@@ -54,6 +54,42 @@ def _freshest_file_mtime(service, account_key):
     return newest
 
 
+class _PidLocked(Exception):
+    pass
+
+
+def acquire_pid_file(pid_file):
+    """Open + flock a pid file WITHOUT destroying another live process's record.
+
+    2026-10-22: this used O_TRUNC before LOCK_EX, so every duplicate start (keepalive
+    pgrep-miss under load) zeroed the running worker's pid file and exited — all four
+    realtime pid files were found 0 bytes. Now: create/open RDWR, take LOCK_EX|LOCK_NB
+    FIRST, and only then truncate + write our pid. A lock loser raises _PidLocked
+    WITHOUT touching the file. Other IO trouble raises as-is (caller proceeds unlocked).
+    Returns the held fd on success.
+    """
+    fd = os.open(str(pid_file), os.O_CREAT | os.O_RDWR, 0o644)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        try:
+            os.close(fd)
+        except Exception:
+            pass
+        raise _PidLocked(str(pid_file))
+    try:
+        os.ftruncate(fd, 0)
+        os.write(fd, str(os.getpid()).encode())
+        os.fsync(fd)
+    except Exception:
+        try:
+            os.close(fd)
+        except Exception:
+            pass
+        raise
+    return fd
+
+
 class RealtimePositionUpdater:
     def __init__(self, position_service, account_key: str):
         self.position_service = position_service
@@ -138,18 +174,42 @@ class RealtimePositionUpdater:
                         try:
                             # 2026-04-29 user: bumped 60→120s. flz was crashing every 116s on this exact gate.
                             # Stale-data trading risk vs constant-crash data loss — 120s gives slow-API accounts headroom.
-                            _pau_timeout = float(getattr(globals().get('config'), 'PAU_TIMEOUT_SEC', 120.0))  # 2026-10-06: `config` never imported here -> NameError -> os._exit(43)
+                            _svc_cfg = getattr(self.position_service, "config", None)
+                            try:
+                                _pau_timeout = float(getattr(_svc_cfg, "PAU_TIMEOUT_SEC", 120.0) or 120.0)
+                            except Exception:
+                                _pau_timeout = 120.0
                             updated_keys = await asyncio.wait_for(self.position_service.process_account_update(self.account_key, positions_data, single=False, skip_broadcast_save=False), timeout=_pau_timeout)
+                            try:
+                                import positions_truth as _ptruth_ok
+                                _ptruth_ok.hang_ok(self.position_service, self.account_key)
+                            except Exception:
+                                pass
                         except asyncio.TimeoutError:
-                            logger.critical(f"[FETCH_LOOP][{self.account_key}] 🚨🚨🚨 process_account_update HUNG > {_pau_timeout}s — CRASHING realtime worker so watchdog respawns.")
-                            try: sys.stdout.flush(); sys.stderr.flush()
-                            except Exception: pass
-                            os._exit(42)
+                            # 2026-10-22: mirror the service (fetch_positions): reconcile from the broker
+                            # snapshot and exit only after POSITIONS_HANG_EXIT_AFTER consecutive hangs. The old
+                            # first-hang os._exit(42) turned every load-starvation stall (Mac load 200+) into a
+                            # worker death + bootstrap storm, which added the load causing the next stall.
+                            import positions_truth as _ptruth
+                            _where = f"process_account_update HUNG > {_pau_timeout}s"
+                            if _ptruth.hang_reconcile(self.position_service, self.account_key, positions_data, _where, _svc_cfg, logger):
+                                logger.critical(f"[FETCH_LOOP][{self.account_key}] 🚨 process_account_update hung repeatedly — exiting for watchdog respawn (last resort)")
+                                try: sys.stdout.flush(); sys.stderr.flush()
+                                except Exception: pass
+                                os._exit(42)
                         except Exception as _pau_err:
-                            logger.critical(f"[FETCH_LOOP][{self.account_key}] 🚨🚨🚨 process_account_update RAISED — CRASHING realtime worker so watchdog respawns. Error: {_pau_err}", exc_info=True)
-                            try: sys.stdout.flush(); sys.stderr.flush()
-                            except Exception: pass
-                            os._exit(43)
+                            logger.critical(f"[FETCH_LOOP][{self.account_key}] 🚨🚨🚨 process_account_update RAISED: {_pau_err}", exc_info=True)
+                            try:
+                                import positions_truth as _ptruth2
+                                _where2 = f"process_account_update RAISED {_pau_err!r}"[:200]
+                                if _ptruth2.hang_reconcile(self.position_service, self.account_key, positions_data, _where2, _svc_cfg, logger):
+                                    try: sys.stdout.flush(); sys.stderr.flush()
+                                    except Exception: pass
+                                    os._exit(43)
+                            except SystemExit:
+                                raise
+                            except Exception:
+                                pass
                         logger.info(f"[FETCHFETCH]ez_pos_realtime {self.account_key}[ 🚨 Fetched {positions_data}")
                         updated_count = len(updated_keys) if isinstance(updated_keys, set) else 0
                         logger.warning(f"[FETCH_LOOP][{self.account_key}] ✅ FETCHED and SYNCED {updated_count} positions")
@@ -197,18 +257,12 @@ async def main():
     pid_file.parent.mkdir(parents=True, exist_ok=True)
     pid_fd = None
     try:
-        pid_fd = os.open(str(pid_file), os.O_CREAT | os.O_WRONLY | os.O_TRUNC)
-        try:
-            fcntl.flock(pid_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
-            logger.critical(f"[REALTIME][{account_key}] ❌ Another instance is already running (PID file locked)")
-            if pid_fd: os.close(pid_fd)
-            sys.exit(1)
-        os.write(pid_fd, str(os.getpid()).encode())
-        os.fsync(pid_fd)
+        pid_fd = acquire_pid_file(pid_file)
+    except _PidLocked:
+        logger.critical(f"[REALTIME][{account_key}] ❌ Another instance is already running (PID file locked)")
+        sys.exit(1)
     except Exception as pid_err:
         logger.warning(f"[REALTIME][{account_key}] ⚠️ Could not create PID file: {pid_err}")
-        if pid_fd: os.close(pid_fd)
         pid_fd = None
     account_file_handler = None
     try:

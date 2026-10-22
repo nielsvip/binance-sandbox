@@ -76,11 +76,13 @@ if [ -n "$REASON" ]; then
   if [ "$AGE" -lt "$COOL" ]; then
     log "round exhausted ($REASON) but cooldown ${AGE}s < ${COOL}s -> not rolling"
   else
-    # 2026-10-22 spec 22 §6.1: no roll while the full-course round is incomplete (data/reports/full_course_round_<run>.json, written by the
-    # scheduler every tick) unless V15_ROUND_ROLL_FORCE=1. Fail-closed: a missing/stale record or a failing check refuses the roll.
+    # 2026-10-22 spec 22 §6.1 + coordinator ("an idle fleet is worse than an imperfect round boundary"): the roll is refused ONLY while the
+    # scheduler's completion record (data/reports/full_course_round_<run>.json) lists LAUNCHABLE pending work (exit 3). Exhausted/complete/forced
+    # (V15_ROUND_ROLL_FORCE=1) -> exit 0, the record is frozen and the roll proceeds. Any other exit (crash/timeout) is logged and does NOT block.
     PYI=/home/niels/.conda/envs/binance_env_mac/bin/python; [ -x "$PYI" ] || PYI=python3
-    if GUARD=$(timeout 60 "$PYI" tools/v15_fleet_scheduler.py --round-roll-check 2>&1); then
-      log "round exhausted ($REASON) -> rolling round; completion guard: $(echo "$GUARD" | tail -1)"
+    GUARD=$(timeout 60 "$PYI" tools/v15_fleet_scheduler.py --round-roll-check 2>&1); GRC=$?
+    if [ "$GRC" -ne 3 ]; then
+      log "round exhausted ($REASON) -> rolling round; completion guard rc=$GRC: $(echo "$GUARD" | tail -1)"
       echo "$NOW" > $STAMP
       timeout 300 python3 tools/v15_autopilot.py --once --force-stage restart >> $W 2>&1 && log "restart stage ok" || log "restart stage FAILED rc=$?"
     else

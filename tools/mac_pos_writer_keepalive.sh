@@ -286,6 +286,14 @@ engine_keepalive() {
     # file that parses and is genuinely empty reaches this arm. 61 positions were open across 6 accounts when
     # this was written.
     engine_alert "$A" "ez_manage SILENT (${mgr_age}s > ${max_age}s) but the 24h restart budget is spent (last restart ${rb_age}s ago) and the account is PROVABLY FLAT — NOT restarting; a genuinely wedged engine now needs a human/code fix"
+  elif [ "$mgr_age" -gt "$max_age" ] && [ "$mgr_since" -gt "$mgr_boot_grace" ] && [ "${_MGR_OVERLOADED:-0}" = "1" ]; then
+    # 2026-10-22 LOAD GATE (USER positions-reliability): a starved engine looks exactly like a
+    # wedged one (no log output), and killing it buys an 8-13 min bootstrap storm that raises the
+    # load that caused the silence — measured all 2026-10-22, a kill every ~10 min/account at Mac
+    # load 200+. Defer the kill (the NOCHILD branch above still replaces a truly dead engine, and
+    # writers are unaffected); retried every pass, alerted rate-limited like all engine alerts.
+    engine_alert "$A" "ez_manage SILENT (${mgr_age}s > ${max_age}s) but host overloaded (load ${_MGR_LOAD1:-?} on ${_MGR_NCPU:-?} cores) — kill DEFERRED to break the kill→bootstrap→load loop"
+    klog "$A: ez_manage SILENT (${mgr_age}s) but host overloaded (load ${_MGR_LOAD1:-?}) -> kill DEFERRED, retry next pass"
   elif [ "$mgr_age" -gt "$max_age" ] && [ "$mgr_since" -gt "$mgr_boot_grace" ]; then
     _risk_note="budget available"
     if [ "$rb_age" -lt "$rb_window" ]; then
@@ -362,6 +370,40 @@ engine_keepalive() {
   fi
 }
 
+# ═══ 2026-10-22 ROTATION (USER positions-reliability): one pass never outlives RUN_MAX_S
+# (45 s), and under Mac load 200+ the engine section alone can eat it — so a fixed account order
+# starves the tail: measured, fin's writer-stall counter froze for an hour (state mtime 16:29Z
+# while passes ran) because passes kept dying before reaching the 4th account. Rotate the starting
+# account each pass; coverage is then eventually-consistent instead of never. Order only — no
+# account is skipped and none is preferred.
+_mr_seq_file="/tmp/.mac_pos_keepalive_seq"
+_mr_rot=$(cat "$_mr_seq_file" 2>/dev/null || echo 0)
+case "$_mr_rot" in ''|*[!0-9]*) _mr_rot=0 ;; esac
+_mr_n=$(echo $ACCOUNTS | wc -w | tr -d ' ')
+case "$_mr_n" in ''|*[!0-9]*) _mr_n=0 ;; esac
+if [ "$_mr_n" -gt 0 ]; then
+  _mr_rot=$(( _mr_rot % _mr_n ))
+  echo $(( (_mr_rot + 1) % _mr_n )) > "$_mr_seq_file" 2>/dev/null || true
+  _mr_i=0; _mr_head=""; _mr_tail=""
+  for _mr_a in $ACCOUNTS; do
+    if [ "$_mr_i" -lt "$_mr_rot" ]; then _mr_head="$_mr_head $_mr_a"; else _mr_tail="$_mr_tail $_mr_a"; fi
+    _mr_i=$(( _mr_i + 1 ))
+  done
+  ACCOUNTS_ROTATED="$_mr_tail $_mr_head"
+else
+  ACCOUNTS_ROTATED="$ACCOUNTS"
+fi
+# ═══ 2026-10-22 LOAD SNAPSHOT (one sysctl per pass, shared by every account below). Fail-open:
+# unreadable load reads as not-overloaded and nothing changes.
+_MGR_LOAD1=$(/usr/sbin/sysctl -n vm.loadavg 2>/dev/null | tr -d '{}' | awk '{print $1}')
+_MGR_NCPU=$(/usr/sbin/sysctl -n hw.ncpu 2>/dev/null || echo 0)
+case "$_MGR_NCPU" in ''|*[!0-9]*) _MGR_NCPU=0 ;; esac
+_MGR_OVERLOADED=0
+if [ "$_MGR_NCPU" -gt 0 ]; then
+  _MGR_OVERLOADED=$(awk -v l="$_MGR_LOAD1" -v n="$_MGR_NCPU" 'BEGIN{print ((l+0) > 4*n) ? 1 : 0}')
+fi
+case "$_MGR_OVERLOADED" in 1|0) ;; *) _MGR_OVERLOADED=0 ;; esac
+
 # ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 # PASS 1 — THE DECISION ENGINE, FIRST AND ALONE.
 # 2026-10-16 USER ("NO account can be inactive for >3min"): engine supervision used to live at the BOTTOM of a loop
@@ -369,13 +411,13 @@ engine_keepalive() {
 # sat 73 s inside a spawn subshell at 04:30:00-04:31:13Z while holding the single-flight lock), so on a bad pass the
 # engine check was reached late or not at all, and every run behind it aborted with "another run holds the lock".
 # The 3-minute invariant is about ENGINES, so engines are now checked before anything else can stall the pass.
-for A in $ACCOUNTS; do
+for A in $ACCOUNTS_ROTATED; do
   engine_keepalive "$A"
 done
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 # PASS 2 — position writers and realtime failover workers (unchanged logic, now strictly after the engines).
-for A in $ACCOUNTS; do
+for A in $ACCOUNTS_ROTATED; do
   SVC="ez_positions_service_main.py $A"
   RT="ez_positions_realtime.py $A"
   reap_extras "$SVC"

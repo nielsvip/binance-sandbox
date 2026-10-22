@@ -2199,11 +2199,23 @@ _SS_BUDGET = {}  # per tick: sym_side -> V15_BOARD_BUDGET (0 = full board) from 
 _PCLASS = {}  # per tick: sym -> selection class of its best side (0 violator / 1 gainer-due / 1.5 never-boarded / 2 everyone else)
 _BUDGET_EVALS_DEFAULT = 12000
 _FULL_MODES = ("slow", "full")  # manifest.mode values that count as a full-course board; catchup / budget:<n> / missing never do
-_STRUCTURAL_REFUSALS = frozenset({"DEAD_VEC_PATH", "NOT_A_TEMPLATE_KEY", "GLOBAL_ONLY", "ABLATION_NEVER_ON", "TYPE_LAW"})
+# Structural refusal codes = the item can never be adopted on this board whatever the compute (v15_pilot.v18_parts_to_overrides "Refused, never a
+# candidate" + promotion_block_reason + v15_row_guards.STRUCTURAL_SKIP_PREFIXES). Measured fleet refused_sample codes 2026-10-22 (S1/S2/S5/S6 run35):
+# DEAD_VEC_PATH 326, LIVE_DEAD_KEY 179, NOT_A_TEMPLATE_KEY 160, TYPE_MISMATCH 14, PROTECTED_STOP_OFF 5, ABLATION_IS_A_LEVER 1, HARD_SET 1.
+# PARSE / EMPTY / anything new stays OUTSIDE (reported in refusal_reasons_outside_allowlist) until someone proves it structural.
+_STRUCTURAL_REFUSALS = frozenset({"DEAD_VEC_PATH", "NOT_A_TEMPLATE_KEY", "GLOBAL_ONLY", "ABLATION_NEVER_ON", "ABLATION_IS_A_LEVER", "TYPE_LAW", "TYPE_MISMATCH",
+                                  "LIVE_DEAD_KEY", "MAXAUG_NEVER_ZERO", "NOT_WIRED_VEC", "INVENTED_ALT", "NOT_IN_CONFIG", "SELF_PAIR", "HARD_SET",
+                                  "PROTECTED_STOP_OFF", "LIVE_ONLY", "NO_LIVE_PATH", "ZERO_FORMULA", "EMPTY_KEY"})
+_STRUCTURAL_PREFIXES = ("DEAD_VEC", "MAXAUG", "UNWIRED", "NOT_WIRED", "ABLATION_", "TYPE_", "GLOBAL_ONLY", "SELF_PAIR")
+
+
+def _is_structural_refusal(code):
+    c = str(code or "").strip().upper()
+    return bool(c) and (c in _STRUCTURAL_REFUSALS or c.startswith(_STRUCTURAL_PREFIXES))
 _COMPLETION_CRITERION = ("every tradeable sym_side (tradeable_universe()) has complete_at = newest PUBLISHED board with manifest.mode in "
                          f"{list(_FULL_MODES)} on an NPZ <= npz_min old (the _qualifying_ages rule), AND this round's progress JSON for it is finished "
                          "(result_done_utc set) with v18.must n_carried_over == 0 and every refusal reason code in v18.must.refused_sample within "
-                         f"{sorted(_STRUCTURAL_REFUSALS)} (a SAMPLE of refusals, not all of them); OR it is listed in data/round_exclusions.json with a reason. "
+                         f"{sorted(_STRUCTURAL_REFUSALS)} or prefixed {list(_STRUCTURAL_PREFIXES)} (a SAMPLE of refusals, not all of them); OR it is listed in data/round_exclusions.json with a reason. "
                          "A budget/catch-up board never counts.")
 
 
@@ -2328,10 +2340,14 @@ def _rget(r, i):
     return r[i] if isinstance(r, (list, tuple)) and len(r) > i else None
 
 
-def build_round_completion(round_id, universe, rows, must_by_host, exclusions, now_ts, npz_min=20.0, hosts_not_visible=(), round_meta=None):
+def build_round_completion(round_id, universe, rows, must_by_host, exclusions, now_ts, npz_min=20.0, hosts_not_visible=(), round_meta=None, launchable_syms=None,
+                           running=(), carried_from_previous=None):
     """The full-course round record (brief 20 §4, spec 22 §6.1). Pure (tested).
     universe = tradeable_universe() dict; rows = _manifest_rows (merged hosts, fields 0-10); must_by_host = {host: {SS: _progress_must dict}} from
-    each host's CURRENT progress dir (the probe channel); exclusions = {SS: reason}; hosts_not_visible = hosts whose probe failed this tick."""
+    each host's CURRENT progress dir (the probe channel); exclusions = {SS: reason}; hosts_not_visible = hosts whose probe failed this tick.
+    launchable_syms = symbols the scheduler would launch NOW (its new-launch order, NPZ-dead removed); running = sym_sides running now. A PENDING
+    sym_side whose symbol is launchable and that is not running is `launchable_pending` (the roll guard waits only for those).
+    carried_from_previous = (prev_round, {SS: prev_verdict}) of the previous round's unfinished sym_sides (tracked across the roll)."""
     best_full, best_any, counts = {}, {}, {}
     for r in rows or []:
         ss, ts = _rget(r, 0), _row_epoch(r)
@@ -2358,7 +2374,7 @@ def build_round_completion(round_id, universe, rows, must_by_host, exclusions, n
                 must[ss] = (key, hn, m)
     blind = sorted(set(hosts_not_visible or ()))
     iso = lambda t: datetime.datetime.fromtimestamp(t, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    per_ss, per_cat = {}, {}
+    per_ss, per_cat, outside = {}, {}, {}
     for ss in universe.get("sym_sides") or []:
         cat = cat_of_ss(ss)
         pc = per_cat.setdefault(cat, {"n": 0, "complete": 0, "pending": 0, "excluded": 0, "refused_only": 0})
@@ -2385,7 +2401,9 @@ def build_round_completion(round_id, universe, rows, must_by_host, exclusions, n
                 why.append(f"must_carried={m.get('n_carried_over')}")
             if not m.get("result_done_utc"):
                 why.append("board unfinished this round")
-            bad = sorted(set(m.get("refusal_codes") or []) - _STRUCTURAL_REFUSALS)
+            bad = sorted(c for c in set(m.get("refusal_codes") or []) if not _is_structural_refusal(c))
+            for c in bad:
+                outside[c] = outside.get(c, 0) + 1
         else:
             nv = "not_visible" if blind else "no_progress_this_round"
             e.update({k: nv for k in ("must_items_total", "must_evaluated", "must_carried", "must_refused")})
@@ -2408,10 +2426,23 @@ def build_round_completion(round_id, universe, rows, must_by_host, exclusions, n
         per_ss[ss] = e
     n = len(per_ss)
     n_ok = sum(c["complete"] + c["excluded"] for c in per_cat.values())
+    run_set = set(running or ())
+    lsy = set(launchable_syms or ())
+    launchable = sorted(ss for ss, e in per_ss.items() if str(e.get("verdict", "")).startswith("PENDING") and ss.rsplit("_", 1)[0] in lsy and ss not in run_set)
+    running_pending = sorted(ss for ss, e in per_ss.items() if str(e.get("verdict", "")).startswith("PENDING") and ss in run_set)
+    carried = []
+    if carried_from_previous and carried_from_previous[1]:
+        for ss, pv in sorted(carried_from_previous[1].items()):
+            carried.append({"sym_side": ss, "previous_round": carried_from_previous[0], "previous_verdict": pv, "now": (per_ss.get(ss) or {}).get("verdict", "NOT_IN_UNIVERSE")})
     return {"round": round_id, "generated_at": iso(now_ts), "criterion": _COMPLETION_CRITERION, "universe_source": universe.get("source"), "universe_n": n,
             "universe_alternatives": universe.get("alternatives") or {}, "npz_min": npz_min, "hosts_not_visible": blind, "round_meta": round_meta or {},
             "complete": bool(n and n_ok == n), "n_complete": sum(c["complete"] for c in per_cat.values()), "n_excluded": sum(c["excluded"] for c in per_cat.values()),
             "n_pending": sum(c["pending"] for c in per_cat.values()), "n_refused_only": sum(c["refused_only"] for c in per_cat.values()),
+            "refusal_reasons_outside_allowlist": dict(sorted(outside.items(), key=lambda kv: -kv[1])), "structural_allowlist": sorted(_STRUCTURAL_REFUSALS),
+            "structural_prefixes": list(_STRUCTURAL_PREFIXES), "launchable_pending": launchable, "n_launchable_pending": len(launchable),
+            "running_pending": running_pending, "launchable_known": launchable_syms is not None,
+            "carried_from_previous_round": carried, "n_carried_from_previous_round": len(carried),
+            "n_carried_resolved": sum(1 for c in carried if c["now"] in ("COMPLETE", "EXCLUDED")),
             "per_cat_side": per_cat, "sym_sides": per_ss}
 
 
@@ -2422,6 +2453,8 @@ def write_round_completion(record, out_dir=None):
     d = pathlib.Path(out_dir or (ROOT / "data" / "reports"))
     d.mkdir(parents=True, exist_ok=True)
     p = d / f"full_course_round_{record['round']}.json"
+    if (_jload(p, None) or {}).get("frozen"):
+        return None  # frozen at the roll: the closed round's record is never overwritten
     tmp = p.with_name(p.name + f".tmp{os.getpid()}")
     tmp.write_text(json.dumps(record, indent=1, default=str))
     os.replace(tmp, p)
@@ -2429,10 +2462,12 @@ def write_round_completion(record, out_dir=None):
 
 
 def round_roll_decision(record, force=False, now_ts=None, max_age_s=1800.0):
-    """(allowed, message) for rolling the round (spec 22 §6.1). Allowed only when the record is present, fresh (<= max_age_s) and complete,
-    or when force (V15_ROUND_ROLL_FORCE=1). The message carries the per-cat_side pending counts. Pure (tested)."""
+    """(allowed, message) for rolling the round (spec 22 §6.1; coordinator 2026-10-22: an idle fleet is worse than an imperfect round boundary).
+    REFUSED only while LAUNCHABLE pending work exists (record fresh, launchable known, n_launchable_pending > 0) and not force
+    (V15_ROUND_ROLL_FORCE=1). Complete, exhausted (nothing launchable), missing or stale record -> allowed (the latter two say UNVERIFIED).
+    The message carries the per-cat_side counts. Pure (tested)."""
     if not isinstance(record, dict):
-        return bool(force), ("FORCED: " if force else "REFUSED: ") + "no completion record"
+        return True, ("FORCED: " if force else "ALLOWED (UNVERIFIED: no completion record): ") + "nothing proves launchable work is pending"
     pcs = {k: {x: v.get(x) for x in ("pending", "refused_only", "complete", "excluded", "n")} for k, v in sorted((record.get("per_cat_side") or {}).items())}
     age = None
     try:
@@ -2440,11 +2475,48 @@ def round_roll_decision(record, force=False, now_ts=None, max_age_s=1800.0):
     except Exception:
         age = float("inf")
     stale = age is not None and age > max_age_s
-    ok = bool(record.get("complete")) and not stale
-    msg = f"round {record.get('round')} complete={bool(record.get('complete'))} record_age_s={None if age is None else round(age)}{' STALE' if stale else ''} per_cat_side={json.dumps(pcs, sort_keys=True)}"
-    if ok:
-        return True, "ALLOWED: " + msg
-    return bool(force), ("FORCED (V15_ROUND_ROLL_FORCE=1): " if force else "REFUSED: ") + msg
+    nl = int(record.get("n_launchable_pending") or 0)
+    msg = (f"round {record.get('round')} complete={bool(record.get('complete'))} launchable_pending={nl} {list(record.get('launchable_pending') or [])[:12]} "
+           f"record_age_s={None if age is None else round(age)}{' STALE' if stale else ''} per_cat_side={json.dumps(pcs, sort_keys=True)}")
+    if force:
+        return True, "FORCED (V15_ROUND_ROLL_FORCE=1): " + msg
+    if record.get("complete"):
+        return True, "ALLOWED (complete): " + msg
+    if stale or not record.get("launchable_known", False):
+        return True, "ALLOWED (UNVERIFIED: record stale or launchability unknown): " + msg
+    if nl > 0:
+        return False, "REFUSED (launchable pending work exists): " + msg
+    return True, "ALLOWED (exhausted: nothing launchable, record frozen incomplete): " + msg
+
+
+def freeze_round_record(path, reason, now_ts):
+    """Mark full_course_round_<run>.json frozen at the roll (frozen, frozen_at, frozen_reason; pending list kept as it is). The writer never
+    overwrites a frozen record. Returns True when frozen. Never raises."""
+    rec = _jload(path, None)
+    if not isinstance(rec, dict):
+        return False
+    rec.update(frozen=True, frozen_at=datetime.datetime.fromtimestamp(now_ts, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), frozen_reason=str(reason)[:400],
+               pending_at_freeze=sorted(ss for ss, e in (rec.get("sym_sides") or {}).items() if not str(e.get("verdict", "")).startswith(("COMPLETE", "EXCLUDED"))))
+    try:
+        p = pathlib.Path(path)
+        tmp = p.with_name(p.name + f".tmp{os.getpid()}")
+        tmp.write_text(json.dumps(rec, indent=1, default=str))
+        os.replace(tmp, p)
+        return True
+    except Exception:
+        return False
+
+
+def _previous_round_carry(round_id, reports=None):
+    """(prev_round, {SS: verdict}) of every NOT complete/excluded sym_side in the previous round's record (run<N-1>), or None. Never raises."""
+    m = re.match(r"run(\d+)$", str(round_id or ""))
+    if not m:
+        return None
+    prev = f"run{int(m.group(1)) - 1}"
+    rec = _jload(pathlib.Path(reports or (ROOT / "data" / "reports")) / f"full_course_round_{prev}.json", None)
+    if not isinstance(rec, dict):
+        return None
+    return prev, {ss: e.get("verdict") for ss, e in (rec.get("sym_sides") or {}).items() if not str(e.get("verdict", "")).startswith(("COMPLETE", "EXCLUDED"))}
 
 
 def _append_decision_log(path, rec, now_ts, keep_d=14.0, prune_every_s=21600.0, state=None):
@@ -3868,20 +3940,6 @@ def tick(args, cfg, now):
             os.replace(_tmp, _fp)
     except Exception as _e_cov:
         print(f"[sched] coverage FAILED (non-fatal): {_e_cov}", flush=True)
-    try:  # 2026-10-22 spec 22 §6.1 / brief 20 §4: the full-course round-completion record, every tick
-        if not (args.dry_run or sim):
-            _rid, _rsrc, _renv = _completion_round_id(cur_pdir)
-            _uni1 = tradeable_universe(uni.get("allowed_sym_sides") or [])
-            _mbh = {_hn: (_sx.get("must") or {}) for _hn, _sx in stats.items() if isinstance(_sx, dict)}
-            _blind = [_hn for _hn, _sx in stats.items() if not isinstance(_sx, dict) or "must" not in _sx]
-            _rec = build_round_completion(_rid, _uni1, _mrows, _mbh, _load_round_exclusions(_rid), _now_ts, npz_min=float(os.environ.get("V15_SCHED_COVERAGE_NPZ_MIN", "20")),
-                                          hosts_not_visible=_blind, round_meta={"round_source": _rsrc, "round_env_round": _renv, "current_progress_dir": cur_pdir})
-            _wp = write_round_completion(_rec)
-            log["round_completion"] = {"path": str(_wp), "round": _rid, "complete": _rec["complete"], "universe_n": _rec["universe_n"], "n_complete": _rec["n_complete"], "n_pending": _rec["n_pending"],
-                                       "n_refused_only": _rec["n_refused_only"], "n_excluded": _rec["n_excluded"], "hosts_not_visible": _blind}
-            print(f"[sched] ROUND-COMPLETION {_rid} ({_rsrc}) complete={_rec['complete']} universe={_rec['universe_n']} ({_uni1['source']}) complete={_rec['n_complete']} pending={_rec['n_pending']} refused_only={_rec['n_refused_only']} excluded={_rec['n_excluded']} not_visible_hosts={_blind}", flush=True)
-    except Exception as _e_rc:
-        print(f"[sched] round completion record FAILED (non-fatal): {_e_rc}", flush=True)
     _ph("candidates_coverage")
     log["venue_phase"] = _phase_log
     log["npz_dead"] = sorted(_npz_dead)
@@ -4682,6 +4740,22 @@ def tick(args, cfg, now):
             k = "ok" if r_.get("ok") else re.sub(r"[\d.]+", "#", str(r_.get("reason")))
             hist[k] = hist.get(k, 0) + 1
         log["ready_summary"][hn] = hist
+    try:  # 2026-10-22 spec 22 §6.1 / brief 20 §4: the full-course round-completion record, every tick
+        if not (args.dry_run or sim):
+            _rid, _rsrc, _renv = _completion_round_id(cur_pdir)
+            _uni1 = tradeable_universe(uni.get("allowed_sym_sides") or [])
+            _mbh = {_hn: (_sx.get("must") or {}) for _hn, _sx in stats.items() if isinstance(_sx, dict)}
+            _blind = [_hn for _hn, _sx in stats.items() if not isinstance(_sx, dict) or "must" not in _sx]
+            _lsyms = set().union(*[set(_v) for _v in _ORDER_BY_HOST.values()]) - set(_npz_dead) if _ORDER_BY_HOST else set()
+            _rec = build_round_completion(_rid, _uni1, _mrows, _mbh, _load_round_exclusions(_rid), _now_ts, npz_min=float(os.environ.get("V15_SCHED_COVERAGE_NPZ_MIN", "20")),
+                                          hosts_not_visible=_blind, round_meta={"round_source": _rsrc, "round_env_round": _renv, "current_progress_dir": cur_pdir},
+                                          launchable_syms=_lsyms, running=set(running), carried_from_previous=_previous_round_carry(_rid))
+            _wp = write_round_completion(_rec)
+            log["round_completion"] = {"path": str(_wp), "round": _rid, "complete": _rec["complete"], "universe_n": _rec["universe_n"], "n_complete": _rec["n_complete"], "n_pending": _rec["n_pending"],
+                                       "n_refused_only": _rec["n_refused_only"], "n_excluded": _rec["n_excluded"], "n_launchable_pending": _rec["n_launchable_pending"], "hosts_not_visible": _blind}
+            print(f"[sched] ROUND-COMPLETION {_rid} ({_rsrc}) complete={_rec['complete']} universe={_rec['universe_n']} ({_uni1['source']}) complete={_rec['n_complete']} pending={_rec['n_pending']} refused_only={_rec['n_refused_only']} excluded={_rec['n_excluded']} launchable_pending={_rec['n_launchable_pending']} not_visible_hosts={_blind} written={_wp}", flush=True)
+    except Exception as _e_rc:
+        print(f"[sched] round completion record FAILED (non-fatal): {_e_rc}", flush=True)
     try:
         _lh = []
         for _t in list(log["launched"]) + list(log.get("dispatch_async", [])):
@@ -4810,6 +4884,9 @@ def _round_roll_check_cli(home=None, reports=None, now_ts=None):
     rec = _jload(pathlib.Path(reports or (ROOT / "data" / "reports")) / f"full_course_round_{rid}.json", None) if rid else None
     ok, msg = round_roll_decision(rec, os.environ.get("V15_ROUND_ROLL_FORCE", "0") == "1", time.time() if now_ts is None else now_ts,
                                   float(os.environ.get("V15_ROUND_ROLL_RECORD_MAX_AGE_S", "1800")))
+    if ok and rid and isinstance(rec, dict):
+        _fp = pathlib.Path(reports or (ROOT / "data" / "reports")) / f"full_course_round_{rid}.json"
+        msg += f" | frozen={freeze_round_record(_fp, msg, time.time() if now_ts is None else now_ts)}"
     print(f"[round-roll-check] {msg}", flush=True)
     return 0 if ok else 3
 
@@ -4830,7 +4907,7 @@ def main():
     ap.add_argument("--extend-universe", action="store_true", help="after the base universe is fully terminal, emit the legacy-order extension list (OFF by default)")
     ap.add_argument("--kill-out-of-universe", action="store_true", help="list pilots of the current progress dir whose symbol is not in the universe")
     ap.add_argument("--apply-kill", action="store_true", help="with --kill-out-of-universe: actually SIGTERM them")
-    ap.add_argument("--round-roll-check", action="store_true", help="exit 0 when the round may roll (completion record complete, or V15_ROUND_ROLL_FORCE=1), else 3; prints per-cat_side pending counts")
+    ap.add_argument("--round-roll-check", action="store_true", help="exit 3 only while launchable pending work exists (else 0: complete / exhausted / forced V15_ROUND_ROLL_FORCE=1, record frozen); prints per-cat_side counts")
     args = ap.parse_args()
     if args.round_roll_check:
         sys.exit(_round_roll_check_cli())

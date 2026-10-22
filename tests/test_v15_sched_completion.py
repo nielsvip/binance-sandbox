@@ -75,7 +75,7 @@ def test_select_catchup_mode_excludes_never_from_denominator():
 def test_completion_complete_and_pending_reasons():
     uni = _uni(["AAAUSDT_LONG", "AAAUSDT_SHORT", "BBBUSDT_LONG", "CCCUSDT_LONG", "DDDUSDT_LONG", "EEEUSDT_LONG"])
     rows = [_row("AAAUSDT_LONG", 2), _row("AAAUSDT_SHORT", 2, mode="catchup"), _row("BBBUSDT_LONG", 2), _row("CCCUSDT_LONG", 2, lag_min=90), _row("DDDUSDT_LONG", 2)]
-    must = {"s2": {"AAAUSDT_LONG": _must(), "AAAUSDT_SHORT": _must(), "BBBUSDT_LONG": _must(carried=7), "DDDUSDT_LONG": _must(codes=("LIVE_DEAD_KEY", "DEAD_VEC_PATH"))}}
+    must = {"s2": {"AAAUSDT_LONG": _must(), "AAAUSDT_SHORT": _must(), "BBBUSDT_LONG": _must(carried=7), "DDDUSDT_LONG": _must(codes=("PARSE", "DEAD_VEC_PATH"))}}
     rec = S.build_round_completion("run35", uni, rows, must, {"EEEUSDT_LONG": "delisted"}, NOW)
     ss = rec["sym_sides"]
     assert ss["AAAUSDT_LONG"]["verdict"] == "COMPLETE" and ss["AAAUSDT_LONG"]["complete_at"] == _iso(NOW - 2 * 3600)
@@ -83,7 +83,7 @@ def test_completion_complete_and_pending_reasons():
     assert ss["AAAUSDT_SHORT"]["complete_at"] is None and "no full board" in ss["AAAUSDT_SHORT"]["verdict"]  # catch-up never counts
     assert "must_carried=7" in ss["BBBUSDT_LONG"]["verdict"]
     assert ss["CCCUSDT_LONG"]["must_carried"] == "no_progress_this_round" and ss["CCCUSDT_LONG"]["complete_at"] is None  # stale-NPZ board
-    assert ss["DDDUSDT_LONG"]["verdict"].startswith("REFUSED_ONLY") and "LIVE_DEAD_KEY" in ss["DDDUSDT_LONG"]["verdict"]
+    assert ss["DDDUSDT_LONG"]["verdict"].startswith("REFUSED_ONLY") and "PARSE" in ss["DDDUSDT_LONG"]["verdict"]
     assert ss["EEEUSDT_LONG"]["verdict"] == "EXCLUDED"
     assert rec["complete"] is False and rec["n_complete"] == 1 and rec["n_excluded"] == 1 and rec["n_refused_only"] == 1 and rec["n_pending"] == 3
     pc = rec["per_cat_side"]["CRYPTO_LONG"]
@@ -124,27 +124,60 @@ def test_tradeable_universe_one_source_alternatives_counted():
     assert u2["alternatives"]["per_sym_full_sets_keys"]["n"] is None
 
 
-def test_round_roll_decision():
-    rec = {"round": "run35", "generated_at": _iso(NOW - 60), "complete": False, "per_cat_side": {"CRYPTO_LONG": {"n": 3, "pending": 2, "refused_only": 0, "complete": 1, "excluded": 0}}}
-    ok, msg = S.round_roll_decision(rec, False, NOW)
+def test_round_roll_decision_refuses_only_launchable_pending():
+    base = {"round": "run35", "generated_at": _iso(NOW - 60), "complete": False, "launchable_known": True,
+            "per_cat_side": {"CRYPTO_LONG": {"n": 3, "pending": 2, "refused_only": 0, "complete": 1, "excluded": 0}}}
+    ok, msg = S.round_roll_decision({**base, "n_launchable_pending": 2, "launchable_pending": ["A_LONG", "B_LONG"]}, False, NOW)
     assert ok is False and msg.startswith("REFUSED") and '"pending": 2' in msg
-    assert S.round_roll_decision(rec, True, NOW)[0] is True
-    assert S.round_roll_decision({**rec, "complete": True}, False, NOW)[0] is True
-    assert S.round_roll_decision({**rec, "complete": True, "generated_at": _iso(NOW - 7200)}, False, NOW)[0] is False  # stale record
-    assert S.round_roll_decision(None, False, NOW)[0] is False
+    assert S.round_roll_decision({**base, "n_launchable_pending": 2}, True, NOW)[0] is True  # force
+    ok2, msg2 = S.round_roll_decision({**base, "n_launchable_pending": 0}, False, NOW)
+    assert ok2 is True and "exhausted" in msg2  # incomplete but nothing launchable -> roll
+    assert S.round_roll_decision({**base, "complete": True, "n_launchable_pending": 0}, False, NOW)[0] is True
+    assert S.round_roll_decision({**base, "n_launchable_pending": 5, "generated_at": _iso(NOW - 7200)}, False, NOW)[0] is True  # stale -> never blocks
+    assert S.round_roll_decision({**base, "n_launchable_pending": 5, "launchable_known": False}, False, NOW)[0] is True
+    assert S.round_roll_decision(None, False, NOW)[0] is True
 
 
-def test_round_roll_check_cli(tmp_path, monkeypatch):
+def test_round_roll_check_cli_freezes_on_roll(tmp_path, monkeypatch):
     (tmp_path / "v15_current_progress_dir.txt").write_text("/home/niels/v15_run35_20261022/progress\n")
     rep = tmp_path / "reports"
     rep.mkdir()
     monkeypatch.delenv("V15_ROUND_ROLL_FORCE", raising=False)
+    fp = rep / "full_course_round_run35.json"
+    rec = {"round": "run35", "generated_at": _iso(NOW - 10), "complete": False, "launchable_known": True, "n_launchable_pending": 1, "launchable_pending": ["A_LONG"],
+           "per_cat_side": {}, "sym_sides": {"A_LONG": {"verdict": "PENDING: x"}, "B_LONG": {"verdict": "COMPLETE"}}}
+    fp.write_text(json.dumps(rec))
     assert S._round_roll_check_cli(home=str(tmp_path), reports=str(rep), now_ts=NOW) == 3
-    (rep / "full_course_round_run35.json").write_text(json.dumps({"round": "run35", "generated_at": _iso(NOW - 10), "complete": True, "per_cat_side": {}}))
-    assert S._round_roll_check_cli(home=str(tmp_path), reports=str(rep), now_ts=NOW) == 0
+    assert not json.loads(fp.read_text()).get("frozen")
     monkeypatch.setenv("V15_ROUND_ROLL_FORCE", "1")
-    (rep / "full_course_round_run35.json").write_text(json.dumps({"round": "run35", "generated_at": _iso(NOW - 10), "complete": False, "per_cat_side": {}}))
     assert S._round_roll_check_cli(home=str(tmp_path), reports=str(rep), now_ts=NOW) == 0
+    fr = json.loads(fp.read_text())
+    assert fr["frozen"] is True and fr["pending_at_freeze"] == ["A_LONG"] and fr["complete"] is False
+    assert S.write_round_completion({"round": "run35", "complete": True}, out_dir=rep) is None  # frozen record never overwritten
+    assert json.loads(fp.read_text())["complete"] is False
+
+
+def test_carried_from_previous_round(tmp_path):
+    (tmp_path / "full_course_round_run34.json").write_text(json.dumps({"round": "run34", "sym_sides": {"AAAUSDT_LONG": {"verdict": "PENDING: x"}, "BBBUSDT_LONG": {"verdict": "COMPLETE"},
+                                                                                                         "ZZZUSDT_LONG": {"verdict": "REFUSED_ONLY: y"}}}))
+    carry = S._previous_round_carry("run35", reports=tmp_path)
+    assert carry == ("run34", {"AAAUSDT_LONG": "PENDING: x", "ZZZUSDT_LONG": "REFUSED_ONLY: y"})
+    rec = S.build_round_completion("run35", _uni(["AAAUSDT_LONG"]), [_row("AAAUSDT_LONG", 1)], {"s2": {"AAAUSDT_LONG": _must()}}, {}, NOW, carried_from_previous=carry)
+    assert rec["n_carried_from_previous_round"] == 2 and rec["n_carried_resolved"] == 1
+    assert {c["sym_side"]: c["now"] for c in rec["carried_from_previous_round"]} == {"AAAUSDT_LONG": "COMPLETE", "ZZZUSDT_LONG": "NOT_IN_UNIVERSE"}
+    assert S._previous_round_carry("run35", reports=tmp_path / "nope") is None
+
+
+def test_launchable_pending_and_outside_histogram():
+    uni = _uni(["AAAUSDT_LONG", "BBBUSDT_LONG", "CCCUSDT_LONG", "DDDUSDT_LONG"])
+    must = {"s2": {"DDDUSDT_LONG": _must(codes=("PARSE", "LIVE_DEAD_KEY", "MAXAUG_NEVER_ZERO", "UNWIRED_X", "TYPE_MISMATCH"))}}
+    rec = S.build_round_completion("run35", uni, [_row("DDDUSDT_LONG", 1)], must, {}, NOW, launchable_syms={"AAAUSDT", "BBBUSDT"}, running={"BBBUSDT_LONG"})
+    assert rec["launchable_pending"] == ["AAAUSDT_LONG"] and rec["running_pending"] == ["BBBUSDT_LONG"] and rec["launchable_known"] is True
+    assert rec["refusal_reasons_outside_allowlist"] == {"PARSE": 1} and rec["sym_sides"]["DDDUSDT_LONG"]["verdict"] == "REFUSED_ONLY: non-structural refusal codes PARSE"
+    assert S.build_round_completion("run35", uni, [], {}, {}, NOW)["launchable_known"] is False
+    for c in ("LIVE_DEAD_KEY", "DEAD_VEC_PATH", "SELF_PAIR", "MAXAUG_NEVER_ZERO", "ABLATION_IS_A_LEVER", "PROTECTED_STOP_OFF", "HARD_SET", "NOT_WIRED_VEC"):
+        assert S._is_structural_refusal(c), c
+    assert not S._is_structural_refusal("PARSE") and not S._is_structural_refusal("EMPTY") and not S._is_structural_refusal("")
 
 
 def test_round_id_precedence(tmp_path):

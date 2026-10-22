@@ -1166,7 +1166,8 @@ class CatBrain:
             self._row(ev, ts)
         elif e == "id":
             if ev.get("ni"):
-                self.g.E[self.g.idx(0, "R:" + ev["k"]), C["n_ident"]] += 1
+                edge_index = self.g.idx(0, "R:" + ev["k"])
+                self.g.E[edge_index, C["n_ident"]] += 1
                 self.c["identity_row_visits"] += 1
                 self.c["identity_lines"] += ev["ni"]
             self.c["rows"] += 1
@@ -1360,7 +1361,8 @@ class CatBrain:
                     g.add_eval(g.idx(0, nn), naked[0], naked[1], naked[2], nmet, naked[8], ep)
                 g.add_eval(g.idx(0, a, "G:" + regime), naked[0], naked[1], naked[2], nmet, naked[8], ep)
             if ev.get("ni"):
-                g.E[g.idx(0, a), C["n_ident"]] += 1
+                edge_index = g.idx(0, a)
+                g.E[edge_index, C["n_ident"]] += 1
                 self.c["identity_row_visits"] += 1
                 self.c["identity_lines"] += ev["ni"]
         for c in cells:
