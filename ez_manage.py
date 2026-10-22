@@ -8395,6 +8395,15 @@ def _voe_native_exits_disabled() -> bool:
         return True
 
 
+def _voe_reason_is_vec(reason) -> bool:
+    """USER 2026-10-21 vec-only exits: single definition of a vec-dictated exit reason.
+
+    Mirrors live_twins/vector_enforce._is_board_confirmed plus the RECONCILE_ wire.
+    Used by the execute_now backstop AND the queue_trade_action choke-point gate."""
+    _rx = str(reason or "").upper()
+    return ("VEC_DRIVEN_" in _rx or "RECONCILE_" in _rx or "|VEC_EXACT" in _rx or "BOARD_CONVERGE_" in _rx or "EXIT_OWED" in _rx)
+
+
 _AIR_BARS_LOADER = None  # V17 AIR: callable(symbol, side) -> [(ts, low, high)] for REENTRY_AUGMENT_HL_REF='low'; None = klines_cache/{SYM}_15m.json (backtest_v12_engine injects frozen-NPZ bars)
 
 
@@ -32510,8 +32519,7 @@ class MultiAccountTradeManager:
         except Exception:
             _voe_disabled = True
         if _voe_disabled and _xg.is_exit_action(action, is_full_close):
-            _voe_rx = str(reason or "").upper()
-            _voe_vec = ("VEC_DRIVEN_" in _voe_rx or "RECONCILE_" in _voe_rx or "|VEC_EXACT" in _voe_rx or "BOARD_CONVERGE_" in _voe_rx or "EXIT_OWED" in _voe_rx)
+            _voe_vec = _voe_reason_is_vec(reason)
             if not _voe_vec:
                 logger.critical(f"🛑 [NON_VECTOR_EXIT_DISABLED] {position_key} {action} reason={str(reason)[:80]} — refused (USER 2026-10-21 backstop; NATIVE_EXITS_DISABLED=0 restores)")
                 try:
@@ -40845,7 +40853,7 @@ class MultiAccountTradeManager:
             return int(getattr(config, key, default))
 
         while True:
-            if _vx_native_off():  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
+            if _vx_native_off() or _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits: ratio loop (opens AND closes) dead at source
                 await asyncio.sleep(30)
                 continue
             try:
@@ -59498,6 +59506,13 @@ async def queue_trade_action(
     if "SCALP_REDUCE" in reason_str.upper() and not getattr(config, "SCALP_REDUCE_ENABLED", True):
         logger.info(f"[queue_trade_action] SCALP_REDUCE_DISABLED skip: {position_key} {reason_str[:50]}")
         return "SKIPPED_SCALP_REDUCE_DISABLED"
+    # USER 2026-10-21 vec-only exits: queue-path choke-point gate. Every native CLOSE/REDUCE
+    # that reaches the order queue dies here unless its reason is vec-dictated. Vec exits
+    # (VEC_DRIVEN_*/RECONCILE_/|VEC_EXACT/BOARD_CONVERGE_/EXIT_OWED) pass through untouched.
+    # NATIVE_EXITS_DISABLED=0 restores legacy behavior.
+    if action in ("REDUCE", "QUICK_CLOSE", "CLOSE", "SELL", "PROFIT_TAKE", "HEDGE_CLOSE", "REVERSE_REDUCE", "FORCE_CLOSE", "REVERSE") and _voe_native_exits_disabled() and not _voe_reason_is_vec(reason_str):
+        logger.critical(f"🛑 [NON_VECTOR_EXIT_DISABLED] {position_key} {action} reason={reason_str[:80]} — refused at queue (USER 2026-10-21; NATIVE_EXITS_DISABLED=0 restores)")
+        return "SKIPPED_NON_VECTOR_EXIT_DISABLED"
     try:
         account_key, symbol, position_side = parse_position_key(position_key)
         if account_key not in trade_manager.accounts:
