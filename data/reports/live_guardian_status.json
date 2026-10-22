@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-22T13:51:39Z",
+ "ts": "2026-10-22T13:56:52Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,19 +29,19 @@
   "trb": {
    "fills_6h": 34,
    "open_positions": 7,
-   "unrealised_usd": 171.6,
+   "unrealised_usd": 96.71,
    "pos_mismatch": 0
   },
   "trc": {
    "fills_6h": 1,
    "open_positions": 11,
-   "unrealised_usd": -33.47,
+   "unrealised_usd": -42.96,
    "pos_mismatch": 0
   },
   "fin": {
-   "fills_6h": 124,
+   "fills_6h": 115,
    "open_positions": 7,
-   "unrealised_usd": -0.74,
+   "unrealised_usd": -0.12,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -55,9 +55,9 @@
    }
   },
   "men": {
-   "fills_6h": 105,
+   "fills_6h": 101,
    "open_positions": 2,
-   "unrealised_usd": 0.25,
+   "unrealised_usd": 0.09,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -73,7 +73,7 @@
   "ang": {
    "fills_6h": 122,
    "open_positions": 19,
-   "unrealised_usd": 1.51,
+   "unrealised_usd": 0.38,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -87,9 +87,9 @@
    }
   },
   "inf": {
-   "fills_6h": 91,
+   "fills_6h": 89,
    "open_positions": 7,
-   "unrealised_usd": 0.5,
+   "unrealised_usd": -0.01,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 4,
@@ -103,9 +103,9 @@
    }
   },
   "flz": {
-   "fills_6h": 112,
+   "fills_6h": 107,
    "open_positions": 5,
-   "unrealised_usd": 0.2,
+   "unrealised_usd": 0.1,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 2,
@@ -135,143 +135,118 @@
  "process": {
   "fin": {
    "pids": [
-    "27407"
+    "38420"
    ],
-   "starts_30m": 1,
-   "log_age_s": 125.0
+   "starts_30m": 2,
+   "log_age_s": 6.0
   },
   "men": {
    "pids": [
     "74620"
    ],
    "starts_30m": 1,
-   "log_age_s": 102.0
+   "log_age_s": 28.0
   },
   "ang": {
    "pids": [
     "19627"
    ],
-   "starts_30m": 3,
-   "log_age_s": 4.0
+   "starts_30m": 2,
+   "log_age_s": 52.0
   },
   "inf": {
    "pids": [
     "5643"
    ],
    "starts_30m": 2,
-   "log_age_s": 5.0
+   "log_age_s": 69.0
   },
   "flz": {
    "pids": [
     "1639"
    ],
    "starts_30m": 2,
-   "log_age_s": 20.0
+   "log_age_s": 153.0
   },
   "trb": {
    "pids": [
     "65681"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 1.0
   },
   "trc": {
    "pids": [
     "65913"
    ],
    "starts_30m": 1,
-   "log_age_s": 8.0
+   "log_age_s": 322.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-22T13:51:39Z",
+   "ts": "2026-10-22T13:56:52Z",
    "severity": "CRITICAL",
    "kind": "ACCOUNT_EQUITY_DROP",
    "key": "trb",
-   "evidence": "unrealised PnL of the same open positions fell $249.27 since 2026-10-22T13:30:38Z (now $+171.60)"
+   "evidence": "unrealised PnL of the same open positions fell $324.16 since 2026-10-22T13:30:38Z (now $+96.71)"
   },
   {
-   "ts": "2026-10-22T13:51:39Z",
-   "severity": "CRITICAL",
-   "kind": "RAPID_LOSS_KEY",
-   "key": "trc:CLF_LONG",
-   "evidence": "unrealised -4.71% (60-min high -0.67%), amt 52"
-  },
-  {
-   "ts": "2026-10-22T13:51:39Z",
-   "severity": "WARN",
-   "kind": "NO_PER_KEY_BLOCK_AVAILABLE",
-   "key": "trc:CLF_LONG",
-   "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for RAPID_LOSS_KEY unrealised -4.71% (60-min high -0.67%), amt 52 (opens/augments blocked; exits untouched)"
-  },
-  {
-   "ts": "2026-10-22T13:51:39Z",
+   "ts": "2026-10-22T13:56:52Z",
    "severity": "CRITICAL",
    "kind": "ACCOUNT_EQUITY_DROP",
    "key": "trc",
-   "evidence": "unrealised PnL of the same open positions fell $80.66 since 2026-10-22T13:30:38Z (now $-33.47)"
+   "evidence": "unrealised PnL of the same open positions fell $90.15 since 2026-10-22T13:30:38Z (now $-42.96)"
   },
   {
-   "ts": "2026-10-22T13:51:39Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "fin:COMPUSDT_LONG",
-   "evidence": "entry notional $92.61 (median $18.06, MAX_ORDER_VALUE $300) @ 2026-10-22T13:37:15Z VEC_DRIVEN_OPEN_RECONCILE_"
-  },
-  {
-   "ts": "2026-10-22T13:51:40Z",
+   "ts": "2026-10-22T13:56:53Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:ONEUSDT_SHORT",
    "evidence": "REDUCE WT_CROSS_EXIT_1h_bull decided 2026-10-22T07:59:35Z bar=2026-10-22T07:30:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-22T13:51:40Z",
+   "ts": "2026-10-22T13:56:53Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "inf:ATOMUSDT_SHORT",
    "evidence": "CLOSE MTF_GR_WT_EXIT_1h_grTFs=3 bar=2026-10-22T10:00:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-22T13:51:40Z",
+   "ts": "2026-10-22T13:56:53Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:COTIUSDT_SHORT",
    "evidence": "CLOSE FIXED_STOP decided 2026-10-22T11:59:33Z bar=2026-10-22T10:15:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-22T13:51:40Z",
+   "ts": "2026-10-22T13:56:54Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "flz:XRPUSDC_SHORT",
    "evidence": "OPEN B14 bar=2026-10-22T10:30:00Z: live already holds 99.3 (state divergence)"
   },
   {
-   "ts": "2026-10-22T13:51:40Z",
+   "ts": "2026-10-22T13:56:54Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
-   "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 125s"
+   "key": "flz",
+   "evidence": "ez_manage_flz.log not written for 153s"
   },
   {
-   "ts": "2026-10-22T13:51:40Z",
+   "ts": "2026-10-22T13:56:54Z",
    "severity": "CRITICAL",
-   "kind": "RESTART_LOOP",
-   "key": "ang",
-   "evidence": "3 new process ids in 30 min (['44235', '71643', '19627'])"
+   "kind": "STALE_LOG",
+   "key": "trc",
+   "evidence": "tradier_manage_trc.log not written for 322s"
   }
  ],
  "alert_counts": {
   "ACCOUNT_EQUITY_DROP": 2,
-  "RAPID_LOSS_KEY": 1,
-  "NO_PER_KEY_BLOCK_AVAILABLE": 1,
-  "SIZE_ANOMALY": 1,
   "VEC_DECISION_NOT_FILLED": 2,
   "VEC_EXIT_WHILE_LIVE_FLAT": 1,
   "VEC_OPEN_WHILE_LIVE_IN": 1,
-  "STALE_LOG": 1,
-  "RESTART_LOOP": 1
+  "STALE_LOG": 2
  },
  "active_interventions": {
   "acct:trc": {
@@ -353,5 +328,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.24
+ "sweep_s": 1.49
 }
