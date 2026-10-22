@@ -53,6 +53,16 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "data" / "reports" / "never_untraded"
 STATE = OUT / "state.json"
 LOG = Path("/Users/niels/logs/never_untraded_guard.log")
+RISK_GRACE_S = float(os.environ.get("NEVER_UNTRADED_RISK_GRACE_S", "30"))
+# 2026-10-22 (USER: "can you ABSOLUTELY GUARANTEE no account can stop trading EVER when there is any open
+# position?"): an account holding exposure does not get the full GRACE_S. 30 s + the 30 s cadence means an untraded
+# account with an open position is acted on inside ~1 min instead of ~2. A flat account keeps GRACE_S, because
+# there is nothing to protect and a tighter window would only add restarts.
+try:
+    from account_holds_risk import account_risk as _account_risk
+except Exception:  # never let the risk lookup break the guard — it degrades to the old behaviour
+    _account_risk = None
+
 LAW_FORCE_COOLDOWN_S = float(os.environ.get("NEVER_UNTRADED_LAW_COOLDOWN_S", "120"))
 # Rate limit for the "S1 may hold nothing it does not trade" force-back. One pin per 2 min per account: long
 # enough that a hand-back in progress is not re-pinned on the next 30 s tick, short enough to stay inside the
@@ -293,9 +303,12 @@ def main() -> int:
                 rep["double"].append(a)
             if not nobody and not flapping:
                 continue
+            risk = _account_risk(a) if _account_risk else {"holds": False, "n": 0}
+            grace = RISK_GRACE_S if risk.get("holds") else GRACE_S
             rep["untraded"].append({"account": a, "venue": venue, "untraded_s": round(down_s),
-                                    **({"flapping": True} if flapping else {})})
-            if down_s < GRACE_S:
+                                    "holds_risk": bool(risk.get("holds")), "open_positions": risk.get("n", 0),
+                                    "grace_s": grace, **({"flapping": True} if flapping else {})})
+            if down_s < grace:
                 continue
             if flapping:
                 # A trader IS present, it is just being respawned faster than it can trade. Starting another would

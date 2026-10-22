@@ -349,6 +349,28 @@ check_rapid_restarts() {
     echo "$now" >> "$RESTART_TRACKER"
     
     if [ "$count" -ge "$MAX_RAPID_RESTARTS" ]; then
+        # 2026-10-22 (USER: "can you ABSOLUTELY GUARANTEE no account can stop trading EVER when there is any open
+        # position?"): this exit is the single most destructive refusal in the supervisor, because `exit 1` fires
+        # the EXIT trap -> cleanup() -> `pkill -P $$`, so the watchdog does not merely stop replacing the engine,
+        # it KILLS the running one and leaves the account with nothing. Measured: ang and inf both logged
+        # "Watchdog shutting down..." at 06:42:34Z today and their engines died with them (recovered ~30 s later
+        # only by the keepalive's separate "NO ez_manage watchdog -> start" path), and inf has taken this exit 15
+        # times, once at 29 restarts in 300 s. Giving up is defensible for a flat account — a true crash loop
+        # should stop and be fixed by a human. It is never defensible while the account holds exposure: a crash
+        # loop still gets the engine up for part of every cycle, and zero engine gets nothing. So an account with
+        # an open position keeps its supervisor, the counter is reset so the next window is judged fresh, and the
+        # loop is slowed to SIGKILL_BACKOFF-like spacing instead of hammering. Flat accounts behave exactly as
+        # before. account_holds_risk exits 0 on holds-risk and on ANY unreadable/missing positions file.
+        local _hr_py="${WD_HOLDS_RISK_PY:-/opt/anaconda3/envs/binance_env/bin/python}"
+        local _acct_bare="${ACCT_SUFFIX#_}"
+        if [[ -n "$_acct_bare" && -f "$WORKDIR/tools/account_holds_risk.py" ]] \
+           && "$_hr_py" "$WORKDIR/tools/account_holds_risk.py" --account "$_acct_bare" --quiet 2>/dev/null; then
+            log "⚠️ [RAPID_RESTART_OVERRIDE] $count restarts in ${RAPID_WINDOW}s would normally end this watchdog, but ${_acct_bare} HOLDS AN OPEN POSITION ($("$_hr_py" "$WORKDIR/tools/account_holds_risk.py" --account "$_acct_bare" 2>/dev/null | sed 's/^[a-z]*: //')) — a crash loop trades part of the time, no supervisor trades none of the time. Keeping the supervisor, resetting the window, backing off ${WD_RAPID_OVERRIDE_SLEEP_S:-60}s."
+            : > "$RESTART_TRACKER"
+            echo "$now" >> "$RESTART_TRACKER"
+            sleep "${WD_RAPID_OVERRIDE_SLEEP_S:-60}"
+            return 0
+        fi
         log "ERROR: Too many rapid restarts ($count in ${RAPID_WINDOW}s). Exiting to prevent crash loop."
         exit 1
     fi
