@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-22T14:12:16.893227+00:00",
+ "generated_utc": "2026-10-22T15:12:12.453342+00:00",
  "days": 1.0,
  "totals": {
-  "exit_promises": 166,
+  "exit_promises": 170,
   "exit_kept_in_bar": 19,
   "entry_promises": 65,
   "entry_broken_no_delivery": 65,
   "exit_skipped_inflight": 51,
   "exit_kept_late": 5,
-  "exit_broken_no_delivery": 142
+  "exit_broken_no_delivery": 146
  },
  "per_key": {
   "inf:RLCUSDT_LONG": {
@@ -305,8 +305,8 @@
   "men:MOVEUSDT_SHORT": {
    "entry_promises": 3,
    "entry_broken_no_delivery": 3,
-   "exit_promises": 2,
-   "exit_broken_no_delivery": 2
+   "exit_promises": 4,
+   "exit_broken_no_delivery": 4
   },
   "men:BBUSDT_SHORT": {
    "exit_promises": 1,
@@ -390,6 +390,10 @@
   "fin:ACEUSDT_SHORT": {
    "exit_promises": 1,
    "exit_broken_no_delivery": 1
+  },
+  "men:BLURUSDT_SHORT": {
+   "exit_promises": 2,
+   "exit_broken_no_delivery": 2
   }
  },
  "detail": [
@@ -2511,6 +2515,46 @@
    "late_min": null,
    "action": "OPEN",
    "reason": "B14",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "men",
+   "sym_side": "BLURUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-22 14:30",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "WT_CROSS_EXIT_1h_bull",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "men",
+   "sym_side": "MOVEUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-22 14:30",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "WT_CROSS_EXIT_1h_bull",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "men",
+   "sym_side": "BLURUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-22 14:30",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "WT_CROSS_EXIT_1h_bull",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "men",
+   "sym_side": "MOVEUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-22 14:30",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "WT_CROSS_EXIT_1h_bull",
    "outcome": "NO_DELIVERY"
   }
  ],
