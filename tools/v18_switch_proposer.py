@@ -121,7 +121,10 @@ def load_inputs(cs, learn_dir=LEARN, v3u_dir=V3U, root=ROOT):
     if npz_p.exists():
         npz = load_npz_scores(npz_p, cs)
     srcs = {str(p): LC.md5_file(p) for p in [v3u_dir / f"linknet_proposals_{cs}.json", learn_dir / f"binding_map_{cs}.json", v3u_dir / f"features_{cs}.json", v3u_dir / f"switch_cards_{cs}.json", v3u_dir / f"positives_all_{cs}.json.gz", v3u_dir / f"needed_filters_{cs}.json", npz_p, elr_p, bible_p] if Path(p).exists()}
-    return {"cs": cs, "linknet": ln, "bm": bm, "features": feats, "cards": cards.get("cards") or {}, "positives": pa, "needed": nf, "elr": elr, "bible": bible, "npz": npz, "code": load_code_fields(root), "sources": srcs}
+    tpl = root / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM" / f"TEMPLATE_{cs}.xlsx"
+    bm_tpl = [v for k, v in ((bm.get("meta") or {}).get("sources") or {}).items() if k.endswith(f"TEMPLATE_{cs}.xlsx")]
+    tpl_ok = (LC.md5_file(tpl) == bm_tpl[0]) if (tpl.exists() and bm_tpl) else None
+    return {"cs": cs, "template_md5_ok": tpl_ok, "linknet": ln, "bm": bm, "features": feats, "cards": cards.get("cards") or {}, "positives": pa, "needed": nf, "elr": elr, "bible": bible, "npz": npz, "code": load_code_fields(root), "sources": srcs}
 
 
 def load_npz_scores(path, cs):
@@ -355,7 +358,7 @@ def gen_a(ins, ev, tc, refused):
     venue = LC.venue_of(cs)
     out, seen = [], set()
 
-    def add(sw, cand, tab, rule, p, p_src, note, extra=None):
+    def add(sw, cand, tab, rule, p, p_src, note, extra=None, near=None):
         if (sw, cand) in seen:
             return
         seen.add((sw, cand))
@@ -380,7 +383,7 @@ def gen_a(ins, ev, tc, refused):
         if ws:
             refused["not_wired_needs_C"] += 1
             return
-        near = nearest_same_switch(sw, cand, ins, ev)
+        near = near or nearest_same_switch(sw, cand, ins, ev)
         bold = bold_of(tc, sw)
         if p is None:
             p, p_src = shrunk(near["pos"] if near else 0, near["n"] if near else 0, ins["p0"]), "counts_fallback:nearest_same_switch"
@@ -419,7 +422,7 @@ def gen_a(ins, ev, tc, refused):
                 if c in vals or num(c) in {nums[x] for x in vals}:
                     continue
                 p = shrunk(e["pos"], e["n"], ins["p0"])
-                add(sw, c, tab, "intermediate_bold_to_positive", p, "counts_fallback:adjacent_positive_neighbour", f"midpoint of bold {bold} and adjacent {v} (positive on {e['pos_syms']} sym_sides)")
+                add(sw, c, tab, "intermediate_bold_to_positive", p, "counts_fallback:adjacent_positive_neighbour", f"midpoint of bold {bold} and adjacent {v} (positive on {e['pos_syms']} sym_sides)", near=e)
         kinds = [(ins["features"].get("settings") or {}).get(sw, {}).get(v, {}).get("kind") for v in vals]
         if kinds and all(k == "tf" for k in kinds) and any("," in v for v in vals):
             singles = [v for v in vals if "," not in v and v != "OFF" and v in TF_RANK and ev.key(sw, v)["pos_syms"] >= 1]
@@ -475,6 +478,9 @@ def gen_b(ins, ev, refused):
                 continue
             if rowev is None:
                 rowev = ev.key(sw, cand)
+            if rowev["n"] < 3:
+                refused["B_row_unmeasured_n_lt_3"] += 1
+                continue
             fe = ev.filt(h)
             cell = npz_cell(npz, tab, sw, cand, h)
             pe = ev.pairs.get((f"{sw}={cand}", h))
@@ -484,7 +490,7 @@ def gen_b(ins, ev, refused):
                 pf = shrunk(fe["pos"], fe["n"], ins["p0"])
                 p, src = shrunk(rowev["pos"], rowev["n"], pf), "counts_fallback:row_shrunk_to_filter_marginal"
             sup = 1.0 if h in needed else round((support(rowev["pos_syms"]) + support(fe["pos_syms"])) / 2.0, 4)
-            out.append({"type": "B", "switch": sw, "cand": cand, "filter": f, "opt": o, "tab": tab, "p_pos_pred": round(float(p), 5), "p_source": src, "support": sup, "needed_listed": h in needed, "e_delta_pred": cell["e"] if cell else None, "n_measured_pair": (pe or {}).get("n", cell["n"] if cell else 0), "nearest_measured": {"row": rowev, "filter_marginal": fe, "pair": pe}, "bind_verdict": v, "wiring_needed": False})
+            out.append({"type": "B", "switch": sw, "cand": cand, "filter": f, "opt": o, "tab": tab, "p_pos_pred": round(float(p), 5), "p_source": src, "support": sup, "needed_listed": h in needed, "evidence_thin": rowev["n"] < 10, "e_delta_pred": cell["e"] if cell else None, "n_measured_pair": (pe or {}).get("n", cell["n"] if cell else 0), "nearest_measured": {"row": rowev, "filter_marginal": fe, "pair": pe}, "bind_verdict": v, "wiring_needed": False})
     return out
 
 
@@ -566,14 +572,15 @@ def gen_c(ins, ev, refused):
         if d.get("unlocks_reason"):
             unlock = sum(1 for r in (bm.get("rows") or {}).values() for c in (r.get("cells") or {}).values() if c.get("reason") == d["unlocks_reason"])
         elif d.get("filter_family"):
-            unlock = sum(1 for r in (bm.get("rows") or {}).values() for h, c in (r.get("cells") or {}).items() if c.get("reason") == "REENTRY_MASKS_OFF" and h.startswith(d["filter_family"] + "="))
+            fam_of = {k: v.get("family") for k, v in (bm.get("switches") or {}).items()}
+            unlock = sum(1 for rk, r in (bm.get("rows") or {}).items() if not r.get("dead_row") and fam_of.get(rk.split("!", 1)[1].split("=", 1)[0]) == "REENTRY")
         elr = None
         if d.get("elr_families"):
             rows = ((ins["elr"].get("columns") or {}).get("board") or [])
             fams = [r for r in rows if str(r.get("family", "")).startswith(d["elr_families"])]
             if fams:
                 elr = {"families": [r["family"] for r in fams], "trades": sum(r["n"] for r in fams), "losers": sum(r["losers"] for r in fams), "loss_sum_pct": round(sum(r["loss_sum_pct"] for r in fams), 4), "basis": "board ledgers, exit_loss_rank_<CS>.json (co-occurrence, not causal)"}
-        out.append({"type": "C", "switch": sw, "cand": d["cands"][1], "candidates": d["cands"], "default": d["default"], "filter": None, "opt": None, "tab": d["tab"], "stage": d["stage"], "p_pos_pred": round(p, 5), "p_source": "counts_fallback:analogue_rows (no network score exists for an unwired switch)", "support": support(best["pos_syms"] if best else 0), "nearest_measured": best, "analogue_totals": {"n": n, "pos": pos}, "bind_verdict": {"verdict": "NEW_SWITCH", "reason": "no template row or map entry yet", "unlocks_cells": unlock, "unlocks_reason": d.get("unlocks_reason") or ("REENTRY_MASKS_OFF" if d.get("filter_family") else None)}, "exit_loss_evidence": elr, "rationale": d["rationale"], "risk": d["risk"], "wiring_needed": True, "wiring_spec": d["spec"]})
+        out.append({"type": "C", "switch": sw, "cand": d["cands"][1], "candidates": d["cands"], "default": d["default"], "filter": None, "opt": None, "tab": d["tab"], "stage": d["stage"], "p_pos_pred": round(p, 5), "p_source": "counts_fallback:analogue_rows (no network score exists for an unwired switch)", "support": support(best["pos_syms"] if best else 0), "nearest_measured": best, "analogue_totals": {"n": n, "pos": pos}, "bind_verdict": {"verdict": "NEW_SWITCH", "reason": "no template row or map entry yet", "unlocks": unlock, "unlocks_what": (f"shaded cells now NEVER({d['unlocks_reason']})" if d.get("unlocks_reason") else ("non-dead REENTRY-family template rows on which this mask family would bind (today CONDITIONAL REENTRY_MASKS_OFF or unshaded)" if d.get("filter_family") else None))}, "analogue_cards": {a: {k: (ev.cards.get(a) or {}).get(k) for k in ("default", "state", "why", "n_evals", "n_syms")} for a in d.get("analogues") or []}, "exit_loss_evidence": elr, "rationale": d["rationale"], "risk": d["risk"], "wiring_needed": True, "wiring_spec": d["spec"]})
     return out
 
 
@@ -665,8 +672,10 @@ def build_cat_side(ins, quota=20, min_b=5, max_c=5, predicted_at=None, min_a=5):
             "quota": quota, "min_b": min_b, "max_c": max_c, "min_a": min_a, "selected": dict(n_by), "candidates": {"A": len(a), "B": len(b), "C": len(c)}, "refused": dict(sorted(refused.items())),
             "p0_cat_side": round(ins["p0"], 6), "scoring": f"score = p_pos_pred x support; support = {SUPPORT_FLOOR} + {1 - SUPPORT_FLOOR} x min(1, ln(1+pos_syms)/ln(1+{SUPPORT_FULL_AT})) of the nearest measured key (B: mean of row and filter-marginal support, 1.0 when the filter is interval-proven NEEDED on the row); counts fallback = Beta mean shrunk to p0 (m={M_SHRINK}); B fallback shrinks the row toward the filter's marginal rate",
             "selection": f"C first (<= {max_c}, all valid designs), >= {min_b} B, >= {min_a} A, rest by score over A u B; <= {MAX_PER_SWITCH} per switch, <= {MAX_PER_FILTER} per filter, one option per (switch, filter). The per-type floors are a choice of this tool: A is scored by a naked-row head and B by a cell head that inherits its row's sign (evidence base §2: lift ~ 0), so a raw cross-type ranking would always fill the quota with B",
-            "p_pos_pred_range": [min(p_pred), max(p_pred)] if p_pred else None, "sources": ins["sources"],
+            "p_pos_pred_range": [min(p_pred), max(p_pred)] if p_pred else None, "sources": ins["sources"], "template_md5_matches_binding_map": ins.get("template_md5_ok"),
             "caveats": ["STOCKS_LONG: the network loses to counts on never-tried pairs (design 22 §0/§4, AUC 0.639 vs 0.741) — p_pos_pred there is weaker than the counts it is ranked with" if cs == "STOCKS_LONG" else None, "STOCKS_SHORT: the 10-20 proposals were uncalibrated (p_pos_pred 0.74-0.87 vs realised < 1%); treat these as ranks, not probabilities" if cs == "STOCKS_SHORT" else None, "linknet v3u needs_row items all carry config_field=false (bible in_config unavailable on the training host); wiring is re-checked here from config.py/config_tradier.py/QuickConfig AST + SWITCH_BIBLE status"]}
+    if ins.get("template_md5_ok") is False:
+        meta["caveats"].append("the template changed after binding_map_<CS>.json was built (md5 differs): B 'unshaded' status and verdicts are as of the map build; rebuild the map (tools/v18_binding_map.py) before acting on B items")
     meta["caveats"] = [x for x in meta["caveats"] if x]
     return {"meta": meta, "proposals": sel}
 

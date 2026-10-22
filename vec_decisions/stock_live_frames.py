@@ -212,21 +212,41 @@ def _eval_range(args):
     return [_eval_step(sf, fn, tfs, j) for j in idx]
 
 
+_CODE_VERSION_MEMO = {}
+
+
 def _code_version() -> str:
-    """Cache namespace: any change to the frame/indicator code invalidates stored steps."""
+    """Cache namespace: content hash of the frame/indicator code (USER 2026-10-22:
+    mtime identity broke across Mac->S1 sync skew — identical bytes must share
+    the namespace. mtimes are only the memo key: re-hash when they move)."""
     here = Path(__file__).resolve().parent
+    files = [here / "stock_live_frames.py", here / "stock_live_extras.py",
+             here.parent / "backtest_v8_precompute.py", here.parent / "tradier_indicators.py",
+             here.parent / "live_parity_keys.py"]
+    sig = []
+    for f in files:
+        try:
+            st = f.stat()
+            sig.append((str(f), int(st.st_mtime_ns), int(st.st_size)))
+        except OSError:
+            sig.append((str(f), None))
+    sig = tuple(sig)
+    ent = _CODE_VERSION_MEMO.get("ent")
+    if ent is not None and ent[0] == sig:
+        return ent[1]
     parts = []
-    for f in ("stock_live_frames.py", "stock_live_extras.py"):
+    for f in files:
         try:
-            parts.append(f"{f}:{int((here / f).stat().st_mtime)}")
+            h = hashlib.blake2b(digest_size=8)
+            with open(f, "rb") as fh:
+                for blk in iter(lambda: fh.read(1 << 20), b""):
+                    h.update(blk)
+            parts.append(f"{f.name}:{h.hexdigest()}")
         except OSError:
-            parts.append(f"{f}:0")
-    for f in ("backtest_v8_precompute.py", "tradier_indicators.py", "live_parity_keys.py"):
-        try:
-            parts.append(f"{f}:{int((here.parent / f).stat().st_mtime)}")
-        except OSError:
-            parts.append(f"{f}:0")
-    return "|".join(parts)
+            parts.append(f"{f.name}:0")
+    ver = "|".join(parts)
+    _CODE_VERSION_MEMO["ent"] = (sig, ver)
+    return ver
 
 
 def _frame_key(tf: str, lf: pd.DataFrame):
