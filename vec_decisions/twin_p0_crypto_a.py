@@ -303,13 +303,6 @@ def vec_delta_gate_allows(cfg, which):
     return fn(cfg)
 
 
-# ── 25. DELTA_MAX_HOLD_BARS (v12:12520) ──────────────────────────────────────────
-def delta_max_hold_bars(cfg):
-    if _g(cfg, 'DELTA_ENGINE_ENABLED', False):
-        return _g(cfg, 'DELTA_MAX_HOLD_BARS', 0)
-    return 0
-
-
 # ── 26. DYN_STRUCT_TRAIL_ENABLED (v12:11958-11959, tradier-only) ─────────────────
 def dyn_trail_applies(cfg):
     return _g(cfg, 'MODE', 'crypto') == 'tradier' and bool(_g(cfg, 'DYN_STRUCT_TRAIL_ENABLED', False))

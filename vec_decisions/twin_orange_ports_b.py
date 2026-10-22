@@ -1,4 +1,4 @@
-"""twin_orange_ports_b.py — crypto-live scalar twins for 48 orange-filter switches.
+"""twin_orange_ports_b.py — crypto-live scalar twins for 47 orange-filter switches (WIN_TRAIL_EROSION_PCT erased 2026-10-22 USER).
 
 Each function mirrors its vector predicate (v12_quick_engine) / stocks-live twin
 (tradier_manage) in scalar form over a live-style indicators dict. Contract:
@@ -501,25 +501,6 @@ def vwap_filter_enabled(ind: Mapping[str, Any] | None, is_long: bool, cfg: Any) 
     return bool(c < v)
 
 
-# ── Winner-trail peak erosion (vec v12:12492+13741; stocks-live dead stub;
-# no ez parent → NEEDS-OPERATOR-DECISION). Exit-fire slice (True=exit). ──
-
-def win_trail_erosion_pct(ind: Mapping[str, Any] | None, is_long: bool, cfg: Any) -> Optional[bool]:
-    """Exit-fire slice (True=exit). Both sides. None when pct<=0."""
-    del is_long
-    e = _gf(cfg, "WIN_TRAIL_EROSION_PCT", 0.0)
-    if e <= 0:
-        return None
-    peak = _num(ind, "peak_pnl_pct", 0.0)
-    live = _num(ind, "live_pnl_pct", _num(ind, "gain_pct", 0.0))
-    if peak <= 0:
-        return False
-    ec = (ind or {}).get("erosion_confirm", None)
-    if ec is not None and not bool(ec):
-        return False
-    return bool((peak - live) >= peak * e)
-
-
 # ── WT 15m bounce (vec v12:9736-9808; stocks-live real tradier:1297-1358;
 # ez parent ez:59763-59802 is a dead `_ = (...)` stub → NEEDS-OPERATOR).
 # Eligibility slice (True=eligible). Mirrors vec incl. 15m-primary volume
@@ -907,7 +888,6 @@ FILTERS = (
     "TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER",
     "TRADIER_RSI_SHORT_REL_VOLUME_MIN",
     "VWAP_FILTER_ENABLED",
-    "WIN_TRAIL_EROSION_PCT",
     "WT_15M_BOUNCE_FILTER_HH_ENABLED",
     "WT_15M_BOUNCE_FILTER_HL_ENABLED",
     "WT_15M_BOUNCE_FILTER_MODE",
@@ -958,7 +938,6 @@ DEFAULTS = {
     "TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER": 65,
     "TRADIER_RSI_SHORT_REL_VOLUME_MIN": 2.4,
     "VWAP_FILTER_ENABLED": False,
-    "WIN_TRAIL_EROSION_PCT": 0.0,
     "WT_15M_BOUNCE_FILTER_HH_ENABLED": False,
     "WT_15M_BOUNCE_FILTER_HL_ENABLED": False,
     "WT_15M_BOUNCE_FILTER_MODE": "AND",
@@ -1009,7 +988,6 @@ STATUS = {
     "TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER": "NO-CRYPTO-GAP",
     "TRADIER_RSI_SHORT_REL_VOLUME_MIN": "NO-CRYPTO-GAP",
     "VWAP_FILTER_ENABLED": "NEEDS-OPERATOR-DECISION",
-    "WIN_TRAIL_EROSION_PCT": "NEEDS-OPERATOR-DECISION",
     "WT_15M_BOUNCE_FILTER_HH_ENABLED": "NEEDS-OPERATOR-DECISION",
     "WT_15M_BOUNCE_FILTER_HL_ENABLED": "NEEDS-OPERATOR-DECISION",
     "WT_15M_BOUNCE_FILTER_MODE": "NEEDS-OPERATOR-DECISION",
@@ -1060,7 +1038,6 @@ _GET = {
     "TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER": tradier_k_zone_short_threshold_tradier,
     "TRADIER_RSI_SHORT_REL_VOLUME_MIN": tradier_rsi_short_rel_volume_min,
     "VWAP_FILTER_ENABLED": vwap_filter_enabled,
-    "WIN_TRAIL_EROSION_PCT": win_trail_erosion_pct,
     "WT_15M_BOUNCE_FILTER_HH_ENABLED": wt_15m_bounce_filter_hh_enabled,
     "WT_15M_BOUNCE_FILTER_HL_ENABLED": wt_15m_bounce_filter_hl_enabled,
     "WT_15M_BOUNCE_FILTER_MODE": wt_15m_bounce_filter_mode,

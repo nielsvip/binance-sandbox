@@ -235,14 +235,6 @@ def test_delta_gates_honor_locked():
     assert T.delta_gate_augment_allows(_cfg(VEC_HONOR_DEAD_LIVE_DELTA_GATES=True, DELTA_GATE_AUGMENT=False)) is False
 
 
-# ── 25. delta max hold ─────────────────────────────────────────────────────────
-def test_delta_max_hold():
-    assert T.delta_max_hold_bars(_cfg()) == 0
-    assert T.delta_max_hold_bars(_cfg(DELTA_MAX_HOLD_BARS=50)) == 0  # engine off
-    assert T.delta_max_hold_bars(_cfg(DELTA_ENGINE_ENABLED=True, DELTA_MAX_HOLD_BARS=50)) == 50
-    assert T.delta_max_hold_bars(_cfg(DELTA_ENGINE_ENABLED=True)) == 0
-
-
 # ── 26. dyn trail ──────────────────────────────────────────────────────────────
 def test_dyn_trail():
     assert T.dyn_trail_applies(_cfg(DYN_STRUCT_TRAIL_ENABLED=True)) is False  # crypto

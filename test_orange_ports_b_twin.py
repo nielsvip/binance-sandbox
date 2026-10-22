@@ -21,7 +21,7 @@ def cfg(**kw):
 
 
 def test_all_48_covered():
-    assert len(T.FILTERS) == 48 and len(set(T.FILTERS)) == 48
+    assert len(T.FILTERS) == 47 and len(set(T.FILTERS)) == 47
     assert set(T.DEFAULTS) == set(T.FILTERS)
     assert set(T.STATUS) == set(T.FILTERS)
     for n in T.FILTERS:
@@ -65,7 +65,6 @@ def test_inert_parent_off_returns_none():
         ("TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER", False, {"k_3m": 100}),
         ("TRADIER_RSI_SHORT_REL_VOLUME_MIN", False, {"rsi_1h": 99, "relative_volume_1h": 9}),
         ("VWAP_FILTER_ENABLED", True, {"close": 1, "vwap_D": 100}),
-        ("WIN_TRAIL_EROSION_PCT", True, {"peak_pnl_pct": 10, "live_pnl_pct": 0}),
         ("WT_15M_BOUNCE_FILTER_HH_ENABLED", True, {"wt1_15m": 9, "wt2_15m": 0, "wt1_15m_prev": 0, "wt2_15m_prev": 9, "wt_cross_rising_1h": True}),
         ("WT_15M_BOUNCE_FILTER_HL_ENABLED", True, {"wt1_15m": 9, "wt2_15m": 0, "wt1_15m_prev": 0, "wt2_15m_prev": 9, "wt_cross_rising_1h": True}),
         ("WT_15M_BOUNCE_FILTER_MODE", True, {"wt1_15m": 9, "wt2_15m": 0, "wt1_15m_prev": 0, "wt2_15m_prev": 9, "wt_cross_rising_1h": True}),
@@ -174,10 +173,6 @@ def test_boundary_blocks_and_gates():
     assert get("VWAP_FILTER_ENABLED")({"close": 100.01, "vwap_D": 100}, True, cfg(VWAP_FILTER_ENABLED=True)) is True
     assert get("VWAP_FILTER_ENABLED")({"close": 100.0, "vwap_D": 100}, True, cfg(VWAP_FILTER_ENABLED=True)) is False
     assert get("VWAP_FILTER_ENABLED")({"close": 99.99, "vwap_D": 100}, False, cfg(VWAP_FILTER_ENABLED=True)) is True
-    assert get("WIN_TRAIL_EROSION_PCT")({"peak_pnl_pct": 10, "live_pnl_pct": 9}, True, cfg(WIN_TRAIL_EROSION_PCT=0.1)) is True
-    assert get("WIN_TRAIL_EROSION_PCT")({"peak_pnl_pct": 10, "live_pnl_pct": 9.001}, True, cfg(WIN_TRAIL_EROSION_PCT=0.1)) is False
-    assert get("WIN_TRAIL_EROSION_PCT")({"peak_pnl_pct": 10, "live_pnl_pct": 0}, True, cfg(WIN_TRAIL_EROSION_PCT=0.1)) is True
-    assert get("WIN_TRAIL_EROSION_PCT")({"peak_pnl_pct": 0, "live_pnl_pct": -5}, True, cfg(WIN_TRAIL_EROSION_PCT=0.1)) is False
     assert get("TRADIER_DC_POSITION_ENTRY_THRESHOLD")({"dc_position_15m": 0.249}, True, cfg(DC_DAYTRADE_ENABLED=True)) is True
     assert get("TRADIER_DC_POSITION_ENTRY_THRESHOLD")({"dc_position_15m": 0.25}, True, cfg(DC_DAYTRADE_ENABLED=True)) is False
     assert get("TRADIER_DC_POSITION_ENTRY_THRESHOLD")({"dc_position_15m": 0.751}, False, cfg(DC_DAYTRADE_ENABLED=True)) is True
@@ -432,9 +427,6 @@ def test_agreement_misc_randomized():
         assert get("TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER")({"k_3m": k}, False, kc) == (k > 65)
         a, b = rng.uniform(-50, 50), rng.uniform(-50, 50)
         assert get("STRENGTH_MIN_SCORE")({"wt1_1h": a, "wt2_1h": b}, is_long, {}) == (abs(a - b) >= 4.0)
-        # win trail exact formula
-        peak, live, e = rng.uniform(0, 20), rng.uniform(-5, 20), rng.choice([0.05, 0.1, 0.25])
-        assert get("WIN_TRAIL_EROSION_PCT")({"peak_pnl_pct": peak, "live_pnl_pct": live}, is_long, {"WIN_TRAIL_EROSION_PCT": e}) == ((peak - live) >= peak * e if peak > 0 else False)
         # vwap exact formula
         cl, vw = rng.uniform(50, 150), rng.uniform(50, 150)
         vc = {"VWAP_FILTER_ENABLED": True}

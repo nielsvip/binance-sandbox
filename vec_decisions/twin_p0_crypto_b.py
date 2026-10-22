@@ -1000,26 +1000,3 @@ def wt_d_bounce_dd_stop_fire(get: Get, is_long: bool, px: float, aug_px: float,
     return bool(aug_qty >= 0.5 and aug_px > 0 and market_open
                 and bool(get("WT_D_BOUNCE_DD_STOP_ENABLED", True))
                 and ((px < aug_px) if is_long else (px > aug_px)))
-
-
-# ─── 23. WIN_TRAIL_EROSION_PCT (v12:12616 + 13890) ────────────────────────
-def win_trail_erosion_fire_vec(peak: np.ndarray, live: np.ndarray, get: Get,
-                               confirm: np.ndarray | None = None) -> np.ndarray:
-    erosion = float(get("WIN_TRAIL_EROSION_PCT", 0.0))
-    if not erosion > 0:
-        return np.zeros_like(np.asarray(peak, dtype=float), dtype=bool)
-    p, lv = np.asarray(peak, dtype=float), np.asarray(live, dtype=float)
-    fire = (p > 0) & ((p - lv) >= p * erosion)
-    if confirm is not None:
-        fire = fire & np.asarray(confirm, dtype=bool)
-    return fire
-
-
-def win_trail_erosion_fire(get: Get, peak_pnl_pct: float, live_pnl_pct: float,
-                           confirm: bool | None = None) -> bool:
-    erosion = float(get("WIN_TRAIL_EROSION_PCT", 0.0))
-    if not erosion > 0:
-        return False
-    if not (peak_pnl_pct > 0 and (peak_pnl_pct - live_pnl_pct) >= peak_pnl_pct * erosion):
-        return False
-    return True if confirm is None else bool(confirm)

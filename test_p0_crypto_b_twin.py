@@ -522,22 +522,9 @@ def test_bounce_dd_stop_mirror():
     assert T.wt_d_bounce_dd_stop_fire(G(WT_D_BOUNCE_DD_STOP_ENABLED=False), True, 50.0, 100.0, 9.0) is False
 
 
-def test_win_trail_erosion():
-    assert T.win_trail_erosion_fire(G(), 10.0, 0.0) is False  # default 0.0 inert
-    g = G(WIN_TRAIL_EROSION_PCT=0.5)
-    assert T.win_trail_erosion_fire(g, 10.0, 4.0) is True   # (10-4) >= 10*.5
-    assert T.win_trail_erosion_fire(g, 10.0, 5.01) is False
-    assert T.win_trail_erosion_fire(g, 0.0, -5.0) is False  # peak>0 required
-    assert T.win_trail_erosion_fire(g, 10.0, 4.0, confirm=False) is False
-    p = np.array([10.0, 10.0, 0.0])
-    lv = np.array([4.0, 9.0, -1.0])
-    assert list(T.win_trail_erosion_fire_vec(p, lv, g)) == [True, False, False]
-
-
 # ─── Alias helper ───
 def test_with_aliases_backfills_both_ways():
     assert T.with_aliases({"k_15m": 42})["stoch_k_15m"] == 42
     assert T.with_aliases({"stoch_d_1h": 7})["d_1h"] == 7
     assert "stoch_k_15m_prev" not in T.with_aliases({"stoch_k_15m": 42})  # no prev synth
     assert T.with_aliases(None) == {}
-
