@@ -434,6 +434,26 @@ def _crypto_final_dirs(bvp):
     return (bvp.CRYPTO_KLINES, ROOT / "klines_cache_gateway", ROOT / "klines_cache_macbook")
 
 
+def rth_session_over(symbol, ts, now=None):
+    """2026-10-22 RTH-close finality: a stock bar whose END (ts+15m) is inside its date's regular session (<= 16:00 ET) is FINAL once now >= that close +
+    NPZ_RTH_CLOSE_GRACE_MIN (default 5): the session is over so the bar cannot change and no strictly newer bar will ever arrive. Never for a row the
+    provisional sidecar names. Regular 16:00 ET close for every date (no half-day table exists in tools/npz_cutoffs; a 13:00 half-day bar is just judged later)."""
+    ts = int(ts)
+    now = int(now if now is not None else time.time())
+    d = dt.datetime.fromtimestamp(ts, ET).date()
+    if d.weekday() >= 5 or d.isoformat() in NYSE_HOLIDAYS:
+        return False
+    close = int(dt.datetime(d.year, d.month, d.day, 16, 0, tzinfo=ET).timestamp())
+    if ts + BAR > close or now < close + int(float(os.environ.get("NPZ_RTH_CLOSE_GRACE_MIN", "5")) * 60):
+        return False
+    try:
+        if ts in prov_read(symbol):
+            return False
+    except Exception:
+        return False
+    return True
+
+
 def cache_bar_final_stocks(symbol, cutoff):
     """stocks REST fallback: the cutoff bar is final only if a NEWER row exists in a tradier 15m cache (builder source order)."""
     import backtest_v8_precompute as bvp
@@ -447,6 +467,8 @@ def cache_bar_final_stocks(symbol, cutoff):
             continue
         ts = _epoch_s(df.index)
         if bool((ts == cutoff).any() and (ts > cutoff).any()):
+            return True
+        if bool((ts == cutoff).any()) and rth_session_over(symbol, cutoff):
             return True
     return False
 
@@ -473,6 +495,8 @@ def cache_last_final(symbol, mode):
         ts = sorted({int(t) for t in _epoch_s(df.index)})
         if len(ts) >= 2 and (best is None or ts[-2] > best):
             best = ts[-2]
+        if mode == "tradier" and len(ts) >= 2 and ts[-1] > ts[-2] and rth_session_over(symbol, ts[-1]) and (best is None or ts[-1] > best):
+            best = ts[-1]
     return best
 
 

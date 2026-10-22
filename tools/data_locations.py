@@ -243,6 +243,12 @@ REGISTRY: dict[str, dict[str, list[tuple]]] = {
         "mac": [("{base}/data/eval_cache_cold", "canonical", "zstd -19 --long=27 + manifest of the staged bench caches and the S2 live-cache snapshot; reclaim needs the zst on a REAL ext mount", None)],
         "ext": [("{ext}/binance_archive/eval_cache_cold", "archive", "target for the reclaim step (copy the Mac zst + manifest here, re-verify sha256)", None)],
     },
+    # Cold zstd copies (+ manifest sha256) of the S5 experience-store shards (run34 + run35 delta-log ingest, 2026-10-22).
+    "experience_cold": {
+        "s6": [("/home/niels/rebuild_scratch_s6/experience_cold/run34_35_20261022", "canonical", "temporary until an ext drive has room; S5/S6 deleted after the weekend of 2026-10-24", None)],
+        "s5": [("/home/niels/rebuild_scratch_s5/experience_cold", "mirror", "origin of the zsts; same sha256 as the S6 copy", None)],
+        "ext": [("{ext}/binance_archive/experience_cold/run34_35_20261022", "archive", "final home, needs >= 10 GB free on TOSHIBA_EXT (not created yet)", None)],
+    },
     "priors_causal": {
         "s1": [("{sandbox}/data/causal/v17_priors.json", "canonical", "read by tools/v17_priors.load() inside v15_pilot", "V17_PRIORS_PATH")],
         "s2": [("{sandbox}/data/causal/v17_priors.json", "canonical", "", "V17_PRIORS_PATH")],

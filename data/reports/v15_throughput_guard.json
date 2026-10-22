@@ -1,39 +1,26 @@
 {
- "at": "2026-10-22T19:12:35Z",
+ "at": "2026-10-22T20:19:44Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
   "s1": {
-   "improved": 2,
-   "improved_per_hour": 2.0,
-   "published_n": 2,
+   "improved": 0,
+   "improved_per_hour": 0.0,
+   "published_n": 0,
    "flat_or_worse": 0,
    "unknown": 0,
-   "boards_running": [],
-   "mem_avail_mb": 15098,
-   "load1": 34.07,
-   "nproc": 16,
-   "slots": "1/8",
-   "binding_reason": "scheduler mem guard (disk 25351 MB, mem 14862 MB, est_pair 9154 MB) \u2014 slots 1/8",
-   "error": null,
-   "published": [
-    {
-     "symside": "GDX_SHORT",
-     "at": "2026-10-22T18:38:42Z",
-     "baseline": 5.416628126309108,
-     "final": 18.281788455174418,
-     "state": "improved"
-    },
-    {
-     "symside": "SCRUSDT_SHORT",
-     "at": "2026-10-22T18:38:08Z",
-     "baseline": 5.520051462186318,
-     "final": 8.597401615859674,
-     "state": "improved"
-    }
+   "boards_running": [
+    "XOM_LONG"
    ],
+   "mem_avail_mb": 22679,
+   "load1": 28.11,
+   "nproc": 16,
+   "slots": "0/8",
+   "binding_reason": "scheduler mem guard (disk 23122 MB, mem 3098 MB, est_pair 9154 MB) \u2014 slots 0/8",
+   "error": null,
+   "published": [],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 28.9,
+   "minutes_since_last_improved": 97.2,
    "last_improved_symside": "SCRUSDT_SHORT",
    "cadence_ok": false,
    "improved_gap_min_median_24h": 20.9,
@@ -41,17 +28,18 @@
    "improved_finishes_24h": 26,
    "board_cpu_s_median_24h": 2618.5,
    "board_wall_s_median_24h": 1506.8521411418915,
-   "board_cores": 0.0,
-   "nonboard_cores_competing": 11.57,
-   "nonboard_cores_niced": 3.97,
+   "board_cores": 1.0,
+   "nonboard_cores_competing": 10.89,
+   "nonboard_cores_niced": 2.78,
    "cores_by_bucket": {
-    "other": 6.53,
-    "live_helpers": 4.45,
-    "klines_append": 0.59
+    "other": 7.88,
+    "live_helpers": 2.23,
+    "klines_append": 0.78,
+    "boards": 1.0
    },
    "cores_by_bucket_niced": {
-    "klines_vault": 0.59,
-    "other": 3.38
+    "klines_vault": 0.47,
+    "other": 2.31
    }
   },
   "s2": {
@@ -61,50 +49,49 @@
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "AMD_LONG",
-    "NOC_LONG"
+    "COIN_SHORT"
    ],
-   "mem_avail_mb": 16393,
-   "load1": 11.77,
+   "mem_avail_mb": 14267,
+   "load1": 9.21,
    "nproc": 16,
    "slots": "1/8",
-   "binding_reason": "board CPU DEMAND, not host capacity: 2 running sides pull only 6.8 cores (3.38 core/side) of 14.3 usable -> 8.5 boards/h. 12/h needs 9.5 board-cores = 3 sides at this per-side draw (niced filler 4.01 cores yields). Lever: more concurrent sides (RAM-bound) or deeper eval pipelining per side (V15_PREFETCH_TASKCAP on an idle host).",
+   "binding_reason": "scheduler mem guard (disk 49061 MB, mem 13529 MB, est_pair 9796 MB) \u2014 slots 1/8",
    "error": null,
    "published": [
     {
-     "symside": "BIOUSDC_SHORT",
-     "at": "2026-10-22T18:17:57Z",
-     "baseline": 59.733143277519474,
-     "final": 71.64868081195964,
+     "symside": "COHR_SHORT",
+     "at": "2026-10-22T20:14:44Z",
+     "baseline": 43.16445130192502,
+     "final": 54.550453620027554,
      "state": "improved"
     },
     {
-     "symside": "WOOUSDT_SHORT",
-     "at": "2026-10-22T18:46:17Z",
-     "baseline": -1.1639048642231384,
-     "final": 13.768234875880768,
+     "symside": "ZCSH_SHORT",
+     "at": "2026-10-22T20:15:40Z",
+     "baseline": 80.21400384572371,
+     "final": 80.31313609368571,
      "state": "improved"
     }
    ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 21.4,
-   "last_improved_symside": "WOOUSDT_SHORT",
+   "minutes_since_last_improved": 5.1,
+   "last_improved_symside": "ZCSH_LONG",
    "cadence_ok": false,
    "improved_gap_min_median_24h": 6.3,
    "improved_gap_min_max_24h": 85.9,
-   "improved_finishes_24h": 129,
+   "improved_finishes_24h": 131,
    "board_cpu_s_median_24h": 2852.1,
-   "board_wall_s_median_24h": 1284.3869581222534,
-   "board_cores": 6.76,
-   "nonboard_cores_competing": 1.66,
-   "nonboard_cores_niced": 4.01,
+   "board_wall_s_median_24h": 1276.019914150238,
+   "board_cores": 2.89,
+   "nonboard_cores_competing": 2.23,
+   "nonboard_cores_niced": 3.27,
    "cores_by_bucket": {
-    "other": 0.04,
-    "boards": 6.76,
-    "live_helpers": 1.62
+    "boards": 2.89,
+    "other": 0.05,
+    "live_helpers": 2.18
    },
    "cores_by_bucket_niced": {
-    "other": 4.01
+    "other": 3.27
    }
   }
  },
