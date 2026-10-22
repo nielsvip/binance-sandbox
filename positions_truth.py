@@ -48,6 +48,7 @@ DEFAULTS: Dict[str, Any] = {
     "POSITIONS_WS_ALIVE_S": 90.0,  # a user-data WS heard from within this window IS the freshness proof (see _ez_local)
     "POSITIONS_BROKER_TIMEOUT_S": 8.0,
     "POSITIONS_BROKER_REFRESH_S": 5.0,  # background broker-truth poll interval per account (refresher thread)
+    "POSITIONS_BROKER_REFRESH_TIMEOUT_S": 10.0,  # dedicated REST fallback call timeout (never the shared client)
     "POSITIONS_BROKER_SLOT_STALE_S": 20.0,  # refresher slot older than this = GENUINELY unreachable (failover signal, not loop timing)
     "POSITIONS_CONFIRM_ENABLED": True,  # (c) SUCCESS only after broker-confirmed position change
     "POSITIONS_CONFIRM_TIMEOUT_S": 8.0,
@@ -824,12 +825,83 @@ def _ez_local(mgr: Any, position_key: str) -> Tuple[Optional[float], Optional[fl
 
 def ez_broker(mgr: Any, account_key: str, config: Any = None, logger: Optional[logging.Logger] = None) -> BrokerPositions:
     _cli = _ez_client(mgr, account_key)
+    _dedicated = {"client": None}
+
     def _sync_fetch() -> Any:
-        _c = _ez_client(mgr, account_key)
-        _i = getattr(_c, "odg_inner", _c)
-        if _i is None:
-            raise RuntimeError("no binance client")
-        return _i.futures_position_information()
+        # PRIMARY (USER 2026-10-22): the service store — WS-fed and
+        # REST-reconciled every 3 s inside the service's own loop. Lock-free
+        # read here: zero added REST weight (the fleet already earns bans near
+        # ~275 fetches/min) and it cannot hang like a socket call.
+        try:
+            svc = getattr(mgr, "positions_service", None)
+            store = getattr(svc, "positions", None)
+            if store is not None:
+                try:
+                    items = list(store.items())
+                except RuntimeError:
+                    items = None  # torn by a concurrent mutation; retry next poll
+                if items is not None:
+                    rows = []
+                    for _k, _pos in items:
+                        try:
+                            _d = _pos if isinstance(_pos, dict) else None
+
+                            def _gv(_o, *ns, d=None):
+                                if _d is not None:
+                                    return _d.get(ns[0], d)
+                                return getattr(_o, ns[0], d)
+
+                            _sym = str(_gv(_pos, "symbol", d="") or "").upper()
+                            _side = str(
+                                _gv(_pos, "positionSide", d=_gv(_pos, "position_side", d="BOTH")) or "BOTH"
+                            ).upper()
+                            _amt = _gv(_pos, "positionAmt", d=_gv(_pos, "position_amt", d=0.0))
+                            _epx = _gv(_pos, "entryPrice", d=_gv(_pos, "entry_price", d=0.0))
+                            if not _sym:
+                                _kk = str(_k or "")
+                                if ":" in _kk:
+                                    _kk = _kk.split(":", 1)[1]
+                                _sym, _, _sd = _kk.rpartition("_")
+                                _sym = _sym.upper()
+                                if _side in ("BOTH", ""):
+                                    _side = (_sd or "BOTH").upper()
+                            if _sym:
+                                rows.append(
+                                    {
+                                        "symbol": _sym,
+                                        "positionSide": _side,
+                                        "positionAmt": _amt,
+                                        "entryPrice": _epx,
+                                    }
+                                )
+                        except Exception:
+                            continue
+                    return rows
+        except Exception:
+            pass
+        # FALLBACK: dedicated sync REST client (own session + short timeout).
+        # Never the manager's shared client, whose pool wedges under load and
+        # hangs this thread forever (measured S1 20:23-20:43Z: slot never
+        # filled, zero REFRESH_FAIL, ban 0.0).
+        try:
+            cli = _dedicated["client"]
+            if cli is None:
+                from binance.client import Client as _BinClient
+
+                _base = _ez_client(mgr, account_key)
+                cli = _BinClient(
+                    api_key=getattr(_base, "API_KEY", ""),
+                    api_secret=getattr(_base, "API_SECRET", ""),
+                    tld=getattr(_base, "tld", "com"),
+                    requests_params={
+                        "timeout": float(cfg(config, "POSITIONS_BROKER_REFRESH_TIMEOUT_S"))
+                    },
+                )
+                _dedicated["client"] = cli
+            inner = getattr(cli, "odg_inner", cli)
+            return inner.futures_position_information()
+        except Exception:
+            return None
     bp = get_broker_positions("binance", account_key, binance_fetcher(_cli, config), config=config, ban_remaining=_ban_remaining_binance, logger=logger)
     bp.sync_fetch = _sync_fetch
     bp.ensure_refresher()

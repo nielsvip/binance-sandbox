@@ -119,6 +119,45 @@ def test_truth_slot_age_inf_when_absent():
     assert pt.truth_slot_age_s("binance", "no_such_acct_xyz") == float("inf")
 
 
+def test_ez_broker_sync_fetch_reads_service_store_no_io():
+    """USER 2026-10-22 refresher v2: the sync fetch reads the WS-fed service
+    store (no socket, no REST weight, cannot hang). A sync REST client whose
+    pool wedges under load hung the v1 refresher forever (S1 20:23-20:43Z:
+    slot never filled, zero REFRESH_FAIL, ban 0.0)."""
+    pos = SimpleNamespace(symbol="MANAUSDT", positionSide="LONG", positionAmt="297", entryPrice="0.09397")
+    svc = SimpleNamespace(positions={"ang_store1:MANAUSDT_LONG": pos})
+    mgr = SimpleNamespace(positions_service=svc, accounts={})
+    bp = pt.ez_broker(mgr, "ang_store1", config=CFG)
+    got, dt = None, 0.0
+    t0 = time.time()
+    while time.time() - t0 < 5.0:
+        got = asyncio.new_event_loop().run_until_complete(bp.snapshot(reason="pre ang:X OPEN"))
+        if got is not None:
+            dt = time.time() - t0
+            break
+        time.sleep(0.05)
+    assert got is not None and got.amount("MANAUSDT", "LONG") == 297.0
+    assert pt.truth_slot_age_s("binance", "ang_store1") < 5.0
+
+
+def test_ez_broker_sync_fetch_dict_positions_and_empty_store():
+    """Dict-shaped store rows work; an empty store seeds a fresh flat snapshot
+    (empty is truth, not failure)."""
+    svc = SimpleNamespace(
+        positions={"ang_store2:FOO_SHORT": {"symbol": "FOO", "positionSide": "SHORT", "positionAmt": "-3", "entryPrice": "1"}}
+    )
+    mgr = SimpleNamespace(positions_service=svc, accounts={})
+    bp = pt.ez_broker(mgr, "ang_store2", config=CFG)
+    got = None
+    t0 = time.time()
+    while time.time() - t0 < 5.0:
+        got = asyncio.new_event_loop().run_until_complete(bp.snapshot(reason="pre ang:X OPEN"))
+        if got is not None:
+            break
+        time.sleep(0.05)
+    assert got is not None and got.amount("FOO", "SHORT") == 3.0  # normalize_binance abs (broker semantics)
+
+
 def test_truth_slot_age_tracks_seeded_snapshot():
     assert pt.seed_snapshot("binance", "age_probe_acct", ROWS) is True
     age = pt.truth_slot_age_s("binance", "age_probe_acct")
