@@ -83,6 +83,17 @@ LF_INDICATORS_STALE_S = float(os.environ.get("LF_INDICATORS_STALE_S", "7200"))
 LF_INDICATORS_STALE_FRAC = float(os.environ.get("LF_INDICATORS_STALE_FRAC", "0.5"))
 LF_INDICATORS_MIN_N = int(os.environ.get("LF_INDICATORS_MIN_N", "10"))
 LF_POSITIONS_STALE_S = float(os.environ.get("LF_POSITIONS_STALE_S", "600"))
+# 2026-10-22 USER: "ANY account that is not trading for >3min has to initiate a launch of all ez_ scripts on s1 plus
+# the trading scripts for the account and start trading from s1 until macbook is proven to trade again, then s1 stands
+# down immediately" — and this agent's own 10-20 note already quotes the same intent ("if any binance account stops
+# trading its watchdog should fix it but if it stays down s1 should start trading that account only"). The per-account
+# machinery existed (live_failover_s1._scoped_accounts narrows a takeover to a strict subset) but NO kind ever fired
+# on "this account is not trading", so a wedged engine was invisible to the failover: measured 2026-10-22, men and fin
+# executed nothing for hours while the lease sat holder=mac, 34.6 h stale, and S1 never moved.
+LF_NOT_TRADING_S = float(os.environ.get("LF_NOT_TRADING_S", "180"))
+# The lane must be alive before silence means anything: tools/pure_board_trader.py rewrites vec_driven.json every
+# pass, so a fresh registry proves dictates are still being published and an idle live_exec is the ACCOUNT's fault.
+LF_LANE_FRESH_S = float(os.environ.get("LF_LANE_FRESH_S", "2400"))
 _STOCK_POSITION_FILES = ("state.json", "long_positions.json")
 _CRYPTO_POSITION_FILES = ("long_positions.json", "short_positions.json")
 TRADER_RX = r"python[^ ]* .*(" + "|".join(name.replace(".", r"\.") for name in GATED) + r")"
@@ -743,6 +754,47 @@ class Agent:
                         f"positions_stale {detail} age {int(oldest)}s > {int(LF_POSITIONS_STALE_S)}s (position loop wedged)"
                         + (f" — stale accounts: {','.join(_stale)} of {len(per_acct)}" if _stale else "")]
                     sec["not_trading"] = True
+            # ═══ 2026-10-22 PER-ACCOUNT "NOT TRADING" (the kind that was missing) ═══════════════════════════
+            # One stat per account: data/vec_live/live_exec_<acct>.jsonl gets a row for EVERY vec decision outcome,
+            # including the skips — so if it is idle the account's consumer is not executing the board at all. Only
+            # judged when the lane itself is fresh AND the account actually has live keys, so "the vector dictated
+            # nothing" can never be mistaken for "the engine is wedged". Named per account so the takeover scope is
+            # a strict subset and one dead engine never fences its siblings.
+            _sec_c = health.get("crypto") if isinstance(health, dict) else None
+            if isinstance(_sec_c, dict) and "crypto" not in (fenced or ()) and _sec_c.get("applicable") is not False:
+                try:
+                    _vl = BASE / "data" / "vec_live"
+                    _reg_age = now - (_vl / "vec_driven.json").stat().st_mtime
+                    _reg = json.loads((_vl / "vec_driven.json").read_text())
+                    _live_for = {}
+                    for _ss, _e in _reg.items():
+                        if not isinstance(_e, dict) or str(_e.get("mode") or "").lower() != "live":
+                            continue
+                        _acct_f = _e.get("account")
+                        for _a in ([_acct_f] if isinstance(_acct_f, str) else list(_acct_f or [])):
+                            _live_for[_a] = _live_for.get(_a, 0) + 1
+                    _idle, _detail = [], []
+                    if _reg_age <= LF_LANE_FRESH_S:
+                        for _a in C.CRYPTO_ACCOUNTS:
+                            if _live_for.get(_a, 0) <= 0:
+                                continue
+                            try:
+                                _ex_age = now - (_vl / f"live_exec_{_a}.jsonl").stat().st_mtime
+                            except OSError:
+                                _ex_age = 10 ** 9
+                            if _ex_age > LF_NOT_TRADING_S:
+                                _idle.append(_a)
+                                _detail.append(f"{_a} idle {int(_ex_age)}s ({_live_for[_a]} live keys)")
+                    _sec_c["not_trading_idle_accounts"] = sorted(_idle)
+                    if _idle:
+                        _sec_c["kinds"] = list(_sec_c.get("kinds") or []) + ["not_trading_account"]
+                        _sec_c["not_trading_account_accounts"] = sorted(_idle)
+                        _sec_c["reasons"] = list(_sec_c.get("reasons") or []) + [
+                            f"not_trading_account: {', '.join(_detail)} — no vec decision executed for >"
+                            f"{int(LF_NOT_TRADING_S)}s while the board lane is live (registry age {int(_reg_age)}s)"]
+                        _sec_c["not_trading"] = True
+                except Exception as _nt_exc:
+                    log(f"not_trading_account probe error: {_nt_exc!r}")
         except Exception as exc:
             log(f"data_freshness advisory error: {exc!r}")
 

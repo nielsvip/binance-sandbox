@@ -26016,12 +26016,37 @@ class MultiAccountTradeManager:
         Now: the position comes from the position writer's own dict (ez_positions_service is the single writer and the
         authority) and the price from the in-memory price cache the fetchers keep. Nothing here can block, and sizing
         remains live's job downstream (calculate_final_order_quantity + the ez_positions_quick quantizers)."""
+        # EXIT SAFETY 2026-10-22: the amount decides whether a vec CLOSE is sent at all — `translate()` turns a
+        # flat-looking read into SKIPPED_ALREADY_FLAT and the vector's exit is DROPPED. Measured this day: 7 vec
+        # CLOSEs were skipped as ALREADY_FLAT on keys the account demonstrably held (ang:EGLDUSDT_SHORT 32.4,
+        # ang:TRUMPUSDC_SHORT 3.48, flz:XRPUSDC_SHORT 18.6, inf:ZENUSDT_SHORT 1.0, …) — positions left open against
+        # the vector's decision, which is the direction that loses money. So the amount is now the LARGEST of every
+        # source we have: the broker-backed read, this process's dict, and the position writer's own snapshot. A
+        # position we might hold is never read as flat; a genuinely flat key costs one refused reduceOnly order, and
+        # @_ptruth.ez_confirmed already guarantees a zero qty is never sent. The price stays cache-only — it is not
+        # allowed to block (USER: a wss timeout can never cost the trading path a wait).
         position = None
         try:
-            position = self.positions.get(position_key)
+            position = await self.get_position(position_key, max_age_s=5.0)
         except Exception:
             position = None
         amt = abs(safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0)) if position else 0.0
+        try:
+            _mem = self.positions.get(position_key)
+            if _mem is not None:
+                amt = max(amt, abs(safe_fetch_float(getattr(_mem, "positionAmt", 0.0), 0.0)))
+                position = position or _mem
+        except Exception:
+            pass
+        if amt <= 0.0:
+            try:
+                _acct, _sym_pk, _side_pk = position_key.split(":", 1)[0], symbol, position_key.rsplit("_", 1)[-1]
+                _snap = Path(getattr(self.config, "BASE_PATH", ".")) / _acct / f"{_side_pk.lower()}_positions.json"
+                _rows = json.loads(_snap.read_text()) if _snap.exists() else {}
+                _row = (_rows or {}).get(position_key) or {}
+                amt = max(amt, abs(safe_fetch_float(_row.get("positionAmt"), 0.0)))
+            except Exception:
+                pass
         price = 0.0
         for _src in (getattr(self, "price_cache", None), getattr(self, "mark_price_cache", None)):
             if price > 0 or _src is None:

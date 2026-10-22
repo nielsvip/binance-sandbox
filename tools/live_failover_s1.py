@@ -140,11 +140,21 @@ NT_POS_S = float(os.environ.get("LF_NT_POSITIONS_S", "0"))  # 2026-10-19 USER ("
 # A kind NOT in this set is still measured, still logged, still alerted, and now drives LOCAL repair
 # (tools/never_untraded_guard.py every 30 s + the per-account wrappers + the keepalives). It no longer fences the
 # host that is able to fix it. LF_TAKEOVER_KINDS overrides the set for a deliberate test.
-TAKEOVER_KINDS = set(filter(None, (os.environ.get("LF_TAKEOVER_KINDS") or "indicators_unproducible").split(",")))
+# 2026-10-22 USER (said three times, final): "ANY account that is not trading for >3min has to initiate a launch of
+# all ez_ scripts on s1 plus the trading scripts for the account and start trading from s1 until macbook is proven to
+# trade again, then s1 stands down immediately" / "s1 needs to take over when macbook can not be repaired ... that is
+# SUICIDE, fix immediately". `not_trading_account` is account-SCOPED (mac_failover_agent names the idle accounts), so
+# this takes over only the dead engine and never its healthy siblings — the "Mac down -> S1 takes everything" half
+# still runs through the absent-heartbeat path below. Measured 2026-10-22: men and fin executed nothing for hours
+# while the lease sat holder=mac and 34.6 h stale, because no kind existed for "this account is not trading".
+TAKEOVER_KINDS = set(filter(None, (os.environ.get("LF_TAKEOVER_KINDS") or "indicators_unproducible,not_trading_account").split(",")))
 # The Mac being off/offline is NOT a kind: it is the absent-heartbeat path (hb_absent / unreachable / pushes_stopped),
 # which is evaluated separately and deliberately left untouched — that is the other half of the operator's rule.
 NT_NEED = {"broker_unreachable": NT_BROKER_S, "order_path_dead": NT_ORDER_S, "traders_dead": TRADING_DEAD_S, "account_dead": NT_ACCT_S,
-           "indicators_stale": NT_IND_S, "positions_stale": NT_POS_S, "stock_account_dead": 0.0}
+           "indicators_stale": NT_IND_S, "positions_stale": NT_POS_S, "stock_account_dead": 0.0,
+           # The Mac side already required LF_NOT_TRADING_S (180 s) of silence before raising this, so the S1-side
+           # dwell is small: the operator's bar is 3 minutes total, not 3 minutes plus another confirmation window.
+           "not_trading_account": float(os.environ.get("LF_NT_NOT_TRADING_S", "30"))}
 STOCK_ACCT_MISSING_S = float(os.environ.get("LF_STOCK_ACCT_MISSING_S", "240"))  # S1-side dwell for a
 # vanished single stock engine (no Mac-side age exists for a dead process; 240 s clears ordinary restarts,
 # mirroring LF_ACCT_DEAD_S on crypto).
@@ -598,6 +608,11 @@ class Watchdog:
             # host is the problem), which preserves the "Mac down -> S1 takes everything" half of the rule.
             if "positions_stale" in kinds:
                 named = sorted(set(named) | {a for a in (reading.get("positions_stale_accounts") or [])})
+            # 2026-10-22: same account-scoping for the not-trading kind, so S1 starts ONLY the dead account's
+            # engines. An empty list would mean whole-venue, which for this kind would be every account idle — i.e.
+            # the Mac itself is the problem, and taking the venue is then correct.
+            if "not_trading_account" in kinds:
+                named = sorted(set(named) | {a for a in (reading.get("not_trading_account_accounts") or [])})
             # 2026-10-20 ONLY TAKEOVER_KINDS may move the lease (see the block above). Everything else is kept in
             # `kinds` for the log/alert and handed to LOCAL repair; it must not fence the host that can fix it.
             _tk = [k for k in kinds if k in TAKEOVER_KINDS]

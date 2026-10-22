@@ -438,6 +438,24 @@ def test_same_bar_duplicate_dictates_collapse(tmp_path, monkeypatch):
     assert len(calls) == 1, calls
 
 
+def test_vec_close_is_never_dropped_when_any_source_shows_a_position(tmp_path, monkeypatch):
+    """MONEY BUG 2026-10-22: a vec CLOSE was skipped as SKIPPED_ALREADY_FLAT on keys the account demonstrably held
+    (7 measured: ang:EGLDUSDT_SHORT 32.4, ang:TRUMPUSDC_SHORT 3.48, flz:XRPUSDC_SHORT 18.6, inf:ZENUSDT_SHORT 1.0,
+    …), leaving positions open against the vector's decision. The amount must be the LARGEST of every source, so a
+    position we might hold is never read as flat. Here the broker-backed read says flat and only the in-memory dict
+    knows about it — the CLOSE must still go."""
+    base, vl, tm, calls = _setup(tmp_path, monkeypatch, REG_LIVE)
+
+    async def _flat_broker(pk, max_age_s=None):
+        return SimpleNamespace(positionAmt=0.0, mark_price=10.0, entry_price=10.0, gain=0.0)
+    tm.get_position = _flat_broker
+    tm.positions = {"men:BTCUSDT_LONG": SimpleNamespace(positionAmt=4.0, mark_price=10.0, entry_price=10.0, gain=0.0)}
+    _intent(vl, "c1", "BTCUSDT_LONG", "CLOSE", time.time() - 10, target_state="FLAT", qty_frac=1.0)
+    _run_loop(tm, monkeypatch, cycles=1)
+    assert [c["action"] for c in calls] == ["CLOSE"], calls
+    assert calls[0]["qty"] == 4.0, calls
+
+
 def test_open_dictate_sends_nothing_when_already_held(tmp_path, monkeypatch):
     """The only correct refusal of an OPEN: the account already holds the key (translate -> ALREADY_OPEN)."""
     base, vl, tm, calls = _setup(tmp_path, monkeypatch, REG_LIVE, amts={"men:BTCUSDT_LONG": 5.0})
