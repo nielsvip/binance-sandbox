@@ -21,6 +21,17 @@ ACCOUNTS="${MAC_POS_ACCOUNTS:-ang inf flz fin men}"
 MAX_HB_AGE="${MAC_POS_MAX_HB_AGE:-180}"   # seconds without a successful save before the writer is replaced
 BOOT_GRACE="${MAC_POS_BOOT_GRACE:-240}"   # a freshly started writer gets this long to produce its first heartbeat
 HB_STUCK_PASSES="${MAC_POS_HB_STUCK_PASSES:-10}"   # consecutive 1-min passes with ZERO heartbeat progress before a kill
+# ═══ 2026-10-22 PASS BUDGET SPLIT — NEITHER PASS MAY STARVE THE OTHER ═══
+# The whole script runs under `timeout -s TERM $RUN_MAX_S` (45s). PASS 1 (engines) and PASS 2 (position writers)
+# shared that one budget with no per-pass bound, so whichever ran first could consume all of it. On 2026-10-16 the
+# writers were first and starved the engine check (that is why PASS 1 was moved ahead of them). MEASURED today at
+# load 209-290 on 12 cores, the mirror image: engine_keepalive took 20-40s PER ACCOUNT, so a 45s pass covered 1-2 of
+# 5 accounts and PASS 2 — the position-writer pass this script is NAMED for — was never reached at all. fin sat with
+# NO WRITER for 200s and nothing started it; all five writers had to be launched by hand. Ordering alone cannot fix
+# this, it only chooses the victim. PASS 1 now gets PASS1_MAX_S of the budget and stops at that deadline, leaving the
+# remainder to PASS 2, which is cheap (stat + pgrep per account). Coverage stays gapless because the rotation pointer
+# advances by the number of accounts PASS 1 actually processed, not by one.
+PASS1_MAX_S="${MAC_POS_PASS1_MAX_S:-22}"   # engines keep the larger half of RUN_MAX_S; writers are guaranteed the rest
 MAX_MGR_LOG_AGE="${MAC_MGR_MAX_LOG_AGE:-300}"  # ez_manage silent (no log write) this long = replace it.
 # 2026-10-16: MEASURED, DO NOT LOWER. Log age is a WEAK liveness signal for ez_manage — a healthy engine with few or
 # no positions legitimately writes nothing for minutes. Inter-line gaps in the last 3 MB of ez_manage_{inf,ang}.log:
@@ -72,8 +83,27 @@ if [ -z "${MAC_POS_TIMED:-}" ] && [ -x /opt/homebrew/bin/timeout ]; then
   # past RUN_MAX_S after spawning run_with_watchdog.sh TERM'd the watchdog it had just started — measured as
   # "Watchdog received SIGTERM — killing child" 8-23 s after every one of fin's 5 relaunches, and 28-52 times per
   # account. --foreground signals only this script, which is the only process the bound is meant to cover.
-  exec /opt/homebrew/bin/timeout --foreground -s TERM "$RUN_MAX_S" /bin/bash "$0" "$@"
+  # 2026-10-22 -k: TERM ALONE DOES NOT BOUND THIS SCRIPT. A bash trap cannot run while the shell is blocked in a
+  # foreground child, so a pass stuck in a `pgrep`/`stat`/spawn under extreme load never reaches `trap ... exit`;
+  # `timeout` sends its one TERM, exits, and the pass is reparented to pid 1 and runs on UNBOUNDED AND LOCKLESS —
+  # precisely the state the trap fix at :122 was meant to end. MEASURED now, with that fix in place: 4 orphaned
+  # copies (PPID 1) aged 1h43m-1h45m, still executing the kill -9 paths against ez_manage watchdogs and children.
+  # -k escalates to SIGKILL after the grace period, which no child can defer. The EXIT trap is then skipped, so the
+  # lock file outlives the holder — already handled: shlock breaks a lock whose pid is dead, and LOCK_STALE_S breaks
+  # it by age. Worst-case bound is RUN_MAX_S + grace = 60s, still inside the 3-minute invariant.
+  exec /opt/homebrew/bin/timeout --foreground -k 15 -s TERM "$RUN_MAX_S" /bin/bash "$0" "$@"
 fi
+
+# ═══ ORPHAN REAPER — a pass that outlived its own bound is not a supervisor, it is a loose kill -9 loop ═══
+# Belt-and-braces behind `timeout -k`: anything carrying this script's argv, reparented to init, and older than
+# ORPHAN_MAX_S cannot be a legitimate pass (the bound above is RUN_MAX_S + 15s). Never touches this pid or a pass
+# that still has a live parent.
+ORPHAN_MAX_S="${MAC_POS_ORPHAN_MAX_S:-120}"
+for _op in $(/bin/ps -eo pid=,ppid=,etimes=,command= 2>/dev/null \
+  | /usr/bin/awk -v me="$$" -v cap="$ORPHAN_MAX_S" '$2==1 && $3>cap && $1!=me && /mac_pos_writer_keepalive/ {print $1}'); do
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [keepalive] ORPHAN REAPED: pid=$_op (PPID 1, older than ${ORPHAN_MAX_S}s) — a pass that outlived its timeout bound" >&2
+  kill -9 "$_op" 2>/dev/null || true
+done
 
 LOCK="/tmp/.mac_pos_writer_keepalive.lock"
 # 2026-10-16: shlock only breaks a lock whose holder is DEAD. A holder that is merely SLOW or WEDGED keeps it
@@ -411,12 +441,29 @@ case "$_MGR_OVERLOADED" in 1|0) ;; *) _MGR_OVERLOADED=0 ;; esac
 # sat 73 s inside a spawn subshell at 04:30:00-04:31:13Z while holding the single-flight lock), so on a bad pass the
 # engine check was reached late or not at all, and every run behind it aborted with "another run holds the lock".
 # The 3-minute invariant is about ENGINES, so engines are now checked before anything else can stall the pass.
+_p1_start=$(date +%s)
+_p1_done=0
 for A in $ACCOUNTS_ROTATED; do
+  _p1_elapsed=$(( $(date +%s) - _p1_start ))
+  if [ "$_p1_done" -gt 0 ] && [ "$_p1_elapsed" -ge "$PASS1_MAX_S" ]; then
+    klog "PASS1 budget spent (${_p1_elapsed}s >= ${PASS1_MAX_S}s) after $_p1_done/$(echo $ACCOUNTS | wc -w | tr -d ' ') accounts — yielding to the writer pass; rotation resumes at $A"
+    break
+  fi
   engine_keepalive "$A"
+  _p1_done=$(( _p1_done + 1 ))
 done
+# Gapless round-robin: resume at the first account PASS 1 did NOT reach, instead of advancing by one. Without this a
+# budget-truncated pass would re-check the same leading accounts next minute and the tail could go unchecked for
+# 5+ passes, which is the >3min inactivity this layer exists to prevent.
+if [ "$_mr_n" -gt 0 ] && [ "$_p1_done" -gt 0 ]; then
+  echo $(( (_mr_rot + _p1_done) % _mr_n )) > "$_mr_seq_file" 2>/dev/null || true
+fi
+klog "PASS1 done: $_p1_done account(s) in $(( $(date +%s) - _p1_start ))s"
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 # PASS 2 — position writers and realtime failover workers (unchanged logic, now strictly after the engines).
+# It is reached on EVERY pass now: PASS 1 can no longer outspend the shared budget (see PASS1_MAX_S above).
+_p2_start=$(date +%s)
 for A in $ACCOUNTS_ROTATED; do
   SVC="ez_positions_service_main.py $A"
   RT="ez_positions_realtime.py $A"
@@ -458,3 +505,4 @@ for A in $ACCOUNTS_ROTATED; do
   fi
 
 done
+klog "PASS2 done: $(echo $ACCOUNTS | wc -w | tr -d ' ') writer(s) checked in $(( $(date +%s) - _p2_start ))s (total pass $(( $(date +%s) - _p1_start ))s)"

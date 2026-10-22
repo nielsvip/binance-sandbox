@@ -3,7 +3,7 @@
 # passes burn CPU for 100% EVAL_TIMEOUTs. Freeze them (SIGSTOP, procs persist so
 # supervisors never respawn dupes); auto-thaw (SIGCONT) once >=10 H2 symbols.
 cd /Users/niels/Documents/binance || exit 0
-H2=$(python3 -c "
+H2=$(/Users/niels/.local/bin/python3 -c "
 import sys,pickle,glob
 sys.path.insert(0,'.')
 from vec_decisions.stock_live_frames import _code_version
