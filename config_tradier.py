@@ -1513,8 +1513,12 @@ class TradierConfig:
     PARTIAL_PROFIT_LOCK_ENABLED: bool = (
         False  # 2026-08-10 USER MANDATE: ever-in-gain never slip to loss -> PPL ON (was OFF 2026-07-19). 50% at +0.5%, arm at +0.75% breakeven
     )
-    PPL_REAUGMENT_ENABLED: bool = False  # USER 2026-10-22: re-add locked profit when price reclaims the 15m DC band after a PPL TP. Pilot-swept per sym_side; inert until a board holds True.
-    PPL_REAUGMENT_SIZE_MULT: float = 1.0  # USER 2026-10-22: re-augment qty = MULT x qty taken at the TP. Pilot candidates 1.0/1.5/2.0.
+    PPL_REAUGMENT_ENABLED: bool = (
+        False  # USER 2026-10-22: re-add locked profit when price reclaims the 15m DC band after a PPL TP. Pilot-swept per sym_side; inert until a board holds True.
+    )
+    PPL_REAUGMENT_SIZE_MULT: float = (
+        1.0  # USER 2026-10-22: re-augment qty = MULT x qty taken at the TP. Pilot candidates 1.0/1.5/2.0.
+    )
     # 2026-04-25 PPL CURVE (114-sym, 4.3yr, HVC sweep confirmed): 0.5%=2.832 Sharpe/114%gain | 0.9375%(baseline)=2.435/171% | 1.5%=1.784/206% | 2.0%=1.507/226% | 2.5%=1.379/239% | 3.0%=1.253/244% | 4.0%=1.130/259% | 5.0%=1.092/262% | disabled=1.077/247%.
     # 2026-05-26 crypto grid favours 1.5% (best risk-adjusted vs PPL OFF baseline); apply to stocks symmetrically — tradier-specific sweep can refine later.
     # Use PARTIAL_PROFIT_LOCK_GAIN_PCT (NOT _TRADIER key) for vectorized sweeps.

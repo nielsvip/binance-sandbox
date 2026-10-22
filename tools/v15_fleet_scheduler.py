@@ -2361,6 +2361,27 @@ def _base_wait_release(ss, st, now_ts, has_incumbent, min_wait_s=100.0):
     return bool(has_incumbent) and now_ts - float(first) >= min_wait_s
 
 
+def _steal30_pick(thief, free_slots, launched_here, owner, need_syms, order, running_syms=(), skip=(), min_free=2):
+    """Coordinator 2026-10-22 (S5/S6 idle at 0/8 while 25 pending sides queued behind S1/S2): an idle host (>= min_free free slots and
+    nothing launched this tick) takes the OLDEST pending need30 symbol of the host with the LONGEST owned queue. need_syms = symbols with a
+    launchable need30 side; order = the fleet launch order (oldest/priority first); running_syms = symbols with a pilot anywhere (DEDUP);
+    skip = symbols already tried this tick. -> (sym, victim_host) or (None, None). Pure (tested)."""
+    if free_slots < min_free or launched_here:
+        return None, None
+    run, sk = set(running_syms or ()), set(skip or ())
+    queue = {}
+    for sym in need_syms or ():
+        o = (owner or {}).get(sym)
+        if o and o != thief and sym not in run and sym not in sk:
+            queue.setdefault(o, []).append(sym)
+    if not queue:
+        return None, None
+    victim = max(sorted(queue), key=lambda h: len(queue[h]))
+    rank = {sy: i for i, sy in enumerate(order or [])}
+    pick = min(queue[victim], key=lambda sy: (rank.get(sy, len(rank)), sy))
+    return pick, victim
+
+
 def _round_forces_slow(round_id, path=None):
     """True when data/v15_round_env.json is for THIS round and pins V18_CATCHUP=0 (or V15_BOARD_BUDGET=0) — the operator's 'full slow round'.
     A file naming another round has expired (round_env_inline's own rule). Never raises."""
@@ -4810,6 +4831,74 @@ def tick(args, cfg, now):
                 log["hosts"][h["name"]]["slots"] = f"{len(held[h['name']])}/{B['cap']}"
                 log["hosts"][h["name"]].setdefault("held", []).append(sym)
                 log["hosts"][h["name"]].pop("idle_reason", None)
+    # ---- pass 2b (coordinator 2026-10-22): in a slow-pinned round an IDLE host backfills a pending 30D side owned by a busy host.
+    # The side's progress JSON (resume / REDO) is fetched S1-relayed to the thief and the source copy is archived (renamed
+    # .stolen_to_<host>_<ts>.json, never deleted) so exactly one host holds the board. DEDUP / launched-grace / dispatch-grace / NPZ checks kept.
+    if _slow_pin and os.environ.get("V15_SCHED_STEAL30", "1") == "1" and not (args.dry_run or sim):
+        _run_syms = {k.rsplit("_", 1)[0] for k in running}
+        _need = sorted(sy for sy, sd in chain_state.items() if any((v or ("",))[0] == "need30" and f"{sy}_{k}" not in running for k, v in (sd or {}).items()))
+        _order_all = [sy for sy, _ in _place_order([], [], list(_need), _gtiers, redo, st["attempts"], st.get("launched_at"), pri, cont=_cont_all, pinned=_pin_sides, recent=_recent_syms, age_key=_AGE_KEY[0])] if _need else []
+        _tried = set()
+        for h in hosts:
+            s = stats[h["name"]]
+            if not s or h["name"] not in HB or h["name"] in _drained:
+                continue
+            B = HB[h["name"]]
+            for _try in range(4):
+                if B.get("new_launched", 0) >= args.max_launch or B.get("proj_mem", 0) < B["est_pair"] or B["cpu"] >= cfg.get("cpu_target_pct", 90) or not _disk_admit_ok(s):
+                    break
+                _free = B["cap"] - len(held[h["name"]])
+                sym, _victim = _steal30_pick(h["name"], _free, B.get("new_launched", 0) > 0 and _try == 0, owner, [x for x in _need if venue_of(x) in h["venues"]], _order_all, _run_syms, _tried)
+                if not sym:
+                    break
+                _tried.add(sym)
+                _src_ok, _src_why = _s1_source_tail_ok(sym)
+                if not _src_ok:
+                    log.setdefault("steal30_skipped", []).append(f"{h['name']}:{sym}:npz {_src_why}")
+                    continue
+                acts = [a for a in pending_actions(sym, h["name"]) if a["window"] == "30D" and a["key"] not in launched_keys and not _launched_recently(a["key"], st.get("launched_at"), _now_ts)
+                        and not _launched_recently(a["key"], st.get("dispatch_q"), _now_ts, _DISPATCH_GRACE_S) and f"{sym}_{a['side']}" not in running]
+                acts, _unr = _deny_unreachable_sides(acts, sym, h["name"])
+                if not acts:
+                    log.setdefault("steal30_skipped", []).append(f"{h['name']}:{sym}:no launchable 30D action")
+                    continue
+                pd = s.get("pdir") or cfg.get("fallback_pdir")
+                specs = []
+                for a in acts:
+                    _ss = f"{sym}_{a['side']}"
+                    _src = (_newest_mt.get(_ss) or (None, None))[1]
+                    if _ss in started and _src and _src != h["name"] and pdirs.get(_src):
+                        specs.append((_src, f"{pdirs[_src]}/{_ss}_v14_progress.json", f"{pd}/{_ss}_v14_progress.json"))
+                if specs and not _steal_fetch(hosts, h, sym, specs, log):
+                    log.setdefault("steal30_skipped", []).append(f"{h['name']}:{sym}:progress fetch failed {(log.get('steal_fetch_fail') or {}).get(sym)}")
+                    continue
+                _arch_ok = True
+                for _src, _sp, _dp in specs:
+                    _sh = next((x for x in hosts if x["name"] == _src), None)
+                    _o = sh_ssh(_sh, f"test -f {shlex.quote(_sp)} && mv {shlex.quote(_sp)} {shlex.quote(_sp + '.stolen_to_' + h['name'] + '_' + time.strftime('%Y%m%d%H%M%S', time.gmtime()) + '.json')} && echo ARCHOK", 30) if _sh else None
+                    if not (_o and "ARCHOK" in _o):
+                        _arch_ok = False
+                if not _arch_ok:
+                    log.setdefault("steal30_skipped", []).append(f"{h['name']}:{sym}:source archive failed (thief copy kept, not launched)")
+                    continue
+                tag = f"{h['name']}:{sym}:" + "+".join(f"{a['side'][0]}{a['window']}" for a in acts) + f"[steal30<-{_victim}]"
+                _dispatch_async(h, sym, acts, pd, _workers_for(sym, B["workers"]), tag.split("[")[0])
+                _dispatch_q_mark(st, [a["key"] for a in acts], _now_ts)
+                for a in acts:
+                    _burn_launch(a["key"], a["window"], f"{a['sym']}_{a['side']}", st, started)
+                    st["launched_at"][a["key"]] = _now_ts
+                    launched_keys.add(a["key"])
+                log["launched"].append(tag)
+                print(f"[sched] STEAL30 {h['name']} takes {sym} {[a['side'] for a in acts]} from {_victim} (free {_free}, owner queue longest; progress moved {len(specs)})", flush=True)
+                B["proj_mem"] = B.get("proj_mem", 0) - B["est_pair"]
+                held[h["name"]][sym] = "new"
+                st["held"].setdefault(h["name"], {})[sym] = now.isoformat()
+                owner[sym] = h["name"]
+                B["new_launched"] = B.get("new_launched", 0) + 1
+                _run_syms.add(sym)
+                if isinstance(log["hosts"].get(h["name"]), dict):
+                    log["hosts"][h["name"]]["slots"] = f"{len(held[h['name']])}/{B['cap']}"
+                    log["hosts"][h["name"]].pop("idle_reason", None)
     _ph("steal_pass")
     # ---- NPZ PREFETCH (USER 2026-10-13): s1 readies the NEXT symbol's NPZ while the current boards finish, so a
     # freed slot dispatches instantly on a fresh tail. Runs AFTER the launch pass (never delays a launch), bounded per

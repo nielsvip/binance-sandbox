@@ -186,13 +186,17 @@ def test_ppl_reaugment_allowed_ppl_tp_stays_killed(tmp_path, monkeypatch):
         "QUICK_AUGMENT", "a", "PPL_REAUGMENT_DC_RECLAIM_wt1.2>dc0.5000"
     )
     assert (ok, verdict) == (True, "PPL_REAUGMENT_ALLOWED")
-    # Both live lanes + the v12 walk leg gate on the same per-sym switch.
+    # Both live lanes + the v12 walk leg gate on the same per-sym switch
+    # (pins use the switch name + arm keys, not the exact call wrapping).
     ez_src = (ROOT / "ez_manage.py").read_text()
-    assert '_psym_get(symbol, position_side, "PPL_REAUGMENT_ENABLED", False)' in ez_src
+    assert '"PPL_REAUGMENT_ENABLED"' in ez_src
+    assert '"reaug_armed"' in ez_src and "PPL_REAUGMENT_DC_RECLAIM" in ez_src
     tr_src = (ROOT / "tradier_manage.py").read_text()
     assert '"PPL_REAUGMENT_ENABLED"' in tr_src
+    assert '"reaug_armed"' in tr_src and "PPL_REAUGMENT_DC_RECLAIM" in tr_src
     v12_src = (ROOT / "v12_quick_engine.py").read_text()
     assert "PPL_REAUGMENT_DC_RECLAIM" in v12_src
+    assert "PPL_REAUGMENT_ENABLED" in v12_src
 
 
 def test_monitor_logs_watched_families_only(tmp_path, monkeypatch):

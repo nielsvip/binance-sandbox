@@ -350,3 +350,15 @@ def test_base_wait_release_after_one_tick_with_incumbent():
     assert S._base_wait_release("ICXUSDT_SHORT", st, 1000.0, True) is False  # first tick waits
     assert S._base_wait_release("ICXUSDT_SHORT", st, 1121.0, True) is True  # next tick launches
     assert S._base_wait_release("NOINC_SHORT", st, 1000.0, False) is False and S._base_wait_release("NOINC_SHORT", st, 9999.0, False) is False
+
+
+def test_steal30_pick_longest_queue_oldest_first():
+    owner = {"A": "s1", "B": "s1", "C": "s1", "D": "s2", "E": "s2", "F": "s5"}
+    need = ["A", "B", "C", "D", "E", "F"]
+    order = ["E", "C", "A", "B", "D", "F"]
+    assert S._steal30_pick("s5", 8, False, owner, need, order) == ("C", "s1")  # s1 has the longest queue; C is its oldest in the order
+    assert S._steal30_pick("s5", 1, False, owner, need, order) == (None, None)  # < 2 free slots
+    assert S._steal30_pick("s5", 8, True, owner, need, order) == (None, None)  # host launched its own work this tick
+    assert S._steal30_pick("s5", 8, False, owner, need, order, running_syms={"C"}) == ("A", "s1")  # DEDUP: a running symbol is never taken
+    assert S._steal30_pick("s5", 8, False, owner, need, order, skip={"A", "B", "C"}) == ("E", "s2")
+    assert S._steal30_pick("s5", 8, False, {"F": "s5"}, ["F"], order) == (None, None)  # own work is not stolen

@@ -1,32 +1,103 @@
 {
- "generated_at": "2026-10-22 22:54 UTC",
- "total_capital_usd": 22.3,
+ "generated_at": "2026-10-22 23:11 UTC",
+ "total_capital_usd": 158.64,
  "tier_capital": {
-  "A": 0.0,
-  "B": 0.0,
-  "C": 22.3
+  "A": 44.49,
+  "B": 79.61,
+  "C": 34.54
  },
  "tier_count": {
-  "A": 0,
-  "B": 0,
-  "C": 1
+  "A": 1,
+  "B": 4,
+  "C": 2
  },
  "winners": [],
  "losers": [
-  "inf:BTCDOMUSDT_LONG"
+  "men:1000LUNCUSDT_SHORT",
+  "men:ETHFIUSDC_LONG"
  ],
- "mediocre": [],
+ "mediocre": [
+  "men:CRVUSDC_LONG",
+  "men:ENJUSDT_SHORT",
+  "men:TUSDT_SHORT"
+ ],
  "positions": [
   {
-   "pk": "inf:BTCDOMUSDT_LONG",
-   "symbol": "BTCDOMUSDT",
-   "account": "inf",
-   "value_usd": 22.3,
-   "gain_pct": 0.266,
+   "pk": "men:ZROUSDT_LONG",
+   "symbol": "ZROUSDT",
+   "account": "men",
+   "value_usd": 44.49,
+   "gain_pct": -0.142,
+   "tier": "A",
+   "perf_mult": 5.3,
+   "amt": 25.0,
+   "mark": 1.77977271
+  },
+  {
+   "pk": "men:CRVUSDC_LONG",
+   "symbol": "CRVUSDC",
+   "account": "men",
+   "value_usd": 44.16,
+   "gain_pct": -0.055,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 122.3,
+   "mark": 0.36108909
+  },
+  {
+   "pk": "men:ETHFIUSDC_LONG",
+   "symbol": "ETHFIUSDC",
+   "account": "men",
+   "value_usd": 27.55,
+   "gain_pct": 0.062,
    "tier": "C",
-   "perf_mult": 0.37,
-   "amt": 0.004,
-   "mark": 5574.5
+   "perf_mult": 0.43,
+   "amt": 42.7,
+   "mark": 0.6451
+  },
+  {
+   "pk": "men:PARTIUSDT_SHORT",
+   "symbol": "PARTIUSDT",
+   "account": "men",
+   "value_usd": 16.85,
+   "gain_pct": -0.433,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 512.0,
+   "mark": 0.03290184
+  },
+  {
+   "pk": "men:ENJUSDT_SHORT",
+   "symbol": "ENJUSDT",
+   "account": "men",
+   "value_usd": 11.21,
+   "gain_pct": -0.028,
+   "tier": "B",
+   "perf_mult": 0.59,
+   "amt": 425.0,
+   "mark": 0.02637745
+  },
+  {
+   "pk": "men:TUSDT_SHORT",
+   "symbol": "TUSDT",
+   "account": "men",
+   "value_usd": 7.39,
+   "gain_pct": 0.0,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 1574.0,
+   "mark": 0.004695
+  },
+  {
+   "pk": "men:1000LUNCUSDT_SHORT",
+   "symbol": "1000LUNCUSDT",
+   "account": "men",
+   "value_usd": 6.99,
+   "gain_pct": -0.018,
+   "tier": "C",
+   "perf_mult": 0.17,
+   "amt": 156.0,
+   "mark": 0.04482824
   }
  ]
 }
