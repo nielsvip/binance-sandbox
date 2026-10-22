@@ -104,7 +104,19 @@ if ! /usr/bin/shlock -f "$LOCK" -p $$; then
   klog "another run holds $LOCK — exiting"
   exit 0
 fi
-trap 'rm -f "$LOCK"' EXIT INT TERM
+# 2026-10-22 (USER "guarantee all accounts keep trading whether on mac or s1 including fin"): THE HANDLER MUST
+# EXIT. A bash trap on a SIGNAL runs the handler and then RESUMES at the interrupted command — it does not end the
+# script. So when the `timeout --foreground -s TERM "$RUN_MAX_S"` at :75 fired at 45 s, this handler released the
+# single-flight lock and the pass KEPT RUNNING, now unbounded AND lockless, reparented to pid 1 because timeout had
+# already reaped. The next */1 cron minute then saw no lock and started another. Measured 2026-10-22 06:3xZ: 12
+# concurrent copies of this script, 9 of them orphaned (PPID 1), ages 6 min to 1 h 27 m — every one still executing
+# the kill -9 paths at :157/:234/:271-272/:320-321/:381 against ez_manage watchdogs and children. That is the engine
+# churn: 216 ez_manage watchdog starts and 123 [WATCHDOG_SINGLETON] refusals in 24 h (men alone 60/30), men's
+# "[SIGKILL_EXTERNAL] exit 137 after 22s" at 06:17:22, and the 0<->1 engine flapping that reset
+# never_untraded_guard's untraded_s to 0 on every 30 s sample so it logged WITHIN_GRACE forever and never enforced
+# the 3-minute rule while fin had gone 48 min without an execution. `exit` is what run_with_watchdog.sh:222 already
+# does for the same reason.
+trap 'rm -f "$LOCK"; exit' EXIT INT TERM
 
 now=$(date +%s)
 
