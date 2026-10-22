@@ -4836,7 +4836,9 @@ def tick(args, cfg, now):
     # .stolen_to_<host>_<ts>.json, never deleted) so exactly one host holds the board. DEDUP / launched-grace / dispatch-grace / NPZ checks kept.
     if _slow_pin and os.environ.get("V15_SCHED_STEAL30", "1") == "1" and not (args.dry_run or sim):
         _run_syms = {k.rsplit("_", 1)[0] for k in running}
-        _need = sorted(sy for sy, sd in chain_state.items() if any((v or ("",))[0] == "need30" and f"{sy}_{k}" not in running for k, v in (sd or {}).items()))
+        _uni_ss = _reachable_sym_sides()[0] if _SIDE_UNI_ON else None
+        _need = sorted(sy for sy, sd in chain_state.items() if any((v or ("",))[0] == "need30" and f"{sy}_{k}" not in running and (not _uni_ss or f"{sy}_{k}".upper() in _uni_ss)
+                                                                  and not _launch_exhausted(f"{sy}_{k}|30D", "30D", f"{sy}_{k}", st, started, redo, _pin_sides) for k, v in (sd or {}).items()))
         _order_all = [sy for sy, _ in _place_order([], [], list(_need), _gtiers, redo, st["attempts"], st.get("launched_at"), pri, cont=_cont_all, pinned=_pin_sides, recent=_recent_syms, age_key=_AGE_KEY[0])] if _need else []
         _tried = set()
         for h in hosts:
@@ -4844,7 +4846,7 @@ def tick(args, cfg, now):
             if not s or h["name"] not in HB or h["name"] in _drained:
                 continue
             B = HB[h["name"]]
-            for _try in range(4):
+            for _try in range(12):
                 if B.get("new_launched", 0) >= args.max_launch or B.get("proj_mem", 0) < B["est_pair"] or B["cpu"] >= cfg.get("cpu_target_pct", 90) or not _disk_admit_ok(s):
                     break
                 _free = B["cap"] - len(held[h["name"]])

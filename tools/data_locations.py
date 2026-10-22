@@ -245,8 +245,8 @@ REGISTRY: dict[str, dict[str, list[tuple]]] = {
     },
     # Cold zstd copies (+ manifest sha256) of the S5 experience-store shards (run34 + run35 delta-log ingest, 2026-10-22).
     "experience_cold": {
-        "ext": [("{ext}/binance_archive/experience_cold/run34_35_20261022", "canonical", "4 shard zsts + manifests + SHA256SUMS (2.40 GB); landed 2026-10-22; run35 final pass will make them stale -> re-cold", None)],
-        "s6": [("/home/niels/rebuild_scratch_s6/experience_cold/run34_35_20261022", "mirror", "S5/S6 deleted after the weekend of 2026-10-24", None)],
+        "ext": [("{ext}/binance_archive/experience_cold/run34_35_20261022", "archive", "UNVERIFIED copy (sha256 check stalled 2026-10-22 23:3xZ; experience_CRYPTO_LONG_202610.db.zst reported FAILED, re-copy with rsync -c needed) - S6 is the verified canonical until re-checked; run35 final pass will make them stale -> re-cold", None)],
+        "s6": [("/home/niels/rebuild_scratch_s6/experience_cold/run34_35_20261022", "canonical", "verified (sha256 -c + zstd -t on S6); S5/S6 deleted after the weekend of 2026-10-24", None)],
         "s5": [("/home/niels/rebuild_scratch_s5/experience_cold", "mirror", "origin of the zsts; same sha256", None)],
     },
     "priors_causal": {
