@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-22T23:27:46Z",
+ "generated_utc": "2026-10-22T23:32:48Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 340.3,
+  "age_s": 642.7,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 65078,
-  "proc_age_s": 10181.0,
-  "log_age_s": 56.4,
+  "proc_age_s": 10483.0,
+  "log_age_s": 98.4,
   "warmup_done": true,
   "timeframes_since_restart": [
    "4h",
@@ -45,20 +45,21 @@
   "mode": "ACTIVE",
   "since_epoch": 1792602182.2042153,
   "activations": 163,
-  "hb_mtime": 1792711590.2280517,
-  "mac_snapshot_age_s": 261.0069434642792,
-  "mac_stale": true,
+  "hb_mtime": 1792711894.138294,
+  "mac_snapshot_age_s": 32.54439663887024,
+  "mac_stale": false,
   "lease_holder": "mac",
   "lease_venues": null,
-  "lease_since": "2026-10-22T23:26:06Z",
-  "lease_reason": "yield: Mac never fenced for 315s \u2014 accounts must never be unattended",
-  "now": 1792711606.12426,
-  "from_cache_age_s": 60.4,
-  "heartbeat_age_s": 15.9,
-  "active_s": 109423.9
+  "lease_since": "2026-10-22T23:31:36Z",
+  "lease_reason": "yield: Mac never fenced for 270s \u2014 accounts must never be unattended",
+  "now": 1792711909.0434422,
+  "from_cache_age_s": 59.9,
+  "heartbeat_age_s": 14.9,
+  "active_s": 109726.8,
+  "note": "ACTIVE is CORRECT while the Mac snapshot is stale \u2014 fix the Mac, S1 returns to NORMAL on its own"
  },
  "alerts": [
-  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 109423s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (15s) AND the Mac snapshot is fresh (340s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
+  "SNAPSHOT STALE: latest_market_data.json is 642s old (> 600s). ez_indicators pid=65078 warmup_done=True tfs_since_restart=['4h', '1h', '15m', '3m', 'D', '4h'] restarts_last_hour=0. Live crypto decisions are reading a stale indicator snapshot."
  ],
  "verdict": "ALERT"
 }
