@@ -300,6 +300,54 @@ def losing_switch_alternatives(live_set: dict, losing: list, template_cands: dic
     return list(dict.fromkeys(out))
 
 
+def load_positives_all_raw(cat_side: str, root=None):
+    """The raw positives_all dict (rows/pairs/sym_sides) for rank_must; own cat_side only; None when absent."""
+    import gzip
+    cs = str(cat_side or "").upper()
+    for name in (f"positives_all_{cs}.json.gz", f"positives_all_{cs}.json"):
+        p = Path(root or ".") / "data" / "learn" / name
+        if not p.exists():
+            continue
+        try:
+            with (gzip.open(p, "rt") if name.endswith(".gz") else open(p)) as fh:
+                d = json.load(fh)
+        except Exception:
+            return None
+        if str(((d.get("_meta") or d.get("meta") or {}).get("cat_side")) or cs).upper() != cs:
+            raise CatSideMismatch(f"CAT_SIDE_MISMATCH: {p}")
+        return d
+    return None
+
+
+def load_losing(cat_side: str, root=None) -> list:
+    """data/learn/losing_live_switches_<CS>.json = [{sym_side, switch, value, n, mean, ci}] (evidence base §5); [] when absent."""
+    p = Path(root or ".") / "data" / "learn" / f"losing_live_switches_{str(cat_side).upper()}.json"
+    try:
+        d = json.loads(p.read_text())
+    except Exception:
+        return []
+    if isinstance(d, dict):
+        if str(d.get("cat_side") or cat_side).upper() != str(cat_side).upper():
+            raise CatSideMismatch(f"CAT_SIDE_MISMATCH: {p}")
+        d = d.get("items") or []
+    return [x for x in d if isinstance(x, dict)]
+
+
+def template_cands_from_map(bm) -> dict:
+    """{SWITCH: [cand, ...]} from the binding map's row keys 'TAB!SW=c' (the board's own template rows)."""
+    out: dict = {}
+    for rk in ((bm or {}).get("rows") or {}):
+        try:
+            sw_c = str(rk).split("!", 1)[1]
+            sw, c = sw_c.split("=", 1)
+        except Exception:
+            continue
+        lst = out.setdefault(sw.strip(), [])
+        if c.strip() not in lst:
+            lst.append(c.strip())
+    return out
+
+
 # ---------------------------------------------------------------- §7 budget (replaces the catch-up mode)
 def board_budget_from_env(env=None) -> int:
     """V15_BOARD_BUDGET: 0 (or unset) = full board. Set per launch by the scheduler."""

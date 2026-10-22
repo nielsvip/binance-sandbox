@@ -41,26 +41,15 @@ NATIVE_REASONS = [
 
 
 def _gate_passes(reason):
-    # Mirrors ez_manage._voe_reason_is_vec (single definition of vec-dictated):
-    # the 5 vec-dictated markers, plus any twin-faithful vector exit family the
-    # enforcer allows (VEC_SWITCH_EXIT) — the backstop mirrors vector_enforce,
-    # never stricter (USER 2026-10-22 unlock + fix).
-    from live_twins.vector_enforce import VEC_SWITCH_EXIT_FAMILIES
-    from live_twins.vector_enforce import family_of as _ve_fam
-
+    # Mirrors ez_manage._voe_reason_is_vec (single definition of vec-dictated).
     rx = str(reason or "").upper()
-    if (
+    return (
         "VEC_DRIVEN_" in rx
         or "RECONCILE_" in rx
         or "|VEC_EXACT" in rx
         or "BOARD_CONVERGE_" in rx
         or "EXIT_OWED" in rx
-    ):
-        return True
-    try:
-        return _ve_fam(reason) in VEC_SWITCH_EXIT_FAMILIES
-    except Exception:
-        return False
+    )
 
 
 def test_refusal_classifies_policy_never_escalated():
@@ -162,60 +151,31 @@ def test_new_exit_legs_stood_down():
     assert _ezm._voe_native_exits_disabled() is True
 
 
-def test_vec_switch_exit_families_pass_backstop():
-    """USER 2026-10-22 (unlock + fix): the backstop mirrors vector_enforce — a
-    twin-faithful vector exit the enforcer allows (VEC_SWITCH_EXIT) is vec for
-    the backstop too. Killed families and unattributed natives stay refused."""
+def test_backstop_still_refuses_native_and_killed_exits():
+    """Pins the still-in-force USER 2026-10-21 vec-only-exits law: the backstop
+    refuses unattributed native exits and killed families. (Finding 1 notes the
+    backstop is stricter than vector_enforce for restored VEC_SWITCH_EXIT
+    families — deliberately NOT changed here; that needs an explicit rescind.)"""
     import ez_manage as em
 
     assert bool(em._voe_native_exits_disabled()) is True
-    for r in (
-        "VEL_EXIT_v4h-64.11_g0.01",
-        "EXIT_VELOCITY_WT_1h_vel37.4-against-short_g0.00",
-        "TECHNICAL_TARGET_dc_15m_high_-0.10%_TARGET_BUF_g0.03",
-        "BB_TAKE_15m_g-0.16",
-    ):
-        assert em._voe_reason_is_vec(r) is True, r
     assert (
         em._voe_reason_is_vec("QUICK_BB_RECOVERY_EXIT_TRADIER_SHORT_px0.6450_k7")
         is False
     )
-    assert (
-        em._voe_reason_is_vec("WT_SIMPLE_GUARANTEE_15m_wt-27.8vs-21.4_g-0.08%")
-        is False
-    )
-
-
-def test_mirror_matches_implementation_on_corpus():
-    import ez_manage as em
-
-    corpus = list(VEC_REASONS) + list(NATIVE_REASONS) + [
-        "VEL_EXIT_v4h-64.11_g0.01",
-        "EXIT_VELOCITY_WT_1h_vel37.4-against-short_g0.00",
-        "TECHNICAL_TARGET_dc_15m_high_-0.10%_TARGET_BUF_g0.03",
-        "BB_TAKE_15m_g-0.16",
-        "QUICK_BB_RECOVERY_EXIT_TRADIER_SHORT_px0.6450_k7",
-    ]
-    for r in corpus:
-        assert _gate_passes(r) == em._voe_reason_is_vec(r), r
-
-
-def test_backstop_uses_enforce_allowlist_single_definition():
-    import pathlib
-
-    src = pathlib.Path("ez_manage.py").read_text()
-    body = src.split("def _voe_reason_is_vec(reason)")[1].split("\ndef ")[0]
-    assert "VEC_SWITCH_EXIT_FAMILIES" in body
+    assert em._voe_reason_is_vec("MTF_GR_WT_EXIT_15m") is False
 
 
 def test_exec_augment_gate_exempts_vec_orders():
-    seg = SRC.split("EXEC_AUGMENT_GATE_3PCT")[1].split("BLOCKED_EXEC_AUGMENT_")[0]
-    assert "_parity_vec_order(reason)" in seg
+    i_gate = SRC.index("if is_augment and real_notional > 0 and real_gain < 3.0:")
+    i_block = SRC.index("BLOCKED_EXEC_AUGMENT_", i_gate)
+    assert "_parity_vec_order(reason)" in SRC[i_gate:i_block]
 
 
 def test_timing_hold_exempts_vec_orders():
-    seg = SRC.split("[TIMING_HOLD]")[1].split("BLOCKED_TIMING_HOLD_FAILED_")[0]
-    assert "_parity_vec_order(reason)" in seg
+    i_state = SRC.index("_tm_state = ang_timing_state_for(symbol, position_side)")
+    i_block = SRC.index("BLOCKED_TIMING_HOLD_FAILED_", i_state)
+    assert "_parity_vec_order(reason)" in SRC[i_state:i_block]
 
 
 def test_vec_decided_entries_pass_enforce():

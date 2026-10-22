@@ -57,3 +57,4 @@
 {"ts":1792660922,"account":"flz","kind":"engine_restart_suppressed","msg":"NO ENGINE CHILD for 60s and the 24h budget was already spent (last 118s ago) — starting anyway: an account is never left without an engine"}
 {"ts":1792661644,"account":"ang","kind":"engine_restart_suppressed","msg":"NO ENGINE CHILD for 60s and the 24h budget was already spent (last 120s ago) — starting anyway: an account is never left without an engine"}
 {"ts":1792683253,"account":"inf","kind":"engine_restart_suppressed","msg":"NO ENGINE CHILD for 61s and the 24h budget was already spent (last 120s ago) — starting anyway: an account is never left without an engine"}
+{"ts":1792691733,"account":"flz","kind":"engine_restart_suppressed","msg":"ez_manage SILENT (1086s > 120s) but host overloaded (load 381.46 on 12 cores) — kill DEFERRED to break the kill→bootstrap→load loop"}

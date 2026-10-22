@@ -282,7 +282,7 @@ def _load_gate_flags():
         f = Path(os.environ.get("V15_GATE_FLAGS") or (ROOT / "data" / "v15_gate_flags.json"))
         d = json.loads(f.read_text()).get("flags") or {} if f.exists() else {}
         for k, v in d.items():
-            if str(k).startswith(("V15_", "V18_")) and k not in os.environ:
+            if str(k).startswith(("V15_", "V18_", "V20_")) and k not in os.environ:
                 os.environ[str(k)] = str(v)
         return d
     except Exception:
@@ -306,6 +306,19 @@ try:  # E4 2026-10-20: V18 planner helpers (identity settlement, io throttle, le
     from tools import v15_v18_planner as _V18P
 except Exception:
     _V18P = None
+try:  # V20 2026-10-22 (spec docs/v15_pending/22_V19_NETWORK_UPGRADE_SPEC_20261022.md §3/§4/§7): one evidence-based cell decision,
+    # must-set truth, budget board; gated by V20_SELECTOR (default OFF); missing module = every V20 hook inert (fail-open)
+    from tools import v15_v20_selector as _V20
+except Exception:
+    _V20 = None
+# V15_BOARD_BUDGET (scheduler, per launch; 0/unset = full board): a BUDGET board replaces the catch-up MODE — it cuts SEARCH
+# (V17 pinpoint / focus / endgame / diagnose / red-retry / 365D-at-done) never MEASUREMENT (holdout, forward, publish gates),
+# keeps ablation PRE at its floor budget, exit repair on any family loss, winners, ESSENTIAL rows and the MUST set (interval-
+# ranked, first claim on the budget); the main pass spends the remaining evals by evidence rank (tools/v15_v20_selector)
+_V20_BUDGET = _V20.board_budget_from_env() if (_V20 is not None and not _V18_CATCHUP) else 0
+if _V20_BUDGET > 0:
+    for _bk_k, _bk_v in _V20.budget_forced_profile(_V20_BUDGET).items():
+        os.environ[_bk_k] = _bk_v
 # USER 2026-09-28 "no double compute before mega sweep": only yellows on this allowlist get
 # evaluated; the rest are PENDING_WIRING grey until their family's real vector path lands
 # (see FILTER_WIRING_CENSUS_20260928.md). Missing/unreadable file -> None -> evaluate all
@@ -6248,7 +6261,27 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     _v18_untried_p = _V18P.untried_p() if _V18P is not None else 0.05
     _v18_untried_tot = {"untried_seen": 0, "untried_kept": 0, "brain_cells_seen": 0, "brain_cells_out": 0, "brain_rows_seen": 0, "brain_rows_out": 0}
     _v18_prof_on = bool(_V18P is not None and _V18P.profile_on())
-    _v18_prof, _v18_prof_rows, _v18_prof_min_n, _v18_prof_why = (_V18P.load_profile(_v18_floor_cs, ROOT) if _v18_prof_on else (None, None, None, "off"))
+    # V20 selector (spec §3): ONE decision per cell from the cat_side binding map (BINDS / CONDITIONAL-vs-running-set / INDIRECT
+    # once per tab / NEVER = structural identity, settled without an engine call, floor draw kept), the profile's evidence lists
+    # (always kept — CDE_SHORT guard), MUST cells (p = 1), the brain's p with the untried rate, the literal DEAD_END row state
+    # (§5) and the budget (§7). Replaces the PROFILE and brain-CELL policies while ON; rows, floor, MUST, LINKNET untouched.
+    _v20_on = bool(_V20 is not None and _V18P is not None and _V18P.flag_on("V20_SELECTOR"))
+    _v20_bm, _v20_why, _v20_losing, _v20_tpl_cands, _v20_pa_raw = None, "off", [], {}, None
+    if _v20_on:
+        try:
+            _v20_bm = _V20.load_binding_map(_v18_floor_cs, ROOT)
+            _v20_why = f"binding_map {'ok' if _v20_bm else 'ABSENT (verdicts UNKNOWN = evaluate)'}"
+            _v20_tpl_cands = _V20.template_cands_from_map(_v20_bm)
+            _v20_losing = _V20.load_losing(_v18_floor_cs, ROOT)
+            _v20_pa_raw = _V20.load_positives_all_raw(_v18_floor_cs, ROOT)
+        except Exception as _v20le:
+            _v20_on, _v20_why = False, f"OFF: {_v20le}"[:200]
+    _v20_budget = int(_V20_BUDGET) if _v20_on else 0
+    _v20_tot = {"rows": 0, "never": 0, "master_off": 0, "indirect": 0, "model_out": 0, "floor_rescued": 0, "kept": 0, "dead_end": 0, "budget_skipped": 0}
+    _v20_indirect_seen: set = set()
+    if _V20 is not None:
+        print(f"[V20] {new_symside} {_v18_floor_cs} selector={'ON' if _v20_on else 'off'} budget={_v20_budget} ({_v20_why}; losing_switches={len(_v20_losing)} template_switches={len(_v20_tpl_cands)})", flush=True)
+    _v18_prof, _v18_prof_rows, _v18_prof_min_n, _v18_prof_why = (_V18P.load_profile(_v18_floor_cs, ROOT) if (_v18_prof_on or _v20_on) else (None, None, None, "off"))
     _v18_prof_tot = {"rows": 0, "rows_dead": 0, "cells_pool": 0, "cells_must": 0, "cells_drawn": 0, "cells_settled": 0}
     _v18_prof_sib: dict = {}  # row "SW=c" -> [filter cells positive on >= 1 sibling sym_side] (positives_all pairs)
     if _v18_prof_on:
@@ -6629,7 +6662,47 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             info["catchup_skipped"] = len(_cu_skip)
             _v18_cu_tot["rows"] += 1
             _v18_cu_tot["cells_skipped"] += len(_cu_skip)
-        if _v18_prof_on and _v18_prof is not None and info["kind"] == "eval":
+        if _v20_on and info["kind"] == "eval" and info["hdrs"]:
+            try:  # V20 (spec §3): one decision per cell; settled cells ride prior_skipped (PRIOR-REVIVED on a positive naked) with
+                # their reason code + p; CONDITIONAL cells are resolved against the running set at row-discovery time
+                _v20_rk = f"{str(switch).strip()}={str(cand).strip()}"
+                _v20_ent = (((_v18_prof or {}).get("needed") or {}).get(_v20_rk)) or {}
+                _v20_ev = set()
+                for _l0 in ("needed", "suffocating", "evidence_pos"):
+                    _v20_ev |= {str(h).strip() for h in (_v20_ent.get(_l0) or [])}
+                _v20_ev |= {str(h).strip() for h in ((((_v18_prof or {}).get("proposals") or {}).get(_v20_rk)) or [])}
+                _v20_ev |= {str(h).strip() for h in (_v18_prof_sib.get(_v20_rk) or [])}
+                _v20_must = {h for (_c0, h) in _v18_must_cells if _c0 == _v20_rk}
+                _v20_pm, _v20_untried = {}, set()
+                if _v18_brain is not None:
+                    for _h in info["hdrs"]:
+                        try:
+                            _d0 = _v18_brain.decide(sname, _v20_rk, str(_h).strip(), _v18_round)
+                            if float(_d0.get("n") or 0.0) < 3:
+                                _v20_untried.add(str(_h).strip())
+                            else:
+                                _v20_pm[str(_h).strip()] = float(_d0.get("p"))
+                        except Exception:
+                            pass
+                _v20_prow = (_v18_prof_rows or {}).get(_v20_rk) or {}
+                _v20_dec = _V20.decide_cells(info["hdrs"], _v20_bm, sname, switch, cand, cumulative_overrides, cat_side=_v18_floor_cs, symside=new_symside, rid=_v18_round, essential=str(switch).strip() in ESSENTIAL_GATE_SWITCHES, must_cells=_v20_must, evidence_cells=_v20_ev, model_p=_v20_pm, floor_p=_v18_floor_p, untried_p=_v18_untried_p, untried_cells=_v20_untried, indirect_seen=_v20_indirect_seen, dead_end_row=_V20.dead_end_state(_v20_prow, _v18_floor_cs))
+                if _v20_budget and _V18_ACTIVITY.get("evals", 0) >= _v20_budget:  # budget spent: only ESSENTIAL / MUST / evidence cells still run (law)
+                    for _h in list(_v20_dec["keep"]):
+                        if (_v20_dec["settled"].get(_h) or {}).get("reason_code") in (_V20.RC_KEEP_MODEL, _V20.RC_KEEP_FLOOR):
+                            _v20_dec["keep"].remove(_h)
+                            _v20_dec["settled"][_h] = {**_v20_dec["settled"][_h], "reason_code": _V20.RC_BUDGET_SKIPPED}
+                            _v20_dec["counts"]["budget_skipped"] = _v20_dec["counts"].get("budget_skipped", 0) + 1
+                _v20_keep = set(_v20_dec["keep"])
+                _v20_skip = [h for h in info["hdrs"] if h not in _v20_keep]
+                info["hdrs"] = [h for h in info["hdrs"] if h in _v20_keep]
+                info["prior_skipped"] = list(info.get("prior_skipped") or []) + _v20_skip
+                info["v20"] = {"settled": {h: _v20_dec["settled"][h] for h in _v20_skip}, "counts": _v20_dec["counts"], "kept": len(info["hdrs"])}
+                for _ck, _cv in _v20_dec["counts"].items():
+                    _v20_tot[_ck] = _v20_tot.get(_ck, 0) + int(_cv)
+                _v20_tot["rows"] += 1
+            except Exception as _v20e:
+                print(f"[V20-WARN] {sname}!{rr} {_v20e} — row unchanged", flush=True)
+        if _v18_prof_on and _v18_prof is not None and info["kind"] == "eval" and not _v20_on:
             try:
                 _v18_profile_cells(info, sname, switch, cand)
             except Exception as _v18pce:
@@ -6644,7 +6717,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                         _v18_untried_tot["brain_rows_out"] += 1
                         info.update(kind="skip", reason=f"BRAIN_SAMPLED_OUT: V18 p_pos={_v18_rd['p_pos']:.4f} p_eval={_v18_rd['p']:.4f} n={_v18_rd['n']:g} (settled; floor-rotated, never a fake 0)", g=None)
                         info["v18_brain_row_p"] = round(float(_v18_rd["p"]), 6)
-                if info["kind"] == "eval" and info["hdrs"] and info.get("v18_profile") is None:  # a profiled row's set is final
+                if info["kind"] == "eval" and info["hdrs"] and info.get("v18_profile") is None and not _v20_on:  # a profiled row's set is final; V20 already used the brain's p per cell
                     _v18_brain_cells(info, sname, switch, cand)
             except Exception as _v18bce:
                 print(f"[V18-BRAIN-WARN] {sname}!{rr} {_v18bce} — row calculated", flush=True)
@@ -6690,6 +6763,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             for _h in info.get("v18_brain_skipped") or []:
                 if _h not in info["hdrs"]:
                     _delta_log({"ts": utcnow(), "sym_side": new_symside, "label": "SETTLE", "code": "BRAIN_SKIP", "sheet": sname, "row": rr, "key": _v18_rk2, "filter": str(_h), "p": _v18_brain_p.get((sname, str(_h))), "round": _v18_round})
+        if _v20_on and info.get("v20"):
+            _v20_rk3 = f"{str(switch).strip()}={str(cand).strip()}"
+            for _h, _st in (info["v20"].get("settled") or {}).items():
+                if _h not in info["hdrs"]:  # never a fake 0: a SETTLE line with the verdict, its anchor and the booked p
+                    _delta_log({"ts": utcnow(), "sym_side": new_symside, "label": "SETTLE", "code": f"V20_{_st.get('reason_code')}", "sheet": sname, "row": rr, "key": _v20_rk3, "filter": str(_h), "p": _st.get("p"), "binding_verdict": _st.get("verdict"), "binding_why": _st.get("why"), "binding_anchor": _st.get("anchor") or _st.get("condition") or "", "round": _v18_round, "cached": True})
         _static_info[k] = info
         return info
     def _row_plan(sname: str, rr: int, switch, cand) -> dict:
@@ -8820,21 +8898,40 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 tried.add(str(_dk).split(":", 1)[1])
         start_sha = _V18P.set_sha256(sanitize_overrides(dict(cumulative_overrides), defaults)[0])
         items = _V18P.must_items(idx, _v18_dg, new_symside, tried, ledger, start_sha)
-        if _V18P.flag_on("V18_MUST_ORDER") or _V18_CATCHUP:
+        _mo = None
+        if _V18P.flag_on("V18_MUST_ORDER") or _V18_CATCHUP or _v20_on:
             # ordering only (nothing becomes optional): the linknet's p_pos_pred of each MUST item under this sym_side's own
             # live chain (data/learn/linknet_pair_with_context_<CS>.json.gz) first, the rest in the evidence order after it
             _mo, _mo_why = _V18P.load_must_order(_v18_floor_cs, new_symside, ROOT)
             items = _V18P.order_must(items, _mo)
             why = f"{why}; order: {_mo_why}"
+        _v20_alt_n, _v20_ref_skipped = 0, 0
+        if _v20_on:
+            try:  # V20 must-set truth (spec §4): items refused on THIS start set are not re-offered; every other template
+                # candidate of a switch whose live value measured a negative default-relative interval on THIS sym_side is a
+                # MUST row (§4.5); order = interval lower bound first (pairs: lift CI, rows: CI), linknet p only as tie-breaker
+                items, _v20_ref_skipped = _V20.must_skip_refused(items, ledger, start_sha)
+                _v20_alt = [a for a in _V20.losing_switch_alternatives(cumulative_overrides, _v20_losing, _v20_tpl_cands, new_symside) if a not in tried and a not in items and not ((ledger.get(a) or {}).get("start_sha") == start_sha)]
+                _v20_alt_n = len(_v20_alt)
+                items = _V20.rank_must(list(items) + _v20_alt, _v20_pa_raw, new_symside, None, _mo if isinstance(_mo, dict) else None)
+                why = f"{why}; v20 refused_skipped={_v20_ref_skipped} alternatives={_v20_alt_n} order=interval_lb"
+            except Exception as _v20me:
+                print(f"[V20-MUST-WARN] {_v20me} — V18 order kept", flush=True)
         _must_carried = 0
+        _cap = None
         if _V18_CATCHUP:
             _cap = int(os.environ.get("V18_MUST_CATCHUP_MAX", "3000"))
+        elif _v20_on and _v20_budget > 0:
+            _cap = int(_v20_budget)  # V20 budget board (spec §7.2): the interval-ranked MUST list has first claim on the whole budget
+        if _cap is not None:
             _must_carried = max(0, len(items) - _cap)
             items = items[:_cap]  # the rest is NOT settled -> the next board of this sym_side takes it (carried over, never dropped)
         cands, refused = [], {}
+        _v20_lab2item: dict = {}
         for it_k in items:
             parts = _V18P.must_parts(it_k)
             _lab = f"MUST:{parts[0][0]}={parts[0][1]}" + (f"+{parts[1][0]}={parts[1][1]}" if len(parts) > 1 else "")
+            _v20_lab2item[_lab] = it_k
             x = _v18_cand(_lab, parts, refused, must_key=it_k)
             if x:
                 _v18_lx[_lab] = {"must": True, "positive_on": len((idx.get(it_k) or {}).get("syms") or [])}
@@ -8843,6 +8940,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     _v18_must_rows.add(it_k)
                 else:
                     _v18_must_cells.add((f"{parts[0][0]}={parts[0][1]}", f"{parts[1][0]}={parts[1][1]}"))
+        if _v20_on:  # spec §4.3: refused != carried != settled — a refused item gets a ledger entry (start_sha + reason) so it is not re-offered on this chain
+            for _lab_r, _why_r in refused.items():
+                if _lab_r in _v20_lab2item:
+                    _V20.must_refuse(ledger, _v20_lab2item[_lab_r], _why_r, start_sha, utcnow())
         first = _v17_greedy(cands, "v18_must", "MUST", deadline, ph, accept=_v18_accept, book=_v18) if cands else []
         ad = _v18_adopted("MUST")
         n_pos = 0
@@ -8857,7 +8958,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             os.replace(led_p.with_suffix(".tmp"), led_p)
         except Exception as _le:
             print(f"[V18-MUST-WARN] ledger write {_le}", flush=True)
-        rec = {"source": why, "n_carried_over": _must_carried, "n_items": len(items), "n_offered": len(cands), "n_refused": len(refused), "n_evaluated": sum(1 for x in first if x.get("d") is not None), "n_positive_here": n_pos, "n_adopted": len(ad), "n_tried_before": len(tried), "main_pass_rows": len(_v18_must_rows), "main_pass_cells": len(_v18_must_cells)}
+        rec = {"source": why, "n_carried_over": _must_carried, "n_items": len(items), "n_offered": len(cands), "n_refused": len(refused), "n_refused_structural": (sum(1 for _w in refused.values() if _V20.refusal_is_structural(_w)) if _V20 is not None else None), "n_refused_skipped_same_sha": _v20_ref_skipped, "n_alternatives": _v20_alt_n, "n_evaluated": sum(1 for x in first if x.get("d") is not None), "n_positive_here": n_pos, "n_adopted": len(ad), "n_tried_before": len(tried), "main_pass_rows": len(_v18_must_rows), "main_pass_cells": len(_v18_must_cells)}
         _v18["must"] = {**rec, "refused_sample": dict(list(refused.items())[:40])}
         print(f"[V18-MUST] {new_symside} {_v18_floor_cs} carried_over={rec['n_carried_over']} items={rec['n_items']} offered={rec['n_offered']} refused={rec['n_refused']} evaluated={rec['n_evaluated']} positive_here={n_pos} adopted={rec['n_adopted']} ({why})", flush=True)
         _v18_phase_end(ph, **rec)
@@ -9778,6 +9879,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     if _V18_CATCHUP:
         progress.setdefault("v18", {})["catchup"] = dict(_v18_cu_tot)
         print(f"[V18-CATCHUP] {new_symside} naked-only main pass: rows {_v18_cu_tot['rows']} cells settled CATCHUP_SKIPPED {_v18_cu_tot['cells_skipped']}", flush=True)
+    if _v20_on:
+        progress.setdefault("v18", {})["v20"] = {**dict(_v20_tot), "budget": _v20_budget, "evals": int(_V18_ACTIVITY.get("evals", 0)), "why": _v20_why}
+        print(f"[V20] {new_symside} main pass rows={_v20_tot['rows']} kept={_v20_tot['kept']} structural_identity={_v20_tot['never']} master_off={_v20_tot['master_off']} indirect_tab_level={_v20_tot['indirect']} model_out={_v20_tot['model_out']} dead_end={_v20_tot['dead_end']} floor_rescued={_v20_tot['floor_rescued']} budget_skipped={_v20_tot.get('budget_skipped', 0)} budget={_v20_budget} evals={_V18_ACTIVITY.get('evals', 0)}", flush=True)
     if _v18_ln_on:
         progress.setdefault("v18", {})["linknet_first"] = {**dict(_v18_ln_tot), "booked_cells": len(_v18_ln_book), "why": _v18_ln_why}
         print(f"[V18-LINKNET] {new_symside} proposals={_v18_ln_tot['proposals']} cells evaluated with a linknet rank={len(_v18_ln_book)} forced={_v18_ln_tot['cells_forced']}", flush=True)
@@ -10589,7 +10693,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     _npp = _npz_path(new_symside)
                     _man = _build_publish_manifest(new_symside, _final_name, {**(_fresh_final or {}), "bh": _bh_raw}, (_mf, _mc, _me, len(progress.get("done", {}))), _ovm, _md5_file(_final_path), _npp.name if _npp else None, _md5_file(_npp) if _npp else None, _npz_span_days(new_symside), _md5_file(Path(__file__)), Path(args.template).name if args.template else None, _sock_m.gethostname())
                     _man["publish_class"] = _cand_class
-                    _man["mode"] = "catchup" if _V18_CATCHUP else "slow"
+                    _man["mode"] = "catchup" if _V18_CATCHUP else (f"budget:{_v20_budget}" if (_v20_on and _v20_budget > 0) else "slow")
                     _man["start_source"] = v18_start_source((progress.get("best_start") or {}).get("chosen"))  # floor law audit
                     _man["start_chosen"], _man["start_gain"] = (progress.get("best_start") or {}).get("chosen"), (progress.get("best_start") or {}).get("gain")
                     _man["best_start_floor"] = progress.get("best_start_floor")

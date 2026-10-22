@@ -33385,8 +33385,14 @@ class MultiAccountTradeManager:
             ):
                 _tm_state = ang_timing_state_for(symbol, position_side)
                 if _tm_state == "FAILED":
-                    logger.warning(f"⏳ [TIMING_HOLD] {position_key}: {action} held — timing=FAILED (level lost; insist, retry on reclaim)")
-                    return f"BLOCKED_TIMING_HOLD_FAILED_{_tm_acct}"
+                    if _vd_exempt or _parity_vec_order(reason):
+                        # USER 2026-10-22 (unlock + fix): a vector-dictated entry
+                        # is never held here — everything open in the vector keeps
+                        # its live position. Timing stays authoritative for native.
+                        logger.warning(f"⏳ [TIMING_HOLD_VEC_EXEMPT] {position_key}: {action} proceeds despite timing=FAILED — vector-dictated.")
+                    else:
+                        logger.warning(f"⏳ [TIMING_HOLD] {position_key}: {action} held — timing=FAILED (level lost; insist, retry on reclaim)")
+                        return f"BLOCKED_TIMING_HOLD_FAILED_{_tm_acct}"
         except Exception as _tm_e:
             logger.debug(f"[TIMING_HOLD] check error (fail-open): {_tm_e}")
         # ═══════════════════════════════════════════════════════════════════════════
@@ -37198,9 +37204,14 @@ class MultiAccountTradeManager:
             if is_augment and real_notional > 0 and real_gain < 3.0:
                 if _is_reentry_exec:
                     pass  # reentry ALWAYS allowed
+                elif _vd_exempt or _parity_vec_order(reason):
+                    # USER 2026-10-22 (unlock + fix): a vector-dictated augment is
+                    # never refused here — everything open in the vector keeps its
+                    # live position. Reentry precedent above; native still blocked.
+                    logger.warning(f"[EXEC_AUGMENT_VEC_EXEMPT] {position_key}: pos=${real_notional:.0f} gain={real_gain:.3f}% < 3.0% but vector-dictated — allowed. action={action}")
                 else:
                     logger.warning(
-                        f"🛑 [EXEC_AUGMENT_GATE_3PCT] {position_key}: BLOCKED — pos=${real_notional:.0f} gain={real_gain:.3f}% < 3.0%. action={action} hedge={is_hedge} reentry={_is_reentry_exec}. NO EXCEPTIONS."
+                        f"🛑 [EXEC_AUGMENT_GATE_3PCT] {position_key}: BLOCKED — pos=${real_notional:.0f} gain={real_gain:.3f}% < 3.0%. action={action} hedge={is_hedge} reentry={_is_reentry_exec}. NO EXCEPTIONS (native only)."
                     )
                     return (
                         f"BLOCKED_EXEC_AUGMENT_{real_gain:.3f}%_pos${real_notional:.0f}"
