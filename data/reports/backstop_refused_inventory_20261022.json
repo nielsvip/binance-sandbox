@@ -1,0 +1,1980 @@
+{
+ "generated_at": "2026-10-22T17:28:50.850611+00:00",
+ "trigger": "fin:RLCUSDT_SHORT REDUCE QUICK_BB_RECOVERY_EXIT_TRADIER_SHORT_px0.6450_k7 refused 2026-10-22 17:12:53 (NON_VECTOR_EXIT_DISABLED)",
+ "trigger_verdict": "correct refusal: BB_RECOVERY killed 2026-10-21, resolved non_vectorizable (exit_sig suppressed fleet-wide by VEC_EXIT_SIG_IS_TRIGGER=False); backstop + enforce agree (KILLED_FAMILY_BB_RECOVERY). No action; stays forward-tested.",
+ "finding_1": "Backstop stricter than vector_enforce for VEC_SWITCH_EXIT families (measured 2026-10-22 on live code: EXIT_VELOCITY_WT/VEL_EXIT/TECHNICAL_TARGET/BB_TAKE -> enforce VEC_SWITCH_EXIT-allow, backstop non-vec-refuse). Violates _voe_reason_is_vec mirror contract. Fix needs unlock (ez_manage, locked): teach backstop VEC_SWITCH_EXIT_FAMILIES + tests. NOT applied this turn.",
+ "window_note": "measured VECTOR_BAR_WINDOW_S=900.0 (full bar) at probe time; law-2 window currently non-binding.",
+ "kills_note": "vector_kills.json at gen time lacks WT (present in earlier 10-22 read; restored by parallel session, not this turn). This turn removed only its own BT probe entry + 6 probe ledger rows.",
+ "base_list_oct21": "tests/test_unvec_parity_kills.py (42 kill switches) + data/vector_kills.json + data/vector_retrace_queue.jsonl TODOs + data/vector_retrace_resolutions.jsonl verdicts",
+ "scope": "NON_VECTOR_EXIT_REFUSED live (non-probe) events 2026-10-17..22; entries are HERMETIC-gated (not backstop) and listed separately in verdict.md",
+ "n_events": 1102,
+ "n_families": 36,
+ "families": [
+  {
+   "family": "QUICK_BB_RECOVERY_EXIT_TRADIER",
+   "events": 445,
+   "n_syms": 59,
+   "sides": [
+    "LONG",
+    "SHORT"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "REDUCE"
+   ],
+   "sample_reason": "QUICK_BB_RECOVERY_EXIT_TRADIER_LONG_px0.1171_k96",
+   "enforce_family": "BB_RECOVERY",
+   "killed": true,
+   "resolution": {
+    "verdict": "non_vectorizable",
+    "note": "Vector mask EXISTS+WIRED (v12 extra_exit) but vector books NOTHING with VEC_EXIT_SIG_IS_TRIGGER=False fleet-wide (764 boards): exit_sig closes land bare TECHNICAL_EXIT, suppressed v12:22617. ARUSDT mask agreed; suppressi"
+   },
+   "registry": {
+    "family": "BB_RECOVERY_EXIT",
+    "vec_twin": false,
+    "tf": "15m",
+    "gate": "BB_RECOVERY_EXIT_ENABLED_TRADIER",
+    "kind": "bool"
+   },
+   "switch_bible": {
+    "defaults": {
+     "QuickConfig": true,
+     "QuickConfig_apply_tradier_defaults": false,
+     "cat_side_defaults_4": {
+      "CRYPTO_LONG": true,
+      "CRYPTO_SHORT": true,
+      "STOCKS_LONG": false,
+      "STOCKS_SHORT": false
+     },
+     "config.py": true,
+     "config_tradier.py": false,
+     "template_bold": {
+      "STOCKS_LONG": [
+       false
+      ],
+      "STOCKS_SHORT": [
+       false
+      ]
+     }
+    },
+    "live_read_count": {
+     "crypto": 1,
+     "stocks": 2
+    },
+    "template_bold": {
+     "STOCKS_LONG": [
+      false
+     ],
+     "STOCKS_SHORT": [
+      false
+     ]
+    }
+   },
+   "verdict": "correct_refusal_forward",
+   "proposed_tab": "EXIT_STRUCTURAL",
+   "spec_note": "no row: stays killed (exit_sig suppressed fleet-wide); forward-test only"
+  },
+  {
+   "family": "QUICK_REDUCE_REDUCE_k_1m",
+   "events": 163,
+   "n_syms": 65,
+   "sides": [
+    "LONG",
+    "SHORT"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "REDUCE"
+   ],
+   "sample_reason": "QUICK_REDUCE_REDUCE_k_1m:90/d_1m:95/k_3m:43/d_3m:32_EXIT_FALLTHROUGH_NO_SIGNAL_PANIC_TIGHTEN|RULE_B_3M_LL_LH_REDUCE",
+   "enforce_family": "REDUCE_K",
+   "killed": true,
+   "resolution": {
+    "verdict": "non_vectorizable",
+    "note": "Unvectorized AdvancedSignalRater output (bible 126.1) via QUICK dispatch bypassing gates; RULE_B branch reads GLOBAL switch (config True=user-ordered, board True here) so fire is switch-consistent but unmodeled. Needs pe"
+   },
+   "registry": {
+    "family": "QUICK_REDUCE_OTHER",
+    "vec_twin": false,
+    "tf": "3m",
+    "gate": "ABLATION_DISABLE_QUICK_EXIT",
+    "kind": "inv"
+   },
+   "switch_bible": {
+    "defaults": {
+     "QuickConfig": false,
+     "QuickConfig_apply_tradier_defaults": false,
+     "cat_side_defaults_4": {
+      "CRYPTO_LONG": false,
+      "CRYPTO_SHORT": false,
+      "STOCKS_LONG": false,
+      "STOCKS_SHORT": false
+     },
+     "config.py": false,
+     "config_tradier.py": false,
+     "template_bold": {
+      "CRYPTO_LONG": [
+       false
+      ],
+      "CRYPTO_SHORT": [
+       false
+      ],
+      "STOCKS_LONG": [
+       false
+      ],
+      "STOCKS_SHORT": [
+       false
+      ]
+     }
+    },
+    "live_read_count": {
+     "crypto": 1,
+     "stocks": 1
+    },
+    "template_bold": {
+     "CRYPTO_LONG": [
+      false
+     ],
+     "CRYPTO_SHORT": [
+      false
+     ],
+     "STOCKS_LONG": [
+      false
+     ],
+     "STOCKS_SHORT": [
+      false
+     ]
+    }
+   },
+   "verdict": "correct_refusal_forward",
+   "proposed_tab": null,
+   "spec_note": "REDUCE_K killed nonvec (rater unvectorized); forward-test only"
+  },
+  {
+   "family": "BT_STOCH_XTREME_EXIT_g",
+   "events": 129,
+   "n_syms": 2,
+   "sides": [
+    "SHORT"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "QUICK_CLOSE"
+   ],
+   "sample_reason": "BT_STOCH_XTREME_EXIT_g=0.60%",
+   "enforce_family": "BT",
+   "killed": false,
+   "resolution": null,
+   "registry": {
+    "family": "BT_STOCH_XTREME_EXIT",
+    "vec_twin": true,
+    "tf": "1h",
+    "gate": "STOCH_XTREME_EXIT_ENABLED",
+    "kind": "bool"
+   },
+   "switch_bible": {
+    "defaults": {
+     "QuickConfig": false,
+     "QuickConfig_apply_tradier_defaults": false,
+     "cat_side_defaults_4": {
+      "CRYPTO_LONG": false,
+      "CRYPTO_SHORT": false,
+      "STOCKS_LONG": false,
+      "STOCKS_SHORT": false
+     },
+     "config.py": false,
+     "config_tradier.py": false,
+     "template_bold": {
+      "CRYPTO_LONG": [
+       false
+      ],
+      "CRYPTO_SHORT": [
+       false
+      ],
+      "STOCKS_LONG": [
+       false
+      ],
+      "STOCKS_SHORT": [
+       false
+      ]
+     }
+    },
+    "live_read_count": {
+     "crypto": 2,
+     "stocks": 2
+    },
+    "template_bold": {
+     "CRYPTO_LONG": [
+      false
+     ],
+     "CRYPTO_SHORT": [
+      false
+     ],
+     "STOCKS_LONG": [
+      false
+     ],
+     "STOCKS_SHORT": [
+      false
+     ]
+    }
+   },
+   "verdict": "vector_booked_native_refused",
+   "proposed_tab": "EXIT_VELOCITY",
+   "spec_note": "v12 books exit_sig; native leg refused; needs Finding-1-class fix or twin-lane converge proof"
+  },
+  {
+   "family": "BT_WICK_REJECT_EXIT_g",
+   "events": 58,
+   "n_syms": 4,
+   "sides": [
+    "LONG",
+    "SHORT"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "QUICK_CLOSE"
+   ],
+   "sample_reason": "BT_WICK_REJECT_EXIT_g=0.15%",
+   "enforce_family": "BT",
+   "killed": false,
+   "resolution": null,
+   "registry": {
+    "family": "BT_WICK_REJECT_EXIT",
+    "vec_twin": false,
+    "tf": "1h",
+    "gate": "WICK_REJECT_EXIT_ENABLED",
+    "kind": "bool"
+   },
+   "switch_bible": {
+    "defaults": {
+     "QuickConfig": false,
+     "QuickConfig_apply_tradier_defaults": false,
+     "cat_side_defaults_4": {
+      "CRYPTO_LONG": false,
+      "CRYPTO_SHORT": false,
+      "STOCKS_LONG": false,
+      "STOCKS_SHORT": false
+     },
+     "config.py": false,
+     "config_tradier.py": false,
+     "template_bold": {
+      "CRYPTO_LONG": [
+       false
+      ],
+      "CRYPTO_SHORT": [
+       false
+      ],
+      "STOCKS_LONG": [
+       false
+      ],
+      "STOCKS_SHORT": [
+       false
+      ]
+     }
+    },
+    "live_read_count": {
+     "crypto": 1,
+     "stocks": 2
+    },
+    "template_bold": {
+     "CRYPTO_LONG": [
+      false
+     ],
+     "CRYPTO_SHORT": [
+      false
+     ],
+     "STOCKS_LONG": [
+      false
+     ],
+     "STOCKS_SHORT": [
+      false
+     ]
+    }
+   },
+   "verdict": "needs_vec_leg",
+   "proposed_tab": "EXIT_STRUCTURAL",
+   "spec_note": "live twin + switch exist, v12 has no exit mask; add vec leg + row, gate path"
+  },
+  {
+   "family": "CYCLE_TP_TIERED_T0_0.15pct",
+   "events": 41,
+   "n_syms": 25,
+   "sides": [
+    "LONG",
+    "SHORT"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "REDUCE"
+   ],
+   "sample_reason": "CYCLE_TP_TIERED_T0_0.15pct_gain0.17",
+   "enforce_family": "CYCLE",
+   "killed": true,
+   "resolution": null,
+   "registry": {
+    "family": "CYCLE_TP",
+    "vec_twin": true,
+    "tf": "tick",
+    "gate": "CYCLE_TP_TIERED_ENABLED",
+    "kind": "bool"
+   },
+   "switch_bible": {
+    "defaults": {
+     "QuickConfig": true,
+     "QuickConfig_apply_tradier_defaults": true,
+     "cat_side_defaults_4": {
+      "CRYPTO_LONG": true,
+      "CRYPTO_SHORT": true,
+      "STOCKS_LONG": true,
+      "STOCKS_SHORT": true
+     },
+     "config.py": true,
+     "config_tradier.py": true,
+     "template_bold": {
+      "CRYPTO_LONG": [
+       true
+      ],
+      "CRYPTO_SHORT": [
+       true
+      ],
+      "STOCKS_LONG": [
+       true
+      ],
+      "STOCKS_SHORT": [
+       true
+      ]
+     }
+    },
+    "live_read_count": {
+     "crypto": 1,
+     "stocks": 1
+    },
+    "template_bold": {
+     "CRYPTO_LONG": [
+      true
+     ],
+     "CRYPTO_SHORT": [
+      true
+     ],
+     "STOCKS_LONG": [
+      true
+     ],
+     "STOCKS_SHORT": [
+      true
+     ]
+    }
+   },
+   "verdict": "correct_refusal_forward",
+   "proposed_tab": "REDUCE_PROFIT_LOCK",
+   "spec_note": "CYCLE killed nonvec; forward-test only (tiers T0-T6 same family class)"
+  },
+  {
+   "family": "DELTA_EXIT_DC15M_FLOOR_BREAK",
+   "events": 35,
+   "n_syms": 13,
+   "sides": [
+    "LONG"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "CLOSE"
+   ],
+   "sample_reason": "DELTA_EXIT_DC15M_FLOOR_BREAK",
+   "enforce_family": "DELTA",
+   "killed": false,
+   "resolution": null,
+   "registry": {
+    "family": "DELTA_EXIT",
+    "vec_twin": false,
+    "tf": "3m",
+    "gate": "DELTA_EXIT_ENABLED",
+    "kind": "bool"
+   },
+   "switch_bible": {
+    "defaults": {
+     "QuickConfig": true,
+     "QuickConfig_apply_tradier_defaults": false,
+     "cat_side_defaults_4": {
+      "CRYPTO_LONG": false,
+      "CRYPTO_SHORT": true,
+      "STOCKS_LONG": false,
+      "STOCKS_SHORT": false
+     },
+     "config.py": true,
+     "config_tradier.py": false,
+     "template_bold": {
+      "CRYPTO_LONG": [
+       true
+      ],
+      "CRYPTO_SHORT": [
+       true
+      ],
+      "STOCKS_LONG": [
+       false
+      ],
+      "STOCKS_SHORT": [
+       false
+      ]
+     }
+    },
+    "live_read_count": {
+     "crypto": 4,
+     "stocks": 4
+    },
+    "template_bold": {
+     "CRYPTO_LONG": [
+      true
+     ],
+     "CRYPTO_SHORT": [
+      true
+     ],
+     "STOCKS_LONG": [
+      false
+     ],
+     "STOCKS_SHORT": [
+      false
+     ]
+    }
+   },
+   "verdict": "needs_vec_leg",
+   "proposed_tab": "EXIT_STRUCTURAL",
+   "spec_note": "switched (DELTA_EXIT_ENABLED) unmodeled; add vec leg + row, gate path"
+  },
+  {
+   "family": "BT_RSI2_XTREME_EXIT_g",
+   "events": 33,
+   "n_syms": 2,
+   "sides": [
+    "SHORT"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "QUICK_CLOSE"
+   ],
+   "sample_reason": "BT_RSI2_XTREME_EXIT_g=0.79%",
+   "enforce_family": "BT",
+   "killed": false,
+   "resolution": null,
+   "registry": {
+    "family": "BT_RSI2_XTREME_EXIT",
+    "vec_twin": false,
+    "tf": "1h",
+    "gate": "RSI2_XTREME_EXIT_ENABLED",
+    "kind": "bool"
+   },
+   "switch_bible": {
+    "defaults": {
+     "QuickConfig": false,
+     "QuickConfig_apply_tradier_defaults": false,
+     "cat_side_defaults_4": {
+      "CRYPTO_LONG": false,
+      "CRYPTO_SHORT": false,
+      "STOCKS_LONG": false,
+      "STOCKS_SHORT": false
+     },
+     "config.py": false,
+     "config_tradier.py": false,
+     "template_bold": {
+      "CRYPTO_LONG": [
+       false
+      ],
+      "CRYPTO_SHORT": [
+       false
+      ],
+      "STOCKS_LONG": [
+       false
+      ],
+      "STOCKS_SHORT": [
+       false
+      ]
+     }
+    },
+    "live_read_count": {
+     "crypto": 2,
+     "stocks": 2
+    },
+    "template_bold": {
+     "CRYPTO_LONG": [
+      false
+     ],
+     "CRYPTO_SHORT": [
+      false
+     ],
+     "STOCKS_LONG": [
+      false
+     ],
+     "STOCKS_SHORT": [
+      false
+     ]
+    }
+   },
+   "verdict": "needs_vec_leg",
+   "proposed_tab": "EXIT_VELOCITY",
+   "spec_note": "live twin + switch exist, v12 has no exit-mask call; add vec leg + row, gate path"
+  },
+  {
+   "family": "QUICK_AUGMENTED_DC_BREAK_REDUCE_TO_MIN",
+   "events": 31,
+   "n_syms": 19,
+   "sides": [
+    "LONG",
+    "SHORT"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "REDUCE"
+   ],
+   "sample_reason": "QUICK_AUGMENTED_DC_BREAK_REDUCE_TO_MIN_0.12%",
+   "enforce_family": "AUGMENTED_DC",
+   "killed": false,
+   "resolution": null,
+   "registry": {
+    "family": "UNCLASSIFIED:QUICK_AUGMENTED_DC",
+    "vec_twin": false,
+    "tf": "15m",
+    "gate": null,
+    "kind": "none"
+   },
+   "switch_bible": {
+    "defaults": {},
+    "live_read_count": {},
+    "template_bold": {}
+   },
+   "verdict": "needs_emitter_read",
+   "proposed_tab": "REDUCE_SIGNAL_RATER",
+   "spec_note": "covered by DC_BREAK row (unknown gate); locate emitter, then spec"
+  },
+  {
+   "family": "E_1_WT_DELTA_EXIT_delta_thr_g",
+   "events": 29,
+   "n_syms": 3,
+   "sides": [
+    "LONG",
+    "SHORT"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "QUICK_CLOSE"
+   ],
+   "sample_reason": "E_1_WT_DELTA_EXIT_delta=-7_thr=1_g=-0.50%",
+   "enforce_family": "E",
+   "killed": true,
+   "resolution": null,
+   "registry": {
+    "family": "E_1_WT_DELTA_EXIT",
+    "vec_twin": false,
+    "tf": "15m",
+    "gate": "E_1_WT_EXIT_USE_DELTA_ENABLED",
+    "kind": "bool"
+   },
+   "switch_bible": {
+    "defaults": {
+     "QuickConfig": false,
+     "QuickConfig_apply_tradier_defaults": false,
+     "cat_side_defaults_4": {
+      "CRYPTO_LONG": false,
+      "CRYPTO_SHORT": false,
+      "STOCKS_LONG": false,
+      "STOCKS_SHORT": false
+     },
+     "config.py": false,
+     "config_tradier.py": false,
+     "template_bold": {
+      "CRYPTO_LONG": [
+       false
+      ],
+      "CRYPTO_SHORT": [
+       false
+      ],
+      "STOCKS_LONG": [
+       false
+      ],
+      "STOCKS_SHORT": [
+       false
+      ]
+     }
+    },
+    "live_read_count": {
+     "crypto": 3,
+     "stocks": 1
+    },
+    "template_bold": {
+     "CRYPTO_LONG": [
+      false
+     ],
+     "CRYPTO_SHORT": [
+      false
+     ],
+     "STOCKS_LONG": [
+      false
+     ],
+     "STOCKS_SHORT": [
+      false
+     ]
+    }
+   },
+   "verdict": "needs_vec_leg",
+   "proposed_tab": "EXIT_VELOCITY",
+   "spec_note": "shared predicate exists, v12 imports but never calls; add call site + row, gate path"
+  },
+  {
+   "family": "CYCLE_TP_TIERED_T1_0.30pct",
+   "events": 22,
+   "n_syms": 16,
+   "sides": [
+    "LONG",
+    "SHORT"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "REDUCE"
+   ],
+   "sample_reason": "CYCLE_TP_TIERED_T1_0.30pct_gain0.39",
+   "enforce_family": "CYCLE",
+   "killed": true,
+   "resolution": null,
+   "registry": {
+    "family": "CYCLE_TP",
+    "vec_twin": true,
+    "tf": "tick",
+    "gate": "CYCLE_TP_TIERED_ENABLED",
+    "kind": "bool"
+   },
+   "switch_bible": {
+    "defaults": {
+     "QuickConfig": true,
+     "QuickConfig_apply_tradier_defaults": true,
+     "cat_side_defaults_4": {
+      "CRYPTO_LONG": true,
+      "CRYPTO_SHORT": true,
+      "STOCKS_LONG": true,
+      "STOCKS_SHORT": true
+     },
+     "config.py": true,
+     "config_tradier.py": true,
+     "template_bold": {
+      "CRYPTO_LONG": [
+       true
+      ],
+      "CRYPTO_SHORT": [
+       true
+      ],
+      "STOCKS_LONG": [
+       true
+      ],
+      "STOCKS_SHORT": [
+       true
+      ]
+     }
+    },
+    "live_read_count": {
+     "crypto": 1,
+     "stocks": 1
+    },
+    "template_bold": {
+     "CRYPTO_LONG": [
+      true
+     ],
+     "CRYPTO_SHORT": [
+      true
+     ],
+     "STOCKS_LONG": [
+      true
+     ],
+     "STOCKS_SHORT": [
+      true
+     ]
+    }
+   },
+   "verdict": "correct_refusal_forward",
+   "proposed_tab": "REDUCE_PROFIT_LOCK",
+   "spec_note": "same as T0"
+  },
+  {
+   "family": "QUICK_WT_CROSS_EXIT_1h_bear_wt_wt_15m/",
+   "events": 19,
+   "n_syms": 3,
+   "sides": [
+    "LONG"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "REDUCE"
+   ],
+   "sample_reason": "QUICK_WT_CROSS_EXIT_1h_bear_wt1=70.1_wt2=72.7_15m-4.1/-2.6_g1.28%",
+   "enforce_family": "WT_CROSS",
+   "killed": false,
+   "resolution": null,
+   "registry": {
+    "family": "QUICK_WT_CROSS_EXIT",
+    "vec_twin": true,
+    "tf": "1h",
+    "gate": null,
+    "kind": "unknown"
+   },
+   "switch_bible": {
+    "defaults": {},
+    "live_read_count": {},
+    "template_bold": {}
+   },
+   "verdict": "needs_emitter_read",
+   "proposed_tab": "EXIT_VELOCITY",
+   "spec_note": "row exists (unknown gate); emitter unlocated \u2014 do not guess; research then spec"
+  },
+  {
+   "family": "QUICK_STDEV_REJECT_EXIT_OFF_pctb_g",
+   "events": 14,
+   "n_syms": 1,
+   "sides": [
+    "LONG"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "REDUCE"
+   ],
+   "sample_reason": "QUICK_STDEV_REJECT_EXIT_OFF_pctb=0.500_g=0.05%",
+   "enforce_family": "STDEV_REJECT",
+   "killed": true,
+   "resolution": null,
+   "registry": {
+    "family": "STDEV_REJECT_EXIT",
+    "vec_twin": true,
+    "tf": "15m",
+    "gate": "STDEV_REJECT_EXIT_ENABLED",
+    "kind": "bool"
+   },
+   "switch_bible": {
+    "defaults": {
+     "QuickConfig": false,
+     "QuickConfig_apply_tradier_defaults": false,
+     "cat_side_defaults_4": {
+      "CRYPTO_LONG": false,
+      "CRYPTO_SHORT": false,
+      "STOCKS_LONG": false,
+      "STOCKS_SHORT": false
+     },
+     "config.py": false,
+     "config_tradier.py": false,
+     "template_bold": {
+      "CRYPTO_LONG": [
+       true
+      ],
+      "CRYPTO_SHORT": [
+       false
+      ],
+      "STOCKS_LONG": [
+       false
+      ],
+      "STOCKS_SHORT": [
+       false
+      ]
+     }
+    },
+    "live_read_count": {
+     "crypto": 1,
+     "stocks": 3
+    },
+    "template_bold": {
+     "CRYPTO_LONG": [
+      true
+     ],
+     "CRYPTO_SHORT": [
+      false
+     ],
+     "STOCKS_LONG": [
+      false
+     ],
+     "STOCKS_SHORT": [
+      false
+     ]
+    }
+   },
+   "verdict": "vector_booked_native_refused",
+   "proposed_tab": "EXIT_STRUCTURAL",
+   "spec_note": "v12 books exit_sig (crypto); native leg refused; Finding-1-class or converge proof"
+  },
+  {
+   "family": "WRONG_SIDE_ABS_KILL_wt/3_k/0_agein_gain",
+   "events": 10,
+   "n_syms": 1,
+   "sides": [
+    "LONG"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "QUICK_CLOSE"
+   ],
+   "sample_reason": "WRONG_SIDE_ABS_KILL_wt=3/3_k=2/0_age=32min_gain=0.02%",
+   "enforce_family": "WRONG_SIDE",
+   "killed": true,
+   "resolution": null,
+   "registry": {
+    "family": "WRONG_SIDE_ABS_KILL",
+    "vec_twin": false,
+    "tf": "tick",
+    "gate": "WRONG_SIDE_ABS_KILL_ENABLED",
+    "kind": "bool"
+   },
+   "switch_bible": {
+    "defaults": {
+     "QuickConfig": false,
+     "QuickConfig_apply_tradier_defaults": false,
+     "cat_side_defaults_4": {
+      "CRYPTO_LONG": false,
+      "CRYPTO_SHORT": false,
+      "STOCKS_LONG": false,
+      "STOCKS_SHORT": false
+     },
+     "config.py": false,
+     "config_tradier.py": false,
+     "template_bold": {}
+    },
+    "live_read_count": {
+     "crypto": 1,
+     "stocks": 1
+    },
+    "template_bold": {}
+   },
+   "verdict": "correct_refusal_forward",
+   "proposed_tab": "GLOBAL_RISK_GATES",
+   "spec_note": "WRONG_SIDE killed; risk kill stays refused + forward-tested"
+  },
+  {
+   "family": "CYCLE_TP_TIERED_T2_0.50pct",
+   "events": 9,
+   "n_syms": 7,
+   "sides": [
+    "LONG",
+    "SHORT"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "REDUCE"
+   ],
+   "sample_reason": "CYCLE_TP_TIERED_T2_0.50pct_gain0.54",
+   "enforce_family": "CYCLE",
+   "killed": true,
+   "resolution": null,
+   "registry": {
+    "family": "CYCLE_TP",
+    "vec_twin": true,
+    "tf": "tick",
+    "gate": "CYCLE_TP_TIERED_ENABLED",
+    "kind": "bool"
+   },
+   "switch_bible": {
+    "defaults": {
+     "QuickConfig": true,
+     "QuickConfig_apply_tradier_defaults": true,
+     "cat_side_defaults_4": {
+      "CRYPTO_LONG": true,
+      "CRYPTO_SHORT": true,
+      "STOCKS_LONG": true,
+      "STOCKS_SHORT": true
+     },
+     "config.py": true,
+     "config_tradier.py": true,
+     "template_bold": {
+      "CRYPTO_LONG": [
+       true
+      ],
+      "CRYPTO_SHORT": [
+       true
+      ],
+      "STOCKS_LONG": [
+       true
+      ],
+      "STOCKS_SHORT": [
+       true
+      ]
+     }
+    },
+    "live_read_count": {
+     "crypto": 1,
+     "stocks": 1
+    },
+    "template_bold": {
+     "CRYPTO_LONG": [
+      true
+     ],
+     "CRYPTO_SHORT": [
+      true
+     ],
+     "STOCKS_LONG": [
+      true
+     ],
+     "STOCKS_SHORT": [
+      true
+     ]
+    }
+   },
+   "verdict": "correct_refusal_forward",
+   "proposed_tab": "REDUCE_PROFIT_LOCK",
+   "spec_note": "same as T0"
+  },
+  {
+   "family": "WT_4H_VEL_EXIT_vel_g_k3m_k15m",
+   "events": 9,
+   "n_syms": 1,
+   "sides": [
+    "SHORT"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "QUICK_CLOSE"
+   ],
+   "sample_reason": "WT_4H_VEL_EXIT_vel=16.1_g=0.36%_k3m=100_k15m=4",
+   "enforce_family": "WT",
+   "killed": false,
+   "resolution": null,
+   "registry": {
+    "family": "WT_4H_VEL_EXIT",
+    "vec_twin": true,
+    "tf": "4h",
+    "gate": "WT_4H_VEL_EXIT_ENABLED",
+    "kind": "bool"
+   },
+   "switch_bible": {
+    "defaults": {
+     "QuickConfig": false,
+     "QuickConfig_apply_tradier_defaults": false,
+     "cat_side_defaults_4": {
+      "CRYPTO_LONG": false,
+      "CRYPTO_SHORT": false,
+      "STOCKS_LONG": false,
+      "STOCKS_SHORT": false
+     },
+     "config.py": false,
+     "config_tradier.py": false,
+     "template_bold": {
+      "CRYPTO_LONG": [
+       false
+      ],
+      "CRYPTO_SHORT": [
+       false
+      ],
+      "STOCKS_LONG": [
+       false
+      ],
+      "STOCKS_SHORT": [
+       false
+      ]
+     }
+    },
+    "live_read_count": {
+     "crypto": 4,
+     "stocks": 1
+    },
+    "template_bold": {
+     "CRYPTO_LONG": [
+      false
+     ],
+     "CRYPTO_SHORT": [
+      false
+     ],
+     "STOCKS_LONG": [
+      false
+     ],
+     "STOCKS_SHORT": [
+      false
+     ]
+    }
+   },
+   "verdict": "restored_but_backstopped",
+   "proposed_tab": "EXIT_VELOCITY",
+   "spec_note": "FINDING 1 class (velocity exit family); enforce allows velocity exits, backstop refuses"
+  },
+  {
+   "family": "CYCLE_TP_TIERED_T3_0.70pct",
+   "events": 7,
+   "n_syms": 6,
+   "sides": [
+    "LONG",
+    "SHORT"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "REDUCE"
+   ],
+   "sample_reason": "CYCLE_TP_TIERED_T3_0.70pct_gain0.79",
+   "enforce_family": "CYCLE",
+   "killed": true,
+   "resolution": null,
+   "registry": {
+    "family": "CYCLE_TP",
+    "vec_twin": true,
+    "tf": "tick",
+    "gate": "CYCLE_TP_TIERED_ENABLED",
+    "kind": "bool"
+   },
+   "switch_bible": {
+    "defaults": {
+     "QuickConfig": true,
+     "QuickConfig_apply_tradier_defaults": true,
+     "cat_side_defaults_4": {
+      "CRYPTO_LONG": true,
+      "CRYPTO_SHORT": true,
+      "STOCKS_LONG": true,
+      "STOCKS_SHORT": true
+     },
+     "config.py": true,
+     "config_tradier.py": true,
+     "template_bold": {
+      "CRYPTO_LONG": [
+       true
+      ],
+      "CRYPTO_SHORT": [
+       true
+      ],
+      "STOCKS_LONG": [
+       true
+      ],
+      "STOCKS_SHORT": [
+       true
+      ]
+     }
+    },
+    "live_read_count": {
+     "crypto": 1,
+     "stocks": 1
+    },
+    "template_bold": {
+     "CRYPTO_LONG": [
+      true
+     ],
+     "CRYPTO_SHORT": [
+      true
+     ],
+     "STOCKS_LONG": [
+      true
+     ],
+     "STOCKS_SHORT": [
+      true
+     ]
+    }
+   },
+   "verdict": "correct_refusal_forward",
+   "proposed_tab": "REDUCE_PROFIT_LOCK",
+   "spec_note": "same as T0"
+  },
+  {
+   "family": "E_3_STRUCTURE_EXIT_3TF_g",
+   "events": 5,
+   "n_syms": 1,
+   "sides": [
+    "SHORT"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "QUICK_CLOSE"
+   ],
+   "sample_reason": "E_3_STRUCTURE_EXIT_3TF_g=0.24%",
+   "enforce_family": "E",
+   "killed": true,
+   "resolution": null,
+   "registry": {
+    "family": "STRUCTURE_EXIT",
+    "vec_twin": true,
+    "tf": "15m",
+    "gate": null,
+    "kind": "unknown"
+   },
+   "switch_bible": {
+    "defaults": {},
+    "live_read_count": {},
+    "template_bold": {}
+   },
+   "verdict": "needs_emitter_read",
+   "proposed_tab": "EXIT_STRUCTURAL",
+   "spec_note": "row STRUCTURE_EXIT exists (unknown); enforce family E is killed; research then spec"
+  },
+  {
+   "family": "CYCLE_TP_TIERED_T4_1.00pct",
+   "events": 5,
+   "n_syms": 4,
+   "sides": [
+    "LONG",
+    "SHORT"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "REDUCE"
+   ],
+   "sample_reason": "CYCLE_TP_TIERED_T4_1.00pct_gain1.01",
+   "enforce_family": "CYCLE",
+   "killed": true,
+   "resolution": null,
+   "registry": {
+    "family": "CYCLE_TP",
+    "vec_twin": true,
+    "tf": "tick",
+    "gate": "CYCLE_TP_TIERED_ENABLED",
+    "kind": "bool"
+   },
+   "switch_bible": {
+    "defaults": {
+     "QuickConfig": true,
+     "QuickConfig_apply_tradier_defaults": true,
+     "cat_side_defaults_4": {
+      "CRYPTO_LONG": true,
+      "CRYPTO_SHORT": true,
+      "STOCKS_LONG": true,
+      "STOCKS_SHORT": true
+     },
+     "config.py": true,
+     "config_tradier.py": true,
+     "template_bold": {
+      "CRYPTO_LONG": [
+       true
+      ],
+      "CRYPTO_SHORT": [
+       true
+      ],
+      "STOCKS_LONG": [
+       true
+      ],
+      "STOCKS_SHORT": [
+       true
+      ]
+     }
+    },
+    "live_read_count": {
+     "crypto": 1,
+     "stocks": 1
+    },
+    "template_bold": {
+     "CRYPTO_LONG": [
+      true
+     ],
+     "CRYPTO_SHORT": [
+      true
+     ],
+     "STOCKS_LONG": [
+      true
+     ],
+     "STOCKS_SHORT": [
+      true
+     ]
+    }
+   },
+   "verdict": "correct_refusal_forward",
+   "proposed_tab": "REDUCE_PROFIT_LOCK",
+   "spec_note": "same as T0"
+  },
+  {
+   "family": "ALL_ALL_GREEN_DIRECT_CLOSE_winners_all_green_rank",
+   "events": 5,
+   "n_syms": 3,
+   "sides": [
+    "LONG"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "CLOSE"
+   ],
+   "sample_reason": "ALL_ALL_GREEN_DIRECT_CLOSE_winners_all_green_rank4",
+   "enforce_family": "ALL",
+   "killed": false,
+   "resolution": null,
+   "registry": {
+    "family": "RANKING_DIRECT_ALL_GREEN",
+    "vec_twin": false,
+    "tf": "webhook",
+    "gate": null,
+    "kind": "none"
+   },
+   "switch_bible": {
+    "defaults": {},
+    "live_read_count": {},
+    "template_bold": {}
+   },
+   "verdict": "forward_only",
+   "proposed_tab": null,
+   "spec_note": "ranking-direct webhook close; no switch; forward-test only"
+  },
+  {
+   "family": "WT_EXHAUST_mom4h=EXHAUST_DOWN_1h=IMPULSE_UP_g",
+   "events": 5,
+   "n_syms": 1,
+   "sides": [
+    "SHORT"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "QUICK_CLOSE"
+   ],
+   "sample_reason": "WT_EXHAUST_mom4h=EXHAUST_DOWN_1h=IMPULSE_UP_g=0.62%",
+   "enforce_family": "WT",
+   "killed": false,
+   "resolution": null,
+   "registry": {
+    "family": "WT_EXHAUST",
+    "vec_twin": true,
+    "tf": "4h",
+    "gate": null,
+    "kind": "unknown"
+   },
+   "switch_bible": {
+    "defaults": {},
+    "live_read_count": {},
+    "template_bold": {}
+   },
+   "verdict": "needs_emitter_read",
+   "proposed_tab": "EXIT_VELOCITY",
+   "spec_note": "row exists (unknown); research emitter then spec"
+  },
+  {
+   "family": "WT_EXHAUST_mom4h=EXHAUST_DOWN_1h=IMPULSE_DOWN_g",
+   "events": 4,
+   "n_syms": 2,
+   "sides": [
+    "SHORT"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "QUICK_CLOSE"
+   ],
+   "sample_reason": "WT_EXHAUST_mom4h=EXHAUST_DOWN_1h=IMPULSE_DOWN_g=1.03%",
+   "enforce_family": "WT",
+   "killed": false,
+   "resolution": null,
+   "registry": {
+    "family": "WT_EXHAUST",
+    "vec_twin": true,
+    "tf": "4h",
+    "gate": null,
+    "kind": "unknown"
+   },
+   "switch_bible": {
+    "defaults": {},
+    "live_read_count": {},
+    "template_bold": {}
+   },
+   "verdict": "unmapped",
+   "proposed_tab": null,
+   "spec_note": "not hand-mapped; triage"
+  },
+  {
+   "family": "QUICK_WT_CROSS_EXIT_1h_bull_wt_wt_15m4.5/3.2",
+   "events": 4,
+   "n_syms": 1,
+   "sides": [
+    "SHORT"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "REDUCE"
+   ],
+   "sample_reason": "QUICK_WT_CROSS_EXIT_1h_bull_wt1=20.6_wt2=15.1_15m4.5/3.2_g0.16%",
+   "enforce_family": "WT_CROSS",
+   "killed": false,
+   "resolution": null,
+   "registry": {
+    "family": "QUICK_WT_CROSS_EXIT",
+    "vec_twin": true,
+    "tf": "1h",
+    "gate": null,
+    "kind": "unknown"
+   },
+   "switch_bible": {
+    "defaults": {},
+    "live_read_count": {},
+    "template_bold": {}
+   },
+   "verdict": "needs_emitter_read",
+   "proposed_tab": "EXIT_VELOCITY",
+   "spec_note": "same as bear variant"
+  },
+  {
+   "family": "QUICK_PARABOLIC_EXIT_SHORT_k15_px<0.025200_high3m>prev",
+   "events": 3,
+   "n_syms": 1,
+   "sides": [
+    "SHORT"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "REDUCE"
+   ],
+   "sample_reason": "QUICK_PARABOLIC_EXIT_SHORT_k15=5_px<0.025200_high3m=0.025340>prev0.025330",
+   "enforce_family": "PARABOLIC_EXIT",
+   "killed": false,
+   "resolution": null,
+   "registry": {
+    "family": "PARABOLIC_EXIT",
+    "vec_twin": false,
+    "tf": "3m",
+    "gate": "PARABOLIC_EXIT_ENABLED",
+    "kind": "bool"
+   },
+   "switch_bible": {
+    "defaults": {
+     "QuickConfig": true,
+     "QuickConfig_apply_tradier_defaults": true,
+     "cat_side_defaults_4": {
+      "CRYPTO_LONG": true,
+      "CRYPTO_SHORT": true,
+      "STOCKS_LONG": true,
+      "STOCKS_SHORT": true
+     },
+     "config.py": true,
+     "config_tradier.py": "<absent>",
+     "template_bold": {
+      "CRYPTO_LONG": [
+       true
+      ],
+      "CRYPTO_SHORT": [
+       true
+      ]
+     }
+    },
+    "live_read_count": {
+     "crypto": 1,
+     "stocks": 1
+    },
+    "template_bold": {
+     "CRYPTO_LONG": [
+      true
+     ],
+     "CRYPTO_SHORT": [
+      true
+     ]
+    }
+   },
+   "verdict": "needs_vec_leg",
+   "proposed_tab": "EXIT_STRUCTURAL",
+   "spec_note": "always-on live, v12 has toggle but no mask; add vec leg + row, gate path"
+  },
+  {
+   "family": "ALL_ALL_RED_DIRECT_CLOSE_losers_all_red_rank",
+   "events": 3,
+   "n_syms": 2,
+   "sides": [
+    "SHORT"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "CLOSE"
+   ],
+   "sample_reason": "ALL_ALL_RED_DIRECT_CLOSE_losers_all_red_rank7",
+   "enforce_family": "ALL",
+   "killed": false,
+   "resolution": null,
+   "registry": {
+    "family": "RANKING_DIRECT_ALL_RED",
+    "vec_twin": false,
+    "tf": "webhook",
+    "gate": null,
+    "kind": "none"
+   },
+   "switch_bible": {
+    "defaults": {},
+    "live_read_count": {},
+    "template_bold": {}
+   },
+   "verdict": "forward_only",
+   "proposed_tab": null,
+   "spec_note": "ranking-direct webhook close; forward-test only"
+  },
+  {
+   "family": "HEDGE_CLOSE_WT3M1H_PRE_GATE_3m/_1h/_gain",
+   "events": 2,
+   "n_syms": 1,
+   "sides": [
+    "LONG"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "CLOSE"
+   ],
+   "sample_reason": "HEDGE_CLOSE_WT3M1H_PRE_GATE_3m=-49.1/-35.8_1h=-82.3/-75.1_gain=0.03%",
+   "enforce_family": "HEDGE",
+   "killed": false,
+   "resolution": null,
+   "registry": {
+    "family": "HEDGE_CLOSE_WT3M1H",
+    "vec_twin": false,
+    "tf": "3m",
+    "gate": null,
+    "kind": "unknown"
+   },
+   "switch_bible": {
+    "defaults": {},
+    "live_read_count": {},
+    "template_bold": {}
+   },
+   "verdict": "forward_only",
+   "proposed_tab": null,
+   "spec_note": "hedge-safety bookkeeping, ungated; forward-test only"
+  },
+  {
+   "family": "CYCLE_TP_TIERED_T5_1.50pct",
+   "events": 2,
+   "n_syms": 2,
+   "sides": [
+    "LONG",
+    "SHORT"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "REDUCE"
+   ],
+   "sample_reason": "CYCLE_TP_TIERED_T5_1.50pct_gain1.57",
+   "enforce_family": "CYCLE",
+   "killed": true,
+   "resolution": null,
+   "registry": {
+    "family": "CYCLE_TP",
+    "vec_twin": true,
+    "tf": "tick",
+    "gate": "CYCLE_TP_TIERED_ENABLED",
+    "kind": "bool"
+   },
+   "switch_bible": {
+    "defaults": {
+     "QuickConfig": true,
+     "QuickConfig_apply_tradier_defaults": true,
+     "cat_side_defaults_4": {
+      "CRYPTO_LONG": true,
+      "CRYPTO_SHORT": true,
+      "STOCKS_LONG": true,
+      "STOCKS_SHORT": true
+     },
+     "config.py": true,
+     "config_tradier.py": true,
+     "template_bold": {
+      "CRYPTO_LONG": [
+       true
+      ],
+      "CRYPTO_SHORT": [
+       true
+      ],
+      "STOCKS_LONG": [
+       true
+      ],
+      "STOCKS_SHORT": [
+       true
+      ]
+     }
+    },
+    "live_read_count": {
+     "crypto": 1,
+     "stocks": 1
+    },
+    "template_bold": {
+     "CRYPTO_LONG": [
+      true
+     ],
+     "CRYPTO_SHORT": [
+      true
+     ],
+     "STOCKS_LONG": [
+      true
+     ],
+     "STOCKS_SHORT": [
+      true
+     ]
+    }
+   },
+   "verdict": "correct_refusal_forward",
+   "proposed_tab": "REDUCE_PROFIT_LOCK",
+   "spec_note": "same as T0"
+  },
+  {
+   "family": "QUICK_DC4_HIGH_3M_GAIN_EROSION_STOP_p107.270000>dc",
+   "events": 1,
+   "n_syms": 1,
+   "sides": [
+    "SHORT"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "CLOSE"
+   ],
+   "sample_reason": "QUICK_DC4_HIGH_3M_GAIN_EROSION_STOP_p107.270000>dc4107.230000_g-0.06%",
+   "enforce_family": "DC4_HIGH",
+   "killed": false,
+   "resolution": null,
+   "registry": {
+    "family": "GAIN_EROSION_STOP",
+    "vec_twin": false,
+    "tf": "3m",
+    "gate": null,
+    "kind": "unknown"
+   },
+   "switch_bible": {
+    "defaults": {},
+    "live_read_count": {},
+    "template_bold": {}
+   },
+   "verdict": "needs_emitter_read",
+   "proposed_tab": "EXIT_STRUCTURAL",
+   "spec_note": "covered by GAIN_EROSION_STOP row (unknown); distinguish from breakeven_gain_erosion core, then spec"
+  },
+  {
+   "family": "QUICK_DC4_HIGH_3M_GAIN_EROSION_STOP_p107.323551>dc",
+   "events": 1,
+   "n_syms": 1,
+   "sides": [
+    "SHORT"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "CLOSE"
+   ],
+   "sample_reason": "QUICK_DC4_HIGH_3M_GAIN_EROSION_STOP_p107.323551>dc4107.230000_g-0.09%",
+   "enforce_family": "DC4_HIGH",
+   "killed": false,
+   "resolution": null,
+   "registry": {
+    "family": "GAIN_EROSION_STOP",
+    "vec_twin": false,
+    "tf": "3m",
+    "gate": null,
+    "kind": "unknown"
+   },
+   "switch_bible": {
+    "defaults": {},
+    "live_read_count": {},
+    "template_bold": {}
+   },
+   "verdict": "unmapped",
+   "proposed_tab": null,
+   "spec_note": "not hand-mapped; triage"
+  },
+  {
+   "family": "QUICK_DC4_HIGH_3M_GAIN_EROSION_STOP_p107.277873>dc",
+   "events": 1,
+   "n_syms": 1,
+   "sides": [
+    "SHORT"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "CLOSE"
+   ],
+   "sample_reason": "QUICK_DC4_HIGH_3M_GAIN_EROSION_STOP_p107.277873>dc4107.230000_g-0.06%",
+   "enforce_family": "DC4_HIGH",
+   "killed": false,
+   "resolution": null,
+   "registry": {
+    "family": "GAIN_EROSION_STOP",
+    "vec_twin": false,
+    "tf": "3m",
+    "gate": null,
+    "kind": "unknown"
+   },
+   "switch_bible": {
+    "defaults": {},
+    "live_read_count": {},
+    "template_bold": {}
+   },
+   "verdict": "unmapped",
+   "proposed_tab": null,
+   "spec_note": "not hand-mapped; triage"
+  },
+  {
+   "family": "QUICK_DC4_HIGH_3M_GAIN_EROSION_STOP_p107.257760>dc",
+   "events": 1,
+   "n_syms": 1,
+   "sides": [
+    "SHORT"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "CLOSE"
+   ],
+   "sample_reason": "QUICK_DC4_HIGH_3M_GAIN_EROSION_STOP_p107.257760>dc4107.230000_g-0.04%",
+   "enforce_family": "DC4_HIGH",
+   "killed": false,
+   "resolution": null,
+   "registry": {
+    "family": "GAIN_EROSION_STOP",
+    "vec_twin": false,
+    "tf": "3m",
+    "gate": null,
+    "kind": "unknown"
+   },
+   "switch_bible": {
+    "defaults": {},
+    "live_read_count": {},
+    "template_bold": {}
+   },
+   "verdict": "unmapped",
+   "proposed_tab": null,
+   "spec_note": "not hand-mapped; triage"
+  },
+  {
+   "family": "QUICK_DC4_HIGH_3M_GAIN_EROSION_STOP_p107.267266>dc",
+   "events": 1,
+   "n_syms": 1,
+   "sides": [
+    "SHORT"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "CLOSE"
+   ],
+   "sample_reason": "QUICK_DC4_HIGH_3M_GAIN_EROSION_STOP_p107.267266>dc4107.230000_g-0.03%",
+   "enforce_family": "DC4_HIGH",
+   "killed": false,
+   "resolution": null,
+   "registry": {
+    "family": "GAIN_EROSION_STOP",
+    "vec_twin": false,
+    "tf": "3m",
+    "gate": null,
+    "kind": "unknown"
+   },
+   "switch_bible": {
+    "defaults": {},
+    "live_read_count": {},
+    "template_bold": {}
+   },
+   "verdict": "unmapped",
+   "proposed_tab": null,
+   "spec_note": "not hand-mapped; triage"
+  },
+  {
+   "family": "LIQUIDATION_PROTECT",
+   "events": 1,
+   "n_syms": 1,
+   "sides": [
+    "LONG"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "CLOSE"
+   ],
+   "sample_reason": "LIQUIDATION_PROTECT",
+   "enforce_family": "LIQUIDATION",
+   "killed": false,
+   "resolution": null,
+   "registry": {
+    "family": "SAFETY_LIQUIDATION",
+    "vec_twin": false,
+    "tf": "tick",
+    "gate": null,
+    "kind": "safety"
+   },
+   "switch_bible": {
+    "defaults": {},
+    "live_read_count": {},
+    "template_bold": {}
+   },
+   "verdict": "unmapped",
+   "proposed_tab": null,
+   "spec_note": "not hand-mapped; triage"
+  },
+  {
+   "family": "PPL_TP",
+   "events": 1,
+   "n_syms": 1,
+   "sides": [
+    "LONG"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "QUICK_REDUCE"
+   ],
+   "sample_reason": "PPL_TP_gain1.26_URL2_50pct",
+   "enforce_family": "PPL",
+   "killed": false,
+   "resolution": null,
+   "registry": {
+    "family": "PARTIAL_PROFIT_LOCK",
+    "vec_twin": true,
+    "tf": "tick",
+    "gate": "PARTIAL_PROFIT_LOCK_ENABLED",
+    "kind": "bool"
+   },
+   "switch_bible": {
+    "defaults": {
+     "QuickConfig": true,
+     "QuickConfig_apply_tradier_defaults": false,
+     "cat_side_defaults_4": {
+      "CRYPTO_LONG": true,
+      "CRYPTO_SHORT": true,
+      "STOCKS_LONG": false,
+      "STOCKS_SHORT": false
+     },
+     "config.py": true,
+     "config_tradier.py": false,
+     "template_bold": {
+      "STOCKS_LONG": [
+       false
+      ],
+      "STOCKS_SHORT": [
+       false
+      ]
+     }
+    },
+    "live_read_count": {
+     "crypto": 3,
+     "stocks": 3
+    },
+    "template_bold": {
+     "STOCKS_LONG": [
+      false
+     ],
+     "STOCKS_SHORT": [
+      false
+     ]
+    }
+   },
+   "verdict": "unmapped",
+   "proposed_tab": null,
+   "spec_note": "not hand-mapped; triage"
+  },
+  {
+   "family": "WRONG_SIDE_ABS_KILL_wt/4_k/0_agein_gain",
+   "events": 1,
+   "n_syms": 1,
+   "sides": [
+    "LONG"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "QUICK_CLOSE"
+   ],
+   "sample_reason": "WRONG_SIDE_ABS_KILL_wt=4/4_k=2/0_age=71min_gain=-0.67%",
+   "enforce_family": "WRONG_SIDE",
+   "killed": true,
+   "resolution": null,
+   "registry": {
+    "family": "WRONG_SIDE_ABS_KILL",
+    "vec_twin": false,
+    "tf": "tick",
+    "gate": "WRONG_SIDE_ABS_KILL_ENABLED",
+    "kind": "bool"
+   },
+   "switch_bible": {
+    "defaults": {
+     "QuickConfig": false,
+     "QuickConfig_apply_tradier_defaults": false,
+     "cat_side_defaults_4": {
+      "CRYPTO_LONG": false,
+      "CRYPTO_SHORT": false,
+      "STOCKS_LONG": false,
+      "STOCKS_SHORT": false
+     },
+     "config.py": false,
+     "config_tradier.py": false,
+     "template_bold": {}
+    },
+    "live_read_count": {
+     "crypto": 1,
+     "stocks": 1
+    },
+    "template_bold": {}
+   },
+   "verdict": "unmapped",
+   "proposed_tab": null,
+   "spec_note": "not hand-mapped; triage"
+  },
+  {
+   "family": "QUICK_PARABOLIC_EXIT_LONG_k15_px>0.000459_low3m<prev",
+   "events": 1,
+   "n_syms": 1,
+   "sides": [
+    "LONG"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "REDUCE"
+   ],
+   "sample_reason": "QUICK_PARABOLIC_EXIT_LONG_k15=96_px>0.000459_low3m=0.000454<prev0.000454",
+   "enforce_family": "PARABOLIC_EXIT",
+   "killed": false,
+   "resolution": null,
+   "registry": {
+    "family": "PARABOLIC_EXIT",
+    "vec_twin": false,
+    "tf": "3m",
+    "gate": "PARABOLIC_EXIT_ENABLED",
+    "kind": "bool"
+   },
+   "switch_bible": {
+    "defaults": {
+     "QuickConfig": true,
+     "QuickConfig_apply_tradier_defaults": true,
+     "cat_side_defaults_4": {
+      "CRYPTO_LONG": true,
+      "CRYPTO_SHORT": true,
+      "STOCKS_LONG": true,
+      "STOCKS_SHORT": true
+     },
+     "config.py": true,
+     "config_tradier.py": "<absent>",
+     "template_bold": {
+      "CRYPTO_LONG": [
+       true
+      ],
+      "CRYPTO_SHORT": [
+       true
+      ]
+     }
+    },
+    "live_read_count": {
+     "crypto": 1,
+     "stocks": 1
+    },
+    "template_bold": {
+     "CRYPTO_LONG": [
+      true
+     ],
+     "CRYPTO_SHORT": [
+      true
+     ]
+    }
+   },
+   "verdict": "needs_vec_leg",
+   "proposed_tab": "EXIT_STRUCTURAL",
+   "spec_note": "same as SHORT variant"
+  },
+  {
+   "family": "CYCLE_TP_TIERED_T6_2.00pct",
+   "events": 1,
+   "n_syms": 1,
+   "sides": [
+    "SHORT"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "REDUCE"
+   ],
+   "sample_reason": "CYCLE_TP_TIERED_T6_2.00pct_gain2.11",
+   "enforce_family": "CYCLE",
+   "killed": true,
+   "resolution": null,
+   "registry": {
+    "family": "CYCLE_TP",
+    "vec_twin": true,
+    "tf": "tick",
+    "gate": "CYCLE_TP_TIERED_ENABLED",
+    "kind": "bool"
+   },
+   "switch_bible": {
+    "defaults": {
+     "QuickConfig": true,
+     "QuickConfig_apply_tradier_defaults": true,
+     "cat_side_defaults_4": {
+      "CRYPTO_LONG": true,
+      "CRYPTO_SHORT": true,
+      "STOCKS_LONG": true,
+      "STOCKS_SHORT": true
+     },
+     "config.py": true,
+     "config_tradier.py": true,
+     "template_bold": {
+      "CRYPTO_LONG": [
+       true
+      ],
+      "CRYPTO_SHORT": [
+       true
+      ],
+      "STOCKS_LONG": [
+       true
+      ],
+      "STOCKS_SHORT": [
+       true
+      ]
+     }
+    },
+    "live_read_count": {
+     "crypto": 1,
+     "stocks": 1
+    },
+    "template_bold": {
+     "CRYPTO_LONG": [
+      true
+     ],
+     "CRYPTO_SHORT": [
+      true
+     ],
+     "STOCKS_LONG": [
+      true
+     ],
+     "STOCKS_SHORT": [
+      true
+     ]
+    }
+   },
+   "verdict": "correct_refusal_forward",
+   "proposed_tab": "REDUCE_PROFIT_LOCK",
+   "spec_note": "same as T0"
+  }
+ ]
+}
