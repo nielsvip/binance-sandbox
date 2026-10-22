@@ -103,11 +103,9 @@ def test_vec_reasons_pass_native_blocked():
         assert _gate_passes(r) == em._voe_reason_is_vec(r), r
     blocked = [r for r in NATIVE_REASONS if not em._voe_reason_is_vec(r)]
     assert set(blocked) == {
-        "WT_EXHAUST_mom4h=EXHAUST_DOWN_1h=IMPULSE_UP_g-0.13%",
-        "MTF_GR_WT_EXIT_15m",
-        "ALL_ALL_GREEN_DIRECT_CLOSE",
-        "DC_BREAK_HIGH_15m_EXTREME_g0.03%",
         "DC_15M_HOLD_OVERRIDE",
+        "MTF_GR_WT_EXIT_15m",
+        "ORPHANED_HEDGE",
         "VIGILANCE_2_CONSECUTIVE_LOSING",
         "CB_HTF_EXHAUST_X",
     }

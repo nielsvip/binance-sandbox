@@ -24,6 +24,7 @@ usage:
 import argparse
 import asyncio
 import datetime as dt
+import fcntl
 import json
 import os
 import re
@@ -180,6 +181,15 @@ def main():
     ap.add_argument("--conc", type=int, default=4, help="low on purpose: sem 64 is what produced the 20 s timeouts")
     ap.add_argument("--symbols")
     a = ap.parse_args()
+    # 2026-10-22 SINGLE FLIGHT (USER live-lane): the 20-min cron outlives itself under load
+    # (measured 6 copies + 24 workers). flock is self-cleaning — a killed run releases on death,
+    # so no stale-lock takeover logic is needed. No crontab change needed.
+    _lock_fh = open("/tmp/.tradier_klines_catchup.lock", "w")
+    try:
+        fcntl.flock(_lock_fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        log("another catchup run holds the lock — exiting (single flight)")
+        return 0
     import tradier_klines as tk
     cache = Path(tk.config.KLINES_CACHE_DIR)  # already .../klines_cache/tradier
     if a.symbols:

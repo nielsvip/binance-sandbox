@@ -57,6 +57,8 @@ E[d | pos].
 
 CLI
   extract --source logs|rebuilt|history|ledgers|native --from GLOB --host H --spill-dir D
+  extract --source progress|xlsx --from GLOB --host H --spill-dir D [--covered-by GLOB] [--covered-by-ctx J] [--progress-index P]
+           (board-level corpora: *_v14_progress.json and published workbooks; docs/v15_pending/22_BRAIN_BOARDS_SOURCE_20261022.md)
   train   --spill-dir D [--spill-dir D2] --cut ISO --out-dir data/brain --state S.pkl --report R.json
   export  --state S.pkl --out-dir data/brain
   suggest --cat-side CS --metric gain|dd|tim|sharpe|wr|forward [--sym-side SS] [--model F|--state S]
@@ -831,6 +833,537 @@ def extract_native(a, emit, counters):
                               "rk": h64(f"Q|{gk}|{sorted(dset)}|{x}|{y}")})
 
 
+# ------------------------------------------------------------------------------------------------ boards: progress JSONs + published workbooks (2026-10-22)
+
+BOARD_TOL_S = 7200.0
+PROGRESS_SETTLED = ("noop_yellows", "yellow_dups", "zero_skipped_filters", "sampled_out_filters", "type_skipped", "tab_level_excluded", "excluded_unwired",
+                    "missing_yellows", "inert_filters", "prior_skipped_filters", "coarse_deferred_filters")
+NPZ_TAG_RE = re.compile(r"^ts(?P<ts>[0-9.]+)_n(?P<n>[0-9]+)$")
+XLSX_SS_RE = re.compile(r"^(?P<ss>[A-Z0-9]+_(?:LONG|SHORT))(?:_(?P<stamp>[0-9]{8}))?_")
+ISO_IN_TEXT_RE = re.compile(r"(20[0-9]{2}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})?)")
+
+
+def npz_ts_of(x):
+    """npz identity -> last-bar epoch (int): 'ts1791332100.0_n39157', a number, or an npz_id / manifest dict; None when unknown."""
+    if isinstance(x, dict):
+        x = x.get("ts_last") or x.get("npz_last_bar_ts")
+    if isinstance(x, str):
+        m = NPZ_TAG_RE.match(x.strip())
+        x = m.group("ts") if m else x
+    v = _f(x)
+    return int(v) if (v is not None and v > 1e9) else None
+
+
+class Coverage:
+    """Boards another source already holds: exact (sym_side, npz last-bar ts) pairs, and board times of sym_sides whose ctx
+    carries no npz. A board is covered by npz equality; by time only against ctx points without an npz (or, when the board
+    itself has no npz, against every ctx point of its sym_side), window [t0 - 2 h, t1 + 2 h]."""
+
+    def __init__(self):
+        self.npz = set()
+        self.t_only = collections.defaultdict(list)
+        self.t_all = collections.defaultdict(list)
+        self.c = collections.Counter()
+
+    def add(self, sym, npz=None, t=None, src="ctx", t1=None):
+        if cat_side_of(sym) is None:
+            self.c[src + "_refused_cat_side"] += 1
+            return
+        n = npz_ts_of(npz)
+        ep = epoch_of(iso_of(t)) if t is not None else None
+        ep1 = epoch_of(iso_of(t1)) if t1 is not None else None
+        if n is not None:
+            self.npz.add((sym, n))
+        if ep is not None:
+            iv = (ep, max(ep, ep1 if ep1 is not None else ep))
+            if n is None:
+                self.t_only[sym].append(iv)
+            self.t_all[sym].append(iv)
+        self.c[src + ("_npz" if n is not None else ("_time" if ep is not None else "_empty"))] += 1
+
+    def covers(self, sym, npz, t0, t1=None):
+        n = npz_ts_of(npz)
+        if n is not None and (sym, n) in self.npz:
+            return "npz"
+        if t0 is None:
+            return None
+        pool = self.t_only.get(sym, ()) if n is not None else self.t_all.get(sym, ())
+        lo_, hi_ = t0 - BOARD_TOL_S, max(t0, t1 if t1 is not None else t0) + BOARD_TOL_S
+        return "time" if any(a <= hi_ and b >= lo_ for a, b in pool) else None
+
+
+def load_coverage(globs, ctx_json=None):
+    """--covered-by: delta logs (*.jsonl, BOARD_CTX lines -> sym_side + npz_last_bar_ts + ts) and brain spills (spill_*.tsv[.gz],
+    board events -> sym_side + board ts, no npz). --covered-by-ctx: JSON list of [sym_side, npz_ts_or_ISO] or
+    {sym_side|s, npz|npz_last_bar_ts, ts|t}."""
+    cov = Coverage()
+    files = sorted({f for g in (globs or []) for f in glob.glob(os.path.expanduser(g))})
+    for f in files:
+        cov.c["covered_by_files"] += 1
+        if f.endswith((".tsv", ".tsv.gz")):
+            op = gzip.open if f.endswith(".gz") else open
+            with op(f, "rt", errors="replace") as fh:
+                for line in fh:
+                    if '"e":"board"' not in line:
+                        continue
+                    try:
+                        ev = json.loads(line.partition("\t")[2])
+                    except Exception:
+                        continue
+                    cov.add(ev.get("s"), None, ev.get("t"), "spill")
+            continue
+        sym0 = sym_side_of_path(f)
+        with open(f, "rb") as fh:
+            for raw in fh:
+                if b"BOARD_CTX" not in raw:
+                    continue
+                try:
+                    r = json.loads(raw)
+                except Exception:
+                    continue
+                if isinstance(r, dict) and r.get("label") == "BOARD_CTX":
+                    cov.add(r.get("sym_side") or sym0, r.get("npz_last_bar_ts"), r.get("ts"), "log")
+    if ctx_json:
+        for it in json.loads(Path(os.path.expanduser(ctx_json)).read_text()):
+            if isinstance(it, dict):
+                cov.add(it.get("sym_side") or it.get("s"), it.get("npz") or it.get("npz_last_bar_ts"), it.get("ts") or it.get("t"), "ctxjson")
+            elif isinstance(it, (list, tuple)) and len(it) >= 2:
+                x = it[1]
+                cov.add(it[0], x if not isinstance(x, str) or NPZ_TAG_RE.match(x) else None, x if isinstance(x, str) and not NPZ_TAG_RE.match(x) else None, "ctxjson")
+    return cov
+
+
+def _cand_str(v):
+    if isinstance(v, bool):
+        return "True" if v else "False"
+    return "" if v is None else str(v).strip()
+
+
+def _num(v):
+    return None if isinstance(v, bool) else _f(v) if isinstance(v, (int, float)) else None
+
+
+class BoardEmitter:
+    """One board of a board-level source (progress JSON or workbook) -> brain events through the log Assembler (same row /
+    cell / identity / synergy encoding as extract_logs). Every board event carries its provenance; row keys are re-hashed
+    with src=<source> so they never collide with log-derived keys; workbook row keys are content-addressed (copies of the
+    same board under several names dedupe in train)."""
+
+    def __init__(self, src_kind, sym, t0, emit, counters, extra, src_id, content_rk=False):
+        self.kind = src_kind
+        self.sym = sym
+        self.cs = cat_side_of(sym)
+        self.t0 = t0
+        self.c = counters
+        self.extra = extra
+        self.src_id = src_id
+        self.content_rk = content_rk
+        self.out = emit
+        self.asm = Assembler(sym, src_id, self._emit, counters)
+
+    def _emit(self, ev):
+        e = ev.get("e")
+        if e == "board":
+            ev.update(self.extra)
+            ev["rk"] = h64(f"src={self.kind}|B|{self.src_id}|{ev['b']}")
+        elif self.content_rk and e == "row":
+            ev["rk"] = h64(f"src={self.kind}|R|{self.sym}|{ev['sh']}|{ev['k']}|{ev['cb']}|{json.dumps(ev['n'])}|{json.dumps(ev['y'])}|{json.dumps(ev.get('ya'))}")
+        else:
+            ev["rk"] = h64(f"src={self.kind}|{e}|{self.src_id}|{ev.get('rk')}")
+        self.out(ev)
+
+    def start(self, bh, tier, rnd):
+        self.asm.feed({"label": "BOARD_CTX", "ts": self.t0, "bh": bh, "tier": tier, "round": rnd}, 0)
+
+    def row(self, sheet, row, sw, cand, cb, naked, cells, promoted, identity, valid=True, trades=None):
+        """naked: delta vs cb or None (unknown); cells: [(hdr, delta, valid)] already stripped of settled cells."""
+        base = {"ts": self.t0, "sheet": sheet, "row": row, "switch": sw, "cand": cand, "cum_before": cb}
+        if naked is None and not identity:
+            self.asm.close_row(None)
+            ev = {"e": "row", "t": self.t0, "s": self.sym, "b": self.asm.board, "sh": sheet, "k": f"{sw}={cand}", "cb": _r(cb), "n": None, "y": [],
+                  "ya": [[h, _r(d), 1 if v else 0] for h, d, v in cells], "nu": 1, "ni": 0, "sy": [], "p": bool(promoted), "ps": self.kind,
+                  "g": regime_of(self.asm.ctx.get("bh")), "ti": self.asm.ctx.get("tier"), "bh": _r(self.asm.ctx.get("bh"), 3),
+                  "rk": h64(f"U|{self.sym}|{sheet}|{row}|{sw}|{cand}|{self.t0}|{cb}")}
+            self._emit(ev)
+            return
+        nd = 0.0 if identity else naked
+        self.asm.feed(dict(base, label="naked", delta=nd, valid=bool(valid) if not identity else True, cached=bool(identity), trades=trades), row)
+        for hdr, d, v in cells:
+            self.asm.feed(dict(base, label=hdr, delta=d, valid=bool(v), cached=False), row)
+        self.asm.feed(dict(base, label="ROW_DONE", promoted=bool(promoted)), row)
+
+    def finish(self):
+        self.asm.finish()
+
+
+def count_board_ev(counters, cs, ev):
+    e = ev.get("e")
+    if e == "row":
+        n = ev.get("n")
+        counters[f"{cs}:naked_events"] += int(bool(n and n[-1]))
+        counters[f"{cs}:naked_settled_identity_with_cells"] += int(bool(n is not None and not n[-1]))
+        counters[f"{cs}:cell_events"] += len(ev.get("y") or [])
+        counters[f"{cs}:naked_unknown_rows"] += int(bool(ev.get("nu")))
+        counters[f"{cs}:naked_unknown_cells_raw"] += len(ev.get("ya") or [])
+        counters[f"{cs}:promotions"] += int(bool(ev.get("p")))
+    elif e == "id":
+        counters[f"{cs}:identity_rows_settled"] += 1
+
+
+def _board_day_count(counters, cs, t0):
+    counters[f"{cs}:board_day:{t0[:10]}"] += 1
+    fk, lk = f"{cs}:first_board", f"{cs}:last_board"
+    if not counters.get(fk) or t0 < counters[fk]:
+        counters[fk] = t0
+    if not counters.get(lk) or t0 > counters[lk]:
+        counters[lk] = t0
+
+
+def _progress_names(d):
+    out = set()
+    for k in ("run_path", "impossible_path"):
+        if d.get(k):
+            out.add(os.path.basename(str(d[k])))
+    note = str(d.get("best_note") or "")
+    if note.startswith("activated "):
+        out.add(note.split(" ", 1)[1].strip())
+    return sorted(out)
+
+
+def extract_progress(a, emit, counters):
+    """*_v14_progress.json -> one board per npz the done rows carry (done order kept). Board time = the npz last bar (cells
+    are computed on that NPZ, minutes after it: ts_source progress_npz_last_bar), else result_start_utc, else the file mtime.
+    Row: naked = naked_delta, else delta when joint_delta is None, else unknown (cells kept raw, never learned); RUNNING_IDENTITY
+    / is_running rows = identity settlement (naked never evidence; their fresh cells are cells vs a naked of 0, exactly as an
+    identity row of a delta log); settled cells (noop / dup / zero-skipped / sampled-out / inert / prior / coarse / type /
+    excluded / missing) are never evidence. Writes progress_index_<host>.json (every board, used or covered) for the xlsx pass."""
+    cov = load_coverage(a.covered_by, a.covered_by_ctx)
+    for k, v in cov.c.items():
+        counters["coverage_" + k] = v
+    files = sorted({f for g in a.source_from for f in glob.glob(os.path.expanduser(g))})
+    index = []
+    for f in files:
+        counters["files"] += 1
+        try:
+            st = os.stat(f)
+            with open(f, "rb") as fh:
+                d = json.load(fh)
+        except Exception:
+            counters["files_unreadable"] += 1
+            continue
+        if not isinstance(d, dict):
+            counters["files_not_dict"] += 1
+            continue
+        sym = d.get("symside") or os.path.basename(f).replace("_v14_progress.json", "")
+        cs = cat_side_of(sym)
+        done = d.get("done") or {}
+        if cs is None:
+            counters["files_refused_cat_side"] += 1
+            continue
+        if not isinstance(done, dict) or not done:
+            counters[f"{cs}:files_without_done"] += 1
+            continue
+        top_npz = npz_ts_of(d.get("npz_id"))
+        groups = collections.OrderedDict()
+        for key, rec in done.items():
+            if not isinstance(rec, dict):
+                counters["done_not_dict"] += 1
+                continue
+            groups.setdefault(npz_ts_of(rec.get("npz")) or top_npz, []).append((key, rec))
+        rs, rd = iso_of(d.get("result_start_utc")), iso_of(d.get("result_done_utc"))
+        names = _progress_names(d)
+        mt = iso_of(st.st_mtime)
+        for npz, rows in groups.items():
+            if npz is not None:
+                t0, src_ts = iso_of(npz), "progress_npz_last_bar"
+            elif rs:
+                t0, src_ts = rs, "progress_result_start_utc"
+            else:
+                t0, src_ts = mt, "progress_mtime"
+            t1 = rd if (rd and npz == top_npz and rd > t0) else t0
+            ent = {"s": sym, "npz": npz, "t0": t0, "t1": t1, "mtime": mt, "names": names, "file": os.path.abspath(f), "rows": len(rows)}
+            how = cov.covers(sym, npz, epoch_of(t0), epoch_of(t1))
+            if how:
+                counters[f"{cs}:boards_covered_{how}"] += 1
+                counters[f"{cs}:rows_in_covered_boards"] += len(rows)
+                index.append(dict(ent, status="covered_" + how))
+                continue
+            counters[f"{cs}:boards_used"] += 1
+            counters[f"ts_source_{src_ts}"] += 1
+            _board_day_count(counters, cs, t0)
+            index.append(dict(ent, status="used"))
+            extra = {"src": "progress", "ts_source": src_ts, "npz": npz, "cs": cs, "wd": d.get("window_days"), "file": os.path.basename(f),
+                     "set0": d.get("initial_overrides") or None, "sbs": sorted((d.get("sets_by_sha") or {}).keys()) or None,
+                     "bl": _r(_f(d.get("baseline_gain"))), "fin": _r(_f(d.get("final_gain") if d.get("final_gain") is not None else d.get("cumulative_gain")))}
+            def out(ev, _cs=cs):
+                count_board_ev(counters, _cs, ev)
+                emit(ev)
+
+            be = BoardEmitter("progress", sym, t0, out, counters, extra, f"{os.path.basename(f)}#{npz}")
+            be.start(_f(d.get("bh")), d.get("tier"), d.get("defaults_round"))
+            for key, rec in rows:
+                _progress_row(be, key, rec, counters, cs)
+            be.finish()
+    out = Path(a.spill_dir) / f"progress_index_{a.host}.json"
+    out.write_text(json.dumps(index, separators=(",", ":")))
+    counters["progress_index_boards"] = len(index)
+
+
+def _progress_row(be, key, rec, counters, cs):
+    tab, _, rest = str(key).partition("!")
+    rown, _, kc = rest.partition(":")
+    sw, eq, cand = kc.partition("=")
+    if tab not in SHEET_SET or not sw or not eq:
+        counters[f"{cs}:rows_not_main_pass"] += 1
+        return
+    if sw in DENY:
+        counters[f"{cs}:rows_deny"] += 1
+        return
+    identity = bool(rec.get("is_running")) or str(rec.get("reason") or "").startswith("RUNNING_IDENTITY")
+    valid = not bool(rec.get("delta_invalid"))
+    nd = _f(rec.get("naked_delta"))
+    if nd is None and rec.get("joint_delta") is None:
+        nd = _f(rec.get("delta"))
+    settled = set()
+    for k in PROGRESS_SETTLED:
+        v = rec.get(k)
+        if isinstance(v, dict):
+            settled.update(v.keys())
+        elif isinstance(v, (list, tuple, set)):
+            settled.update(str(x) for x in v)
+    yr = rec.get("yellow_reasons") or {}
+    cells = []
+    for hdr, v in (rec.get("yellows") or {}).items():
+        dv = _num(v)
+        if dv is None:
+            counters[f"{cs}:cells_reason_not_numeric"] += 1
+        elif hdr in settled:
+            counters[f"{cs}:cells_settled"] += 1
+        elif not YELLOW_RE.match(str(hdr)):
+            counters[f"{cs}:cells_bad_header"] += 1
+        else:
+            cells.append((str(hdr), dv, hdr not in yr))
+    counters[f"{cs}:rows"] += 1
+    counters[f"{cs}:identity_rows" if identity else (f"{cs}:naked_unknown" if nd is None else f"{cs}:naked_known")] += 1
+    row_no = int(rown) if rown.isdigit() else rown
+    be.row(tab, row_no, sw, cand, _f(rec.get("cumulative_before")), nd, cells, bool(rec.get("promoted")), identity, valid, rec.get("trades"))
+
+
+def _xlsx_meta(path):
+    """manifest next to the workbook (npz_last_bar_ts, cells_vintage, published_utc, metrics.bh) when present."""
+    mp = str(path)[:-5] + "_manifest.json"
+    try:
+        return json.loads(Path(mp).read_text())
+    except Exception:
+        return {}
+
+
+def _xlsx_read(path, counters):
+    """openpyxl read_only values -> (baseline metrics dict, [(tab, [row tuples], header map, yellow cols)])"""
+    import openpyxl
+    wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    try:
+        base = {}
+        for sn in wb.sheetnames:
+            if sn.endswith("_BASELINE_METRICS"):
+                for r in wb[sn].iter_rows(max_row=60, values_only=True):
+                    if r and isinstance(r[0], str) and len(r) > 1:
+                        base[r[0].strip()] = r[1]
+                break
+        tabs = []
+        for sn in SWITCH_SHEETS:
+            if sn not in wb.sheetnames:
+                counters["xlsx_tab_missing"] += 1
+                continue
+            it = wb[sn].iter_rows(values_only=True)
+            next(it, None)
+            hdr = list(next(it, None) or [])
+            h = {}
+            ycols = []
+            for j, v in enumerate(hdr):
+                if not isinstance(v, str):
+                    continue
+                v = v.strip()
+                if v == "WHAT SWITCH":
+                    break
+                h.setdefault(v, j)
+                if YELLOW_RE.match(v):
+                    ycols.append((j, v))
+            if not all(k in h for k in ("Switch", "default", "override", "VECTOR_DELTA")):
+                counters["xlsx_tab_without_headers"] += 1
+                continue
+            tabs.append((sn, list(it), h, ycols))
+        return base, tabs
+    finally:
+        wb.close()
+
+
+def _xlsx_t0(path, man, base, stamp):
+    v = iso_of(man.get("cells_vintage"))
+    if v:
+        return v, "xlsx_cells_vintage"
+    m = ISO_IN_TEXT_RE.search(str(base.get("source") or ""))
+    if m and iso_of(m.group(1)):
+        return iso_of(m.group(1)), "xlsx_baseline_source_ts"
+    if stamp:
+        try:
+            return datetime.strptime(stamp, "%y%m%d%H").replace(tzinfo=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "xlsx_name_stamp"
+        except ValueError:
+            pass
+    return iso_of(os.path.getmtime(path)), "xlsx_mtime"
+
+
+def extract_xlsx(a, emit, counters):
+    """Published board workbooks (13 SWITCH_SHEETS, row-2 headers). Per row with a numeric G: identity = G == 0 with HUSTLE (F)
+    blank (RUNNING_IDENTITY rows get no F) -> settlement; else naked = G when no yellow cell is > 0 (BIBLE §56.0: G is the
+    joint / best positive / naked, so with no positive yellow G IS the naked), else naked UNKNOWN (cells kept raw in `ya`,
+    never learned). Cells equal to the row's naked (|cell - naked| <= 1e-9) are noop / zero-skip fills = settled, never
+    evidence. promoted = C non-empty AND G > 0. Rows with G blank (skipped / invalid) or only F are not used. Coverage: the
+    workbook name is a progress JSON's run_path / activated / impossible name, or (sym_side, manifest npz) matches a progress
+    board or a delta-log ctx, or the board time is within 2 h of a progress board window or progress file mtime or a ctx
+    point of the sym_side -> covered, counted, skipped. Several copies of one board: first by time is used, later ones whose
+    manifest npz repeats are skipped, the rest dedupe by content row keys (in-extract per sym_side and in train)."""
+    cov = load_coverage(a.covered_by, a.covered_by_ctx)
+    for k, v in cov.c.items():
+        counters["coverage_" + k] = v
+    pidx = []
+    for p in (a.progress_index or []):
+        try:
+            pidx.extend(json.loads(Path(os.path.expanduser(p)).read_text()))
+        except Exception:
+            counters["progress_index_unreadable"] += 1
+    pnames = {n for e in pidx for n in (e.get("names") or [])}
+    pcov = Coverage()
+    for e in pidx:
+        pcov.add(e.get("s"), e.get("npz"), e.get("t0"), "progress", e.get("t1"))
+    files = sorted({f for g in a.source_from for f in glob.glob(os.path.expanduser(g)) if f.endswith(".xlsx") and not os.path.basename(f).startswith("~$")})
+    by_sym = collections.defaultdict(list)
+    for f in files:
+        m = XLSX_SS_RE.match(os.path.basename(f))
+        if not m or cat_side_of(m.group("ss")) is None:
+            counters["files_refused_name"] += 1
+            continue
+        by_sym[m.group("ss")].append((f, m.group("stamp")))
+    t_start = time.time()
+    nfile = 0
+    for sym in sorted(by_sym):
+        cs = cat_side_of(sym)
+        seen_npz = set()
+        seen_rk = set()
+        cand_boards = []
+        for f, stamp in by_sym[sym]:
+            man = _xlsx_meta(f)
+            cand_boards.append((iso_of(man.get("cells_vintage")) or iso_of(os.path.getmtime(f)) or "", f, stamp, man))
+        cand_boards.sort()
+        for _k, f, stamp, man in cand_boards:
+            nfile += 1
+            if nfile % 200 == 0:
+                print(f"[xlsx] {nfile:,}/{len(files):,} files {time.time() - t_start:.0f}s", flush=True)
+            counters["files"] += 1
+            bn = os.path.basename(f)
+            if bn in pnames:
+                counters[f"{cs}:boards_covered_progress_name"] += 1
+                continue
+            try:
+                base, tabs = _xlsx_read(f, counters)
+            except Exception as e:
+                counters["files_unreadable"] += 1
+                print(f"[xlsx] unreadable {bn}: {type(e).__name__}: {e}", file=sys.stderr)
+                continue
+            t0, src_ts = _xlsx_t0(f, man, base, stamp)
+            npz = npz_ts_of(man.get("npz_last_bar_ts")) or npz_ts_of((man.get("provenance") or {}).get("npz_window"))
+            ep = epoch_of(t0)
+            mt_ep = os.path.getmtime(f)
+            how = pcov.covers(sym, npz, ep)
+            how = ("progress_" + how) if how else None
+            if not how:
+                h2 = cov.covers(sym, npz, ep)
+                how = ("log_" + h2) if h2 else None
+            if how:
+                counters[f"{cs}:boards_covered_{how}"] += 1
+                continue
+            if npz is not None and npz in seen_npz:
+                counters[f"{cs}:boards_dup_copy_npz"] += 1
+                continue
+            if npz is not None:
+                seen_npz.add(npz)
+            bh = _f(base.get("bh_pct"))
+            if bh is None:
+                bh = _f((man.get("metrics") or {}).get("bh"))
+            extra = {"src": "xlsx", "ts_source": src_ts, "npz": npz, "cs": cs, "wd": 30 if "_30d_" in bn else None, "file": bn,
+                     "bl": _r(_f(base.get("gain_pct"))), "fin": _r(_f((man.get("metrics") or {}).get("gain_pct"))), "mtime": iso_of(mt_ep)}
+            buf = []
+            bc = collections.Counter()
+            be = BoardEmitter("xlsx", sym, t0, buf.append, bc, extra, bn, content_rk=True)
+            be.start(bh, None, None)
+            for sn, rows, h, ycols in tabs:
+                _xlsx_tab(be, sn, rows, h, ycols, bc, cs)
+            be.finish()
+            fresh = [ev for ev in buf if ev.get("e") == "row" and ev["rk"] not in seen_rk]
+            if not fresh:
+                counters[f"{cs}:boards_all_rows_dup_or_empty"] += 1
+                counters[f"{cs}:rows_in_dup_or_empty_boards"] += sum(1 for ev in buf if ev.get("e") in ("row", "id"))
+                continue
+            if len(fresh) < sum(1 for ev in buf if ev.get("e") == "row"):
+                counters[f"{cs}:boards_partly_dup"] += 1
+            counters.update(bc)
+            for ev in buf:
+                if ev.get("e") == "row":
+                    if ev["rk"] in seen_rk:
+                        counters[f"{cs}:rows_dup_copy"] += 1
+                        continue
+                    seen_rk.add(ev["rk"])
+                count_board_ev(counters, cs, ev)
+                emit(ev)
+            counters[f"{cs}:boards_used"] += 1
+            counters[f"ts_source_{src_ts}"] += 1
+            _board_day_count(counters, cs, t0)
+
+
+def _xlsx_tab(be, sn, rows, h, ycols, counters, cs):
+    jA, jB, jC, jG = h["Switch"], h["default"], h["override"], h["VECTOR_DELTA"]
+    jE, jF, jD = h.get("BASELINE"), h.get("HUSTLE_DELTA"), h.get("Family")
+    for i, r in enumerate(rows, start=3):
+        if not r or jA >= len(r) or not isinstance(r[jA], str) or not r[jA].strip():
+            continue
+        sw = r[jA].strip()
+        if jD is not None and jD < len(r) and str(r[jD] or "").strip().upper() == "GENERAL":
+            counters[f"{cs}:xlsx_rows_general"] += 1
+            continue
+        if sw in DENY:
+            counters[f"{cs}:rows_deny"] += 1
+            continue
+        g = _num(r[jG]) if jG < len(r) else None
+        fv = _num(r[jF]) if (jF is not None and jF < len(r)) else None
+        if g is None:
+            counters[f"{cs}:xlsx_rows_f_only" if fv is not None else f"{cs}:xlsx_rows_unevaluated"] += 1
+            continue
+        cand = _cand_str(r[jB] if jB < len(r) else None)
+        cb = _num(r[jE]) if (jE is not None and jE < len(r)) else None
+        promoted = bool(str(r[jC] if jC < len(r) and r[jC] is not None else "").strip()) and g > EPS
+        ys = [(hdr, _num(r[j])) for j, hdr in ycols if j < len(r)]
+        ys = [(hdr, v) for hdr, v in ys if v is not None]
+        identity = abs(g) <= EPS and fv is None
+        pos = any(v > EPS for _h, v in ys)
+        counters[f"{cs}:rows"] += 1
+        if identity:
+            nd = 0.0
+            counters[f"{cs}:identity_rows"] += 1
+        elif not pos:
+            nd = g
+            counters[f"{cs}:naked_known"] += 1
+        else:
+            nd = None
+            counters[f"{cs}:naked_unknown"] += 1
+        cells = []
+        for hdr, v in ys:
+            if nd is not None and abs(v - nd) <= EPS:
+                counters[f"{cs}:cells_settled"] += 1
+            else:
+                cells.append((hdr, v, True))
+        be.row(sn, i, sw, cand, cb, nd, cells, promoted, identity)
+
+
 def cmd_extract(a):
     a.source_from = a.source_from or []
     stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime()) + f"_{os.getpid()}_{int(time.time() * 1e6) % 1000000:06d}"
@@ -838,7 +1371,8 @@ def cmd_extract(a):
     spill = Spill(sp)
     counters = collections.Counter()
     t0 = time.time()
-    fn = {"logs": extract_logs, "rebuilt": extract_rebuilt, "history": extract_history, "ledgers": extract_ledgers, "native": extract_native}[a.source]
+    fn = {"logs": extract_logs, "rebuilt": extract_rebuilt, "history": extract_history, "ledgers": extract_ledgers, "native": extract_native,
+          "progress": extract_progress, "xlsx": extract_xlsx}[a.source]
     fn(a, spill, counters)
     spill.close()
     rep = {"source": a.source, "from": a.source_from, "host": a.host, "spill": str(sp), "at": utc_now(), "secs": round(time.time() - t0, 1),
@@ -2270,7 +2804,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     x = sub.add_parser("extract")
-    x.add_argument("--source", required=True, choices=("logs", "rebuilt", "history", "ledgers", "native"))
+    x.add_argument("--source", required=True, choices=("logs", "rebuilt", "history", "ledgers", "native", "progress", "xlsx"))
     x.add_argument("--from", dest="source_from", action="append")
     x.add_argument("--host", default="mac")
     x.add_argument("--spill-dir", required=True)
@@ -2278,6 +2812,9 @@ def main(argv=None):
     x.add_argument("--sets", help="ledgers: replay_sets.jsonl.gz (sym_side -> replayed set)")
     x.add_argument("--full", action="store_true", help="logs: ignore watermarks and re-read every file")
     x.add_argument("--max-delta-keys", type=int, default=64)
+    x.add_argument("--covered-by", action="append", help="progress/xlsx: glob of delta logs (*.jsonl BOARD_CTX) or brain spills (spill_*.tsv[.gz] board events) whose boards are already absorbed")
+    x.add_argument("--covered-by-ctx", help="progress/xlsx: JSON list of [sym_side, npz_last_bar_ts | ISO board ts] already absorbed")
+    x.add_argument("--progress-index", action="append", help="xlsx: progress_index_<host>.json written by --source progress")
     t = sub.add_parser("train")
     t.add_argument("--spill-dir", action="append", required=True)
     t.add_argument("--tmp-dir")

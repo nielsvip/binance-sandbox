@@ -36,6 +36,26 @@
 # matters, and it is why the research patterns below now also cover the v18_* brain/experience/precision tools.
 set -u
 
+# 2026-10-22 SINGLE FLIGHT (USER live-lane): cron fires every minute but a loaded run outlives the
+# interval (measured 56 overlapping copies, all re-renicing the same processes). The second copy
+# exits immediately; a stale lock (kill -9) is taken over after verifying the recorded pid is gone
+# or is no longer this script. No crontab change needed.
+_SLP_LOCKDIR="/tmp/.s1_live_priority.lock"
+if mkdir "$_SLP_LOCKDIR" 2>/dev/null; then
+  echo $$ > "$_SLP_LOCKDIR/pid"
+  trap 'rm -rf "$_SLP_LOCKDIR"' EXIT TERM INT HUP
+else
+  _slp_old=$(cat "$_SLP_LOCKDIR/pid" 2>/dev/null || echo 0)
+  case "$_slp_old" in ''|*[!0-9]*) _slp_old=0 ;; esac
+  if [ "$_slp_old" -gt 1 ] 2>/dev/null && kill -0 "$_slp_old" 2>/dev/null && ps -p "$_slp_old" -o command= 2>/dev/null | grep -q "s1_live_priority"; then
+    exit 0
+  fi
+  rm -rf "$_SLP_LOCKDIR" 2>/dev/null
+  mkdir "$_SLP_LOCKDIR" 2>/dev/null || exit 0
+  echo $$ > "$_SLP_LOCKDIR/pid"
+  trap 'rm -rf "$_SLP_LOCKDIR"' EXIT TERM INT HUP
+fi
+
 # LIVE = anything that trades, produces the data trading reads, writes positions, keeps the failover lease honest,
 # or contains live risk (day-loss, per-symbol halt, loss streak). These are promoted, never demoted.
 LIVE_RE='ez_indicators\.py|ez_indicators_merger\.py|ez_klines\.py|ez_prices\.py|ez_prices_ws\.py|ez_mark_prices\.py|ez_manage\.py|ez_positions|ez_reentry|ez_share_ind\.py|ez_market_data\.py|ez_orderbook\.py|ez_crosses\.py|ez_copilot\.py|tradier_indicators\.py|tradier_klines\.py|tradier_prices\.py|tradier_manage\.py|tradier_positions\.py|live_failover_s1\.py|mac_failover_agent\.py|never_untraded_guard\.py|v15_day_loss_guard\.py|v15_sym_halt\.py|v15_loss_streak_watch\.py|v15_open_positions_push\.py|v15_warn_daemon\.py|v15_s1_tunnel_keeper\.sh'
