@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-22T10:30:47Z",
+ "generated_utc": "2026-10-22T10:35:52Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 69.7,
+  "age_s": 47.8,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 45502,
-  "proc_age_s": 10951.0,
-  "log_age_s": 2.7,
+  "proc_age_s": 11256.0,
+  "log_age_s": 99.6,
   "warmup_done": true,
   "timeframes_since_restart": [
    "3m",
@@ -47,20 +47,21 @@
   "mode": "ACTIVE",
   "since_epoch": 1792602182.2042153,
   "activations": 163,
-  "hb_mtime": 1792664801.569942,
-  "mac_snapshot_age_s": 19.83479118347168,
+  "hb_mtime": 1792665102.5862346,
+  "mac_snapshot_age_s": 3.322676181793213,
   "mac_stale": false,
-  "lease_holder": "mac",
-  "lease_venues": null,
-  "lease_since": "2026-10-22T10:23:53Z",
-  "lease_reason": "yield: Mac never fenced for 285s \u2014 accounts must never be unattended",
-  "now": 1792664804.844525,
-  "from_cache_age_s": 242.5,
-  "heartbeat_age_s": 3.3,
-  "active_s": 62622.6
+  "lease_holder": "s1",
+  "lease_venues": "crypto",
+  "lease_since": "2026-10-22T10:29:04Z",
+  "lease_reason": "yield stable scoped account(s) back to Mac",
+  "now": 1792665108.8310554,
+  "from_cache_age_s": 244.0,
+  "heartbeat_age_s": 6.2,
+  "active_s": 62926.6,
+  "note": "producers are CORRECT: S1 holds the TRADING lease (venues='crypto', since 2026-10-22T10:29:04Z, reason 'yield stable scoped account(s) back to Mac'), so S1 must produce crypto data. Do NOT stop the producers. The question to chase is the LEASE/failback, not this unit."
  },
  "alerts": [
-  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 62622s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (3s) AND the Mac snapshot is fresh (69s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
+  "S1 HOLDS THE LIVE CRYPTO LEASE WHILE THE MAC LOOKS HEALTHY: lease venues='crypto' since 2026-10-22T10:29:04Z (reason 'yield stable scoped account(s) back to Mac'), Mac heartbeat 6s, Mac snapshot 47s. S1 is therefore running the live engines AND the producers instead of backtests. This is a LEASE/failback question \u2014 do NOT stop the producers (that would leave the trading host blind). Operator decision: hand the lease back to the Mac only after confirming the Mac's pushes and heartbeat are stable."
  ],
  "verdict": "ALERT"
 }
