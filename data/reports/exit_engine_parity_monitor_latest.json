@@ -1,19 +1,19 @@
 {
- "now": "2026-10-22T13:45:20.639778+00:00",
+ "now": "2026-10-22T14:45:23.281598+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 11938,
- "last_exit_ts": "2026-10-22T13:42:58.357218+00:00",
+ "n_exit_rows": 11948,
+ "last_exit_ts": "2026-10-22T14:25:40.408930+00:00",
  "n_leaks": 3670,
  "n_gate_on": 6547,
  "n_ungated": 15,
- "n_safety": 376,
+ "n_safety": 386,
  "n_unmapped": 160,
  "n_unverified": 1084,
- "since": "2026-10-20T13:45:20.639778+00:00",
+ "since": "2026-10-20T14:45:23.281598+00:00",
  "vec_exact_by_action": {
   "CLOSE": 86
  },
- "native_rows": 11852,
+ "native_rows": 11862,
  "unverified_by_family": {
   "REENTRY_OTHER (ABLATION_DISABLE_REENTRY=False)": 57,
   "GAIN_EROSION_STOP (None=None)": 79,
@@ -107,7 +107,7 @@
   "BREAK_EVEN_GUARD": 15
  },
  "safety_by_family": {
-  "FIXED_STOP": 376
+  "FIXED_STOP": 386
  },
  "unmapped": {
   "R3_HTF_FLIP_DAILY": 49,
@@ -135,7 +135,7 @@
  "actions": {
   "OPEN": 3921,
   "QUICK_OPEN": 3758,
-  "CLOSE": 2036,
+  "CLOSE": 2046,
   "QUICK_CLOSE": 26,
   "QUICK_QUICK_CLOSE": 23,
   "STRONG_REDUCE": 585,
