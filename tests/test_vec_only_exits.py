@@ -248,6 +248,72 @@ def test_timing_hold_exempts_vec_orders():
     assert "_parity_vec_order(reason)" in SRC[i_state:i_block]
 
 
+def test_force_side_gates_exempt_vec_orders():
+    """USER 2026-10-22 parity restores: measured breach gates (STALE_SET 21,
+    CHURN 53, LEFTOVER 24, DOUBLE_OPEN 19, UAGAIN) never refuse a vec-dictated
+    order — each site is wired to the vec predicate. Native keeps every gate."""
+    for marker, block in (
+        ("STALE-SET 2-LOSS HALT", "BLOCKED_STALE_SET_HALT"),
+        (
+            '_live_eb_reason == "EMERGENCY_BRAKE_10_PER_MIN_CHURN"',
+            "BLOCKED_EMERGENCY_BRAKE_10_PER_MIN_CHURN",
+        ),
+        ("open_on_leftover ", "BLOCKED_OPEN_ON_LEFTOVER_GAIN_GATE"),
+        ("position is already alive for this key", "BLOCKED_NO_DOUBLE_OPEN_"),
+        ("[UAGAIN_BLOCK]", "BLOCKED_UAGAIN_gain_since_last_add="),
+    ):
+        i_gate = SRC.index(marker)
+        i_block = SRC.index(block, i_gate)
+        seg = SRC[i_gate:i_block]
+        assert "_parity_vec_order(reason)" in seg or "_vd_exempt" in seg, marker
+
+
+def test_tr_parity_vec_order_matches_ez():
+    """Stocks twin of _parity_vec_order: board intent, reconcile, VEC_EXACT,
+    owed exits pass; native reasons don't."""
+    import tradier_manage as tm
+
+    assert tm._tr_parity_vec_order("VEC_DRIVEN_OPEN_PURE_BOARD_X") is True
+    assert tm._tr_parity_vec_order("BOARD_CONVERGE_CLOSE vec=leg") is True
+    assert tm._tr_parity_vec_order("twin act |VEC_EXACT live") is True
+    assert tm._tr_parity_vec_order("QUICK_BB_RECOVERY_EXIT_X") is False
+    assert tm._tr_parity_vec_order("") is False
+    import ez_manage as em
+
+    for r in (
+        "VEC_DRIVEN_OPEN_PURE_BOARD_X",
+        "BOARD_CONVERGE_CLOSE vec=leg",
+        "twin act |VEC_EXACT live",
+        "QUICK_BB_RECOVERY_EXIT_X",
+        "",
+    ):
+        assert tm._tr_parity_vec_order(r) == em._parity_vec_order(r), r
+
+
+def test_tradier_force_side_gates_exempt_vec_orders():
+    """Tradier SYM_HALT / VIGILANCE / STALE_SET / churn halts never refuse a
+    vec-dictated order (same law as crypto)."""
+    import pathlib
+
+    TR = pathlib.Path("tradier_manage.py").read_text()
+    assert "_tr_parity_vec_order" in TR
+    for marker, block in (
+        ("sym_halt_active(account_key", '"BLOCKED_SYM_HALT"'),
+        ("VIGILANCE_RECOVERED_ENTRY_ALLOWED", '"BLOCKED_VIGILANCE"'),
+        ("STALE-SET 2-LOSS HALT", '"BLOCKED_STALE_SET_HALT"'),
+    ):
+        i_gate = TR.index(marker)
+        i_block = TR.index(block, i_gate)
+        assert "_tr_parity_vec_order(reason)" in TR[i_gate:i_block], marker
+    # Churn halts: the condition itself names the vec predicate (hoisted above
+    # the three returns), plus an explicit exempt log arm.
+    assert (
+        "if _live_eb_blocked and not _vx_ex and not _xg_full and not _tr_vec_eb:"
+        in TR
+    )
+    assert "[CHURN_PARITY_EXEMPT]" in TR
+
+
 def test_vec_decided_entries_pass_enforce():
     from live_twins import vector_enforce as V
 

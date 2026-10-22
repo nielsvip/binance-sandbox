@@ -49004,10 +49004,13 @@ class TradierTradeManager:
                 from tools.v15_sym_halt import sym_halt_active as _sym_halt_active
                 _sh_hit, _sh_why = _sym_halt_active(account_key, f"{symbol}_{position_side}")
                 if _sh_hit:
-                    logger.critical(
-                        f"🛑 [SYM_HALT] {position_key}: {account_key} {_sh_why} — {action} refused, exits untouched"
-                    )
-                    return "BLOCKED_SYM_HALT"
+                    if _tr_parity_vec_order(reason):
+                        logger.warning(f"[SYM_HALT_PARITY_EXEMPT] {position_key}: {_sh_why} — vec-dictated {action} proceeds (USER 2026-10-22; native stays halted)")
+                    else:
+                        logger.critical(
+                            f"🛑 [SYM_HALT] {position_key}: {account_key} {_sh_why} — {action} refused, exits untouched"
+                        )
+                        return "BLOCKED_SYM_HALT"
         except Exception as _sh_e:
             logger.debug(f"[SYM_HALT] {position_key}: check skipped, fail-open ({_sh_e})")
         # PARITY LOOP STOCKS 2026-10-06: VEC_EXACT order (PARITY_VEC_EXACT_MODE) = the vec decision -> decision gates below are skipped ("NO GATES"; NOLOSS has only exceptions).
@@ -49262,12 +49265,15 @@ class TradierTradeManager:
                                 f"✅ [VIGILANCE_RECOVERED_ENTRY_ALLOWED] {position_key}: {_vg_rec_why} — {action} proceeds"
                             )
                         else:
-                            logger.critical(
-                                f"🚨 [VIGILANCE_ENTRY_BLOCK] {position_key}: {_vg_why} — awaiting recovery (bounce or price>exit). action={action} reason={(reason or '')[:60]}"
-                            )
-                            if lock_acquired and self.redis_manager:
-                                await self.redis_manager.delete(exec_lock_key)
-                            return "BLOCKED_VIGILANCE"
+                            if _tr_parity_vec_order(reason):
+                                logger.warning(f"[VIGILANCE_PARITY_EXEMPT] {position_key}: {_vg_why} — vec-dictated {action} proceeds (USER 2026-10-22)")
+                            else:
+                                logger.critical(
+                                    f"🚨 [VIGILANCE_ENTRY_BLOCK] {position_key}: {_vg_why} — awaiting recovery (bounce or price>exit). action={action} reason={(reason or '')[:60]}"
+                                )
+                                if lock_acquired and self.redis_manager:
+                                    await self.redis_manager.delete(exec_lock_key)
+                                return "BLOCKED_VIGILANCE"
             except Exception as _vg_e2:
                 logger.warning(f"[VIGILANCE] entry check err (fail-open): {_vg_e2}")
             # ═══ STALE-SET 2-LOSS HALT (USER 2026-10-14, BIBLE §102): vector > STALE_SET_HALT_DAYS old AND last
@@ -49277,10 +49283,13 @@ class TradierTradeManager:
                 if (not _is_exit_or_reduce) and (not is_reduce) and (action or "").upper() != "HEDGE_CLOSE":
                     _ssh_blk, _ssh_why = _stale_set_halt.entry_gate("tradier", symbol, position_side, action, cfg=config, logger=logger, is_entry=True)
                     if _ssh_blk:
-                        logger.critical(f"🛑 [STALE_SET_HALT_ENTRY_BLOCK] {position_key}: {_ssh_why} — action={action} reason={(reason or '')[:60]}")
-                        if lock_acquired and self.redis_manager:
-                            await self.redis_manager.delete(exec_lock_key)
-                        return "BLOCKED_STALE_SET_HALT"
+                        if _tr_parity_vec_order(reason):
+                            logger.warning(f"[STALE_SET_PARITY_EXEMPT] {position_key}: {_ssh_why} — vec-dictated {action} proceeds (USER 2026-10-22; native stays halted)")
+                        else:
+                            logger.critical(f"🛑 [STALE_SET_HALT_ENTRY_BLOCK] {position_key}: {_ssh_why} — action={action} reason={(reason or '')[:60]}")
+                            if lock_acquired and self.redis_manager:
+                                await self.redis_manager.delete(exec_lock_key)
+                            return "BLOCKED_STALE_SET_HALT"
             except Exception as _ssh_e2:
                 logger.warning(f"[STALE_SET_HALT] entry check err (fail-open): {_ssh_e2}")
             # ═══ 15-MINUTE NEWBORN PROTECTION — STOCKS twin of ez_manage execute_now (USER 2026-10-17 "newborn protection; should exist in
@@ -50708,7 +50717,11 @@ class TradierTradeManager:
                     logger.warning(
                         f"[LIVE_VEC_EMERGENCY_BRAKE_SHADOW_ERR] {type(_eb_sh_err).__name__}: {_eb_sh_err}"
                     )
-                if _live_eb_blocked and not _vx_ex and not _xg_full:  # 2026-10-14 EXIT GUARANTEE: FULL close never braked
+                # USER 2026-10-22 parity restore: vec-dictated bursts are the
+                # vector's will (bounded upstream) — counted + logged, never
+                # refused. Native keeps all three halts. FULL closes already exempt.
+                _tr_vec_eb = _tr_parity_vec_order(reason)
+                if _live_eb_blocked and not _vx_ex and not _xg_full and not _tr_vec_eb:  # 2026-10-14 EXIT GUARANTEE: FULL close never braked
                     if _live_eb_reason == "EMERGENCY_BRAKE_MAX_ENTRIES":
                         logger.critical(
                             f"🛑 [EMERGENCY_BRAKE] {_acct}: {_cache['entries']} entries/hr — HALTED. Max 500. Glitch detected."
@@ -50731,6 +50744,8 @@ class TradierTradeManager:
                         if lock_acquired and self.redis_manager:
                             await self.redis_manager.delete(exec_lock_key)
                         return "BLOCKED_EMERGENCY_BRAKE_SYMBOL_CHURN"
+                elif _live_eb_blocked and (_vx_ex or _tr_vec_eb) and not _xg_full:
+                    logger.warning(f"[CHURN_PARITY_EXEMPT] {_acct}: {_live_eb_reason} on vec-dictated {action} — counted, proceeds (USER 2026-10-22)")
             except Exception as _eb_err:
                 logger.debug(f"[EMERGENCY_BRAKE] Error: {_eb_err}")
             _live_q_blocked = False

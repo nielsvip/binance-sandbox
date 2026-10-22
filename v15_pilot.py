@@ -8944,8 +8944,16 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 items, _v20_ref_skipped = _V20.must_skip_refused(items, ledger, start_sha)
                 _v20_alt = [a for a in _V20.losing_switch_alternatives(cumulative_overrides, _v20_losing, _v20_tpl_cands, new_symside) if a not in tried and a not in items and not ((ledger.get(a) or {}).get("start_sha") == start_sha)]
                 _v20_alt_n = len(_v20_alt)
-                items = _V20.rank_must(list(items) + _v20_alt, _v20_pa_raw, new_symside, _v20_clusters or None, _mo if isinstance(_mo, dict) else None)
-                why = f"{why}; v20 refused_skipped={_v20_ref_skipped} alternatives={_v20_alt_n} order=cluster+interval_lb clusters={len(_v20_clusters)}"
+                items = list(items) + _v20_alt  # alternatives appended in the V18 (linknet) order; V20 ranking below only when a cap applies
+                if _v20_budget > 0 or _V18_CATCHUP:
+                    # gate 175931Z FAIL forensics (22_V20_GATE_FAIL_FORENSICS): in FULL mode every MUST item is evaluated, so the order only
+                    # breaks exact gain ties in the greedy (73 pairs tied at +11.7079 on COIN_SHORT; a different tie-break sent the chain
+                    # -4.1 pp) -> full mode keeps the champion's V18 order byte-for-byte; the interval/cluster ranking decides WHAT a CAPPED
+                    # (budget / catch-up) board evaluates first, which is the only place ranking changes the evaluated set
+                    items = _V20.rank_must(items, _v20_pa_raw, new_symside, _v20_clusters or None, _mo if isinstance(_mo, dict) else None)
+                    why = f"{why}; v20 refused_skipped={_v20_ref_skipped} alternatives={_v20_alt_n} order=cluster+interval_lb (capped) clusters={len(_v20_clusters)}"
+                else:
+                    why = f"{why}; v20 refused_skipped={_v20_ref_skipped} alternatives={_v20_alt_n} order=v18 (full mode: ranking only breaks ties)"
             except Exception as _v20me:
                 print(f"[V20-MUST-WARN] {_v20me} — V18 order kept", flush=True)
         _must_carried = 0

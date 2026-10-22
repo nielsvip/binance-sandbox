@@ -13442,8 +13442,16 @@ def compute_exit_signals(npz, n, is_long, cfg, entry_sig=None):
         pass  # handled in simulate() via PROFIT_TARGET_PCT
 
     # --- MTF_GR_EXIT (2026-08-18) — side-aware TOP/BREAKDOWN mirror ---
+    # USER 2026-10-22 parity restore: faithful to the live MTF_GR_WT_EXIT lane
+    # (tradier 18055 / ez 54570): GR count over 1h+4h+D+W with nonzero guards,
+    # WT cross on the MTF_WT_CROSS_EXIT_TF param (default 15m), dual-gated by
+    # MTF_GR_EXIT_GATE_ENABLED + MTF_WT_CROSS_EXIT_ENABLED. The live
+    # structural veto (wt_dc_delta.structural_exit_permitted) stays live-only:
+    # it only ever SUPPRESSES, so every live-fired act is vector-booked.
     mtf_gr_exit = np.zeros(n, dtype=bool)
-    if getattr(cfg, "MTF_GR_EXIT_GATE_ENABLED", False):
+    if bool(getattr(cfg, "MTF_GR_EXIT_GATE_ENABLED", False)) and bool(
+        getattr(cfg, "MTF_WT_CROSS_EXIT_ENABLED", True)
+    ):
         gr_min_tfs = int(float(getattr(cfg, "MTF_GR_EXIT_MIN_TFS", 3)))
         wt1_1h_arr2 = _safe(npz, "wt1_1h", n)
         wt2_1h_arr2 = _safe(npz, "wt2_1h", n)
@@ -13451,26 +13459,37 @@ def compute_exit_signals(npz, n, is_long, cfg, entry_sig=None):
         wt2_4h_arr2 = _safe(npz, "wt2_4h", n)
         wt1_D_arr2 = _safe(npz, "wt1_D", n)
         wt2_D_arr2 = _safe(npz, "wt2_D", n)
-        if is_long:
-            gr_cnt2 = (
-                (wt1_1h_arr2 < wt2_1h_arr2).astype(int)
-                + (wt1_4h_arr2 < wt2_4h_arr2).astype(int)
-                + (wt1_D_arr2 < wt2_D_arr2).astype(int)
-            )
-        else:
-            gr_cnt2 = (
-                (wt1_1h_arr2 > wt2_1h_arr2).astype(int)
-                + (wt1_4h_arr2 > wt2_4h_arr2).astype(int)
-                + (wt1_D_arr2 > wt2_D_arr2).astype(int)
-            )
-        wt1_5m_arr2 = _safe(npz, "wt1_5m", n)
-        wt2_5m_arr2 = _safe(npz, "wt2_5m", n)
-        if wt1_5m_arr2.sum() == 0:
-            wt1_5m_arr2 = wt1_3m
-            wt2_5m_arr2 = wt2_3m
-        wt_ltf_against2 = (
-            (wt1_5m_arr2 < wt2_5m_arr2) if is_long else (wt1_5m_arr2 > wt2_5m_arr2)
+        wt1_W_arr2 = _safe(npz, "wt1_W", n)
+        wt2_W_arr2 = _safe(npz, "wt2_W", n)
+
+        def _mtf_against(a1, a2):
+            nz = (a1 != 0) & (a2 != 0)
+            return (nz & ((a1 < a2) if is_long else (a1 > a2))).astype(int)
+
+        gr_cnt2 = (
+            _mtf_against(wt1_1h_arr2, wt2_1h_arr2)
+            + _mtf_against(wt1_4h_arr2, wt2_4h_arr2)
+            + _mtf_against(wt1_D_arr2, wt2_D_arr2)
+            + _mtf_against(wt1_W_arr2, wt2_W_arr2)
         )
+        _mtf_tf = str(getattr(cfg, "MTF_WT_CROSS_EXIT_TF", "15m") or "15m")
+        _mtf_pair = {
+            "5m": ("wt1_5m", "wt2_5m"),
+            "15m": ("wt1_15m", "wt2_15m"),
+            "1h": ("wt1_1h", "wt2_1h"),
+            "4h": ("wt1_4h", "wt2_4h"),
+            "3m": ("wt1", "wt2"),
+        }.get(_mtf_tf)
+        if _mtf_pair is None:
+            wt_ltf_against2 = np.zeros(n, dtype=bool)
+        else:
+            _c1 = _safe(npz, _mtf_pair[0], n)
+            _c2 = _safe(npz, _mtf_pair[1], n)
+            if _c1.sum() == 0 and _c2.sum() == 0 and _mtf_tf == "5m":
+                _c1, _c2 = wt1_3m, wt2_3m
+            wt_ltf_against2 = (
+                (_c1 < _c2) if is_long else (_c1 > _c2)
+            )
         mtf_gr_exit = (gr_cnt2 >= gr_min_tfs) & wt_ltf_against2
 
     # --- GR_HTF_DIRECT_EXIT — W2-GR5M STAGED faithful twin (ONE call site) ---
