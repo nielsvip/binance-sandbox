@@ -1,53 +1,61 @@
 {
- "at": "2026-10-22T13:11:22Z",
+ "at": "2026-10-22T14:11:08Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
   "s1": {
-   "improved": 1,
-   "improved_per_hour": 1.0,
-   "published_n": 1,
+   "improved": 2,
+   "improved_per_hour": 2.0,
+   "published_n": 2,
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "BTCDOMUSDT_LONG"
+    "BTCDOMUSDT_SHORT"
    ],
-   "mem_avail_mb": 17789,
-   "load1": 33.79,
+   "mem_avail_mb": 18429,
+   "load1": 41.77,
    "nproc": 16,
    "slots": "1/8",
-   "binding_reason": "scheduler mem guard (disk 25005 MB, mem 10292 MB, est_pair 8638 MB) \u2014 slots 1/8",
+   "binding_reason": "scheduler mem guard (disk 24822 MB, mem 18427 MB, est_pair 9154 MB) \u2014 slots 1/8",
    "error": null,
    "published": [
     {
-     "symside": "BTCDOMUSDT_LONG",
-     "at": "2026-10-22T13:10:44Z",
-     "baseline": 9.294994967376697,
-     "final": 16.91239891348289,
+     "symside": "STXUSDT_LONG",
+     "at": "2026-10-22T14:05:36Z",
+     "baseline": 1.4749051560397035,
+     "final": 79.09109069839164,
+     "state": "improved"
+    },
+    {
+     "symside": "STXUSDT_SHORT",
+     "at": "2026-10-22T14:04:21Z",
+     "baseline": 28.49356733766988,
+     "final": 37.74377146506227,
      "state": "improved"
     }
    ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 0.1,
-   "last_improved_symside": "BTCDOMUSDT_LONG",
-   "cadence_ok": true,
+   "minutes_since_last_improved": 5.1,
+   "last_improved_symside": "STXUSDT_LONG",
+   "cadence_ok": false,
    "improved_gap_min_median_24h": 15.4,
    "improved_gap_min_max_24h": 124.4,
-   "improved_finishes_24h": 18,
-   "board_cpu_s_median_24h": 2467.8,
-   "board_wall_s_median_24h": 1788.2114691734314,
-   "board_cores": 0.0,
-   "nonboard_cores_competing": 8.54,
-   "nonboard_cores_niced": 7.03,
+   "improved_finishes_24h": 20,
+   "board_cpu_s_median_24h": 2587.2,
+   "board_wall_s_median_24h": 1807.6528050899506,
+   "board_cores": 5.52,
+   "nonboard_cores_competing": 6.84,
+   "nonboard_cores_niced": 3.22,
    "cores_by_bucket": {
-    "other": 6.54,
-    "live_helpers": 1.14,
-    "klines_append": 0.86
+    "other": 2.94,
+    "live_helpers": 3.49,
+    "klines_append": 0.41,
+    "boards": 5.52
    },
    "cores_by_bucket_niced": {
-    "other": 4.28,
-    "klines_vault": 0.81,
-    "npz_precompute": 1.94
+    "klines_vault": 0.4,
+    "npz_precompute": 0.72,
+    "other": 2.1
    }
   },
   "s2": {
@@ -57,57 +65,58 @@
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "DOTUSDT_SHORT",
-    "MANAUSDT_LONG"
+    "KAVAUSDT_LONG",
+    "RLCUSDT_LONG",
+    "WUSDT_SHORT"
    ],
-   "mem_avail_mb": 13891,
-   "load1": 23.49,
+   "mem_avail_mb": 15347,
+   "load1": 26.16,
    "nproc": 16,
-   "slots": "2/8",
-   "binding_reason": "scheduler mem guard (disk 20444 MB, mem 16248 MB, est_pair 9302 MB) \u2014 slots 2/8",
+   "slots": "3/8",
+   "binding_reason": "scheduler mem guard (disk 19871 MB, mem 15715 MB, est_pair 9796 MB) \u2014 slots 3/8",
    "error": null,
    "published": [
     {
-     "symside": "ARKMUSDT_LONG",
-     "at": "2026-10-22T13:06:48Z",
-     "baseline": -1.8471488773528302,
-     "final": 44.798831907917005,
+     "symside": "DOTUSDT_SHORT",
+     "at": "2026-10-22T13:58:51Z",
+     "baseline": 9.809251502782827,
+     "final": 63.64082005559602,
      "state": "improved"
     },
     {
-     "symside": "COMPUSDT_LONG",
-     "at": "2026-10-22T12:31:57Z",
-     "baseline": 57.26249245841083,
-     "final": 60.57516336425659,
+     "symside": "MANAUSDT_LONG",
+     "at": "2026-10-22T13:54:22Z",
+     "baseline": 14.699322325164907,
+     "final": 83.93315233723571,
      "state": "improved"
     },
     {
-     "symside": "NEARUSDC_LONG",
-     "at": "2026-10-22T12:45:22Z",
-     "baseline": 65.23100059266497,
-     "final": 115.0064349226761,
+     "symside": "MANAUSDT_SHORT",
+     "at": "2026-10-22T13:44:26Z",
+     "baseline": 7.5368384429471105,
+     "final": 45.802558514275844,
      "state": "improved"
     }
    ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 4.3,
-   "last_improved_symside": "ARKMUSDT_LONG",
-   "cadence_ok": true,
+   "minutes_since_last_improved": 12.0,
+   "last_improved_symside": "DOTUSDT_SHORT",
+   "cadence_ok": false,
    "improved_gap_min_median_24h": 5.8,
    "improved_gap_min_max_24h": 149.9,
-   "improved_finishes_24h": 129,
-   "board_cpu_s_median_24h": 2116.2,
-   "board_wall_s_median_24h": 1129.280876159668,
-   "board_cores": 8.93,
-   "nonboard_cores_competing": 2.93,
-   "nonboard_cores_niced": 3.95,
+   "improved_finishes_24h": 125,
+   "board_cpu_s_median_24h": 2299.5,
+   "board_wall_s_median_24h": 1166.703854084015,
+   "board_cores": 9.77,
+   "nonboard_cores_competing": 1.67,
+   "nonboard_cores_niced": 3.98,
    "cores_by_bucket": {
-    "boards": 8.93,
-    "other": 0.02,
-    "live_helpers": 2.91
+    "boards": 9.77,
+    "other": 0.04,
+    "live_helpers": 1.63
    },
    "cores_by_bucket_niced": {
-    "other": 3.95
+    "other": 3.98
    }
   }
  },
@@ -115,5 +124,8 @@
   "s1",
   "s2"
  ],
- "cadence_breach": []
+ "cadence_breach": [
+  "s1",
+  "s2"
+ ]
 }
