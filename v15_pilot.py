@@ -4578,6 +4578,75 @@ def scan_template_cands(template_path, defaults: dict, cat_side: str, zero_on: b
     return cands, stats
 
 
+# ─── AUGMENT/REDUCE GAIN ADJUSTMENT (USER 2026-10-22: "the gain calculations ... are making many errors in the
+# augment/reduce gain adjustments") ─────────────────────────────────────────────────────────────────────────────
+# gain% = net $ / PEAK COST BASIS (§51 peak-concurrent). A row that changes position SIZE moves the denominator,
+# so its gain delta is not a pure measure of the change: an AUGMENT raises the basis and an REDUCE lowers it.
+# MEASURED 2026-10-22 on frozen Mac NPZs (30d, diagnostic V12_ALLOW_STALE_NPZ, tools/augment_reduce_denom_probe.py):
+#   UNIUSDC_LONG  AUGMENT_AT_LOSS_ENABLED=True        gain -15.697 -> -14.425 (+1.272)  net $ -56.51 -> -65.39 (-8.88)   basis $360 -> $453
+#   ALGOUSDT_LONG AUGMENT_INTO_REENTRY_ENABLED=True   gain  -5.023 ->  -2.961 (+2.062)  net $ -18.08 -> -23.10 (-5.02)   basis $360 -> $780
+#   XLMUSDT_LONG  AUGMENT_AT_LOSS_ENABLED=True        gain -10.097 ->  -8.759 (+1.338)  net $ -36.35 -> -39.65 (-3.30)   basis $360 -> $453
+# Each would have been PROMOTED by the greedy rule (G > 0) while losing real money, and the same arithmetic run
+# the other way makes every basis-shrinking REDUCE look like an improvement it did not earn — which is why boards
+# scale out of a rally and never scale into one. The guard below refuses a promotion whose gain delta is an
+# artefact of its own denominator. It never changes a reported delta: G/F/E keep the real gain numbers (§14, §19).
+_CHAIN_BASES: dict = {}
+_DENOM_EPS_USD = 1e-9
+
+
+def _chain_money(res):
+    """(net $, peak cost basis) of an eval, or None when the result carries neither."""
+    if not isinstance(res, dict):
+        return None
+    net = res.get("net_gain_dollars")
+    if net is None:
+        net = res.get("gain_dollars")
+    peak = res.get("max_invested_dollars")
+    if not peak:
+        peak = res.get("peak_capital")
+    try:
+        net, peak = float(net), float(peak)
+    except (TypeError, ValueError):
+        return None
+    return (net, peak) if peak > 0 else None
+
+
+def remember_chain_base(res) -> None:
+    """Record an eval's money so a later delta against ITS gain can be checked for a denominator artefact.
+    Keyed by the gain itself — the chain carries only the number, never the result dict."""
+    money = _chain_money(res)
+    if money is None or res.get("gain_pct") is None:
+        return
+    _CHAIN_BASES[round(float(res["gain_pct"]), 9)] = money
+    if len(_CHAIN_BASES) > 20000:
+        for k in list(_CHAIN_BASES)[:10000]:
+            _CHAIN_BASES.pop(k, None)
+
+
+def denom_artefact(res, cum_before: float):
+    """'' when the gain delta is honest, else why it is a denominator artefact.
+
+    Fail-open by construction: the guard engages ONLY when the remembered base reproduces `cum_before` from its
+    OWN net/peak (so a gain collision between two different sets can never arm it) and the candidate's basis
+    actually moved. A row that neither augments nor reduces has an identical basis and is never touched."""
+    base = _CHAIN_BASES.get(round(float(cum_before), 9))
+    cand = _chain_money(res)
+    if base is None or cand is None:
+        return ""
+    base_net, base_peak = base
+    cand_net, cand_peak = cand
+    # Reproduce cum_before from the base's OWN money, in dollars: the engine rounds net $ to the cent, so a
+    # percentage-space comparison would reject every honest base (-56.51/360 = -15.69722 vs gain -15.69701).
+    if abs(base_net - float(cum_before) / 100.0 * base_peak) > max(0.02, 1e-6 * base_peak):
+        return ""  # the remembered base is not this baseline — say nothing
+    if abs(cand_peak - base_peak) <= _DENOM_EPS_USD:
+        return ""  # same capital base: the delta is a pure strategy delta
+    if cand_net - base_net > -_DENOM_EPS_USD:
+        return ""  # the dollars moved the same way as the percentage
+    return (f"DENOM_ARTEFACT gain {float(res['gain_pct']) - float(cum_before):+.4f}pp on basis "
+            f"${base_peak:,.0f}->${cand_peak:,.0f} while net ${cand_net - base_net:+,.2f}")
+
+
 def delta_vs_result(res, cum_before: float):
     """Module-level twin of the fill loop's _delta_vs (pure — extracted 2026-10-03 for testing).
     (delta, promotable, reason): real gain delta always reported; engine-invalid results keep
@@ -4588,8 +4657,13 @@ def delta_vs_result(res, cum_before: float):
         return None, False, "ZERO_TRADES"
     d = float(res.get("gain_pct")) - cum_before
     d = 0.0 if abs(d) < 1e-9 else d
+    remember_chain_base(res)
     if not res.get("valid"):
         return d, False, str(res.get("invalid_reason") or "invalid")[:40]
+    if d > 0:
+        why = denom_artefact(res, cum_before)
+        if why:
+            return d, False, why[:120]
     return d, True, ""
 
 
@@ -6801,7 +6875,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             finally:
                 ex.shutdown(wait=False)
         g = (res or {}).get("gain_pct")
-        _delta_log({**(_v18_logfields(sname, rr, label) if _v18_logx[0] else {}), "ts": utcnow(), "sym_side": new_symside, "nav": "sequential", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "label": label, "fn": "tools.opt.v12_pilot.evaluate_prepared_sanitized", "window_days": args.window_days, "gain_pct": g, "trades": (res or {}).get("trades"), "fp": ((res or {}).get("behavior_fingerprint") or "")[:16], "tim": (res or {}).get("tim_pct"), "max_dd_pct": (res or {}).get("max_dd_pct"), "pool_sharpe": (res or {}).get("pool_sharpe"), "wr_pct": (res or {}).get("wr_pct"), "valid": (res or {}).get("valid"), "invalid_reason": (res or {}).get("invalid_reason"), "cum_before": cum_before, "delta": (float(g) - cum_before) if g is not None else None, "secs": round(_t.time() - t0, 4), "cached": cached, "err": err})  # BRAIN 2026-10-14: dd/sharpe/wr logged (already in the result, zero extra compute) so the graph learns every metric
+        _delta_log({**(_v18_logfields(sname, rr, label) if _v18_logx[0] else {}), "ts": utcnow(), "sym_side": new_symside, "nav": "sequential", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "label": label, "fn": "tools.opt.v12_pilot.evaluate_prepared_sanitized", "window_days": args.window_days, "gain_pct": g, "trades": (res or {}).get("trades"), "fp": ((res or {}).get("behavior_fingerprint") or "")[:16], "tim": (res or {}).get("tim_pct"), "max_dd_pct": (res or {}).get("max_dd_pct"), "pool_sharpe": (res or {}).get("pool_sharpe"), "wr_pct": (res or {}).get("wr_pct"), "valid": (res or {}).get("valid"), "invalid_reason": (res or {}).get("invalid_reason"), "cum_before": cum_before, "delta": (float(g) - cum_before) if g is not None else None, "net_dollars": (res or {}).get("net_gain_dollars", (res or {}).get("gain_dollars")), "peak_capital": (res or {}).get("max_invested_dollars"), "denom_artefact": denom_artefact(res, cum_before) or None, "secs": round(_t.time() - t0, 4), "cached": cached, "err": err})  # BRAIN 2026-10-14: dd/sharpe/wr logged (already in the result, zero extra compute) so the graph learns every metric. USER 2026-10-22: net $ + peak basis logged beside gain% so an augment/reduce row's delta can be audited against the dollars that produced it
         if res is not None and not err:
             _V18_ACTIVITY["evals"] = _V18_ACTIVITY.get("evals", 0) + 1
         if res is not None and not err and not cached:
@@ -6847,6 +6921,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 progress["e3_default_base"] = {"switch": _sw0, "override_value": cumulative_overrides.get(_sw0), "gain_with_override": float(cumulative_gain), "gain_default": float(_res0["gain_pct"])}
                 cumulative_overrides = dict(_base0)
                 cumulative_gain = float(_res0["gain_pct"])
+                remember_chain_base(_res0)
                 initial_baseline = cumulative_gain
                 initial_overrides = dict(_base0)
                 progress["initial_baseline_gain"] = cumulative_gain
@@ -6974,6 +7049,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 continue
             cumulative_overrides = dict(ov)
             cumulative_gain = float((res or {}).get("gain_pct"))
+            remember_chain_base(res)
             e_next = cumulative_gain
             _spec_state["ver"] += 1
             progress["cumulative_overrides"] = dict(cumulative_overrides)
@@ -7095,6 +7171,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 cb = float(cumulative_gain)
                 cumulative_overrides = sanitize_overrides(dict(ov), defaults)[0]
                 cumulative_gain = float((res or {}).get("gain_pct"))
+                remember_chain_base(res)
                 e_next = cumulative_gain
                 _spec_state["ver"] += 1
                 progress["cumulative_overrides"] = dict(cumulative_overrides)
@@ -7449,6 +7526,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         cb = float(cumulative_gain)
         cumulative_overrides = sanitize_overrides(dict(it["ov"]), defaults)[0]
         cumulative_gain = float((res or {}).get("gain_pct"))
+        remember_chain_base(res)
         e_next = cumulative_gain
         _spec_state["ver"] += 1
         progress["cumulative_overrides"] = dict(cumulative_overrides)
@@ -12990,6 +13068,8 @@ def _main_single():
             print(f"[baseline] live invalid — using vec for E2 ({baseline_live.get('invalid_reason')})", flush=True)
             baseline_live = baseline_vec
     baseline_gain = float(baseline_live.get("gain_pct") or baseline_vec.get("gain_pct") or 0.0)
+    remember_chain_base(baseline_vec)
+    remember_chain_base(baseline_live)
     bh = float(baseline_live.get("bh_pct") or baseline_vec.get("bh_pct") or 0.0)
     baseline_trades = int(baseline_live.get("trades") or baseline_vec.get("trades") or 0)
     # 10-trade floor per sym_side (user 2026-09-28: 30 is too extreme for a bad month) (the "100" in the mandate is a symbol count, not trades). Below floor the XLS is
@@ -13936,7 +14016,9 @@ def _main_single():
     # CRITICAL BUG #1: Calculate baseline with PREVIOUS BEST OVERRIDES before spec_fill
     # Without this, baseline is wrong and ALL deltas are calculated against wrong baseline
     try:
-        baseline_gain = float(evaluate_prepared_sanitized(prepared, cumulative_overrides, args.window_days).get("gain_pct", baseline_gain))
+        _base_recalc = evaluate_prepared_sanitized(prepared, cumulative_overrides, args.window_days)
+        baseline_gain = float(_base_recalc.get("gain_pct", baseline_gain))
+        remember_chain_base(_base_recalc)
         print(f"[BASELINE-RECALC] {new_symside} with cumulative_overrides: {baseline_gain:.4f}% (was cum {cumulative_gain:.4f})", flush=True)
         # Deltas are measured vs the REAL gain of the current override set. The max(..., 0, hustler_best) above
         # clamped negative baselines to 0.0, so every row delta was gain-0 (always NEG, never promoted).

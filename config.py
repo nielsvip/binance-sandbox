@@ -2104,11 +2104,10 @@ class Config:
         True  # ez_positions_quick augmented position reduce-to-min on 3m DC break
     )
     MOMENTUM_TP_ENABLED: bool = (
-        False  # USER 2026-10-21 EXACT-PARITY: was True. ez_manage MANDATORY PROFIT TAKE (PROFIT_TP_EXHAUSTION)
-        # has NO vector model (v12:7043 "vec-only toggle", 0 emissions) and fires on gain>0.5 + stoch extreme.
-        # Boards: 94 True / 44 False / 369 absent — per-sym proxy keeps all measured boards identical; only
-        # untested keys stop taking unmeasured profit. Verified zero PROFIT_TP_EXHAUSTION fills post-2026-10-20
-        # on any account, so this flips no current behavior, only future unmeasured exits. ROLLBACK: True.
+        True  # USER 2026-10-22 TANDEM: template bold True (CRYPTO_LONG/SHORT) rules; configs only read.
+        # The 2026-10-21 False rationale is stale: the vector models it (vec_decisions/live_exit_chain.py:237,
+        # QuickConfig True), live call sites already default True, boards carry 699 True / 73 False / 0 absent,
+        # config_tradier True. False starved only board-less keys of a profit-take both engines measure as ON.
     )
     DC_BASIS_3M_REDUCE_ENABLED: bool = (
         True  # ez_manage reduce when price crosses 3m DC level

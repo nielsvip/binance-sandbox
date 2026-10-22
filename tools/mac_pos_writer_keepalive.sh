@@ -46,7 +46,11 @@ klog() { echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [keepalive] $*"; }
 RUN_MAX_S="${MAC_POS_RUN_MAX_S:-45}"
 if [ -z "${MAC_POS_TIMED:-}" ] && [ -x /opt/homebrew/bin/timeout ]; then
   export MAC_POS_TIMED=1
-  exec /opt/homebrew/bin/timeout -s TERM "$RUN_MAX_S" /bin/bash "$0" "$@"
+  # 2026-10-22 --foreground: without it GNU timeout signals the whole process GROUP on expiry, so a pass that ran
+  # past RUN_MAX_S after spawning run_with_watchdog.sh TERM'd the watchdog it had just started — measured as
+  # "Watchdog received SIGTERM — killing child" 8-23 s after every one of fin's 5 relaunches, and 28-52 times per
+  # account. --foreground signals only this script, which is the only process the bound is meant to cover.
+  exec /opt/homebrew/bin/timeout --foreground -s TERM "$RUN_MAX_S" /bin/bash "$0" "$@"
 fi
 
 LOCK="/tmp/.mac_pos_writer_keepalive.lock"
@@ -183,7 +187,12 @@ engine_keepalive() {
   # 2026-10-22 fin silence limit: fin's engine is legitimately quiet 210-343 s every PERF_REPORT cycle and during
   # STEP 2+3 Redis flushes, so the 300 s limit killed it on every cycle. fin alone gets 900 s; a true wedge is still
   # caught by run_with_watchdog.sh (600 s no-output with a CPU-progress gate).
-  local max_age="$MAX_MGR_LOG_AGE"
+  # 2026-10-22 EVERY account, not just fin: measured the same day, flz was SILENT-killed at 00:59:12 (335 s) and the
+  # TERM counts per account were fin 52, men 51, ang 37, inf 29, flz 28 — the quiet gaps are normal everywhere (the
+  # Mac runs at load 164-180 with ~99 python processes, so a PERF_REPORT or Redis-flush gap of 300-560 s is routine).
+  # Killing on silence alone made the board lane restart-churn instead of trade. 900 s for all; a true wedge is still
+  # caught by run_with_watchdog.sh (600 s no-output WITH a CPU-progress gate, which this check does not have).
+  local max_age="${MAC_MGR_MAX_LOG_AGE_ALL:-900}"
   [ "$A" = "fin" ] && max_age="${MAC_MGR_MAX_LOG_AGE_FIN:-900}"
   if [ -z "$mgr_pids" ]; then
     klog "$A: NO ez_manage watchdog -> start (decision engine was down)"
