@@ -26003,7 +26003,13 @@ class MultiAccountTradeManager:
                 if not bool(getattr(_ezm_base_config, "VEC_DRIVEN_ENABLED", False)):
                     continue
                 max_age = float(getattr(_ezm_base_config, "VEC_DRIVEN_MAX_INTENT_AGE_S", 300.0))
-                state_max_age = float(getattr(_ezm_base_config, "VEC_DRIVEN_STATE_MAX_AGE_S", 1200.0))
+                # USER 2026-10-22: the 1200 s default silently dropped a THIRD of the board from reconcile. Measured
+                # this day: 101 of 269 live account-keys were skipped for "state older than 1200s" while only 63 would
+                # open — because tools/pure_board_trader.py needs ~26 min to evaluate its 174 keys per 15m bar, so its
+                # own state files go stale BEFORE it can refresh them. A horizon shorter than the publisher's period
+                # is a guarantee that keys the board holds have no live position. 3600 s covers two lane cycles; the
+                # real repair is lane throughput, and the staleness is still reported (ZERO_PASS_ALLOW late-OPEN log).
+                state_max_age = float(os.environ.get("VEC_DRIVEN_STATE_MAX_AGE_S") or getattr(_ezm_base_config, "VEC_DRIVEN_STATE_MAX_AGE_S", 3600.0))
                 grace = float(getattr(_ezm_base_config, "VEC_DRIVEN_RECONCILE_GRACE_S", 180.0))
                 _live_ok, _live_why = registry.live_allowed()
                 if _live_ok != last_live_ok:
