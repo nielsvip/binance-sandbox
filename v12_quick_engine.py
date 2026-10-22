@@ -18688,6 +18688,19 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _cs_book = None
     except Exception:
         _cs_book = None
+    # USER 2026-10-22 PPL re-augment (standing order -> per-sym_side switch):
+    # backtest decides on/off; ON arms a re-entry at every PPL tap and fires an
+    # implied augment of MULT x the TP qty the moment WT crosses back above
+    # dc_low_15m (one-shot per tap). Default OFF/inert.
+    _ppl_reaug_on = bool(getattr(cfg, "PPL_REAUGMENT_ENABLED", False))
+    try:
+        _ppl_reaug_mult = float(getattr(cfg, "PPL_REAUGMENT_SIZE_MULT", 1.0))
+    except (TypeError, ValueError):
+        _ppl_reaug_mult = 1.0
+    _ppl_reaug_mult = min(2.0, max(0.0, _ppl_reaug_mult))
+    if not _ppl_reaug_on:
+        _ppl_reaug_mult = 0.0
+    _ppl_wt_15 = _safe(npz, "wt1_15m", n) + _safe(npz, "wt2_15m", n)
     for i in range(n):
         if _qs_on and pos is not None:
             _qs_avg_by_entry[int(pos["entry_bar"])] = float(pos["avg_price"])  # live streak scores vs the AVERAGE entry
@@ -21832,6 +21845,50 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 }
             )
             pos["last_reduce_bar"] = int(i)
+            if _ppl_reaug_on:  # USER 2026-10-22: every PPL tap arms the DC-reclaim re-augment (one-shot)
+                pos["_ppl_armed"] = 1
+                pos["_ppl_armed_bar"] = int(i)
+                pos["_ppl_tp_qty"] = float(_ppl_qty)
+        # USER 2026-10-22 PPL re-augment fire: armed by the PPL tap, the moment
+        # WT crosses back above dc_low_15m the position re-augments MULT x the
+        # TP qty (one-shot per tap; floor + live cap mirrored, same as AUGMENT).
+        if (
+            _ppl_reaug_on
+            and pos is not None
+            and int(pos.get("_ppl_armed", 0)) == 1
+            and int(i) > int(pos.get("_ppl_armed_bar", i))
+            and float(_ppl_wt_15[i]) > float(_uh_l15[i])
+            and float(_ppl_wt_15[i - 1]) <= float(_uh_l15[i - 1])
+        ):
+            _reaug_qty = float(pos.get("_ppl_tp_qty", 0.0)) * _ppl_reaug_mult
+            if _mvf_on and _reaug_qty > 0:
+                _reaug_qty = max(float(_reaug_qty), _qq.min_viable_qty(sym, px, cfg))
+            _reaug_qty = _qq.cap_add_qty(cfg, pos["qty"], _reaug_qty, px, is_tradier)
+            if _mvf_on and 0 < _reaug_qty < _qq.min_viable_qty(sym, px, cfg):
+                _reaug_qty = 0.0
+            if _reaug_qty > 0:
+                _reaug_new = pos["qty"] + _reaug_qty
+                pos["avg_price"] = (pos["avg_price"] * pos["qty"] + px * _reaug_qty) / _reaug_new
+                pos["deployed"] += abs(_reaug_qty * px)
+                pos["fees"] += abs(_reaug_qty * px) * half_fee
+                pos["qty"] = _reaug_new
+                pos["last_aug_px"] = float(px)
+                pos["last_aug_bar"] = int(i)
+                pos["n_augments"] = int(pos.get("n_augments", 0)) + 1
+                pos["last_aug_qty"] = float(_reaug_qty)
+                pos["_ppl_armed"] = 0
+                _ts_reaug = float(ts[i]) if i < len(ts) else (float(ts[-1]) if len(ts) else 0.0)
+                events.append(
+                    {
+                        "type": "AUGMENT",
+                        "ts": _ts_reaug,
+                        "price": float(px),
+                        "qty": float(_reaug_qty),
+                        "pos_deployed": float(pos["deployed"]),
+                        "bar": int(i),
+                        "reason": "PPL_REAUGMENT_DC_RECLAIM",
+                    }
+                )
         # [N4 queue/2c] rate()-driven REDUCE sources (crypto live): SIMPLE_TP_EXIT / MACD_EXIT — only when QUICK_REDUCE_TECHNICAL_ONLY is False
         if pos is not None and _n4_qr is not None:
             _qr_fire, _qr_reason = vec_decisions.quick_reduce_sources.simple_tp(

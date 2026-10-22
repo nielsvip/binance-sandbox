@@ -16506,6 +16506,14 @@ async def process_position(
                                     override_qty=_ppl_rqty,
                                 )
                                 if _ppl_res:
+                                    try:
+                                        _ppl_reaug_arm = bool(_gx_c("PPL_REAUGMENT_ENABLED", False))
+                                    except Exception:
+                                        _ppl_reaug_arm = False
+                                    try:
+                                        _ppl_reaug_m = min(2.0, max(0.0, float(_gx_c("PPL_REAUGMENT_SIZE_MULT", 1.0))))
+                                    except Exception:
+                                        _ppl_reaug_m = 1.0
                                     trade_manager.partial_profit_lock_state[
                                         position_key
                                     ] = {
@@ -16516,6 +16524,9 @@ async def process_position(
                                         "stop_level": float(_ppl_stop),
                                         "stop_upgraded": False,
                                         "effective_entry": float(_ppl_eff),
+                                        "reaug_armed": _ppl_reaug_arm,
+                                        "reaug_tp_qty": float(_ppl_rqty) if _ppl_reaug_arm else 0.0,
+                                        "reaug_mult": _ppl_reaug_m if _ppl_reaug_arm else 0.0,
                                     }
                                     return "PPL_TP_REDUCED"
                             elif _ppl_out.get("action") == "upgrade":
@@ -16557,6 +16568,27 @@ async def process_position(
                                         except Exception:
                                             pass
                                         return "PPL_SL_CLOSED"
+                            # USER 2026-10-22 PPL re-augment (per-sym_side switch, backtest decides):
+                            # armed at the PPL tap; the moment WT crosses back above dc_low_15m
+                            # the position re-augments MULT x the TP qty (one-shot per tap, whole shares).
+                            _rg_st = ((getattr(trade_manager, "partial_profit_lock_state", {}) or {}).get(position_key, {}) or {})
+                            if _rg_st.get("reaug_armed", False):
+                                try:
+                                    _rg_wt = safe_fetch_float((_tsr_ind or {}).get("wt1_15m", 0), 0.0) + safe_fetch_float((_tsr_ind or {}).get("wt2_15m", 0), 0.0)
+                                    _rg_dc = safe_fetch_float((_tsr_ind or {}).get("dc_low_15m", 0), 0.0)
+                                    _rg_pw = safe_fetch_float((_tsr_ind or {}).get("wt1_15m_prev", 0), 0.0) + safe_fetch_float((_tsr_ind or {}).get("wt2_15m_prev", 0), 0.0)
+                                    _rg_pd = safe_fetch_float((_tsr_ind or {}).get("dc_low_15m_prev", 0), 0.0)
+                                    if _rg_dc > 0 and _rg_pd > 0 and _rg_pw <= _rg_pd and _rg_wt > _rg_dc:
+                                        _rg_qty = float(_rg_st.get("reaug_tp_qty", 0.0)) * float(_rg_st.get("reaug_mult", 0.0))
+                                        if _rg_qty >= 1.0:
+                                            _rg_qty = float(int(_rg_qty))
+                                            logger.warning(f"[PPL_REAUGMENT] {position_key}: WT {_rg_wt:.1f} crossed back above dc_low_15m {_rg_dc:.4f} — firing AUGMENT {_rg_qty:.0f} shares")
+                                            _rg_ok = await queue_trade_action(order_queue, trade_manager, position_key, "AUGMENT", f"PPL_REAUGMENT_DC_RECLAIM_wt{_rg_wt:.1f}>dc{_rg_dc:.4f}", 80.0, override_qty=_rg_qty)
+                                            if _rg_ok:
+                                                trade_manager.partial_profit_lock_state[position_key] = {**_rg_st, "reaug_armed": False}
+                                                return "PPL_REAUGMENT_DC_RECLAIM"
+                                except Exception as _rg_e:
+                                    logger.warning(f"[PPL_REAUGMENT_ERR] {position_key}: {_rg_e}")
                             try:
                                 _sat_ok = account_key in list(
                                     _gx_c("SATOSHIT_ACCOUNTS", []) or []
