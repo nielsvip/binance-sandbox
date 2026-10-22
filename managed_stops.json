@@ -1,23 +1,44 @@
 {
-  "men:ACTUSDT_SHORT": {
-    "orderId": "2000001532922629",
-    "stopPrice": 0.008778,
-    "entry_sig": "2026-10-22 19:28:47.192000+00:00",
-    "symbol": "ACTUSDT",
+  "inf:BTCDOMUSDT_LONG": {
+    "orderId": "2000001533149617",
+    "stopPrice": 5518.2,
+    "entry_sig": "2026-10-22 10:21:37.368000+00:00",
+    "symbol": "BTCDOMUSDT",
+    "side": "LONG"
+  },
+  "inf:EGLDUSDT_SHORT": {
+    "orderId": "2000001533149619",
+    "stopPrice": 3.751,
+    "entry_sig": "2026-10-22 12:29:47.366000+00:00",
+    "symbol": "EGLDUSDT",
     "side": "SHORT"
   },
-  "men:BIGTIMEUSDT_SHORT": {
-    "orderId": "2000001532924274",
-    "stopPrice": 0.006603,
-    "entry_sig": "2026-10-22 19:28:14.747000+00:00",
-    "symbol": "BIGTIMEUSDT",
+  "inf:GALAUSDT_SHORT": {
+    "orderId": "2000001533149616",
+    "stopPrice": 0.002031,
+    "entry_sig": "2026-10-22 15:34:46.668000+00:00",
+    "symbol": "GALAUSDT",
     "side": "SHORT"
   },
-  "men:BIOUSDC_SHORT": {
-    "orderId": "2000001533047482",
-    "stopPrice": 0.02409,
-    "entry_sig": "2026-10-22 19:28:21.590000+00:00",
-    "symbol": "BIOUSDC",
+  "inf:ETCUSDT_SHORT": {
+    "orderId": "2000001531927131",
+    "stopPrice": 7.922,
+    "entry_sig": "2026-10-22 12:28:44.624000+00:00",
+    "symbol": "ETCUSDT",
+    "side": "SHORT"
+  },
+  "inf:WUSDT_SHORT": {
+    "orderId": "2000001532731539",
+    "stopPrice": 0.01364,
+    "entry_sig": "2026-10-22 10:57:00.456000+00:00",
+    "symbol": "WUSDT",
+    "side": "SHORT"
+  },
+  "inf:ARUSDT_SHORT": {
+    "orderId": "2000001533149614",
+    "stopPrice": 3.737,
+    "entry_sig": "2026-10-22 15:27:31+00:00",
+    "symbol": "ARUSDT",
     "side": "SHORT"
   }
 }

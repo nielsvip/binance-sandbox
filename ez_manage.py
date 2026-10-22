@@ -41834,7 +41834,7 @@ class MultiAccountTradeManager:
                         )  # lowest profit first — trim the weakest winners
                         max_reduces = min(3, max(1, int(skew / 5)))
                         _reduced = 0
-                        for _rpk, _rpos, _rgain in ([] if _voe_native_exits_disabled() else _reduce_candidates):  # USER 2026-10-21 vec-only exits: rebalance stood down, decision intact
+                        for _rpk, _rpos, _rgain in _reduce_candidates:  # USER 2026-10-22 (operator: ratio ON): rebalance REDUCE flows (de-risk toward target)
                             if _reduced >= max_reduces:
                                 break
                             _reason = f"RATIO_REDUCE_{overweight_side}_L{long_pct:.0f}_S{short_pct:.0f}_tgt{target_long:.0f}/{target_short:.0f}_breadth{_breadth_bias:.0%}_gain{_rgain:.1f}%"
@@ -41887,7 +41887,7 @@ class MultiAccountTradeManager:
                         _close_candidates.sort(key=lambda x: x[2])
                         _max_close = min(3, max(1, int(skew / 10)))
                         _closed = 0
-                        for _cpk2, _cpos2, _cgain2 in ([] if _voe_native_exits_disabled() else _close_candidates):  # USER 2026-10-21 vec-only exits: rebalance stood down, decision intact
+                        for _cpk2, _cpos2, _cgain2 in _close_candidates:  # USER 2026-10-22 (operator: ratio ON): rebalance CLOSE flows (de-risk toward target)
                             if _closed >= _max_close:
                                 break
                             _creason = f"RATIO_CLOSE_{overweight_side}_L{long_pct:.0f}_S{short_pct:.0f}_tgt{target_long:.0f}/{target_short:.0f}_gain{_cgain2:.1f}%"
@@ -41964,7 +41964,7 @@ class MultiAccountTradeManager:
                         )  # smallest |wt15m delta| first
                         _ow_max = _cfg_i("RATIO_REBALANCE_MAX_CLOSES", 3)
                         _ow_closed = 0
-                        for _ow_pk, _ow_pos, _ow_gain, _ow_delta in ([] if _voe_native_exits_disabled() else _ow_candidates):  # USER 2026-10-21 vec-only exits: rebalance stood down, decision intact
+                        for _ow_pk, _ow_pos, _ow_gain, _ow_delta in _ow_candidates:  # USER 2026-10-22 (operator: ratio ON): overweight CLOSE flows (de-risk toward target)
                             if _ow_closed >= _ow_max:
                                 break
                             _ow_reason = f"RATIO_CLOSE_OW_{overweight_side}_L{long_pct:.0f}_S{short_pct:.0f}_tgt{target_long:.0f}/{target_short:.0f}_wt15Δ{_ow_delta:.1f}_g{_ow_gain:.2f}%"
@@ -42026,6 +42026,14 @@ class MultiAccountTradeManager:
                         )
                         if not _rrr_tk or f"{account_key}:{s}_{open_side}" in _rrr_tk
                     ]
+                    # USER 2026-10-22 (operator: ratio ON, parity law intact):
+                    # RATIO closes/reduces flow (de-risk toward target), but
+                    # RATIO opens/augments stay stood down — an open is never
+                    # vector-dictated. Say the word to lift this too.
+                    if _voe_native_exits_disabled():
+                        if candidates:
+                            logger.info(f"[RATIO_REBALANCE] {account_key}: {len(candidates)} open/augment candidates stood down (parity law: opens are vector-dictated)")
+                        candidates = []
                     candidates = candidates[:30]
                     opened = 0
                     _already_open = {}  # sym -> position_key for augment

@@ -147,19 +147,22 @@ def test_technical_exempt_with_crossing_hold(tmp_path, monkeypatch):
 
 
 def test_ratio_trim_allowed_close_killed(tmp_path, monkeypatch):
-    """USER 2026-10-21 (+18:0x, 'augment too'): RATIO trims (REDUCE) and adds
-    (AUGMENT) stay allowed in-window; OPEN/CLOSE fall through to the kill."""
+    """USER 2026-10-22 OPERATOR ORDER ("ratio is L/S, make sure that is on"):
+    RATIO REDUCE/CLOSE flow as VEC_SWITCH_EXIT (de-risk toward target);
+    AUGMENT stays trim-allowed at the enforcer but stood down in code;
+    RATIO OPEN stays killed (an open is never vector-dictated). Supersedes
+    the 10-21 trim-only pin."""
     _iso(tmp_path, monkeypatch)
     ok, verdict = ve.check("REDUCE", "a", "RATIO_CLOSE_LONG_L100_S0_tgt30/70_gain1.5%")
-    assert (ok, verdict) == (True, "RATIO_TRIM_ALLOWED")
+    assert (ok, verdict) == (True, "VEC_SWITCH_EXIT")
+    ok, verdict = ve.check("CLOSE", "a", "RATIO_CLOSE_LONG_L100_S0_tgt30/70_gain1.5%")
+    assert (ok, verdict) == (True, "VEC_SWITCH_EXIT")
     ok, verdict = ve.check(
         "AUGMENT", "a", "RATIO_REDUCE_SHORT_L0_S100_tgt25/75_breadth26%_gain0.2%"
     )
     assert (ok, verdict) == (True, "RATIO_TRIM_ALLOWED")
-    ok, verdict = ve.check("CLOSE", "a", "RATIO_CLOSE_LONG_L100_S0_tgt30/70_gain1.5%")
-    assert ok is False and verdict == "VIOLATION_FAMILY_KILLED"
     ok, verdict = ve.check(
-        "OPEN", "a", "RATIO_REDUCE_SHORT_L0_S100_tgt25/75_breadth26%_gain0.2%"
+        "OPEN", "a", "RATIO_REBALANCE_LONG_L0_S100_tgt25/75_4x_score50"
     )
     assert ok is False
 
@@ -620,6 +623,24 @@ def test_all_tf_against_restore(tmp_path, monkeypatch):
     ez_src = (ROOT / "ez_manage.py").read_text()
     assert "int(_at_w1_3m < _at_w2_3m)" not in ez_src
     assert "int(_at_w1_3m > _at_w2_3m)" not in ez_src
+    assert not (tmp_path / "vector_kills.json").exists()
+
+
+def test_ratio_on_operator_order(tmp_path, monkeypatch):
+    """USER 2026-10-22 OPERATOR ORDER ("ratio is L/S, make sure that is on"):
+    the RATIO rebalance REDUCE/CLOSE/OW arms flow (de-risk toward target);
+    opens/augments stay stood down (never vector-dictated). This is an
+    operator override, not a parity proof — no vector model exists."""
+    _iso(tmp_path, monkeypatch)
+    assert "RATIO" in ve.VEC_SWITCH_EXIT_FAMILIES
+    assert ve.family_of("RATIO_CLOSE_LONG_L100_S0_tgt30/70_gain1.5%") == "RATIO"
+    ok, verdict = ve.check("REDUCE", "fin:LINKUSDC_LONG", "RATIO_CLOSE_LONG_L100_S0_tgt30/70_gain1.5%")
+    assert (ok, verdict) == (True, "VEC_SWITCH_EXIT")
+    ez_src = (ROOT / "ez_manage.py").read_text()
+    assert "for _rpk, _rpos, _rgain in _reduce_candidates:" in ez_src
+    assert "for _cpk2, _cpos2, _cgain2 in _close_candidates:" in ez_src
+    assert "for _ow_pk, _ow_pos, _ow_gain, _ow_delta in _ow_candidates:" in ez_src
+    assert "RATIO opens/augments stay stood down" in ez_src
     assert not (tmp_path / "vector_kills.json").exists()
 
 
