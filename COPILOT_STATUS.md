@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-22 02:46:16 UTC
+# Copilot Status — 2026-10-22 02:51:25 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-22T02:36:52
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-22T02:36:52
-- **STALE_INDICATORS** [tradier]  — 2026-10-22T02:38:55
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-22T02:38:55
-- **STALE_INDICATORS** [tradier]  — 2026-10-22T02:40:58
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-22T02:40:58
 - **STALE_INDICATORS** [tradier]  — 2026-10-22T02:43:01
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-22T02:43:01
 - **STALE_INDICATORS** [tradier]  — 2026-10-22T02:45:03
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-22T02:45:03
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-22T02:47:06
+- **STALE_INDICATORS** [tradier]  — 2026-10-22T02:49:10
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-22T02:49:10
+- **STALE_INDICATORS** [tradier]  — 2026-10-22T02:51:14
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-22T02:51:14
 
 ## Missed Trades (trader comparison)
 
@@ -31,7 +31,7 @@ _None_
 
 - HELD: **CLF** LONG (tradier) peak +16.5%, now +-0.7%
 - HELD: **ADP** LONG (tradier) peak +5.5%, now +-0.7%
-- HELD: **ZECUSDC** SHORT (crypto) peak +5.5%, now +2.1%
+- HELD: **ZECUSDC** SHORT (crypto) peak +5.5%, now +2.4%
 - HELD: **U** SHORT (tradier) peak +4.8%, now +0.7%
 - HELD: **EXEL** LONG (tradier) peak +4.4%, now +0.0%
 - HELD: **TMO** LONG (tradier) peak +3.7%, now +0.5%

@@ -44766,6 +44766,15 @@ class TradierTradeManager:
         now = datetime.now(timezone.utc)
         MAX_AGE_SECONDS = 15.0
 
+        def _sd_fed(_p, _t):
+            # SCALE_DIRECTION: feed the 15m close ring from the price resolver — orders are far too sparse to fill it
+            try:
+                from live_twins import scale_direction_live as _sdl_feed
+                _sdl_feed.note_price(symbol, float(_p), _t.timestamp() if _t is not None else None)
+            except Exception:
+                pass
+            return _p, _t
+
         def safe_parse_ts(ts_val):
             if not ts_val:
                 return None
@@ -44793,7 +44802,7 @@ class TradierTradeManager:
                 p = float(entry.get("price", 0.0))
                 t = safe_parse_ts(entry.get("timestamp"))
                 if p > 0 and t and (now - t).total_seconds() < MAX_AGE_SECONDS:
-                    return p, t
+                    return _sd_fed(p, t)
             if hasattr(self, "redis_manager") and self.redis_manager:
                 try:
                     raw_md = await asyncio.wait_for(
@@ -44817,7 +44826,7 @@ class TradierTradeManager:
                                         "timestamp": t,
                                     }
                                     if (now - t).total_seconds() < MAX_AGE_SECONDS:
-                                        return p, t
+                                        return _sd_fed(p, t)
                 except (asyncio.TimeoutError, Exception):
                     pass
                 # 2026-08-19 FIX: gateway Redis fallback (157.90.168.35 via localhost:6380) — if local Redis stale/missing, try gateway directly (3-geo redundancy)
@@ -44885,7 +44894,7 @@ class TradierTradeManager:
                                             if (
                                                 now - t
                                             ).total_seconds() < MAX_AGE_SECONDS:
-                                                return p, t
+                                                return _sd_fed(p, t)
             except Exception:
                 pass
             if hasattr(self, "api_client") and self.api_client:
@@ -44898,7 +44907,7 @@ class TradierTradeManager:
                             t = safe_parse_ts(quote.get("date")) or now
                             if p > 0:
                                 self.price_cache[symbol] = {"price": p, "timestamp": t}
-                                return p, t
+                                return _sd_fed(p, t)
                     except Exception:
                         pass
 
@@ -48540,6 +48549,28 @@ class TradierTradeManager:
         # stop_truth_reconcile_loop (tradier_manage.py:44976), which sweeps every 10 s. So a filled entry was
         # unprotected until the sweep reached it, and anything that stalled the sweep left it unprotected with no
         # alarm. Tonight's audit measured the result: 14 of 44 live stock positions had no resting stop.
+        # ─── SCALE_DIRECTION (USER 2026-10-22: "reducing when it should be augmenting (price rising) but not
+        # reducing when the price is falling (vv shorts)") ─── twin of the crypto gate at ez_manage.py. Same one
+        # predicate (vec_decisions.scale_direction via live_twins.scale_direction_live), same per-sym resolution
+        # (_cfg), same exemptions: a full close, a cut to dust, a protective/stop reason and an OPEN on a flat key
+        # are never touched, and the twin fails OPEN on anything it cannot judge. Inert until a board promotes
+        # SCALE_DIRECTION_LAW_ENABLED (False everywhere today).
+        try:
+            from live_twins import scale_direction_live as _sdl
+            _sd_px = float(old_price or 0.0)
+            if _sd_px > 0:
+                _sdl.note_price(symbol, _sd_px)
+            _sd_why = _sdl.blocked(
+                lambda _k, _d: _cfg(_k, _d, account_key, symbol, position_side),
+                symbol=symbol, position_side=position_side, action=action, reason=reason, side=side,
+                quantity=quantity, original_positionAmt=original_position_amt, price=_sd_px,
+                is_full_close=is_full_close, is_hedge=False,
+            )
+        except Exception:
+            _sd_why = ""
+        if _sd_why:
+            logger.info(f"🧭 [SCALE_DIRECTION] {position_key}: refused {action} — {_sd_why}")
+            return f"BLOCKED_SCALE_DIRECTION {_sd_why}"
         _res = await self._execute_now_inner(
             position_key=position_key, account_key=account_key, symbol=symbol,
             original_position_amt=original_position_amt, side=side, position_side=position_side,

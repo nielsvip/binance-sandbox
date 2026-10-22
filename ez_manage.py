@@ -13206,6 +13206,11 @@ class WebSocketManager:
         async with self.trade_manager._price_cache_lock:
             self.trade_manager.price_cache[norm] = {"price": price, "timestamp": iso_ts}
             self.trade_manager.price_update_time[norm] = ts
+        try:  # SCALE_DIRECTION: feed the 15m close ring here, not on the order path — orders are far too sparse to fill it
+            from live_twins import scale_direction_live as _sdl_feed
+            _sdl_feed.note_price(norm, price, ts.timestamp())
+        except Exception:
+            pass
         async with self.trade_manager._positions_lock:
             for position_key, position in self.trade_manager.positions.items():
                 if position and position.symbol == norm:
@@ -26047,6 +26052,7 @@ class MultiAccountTradeManager:
         caps = _vdm.OpenCaps(int(getattr(_ezm_base_config, "VEC_DRIVEN_MAX_CONCURRENT", 0)), int(getattr(_ezm_base_config, "VEC_DRIVEN_MAX_OPENS_PER_HOUR", 0)))  # USER 2026-10-06: no concurrent/hourly caps (0 = off); 1 open per sym_side per bar kept
         stores: Dict[str, Any] = {}
         last_sent: Dict[str, float] = {}
+        _pulse: Dict[str, float] = {}
         last_live_ok = None
         logger.info(f"🧭 [VEC_DRIVEN] consumer started base={base} accounts={list(self.accounts)}")
         while True:
@@ -26164,7 +26170,7 @@ class MultiAccountTradeManager:
                     # 20 ready keys" was indistinguishable from "nothing to do" and cost hours of inference. Every
                     # skip is now counted and the tally is logged once a minute per account — the sweep states why.
                     _rec_jobs = []
-                    _rc_skip = collections.Counter()
+                    _rc_skip = defaultdict(int)
                     for ss, mode in modes.items():
                         if mode != "live":
                             _rc_skip["mode_not_live"] += 1
@@ -26233,6 +26239,7 @@ class MultiAccountTradeManager:
                             logger.warning(f"[ZERO_PASS_ALLOW] {position_key}: reconcile target open but decision bar {bar_key} is {_st_dec_age:.0f}s old — executing late OPEN (USER 2026-10-21)")
                         if act == "OPEN" and _st_dec_age > max_age + _vdm.BAR_SECONDS and not _zp_vd2:
                             store.mark_reconcile(ss, bar_key)
+                            _rc_skip["stale_decision_no_late_open"] += 1
                             logger.warning(f"[VEC_DRIVEN_RECONCILE] {position_key}: target open but decision bar {bar_key} is {_st_dec_age:.0f}s old > {max_age:.0f}s — no late OPEN (stale guard)")
                             continue
                         store.mark_reconcile(ss, bar_key)
@@ -26258,8 +26265,11 @@ class MultiAccountTradeManager:
                                 last_sent[_pk] = time.time()
                                 _vdm.append_jsonl(base / f"live_exec_{account_key}.jsonl", {"ts": time.time(), "reconcile": True, "ss": _ss, "bar_ts": _bar_key, "action": _act, "result": _r})
                                 return _r
-                        logger.warning(f"🧭 [VEC_DRIVEN_RECONCILE] {account_key}: converging {len(_rec_jobs)} key(s) concurrently (limit {_rc_lim})")
+                        logger.warning(f"🧭 [VEC_DRIVEN_RECONCILE] {account_key}: converging {len(_rec_jobs)} key(s) concurrently (limit {_rc_lim}) | skips {dict(_rc_skip)}")
                         await asyncio.gather(*[_rc_one(*_j) for _j in _rec_jobs], return_exceptions=True)
+                    elif now - _pulse.get(account_key, 0.0) > 60.0:
+                        _pulse[account_key] = now
+                        logger.warning(f"🧭 [VEC_DRIVEN_PULSE] {account_key}: nothing to converge — modes={len(modes)} live={sum(1 for _v in modes.values() if _v == 'live')} intents_on_disk={len(intents)} | skips {dict(_rc_skip)}")
             except asyncio.CancelledError:
                 break
             except Exception as _vdc_e:
@@ -32616,6 +32626,28 @@ class MultiAccountTradeManager:
         # therefore unprotected from fill until its next cycle, and a probe that errored left it unprotected
         # indefinitely. That is not theory — tonight's stocks audit found 14 of 44 live positions with no resting
         # stop. The requirement is enforced by placing, then VERIFYING, and shouting when it cannot.
+        # ─── SCALE_DIRECTION (USER 2026-10-22: "reducing when it should be augmenting (price rising) but not
+        # reducing when the price is falling (vv shorts)") ─── execute_now is the ONE gate, so the law lives here
+        # and applies to every caller, with no reason-string bypass. It may only ever refuse a PARTIAL scale that
+        # points the wrong way; a full close, a hedge, a cut to dust, a protective/stop reason and an OPEN on a
+        # flat key are exempt inside the twin, which fails OPEN on anything it cannot judge. Inert until a board
+        # promotes SCALE_DIRECTION_LAW_ENABLED (False everywhere today).
+        try:
+            from live_twins import scale_direction_live as _sdl
+            _sd_px = safe_fetch_float(old_price, 0.0)
+            if _sd_px > 0:
+                _sdl.note_price(symbol, _sd_px)
+            _sd_why = _sdl.blocked(
+                lambda _k, _d: _psym_get(symbol, position_side, _k, _d),
+                symbol=symbol, position_side=position_side, action=action, reason=reason, side=side,
+                quantity=quantity, original_positionAmt=original_positionAmt, price=_sd_px,
+                is_full_close=is_full_close, is_hedge=is_hedge,
+            )
+        except Exception:
+            _sd_why = ""
+        if _sd_why:
+            logger.info(f"🧭 [SCALE_DIRECTION] {position_key}: refused {action} — {_sd_why}")
+            return f"BLOCKED_SCALE_DIRECTION {_sd_why}"
         _res = await self._execute_now_inner(
             position_key=position_key, account_key=account_key, symbol=symbol,
             original_positionAmt=original_positionAmt, side=side, position_side=position_side,
