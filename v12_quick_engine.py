@@ -17725,6 +17725,16 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         and bool(getattr(cfg, "MTF_GR_EXIT_GATE_ENABLED", False))
         and bool(getattr(cfg, "MTF_WT_CROSS_EXIT_ENABLED", False))
     )
+    if _mtftr_on:
+        _mtftr_pair = {
+            "5m": ("wt1_5m", "wt2_5m"),
+            "3m": ("wt1", "wt2"),
+            "15m": ("wt1_15m", "wt2_15m"),
+            "1h": ("wt1_1h", "wt2_1h"),
+            "4h": ("wt1_4h", "wt2_4h"),
+            "D": ("wt1_D", "wt2_D"),
+            "W": ("wt1_W", "wt2_W"),
+        }[_mtftr_tf]
         _mtftr_w1 = _safe(npz, _mtftr_pair[0], n, 0)
         _mtftr_w2 = _safe(npz, _mtftr_pair[1], n, 0)
         _mtftr_lad = [
@@ -22497,6 +22507,66 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         "qty": float(pos["qty"]),
                         "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"),
                         "exit_reason": _cmp_reason,
+                        "bars_held": int(i - pos["entry_bar"]),
+                    }
+                )
+                pos = None
+                cd = cooldown_bars
+                has_closed_before = True
+                continue
+        # USER 2026-10-22 MTF parity: tradier-mode GR_WT arm (setup above).
+        # The crypto compound block is crypto-only, so stocks MTF_GR_WT_EXIT
+        # never booked while the tradier live lane fires it. Same shared
+        # predicate (gr_wt_exit_fires), tradier TF set, same switches,
+        # same min_hold, NOLOSS-bypassed like live. NO structural veto —
+        # booking is unvetoed on both venues (the live tradier veto is
+        # removed the same session: it held exits the vector books).
+        if pos is not None and held_bars >= min_hold and _mtftr_w1 is not None:
+            _mtftr_fire, _mtftr_cnt = vec_decisions.mtf_compound_exits.gr_wt_exit_fires(
+                float(_mtftr_w1[i]) if i < len(_mtftr_w1) else 0.0,
+                float(_mtftr_w2[i]) if i < len(_mtftr_w2) else 0.0,
+                [
+                    (
+                        float(_l1[i]) if i < len(_l1) else 0.0,
+                        float(_l2[i]) if i < len(_l2) else 0.0,
+                    )
+                    for _l1, _l2 in _mtftr_lad
+                ],
+                _mtftr_min,
+                is_long,
+            )
+            if _mtftr_fire:
+                _mtftr_reason = f"MTF_GR_WT_EXIT_{_mtftr_tf}_grTFs={_mtftr_cnt}"
+                pos["fees"] += abs(pos["qty"] * px) * half_fee
+                _mtftr_pnl = (
+                    pos["realized"]
+                    + (
+                        (px - pos["avg_price"]) * pos["qty"]
+                        if is_long
+                        else (pos["avg_price"] - px) * pos["qty"]
+                    )
+                    - pos["fees"]
+                )
+                _mtftr_pct = _mtftr_pnl / pos["deployed"] * 100 if pos["deployed"] else 0.0
+                _mtftr_tsc = (
+                    float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+                )
+                trades.append(
+                    {
+                        "pnl_dollars": _mtftr_pnl,
+                        "pnl_pct": float(_mtftr_pct),
+                        "deployed": pos["deployed"],
+                        "reason": _mtftr_reason,
+                        "type": "CLOSE",
+                        "ts": _mtftr_tsc,
+                        "price": float(px),
+                        "bar_entry": int(pos["entry_bar"]),
+                        "bar_exit": int(i),
+                        "entry_price": float(pos.get("entry_price", pos["avg_price"])),
+                        "exit_price": float(px),
+                        "qty": float(pos["qty"]),
+                        "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"),
+                        "exit_reason": _mtftr_reason,
                         "bars_held": int(i - pos["entry_bar"]),
                     }
                 )

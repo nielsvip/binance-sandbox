@@ -497,6 +497,22 @@ def test_mtf_engine_delta_within_core_mask():
             assert ((delta & ~mask).sum() == 0), (mode, is_long)
 
 
+def test_mtf_tradier_walk_arm_wired():
+    """USER 2026-10-22 parity restore: the tradier walk arm books MTF_GR closes
+    (the crypto compound block is crypto-only). Measured 10-22 on MINAUSDT
+    MODE=tradier SHORT: triple-gates OFF -> 0 MTF_GR rows / 773 trades;
+    triple ON (COMPOUND+GATE+CROSS, TF 1h, min 3) -> 14 MTF_GR_WT_EXIT_1h
+    rows / 785 trades. This test pins the wiring; the numbers above are the
+    recorded booking proof."""
+    v12_src = (ROOT / "v12_quick_engine.py").read_text()
+    assert "_mtftr_w1 is not None" in v12_src
+    assert "gr_wt_exit_fires(" in v12_src
+    assert '"MTF_GR_WT_EXIT_{_mtftr_tf}_grTFs={_mtftr_cnt}"' in v12_src
+    # Tradier arm follows live defaults (COMPOUND/GATE/CROSS False): it must
+    # NOT ride the True-default crypto master, or unpromoted syms diverge.
+    assert "MTF_EXIT_USE_COMPOUND\", False" in v12_src
+
+
 def test_mtf_gr_restore(tmp_path, monkeypatch):
     """USER 2026-10-22 parity restore: MTF_GR_WT_EXIT (killed 10-22 20:47Z on
     fin:KSMUSDT_LONG) and GR_HTF_DIRECT_EXIT (killed 10-22 14:00Z on
@@ -520,12 +536,15 @@ def test_mtf_gr_restore(tmp_path, monkeypatch):
         "_GR_HTF_EXIT_CONFIRM_STATE_EZ",
         "GR_HTF_DIRECT_EXIT_HTF_VETO",
         "GR_HTF_DIRECT_EXIT_STRUCT_VETO",
-        "MTF_GR_STRUCT_VETO",
         "WT_PERCENTILE_STRUCT_VETO",
         "E_1_STRUCT_VETO",
     ):
         assert marker in ez_src, marker
+    # MTF books unvetoed on both venues (crypto compound block + tradier walk
+    # arm): neither live lane may carry a structural veto — assert absence.
+    assert "MTF_GR_STRUCT_VETO" not in ez_src
     tr_src = (ROOT / "tradier_manage.py").read_text()
+    assert "MTF_GR_STRUCT_VETO" not in tr_src
     assert "TSR_STRUCT_VETO" in tr_src
     # Veto precedes the order in every hardened lane (a veto after the send is no veto).
     assert ez_src.index("WT_PERCENTILE_STRUCT_VETO") < ez_src.index("WT_PERCENTILE_pctD=")
@@ -570,10 +589,10 @@ def test_dc_daytrade_restore(tmp_path, monkeypatch):
     on trb:LRCX_SHORT, +10.32% winner refused exit) flow in-window — both
     booked in v12 via shared twins + live lanes both venues."""
     _iso(tmp_path, monkeypatch)
-    assert "DC" in ve.VEC_SWITCH_EXIT_FAMILIES
+    assert "DC_HOPELESS" in ve.VEC_SWITCH_EXIT_FAMILIES
     assert "DAYTRADE_TARGET" in ve.VEC_SWITCH_EXIT_FAMILIES
-    assert ve.family_of("DC_HOPELESS_entry=68.7591_dc=[64.0000,68.7400]_g0.00") == "DC"
-    assert ve.family_of("DC_HOPELESS_TWIN_entry68.7591_g0.00%") == "DC"
+    assert ve.family_of("DC_HOPELESS_entry=68.7591_dc=[64.0000,68.7400]_g0.00") == "DC_HOPELESS"
+    assert ve.family_of("DC_HOPELESS_TWIN_entry68.7591_g0.00%") == "DC_HOPELESS"
     ok, verdict = ve.check("CLOSE", "trb:BNO_LONG", "DC_HOPELESS_entry=68.7591_dc=[64.0000,68.7400]_g0.00")
     assert (ok, verdict) == (True, "VEC_SWITCH_EXIT")
     ok2, verdict2 = ve.check("CLOSE", "trb:LRCX_SHORT", "DAYTRADE_TARGET_dc_1h_low_+0.10%_TARGET_BUF_g10.32")

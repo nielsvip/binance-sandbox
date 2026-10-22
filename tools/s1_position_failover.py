@@ -37,7 +37,15 @@ STANDDOWN_LOOPS = 12
 MAX_SPAWNS_PER_HR = 6
 COOLDOWN_S = 900
 ORDER_WINDOW_S = 180
-ORDER_FRESH_S = 3.0
+# A takeover threshold must sit ABOVE what the healthy primary can achieve, or it fires on health, not failure.
+# 2026-10-22: this was 3.0s while the Mac's own fetch loop is `await asyncio.sleep(6.0)` + fetch
+# (ez_positions_realtime.py:239), so position_max_age_s oscillates 0-8s in PERFECT health. Within the 180s
+# ORDER_WINDOW_S after any order, every check therefore breached: the supervisor's first live minutes took over
+# ang/inf/men at max_age 5.2/3.9/5.0s with hb_ok=True, and 3 S1 engines began writing position files beside a
+# healthy Mac — the two-writer state this fleet exists to avoid ("S1 is emergency-only"). 12s = 2x the primary's
+# cadence, so a genuine post-order stall is still caught in ORDER_GRACE_LOOPS+1 ~= 13s ("seconds", as asked) while
+# a Mac that is merely mid-cycle is left alone.
+ORDER_FRESH_S = 12.0
 ORDER_GRACE_LOOPS = 2
 ORDER_LOOP_S = 1
 PULSE_STALE_S = 60

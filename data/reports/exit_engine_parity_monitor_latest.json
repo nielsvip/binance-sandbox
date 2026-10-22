@@ -1,19 +1,19 @@
 {
- "now": "2026-10-22T20:47:48.110723+00:00",
+ "now": "2026-10-22T21:47:53.356696+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 13109,
- "last_exit_ts": "2026-10-22T20:45:40.370818+00:00",
+ "n_exit_rows": 13113,
+ "last_exit_ts": "2026-10-22T20:51:46.580130+00:00",
  "n_leaks": 3766,
  "n_gate_on": 7362,
  "n_ungated": 15,
- "n_safety": 584,
- "n_unmapped": 147,
- "n_unverified": 1137,
- "since": "2026-10-20T20:47:48.110723+00:00",
+ "n_safety": 588,
+ "n_unmapped": 143,
+ "n_unverified": 1141,
+ "since": "2026-10-20T21:47:53.356696+00:00",
  "vec_exact_by_action": {
   "CLOSE": 98
  },
- "native_rows": 13011,
+ "native_rows": 13015,
  "unverified_by_family": {
   "REENTRY_OTHER (ABLATION_DISABLE_REENTRY=False)": 62,
   "GAIN_EROSION_STOP (None=None)": 103,
@@ -24,6 +24,7 @@
   "QUICK_WT_CROSS_EXIT (None=None)": 21,
   "RATIO_REBALANCE (ABLATION_DISABLE_RATIO_REBALANCE=False)": 36,
   "HEDGE_CLOSE_WT3M1H (None=None)": 10,
+  "RSI2 (TRADIER_RSI2_ENABLED=True)": 4,
   "HAIKU_WINNER (HAIKU_WINNER_ENABLED=True)": 17
  },
  "leaks_by_family": {
@@ -110,7 +111,7 @@
   "BREAK_EVEN_GUARD": 15
  },
  "safety_by_family": {
-  "FIXED_STOP": 584
+  "FIXED_STOP": 588
  },
  "unmapped": {
   "R3_HTF_FLIP_DAILY": 49,
@@ -119,7 +120,6 @@
   "LH_LL_TOP_EXIT_arm=4h_LH_leg=WT15M": 11,
   "TECHNICAL_TARGET_dc_15m_high_-0.10%_TA": 7,
   "RECONCILE_XRPUSDC_LONG": 4,
-  "RSI2_EXIT_LIVE_rsi2=6.3_thr=10.0": 3,
   "ANG_TIMING_TRIM_FAILED": 2,
   "MTF_GR_WT_EXIT_1h_grTFs=3": 2,
   "men:BBUSDT_LONG_QUICK_WINNER_WT_AUGMEN": 2,
@@ -129,14 +129,13 @@
   "RSI2_XTREME_EXIT_LONG_1h_94.0": 1,
   "FROZEN_ACT_STOP_FROZEN_BREACH": 1,
   "WT_SIMPLE_GUARANTEE_15m_wt-27.6vs-21.3": 1,
-  "RSI2_EXIT_LIVE_rsi2=3.6_thr=10.0": 1,
   "WT_SIMPLE_GUARANTEE_15m_wt-27.8vs-21.4": 1,
   "BB_BOUNCE_ENTRY_4h_S": 1
  },
  "actions": {
   "OPEN": 4674,
   "QUICK_OPEN": 3850,
-  "CLOSE": 2350,
+  "CLOSE": 2354,
   "QUICK_CLOSE": 27,
   "QUICK_QUICK_CLOSE": 23,
   "STRONG_REDUCE": 585,
