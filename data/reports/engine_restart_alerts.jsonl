@@ -43,3 +43,5 @@
 {"ts":1792649828,"account":"ang","kind":"engine_restart_suppressed","msg":"ez_manage SILENT (156s > 120s) but the 24h restart budget is spent (last restart 1381s ago) — NOT restarting; a genuinely wedged engine now needs a human/code fix"}
 {"ts":1792649835,"account":"flz","kind":"engine_restart_suppressed","msg":"ez_manage SILENT (184s > 120s) but the 24h restart budget is spent (last restart 602s ago) — NOT restarting; a genuinely wedged engine now needs a human/code fix"}
 {"ts":1792649886,"account":"inf","kind":"engine_restart_suppressed","msg":"ez_manage SILENT (169s > 120s) but the 24h restart budget is spent (last restart 1440s ago) — NOT restarting; a genuinely wedged engine now needs a human/code fix"}
+{"ts":1792650441,"account":"men","kind":"engine_restart_suppressed","msg":"NO ENGINE CHILD for 61s and the 24h budget was already spent (last 659s ago) — starting anyway: an account is never left without an engine"}
+{"ts":1792650550,"account":"inf","kind":"engine_restart_suppressed","msg":"ez_manage SILENT (238s > 120s) but the 24h restart budget is spent (last restart 2100s ago) — NOT restarting; a genuinely wedged engine now needs a human/code fix"}

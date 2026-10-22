@@ -304,7 +304,16 @@ engine_keepalive() {
   if [ "$nt_mt" -gt 0 ]; then nt_age=$(( now - nt_mt )); else nt_age=0; fi
   nt_pending=$(/bin/ls "$BASE/data/vec_live/intents/" 2>/dev/null | /usr/bin/grep -c "^PB-${A}-" 2>/dev/null || echo 0)
   case "$nt_pending" in ''|*[!0-9]*) nt_pending=0 ;; esac
-  if [ -n "$mgr_pids" ] && [ "$nt_pending" -gt 0 ] && [ "$nt_age" -gt "$nt_limit" ] && [ "$mgr_since" -gt "$mgr_boot_grace" ]; then
+  # DISABLED BY DEFAULT 2026-10-22 06:2xZ — THIS RULE WAS THE RESTART LOOP. I added it to guarantee "no account can
+  # ever stop trading" and it did the exact opposite: it killed fin at 05:54:27, 06:05:23 and 06:16:31Z, men at
+  # 05:54:32, 06:05:29 and 06:16:40Z, flz at 06:07:12Z — every ~11 minutes. A freshly restarted engine HAS a stale
+  # ledger and pending dictates by definition, so the kill reset it before it could trade, which kept the ledger
+  # stale, which fired the rule again. The boot grace could not save it either: $mgr_since comes from
+  # /tmp/.mac_mgr_started_<acct>, which is stamped only when THIS script spawns the watchdog, not when the watchdog
+  # respawns the child — measured ang/inf stamps 1,837 s old while their engines were seconds old.
+  # Re-enable only with a grace measured from the ENGINE CHILD's own start and a limit proven not to fire on a
+  # healthy account: MAC_NOT_TRADING_ENFORCE=1.
+  if [ "${MAC_NOT_TRADING_ENFORCE:-0}" = "1" ] && [ -n "$mgr_pids" ] && [ "$nt_pending" -gt 0 ] && [ "$nt_age" -gt "$nt_limit" ] && [ "$mgr_since" -gt "$mgr_boot_grace" ]; then
     engine_alert "$A" "NOT TRADING: ${nt_pending} dictate(s) pending and live_exec_${A}.jsonl has not advanced in ${nt_age}s (> ${nt_limit}s) while the engine is up — replacing the engine"
     klog "$A: NOT TRADING (${nt_pending} pending dictates, ledger ${nt_age}s stale) -> replacing engine $mgr_pids"
     echo "$now" > "$rb_stamp"
