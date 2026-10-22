@@ -404,7 +404,14 @@ class Agent:
         if yielded and local.get("holder") == "s1" and local.get("gen") == lease.get("gen"):
             ok = self.pull_state_back(host, venues, accounts=yielded) if host else True
             log(f"UNFENCE scoped accounts {yielded} (state pull ok={ok}) — watchdog respawns via gate")
-        pids = [] if os.environ.get("LF_NO_KILL") == "1" else trader_pids(venues, scope or None)
+        # THE MAC NEVER KILLS ITS OWN TRADERS (USER 2026-10-22: S1 "can NEVER block any mac action it needs to STAND
+        # DOWN as soon as mac trades"). This loop SIGTERMed every gated Mac trader the moment S1 took the lease.
+        # MEASURED 2026-10-22: "FENCE: SIGTERM 13 gated trader pids [50189, ...]" at 04:31:34Z killed fin's engine
+        # (50189), and 05:00:37-41Z killed ang, men and fin (exit=143, signal 15) — while S1 ran zero ez_manage
+        # processes. Combined with the spawn gate in tools/live_failover_lease_gate.sh (now Mac-exempt), accounts were
+        # killed here and then refused a restart there. Dedup belongs to S1, which does not spawn without the lease.
+        # LF_FENCE_KILL=1 restores the kill for the failover harness only.
+        pids = trader_pids(venues, scope or None) if os.environ.get("LF_FENCE_KILL") == "1" else []
         for pid in pids:
             try:
                 os.kill(pid, signal.SIGTERM)
@@ -412,6 +419,10 @@ class Agent:
                 pass
         if pids:
             log(f"FENCE: SIGTERM {len(pids)} gated trader pids {pids}")
+        else:
+            _alive = trader_pids(venues, scope or None)
+            if _alive:
+                log(f"FENCE: NOT killing {len(_alive)} Mac trader pids {_alive} — the Mac keeps trading; S1 must stand down (USER 2026-10-22)")
         if host:
             # 2026-10-15: seed at most once per lease generation / SEED_EVERY_S. This ran an rsync from S1 on EVERY
             # tick while fenced, so the 15 s tick stretched to ~180 s and the heartbeat this agent pushes to S1 went

@@ -70,7 +70,7 @@ NOTIFY_EVERY_S = 600.0
 SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=5", "-o", "StrictHostKeyChecking=accept-new",
             "-o", "ControlMaster=no", "-o", "ControlPath=none", "-o", "ServerAliveInterval=5", "-o", "ServerAliveCountMax=2"]
 DEFAULT_SOURCES = ("s1=s1-pub,s1-int=binance/ez_s1_stack/data/latest_market_data.json;"
-                   "s2=s2-pub,s2=binance/ez_s2_stack/data/latest_market_data.json")
+                   "s2=s2,s2-pub=binance/ez_s2_stack/data/latest_market_data.json")
 
 
 def parse_sources(spec):
