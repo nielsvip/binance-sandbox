@@ -34,6 +34,10 @@ class Config:
     _CURRENT_MARKET_MODE: ClassVar[str] = "NORMAL_MODE"
     _REGIME_OVERRIDES: ClassVar[Dict[str, Dict[str, object]]] = {}
     _REGIME_REDIS_CACHE: ClassVar[Dict[str, Dict]] = {}
+    # 2026-10-22: ClassVar, not a bare annotation — this is a dataclass, and a mutable default on a plain field
+    # raises ValueError at class-definition time, i.e. config.py stops importing and every process dies on start.
+    _REGIME_JSON_MEMO: ClassVar[Dict[str, object]] = {"mtime": None, "map": {}}
+    _REGIME_REDIS_CLIENT: ClassVar[object] = None
     _REGIME_REDIS_TS: ClassVar[float] = 0.0
     _REGIME_LOG: ClassVar[list] = []
 
@@ -6076,8 +6080,6 @@ class Config:
         # Cache the answer either way — an empty dict means "asked, nothing there" and stops the hammering.
         cls._REGIME_REDIS_CACHE[full_key] = dict(data, _cache_ts=now) if data else {"_cache_ts": now}
         return cls._REGIME_REDIS_CACHE[full_key] if data else None
-
-    _REGIME_JSON_MEMO: dict = {"mtime": None, "map": {}}
 
     @classmethod
     def _regime_from_json(cls, full_key: str) -> dict | None:
