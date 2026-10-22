@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-22T16:00:04Z",
+ "generated_utc": "2026-10-22T16:20:02Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-22T13:30:00Z",
  "market_open": true,
@@ -14,10 +14,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 545,
-    "filled_before_open": 469
+    "filled_today": 560,
+    "filled_before_open": 468
    },
-   "detail": "469 boards filled before the open (545 today)"
+   "detail": "468 boards filled before the open (560 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -25,12 +25,12 @@
    "critical": true,
    "measured": {
     "mac_done_stamp": false,
-    "s1_stamp": "{\"date\":\"20261022\",\"status\":\"FAILED\",\"failed_step\":\"1\",\"why\":\"v15_avg_delta_rebuild rc=1\",\"steps_ok\":\"\",\"started\":\"2026-10-22T13:01:00Z\",\"ended\":\"2026-10-22T13:02:46Z\"}",
+    "s1_stamp": "NO_STAMP",
     "cat_side_defaults_4_at": "2026-10-21T04:54:49Z",
     "cat_side_age_days": 1.5,
     "cat_side_note": "rebuilt only by v15_daily_template_update --sync-defaults, a deliberate manual step \u2014 reported, never fails this gate"
    },
-   "detail": "mac stamp 20261022=False, s1 stamp {\"date\":\"20261022\",\"status\":\"FAILED\",\"failed_step\":\"1\",\"why\":\"v15_avg_delta_rebuild rc=1\",\"steps_ok\":\"\",\"started\":\"2026-10-22T13:01:00Z\",\"ended\":\"2026, cat_side layer 1.5d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
+   "detail": "mac stamp 20261022=False, s1 stamp NO_STAMP, cat_side layer 1.5d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
   },
   {
    "name": "selection_fresh",
@@ -62,8 +62,8 @@
    "measured": {
     "selection_n": 511,
     "exact": 63,
-    "benign_divergence_only": 410,
-    "material_divergence": 37,
+    "benign_divergence_only": 413,
+    "material_divergence": 34,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -173,19 +173,6 @@
       ]
      },
      {
-      "sym_side": "GRAMUSDT_SHORT",
-      "published_at": "2026-10-22T15:32:52Z",
-      "material": 45,
-      "sample": [
-       "ATR_ADAPTIVE_STOP_MULT",
-       "ATR_ADAPTIVE_STOP_TF",
-       "BREAKOUT_RETEST_ARMED_ENABLED",
-       "BREAKOUT_RETEST_FILTER_TF",
-       "CRYPTO_REENTRY_PATHWAYS_ENABLED",
-       "DAYTRADE_DC_TARGET_TF"
-      ]
-     },
-     {
       "sym_side": "SHOP_LONG",
       "published_at": "2026-10-22T04:02:56Z",
       "material": 42,
@@ -197,10 +184,23 @@
        "DC_EDGE_SIZING_MIN_MULT",
        "DC_HARD_STOP_1H_ENABLED"
       ]
+     },
+     {
+      "sym_side": "1000FLOKIUSDT_LONG",
+      "published_at": "2026-10-13T03:39:04Z",
+      "material": 41,
+      "sample": [
+       "ALL_TF_AGAINST_BLOCK_ENTRY_ENABLED",
+       "ATR_ADAPTIVE_STOP_ENABLED",
+       "BB_BOUNCE_ENTRY_TF",
+       "DAYTRADE_DC_TARGET_TF",
+       "DC_BREAKOUT_TF_EXPANDED",
+       "ENTRY_DC_TF"
+      ]
      }
     ]
    },
-   "detail": "63 exact, 410 benign-only, 37 with material divergence, 1 with no live row"
+   "detail": "63 exact, 413 benign-only, 34 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
@@ -210,7 +210,7 @@
     "symbols": 330,
     "stale_over_90min": 2,
     "stale_pct": 0.6,
-    "median_age_min": 30.1,
+    "median_age_min": 35.0,
     "sample": [
      "DUSKUSDT",
      "ONEUSDT"
