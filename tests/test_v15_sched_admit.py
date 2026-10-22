@@ -269,7 +269,7 @@ class SideGrowthDebtTest(unittest.TestCase):
         full = (13200.0 - 4600.0)
         self.assertEqual(_side_growth_debt_mb({"ALGOUSDT_LONG": 4600.0}, {"crypto": 13200.0}, 2.0), full)
         self.assertEqual(_side_growth_debt_mb({"ALGOUSDT_LONG": 4600.0}, {"crypto": 13200.0}, -1.0), 0.0)
-        self.assertEqual(_side_growth_debt_mb({"ALGOUSDT_LONG": 4600.0}, {"crypto": 13200.0}, "bogus"), 0.5 * full)
+        self.assertEqual(_side_growth_debt_mb({"ALGOUSDT_LONG": 4600.0}, {"crypto": 13200.0}, "bogus"), 0.25 * full)
 
     def test_junk_safe(self):
         from v15_fleet_scheduler import _side_growth_debt_mb
@@ -321,6 +321,12 @@ class MemGuardFillTest(unittest.TestCase):
         h = log["hosts"][self.HOST]
         self.assertNotEqual(h.get("idle_reason"), "mem guard")
         self.assertGreaterEqual(h.get("launched_pairs", 0), 1)
+
+    def test_blocked_symbols_name_their_gate(self):
+        log = self._run_tick()
+        fate = (log.get("fate") or {}).get(self.HOST, {})
+        self.assertTrue(fate)
+        self.assertTrue(any("mem guard" in str(v) for v in fate.values()))
 
 
 if __name__ == "__main__":

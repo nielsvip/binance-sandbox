@@ -1463,14 +1463,14 @@ def _growth_debt_mb(pairs_pss, est_pair):
     return debt
 
 
-def _side_growth_debt_mb(units, est_by_venue, frac=0.5):
+def _side_growth_debt_mb(units, est_by_venue, frac=0.25):
     """Growth debt of running sides, venue-grouped through the tested _growth_debt_mb contract (only sides under half their venue est count; mature sides are steady-state, the OOM reaper covers spikes).
 
-    USER 2026-10-22 (fleet trickle: 1 launch/tick with 12-23GB free on s2/s5/s6): the 2026-10-17 peak-admit rewrite counted full peak-minus-current for EVERY side, so two young crypto sides reserved ~15GB of growth that never materialises at once and blocked every admission while CPUs idled. Boards mature and finish at different times, so simultaneous peaks don't happen; `frac` (V15_SCHED_GROWTH_DEBT_FRAC, default 0.5) reserves the multiplexed share. The OOM reaper stays the hard backstop (refill-safe victim ranking bounds loss to newest startups). Never raises."""
+    USER 2026-10-22 (fleet trickle: 0-1 launches/tick with ~48GB free fleet-wide): the 2026-10-17 peak-admit rewrite counted full peak-minus-current for EVERY side, so two young crypto sides reserved ~15GB of growth that never materialises at once and blocked every admission while CPUs idled. Boards mature and finish at different times, so simultaneous peaks don't happen; `frac` (V15_SCHED_GROWTH_DEBT_FRAC, default 0.25) reserves the multiplexed share. The OOM reaper stays the hard backstop (refill-safe victim ranking bounds loss to newest startups). Never raises."""
     try:
         f = float(frac)
     except (TypeError, ValueError):
-        f = 0.5
+        f = 0.25
     f = min(1.0, max(0.0, f))
     if f <= 0:
         return 0.0
@@ -3589,9 +3589,9 @@ def tick(args, cfg, now):
             # (a mature side holds steady; the OOM reaper covers spikes) at the multiplexed share — every
             # side reserved to its full peak assumed simultaneous peaks that never happen and idled the fleet.
             try:
-                _debt_frac = float(os.environ.get("V15_SCHED_GROWTH_DEBT_FRAC", "0.5"))
+                _debt_frac = float(os.environ.get("V15_SCHED_GROWTH_DEBT_FRAC", "0.25"))
             except (TypeError, ValueError):
-                _debt_frac = 0.5
+                _debt_frac = 0.25
             _debt_frac = min(1.0, max(0.0, _debt_frac))
             _debt = _side_growth_debt_mb(_units, est_v, _debt_frac)
             proj_mem = s["mem_avail_mb"] - reserve - _debt
@@ -3659,15 +3659,22 @@ def tick(args, cfg, now):
         info["mem_source"] = "rss-fallback" if any(isinstance(_r_m, dict) and _r_m.get("mem_source") == "rss-fallback" for _r_m in s["running"].values()) else "pss(smaps_rollup)"
         info["gate_venues"] = _gate_venues
         info["gate_inputs"] = {"mem_avail_mb": s["mem_avail_mb"], "reserve_mb": round(reserve), "proj_mem_mb": round(proj_mem), "growth_debt_mb": round(_debt), "debt_frac": _debt_frac, "est_gate_mb": round(est_gate), "floor_crypto_mb": os.environ.get("V15_SCHED_PAIR_FLOOR_MB", ""), "floor_stocks_mb": os.environ.get("V15_SCHED_PAIR_FLOOR_MB_STOCKS", ""), "phase": _host_phase}
-        for sym, needs_slot in order:
+        for _rank0, (sym, needs_slot) in enumerate(order):
+            # USER 2026-10-22 fate log: every skip of a top-40 symbol names its blocker, so the ORDER-AUDIT
+            # never cries ORDER_VIOLATION over a logged reason and an idling fleet names its own gate.
+            _fate = (lambda _r, _s=sym: log.setdefault("fate", {}).setdefault(h["name"], {}).setdefault(_s, _r)) if _rank0 < 40 else (lambda _r: None)
             _pinned_sym = sym in _pin_syms
             if _pinned_sym and _pin_hosts and h["name"] not in _pin_hosts:
+                _fate("pin restricted to other hosts")
                 continue
             if needs_slot and new_launched >= args.max_launch:
+                _fate("budget: host max-launch reached")
                 continue  # budget counts only NEW pairs; never break (a break skips held chains sorted later and froze the fleet 03:00-03:35Z)
             if needs_slot and (used >= cap or proj_mem < _est_sym(sym) or cpu >= cfg.get("cpu_target_pct", 90) or not swap_ok or not disk_ok):
+                _fate("slots full" if used >= cap else "mem guard" if proj_mem < _est_sym(sym) else "cpu guard" if cpu >= cfg.get("cpu_target_pct", 90) else "swap guard" if not swap_ok else "disk guard")
                 continue  # over-cap/exhausted host: skip this admission, keep evaluating (held chains need no slot)
             if venue_of(sym) not in h["venues"]:
+                _fate("venue not on host")
                 continue
             # USER 2026-10-18 "100% stocks until all stocks are done": a PRIORITY PIN is a hint about ORDER, it may not
             # override an explicit venue pin. V15_SCHED_PRIORITY_SYMS is regenerated with crypto symbols at the front
@@ -3683,13 +3690,16 @@ def tick(args, cfg, now):
                 log.setdefault("skipped_venue_only", []).append(f"{h['name']}:{sym}")
                 continue  # TEMPORARY USER 2026-10-10: stocks-only weekend push — new crypto pairs blocked; held chains (needs_slot=False) drain untouched
             if sym in owner and owner[sym] != h["name"]:
+                _fate(f"owned by {owner.get(sym)}")
                 continue
             if needs_slot and not _pinned_sym and _quota_blocks(sym, _gtiers, chain_state) and nonw_used >= nonw_quota and f"{sym}_LONG" not in redo and f"{sym}_SHORT" not in redo:
                 log.setdefault("skipped_quota", []).append(f"{h['name']}:{sym}")
                 continue  # USER 2026-10-10 (82 redo backlog): refills never consume winner quota
             if not needs_slot and (proj_mem < _est_sym(sym) / 2 or cpu >= 120 or not swap_ok or not disk_ok):
+                _fate("chain mem/cpu/swap/disk guard")
                 continue
             if not needs_slot and held[h["name"]].get(sym) != "running" and (running_cnt >= cap or chain_launched >= max(args.max_launch, 4)):
+                _fate("chain cap/budget")
                 continue
             rd = is_ready(h["name"], sym)
             _cont_ss = _cont_sides(sym)
@@ -4296,6 +4306,15 @@ def tick(args, cfg, now):
                 return "sibling-terminal"
             if sy in {x.rsplit("_", 1)[0] for x in (log.get("own_unfinished", {}).get(hn) or [])}:
                 return "own-unfinished-resume"
+            _ft = (log.get("fate") or {}).get(hn, {}).get(sy)
+            if _ft:
+                return "fate: " + str(_ft)[:80]
+            if f"{hn}:{sy}" in (log.get("skipped_no_actions") or []):
+                return "no launchable action (capped/grace/running/unreachable sides)"
+            if f"{hn}:{sy}" in (log.get("skipped_quota") or []):
+                return "winner-quota"
+            if any(x == f"{hn}:{sy}" or x.startswith(f"{hn}:{sy}:") for x in (log.get("skipped_pair_gate") or [])):
+                return "pair-gate"
             if isinstance(hi, dict):
                 try:
                     used, cap = [int(z) for z in str(hi.get("slots", "0/0")).split("/")]
