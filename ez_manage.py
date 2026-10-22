@@ -49682,6 +49682,8 @@ async def _process_single_override_check(
                     logger.error(
                         f"[🚨 OVERRIDE_NOT_ALLOWED] {position_key}: REDUCE COOLDOWN ACTIVE - last reduction was {red_seconds:.0f}s ago (required={config.REDUCTION_COOLDOWN_SECONDS}s) - NO EXCEPTIONS"
                     )
+                elif _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits: would-fire leg stood down, no reduce
+                    logger.info(f"[OVERRIDE_REDUCE_STOOD_DOWN] {position_key}: native exit disabled — no trade")
                 else:
                     logger.info(
                         f"[exe cute_trade_actdion][{account_key}] ❌ 'REDUCE' {position_key} {current_price:.6f} DIRECT_HIGH_AUGMENT REDUCE"
@@ -49781,6 +49783,8 @@ async def _process_single_override_check(
                         logger.error(
                             f"[🚨 OVERRIDE_NOT_ALLOWED] {position_key}: REDUCE COOLDOWN ACTIVE - last reduction was {red_seconds:.0f}s ago (required={config.REDUCTION_COOLDOWN_SECONDS}s) - NO EXCEPTIONS ts3/15:{i.get('timestamp_3m')}/{i.get('timestamp_15m')}"
                         )
+                    elif _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits: would-fire leg stood down, no reduce
+                        logger.info(f"[OVERRIDE_REDUCE_STOOD_DOWN] {position_key}: native exit disabled — no trade")
                     else:
                         logger.info(
                             f"[exe cute_trade_afction][{account_key}] ❌ 'REDUCE' {position_key} {current_price:.6f} DIRECT_HIGH_AUGMENT REDUCE"
