@@ -29,8 +29,20 @@ async def main():
                 async with session.ws_connect(URL, heartbeat=30, timeout=60.0) as ws:
                     logger.info("Connected to !markPrice@arr stream")
                     backoff = 5
-                    async for msg in ws:
+                    # 2026-10-22: bare `async for` blocked forever on a silently-throttled
+                    # socket. Bound receives + reconnect on no-DATA (same disease as ez_klines).
+                    _last_data = time.monotonic()
+                    while True:
+                        try:
+                            msg = await asyncio.wait_for(ws.receive(), timeout=10)
+                        except asyncio.TimeoutError:
+                            logger.warning("mark_price WS no frame for 10s — forcing reconnect")
+                            break
+                        if time.monotonic() - _last_data > 20:
+                            logger.warning("mark_price WS no DATA for 20s — forcing reconnect")
+                            break
                         if msg.type == aiohttp.WSMsgType.TEXT:
+                            _last_data = time.monotonic()
                             try:
                                 payload = json.loads(msg.data)
                                 items = payload.get("data", payload)
@@ -52,7 +64,7 @@ async def main():
                                     last_log = time.time()
                             except Exception as e:
                                 logger.debug(f"msg parse error: {e}")
-                        elif msg.type in (aiohttp.WSMsgType.ERROR, aiohttp.WSMsgType.CLOSED):
+                        elif msg.type in (aiohttp.WSMsgType.ERROR, aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.CLOSING):
                             logger.warning("WS closed/error, reconnecting")
                             break
             finally:

@@ -418,6 +418,62 @@ class HighResMarketData:
 
         return c1, c3, lp, tick_ts
 # --- ENGINE WITH MULTI-SOURCE INJECTORS ---
+async def _wb_write(symbol, store, cache_dir):
+    """Merge one symbol's composed 1m/3m candles into klines_cache. Returns files written."""
+    n = 0
+    for tf, closes_key in [("1m", "closes_1m"), ("3m", "closes_3m")]:
+        closes = store.get(closes_key)
+        if not closes or len(closes) < 10:
+            continue
+        path = cache_dir / f"{symbol}_{tf}.json"
+        existing = []
+        if path.exists():
+            try:
+                async with aiofiles.open(path, "rb") as f:
+                    existing = orjson.loads(await f.read())
+                if not isinstance(existing, list):
+                    existing = []
+            except Exception:
+                existing = []
+        existing_ts = set()
+        for bar in existing:
+            if isinstance(bar, dict):
+                ts_raw = bar.get("timestamp", "")
+                try:
+                    existing_ts.add(int(isoparse(ts_raw).timestamp()))
+                except Exception:
+                    pass
+        new_bars = []
+        for ts_epoch, close_price in closes.items():
+            if ts_epoch not in existing_ts:
+                ts_iso = datetime.fromtimestamp(ts_epoch, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+                new_bars.append({"timestamp": ts_iso, "open": close_price, "high": close_price, "low": close_price, "close": close_price, "volume": 0})
+            else:
+                for bar in existing:
+                    if isinstance(bar, dict):
+                        try:
+                            bar_ts = int(isoparse(bar.get("timestamp", "")).timestamp())
+                        except Exception:
+                            continue
+                        if bar_ts == ts_epoch:
+                            bar["close"] = close_price
+                            bar["high"] = max(float(bar.get("high", close_price)), close_price)
+                            bar["low"] = min(float(bar.get("low", close_price)), close_price)
+                            break
+        if new_bars:
+            merged = existing + new_bars
+            merged.sort(key=lambda b: b.get("timestamp", ""))
+            tmp = path.with_suffix(".tmp")
+            async with aiofiles.open(tmp, "wb") as f:
+                await f.write(orjson.dumps(merged))
+            os.replace(tmp, path)
+            n += 1
+        elif existing:
+            tmp = path.with_suffix(".tmp")
+            async with aiofiles.open(tmp, "wb") as f:
+                await f.write(orjson.dumps(existing))
+            os.replace(tmp, path)
+    return n
 class MarketDataEngine:
     def __init__(self):
         self.redis = Redis.from_url(REDIS_URL, decode_responses=True)
@@ -429,6 +485,7 @@ class MarketDataEngine:
         
         # THE BRAIN: Stores the freshest price found across all sources
         self.price_buffer = {} # { 'BTCUSDC': {'p': 50.0, 't': 1700.0} }
+        self._synth_ts = {} # { sym: last wall-clock synthetic pass } — wall-clock kline synthesis when ticks stall
         
         self._connect_shared()
 
@@ -638,53 +695,46 @@ class MarketDataEngine:
                 buf = self.price_buffer.get(sym)
                 if not buf: continue
 
-                # 2. STRICT SYNC CHECK
-                # Only proceed if this price is newer than the last one we CALCULATED with.
-                # This prevents "updating without recalculating".
-                if buf['t'] <= store.get('last_calc_ts', 0.0):
-                    continue
+                # 2. STALE-BUF WALL-CLOCK SYNTHESIS (checked BEFORE the sync check).
+                # 2026-10-22: the old order ran the sync check first, so a synthetic pass set
+                # last_calc_ts = stale buf time and every later loop skipped the symbol forever —
+                # one synth per outage, then silence until a fresh tick. And the synth re-stamped
+                # the STALE buf time, so _tick_ts / minute buckets could never advance without ticks.
+                # Now: a buf older than 3s synthesizes on WALL CLOCK (last price carried forward),
+                # throttled to one pass per symbol per 5s, until fresh ticks resume.
                 _now_ts = time.time()
                 _buf_age = _now_ts - float(buf.get('t', 0) or 0)
+                _is_synthetic = False
                 if _buf_age > 3.0:
-                    # TRY FRESH FALLBACK: check Redis mark_price:{sym} and mark_prices hash for a fresher tick
-                    # before declaring stale. This allows gateway/macbook/s1 to fill in when local WS dies.
-                    _fresh_found = False
-                    try:
-                        # quick sync check - if Redis has fresher mark, inject it
-                        if self.redis:
-                            # This will be handled by redis_injector on next loop, but try immediate fetch for this sym
-                            pass
-                    except Exception:
-                        pass
-                    # SYNTHESIZE KLINE FROM MARK: if no fresh source, use stale mark to synthesize kline close
-                    # instead of skipping entirely. This keeps indicators updating when kline WS dies.
-                    # We still warn but proceed with synthesis.
                     _last_warn = self._stale_warn_throttle.get(sym, 0.0) if hasattr(self, "_stale_warn_throttle") else 0.0
                     if _now_ts - _last_warn > 30.0:
                         if not hasattr(self, "_stale_warn_throttle"): self._stale_warn_throttle = {}
                         self._stale_warn_throttle[sym] = _now_ts
                         try: logger.warning(f"[mark_price_freshness] ez_market_data {sym} buf_age={_buf_age:.1f}s>3.0s — WS likely dead, synthesizing kline from mark price {buf.get('p')}")
                         except Exception: pass
-                    # Do NOT continue - proceed to synthesize: update market with stale mark as synthetic kline close
-                    # This ensures indicators stay fresh via mark prices when klines stop
+                    if _now_ts - self._synth_ts.get(sym, 0.0) < 5.0:
+                        continue
+                    self._synth_ts[sym] = _now_ts
                     _is_synthetic = True
-                else:
-                    _is_synthetic = False
+                elif buf['t'] <= store.get('last_calc_ts', 0.0):
+                    # STRICT SYNC CHECK (real ticks only): skip prices already calculated with.
+                    continue
 
                 # 3. ATOMIC UPDATE & SNAPSHOT
-                # We update the store NOW, knowing we will immediately snapshot it.
-                # This replaces the last close with the current Mark Price.
-                self.market.update(sym, buf['p'], buf['t'])
-                
+                # Real tick: stamp the tick. Synthetic pass: carry last price forward on WALL
+                # CLOCK so a new minute/3m bucket opens as time passes and _tick_ts stays fresh.
+                if _is_synthetic:
+                    self.market.update(sym, store.get('last_price') or buf['p'], _now_ts)
+                else:
+                    self.market.update(sym, buf['p'], buf['t'])
+
                 # 4. GET ARRAYS
-                # Because we just called update(), c1[-1] is guaranteed to be buf['p']
                 snap = self.market.get_snapshot(sym)
                 if not snap: continue
                 c1, c3, price, tick_ts = snap
 
                 # 5. QUEUE CALCULATION
-                # We pass 'tick_ts' (which equals buf['t']) explicitly.
-                tasks_data.append((sym, c1, c3, price, tick_ts))
+                tasks_data.append((sym, c1, c3, price, tick_ts, _is_synthetic))
 
             if not tasks_data:
                 await asyncio.sleep(0.5) # Wait for new price ticks
@@ -697,14 +747,16 @@ class MarketDataEngine:
                 chunk = tasks_data[i:i+chunk_size]
                 futures = []
                 for item in chunk:
-                    sym, c1, c3, p, t = item
+                    sym, c1, c3, p, t, _syn = item
                     fut = loop.run_in_executor(self.executor, cpu_bound_calculation, c1, c3, p, t)
-                    futures.append((sym, fut, t)) # Track timestamp to update store
-                
-                for sym, fut, t in futures:
+                    futures.append((sym, fut, t, _syn)) # Track timestamp to update store
+
+                for sym, fut, t, _syn in futures:
                     try:
                         res = await fut
-                        if res: 
+                        if res:
+                            if _syn:
+                                res['_synthetic_kline'] = True # wall-clock carry-forward, not a fresh tick
                             results.append((sym, res))
                             self.market.data[sym]['last_calc_ts'] = t # Mark as calculated
                     except Exception as e:
@@ -922,58 +974,14 @@ class MarketDataEngine:
             try:
                 written = 0
                 for symbol, store in self.market.data.items():
-                    for tf, closes_key in [("1m", "closes_1m"), ("3m", "closes_3m")]:
-                        closes = store.get(closes_key)
-                        if not closes or len(closes) < 10:
-                            continue
-                        path = cache_dir / f"{symbol}_{tf}.json"
-                        existing = []
-                        if path.exists():
-                            try:
-                                async with aiofiles.open(path, "rb") as f:
-                                    existing = orjson.loads(await f.read())
-                                if not isinstance(existing, list):
-                                    existing = []
-                            except Exception:
-                                existing = []
-                        existing_ts = set()
-                        for bar in existing:
-                            if isinstance(bar, dict):
-                                ts_raw = bar.get("timestamp", "")
-                                try:
-                                    existing_ts.add(int(isoparse(ts_raw).timestamp()))
-                                except Exception:
-                                    pass
-                        new_bars = []
-                        for ts_epoch, close_price in closes.items():
-                            if ts_epoch not in existing_ts:
-                                ts_iso = datetime.fromtimestamp(ts_epoch, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-                                new_bars.append({"timestamp": ts_iso, "open": close_price, "high": close_price, "low": close_price, "close": close_price, "volume": 0})
-                            else:
-                                for bar in existing:
-                                    if isinstance(bar, dict):
-                                        try:
-                                            bar_ts = int(isoparse(bar.get("timestamp", "")).timestamp())
-                                        except Exception:
-                                            continue
-                                        if bar_ts == ts_epoch:
-                                            bar["close"] = close_price
-                                            bar["high"] = max(float(bar.get("high", close_price)), close_price)
-                                            bar["low"] = min(float(bar.get("low", close_price)), close_price)
-                                            break
-                        if new_bars:
-                            merged = existing + new_bars
-                            merged.sort(key=lambda b: b.get("timestamp", ""))
-                            tmp = path.with_suffix(".tmp")
-                            async with aiofiles.open(tmp, "wb") as f:
-                                await f.write(orjson.dumps(merged))
-                            os.replace(tmp, path)
-                            written += 1
-                        elif existing:
-                            tmp = path.with_suffix(".tmp")
-                            async with aiofiles.open(tmp, "wb") as f:
-                                await f.write(orjson.dumps(existing))
-                            os.replace(tmp, path)
+                    # 2026-10-22: one bad symbol used to abort the whole pass (single outer
+                    # try), freezing writeback for every other symbol. Contain per symbol.
+                    try:
+                        written += await _wb_write(symbol, store, cache_dir)
+                    except Exception as _wbe:
+                        try: logger.warning(f"[KLINES_WRITEBACK] skip {symbol}: {_wbe}")
+                        except Exception: pass
+                        continue
                 if written > 0:
                     logger.info(f"📝 [KLINES_WRITEBACK] Updated {written} klines_cache files")
             except Exception as e:

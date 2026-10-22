@@ -255,3 +255,19 @@ def test_vec_decided_entries_pass_enforce():
         "OPEN", "fin:DOTUSDT_LONG", "VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_X"
     )
     assert (ok, verdict) == (True, "VEC_DECIDED")
+
+
+def test_broker_sync_epoch_sentinel_is_no_sync():
+    """USER 2026-10-22: men 19:22Z refused 30 vec OPENs as BLOCKED_BROKER_SYNC_STALE
+    on a 1792696923s (≈56y) age — an epoch-0/1970 never-synced sentinel, not a real
+    measurement. The gate's own None branch allows the first action with a warning;
+    the sentinel must take that branch, never the refuse branch."""
+    from datetime import datetime, timezone
+
+    import ez_manage as em
+
+    epoch = datetime.fromtimestamp(0, tz=timezone.utc)
+    assert em._broker_sync_freshest_ts(epoch, None, epoch) is None
+    fresh = datetime.now(timezone.utc)
+    assert em._broker_sync_freshest_ts(epoch, fresh) == fresh
+    assert em._broker_sync_freshest_ts(None, None) is None

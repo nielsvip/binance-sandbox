@@ -925,7 +925,20 @@ async def _ws_1m_chunk(symbols_chunk):
         try:
             async with websockets.connect(url, ping_interval=20, ping_timeout=10, close_timeout=5) as ws:
                 log(f'1m WS connected: {len(symbols_chunk)} symbols')
-                async for raw in ws:
+                # 2026-10-22: bare `async for` blocked forever on a silently-throttled
+                # socket (frames stop, pings continue) — every 1m file froze with the
+                # connection looking healthy. Bound receives + reconnect on no-DATA.
+                _last_data = time.monotonic()
+                while True:
+                    try:
+                        raw = await asyncio.wait_for(ws.recv(), timeout=10)
+                    except asyncio.TimeoutError:
+                        log(f'1m WS no frame for 10s ({len(symbols_chunk)} syms) — forcing reconnect')
+                        break
+                    if time.monotonic() - _last_data > 30:
+                        log(f'1m WS no DATA for 30s ({len(symbols_chunk)} syms, pings only?) — forcing reconnect')
+                        break
+                    _last_data = time.monotonic()
                     try:
                         msg = json.loads(raw)
                         k = msg.get('data', {}).get('k', {})

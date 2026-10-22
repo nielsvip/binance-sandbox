@@ -180,9 +180,19 @@ class KlineWSFeed:
                 async with websockets.connect(url, ssl=ssl_ctx, ping_interval=20, ping_timeout=30, close_timeout=10, max_size=2 ** 20) as ws:
                     delay = 5
                     logger.info(f"🔌 WS connected: {len(chunk)} symbols")
-                    async for raw in ws:
-                        if self._shutdown.is_set():
+                    # 2026-10-22: bare `async for` blocked forever on a silently-throttled
+                    # socket. Bound receives + reconnect on no-DATA (same disease as ez_klines).
+                    _last_data = time.monotonic()
+                    while not self._shutdown.is_set():
+                        try:
+                            raw = await asyncio.wait_for(ws.recv(), timeout=10)
+                        except asyncio.TimeoutError:
+                            logger.warning(f"⚠️ 3m WS no frame for 10s ({len(chunk)} syms) — forcing reconnect")
                             break
+                        if time.monotonic() - _last_data > 30:
+                            logger.warning(f"⚠️ 3m WS no DATA for 30s ({len(chunk)} syms) — forcing reconnect")
+                            break
+                        _last_data = time.monotonic()
                         try:
                             data = json.loads(raw).get("data", {})
                             if data.get("e") != "kline":

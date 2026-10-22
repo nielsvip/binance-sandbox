@@ -6,39 +6,18 @@
     "symbol": "ZILUSDT",
     "side": "SHORT"
   },
-  "fin:STRKUSDT_SHORT": {
-    "orderId": "3000002266988695",
-    "stopPrice": 0.05476,
-    "entry_sig": "2026-10-22 17:53:17.913000+00:00",
-    "symbol": "STRKUSDT",
-    "side": "SHORT"
-  },
-  "fin:BOMEUSDC_SHORT": {
-    "orderId": "3000002266990146",
-    "stopPrice": 0.0006041,
-    "entry_sig": "2026-10-22 17:53:59.292000+00:00",
-    "symbol": "BOMEUSDC",
-    "side": "SHORT"
+  "fin:ETHFIUSDC_LONG": {
+    "orderId": "3000002267148555",
+    "stopPrice": 0.6493,
+    "entry_sig": "2026-10-22 19:23:40.469000+00:00",
+    "symbol": "ETHFIUSDC",
+    "side": "LONG"
   },
   "fin:NMRUSDT_SHORT": {
-    "orderId": "3000002267124505",
-    "stopPrice": 10.667,
+    "orderId": "3000002267151372",
+    "stopPrice": 10.788,
     "entry_sig": "2026-10-22 18:27:21.165000+00:00",
     "symbol": "NMRUSDT",
-    "side": "SHORT"
-  },
-  "fin:KSMUSDT_SHORT": {
-    "orderId": "3000002267124504",
-    "stopPrice": 3.972,
-    "entry_sig": "2026-10-22 18:46:55.780000+00:00",
-    "symbol": "KSMUSDT",
-    "side": "SHORT"
-  },
-  "fin:ZKUSDT_SHORT": {
-    "orderId": "3000002267124602",
-    "stopPrice": 0.01327,
-    "entry_sig": "2026-10-22 18:34:18.729000+00:00",
-    "symbol": "ZKUSDT",
     "side": "SHORT"
   }
 }

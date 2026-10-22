@@ -7986,6 +7986,8 @@ def _broker_sync_freshest_ts(*candidates):
             continue
         try:
             c = cand.replace(tzinfo=timezone.utc) if getattr(cand, 'tzinfo', None) is None else cand
+            if c.year < 2020:
+                continue  # USER 2026-10-22: epoch-0/1970 sentinel = never synced, not a 56-year-old sync (men 19:22Z refused vec OPENs on it)
             if best is None or c > best:
                 best = c
         except Exception:
