@@ -14572,7 +14572,9 @@ async def bootstrap_position_service(logger=None, accounts: Optional[Dict[str, A
     try:
         _t_phantom = time.time()
         phantom_count = await service.phantom_kill_on_bootstrap()
-        if logger: logger.info(f"[bootstrap] Phantom kill pass took {time.time()-_t_phantom:.2f}s, killed {phantom_count} phantoms")
+        # USER 2026-10-22 ("the bootstrap should not take over 20 seconds"): promoted from info to critical so it
+        # survives ez_manage's ServiceSilent logger (level CRITICAL) and STEP 1 becomes attributable.
+        if logger: logger.critical(f"[bootstrap] ⏱️ Phantom kill pass took {time.time()-_t_phantom:.2f}s, killed {phantom_count} phantoms")
     except Exception as phantom_err:
         if logger: logger.error(f"[bootstrap] Phantom kill pass failed (non-fatal): {phantom_err}", exc_info=True)
     asyncio.create_task(service._periodic_phantom_kill())
@@ -14580,8 +14582,10 @@ async def bootstrap_position_service(logger=None, accounts: Optional[Dict[str, A
     _t3 = time.time()
     # 2026-04-26 FIX: was `logger.critical(...)` — when caller passes logger=None this AttributeError'd 758× in 2 days,
     # crashing ez_positions_realtime workers (which call bootstrap_position_service(logger=None, ...) early in main()).
-    #if logger: logger.critical(f"[bootstrap] ⏱️ Data loading + init took {_t3-_t2:.2f}s | TOTAL bootstrap: {_t3-_t0:.2f}s")
-    #if logger: logger.info(f"[bootstrap] DONE. Service initialized with {total_count} total positions.")
+    # USER 2026-10-22: restored (with the `if logger:` guard that was missing when this AttributeError'd 758x in
+    # 2026-04 — callers like ez_positions_realtime pass logger=None, and the guard is what makes that safe).
+    # Without these two lines STEP 1's 35-45 s had no breakdown at all.
+    if logger: logger.critical(f"[bootstrap] ⏱️ Data loading + init took {_t3-_t2:.2f}s | TOTAL bootstrap: {_t3-_t0:.2f}s | {total_count} positions")
     return service
 if __name__ == "__main__":
 

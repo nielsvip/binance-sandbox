@@ -6,13 +6,6 @@
     "symbol": "XMRUSDT",
     "side": "LONG"
   },
-  "inf:COTIUSDT_SHORT": {
-    "orderId": "2000001530820857",
-    "stopPrice": 0.011428,
-    "entry_sig": "2026-10-22 02:10:07.484000+00:00",
-    "symbol": "COTIUSDT",
-    "side": "SHORT"
-  },
   "inf:BTCDOMUSDT_LONG": {
     "orderId": "2000001530816506",
     "stopPrice": 5501.5,
@@ -34,18 +27,18 @@
     "symbol": "MELANIAUSDT",
     "side": "SHORT"
   },
-  "inf:ONEUSDT_SHORT": {
-    "orderId": "2000001530887049",
-    "stopPrice": 0.0015143,
-    "entry_sig": "2026-10-22 02:39:22.484000+00:00",
-    "symbol": "ONEUSDT",
-    "side": "SHORT"
-  },
-  "inf:KMNOUSDT_LONG": {
-    "orderId": "2000001530887051",
-    "stopPrice": 0.04066,
-    "entry_sig": "2026-10-22 02:39:25.656000+00:00",
-    "symbol": "KMNOUSDT",
+  "inf:BBUSDT_LONG": {
+    "orderId": "2000001530907987",
+    "stopPrice": 0.008668,
+    "entry_sig": "2026-10-22 02:50:21.725000+00:00",
+    "symbol": "BBUSDT",
     "side": "LONG"
+  },
+  "inf:DOTUSDT_SHORT": {
+    "orderId": "2000001530914294",
+    "stopPrice": 1.1883,
+    "entry_sig": "2026-10-22 02:53:44.261000+00:00",
+    "symbol": "DOTUSDT",
+    "side": "SHORT"
   }
 }

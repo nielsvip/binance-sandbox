@@ -157,12 +157,30 @@ def test_a_broken_getter_can_only_ever_allow():
                        side="SELL", quantity=3.0, original_positionAmt=10.0, price=104.0) == ""
 
 
-def test_shim_falls_back_to_the_module_default_when_live_has_no_value():
-    """A missing key must reach getattr's OWN default — None would turn a True default into False."""
-    import vec_decisions.scale_direction as SD
-    shim = SDL._CfgShim(_get(SCALE_DIRECTION_LAW_ENABLED=True))
-    enabled, lookback, band, block_red, block_aug = SD.params(shim)
-    assert (enabled, lookback, band, block_red, block_aug) == (True, 4, 0.0, True, True)
+def test_absent_knobs_fall_back_to_the_law_defaults_not_to_falsy_none():
+    """A per-sym store that returns None for a knob must not turn a True default into False."""
+    g = _get(SCALE_DIRECTION_LAW_ENABLED=True, SCALE_DIRECTION_BLOCK_REDUCE_ON_FAVOURABLE=None,
+             SCALE_DIRECTION_LOOKBACK_BARS=None, SCALE_DIRECTION_BAND_PCT=None)
+    assert SDL._flag(g, "SCALE_DIRECTION_BLOCK_REDUCE_ON_FAVOURABLE", True) is True
+    assert SDL._flag(g, "SCALE_DIRECTION_BLOCK_AUGMENT_ON_ADVERSE", True) is True
+    assert SDL._f(g, "SCALE_DIRECTION_LOOKBACK_BARS", 4.0) == 4.0
+    assert SDL._f(g, "SCALE_DIRECTION_BAND_PCT", 0.0) == 0.0
+    assert SDL._flag(_get(SCALE_DIRECTION_LAW_ENABLED="true"), "SCALE_DIRECTION_LAW_ENABLED", False) is True
+    _fill("X", [100.0, 101.0, 102.0, 103.0, 104.0])
+    assert SDL.blocked(g, symbol="X", position_side="LONG", action="REDUCE", reason="PPL_TP",
+                       side="SELL", quantity=3.0, original_positionAmt=10.0, price=104.0)
+
+
+def test_exit_chain_exemption_is_the_same_switch_on_both_sides():
+    """The vector exempts the exit chain's partial leg under SCALE_DIRECTION_EXEMPT_EXIT_CHAIN; live mirrors it."""
+    _fill("X", [100.0, 101.0, 102.0, 103.0, 104.0])
+    exempt = _get(SCALE_DIRECTION_LAW_ENABLED=True)                                     # default True
+    covered = _get(SCALE_DIRECTION_LAW_ENABLED=True, SCALE_DIRECTION_EXEMPT_EXIT_CHAIN=False)
+    kw = dict(symbol="X", position_side="LONG", action="REDUCE", reason="WT_CROSS_EXIT_1h_bear",
+              side="SELL", quantity=3.0, original_positionAmt=10.0, price=104.0)
+    assert SDL.blocked(exempt, **kw) == ""
+    assert SDL.blocked(covered, **kw), "with the exemption off the law must cover the exit chain"
+    assert SDL.is_exit_chain("STDEV_REJECT_EXIT") and not SDL.is_exit_chain("PPL_TP_g3.05%")
 
 
 def test_per_sym_knobs_bind_through_the_shim():

@@ -62,16 +62,16 @@ def move_pct(is_long: bool, px: float, ref_px: float) -> float:
     return raw if is_long else -raw
 
 
-def scale_allowed(config, kind: str, is_long: bool, px: float, ref_px: float, to_flat: bool = False):
-    """(allowed, reason) for one PARTIAL scaling act. `kind` in {'REDUCE', 'AUGMENT'}.
+def decide(kind: str, is_long: bool, px: float, ref_px: float, band: float, block_reduce: bool,
+           block_augment: bool, to_flat: bool = False):
+    """THE decision — one function, two resolution paths (QuickConfig in the vector, the per-sym getter live).
 
-    `ref_px` = close `SCALE_DIRECTION_LOOKBACK_BARS` bars back (the caller owns the array).
+    `ref_px` = close `SCALE_DIRECTION_LOOKBACK_BARS` bars back; the caller owns the series.
     `to_flat=True` marks an act that closes the position — an exit, always allowed.
-    Fails OPEN: anything unresolvable returns (True, '') so the law can only ever refuse a scaling
-    act it positively identified as pointing the wrong way.
+    Fails OPEN: anything unresolvable returns (True, '') so the law can only ever refuse a scaling act it
+    positively identified as pointing the wrong way.
     """
-    enabled, _lookback, band, block_reduce, block_augment = params(config)
-    if not enabled or to_flat:
+    if to_flat:
         return True, ""
     mv = move_pct(is_long, px, ref_px)
     k = str(kind or "").upper()
@@ -84,6 +84,14 @@ def scale_allowed(config, kind: str, is_long: bool, px: float, ref_px: float, to
             return False, f"SCALE_DIRECTION: price {mv:.2f}% against — reduce territory, partial augment refused"
         return True, ""
     return True, ""
+
+
+def scale_allowed(config, kind: str, is_long: bool, px: float, ref_px: float, to_flat: bool = False):
+    """Vector entry point: resolve the knobs off a QuickConfig, then `decide`."""
+    enabled, _lookback, band, block_reduce, block_augment = params(config)
+    if not enabled:
+        return True, ""
+    return decide(kind, is_long, px, ref_px, band, block_reduce, block_augment, to_flat)
 
 
 def ref_index(i: int, lookback: int) -> int:

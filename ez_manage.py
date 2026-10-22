@@ -64348,7 +64348,14 @@ async def main():
         mod_logger.propagate = False
     service_silencer = logging.getLogger("ServiceSilent")
     service_silencer.setLevel(logging.CRITICAL)
-    service_silencer.addHandler(logging.NullHandler())
+    # USER 2026-10-22 ("the bootstrap should not take over 20 seconds — fix that"): bootstrap_position_service
+    # instruments its own phases (`[bootstrap] ⏱️ Account loading took …`, `Redis init took …`, `Phantom kill pass
+    # took …`) at CRITICAL, but this NullHandler swallowed them, so STEP 1's 35-45 s was unattributable. The level
+    # stays CRITICAL — none of the service's INFO noise returns, which is what this silencer is for — the timing
+    # lines simply reach the normal handlers now. Measurement first: it is why STEP 6 turned out to be an awaited
+    # price per position rather than the "tracker engine" it looked like.
+    if not any(not isinstance(_h, logging.NullHandler) for _h in service_silencer.handlers):
+        service_silencer.propagate = True
     while True:
         if shutdown_event.is_set():
             logger.info("Shutdown event already set; exiting main loop.")
