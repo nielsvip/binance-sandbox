@@ -26090,6 +26090,7 @@ class MultiAccountTradeManager:
                                 return _r
                         logger.warning(f"🧭 [VEC_DRIVEN_LIVE] {account_key}: dispatching {len(_dispatch)} dictate(s) concurrently (limit {_vd_lim})")
                         await asyncio.gather(*[_vd_one(*_j) for _j in _dispatch], return_exceptions=True)
+                    _rec_jobs = []
                     for ss, mode in modes.items():
                         if mode != "live":
                             continue
@@ -26134,9 +26135,29 @@ class MultiAccountTradeManager:
                             continue
                         store.mark_reconcile(ss, bar_key)
                         logger.warning(f"🧭 [VEC_DRIVEN_RECONCILE] {position_key}: live amt={amt:.8f} != target {st.get('target_state')} (bar={bar_key}) -> {act} (one attempt this bar)")
-                        res = await self._vec_driven_send(account_key, ss, act, act, f"RECONCILE_{st.get('reason') or ''}", st.get("qty_frac") if act == "OPEN" else 1.0, "reconcile", caps=caps, modes=modes)
-                        last_sent[position_key] = time.time()
-                        _vdm.append_jsonl(base / f"live_exec_{account_key}.jsonl", {"ts": time.time(), "reconcile": True, "ss": ss, "bar_ts": bar_key, "action": act, "result": res})
+                        _rec_jobs.append((ss, position_key, act, st.get("reason"), st.get("qty_frac") if act == "OPEN" else 1.0, bar_key))
+                    if _rec_jobs:
+                        # USER 2026-10-22: reconcile is THE converger — it is what makes every key the forward board
+                        # holds actually hold live — and it was sequential, one full order round trip per key. With
+                        # ~70-100 keys to converge per bar on a machine at load 200+, a sweep could not finish inside
+                        # the bar, so the book never caught up however permissive the gates became. Same bounded
+                        # concurrency as the intent dispatch; one attempt per sym_side per bar is unchanged
+                        # (store.mark_reconcile already ran above), and each task writes its own ledger row.
+                        _rc_lim = max(1, int(os.environ.get("VEC_DRIVEN_CONCURRENCY") or getattr(_ezm_base_config, "VEC_DRIVEN_CONCURRENCY", 12) or 1))
+                        _rc_sem = asyncio.Semaphore(_rc_lim)
+
+                        async def _rc_one(_ss, _pk, _act, _reason, _frac, _bar_key):
+                            async with _rc_sem:
+                                try:
+                                    _r = await self._vec_driven_send(account_key, _ss, _act, _act, f"RECONCILE_{_reason or ''}", _frac, "reconcile", caps=caps, modes=modes)
+                                except Exception as _rc_e:
+                                    _r = f"ERROR_{type(_rc_e).__name__}"
+                                    logger.error(f"[VEC_DRIVEN_RECONCILE] {_pk}: dispatch error: {_rc_e}", exc_info=True)
+                                last_sent[_pk] = time.time()
+                                _vdm.append_jsonl(base / f"live_exec_{account_key}.jsonl", {"ts": time.time(), "reconcile": True, "ss": _ss, "bar_ts": _bar_key, "action": _act, "result": _r})
+                                return _r
+                        logger.warning(f"🧭 [VEC_DRIVEN_RECONCILE] {account_key}: converging {len(_rec_jobs)} key(s) concurrently (limit {_rc_lim})")
+                        await asyncio.gather(*[_rc_one(*_j) for _j in _rec_jobs], return_exceptions=True)
             except asyncio.CancelledError:
                 break
             except Exception as _vdc_e:

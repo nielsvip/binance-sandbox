@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-22T01:41:35Z",
+ "ts": "2026-10-22T01:46:43Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 11,
-   "open_positions": 2,
-   "unrealised_usd": -0.23,
+   "fills_6h": 12,
+   "open_positions": 1,
+   "unrealised_usd": -0.27,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 3,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 36,
+   "fills_6h": 24,
    "open_positions": 1,
-   "unrealised_usd": 0.27,
+   "unrealised_usd": 0.24,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -75,14 +75,14 @@
    }
   },
   "inf": {
-   "fills_6h": 58,
-   "open_positions": 6,
-   "unrealised_usd": 0.93,
+   "fills_6h": 60,
+   "open_positions": 5,
+   "unrealised_usd": 1.23,
    "pos_mismatch": 0,
    "vec_parity": {
-    "live_vec_decisions": 9,
+    "live_vec_decisions": 10,
     "state_divergent": 1,
-    "filled": 5,
+    "filled": 9,
     "refused_non_safety": 0,
     "safety_refusals": 0,
     "not_filled_no_log": 0,
@@ -91,9 +91,9 @@
    }
   },
   "flz": {
-   "fills_6h": 56,
-   "open_positions": 5,
-   "unrealised_usd": 0.35,
+   "fills_6h": 53,
+   "open_positions": 3,
+   "unrealised_usd": 0.46,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 2,
@@ -124,139 +124,132 @@
  "process": {
   "fin": {
    "pids": [
-    "74243"
+    "91695"
    ],
-   "starts_30m": 4,
-   "log_age_s": 2.0
+   "starts_30m": 5,
+   "log_age_s": 21.0
   },
   "men": {
    "pids": [
-    "74245"
+    "91614"
    ],
-   "starts_30m": 6,
-   "log_age_s": 11.0
+   "starts_30m": 7,
+   "log_age_s": 10.0
   },
   "ang": {
    "pids": [
-    "74250"
+    "91620"
+   ],
+   "starts_30m": 7,
+   "log_age_s": 21.0
+  },
+  "inf": {
+   "pids": [
+    "90894"
    ],
    "starts_30m": 6,
    "log_age_s": 4.0
   },
-  "inf": {
-   "pids": [
-    "71626"
-   ],
-   "starts_30m": 6,
-   "log_age_s": 7.0
-  },
   "flz": {
    "pids": [
-    "74235"
+    "91612"
    ],
-   "starts_30m": 7,
+   "starts_30m": 8,
    "log_age_s": 1.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 20432.0
+   "log_age_s": 20739.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 20435.0
+   "log_age_s": 20742.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-22T01:41:35Z",
+   "ts": "2026-10-22T01:46:43Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "REDUCE 0.3 @ 2026-10-21T21:24:01Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-22T01:41:35Z",
+   "ts": "2026-10-22T01:46:43Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "REDUCE 0.5 @ 2026-10-21T21:24:10Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-22T01:41:35Z",
+   "ts": "2026-10-22T01:46:43Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "REDUCE 0.9 @ 2026-10-21T21:24:31Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-22T01:41:35Z",
+   "ts": "2026-10-22T01:46:43Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "men:CRVUSDC_LONG",
    "evidence": "entry notional $24.85 (median $7.00, MAX_ORDER_VALUE $300) @ 2026-10-22T01:40:14Z QUICK_OPEN_STRONG_BUY_k1:95/d195/k3:78.88081766688627/d3:53."
   },
   {
-   "ts": "2026-10-22T01:41:35Z",
+   "ts": "2026-10-22T01:46:43Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "men:CRVUSDC_LONG",
    "evidence": "CLOSE MTF_DC_REJECT_1h_px0.4029 decided 2026-10-22T00:33:13Z bar=2026-10-22T00:15:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-22T01:41:36Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "inf:XMRUSDT_LONG",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 0.16708->0.50124 = $310.96 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 0.16708)"
-  },
-  {
-   "ts": "2026-10-22T01:41:36Z",
+   "ts": "2026-10-22T01:46:44Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "inf:XMRUSDT_LONG",
    "evidence": "OPEN B_KZONE bar=2026-10-22T00:00:00Z: live already holds 0.039 (state divergence)"
   },
   {
-   "ts": "2026-10-22T01:41:37Z",
+   "ts": "2026-10-22T01:46:44Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "fin",
-   "evidence": "4 new process ids in 30 min (['22021', '30689', '53874', '74243'])"
+   "evidence": "5 new process ids in 30 min (['22021', '30689', '53874', '74243', '91695'])"
   },
   {
-   "ts": "2026-10-22T01:41:37Z",
+   "ts": "2026-10-22T01:46:44Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "men",
-   "evidence": "6 new process ids in 30 min (['3249', '14066', '20406', '30414', '54229', '74245'])"
+   "evidence": "7 new process ids in 30 min (['3249', '14066', '20406', '30414', '54229', '74245', '91614'])"
   },
   {
-   "ts": "2026-10-22T01:41:37Z",
+   "ts": "2026-10-22T01:46:44Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "ang",
-   "evidence": "6 new process ids in 30 min (['97595', '1498', '21739', '30561', '54217', '74250'])"
+   "evidence": "7 new process ids in 30 min (['97595', '1498', '21739', '30561', '54217', '74250', '91620'])"
   },
   {
-   "ts": "2026-10-22T01:41:37Z",
+   "ts": "2026-10-22T01:46:44Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "inf",
-   "evidence": "6 new process ids in 30 min (['18762', '96546', '20617', '29999', '53672', '71626'])"
+   "evidence": "6 new process ids in 30 min (['96546', '20617', '29999', '53672', '71626', '90894'])"
   },
   {
-   "ts": "2026-10-22T01:41:37Z",
+   "ts": "2026-10-22T01:46:44Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "flz",
-   "evidence": "7 new process ids in 30 min (['96531', '3248', '13271', '21738', '30403', '53891', '74235'])"
+   "evidence": "8 new process ids in 30 min (['96531', '3248', '13271', '21738', '30403', '53891', '74235', '91612'])"
   }
  ],
  "alert_counts": {
   "FILL_WITHOUT_VEC_DECISION": 3,
-  "SIZE_ANOMALY": 2,
+  "SIZE_ANOMALY": 1,
   "VEC_DECISION_NOT_FILLED": 1,
   "VEC_OPEN_WHILE_LIVE_IN": 1,
   "RESTART_LOOP": 5
@@ -321,5 +314,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.74
+ "sweep_s": 1.49
 }
