@@ -6,60 +6,32 @@
     "symbol": "BLURUSDT",
     "side": "SHORT"
   },
-  "fin:IOTXUSDT_LONG": {
-    "orderId": "3000002266792648",
-    "stopPrice": 0.004187,
-    "entry_sig": "2026-10-22 16:15:29.063000+00:00",
-    "symbol": "IOTXUSDT",
-    "side": "LONG"
+  "fin:MAGICUSDT_SHORT": {
+    "orderId": "3000002266807366",
+    "stopPrice": 0.09454,
+    "entry_sig": "2026-10-22 16:27:03.508000+00:00",
+    "symbol": "MAGICUSDT",
+    "side": "SHORT"
   },
-  "fin:DASHUSDT_LONG": {
-    "orderId": "3000002266792649",
-    "stopPrice": 50.43,
-    "entry_sig": "2026-10-22 16:16:10.034000+00:00",
-    "symbol": "DASHUSDT",
-    "side": "LONG"
-  },
-  "fin:1000PEPEUSDC_LONG": {
-    "orderId": "3000002266792650",
-    "stopPrice": 0.0044044,
-    "entry_sig": "2026-10-22 16:15:50.080000+00:00",
-    "symbol": "1000PEPEUSDC",
-    "side": "LONG"
-  },
-  "fin:BEAMXUSDT_LONG": {
-    "orderId": "3000002266794109",
-    "stopPrice": 0.00308,
-    "entry_sig": "2026-10-22 16:26:29.482000+00:00",
-    "symbol": "BEAMXUSDT",
+  "fin:MASKUSDT_LONG": {
+    "orderId": "3000002266808048",
+    "stopPrice": 0.4248,
+    "entry_sig": "2026-10-22 16:21:40.485000+00:00",
+    "symbol": "MASKUSDT",
     "side": "LONG"
   },
   "fin:STRKUSDT_SHORT": {
-    "orderId": "3000002266794244",
-    "stopPrice": 0.05483,
+    "orderId": "3000002266808063",
+    "stopPrice": 0.05685,
     "entry_sig": "2026-10-22 16:21:22.688000+00:00",
     "symbol": "STRKUSDT",
     "side": "SHORT"
   },
   "fin:BOMEUSDC_SHORT": {
-    "orderId": "3000002266794245",
-    "stopPrice": 0.0006034,
+    "orderId": "3000002266808064",
+    "stopPrice": 0.0006172,
     "entry_sig": "2026-10-22 16:21:19.056000+00:00",
     "symbol": "BOMEUSDC",
-    "side": "SHORT"
-  },
-  "fin:MASKUSDT_LONG": {
-    "orderId": "3000002266796454",
-    "stopPrice": 0.45,
-    "entry_sig": "2026-10-22 16:21:40.485000+00:00",
-    "symbol": "MASKUSDT",
-    "side": "LONG"
-  },
-  "fin:MAGICUSDT_SHORT": {
-    "orderId": "3000002266796667",
-    "stopPrice": 0.0915,
-    "entry_sig": "2026-10-22 16:27:03.508000+00:00",
-    "symbol": "MAGICUSDT",
     "side": "SHORT"
   }
 }

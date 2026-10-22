@@ -8387,6 +8387,14 @@ def _psym_get(symbol: str, side: str, knob: str, default):
     All JSON/book/xlsx/tradeable_keys layers removed — they ran conflicting configs.
 
     2026-10-15: the SUB-15m hard block is checked first — see _sub15m_blocked_ez()."""
+    try:  # USER 2026-10-22 forward auto-promote: a live promotion exempts exactly this (sym_side, knob)
+        import forward_live_settings as _fls
+
+        _fls_hit = _fls.get(symbol, side, knob)
+        if _fls_hit is not None:
+            return _fls_hit[0]
+    except Exception:
+        pass
     if _sub15m_blocked_ez(knob):
         return SUB15M_BLOCKED_SWITCHES[knob]
     if knob in EXCHANGE_RESTING_STOPS:

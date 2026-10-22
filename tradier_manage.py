@@ -7792,6 +7792,14 @@ def _cfg(
 
     2026-10-15: a SUB-15m hard block sits above every layer here — see _sub15m_blocked().
     """
+    try:  # USER 2026-10-22 forward auto-promote: a live promotion exempts exactly this (sym_side, knob)
+        import forward_live_settings as _fls_tr
+
+        _fls_hit = _fls_tr.get(symbol, side, param)
+        if _fls_hit is not None:
+            return _fls_hit[0]
+    except Exception:
+        pass
     if _sub15m_blocked(param):
         return SUB15M_BLOCKED_SWITCHES[param]
     # USER 2026-10-16: the bottom stop-market order rests AT the exchange with the entry, so no per_sym set, board
