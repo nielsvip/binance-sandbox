@@ -1,44 +1,184 @@
 {
- "generated_at": "2026-10-23 01:15 UTC",
- "total_capital_usd": 32.03,
+ "generated_at": "2026-10-23 01:56 UTC",
+ "total_capital_usd": 326.39,
  "tier_capital": {
   "A": 0.0,
-  "B": 0.0,
-  "C": 32.03
+  "B": 105.47,
+  "C": 220.91
  },
  "tier_count": {
   "A": 0,
-  "B": 0,
-  "C": 2
+  "B": 5,
+  "C": 9
  },
  "winners": [],
  "losers": [
-  "inf:EGLDUSDT_SHORT",
-  "inf:AVAXUSDC_SHORT"
+  "ang:TRUMPUSDC_SHORT",
+  "ang:FARTCOINUSDT_SHORT",
+  "ang:1000FLOKIUSDT_SHORT",
+  "ang:ENJUSDT_SHORT",
+  "ang:ENSUSDT_SHORT",
+  "ang:AXSUSDT_SHORT",
+  "ang:XLMUSDT_SHORT",
+  "ang:COTIUSDT_SHORT",
+  "ang:NMRUSDT_SHORT",
+  "ang:PARTIUSDT_SHORT"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "inf:EGLDUSDT_SHORT",
-   "symbol": "EGLDUSDT",
-   "account": "inf",
-   "value_usd": 25.0,
-   "gain_pct": -1.163,
+   "pk": "ang:AXSUSDT_SHORT",
+   "symbol": "AXSUSDT",
+   "account": "ang",
+   "value_usd": 120.16,
+   "gain_pct": -0.542,
    "tier": "C",
-   "perf_mult": 0.39,
-   "amt": 7.0,
-   "mark": 3.57208134
+   "perf_mult": 0.15,
+   "amt": 120.0,
+   "mark": 1.0013
   },
   {
-   "pk": "inf:AVAXUSDC_SHORT",
-   "symbol": "AVAXUSDC",
-   "account": "inf",
-   "value_usd": 7.03,
-   "gain_pct": -0.234,
+   "pk": "ang:COTIUSDT_SHORT",
+   "symbol": "COTIUSDT",
+   "account": "ang",
+   "value_usd": 45.11,
+   "gain_pct": -0.407,
    "tier": "C",
-   "perf_mult": 0.2,
-   "amt": 0.77,
-   "mark": 9.12425789
+   "perf_mult": 0.35,
+   "amt": 4123.0,
+   "mark": 0.01094213
+  },
+  {
+   "pk": "ang:BATUSDT_LONG",
+   "symbol": "BATUSDT",
+   "account": "ang",
+   "value_usd": 44.84,
+   "gain_pct": -0.406,
+   "tier": "B",
+   "perf_mult": 6.93,
+   "amt": 261.0,
+   "mark": 0.17181
+  },
+  {
+   "pk": "ang:PENGUUSDC_LONG",
+   "symbol": "PENGUUSDC",
+   "account": "ang",
+   "value_usd": 28.09,
+   "gain_pct": 0.498,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 3586.0,
+   "mark": 0.00783425
+  },
+  {
+   "pk": "ang:QNTUSDT_LONG",
+   "symbol": "QNTUSDT",
+   "account": "ang",
+   "value_usd": 18.89,
+   "gain_pct": 0.532,
+   "tier": "B",
+   "perf_mult": 1.34,
+   "amt": 0.1,
+   "mark": 188.88475318
+  },
+  {
+   "pk": "ang:NMRUSDT_SHORT",
+   "symbol": "NMRUSDT",
+   "account": "ang",
+   "value_usd": 11.69,
+   "gain_pct": -0.13,
+   "tier": "C",
+   "perf_mult": 0.21,
+   "amt": 1.1,
+   "mark": 10.62380507
+  },
+  {
+   "pk": "ang:ENJUSDT_SHORT",
+   "symbol": "ENJUSDT",
+   "account": "ang",
+   "value_usd": 11.29,
+   "gain_pct": -0.731,
+   "tier": "C",
+   "perf_mult": 0.21,
+   "amt": 426.0,
+   "mark": 0.02651067
+  },
+  {
+   "pk": "ang:XLMUSDT_SHORT",
+   "symbol": "XLMUSDT",
+   "account": "ang",
+   "value_usd": 11.27,
+   "gain_pct": -0.473,
+   "tier": "C",
+   "perf_mult": 0.28,
+   "amt": 64.0,
+   "mark": 0.17613012
+  },
+  {
+   "pk": "ang:1000FLOKIUSDT_SHORT",
+   "symbol": "1000FLOKIUSDT",
+   "account": "ang",
+   "value_usd": 7.05,
+   "gain_pct": -0.837,
+   "tier": "C",
+   "perf_mult": 0.16,
+   "amt": 300.0,
+   "mark": 0.02349292
+  },
+  {
+   "pk": "ang:TRUMPUSDC_SHORT",
+   "symbol": "TRUMPUSDC",
+   "account": "ang",
+   "value_usd": 7.04,
+   "gain_pct": -1.037,
+   "tier": "C",
+   "perf_mult": 0.49,
+   "amt": 4.02,
+   "mark": 1.751
+  },
+  {
+   "pk": "ang:KAVAUSDT_LONG",
+   "symbol": "KAVAUSDT",
+   "account": "ang",
+   "value_usd": 6.99,
+   "gain_pct": -0.011,
+   "tier": "B",
+   "perf_mult": 5.04,
+   "amt": 99.6,
+   "mark": 0.07016
+  },
+  {
+   "pk": "ang:ENSUSDT_SHORT",
+   "symbol": "ENSUSDT",
+   "account": "ang",
+   "value_usd": 6.66,
+   "gain_pct": -0.688,
+   "tier": "B",
+   "perf_mult": 0.66,
+   "amt": 1.2,
+   "mark": 5.5523473
+  },
+  {
+   "pk": "ang:FARTCOINUSDT_SHORT",
+   "symbol": "FARTCOINUSDT",
+   "account": "ang",
+   "value_usd": 6.29,
+   "gain_pct": -0.994,
+   "tier": "C",
+   "perf_mult": 0.18,
+   "amt": 43.6,
+   "mark": 0.14429752
+  },
+  {
+   "pk": "ang:PARTIUSDT_SHORT",
+   "symbol": "PARTIUSDT",
+   "account": "ang",
+   "value_usd": 1.01,
+   "gain_pct": 1.481,
+   "tier": "C",
+   "perf_mult": 0.36,
+   "amt": 31.0,
+   "mark": 0.0326
   }
  ]
 }
