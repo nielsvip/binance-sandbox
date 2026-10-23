@@ -1,30 +1,44 @@
 {
-  "fin:SKYAIUSDT_LONG": {
-    "orderId": "3000002269544532",
-    "stopPrice": 0.02955,
-    "entry_sig": "2026-10-23 13:28:55.436000+00:00",
-    "symbol": "SKYAIUSDT",
+  "men:TIAUSDC_LONG": {
+    "orderId": "2000001535663051",
+    "stopPrice": 0.5323,
+    "entry_sig": "2026-10-23 18:55:45.846000+00:00",
+    "symbol": "TIAUSDC",
     "side": "LONG"
   },
-  "fin:VETUSDT_LONG": {
-    "orderId": "3000002269556190",
-    "stopPrice": 0.006665,
-    "entry_sig": "2026-10-23 09:43:24.075000+00:00",
-    "symbol": "VETUSDT",
+  "men:GRASSUSDT_LONG": {
+    "orderId": "2000001535682639",
+    "stopPrice": 0.6599,
+    "entry_sig": "2026-10-23 19:05:52.553000+00:00",
+    "symbol": "GRASSUSDT",
     "side": "LONG"
   },
-  "fin:BLURUSDT_SHORT": {
-    "orderId": "3000002269673431",
-    "stopPrice": 0.0093,
-    "entry_sig": "2026-10-23 11:47:45.946000+00:00",
-    "symbol": "BLURUSDT",
+  "men:ACTUSDT_SHORT": {
+    "orderId": "2000001535694199",
+    "stopPrice": 0.009004,
+    "entry_sig": "2026-10-23 18:53:53.968000+00:00",
+    "symbol": "ACTUSDT",
     "side": "SHORT"
   },
-  "fin:1000PEPEUSDC_LONG": {
-    "orderId": "3000002269705393",
-    "stopPrice": 0.0046415,
-    "entry_sig": "2026-10-23 19:33:34.372000+00:00",
-    "symbol": "1000PEPEUSDC",
+  "men:ARBUSDC_LONG": {
+    "orderId": "2000001535735694",
+    "stopPrice": 0.17642,
+    "entry_sig": "2026-10-23 19:01:55.890000+00:00",
+    "symbol": "ARBUSDC",
     "side": "LONG"
+  },
+  "men:BATUSDT_LONG": {
+    "orderId": "2000001535806517",
+    "stopPrice": 0.1704,
+    "entry_sig": "2026-10-23 19:02:54.803000+00:00",
+    "symbol": "BATUSDT",
+    "side": "LONG"
+  },
+  "men:BIOUSDC_SHORT": {
+    "orderId": "2000001535813974",
+    "stopPrice": 0.02431,
+    "entry_sig": "2026-10-23 19:00:44.643000+00:00",
+    "symbol": "BIOUSDC",
+    "side": "SHORT"
   }
 }
