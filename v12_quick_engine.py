@@ -16751,7 +16751,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     except Exception:
         _gftf = {"entry": None, "reduce_confirm": None, "erosion_confirm": None}
     try:
-        _rmarm_mask = _rmarm.armed_mask(npz, n, is_long, cfg, close, _safe)  # USER 2026-10-23 pv3 C3: None unless a REENTRY_MASK_ARM_* switch is True
+        _rmarm_mask = _rmarm.armed_mask(
+            npz, n, is_long, cfg, close, _safe
+        )  # USER 2026-10-23 pv3 C3: None unless a REENTRY_MASK_ARM_* switch is True
     except Exception:
         _rmarm_mask = None
     # 2026-09-29 USER: BB_PULLBACK_GATE gated only _base_entry (before the OR'd entry sources) -> the switch and its

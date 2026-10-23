@@ -4,6 +4,7 @@ crypto trough extras fired live-only. Both lanes now read peak structure
 (LONG LH / SHORT HH) and emit the booked E_3_STRUCTURE_EXIT_{n}TF_{tfs} shape.
 Proves lane predicate == booking predicate on real NPZ arrays, mode-gating,
 and the booked shape in the walk ledger."""
+
 import sys
 from pathlib import Path
 

@@ -178,9 +178,7 @@ def test_e3_booked_shape_flows_stale_analogue_refused(tmp_path, monkeypatch):
     E3_STRUCT_EXIT_{n}of3 cross-analogue shape stays refused (E3_ANALOGUE,
     never listed) so a stale live process cannot slip through."""
     _iso(tmp_path, monkeypatch)
-    assert (
-        ve.family_of("E_3_STRUCTURE_EXIT_2TF_15m_4h_g-0.13%") == "E3"
-    )
+    assert ve.family_of("E_3_STRUCTURE_EXIT_2TF_15m_4h_g-0.13%") == "E3"
     assert ve.family_of("E3_STRUCT_EXIT_2of3_g-0.13%") == "E3_ANALOGUE"
     ok, verdict = ve.check(
         "CLOSE", "a", "E_3_STRUCTURE_EXIT_2TF_15m_4h_g-0.13%"

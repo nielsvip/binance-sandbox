@@ -17345,7 +17345,9 @@ async def process_position(
                 _w2_e3_tfs = []
                 for _w2_tf in ("15m", "1h", "4h"):
                     _w2_ps = str(i.get(f"wt_peak_structure_{_w2_tf}", "") or "").upper()
-                    if (_w2_e3_long and _w2_ps == "LH") or (not _w2_e3_long and _w2_ps == "HH"):
+                    if (_w2_e3_long and _w2_ps == "LH") or (
+                        not _w2_e3_long and _w2_ps == "HH"
+                    ):
                         _w2_e3_n += 1
                         _w2_e3_tfs.append(_w2_tf)
                 if _w2_e3 == 1:
