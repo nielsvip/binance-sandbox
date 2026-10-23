@@ -2482,6 +2482,32 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
         entry["trend_val_norm"] = entry["trend_val_norm_lt"]
         entry["trend_val_recent_norm"] = entry["trend_val_norm_st"]
         entry["linearity_norm"] = normalize_log_signed(entry["abs_linearity_raw"], 0.0, 1.0) * 100.0
+    try:
+        import verified_gain_boost as _vgb
+        _vgb_boosts = _vgb.refresh(Path(config.BASE_PATH))
+    except Exception:
+        _vgb_boosts = {}
+    _vgb_n = 0
+    for entry in final_ranking_data_scalars:
+        try:
+            _bl = float(_vgb_boosts.get("%s_LONG" % entry.get("symbol", ""), 0.0) or 0.0)
+            _bs = float(_vgb_boosts.get("%s_SHORT" % entry.get("symbol", ""), 0.0) or 0.0)
+        except Exception:
+            _bl = 0.0
+            _bs = 0.0
+        entry["verified_gain_boost_lt"] = _bl
+        entry["verified_gain_boost_st"] = _bs
+        _vgb_delta = _bl - _bs
+        if _vgb_delta:
+            entry["final_score_norm"] = entry.get("final_score_norm", 0.0) + _vgb_delta
+            entry["final_score_norm_lt"] = entry.get("final_score_norm_lt", 0.0) + _vgb_delta
+            entry["final_score_recent_norm"] = entry.get("final_score_recent_norm", 0.0) + _vgb_delta
+            entry["final_score_norm_st"] = entry.get("final_score_norm_st", 0.0) + _vgb_delta
+            _vgb_n += 1
+    try:
+        logger.info(f"[rankings] verified-gain boost legs={_vgb_n}")
+    except Exception:
+        pass
     # Calculate returns (adapted for Tradier timeframes)
     returns_data = {}
     for entry in final_ranking_data_scalars:

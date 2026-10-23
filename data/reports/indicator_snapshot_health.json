@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-23T09:57:48Z",
+ "generated_utc": "2026-10-23T10:03:46Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 662.8,
+  "age_s": 1020.2,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 10644,
-  "proc_age_s": 28693.0,
-  "log_age_s": 219.9,
+  "proc_age_s": 29051.0,
+  "log_age_s": 328.7,
   "warmup_done": true,
   "timeframes_since_restart": [
    "D",
@@ -44,11 +44,24 @@
   }
  },
  "s1_failover": {
-  "error": "ssh: connect to host 157.180.125.52 port 22: Operation timed out",
-  "from_cache_age_s": 169.7
+  "mode": "ACTIVE",
+  "since_epoch": 1792602182.2042153,
+  "activations": 163,
+  "hb_mtime": 1792749654.209671,
+  "mac_snapshot_age_s": 102.96493792533875,
+  "mac_stale": true,
+  "lease_holder": "mac",
+  "lease_venues": null,
+  "lease_since": "2026-10-23T09:59:14Z",
+  "lease_reason": "manual force-mac",
+  "now": 1792749657.5825782,
+  "from_cache_age_s": 169.0,
+  "heartbeat_age_s": 3.4,
+  "active_s": 147475.4,
+  "note": "ACTIVE is CORRECT while the Mac snapshot is stale \u2014 fix the Mac, S1 returns to NORMAL on its own"
  },
  "alerts": [
-  "SNAPSHOT STALE: latest_market_data.json is 662s old (> 600s). ez_indicators pid=10644 warmup_done=True tfs_since_restart=['D', '4h', '1h', '15m', '3m', '4h', '1h', '15m'] restarts_last_hour=0. Live crypto decisions are reading a stale indicator snapshot."
+  "SNAPSHOT STALE: latest_market_data.json is 1020s old (> 600s). ez_indicators pid=10644 warmup_done=True tfs_since_restart=['D', '4h', '1h', '15m', '3m', '4h', '1h', '15m'] restarts_last_hour=0. Live crypto decisions are reading a stale indicator snapshot."
  ],
  "verdict": "ALERT"
 }
