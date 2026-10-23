@@ -3076,7 +3076,11 @@ class WebSocketManager:
         symbols in a single response, so we poll it every ~2s and route each entry through
         the same _apply_mark_price method the WS handler uses (which writes Redis + pubsub)."""
         url = "https://fapi.binance.com/fapi/v1/premiumIndex"
-        interval = float(getattr(self.config, "MARK_PRICE_REST_POLL_INTERVAL", 2.0))
+        # USER 2026-10-23 ban root-cause: verify-by-REST runs every 5-10s, never every 1-2s.
+        # premiumIndex (all symbols, one call) is public weight-1, but the 2.0s cadence was still
+        # 3x the user's verification rule for zero trading benefit (mark prices move slowly vs the
+        # WS position stream). Explicit MARK_PRICE_REST_POLL_INTERVAL still overrides this default.
+        interval = float(getattr(self.config, "MARK_PRICE_REST_POLL_INTERVAL", 7.5))
         backoff = interval
         consecutive_fail = 0
         log_first_success = True

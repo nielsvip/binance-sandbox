@@ -26399,6 +26399,18 @@ class MultiAccountTradeManager:
                         if not act:
                             _rc_skip["already_matches_target" if target else "already_flat"] += 1
                             continue
+                        # USER 2026-10-23 close-only keys: a position on a non-tradeable key persists
+                        # and may only close, never open further — so reconcile never OPENs one (it still
+                        # CLOSEs it: the CLOSE arm below is untouched). Counted in the pulse tally, no
+                        # ledger row (a refused OPEN here could never succeed by design, like foreign files).
+                        if act == "OPEN":
+                            try:
+                                _tk = await self.load_tradeable()
+                            except Exception:
+                                _tk = None
+                            if _tk is not None and position_key not in set(_tk):
+                                _rc_skip["non_tradeable_close_only"] += 1
+                                continue
                         if _rc_done and act != "OPEN":
                             _rc_skip["close_already_tried_this_bar"] += 1
                             continue
@@ -64937,6 +64949,22 @@ async def _ez_loop_lag_watchdog():
             _fh.cancel_dump_traceback_later()
         except Exception:
             pass
+
+
+def _boot_stagger_s(account) -> float:
+    """USER 2026-10-23 ban root-cause: simultaneous restarts of all engines bootstrapped full
+    REST state at once (the 00:19 -1003 followed bootstraps on 5 accounts within ~7 min).
+    Deterministic per-account delay spreads the burst across ~1 min. Boot-only: costs seconds
+    after a restart, never gates a trading decision. VEC_BOOT_STAGGER_S=0 disables."""
+    try:
+        if str(os.environ.get("VEC_BOOT_STAGGER_S", "1")).lower() in ("0", "false", "no", "off"):
+            return 0.0
+    except Exception:
+        pass
+    try:
+        return float(("ang", "fin", "flz", "inf", "men").index(str(account or "").lower()) * 15)
+    except ValueError:
+        return 0.0
 
 
 async def main():

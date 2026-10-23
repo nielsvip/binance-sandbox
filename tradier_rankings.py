@@ -684,6 +684,14 @@ async def convert_tradier_bars_to_analysis_df(symbol: str, timeframe: str) -> pd
         df_result["close_time"] = df_result["timestamp_dt"]
         df_result = df_result.dropna(subset=["close_time"])
         df_result = df_result.sort_values("close_time").reset_index(drop=True)
+        try:
+            from split_adjust import apply_split_adjustment as _sa_apply, get_splits as _sa_get
+            _sa_splits, _sa_prov = _sa_get(symbol)
+            df_result, _sa_rep = _sa_apply(df_result, _sa_splits, symbol=symbol)
+            if not _sa_rep.get("verified"):
+                logger.debug(f"[split_adjust] {symbol} {timeframe}: UNVERIFIED ({_sa_rep.get('reason')}) — raw prices used")
+        except Exception as _sa_e:
+            logger.debug(f"[split_adjust] {symbol} {timeframe}: adjust skipped ({_sa_e}) — raw prices used")
         return df_result
     except Exception as e:
         logger.debug(f"Error converting bars for {symbol} {timeframe}: {e}", exc_info=True)

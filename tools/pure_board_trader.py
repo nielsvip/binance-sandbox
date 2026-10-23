@@ -89,6 +89,26 @@ def universe(accounts):
     return sorted(out)
 
 
+_TRADEABLE_MTIME = 0.0
+_TRADEABLE_KEYS = frozenset()
+
+
+def tradeable_pair(acct: str, ss: str) -> bool:
+    """(acct, sym_side) may OPEN: present in tradeable_keys.json. Adopted keys (held but
+    untradeable) stay managed for CLOSEs only — USER 2026-10-23: a position on a non-tradeable
+    key persists for years and may only close its outstanding amount, never open further.
+    Fail-open True on a read error (an unreadable file must never sideline an open)."""
+    global _TRADEABLE_MTIME, _TRADEABLE_KEYS
+    try:
+        mt = (ROOT / "tradeable_keys.json").stat().st_mtime
+        if mt != _TRADEABLE_MTIME:
+            _TRADEABLE_KEYS = frozenset(k for k in json.load(open(ROOT / "tradeable_keys.json")) if ":" in str(k))
+            _TRADEABLE_MTIME = mt
+    except Exception:
+        return True
+    return f"{acct}:{ss}" in _TRADEABLE_KEYS
+
+
 def live_positions(accounts):
     """What the accounts actually hold right now, from the position writer's own snapshots ({acct}/{long,short}_positions.json,
     the files ez_positions_service keeps in step with the exchange). Read-only; the lane never writes them."""
@@ -566,6 +586,9 @@ def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4, held=N
                                 pass
                             continue
                         conv = "CONVERGE_OPEN" if verdict == "BOARD_HOLDS_LIVE_FLAT" else "CONVERGE_CLOSE"
+                        if conv == "CONVERGE_OPEN" and not tradeable_pair(acct, ss):
+                            stats["SIDELINED_NON_TRADEABLE"] += 1
+                            continue
                         if close_only and conv == "CONVERGE_OPEN":
                             stats["SKIPPED_OPEN_CLOSE_ONLY"] += 1
                             continue

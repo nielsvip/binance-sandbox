@@ -257,6 +257,11 @@ class _FakeTM:
     async def get_position(self, pk, max_age_s=None):
         return SimpleNamespace(positionAmt=self.amts.get(pk, 0.0), mark_price=10.0, entry_price=10.0, gain=0.0)
 
+    async def load_tradeable(self):
+        """USER 2026-10-23 close-only keys: reconcile consults this; default keeps every
+        pre-existing test's key tradeable, individual tests narrow it."""
+        return list(getattr(self, "tradeable_keys", {"men:BTCUSDT_LONG"}))
+
     async def execute_trade_action(self, account_key=None, position_key=None, symbol=None, quantity=0.0, current_price=0.0, side=None, position_side=None, unique_id=None, is_full_close=False, action="", reason="", override_qty=None, **kw):
         """USER 2026-10-22 no-queue path: a vec dictate goes straight to execute_trade_action -> execute_now, so the
         harness records HERE instead of at queue_trade_action (which only the VEC_DRIVEN_SEND_VIA_QUEUE rollback uses)."""

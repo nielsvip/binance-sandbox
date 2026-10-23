@@ -46,3 +46,13 @@ def test_start_defers_client_init_while_banned():
     i_init = src.index("self.client = await asyncio.to_thread(self._init_binance_client_blocking)", i_client)
     seg = src[i_client:i_init]
     assert "_ban_remaining_seconds()" in seg and "deferring client init" in seg, seg
+
+
+def test_mark_price_verify_poll_obeys_5_to_10s_rule():
+    """Pin USER 2026-10-23: verify-by-REST runs every 5-10s, never every 1-2s."""
+    import re
+
+    src = Path(eps.__file__).read_text()
+    m = re.search(r'getattr\(self\.config, "MARK_PRICE_REST_POLL_INTERVAL", ([\d.]+)\)', src)
+    assert m, "MARK_PRICE_REST_POLL_INTERVAL default missing"
+    assert 5.0 <= float(m.group(1)) <= 10.0, m.group(1)
