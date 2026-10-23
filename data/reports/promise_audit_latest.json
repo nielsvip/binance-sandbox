@@ -1,9 +1,9 @@
 {
- "generated_utc": "2026-10-23T09:12:07.427996+00:00",
+ "generated_utc": "2026-10-23T10:12:05.714904+00:00",
  "days": 1.0,
  "totals": {
-  "exit_promises": 81,
-  "exit_broken_no_delivery": 77,
+  "exit_promises": 80,
+  "exit_broken_no_delivery": 76,
   "entry_promises": 39,
   "entry_broken_no_delivery": 39,
   "exit_kept_late": 2,
@@ -11,10 +11,6 @@
   "exit_kept_in_bar": 2
  },
  "per_key": {
-  "flz:SOLUSDC_SHORT": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
-  },
   "men:MOVEUSDT_SHORT": {
    "exit_promises": 3,
    "exit_broken_no_delivery": 3
@@ -268,16 +264,6 @@
   }
  },
  "detail": [
-  {
-   "acct": "flz",
-   "sym_side": "SOLUSDC_SHORT",
-   "kind": "exit",
-   "bar": "10-22 09:30",
-   "late_min": null,
-   "action": "REDUCE",
-   "reason": "WT_CROSS_EXIT_1h_bull",
-   "outcome": "NO_DELIVERY"
-  },
   {
    "acct": "men",
    "sym_side": "MOVEUSDT_SHORT",
