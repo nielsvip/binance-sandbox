@@ -1,32 +1,65 @@
 {
- "generated_at": "2026-10-23 05:36 UTC",
- "total_capital_usd": 29.9,
+ "generated_at": "2026-10-23 05:55 UTC",
+ "total_capital_usd": 112.97,
  "tier_capital": {
   "A": 0.0,
-  "B": 29.9,
-  "C": 0.0
+  "B": 103.03,
+  "C": 9.94
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 0
+  "B": 3,
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "men:BATUSDT_LONG"
+  "ang:NEARUSDC_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "men:BATUSDT_LONG",
+   "pk": "ang:BATUSDT_LONG",
    "symbol": "BATUSDT",
-   "account": "men",
-   "value_usd": 29.9,
-   "gain_pct": -0.631,
+   "account": "ang",
+   "value_usd": 44.84,
+   "gain_pct": -0.435,
    "tier": "B",
    "perf_mult": 6.76,
-   "amt": 175.0,
-   "mark": 0.17084468
+   "amt": 261.0,
+   "mark": 0.1718
+  },
+  {
+   "pk": "ang:AAVEUSDC_LONG",
+   "symbol": "AAVEUSDC",
+   "account": "ang",
+   "value_usd": 29.83,
+   "gain_pct": 0.511,
+   "tier": "B",
+   "perf_mult": 0.65,
+   "amt": 0.2,
+   "mark": 149.12759498
+  },
+  {
+   "pk": "ang:PENGUUSDC_LONG",
+   "symbol": "PENGUUSDC",
+   "account": "ang",
+   "value_usd": 28.36,
+   "gain_pct": 1.337,
+   "tier": "B",
+   "perf_mult": 1.73,
+   "amt": 3586.0,
+   "mark": 0.00790964
+  },
+  {
+   "pk": "ang:NEARUSDC_LONG",
+   "symbol": "NEARUSDC",
+   "account": "ang",
+   "value_usd": 9.94,
+   "gain_pct": 0.307,
+   "tier": "C",
+   "perf_mult": 0.18,
+   "amt": 2.0,
+   "mark": 4.9681877
   }
  ]
 }
