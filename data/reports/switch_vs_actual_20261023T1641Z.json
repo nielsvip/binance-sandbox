@@ -1,0 +1,50 @@
+{
+ "window_from": "10-23 15:37",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 179,
+  "status_OK": 171,
+  "EXTRA": 3
+ },
+ "rows": [
+  {
+   "acct": "fin",
+   "sym_side": "GRASSUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-23 15:40",
+   "actual": "REDUCE",
+   "actual_reason": "RATIO_CLOSE_LONG_L81_S19_tgt25/75_gain1.8%",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "GRASSUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-23 16:15",
+   "actual": "REDUCE",
+   "actual_reason": "RATIO_CLOSE_OW_LONG_L100_S0_tgt50/50_wt15\u03940.0_g0.26%",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "fin",
+   "sym_side": "STXUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-23 15:53",
+   "actual": "REDUCE",
+   "actual_reason": "QUICK_DC4_HIGH_3M_GAIN_EROSION_STOP_p0.319687>dc40.319400_g0.03%",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  }
+ ]
+}

@@ -1,30 +1,37 @@
 {
-  "ang:1000PEPEUSDC_LONG": {
-    "orderId": "4000001989136391",
-    "stopPrice": 0.0043798,
-    "entry_sig": "2026-10-23 06:42:58.550000+00:00",
-    "symbol": "1000PEPEUSDC",
+  "flz:BTCUSDC_LONG": {
+    "orderId": "1000002638177488",
+    "stopPrice": 80665.1,
+    "entry_sig": "2026-10-23 01:37:55.829000+00:00",
+    "symbol": "BTCUSDC",
     "side": "LONG"
   },
-  "ang:ARUSDT_LONG": {
-    "orderId": "4000001989959386",
-    "stopPrice": 3.524,
-    "entry_sig": "2026-10-23 06:37:13.084000+00:00",
-    "symbol": "ARUSDT",
+  "flz:DOGEUSDC_LONG": {
+    "orderId": "1000002638644882",
+    "stopPrice": 0.07829,
+    "entry_sig": "2026-10-23 05:01:25.627000+00:00",
+    "symbol": "DOGEUSDC",
     "side": "LONG"
   },
-  "ang:PENGUUSDC_LONG": {
-    "orderId": "4000001990394088",
-    "stopPrice": 0.007386,
-    "entry_sig": "2026-10-23 01:11:56.889831+00:00",
-    "symbol": "PENGUUSDC",
+  "flz:SOLUSDC_LONG": {
+    "orderId": "1000002638441054",
+    "stopPrice": 102.47,
+    "entry_sig": "2026-10-23 01:10:05.199000+00:00",
+    "symbol": "SOLUSDC",
     "side": "LONG"
   },
-  "ang:MASKUSDT_SHORT": {
-    "orderId": "4000001990401614",
-    "stopPrice": 0.434,
-    "entry_sig": "2026-10-23 08:51:31.205000+00:00",
-    "symbol": "MASKUSDT",
+  "flz:BNBUSDC_LONG": {
+    "orderId": "1000002639548956",
+    "stopPrice": 720.62,
+    "entry_sig": "2026-10-23 01:37:54.619000+00:00",
+    "symbol": "BNBUSDC",
+    "side": "LONG"
+  },
+  "flz:WLDUSDC_SHORT": {
+    "orderId": "1000002639553767",
+    "stopPrice": 0.5608,
+    "entry_sig": "2026-10-23 16:37:55.864000+00:00",
+    "symbol": "WLDUSDC",
     "side": "SHORT"
   }
 }
