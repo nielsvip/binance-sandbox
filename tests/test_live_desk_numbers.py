@@ -134,6 +134,39 @@ def test_unknown_partial_vs_phantom():
     assert by_sym["P"]["rpnl"] == 100.0
 
 
+def test_broker_reconstruction_never_fabricates_pnl():
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    iso = lambda dt: dt.isoformat()
+    from datetime import timedelta
+    o = _ev(iso(now - timedelta(hours=4)), "LRCX", "SHORT", "OPEN", 13.0, 263.12)
+    r1 = _ev(iso(now - timedelta(hours=3)), "LRCX", "SHORT", "REDUCE", 13.0, 235.70)
+    r1["reason"] = "Broker sync"
+    r2 = _ev(iso(now - timedelta(hours=2)), "LRCX", "SHORT", "REDUCE", 2.0, 232.11)
+    r2["reason"] = "BROKER_RECONCILED order=999"
+    p = _ev(iso(now - timedelta(hours=3)), "Q", "LONG", "OPEN", 10.0, 100.0)
+    s1 = _ev(iso(now - timedelta(hours=2)), "Q", "LONG", "REDUCE", 4.0, 110.0)
+    s1["reason"] = "Broker sync"
+    c1 = _ev(iso(now - timedelta(hours=1)), "Q", "LONG", "REDUCE", 6.0, 120.0)
+    c1["reason"] = "REAL_STRATEGY_CLOSE"
+    out, s = srv.realized_walk([o, r1, r2, p, s1, c1])
+    lrcx = [e for e in out if e.get("symbol") == "LRCX" and e["action"] == "REDUCE"]
+    assert len(lrcx) == 2 and all("rpnl" not in e for e in lrcx)
+    assert "rpnl" not in [e for e in out if e.get("symbol") == "Q" and e.get("reason") == "Broker sync"][0]
+    assert [e for e in out if e.get("reason") == "REAL_STRATEGY_CLOSE"][0]["rpnl"] == 120.0
+    assert s["sync_hidden"] == 3
+    assert s["pnl_total"] == 120.0
+    assert s["unknown"] == 1
+    assert s["unknown_phantom"] == 1
+    assert all(e.get("sync_hidden") for e in out if e.get("reason") in ("Broker sync", "BROKER_RECONCILED order=999"))
+    assert srv._is_broker_reconstruction("BROKER_SYNC_CLOSE") is True
+    assert srv._is_broker_reconstruction("Broker sync") is True
+    assert srv._is_broker_reconstruction("BROKER_RECONCILED order=1") is True
+    assert srv._is_broker_reconstruction("BROKER_SYNC_OPEN_FROM_FLAT_STUB") is True
+    assert srv._is_broker_reconstruction("VEC_DRIVEN_CLOSE_RECONCILE_") is False
+    assert srv._is_broker_reconstruction("FIXED_STOP_SHORT_px1_g-0.3") is False
+    assert srv._is_broker_reconstruction(None) is False
+
+
 def test_intent_validation():
     ok, err = srv.validate_intent({"account": "fin", "symbol": "dogeusdt", "side": "long", "qty": 5})
     assert err is None and ok == {"acct": "fin", "symbol": "DOGEUSDT", "side": "LONG", "qty": 5.0}

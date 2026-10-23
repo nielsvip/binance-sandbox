@@ -47,7 +47,14 @@ def _npz():
     }
 
 
-def _run(npz, reaug, mult=1.5):
+def _npz_wt(wt1, wt2=None):
+    d = _npz()
+    d["wt1_15m"] = wt1
+    d["wt2_15m"] = wt2 if wt2 is not None else np.zeros(len(wt1))
+    return d
+
+
+def _run(npz, reaug, mult=1.5, trig="DC_RECLAIM"):
     cfg = V.QuickConfig()
     cfg.PARTIAL_PROFIT_LOCK_ENABLED = True
     cfg.PARTIAL_PROFIT_LOCK_GAIN_PCT = 1.0
@@ -56,6 +63,7 @@ def _run(npz, reaug, mult=1.5):
     cfg.PARTIAL_PROFIT_LOCK_FRAC = 0.5
     cfg.PPL_REAUGMENT_ENABLED = reaug
     cfg.PPL_REAUGMENT_SIZE_MULT = mult
+    cfg.PPL_REAUGMENT_TRIGGER = trig
     return V.simulate_one(npz, "PROBE", True, cfg, force_initial_seed=True)
 
 
@@ -67,8 +75,8 @@ def _taps(ledger):
     ]
 
 
-def _reaugs(ledger):
-    return [e for e in ledger if e.get("reason") == "PPL_REAUGMENT_DC_RECLAIM"]
+def _reaugs(ledger, trig="DC_RECLAIM"):
+    return [e for e in ledger if e.get("reason") == f"PPL_REAUGMENT_{trig}"]
 
 
 def test_reaugment_off_is_inert():
@@ -97,3 +105,39 @@ def test_reaugment_size_mult_scales():
     reaugs = _reaugs(res["ledger"])
     assert taps and len(reaugs) == 1
     assert reaugs[0]["qty"] == taps[0]["qty"] * 2.0
+
+
+def test_reaugment_wt_cross_trigger():
+    """WT_CROSS: armed by the tap, wt1 crossing back above wt2 re-augments
+    (WT stays below the DC band throughout, so DC_RECLAIM could not fire)."""
+    wt1 = np.array([-5.0] * 8 + [-1.0, 2.0] + [3.0] * 110)
+    res = _run(_npz_wt(wt1), True, trig="WT_CROSS")
+    taps = _taps(res["ledger"])
+    reaugs = _reaugs(res["ledger"], "WT_CROSS")
+    assert taps, "probe must tap PPL or it proves nothing"
+    assert len(reaugs) == 1
+    assert reaugs[0]["type"] == "AUGMENT"
+    assert reaugs[0]["bar"] == 9
+    assert reaugs[0]["bar"] > taps[0]["bar"]
+    assert reaugs[0]["qty"] == taps[0]["qty"] * 1.5
+    assert _reaugs(res["ledger"], "DC_RECLAIM") == []
+
+
+def test_reaugment_wt_slowdown_trigger():
+    """WT_SLOWDOWN: wt1 hooking back up (decline decelerating) re-augments
+    before any band reclaim."""
+    wt1 = np.array([0.0, 0.0, -2.0, -4.0, -3.0, -1.0] + [0.0] * 114)
+    res = _run(_npz_wt(wt1), True, trig="WT_SLOWDOWN")
+    taps = _taps(res["ledger"])
+    reaugs = _reaugs(res["ledger"], "WT_SLOWDOWN")
+    assert taps, "probe must tap PPL or it proves nothing"
+    assert len(reaugs) == 1
+    assert reaugs[0]["type"] == "AUGMENT"
+    assert reaugs[0]["bar"] == 4
+    assert reaugs[0]["qty"] == taps[0]["qty"] * 1.5
+
+
+def test_reaugment_unknown_trigger_falls_back():
+    """An unknown trigger value fails safe to the proven DC_RECLAIM."""
+    res = _run(_npz(), True, trig="BOGUS")
+    assert len(_reaugs(res["ledger"], "DC_RECLAIM")) == 1

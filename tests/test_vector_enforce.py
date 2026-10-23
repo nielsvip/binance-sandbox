@@ -181,22 +181,30 @@ def test_ppl_reaugment_allowed_ppl_tp_stays_killed(tmp_path, monkeypatch):
     k, _v = _iso(tmp_path, monkeypatch)
     k.write_text(json.dumps({"PPL": {"disabled_at": 0.0, "why": "standing order"}}))
     assert ve.family_of("PPL_REAUGMENT_DC_RECLAIM_wt1.2>dc0.5000") == "PPL_REAUGMENT"
+    assert ve.family_of("PPL_REAUGMENT_WT_CROSS_wt1.2x0.5") == "PPL_REAUGMENT"
+    assert ve.family_of("PPL_REAUGMENT_WT_SLOWDOWN_wt1.2>prev0.5") == "PPL_REAUGMENT"
     assert ve.family_of("PPL_TP_gain1.50_URL2_50pct") == "PPL"
     ok, verdict = ve.check(
         "QUICK_AUGMENT", "a", "PPL_REAUGMENT_DC_RECLAIM_wt1.2>dc0.5000"
     )
     assert (ok, verdict) == (True, "PPL_REAUGMENT_ALLOWED")
-    # Both live lanes + the v12 walk leg gate on the same per-sym switch
-    # (pins use the switch name + arm keys, not the exact call wrapping).
+    ok, verdict = ve.check("AUGMENT", "a", "PPL_REAUGMENT_WT_CROSS_wt1.2x0.5")
+    assert (ok, verdict) == (True, "PPL_REAUGMENT_ALLOWED")
+    # Both live lanes + the v12 walk leg gate on the same per-sym switch +
+    # trigger (pins use names + arm keys, not exact call wrapping; reasons
+    # are built as PPL_REAUGMENT_{TRIGGER}_{tag}).
     ez_src = (ROOT / "ez_manage.py").read_text()
     assert '"PPL_REAUGMENT_ENABLED"' in ez_src
-    assert '"reaug_armed"' in ez_src and "PPL_REAUGMENT_DC_RECLAIM" in ez_src
+    assert '"PPL_REAUGMENT_TRIGGER"' in ez_src
+    assert '"reaug_armed"' in ez_src and "PPL_REAUGMENT_{_rg_trig}" in ez_src
     tr_src = (ROOT / "tradier_manage.py").read_text()
     assert '"PPL_REAUGMENT_ENABLED"' in tr_src
-    assert '"reaug_armed"' in tr_src and "PPL_REAUGMENT_DC_RECLAIM" in tr_src
+    assert '"PPL_REAUGMENT_TRIGGER"' in tr_src
+    assert '"reaug_armed"' in tr_src and "PPL_REAUGMENT_{_rg_trig}" in tr_src
     v12_src = (ROOT / "v12_quick_engine.py").read_text()
-    assert "PPL_REAUGMENT_DC_RECLAIM" in v12_src
+    assert '"PPL_REAUGMENT_" + _reaug_trig_name' in v12_src
     assert "PPL_REAUGMENT_ENABLED" in v12_src
+    assert "PPL_REAUGMENT_TRIGGER" in v12_src
 
 
 def test_monitor_logs_watched_families_only(tmp_path, monkeypatch):
