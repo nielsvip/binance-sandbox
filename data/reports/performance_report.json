@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-23 23:21 UTC",
+ "generated_at": "2026-10-23 23:29 UTC",
  "stats": {
   "BNBUSDC": {
    "symbol": "BNBUSDC",
@@ -13,17 +13,17 @@
    "worst_trade_pct": -1.95,
    "avg_hold_hours": 44.3,
    "accounts": [
+    "men",
     "flz",
-    "fin",
-    "inf",
     "ang",
-    "men"
+    "fin",
+    "inf"
    ],
    "raw_multiplier": 0.623,
    "order_multiplier": 0.623,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.424772+00:00",
-   "updated_at": "2026-10-23T23:21:46.424772+00:00"
+   "set_at": "2026-10-23T23:29:25.902150+00:00",
+   "updated_at": "2026-10-23T23:29:25.902150+00:00"
   },
   "ALGOUSDT": {
    "symbol": "ALGOUSDT",
@@ -38,15 +38,15 @@
    "avg_hold_hours": 44.45,
    "accounts": [
     "inf",
-    "fin",
     "ang",
-    "men"
+    "men",
+    "fin"
    ],
    "raw_multiplier": 0.1915,
    "order_multiplier": 0.191,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.426261+00:00",
-   "updated_at": "2026-10-23T23:21:46.426261+00:00"
+   "set_at": "2026-10-23T23:29:25.963905+00:00",
+   "updated_at": "2026-10-23T23:29:25.963905+00:00"
   },
   "1000SHIBUSDC": {
    "symbol": "1000SHIBUSDC",
@@ -65,8 +65,8 @@
    "raw_multiplier": 0.526,
    "order_multiplier": 0.526,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.424886+00:00",
-   "updated_at": "2026-10-23T23:21:46.424886+00:00"
+   "set_at": "2026-10-23T23:29:25.903034+00:00",
+   "updated_at": "2026-10-23T23:29:25.903034+00:00"
   },
   "IOTXUSDT": {
    "symbol": "IOTXUSDT",
@@ -81,15 +81,15 @@
    "avg_hold_hours": 10.08,
    "accounts": [
     "inf",
-    "fin",
     "ang",
-    "men"
+    "men",
+    "fin"
    ],
    "raw_multiplier": 1.7971,
    "order_multiplier": 1.797,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.424961+00:00",
-   "updated_at": "2026-10-23T23:21:46.424961+00:00"
+   "set_at": "2026-10-23T23:29:25.903316+00:00",
+   "updated_at": "2026-10-23T23:29:25.903316+00:00"
   },
   "COTIUSDT": {
    "symbol": "COTIUSDT",
@@ -104,15 +104,15 @@
    "avg_hold_hours": 13.91,
    "accounts": [
     "inf",
-    "fin",
     "ang",
-    "men"
+    "men",
+    "fin"
    ],
    "raw_multiplier": 0.3913,
    "order_multiplier": 0.391,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.425090+00:00",
-   "updated_at": "2026-10-23T23:21:46.425090+00:00"
+   "set_at": "2026-10-23T23:29:25.903535+00:00",
+   "updated_at": "2026-10-23T23:29:25.903535+00:00"
   },
   "BIOUSDC": {
    "symbol": "BIOUSDC",
@@ -132,8 +132,8 @@
    "raw_multiplier": 0.2069,
    "order_multiplier": 0.207,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.425139+00:00",
-   "updated_at": "2026-10-23T23:21:46.425139+00:00"
+   "set_at": "2026-10-23T23:29:25.903599+00:00",
+   "updated_at": "2026-10-23T23:29:25.903599+00:00"
   },
   "MINAUSDT": {
    "symbol": "MINAUSDT",
@@ -152,8 +152,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.425153+00:00",
-   "updated_at": "2026-10-23T23:21:46.425153+00:00"
+   "set_at": "2026-10-23T23:29:25.903637+00:00",
+   "updated_at": "2026-10-23T23:29:25.903637+00:00"
   },
   "LINKUSDC": {
    "symbol": "LINKUSDC",
@@ -167,15 +167,15 @@
    "worst_trade_pct": -1.78,
    "avg_hold_hours": 18.51,
    "accounts": [
-    "fin",
     "ang",
-    "men"
+    "men",
+    "fin"
    ],
    "raw_multiplier": 0.2042,
    "order_multiplier": 0.204,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.425195+00:00",
-   "updated_at": "2026-10-23T23:21:46.425195+00:00"
+   "set_at": "2026-10-23T23:29:25.903750+00:00",
+   "updated_at": "2026-10-23T23:29:25.903750+00:00"
   },
   "SNXUSDT": {
    "symbol": "SNXUSDT",
@@ -189,15 +189,15 @@
    "worst_trade_pct": -10.14,
    "avg_hold_hours": 65.77,
    "accounts": [
-    "fin",
     "ang",
-    "men"
+    "men",
+    "fin"
    ],
    "raw_multiplier": 0.1429,
    "order_multiplier": 0.143,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.425279+00:00",
-   "updated_at": "2026-10-23T23:21:46.425279+00:00"
+   "set_at": "2026-10-23T23:29:25.903852+00:00",
+   "updated_at": "2026-10-23T23:29:25.903852+00:00"
   },
   "SKLUSDT": {
    "symbol": "SKLUSDT",
@@ -211,14 +211,14 @@
    "worst_trade_pct": -0.37,
    "avg_hold_hours": 4.73,
    "accounts": [
-    "fin",
-    "ang"
+    "ang",
+    "fin"
    ],
    "raw_multiplier": 2.3067,
    "order_multiplier": 2.307,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.425323+00:00",
-   "updated_at": "2026-10-23T23:21:46.425323+00:00"
+   "set_at": "2026-10-23T23:29:25.903927+00:00",
+   "updated_at": "2026-10-23T23:29:25.903927+00:00"
   },
   "1000FLOKIUSDT": {
    "symbol": "1000FLOKIUSDT",
@@ -237,8 +237,8 @@
    "raw_multiplier": 0.1775,
    "order_multiplier": 0.178,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.425365+00:00",
-   "updated_at": "2026-10-23T23:21:46.425365+00:00"
+   "set_at": "2026-10-23T23:29:25.903964+00:00",
+   "updated_at": "2026-10-23T23:29:25.903964+00:00"
   },
   "AAPLUSDT": {
    "symbol": "AAPLUSDT",
@@ -258,8 +258,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.425381+00:00",
-   "updated_at": "2026-10-23T23:21:46.425381+00:00"
+   "set_at": "2026-10-23T23:29:25.904010+00:00",
+   "updated_at": "2026-10-23T23:29:25.904010+00:00"
   },
   "THETAUSDT": {
    "symbol": "THETAUSDT",
@@ -274,15 +274,15 @@
    "avg_hold_hours": 27.33,
    "accounts": [
     "inf",
-    "fin",
     "ang",
-    "men"
+    "men",
+    "fin"
    ],
    "raw_multiplier": 0.1854,
    "order_multiplier": 0.185,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.429237+00:00",
-   "updated_at": "2026-10-23T23:21:46.429237+00:00"
+   "set_at": "2026-10-23T23:29:26.459314+00:00",
+   "updated_at": "2026-10-23T23:29:26.459314+00:00"
   },
   "GRAMUSDT": {
    "symbol": "GRAMUSDT",
@@ -304,8 +304,8 @@
    "raw_multiplier": 0.1685,
    "order_multiplier": 0.169,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.425493+00:00",
-   "updated_at": "2026-10-23T23:21:46.425493+00:00"
+   "set_at": "2026-10-23T23:29:25.961519+00:00",
+   "updated_at": "2026-10-23T23:29:25.961519+00:00"
   },
   "ALTUSDT": {
    "symbol": "ALTUSDT",
@@ -320,15 +320,15 @@
    "avg_hold_hours": 11.78,
    "accounts": [
     "inf",
-    "fin",
     "ang",
-    "men"
+    "men",
+    "fin"
    ],
    "raw_multiplier": 10.0,
    "order_multiplier": 10.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.425559+00:00",
-   "updated_at": "2026-10-23T23:21:46.425559+00:00"
+   "set_at": "2026-10-23T23:29:25.961697+00:00",
+   "updated_at": "2026-10-23T23:29:25.961697+00:00"
   },
   "BATUSDT": {
    "symbol": "BATUSDT",
@@ -349,8 +349,8 @@
    "raw_multiplier": 5.4085,
    "order_multiplier": 5.409,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.425666+00:00",
-   "updated_at": "2026-10-23T23:21:46.425666+00:00"
+   "set_at": "2026-10-23T23:29:25.961923+00:00",
+   "updated_at": "2026-10-23T23:29:25.961923+00:00"
   },
   "DOGEUSDC": {
    "symbol": "DOGEUSDC",
@@ -370,8 +370,8 @@
    "raw_multiplier": 0.4493,
    "order_multiplier": 0.449,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.427790+00:00",
-   "updated_at": "2026-10-23T23:21:46.427790+00:00"
+   "set_at": "2026-10-23T23:29:25.966271+00:00",
+   "updated_at": "2026-10-23T23:29:25.966271+00:00"
   },
   "MANAUSDT": {
    "symbol": "MANAUSDT",
@@ -385,15 +385,15 @@
    "worst_trade_pct": -5.16,
    "avg_hold_hours": 13.73,
    "accounts": [
-    "fin",
     "ang",
-    "men"
+    "men",
+    "fin"
    ],
    "raw_multiplier": 0.6083,
    "order_multiplier": 0.608,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.430283+00:00",
-   "updated_at": "2026-10-23T23:21:46.430283+00:00"
+   "set_at": "2026-10-23T23:29:27.032427+00:00",
+   "updated_at": "2026-10-23T23:29:27.032427+00:00"
   },
   "1INCHUSDT": {
    "symbol": "1INCHUSDT",
@@ -408,15 +408,15 @@
    "avg_hold_hours": 10.0,
    "accounts": [
     "inf",
-    "fin",
     "ang",
-    "men"
+    "men",
+    "fin"
    ],
    "raw_multiplier": 0.3289,
    "order_multiplier": 0.329,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.425820+00:00",
-   "updated_at": "2026-10-23T23:21:46.425820+00:00"
+   "set_at": "2026-10-23T23:29:25.962233+00:00",
+   "updated_at": "2026-10-23T23:29:25.962233+00:00"
   },
   "BEATUSDT": {
    "symbol": "BEATUSDT",
@@ -435,8 +435,8 @@
    "raw_multiplier": 3.5202,
    "order_multiplier": 3.52,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.425847+00:00",
-   "updated_at": "2026-10-23T23:21:46.425847+00:00"
+   "set_at": "2026-10-23T23:29:25.962309+00:00",
+   "updated_at": "2026-10-23T23:29:25.962309+00:00"
   },
   "SKYUSDT": {
    "symbol": "SKYUSDT",
@@ -455,8 +455,8 @@
    "raw_multiplier": 0.2632,
    "order_multiplier": 0.263,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.430371+00:00",
-   "updated_at": "2026-10-23T23:21:46.430371+00:00"
+   "set_at": "2026-10-23T23:29:27.032623+00:00",
+   "updated_at": "2026-10-23T23:29:27.032623+00:00"
   },
   "PTBUSDT": {
    "symbol": "PTBUSDT",
@@ -476,8 +476,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.426786+00:00",
-   "updated_at": "2026-10-23T23:21:46.426786+00:00"
+   "set_at": "2026-10-23T23:29:25.964725+00:00",
+   "updated_at": "2026-10-23T23:29:25.964725+00:00"
   },
   "1000LUNCUSDT": {
    "symbol": "1000LUNCUSDT",
@@ -497,8 +497,8 @@
    "raw_multiplier": 0.1806,
    "order_multiplier": 0.181,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.425918+00:00",
-   "updated_at": "2026-10-23T23:21:46.425918+00:00"
+   "set_at": "2026-10-23T23:29:25.962421+00:00",
+   "updated_at": "2026-10-23T23:29:25.962421+00:00"
   },
   "AVAXUSDC": {
    "symbol": "AVAXUSDC",
@@ -512,15 +512,15 @@
    "worst_trade_pct": -7.42,
    "avg_hold_hours": 64.57,
    "accounts": [
-    "fin",
     "ang",
-    "men"
+    "men",
+    "fin"
    ],
    "raw_multiplier": 0.204,
    "order_multiplier": 0.204,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.425987+00:00",
-   "updated_at": "2026-10-23T23:21:46.425987+00:00"
+   "set_at": "2026-10-23T23:29:25.962559+00:00",
+   "updated_at": "2026-10-23T23:29:25.962559+00:00"
   },
   "FILUSDC": {
    "symbol": "FILUSDC",
@@ -540,8 +540,8 @@
    "raw_multiplier": 3.7,
    "order_multiplier": 3.7,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.426012+00:00",
-   "updated_at": "2026-10-23T23:21:46.426012+00:00"
+   "set_at": "2026-10-23T23:29:25.962587+00:00",
+   "updated_at": "2026-10-23T23:29:25.962587+00:00"
   },
   "HYPEUSDT": {
    "symbol": "HYPEUSDT",
@@ -561,8 +561,8 @@
    "raw_multiplier": 0.3399,
    "order_multiplier": 0.34,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.426052+00:00",
-   "updated_at": "2026-10-23T23:21:46.426052+00:00"
+   "set_at": "2026-10-23T23:29:25.962628+00:00",
+   "updated_at": "2026-10-23T23:29:25.962628+00:00"
   },
   "XLMUSDT": {
    "symbol": "XLMUSDT",
@@ -576,15 +576,15 @@
    "worst_trade_pct": -4.59,
    "avg_hold_hours": 79.56,
    "accounts": [
-    "fin",
     "ang",
-    "men"
+    "men",
+    "fin"
    ],
    "raw_multiplier": 0.2916,
    "order_multiplier": 0.292,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.426114+00:00",
-   "updated_at": "2026-10-23T23:21:46.426114+00:00"
+   "set_at": "2026-10-23T23:29:25.963529+00:00",
+   "updated_at": "2026-10-23T23:29:25.963529+00:00"
   },
   "ARMUSDT": {
    "symbol": "ARMUSDT",
@@ -604,8 +604,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.426131+00:00",
-   "updated_at": "2026-10-23T23:21:46.426131+00:00"
+   "set_at": "2026-10-23T23:29:25.963558+00:00",
+   "updated_at": "2026-10-23T23:29:25.963558+00:00"
   },
   "AIAUSDT": {
    "symbol": "AIAUSDT",
@@ -625,8 +625,8 @@
    "raw_multiplier": 0.1719,
    "order_multiplier": 0.172,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.426195+00:00",
-   "updated_at": "2026-10-23T23:21:46.426195+00:00"
+   "set_at": "2026-10-23T23:29:25.963796+00:00",
+   "updated_at": "2026-10-23T23:29:25.963796+00:00"
   },
   "WUSDT": {
    "symbol": "WUSDT",
@@ -647,8 +647,8 @@
    "raw_multiplier": 0.2632,
    "order_multiplier": 0.263,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.426288+00:00",
-   "updated_at": "2026-10-23T23:21:46.426288+00:00"
+   "set_at": "2026-10-23T23:29:25.964014+00:00",
+   "updated_at": "2026-10-23T23:29:25.964014+00:00"
   },
   "RSRUSDT": {
    "symbol": "RSRUSDT",
@@ -667,8 +667,8 @@
    "raw_multiplier": 0.2736,
    "order_multiplier": 0.274,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.426314+00:00",
-   "updated_at": "2026-10-23T23:21:46.426314+00:00"
+   "set_at": "2026-10-23T23:29:25.964057+00:00",
+   "updated_at": "2026-10-23T23:29:25.964057+00:00"
   },
   "NEARUSDC": {
    "symbol": "NEARUSDC",
@@ -689,8 +689,8 @@
    "raw_multiplier": 0.18,
    "order_multiplier": 0.18,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.426354+00:00",
-   "updated_at": "2026-10-23T23:21:46.426354+00:00"
+   "set_at": "2026-10-23T23:29:25.964125+00:00",
+   "updated_at": "2026-10-23T23:29:25.964125+00:00"
   },
   "CHRUSDT": {
    "symbol": "CHRUSDT",
@@ -704,15 +704,15 @@
    "worst_trade_pct": -11.55,
    "avg_hold_hours": 29.75,
    "accounts": [
-    "fin",
     "ang",
-    "men"
+    "men",
+    "fin"
    ],
    "raw_multiplier": 0.1257,
    "order_multiplier": 0.126,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.426409+00:00",
-   "updated_at": "2026-10-23T23:21:46.426409+00:00"
+   "set_at": "2026-10-23T23:29:25.964213+00:00",
+   "updated_at": "2026-10-23T23:29:25.964213+00:00"
   },
   "SOLUSDC": {
    "symbol": "SOLUSDC",
@@ -726,17 +726,17 @@
    "worst_trade_pct": -7.27,
    "avg_hold_hours": 104.48,
    "accounts": [
+    "men",
     "flz",
-    "fin",
-    "inf",
     "ang",
-    "men"
+    "fin",
+    "inf"
    ],
    "raw_multiplier": 0.1849,
    "order_multiplier": 0.185,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.428558+00:00",
-   "updated_at": "2026-10-23T23:21:46.428558+00:00"
+   "set_at": "2026-10-23T23:29:26.454219+00:00",
+   "updated_at": "2026-10-23T23:29:26.454219+00:00"
   },
   "EDUUSDT": {
    "symbol": "EDUUSDT",
@@ -756,8 +756,8 @@
    "raw_multiplier": 0.2463,
    "order_multiplier": 0.246,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.426554+00:00",
-   "updated_at": "2026-10-23T23:21:46.426554+00:00"
+   "set_at": "2026-10-23T23:29:25.964375+00:00",
+   "updated_at": "2026-10-23T23:29:25.964375+00:00"
   },
   "MELANIAUSDT": {
    "symbol": "MELANIAUSDT",
@@ -778,8 +778,8 @@
    "raw_multiplier": 0.1676,
    "order_multiplier": 0.168,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.426630+00:00",
-   "updated_at": "2026-10-23T23:21:46.426630+00:00"
+   "set_at": "2026-10-23T23:29:25.964439+00:00",
+   "updated_at": "2026-10-23T23:29:25.964439+00:00"
   },
   "KSMUSDT": {
    "symbol": "KSMUSDT",
@@ -793,15 +793,15 @@
    "worst_trade_pct": -5.74,
    "avg_hold_hours": 94.97,
    "accounts": [
-    "fin",
     "ang",
-    "men"
+    "men",
+    "fin"
    ],
    "raw_multiplier": 0.1268,
    "order_multiplier": 0.127,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.430794+00:00",
-   "updated_at": "2026-10-23T23:21:46.430794+00:00"
+   "set_at": "2026-10-23T23:29:27.473749+00:00",
+   "updated_at": "2026-10-23T23:29:27.473749+00:00"
   },
   "GRTUSDT": {
    "symbol": "GRTUSDT",
@@ -822,8 +822,8 @@
    "raw_multiplier": 0.1429,
    "order_multiplier": 0.143,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.426701+00:00",
-   "updated_at": "2026-10-23T23:21:46.426701+00:00"
+   "set_at": "2026-10-23T23:29:25.964600+00:00",
+   "updated_at": "2026-10-23T23:29:25.964600+00:00"
   },
   "TRUMPUSDC": {
    "symbol": "TRUMPUSDC",
@@ -843,8 +843,8 @@
    "raw_multiplier": 0.6244,
    "order_multiplier": 0.624,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.426731+00:00",
-   "updated_at": "2026-10-23T23:21:46.426731+00:00"
+   "set_at": "2026-10-23T23:29:25.964641+00:00",
+   "updated_at": "2026-10-23T23:29:25.964641+00:00"
   },
   "QTUMUSDT": {
    "symbol": "QTUMUSDT",
@@ -859,15 +859,15 @@
    "avg_hold_hours": 15.51,
    "accounts": [
     "inf",
-    "fin",
     "ang",
-    "men"
+    "men",
+    "fin"
    ],
    "raw_multiplier": 0.319,
    "order_multiplier": 0.319,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.426837+00:00",
-   "updated_at": "2026-10-23T23:21:46.426837+00:00"
+   "set_at": "2026-10-23T23:29:25.965105+00:00",
+   "updated_at": "2026-10-23T23:29:25.965105+00:00"
   },
   "GALAUSDT": {
    "symbol": "GALAUSDT",
@@ -888,8 +888,8 @@
    "raw_multiplier": 0.1351,
    "order_multiplier": 0.135,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.430320+00:00",
-   "updated_at": "2026-10-23T23:21:46.430320+00:00"
+   "set_at": "2026-10-23T23:29:27.032519+00:00",
+   "updated_at": "2026-10-23T23:29:27.032519+00:00"
   },
   "RLCUSDT": {
    "symbol": "RLCUSDT",
@@ -909,8 +909,8 @@
    "raw_multiplier": 0.1598,
    "order_multiplier": 0.16,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:47.059529+00:00",
-   "updated_at": "2026-10-23T23:21:47.059529+00:00"
+   "set_at": "2026-10-23T23:29:27.602514+00:00",
+   "updated_at": "2026-10-23T23:29:27.602514+00:00"
   },
   "PARTIUSDT": {
    "symbol": "PARTIUSDT",
@@ -930,8 +930,8 @@
    "raw_multiplier": 0.4548,
    "order_multiplier": 0.455,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.426946+00:00",
-   "updated_at": "2026-10-23T23:21:46.426946+00:00"
+   "set_at": "2026-10-23T23:29:25.965308+00:00",
+   "updated_at": "2026-10-23T23:29:25.965308+00:00"
   },
   "MOVRUSDT": {
    "symbol": "MOVRUSDT",
@@ -945,14 +945,14 @@
    "worst_trade_pct": -0.44,
    "avg_hold_hours": 0.93,
    "accounts": [
-    "fin",
-    "ang"
+    "ang",
+    "fin"
    ],
    "raw_multiplier": 2.7658,
    "order_multiplier": 2.766,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.430229+00:00",
-   "updated_at": "2026-10-23T23:21:46.430229+00:00"
+   "set_at": "2026-10-23T23:29:27.032311+00:00",
+   "updated_at": "2026-10-23T23:29:27.032311+00:00"
   },
   "RENDERUSDT": {
    "symbol": "RENDERUSDT",
@@ -971,8 +971,8 @@
    "raw_multiplier": 0.7989,
    "order_multiplier": 0.799,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.426988+00:00",
-   "updated_at": "2026-10-23T23:21:46.426988+00:00"
+   "set_at": "2026-10-23T23:29:25.965387+00:00",
+   "updated_at": "2026-10-23T23:29:25.965387+00:00"
   },
   "PUMPUSDT": {
    "symbol": "PUMPUSDT",
@@ -986,15 +986,15 @@
    "worst_trade_pct": -4.56,
    "avg_hold_hours": 68.89,
    "accounts": [
-    "fin",
     "ang",
-    "men"
+    "men",
+    "fin"
    ],
    "raw_multiplier": 0.1985,
    "order_multiplier": 0.199,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.427032+00:00",
-   "updated_at": "2026-10-23T23:21:46.427032+00:00"
+   "set_at": "2026-10-23T23:29:25.965440+00:00",
+   "updated_at": "2026-10-23T23:29:25.965440+00:00"
   },
   "JASMYUSDT": {
    "symbol": "JASMYUSDT",
@@ -1013,8 +1013,8 @@
    "raw_multiplier": 4.3674,
    "order_multiplier": 4.367,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.427885+00:00",
-   "updated_at": "2026-10-23T23:21:46.427885+00:00"
+   "set_at": "2026-10-23T23:29:25.966342+00:00",
+   "updated_at": "2026-10-23T23:29:25.966342+00:00"
   },
   "ZECUSDC": {
    "symbol": "ZECUSDC",
@@ -1029,15 +1029,15 @@
    "avg_hold_hours": 87.21,
    "accounts": [
     "flz",
-    "fin",
     "ang",
-    "men"
+    "men",
+    "fin"
    ],
    "raw_multiplier": 1.2811,
    "order_multiplier": 1.281,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.427146+00:00",
-   "updated_at": "2026-10-23T23:21:46.427146+00:00"
+   "set_at": "2026-10-23T23:29:25.965557+00:00",
+   "updated_at": "2026-10-23T23:29:25.965557+00:00"
   },
   "ARUSDT": {
    "symbol": "ARUSDT",
@@ -1058,8 +1058,8 @@
    "raw_multiplier": 0.4793,
    "order_multiplier": 0.479,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.427212+00:00",
-   "updated_at": "2026-10-23T23:21:46.427212+00:00"
+   "set_at": "2026-10-23T23:29:25.965670+00:00",
+   "updated_at": "2026-10-23T23:29:25.965670+00:00"
   },
   "ETCUSDT": {
    "symbol": "ETCUSDT",
@@ -1079,8 +1079,8 @@
    "raw_multiplier": 0.2381,
    "order_multiplier": 0.238,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:47.060547+00:00",
-   "updated_at": "2026-10-23T23:21:47.060547+00:00"
+   "set_at": "2026-10-23T23:29:27.604499+00:00",
+   "updated_at": "2026-10-23T23:29:27.604499+00:00"
   },
   "LTCUSDC": {
    "symbol": "LTCUSDC",
@@ -1101,8 +1101,8 @@
    "raw_multiplier": 0.1273,
    "order_multiplier": 0.127,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.427281+00:00",
-   "updated_at": "2026-10-23T23:21:46.427281+00:00"
+   "set_at": "2026-10-23T23:29:25.965764+00:00",
+   "updated_at": "2026-10-23T23:29:25.965764+00:00"
   },
   "WLDUSDC": {
    "symbol": "WLDUSDC",
@@ -1116,17 +1116,17 @@
    "worst_trade_pct": -10.96,
    "avg_hold_hours": 76.22,
    "accounts": [
+    "men",
     "flz",
-    "fin",
-    "inf",
     "ang",
-    "men"
+    "fin",
+    "inf"
    ],
    "raw_multiplier": 0.7565,
    "order_multiplier": 0.756,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.429515+00:00",
-   "updated_at": "2026-10-23T23:21:46.429515+00:00"
+   "set_at": "2026-10-23T23:29:27.020654+00:00",
+   "updated_at": "2026-10-23T23:29:27.020654+00:00"
   },
   "BSVUSDT": {
    "symbol": "BSVUSDT",
@@ -1145,8 +1145,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.427344+00:00",
-   "updated_at": "2026-10-23T23:21:46.427344+00:00"
+   "set_at": "2026-10-23T23:29:25.965837+00:00",
+   "updated_at": "2026-10-23T23:29:25.965837+00:00"
   },
   "API3USDT": {
    "symbol": "API3USDT",
@@ -1165,8 +1165,8 @@
    "raw_multiplier": 0.5431,
    "order_multiplier": 0.543,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.427833+00:00",
-   "updated_at": "2026-10-23T23:21:46.427833+00:00"
+   "set_at": "2026-10-23T23:29:25.966308+00:00",
+   "updated_at": "2026-10-23T23:29:25.966308+00:00"
   },
   "ZROUSDT": {
    "symbol": "ZROUSDT",
@@ -1187,8 +1187,8 @@
    "raw_multiplier": 6.9233,
    "order_multiplier": 6.923,
    "tier": "A",
-   "set_at": "2026-10-23T23:21:46.427466+00:00",
-   "updated_at": "2026-10-23T23:21:46.427466+00:00"
+   "set_at": "2026-10-23T23:29:25.965976+00:00",
+   "updated_at": "2026-10-23T23:29:25.965976+00:00"
   },
   "XTZUSDT": {
    "symbol": "XTZUSDT",
@@ -1203,15 +1203,15 @@
    "avg_hold_hours": 30.32,
    "accounts": [
     "inf",
-    "fin",
     "ang",
-    "men"
+    "men",
+    "fin"
    ],
    "raw_multiplier": 3.2358,
    "order_multiplier": 3.236,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.427578+00:00",
-   "updated_at": "2026-10-23T23:21:46.427578+00:00"
+   "set_at": "2026-10-23T23:29:25.966059+00:00",
+   "updated_at": "2026-10-23T23:29:25.966059+00:00"
   },
   "ASTERUSDT": {
    "symbol": "ASTERUSDT",
@@ -1230,8 +1230,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.427594+00:00",
-   "updated_at": "2026-10-23T23:21:46.427594+00:00"
+   "set_at": "2026-10-23T23:29:25.966078+00:00",
+   "updated_at": "2026-10-23T23:29:25.966078+00:00"
   },
   "TRBUSDT": {
    "symbol": "TRBUSDT",
@@ -1250,8 +1250,8 @@
    "raw_multiplier": 2.0001,
    "order_multiplier": 2.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.427631+00:00",
-   "updated_at": "2026-10-23T23:21:46.427631+00:00"
+   "set_at": "2026-10-23T23:29:25.966113+00:00",
+   "updated_at": "2026-10-23T23:29:25.966113+00:00"
   },
   "NMRUSDT": {
    "symbol": "NMRUSDT",
@@ -1266,14 +1266,14 @@
    "avg_hold_hours": 7.96,
    "accounts": [
     "inf",
-    "fin",
-    "ang"
+    "ang",
+    "fin"
    ],
    "raw_multiplier": 0.2485,
    "order_multiplier": 0.249,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.427701+00:00",
-   "updated_at": "2026-10-23T23:21:46.427701+00:00"
+   "set_at": "2026-10-23T23:29:25.966152+00:00",
+   "updated_at": "2026-10-23T23:29:25.966152+00:00"
   },
   "ENSUSDT": {
    "symbol": "ENSUSDT",
@@ -1294,8 +1294,8 @@
    "raw_multiplier": 0.6623,
    "order_multiplier": 0.662,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.430926+00:00",
-   "updated_at": "2026-10-23T23:21:46.430926+00:00"
+   "set_at": "2026-10-23T23:29:27.601769+00:00",
+   "updated_at": "2026-10-23T23:29:27.601769+00:00"
   },
   "1000PEPEUSDC": {
    "symbol": "1000PEPEUSDC",
@@ -1309,14 +1309,14 @@
    "worst_trade_pct": -5.63,
    "avg_hold_hours": 96.32,
    "accounts": [
-    "fin",
-    "ang"
+    "ang",
+    "fin"
    ],
    "raw_multiplier": 9.0553,
    "order_multiplier": 9.055,
    "tier": "A",
-   "set_at": "2026-10-23T23:21:46.428378+00:00",
-   "updated_at": "2026-10-23T23:21:46.428378+00:00"
+   "set_at": "2026-10-23T23:29:26.453756+00:00",
+   "updated_at": "2026-10-23T23:29:26.453756+00:00"
   },
   "ADBEUSDT": {
    "symbol": "ADBEUSDT",
@@ -1335,8 +1335,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.427805+00:00",
-   "updated_at": "2026-10-23T23:21:46.427805+00:00"
+   "set_at": "2026-10-23T23:29:25.966285+00:00",
+   "updated_at": "2026-10-23T23:29:25.966285+00:00"
   },
   "ONEUSDT": {
    "symbol": "ONEUSDT",
@@ -1356,20 +1356,20 @@
    "raw_multiplier": 0.4722,
    "order_multiplier": 0.472,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.427922+00:00",
-   "updated_at": "2026-10-23T23:21:46.427922+00:00"
+   "set_at": "2026-10-23T23:29:25.966377+00:00",
+   "updated_at": "2026-10-23T23:29:25.966377+00:00"
   },
   "STRKUSDT": {
    "symbol": "STRKUSDT",
-   "trade_count": 41,
-   "win_rate": 0.561,
-   "avg_gain_pct": 4.1016,
-   "total_pnl_pct": 269.3,
-   "total_pnl_pct_compounded": 269.3,
-   "total_pnl_pct_sum_diagnostic": 168.17,
+   "trade_count": 40,
+   "win_rate": 0.575,
+   "avg_gain_pct": 4.2025,
+   "total_pnl_pct": 269.06,
+   "total_pnl_pct_compounded": 269.06,
+   "total_pnl_pct_sum_diagnostic": 168.1,
    "best_trade_pct": 57.09,
    "worst_trade_pct": -22.85,
-   "avg_hold_hours": 20.41,
+   "avg_hold_hours": 20.88,
    "accounts": [
     "inf",
     "ang",
@@ -1378,8 +1378,8 @@
    "raw_multiplier": 10.0,
    "order_multiplier": 10.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.427968+00:00",
-   "updated_at": "2026-10-23T23:21:46.427968+00:00"
+   "set_at": "2026-10-23T23:29:25.966456+00:00",
+   "updated_at": "2026-10-23T23:29:25.966456+00:00"
   },
   "STXUSDT": {
    "symbol": "STXUSDT",
@@ -1398,8 +1398,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.060050+00:00",
-   "updated_at": "2026-10-23T23:21:47.060050+00:00"
+   "set_at": "2026-10-23T23:29:27.604322+00:00",
+   "updated_at": "2026-10-23T23:29:27.604322+00:00"
   },
   "BCHUSDC": {
    "symbol": "BCHUSDC",
@@ -1419,8 +1419,8 @@
    "raw_multiplier": 0.2243,
    "order_multiplier": 0.224,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.428013+00:00",
-   "updated_at": "2026-10-23T23:21:46.428013+00:00"
+   "set_at": "2026-10-23T23:29:26.450900+00:00",
+   "updated_at": "2026-10-23T23:29:26.450900+00:00"
   },
   "AXSUSDT": {
    "symbol": "AXSUSDT",
@@ -1441,8 +1441,8 @@
    "raw_multiplier": 0.1529,
    "order_multiplier": 0.153,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.428055+00:00",
-   "updated_at": "2026-10-23T23:21:46.428055+00:00"
+   "set_at": "2026-10-23T23:29:26.451314+00:00",
+   "updated_at": "2026-10-23T23:29:26.451314+00:00"
   },
   "SANDUSDT": {
    "symbol": "SANDUSDT",
@@ -1456,15 +1456,15 @@
    "worst_trade_pct": -11.31,
    "avg_hold_hours": 45.71,
    "accounts": [
-    "fin",
     "ang",
-    "men"
+    "men",
+    "fin"
    ],
    "raw_multiplier": 0.2581,
    "order_multiplier": 0.258,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.428093+00:00",
-   "updated_at": "2026-10-23T23:21:46.428093+00:00"
+   "set_at": "2026-10-23T23:29:26.451531+00:00",
+   "updated_at": "2026-10-23T23:29:26.451531+00:00"
   },
   "ATOMUSDT": {
    "symbol": "ATOMUSDT",
@@ -1479,15 +1479,15 @@
    "avg_hold_hours": 34.94,
    "accounts": [
     "inf",
-    "fin",
     "ang",
-    "men"
+    "men",
+    "fin"
    ],
    "raw_multiplier": 2.5419,
    "order_multiplier": 2.542,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.428136+00:00",
-   "updated_at": "2026-10-23T23:21:46.428136+00:00"
+   "set_at": "2026-10-23T23:29:26.451715+00:00",
+   "updated_at": "2026-10-23T23:29:26.451715+00:00"
   },
   "ADAUSDC": {
    "symbol": "ADAUSDC",
@@ -1501,15 +1501,15 @@
    "worst_trade_pct": -3.88,
    "avg_hold_hours": 91.35,
    "accounts": [
-    "fin",
     "ang",
-    "men"
+    "men",
+    "fin"
    ],
    "raw_multiplier": 0.1776,
    "order_multiplier": 0.178,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.429364+00:00",
-   "updated_at": "2026-10-23T23:21:46.429364+00:00"
+   "set_at": "2026-10-23T23:29:27.019781+00:00",
+   "updated_at": "2026-10-23T23:29:27.019781+00:00"
   },
   "RVNUSDT": {
    "symbol": "RVNUSDT",
@@ -1529,8 +1529,8 @@
    "raw_multiplier": 0.125,
    "order_multiplier": 0.125,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.428228+00:00",
-   "updated_at": "2026-10-23T23:21:46.428228+00:00"
+   "set_at": "2026-10-23T23:29:26.451915+00:00",
+   "updated_at": "2026-10-23T23:29:26.451915+00:00"
   },
   "ZILUSDT": {
    "symbol": "ZILUSDT",
@@ -1544,15 +1544,15 @@
    "worst_trade_pct": -2.38,
    "avg_hold_hours": 6.89,
    "accounts": [
-    "fin",
     "ang",
-    "men"
+    "men",
+    "fin"
    ],
    "raw_multiplier": 0.3293,
    "order_multiplier": 0.329,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.428272+00:00",
-   "updated_at": "2026-10-23T23:21:46.428272+00:00"
+   "set_at": "2026-10-23T23:29:26.452877+00:00",
+   "updated_at": "2026-10-23T23:29:26.452877+00:00"
   },
   "ACEUSDT": {
    "symbol": "ACEUSDT",
@@ -1566,14 +1566,14 @@
    "worst_trade_pct": -5.33,
    "avg_hold_hours": 32.95,
    "accounts": [
-    "fin",
-    "ang"
+    "ang",
+    "fin"
    ],
    "raw_multiplier": 0.1301,
    "order_multiplier": 0.13,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.428316+00:00",
-   "updated_at": "2026-10-23T23:21:46.428316+00:00"
+   "set_at": "2026-10-23T23:29:26.453188+00:00",
+   "updated_at": "2026-10-23T23:29:26.453188+00:00"
   },
   "VETUSDT": {
    "symbol": "VETUSDT",
@@ -1594,8 +1594,8 @@
    "raw_multiplier": 0.3212,
    "order_multiplier": 0.321,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.430057+00:00",
-   "updated_at": "2026-10-23T23:21:46.430057+00:00"
+   "set_at": "2026-10-23T23:29:27.030401+00:00",
+   "updated_at": "2026-10-23T23:29:27.030401+00:00"
   },
   "BMNRUSDT": {
    "symbol": "BMNRUSDT",
@@ -1614,8 +1614,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.428437+00:00",
-   "updated_at": "2026-10-23T23:21:46.428437+00:00"
+   "set_at": "2026-10-23T23:29:26.453931+00:00",
+   "updated_at": "2026-10-23T23:29:26.453931+00:00"
   },
   "ETHUSDC": {
    "symbol": "ETHUSDC",
@@ -1629,17 +1629,17 @@
    "worst_trade_pct": -3.32,
    "avg_hold_hours": 68.73,
    "accounts": [
+    "men",
     "flz",
-    "fin",
-    "inf",
     "ang",
-    "men"
+    "fin",
+    "inf"
    ],
    "raw_multiplier": 3.0282,
    "order_multiplier": 3.028,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.428495+00:00",
-   "updated_at": "2026-10-23T23:21:46.428495+00:00"
+   "set_at": "2026-10-23T23:29:26.454097+00:00",
+   "updated_at": "2026-10-23T23:29:26.454097+00:00"
   },
   "TRXUSDT": {
    "symbol": "TRXUSDT",
@@ -1658,8 +1658,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.429200+00:00",
-   "updated_at": "2026-10-23T23:21:46.429200+00:00"
+   "set_at": "2026-10-23T23:29:26.457228+00:00",
+   "updated_at": "2026-10-23T23:29:26.457228+00:00"
   },
   "EGLDUSDT": {
    "symbol": "EGLDUSDT",
@@ -1674,15 +1674,15 @@
    "avg_hold_hours": 17.52,
    "accounts": [
     "inf",
-    "fin",
     "ang",
-    "men"
+    "men",
+    "fin"
    ],
    "raw_multiplier": 0.4743,
    "order_multiplier": 0.474,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.428899+00:00",
-   "updated_at": "2026-10-23T23:21:46.428899+00:00"
+   "set_at": "2026-10-23T23:29:26.455827+00:00",
+   "updated_at": "2026-10-23T23:29:26.455827+00:00"
   },
   "KASUSDT": {
    "symbol": "KASUSDT",
@@ -1696,14 +1696,14 @@
    "worst_trade_pct": -1.35,
    "avg_hold_hours": 6.99,
    "accounts": [
-    "fin",
-    "ang"
+    "ang",
+    "fin"
    ],
    "raw_multiplier": 2.618,
    "order_multiplier": 2.618,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.428922+00:00",
-   "updated_at": "2026-10-23T23:21:46.428922+00:00"
+   "set_at": "2026-10-23T23:29:26.455897+00:00",
+   "updated_at": "2026-10-23T23:29:26.455897+00:00"
   },
   "ASTSUSDT": {
    "symbol": "ASTSUSDT",
@@ -1722,8 +1722,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.428934+00:00",
-   "updated_at": "2026-10-23T23:21:46.428934+00:00"
+   "set_at": "2026-10-23T23:29:26.455945+00:00",
+   "updated_at": "2026-10-23T23:29:26.455945+00:00"
   },
   "INJUSDT": {
    "symbol": "INJUSDT",
@@ -1744,8 +1744,8 @@
    "raw_multiplier": 0.3118,
    "order_multiplier": 0.312,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.429064+00:00",
-   "updated_at": "2026-10-23T23:21:46.429064+00:00"
+   "set_at": "2026-10-23T23:29:26.456006+00:00",
+   "updated_at": "2026-10-23T23:29:26.456006+00:00"
   },
   "UNIUSDC": {
    "symbol": "UNIUSDC",
@@ -1765,8 +1765,8 @@
    "raw_multiplier": 10.0,
    "order_multiplier": 10.0,
    "tier": "A",
-   "set_at": "2026-10-23T23:21:47.059093+00:00",
-   "updated_at": "2026-10-23T23:21:47.059093+00:00"
+   "set_at": "2026-10-23T23:29:27.602170+00:00",
+   "updated_at": "2026-10-23T23:29:27.602170+00:00"
   },
   "MAGICUSDT": {
    "symbol": "MAGICUSDT",
@@ -1785,8 +1785,8 @@
    "raw_multiplier": 0.6344,
    "order_multiplier": 0.634,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.059622+00:00",
-   "updated_at": "2026-10-23T23:21:47.059622+00:00"
+   "set_at": "2026-10-23T23:29:27.602603+00:00",
+   "updated_at": "2026-10-23T23:29:27.602603+00:00"
   },
   "ARPAUSDT": {
    "symbol": "ARPAUSDT",
@@ -1805,8 +1805,8 @@
    "raw_multiplier": 5.2106,
    "order_multiplier": 5.211,
    "tier": "A",
-   "set_at": "2026-10-23T23:21:46.429151+00:00",
-   "updated_at": "2026-10-23T23:21:46.429151+00:00"
+   "set_at": "2026-10-23T23:29:26.456192+00:00",
+   "updated_at": "2026-10-23T23:29:26.456192+00:00"
   },
   "FLNCUSDT": {
    "symbol": "FLNCUSDT",
@@ -1825,8 +1825,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.429249+00:00",
-   "updated_at": "2026-10-23T23:21:46.429249+00:00"
+   "set_at": "2026-10-23T23:29:26.459629+00:00",
+   "updated_at": "2026-10-23T23:29:26.459629+00:00"
   },
   "1000BONKUSDC": {
    "symbol": "1000BONKUSDC",
@@ -1846,8 +1846,8 @@
    "raw_multiplier": 1.7326,
    "order_multiplier": 1.733,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.429285+00:00",
-   "updated_at": "2026-10-23T23:21:46.429285+00:00"
+   "set_at": "2026-10-23T23:29:26.459841+00:00",
+   "updated_at": "2026-10-23T23:29:26.459841+00:00"
   },
   "ENAUSDC": {
    "symbol": "ENAUSDC",
@@ -1862,15 +1862,15 @@
    "avg_hold_hours": 30.52,
    "accounts": [
     "inf",
-    "fin",
     "ang",
-    "men"
+    "men",
+    "fin"
    ],
    "raw_multiplier": 0.4366,
    "order_multiplier": 0.437,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.429326+00:00",
-   "updated_at": "2026-10-23T23:21:46.429326+00:00"
+   "set_at": "2026-10-23T23:29:27.019685+00:00",
+   "updated_at": "2026-10-23T23:29:27.019685+00:00"
   },
   "BTCDOMUSDT": {
    "symbol": "BTCDOMUSDT",
@@ -1884,17 +1884,17 @@
    "worst_trade_pct": -1.68,
    "avg_hold_hours": 52.97,
    "accounts": [
+    "men",
     "flz",
-    "fin",
-    "inf",
     "ang",
-    "men"
+    "fin",
+    "inf"
    ],
    "raw_multiplier": 0.4901,
    "order_multiplier": 0.49,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.429403+00:00",
-   "updated_at": "2026-10-23T23:21:46.429403+00:00"
+   "set_at": "2026-10-23T23:29:27.019873+00:00",
+   "updated_at": "2026-10-23T23:29:27.019873+00:00"
   },
   "ZENUSDT": {
    "symbol": "ZENUSDT",
@@ -1909,15 +1909,15 @@
    "avg_hold_hours": 60.33,
    "accounts": [
     "inf",
-    "fin",
     "ang",
-    "men"
+    "men",
+    "fin"
    ],
    "raw_multiplier": 0.2127,
    "order_multiplier": 0.213,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.429446+00:00",
-   "updated_at": "2026-10-23T23:21:46.429446+00:00"
+   "set_at": "2026-10-23T23:29:27.019936+00:00",
+   "updated_at": "2026-10-23T23:29:27.019936+00:00"
   },
   "RAYSOLUSDT": {
    "symbol": "RAYSOLUSDT",
@@ -1938,8 +1938,8 @@
    "raw_multiplier": 0.3292,
    "order_multiplier": 0.329,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.429554+00:00",
-   "updated_at": "2026-10-23T23:21:46.429554+00:00"
+   "set_at": "2026-10-23T23:29:27.020754+00:00",
+   "updated_at": "2026-10-23T23:29:27.020754+00:00"
   },
   "BEAMXUSDT": {
    "symbol": "BEAMXUSDT",
@@ -1953,15 +1953,15 @@
    "worst_trade_pct": -0.86,
    "avg_hold_hours": 5.9,
    "accounts": [
-    "fin",
     "ang",
-    "men"
+    "men",
+    "fin"
    ],
    "raw_multiplier": 0.4592,
    "order_multiplier": 0.459,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.429601+00:00",
-   "updated_at": "2026-10-23T23:21:46.429601+00:00"
+   "set_at": "2026-10-23T23:29:27.020805+00:00",
+   "updated_at": "2026-10-23T23:29:27.020805+00:00"
   },
   "BLURUSDT": {
    "symbol": "BLURUSDT",
@@ -1975,15 +1975,15 @@
    "worst_trade_pct": -21.17,
    "avg_hold_hours": 21.71,
    "accounts": [
-    "fin",
     "ang",
-    "men"
+    "men",
+    "fin"
    ],
    "raw_multiplier": 0.1688,
    "order_multiplier": 0.169,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.429668+00:00",
-   "updated_at": "2026-10-23T23:21:46.429668+00:00"
+   "set_at": "2026-10-23T23:29:27.026574+00:00",
+   "updated_at": "2026-10-23T23:29:27.026574+00:00"
   },
   "DASHUSDT": {
    "symbol": "DASHUSDT",
@@ -1998,15 +1998,15 @@
    "avg_hold_hours": 70.81,
    "accounts": [
     "flz",
-    "fin",
     "ang",
-    "men"
+    "men",
+    "fin"
    ],
    "raw_multiplier": 0.3843,
    "order_multiplier": 0.384,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.430757+00:00",
-   "updated_at": "2026-10-23T23:21:46.430757+00:00"
+   "set_at": "2026-10-23T23:29:27.473681+00:00",
+   "updated_at": "2026-10-23T23:29:27.473681+00:00"
   },
   "KMNOUSDT": {
    "symbol": "KMNOUSDT",
@@ -2027,8 +2027,8 @@
    "raw_multiplier": 10.0,
    "order_multiplier": 10.0,
    "tier": "A",
-   "set_at": "2026-10-23T23:21:46.429771+00:00",
-   "updated_at": "2026-10-23T23:21:46.429771+00:00"
+   "set_at": "2026-10-23T23:29:27.029343+00:00",
+   "updated_at": "2026-10-23T23:29:27.029343+00:00"
   },
   "ARKMUSDT": {
    "symbol": "ARKMUSDT",
@@ -2047,8 +2047,8 @@
    "raw_multiplier": 0.1613,
    "order_multiplier": 0.161,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.429813+00:00",
-   "updated_at": "2026-10-23T23:21:46.429813+00:00"
+   "set_at": "2026-10-23T23:29:27.029445+00:00",
+   "updated_at": "2026-10-23T23:29:27.029445+00:00"
   },
   "KAVAUSDT": {
    "symbol": "KAVAUSDT",
@@ -2067,8 +2067,8 @@
    "raw_multiplier": 5.0444,
    "order_multiplier": 5.044,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.429842+00:00",
-   "updated_at": "2026-10-23T23:21:46.429842+00:00"
+   "set_at": "2026-10-23T23:29:27.029539+00:00",
+   "updated_at": "2026-10-23T23:29:27.029539+00:00"
   },
   "SUSHIUSDT": {
    "symbol": "SUSHIUSDT",
@@ -2087,8 +2087,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.429863+00:00",
-   "updated_at": "2026-10-23T23:21:46.429863+00:00"
+   "set_at": "2026-10-23T23:29:27.029586+00:00",
+   "updated_at": "2026-10-23T23:29:27.029586+00:00"
   },
   "1000SATSUSDT": {
    "symbol": "1000SATSUSDT",
@@ -2107,8 +2107,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.429876+00:00",
-   "updated_at": "2026-10-23T23:21:46.429876+00:00"
+   "set_at": "2026-10-23T23:29:27.029613+00:00",
+   "updated_at": "2026-10-23T23:29:27.029613+00:00"
   },
   "FARTCOINUSDT": {
    "symbol": "FARTCOINUSDT",
@@ -2128,8 +2128,8 @@
    "raw_multiplier": 0.2141,
    "order_multiplier": 0.214,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.430402+00:00",
-   "updated_at": "2026-10-23T23:21:46.430402+00:00"
+   "set_at": "2026-10-23T23:29:27.034530+00:00",
+   "updated_at": "2026-10-23T23:29:27.034530+00:00"
   },
   "MASKUSDT": {
    "symbol": "MASKUSDT",
@@ -2148,8 +2148,8 @@
    "raw_multiplier": 0.3174,
    "order_multiplier": 0.317,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:47.059186+00:00",
-   "updated_at": "2026-10-23T23:21:47.059186+00:00"
+   "set_at": "2026-10-23T23:29:27.602227+00:00",
+   "updated_at": "2026-10-23T23:29:27.602227+00:00"
   },
   "DUSKUSDT": {
    "symbol": "DUSKUSDT",
@@ -2169,8 +2169,8 @@
    "raw_multiplier": 0.7976,
    "order_multiplier": 0.798,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.429945+00:00",
-   "updated_at": "2026-10-23T23:21:46.429945+00:00"
+   "set_at": "2026-10-23T23:29:27.029758+00:00",
+   "updated_at": "2026-10-23T23:29:27.029758+00:00"
   },
   "IOTAUSDT": {
    "symbol": "IOTAUSDT",
@@ -2189,8 +2189,8 @@
    "raw_multiplier": 0.293,
    "order_multiplier": 0.293,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.429970+00:00",
-   "updated_at": "2026-10-23T23:21:46.429970+00:00"
+   "set_at": "2026-10-23T23:29:27.030135+00:00",
+   "updated_at": "2026-10-23T23:29:27.030135+00:00"
   },
   "ONDOUSDT": {
    "symbol": "ONDOUSDT",
@@ -2209,8 +2209,8 @@
    "raw_multiplier": 0.163,
    "order_multiplier": 0.163,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.430009+00:00",
-   "updated_at": "2026-10-23T23:21:46.430009+00:00"
+   "set_at": "2026-10-23T23:29:27.030260+00:00",
+   "updated_at": "2026-10-23T23:29:27.030260+00:00"
   },
   "YFIUSDT": {
    "symbol": "YFIUSDT",
@@ -2230,8 +2230,8 @@
    "raw_multiplier": 0.479,
    "order_multiplier": 0.479,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.430086+00:00",
-   "updated_at": "2026-10-23T23:21:46.430086+00:00"
+   "set_at": "2026-10-23T23:29:27.030457+00:00",
+   "updated_at": "2026-10-23T23:29:27.030457+00:00"
   },
   "PENGUUSDC": {
    "symbol": "PENGUUSDC",
@@ -2245,14 +2245,14 @@
    "worst_trade_pct": -0.54,
    "avg_hold_hours": 3.56,
    "accounts": [
-    "fin",
-    "ang"
+    "ang",
+    "fin"
    ],
    "raw_multiplier": 0.4537,
    "order_multiplier": 0.454,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.430114+00:00",
-   "updated_at": "2026-10-23T23:21:46.430114+00:00"
+   "set_at": "2026-10-23T23:29:27.032064+00:00",
+   "updated_at": "2026-10-23T23:29:27.032064+00:00"
   },
   "APEUSDT": {
    "symbol": "APEUSDT",
@@ -2272,8 +2272,8 @@
    "raw_multiplier": 0.3647,
    "order_multiplier": 0.365,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.430206+00:00",
-   "updated_at": "2026-10-23T23:21:46.430206+00:00"
+   "set_at": "2026-10-23T23:29:27.032263+00:00",
+   "updated_at": "2026-10-23T23:29:27.032263+00:00"
   },
   "QNTUSDT": {
    "symbol": "QNTUSDT",
@@ -2293,8 +2293,8 @@
    "raw_multiplier": 0.5294,
    "order_multiplier": 0.529,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.430348+00:00",
-   "updated_at": "2026-10-23T23:21:46.430348+00:00"
+   "set_at": "2026-10-23T23:29:27.032566+00:00",
+   "updated_at": "2026-10-23T23:29:27.032566+00:00"
   },
   "ENJUSDT": {
    "symbol": "ENJUSDT",
@@ -2314,8 +2314,8 @@
    "raw_multiplier": 0.2023,
    "order_multiplier": 0.202,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.430445+00:00",
-   "updated_at": "2026-10-23T23:21:46.430445+00:00"
+   "set_at": "2026-10-23T23:29:27.034693+00:00",
+   "updated_at": "2026-10-23T23:29:27.034693+00:00"
   },
   "COMPUSDT": {
    "symbol": "COMPUSDT",
@@ -2329,15 +2329,15 @@
    "worst_trade_pct": -6.78,
    "avg_hold_hours": 114.2,
    "accounts": [
-    "fin",
     "ang",
-    "men"
+    "men",
+    "fin"
    ],
    "raw_multiplier": 0.4126,
    "order_multiplier": 0.413,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.430500+00:00",
-   "updated_at": "2026-10-23T23:21:46.430500+00:00"
+   "set_at": "2026-10-23T23:29:27.034792+00:00",
+   "updated_at": "2026-10-23T23:29:27.034792+00:00"
   },
   "BBUSDT": {
    "symbol": "BBUSDT",
@@ -2357,8 +2357,8 @@
    "raw_multiplier": 0.1737,
    "order_multiplier": 0.174,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.430552+00:00",
-   "updated_at": "2026-10-23T23:21:46.430552+00:00"
+   "set_at": "2026-10-23T23:29:27.035280+00:00",
+   "updated_at": "2026-10-23T23:29:27.035280+00:00"
   },
   "XMRUSDT": {
    "symbol": "XMRUSDT",
@@ -2372,17 +2372,17 @@
    "worst_trade_pct": -2.45,
    "avg_hold_hours": 56.87,
    "accounts": [
+    "men",
     "flz",
-    "fin",
-    "inf",
     "ang",
-    "men"
+    "fin",
+    "inf"
    ],
    "raw_multiplier": 10.0,
    "order_multiplier": 10.0,
    "tier": "A",
-   "set_at": "2026-10-23T23:21:46.430652+00:00",
-   "updated_at": "2026-10-23T23:21:46.430652+00:00"
+   "set_at": "2026-10-23T23:29:27.473364+00:00",
+   "updated_at": "2026-10-23T23:29:27.473364+00:00"
   },
   "AMATUSDT": {
    "symbol": "AMATUSDT",
@@ -2402,8 +2402,8 @@
    "raw_multiplier": 2.0896,
    "order_multiplier": 2.09,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.430820+00:00",
-   "updated_at": "2026-10-23T23:21:46.430820+00:00"
+   "set_at": "2026-10-23T23:29:27.599340+00:00",
+   "updated_at": "2026-10-23T23:29:27.599340+00:00"
   },
   "BABAUSDT": {
    "symbol": "BABAUSDT",
@@ -2423,8 +2423,8 @@
    "raw_multiplier": 1.3144,
    "order_multiplier": 1.314,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.430844+00:00",
-   "updated_at": "2026-10-23T23:21:46.430844+00:00"
+   "set_at": "2026-10-23T23:29:27.599404+00:00",
+   "updated_at": "2026-10-23T23:29:27.599404+00:00"
   },
   "AAVEUSDC": {
    "symbol": "AAVEUSDC",
@@ -2444,8 +2444,8 @@
    "raw_multiplier": 0.6512,
    "order_multiplier": 0.651,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.430892+00:00",
-   "updated_at": "2026-10-23T23:21:46.430892+00:00"
+   "set_at": "2026-10-23T23:29:27.601711+00:00",
+   "updated_at": "2026-10-23T23:29:27.601711+00:00"
   },
   "BANDUSDT": {
    "symbol": "BANDUSDT",
@@ -2464,8 +2464,8 @@
    "raw_multiplier": 1.2792,
    "order_multiplier": 1.279,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.430955+00:00",
-   "updated_at": "2026-10-23T23:21:46.430955+00:00"
+   "set_at": "2026-10-23T23:29:27.601825+00:00",
+   "updated_at": "2026-10-23T23:29:27.601825+00:00"
   },
   "XRPUSDC": {
    "symbol": "XRPUSDC",
@@ -2479,17 +2479,17 @@
    "worst_trade_pct": -3.98,
    "avg_hold_hours": 57.22,
    "accounts": [
+    "men",
     "flz",
-    "fin",
-    "inf",
     "ang",
-    "men"
+    "fin",
+    "inf"
    ],
    "raw_multiplier": 0.5108,
    "order_multiplier": 0.511,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.431011+00:00",
-   "updated_at": "2026-10-23T23:21:46.431011+00:00"
+   "set_at": "2026-10-23T23:29:27.601893+00:00",
+   "updated_at": "2026-10-23T23:29:27.601893+00:00"
   },
   "DOTUSDT": {
    "symbol": "DOTUSDT",
@@ -2503,15 +2503,15 @@
    "worst_trade_pct": -3.46,
    "avg_hold_hours": 7.57,
    "accounts": [
-    "fin",
     "inf",
+    "fin",
     "men"
    ],
    "raw_multiplier": 4.8214,
    "order_multiplier": 4.821,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:46.431086+00:00",
-   "updated_at": "2026-10-23T23:21:46.431086+00:00"
+   "set_at": "2026-10-23T23:29:27.601994+00:00",
+   "updated_at": "2026-10-23T23:29:27.601994+00:00"
   },
   "RIFUSDT": {
    "symbol": "RIFUSDT",
@@ -2530,8 +2530,8 @@
    "raw_multiplier": 0.2124,
    "order_multiplier": 0.212,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:46.431194+00:00",
-   "updated_at": "2026-10-23T23:21:46.431194+00:00"
+   "set_at": "2026-10-23T23:29:27.602133+00:00",
+   "updated_at": "2026-10-23T23:29:27.602133+00:00"
   },
   "BOMEUSDC": {
    "symbol": "BOMEUSDC",
@@ -2550,8 +2550,8 @@
    "raw_multiplier": 1.4676,
    "order_multiplier": 1.468,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.059246+00:00",
-   "updated_at": "2026-10-23T23:21:47.059246+00:00"
+   "set_at": "2026-10-23T23:29:27.602282+00:00",
+   "updated_at": "2026-10-23T23:29:27.602282+00:00"
   },
   "ZKUSDT": {
    "symbol": "ZKUSDT",
@@ -2570,8 +2570,8 @@
    "raw_multiplier": 0.5556,
    "order_multiplier": 0.556,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:47.059281+00:00",
-   "updated_at": "2026-10-23T23:21:47.059281+00:00"
+   "set_at": "2026-10-23T23:29:27.602315+00:00",
+   "updated_at": "2026-10-23T23:29:27.602315+00:00"
   },
   "SKYAIUSDT": {
    "symbol": "SKYAIUSDT",
@@ -2590,8 +2590,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.059333+00:00",
-   "updated_at": "2026-10-23T23:21:47.059333+00:00"
+   "set_at": "2026-10-23T23:29:27.602372+00:00",
+   "updated_at": "2026-10-23T23:29:27.602372+00:00"
   },
   "ETHFIUSDC": {
    "symbol": "ETHFIUSDC",
@@ -2605,15 +2605,15 @@
    "worst_trade_pct": -2.26,
    "avg_hold_hours": 0.8,
    "accounts": [
-    "fin",
     "inf",
+    "fin",
     "men"
    ],
    "raw_multiplier": 0.4789,
    "order_multiplier": 0.479,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:47.059381+00:00",
-   "updated_at": "2026-10-23T23:21:47.059381+00:00"
+   "set_at": "2026-10-23T23:29:27.602416+00:00",
+   "updated_at": "2026-10-23T23:29:27.602416+00:00"
   },
   "GRASSUSDT": {
    "symbol": "GRASSUSDT",
@@ -2633,8 +2633,8 @@
    "raw_multiplier": 3.2905,
    "order_multiplier": 3.291,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.059582+00:00",
-   "updated_at": "2026-10-23T23:21:47.059582+00:00"
+   "set_at": "2026-10-23T23:29:27.602565+00:00",
+   "updated_at": "2026-10-23T23:29:27.602565+00:00"
   },
   "MEWUSDT": {
    "symbol": "MEWUSDT",
@@ -2653,8 +2653,8 @@
    "raw_multiplier": 10.0,
    "order_multiplier": 10.0,
    "tier": "A",
-   "set_at": "2026-10-23T23:21:47.059659+00:00",
-   "updated_at": "2026-10-23T23:21:47.059659+00:00"
+   "set_at": "2026-10-23T23:29:27.602632+00:00",
+   "updated_at": "2026-10-23T23:29:27.602632+00:00"
   },
   "CRVUSDC": {
    "symbol": "CRVUSDC",
@@ -2674,8 +2674,8 @@
    "raw_multiplier": 0.2632,
    "order_multiplier": 0.263,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:47.059694+00:00",
-   "updated_at": "2026-10-23T23:21:47.059694+00:00"
+   "set_at": "2026-10-23T23:29:27.602666+00:00",
+   "updated_at": "2026-10-23T23:29:27.602666+00:00"
   },
   "AWEUSDT": {
    "symbol": "AWEUSDT",
@@ -2694,8 +2694,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.059710+00:00",
-   "updated_at": "2026-10-23T23:21:47.059710+00:00"
+   "set_at": "2026-10-23T23:29:27.604036+00:00",
+   "updated_at": "2026-10-23T23:29:27.604036+00:00"
   },
   "FLUXUSDT": {
    "symbol": "FLUXUSDT",
@@ -2714,8 +2714,8 @@
    "raw_multiplier": 4.5245,
    "order_multiplier": 4.524,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.059751+00:00",
-   "updated_at": "2026-10-23T23:21:47.059751+00:00"
+   "set_at": "2026-10-23T23:29:27.604114+00:00",
+   "updated_at": "2026-10-23T23:29:27.604114+00:00"
   },
   "VT": {
    "symbol": "VT",
@@ -2729,14 +2729,14 @@
    "worst_trade_pct": -1.22,
    "avg_hold_hours": 99.74,
    "accounts": [
-    "trc",
-    "tra"
+    "tra",
+    "trc"
    ],
    "raw_multiplier": 5.6289,
    "order_multiplier": 5.629,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.059818+00:00",
-   "updated_at": "2026-10-23T23:21:47.059818+00:00"
+   "set_at": "2026-10-23T23:29:27.604185+00:00",
+   "updated_at": "2026-10-23T23:29:27.604185+00:00"
   },
   "NEM": {
    "symbol": "NEM",
@@ -2755,8 +2755,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.059831+00:00",
-   "updated_at": "2026-10-23T23:21:47.059831+00:00"
+   "set_at": "2026-10-23T23:29:27.604200+00:00",
+   "updated_at": "2026-10-23T23:29:27.604200+00:00"
   },
   "META": {
    "symbol": "META",
@@ -2775,8 +2775,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.059842+00:00",
-   "updated_at": "2026-10-23T23:21:47.059842+00:00"
+   "set_at": "2026-10-23T23:29:27.604211+00:00",
+   "updated_at": "2026-10-23T23:29:27.604211+00:00"
   },
   "MOVEUSDT": {
    "symbol": "MOVEUSDT",
@@ -2795,8 +2795,8 @@
    "raw_multiplier": 0.2594,
    "order_multiplier": 0.259,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:47.059976+00:00",
-   "updated_at": "2026-10-23T23:21:47.059976+00:00"
+   "set_at": "2026-10-23T23:29:27.604253+00:00",
+   "updated_at": "2026-10-23T23:29:27.604253+00:00"
   },
   "BRETTUSDT": {
    "symbol": "BRETTUSDT",
@@ -2815,8 +2815,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.059997+00:00",
-   "updated_at": "2026-10-23T23:21:47.059997+00:00"
+   "set_at": "2026-10-23T23:29:27.604270+00:00",
+   "updated_at": "2026-10-23T23:29:27.604270+00:00"
   },
   "INXUSDT": {
    "symbol": "INXUSDT",
@@ -2835,8 +2835,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.060011+00:00",
-   "updated_at": "2026-10-23T23:21:47.060011+00:00"
+   "set_at": "2026-10-23T23:29:27.604282+00:00",
+   "updated_at": "2026-10-23T23:29:27.604282+00:00"
   },
   "BIGTIMEUSDT": {
    "symbol": "BIGTIMEUSDT",
@@ -2855,8 +2855,8 @@
    "raw_multiplier": 0.3338,
    "order_multiplier": 0.334,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:47.060080+00:00",
-   "updated_at": "2026-10-23T23:21:47.060080+00:00"
+   "set_at": "2026-10-23T23:29:27.604364+00:00",
+   "updated_at": "2026-10-23T23:29:27.604364+00:00"
   },
   "ARBUSDC": {
    "symbol": "ARBUSDC",
@@ -2875,8 +2875,8 @@
    "raw_multiplier": 0.5906,
    "order_multiplier": 0.591,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:47.060343+00:00",
-   "updated_at": "2026-10-23T23:21:47.060343+00:00"
+   "set_at": "2026-10-23T23:29:27.604446+00:00",
+   "updated_at": "2026-10-23T23:29:27.604446+00:00"
   },
   "TIAUSDC": {
    "symbol": "TIAUSDC",
@@ -2896,8 +2896,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.060641+00:00",
-   "updated_at": "2026-10-23T23:21:47.060641+00:00"
+   "set_at": "2026-10-23T23:29:27.613142+00:00",
+   "updated_at": "2026-10-23T23:29:27.613142+00:00"
   },
   "WOOUSDT": {
    "symbol": "WOOUSDT",
@@ -2916,8 +2916,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.060509+00:00",
-   "updated_at": "2026-10-23T23:21:47.060509+00:00"
+   "set_at": "2026-10-23T23:29:27.604473+00:00",
+   "updated_at": "2026-10-23T23:29:27.604473+00:00"
   },
   "TLMUSDT": {
    "symbol": "TLMUSDT",
@@ -2936,8 +2936,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.060578+00:00",
-   "updated_at": "2026-10-23T23:21:47.060578+00:00"
+   "set_at": "2026-10-23T23:29:27.612958+00:00",
+   "updated_at": "2026-10-23T23:29:27.612958+00:00"
   },
   "ACTUSDT": {
    "symbol": "ACTUSDT",
@@ -2956,8 +2956,8 @@
    "raw_multiplier": 7.1312,
    "order_multiplier": 7.131,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.060612+00:00",
-   "updated_at": "2026-10-23T23:21:47.060612+00:00"
+   "set_at": "2026-10-23T23:29:27.613099+00:00",
+   "updated_at": "2026-10-23T23:29:27.613099+00:00"
   },
   "VUSDT": {
    "symbol": "VUSDT",
@@ -2976,8 +2976,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.060659+00:00",
-   "updated_at": "2026-10-23T23:21:47.060659+00:00"
+   "set_at": "2026-10-23T23:29:27.613157+00:00",
+   "updated_at": "2026-10-23T23:29:27.613157+00:00"
   },
   "LRCXUSDT": {
    "symbol": "LRCXUSDT",
@@ -2996,8 +2996,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.060671+00:00",
-   "updated_at": "2026-10-23T23:21:47.060671+00:00"
+   "set_at": "2026-10-23T23:29:27.616405+00:00",
+   "updated_at": "2026-10-23T23:29:27.616405+00:00"
   },
   "PYPLUSDT": {
    "symbol": "PYPLUSDT",
@@ -3016,8 +3016,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.060691+00:00",
-   "updated_at": "2026-10-23T23:21:47.060691+00:00"
+   "set_at": "2026-10-23T23:29:27.622043+00:00",
+   "updated_at": "2026-10-23T23:29:27.622043+00:00"
   },
   "LSCC": {
    "symbol": "LSCC",
@@ -3036,8 +3036,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.060716+00:00",
-   "updated_at": "2026-10-23T23:21:47.060716+00:00"
+   "set_at": "2026-10-23T23:29:27.622094+00:00",
+   "updated_at": "2026-10-23T23:29:27.622094+00:00"
   },
   "CLS": {
    "symbol": "CLS",
@@ -3057,8 +3057,8 @@
    "raw_multiplier": 0.1429,
    "order_multiplier": 0.143,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:47.060764+00:00",
-   "updated_at": "2026-10-23T23:21:47.060764+00:00"
+   "set_at": "2026-10-23T23:29:27.622185+00:00",
+   "updated_at": "2026-10-23T23:29:27.622185+00:00"
   },
   "PAAS": {
    "symbol": "PAAS",
@@ -3077,8 +3077,8 @@
    "raw_multiplier": 0.3849,
    "order_multiplier": 0.385,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:47.062658+00:00",
-   "updated_at": "2026-10-23T23:21:47.062658+00:00"
+   "set_at": "2026-10-23T23:29:28.186130+00:00",
+   "updated_at": "2026-10-23T23:29:28.186130+00:00"
   },
   "ALB": {
    "symbol": "ALB",
@@ -3098,8 +3098,8 @@
    "raw_multiplier": 0.4148,
    "order_multiplier": 0.415,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:47.060824+00:00",
-   "updated_at": "2026-10-23T23:21:47.060824+00:00"
+   "set_at": "2026-10-23T23:29:27.623593+00:00",
+   "updated_at": "2026-10-23T23:29:27.623593+00:00"
   },
   "EXEL": {
    "symbol": "EXEL",
@@ -3119,8 +3119,8 @@
    "raw_multiplier": 10.0,
    "order_multiplier": 10.0,
    "tier": "A",
-   "set_at": "2026-10-23T23:21:47.060891+00:00",
-   "updated_at": "2026-10-23T23:21:47.060891+00:00"
+   "set_at": "2026-10-23T23:29:27.623660+00:00",
+   "updated_at": "2026-10-23T23:29:27.623660+00:00"
   },
   "CRWD": {
    "symbol": "CRWD",
@@ -3140,8 +3140,8 @@
    "raw_multiplier": 0.1515,
    "order_multiplier": 0.152,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:47.061473+00:00",
-   "updated_at": "2026-10-23T23:21:47.061473+00:00"
+   "set_at": "2026-10-23T23:29:27.637501+00:00",
+   "updated_at": "2026-10-23T23:29:27.637501+00:00"
   },
   "OLED": {
    "symbol": "OLED",
@@ -3161,8 +3161,8 @@
    "raw_multiplier": 3.6314,
    "order_multiplier": 3.631,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.061003+00:00",
-   "updated_at": "2026-10-23T23:21:47.061003+00:00"
+   "set_at": "2026-10-23T23:29:27.623732+00:00",
+   "updated_at": "2026-10-23T23:29:27.623732+00:00"
   },
   "MSTR": {
    "symbol": "MSTR",
@@ -3182,8 +3182,8 @@
    "raw_multiplier": 0.8205,
    "order_multiplier": 0.821,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.061038+00:00",
-   "updated_at": "2026-10-23T23:21:47.061038+00:00"
+   "set_at": "2026-10-23T23:29:27.623774+00:00",
+   "updated_at": "2026-10-23T23:29:27.623774+00:00"
   },
   "ZCSH": {
    "symbol": "ZCSH",
@@ -3202,8 +3202,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.061077+00:00",
-   "updated_at": "2026-10-23T23:21:47.061077+00:00"
+   "set_at": "2026-10-23T23:29:27.630196+00:00",
+   "updated_at": "2026-10-23T23:29:27.630196+00:00"
   },
   "AG": {
    "symbol": "AG",
@@ -3222,8 +3222,8 @@
    "raw_multiplier": 9.1983,
    "order_multiplier": 9.198,
    "tier": "A",
-   "set_at": "2026-10-23T23:21:47.061159+00:00",
-   "updated_at": "2026-10-23T23:21:47.061159+00:00"
+   "set_at": "2026-10-23T23:29:27.630299+00:00",
+   "updated_at": "2026-10-23T23:29:27.630299+00:00"
   },
   "ETN": {
    "symbol": "ETN",
@@ -3243,8 +3243,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.061176+00:00",
-   "updated_at": "2026-10-23T23:21:47.061176+00:00"
+   "set_at": "2026-10-23T23:29:27.630318+00:00",
+   "updated_at": "2026-10-23T23:29:27.630318+00:00"
   },
   "HP": {
    "symbol": "HP",
@@ -3263,8 +3263,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.061188+00:00",
-   "updated_at": "2026-10-23T23:21:47.061188+00:00"
+   "set_at": "2026-10-23T23:29:27.630330+00:00",
+   "updated_at": "2026-10-23T23:29:27.630330+00:00"
   },
   "AXON": {
    "symbol": "AXON",
@@ -3284,8 +3284,8 @@
    "raw_multiplier": 0.5223,
    "order_multiplier": 0.522,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:47.061342+00:00",
-   "updated_at": "2026-10-23T23:21:47.061342+00:00"
+   "set_at": "2026-10-23T23:29:27.630369+00:00",
+   "updated_at": "2026-10-23T23:29:27.630369+00:00"
   },
   "COIN": {
    "symbol": "COIN",
@@ -3305,8 +3305,8 @@
    "raw_multiplier": 0.7061,
    "order_multiplier": 0.706,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.061413+00:00",
-   "updated_at": "2026-10-23T23:21:47.061413+00:00"
+   "set_at": "2026-10-23T23:29:27.633403+00:00",
+   "updated_at": "2026-10-23T23:29:27.633403+00:00"
   },
   "AMZN": {
    "symbol": "AMZN",
@@ -3326,8 +3326,8 @@
    "raw_multiplier": 0.2123,
    "order_multiplier": 0.212,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:47.061509+00:00",
-   "updated_at": "2026-10-23T23:21:47.061509+00:00"
+   "set_at": "2026-10-23T23:29:27.637576+00:00",
+   "updated_at": "2026-10-23T23:29:27.637576+00:00"
   },
   "U": {
    "symbol": "U",
@@ -3346,8 +3346,8 @@
    "raw_multiplier": 0.4084,
    "order_multiplier": 0.408,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:47.061539+00:00",
-   "updated_at": "2026-10-23T23:21:47.061539+00:00"
+   "set_at": "2026-10-23T23:29:27.637610+00:00",
+   "updated_at": "2026-10-23T23:29:27.637610+00:00"
   },
   "APO": {
    "symbol": "APO",
@@ -3367,8 +3367,8 @@
    "raw_multiplier": 0.6057,
    "order_multiplier": 0.606,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.061575+00:00",
-   "updated_at": "2026-10-23T23:21:47.061575+00:00"
+   "set_at": "2026-10-23T23:29:27.637641+00:00",
+   "updated_at": "2026-10-23T23:29:27.637641+00:00"
   },
   "XOP": {
    "symbol": "XOP",
@@ -3387,8 +3387,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.061591+00:00",
-   "updated_at": "2026-10-23T23:21:47.061591+00:00"
+   "set_at": "2026-10-23T23:29:27.637657+00:00",
+   "updated_at": "2026-10-23T23:29:27.637657+00:00"
   },
   "BWXT": {
    "symbol": "BWXT",
@@ -3408,8 +3408,8 @@
    "raw_multiplier": 0.3621,
    "order_multiplier": 0.362,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:47.061631+00:00",
-   "updated_at": "2026-10-23T23:21:47.061631+00:00"
+   "set_at": "2026-10-23T23:29:27.637710+00:00",
+   "updated_at": "2026-10-23T23:29:27.637710+00:00"
   },
   "NVDA": {
    "symbol": "NVDA",
@@ -3428,8 +3428,8 @@
    "raw_multiplier": 0.9386,
    "order_multiplier": 0.939,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.061671+00:00",
-   "updated_at": "2026-10-23T23:21:47.061671+00:00"
+   "set_at": "2026-10-23T23:29:27.637737+00:00",
+   "updated_at": "2026-10-23T23:29:27.637737+00:00"
   },
   "MSFT": {
    "symbol": "MSFT",
@@ -3449,8 +3449,8 @@
    "raw_multiplier": 3.8829,
    "order_multiplier": 3.883,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.061731+00:00",
-   "updated_at": "2026-10-23T23:21:47.061731+00:00"
+   "set_at": "2026-10-23T23:29:27.639160+00:00",
+   "updated_at": "2026-10-23T23:29:27.639160+00:00"
   },
   "INTC": {
    "symbol": "INTC",
@@ -3470,8 +3470,8 @@
    "raw_multiplier": 2.2241,
    "order_multiplier": 2.224,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.062019+00:00",
-   "updated_at": "2026-10-23T23:21:47.062019+00:00"
+   "set_at": "2026-10-23T23:29:27.639216+00:00",
+   "updated_at": "2026-10-23T23:29:27.639216+00:00"
   },
   "ACN": {
    "symbol": "ACN",
@@ -3491,8 +3491,8 @@
    "raw_multiplier": 8.1393,
    "order_multiplier": 8.139,
    "tier": "A",
-   "set_at": "2026-10-23T23:21:47.062079+00:00",
-   "updated_at": "2026-10-23T23:21:47.062079+00:00"
+   "set_at": "2026-10-23T23:29:27.639265+00:00",
+   "updated_at": "2026-10-23T23:29:27.639265+00:00"
   },
   "AAPL": {
    "symbol": "AAPL",
@@ -3512,8 +3512,8 @@
    "raw_multiplier": 0.9056,
    "order_multiplier": 0.906,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.062108+00:00",
-   "updated_at": "2026-10-23T23:21:47.062108+00:00"
+   "set_at": "2026-10-23T23:29:27.639460+00:00",
+   "updated_at": "2026-10-23T23:29:27.639460+00:00"
   },
   "MNTS": {
    "symbol": "MNTS",
@@ -3532,8 +3532,8 @@
    "raw_multiplier": 0.2381,
    "order_multiplier": 0.238,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:47.062134+00:00",
-   "updated_at": "2026-10-23T23:21:47.062134+00:00"
+   "set_at": "2026-10-23T23:29:27.639787+00:00",
+   "updated_at": "2026-10-23T23:29:27.639787+00:00"
   },
   "AU": {
    "symbol": "AU",
@@ -3552,8 +3552,8 @@
    "raw_multiplier": 2.4572,
    "order_multiplier": 2.457,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.062157+00:00",
-   "updated_at": "2026-10-23T23:21:47.062157+00:00"
+   "set_at": "2026-10-23T23:29:27.639824+00:00",
+   "updated_at": "2026-10-23T23:29:27.639824+00:00"
   },
   "ZETA": {
    "symbol": "ZETA",
@@ -3572,8 +3572,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.062252+00:00",
-   "updated_at": "2026-10-23T23:21:47.062252+00:00"
+   "set_at": "2026-10-23T23:29:27.639840+00:00",
+   "updated_at": "2026-10-23T23:29:27.639840+00:00"
   },
   "NKE": {
    "symbol": "NKE",
@@ -3593,8 +3593,8 @@
    "raw_multiplier": 1.5577,
    "order_multiplier": 1.558,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.062448+00:00",
-   "updated_at": "2026-10-23T23:21:47.062448+00:00"
+   "set_at": "2026-10-23T23:29:27.639889+00:00",
+   "updated_at": "2026-10-23T23:29:27.639889+00:00"
   },
   "VZ": {
    "symbol": "VZ",
@@ -3613,8 +3613,8 @@
    "raw_multiplier": 0.4047,
    "order_multiplier": 0.405,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:47.062480+00:00",
-   "updated_at": "2026-10-23T23:21:47.062480+00:00"
+   "set_at": "2026-10-23T23:29:27.639918+00:00",
+   "updated_at": "2026-10-23T23:29:27.639918+00:00"
   },
   "ARM": {
    "symbol": "ARM",
@@ -3634,8 +3634,8 @@
    "raw_multiplier": 0.4061,
    "order_multiplier": 0.406,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.062516+00:00",
-   "updated_at": "2026-10-23T23:21:47.062516+00:00"
+   "set_at": "2026-10-23T23:29:27.639952+00:00",
+   "updated_at": "2026-10-23T23:29:27.639952+00:00"
   },
   "PRI": {
    "symbol": "PRI",
@@ -3655,8 +3655,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.062552+00:00",
-   "updated_at": "2026-10-23T23:21:47.062552+00:00"
+   "set_at": "2026-10-23T23:29:27.639967+00:00",
+   "updated_at": "2026-10-23T23:29:27.639967+00:00"
   },
   "LRCX": {
    "symbol": "LRCX",
@@ -3676,8 +3676,8 @@
    "raw_multiplier": 0.1193,
    "order_multiplier": 0.119,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:47.062720+00:00",
-   "updated_at": "2026-10-23T23:21:47.062720+00:00"
+   "set_at": "2026-10-23T23:29:28.186332+00:00",
+   "updated_at": "2026-10-23T23:29:28.186332+00:00"
   },
   "TMO": {
    "symbol": "TMO",
@@ -3697,8 +3697,8 @@
    "raw_multiplier": 2.2354,
    "order_multiplier": 2.235,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.062763+00:00",
-   "updated_at": "2026-10-23T23:21:47.062763+00:00"
+   "set_at": "2026-10-23T23:29:28.186406+00:00",
+   "updated_at": "2026-10-23T23:29:28.186406+00:00"
   },
   "LOW": {
    "symbol": "LOW",
@@ -3718,8 +3718,8 @@
    "raw_multiplier": 0.5074,
    "order_multiplier": 0.507,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:47.066119+00:00",
-   "updated_at": "2026-10-23T23:21:47.066119+00:00"
+   "set_at": "2026-10-23T23:29:28.188528+00:00",
+   "updated_at": "2026-10-23T23:29:28.188528+00:00"
   },
   "GOOGL": {
    "symbol": "GOOGL",
@@ -3739,8 +3739,8 @@
    "raw_multiplier": 0.794,
    "order_multiplier": 0.794,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.062862+00:00",
-   "updated_at": "2026-10-23T23:21:47.062862+00:00"
+   "set_at": "2026-10-23T23:29:28.186528+00:00",
+   "updated_at": "2026-10-23T23:29:28.186528+00:00"
   },
   "A": {
    "symbol": "A",
@@ -3760,8 +3760,8 @@
    "raw_multiplier": 10.0,
    "order_multiplier": 10.0,
    "tier": "A",
-   "set_at": "2026-10-23T23:21:47.062901+00:00",
-   "updated_at": "2026-10-23T23:21:47.062901+00:00"
+   "set_at": "2026-10-23T23:29:28.186614+00:00",
+   "updated_at": "2026-10-23T23:29:28.186614+00:00"
   },
   "MOS": {
    "symbol": "MOS",
@@ -3781,8 +3781,8 @@
    "raw_multiplier": 3.1983,
    "order_multiplier": 3.198,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.062936+00:00",
-   "updated_at": "2026-10-23T23:21:47.062936+00:00"
+   "set_at": "2026-10-23T23:29:28.186665+00:00",
+   "updated_at": "2026-10-23T23:29:28.186665+00:00"
   },
   "PSX": {
    "symbol": "PSX",
@@ -3802,8 +3802,8 @@
    "raw_multiplier": 0.7638,
    "order_multiplier": 0.764,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.062975+00:00",
-   "updated_at": "2026-10-23T23:21:47.062975+00:00"
+   "set_at": "2026-10-23T23:29:28.186772+00:00",
+   "updated_at": "2026-10-23T23:29:28.186772+00:00"
   },
   "WMT": {
    "symbol": "WMT",
@@ -3822,8 +3822,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.062990+00:00",
-   "updated_at": "2026-10-23T23:21:47.062990+00:00"
+   "set_at": "2026-10-23T23:29:28.186823+00:00",
+   "updated_at": "2026-10-23T23:29:28.186823+00:00"
   },
   "COST": {
    "symbol": "COST",
@@ -3843,8 +3843,8 @@
    "raw_multiplier": 3.9709,
    "order_multiplier": 3.971,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.063030+00:00",
-   "updated_at": "2026-10-23T23:21:47.063030+00:00"
+   "set_at": "2026-10-23T23:29:28.187254+00:00",
+   "updated_at": "2026-10-23T23:29:28.187254+00:00"
   },
   "ABBV": {
    "symbol": "ABBV",
@@ -3864,8 +3864,8 @@
    "raw_multiplier": 1.9263,
    "order_multiplier": 1.926,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.063075+00:00",
-   "updated_at": "2026-10-23T23:21:47.063075+00:00"
+   "set_at": "2026-10-23T23:29:28.187557+00:00",
+   "updated_at": "2026-10-23T23:29:28.187557+00:00"
   },
   "AMAT": {
    "symbol": "AMAT",
@@ -3884,8 +3884,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.063449+00:00",
-   "updated_at": "2026-10-23T23:21:47.063449+00:00"
+   "set_at": "2026-10-23T23:29:28.187594+00:00",
+   "updated_at": "2026-10-23T23:29:28.187594+00:00"
   },
   "ADP": {
    "symbol": "ADP",
@@ -3904,8 +3904,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.063472+00:00",
-   "updated_at": "2026-10-23T23:21:47.063472+00:00"
+   "set_at": "2026-10-23T23:29:28.187636+00:00",
+   "updated_at": "2026-10-23T23:29:28.187636+00:00"
   },
   "BA": {
    "symbol": "BA",
@@ -3925,8 +3925,8 @@
    "raw_multiplier": 9.0392,
    "order_multiplier": 9.039,
    "tier": "A",
-   "set_at": "2026-10-23T23:21:47.063543+00:00",
-   "updated_at": "2026-10-23T23:21:47.063543+00:00"
+   "set_at": "2026-10-23T23:29:28.187817+00:00",
+   "updated_at": "2026-10-23T23:29:28.187817+00:00"
   },
   "IBIT": {
    "symbol": "IBIT",
@@ -3946,8 +3946,8 @@
    "raw_multiplier": 0.1633,
    "order_multiplier": 0.163,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:47.064182+00:00",
-   "updated_at": "2026-10-23T23:21:47.064182+00:00"
+   "set_at": "2026-10-23T23:29:28.187888+00:00",
+   "updated_at": "2026-10-23T23:29:28.187888+00:00"
   },
   "HOOD": {
    "symbol": "HOOD",
@@ -3967,8 +3967,8 @@
    "raw_multiplier": 0.2321,
    "order_multiplier": 0.232,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:47.064241+00:00",
-   "updated_at": "2026-10-23T23:21:47.064241+00:00"
+   "set_at": "2026-10-23T23:29:28.187999+00:00",
+   "updated_at": "2026-10-23T23:29:28.187999+00:00"
   },
   "XOM": {
    "symbol": "XOM",
@@ -3988,8 +3988,8 @@
    "raw_multiplier": 0.853,
    "order_multiplier": 0.853,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.064282+00:00",
-   "updated_at": "2026-10-23T23:21:47.064282+00:00"
+   "set_at": "2026-10-23T23:29:28.188121+00:00",
+   "updated_at": "2026-10-23T23:29:28.188121+00:00"
   },
   "PLTR": {
    "symbol": "PLTR",
@@ -4009,8 +4009,8 @@
    "raw_multiplier": 9.8105,
    "order_multiplier": 9.81,
    "tier": "A",
-   "set_at": "2026-10-23T23:21:47.064328+00:00",
-   "updated_at": "2026-10-23T23:21:47.064328+00:00"
+   "set_at": "2026-10-23T23:29:28.188183+00:00",
+   "updated_at": "2026-10-23T23:29:28.188183+00:00"
   },
   "BHVN": {
    "symbol": "BHVN",
@@ -4029,8 +4029,8 @@
    "raw_multiplier": 1.7773,
    "order_multiplier": 1.777,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.064383+00:00",
-   "updated_at": "2026-10-23T23:21:47.064383+00:00"
+   "set_at": "2026-10-23T23:29:28.188272+00:00",
+   "updated_at": "2026-10-23T23:29:28.188272+00:00"
   },
   "CLF": {
    "symbol": "CLF",
@@ -4050,8 +4050,8 @@
    "raw_multiplier": 8.8067,
    "order_multiplier": 8.807,
    "tier": "A",
-   "set_at": "2026-10-23T23:21:47.064413+00:00",
-   "updated_at": "2026-10-23T23:21:47.064413+00:00"
+   "set_at": "2026-10-23T23:29:28.188314+00:00",
+   "updated_at": "2026-10-23T23:29:28.188314+00:00"
   },
   "SCHW": {
    "symbol": "SCHW",
@@ -4071,8 +4071,8 @@
    "raw_multiplier": 6.4201,
    "order_multiplier": 6.42,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.064449+00:00",
-   "updated_at": "2026-10-23T23:21:47.064449+00:00"
+   "set_at": "2026-10-23T23:29:28.188364+00:00",
+   "updated_at": "2026-10-23T23:29:28.188364+00:00"
   },
   "GE": {
    "symbol": "GE",
@@ -4092,8 +4092,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.064470+00:00",
-   "updated_at": "2026-10-23T23:21:47.064470+00:00"
+   "set_at": "2026-10-23T23:29:28.188379+00:00",
+   "updated_at": "2026-10-23T23:29:28.188379+00:00"
   },
   "PR": {
    "symbol": "PR",
@@ -4113,8 +4113,8 @@
    "raw_multiplier": 2.5412,
    "order_multiplier": 2.541,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.064549+00:00",
-   "updated_at": "2026-10-23T23:21:47.064549+00:00"
+   "set_at": "2026-10-23T23:29:28.188435+00:00",
+   "updated_at": "2026-10-23T23:29:28.188435+00:00"
   },
   "MP": {
    "symbol": "MP",
@@ -4133,8 +4133,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.064565+00:00",
-   "updated_at": "2026-10-23T23:21:47.064565+00:00"
+   "set_at": "2026-10-23T23:29:28.188453+00:00",
+   "updated_at": "2026-10-23T23:29:28.188453+00:00"
   },
   "CRWV": {
    "symbol": "CRWV",
@@ -4153,8 +4153,8 @@
    "raw_multiplier": 2.8,
    "order_multiplier": 2.8,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.065008+00:00",
-   "updated_at": "2026-10-23T23:21:47.065008+00:00"
+   "set_at": "2026-10-23T23:29:28.188493+00:00",
+   "updated_at": "2026-10-23T23:29:28.188493+00:00"
   },
   "MU": {
    "symbol": "MU",
@@ -4174,8 +4174,8 @@
    "raw_multiplier": 0.2941,
    "order_multiplier": 0.294,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:47.066158+00:00",
-   "updated_at": "2026-10-23T23:21:47.066158+00:00"
+   "set_at": "2026-10-23T23:29:28.188565+00:00",
+   "updated_at": "2026-10-23T23:29:28.188565+00:00"
   },
   "XLE": {
    "symbol": "XLE",
@@ -4194,8 +4194,8 @@
    "raw_multiplier": 5.0122,
    "order_multiplier": 5.012,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.066354+00:00",
-   "updated_at": "2026-10-23T23:21:47.066354+00:00"
+   "set_at": "2026-10-23T23:29:28.188605+00:00",
+   "updated_at": "2026-10-23T23:29:28.188605+00:00"
   },
   "UUUU": {
    "symbol": "UUUU",
@@ -4214,8 +4214,8 @@
    "raw_multiplier": 0.6618,
    "order_multiplier": 0.662,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:47.066426+00:00",
-   "updated_at": "2026-10-23T23:21:47.066426+00:00"
+   "set_at": "2026-10-23T23:29:28.188639+00:00",
+   "updated_at": "2026-10-23T23:29:28.188639+00:00"
   },
   "RKLB": {
    "symbol": "RKLB",
@@ -4234,8 +4234,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.066440+00:00",
-   "updated_at": "2026-10-23T23:21:47.066440+00:00"
+   "set_at": "2026-10-23T23:29:28.188651+00:00",
+   "updated_at": "2026-10-23T23:29:28.188651+00:00"
   },
   "COHR": {
    "symbol": "COHR",
@@ -4255,8 +4255,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.066492+00:00",
-   "updated_at": "2026-10-23T23:21:47.066492+00:00"
+   "set_at": "2026-10-23T23:29:28.188664+00:00",
+   "updated_at": "2026-10-23T23:29:28.188664+00:00"
   },
   "WDAY": {
    "symbol": "WDAY",
@@ -4276,8 +4276,8 @@
    "raw_multiplier": 6.0227,
    "order_multiplier": 6.023,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.066548+00:00",
-   "updated_at": "2026-10-23T23:21:47.066548+00:00"
+   "set_at": "2026-10-23T23:29:28.188702+00:00",
+   "updated_at": "2026-10-23T23:29:28.188702+00:00"
   },
   "CVX": {
    "symbol": "CVX",
@@ -4297,8 +4297,8 @@
    "raw_multiplier": 2.5977,
    "order_multiplier": 2.598,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.066585+00:00",
-   "updated_at": "2026-10-23T23:21:47.066585+00:00"
+   "set_at": "2026-10-23T23:29:28.188746+00:00",
+   "updated_at": "2026-10-23T23:29:28.188746+00:00"
   },
   "ASML": {
    "symbol": "ASML",
@@ -4318,8 +4318,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.066604+00:00",
-   "updated_at": "2026-10-23T23:21:47.066604+00:00"
+   "set_at": "2026-10-23T23:29:28.188765+00:00",
+   "updated_at": "2026-10-23T23:29:28.188765+00:00"
   },
   "TSLA": {
    "symbol": "TSLA",
@@ -4339,8 +4339,8 @@
    "raw_multiplier": 0.3597,
    "order_multiplier": 0.36,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:47.066632+00:00",
-   "updated_at": "2026-10-23T23:21:47.066632+00:00"
+   "set_at": "2026-10-23T23:29:28.188803+00:00",
+   "updated_at": "2026-10-23T23:29:28.188803+00:00"
   },
   "SAP": {
    "symbol": "SAP",
@@ -4360,8 +4360,8 @@
    "raw_multiplier": 0.8463,
    "order_multiplier": 0.846,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.066655+00:00",
-   "updated_at": "2026-10-23T23:21:47.066655+00:00"
+   "set_at": "2026-10-23T23:29:28.188835+00:00",
+   "updated_at": "2026-10-23T23:29:28.188835+00:00"
   },
   "ORCL": {
    "symbol": "ORCL",
@@ -4381,8 +4381,8 @@
    "raw_multiplier": 0.5363,
    "order_multiplier": 0.536,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.066800+00:00",
-   "updated_at": "2026-10-23T23:21:47.066800+00:00"
+   "set_at": "2026-10-23T23:29:28.188889+00:00",
+   "updated_at": "2026-10-23T23:29:28.188889+00:00"
   },
   "BTCUSDC": {
    "symbol": "BTCUSDC",
@@ -4401,8 +4401,8 @@
    "raw_multiplier": 0.4249,
    "order_multiplier": 0.425,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:47.066887+00:00",
-   "updated_at": "2026-10-23T23:21:47.066887+00:00"
+   "set_at": "2026-10-23T23:29:28.188970+00:00",
+   "updated_at": "2026-10-23T23:29:28.188970+00:00"
   },
   "NUE": {
    "symbol": "NUE",
@@ -4421,8 +4421,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.066929+00:00",
-   "updated_at": "2026-10-23T23:21:47.066929+00:00"
+   "set_at": "2026-10-23T23:29:28.189015+00:00",
+   "updated_at": "2026-10-23T23:29:28.189015+00:00"
   },
   "MA": {
    "symbol": "MA",
@@ -4441,8 +4441,8 @@
    "raw_multiplier": 2.9159,
    "order_multiplier": 2.916,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.066954+00:00",
-   "updated_at": "2026-10-23T23:21:47.066954+00:00"
+   "set_at": "2026-10-23T23:29:28.189062+00:00",
+   "updated_at": "2026-10-23T23:29:28.189062+00:00"
   },
   "CIEN": {
    "symbol": "CIEN",
@@ -4461,8 +4461,8 @@
    "raw_multiplier": 0.5359,
    "order_multiplier": 0.536,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.067062+00:00",
-   "updated_at": "2026-10-23T23:21:47.067062+00:00"
+   "set_at": "2026-10-23T23:29:28.189300+00:00",
+   "updated_at": "2026-10-23T23:29:28.189300+00:00"
   },
   "DHR": {
    "symbol": "DHR",
@@ -4481,8 +4481,8 @@
    "raw_multiplier": 0.7211,
    "order_multiplier": 0.721,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.066991+00:00",
-   "updated_at": "2026-10-23T23:21:47.066991+00:00"
+   "set_at": "2026-10-23T23:29:28.189172+00:00",
+   "updated_at": "2026-10-23T23:29:28.189172+00:00"
   },
   "VLO": {
    "symbol": "VLO",
@@ -4501,8 +4501,8 @@
    "raw_multiplier": 0.4259,
    "order_multiplier": 0.426,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:47.067022+00:00",
-   "updated_at": "2026-10-23T23:21:47.067022+00:00"
+   "set_at": "2026-10-23T23:29:28.189242+00:00",
+   "updated_at": "2026-10-23T23:29:28.189242+00:00"
   },
   "EOG": {
    "symbol": "EOG",
@@ -4521,8 +4521,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.067035+00:00",
-   "updated_at": "2026-10-23T23:21:47.067035+00:00"
+   "set_at": "2026-10-23T23:29:28.189257+00:00",
+   "updated_at": "2026-10-23T23:29:28.189257+00:00"
   },
   "CDW": {
    "symbol": "CDW",
@@ -4541,8 +4541,8 @@
    "raw_multiplier": 5.6749,
    "order_multiplier": 5.675,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.067093+00:00",
-   "updated_at": "2026-10-23T23:21:47.067093+00:00"
+   "set_at": "2026-10-23T23:29:28.189344+00:00",
+   "updated_at": "2026-10-23T23:29:28.189344+00:00"
   },
   "SNDK": {
    "symbol": "SNDK",
@@ -4561,8 +4561,8 @@
    "raw_multiplier": 0.5158,
    "order_multiplier": 0.516,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:47.067806+00:00",
-   "updated_at": "2026-10-23T23:21:47.067806+00:00"
+   "set_at": "2026-10-23T23:29:28.189912+00:00",
+   "updated_at": "2026-10-23T23:29:28.189912+00:00"
   },
   "RBLX": {
    "symbol": "RBLX",
@@ -4581,8 +4581,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.067127+00:00",
-   "updated_at": "2026-10-23T23:21:47.067127+00:00"
+   "set_at": "2026-10-23T23:29:28.189392+00:00",
+   "updated_at": "2026-10-23T23:29:28.189392+00:00"
   },
   "ULTA": {
    "symbol": "ULTA",
@@ -4601,8 +4601,8 @@
    "raw_multiplier": 3.604,
    "order_multiplier": 3.604,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.067158+00:00",
-   "updated_at": "2026-10-23T23:21:47.067158+00:00"
+   "set_at": "2026-10-23T23:29:28.189441+00:00",
+   "updated_at": "2026-10-23T23:29:28.189441+00:00"
   },
   "UNH": {
    "symbol": "UNH",
@@ -4621,8 +4621,8 @@
    "raw_multiplier": 1.8084,
    "order_multiplier": 1.808,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.067210+00:00",
-   "updated_at": "2026-10-23T23:21:47.067210+00:00"
+   "set_at": "2026-10-23T23:29:28.189497+00:00",
+   "updated_at": "2026-10-23T23:29:28.189497+00:00"
   },
   "GME": {
    "symbol": "GME",
@@ -4641,8 +4641,8 @@
    "raw_multiplier": 1.0313,
    "order_multiplier": 1.031,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.067237+00:00",
-   "updated_at": "2026-10-23T23:21:47.067237+00:00"
+   "set_at": "2026-10-23T23:29:28.189540+00:00",
+   "updated_at": "2026-10-23T23:29:28.189540+00:00"
   },
   "LDOS": {
    "symbol": "LDOS",
@@ -4661,8 +4661,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.067249+00:00",
-   "updated_at": "2026-10-23T23:21:47.067249+00:00"
+   "set_at": "2026-10-23T23:29:28.189552+00:00",
+   "updated_at": "2026-10-23T23:29:28.189552+00:00"
   },
   "CRK": {
    "symbol": "CRK",
@@ -4681,8 +4681,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.067267+00:00",
-   "updated_at": "2026-10-23T23:21:47.067267+00:00"
+   "set_at": "2026-10-23T23:29:28.189572+00:00",
+   "updated_at": "2026-10-23T23:29:28.189572+00:00"
   },
   "QLYS": {
    "symbol": "QLYS",
@@ -4701,8 +4701,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.067280+00:00",
-   "updated_at": "2026-10-23T23:21:47.067280+00:00"
+   "set_at": "2026-10-23T23:29:28.189585+00:00",
+   "updated_at": "2026-10-23T23:29:28.189585+00:00"
   },
   "BKR": {
    "symbol": "BKR",
@@ -4721,8 +4721,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.067291+00:00",
-   "updated_at": "2026-10-23T23:21:47.067291+00:00"
+   "set_at": "2026-10-23T23:29:28.189596+00:00",
+   "updated_at": "2026-10-23T23:29:28.189596+00:00"
   },
   "CF": {
    "symbol": "CF",
@@ -4741,8 +4741,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.067304+00:00",
-   "updated_at": "2026-10-23T23:21:47.067304+00:00"
+   "set_at": "2026-10-23T23:29:28.189609+00:00",
+   "updated_at": "2026-10-23T23:29:28.189609+00:00"
   },
   "CIBR": {
    "symbol": "CIBR",
@@ -4761,8 +4761,8 @@
    "raw_multiplier": 2.0969,
    "order_multiplier": 2.097,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.067327+00:00",
-   "updated_at": "2026-10-23T23:21:47.067327+00:00"
+   "set_at": "2026-10-23T23:29:28.189647+00:00",
+   "updated_at": "2026-10-23T23:29:28.189647+00:00"
   },
   "SHOP": {
    "symbol": "SHOP",
@@ -4781,8 +4781,8 @@
    "raw_multiplier": 0.712,
    "order_multiplier": 0.712,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.067361+00:00",
-   "updated_at": "2026-10-23T23:21:47.067361+00:00"
+   "set_at": "2026-10-23T23:29:28.189692+00:00",
+   "updated_at": "2026-10-23T23:29:28.189692+00:00"
   },
   "PATH": {
    "symbol": "PATH",
@@ -4801,8 +4801,8 @@
    "raw_multiplier": 5.5,
    "order_multiplier": 5.5,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.067398+00:00",
-   "updated_at": "2026-10-23T23:21:47.067398+00:00"
+   "set_at": "2026-10-23T23:29:28.189726+00:00",
+   "updated_at": "2026-10-23T23:29:28.189726+00:00"
   },
   "BMNR": {
    "symbol": "BMNR",
@@ -4821,8 +4821,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.067411+00:00",
-   "updated_at": "2026-10-23T23:21:47.067411+00:00"
+   "set_at": "2026-10-23T23:29:28.189739+00:00",
+   "updated_at": "2026-10-23T23:29:28.189739+00:00"
   },
   "LITE": {
    "symbol": "LITE",
@@ -4841,8 +4841,8 @@
    "raw_multiplier": 1.4805,
    "order_multiplier": 1.48,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.067436+00:00",
-   "updated_at": "2026-10-23T23:21:47.067436+00:00"
+   "set_at": "2026-10-23T23:29:28.189770+00:00",
+   "updated_at": "2026-10-23T23:29:28.189770+00:00"
   },
   "CME": {
    "symbol": "CME",
@@ -4861,8 +4861,8 @@
    "raw_multiplier": 2.0423,
    "order_multiplier": 2.042,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.067610+00:00",
-   "updated_at": "2026-10-23T23:21:47.067610+00:00"
+   "set_at": "2026-10-23T23:29:28.189804+00:00",
+   "updated_at": "2026-10-23T23:29:28.189804+00:00"
   },
   "IBM": {
    "symbol": "IBM",
@@ -4881,8 +4881,8 @@
    "raw_multiplier": 3.6989,
    "order_multiplier": 3.699,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.067718+00:00",
-   "updated_at": "2026-10-23T23:21:47.067718+00:00"
+   "set_at": "2026-10-23T23:29:28.189839+00:00",
+   "updated_at": "2026-10-23T23:29:28.189839+00:00"
   },
   "COP": {
    "symbol": "COP",
@@ -4901,8 +4901,8 @@
    "raw_multiplier": 2.3148,
    "order_multiplier": 2.315,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.067747+00:00",
-   "updated_at": "2026-10-23T23:21:47.067747+00:00"
+   "set_at": "2026-10-23T23:29:28.189875+00:00",
+   "updated_at": "2026-10-23T23:29:28.189875+00:00"
   },
   "BNO": {
    "symbol": "BNO",
@@ -4921,8 +4921,8 @@
    "raw_multiplier": 2.0152,
    "order_multiplier": 2.015,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.067857+00:00",
-   "updated_at": "2026-10-23T23:21:47.067857+00:00"
+   "set_at": "2026-10-23T23:29:28.189976+00:00",
+   "updated_at": "2026-10-23T23:29:28.189976+00:00"
   },
   "CRM": {
    "symbol": "CRM",
@@ -4941,8 +4941,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.067881+00:00",
-   "updated_at": "2026-10-23T23:21:47.067881+00:00"
+   "set_at": "2026-10-23T23:29:28.189991+00:00",
+   "updated_at": "2026-10-23T23:29:28.189991+00:00"
   },
   "CDE": {
    "symbol": "CDE",
@@ -4961,8 +4961,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.067913+00:00",
-   "updated_at": "2026-10-23T23:21:47.067913+00:00"
+   "set_at": "2026-10-23T23:29:28.190003+00:00",
+   "updated_at": "2026-10-23T23:29:28.190003+00:00"
   },
   "AMD": {
    "symbol": "AMD",
@@ -4981,8 +4981,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.068007+00:00",
-   "updated_at": "2026-10-23T23:21:47.068007+00:00"
+   "set_at": "2026-10-23T23:29:28.190015+00:00",
+   "updated_at": "2026-10-23T23:29:28.190015+00:00"
   },
   "JNJ": {
    "symbol": "JNJ",
@@ -5001,8 +5001,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.068027+00:00",
-   "updated_at": "2026-10-23T23:21:47.068027+00:00"
+   "set_at": "2026-10-23T23:29:28.190027+00:00",
+   "updated_at": "2026-10-23T23:29:28.190027+00:00"
   },
   "DVN": {
    "symbol": "DVN",
@@ -5021,8 +5021,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.068040+00:00",
-   "updated_at": "2026-10-23T23:21:47.068040+00:00"
+   "set_at": "2026-10-23T23:29:28.190039+00:00",
+   "updated_at": "2026-10-23T23:29:28.190039+00:00"
   },
   "TRGP": {
    "symbol": "TRGP",
@@ -5041,8 +5041,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.068053+00:00",
-   "updated_at": "2026-10-23T23:21:47.068053+00:00"
+   "set_at": "2026-10-23T23:29:28.190063+00:00",
+   "updated_at": "2026-10-23T23:29:28.190063+00:00"
   },
   "RRC": {
    "symbol": "RRC",
@@ -5061,8 +5061,8 @@
    "raw_multiplier": 4.1171,
    "order_multiplier": 4.117,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.068104+00:00",
-   "updated_at": "2026-10-23T23:21:47.068104+00:00"
+   "set_at": "2026-10-23T23:29:28.190105+00:00",
+   "updated_at": "2026-10-23T23:29:28.190105+00:00"
   },
   "BABA": {
    "symbol": "BABA",
@@ -5081,8 +5081,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.068120+00:00",
-   "updated_at": "2026-10-23T23:21:47.068120+00:00"
+   "set_at": "2026-10-23T23:29:28.190119+00:00",
+   "updated_at": "2026-10-23T23:29:28.190119+00:00"
   },
   "QQQ": {
    "symbol": "QQQ",
@@ -5101,8 +5101,8 @@
    "raw_multiplier": 0.7109,
    "order_multiplier": 0.711,
    "tier": "C",
-   "set_at": "2026-10-23T23:21:47.068145+00:00",
-   "updated_at": "2026-10-23T23:21:47.068145+00:00"
+   "set_at": "2026-10-23T23:29:28.190155+00:00",
+   "updated_at": "2026-10-23T23:29:28.190155+00:00"
   },
   "QCOM": {
    "symbol": "QCOM",
@@ -5121,8 +5121,8 @@
    "raw_multiplier": 1.0,
    "order_multiplier": 1.0,
    "tier": "B",
-   "set_at": "2026-10-23T23:21:47.068173+00:00",
-   "updated_at": "2026-10-23T23:21:47.068173+00:00"
+   "set_at": "2026-10-23T23:29:28.190196+00:00",
+   "updated_at": "2026-10-23T23:29:28.190196+00:00"
   }
  },
  "tiers": {
@@ -5378,6 +5378,6 @@
    "RLCUSDT"
   ]
  },
- "total_pnl_pct": -716.61,
- "avg_win_rate": 0.4277
+ "total_pnl_pct": -716.85,
+ "avg_win_rate": 0.4278
 }
