@@ -121,11 +121,12 @@ def test_low_funds_boundary():
 def test_sum_windows_buckets_and_future_clamp():
     import time
     now = time.time()
-    w = srv.sum_windows([(now - 100, 10.0), (now - 2 * 86400, -4.0), (now - 10 * 86400, 7.0), (now - 40 * 86400, 100.0), (now + 3600, 5.0)], now)
+    w, daily = srv.sum_windows([(now - 100, 10.0), (now - 2 * 86400, -4.0), (now - 10 * 86400, 7.0), (now - 40 * 86400, 100.0), (now + 3600, 5.0)], now)
     assert w["b_1d"] == 15.0
     assert w["b_7d"] == 11.0
     assert w["b_30d"] == 18.0
-    assert srv.sum_windows([("bad", 1.0)], now) == {"b_1d": 0.0, "b_7d": 0.0, "b_30d": 0.0}
+    assert sum(daily.values()) == 18.0
+    assert srv.sum_windows([("bad", 1.0)], now) == ({"b_1d": 0.0, "b_7d": 0.0, "b_30d": 0.0}, {})
 
 
 def test_binance_sign_shape():

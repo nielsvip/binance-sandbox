@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-23T01:00:02Z",
+ "generated_utc": "2026-10-23T01:20:03Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-22T13:30:00Z",
  "market_open": true,
@@ -14,10 +14,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 702,
-    "filled_before_open": 399
+    "filled_today": 703,
+    "filled_before_open": 395
    },
-   "detail": "399 boards filled before the open (702 today)"
+   "detail": "395 boards filled before the open (703 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -27,10 +27,10 @@
     "mac_done_stamp": false,
     "s1_stamp": "{\"date\":\"20261022\",\"status\":\"FAILED\",\"failed_step\":\"1\",\"why\":\"v15_avg_delta_rebuild rc=1\",\"steps_ok\":\"\",\"started\":\"2026-10-22T13:01:00Z\",\"ended\":\"2026-10-22T13:02:46Z\"}",
     "cat_side_defaults_4_at": "2026-10-21T04:54:49Z",
-    "cat_side_age_days": 1.8,
+    "cat_side_age_days": 1.9,
     "cat_side_note": "rebuilt only by v15_daily_template_update --sync-defaults, a deliberate manual step \u2014 reported, never fails this gate"
    },
-   "detail": "mac stamp 20261022=False, s1 stamp {\"date\":\"20261022\",\"status\":\"FAILED\",\"failed_step\":\"1\",\"why\":\"v15_avg_delta_rebuild rc=1\",\"steps_ok\":\"\",\"started\":\"2026-10-22T13:01:00Z\",\"ended\":\"2026, cat_side layer 1.8d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
+   "detail": "mac stamp 20261022=False, s1 stamp {\"date\":\"20261022\",\"status\":\"FAILED\",\"failed_step\":\"1\",\"why\":\"v15_avg_delta_rebuild rc=1\",\"steps_ok\":\"\",\"started\":\"2026-10-22T13:01:00Z\",\"ended\":\"2026, cat_side layer 1.9d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
   },
   {
    "name": "selection_fresh",
@@ -61,9 +61,9 @@
    "critical": true,
    "measured": {
     "selection_n": 523,
-    "exact": 130,
-    "benign_divergence_only": 320,
-    "material_divergence": 67,
+    "exact": 131,
+    "benign_divergence_only": 324,
+    "material_divergence": 62,
     "no_live_row": [
      "LEXX_SHORT",
      "MCD_LONG",
@@ -205,23 +205,22 @@
      }
     ]
    },
-   "detail": "130 exact, 320 benign-only, 67 with material divergence, 6 with no live row"
+   "detail": "131 exact, 324 benign-only, 62 with material divergence, 6 with no live row"
   },
   {
    "name": "indicators_fresh",
    "ok": true,
    "critical": true,
    "measured": {
-    "symbols": 330,
-    "stale_over_90min": 2,
-    "stale_pct": 0.6,
-    "median_age_min": 15.0,
+    "symbols": 202,
+    "stale_over_90min": 1,
+    "stale_pct": 0.5,
+    "median_age_min": 80.1,
     "sample": [
-     "DUSKUSDT",
-     "ONEUSDT"
+     "DYDXUSDT"
     ]
    },
-   "detail": "2/330 symbols past the live 90-min entry gate (0.6%)"
+   "detail": "1/202 symbols past the live 90-min entry gate (0.5%)"
   },
   {
    "name": "s1_sets_synced",
