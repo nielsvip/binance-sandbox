@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-23T10:20:03Z",
+ "generated_utc": "2026-10-23T10:40:05Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-23T13:30:00Z",
  "market_open": false,
@@ -16,10 +16,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 208,
-    "filled_before_open": 208
+    "filled_today": 212,
+    "filled_before_open": 212
    },
-   "detail": "208 boards filled before the open (208 today)"
+   "detail": "212 boards filled before the open (212 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -63,12 +63,11 @@
    "critical": true,
    "measured": {
     "selection_n": 523,
-    "exact": 134,
-    "benign_divergence_only": 342,
-    "material_divergence": 43,
+    "exact": 135,
+    "benign_divergence_only": 343,
+    "material_divergence": 42,
     "no_live_row": [
      "LEXX_SHORT",
-     "SCRUSDT_SHORT",
      "WOOUSDT_SHORT",
      "SPELLUSDT_SHORT"
     ],
@@ -178,19 +177,6 @@
       ]
      },
      {
-      "sym_side": "SNDK_SHORT",
-      "published_at": "2026-10-22T21:12:43Z",
-      "material": 44,
-      "sample": [
-       "ADX_REGIME_FILTER_ENABLED",
-       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
-       "COOLDOWN_BARS_TRADIER",
-       "DAYTRADE_DC_TARGET_TF",
-       "DC_EDGE_SIZING_MAX_MULT",
-       "DC_HARD_STOP_15M_ENABLED"
-      ]
-     },
-     {
       "sym_side": "SHOP_LONG",
       "published_at": "2026-10-22T04:02:56Z",
       "material": 42,
@@ -202,26 +188,38 @@
        "DC_EDGE_SIZING_MIN_MULT",
        "DC_HARD_STOP_1H_ENABLED"
       ]
+     },
+     {
+      "sym_side": "1000FLOKIUSDT_LONG",
+      "published_at": "2026-10-13T03:39:04Z",
+      "material": 41,
+      "sample": [
+       "ALL_TF_AGAINST_BLOCK_ENTRY_ENABLED",
+       "ATR_ADAPTIVE_STOP_ENABLED",
+       "BB_BOUNCE_ENTRY_TF",
+       "DAYTRADE_DC_TARGET_TF",
+       "DC_BREAKOUT_TF_EXPANDED",
+       "ENTRY_DC_TF"
+      ]
      }
     ]
    },
-   "detail": "134 exact, 342 benign-only, 43 with material divergence, 4 with no live row"
+   "detail": "135 exact, 343 benign-only, 42 with material divergence, 3 with no live row"
   },
   {
    "name": "indicators_fresh",
    "ok": true,
    "critical": true,
    "measured": {
-    "symbols": 330,
-    "stale_over_90min": 2,
-    "stale_pct": 0.6,
-    "median_age_min": 20.1,
+    "symbols": 329,
+    "stale_over_90min": 1,
+    "stale_pct": 0.3,
+    "median_age_min": 0.0,
     "sample": [
-     "DUSKUSDT",
      "ONEUSDT"
     ]
    },
-   "detail": "2/330 symbols past the live 90-min entry gate (0.6%)"
+   "detail": "1/329 symbols past the live 90-min entry gate (0.3%)"
   },
   {
    "name": "s1_sets_synced",
