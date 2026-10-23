@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-23T12:32:29Z",
+ "ts": "2026-10-23T12:37:41Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,7 +29,7 @@
   "fin": {
    "fills_6h": 109,
    "open_positions": 9,
-   "unrealised_usd": 3.32,
+   "unrealised_usd": 3.18,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 1,
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 16,
    "open_positions": 4,
-   "unrealised_usd": 0.47,
+   "unrealised_usd": 0.32,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 50,
+   "fills_6h": 47,
    "open_positions": 7,
-   "unrealised_usd": 7.82,
+   "unrealised_usd": 7.96,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 10,
    "open_positions": 5,
-   "unrealised_usd": 0.92,
+   "unrealised_usd": 0.89,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -134,56 +134,56 @@
     "95891"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 68.0
   },
   "ang": {
    "pids": [
     "50544"
    ],
    "starts_30m": 1,
-   "log_age_s": 63.0
+   "log_age_s": 106.0
   },
   "inf": {
    "pids": [
     "82830"
    ],
    "starts_30m": 1,
-   "log_age_s": 65.0
+   "log_age_s": 14.0
   },
   "flz": {
    "pids": [
     "12407"
    ],
-   "starts_30m": 0,
-   "log_age_s": 1881.0
+   "starts_30m": 1,
+   "log_age_s": 2191.0
   },
   "trb": {
    "pids": [
     "77496"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 0.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 59488.0
+   "log_age_s": 59798.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-23T12:32:29Z",
+   "ts": "2026-10-23T12:37:41Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "fin:RLCUSDT_SHORT",
    "evidence": "CLOSE PROFIT_TP_EXHAUSTION decided 2026-10-23T11:23:59Z bar=2026-10-23T10:15:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-23T12:32:32Z",
+   "ts": "2026-10-23T12:37:42Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 1881s"
+   "evidence": "ez_manage_flz.log not written for 2191s"
   }
  ],
  "alert_counts": {
@@ -235,5 +235,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 3.42
+ "sweep_s": 0.85
 }
