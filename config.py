@@ -4756,6 +4756,9 @@ class Config:
     PPL_REAUGMENT_SIZE_MULT: float = (
         1.0  # USER 2026-10-22: re-augment qty = MULT x qty taken at the TP. Pilot candidates 1.0/1.5/2.0.
     )
+    PPL_REAUGMENT_TRIGGER: str = (
+        "DC_RECLAIM"  # USER 2026-10-23: which WT event fires the armed re-augment. DC_RECLAIM = WT crosses back above dc_low_15m (both sides, literal). WT_CROSS = fresh wt1/wt2 hook toward the position (LONG wt1 up-cross, SHORT wt1 down-cross). WT_SLOWDOWN = wt1 bar-change toward the position (LONG up, SHORT down) while the band is not yet reclaimed. Pilot candidates DC_RECLAIM/WT_CROSS/WT_SLOWDOWN.
+    )
     PARTIAL_PROFIT_LOCK_GAIN_PCT: float = (
         1.5  # 2026-05-26 GRID WINNER (was 0.5). 1.5% > 1.0% > 0.5% monotonic; lets winners run before harvesting.
     )

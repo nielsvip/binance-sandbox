@@ -1519,6 +1519,9 @@ class TradierConfig:
     PPL_REAUGMENT_SIZE_MULT: float = (
         1.0  # USER 2026-10-22: re-augment qty = MULT x qty taken at the TP. Pilot candidates 1.0/1.5/2.0.
     )
+    PPL_REAUGMENT_TRIGGER: str = (
+        "DC_RECLAIM"  # USER 2026-10-23: which WT event fires the armed re-augment. DC_RECLAIM = WT crosses back above dc_low_15m (both sides, literal). WT_CROSS = fresh wt1/wt2 hook toward the position (LONG wt1 up-cross, SHORT wt1 down-cross). WT_SLOWDOWN = wt1 bar-change toward the position (LONG up, SHORT down) while the band is not yet reclaimed. Pilot candidates DC_RECLAIM/WT_CROSS/WT_SLOWDOWN.
+    )
     # 2026-04-25 PPL CURVE (114-sym, 4.3yr, HVC sweep confirmed): 0.5%=2.832 Sharpe/114%gain | 0.9375%(baseline)=2.435/171% | 1.5%=1.784/206% | 2.0%=1.507/226% | 2.5%=1.379/239% | 3.0%=1.253/244% | 4.0%=1.130/259% | 5.0%=1.092/262% | disabled=1.077/247%.
     # 2026-05-26 crypto grid favours 1.5% (best risk-adjusted vs PPL OFF baseline); apply to stocks symmetrically — tradier-specific sweep can refine later.
     # Use PARTIAL_PROFIT_LOCK_GAIN_PCT (NOT _TRADIER key) for vectorized sweeps.

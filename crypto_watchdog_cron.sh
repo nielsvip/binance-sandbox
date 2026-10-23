@@ -97,9 +97,26 @@ MISSING=""
 # (bash parses once at startup, so an edited wrapper file does nothing until the wrapper itself restarts).
 # Per-account scripts are excluded: ez_manage's wrapper is matched per account elsewhere and a bare re-wrap here
 # could start a second trader on one account.
+# 2026-10-23 bounded pgrep for launch decisions (USER: stop duplicate-supervisor churn).
+# Under extreme load pgrep/ps can stall for minutes; every `if ! pgrep` below then reads
+# "dead" and launches a duplicate, which a third supervisor later reap-kills — pure churn.
+# _pgrep fails CLOSED: on timeout it reports ALIVE (skip the launch). At normal load it is
+# byte-identical to pgrep (`command` bypasses this function for the real binary).
+_PGREP_TIMEOUT_BIN=""
+[ -x /opt/homebrew/bin/timeout ] && _PGREP_TIMEOUT_BIN=/opt/homebrew/bin/timeout
+_pgrep() {
+    local _out _rc
+    if [ -n "$_PGREP_TIMEOUT_BIN" ]; then
+        _out=$("$_PGREP_TIMEOUT_BIN" 10 command pgrep "$@" 2>/dev/null); _rc=$?
+        if [ "$_rc" -eq 124 ]; then return 0; fi
+    else
+        _out=$(command pgrep "$@" 2>/dev/null); _rc=$?
+    fi
+    [ -n "$_out" ] && return 0 || return 1
+}
 for wm in "${WATCHDOG_MANAGED[@]}"; do
     case "$wm" in ez_manage.py) continue ;; esac
-    if pgrep -f "python.*$wm" >/dev/null 2>&1 && ! pgrep -f "run_with_watchdog.sh $wm" >/dev/null 2>&1; then
+    if _pgrep -f "python.*$wm" && ! _pgrep -f "run_with_watchdog.sh $wm"; then
         log "REWRAP: $wm running WITHOUT a run_with_watchdog wrapper — recycling it under a fresh supervisor"
         cd "$WORKDIR"
         LOG_NAME=$(echo "$wm" | sed 's/\.py//')
@@ -109,7 +126,7 @@ for wm in "${WATCHDOG_MANAGED[@]}"; do
 done
 
 for proc in "${CRITICAL_PROCESSES[@]}"; do
-    if ! pgrep -f "$proc" >/dev/null 2>&1; then
+    if ! _pgrep -f "$proc" >/dev/null 2>&1; then
         script_name="${proc%% *}"
         args="${proc#* }"
         if [ "$script_name" = "$args" ]; then args=""; fi
@@ -133,7 +150,7 @@ for proc in "${CRITICAL_PROCESSES[@]}"; do
             log "HOLD: $proc — data/no_autostart_${hold_acct}.flag present (handed to pure_board_trader), not relaunching"
             continue
         fi
-        if $is_watchdog_managed && pgrep -f "run_with_watchdog.*$proc" >/dev/null 2>&1; then
+        if $is_watchdog_managed && _pgrep -f "run_with_watchdog.*$proc" >/dev/null 2>&1; then
             # Wrapper alive — it will restart the process. Don't interfere.
             log "SKIP: $proc — run_with_watchdog wrapper alive, will self-heal"
             continue
@@ -175,7 +192,7 @@ if ! /opt/homebrew/bin/redis-cli -p 6379 ping >/dev/null 2>&1; then
 fi
 if ! /opt/homebrew/bin/redis-cli -p 6381 ping >/dev/null 2>&1; then
     # Restart tunnels
-    if ! pgrep -f "setup_ssh_tunnels.py" >/dev/null 2>&1; then
+    if ! _pgrep -f "setup_ssh_tunnels.py" >/dev/null 2>&1; then
         cd "$WORKDIR"
         nohup python3 -u setup_ssh_tunnels.py > /dev/null 2>&1 &
         alert "SSH tunnels were dead — restarted"
@@ -217,10 +234,10 @@ if [ "$DOW" -le 5 ] && [ "$ET_MINS" -ge 420 ] && [ "$ET_MINS" -le 975 ]; then
         # wrapper cmdline (/bin/bash run_with_watchdog.sh tradier_manage.py --accounts trb),
         # so a live wrapper with a DEAD child read as "alive" here and continue'd silently --
         # which also made the wrapper-alive branch below unreachable dead code.
-        if pgrep -f "python.*-u $tproc" >/dev/null 2>&1; then
+        if _pgrep -f "python.*-u $tproc" >/dev/null 2>&1; then
             continue
         fi
-        if pgrep -f "run_with_watchdog.sh $tproc" >/dev/null 2>&1; then
+        if _pgrep -f "run_with_watchdog.sh $tproc" >/dev/null 2>&1; then
             log "SKIP TRADIER: $tproc — wrapper alive, will self-heal"
             continue
         fi
@@ -237,7 +254,7 @@ if [ "$DOW" -le 5 ] && [ "$ET_MINS" -ge 420 ] && [ "$ET_MINS" -le 975 ]; then
         # "restarted under watchdog" ~180x/hour during the 07:00-09:30 ET pre-open window
         # while nothing had in fact been restarted. Verify the wrapper actually survived
         # (it persists on a real launch, and is gone on a gate refusal) before claiming it.
-        if pgrep -f "run_with_watchdog.sh $tproc" >/dev/null 2>&1; then
+        if _pgrep -f "run_with_watchdog.sh $tproc" >/dev/null 2>&1; then
             alert "Tradier $tproc — BOTH wrapper and process were dead — restarted under watchdog"
         else
             log "TRADIER RELAUNCH NO-OP: $tproc — run_with_watchdog.sh TRADIER_MARKET_GATE refused (outside Mon-Fri 13:30-20:00 UTC); still DOWN"
@@ -249,7 +266,7 @@ fi
 # Refreshes data/stocks_oi_cache/{sym}.json hourly via Tradier options chain endpoint.
 # READ-ONLY — never opens options orders. Per feedback_oi_signal_only_no_options_trading_20260427.md.
 # Runs 24/7 (not market-hours gated) — OI publishes daily and we want overnight refreshes too.
-if ! pgrep -f "tradier_options_oi_fetcher.py" >/dev/null 2>&1; then
+if ! _pgrep -f "tradier_options_oi_fetcher.py" >/dev/null 2>&1; then
     log "RESTARTING: tradier_options_oi_fetcher.py"
     cd "$WORKDIR"
     nohup $PYTHON -u tradier_options_oi_fetcher.py > "$LOGDIR/tradier_oi_fetcher_cron.log" 2>&1 &
@@ -261,7 +278,7 @@ fi
 # Builds vol_profile:<sym> Redis keys (1500×15m bars × ±50% range × 1% buckets, top-5 HVNs).
 # Consumed by VP_GATE in ez_positions_quick (currently default OFF after sweep validation).
 # Has been dying repeatedly without auto-restart — adding here per "regress to qualifying setup" rule.
-if ! pgrep -f "ez_volume_profile.py" >/dev/null 2>&1; then
+if ! _pgrep -f "ez_volume_profile.py" >/dev/null 2>&1; then
     log "RESTARTING: ez_volume_profile.py"
     cd "$WORKDIR"
     nohup $PYTHON -u ez_volume_profile.py > "$LOGDIR/ez_volume_profile_cron.log" 2>&1 &
@@ -335,7 +352,7 @@ for wlog in "$LOGDIR"/ez_manage_*_watchdog.log; do
     acct=$(basename "$wlog" | sed 's/ez_manage_//;s/_watchdog.log//')
     if tail -5 "$wlog" 2>/dev/null | grep -q "Too many rapid restarts"; then
         # Watchdog gave up. Check if the python process is alive anyway (cron may have restarted it).
-        if ! pgrep -f "ez_manage.py --account $acct" >/dev/null 2>&1; then
+        if ! _pgrep -f "ez_manage.py --account $acct" >/dev/null 2>&1; then
             alert "$acct: Watchdog gave up AND python dead — starting bare process"
             cd "$WORKDIR"
             nohup $PYTHON -u ez_manage.py --account $acct > /dev/null 2>&1 &
@@ -345,7 +362,7 @@ for wlog in "$LOGDIR"/ez_manage_*_watchdog.log; do
 done
 
 # 4b. DNS failures in ez_market_data — restart if stuck
-if pgrep -f "ez_market_data.py" >/dev/null 2>&1; then
+if _pgrep -f "ez_market_data.py" >/dev/null 2>&1; then
     DNS_ERRS=$(tail -50 "$LOGDIR/ez_market_data.log" 2>/dev/null | grep -c "DNS\|resolve\|Connection refused" 2>/dev/null)
     if [ "$DNS_ERRS" -gt 3 ] 2>/dev/null; then
         alert "ez_market_data: $DNS_ERRS DNS/connection errors — restarting"

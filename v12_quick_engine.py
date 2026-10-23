@@ -2374,6 +2374,7 @@ AUTO_WIRED_PARAMS = [
     "PARTIAL_PROFIT_LOCK_USE_MAKER_TRADIER",
     "PPL_REAUGMENT_ENABLED",
     "PPL_REAUGMENT_SIZE_MULT",
+    "PPL_REAUGMENT_TRIGGER",
     "PEAK_GIVEBACK_DROP_PCT",
     "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED",
     "PEAK_GIVEBACK_HARD_ZERO_ENABLED",
@@ -6208,6 +6209,9 @@ class QuickConfig:
     )
     PPL_REAUGMENT_SIZE_MULT: float = (
         1.0  # USER 2026-10-22: pilot candidates 1.0/1.5/2.0
+    )
+    PPL_REAUGMENT_TRIGGER: str = (
+        "DC_RECLAIM"  # USER 2026-10-23: pilot candidates DC_RECLAIM/WT_CROSS/WT_SLOWDOWN
     )
     PEAK_GIVEBACK_DROP_PCT: float = 0.5  # auto-wired 625
     PEAK_GIVEBACK_HARD_ZERO_ENABLED: bool = False  # auto-wired 625
@@ -18694,8 +18698,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _cs_book = None
     # USER 2026-10-22 PPL re-augment (standing order -> per-sym_side switch):
     # backtest decides on/off; ON arms a re-entry at every PPL tap and fires an
-    # implied augment of MULT x the TP qty the moment WT crosses back above
-    # dc_low_15m (one-shot per tap). Default OFF/inert.
+    # implied augment of MULT x the TP qty on the PPL_REAUGMENT_TRIGGER event
+    # (default DC_RECLAIM = WT back above dc_low_15m; one-shot per tap).
+    # Default OFF/inert.
     _ppl_reaug_on = bool(getattr(cfg, "PPL_REAUGMENT_ENABLED", False))
     try:
         _ppl_reaug_mult = float(getattr(cfg, "PPL_REAUGMENT_SIZE_MULT", 1.0))
@@ -18704,7 +18709,14 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _ppl_reaug_mult = min(2.0, max(0.0, _ppl_reaug_mult))
     if not _ppl_reaug_on:
         _ppl_reaug_mult = 0.0
-    _ppl_wt_15 = _safe(npz, "wt1_15m", n) + _safe(npz, "wt2_15m", n)
+    _ppl_reaug_trig = str(
+        getattr(cfg, "PPL_REAUGMENT_TRIGGER", "DC_RECLAIM") or "DC_RECLAIM"
+    ).upper()
+    if _ppl_reaug_trig not in ("DC_RECLAIM", "WT_CROSS", "WT_SLOWDOWN"):
+        _ppl_reaug_trig = "DC_RECLAIM"
+    _ppl_wt1_15 = _safe(npz, "wt1_15m", n)
+    _ppl_wt2_15 = _safe(npz, "wt2_15m", n)
+    _ppl_wt_15 = _ppl_wt1_15 + _ppl_wt2_15
     for i in range(n):
         if _qs_on and pos is not None:
             _qs_avg_by_entry[int(pos["entry_bar"])] = float(pos["avg_price"])  # live streak scores vs the AVERAGE entry
@@ -21855,17 +21867,42 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 pos["_ppl_armed"] = 1
                 pos["_ppl_armed_bar"] = int(i)
                 pos["_ppl_tp_qty"] = float(_ppl_qty)
-        # USER 2026-10-22 PPL re-augment fire: armed by the PPL tap, the moment
-        # WT crosses back above dc_low_15m the position re-augments MULT x the
-        # TP qty (one-shot per tap; floor + live cap mirrored, same as AUGMENT).
+        # USER 2026-10-23 PPL re-augment triggers (per-sym pilot switch
+        # PPL_REAUGMENT_TRIGGER, default DC_RECLAIM): DC_RECLAIM = WT crosses
+        # back above dc_low_15m (both sides, literal); WT_CROSS = fresh
+        # wt1/wt2 hook toward the position (LONG wt1 up-cross, SHORT wt1
+        # down-cross); WT_SLOWDOWN = wt1 bar-change toward the position
+        # (LONG up, SHORT down) while the band is not yet reclaimed.
+        # One-shot per tap; floor + live cap mirrored, same as AUGMENT.
+        _reaug_trig_fire = False
+        _reaug_trig_name = "DC_RECLAIM"
         if (
             _ppl_reaug_on
             and pos is not None
             and int(pos.get("_ppl_armed", 0)) == 1
             and int(i) > int(pos.get("_ppl_armed_bar", i))
-            and float(_ppl_wt_15[i]) > float(_uh_l15[i])
-            and float(_ppl_wt_15[i - 1]) <= float(_uh_l15[i - 1])
         ):
+            _rw1 = float(_ppl_wt1_15[i])
+            _rw2 = float(_ppl_wt2_15[i])
+            _rw1p = float(_ppl_wt1_15[i - 1])
+            _rw2p = float(_ppl_wt2_15[i - 1])
+            if _ppl_reaug_trig == "WT_CROSS":
+                _reaug_trig_name = "WT_CROSS"
+                if is_long:
+                    _reaug_trig_fire = _rw1 > _rw2 and _rw1p <= _rw2p
+                else:
+                    _reaug_trig_fire = _rw1 < _rw2 and _rw1p >= _rw2p
+            elif _ppl_reaug_trig == "WT_SLOWDOWN":
+                _reaug_trig_name = "WT_SLOWDOWN"
+                if is_long:
+                    _reaug_trig_fire = _rw1 > _rw1p
+                else:
+                    _reaug_trig_fire = _rw1 < _rw1p
+            else:
+                _reaug_trig_fire = float(_ppl_wt_15[i]) > float(_uh_l15[i]) and float(
+                    _ppl_wt_15[i - 1]
+                ) <= float(_uh_l15[i - 1])
+        if _reaug_trig_fire:
             _reaug_qty = float(pos.get("_ppl_tp_qty", 0.0)) * _ppl_reaug_mult
             if _mvf_on and _reaug_qty > 0:
                 _reaug_qty = max(float(_reaug_qty), _qq.min_viable_qty(sym, px, cfg))
@@ -21896,7 +21933,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         "qty": float(_reaug_qty),
                         "pos_deployed": float(pos["deployed"]),
                         "bar": int(i),
-                        "reason": "PPL_REAUGMENT_DC_RECLAIM",
+                        "reason": "PPL_REAUGMENT_" + _reaug_trig_name,
                     }
                 )
         # [N4 queue/2c] rate()-driven REDUCE sources (crypto live): SIMPLE_TP_EXIT / MACD_EXIT — only when QUICK_REDUCE_TECHNICAL_ONLY is False

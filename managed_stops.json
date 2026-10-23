@@ -1,30 +1,51 @@
 {
-  "flz:SOLUSDC_LONG": {
-    "orderId": "1000002638137360",
-    "stopPrice": 102.47,
-    "entry_sig": "2026-10-23 01:10:05.199000+00:00",
-    "symbol": "SOLUSDC",
-    "side": "LONG"
-  },
-  "flz:ZECUSDC_SHORT": {
-    "orderId": "1000002638157332",
-    "stopPrice": 1232.17,
-    "entry_sig": "2026-10-23 01:23:49.887000+00:00",
-    "symbol": "ZECUSDC",
+  "men:ACTUSDT_SHORT": {
+    "orderId": "2000001533532974",
+    "stopPrice": 0.00868,
+    "entry_sig": "2026-10-23 01:28:15.282000+00:00",
+    "symbol": "ACTUSDT",
     "side": "SHORT"
   },
-  "flz:HYPEUSDT_LONG": {
-    "orderId": "1000002638165176",
-    "stopPrice": 76.844,
-    "entry_sig": "2026-10-23 01:19:24.525000+00:00",
-    "symbol": "HYPEUSDT",
+  "men:BATUSDT_LONG": {
+    "orderId": "2000001533542663",
+    "stopPrice": 0.1684,
+    "entry_sig": "2026-10-23 01:16:40.223000+00:00",
+    "symbol": "BATUSDT",
     "side": "LONG"
   },
-  "flz:SOLUSDC_SHORT": {
-    "orderId": "1000002638165956",
-    "stopPrice": 104.08,
-    "entry_sig": "2026-10-23 01:30:06.849000+00:00",
-    "symbol": "SOLUSDC",
+  "men:GRASSUSDT_LONG": {
+    "orderId": "2000001533545332",
+    "stopPrice": 0.6211,
+    "entry_sig": "2026-10-23 01:27:56.563000+00:00",
+    "symbol": "GRASSUSDT",
+    "side": "LONG"
+  },
+  "men:QNTUSDT_LONG": {
+    "orderId": "2000001533547093",
+    "stopPrice": 185.21,
+    "entry_sig": "2026-10-23 01:33:56.264000+00:00",
+    "symbol": "QNTUSDT",
+    "side": "LONG"
+  },
+  "men:PARTIUSDT_SHORT": {
+    "orderId": "2000001533550222",
+    "stopPrice": 0.03335,
+    "entry_sig": "2026-10-22 22:52:09.019000+00:00",
+    "symbol": "PARTIUSDT",
+    "side": "SHORT"
+  },
+  "men:ARBUSDC_LONG": {
+    "orderId": "2000001533551572",
+    "stopPrice": 0.17741,
+    "entry_sig": "2026-10-23 01:35:52.501000+00:00",
+    "symbol": "ARBUSDC",
+    "side": "LONG"
+  },
+  "men:1000BONKUSDC_SHORT": {
+    "orderId": "2000001533551573",
+    "stopPrice": 0.003142,
+    "entry_sig": "2026-10-23 01:35:53.386000+00:00",
+    "symbol": "1000BONKUSDC",
     "side": "SHORT"
   }
 }
