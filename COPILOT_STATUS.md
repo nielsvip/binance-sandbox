@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-23 01:46:27 UTC
+# Copilot Status — 2026-10-23 01:51:32 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-23T01:35:14
-- **STALE_INDICATORS** [tradier]  — 2026-10-23T01:36:14
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-23T01:36:15
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-23T01:37:16
-- **STALE_INDICATORS** [tradier]  — 2026-10-23T01:38:17
-- **RATIO_IMBALANCE** [crypto] flz — 2026-10-23T01:38:17
-- **STALE_INDICATORS** [tradier]  — 2026-10-23T01:40:19
-- **STALE_INDICATORS** [tradier]  — 2026-10-23T01:42:22
-- **STALE_INDICATORS** [tradier]  — 2026-10-23T01:44:24
-- **STALE_INDICATORS** [tradier]  — 2026-10-23T01:46:26
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-23T01:49:30
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-23T01:49:30
+- **RATIO_IMBALANCE** [crypto] flz — 2026-10-23T01:49:30
+- **STALE_INDICATORS** [tradier]  — 2026-10-23T01:50:30
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-23T01:50:31
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-23T01:50:31
+- **RATIO_IMBALANCE** [crypto] flz — 2026-10-23T01:50:31
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-23T01:51:31
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-23T01:51:31
+- **RATIO_IMBALANCE** [crypto] flz — 2026-10-23T01:51:31
 
 ## Missed Trades (trader comparison)
 
@@ -27,15 +27,10 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 3 | **Watching for reentry:** 7 | **Reentered:** 0
+**Held:** 1 | **Watching for reentry:** 4 | **Reentered:** 0
 
 - HELD: **ARM** SHORT (tradier) peak +8.3%, now +-0.2%
-- HELD: **ZECUSDC** SHORT (crypto) peak +5.7%, now +0.1%
-- HELD: **SOLUSDC** SHORT (crypto) peak +3.6%, now +-0.0%
 
-- WATCHING: **RLCUSDT** SHORT (crypto) peaked +7.6%, exited 0m ago
-- WATCHING: **NMRUSDT** SHORT (crypto) peaked +4.3%, exited 0m ago
-- WATCHING: **AXSUSDT** SHORT (crypto) peaked +4.0%, exited 0m ago
 - WATCHING: **STRKUSDT** SHORT (crypto) peaked +3.7%, exited 0m ago
 - WATCHING: **ENJUSDT** SHORT (crypto) peaked +3.2%, exited 0m ago
 - WATCHING: **FARTCOINUSDT** SHORT (crypto) peaked +3.2%, exited 0m ago
