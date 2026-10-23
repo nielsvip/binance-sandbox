@@ -1,121 +1,122 @@
 {
- "at": "2026-10-23T00:11:26Z",
+ "at": "2026-10-23T01:11:06Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
   "s1": {
+   "improved": 1,
+   "improved_per_hour": 1.0,
+   "published_n": 1,
+   "flat_or_worse": 0,
+   "unknown": 0,
+   "boards_running": [
+    "ETHFIUSDC_LONG",
+    "SOLUSDC_SHORT"
+   ],
+   "mem_avail_mb": 14521,
+   "load1": 46.68,
+   "nproc": 16,
+   "slots": "2/8",
+   "binding_reason": "CPU budget: median board 2557 core-s, 16 cores minus 8.3 competing non-board cores ({'other': 4.77, 'live_helpers': 2.61, 'boards': 3.53, 'klines_append': 0.94}) = 7.7 usable -> host ceiling 10.8 boards/h. Move nice-0 non-board work off the host and/or cut core-s per board.",
+   "error": null,
+   "published": [
+    {
+     "symside": "BTCDOMUSDT_SHORT",
+     "at": "2026-10-23T00:28:21Z",
+     "baseline": -2.197417440668347,
+     "final": 6.432616489487873,
+     "state": "improved"
+    }
+   ],
+   "cadence_target_min": 5.0,
+   "minutes_since_last_improved": 68.4,
+   "last_improved_symside": "ETHFIUSDC_LONG",
+   "cadence_ok": false,
+   "improved_gap_min_median_24h": 42.6,
+   "improved_gap_min_max_24h": 195.8,
+   "improved_finishes_24h": 21,
+   "board_cpu_s_median_24h": 2556.9,
+   "board_wall_s_median_24h": 1123.540610074997,
+   "board_cores": 3.53,
+   "nonboard_cores_competing": 8.32,
+   "nonboard_cores_niced": 2.74,
+   "cores_by_bucket": {
+    "other": 4.77,
+    "live_helpers": 2.61,
+    "boards": 3.53,
+    "klines_append": 0.94
+   },
+   "cores_by_bucket_niced": {
+    "other": 2.4,
+    "klines_vault": 0.34
+   }
+  },
+  "s2": {
    "improved": 4,
    "improved_per_hour": 4.0,
    "published_n": 4,
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "BTCDOMUSDT_LONG",
-    "SOLUSDC_LONG"
+    "BTCDOMUSDT_SHORT",
+    "CHRUSDT_LONG",
+    "ENJUSDT_SHORT"
    ],
-   "mem_avail_mb": 5553,
-   "load1": 54.13,
+   "mem_avail_mb": 10493,
+   "load1": 21.07,
    "nproc": 16,
    "slots": "2/8",
-   "binding_reason": "scheduler mem guard (disk 23405 MB, mem 6548 MB, est_pair 6354 MB) \u2014 slots 2/8",
+   "binding_reason": "concurrency 2 boards: 12/h needs <= 10 min per sym_side (measured median 19 min) \u2014 raise concurrent sides or cut evals per board",
    "error": null,
    "published": [
     {
      "symside": "BTCDOMUSDT_LONG",
-     "at": "2026-10-23T00:09:15Z",
-     "baseline": 9.294994967376697,
-     "final": 17.127887744870964,
+     "at": "2026-10-23T01:04:29Z",
+     "baseline": 15.175047751529194,
+     "final": 15.418035687882941,
      "state": "improved"
     },
     {
-     "symside": "ENSUSDT_SHORT",
-     "at": "2026-10-22T23:55:48Z",
-     "baseline": 39.46684293559277,
-     "final": 66.29139732025901,
+     "symside": "BTCDOMUSDT_SHORT",
+     "at": "2026-10-23T01:02:07Z",
+     "baseline": 3.123851498422159,
+     "final": 4.4359836597930125,
      "state": "improved"
     },
     {
-     "symside": "ETHFIUSDC_LONG",
-     "at": "2026-10-23T00:02:15Z",
-     "baseline": 1.755572390321135,
-     "final": 45.11983714643442,
+     "symside": "GRAMUSDT_SHORT",
+     "at": "2026-10-23T01:00:45Z",
+     "baseline": 28.831071708086796,
+     "final": 51.98257016484986,
      "state": "improved"
     },
     {
-     "symside": "KASUSDT_LONG",
-     "at": "2026-10-22T23:42:05Z",
-     "baseline": -0.13020327236674695,
-     "final": 42.00762179098295,
+     "symside": "IBM_LONG",
+     "at": "2026-10-23T00:51:50Z",
+     "baseline": 23.067196106433727,
+     "final": 26.67681436102949,
      "state": "improved"
     }
    ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 1.9,
-   "last_improved_symside": "BTCDOMUSDT_LONG",
-   "cadence_ok": true,
-   "improved_gap_min_median_24h": 18.5,
-   "improved_gap_min_max_24h": 195.8,
-   "improved_finishes_24h": 23,
-   "board_cpu_s_median_24h": 2528.9,
-   "board_wall_s_median_24h": 1121.2850439548492,
-   "board_cores": 7.24,
-   "nonboard_cores_competing": 7.76,
-   "nonboard_cores_niced": 0.37,
-   "cores_by_bucket": {
-    "other": 3.77,
-    "live_helpers": 3.73,
-    "klines_append": 0.26,
-    "boards": 7.24
-   },
-   "cores_by_bucket_niced": {
-    "other": 0.34,
-    "klines_vault": 0.03
-   }
-  },
-  "s2": {
-   "improved": 0,
-   "improved_per_hour": 0.0,
-   "published_n": 1,
-   "flat_or_worse": 1,
-   "unknown": 0,
-   "boards_running": [
-    "1000PEPEUSDC_LONG",
-    "CDE_SHORT"
-   ],
-   "mem_avail_mb": 9746,
-   "load1": 15.13,
-   "nproc": 16,
-   "slots": "3/8",
-   "binding_reason": "board CPU DEMAND, not host capacity: 2 running sides pull only 8.5 cores (4.26 core/side) of 13.0 usable -> 11.8 boards/h. 12/h needs 8.7 board-cores = 2 sides at this per-side draw (niced filler 4.08 cores yields). Lever: more concurrent sides (RAM-bound) or deeper eval pipelining per side (V15_PREFETCH_TASKCAP on an idle host).",
-   "error": null,
-   "published": [
-    {
-     "symside": "1000LUNCUSDT_SHORT",
-     "at": "2026-10-23T00:08:51Z",
-     "baseline": null,
-     "final": null,
-     "state": "flat_or_worse"
-    }
-   ],
-   "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 30.6,
-   "last_improved_symside": "1000PEPEUSDC_LONG",
+   "minutes_since_last_improved": 8.8,
+   "last_improved_symside": "BTCDOMUSDT_SHORT",
    "cadence_ok": false,
-   "improved_gap_min_median_24h": 6.1,
-   "improved_gap_min_max_24h": 72.9,
-   "improved_finishes_24h": 124,
-   "board_cpu_s_median_24h": 2597.2,
-   "board_wall_s_median_24h": 1166.703854084015,
-   "board_cores": 8.53,
-   "nonboard_cores_competing": 3.04,
-   "nonboard_cores_niced": 4.08,
+   "improved_gap_min_median_24h": 6.3,
+   "improved_gap_min_max_24h": 84.6,
+   "improved_finishes_24h": 118,
+   "board_cpu_s_median_24h": 2522.4,
+   "board_wall_s_median_24h": 1115.008092880249,
+   "board_cores": 9.8,
+   "nonboard_cores_competing": 2.08,
+   "nonboard_cores_niced": 4.04,
    "cores_by_bucket": {
     "other": 0.03,
-    "boards": 8.53,
-    "live_helpers": 3.01
+    "boards": 9.8,
+    "live_helpers": 2.05
    },
    "cores_by_bucket_niced": {
-    "other": 4.08
+    "other": 4.04
    }
   }
  },
@@ -124,6 +125,7 @@
   "s2"
  ],
  "cadence_breach": [
+  "s1",
   "s2"
  ]
 }
