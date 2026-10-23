@@ -6,13 +6,6 @@
     "symbol": "BEAMXUSDT",
     "side": "LONG"
   },
-  "fin:MAGICUSDT_SHORT": {
-    "orderId": "3000002268572767",
-    "stopPrice": 0.09533,
-    "entry_sig": "2026-10-23 09:42:21.128000+00:00",
-    "symbol": "MAGICUSDT",
-    "side": "SHORT"
-  },
   "fin:VETUSDT_LONG": {
     "orderId": "3000002268602385",
     "stopPrice": 0.006665,
@@ -34,13 +27,6 @@
     "symbol": "RLCUSDT",
     "side": "SHORT"
   },
-  "fin:NMRUSDT_SHORT": {
-    "orderId": "3000002268636328",
-    "stopPrice": 10.832,
-    "entry_sig": "2026-10-23 09:43:19.734000+00:00",
-    "symbol": "NMRUSDT",
-    "side": "SHORT"
-  },
   "fin:STRKUSDT_SHORT": {
     "orderId": "3000002268636330",
     "stopPrice": 0.05352,
@@ -48,8 +34,15 @@
     "symbol": "STRKUSDT",
     "side": "SHORT"
   },
+  "fin:1000PEPEUSDC_LONG": {
+    "orderId": "3000002268664198",
+    "stopPrice": 0.0045637,
+    "entry_sig": "2026-10-23 11:21:02.086000+00:00",
+    "symbol": "1000PEPEUSDC",
+    "side": "LONG"
+  },
   "fin:ETHFIUSDC_LONG": {
-    "orderId": "3000002268651272",
+    "orderId": "3000002268666594",
     "stopPrice": 0.6368,
     "entry_sig": "2026-10-23 10:01:04.655000+00:00",
     "symbol": "ETHFIUSDC",

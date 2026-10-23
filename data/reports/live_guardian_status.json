@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-23T11:20:32Z",
+ "ts": "2026-10-23T11:25:36Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,12 +27,12 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 83,
-   "open_positions": 8,
-   "unrealised_usd": 0.5,
+   "fills_6h": 86,
+   "open_positions": 7,
+   "unrealised_usd": 0.56,
    "pos_mismatch": 0,
    "vec_parity": {
-    "live_vec_decisions": 0,
+    "live_vec_decisions": 1,
     "state_divergent": 0,
     "filled": 0,
     "refused_non_safety": 0,
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 24,
    "open_positions": 5,
-   "unrealised_usd": -0.0,
+   "unrealised_usd": 0.05,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 49,
    "open_positions": 8,
-   "unrealised_usd": 6.33,
+   "unrealised_usd": 6.1,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 11,
    "open_positions": 5,
-   "unrealised_usd": 0.69,
+   "unrealised_usd": 0.75,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,35 +127,35 @@
     "47661"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 4.0
   },
   "men": {
    "pids": [
     "40038"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 3.0
   },
   "ang": {
    "pids": [
     "50544"
    ],
    "starts_30m": 1,
-   "log_age_s": 670.0
+   "log_age_s": 973.0
   },
   "inf": {
    "pids": [
     "82830"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 6.0
   },
   "flz": {
    "pids": [
     "35119"
    ],
    "starts_30m": 1,
-   "log_age_s": 81.0
+   "log_age_s": 384.0
   },
   "trb": {
    "pids": [
@@ -167,20 +167,49 @@
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 55171.0
+   "log_age_s": 55473.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-23T11:20:34Z",
+   "ts": "2026-10-23T11:25:36Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "fin:1000PEPEUSDC_LONG",
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 21137.8->63413.5 = $311.36 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 21137.8)"
+  },
+  {
+   "ts": "2026-10-23T11:25:36Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "fin:1000PEPEUSDC_LONG",
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 21137.8->63413.5 = $311.36 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 21137.8)"
+  },
+  {
+   "ts": "2026-10-23T11:25:36Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "fin:1000PEPEUSDC_LONG",
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 21137.8->63413.5 = $311.36 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 21137.8)"
+  },
+  {
+   "ts": "2026-10-23T11:25:37Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 670s"
+   "evidence": "ez_manage_ang.log not written for 973s"
+  },
+  {
+   "ts": "2026-10-23T11:25:37Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "flz",
+   "evidence": "ez_manage_flz.log not written for 384s"
   }
  ],
  "alert_counts": {
-  "STALE_LOG": 1
+  "SIZE_ANOMALY": 3,
+  "STALE_LOG": 2
  },
  "active_interventions": {
   "acct:trc": {
@@ -234,5 +263,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 2.61
+ "sweep_s": 0.84
 }
