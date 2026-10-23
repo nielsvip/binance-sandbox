@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-23T08:31:45Z",
+ "ts": "2026-10-23T08:36:46Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 31,
-   "open_positions": 3,
-   "unrealised_usd": -1.68,
+   "fills_6h": 32,
+   "open_positions": 4,
+   "unrealised_usd": -0.62,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 26,
+   "fills_6h": 28,
    "open_positions": 9,
-   "unrealised_usd": 0.22,
+   "unrealised_usd": 0.3,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 59,
+   "fills_6h": 58,
    "open_positions": 8,
-   "unrealised_usd": 2.38,
+   "unrealised_usd": 3.22,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -75,7 +75,7 @@
    }
   },
   "inf": {
-   "fills_6h": 8,
+   "fills_6h": 7,
    "open_positions": 0,
    "unrealised_usd": 0.0,
    "pos_mismatch": 0,
@@ -134,53 +134,60 @@
     "42441"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 12.0
   },
   "ang": {
    "pids": [
     "50544"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 12.0
   },
   "inf": {
    "pids": [
     "38044"
    ],
    "starts_30m": 1,
-   "log_age_s": 15.0
+   "log_age_s": 6.0
   },
   "flz": {
    "pids": [
     "94870"
    ],
    "starts_30m": 1,
-   "log_age_s": 110.0
+   "log_age_s": 5.0
   },
   "trb": {
    "pids": [
     "69879"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 1.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 45043.0
+   "log_age_s": 45343.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-23T08:31:45Z",
+   "ts": "2026-10-23T08:36:46Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "fin:MEWUSDT_LONG",
    "evidence": "BREAKOUT_SIZE_LADDER resized qty 245967->737901 = $360.10 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 245967)"
+  },
+  {
+   "ts": "2026-10-23T08:36:46Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "fin:STRKUSDT_SHORT",
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 2273.59->6820.77 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 2273.59)"
   }
  ],
  "alert_counts": {
-  "SIZE_ANOMALY": 1
+  "SIZE_ANOMALY": 2
  },
  "active_interventions": {
   "acct:trc": {
@@ -227,5 +234,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.08
+ "sweep_s": 0.96
 }
