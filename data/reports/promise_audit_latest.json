@@ -1,9 +1,9 @@
 {
- "generated_utc": "2026-10-23T10:12:05.714904+00:00",
+ "generated_utc": "2026-10-23T11:12:05.966693+00:00",
  "days": 1.0,
  "totals": {
-  "exit_promises": 80,
-  "exit_broken_no_delivery": 76,
+  "exit_promises": 79,
+  "exit_broken_no_delivery": 75,
   "entry_promises": 39,
   "entry_broken_no_delivery": 39,
   "exit_kept_late": 2,
@@ -11,10 +11,6 @@
   "exit_kept_in_bar": 2
  },
  "per_key": {
-  "men:MOVEUSDT_SHORT": {
-   "exit_promises": 3,
-   "exit_broken_no_delivery": 3
-  },
   "inf:ATOMUSDT_SHORT": {
    "exit_promises": 1,
    "exit_broken_no_delivery": 1
@@ -32,6 +28,10 @@
    "exit_broken_no_delivery": 4,
    "entry_promises": 2,
    "entry_broken_no_delivery": 2
+  },
+  "men:MOVEUSDT_SHORT": {
+   "exit_promises": 2,
+   "exit_broken_no_delivery": 2
   },
   "fin:MASKUSDT_LONG": {
    "exit_promises": 3,
@@ -264,16 +264,6 @@
   }
  },
  "detail": [
-  {
-   "acct": "men",
-   "sym_side": "MOVEUSDT_SHORT",
-   "kind": "exit",
-   "bar": "10-22 10:00",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "EXIT_VELOCITY_WT against-short g-0.29%",
-   "outcome": "NO_DELIVERY"
-  },
   {
    "acct": "inf",
    "sym_side": "ATOMUSDT_SHORT",
