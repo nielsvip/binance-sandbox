@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-23T15:22:41Z",
+ "ts": "2026-10-23T15:27:57Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,19 +29,19 @@
   "trb": {
    "fills_6h": 17,
    "open_positions": 1,
-   "unrealised_usd": 16.31,
+   "unrealised_usd": 15.65,
    "pos_mismatch": 0
   },
   "trc": {
    "fills_6h": 5,
    "open_positions": 5,
-   "unrealised_usd": 61.23,
+   "unrealised_usd": 55.27,
    "pos_mismatch": 0
   },
   "fin": {
    "fills_6h": 115,
    "open_positions": 5,
-   "unrealised_usd": 1.02,
+   "unrealised_usd": 0.8,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 3,
@@ -73,7 +73,7 @@
   "ang": {
    "fills_6h": 5,
    "open_positions": 6,
-   "unrealised_usd": 3.99,
+   "unrealised_usd": 4.31,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -105,7 +105,7 @@
   "flz": {
    "fills_6h": 5,
    "open_positions": 5,
-   "unrealised_usd": 0.8,
+   "unrealised_usd": 0.74,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -138,35 +138,35 @@
     "47341"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 16.0
   },
   "men": {
    "pids": [
     "42359"
    ],
    "starts_30m": 1,
-   "log_age_s": 69.0
+   "log_age_s": 0.0
   },
   "ang": {
    "pids": [
     "50544"
    ],
    "starts_30m": 1,
-   "log_age_s": 13.0
+   "log_age_s": 78.0
   },
   "inf": {
    "pids": [
     "82830"
    ],
    "starts_30m": 1,
-   "log_age_s": 20.0
+   "log_age_s": 16.0
   },
   "flz": {
    "pids": [
     "25106"
    ],
    "starts_30m": 2,
-   "log_age_s": 9.0
+   "log_age_s": 66.0
   },
   "trb": {
    "pids": [
@@ -174,40 +174,40 @@
     "86234"
    ],
    "starts_30m": 2,
-   "log_age_s": 3.0
+   "log_age_s": 2.0
   },
   "trc": {
    "pids": [
     "83240"
    ],
    "starts_30m": 1,
-   "log_age_s": 25.0
+   "log_age_s": 7.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-23T15:22:41Z",
+   "ts": "2026-10-23T15:27:57Z",
    "severity": "CRITICAL",
    "kind": "ACCOUNT_EQUITY_DROP",
    "key": "trc",
-   "evidence": "unrealised PnL of the same open positions fell $66.23 since 2026-10-23T14:29:07Z (now $+61.23)"
+   "evidence": "unrealised PnL of the same open positions fell $72.19 since 2026-10-23T14:29:07Z (now $+55.27)"
   },
   {
-   "ts": "2026-10-23T15:22:41Z",
+   "ts": "2026-10-23T15:27:58Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "fin:RLCUSDT_SHORT",
    "evidence": "CLOSE PROFIT_TP_EXHAUSTION decided 2026-10-23T11:23:59Z bar=2026-10-23T10:15:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-23T15:22:41Z",
+   "ts": "2026-10-23T15:27:58Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "fin:GRASSUSDT_LONG",
    "evidence": "OPEN B09 bar=2026-10-23T12:15:00Z: live already holds 105.8 (state divergence)"
   },
   {
-   "ts": "2026-10-23T15:22:41Z",
+   "ts": "2026-10-23T15:27:58Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "fin:COMPUSDT_LONG",
@@ -257,5 +257,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.99
+ "sweep_s": 2.3
 }
