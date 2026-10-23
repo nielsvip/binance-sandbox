@@ -19307,6 +19307,22 @@ async def process_position(
                             )
             except Exception as _w2_e:
                 logger.debug(f"[W2_RFMP] {position_key} err: {_w2_e}")
+            try:  # USER 2026-10-23 pv3 C3 REENTRY_MASK_ARM_<FAM>_ENABLED (all default False = inert)
+                import vec_decisions.reentry_mask_arm as _rmarm_t
+                _rm_get = lambda _k, _d=None: _cfg(_k, _d, account_key, symbol, position_side)
+                _rm_ok_t, _rm_why_t = _rmarm_t.live_allows(
+                    _rm_get,
+                    _w2_long,
+                    indicators_raw or {},
+                    safe_fetch_float(current_price, 0),
+                )
+                if not _rm_ok_t:
+                    re_action = "HOLD"
+                    logger.warning(
+                        f"[W2_REENTRY_MASK_ARM] {position_key}: {_rm_why_t} — reentry blocked"
+                    )
+            except Exception as _w2_rm_e:
+                logger.debug(f"[W2_RMA] {position_key} err: {_w2_rm_e}")
             try:
                 _w2_cd = int(_cfg_auto("COOLDOWN_BARS_TRADIER", 8) or 8)
                 _w2_cd_base = int(_cfg_auto("COOLDOWN_BARS", 3) or 3)

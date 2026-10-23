@@ -55848,6 +55848,17 @@ async def process_position(
                 except Exception:
                     pass
             if _re_signal and getattr(_re_signal, "action", None) == "REENTRY":
+                try:  # USER 2026-10-23 pv3 C3 REENTRY_MASK_ARM_<FAM>_ENABLED (all default False = inert): armed entry-mask family applies to reentry fires
+                    import vec_decisions.reentry_mask_arm as _rmarm_e
+                    _rm_g = lambda _k, _d=None: _psym_get(symbol, position_side, _k, getattr(config, _k, _d))
+                    _rm_ind = await ii(trade_manager, symbol) or {}
+                    _rm_ok, _rm_why = _rmarm_e.live_allows(_rm_g, position_side == "LONG", _rm_ind, safe_fetch_float(current_price, 0))
+                    if not _rm_ok:
+                        logger.warning(f"[REENTRY_MASK_ARM] {position_key}: {_rm_why} — reentry refused")
+                        _re_signal = None
+                except Exception:
+                    pass
+            if _re_signal and getattr(_re_signal, "action", None) == "REENTRY":
                 _re_qty = float(getattr(_re_signal, "quantity", 0) or 0)
                 _re_reason = getattr(_re_signal, "reason", "EVAL_REENTRY_FIRED")
                 if _re_qty > 0:
