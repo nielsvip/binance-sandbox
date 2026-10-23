@@ -1,79 +1,81 @@
 {
- "generated_at": "2026-10-23 03:53 UTC",
- "total_capital_usd": 121.84,
+ "generated_at": "2026-10-23 04:16 UTC",
+ "total_capital_usd": 262.83,
  "tier_capital": {
-  "A": 0.0,
-  "B": 82.09,
-  "C": 39.76
+  "A": 45.74,
+  "B": 164.43,
+  "C": 52.65
  },
  "tier_count": {
-  "A": 0,
-  "B": 3,
+  "A": 1,
+  "B": 2,
   "C": 2
  },
- "winners": [],
+ "winners": [
+  "fin:1000PEPEUSDC_LONG"
+ ],
  "losers": [
-  "ang:AAVEUSDC_LONG",
-  "ang:NEARUSDC_LONG"
+  "fin:KASUSDT_LONG",
+  "fin:COMPUSDT_LONG",
+  "fin:NMRUSDT_SHORT",
+  "fin:DASHUSDT_LONG"
  ],
- "mediocre": [
-  "ang:DYDXUSDT_SHORT"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "ang:BATUSDT_LONG",
-   "symbol": "BATUSDT",
-   "account": "ang",
-   "value_usd": 45.08,
-   "gain_pct": 0.102,
+   "pk": "fin:COMPUSDT_LONG",
+   "symbol": "COMPUSDT",
+   "account": "fin",
+   "value_usd": 119.41,
+   "gain_pct": -0.528,
    "tier": "B",
-   "perf_mult": 6.9,
-   "amt": 261.0,
-   "mark": 0.17272519
+   "perf_mult": 4.79,
+   "amt": 4.874,
+   "mark": 24.5
   },
   {
-   "pk": "ang:AAVEUSDC_LONG",
-   "symbol": "AAVEUSDC",
-   "account": "ang",
-   "value_usd": 29.8,
-   "gain_pct": 0.434,
+   "pk": "fin:1000PEPEUSDC_LONG",
+   "symbol": "1000PEPEUSDC",
+   "account": "fin",
+   "value_usd": 45.74,
+   "gain_pct": 0.126,
+   "tier": "A",
+   "perf_mult": 5.87,
+   "amt": 10184.0,
+   "mark": 0.00449143
+  },
+  {
+   "pk": "fin:DASHUSDT_LONG",
+   "symbol": "DASHUSDT",
+   "account": "fin",
+   "value_usd": 45.16,
+   "gain_pct": 0.206,
    "tier": "C",
-   "perf_mult": 0.44,
-   "amt": 0.2,
-   "mark": 149.01373004
+   "perf_mult": 0.39,
+   "amt": 0.821,
+   "mark": 55.0029562
   },
   {
-   "pk": "ang:PENGUUSDC_LONG",
-   "symbol": "PENGUUSDC",
-   "account": "ang",
-   "value_usd": 28.25,
-   "gain_pct": 0.92,
-   "tier": "B",
-   "perf_mult": 3.01,
-   "amt": 3586.0,
-   "mark": 0.00787711
-  },
-  {
-   "pk": "ang:NEARUSDC_LONG",
-   "symbol": "NEARUSDC",
-   "account": "ang",
-   "value_usd": 9.96,
-   "gain_pct": 0.498,
-   "tier": "C",
-   "perf_mult": 0.19,
-   "amt": 2.0,
-   "mark": 4.97766567
-  },
-  {
-   "pk": "ang:DYDXUSDT_SHORT",
-   "symbol": "DYDXUSDT",
-   "account": "ang",
-   "value_usd": 8.76,
-   "gain_pct": 0.0,
+   "pk": "fin:KASUSDT_LONG",
+   "symbol": "KASUSDT",
+   "account": "fin",
+   "value_usd": 45.02,
+   "gain_pct": -1.11,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 102.7,
-   "mark": 0.08525143297099039
+   "amt": 1207.0,
+   "mark": 0.03730125
+  },
+  {
+   "pk": "fin:NMRUSDT_SHORT",
+   "symbol": "NMRUSDT",
+   "account": "fin",
+   "value_usd": 7.49,
+   "gain_pct": -0.499,
+   "tier": "C",
+   "perf_mult": 0.22,
+   "amt": 0.7,
+   "mark": 10.70682722
   }
  ]
 }

@@ -1,0 +1,103 @@
+{
+ "window_from": "10-23 03:07",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 176,
+  "status_OK": 171,
+  "STATE_CONVERGENCE": 6,
+  "EXTRA": 1
+ },
+ "rows": [
+  {
+   "acct": "ang",
+   "sym_side": "1000FLOKIUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-23 03:17",
+   "actual": "AUGMENT",
+   "actual_reason": "VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_257.910445_LIVE_Q",
+   "late_bars": null,
+   "verdict": "STATE_CONVERGENCE",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "1000FLOKIUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-23 03:28",
+   "actual": "REDUCE",
+   "actual_reason": "VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_257.910445_LIVE_Q",
+   "late_bars": null,
+   "verdict": "STATE_CONVERGENCE",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "AAVEUSDC_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-23 03:27",
+   "actual": "AUGMENT",
+   "actual_reason": "VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_1.520603_LIVE_QTY",
+   "late_bars": null,
+   "verdict": "STATE_CONVERGENCE",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "BEATUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-23 03:15",
+   "actual": "AUGMENT",
+   "actual_reason": "VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_9459.459853_LIVE_",
+   "late_bars": null,
+   "verdict": "STATE_CONVERGENCE",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "BEATUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-23 03:29",
+   "actual": "REDUCE",
+   "actual_reason": "VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_9459.459853_LIVE_",
+   "late_bars": null,
+   "verdict": "STATE_CONVERGENCE",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "NEARUSDC_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-23 03:19",
+   "actual": "AUGMENT",
+   "actual_reason": "VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_45.546968_LIVE_QT",
+   "late_bars": null,
+   "verdict": "STATE_CONVERGENCE",
+   "vec_tagged": false
+  },
+  {
+   "acct": "fin",
+   "sym_side": "NMRUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-23 04:06",
+   "actual": "REDUCE",
+   "actual_reason": "QUICK_PEAK_GIVEBACK_GAIN_EROSION_STOP_peak1.00%_drop0.4%_cur-0.02%",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  }
+ ]
+}
