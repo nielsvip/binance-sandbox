@@ -1,5 +1,5 @@
 {
- "at": "2026-10-23T15:26:03Z",
+ "at": "2026-10-23T16:26:01Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
@@ -8,9 +8,9 @@
    "published_n": 1,
    "per_hour": 0.5,
    "improved_vs_best_start": 1,
-   "mean_uplift_vs_best_start": 67.1648,
-   "median_uplift": 67.1648,
-   "chained_from_previous_published": 1,
+   "mean_uplift_vs_best_start": 77.6511,
+   "median_uplift": 77.6511,
+   "chained_from_previous_published": 0,
    "no_floor_recorded": 0,
    "backslides": [],
    "stale_npz": [],
@@ -19,35 +19,35 @@
    ],
    "rows": [
     {
-     "symside": "NEARUSDC_LONG",
-     "published_at": 1792763576.382829,
-     "final_gain": 104.46673666606603,
-     "best_start_gain": 37.30195010741489,
-     "best_start_chosen": "history_0",
-     "best_start_candidates": 9,
-     "baseline_gain": 37.30195010741489,
-     "npz_ts_last": 1792758600.0,
-     "npz_md5": "b0026bc0ddbf6fd9ea9264f02b410781",
-     "npz_bars": 40741,
-     "bh": 4.121753833494631,
+     "symside": "STXUSDT_LONG",
+     "published_at": 1792772117.8285158,
+     "final_gain": 89.75270974360197,
+     "best_start_gain": 12.10160040000767,
+     "best_start_chosen": "incumbent",
+     "best_start_candidates": 5,
+     "baseline_gain": 12.10160040000767,
+     "npz_ts_last": 1792767600.0,
+     "npz_md5": "1da3feb29cc57f52d05a2f6aa79c61a1",
+     "npz_bars": 43070,
+     "bh": 0.4420567873963377,
      "verdict": null,
-     "npz_age_h_at_publish": 1.38
+     "npz_age_h_at_publish": 1.25
     }
    ],
    "error": null
   },
   "s2": {
-   "published_n": 4,
-   "per_hour": 2.0,
-   "improved_vs_best_start": 4,
-   "mean_uplift_vs_best_start": 15.2841,
+   "published_n": 5,
+   "per_hour": 2.5,
+   "improved_vs_best_start": 5,
+   "mean_uplift_vs_best_start": 26.5809,
    "median_uplift": 15.9241,
-   "chained_from_previous_published": 4,
+   "chained_from_previous_published": 5,
    "no_floor_recorded": 0,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 2.0/h < 12.0/h (one per 5 min)"
+    "throughput 2.5/h < 12.0/h (one per 5 min)"
    ],
    "rows": [
     {
@@ -64,6 +64,21 @@
      "bh": 0.995668449824535,
      "verdict": null,
      "npz_age_h_at_publish": 0.83
+    },
+    {
+     "symside": "RLCUSDT_LONG",
+     "published_at": 1792770252.6040113,
+     "final_gain": 238.6967075297992,
+     "best_start_gain": 166.92880794569288,
+     "best_start_chosen": "history_2",
+     "best_start_candidates": 10,
+     "baseline_gain": 166.92880794569288,
+     "npz_ts_last": 1792766700.0,
+     "npz_md5": "4413db3ce388dc7f72d96c75b2804997",
+     "npz_bars": 40750,
+     "bh": 90.04418117353555,
+     "verdict": null,
+     "npz_age_h_at_publish": 0.99
     },
     {
      "symside": "RLCUSDT_SHORT",
