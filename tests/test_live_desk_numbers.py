@@ -177,6 +177,19 @@ def test_broker_fills_counted_once_and_unattributed_hidden():
     assert srv._is_broker_reconstruction(None) is False
 
 
+def test_asof_blanks_unsettled_days_never_zero():
+    w = {"b_today": 0.0, "b_yest": 0.0, "b_7d": -5193.33, "b_30d": -24782.32, "d_today": "2026-10-23", "d_yest": "2026-10-22"}
+    lagged = srv._apply_asof(w, "2026-10-21")
+    assert lagged["b_today"] is None
+    assert lagged["b_yest"] is None
+    assert lagged["b_7d"] == -5193.33
+    assert lagged["b_30d"] == -24782.32
+    fresh = srv._apply_asof(w, "2026-10-23")
+    assert fresh["b_today"] == 0.0 and fresh["b_yest"] == 0.0
+    mid = srv._apply_asof(w, "2026-10-22")
+    assert mid["b_today"] is None and mid["b_yest"] == 0.0
+
+
 def test_basisless_echo_twins_hidden():
     now = datetime.now(timezone.utc).replace(microsecond=0)
     iso = lambda dt: dt.isoformat()
