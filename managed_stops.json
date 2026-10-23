@@ -1,16 +1,23 @@
 {
-  "ang:1000PEPEUSDC_LONG": {
-    "orderId": "4000001989136391",
-    "stopPrice": 0.0043798,
-    "entry_sig": "2026-10-23 06:42:58.550000+00:00",
-    "symbol": "1000PEPEUSDC",
-    "side": "LONG"
+  "flz:DASHUSDT_SHORT": {
+    "orderId": "1000002640059318",
+    "stopPrice": 54.51,
+    "entry_sig": "2026-10-23 16:43:45.189000+00:00",
+    "symbol": "DASHUSDT",
+    "side": "SHORT"
   },
-  "ang:MASKUSDT_SHORT": {
-    "orderId": "4000001991067235",
-    "stopPrice": 0.434,
-    "entry_sig": "2026-10-23 08:51:31.205000+00:00",
-    "symbol": "MASKUSDT",
+  "flz:XMRUSDT_SHORT": {
+    "orderId": "1000002640059696",
+    "stopPrice": 636.33,
+    "entry_sig": "2026-10-23 21:14:44.872616+00:00",
+    "symbol": "XMRUSDT",
+    "side": "SHORT"
+  },
+  "flz:ZECUSDC_SHORT": {
+    "orderId": "1000002640059705",
+    "stopPrice": 1263.63,
+    "entry_sig": "2026-10-23 21:19:36.766644+00:00",
+    "symbol": "ZECUSDC",
     "side": "SHORT"
   }
 }
