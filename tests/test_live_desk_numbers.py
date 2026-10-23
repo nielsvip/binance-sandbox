@@ -190,6 +190,40 @@ def test_asof_blanks_unsettled_days_never_zero():
     assert mid["b_today"] is None and mid["b_yest"] == 0.0
 
 
+def test_account_value_ledger_roundtrip_and_throttle(tmp_path):
+    srv.LEDGER_PATH = tmp_path / "account_values.json"
+    srv._LEDGER_WRITE_AT.clear()
+    bal = {"equity": 45902.05, "avail": 45902.05, "open_pl": 0.0, "close_pl": -0.52}
+    srv._record_account_day("trb", bal, 0.0)
+    led = srv._load_ledger()
+    today = time.strftime("%Y-%m-%d", time.gmtime(time.time()))
+    assert led["trb"][today]["equity"] == 45902.05
+    assert led["trb"][today]["close_pl"] == -0.52
+    assert led["trb"][today]["ts_first"] == led["trb"][today]["ts_last"]
+    srv._record_account_day("trb", dict(bal, equity=45903.0), 0.0)
+    assert srv._load_ledger()["trb"][today]["equity"] == 45902.05
+    srv._LEDGER_WRITE_AT.clear()
+    srv._record_account_day("trb", dict(bal, equity=45903.0), 1.0)
+    rec = srv._load_ledger()["trb"][today]
+    assert rec["equity"] == 45903.0 and rec["unreal_desk"] == 1.0
+    srv._LEDGER_WRITE_AT.clear()
+    srv._record_account_day("trb", {"equity": None, "avail": None, "open_pl": None, "close_pl": None}, None)
+    rec = srv._load_ledger()["trb"][today]
+    assert rec["equity"] == 45903.0 and rec["close_pl"] == -0.52
+
+
+def test_implied_today_from_equity_marks(tmp_path):
+    srv.LEDGER_PATH = tmp_path / "account_values.json"
+    srv._LEDGER_WRITE_AT.clear()
+    now = time.time()
+    yest = time.strftime("%Y-%m-%d", time.gmtime(now - 86400))
+    srv.LEDGER_PATH.parent.mkdir(parents=True, exist_ok=True)
+    srv.LEDGER_PATH.write_text(json.dumps({"trb": {yest: {"equity": 46000.0, "open_pl": 100.0}}}))
+    assert srv._implied_today("trb", 45902.05, 0.0) == round((45902.05 - 46000.0) - (0.0 - 100.0), 2)
+    assert srv._implied_today("trb", None, 0.0) is None
+    assert srv._implied_today("nosuch", 1.0, 0.0) is None
+
+
 def test_basisless_echo_twins_hidden():
     now = datetime.now(timezone.utc).replace(microsecond=0)
     iso = lambda dt: dt.isoformat()
