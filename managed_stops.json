@@ -20,35 +20,6 @@
     "symbol": "MAGICUSDT",
     "side": "SHORT"
   },
-  "fin:ZECUSDC_LONG": {
-    "orderId": "3000002268587897",
-    "stopPrice": 1204.16,
-    "entry_sig": "2026-10-23 09:42:13.624000+00:00",
-    "symbol": "ZECUSDC",
-    "side": "LONG"
-  },
-  "fin:WLDUSDC_LONG": {
-    "orderId": "3000002268588324",
-    "stopPrice": 0.5345,
-    "entry_sig": "2026-10-23 09:50:00.821000+00:00",
-    "symbol": "WLDUSDC",
-    "side": "LONG",
-    "disaster_backstop": true
-  },
-  "fin:CRVUSDC_LONG": {
-    "orderId": "3000002268602070",
-    "stopPrice": 0.3594,
-    "entry_sig": "2026-10-23 09:40:06.358000+00:00",
-    "symbol": "CRVUSDC",
-    "side": "LONG"
-  },
-  "fin:PENGUUSDC_LONG": {
-    "orderId": "3000002268602388",
-    "stopPrice": 0.007418,
-    "entry_sig": "2026-10-23 09:56:13.793000+00:00",
-    "symbol": "PENGUUSDC",
-    "side": "LONG"
-  },
   "fin:BBUSDT_LONG": {
     "orderId": "3000002268602386",
     "stopPrice": 0.007909,
@@ -85,7 +56,7 @@
     "side": "SHORT"
   },
   "fin:ETHFIUSDC_LONG": {
-    "orderId": "3000002268619260",
+    "orderId": "3000002268630505",
     "stopPrice": 0.6368,
     "entry_sig": "2026-10-23 10:01:04.655000+00:00",
     "symbol": "ETHFIUSDC",
