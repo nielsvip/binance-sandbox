@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-23T21:35:15Z",
+ "ts": "2026-10-23T21:40:26Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 32,
-   "open_positions": 14,
-   "unrealised_usd": -0.71,
+   "fills_6h": 29,
+   "open_positions": 15,
+   "unrealised_usd": -0.61,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 3,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 4,
    "open_positions": 5,
-   "unrealised_usd": 1.08,
+   "unrealised_usd": 1.23,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 30,
    "open_positions": 13,
-   "unrealised_usd": 1.16,
+   "unrealised_usd": 1.11,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -126,119 +126,99 @@
    "pids": [
     "28267"
    ],
-   "starts_30m": 3,
-   "log_age_s": -0.0
+   "starts_30m": 2,
+   "log_age_s": 1.0
   },
   "men": {
    "pids": [
     "23041"
    ],
-   "starts_30m": 3,
-   "log_age_s": -0.0
+   "starts_30m": 2,
+   "log_age_s": 2.0
   },
   "ang": {
    "pids": [
     "18194"
    ],
-   "starts_30m": 5,
-   "log_age_s": 22.0
+   "starts_30m": 2,
+   "log_age_s": 169.0
   },
   "inf": {
    "pids": [
     "12903"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 0.0
   },
   "flz": {
    "pids": [
     "13450"
    ],
-   "starts_30m": 2,
+   "starts_30m": 1,
    "log_age_s": 0.0
   },
   "trb": {
    "pids": [
     "5224"
    ],
-   "starts_30m": 2,
-   "log_age_s": 9.0
+   "starts_30m": 1,
+   "log_age_s": -0.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 13140.0
+   "log_age_s": 13451.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-23T21:35:15Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "fin:STRKUSDT_SHORT",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 2367.57->7102.7 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 2367.57)"
-  },
-  {
-   "ts": "2026-10-23T21:35:16Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "men:BEAMXUSDT_LONG",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 35513.5->106540 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 35513.5)"
-  },
-  {
-   "ts": "2026-10-23T21:35:16Z",
+   "ts": "2026-10-23T21:40:26Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "men:BEAMXUSDT_LONG",
    "evidence": "BREAKOUT_SIZE_LADDER resized qty 35711.8->107136 = $359.98 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 35711.8)"
   },
   {
-   "ts": "2026-10-23T21:35:16Z",
+   "ts": "2026-10-23T21:40:26Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "men:BEAMXUSDT_LONG",
    "evidence": "BREAKOUT_SIZE_LADDER resized qty 35724.9->107175 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 35724.9)"
   },
   {
-   "ts": "2026-10-23T21:35:16Z",
+   "ts": "2026-10-23T21:40:27Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:WLDUSDC_LONG",
    "evidence": "AUGMENT 21.2 @ 2026-10-23T16:45:07Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-23T21:35:16Z",
+   "ts": "2026-10-23T21:40:27Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:WLDUSDC_LONG",
    "evidence": "REDUCE 21.2 @ 2026-10-23T17:31:18Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-23T21:35:17Z",
-   "severity": "CRITICAL",
-   "kind": "RESTART_LOOP",
-   "key": "fin",
-   "evidence": "3 new process ids in 30 min (['9513', '13336', '28267'])"
+   "ts": "2026-10-23T21:40:27Z",
+   "severity": "WARN",
+   "kind": "ATTEMPT_STORM_KEY",
+   "key": "fin:BBUSDT_LONG",
+   "evidence": "39 execute_now attempts in 5 min (pre-gate)"
   },
   {
-   "ts": "2026-10-23T21:35:17Z",
+   "ts": "2026-10-23T21:40:27Z",
    "severity": "CRITICAL",
-   "kind": "RESTART_LOOP",
-   "key": "men",
-   "evidence": "3 new process ids in 30 min (['14897', '13764', '23041'])"
-  },
-  {
-   "ts": "2026-10-23T21:35:17Z",
-   "severity": "CRITICAL",
-   "kind": "RESTART_LOOP",
+   "kind": "STALE_LOG",
    "key": "ang",
-   "evidence": "5 new process ids in 30 min (['12563', '15563', '8856', '16967', '18194'])"
+   "evidence": "ez_manage_ang.log not written for 169s"
   }
  ],
  "alert_counts": {
-  "SIZE_ANOMALY": 4,
+  "SIZE_ANOMALY": 2,
   "FILL_WITHOUT_VEC_DECISION": 2,
-  "RESTART_LOOP": 3
+  "ATTEMPT_STORM_KEY": 1,
+  "STALE_LOG": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -327,5 +307,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.55
+ "sweep_s": 1.21
 }
