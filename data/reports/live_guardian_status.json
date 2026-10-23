@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-23T12:42:49Z",
+ "ts": "2026-10-23T12:47:56Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 110,
+   "fills_6h": 111,
    "open_positions": 8,
-   "unrealised_usd": 3.9,
+   "unrealised_usd": 2.07,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 1,
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 16,
    "open_positions": 4,
-   "unrealised_usd": 0.28,
+   "unrealised_usd": 0.23,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 46,
+   "fills_6h": 42,
    "open_positions": 7,
-   "unrealised_usd": 7.75,
+   "unrealised_usd": 7.19,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 10,
    "open_positions": 5,
-   "unrealised_usd": 0.97,
+   "unrealised_usd": 0.92,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,75 +127,76 @@
     "22551"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 1.0
   },
   "men": {
    "pids": [
     "95891"
    ],
    "starts_30m": 1,
-   "log_age_s": 24.0
+   "log_age_s": 14.0
   },
   "ang": {
    "pids": [
     "50544"
    ],
    "starts_30m": 1,
-   "log_age_s": 414.0
+   "log_age_s": 114.0
   },
   "inf": {
    "pids": [
     "82830"
    ],
    "starts_30m": 1,
-   "log_age_s": 6.0
+   "log_age_s": 27.0
   },
   "flz": {
    "pids": [
     "12407"
    ],
    "starts_30m": 1,
-   "log_age_s": 2499.0
+   "log_age_s": 2806.0
   },
   "trb": {
    "pids": [
     "77496"
    ],
    "starts_30m": 1,
-   "log_age_s": 8.0
+   "log_age_s": 2.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 60106.0
+   "log_age_s": 60413.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-23T12:42:49Z",
+   "ts": "2026-10-23T12:47:56Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "fin:STXUSDT_SHORT",
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 377.003->1131.01 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 377.003)"
+  },
+  {
+   "ts": "2026-10-23T12:47:56Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "fin:RLCUSDT_SHORT",
    "evidence": "CLOSE PROFIT_TP_EXHAUSTION decided 2026-10-23T11:23:59Z bar=2026-10-23T10:15:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-23T12:42:50Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 414s"
-  },
-  {
-   "ts": "2026-10-23T12:42:50Z",
+   "ts": "2026-10-23T12:47:57Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 2499s"
+   "evidence": "ez_manage_flz.log not written for 2806s"
   }
  ],
  "alert_counts": {
+  "SIZE_ANOMALY": 1,
   "VEC_DECISION_NOT_FILLED": 1,
-  "STALE_LOG": 2
+  "STALE_LOG": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -242,5 +243,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.96
+ "sweep_s": 0.68
 }
