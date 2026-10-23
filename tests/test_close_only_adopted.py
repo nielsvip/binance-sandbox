@@ -51,6 +51,24 @@ def test_reconcile_never_opens_non_tradeable_but_still_closes(tmp_path, monkeypa
     assert [c["action"] for c in calls2] == ["CLOSE"], calls2
 
 
+def test_write_registry_merges_across_lane_passes(tmp_path, monkeypatch):
+    """USER 2026-10-23 vec-native parity: two lane passes (crypto + trb) share vec_driven.json.
+    A pass must UNION its keys with the file, never replace it — measured 11:30Z: a trb replace
+    wiped every crypto key mid-flight and in-flight crypto dictates lost vec exemption."""
+    monkeypatch.setattr(pbt, "VEC_LIVE", tmp_path)
+    pbt.write_registry([("fin", "COMPUSDT_LONG"), ("ang", "GALAUSDT_SHORT")], hours=12)
+    pbt.write_registry([("trb", "AAPL_LONG")], hours=12)
+    reg = json.loads((tmp_path / "vec_driven.json").read_text())
+    assert reg["COMPUSDT_LONG"]["account"] == "fin", reg["COMPUSDT_LONG"]
+    assert reg["GALAUSDT_SHORT"]["account"] == "ang"
+    assert reg["AAPL_LONG"]["account"] == "trb"
+    assert reg["expires_utc"] > reg["_written_utc"]
+    # shared key across passes unions accounts, never duplicates
+    pbt.write_registry([("men", "GALAUSDT_SHORT")], hours=12)
+    reg = json.loads((tmp_path / "vec_driven.json").read_text())
+    assert sorted(reg["GALAUSDT_SHORT"]["account"]) == ["ang", "men"], reg["GALAUSDT_SHORT"]
+
+
 def test_lane_counts_sidelined_counter():
     """Pin: the CONVERGE_OPEN gate counts SIDELINED_NON_TRADEABLE (grep-pin, repo convention)."""
     src = Path(pbt.__file__).read_text()

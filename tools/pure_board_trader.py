@@ -395,9 +395,27 @@ def write_registry(keys, hours: float):
     `data/vec_live/KILL` does the same instantly. The lane refreshes the expiry each pass while it is alive, so stopping
     the lane is itself the kill switch.
     """
+    # USER 2026-10-23 vec-native parity: MERGE with the existing file, never replace. Two lane passes
+    # (crypto + trb) share this file, and a replace lets one pass wipe the other's live keys — measured
+    # 11:30Z: a trb pass replaced all 114 entries with trb-only keys, deleting every crypto key mid-flight,
+    # so in-flight crypto dictates lost their vec exemption and dedup/overtrade gates ate them (fin
+    # COMPUSDT_LONG + GRASSUSDT_LONG stranded flat-while-board-holds). Staleness stays bounded by
+    # expires_utc (refreshed here) and the instant global KILL switch; deliberate per-key stops keep
+    # working through the tradeable-gates downstream.
+    try:
+        _prev = json.load(open(VEC_LIVE / "vec_driven.json"))
+        _prev_entries = _prev.get("entries", _prev) if isinstance(_prev, dict) else {}
+    except Exception:
+        _prev_entries = {}
     reg = {"_why": "tools/pure_board_trader.py — the latest published board set per sym_side decides, ez_manage executes",
            "_written_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
            "expires_utc": dt.datetime.fromtimestamp(time.time() + hours * 3600.0, dt.timezone.utc).isoformat()}
+    if isinstance(_prev_entries, dict):
+        for _ss, _e in _prev_entries.items():
+            if isinstance(_e, dict) and str(_ss)[:1] != "_":
+                _pa = _e.get("account", _e.get("accounts", []))
+                _pa = [_pa] if isinstance(_pa, str) else list(_pa or [])
+                reg.setdefault(str(_ss), {"mode": str(_e.get("mode", "live")), "account": _pa})
     for acct, ss in keys:
         e = reg.setdefault(ss, {"mode": "live", "account": []})
         if isinstance(e.get("account"), list) and acct not in e["account"]:
