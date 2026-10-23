@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-23T08:21:29Z",
+ "ts": "2026-10-23T08:26:47Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,7 +29,7 @@
   "fin": {
    "fills_6h": 31,
    "open_positions": 3,
-   "unrealised_usd": -1.45,
+   "unrealised_usd": -1.53,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 26,
    "open_positions": 9,
-   "unrealised_usd": 0.29,
+   "unrealised_usd": 0.26,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 56,
-   "open_positions": 10,
-   "unrealised_usd": 2.15,
+   "fills_6h": 58,
+   "open_positions": 9,
+   "unrealised_usd": 2.17,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -91,9 +91,9 @@
    }
   },
   "flz": {
-   "fills_6h": 20,
+   "fills_6h": 19,
    "open_positions": 6,
-   "unrealised_usd": 1.07,
+   "unrealised_usd": 1.0,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,51 +127,61 @@
     "53921"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 0.0
   },
   "men": {
    "pids": [
     "42441"
    ],
-   "starts_30m": 0,
-   "log_age_s": 28.0
+   "starts_30m": 1,
+   "log_age_s": 12.0
   },
   "ang": {
    "pids": [
     "50544"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 3.0
   },
   "inf": {
    "pids": [
     "38044"
    ],
    "starts_30m": 1,
-   "log_age_s": 65.0
+   "log_age_s": 1.0
   },
   "flz": {
    "pids": [
     "94870"
    ],
    "starts_30m": 1,
-   "log_age_s": 10.0
+   "log_age_s": 29.0
   },
   "trb": {
    "pids": [
     "69879"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 5.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 44426.0
+   "log_age_s": 44744.0
   }
  },
- "alerts": [],
- "alert_counts": {},
+ "alerts": [
+  {
+   "ts": "2026-10-23T08:26:48Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "ang:STRKUSDT_SHORT",
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 2257.28->6771.85 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 2257.28)"
+  }
+ ],
+ "alert_counts": {
+  "SIZE_ANOMALY": 1
+ },
  "active_interventions": {
   "acct:trc": {
    "ts": 1791314517.218395,
@@ -217,5 +227,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.87
+ "sweep_s": 0.84
 }
