@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-23T11:15:28Z",
+ "ts": "2026-10-23T11:20:32Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 81,
-   "open_positions": 9,
-   "unrealised_usd": 0.6,
+   "fills_6h": 83,
+   "open_positions": 8,
+   "unrealised_usd": 0.5,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 25,
+   "fills_6h": 24,
    "open_positions": 5,
-   "unrealised_usd": 0.04,
+   "unrealised_usd": -0.0,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 50,
+   "fills_6h": 49,
    "open_positions": 8,
-   "unrealised_usd": 6.3,
+   "unrealised_usd": 6.33,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -91,9 +91,9 @@
    }
   },
   "flz": {
-   "fills_6h": 12,
+   "fills_6h": 11,
    "open_positions": 5,
-   "unrealised_usd": 0.72,
+   "unrealised_usd": 0.69,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,56 +127,56 @@
     "47661"
    ],
    "starts_30m": 1,
-   "log_age_s": 61.0
+   "log_age_s": 0.0
   },
   "men": {
    "pids": [
     "40038"
    ],
    "starts_30m": 1,
-   "log_age_s": 13.0
+   "log_age_s": 1.0
   },
   "ang": {
    "pids": [
     "50544"
    ],
    "starts_30m": 1,
-   "log_age_s": 365.0
+   "log_age_s": 670.0
   },
   "inf": {
    "pids": [
     "82830"
    ],
    "starts_30m": 1,
-   "log_age_s": 9.0
+   "log_age_s": 1.0
   },
   "flz": {
    "pids": [
     "35119"
    ],
    "starts_30m": 1,
-   "log_age_s": 117.0
+   "log_age_s": 81.0
   },
   "trb": {
    "pids": [
     "77496"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 1.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 54866.0
+   "log_age_s": 55171.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-23T11:15:29Z",
+   "ts": "2026-10-23T11:20:34Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 365s"
+   "evidence": "ez_manage_ang.log not written for 670s"
   }
  ],
  "alert_counts": {
@@ -234,5 +234,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.31
+ "sweep_s": 2.61
 }
