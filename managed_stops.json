@@ -1,58 +1,23 @@
 {
-  "fin:VETUSDT_LONG": {
-    "orderId": "3000002269947837",
-    "stopPrice": 0.006665,
-    "entry_sig": "2026-10-23 09:43:24.075000+00:00",
-    "symbol": "VETUSDT",
+  "inf:BTCDOMUSDT_LONG": {
+    "orderId": "2000001536126312",
+    "stopPrice": 5506.7,
+    "entry_sig": "2026-10-23 23:09:59.396000+00:00",
+    "symbol": "BTCDOMUSDT",
     "side": "LONG"
   },
-  "fin:NMRUSDT_SHORT": {
-    "orderId": "3000002270027723",
-    "stopPrice": 10.794,
-    "entry_sig": "2026-10-23 22:59:50.319000+00:00",
-    "symbol": "NMRUSDT",
+  "inf:TRXUSDT_SHORT": {
+    "orderId": "2000001536155381",
+    "stopPrice": 0.33177,
+    "entry_sig": "2026-10-23 23:07:22.497000+00:00",
+    "symbol": "TRXUSDT",
     "side": "SHORT"
   },
-  "fin:KSMUSDT_SHORT": {
-    "orderId": "3000002270027724",
-    "stopPrice": 4.04,
-    "entry_sig": "2026-10-23 22:59:50.732000+00:00",
-    "symbol": "KSMUSDT",
-    "side": "SHORT"
-  },
-  "fin:BOMEUSDC_SHORT": {
-    "orderId": "3000002270032299",
-    "stopPrice": 0.0006483,
-    "entry_sig": "2026-10-23 23:12:54.290000+00:00",
-    "symbol": "BOMEUSDC",
-    "side": "SHORT"
-  },
-  "fin:MAGICUSDT_SHORT": {
-    "orderId": "3000002270041395",
-    "stopPrice": 0.09234,
-    "entry_sig": "2026-10-23 21:40:59.535000+00:00",
-    "symbol": "MAGICUSDT",
-    "side": "SHORT"
-  },
-  "fin:MOVRUSDT_SHORT": {
-    "orderId": "3000002270045223",
-    "stopPrice": 1.2277,
-    "entry_sig": "2026-10-23 21:59:03.510000+00:00",
-    "symbol": "MOVRUSDT",
-    "side": "SHORT"
-  },
-  "fin:BLURUSDT_SHORT": {
-    "orderId": "3000002270045225",
-    "stopPrice": 0.0087,
-    "entry_sig": "2026-10-23 22:59:59.737000+00:00",
-    "symbol": "BLURUSDT",
-    "side": "SHORT"
-  },
-  "fin:STRKUSDT_SHORT": {
-    "orderId": "3000002270045224",
-    "stopPrice": 0.0522,
-    "entry_sig": "2026-10-23 22:59:50.719000+00:00",
-    "symbol": "STRKUSDT",
-    "side": "SHORT"
+  "inf:VETUSDT_LONG": {
+    "orderId": "2000001536160738",
+    "stopPrice": 0.00684,
+    "entry_sig": "2026-10-23 23:10:01.434000+00:00",
+    "symbol": "VETUSDT",
+    "side": "LONG"
   }
 }
