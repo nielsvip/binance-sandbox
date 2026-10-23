@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-23T13:08:36Z",
+ "ts": "2026-10-23T13:13:41Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,12 +27,12 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 121,
-   "open_positions": 8,
-   "unrealised_usd": 1.07,
+   "fills_6h": 122,
+   "open_positions": 10,
+   "unrealised_usd": 1.62,
    "pos_mismatch": 0,
    "vec_parity": {
-    "live_vec_decisions": 1,
+    "live_vec_decisions": 2,
     "state_divergent": 0,
     "filled": 0,
     "refused_non_safety": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 30,
+   "fills_6h": 28,
    "open_positions": 7,
-   "unrealised_usd": 7.03,
+   "unrealised_usd": 7.0,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 10,
    "open_positions": 5,
-   "unrealised_usd": 0.79,
+   "unrealised_usd": 0.82,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,119 +127,119 @@
     "22551"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 3.0
   },
   "men": {
    "pids": [
     "95891"
    ],
    "starts_30m": 2,
-   "log_age_s": 11.0
+   "log_age_s": 26.0
   },
   "ang": {
    "pids": [
     "50544"
    ],
    "starts_30m": 1,
-   "log_age_s": 141.0
+   "log_age_s": 142.0
   },
   "inf": {
    "pids": [
     "82830"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 20.0
   },
   "flz": {
    "pids": [
     "63687"
    ],
    "starts_30m": 1,
-   "log_age_s": 190.0
+   "log_age_s": 494.0
   },
   "trb": {
    "pids": [
     "41039"
    ],
    "starts_30m": 2,
-   "log_age_s": 1.0
+   "log_age_s": 0.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 61654.0
+   "log_age_s": 61958.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-23T13:08:36Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "fin:ZECUSDC_LONG",
-   "evidence": "23 12:54:43 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:ZECUSDC_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $160 on bounce (prior max 0.0220)"
-  },
-  {
-   "ts": "2026-10-23T13:08:36Z",
+   "ts": "2026-10-23T13:13:41Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "fin:ZECUSDC_LONG",
    "evidence": "23 13:00:11 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:ZECUSDC_LONG: bypass MAX_ORDER_VALUE $120 \u2014 restoring $161 (prior max 0.0220) on bounce"
   },
   {
-   "ts": "2026-10-23T13:08:36Z",
+   "ts": "2026-10-23T13:13:41Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "fin:SKYAIUSDT_LONG",
    "evidence": "23 13:01:24 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:SKYAIUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $33 on bounce (prior max 794.0000)"
   },
   {
-   "ts": "2026-10-23T13:08:36Z",
+   "ts": "2026-10-23T13:13:41Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "fin:NMRUSDT_SHORT",
    "evidence": "23 13:02:58 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:NMRUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $3601 on bounce (prior max 2.6000)"
   },
   {
-   "ts": "2026-10-23T13:08:36Z",
+   "ts": "2026-10-23T13:13:41Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "fin:NMRUSDT_SHORT",
    "evidence": "order notional $3601.28 > MAX_ORDER_VALUE $300: 23 13:02:58 - INFO - [fin] [execute_trade_action][fin] \u2705 \u2705 \u2705 \u2705 OPEN fin:NMRUSDT_SHORT @ 10.610000 qty=339.423450 ($3601.28) side=SELL | CRYPTO_REENTRY_PATHWAY_HTF_WT_CHURN_SHORT_px10.605000_exit10.621"
   },
   {
-   "ts": "2026-10-23T13:08:36Z",
+   "ts": "2026-10-23T13:13:41Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "fin:NMRUSDT_SHORT",
    "evidence": "BREAKOUT_SIZE_LADDER resized qty 339.423->1018.27 = $10803.85 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 339.423)"
   },
   {
-   "ts": "2026-10-23T13:08:36Z",
+   "ts": "2026-10-23T13:13:41Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "fin:ZKUSDT_SHORT",
    "evidence": "23 13:06:36 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:ZKUSDT_SHORT: bypass MAX_ORDER_VALUE $120 \u2014 restoring $1393 (prior max 2116.0000) on bounce"
   },
   {
-   "ts": "2026-10-23T13:08:37Z",
+   "ts": "2026-10-23T13:13:41Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "fin:NMRUSDT_SHORT",
+   "evidence": "23 13:08:48 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:NMRUSDT_SHORT: bypass MAX_ORDER_VALUE $120 \u2014 restoring $10829 (prior max 2.6000) on bounce"
+  },
+  {
+   "ts": "2026-10-23T13:13:41Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "fin:RLCUSDT_SHORT",
    "evidence": "CLOSE PROFIT_TP_EXHAUSTION decided 2026-10-23T11:23:59Z bar=2026-10-23T10:15:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-23T13:08:38Z",
+   "ts": "2026-10-23T13:13:42Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 141s"
+   "evidence": "ez_manage_ang.log not written for 142s"
   },
   {
-   "ts": "2026-10-23T13:08:38Z",
+   "ts": "2026-10-23T13:13:42Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 190s"
+   "evidence": "ez_manage_flz.log not written for 494s"
   }
  ],
  "alert_counts": {
@@ -307,5 +307,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.37
+ "sweep_s": 1.22
 }

@@ -1,20 +1,16 @@
 {
- "generated_utc": "2026-10-23T12:12:07.162702+00:00",
+ "generated_utc": "2026-10-23T13:12:04.795067+00:00",
  "days": 1.0,
  "totals": {
-  "entry_promises": 39,
-  "entry_broken_no_delivery": 39,
   "exit_promises": 78,
   "exit_broken_no_delivery": 74,
+  "entry_promises": 39,
+  "entry_broken_no_delivery": 39,
   "exit_kept_late": 2,
   "exit_skipped_inflight": 69,
   "exit_kept_in_bar": 2
  },
  "per_key": {
-  "flz:XRPUSDC_SHORT": {
-   "entry_promises": 1,
-   "entry_broken_no_delivery": 1
-  },
   "men:BLURUSDT_SHORT": {
    "exit_promises": 4,
    "exit_broken_no_delivery": 4,
@@ -203,8 +199,8 @@
    "exit_broken_no_delivery": 2
   },
   "fin:GRASSUSDT_LONG": {
-   "entry_promises": 2,
-   "entry_broken_no_delivery": 2,
+   "entry_promises": 3,
+   "entry_broken_no_delivery": 3,
    "exit_promises": 2,
    "exit_broken_no_delivery": 2
   },
@@ -256,16 +252,6 @@
   }
  },
  "detail": [
-  {
-   "acct": "flz",
-   "sym_side": "XRPUSDC_SHORT",
-   "kind": "entry",
-   "bar": "10-22 10:30",
-   "late_min": null,
-   "action": "OPEN",
-   "reason": "B14",
-   "outcome": "NO_DELIVERY"
-  },
   {
    "acct": "men",
    "sym_side": "BLURUSDT_SHORT",
@@ -1404,6 +1390,16 @@
    "late_min": null,
    "action": "CLOSE",
    "reason": "PROFIT_TP_EXHAUSTION",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "fin",
+   "sym_side": "GRASSUSDT_LONG",
+   "kind": "entry",
+   "bar": "10-23 12:15",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "B09",
    "outcome": "NO_DELIVERY"
   }
  ],
