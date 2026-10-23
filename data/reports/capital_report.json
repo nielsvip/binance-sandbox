@@ -1,43 +1,69 @@
 {
- "generated_at": "2026-10-23 04:35 UTC",
- "total_capital_usd": 40.56,
+ "generated_at": "2026-10-23 04:49 UTC",
+ "total_capital_usd": 254.52,
  "tier_capital": {
-  "A": 0.0,
-  "B": 40.57,
-  "C": 0.0
+  "A": 45.95,
+  "B": 163.71,
+  "C": 44.86
  },
  "tier_count": {
-  "A": 0,
+  "A": 1,
   "B": 2,
-  "C": 0
+  "C": 1
  },
- "winners": [],
- "losers": [],
- "mediocre": [
-  "men:TUSDT_SHORT"
+ "winners": [
+  "fin:1000PEPEUSDC_LONG"
  ],
+ "losers": [
+  "fin:KASUSDT_LONG",
+  "fin:COMPUSDT_LONG",
+  "fin:DASHUSDT_LONG"
+ ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "men:BATUSDT_LONG",
-   "symbol": "BATUSDT",
-   "account": "men",
-   "value_usd": 30.18,
-   "gain_pct": 0.3,
+   "pk": "fin:COMPUSDT_LONG",
+   "symbol": "COMPUSDT",
+   "account": "fin",
+   "value_usd": 118.71,
+   "gain_pct": -1.115,
    "tier": "B",
-   "perf_mult": 6.92,
-   "amt": 175.0,
-   "mark": 0.17245
+   "perf_mult": 4.79,
+   "amt": 4.874,
+   "mark": 24.35547918
   },
   {
-   "pk": "men:TUSDT_SHORT",
-   "symbol": "TUSDT",
-   "account": "men",
-   "value_usd": 10.39,
-   "gain_pct": 0.0,
+   "pk": "fin:1000PEPEUSDC_LONG",
+   "symbol": "1000PEPEUSDC",
+   "account": "fin",
+   "value_usd": 45.95,
+   "gain_pct": 0.59,
+   "tier": "A",
+   "perf_mult": 5.87,
+   "amt": 10184.0,
+   "mark": 0.00451228
+  },
+  {
+   "pk": "fin:KASUSDT_LONG",
+   "symbol": "KASUSDT",
+   "account": "fin",
+   "value_usd": 45.0,
+   "gain_pct": -1.168,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 1574.0,
-   "mark": 0.006598113580072874
+   "amt": 1207.0,
+   "mark": 0.03727931
+  },
+  {
+   "pk": "fin:DASHUSDT_LONG",
+   "symbol": "DASHUSDT",
+   "account": "fin",
+   "value_usd": 44.86,
+   "gain_pct": -0.453,
+   "tier": "C",
+   "perf_mult": 0.39,
+   "amt": 0.821,
+   "mark": 54.64150759
   }
  ]
 }
