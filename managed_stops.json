@@ -1,16 +1,37 @@
 {
-  "fin:VETUSDT_LONG": {
-    "orderId": "3000002269556190",
-    "stopPrice": 0.006665,
-    "entry_sig": "2026-10-23 09:43:24.075000+00:00",
-    "symbol": "VETUSDT",
+  "men:ETHFIUSDC_LONG": {
+    "orderId": "2000001536003194",
+    "stopPrice": 0.6436,
+    "entry_sig": "2026-10-23 22:10:37.011000+00:00",
+    "symbol": "ETHFIUSDC",
     "side": "LONG"
   },
-  "fin:MOVRUSDT_SHORT": {
-    "orderId": "3000002269914706",
-    "stopPrice": 1.2277,
-    "entry_sig": "2026-10-23 21:59:03.510000+00:00",
-    "symbol": "MOVRUSDT",
+  "men:INJUSDT_LONG": {
+    "orderId": "2000001536004616",
+    "stopPrice": 7.784,
+    "entry_sig": "2026-10-23 22:11:06.411000+00:00",
+    "symbol": "INJUSDT",
+    "side": "LONG"
+  },
+  "men:BATUSDT_LONG": {
+    "orderId": "2000001536005517",
+    "stopPrice": 0.17039,
+    "entry_sig": "2026-10-23 22:11:19.659000+00:00",
+    "symbol": "BATUSDT",
+    "side": "LONG"
+  },
+  "men:1000LUNCUSDT_SHORT": {
+    "orderId": "2000001536005547",
+    "stopPrice": 0.04764,
+    "entry_sig": "2026-10-23 22:13:05.887000+00:00",
+    "symbol": "1000LUNCUSDT",
     "side": "SHORT"
+  },
+  "men:KMNOUSDT_LONG": {
+    "orderId": "2000001536003191",
+    "stopPrice": 0.04017,
+    "entry_sig": "2026-10-23 21:52:06.793000+00:00",
+    "symbol": "KMNOUSDT",
+    "side": "LONG"
   }
 }
