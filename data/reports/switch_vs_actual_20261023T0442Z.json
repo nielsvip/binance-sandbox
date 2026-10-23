@@ -1,0 +1,77 @@
+{
+ "window_from": "10-23 03:37",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 176,
+  "status_OK": 171,
+  "EXTRA": 4,
+  "STATE_CONVERGENCE": 1
+ },
+ "rows": [
+  {
+   "acct": "flz",
+   "sym_side": "GRAMUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-23 04:25",
+   "actual": "REDUCE",
+   "actual_reason": "FIXED_STOP_SHORT_px1.323000_lvl1.320292_g-0.46_REFdc_low.15m.b0.225",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "flz",
+   "sym_side": "HYPEUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-23 04:18",
+   "actual": "REDUCE",
+   "actual_reason": "FIXED_STOP_LONG_px77.978361_lvl78.023453_g-0.31_REFbb_low.15m.b0.25.Ttrail_ref",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "flz",
+   "sym_side": "HYPEUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-23 04:25",
+   "actual": "REDUCE",
+   "actual_reason": "FIXED_STOP_LONG_px77.978361_lvl78.023453_g-0.31_REFbb_low.15m.b0.25.Ttrail_ref",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "fin",
+   "sym_side": "NMRUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-23 04:06",
+   "actual": "REDUCE",
+   "actual_reason": "QUICK_PEAK_GIVEBACK_GAIN_EROSION_STOP_peak1.00%_drop0.4%_cur-0.02%",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "fin",
+   "sym_side": "PENGUUSDC_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-23 04:23",
+   "actual": "REDUCE",
+   "actual_reason": "VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_28847.391325_LIVE",
+   "late_bars": null,
+   "verdict": "STATE_CONVERGENCE",
+   "vec_tagged": false
+  }
+ ]
+}

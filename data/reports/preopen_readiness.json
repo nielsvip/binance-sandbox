@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-23T04:20:08Z",
+ "generated_utc": "2026-10-23T04:40:06Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-23T13:30:00Z",
  "market_open": false,
@@ -8,7 +8,8 @@
   "defaults_chain_completed",
   "selection_fresh",
   "apply_report_written",
-  "live_set_matches_selection"
+  "live_set_matches_selection",
+  "indicators_fresh"
  ],
  "checks": [
   {
@@ -16,10 +17,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 97,
-    "filled_before_open": 97
+    "filled_today": 102,
+    "filled_before_open": 102
    },
-   "detail": "97 boards filled before the open (97 today)"
+   "detail": "102 boards filled before the open (102 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -63,9 +64,9 @@
    "critical": true,
    "measured": {
     "selection_n": 523,
-    "exact": 131,
-    "benign_divergence_only": 328,
-    "material_divergence": 58,
+    "exact": 132,
+    "benign_divergence_only": 330,
+    "material_divergence": 55,
     "no_live_row": [
      "LEXX_SHORT",
      "MCD_LONG",
@@ -207,22 +208,29 @@
      }
     ]
    },
-   "detail": "131 exact, 328 benign-only, 58 with material divergence, 6 with no live row"
+   "detail": "132 exact, 330 benign-only, 55 with material divergence, 6 with no live row"
   },
   {
    "name": "indicators_fresh",
-   "ok": true,
+   "ok": false,
    "critical": true,
    "measured": {
-    "symbols": 329,
-    "stale_over_90min": 1,
-    "stale_pct": 0.3,
-    "median_age_min": 65.1,
+    "symbols": 201,
+    "stale_over_90min": 200,
+    "stale_pct": 99.5,
+    "median_age_min": 175.1,
     "sample": [
-     "ONEUSDT"
+     "1000000MOGUSDT",
+     "1000CHEEMSUSDT",
+     "1000FLOKIUSDT",
+     "1000LUNCUSDT",
+     "1000PEPEUSDC",
+     "1000SATSUSDT",
+     "1000SHIBUSDC",
+     "1000XECUSDT"
     ]
    },
-   "detail": "1/329 symbols past the live 90-min entry gate (0.3%)"
+   "detail": "200/201 symbols past the live 90-min entry gate (99.5%)"
   },
   {
    "name": "s1_sets_synced",
