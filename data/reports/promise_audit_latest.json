@@ -1,16 +1,14 @@
 {
- "generated_utc": "2026-10-23T22:12:06.244649+00:00",
+ "generated_utc": "2026-10-23T23:12:04.898349+00:00",
  "days": 1.0,
  "totals": {
   "exit_promises": 55,
-  "exit_broken_no_delivery": 48,
+  "exit_broken_no_delivery": 50,
   "entry_promises": 29,
-  "entry_broken_no_delivery": 28,
+  "entry_broken_no_delivery": 29,
   "exit_skipped_inflight": 120,
   "exit_kept_in_bar": 4,
-  "exit_kept_late": 1,
-  "exit_pending": 2,
-  "entry_pending": 1
+  "exit_kept_late": 1
  },
  "per_key": {
   "ang:NMRUSDT_SHORT": {
@@ -213,8 +211,7 @@
   },
   "fin:ETHFIUSDC_LONG": {
    "exit_promises": 3,
-   "exit_broken_no_delivery": 2,
-   "exit_pending": 1
+   "exit_broken_no_delivery": 3
   },
   "fin:BEAMXUSDT_LONG": {
    "exit_promises": 1,
@@ -222,11 +219,11 @@
   },
   "men:ENJUSDT_SHORT": {
    "entry_promises": 1,
-   "entry_pending": 1
+   "entry_broken_no_delivery": 1
   },
   "men:ETHFIUSDC_LONG": {
    "exit_promises": 1,
-   "exit_pending": 1
+   "exit_broken_no_delivery": 1
   }
  },
  "detail": [
@@ -998,6 +995,36 @@
    "late_min": null,
    "action": "REDUCE",
    "reason": "DD_BOUNCE_STOP px0.2055 aug_px0.2057 qty281.2572",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "men",
+   "sym_side": "ENJUSDT_SHORT",
+   "kind": "entry",
+   "bar": "10-23 21:45",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "DC_BREAKOUT_ENTRY",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "fin",
+   "sym_side": "ETHFIUSDC_LONG",
+   "kind": "exit",
+   "bar": "10-23 21:45",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "WT_CROSS_EXIT_1h_bear",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "men",
+   "sym_side": "ETHFIUSDC_LONG",
+   "kind": "exit",
+   "bar": "10-23 21:45",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "WT_CROSS_EXIT_1h_bear",
    "outcome": "NO_DELIVERY"
   }
  ],
