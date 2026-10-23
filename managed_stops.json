@@ -1,30 +1,9 @@
 {
-  "fin:ENAUSDC_LONG": {
-    "orderId": "3000002269905909",
-    "stopPrice": 0.20418,
-    "entry_sig": "2026-10-23 21:50:06.377000+00:00",
-    "symbol": "ENAUSDC",
-    "side": "LONG"
-  },
-  "fin:VETUSDT_LONG": {
-    "orderId": "3000002269556190",
-    "stopPrice": 0.006665,
-    "entry_sig": "2026-10-23 09:43:24.075000+00:00",
-    "symbol": "VETUSDT",
-    "side": "LONG"
-  },
-  "fin:ETHFIUSDC_LONG": {
-    "orderId": "3000002269906068",
-    "stopPrice": 0.6539,
-    "entry_sig": "2026-10-23 21:50:22.556000+00:00",
-    "symbol": "ETHFIUSDC",
-    "side": "LONG"
-  },
-  "fin:MAGICUSDT_SHORT": {
-    "orderId": "3000002269908514",
-    "stopPrice": 0.08924,
-    "entry_sig": "2026-10-23 21:40:59.535000+00:00",
-    "symbol": "MAGICUSDT",
+  "flz:DASHUSDT_SHORT": {
+    "orderId": "1000002639950072",
+    "stopPrice": 54.51,
+    "entry_sig": "2026-10-23 16:43:45.189000+00:00",
+    "symbol": "DASHUSDT",
     "side": "SHORT"
   }
 }
