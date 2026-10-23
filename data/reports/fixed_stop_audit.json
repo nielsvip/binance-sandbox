@@ -6,7 +6,7 @@
    "entry_bar_level": 0.43678924999999996,
    "key": "ang:MASKUSDT_SHORT",
    "live_level": 0.43328049999999996,
-   "mark": 0.40030333,
+   "mark": 0.3997,
    "opened_at": "2026-10-23T08:51:31.205000Z",
    "resting_trigger": 0.4318
   },
@@ -16,7 +16,7 @@
    "entry_bar_level": 3.5959875,
    "key": "ang:ARUSDT_LONG",
    "live_level": 3.5296975,
-   "mark": 3.588,
+   "mark": 3.578,
    "opened_at": "2026-10-23T06:37:13.084000Z",
    "resting_trigger": 3.524
   },
@@ -26,9 +26,9 @@
    "entry_bar_level": 0.007672770000000001,
    "key": "ang:PENGUUSDC_LONG",
    "live_level": 0.007397727202706453,
-   "mark": 0.00783417,
+   "mark": 0.00781771,
    "opened_at": "2026-10-23T01:11:56.889831Z",
-   "resting_trigger": 0.007386
+   "resting_trigger": 0.007774
   },
   {
    "armed": true,
@@ -36,7 +36,7 @@
    "entry_bar_level": 0.0071510775,
    "key": "fin:VETUSDT_LONG",
    "live_level": 0.006675555980607928,
-   "mark": 0.0071475,
+   "mark": 0.007134,
    "opened_at": "2026-10-23T09:43:24.075000Z",
    "resting_trigger": 0.006665
   },
@@ -46,9 +46,9 @@
    "entry_bar_level": 1.18224825,
    "key": "fin:MOVRUSDT_SHORT",
    "live_level": 1.2257820236521544,
-   "mark": 1.1622,
+   "mark": 1.1589,
    "opened_at": "2026-10-23T21:59:03.510000Z",
-   "resting_trigger": 1.2277
+   "resting_trigger": 1.1642
   },
   {
    "armed": true,
@@ -56,69 +56,69 @@
    "entry_bar_level": 0.09219992499999999,
    "key": "fin:MAGICUSDT_SHORT",
    "live_level": 0.08910219999999999,
-   "mark": 0.08760403,
+   "mark": 0.08733,
    "opened_at": "2026-10-23T21:40:59.535000Z",
    "resting_trigger": 0.09234
   },
   {
    "armed": true,
    "code": "LEVEL_NOT_ENTRY_BAR",
-   "entry_bar_level": 0.16458750000000003,
+   "entry_bar_level": 0.168866775,
    "key": "men:BATUSDT_LONG",
-   "live_level": 0.1706624,
-   "mark": 0.17103222,
-   "opened_at": "2026-10-23T19:02:54.803000Z",
+   "live_level": 0.17065229999999995,
+   "mark": 0.17101,
+   "opened_at": "2026-10-23T22:11:19.659000Z",
    "resting_trigger": 0.17039
   },
   {
    "armed": true,
-   "code": "EXCHANGE_STOP_WRONG_LEVEL",
-   "entry_bar_level": 8.483737500000002,
+   "code": "LEVEL_NOT_ENTRY_BAR",
+   "entry_bar_level": 7.6927200000000004,
    "key": "men:INJUSDT_LONG",
-   "live_level": 8.483737500000002,
-   "mark": 7.814,
-   "opened_at": "2026-10-18T04:54:17.419000Z",
+   "live_level": 7.7964600000000015,
+   "mark": 7.798,
+   "opened_at": "2026-10-23T22:11:06.411000Z",
    "resting_trigger": 7.784
+  },
+  {
+   "armed": true,
+   "code": "LEVEL_NOT_ENTRY_BAR",
+   "entry_bar_level": 0.046295449999999995,
+   "key": "men:1000LUNCUSDT_SHORT",
+   "live_level": 0.04560372499999999,
+   "mark": 0.04538,
+   "opened_at": "2026-10-23T22:13:05.887000Z",
+   "resting_trigger": 0.04568
   },
   {
    "armed": true,
    "code": "LEVEL_NOT_ENTRY_BAR",
    "entry_bar_level": 0.0403389,
    "key": "men:KMNOUSDT_LONG",
-   "live_level": 0.0402378,
-   "mark": 0.04197182,
+   "live_level": 0.0412965,
+   "mark": 0.04231,
    "opened_at": "2026-10-23T21:52:06.793000Z",
    "resting_trigger": 0.04123
   },
   {
    "armed": true,
    "code": "LEVEL_NOT_ENTRY_BAR",
-   "entry_bar_level": 0.197654625,
-   "key": "men:ENAUSDC_LONG",
-   "live_level": 0.19715924999999998,
-   "mark": 0.20438,
-   "opened_at": "2026-10-23T19:02:03.039000Z",
-   "resting_trigger": 0.20371
-  },
-  {
-   "armed": true,
-   "code": "LEVEL_NOT_ENTRY_BAR",
-   "entry_bar_level": 0.63251475,
+   "entry_bar_level": 0.64209075,
    "key": "men:ETHFIUSDC_LONG",
-   "live_level": 0.6522652499999999,
-   "mark": 0.6612,
-   "opened_at": "2026-10-23T18:55:10.926000Z",
+   "live_level": 0.6597465,
+   "mark": 0.6609,
+   "opened_at": "2026-10-23T22:10:37.011000Z",
    "resting_trigger": 0.6587
   },
   {
    "armed": true,
    "code": "LEVEL_NOT_ENTRY_BAR",
-   "entry_bar_level": 0.03999975,
+   "entry_bar_level": 0.0403389,
    "key": "inf:KMNOUSDT_LONG",
-   "live_level": 0.0398995,
-   "mark": 0.04196,
-   "opened_at": "2026-10-22T10:21:20.844000Z",
-   "resting_trigger": 0.0
+   "live_level": 0.0402378,
+   "mark": 0.0423,
+   "opened_at": "2026-10-23T22:11:41.064000Z",
+   "resting_trigger": 0.04017
   },
   {
    "armed": true,
@@ -126,9 +126,9 @@
    "entry_bar_level": 608.0663749999999,
    "key": "flz:XMRUSDT_SHORT",
    "live_level": 635.370057720864,
-   "mark": 590.1885,
+   "mark": 591.3545,
    "opened_at": "2026-10-23T21:14:44.872616Z",
-   "resting_trigger": 636.33
+   "resting_trigger": 594.31
   },
   {
    "armed": true,
@@ -136,9 +136,9 @@
    "entry_bar_level": 1258.59865,
    "key": "flz:ZECUSDC_SHORT",
    "live_level": 1261.7373,
-   "mark": 1221.95875545,
+   "mark": 1220.96,
    "opened_at": "2026-10-23T21:19:36.766644Z",
-   "resting_trigger": 1263.63
+   "resting_trigger": 1235.82
   }
  ],
  "n_findings": 14,
@@ -149,7 +149,7 @@
    "entry_bar_level": 0.43678924999999996,
    "key": "ang:MASKUSDT_SHORT",
    "live_level": 0.43328049999999996,
-   "mark": 0.40030333,
+   "mark": 0.3997,
    "opened_at": "2026-10-23T08:51:31.205000Z",
    "resting_trigger": 0.4318
   },
@@ -158,7 +158,7 @@
    "entry_bar_level": 3.5959875,
    "key": "ang:ARUSDT_LONG",
    "live_level": 3.5296975,
-   "mark": 3.588,
+   "mark": 3.578,
    "opened_at": "2026-10-23T06:37:13.084000Z",
    "resting_trigger": 3.524
   },
@@ -167,7 +167,7 @@
    "entry_bar_level": 0.0043864065,
    "key": "ang:1000PEPEUSDC_LONG",
    "live_level": 0.0043864065,
-   "mark": 0.00462832,
+   "mark": 0.00462115,
    "opened_at": "2026-10-23T06:42:58.550000Z",
    "resting_trigger": 0.0043798
   },
@@ -176,16 +176,16 @@
    "entry_bar_level": 0.007672770000000001,
    "key": "ang:PENGUUSDC_LONG",
    "live_level": 0.007397727202706453,
-   "mark": 0.00783417,
+   "mark": 0.00781771,
    "opened_at": "2026-10-23T01:11:56.889831Z",
-   "resting_trigger": 0.007386
+   "resting_trigger": 0.007774
   },
   {
    "armed": true,
    "entry_bar_level": 0.0071510775,
    "key": "fin:VETUSDT_LONG",
    "live_level": 0.006675555980607928,
-   "mark": 0.0071475,
+   "mark": 0.007134,
    "opened_at": "2026-10-23T09:43:24.075000Z",
    "resting_trigger": 0.006665
   },
@@ -194,88 +194,88 @@
    "entry_bar_level": 1.18224825,
    "key": "fin:MOVRUSDT_SHORT",
    "live_level": 1.2257820236521544,
-   "mark": 1.1622,
+   "mark": 1.1589,
    "opened_at": "2026-10-23T21:59:03.510000Z",
-   "resting_trigger": 1.2277
+   "resting_trigger": 1.1642
   },
   {
    "armed": true,
    "entry_bar_level": 0.09219992499999999,
    "key": "fin:MAGICUSDT_SHORT",
    "live_level": 0.08910219999999999,
-   "mark": 0.08760403,
+   "mark": 0.08733,
    "opened_at": "2026-10-23T21:40:59.535000Z",
    "resting_trigger": 0.09234
   },
   {
    "armed": true,
-   "entry_bar_level": 0.16458750000000003,
+   "entry_bar_level": 0.168866775,
    "key": "men:BATUSDT_LONG",
-   "live_level": 0.1706624,
-   "mark": 0.17103222,
-   "opened_at": "2026-10-23T19:02:54.803000Z",
+   "live_level": 0.17065229999999995,
+   "mark": 0.17101,
+   "opened_at": "2026-10-23T22:11:19.659000Z",
    "resting_trigger": 0.17039
   },
   {
    "armed": true,
-   "entry_bar_level": 8.483737500000002,
+   "entry_bar_level": 7.6927200000000004,
    "key": "men:INJUSDT_LONG",
-   "live_level": 8.483737500000002,
-   "mark": 7.814,
-   "opened_at": "2026-10-18T04:54:17.419000Z",
+   "live_level": 7.7964600000000015,
+   "mark": 7.798,
+   "opened_at": "2026-10-23T22:11:06.411000Z",
    "resting_trigger": 7.784
+  },
+  {
+   "armed": true,
+   "entry_bar_level": 0.046295449999999995,
+   "key": "men:1000LUNCUSDT_SHORT",
+   "live_level": 0.04560372499999999,
+   "mark": 0.04538,
+   "opened_at": "2026-10-23T22:13:05.887000Z",
+   "resting_trigger": 0.04568
   },
   {
    "armed": true,
    "entry_bar_level": 0.0403389,
    "key": "men:KMNOUSDT_LONG",
-   "live_level": 0.0402378,
-   "mark": 0.04197182,
+   "live_level": 0.0412965,
+   "mark": 0.04231,
    "opened_at": "2026-10-23T21:52:06.793000Z",
    "resting_trigger": 0.04123
   },
   {
    "armed": true,
-   "entry_bar_level": 0.197654625,
-   "key": "men:ENAUSDC_LONG",
-   "live_level": 0.19715924999999998,
-   "mark": 0.20438,
-   "opened_at": "2026-10-23T19:02:03.039000Z",
-   "resting_trigger": 0.20371
-  },
-  {
-   "armed": true,
-   "entry_bar_level": 0.63251475,
+   "entry_bar_level": 0.64209075,
    "key": "men:ETHFIUSDC_LONG",
-   "live_level": 0.6522652499999999,
-   "mark": 0.6612,
-   "opened_at": "2026-10-23T18:55:10.926000Z",
+   "live_level": 0.6597465,
+   "mark": 0.6609,
+   "opened_at": "2026-10-23T22:10:37.011000Z",
    "resting_trigger": 0.6587
   },
   {
    "armed": true,
-   "entry_bar_level": 0.03999975,
+   "entry_bar_level": 0.0403389,
    "key": "inf:KMNOUSDT_LONG",
-   "live_level": 0.0398995,
-   "mark": 0.04196,
-   "opened_at": "2026-10-22T10:21:20.844000Z",
-   "resting_trigger": 0.0
+   "live_level": 0.0402378,
+   "mark": 0.0423,
+   "opened_at": "2026-10-23T22:11:41.064000Z",
+   "resting_trigger": 0.04017
   },
   {
    "armed": true,
    "entry_bar_level": 608.0663749999999,
    "key": "flz:XMRUSDT_SHORT",
    "live_level": 635.370057720864,
-   "mark": 590.1885,
+   "mark": 591.3545,
    "opened_at": "2026-10-23T21:14:44.872616Z",
-   "resting_trigger": 636.33
+   "resting_trigger": 594.31
   },
   {
    "armed": true,
    "entry_bar_level": 54.42572499999999,
    "key": "flz:DASHUSDT_SHORT",
    "live_level": 54.42572499999999,
-   "mark": 54.04,
+   "mark": 54.191836,
    "opened_at": "2026-10-23T16:43:45.189000Z",
    "resting_trigger": 54.51
   },
@@ -284,7 +284,7 @@
    "entry_bar_level": 80927.67375,
    "key": "flz:BTCUSDC_LONG",
    "live_level": 80927.67375,
-   "mark": 81224.5,
+   "mark": 81223.5,
    "opened_at": "2026-10-23T21:19:33.044418Z",
    "resting_trigger": 80805.9
   },
@@ -293,10 +293,10 @@
    "entry_bar_level": 1258.59865,
    "key": "flz:ZECUSDC_SHORT",
    "live_level": 1261.7373,
-   "mark": 1221.95875545,
+   "mark": 1220.96,
    "opened_at": "2026-10-23T21:19:36.766644Z",
-   "resting_trigger": 1263.63
+   "resting_trigger": 1235.82
   }
  ],
- "ts": "2026-10-23T22:12:01.730566+00:00"
+ "ts": "2026-10-23T22:22:44.036183+00:00"
 }
