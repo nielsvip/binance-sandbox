@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-23T19:50:52Z",
+ "generated_utc": "2026-10-23T19:55:45Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 716.7,
+  "age_s": 106.8,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 10644,
-  "proc_age_s": 64277.0,
-  "log_age_s": 30.2,
+  "proc_age_s": 64569.0,
+  "log_age_s": 74.9,
   "warmup_done": true,
   "timeframes_since_restart": [
    "D",
@@ -52,21 +52,20 @@
   "mode": "ACTIVE",
   "since_epoch": 1792602182.2042153,
   "activations": 163,
-  "hb_mtime": 1792784734.8070426,
-  "mac_snapshot_age_s": 39.905439615249634,
+  "hb_mtime": 1792785096.3292575,
+  "mac_snapshot_age_s": 24.084797859191895,
   "mac_stale": false,
   "lease_holder": "mac",
   "lease_venues": null,
-  "lease_since": "2026-10-23T19:43:54Z",
-  "lease_reason": "manual force-mac",
-  "now": 1792784757.5690818,
-  "from_cache_age_s": 294.9,
-  "heartbeat_age_s": 22.8,
-  "active_s": 182575.4,
-  "note": "ACTIVE is CORRECT while the Mac snapshot is stale \u2014 fix the Mac, S1 returns to NORMAL on its own"
+  "lease_since": "2026-10-23T19:51:01Z",
+  "lease_reason": "yield: Mac never fenced for 195s \u2014 accounts must never be unattended",
+  "now": 1792785111.5932317,
+  "from_cache_age_s": 233.7,
+  "heartbeat_age_s": 15.3,
+  "active_s": 182929.4
  },
  "alerts": [
-  "SNAPSHOT STALE: latest_market_data.json is 716s old (> 600s). ez_indicators pid=10644 warmup_done=True tfs_since_restart=['D', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', 'D', '4h', '1h', '15m'] restarts_last_hour=0. Live crypto decisions are reading a stale indicator snapshot."
+  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 182929s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (15s) AND the Mac snapshot is fresh (106s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
  ],
  "verdict": "ALERT"
 }
