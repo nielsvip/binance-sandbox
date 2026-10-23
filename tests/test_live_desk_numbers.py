@@ -134,34 +134,44 @@ def test_unknown_partial_vs_phantom():
     assert by_sym["P"]["rpnl"] == 100.0
 
 
-def test_broker_reconstruction_never_fabricates_pnl():
+def test_broker_fills_counted_once_and_unattributed_hidden():
     now = datetime.now(timezone.utc).replace(microsecond=0)
     iso = lambda dt: dt.isoformat()
     from datetime import timedelta
     o = _ev(iso(now - timedelta(hours=4)), "LRCX", "SHORT", "OPEN", 13.0, 263.12)
     r1 = _ev(iso(now - timedelta(hours=3)), "LRCX", "SHORT", "REDUCE", 13.0, 235.70)
     r1["reason"] = "Broker sync"
-    r2 = _ev(iso(now - timedelta(hours=2)), "LRCX", "SHORT", "REDUCE", 2.0, 232.11)
-    r2["reason"] = "BROKER_RECONCILED order=999"
-    p = _ev(iso(now - timedelta(hours=3)), "Q", "LONG", "OPEN", 10.0, 100.0)
-    s1 = _ev(iso(now - timedelta(hours=2)), "Q", "LONG", "REDUCE", 4.0, 110.0)
-    s1["reason"] = "Broker sync"
-    c1 = _ev(iso(now - timedelta(hours=1)), "Q", "LONG", "REDUCE", 6.0, 120.0)
-    c1["reason"] = "REAL_STRATEGY_CLOSE"
-    out, s = srv.realized_walk([o, r1, r2, p, s1, c1])
+    p = _ev(iso(now - timedelta(hours=62, minutes=0)), "E", "LONG", "OPEN", 43.4, 0.6433)
+    f1 = _ev(iso(now - timedelta(hours=1, minutes=1)), "E", "LONG", "REDUCE", 30.7, 0.6432)
+    f1["reason"] = "BROKER_RECONCILED order=1"
+    f2 = _ev(iso(now - timedelta(hours=1, minutes=1)), "E", "LONG", "REDUCE", 8.8, 0.6431)
+    f2["reason"] = "BROKER_RECONCILED order=1"
+    f3 = _ev(iso(now - timedelta(hours=1, minutes=1)), "E", "LONG", "REDUCE", 3.9, 0.6431)
+    f3["reason"] = "BROKER_RECONCILED order=1"
+    dup = _ev(iso(now - timedelta(hours=1)), "E", "LONG", "REDUCE", 43.4, 0.6435)
+    dup["reason"] = "REAL_STRATEGY_CLOSE"
+    q0 = _ev(iso(now - timedelta(minutes=30)), "R", "LONG", "OPEN", 10.0, 100.0)
+    c0 = _ev(iso(now - timedelta(minutes=29)), "R", "LONG", "REDUCE", 10.0, 120.0)
+    c0["reason"] = "REAL_STRATEGY_CLOSE"
+    d0 = _ev(iso(now - timedelta(minutes=28)), "R", "LONG", "REDUCE", 10.0, 120.0)
+    d0["reason"] = "BROKER_RECONCILED order=2"
+    out, s = srv.realized_walk([o, r1, p, f1, f2, f3, dup, q0, c0, d0])
     lrcx = [e for e in out if e.get("symbol") == "LRCX" and e["action"] == "REDUCE"]
-    assert len(lrcx) == 2 and all("rpnl" not in e for e in lrcx)
-    assert "rpnl" not in [e for e in out if e.get("symbol") == "Q" and e.get("reason") == "Broker sync"][0]
-    assert [e for e in out if e.get("reason") == "REAL_STRATEGY_CLOSE"][0]["rpnl"] == 120.0
+    assert len(lrcx) == 1 and all("rpnl" not in e for e in lrcx)
+    fills = [e for e in out if (e.get("reason") or "").startswith("BROKER_RECONCILED order=1")]
+    assert len(fills) == 3 and all("rpnl" in e for e in fills)
+    strat = [e for e in out if e.get("reason") == "REAL_STRATEGY_CLOSE" and e.get("symbol") == "E"][0]
+    assert "rpnl" not in strat and strat.get("sync_hidden") is True
+    assert [e for e in out if e.get("reason") == "BROKER_RECONCILED order=2"][0].get("sync_hidden") is True
     assert s["sync_hidden"] == 3
-    assert s["pnl_total"] == 120.0
-    assert s["unknown"] == 1
-    assert s["unknown_phantom"] == 1
-    assert all(e.get("sync_hidden") for e in out if e.get("reason") in ("Broker sync", "BROKER_RECONCILED order=999"))
+    assert s["known"] == 4
+    assert s["unknown"] == 0
+    assert s["pnl_total"] == round(30.7 * (0.6432 - 0.6433) + 8.8 * (0.6431 - 0.6433) + 3.9 * (0.6431 - 0.6433) + 200.0, 2)
     assert srv._is_broker_reconstruction("BROKER_SYNC_CLOSE") is True
     assert srv._is_broker_reconstruction("Broker sync") is True
-    assert srv._is_broker_reconstruction("BROKER_RECONCILED order=1") is True
-    assert srv._is_broker_reconstruction("BROKER_SYNC_OPEN_FROM_FLAT_STUB") is True
+    assert srv._is_broker_reconstruction("BROKER_RECONCILED order=1") is False
+    assert srv._is_broker_fill("BROKER_RECONCILED order=1") is True
+    assert srv._is_broker_fill("Broker sync") is False
     assert srv._is_broker_reconstruction("VEC_DRIVEN_CLOSE_RECONCILE_") is False
     assert srv._is_broker_reconstruction("FIXED_STOP_SHORT_px1_g-0.3") is False
     assert srv._is_broker_reconstruction(None) is False
