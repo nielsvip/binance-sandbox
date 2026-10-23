@@ -64981,6 +64981,10 @@ async def main():
         config.ACCOUNT_KEYS = [selected_account]
         accounts_to_init = [selected_account]
         print(f"🔒 LOCKING LOGS to single account: {selected_account}")
+        _stagger = _boot_stagger_s(selected_account)
+        if _stagger > 0:
+            print(f"⏳ BOOT_STAGGER: {selected_account} waiting {_stagger:.0f}s to spread the REST bootstrap burst (USER 2026-10-23; VEC_BOOT_STAGGER_S=0 disables)")
+            await asyncio.sleep(_stagger)
     else:
         config.ACCOUNT_KEYS = all_possible_accounts
         accounts_to_init = all_possible_accounts

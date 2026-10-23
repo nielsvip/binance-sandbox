@@ -439,6 +439,19 @@ def test_foreign_account_intent_ignored_here(tmp_path, monkeypatch):
     assert not VD.ConsumedStore(vl / "consumed_men.json").has("fr1")
 
 
+def test_boot_stagger_spreads_accounts_and_disables(monkeypatch):
+    """USER 2026-10-23 ban root-cause: deterministic per-account boot delay spreads REST
+    bootstrap bursts; env kill switch disables; unknown accounts get no delay."""
+    assert EZ._boot_stagger_s("ang") == 0.0
+    assert EZ._boot_stagger_s("fin") == 15.0
+    assert EZ._boot_stagger_s("flz") == 30.0
+    assert EZ._boot_stagger_s("inf") == 45.0
+    assert EZ._boot_stagger_s("men") == 60.0
+    assert EZ._boot_stagger_s("nobody") == 0.0
+    monkeypatch.setenv("VEC_BOOT_STAGGER_S", "0")
+    assert EZ._boot_stagger_s("men") == 0.0
+
+
 def test_open_on_leftover_broker_retry_then_fail_closed():
     """USER 2026-10-23 vec-native parity: the broker-truth slot read is wait-free, so a transiently
     stale slot gets a bounded retry before the OPEN is refused; a persistently unreachable broker
