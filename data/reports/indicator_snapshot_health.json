@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-23T07:45:52Z",
+ "generated_utc": "2026-10-23T07:50:56Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 61.6,
+  "age_s": 80.2,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 10644,
-  "proc_age_s": 20775.0,
-  "log_age_s": 31.1,
+  "proc_age_s": 21080.0,
+  "log_age_s": 111.8,
   "warmup_done": true,
   "timeframes_since_restart": [
    "D",
@@ -46,21 +46,21 @@
   "mode": "ACTIVE",
   "since_epoch": 1792602182.2042153,
   "activations": 163,
-  "hb_mtime": 1792741302.9627216,
-  "mac_snapshot_age_s": 24.57735776901245,
+  "hb_mtime": 1792741602.245678,
+  "mac_snapshot_age_s": 39.685797691345215,
   "mac_stale": false,
   "lease_holder": "s1",
   "lease_venues": "crypto",
-  "lease_since": "2026-10-23T07:41:36Z",
-  "lease_reason": "Mac reachable but NOT TRADING: crypto: not_trading_account: ang idle 1607s (56 live keys), inf idle 150s (11 live keys), flz idle 53s (26 live keys) \u2014 no vec decision executed for >30s while the board lane is live (registry age 1574s) for 48s",
-  "now": 1792741305.4228234,
-  "from_cache_age_s": 246.6,
-  "heartbeat_age_s": 2.5,
-  "active_s": 139123.2,
-  "note": "producers are CORRECT: S1 holds the TRADING lease (venues='crypto', since 2026-10-23T07:41:36Z, reason 'Mac reachable but NOT TRADING: crypto: not_trading_account: ang idle 1607s (56 live keys), inf idle 150s (11 live keys), flz idle 53s (26 live keys) \u2014 no vec decision executed for >30s while the board lane is live (registry age 1574s) for 48s'), so S1 must produce crypto data. Do NOT stop the producers. The question to chase is the LEASE/failback, not this unit."
+  "lease_since": "2026-10-23T07:46:51Z",
+  "lease_reason": "Mac reachable but NOT TRADING: crypto: not_trading_account: ang idle 30s (56 live keys), flz idle 84s (26 live keys), men idle 49s (50 live keys), fin idle 39s (42 live keys) \u2014 no vec decision executed for >30s while the board lane is live (registry age 91s) for 48s",
+  "now": 1792741611.6035535,
+  "from_cache_age_s": 244.5,
+  "heartbeat_age_s": 9.4,
+  "active_s": 139429.4,
+  "note": "producers are CORRECT: S1 holds the TRADING lease (venues='crypto', since 2026-10-23T07:46:51Z, reason 'Mac reachable but NOT TRADING: crypto: not_trading_account: ang idle 30s (56 live keys), flz idle 84s (26 live keys), men idle 49s (50 live keys), fin idle 39s (42 live keys) \u2014 no vec decision executed for >30s while the board lane is live (registry age 91s) for 48s'), so S1 must produce crypto data. Do NOT stop the producers. The question to chase is the LEASE/failback, not this unit."
  },
  "alerts": [
-  "S1 HOLDS THE LIVE CRYPTO LEASE WHILE THE MAC LOOKS HEALTHY: lease venues='crypto' since 2026-10-23T07:41:36Z (reason 'Mac reachable but NOT TRADING: crypto: not_trading_account: ang idle 1607s (56 live keys), inf idle 150s (11 live keys), flz idle 53s (26 live keys) \u2014 no vec decision executed for >30s while the board lane is live (registry age 1574s) for 48s'), Mac heartbeat 2s, Mac snapshot 61s. S1 is therefore running the live engines AND the producers instead of backtests. This is a LEASE/failback question \u2014 do NOT stop the producers (that would leave the trading host blind). Operator decision: hand the lease back to the Mac only after confirming the Mac's pushes and heartbeat are stable."
+  "S1 HOLDS THE LIVE CRYPTO LEASE WHILE THE MAC LOOKS HEALTHY: lease venues='crypto' since 2026-10-23T07:46:51Z (reason 'Mac reachable but NOT TRADING: crypto: not_trading_account: ang idle 30s (56 live keys), flz idle 84s (26 live keys), men idle 49s (50 live keys), fin idle 39s (42 live keys) \u2014 no vec decision executed for >30s while the board lane is live (registry age 91s) for 48s'), Mac heartbeat 9s, Mac snapshot 80s. S1 is therefore running the live engines AND the producers instead of backtests. This is a LEASE/failback question \u2014 do NOT stop the producers (that would leave the trading host blind). Operator decision: hand the lease back to the Mac only after confirming the Mac's pushes and heartbeat are stable."
  ],
  "verdict": "ALERT"
 }
