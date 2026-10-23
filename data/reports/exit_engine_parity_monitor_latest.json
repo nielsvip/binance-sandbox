@@ -1,19 +1,19 @@
 {
- "now": "2026-10-23T21:06:09.849779+00:00",
+ "now": "2026-10-23T21:09:14.626193+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 11743,
+ "n_exit_rows": 11740,
  "last_exit_ts": "2026-10-23T21:04:50.878368+00:00",
- "n_leaks": 860,
+ "n_leaks": 857,
  "n_gate_on": 8182,
  "n_ungated": 0,
  "n_safety": 1479,
  "n_unmapped": 16,
  "n_unverified": 824,
- "since": "2026-10-21T21:06:09.849779+00:00",
+ "since": "2026-10-21T21:09:14.626193+00:00",
  "vec_exact_by_action": {
   "CLOSE": 382
  },
- "native_rows": 11361,
+ "native_rows": 11358,
  "unverified_by_family": {
   "RATIO_REBALANCE (ABLATION_DISABLE_RATIO_REBALANCE=False)": 400,
   "GAIN_EROSION_STOP (None=None)": 222,
@@ -26,13 +26,13 @@
   "WT_EXHAUST (None=None)": 17
  },
  "leaks_by_family": {
-  "QUICK_OPEN_STRONG": 842,
+  "QUICK_OPEN_STRONG": 839,
   "STDEV_REJECT_EXIT (STDEV_REJECT_EXIT_ENABLED=False)": 3,
   "E_1_WT_DELTA_EXIT (E_1_WT_EXIT_USE_DELTA_ENABLED=False)": 15
  },
  "leak_keys": {
   "QUICK_OPEN_STRONG inf:BBUSDT_LONG": 47,
-  "QUICK_OPEN_STRONG flz:DASHUSDT_LONG": 32,
+  "QUICK_OPEN_STRONG flz:DASHUSDT_LONG": 30,
   "QUICK_OPEN_STRONG fin:IOTXUSDT_LONG": 30,
   "QUICK_OPEN_STRONG inf:TRUMPUSDC_SHORT": 27,
   "QUICK_OPEN_STRONG fin:RLCUSDT_SHORT": 27,
@@ -113,7 +113,7 @@
   "BB_BOUNCE_ENTRY_1h_S": 1
  },
  "actions": {
-  "QUICK_OPEN": 868,
+  "QUICK_OPEN": 865,
   "OPEN": 6926,
   "REDUCE": 530,
   "CLOSE": 3242,
