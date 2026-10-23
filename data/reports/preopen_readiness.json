@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-23T08:40:07Z",
+ "generated_utc": "2026-10-23T09:00:03Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-23T13:30:00Z",
  "market_open": false,
@@ -8,7 +8,8 @@
   "defaults_chain_completed",
   "selection_fresh",
   "apply_report_written",
-  "live_set_matches_selection"
+  "live_set_matches_selection",
+  "indicators_fresh"
  ],
  "checks": [
   {
@@ -16,10 +17,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 194,
-    "filled_before_open": 194
+    "filled_today": 199,
+    "filled_before_open": 199
    },
-   "detail": "194 boards filled before the open (194 today)"
+   "detail": "199 boards filled before the open (199 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -63,9 +64,9 @@
    "critical": true,
    "measured": {
     "selection_n": 523,
-    "exact": 129,
-    "benign_divergence_only": 336,
-    "material_divergence": 54,
+    "exact": 131,
+    "benign_divergence_only": 339,
+    "material_divergence": 49,
     "no_live_row": [
      "LEXX_SHORT",
      "SCRUSDT_SHORT",
@@ -97,19 +98,6 @@
        "DC_HARD_STOP_15M_ENABLED",
        "DC_HOPELESS_EXIT_ENABLED",
        "DC_SLOPE_INCENTIVE_ENABLED"
-      ]
-     },
-     {
-      "sym_side": "PLTR_LONG",
-      "published_at": "2026-10-23T02:38:55Z",
-      "material": 92,
-      "sample": [
-       "ADX_RANGING_THRESHOLD",
-       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
-       "AUGMENT_INTO_REENTRY_ENABLED",
-       "BREAKOUT_RETEST_ARMED_ENABLED",
-       "COMMISSION_BUFFER_PCT",
-       "COUNTER_TREND_ADD_BLOCK_ENABLED"
       ]
      },
      {
@@ -202,32 +190,45 @@
        "DC_HARD_STOP_15M_ENABLED",
        "DC_MOMENTUM_BOTA_SCORER_FILTER_TF"
       ]
+     },
+     {
+      "sym_side": "SNDK_SHORT",
+      "published_at": "2026-10-22T21:12:43Z",
+      "material": 44,
+      "sample": [
+       "ADX_REGIME_FILTER_ENABLED",
+       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
+       "COOLDOWN_BARS_TRADIER",
+       "DAYTRADE_DC_TARGET_TF",
+       "DC_EDGE_SIZING_MAX_MULT",
+       "DC_HARD_STOP_15M_ENABLED"
+      ]
      }
     ]
    },
-   "detail": "129 exact, 336 benign-only, 54 with material divergence, 4 with no live row"
+   "detail": "131 exact, 339 benign-only, 49 with material divergence, 4 with no live row"
   },
   {
    "name": "indicators_fresh",
-   "ok": true,
+   "ok": false,
    "critical": true,
    "measured": {
-    "symbols": 330,
-    "stale_over_90min": 32,
-    "stale_pct": 9.7,
-    "median_age_min": 25.1,
+    "symbols": 329,
+    "stale_over_90min": 45,
+    "stale_pct": 13.7,
+    "median_age_min": 45.1,
     "sample": [
-     "ARMUSDT",
-     "ASMLUSDT",
+     "ARBUSDC",
      "ASTSUSDT",
-     "AXTIUSDT",
-     "BMNRUSDT",
-     "COSTUSDT",
-     "CRCLUSDT",
-     "CRDOUSDT"
+     "ATOMUSDT",
+     "AWEUSDT",
+     "AXSUSDT",
+     "BBUSDT",
+     "BEATUSDT",
+     "BNBUSDC"
     ]
    },
-   "detail": "32/330 symbols past the live 90-min entry gate (9.7%)"
+   "detail": "45/329 symbols past the live 90-min entry gate (13.7%)"
   },
   {
    "name": "s1_sets_synced",
