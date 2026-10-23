@@ -7362,14 +7362,36 @@ class PositionService:
             logger.warning(f"[_process_account_update_impl][{account_key}] Processed {processed_count} positions, skipped {skipped_count}, total updated_keys: {len(updated_keys_in_api)}")
             try:
                 keys_in_memory_not_in_api = set(account_positions.keys()) - updated_keys_in_api
-                
+
+                # USER 2026-10-23 blindness guard: an empty/partial API report is AMBIGUOUS — it means
+                # "no positions" only when the API is trustworthy. During a recorded -1003 ban, or when
+                # 3+ held keys vanish in a single 5s cycle (a genuine simultaneous mass-close with no
+                # fills is implausible; a blind/forgetful report is likely), strikes must NOT accumulate:
+                # 2026-10-23 measured a held 0.001 BTCUSDC_LONG zeroed out of the writer JSON on forgetful
+                # reports during WS-drop + REST-failure windows, and the lane then read it as flat.
+                # Deferral costs one cycle; a false zero destroys years of position state. Strike counts
+                # are kept (not cleared), so a continued absence on the next believable report still zeroes.
+                _held_missing = [k for k in keys_in_memory_not_in_api
+                                 if account_positions.get(k) and abs(account_positions[k].positionAmt or 0.0) > 0]
+                _ban_rem_ghost = _ban_remaining_seconds()
+                _ghost_hold = False
+                if _held_missing and _ban_rem_ghost > 0:
+                    _ghost_hold = True
+                    _log_ban_skip_throttled(logger, account_key, f"deferring {len(_held_missing)} ghost strikes")
+                elif len(_held_missing) >= 3:
+                    _ghost_hold = True
+                    logger.critical(f"[GHOST_RECONCILE_DEFERRED][{account_key}] {len(_held_missing)} held keys missing from one API report {sorted(_held_missing)[:6]} — mass absence, report distrusted, strikes deferred this cycle.")
+
                 for pk_ghost in keys_in_memory_not_in_api:
                     position_obj = account_positions.get(pk_ghost)
                     if not position_obj:
                         continue
 
                     prev_amt = abs(position_obj.positionAmt) if position_obj.positionAmt else 0.0
-                    
+
+                    if _ghost_hold and prev_amt > 0:
+                        continue
+
                     # If position has an amount but is missing from API, apply the "Two-Strike" rule
                     if prev_amt > 0:
                         current_count = self._log_zero_report(pk_ghost, now, source="API_ABSENCE")

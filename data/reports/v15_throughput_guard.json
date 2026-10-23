@@ -1,95 +1,104 @@
 {
- "at": "2026-10-23T04:11:14Z",
+ "at": "2026-10-23T05:11:06Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
   "s1": {
-   "improved": 2,
-   "improved_per_hour": 2.0,
-   "published_n": 2,
+   "improved": 0,
+   "improved_per_hour": 0.0,
+   "published_n": null,
+   "flat_or_worse": null,
+   "unknown": null,
+   "boards_running": null,
+   "mem_avail_mb": null,
+   "load1": null,
+   "nproc": null,
+   "slots": null,
+   "binding_reason": "concurrency 0 boards: 12/h needs <= 0 min per sym_side \u2014 raise concurrent sides or cut evals per board",
+   "error": "ssh: connect to host 127.0.0.1 port 2201: Connection refused\n",
+   "published": null,
+   "cadence_target_min": 5.0,
+   "minutes_since_last_improved": null,
+   "last_improved_symside": null,
+   "cadence_ok": false,
+   "improved_gap_min_median_24h": null,
+   "improved_gap_min_max_24h": null,
+   "improved_finishes_24h": null,
+   "board_cpu_s_median_24h": null,
+   "board_wall_s_median_24h": null,
+   "board_cores": null,
+   "nonboard_cores_competing": null,
+   "nonboard_cores_niced": null,
+   "cores_by_bucket": null,
+   "cores_by_bucket_niced": null
+  },
+  "s2": {
+   "improved": 4,
+   "improved_per_hour": 4.0,
+   "published_n": 4,
    "flat_or_worse": 0,
    "unknown": 0,
-   "boards_running": [],
-   "mem_avail_mb": 16296,
-   "load1": 29.39,
+   "boards_running": [
+    "AAVEUSDC_LONG",
+    "AMD_LONG",
+    "DOTUSDT_LONG",
+    "MA_LONG"
+   ],
+   "mem_avail_mb": 14542,
+   "load1": 11.82,
    "nproc": 16,
-   "slots": "0/8",
-   "binding_reason": "host IDLE, not CPU-bound: 0 running sides pull 0.0 cores of 8.8 usable -> 0.0 boards/h against target 12/h. Nothing is dispatched here: 12/h needs 8.7 board-cores. Check the scheduler's idle_reason for this host (slots 0/8) and whether the round is exhausted (tools/v15_round_watchdog.sh quorum rule rolls it).",
+   "slots": null,
+   "binding_reason": "board CPU DEMAND, not host capacity: 4 running sides pull only 7.2 cores (1.79 core/side) of 13.8 usable -> 10.3 boards/h. 12/h needs 8.3 board-cores = 5 sides at this per-side draw (niced filler 3.04 cores yields). Lever: more concurrent sides (RAM-bound) or deeper eval pipelining per side (V15_PREFETCH_TASKCAP on an idle host).",
    "error": null,
    "published": [
     {
-     "symside": "DOTUSDT_LONG",
-     "at": "2026-10-23T03:16:00Z",
-     "baseline": 5.095560604730996,
-     "final": 28.7865092330851,
+     "symside": "1000FLOKIUSDT_SHORT",
+     "at": "2026-10-23T04:59:13Z",
+     "baseline": 39.30780131467107,
+     "final": 43.56993225758341,
      "state": "improved"
     },
     {
-     "symside": "FILUSDC_LONG",
-     "at": "2026-10-23T03:17:09Z",
-     "baseline": 74.81809754184701,
-     "final": 75.05400689190367,
+     "symside": "ADP_LONG",
+     "at": "2026-10-23T04:36:25Z",
+     "baseline": 17.796527093877476,
+     "final": 19.650748671286166,
+     "state": "improved"
+    },
+    {
+     "symside": "AMAT_SHORT",
+     "at": "2026-10-23T04:35:30Z",
+     "baseline": 27.541475092879388,
+     "final": 37.62648559704927,
+     "state": "improved"
+    },
+    {
+     "symside": "ZCSH_SHORT",
+     "at": "2026-10-23T04:23:11Z",
+     "baseline": 80.21400384572371,
+     "final": 82.02039131290776,
      "state": "improved"
     }
    ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 1.7,
-   "last_improved_symside": "INTC_SHORT",
-   "cadence_ok": true,
-   "improved_gap_min_median_24h": 37.3,
-   "improved_gap_min_max_24h": 195.8,
-   "improved_finishes_24h": 27,
-   "board_cpu_s_median_24h": 2602.2,
-   "board_wall_s_median_24h": 1123.540610074997,
-   "board_cores": 0.0,
-   "nonboard_cores_competing": 7.15,
-   "nonboard_cores_niced": 7.48,
-   "cores_by_bucket": {
-    "other": 4.97,
-    "live_helpers": 1.25,
-    "klines_append": 0.93
-   },
-   "cores_by_bucket_niced": {
-    "klines_vault": 0.67,
-    "other": 4.87,
-    "npz_precompute": 1.94
-   }
-  },
-  "s2": {
-   "improved": 0,
-   "improved_per_hour": 0.0,
-   "published_n": 0,
-   "flat_or_worse": 0,
-   "unknown": 0,
-   "boards_running": [
-    "CHRUSDT_LONG"
-   ],
-   "mem_avail_mb": 17856,
-   "load1": 9.68,
-   "nproc": 16,
-   "slots": "1/8",
-   "binding_reason": "board CPU DEMAND, not host capacity: 1 running sides pull only 3.2 cores (3.24 core/side) of 13.8 usable -> 4.7 boards/h. 12/h needs 8.3 board-cores = 3 sides at this per-side draw (niced filler 3.27 cores yields). Lever: more concurrent sides (RAM-bound) or deeper eval pipelining per side (V15_PREFETCH_TASKCAP on an idle host).",
-   "error": null,
-   "published": [],
-   "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 79.4,
-   "last_improved_symside": "LINKUSDC_SHORT",
+   "minutes_since_last_improved": 11.5,
+   "last_improved_symside": "1000FLOKIUSDT_SHORT",
    "cadence_ok": false,
-   "improved_gap_min_median_24h": 6.5,
-   "improved_gap_min_max_24h": 84.6,
-   "improved_finishes_24h": 111,
+   "improved_gap_min_median_24h": 7.3,
+   "improved_gap_min_max_24h": 91.4,
+   "improved_finishes_24h": 105,
    "board_cpu_s_median_24h": 2496.6,
    "board_wall_s_median_24h": 1129.280876159668,
-   "board_cores": 3.24,
-   "nonboard_cores_competing": 2.23,
-   "nonboard_cores_niced": 3.27,
+   "board_cores": 7.17,
+   "nonboard_cores_competing": 2.16,
+   "nonboard_cores_niced": 3.04,
    "cores_by_bucket": {
-    "boards": 3.24,
-    "other": 0.04,
-    "live_helpers": 2.19
+    "boards": 7.17,
+    "other": 0.01,
+    "live_helpers": 2.15
    },
    "cores_by_bucket_niced": {
-    "other": 3.27
+    "other": 3.04
    }
   }
  },
@@ -98,6 +107,7 @@
   "s2"
  ],
  "cadence_breach": [
+  "s1",
   "s2"
  ]
 }

@@ -48,6 +48,70 @@ def test_start_defers_client_init_while_banned():
     assert "_ban_remaining_seconds()" in seg and "deferring client init" in seg, seg
 
 
+def _ghost_stub(keys):
+    """Minimal stand-in for driving _process_account_update_impl's ghost loop."""
+    import asyncio
+    from datetime import datetime, timezone
+    from types import SimpleNamespace
+
+    async def _noop(*a, **k):
+        return None
+
+    acct_positions = {k: SimpleNamespace(positionAmt=1.0, mark_price=2.0, entry_price=2.0, symbol=k.split(":")[1],
+                                         last_updated=None, last_signal="") for k in keys}
+    stub = SimpleNamespace(zero_report_tracker={}, positions=dict(acct_positions),
+                           positions_by_account={"t": acct_positions})
+    stub._log_zero_report = eps.PositionService._log_zero_report.__get__(stub)
+    stub._is_zero_confirmed = eps.PositionService._is_zero_confirmed.__get__(stub)
+    return stub, acct_positions, datetime.now(timezone.utc)
+
+
+def _run_impl(stub, acct_positions):
+    import asyncio
+
+    return asyncio.new_event_loop().run_until_complete(
+        eps.PositionService._process_account_update_impl(stub, "t", [], __import__("datetime").datetime.now(__import__("datetime").timezone.utc), set(), acct_positions))
+
+
+def test_ghost_strikes_deferred_during_recorded_ban():
+    """USER 2026-10-23 blindness guard: a hold missing from the API report during a recorded
+    -1003 ban must not accumulate strikes (empty report is blindness, not closure)."""
+    prev = eps._GLOBAL_BAN_UNTIL_MS
+    try:
+        import time as _t
+        eps._GLOBAL_BAN_UNTIL_MS = int((_t.time() + 300) * 1000)
+        stub, acct_positions, _ = _ghost_stub(["t:AAAUSDT_LONG"])
+        _run_impl(stub, acct_positions)
+        assert stub.zero_report_tracker == {}, stub.zero_report_tracker
+        assert abs(acct_positions["t:AAAUSDT_LONG"].positionAmt) > 0
+    finally:
+        eps._GLOBAL_BAN_UNTIL_MS = prev
+
+
+def test_ghost_mass_absence_deferred_without_ban():
+    """3+ held keys vanishing in one cycle = distrusted report, even with no recorded ban."""
+    prev = eps._GLOBAL_BAN_UNTIL_MS
+    try:
+        eps._GLOBAL_BAN_UNTIL_MS = 0
+        stub, acct_positions, _ = _ghost_stub([f"t:SYM{i}USDT_LONG" for i in range(4)])
+        _run_impl(stub, acct_positions)
+        assert stub.zero_report_tracker == {}, stub.zero_report_tracker
+    finally:
+        eps._GLOBAL_BAN_UNTIL_MS = prev
+
+
+def test_ghost_single_absence_still_strikes():
+    """The phantom-killer keeps working: one missing key still earns its strike."""
+    prev = eps._GLOBAL_BAN_UNTIL_MS
+    try:
+        eps._GLOBAL_BAN_UNTIL_MS = 0
+        stub, acct_positions, _ = _ghost_stub(["t:AAAUSDT_LONG"])
+        _run_impl(stub, acct_positions)
+        assert stub.zero_report_tracker.get("t:AAAUSDT_LONG", {}).get("count", 0) >= 1
+    finally:
+        eps._GLOBAL_BAN_UNTIL_MS = prev
+
+
 def test_mark_price_verify_poll_obeys_5_to_10s_rule():
     """Pin USER 2026-10-23: verify-by-REST runs every 5-10s, never every 1-2s."""
     import re
