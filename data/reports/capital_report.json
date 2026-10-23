@@ -1,68 +1,163 @@
 {
- "generated_at": "2026-10-23 17:28 UTC",
- "total_capital_usd": 36.87,
+ "generated_at": "2026-10-23 17:53 UTC",
+ "total_capital_usd": 439.57,
  "tier_capital": {
   "A": 0.0,
-  "B": 30.84,
-  "C": 6.03
+  "B": 382.96,
+  "C": 56.6
  },
  "tier_count": {
   "A": 0,
-  "B": 3,
-  "C": 1
+  "B": 5,
+  "C": 7
  },
  "winners": [],
  "losers": [
-  "fin:BLURUSDT_SHORT"
+  "flz:HYPEUSDT_LONG",
+  "flz:BTCDOMUSDT_SHORT",
+  "flz:HYPEUSDT_SHORT",
+  "flz:SOLUSDC_SHORT",
+  "flz:SOLUSDC_LONG",
+  "flz:DASHUSDT_SHORT",
+  "flz:BNBUSDC_LONG"
  ],
  "mediocre": [
-  "fin:SKYAIUSDT_LONG",
-  "fin:VETUSDT_LONG"
+  "flz:BTCUSDC_SHORT",
+  "flz:DYDXUSDT_SHORT",
+  "flz:XRPUSDC_SHORT"
  ],
  "positions": [
   {
-   "pk": "fin:GRASSUSDT_LONG",
-   "symbol": "GRASSUSDT",
-   "account": "fin",
-   "value_usd": 17.95,
-   "gain_pct": 2.781,
-   "tier": "B",
-   "perf_mult": 3.19,
-   "amt": 26.9,
-   "mark": 0.66724583
-  },
-  {
-   "pk": "fin:SKYAIUSDT_LONG",
-   "symbol": "SKYAIUSDT",
-   "account": "fin",
-   "value_usd": 6.89,
-   "gain_pct": 0.048,
+   "pk": "flz:BTCUSDC_SHORT",
+   "symbol": "BTCUSDC",
+   "account": "flz",
+   "value_usd": 163.07,
+   "gain_pct": 0.135,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 205.0,
-   "mark": 0.0336263
+   "amt": 0.002,
+   "mark": 81532.8056037
   },
   {
-   "pk": "fin:BLURUSDT_SHORT",
-   "symbol": "BLURUSDT",
-   "account": "fin",
-   "value_usd": 6.03,
-   "gain_pct": 3.529,
-   "tier": "C",
-   "perf_mult": 0.17,
-   "amt": 702.0,
-   "mark": 0.00859558
-  },
-  {
-   "pk": "fin:VETUSDT_LONG",
-   "symbol": "VETUSDT",
-   "account": "fin",
-   "value_usd": 6.0,
-   "gain_pct": -0.275,
+   "pk": "flz:DYDXUSDT_SHORT",
+   "symbol": "DYDXUSDT",
+   "account": "flz",
+   "value_usd": 131.17,
+   "gain_pct": 0.0,
    "tier": "B",
-   "perf_mult": 0.32,
-   "amt": 826.0,
-   "mark": 0.007262
+   "perf_mult": 1.0,
+   "amt": 1588.1,
+   "mark": 0.08259771292893943
+  },
+  {
+   "pk": "flz:BTCUSDC_LONG",
+   "symbol": "BTCUSDC",
+   "account": "flz",
+   "value_usd": 81.53,
+   "gain_pct": 0.544,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 0.001,
+   "mark": 81532.8056037
+  },
+  {
+   "pk": "flz:BNBUSDC_LONG",
+   "symbol": "BNBUSDC",
+   "account": "flz",
+   "value_usd": 14.9,
+   "gain_pct": 1.997,
+   "tier": "C",
+   "perf_mult": 0.45,
+   "amt": 0.02,
+   "mark": 745.1705608
+  },
+  {
+   "pk": "flz:HYPEUSDT_LONG",
+   "symbol": "HYPEUSDT",
+   "account": "flz",
+   "value_usd": 10.98,
+   "gain_pct": -0.274,
+   "tier": "C",
+   "perf_mult": 0.39,
+   "amt": 0.14,
+   "mark": 78.43543678
+  },
+  {
+   "pk": "flz:SOLUSDC_SHORT",
+   "symbol": "SOLUSDC",
+   "account": "flz",
+   "value_usd": 10.43,
+   "gain_pct": 0.332,
+   "tier": "C",
+   "perf_mult": 0.18,
+   "amt": 0.1,
+   "mark": 104.33256027
+  },
+  {
+   "pk": "flz:XRPUSDC_SHORT",
+   "symbol": "XRPUSDC",
+   "account": "flz",
+   "value_usd": 6.15,
+   "gain_pct": 0.191,
+   "tier": "B",
+   "perf_mult": 0.66,
+   "amt": 4.7,
+   "mark": 1.3088
+  },
+  {
+   "pk": "flz:DASHUSDT_SHORT",
+   "symbol": "DASHUSDT",
+   "account": "flz",
+   "value_usd": 6.14,
+   "gain_pct": 0.891,
+   "tier": "C",
+   "perf_mult": 0.38,
+   "amt": 0.115,
+   "mark": 53.4
+  },
+  {
+   "pk": "flz:BTCDOMUSDT_SHORT",
+   "symbol": "BTCDOMUSDT",
+   "account": "flz",
+   "value_usd": 5.53,
+   "gain_pct": 0.013,
+   "tier": "C",
+   "perf_mult": 0.49,
+   "amt": 0.001,
+   "mark": 5534.7
+  },
+  {
+   "pk": "flz:HYPEUSDT_SHORT",
+   "symbol": "HYPEUSDT",
+   "account": "flz",
+   "value_usd": 5.49,
+   "gain_pct": 0.244,
+   "tier": "C",
+   "perf_mult": 0.39,
+   "amt": 0.07,
+   "mark": 78.43543678
+  },
+  {
+   "pk": "flz:SOLUSDC_LONG",
+   "symbol": "SOLUSDC",
+   "account": "flz",
+   "value_usd": 3.13,
+   "gain_pct": 0.688,
+   "tier": "C",
+   "perf_mult": 0.18,
+   "amt": 0.03,
+   "mark": 104.33256027
+  },
+  {
+   "pk": "flz:DOGEUSDC_LONG",
+   "symbol": "DOGEUSDC",
+   "account": "flz",
+   "value_usd": 1.04,
+   "gain_pct": 0.493,
+   "tier": "B",
+   "perf_mult": 0.37,
+   "amt": 13.0,
+   "mark": 0.07976128
   }
  ]
 }
