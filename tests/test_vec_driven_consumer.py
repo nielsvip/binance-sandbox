@@ -439,6 +439,19 @@ def test_foreign_account_intent_ignored_here(tmp_path, monkeypatch):
     assert not VD.ConsumedStore(vl / "consumed_men.json").has("fr1")
 
 
+def test_load_intents_oldest_bar_first(tmp_path):
+    """USER 2026-10-23 vec-native parity: bar precedence is oldest-first (a newest-first flip was
+    tried and reverted same day — it lets a newer OPEN dispatch before an older CLOSE and close the
+    fresh re-entry). Backlog latency is owned by the exterminator + load, not by sort order."""
+    d = tmp_path / "intents"
+    d.mkdir()
+    now = time.time()
+    for i, age in enumerate((3000, 100, 10000)):
+        (d / f"PB-men-AAAUSDT_LONG-{i}.json").write_text(json.dumps({
+            "intent_id": f"ID-{i}", "ss": "AAAUSDT_LONG", "type": "OPEN", "bar_ts": now - age}))
+    assert [r["intent_id"] for r in VD.load_intents(d)] == ["ID-2", "ID-0", "ID-1"]
+
+
 def test_boot_stagger_spreads_accounts_and_disables(monkeypatch):
     """USER 2026-10-23 ban root-cause: deterministic per-account boot delay spreads REST
     bootstrap bursts; env kill switch disables; unknown accounts get no delay."""
