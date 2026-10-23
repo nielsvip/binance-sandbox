@@ -1,13 +1,12 @@
 {
- "generated_utc": "2026-10-23T01:40:08Z",
+ "generated_utc": "2026-10-23T02:00:03Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-22T13:30:00Z",
  "market_open": true,
  "verdict": "FAIL",
  "failed_critical": [
   "defaults_chain_completed",
-  "live_set_matches_selection",
-  "indicators_fresh"
+  "live_set_matches_selection"
  ],
  "checks": [
   {
@@ -15,10 +14,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 710,
+    "filled_today": 714,
     "filled_before_open": 394
    },
-   "detail": "394 boards filled before the open (710 today)"
+   "detail": "394 boards filled before the open (714 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -38,11 +37,11 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "built_at": "2026-10-23T00:51:17.346389+00:00",
+    "built_at": "2026-10-23T01:52:32.497137+00:00",
     "n": 523,
-    "age_at_open_s": -40877
+    "age_at_open_s": -44552
    },
-   "detail": "built 2026-10-23T00:51:17.346389+00:00 n=523"
+   "detail": "built 2026-10-23T01:52:32.497137+00:00 n=523"
   },
   {
    "name": "apply_report_written",
@@ -63,8 +62,8 @@
    "measured": {
     "selection_n": 523,
     "exact": 130,
-    "benign_divergence_only": 327,
-    "material_divergence": 60,
+    "benign_divergence_only": 324,
+    "material_divergence": 63,
     "no_live_row": [
      "LEXX_SHORT",
      "MCD_LONG",
@@ -153,6 +152,19 @@
       ]
      },
      {
+      "sym_side": "KMNOUSDT_SHORT",
+      "published_at": "2026-10-23T01:49:34Z",
+      "material": 91,
+      "sample": [
+       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
+       "ATR_ADAPTIVE_STOP_ENABLED",
+       "BB_EXIT_AT_LOSS_TF",
+       "BB_RECOVERY_ENTRY_FILTER_TF",
+       "DC_EDGE_SIZING_MAX_MULT",
+       "DC_SLOPE_INCENTIVE_ENTRY_MULT"
+      ]
+     },
+     {
       "sym_side": "NXE_SHORT",
       "published_at": "2026-10-21T01:32:19Z",
       "material": 83,
@@ -190,45 +202,27 @@
        "BB_PULLBACK_GATE_ON_FINAL",
        "BB_PULLBACK_GATE_TF"
       ]
-     },
-     {
-      "sym_side": "UNIUSDC_SHORT",
-      "published_at": "2026-10-22T14:26:50Z",
-      "material": 69,
-      "sample": [
-       "ALL_TF_AGAINST_CLOSE_ENABLED",
-       "ATR_ADAPTIVE_SIZING_ENABLED",
-       "ATR_ADAPTIVE_STOP_ENABLED",
-       "BB_PULLBACK_GATE_FILTER_TF",
-       "BB_PULLBACK_GATE_TF",
-       "CIRCUIT_SHARPE_GATES_FILTER_TF"
-      ]
      }
     ]
    },
-   "detail": "130 exact, 327 benign-only, 60 with material divergence, 6 with no live row"
+   "detail": "130 exact, 324 benign-only, 63 with material divergence, 6 with no live row"
   },
   {
    "name": "indicators_fresh",
-   "ok": false,
+   "ok": true,
    "critical": true,
    "measured": {
-    "symbols": 202,
-    "stale_over_90min": 162,
-    "stale_pct": 80.2,
-    "median_age_min": 100.1,
+    "symbols": 201,
+    "stale_over_90min": 3,
+    "stale_pct": 1.5,
+    "median_age_min": 30.1,
     "sample": [
-     "1000SATSUSDT",
-     "1000SHIBUSDC",
-     "1000XECUSDT",
-     "1INCHUSDT",
-     "1MBABYDOGEUSDT",
-     "ACHUSDT",
-     "ADAUSDC",
-     "AGLDUSDT"
+     "DUSKUSDT",
+     "ONEUSDT",
+     "SPELLUSDT"
     ]
    },
-   "detail": "162/202 symbols past the live 90-min entry gate (80.2%)"
+   "detail": "3/201 symbols past the live 90-min entry gate (1.5%)"
   },
   {
    "name": "s1_sets_synced",
