@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-23T20:57:48Z",
+ "generated_utc": "2026-10-23T21:02:49Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 229.5,
+  "age_s": 530.0,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 10644,
-  "proc_age_s": 68293.0,
-  "log_age_s": 10.1,
+  "proc_age_s": 68593.0,
+  "log_age_s": 44.3,
   "warmup_done": true,
   "timeframes_since_restart": [
    "D",
@@ -52,20 +52,20 @@
   "mode": "ACTIVE",
   "since_epoch": 1792602182.2042153,
   "activations": 163,
-  "hb_mtime": 1792788821.9009736,
-  "mac_snapshot_age_s": 20.329593420028687,
+  "hb_mtime": 1792789119.8180795,
+  "mac_snapshot_age_s": 7.182682037353516,
   "mac_stale": false,
   "lease_holder": "mac",
   "lease_venues": null,
-  "lease_since": "2026-10-23T20:52:39Z",
-  "lease_reason": "manual force-mac",
-  "now": 1792788823.1903539,
-  "from_cache_age_s": 245.4,
-  "heartbeat_age_s": 1.3,
-  "active_s": 186641.0
+  "lease_since": "2026-10-23T20:54:54Z",
+  "lease_reason": "yield: Mac never fenced for 180s \u2014 accounts must never be unattended",
+  "now": 1792789128.225262,
+  "from_cache_age_s": 240.9,
+  "heartbeat_age_s": 8.4,
+  "active_s": 186946.0
  },
  "alerts": [
-  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 186640s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (1s) AND the Mac snapshot is fresh (229s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
+  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 186946s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (8s) AND the Mac snapshot is fresh (529s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
  ],
  "verdict": "ALERT"
 }
