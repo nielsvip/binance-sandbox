@@ -171,6 +171,25 @@ def test_ratio_trim_allowed_close_killed(tmp_path, monkeypatch):
     assert "candidates = []" in ez_src
 
 
+def test_e3_booked_shape_flows_stale_analogue_refused(tmp_path, monkeypatch):
+    """USER 2026-10-23 hawk E3 (trb:ARM_SHORT kill): the booked
+    E_3_STRUCTURE_EXIT_{n}TF_{tfs} shape (grey-wire booking + peak-structure
+    twins both venues) flows as VEC_SWITCH_EXIT; the old tradier
+    E3_STRUCT_EXIT_{n}of3 cross-analogue shape stays refused (E3_ANALOGUE,
+    never listed) so a stale live process cannot slip through."""
+    _iso(tmp_path, monkeypatch)
+    assert (
+        ve.family_of("E_3_STRUCTURE_EXIT_2TF_15m_4h_g-0.13%") == "E3"
+    )
+    assert ve.family_of("E3_STRUCT_EXIT_2of3_g-0.13%") == "E3_ANALOGUE"
+    ok, verdict = ve.check(
+        "CLOSE", "a", "E_3_STRUCTURE_EXIT_2TF_15m_4h_g-0.13%"
+    )
+    assert (ok, verdict) == (True, "VEC_SWITCH_EXIT")
+    ok, _ = ve.check("CLOSE", "a", "E3_STRUCT_EXIT_2of3_g-0.13%")
+    assert ok is False
+
+
 def test_ppl_reaugment_allowed_ppl_tp_stays_killed(tmp_path, monkeypatch):
     """USER 2026-10-22 PPL re-augment switch (standing order -> per-sym_side
     switch, backtest decides; implied augment MULT x TP qty on WT cross back
