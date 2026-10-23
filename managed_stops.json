@@ -1,30 +1,58 @@
 {
-  "men:TIAUSDC_LONG": {
-    "orderId": "2000001535663051",
-    "stopPrice": 0.5323,
-    "entry_sig": "2026-10-23 18:55:45.846000+00:00",
-    "symbol": "TIAUSDC",
+  "flz:SOLUSDC_LONG": {
+    "orderId": "1000002638441054",
+    "stopPrice": 102.47,
+    "entry_sig": "2026-10-23 01:10:05.199000+00:00",
+    "symbol": "SOLUSDC",
     "side": "LONG"
   },
-  "men:GRASSUSDT_LONG": {
-    "orderId": "2000001535682639",
-    "stopPrice": 0.6599,
-    "entry_sig": "2026-10-23 19:05:52.553000+00:00",
-    "symbol": "GRASSUSDT",
-    "side": "LONG"
-  },
-  "men:ACTUSDT_SHORT": {
-    "orderId": "2000001535694199",
-    "stopPrice": 0.009004,
-    "entry_sig": "2026-10-23 18:53:53.968000+00:00",
-    "symbol": "ACTUSDT",
+  "flz:DASHUSDT_SHORT": {
+    "orderId": "1000002639791447",
+    "stopPrice": 54.51,
+    "entry_sig": "2026-10-23 16:43:45.189000+00:00",
+    "symbol": "DASHUSDT",
     "side": "SHORT"
   },
-  "men:BIOUSDC_SHORT": {
-    "orderId": "2000001535840738",
-    "stopPrice": 0.02431,
-    "entry_sig": "2026-10-23 19:00:44.643000+00:00",
-    "symbol": "BIOUSDC",
+  "flz:BTCDOMUSDT_SHORT": {
+    "orderId": "1000002639909762",
+    "stopPrice": 5583.0,
+    "entry_sig": "2026-10-23 16:43:54.043000+00:00",
+    "symbol": "BTCDOMUSDT",
+    "side": "SHORT"
+  },
+  "flz:XRPUSDC_SHORT": {
+    "orderId": "1000002639918830",
+    "stopPrice": 1.3311,
+    "entry_sig": "2026-10-23 16:44:01.874000+00:00",
+    "symbol": "XRPUSDC",
+    "side": "SHORT"
+  },
+  "flz:BNBUSDC_LONG": {
+    "orderId": "1000002639918831",
+    "stopPrice": 720.62,
+    "entry_sig": "2026-10-23 01:37:54.619000+00:00",
+    "symbol": "BNBUSDC",
+    "side": "LONG"
+  },
+  "flz:SOLUSDC_SHORT": {
+    "orderId": "1000002639921107",
+    "stopPrice": 105.02,
+    "entry_sig": "2026-10-23 16:43:45.802000+00:00",
+    "symbol": "SOLUSDC",
+    "side": "SHORT"
+  },
+  "flz:BTCUSDC_SHORT": {
+    "orderId": "1000002639921115",
+    "stopPrice": 82215.3,
+    "entry_sig": "2026-10-23 16:43:49.317000+00:00",
+    "symbol": "BTCUSDC",
+    "side": "SHORT"
+  },
+  "flz:HYPEUSDT_SHORT": {
+    "orderId": "1000002639921108",
+    "stopPrice": 78.878,
+    "entry_sig": "2026-10-23 16:43:45.188000+00:00",
+    "symbol": "HYPEUSDT",
     "side": "SHORT"
   }
 }
