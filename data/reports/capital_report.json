@@ -1,68 +1,32 @@
 {
- "generated_at": "2026-10-23 18:42 UTC",
- "total_capital_usd": 25.8,
+ "generated_at": "2026-10-23 18:54 UTC",
+ "total_capital_usd": 11.27,
  "tier_capital": {
   "A": 0.0,
-  "B": 19.79,
-  "C": 6.0
+  "B": 11.27,
+  "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 3,
-  "C": 1
+  "B": 1,
+  "C": 0
  },
  "winners": [],
- "losers": [
-  "fin:SKYAIUSDT_LONG",
-  "fin:BLURUSDT_SHORT"
- ],
+ "losers": [],
  "mediocre": [
-  "fin:VETUSDT_LONG"
+  "men:STXUSDT_LONG"
  ],
  "positions": [
   {
-   "pk": "fin:GRASSUSDT_LONG",
-   "symbol": "GRASSUSDT",
-   "account": "fin",
-   "value_usd": 6.96,
-   "gain_pct": 4.019,
-   "tier": "B",
-   "perf_mult": 5.41,
-   "amt": 10.3,
-   "mark": 0.67528417
-  },
-  {
-   "pk": "fin:SKYAIUSDT_LONG",
-   "symbol": "SKYAIUSDT",
-   "account": "fin",
-   "value_usd": 6.83,
-   "gain_pct": -0.833,
+   "pk": "men:STXUSDT_LONG",
+   "symbol": "STXUSDT",
+   "account": "men",
+   "value_usd": 11.27,
+   "gain_pct": -0.008,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 205.0,
-   "mark": 0.03333008
-  },
-  {
-   "pk": "fin:VETUSDT_LONG",
-   "symbol": "VETUSDT",
-   "account": "fin",
-   "value_usd": 6.0,
-   "gain_pct": -0.199,
-   "tier": "B",
-   "perf_mult": 0.32,
-   "amt": 826.0,
-   "mark": 0.00726751
-  },
-  {
-   "pk": "fin:BLURUSDT_SHORT",
-   "symbol": "BLURUSDT",
-   "account": "fin",
-   "value_usd": 6.0,
-   "gain_pct": 3.999,
-   "tier": "C",
-   "perf_mult": 0.17,
-   "amt": 702.0,
-   "mark": 0.0085537
+   "amt": 35.0,
+   "mark": 0.32207516
   }
  ]
 }
