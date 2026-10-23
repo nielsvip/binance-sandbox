@@ -1,11 +1,13 @@
 {
- "generated_utc": "2026-10-23T03:40:06Z",
+ "generated_utc": "2026-10-23T04:00:09Z",
  "host": "MacBook-Pro.local",
- "session_open_utc": "2026-10-22T13:30:00Z",
- "market_open": true,
+ "session_open_utc": "2026-10-23T13:30:00Z",
+ "market_open": false,
  "verdict": "FAIL",
  "failed_critical": [
   "defaults_chain_completed",
+  "selection_fresh",
+  "apply_report_written",
   "live_set_matches_selection",
   "indicators_fresh"
  ],
@@ -15,10 +17,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 726,
-    "filled_before_open": 386
+    "filled_today": 94,
+    "filled_before_open": 94
    },
-   "detail": "386 boards filled before the open (726 today)"
+   "detail": "94 boards filled before the open (94 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -26,35 +28,35 @@
    "critical": true,
    "measured": {
     "mac_done_stamp": false,
-    "s1_stamp": "{\"date\":\"20261022\",\"status\":\"FAILED\",\"failed_step\":\"1\",\"why\":\"v15_avg_delta_rebuild rc=1\",\"steps_ok\":\"\",\"started\":\"2026-10-22T13:01:00Z\",\"ended\":\"2026-10-22T13:02:46Z\"}",
+    "s1_stamp": "NO_STAMP",
     "cat_side_defaults_4_at": "2026-10-21T04:54:49Z",
-    "cat_side_age_days": 1.9,
+    "cat_side_age_days": 2.0,
     "cat_side_note": "rebuilt only by v15_daily_template_update --sync-defaults, a deliberate manual step \u2014 reported, never fails this gate"
    },
-   "detail": "mac stamp 20261022=False, s1 stamp {\"date\":\"20261022\",\"status\":\"FAILED\",\"failed_step\":\"1\",\"why\":\"v15_avg_delta_rebuild rc=1\",\"steps_ok\":\"\",\"started\":\"2026-10-22T13:01:00Z\",\"ended\":\"2026, cat_side layer 1.9d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
+   "detail": "mac stamp 20261023=False, s1 stamp NO_STAMP, cat_side layer 2.0d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
   },
   {
    "name": "selection_fresh",
-   "ok": true,
+   "ok": false,
    "critical": true,
    "measured": {
-    "built_at": "2026-10-23T02:52:04.345184+00:00",
+    "built_at": "2026-10-23T03:52:05.077472+00:00",
     "n": 523,
-    "age_at_open_s": -48124
+    "age_at_open_s": 34675
    },
-   "detail": "built 2026-10-23T02:52:04.345184+00:00 n=523"
+   "detail": "built 2026-10-23T03:52:05.077472+00:00 n=523 \u2014 34675s before the open > 7200s"
   },
   {
    "name": "apply_report_written",
-   "ok": true,
+   "ok": false,
    "critical": true,
    "measured": {
-    "reports_today": 5,
-    "newest_report": "persym_golive_20261022_preopen_1242.json",
-    "newest_report_at": "2026-10-22T12:59:44Z",
+    "reports_today": 0,
+    "newest_report": null,
+    "newest_report_at": null,
     "tiers_at": "2026-10-22T14:30:15Z"
    },
-   "detail": "persym_golive_20261022_preopen_1242.json at 2026-10-22T12:59:44Z, tiers 2026-10-22T14:30:15Z"
+   "detail": "NO REPORT at None, tiers 2026-10-22T14:30:15Z \u2014 the apply never finished (no report / stale tiers): the live set is PARTIAL"
   },
   {
    "name": "live_set_matches_selection",
@@ -62,9 +64,9 @@
    "critical": true,
    "measured": {
     "selection_n": 523,
-    "exact": 131,
-    "benign_divergence_only": 329,
-    "material_divergence": 57,
+    "exact": 130,
+    "benign_divergence_only": 328,
+    "material_divergence": 59,
     "no_live_row": [
      "LEXX_SHORT",
      "MCD_LONG",
@@ -206,7 +208,7 @@
      }
     ]
    },
-   "detail": "131 exact, 329 benign-only, 57 with material divergence, 6 with no live row"
+   "detail": "130 exact, 328 benign-only, 59 with material divergence, 6 with no live row"
   },
   {
    "name": "indicators_fresh",
@@ -214,21 +216,21 @@
    "critical": true,
    "measured": {
     "symbols": 201,
-    "stale_over_90min": 200,
-    "stale_pct": 99.5,
-    "median_age_min": 115.1,
+    "stale_over_90min": 201,
+    "stale_pct": 100.0,
+    "median_age_min": 135.2,
     "sample": [
+     "1000000MOGUSDT",
      "1000BONKUSDC",
      "1000CHEEMSUSDT",
      "1000FLOKIUSDT",
      "1000LUNCUSDT",
      "1000PEPEUSDC",
      "1000SATSUSDT",
-     "1000SHIBUSDC",
-     "1000XECUSDT"
+     "1000SHIBUSDC"
     ]
    },
-   "detail": "200/201 symbols past the live 90-min entry gate (99.5%)"
+   "detail": "201/201 symbols past the live 90-min entry gate (100.0%)"
   },
   {
    "name": "s1_sets_synced",
