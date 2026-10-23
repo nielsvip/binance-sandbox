@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-23T08:20:02Z",
+ "generated_utc": "2026-10-23T08:40:07Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-23T13:30:00Z",
  "market_open": false,
@@ -16,10 +16,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 185,
-    "filled_before_open": 185
+    "filled_today": 194,
+    "filled_before_open": 194
    },
-   "detail": "185 boards filled before the open (185 today)"
+   "detail": "194 boards filled before the open (194 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -29,10 +29,10 @@
     "mac_done_stamp": false,
     "s1_stamp": "NO_STAMP",
     "cat_side_defaults_4_at": "2026-10-21T04:54:49Z",
-    "cat_side_age_days": 2.1,
+    "cat_side_age_days": 2.2,
     "cat_side_note": "rebuilt only by v15_daily_template_update --sync-defaults, a deliberate manual step \u2014 reported, never fails this gate"
    },
-   "detail": "mac stamp 20261023=False, s1 stamp NO_STAMP, cat_side layer 2.1d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
+   "detail": "mac stamp 20261023=False, s1 stamp NO_STAMP, cat_side layer 2.2d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
   },
   {
    "name": "selection_fresh",
@@ -63,9 +63,9 @@
    "critical": true,
    "measured": {
     "selection_n": 523,
-    "exact": 128,
-    "benign_divergence_only": 334,
-    "material_divergence": 57,
+    "exact": 129,
+    "benign_divergence_only": 336,
+    "material_divergence": 54,
     "no_live_row": [
      "LEXX_SHORT",
      "SCRUSDT_SHORT",
@@ -205,29 +205,29 @@
      }
     ]
    },
-   "detail": "128 exact, 334 benign-only, 57 with material divergence, 4 with no live row"
+   "detail": "129 exact, 336 benign-only, 54 with material divergence, 4 with no live row"
   },
   {
    "name": "indicators_fresh",
    "ok": true,
    "critical": true,
    "measured": {
-    "symbols": 329,
-    "stale_over_90min": 31,
-    "stale_pct": 9.4,
-    "median_age_min": 50.0,
+    "symbols": 330,
+    "stale_over_90min": 32,
+    "stale_pct": 9.7,
+    "median_age_min": 25.1,
     "sample": [
-     "ASTERUSDT",
-     "AXLUSDT",
-     "BLURUSDT",
-     "BNCUSDT",
-     "BTCDOMUSDT",
-     "CHRUSDT",
-     "CRDOUSDT",
-     "EBAYUSDT"
+     "ARMUSDT",
+     "ASMLUSDT",
+     "ASTSUSDT",
+     "AXTIUSDT",
+     "BMNRUSDT",
+     "COSTUSDT",
+     "CRCLUSDT",
+     "CRDOUSDT"
     ]
    },
-   "detail": "31/329 symbols past the live 90-min entry gate (9.4%)"
+   "detail": "32/330 symbols past the live 90-min entry gate (9.7%)"
   },
   {
    "name": "s1_sets_synced",
