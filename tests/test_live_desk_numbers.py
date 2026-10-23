@@ -57,23 +57,52 @@ def _ev(ts, sym, side, act, qty, price):
     return {"ts": ts, "symbol": sym, "side": side, "action": act, "qty": qty, "price": price}
 
 
+def _expected_day_sums(out, now):
+    """Per-day realized sums straight from priced events, independent of the walk's bucketing."""
+    from datetime import date, timedelta
+    per_day = {}
+    for e in out:
+        rp = e.get("rpnl")
+        if rp is None:
+            continue
+        ts = datetime.fromisoformat(e["ts"])
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        if ts > now:
+            continue
+        d = ts.strftime("%Y-%m-%d")
+        per_day[d] = per_day.get(d, 0.0) + rp
+    today, yest = now.date(), now.date() - timedelta(days=1)
+
+    def in_trail(n):
+        return round(sum(v for d, v in per_day.items() if (today - date.fromisoformat(d)).days <= n), 2)
+
+    return {"today": round(per_day.get(today.strftime("%Y-%m-%d"), 0.0), 2), "yest": round(per_day.get(yest.strftime("%Y-%m-%d"), 0.0), 2), "d7": in_trail(6), "d30": in_trail(29)}
+
+
 def test_realized_windows_and_unknown_basis():
     now = datetime.now(timezone.utc).replace(microsecond=0)
     iso = lambda dt: dt.isoformat()
 
     from datetime import timedelta
     evts = [
-        _ev(iso(now - timedelta(hours=1)), "A", "LONG", "OPEN", 10.0, 100.0),
-        _ev(iso(now - timedelta(minutes=30)), "A", "LONG", "REDUCE", 4.0, 110.0),  # +40 in every window
+        _ev(iso(now - timedelta(hours=2)), "A", "LONG", "OPEN", 10.0, 100.0),
+        _ev(iso(now - timedelta(hours=1)), "A", "LONG", "REDUCE", 4.0, 110.0),  # +40
+        _ev(iso(now - timedelta(hours=26)), "D", "LONG", "OPEN", 1.0, 100.0),
+        _ev(iso(now - timedelta(hours=25)), "D", "LONG", "REDUCE", 1.0, 120.0),  # +20 prior day
         _ev(iso(now - timedelta(days=10)), "B", "SHORT", "OPEN", 5.0, 50.0),
         _ev(iso(now - timedelta(days=9)), "B", "SHORT", "CLOSE", 5.0, 40.0),  # +50 in 30d only
         _ev(iso(now - timedelta(minutes=5)), "C", "LONG", "CLOSE", 2.0, 9.0),  # no basis: unknown
     ]
     out, s = srv.realized_walk(evts)
-    assert s["pnl_1d"] == 40.0
-    assert s["pnl_7d"] == 40.0
-    assert s["pnl_30d"] == 90.0
-    assert s["pnl_total"] == 90.0
+    exp = _expected_day_sums(out, now)
+    assert s["pnl_total"] == 110.0
+    assert s["pnl_today"] == exp["today"]
+    assert s["pnl_yest"] == exp["yest"]
+    assert s["pnl_7d"] == exp["d7"]
+    assert s["pnl_30d"] == exp["d30"]
+    assert s["d_today"] == now.strftime("%Y-%m-%d")
+    assert s["d_yest"] == (now - timedelta(days=1)).strftime("%Y-%m-%d")
     assert s["unknown"] == 1
     assert s["unknown_phantom"] == 1
     assert s["unknown_partial"] == 0
@@ -92,11 +121,15 @@ def test_unknown_partial_vs_phantom():
         _ev(iso(now - timedelta(hours=1)), "P", "LONG", "REDUCE", 14.0, 110.0),  # 10 known (+100) + 4 partial
     ]
     out, s = srv.realized_walk(evts)
+    exp = _expected_day_sums(out, now)
     assert s["known"] == 1
     assert s["unknown"] == 1
     assert s["unknown_partial"] == 1
     assert s["unknown_phantom"] == 0
-    assert s["pnl_1d"] == 100.0
+    assert s["pnl_total"] == 100.0
+    assert s["pnl_today"] == exp["today"]
+    assert s["pnl_7d"] == exp["d7"]
+    assert s["pnl_30d"] == exp["d30"]
     by_sym = {e["symbol"]: e for e in out if e["action"] in ("REDUCE", "CLOSE")}
     assert by_sym["P"]["rpnl"] == 100.0
 
@@ -121,12 +154,20 @@ def test_low_funds_boundary():
 def test_sum_windows_buckets_and_future_clamp():
     import time
     now = time.time()
-    w, daily = srv.sum_windows([(now - 100, 10.0), (now - 2 * 86400, -4.0), (now - 10 * 86400, 7.0), (now - 40 * 86400, 100.0), (now + 3600, 5.0)], now)
-    assert w["b_1d"] == 15.0
-    assert w["b_7d"] == 11.0
-    assert w["b_30d"] == 18.0
-    assert sum(daily.values()) == 18.0
-    assert srv.sum_windows([("bad", 1.0)], now) == ({"b_1d": 0.0, "b_7d": 0.0, "b_30d": 0.0}, {})
+    noon = now - (now % 86400) + 12 * 3600
+    if noon > now:
+        noon -= 86400
+    now_s = noon + 3600
+    w, daily = srv.sum_windows([(noon - 100, 10.0), (noon - 86400 + 50, 3.0), (noon - 2 * 86400, -4.0), (noon - 10 * 86400, 7.0), (noon - 40 * 86400, 100.0), (noon + 12 * 3600, 5.0)], now_s)
+    assert w["b_today"] == 15.0
+    assert w["b_yest"] == 3.0
+    assert w["b_7d"] == 14.0
+    assert w["b_30d"] == 21.0
+    assert sum(daily.values()) == 21.0
+    assert w["d_today"] == time.strftime("%Y-%m-%d", time.gmtime(now_s))
+    assert w["d_yest"] == time.strftime("%Y-%m-%d", time.gmtime(now_s - 86400))
+    assert srv.sum_windows([("bad", 1.0)], now_s)[0]["b_today"] == 0.0
+    assert srv.sum_windows([("bad", 1.0)], now_s)[1] == {}
 
 
 def test_binance_sign_shape():
