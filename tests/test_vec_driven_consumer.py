@@ -414,6 +414,37 @@ def test_margin_floor_refuses_open(tmp_path, monkeypatch):
     assert rows[-1]["result"] == "REFUSED_MARGIN_FLOOR"
 
 
+def test_foreign_account_intent_ignored_here(tmp_path, monkeypatch):
+    """USER 2026-10-23 vec-native parity: one process serves ONE account, so an intent file addressed
+    to another account must neither execute nor refuse here — the owning process owns it (19,902
+    cross-account ledger rows all-time, incl. false NON_TRADEABLE and BROKER_UNREACHABLE breaches).
+    An absent account field (legacy executor files) stays fail-open and still executes."""
+    base, vl, tm, calls = _setup(tmp_path, monkeypatch, REG_LIVE)
+    now = time.time()
+    _intent(vl, "own1", "BTCUSDT_LONG", "OPEN", now - 5, account="men", reason="OWN_LEG")
+    _intent(vl, "fr1", "BTCUSDT_LONG", "OPEN", now - 5, account="fin", reason="FOREIGN_LEG")
+    _intent(vl, "legacy1", "BTCUSDT_LONG", "OPEN", now - 4, reason="LEGACY_LEG")
+    _run_loop(tm, monkeypatch, cycles=1)
+    reasons = [c["reason"] for c in calls]
+    assert any("OWN_LEG" in r for r in reasons), reasons
+    assert any("LEGACY_LEG" in r for r in reasons), reasons
+    assert not any("FOREIGN_LEG" in r for r in reasons), reasons
+    rows = [json.loads(x) for x in (vl / "live_exec_men.jsonl").read_text().splitlines()]
+    assert "fr1" not in {r.get("intent_id") for r in rows}, rows
+    assert not VD.ConsumedStore(vl / "consumed_men.json").has("fr1")
+
+
+def test_open_on_leftover_broker_retry_then_fail_closed():
+    """USER 2026-10-23 vec-native parity: the broker-truth slot read is wait-free, so a transiently
+    stale slot gets a bounded retry before the OPEN is refused; a persistently unreachable broker
+    still refuses with the same gate string (fail-closed)."""
+    src = Path(EZ.__file__).read_text()
+    i_snap = src.index('snapshot(reason=f"open_on_leftover {position_key}")')
+    i_refuse = src.index('"BLOCKED_POSITIONS_BROKER_UNREACHABLE"')
+    seg = src[i_snap:i_refuse]
+    assert "while _lo_snap is None" in seg and "await asyncio.sleep" in seg and "open_on_leftover_retry" in seg, seg[-400:]
+
+
 def test_dictates_not_refused_while_flat(tmp_path, monkeypatch):
     """USER 2026-10-22: the per-bar cap is only correct WHEN A POSITION ACTUALLY EXISTS. Two OPEN dictates on a FLAT
     key both reach the order path — a vector decision is never refused by a counter. (Old law: exactly 1 per bar,

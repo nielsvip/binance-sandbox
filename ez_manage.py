@@ -26241,6 +26241,15 @@ class MultiAccountTradeManager:
                         bar = it["_bar_epoch"]
                         symbol, side = _vdm.split_ss(ss)
                         position_key = f"{account_key}:{ss}"
+                        # USER 2026-10-23 vec-native parity: each process is locked to ONE account
+                        # (main() pins config.ACCOUNT_KEYS=[selected]), so a foreign-addressed intent
+                        # file can never execute here — it only produced refusal noise (19,902
+                        # cross-account ledger rows all-time, incl. false NON_TRADEABLE and
+                        # BROKER_UNREACHABLE breaches). Skip it silently for the owning process
+                        # to handle; absent account field (legacy executor files) stays fail-open.
+                        _it_acct = it.get("account")
+                        if isinstance(_it_acct, str) and _it_acct.strip() and _it_acct.strip() != account_key:
+                            continue
                         # USER 2026-10-22: the lane writes one intent file per (account, sym_side, bar), and this
                         # process answers for its own accounts only, so N files for the same sym_side+bar+type are ONE
                         # vector decision — collapsed here, not refused downstream. tradeable_keys decides which keys
@@ -35796,8 +35805,24 @@ class MultiAccountTradeManager:
                 _lo_acct, _lo_sym, _lo_ps = account_key, symbol, position_side
             if _lo_acct and not is_sandbox_account(config, _lo_acct):
                 _lo_snap = await _ptruth.ez_broker(self, _lo_acct, config, logger).snapshot(reason=f"open_on_leftover {position_key}")
+                # USER 2026-10-23 vec-native parity: the slot read above is wait-free (positions_truth
+                # serves the background-refresher slot with no loop-timed waiting), so a transiently
+                # stale slot under load refused 1,237 vec OPENs on 2026-10-22 in staggered bursts while
+                # fetches seconds later succeeded. Bounded retry lets the refresher land; a persistently
+                # unreachable broker still refuses exactly as before (fail-closed, same gate string).
+                _lo_tries = 0
+                while _lo_snap is None and _lo_tries < 2:
+                    _lo_tries += 1
+                    try:
+                        await asyncio.sleep(1.0)
+                    except Exception:
+                        pass
+                    try:
+                        _lo_snap = await _ptruth.ez_broker(self, _lo_acct, config, logger).snapshot(reason=f"open_on_leftover_retry{_lo_tries} {position_key}")
+                    except Exception:
+                        _lo_snap = None
                 if _lo_snap is None:
-                    logger.critical(f"🛑 [OPEN_ON_LEFTOVER] {position_key}: broker position unknown — OPEN refused (fail closed)")
+                    logger.critical(f"🛑 [OPEN_ON_LEFTOVER] {position_key}: broker position unknown after {_lo_tries + 1} reads — OPEN refused (fail closed)")
                     return "BLOCKED_POSITIONS_BROKER_UNREACHABLE"
                 _lo_amt = _lo_snap.amount(_lo_sym, _lo_ps)
                 if _lo_amt > 0:
