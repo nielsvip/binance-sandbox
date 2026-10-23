@@ -1,67 +1,69 @@
 {
- "generated_at": "2026-10-23 04:53 UTC",
- "total_capital_usd": 112.08,
+ "generated_at": "2026-10-23 05:06 UTC",
+ "total_capital_usd": 254.86,
  "tier_capital": {
-  "A": 0.0,
-  "B": 72.62,
-  "C": 39.45
+  "A": 45.97,
+  "B": 163.93,
+  "C": 44.95
  },
  "tier_count": {
-  "A": 0,
+  "A": 1,
   "B": 2,
-  "C": 2
+  "C": 1
  },
- "winners": [],
+ "winners": [
+  "fin:1000PEPEUSDC_LONG"
+ ],
  "losers": [
-  "ang:BATUSDT_LONG",
-  "ang:NEARUSDC_LONG",
-  "ang:AAVEUSDC_LONG"
+  "fin:COMPUSDT_LONG",
+  "fin:KASUSDT_LONG",
+  "fin:DASHUSDT_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "ang:BATUSDT_LONG",
-   "symbol": "BATUSDT",
-   "account": "ang",
-   "value_usd": 44.55,
-   "gain_pct": -1.082,
+   "pk": "fin:COMPUSDT_LONG",
+   "symbol": "COMPUSDT",
+   "account": "fin",
+   "value_usd": 118.74,
+   "gain_pct": -1.087,
    "tier": "B",
-   "perf_mult": 6.75,
-   "amt": 261.0,
-   "mark": 0.17068317
+   "perf_mult": 4.79,
+   "amt": 4.874,
+   "mark": 24.36225235
   },
   {
-   "pk": "ang:AAVEUSDC_LONG",
-   "symbol": "AAVEUSDC",
-   "account": "ang",
-   "value_usd": 29.64,
-   "gain_pct": -0.102,
-   "tier": "C",
-   "perf_mult": 0.44,
-   "amt": 0.2,
-   "mark": 148.21847422
+   "pk": "fin:1000PEPEUSDC_LONG",
+   "symbol": "1000PEPEUSDC",
+   "account": "fin",
+   "value_usd": 45.97,
+   "gain_pct": 0.631,
+   "tier": "A",
+   "perf_mult": 5.87,
+   "amt": 10184.0,
+   "mark": 0.00451412
   },
   {
-   "pk": "ang:PENGUUSDC_LONG",
-   "symbol": "PENGUUSDC",
-   "account": "ang",
-   "value_usd": 28.07,
-   "gain_pct": 0.297,
+   "pk": "fin:KASUSDT_LONG",
+   "symbol": "KASUSDT",
+   "account": "fin",
+   "value_usd": 45.19,
+   "gain_pct": -0.74,
    "tier": "B",
-   "perf_mult": 1.72,
-   "amt": 3586.0,
-   "mark": 0.00782846
+   "perf_mult": 1.0,
+   "amt": 1207.0,
+   "mark": 0.03744083
   },
   {
-   "pk": "ang:NEARUSDC_LONG",
-   "symbol": "NEARUSDC",
-   "account": "ang",
-   "value_usd": 9.81,
-   "gain_pct": -0.956,
+   "pk": "fin:DASHUSDT_LONG",
+   "symbol": "DASHUSDT",
+   "account": "fin",
+   "value_usd": 44.95,
+   "gain_pct": -0.248,
    "tier": "C",
-   "perf_mult": 0.19,
-   "amt": 2.0,
-   "mark": 4.90566649
+   "perf_mult": 0.39,
+   "amt": 0.821,
+   "mark": 54.75407853
   }
  ]
 }

@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-23T05:02:00Z",
+ "generated_utc": "2026-10-23T05:06:04Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 161.4,
+  "age_s": 405.5,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 10644,
-  "proc_age_s": 10944.0,
-  "log_age_s": 161.1,
+  "proc_age_s": 11188.0,
+  "log_age_s": 166.3,
   "warmup_done": true,
   "timeframes_since_restart": [
    "D",
@@ -45,21 +45,20 @@
   "mode": "ACTIVE",
   "since_epoch": 1792602182.2042153,
   "activations": 163,
-  "hb_mtime": 1792731474.1210265,
-  "mac_snapshot_age_s": 4.458449840545654,
+  "hb_mtime": 1792731732.6821177,
+  "mac_snapshot_age_s": 41.80980348587036,
   "mac_stale": false,
-  "lease_holder": "s1",
-  "lease_venues": "crypto",
-  "lease_since": "2026-10-23T04:57:52Z",
-  "lease_reason": "Mac reachable but NOT TRADING: crypto: account_dead 1/5 (inf) no ez_manage process and/or no engine log line for >= 240s while other accounts still trade \u2014 local repair failed, not_trading_account: ang idle 186s (56 live keys), inf idle 3435s (11 live keys), flz idle 2008s (26 live keys), men idle 934s (50 live keys), fin idle 3947s (42 live keys) \u2014 no vec decision executed for >30s while the board lane is live (registry age 744s) for 50s",
-  "now": 1792731475.4646492,
-  "from_cache_age_s": 245.2,
-  "heartbeat_age_s": 1.3,
-  "active_s": 129293.3,
-  "note": "producers are CORRECT: S1 holds the TRADING lease (venues='crypto', since 2026-10-23T04:57:52Z, reason 'Mac reachable but NOT TRADING: crypto: account_dead 1/5 (inf) no ez_manage process and/or no engine log line for >= 240s while other accounts still trade \u2014 local repair failed, not_trading_account: ang idle 186s (56 live keys), inf idle 3435s (11 live keys), flz idle 2008s (26 live keys), men idle 934s (50 live keys), fin idle 3947s (42 live keys) \u2014 no vec decision executed for >30s while the board lane is live (registry age 744s) for 50s'), so S1 must produce crypto data. Do NOT stop the producers. The question to chase is the LEASE/failback, not this unit."
+  "lease_holder": "mac",
+  "lease_venues": null,
+  "lease_since": "2026-10-23T05:02:02Z",
+  "lease_reason": "manual force-mac",
+  "now": 1792731776.9401503,
+  "from_cache_age_s": 187.9,
+  "heartbeat_age_s": 44.3,
+  "active_s": 129594.7
  },
  "alerts": [
-  "S1 HOLDS THE LIVE CRYPTO LEASE WHILE THE MAC LOOKS HEALTHY: lease venues='crypto' since 2026-10-23T04:57:52Z (reason 'Mac reachable but NOT TRADING: crypto: account_dead 1/5 (inf) no ez_manage process and/or no engine log line for >= 240s while other accounts still trade \u2014 local repair failed, not_trading_account: ang idle 186s (56 live keys), inf idle 3435s (11 live keys), flz idle 2008s (26 live keys), men idle 934s (50 live keys), fin idle 3947s (42 live keys) \u2014 no vec decision executed for >30s while the board lane is live (registry age 744s) for 50s'), Mac heartbeat 1s, Mac snapshot 161s. S1 is therefore running the live engines AND the producers instead of backtests. This is a LEASE/failback question \u2014 do NOT stop the producers (that would leave the trading host blind). Operator decision: hand the lease back to the Mac only after confirming the Mac's pushes and heartbeat are stable."
+  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 129594s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (44s) AND the Mac snapshot is fresh (405s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
  ],
  "verdict": "ALERT"
 }

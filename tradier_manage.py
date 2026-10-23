@@ -23877,7 +23877,11 @@ async def process_position(
                                 (True, "MANDATORY_REENTRY_CAPACITY_BYPASS")
                                 if _xb_reentry_fired or _ordinary_parity_claim
                                 else trade_manager.is_swing_entry_allowed(
-                                    position_side, float(qty) * current_price
+                                    position_side,
+                                    float(qty) * current_price,
+                                    account_key,
+                                    symbol,
+                                    position_side,
                                 )
                             )
                             if not sw_ok:
@@ -44176,17 +44180,27 @@ class TradierTradeManager:
                 total += qty * price
         return total
 
-    def is_swing_entry_allowed(self, side: str, order_value: float) -> tuple:
+    def is_swing_entry_allowed(
+        self, side: str, order_value: float, account_key=None, symbol=None, position_side=None
+    ) -> tuple:
         """
         Check if a swing entry fits within the ratio-adjusted budget.
         ratio=0.7 → long cap ×140%, short cap ×60%. Clamped to ±50% of base.
         Returns (allowed: bool, reason: str).
         """
-        try:  # USER 2026-10-22: wing master reads GLOBAL — a frozen per-sym False (boards snapshotted
-            _sw_src = object.__getattribute__(config, "_inner")  # while the default was False) must never
-        except Exception:  # out-vote it through _TRPerSymProxy (the 2026-10-15 trap). Budgets stay per-sym.
-            _sw_src = config
-        if getattr(_sw_src, "ENABLE_TR_SWING_ENTRIES", False) is not True:
+        # USER 2026-10-23 doctrine: the 3600 switch json/sql decides per
+        # sym_side — read the SINGLE SOURCE (_cfg: forward promotions >
+        # per-sym sqlite > template > global default False), never a forced
+        # global. (The 2026-10-22 global-True bypass is reverted: it carried
+        # no LOCKED_FILES entry and standing decisions belong to backtests.)
+        _sw_side = position_side or side
+        try:
+            _sw_on = _cfg(
+                "ENABLE_TR_SWING_ENTRIES", False, account_key, symbol, _sw_side
+            )
+        except Exception:
+            _sw_on = False
+        if _sw_on is not True:
             return False, "SWING_ENTRIES_OFF_PARITY"
         ratio = self.calculate_unified_market_ratio()
         if side == "LONG":

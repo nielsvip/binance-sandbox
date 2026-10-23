@@ -490,6 +490,7 @@ class MarketDataEngine:
         # THE BRAIN: Stores the freshest price found across all sources
         self.price_buffer = {} # { 'BTCUSDC': {'p': 50.0, 't': 1700.0} }
         self._synth_ts = {} # { sym: last wall-clock synthetic pass } — wall-clock kline synthesis when ticks stall
+        self._wb_sig = {} # { sym: last writeback signature } — skip files whose buckets did not change
         
         self._connect_shared()
 
@@ -1003,19 +1004,33 @@ class MarketDataEngine:
     async def klines_cache_writeback(self):
         """Periodically merge composed 1m/3m candles back to klines_cache so ez_indicators stays fresh."""
         cache_dir = BASE_PATH / "klines_cache"
+        sem = asyncio.Semaphore(8)
         await asyncio.sleep(60)
         while self.running:
             try:
-                written = 0
+                # 2026-10-23: the pass rewrote ~400 JSON files sequentially (~25 min under
+                # load) so files lagged the buckets badly. Skip symbols whose buckets did not
+                # change since the last pass and write the dirty ones concurrently.
+                async def _one(symbol, store):
+                    async with sem:
+                        try:
+                            return await _wb_write(symbol, store, cache_dir)
+                        except Exception as _wbe:
+                            try: logger.warning(f"[KLINES_WRITEBACK] skip {symbol}: {_wbe}")
+                            except Exception: pass
+                            return 0
+                tasks = []
                 for symbol, store in self.market.data.items():
-                    # 2026-10-22: one bad symbol used to abort the whole pass (single outer
-                    # try), freezing writeback for every other symbol. Contain per symbol.
-                    try:
-                        written += await _wb_write(symbol, store, cache_dir)
-                    except Exception as _wbe:
-                        try: logger.warning(f"[KLINES_WRITEBACK] skip {symbol}: {_wbe}")
-                        except Exception: pass
+                    s1 = store.get("closes_1m") or {}
+                    s3 = store.get("closes_3m") or {}
+                    if len(s1) < 10 and len(s3) < 10:
                         continue
+                    sig = (len(s1), max(s1) if s1 else 0, len(s3), max(s3) if s3 else 0)
+                    if self._wb_sig.get(symbol) == sig:
+                        continue
+                    self._wb_sig[symbol] = sig
+                    tasks.append(_one(symbol, store))
+                written = sum(await asyncio.gather(*tasks)) if tasks else 0
                 if written > 0:
                     logger.info(f"📝 [KLINES_WRITEBACK] Updated {written} klines_cache files")
             except Exception as e:
