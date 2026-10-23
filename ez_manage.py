@@ -9589,7 +9589,7 @@ async def board_state_converge_loop(trade_manager):
                         except Exception:
                             px = 0.0
                         px = float(px or 0.0)
-                        base_n = float(getattr(config, "START_POSITION_SIZE", 0.0) or 0.0)
+                        base_n = float(_psym_sps(sym, "LONG" if is_long else "SHORT") or 0.0)
                         qty = base_n / px if (base_n > 0 and px > 0) else 0.0
                         if qty <= 0:
                             res = "SKIPPED_NO_PRICE_OR_SIZE"
@@ -61595,7 +61595,7 @@ async def crypto_fh_momentum_loop(trade_manager: MultiAccountTradeManager):
                     if 0 < dist < 1.5:
                         retest_bonus = 1
                 qty_usd = (
-                    config.START_POSITION_SIZE
+                    _psym_sps(symbol, "LONG" if move_pct > 0 else "SHORT")
                     * size_mult
                     * (1.5 if retest_bonus else 1.0)
                 )
@@ -61666,7 +61666,6 @@ async def crypto_spike_fade_loop(trade_manager: MultiAccountTradeManager):
                 continue
             thresh = getattr(config, "CRYPTO_SPIKE_FADE_THRESHOLD_PCT", 3.0)
             k_exh = getattr(config, "CRYPTO_SPIKE_FADE_K_EXHAUSTION", 75.0)
-            pos_size = config.START_POSITION_SIZE
             max_pos = getattr(config, "CRYPTO_SPIKE_FADE_MAX_POSITIONS", 6)
             cd_seconds = getattr(config, "CRYPTO_SPIKE_FADE_COOLDOWN_SEC", 900.0)
             now = time.time()
@@ -61762,16 +61761,17 @@ async def crypto_spike_fade_loop(trade_manager: MultiAccountTradeManager):
                         continue
                     if ret_pct > thresh and (pump_fading or price_below_prev_high):
                         pk = f"{account_key}:{symbol}_SHORT"
+                        _sf_sps = _psym_sps(symbol, "SHORT")
                         pos = trade_manager.positions.get(pk)
                         pos_amt = (
                             (safe_fetch_float(getattr(pos, "positionAmt", 0), 0))
                             if pos
                             else 0
                         )
-                        if pos_amt > 0 and pos_amt * current_price >= pos_size * 2:
+                        if pos_amt > 0 and pos_amt * current_price >= _sf_sps * 2:
                             continue
                         qty = max(
-                            pos_size / current_price,
+                            _sf_sps / current_price,
                             trade_manager.min_qty.get(symbol, 0.001) * 1.2,
                         )
                         action = "AUGMENT" if pos_amt > 0 else "OPEN"
@@ -61793,16 +61793,17 @@ async def crypto_spike_fade_loop(trade_manager: MultiAccountTradeManager):
                         _spike_fade_count += 1
                     elif ret_pct < -thresh and (dump_reversing or price_above_prev_low):
                         pk = f"{account_key}:{symbol}_LONG"
+                        _sf_sps = _psym_sps(symbol, "LONG")
                         pos = trade_manager.positions.get(pk)
                         pos_amt = (
                             (safe_fetch_float(getattr(pos, "positionAmt", 0), 0))
                             if pos
                             else 0
                         )
-                        if pos_amt > 0 and pos_amt * current_price >= pos_size * 2:
+                        if pos_amt > 0 and pos_amt * current_price >= _sf_sps * 2:
                             continue
                         qty = max(
-                            pos_size / current_price,
+                            _sf_sps / current_price,
                             trade_manager.min_qty.get(symbol, 0.001) * 1.2,
                         )
                         action = "AUGMENT" if pos_amt > 0 else "OPEN"

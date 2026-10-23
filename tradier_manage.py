@@ -12686,7 +12686,7 @@ async def board_state_converge_loop(trade_manager):
                     except Exception:
                         px = 0.0
                     px = float(px or 0.0)
-                    base_n = float(getattr(config, "START_POSITION_SIZE", 0.0) or 0.0)
+                    base_n = float(_cfg("START_POSITION_SIZE", 500.0, acct, sym, side_long) or 0.0)
                     qty = base_n / px if (base_n > 0 and px > 0) else 0.0
                     if qty <= 0:
                         res = "SKIPPED_NO_PRICE_OR_SIZE"
@@ -12780,7 +12780,7 @@ async def native_replay_loop(trade_manager):
                     except Exception:
                         px = 0.0
                     px = float(px or 0.0)
-                    base_n = float(getattr(config, "START_POSITION_SIZE", 0.0) or 0.0)
+                    base_n = float(_cfg("START_POSITION_SIZE", 500.0, acct, sym, "LONG" if is_long else "SHORT") or 0.0)
                     qty = base_n / px if (base_n > 0 and px > 0) else 0.0
                     if qty <= 0:
                         continue
@@ -33534,7 +33534,7 @@ class StockStrategy:
             current_price = float(i.get("current_price", 0) or 0)
         if current_price <= 0:
             return 0.0
-        SP = config.START_POSITION_SIZE / current_price
+        SP = float(_cfg("START_POSITION_SIZE", config.START_POSITION_SIZE, account_key, symbol, position_side)) / current_price
         velocity_mult = 1.0
         log_parts = [f"[SIZE_CALC] {symbol} {position_side} Base: {qty:.2f}"]
         knife_penalty = 1.0
@@ -39003,7 +39003,7 @@ class StockStrategy:
             ):
                 _force_entry_q = True
         if _force_entry_q:
-            final_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
+            final_qty = float(_cfg_auto("START_POSITION_SIZE", config.START_POSITION_SIZE)) / max(current_price, 1e-9)
             _ha_dir = "ABOVE" if is_long else "BELOW"
             logger.critical(
                 f"🚀 [FORCE_HA_4H_{_ha_dir}_BASIS] {symbol}_{position_side}: price={current_price:.6f} basis={_basis_ref_q:.6f} ha_4h={_ha_4h_q} — FORCE OPEN BYPASS"
@@ -39351,7 +39351,7 @@ class StockStrategy:
                         }
                         _dc_long_mult_l = _tier_mults_l.get(_dc_long_tf_l, 1.0)
                         base_qty = (
-                            config.START_POSITION_SIZE
+                            float(_cfg_auto("START_POSITION_SIZE", config.START_POSITION_SIZE))
                             * _dc_long_mult_l
                             / max(current_price, 1e-9)
                         )
@@ -39389,7 +39389,7 @@ class StockStrategy:
                     }
                     _dc_long_mult_l = _tier_mults_l.get(_dc_long_tf_l, 1.0)
                     base_qty = (
-                        config.START_POSITION_SIZE
+                        float(_cfg_auto("START_POSITION_SIZE", config.START_POSITION_SIZE))
                         * _dc_long_mult_l
                         / max(current_price, 1e-9)
                     )
@@ -39510,7 +39510,7 @@ class StockStrategy:
                         }
                         _dc_short_mult = _tier_mults.get(_dc_short_tf, 1.0)
                         base_qty = (
-                            config.START_POSITION_SIZE
+                            float(_cfg_auto("START_POSITION_SIZE", config.START_POSITION_SIZE))
                             * _dc_short_mult
                             / max(current_price, 1e-9)
                         )
@@ -39543,7 +39543,7 @@ class StockStrategy:
                     _tier_mults = {"DC5M": 1.0, "DC15M": 2.0, "DC1H": 3.0, "DC4H": 5.0}
                     _dc_short_mult = _tier_mults.get(_dc_short_tf, 1.0)
                     base_qty = (
-                        config.START_POSITION_SIZE
+                        float(_cfg_auto("START_POSITION_SIZE", config.START_POSITION_SIZE))
                         * _dc_short_mult
                         / max(current_price, 1e-9)
                     )
@@ -39610,7 +39610,7 @@ class StockStrategy:
                 "ENTRY_SCORE_THRESHOLD", 12, account_key, symbol, position_side
             )
             if score >= _min_score:
-                base_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
+                base_qty = float(_cfg("START_POSITION_SIZE", config.START_POSITION_SIZE, account_key, symbol, position_side)) / max(current_price, 1e-9)
                 final_qty = await self.calculate_quantity_complex(
                     symbol, "OPEN", "LONG", base_qty, indicators, None, market_context
                 )
@@ -39620,7 +39620,7 @@ class StockStrategy:
                     )
                     return "OPEN", f"LONG_{rec}: {reason}", conviction, final_qty
             if score >= 6 and "Sniper" in reason:
-                base_qty = config.START_POSITION_SIZE * 0.5 / max(current_price, 1e-9)
+                base_qty = float(_cfg("START_POSITION_SIZE", config.START_POSITION_SIZE, account_key, symbol, position_side)) * 0.5 / max(current_price, 1e-9)
                 return "OPEN", f"SNIPER_LONG_{rec}", 60.0, base_qty
 
         elif not is_long and symbol in shorts and can_short:
@@ -39632,7 +39632,7 @@ class StockStrategy:
                 "ENTRY_SCORE_THRESHOLD", 12, account_key, symbol, position_side
             )
             if score >= _min_score:
-                base_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
+                base_qty = float(_cfg("START_POSITION_SIZE", config.START_POSITION_SIZE, account_key, symbol, position_side)) / max(current_price, 1e-9)
                 final_qty = await self.calculate_quantity_complex(
                     symbol, "OPEN", "SHORT", base_qty, indicators, None, market_context
                 )
@@ -39640,7 +39640,7 @@ class StockStrategy:
                     conviction = min(95.0, score * 3.5)
                     return "OPEN", f"SHORT_{rec}: {reason}", conviction, final_qty
             if score >= 6 and "Sniper" in reason:
-                base_qty = config.START_POSITION_SIZE * 0.5 / max(current_price, 1e-9)
+                base_qty = float(_cfg("START_POSITION_SIZE", config.START_POSITION_SIZE, account_key, symbol, position_side)) * 0.5 / max(current_price, 1e-9)
                 return "OPEN", f"SNIPER_SHORT_{rec}", 60.0, base_qty
 
         # 2. Strategy Variables
@@ -39691,7 +39691,7 @@ class StockStrategy:
 
         if is_long and symbol in longs:
             if uptrend_1h and pullback_long and trigger_long and sent_long_ok:
-                base_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
+                base_qty = float(_cfg("START_POSITION_SIZE", config.START_POSITION_SIZE, account_key, symbol, position_side)) / max(current_price, 1e-9)
                 final_qty = await self.calculate_quantity_complex(
                     symbol, "OPEN", "LONG", base_qty, indicators, None, market_context
                 )
@@ -39706,7 +39706,7 @@ class StockStrategy:
                 i.get("k_1m", 50) > i.get("d_1m", 50) and i.get("k_1m", 50) < 30
             )
             if dist_5m_low < 0.008 and bounce_1m_long:
-                base_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
+                base_qty = float(_cfg("START_POSITION_SIZE", config.START_POSITION_SIZE, account_key, symbol, position_side)) / max(current_price, 1e-9)
                 final_qty = await self.calculate_quantity_complex(
                     symbol, "OPEN", "LONG", base_qty, indicators, None, market_context
                 )
@@ -39715,7 +39715,7 @@ class StockStrategy:
 
         elif not is_long and symbol in shorts and can_short:
             if downtrend_1h and pullback_short and trigger_short and sent_short_ok:
-                base_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
+                base_qty = float(_cfg("START_POSITION_SIZE", config.START_POSITION_SIZE, account_key, symbol, position_side)) / max(current_price, 1e-9)
                 final_qty = await self.calculate_quantity_complex(
                     symbol, "OPEN", "SHORT", base_qty, indicators, None, market_context
                 )
@@ -39730,7 +39730,7 @@ class StockStrategy:
                 i.get("k_1m", 50) < i.get("d_1m", 50) and i.get("k_1m", 50) > 70
             )
             if dist_5m_high < 0.008 and bounce_1m_short:
-                base_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
+                base_qty = float(_cfg("START_POSITION_SIZE", config.START_POSITION_SIZE, account_key, symbol, position_side)) / max(current_price, 1e-9)
                 final_qty = await self.calculate_quantity_complex(
                     symbol, "OPEN", "SHORT", base_qty, indicators, None, market_context
                 )
@@ -39948,7 +39948,7 @@ class StockStrategy:
                                     _ga_aug_qty = max(
                                         1.0,
                                         (
-                                            config.START_POSITION_SIZE
+                                            float(_cfg_auto("START_POSITION_SIZE", config.START_POSITION_SIZE))
                                             * _ga_size_pct
                                             / 100.0
                                         )
@@ -43598,7 +43598,7 @@ class TradierTradeManager:
                         i = self.get_indicators(symbol)
                         if not i:
                             continue
-                        base_qty = config.START_POSITION_SIZE / current_price
+                        base_qty = float(_cfg_auto("START_POSITION_SIZE", config.START_POSITION_SIZE)) / current_price
                         ideal_qty = await self.strategy.calculate_quantity_complex(
                             symbol, "REBALANCE", side, base_qty, i, pos
                         )
@@ -46284,7 +46284,7 @@ class TradierTradeManager:
             if action in ["OPEN", "AUGMENT", "REENTER", "REENTRY"]:
                 remaining_usd = max(0, max_pos - (current_qty * last))
                 base_target = (
-                    (quantity * last) if quantity > 0 else config.START_POSITION_SIZE
+                    (quantity * last) if quantity > 0 else float(_cfg("START_POSITION_SIZE", config.START_POSITION_SIZE, account_key, symbol, position_side))
                 )
                 target_usd = (
                     base_target
@@ -47836,7 +47836,7 @@ class TradierTradeManager:
             )
 
         # 6. Entry/Augment Quantity Calculation (The Quantizing Logic)
-        SP = config.START_POSITION_SIZE / current_price
+        SP = float(_cfg("START_POSITION_SIZE", config.START_POSITION_SIZE, account_key, symbol, position_side)) / current_price
 
         # Exception Boost (3x size)
         if symbol.upper() in self.exceptions:
@@ -60335,7 +60335,7 @@ class StockSentimentStrategy:
             price = cand["price"]
 
             # Size Calc
-            base_qty = config.START_POSITION_SIZE / price
+            base_qty = float(_cfg("START_POSITION_SIZE", config.START_POSITION_SIZE, account_key, symbol, side)) / price
             qty = max(1, int(base_qty))
 
             pk = f"{account_key}:{symbol}_{side}"
@@ -60553,7 +60553,7 @@ async def direct_high_gain_augmentation(
                     f"[HIGH_GAIN_AUGMENT] {position_key}: Conditions not met for SHORT augment"
                 )
                 return
-        base_qty = (config.START_POSITION_SIZE * 0.5) / current_price
+        base_qty = (float(_cfg_auto("START_POSITION_SIZE", config.START_POSITION_SIZE)) * 0.5) / current_price
         final_qty = await trade_manager.strategy.calculate_quantity_complex(
             symbol, "AUGMENT", position_side, base_qty, indicators, position
         )
