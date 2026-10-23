@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-23T10:49:46Z",
+ "ts": "2026-10-23T10:54:53Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,7 +29,7 @@
   "fin": {
    "fills_6h": 76,
    "open_positions": 14,
-   "unrealised_usd": 0.12,
+   "unrealised_usd": -0.05,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 25,
    "open_positions": 6,
-   "unrealised_usd": 0.11,
+   "unrealised_usd": 0.07,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 54,
+   "fills_6h": 53,
    "open_positions": 8,
-   "unrealised_usd": 6.16,
+   "unrealised_usd": 6.18,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 16,
    "open_positions": 5,
-   "unrealised_usd": 0.88,
+   "unrealised_usd": 0.83,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,67 +127,74 @@
     "47661"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 7.0
   },
   "men": {
    "pids": [
     "40038"
    ],
    "starts_30m": 2,
-   "log_age_s": 127.0
+   "log_age_s": 161.0
   },
   "ang": {
    "pids": [
     "50544"
    ],
    "starts_30m": 1,
-   "log_age_s": 358.0
+   "log_age_s": 667.0
   },
   "inf": {
    "pids": [
     "82830"
    ],
    "starts_30m": 1,
-   "log_age_s": 11.0
+   "log_age_s": -4.0
   },
   "flz": {
    "pids": [
     "35119"
    ],
    "starts_30m": 2,
-   "log_age_s": 54.0
+   "log_age_s": 138.0
   },
   "trb": {
    "pids": [
     "77496"
    ],
    "starts_30m": 1,
-   "log_age_s": 6.0
+   "log_age_s": -1.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 53323.0
+   "log_age_s": 53632.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-23T10:49:47Z",
+   "ts": "2026-10-23T10:55:00Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "men",
-   "evidence": "ez_manage_men.log not written for 127s"
+   "evidence": "ez_manage_men.log not written for 161s"
   },
   {
-   "ts": "2026-10-23T10:49:47Z",
+   "ts": "2026-10-23T10:55:00Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 358s"
+   "evidence": "ez_manage_ang.log not written for 667s"
+  },
+  {
+   "ts": "2026-10-23T10:55:00Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "flz",
+   "evidence": "ez_manage_flz.log not written for 138s"
   }
  ],
  "alert_counts": {
-  "STALE_LOG": 2
+  "STALE_LOG": 3
  },
  "active_interventions": {
   "acct:trc": {
@@ -248,5 +255,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.79
+ "sweep_s": 7.69
 }
