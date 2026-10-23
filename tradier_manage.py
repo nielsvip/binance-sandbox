@@ -17333,7 +17333,7 @@ async def process_position(
                     return f"TIGHT_STOP:{position_key}"
             except Exception as _gr_e:
                 logger.warning(f"[LANEB_TIGHT_STOP] {position_key} probe err: {_gr_e}")
-        # WAVE2 2026-10-04 lane B2: E_3_USE_WT_STRUCTURE_EXIT_MODE live twin (vec ported_exit.py:81: 0=off,1=shadow,2=live exit when >=2 of 15m/1h/4h against). Live has no wt_structure_* fields; WT cross-against per TF is the live analogue (same definition as the ALL_TF live gate). Inert at 0.
+        # WAVE2 2026-10-04 lane B2: E_3_USE_WT_STRUCTURE_EXIT_MODE live twin (vec ported_exit.py:81: 0=off,1=shadow,2=live exit when >=2 of 15m/1h/4h against). USER 2026-10-23 hawk E3: the wt1/wt2 cross analogue agreed with the vector's wt_structure peak ints only ~45% of bars — the snapshot carries wt_peak_structure_* strings (HH/LH, same 3-bar pivots), so read those: LONG against = LH, SHORT against = HH, exactly the vector's -1/+1. Missing/None = not against (vector fail-closed).
         try:
             _w2_e3 = int(_cfg_auto("E_3_USE_WT_STRUCTURE_EXIT_MODE", 0) or 0)
         except Exception:
@@ -17342,11 +17342,12 @@ async def process_position(
             try:
                 _w2_e3_long = position_side == "LONG"
                 _w2_e3_n = 0
+                _w2_e3_tfs = []
                 for _w2_tf in ("15m", "1h", "4h"):
-                    _w2_a = float(i.get(f"wt1_{_w2_tf}", 0) or 0)
-                    _w2_b = float(i.get(f"wt2_{_w2_tf}", 0) or 0)
-                    if (_w2_a < _w2_b) if _w2_e3_long else (_w2_a > _w2_b):
+                    _w2_ps = str(i.get(f"wt_peak_structure_{_w2_tf}", "") or "").upper()
+                    if (_w2_e3_long and _w2_ps == "LH") or (not _w2_e3_long and _w2_ps == "HH"):
                         _w2_e3_n += 1
+                        _w2_e3_tfs.append(_w2_tf)
                 if _w2_e3 == 1:
                     logger.debug(f"[W2_E3_SHADOW] {position_key}: against={_w2_e3_n}/3")
                 elif _w2_e3_n >= 2 and position is not None and has_position:
@@ -17359,7 +17360,7 @@ async def process_position(
                         trade_manager,
                         position_key,
                         "CLOSE",
-                        f"E3_STRUCT_EXIT_{_w2_e3_n}of3_g{_w2_e3_g:.2f}%",
+                        f"E_3_STRUCTURE_EXIT_{_w2_e3_n}TF_{'_'.join(_w2_e3_tfs)}_g{_w2_e3_g:.2f}%",
                         100.0,
                     )
                     return "W2_E3_EXIT_CLOSED"

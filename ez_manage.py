@@ -57181,7 +57181,12 @@ async def process_position(
                         trade_manager.processing_keys.discard(position_key)
                         return f"{EvalStatus.ACTION_TAKEN}:E_1_WT_DELTA_EXIT"
         # E-3 USE_WT_STRUCTURE_EXIT (2026-04-19 default OFF, mode=0) — exit on wt_structure HH/HL label reversal.
-        # Modes: 0=off, 1=shadow (log only, no action), 2=on (live exit). LONG exits on LH/LL on ≥2 HTFs.
+        # Modes: 0=off, 1=shadow (log only, no action), 2=on (live exit).
+        # USER 2026-10-23 hawk E3: peak-structure only (LONG LH, SHORT HH) —
+        # exactly the vector's wt_structure peak ints (ported_exit.py:81, and
+        # the grey-wire booking via INT_DECODE). The trough extras (LL/HL)
+        # fired live where the vector books nothing. Reason carries the TF
+        # list like the booked E_3_STRUCTURE_EXIT_{n}TF_{tfs} shape.
         _e3_mode = int(getattr(config, "E_3_USE_WT_STRUCTURE_EXIT_MODE", 0))
         if (
             _e3_mode > 0
@@ -57193,11 +57198,11 @@ async def process_position(
             _e3_against = 0
             _e3_tfs = []
             for _tf in ("15m", "1h", "4h"):
-                _struct = str(i.get(f"wt_structure_{_tf}", "") or "").upper()
-                if is_long and _struct in ("LH", "LL"):
+                _struct = str(i.get(f"wt_peak_structure_{_tf}", "") or "").upper()
+                if is_long and _struct == "LH":
                     _e3_against += 1
                     _e3_tfs.append(f"{_tf}={_struct}")
-                elif (not is_long) and _struct in ("HH", "HL"):
+                elif (not is_long) and _struct == "HH":
                     _e3_against += 1
                     _e3_tfs.append(f"{_tf}={_struct}")
             if _e3_against >= 2:
@@ -57215,7 +57220,7 @@ async def process_position(
                         trade_manager,
                         position_key,
                         "QUICK_CLOSE",
-                        f"E_3_STRUCTURE_EXIT_{_e3_against}TF_g={_e3_g:.2f}%",
+                        f"E_3_STRUCTURE_EXIT_{_e3_against}TF_{'_'.join(_e3_tfs)}_g={_e3_g:.2f}%",
                         0.95,
                     )
                     if result:

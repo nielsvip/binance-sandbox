@@ -17258,6 +17258,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         exit_sig = _px.apply(npz, n, is_long, cfg, exit_sig, _safe, close)
     except Exception:
         pass
+    # USER 2026-10-23 hawk E3 note: NO separate attribution block here — the
+    # grey-wire path (vec_decisions/grey_wire_exits.e3_structure, mode==2
+    # gated) already books E3 closes distinctly as E_3_STRUCTURE_EXIT_{n}TF_*,
+    # and both live lanes now emit that same shape (peak-structure only).
     try:
         import vec_decisions.ported_augment as _pa
 

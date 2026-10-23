@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-23T09:32:56Z",
+ "ts": "2026-10-23T09:37:55Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 16,
-   "open_positions": 2,
-   "unrealised_usd": 3.15,
+   "fills_6h": 17,
+   "open_positions": 3,
+   "unrealised_usd": 2.22,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 29,
    "open_positions": 6,
-   "unrealised_usd": -0.01,
+   "unrealised_usd": -0.07,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 50,
    "open_positions": 8,
-   "unrealised_usd": 5.27,
+   "unrealised_usd": 5.5,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 20,
    "open_positions": 6,
-   "unrealised_usd": 0.45,
+   "unrealised_usd": 0.11,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,97 +127,104 @@
     "53921"
    ],
    "starts_30m": 1,
-   "log_age_s": 42.0
+   "log_age_s": 0.0
   },
   "men": {
    "pids": [
     "62640"
    ],
    "starts_30m": 1,
-   "log_age_s": 14.0
+   "log_age_s": 312.0
   },
   "ang": {
    "pids": [
     "50544"
    ],
    "starts_30m": 1,
-   "log_age_s": 18.0
+   "log_age_s": 16.0
   },
   "inf": {
    "pids": [
     "38044"
    ],
    "starts_30m": 1,
-   "log_age_s": 1518.0
+   "log_age_s": 1816.0
   },
   "flz": {
    "pids": [
     "87278"
    ],
-   "starts_30m": 2,
-   "log_age_s": 669.0
+   "starts_30m": 1,
+   "log_age_s": 967.0
   },
   "trb": {
    "pids": [
     "69879"
    ],
    "starts_30m": 1,
-   "log_age_s": 5.0
+   "log_age_s": 3.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 48714.0
+   "log_age_s": 49012.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-23T09:32:56Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "fin:PTBUSDT_SHORT",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 351381->1.05414e+06 = $360.52 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 351381)"
-  },
-  {
-   "ts": "2026-10-23T09:32:56Z",
+   "ts": "2026-10-23T09:37:55Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "fin:ZKUSDT_SHORT",
    "evidence": "BREAKOUT_SIZE_LADDER resized qty 9260.03->27780.1 = $357.61 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 9260.03)"
   },
   {
-   "ts": "2026-10-23T09:32:56Z",
+   "ts": "2026-10-23T09:37:55Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "fin:ZKUSDT_SHORT",
    "evidence": "BREAKOUT_SIZE_LADDER resized qty 9321.84->27965.5 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 9321.84)"
   },
   {
-   "ts": "2026-10-23T09:32:56Z",
+   "ts": "2026-10-23T09:37:55Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "fin:ZECUSDC_LONG",
    "evidence": "23 09:32:14 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:ZECUSDC_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $14 on bounce (prior max 0.0200)"
   },
   {
-   "ts": "2026-10-23T09:32:57Z",
+   "ts": "2026-10-23T09:37:55Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "fin:GRASSUSDT_LONG",
+   "evidence": "23 09:35:49 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:GRASSUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $6 on bounce (prior max 47.0000)"
+  },
+  {
+   "ts": "2026-10-23T09:37:55Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "men",
+   "evidence": "ez_manage_men.log not written for 312s"
+  },
+  {
+   "ts": "2026-10-23T09:37:55Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "inf",
-   "evidence": "ez_manage_inf.log not written for 1518s"
+   "evidence": "ez_manage_inf.log not written for 1816s"
   },
   {
-   "ts": "2026-10-23T09:32:57Z",
+   "ts": "2026-10-23T09:37:55Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 669s"
+   "evidence": "ez_manage_flz.log not written for 967s"
   }
  ],
  "alert_counts": {
-  "SIZE_ANOMALY": 3,
-  "CAP_BYPASS": 1,
-  "STALE_LOG": 2
+  "SIZE_ANOMALY": 2,
+  "CAP_BYPASS": 2,
+  "STALE_LOG": 3
  },
  "active_interventions": {
   "acct:trc": {
@@ -271,5 +278,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.87
+ "sweep_s": 0.84
 }
