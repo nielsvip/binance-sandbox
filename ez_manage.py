@@ -62833,7 +62833,7 @@ async def _price_level_reentry_monitor(trade_manager: MultiAccountTradeManager) 
         if not acc_dir.exists():
             continue
         # Collect all price levels from all sources
-        levels_to_check: list[tuple[str, float, float, str]] = []
+        levels_to_check: list = []
         for side in ("long", "short"):
             is_long = side == "long"
             # --- reentry JSON ---
@@ -62849,7 +62849,16 @@ async def _price_level_reentry_monitor(trade_manager: MultiAccountTradeManager) 
                             fire_amt = amt if amt > 0 else min_qty_usd
                             fire_qty_usd = fire_amt * partial_pct
                             levels_to_check.append(
-                                (pk, lvl, fire_qty_usd, f"FILE_{side.upper()}_REENTRY")
+                                (
+                                    pk,
+                                    lvl,
+                                    fire_qty_usd,
+                                    f"FILE_{side.upper()}_REENTRY",
+                                    None,
+                                    None,
+                                    None,
+                                    None,
+                                )
                             )
                 except Exception as _e:
                     logger.debug(
@@ -62865,7 +62874,7 @@ async def _price_level_reentry_monitor(trade_manager: MultiAccountTradeManager) 
                         levels = (
                             plan.get("levels", []) if isinstance(plan, dict) else []
                         )
-                        for entry in levels:
+                        for _lidx, entry in enumerate(levels):
                             if entry.get("crossed", False):
                                 continue
                             lvl = float(entry.get("level", 0) or 0)
@@ -62875,14 +62884,32 @@ async def _price_level_reentry_monitor(trade_manager: MultiAccountTradeManager) 
                                     max(qty, min_qty_usd / max(lvl, 1e-9)) * partial_pct
                                 )
                                 levels_to_check.append(
-                                    (pk, lvl, fire_qty * lvl, f"LADDER_{side.upper()}")
+                                    (
+                                        pk,
+                                        lvl,
+                                        fire_qty * lvl,
+                                        f"LADDER_{side.upper()}",
+                                        acc_dir,
+                                        side,
+                                        pk,
+                                        _lidx,
+                                    )
                                 )
                 except Exception as _e:
                     logger.debug(
                         f"[REENTRY_MONITOR] {account_key}/{side}_ladder.json read error: {_e}"
                     )
         # --- evaluate each level ---
-        for position_key, level_price, fire_usd, source in levels_to_check:
+        for (
+            position_key,
+            level_price,
+            fire_usd,
+            source,
+            _ldir,
+            _lside,
+            _lpk,
+            _lidx,
+        ) in levels_to_check:
             try:
                 _parts = position_key.split(":")
                 if len(_parts) < 2:
@@ -62959,22 +62986,51 @@ async def _price_level_reentry_monitor(trade_manager: MultiAccountTradeManager) 
                 logger.warning(
                     f"[REENTRY_MONITOR] {position_key}: {source} level={level_price:.6f} cur={_cur_price:.6f} → partial qty={fire_qty:.4f} (${fire_usd:.1f})"
                 )
-                await trade_manager.execute_now(
-                    trade_manager.order_queue,
-                    trade_manager,
-                    position_key,
-                    _acc,
-                    _sym,
-                    0.0,
-                    "BUY" if _is_long else "SELL",
-                    "LONG" if _is_long else "SHORT",
-                    fire_qty,
-                    _cur_price,
-                    _uid,
-                    f"{source}_LEVEL={level_price:.6f}",
-                    False,
-                    "AUGMENT",
+                # USER 2026-10-23 ladder fix: the old positional call passed
+                # (order_queue, trade_manager, ...) into a signature that takes
+                # (position_key, account_key, ...) — every slot misaligned, so
+                # no ladder level ever fired. Keyword call with the real
+                # current amt (AUGMENT adds to a reduced remainder, entry
+                # rules treat flat as a fresh open).
+                _rm_amt_now = (
+                    abs(float(getattr(_pos, "positionAmt", 0) or 0)) if _pos else 0.0
                 )
+                _rm_res = await trade_manager.execute_now(
+                    position_key=position_key,
+                    account_key=_acc,
+                    symbol=_sym,
+                    original_positionAmt=_rm_amt_now,
+                    side="BUY" if _is_long else "SELL",
+                    position_side="LONG" if _is_long else "SHORT",
+                    quantity=fire_qty,
+                    old_price=_cur_price,
+                    unique_id=_uid,
+                    reason=f"{source}_LEVEL={level_price:.6f}",
+                    is_full_close=False,
+                    action="AUGMENT",
+                )
+                # Mark LADDER level crossed on SUCCESS so it cannot re-fire
+                # after the 900s dedupe TTL expires (levels were never marked).
+                if "SUCCESS" in str(_rm_res or "").upper() and source.startswith(
+                    "LADDER_"
+                ) and _ldir is not None:
+                    try:
+                        _lfile = _ldir / f"{str(_lside).lower()}_ladder.json"
+                        async with aiofiles.open(_lfile, "r") as _lrf:
+                            _ldata = json.loads(await _lrf.read())
+                        _lplan = _ldata.get(_lpk, {})
+                        _llevels = _lplan.get("levels", [])
+                        if 0 <= int(_lidx) < len(_llevels):
+                            _llevels[int(_lidx)]["crossed"] = True
+                            async with aiofiles.open(_lfile, "w") as _lwf:
+                                await _lwf.write(json.dumps(_ldata, indent=2))
+                            logger.warning(
+                                f"[REENTRY_MONITOR_CONSUME] {position_key}: ladder level {level_price:.6f} marked crossed — will not re-fire"
+                            )
+                    except Exception as _lce:
+                        logger.debug(
+                            f"[REENTRY_MONITOR_CONSUME] {position_key}: ladder mark error: {_lce}"
+                        )
                 # Consume FILE reentry entry so it cannot re-fire after 900s TTL expires
                 if source.startswith("FILE_") and source.endswith("_REENTRY"):
                     _side_str = "long" if "LONG" in source else "short"
