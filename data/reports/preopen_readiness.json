@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-23T14:20:06Z",
+ "generated_utc": "2026-10-23T14:40:07Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-23T13:30:00Z",
  "market_open": true,
@@ -13,10 +13,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 270,
+    "filled_today": 272,
     "filled_before_open": 267
    },
-   "detail": "267 boards filled before the open (270 today)"
+   "detail": "267 boards filled before the open (272 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -50,9 +50,9 @@
     "reports_today": 1,
     "newest_report": "persym_golive_20261023_preopen_0945.json",
     "newest_report_at": "2026-10-23T11:54:08Z",
-    "tiers_at": "2026-10-23T11:55:29Z"
+    "tiers_at": "2026-10-23T14:31:12Z"
    },
-   "detail": "persym_golive_20261023_preopen_0945.json at 2026-10-23T11:54:08Z, tiers 2026-10-23T11:55:29Z"
+   "detail": "persym_golive_20261023_preopen_0945.json at 2026-10-23T11:54:08Z, tiers 2026-10-23T14:31:12Z"
   },
   {
    "name": "live_set_matches_selection",
@@ -60,9 +60,9 @@
    "critical": true,
    "measured": {
     "selection_n": 523,
-    "exact": 139,
+    "exact": 138,
     "benign_divergence_only": 349,
-    "material_divergence": 34,
+    "material_divergence": 35,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -199,7 +199,7 @@
      }
     ]
    },
-   "detail": "139 exact, 349 benign-only, 34 with material divergence, 1 with no live row"
+   "detail": "138 exact, 349 benign-only, 35 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
@@ -209,7 +209,7 @@
     "symbols": 330,
     "stale_over_90min": 2,
     "stale_pct": 0.6,
-    "median_age_min": 50.1,
+    "median_age_min": 0.0,
     "sample": [
      "DUSKUSDT",
      "ONEUSDT"
