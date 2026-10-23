@@ -1,0 +1,129 @@
+{
+ "window_from": "10-23 13:37",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 179,
+  "status_OK": 171,
+  "EXTRA": 6,
+  "STATE_CONVERGENCE": 3
+ },
+ "rows": [
+  {
+   "acct": "fin",
+   "sym_side": "1000PEPEUSDC_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-23 13:58",
+   "actual": "REDUCE",
+   "actual_reason": "RATIO_CLOSE_OW_LONG_L89_S11_tgt30/70_wt15\u03940.8_g2.62%",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "ARUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-23 13:41",
+   "actual": "REDUCE",
+   "actual_reason": "RATIO_CLOSE_LONG_L100_S0_tgt25/75_gain0.4%",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "fin",
+   "sym_side": "BBUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-23 14:17",
+   "actual": "REDUCE",
+   "actual_reason": "RATIO_CLOSE_LONG_L89_S11_tgt30/70_gain0.6%",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "GRASSUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-23 14:20",
+   "actual": "REDUCE",
+   "actual_reason": "RATIO_CLOSE_OW_LONG_L100_S0_tgt50/50_wt15\u03940.0_g0.26%",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "fin",
+   "sym_side": "MEWUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-23 14:11",
+   "actual": "REDUCE",
+   "actual_reason": "VEC_DRIVEN_CLOSE_PURE_BOARD_BOARD_FLAT_LIVE_HOLDS_BOARD_QTY_0.000000_LIVE_QTY",
+   "late_bars": null,
+   "verdict": "STATE_CONVERGENCE",
+   "vec_tagged": false
+  },
+  {
+   "acct": "fin",
+   "sym_side": "NMRUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-23 14:02",
+   "actual": "REDUCE",
+   "actual_reason": "CRYPTO_REENTRY_PATHWAY_HTF_WT_CHURN_SHORT_px10.616120_exit10.621000_age119m",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "PARTIUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-23 14:28",
+   "actual": "REDUCE",
+   "actual_reason": "VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_6698.172436_LIVE_",
+   "late_bars": null,
+   "verdict": "STATE_CONVERGENCE",
+   "vec_tagged": false
+  },
+  {
+   "acct": "fin",
+   "sym_side": "RLCUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-23 14:24",
+   "actual": "REDUCE",
+   "actual_reason": "VEC_DRIVEN_CLOSE_PURE_BOARD_BOARD_FLAT_LIVE_HOLDS_BOARD_QTY_0.000000_LIVE_QTY",
+   "late_bars": null,
+   "verdict": "STATE_CONVERGENCE",
+   "vec_tagged": false
+  },
+  {
+   "acct": "fin",
+   "sym_side": "ZKUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-23 13:44",
+   "actual": "REDUCE",
+   "actual_reason": "CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_SHORT_px0.012686_exit0.013078_age708m",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  }
+ ]
+}

@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-23T14:41:12Z",
+ "ts": "2026-10-23T14:46:31Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,19 +29,19 @@
   "trb": {
    "fills_6h": 17,
    "open_positions": 1,
-   "unrealised_usd": 19.28,
+   "unrealised_usd": 17.46,
    "pos_mismatch": 0
   },
   "trc": {
-   "fills_6h": 3,
+   "fills_6h": 4,
    "open_positions": 6,
-   "unrealised_usd": 80.58,
+   "unrealised_usd": 58.1,
    "pos_mismatch": 0
   },
   "fin": {
    "fills_6h": 132,
    "open_positions": 6,
-   "unrealised_usd": 0.92,
+   "unrealised_usd": 0.82,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 3,
@@ -49,7 +49,7 @@
     "filled": 0,
     "refused_non_safety": 0,
     "safety_refusals": 0,
-    "not_filled_no_log": 1,
+    "not_filled_no_log": 2,
     "vec_exact_fills_without_decision": 0,
     "matched_by_reason": 0
    }
@@ -71,9 +71,9 @@
    }
   },
   "ang": {
-   "fills_6h": 11,
+   "fills_6h": 10,
    "open_positions": 6,
-   "unrealised_usd": 4.54,
+   "unrealised_usd": 3.64,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -105,7 +105,7 @@
   "flz": {
    "fills_6h": 8,
    "open_positions": 5,
-   "unrealised_usd": 1.04,
+   "unrealised_usd": 0.98,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -138,35 +138,35 @@
     "47341"
    ],
    "starts_30m": 2,
-   "log_age_s": 30.0
+   "log_age_s": 290.0
   },
   "men": {
    "pids": [
     "42359"
    ],
    "starts_30m": 2,
-   "log_age_s": 43.0
+   "log_age_s": 20.0
   },
   "ang": {
    "pids": [
     "50544"
    ],
    "starts_30m": 1,
-   "log_age_s": 147.0
+   "log_age_s": 255.0
   },
   "inf": {
    "pids": [
     "82830"
    ],
    "starts_30m": 1,
-   "log_age_s": 27.0
+   "log_age_s": 47.0
   },
   "flz": {
    "pids": [
     "76532"
    ],
    "starts_30m": 1,
-   "log_age_s": 28.0
+   "log_age_s": 0.0
   },
   "trb": {
    "pids": [
@@ -174,51 +174,65 @@
     "86234"
    ],
    "starts_30m": 2,
-   "log_age_s": -1.0
+   "log_age_s": 9.0
   },
   "trc": {
    "pids": [
     "83240"
    ],
    "starts_30m": 1,
-   "log_age_s": 27.0
+   "log_age_s": 6.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-23T14:41:12Z",
+   "ts": "2026-10-23T14:46:31Z",
    "severity": "CRITICAL",
    "kind": "ACCOUNT_EQUITY_DROP",
    "key": "trc",
-   "evidence": "unrealised PnL of the same open positions fell $74.06 since 2026-10-23T14:29:07Z (now $+80.58)"
+   "evidence": "unrealised PnL of the same open positions fell $96.54 since 2026-10-23T14:29:07Z (now $+58.10)"
   },
   {
-   "ts": "2026-10-23T14:41:13Z",
+   "ts": "2026-10-23T14:46:33Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "fin:RLCUSDT_SHORT",
    "evidence": "CLOSE PROFIT_TP_EXHAUSTION decided 2026-10-23T11:23:59Z bar=2026-10-23T10:15:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-23T14:41:13Z",
+   "ts": "2026-10-23T14:46:33Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "fin:GRASSUSDT_LONG",
    "evidence": "OPEN B09 bar=2026-10-23T12:15:00Z: live already holds 105.8 (state divergence)"
   },
   {
-   "ts": "2026-10-23T14:41:15Z",
+   "ts": "2026-10-23T14:46:33Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_NOT_FILLED",
+   "key": "fin:COMPUSDT_LONG",
+   "evidence": "CLOSE LH_LL_TOP_EXIT arm=4h_LH+LL leg=WT15M decided 2026-10-23T14:12:17Z bar=2026-10-23T12:15:00Z: no fill in 1800s and no refusal logged"
+  },
+  {
+   "ts": "2026-10-23T14:46:34Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "fin",
+   "evidence": "ez_manage_fin.log not written for 290s"
+  },
+  {
+   "ts": "2026-10-23T14:46:34Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 147s"
+   "evidence": "ez_manage_ang.log not written for 255s"
   }
  ],
  "alert_counts": {
   "ACCOUNT_EQUITY_DROP": 1,
-  "VEC_DECISION_NOT_FILLED": 1,
+  "VEC_DECISION_NOT_FILLED": 2,
   "VEC_OPEN_WHILE_LIVE_IN": 1,
-  "STALE_LOG": 1
+  "STALE_LOG": 2
  },
  "active_interventions": {
   "acct:trc": {
@@ -272,5 +286,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 3.32
+ "sweep_s": 3.19
 }
