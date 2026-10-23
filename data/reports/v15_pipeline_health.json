@@ -1,23 +1,24 @@
 {
- "at": "2026-10-23T14:45:11Z",
+ "at": "2026-10-23T15:00:11Z",
  "s1": {
   "host": "niels",
-  "now": 1792766707.809151,
+  "now": 1792767607.8375838,
   "merge_crypto": {
    "n": 12,
    "max_lag_min": 15.0,
    "median_lag_min": 0.0,
-   "worst": "1000FLOKIUSDT",
+   "worst": "ALTUSDT",
    "dead": []
   },
   "merge_stocks": {
-   "n": 2,
-   "max_lag_min": 0.0,
-   "median_lag_min": 0.0,
-   "worst": "ABBV",
+   "n": 0,
+   "max_lag_min": null,
+   "median_lag_min": null,
+   "worst": null,
    "dead": [
     "A",
     "AAPL",
+    "ABBV",
     "ABT",
     "ACN",
     "ADBE",
@@ -25,7 +26,8 @@
     "AEM",
     "AG",
     "AGCO",
-    "AGI"
+    "AGI",
+    "ALB"
    ]
   },
   "npz_legacy_crypto": [
@@ -34,20 +36,16 @@
    "WLFIUSDC",
    "XVGUSDT"
   ],
-  "append_log_age_min": 10.4,
-  "append_last_secs": 579.9,
-  "append_last_stats": "'appended': 178, 'created': 0, 'up_to_date': 5881, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
-  "npz_loop_pids": 9,
-  "npz_cycle_last_utc": "14:41:36",
-  "npz_cycle_installed": 130,
-  "npz_cycle_not_ready": 0,
-  "npz_cycle_no_new": 159,
+  "append_log_age_min": 0.3,
+  "append_last_secs": 585.5,
+  "append_last_stats": "'appended': 227, 'created': 0, 'up_to_date': 5832, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
+  "npz_loop_pids": 1,
   "npz_loop_has_settle": true,
-  "sched_tick_age_min": 1.1,
-  "sched_launched": 1,
+  "sched_tick_age_min": 2.1,
+  "sched_launched": 0,
   "archive_n": 195,
   "archive_mb": 2323.2,
-  "archive_newest_min": 106.8,
+  "archive_newest_min": 121.8,
   "_via": "s1-int"
  },
  "red": [],

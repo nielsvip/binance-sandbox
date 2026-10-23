@@ -1,11 +1,4 @@
 {
-  "flz:SOLUSDC_LONG": {
-    "orderId": "1000002638441054",
-    "stopPrice": 102.47,
-    "entry_sig": "2026-10-23 01:10:05.199000+00:00",
-    "symbol": "SOLUSDC",
-    "side": "LONG"
-  },
   "flz:BTCUSDC_LONG": {
     "orderId": "1000002638177488",
     "stopPrice": 80665.1,
@@ -25,6 +18,13 @@
     "stopPrice": 720.62,
     "entry_sig": "2026-10-23 01:37:54.619000+00:00",
     "symbol": "BNBUSDC",
+    "side": "LONG"
+  },
+  "flz:SOLUSDC_LONG": {
+    "orderId": "1000002638441054",
+    "stopPrice": 102.47,
+    "entry_sig": "2026-10-23 01:10:05.199000+00:00",
+    "symbol": "SOLUSDC",
     "side": "LONG"
   }
 }
