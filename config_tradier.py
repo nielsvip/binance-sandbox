@@ -3478,7 +3478,7 @@ class TradierConfig:
     OBLIGATORY_REENTRY_SMA_TF: str = "15m"
     OBLIGATORY_REENTRY_TIER1_HTF_REQUIRED: int = 3
     OBLIGATORY_REENTRY_TIER2_HTF_REQUIRED: int = 1
-    OBLIGATORY_SECTOR_HEDGE_ENABLED: bool = True
+    OBLIGATORY_SECTOR_HEDGE_ENABLED: bool = False  # USER 2026-10-23 exact parity: sector-hedge opens are not board switches (absent from every TEMPLATE tab); the loop read is plain-config so per_sym rows cannot re-enable it.
     OBLIGATORY_SECTOR_HEDGE_LOOP_INTERVAL_SECONDS: float = 90.0
     OBLIGATORY_SECTOR_HEDGE_TRIGGER_REQUIRE_WT_5M_AND_1H: bool = True
     OBLIGATORY_SMA200_PCT: float = 1.0

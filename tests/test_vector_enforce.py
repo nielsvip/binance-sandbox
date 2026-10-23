@@ -726,6 +726,24 @@ def test_dc_hopeless_twin_grid():
             assert reason.startswith("DC_HOPELESS_entry="), reason
 
 
+def test_trb_obligatory_entry_refused_no_kill(tmp_path, monkeypatch):
+    """USER 2026-10-23 exact parity: sector-hedge entries are not board switches.
+
+    trb OBLIGATORY opens refuse + flag without a venue-wide kill (crypto
+    OBLIGATORY_OPEN_SMA200 shares the family name); board entries unaffected.
+    """
+    k, v = _iso(tmp_path, monkeypatch)
+    ok, verdict = ve.check("OPEN", "trb:CRWD_LONG", "OBLIGATORY_SECTOR_HEDGE_for_ARM_SHORT_g-0.50%_sector=tech")
+    assert ok is False and verdict == "NONBOARD_ENTRY_REFUSED_NO_KILL"
+    ok, verdict = ve.check("OPEN", "fin:X_LONG", "OBLIGATORY_OPEN_LONG_SMA200_WT3M_px0.61")
+    assert ok is True, verdict
+    ok, verdict = ve.check("OPEN", "trb:X_LONG", "DC_BREAK_HIGH_15M_px100")
+    assert ok is True, verdict
+    kills = json.loads(k.read_text()) if k.exists() else {}
+    assert not any("OBLIGATORY" in str(x) for x in kills)
+    assert "NONBOARD_ENTRY_REFUSED_NO_KILL" in v.read_text()
+
+
 def test_daytrade_target_twin_boundaries():
     """USER 2026-10-22 parity restore: the shared daytrade_dc_exit twin fires
     a 1h TARGET exactly at px >= dc_high_1h*(1-buf) LONG / px <= dc_low_1h*

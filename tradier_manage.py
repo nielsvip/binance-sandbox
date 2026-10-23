@@ -11749,7 +11749,9 @@ async def obligatory_sector_hedge_or_close_loop(trade_manager):
     ⚠️ APPROXIMATION WARNING — sector beta differs across names; this is NOT perfect netting
     like the Binance perp same-symbol hedge. Each fire is logged loudly so the user can monitor.
     """
-    if not bool(_cfg_auto("OBLIGATORY_SECTOR_HEDGE_ENABLED", True)):
+    if not bool(getattr(config, "OBLIGATORY_SECTOR_HEDGE_ENABLED", False)):
+        # USER 2026-10-23 exact parity: plain-config read (HEDGE_MODE_TRADIER pattern) so per_sym rows carrying True
+        # cannot re-enable non-board opens; global default is False.
         logger.warning(
             "[OBLIGATORY_SECTOR_HEDGE_LOOP] DISABLED via OBLIGATORY_SECTOR_HEDGE_ENABLED=False"
         )

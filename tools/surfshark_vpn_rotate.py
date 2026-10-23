@@ -116,12 +116,21 @@ def ensure_tunnel(wl, state):
         return True
     cands = eligible_slots(wl, state, None)
     if not cands:
-        log("ensure_tunnel: no slot available, leaving link as-is");
+        log("INVARIANT FAIL-CLOSED: no whitelisted slot available, leaving link down (no non-whitelisted egress)");
         return False
     name = cands[0]["name"]
-    log(f"ensure_tunnel: restoring {name} so the link is not left dark")
+    log(f"ensure_tunnel: restoring {name}, verifying whitelist before accepting")
     sh(["scutil", "--nc", "start", name])
-    wait_state([name], "Connected", None, timeout=45)
+    if not wait_state([name], "Connected", egress_ip(), timeout=45):
+        log("INVARIANT FAIL-CLOSED: restored slot did not connect, leaving link down");
+        return False
+    ip = egress_ip()
+    probe = binance_probe()
+    if ip not in wl or probe.get("ping") == 418:
+        log(f"INVARIANT FAIL-CLOSED: restored egress={ip} not usable (whitelisted={ip in wl} binance={probe}) — stopping it");
+        sh(["scutil", "--nc", "stop", name])
+        return False
+    log(f"ensure_tunnel OK egress={ip} binance={probe}")
     return True
 def load_state():
     try:
@@ -303,15 +312,24 @@ def cmd_check():
 def cmd_watch(interval=15):
     lock = "/tmp/vpn_rotate_watch.lock"
     try:
-        fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-        os.write(fd, str(os.getpid()).encode())
-    except FileExistsError:
-        print("watch already running");
+        old = open(lock).read().strip()
+        os.kill(int(old), 0)
+        print(f"watch already running as pid {old}");
         return 1
+    except Exception:
+        try:
+            open(lock, "w").write(str(os.getpid()))
+        except Exception as e:
+            print(f"cannot write lock: {e}");
+            return 1
     log(f"watch start interval={interval}s")
+    n = 0
     while True:
         try:
             rc = cmd_check_quiet()
+            n += 1
+            if n % 120 == 0:
+                log(f"AUDIT egress={egress_ip()} binance={binance_probe()} ban={ban_active()}")
             if rc != 0 and time.time() - load_state().get("last_rotate_ts", 0) >= COOLDOWN_S:
                 log(f"watch: check rc={rc} -> rotating")
                 do_rotate()
