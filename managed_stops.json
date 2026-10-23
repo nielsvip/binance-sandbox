@@ -1,58 +1,30 @@
 {
-  "fin:SKYAIUSDT_LONG": {
-    "orderId": "3000002269544532",
-    "stopPrice": 0.02955,
-    "entry_sig": "2026-10-23 13:28:55.436000+00:00",
-    "symbol": "SKYAIUSDT",
+  "ang:ARUSDT_LONG": {
+    "orderId": "4000001989959386",
+    "stopPrice": 3.524,
+    "entry_sig": "2026-10-23 06:37:13.084000+00:00",
+    "symbol": "ARUSDT",
     "side": "LONG"
   },
-  "fin:VETUSDT_LONG": {
-    "orderId": "3000002269556190",
-    "stopPrice": 0.006665,
-    "entry_sig": "2026-10-23 09:43:24.075000+00:00",
-    "symbol": "VETUSDT",
-    "side": "LONG"
-  },
-  "fin:FLUXUSDT_SHORT": {
-    "orderId": "3000002269717228",
-    "stopPrice": 0.06928,
-    "entry_sig": "2026-10-23 19:45:19.026000+00:00",
-    "symbol": "FLUXUSDT",
+  "ang:MASKUSDT_SHORT": {
+    "orderId": "4000001991000195",
+    "stopPrice": 0.434,
+    "entry_sig": "2026-10-23 08:51:31.205000+00:00",
+    "symbol": "MASKUSDT",
     "side": "SHORT"
   },
-  "fin:AWEUSDT_LONG": {
-    "orderId": "3000002269863796",
-    "stopPrice": 0.06355,
-    "entry_sig": "2026-10-23 21:11:54.913000+00:00",
-    "symbol": "AWEUSDT",
+  "ang:PENGUUSDC_LONG": {
+    "orderId": "4000001991000196",
+    "stopPrice": 0.007386,
+    "entry_sig": "2026-10-23 01:11:56.889831+00:00",
+    "symbol": "PENGUUSDC",
     "side": "LONG"
   },
-  "fin:1000PEPEUSDC_LONG": {
-    "orderId": "3000002269868279",
-    "stopPrice": 0.0046164,
-    "entry_sig": "2026-10-23 21:15:17.402939+00:00",
+  "ang:1000PEPEUSDC_LONG": {
+    "orderId": "4000001989136391",
+    "stopPrice": 0.0043798,
+    "entry_sig": "2026-10-23 06:42:58.550000+00:00",
     "symbol": "1000PEPEUSDC",
     "side": "LONG"
-  },
-  "fin:SKLUSDT_SHORT": {
-    "orderId": "3000002269864809",
-    "stopPrice": 0.004102,
-    "entry_sig": "2026-10-23 21:15:00.638930+00:00",
-    "symbol": "SKLUSDT",
-    "side": "SHORT"
-  },
-  "fin:ACEUSDT_SHORT": {
-    "orderId": "3000002269864798",
-    "stopPrice": 0.14922,
-    "entry_sig": "2026-10-23 21:14:58.454783+00:00",
-    "symbol": "ACEUSDT",
-    "side": "SHORT"
-  },
-  "fin:NMRUSDT_SHORT": {
-    "orderId": "3000002269864804",
-    "stopPrice": 10.539,
-    "entry_sig": "2026-10-23 21:15:56.094751+00:00",
-    "symbol": "NMRUSDT",
-    "side": "SHORT"
   }
 }
