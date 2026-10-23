@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-23T11:41:14Z",
+ "ts": "2026-10-23T11:46:28Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,7 +29,7 @@
   "fin": {
    "fills_6h": 85,
    "open_positions": 6,
-   "unrealised_usd": 1.41,
+   "unrealised_usd": 1.71,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 1,
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 23,
+   "fills_6h": 25,
    "open_positions": 4,
-   "unrealised_usd": 0.0,
+   "unrealised_usd": -0.07,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 49,
    "open_positions": 8,
-   "unrealised_usd": 7.25,
+   "unrealised_usd": 7.65,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -91,9 +91,9 @@
    }
   },
   "flz": {
-   "fills_6h": 11,
+   "fills_6h": 10,
    "open_positions": 5,
-   "unrealised_usd": 0.77,
+   "unrealised_usd": 0.8,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,60 +127,67 @@
     "47661"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 11.0
   },
   "men": {
    "pids": [
     "40038"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 15.0
   },
   "ang": {
    "pids": [
     "50544"
    ],
    "starts_30m": 1,
-   "log_age_s": 98.0
+   "log_age_s": 410.0
   },
   "inf": {
    "pids": [
     "82830"
    ],
    "starts_30m": 1,
-   "log_age_s": 12.0
+   "log_age_s": 2.0
   },
   "flz": {
    "pids": [
     "12407"
    ],
    "starts_30m": 2,
-   "log_age_s": 263.0
+   "log_age_s": 576.0
   },
   "trb": {
    "pids": [
     "77496"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 4.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 56413.0
+   "log_age_s": 56726.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-23T11:41:17Z",
+   "ts": "2026-10-23T11:46:29Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "ang",
+   "evidence": "ez_manage_ang.log not written for 410s"
+  },
+  {
+   "ts": "2026-10-23T11:46:29Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 263s"
+   "evidence": "ez_manage_flz.log not written for 576s"
   }
  ],
  "alert_counts": {
-  "STALE_LOG": 1
+  "STALE_LOG": 2
  },
  "active_interventions": {
   "acct:trc": {
@@ -218,21 +225,7 @@
    "why": "ORDER_STORM_ACCOUNT 28 fills/10min",
    "undo": "alert-only (never-halt policy 2026-10-10)",
    "dry_run": false
-  },
-  "key:fin:MAGICUSDT_SHORT": {
-   "ts": 1792748573.626792,
-   "until": 1792755773.62688,
-   "why": "SIZE_ANOMALY entry notional $28.92 (median $7.49, MAX_ORDER_VALUE $300) @ 2026-10-23T09:42:44Z VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_3",
-   "undo": "redis-cli -p 6379 DEL open_blocked:fin:MAGICUSDT_SHORT",
-   "dry_run": false
-  },
-  "key:fin:ZECUSDC_LONG": {
-   "ts": 1792748552.467207,
-   "until": 1792755752.46721,
-   "why": "SIZE_ANOMALY entry notional $26.82 (median $5.64, MAX_ORDER_VALUE $300) @ 2026-10-23T09:42:27Z VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_0",
-   "undo": "redis-cli -p 6379 DEL open_blocked:fin:ZECUSDC_LONG",
-   "dry_run": false
   }
  },
- "sweep_s": 2.42
+ "sweep_s": 1.01
 }
