@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-23T06:40:04Z",
+ "generated_utc": "2026-10-23T07:00:08Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-23T13:30:00Z",
  "market_open": false,
@@ -16,10 +16,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 160,
-    "filled_before_open": 160
+    "filled_today": 165,
+    "filled_before_open": 165
    },
-   "detail": "160 boards filled before the open (160 today)"
+   "detail": "165 boards filled before the open (165 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -63,9 +63,9 @@
    "critical": true,
    "measured": {
     "selection_n": 523,
-    "exact": 129,
-    "benign_divergence_only": 332,
-    "material_divergence": 57,
+    "exact": 128,
+    "benign_divergence_only": 334,
+    "material_divergence": 56,
     "no_live_row": [
      "LEXX_SHORT",
      "SCRUSDT_SHORT",
@@ -206,7 +206,7 @@
      }
     ]
    },
-   "detail": "129 exact, 332 benign-only, 57 with material divergence, 5 with no live row"
+   "detail": "128 exact, 334 benign-only, 56 with material divergence, 5 with no live row"
   },
   {
    "name": "indicators_fresh",
@@ -216,7 +216,7 @@
     "symbols": 330,
     "stale_over_90min": 2,
     "stale_pct": 0.6,
-    "median_age_min": 0.0,
+    "median_age_min": 30.1,
     "sample": [
      "DUSKUSDT",
      "ONEUSDT"

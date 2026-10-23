@@ -1,54 +1,77 @@
 {
- "generated_at": "2026-10-23 06:51 UTC",
- "total_capital_usd": 127.61,
+ "generated_at": "2026-10-23 07:07 UTC",
+ "total_capital_usd": 139.15,
  "tier_capital": {
-  "A": 6.05,
-  "B": 121.56,
-  "C": 0.0
+  "A": 0.0,
+  "B": 103.76,
+  "C": 35.39
  },
  "tier_count": {
-  "A": 1,
-  "B": 2,
-  "C": 0
+  "A": 0,
+  "B": 3,
+  "C": 2
  },
- "winners": [
-  "fin:1000PEPEUSDC_LONG"
+ "winners": [],
+ "losers": [
+  "ang:AXSUSDT_SHORT",
+  "ang:NEARUSDC_LONG"
  ],
- "losers": [],
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:COMPUSDT_LONG",
-   "symbol": "COMPUSDT",
-   "account": "fin",
-   "value_usd": 119.5,
-   "gain_pct": -0.454,
+   "pk": "ang:BATUSDT_LONG",
+   "symbol": "BATUSDT",
+   "account": "ang",
+   "value_usd": 45.49,
+   "gain_pct": 1.005,
    "tier": "B",
-   "perf_mult": 4.79,
-   "amt": 4.874,
-   "mark": 24.51827537
+   "perf_mult": 6.76,
+   "amt": 261.0,
+   "mark": 0.17428453
   },
   {
-   "pk": "fin:1000PEPEUSDC_LONG",
-   "symbol": "1000PEPEUSDC",
-   "account": "fin",
-   "value_usd": 6.05,
-   "gain_pct": 3.079,
-   "tier": "A",
-   "perf_mult": 6.56,
-   "amt": 1308.0,
-   "mark": 0.0046239
+   "pk": "ang:AAVEUSDC_LONG",
+   "symbol": "AAVEUSDC",
+   "account": "ang",
+   "value_usd": 29.83,
+   "gain_pct": 0.511,
+   "tier": "B",
+   "perf_mult": 0.65,
+   "amt": 0.2,
+   "mark": 149.12759498
   },
   {
-   "pk": "fin:KASUSDT_LONG",
-   "symbol": "KASUSDT",
-   "account": "fin",
-   "value_usd": 2.06,
-   "gain_pct": 1.34,
+   "pk": "ang:PENGUUSDC_LONG",
+   "symbol": "PENGUUSDC",
+   "account": "ang",
+   "value_usd": 28.44,
+   "gain_pct": 1.623,
    "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 54.0,
-   "mark": 0.03822556
+   "perf_mult": 1.73,
+   "amt": 3586.0,
+   "mark": 0.007932
+  },
+  {
+   "pk": "ang:AXSUSDT_SHORT",
+   "symbol": "AXSUSDT",
+   "account": "ang",
+   "value_usd": 25.47,
+   "gain_pct": -0.092,
+   "tier": "C",
+   "perf_mult": 0.15,
+   "amt": 25.0,
+   "mark": 1.01874119
+  },
+  {
+   "pk": "ang:NEARUSDC_LONG",
+   "symbol": "NEARUSDC",
+   "account": "ang",
+   "value_usd": 9.92,
+   "gain_pct": 0.182,
+   "tier": "C",
+   "perf_mult": 0.18,
+   "amt": 2.0,
+   "mark": 4.962
   }
  ]
 }
