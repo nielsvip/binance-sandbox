@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-23T23:00:06Z",
+ "generated_utc": "2026-10-23T23:20:07Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-23T13:30:00Z",
  "market_open": true,
@@ -13,10 +13,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 378,
+    "filled_today": 379,
     "filled_before_open": 249
    },
-   "detail": "249 boards filled before the open (378 today)"
+   "detail": "249 boards filled before the open (379 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -60,9 +60,9 @@
    "critical": true,
    "measured": {
     "selection_n": 523,
-    "exact": 136,
-    "benign_divergence_only": 344,
-    "material_divergence": 42,
+    "exact": 137,
+    "benign_divergence_only": 345,
+    "material_divergence": 40,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -91,19 +91,6 @@
        "ALL_TF_AGAINST_BLOCK_ENTRY_ENABLED",
        "ATR_ADAPTIVE_SIZING_ENABLED",
        "ATR_ADAPTIVE_STOP_MULT"
-      ]
-     },
-     {
-      "sym_side": "APEUSDT_LONG",
-      "published_at": "2026-10-23T22:31:37Z",
-      "material": 103,
-      "sample": [
-       "ATR_ADAPTIVE_STOP_MULT",
-       "ATR_ADAPTIVE_STOP_TF",
-       "BB_BREAKOUT_ENTRY_TF",
-       "BB_FROZEN_STOP_TF",
-       "BB_RECOVERY_ENTRY_FILTER_TF",
-       "CIRCUIT_SHARPE_GATES_FILTER_TF"
       ]
      },
      {
@@ -196,10 +183,23 @@
        "BB_SQUEEZE_ENTRY_ENABLED",
        "COUNTER_TREND_ADD_BLOCK_ENABLED"
       ]
+     },
+     {
+      "sym_side": "RRC_LONG",
+      "published_at": "2026-10-22T20:51:17Z",
+      "material": 37,
+      "sample": [
+       "ATR_ADAPTIVE_SIZING_ENABLED",
+       "ATR_ADAPTIVE_STOP_MULT",
+       "ATR_ADAPTIVE_STOP_TF",
+       "BAR_PATTERNS_FILTER_TF",
+       "COOLDOWN_BARS_TRADIER",
+       "COUNTER_TREND_ADD_BLOCK_ENABLED"
+      ]
      }
     ]
    },
-   "detail": "136 exact, 344 benign-only, 42 with material divergence, 1 with no live row"
+   "detail": "137 exact, 345 benign-only, 40 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
@@ -209,7 +209,7 @@
     "symbols": 203,
     "stale_over_90min": 2,
     "stale_pct": 1.0,
-    "median_age_min": 45.1,
+    "median_age_min": 65.1,
     "sample": [
      "DYDXUSDT",
      "TUSDT"
