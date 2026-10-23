@@ -1,12 +1,13 @@
 {
- "generated_utc": "2026-10-23T03:20:06Z",
+ "generated_utc": "2026-10-23T03:40:06Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-22T13:30:00Z",
  "market_open": true,
  "verdict": "FAIL",
  "failed_critical": [
   "defaults_chain_completed",
-  "live_set_matches_selection"
+  "live_set_matches_selection",
+  "indicators_fresh"
  ],
  "checks": [
   {
@@ -14,10 +15,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 729,
-    "filled_before_open": 387
+    "filled_today": 726,
+    "filled_before_open": 386
    },
-   "detail": "387 boards filled before the open (729 today)"
+   "detail": "386 boards filled before the open (726 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -113,19 +114,6 @@
       ]
      },
      {
-      "sym_side": "KMNOUSDT_SHORT",
-      "published_at": "2026-10-23T02:09:28Z",
-      "material": 98,
-      "sample": [
-       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
-       "ATR_ADAPTIVE_STOP_ENABLED",
-       "BAR_PATTERNS_FILTER_TF",
-       "BB_BREAKOUT_ENTRY_TF",
-       "BB_EXIT_AT_LOSS_TF",
-       "BB_RECOVERY_ENTRY_FILTER_TF"
-      ]
-     },
-     {
       "sym_side": "MRVL_SHORT",
       "published_at": "2026-10-22T16:19:54Z",
       "material": 93,
@@ -202,6 +190,19 @@
        "BB_PULLBACK_GATE_ON_FINAL",
        "BB_PULLBACK_GATE_TF"
       ]
+     },
+     {
+      "sym_side": "UNIUSDC_SHORT",
+      "published_at": "2026-10-22T14:26:50Z",
+      "material": 69,
+      "sample": [
+       "ALL_TF_AGAINST_CLOSE_ENABLED",
+       "ATR_ADAPTIVE_SIZING_ENABLED",
+       "ATR_ADAPTIVE_STOP_ENABLED",
+       "BB_PULLBACK_GATE_FILTER_TF",
+       "BB_PULLBACK_GATE_TF",
+       "CIRCUIT_SHARPE_GATES_FILTER_TF"
+      ]
      }
     ]
    },
@@ -209,19 +210,25 @@
   },
   {
    "name": "indicators_fresh",
-   "ok": true,
+   "ok": false,
    "critical": true,
    "measured": {
-    "symbols": 330,
-    "stale_over_90min": 2,
-    "stale_pct": 0.6,
-    "median_age_min": 20.1,
+    "symbols": 201,
+    "stale_over_90min": 200,
+    "stale_pct": 99.5,
+    "median_age_min": 115.1,
     "sample": [
-     "DUSKUSDT",
-     "ONEUSDT"
+     "1000BONKUSDC",
+     "1000CHEEMSUSDT",
+     "1000FLOKIUSDT",
+     "1000LUNCUSDT",
+     "1000PEPEUSDC",
+     "1000SATSUSDT",
+     "1000SHIBUSDC",
+     "1000XECUSDT"
     ]
    },
-   "detail": "2/330 symbols past the live 90-min entry gate (0.6%)"
+   "detail": "200/201 symbols past the live 90-min entry gate (99.5%)"
   },
   {
    "name": "s1_sets_synced",
