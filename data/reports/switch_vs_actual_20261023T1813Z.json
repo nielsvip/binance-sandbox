@@ -1,0 +1,24 @@
+{
+ "window_from": "10-23 17:07",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 179,
+  "status_OK": 171,
+  "EXTRA": 1
+ },
+ "rows": [
+  {
+   "acct": "flz",
+   "sym_side": "WLDUSDC_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-23 17:31",
+   "actual": "REDUCE",
+   "actual_reason": "VEC_EXIT_OWED paper-flat-live-holds-retry |VEC_EXACT|SW=NONE|F=-",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  }
+ ]
+}
