@@ -16177,8 +16177,9 @@ class FastDataManager:
                         client = self.redis_manager.connections.get(name)
                         if client:
                             try:
+                                # 2026-10-23: same 0.1s starvation as hot_metrics above → 1.0s.
                                 raw = await asyncio.wait_for(
-                                    client.get(redis_key), timeout=0.1
+                                    client.get(redis_key), timeout=1.0
                                 )
                                 if raw:
                                     fp = hash(raw[:500])
@@ -16331,8 +16332,11 @@ class FastDataManager:
                 client = self.redis_manager.connections.get(name)
                 if client:
                     try:
+                        # 2026-10-23: 0.1s starved the fetch on a loaded box (own loop delay
+                        # ate the budget; Redis p99 is 3ms) — every miss fell back to ~30min
+                        # cold data. 1.0s costs nothing when fast, rescues slow loops.
                         raw_json = await asyncio.wait_for(
-                            client.get(f"hot_metrics:{clean_sym}"), timeout=0.1
+                            client.get(f"hot_metrics:{clean_sym}"), timeout=1.0
                         )
                         if raw_json:
                             redis_hot = orjson.loads(raw_json)
@@ -29017,9 +29021,7 @@ async def check_entry_candidates_for_account(
                                     if _v2_decision:
                                         _v2_qty = (
                                             max(
-                                                getattr(
-                                                    config, "START_POSITION_SIZE", 18.0
-                                                )
+                                                _q_sps_usd(_v2_sym, parse_position_key(position_key)[2] if position_key else "", 18.0)
                                                 / _v2_px,
                                                 trade_manager.min_qty.get(
                                                     _v2_sym, 0.0001
@@ -29451,9 +29453,7 @@ async def check_entry_candidates_for_account(
                 )
                 current_gain = safe_fetch_float(getattr(position, "gain", 0.0), 0.0)
                 pos_val = pos_amt * current_price
-                start_size = safe_fetch_float(
-                    getattr(config, "START_POSITION_SIZE", 55.0), 55.0
-                )
+                start_size = _q_sps_usd(parse_position_key(position_key)[1] if position_key else "", position_side, 55.0)
                 is_small = pos_val < (1.5 * start_size)
                 allow_neg_augment = False
                 if pos_amt > 0 and current_gain <= 0 and is_small:
@@ -30959,7 +30959,7 @@ async def check_entry_candidates_for_account(
                             account_key,
                         )
                         max_entry = (
-                            float(config.START_POSITION_SIZE) * 12.0 / current_price
+                            _q_sps_usd(_pq_sym, _pq_side, 45.0) * 12.0 / current_price
                         )
                         qty = min(qty, max_entry)
                     # Apply STDEV breakout size multiplier
@@ -31072,7 +31072,7 @@ async def check_entry_candidates_for_account(
                         _hlr_mult_e = min(_hlr_mult_e, _hlr_sz_cap_e)
                         if _hlr_mult_e > 1.0:
                             _hlr_max_qty = (
-                                float(config.START_POSITION_SIZE)
+                                _q_sps_usd(_pq_sym, _pq_side, 45.0)
                                 * _hlr_sz_cap_e
                                 / current_price
                             )
@@ -31094,7 +31094,7 @@ async def check_entry_candidates_for_account(
                         _hte_re_mult = _hte_rec["mult"]
                         _hte_target_qty = _hte_prev_qty * _hte_re_mult
                         _hte_hard_cap = (
-                            float(config.START_POSITION_SIZE)
+                            _q_sps_usd(_pq_sym, _pq_side, 45.0)
                             * getattr(config, "HLR_SZ_MAX", 10.0)
                             / current_price
                         )
@@ -31107,7 +31107,7 @@ async def check_entry_candidates_for_account(
                     if _reentry_tier == "TIER1":
                         _t1_mult = getattr(config, "REENTRY_TIER1_SIZE_MULT", 1.5)
                         _t1_floor = (
-                            config.START_POSITION_SIZE / current_price * _t1_mult
+                            _q_sps_usd(_pq_sym, _pq_side, 45.0) / current_price * _t1_mult
                             if current_price > 0
                             else qty
                         )
@@ -31118,7 +31118,7 @@ async def check_entry_candidates_for_account(
                     elif _reentry_tier == "TIER2":
                         _t2_mult = getattr(config, "REENTRY_TIER2_SIZE_MULT", 0.8)
                         _t2_floor = (
-                            config.START_POSITION_SIZE / current_price
+                            _q_sps_usd(_pq_sym, _pq_side, 45.0) / current_price
                             if current_price > 0
                             else qty
                         )
@@ -32210,7 +32210,7 @@ async def evaluate_reentry_epq(ctx: dict):
             return None
     # === END NEW GUARDS ===
     _sf = safe_fetch_float
-    re_qty = cfg.START_POSITION_SIZE / max(current_price, 1e-9)
+    re_qty = _q_sps_usd(symbol, ctx.get("position_side", "LONG"), 45.0) / max(current_price, 1e-9)
     wt1_3m = _sf(i.get("wt1_3m"), 0)
     wt2_3m = _sf(i.get("wt2_3m"), 0)
     wt1_15m = _sf(i.get("wt1_15m"), 0)
@@ -32289,7 +32289,7 @@ async def evaluate_reentry_epq(ctx: dict):
             i, current_price, is_long
         )
         if _dcbr_ok:
-            _dcbr_qty = cfg.START_POSITION_SIZE * _dcbr_mult / current_price
+            _dcbr_qty = _q_sps_usd(symbol, ctx.get("position_side", "LONG"), 45.0) * _dcbr_mult / current_price
             _b04_conv = 88.0
             # RE-5: compression bonus when bar_inside_count_15m >= threshold (coiled spring)
             if bool(getattr(cfg, "RE_5_B04_COMPRESSION_BONUS_ENABLED", False)):
@@ -32609,12 +32609,12 @@ async def process_single_reentry_evaluation_epq(
                 return
         positionAmt = safe_fetch_float(position.positionAmt, 0.0)
         position_value = abs(positionAmt) * current_price
-        min_pos_usd = safe_fetch_float(config_obj.START_POSITION_SIZE, 55.0)
+        min_pos_usd = _q_sps_usd(symbol, position_side, 55.0)
         if position_value > min_pos_usd * 3.0:
             return
         max_qty = max(
             getattr(position, "max_quantity", 0) or 0.0,
-            20 * config_obj.START_POSITION_SIZE / current_price,
+            20 * _q_sps_usd(symbol, position_side, 55.0) / current_price,
         )
         if positionAmt >= max_qty:
             return
@@ -32635,8 +32635,9 @@ async def process_single_reentry_evaluation_epq(
             if isinstance(reentry_data, dict)
             else safe_datetime(getattr(position, "last_reduction_time", None))
         )
-        if reentry_amount < config_obj.START_POSITION_SIZE / current_price:
-            reentry_amount = config_obj.START_POSITION_SIZE / current_price
+        _re_sps = _q_sps_usd(symbol, position_side, 55.0)
+        if reentry_amount < _re_sps / current_price:
+            reentry_amount = _re_sps / current_price
         if not isinstance(reentry_timestamp, datetime):
             reentry_timestamp = safe_datetime(reentry_timestamp)
         now = datetime.now(timezone.utc)
@@ -32781,7 +32782,7 @@ async def process_single_reentry_evaluation_epq(
                     f"[DIRECTION_FAVORABLE_PRICE_BLOCK_EPQ] {position_key}: cur={current_price:.6f} vs exit={reentry_level:.6f} — near exit (no dip, no breakout). Skipping."
                 )
                 return
-        if min_since_exit < 120 and _dfr_pos_notional < config_obj.START_POSITION_SIZE:
+        if min_since_exit < 120 and _dfr_pos_notional < _q_sps_usd(symbol, position_side, 55.0):
             _dir_fav_long = is_long and k_3m > d_3m and k_15m > d_15m and k_3m < 85
             _dir_fav_short = not is_long and k_3m < d_3m and k_15m < d_15m and k_3m > 15
             _wt_confirm = (is_long and wt1_15m > wt2_15m and wt1_3m > wt2_3m) or (
@@ -32916,7 +32917,7 @@ async def process_single_reentry_evaluation_epq(
             _dcbr_pos_notional = (
                 abs(_sf(getattr(position, "positionAmt", 0), 0)) * current_price
             )
-            if _dcbr_pos_notional >= config_obj.START_POSITION_SIZE:
+            if _dcbr_pos_notional >= _q_sps_usd(symbol, position_side, 55.0):
                 return
             if not hasattr(trade_manager, "_dc_breakout_reentry_cd"):
                 trade_manager._dc_breakout_reentry_cd = {}
@@ -32999,7 +33000,7 @@ async def process_single_reentry_evaluation_epq(
             )
             _epq_force_qty = max(
                 reentry_amount * _epq_force_mult,
-                getattr(config_obj, "START_POSITION_SIZE", 45.0) / current_price,
+                _q_sps_usd(symbol, position_side, 45.0) / current_price,
             )
             _epq_force_reason = f"PRICE_CROSSED_MANDATORY_EPQ_k15m{k_15m:.0f}_k1h{k_1h:.0f}_min{min_since_exit:.0f}_mult{_epq_force_mult:.2f}"
             _dbs_wt3m = (is_long and wt1_3m > wt2_3m) or (
@@ -33367,7 +33368,7 @@ async def process_single_reentry_evaluation_epq(
         if (
             (full_reentry_stoch_above_dc or dc_basis_crossover_3m)
             and not is_invalidated
-            and _psr_notional < config_obj.START_POSITION_SIZE
+            and _psr_notional < _q_sps_usd(symbol, position_side, 55.0)
             and getattr(config_obj, "LEGACY_REENTRY_PSR_FULL_DC", False)
         ):
             reason = f"[PROC_SINGLE_REENTRY_EPQ]: full_reentry_{'stoch3m_x_dc15m' if full_reentry_stoch_above_dc else 'dc3m_cross'}"
@@ -34034,12 +34035,16 @@ async def priority_exit_scan_loop(
                                 getattr(pos, "mark_price", 0.0), 0.0
                             )
                             val = amt * mark_price
-                            start_size = safe_fetch_float(
-                                getattr(
-                                    trade_manager.config, "START_POSITION_SIZE", 45.0
-                                ),
-                                45.0,
-                            )
+                            try:
+                                _lp_ak, _lp_sym, _lp_side = parse_position_key(k)
+                                start_size = _q_sps_usd(_lp_sym, _lp_side, 45.0)
+                            except Exception:
+                                start_size = safe_fetch_float(
+                                    getattr(
+                                        trade_manager.config, "START_POSITION_SIZE", 45.0
+                                    ),
+                                    45.0,
+                                )
                             is_tradeable = k in tracker_manager.tradeable_keys
                             if val >= start_size or not is_tradeable:
                                 active_keys.append(k)
@@ -34179,17 +34184,21 @@ async def quick_entry_monitor_loop(
                 k for k in universe if k not in active and k.startswith(account_key)
             ]
             valid_candidates = []
-            start_size = safe_fetch_float(
-                getattr(trade_manager.config, "START_POSITION_SIZE", 45.0), 45.0
-            )
             for k in candidates:
                 pos = tracker_manager.positions_service.positions_by_account.get(
                     account_key, {}
                 ).get(k)
                 if pos:
+                    try:
+                        _ec_ak, _ec_sym, _ec_side = parse_position_key(k)
+                        _ec_sps = _q_sps_usd(_ec_sym, _ec_side, 45.0)
+                    except Exception:
+                        _ec_sps = safe_fetch_float(
+                            getattr(trade_manager.config, "START_POSITION_SIZE", 45.0), 45.0
+                        )
                     amt = abs(safe_fetch_float(getattr(pos, "positionAmt", 0.0), 0.0))
                     price = safe_fetch_float(getattr(pos, "mark_price", 0.0), 0.0)
-                    if (amt * price) >= start_size:
+                    if (amt * price) >= _ec_sps:
                         continue
                 valid_candidates.append(k)
             if not candidates:
@@ -34517,20 +34526,24 @@ async def sla_miss_enforcer_loop(
                     if k.startswith(account_key)
                 )
             filtered_active = []
-            start_size = safe_fetch_float(
-                getattr(trade_manager.config, "START_POSITION_SIZE", 45.0), 45.0
-            )
             for k in active_account_keys:
                 pos_mem = tracker_manager.positions_service.positions_by_account.get(
                     account_key, {}
                 ).get(k)
                 if pos_mem:
+                    try:
+                        _fa_ak, _fa_sym, _fa_side = parse_position_key(k)
+                        _fa_sps = _q_sps_usd(_fa_sym, _fa_side, 45.0)
+                    except Exception:
+                        _fa_sps = safe_fetch_float(
+                            getattr(trade_manager.config, "START_POSITION_SIZE", 45.0), 45.0
+                        )
                     amt = abs(
                         safe_fetch_float(getattr(pos_mem, "positionAmt", 0.0), 0.0)
                     )
                     price = safe_fetch_float(getattr(pos_mem, "mark_price", 0.0), 0.0)
                     is_tradeable = k in tracker_manager.tradeable_keys
-                    if (amt * price) < start_size and is_tradeable:
+                    if (amt * price) < _fa_sps and is_tradeable:
                         continue
                 filtered_active.append(k)
             active_account_keys = filtered_active
@@ -34729,10 +34742,14 @@ async def position_watchdog_loop(
                         )
                         if (amt * mark_price) < 5.0:
                             continue
-                        start_size = safe_fetch_float(
-                            getattr(trade_manager.config, "START_POSITION_SIZE", 45.0),
-                            45.0,
-                        )
+                        try:
+                            _wd_ak, _wd_sym, _wd_side = parse_position_key(k)
+                            start_size = _q_sps_usd(_wd_sym, _wd_side, 45.0)
+                        except Exception:
+                            start_size = safe_fetch_float(
+                                getattr(trade_manager.config, "START_POSITION_SIZE", 45.0),
+                                45.0,
+                            )
                         val = amt * mark_price
                         is_tradeable = k in tracker_manager.tradeable_keys
                         if val < start_size and is_tradeable:
@@ -36218,18 +36235,22 @@ async def run_initial_unified_batch(
                     if k.startswith(account_key)
                 }
             waiting_keys = {k for k in universe if k not in active_keys}
-            start_size = safe_fetch_float(
-                getattr(trade_manager.config, "START_POSITION_SIZE", 45.0), 45.0
-            )
             final_waiting = set()
             for k in waiting_keys:
                 pos = tracker_manager.positions_service.positions_by_account.get(
                     account_key, {}
                 ).get(k)
                 if pos:
+                    try:
+                        _wk_ak, _wk_sym, _wk_side = parse_position_key(k)
+                        _wk_sps = _q_sps_usd(_wk_sym, _wk_side, 45.0)
+                    except Exception:
+                        _wk_sps = safe_fetch_float(
+                            getattr(trade_manager.config, "START_POSITION_SIZE", 45.0), 45.0
+                        )
                     amt = abs(safe_fetch_float(getattr(pos, "positionAmt", 0.0), 0.0))
                     price = safe_fetch_float(getattr(pos, "mark_price", 0.0), 0.0)
-                    if (amt * price) >= start_size:
+                    if (amt * price) >= _wk_sps:
                         active_keys.add(k)
                 final_waiting.add(k)
             waiting_keys = final_waiting

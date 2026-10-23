@@ -11909,7 +11909,11 @@ async def ii(
                 client = rm.connections.get(name)
                 if client and _II_REDIS_DOWN_UNTIL.get(name, 0.0) <= now:
                     try:
-                        hot_raw = await asyncio.wait_for(client.get(f"hot_metrics:{sym}"), timeout=0.1)
+                        # 2026-10-23: 0.1s starved on a loaded box (own loop delay ate the
+                        # budget; Redis p99 is 3ms) and every miss ALSO tripped the 30s
+                        # breaker. 1.0s costs nothing when fast; a mere slow tick must not
+                        # mark a healthy connection down.
+                        hot_raw = await asyncio.wait_for(client.get(f"hot_metrics:{sym}"), timeout=1.0)
                         if hot_raw:
                             if isinstance(hot_raw, bytes): hot_raw = hot_raw.decode("utf-8")
                             parsed = orjson.loads(hot_raw)
@@ -11917,6 +11921,8 @@ async def ii(
                                 result = parsed.copy()
                                 trade_manager.indicators_source_label = f"redis_hot_{name}"
                                 break
+                    except asyncio.TimeoutError:
+                        pass  # slow tick only — connection stays eligible
                     except Exception:
                         _II_REDIS_DOWN_UNTIL[name] = now + 30.0  # circuit breaker: JSON answers immediately for 30 s
     # hot_metrics (Redis path 2) only has 1m/3m stoch — supplement HTF fields if missing.
@@ -26129,10 +26135,11 @@ class MultiAccountTradeManager:
             return "SKIPPED_NO_PRICE"
         normal_qty = 0.0
         if action in ("OPEN", "AUGMENT"):
+            _vd_sps = _psym_sps(symbol, side)
             if action == "OPEN":
-                prelim = max(float(self.config.START_POSITION_SIZE) / price, 1.2 * float(self.min_qty.get(symbol, 0.001) or 0.001))
+                prelim = max(float(_vd_sps) / price, 1.2 * float(self.min_qty.get(symbol, 0.001) or 0.001))
             else:
-                prelim = max(2 * float(self.config.START_POSITION_SIZE) / price, 0.6 * amt)
+                prelim = max(2 * float(_vd_sps) / price, 0.6 * amt)
             reason_probe = _vdm.make_reason(action, vec_reason)
             if position is None:
                 # Not a flat key — every symbol has a row in <acct>/{side}_positions.json, so this is a resolution
@@ -26143,7 +26150,7 @@ class MultiAccountTradeManager:
         final_action, qty = _vdm.order_qty(action, qty_frac, amt, normal_qty)
         reason = _vdm.make_reason(final_action, vec_reason)
         if final_action in ("OPEN", "AUGMENT"):
-            qty = _vdm.cap_open_qty(qty, price, float(self.config.START_POSITION_SIZE))
+            qty = _vdm.cap_open_qty(qty, price, float(_psym_sps(symbol, side)))
         if final_action in ("OPEN", "AUGMENT") and (Path(getattr(self.config, "BASE_PATH", ".")) / "data" / f"HALT_TRADING_{account_key}").exists():
             logger.critical(f"🛑 [VEC_DRIVEN_MARGIN] {position_key}: {src} {final_action} refused — data/HALT_TRADING_{account_key} present (balance_floor_watchdog: free margin at/below the account floor)")
             return "REFUSED_MARGIN_FLOOR"
@@ -28438,7 +28445,7 @@ class MultiAccountTradeManager:
             is_bottom_sentiment = i.get("0is_bottom_sentiment", False)
             if quantity < min_viable_qty:
                 quantity = min_viable_qty
-            SP = config.START_POSITION_SIZE / current_price
+            SP = _psym_sps(symbol, position_side) / current_price
             logger.info(
                 f"{position_key} fff execute_ begin $ {quantity * current_price}"
             )
@@ -30607,18 +30614,20 @@ class MultiAccountTradeManager:
     ):
         adjustment = 0.0
         qty = float(quantity)
+        _adj_side = (position.position_side if position is not None and getattr(position, "position_side", None) else ("SHORT" if str(position_key).endswith("_SHORT") else "LONG"))
+        _adj_sps = _psym_sps(symbol, _adj_side)
         pos_min_qty = _min_viable_qty(self.min_qty.get(symbol, 0.0001), self.min_notional.get(symbol, 5.0), current_price)
         if account_key == "fin":
             adjustment += 9.0
         if account_key in ["ang", "inf", "flz", "men"] and not config.EXTREME_MODE:
             position_value = qty * current_price
-            if position_value > 9 * config.START_POSITION_SIZE:
+            if position_value > 9 * _adj_sps:
                 adjustment -= 0.4  # -40%
-            elif position_value > 6 * config.START_POSITION_SIZE:
+            elif position_value > 6 * _adj_sps:
                 adjustment -= 0.3  # -30%
-            elif position_value > 2 * config.START_POSITION_SIZE:
+            elif position_value > 2 * _adj_sps:
                 adjustment -= 0.2  # -20%
-            elif position_value > 2 * config.START_POSITION_SIZE:
+            elif position_value > 2 * _adj_sps:
                 adjustment -= 0.1
         if adjustment != 0:
             qty = qty * (1.0 + adjustment)
@@ -30665,14 +30674,14 @@ class MultiAccountTradeManager:
         if config.EXTREME_MODE and account_key in ["ang", "inf", "men", "flz"]:
             extreme_multiplier = 3.0
             qty = extreme_multiplier * min(
-                2 * qty, config.START_POSITION_SIZE / current_price
+                2 * qty, _adj_sps / current_price
             )
             qty = extreme_multiplier * max(
-                qty, config.START_POSITION_SIZE / current_price / 3
+                qty, _adj_sps / current_price / 3
             )
             logger.debug(f"[{position_key}] Extreme mode applied: {qty:.6f}")
         if "REVERSE" in reason or position_key in self.reversed_positions:
-            qty = min(qty, config.START_POSITION_SIZE / current_price)
+            qty = min(qty, _adj_sps / current_price)
             logger.debug(f"[{position_key}] Reverse position cap: {qty:.6f}")
         if "FALL_BOUNCE_FALL" in reason and self.is_same_direction(
             position.position_side if position else "LONG", action
@@ -30680,15 +30689,15 @@ class MultiAccountTradeManager:
             qty *= 0.2
             logger.info(f"[{position_key}] Fall bounce fall reduction: {qty:.6f}")
         if position:
-            if position.positionAmt > config.START_POSITION_SIZE and (
+            if position.positionAmt > _adj_sps and (
                 position.gain < 0.3 * config.MIN_GAIN or position.realized_pnl < 0
             ):
                 qty *= 0.3
             if (
-                position.positionAmt < config.START_POSITION_SIZE
+                position.positionAmt < _adj_sps
                 and position.realized_pnl < 0
             ):
-                qty = max(qty, config.START_POSITION_SIZE / current_price)
+                qty = max(qty, _adj_sps / current_price)
                 logger.info(
                     f"[{position_key}] Aggressive adjustment for small losing position: {qty:.6f}"
                 )
@@ -32356,7 +32365,7 @@ class MultiAccountTradeManager:
                         f"set aug_cooldown:{position_key}",
                     )
                 )
-            if final_position_size > config.START_POSITION_SIZE / current_price:
+            if final_position_size > _psym_sps(symbol, position_side) / current_price:
                 if position_key in self.reduced_positions:
                     del self.reduced_positions[position_key]
         original_amt = abs(float(getattr(position, "positionAmt", positionAmt)))
@@ -35705,9 +35714,7 @@ class MultiAccountTradeManager:
                 else 0
             )
             _sg_val = _sg_amt * _sg_price
-            _sg_start = safe_fetch_float(
-                getattr(config, "START_POSITION_SIZE", 55.0), 55.0
-            )
+            _sg_start = _psym_sps(symbol, position_side)
             if _sg_val >= _sg_start:
                 _sg_gain_raw = (
                     safe_fetch_float(getattr(_sg_pos, "gain", 0), 0.0) if _sg_pos else 0
@@ -37311,7 +37318,7 @@ class MultiAccountTradeManager:
             if is_augment and not is_long and current_price > 0:
                 sma_200_15m = safe_fetch_float(i.get("sma_200_15m", 0), 0)
                 if sma_200_15m > 0 and current_price > sma_200_15m:
-                    max_short_size = config.START_POSITION_SIZE
+                    max_short_size = _psym_sps(symbol, position_side)
                     if real_notional >= max_short_size:
                         # 2026-05-06 ZECUSDC: extreme-overbought override — short the demise of parabolic moves.
                         # rsi_4h ≥ 80 + rsi_D ≥ 75 + bb%B_4h ≥ 1.0 → allow SHORT augment despite price > SMA200.
@@ -37560,7 +37567,7 @@ class MultiAccountTradeManager:
                     action = "CLOSE"
                 is_huge = (
                     abs(float(position.positionAmt)) * old_price
-                    > 5 * self.config.START_POSITION_SIZE
+                    > 5 * _psym_sps(symbol, position_side)
                 )
                 # 2026-04-27 V3 BYPASS — this drain-protection gate was the actual phantom-close
                 # cause for MOVRUSDT_LONG (54 protective_exit fires, 0 closes). The wrapper passed
@@ -37637,13 +37644,13 @@ class MultiAccountTradeManager:
                 ):
                     if (
                         position.positionAmt
-                        < 4 * config.START_POSITION_SIZE / current_price
+                        < 4 * _psym_sps(symbol, position_side) / current_price
                         and position.gain > 0.3
                     ):
                         return "NO QUANTITY LEFT TO REDUCE 1"
                     elif (
                         position.positionAmt
-                        < 1 * config.START_POSITION_SIZE / current_price
+                        < 1 * _psym_sps(symbol, position_side) / current_price
                         and position.gain > -2
                     ):
                         return "NO QUANTITY LEFT TO REDUCE 2"
@@ -38092,7 +38099,7 @@ class MultiAccountTradeManager:
                 if (
                     is_augment
                     and not _is_reentry_exec
-                    and current_real_amt * current_price > config.START_POSITION_SIZE
+                    and current_real_amt * current_price > _psym_sps(symbol, position_side)
                     and position.gain < config.MIN_GAIN
                 ):
                     logger.warning(
@@ -38366,7 +38373,7 @@ class MultiAccountTradeManager:
                                 self.pending_reentries.get(position_key) or {}
                             ).get("status", "")
                             if (
-                                remaining_value < config.START_POSITION_SIZE
+                                remaining_value < _psym_sps(symbol, position_side)
                                 and _pr_existing_status not in ("pending", "queued")
                             ):
                                 exit_price_val = (
@@ -40972,7 +40979,7 @@ class MultiAccountTradeManager:
                                         logger.warning(f"🚀 [HARDCODED_RALLY_REENTRY_BYPASS] {position_key}: HARDCODED price>exit & wt rising — {_reason_hc} — FORCING REENTRY (bypass cooldown)")
                                         _orig_qty = safe_fetch_float(data.get("original_qty", 0), 0.0)
                                         if _orig_qty <= 0:
-                                            _orig_qty = float(getattr(config, "START_POSITION_SIZE", 100) or 100) / max(_hc_current_price, 1e-9)
+                                            _orig_qty = float(_psym_sps(symbol, pos_side)) / max(_hc_current_price, 1e-9)
                                         _qty = _orig_qty * _qty_mult_hc
                                         await queue_trade_action(self.order_queue, self, position_key, "REENTRY", _reason_hc, 90.0, override_qty=_qty)
                                         _reentry_last_fire[position_key] = time.time()
@@ -41037,7 +41044,7 @@ class MultiAccountTradeManager:
                                 logger.warning(f"🚀 [HARDCODED_RALLY_REENTRY] {position_key}: HARDCODED price>exit & wt rising/falling — {_reason_hc} — FORCING REENTRY")
                                 _orig_qty = safe_fetch_float(data.get("original_qty", 0), 0.0)
                                 if _orig_qty <= 0:
-                                    _orig_qty = float(getattr(config, "START_POSITION_SIZE", 100) or 100) / max(current_price, 1e-9)
+                                    _orig_qty = float(_psym_sps(symbol, pos_side)) / max(current_price, 1e-9)
                                 _qty = _orig_qty * _qty_mult_hc
                                 await queue_trade_action(self.order_queue, self, position_key, "REENTRY", _reason_hc, 90.0, override_qty=_qty)
                                 _reentry_last_fire[position_key] = time.time()
@@ -41073,7 +41080,7 @@ class MultiAccountTradeManager:
                                 if _ft_fav >= _ft_min * 100.0:
                                     _ft_qty = safe_fetch_float(data.get("original_qty", 0), 0.0)
                                     if _ft_qty <= 0:
-                                        _ft_qty = float(getattr(config, "START_POSITION_SIZE", 100) or 100) / max(current_price, 1e-9)
+                                        _ft_qty = float(_psym_sps(symbol, pos_side)) / max(current_price, 1e-9)
                                     _ft_reason = f"FOLLOW_THROUGH_fav{_ft_fav:.2f}pct_bars{_ft_bars:.1f}"
                                     logger.warning(f"🔁 [FOLLOW_THROUGH_REENTRY] {position_key}: {_ft_reason} — FORCING REENTRY")
                                     await queue_trade_action(self.order_queue, self, position_key, "REENTRY", _ft_reason, 90.0, override_qty=_ft_qty)
@@ -41388,7 +41395,7 @@ class MultiAccountTradeManager:
                         )
                         _base_qty = safe_fetch_float(data.get("original_qty", 0), 0.0)
                         if _base_qty <= 0:
-                            _base_qty = config.START_POSITION_SIZE / current_price
+                            _base_qty = _psym_sps(symbol, "LONG" if is_long else "SHORT") / current_price
                         override_qty = _base_qty * _qty_mult
                         # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
                         _ee_mult, _ee_tag = _ee_reentry_boost(
@@ -43291,7 +43298,7 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
     i = await ii(trade_manager, symbol)
     if not i:
         return None
-    re_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
+    re_qty = _psym_sps(symbol, ctx.get("position_side", "LONG")) / max(current_price, 1e-9)
     # 2026-09-18 HARDCODED RALLY REENTRY (user mandate): close > exit and wt1_15m rising
     # ═══ MU_CORRECTION_REENTRY 2026-10-04 crypto port of tradier StockStrategy.evaluate_reentry (default OFF = inert) ═══
     try:
@@ -43324,8 +43331,8 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
                 _hc_is_long_rally = is_long and current_price > _hc_exit_px and (not _hc_req_wt3 or _hc_wt1 > _hc_wt1_prev) and _rally_ok(config, i, True, current_price, _hc_exit_px, _rally_age(getattr(position, "last_reduction_time", None)))
                 _hc_is_short_rally = (not is_long) and current_price < _hc_exit_px and (not _hc_req_wt3 or _hc_wt1 < _hc_wt1_prev) and _rally_ok(config, i, False, current_price, _hc_exit_px, _rally_age(getattr(position, "last_reduction_time", None)))
                 if _hc_is_long_rally or _hc_is_short_rally:
-                    re_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
                     _side = "LONG" if is_long else "SHORT"
+                    re_qty = _psym_sps(symbol, _side) / max(current_price, 1e-9)
                     _reason = f"HARDCODED_RALLY_REENTRY_{_side}_close{current_price:.4f}>exit{_hc_exit_px:.4f}_wt{_hc_wt1:.1f}>{_hc_wt1_prev:.1f}" if is_long else f"HARDCODED_RALLY_REENTRY_{_side}_close{current_price:.4f}<exit{_hc_exit_px:.4f}_wt{_hc_wt1:.1f}<{_hc_wt1_prev:.1f}"
                     logger.warning(f"[HARDCODED_RALLY_REENTRY] {position_key}: {_reason} — FORCED REENTRY")
                     return Signal(action="REENTRY", reason=_reason, conviction=90.0, quantity=re_qty)
@@ -43671,7 +43678,7 @@ async def evaluate_augmentation(ctx: dict) -> Optional[Signal]:
             if gain >= _ta_next and int(_ta_state.get("aug_count", 0)) < _ta_max_augs:
                 _ta_cap = float(_psym_get(symbol, position_side, "MAX_SYMBOL_VALUE_TRADIER", getattr(config, "MAX_SYMBOL_VALUE_TRADIER", 3750.0)))
                 if abs(position_value) < _ta_cap * 0.95:
-                    _ta_qty = float(getattr(config, "START_POSITION_SIZE", 28.0)) / max(current_price, 1e-9)
+                    _ta_qty = float(_psym_sps(symbol, position_side)) / max(current_price, 1e-9)
                     if _ta_qty > 0:
                         trade_manager._trailing_aug_state[position_key] = {"last_threshold": _ta_next, "aug_count": int(_ta_state.get("aug_count", 0)) + 1}
                         logger.info(f"{position_key} [TRAILING_AUG] step{_ta_next:.2f}% g={gain:.2f}% cnt{int(_ta_state.get('aug_count', 0)) + 1}/{_ta_max_augs}")
@@ -43713,7 +43720,7 @@ async def evaluate_augmentation(ctx: dict) -> Optional[Signal]:
                 if _aal_dcc > 0:
                     _aal_new["prev_dc_high_15m_prev"] = _aal_dcc
             if _aal_sig and _aal_dc_ok and _aal_fresh:  # 2026-10-15: MAX_AUGMENTS cap deleted (USER)
-                _aal_qty = float(getattr(config, "START_POSITION_SIZE", 28.0)) / max(current_price, 1e-9)
+                _aal_qty = float(_psym_sps(symbol, "LONG" if is_long else "SHORT")) / max(current_price, 1e-9)
                 if _aal_qty > 0:
                     _aal_new["last_aug_low" if is_long else "last_aug_high"] = _aal_cur
                     trade_manager._aug_at_loss_state[position_key] = _aal_new
@@ -43791,7 +43798,7 @@ async def evaluate_augmentation(ctx: dict) -> Optional[Signal]:
     wt_tf_aligned = sum([wt_dir_3m, wt_dir_15m, wt_dir_1h])
     has_wt_cross = wt_cross_bull_3m or wt_cross_bull_15m
     min_gain = safe_fetch_float(getattr(config, "MIN_GAIN", 5.0), 5.0)
-    base_qty = config.START_POSITION_SIZE / current_price
+    base_qty = _psym_sps(symbol, "LONG" if is_long else "SHORT") / current_price
     # AUG_A: BLOWPAST (gain >= 3×min_gain, conviction 90) — highest conviction
     if getattr(config, "AUGMENT_BLOWPAST_ENABLED", True):
         if gain >= 3 * min_gain and k_not_exhausted:
