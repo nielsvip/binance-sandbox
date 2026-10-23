@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-23T08:11:32Z",
+ "ts": "2026-10-23T08:16:32Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 34,
+   "fills_6h": 31,
    "open_positions": 3,
-   "unrealised_usd": -0.92,
+   "unrealised_usd": -1.04,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 26,
    "open_positions": 9,
-   "unrealised_usd": 0.25,
+   "unrealised_usd": 0.48,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 55,
    "open_positions": 11,
-   "unrealised_usd": 1.36,
+   "unrealised_usd": 2.22,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 20,
    "open_positions": 6,
-   "unrealised_usd": 0.9,
+   "unrealised_usd": 1.11,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -126,62 +126,52 @@
    "pids": [
     "53921"
    ],
-   "starts_30m": 2,
-   "log_age_s": 20.0
+   "starts_30m": 1,
+   "log_age_s": 16.0
   },
   "men": {
    "pids": [
     "42441"
    ],
    "starts_30m": 2,
-   "log_age_s": 59.0
+   "log_age_s": 83.0
   },
   "ang": {
    "pids": [
     "50544"
    ],
    "starts_30m": 1,
-   "log_age_s": 11.0
+   "log_age_s": 6.0
   },
   "inf": {
    "pids": [
-    "15594"
+    "38044"
    ],
-   "starts_30m": 1,
-   "log_age_s": 14.0
+   "starts_30m": 2,
+   "log_age_s": 90.0
   },
   "flz": {
    "pids": [
     "94870"
    ],
    "starts_30m": 1,
-   "log_age_s": 184.0
+   "log_age_s": 37.0
   },
   "trb": {
    "pids": [
     "69879"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 0.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 43829.0
+   "log_age_s": 44129.0
   }
  },
- "alerts": [
-  {
-   "ts": "2026-10-23T08:11:33Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 184s"
-  }
- ],
- "alert_counts": {
-  "STALE_LOG": 1
- },
+ "alerts": [],
+ "alert_counts": {},
  "active_interventions": {
   "acct:trc": {
    "ts": 1791314517.218395,
@@ -227,5 +217,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.17
+ "sweep_s": 0.92
 }
