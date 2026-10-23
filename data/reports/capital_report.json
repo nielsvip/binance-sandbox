@@ -1,14 +1,14 @@
 {
- "generated_at": "2026-10-23 13:14 UTC",
- "total_capital_usd": 234.97,
+ "generated_at": "2026-10-23 13:47 UTC",
+ "total_capital_usd": 103.85,
  "tier_capital": {
   "A": 0.0,
-  "B": 213.8,
-  "C": 21.16
+  "B": 82.67,
+  "C": 21.18
  },
  "tier_count": {
   "A": 0,
-  "B": 3,
+  "B": 2,
   "C": 2
  },
  "winners": [],
@@ -16,64 +16,51 @@
   "flz:SOLUSDC_LONG",
   "flz:BNBUSDC_LONG"
  ],
- "mediocre": [
-  "flz:DYDXUSDT_SHORT"
- ],
+ "mediocre": [],
  "positions": [
-  {
-   "pk": "flz:DYDXUSDT_SHORT",
-   "symbol": "DYDXUSDT",
-   "account": "flz",
-   "value_usd": 131.17,
-   "gain_pct": 0.0,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 1588.1,
-   "mark": 0.08259771292893943
-  },
   {
    "pk": "flz:BTCUSDC_LONG",
    "symbol": "BTCUSDC",
    "account": "flz",
-   "value_usd": 81.59,
-   "gain_pct": 0.613,
+   "value_usd": 81.63,
+   "gain_pct": 0.666,
    "tier": "B",
    "perf_mult": 1.0,
    "amt": 0.001,
-   "mark": 81588.2
+   "mark": 81631.3
   },
   {
    "pk": "flz:BNBUSDC_LONG",
    "symbol": "BNBUSDC",
    "account": "flz",
-   "value_usd": 14.91,
-   "gain_pct": 2.059,
+   "value_usd": 14.92,
+   "gain_pct": 2.135,
    "tier": "C",
    "perf_mult": 0.45,
    "amt": 0.02,
-   "mark": 745.62
+   "mark": 746.17687075
   },
   {
    "pk": "flz:SOLUSDC_LONG",
    "symbol": "SOLUSDC",
    "account": "flz",
-   "value_usd": 6.25,
-   "gain_pct": 0.589,
+   "value_usd": 6.26,
+   "gain_pct": 0.633,
    "tier": "C",
    "perf_mult": 0.18,
    "amt": 0.06,
-   "mark": 104.23
+   "mark": 104.27613763
   },
   {
    "pk": "flz:DOGEUSDC_LONG",
    "symbol": "DOGEUSDC",
    "account": "flz",
    "value_usd": 1.04,
-   "gain_pct": 0.857,
+   "gain_pct": 0.753,
    "tier": "B",
-   "perf_mult": 0.37,
+   "perf_mult": 0.38,
    "amt": 13.0,
-   "mark": 0.08005053
+   "mark": 0.07996763
   }
  ]
 }
