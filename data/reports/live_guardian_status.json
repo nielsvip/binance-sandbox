@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-23T12:27:16Z",
+ "ts": "2026-10-23T12:32:29Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -28,8 +28,8 @@
  "accounts": {
   "fin": {
    "fills_6h": 109,
-   "open_positions": 10,
-   "unrealised_usd": 1.71,
+   "open_positions": 9,
+   "unrealised_usd": 3.32,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 1,
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 16,
    "open_positions": 4,
-   "unrealised_usd": 0.19,
+   "unrealised_usd": 0.47,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 49,
-   "open_positions": 8,
-   "unrealised_usd": 7.13,
+   "fills_6h": 50,
+   "open_positions": 7,
+   "unrealised_usd": 7.82,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 10,
    "open_positions": 5,
-   "unrealised_usd": 0.76,
+   "unrealised_usd": 0.92,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,35 +127,35 @@
     "22551"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 5.0
   },
   "men": {
    "pids": [
     "95891"
    ],
    "starts_30m": 1,
-   "log_age_s": 33.0
+   "log_age_s": 0.0
   },
   "ang": {
    "pids": [
     "50544"
    ],
    "starts_30m": 1,
-   "log_age_s": 1319.0
+   "log_age_s": 63.0
   },
   "inf": {
    "pids": [
     "82830"
    ],
    "starts_30m": 1,
-   "log_age_s": 13.0
+   "log_age_s": 65.0
   },
   "flz": {
    "pids": [
     "12407"
    ],
-   "starts_30m": 1,
-   "log_age_s": 1567.0
+   "starts_30m": 0,
+   "log_age_s": 1881.0
   },
   "trb": {
    "pids": [
@@ -167,35 +167,28 @@
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 59174.0
+   "log_age_s": 59488.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-23T12:27:17Z",
+   "ts": "2026-10-23T12:32:29Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "fin:RLCUSDT_SHORT",
    "evidence": "CLOSE PROFIT_TP_EXHAUSTION decided 2026-10-23T11:23:59Z bar=2026-10-23T10:15:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-23T12:27:17Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 1319s"
-  },
-  {
-   "ts": "2026-10-23T12:27:17Z",
+   "ts": "2026-10-23T12:32:32Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 1567s"
+   "evidence": "ez_manage_flz.log not written for 1881s"
   }
  ],
  "alert_counts": {
   "VEC_DECISION_NOT_FILLED": 1,
-  "STALE_LOG": 2
+  "STALE_LOG": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -242,5 +235,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.19
+ "sweep_s": 3.42
 }
