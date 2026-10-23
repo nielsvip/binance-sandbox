@@ -1,30 +1,30 @@
 {
-  "ang:ARUSDT_LONG": {
-    "orderId": "4000001989959386",
-    "stopPrice": 3.524,
-    "entry_sig": "2026-10-23 06:37:13.084000+00:00",
-    "symbol": "ARUSDT",
+  "fin:ENAUSDC_LONG": {
+    "orderId": "3000002269905909",
+    "stopPrice": 0.20418,
+    "entry_sig": "2026-10-23 21:50:06.377000+00:00",
+    "symbol": "ENAUSDC",
     "side": "LONG"
   },
-  "ang:MASKUSDT_SHORT": {
-    "orderId": "4000001991000195",
-    "stopPrice": 0.434,
-    "entry_sig": "2026-10-23 08:51:31.205000+00:00",
-    "symbol": "MASKUSDT",
+  "fin:VETUSDT_LONG": {
+    "orderId": "3000002269556190",
+    "stopPrice": 0.006665,
+    "entry_sig": "2026-10-23 09:43:24.075000+00:00",
+    "symbol": "VETUSDT",
+    "side": "LONG"
+  },
+  "fin:ETHFIUSDC_LONG": {
+    "orderId": "3000002269906068",
+    "stopPrice": 0.6539,
+    "entry_sig": "2026-10-23 21:50:22.556000+00:00",
+    "symbol": "ETHFIUSDC",
+    "side": "LONG"
+  },
+  "fin:MAGICUSDT_SHORT": {
+    "orderId": "3000002269908514",
+    "stopPrice": 0.08924,
+    "entry_sig": "2026-10-23 21:40:59.535000+00:00",
+    "symbol": "MAGICUSDT",
     "side": "SHORT"
-  },
-  "ang:PENGUUSDC_LONG": {
-    "orderId": "4000001991000196",
-    "stopPrice": 0.007386,
-    "entry_sig": "2026-10-23 01:11:56.889831+00:00",
-    "symbol": "PENGUUSDC",
-    "side": "LONG"
-  },
-  "ang:1000PEPEUSDC_LONG": {
-    "orderId": "4000001989136391",
-    "stopPrice": 0.0043798,
-    "entry_sig": "2026-10-23 06:42:58.550000+00:00",
-    "symbol": "1000PEPEUSDC",
-    "side": "LONG"
   }
 }
