@@ -1,32 +1,56 @@
 {
- "generated_at": "2026-10-23 07:46 UTC",
- "total_capital_usd": 6.96,
+ "generated_at": "2026-10-23 07:52 UTC",
+ "total_capital_usd": 127.02,
  "tier_capital": {
-  "A": 0.0,
-  "B": 0.0,
-  "C": 6.96
+  "A": 5.89,
+  "B": 121.13,
+  "C": 0.0
  },
  "tier_count": {
-  "A": 0,
-  "B": 0,
-  "C": 1
+  "A": 1,
+  "B": 2,
+  "C": 0
  },
- "winners": [],
+ "winners": [
+  "fin:1000PEPEUSDC_LONG"
+ ],
  "losers": [
-  "inf:AVAXUSDC_SHORT"
+  "fin:COMPUSDT_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "inf:AVAXUSDC_SHORT",
-   "symbol": "AVAXUSDC",
-   "account": "inf",
-   "value_usd": 6.96,
-   "gain_pct": 0.0,
-   "tier": "C",
-   "perf_mult": 0.23,
-   "amt": 0.75,
-   "mark": 9.277
+   "pk": "fin:COMPUSDT_LONG",
+   "symbol": "COMPUSDT",
+   "account": "fin",
+   "value_usd": 119.12,
+   "gain_pct": -0.771,
+   "tier": "B",
+   "perf_mult": 4.79,
+   "amt": 4.874,
+   "mark": 24.44
+  },
+  {
+   "pk": "fin:1000PEPEUSDC_LONG",
+   "symbol": "1000PEPEUSDC",
+   "account": "fin",
+   "value_usd": 5.89,
+   "gain_pct": 2.721,
+   "tier": "A",
+   "perf_mult": 7.87,
+   "amt": 1308.0,
+   "mark": 0.0045023
+  },
+  {
+   "pk": "fin:KASUSDT_LONG",
+   "symbol": "KASUSDT",
+   "account": "fin",
+   "value_usd": 2.01,
+   "gain_pct": 0.644,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 53.0,
+   "mark": 0.03793108
   }
  ]
 }
