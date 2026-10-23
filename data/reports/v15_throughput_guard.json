@@ -1,105 +1,121 @@
 {
- "at": "2026-10-22T23:11:04Z",
+ "at": "2026-10-23T00:11:26Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
   "s1": {
-   "improved": 1,
-   "improved_per_hour": 1.0,
-   "published_n": 1,
+   "improved": 4,
+   "improved_per_hour": 4.0,
+   "published_n": 4,
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "BTCDOMUSDT_SHORT"
+    "BTCDOMUSDT_LONG",
+    "SOLUSDC_LONG"
    ],
-   "mem_avail_mb": 9140,
-   "load1": 62.96,
+   "mem_avail_mb": 5553,
+   "load1": 54.13,
    "nproc": 16,
-   "slots": "1/8",
-   "binding_reason": "scheduler mem guard (disk 24099 MB, mem 8902 MB, est_pair 9154 MB) \u2014 slots 1/8",
+   "slots": "2/8",
+   "binding_reason": "scheduler mem guard (disk 23405 MB, mem 6548 MB, est_pair 6354 MB) \u2014 slots 2/8",
    "error": null,
    "published": [
     {
-     "symside": "BTCDOMUSDT_SHORT",
-     "at": "2026-10-22T23:10:57Z",
-     "baseline": -0.7584114482761046,
-     "final": 3.124662571106311,
-     "state": "improved"
-    }
-   ],
-   "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 0.1,
-   "last_improved_symside": "BTCDOMUSDT_SHORT",
-   "cadence_ok": true,
-   "improved_gap_min_median_24h": 22.4,
-   "improved_gap_min_max_24h": 193.3,
-   "improved_finishes_24h": 27,
-   "board_cpu_s_median_24h": 2618.5,
-   "board_wall_s_median_24h": 1123.540610074997,
-   "board_cores": 1.92,
-   "nonboard_cores_competing": 12.47,
-   "nonboard_cores_niced": 1.06,
-   "cores_by_bucket": {
-    "other": 10.63,
-    "live_helpers": 1.51,
-    "klines_append": 0.33,
-    "boards": 1.92
-   },
-   "cores_by_bucket_niced": {
-    "klines_vault": 0.07,
-    "other": 0.99
-   }
-  },
-  "s2": {
-   "improved": 2,
-   "improved_per_hour": 2.0,
-   "published_n": 2,
-   "flat_or_worse": 0,
-   "unknown": 0,
-   "boards_running": [
-    "QBTS_LONG"
-   ],
-   "mem_avail_mb": 14402,
-   "load1": 9.77,
-   "nproc": 16,
-   "slots": "1/8",
-   "binding_reason": "scheduler mem guard (disk 46842 MB, mem 11438 MB, est_pair 9796 MB) \u2014 slots 1/8",
-   "error": null,
-   "published": [
-    {
-     "symside": "ADBE_LONG",
-     "at": "2026-10-22T22:18:17Z",
-     "baseline": 9.442292135041829,
-     "final": 32.3417497321323,
+     "symside": "BTCDOMUSDT_LONG",
+     "at": "2026-10-23T00:09:15Z",
+     "baseline": 9.294994967376697,
+     "final": 17.127887744870964,
      "state": "improved"
     },
     {
-     "symside": "INJUSDT_LONG",
-     "at": "2026-10-22T22:49:57Z",
-     "baseline": 26.194545948532,
-     "final": 30.420214506145392,
+     "symside": "ENSUSDT_SHORT",
+     "at": "2026-10-22T23:55:48Z",
+     "baseline": 39.46684293559277,
+     "final": 66.29139732025901,
+     "state": "improved"
+    },
+    {
+     "symside": "ETHFIUSDC_LONG",
+     "at": "2026-10-23T00:02:15Z",
+     "baseline": 1.755572390321135,
+     "final": 45.11983714643442,
+     "state": "improved"
+    },
+    {
+     "symside": "KASUSDT_LONG",
+     "at": "2026-10-22T23:42:05Z",
+     "baseline": -0.13020327236674695,
+     "final": 42.00762179098295,
      "state": "improved"
     }
    ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 1.2,
-   "last_improved_symside": "GRAMUSDT_LONG",
+   "minutes_since_last_improved": 1.9,
+   "last_improved_symside": "BTCDOMUSDT_LONG",
    "cadence_ok": true,
-   "improved_gap_min_median_24h": 5.9,
-   "improved_gap_min_max_24h": 72.9,
-   "improved_finishes_24h": 129,
-   "board_cpu_s_median_24h": 2664.2,
-   "board_wall_s_median_24h": 1182.831600189209,
-   "board_cores": 3.14,
-   "nonboard_cores_competing": 2.26,
-   "nonboard_cores_niced": 3.33,
+   "improved_gap_min_median_24h": 18.5,
+   "improved_gap_min_max_24h": 195.8,
+   "improved_finishes_24h": 23,
+   "board_cpu_s_median_24h": 2528.9,
+   "board_wall_s_median_24h": 1121.2850439548492,
+   "board_cores": 7.24,
+   "nonboard_cores_competing": 7.76,
+   "nonboard_cores_niced": 0.37,
    "cores_by_bucket": {
-    "other": 0.03,
-    "boards": 3.14,
-    "live_helpers": 2.23
+    "other": 3.77,
+    "live_helpers": 3.73,
+    "klines_append": 0.26,
+    "boards": 7.24
    },
    "cores_by_bucket_niced": {
-    "other": 3.33
+    "other": 0.34,
+    "klines_vault": 0.03
+   }
+  },
+  "s2": {
+   "improved": 0,
+   "improved_per_hour": 0.0,
+   "published_n": 1,
+   "flat_or_worse": 1,
+   "unknown": 0,
+   "boards_running": [
+    "1000PEPEUSDC_LONG",
+    "CDE_SHORT"
+   ],
+   "mem_avail_mb": 9746,
+   "load1": 15.13,
+   "nproc": 16,
+   "slots": "3/8",
+   "binding_reason": "board CPU DEMAND, not host capacity: 2 running sides pull only 8.5 cores (4.26 core/side) of 13.0 usable -> 11.8 boards/h. 12/h needs 8.7 board-cores = 2 sides at this per-side draw (niced filler 4.08 cores yields). Lever: more concurrent sides (RAM-bound) or deeper eval pipelining per side (V15_PREFETCH_TASKCAP on an idle host).",
+   "error": null,
+   "published": [
+    {
+     "symside": "1000LUNCUSDT_SHORT",
+     "at": "2026-10-23T00:08:51Z",
+     "baseline": null,
+     "final": null,
+     "state": "flat_or_worse"
+    }
+   ],
+   "cadence_target_min": 5.0,
+   "minutes_since_last_improved": 30.6,
+   "last_improved_symside": "1000PEPEUSDC_LONG",
+   "cadence_ok": false,
+   "improved_gap_min_median_24h": 6.1,
+   "improved_gap_min_max_24h": 72.9,
+   "improved_finishes_24h": 124,
+   "board_cpu_s_median_24h": 2597.2,
+   "board_wall_s_median_24h": 1166.703854084015,
+   "board_cores": 8.53,
+   "nonboard_cores_competing": 3.04,
+   "nonboard_cores_niced": 4.08,
+   "cores_by_bucket": {
+    "other": 0.03,
+    "boards": 8.53,
+    "live_helpers": 3.01
+   },
+   "cores_by_bucket_niced": {
+    "other": 4.08
    }
   }
  },
@@ -107,5 +123,7 @@
   "s1",
   "s2"
  ],
- "cadence_breach": []
+ "cadence_breach": [
+  "s2"
+ ]
 }
