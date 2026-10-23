@@ -1,42 +1,15 @@
 {
- "generated_utc": "2026-10-23T19:12:11.627941+00:00",
+ "generated_utc": "2026-10-23T20:12:10.829742+00:00",
  "days": 1.0,
  "totals": {
-  "exit_promises": 50,
-  "exit_broken_no_delivery": 48,
-  "exit_skipped_inflight": 69,
+  "exit_promises": 43,
+  "exit_broken_no_delivery": 41,
   "entry_promises": 24,
   "entry_broken_no_delivery": 24,
+  "exit_skipped_inflight": 69,
   "exit_kept_in_bar": 2
  },
  "per_key": {
-  "fin:ZKUSDT_SHORT": {
-   "exit_promises": 2,
-   "exit_broken_no_delivery": 2
-  },
-  "fin:MEWUSDT_LONG": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
-  },
-  "fin:NMRUSDT_SHORT": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
-  },
-  "fin:BOMEUSDC_SHORT": {
-   "exit_promises": 2,
-   "exit_broken_no_delivery": 2,
-   "exit_skipped_inflight": 26
-  },
-  "fin:KSMUSDT_SHORT": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
-  },
-  "men:WLDUSDC_LONG": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1,
-   "entry_promises": 1,
-   "entry_broken_no_delivery": 1
-  },
   "ang:NMRUSDT_SHORT": {
    "exit_promises": 1,
    "exit_broken_no_delivery": 1
@@ -59,6 +32,10 @@
    "exit_promises": 1,
    "exit_broken_no_delivery": 1
   },
+  "men:WLDUSDC_LONG": {
+   "entry_promises": 1,
+   "entry_broken_no_delivery": 1
+  },
   "flz:WLDUSDC_LONG": {
    "entry_promises": 1,
    "entry_broken_no_delivery": 1
@@ -80,6 +57,11 @@
    "entry_promises": 1,
    "entry_broken_no_delivery": 1,
    "exit_promises": 1,
+   "exit_broken_no_delivery": 1
+  },
+  "fin:BOMEUSDC_SHORT": {
+   "exit_promises": 1,
+   "exit_skipped_inflight": 26,
    "exit_broken_no_delivery": 1
   },
   "fin:RLCUSDT_SHORT": {
@@ -207,76 +189,6 @@
   }
  },
  "detail": [
-  {
-   "acct": "fin",
-   "sym_side": "ZKUSDT_SHORT",
-   "kind": "exit",
-   "bar": "10-22 18:45",
-   "late_min": null,
-   "action": "REDUCE",
-   "reason": "REGIME_REDUCE",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "fin",
-   "sym_side": "MEWUSDT_LONG",
-   "kind": "exit",
-   "bar": "10-22 18:45",
-   "late_min": null,
-   "action": "REDUCE",
-   "reason": "SATOSHIT_EXIT_PARTIAL 0.70",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "fin",
-   "sym_side": "NMRUSDT_SHORT",
-   "kind": "exit",
-   "bar": "10-22 19:00",
-   "late_min": null,
-   "action": "REDUCE",
-   "reason": "REDUCE_TO_FLAT",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "fin",
-   "sym_side": "BOMEUSDC_SHORT",
-   "kind": "exit",
-   "bar": "10-22 19:00",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "EXIT_VELOCITY_WT against-short g-0.32%",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "fin",
-   "sym_side": "ZKUSDT_SHORT",
-   "kind": "exit",
-   "bar": "10-22 19:00",
-   "late_min": null,
-   "action": "REDUCE",
-   "reason": "REGIME_REDUCE",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "fin",
-   "sym_side": "KSMUSDT_SHORT",
-   "kind": "exit",
-   "bar": "10-22 19:00",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "WT_LOWER_CROSS_EXIT wt_1h higher wt+price",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "men",
-   "sym_side": "WLDUSDC_LONG",
-   "kind": "exit",
-   "bar": "10-22 19:15",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "PPL_SL_CLOSE_upgraded-scalp_px0.5586_stop0.5612",
-   "outcome": "NO_DELIVERY"
-  },
   {
    "acct": "ang",
    "sym_side": "NMRUSDT_SHORT",
