@@ -1805,9 +1805,7 @@ def calculate_dynamic_quantity(
     if current_price <= 0:
         return 0.0
     _htfc = 0
-    base_usdc_size = safe_fetch_float(
-        getattr(config_obj, "START_POSITION_SIZE", 45.0), 45.0
-    )
+    base_usdc_size = _q_sps_usd(symbol, "LONG" if is_long else "SHORT", 45.0)
     # 2026-05-21 ZEC FLZ 5x — mirror ez_manage execute_now sizing. Must be first so all downstream mults scale from 5x base.
     try:
         _zec_mult = _zec_flz_long_size_mult(
@@ -12001,9 +11999,10 @@ class HedgeEngine:
                 if candidate_position.mark_price > 0
                 else current_price
             )
+            _pci_sps = _q_sps_usd(candidate_symbol, target_side, 45.0)
             size_ratio = (
-                pos_value / config.START_POSITION_SIZE
-                if config.START_POSITION_SIZE > 0
+                pos_value / _pci_sps
+                if _pci_sps > 0
                 else 0
             )
             if size_ratio > 3.0:
@@ -15351,9 +15350,7 @@ class HedgeEngine:
         aligned, reason = trading_policy.check_entry_alignment(indicators, is_long)
         if not aligned:
             return None
-        start_position_size_usd = safe_fetch_float(
-            getattr(self.config, "START_POSITION_SIZE", 45.0), 45.0
-        )
+        start_position_size_usd = _q_sps_usd(symbol, "LONG" if is_long else "SHORT", 45.0)
         min_quantity_by_cost = start_position_size_usd / current_price
         max_quantity_by_ratio = current_quantity * self.pyramid_size_ratio
         pyramid_quantity = max(min_quantity_by_cost, max_quantity_by_ratio)
@@ -15776,9 +15773,7 @@ class SentimentMomentumStrategy:
         side = cand["side"]
         price = cand["price"]
         reason_detail = cand["reason"]
-        base_usd = safe_fetch_float(
-            getattr(self.config, "START_POSITION_SIZE", 50.0), 50.0
-        )
+        base_usd = _q_sps_usd(symbol, side, 50.0)
         ha_score = cand.get("ha_score", 0)
         if ha_score == 4:
             mult = 3.0
@@ -21448,7 +21443,8 @@ class SentimentExposureManager:
                 return
             should_augment = False
             reason_pyramid = ""
-            base_usd = getattr(self.config, "START_POSITION_SIZE", 55.0)
+            _pyr_ak, _pyr_sym, _pyr_side = parse_position_key(position_key)
+            base_usd = _q_sps_usd(_pyr_sym, _pyr_side, 55.0)
             mult = 0.5
             if pnl_pct > 2.5 and is_strong_trend:
                 should_augment = True
@@ -21477,7 +21473,12 @@ class SentimentExposureManager:
                     is_hedge=False,
                 )
                 return
-        is_large_position = pos_amt > (config.START_POSITION_SIZE / current_price * 2.5)
+        try:
+            _lrg_ak, _lrg_sym, _lrg_side = parse_position_key(position_key)
+            _lrg_sps = _q_sps_usd(_lrg_sym, _lrg_side, 55.0)
+        except Exception:
+            _lrg_sps = float(getattr(config, "START_POSITION_SIZE", 55.0))
+        is_large_position = pos_amt > (_lrg_sps / current_price * 2.5)
         # EMERGENCY FIX: NEVER cut positions in their first 15 minutes. NEVER cut shorts in a crash.
         _pos_opened = getattr(position, "opened_at", None) or getattr(
             position, "last_augmentation_time", None
@@ -21564,7 +21565,12 @@ class SentimentExposureManager:
             if structure_confirmed and aligned_with_sentiment:
                 if await self.tracker_manager.is_trade_cooldown_active(position_key):
                     return
-                base_target = getattr(self.config, "START_POSITION_SIZE", 50) * 2.5
+                try:
+                    _sre_ak, _sre_sym, _sre_side = parse_position_key(position_key)
+                    _sre_sps = _q_sps_usd(_sre_sym, _sre_side, 50.0)
+                except Exception:
+                    _sre_sps = float(getattr(self.config, "START_POSITION_SIZE", 50))
+                base_target = _sre_sps * 2.5
                 target_size = max(base_target, reg_data["original_size"])
                 qty_to_buy = (target_size / current_price) - pos_amt
                 if qty_to_buy > 0:
@@ -23904,7 +23910,7 @@ async def execute_trade_wrapper(
             if current_price > 0
             else _min_qty_sym
         )
-        _max_pos_val = float(getattr(config, "START_POSITION_SIZE", 18.0)) * 12.0
+        _max_pos_val = _q_sps_usd(_pos_symbol, parse_position_key(position_key)[2] if position_key else "", 18.0) * 12.0
         _pos_is_open = _fresh_amt > _min_qty
         # HARD BLOCK: No entry action on an already-open position — covers ALL entry action names.
         # 2026-04-27 owner: AUGMENT also blocked when gain < MIN_GAIN. Only profitable
@@ -27308,12 +27314,10 @@ async def check_exit_candidates_for_account(
                     hard_exit_reason = (
                         f"AUGMENTED_DC_BREAK_REDUCE_TO_MIN_{current_gain:.2f}%"
                     )
-                min_hedge_val = safe_fetch_float(
-                    getattr(config, "START_POSITION_SIZE", 50.0), 50.0
-                )
+                min_hedge_val = _q_sps_usd(symbol, position_side, 50.0)
                 if hard_augment:
                     augment_qty = max(
-                        config.START_POSITION_SIZE / current_price,
+                        _q_sps_usd(symbol, position_side, 50.0) / current_price,
                         position.positionAmt * 0.1,
                     )
                     augment_reason = (
@@ -28028,9 +28032,7 @@ async def check_exit_candidates_for_account(
                                 if hedge.get("losing_position_key") == position_key:
                                     already_hedged = True
                                     break
-                        min_hedge_val = safe_fetch_float(
-                            getattr(config, "START_POSITION_SIZE", 50.0), 50.0
-                        )
+                        min_hedge_val = _q_sps_usd(symbol, position_side, 50.0)
                         if not already_hedged:
                             if position_value < min_hedge_val:
                                 logger.info(
@@ -28224,14 +28226,19 @@ async def check_exit_candidates_for_account(
                                         aug_ratio *= 0.5
                                         caution_tag += "_NEAR_DC1H"
                                 augment_qty = abs(position.positionAmt) * aug_ratio
+                                try:
+                                    _wu_ak, _wu_sym, _wu_side = parse_position_key(position_key)
+                                    _wu_sps = _q_sps_usd(_wu_sym, _wu_side, 50.0)
+                                except Exception:
+                                    _wu_sps = float(getattr(config, "START_POSITION_SIZE", 50.0))
                                 base_qty = (
-                                    float(config.START_POSITION_SIZE) / current_price
+                                    _wu_sps / current_price
                                 )
                                 min_qty_symbol = trade_manager.min_qty.get(symbol, 0.0)
-                                # WINNER SIZING: if position is undersized AND winning, augment to at least START_POSITION_SIZE
+                                # WINNER SIZING: if position is undersized AND winning, augment to at least vector-suggested START_POSITION_SIZE
                                 _pos_usd = abs(position.positionAmt) * current_price
                                 if (
-                                    _pos_usd < config.START_POSITION_SIZE
+                                    _pos_usd < _wu_sps
                                     and position.gain >= 1.0
                                 ):
                                     augment_qty = max(
@@ -28240,7 +28247,7 @@ async def check_exit_candidates_for_account(
                                         min_qty_symbol,
                                     )
                                     logger.warning(
-                                        f"[WINNER_SIZE_UP] {position_key}: ${_pos_usd:.1f} < ${config.START_POSITION_SIZE:.0f} at {position.gain:.2f}% gain — sizing up to ${augment_qty * current_price:.1f}"
+                                        f"[WINNER_SIZE_UP] {position_key}: ${_pos_usd:.1f} < ${_wu_sps:.0f} at {position.gain:.2f}% gain — sizing up to ${augment_qty * current_price:.1f}"
                                     )
                                 else:
                                     augment_qty = max(
