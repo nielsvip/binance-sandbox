@@ -1,104 +1,57 @@
 {
- "generated_at": "2026-10-23 23:29 UTC",
- "total_capital_usd": 131.76,
+ "generated_at": "2026-10-23 23:38 UTC",
+ "total_capital_usd": 45.76,
  "tier_capital": {
-  "A": 7.1,
-  "B": 45.07,
-  "C": 79.59
+  "A": 0.0,
+  "B": 7.22,
+  "C": 38.54
  },
  "tier_count": {
-  "A": 1,
+  "A": 0,
   "B": 1,
-  "C": 5
+  "C": 2
  },
- "winners": [
-  "men:KMNOUSDT_LONG"
- ],
+ "winners": [],
  "losers": [
   "men:ENJUSDT_SHORT",
-  "men:INJUSDT_LONG",
-  "men:ENAUSDC_LONG",
-  "men:ETHFIUSDC_LONG",
   "men:1000LUNCUSDT_SHORT"
  ],
- "mediocre": [],
+ "mediocre": [
+  "men:TUSDT_SHORT"
+ ],
  "positions": [
-  {
-   "pk": "men:BATUSDT_LONG",
-   "symbol": "BATUSDT",
-   "account": "men",
-   "value_usd": 45.07,
-   "gain_pct": -0.189,
-   "tier": "B",
-   "perf_mult": 5.41,
-   "amt": 263.1,
-   "mark": 0.1713
-  },
-  {
-   "pk": "men:ENAUSDC_LONG",
-   "symbol": "ENAUSDC",
-   "account": "men",
-   "value_usd": 27.84,
-   "gain_pct": 0.083,
-   "tier": "C",
-   "perf_mult": 0.44,
-   "amt": 136.0,
-   "mark": 0.2047
-  },
   {
    "pk": "men:1000LUNCUSDT_SHORT",
    "symbol": "1000LUNCUSDT",
    "account": "men",
-   "value_usd": 27.5,
-   "gain_pct": 1.689,
+   "value_usd": 27.51,
+   "gain_pct": 1.665,
    "tier": "C",
    "perf_mult": 0.18,
    "amt": 615.0,
-   "mark": 0.04472167
+   "mark": 0.04473273
   },
   {
    "pk": "men:ENJUSDT_SHORT",
    "symbol": "ENJUSDT",
    "account": "men",
-   "value_usd": 11.02,
-   "gain_pct": -1.259,
+   "value_usd": 11.03,
+   "gain_pct": -1.377,
    "tier": "C",
    "perf_mult": 0.2,
    "amt": 428.0,
-   "mark": 0.02574
+   "mark": 0.02577
   },
   {
-   "pk": "men:KMNOUSDT_LONG",
-   "symbol": "KMNOUSDT",
+   "pk": "men:TUSDT_SHORT",
+   "symbol": "TUSDT",
    "account": "men",
-   "value_usd": 7.1,
-   "gain_pct": 1.476,
-   "tier": "A",
-   "perf_mult": 10.0,
-   "amt": 169.0,
-   "mark": 0.04201087
-  },
-  {
-   "pk": "men:ETHFIUSDC_LONG",
-   "symbol": "ETHFIUSDC",
-   "account": "men",
-   "value_usd": 6.98,
-   "gain_pct": 0.58,
-   "tier": "C",
-   "perf_mult": 0.48,
-   "amt": 10.5,
-   "mark": 0.66523541
-  },
-  {
-   "pk": "men:INJUSDT_LONG",
-   "symbol": "INJUSDT",
-   "account": "men",
-   "value_usd": 6.25,
-   "gain_pct": -0.094,
-   "tier": "C",
-   "perf_mult": 0.31,
-   "amt": 0.8,
-   "mark": 7.80864978
+   "value_usd": 7.22,
+   "gain_pct": 0.0,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 1574.0,
+   "mark": 0.004589
   }
  ]
 }
