@@ -30583,13 +30583,14 @@ class MultiAccountTradeManager:
             position.position_side, action
         ):
             adjustment -= 0.8  # -80% for risky patterns
-        if position.positionAmt > config.START_POSITION_SIZE:
+        _pb_sps = _psym_sps(parse_position_key(position_key)[1] if position_key else "", getattr(position, "position_side", "LONG"))
+        if position.positionAmt > _pb_sps:
             if position.gain < 0.3 * config.MIN_GAIN or position.realized_pnl < 0:
                 adjustment -= 0.7  # -70% for large unprofitable positions
             elif position.gain < config.MIN_GAIN:
                 adjustment -= 0.3
         if (
-            position.positionAmt < config.START_POSITION_SIZE
+            position.positionAmt < _pb_sps
             and position.realized_pnl < 0
         ):
             adjustment = max(adjustment, 0.5)  # Ensure at least +50% for recovery
@@ -42616,8 +42617,12 @@ class OrderQueue:
                         order["current_price"] = current_price
                         if order["quantity"] <= 0:
                             conf = self.trade_manager.config
+                            try:
+                                _ho_side = parse_position_key(position_key)[2] if position_key else ""
+                            except Exception:
+                                _ho_side = ""
                             base_qty = max(
-                                conf.START_POSITION_SIZE / current_price,
+                                _psym_sps(order["symbol"], _ho_side or "LONG") / current_price,
                                 1.2
                                 * self.trade_manager.min_qty.get(
                                     order["symbol"], 0.001
@@ -43957,7 +43962,7 @@ async def evaluate_leaderboard_entry(ctx: dict) -> Optional[Signal]:
     )
     timestamp = safe_datetime(i.get("timestamp"), datetime.now(timezone.utc))
     min_position_size = max(
-        config.START_POSITION_SIZE / current_price,
+        _psym_sps(symbol, ctx.get("position_side", "LONG")) / current_price,
         1.2 * trade_manager.min_qty.get(symbol, 0.001),
     )
 
@@ -44351,7 +44356,7 @@ async def evaluate_ranking_momentum_trade(ctx: dict) -> Optional[Signal]:
         )
         return None
     min_position_size = max(
-        config.START_POSITION_SIZE / current_price,
+        _psym_sps(symbol, ctx.get("position_side", "LONG")) / current_price,
         1.2 * trade_manager.min_qty.get(symbol, 0.001),
     )
     if position.positionAmt > min_position_size and gain < 0.3 * config.MIN_GAIN:
@@ -45648,7 +45653,7 @@ async def evaluate_technical_indicator_signals(ctx: dict) -> Optional[Signal]:
                 _psym_get(_gr_sym, _gr_side, "GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE", 18.0)
             )
             if _grde_score >= _grde_score_min:
-                _grde_sps = float(getattr(_tm_cfg_grde, "START_POSITION_SIZE", 200))
+                _grde_sps = float(_psym_sps(_gr_sym, _gr_side))
                 _grde_mult = 2.0 if _grde_score >= _grde_double else 1.0
                 _grde_pos_amt = float(getattr(position, "positionAmt", 0.0) or 0.0)
                 _grde_min_qty = (
@@ -46590,7 +46595,11 @@ async def calculate_final_order_quantity(
     if final_add_qty * current_price > max_order_value_usd:
         final_add_qty = max_order_value_usd / current_price
     if not is_long and price_dist_from_sma_1m_pct and price_dist_from_sma_1m_pct > 0.0:
-        max_dangerous_position_usd = 0.5 * config.START_POSITION_SIZE
+        try:
+            _dq_side = parse_position_key(position_key)[2] if position_key else ("SHORT" if not is_long else "LONG")
+        except Exception:
+            _dq_side = "SHORT" if not is_long else "LONG"
+        max_dangerous_position_usd = 0.5 * _psym_sps(symbol, _dq_side)
         if final_add_qty * current_price > max_dangerous_position_usd:
             final_add_qty = min(
                 final_add_qty, max_dangerous_position_usd / current_price
@@ -46929,7 +46938,8 @@ async def process_single_reentry_evaluation(
                 return
         positionAmt = safe_fetch_float(position.positionAmt, 0.0)
         position_value = abs(positionAmt) * current_price
-        min_pos_usd = safe_fetch_float(config.START_POSITION_SIZE, 55.0)
+        _ev_sps = _psym_sps(symbol, position_side)
+        min_pos_usd = safe_fetch_float(_ev_sps, 55.0)
         if position_value > min_pos_usd * 3.0:
             if config.VERBOSE:
                 logger.debug(
@@ -46937,7 +46947,7 @@ async def process_single_reentry_evaluation(
                 )
             return
         max_qty = max(
-            position.max_quantity, 20 * config.START_POSITION_SIZE / current_price
+            position.max_quantity, 20 * _psym_sps(symbol, position_side) / current_price
         )
         if positionAmt >= max_qty:
             if config.VERBOSE:
@@ -46945,7 +46955,7 @@ async def process_single_reentry_evaluation(
                     f"[proces s_single_reentry_evaluation] {position_key}: NOT_ALLOWED - positionAmt {positionAmt:.6f} >= max_qty {max_qty:.6f}"
                 )
             return
-        SPS = safe_fetch_float(config.START_POSITION_SIZE, 55.0)
+        SPS = safe_fetch_float(_psym_sps(symbol, position_side), 55.0)
         min_qty_symbol = safe_fetch_float(
             trade_manager.min_qty.get(symbol, 0.0001), 0.0001
         )
@@ -46993,8 +47003,8 @@ async def process_single_reentry_evaluation(
                 else None
             )
         )
-        if reentry_amount < config.START_POSITION_SIZE / current_price:
-            reentry_amount = config.START_POSITION_SIZE / current_price
+        if reentry_amount < _psym_sps(symbol, position_side) / current_price:
+            reentry_amount = _psym_sps(symbol, position_side) / current_price
         if not isinstance(reentry_timestamp, datetime):
             reentry_timestamp = safe_datetime(reentry_timestamp)
         now = datetime.now(timezone.utc)
@@ -47193,7 +47203,7 @@ async def process_single_reentry_evaluation(
                     f"[DIRECTION_FAVORABLE_PRICE_BLOCK] {position_key}: cur={current_price:.6f} vs exit={reentry_level:.6f} — near exit (no dip, no breakout); need {_dfr_need} before reentry. Skipping."
                 )
                 return
-        if min_since_exit < 120 and _dfr_pos_notional < config.START_POSITION_SIZE:
+        if min_since_exit < 120 and _dfr_pos_notional < _psym_sps(symbol, position_side):
             # USER 2026-05-30: a bounce ALWAYS gets a reentry while the 1h is still going the right way.
             # 1h alignment makes the 15m gate optional and satisfies the WT confirm.
             _wt1_1h_dfr = safe_fetch_float(i.get("wt1_1h", 0), 0.0)
@@ -47228,7 +47238,7 @@ async def process_single_reentry_evaluation(
                     return
                 _dfr_grandfathered = float(getattr(position, "max_quantity", 0) or 0) * current_price > 2 * float(getattr(config, "START_POSITION_SIZE", 34))
                 _dfr_amt = reentry_amount if _dfr_grandfathered else min(
-                    reentry_amount, 2 * config.START_POSITION_SIZE / current_price
+                    reentry_amount, 2 * _psym_sps(symbol, position_side) / current_price
                 )
                 _dfr_reason = f"DIRECTION_FAVORABLE_REENTRY_k3m{k_3m:.0f}_k15m{k_15m:.0f}_wt{_wt1_15m:.1f}/{_wt2_15m:.1f}_min{min_since_exit:.0f}"
                 logger.warning(
@@ -47300,7 +47310,7 @@ async def process_single_reentry_evaluation(
             # 2026-06-03 USER MANDATE: a reentry must NEVER be blocked after a reduction. Cap at the position's
             # MAX size (so a reduced position re-adds up to max on a dc4 cross), NOT at START_POSITION_SIZE
             # (which blocked every after-reduction re-add since the remainder is usually >= start).
-            _dcbr_max = (safe_fetch_float(getattr(position, "max_positionSize", 0), 0)) or (float(getattr(config, "MAX_POSITION_SIZE", 0) or 0) or config.START_POSITION_SIZE * 10.0)
+            _dcbr_max = (safe_fetch_float(getattr(position, "max_positionSize", 0), 0)) or (float(getattr(config, "MAX_POSITION_SIZE", 0) or 0) or _psym_sps(symbol, position_side) * 10.0)
             if _dcbr_pos_notional >= _dcbr_max:
                 logger.info(
                     f"[DC_BREAKOUT_REENTRY_AT_MAX] {position_key}: at max size (${_dcbr_pos_notional:.0f} >= max ${_dcbr_max:.0f}). No further add."
@@ -47340,9 +47350,9 @@ async def process_single_reentry_evaluation(
                 f"[DC_BREAKOUT_REENTRY] {position_key}: DC {_dc_re_tf} breakout! delta={_dcbr_delta_reason}. Reentry at ${current_price:.4f}"
             )
             # REAL: restore full prior max_quantity on bounce — not capped to 3*START if grandfathered
-            _dc_grandfathered = float(getattr(position, "max_quantity", 0) or 0) * current_price > 3 * float(getattr(config, "START_POSITION_SIZE", 34))
+            _dc_grandfathered = float(getattr(position, "max_quantity", 0) or 0) * current_price > 3 * float(_psym_sps(symbol, position_side))
             recovery_reentry_amount = reentry_amount if _dc_grandfathered else min(
-                reentry_amount, 3 * config.START_POSITION_SIZE / current_price
+                reentry_amount, 3 * _psym_sps(symbol, position_side) / current_price
             )
             reason = f"DC_BREAKOUT_REENTRY_{_dc_re_tf}_{current_price:.4f}"
             # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
@@ -47441,7 +47451,7 @@ async def process_single_reentry_evaluation(
                     if _ch_htf_with:
                         # also require not already at max size (use same check as other reentries)
                         _ch_notional = abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0)) * current_price
-                        _ch_sps = float(getattr(config, "START_POSITION_SIZE", 28.0))
+                        _ch_sps = float(_psym_sps(symbol, position_side))
                         if _ch_notional < _ch_sps * 3:
                             _ch_reason = f"HTF_WT_CHURN_REENTRY_{'LONG' if is_long else 'SHORT'}_wt1h{_ch_wt1_1h:.1f}/{_ch_wt2_1h:.1f}_wt15m{_ch_wt1_15m:.1f}/{_ch_wt2_15m:.1f}_age{min_since_exit:.0f}m_exit{reentry_level:.4f}_cur{current_price:.4f}_CHURN_OK"
                             logger.warning(f"🔥 [HTF_WT_CHURN_REENTRY] {position_key}: HTF WT still WITH position (wt1h {_ch_wt1_1h:.1f}/{_ch_wt2_1h:.1f} wt15m {_ch_wt1_15m:.1f}/{_ch_wt2_15m:.1f} wt4h {_ch_wt1_4h:.1f}/{_ch_wt2_4h:.1f}) age {min_since_exit:.0f}m <= {_churn_max_age:.0f}m exit {reentry_level:.4f} cur {current_price:.4f} → CHURN REENTRY (burn commission to not miss bounce)")
@@ -47551,7 +47561,7 @@ async def process_single_reentry_evaluation(
             )
             _force_qty = max(
                 reentry_amount * _force_mult,
-                getattr(config, "START_POSITION_SIZE", 45.0) / current_price,
+                _psym_sps(symbol, position_side) / current_price,
             )
             _force_reason = f"PRICE_CROSSED_MANDATORY_k15m{k_15m:.0f}_k1h{k_1h:.0f}_min{min_since_exit:.0f}_mult{_force_mult:.1f}_{_gate_reason}"
             logger.critical(
@@ -47671,9 +47681,9 @@ async def process_single_reentry_evaluation(
                 if (quick_recovery_long or quick_recovery_short) and getattr(
                     config, "LEGACY_REENTRY_PSR_QUICK_RECOVERY", False
                 ):
-                    _qr_grandfathered = float(getattr(position, "max_quantity", 0) or 0) * current_price > 2 * float(getattr(config, "START_POSITION_SIZE", 34))
+                    _qr_grandfathered = float(getattr(position, "max_quantity", 0) or 0) * current_price > 2 * float(_psym_sps(symbol, position_side))
                     recovery_reentry_amount = reentry_amount if _qr_grandfathered else min(
-                        reentry_amount, 2 * config.START_POSITION_SIZE / current_price
+                        reentry_amount, 2 * _psym_sps(symbol, position_side) / current_price
                     )
                     reason = f"PROC_SINGLE_REENTRY]:quick_recovery {minutes_since_reduction:.1f}_qty_{recovery_reentry_amount}_${current_price}_price{'above' if is_long else 'below'}_{position.last_reducion_level}+atr"
                     conviction = 75.0
@@ -48060,7 +48070,7 @@ async def process_single_reentry_evaluation(
         if (
             (full_reentry_stoch_above_dc or dc_basis_crossover_3m)
             and not is_invalidated
-            and _psr_notional < config.START_POSITION_SIZE
+            and _psr_notional < _psym_sps(symbol, position_side)
             and getattr(config, "LEGACY_REENTRY_PSR_FULL_DC", False)
         ):
             reason = f"PROC_SINGLE_REENTRY]: full_reentry_qty_{reentry_amount}_{'stoch3m_crossover_above_dc15m' if full_reentry_stoch_above_dc else 'dc3m_crossover'}"
@@ -48176,7 +48186,7 @@ async def process_single_reentry_evaluation(
                         and getattr(config, "LEGACY_REENTRY_PSR_DC_BOUNCE", False)
                     ):
                         reentry_amount = min(
-                            reentry_amount, config.START_POSITION_SIZE / current_price
+                            reentry_amount, _psym_sps(symbol, position_side) / current_price
                         )
                         if dc_low_15m > dc_low_15m_ant:
                             reentry_amount = reentry_amount * 1.5
@@ -48550,8 +48560,9 @@ async def direct_high_gain_augmentation(
             return
         cooldown_seconds = getattr(config, "DIRECT_HIGH_GAIN_COOLDOWN_SECONDS", 15)
         direct_high_gain_dict = getattr(trade_manager, "direct_high_gain_augmented", {})
+        _hg_sps = _psym_sps(symbol, position_side)
         is_large_position = (
-            float(position.positionAmt) * current_price >= config.START_POSITION_SIZE
+            float(position.positionAmt) * current_price >= _hg_sps
         )
         if is_large_position and gain > 3 * config.MIN_GAIN:
             i = await ii(trade_manager, symbol)
@@ -48774,7 +48785,7 @@ async def direct_high_gain_augmentation(
             position = await trade_manager.get_position(position_key)
             if (
                 position_key in direct_high_gain_dict
-                and (float(position.positionAmt) < config.START_POSITION_SIZE)
+                and (float(position.positionAmt) < _psym_sps(symbol, position_side))
                 and gain >= 1.0
             ):
                 if (
@@ -48803,15 +48814,15 @@ async def direct_high_gain_augmentation(
                     target_qty = (
                         0.3 * position.max_quantity
                         if account_key == "fin"
-                        else config.START_POSITION_SIZE / max(current_price, 1e-9)
+                        else _hg_sps / max(current_price, 1e-9)
                     )
                     quantity = (
                         max(
-                            2 * config.START_POSITION_SIZE / max(current_price, 1e-9),
+                            2 * _hg_sps / max(current_price, 1e-9),
                             target_qty,
                         )
                         if account_key == "fin"
-                        else config.START_POSITION_SIZE / max(current_price, 1e-9)
+                        else _hg_sps / max(current_price, 1e-9)
                     )
                     if (is_long and k_15m > 70) or (not is_long and k_15m < 30):
                         quantity = 0.25 * quantity
@@ -48843,7 +48854,7 @@ async def direct_high_gain_augmentation(
                             action = (
                                 "AUGMENT"
                                 if abs(float(position.positionAmt)) * current_price
-                                > config.START_POSITION_SIZE
+                                > _hg_sps
                                 else "REENTRY"
                             )
                             reason = f"[DIRECT_HIGH_GAIN_AUGMENATION]: < 2*START reentry: reclaim {current_price} {'>' if is_long else '<'} {position.last_reduction_price}_qty_{quantity} {k_15m}"
@@ -49296,7 +49307,7 @@ async def _process_single_override_check(
                                     getattr(
                                         config, "TRADEABLE_KEYS_MANDATORY_SIZE_USD", 9.0
                                     )
-                                ) or float(getattr(config, "START_POSITION_SIZE", 9.0))
+                                ) or float(_psym_sps(_sym_z, _side_z))
                                 _reason_z = f"TRADEABLE_KEYS_MANDATORY_{'LONG_dc_high_3m' if _is_long_z else 'SHORT_dc_low_3m'}_3M_px{_px_z:.6f}_dc{(_dch3m_z if _is_long_z else _dcl3m_z):.6f}_k3{_k3_z:.0f}/{_k3p_z:.0f}_ha{_ha3_z}"
                                 logger.warning(
                                     f"[TRADEABLE_KEYS_MANDATORY] {position_key}: ZERO position in tradeable_keys + px {'>' if _is_long_z else '<'} dc_{'high' if _is_long_z else 'low'}_3m ({_px_z:.6f} {'>' if _is_long_z else '<'} {(_dch3m_z if _is_long_z else _dcl3m_z):.6f}) + {'rising' if _is_long_z else 'falling'} → OPEN ~${_tiny_usd:.0f}"
@@ -49377,7 +49388,7 @@ async def _process_single_override_check(
                             if _wt_trigger_z and _px_z > 0:
                                 _wf_usd = float(
                                     getattr(config, "WT_3M_FORCE_OPEN_SIZE_USD", 9.0)
-                                ) or float(getattr(config, "START_POSITION_SIZE", 9.0))
+                                ) or float(_psym_sps(_sym_z, _side_z))
                                 _wf_reason = f"WT_3M_FORCE_OPEN_{'LONG' if _is_long_z else 'SHORT'}_wt1={_wt1_3m_z:.1f}_wt2={_wt2_3m_z:.1f}_px{_px_z:.6f}"
                                 logger.warning(
                                     f"[WT_3M_FORCE_OPEN] {position_key}: ZERO position + wt1_3m {'>' if _is_long_z else '<'} wt2_3m ({_wt1_3m_z:.1f}{'>' if _is_long_z else '<'}{_wt2_3m_z:.1f}) → OPEN ~${_wf_usd:.0f}"
@@ -49993,7 +50004,8 @@ async def _process_single_override_check(
             if hasattr(position, "prev_gain")
             else 0.0
         )
-        position_max_quantity = 2 * config.START_POSITION_SIZE / current_price
+        _oc_sym, _oc_side = parse_position_key(position_key)[1], parse_position_key(position_key)[2]
+        position_max_quantity = 2 * _psym_sps(_oc_sym, _oc_side) / current_price
         dc_high4_3m = i.get("dc_high4_3m", 0.0)
         dc_low4_3m = i.get("dc_low4_3m", 0.0)
         dc_high_3m = i.get("dc_high_3m", 0.0)
@@ -50037,9 +50049,9 @@ async def _process_single_override_check(
             and price_going_down
         ):
             min_required_usd = (
-                4 * config.START_POSITION_SIZE
+                4 * _psym_sps(_oc_sym, _oc_side)
                 if (k_3m < 50 or k_15m < 50)
-                else config.START_POSITION_SIZE
+                else _psym_sps(_oc_sym, _oc_side)
             )
             min_required_qty = min_required_usd / current_price
             if position_value < min_required_usd:

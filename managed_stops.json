@@ -1,79 +1,23 @@
 {
-  "ang:BATUSDT_LONG": {
-    "orderId": "4000001988346746",
-    "stopPrice": 0.16894,
-    "entry_sig": "2026-10-23 00:05:00.514000+00:00",
-    "symbol": "BATUSDT",
+  "fin:KASUSDT_LONG": {
+    "orderId": "3000002267535548",
+    "stopPrice": 0.03505,
+    "entry_sig": "2026-10-22 22:46:50.658000+00:00",
+    "symbol": "KASUSDT",
     "side": "LONG"
   },
-  "ang:1000PEPEUSDC_LONG": {
-    "orderId": "4000001988357858",
-    "stopPrice": 0.0043354,
-    "entry_sig": "2026-10-23 00:06:41.009338+00:00",
-    "symbol": "1000PEPEUSDC",
-    "side": "LONG"
-  },
-  "ang:BLURUSDT_SHORT": {
-    "orderId": "4000001988370657",
-    "stopPrice": 0.00904,
-    "entry_sig": "2026-10-22 08:39:13.646000+00:00",
-    "symbol": "BLURUSDT",
+  "fin:MAGICUSDT_SHORT": {
+    "orderId": "3000002267584134",
+    "stopPrice": 0.09238,
+    "entry_sig": "2026-10-23 00:15:30.635300+00:00",
+    "symbol": "MAGICUSDT",
     "side": "SHORT"
   },
-  "ang:API3USDT_SHORT": {
-    "orderId": "4000001988383145",
-    "stopPrice": 0.2909,
-    "entry_sig": "2026-10-23 00:05:18.385000+00:00",
-    "symbol": "API3USDT",
-    "side": "SHORT"
-  },
-  "ang:ZECUSDC_LONG": {
-    "orderId": "4000001988383146",
-    "stopPrice": 1205.04,
-    "entry_sig": "2026-10-23 00:05:50.753213+00:00",
-    "symbol": "ZECUSDC",
-    "side": "LONG"
-  },
-  "ang:DOGEUSDC_SHORT": {
-    "orderId": "4000001988383153",
-    "stopPrice": 0.08425,
-    "entry_sig": "2026-10-23 00:04:10.896000+00:00",
-    "symbol": "DOGEUSDC",
-    "side": "SHORT"
-  },
-  "ang:AAVEUSDC_LONG": {
-    "orderId": "4000001988383154",
-    "stopPrice": 143.32,
-    "entry_sig": "2026-10-23 00:05:51.304689+00:00",
-    "symbol": "AAVEUSDC",
-    "side": "LONG"
-  },
-  "ang:QNTUSDT_LONG": {
-    "orderId": "4000001988383155",
-    "stopPrice": 185.21,
-    "entry_sig": "2026-10-23 00:05:58.466168+00:00",
-    "symbol": "QNTUSDT",
-    "side": "LONG"
-  },
-  "ang:AVAXUSDC_LONG": {
-    "orderId": "4000001988386516",
-    "stopPrice": 8.995,
-    "entry_sig": "2026-10-23 00:06:00.644000+00:00",
-    "symbol": "AVAXUSDC",
-    "side": "LONG"
-  },
-  "ang:ONDOUSDT_LONG": {
-    "orderId": "4000001988386517",
-    "stopPrice": 0.4228,
-    "entry_sig": "2026-10-23 00:06:17.033000+00:00",
-    "symbol": "ONDOUSDT",
-    "side": "LONG"
-  },
-  "ang:PARTIUSDT_SHORT": {
-    "orderId": "4000001988386523",
-    "stopPrice": 0.03335,
-    "entry_sig": "2026-10-23 00:06:29.578000+00:00",
-    "symbol": "PARTIUSDT",
+  "fin:NMRUSDT_SHORT": {
+    "orderId": "3000002267603604",
+    "stopPrice": 10.742,
+    "entry_sig": "2026-10-23 00:15:32.170390+00:00",
+    "symbol": "NMRUSDT",
     "side": "SHORT"
   }
 }
