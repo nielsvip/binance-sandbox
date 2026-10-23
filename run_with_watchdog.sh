@@ -507,7 +507,22 @@ run_script() {
             # gap, charged to a 2-minute-old process. A child can only be held responsible for the time it has run.
             [ "$last_mod" -lt "$start_time" ] && last_mod="$start_time"
             local no_output_time=$((now - last_mod))
-            if [ "$NO_OUTPUT_TIMEOUT" -gt 0 ] && [ "$no_output_time" -gt "$NO_OUTPUT_TIMEOUT" ]; then
+            # 2026-10-23 LOAD-SCALED GRACE (USER: healthy processes must run until a code
+            # update demands a restart — stop murdering starved-but-alive children). A live
+            # child under load 400+ burns ~0 CPU and boots for many minutes; the fixed
+            # per-script limit then kills it for being slow, and each kill's reboot storm
+            # raises the load further. Scale the silence limit and the CPU observation
+            # window by 1-min loadavg. At load <150 every number below is byte-identical
+            # to the old behavior; a truly wedged child (0.00 CPU gain over the whole
+            # scaled window) is still killed exactly as before.
+            local _load_factor=1
+            local _load1
+            _load1=$(uptime 2>/dev/null | sed -E 's/.*load averages?: *([0-9.]+).*/\1/' | head -1)
+            case "$_load1" in ''|*[!0-9.]*) _load1=0 ;; esac
+            _load_factor=$(awk -v l="$_load1" 'BEGIN{f=int(l/150); if(f<1)f=1; if(f>8)f=8; print f}')
+            local _eff_limit=$((NO_OUTPUT_TIMEOUT * _load_factor))
+            local _eff_window=$((NO_OUTPUT_CPU_WINDOW_S * _load_factor))
+            if [ "$NO_OUTPUT_TIMEOUT" -gt 0 ] && [ "$no_output_time" -gt "$_eff_limit" ]; then
                 # USER 2026-10-20: "make sure the watchdogs do not intervene innecessarily ... every restart
                 # destabilizes the system". Log mtime is NOT liveness. This single check has kill-looped healthy
                 # processes at least three times already, each time "fixed" by widening or disabling the limit for
@@ -521,20 +536,22 @@ run_script() {
                 # uninterruptible sleep) shows no progress and is still killed exactly as before. A genuinely busy
                 # but silent process is now left alone up to a hard ceiling, so nothing can be shielded forever.
                 local _cpu_now; _cpu_now=$(_cpu_secs "$script_pid")
-                local _hard=$((NO_OUTPUT_TIMEOUT * NO_OUTPUT_HARD_MULT))
+                local _hard=$((_eff_limit * NO_OUTPUT_HARD_MULT))
                 if [ -z "$_sil_cpu0" ]; then _sil_cpu0="$_cpu_now"; _sil_base_t="$now"; fi
                 local _gain=$((_cpu_now - _sil_cpu0))
                 local _waited=$((now - _sil_base_t))
+                local _lim_txt="${_eff_limit}s"
+                [ "$_load_factor" -gt 1 ] && _lim_txt="${_eff_limit}s (base ${NO_OUTPUT_TIMEOUT}s x${_load_factor} @load ${_load1})"
                 if [ "$no_output_time" -ge "$_hard" ]; then
-                    log "⚠️ No output for ${no_output_time}s (limit: ${NO_OUTPUT_TIMEOUT}s, HARD ceiling ${_hard}s) on ${_check_log} — CPU gain ${_gain}s is not enough to keep shielding it. Restarting..."
+                    log "⚠️ No output for ${no_output_time}s (limit: ${_lim_txt}, HARD ceiling ${_hard}s) on ${_check_log} — CPU gain ${_gain}s is not enough to keep shielding it. Restarting..."
                 elif [ "$_gain" -ge "$NO_OUTPUT_CPU_MIN_S" ]; then
-                    log "[NO_OUTPUT_BUT_WORKING] ${_check_log} silent ${no_output_time}s (limit ${NO_OUTPUT_TIMEOUT}s) but the process burned ${_gain}s CPU in the last ${_waited}s — NOT restarting (hard ceiling ${_hard}s)"
+                    log "[NO_OUTPUT_BUT_WORKING] ${_check_log} silent ${no_output_time}s (limit ${_lim_txt}) but the process burned ${_gain}s CPU in the last ${_waited}s — NOT restarting (hard ceiling ${_hard}s)"
                     _sil_cpu0="$_cpu_now"; _sil_base_t="$now"
                     continue
-                elif [ "$_waited" -lt "$NO_OUTPUT_CPU_WINDOW_S" ]; then
+                elif [ "$_waited" -lt "$_eff_window" ]; then
                     continue    # still inside the observation window — decide once we have really watched it
                 else
-                    log "⚠️ No output for ${no_output_time}s (limit: ${NO_OUTPUT_TIMEOUT}s) on ${_check_log} AND only ${_gain}s CPU in ${_waited}s — wedged. Restarting..."
+                    log "⚠️ No output for ${no_output_time}s (limit: ${_lim_txt}) on ${_check_log} AND only ${_gain}s CPU in ${_waited}s — wedged. Restarting..."
                 fi
                 kill -TERM "$script_pid" 2>/dev/null || true
                 sleep 2
