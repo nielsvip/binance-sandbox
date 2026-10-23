@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-23T12:06:45Z",
+ "ts": "2026-10-23T12:11:55Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,7 +29,7 @@
   "fin": {
    "fills_6h": 110,
    "open_positions": 10,
-   "unrealised_usd": 3.09,
+   "unrealised_usd": 2.52,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 1,
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 18,
+   "fills_6h": 17,
    "open_positions": 4,
-   "unrealised_usd": 0.05,
+   "unrealised_usd": 0.03,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 49,
    "open_positions": 8,
-   "unrealised_usd": 7.65,
+   "unrealised_usd": 7.08,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 10,
    "open_positions": 5,
-   "unrealised_usd": 0.82,
+   "unrealised_usd": 0.65,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,81 +127,73 @@
     "22551"
    ],
    "starts_30m": 1,
-   "log_age_s": 187.0
+   "log_age_s": 4.0
   },
   "men": {
    "pids": [
     "95891"
    ],
    "starts_30m": 2,
-   "log_age_s": 33.0
+   "log_age_s": 15.0
   },
   "ang": {
    "pids": [
     "50544"
    ],
    "starts_30m": 1,
-   "log_age_s": 87.0
+   "log_age_s": 397.0
   },
   "inf": {
    "pids": [
     "82830"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 14.0
   },
   "flz": {
    "pids": [
     "12407"
    ],
    "starts_30m": 1,
-   "log_age_s": 335.0
+   "log_age_s": 645.0
   },
   "trb": {
    "pids": [
     "77496"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 0.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 57943.0
+   "log_age_s": 58253.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-23T12:06:45Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "fin:COMPUSDT_LONG",
-   "evidence": "entry notional $104.21 (median $22.45, MAX_ORDER_VALUE $300) @ 2026-10-23T11:52:18Z VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_1"
-  },
-  {
-   "ts": "2026-10-23T12:06:45Z",
+   "ts": "2026-10-23T12:11:56Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "fin:RLCUSDT_SHORT",
    "evidence": "CLOSE PROFIT_TP_EXHAUSTION decided 2026-10-23T11:23:59Z bar=2026-10-23T10:15:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-23T12:06:46Z",
+   "ts": "2026-10-23T12:11:56Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
-   "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 187s"
+   "key": "ang",
+   "evidence": "ez_manage_ang.log not written for 397s"
   },
   {
-   "ts": "2026-10-23T12:06:46Z",
+   "ts": "2026-10-23T12:11:56Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 335s"
+   "evidence": "ez_manage_flz.log not written for 645s"
   }
  ],
  "alert_counts": {
-  "SIZE_ANOMALY": 1,
   "VEC_DECISION_NOT_FILLED": 1,
   "STALE_LOG": 2
  },
@@ -250,5 +242,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.6
+ "sweep_s": 0.94
 }
