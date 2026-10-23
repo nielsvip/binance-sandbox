@@ -97,7 +97,9 @@ def normalize_splits(events: Any) -> Tuple[List[Dict[str, Any]], int]:
         return [], 1 if events is not None else 0
     for event in events:
         try:
-            factor = float(event.get("factor")) if isinstance(event, dict) else float(event)
+            factor = (
+                float(event.get("factor")) if isinstance(event, dict) else float(event)
+            )
             ex = _coerce_date(event.get("ex_date")) if isinstance(event, dict) else None
         except Exception:
             dropped += 1
@@ -126,20 +128,39 @@ def _bar_dates(df: pd.DataFrame) -> Tuple[List[Optional[date]], Optional[str]]:
         return [None] * len(df), None
 
 
-def apply_split_adjustment(df: pd.DataFrame, splits: Optional[List[Dict[str, Any]]], symbol: str = "") -> Tuple[pd.DataFrame, Dict[str, Any]]:
+def apply_split_adjustment(
+    df: pd.DataFrame, splits: Optional[List[Dict[str, Any]]], symbol: str = ""
+) -> Tuple[pd.DataFrame, Dict[str, Any]]:
     """Backward-adjust pre-split prices (volumes inversely). Pure: input never mutated.
 
     splits=None means NO coverage -> frame returned unchanged with
     verified=False (caller must flag [UNVERIFIED]). splits=[] means coverage
     confirms no splits -> unchanged with verified=True.
     """
-    report: Dict[str, Any] = {"symbol": symbol, "adjusted": False, "verified": False, "n_splits": 0, "n_invalid_dropped": 0, "n_undated_bars": 0, "max_jump_pct_before": None, "max_jump_pct_after": None, "reason": None}
-    if df is None or not isinstance(df, pd.DataFrame) or df.empty or "close" not in df.columns:
+    report: Dict[str, Any] = {
+        "symbol": symbol,
+        "adjusted": False,
+        "verified": False,
+        "n_splits": 0,
+        "n_invalid_dropped": 0,
+        "n_undated_bars": 0,
+        "max_jump_pct_before": None,
+        "max_jump_pct_after": None,
+        "reason": None,
+    }
+    if (
+        df is None
+        or not isinstance(df, pd.DataFrame)
+        or df.empty
+        or "close" not in df.columns
+    ):
         report["reason"] = "EMPTY_FRAME"
         return df if isinstance(df, pd.DataFrame) else pd.DataFrame(), report
     raw_close = pd.to_numeric(df["close"], errors="coerce")
     try:
-        report["max_jump_pct_before"] = float(raw_close.pct_change().abs().max() * 100.0)
+        report["max_jump_pct_before"] = float(
+            raw_close.pct_change().abs().max() * 100.0
+        )
     except Exception:
         pass
     if splits is None:
@@ -171,10 +192,15 @@ def apply_split_adjustment(df: pd.DataFrame, splits: Optional[List[Dict[str, Any
             adj[col] = pd.to_numeric(adj[col], errors="coerce") * mult
     if VOLUME_COL in adj.columns:
         with np.errstate(divide="ignore", invalid="ignore"):
-            adj[VOLUME_COL] = pd.to_numeric(adj[VOLUME_COL], errors="coerce") / np.where(mult == 0.0, np.nan, mult)
+            adj[VOLUME_COL] = pd.to_numeric(
+                adj[VOLUME_COL], errors="coerce"
+            ) / np.where(mult == 0.0, np.nan, mult)
     report["adjusted"] = True
     try:
-        report["max_jump_pct_after"] = float(pd.to_numeric(adj["close"], errors="coerce").pct_change().abs().max() * 100.0)
+        report["max_jump_pct_after"] = float(
+            pd.to_numeric(adj["close"], errors="coerce").pct_change().abs().max()
+            * 100.0
+        )
     except Exception:
         pass
     return adj, report
@@ -193,8 +219,15 @@ def _read_cache(path: Path) -> Tuple[Optional[List[Dict[str, Any]]], float]:
 def _write_cache(path: Path, symbol: str, splits: List[Dict[str, Any]]) -> None:
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        payload = {"symbol": symbol, "updated_at": time.time(), "source": "yfinance", "splits": splits}
-        with tempfile.NamedTemporaryFile("w", dir=str(path.parent), delete=False) as tmp:
+        payload = {
+            "symbol": symbol,
+            "updated_at": time.time(),
+            "source": "yfinance",
+            "splits": splits,
+        }
+        with tempfile.NamedTemporaryFile(
+            "w", dir=str(path.parent), delete=False
+        ) as tmp:
             json.dump(payload, tmp)
             tmp_path = tmp.name
         Path(tmp_path).replace(path)
@@ -202,26 +235,40 @@ def _write_cache(path: Path, symbol: str, splits: List[Dict[str, Any]]) -> None:
         logger.warning(f"[split_adjust] cache write failed for {symbol}: {e}")
 
 
-def get_splits(symbol: str, cache_dir: Optional[Path] = None, ttl_s: float = CACHE_TTL_S) -> Tuple[Optional[List[Dict[str, Any]]], Dict[str, Any]]:
+def get_splits(
+    symbol: str, cache_dir: Optional[Path] = None, ttl_s: float = CACHE_TTL_S
+) -> Tuple[Optional[List[Dict[str, Any]]], Dict[str, Any]]:
     """Split events for a ranking symbol. ([], fresh) = verified no splits.
 
     Returns (None, prov) when neither fresh cache, stale cache nor network can
     supply events — the caller must flag [UNVERIFIED] and use raw prices.
     """
-    prov: Dict[str, Any] = {"symbol": symbol, "equity": None, "source": None, "cached": False, "stale": False}
+    prov: Dict[str, Any] = {
+        "symbol": symbol,
+        "equity": None,
+        "source": None,
+        "cached": False,
+        "stale": False,
+    }
     equity = to_equity_symbol(symbol)
     prov["equity"] = equity
     if not equity:
         return None, prov
-    cache_path = (Path(cache_dir) if cache_dir else DEFAULT_CACHE_DIR) / f"{equity}.json"
+    cache_path = (
+        Path(cache_dir) if cache_dir else DEFAULT_CACHE_DIR
+    ) / f"{equity}.json"
     cached, updated = _read_cache(cache_path) if cache_path.exists() else (None, 0.0)
     if cached is not None and time.time() - updated < ttl_s:
         prov["source"], prov["cached"] = "cache", True
         return cached, prov
     try:
         import yfinance as yf
+
         series = yf.Ticker(equity).splits
-        events = [{"ex_date": ts.date().isoformat(), "factor": float(val)} for ts, val in series.items()]
+        events = [
+            {"ex_date": ts.date().isoformat(), "factor": float(val)}
+            for ts, val in series.items()
+        ]
         clean, _ = normalize_splits(events)
         _write_cache(cache_path, equity, clean)
         prov["source"] = "yfinance"

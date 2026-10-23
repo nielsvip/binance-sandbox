@@ -1,57 +1,32 @@
 {
- "generated_at": "2026-10-23 00:54 UTC",
- "total_capital_usd": 78.71,
+ "generated_at": "2026-10-23 01:01 UTC",
+ "total_capital_usd": 181.68,
  "tier_capital": {
   "A": 0.0,
-  "B": 73.02,
-  "C": 5.69
+  "B": 181.68,
+  "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
-  "C": 1
+  "B": 1,
+  "C": 0
  },
  "winners": [],
- "losers": [
-  "fin:ZKUSDT_SHORT"
- ],
+ "losers": [],
  "mediocre": [
-  "fin:CRVUSDC_LONG",
-  "fin:BOMEUSDC_SHORT"
+  "flz:DYDXUSDT_SHORT"
  ],
  "positions": [
   {
-   "pk": "fin:CRVUSDC_LONG",
-   "symbol": "CRVUSDC",
-   "account": "fin",
-   "value_usd": 45.01,
-   "gain_pct": -0.138,
+   "pk": "flz:DYDXUSDT_SHORT",
+   "symbol": "DYDXUSDT",
+   "account": "flz",
+   "value_usd": 181.68,
+   "gain_pct": 0.0,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 123.9,
-   "mark": 0.36323891
-  },
-  {
-   "pk": "fin:BOMEUSDC_SHORT",
-   "symbol": "BOMEUSDC",
-   "account": "fin",
-   "value_usd": 28.01,
-   "gain_pct": -0.077,
-   "tier": "B",
-   "perf_mult": 0.99,
-   "amt": 46571.0,
-   "mark": 0.00060143
-  },
-  {
-   "pk": "fin:ZKUSDT_SHORT",
-   "symbol": "ZKUSDT",
-   "account": "fin",
-   "value_usd": 5.69,
-   "gain_pct": 1.329,
-   "tier": "C",
-   "perf_mult": 0.52,
-   "amt": 435.0,
-   "mark": 0.01308765
+   "amt": 1588.1,
+   "mark": 0.1144
   }
  ]
 }
