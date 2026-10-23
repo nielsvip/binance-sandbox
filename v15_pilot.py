@@ -16956,7 +16956,8 @@ def _main_single():
                         # --- size tier write-through: the fresh 30D result sizes live within ~30 s ---
                         try:
                             from tools.v15_persym_size_tiers import upsert_workbook_tier as _wbt
-                            _wt = _wbt(new_symside, cumulative_gain, g365=_365_gain)
+                            _ff = locals().get("_fresh_final") or {}
+                            _wt = _wbt(new_symside, cumulative_gain, g365=_365_gain, trades_30d=_ff.get("trades"), tim_30d=_ff.get("tim_pct"))
                             print(f"[TIER-WRITE] {new_symside} -> {(_wt or {}).get('tier')} x{(_wt or {}).get('mult')} (30D {cumulative_gain:.2f})", flush=True)
                         except Exception as _wte:
                             print(f"[TIER-WRITE-warn] {new_symside} {str(_wte)[:200]}", flush=True)

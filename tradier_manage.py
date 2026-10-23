@@ -24841,7 +24841,7 @@ def _qta_entry_sizing(
                 return 0
             if quantity == 1 and int(_pt_q0 * _pts.get_mult(symbol, position_side)) <= 0 and _pts.zero_pass_neg(symbol, position_side):
                 try:
-                    _zp_start = float(getattr(config, "START_POSITION_SIZE", 0) or 0)
+                    _zp_start = float(_cfg_auto("START_POSITION_SIZE", 0) or 0)
                     _zp_px = float(current_price or 0)
                 except Exception:
                     _zp_start, _zp_px = 0.0, 0.0
@@ -40596,7 +40596,7 @@ class StockStrategy:
                         f"[CONC_CAP] {symbol} {('LONG' if is_long else 'SHORT')}: value=${current_value:.0f} >= cap ${_max_symbol_value} — NO AUGMENT"
                     )
                     return False, "", 0.0, 0.0
-                target_value = config.START_POSITION_SIZE * tier_mults[active_tier]
+                target_value = float(_cfg_auto("START_POSITION_SIZE", config.START_POSITION_SIZE)) * tier_mults[active_tier]
                 target_value = min(
                     target_value, _max_symbol_value - current_value
                 )  # Don't exceed cap

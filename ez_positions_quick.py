@@ -3188,6 +3188,24 @@ def _psym_cs_get(symbol: str, side: str, knob: str, default):
     return _sw_get(symbol, side, knob, default)
 
 
+def _q_sps_usd(symbol: str, side: str, default=45.0):
+    """Vector-suggested START USD for (symbol, side).
+
+    USER 2026-10-23: satellite entry lanes size from the same vector suggestion as the main lane — per-sym START from the frozen board set x the perf-tier mult (data/persym_size_tiers.json) — never the bare global. Fail-open: any error returns the global default."""
+    try:
+        base = _psym_get(symbol, side, "START_POSITION_SIZE_OVERRIDE_USD", None)
+        if base is None:
+            base = _psym_get(symbol, side, "START_POSITION_SIZE", default)
+        base = float(base)
+    except Exception:
+        base = float(default)
+    try:
+        import perf_tier_sizing as _q_pts
+        return _q_pts.apply_usd(base, symbol, side, float(getattr(config, "PERF_TIER_MIN_ORDER_USD", 6.0)), float(_psym_get(symbol, side, "MAX_ORDER_VALUE", getattr(config, "MAX_ORDER_VALUE", 300.0))))
+    except Exception:
+        return base
+
+
 class _PerSymOverlay:
     """General per-sym config overlay. Forwards attr reads to per-sym overrides
     dict first; falls back to base config. Same pattern as _BtcConfigOverlay but
@@ -19838,10 +19856,15 @@ class TrackerManager:
                 )
             )
         if self.trade_manager:
+            try:
+                _rk_ak, _rk_sym, _rk_side = parse_position_key(position_key)
+                _rk_sps = _q_sps_usd(_rk_sym, _rk_side, 45.0)
+            except Exception:
+                _rk_sps = float(getattr(self.trade_manager.config, "START_POSITION_SIZE", 45))
             _reentry_qty = max(
                 close_qty * REENTRY_MIN_MULT,
                 (
-                    float(getattr(self.trade_manager.config, "START_POSITION_SIZE", 45))
+                    _rk_sps
                     / current_price
                     if current_price > 0
                     else close_qty * REENTRY_MIN_MULT
@@ -20343,12 +20366,14 @@ class TrackerManager:
         data["total_entry_qty"] = new_qty
         data["timestamp"] = datetime.now(timezone.utc)
         data["last_updated"] = datetime.now(timezone.utc).isoformat()
-        pilot_size_usd = (
-            safe_fetch_float(
+        try:
+            _pl_ak, _pl_sym, _pl_side = parse_position_key(position_key)
+            _pl_sps = _q_sps_usd(_pl_sym, _pl_side, 45.0)
+        except Exception:
+            _pl_sps = safe_fetch_float(
                 getattr(self.trade_manager.config, "START_POSITION_SIZE", 45.0), 45.0
             )
-            * 0.25
-        )
+        pilot_size_usd = _pl_sps * 0.25
         remaining_value = new_qty * current_price
         is_now_pilot = remaining_value <= (pilot_size_usd * 1.1)
         if is_now_pilot:
@@ -21160,7 +21185,7 @@ class SentimentExposureManager:
                 current_price, _ = await self.data_manager.get_fresh_price(sym)
                 if current_price <= 0:
                     continue
-                base_usd = getattr(self.config, "START_POSITION_SIZE", 55.0)
+                base_usd = _q_sps_usd(sym, ps, 55.0)
                 qty = base_usd / current_price
                 if is_open_pending(pos_key):
                     logger.warning(
@@ -24720,7 +24745,12 @@ async def execute_trade_wrapper(
         f"🔄 [EXECUTE] {position_key}: {action} | ReqQty={qty:.6f} | RealAmt={real_amt:.6f} | Gain={real_gain:.2f}%"
     )
     if action == "OPEN":
-        qty = max(config.START_POSITION_SIZE / current_price, pos_min_qty, qty)
+        try:
+            _eq_ak, _eq_sym, _eq_side = parse_position_key(position_key)
+            _eq_sps = _q_sps_usd(_eq_sym, _eq_side, 45.0)
+        except Exception:
+            _eq_sps = float(getattr(config, "START_POSITION_SIZE", 45.0))
+        qty = max(_eq_sps / current_price, pos_min_qty, qty)
     unique_id = generate_unique_id(position_key, reason)
     if "CLOSE" in action or "REDUCE" in action:
         # UNIVERSAL TP GUARD: Any reason containing "TP" or "PROFIT" or "TAKE" must be at a gain
@@ -31947,7 +31977,7 @@ async def reentry_enforcement_loop_epq(
                     )
                     _base_qty = safe_fetch_float(data.get("original_qty", 0), 0.0)
                     if _base_qty <= 0:
-                        _base_qty = config.START_POSITION_SIZE / current_price
+                        _base_qty = _q_sps_usd(symbol, pos_side, 45.0) / current_price
                     # 2026-08-21 FLZ FIX: at least max qty — USER "with at least max qty if price crosses exit price"
                     _pos_for_max = (
                         trade_manager.positions.get(position_key)
@@ -31965,7 +31995,7 @@ async def reentry_enforcement_loop_epq(
                     if current_price > 0:
                         override_qty = max(
                             override_qty,
-                            config.START_POSITION_SIZE / current_price,
+                            _q_sps_usd(symbol, pos_side, 45.0) / current_price,
                             _max_q if _max_q > 0 else 0,
                         )
                     # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)

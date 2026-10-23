@@ -25999,7 +25999,7 @@ class MultiAccountTradeManager:
                                             price = 0
                                     if price <= 0:
                                         continue
-                                    qty = float(self.config.START_POSITION_SIZE) / price if price else 0  # config.py 14.0
+                                    qty = float(_psym_sps(usdt, side)) / price if price else 0  # USER 2026-10-23 vector START: per-sym suggestion x tier, not the bare global
                                     if qty <= 0:
                                         continue
                                     pos_key = f"inf:{usdt}_{side}"
