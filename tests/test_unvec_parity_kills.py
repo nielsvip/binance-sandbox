@@ -35,7 +35,6 @@ TRADIER_KILLS = {
     "ENABLE_TR_REENTRY_MONITOR": ("tradier_manage.py", ("reentry_monitor_loop",)),
     "ENABLE_TR_REENTRY_DISPATCH": ("tradier_manage.py", ("_dispatch_reentry_guaranteed_trd",)),
     "TR_HIGH_GAIN_REOPEN_ENABLED": ("tradier_manage.py", ("periodic_direct_high_gain_reopen",)),
-    "ENABLE_TR_SWING_ENTRIES": ("tradier_manage.py", ("is_swing_entry_allowed",)),
     "ENABLE_TR_SYMGATE_REENTRY": ("tradier_manage.py", ("would_exit_trigger_now",)),
     "ENABLE_TR_REENTRY_PERIODIC": ("tradier_manage.py", ("periodic_evaluate_reentry_loop",)),
 }
@@ -59,6 +58,18 @@ def test_tradier_kills_default_false():
     cfg = CT.TradierConfig()
     for switch in list(TRADIER_KILLS) + ["UVE_LIVE_ENABLED"]:
         assert getattr(cfg, switch, None) is False, switch
+
+
+def test_swing_entries_user_ordered_on():
+    """USER 2026-10-22 force-open stocks parity (config_tradier.py:3885):
+    swing entries were the only afternoon entry wing (SWING_ENTRIES_OFF_PARITY,
+    11 syms 10-22), so the default flipped False->True with budgets + gates as
+    guards. Pinned ON here (not in TRADIER_KILLS); the gate itself must stay at
+    the function head so False still restores the block (ROLLBACK documented
+    in-code)."""
+    assert CT.TradierConfig().ENABLE_TR_SWING_ENTRIES is True
+    head = _fn_head_source("tradier_manage.py", "is_swing_entry_allowed")[:1200]
+    assert "ENABLE_TR_SWING_ENTRIES" in head
 
 
 def test_kill_sites_at_function_heads():

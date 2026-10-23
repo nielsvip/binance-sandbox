@@ -75,6 +75,7 @@ import vec_decisions.stop_reclaim as _srm  # 2026-10-17 STOP_RECLAIM_REENTRY (sw
 import vec_decisions.high_gain_reopen as _hgr  # 2026-10-21 TR HIGH-GAIN REOPEN (re-open reduced high-gain lifecycles; stocks only, default off)
 import vec_decisions.uncond_dc_stop as _udcs  # 2026-10-22 USER UNCOND_DC_HARD_STOP_BUFFER_PCT (default 0.25 = the 0.9975/1.0025 literals)
 import vec_decisions.reentry_overdue as _rovd  # 2026-10-21 TRADIER OVERDUE reentry bypass (2h+ wait bypasses stoch+WT on dc_15m break or GR HL/HH; stocks only, default off)
+import vec_decisions.reentry_mask_arm as _rmarm  # USER 2026-10-23 v15_pending sweep pv3 C3 (default OFF = today's behaviour)
 import vec_decisions.breakeven_gain_erosion as _bgem  # 2026-10-17 BREAKEVEN_GAIN_EROSION + HTF_EXIT_VETO + HARD_BREAKEVEN_FLOOR (shared core with ez_positions_quick)
 import vec_decisions.breakeven_lock as _belm  # 2026-10-17 PEAK_GIVEBACK scope + LOSS_PRONE_ENTRY_FILTER (loss-prone entries need filters)
 import vec_decisions.scale_direction  # 2026-10-22 SCALE_DIRECTION law: a partial scale points the way price moves (augment up, reduce down)
@@ -16734,6 +16735,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         _entry_filter_masks.append(_gm)
     except Exception:
         _gftf = {"entry": None, "reduce_confirm": None, "erosion_confirm": None}
+    try:
+        _rmarm_mask = _rmarm.armed_mask(npz, n, is_long, cfg, close, _safe)  # USER 2026-10-23 pv3 C3: None unless a REENTRY_MASK_ARM_* switch is True
+    except Exception:
+        _rmarm_mask = None
     # 2026-09-29 USER: BB_PULLBACK_GATE gated only _base_entry (before the OR'd entry sources) -> the switch and its
     # FILTER_TF read 0 on every symbol. Live applies it in entry vetting (ez_manage.check_entry_alignment /
     # tradier_manage entry scoring) -> apply to the final entry signal like the other entry filters.
@@ -19450,6 +19455,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     pass
             # 2026-09-29 USER: reentries bypassed every entry filter (reckless). Lenient gate: a reentry must pass at
             # least REENTRY_FILTER_MIN_PASS of the active entry filters; new entries (entry_sig) must pass ALL of them.
+            if fire and _rmarm_mask is not None and has_closed_before and not entry_sig[i] and not bool(_rmarm_mask[i]):
+                fire = False  # USER 2026-10-23 pv3 C3 REENTRY_MASK_ARM_<FAM>_ENABLED: the armed entry-mask family applies to reentry fires
             if fire and _reentry_filter_on and has_closed_before and not entry_sig[i]:
                 if (
                     (sum(1 for _rm in _fx_G["_entry_filter_masks"] if bool(_rm[i])) + max(0, len(_entry_filter_masks) - len(_fx_G["_entry_filter_masks"])))

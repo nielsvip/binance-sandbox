@@ -42,6 +42,19 @@ def test_snapshot_tick_ts_is_wallclock(monkeypatch):
     assert _c1[-1] == 102.0
 
 
+def test_timestamp_3m_only_when_computed():
+    now = float(int(time.time()))
+    full_1m = [100.0 + (i % 7) * 0.1 for i in range(60)]
+    full_3m = [100.0 + (i % 5) * 0.2 for i in range(40)]
+    res = emd.cpu_bound_calculation(full_1m, full_3m, 101.0, now)
+    assert res is not None
+    assert res["timestamp_3m"] == now
+    thin = emd.cpu_bound_calculation(full_1m, [100.0] * 5, 101.0, now)
+    assert thin is not None
+    assert thin["timestamp_3m"] is None
+    assert thin["k_3m"] == 50.0
+
+
 def test_snapshot_needs_live_tick_first(monkeypatch):
     m = _seeded_market(monkeypatch)
     assert m.data["TESTUSDC"]["last_tick_ts"] == 0.0

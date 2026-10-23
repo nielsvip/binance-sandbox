@@ -16453,7 +16453,12 @@ class FastDataManager:
                     "timestamp",
                 }
                 for k, v in hot_data.items():
-                    if k not in _skip_stale_keys and k not in _never_overwrite:
+                    # 2026-10-23: hot timestamp_3m is admitted ONLY when the producer proved a
+                    # real 3m computation (non-None); the 50.0-fallback keeps UNK, never a lie.
+                    if k not in _skip_stale_keys and (
+                        k not in _never_overwrite
+                        or (k == "timestamp_3m" and v is not None)
+                    ):
                         combined_data[k] = v
         k_1m = self._safe_float(combined_data.get("k_1m", combined_data.get("k_1m")))
         d_1m = self._safe_float(combined_data.get("d_1m", combined_data.get("d_1m")))

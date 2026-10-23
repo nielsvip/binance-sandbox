@@ -77,6 +77,36 @@ def ban_active():
         if until > now:
             return True, os.path.basename(path), (until - now) / 1000.0
     return False, None, 0.0
+def quit_app():
+    try:
+        sh(["osascript", "-e", 'tell application "Surfshark" to quit'], timeout=15)
+    except Exception as e:
+        log(f"app quit attempt: {e}")
+def stop_all():
+    for s in slots():
+        if s["status"] != "Disconnected":
+            sh(["scutil", "--nc", "stop", s["name"]])
+def try_naked(wl, state, old_ip):
+    stop_all()
+    if not wait_state([s["name"] for s in slots()], "Disconnected", old_ip, timeout=25):
+        return False
+    time.sleep(3)
+    ip = egress_ip()
+    probe = binance_probe()
+    state["slot_exit"]["(no-vpn)"] = {"ip": ip, "server": None, "ts": time.time()}
+    if not ip or ip not in wl:
+        log(f"naked egress={ip} not whitelisted — cannot use");
+        save_state(state)
+        return False
+    if probe.get("ping") == 418:
+        log(f"naked egress={ip} Binance 418 — cannot use");
+        save_state(state)
+        return False
+    state["last_rotate_ts"] = time.time()
+    state["rotations"] = state.get("rotations", 0) + 1
+    save_state(state)
+    log(f"ROTATED OK slot=(no-vpn) egress={ip} binance={probe}")
+    return True
 def load_state():
     try:
         return json.load(open(STATE_PATH))
@@ -120,6 +150,10 @@ def wait_state(names, want, old_ip, timeout=75):
     return False
 def do_rotate(target=None):
     wl, state = whitelist(), load_state()
+    quit_app()
+    time.sleep(2)
+    if target == "none":
+        return try_naked(wl, state, egress_ip())
     cur = [s for s in slots() if s["status"] == "Connected"]
     cur_name = cur[0]["name"] if cur else None
     old_ip = egress_ip()
@@ -131,8 +165,8 @@ def do_rotate(target=None):
             log(f"no such slot {target}");
             return False
     if not cands:
-        log("no eligible slot to rotate to");
-        return False
+        log("no eligible slot — falling back to naked egress");
+        return try_naked(wl, state, old_ip)
     for cand in cands:
         name = cand["name"]
         srv, _ = slot_server(name)
@@ -173,8 +207,8 @@ def do_rotate(target=None):
                 except Exception as e:
                     log(f"could not clear {path}: {e}")
         return True
-    log("all candidate slots failed");
-    return False
+    log("all candidate slots failed — falling back to naked egress");
+    return try_naked(wl, state, old_ip)
 def cmd_check():
     wl = whitelist()
     ip = egress_ip()
@@ -233,5 +267,5 @@ if __name__ == "__main__":
         iv = int(sys.argv[2]) if len(sys.argv) > 2 else 15
         sys.exit(cmd_watch(iv))
     else:
-        print("usage: surfshark_vpn_rotate.py status|check|rotate [slot]|watch [interval]");
+        print("usage: surfshark_vpn_rotate.py status|check|rotate [slot|none]|watch [interval]");
         sys.exit(2)

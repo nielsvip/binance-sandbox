@@ -222,6 +222,9 @@ def cpu_bound_calculation(closes_1m, closes_3m, last_price, last_tick_ts):
 
         # 2. Calculate 3m Stoch
         r3 = stoch_rsi_numpy(closes_3m)
+        # 2026-10-23: timestamp the 3m leg ONLY when it was really computed (else the
+        # 50.0 fallback would wear a fresh age). Consumers show UNK rather than a lie.
+        r3_ok = bool(r3) and len(closes_3m) >= 21
         if r3:
             k3, d3, k3p, d3p, k3_slope = r3
         else:
@@ -232,6 +235,7 @@ def cpu_bound_calculation(closes_1m, closes_3m, last_price, last_tick_ts):
             '_tick_ts': last_tick_ts,
             '_calc_ts': last_tick_ts,  # Computation freshness = data freshness (mark price timestamp, NOT wall clock)
             'timestamp_1m': last_tick_ts,
+            'timestamp_3m': last_tick_ts if r3_ok else None,
             'is_partial_1m': True,
             'is_partial_3m': True,
             'k_1m': round(float(k1), 2), 'd_1m': round(float(d1), 2),

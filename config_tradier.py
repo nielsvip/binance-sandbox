@@ -6159,6 +6159,14 @@ class TradierConfig:
     DELTA_PYRAMID_QTY_MULT: float = 1.5
     DELTA_PYRAMID_ACCEL_THRESHOLD: float = 0.2
     DELTA_Z_WINDOW: int = 200
+    # USER 2026-10-23 v15_pending sweep: pv3 C3 — defaults = today's behaviour byte for byte
+    REENTRY_MASK_ARM_CIRCUIT_SHARPE_GATES_ENABLED: bool = False  # pv3 C3: apply CIRCUIT_SHARPE_GATES_FILTER_TF to reentry fires
+    REENTRY_MASK_ARM_DC_BREAK_ENABLED: bool = False  # pv3 C3: apply DC_BREAK_FILTER_TF to reentry fires
+    REENTRY_MASK_ARM_BREAKOUT_RETEST_ENABLED: bool = False  # pv3 C3: apply BREAKOUT_RETEST_FILTER_TF to reentry fires
+    REENTRY_MASK_ARM_DC_MOMENTUM_BOTA_SCORER_ENABLED: bool = False  # pv3 C3: apply DC_MOMENTUM_BOTA_SCORER_FILTER_TF to reentry fires
+    REENTRY_MASK_ARM_DELTA_ENGINE_ENABLED: bool = False  # pv3 C3: apply DELTA_ENGINE_FILTER_TF to reentry fires
+    REENTRY_MASK_ARM_MOM3_ENABLED: bool = False  # pv3 C3: apply MOM3_FILTER_TF to reentry fires
+    REENTRY_MASK_ARM_MOMENTUM_BREAKOUT_ENABLED: bool = False  # pv3 C3: apply MOMENTUM_BREAKOUT_FILTER_TF to reentry fires
     UNCOND_DC_HARD_STOP_BUFFER_PCT: float = 0.25  # 2026-10-22 USER: UNCOND_DC_* hard-stop buffer below dc_low / above dc_high (0.25 = the twin default tol)
     DELTA_COOLDOWN_BARS: int = (
         60  # WINNER ST: 60 bars (5h) ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
