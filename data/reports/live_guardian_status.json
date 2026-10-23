@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-23T10:29:27Z",
+ "ts": "2026-10-23T10:34:35Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 65,
-   "open_positions": 15,
-   "unrealised_usd": -0.32,
+   "fills_6h": 66,
+   "open_positions": 14,
+   "unrealised_usd": 0.15,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 29,
    "open_positions": 6,
-   "unrealised_usd": 0.06,
+   "unrealised_usd": 0.03,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 54,
    "open_positions": 8,
-   "unrealised_usd": 6.25,
+   "unrealised_usd": 6.45,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 17,
    "open_positions": 5,
-   "unrealised_usd": 0.89,
+   "unrealised_usd": 0.87,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,56 +127,56 @@
     "47661"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 36.0
   },
   "men": {
    "pids": [
     "83282"
    ],
    "starts_30m": 1,
-   "log_age_s": 22.0
+   "log_age_s": 124.0
   },
   "ang": {
    "pids": [
     "50544"
    ],
    "starts_30m": 1,
-   "log_age_s": 1279.0
+   "log_age_s": 58.0
   },
   "inf": {
    "pids": [
     "82830"
    ],
    "starts_30m": 1,
-   "log_age_s": 17.0
+   "log_age_s": 0.0
   },
   "flz": {
    "pids": [
     "37690"
    ],
    "starts_30m": 1,
-   "log_age_s": 59.0
+   "log_age_s": 26.0
   },
   "trb": {
    "pids": [
     "77496"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 2.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 52105.0
+   "log_age_s": 52412.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-23T10:29:28Z",
+   "ts": "2026-10-23T10:34:36Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
-   "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 1279s"
+   "key": "men",
+   "evidence": "ez_manage_men.log not written for 124s"
   }
  ],
  "alert_counts": {
@@ -241,5 +241,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.03
+ "sweep_s": 1.47
 }
