@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-23T11:51:16Z",
+ "ts": "2026-10-23T11:56:28Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 107,
-   "open_positions": 9,
-   "unrealised_usd": 1.65,
+   "fills_6h": 109,
+   "open_positions": 11,
+   "unrealised_usd": 1.95,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 1,
@@ -37,15 +37,15 @@
     "filled": 0,
     "refused_non_safety": 0,
     "safety_refusals": 0,
-    "not_filled_no_log": 0,
+    "not_filled_no_log": 1,
     "vec_exact_fills_without_decision": 0,
     "matched_by_reason": 0
    }
   },
   "men": {
-   "fills_6h": 27,
+   "fills_6h": 22,
    "open_positions": 4,
-   "unrealised_usd": -0.01,
+   "unrealised_usd": -0.02,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 49,
    "open_positions": 8,
-   "unrealised_usd": 7.51,
+   "unrealised_usd": 7.19,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 10,
    "open_positions": 5,
-   "unrealised_usd": 0.93,
+   "unrealised_usd": 0.84,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,60 +127,83 @@
     "47661"
    ],
    "starts_30m": 1,
-   "log_age_s": 54.0
+   "log_age_s": 2.0
   },
   "men": {
    "pids": [
-    "40038"
+    "95891"
    ],
-   "starts_30m": 1,
-   "log_age_s": 5.0
+   "starts_30m": 2,
+   "log_age_s": 26.0
   },
   "ang": {
    "pids": [
     "50544"
    ],
    "starts_30m": 1,
-   "log_age_s": 81.0
+   "log_age_s": 176.0
   },
   "inf": {
    "pids": [
     "82830"
    ],
    "starts_30m": 1,
-   "log_age_s": 10.0
+   "log_age_s": 0.0
   },
   "flz": {
    "pids": [
     "12407"
    ],
    "starts_30m": 1,
-   "log_age_s": 70.0
+   "log_age_s": 22.0
   },
   "trb": {
    "pids": [
     "77496"
    ],
    "starts_30m": 1,
-   "log_age_s": 9.0
+   "log_age_s": 2.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 57013.0
+   "log_age_s": 57325.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-23T11:51:16Z",
+   "ts": "2026-10-23T11:56:28Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "fin:COMPUSDT_LONG",
+   "evidence": "entry notional $104.21 (median $22.45, MAX_ORDER_VALUE $300) @ 2026-10-23T11:52:18Z VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_1"
+  },
+  {
+   "ts": "2026-10-23T11:56:28Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "fin:ZKUSDT_SHORT",
    "evidence": "BREAKOUT_SIZE_LADDER resized qty 9424.45->28273.3 = $360.46 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 9424.45)"
+  },
+  {
+   "ts": "2026-10-23T11:56:28Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_NOT_FILLED",
+   "key": "fin:RLCUSDT_SHORT",
+   "evidence": "CLOSE PROFIT_TP_EXHAUSTION decided 2026-10-23T11:23:59Z bar=2026-10-23T10:15:00Z: no fill in 1800s and no refusal logged"
+  },
+  {
+   "ts": "2026-10-23T11:56:29Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "ang",
+   "evidence": "ez_manage_ang.log not written for 176s"
   }
  ],
  "alert_counts": {
-  "SIZE_ANOMALY": 1
+  "SIZE_ANOMALY": 2,
+  "VEC_DECISION_NOT_FILLED": 1,
+  "STALE_LOG": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -207,6 +230,13 @@
    "undo": "rm /Users/niels/Documents/binance/data/HALT_TRADING_men",
    "dry_run": false
   },
+  "key:fin:COMPUSDT_LONG": {
+   "ts": 1792756342.4451761,
+   "until": 1792763542.445199,
+   "why": "SIZE_ANOMALY entry notional $104.21 (median $22.45, MAX_ORDER_VALUE $300) @ 2026-10-23T11:52:18Z VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_1",
+   "undo": "redis-cli -p 6379 DEL open_blocked:fin:COMPUSDT_LONG",
+   "dry_run": false
+  },
   "acct:inf": {
    "ts": 1791791577.100162,
    "why": "ACCOUNT_EQUITY_DROP unrealised PnL of the same open positions fell $25.47 since 2026-10-12T07:51:49Z (now $+1.07)",
@@ -220,5 +250,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.89
+ "sweep_s": 1.14
 }
