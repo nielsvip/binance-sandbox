@@ -1,23 +1,72 @@
 {
-  "men:ZROUSDT_LONG": {
-    "orderId": "2000001534055824",
-    "stopPrice": 1.7544,
-    "entry_sig": "2026-10-23 06:06:02.252000+00:00",
-    "symbol": "ZROUSDT",
+  "fin:STRKUSDT_SHORT": {
+    "orderId": "3000002268706707",
+    "stopPrice": 0.05352,
+    "entry_sig": "2026-10-23 09:43:16.212000+00:00",
+    "symbol": "STRKUSDT",
+    "side": "SHORT"
+  },
+  "fin:RLCUSDT_SHORT": {
+    "orderId": "3000002268712953",
+    "stopPrice": 0.7413,
+    "entry_sig": "2026-10-23 09:42:08.010000+00:00",
+    "symbol": "RLCUSDT",
+    "side": "SHORT"
+  },
+  "fin:VETUSDT_LONG": {
+    "orderId": "3000002268721767",
+    "stopPrice": 0.006665,
+    "entry_sig": "2026-10-23 09:43:24.075000+00:00",
+    "symbol": "VETUSDT",
     "side": "LONG"
   },
-  "men:GRASSUSDT_LONG": {
-    "orderId": "2000001534432028",
-    "stopPrice": 0.6211,
-    "entry_sig": "2026-10-23 05:33:43.470000+00:00",
+  "fin:1000PEPEUSDC_LONG": {
+    "orderId": "3000002268721159",
+    "stopPrice": 0.0045637,
+    "entry_sig": "2026-10-23 11:21:02.086000+00:00",
+    "symbol": "1000PEPEUSDC",
+    "side": "LONG"
+  },
+  "fin:COMPUSDT_LONG": {
+    "orderId": "3000002268723336",
+    "stopPrice": 24.17,
+    "entry_sig": "2026-10-23 11:52:13.114000+00:00",
+    "symbol": "COMPUSDT",
+    "side": "LONG"
+  },
+  "fin:MEWUSDT_LONG": {
+    "orderId": "3000002268723474",
+    "stopPrice": 0.0004834,
+    "entry_sig": "2026-10-23 11:46:59.906000+00:00",
+    "symbol": "MEWUSDT",
+    "side": "LONG"
+  },
+  "fin:BLURUSDT_SHORT": {
+    "orderId": "3000002268724026",
+    "stopPrice": 0.0093,
+    "entry_sig": "2026-10-23 11:47:45.946000+00:00",
+    "symbol": "BLURUSDT",
+    "side": "SHORT"
+  },
+  "fin:ETHFIUSDC_LONG": {
+    "orderId": "3000002268724388",
+    "stopPrice": 0.6368,
+    "entry_sig": "2026-10-23 10:01:04.655000+00:00",
+    "symbol": "ETHFIUSDC",
+    "side": "LONG"
+  },
+  "fin:GRASSUSDT_LONG": {
+    "orderId": "3000002268724756",
+    "stopPrice": 0.637,
+    "entry_sig": "2026-10-23 11:48:17.341000+00:00",
     "symbol": "GRASSUSDT",
     "side": "LONG"
   },
-  "men:ARUSDT_LONG": {
-    "orderId": "2000001534617048",
-    "stopPrice": 3.524,
-    "entry_sig": "2026-10-23 05:33:36.144000+00:00",
-    "symbol": "ARUSDT",
+  "fin:BBUSDT_LONG": {
+    "orderId": "3000002268725259",
+    "stopPrice": 0.007909,
+    "entry_sig": "2026-10-23 09:41:42.931000+00:00",
+    "symbol": "BBUSDT",
     "side": "LONG"
   }
 }
