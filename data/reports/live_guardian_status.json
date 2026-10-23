@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-23T09:47:53Z",
+ "ts": "2026-10-23T09:53:31Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 29,
-   "open_positions": 12,
-   "unrealised_usd": 2.24,
+   "fills_6h": 62,
+   "open_positions": 14,
+   "unrealised_usd": 3.47,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 29,
    "open_positions": 6,
-   "unrealised_usd": -0.04,
+   "unrealised_usd": 0.01,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 50,
+   "fills_6h": 54,
    "open_positions": 8,
-   "unrealised_usd": 4.79,
+   "unrealised_usd": 5.28,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -91,9 +91,9 @@
    }
   },
   "flz": {
-   "fills_6h": 20,
+   "fills_6h": 21,
    "open_positions": 6,
-   "unrealised_usd": -0.08,
+   "unrealised_usd": 0.14,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -120,128 +120,89 @@
    "inf": 1
   }
  },
- "reconcile": {
-  "fin": {
-   "symbols": 15,
-   "broker_fills": 44,
-   "matched": 13,
-   "appended": 31
-  },
-  "men": {
-   "symbols": 8,
-   "broker_fills": 3,
-   "matched": 3,
-   "appended": 0
-  },
-  "ang": {
-   "symbols": 10,
-   "broker_fills": 7,
-   "matched": 3,
-   "appended": 4
-  },
-  "inf": {
-   "symbols": 0,
-   "broker_fills": 0,
-   "matched": 0,
-   "appended": 0
-  },
-  "flz": {
-   "symbols": 7,
-   "broker_fills": 3,
-   "matched": 2,
-   "appended": 1
-  }
- },
+ "reconcile": {},
  "process": {
   "fin": {
    "pids": [
     "53921"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 13.0
   },
   "men": {
    "pids": [
     "62640"
    ],
    "starts_30m": 1,
-   "log_age_s": 72.0
+   "log_age_s": 1.0
   },
   "ang": {
    "pids": [
     "50544"
    ],
    "starts_30m": 1,
-   "log_age_s": 19.0
+   "log_age_s": 34.0
   },
   "inf": {
    "pids": [
     "38044"
    ],
    "starts_30m": 1,
-   "log_age_s": 2429.0
+   "log_age_s": 2752.0
   },
   "flz": {
    "pids": [
     "87278"
    ],
-   "starts_30m": 0,
-   "log_age_s": 139.0
+   "starts_30m": 1,
+   "log_age_s": 17.0
   },
   "trb": {
    "pids": [
     "77496"
    ],
-   "starts_30m": 2,
+   "starts_30m": 1,
    "log_age_s": 1.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 49625.0
+   "log_age_s": 49948.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-23T09:47:53Z",
+   "ts": "2026-10-23T09:53:31Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "fin:ZECUSDC_LONG",
    "evidence": "entry notional $26.82 (median $5.64, MAX_ORDER_VALUE $300) @ 2026-10-23T09:42:27Z VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_0"
   },
   {
-   "ts": "2026-10-23T09:47:53Z",
+   "ts": "2026-10-23T09:53:31Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "fin:MAGICUSDT_SHORT",
+   "evidence": "entry notional $23.62 (median $7.49, MAX_ORDER_VALUE $300) @ 2026-10-23T09:42:21Z BROKER_RECONCILED order=5945992339"
+  },
+  {
+   "ts": "2026-10-23T09:53:31Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "fin:MAGICUSDT_SHORT",
    "evidence": "entry notional $28.92 (median $7.49, MAX_ORDER_VALUE $300) @ 2026-10-23T09:42:44Z VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_3"
   },
   {
-   "ts": "2026-10-23T09:47:53Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "fin:GRASSUSDT_LONG",
-   "evidence": "23 09:35:49 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:GRASSUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $6 on bounce (prior max 47.0000)"
-  },
-  {
-   "ts": "2026-10-23T09:48:09Z",
+   "ts": "2026-10-23T09:53:32Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "inf",
-   "evidence": "ez_manage_inf.log not written for 2429s"
-  },
-  {
-   "ts": "2026-10-23T09:48:09Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 139s"
+   "evidence": "ez_manage_inf.log not written for 2752s"
   }
  ],
  "alert_counts": {
-  "SIZE_ANOMALY": 2,
-  "CAP_BYPASS": 1,
-  "STALE_LOG": 2
+  "SIZE_ANOMALY": 3,
+  "STALE_LOG": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -266,13 +227,6 @@
    "ts": 1791405204.913714,
    "why": "ORDER_STORM_ACCOUNT 26 fills/10min",
    "undo": "rm /Users/niels/Documents/binance/data/HALT_TRADING_men",
-   "dry_run": false
-  },
-  "key:fin:IOTXUSDT_LONG": {
-   "ts": 1792741787.055443,
-   "until": 1792748987.055445,
-   "why": "SIZE_ANOMALY entry notional $44.62 (median $13.49, MAX_ORDER_VALUE $300) @ 2026-10-23T07:49:29Z QUICK_OPEN_STRONG_BUY_k1:33/d111/k3:100.0/d3:67.11_@0.0042_R",
-   "undo": "redis-cli -p 6379 DEL open_blocked:fin:IOTXUSDT_LONG",
    "dry_run": false
   },
   "acct:inf": {
@@ -309,5 +263,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 15.93
+ "sweep_s": 0.88
 }
