@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-23T19:03:47Z",
+ "generated_utc": "2026-10-23T19:08:54Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 98.6,
+  "age_s": 405.2,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 10644,
-  "proc_age_s": 61452.0,
-  "log_age_s": 244.7,
+  "proc_age_s": 61758.0,
+  "log_age_s": 551.4,
   "warmup_done": true,
   "timeframes_since_restart": [
    "D",
@@ -52,20 +52,20 @@
   "mode": "ACTIVE",
   "since_epoch": 1792602182.2042153,
   "activations": 163,
-  "hb_mtime": 1792781974.219704,
-  "mac_snapshot_age_s": 0.6041836738586426,
+  "hb_mtime": 1792782352.9637856,
+  "mac_snapshot_age_s": 62.37991213798523,
   "mac_stale": false,
   "lease_holder": "mac",
   "lease_venues": null,
-  "lease_since": "2026-10-23T18:59:35Z",
-  "lease_reason": "yield: Mac never fenced for 180s \u2014 accounts must never be unattended",
-  "now": 1792781991.7198646,
-  "from_cache_age_s": 236.2,
-  "heartbeat_age_s": 17.5,
-  "active_s": 179809.5
+  "lease_since": "2026-10-23T19:03:33Z",
+  "lease_reason": "all scoped accounts yielded back to a live Mac",
+  "now": 1792782353.1234555,
+  "from_cache_age_s": 181.2,
+  "heartbeat_age_s": 0.2,
+  "active_s": 180170.9
  },
  "alerts": [
-  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 179809s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (17s) AND the Mac snapshot is fresh (98s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
+  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 180170s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (0s) AND the Mac snapshot is fresh (405s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
  ],
  "verdict": "ALERT"
 }
