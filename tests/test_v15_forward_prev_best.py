@@ -50,3 +50,9 @@ def test_forward_record_carries_prev_ts_source():
     src = SRC.read_text()
     assert '"prev_ts_source": _prev.get("ts_source") or "npzprev"' in src
     assert "_out = list(forward_prev_best_candidates(symside))" in src
+
+
+def test_forward_timestamps_not_tested_with_or_on_numpy():
+    src = SRC.read_text()
+    assert '.get("timestamps") or [])' not in src.split("def run_forward_score")[1].split("def ")[0]
+    assert "_ts = [] if _ts is None else _ts" in src

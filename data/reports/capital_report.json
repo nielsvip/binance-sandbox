@@ -1,69 +1,162 @@
 {
- "generated_at": "2026-10-23 21:53 UTC",
- "total_capital_usd": 46.88,
+ "generated_at": "2026-10-23 21:58 UTC",
+ "total_capital_usd": 359.46,
  "tier_capital": {
-  "A": 6.93,
-  "B": 5.9,
-  "C": 34.05
+  "A": 10.6,
+  "B": 29.48,
+  "C": 319.38
  },
  "tier_count": {
   "A": 1,
-  "B": 1,
-  "C": 2
+  "B": 3,
+  "C": 8
  },
  "winners": [
-  "fin:MAGICUSDT_SHORT"
+  "flz:XMRUSDT_SHORT"
  ],
  "losers": [
-  "fin:VETUSDT_LONG",
-  "fin:ENAUSDC_LONG",
-  "fin:ETHFIUSDC_LONG"
+  "flz:DASHUSDT_SHORT",
+  "flz:BTCUSDC_LONG",
+  "flz:BTCDOMUSDT_SHORT",
+  "flz:SOLUSDC_LONG",
+  "flz:BTCUSDC_SHORT",
+  "flz:SOLUSDC_SHORT",
+  "flz:DASHUSDT_LONG",
+  "flz:HYPEUSDT_SHORT"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:ENAUSDC_LONG",
-   "symbol": "ENAUSDC",
-   "account": "fin",
-   "value_usd": 27.81,
-   "gain_pct": -0.254,
+   "pk": "flz:BTCUSDC_LONG",
+   "symbol": "BTCUSDC",
+   "account": "flz",
+   "value_usd": 162.44,
+   "gain_pct": -0.128,
    "tier": "C",
-   "perf_mult": 0.39,
-   "amt": 136.0,
-   "mark": 0.20449
+   "perf_mult": 0.42,
+   "amt": 0.002,
+   "mark": 81217.5
   },
   {
-   "pk": "fin:MAGICUSDT_SHORT",
-   "symbol": "MAGICUSDT",
-   "account": "fin",
-   "value_usd": 6.93,
-   "gain_pct": 0.893,
-   "tier": "A",
-   "perf_mult": 7.52,
-   "amt": 78.7,
-   "mark": 0.08808594
-  },
-  {
-   "pk": "fin:ETHFIUSDC_LONG",
-   "symbol": "ETHFIUSDC",
-   "account": "fin",
-   "value_usd": 6.24,
-   "gain_pct": 0.027,
+   "pk": "flz:BTCUSDC_SHORT",
+   "symbol": "BTCUSDC",
+   "account": "flz",
+   "value_usd": 81.22,
+   "gain_pct": 0.389,
    "tier": "C",
-   "perf_mult": 0.37,
-   "amt": 9.5,
-   "mark": 0.65677531
+   "perf_mult": 0.42,
+   "amt": 0.001,
+   "mark": 81217.5
   },
   {
-   "pk": "fin:VETUSDT_LONG",
-   "symbol": "VETUSDT",
-   "account": "fin",
-   "value_usd": 5.9,
-   "gain_pct": -1.936,
+   "pk": "flz:DASHUSDT_LONG",
+   "symbol": "DASHUSDT",
+   "account": "flz",
+   "value_usd": 45.1,
+   "gain_pct": 1.048,
+   "tier": "C",
+   "perf_mult": 0.38,
+   "amt": 0.836,
+   "mark": 53.9495035
+  },
+  {
+   "pk": "flz:BNBUSDC_LONG",
+   "symbol": "BNBUSDC",
+   "account": "flz",
+   "value_usd": 14.81,
+   "gain_pct": 1.563,
    "tier": "B",
-   "perf_mult": 0.32,
-   "amt": 826.0,
-   "mark": 0.007141
+   "perf_mult": 0.55,
+   "amt": 0.02,
+   "mark": 740.28831591
+  },
+  {
+   "pk": "flz:XMRUSDT_SHORT",
+   "symbol": "XMRUSDT",
+   "account": "flz",
+   "value_usd": 10.6,
+   "gain_pct": 0.508,
+   "tier": "A",
+   "perf_mult": 10.0,
+   "amt": 0.018,
+   "mark": 588.9315
+  },
+  {
+   "pk": "flz:SOLUSDC_SHORT",
+   "symbol": "SOLUSDC",
+   "account": "flz",
+   "value_usd": 10.34,
+   "gain_pct": 0.771,
+   "tier": "C",
+   "perf_mult": 0.19,
+   "amt": 0.1,
+   "mark": 103.41
+  },
+  {
+   "pk": "flz:ZECUSDC_SHORT",
+   "symbol": "ZECUSDC",
+   "account": "flz",
+   "value_usd": 8.54,
+   "gain_pct": 0.848,
+   "tier": "B",
+   "perf_mult": 1.28,
+   "amt": 0.007,
+   "mark": 1220.45
+  },
+  {
+   "pk": "flz:DASHUSDT_SHORT",
+   "symbol": "DASHUSDT",
+   "account": "flz",
+   "value_usd": 6.2,
+   "gain_pct": -0.129,
+   "tier": "C",
+   "perf_mult": 0.38,
+   "amt": 0.115,
+   "mark": 53.94950348
+  },
+  {
+   "pk": "flz:XRPUSDC_SHORT",
+   "symbol": "XRPUSDC",
+   "account": "flz",
+   "value_usd": 6.13,
+   "gain_pct": 0.32,
+   "tier": "B",
+   "perf_mult": 0.55,
+   "amt": 4.7,
+   "mark": 1.30351442
+  },
+  {
+   "pk": "flz:BTCDOMUSDT_SHORT",
+   "symbol": "BTCDOMUSDT",
+   "account": "flz",
+   "value_usd": 5.55,
+   "gain_pct": -0.089,
+   "tier": "C",
+   "perf_mult": 0.49,
+   "amt": 0.001,
+   "mark": 5548.02314939
+  },
+  {
+   "pk": "flz:HYPEUSDT_SHORT",
+   "symbol": "HYPEUSDT",
+   "account": "flz",
+   "value_usd": 5.43,
+   "gain_pct": 1.256,
+   "tier": "C",
+   "perf_mult": 0.35,
+   "amt": 0.07,
+   "mark": 77.57
+  },
+  {
+   "pk": "flz:SOLUSDC_LONG",
+   "symbol": "SOLUSDC",
+   "account": "flz",
+   "value_usd": 3.1,
+   "gain_pct": 0.241,
+   "tier": "C",
+   "perf_mult": 0.19,
+   "amt": 0.03,
+   "mark": 103.41
   }
  ]
 }

@@ -2979,7 +2979,8 @@ def run_forward_score(symside, cur_ts_last, defaults, delta_log_fn=None, progres
             _HOLDOUT["on"] = _was_on
         if not isinstance(_prep, dict) or _prep.get("_stale"):
             return []
-        _ts = ((_prep.get("npz_prepared") or {}).get("timestamps") or [])
+        _ts = (_prep.get("npz_prepared") or {}).get("timestamps")  # 2026-10-23: a numpy array has no truth value — `or []` raised in every production board ([FORWARD-WARN] x88 on S2) and FORWARD lines stayed 0
+        _ts = [] if _ts is None else _ts
         try:
             _unseen_bars = int(len(_ts))
         except Exception:
