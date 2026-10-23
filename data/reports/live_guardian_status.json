@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-23T13:49:44Z",
+ "ts": "2026-10-23T13:54:55Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,19 +29,19 @@
   "trb": {
    "fills_6h": 9,
    "open_positions": 5,
-   "unrealised_usd": -23.3,
+   "unrealised_usd": -19.01,
    "pos_mismatch": 0
   },
   "trc": {
    "fills_6h": 0,
    "open_positions": 8,
-   "unrealised_usd": 56.5,
+   "unrealised_usd": 72.88,
    "pos_mismatch": 0
   },
   "fin": {
    "fills_6h": 128,
    "open_positions": 10,
-   "unrealised_usd": 1.79,
+   "unrealised_usd": 1.85,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 2,
@@ -71,9 +71,9 @@
    }
   },
   "ang": {
-   "fills_6h": 15,
+   "fills_6h": 14,
    "open_positions": 7,
-   "unrealised_usd": 6.61,
+   "unrealised_usd": 6.57,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -105,7 +105,7 @@
   "flz": {
    "fills_6h": 8,
    "open_positions": 5,
-   "unrealised_usd": 1.2,
+   "unrealised_usd": 1.15,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -138,35 +138,35 @@
     "22551"
    ],
    "starts_30m": 1,
-   "log_age_s": 8.0
+   "log_age_s": 1.0
   },
   "men": {
    "pids": [
     "95891"
    ],
    "starts_30m": 1,
-   "log_age_s": 204.0
+   "log_age_s": 515.0
   },
   "ang": {
    "pids": [
     "50544"
    ],
    "starts_30m": 1,
-   "log_age_s": 133.0
+   "log_age_s": 227.0
   },
   "inf": {
    "pids": [
     "82830"
    ],
    "starts_30m": 1,
-   "log_age_s": 100.0
+   "log_age_s": 3.0
   },
   "flz": {
    "pids": [
     "76532"
    ],
    "starts_30m": 1,
-   "log_age_s": 7.0
+   "log_age_s": 50.0
   },
   "trb": {
    "pids": [
@@ -174,62 +174,70 @@
     "86234"
    ],
    "starts_30m": 2,
-   "log_age_s": 1.0
+   "log_age_s": 5.0
   },
   "trc": {
    "pids": [
     "83240"
    ],
    "starts_30m": 1,
-   "log_age_s": 5.0
+   "log_age_s": 6.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-23T13:49:44Z",
+   "ts": "2026-10-23T13:54:55Z",
    "severity": "CRITICAL",
    "kind": "ACCOUNT_EQUITY_DROP",
    "key": "trb",
-   "evidence": "unrealised PnL of the same open positions fell $79.96 since 2026-10-23T13:39:21Z (now $-23.30)"
+   "evidence": "unrealised PnL of the same open positions fell $75.67 since 2026-10-23T13:39:21Z (now $-19.01)"
   },
   {
-   "ts": "2026-10-23T13:49:44Z",
+   "ts": "2026-10-23T13:54:56Z",
    "severity": "CRITICAL",
    "kind": "ACCOUNT_EQUITY_DROP",
    "key": "trc",
-   "evidence": "unrealised PnL of the same open positions fell $76.30 since 2026-10-23T13:38:14Z (now $+56.50)"
+   "evidence": "unrealised PnL of the same open positions fell $59.92 since 2026-10-23T13:38:14Z (now $+72.88)"
   },
   {
-   "ts": "2026-10-23T13:49:44Z",
+   "ts": "2026-10-23T13:54:56Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "fin:NMRUSDT_SHORT",
+   "evidence": "23 13:52:24 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:NMRUSDT_SHORT: bypass MAX_ORDER_VALUE $120 \u2014 restoring $1861 (prior max 2.6000) on bounce"
+  },
+  {
+   "ts": "2026-10-23T13:54:56Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "fin:RLCUSDT_SHORT",
    "evidence": "CLOSE PROFIT_TP_EXHAUSTION decided 2026-10-23T11:23:59Z bar=2026-10-23T10:15:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-23T13:49:44Z",
+   "ts": "2026-10-23T13:54:56Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "fin:GRASSUSDT_LONG",
    "evidence": "OPEN B09 bar=2026-10-23T12:15:00Z: live already holds 105.8 (state divergence)"
   },
   {
-   "ts": "2026-10-23T13:49:45Z",
+   "ts": "2026-10-23T13:54:57Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "men",
-   "evidence": "ez_manage_men.log not written for 204s"
+   "evidence": "ez_manage_men.log not written for 515s"
   },
   {
-   "ts": "2026-10-23T13:49:45Z",
+   "ts": "2026-10-23T13:54:57Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 133s"
+   "evidence": "ez_manage_ang.log not written for 227s"
   }
  ],
  "alert_counts": {
   "ACCOUNT_EQUITY_DROP": 2,
+  "CAP_BYPASS": 1,
   "VEC_DECISION_NOT_FILLED": 1,
   "VEC_OPEN_WHILE_LIVE_IN": 1,
   "STALE_LOG": 2
@@ -259,13 +267,6 @@
    "undo": "rm /Users/niels/Documents/binance/data/HALT_TRADING_men",
    "dry_run": false
   },
-  "key:fin:COMPUSDT_LONG": {
-   "ts": 1792756342.4451761,
-   "until": 1792763542.445199,
-   "why": "SIZE_ANOMALY entry notional $104.21 (median $22.45, MAX_ORDER_VALUE $300) @ 2026-10-23T11:52:18Z VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_1",
-   "undo": "redis-cli -p 6379 DEL open_blocked:fin:COMPUSDT_LONG",
-   "dry_run": false
-  },
   "acct:inf": {
    "ts": 1791791577.100162,
    "why": "ACCOUNT_EQUITY_DROP unrealised PnL of the same open positions fell $25.47 since 2026-10-12T07:51:49Z (now $+1.07)",
@@ -293,5 +294,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.89
+ "sweep_s": 1.08
 }
