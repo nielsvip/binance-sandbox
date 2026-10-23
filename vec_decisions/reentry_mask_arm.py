@@ -5,6 +5,7 @@ REENTRY_ENTRY_FILTER_ENABLED (the lenient all-mask count) and REENTRY_APPLY_ENTR
 An armed family whose <FAM>_FILTER_TF is OFF in the running set does nothing (same as for fresh entries); master-gated
 families follow their master. No switch True -> None -> today's behaviour byte for byte.
 """
+
 from vec_decisions import filter_tf_gates as _ftg
 from vec_decisions import generic_filter_tf as _gft
 
@@ -129,7 +130,9 @@ def live_allows(get, is_long, ind, px):
     for base in fams:
         name = FAMILIES[base]
         tf = str(get(name, "OFF") or "OFF").strip()
-        if tf.upper() == "OFF" or (name in MASTERS and not bool(get(MASTERS[name], False))):
+        if tf.upper() == "OFF" or (
+            name in MASTERS and not bool(get(MASTERS[name], False))
+        ):
             continue
         if name in (
             "CIRCUIT_SHARPE_GATES_FILTER_TF",
@@ -157,10 +160,14 @@ def armed_mask(npz, n, is_long, cfg, close, safe):
     for base in armed(cfg):
         name = FAMILIES[base]
         tf = str(getattr(cfg, name, "OFF") or "OFF").strip()
-        if tf.upper() == "OFF" or (name in MASTERS and not bool(getattr(cfg, MASTERS[name], False))):
+        if tf.upper() == "OFF" or (
+            name in MASTERS and not bool(getattr(cfg, MASTERS[name], False))
+        ):
             continue
         if name in _gft.FILTER_TF_MAP:
-            mk = _gft._cond(_gft.FILTER_TF_MAP[name][1], npz, n, tf, is_long, close, safe)
+            mk = _gft._cond(
+                _gft.FILTER_TF_MAP[name][1], npz, n, tf, is_long, close, safe
+            )
         elif name == "MOM3_FILTER_TF":
             mk = _ftg.mom3_entry_gate(npz, n, is_long, cfg, close, safe)
         elif name == "MOMENTUM_BREAKOUT_FILTER_TF":

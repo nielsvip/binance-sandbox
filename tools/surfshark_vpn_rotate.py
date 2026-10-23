@@ -86,7 +86,8 @@ def stop_all():
     for s in slots():
         if s["status"] != "Disconnected":
             sh(["scutil", "--nc", "stop", s["name"]])
-def try_naked(wl, state, old_ip):
+def try_naked(wl, state, old_ip, home_only=True):
+    cfg = net_cfg()
     stop_all()
     if not wait_state([s["name"] for s in slots()], "Disconnected", old_ip, timeout=25):
         return False
@@ -94,8 +95,9 @@ def try_naked(wl, state, old_ip):
     ip = egress_ip()
     probe = binance_probe()
     state["slot_exit"]["(no-vpn)"] = {"ip": ip, "server": None, "ts": time.time()}
-    if not ip or ip not in wl:
-        log(f"naked egress={ip} not whitelisted — cannot use");
+    ok_ips = cfg.get("home_ips") or [] if home_only else list(wl)
+    if not ip or ip not in ok_ips:
+        log(f"naked egress={ip} not a home IP — cannot use");
         save_state(state)
         return False
     if probe.get("ping") == 418:
@@ -106,6 +108,20 @@ def try_naked(wl, state, old_ip):
     state["rotations"] = state.get("rotations", 0) + 1
     save_state(state)
     log(f"ROTATED OK slot=(no-vpn) egress={ip} binance={probe}")
+    return True
+def ensure_tunnel(wl, state):
+    if [s for s in slots() if s["status"] == "Connected"]:
+        return True
+    if (egress_ip() or "") in wl and binance_probe().get("ping") != 418:
+        return True
+    cands = eligible_slots(wl, state, None)
+    if not cands:
+        log("ensure_tunnel: no slot available, leaving link as-is");
+        return False
+    name = cands[0]["name"]
+    log(f"ensure_tunnel: restoring {name} so the link is not left dark")
+    sh(["scutil", "--nc", "start", name])
+    wait_state([name], "Connected", None, timeout=45)
     return True
 def load_state():
     try:
@@ -126,6 +142,47 @@ def cmd_status():
     print(f"egress={ip} whitelisted={ip in wl if ip else '?'}")
     print(f"binance={binance_probe()}")
     print(f"ban_active={ban_active()}")
+def net_cfg():
+    try:
+        return json.load(open(WL_PATH))
+    except Exception:
+        return {}
+def slot_rank(server):
+    cc = (server or "").split("-")[0].lower()
+    if cc in ("nl", "us"):
+        return None
+    return {"uk": 1, "sg": 2}.get(cc, 3)
+def gateway_mac():
+    try:
+        gw = None
+        r = sh(["route", "-n", "get", "default"], timeout=10).stdout
+        m = re.search(r"gateway:\s*([\d.]+)", r)
+        if m:
+            gw = m.group(1)
+        if not gw:
+            return None
+        a = sh(["arp", "-n", gw], timeout=10).stdout
+        m = re.search(r"at\s+([0-9a-f:]{17})", a)
+        return m.group(1).lower() if m else None
+    except Exception:
+        return None
+def wifi_ssid():
+    try:
+        r = sh(["networksetup", "-getairportnetwork", "en0"], timeout=10).stdout
+        m = re.search(r"Current Wi-Fi Network:\s*(.+)", r)
+        return m.group(1).strip() if m else None
+    except Exception:
+        return None
+def at_home(cfg):
+    if wifi_ssid() in (cfg.get("home_ssids") or []):
+        return True
+    mac = gateway_mac()
+    if mac and mac in [g.lower() for g in cfg.get("home_gateways") or []]:
+        return True
+    if not [s for s in slots() if s["status"] == "Connected"]:
+        if egress_ip() in (cfg.get("home_ips") or []):
+            return True
+    return False
 def eligible_slots(wl, state, skip):
     out = []
     for s in slots():
@@ -134,8 +191,13 @@ def eligible_slots(wl, state, skip):
         fail_ts = state["slot_fail"].get(s["name"], 0)
         if time.time() - fail_ts < FAIL_SKIP_S:
             continue
-        out.append(s)
-    return out
+        srv, _ = slot_server(s["name"])
+        rank = slot_rank(srv)
+        if rank is None:
+            continue
+        out.append((rank, s["name"], s))
+    out.sort(key=lambda t: (t[0], t[1]))
+    return [t[2] for t in out]
 def wait_state(names, want, old_ip, timeout=75):
     end = time.time() + timeout
     while time.time() < end:
@@ -158,6 +220,10 @@ def do_rotate(target=None):
     cur_name = cur[0]["name"] if cur else None
     old_ip = egress_ip()
     log(f"rotate from={cur_name} egress={old_ip}")
+    if not target and at_home(net_cfg()) and old_ip not in (net_cfg().get("home_ips") or []):
+        log("home network — naked home IP is preferred, trying it first")
+        if try_naked(wl, state, old_ip):
+            return True
     cands = eligible_slots(wl, state, cur_name)
     if target:
         cands = [s for s in slots() if s["name"] == target]
@@ -207,8 +273,11 @@ def do_rotate(target=None):
                 except Exception as e:
                     log(f"could not clear {path}: {e}")
         return True
-    log("all candidate slots failed — falling back to naked egress");
-    return try_naked(wl, state, old_ip)
+    log("all candidate slots failed — trying naked egress, then ensuring the link is not dark");
+    if try_naked(wl, state, old_ip):
+        return True
+    ensure_tunnel(wl, state)
+    return False
 def cmd_check():
     wl = whitelist()
     ip = egress_ip()

@@ -19309,7 +19309,9 @@ async def process_position(
                 logger.debug(f"[W2_RFMP] {position_key} err: {_w2_e}")
             try:  # USER 2026-10-23 pv3 C3 REENTRY_MASK_ARM_<FAM>_ENABLED (all default False = inert)
                 import vec_decisions.reentry_mask_arm as _rmarm_t
-                _rm_get = lambda _k, _d=None: _cfg(_k, _d, account_key, symbol, position_side)
+                _rm_get = lambda _k, _d=None: _cfg(
+                    _k, _d, account_key, symbol, position_side
+                )
                 _rm_ok_t, _rm_why_t = _rmarm_t.live_allows(
                     _rm_get,
                     _w2_long,
