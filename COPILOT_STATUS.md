@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-23 21:20:11 UTC
+# Copilot Status — 2026-10-23 21:25:16 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] ang — 2026-10-23T21:17:17
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-23T21:17:17
-- **STALE_INDICATORS** [tradier]  — 2026-10-23T21:18:08
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-23T21:18:08
-- **RATIO_IMBALANCE** [crypto] ang — 2026-10-23T21:18:19
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-23T21:18:19
-- **RATIO_IMBALANCE** [crypto] ang — 2026-10-23T21:19:20
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-23T21:19:20
-- **STALE_INDICATORS** [tradier]  — 2026-10-23T21:20:11
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-23T21:20:11
+- **STALE_INDICATORS** [tradier]  — 2026-10-23T21:22:13
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-23T21:22:13
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-23T21:22:23
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-23T21:22:23
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-23T21:23:24
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-23T21:23:24
+- **STALE_INDICATORS** [tradier]  — 2026-10-23T21:24:15
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-23T21:24:15
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-23T21:24:25
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-23T21:24:25
 
 ## Missed Trades (trader comparison)
 
@@ -30,7 +30,7 @@ _None_
 **Held:** 6 | **Watching for reentry:** 6 | **Reentered:** 0
 
 - HELD: **ARM** SHORT (tradier) peak +8.3%, now +-0.5%
-- HELD: **ZECUSDC** SHORT (crypto) peak +5.7%, now +-0.1%
+- HELD: **ZECUSDC** SHORT (crypto) peak +5.7%, now +0.2%
 - HELD: **CDE** SHORT (tradier) peak +5.0%, now +2.1%
 - HELD: **SOLUSDC** SHORT (crypto) peak +3.6%, now +0.8%
 - HELD: **HYPEUSDT** SHORT (crypto) peak +3.6%, now +1.1%
@@ -47,9 +47,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 47
-- [MEDIUM] tradier_positions.py running but log stale (79min)
+**Issues (last 1h):** 50
+- [MEDIUM] tradier_positions.py running but log stale (84min)
 - [HIGH] ez_share_ind.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] tradier_positions.py running but log stale (80min)
+- [MEDIUM] tradier_positions.py running but log stale (85min)
