@@ -1,1 +1,30 @@
-{}
+{
+  "ang:FARTCOINUSDT_SHORT": {
+    "orderId": "4000001988532265",
+    "stopPrice": 0.1506,
+    "entry_sig": "2026-10-23 01:11:03.806000+00:00",
+    "symbol": "FARTCOINUSDT",
+    "side": "SHORT"
+  },
+  "ang:ENSUSDT_SHORT": {
+    "orderId": "4000001988532255",
+    "stopPrice": 5.694,
+    "entry_sig": "2026-10-23 01:11:05.616000+00:00",
+    "symbol": "ENSUSDT",
+    "side": "SHORT"
+  },
+  "ang:BATUSDT_LONG": {
+    "orderId": "4000001988555724",
+    "stopPrice": 0.1684,
+    "entry_sig": "2026-10-23 00:05:00.514000+00:00",
+    "symbol": "BATUSDT",
+    "side": "LONG"
+  },
+  "ang:PENGUUSDC_LONG": {
+    "orderId": "4000001988555723",
+    "stopPrice": 0.007386,
+    "entry_sig": "2026-10-23 01:11:56.889831+00:00",
+    "symbol": "PENGUUSDC",
+    "side": "LONG"
+  }
+}

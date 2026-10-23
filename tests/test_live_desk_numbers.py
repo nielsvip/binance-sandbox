@@ -177,6 +177,24 @@ def test_broker_fills_counted_once_and_unattributed_hidden():
     assert srv._is_broker_reconstruction(None) is False
 
 
+def test_basisless_echo_twins_hidden():
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    iso = lambda dt: dt.isoformat()
+    from datetime import timedelta
+    a1 = _ev(iso(now - timedelta(minutes=10)), "G", "LONG", "REDUCE", 10.0, 200.0)
+    a1["reason"] = "HTF_AGAINST_FORCE_CLOSE_wt1h-96"
+    a2 = _ev(iso(now - timedelta(minutes=10) + timedelta(seconds=2)), "G", "LONG", "REDUCE", 10.0, 200.0)
+    a2["reason"] = "HEDGE_FAILED_FALLBACK_CLOSE_mateX_fail"
+    b1 = _ev(iso(now - timedelta(hours=5)), "H", "LONG", "REDUCE", 7.0, 50.0)
+    b1["reason"] = "SOME_EXIT"
+    out, s = srv.realized_walk([a1, a2, b1])
+    assert s["unknown"] == 2
+    assert s["unknown_phantom"] == 2
+    assert s["sync_hidden"] == 1
+    assert s["pnl_total"] == 0.0
+    assert [e for e in out if e.get("reason", "").startswith("HEDGE_FAILED")][0].get("sync_hidden") is True
+
+
 def test_intent_validation():
     ok, err = srv.validate_intent({"account": "fin", "symbol": "dogeusdt", "side": "long", "qty": 5})
     assert err is None and ok == {"acct": "fin", "symbol": "DOGEUSDT", "side": "LONG", "qty": 5.0}
