@@ -198,3 +198,5 @@
 {"ts":1792734979,"account":"inf","kind":"engine_restart_suppressed","msg":"ez_manage SILENT (205s > 120s) but the 24h restart budget is spent (last restart 17883s ago) and the account is PROVABLY FLAT — NOT restarting; a genuinely wedged engine now needs a human/code fix"}
 {"ts":1792735037,"account":"fin","kind":"engine_restart_suppressed","msg":"ez_manage SILENT (214s > 120s) but host overloaded (load 188.85 on 12 cores) — kill DEFERRED to break the kill→bootstrap→load loop"}
 {"ts":1792735251,"account":"ang","kind":"engine_restart_suppressed","msg":"ez_manage SILENT (222s > 120s) but host overloaded (load 197.19 on 12 cores) — kill DEFERRED to break the kill→bootstrap→load loop"}
+{"ts":1792735514,"account":"flz","kind":"engine_restart_suppressed","msg":"ez_manage SILENT (938s > 120s) but host overloaded (load 192.68 on 12 cores) — kill DEFERRED to break the kill→bootstrap→load loop"}
+{"ts":1792735582,"account":"inf","kind":"engine_restart_suppressed","msg":"ez_manage SILENT (307s > 120s) but the 24h restart budget is spent (last restart 18484s ago) and the account is PROVABLY FLAT — NOT restarting; a genuinely wedged engine now needs a human/code fix"}

@@ -1,65 +1,68 @@
 {
- "generated_at": "2026-10-23 05:55 UTC",
- "total_capital_usd": 112.97,
+ "generated_at": "2026-10-23 06:07 UTC",
+ "total_capital_usd": 256.02,
  "tier_capital": {
-  "A": 0.0,
-  "B": 103.03,
-  "C": 9.94
+  "A": 46.67,
+  "B": 164.38,
+  "C": 44.97
  },
  "tier_count": {
-  "A": 0,
-  "B": 3,
+  "A": 1,
+  "B": 2,
   "C": 1
  },
- "winners": [],
+ "winners": [
+  "fin:1000PEPEUSDC_LONG"
+ ],
  "losers": [
-  "ang:NEARUSDC_LONG"
+  "fin:COMPUSDT_LONG",
+  "fin:DASHUSDT_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "ang:BATUSDT_LONG",
-   "symbol": "BATUSDT",
-   "account": "ang",
-   "value_usd": 44.84,
-   "gain_pct": -0.435,
+   "pk": "fin:COMPUSDT_LONG",
+   "symbol": "COMPUSDT",
+   "account": "fin",
+   "value_usd": 118.97,
+   "gain_pct": -0.893,
    "tier": "B",
-   "perf_mult": 6.76,
-   "amt": 261.0,
-   "mark": 0.1718
+   "perf_mult": 4.79,
+   "amt": 4.874,
+   "mark": 24.41
   },
   {
-   "pk": "ang:AAVEUSDC_LONG",
-   "symbol": "AAVEUSDC",
-   "account": "ang",
-   "value_usd": 29.83,
-   "gain_pct": 0.511,
-   "tier": "B",
-   "perf_mult": 0.65,
-   "amt": 0.2,
-   "mark": 149.12759498
+   "pk": "fin:1000PEPEUSDC_LONG",
+   "symbol": "1000PEPEUSDC",
+   "account": "fin",
+   "value_usd": 46.67,
+   "gain_pct": 2.158,
+   "tier": "A",
+   "perf_mult": 5.87,
+   "amt": 10184.0,
+   "mark": 0.0045826
   },
   {
-   "pk": "ang:PENGUUSDC_LONG",
-   "symbol": "PENGUUSDC",
-   "account": "ang",
-   "value_usd": 28.36,
-   "gain_pct": 1.337,
+   "pk": "fin:KASUSDT_LONG",
+   "symbol": "KASUSDT",
+   "account": "fin",
+   "value_usd": 45.41,
+   "gain_pct": 0.636,
    "tier": "B",
-   "perf_mult": 1.73,
-   "amt": 3586.0,
-   "mark": 0.00790964
+   "perf_mult": 1.0,
+   "amt": 1207.0,
+   "mark": 0.03762083
   },
   {
-   "pk": "ang:NEARUSDC_LONG",
-   "symbol": "NEARUSDC",
-   "account": "ang",
-   "value_usd": 9.94,
-   "gain_pct": 0.307,
+   "pk": "fin:DASHUSDT_LONG",
+   "symbol": "DASHUSDT",
+   "account": "fin",
+   "value_usd": 44.97,
+   "gain_pct": -0.209,
    "tier": "C",
-   "perf_mult": 0.18,
-   "amt": 2.0,
-   "mark": 4.9681877
+   "perf_mult": 0.41,
+   "amt": 0.821,
+   "mark": 54.77547835
   }
  ]
 }
