@@ -1,37 +1,51 @@
 {
-  "men:ZROUSDT_LONG": {
-    "orderId": "2000001534055824",
-    "stopPrice": 1.7544,
-    "entry_sig": "2026-10-23 06:06:02.252000+00:00",
-    "symbol": "ZROUSDT",
+  "ang:1000PEPEUSDC_LONG": {
+    "orderId": "4000001989136391",
+    "stopPrice": 0.0043798,
+    "entry_sig": "2026-10-23 06:42:58.550000+00:00",
+    "symbol": "1000PEPEUSDC",
     "side": "LONG"
   },
-  "men:GRASSUSDT_LONG": {
-    "orderId": "2000001534302227",
-    "stopPrice": 0.6211,
-    "entry_sig": "2026-10-23 05:33:43.470000+00:00",
-    "symbol": "GRASSUSDT",
-    "side": "LONG"
+  "ang:STRKUSDT_SHORT": {
+    "orderId": "4000001989371528",
+    "stopPrice": 0.05352,
+    "entry_sig": "2026-03-12 05:29:19.663496+00:00",
+    "symbol": "STRKUSDT",
+    "side": "SHORT"
   },
-  "men:BEAMXUSDT_LONG": {
-    "orderId": "2000001534308560",
-    "stopPrice": 0.003111,
-    "entry_sig": "2026-10-23 05:53:09.205000+00:00",
-    "symbol": "BEAMXUSDT",
-    "side": "LONG"
-  },
-  "men:ARUSDT_LONG": {
-    "orderId": "2000001534308561",
+  "ang:ARUSDT_LONG": {
+    "orderId": "4000001989426783",
     "stopPrice": 3.524,
-    "entry_sig": "2026-10-23 05:33:36.144000+00:00",
+    "entry_sig": "2026-10-23 06:37:13.084000+00:00",
     "symbol": "ARUSDT",
     "side": "LONG"
   },
-  "men:UNIUSDC_LONG": {
-    "orderId": "2000001534308562",
-    "stopPrice": 6.932,
-    "entry_sig": "2026-10-23 06:07:49.091000+00:00",
-    "symbol": "UNIUSDC",
+  "ang:MASKUSDT_SHORT": {
+    "orderId": "4000001989426803",
+    "stopPrice": 0.434,
+    "entry_sig": "2026-10-23 08:51:31.205000+00:00",
+    "symbol": "MASKUSDT",
+    "side": "SHORT"
+  },
+  "ang:PARTIUSDT_SHORT": {
+    "orderId": "4000001989432572",
+    "stopPrice": 0.03343,
+    "entry_sig": "2026-10-23 06:56:30.789000+00:00",
+    "symbol": "PARTIUSDT",
+    "side": "SHORT"
+  },
+  "ang:BATUSDT_LONG": {
+    "orderId": "4000001989432573",
+    "stopPrice": 0.16894,
+    "entry_sig": "2026-10-23 00:05:00.514000+00:00",
+    "symbol": "BATUSDT",
+    "side": "LONG"
+  },
+  "ang:PENGUUSDC_LONG": {
+    "orderId": "4000001989433460",
+    "stopPrice": 0.007386,
+    "entry_sig": "2026-10-23 01:11:56.889831+00:00",
+    "symbol": "PENGUUSDC",
     "side": "LONG"
   }
 }
