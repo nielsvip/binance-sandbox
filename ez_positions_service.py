@@ -2584,6 +2584,15 @@ class WebSocketManager:
         while self._running:
             try :
                 if not self.client:
+                    # USER 2026-10-23 ban root-cause: this loop fired REST client-init (futures_time)
+                    # every ~2s THROUGH an active -1003 ban on all 5 account loops — pure self-harm
+                    # (each hit re-records the ban; listenKey POSTs during -1003 extend the window).
+                    # Sleep out the ban instead; the ban tracker is fed only by genuine Binance -1003s.
+                    _ban_rem_ci = _ban_remaining_seconds()
+                    if _ban_rem_ci > 0:
+                        _log_ban_skip_throttled(logger, account_key, f"deferring client init ({_ban_rem_ci:.0f}s)")
+                        await asyncio.sleep(min(_ban_rem_ci + 2, 60.0))
+                        continue
                     try :
                         self.client = await asyncio.to_thread(self._init_binance_client_blocking)
                     except Exception as client_err:

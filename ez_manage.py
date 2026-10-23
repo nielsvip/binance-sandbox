@@ -23213,13 +23213,17 @@ class MultiAccountTradeManager:
                             if position
                             else 0.0
                         )
+                        try:
+                            _sa_side = parse_position_key(position_key)[2] if position_key else ""
+                        except Exception:
+                            _sa_side = ""
                         auto_action = (
                             "CLOSE"
                             if not is_entry
                             else (
                                 "OPEN"
                                 if base_amt
-                                <= config.START_POSITION_SIZE / current_price
+                                <= _psym_sps(sym, _sa_side or "LONG") / current_price
                                 else "AUGMENT"
                             )
                         )
@@ -23915,7 +23919,7 @@ class MultiAccountTradeManager:
                                         )  # Default to 0 if min_qty not available
                                         if (
                                             pos_amt
-                                            > config.START_POSITION_SIZE / current_price
+                                            > _psym_sps(sym, pos_side) / current_price
                                             and pos_gain < 0.5 * config.MIN_GAIN
                                         ):
                                             logger.warning(
@@ -24011,7 +24015,7 @@ class MultiAccountTradeManager:
                                     )  # Default to 0 if min_qty not available
                                     if (
                                         pos_amt
-                                        > config.START_POSITION_SIZE / current_price
+                                        > _psym_sps(sym, pos_side) / current_price
                                         and pos_gain < 0.5 * config.MIN_GAIN
                                     ):
                                         logger.warning(
@@ -26150,7 +26154,7 @@ class MultiAccountTradeManager:
         final_action, qty = _vdm.order_qty(action, qty_frac, amt, normal_qty)
         reason = _vdm.make_reason(final_action, vec_reason)
         if final_action in ("OPEN", "AUGMENT"):
-            qty = _vdm.cap_open_qty(qty, price, float(_psym_sps(symbol, side)))
+            qty = _vdm.cap_open_qty(qty, price, float(_psym_sps(symbol, side if side in ("LONG", "SHORT") else "LONG")))
         if final_action in ("OPEN", "AUGMENT") and (Path(getattr(self.config, "BASE_PATH", ".")) / "data" / f"HALT_TRADING_{account_key}").exists():
             logger.critical(f"🛑 [VEC_DRIVEN_MARGIN] {position_key}: {src} {final_action} refused — data/HALT_TRADING_{account_key} present (balance_floor_watchdog: free margin at/below the account floor)")
             return "REFUSED_MARGIN_FLOOR"
@@ -50004,8 +50008,12 @@ async def _process_single_override_check(
             if hasattr(position, "prev_gain")
             else 0.0
         )
-        _oc_sym, _oc_side = parse_position_key(position_key)[1], parse_position_key(position_key)[2]
-        position_max_quantity = 2 * _psym_sps(_oc_sym, _oc_side) / current_price
+        try:
+            _oc_sym, _oc_side = parse_position_key(position_key)[1], parse_position_key(position_key)[2]
+            _oc_sps = _psym_sps(_oc_sym, _oc_side)
+        except Exception:
+            _oc_sym, _oc_side, _oc_sps = "", "", float(getattr(config, "START_POSITION_SIZE", 45.0))
+        position_max_quantity = 2 * _oc_sps / current_price
         dc_high4_3m = i.get("dc_high4_3m", 0.0)
         dc_low4_3m = i.get("dc_low4_3m", 0.0)
         dc_high_3m = i.get("dc_high_3m", 0.0)
@@ -50049,9 +50057,9 @@ async def _process_single_override_check(
             and price_going_down
         ):
             min_required_usd = (
-                4 * _psym_sps(_oc_sym, _oc_side)
+                4 * _oc_sps
                 if (k_3m < 50 or k_15m < 50)
-                else _psym_sps(_oc_sym, _oc_side)
+                else _oc_sps
             )
             min_required_qty = min_required_usd / current_price
             if position_value < min_required_usd:
@@ -50475,7 +50483,7 @@ async def _process_single_override_check(
         required_multiplier = max(sma_1_multiplier, sma_15_multiplier)
         if required_multiplier <= 0:
             return
-        required_position_size = config.START_POSITION_SIZE * required_multiplier
+        required_position_size = _oc_sps * required_multiplier
         if position_value < required_position_size:
             now_utc = datetime.now(timezone.utc)
             recently_augmented = (
@@ -50791,8 +50799,9 @@ async def override_check_uptrend_positions(
                     required_multiplier = max(sma_1_multiplier, sma_15_multiplier)
                     if required_multiplier <= 0:
                         continue
+                    _up_sym, _up_side = parse_position_key(position_key)[1], parse_position_key(position_key)[2]
                     required_position_size = (
-                        config.START_POSITION_SIZE * required_multiplier
+                        _psym_sps(_up_sym, _up_side) * required_multiplier
                     )
                     position = await trade_manager.get_position(position_key)
                     position_value = 0.0
@@ -51082,13 +51091,15 @@ async def _process_single_monitor_direct_high_gain(
                 else False
             )
             if price_above_reduction:
+                _mn_sym, _mn_side = parse_position_key(position_key)[1], parse_position_key(position_key)[2]
+                _mn_sps = _psym_sps(_mn_sym, _mn_side)
                 min_required_qty = (
                     max(
-                        2 * config.START_POSITION_SIZE / current_price,
+                        2 * _mn_sps / current_price,
                         last_reduction_amount,
                     )
                     if last_reduction_amount > 0
-                    else 2 * config.START_POSITION_SIZE / current_price
+                    else 2 * _mn_sps / current_price
                 )
                 if abs(positionAmt) < min_required_qty:
                     needed_qty = min_required_qty - abs(positionAmt)
@@ -51170,9 +51181,14 @@ async def _process_single_monitor_direct_high_gain(
         about_to_be_in_loss = position.gain < 0.1
         should_auto_reduce = False
         is_in_chop_zone = -2.0 <= position.gain <= 0.2
+        try:
+            _huge_sym, _huge_side = parse_position_key(position_key)[1], parse_position_key(position_key)[2]
+            _huge_sps = _psym_sps(_huge_sym, _huge_side)
+        except Exception:
+            _huge_sps = float(getattr(config, "START_POSITION_SIZE", 45.0))
         is_huge_position = (
             abs(float(position.positionAmt)) * current_price
-            > 5.0 * config.START_POSITION_SIZE
+            > 5.0 * _huge_sps
         )
         if has_crossunder_signal and getattr(
             config, "EXIT_AUTO_REDUCE_CROSSUNDER_ENABLED", True
@@ -58843,7 +58859,7 @@ async def process_position(
             _lrt
             and (now - _lrt).total_seconds() < 600
             and abs(float(position.positionAmt)) * current_price
-            < 1.5 * config.START_POSITION_SIZE
+            < 1.5 * _psym_sps(symbol, position_side)
         ):
             _recently_reduced = True
             logger.info(
@@ -59324,7 +59340,7 @@ async def process_position(
                 not position
                 or not hasattr(position, "positionAmt")
                 or abs(float(position.positionAmt))
-                <= 0.5 * config.START_POSITION_SIZE / current_price
+                <= 0.5 * _psym_sps(symbol, position_side) / current_price
             ):
                 return
             opened_at = getattr(position, "opened_at", None)
@@ -59334,7 +59350,7 @@ async def process_position(
                 getattr(config, "LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED", False)
                 and current_gain < -5.0
                 and position.positionAmt
-                > 5 * config.START_POSITION_SIZE / current_price
+                > 5 * _psym_sps(symbol, position_side) / current_price
             ):
                 should_stop_kill = True
                 logger.info(
@@ -59483,7 +59499,7 @@ async def process_position(
                 )
                 if (
                     position.positionAmt
-                    > 3 * config.START_POSITION_SIZE / current_price
+                    > 3 * _psym_sps(symbol, position_side) / current_price
                     and position.gain > 0.4
                     and config.MANAGE_REDUCE
                 ):
@@ -59491,7 +59507,7 @@ async def process_position(
                         0.0,
                         min(
                             position.positionAmt
-                            - 2 * config.START_POSITION_SIZE / current_price,
+                            - 2 * _psym_sps(symbol, position_side) / current_price,
                             position.positionAmt - pos_min_qty,
                             position.positionAmt * 0.99,
                         ),
@@ -59514,7 +59530,7 @@ async def process_position(
                         )
                 elif (
                     position.positionAmt
-                    > 2 * config.START_POSITION_SIZE / current_price
+                    > 2 * _psym_sps(symbol, position_side) / current_price
                     and position.gain < 0.4
                     and position_age_minutes > 18
                     and config.MANAGE_REDUCE
@@ -59721,7 +59737,7 @@ async def process_position(
                         )
                         auto_action = (
                             "OPEN"
-                            if base_amt <= config.START_POSITION_SIZE / current_price
+                            if base_amt <= _psym_sps(symbol, position_side) / current_price
                             else "AUGMENT"
                         )
                         conviction_hint = float(signal_data.get("conviction") or 65.0)
@@ -59772,7 +59788,7 @@ async def process_position(
             eval_funcs.append(evaluate_reversal_entry)
         should_consider_reentry = (
             position.positionAmt
-            < max(config.START_POSITION_SIZE / current_price, 1.5 * pos_min_qty)
+            < max(_psym_sps(symbol, position_side) / current_price, 1.5 * pos_min_qty)
         ) and (
             (is_long and k_3m > k_3m_prev)
             or (
@@ -59786,7 +59802,7 @@ async def process_position(
         )
         if not should_consider_reentry and not is_long:
             logger.debug(
-                f"[SHORT_REENTRY_CHECK] {position_key}: should_consider_reentry=False - positionAmt={position.positionAmt:.6f} max={max(config.START_POSITION_SIZE / current_price, 1.5 * pos_min_qty):.6f} k_3m={k_3m:} k_3m_prev={k_3m_prev:} condition={position.positionAmt < max(config.START_POSITION_SIZE / current_price, 1.5 * pos_min_qty)} and k_3m < k_3m_prev"
+                f"[SHORT_REENTRY_CHECK] {position_key}: should_consider_reentry=False - positionAmt={position.positionAmt:.6f} max={max(_psym_sps(symbol, position_side) / current_price, 1.5 * pos_min_qty):.6f} k_3m={k_3m:} k_3m_prev={k_3m_prev:} condition={position.positionAmt < max(_psym_sps(symbol, position_side) / current_price, 1.5 * pos_min_qty)} and k_3m < k_3m_prev"
             )
         elif should_consider_reentry and not is_long:
             logger.info(
@@ -59872,7 +59888,7 @@ async def process_position(
                 ):
                     augment_qty = max(
                         abs(float(position.positionAmt)),
-                        2 * config.START_POSITION_SIZE / current_price,
+                        2 * _psym_sps(symbol, position_side) / current_price,
                     )
                     max_positionAmt = (
                         config.MAX_POSITION_SIZE / current_price
@@ -60590,10 +60606,15 @@ async def queue_trade_action(
             final_order_qty = override_qty
         elif position and current_price > 0:
             try:
+                try:
+                    _qa_side = parse_position_key(position_key)[2] if position_key else ""
+                except Exception:
+                    _qa_side = ""
+                _qa_sps = _psym_sps(symbol, _qa_side or "LONG")
                 preliminary_qty = 0.0
                 if action == "OPEN":
                     preliminary_qty = max(
-                        trade_manager.config.START_POSITION_SIZE / current_price,
+                        _qa_sps / current_price,
                         1.2 * trade_manager.min_qty.get(symbol, 0.001),
                     )
                     if "HEDGE" in reason.upper():
@@ -60601,11 +60622,11 @@ async def queue_trade_action(
                         qty = max(qty, exchange_min)
                     else:
                         qty = max(
-                            qty, config.START_POSITION_SIZE / current_price, pos_min_qty
+                            qty, _qa_sps / current_price, pos_min_qty
                         )
                 elif action == "AUGMENT":
                     preliminary_qty = max(
-                        2 * trade_manager.config.START_POSITION_SIZE / current_price,
+                        2 * _qa_sps / current_price,
                         0.6 * position.positionAmt,
                     )
                 elif action in [
@@ -60617,7 +60638,7 @@ async def queue_trade_action(
                     "HEDGE_OPEN",
                 ]:
                     preliminary_qty = max(
-                        2 * trade_manager.config.START_POSITION_SIZE / current_price,
+                        2 * _qa_sps / current_price,
                         0.6 * position.positionAmt,
                     )
                 if preliminary_qty > 0:
@@ -60648,7 +60669,11 @@ async def queue_trade_action(
                 logger.warning(
                     f"[{position_key}] Preliminary qty calc failed ({e}), using default for handler."
                 )
-                final_order_qty = config.START_POSITION_SIZE / current_price
+                try:
+                    _qf_side = parse_position_key(position_key)[2] if position_key else ""
+                except Exception:
+                    _qf_side = ""
+                final_order_qty = _psym_sps(symbol, _qf_side or "LONG") / current_price
         elif "REDUCE" in action or action in [
             "REDUCE",
             "QUICK_CLOSE",
