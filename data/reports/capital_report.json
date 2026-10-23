@@ -1,32 +1,82 @@
 {
- "generated_at": "2026-10-23 18:54 UTC",
- "total_capital_usd": 11.27,
+ "generated_at": "2026-10-23 18:58 UTC",
+ "total_capital_usd": 130.38,
  "tier_capital": {
-  "A": 0.0,
-  "B": 11.27,
-  "C": 0.0
+  "A": 47.44,
+  "B": 8.76,
+  "C": 74.18
  },
  "tier_count": {
-  "A": 0,
+  "A": 1,
   "B": 1,
-  "C": 0
+  "C": 3
  },
- "winners": [],
- "losers": [],
+ "winners": [
+  "ang:1000PEPEUSDC_LONG"
+ ],
+ "losers": [
+  "ang:ARUSDT_LONG",
+  "ang:PENGUUSDC_LONG",
+  "ang:MASKUSDT_SHORT"
+ ],
  "mediocre": [
-  "men:STXUSDT_LONG"
+  "ang:DYDXUSDT_SHORT"
  ],
  "positions": [
   {
-   "pk": "men:STXUSDT_LONG",
-   "symbol": "STXUSDT",
-   "account": "men",
-   "value_usd": 11.27,
-   "gain_pct": -0.008,
+   "pk": "ang:1000PEPEUSDC_LONG",
+   "symbol": "1000PEPEUSDC",
+   "account": "ang",
+   "value_usd": 47.44,
+   "gain_pct": 3.116,
+   "tier": "A",
+   "perf_mult": 7.99,
+   "amt": 9994.0,
+   "mark": 0.00474663
+  },
+  {
+   "pk": "ang:PENGUUSDC_LONG",
+   "symbol": "PENGUUSDC",
+   "account": "ang",
+   "value_usd": 28.68,
+   "gain_pct": 2.47,
+   "tier": "C",
+   "perf_mult": 0.68,
+   "amt": 3586.0,
+   "mark": 0.00799808
+  },
+  {
+   "pk": "ang:MASKUSDT_SHORT",
+   "symbol": "MASKUSDT",
+   "account": "ang",
+   "value_usd": 26.62,
+   "gain_pct": 4.75,
+   "tier": "C",
+   "perf_mult": 0.32,
+   "amt": 65.0,
+   "mark": 0.40957627
+  },
+  {
+   "pk": "ang:ARUSDT_LONG",
+   "symbol": "ARUSDT",
+   "account": "ang",
+   "value_usd": 18.88,
+   "gain_pct": -1.918,
+   "tier": "C",
+   "perf_mult": 0.6,
+   "amt": 5.2,
+   "mark": 3.631
+  },
+  {
+   "pk": "ang:DYDXUSDT_SHORT",
+   "symbol": "DYDXUSDT",
+   "account": "ang",
+   "value_usd": 8.76,
+   "gain_pct": 0.0,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 35.0,
-   "mark": 0.32207516
+   "amt": 102.7,
+   "mark": 0.08525143297099039
   }
  ]
 }
