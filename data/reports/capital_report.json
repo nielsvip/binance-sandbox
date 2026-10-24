@@ -1,88 +1,45 @@
 {
- "generated_at": "2026-10-24 09:21 UTC",
- "total_capital_usd": 98.26,
+ "generated_at": "2026-10-24 09:22 UTC",
+ "total_capital_usd": 69.48,
  "tier_capital": {
   "A": 0.0,
-  "B": 47.49,
-  "C": 50.77
+  "B": 24.73,
+  "C": 44.76
  },
  "tier_count": {
   "A": 0,
-  "B": 4,
-  "C": 2
+  "B": 1,
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "flz:BTCDOMUSDT_LONG",
-  "flz:HYPEUSDT_SHORT"
+  "inf:BTCDOMUSDT_LONG"
  ],
- "mediocre": [],
+ "mediocre": [
+  "inf:TRXUSDT_SHORT"
+ ],
  "positions": [
   {
-   "pk": "flz:BTCDOMUSDT_LONG",
+   "pk": "inf:BTCDOMUSDT_LONG",
    "symbol": "BTCDOMUSDT",
-   "account": "flz",
-   "value_usd": 44.75,
-   "gain_pct": 0.463,
+   "account": "inf",
+   "value_usd": 44.76,
+   "gain_pct": 0.595,
    "tier": "C",
    "perf_mult": 0.4,
    "amt": 0.008,
-   "mark": 5593.8
+   "mark": 5594.9
   },
   {
-   "pk": "flz:XRPUSDC_SHORT",
-   "symbol": "XRPUSDC",
-   "account": "flz",
-   "value_usd": 24.78,
-   "gain_pct": 0.769,
+   "pk": "inf:TRXUSDT_SHORT",
+   "symbol": "TRXUSDT",
+   "account": "inf",
+   "value_usd": 24.73,
+   "gain_pct": -0.058,
    "tier": "B",
-   "perf_mult": 0.48,
-   "amt": 19.4,
-   "mark": 1.2771
-  },
-  {
-   "pk": "flz:BNBUSDC_SHORT",
-   "symbol": "BNBUSDC",
-   "account": "flz",
-   "value_usd": 14.66,
-   "gain_pct": 0.902,
-   "tier": "B",
-   "perf_mult": 0.77,
-   "amt": 0.02,
-   "mark": 732.94
-  },
-  {
-   "pk": "flz:WLDUSDC_SHORT",
-   "symbol": "WLDUSDC",
-   "account": "flz",
-   "value_usd": 6.9,
-   "gain_pct": 1.026,
-   "tier": "B",
-   "perf_mult": 0.77,
-   "amt": 14.8,
-   "mark": 0.46636554
-  },
-  {
-   "pk": "flz:HYPEUSDT_SHORT",
-   "symbol": "HYPEUSDT",
-   "account": "flz",
-   "value_usd": 6.02,
-   "gain_pct": 1.178,
-   "tier": "C",
-   "perf_mult": 0.28,
-   "amt": 0.08,
-   "mark": 75.29798611
-  },
-  {
-   "pk": "flz:ZECUSDC_SHORT",
-   "symbol": "ZECUSDC",
-   "account": "flz",
-   "value_usd": 1.15,
-   "gain_pct": 6.411,
-   "tier": "B",
-   "perf_mult": 1.26,
-   "amt": 0.001,
-   "mark": 1151.98
+   "perf_mult": 1.0,
+   "amt": 75.0,
+   "mark": 0.32967647
   }
  ]
 }
