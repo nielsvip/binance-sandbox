@@ -1882,7 +1882,17 @@ class Config:
     VEC_CONVERGE_FRESH_FILL_GRACE_S: float = (
         900.0  # USER 2026-10-21: converge-to-flat never flattens a fill the twin never saw (measured: flz:ZECUSDC_LONG native AUG filled 22:52:04, flattened as paper-flat-live-holds 44 s later = pure churn). A position opened/augmented within this many seconds is skipped by legacy-converge; stale-flatten (2 bars) and exit-owed are unaffected. 0 = no grace. ROLLBACK: 0.
     )
-    VEC_BACKSTOP_SYNC_ENABLED: bool = True  # USER 2026-10-21: absolute backstopper — with PARITY_VEC_EXACT_MODE off, _vec_exact_process_position still runs in backstop-only mode (legacy-converge-to-flat + stale-flatten + exit-owed; NO twin act dispatch, NO converge-open). No paper state -> no-op. Kill: False.
+    VEC_BACKSTOP_SYNC_ENABLED: bool = True
+    VEC_OVERRIDE_ENABLED: bool = True  # USER 2026-10-24: VEC_LAST_OVERRIDE master — False never bypasses native gates for vec orders (native verdict stands). Default True = current behavior, inert.
+    VEC_OVERRIDE_BYPASS_CIRCUIT_BREAKER: bool = True  # USER 2026-10-24: vec orders bypass CIRCUIT_BREAKER (measured: every men/fin OVERRIDE names it). False lets the breaker veto vec orders. Default True = current behavior, inert.
+    VEC_REFUSE_NON_VECTOR_EXIT_ENABLED: bool = True  # USER 2026-10-24: VECTOR-ONLY EXITS BACKSTOP master — False restores pre-law behavior (native exits never refused as non-vector). Default True = current behavior, inert.
+    VEC_REFUSE_QUICK_REDUCE_ENABLED: bool = True  # USER 2026-10-24: QUICK_REDUCE/QUICK_BB_RECOVERY REDUCEs fall under the non-vector refusal (measured fin:MAGICUSDT_SHORT, ang:KAVAUSDT_LONG). False exempts that family. Default True = current behavior, inert.
+    VEC_DISAGREE_KILL_ENABLED: bool = False  # USER 2026-10-24: VEC_STATE_DISAGREE is log-only today — True refuses the disagreeing order. Default False = current behavior, inert.
+    VEC_DISAGREE_FLAT_OPEN_BLOCK: bool = True  # USER 2026-10-24 zero tolerance: native OPEN/AUGMENT refused while the forward vec target is flat (never CLOSEs/stops/hedges). Kill: False restores log-only.
+    VEC_PENDING_TTL_S: float = 300.0  # USER 2026-10-24: VEC_PENDING_CONFIRM hold window in seconds (live_twins/vec_pending.WINDOW_S). Candidates 300/900/1800. Default 300.0 = current window, inert.
+    VEC_PENDING_DEFER_NATIVE_ENABLED: bool = True  # USER 2026-10-24: hold native fires for vec confirm instead of refusing outright. False restores the immediate native verdict. Default True = current behavior, inert.
+    VEC_HOLD_EXPIRY_FLATTEN_ENABLED: bool = True  # USER 2026-10-24: expired pending holds flatten via the stale path. False keeps them as evidence only. Default True = current behavior, inert.
+    VEC_CONFIRM_REQUIRE_BOARD_ENABLED: bool = True  # USER 2026-10-24: VEC CONFIRM RELEASE consumes held natives on vec dictates (today's rule). False also releases on any vec-ordered reason. Default True = current behavior, inert.  # USER 2026-10-21: absolute backstopper — with PARITY_VEC_EXACT_MODE off, _vec_exact_process_position still runs in backstop-only mode (legacy-converge-to-flat + stale-flatten + exit-owed; NO twin act dispatch, NO converge-open). No paper state -> no-op. Kill: False.
     REENTRY_ON_EXIT_PRICE_BREAK_ENABLED: bool = (
         True  # USER 2026-10-14 re-entry trigger 1/3 (all 3 can be on): after any exit, close crosses back through the exit price (+15m WT confirm). vec_decisions/reentry_triggers.py
     )

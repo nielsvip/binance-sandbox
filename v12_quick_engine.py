@@ -8353,6 +8353,20 @@ class QuickConfig:
     # The loop is portfolio-level (L/S skew across positions) so per-sym simulate_one cannot model it;
     # the key exists here for config parity (§17) and bible coverage. Default True = current behavior.
     RATIO_REBALANCE_ENABLED: bool = True
+    # USER 2026-10-24: QuickConfig mirrors of the 10 VEC-parity governance switches
+    # (config.py). The loop/breaker/hold machinery they gate is live-only
+    # infrastructure with no per-sym simulate_one counterpart, so these read
+    # LIVE_ONLY (RATIO_REBALANCE_ENABLED precedent); defaults equal live.
+    VEC_OVERRIDE_ENABLED: bool = True
+    VEC_OVERRIDE_BYPASS_CIRCUIT_BREAKER: bool = True
+    VEC_REFUSE_NON_VECTOR_EXIT_ENABLED: bool = True
+    VEC_REFUSE_QUICK_REDUCE_ENABLED: bool = True
+    VEC_DISAGREE_KILL_ENABLED: bool = False
+    VEC_DISAGREE_FLAT_OPEN_BLOCK: bool = True
+    VEC_PENDING_TTL_S: float = 300.0
+    VEC_PENDING_DEFER_NATIVE_ENABLED: bool = True
+    VEC_HOLD_EXPIRY_FLATTEN_ENABLED: bool = True
+    VEC_CONFIRM_REQUIRE_BOARD_ENABLED: bool = True
     INTRADAY_RATIO_CHECK_INTERVAL_MIN: int = 15
     INTRADAY_RATIO_COOLDOWN_MIN: int = 30
     INTRADAY_RATIO_DEVIATION_THR: float = 0.10

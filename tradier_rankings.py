@@ -179,6 +179,7 @@ SHOW_RSI_STRIP = True  # tiny RSI strip at the bottom of each TF panel
 SHOW_STOCH_STRIP = True  # tiny StochRSI %K/%D strip below the RSI strip, %K blue when K>D red when K<D
 SHOW_TOP_LEGEND = False  # top legend removed to regain vertical space
 SHOW_STOCK_MISMATCH = True  # USER 2026-10-24: faint reddish/greenish vlines for signal/fill discrepancies
+SHOW_STOCK_SIGNAL_ARROWS = False  # USER 2026-10-24: WT/winners lime-red triangles hidden (signal markers, not trades); code kept, marker_events still collected for mismatch
 STOCK_MISMATCH_TOL_MIN = 30.0
 import live_trade_history as _lth
 ACCOUNT_ARROW_ORDER = _lth.ACCOUNT_ARROW_ORDER
@@ -1161,7 +1162,8 @@ async def plot_dfs_subplots(
                             if marker_style == '^': y_pos = candle_row['low'] - margin_abs_val * 0.5
                             elif marker_style == 'v': y_pos = candle_row['high'] + margin_abs_val * 0.5
                         except IndexError: pass
-                        ax_plot.plot(t_idx, y_pos, marker=marker_style, color=color_style, ms=marker_size, linestyle='None', zorder=7)
+                        if marker_style not in ('^', 'v') or SHOW_STOCK_SIGNAL_ARROWS:
+                            ax_plot.plot(t_idx, y_pos, marker=marker_style, color=color_style, ms=marker_size, linestyle='None', zorder=7)
                         if marker_style in ('^', 'v'):
                             marker_events.append((ts_event, 'buy' if marker_style == '^' else 'sell'))
         if SHOW_STOCK_MISMATCH and (marker_events or acct_trades) and len(df_tf) > 1:

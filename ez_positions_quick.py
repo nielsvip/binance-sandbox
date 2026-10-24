@@ -27692,6 +27692,22 @@ async def check_exit_candidates_for_account(
                                 return "HEDGED_INSTEAD_OF_REDUCING"
 
                     action_name = "CLOSE" if is_full_close else "REDUCE"
+                    # USER 2026-10-24 VEC_ clean-run: hold-or-fire for worker quick exits
+                    # (BB already holds at its producer; protective reasons never hold).
+                    # Fail-open: hold failure executes natively as before. No jsonl here.
+                    _qk_held = None
+                    try:
+                        from live_twins.vec_pending import file_preemptive_hold as _qk_hold_fn
+                        _qk_held = _qk_hold_fn("crypto", position_key, action_name, f"QUICK_{hard_exit_reason}")
+                    except Exception:
+                        _qk_held = None
+                    if _qk_held is not None:
+                        await tracker_manager.clear_processing(position_key)
+                        if _qk_held[2]:
+                            logger.warning(
+                                f"[QUICK_EXIT_VEC_HOLD] {position_key}: QUICK_{hard_exit_reason} — held for vec confirm, not fired"
+                            )
+                        return f"PROACTIVE_{action_name}_VEC_HOLD"
                     result = await trade_manager.execute_now(
                         position_key,
                         account_key,
