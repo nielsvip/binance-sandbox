@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-24T03:16:54Z",
+ "generated_utc": "2026-10-24T03:21:47Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 984.6,
+  "age_s": 226.9,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 2287,
-  "proc_age_s": 18164.0,
-  "log_age_s": 685.5,
+  "proc_age_s": 18456.0,
+  "log_age_s": 49.6,
   "warmup_done": true,
   "timeframes_since_restart": [
    "1h",
@@ -45,21 +45,21 @@
   "mode": "ACTIVE",
   "since_epoch": 1792602182.2042153,
   "activations": 163,
-  "hb_mtime": 1792811630.9024749,
-  "mac_snapshot_age_s": 11.006642818450928,
-  "mac_stale": false,
-  "lease_holder": "mac",
-  "lease_venues": null,
-  "lease_since": "2026-10-24T03:11:40Z",
-  "lease_reason": "yield: Mac never fenced for 180s \u2014 accounts must never be unattended",
-  "now": 1792811632.3591135,
-  "from_cache_age_s": 183.2,
-  "heartbeat_age_s": 1.5,
-  "active_s": 209450.2,
-  "note": "ACTIVE is CORRECT while the Mac snapshot is stale \u2014 fix the Mac, S1 returns to NORMAL on its own"
+  "hb_mtime": 1792811984.3977044,
+  "mac_snapshot_age_s": 22.11112666130066,
+  "mac_stale": true,
+  "lease_holder": "s1",
+  "lease_venues": "crypto",
+  "lease_since": "2026-10-24T03:19:40Z",
+  "lease_reason": "Mac reachable but NOT TRADING: crypto: account_dead 2/5 (fin,inf) no ez_manage process and/or no engine log line for >= 240s while other accounts still trade \u2014 local repair failed, broker_unreachable_account (ang,flz) genuine broker-truth miss \u2014 broker unreachable from this host, not_trading_account: ang idle 147s (102 live keys), inf idle 915s (19 live keys), flz idle 733s (27 live keys), men idle 61s (51 live keys), fin idle 2510s (42 live keys) \u2014 no vec decision executed for >30s while the board lane is live (registry age 1157s) for 45s",
+  "now": 1792811995.317861,
+  "from_cache_age_s": 112.7,
+  "heartbeat_age_s": 10.9,
+  "active_s": 209813.1,
+  "note": "producers are CORRECT: S1 holds the TRADING lease (venues='crypto', since 2026-10-24T03:19:40Z, reason 'Mac reachable but NOT TRADING: crypto: account_dead 2/5 (fin,inf) no ez_manage process and/or no engine log line for >= 240s while other accounts still trade \u2014 local repair failed, broker_unreachable_account (ang,flz) genuine broker-truth miss \u2014 broker unreachable from this host, not_trading_account: ang idle 147s (102 live keys), inf idle 915s (19 live keys), flz idle 733s (27 live keys), men idle 61s (51 live keys), fin idle 2510s (42 live keys) \u2014 no vec decision executed for >30s while the board lane is live (registry age 1157s) for 45s'), so S1 must produce crypto data. Do NOT stop the producers. The question to chase is the LEASE/failback, not this unit."
  },
  "alerts": [
-  "SNAPSHOT STALE: latest_market_data.json is 984s old (> 600s). ez_indicators pid=2287 warmup_done=True tfs_since_restart=['1h', '15m', '3m', '1h', '15m', '3m'] restarts_last_hour=0. Live crypto decisions are reading a stale indicator snapshot."
+  "S1 HOLDS THE LIVE CRYPTO LEASE WHILE THE MAC LOOKS HEALTHY: lease venues='crypto' since 2026-10-24T03:19:40Z (reason 'Mac reachable but NOT TRADING: crypto: account_dead 2/5 (fin,inf) no ez_manage process and/or no engine log line for >= 240s while other accounts still trade \u2014 local repair failed, broker_unreachable_account (ang,flz) genuine broker-truth miss \u2014 broker unreachable from this host, not_trading_account: ang idle 147s (102 live keys), inf idle 915s (19 live keys), flz idle 733s (27 live keys), men idle 61s (51 live keys), fin idle 2510s (42 live keys) \u2014 no vec decision executed for >30s while the board lane is live (registry age 1157s) for 45s'), Mac heartbeat 10s, Mac snapshot 226s. S1 is therefore running the live engines AND the producers instead of backtests. This is a LEASE/failback question \u2014 do NOT stop the producers (that would leave the trading host blind). Operator decision: hand the lease back to the Mac only after confirming the Mac's pushes and heartbeat are stable."
  ],
  "verdict": "ALERT"
 }
