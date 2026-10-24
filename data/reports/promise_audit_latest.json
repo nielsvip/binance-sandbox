@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-24T15:12:13.950742+00:00",
+ "generated_utc": "2026-10-24T16:12:09.801937+00:00",
  "days": 1.0,
  "totals": {
-  "exit_promises": 94,
-  "exit_skipped_inflight": 105,
+  "exit_promises": 96,
+  "exit_skipped_inflight": 109,
   "exit_kept_late": 5,
   "entry_promises": 36,
   "entry_broken_no_delivery": 36,
-  "exit_broken_no_delivery": 87,
-  "exit_kept_in_bar": 2
+  "exit_broken_no_delivery": 88,
+  "exit_kept_in_bar": 3
  },
  "per_key": {
   "men:ACTUSDT_SHORT": {
@@ -81,8 +81,10 @@
    "exit_kept_late": 1
   },
   "inf:TRXUSDT_SHORT": {
-   "exit_promises": 20,
-   "exit_broken_no_delivery": 20
+   "exit_promises": 21,
+   "exit_broken_no_delivery": 20,
+   "exit_skipped_inflight": 4,
+   "exit_kept_in_bar": 1
   },
   "ang:NMRUSDT_SHORT": {
    "entry_promises": 1,
@@ -99,7 +101,9 @@
   },
   "ang:MINAUSDT_SHORT": {
    "entry_promises": 1,
-   "entry_broken_no_delivery": 1
+   "entry_broken_no_delivery": 1,
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1
   },
   "ang:WUSDT_SHORT": {
    "exit_promises": 1,
@@ -1480,6 +1484,16 @@
    "late_min": null,
    "action": "REDUCE",
    "reason": "WT_CROSS_EXIT_1h_bull",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "MINAUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-24 15:30",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "SATOSHIT_EXIT_PARTIAL 0.70",
    "outcome": "NO_DELIVERY"
   }
  ],
