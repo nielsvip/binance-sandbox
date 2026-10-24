@@ -512,44 +512,63 @@ async def _wb_write(symbol, store, cache_dir):
                     existing = []
             except Exception:
                 existing = []
-        existing_ts = set()
+        # 2026-10-24: was O(n*m) with isoparse() in the inner loop (180 stored
+        # closes x 3000+ file bars x ~20us parse = 10s+ per symbol IN THE EVENT
+        # LOOP, freezing all hot ages ~50s every writeback pass). Index once.
+        existing_by_ts = {}
+        carried = []
         for bar in existing:
             if isinstance(bar, dict):
-                ts_raw = bar.get("timestamp", "")
                 try:
-                    existing_ts.add(int(isoparse(ts_raw).timestamp()))
+                    _bts = int(isoparse(bar.get("timestamp", "")).timestamp())
+                except Exception:
+                    carried.append(bar)
+                    continue
+                if _bts not in existing_by_ts:
+                    existing_by_ts[_bts] = bar
+                else:
+                    carried.append(bar)
+            else:
+                carried.append(bar)
+        new_bars = []
+        touched = False
+        for ts_epoch, close_price in closes.items():
+            ts_epoch = int(ts_epoch)
+            eb = existing_by_ts.get(ts_epoch)
+            if eb is None:
+                ts_iso = datetime.fromtimestamp(ts_epoch, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+                nb = {"timestamp": ts_iso, "open": close_price, "high": close_price, "low": close_price, "close": close_price, "volume": 0}
+                new_bars.append(nb)
+                existing_by_ts[ts_epoch] = nb
+                touched = True
+            else:
+                try:
+                    if float(eb.get("close", close_price)) != float(close_price):
+                        eb["close"] = close_price
+                        touched = True
+                    if float(eb.get("high", close_price)) < float(close_price):
+                        eb["high"] = close_price
+                        touched = True
+                    if float(eb.get("low", close_price)) > float(close_price):
+                        eb["low"] = close_price
+                        touched = True
                 except Exception:
                     pass
-        new_bars = []
-        for ts_epoch, close_price in closes.items():
-            if ts_epoch not in existing_ts:
-                ts_iso = datetime.fromtimestamp(ts_epoch, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-                new_bars.append({"timestamp": ts_iso, "open": close_price, "high": close_price, "low": close_price, "close": close_price, "volume": 0})
+        if new_bars or touched:
+            merged = list(existing_by_ts.values()) + carried
+            # Loader reads data[-1000:]; files otherwise grow unbounded (DUSK 1m
+            # hit 3212 bars), making every future merge/sort slower. Trim here.
+            _tskey = lambda b: b.get("timestamp", "") if isinstance(b, dict) else ""
+            if len(merged) > 1000:
+                merged.sort(key=_tskey)
+                merged = merged[-1000:]
             else:
-                for bar in existing:
-                    if isinstance(bar, dict):
-                        try:
-                            bar_ts = int(isoparse(bar.get("timestamp", "")).timestamp())
-                        except Exception:
-                            continue
-                        if bar_ts == ts_epoch:
-                            bar["close"] = close_price
-                            bar["high"] = max(float(bar.get("high", close_price)), close_price)
-                            bar["low"] = min(float(bar.get("low", close_price)), close_price)
-                            break
-        if new_bars:
-            merged = existing + new_bars
-            merged.sort(key=lambda b: b.get("timestamp", ""))
+                merged.sort(key=_tskey)
             tmp = path.with_suffix(".tmp")
             async with aiofiles.open(tmp, "wb") as f:
                 await f.write(orjson.dumps(merged))
             os.replace(tmp, path)
             n += 1
-        elif existing:
-            tmp = path.with_suffix(".tmp")
-            async with aiofiles.open(tmp, "wb") as f:
-                await f.write(orjson.dumps(existing))
-            os.replace(tmp, path)
     return n
 class MarketDataEngine:
     def __init__(self):

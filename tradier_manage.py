@@ -23889,6 +23889,11 @@ async def process_position(
                         requested_qty=qty,
                         reason=reason,
                     )
+                if os.environ.get("V8_B12_DIAG") and action_type == "OPEN":
+                    print(
+                        f"V8_LOG DISPATCH_GATE sym={symbol} side={position_side} action={action_type} reason={(reason or '')[:80]} qty={qty} conf={conf}",
+                        flush=True,
+                    )
                 if action_type == "OPEN":
                     # Determine intended direction from strategy return
                     signal_is_long = "LONG" in reason.upper()

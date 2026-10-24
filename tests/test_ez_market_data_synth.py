@@ -77,3 +77,37 @@ async def test_wb_write_skips_thin_store(tmp_path):
     n = await emd._wb_write("TESTUSDC", {"closes_1m": {}, "closes_3m": None}, tmp_path)
     assert n == 0
     assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.asyncio
+async def test_wb_write_big_file_overlap_is_fast_and_correct(tmp_path, monkeypatch):
+    """2026-10-24: the overlap branch parsed timestamps per compare — O(n*m)
+    isoparse calls in the event loop (measured: writeback passes freezing all
+    hot ages ~50s). Index once: parse calls stay O(file), output trimmed."""
+    import orjson
+    from datetime import datetime, timezone
+    calls = {"n": 0}
+    _real_iso = emd.isoparse
+    def _counting(s):
+        calls["n"] += 1
+        return _real_iso(s)
+    monkeypatch.setattr(emd, "isoparse", _counting)
+    base = 1700000000
+    rows = []
+    for i in range(3000):
+        ts = base + i * 60
+        iso = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        rows.append({"timestamp": iso, "open": 50.0, "high": 50.0, "low": 50.0, "close": 50.0, "volume": 0})
+    (tmp_path / "BIGUSDC_1m.json").write_bytes(orjson.dumps(rows))
+    start = base + (3000 - 60) * 60
+    closes = {start + i * 20: 51.0 for i in range(180)}
+    store = {"closes_1m": closes, "closes_3m": {base: 1.0}}
+    n = await emd._wb_write("BIGUSDC", store, tmp_path)
+    assert n == 1
+    assert calls["n"] < 20000
+    out = orjson.loads((tmp_path / "BIGUSDC_1m.json").read_bytes())
+    assert len(out) <= 1000
+    by_ts = {r["timestamp"]: r for r in out}
+    iso_new = datetime.fromtimestamp(base + 2999 * 60, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    assert by_ts[iso_new]["close"] == 51.0
+    assert by_ts[iso_new]["high"] == 51.0
