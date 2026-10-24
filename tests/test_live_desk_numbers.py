@@ -300,6 +300,7 @@ def test_close_carries_basis_provenance():
     row = [e for e in out if e.get("rpnl") is not None][0]
     assert row["basis_n"] == 1
     assert row["basis"][0]["px"] == 101.835
+    assert row["basis"][0]["q"] == 11.0
     assert row["basis"][0]["ts"] == "2026-10-22T18:17:00+00:00"
     assert row["basis"][0]["reason"] == "WT_15M_BOUNCE_OPEN_S"
 
@@ -321,6 +322,7 @@ def test_stale_close_provenance_shows_fresh_lots_not_zombies():
     assert row["rpnl"] == round(11.0 * (101.0 - 99.0), 2)
     assert row["basis_n"] == 1
     assert row["basis"][0]["px"] == 101.0
+    assert row["basis"][0]["q"] == 11.0
     assert row["basis"][0]["reason"] == "WT_15M_BOUNCE_OPEN_S"
     assert all("DC_BREAK" not in (b.get("reason") or "") for b in row["basis"])
     assert s["pnl_total"] == 0.0

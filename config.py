@@ -2352,6 +2352,9 @@ class Config:
     # Set False to re-enable the old open-underweight path once system is verified.
     RATIO_REBALANCE_CLOSE_OVERWEIGHT_ONLY: bool = True
     RATIO_REBALANCE_MAX_CLOSES: int = 3
+    RATIO_REBALANCE_ENABLED: bool = (
+        True  # USER 2026-10-24: master kill-switch for ratio_rebalance_loop (was unwired — loop started unconditionally, no switch existed). Default True = current behavior, inert. Pilot-testable per sym_side via TEMPLATE REDUCE_SIGNAL_RATER rows.
+    )
     # 2026-05-09 USER MANDATE — OVERTRADE_GUARD in execute_now caps OPEN/AUGMENT
     # to this many per (pkey × UTC day). CLOSE/REDUCE not capped. Emergency-exit
     # reasons (RIDICULOUS, BREAK_REVERSE, ALL_TF_AGAINST, INTERVENTION, MANUAL)

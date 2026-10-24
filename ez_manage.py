@@ -41597,6 +41597,9 @@ class MultiAccountTradeManager:
             return int(getattr(config, key, default))
 
         while True:
+            if not bool(getattr(config, "RATIO_REBALANCE_ENABLED", True)):
+                logger.warning("[RATIO_REBALANCE] disabled via RATIO_REBALANCE_ENABLED=False — loop exits")
+                return
             if _vx_native_off():  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
                 await asyncio.sleep(30)
                 continue

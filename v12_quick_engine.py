@@ -8345,6 +8345,10 @@ class QuickConfig:
     GAP_CLOSE_MOC_FORCE_MOC_AT_CLOSE: bool = True
     # INTRADAY RATIO REBALANCE — LIVE-ONLY portfolio gate, NON-VECTORIZABLE (master switch OFF in vector)
     INTRADAY_RATIO_REBALANCE_ENABLED: bool = True
+    # USER 2026-10-24: crypto ratio_rebalance_loop master (QuickConfig mirror of config.RATIO_REBALANCE_ENABLED).
+    # The loop is portfolio-level (L/S skew across positions) so per-sym simulate_one cannot model it;
+    # the key exists here for config parity (§17) and bible coverage. Default True = current behavior.
+    RATIO_REBALANCE_ENABLED: bool = True
     INTRADAY_RATIO_CHECK_INTERVAL_MIN: int = 15
     INTRADAY_RATIO_COOLDOWN_MIN: int = 30
     INTRADAY_RATIO_DEVIATION_THR: float = 0.10
