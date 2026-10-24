@@ -1,68 +1,78 @@
 {
- "generated_at": "2026-10-24 03:24 UTC",
- "total_capital_usd": 90.93,
+ "generated_at": "2026-10-24 03:29 UTC",
+ "total_capital_usd": 74.86,
  "tier_capital": {
   "A": 0.0,
-  "B": 38.48,
-  "C": 52.45
+  "B": 15.95,
+  "C": 58.91
  },
  "tier_count": {
   "A": 0,
   "B": 2,
-  "C": 2
+  "C": 3
  },
  "winners": [],
  "losers": [
-  "ang:AXSUSDT_SHORT",
-  "ang:BLURUSDT_SHORT"
+  "flz:HYPEUSDT_SHORT",
+  "flz:SOLUSDC_SHORT",
+  "flz:BTCDOMUSDT_LONG"
  ],
- "mediocre": [
-  "ang:ARKMUSDT_LONG"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "ang:AXSUSDT_SHORT",
-   "symbol": "AXSUSDT",
-   "account": "ang",
-   "value_usd": 27.64,
-   "gain_pct": 0.177,
+   "pk": "flz:BTCDOMUSDT_LONG",
+   "symbol": "BTCDOMUSDT",
+   "account": "flz",
+   "value_usd": 44.53,
+   "gain_pct": -0.104,
    "tier": "C",
-   "perf_mult": 0.15,
-   "amt": 28.0,
-   "mark": 0.98708452
+   "perf_mult": 0.47,
+   "amt": 0.008,
+   "mark": 5565.8
   },
   {
-   "pk": "ang:ARKMUSDT_LONG",
-   "symbol": "ARKMUSDT",
-   "account": "ang",
-   "value_usd": 24.85,
-   "gain_pct": 0.11,
+   "pk": "flz:BNBUSDC_LONG",
+   "symbol": "BNBUSDC",
+   "account": "flz",
+   "value_usd": 14.79,
+   "gain_pct": 0.366,
    "tier": "B",
-   "perf_mult": 0.28,
-   "amt": 185.0,
-   "mark": 0.13431751
+   "perf_mult": 0.67,
+   "amt": 0.02,
+   "mark": 739.63446435
   },
   {
-   "pk": "ang:BLURUSDT_SHORT",
-   "symbol": "BLURUSDT",
-   "account": "ang",
-   "value_usd": 24.81,
-   "gain_pct": 0.668,
+   "pk": "flz:SOLUSDC_SHORT",
+   "symbol": "SOLUSDC",
+   "account": "flz",
+   "value_usd": 8.2,
+   "gain_pct": -0.196,
    "tier": "C",
-   "perf_mult": 0.17,
-   "amt": 3035.0,
-   "mark": 0.0081751
+   "perf_mult": 0.18,
+   "amt": 0.08,
+   "mark": 102.50707299
   },
   {
-   "pk": "ang:RAYSOLUSDT_LONG",
-   "symbol": "RAYSOLUSDT",
-   "account": "ang",
-   "value_usd": 13.63,
-   "gain_pct": 1.142,
+   "pk": "flz:HYPEUSDT_SHORT",
+   "symbol": "HYPEUSDT",
+   "account": "flz",
+   "value_usd": 6.18,
+   "gain_pct": -0.566,
+   "tier": "C",
+   "perf_mult": 0.32,
+   "amt": 0.08,
+   "mark": 77.24029167
+  },
+  {
+   "pk": "flz:ZECUSDC_SHORT",
+   "symbol": "ZECUSDC",
+   "account": "flz",
+   "value_usd": 1.16,
+   "gain_pct": 5.505,
    "tier": "B",
-   "perf_mult": 0.39,
-   "amt": 7.4,
-   "mark": 1.8423
+   "perf_mult": 1.28,
+   "amt": 0.001,
+   "mark": 1163.13
   }
  ]
 }
