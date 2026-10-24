@@ -23028,6 +23028,143 @@ async def process_position(
                                 pass
                     except Exception:
                         pass
+                # ─── MOM3 momentum (USER 2026-10-24 unlock: wire missing producers) ───
+                # Shared core (same predicate the vector sweeps as B_MOM3): mom3 =
+                # (close_15m - close_3bar_15m)/close_3bar_15m*100; LONG < thr
+                # (default -1.0), SHORT > thr (1.0). Fires only when no earlier
+                # path claimed OPEN. Switch + thresholds per-sym via _cfg.
+                _mom_side = "LONG" if is_long else "SHORT"
+                if action_type != "OPEN" and bool(
+                    _cfg("MOM3_ENTRY_ENABLED", True, account_key, symbol, _mom_side)
+                ):
+                    try:
+                        from vec_decisions import (
+                            check_entry_mom3 as _mom3_core,
+                        )
+
+                        _mom3_ind = indicators_raw if indicators_raw else i
+
+                        def _mom3f(_k, _d=0.0):
+                            try:
+                                _v = (_mom3_ind or {}).get(_k, _d)
+                                return float(_v) if _v is not None else float(_d)
+                            except (TypeError, ValueError):
+                                return float(_d)
+
+                        _mom3_close = _mom3f("close_15m", 0.0) or float(current_price or 0.0)
+                        _mom3_c3 = _mom3f("close_3bar_15m", 0.0)
+                        _mom3_fire = bool(_mom3_close > 0.0) and _mom3_core.mom3_fires_scalar(
+                            _mom3_close,
+                            _mom3_c3,
+                            _cfg("MOM3_LONG_THRESHOLD", -1.0, account_key, symbol, _mom_side),
+                            _cfg("MOM3_SHORT_THRESHOLD", 1.0, account_key, symbol, _mom_side),
+                            bool(is_long),
+                        )
+                        if _mom3_fire:
+                            _mom3_qty = (
+                                int(max(1, float(_cfg_auto("START_POSITION_SIZE", 600)) / current_price))
+                                if current_price and current_price > 0
+                                else 1
+                            )
+                            action_type = "OPEN"
+                            qty = _mom3_qty
+                            conf = 70.0
+                            reason = f"TRADIER_MOM3_{'L' if is_long else 'S'}"
+                            try:
+                                _entry_score = max(float(_entry_score or 0.0), float(conf))
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
+                # ─── B14 HA-stack (USER 2026-10-24 unlock: wire missing producers) ───
+                # Shared core (same predicate the vector sweeps as B14): ha stack
+                # aligned ±1 on 3m/15m/1h with k_3m <60/>40. NO-3M parity (B12
+                # precedent): ha_15m/k_15m stand in for the missing 3m keys.
+                # Full closure needs 1/3/5m lane data. Switch per-sym via _cfg.
+                if action_type != "OPEN" and bool(
+                    _cfg("REENTRY_B14_HA_TREND_ENABLED", True, account_key, symbol, _mom_side)
+                ):
+                    try:
+                        from vec_decisions import (
+                            check_entry_b14_ha_stack as _b14_core,
+                        )
+
+                        _b14_ind = indicators_raw if indicators_raw else i
+                        _b14_src = _b14_ind or {}
+                        _b14_fire = False
+                        if (
+                            "ha_15m" in _b14_src
+                            and "ha_1h" in _b14_src
+                            and "k_15m" in _b14_src
+                        ):
+                            _b14_fire = _b14_core.b14_fires_scalar(
+                                _b14_src["ha_15m"],
+                                _b14_src["ha_15m"],
+                                _b14_src["ha_1h"],
+                                _b14_src["k_15m"],
+                                bool(is_long),
+                            )
+                        if _b14_fire:
+                            _b14_qty = (
+                                int(max(1, float(_cfg_auto("START_POSITION_SIZE", 600)) / current_price))
+                                if current_price and current_price > 0
+                                else 1
+                            )
+                            action_type = "OPEN"
+                            qty = _b14_qty
+                            conf = 70.0
+                            reason = f"TRADIER_B14_HA_STACK_{'L' if is_long else 'S'}"
+                            try:
+                                _entry_score = max(float(_entry_score or 0.0), float(conf))
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
+                # ─── B15 strong-trend (USER 2026-10-24 unlock: wire missing producers) ───
+                # Shared core (same predicate the vector sweeps as B15): 4h DC
+                # break with 1h WT velocity and 1h stoch in range. Every input
+                # exists in the 15m lane — exact twin, no fallback.
+                if action_type != "OPEN" and bool(
+                    _cfg("REENTRY_B15_STRONG_TREND_ENABLED", True, account_key, symbol, _mom_side)
+                ):
+                    try:
+                        from vec_decisions import (
+                            check_entry_b15_trend as _b15_core,
+                        )
+
+                        _b15_ind = indicators_raw if indicators_raw else i
+
+                        def _b15f(_k, _d=0.0):
+                            try:
+                                _v = (_b15_ind or {}).get(_k, _d)
+                                return float(_v) if _v is not None else float(_d)
+                            except (TypeError, ValueError):
+                                return float(_d)
+
+                        _b15_dc = _b15f("dc_high_4h", 0.0) if is_long else _b15f("dc_low_4h", 0.0)
+                        _b15_fire = _b15_core.b15_fires_scalar(
+                            float(current_price or 0.0),
+                            _b15_dc,
+                            _b15f("wt_velocity_1h", 0.0),
+                            _b15f("k_1h", 50.0),
+                            bool(is_long),
+                        )
+                        if _b15_fire:
+                            _b15_qty = (
+                                int(max(1, float(_cfg_auto("START_POSITION_SIZE", 600)) / current_price))
+                                if current_price and current_price > 0
+                                else 1
+                            )
+                            action_type = "OPEN"
+                            qty = _b15_qty
+                            conf = 70.0
+                            reason = f"TRADIER_B15_TREND_{'L' if is_long else 'S'}"
+                            try:
+                                _entry_score = max(float(_entry_score or 0.0), float(conf))
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
                 # ═══════════════════════════════════════════════════════════════════════
                 # 🚩 GR_HTF_DIRECT_ENTRY — 2026-05-12 USER MANDATE
                 # Direct entry signal: Score = n_tfs_aligned × GOLDEN_RULE_MIN_IND.
@@ -23479,6 +23616,34 @@ async def process_position(
                                 if _wa1 is not None and _wa2 is not None:
                                     if not (float(_wa1) > float(_wa2)):
                                         _veto = f"WT_AGAINST_FILTER_LONG_BLOCK(wt1={float(_wa1):.1f}_wt2={float(_wa2):.1f})"
+                            # SRS range-edge permission (USER 2026-10-24 unlock: wire missing
+                            # producers) — live twin of vec B_SRS_ENTRY (v12:11029): refuse
+                            # fresh OPEN at the range extreme (pctb>=0.97 LONG / <=0.03
+                            # SHORT). A permission, not a trigger: wiring it as an opener
+                            # would flood entries the vector never takes. TF leg per-sym,
+                            # default bb_1h. Missing pctb key = fail-open. Vec-dictated
+                            # orders skip (backstop names them downstream if disputed).
+                            if _veto is None and bool(
+                                _cfg("STRUCTURAL_RANGE_SHIFT_EXIT", True, account_key, symbol, _side_vf)
+                            ):
+                                try:
+                                    from vec_decisions import (
+                                        check_entry_srs_permission as _srs_core,
+                                    )
+
+                                    _srs_tf = str(
+                                        _cfg("STRUCTURAL_RANGE_SHIFT_TF", "bb_1h", account_key, symbol, _side_vf)
+                                        or "bb_1h"
+                                    )
+                                    _srs_key = _srs_core.pctb_key_for_tf(_srs_tf)
+                                    _srs_src = _entry_ind if _entry_ind else i
+                                    _srs_raw = (_srs_src or {}).get(_srs_key)
+                                    if _srs_raw is not None and not _tr_parity_vec_order(reason):
+                                        _srs_pctb = float(_srs_raw or 0.0)
+                                        if _srs_core.srs_blocked_scalar(_srs_pctb, bool(is_long)):
+                                            _veto = f"SRS_EXTREME_GATE(pctb={_srs_pctb:.2f})"
+                                except Exception:
+                                    pass
                         except Exception:
                             pass
                     # WT_COMPOSITE_SCORING_ENABLED: when sweep VETO knob is on AND composite scoring is on,

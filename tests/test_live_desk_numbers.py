@@ -446,6 +446,17 @@ def test_backfill_short_book_leaves_honest_unknown():
     assert sm["unknown"] == 1 and sm["unknown_partial"] == 1
 
 
+def test_clean_reason_swaps_placeholder_for_fill_qty():
+    assert srv._clean_reason("DAYTRADE_TARGET_g2.27_qty_999999", 11.0).endswith("_qty_11")
+    assert srv._clean_reason("X_qty_9999|Y", 0.5) == "X_qty_0.5|Y"
+    assert srv._clean_reason("X_qty_9999_Y", 0.5) == "X_qty_9999_Y"
+    # real threaded qtys untouched, even nine-ish ones matching the row
+    assert srv._clean_reason("A_qty_1.5_B", 1.5) == "A_qty_1.5_B"
+    assert srv._clean_reason("A_qty_9999_B", 9999.0) == "A_qty_9999_B"
+    assert srv._clean_reason(None, 11.0) is None
+    assert srv._clean_reason("BROKER_SYNC_REJECTED_X_2555>2500", 6.0) == "BROKER_SYNC_REJECTED_X_2555>2500"
+
+
 def test_backfill_never_uses_future_fills():
     # Lookahead bias: a September fill must not price a March close.
     from datetime import timedelta
