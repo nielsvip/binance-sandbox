@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-24T11:54:44Z",
+ "generated_utc": "2026-10-24T11:59:44Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 310.1,
+  "age_s": 273.5,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 46725,
-  "proc_age_s": 17816.0,
-  "log_age_s": 81.4,
+  "proc_age_s": 18116.0,
+  "log_age_s": 14.8,
   "warmup_done": true,
   "timeframes_since_restart": [
    "4h",
@@ -50,20 +50,20 @@
   "mode": "ACTIVE",
   "since_epoch": 1792602182.2042153,
   "activations": 163,
-  "hb_mtime": 1792842648.2472367,
-  "mac_snapshot_age_s": 41.30393719673157,
+  "hb_mtime": 1792842973.3946996,
+  "mac_snapshot_age_s": 13.528001308441162,
   "mac_stale": false,
   "lease_holder": "mac",
   "lease_venues": null,
-  "lease_since": "2026-10-24T11:49:40Z",
-  "lease_reason": "manual force-mac",
-  "now": 1792842653.4397073,
-  "from_cache_age_s": 230.8,
-  "heartbeat_age_s": 5.2,
-  "active_s": 240471.2
+  "lease_since": "2026-10-24T11:55:40Z",
+  "lease_reason": "yield: Mac never fenced for 180s \u2014 accounts must never be unattended",
+  "now": 1792843006.7785623,
+  "from_cache_age_s": 177.4,
+  "heartbeat_age_s": 33.4,
+  "active_s": 240824.6
  },
  "alerts": [
-  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 240471s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (5s) AND the Mac snapshot is fresh (310s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
+  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 240824s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (33s) AND the Mac snapshot is fresh (273s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
  ],
  "verdict": "ALERT"
 }
