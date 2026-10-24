@@ -22443,6 +22443,12 @@ class MultiAccountTradeManager:
                 else:
                     raise
             _confirm_wire_result("futures_create_order:fixed_stop_taker_backstop", position_key, _tb_resp, _tb_seq, "REDUCE", reason)
+            try:
+                from vec_decisions import execution_ledger as _exledger_tb
+                if _exledger_tb.classify_history_type(action, is_full_close) is None:
+                    _exledger_tb.append_history_fill(getattr(config, "BASE_PATH", "/Users/niels/Documents/binance"), account_key, position_key, "REDUCE", _tb_qty, current_price, reason)
+            except Exception:
+                pass
             logger.critical(f"🛡️ [FIXED_STOP_TAKER_SENT] {position_key}: taker MARKET sent {str(_tb_resp)[:200]}")
             return "SUCCESS_VIA_FIXED_STOP_TAKER_BACKSTOP"
         except Exception as _tb_e2:
