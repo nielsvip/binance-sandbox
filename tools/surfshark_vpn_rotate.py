@@ -56,14 +56,151 @@ def sh(args, timeout=30):
     return subprocess.run(args, capture_output=True, text=True, timeout=timeout)
 def whitelist():
     return set(json.load(open(WL_PATH))["binance_ip_whitelist"])
+OVPN_DIR = os.path.join(os.path.expanduser("~"), ".config", "surfshark", "ovpn")
+OVPN_AUTH = os.path.join(os.path.expanduser("~"), ".config", "surfshark", "manual_auth.txt")
+OVPN_MGMT_PORT = 7505
+
+
+def _is_ovpn(name):
+    try:
+        return str(name).startswith("OVPN:")
+    except Exception:
+        return False
+
+
+def ovpn_servers():
+    out = {}
+    try:
+        if not os.path.exists("/Library/LaunchDaemons/com.binance.ovpn-supervisor.plist"):
+            return {}
+        for f in sorted(os.listdir(os.path.join(OVPN_DIR, "servers"))):
+            if f.endswith(".ovpn"):
+                out[f"OVPN:{f.split('.prod')[0]}"] = os.path.join(OVPN_DIR, "servers", f)
+    except Exception:
+        pass
+    return out
+
+
+def _ovpn_mgmt(cmd, timeout=8):
+    import socket
+    s = None
+    try:
+        s = socket.create_connection(("127.0.0.1", OVPN_MGMT_PORT), timeout=timeout)
+        s.sendall((cmd + "\n").encode())
+        time.sleep(0.3)
+        out = b""
+        try:
+            while True:
+                chunk = s.recv(65536)
+                if not chunk:
+                    break
+                out += chunk
+                if len(chunk) < 65536:
+                    break
+        except Exception:
+            pass
+        return out.decode("utf8", "ignore")
+    except Exception:
+        return ""
+    finally:
+        try:
+            s.close()
+        except Exception:
+            pass
+
+
+def ovpn_build_active(server_path):
+    try:
+        txt = open(server_path).read().splitlines()
+        out, replaced = [], False
+        for ln in txt:
+            if ln.strip().startswith("auth-user-pass"):
+                out.append(f"auth-user-pass {OVPN_AUTH}")
+                replaced = True
+            else:
+                out.append(ln)
+        if not replaced:
+            out.append(f"auth-user-pass {OVPN_AUTH}")
+        open(os.path.join(OVPN_DIR, "active.conf"), "w").write("\n".join(out) + "\n")
+        return True
+    except Exception:
+        return False
+
+
+def ovpn_active_name():
+    try:
+        return open(os.path.join(OVPN_DIR, "active_server")).read().strip()
+    except Exception:
+        return ""
+
+
+def ovpn_status(name):
+    try:
+        if ovpn_active_name() != name:
+            return "Disconnected"
+        for ln in _ovpn_mgmt("state").splitlines():
+            if ",CONNECTED," in ln:
+                return "Connected"
+        return "Disconnected"
+    except Exception:
+        return "Disconnected"
+
+
+def ovpn_up(name):
+    try:
+        srv = ovpn_servers().get(name)
+        if not srv or not ovpn_build_active(srv):
+            return False
+        open(os.path.join(OVPN_DIR, "active_server"), "w").write(name)
+        open(os.path.join(OVPN_DIR, "enabled"), "w").write("1")
+        _ovpn_mgmt("signal SIGTERM", timeout=5)
+        return True
+    except Exception:
+        return False
+
+
+def ovpn_down(name):
+    try:
+        open(os.path.join(OVPN_DIR, "enabled"), "w").write("0")
+        _ovpn_mgmt("signal SIGTERM", timeout=5)
+        return True
+    except Exception:
+        return False
+
+
+def _slot_start(name):
+    if _is_ovpn(name):
+        return ovpn_up(name)
+    sh(["scutil", "--nc", "start", name])
+    return True
+
+
+def _slot_stop(name):
+    if _is_ovpn(name):
+        return ovpn_down(name)
+    sh(["scutil", "--nc", "stop", name])
+    return True
+
+
 def slots():
     out, res = [], sh(["scutil", "--nc", "list"])
     for line in res.stdout.splitlines():
         m = re.match(r"\*?\s*\((\w+)\)\s+\S+ \S+ \(.+?\) \"(.+?)\"", line)
         if m and "Surfshark" in m.group(2):
             out.append({"name": m.group(2), "status": m.group(1)})
+    for name in ovpn_servers():
+        try:
+            out.append({"name": name, "status": ovpn_status(name), "ovpn": True})
+        except Exception:
+            pass
     return out
 def slot_server(name):
+    if _is_ovpn(name):
+        try:
+            host = os.path.basename(ovpn_servers().get(name, "")).split(".prod")[0]
+            return (f"{host}.prod.surfshark.com" if host else None), None
+        except Exception:
+            return None, None
     res = sh(["scutil", "--nc", "show", name])
     srv, sip = None, None
     for line in res.stdout.splitlines():
@@ -130,7 +267,7 @@ def _tour_next(current, cands):
 def stop_all():
     for s in slots():
         if s["status"] != "Disconnected":
-            sh(["scutil", "--nc", "stop", s["name"]])
+            _slot_stop(s["name"])
 def try_naked(wl, state, old_ip, home_only=True):
     cfg = net_cfg()
     stop_all()
@@ -165,7 +302,7 @@ def ensure_tunnel(wl, state):
         return False
     name = cands[0]["name"]
     log(f"ensure_tunnel: restoring {name}, verifying whitelist before accepting")
-    sh(["scutil", "--nc", "start", name])
+    _slot_start(name)
     if not wait_state([name], "Connected", egress_ip(), timeout=45):
         log("INVARIANT FAIL-CLOSED: restored slot did not connect, leaving link down");
         return False
@@ -173,7 +310,7 @@ def ensure_tunnel(wl, state):
     probe = binance_probe()
     if ip not in wl or probe.get("ping") == 418:
         log(f"INVARIANT FAIL-CLOSED: restored egress={ip} not usable (whitelisted={ip in wl} binance={probe}) — stopping it");
-        sh(["scutil", "--nc", "stop", name])
+        _slot_stop(name)
         return False
     log(f"ensure_tunnel OK egress={ip} binance={probe}")
     return True
@@ -291,15 +428,15 @@ def do_rotate(target=None, force_tunnel=False):
         name = cand["name"]
         srv, _ = slot_server(name)
         log(f"trying slot {name} server={srv}")
-        sh(["scutil", "--nc", "start", name])
+        _slot_start(name)
         if not wait_state([name], "Connected", old_ip):
             log(f"slot {name} did not connect with new IP");
             state["slot_fail"][name] = time.time()
             save_state(state)
-            sh(["scutil", "--nc", "stop", name])
+            _slot_stop(name)
             continue
         if cur_name and cur_name != name:
-            sh(["scutil", "--nc", "stop", cur_name])
+            _slot_stop(cur_name)
         ip = egress_ip()
         probe = binance_probe()
         state["slot_exit"][name] = {"ip": ip, "server": srv, "ts": time.time()}
@@ -307,13 +444,13 @@ def do_rotate(target=None, force_tunnel=False):
             log(f"slot {name} egress={ip} NOT in Binance whitelist — skipping (orders would -2015)")
             state["slot_fail"][name] = time.time()
             save_state(state)
-            sh(["scutil", "--nc", "stop", name])
+            _slot_stop(name)
             continue
         if probe.get("ping") == 418:
             log(f"slot {name} egress={ip} Binance still 418 — skipping")
             state["slot_fail"][name] = time.time()
             save_state(state)
-            sh(["scutil", "--nc", "stop", name])
+            _slot_stop(name)
             continue
         state["last_rotate_ts"] = time.time()
         state["rotations"] = state.get("rotations", 0) + 1

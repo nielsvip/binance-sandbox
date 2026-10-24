@@ -78,6 +78,32 @@ def test_scan_ignores_stale_file_and_clean_tail(tmp_path, monkeypatch):
     assert not ban.exists()
 
 
+def test_ovpn_hidden_until_supervisor_installed(tmp_path, monkeypatch):
+    import os
+    d = tmp_path / "servers"
+    d.mkdir()
+    (d / "uk-lon.prod.surfshark.comsurfshark_openvpn_udp.ovpn").write_text("remote x\n")
+    monkeypatch.setattr(vpn, "OVPN_DIR", str(tmp_path))
+    assert vpn.ovpn_servers() == {}
+
+
+def test_ovpn_build_active_rewrites_auth(tmp_path, monkeypatch):
+    monkeypatch.setattr(vpn, "OVPN_DIR", str(tmp_path))
+    monkeypatch.setattr(vpn, "OVPN_AUTH", "/auth.txt")
+    (tmp_path / "s.ovpn").write_text("dev tun\nauth-user-pass\nremote h 1194\n")
+    assert vpn.ovpn_build_active(str(tmp_path / "s.ovpn")) is True
+    txt = (tmp_path / "active.conf").read_text()
+    assert "auth-user-pass /auth.txt" in txt
+    assert txt.count("auth-user-pass") == 1
+
+
+def test_slot_dispatch_prefers_ovpn_branch():
+    assert vpn._is_ovpn("OVPN:uk-lon") is True
+    assert vpn._is_ovpn("Surfshark. Dausos") is False
+    assert vpn.slot_rank("uk-lon.prod.surfshark.com") == 1
+    assert vpn.slot_rank("sg-sng.prod.surfshark.com") == 2
+
+
 def test_tour_walks_ring_skipping_current():
     order = ["Surfshark. Dausos", "Surfshark. WireGuard", "(no-vpn)"]
     assert vpn._tour_next("Surfshark. Dausos", order) == "Surfshark. WireGuard"

@@ -50,9 +50,9 @@ def resolve_daytrade_dc(get: Callable[[str, Any], Any]) -> Tuple[list, list]:
 
     USER 2026-10-24: DAYTRADE_TARGET is DESTROYED — it was never a switch (no ENABLE
     knob), fired level-only on stale touches, and kept coming back. This resolver
-    returns ([...], []) ALWAYS: the TARGET specs below are built then dropped so the
-    shape stays stable for callers, but no TARGET spec can ever reach an exit again,
-    in EITHER engine (both call this one function). STOPS are untouched.
+    returns ([...], []) ALWAYS: TARGET specs are never built and TARGET knobs are
+    never read, so no TARGET spec can ever reach an exit again, in EITHER engine
+    (both call this one function). STOPS are untouched.
 
     Returns (stop_specs, []); each spec is a dict
       {tf, field_long, field_short, buf, mode, tag}
@@ -64,13 +64,10 @@ def resolve_daytrade_dc(get: Callable[[str, Any], Any]) -> Tuple[list, list]:
                    when the corresponding TF list is OFF (vec precedence).
     """
     stop_specs: list = []
-    tgt_specs: list = []
     stop_buf = _f(get("DAYTRADE_DC_STOP_BUFFER_PCT", 0.25), 0.25) / 100.0
-    tgt_buf = _f(get("DAYTRADE_DC_TARGET_BUFFER_PCT", 0.10), 0.10) / 100.0
     for tf in parse_tf_list(get("DAYTRADE_DC_STOP_TF", "OFF")):
         stop_specs.append({"tf": tf, "field_long": f"dc_low_{tf}", "field_short": f"dc_high_{tf}", "buf": stop_buf, "mode": "list", "tag": f"dc_{tf}"})
-    for tf in parse_tf_list(get("DAYTRADE_DC_TARGET_TF", "OFF")):
-        tgt_specs.append({"tf": tf, "field_long": f"dc_high_{tf}", "field_short": f"dc_low_{tf}", "buf": tgt_buf, "mode": "list", "tag": f"dc_{tf}"})
+    # USER 2026-10-24: completely ignored (was: built-then-dropped) — no TARGET TF parse, no TARGET knob reads.
 
     def _b(name: str) -> bool:
         return bool(get(name, False)) or bool(get("TRADIER_" + name, False))
@@ -80,21 +77,9 @@ def resolve_daytrade_dc(get: Callable[[str, Any], Any]) -> Tuple[list, list]:
             stop_specs.append({"tf": "15m", "field_long": "dc_low4_15m", "field_short": "dc_high4_15m", "buf": 0.0, "mode": "alias", "tag": "dc4_15m"})
         if _b("DC_DAYTRADE_STOP_USE_DC_15M"):
             stop_specs.append({"tf": "15m", "field_long": "dc_low_15m", "field_short": "dc_high_15m", "buf": 0.0, "mode": "alias", "tag": "dc_15m", "fallback_of": "dc4_15m"})
-    if not tgt_specs:
-        # one knob, two names: whichever is overridden away from the 0.002 default wins
-        # (DC_ name first) — reproduces tradier live getattr(DC_, getattr(TRADIER_, 0.002)).
-        a_buf = _f(get("DC_DAYTRADE_TARGET_DC_BUFFER_PCT", 0.002), 0.002)
-        if abs(a_buf - 0.002) <= 1e-12:
-            a_buf = _f(get("TRADIER_DC_DAYTRADE_TARGET_DC_BUFFER_PCT", 0.002), 0.002)
-        a_buf = a_buf or 0.002
-        if _b("DC_DAYTRADE_TARGET_USE_DC4_15M"):
-            tgt_specs.append({"tf": "15m", "field_long": "dc_high4_15m", "field_short": "dc_low4_15m", "buf": a_buf, "mode": "alias", "tag": "dc4_15m"})
-        if _b("DC_DAYTRADE_TARGET_USE_DC_15M"):
-            tgt_specs.append({"tf": "15m", "field_long": "dc_high_15m", "field_short": "dc_low_15m", "buf": a_buf, "mode": "alias", "tag": "dc_15m", "fallback_of": "dc4_15m"})
-    # USER 2026-10-24: DAYTRADE_TARGET DESTROYED — drop every TARGET spec no matter
-    # which TF list, alias, or board value produced it. STOPS pass through untouched.
-    tgt_specs = []
-    return stop_specs, tgt_specs
+    # USER 2026-10-24: completely ignored — the TARGET alias block lived here (built-then-dropped).
+    # No TARGET knob is read anywhere in this function anymore. STOPS pass through untouched.
+    return stop_specs, []
 
 
 def dc_stop_hit(px: float, lvl: float, is_long: bool, spec: Mapping[str, Any]) -> bool:
