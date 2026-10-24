@@ -24933,6 +24933,20 @@ async def execute_trade_wrapper(
             if "REDUCE" in action
             else fresh_position.positionAmt
         )
+        # USER 2026-10-24 VEC_ clean-run: hold-or-fire for worker quick exits.
+        # Fail-open: hold failure executes natively as before. No jsonl here.
+        _qr_held = None
+        try:
+            from live_twins.vec_pending import file_preemptive_hold as _qr_hold_fn
+            _qr_held = _qr_hold_fn("crypto", position_key, action, f"QUICK_{reason}_REDUCE")
+        except Exception:
+            _qr_held = None
+        if _qr_held is not None:
+            if _qr_held[2]:
+                logger.warning(
+                    f"[QUICK_EXIT_VEC_HOLD] {position_key}: QUICK_{reason}_REDUCE — held for vec confirm, not fired"
+                )
+            return False, f"QUICK_VEC_HOLD_{reason}"
         result = await trade_manager.execute_now(
             position_key,
             account_key,
@@ -28203,6 +28217,21 @@ async def check_exit_candidates_for_account(
                     side = "SELL" if is_long else "BUY"
                     if "WAIT" in full_reason:
                         return f"{position_key} WAIT MEANS WAIT"
+                    # USER 2026-10-24 VEC_ clean-run: hold-or-fire for worker quick exits.
+                    # Fail-open: hold failure executes natively as before. No jsonl here.
+                    _qk2_held = None
+                    try:
+                        from live_twins.vec_pending import file_preemptive_hold as _qk2_hold_fn
+                        _qk2_held = _qk2_hold_fn("crypto", position_key, "CLOSE" if _is_full_close_flag else "REDUCE", f"QUICK_{full_reason}_REDUCE")
+                    except Exception:
+                        _qk2_held = None
+                    if _qk2_held is not None:
+                        await tracker_manager.clear_processing(position_key)
+                        if _qk2_held[2]:
+                            logger.warning(
+                                f"[QUICK_EXIT_VEC_HOLD] {position_key}: QUICK_{full_reason}_REDUCE — held for vec confirm, not fired"
+                            )
+                        return f"{position_key} QUICK_VEC_HOLD MEANS NO TRADE"
                     result = await trade_manager.execute_now(
                         position_key,
                         account_key,

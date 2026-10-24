@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-24T20:00:06Z",
+ "generated_utc": "2026-10-24T20:20:20Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
@@ -39,7 +39,7 @@
    "measured": {
     "built_at": "2026-10-24T19:21:18.893987+00:00",
     "n": 523,
-    "age_at_open_s": 2328
+    "age_at_open_s": 3542
    },
    "detail": "built 2026-10-24T19:21:18.893987+00:00 n=523"
   },
@@ -51,9 +51,9 @@
     "reports_today": 13,
     "newest_report": "persym_golive_20261024_refresh_1755.json",
     "newest_report_at": "2026-10-24T18:58:44Z",
-    "tiers_at": "2026-10-24T18:59:17Z"
+    "tiers_at": "2026-10-24T20:17:23Z"
    },
-   "detail": "persym_golive_20261024_refresh_1755.json at 2026-10-24T18:58:44Z, tiers 2026-10-24T18:59:17Z"
+   "detail": "persym_golive_20261024_refresh_1755.json at 2026-10-24T18:58:44Z, tiers 2026-10-24T20:17:23Z"
   },
   {
    "name": "live_set_matches_selection",
@@ -61,9 +61,9 @@
    "critical": true,
    "measured": {
     "selection_n": 523,
-    "exact": 128,
-    "benign_divergence_only": 313,
-    "material_divergence": 81,
+    "exact": 127,
+    "benign_divergence_only": 312,
+    "material_divergence": 83,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -160,6 +160,19 @@
       ]
      },
      {
+      "sym_side": "1000FLOKIUSDT_LONG",
+      "published_at": "2026-10-13T03:39:04Z",
+      "material": 65,
+      "sample": [
+       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
+       "ATR_ADAPTIVE_STOP_ENABLED",
+       "BB_FROZEN_STOP_ENABLED",
+       "BB_SQUEEZE_ENTRY_ENABLED",
+       "DAYTRADE_DC_STOP_TF",
+       "DAYTRADE_DC_TARGET_TF"
+      ]
+     },
+     {
       "sym_side": "APO_SHORT",
       "published_at": "2026-10-20T11:43:52Z",
       "material": 55,
@@ -184,39 +197,32 @@
        "COOLDOWN_BARS",
        "COOLDOWN_BARS_TRADIER"
       ]
-     },
-     {
-      "sym_side": "ACN_LONG",
-      "published_at": "2026-10-23T06:02:03Z",
-      "material": 50,
-      "sample": [
-       "ATR_ADAPTIVE_STOP_MULT",
-       "ATR_ADAPTIVE_STOP_TF",
-       "AUGMENT_FALLBACK_REDUCE_PCT",
-       "BB_PULLBACK_GATE_ENABLED",
-       "BB_SQUEEZE_ENTRY_ENABLED",
-       "COUNTER_TREND_ADD_BLOCK_ENABLED"
-      ]
      }
     ]
    },
-   "detail": "128 exact, 313 benign-only, 81 with material divergence, 1 with no live row"
+   "detail": "127 exact, 312 benign-only, 83 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
    "ok": true,
    "critical": true,
    "measured": {
-    "symbols": 330,
-    "stale_over_90min": 2,
-    "stale_pct": 0.6,
-    "median_age_min": 15.1,
+    "symbols": 329,
+    "stale_over_90min": 18,
+    "stale_pct": 5.5,
+    "median_age_min": 65.3,
     "sample": [
-     "DUSKUSDT",
-     "ONEUSDT"
+     "CRWVUSDT",
+     "DASHUSDT",
+     "ETCUSDT",
+     "FLEXUSDT",
+     "GEVUSDT",
+     "GRAMUSDT",
+     "GRTUSDT",
+     "GSUSDT"
     ]
    },
-   "detail": "2/330 symbols past the live 90-min entry gate (0.6%)"
+   "detail": "18/329 symbols past the live 90-min entry gate (5.5%)"
   },
   {
    "name": "s1_sets_synced",
