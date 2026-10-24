@@ -238,7 +238,9 @@ def test_exempt_gates_wired_in_source():
     # execute_now is now a thin wrapper (2026-10-17 entry-stop requirement); the gates live in _execute_now_inner.
     src = inspect.getsource(EZ.MultiAccountTradeManager._execute_now_inner)
     must = [
-        "if not _ok365 and _vd_exempt:",
+        # USER 2026-10-24 pending-confirm: the 365d exemption is master-gated (_vo_armed = VEC_DRIVEN on AND vec
+        # reason) so VEC_DRIVEN_ENABLED=False stays byte-identical; the vec path through the gate is preserved.
+        "if not _ok365 and (_vd_exempt or _vo_armed):",
         "if not _live_ok and _vd_exempt:",
         'not _lane_b_vec_only_parity_ok(symbol, position_side, reason or "") and not _vd_exempt',
         "if _ot_max > 0 and not _ot_emerg and not _vd_exempt:",

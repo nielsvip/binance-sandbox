@@ -248,13 +248,16 @@ def test_mirror_matches_implementation_on_corpus():
 def test_exec_augment_gate_exempts_vec_orders():
     i_gate = SRC.index("if is_augment and real_notional > 0 and real_gain < 3.0:")
     i_block = SRC.index("BLOCKED_EXEC_AUGMENT_", i_gate)
-    assert "_parity_vec_order(reason)" in SRC[i_gate:i_block]
+    # USER 2026-10-24 pending-confirm: _vo_armed is the master-gated form of the same predicate
+    # (VEC_DRIVEN on AND vec reason), so off stays byte-identical while the vec path is preserved.
+    assert "_parity_vec_order(reason)" in SRC[i_gate:i_block] or "_vo_armed" in SRC[i_gate:i_block]
 
 
 def test_timing_hold_exempts_vec_orders():
     i_state = SRC.index("_tm_state = ang_timing_state_for(symbol, position_side)")
     i_block = SRC.index("BLOCKED_TIMING_HOLD_FAILED_", i_state)
-    assert "_parity_vec_order(reason)" in SRC[i_state:i_block]
+    # USER 2026-10-24 pending-confirm: _vo_armed is the master-gated form of the same predicate (see above).
+    assert "_parity_vec_order(reason)" in SRC[i_state:i_block] or "_vo_armed" in SRC[i_state:i_block]
 
 
 def test_force_side_gates_exempt_vec_orders():
