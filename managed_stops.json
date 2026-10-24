@@ -1,23 +1,23 @@
 {
+  "men:RAYSOLUSDT_LONG": {
+    "orderId": "2000001536527585",
+    "stopPrice": 1.8267,
+    "entry_sig": "2026-10-24 02:50:40.311000+00:00",
+    "symbol": "RAYSOLUSDT",
+    "side": "LONG"
+  },
   "men:BLURUSDT_SHORT": {
-    "orderId": "2000001536521349",
+    "orderId": "2000001536530287",
     "stopPrice": 0.00828,
     "entry_sig": "2026-10-24 02:33:11.164000+00:00",
     "symbol": "BLURUSDT",
     "side": "SHORT"
   },
   "men:TLMUSDT_SHORT": {
-    "orderId": "2000001536525021",
+    "orderId": "2000001536533485",
     "stopPrice": 0.001231,
     "entry_sig": "2026-10-24 03:04:09.645000+00:00",
     "symbol": "TLMUSDT",
     "side": "SHORT"
-  },
-  "men:RAYSOLUSDT_LONG": {
-    "orderId": "2000001536525027",
-    "stopPrice": 1.8267,
-    "entry_sig": "2026-10-24 02:50:40.311000+00:00",
-    "symbol": "RAYSOLUSDT",
-    "side": "LONG"
   }
 }
