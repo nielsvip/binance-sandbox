@@ -1,11 +1,43 @@
 {
- "at": "2026-10-24T05:48:44Z",
+ "at": "2026-10-24T06:00:10Z",
  "s1": {
-  "error": "s1-int: Connection timed out during banner exchange\nConnection to 127.0.0.1 port 2201 timed out | s1-pub:  master failed: Broken pipe\nssh_dispatch_run_fatal: Connection to 157.180.125.52 port 22: Can't assign requested address"
+  "host": "niels",
+  "now": 1792821604.2508388,
+  "merge_crypto": {
+   "n": 12,
+   "max_lag_min": 30.0,
+   "median_lag_min": 15.0,
+   "worst": "1000LUNCUSDT",
+   "dead": []
+  },
+  "merge_stocks": {
+   "n": 12,
+   "max_lag_min": 0.0,
+   "median_lag_min": 0.0,
+   "worst": "A",
+   "dead": []
+  },
+  "npz_legacy_crypto": [
+   "HBARUSDC",
+   "NEOUSDC",
+   "WLFIUSDC",
+   "XVGUSDT"
+  ],
+  "append_log_age_min": 0.5,
+  "append_last_secs": 866.7,
+  "append_last_stats": "'appended': 580, 'created': 0, 'up_to_date': 5479, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
+  "npz_loop_pids": 1,
+  "npz_loop_has_settle": true,
+  "sched_tick_age_min": 2.0,
+  "sched_launched": 2,
+  "archive_n": 195,
+  "archive_mb": 2323.4,
+  "archive_newest_min": 129.9,
+  "_via": "s1-pub"
  },
- "red": [
-  "s1 unreachable: s1-int: Connection timed out during banner exchange\nConnection to 127.0.0.1 port 2201 timed out | s1-pub:  master failed: Broken pipe\nssh_dispatch_run_fatal: Connection to 157.180.125.52 port 22: Can't assign requested address"
+ "red": [],
+ "warn": [
+  "L3 4 crypto NPZ(s) carry no htf_align so the append loop refuses them forever \u2014 they need a full rebuild: HBARUSDC NEOUSDC WLFIUSDC XVGUSDT"
  ],
- "warn": [],
- "ok": false
+ "ok": true
 }
