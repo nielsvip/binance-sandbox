@@ -125,7 +125,9 @@ def test_ez_broker_sync_fetch_reads_service_store_no_io():
     pool wedges under load hung the v1 refresher forever (S1 20:23-20:43Z:
     slot never filled, zero REFRESH_FAIL, ban 0.0)."""
     pos = SimpleNamespace(symbol="MANAUSDT", positionSide="LONG", positionAmt="297", entryPrice="0.09397")
-    svc = SimpleNamespace(positions={"ang_store1:MANAUSDT_LONG": pos})
+    # USER 2026-10-24 unreachable-real-fix: sync evidence (a running synced service); without it the store is
+    # stale-disk rows and the slot must stay empty until REST decides.
+    svc = SimpleNamespace(positions={"ang_store1:MANAUSDT_LONG": pos}, positions_last_sync=time.time())
     mgr = SimpleNamespace(positions_service=svc, accounts={})
     bp = pt.ez_broker(mgr, "ang_store1", config=CFG)
     got, dt = None, 0.0
@@ -144,7 +146,8 @@ def test_ez_broker_sync_fetch_dict_positions_and_empty_store():
     """Dict-shaped store rows work; an empty store seeds a fresh flat snapshot
     (empty is truth, not failure)."""
     svc = SimpleNamespace(
-        positions={"ang_store2:FOO_SHORT": {"symbol": "FOO", "positionSide": "SHORT", "positionAmt": "-3", "entryPrice": "1"}}
+        positions={"ang_store2:FOO_SHORT": {"symbol": "FOO", "positionSide": "SHORT", "positionAmt": "-3", "entryPrice": "1"}},
+        positions_last_sync=time.time(),  # USER 2026-10-24: sync evidence, see store1 test above
     )
     mgr = SimpleNamespace(positions_service=svc, accounts={})
     bp = pt.ez_broker(mgr, "ang_store2", config=CFG)

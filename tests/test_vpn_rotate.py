@@ -137,7 +137,8 @@ def test_ovpn_hardening_knobs():
     for f in _staged_servers():
         txt = f.read_text()
         for knob in ["ping-restart 60", "hand-window 20", "tls-timeout 5", "persist-tun",
-                     "persist-key", "explicit-exit-notify 1", "mssfix 1400", "remote-random"]:
+                     "persist-key", "explicit-exit-notify 1", "mssfix 1400", "remote-random",
+                     "replay-window 64 60"]:
             assert knob in txt, f"{f.name}: missing {knob}"
         assert "ping-restart 0" not in txt, f"{f.name}: dead-peer detection disabled"
 

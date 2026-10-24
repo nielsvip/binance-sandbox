@@ -42,7 +42,9 @@ class FakeBinance:
 class FakeService:
     def __init__(self):
         self.positions = {}
-        self.positions_last_sync = None
+        # USER 2026-10-24 unreachable-real-fix: default = a RUNNING synced service. The store counts as broker
+        # truth only with sync evidence; tests simulating restart/unsynced override last_sync to None/stale.
+        self.positions_last_sync = time.time()
         self.resyncs = 0
 
     async def fetch_positions(self, account_key):
@@ -191,20 +193,33 @@ def test_seed_before_broker_still_arms_refresher():
 
 
 # ── restart with stale files -> broker truth wins ─────────────────────────────────────
-def test_restart_with_stale_files_broker_truth_wins(tmp_path):
+def test_restart_with_stale_files_broker_truth_wins(tmp_path, monkeypatch):
     f = tmp_path / "long_positions.json"
     f.write_text("{}")
     pt.write_meta(f, writer="test", now=time.time() - 600)
     assert pt.is_stale(pt.read_written_at(f), CFG)
     fb = FakeBinance()  # broker: flat
+    # USER 2026-10-24 unreachable-real-fix: the dedicated sync-REST fallback builds its own client — point it at
+    # the fake broker, so the restart path (store untrusted without sync evidence -> REST decides) is exercised.
+    monkeypatch.setattr("binance.client.Client", lambda *a, **k: fb)
     mgr = FakeMgr(fb)
     mgr.positions_service.positions["men:SOLUSDC_LONG"] = _pos(3.0)  # loaded from stale disk at restart
     mgr.positions_service.positions_last_sync = None  # no broker sync since restart
-    assert run(pt.ez_pre_order_check(mgr, "men", "SOLUSDC", "men:SOLUSDC_LONG", "LONG", "AUGMENT", config=CFG)) == "BLOCKED_POSITIONS_BROKER_MISMATCH"
-    assert run(pt.ez_pre_order_check(mgr, "men", "SOLUSDC", "men:SOLUSDC_LONG", "LONG", "CLOSE", config=CFG)) == "SKIP_BROKER_FLAT"
-    fb.amts[("SOLUSDC", "LONG")] = 5.0  # broker holds MORE than the stale file: exit proceeds on broker truth
-    pt._CACHES.clear()
-    assert run(pt.ez_pre_order_check(mgr, "men", "SOLUSDC", "men:SOLUSDC_LONG", "LONG", "REDUCE", config=CFG)) is None
+
+    async def main():
+        r1 = await pt.ez_pre_order_check(mgr, "men", "SOLUSDC", "men:SOLUSDC_LONG", "LONG", "AUGMENT", config=CFG)
+        await asyncio.sleep(0)  # let the mismatch resync nudge run on this loop
+        r2 = await pt.ez_pre_order_check(mgr, "men", "SOLUSDC", "men:SOLUSDC_LONG", "LONG", "CLOSE", config=CFG)
+        fb.amts[("SOLUSDC", "LONG")] = 5.0  # broker holds MORE than the stale file
+        pt._CACHES.clear()
+        r3 = await pt.ez_pre_order_check(mgr, "men", "SOLUSDC", "men:SOLUSDC_LONG", "LONG", "REDUCE", config=CFG)
+        await asyncio.sleep(0)
+        return r1, r2, r3
+
+    r1, r2, r3 = run(main())
+    assert r1 == "BLOCKED_POSITIONS_BROKER_MISMATCH"
+    assert r2 == "SKIP_BROKER_FLAT"
+    assert r3 is None  # exit proceeds on broker truth
     assert mgr._ptruth_pre["men:SOLUSDC_LONG"]["pre"] == 5.0
     assert mgr.positions_service.resyncs >= 1
 
