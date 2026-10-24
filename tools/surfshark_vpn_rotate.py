@@ -379,7 +379,7 @@ def ensure_tunnel(wl, state):
     name = cands[0]["name"]
     log(f"ensure_tunnel: restoring {name}, verifying whitelist before accepting")
     _slot_start(name)
-    if not wait_state([name], "Connected", egress_ip(), timeout=45):
+    if not wait_state([name], "Connected", egress_ip(), timeout=45, same_ip_ok=True):
         log("INVARIANT FAIL-CLOSED: restored slot did not connect, leaving link down")
         return False
     ip = egress_ip()
@@ -489,7 +489,12 @@ def eligible_slots(wl, state, skip):
     return [t[2] for t in out]
 
 
-def wait_state(names, want, old_ip, timeout=75):
+def wait_state(names, want, old_ip, timeout=75, same_ip_ok=False):
+    # USER 2026-10-24: requiring a NEW egress IP murdered healthy static tunnels —
+    # a flapping static reconnects on its SAME whitelisted IP, wait_state called it
+    # failure, and the rotator stopped it to naked. same_ip_ok accepts Connected on
+    # the same IP; ban-evasion callers keep it False (a ban follows the IP).
+    # Post-accept whitelist + Binance-probe gates below still apply either way.
     end = time.time() + timeout
     while time.time() < end:
         cur = {s["name"]: s["status"] for s in slots()}
@@ -497,7 +502,7 @@ def wait_state(names, want, old_ip, timeout=75):
             if want != "Connected":
                 return True
             ip = egress_ip()
-            if ip and ip != old_ip:
+            if ip and (ip != old_ip or same_ip_ok):
                 return True
         time.sleep(3)
     return False
@@ -536,7 +541,8 @@ def do_rotate(target=None, force_tunnel=False):
         srv, _ = slot_server(name)
         log(f"trying slot {name} server={srv}")
         _slot_start(name)
-        if not wait_state([name], "Connected", old_ip):
+        if not wait_state([name], "Connected", old_ip,
+                            same_ip_ok=(old_ip in wl and not ban_active()[0])):
             log(f"slot {name} did not connect with new IP")
             state["slot_fail"][name] = time.time()
             save_state(state)

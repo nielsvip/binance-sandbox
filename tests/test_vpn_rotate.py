@@ -188,6 +188,14 @@ def test_ovpn_only_flag_gates_app_slots(monkeypatch):
     assert got == ["OVPN:uk-lon", "Surfshark. Dausos", "Surfshark. WireGuard"]
 
 
+def test_wait_state_same_ip_ok_for_statics(monkeypatch):
+    monkeypatch.setattr(vpn, "slots", lambda: [{"name": "X", "status": "Connected"}])
+    monkeypatch.setattr(vpn, "egress_ip", lambda: "1.2.3.4")
+    assert vpn.wait_state(["X"], "Connected", "1.2.3.4", timeout=5, same_ip_ok=True) is True
+    assert vpn.wait_state(["X"], "Connected", "1.2.3.4", timeout=0) is False
+    assert vpn.wait_state(["X"], "Connected", "9.9.9.9", timeout=5) is True
+
+
 def test_slot_rank_covers_static_geos():
     assert vpn.slot_rank("br-sao-static.prod.surfshark.com") == 3
     assert vpn.slot_rank("au-syd-static.prod.surfshark.com") == 3
