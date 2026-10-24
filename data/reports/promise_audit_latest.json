@@ -1,11 +1,11 @@
 {
- "generated_utc": "2026-10-24T10:12:08.023790+00:00",
+ "generated_utc": "2026-10-24T11:12:07.292722+00:00",
  "days": 1.0,
  "totals": {
-  "exit_promises": 84,
-  "exit_broken_no_delivery": 77,
-  "entry_promises": 36,
-  "entry_broken_no_delivery": 36,
+  "exit_promises": 85,
+  "exit_broken_no_delivery": 78,
+  "entry_promises": 37,
+  "entry_broken_no_delivery": 37,
   "exit_skipped_inflight": 105,
   "exit_kept_late": 5,
   "exit_kept_in_bar": 2
@@ -201,6 +201,14 @@
    "entry_broken_no_delivery": 6,
    "exit_promises": 9,
    "exit_broken_no_delivery": 9
+  },
+  "fin:BLURUSDT_SHORT": {
+   "entry_promises": 1,
+   "entry_broken_no_delivery": 1
+  },
+  "men:SKYAIUSDT_SHORT": {
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1
   }
  },
  "detail": [
@@ -1382,6 +1390,26 @@
    "late_min": null,
    "action": "AUGMENT",
    "reason": "AUGMENT_AT_LOSS_LH",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "fin",
+   "sym_side": "BLURUSDT_SHORT",
+   "kind": "entry",
+   "bar": "10-24 10:15",
+   "late_min": null,
+   "action": "AUGMENT",
+   "reason": "AUGMENT_AT_LOSS_LH",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "men",
+   "sym_side": "SKYAIUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-24 09:45",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "VIGILANCE_DC4_15m_STOP g-0.66 breach0.44%>=tol0.25% px0.0321",
    "outcome": "NO_DELIVERY"
   }
  ],
