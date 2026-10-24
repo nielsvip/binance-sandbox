@@ -414,6 +414,63 @@ def test_lots_held_over_7d_expire_exact():
     assert row["basis"][0]["px"] == 52.0
 
 
+def test_backfill_prices_phantom_from_broker_book():
+    cl = _ev("2026-10-23T19:00:00+00:00", "BF", "SHORT", "CLOSE", 10.0, 99.0)
+    books = {("BF", "SHORT"): [10.0, 10.0 * 101.0, None, None]}
+    out, sm = srv.realized_walk([cl], broker_books=books)
+    row = [e for e in out if e.get("action") == "CLOSE"][0]
+    assert row["rpnl"] == round(10.0 * (101.0 - 99.0), 2)
+    assert row["basis"][-1]["reason"] == "BROKER_FILL Basis"
+    assert sm["unknown"] == 0 and sm["broker_filled"] == 1
+    assert sm["pnl_total"] == row["rpnl"]
+
+
+def test_backfill_covers_partial_remainder_only():
+    o = _ev("2026-10-23T10:00:00+00:00", "BF", "LONG", "OPEN", 4.0, 10.0)
+    o["reason"] = "STRAT"
+    c = _ev("2026-10-23T19:00:00+00:00", "BF", "LONG", "CLOSE", 10.0, 12.0)
+    books = {("BF", "LONG"): [6.0, 6.0 * 11.0, None, None]}
+    out, sm = srv.realized_walk([o, c], broker_books=books)
+    row = [e for e in out if e.get("action") == "CLOSE"][0]
+    assert row["rpnl"] == round(4.0 * 2.0 + 6.0 * 1.0, 2)
+    assert sm["unknown"] == 0 and sm["unknown_partial"] == 0
+    assert sm["broker_filled"] == 1
+
+
+def test_backfill_short_book_leaves_honest_unknown():
+    cl = _ev("2026-10-23T19:00:00+00:00", "BF", "SHORT", "CLOSE", 10.0, 99.0)
+    books = {("BF", "SHORT"): [3.0, 3.0 * 101.0, None, None]}
+    out, sm = srv.realized_walk([cl], broker_books=books)
+    row = [e for e in out if e.get("action") == "CLOSE"][0]
+    assert row["rpnl"] == round(3.0 * (101.0 - 99.0), 2)
+    assert sm["unknown"] == 1 and sm["unknown_partial"] == 1
+
+
+def test_backfill_never_touches_stale_excluded():
+    old = _ev("2026-09-02T10:00:00+00:00", "BF", "SHORT", "OPEN", 10.0, 112.0)
+    old["reason"] = "ZOMBIE"
+    cl = _ev("2026-10-23T19:00:00+00:00", "BF", "SHORT", "CLOSE", 15.0, 99.0)
+    books = {("BF", "SHORT"): [5.0, 5.0 * 101.0, None, None]}
+    out, sm = srv.realized_walk(
+        [old, cl], stale_basis_days=7, expiry_days=60, broker_books=books
+    )
+    row = [e for e in out if e.get("action") == "CLOSE"][0]
+    assert row.get("stale_excluded") is True
+    assert sm["broker_filled"] == 0
+    assert sm["unknown"] == 1
+
+
+def test_broker_match_burns_twins_and_quarantines_veto():
+    j1 = {"ts": "2026-10-20T10:00:00+00:00", "symbol": "MM", "side": "LONG", "action": "OPEN", "qty": 10.0, "price": 50.0, "reason": "STRAT"}
+    j2 = {"ts": "2026-10-20T11:00:00+00:00", "symbol": "MM", "side": "LONG", "action": "CLOSE", "qty": 10.0, "price": 52.0, "reason": "STRAT_X"}
+    v = {"ts": "2026-10-21T10:00:00+00:00", "symbol": "MM", "side": "LONG", "action": "OPEN", "qty": 5.0, "price": 51.0, "reason": "BROKER_SYNC_REJECTED_X"}
+    fills = {"MM": [[None, 10.0, 50.0, "2026-10-20"], [None, -10.0, 52.0, "2026-10-20"], [None, 5.0, 51.0, "2026-10-21"]]}
+    chains = {("MM", "LONG"): [j1, j2, v]}
+    books = srv._build_broker_books(chains, fills)
+    assert books.get(("MM", "LONG"), [0])[0] == 0
+    assert books.get(("MM", "SHORT"), [0])[0] == 0
+
+
 def test_close_on_expired_only_book_is_honest_unknown():
     from datetime import timedelta
 

@@ -571,6 +571,14 @@ def test_executor_doc_format_and_dict_target(tmp_path, monkeypatch):
     assert len(calls) == 1 and calls[0]["action"] == "OPEN"
 
 
+def test_native_unconfirmed_held_for_vec_confirm(monkeypatch):
+    """USER 2026-10-24 pending-confirm: a native fire the vec hasn't confirmed waits (flagged for switch
+    creation) instead of dying outright — the vec may simply be behind live."""
+    _mode_live(monkeypatch)
+    res = _run_exec(action="OPEN", reason="WT_DC_ENTRY")
+    assert res == "DEFERRED_VEC_CONFIRM_WAIT", res
+
+
 def test_board_converge_open_bypasses_board_entry_block(monkeypatch, caplog):
     """USER 2026-10-24 vector-authority: a vec-dictated force-open carries the board's own decision, so the
     live-set-vs-board entry block must record-and-continue (named for the late VEC_LAST backstop), never

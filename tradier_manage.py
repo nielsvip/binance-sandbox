@@ -42963,6 +42963,27 @@ def _tr_parity_vec_order(reason) -> bool:
     )
 
 
+def _parity_breach_record_tradier(position_key, action, reason, result) -> None:
+    """USER 2026-10-24 VEC-LAST stocks mirror of ez_manage._parity_breach_record: a
+    vector decision that stocks-live REFUSED is a parity breach — named here because
+    the pre-backstop structural gates return before the backstop ever sees the order.
+    Logged CRITICAL, appended to the same data/vector_parity_breaches.jsonl ledger,
+    refusing gate filed as a retrace work order. Never writes under pytest."""
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return
+    try:
+        from pathlib import Path as _P
+        _p = _P(_cfg_auto("BASE_PATH", "/users/niels/Documents/binance")) / "data" / "vector_parity_breaches.jsonl"
+        _p.parent.mkdir(parents=True, exist_ok=True)
+        with open(_p, "a") as fh:
+            fh.write(json.dumps({"ts": time.time(), "venue": "stocks", "position_key": position_key, "action": action, "reason": str(reason)[:160], "gate": str(result)[:80]}) + "\n")
+        logger.critical(f"🧨 [VECTOR_PARITY_BREACH] {position_key}: the vector decided {action} and stocks-live REFUSED it — {str(result)[:60]} (reason={str(reason)[:60]}). The gate must be exempted or vectorized: data/vector_parity_breaches.jsonl")
+        from live_twins.vector_enforce import _queue_retrace as _qr_tr
+        _qr_tr(f"GATE:{str(result)[:40]}", action, position_key, reason)
+    except Exception:
+        pass
+
+
 class TradierTradeManager:
     def __init__(self, account_list: List[str] = None):
         self.config = config
@@ -49053,6 +49074,8 @@ class TradierTradeManager:
         except Exception as _rq_e:  # a stop failure must never unwind or mask a real fill
             logger.critical(f"🛡️ [ENTRY_STOP_REQUIRED] {position_key}: post-fill stop requirement ERRORED after {_res}: {_rq_e}")
             self._mark_entry_unprotected_tradier(position_key, account_key, symbol, position_side, f"requirement_error:{_rq_e}")
+        if str(_res or "").upper().startswith(("BLOCKED", "REFUSED")) and _tr_parity_vec_order(reason):
+            _parity_breach_record_tradier(position_key, action, reason, _res)
         return _res
 
     def _mark_entry_unprotected_tradier(self, position_key, account_key, symbol, position_side, why):
