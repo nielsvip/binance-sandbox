@@ -55,8 +55,9 @@ def to_utc(s):
 
 
 def load_live(acct, sym, side):
+    import live_trade_history as lth
     seen = set()
-    events = []
+    raw = []
     for root in [ROOT / "data" / "tradier" / "history", ROOT / "data" / "history"]:
         fpath = root / acct / f"{sym}_{side}.jsonl"
         if not fpath.is_file():
@@ -75,15 +76,23 @@ def load_live(acct, sym, side):
             if key in seen:
                 continue
             seen.add(key)
-            if any(k in typ for k in OPEN_TOKENS):
-                kind = "open"
-            elif any(k in typ for k in CLOSE_TOKENS):
-                kind = "close"
-            else:
-                continue
-            events.append({"ts": ts, "kind": kind, "type": typ,
-                           "reason": str(rec.get("reason") or "")[:80],
-                           "price": rec.get("price"), "qty": rec.get("qty")})
+            try:
+                qty = float(rec.get("qty") or 0)
+            except (TypeError, ValueError):
+                qty = 0.0
+            raw.append({"ts": ts, "type": typ, "qty": qty,
+                        "reason": str(rec.get("reason") or "")[:80], "price": rec.get("price")})
+    raw.sort(key=lambda e: e["ts"])
+    events = []
+    for r in lth.mark_boundaries(raw):
+        if r["phase"] == "entry":
+            kind = "open"
+        elif r["phase"] == "exit":
+            kind = "close"
+        else:
+            continue
+        events.append({"ts": r["ts"], "kind": kind, "type": r["type"],
+                       "reason": r["reason"], "price": r["price"], "qty": r["qty"]})
     events.sort(key=lambda e: e["ts"])
     return events
 
@@ -207,11 +216,11 @@ def main():
            len(vec_entries) - len(r2["me_v"]) + len(vec_exits) - len(r2["mx_v"]),
            len(live_opens) - len(r2["me_l"]) + len(live_closes) - len(r2["mx_l"]), len(live))
     )
-    for anchor in ["const LIVE = [];", "const OPEN_EV=EVENTS", "<div id='wrap'>"]:
+    for anchor in ["const LIVE = [];", "];\nconst OPEN_EV=EVENTS", "<div id='wrap'>"]:
         if anchor not in text:
             raise SystemExit(f"anchor missing: {anchor}")
     text = text.replace("const LIVE = [];", "const LIVE = %s;" % json.dumps(live_js))
-    text = text.replace("const OPEN_EV=EVENTS", injection + "const OPEN_EV=EVENTS")
+    text = text.replace("];\nconst OPEN_EV=EVENTS", injection + "];\nconst OPEN_EV=EVENTS")
     text = text.replace("<div id='wrap'>", banner + "<div id='wrap'>", 1)
     out = Path(args.out) if args.out else html_path.with_name(html_path.stem + ".parity.html")
     if out.resolve() == html_path.resolve():

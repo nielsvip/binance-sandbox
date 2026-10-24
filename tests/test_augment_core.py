@@ -178,7 +178,7 @@ def test_ez_hook_inert_by_default():
 
 def test_ez_hook_fires_when_enabled():
     sig = _ez_stub(True)
-    assert sig is not None and sig.action == "AUGMENT" and str(sig.reason).startswith("AUGMENT_CORE_LADDER UAG_LADDER") and abs(sig.quantity - 2.475) < 1e-9  # USER 2026-10-24: 10*0.5*0.495, LONG wt1_15m=1.0 mirrors to (100-1)/200
+    assert sig is not None and sig.action == "AUGMENT" and str(sig.reason).startswith("AUGMENT_CORE_LADDER UAG_LADDER") and abs(sig.quantity - 2.46875) < 1e-9  # USER 2026-10-24: 10*0.5*0.49375, LONG wt1_15m=1.0 mirrors to (80-1)/160
 
 
 def test_no_cap_refusal_and_broken_promise_on_zero_size():

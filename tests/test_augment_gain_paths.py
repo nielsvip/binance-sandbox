@@ -130,7 +130,7 @@ def test_wt_runway_math():
     assert _rw(0.0, 0.0, 0.0, True) == 0.5
     assert _rw(200.0, 0.0, 0.0, False) == 0.5  # most-exhausted TF governs (min)
     assert _rw(None, None, None, False) == 0.5  # bad input fail-safe
-    assert _rw(-60.0, -60.0, -60.0, False) == 0.2  # oversold line still sizes 20%
+    assert _rw(-60.0, -60.0, -60.0, False) == 0.125  # exhaustion line sizes like the old K-line (0.15), never 0
 
 
 def test_ladder_tiers_by_source_type():

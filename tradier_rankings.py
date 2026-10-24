@@ -1105,7 +1105,7 @@ async def plot_dfs_subplots(
                     ax_plot.axvline(x=t_idx, color=l_color, linewidth=l_width, alpha=0.6, zorder=2)
         if SHOW_ACCOUNT_TRADE_ARROWS and acct_trades:
             for ai, acct in enumerate(ACCOUNT_ARROW_ORDER):
-                evs = acct_trades.get(acct) or []
+                evs = _lth.boundary_events(acct_trades.get(acct))
                 if not evs:
                     continue
                 x_off = (ai - (len(ACCOUNT_ARROW_ORDER) - 1) / 2.0) * 0.18
@@ -1126,7 +1126,7 @@ async def plot_dfs_subplots(
                         y_pos = candle_row["low"] - margin_abs_val * 0.5 if is_buy else candle_row["high"] + margin_abs_val * 0.5
                     except (IndexError, KeyError):
                         continue
-                    ax_plot.scatter([t_idx], [y_pos], color=ecol, marker="^" if is_buy else "v", s=30, zorder=8, alpha=0.95, edgecolors="white", linewidths=0.6)
+                    ax_plot.scatter([t_idx], [y_pos], color=ecol, marker="^" if is_buy else "v", s=30, zorder=8, alpha=_lth.arrow_alpha(ev), edgecolors="white", linewidths=0.6)
         marker_events = []
         if symbol in signals_data and tf_plot_loop in signals_data[symbol]:
             for etype, ev_list in signals_data[symbol][tf_plot_loop].items():
@@ -1169,8 +1169,8 @@ async def plot_dfs_subplots(
                 _tol_s = STOCK_MISMATCH_TOL_MIN * 60.0
                 _sig_buy = sorted([t for t, s in marker_events if s == "buy"])
                 _sig_sell = sorted([t for t, s in marker_events if s == "sell"])
-                _fill_buy = sorted([e["timestamp"] for evs in acct_trades.values() for e in evs if e["direction"] == "buy"])
-                _fill_sell = sorted([e["timestamp"] for evs in acct_trades.values() for e in evs if e["direction"] == "sell"])
+                _fill_buy = sorted([e["timestamp"] for evs in acct_trades.values() for e in _lth.boundary_events(evs) if e["direction"] == "buy"])
+                _fill_sell = sorted([e["timestamp"] for evs in acct_trades.values() for e in _lth.boundary_events(evs) if e["direction"] == "sell"])
                 _mb_v, _mb_l = _lth.greedy_match(_sig_buy, _fill_buy, _tol_s)
                 _ms_v, _ms_l = _lth.greedy_match(_sig_sell, _fill_sell, _tol_s)
                 _constituted_vec, _constituted_live = _lth.MISMATCH_VEC_MPL, _lth.MISMATCH_LIVE_MPL

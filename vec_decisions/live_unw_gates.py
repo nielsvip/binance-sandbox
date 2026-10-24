@@ -120,18 +120,22 @@ def augment_tier_min_gain(get, reason, generic):
 
 def wt_runway(wt1_3m, wt1_15m, wt1_1h, is_long):
     """WT-based augment sizing runway 0..1 (USER 2026-10-24: replaces the stoch-K runway;
-    the user trades WT, not stoch). Room before WT exhaustion per TF, normalized on WT's
-    natural +-100 extremes; the most-exhausted TF governs. SHORT: 1 at wt1=+100 (full room
-    below) down to 0 at wt1=-100 (pinned at the floor). LONG mirrored. Bad input -> 0.5
-    (matches the old K default of 50). THE single implementation for augment runway sizing:
-    live AUG_B/C/D call it today; v12's UAG-family sizing and augment_core take it in the
-    same unlock edit — never re-derive it anywhere."""
+    the user trades WT, not stoch). Room before WT exhaustion per TF, linear on +-80 with
+    clamp; the most-exhausted TF governs. SHORT: 1 at wt1>=+80 (full room below) down to 0
+    at wt1<=-80 (pinned at the floor). LONG mirrored. Bad input -> 0.5 (matches the old K
+    default of 50). Bounds rationale: the house exhaustion LINE is +-60 (tradier D-exhaust,
+    BULL/BEAR_HOLD +-53) and the user recalls 56-60 — but measured NPZ p99 is ~+-105 with
+    14-29% of bars beyond +-60, so +-60-anchored sizing would zero augments across every
+    strong trend (the refusal ghost back). +-80 keeps 0.125 at the -60 line, matching the
+    old K-line response (K=15 -> runway 0.15). THE single implementation for augment runway
+    sizing: live AUG_B/C/D, v12's UAG-family sizing and augment_core share it — never
+    re-derive it anywhere."""
     def _r(w):
         try:
             w = float(w)
         except (TypeError, ValueError):
             w = 0.0
-        return min(1.0, max(0.0, (w + 100.0) / 200.0 if not is_long else (100.0 - w) / 200.0))
+        return min(1.0, max(0.0, (w + 80.0) / 160.0 if not is_long else (80.0 - w) / 160.0))
     try:
         return min(_r(wt1_3m), _r(wt1_15m), _r(wt1_1h))
     except Exception:

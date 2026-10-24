@@ -19,9 +19,17 @@ TRB_BUY_COLOR = "#00e676"
 TRB_SELL_COLOR = "#ff1744"
 VEC_ONLY_COLOR = "rgba(248,113,113,0.55)"
 LIVE_ONLY_COLOR = "rgba(74,222,128,0.55)"
-MISMATCH_VEC_MPL = ("#f87171", 0.20)
-MISMATCH_LIVE_MPL = ("#4ade80", 0.20)
-MISMATCH_LW = 0.9
+MISMATCH_VEC_MPL = ("#f87171", 0.14)
+MISMATCH_LIVE_MPL = ("#4ade80", 0.14)
+MISMATCH_LW = 0.8
+
+
+def boundary_events(events):
+    return [e for e in (events or []) if e.get("phase") in ("entry", "exit")]
+
+
+def arrow_alpha(event):
+    return ENTRY_ALPHA if event.get("phase", "entry") == "entry" else EXIT_ALPHA
 
 _BUY_TOKENS = ("OPEN", "AUGMENT", "ADD", "REOPEN", "BUY")
 _SELL_TOKENS = ("REDUCE", "CLOSE", "SELL", "EXIT", "COVER", "TAKE")
@@ -100,7 +108,7 @@ def fetch_trades(symbol, accounts, hist_dirs):
     if not sym:
         return out
     for acct in accounts:
-        events = []
+        by_side = {}
         for hdir in hist_dirs:
             adir = Path(hdir) / acct
             if not adir.is_dir():
@@ -125,12 +133,15 @@ def fetch_trades(symbol, accounts, hist_dirs):
                     if pd.isna(ts):
                         continue
                     typ = str(rec.get("type") or "")
-                    events.append({"timestamp": ts, "direction": event_direction(typ, side),
-                                   "type": typ, "qty": _qty(rec),
-                                   "reason": str(rec.get("reason") or "")[:80]})
+                    by_side.setdefault(side, []).append(
+                        {"timestamp": ts, "direction": event_direction(typ, side),
+                         "type": typ, "qty": _qty(rec), "side": side,
+                         "reason": str(rec.get("reason") or "")[:80]})
+        events = []
+        for side, recs in by_side.items():
+            recs.sort(key=lambda e: e["timestamp"])
+            events.extend(mark_boundaries(recs))
         if events:
-            events.sort(key=lambda e: e["timestamp"])
-            events = mark_boundaries(events)
             seen = set()
             uniq = []
             for ev in events:

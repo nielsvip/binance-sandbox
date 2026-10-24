@@ -54,6 +54,16 @@ def test_history_reader_dedupes_synced_copies():
     assert len(evs) == 2
     keys = [(e["timestamp"].isoformat(), e["type"], e["direction"]) for e in evs]
     assert len(set(keys)) == len(keys)
+    assert [e["phase"] for e in evs] == ["entry", "adapt"]
+
+
+def test_history_reader_marks_adapts():
+    import live_trade_history as lth
+    out = lth.fetch_trades("ENSUSDT", ["inf"], [ROOT / "data" / "history"])
+    evs = out.get("inf", [])
+    assert len(evs) > 0
+    n_bound = len(lth.boundary_events(evs))
+    assert 0 < n_bound < len(evs)
 
 
 def test_history_reader_empty_symbol():

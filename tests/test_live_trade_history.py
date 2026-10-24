@@ -59,6 +59,29 @@ def test_fetch_dedupes_mirror_and_sorts():
     assert len(evs) == 2
     ts = [e["timestamp"] for e in evs]
     assert ts == sorted(ts)
+    assert [e["phase"] for e in evs] == ["entry", "adapt"]
+
+
+def test_mark_boundaries_round_trip():
+    from datetime import datetime, timezone
+    def rec(h, typ, qty):
+        return {"ts": datetime(2026, 10, 15, h, 0, tzinfo=timezone.utc), "type": typ, "qty": qty}
+    recs = [rec(8, "AUGMENT", 5.0), rec(9, "AUGMENT", 3.0), rec(10, "REDUCE", 4.0),
+            rec(11, "REDUCE", 4.0), rec(12, "AUGMENT", 2.0)]
+    out = lth.mark_boundaries(recs)
+    assert [r["phase"] for r in out] == ["entry", "adapt", "adapt", "exit", "entry"]
+
+
+def test_mark_boundaries_missing_qty_still_counts():
+    from datetime import datetime, timezone
+    recs = [{"ts": datetime(2026, 10, 15, 8, 0, tzinfo=timezone.utc), "type": "OPEN", "qty": None}]
+    assert lth.mark_boundaries(recs)[0]["phase"] == "entry"
+
+
+def test_boundary_events_and_arrow_alpha():
+    evs = [{"phase": "entry"}, {"phase": "adapt"}, {"phase": "exit"}, {}]
+    assert len(lth.boundary_events(evs)) == 2
+    assert lth.arrow_alpha({"phase": "entry"}) > lth.arrow_alpha({"phase": "exit"})
 
 
 def test_fetch_empty_symbol():

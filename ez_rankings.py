@@ -6610,8 +6610,8 @@ async def plot_dfs_subplots(
                 _tol_s = CRYPTO_MISMATCH_TOL_MIN * 60.0
                 _sig_buy = sorted([t for t, s in marker_events if s == "buy"])
                 _sig_sell = sorted([t for t, s in marker_events if s == "sell"])
-                _fill_buy = sorted([e["timestamp"] for evs in _fills.values() for e in evs if e["direction"] == "buy"])
-                _fill_sell = sorted([e["timestamp"] for evs in _fills.values() for e in evs if e["direction"] == "sell"])
+                _fill_buy = sorted([e["timestamp"] for evs in _fills.values() for e in _lth.boundary_events(evs) if e["direction"] == "buy"])
+                _fill_sell = sorted([e["timestamp"] for evs in _fills.values() for e in _lth.boundary_events(evs) if e["direction"] == "sell"])
                 _mb_v, _mb_l = _lth.greedy_match(_sig_buy, _fill_buy, _tol_s)
                 _ms_v, _ms_l = _lth.greedy_match(_sig_sell, _fill_sell, _tol_s)
                 if SHOW_CRYPTO_MISMATCH:
@@ -6630,7 +6630,7 @@ async def plot_dfs_subplots(
                             ax_plot.axvline(x=_t, color=_mc_live[0], alpha=_mc_live[1], lw=_lth.MISMATCH_LW, zorder=6)
                 if SHOW_CRYPTO_LIVE_ARROWS and _fills:
                     for _acct in CRYPTO_ARROW_ACCOUNTS:
-                        for _ev in _fills.get(_acct) or []:
+                        for _ev in _lth.boundary_events(_fills.get(_acct)):
                             _t = _ev["timestamp"]
                             if _t < x_left_ts or _t > x_right_ts:
                                 continue
@@ -6640,7 +6640,7 @@ async def plot_dfs_subplots(
                                 _yp = _row["low"] - margin_abs_val * 0.5 if _is_buy else _row["high"] + margin_abs_val * 0.5
                             except (IndexError, KeyError):
                                 continue
-                            ax_plot.scatter([_t], [_yp], color=_lth.ACCOUNT_ARROW_COLORS[_acct], marker="^" if _is_buy else "v", s=30, zorder=8, alpha=0.95, edgecolors="white", linewidths=0.6)
+                            ax_plot.scatter([_t], [_yp], color=_lth.ACCOUNT_ARROW_COLORS[_acct], marker="^" if _is_buy else "v", s=30, zorder=8, alpha=_lth.arrow_alpha(_ev), edgecolors="white", linewidths=0.6)
             except Exception as _e_live:
                 logger.debug(f"[plot_dfs_subplots] live overlay error: {_e_live}")
 
