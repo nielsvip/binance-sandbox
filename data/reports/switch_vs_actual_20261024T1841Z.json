@@ -1,0 +1,24 @@
+{
+ "window_from": "10-24 17:37",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 207,
+  "status_OK": 143,
+  "EXTRA": 1
+ },
+ "rows": [
+  {
+   "acct": "fin",
+   "sym_side": "RLCUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-24 17:45",
+   "actual": "REDUCE",
+   "actual_reason": "RATIO_CLOSE_OW_SHORT_L20_S80_tgt50/50_wt15\u03940.0_g0.69%",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  }
+ ]
+}
