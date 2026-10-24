@@ -19863,8 +19863,17 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             _hardcoded_fired = True
                         if not _hardcoded_fired:
                             _res_attributed = False  # 2026-10-06 ENTRY_SOURCE_LABEL: True when the resolver below named a non-B source (GR override key)
+                            # 2026-10-24 ATTRIBUTION HONESTY (NO-LIES): bypass/reentry lanes record
+                            # provenance in _fire_src (label-only, never set by the block path). A
+                            # firing B-block must NOT clobber it — else bypass opens wear block
+                            # labels (proven: GFTF-dead bars opening as B_KZONE/B14/B_MOM5). Bypass
+                            # fires fall through to the _fire_src resolver below with true names.
+                            try:
+                                _fs_set = _fire_src is not None
+                            except NameError:
+                                _fs_set = False
                             for _bname, _barr in _entry_blocks_cache.items():
-                                if _barr[i]:
+                                if _barr[i] and not _fs_set:
                                     entry_reason = _bname
                                     break
                             if entry_reason == "VECTOR_ENTRY" and _n3_tier_reason:

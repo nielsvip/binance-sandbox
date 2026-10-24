@@ -33,18 +33,32 @@ DC_DELTA_FIELDS = ["dc_basis", "dc_high", "dc_low"]
 DC_POSITION_FIELDS = ["dc_position", "dc_width"]
 
 
-def _tfs(cfg_get):
+def _C(cfg_get, key, default):
+    """Board-governance lookup: UPPERCASE registry keys first (boards/template rows
+    speak UPPER), lowercase live-code keys second, default last. Without this,
+    board overrides never reach the twin (the RZ case-split bug, 2026-10-24)."""
     try:
-        tw = cfg_get("tf_weights", {}) or {}
+        v = cfg_get(key.upper(), None)
     except Exception:
+        v = None
+    if v is None:
+        try:
+            v = cfg_get(key, None)
+        except Exception:
+            v = None
+    return default if v is None else v
+
+
+def _tfs(cfg_get):
+    tw = _C(cfg_get, "tf_weights", {}) or {}
+    if not isinstance(tw, dict):
         tw = {}
     return list(tw.keys()) if tw else list(TFS)
 
 
 def _tw(cfg_get):
-    try:
-        tw = cfg_get("tf_weights", {}) or {}
-    except Exception:
+    tw = _C(cfg_get, "tf_weights", {}) or {}
+    if not isinstance(tw, dict):
         tw = {}
     return {tf: float(tw.get(tf, 1.0)) for tf in _tfs(cfg_get)}
 
