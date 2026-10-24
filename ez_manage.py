@@ -43906,26 +43906,28 @@ async def evaluate_augmentation(ctx: dict) -> Optional[Signal]:
     wt2_1h = safe_fetch_float(i.get("wt2_1h"), 0)
     wt_cross_3m = i.get("wt_cross_3m", "NONE")
     wt_cross_15m = i.get("wt_cross_15m", "NONE")
-    k_3m = safe_fetch_float(i.get("k_3m"), 50)
-    k_15m = safe_fetch_float(i.get("k_15m"), 50)
-    k_1h = safe_fetch_float(i.get("k_1h"), 50)
-    k_4h = safe_fetch_float(i.get("k_4h"), 50)
     if is_long:
         wt_dir_3m = wt1_3m > wt2_3m
         wt_dir_15m = wt1_15m > wt2_15m
         wt_dir_1h = wt1_1h > wt2_1h
         wt_cross_bull_3m = wt_cross_3m == "BULL"
         wt_cross_bull_15m = wt_cross_15m == "BULL"
-        k_runway = min(100 - k_3m, 100 - k_15m, 100 - k_1h) / 100.0
-        # USER 2026-10-24: stoch-K exhaustion veto REMOVED (not a switch, never vectorized,
-        # never tested; user trades WT, not stoch). k_runway stays as a SIZING mult only.
     else:
         wt_dir_3m = wt1_3m < wt2_3m
         wt_dir_15m = wt1_15m < wt2_15m
         wt_dir_1h = wt1_1h < wt2_1h
         wt_cross_bull_3m = wt_cross_3m == "BEAR"
         wt_cross_bull_15m = wt_cross_15m == "BEAR"
-        k_runway = min(k_3m, k_15m, k_1h) / 100.0
+    # USER 2026-10-24: WT-runway sizing via the shared twin vec_decisions.live_unw_gates.wt_runway
+    # (v12's UAG-family sizing + augment_core take the same twin in one unlock edit — until then
+    # boards assume full mult while live scales, the pre-existing sizing gap, now WT-driven).
+    # Replaces the stoch-K runway AND its veto (not a switch, never vectorized, never tested;
+    # user trades WT, not stoch). Sizing only — never a gate.
+    try:
+        from vec_decisions.live_unw_gates import wt_runway as _wt_runway_fn
+        wt_runway = float(_wt_runway_fn(wt1_3m, wt1_15m, wt1_1h, is_long))
+    except Exception:
+        wt_runway = 0.5
     wt_tf_aligned = sum([wt_dir_3m, wt_dir_15m, wt_dir_1h])
     has_wt_cross = wt_cross_bull_3m or wt_cross_bull_15m
     # USER 2026-10-24 (augment "always enforced at the best value"): tiers resolve
@@ -43961,38 +43963,38 @@ async def evaluate_augmentation(ctx: dict) -> Optional[Signal]:
             aug_qty = min(pos_amt * 0.30, base_qty * 2.0)
             return Signal(
                 action="AUGMENT",
-                reason=f"AUG_A_BLOWPAST_g{gain:.1f}%_wt={wt_tf_aligned}/3_k_run={k_runway:.0%}",
+                reason=f"AUG_A_BLOWPAST_g{gain:.1f}%_wt={wt_tf_aligned}/3_wt_run={wt_runway:.0%}",
                 conviction=90.0,
                 quantity=aug_qty,
             )
     # AUG_B: WT cross + aligned 2/3 TFs (conviction 80), bounce-tier gain gate
     if getattr(config, "AUGMENT_WT_CROSS_ENABLED", True):
         if has_wt_cross and wt_tf_aligned >= 2 and gain >= _wtcross_tier:
-            aug_qty = base_qty * k_runway
+            aug_qty = base_qty * wt_runway
             cross_tf = "3m" if wt_cross_bull_3m else "15m"
             return Signal(
                 action="AUGMENT",
-                reason=f"AUG_B_WT_CROSS_{cross_tf}_g{gain:.1f}%_wt={wt_tf_aligned}/3_k_run={k_runway:.0%}",
+                reason=f"AUG_B_WT_CROSS_{cross_tf}_g{gain:.1f}%_wt={wt_tf_aligned}/3_wt_run={wt_runway:.0%}",
                 conviction=80.0,
                 quantity=aug_qty,
             )
     # AUG_C: WT aligned 3/3 LTF + smaller gain (conviction 70)
     if getattr(config, "AUGMENT_WT_3TF_ENABLED", True):
         if wt_tf_aligned >= 3 and wt_dir_3m and gain >= 0.5 * min_gain:
-            aug_qty = base_qty * 0.5 * k_runway
+            aug_qty = base_qty * 0.5 * wt_runway
             return Signal(
                 action="AUGMENT",
-                reason=f"AUG_C_WT_3TF_g{gain:.1f}%_k_run={k_runway:.0%}",
+                reason=f"AUG_C_WT_3TF_g{gain:.1f}%_wt_run={wt_runway:.0%}",
                 conviction=70.0,
                 quantity=aug_qty,
             )
     # AUG_D: HTF trend only (conviction 65) — lowest bar, most frequent
     if getattr(config, "AUGMENT_HTF_TREND_ENABLED", True):
         if gain >= min_gain and wt_dir_15m and wt_dir_1h:
-            aug_qty = base_qty * 0.3 * k_runway
+            aug_qty = base_qty * 0.3 * wt_runway
             return Signal(
                 action="AUGMENT",
-                reason=f"AUG_D_HTF_TREND_g{gain:.1f}%_k_run={k_runway:.0%}",
+                reason=f"AUG_D_HTF_TREND_g{gain:.1f}%_wt_run={wt_runway:.0%}",
                 conviction=65.0,
                 quantity=aug_qty,
             )

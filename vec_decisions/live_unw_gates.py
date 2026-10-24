@@ -118,6 +118,26 @@ def augment_tier_min_gain(get, reason, generic):
     return generic
 
 
+def wt_runway(wt1_3m, wt1_15m, wt1_1h, is_long):
+    """WT-based augment sizing runway 0..1 (USER 2026-10-24: replaces the stoch-K runway;
+    the user trades WT, not stoch). Room before WT exhaustion per TF, normalized on WT's
+    natural +-100 extremes; the most-exhausted TF governs. SHORT: 1 at wt1=+100 (full room
+    below) down to 0 at wt1=-100 (pinned at the floor). LONG mirrored. Bad input -> 0.5
+    (matches the old K default of 50). THE single implementation for augment runway sizing:
+    live AUG_B/C/D call it today; v12's UAG-family sizing and augment_core take it in the
+    same unlock edit — never re-derive it anywhere."""
+    def _r(w):
+        try:
+            w = float(w)
+        except (TypeError, ValueError):
+            w = 0.0
+        return min(1.0, max(0.0, (w + 100.0) / 200.0 if not is_long else (100.0 - w) / 200.0))
+    try:
+        return min(_r(wt1_3m), _r(wt1_15m), _r(wt1_1h))
+    except Exception:
+        return 0.5
+
+
 # ── WT_COMPOSITE_ENTRY_BLOCK (+ master WT_COMPOSITE_HTF_GATE): hard entry/augment block of ez_positions_quick.rate() lines 2493-2512, twin of vec_decisions/wt_composite_gate.block_mask ──
 def wt_composite_block(get, ind, is_long):
     """True -> block fresh entry / augment: alignment < 3 OR composite < WT_COMPOSITE_ENTRY_BLOCK (default -20). Active iff WT_COMPOSITE_HTF_GATE and a WT_COMPOSITE_SCORING_ENABLED(_TRADIER)."""
