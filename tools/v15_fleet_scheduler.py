@@ -11,6 +11,7 @@ Admission of a NEW symbol needs: free slot, MemAvailable - mem_reserve >= estima
 else default_pair_mb, + its NPZ size), cpu < cpu_target_pct, NPZ readiness on that host, both templates present, and at most
 --max-launch new pairs per host per tick (no ramp, shared by pass 1 + steal pass). Symbols whose data is not ready are SKIPPED and listed in the state.
 PAIR FLOOR (USER 2026-10-24): a host holding fewer than min(cap, V15_SCHED_MIN_PAIRS=4) pairs admits budget-exhausted sides past the attempt/slice caps AND past --max-launch (tagged floor=True, drawing V15_SCHED_FLOOR_EXTRA=6 extra launches per side) — every safety gate still applies, so a still-idle host names a real gate, never an empty budget.
+Below-floor hosts also pull 30D work off long queues (steal30 opens without a slow-pinned round; floor-tagged takes burn floor budget). A side that just structural-exited (soft-skip/gate/stale verdict in a fresh sweep log) cannot be floor-refilled for V15_SCHED_FLOOR_SKIP_S=3600s — corpses never hold floor slots.
 
 UNIVERSE (tools/v15_universe.py, written to data/daily_universe/<date>.json): STOCKS = symbols that traded in the last 30d in the real
 ledger (data/history/{tra,trb,trc,inf}); CRYPTO = union of symbols_{flz,men,ang}_{long,short}.json. --extend-universe (off) adds the
@@ -713,6 +714,18 @@ def _floor_left(st, key):
     except (TypeError, ValueError, AttributeError):
         used = 0
     return max(0, extra - used)
+
+
+def _below_floor_hosts(held, caps):
+    """[host names] holding fewer pairs than their floor target. Pure (tested). caps = {host: cap}."""
+    out = []
+    for name, cap in (caps or {}).items():
+        try:
+            if len((held or {}).get(name, {})) < _floor_target_n(cap):
+                out.append(name)
+        except (TypeError, ValueError, AttributeError):
+            continue
+    return sorted(out)
 
 
 def _launch_exhausted(key, window, ss, st, started, redo, pinned=None):
@@ -2406,6 +2419,7 @@ def _refund_structural_exits(st, early_by_host, keep=4000):
     seen = st.setdefault("refunded_exits", {})
     att = st.setdefault("attempts", {})
     out = []
+    _no_refund = ("[SOFT-SKIP]", "[IMPOSSIBLE-SKIP]")
     for hn, ex in sorted((early_by_host or {}).items()):
         for ss, v in sorted((ex or {}).items()):
             try:
@@ -2416,6 +2430,8 @@ def _refund_structural_exits(st, early_by_host, keep=4000):
             if k in seen:
                 continue
             seen[k] = mk
+            if any(m in mk for m in _no_refund):
+                continue  # USER 2026-10-24: a terminal verdict recomputes nothing on the same NPZ — refunding the attempt relaunch-loops the corpse (s6 FLOKI/ADA SHORT launched+skipped every tick). It waits for NPZ refresh / the floor cooldown, never for a refunded attempt.
             ak = f"{ss}|30D"
             if att.get(ak, 0) > 0:
                 att[ak] = att[ak] - 1
@@ -4130,6 +4146,25 @@ def tick(args, cfg, now):
     _parity_cache = {}
 
     _cap_by_host = {}
+    # USER 2026-10-24: a side that JUST structural-exited (SOFT-SKIP on a terminal verdict, STALE exit, gate refusal)
+    # relaunches into the same exit while its inputs are unchanged — the floor would refill the slot with a corpse
+    # every tick (s6 FLOKI/ADA SHORT). Fresh structural exits (per-host probe early_exits, fleet-wide so a corpse
+    # cannot ping-pong owner->thief) block FLOOR admission for V15_SCHED_FLOOR_SKIP_S (default 3600 s), then retry
+    # (the NPZ may have refreshed by then). Normal-budget launches are untouched.
+    _floor_skip = {}
+    try:
+        _skip_s = float(os.environ.get("V15_SCHED_FLOOR_SKIP_S", "3600"))
+    except (TypeError, ValueError):
+        _skip_s = 3600.0
+    if _skip_s > 0:
+        for _hn, _sx in (stats or {}).items():
+            for _ss, _ex in ((_sx or {}).get("early_exits") or {}).items():
+                try:
+                    _mt = float((_ex or [0])[0])
+                except (TypeError, ValueError):
+                    continue
+                if _now_ts - _mt < _skip_s:
+                    _floor_skip[str(_ss)] = _mt
 
     def _host_cap_base(name):
         if name not in _cap_by_host:
@@ -4149,7 +4184,11 @@ def tick(args, cfg, now):
                 _via_floor = False
                 if _launch_exhausted(key, w, f"{sym}_{side}", st, started, redo, _pin_sides):
                     _cap_now = HB.get(host_name, {}).get("cap") or _host_cap_base(host_name)
-                    if not floor or len(held.get(host_name, {})) >= _floor_target_n(_cap_now) or _floor_left(st, key) <= 0:
+                    _below = bool(floor) and len(held.get(host_name, {})) < _floor_target_n(_cap_now) and _floor_left(st, key) > 0
+                    if _below and f"{sym}_{side}" in _floor_skip:
+                        log.setdefault("floor_skipped_exits", []).append(f"{host_name}:{sym}_{side}")
+                        continue
+                    if not _below:
                         continue
                     _via_floor = True
                 if w == "30D" and not sim and not _parity_gate_ok(venue_of(sym), side, _tmpl_dir_by_host.get(host_name) or next(iter(_tmpl_dir_by_host.values()), "SPREADSHEETS"), _parity_cache):
@@ -4947,11 +4986,14 @@ def tick(args, cfg, now):
     # ---- pass 2b (coordinator 2026-10-22): in a slow-pinned round an IDLE host backfills a pending 30D side owned by a busy host.
     # The side's progress JSON (resume / REDO) is fetched S1-relayed to the thief and the source copy is archived (renamed
     # .stolen_to_<host>_<ts>.json, never deleted) so exactly one host holds the board. DEDUP / launched-grace / dispatch-grace / NPZ checks kept.
-    if _slow_pin and os.environ.get("V15_SCHED_STEAL30", "1") == "1" and not (args.dry_run or sim):
+    _steal_floor_hosts = _below_floor_hosts(held, {h_["name"]: (HB.get(h_["name"]) or {}).get("cap") or 4 for h_ in hosts if h_["name"] in HB})
+    if (_slow_pin or _steal_floor_hosts) and os.environ.get("V15_SCHED_STEAL30", "1") == "1" and not (args.dry_run or sim):
+        if not _slow_pin:
+            log["steal30_floor_open"] = _steal_floor_hosts  # USER 2026-10-24: below-floor hosts pull 30D work off long queues even outside a slow-pinned round
         _run_syms = {k.rsplit("_", 1)[0] for k in running}
         _uni_ss = _reachable_sym_sides()[0] if _SIDE_UNI_ON else None
         _need = sorted(sy for sy, sd in chain_state.items() if any((v or ("",))[0] == "need30" and f"{sy}_{k}" not in running and (not _uni_ss or f"{sy}_{k}".upper() in _uni_ss)
-                                                                  and not _launch_exhausted(f"{sy}_{k}|30D", "30D", f"{sy}_{k}", st, started, redo, _pin_sides) for k, v in (sd or {}).items()))
+                                                                  and (not _launch_exhausted(f"{sy}_{k}|30D", "30D", f"{sy}_{k}", st, started, redo, _pin_sides) or _floor_left(st, f"{sy}_{k}|30D") > 0) for k, v in (sd or {}).items()))
         _order_all = [sy for sy, _ in _place_order([], [], list(_need), _gtiers, redo, st["attempts"], st.get("launched_at"), pri, cont=_cont_all, pinned=_pin_sides, recent=_recent_syms, age_key=_AGE_KEY[0])] if _need else []
         _tried = set()
         for h in hosts:
@@ -5000,7 +5042,7 @@ def tick(args, cfg, now):
                 _dispatch_async(h, sym, acts, pd, _workers_for(sym, B["workers"]), tag.split("[")[0])
                 _dispatch_q_mark(st, [a["key"] for a in acts], _now_ts)
                 for a in acts:
-                    _burn_launch(a["key"], a["window"], f"{a['sym']}_{a['side']}", st, started)
+                    _burn_launch(a["key"], a["window"], f"{a['sym']}_{a['side']}", st, started, floor=bool(a.get("floor")))
                     st["launched_at"][a["key"]] = _now_ts
                     launched_keys.add(a["key"])
                 log["launched"].append(tag)
