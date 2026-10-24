@@ -73,13 +73,16 @@ def classify_history_type(action, is_full_close=False):
     return act[:24] if act else None
 
 
-def append_history_fill(base_path, account_key, position_key, hist_type, qty, price, reason):
+def append_history_fill(base_path, account_key, position_key, hist_type, qty, price, reason, venue_subdir=""):
     """Append one accepted fill to data/history/{acct}/{SYM_SIDE}.jsonl.
 
     USER 2026-10-24: no positionAmt movement may go unrecorded. The funnel calls
     this for every accepted outcome the service does not already record (see
-    classify_history_type). Tail guard: same type+qty+price within 120 s is
-    already on disk (service write or retry) — never double-log. Never raises.
+    classify_history_type). venue_subdir routes to a venue history root (stocks:
+    "tradier" -> data/tradier/history, exposed under data/history via symlink);
+    default "" keeps the crypto root data/history. Tail guard: same
+    type+qty+price within 120 s is already on disk (service write or retry) —
+    never double-log. Never raises.
     """
     try:
         if os.environ.get("V8_SIM_TS"):
@@ -89,7 +92,8 @@ def append_history_fill(base_path, account_key, position_key, hist_type, qty, pr
         symside = (parts[1] if len(parts) > 1 else str(position_key or "")).strip()
         if not symside:
             return False
-        path = os.path.join(str(base_path), "data", "history", acct, f"{symside}.jsonl")
+        _mid = ["data"] + ([str(venue_subdir)] if str(venue_subdir or "").strip() else []) + ["history"]
+        path = os.path.join(str(base_path), *_mid, acct, f"{symside}.jsonl")
         os.makedirs(os.path.dirname(path), exist_ok=True)
         q = round(float(qty), 6)
         p = round(float(price), 8)

@@ -552,6 +552,39 @@ def test_attach_order_commissions_exact_multiset_only():
     assert "comm" not in c and "comm" not in d and "comm" not in e
 
 
+def test_attach_order_commissions_converts_via_fx():
+    omap = {
+        "1": [{"q": 2.0, "comm": "0.00001", "asset": "BNB", "t": 1792800000000}],
+        "2": [{"q": 3.0, "comm": "0.05", "asset": "USDT", "t": 1792800000000}],
+        "3": [{"q": 4.0, "comm": "0.00002", "asset": "BNB", "t": 1000000000000}],
+    }
+    a = {"reason": "BROKER_RECONCILED order=1", "qty": 2.0}
+    b = {"reason": "BROKER_RECONCILED order=2", "qty": 3.0}
+    c = {"reason": "BROKER_RECONCILED order=3", "qty": 4.0}
+    n = srv._attach_order_commissions([a, b, c], omap, fx=lambda asset, t: 700.0 if asset == "BNB" else 1.0)
+    assert n == 3
+    assert a["comm_usd"] == round(0.00001 * 700.0, 6) and "comm" not in a
+    assert b["comm_usd"] == 0.05
+    assert c["comm_usd"] == round(0.00002 * 700.0, 6)
+
+
+def test_attach_order_commissions_falls_back_to_raw_without_bar():
+    omap = {"1": [{"q": 2.0, "comm": "0.00001", "asset": "BNB", "t": 1000000000000}]}
+    a = {"reason": "BROKER_RECONCILED order=1", "qty": 2.0}
+    n = srv._attach_order_commissions([a], omap)
+    assert n == 1
+    assert "comm_usd" not in a
+    assert (a["comm"], a["comm_asset"]) == ("0.00001", "BNB")
+
+
+def test_comm_fx_stable_and_bnb_known():
+    assert srv._comm_fx("USDT", 1792800000000) == 1.0
+    assert srv._comm_fx("USDC", None) == 1.0
+    assert srv._comm_fx("ETH", 1792800000000) is None
+    px = srv._comm_fx("BNB", 1792800000000)
+    assert px is None or 100.0 < px < 10000.0
+
+
 def test_attach_order_commissions_empty_map_safe():
     assert srv._attach_order_commissions([{"reason": "X", "qty": 1.0}], {}) == 0
     assert srv._attach_order_commissions([], {"1": []}) == 0
