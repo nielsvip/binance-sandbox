@@ -51596,7 +51596,15 @@ class TradierTradeManager:
                 from vec_decisions import vec_parity_gates as _vpg_do_tr
                 _vpg_do_on_tr = bool(_cfg_auto("VEC_DICTATE_ONLY_ENABLED", True))
                 if _vpg_do_on_tr and not bool(_vl_dictated_tr) and not _vpg_do_tr.dictate_only_exempt(action, reason):
-                    logger.warning(f"⛔ [VEC_DICTATE_ONLY_BLOCK] {position_key} {action} reason={(reason or '')[:80]} — no vec dictate (USER 2026-10-24 STEP1)")
+                    logger.warning(f"⛔ [VEC_DICTATE_ONLY_BLOCK] {position_key} {action} reason={(reason or '')[:80]} — no vec dictate (fix: VEC_DICTATE_ONLY_ENABLED; only ratio trims/augments survive STEP1)")
+                    try:
+                        if not os.environ.get("PYTEST_CURRENT_TEST"):
+                            _vlp_do_tr = Path(_cfg_auto("BASE_PATH", "/users/niels/documents/binance")) / "data" / "vector_disparity_queue.jsonl"
+                            _vlp_do_tr.parent.mkdir(parents=True, exist_ok=True)
+                            with open(str(_vlp_do_tr), "a") as _vlf_do_tr:
+                                _vlf_do_tr.write(json.dumps({"ts": time.time(), "venue": "stocks", "kind": "VEC_DICTATE_ONLY_BLOCK", "position_key": position_key, "action": action, "reason": str(reason)[:160], "fix": "VEC_DICTATE_ONLY_ENABLED blocked this; STEP2: wire this vec path as a switch or confirm it stays dead"}) + "\n")
+                    except Exception:
+                        pass
                     if lock_acquired and self.redis_manager:
                         await self.redis_manager.delete(exec_lock_key)
                     return "BLOCKED_NON_VEC_DICTATE"

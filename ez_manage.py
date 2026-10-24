@@ -37405,12 +37405,12 @@ class MultiAccountTradeManager:
                 from vec_decisions import vec_parity_gates as _vpg_do
                 _vpg_do_on = bool(getattr(_ezm_base_config, "VEC_DICTATE_ONLY_ENABLED", getattr(config, "VEC_DICTATE_ONLY_ENABLED", True)))
                 if _vpg_do_on and not bool(_vl_dictated) and not _vpg_do.dictate_only_exempt(action, reason):
-                    logger.warning(f"⛔ [VEC_DICTATE_ONLY_BLOCK] {position_key} {action} reason={(reason or '')[:80]} — no vec dictate (USER 2026-10-24 STEP1: only ratio trims/augments survive)")
+                    logger.warning(f"⛔ [VEC_DICTATE_ONLY_BLOCK] {position_key} {action} reason={(reason or '')[:80]} — no vec dictate (fix: VEC_DICTATE_ONLY_ENABLED; only ratio trims/augments survive STEP1)")
                     if not os.environ.get("PYTEST_CURRENT_TEST"):
                         _vlp_do = Path(getattr(config, "BASE_PATH", ".")) / "data" / "vector_disparity_queue.jsonl"
                         _vlp_do.parent.mkdir(parents=True, exist_ok=True)
                         with open(str(_vlp_do), "a") as _vlf_do:
-                            _vlf_do.write(json.dumps({"ts": time.time(), "venue": "crypto", "kind": "VEC_DICTATE_ONLY_BLOCK", "position_key": position_key, "action": action, "reason": str(reason)[:160], "fix": "STEP2: wire this vec path as a switch or confirm it stays dead"}) + "\n")
+                            _vlf_do.write(json.dumps({"ts": time.time(), "venue": "crypto", "kind": "VEC_DICTATE_ONLY_BLOCK", "position_key": position_key, "action": action, "reason": str(reason)[:160], "fix": "VEC_DICTATE_ONLY_ENABLED blocked this; STEP2: wire this vec path as a switch or confirm it stays dead"}) + "\n")
                         _parity_breach_record(position_key, action, reason, "VEC_DICTATE_ONLY_BLOCK")
                     try:
                         _peg.release_claim(f"{(position_key or f'{account_key}:{symbol}_{position_side}')}|INC")
