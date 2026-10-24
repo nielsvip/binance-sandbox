@@ -1,13 +1,12 @@
 {
- "generated_utc": "2026-10-24T14:00:01Z",
+ "generated_utc": "2026-10-24T14:20:04Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
  "verdict": "FAIL",
  "failed_critical": [
   "boards_recomputed",
-  "live_set_matches_selection",
-  "indicators_fresh"
+  "live_set_matches_selection"
  ],
  "checks": [
   {
@@ -15,7 +14,7 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "filled_today": 236,
+    "filled_today": 242,
     "filled_before_open": 0
    },
    "detail": "no board was filled before the open"
@@ -40,7 +39,7 @@
    "measured": {
     "built_at": "2026-10-24T13:51:19.030630+00:00",
     "n": 523,
-    "age_at_open_s": 523
+    "age_at_open_s": 1726
    },
    "detail": "built 2026-10-24T13:51:19.030630+00:00 n=523"
   },
@@ -122,19 +121,6 @@
       ]
      },
      {
-      "sym_side": "LTCUSDC_LONG",
-      "published_at": "2026-10-24T13:29:04Z",
-      "material": 78,
-      "sample": [
-       "ADX_TRENDING_THRESHOLD",
-       "ALL_TF_AGAINST_CLOSE_MIN_TFS",
-       "BAR_PATTERNS_FILTER_TF",
-       "BBKC_EXIT_ENABLED",
-       "BB_FROZEN_STOP_ENABLED",
-       "BREAKOUT_RETEST_ARMED_ENABLED"
-      ]
-     },
-     {
       "sym_side": "CMC_LONG",
       "published_at": "2026-10-14T06:21:31Z",
       "material": 76,
@@ -198,6 +184,19 @@
        "COOLDOWN_BARS",
        "COOLDOWN_BARS_TRADIER"
       ]
+     },
+     {
+      "sym_side": "ACN_LONG",
+      "published_at": "2026-10-23T06:02:03Z",
+      "material": 50,
+      "sample": [
+       "ATR_ADAPTIVE_STOP_MULT",
+       "ATR_ADAPTIVE_STOP_TF",
+       "AUGMENT_FALLBACK_REDUCE_PCT",
+       "BB_PULLBACK_GATE_ENABLED",
+       "BB_SQUEEZE_ENTRY_ENABLED",
+       "COUNTER_TREND_ADD_BLOCK_ENABLED"
+      ]
      }
     ]
    },
@@ -205,25 +204,19 @@
   },
   {
    "name": "indicators_fresh",
-   "ok": false,
+   "ok": true,
    "critical": true,
    "measured": {
-    "symbols": 201,
-    "stale_over_90min": 200,
-    "stale_pct": 99.5,
-    "median_age_min": 180.0,
+    "symbols": 330,
+    "stale_over_90min": 2,
+    "stale_pct": 0.6,
+    "median_age_min": 35.1,
     "sample": [
-     "1000000MOGUSDT",
-     "1000CHEEMSUSDT",
-     "1000FLOKIUSDT",
-     "1000LUNCUSDT",
-     "1000PEPEUSDC",
-     "1000SATSUSDT",
-     "1000SHIBUSDC",
-     "1000XECUSDT"
+     "DUSKUSDT",
+     "ONEUSDT"
     ]
    },
-   "detail": "200/201 symbols past the live 90-min entry gate (99.5%)"
+   "detail": "2/330 symbols past the live 90-min entry gate (0.6%)"
   },
   {
    "name": "s1_sets_synced",
