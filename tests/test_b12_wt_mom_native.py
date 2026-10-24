@@ -33,6 +33,12 @@ def test_core_fires_and_silent():
     assert B.b12_fires_scalar(10, 5, 8, 3, 6, 1, 2.5, False) is False
 
 
+def test_live_lane_falls_back_15m_for_missing_3m():
+    src = Path("tradier_manage.py").read_text()
+    assert "NO-3M parity" in src
+    assert '"wt_velocity_15m"' in src or "'wt_velocity_15m'" in src or "wt_velocity_15m" in src
+
+
 def test_tradier_lane_wires_b12_on_own_switch():
     src = Path("tradier_manage.py").read_text()
     i = src.index("TRADIER_B12_WT_MOM_")

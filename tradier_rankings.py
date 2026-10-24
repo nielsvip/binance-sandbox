@@ -176,6 +176,7 @@ ez_rankings.INDICATORS_FILE = config.DATA_DIR / "tradier_indicators_latest.json"
 SHOW_TOP_BOTTOM_ARROWS = False  # temporarily off: detect_tops_bottoms green/red arrows hidden, code kept
 SHOW_ACCOUNT_TRADE_ARROWS = True  # overlay per-account /history/ trades as arrows on stocks plots
 SHOW_RSI_STRIP = True  # tiny RSI strip at the bottom of each TF panel
+SHOW_STOCH_STRIP = True  # tiny StochRSI %K/%D strip below the RSI strip, %K blue when K>D red when K<D
 SHOW_TOP_LEGEND = False  # top legend removed to regain vertical space
 ACCOUNT_ARROW_ORDER = ["trb", "ang", "inf", "flz", "men", "fin"]
 ACCOUNT_ARROW_COLORS = {"ang": "#2ecc71", "inf": "#42a5f5", "flz": "#ff5252", "men": "#ffa726", "fin": "#9e9e9e"}
@@ -1020,12 +1021,47 @@ def _wilder_rsi(close, period=14):
     rsi[rest] = 100.0 - (100.0 / (1.0 + (avg_gain / avg_loss)))[rest]
     return rsi.fillna(50.0).clip(0.0, 100.0)
 
+def _stoch_kd(close, window=14, smooth_k=3, smooth_d=3):
+    c = pd.to_numeric(close, errors="coerce")
+    try:
+        from ta.momentum import StochRSIIndicator
+        k = StochRSIIndicator(close=c, window=window, smooth1=smooth_k, smooth2=smooth_d, fillna=True).stochrsi() * 100.0
+        k = pd.Series(k, index=c.index).clip(0.0, 100.0)
+    except Exception:
+        k = pd.Series(50.0, index=c.index)
+    d = k.rolling(smooth_d, min_periods=1).mean()
+    return k.fillna(50.0).clip(0.0, 100.0), d.fillna(50.0).clip(0.0, 100.0)
+
+def _draw_stoch_strip(ax_plot, x_vals, k_vals, d_vals):
+    x = np.asarray(x_vals)
+    k = np.asarray(k_vals, dtype=float)
+    d = np.asarray(d_vals, dtype=float)
+    if len(x) < 2 or len(x) != len(k) or len(x) != len(d):
+        return
+    st_ax = ax_plot.inset_axes([0.0, 0.0, 1.0, 0.07])
+    st_ax.set_facecolor("#1e2427")
+    st_ax.patch.set_alpha(0.85)
+    up = k >= d
+    st_ax.plot(x, np.where(up, k, np.nan), color="#5b9dff", lw=0.9, zorder=3)
+    st_ax.plot(x, np.where(~up, k, np.nan), color="#ff5252", lw=0.9, zorder=3)
+    st_ax.plot(x, d, color="#e0e0e0", lw=0.6, alpha=0.8, zorder=3)
+    st_ax.axhline(80.0, color="#8a8a8a", lw=0.5, alpha=0.5, linestyle=":", zorder=2)
+    st_ax.axhline(20.0, color="#8a8a8a", lw=0.5, alpha=0.5, linestyle=":", zorder=2)
+    st_ax.set_xlim(x[0] - 0.5, x[-1] + 0.5)
+    st_ax.set_ylim(0.0, 100.0)
+    st_ax.set_xticks([])
+    st_ax.set_yticks([])
+    for spine in st_ax.spines.values():
+        spine.set_color("#5a5a5a")
+    st_ax.text(0.01, 0.82, "STOCH", transform=st_ax.transAxes, fontsize=5, color="#9e9e9e", va="top", ha="left", zorder=4)
+    st_ax.set_zorder(6)
+
 def _draw_rsi_strip(ax_plot, x_vals, rsi_vals):
     x = np.asarray(x_vals)
     r = np.asarray(rsi_vals, dtype=float)
     if len(x) < 2 or len(x) != len(r):
         return
-    rsi_ax = ax_plot.inset_axes([0.0, 0.0, 1.0, 0.13])
+    rsi_ax = ax_plot.inset_axes([0.0, 0.07, 1.0, 0.06])
     rsi_ax.set_facecolor("#1e2427")
     rsi_ax.patch.set_alpha(0.85)
     up = r >= 50.0
@@ -1319,6 +1355,11 @@ async def plot_dfs_subplots(
         if SHOW_RSI_STRIP and "close" in df_tf.columns and len(df_tf) > 15:
             try:
                 _draw_rsi_strip(ax_plot, x_indices, _wilder_rsi(df_tf["close"]).values)
+            except Exception: pass
+        if SHOW_STOCH_STRIP and "close" in df_tf.columns and len(df_tf) > 20:
+            try:
+                _sk, _sd = _stoch_kd(df_tf["close"])
+                _draw_stoch_strip(ax_plot, x_indices, _sk.values, _sd.values)
             except Exception: pass
 
     # Wrap up Global legend

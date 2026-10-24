@@ -52,6 +52,21 @@ def test_history_reader_empty_symbol():
     assert trr.fetch_account_trades_from_history("") == {}
 
 
+def test_stoch_kd_bounds_and_smoothing():
+    import numpy as np
+    assert trr.SHOW_STOCH_STRIP is True
+    osc = pd.Series(100 + np.sin(np.arange(160) / 4.0) * 8 + np.arange(160) * 0.05)
+    k, d = trr._stoch_kd(osc)
+    assert len(k) == len(osc) and len(d) == len(osc)
+    assert bool(((k >= 0.0) & (k <= 100.0)).all())
+    assert bool(((d >= 0.0) & (d <= 100.0)).all())
+    assert float(k.max() - k.min()) > 40.0
+    assert int((k >= d).sum()) > 0 and int((k < d).sum()) > 0
+    flat = pd.Series([100.0] * 80)
+    kf, _df = trr._stoch_kd(flat)
+    assert bool(((kf >= 0.0) & (kf <= 100.0)).all())
+
+
 def test_wilder_rsi_shape():
     rising = pd.Series(float(i) for i in range(1, 60))
     r = trr._wilder_rsi(rising)

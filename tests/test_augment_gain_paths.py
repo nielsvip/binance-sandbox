@@ -83,6 +83,29 @@ def _ez_augment_fn_source():
     return src[start:end]
 
 
+def test_gain_gate_tiers_dispatch_typed():
+    # The execute-time GAIN_GATE (vec twin + live) must tier a bounce-type augment
+    # off AUGMENT_BOUNCE_MIN_GAIN_PCT — the hardcoded MIN_GAIN*0.5 ignored every board.
+    from vec_decisions import aug_gain_gate as _gg
+
+    class _Cfg:
+        AUGMENT_MIN_GAIN_PCT = 3.0
+        MIN_GAIN_TO_BUY_AGGRESSIVELY = 3.0
+        AUGMENT_BOUNCE_MIN_GAIN_PCT = 1.0
+
+    bounce = _gg.threshold(_Cfg(), True, 90.0, 100.0, 5.0, 1.0, 1.0, 0.0)
+    assert bounce == 1.0, f"bounce leg must tier at 1.0, got {bounce}"
+    flat = _gg.threshold(_Cfg(), True, 110.0, 0.0, 5.0, 1.0, 0.0, 0.0)
+    assert flat == 3.0, f"non-bounce leg must tier at generic 3.0, got {flat}"
+
+
+def test_live_gain_gate_and_tradier_wall_are_per_sym():
+    src = (ROOT / "ez_manage.py").read_text()
+    assert "effective_min_gain(lambda _k, _d: _psym_get(symbol, position_side" in src, "live GAIN_GATE must resolve the tier per sym_side"
+    tsrc = (ROOT / "tradier_manage.py").read_text()
+    assert "effective_min_gain(lambda _k, _d: _cfg_auto(_k, _d))" in tsrc, "tradier MIN_GAIN wall must resolve the board tier"
+
+
 def test_live_aug_tier_is_per_sym_not_global():
     # AUG_A-D must tier off the board's per-sym gain value: the generic tier feeds
     # from _psym_get, and the WT-cross / blowpast gates compare against the typed

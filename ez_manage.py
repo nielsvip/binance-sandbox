@@ -26677,7 +26677,13 @@ class MultiAccountTradeManager:
             # USER 2026-05-30: AUGMENT a million times as long as gain stays above 0.5*MIN_GAIN (1.5%). NO count
             # cap (MAX_AUGMENTS uncapped). Direction is enforced separately by COUNTER_TREND_ADD_BLOCK (no add
             # against wt1_1h), so this is purely "winner past +1.5% → keep pyramiding". gain<0 still LOSER_KILL.
-            _aug_thr = float(getattr(config, "MIN_GAIN", 3.0))
+            # USER 2026-10-24: per-sym board tier (AUGMENT_MIN_GAIN_PCT else MIN_GAIN_TO_BUY_AGGRESSIVELY,
+            # floor 2.5); bounce-type augments tier off AUGMENT_BOUNCE_MIN_GAIN_PCT — never GLOBAL MIN_GAIN.
+            try:
+                import live_entry_gates as _leg_gg
+                _aug_thr = float(_leg_gg.effective_min_gain(lambda _k, _d: _psym_get(symbol, position_side, _k, getattr(config, _k, _d))))
+            except Exception:
+                _aug_thr = float(getattr(config, "MIN_GAIN", 3.0))
             _aug_is_bounce = False
             try:
                 _aug_is_long = position_side == "LONG"
@@ -26695,9 +26701,13 @@ class MultiAccountTradeManager:
                 # BOUNCE = 15m wt higher-low AND 1h going the right way AND price below the exit. All three.
                 _aug_is_bounce = bool(_aug_below_exit and _aug_1h_ok and _aug_wt_bounce)
                 if _aug_is_bounce:
-                    _aug_thr = float(getattr(config, "MIN_GAIN", 3.0)) * 0.5
+                    try:
+                        from vec_decisions.live_unw_gates import augment_tier_min_gain as _gg_tier
+                        _aug_thr = float(_gg_tier(lambda _k, _d=None: _psym_get(symbol, position_side, _k, getattr(config, _k, _d)), "BOUNCE_AUG", _aug_thr))
+                    except Exception:
+                        _aug_thr = _aug_thr * 0.5
             except Exception:
-                _aug_thr = float(getattr(config, "MIN_GAIN", 3.0))
+                pass
             if _pos_val <= _min_pos_val:
                 # 2026-05-09 FOOTHOLD pile-on guard — 2026-05-12 gated by FOOTHOLD_PILEON_ENABLED (default False) after user reported blocked breakouts.
                 if bool(getattr(config, "FOOTHOLD_PILEON_ENABLED", False)):

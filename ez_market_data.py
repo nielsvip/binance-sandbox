@@ -888,6 +888,7 @@ class MarketDataEngine:
             if not tasks_data and not light_results:
                 await asyncio.sleep(0.5) # Wait for new price ticks
                 continue
+            _t_after_queue = time.time()
 
             # 4. Execute Threads
             results = []
@@ -914,6 +915,7 @@ class MarketDataEngine:
                         logger.error(f"Calc error {sym}: {e}")
             if light_results:
                 results = light_results + results
+            _t_after_exec = time.time()
 
             # 5. Publish Results
             if results:
@@ -984,10 +986,13 @@ class MarketDataEngine:
                         self.shared_proxy = None
 
             # Pass timing (2026-10-24: ages flapped with no visibility into why).
-            # Log every 10th pass or any pass slower than 15s.
+            # Log every 10th pass or any pass slower than 15s, with stage split.
             _pass_dt = time.time() - _pass_t0
+            _st_queue = _t_after_queue - _pass_t0
+            _st_exec = _t_after_exec - _t_after_queue
+            _st_pub = _pass_dt - (_t_after_exec - _pass_t0)
             if _pass_n % 10 == 0 or _pass_dt > 15.0:
-                try: logger.info(f"[BROADCAST] pass {_pass_n}: {len(tasks_data)} computed + {len(light_results)} re-stamped in {_pass_dt:.1f}s")
+                try: logger.info(f"[BROADCAST] pass {_pass_n}: {len(tasks_data)} computed + {len(light_results)} re-stamped in {_pass_dt:.1f}s (queue={_st_queue:.1f} exec={_st_exec:.1f} pub={_st_pub:.1f})")
                 except Exception: pass
             # Ensure we don't spin uncontrollably
             await asyncio.sleep(0.1)

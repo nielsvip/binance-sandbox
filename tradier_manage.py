@@ -22959,6 +22959,17 @@ async def process_position(
                         )
 
                         _b12_ind = indicators_raw if indicators_raw else i
+                        # NO-3M parity (matches the shared twin convention): the live
+                        # 15m lane carries no 3m WT keys, so 15m stands in for 3m.
+                        if os.environ.get("V8_B12_DIAG"):
+                            _b12dbg = globals().setdefault("_B12_DIAG", {"n": 0})
+                            _b12dbg["n"] += 1
+                            if _b12dbg["n"] <= 3:
+                                _wtkeys = sorted(k for k in (_b12_ind or {}).keys() if k.startswith("wt"))
+                                print(
+                                    f"V8_LOG B12_DIAG n={_b12dbg['n']} nkeys={len((_b12_ind or {}).keys())} wtkeys={_wtkeys} px={current_price}",
+                                    flush=True,
+                                )
 
                         def _b12f(_k):
                             try:
@@ -22967,14 +22978,21 @@ async def process_position(
                             except (TypeError, ValueError):
                                 return 0.0
 
+                        _b12_wt1_3m = (_b12_ind or {}).get("wt1_3m")
+                        _b12_wt2_3m = (_b12_ind or {}).get("wt2_3m")
+                        _b12_wtvel = (_b12_ind or {}).get("wt_velocity_3m")
+                        if _b12_wtvel is None:
+                            _b12_wtvel = (_b12_ind or {}).get("wt_velocity_15m")
+                        if _b12_wtvel is None:
+                            _b12_wtvel = (_b12_ind or {}).get("wt_velocity_1h")
                         if _b12_core.b12_fires_scalar(
-                            _b12f("wt1_3m"),
-                            _b12f("wt2_3m"),
+                            _b12_wt1_3m if _b12_wt1_3m is not None else _b12f("wt1_15m"),
+                            _b12_wt2_3m if _b12_wt2_3m is not None else _b12f("wt2_15m"),
                             _b12f("wt1_15m"),
                             _b12f("wt2_15m"),
                             _b12f("wt1_1h"),
                             _b12f("wt2_1h"),
-                            _b12f("wt_velocity_3m"),
+                            _b12_wtvel if _b12_wtvel is not None else 0.0,
                             bool(is_long),
                         ):
                             _base_qty = (
@@ -47957,10 +47975,16 @@ class TradierTradeManager:
                 f"[{account_key}] BLOCKED AUGMENT {symbol}: Gain is {position.gain:.2f}% (Must be > 0%)"
             )
             return "BLOCKED_NO_GAIN"
-        # AUGMENT GUARD — NEVER augment an EXISTING position below MIN_GAIN (3%). The 0.5*MIN_GAIN rule
+        # AUGMENT GUARD — NEVER augment an EXISTING position below the board tier. The 0.5*MIN_GAIN rule
         # is ONLY for a BOUNCE reentry (an OPEN), never an augment or breakout (USER 2026-05-30).
         # REENTRY of a flat position is exempt via _is_reentry below — it OPENs at gain==0, no gain wait.
-        _min_aug_gain = _cfg_auto("MIN_GAIN", 3.0)
+        # USER 2026-10-24: tier = per-sym AUGMENT_MIN_GAIN_PCT else MIN_GAIN_TO_BUY_AGGRESSIVELY (floor 2.5),
+        # never bare MIN_GAIN (which ignored every board promotion).
+        try:
+            import live_entry_gates as _leg_ag
+            _min_aug_gain = float(_leg_ag.effective_min_gain(lambda _k, _d: _cfg_auto(_k, _d)))
+        except Exception:
+            _min_aug_gain = _cfg_auto("MIN_GAIN", 3.0)
         if (
             action == "AUGMENT"
             and not _is_reentry

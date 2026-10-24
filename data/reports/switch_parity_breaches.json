@@ -11,6 +11,14 @@
       "TEMPLATE_CRYPTO_SHORT.xlsx!GLOBAL_RISK_GATES"
      ]
     },
+    "AUGMENT_TYPED_MIN_GAIN_ENABLED": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_CRYPTO_LONG.xlsx!AUGMENT_RISK_SIZING",
+      "TEMPLATE_CRYPTO_SHORT.xlsx!AUGMENT_RISK_SIZING"
+     ]
+    },
     "BALANCE_FLOOR_USD": {
      "class": "UNDEFINED_SWITCH",
      "other_config_has_it": false,
@@ -172,7 +180,7 @@
      ]
     }
    },
-   "missing_count": 21,
+   "missing_count": 22,
    "switch_keys_checked": 1109,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
@@ -188,6 +196,14 @@
      "sheets": [
       "TEMPLATE_STOCKS_LONG.xlsx!GLOBAL_RISK_GATES",
       "TEMPLATE_STOCKS_SHORT.xlsx!GLOBAL_RISK_GATES"
+     ]
+    },
+    "AUGMENT_TYPED_MIN_GAIN_ENABLED": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_STOCKS_LONG.xlsx!AUGMENT_RISK_SIZING",
+      "TEMPLATE_STOCKS_SHORT.xlsx!AUGMENT_RISK_SIZING"
      ]
     },
     "BALANCE_FLOOR_USD": {
@@ -339,7 +355,7 @@
      ]
     }
    },
-   "missing_count": 19,
+   "missing_count": 20,
    "switch_keys_checked": 1223,
    "templates": [
     "TEMPLATE_STOCKS_LONG.xlsx",
@@ -347,5 +363,5 @@
    ]
   }
  },
- "generated": "2026-10-24T01:10:15.432384+00:00"
+ "generated": "2026-10-24T01:46:13.723954+00:00"
 }

@@ -15,11 +15,21 @@ from __future__ import annotations
 
 
 def threshold(cfg, is_long: bool, px: float, last_exit_px: float, wt1_1h: float, wt2_1h: float, trough_15m: float, peak_15m: float) -> float:
-    thr = float(getattr(cfg, "MIN_GAIN", 3.0) or 3.0)
+    # USER 2026-10-24: per-sym board tier (never GLOBAL MIN_GAIN); the bounce leg
+    # tiers off AUGMENT_BOUNCE_MIN_GAIN_PCT via the shared typed dispatcher — the
+    # same numbers live enforces in execute_trade_action's GAIN_GATE.
+    from vec_decisions.uagain_gate import effective_min_gain as _eff
+    generic = float(_eff(cfg))
     below = last_exit_px > 0 and ((is_long and px < last_exit_px) or ((not is_long) and px > last_exit_px))
     h1 = (wt1_1h > wt2_1h) if is_long else (wt1_1h < wt2_1h)
     bounce = (trough_15m > 0) if is_long else (peak_15m < 0)
-    return thr * 0.5 if (below and h1 and bounce) else thr
+    if below and h1 and bounce:
+        try:
+            from vec_decisions.live_unw_gates import augment_tier_min_gain as _tier
+            return float(_tier(lambda k, d=None: getattr(cfg, k, d), "BOUNCE_AUG", generic))
+        except Exception:
+            return generic * 0.5
+    return generic
 
 
 def passes(cfg, is_long: bool, px: float, raw_gain_pct: float, pos_value: float, last_exit_px: float,

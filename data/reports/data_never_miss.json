@@ -1,20 +1,20 @@
 {
- "generated_utc": "2026-10-24T01:46:10Z",
- "secs": 127.9,
+ "generated_utc": "2026-10-24T01:50:42Z",
+ "secs": 157.9,
  "universe": {
   "crypto": 201,
   "stocks": 224
  },
  "unreachable": {},
  "healed": {
-  "mac:/Users/niels/Documents/binance": {
-   "files": 72,
-   "rows": 105,
+  "s1:binance": {
+   "files": 50,
+   "rows": 25,
    "skipped": {}
   },
-  "s1:binance": {
-   "files": 28,
-   "rows": 29,
+  "mac:/Users/niels/Documents/binance": {
+   "files": 101,
+   "rows": 132,
    "skipped": {}
   }
  },
@@ -22,91 +22,154 @@
   {
    "host": "s1",
    "venue": "crypto",
-   "symbol": "ROSEUSDT",
+   "symbol": "USTCUSDT",
    "tf": "3m",
-   "last": "2026-10-24T01:30",
-   "expect": "2026-10-24T01:33",
+   "last": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 1.0
+  },
+  {
+   "host": "s1",
+   "venue": "crypto",
+   "symbol": "LINKUSDC",
+   "tf": "15m",
+   "last": "2026-10-24T01:15",
+   "expect": "2026-10-24T01:30",
    "bars_behind": 1.0
   },
   {
    "host": "mac",
    "venue": "crypto",
-   "symbol": "ROSEUSDT",
-   "tf": "3m",
-   "last": "2026-10-24T01:30",
-   "expect": "2026-10-24T01:33",
+   "symbol": "LINKUSDC",
+   "tf": "15m",
+   "last": "2026-10-24T01:15",
+   "expect": "2026-10-24T01:30",
    "bars_behind": 1.0
   },
   {
    "host": "s1",
    "venue": "crypto",
-   "symbol": "ETCUSDT",
-   "tf": "15m",
-   "last": "2026-10-24T01:00",
-   "expect": "2026-10-24T01:15",
+   "symbol": "LINKUSDC",
+   "tf": "3m",
+   "last": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39",
    "bars_behind": 1.0
   },
   {
    "host": "mac",
    "venue": "crypto",
-   "symbol": "ETCUSDT",
-   "tf": "15m",
-   "last": "2026-10-24T01:00",
-   "expect": "2026-10-24T01:15",
+   "symbol": "LINKUSDC",
+   "tf": "3m",
+   "last": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39",
    "bars_behind": 1.0
   },
   {
    "host": "s1",
    "venue": "crypto",
-   "symbol": "SPELLUSDT",
-   "tf": "3m",
-   "last": "2026-10-24T01:09",
-   "expect": "2026-10-24T01:33",
-   "bars_behind": 8.0
-  },
-  {
-   "host": "s1",
-   "venue": "crypto",
-   "symbol": "XTZUSDT",
-   "tf": "3m",
-   "last": "2026-10-24T01:30",
-   "expect": "2026-10-24T01:33",
+   "symbol": "ARBUSDC",
+   "tf": "15m",
+   "last": "2026-10-24T01:15",
+   "expect": "2026-10-24T01:30",
    "bars_behind": 1.0
   },
   {
    "host": "s1",
    "venue": "crypto",
-   "symbol": "SAGAUSDT",
-   "tf": "15m",
-   "last": "2026-10-24T01:00",
-   "expect": "2026-10-24T01:15",
+   "symbol": "PENDLEUSDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39",
    "bars_behind": 1.0
   },
   {
    "host": "mac",
    "venue": "crypto",
-   "symbol": "SAGAUSDT",
-   "tf": "15m",
-   "last": "2026-10-24T01:00",
-   "expect": "2026-10-24T01:15",
+   "symbol": "PENDLEUSDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39",
    "bars_behind": 1.0
   },
   {
    "host": "s1",
    "venue": "crypto",
-   "symbol": "INJUSDT",
-   "tf": "15m",
-   "last": "2026-10-24T01:00",
-   "expect": "2026-10-24T01:15",
+   "symbol": "NOTUSDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39",
    "bars_behind": 1.0
   },
   {
    "host": "mac",
    "venue": "crypto",
-   "symbol": "INJUSDT",
+   "symbol": "NOTUSDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 1.0
+  },
+  {
+   "host": "s1",
+   "venue": "crypto",
+   "symbol": "CELRUSDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:33",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 2.0
+  },
+  {
+   "host": "mac",
+   "venue": "crypto",
+   "symbol": "CELRUSDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:33",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 2.0
+  },
+  {
+   "host": "s1",
+   "venue": "crypto",
+   "symbol": "SEIUSDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 1.0
+  },
+  {
+   "host": "s1",
+   "venue": "crypto",
+   "symbol": "ASTERUSDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 1.0
+  },
+  {
+   "host": "mac",
+   "venue": "crypto",
+   "symbol": "ASTERUSDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 1.0
+  },
+  {
+   "host": "s1",
+   "venue": "crypto",
+   "symbol": "ILVUSDT",
    "tf": "15m",
-   "last": "2026-10-24T01:00",
-   "expect": "2026-10-24T01:15",
+   "last": "2026-10-24T01:15",
+   "expect": "2026-10-24T01:30",
+   "bars_behind": 1.0
+  },
+  {
+   "host": "mac",
+   "venue": "crypto",
+   "symbol": "ILVUSDT",
+   "tf": "15m",
+   "last": "2026-10-24T01:15",
+   "expect": "2026-10-24T01:30",
    "bars_behind": 1.0
   },
   {
@@ -115,43 +178,358 @@
    "symbol": "VETUSDT",
    "tf": "15m",
    "last": "2026-10-24T01:00",
-   "expect": "2026-10-24T01:15",
+   "expect": "2026-10-24T01:30",
+   "bars_behind": 2.0
+  },
+  {
+   "host": "s1",
+   "venue": "crypto",
+   "symbol": "HBARUSDC",
+   "tf": "15m",
+   "last": "2026-10-24T01:15",
+   "expect": "2026-10-24T01:30",
    "bars_behind": 1.0
   },
   {
    "host": "mac",
    "venue": "crypto",
-   "symbol": "VETUSDT",
+   "symbol": "HBARUSDC",
    "tf": "15m",
-   "last": "2026-10-24T01:00",
-   "expect": "2026-10-24T01:15",
+   "last": "2026-10-24T01:15",
+   "expect": "2026-10-24T01:30",
    "bars_behind": 1.0
   },
   {
    "host": "s1",
    "venue": "crypto",
-   "symbol": "SUIUSDC",
+   "symbol": "SUSHIUSDT",
    "tf": "3m",
-   "last": "2026-10-24T01:30",
-   "expect": "2026-10-24T01:33",
+   "last": "2026-10-24T01:33",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 2.0
+  },
+  {
+   "host": "mac",
+   "venue": "crypto",
+   "symbol": "SUSHIUSDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:33",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 2.0
+  },
+  {
+   "host": "s1",
+   "venue": "crypto",
+   "symbol": "BTCUSDC",
+   "tf": "15m",
+   "last": "2026-10-24T01:15",
+   "expect": "2026-10-24T01:30",
    "bars_behind": 1.0
   },
   {
    "host": "s1",
    "venue": "crypto",
-   "symbol": "DUSKUSDT",
+   "symbol": "KAVAUSDT",
    "tf": "15m",
-   "last": "2026-10-24T01:00",
-   "expect": "2026-10-24T01:15",
+   "last": "2026-10-24T01:15",
+   "expect": "2026-10-24T01:30",
+   "bars_behind": 1.0
+  },
+  {
+   "host": "mac",
+   "venue": "crypto",
+   "symbol": "KAVAUSDT",
+   "tf": "15m",
+   "last": "2026-10-24T01:15",
+   "expect": "2026-10-24T01:30",
+   "bars_behind": 1.0
+  },
+  {
+   "host": "s1",
+   "venue": "crypto",
+   "symbol": "POPCATUSDT",
+   "tf": "15m",
+   "last": "2026-10-24T01:15",
+   "expect": "2026-10-24T01:30",
+   "bars_behind": 1.0
+  },
+  {
+   "host": "s1",
+   "venue": "crypto",
+   "symbol": "C98USDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 1.0
+  },
+  {
+   "host": "mac",
+   "venue": "crypto",
+   "symbol": "C98USDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 1.0
+  },
+  {
+   "host": "s1",
+   "venue": "crypto",
+   "symbol": "USUALUSDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:33",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 2.0
+  },
+  {
+   "host": "mac",
+   "venue": "crypto",
+   "symbol": "USUALUSDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:33",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 2.0
+  },
+  {
+   "host": "s1",
+   "venue": "crypto",
+   "symbol": "IMXUSDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 1.0
+  },
+  {
+   "host": "mac",
+   "venue": "crypto",
+   "symbol": "IMXUSDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 1.0
+  },
+  {
+   "host": "s1",
+   "venue": "crypto",
+   "symbol": "QTUMUSDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:33",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 2.0
+  },
+  {
+   "host": "mac",
+   "venue": "crypto",
+   "symbol": "QTUMUSDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:33",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 2.0
+  },
+  {
+   "host": "s1",
+   "venue": "crypto",
+   "symbol": "EGLDUSDT",
+   "tf": "15m",
+   "last": "2026-10-24T01:15",
+   "expect": "2026-10-24T01:30",
+   "bars_behind": 1.0
+  },
+  {
+   "host": "mac",
+   "venue": "crypto",
+   "symbol": "EGLDUSDT",
+   "tf": "15m",
+   "last": "2026-10-24T01:15",
+   "expect": "2026-10-24T01:30",
+   "bars_behind": 1.0
+  },
+  {
+   "host": "s1",
+   "venue": "crypto",
+   "symbol": "AVAXUSDC",
+   "tf": "15m",
+   "last": "2026-10-24T01:15",
+   "expect": "2026-10-24T01:30",
+   "bars_behind": 1.0
+  },
+  {
+   "host": "s1",
+   "venue": "crypto",
+   "symbol": "ORDIUSDC",
+   "tf": "3m",
+   "last": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 1.0
+  },
+  {
+   "host": "mac",
+   "venue": "crypto",
+   "symbol": "ORDIUSDC",
+   "tf": "3m",
+   "last": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 1.0
+  },
+  {
+   "host": "s1",
+   "venue": "crypto",
+   "symbol": "UMAUSDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 1.0
+  },
+  {
+   "host": "mac",
+   "venue": "crypto",
+   "symbol": "UMAUSDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 1.0
+  },
+  {
+   "host": "s1",
+   "venue": "crypto",
+   "symbol": "LPTUSDT",
+   "tf": "15m",
+   "last": "2026-10-24T01:15",
+   "expect": "2026-10-24T01:30",
+   "bars_behind": 1.0
+  },
+  {
+   "host": "mac",
+   "venue": "crypto",
+   "symbol": "LPTUSDT",
+   "tf": "15m",
+   "last": "2026-10-24T01:15",
+   "expect": "2026-10-24T01:30",
+   "bars_behind": 1.0
+  },
+  {
+   "host": "s1",
+   "venue": "crypto",
+   "symbol": "XRPUSDC",
+   "tf": "15m",
+   "last": "2026-10-24T01:15",
+   "expect": "2026-10-24T01:30",
+   "bars_behind": 1.0
+  },
+  {
+   "host": "s1",
+   "venue": "crypto",
+   "symbol": "GRIFFAINUSDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:33",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 2.0
+  },
+  {
+   "host": "mac",
+   "venue": "crypto",
+   "symbol": "GRIFFAINUSDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:33",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 2.0
+  },
+  {
+   "host": "s1",
+   "venue": "crypto",
+   "symbol": "GMXUSDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 1.0
+  },
+  {
+   "host": "s1",
+   "venue": "crypto",
+   "symbol": "HIVEUSDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:33",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 2.0
+  },
+  {
+   "host": "mac",
+   "venue": "crypto",
+   "symbol": "HIVEUSDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:33",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 2.0
+  },
+  {
+   "host": "s1",
+   "venue": "crypto",
+   "symbol": "DUSKUSDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39",
    "bars_behind": 1.0
   },
   {
    "host": "mac",
    "venue": "crypto",
    "symbol": "DUSKUSDT",
-   "tf": "15m",
-   "last": "2026-10-24T01:00",
-   "expect": "2026-10-24T01:15",
+   "tf": "3m",
+   "last": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 1.0
+  },
+  {
+   "host": "s1",
+   "venue": "crypto",
+   "symbol": "SSVUSDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:33",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 2.0
+  },
+  {
+   "host": "mac",
+   "venue": "crypto",
+   "symbol": "SSVUSDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:33",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 2.0
+  },
+  {
+   "host": "s1",
+   "venue": "crypto",
+   "symbol": "MEMEUSDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:33",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 2.0
+  },
+  {
+   "host": "mac",
+   "venue": "crypto",
+   "symbol": "MEMEUSDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:33",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 2.0
+  },
+  {
+   "host": "s1",
+   "venue": "crypto",
+   "symbol": "POPCATUSDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39",
+   "bars_behind": 1.0
+  },
+  {
+   "host": "mac",
+   "venue": "crypto",
+   "symbol": "POPCATUSDT",
+   "tf": "3m",
+   "last": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39",
    "bars_behind": 1.0
   },
   {
@@ -194,45 +572,171 @@
  "unhealable": [
   {
    "venue": "crypto",
-   "symbol": "ROSEUSDT",
+   "symbol": "LINKUSDC",
+   "tf": "15m",
+   "best": "2026-10-24T01:15",
+   "expect": "2026-10-24T01:30"
+  },
+  {
+   "venue": "crypto",
+   "symbol": "LINKUSDC",
    "tf": "3m",
-   "best": "2026-10-24T01:30",
-   "expect": "2026-10-24T01:33"
+   "best": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39"
   },
   {
    "venue": "crypto",
-   "symbol": "ETCUSDT",
-   "tf": "15m",
-   "best": "2026-10-24T01:00",
-   "expect": "2026-10-24T01:15"
+   "symbol": "PENDLEUSDT",
+   "tf": "3m",
+   "best": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39"
   },
   {
    "venue": "crypto",
-   "symbol": "SAGAUSDT",
-   "tf": "15m",
-   "best": "2026-10-24T01:00",
-   "expect": "2026-10-24T01:15"
+   "symbol": "NOTUSDT",
+   "tf": "3m",
+   "best": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39"
   },
   {
    "venue": "crypto",
-   "symbol": "INJUSDT",
-   "tf": "15m",
-   "best": "2026-10-24T01:00",
-   "expect": "2026-10-24T01:15"
+   "symbol": "CELRUSDT",
+   "tf": "3m",
+   "best": "2026-10-24T01:33",
+   "expect": "2026-10-24T01:39"
   },
   {
    "venue": "crypto",
-   "symbol": "VETUSDT",
+   "symbol": "ASTERUSDT",
+   "tf": "3m",
+   "best": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39"
+  },
+  {
+   "venue": "crypto",
+   "symbol": "ILVUSDT",
    "tf": "15m",
-   "best": "2026-10-24T01:00",
-   "expect": "2026-10-24T01:15"
+   "best": "2026-10-24T01:15",
+   "expect": "2026-10-24T01:30"
+  },
+  {
+   "venue": "crypto",
+   "symbol": "HBARUSDC",
+   "tf": "15m",
+   "best": "2026-10-24T01:15",
+   "expect": "2026-10-24T01:30"
+  },
+  {
+   "venue": "crypto",
+   "symbol": "SUSHIUSDT",
+   "tf": "3m",
+   "best": "2026-10-24T01:33",
+   "expect": "2026-10-24T01:39"
+  },
+  {
+   "venue": "crypto",
+   "symbol": "KAVAUSDT",
+   "tf": "15m",
+   "best": "2026-10-24T01:15",
+   "expect": "2026-10-24T01:30"
+  },
+  {
+   "venue": "crypto",
+   "symbol": "C98USDT",
+   "tf": "3m",
+   "best": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39"
+  },
+  {
+   "venue": "crypto",
+   "symbol": "USUALUSDT",
+   "tf": "3m",
+   "best": "2026-10-24T01:33",
+   "expect": "2026-10-24T01:39"
+  },
+  {
+   "venue": "crypto",
+   "symbol": "IMXUSDT",
+   "tf": "3m",
+   "best": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39"
+  },
+  {
+   "venue": "crypto",
+   "symbol": "QTUMUSDT",
+   "tf": "3m",
+   "best": "2026-10-24T01:33",
+   "expect": "2026-10-24T01:39"
+  },
+  {
+   "venue": "crypto",
+   "symbol": "EGLDUSDT",
+   "tf": "15m",
+   "best": "2026-10-24T01:15",
+   "expect": "2026-10-24T01:30"
+  },
+  {
+   "venue": "crypto",
+   "symbol": "ORDIUSDC",
+   "tf": "3m",
+   "best": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39"
+  },
+  {
+   "venue": "crypto",
+   "symbol": "UMAUSDT",
+   "tf": "3m",
+   "best": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39"
+  },
+  {
+   "venue": "crypto",
+   "symbol": "LPTUSDT",
+   "tf": "15m",
+   "best": "2026-10-24T01:15",
+   "expect": "2026-10-24T01:30"
+  },
+  {
+   "venue": "crypto",
+   "symbol": "GRIFFAINUSDT",
+   "tf": "3m",
+   "best": "2026-10-24T01:33",
+   "expect": "2026-10-24T01:39"
+  },
+  {
+   "venue": "crypto",
+   "symbol": "HIVEUSDT",
+   "tf": "3m",
+   "best": "2026-10-24T01:33",
+   "expect": "2026-10-24T01:39"
   },
   {
    "venue": "crypto",
    "symbol": "DUSKUSDT",
-   "tf": "15m",
-   "best": "2026-10-24T01:00",
-   "expect": "2026-10-24T01:15"
+   "tf": "3m",
+   "best": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39"
+  },
+  {
+   "venue": "crypto",
+   "symbol": "SSVUSDT",
+   "tf": "3m",
+   "best": "2026-10-24T01:33",
+   "expect": "2026-10-24T01:39"
+  },
+  {
+   "venue": "crypto",
+   "symbol": "MEMEUSDT",
+   "tf": "3m",
+   "best": "2026-10-24T01:33",
+   "expect": "2026-10-24T01:39"
+  },
+  {
+   "venue": "crypto",
+   "symbol": "POPCATUSDT",
+   "tf": "3m",
+   "best": "2026-10-24T01:36",
+   "expect": "2026-10-24T01:39"
   },
   {
    "venue": "stocks",
@@ -257,90 +761,90 @@
   {
    "host": "mac",
    "file": "crypto prices",
-   "age_s": 98.8,
+   "age_s": 70.7,
    "max_s": 60,
    "ok": false,
    "files": {
-    "price_cache_1.json": 319.9,
-    "price_cache_2.json": 98.8,
-    "price_cache_3.json": 161.3
+    "price_cache_1.json": 226.8,
+    "price_cache_2.json": 70.7,
+    "price_cache_3.json": 215.0
    }
   },
   {
    "host": "mac",
    "file": "crypto snapshot (market_data_*)",
-   "age_s": 225.9,
+   "age_s": 505.4,
    "max_s": 90,
    "ok": false,
    "files": {
-    "data/market_data_NEWEST": 225.9
+    "data/market_data_NEWEST": 505.4
    }
   },
   {
    "host": "mac",
    "file": "crypto latest_market_data",
-   "age_s": 870.0,
+   "age_s": 1149.5,
    "max_s": 90,
    "ok": false,
    "files": {
-    "data/latest_market_data.json": 870.0
+    "data/latest_market_data.json": 1149.5
    }
   },
   {
    "host": "s1",
    "file": "crypto snapshot on S1 (Mac push or own stack)",
-   "age_s": 22.0,
+   "age_s": 5.0,
    "max_s": 180,
    "ok": true,
    "files": {
-    "data/market_data_NEWEST": 152.6,
-    "ez_s1_stack/data/latest_market_data.json": 22.0
+    "data/market_data_NEWEST": 395.6,
+    "ez_s1_stack/data/latest_market_data.json": 5.0
    }
   },
   {
    "host": "s1",
    "file": "crypto prices on S1 (Mac push or own stack)",
-   "age_s": -2.7,
+   "age_s": -0.8,
    "max_s": 300,
    "ok": true,
    "files": {
-    "price_cache_1.json": 246.6,
-    "price_cache_2.json": 24.8,
-    "price_cache_3.json": 12.3,
-    "ez_s1_stack/price_cache_1.json": 1548985.1,
-    "ez_s1_stack/price_cache_2.json": 24.8,
-    "ez_s1_stack/price_cache_3.json": -2.7
+    "price_cache_1.json": 489.6,
+    "price_cache_2.json": 268.6,
+    "price_cache_3.json": 330.6,
+    "ez_s1_stack/price_cache_1.json": 1549228.1,
+    "ez_s1_stack/price_cache_2.json": 24.3,
+    "ez_s1_stack/price_cache_3.json": -0.8
    }
   },
   {
    "host": "gw",
    "file": "crypto market_data",
-   "age_s": 801.6,
+   "age_s": 1043.8,
    "max_s": 300,
    "ok": false,
    "files": {
-    "data/latest_market_data.json": 801.6
+    "data/latest_market_data.json": 1043.8
    }
   },
   {
    "host": "mac",
    "file": "disk free /Users/niels/Documents/binance",
    "age_s": null,
-   "free_gb": 32.5,
+   "free_gb": 32.4,
    "ok": true
   },
   {
    "host": "s1",
    "file": "disk free binance",
    "age_s": null,
-   "free_gb": 14.4,
+   "free_gb": 14.3,
    "ok": true
   },
   {
    "host": "s1",
    "file": "disk free binance-sandbox",
    "age_s": null,
-   "free_gb": 14.4,
+   "free_gb": 14.1,
    "ok": true
   },
   {
