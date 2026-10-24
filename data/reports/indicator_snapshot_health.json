@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-24T20:39:15Z",
+ "generated_utc": "2026-10-24T20:43:31Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 1465.1,
+  "age_s": 1720.7,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 46725,
-  "proc_age_s": 49286.0,
-  "log_age_s": 1499.6,
+  "proc_age_s": 49541.0,
+  "log_age_s": 98.3,
   "warmup_done": true,
   "timeframes_since_restart": [
    "4h",
@@ -43,7 +43,6 @@
   "decisions": [
    "warm-up already complete (steady state is self-sustaining)",
    "warm-up already complete (steady state is self-sustaining)",
-   "warm-up already complete (steady state is self-sustaining)",
    "warm-up already complete (steady state is self-sustaining)"
   ],
   "policy": {
@@ -54,24 +53,11 @@
   }
  },
  "s1_failover": {
-  "mode": "ACTIVE",
-  "since_epoch": 1792602182.2042153,
-  "activations": 163,
-  "hb_mtime": 1792873965.768563,
-  "mac_snapshot_age_s": 67.86856317520142,
-  "mac_stale": true,
-  "lease_holder": "s1",
-  "lease_venues": "crypto",
-  "lease_since": "2026-10-24T20:30:58Z",
-  "lease_reason": "Mac reachable but NOT TRADING: crypto: indicators_unproducible latest_market_data.json age 901s > 300s \u2014 the Mac is not producing the indicator snapshot its engines read, not_trading_account: ang idle 926s (102 live keys), inf idle 1428s (19 live keys), flz idle 56s (27 live keys), fin idle 93s (42 live keys) \u2014 no vec decision executed for >30s while the board lane is live (registry age 1783s) for 49s",
-  "now": 1792874075.3793702,
-  "from_cache_age_s": 277.3,
-  "heartbeat_age_s": 109.6,
-  "active_s": 271893.2,
-  "note": "producers are CORRECT: S1 holds the TRADING lease (venues='crypto', since 2026-10-24T20:30:58Z, reason 'Mac reachable but NOT TRADING: crypto: indicators_unproducible latest_market_data.json age 901s > 300s \u2014 the Mac is not producing the indicator snapshot its engines read, not_trading_account: ang idle 926s (102 live keys), inf idle 1428s (19 live keys), flz idle 56s (27 live keys), fin idle 93s (42 live keys) \u2014 no vec decision executed for >30s while the board lane is live (registry age 1783s) for 49s'), so S1 must produce crypto data. Do NOT stop the producers. The question to chase is the LEASE/failback, not this unit."
+  "error": "TimeoutExpired: Command '['ssh', '-o', 'ConnectTimeout=10', '-o', 'BatchMode=yes', 's1-pub', 'python3 -c \"import json,time;s=json.load(open(\\'/home/niels/binance/data/live_failover/state.json\\'));h=json.load(open(\\'/home/niels/binance/data/live_failover/mac_data_heartbeat.json\\'));v=(s.get(\\'venues\\') or {}).get(\\'crypto\\') or {};c=(h.get(\\'venues\\') or {}).get(\\'crypto\\') or {};print(json.dumps({\\'mode\\':v.get(\\'mode\\'),\\'since_epoch\\':v.get(\\'since_epoch\\'),\\'activations\\':v.get(\\'activations\\'),\\'hb_mtime\\':__import__(\\'os\\').stat(\\'/home/niels/binance/data/live_failover/mac_data_heartbeat.json\\').st_mtime,\\'mac_snapshot_age_s\\':c.get(\\'snapshot_age_s\\'),\\'mac_stale\\':c.get(\\'stale\\'),\\'lease_holder\\':(s.get(\\'lease\\') or {}).get(\\'holder\\'),\\'lease_venues\\':(s.get(\\'lease\\') or {}).get(\\'venues\\'),\\'lease_since\\':(s.get(\\'lease\\') or {}).get(\\'since\\'),\\'lease_reason\\':(s.get(\\'lease\\') or {}).get(\\'reason\\'),\\'now\\':time.time()}))\"']' timed out after 20 seconds",
+  "from_cache_age_s": 104.7
  },
  "alerts": [
-  "SNAPSHOT STALE: latest_market_data.json is 1465s old (> 600s). ez_indicators pid=46725 warmup_done=True tfs_since_restart=['4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m'] restarts_last_hour=0. Live crypto decisions are reading a stale indicator snapshot."
+  "SNAPSHOT STALE: latest_market_data.json is 1720s old (> 600s). ez_indicators pid=46725 warmup_done=True tfs_since_restart=['4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m'] restarts_last_hour=0. Live crypto decisions are reading a stale indicator snapshot."
  ],
  "verdict": "ALERT"
 }
