@@ -269,8 +269,7 @@ def fetch_trades(symbol, accounts, hist_dirs):
             recs = _collapse_echo_fills(recs)
             recs = _collapse_stuck_relogs(recs)
             marked = mark_boundaries(recs)
-            marked = _cancel_same_bar_pairs(marked)
-            marked = _net_bucket_filter(marked)
+            marked = _cluster_net_filter(marked)
             marked = annotate_round_trips(marked, side)
             if trusted and (acct, sym, side) not in open_set:
                 _mark_stale_trailing(marked)
@@ -529,6 +528,47 @@ def _net_bucket_filter(recs, bar_min=15, wash_pct=0.01):
             for r in members:
                 if r.get("phase") == "entry":
                     drop.add(id(r))
+    return [r for r in recs if id(r) not in drop]
+
+
+def _cluster_net_filter(recs, gap_s=900.0, wash_pct=0.01):
+    """At most one phase per 15m of trading per side: cluster + net.
+
+    We only trade 15m bars and up, so consecutive boundary events closer
+    than one bar are intra-bar churn, never two bar-close decisions — even
+    across a bucket edge (entry 10:14, exit 10:16). Single-linkage clusters
+    per side over sub-900s gaps net their signed qty (entries +, exits -):
+    a wash (|net| <= 1% of cluster volume) drops everything; otherwise the
+    minority side drops and the net direction stands. Isolated events and
+    adapts pass through untouched.
+    """
+    bounds = [r for r in recs if r.get("phase") in ("entry", "exit")
+              and r.get("timestamp") is not None]
+    drop = set()
+    i = 0
+    while i < len(bounds):
+        j = i
+        while (j + 1 < len(bounds) and bounds[j + 1].get("side") == bounds[i].get("side")
+               and (bounds[j + 1]["timestamp"] - bounds[j]["timestamp"]).total_seconds() < gap_s):
+            j += 1
+        cluster = bounds[i:j + 1]
+        kinds = set(r.get("phase") for r in cluster)
+        if len(kinds) > 1:
+            net = sum(float(r.get("qty") or 0) * (1.0 if r.get("phase") == "entry" else -1.0)
+                      for r in cluster)
+            vol = sum(abs(float(r.get("qty") or 0)) for r in cluster)
+            if abs(net) <= max(1e-9, wash_pct * vol):
+                for r in cluster:
+                    drop.add(id(r))
+            elif net > 0:
+                for r in cluster:
+                    if r.get("phase") == "exit":
+                        drop.add(id(r))
+            else:
+                for r in cluster:
+                    if r.get("phase") == "entry":
+                        drop.add(id(r))
+        i = j + 1
     return [r for r in recs if id(r) not in drop]
 
 

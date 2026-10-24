@@ -204,6 +204,25 @@ def test_net_bucket_filter_keeps_net_side():
     assert [(r["phase"], r["qty"]) for r in lth._net_bucket_filter(cut)] == [("exit", 100.0)]
 
 
+def test_cluster_net_filter_cross_edge_pair():
+    from datetime import datetime, timezone
+    recs = [{"timestamp": datetime(2026, 10, 15, 10, 14, tzinfo=timezone.utc),
+             "side": "LONG", "phase": "entry", "qty": 5.0},
+            {"timestamp": datetime(2026, 10, 15, 10, 16, tzinfo=timezone.utc),
+             "side": "LONG", "phase": "exit", "qty": 5.0}]
+    assert lth._cluster_net_filter(recs) == []
+
+
+def test_cluster_net_filter_separate_bars_survive():
+    from datetime import datetime, timezone, timedelta
+    base = datetime(2026, 10, 15, 10, 0, tzinfo=timezone.utc)
+    recs = [{"timestamp": base, "side": "LONG", "phase": "entry", "qty": 5.0},
+            {"timestamp": base + timedelta(minutes=15), "side": "LONG", "phase": "exit", "qty": 5.0},
+            {"timestamp": base + timedelta(minutes=16), "side": "SHORT", "phase": "entry", "qty": 5.0}]
+    out = lth._cluster_net_filter(recs)
+    assert len(out) == 3
+
+
 def test_mark_stale_trailing_only_when_old_and_unclosed():
     from datetime import datetime, timezone, timedelta
     now = datetime.now(timezone.utc)
