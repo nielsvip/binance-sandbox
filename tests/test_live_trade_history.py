@@ -28,7 +28,7 @@ def test_account_colors():
 
 
 def test_mismatch_constants_faint():
-    assert lth.MISMATCH_VEC_MPL[1] <= 0.25
+    assert lth.MISMATCH_VEC_MPL == ("#16a34a", 0.30)
     assert lth.MISMATCH_LIVE_MPL[1] <= 0.25
 
 
@@ -101,7 +101,7 @@ def test_draw_mismatch_lines_both_colors():
             and l.get_color() == lth.MISMATCH_VEC_MPL[0]]
     assert len(vecs) == 1
     assert abs(vecs[0].get_alpha() - lth.MISMATCH_VEC_MPL[1]) < 1e-9
-    assert lth.MISMATCH_VEC_MPL[0] == "#4ade80" and lth.MISMATCH_LIVE_MPL[0] == "#f87171"
+    assert lth.MISMATCH_VEC_MPL[0] == "#16a34a" and lth.MISMATCH_LIVE_MPL[0] == "#f87171"
     nv2, nl2 = lth.draw_mismatch_lines(ax, base.replace(hour=9), base.replace(hour=16),
                                        [], [], [], [base.replace(hour=12)], lambda t: t.timestamp())
     assert (nv2, nl2) == (0, 1)

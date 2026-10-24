@@ -30,7 +30,8 @@ def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("html", nargs="+", help="matrix HTML(s) with embedded LABELS/TRADES; "
                    "pass several (e.g. 30d + 365d windows) to merge, or --auto-longest")
-    p.add_argument("--acct", default="trb")
+    p.add_argument("--acct", default="trb",
+                   help="account ledger to compare (default trb); comma list or 'all' for every account")
     p.add_argument("--tol-min", type=float, default=30.0)
     p.add_argument("--tol2-min", type=float, default=60.0)
     p.add_argument("--auto-longest", action="store_true",
@@ -54,8 +55,10 @@ def to_utc(s):
     return dt.astimezone(timezone.utc)
 
 
-def load_live(acct, sym, side):
+def load_live(accts, sym, side):
     import live_trade_history as lth
+    if isinstance(accts, str):
+        accts = ["trb", "ang", "inf", "flz", "men", "fin"] if accts == "all" else [a.strip() for a in accts.split(",")]
     seen = set()
     raw = []
     for root in [ROOT / "data" / "tradier" / "history", ROOT / "data" / "history"]:
@@ -198,8 +201,8 @@ def main():
     vec_bars = sorted({b for b, _ in vec_only})
     live_bars = sorted({nearest_bar(t) for t in live_only_ts})
     injection = (
-        "{label:'vec only (no live fill)',data:%s,type:'line',borderColor:'rgba(74,222,128,0.55)',"
-        "backgroundColor:'rgba(74,222,128,0.55)',borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:20},"
+        "{label:'vec only (no live fill)',data:%s,type:'line',borderColor:'rgba(22,163,74,0.70)',"
+        "backgroundColor:'rgba(22,163,74,0.70)',borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:20},"
         "{label:'live only (no vec trade)',data:%s,type:'line',borderColor:'rgba(248,113,113,0.55)',"
         "backgroundColor:'rgba(248,113,113,0.55)',borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:20},"
         % (json.dumps(seg(vec_bars)), json.dumps(seg(live_bars)))
@@ -207,7 +210,7 @@ def main():
     banner = (
         "<div class='metrics' style='border-color:#a855f7'>PARITY VS LIVE (%s %s_%s tol %.0fm src %d file(s) %s): "
         "vec entries %d matched %d · vec exits %d matched %d · live opens %d matched %d · "
-        "live closes %d matched %d · <span style='color:#4ade80'>vec-only %d</span> · "
+        "live closes %d matched %d · <span style='color:#16a34a'>vec-only %d</span> · "
         "<span style='color:#f87171'>live-only %d</span> · tol %.0fm recount: vec-only %d live-only %d · "
         "chart models 0 bps costs; live sample n=%d</div>"
         % (args.acct, sym, side, args.tol_min, len(blobs), src_names, len(vec_entries), len(r1["me_v"]), len(vec_exits),
