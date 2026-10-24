@@ -97,13 +97,17 @@ def test_draw_mismatch_lines_both_colors():
     nv, nl = lth.draw_mismatch_lines(ax, base.replace(hour=9), base.replace(hour=16),
                                      sig, [], fills, [], lambda t: t.timestamp())
     assert (nv, nl) == (1, 0)
-    reds = [l for l in ax.get_children() if isinstance(l, Line2D)
+    vecs = [l for l in ax.get_children() if isinstance(l, Line2D)
             and l.get_color() == lth.MISMATCH_VEC_MPL[0]]
-    assert len(reds) == 1
-    assert abs(reds[0].get_alpha() - lth.MISMATCH_VEC_MPL[1]) < 1e-9
+    assert len(vecs) == 1
+    assert abs(vecs[0].get_alpha() - lth.MISMATCH_VEC_MPL[1]) < 1e-9
+    assert lth.MISMATCH_VEC_MPL[0] == "#4ade80" and lth.MISMATCH_LIVE_MPL[0] == "#f87171"
     nv2, nl2 = lth.draw_mismatch_lines(ax, base.replace(hour=9), base.replace(hour=16),
                                        [], [], [], [base.replace(hour=12)], lambda t: t.timestamp())
     assert (nv2, nl2) == (0, 1)
+    lives = [l for l in ax.get_children() if isinstance(l, Line2D)
+             and l.get_color() == lth.MISMATCH_LIVE_MPL[0]]
+    assert len(lives) == 1
     plt.close(fig)
 
 

@@ -1,18 +1,4 @@
 {
-  "flz:ZECUSDC_SHORT": {
-    "orderId": "1000002640439990",
-    "stopPrice": 1263.63,
-    "entry_sig": "2026-10-23 21:19:36.766644+00:00",
-    "symbol": "ZECUSDC",
-    "side": "SHORT"
-  },
-  "flz:BNBUSDC_SHORT": {
-    "orderId": "1000002640491072",
-    "stopPrice": 753.06,
-    "entry_sig": "2026-10-24 03:34:37.262000+00:00",
-    "symbol": "BNBUSDC",
-    "side": "SHORT"
-  },
   "flz:SOLUSDC_LONG": {
     "orderId": "1000002640492886",
     "stopPrice": 101.4,
@@ -21,17 +7,45 @@
     "side": "LONG"
   },
   "flz:SOLUSDC_SHORT": {
-    "orderId": "1000002640493000",
-    "stopPrice": 103.24,
+    "orderId": "1000002640493755",
+    "stopPrice": 102.76,
     "entry_sig": "2026-10-24 05:09:53.129000+00:00",
     "symbol": "SOLUSDC",
     "side": "SHORT"
   },
-  "flz:DOGEUSDC_SHORT": {
-    "orderId": "1000002640492997",
-    "stopPrice": 0.08425,
-    "entry_sig": "2026-10-24 05:09:53.351000+00:00",
-    "symbol": "DOGEUSDC",
+  "flz:BNBUSDC_SHORT": {
+    "orderId": "1000002640492529",
+    "stopPrice": 742.57,
+    "entry_sig": "2026-10-24 03:34:37.262000+00:00",
+    "symbol": "BNBUSDC",
+    "side": "SHORT"
+  },
+  "flz:XRPUSDC_SHORT": {
+    "orderId": "1000002640494012",
+    "stopPrice": 1.2943,
+    "entry_sig": "2026-10-24 05:11:10.914000+00:00",
+    "symbol": "XRPUSDC",
+    "side": "SHORT"
+  },
+  "flz:ETHUSDC_SHORT": {
+    "orderId": "1000002640494541",
+    "stopPrice": 2386.2,
+    "entry_sig": "2026-10-24 05:11:20.563000+00:00",
+    "symbol": "ETHUSDC",
+    "side": "SHORT"
+  },
+  "flz:ZECUSDC_SHORT": {
+    "orderId": "1000002640494543",
+    "stopPrice": 1235.82,
+    "entry_sig": "2026-10-23 21:19:36.766644+00:00",
+    "symbol": "ZECUSDC",
+    "side": "SHORT"
+  },
+  "flz:WLDUSDC_SHORT": {
+    "orderId": "1000002640494547",
+    "stopPrice": 0.479,
+    "entry_sig": "2026-10-24 05:09:40.609000+00:00",
+    "symbol": "WLDUSDC",
     "side": "SHORT"
   }
 }

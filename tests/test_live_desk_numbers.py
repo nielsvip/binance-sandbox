@@ -446,6 +446,28 @@ def test_backfill_short_book_leaves_honest_unknown():
     assert sm["unknown"] == 1 and sm["unknown_partial"] == 1
 
 
+def test_load_crypto_maps_sides_and_days():
+    import json
+
+    fp = srv.ROOT / "data" / "live_desk" / "broker_fill_cache" / "ang_TESTLOADUSDT.json"
+    rows = [
+        {"symbol": "TESTLOADUSDT", "side": "BUY", "qty": "5", "price": "2.0", "time": 1792800000000, "id": 1},
+        {"symbol": "TESTLOADUSDT", "side": "SELL", "qty": "2", "price": "2.5", "time": 1792886400000, "id": 2},
+        {"symbol": "TESTLOADUSDT", "side": "", "qty": "9", "price": "9.0", "time": 1792886400000, "id": 3},
+    ]
+    try:
+        fp.write_text(json.dumps(rows))
+        out = srv._load_crypto("ang")
+        got = out.get("TESTLOADUSDT", [])
+        assert [(round(q, 4), p) for (_, q, p, _) in got] == [(5.0, 2.0), (-2.0, 2.5)]
+        assert got[0][3] == "2026-10-24" and got[1][3] == "2026-10-25"
+    finally:
+        try:
+            fp.unlink()
+        except OSError:
+            pass
+
+
 def test_clean_reason_swaps_placeholder_for_fill_qty():
     assert srv._clean_reason("DAYTRADE_TARGET_g2.27_qty_999999", 11.0).endswith("_qty_11")
     assert srv._clean_reason("X_qty_9999|Y", 0.5) == "X_qty_0.5|Y"
