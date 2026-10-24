@@ -806,7 +806,13 @@ class MarketDataEngine:
                         self._stale_warn_throttle[sym] = _now_ts
                         try: logger.warning(f"[mark_price_freshness] ez_market_data {sym} buf_age={_buf_age:.1f}s>3.0s — WS likely dead, synthesizing kline from mark price {buf.get('p')}")
                         except Exception: pass
-                    if _now_ts - self._synth_ts.get(sym, 0.0) < 5.0:
+                    # 2026-10-24: was 5s — every throttled symbol recomputed every
+                    # pass, so a 353-symbol pass took 90s and ALL ages flapped
+                    # past the TTL together. Synth values are frozen real history
+                    # (overwrite-only) + wall-clock tick, so recomputing them at
+                    # 5s cadence buys nothing. 45s spreads synth load 9x; real
+                    # ticks still compute immediately via the elif branch below.
+                    if _now_ts - self._synth_ts.get(sym, 0.0) < 45.0:
                         continue
                     self._synth_ts[sym] = _now_ts
                     _is_synthetic = True
