@@ -48,14 +48,18 @@ def _f(v: Any, d: float) -> float:
 def resolve_daytrade_dc(get: Callable[[str, Any], Any]) -> Tuple[list, list]:
     """Resolve the DC-channel daytrade exit spec from a config getter get(name, default).
 
-    Returns (stop_specs, target_specs); each spec is a dict
+    USER 2026-10-24: DAYTRADE_TARGET is DESTROYED — it was never a switch (no ENABLE
+    knob), fired level-only on stale touches, and kept coming back. This resolver
+    returns ([...], []) ALWAYS: the TARGET specs below are built then dropped so the
+    shape stays stable for callers, but no TARGET spec can ever reach an exit again,
+    in EITHER engine (both call this one function). STOPS are untouched.
+
+    Returns (stop_specs, []); each spec is a dict
       {tf, field_long, field_short, buf, mode, tag}
-    mode 'list'  : DAYTRADE_DC_{STOP,TARGET}_TF path (vec 2026-09-26 semantics):
+    mode 'list'  : DAYTRADE_DC_STOP_TF path (vec 2026-09-26 semantics):
                    STOP  LONG px <= lvl*(1-buf) / SHORT px >= lvl*(1+buf), buf=DAYTRADE_DC_STOP_BUFFER_PCT%
-                   TARGET LONG px >= lvl*(1-buf) / SHORT px <= lvl*(1+buf), buf=DAYTRADE_DC_TARGET_BUFFER_PCT%
-    mode 'alias' : legacy DC_DAYTRADE_{STOP,TARGET}_USE_DC(4)_15M (+TRADIER_ twins) — tradier live
-                   semantics (2026-09-24): STOP LONG px < dc / SHORT px > dc (no buffer);
-                   TARGET |px-dc|/dc < DC_DAYTRADE_TARGET_DC_BUFFER_PCT (fraction, default 0.002);
+    mode 'alias' : legacy DC_DAYTRADE_STOP_USE_DC(4)_15M (+TRADIER_ twins) — tradier live
+                   semantics (2026-09-24): STOP LONG px < dc / SHORT px > dc (no buffer).
                    DC4 wins over DC when both set (same precedence as live).  Aliases only apply
                    when the corresponding TF list is OFF (vec precedence).
     """
@@ -87,6 +91,9 @@ def resolve_daytrade_dc(get: Callable[[str, Any], Any]) -> Tuple[list, list]:
             tgt_specs.append({"tf": "15m", "field_long": "dc_high4_15m", "field_short": "dc_low4_15m", "buf": a_buf, "mode": "alias", "tag": "dc4_15m"})
         if _b("DC_DAYTRADE_TARGET_USE_DC_15M"):
             tgt_specs.append({"tf": "15m", "field_long": "dc_high_15m", "field_short": "dc_low_15m", "buf": a_buf, "mode": "alias", "tag": "dc_15m", "fallback_of": "dc4_15m"})
+    # USER 2026-10-24: DAYTRADE_TARGET DESTROYED — drop every TARGET spec no matter
+    # which TF list, alias, or board value produced it. STOPS pass through untouched.
+    tgt_specs = []
     return stop_specs, tgt_specs
 
 
@@ -179,7 +186,9 @@ def technical_dc_exit_crossing(
 
 
 def daytrade_dc_exit(px: float, is_long: bool, stop_specs: list, tgt_specs: list, level: Callable[[str], float]) -> Tuple[bool, str]:
-    """First STOP spec that fires wins, then TARGET specs (vec order).  level(field) -> float.
+    """First STOP spec that fires wins.  level(field) -> float.
+    USER 2026-10-24: DAYTRADE_TARGET is DESTROYED (was never a switch) — the TARGET
+    loop is gone; tgt_specs is accepted and ignored so every caller keeps working.
     Alias DC spec with fallback_of=dc4_15m is only consulted when the DC4 level is missing (0),
     exactly like tradier live (_dc_stop == 0 -> use dc_*_15m)."""
     seen = {}
@@ -193,17 +202,6 @@ def daytrade_dc_exit(px: float, is_long: bool, stop_specs: list, tgt_specs: list
                 return True, f"DT_DC_{'4_' if sp['tag'].startswith('dc4') else ''}15M_STOP dc={lvl:.6f}"
             side = "low -" if is_long else "high +"
             return True, f"DAYTRADE_STOP {sp['tag']}_{side.split()[0]} {side.split()[1]}{sp['buf'] * 100:.2f}% STOP_BUF"
-    seen = {}
-    for sp in tgt_specs:
-        lvl = _f(level(sp["field_long"] if is_long else sp["field_short"]), 0.0)
-        seen[sp["tag"]] = lvl
-        if sp.get("fallback_of") and seen.get(sp["fallback_of"], 0.0) > 0:
-            continue
-        if dc_target_hit(px, lvl, is_long, sp):
-            if sp["mode"] == "alias":
-                return True, f"DT_DC_{'4_' if sp['tag'].startswith('dc4') else ''}15M_TARGET dc={lvl:.6f}"
-            side = "high -" if is_long else "low +"
-            return True, f"DAYTRADE_TARGET {sp['tag']}_{side.split()[0]} {side.split()[1]}{sp['buf'] * 100:.2f}% TARGET_BUF"
     return False, ""
 
 

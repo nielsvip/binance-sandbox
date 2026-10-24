@@ -316,7 +316,7 @@ def test_stale_close_provenance_shows_fresh_lots_not_zombies():
     fr = _ev(new, "ZMB", "SHORT", "OPEN", 12.0, 101.0)
     fr["reason"] = "WT_15M_BOUNCE_OPEN_S"
     cl = _ev(now.isoformat(), "ZMB", "SHORT", "CLOSE", 11.0, 99.0)
-    out, s = srv.realized_walk([zt, fr, cl], stale_basis_days=7, use_kline_px=True)
+    out, s = srv.realized_walk([zt, fr, cl], stale_basis_days=7, use_kline_px=True, expiry_days=60)
     row = [e for e in out if e.get("action") == "CLOSE"][0]
     assert row.get("stale_excluded") is True
     assert row["rpnl"] == round(11.0 * (101.0 - 99.0), 2)
@@ -370,6 +370,64 @@ def test_collapse_keeps_lone_sync_beyond_120s():
     assert len(kept) == 2 and n == 0
 
 
+def test_adopt_stub_accepts_only_excess_over_book():
+    o = _ev("2026-10-22T10:00:00+00:00", "AX", "LONG", "OPEN", 30.0, 10.0)
+    o["reason"] = "STRAT_OPEN"
+    s = _ev("2026-10-22T11:00:00+00:00", "AX", "LONG", "OPEN", 38.0, 10.5)
+    s["reason"] = "BROKER_SYNC_ADOPTED_EXACT_X"
+    c = _ev("2026-10-22T12:00:00+00:00", "AX", "LONG", "CLOSE", 38.0, 11.0)
+    out, sm = srv.realized_walk([o, s, c])
+    row = [e for e in out if e.get("action") == "CLOSE"][0]
+    assert row["rpnl"] == round(30.0 * 1.0 + 8.0 * 0.5, 2)
+    assert row["basis_n"] == 2
+    assert sm["sync_hidden"] == 0
+
+
+def test_adopt_exact_rereport_still_skips():
+    o = _ev("2026-10-22T10:00:00+00:00", "AX", "LONG", "OPEN", 30.0, 10.0)
+    o["reason"] = "STRAT_OPEN"
+    s = _ev("2026-10-22T11:00:00+00:00", "AX", "LONG", "OPEN", 30.0, 10.5)
+    s["reason"] = "BROKER_SYNC_OPEN_FROM_FLAT_STUB"
+    c = _ev("2026-10-22T12:00:00+00:00", "AX", "LONG", "CLOSE", 30.0, 11.0)
+    out, sm = srv.realized_walk([o, s, c])
+    row = [e for e in out if e.get("action") == "CLOSE"][0]
+    assert row["rpnl"] == round(30.0 * 1.0, 2)
+    assert row["basis_n"] == 1
+
+
+def test_lots_held_over_7d_expire_exact():
+    from datetime import timedelta
+
+    now = datetime.now(timezone.utc)
+    old = (now - timedelta(days=30)).isoformat()
+    new = (now - timedelta(days=1)).isoformat()
+    z = _ev(old, "EX", "LONG", "OPEN", 100.0, 50.0)
+    z["reason"] = "PHANTOM_ERA"
+    f = _ev(new, "EX", "LONG", "OPEN", 10.0, 52.0)
+    f["reason"] = "STRAT"
+    c = _ev(now.isoformat(), "EX", "LONG", "CLOSE", 10.0, 55.0)
+    out, sm = srv.realized_walk([z, f, c])
+    row = [e for e in out if e.get("action") == "CLOSE"][0]
+    assert sm["lots_expired"] == 1
+    assert row["rpnl"] == round(10.0 * 3.0, 2)
+    assert row.get("stale_excluded") is not True
+    assert row["basis"][0]["px"] == 52.0
+
+
+def test_close_on_expired_only_book_is_honest_unknown():
+    from datetime import timedelta
+
+    now = datetime.now(timezone.utc)
+    old = (now - timedelta(days=30)).isoformat()
+    z = _ev(old, "EX", "LONG", "OPEN", 100.0, 50.0)
+    z["reason"] = "PHANTOM_ERA"
+    c = _ev(now.isoformat(), "EX", "LONG", "CLOSE", 5.0, 55.0)
+    out, sm = srv.realized_walk([z, c])
+    row = [e for e in out if e.get("action") == "CLOSE"][0]
+    assert row.get("rpnl") is None
+    assert sm["unknown"] == 1 and sm["lots_expired"] == 1
+
+
 def test_collapse_keeps_strategy_pair():
     from datetime import timedelta
 
@@ -403,7 +461,7 @@ def test_stale_basis_excluded_from_sums_not_hidden():
     new["reason"] = "WT_OPEN"
     close = _ev("2026-10-23T19:58:00+00:00", "BABA", "SHORT", "CLOSE", 5.0, 99.0)
     close["reason"] = "DAYTRADE_TARGET"
-    out, s = srv.realized_walk([old, new, close], stale_basis_days=7)
+    out, s = srv.realized_walk([old, new, close], stale_basis_days=7, expiry_days=60)
     assert s["known"] == 1 and s["stale_excluded"] == 1
     assert s["stale_excluded_sum"] == round(
         5.0 * ((10 * 112.0 + 11 * 101.0) / 21.0 - 99.0), 2
@@ -449,7 +507,7 @@ def test_stale_close_shows_fresh_basis_number():
     new["reason"] = "WT_OPEN"
     close = _ev("2026-10-23T19:58:00+00:00", "FRESH", "SHORT", "CLOSE", 11.0, 99.60)
     close["reason"] = "DAYTRADE_TARGET"
-    out, s = srv.realized_walk([old, new, close], stale_basis_days=7, use_kline_px=True)
+    out, s = srv.realized_walk([old, new, close], stale_basis_days=7, use_kline_px=True, expiry_days=60)
     row = [e for e in out if e.get("stale_excluded")][0]
     assert row["rpnl"] == round(11.0 * (101.85 - 99.55), 2)
     assert row["fresh_basis"] is True
@@ -461,7 +519,7 @@ def test_stale_close_without_fresh_cover_shows_dash():
     old["reason"] = "DC_OPEN"
     close = _ev("2026-10-23T19:58:00+00:00", "NOFRESH", "SHORT", "CLOSE", 5.0, 99.0)
     close["reason"] = "DAYTRADE_TARGET"
-    out, s = srv.realized_walk([old, close], stale_basis_days=7, use_kline_px=True)
+    out, s = srv.realized_walk([old, close], stale_basis_days=7, use_kline_px=True, expiry_days=60)
     row = [e for e in out if e.get("stale_excluded")][0]
     assert row["rpnl"] is None and s["pnl_total"] == 0.0
 
