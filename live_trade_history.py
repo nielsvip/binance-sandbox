@@ -46,6 +46,53 @@ def account_color(acct, direction):
     return ACCOUNT_ARROW_COLORS[acct]
 
 
+ENTRY_ALPHA = 0.95
+EXIT_ALPHA = 0.45
+
+
+def _qty(rec):
+    try:
+        return float(rec.get("qty") or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def mark_boundaries(records):
+    """Tag ledger records with round-trip phase via cumulative qty.
+
+    records: [{ts, type, qty}]. qty is a DELTA (added on OPEN/AUGMENT/BUY,
+    removed on REDUCE/CLOSE/...). Returns same list with phase entry/exit/adapt:
+    entry = balance leaves ~0, exit = balance returns to ~0, adapt = mid-position
+    size changes (skipped by overlays). Unknown types change nothing. A typed
+    event with missing qty still counts as a unit move so OPENs never vanish.
+    """
+    peak = max([abs(_qty(r)) for r in records] + [1.0])
+    eps = 1e-6 * peak
+    bal = 0.0
+    out = []
+    for r in records:
+        typ = str(r.get("type") or "").upper()
+        q = abs(_qty(r))
+        if any(k in typ for k in _BUY_TOKENS):
+            nb = bal + (q if q > eps else eps * 10.0)
+        elif any(k in typ for k in _SELL_TOKENS):
+            nb = bal - (q if q > eps else eps * 10.0)
+        else:
+            nb = bal
+        nb = max(0.0, nb)
+        if bal <= eps and nb > eps:
+            phase = "entry"
+        elif bal > eps and nb <= eps:
+            phase = "exit"
+        else:
+            phase = "adapt"
+        bal = nb
+        d = dict(r)
+        d["phase"] = phase
+        out.append(d)
+    return out
+
+
 def fetch_trades(symbol, accounts, hist_dirs):
     import json
     out = {}
@@ -79,8 +126,11 @@ def fetch_trades(symbol, accounts, hist_dirs):
                         continue
                     typ = str(rec.get("type") or "")
                     events.append({"timestamp": ts, "direction": event_direction(typ, side),
-                                   "type": typ, "reason": str(rec.get("reason") or "")[:80]})
+                                   "type": typ, "qty": _qty(rec),
+                                   "reason": str(rec.get("reason") or "")[:80]})
         if events:
+            events.sort(key=lambda e: e["timestamp"])
+            events = mark_boundaries(events)
             seen = set()
             uniq = []
             for ev in events:

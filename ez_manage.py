@@ -33236,7 +33236,7 @@ class MultiAccountTradeManager:
         _act365 = str(action or "").upper()
         if any(_t in _act365 for _t in ("OPEN", "AUGMENT", "REENTRY", "REVERSE")):
             _ok365, _why365 = _confirm_365d_allows(symbol, position_side)
-            if not _ok365 and _vd_exempt:
+            if not _ok365 and (_vd_exempt or _parity_vec_order(reason)):
                 logger.warning(f"🧭 [VEC_DRIVEN_365D_EXEMPT] {position_key} action={action} — 365D gate would block ({_why365}); director-certified 365D vec set, allowed")
                 _vec_last_bypassed.append("365D_CONFIRM")
                 _ok365 = True
@@ -34151,12 +34151,20 @@ class MultiAccountTradeManager:
             if ("SCALP" in _sc_act or "SCALP" in _sc_reas) and "CLOSE" not in _sc_act and "REDUCE" not in _sc_act:
                 if "SCALP_V3" in _sc_act or "SCALP_V3" in _sc_reas:
                     if not getattr(config, "SCALP_V3_ENABLED", False):
-                        logger.critical(f"🚫 [SCALPING_HARD_GATE] {position_key}: BLOCKED V3 {action} — SCALP_V3_ENABLED is False. reason={reason[:50]}")
-                        return "BLOCKED_SCALP_V3_DISABLED"
+                        if _vd_exempt or _parity_vec_order(reason):
+                            logger.warning(f"🧭 [SCALPING_VEC_EXEMPT] {position_key}: V3 {action} proceeds vec-dictated (USER 2026-10-24: live never refuses a vec trade)")
+                            _vec_last_bypassed.append("SCALP_V3_DISABLED")
+                        else:
+                            logger.critical(f"🚫 [SCALPING_HARD_GATE] {position_key}: BLOCKED V3 {action} — SCALP_V3_ENABLED is False. reason={reason[:50]}")
+                            return "BLOCKED_SCALP_V3_DISABLED"
                 else:
                     if not getattr(config, "SCALP_MODE", False):
-                        logger.critical(f"🚫 [SCALPING_HARD_GATE] {position_key}: BLOCKED {action} — SCALP_MODE is False. reason={reason[:50]}")
-                        return "BLOCKED_SCALP_DISABLED"
+                        if _vd_exempt or _parity_vec_order(reason):
+                            logger.warning(f"🧭 [SCALPING_VEC_EXEMPT] {position_key}: {action} proceeds vec-dictated (USER 2026-10-24: live never refuses a vec trade)")
+                            _vec_last_bypassed.append("SCALP_DISABLED")
+                        else:
+                            logger.critical(f"🚫 [SCALPING_HARD_GATE] {position_key}: BLOCKED {action} — SCALP_MODE is False. reason={reason[:50]}")
+                            return "BLOCKED_SCALP_DISABLED"
         except Exception as _sce: logger.warning(f"[SCALPING_HARD_GATE] check error (fail-open): {_sce}")
         # ═══════════════════════════════════════════════════════════════════════════
         # 🚫 PER_SYM_SIDE_DISABLED (USER 2026-05-28) — respect LONG_ENABLED/SHORT_ENABLED.
@@ -34342,8 +34350,12 @@ class MultiAccountTradeManager:
         # ═══════════════════════════════════════════════════════════════════════════
         # 🚫 EXIT BLOCKER LH/LL — 2026-09-15 USER: block REDUCE/CLOSE unless LH (closed 15m) OR LL (forming) ===
         try:
+            _vd_lhll_vec = bool(_parity_vec_order(reason)) and ("REDUCE" in _kill_act or "CLOSE" in _kill_act)
+            if _vd_lhll_vec:
+                _vec_last_bypassed.append("EXIT_LH_LL")
             if (bool(getattr(config, "EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED", False))
                 and not _vd_exempt  # lane A 2026-10-06 (CHRUSDT_LONG 173x BLOCKED_EXIT_LH_LL_REQUIRED): a vec-decided exit is never re-gated
+                and not _vd_lhll_vec  # USER 2026-10-24: vec-decided exits skip re-gating (bypass recorded above)
                 and ("REDUCE" in _kill_act or "CLOSE" in _kill_act)
                 and "HEDGE" not in (reason or "").upper()):
                 _blk_sym = symbol or (position_key.split(":")[-1].rsplit("_", 1)[0] if position_key else "")
@@ -34557,8 +34569,12 @@ class MultiAccountTradeManager:
                     _inf_sym = symbol or (pk_symbol(position_key) if position_key else "")
                     _inf_winners = set(getattr(config, "INF_DEDICATED_WINNERS", set()) or set())
                     if _inf_sym and _inf_winners and _inf_sym not in _inf_winners:
-                        logger.warning(f"[INF_DEDICATED] {position_key}: BLOCKED — not in winners set. act={_kill_act} reason={(reason or '')[:60]}")
-                        return "BLOCKED_INF_NOT_WINNER"
+                        if _vd_exempt or _parity_vec_order(reason):
+                            logger.warning(f"🧭 [INF_VEC_EXEMPT] {position_key}: not in winners set but vec-dictated — proceeds (USER 2026-10-24: live never refuses a vec trade)")
+                            _vec_last_bypassed.append("INF_NOT_WINNER")
+                        else:
+                            logger.warning(f"[INF_DEDICATED] {position_key}: BLOCKED — not in winners set. act={_kill_act} reason={(reason or '')[:60]}")
+                            return "BLOCKED_INF_NOT_WINNER"
         except Exception as _inf_e:
             logger.warning(f"[INF_DEDICATED] {position_key}: check error (fail-open): {_inf_e}")
         # ═══════════════════════════════════════════════════════════════════════════
@@ -37060,11 +37076,15 @@ class MultiAccountTradeManager:
                                     side = "SELL" if position_side == "LONG" else "BUY"
                                 # Do NOT return here — let the function continue to place the close order.
                             else:
-                                if self.tracker_manager:
-                                    await self.tracker_manager.set_trade_cooldown(
-                                        position_key, duration=300
-                                    )
-                                return "BLOCKED_BY_UNIVERSAL_NOLOSS_GATE"
+                                if _vd_exempt or _parity_vec_order(reason):
+                                    logger.warning(f"🧭 [NOLOSS_VEC_EXEMPT] {position_key}: vec-dictated {action} proceeds despite universal noloss gate (USER 2026-10-24: live never refuses a vec trade)")
+                                    _vec_last_bypassed.append("UNIVERSAL_NOLOSS_GATE")
+                                else:
+                                    if self.tracker_manager:
+                                        await self.tracker_manager.set_trade_cooldown(
+                                            position_key, duration=300
+                                        )
+                                    return "BLOCKED_BY_UNIVERSAL_NOLOSS_GATE"
                     _rpk_em = (
                         position_key.split(":", 1)[1]
                         if ":" in position_key

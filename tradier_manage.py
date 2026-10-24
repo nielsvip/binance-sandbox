@@ -49289,7 +49289,10 @@ class TradierTradeManager:
                     _zp_allow = _zp_tr.trade_all_on() and _zp_tr.calculated(symbol, position_side)
                 except Exception:
                     _zp_allow = False
-                if _zp_allow:
+                if _tr_parity_vec_order(reason):
+                    logger.warning(f"[NO_BOARD_VEC_EXEMPT] {position_key} {action} — vec-dictated, board intent carried (USER 2026-10-24: live never refuses a vec trade)")
+                    _vec_last_bypassed.append("NO_LATEST_BOARD")
+                elif _zp_allow:
                     logger.warning(f"[ZERO_PASS_ALLOW] {position_key} {action} {side}/{position_side} reason={str(reason)[:80]} — {_lb_why}; calculated sym_side trades (USER 2026-10-21)")
                 else:
                     logger.warning(f"[NO_BOARD_TR] REFUSED {position_key} {action} {side}/{position_side} reason={str(reason)[:80]} — {_lb_why}")

@@ -416,7 +416,7 @@ def test_lots_held_over_7d_expire_exact():
 
 def test_backfill_prices_phantom_from_broker_book():
     cl = _ev("2026-10-23T19:00:00+00:00", "BF", "SHORT", "CLOSE", 10.0, 99.0)
-    books = {("BF", "SHORT"): [10.0, 10.0 * 101.0, None, None]}
+    books = {("BF", "SHORT"): [[None, 10.0, 101.0]]}
     out, sm = srv.realized_walk([cl], broker_books=books)
     row = [e for e in out if e.get("action") == "CLOSE"][0]
     assert row["rpnl"] == round(10.0 * (101.0 - 99.0), 2)
@@ -429,7 +429,7 @@ def test_backfill_covers_partial_remainder_only():
     o = _ev("2026-10-23T10:00:00+00:00", "BF", "LONG", "OPEN", 4.0, 10.0)
     o["reason"] = "STRAT"
     c = _ev("2026-10-23T19:00:00+00:00", "BF", "LONG", "CLOSE", 10.0, 12.0)
-    books = {("BF", "LONG"): [6.0, 6.0 * 11.0, None, None]}
+    books = {("BF", "LONG"): [[None, 6.0, 11.0]]}
     out, sm = srv.realized_walk([o, c], broker_books=books)
     row = [e for e in out if e.get("action") == "CLOSE"][0]
     assert row["rpnl"] == round(4.0 * 2.0 + 6.0 * 1.0, 2)
@@ -439,18 +439,39 @@ def test_backfill_covers_partial_remainder_only():
 
 def test_backfill_short_book_leaves_honest_unknown():
     cl = _ev("2026-10-23T19:00:00+00:00", "BF", "SHORT", "CLOSE", 10.0, 99.0)
-    books = {("BF", "SHORT"): [3.0, 3.0 * 101.0, None, None]}
+    books = {("BF", "SHORT"): [[None, 3.0, 101.0]]}
     out, sm = srv.realized_walk([cl], broker_books=books)
     row = [e for e in out if e.get("action") == "CLOSE"][0]
     assert row["rpnl"] == round(3.0 * (101.0 - 99.0), 2)
     assert sm["unknown"] == 1 and sm["unknown_partial"] == 1
 
 
+def test_backfill_broker_lots_expire_like_journal():
+    from datetime import timedelta
+
+    now = datetime.now(timezone.utc)
+    old_ep = (now - timedelta(days=42)).timestamp()
+    cl = _ev(now.isoformat(), "BF", "SHORT", "CLOSE", 10.0, 99.0)
+    books = {("BF", "SHORT"): [[old_ep, 10.0, 101.0]]}
+    out, sm = srv.realized_walk([cl], broker_books=books)
+    row = [e for e in out if e.get("action") == "CLOSE"][0]
+    assert row.get("rpnl") is None
+    assert sm["unknown"] == 1 and sm["broker_filled"] == 0
+    assert sm["lots_expired"] == 1
+
+
+def test_match_never_burns_for_echo_opens():
+    st = {"ts": "2026-10-20T10:00:00+00:00", "symbol": "MM", "side": "LONG", "action": "OPEN", "qty": 10.0, "price": 50.0, "reason": "BROKER_SYNC_OPEN_FROM_FLAT_STUB"}
+    fills = {"MM": [[None, 10.0, 50.0, "2026-10-20"]]}
+    books = srv._build_broker_books({("MM", "LONG"): [st]}, fills)
+    assert books.get(("MM", "LONG"), []) == [[None, 10.0, 50.0]]
+
+
 def test_backfill_never_touches_stale_excluded():
     old = _ev("2026-09-02T10:00:00+00:00", "BF", "SHORT", "OPEN", 10.0, 112.0)
     old["reason"] = "ZOMBIE"
     cl = _ev("2026-10-23T19:00:00+00:00", "BF", "SHORT", "CLOSE", 15.0, 99.0)
-    books = {("BF", "SHORT"): [5.0, 5.0 * 101.0, None, None]}
+    books = {("BF", "SHORT"): [[None, 5.0, 101.0]]}
     out, sm = srv.realized_walk(
         [old, cl], stale_basis_days=7, expiry_days=60, broker_books=books
     )
@@ -467,8 +488,8 @@ def test_broker_match_burns_twins_and_quarantines_veto():
     fills = {"MM": [[None, 10.0, 50.0, "2026-10-20"], [None, -10.0, 52.0, "2026-10-20"], [None, 5.0, 51.0, "2026-10-21"]]}
     chains = {("MM", "LONG"): [j1, j2, v]}
     books = srv._build_broker_books(chains, fills)
-    assert books.get(("MM", "LONG"), [0])[0] == 0
-    assert books.get(("MM", "SHORT"), [0])[0] == 0
+    assert books.get(("MM", "LONG"), []) == []
+    assert books.get(("MM", "SHORT"), []) == []
 
 
 def test_close_on_expired_only_book_is_honest_unknown():
