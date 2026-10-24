@@ -264,8 +264,11 @@ def fetch_trades(symbol, accounts, hist_dirs):
         for side, recs in by_side.items():
             recs.sort(key=lambda e: e["timestamp"])
             recs = _dedupe_mirror_lines(recs)
+            recs = _collapse_echo_fills(recs)
             recs = _collapse_stuck_relogs(recs)
-            events.extend(annotate_round_trips(mark_boundaries(recs), side))
+            marked = mark_boundaries(recs)
+            marked = _cancel_same_bar_pairs(marked)
+            events.extend(annotate_round_trips(marked, side))
         if events:
             events.sort(key=lambda e: e["timestamp"])
             out[acct] = events
@@ -286,6 +289,86 @@ def _dedupe_mirror_lines(recs):
             seen.add(key)
             uniq.append(r)
     return uniq
+
+
+def _fill_class(typ):
+    t = str(typ or "").upper()
+    if any(k in t for k in _SELL_TOKENS):
+        return "exit"
+    if any(k in t for k in _BUY_TOKENS):
+        return "entry"
+    return "other"
+
+
+def _is_sync_echo(reason):
+    r = str(reason or "").upper()
+    return "BROKER_SYNC" in r or r.startswith("BROKER SYNC") or "BROKER SYNC" in r
+
+
+def _collapse_echo_fills(recs, window_s=90.0):
+    """Collapse strategy/broker double-logs of the same fill.
+
+    Every bot fill is logged twice: once by the strategy (real reason) and
+    once by the broker sync (BROKER_SYNC_OPEN_FROM_FLAT_STUB / Broker sync),
+    seconds apart with the same side, qty and direction class. Counting both
+    inflates the position balance so round trips never close (e.g. CDW showed
+    one eternal entry). Same side + same class + same qty within 90s keeps
+    one record, preferring the strategy reason. Genuine distinct fills are
+    >=1 15m bar apart by construction, so same-qty repeats inside 90s are
+    echoes, not trades.
+    """
+    out = []
+    for r in recs:
+        cls = _fill_class(r.get("type"))
+        dup = None
+        if cls in ("entry", "exit"):
+            for o in reversed(out):
+                if (o["timestamp"] - r["timestamp"]).total_seconds() < -window_s:
+                    break
+                if (o.get("side") == r.get("side") and _fill_class(o.get("type")) == cls
+                        and abs(float(o.get("qty") or 0) - float(r.get("qty") or 0)) < 1e-9):
+                    dup = o
+                    break
+        if dup is None:
+            out.append(r)
+        elif _is_sync_echo(r.get("reason")) and not _is_sync_echo(dup.get("reason")):
+            pass
+        elif _is_sync_echo(dup.get("reason")) and not _is_sync_echo(r.get("reason")):
+            out[out.index(dup)] = r
+        # else: identical echoes, keep the first
+    return out
+
+
+def _cancel_same_bar_pairs(recs, bar_min=15):
+    """Cancel entry+exit pairs netting to zero inside one bar.
+
+    We only trade 15m bars and up, so an entry and an exit of equal size in
+    the same 15m bucket is not a trade (daemon whipsaw / sync churn) — it
+    nets to zero and must not draw arrows, bars or mismatch fills. Unequal
+    remainders (real flips: exit of one trip plus entry of the next) survive.
+    """
+    from datetime import timezone
+    buckets, order = {}, []
+    for r in recs:
+        ts = r["timestamp"].astimezone(timezone.utc)
+        key = (ts.replace(minute=(ts.minute // bar_min) * bar_min, second=0, microsecond=0),
+               r.get("side"), r.get("phase"))
+        if key not in buckets:
+            buckets[key] = []
+            order.append(key)
+        buckets[key].append(r)
+    drop = set()
+    seen_buckets = set((k[0], k[1]) for k in order)
+    for ts_b, side in seen_buckets:
+        entries = [r for r in buckets.get((ts_b, side, "entry"), [])]
+        exits = [r for r in buckets.get((ts_b, side, "exit"), [])]
+        for x in exits:
+            for e in entries:
+                if id(e) not in drop and abs(float(e.get("qty") or 0) - float(x.get("qty") or 0)) < 1e-9:
+                    drop.add(id(e))
+                    drop.add(id(x))
+                    break
+    return [r for r in recs if id(r) not in drop]
 
 
 def _collapse_stuck_relogs(recs):

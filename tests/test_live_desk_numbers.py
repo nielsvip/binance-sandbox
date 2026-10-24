@@ -266,7 +266,15 @@ def test_broker_fills_counted_once_and_unattributed_hidden():
     d0["reason"] = "BROKER_RECONCILED order=2"
     out, s = srv.realized_walk([o, r1, p, f1, f2, f3, dup, q0, c0, d0], expiry_days=60)
     lrcx = [e for e in out if e.get("symbol") == "LRCX" and e["action"] == "REDUCE"]
-    assert len(lrcx) == 1 and all("rpnl" not in e for e in lrcx)
+    # Parity contract (USER 2026-10-24 absolute dashboard-vs-broker parity):
+    # a sync close WITH full journal basis prices off those lots (AAPL
+    # 10-22 17:35 printed None despite WT 4.0 lots). The LRCX lesson
+    # survives narrowed: sync closes WITHOUT basis never price (see
+    # test_sync_close_without_basis_stays_hidden below) — fabrication is
+    # still banned, attribution is not. Row stays hidden either way.
+    assert len(lrcx) == 1
+    assert lrcx[0].get("sync_hidden") is True
+    assert lrcx[0].get("rpnl") == round(13.0 * (235.70 - 263.12), 2)
     fills = [
         e
         for e in out
@@ -283,10 +291,11 @@ def test_broker_fills_counted_once_and_unattributed_hidden():
         "sync_hidden"
     ) is True
     assert s["sync_hidden"] == 3
-    assert s["known"] == 4
+    assert s["known"] == 5
     assert s["unknown"] == 0
     assert s["pnl_total"] == round(
-        30.7 * (0.6432 - 0.6433)
+        13.0 * (235.70 - 263.12)
+        + 30.7 * (0.6432 - 0.6433)
         + 8.8 * (0.6431 - 0.6433)
         + 3.9 * (0.6431 - 0.6433)
         + 200.0,
@@ -1348,6 +1357,19 @@ def test_paper_twin_first_of_dupes_only():
     )
     assert rpnls == [(False, 2.24), (True, None)]
     assert sm["paper_twinned"] == 1
+
+
+def test_sync_close_without_basis_stays_hidden():
+    # LRCX lesson, narrowed and preserved: a sync close with NO journal
+    # basis and NO tape basis never prices (fabrication stays banned).
+    now = datetime.now(timezone.utc)
+    row = _ev(now.isoformat(), "Q", "LONG", "REDUCE", 5.0, 50.0)
+    row["reason"] = "Broker sync"
+    out, sm = srv.realized_walk([row], recon_backfill=True)
+    got = [e for e in out if e.get("action") == "REDUCE"][0]
+    assert got.get("rpnl") is None
+    assert got.get("sync_hidden") is True
+    assert sm["unknown"] == 1
 
 
 def test_recon_backfill_trb_gated():
