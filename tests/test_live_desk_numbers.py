@@ -224,6 +224,46 @@ def test_implied_today_from_equity_marks(tmp_path):
     assert srv._implied_today("nosuch", 1.0, 0.0) is None
 
 
+def test_ledger_windows_slots_and_never_zero(tmp_path):
+    srv.LEDGER_PATH = tmp_path / "account_values.json"
+    srv.LEDGER_PATH.parent.mkdir(parents=True, exist_ok=True)
+    now_s = datetime(2026, 10, 24, 12, 0, tzinfo=timezone.utc).timestamp()
+    days = {}
+    eq, op = 45000.0, 0.0
+    for off, pnl in ((8, 0.0), (7, 10.0), (2, 20.0), (1, -5.0)):
+        eq += pnl
+        d = time.strftime("%Y-%m-%d", time.gmtime(now_s - off * 86400))
+        days[d] = {"equity": eq, "open_pl": op, "cash": eq}
+    srv.LEDGER_PATH.write_text(json.dumps({"trb": days}))
+    w = srv._ledger_windows("trb", eq + 3.0, 7.0, now_s)
+    assert w["l_today"] == round(3.0 - 7.0, 2)
+    assert w["l_yest"] == -5.0
+    d7 = days[time.strftime("%Y-%m-%d", time.gmtime(now_s - 7 * 86400))]["equity"]
+    assert w["l_7d"] == round((eq + 3.0 - d7) - 7.0, 2)
+    assert w["l_30d"] is None
+    assert w["l_cov"] == {"today": True, "yest": True, "d7": True, "d30": False}
+    assert w["l_asof"] == max(days)
+    empty = srv._ledger_windows("nosuch", 1.0, 0.0, now_s)
+    assert empty["l_today"] is None and empty["l_cov"] == {} and empty["l_asof"] is None
+    nones = srv._ledger_windows("trb", None, None, now_s)
+    assert nones["l_today"] is None and nones["l_cov"]["today"] is False
+
+
+def test_ledger_audit_gap(tmp_path):
+    srv.LEDGER_PATH = tmp_path / "account_values.json"
+    srv.LEDGER_PATH.parent.mkdir(parents=True, exist_ok=True)
+    now_s = datetime(2026, 10, 24, 12, 0, tzinfo=timezone.utc).timestamp()
+    days = {}
+    for off in (7, 30, 1, 2):
+        d = time.strftime("%Y-%m-%d", time.gmtime(now_s - off * 86400))
+        days[d] = {"equity": 1000.0 + off, "open_pl": 0.0, "cash": 1000.0 + off}
+    srv.LEDGER_PATH.write_text(json.dumps({"fin": days}))
+    a = srv._ledger_audit("fin", 1100.0, 10.0, 50.0, 60.0, now_s)
+    assert a["v_7d"] == 50.0 and a["v_30d"] == 60.0
+    assert a["d_7d"] == round(a["l_7d"] - 50.0, 2)
+    assert srv._ledger_audit("nosuch", 1.0, 0.0, 1.0, 1.0, now_s) is None
+
+
 def test_basisless_echo_twins_hidden():
     now = datetime.now(timezone.utc).replace(microsecond=0)
     iso = lambda dt: dt.isoformat()

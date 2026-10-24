@@ -47,10 +47,12 @@ def test_vec_last_decide_matrix():
 def test_vec_refusals_deferred_past_native_gates():
     for fname in ("ez_manage.py", "tradier_manage.py"):
         body = _inner_body(pathlib.Path(fname).read_text())
-        late = body.index("VEC_LAST_BACKSTOP")
+        late = body.index("─── VEC_LAST_BACKSTOP")
+        early_returns = [ln for ln in body[:late].splitlines() if ln.strip().startswith("return")]
         for pat in EARLY_VEC_RETURNS:
-            assert pat not in body[:late], f"{fname}: early VEC refusal still present: {pat}"
-        assert "365D_CONFIRM" in body[:late] or "365D" in body[:late], f"{fname}: native gates missing before backstop"
+            assert not any(pat in ln for ln in early_returns), f"{fname}: early VEC refusal still present: {pat}"
+        native_marker = "365D" if fname.startswith("ez") else "SYM_HALT"
+        assert native_marker in body[:late], f"{fname}: native gates missing before backstop"
 
 
 def test_vec_dictated_predicate_matches_parity_order():

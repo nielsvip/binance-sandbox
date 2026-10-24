@@ -48981,17 +48981,11 @@ class TradierTradeManager:
         # exits only on cross/board/stop, violating families refused+disabled+flagged (manual restore via
         # tools/vector_violations.py). BOARD_CONVERGE_/VEC_DECIDED/stop/bookkeeping reasons always pass.
         # Refusals are LOGGED (violations file) — review daily until parity improves. Kill: VECTOR_ENFORCE_ENABLED=False.
-        try:
-            from live_twins import vector_enforce as _ve_tm
-            _ve_ok, _ve_verdict = _ve_tm.check(action, position_key, reason, config)
-        except Exception:
-            _ve_ok, _ve_verdict = True, "ENFORCE_ERROR_FAILOPEN"
-        if not _ve_ok:
-            if _ve_verdict == "OFF_BAR_WINDOW":
-                logger.info(f"[VECTOR_EXEC_REFUSED] {position_key} action={action} reason={(reason or '')[:80]} — outside 15m bar window")
-            else:
-                logger.critical(f"[VECTOR_EXEC_REFUSED] {position_key} action={action} verdict={_ve_verdict} reason={(reason or '')[:80]}")
-            return f"BLOCKED_VECTOR_EXEC_{_ve_verdict[:40]}"
+        # USER 2026-10-24 VEC-LAST: the enforcer runs at VEC_LAST_BACKSTOP (after all native
+        # gates) so a native refusal keeps its own string; _ve_deferred carries the request.
+        _vec_last_refuse = ""
+        _vec_last_bypassed = []
+        _ve_deferred = True
         # ─── HERMETIC VEC-ONLY GATE — STOCKS (2026-10-15 USER "stocks have no gate at all <- last thing i need for
         # you is to fix that"). Twin of the crypto gate at ez_manage.py:31983, which has been in `enforce` since
         # 2026-10-14T20:58Z with 0 false flags. Stocks had ZERO hermetic references before this — and stocks are where
@@ -49024,7 +49018,7 @@ class TradierTradeManager:
         if not _hm_ok and _hm_enforce:
             if _paper_nv.enabled(config):
                 _paper_nv.record("stocks", account_key, position_key, _paper_nv.kind_of(action, side, position_side), action, reason, "HERMETIC", old_price, quantity)
-            return "BLOCKED_HERMETIC_NOT_VEC"
+            _vec_last_refuse = _vec_last_refuse or "BLOCKED_HERMETIC_NOT_VEC"
         # ─── LOSS_PRONE_ENTRY_FILTER (USER 2026-10-21: ABSENT from all TEMPLATE sheets —
         # no sweep row ever measured it, so the per-sym True is the frozen defaults snapshot, not
         # a board winner. It may NEVER refuse. Allow-with-log + paper record so the ledger keeps
@@ -49154,6 +49148,7 @@ class TradierTradeManager:
                 if _sh_hit:
                     if _tr_parity_vec_order(reason):
                         logger.warning(f"[SYM_HALT_PARITY_EXEMPT] {position_key}: {_sh_why} — vec-dictated {action} proceeds (USER 2026-10-22; native stays halted)")
+                        _vec_last_bypassed.append("SYM_HALT")
                     else:
                         logger.critical(
                             f"🛑 [SYM_HALT] {position_key}: {account_key} {_sh_why} — {action} refused, exits untouched"
@@ -49415,6 +49410,7 @@ class TradierTradeManager:
                         else:
                             if _tr_parity_vec_order(reason):
                                 logger.warning(f"[VIGILANCE_PARITY_EXEMPT] {position_key}: {_vg_why} — vec-dictated {action} proceeds (USER 2026-10-22)")
+                                _vec_last_bypassed.append("VIGILANCE")
                             else:
                                 logger.critical(
                                     f"🚨 [VIGILANCE_ENTRY_BLOCK] {position_key}: {_vg_why} — awaiting recovery (bounce or price>exit). action={action} reason={(reason or '')[:60]}"
@@ -49433,6 +49429,7 @@ class TradierTradeManager:
                     if _ssh_blk:
                         if _tr_parity_vec_order(reason):
                             logger.warning(f"[STALE_SET_PARITY_EXEMPT] {position_key}: {_ssh_why} — vec-dictated {action} proceeds (USER 2026-10-22; native stays halted)")
+                            _vec_last_bypassed.append("STALE_SET_HALT")
                         else:
                             logger.critical(f"🛑 [STALE_SET_HALT_ENTRY_BLOCK] {position_key}: {_ssh_why} — action={action} reason={(reason or '')[:60]}")
                             if lock_acquired and self.redis_manager:
@@ -50977,6 +50974,46 @@ class TradierTradeManager:
                 if lock_acquired and self.redis_manager:
                     await self.redis_manager.delete(exec_lock_key)
                 return f"BLOCKED_QUARANTINED({_live_q_name})"
+            # ─── VEC_LAST_BACKSTOP (USER 2026-10-24: VEC overrides act LAST) ───
+            # Every native gate above has had its say with its own string. Only now:
+            # vector_enforce runs (kill + bar window land here, never before a native
+            # verdict), then live_twins.vec_last.decide() issues the single verdict.
+            # VEC_LAST_OVERRIDE names the bypassed native gates = the broken paths to
+            # fix. When it vanishes from the logs, native has caught up and the vec
+            # backup comes out. Fail-open on any error (never strand a stop/exit).
+            try:
+                from live_twins import vector_enforce as _ve_late_tr
+                _ve_ok_tr, _ve_verdict_tr = _ve_late_tr.check(action, position_key, reason, config)
+            except Exception:
+                _ve_ok_tr, _ve_verdict_tr = True, "ENFORCE_ERROR_FAILOPEN"
+            if not _ve_ok_tr and str(_ve_verdict_tr) == "OFF_BAR_WINDOW":
+                logger.info(f"⏳ [VECTOR_EXEC_REFUSED] {position_key} action={action} reason={(reason or '')[:80]} — outside 15m bar window, waits for next bar (USER 2026-10-21; VEC-LAST keeps the deferral)")
+                if lock_acquired and self.redis_manager:
+                    await self.redis_manager.delete(exec_lock_key)
+                return "BLOCKED_VECTOR_EXEC_OFF_BAR_WINDOW"
+            if not _ve_ok_tr and not _vec_last_refuse:
+                _vec_last_refuse = f"BLOCKED_VECTOR_EXEC_{str(_ve_verdict_tr)[:40]}"
+            try:
+                from live_twins.vec_last import decide as _vec_last_decide_tr
+                _vl_dictated_tr = bool(_tr_parity_vec_order(reason)) or str(_hm_why).startswith("vec:")
+                _vl_ok_tr, _vl_tag_tr, _vl_detail_tr = _vec_last_decide_tr(_vl_dictated_tr, _vec_last_bypassed, _vec_last_refuse)
+            except Exception as _vl_e_tr:
+                _vl_ok_tr, _vl_tag_tr, _vl_detail_tr = True, "VEC_LAST_CLEAN", ""
+                logger.debug(f"[VEC_LAST] {position_key}: decide error (fail-open): {_vl_e_tr}")
+            if _vl_tag_tr == "VEC_LAST_OVERRIDE":
+                logger.warning(f"🧭 [VEC_LAST_OVERRIDE] {position_key} {action} reason={(reason or '')[:80]} — vec-dictated, native gates bypassed [{_vl_detail_tr}] (USER 2026-10-24: fix these paths)")
+                try:
+                    _vlp_tr = Path(_cfg_auto("BASE_PATH", "/users/niels/documents/binance")) / "data" / "vector_disparity_queue.jsonl"
+                    _vlp_tr.parent.mkdir(parents=True, exist_ok=True)
+                    with open(str(_vlp_tr), "a") as _vlf_tr:
+                        _vlf_tr.write(json.dumps({"ts": time.time(), "venue": "stocks", "position_key": position_key, "action": action, "reason": str(reason)[:160], "gates": _vl_detail_tr.split("+")}) + "\n")
+                except Exception:
+                    pass
+            elif _vl_tag_tr == "VEC_LAST_REFUSE":
+                logger.warning(f"🛑 [VEC_LAST_REFUSE] {position_key} {action} reason={(reason or '')[:80]} — {_vl_detail_tr} (USER 2026-10-24 VEC-LAST: refused last, native allowed it)")
+                if lock_acquired and self.redis_manager:
+                    await self.redis_manager.delete(exec_lock_key)
+                return _vl_detail_tr
             current_price = old_price
             if not current_price or current_price <= 0:
                 current_price, ts = await self.get_current_price(symbol)

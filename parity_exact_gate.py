@@ -77,5 +77,13 @@ def try_claim(key, now: float = None) -> tuple:
     return True, 0.0
 
 
+def release_claim(key) -> None:
+    """Free a same-key claim (VEC-LAST late refusal must not burn the bar's chance)."""
+    try:
+        _claims.pop(key, None)
+    except Exception:
+        pass
+
+
 def _reset_for_tests():
     _claims.clear()

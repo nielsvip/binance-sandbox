@@ -33159,6 +33159,7 @@ class MultiAccountTradeManager:
         # (they skip the discretionary gates flagged _vd_exempt below); every native decision is suppressed here, the
         # single order chokepoint, except an emergency (liquidation/margin/balance-floor/manual) reduce/close.
         _vd_exempt = False
+        _vec_last_bypassed = []
         # USER 2026-10-21 zero-pass NO-SUPPRESSION: a calculated sym_side trades EXACTLY what its board set
         # dictates — entry/exit decision vetoes below become allow-with-log. Correctness (invalid key/price/dup),
         # infra (broker/sync/mark freshness) and execution integrity (locks/dedup/cooldowns) are untouched, as are
@@ -33213,6 +33214,7 @@ class MultiAccountTradeManager:
             _ok365, _why365 = _confirm_365d_allows(symbol, position_side)
             if not _ok365 and _vd_exempt:
                 logger.warning(f"🧭 [VEC_DRIVEN_365D_EXEMPT] {position_key} action={action} — 365D gate would block ({_why365}); director-certified 365D vec set, allowed")
+                _vec_last_bypassed.append("365D_CONFIRM")
                 _ok365 = True
             if not _ok365 and _zp_ns:
                 logger.warning(f"[ZERO_PASS_ALLOW] {position_key} action={action} — 365D gate would block ({_why365}); calculated sym_side trades (USER 2026-10-21)")
@@ -33245,6 +33247,7 @@ class MultiAccountTradeManager:
             if _sh_on and (_vd_exempt or _parity_vec_order(reason)):
                 _sh_on = False
                 logger.warning(f"[SYM_HALT_VEC_EXEMPT] {position_key} action={action}: vector-dictated, halt not applied (USER 2026-10-22)")
+                _vec_last_bypassed.append("SYM_HALT")
             if _sh_on and any(_t in _sh_act for _t in ("OPEN", "AUGMENT", "REENTRY", "REVERSE")):
                 from tools.v15_sym_halt import sym_halt_active as _sym_halt_active
                 _sh_hit, _sh_why = _sym_halt_active(account_key, f"{symbol}_{position_side}")
@@ -33442,6 +33445,7 @@ class MultiAccountTradeManager:
                         # is never held here — everything open in the vector keeps
                         # its live position. Timing stays authoritative for native.
                         logger.warning(f"⏳ [TIMING_HOLD_VEC_EXEMPT] {position_key}: {action} proceeds despite timing=FAILED — vector-dictated.")
+                        _vec_last_bypassed.append("TIMING_HOLD")
                     else:
                         logger.warning(f"⏳ [TIMING_HOLD] {position_key}: {action} held — timing=FAILED (level lost; insist, retry on reclaim)")
                         return f"BLOCKED_TIMING_HOLD_FAILED_{_tm_acct}"
@@ -33470,6 +33474,7 @@ class MultiAccountTradeManager:
                         logger.critical(f"✅ [VIGILANCE_RECOVERED_ENTRY_ALLOWED] {position_key}: {_vg_rec_why} — {action} proceeds")
                     elif _vd_exempt or _parity_vec_order(reason):
                         logger.warning(f"[VIGILANCE_PARITY_EXEMPT] {position_key}: {_vg_why} — vec-dictated {action} proceeds (USER 2026-10-22: no vector decision is refused)")
+                        _vec_last_bypassed.append("VIGILANCE")
                     else:
                         logger.critical(f"🚨 [VIGILANCE_ENTRY_BLOCK] {position_key}: {_vg_why} — awaiting recovery (bounce or price>exit). action={action} reason={(reason or '')[:60]}")
                         return "BLOCKED_VIGILANCE"
@@ -33487,6 +33492,7 @@ class MultiAccountTradeManager:
                 if _ssh_blk:
                     if _vd_exempt or _parity_vec_order(reason):
                         logger.warning(f"[STALE_SET_PARITY_EXEMPT] {position_key}: {_ssh_why} — vec-dictated {action} proceeds (USER 2026-10-22: no vector decision is refused; native stays halted)")
+                        _vec_last_bypassed.append("STALE_SET_HALT")
                     else:
                         logger.critical(f"🛑 [STALE_SET_HALT_ENTRY_BLOCK] {position_key}: {_ssh_why} — action={action} reason={(reason or '')[:60]}")
                         return "BLOCKED_STALE_SET_HALT"
@@ -33574,6 +33580,7 @@ class MultiAccountTradeManager:
                         _eb_ok, _eb_agree, _eb_found = _eb_pass(await ii(self, symbol) or {}, position_side == "LONG", _eb_cfg)
                     if not _eb_ok and (_vd_exempt or _parity_vec_order(reason)):
                         logger.warning(f"[EMA_BLANKET_PARITY_EXEMPT] {position_key}: ema9>21 agrees on {_eb_agree}/{_eb_found} TFs — vec-dictated {action} proceeds (USER 2026-10-22)")
+                        _vec_last_bypassed.append("EMA_BLANKET")
                     elif not _eb_ok:
                         logger.warning(f"🚫 [EMA_BLANKET_FILTER] {position_key}: BLOCKED {action} — ema9>21 agrees on {_eb_agree}/{_eb_found} TFs < {_eb_cfg.EMA_BLANKET_FILTER_MIN_TFS}. reason={(reason or '')[:50]}")
                         return f"BLOCKED_EMA_BLANKET_FILTER_{position_side}"
@@ -35280,6 +35287,7 @@ class MultiAccountTradeManager:
                             # MEASURED 05:1xZ: 4 BLOCKED_LOSING_POSITION_GAIN on flz in 15 min, against 4,720 pending
                             # intents and 0 executions on three accounts.
                             logger.warning(f"[LOSING_POSITION_VEC_EXEMPT] {position_key}: eff={_lpb_gain:.2f}% < MIN_GAIN={_lpb_min:.2f}% but vector-dictated — allowed. action={action}")
+                            _vec_last_bypassed.append("LOSING_POSITION")
                         else:
                             logger.critical(
                                 f"🔨 [LOSING_POSITION_HARD_BLOCK] {position_key}: amt={_lpb_amt:.4f} gain={_lpb_gain_raw:.2f}% (eff={_lpb_gain:.2f}%) < MIN_GAIN={_lpb_min:.2f}% — NEVER augment/reopen/hedge/reenter losing position. action={action} reason={(reason or '')[:60]}"
@@ -35578,6 +35586,7 @@ class MultiAccountTradeManager:
                     _flag_count = int(_flag_entry.get("count", 0) or 0)
                     if _flag_count >= 3 and (_vd_exempt or _parity_vec_order(reason)):
                         logger.warning(f"[FLAGGED_ORIGIN_PARITY_EXEMPT] {position_key}: flagged {_flag_count}× — vec-dictated {action} proceeds (USER 2026-10-22: no vector decision is refused)")
+                        _vec_last_bypassed.append("FLAGGED_ORIGIN")
                     elif _flag_count >= 3:
                         logger.critical(f"🚫 [FLAGGED_ORIGIN_BLOCK] {position_key}: flagged {_flag_count}× — entry BLOCKED. reasons={_flag_entry.get('reasons', [])[:3]}")
                         return f"BLOCKED_FLAGGED_ORIGIN_{_flag_count}x"
@@ -35800,6 +35809,7 @@ class MultiAccountTradeManager:
             # CIRCUIT_BREAKER_ENABLED, which this gate ignored while the flag read False.
             if _parity_vec_order(reason) or _vd_exempt or _zp_ns:
                 logger.info(f"[CIRCUIT_BREAKER_PARITY_EXEMPT] {position_key}: vec-dictated order — breaker has no vote. action={action} reason={(reason or '')[:70]}")
+                _vec_last_bypassed.append("CIRCUIT_BREAKER")
             elif bool(getattr(config, "CIRCUIT_BREAKER_ENABLED", False)) and self.circuit_breaker.is_blocked(reason or ""):
                 logger.critical(f"🛑 [CIRCUIT_BREAKER] {position_key}: BLOCKED '{reason}' — path auto-disabled (WT/DC wrong at entry)")
                 return "CIRCUIT_BREAKER_BLOCKED"
@@ -35931,6 +35941,7 @@ class MultiAccountTradeManager:
                                 # refused here — same class as EXEC_AUGMENT below.
                                 if _vd_exempt or _parity_vec_order(reason):
                                     logger.warning(f"[UAGAIN_VEC_EXEMPT] {position_key}: gain_since_last_add={_uag_gain_since:+.2f}% < {_uag_min_gain:.1f}% but vector-dictated — allowed. action={action}")
+                                    _vec_last_bypassed.append("UAGAIN_MIN_GAIN")
                                 else:
                                     logger.warning(
                                         f"🚫 [UAGAIN_BLOCK] {position_key}: gain_since_last_add={_uag_gain_since:+.2f}% < {_uag_min_gain:.1f}% (max={_uag_max_gain:.2f}% raw={_uag_raw_gain:.2f}% pb_ok={_uag_pb_ok}) — action={action} reason={(reason or '')[:60]}"
@@ -36332,6 +36343,7 @@ class MultiAccountTradeManager:
                     # not glitch churn. Count + log, no halt, no refusal. Native keeps it.
                     if _vd_exempt or _parity_vec_order(reason):
                         logger.warning(f"[CHURN_PARITY_EXEMPT] {_acct}: {_cache.get('min_total',0)} trades/min on vec-dictated {action} — counted, proceeds (USER 2026-10-22)")
+                        _vec_last_bypassed.append("CHURN_BRAKE")
                     else:
                         logger.critical(f"🛑 [EMERGENCY_BRAKE_10/MIN] {_acct}: {_cache.get('min_total',0)} trades/min — HALTED. Max {int(getattr(config, 'EMERGENCY_BRAKE_MAX_TRADES_PER_MIN', 10))}. Churn detected.")
                         try:
@@ -37124,6 +37136,46 @@ class MultiAccountTradeManager:
                         f"[REFRESH_POS] {position_key}: positionAmt=0 from service, skipping REDUCE"
                     )
                     return "SKIP_REDUCE_EMPTY_POSITION"
+        # ─── VEC_LAST_BACKSTOP (USER 2026-10-24: VEC overrides act LAST) ───
+        # Every native gate above has had its say with its own string. Only now:
+        # vector_enforce runs (kill + bar window land here, never before a native
+        # verdict), then live_twins.vec_last.decide() issues the single verdict.
+        # VEC_LAST_OVERRIDE names the bypassed native gates = the broken paths to
+        # fix. When it vanishes from the logs, native has caught up and the vec
+        # backup comes out. Fail-open on any error (never strand a stop/exit).
+        try:
+            from live_twins import vector_enforce as _ve_late
+            _ve_ok_late, _ve_verdict_late = _ve_late.check(action, position_key, reason)
+        except Exception:
+            _ve_ok_late, _ve_verdict_late = True, "ENFORCE_ERROR_FAILOPEN"
+        if not _ve_ok_late and str(_ve_verdict_late) == "OFF_BAR_WINDOW":
+            logger.info(f"⏳ [VECTOR_EXEC_REFUSED] {position_key} action={action} reason={(reason or '')[:80]} — outside 15m bar window, waits for next bar (USER 2026-10-21; VEC-LAST keeps the deferral)")
+            return "BLOCKED_VECTOR_EXEC_OFF_BAR_WINDOW"
+        if not _ve_ok_late and not _vec_last_refuse:
+            _vec_last_refuse = f"BLOCKED_VECTOR_EXEC_{str(_ve_verdict_late)[:40]}"
+        try:
+            from live_twins.vec_last import decide as _vec_last_decide
+            _vl_dictated = _vec_decided or _vd_exempt or _parity_vec_order(reason)
+            _vl_ok, _vl_tag, _vl_detail = _vec_last_decide(_vl_dictated, _vec_last_bypassed, _vec_last_refuse)
+        except Exception as _vl_e:
+            _vl_ok, _vl_tag, _vl_detail = True, "VEC_LAST_CLEAN", ""
+            logger.debug(f"[VEC_LAST] {position_key}: decide error (fail-open): {_vl_e}")
+        if _vl_tag == "VEC_LAST_OVERRIDE":
+            logger.warning(f"🧭 [VEC_LAST_OVERRIDE] {position_key} {action} reason={(reason or '')[:80]} — vec-dictated, native gates bypassed [{_vl_detail}] (USER 2026-10-24: fix these paths)")
+            try:
+                _vlp = Path(getattr(config, "BASE_PATH", ".")) / "data" / "vector_disparity_queue.jsonl"
+                _vlp.parent.mkdir(parents=True, exist_ok=True)
+                with open(str(_vlp), "a") as _vlf:
+                    _vlf.write(json.dumps({"ts": time.time(), "venue": "crypto", "position_key": position_key, "action": action, "reason": str(reason)[:160], "gates": _vl_detail.split("+")}) + "\n")
+            except Exception:
+                pass
+        elif _vl_tag == "VEC_LAST_REFUSE":
+            logger.warning(f"🛑 [VEC_LAST_REFUSE] {position_key} {action} reason={(reason or '')[:80]} — {_vl_detail} (USER 2026-10-24 VEC-LAST: refused last, native allowed it)")
+            try:
+                _peg.release_claim(f"{(position_key or f'{account_key}:{symbol}_{position_side}')}|INC")
+            except Exception:
+                pass
+            return _vl_detail
         shadow_start_amt = original_positionAmt
         i = await ii(self, symbol)
         keep_lock_active = False
