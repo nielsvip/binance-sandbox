@@ -114,6 +114,23 @@ def test_no_stoch_k_veto_on_augment_tiers():
     fn_src = _ez_augment_fn_source()
     assert "k_not_exhausted" not in fn_src, "stoch-K veto must stay removed from AUG tiers"
     assert "k_runway > 0.25" not in fn_src and "k_runway > 0.30" not in fn_src, "hardcoded K-runway floors must stay removed from AUG gates"
+    assert "wt_runway" in fn_src, "AUG sizing must use the shared WT-runway twin"
+
+
+def test_wt_runway_math():
+    # USER 2026-10-24: single sizing implementation, WT-driven, both sides in one future
+    # unlock edit (v12 + augment_core). Short: 1 at top, 0 at floor. Long mirrored.
+    from vec_decisions.live_unw_gates import wt_runway as _rw
+
+    assert _rw(100.0, 100.0, 100.0, False) == 1.0
+    assert _rw(-100.0, 0.0, 0.0, False) == 0.0
+    assert _rw(0.0, 0.0, 0.0, False) == 0.5
+    assert _rw(-100.0, -100.0, -100.0, True) == 1.0
+    assert _rw(100.0, 0.0, 0.0, True) == 0.0
+    assert _rw(0.0, 0.0, 0.0, True) == 0.5
+    assert _rw(200.0, 0.0, 0.0, False) == 0.5  # most-exhausted TF governs (min)
+    assert _rw(None, None, None, False) == 0.5  # bad input fail-safe
+    assert _rw(-60.0, -60.0, -60.0, False) == 0.2  # oversold line still sizes 20%
 
 
 def test_ladder_tiers_by_source_type():

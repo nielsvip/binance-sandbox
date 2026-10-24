@@ -49164,6 +49164,12 @@ class TradierTradeManager:
         # gates) so a native refusal keeps its own string; _ve_deferred carries the request.
         _vec_last_refuse = ""
         _vec_last_bypassed = []
+        # USER 2026-10-24 vector-authority (stocks): record-and-continue for vec-dictated orders at every
+        # opinion veto below. Same predicate the late backstop enforces (_tr_parity_vec_order), so exemption
+        # and enforcement cannot drift. Natives keep every refusal; vec orders name the broken path and continue.
+        def _tr_bypass(_gate_name):
+            _vec_last_bypassed.append(_gate_name)
+            logger.warning(f"🧭 [TR_VEC_BYPASS] {position_key} {action} reason={(reason or '')[:80]} — vec-dictated, {_gate_name} recorded for VEC_LAST, continuing")
         _ve_deferred = True
         # ─── HERMETIC VEC-ONLY GATE — STOCKS (2026-10-15 USER "stocks have no gate at all <- last thing i need for
         # you is to fix that"). Twin of the crypto gate at ez_manage.py:31983, which has been in `enforce` since
@@ -49648,10 +49654,13 @@ class TradierTradeManager:
                                 _nb_px = float(old_price or 0)
                                 _nb_dc_broken = _nb_px > 0 and ((is_long and _nb_lo > 0 and _nb_px <= _nb_lo) or ((not is_long) and _nb_hi > 0 and _nb_px >= _nb_hi))
                             if not _nb_dc_broken and not _nb_emergency:
-                                logger.critical(f"🛡️ [NEWBORN_PROTECT] {position_key}: BLOCKED {action} ({(reason or '')[:60]}) — position only {_nb_age_s:.0f}s old (need 900s) and price NOT at the dc_5m extreme")
-                                if lock_acquired and self.redis_manager:
-                                    await self.redis_manager.delete(exec_lock_key)
-                                return f"BLOCKED_NEWBORN_PROTECT_{_nb_age_s:.0f}s"
+                                if _tr_parity_vec_order(reason):
+                                    _tr_bypass("NEWBORN_PROTECT")
+                                else:
+                                    logger.critical(f"🛡️ [NEWBORN_PROTECT] {position_key}: BLOCKED {action} ({(reason or '')[:60]}) — position only {_nb_age_s:.0f}s old (need 900s) and price NOT at the dc_5m extreme")
+                                    if lock_acquired and self.redis_manager:
+                                        await self.redis_manager.delete(exec_lock_key)
+                                    return f"BLOCKED_NEWBORN_PROTECT_{_nb_age_s:.0f}s"
                             logger.warning(f"⚠️ [NEWBORN_{'EMERGENCY_BYPASS' if _nb_emergency else 'DC_BREAK'}] {position_key}: allowing {action} despite {_nb_age_s:.0f}s age — {_nb_why or f'DC 5m structure broken (price={old_price})'}")
             except Exception as _nb_e:
                 logger.warning(f"[NEWBORN_PROTECT] check err (fail-open): {_nb_e}")
@@ -49663,12 +49672,15 @@ class TradierTradeManager:
                         symbol, position_side
                     )
                     if _dc_cd and not _vx_ex:
-                        logger.critical(
-                            f"🚨 [DC_HARDSTOP_COOLDOWN_BLOCK] {position_key}: reopen refused, {_dc_left/60.0:.0f}m left — action={action} reason={(reason or '')[:60]}"
-                        )
-                        if lock_acquired and self.redis_manager:
-                            await self.redis_manager.delete(exec_lock_key)
-                        return "BLOCKED_DC_HARDSTOP_COOLDOWN"
+                        if _tr_parity_vec_order(reason):
+                            _tr_bypass("DC_HARDSTOP_COOLDOWN")
+                        else:
+                            logger.critical(
+                                f"🚨 [DC_HARDSTOP_COOLDOWN_BLOCK] {position_key}: reopen refused, {_dc_left/60.0:.0f}m left — action={action} reason={(reason or '')[:60]}"
+                            )
+                            if lock_acquired and self.redis_manager:
+                                await self.redis_manager.delete(exec_lock_key)
+                            return "BLOCKED_DC_HARDSTOP_COOLDOWN"
             except Exception as _dc_e2:
                 logger.warning(f"[DC_HS_COOLDOWN] check err (fail-open): {_dc_e2}")
             # ═══════════════════════════════════════════════════════════════════════════
@@ -49812,12 +49824,15 @@ class TradierTradeManager:
                             blocked=_mtf_blocked,
                         )
                         if not _mtf_ok:
-                            logger.warning(
-                                f"[MTF_FILTER_BLOCK] {position_key} act={action}: {_mtf_reason}"
-                            )
-                            if lock_acquired and self.redis_manager:
-                                await self.redis_manager.delete(exec_lock_key)
-                            return f"BLOCKED_{_mtf_reason}"
+                            if _tr_parity_vec_order(reason):
+                                _tr_bypass(f"MTF_FILTER:{_mtf_reason}"[:60])
+                            else:
+                                logger.warning(
+                                    f"[MTF_FILTER_BLOCK] {position_key} act={action}: {_mtf_reason}"
+                                )
+                                if lock_acquired and self.redis_manager:
+                                    await self.redis_manager.delete(exec_lock_key)
+                                return f"BLOCKED_{_mtf_reason}"
                         _mtf_mult = float(
                             _cfg(
                                 "MTF_SIZE_MULT", 1.0, account_key, symbol, position_side
@@ -49931,12 +49946,15 @@ class TradierTradeManager:
                             _i2_rrg_breakout = True
                             _i2_rrg_have_lvl = True
                         if not _i2_rrg_breakout:
-                            logger.warning(
-                                f"🚫 [RECENT_REDUCTION_GUARD] {position_key}: reduced {_i2_rrg_since:.0f}s ago (<{_i2_rrg_win:.0f}s), no Donchian breakout (have_lvl={_i2_rrg_have_lvl}) — blocking re-add. action={action} reason={(reason or '')[:50]}"
-                            )
-                            if lock_acquired and self.redis_manager:
-                                await self.redis_manager.delete(exec_lock_key)
-                            return f"BLOCKED_RECENT_REDUCTION_GUARD_{_i2_rrg_since:.0f}s_lt_{_i2_rrg_win:.0f}s"
+                            if _tr_parity_vec_order(reason):
+                                _tr_bypass("RECENT_REDUCTION_GUARD")
+                            else:
+                                logger.warning(
+                                    f"🚫 [RECENT_REDUCTION_GUARD] {position_key}: reduced {_i2_rrg_since:.0f}s ago (<{_i2_rrg_win:.0f}s), no Donchian breakout (have_lvl={_i2_rrg_have_lvl}) — blocking re-add. action={action} reason={(reason or '')[:50]}"
+                                )
+                                if lock_acquired and self.redis_manager:
+                                    await self.redis_manager.delete(exec_lock_key)
+                                return f"BLOCKED_RECENT_REDUCTION_GUARD_{_i2_rrg_since:.0f}s_lt_{_i2_rrg_win:.0f}s"
             except Exception as _i2_rrg_outer:
                 logger.debug(
                     f"[RECENT_REDUCTION_GUARD] {position_key}: outer skipped ({_i2_rrg_outer})"
@@ -49971,12 +49989,15 @@ class TradierTradeManager:
                     ):
                         _RECENT_OPEN_ATTEMPTS.popleft()
                     if len(_RECENT_OPEN_ATTEMPTS) >= _orb_max:
-                        logger.critical(
-                            f"🚨 [OPEN_RATE_BREAKER] {position_key}: BLOCKED — {len(_RECENT_OPEN_ATTEMPTS)} fresh opens in last {_orb_win:.0f}s >= max {_orb_max}. Flood circuit-breaker tripped. act={_orb_act} reason={(reason or '')[:40]}"
-                        )
-                        if lock_acquired and self.redis_manager:
-                            await self.redis_manager.delete(exec_lock_key)
-                        return f"BLOCKED_OPEN_RATE_BREAKER_{len(_RECENT_OPEN_ATTEMPTS)}_in_{int(_orb_win)}s"
+                        if _tr_parity_vec_order(reason):
+                            _tr_bypass("OPEN_RATE_BREAKER")
+                        else:
+                            logger.critical(
+                                f"🚨 [OPEN_RATE_BREAKER] {position_key}: BLOCKED — {len(_RECENT_OPEN_ATTEMPTS)} fresh opens in last {_orb_win:.0f}s >= max {_orb_max}. Flood circuit-breaker tripped. act={_orb_act} reason={(reason or '')[:40]}"
+                            )
+                            if lock_acquired and self.redis_manager:
+                                await self.redis_manager.delete(exec_lock_key)
+                            return f"BLOCKED_OPEN_RATE_BREAKER_{len(_RECENT_OPEN_ATTEMPTS)}_in_{int(_orb_win)}s"
                     _RECENT_OPEN_ATTEMPTS.append(_orb_now)
             except Exception as _orb_e:
                 logger.warning(
@@ -50031,12 +50052,15 @@ class TradierTradeManager:
                     reason,
                 )
                 if _dg_block:
-                    logger.critical(
-                        f"🛑 [DISASTER_GUARD_BLOCKED_FORCE_OPEN] {position_key}: {_dg_tag} reason={reason}"
-                    )
-                    if lock_acquired and self.redis_manager:
-                        await self.redis_manager.delete(exec_lock_key)
-                    return f"BLOCKED_{_dg_tag}"
+                    if _tr_parity_vec_order(reason):
+                        _tr_bypass(f"DISASTER_GUARD:{_dg_tag}"[:60])
+                    else:
+                        logger.critical(
+                            f"🛑 [DISASTER_GUARD_BLOCKED_FORCE_OPEN] {position_key}: {_dg_tag} reason={reason}"
+                        )
+                        if lock_acquired and self.redis_manager:
+                            await self.redis_manager.delete(exec_lock_key)
+                        return f"BLOCKED_{_dg_tag}"
 
             # ERASED LONG_ENABLED/SHORT_ENABLED per user 2026-09-23: _SHORT means not is_long, no bare flag
             # PER_SYM_SIDE_DISABLED removed - suffix _LONG/_SHORT already means is_long
@@ -50198,12 +50222,15 @@ class TradierTradeManager:
                                 _live_ok = False
                                 _live_reason = f"gain {g:.2f} <= bh {bh:.2f}"
                     if not _live_ok:
-                        logger.critical(
-                            f"🚫 [PER_SYM_LIVE_GATE] {position_key}: BLOCKED live side not profitable gain>0 and beat bh required. side={position_side} reason={_live_reason}"
-                        )
-                        if lock_acquired and self.redis_manager:
-                            await self.redis_manager.delete(exec_lock_key)
-                        return f"BLOCKED_PER_SYM_LIVE_GATE_{position_side}"
+                        if _tr_parity_vec_order(reason):
+                            _tr_bypass("PER_SYM_LIVE_GATE")
+                        else:
+                            logger.critical(
+                                f"🚫 [PER_SYM_LIVE_GATE] {position_key}: BLOCKED live side not profitable gain>0 and beat bh required. side={position_side} reason={_live_reason}"
+                            )
+                            if lock_acquired and self.redis_manager:
+                                await self.redis_manager.delete(exec_lock_key)
+                            return f"BLOCKED_PER_SYM_LIVE_GATE_{position_side}"
                 except Exception as _e:
                     logger.warning(f"[PER_SYM_LIVE_GATE] check error fail-open: {_e}")
 
@@ -50360,12 +50387,15 @@ class TradierTradeManager:
                                 f"[HTF_VETO_HA_BYPASS] {position_key}: check skipped ({type(_htfv_ha_e).__name__})"
                             )
                         if not _htfv_aligned and not _htfv_ha_bypass and not _vx_ex:
-                            logger.warning(
-                                f"[HTF_TREND_VETO] {position_key}: BLOCKED action={action} is_long={is_long} wt1_D={_htfv_wt1_D:.2f} wt2_D={_htfv_wt2_D:.2f} reason={(reason or '')[:50]}"
-                            )
-                            if lock_acquired and self.redis_manager:
-                                await self.redis_manager.delete(exec_lock_key)
-                            return f"BLOCKED_HTF_TREND_VETO_action={action}"
+                            if _tr_parity_vec_order(reason):
+                                _tr_bypass("HTF_TREND_VETO")
+                            else:
+                                logger.warning(
+                                    f"[HTF_TREND_VETO] {position_key}: BLOCKED action={action} is_long={is_long} wt1_D={_htfv_wt1_D:.2f} wt2_D={_htfv_wt2_D:.2f} reason={(reason or '')[:50]}"
+                                )
+                                if lock_acquired and self.redis_manager:
+                                    await self.redis_manager.delete(exec_lock_key)
+                                return f"BLOCKED_HTF_TREND_VETO_action={action}"
 
             # ═══════════════════════════════════════════════════════════════════════
             # HTF_TREND_VETO_ON_REDUCE — 2026-05-21 USER URGENT MANDATE
@@ -50432,14 +50462,17 @@ class TradierTradeManager:
                                 is_long and _htfr_wt1_D > _htfr_wt2_D
                             ) or ((not is_long) and _htfr_wt1_D < _htfr_wt2_D)
                             if _htfr_supports and not _vx_ex:
-                                logger.warning(
-                                    f"[HTF_TREND_VETO_ON_REDUCE] {position_key}: BLOCKED action={action} is_long={is_long} wt1_D={_htfr_wt1_D:.2f} wt2_D={_htfr_wt2_D:.2f} reason={(reason or '')[:50]} (HTF still supports side — hold)"
-                                )
-                                if lock_acquired and self.redis_manager:
-                                    await self.redis_manager.delete(exec_lock_key)
-                                return (
-                                    f"BLOCKED_HTF_TREND_VETO_ON_REDUCE_action={action}"
-                                )
+                                if _tr_parity_vec_order(reason):
+                                    _tr_bypass("HTF_TREND_VETO_ON_REDUCE")
+                                else:
+                                    logger.warning(
+                                        f"[HTF_TREND_VETO_ON_REDUCE] {position_key}: BLOCKED action={action} is_long={is_long} wt1_D={_htfr_wt1_D:.2f} wt2_D={_htfr_wt2_D:.2f} reason={(reason or '')[:50]} (HTF still supports side — hold)"
+                                    )
+                                    if lock_acquired and self.redis_manager:
+                                        await self.redis_manager.delete(exec_lock_key)
+                                    return (
+                                        f"BLOCKED_HTF_TREND_VETO_ON_REDUCE_action={action}"
+                                    )
 
             # === EXIT BLOCKER — 2026-09-15 USER: block any REDUCE/CLOSE not accompanied by LH (closed 15m) OR LL (forming candle) ===
             if (
@@ -50493,12 +50526,15 @@ class TradierTradeManager:
                         )
                         # Strict per user spec: either LH in latest closed 15m bar OR LL in currently forming candle (vv shorts)
                         if not _blk_pass and not _vx_ex:
-                            logger.warning(
-                                f"[EXIT_BLOCKER_LH_LL] {position_key}: BLOCKED action={action} reason={(reason or '')[:60]} — no LH closed (pk={_blk_pk_s}) nor LL forming (low={_blk_low:.4f} prev={_blk_low_prev:.4f})"
-                            )
-                            if lock_acquired and self.redis_manager:
-                                await self.redis_manager.delete(exec_lock_key)
-                            return "BLOCKED_EXIT_LH_LL_REQUIRED"
+                            if _tr_parity_vec_order(reason):
+                                _tr_bypass("EXIT_LH_LL")
+                            else:
+                                logger.warning(
+                                    f"[EXIT_BLOCKER_LH_LL] {position_key}: BLOCKED action={action} reason={(reason or '')[:60]} — no LH closed (pk={_blk_pk_s}) nor LL forming (low={_blk_low:.4f} prev={_blk_low_prev:.4f})"
+                                )
+                                if lock_acquired and self.redis_manager:
+                                    await self.redis_manager.delete(exec_lock_key)
+                                return "BLOCKED_EXIT_LH_LL_REQUIRED"
                 except Exception as _blk_e:
                     logger.debug(
                         f"[EXIT_BLOCKER_LH_LL] {position_key}: check skipped ({_blk_e})"
@@ -50525,12 +50561,15 @@ class TradierTradeManager:
                 and not _is_mandatory_reclaim
                 and not _is_ladder_parity
             ):
-                logger.warning(
-                    f"[EXECUTE_NOW_BLOCKED] {position_key}: Augmentation cooldown active"
-                )
-                if lock_acquired and self.redis_manager:
-                    await self.redis_manager.delete(exec_lock_key)
-                return "AUGMENTATION_COOLDOWN"
+                if _tr_parity_vec_order(reason):
+                    _tr_bypass("AUGMENTATION_COOLDOWN")
+                else:
+                    logger.warning(
+                        f"[EXECUTE_NOW_BLOCKED] {position_key}: Augmentation cooldown active"
+                    )
+                    if lock_acquired and self.redis_manager:
+                        await self.redis_manager.delete(exec_lock_key)
+                    return "AUGMENTATION_COOLDOWN"
 
             _e02_contract_reduce = (
                 is_reduce
@@ -50562,12 +50601,15 @@ class TradierTradeManager:
                 position_gain = getattr(position, "gain", 0.0) if position else 0.0
                 # Cooldown applies regardless of gain — no bypass for any loss level
                 if True:
-                    logger.warning(
-                        f"[EXECUTE_NOW_BLOCKED] {position_key}: Reduction cooldown active (gain={position_gain:.2f}%)"
-                    )
-                    if lock_acquired and self.redis_manager:
-                        await self.redis_manager.delete(exec_lock_key)
-                    return "REDUCTION_COOLDOWN"
+                    if _tr_parity_vec_order(reason):
+                        _tr_bypass("REDUCTION_COOLDOWN")
+                    else:
+                        logger.warning(
+                            f"[EXECUTE_NOW_BLOCKED] {position_key}: Reduction cooldown active (gain={position_gain:.2f}%)"
+                        )
+                        if lock_acquired and self.redis_manager:
+                            await self.redis_manager.delete(exec_lock_key)
+                        return "REDUCTION_COOLDOWN"
 
             # STRICT_NO_LOSS guard — block reductions at a loss (unless Part 15 sweep disables it)
             # ═══ SAFETY SWITCH 5: SRS REASON-STRING NOLOSS BYPASS (2026-04-16) ═══
@@ -50742,19 +50784,25 @@ class TradierTradeManager:
                         f"[EXECUTE_NOW_NOLOSS_TECH_BYPASS] {position_key}: gain={_en_gain:.2f}% — technical exit '{_en_tech_bypass_hit}' allowed to close at loss (reason={reason[:80]})"
                     )
                 elif _en_lp_block:
-                    logger.warning(
-                        f"[LOSS_PROTECTION] {position_key}: not_allowed reduce - gain={_en_gain:.2f}% in loss-protection window (reason={reason[:80]})"
-                    )
-                    if lock_acquired and self.redis_manager:
-                        await self.redis_manager.delete(exec_lock_key)
-                    return "LOSS_PROTECTION_BLOCK"
+                    if _tr_parity_vec_order(reason):
+                        _tr_bypass("LOSS_PROTECTION")
+                    else:
+                        logger.warning(
+                            f"[LOSS_PROTECTION] {position_key}: not_allowed reduce - gain={_en_gain:.2f}% in loss-protection window (reason={reason[:80]})"
+                        )
+                        if lock_acquired and self.redis_manager:
+                            await self.redis_manager.delete(exec_lock_key)
+                        return "LOSS_PROTECTION_BLOCK"
                 elif _en_noloss_min > 0 and _en_gain < _en_noloss_min:
-                    logger.warning(
-                        f"[EXECUTE_NOW_NOLOSS_BLOCK] {position_key}: BLOCKED reduce at gain={_en_gain:.2f}% < noloss_min={_en_noloss_min}% reason={reason}"
-                    )
-                    if lock_acquired and self.redis_manager:
-                        await self.redis_manager.delete(exec_lock_key)
-                    return "NOLOSS_BLOCK"
+                    if _tr_parity_vec_order(reason):
+                        _tr_bypass("NOLOSS")
+                    else:
+                        logger.warning(
+                            f"[EXECUTE_NOW_NOLOSS_BLOCK] {position_key}: BLOCKED reduce at gain={_en_gain:.2f}% < noloss_min={_en_noloss_min}% reason={reason}"
+                        )
+                        if lock_acquired and self.redis_manager:
+                            await self.redis_manager.delete(exec_lock_key)
+                        return "NOLOSS_BLOCK"
             # Get current position and price
             position = self.position_manager.positions.get(position_key)
             try:
