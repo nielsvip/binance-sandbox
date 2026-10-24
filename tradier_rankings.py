@@ -1126,7 +1126,7 @@ async def plot_dfs_subplots(
                         y_pos = candle_row["low"] - margin_abs_val * 0.5 if is_buy else candle_row["high"] + margin_abs_val * 0.5
                     except (IndexError, KeyError):
                         continue
-                    ax_plot.scatter([t_idx], [y_pos], color=ecol, marker="^" if is_buy else "v", s=30, zorder=8, alpha=_lth.arrow_alpha(ev), edgecolors="white", linewidths=0.6)
+                    ax_plot.scatter([t_idx], [y_pos], color=ecol, marker="^" if is_buy else "v", s=_lth.ARROW_SIZE, zorder=8, alpha=_lth.arrow_alpha(ev), edgecolors="white", linewidths=0.8)
         marker_events = []
         if symbol in signals_data and tf_plot_loop in signals_data[symbol]:
             for etype, ev_list in signals_data[symbol][tf_plot_loop].items():
@@ -1164,8 +1164,14 @@ async def plot_dfs_subplots(
                         ax_plot.plot(t_idx, y_pos, marker=marker_style, color=color_style, ms=marker_size, linestyle='None', zorder=7)
                         if marker_style in ('^', 'v'):
                             marker_events.append((ts_event, 'buy' if marker_style == '^' else 'sell'))
-        if SHOW_STOCK_MISMATCH and acct_trades and len(df_tf) > 1:
+        if SHOW_STOCK_MISMATCH and (marker_events or acct_trades) and len(df_tf) > 1:
             try:
+                _sig_buy = sorted([t for t, s in marker_events if s == "buy"])
+                _sig_sell = sorted([t for t, s in marker_events if s == "sell"])
+                _fill_buy = sorted([e["timestamp"] for evs in acct_trades.values() for e in _lth.boundary_events(evs) if e["direction"] == "buy"])
+                _fill_sell = sorted([e["timestamp"] for evs in acct_trades.values() for e in _lth.boundary_events(evs) if e["direction"] == "sell"])
+                _lth.draw_mismatch_lines(ax_plot, x_left_ts, x_right_ts, _sig_buy, _sig_sell,
+                                         _fill_buy, _fill_sell, get_x_idx, STOCK_MISMATCH_TOL_MIN)
                 _outcome_evs = [e for evs in acct_trades.values() for e in _lth.boundary_events(evs)]
                 _lth.draw_outcome_lines(ax_plot, x_left_ts, x_right_ts, _outcome_evs, get_x_idx)
             except Exception: pass

@@ -1056,6 +1056,19 @@ def _binance_account_for(client) -> str:
     key = str(getattr(client, "API_KEY", "") or "")
     if key in _BINANCE_KEY_ACCOUNTS:
         return _BINANCE_KEY_ACCOUNTS[key]
+    if key and os.environ.get("ODG_SINGLE_ACCOUNT_ATTRIBUTION", "1") == "1":
+        try:
+            known = set(_BINANCE_KEY_ACCOUNTS.values())
+        except Exception:
+            known = set()
+        if len(known) == 1:
+            only = next(iter(known))
+            _BINANCE_KEY_ACCOUNTS[key] = only
+            try:
+                _LOG.critical(f"[ODG_SINGLE_ACCOUNT_ATTRIBUTION] unwrapped client key sha1={hashlib.sha1(key.encode()).hexdigest()[:10]} attributed to sole registered account '{only}' (memoized; ODG_SINGLE_ACCOUNT_ATTRIBUTION=0 restores key_* fingerprint)")
+            except Exception:
+                pass
+            return only
     return "key_" + hashlib.sha1(key.encode()).hexdigest()[:10]
 
 

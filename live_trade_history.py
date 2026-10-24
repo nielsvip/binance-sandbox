@@ -19,9 +19,9 @@ TRB_BUY_COLOR = "#00e676"
 TRB_SELL_COLOR = "#ff1744"
 VEC_ONLY_COLOR = "rgba(248,113,113,0.55)"
 LIVE_ONLY_COLOR = "rgba(74,222,128,0.55)"
-MISMATCH_VEC_MPL = ("#e0e0e0", 0.30)
-MISMATCH_LIVE_MPL = ("#616161", 0.55)
-MISMATCH_LW = 0.8
+MISMATCH_VEC_MPL = ("#eeeeee", 0.50)
+MISMATCH_LIVE_MPL = ("#9e9e9e", 0.85)
+MISMATCH_LW = 1.0
 WIN_COLOR = "#00e676"
 LOSS_COLOR = "#ff1744"
 UNKNOWN_COLOR = "#9e9e9e"
@@ -35,8 +35,8 @@ def arrow_alpha(event):
     return ENTRY_ALPHA if event.get("phase", "entry") == "entry" else EXIT_ALPHA
 
 
-OUTCOME_LW = 1.2
-OUTCOME_ALPHA = 0.55
+OUTCOME_LW = 1.5
+OUTCOME_ALPHA = 0.80
 
 
 def draw_outcome_lines(ax_plot, x_left_ts, x_right_ts, events, x_of):
@@ -118,8 +118,9 @@ def account_color(acct, direction):
     return ACCOUNT_ARROW_COLORS[acct]
 
 
-ENTRY_ALPHA = 0.95
-EXIT_ALPHA = 0.45
+ENTRY_ALPHA = 1.0
+EXIT_ALPHA = 0.65
+ARROW_SIZE = 55
 
 
 def _qty(rec):
