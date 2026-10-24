@@ -121,6 +121,45 @@ def check_quick_open_strong(config, indicators: dict, is_long: bool,
     return True, f"{reason} score={score:.1f}>=80"
 
 
+def augment_fire_from_state(config, pos, live_pnl_pct, is_long):
+    """SIM-LOOP driver (v12 augment gate). Synthesizes the live
+    PositionFieldCalculator inputs from simulated position state and runs the
+    shared fire test. Returns (fires, reason).
+
+    Live requires an open position (positionAmt>0 and avg_entry_price>0):
+    flat/empty pos -> (False, ''). momentum = mean of prior-bar unrealized
+    gains (the sim samples per bar where live samples per tick). risk_level =
+    shared drawdown ladder on (peak - current). high_vol has NO NPZ source ->
+    False (fail-open, documented; residual measured via parity, ATR proxy if
+    it ever names a bar). Crypto only (live QUICK lives in ez_positions_quick;
+    tradier has no QUICK path). Gated by QUICK_OPEN_STRONG_VEC_ENABLED."""
+    try:
+        if pos is None or float(pos.get("qty", 0) or 0) <= 0:
+            return False, ""
+        if str(getattr(config, "MODE", "crypto") or "crypto") == "tradier":
+            return False, ""
+        if not bool(getattr(config, "QUICK_OPEN_STRONG_VEC_ENABLED", True)):
+            return False, ""
+        _hist = pos.get("_qos_gain_hist") or []
+        _mom = None
+        _prior = _hist[:-1]  # sim appends the current bar before the gate runs; live decides on prior ticks only
+        if _prior:
+            _tail = _prior[-3:]
+            _mom = float(sum(_tail) / len(_tail))
+        try:
+            _peak = float(pos.get("peak_pnl_pct", 0.0) or 0.0)
+        except Exception:
+            _peak = 0.0
+        try:
+            _cur = float(live_pnl_pct)
+        except Exception:
+            return False, ""
+        _risk = _risk_level_from_drawdown(_peak - _cur)
+        return check_quick_open_strong(config, {}, bool(is_long), momentum=_mom, risk_level=_risk, high_vol=False)
+    except Exception:
+        return False, ""
+
+
 def check_quick_open_strong_vec(config, momentum_arr, risk_level_arr, high_vol_arr,
                                 have_momentum: bool = True, have_risk: bool = True):
     """VECTORIZED per-bar fire mask — backtest path. SAME threshold + SAME score

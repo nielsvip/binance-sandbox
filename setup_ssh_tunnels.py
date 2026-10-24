@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Resilient SSH Tunnel Manager — 3-path S1 redundancy + auto-failover.
 
-Plan A (2201): Direct S1 @ 157.180.125.52
-Plan B (2202): Gateway → internal S1 @ 10.0.0.3
-Plan C (2203): Backup direct S1 (retry after 60s of Plan A+B failure)
+Plan A (2201): BRIDGE — s1-int front door, follows the first healthy route
+  (direct S1 @ 157.180.125.52, then gateway -> internal S1 @ 10.0.0.3).
+Plan B (2202): Gateway → internal S1 @ 10.0.0.3 (fixed spare).
+Plan C (2203): Backup direct S1 (fixed spare).
 
-Auto-detects healthy port, routes agents to whichever works.
-Aggressive port cleanup on restart (SO_REUSEADDR + kill stale holders).
+Health = a real S1 login through the forward, not just an open port.
+Port reclaim only ever targets forward-master listeners — never data sessions —
+and the 2201 bridge is never recycled under s1_s2_autosync's transport lock.
 """
 import subprocess
 import time
@@ -17,13 +19,26 @@ import socket
 
 CONTROL_DIR = os.path.expanduser("~/.ssh/tunnel_controls")
 LOG_DIR = os.path.join(os.path.expanduser("~"), "logs")
+# USER 2026-10-24: s1-int (localhost:2201) is the fleet's Mac-side front door, so
+# 2201 is a BRIDGE, not a fixed route — it follows whichever S1 route is healthy.
+# s1-plan-b/c stay fixed spares on 2202/2203. s1-sftp hand masters are retired:
+# this manager is the sole owner of 2201 (see _kill_stale_port_holders).
+S1_BRIDGE_CANDIDATES = [
+    ("direct", "niels@157.180.125.52"),
+    ("gateway", "s1-via-gateway"),
+]
+# s1_s2_autosync takes this lock for verified transactions — never recycle 2201
+# under it (the keeper yields the same way).
+TRANSPORT_LOCK = "/Users/niels/Documents/binance/data/sync/.s1_transport.lock"
+BRIDGE_STATUS_FILE = "/tmp/s1_bridge.status"
+bridge_route = {}  # host_key -> candidate name currently bound
 
 # Three-tier S1 redundancy: agents use whichever port responds
 HOSTS = {
     "s1-plan-a": {
-        "host": "niels@157.180.125.52",
+        "host": "niels@157.180.125.52",  # default route; bridge tries S1_BRIDGE_CANDIDATES
         "forwards": [
-            {"name": "S1 Direct (Plan A)", "local_port": 2201, "remote_port": 22},
+            {"name": "S1 Bridge (Plan A)", "local_port": 2201, "remote_port": 22},
         ],
     },
     "s1-plan-b": {
@@ -109,38 +124,98 @@ def _stop_host(host_key):
             pass
 
 
+def is_forward_owner(cmdline, port):
+    """True if this command line is a tunnel master LISTENING on port (not a data session).
+
+    USER 2026-10-24: the old killer matched any ssh pid on the port — including live
+    rsync/scp data connections — and recycled them mid-transfer. Only a process that
+    OWNS the listen socket may be reclaimed: an `ssh -N`/`-fN` forward master binding
+    our port, a retired `ssh -fNT s1-sftp` hand master, or one of our own control-path
+    children. Data sessions (`ssh -p 2201 ... <command>`, rsync --server) never match.
+    """
+    if not cmdline:
+        return False
+    c = str(cmdline)
+    if "ssh" not in os.path.basename(c.split()[0]) and " ssh " not in f" {c} " and not c.lstrip().startswith("ssh "):
+        return False
+    if f":{port}" not in c and f" {port}" not in c and f"={port}" not in c:
+        return False
+    if "tunnel_controls" in c:
+        return True
+    if "-fNT" in c or " -fN " in c or c.rstrip().endswith(" -fN"):
+        return True
+    if " -N " in c or c.rstrip().endswith(" -N"):
+        return "-L" in c or "-R" in c or "-D" in c
+    return False
+
+
 def _kill_stale_port_holders(host_key):
-    """Kill only SSH processes holding our ports (not other processes)."""
+    """Reclaim our listen ports from dead/foreign forward masters only."""
     cfg = HOSTS[host_key]
     my_pid = os.getpid()
     my_children = {p.pid for p in processes.values() if p and p.poll() is None}
     for fwd in cfg["forwards"]:
         port = fwd["local_port"]
         try:
-            result = subprocess.run(["lsof", "-ti", f":{port}"], capture_output=True, text=True, timeout=5)
+            result = subprocess.run(
+                ["lsof", "-ti", f"TCP:{port}", "-sTCP:LISTEN"],
+                capture_output=True, text=True, timeout=5,
+            )
             if result.stdout.strip():
                 for pid_str in result.stdout.strip().split("\n"):
-                    pid = int(pid_str.strip())
+                    try:
+                        pid = int(pid_str.strip())
+                    except ValueError:
+                        continue
                     if pid == my_pid or pid in my_children:
                         continue
-                    # Only kill if it's an ssh process
-                    ps_result = subprocess.run(["ps", "-p", str(pid), "-o", "comm="], capture_output=True, text=True, timeout=3)
-                    if "ssh" in ps_result.stdout.lower():
+                    ps_result = subprocess.run(
+                        ["ps", "-p", str(pid), "-o", "command="],
+                        capture_output=True, text=True, timeout=3,
+                    )
+                    if is_forward_owner(ps_result.stdout.strip(), port):
+                        print(f"  [{host_key}] reclaiming port {port} from stale forward master pid {pid}")
                         os.kill(pid, signal.SIGTERM)
                         time.sleep(0.5)
         except Exception:
             pass
 
 
-def start_host(host_key):
+def s1_end_to_end(port, timeout=8):
+    """True if an S1 login actually works through this local forward."""
+    try:
+        result = subprocess.run(
+            ["ssh", "-p", str(port), "-o", "BatchMode=yes", "-o", "ConnectTimeout=5",
+             "-o", "StrictHostKeyChecking=no", "-o", "ControlMaster=no",
+             "-o", "ControlPath=none", "niels@127.0.0.1", "true"],
+            capture_output=True, text=True, timeout=timeout,
+        )
+        return result.returncode == 0
+    except Exception:
+        return False
+
+
+def _write_bridge_status(route):
+    try:
+        import json
+        with open(BRIDGE_STATUS_FILE, "w") as f:
+            json.dump({"port": 2201, "route": route,
+                       "updated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}, f)
+    except Exception:
+        pass
+
+
+def transport_locked():
+    try:
+        return os.path.isdir(TRANSPORT_LOCK)
+    except Exception:
+        return False
+
+
+def _start_forward(host_key, host):
+    """Start one forward master for host_key; returns the Popen."""
     cfg = HOSTS[host_key]
-    host = cfg["host"]
     ctrl = os.path.join(CONTROL_DIR, f"{host_key}.sock")
-    _stop_host(host_key)
-    _kill_stale_port_holders(host_key)
-    # Wait for TIME_WAIT to clear
-    time.sleep(2)
-    # Build forward args: -L local:localhost:remote for each tunnel
     forward_args = []
     for fwd in cfg["forwards"]:
         forward_args.extend(["-L", f"localhost:{fwd['local_port']}:localhost:{fwd['remote_port']}"])
@@ -158,6 +233,37 @@ def start_host(host_key):
     ]
     proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
     processes[host_key] = proc
+    return proc
+
+
+def start_host(host_key):
+    cfg = HOSTS[host_key]
+    _stop_host(host_key)
+    _kill_stale_port_holders(host_key)
+    # Wait for TIME_WAIT to clear
+    time.sleep(2)
+    if host_key == "s1-plan-a":
+        # BRIDGE: bind 2201 to the first candidate route that passes end-to-end.
+        for route_name, host in S1_BRIDGE_CANDIDATES:
+            proc = _start_forward(host_key, host)
+            print(f"  [{host_key}] trying route {route_name} -> {host} (pid {proc.pid})")
+            time.sleep(3)
+            if proc.poll() is not None:
+                print(f"  [{host_key}] route {route_name} exited immediately (rc={proc.returncode})")
+                continue
+            if s1_end_to_end(cfg["forwards"][0]["local_port"]):
+                bridge_route[host_key] = route_name
+                _write_bridge_status(route_name)
+                print(f"  [{host_key}] BRIDGE UP via {route_name} — s1-int (2201) live")
+                return proc
+            print(f"  [{host_key}] route {route_name} bound but end-to-end FAILED — next")
+            _stop_host(host_key)
+            time.sleep(1)
+        print(f"  [{host_key}] ALL bridge routes failed — backoff will retry")
+        bridge_route.pop(host_key, None)
+        return processes.get(host_key)
+    host = cfg["host"]
+    proc = _start_forward(host_key, host)
     fwd_names = ", ".join(f['name'] for f in cfg['forwards'])
     fwd_ports = ", ".join(str(f['local_port']) for f in cfg['forwards'])
     print(f"  [{host_key}] Started SSH to {host} (pid {proc.pid}) — ports: {fwd_ports} ({fwd_names})")
@@ -178,6 +284,18 @@ def check_host_health(host_key):
                 pass
         print(f"  [{host_key}] SSH process died (exit={exit_code}){f': {stderr_out}' if stderr_out else ''}")
         return False
+    # S1 plans get a real login check — a bound-but-dead forward must not count
+    # (USER 2026-10-24: s1-int flapped while the port stayed open).
+    if host_key in ("s1-plan-a", "s1-plan-b", "s1-plan-c"):
+        port = cfg["forwards"][0]["local_port"]
+        if not s1_end_to_end(port):
+            print(f"  [{host_key}] Port {port} open but S1 login FAILED — treating as down")
+            try:
+                proc.terminate()
+            except Exception:
+                pass
+            return False
+        return True
     # Check each forwarded port
     for fwd in cfg["forwards"]:
         if not is_port_open(fwd["local_port"]):
@@ -264,6 +382,11 @@ def main():
     while running:
         for host_key in HOSTS:
             if not check_host_health(host_key):
+                if host_key == "s1-plan-a" and transport_locked():
+                    # A verified sync transaction owns the bridge — never recycle
+                    # 2201 under it; retry on the next tick after it clears.
+                    print(f"  [{host_key}] unhealthy but transport lock held — deferring recycle")
+                    continue
                 # Check backoff
                 wait = get_backoff(host_key)
                 last = _last_restart.get(host_key, 0)

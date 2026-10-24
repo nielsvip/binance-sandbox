@@ -9115,7 +9115,7 @@ class QuickConfig:
     QUICK_OPEN_STRONG_DC_SHORT_MIN: float = 0.6
     QUICK_OPEN_STRONG_K_LONG_MAX: float = 25.0
     QUICK_OPEN_STRONG_K_SHORT_MIN: float = 75.0
-    QUICK_OPEN_STRONG_VEC_ENABLED: bool = False
+    QUICK_OPEN_STRONG_VEC_ENABLED: bool = True  # 2026-10-24 USER "every path covered with a switch and a vectorized version": live fires QUICK ungated, vec matches out of the box (doctrine entry in LOCKED_FILES.md)
     QUICK_OPEN_STRONG_VEL_MIN: float = 1.0
     QUICK_RECOVERY_WINDOW_MIN: float = 120.0
     QUICK_REDUCE_STRONG_REDUCE_VEC_ENABLED: bool = False
@@ -20002,6 +20002,13 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             else ((pos["avg_price"] - px) / pos["avg_price"] * 100)
         )
         pos["peak_pnl_pct"] = max(pos["peak_pnl_pct"], live_pnl_pct)
+        try:  # QUICK_OPEN_STRONG momentum input: prior-bar unrealized-gain samples (live samples per tick; sim per bar)
+            _qos_h = pos.setdefault("_qos_gain_hist", [])
+            _qos_h.append(float(live_pnl_pct))
+            if len(_qos_h) > 4:
+                del _qos_h[:-4]
+        except Exception:
+            pass
         held_bars = i - pos["entry_bar"]
         # SCALE_DIRECTION law (USER 2026-10-22 "reducing when it should be augmenting (price rising) but not
         # reducing when the price is falling"): a PARTIAL scaling act must point the way price is moving —
@@ -21569,11 +21576,20 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             [_s for _s in ("SIGNAL", "FAST_RISER") if _s in _fx_src],
             "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED",
         )
+        # QUICK_OPEN_STRONG 2026-10-24 (USER "every path covered with a switch and a vectorized version"):
+        # shared-decider augment driver; synthesized live inputs (gain history, drawdown ladder).
+        _qos_fire, _qos_reason = False, ""
+        try:
+            import vec_decisions.quick_open_strong as _qos_mod
+            _qos_fire, _qos_reason = _qos_mod.augment_fire_from_state(cfg, pos, live_pnl_pct, is_long)
+        except Exception:
+            _qos_fire, _qos_reason = False, ""
         _uag_src_ok = (
             _hq_fire
             or _dd_fire
             or _n4_fire
             or _aal_fire
+            or _qos_fire
             or (
                 not _n4_live_only
                 and (
@@ -21668,12 +21684,13 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 or _dd_fire
                 or _hq_fire
                 or _aal_fire
+                or _qos_fire
             )
             and (_sa_cap is None or int(pos.get("n_augments", 0)) < _sa_cap)
         ):
             _aug_cd_bars = vec_decisions.gain_ladder_augment.cooldown_bars(cfg, bmin)
             _aug_last_bar = int(pos.get("last_aug_bar", -(10**9)))
-            if _dd_fire or _hq_fire or (i - _aug_last_bar) >= _aug_cd_bars:
+            if _dd_fire or _hq_fire or _qos_fire or (i - _aug_last_bar) >= _aug_cd_bars:  # QUICK: live has no cooldown on this path
                 # STDEV_SLOPE_SIZING ladder applies to augment as well (user mandate: entry AND augment sizing)
                 _aug_regime = float(regime_mult[i]) if i < len(regime_mult) else 1.0
                 _aug_add_mult = float(augment_mult[i]) * _aug_regime
@@ -21811,7 +21828,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             "qty": float(add_qty),
                             "pos_deployed": float(pos["deployed"]),
                             "bar": int(i),
-                            "reason": _aal_reason
+                            "reason": (_qos_reason if _qos_fire else "")
+                            or _aal_reason
                             or _hq_reason
                             or _n4_reason
                             or _gl_reason

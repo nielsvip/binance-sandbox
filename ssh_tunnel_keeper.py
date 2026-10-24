@@ -24,7 +24,12 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-HOSTS = ["gateway-internal", "s1-int", "s1-sftp", "s2-fresh", "s2-fresh-int"]  # 2026-09-11 CCX33 fresh S2 restored
+HOSTS = ["gateway-internal", "s1-int", "s2-fresh", "s2-fresh-int"]  # 2026-09-11 CCX33 fresh S2 restored
+# USER 2026-10-24: "s1-sftp" retired from the keeper — localhost:2201 is owned SOLELY
+# by setup_ssh_tunnels.py's s1-plan-a bridge now. The keeper kept racing it for the
+# bind ("Address already in use" loops) while the bridge was down. is_alive/connect
+# for "s1-sftp" stay implemented (pinned by test_ssh_tunnel_keeper.py) but are no
+# longer driven by the health loop.
 CHECK_INTERVAL = 30  # seconds
 LOG_FILE = Path.home() / "ssh_tunnel_keeper.log"
 STATUS_FILE = Path.home() / "ssh_tunnel_keeper.status"

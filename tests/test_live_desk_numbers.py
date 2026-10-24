@@ -155,7 +155,7 @@ def test_broker_fills_counted_once_and_unattributed_hidden():
     c0["reason"] = "REAL_STRATEGY_CLOSE"
     d0 = _ev(iso(now - timedelta(minutes=28)), "R", "LONG", "REDUCE", 10.0, 120.0)
     d0["reason"] = "BROKER_RECONCILED order=2"
-    out, s = srv.realized_walk([o, r1, p, f1, f2, f3, dup, q0, c0, d0])
+    out, s = srv.realized_walk([o, r1, p, f1, f2, f3, dup, q0, c0, d0], expiry_days=60)
     lrcx = [e for e in out if e.get("symbol") == "LRCX" and e["action"] == "REDUCE"]
     assert len(lrcx) == 1 and all("rpnl" not in e for e in lrcx)
     fills = [e for e in out if (e.get("reason") or "").startswith("BROKER_RECONCILED order=1")]
@@ -444,6 +444,74 @@ def test_backfill_short_book_leaves_honest_unknown():
     row = [e for e in out if e.get("action") == "CLOSE"][0]
     assert row["rpnl"] == round(3.0 * (101.0 - 99.0), 2)
     assert sm["unknown"] == 1 and sm["unknown_partial"] == 1
+
+
+def test_is_paper_row_markers():
+    live = [
+        "WT_15M_BOUNCE_OPEN_S_wt1=-44.6",
+        "BROKER_RECONCILED order=9745492051",
+        "VEC_DRIVEN_OPEN_RECONCILE_",
+        "MAKER_PROFIT_EXIT_FIXED_STOP_SHORT_px3.58",
+        "Broker sync",
+        "BROKER_SYNC_CLOSE",
+        "VEC_DRIVEN_CLOSE_RECONCILE_",
+        None,
+        "",
+    ]
+    paper = [
+        "VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_9",
+        "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+        "MAKER_PROFIT_EXIT_VEC_CONVERGE_TO_FLAT paper-flat-live-holds",
+        "VEC_DRIVEN_CLOSE_PURE_BOARD_BOARD_FLAT_LIVE_HOLDS_BOARD_QTY_0",
+    ]
+    assert not any(srv._is_paper_row(r) for r in live)
+    assert all(srv._is_paper_row(r) for r in paper)
+
+
+def test_paper_open_never_forms_basis():
+    po = _ev("2026-10-23T10:00:00+00:00", "PP", "LONG", "OPEN", 10.0, 90.0)
+    po["reason"] = "VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_1"
+    o = _ev("2026-10-23T11:00:00+00:00", "PP", "LONG", "OPEN", 10.0, 100.0)
+    o["reason"] = "STRAT"
+    c = _ev("2026-10-23T19:00:00+00:00", "PP", "LONG", "CLOSE", 10.0, 110.0)
+    out, sm = srv.realized_walk([po, o, c])
+    row = [e for e in out if e.get("action") == "CLOSE"][0]
+    assert row["rpnl"] == 100.0
+    assert all(b["reason"] != po["reason"] for b in row["basis"])
+    assert sm["paper_skipped"] == 1 and sm["unknown"] == 0
+
+
+def test_paper_close_never_consumes_or_prices():
+    o = _ev("2026-10-23T10:00:00+00:00", "PP", "LONG", "OPEN", 10.0, 100.0)
+    o["reason"] = "STRAT"
+    pc = _ev("2026-10-23T15:00:00+00:00", "PP", "LONG", "CLOSE", 10.0, 110.0)
+    pc["reason"] = "VEC_DRIVEN_CLOSE_PURE_BOARD_BOARD_FLAT_LIVE_HOLDS_BOARD_QTY_0"
+    c = _ev("2026-10-23T19:00:00+00:00", "PP", "LONG", "CLOSE", 10.0, 110.0)
+    out, sm = srv.realized_walk([o, pc, c])
+    rows = {e["ts"]: e for e in out if e.get("action") == "CLOSE"}
+    assert rows[pc["ts"]]["rpnl"] is None and rows[pc["ts"]]["paper"] is True
+    assert rows[c["ts"]]["rpnl"] == 100.0
+    assert sm["paper_skipped"] == 1 and sm["unknown"] == 0
+    assert sm["pnl_total"] == 100.0
+
+
+def test_paper_rows_never_burn_fills():
+    fills = {"PB": [(1, -10.0, 100.0, "2026-10-23")]}
+    po = _ev("2026-10-23T10:00:00+00:00", "PB", "SHORT", "OPEN", 10.0, 90.0)
+    po["reason"] = "VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_1"
+    chains = {("PB", "SHORT"): [po]}
+    books = srv._build_broker_books(chains, fills)
+    assert books.get(("PB", "SHORT")) == [[1, 10.0, 100.0]]
+
+
+def test_36h_lots_expire_per_max_hold_ruling():
+    o = _ev("2026-10-20T10:00:00+00:00", "ZX", "LONG", "OPEN", 10.0, 50.0)
+    o["reason"] = "STRAT"
+    c = _ev("2026-10-23T19:00:00+00:00", "ZX", "LONG", "CLOSE", 10.0, 60.0)
+    out, sm = srv.realized_walk([o, c])
+    row = [e for e in out if e.get("action") == "CLOSE"][0]
+    assert "rpnl" not in row
+    assert sm["unknown"] == 1 and sm["lots_expired"] >= 1
 
 
 def test_load_crypto_maps_sides_and_days():
