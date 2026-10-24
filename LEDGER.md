@@ -25,3 +25,12 @@
 - Tradier GOLDEN_RULE lane via golden_loop.scalar_fire (stateful prev_above/breakout_ts, sim-time clock, first-claim-wins). 5/5 tests. Fixes definitely-missing stocks producer (16 trips, 0 callers).
 - Deferred (need fresh-sweep honest ranking, not stale labels): LEGACY_PSR/MOM5 (board-conditional defaults False), RALLY/GOLDEN-crypto/WR/DC conformance (live paths exist), reentry state-machine timing (REENTRY_MANDATORY/RALLY), TIER1 (exists), STDEV (exists crypto).
 - Noted: tradier breaker still 1-token tags (native B-family nuking on stocks) — queued.
+
+## 2026-10-24 08:0xZ — clean sweep + forensics round (Mac wiring held, NO engine sync: sweep purity)
+- Clean sweep /tmp/parity_native_engine_cur (v12 9618db84): running, 45+/330, 12 workers. Prior 247 span 19 engines — aggregate by md5_set only.
+- family() honesty fix (Mac tool only, synced — tool NOT in ENGINE_FILES so set-safe): alphanumeric family tokens survive (B_EMA20SLOPE was hiding in "B": 40 trips; +SMA200DIST 19, MOM5 12). Verified mapping unit.
+- "B"-bucket decoded: all have live paths (conformance queue, not missing lanes). TIER1/WR/STDEV likewise exist; LEGACY_PSR + B_STDEV + TIER1-cross truly missing but board-conditional/small — deferred to fresh ranking.
+- Tradier GOLDEN lane (Mac-only): scalar_fire shared core, 5/5 tests. Rally verified EXISTING both venues (predicates match: live_rally_filters == RallyFilters) — RALLY gaps are evaluation-context (position-history divergence), not predicate gaps.
+- DC D-edge measured: prevs never all-zero on PUMP — non-issue, dropped.
+- Monitor triage (Mac 2h): CIRCUIT_BREAKER bypasses = breaker auto-disable vs vec-dictated (FIXED via exemption); EMA_BLANKET (vec gate exists — edge conformance); POLICY_NON_VECTOR_EXIT_DISABLED (207, working: live exits vec never ordered stay refused); EXIT_LH_LL (154, working: vec exits never re-gated).
+- PUMP forensics: vec KZONE/RALLY trips open on GFTF-dead bars via reentry-bypass lanes wearing block labels (fixed via honesty guard); live rally predicate matches vec — gaps are history-divergence, self-resolving as opens converge.

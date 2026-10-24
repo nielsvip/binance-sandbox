@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-24T07:00:03Z",
+ "generated_utc": "2026-10-24T07:20:05Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
@@ -7,8 +7,7 @@
  "failed_critical": [
   "boards_recomputed",
   "defaults_chain_completed",
-  "live_set_matches_selection",
-  "indicators_fresh"
+  "live_set_matches_selection"
  ],
  "checks": [
   {
@@ -16,7 +15,7 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "filled_today": 291,
+    "filled_today": 289,
     "filled_before_open": 0
    },
    "detail": "no board was filled before the open"
@@ -41,7 +40,7 @@
    "measured": {
     "built_at": "2026-10-24T06:51:19.250087+00:00",
     "n": 523,
-    "age_at_open_s": 524
+    "age_at_open_s": 1726
    },
    "detail": "built 2026-10-24T06:51:19.250087+00:00 n=523"
   },
@@ -206,25 +205,18 @@
   },
   {
    "name": "indicators_fresh",
-   "ok": false,
+   "ok": true,
    "critical": true,
    "measured": {
-    "symbols": 201,
-    "stale_over_90min": 22,
-    "stale_pct": 10.9,
-    "median_age_min": 75.1,
+    "symbols": 329,
+    "stale_over_90min": 1,
+    "stale_pct": 0.3,
+    "median_age_min": 65.1,
     "sample": [
-     "BIOUSDC",
-     "BLURUSDT",
-     "BRETTUSDT",
-     "BTCDOMUSDT",
-     "COTIUSDT",
-     "DOGEUSDC",
-     "DUSKUSDT",
-     "EIGENUSDT"
+     "ONEUSDT"
     ]
    },
-   "detail": "22/201 symbols past the live 90-min entry gate (10.9%)"
+   "detail": "1/329 symbols past the live 90-min entry gate (0.3%)"
   },
   {
    "name": "s1_sets_synced",

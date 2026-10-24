@@ -30255,6 +30255,17 @@ class MultiAccountTradeManager:
         logger.warning(
             f"🔍 [WH_TRACE_2_done] after_execute_now pk={position_key} result={result[:60] if result else 'None'}"
         )
+        try:
+            # USER 2026-10-24: execution-outcome ledger for the per-minute churn brake.
+            # The brake used to count raw decision lines (attempts incl. self-refused
+            # retries); it now counts exchange-accepted outcomes from here.
+            from vec_decisions import execution_ledger as _exledger
+            _exledger.append_execution(
+                getattr(config, "BASE_PATH", "/Users/niels/Documents/binance"),
+                account_key, position_key, action, reason, result,
+            )
+        except Exception:
+            pass
         if result and "SUCCESS" not in result:
             logger.warning(
                 f"🔍 [WH_TRACE_3_done] NO SUCCESSFUL RESULT after_execute_now pk={position_key} result={result[:60] if result else 'None'}"
@@ -36299,7 +36310,10 @@ class MultiAccountTradeManager:
                 )
                 return f"BLOCKED_LAST_AUGMENT_SAVE_{_las_age:.0f}s"
         # ═══ EMERGENCY BRAKE ═══
-        # Reads from decisions JSONL (actual executed trades), not in-memory counters.
+        # USER 2026-10-24: min_total counts EXCHANGE-ACCEPTED executions (execution_ledger),
+        # not raw decision lines — the decisions file records attempts incl. self-refused
+        # retries, which tripped the halt on ~1 fill + dedupe/lock refusals (flz 05:09Z).
+        # Hourly entries/total guards stay on the decisions file (decision-storm detection).
         # Closes/reduces bypass ONLY if position is profitable. Losing reduces NEVER bypass.
         try:
             _now = time.time()
@@ -36345,8 +36359,6 @@ class MultiAccountTradeManager:
                                 if _dt < _cutoff:
                                     continue
                                 _hour_total += 1
-                                if _dt >= _cutoff_min:
-                                    _min_total += 1
                                 _da = _dd.get("action", "")
                                 if _da in (
                                     "OPEN",
@@ -36361,6 +36373,15 @@ class MultiAccountTradeManager:
                             except Exception:
                                 pass
                 except FileNotFoundError:
+                    pass
+                try:
+                    # USER 2026-10-24: per-minute churn = exchange-accepted fills only.
+                    from vec_decisions import execution_ledger as _exledger2
+                    _min_total = _exledger2.count_recent_accepted(
+                        getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance'),
+                        _acct, _cutoff_min,
+                    )
+                except Exception:
                     pass
                 self._brake_cache[_acct] = {
                     "ts": _now,
@@ -36445,7 +36466,7 @@ class MultiAccountTradeManager:
                         try:
                             _halt_path = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / ".FLZ_TRADING_HALTED"
                             if _acct == "flz" or "flz" in str(_halt_path):
-                                _halt_path.write_text(f"HALTED {datetime.now(timezone.utc).isoformat()} 10trades/min\n")
+                                _halt_path.write_text(f"HALTED {datetime.now(timezone.utc).isoformat()} {_max_per_min}trades/min\n")
                         except Exception:
                             pass
                         return "BLOCKED_EMERGENCY_BRAKE_10_PER_MIN_CHURN"

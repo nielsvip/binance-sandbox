@@ -49,7 +49,10 @@ def family(reason) -> str:
     toks = [t for t in s.upper().split("_") if t != ""]
     if not toks:
         return "?"
-    keep = [toks[0]] + [t for t in toks[1:] if not any(ch.isdigit() for ch in t) and t not in ("D", "W", "H", "M")]
+    # 2026-10-24 honesty: family-carrying alphanumeric tokens survive (B_EMA20SLOPE was
+    # hiding inside "B"); pure numbers/TF-letters still drop.
+    _keep_digit = {"B02", "B04", "B10", "B11", "B12", "B14", "B15", "B16", "B18", "MOM3", "MOM4", "MOM5", "SMA200DIST", "EMADIST", "EMA20SLOPE", "DC1H", "DC4H", "K15M", "WT3M", "STOCHRSI"}
+    keep = [toks[0]] + [t for t in toks[1:] if (t in _keep_digit) or (not any(ch.isdigit() for ch in t) and t not in ("D", "W", "H", "M"))]
     return "_".join(keep)[:48] or "?"
 
 
