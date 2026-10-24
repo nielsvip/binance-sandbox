@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-24T19:40:07Z",
+ "generated_utc": "2026-10-24T20:00:06Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
@@ -14,7 +14,7 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "filled_today": 302,
+    "filled_today": 301,
     "filled_before_open": 0
    },
    "detail": "no board was filled before the open"
@@ -39,7 +39,7 @@
    "measured": {
     "built_at": "2026-10-24T19:21:18.893987+00:00",
     "n": 523,
-    "age_at_open_s": 1128
+    "age_at_open_s": 2328
    },
    "detail": "built 2026-10-24T19:21:18.893987+00:00 n=523"
   },
@@ -61,9 +61,9 @@
    "critical": true,
    "measured": {
     "selection_n": 523,
-    "exact": 127,
-    "benign_divergence_only": 312,
-    "material_divergence": 83,
+    "exact": 128,
+    "benign_divergence_only": 313,
+    "material_divergence": 81,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -160,19 +160,6 @@
       ]
      },
      {
-      "sym_side": "RIFUSDT_SHORT",
-      "published_at": "2026-10-24T19:07:05Z",
-      "material": 62,
-      "sample": [
-       "ATR_ADAPTIVE_STOP_MULT",
-       "COUNTER_TREND_ADD_BLOCK_ENABLED",
-       "CRYPTO_REENTRY_PATHWAYS_ENABLED",
-       "DAYTRADE_DC_TARGET_TF",
-       "DC_BREACH_REDUCE_FILTER_TF",
-       "DC_BREAKOUT_TF_EXPANDED"
-      ]
-     },
-     {
       "sym_side": "APO_SHORT",
       "published_at": "2026-10-20T11:43:52Z",
       "material": 55,
@@ -197,10 +184,23 @@
        "COOLDOWN_BARS",
        "COOLDOWN_BARS_TRADIER"
       ]
+     },
+     {
+      "sym_side": "ACN_LONG",
+      "published_at": "2026-10-23T06:02:03Z",
+      "material": 50,
+      "sample": [
+       "ATR_ADAPTIVE_STOP_MULT",
+       "ATR_ADAPTIVE_STOP_TF",
+       "AUGMENT_FALLBACK_REDUCE_PCT",
+       "BB_PULLBACK_GATE_ENABLED",
+       "BB_SQUEEZE_ENTRY_ENABLED",
+       "COUNTER_TREND_ADD_BLOCK_ENABLED"
+      ]
      }
     ]
    },
-   "detail": "127 exact, 312 benign-only, 83 with material divergence, 1 with no live row"
+   "detail": "128 exact, 313 benign-only, 81 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
@@ -210,7 +210,7 @@
     "symbols": 330,
     "stale_over_90min": 2,
     "stale_pct": 0.6,
-    "median_age_min": 10.1,
+    "median_age_min": 15.1,
     "sample": [
      "DUSKUSDT",
      "ONEUSDT"
