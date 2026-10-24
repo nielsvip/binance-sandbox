@@ -1,5 +1,5 @@
 {
- "broken": 87,
+ "broken": 82,
  "checks": {
   "TEMPLATE_NO_CONFIG": [
    "REENTRY_TIER2_MAX_MINUTES_TRADIER: in templates ['STOCKS_LONG'] but in no config"
@@ -16,8 +16,6 @@
    "BB_SQUEEZE_WIDTH_PERCENTILE [STOCKS]: config_tradier.py=0.2 vs QuickConfig=0.25 (not on the documented conflict list)",
    "BREAKEVEN_GAIN_EROSION_FILTER_TF [STOCKS]: config_tradier.py='OFF' vs QuickConfig='1h' (not on the documented conflict list)",
    "DC_EDGE_SIZING_ENABLED [CRYPTO]: config.py=True vs QuickConfig=False (not on the documented conflict list)",
-   "EMERGENCY_BRAKE_MAX_TRADES_PER_MIN [CRYPTO]: config.py=30 vs QuickConfig=10 (not on the documented conflict list)",
-   "EMERGENCY_BRAKE_MAX_TRADES_PER_MIN [STOCKS]: config_tradier.py=30 vs QuickConfig=10 (not on the documented conflict list)",
    "EXIT_R1_R2_FILTER_TF [STOCKS]: config_tradier.py='15m' vs QuickConfig='1h' (not on the documented conflict list)",
    "EZ_MANAGE_THROTTLER_RATE [CRYPTO]: config.py=\"{'gateway': 200, 'macbook': 250}\" vs QuickConfig=0.0 (not on the documented conflict list)",
    "EZ_MANAGE_THROTTLER_RATE [STOCKS]: config_tradier.py=\"{'gateway': 200, 'macbook': 250}\" vs QuickConfig=0.0 (not on the documented conflict list)",
@@ -25,9 +23,15 @@
    "FIRST_OPEN_THROTTLE_FILTER_TF [STOCKS]: config_tradier.py='D' vs QuickConfig='15m' (not on the documented conflict list)",
    "HTF_TREND_VETO_BYPASS_REASONS [CRYPTO]: config.py=\"['TRADEABLE_KEYS_MANDATORY', 'RZ_', 'RED_ZONE', 'BASELINE_BOUNCE', 'BREAKDOWN_TR\" vs QuickConfig=0.0 (not on the documented conflict list)",
    "HTF_TREND_VETO_BYPASS_REASONS [STOCKS]: config_tradier.py=\"['TRADEABLE_KEYS_MANDATORY', 'RZ_', 'RED_ZONE', 'BASELINE_BOUNCE', 'BREAKDOWN_TR\" vs QuickConfig=0.0 (not on the documented conflict list)",
+   "LIVE_ENTRY_ENGINE_DC_ENABLED [CRYPTO]: config.py=True vs QuickConfig=False (not on the documented conflict list)",
+   "LIVE_ENTRY_ENGINE_HTF_ENABLED [CRYPTO]: config.py=True vs QuickConfig=False (not on the documented conflict list)",
+   "LIVE_ENTRY_ENGINE_STOCH_ENABLED [CRYPTO]: config.py=True vs QuickConfig=False (not on the documented conflict list)",
+   "LIVE_ENTRY_ENGINE_WT_ENABLED [CRYPTO]: config.py=True vs QuickConfig=False (not on the documented conflict list)",
    "MANDATORY_REENTRY_WT_FILTER_TF_MODE [STOCKS]: config_tradier.py='5m_or_15m' vs QuickConfig='15m_only' (not on the documented conflict list)",
    "NEWBORN_LOSS_KILL_ENABLED [CRYPTO]: config.py=False vs QuickConfig=True (not on the documented conflict list)",
+   "RULE_B_5M_EXIT_ENABLED [STOCKS]: config_tradier.py=False vs QuickConfig=True (not on the documented conflict list)",
    "STDEV_REJECT_EXIT_TF [STOCKS]: config_tradier.py='15m' vs QuickConfig='D' (not on the documented conflict list)",
+   "VIGILANCE_GUARD_ENABLED [CRYPTO]: config.py=True vs QuickConfig=False (not on the documented conflict list)",
    "WT_15M_BOUNCE_BB_MAX [CRYPTO]: config.py=0.9 vs QuickConfig=0.95 (not on the documented conflict list)",
    "WT_15M_BOUNCE_BB_MAX [STOCKS]: config_tradier.py=0.8 vs QuickConfig=0.9 (not on the documented conflict list)",
    "WT_CROSSUNDER_FINAL_ENABLED [STOCKS]: config_tradier.py=False vs QuickConfig=True (not on the documented conflict list)",
@@ -39,18 +43,10 @@
    "vec_decisions/live_indicator_arrays.py: was reachable from simulate_one in the baseline, not any more"
   ],
   "NOT_IN_CAT_SIDE_DEFAULTS": [
-   "LIVE_ENTRY_ENGINE_DC_ENABLED [CRYPTO_LONG]",
-   "LIVE_ENTRY_ENGINE_DC_ENABLED [CRYPTO_SHORT]",
-   "LIVE_ENTRY_ENGINE_HTF_ENABLED [CRYPTO_LONG]",
-   "LIVE_ENTRY_ENGINE_HTF_ENABLED [CRYPTO_SHORT]",
-   "LIVE_ENTRY_ENGINE_STOCH_ENABLED [CRYPTO_LONG]",
-   "LIVE_ENTRY_ENGINE_STOCH_ENABLED [CRYPTO_SHORT]",
-   "LIVE_ENTRY_ENGINE_WT_ENABLED [CRYPTO_LONG]",
-   "LIVE_ENTRY_ENGINE_WT_ENABLED [CRYPTO_SHORT]",
-   "RATIO_REBALANCE_ENABLED [CRYPTO_LONG]",
-   "RATIO_REBALANCE_ENABLED [CRYPTO_SHORT]",
-   "RULE_B_5M_EXIT_ENABLED [STOCKS_LONG]",
-   "RULE_B_5M_EXIT_ENABLED [STOCKS_SHORT]",
+   "EMERGENCY_BRAKE_MAX_TRADES_PER_MIN [CRYPTO_LONG]",
+   "EMERGENCY_BRAKE_MAX_TRADES_PER_MIN [CRYPTO_SHORT]",
+   "EMERGENCY_BRAKE_MAX_TRADES_PER_MIN [STOCKS_LONG]",
+   "EMERGENCY_BRAKE_MAX_TRADES_PER_MIN [STOCKS_SHORT]",
    "WT_15M_BOUNCE_HIGH_1H_GT_PREV [CRYPTO_LONG]",
    "WT_15M_BOUNCE_LOW_1H_GT_PREV [CRYPTO_LONG]"
   ],
@@ -75,7 +71,6 @@
    "BTC_RZ_AS_BOOST_ENABLED: wired live+vec (['btc_loop.py:422(should_enter_btc_long)'] / ['vec_decisions/btc_dedicated_entry.py:177(allow_mask)']) but in no template",
    "BTC_RZ_PROXIMITY_PCT: wired live+vec (['ez_positions_quick.py:3424(_btc_build_features_from_indicators)'] / ['vec_decisions/btc_dedicated_entry.py:139(allow_mask)']) but in no template",
    "BTC_RZ_SOFTEN_ACCEL_BY: wired live+vec (['btc_loop.py:423(should_enter_btc_long)'] / ['vec_decisions/btc_dedicated_entry.py:178(allow_mask)']) but in no template",
-   "ENABLE_TR_SWING_ENTRIES: wired live+vec (['tradier_manage.py:44650(TradierTradeManager.is_swing_entry_allowed)'] / ['vec_decisions/check_entry_swing_budget.py:31(knob_allows)']) but in no template",
    "EXIT_DUST_USD: wired live+vec (['ez_manage.py:3512(ez_vigilance_record_close)'] / ['vec_decisions/qty_quantizers.py:186(live_record_close)']) but in no template",
    "HAIKU_WINNER_ENABLED: wired live+vec (['ez_manage.py:8465(_lane_b_vec_only_parity_ok)'] / ['vec_decisions/haiku_augment.py:49(params)']) but in no template",
    "HISTORY_PROV_ENABLED: wired live+vec (['vec_decisions/history_prov.py:154(enabled)'] / ['vec_decisions/history_prov.py:154(enabled)']) but in no template",
