@@ -370,6 +370,19 @@ def _repair_backoff_s(consec):
     except Exception: return REST_REPAIR_BACKOFF_CAP_S
 
 
+def _repair_req_symbol(sym):
+    """USER 2026-10-24: market.data is keyed by POSITION key (SYM_SIDE) but Binance
+    wants the bare symbol — ZROUSDT_LONG always 400s. Strip the side suffix."""
+    try:
+        if sym.endswith("_LONG"):
+            return sym[:-5]
+        if sym.endswith("_SHORT"):
+            return sym[:-6]
+    except Exception:
+        pass
+    return sym
+
+
 def _pick_due_stale(data, now, limit=REST_REPAIR_MAX_SYMS, skip=None):
     """USER 2026-10-24: stalest-first repair queue, capped. Pure, tested."""
     due = []
@@ -1303,41 +1316,47 @@ class MarketDataEngine:
                     picked = []
                 sem = asyncio.Semaphore(max(1, conc))
 
-                async def _fetch(sym, tf):
+                async def _fetch(store_key, sym, tf):
                     async with sem:
                         try:
                             params = {"symbol": sym, "interval": tf, "limit": 60}
                             async with session.get(base, params=params) as r:
                                 if r.status in (418, 429):
-                                    return sym, tf, {}, True
+                                    return store_key, tf, {}, True, r.status
                                 if r.status != 200:
-                                    return sym, tf, {}, False
+                                    return store_key, tf, {}, False, r.status
                                 rows = await r.json()
-                            return sym, tf, parse_rest_klines(rows), False
-                        except Exception:
-                            return sym, tf, {}, False
+                            return store_key, tf, parse_rest_klines(rows), False, 200
+                        except Exception as _fe:
+                            return store_key, tf, {}, False, f"EXC:{type(_fe).__name__}"
 
                 tasks = []
                 for sym, d1, d3 in picked:
+                    req = _repair_req_symbol(sym)
                     if d1:
-                        tasks.append(_fetch(sym, "1m"))
+                        tasks.append(_fetch(sym, req, "1m"))
                     if d3:
-                        tasks.append(_fetch(sym, "3m"))
+                        tasks.append(_fetch(sym, req, "3m"))
                 n_ok = 0
                 n_thr = 0
                 ok_syms = set()
                 thr_syms = set()
+                det_count = {}
+                fail_sample = []
                 try:
                     for i in range(0, len(tasks), 100):
                         chunk = tasks[i:i + 100]
-                        for sym, tf, bars, thr in await asyncio.gather(*chunk):
+                        for sym, tf, bars, thr, det in await asyncio.gather(*chunk):
                             try:
+                                det_count[det] = det_count.get(det, 0) + 1
                                 if thr:
                                     n_thr += 1
                                     thr_syms.add(sym)
                                 elif bars and self.market.apply_rest_bars(sym, tf, bars):
                                     n_ok += 1
                                     ok_syms.add(sym)
+                                elif len(fail_sample) < 3:
+                                    fail_sample.append(f"{sym}:{tf}:{det}")
                             except Exception:
                                 pass
                 except Exception as e:
@@ -1365,7 +1384,7 @@ class MarketDataEngine:
                 else:
                     consec_throttle = 0
                     conc = REST_REPAIR_BASE_CONC
-                try: logger.info(f"[REST_REPAIR] refreshed {n_ok} pairs ({len(picked)} due/{len(symbols)} syms) in {time.time() - t0:.1f}s throttle={n_thr} backoff={max(0.0, throttled_until - time.time()):.0f}s conc={conc} skip={n_skip}")
+                try: logger.info(f"[REST_REPAIR] refreshed {n_ok} pairs ({len(picked)} due/{len(symbols)} syms) in {time.time() - t0:.1f}s throttle={n_thr} backoff={max(0.0, throttled_until - time.time()):.0f}s conc={conc} skip={n_skip} det={det_count} fail_sample={fail_sample}")
                 except Exception: pass
                 await asyncio.sleep(max(5.0, 60.0 - (time.time() - t0)))
         finally:

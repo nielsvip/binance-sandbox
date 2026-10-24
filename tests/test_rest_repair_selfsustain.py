@@ -15,6 +15,7 @@ from ez_market_data import (
     _pick_due_stale,
     _repair_backoff_s,
     _repair_due,
+    _repair_req_symbol,
 )
 
 NOW = 1_792_818_945.0
@@ -89,6 +90,13 @@ def test_pick_limit_shrinks_under_throttle():
     assert len(_pick_due_stale(data, NOW, 60 >> 1)) == 30
     assert len(_pick_due_stale(data, NOW, 60 >> 4)) == 3
     assert _pick_due_stale(data, NOW, 60 >> 4)[0][0] == "S039"
+
+
+def test_req_symbol_strips_side_suffix():
+    assert _repair_req_symbol("ZROUSDT_LONG") == "ZROUSDT"
+    assert _repair_req_symbol("ZKUSDT_SHORT") == "ZKUSDT"
+    assert _repair_req_symbol("BTCUSDT") == "BTCUSDT"
+    assert _repair_req_symbol("") == ""
 
 
 def test_pick_honors_skip_until_expiry():

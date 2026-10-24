@@ -11325,6 +11325,17 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
                 base = base & ((atr_1h <= 0) | (bar_move >= atr_1h * 0.3))
             blocks["B_DELTAENTRY"] = base
 
+    # DELTA ZONE BASELINE-BOUNCE 2026-10-24 (USER "every path covered with a switch and a vectorized version"):
+    # live wt_dc_delta.py zone signal (BASELINE_BOUNCE_LONG/SHORT) that the scoring worker opens as
+    # QUICK_OPEN_STRONG_BUY/SELL (257+ live-only legs: live fires standalone, velocity twin never matched it).
+    # Shared core vec_decisions/delta_zone_baseline.py (scalar+mask, presence-checked, no fabrication).
+    if bool(getattr(cfg, "rz_entry_enabled", True)):
+        try:
+            import vec_decisions.delta_zone_baseline as _dzb
+            blocks["B_DELTA_BASELINE_BOUNCE"] = _dzb.baseline_bounce_mask(npz, n, is_long, cfg, _safe)
+        except Exception:
+            pass
+
     # 2026-08-09: Additional confluence gates using momentum and volatility
     # TF_FOCUS_ENTRY_HARD_GATE — hard gate requiring multiple timeframe alignment
     if getattr(cfg, "TF_FOCUS_ENTRY_HARD_GATE", False):
@@ -12093,7 +12104,7 @@ def compute_entry_signals(npz, n, is_long, cfg):
     if cfg.STRENGTH_FILTER_ENABLED:
         weights = {
             # ORIGINAL V8Q v3 weights — proven Sharpe 1.93 on TOP3
-            "B15": 4,  # Strong trend continuation (#1 single block, Sharpe 0.89)
+            "B15": 6,  # 2026-10-24 standalone tier (was 4: never cleared min-score 5.0 alone; live fires standalone)
             "GOLDEN_RULE_ENTRY": 6,  # 2026-10-06 golden twin: fires standalone (live loop is independent of other entries)
             "DC_BREAKOUT_ENTRY": 6,  # 2026-10-06 DC twin: standalone (live DC path overrides earlier triggers)
             "VOL_SPIKE_REVERSAL": 6,  # 2026-10-06 VOL twin: standalone (live score 20); alignment-dead both sides for now
@@ -12108,9 +12119,17 @@ def compute_entry_signals(npz, n, is_long, cfg):
             "B04": 3,  # DC retest (Sharpe 0.39)
             "B11": 3,  # DC break (Sharpe 0.34, 94% WR)
             "B02": 2,  # BC156 bottom bounce (Sharpe 0.31)
-            "B10": 1,
-            "B12": 1,
-            "B14": 1,
+            # 2026-10-24 USER "exact same lanes, not one more not one less": these families fire
+            # STANDALONE live (native producers wired Oct-24) but weight 1 never clears
+            # STRENGTH_MIN_SCORE 5.0 alone — vec-only-on-combo-bars was a systematic
+            # under-fire vs live. Standalone tier 6 like GOLDEN/DC/VOL/LH twins.
+            "B10": 6,
+            "B12": 6,
+            "B14": 6,
+            "B_MOM3": 6,
+            "B_SRS_ENTRY": 6,
+            "B_KZONE": 6,
+            "B_DELTA_BASELINE_BOUNCE": 6,  # DELTA zone twin: live scoring opens it standalone (QUICK_OPEN_STRONG_*).
             # Pullback blocks (2026-04-16 experiment — tested, kept at low weight)
             "B_PULL1": 1,
             "B_PULL2": 1,
