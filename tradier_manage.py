@@ -51559,6 +51559,10 @@ class TradierTradeManager:
                 _vpg_ovr_on_tr = bool(_cfg_auto("VEC_OVERRIDE_ENABLED", True))
                 _vpg_brk_on_tr = bool(_cfg_auto("VEC_OVERRIDE_BYPASS_CIRCUIT_BREAKER", True))
                 _vl_tag_tr, _vl_detail_tr, _vpg_ovr_keep_tr = _vpg_ovr_tr.override_verdict(_vl_tag_tr, _vl_detail_tr, _vec_last_refuse, _vpg_ovr_on_tr, _vpg_brk_on_tr)
+                _vpg_exec_o_tr = bool(_cfg_auto("VEC_EXEC_BOARD_OPEN_ENABLED", True))
+                _vpg_exec_c_tr = bool(_cfg_auto("VEC_EXEC_BOARD_CLOSE_ENABLED", True))
+                if _vl_tag_tr == "VEC_LAST_OVERRIDE" and not _vpg_ovr_tr.exec_board_ok(action, _vpg_exec_o_tr, _vpg_exec_c_tr):
+                    _vl_tag_tr, _vl_detail_tr = "VEC_LAST_REFUSE", "VEC_EXEC_BOARD_WITHHELD"
             except Exception:
                 pass
             if _vl_tag_tr == "VEC_LAST_OVERRIDE":
@@ -51588,6 +51592,16 @@ class TradierTradeManager:
                 if lock_acquired and self.redis_manager:
                     await self.redis_manager.delete(exec_lock_key)
                 return _vl_detail_tr
+            try:
+                from vec_decisions import vec_parity_gates as _vpg_do_tr
+                _vpg_do_on_tr = bool(_cfg_auto("VEC_DICTATE_ONLY_ENABLED", True))
+                if _vpg_do_on_tr and not bool(_vl_dictated_tr) and not _vpg_do_tr.dictate_only_exempt(action, reason):
+                    logger.warning(f"⛔ [VEC_DICTATE_ONLY_BLOCK] {position_key} {action} reason={(reason or '')[:80]} — no vec dictate (USER 2026-10-24 STEP1)")
+                    if lock_acquired and self.redis_manager:
+                        await self.redis_manager.delete(exec_lock_key)
+                    return "BLOCKED_NON_VEC_DICTATE"
+            except Exception:
+                pass
             if not _vl_dictated_tr:
                 try:
                     from live_twins import vec_driven as _vdf_dis_tr

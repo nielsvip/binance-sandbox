@@ -5,6 +5,7 @@ positions snapshots carry file values through untouched, realized windows follow
 average-cost math with unknown (never fabricated) basis, and intent validation
 rejects bad shapes before anything is staged.
 """
+
 import importlib.util
 import json
 import sys
@@ -18,7 +19,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def _load_server():
-    spec = importlib.util.spec_from_file_location("live_desk_server", str(ROOT / "tools" / "live_desk" / "server.py"))
+    spec = importlib.util.spec_from_file_location(
+        "live_desk_server", str(ROOT / "tools" / "live_desk" / "server.py")
+    )
     mod = importlib.util.module_from_spec(spec)
     sys.modules["live_desk_server"] = mod
     spec.loader.exec_module(mod)
@@ -27,15 +30,52 @@ def _load_server():
 
 srv = _load_server()
 
-ROW = {"symbol": "TSTUSDT", "position_side": "LONG", "positionAmt": 2.5, "entry_price": 100.0, "mark_price": 110.0, "gain": 10.0, "max_gain": 12.0, "unrealized_pnl_USD": 25.0, "realized_pnl": 0.0, "opened_at": "2026-10-22T10:00:00Z", "last_updated": "2026-10-22T11:00:00Z"}
+ROW = {
+    "symbol": "TSTUSDT",
+    "position_side": "LONG",
+    "positionAmt": 2.5,
+    "entry_price": 100.0,
+    "mark_price": 110.0,
+    "gain": 10.0,
+    "max_gain": 12.0,
+    "unrealized_pnl_USD": 25.0,
+    "realized_pnl": 0.0,
+    "opened_at": "2026-10-22T10:00:00Z",
+    "last_updated": "2026-10-22T11:00:00Z",
+}
 
 
 @pytest.fixture
 def repo(tmp_path, monkeypatch):
     acct = tmp_path / "fin"
     acct.mkdir()
-    (acct / "long_positions.json").write_text(json.dumps({"fin:TSTUSDT_LONG": dict(ROW), "fin:FLATUSDT_LONG": dict(ROW, symbol="FLATUSDT", positionAmt=0.0, unrealized_pnl_USD=0.0, gain=0.0)}))
-    (acct / "short_positions.json").write_text(json.dumps({"fin:SHOUSDT_SHORT": dict(ROW, symbol="SHOUSDT", position_side="SHORT", positionAmt=1.0, unrealized_pnl_USD=-5.0)}))
+    (acct / "long_positions.json").write_text(
+        json.dumps(
+            {
+                "fin:TSTUSDT_LONG": dict(ROW),
+                "fin:FLATUSDT_LONG": dict(
+                    ROW,
+                    symbol="FLATUSDT",
+                    positionAmt=0.0,
+                    unrealized_pnl_USD=0.0,
+                    gain=0.0,
+                ),
+            }
+        )
+    )
+    (acct / "short_positions.json").write_text(
+        json.dumps(
+            {
+                "fin:SHOUSDT_SHORT": dict(
+                    ROW,
+                    symbol="SHOUSDT",
+                    position_side="SHORT",
+                    positionAmt=1.0,
+                    unrealized_pnl_USD=-5.0,
+                )
+            }
+        )
+    )
     monkeypatch.setattr(srv, "ROOT", tmp_path)
     monkeypatch.setattr(srv, "_cache", {})
     return tmp_path
@@ -43,23 +83,61 @@ def repo(tmp_path, monkeypatch):
 
 def test_positions_passthrough_byte_identical(repo):
     snap = srv.read_positions("fin")
-    assert set(snap["sides"]) == {"long", "short"}, "both sides must survive (no side-collapse)"
+    assert set(snap["sides"]) == {
+        "long",
+        "short",
+    }, "both sides must survive (no side-collapse)"
     assert snap["totals"]["count"] == 2
     assert snap["totals"]["flat"] == 1
     row = snap["sides"]["long"][0]
-    for k in ("symbol", "side", "qty", "entry", "mark", "gain", "max_gain", "upnl", "realized", "opened_at", "updated"):
-        assert row[k] == {"symbol": "TSTUSDT", "side": "LONG", "qty": 2.5, "entry": 100.0, "mark": 110.0, "gain": 10.0, "max_gain": 12.0, "upnl": 25.0, "realized": 0.0, "opened_at": "2026-10-22T10:00:00Z", "updated": "2026-10-22T11:00:00Z"}[k]
+    for k in (
+        "symbol",
+        "side",
+        "qty",
+        "entry",
+        "mark",
+        "gain",
+        "max_gain",
+        "upnl",
+        "realized",
+        "opened_at",
+        "updated",
+    ):
+        assert (
+            row[k]
+            == {
+                "symbol": "TSTUSDT",
+                "side": "LONG",
+                "qty": 2.5,
+                "entry": 100.0,
+                "mark": 110.0,
+                "gain": 10.0,
+                "max_gain": 12.0,
+                "upnl": 25.0,
+                "realized": 0.0,
+                "opened_at": "2026-10-22T10:00:00Z",
+                "updated": "2026-10-22T11:00:00Z",
+            }[k]
+        )
     assert snap["totals"]["upnl"] == 20.0
     assert snap["sides"]["short"][0]["side"] == "SHORT"
 
 
 def _ev(ts, sym, side, act, qty, price):
-    return {"ts": ts, "symbol": sym, "side": side, "action": act, "qty": qty, "price": price}
+    return {
+        "ts": ts,
+        "symbol": sym,
+        "side": side,
+        "action": act,
+        "qty": qty,
+        "price": price,
+    }
 
 
 def _expected_day_sums(out, now):
     """Per-day realized sums straight from priced events, independent of the walk's bucketing."""
     from datetime import date, timedelta
+
     per_day = {}
     for e in out:
         rp = e.get("rpnl")
@@ -75,9 +153,21 @@ def _expected_day_sums(out, now):
     today, yest = now.date(), now.date() - timedelta(days=1)
 
     def in_trail(n):
-        return round(sum(v for d, v in per_day.items() if (today - date.fromisoformat(d)).days <= n), 2)
+        return round(
+            sum(
+                v
+                for d, v in per_day.items()
+                if (today - date.fromisoformat(d)).days <= n
+            ),
+            2,
+        )
 
-    return {"today": round(per_day.get(today.strftime("%Y-%m-%d"), 0.0), 2), "yest": round(per_day.get(yest.strftime("%Y-%m-%d"), 0.0), 2), "d7": in_trail(6), "d30": in_trail(29)}
+    return {
+        "today": round(per_day.get(today.strftime("%Y-%m-%d"), 0.0), 2),
+        "yest": round(per_day.get(yest.strftime("%Y-%m-%d"), 0.0), 2),
+        "d7": in_trail(6),
+        "d30": in_trail(29),
+    }
 
 
 def test_realized_windows_and_unknown_basis():
@@ -85,14 +175,21 @@ def test_realized_windows_and_unknown_basis():
     iso = lambda dt: dt.isoformat()
 
     from datetime import timedelta
+
     evts = [
         _ev(iso(now - timedelta(hours=2)), "A", "LONG", "OPEN", 10.0, 100.0),
         _ev(iso(now - timedelta(hours=1)), "A", "LONG", "REDUCE", 4.0, 110.0),  # +40
         _ev(iso(now - timedelta(hours=26)), "D", "LONG", "OPEN", 1.0, 100.0),
-        _ev(iso(now - timedelta(hours=25)), "D", "LONG", "REDUCE", 1.0, 120.0),  # +20 prior day
+        _ev(
+            iso(now - timedelta(hours=25)), "D", "LONG", "REDUCE", 1.0, 120.0
+        ),  # +20 prior day
         _ev(iso(now - timedelta(days=10)), "B", "SHORT", "OPEN", 5.0, 50.0),
-        _ev(iso(now - timedelta(days=9)), "B", "SHORT", "CLOSE", 5.0, 40.0),  # +50 in 30d only
-        _ev(iso(now - timedelta(minutes=5)), "C", "LONG", "CLOSE", 2.0, 9.0),  # no basis: unknown
+        _ev(
+            iso(now - timedelta(days=9)), "B", "SHORT", "CLOSE", 5.0, 40.0
+        ),  # +50 in 30d only
+        _ev(
+            iso(now - timedelta(minutes=5)), "C", "LONG", "CLOSE", 2.0, 9.0
+        ),  # no basis: unknown
     ]
     out, s = srv.realized_walk(evts)
     exp = _expected_day_sums(out, now)
@@ -116,9 +213,12 @@ def test_unknown_partial_vs_phantom():
     now = datetime.now(timezone.utc).replace(microsecond=0)
     iso = lambda dt: dt.isoformat()
     from datetime import timedelta
+
     evts = [
         _ev(iso(now - timedelta(hours=2)), "P", "LONG", "OPEN", 10.0, 100.0),
-        _ev(iso(now - timedelta(hours=1)), "P", "LONG", "REDUCE", 14.0, 110.0),  # 10 known (+100) + 4 partial
+        _ev(
+            iso(now - timedelta(hours=1)), "P", "LONG", "REDUCE", 14.0, 110.0
+        ),  # 10 known (+100) + 4 partial
     ]
     out, s = srv.realized_walk(evts)
     exp = _expected_day_sums(out, now)
@@ -138,15 +238,24 @@ def test_broker_fills_counted_once_and_unattributed_hidden():
     now = datetime.now(timezone.utc).replace(microsecond=0)
     iso = lambda dt: dt.isoformat()
     from datetime import timedelta
+
     o = _ev(iso(now - timedelta(hours=4)), "LRCX", "SHORT", "OPEN", 13.0, 263.12)
     r1 = _ev(iso(now - timedelta(hours=3)), "LRCX", "SHORT", "REDUCE", 13.0, 235.70)
     r1["reason"] = "Broker sync"
-    p = _ev(iso(now - timedelta(hours=62, minutes=0)), "E", "LONG", "OPEN", 43.4, 0.6433)
-    f1 = _ev(iso(now - timedelta(hours=1, minutes=1)), "E", "LONG", "REDUCE", 30.7, 0.6432)
+    p = _ev(
+        iso(now - timedelta(hours=62, minutes=0)), "E", "LONG", "OPEN", 43.4, 0.6433
+    )
+    f1 = _ev(
+        iso(now - timedelta(hours=1, minutes=1)), "E", "LONG", "REDUCE", 30.7, 0.6432
+    )
     f1["reason"] = "BROKER_RECONCILED order=1"
-    f2 = _ev(iso(now - timedelta(hours=1, minutes=1)), "E", "LONG", "REDUCE", 8.8, 0.6431)
+    f2 = _ev(
+        iso(now - timedelta(hours=1, minutes=1)), "E", "LONG", "REDUCE", 8.8, 0.6431
+    )
     f2["reason"] = "BROKER_RECONCILED order=1"
-    f3 = _ev(iso(now - timedelta(hours=1, minutes=1)), "E", "LONG", "REDUCE", 3.9, 0.6431)
+    f3 = _ev(
+        iso(now - timedelta(hours=1, minutes=1)), "E", "LONG", "REDUCE", 3.9, 0.6431
+    )
     f3["reason"] = "BROKER_RECONCILED order=1"
     dup = _ev(iso(now - timedelta(hours=1)), "E", "LONG", "REDUCE", 43.4, 0.6435)
     dup["reason"] = "REAL_STRATEGY_CLOSE"
@@ -158,15 +267,31 @@ def test_broker_fills_counted_once_and_unattributed_hidden():
     out, s = srv.realized_walk([o, r1, p, f1, f2, f3, dup, q0, c0, d0], expiry_days=60)
     lrcx = [e for e in out if e.get("symbol") == "LRCX" and e["action"] == "REDUCE"]
     assert len(lrcx) == 1 and all("rpnl" not in e for e in lrcx)
-    fills = [e for e in out if (e.get("reason") or "").startswith("BROKER_RECONCILED order=1")]
+    fills = [
+        e
+        for e in out
+        if (e.get("reason") or "").startswith("BROKER_RECONCILED order=1")
+    ]
     assert len(fills) == 3 and all("rpnl" in e for e in fills)
-    strat = [e for e in out if e.get("reason") == "REAL_STRATEGY_CLOSE" and e.get("symbol") == "E"][0]
+    strat = [
+        e
+        for e in out
+        if e.get("reason") == "REAL_STRATEGY_CLOSE" and e.get("symbol") == "E"
+    ][0]
     assert "rpnl" not in strat and strat.get("sync_hidden") is True
-    assert [e for e in out if e.get("reason") == "BROKER_RECONCILED order=2"][0].get("sync_hidden") is True
+    assert [e for e in out if e.get("reason") == "BROKER_RECONCILED order=2"][0].get(
+        "sync_hidden"
+    ) is True
     assert s["sync_hidden"] == 3
     assert s["known"] == 4
     assert s["unknown"] == 0
-    assert s["pnl_total"] == round(30.7 * (0.6432 - 0.6433) + 8.8 * (0.6431 - 0.6433) + 3.9 * (0.6431 - 0.6433) + 200.0, 2)
+    assert s["pnl_total"] == round(
+        30.7 * (0.6432 - 0.6433)
+        + 8.8 * (0.6431 - 0.6433)
+        + 3.9 * (0.6431 - 0.6433)
+        + 200.0,
+        2,
+    )
     assert srv._is_broker_reconstruction("BROKER_SYNC_CLOSE") is True
     assert srv._is_broker_reconstruction("Broker sync") is True
     assert srv._is_broker_reconstruction("BROKER_RECONCILED order=1") is False
@@ -178,7 +303,14 @@ def test_broker_fills_counted_once_and_unattributed_hidden():
 
 
 def test_asof_blanks_unsettled_days_never_zero():
-    w = {"b_today": 0.0, "b_yest": 0.0, "b_7d": -5193.33, "b_30d": -24782.32, "d_today": "2026-10-23", "d_yest": "2026-10-22"}
+    w = {
+        "b_today": 0.0,
+        "b_yest": 0.0,
+        "b_7d": -5193.33,
+        "b_30d": -24782.32,
+        "d_today": "2026-10-23",
+        "d_yest": "2026-10-22",
+    }
     lagged = srv._apply_asof(w, "2026-10-21")
     assert lagged["b_today"] is None
     assert lagged["b_yest"] is None
@@ -207,7 +339,9 @@ def test_account_value_ledger_roundtrip_and_throttle(tmp_path):
     rec = srv._load_ledger()["trb"][today]
     assert rec["equity"] == 45903.0 and rec["unreal_desk"] == 1.0
     srv._LEDGER_WRITE_AT.clear()
-    srv._record_account_day("trb", {"equity": None, "avail": None, "open_pl": None, "close_pl": None}, None)
+    srv._record_account_day(
+        "trb", {"equity": None, "avail": None, "open_pl": None, "close_pl": None}, None
+    )
     rec = srv._load_ledger()["trb"][today]
     assert rec["equity"] == 45903.0 and rec["close_pl"] == -0.52
 
@@ -218,8 +352,12 @@ def test_implied_today_from_equity_marks(tmp_path):
     now = time.time()
     yest = time.strftime("%Y-%m-%d", time.gmtime(now - 86400))
     srv.LEDGER_PATH.parent.mkdir(parents=True, exist_ok=True)
-    srv.LEDGER_PATH.write_text(json.dumps({"trb": {yest: {"equity": 46000.0, "open_pl": 100.0}}}))
-    assert srv._implied_today("trb", 45902.05, 0.0) == round((45902.05 - 46000.0) - (0.0 - 100.0), 2)
+    srv.LEDGER_PATH.write_text(
+        json.dumps({"trb": {yest: {"equity": 46000.0, "open_pl": 100.0}}})
+    )
+    assert srv._implied_today("trb", 45902.05, 0.0) == round(
+        (45902.05 - 46000.0) - (0.0 - 100.0), 2
+    )
     assert srv._implied_today("trb", None, 0.0) is None
     assert srv._implied_today("nosuch", 1.0, 0.0) is None
 
@@ -316,7 +454,9 @@ def test_stale_close_provenance_shows_fresh_lots_not_zombies():
     fr = _ev(new, "ZMB", "SHORT", "OPEN", 12.0, 101.0)
     fr["reason"] = "WT_15M_BOUNCE_OPEN_S"
     cl = _ev(now.isoformat(), "ZMB", "SHORT", "CLOSE", 11.0, 99.0)
-    out, s = srv.realized_walk([zt, fr, cl], stale_basis_days=7, use_kline_px=True, expiry_days=60)
+    out, s = srv.realized_walk(
+        [zt, fr, cl], stale_basis_days=7, use_kline_px=True, expiry_days=60
+    )
     row = [e for e in out if e.get("action") == "CLOSE"][0]
     assert row.get("stale_excluded") is True
     assert row["rpnl"] == round(11.0 * (101.0 - 99.0), 2)
@@ -561,7 +701,9 @@ def test_attach_order_commissions_converts_via_fx():
     a = {"reason": "BROKER_RECONCILED order=1", "qty": 2.0}
     b = {"reason": "BROKER_RECONCILED order=2", "qty": 3.0}
     c = {"reason": "BROKER_RECONCILED order=3", "qty": 4.0}
-    n = srv._attach_order_commissions([a, b, c], omap, fx=lambda asset, t: 700.0 if asset == "BNB" else 1.0)
+    n = srv._attach_order_commissions(
+        [a, b, c], omap, fx=lambda asset, t: 700.0 if asset == "BNB" else 1.0
+    )
     assert n == 3
     assert a["comm_usd"] == round(0.00001 * 700.0, 6) and "comm" not in a
     assert b["comm_usd"] == 0.05
@@ -595,9 +737,33 @@ def test_order_fill_map_reads_cache_files():
 
     fp = srv.ROOT / "data" / "live_desk" / "broker_fill_cache" / "tst_COMMX.json"
     rows = [
-        {"symbol": "COMMX", "orderId": 77, "qty": "2.5", "price": "1.0", "commission": "0.000004", "commissionAsset": "BNB", "time": 1792800000000, "id": 1},
-        {"symbol": "COMMX", "orderId": 77, "qty": "7.5", "price": "1.0", "commission": "0.000011", "commissionAsset": "BNB", "time": 1792800001000, "id": 2},
-        {"symbol": "COMMX", "qty": "9.0", "price": "1.0", "time": 1792800002000, "id": 3},
+        {
+            "symbol": "COMMX",
+            "orderId": 77,
+            "qty": "2.5",
+            "price": "1.0",
+            "commission": "0.000004",
+            "commissionAsset": "BNB",
+            "time": 1792800000000,
+            "id": 1,
+        },
+        {
+            "symbol": "COMMX",
+            "orderId": 77,
+            "qty": "7.5",
+            "price": "1.0",
+            "commission": "0.000011",
+            "commissionAsset": "BNB",
+            "time": 1792800001000,
+            "id": 2,
+        },
+        {
+            "symbol": "COMMX",
+            "qty": "9.0",
+            "price": "1.0",
+            "time": 1792800002000,
+            "id": 3,
+        },
     ]
     try:
         fp.write_text(json.dumps(rows))
@@ -624,7 +790,9 @@ def test_twopass_releases_unpriced_close_burn():
     books1 = srv._build_broker_books(chains, fills)
     assert books1.get(("TP", "SHORT")) is None
     out1, _ = srv.realized_walk([phantom, close], broker_books=books1)
-    assert all(e.get("rpnl") is None for e in out1 if e.get("action") in ("CLOSE", "REDUCE"))
+    assert all(
+        e.get("rpnl") is None for e in out1 if e.get("action") in ("CLOSE", "REDUCE")
+    )
     release = ({srv._burn_key(phantom)}, set())
     books2 = srv._build_broker_books(chains, fills, release=release)
     assert books2.get(("TP", "SHORT")) == [[None, 10.0, 100.0]]
@@ -658,7 +826,9 @@ def test_twopass_veto_burns_never_release():
     veto["reason"] = "BROKER_SYNC_REJECTED_VALUE_CAP"
     close = _ev("2026-10-23T19:00:00+00:00", "TV", "SHORT", "CLOSE", 10.0, 95.0)
     chains = {("TV", "SHORT"): [veto, close]}
-    books = srv._build_broker_books(chains, fills, release=({srv._burn_key(veto)}, {("TV", "SHORT")}))
+    books = srv._build_broker_books(
+        chains, fills, release=({srv._burn_key(veto)}, {("TV", "SHORT")})
+    )
     assert books.get(("TV", "SHORT")) is None
 
 
@@ -677,9 +847,30 @@ def test_load_crypto_maps_sides_and_days():
 
     fp = srv.ROOT / "data" / "live_desk" / "broker_fill_cache" / "ang_TESTLOADUSDT.json"
     rows = [
-        {"symbol": "TESTLOADUSDT", "side": "BUY", "qty": "5", "price": "2.0", "time": 1792800000000, "id": 1},
-        {"symbol": "TESTLOADUSDT", "side": "SELL", "qty": "2", "price": "2.5", "time": 1792886400000, "id": 2},
-        {"symbol": "TESTLOADUSDT", "side": "", "qty": "9", "price": "9.0", "time": 1792886400000, "id": 3},
+        {
+            "symbol": "TESTLOADUSDT",
+            "side": "BUY",
+            "qty": "5",
+            "price": "2.0",
+            "time": 1792800000000,
+            "id": 1,
+        },
+        {
+            "symbol": "TESTLOADUSDT",
+            "side": "SELL",
+            "qty": "2",
+            "price": "2.5",
+            "time": 1792886400000,
+            "id": 2,
+        },
+        {
+            "symbol": "TESTLOADUSDT",
+            "side": "",
+            "qty": "9",
+            "price": "9.0",
+            "time": 1792886400000,
+            "id": 3,
+        },
     ]
     try:
         fp.write_text(json.dumps(rows))
@@ -695,14 +886,19 @@ def test_load_crypto_maps_sides_and_days():
 
 
 def test_clean_reason_swaps_placeholder_for_fill_qty():
-    assert srv._clean_reason("DAYTRADE_TARGET_g2.27_qty_999999", 11.0).endswith("_qty_11")
+    assert srv._clean_reason("DAYTRADE_TARGET_g2.27_qty_999999", 11.0).endswith(
+        "_qty_11"
+    )
     assert srv._clean_reason("X_qty_9999|Y", 0.5) == "X_qty_0.5|Y"
     assert srv._clean_reason("X_qty_9999_Y", 0.5) == "X_qty_9999_Y"
     # real threaded qtys untouched, even nine-ish ones matching the row
     assert srv._clean_reason("A_qty_1.5_B", 1.5) == "A_qty_1.5_B"
     assert srv._clean_reason("A_qty_9999_B", 9999.0) == "A_qty_9999_B"
     assert srv._clean_reason(None, 11.0) is None
-    assert srv._clean_reason("BROKER_SYNC_REJECTED_X_2555>2500", 6.0) == "BROKER_SYNC_REJECTED_X_2555>2500"
+    assert (
+        srv._clean_reason("BROKER_SYNC_REJECTED_X_2555>2500", 6.0)
+        == "BROKER_SYNC_REJECTED_X_2555>2500"
+    )
 
 
 def test_backfill_never_uses_future_fills():
@@ -711,7 +907,9 @@ def test_backfill_never_uses_future_fills():
 
     now = datetime.now(timezone.utc)
     fut_ep = (now + timedelta(days=180)).timestamp()
-    cl = _ev((now - timedelta(days=200)).isoformat(), "BF", "SHORT", "CLOSE", 10.0, 99.0)
+    cl = _ev(
+        (now - timedelta(days=200)).isoformat(), "BF", "SHORT", "CLOSE", 10.0, 99.0
+    )
     books = {("BF", "SHORT"): [[fut_ep, 10.0, 101.0]]}
     out, sm = srv.realized_walk([cl], broker_books=books)
     row = [e for e in out if e.get("action") == "CLOSE"][0]
@@ -720,22 +918,48 @@ def test_backfill_never_uses_future_fills():
     assert books[("BF", "SHORT")] == [[fut_ep, 10.0, 101.0]]
 
 
-def test_backfill_broker_lots_expire_like_journal():
+def test_backfill_broker_lots_outlive_journal_expiry():
     from datetime import timedelta
 
     now = datetime.now(timezone.utc)
     old_ep = (now - timedelta(days=42)).timestamp()
-    cl = _ev(now.isoformat(), "BF", "SHORT", "CLOSE", 10.0, 99.0)
+    old_cl = _ev(
+        (now - timedelta(days=41, hours=20)).isoformat(),
+        "BF",
+        "SHORT",
+        "CLOSE",
+        10.0,
+        99.0,
+    )
     books = {("BF", "SHORT"): [[old_ep, 10.0, 101.0]]}
-    out, sm = srv.realized_walk([cl], broker_books=books)
+    out, sm = srv.realized_walk([old_cl], broker_books=books)
     row = [e for e in out if e.get("action") == "CLOSE"][0]
-    assert row.get("rpnl") is None
-    assert sm["unknown"] == 1 and sm["broker_filled"] == 0
-    assert sm["lots_expired"] == 1
+    assert row.get("rpnl") == 20.0
+    assert sm["unknown"] == 0 and sm["broker_filled"] == 1
+    cl = _ev(now.isoformat(), "BF", "SHORT", "CLOSE", 10.0, 99.0)
+    out2, sm2 = srv.realized_walk([cl], broker_books=books)
+    row2 = [e for e in out2 if e.get("action") == "CLOSE"][0]
+    assert row2.get("rpnl") is None
+    assert sm2["unknown"] == 1 and sm2["broker_filled"] == 0
+    ancient_ep = (now - timedelta(days=121)).timestamp()
+    books3 = {("BF", "SHORT"): [[ancient_ep, 10.0, 101.0]]}
+    out3, sm3 = srv.realized_walk([cl], broker_books=books3)
+    row3 = [e for e in out3 if e.get("action") == "CLOSE"][0]
+    assert row3.get("rpnl") is None
+    assert sm3["unknown"] == 1 and sm3["broker_filled"] == 0
+    assert sm3["lots_expired"] == 1
 
 
 def test_match_never_burns_for_echo_opens():
-    st = {"ts": "2026-10-20T10:00:00+00:00", "symbol": "MM", "side": "LONG", "action": "OPEN", "qty": 10.0, "price": 50.0, "reason": "BROKER_SYNC_OPEN_FROM_FLAT_STUB"}
+    st = {
+        "ts": "2026-10-20T10:00:00+00:00",
+        "symbol": "MM",
+        "side": "LONG",
+        "action": "OPEN",
+        "qty": 10.0,
+        "price": 50.0,
+        "reason": "BROKER_SYNC_OPEN_FROM_FLAT_STUB",
+    }
     fills = {"MM": [[None, 10.0, 50.0, "2026-10-20"]]}
     books = srv._build_broker_books({("MM", "LONG"): [st]}, fills)
     assert books.get(("MM", "LONG"), []) == [[None, 10.0, 50.0]]
@@ -756,10 +980,40 @@ def test_backfill_never_touches_stale_excluded():
 
 
 def test_broker_match_burns_twins_and_quarantines_veto():
-    j1 = {"ts": "2026-10-20T10:00:00+00:00", "symbol": "MM", "side": "LONG", "action": "OPEN", "qty": 10.0, "price": 50.0, "reason": "STRAT"}
-    j2 = {"ts": "2026-10-20T11:00:00+00:00", "symbol": "MM", "side": "LONG", "action": "CLOSE", "qty": 10.0, "price": 52.0, "reason": "STRAT_X"}
-    v = {"ts": "2026-10-21T10:00:00+00:00", "symbol": "MM", "side": "LONG", "action": "OPEN", "qty": 5.0, "price": 51.0, "reason": "BROKER_SYNC_REJECTED_X"}
-    fills = {"MM": [[None, 10.0, 50.0, "2026-10-20"], [None, -10.0, 52.0, "2026-10-20"], [None, 5.0, 51.0, "2026-10-21"]]}
+    j1 = {
+        "ts": "2026-10-20T10:00:00+00:00",
+        "symbol": "MM",
+        "side": "LONG",
+        "action": "OPEN",
+        "qty": 10.0,
+        "price": 50.0,
+        "reason": "STRAT",
+    }
+    j2 = {
+        "ts": "2026-10-20T11:00:00+00:00",
+        "symbol": "MM",
+        "side": "LONG",
+        "action": "CLOSE",
+        "qty": 10.0,
+        "price": 52.0,
+        "reason": "STRAT_X",
+    }
+    v = {
+        "ts": "2026-10-21T10:00:00+00:00",
+        "symbol": "MM",
+        "side": "LONG",
+        "action": "OPEN",
+        "qty": 5.0,
+        "price": 51.0,
+        "reason": "BROKER_SYNC_REJECTED_X",
+    }
+    fills = {
+        "MM": [
+            [None, 10.0, 50.0, "2026-10-20"],
+            [None, -10.0, 52.0, "2026-10-20"],
+            [None, 5.0, 51.0, "2026-10-21"],
+        ]
+    }
     chains = {("MM", "LONG"): [j1, j2, v]}
     books = srv._build_broker_books(chains, fills)
     assert books.get(("MM", "LONG"), []) == []
@@ -796,7 +1050,10 @@ def test_collapse_keeps_strategy_pair():
 def test_crosscheck_direction_mapping():
     import importlib.util
 
-    spec = importlib.util.spec_from_file_location("trb_broker_crosscheck", str(ROOT / "tools" / "live_desk" / "trb_broker_crosscheck.py"))
+    spec = importlib.util.spec_from_file_location(
+        "trb_broker_crosscheck",
+        str(ROOT / "tools" / "live_desk" / "trb_broker_crosscheck.py"),
+    )
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     assert mod._jdir("OPEN", "LONG") == "BUY"
@@ -859,7 +1116,9 @@ def test_stale_close_shows_fresh_basis_number():
     new["reason"] = "WT_OPEN"
     close = _ev("2026-10-23T19:58:00+00:00", "FRESH", "SHORT", "CLOSE", 11.0, 99.60)
     close["reason"] = "DAYTRADE_TARGET"
-    out, s = srv.realized_walk([old, new, close], stale_basis_days=7, use_kline_px=True, expiry_days=60)
+    out, s = srv.realized_walk(
+        [old, new, close], stale_basis_days=7, use_kline_px=True, expiry_days=60
+    )
     row = [e for e in out if e.get("stale_excluded")][0]
     assert row["rpnl"] == round(11.0 * (101.85 - 99.55), 2)
     assert row["fresh_basis"] is True
@@ -871,7 +1130,9 @@ def test_stale_close_without_fresh_cover_shows_dash():
     old["reason"] = "DC_OPEN"
     close = _ev("2026-10-23T19:58:00+00:00", "NOFRESH", "SHORT", "CLOSE", 5.0, 99.0)
     close["reason"] = "DAYTRADE_TARGET"
-    out, s = srv.realized_walk([old, close], stale_basis_days=7, use_kline_px=True, expiry_days=60)
+    out, s = srv.realized_walk(
+        [old, close], stale_basis_days=7, use_kline_px=True, expiry_days=60
+    )
     row = [e for e in out if e.get("stale_excluded")][0]
     assert row["rpnl"] is None and s["pnl_total"] == 0.0
 
@@ -934,9 +1195,17 @@ def test_basisless_echo_twins_hidden():
     now = datetime.now(timezone.utc).replace(microsecond=0)
     iso = lambda dt: dt.isoformat()
     from datetime import timedelta
+
     a1 = _ev(iso(now - timedelta(minutes=10)), "G", "LONG", "REDUCE", 10.0, 200.0)
     a1["reason"] = "HTF_AGAINST_FORCE_CLOSE_wt1h-96"
-    a2 = _ev(iso(now - timedelta(minutes=10) + timedelta(seconds=2)), "G", "LONG", "REDUCE", 10.0, 200.0)
+    a2 = _ev(
+        iso(now - timedelta(minutes=10) + timedelta(seconds=2)),
+        "G",
+        "LONG",
+        "REDUCE",
+        10.0,
+        200.0,
+    )
     a2["reason"] = "HEDGE_FAILED_FALLBACK_CLOSE_mateX_fail"
     b1 = _ev(iso(now - timedelta(hours=5)), "H", "LONG", "REDUCE", 7.0, 50.0)
     b1["reason"] = "SOME_EXIT"
@@ -945,13 +1214,29 @@ def test_basisless_echo_twins_hidden():
     assert s["unknown_phantom"] == 2
     assert s["sync_hidden"] == 1
     assert s["pnl_total"] == 0.0
-    assert [e for e in out if e.get("reason", "").startswith("HEDGE_FAILED")][0].get("sync_hidden") is True
+    assert [e for e in out if e.get("reason", "").startswith("HEDGE_FAILED")][0].get(
+        "sync_hidden"
+    ) is True
 
 
 def test_intent_validation():
-    ok, err = srv.validate_intent({"account": "fin", "symbol": "dogeusdt", "side": "long", "qty": 5})
-    assert err is None and ok == {"acct": "fin", "symbol": "DOGEUSDT", "side": "LONG", "qty": 5.0}
-    for bad in ({"account": "zzz", "symbol": "DOGEUSDT", "side": "LONG", "qty": 5}, {"account": "fin", "symbol": "../x", "side": "LONG", "qty": 5}, {"account": "fin", "symbol": "DOGEUSDT", "side": "HOLD", "qty": 5}, {"account": "fin", "symbol": "DOGEUSDT", "side": "LONG", "qty": 0}, {"account": "fin", "symbol": "DOGEUSDT", "side": "LONG", "qty": -3}, []):
+    ok, err = srv.validate_intent(
+        {"account": "fin", "symbol": "dogeusdt", "side": "long", "qty": 5}
+    )
+    assert err is None and ok == {
+        "acct": "fin",
+        "symbol": "DOGEUSDT",
+        "side": "LONG",
+        "qty": 5.0,
+    }
+    for bad in (
+        {"account": "zzz", "symbol": "DOGEUSDT", "side": "LONG", "qty": 5},
+        {"account": "fin", "symbol": "../x", "side": "LONG", "qty": 5},
+        {"account": "fin", "symbol": "DOGEUSDT", "side": "HOLD", "qty": 5},
+        {"account": "fin", "symbol": "DOGEUSDT", "side": "LONG", "qty": 0},
+        {"account": "fin", "symbol": "DOGEUSDT", "side": "LONG", "qty": -3},
+        [],
+    ):
         _, err = srv.validate_intent(bad)
         assert err, bad
 
@@ -967,12 +1252,23 @@ def test_low_funds_boundary():
 
 def test_sum_windows_buckets_and_future_clamp():
     import time
+
     now = time.time()
     noon = now - (now % 86400) + 12 * 3600
     if noon > now:
         noon -= 86400
     now_s = noon + 3600
-    w, daily = srv.sum_windows([(noon - 100, 10.0), (noon - 86400 + 50, 3.0), (noon - 2 * 86400, -4.0), (noon - 10 * 86400, 7.0), (noon - 40 * 86400, 100.0), (noon + 12 * 3600, 5.0)], now_s)
+    w, daily = srv.sum_windows(
+        [
+            (noon - 100, 10.0),
+            (noon - 86400 + 50, 3.0),
+            (noon - 2 * 86400, -4.0),
+            (noon - 10 * 86400, 7.0),
+            (noon - 40 * 86400, 100.0),
+            (noon + 12 * 3600, 5.0),
+        ],
+        now_s,
+    )
     assert w["b_today"] == 15.0
     assert w["b_yest"] == 3.0
     assert w["b_7d"] == 14.0
@@ -986,6 +1282,7 @@ def test_sum_windows_buckets_and_future_clamp():
 
 def test_binance_sign_shape():
     import re
+
     s1 = srv._binance_sign("secretA", "timestamp=123&recvWindow=10000")
     s2 = srv._binance_sign("secretA", "timestamp=123&recvWindow=10000")
     s3 = srv._binance_sign("secretB", "timestamp=123&recvWindow=10000")

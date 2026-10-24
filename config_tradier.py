@@ -3901,6 +3901,9 @@ class TradierConfig:
     VEC_PENDING_TTL_S: float = 300.0  # USER 2026-10-24: VEC_PENDING_CONFIRM hold window in seconds, stocks (shared live_twins/vec_pending.WINDOW_S). Default 300.0 = current window, inert.
     VEC_PENDING_DEFER_NATIVE_ENABLED: bool = True  # USER 2026-10-24: hold stocks native fires for vec confirm. False restores the immediate native verdict. Default True = current behavior, inert.
     VEC_CONFIRM_REQUIRE_BOARD_ENABLED: bool = True  # USER 2026-10-24: stocks CONFIRM RELEASE consumes held natives on vec dictates (today's rule). False also releases on any vec-ordered reason. Default True = current behavior, inert.
+    VEC_DICTATE_ONLY_ENABLED: bool = True  # USER 2026-10-24 STEP1 (stocks): no script may trade anything the vec does not dictate. Same exemptions as crypto. Kill: False.
+    VEC_EXEC_BOARD_OPEN_ENABLED: bool = True  # USER 2026-10-24 STEP2 (stocks): backstop executes board-holds-live-flat OPENs. Default True = current behavior, inert.
+    VEC_EXEC_BOARD_CLOSE_ENABLED: bool = True  # USER 2026-10-24 STEP2 (stocks): backstop executes board-flat-live-holds CLOSEs. Default True = current behavior, inert.
     RULE_B_W_TREND_4H_PULLBACK_ENABLED: bool = False
     RULE_NAME_TAGGING_ENABLED: bool = True
     RZ_BASELINE_BOUNCE_SHORT_ENABLED: bool = False

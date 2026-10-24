@@ -37366,6 +37366,10 @@ class MultiAccountTradeManager:
             _vpg_ovr_on = bool(getattr(_ezm_base_config, "VEC_OVERRIDE_ENABLED", getattr(config, "VEC_OVERRIDE_ENABLED", True)))
             _vpg_brk_on = bool(getattr(_ezm_base_config, "VEC_OVERRIDE_BYPASS_CIRCUIT_BREAKER", getattr(config, "VEC_OVERRIDE_BYPASS_CIRCUIT_BREAKER", True)))
             _vl_tag, _vl_detail, _vpg_ovr_keep = _vpg_ovr.override_verdict(_vl_tag, _vl_detail, _vec_last_refuse, _vpg_ovr_on, _vpg_brk_on)
+            _vpg_exec_o = bool(getattr(_ezm_base_config, "VEC_EXEC_BOARD_OPEN_ENABLED", getattr(config, "VEC_EXEC_BOARD_OPEN_ENABLED", True)))
+            _vpg_exec_c = bool(getattr(_ezm_base_config, "VEC_EXEC_BOARD_CLOSE_ENABLED", getattr(config, "VEC_EXEC_BOARD_CLOSE_ENABLED", True)))
+            if _vl_tag == "VEC_LAST_OVERRIDE" and not _vpg_ovr.exec_board_ok(action, _vpg_exec_o, _vpg_exec_c):
+                _vl_tag, _vl_detail = "VEC_LAST_REFUSE", "VEC_EXEC_BOARD_WITHHELD"
         except Exception:
             pass
         if _vl_tag == "VEC_LAST_OVERRIDE":
@@ -37397,6 +37401,24 @@ class MultiAccountTradeManager:
                 pass
             return _vl_detail
         else:
+            try:
+                from vec_decisions import vec_parity_gates as _vpg_do
+                _vpg_do_on = bool(getattr(_ezm_base_config, "VEC_DICTATE_ONLY_ENABLED", getattr(config, "VEC_DICTATE_ONLY_ENABLED", True)))
+                if _vpg_do_on and not bool(_vl_dictated) and not _vpg_do.dictate_only_exempt(action, reason):
+                    logger.warning(f"⛔ [VEC_DICTATE_ONLY_BLOCK] {position_key} {action} reason={(reason or '')[:80]} — no vec dictate (USER 2026-10-24 STEP1: only ratio trims/augments survive)")
+                    if not os.environ.get("PYTEST_CURRENT_TEST"):
+                        _vlp_do = Path(getattr(config, "BASE_PATH", ".")) / "data" / "vector_disparity_queue.jsonl"
+                        _vlp_do.parent.mkdir(parents=True, exist_ok=True)
+                        with open(str(_vlp_do), "a") as _vlf_do:
+                            _vlf_do.write(json.dumps({"ts": time.time(), "venue": "crypto", "kind": "VEC_DICTATE_ONLY_BLOCK", "position_key": position_key, "action": action, "reason": str(reason)[:160], "fix": "STEP2: wire this vec path as a switch or confirm it stays dead"}) + "\n")
+                        _parity_breach_record(position_key, action, reason, "VEC_DICTATE_ONLY_BLOCK")
+                    try:
+                        _peg.release_claim(f"{(position_key or f'{account_key}:{symbol}_{position_side}')}|INC")
+                    except Exception:
+                        pass
+                    return "BLOCKED_NON_VEC_DICTATE"
+            except Exception:
+                pass
             try:
                 if not os.environ.get("PYTEST_CURRENT_TEST") and not _vl_dictated:
                     from live_twins import vec_driven as _vdf_last

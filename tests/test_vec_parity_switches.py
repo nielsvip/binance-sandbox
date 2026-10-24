@@ -26,6 +26,9 @@ SWITCHES = {
     "VEC_PENDING_DEFER_NATIVE_ENABLED": True,
     "VEC_HOLD_EXPIRY_FLATTEN_ENABLED": True,
     "VEC_CONFIRM_REQUIRE_BOARD_ENABLED": True,
+    "VEC_DICTATE_ONLY_ENABLED": True,
+    "VEC_EXEC_BOARD_OPEN_ENABLED": True,
+    "VEC_EXEC_BOARD_CLOSE_ENABLED": True,
 }
 
 TABS = {
@@ -39,6 +42,9 @@ TABS = {
     "VEC_PENDING_DEFER_NATIVE_ENABLED": "ENTRY_CONFIRMATION_GATES",
     "VEC_HOLD_EXPIRY_FLATTEN_ENABLED": "EXIT_STRUCTURAL",
     "VEC_CONFIRM_REQUIRE_BOARD_ENABLED": "GLOBAL_RISK_GATES",
+    "VEC_DICTATE_ONLY_ENABLED": "GLOBAL_RISK_GATES",
+    "VEC_EXEC_BOARD_OPEN_ENABLED": "ENTRY_CONFIRMATION_GATES",
+    "VEC_EXEC_BOARD_CLOSE_ENABLED": "EXIT_STRUCTURAL",
 }
 
 
@@ -113,6 +119,28 @@ def test_pending_confirm_and_ttl():
     assert G.confirm_release_ok(False, False, False) is False
 
 
+def test_dictate_only_exemptions():
+    assert G.dictate_only_exempt("REDUCE", "RATIO_CLOSE_SHORT_X") is True
+    assert G.dictate_only_exempt("AUGMENT", "RATIO_AUGMENT_X") is True
+    assert G.dictate_only_exempt("OPEN", "RATIO_OPEN_X") is False
+    assert G.dictate_only_exempt("CLOSE", "RATIO_CLOSE_X") is False
+    assert G.dictate_only_exempt("CLOSE", "FIXED_STOP_LONG_px") is False
+    assert G.dictate_only_exempt("CLOSE", "LIQUIDATION_PROTECT_X") is False
+    assert G.dictate_only_exempt("OPEN", "HEDGE_OPEN_X") is False
+    assert G.dictate_only_exempt("REDUCE", "OVERSIZE_TRIM_X") is False
+    assert G.dictate_only_exempt("OPEN", "VEC_DRIVEN_OPEN_PURE_BOARD_X") is True
+    assert G.dictate_only_exempt("CLOSE", "QUICK_REDUCE_X") is False
+
+
+def test_exec_board_ok():
+    assert G.exec_board_ok("OPEN", True, True) is True
+    assert G.exec_board_ok("OPEN", False, True) is False
+    assert G.exec_board_ok("AUGMENT", False, True) is False
+    assert G.exec_board_ok("CLOSE", True, False) is False
+    assert G.exec_board_ok("REDUCE", True, True) is True
+    assert G.exec_board_ok("CLOSE", True, True) is True
+
+
 def test_live_gates_wired():
     src = (ROOT / "ez_manage.py").read_text()
     assert "vec_parity_gates" in src
@@ -146,6 +174,9 @@ STOCKS_SWITCHES = {
     "VEC_PENDING_TTL_S": 300.0,
     "VEC_PENDING_DEFER_NATIVE_ENABLED": True,
     "VEC_CONFIRM_REQUIRE_BOARD_ENABLED": True,
+    "VEC_DICTATE_ONLY_ENABLED": True,
+    "VEC_EXEC_BOARD_OPEN_ENABLED": True,
+    "VEC_EXEC_BOARD_CLOSE_ENABLED": True,
 }
 
 CRYPTO_ONLY = (
