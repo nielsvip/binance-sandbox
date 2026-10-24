@@ -6,13 +6,6 @@
     "symbol": "GALAUSDT",
     "side": "SHORT"
   },
-  "men:ZILUSDT_SHORT": {
-    "orderId": "2000001537238518",
-    "stopPrice": 0.002269,
-    "entry_sig": "2026-10-24 10:17:34.604000+00:00",
-    "symbol": "ZILUSDT",
-    "side": "SHORT"
-  },
   "men:1000LUNCUSDT_SHORT": {
     "orderId": "2000001537241353",
     "stopPrice": 0.04756,
@@ -33,5 +26,19 @@
     "entry_sig": "2026-10-24 10:55:47.560000+00:00",
     "symbol": "GRASSUSDT",
     "side": "LONG"
+  },
+  "men:BLURUSDT_SHORT": {
+    "orderId": "2000001537324602",
+    "stopPrice": 0.00845,
+    "entry_sig": "2026-10-24 11:24:56.983000+00:00",
+    "symbol": "BLURUSDT",
+    "side": "SHORT"
+  },
+  "men:BBUSDT_SHORT": {
+    "orderId": "2000001537329608",
+    "stopPrice": 0.008335,
+    "entry_sig": "2026-10-24 11:28:19.594000+00:00",
+    "symbol": "BBUSDT",
+    "side": "SHORT"
   }
 }
