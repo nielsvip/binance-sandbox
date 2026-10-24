@@ -284,8 +284,16 @@ def check_gain(findings, hdr, rec, man, fname, tol):
             ok = any(abs(c - fname["gain"]) <= max(tol, 0.005) for c in cands)
             slot = "cents slot"
         else:
-            want = int(abs(fname["gain"])) * (-1 if fname["gain"] < 0 else 1)
-            ok = any(int(abs(c)) * (-1 if c < 0 else 1) == want for c in cands)
+            # 2026-10-24: filenames use v15_final_naming.fmt_int = round half away
+            # from zero (gain41 covers [40.5, 41.5)), not truncation — compare slots.
+            import math as _m
+
+            def _slot(v):
+                n = int(_m.floor(abs(float(v)) + 0.5))
+                return -n if (float(v) < 0 and n > 0) else n
+
+            want = _slot(fname["gain"])
+            ok = any(_slot(c) == want for c in cands)
             slot = "integer slot"
         if not ok:
             _add(findings, "ERROR", "GAIN_FILENAME_VS_LEDGER", f"filename says gain {fname['gain']:+g}% ({slot}) but the ledger sums to {cands[0]:+.2f}%", claimed=fname["gain"], recomputed=cands)

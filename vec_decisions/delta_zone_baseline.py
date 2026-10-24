@@ -76,6 +76,8 @@ def baseline_bounce_fires_scalar(ind, is_long, cfg_get, prev=None, update_prev=T
     empty on first call). Returns (fires, touched_tf)."""
     if prev is None:
         prev = {}
+    _cg = cfg_get
+    cfg_get = lambda k, d=None: _C(_cg, k, d)  # noqa: E731 -- board UPPER keys govern
     tfs = _tfs(cfg_get)
     tw = _tw(cfg_get)
     tf_bull = {tf: 0.0 for tf in tfs}
@@ -273,9 +275,15 @@ def baseline_bounce_mask(npz, n, is_long, cfg, _safe):
 
     def _cfg(k, d):
         try:
-            return getattr(cfg, k, d)
+            v = getattr(cfg, k.upper(), None)
         except Exception:
-            return d
+            v = None
+        if v is None:
+            try:
+                v = getattr(cfg, k, None)
+            except Exception:
+                v = None
+        return d if v is None else v
 
     try:
         tw_raw = _cfg("tf_weights", {}) or {}

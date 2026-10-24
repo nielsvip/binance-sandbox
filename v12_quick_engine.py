@@ -5544,6 +5544,8 @@ class QuickConfig:
         self.EXIT_TOP_FADE_FILTER_TF = "15m"
         self.BAR_PATTERNS_FILTER_TF = "OFF"  # 2026-10-24 venue-truth: tradier Config OFF
         self.BREAKOUT_RETEST_FILTER_TF = "OFF"  # 2026-10-24 venue-truth: tradier Config OFF
+        self.RZ_BASELINE_TOL = 0.05  # 2026-10-24 venue-truth: tradier registry 0.05
+        self.RZ_LTF_MICRO = "5m"  # 2026-10-24 venue-truth: stocks 5m lane (keep prior behavior)
         self.MIN_GAIN_TO_BUY_AGGRESSIVELY = 6.0
         self.MTF_ATR_TRAIL_FILTER_TF = "15m"
         self.MTF_DC_REJECT_EXIT_TF = "1h"
@@ -9279,11 +9281,11 @@ class QuickConfig:
     RVOL_SCORE_BOOST_PCT: float = 0.2
     RVOL_SCORE_BOOST_THRESHOLD: float = 2.0
     RZ_BASELINE_BOUNCE_SHORT_ENABLED: bool = False
-    RZ_BASELINE_TOL: float = 0.05
+    RZ_BASELINE_TOL: float = 0.03  # 2026-10-24 live-truth: crypto code default 0.03 (was 0.05; tradier overlay keeps 0.05)
     RZ_CASCADE_MIN_TF_ALIGN: int = 2
     RZ_DIV_BLOCK_MIN: int = 2
     RZ_LEGS_MIN: float = 20.0
-    RZ_LTF_MICRO: str = "5m"
+    RZ_LTF_MICRO: str = "3m"  # 2026-10-24 live-truth: wt_dc_delta default 3m (was 5m; tradier overlay keeps 5m)
     R_G10_HTF_DIV_GATE_ENABLED: bool = False
     R_G10_HTF_DIV_TFS: str = "4h,D"
     R_S1_WT_COMPOSITE_DELTA_THR: float = 50.0
@@ -11331,7 +11333,7 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
     # live wt_dc_delta.py zone signal (BASELINE_BOUNCE_LONG/SHORT) that the scoring worker opens as
     # QUICK_OPEN_STRONG_BUY/SELL (257+ live-only legs: live fires standalone, velocity twin never matched it).
     # Shared core vec_decisions/delta_zone_baseline.py (scalar+mask, presence-checked, no fabrication).
-    if bool(getattr(cfg, "rz_entry_enabled", True)):
+    if bool(getattr(cfg, "RZ_ENTRY_ENABLED", True)):
         try:
             import vec_decisions.delta_zone_baseline as _dzb
             blocks["B_DELTA_BASELINE_BOUNCE"] = _dzb.baseline_bounce_mask(npz, n, is_long, cfg, _safe)

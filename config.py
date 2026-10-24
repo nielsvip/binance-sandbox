@@ -7060,7 +7060,7 @@ class Config:
     HEDGE_PROTECT_QTY_PCT: float = 1.0
     SYNTHETIC_LOSER_THRESHOLD_PCT: float = -2.0
     SYNTHETIC_LOSER_MIN_AGE_MIN: float = 30.0
-    QUICK_OPEN_STRONG_VEC_ENABLED: bool = False
+    QUICK_OPEN_STRONG_VEC_ENABLED: bool = True  # 2026-10-24 truth: live fires QUICK ungated (key was dead-read); documents reality, zero behavior change
     QUICK_OPEN_STRONG_VEL_MIN: float = 1.0
     QUICK_OPEN_STRONG_K_LONG_MAX: float = 25.0
     QUICK_OPEN_STRONG_K_SHORT_MIN: float = 75.0

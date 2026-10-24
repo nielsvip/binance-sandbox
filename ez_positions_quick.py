@@ -18654,7 +18654,11 @@ class TrackerManager:
             composite_score -= 10
         composite_score = max(0, min(100, composite_score))
         signals["composite_signal_score"] = composite_score
-        if composite_score >= 80:
+        # 2026-10-24 USER "every path covered with a switch": the position-state STRONG
+        # promotion is the live QUICK path (vec twin: vec_decisions.quick_open_strong +
+        # v12 augment driver). Default True = today's behavior preserved exactly.
+        _qos_on = bool(getattr(config, "QUICK_OPEN_STRONG_VEC_ENABLED", True))
+        if composite_score >= 80 and _qos_on:
             signals["action"] = "STRONG_BUY" if is_long else "STRONG_SELL"
         elif composite_score >= 60:
             signals["action"] = "BUY" if is_long else "SELL"

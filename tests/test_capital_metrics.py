@@ -34,3 +34,19 @@ def test_partial_reduce_counts_toward_its_trade():
     ]
     m = capital_metrics(led)
     assert m["lifecycles"] == 1 and abs(m["flat_gain_pct"] - 1.5) < 1e-9  # $15 on $1000 peak
+
+
+def test_to_flat_reduce_with_zero_qty_still_counts_its_dollars():
+    # 2026-10-24 chart audit: REDUCE_TO_FLAT rows state the REMAINING size (0 = flat),
+    # not a tradeable size — their realised P&L (-$30) was silently dropped from $ gain.
+    led = [
+        {"type": "OPEN", "ts": 1, "bar": 0, "price": 10.0, "qty": 100.0},
+        {"type": "CLOSE", "ts": 2, "bar_exit": 2, "pnl_dollars": 50.0, "deployed": 1000.0, "bar_entry": 0},
+        {"type": "OPEN", "ts": 3, "bar": 4, "price": 20.0, "qty": 50.0},
+        {"type": "REDUCE", "ts": 4, "bar": 6, "price": 21.0, "qty": 0.0, "pnl_dollars": -30.0, "exit_reason": "REDUCE_TO_FLAT"},
+    ]
+    m = capital_metrics(led)
+    assert m["net_gain_dollars"] == 20.0
+    assert m["max_invested_dollars"] == 1000.0
+    assert m["lifecycles"] == 2
+    assert abs(m["flat_gain_pct"] - 2.0) < 1e-9  # +5% on trade 1, -3% on trade 2

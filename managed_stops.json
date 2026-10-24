@@ -1,58 +1,23 @@
 {
-  "ang:MANAUSDT_SHORT": {
-    "orderId": "4000001991769963",
-    "stopPrice": 0.08191,
-    "entry_sig": "2026-10-24 05:04:13.875000+00:00",
-    "symbol": "MANAUSDT",
+  "fin:STXUSDT_SHORT": {
+    "orderId": "3000002270724352",
+    "stopPrice": 0.3166,
+    "entry_sig": "2026-10-24 05:59:10.673000+00:00",
+    "symbol": "STXUSDT",
     "side": "SHORT"
   },
-  "ang:MINAUSDT_SHORT": {
-    "orderId": "4000001991869606",
-    "stopPrice": 0.06888,
-    "entry_sig": "2026-10-24 06:26:02.812000+00:00",
-    "symbol": "MINAUSDT",
+  "fin:KSMUSDT_SHORT": {
+    "orderId": "3000002270729770",
+    "stopPrice": 4.009,
+    "entry_sig": "2026-10-24 05:57:39.850000+00:00",
+    "symbol": "KSMUSDT",
     "side": "SHORT"
   },
-  "ang:ZENUSDT_SHORT": {
-    "orderId": "4000001991869852",
-    "stopPrice": 5.98,
-    "entry_sig": "2026-10-24 04:01:46.311521+00:00",
-    "symbol": "ZENUSDT",
-    "side": "SHORT"
-  },
-  "ang:ENJUSDT_SHORT": {
-    "orderId": "4000001991870690",
-    "stopPrice": 0.02629,
-    "entry_sig": "2026-10-24 06:27:00.154000+00:00",
-    "symbol": "ENJUSDT",
-    "side": "SHORT"
-  },
-  "ang:WUSDT_SHORT": {
-    "orderId": "4000001991871350",
-    "stopPrice": 0.013215,
-    "entry_sig": "2026-10-24 06:27:35.695000+00:00",
-    "symbol": "WUSDT",
-    "side": "SHORT"
-  },
-  "ang:AXSUSDT_SHORT": {
-    "orderId": "4000001991872129",
-    "stopPrice": 1.0828,
-    "entry_sig": "2026-10-24 05:11:17.631000+00:00",
-    "symbol": "AXSUSDT",
-    "side": "SHORT"
-  },
-  "ang:RAYSOLUSDT_LONG": {
-    "orderId": "4000001991875172",
-    "stopPrice": 1.8057,
-    "entry_sig": "2026-10-24 06:25:09.618000+00:00",
-    "symbol": "RAYSOLUSDT",
-    "side": "LONG"
-  },
-  "ang:1000FLOKIUSDT_SHORT": {
-    "orderId": "4000001991875624",
-    "stopPrice": 0.02399,
-    "entry_sig": "2026-03-09 12:48:10.749615+00:00",
-    "symbol": "1000FLOKIUSDT",
+  "fin:STRKUSDT_SHORT": {
+    "orderId": "3000002270730827",
+    "stopPrice": 0.0499,
+    "entry_sig": "2026-10-24 05:57:04.464000+00:00",
+    "symbol": "STRKUSDT",
     "side": "SHORT"
   }
 }
