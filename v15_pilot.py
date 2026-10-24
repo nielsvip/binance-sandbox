@@ -237,6 +237,25 @@ DEAD_VEC_SWITCHES = frozenset({
     "REGIME_RANGING_EXIT_GAIN_MIN", "REGIME_TRENDING_EXIT_GAIN_MIN",  # coverage-farm stubs only, both venues
     "GR_FILTER_VEC_MIN_TFS", "STDEV_SUPPRESS_EARLY_EXIT", "REVERSE_ON_EXIT_ENABLED",  # coverage-farm stubs only
     "WORKER_INSTANCE_ID", "WORKER_TOTAL_INSTANCES",  # scheduler ops identity, zero reads
+    # 🔴 2026-10-24 NO-DEAD-PATHS AUDIT batch 2 (USER "no more DEAD_VEC_SWITCHES ... fix by adding").
+    # Same bar as batch 1: zero vec body reads outside dead ranges + twin callers checked +
+    # live consumers checked (farm/telemetry-only reads are not consumers).
+    # Fully dead (vec _batch1-dead-code or nothing; live farm-stubs/telemetry only):
+    "AUGMENTATION_COOLDOWN_MINUTES",  # NAME SPLIT orphan: real knob is AUGMENTATION_COOLDOWN_SECONDS
+    "BTC_DIVERGENCE_EXIT_AGAINST", "BTC_GUARANTEED_REENTRY_MAX_AGE_BARS",
+    "BTC_GUARANTEED_REENTRY_MIN_GAP_BARS", "BTC_HARD_BLOCK_OTHER_ACCOUNTS",
+    "BTC_RZ_WT_DC_MULTIFACTOR", "DAEMON_REENTRY_STALE_EXIT_ENABLED",
+    "HTF_BULL_ENTRY_FILTER_ENABLED", "HTF_BULL_ENTRY_FILTER_TF",
+    "WT_DC_DIRECT_DC_TF", "WT_DC_DIRECT_TF_ENTRY", "WT_DC_DETAILED_TF",
+    "ABLATION_DISABLE_SCALP_GUARD", "EXIT_STDEV_BREAKOUT_FAIL_ENABLED",  # telemetry (_emit_inf_impulse) only, no decision
+    "INTRADAY_SESSION_FORCE_EXIT_UTC", "OBLIGATORY_REENTRY_SCORE_TIER3",
+    "QUICK_REENTRY_60MIN_MIN_PCT", "V8_ENTRY_ENGINE_DC_ENABLED", "V8_ENTRY_ENGINE_WT_ENABLED",
+    # Live-runs-unmeasured (real live consumers the vector never models):
+    "CAT_SIDE_DEFAULTS_ENABLED", "RATIO_REBALANCE_ENABLED",
+    "DC_MOMENT_STRONG_THRESHOLD",  # live score bonus/penalty, no vec twin
+    "LIVE_ENTRY_ENGINE_DC_ENABLED", "LIVE_ENTRY_ENGINE_HTF_ENABLED",
+    "LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED", "LIVE_ENTRY_ENGINE_STOCH_ENABLED",
+    "LIVE_ENTRY_ENGINE_WT_ENABLED", "RULE_B_5M_EXIT_ENABLED",  # NPZ has no 5m data — structurally unwirable
     # Live-infra / execution plumbing (real GLOBAL live reads; single-symbol NPZs cannot model them — board can never move them):
     "EXECUTE_NOW_MAX_MARK_AGE_S", "EZ_MANAGE_THROTTLER_RATE", "OPEN_RATE_BREAKER_ENABLED", "OPEN_RATE_MAX",
     # Live-runs-unmeasured strategy (real live consumers; vector never models them — vectorize first, tune after):

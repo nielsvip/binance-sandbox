@@ -565,3 +565,14 @@ def test_executor_doc_format_and_dict_target(tmp_path, monkeypatch):
     assert VD.normalize_target(tgt) is True and VD.normalize_target({"side": "flat"}) is False
     _run_loop(tm, monkeypatch, cycles=1)
     assert len(calls) == 1 and calls[0]["action"] == "OPEN"
+
+
+def test_board_converge_open_bypasses_board_entry_block(monkeypatch, caplog):
+    """USER 2026-10-24 vector-authority: a vec-dictated force-open carries the board's own decision, so the
+    live-set-vs-board entry block must record-and-continue (named for the late VEC_LAST backstop), never
+    hard-refuse before it. The synthetic key has NO_LATEST_BOARD, which exercises the block."""
+    _mode_live(monkeypatch)
+    with caplog.at_level("WARNING"):
+        res = _run_exec(action="OPEN", reason="BOARD_CONVERGE_OPEN vec=VEC_DRIVEN_TEST")
+    assert not str(res).startswith("BLOCKED_BOARD_ENTRY"), res
+    assert "BOARD_ENTRY_BLOCK" in caplog.text

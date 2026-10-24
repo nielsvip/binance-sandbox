@@ -33212,7 +33212,10 @@ class MultiAccountTradeManager:
             except Exception as _vd_e:
                 logger.warning(f"[VEC_DRIVEN] {position_key}: gate error {_vd_e} (no exemption)")
         # parity-loop-crypto 2026-10-06: in-script vec twin orders (PARITY_VEC_EXACT_MODE) share the vec-decided exemption set
-        if not _vd_exempt and _vec_exact_reason_ok(reason):
+        # USER 2026-10-24 vector-authority: BOARD_CONVERGE_/PURE_BOARD force-opens carry the board's own decision too —
+        # without this every native entry veto below hard-refuses them before the late VEC_LAST backstop. Same
+        # predicate the backstop uses (_parity_vec_order), so exemption and enforcement cannot drift.
+        if not _vd_exempt and (_vec_exact_reason_ok(reason) or _parity_vec_order(reason)):
             _vd_exempt = True
             logger.info(f"🧬 [VEC_EXACT_EXEC] {position_key} action={action} qty={quantity} reason={(reason or '')[:80]} — vec-decided (in-script twin), discretionary gates exempt")
         # ─── 365D CONFIRMATION GATE (2026-09-28 USER MANDATE — fail-closed, no bypasses) ───
@@ -34243,6 +34246,9 @@ class MultiAccountTradeManager:
                             _zp_allow = False
                         if _zp_allow:
                             logger.warning(f"🧮 [ZERO_PASS_ALLOW] {position_key}: {_bg_why} — calculated sym_side trades (USER 2026-10-21 zero-pass goes completely; risk carried by size). action={action} reason={(reason or '')[:70]}")
+                        elif _parity_vec_order(reason):
+                            _vec_last_bypassed.append("BOARD_ENTRY_BLOCK")
+                            logger.warning(f"🧮 [BOARD_ENTRY_VEC_CONTINUE] {position_key}: {_bg_why} — vec-dictated force-open carries the board's own decision; block recorded for VEC_LAST, order continues (USER 2026-10-24 vector-authority). action={action} reason={(reason or '')[:70]}")
                         else:
                             logger.critical(f"🧮 [BOARD_ENTRY_BLOCK] {position_key}: {_bg_why} — ENTRY refused (exits unaffected). action={action} reason={(reason or '')[:70]}")
                             return f"BLOCKED_BOARD_ENTRY_{str(_bg_why)[:40]}"

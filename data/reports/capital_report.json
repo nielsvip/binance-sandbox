@@ -1,78 +1,67 @@
 {
- "generated_at": "2026-10-24 03:29 UTC",
- "total_capital_usd": 74.86,
+ "generated_at": "2026-10-24 03:45 UTC",
+ "total_capital_usd": 77.26,
  "tier_capital": {
   "A": 0.0,
-  "B": 15.95,
-  "C": 58.91
+  "B": 27.44,
+  "C": 49.82
  },
  "tier_count": {
   "A": 0,
   "B": 2,
-  "C": 3
+  "C": 2
  },
  "winners": [],
  "losers": [
-  "flz:HYPEUSDT_SHORT",
-  "flz:SOLUSDC_SHORT",
-  "flz:BTCDOMUSDT_LONG"
+  "fin:FLUXUSDT_SHORT",
+  "fin:ACEUSDT_SHORT",
+  "fin:RIFUSDT_SHORT"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "flz:BTCDOMUSDT_LONG",
-   "symbol": "BTCDOMUSDT",
-   "account": "flz",
-   "value_usd": 44.53,
-   "gain_pct": -0.104,
-   "tier": "C",
-   "perf_mult": 0.47,
-   "amt": 0.008,
-   "mark": 5565.8
-  },
-  {
-   "pk": "flz:BNBUSDC_LONG",
-   "symbol": "BNBUSDC",
-   "account": "flz",
-   "value_usd": 14.79,
-   "gain_pct": 0.366,
+   "pk": "fin:FLUXUSDT_SHORT",
+   "symbol": "FLUXUSDT",
+   "account": "fin",
+   "value_usd": 25.47,
+   "gain_pct": -2.145,
    "tier": "B",
-   "perf_mult": 0.67,
-   "amt": 0.02,
-   "mark": 739.63446435
+   "perf_mult": 4.52,
+   "amt": 379.0,
+   "mark": 0.06721171
   },
   {
-   "pk": "flz:SOLUSDC_SHORT",
-   "symbol": "SOLUSDC",
-   "account": "flz",
-   "value_usd": 8.2,
-   "gain_pct": -0.196,
+   "pk": "fin:RIFUSDT_SHORT",
+   "symbol": "RIFUSDT",
+   "account": "fin",
+   "value_usd": 24.92,
+   "gain_pct": 0.099,
    "tier": "C",
-   "perf_mult": 0.18,
-   "amt": 0.08,
-   "mark": 102.50707299
+   "perf_mult": 0.21,
+   "amt": 344.0,
+   "mark": 0.072455
   },
   {
-   "pk": "flz:HYPEUSDT_SHORT",
-   "symbol": "HYPEUSDT",
-   "account": "flz",
-   "value_usd": 6.18,
-   "gain_pct": -0.566,
+   "pk": "fin:ACEUSDT_SHORT",
+   "symbol": "ACEUSDT",
+   "account": "fin",
+   "value_usd": 24.9,
+   "gain_pct": -1.143,
    "tier": "C",
-   "perf_mult": 0.32,
-   "amt": 0.08,
-   "mark": 77.24029167
+   "perf_mult": 0.13,
+   "amt": 169.39,
+   "mark": 0.14700103
   },
   {
-   "pk": "flz:ZECUSDC_SHORT",
-   "symbol": "ZECUSDC",
-   "account": "flz",
-   "value_usd": 1.16,
-   "gain_pct": 5.505,
+   "pk": "fin:MAGICUSDT_SHORT",
+   "symbol": "MAGICUSDT",
+   "account": "fin",
+   "value_usd": 1.97,
+   "gain_pct": 2.524,
    "tier": "B",
-   "perf_mult": 1.28,
-   "amt": 0.001,
-   "mark": 1163.13
+   "perf_mult": 0.63,
+   "amt": 22.7,
+   "mark": 0.08663633
   }
  ]
 }
