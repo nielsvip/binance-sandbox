@@ -1,11 +1,11 @@
 {
- "generated_utc": "2026-10-24T09:12:11.099655+00:00",
+ "generated_utc": "2026-10-24T10:12:08.023790+00:00",
  "days": 1.0,
  "totals": {
   "exit_promises": 84,
   "exit_broken_no_delivery": 77,
-  "entry_promises": 34,
-  "entry_broken_no_delivery": 34,
+  "entry_promises": 36,
+  "entry_broken_no_delivery": 36,
   "exit_skipped_inflight": 105,
   "exit_kept_late": 5,
   "exit_kept_in_bar": 2
@@ -173,11 +173,15 @@
   },
   "men:BLURUSDT_SHORT": {
    "exit_promises": 5,
-   "exit_broken_no_delivery": 5
+   "exit_broken_no_delivery": 5,
+   "entry_promises": 1,
+   "entry_broken_no_delivery": 1
   },
   "flz:BNBUSDC_SHORT": {
    "exit_promises": 1,
-   "exit_broken_no_delivery": 1
+   "exit_broken_no_delivery": 1,
+   "entry_promises": 1,
+   "entry_broken_no_delivery": 1
   },
   "ang:RLCUSDT_SHORT": {
    "exit_promises": 1,
@@ -1358,6 +1362,26 @@
    "late_min": null,
    "action": "CLOSE",
    "reason": "EXIT_VELOCITY_WT against-long g1.21%",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "flz",
+   "sym_side": "BNBUSDC_SHORT",
+   "kind": "entry",
+   "bar": "10-24 09:30",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "HARDCODED_RALLY_REENTRY",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "men",
+   "sym_side": "BLURUSDT_SHORT",
+   "kind": "entry",
+   "bar": "10-24 09:30",
+   "late_min": null,
+   "action": "AUGMENT",
+   "reason": "AUGMENT_AT_LOSS_LH",
    "outcome": "NO_DELIVERY"
   }
  ],
