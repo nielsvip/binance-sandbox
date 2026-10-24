@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-24T06:20:03Z",
+ "generated_utc": "2026-10-24T06:40:06Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
@@ -40,7 +40,7 @@
    "measured": {
     "built_at": "2026-10-24T04:50:51.624098+00:00",
     "n": 523,
-    "age_at_open_s": 5352
+    "age_at_open_s": 6555
    },
    "detail": "built 2026-10-24T04:50:51.624098+00:00 n=523"
   },
@@ -62,9 +62,9 @@
    "critical": true,
    "measured": {
     "selection_n": 523,
-    "exact": 134,
-    "benign_divergence_only": 335,
-    "material_divergence": 53,
+    "exact": 133,
+    "benign_divergence_only": 334,
+    "material_divergence": 55,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -148,6 +148,19 @@
       ]
      },
      {
+      "sym_side": "RENDERUSDT_SHORT",
+      "published_at": "2026-10-14T07:52:35Z",
+      "material": 54,
+      "sample": [
+       "AUGMENT_INTO_REENTRY_ENABLED",
+       "BB_BOUNCE_ENTRY_TF",
+       "DAYTRADE_DC_TARGET_TF",
+       "DC_BREACH_REDUCE_FILTER_TF",
+       "DC_BREAKOUT_TF_EXPANDED",
+       "DC_HARD_STOP_TF"
+      ]
+     },
+     {
       "sym_side": "QBTS_SHORT",
       "published_at": "2026-10-21T09:52:12Z",
       "material": 53,
@@ -185,23 +198,10 @@
        "DC_EDGE_SIZING_MIN_MULT",
        "DC_HARD_STOP_1H_ENABLED"
       ]
-     },
-     {
-      "sym_side": "1000FLOKIUSDT_LONG",
-      "published_at": "2026-10-13T03:39:04Z",
-      "material": 41,
-      "sample": [
-       "ALL_TF_AGAINST_BLOCK_ENTRY_ENABLED",
-       "ATR_ADAPTIVE_STOP_ENABLED",
-       "BB_BOUNCE_ENTRY_TF",
-       "DAYTRADE_DC_TARGET_TF",
-       "DC_BREAKOUT_TF_EXPANDED",
-       "ENTRY_DC_TF"
-      ]
      }
     ]
    },
-   "detail": "134 exact, 335 benign-only, 53 with material divergence, 1 with no live row"
+   "detail": "133 exact, 334 benign-only, 55 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
@@ -211,7 +211,7 @@
     "symbols": 330,
     "stale_over_90min": 2,
     "stale_pct": 0.6,
-    "median_age_min": 35.1,
+    "median_age_min": 0.0,
     "sample": [
      "DUSKUSDT",
      "ONEUSDT"
