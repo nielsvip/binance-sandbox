@@ -1,37 +1,53 @@
 {
- "at": "2026-10-24T13:26:01Z",
+ "at": "2026-10-24T14:26:00Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
  "hosts": {
   "s1": {
-   "published_n": 0,
-   "per_hour": 0.0,
-   "improved_vs_best_start": 0,
-   "mean_uplift_vs_best_start": null,
-   "median_uplift": null,
-   "chained_from_previous_published": 0,
+   "published_n": 1,
+   "per_hour": 0.5,
+   "improved_vs_best_start": 1,
+   "mean_uplift_vs_best_start": 9.7509,
+   "median_uplift": 9.7509,
+   "chained_from_previous_published": 1,
    "no_floor_recorded": 0,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 0.0/h < 12.0/h (one per 5 min)"
+    "throughput 0.5/h < 12.0/h (one per 5 min)"
    ],
-   "rows": [],
+   "rows": [
+    {
+     "symside": "DOTUSDT_SHORT",
+     "published_at": 1792851166.0344672,
+     "final_gain": 69.3643910081653,
+     "best_start_gain": 59.61344698488602,
+     "best_start_chosen": "history_0",
+     "best_start_candidates": 9,
+     "baseline_gain": 59.61344698488602,
+     "npz_ts_last": 1792844100.0,
+     "npz_md5": "7063694323ca44e041b235fdb3d2db75",
+     "npz_bars": 40837,
+     "bh": 4.497708172134841,
+     "verdict": null,
+     "npz_age_h_at_publish": 1.96
+    }
+   ],
    "error": null
   },
   "s2": {
-   "published_n": 5,
-   "per_hour": 2.5,
-   "improved_vs_best_start": 5,
-   "mean_uplift_vs_best_start": 21.0591,
+   "published_n": 7,
+   "per_hour": 3.5,
+   "improved_vs_best_start": 7,
+   "mean_uplift_vs_best_start": 23.3747,
    "median_uplift": 17.218,
-   "chained_from_previous_published": 3,
+   "chained_from_previous_published": 5,
    "no_floor_recorded": 0,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 2.5/h < 12.0/h (one per 5 min)"
+    "throughput 3.5/h < 12.0/h (one per 5 min)"
    ],
    "rows": [
     {
@@ -63,6 +79,36 @@
      "bh": 29.784195577734717,
      "verdict": null,
      "npz_age_h_at_publish": 1.22
+    },
+    {
+     "symside": "ENJUSDT_SHORT",
+     "published_at": 1792849108.5235956,
+     "final_gain": 84.98563157546857,
+     "best_start_gain": 37.36104203241972,
+     "best_start_chosen": "history_3",
+     "best_start_candidates": 10,
+     "baseline_gain": 37.36104203241972,
+     "npz_ts_last": 1792844100.0,
+     "npz_md5": "63fb23f2959538563744d4612dbb0c42",
+     "npz_bars": 40837,
+     "bh": 5.239854392014077,
+     "verdict": null,
+     "npz_age_h_at_publish": 1.39
+    },
+    {
+     "symside": "GRAMUSDT_SHORT",
+     "published_at": 1792851272.6534243,
+     "final_gain": 57.14490470630231,
+     "best_start_gain": 46.44241381070538,
+     "best_start_chosen": "history_3",
+     "best_start_candidates": 8,
+     "baseline_gain": 46.44241381070538,
+     "npz_ts_last": 1792848600.0,
+     "npz_md5": "81d91c9c104a7c0f3e38306a0a49412f",
+     "npz_bars": 10967,
+     "bh": 11.024179899872678,
+     "verdict": null,
+     "npz_age_h_at_publish": 0.74
     },
     {
      "symside": "HYPEUSDT_LONG",
