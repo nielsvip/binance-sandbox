@@ -39,3 +39,13 @@ def test_backstop_records_carry_fix_trail():
     assert '"kind": "VEC_LAST_OVERRIDE"' in src and '"kind": "VEC_LAST_REFUSE"' in src
     assert '"vec_path"' in src and "wire live to emit this vec path" in src
     assert "_queue_retrace" in src
+
+
+def test_vec_unreachable_paths_fail_open_for_vec_only():
+    """USER 2026-10-24 unreachable-real-fix (stocks mirror of the crypto proceed path): unreadable broker
+    holdings and unverifiable preflight state proceed for vec-dictated orders; natives keep every refusal
+    (mismatch gate, distress fail-fast, evidence-code preflight)."""
+    po = inspect.getsource(TR.TradierTradeManager.place_order)
+    assert "[TR_TRUTH_UNVERIFIED_PROCEED]" in po and '"POSITIONS_BROKER_UNREACHABLE"' in po
+    inner = inspect.getsource(TR.TradierTradeManager._execute_now_inner)
+    assert "[TR_VEC_PREFLIGHT_FAILOPEN]" in inner and "_tr_parity_vec_order(reason)" in inner

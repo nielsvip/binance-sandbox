@@ -46709,7 +46709,15 @@ class TradierTradeManager:
                     "errors": {"error": [f"Opposing position held in API for {symbol}"]}
                 }
             # 2026-10-06 USER POSITIONS_TRUTH: this call's API holdings = broker pre-order qty (no extra request); local != broker refuses entries
-            if api_positions is None:
+            # USER 2026-10-24 unreachable-real-fix (stocks mirror of the crypto proceed path): a missing holdings
+            # read is a READING failure, never execution evidence. A vec-dictated order proceeds unverified — the
+            # broker attests reality at place-time (a truly dead broker returns an honest error dict). Natives keep
+            # the refusal. The mismatch gate below is skipped for vec orders: with no broker qty there are no two
+            # quantities to compare, and post-trade confirmation reconciles.
+            _tr_truth_unknown = api_positions is None
+            if _tr_truth_unknown and _tr_parity_vec_order(reason):
+                logger.critical(f"⚠️ [TR_TRUTH_UNVERIFIED_PROCEED] {account_key}:{symbol}_{position_side}: broker holdings unreadable — vec-dictated {action} proceeds unverified (no refusal)")
+            elif _tr_truth_unknown:
                 return {"errors": {"error": ["POSITIONS_BROKER_UNREACHABLE"]}}
             _pt_pm = getattr(
                 getattr(self, "trade_manager", None), "position_manager", None
@@ -46719,22 +46727,24 @@ class TradierTradeManager:
                 if (_pt_pm is not None and position_side)
                 else None
             )
-            _pt_blk = _ptruth.tradier_pre_order(
-                account_key,
-                symbol,
-                position_side or "LONG",
-                action,
-                current_qty,
-                (
-                    abs(float(getattr(_pt_lp, "positionAmt", 0) or 0))
-                    if _pt_lp is not None
-                    else None
-                ),
-                (getattr(_pt_pm, "written_at", None) or {}).get(account_key),
-                reason,
-                config,
-                logger,
-            )
+            _pt_blk = None
+            if not (_tr_truth_unknown and _tr_parity_vec_order(reason)):
+                _pt_blk = _ptruth.tradier_pre_order(
+                    account_key,
+                    symbol,
+                    position_side or "LONG",
+                    action,
+                    current_qty,
+                    (
+                        abs(float(getattr(_pt_lp, "positionAmt", 0) or 0))
+                        if _pt_lp is not None
+                        else None
+                    ),
+                    (getattr(_pt_pm, "written_at", None) or {}).get(account_key),
+                    reason,
+                    config,
+                    logger,
+                )
             if _pt_blk:
                 return {"errors": {"error": [_pt_blk]}}
 
@@ -52215,6 +52225,17 @@ class TradierTradeManager:
                 except Exception:
                     pass
                 logger.critical(f"🧯 [EXIT_PREFLIGHT_BYPASS] {position_key}: preflight {_odg_dec.code} — FULL close {action} proceeds to the wire exit path (reason={(reason or '')[:60]})")
+            elif not _odg_dec.allowed and _tr_parity_vec_order(reason) and (("UNREACHABLE" in str(_odg_dec.code or "")) or ("TIMEOUT" in str(_odg_dec.code or ""))):
+                # USER 2026-10-24 unreachable-real-fix (stocks mirror of the crypto VEC_PREFLIGHT_FAILOPEN):
+                # unverifiable broker state is the lie class — no evidence of a live order — so a vec-dictated
+                # order attempts anyway; the wire guard re-checks at submit. The distress note stays: natives
+                # must still fail fast while reads fail (10-13 vitals-first). Evidence codes
+                # (OPEN_ORDER_EXISTS/LAST_ORDER_*) still refuse.
+                try:
+                    _note_broker_distress()
+                except Exception:
+                    pass
+                logger.critical(f"🛡️ [TR_VEC_PREFLIGHT_FAILOPEN] {position_key}: preflight {_odg_dec.code} is unverifiable broker state — vec-dictated {action} attempts anyway (wire guard re-checks at submit)")
             elif not _odg_dec.allowed:
                 if lock_acquired and self.redis_manager:
                     await self.redis_manager.delete(exec_lock_key)

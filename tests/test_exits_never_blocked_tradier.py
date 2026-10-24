@@ -239,7 +239,9 @@ def test_wire_entry_unchanged_legacy_path(tmp_path):
 
 
 # ───────────────────────── source-level: exempted mechanical guards ─────────────────────────
-def _block(anchor, span=1600):
+def _block(anchor, span=3600):
+    # USER 2026-10-24 unreachable-real-fix: span raised 1600->3600 — exemption branches upstream of a refusal
+    # keep growing (vec fail-open), and the window must cover the guard chain, not just its tail.
     i = SRC.index(anchor)
     return SRC[max(0, i - span):i + 200]
 
