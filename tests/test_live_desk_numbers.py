@@ -504,6 +504,82 @@ def test_paper_rows_never_burn_fills():
     assert books.get(("PB", "SHORT")) == [[1, 10.0, 100.0]]
 
 
+def test_intraday_first_close_eats_same_day_lots():
+    # EGLD 10-22 shape: an older AUG must not feed a close that has
+    # same-day basis; the orphan otherwise prints next-day phantom P&L.
+    # (Old lot is 23h fresh so only tiering — not expiry — can explain it.)
+    old = _ev("2026-10-22T20:00:00+00:00", "ID", "LONG", "OPEN", 10.0, 90.0)
+    old["reason"] = "STRAT_OLD"
+    new = _ev("2026-10-23T06:00:00+00:00", "ID", "LONG", "OPEN", 10.0, 100.0)
+    new["reason"] = "STRAT_NEW"
+    c = _ev("2026-10-23T19:00:00+00:00", "ID", "LONG", "CLOSE", 10.0, 110.0)
+    out, sm = srv.realized_walk([old, new, c])
+    row = [e for e in out if e.get("action") == "CLOSE"][0]
+    assert row["rpnl"] == 100.0
+    assert [b["reason"] for b in row["basis"]] == ["STRAT_NEW"]
+    assert sm["unknown"] == 0
+
+
+def test_intraday_first_partial_spills_to_older_tier():
+    old = _ev("2026-10-22T20:00:00+00:00", "ID", "LONG", "OPEN", 10.0, 90.0)
+    old["reason"] = "STRAT_OLD"
+    new = _ev("2026-10-23T06:00:00+00:00", "ID", "LONG", "OPEN", 10.0, 100.0)
+    new["reason"] = "STRAT_NEW"
+    c = _ev("2026-10-23T19:00:00+00:00", "ID", "LONG", "CLOSE", 15.0, 110.0)
+    out, sm = srv.realized_walk([old, new, c])
+    row = [e for e in out if e.get("action") == "CLOSE"][0]
+    assert row["rpnl"] == round(10.0 * 10.0 + 5.0 * 20.0, 2)
+    assert [b["reason"] for b in row["basis"]] == ["STRAT_NEW", "STRAT_OLD"]
+
+
+def test_attach_order_commissions_exact_multiset_only():
+    omap = {
+        "1": [
+            {"q": 4.6, "comm": "0.000001", "asset": "BNB"},
+            {"q": 11.0, "comm": "0.000003", "asset": "BNB"},
+        ],
+        "2": [{"q": 5.0, "comm": "0.000002", "asset": "BNB"}],
+    }
+    a = {"reason": "BROKER_RECONCILED order=1", "qty": 11.0}
+    b = {"reason": "BROKER_RECONCILED order=1", "qty": 4.6}
+    c = {"reason": "BROKER_RECONCILED order=2", "qty": 9.9}  # qty mismatch: skip
+    d = {"reason": "STRAT", "qty": 1.0}  # no order: skip
+    e = {"reason": "BROKER_RECONCILED order=9", "qty": 1.0}  # unknown order: skip
+    n = srv._attach_order_commissions([a, b, c, d, e], omap)
+    assert n == 2
+    assert (a["comm"], a["comm_asset"]) == ("0.000003", "BNB")
+    assert (b["comm"], b["comm_asset"]) == ("0.000001", "BNB")
+    assert "comm" not in c and "comm" not in d and "comm" not in e
+
+
+def test_attach_order_commissions_empty_map_safe():
+    assert srv._attach_order_commissions([{"reason": "X", "qty": 1.0}], {}) == 0
+    assert srv._attach_order_commissions([], {"1": []}) == 0
+
+
+def test_order_fill_map_reads_cache_files():
+    import json
+
+    fp = srv.ROOT / "data" / "live_desk" / "broker_fill_cache" / "tst_COMMX.json"
+    rows = [
+        {"symbol": "COMMX", "orderId": 77, "qty": "2.5", "price": "1.0", "commission": "0.000004", "commissionAsset": "BNB", "time": 1792800000000, "id": 1},
+        {"symbol": "COMMX", "orderId": 77, "qty": "7.5", "price": "1.0", "commission": "0.000011", "commissionAsset": "BNB", "time": 1792800001000, "id": 2},
+        {"symbol": "COMMX", "qty": "9.0", "price": "1.0", "time": 1792800002000, "id": 3},
+    ]
+    try:
+        fp.write_text(json.dumps(rows))
+        srv._cache.pop("ordercomm:tst", None)
+        m = srv._order_fill_map("tst")
+        assert sorted(f["q"] for f in m["77"]) == [2.5, 7.5]
+        assert m["77"][0]["comm"] == "0.000004" and m["77"][0]["asset"] == "BNB"
+    finally:
+        try:
+            fp.unlink()
+        except OSError:
+            pass
+        srv._cache.pop("ordercomm:tst", None)
+
+
 def test_36h_lots_expire_per_max_hold_ruling():
     o = _ev("2026-10-20T10:00:00+00:00", "ZX", "LONG", "OPEN", 10.0, 50.0)
     o["reason"] = "STRAT"

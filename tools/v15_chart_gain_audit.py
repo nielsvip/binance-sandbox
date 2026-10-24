@@ -280,18 +280,21 @@ def check_gain(findings, hdr, rec, man, fname, tol):
         if best > tol:
             _add(findings, "ERROR", f"GAIN_{label.upper()}_VS_LEDGER", f"{label} prints gain {claimed:+.4f}% but its own entries/exits sum to {cands[0]:+.4f}% (event-peak) / {cands[-1]:+.4f}% (sweep-peak) — drift {best:.4f}", claimed=claimed, recomputed=cands)
     if fname and fname.get("gain") is not None:
-        if fname.get("fmt") == "old":
+        # 2026-10-24: filenames use v15_final_naming.fmt_int = round half away
+        # from zero (gain41 covers [40.5, 41.5)), not truncation — compare slots.
+        # Old-format names carry no decimals either (measured: zero of them use
+        # the p-separator), so they are integer slots too; the cents comparison
+        # below only applies if a fractional name ever appears.
+        import math as _m
+
+        def _slot(v):
+            n = int(_m.floor(abs(float(v)) + 0.5))
+            return -n if (float(v) < 0 and n > 0) else n
+
+        if fname.get("fmt") == "old" and float(fname["gain"]) != int(float(fname["gain"])):
             ok = any(abs(c - fname["gain"]) <= max(tol, 0.005) for c in cands)
             slot = "cents slot"
         else:
-            # 2026-10-24: filenames use v15_final_naming.fmt_int = round half away
-            # from zero (gain41 covers [40.5, 41.5)), not truncation — compare slots.
-            import math as _m
-
-            def _slot(v):
-                n = int(_m.floor(abs(float(v)) + 0.5))
-                return -n if (float(v) < 0 and n > 0) else n
-
             want = _slot(fname["gain"])
             ok = any(_slot(c) == want for c in cands)
             slot = "integer slot"

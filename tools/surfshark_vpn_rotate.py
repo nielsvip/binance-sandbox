@@ -7,7 +7,8 @@ LOG_PATH = os.path.expanduser("~/logs/vpn_rotate.log")
 BAN_FILES = [os.path.join(BASE, "data", "ez_klines_ban_state.json"), os.path.join(BASE, "data", "klines_canonical_ban.json")]
 FAPI = "https://fapi.binance.com"
 COOLDOWN_S = 120
-FAIL_SKIP_S = 1800
+FAIL_SKIP_S = 300
+RESTORE_TRY_S = 600
 def log(m):
     line = time.strftime("%Y-%m-%d %H:%M:%S") + " " + m
     print(line, flush=True)
@@ -219,7 +220,7 @@ def wait_state(names, want, old_ip, timeout=75):
                 return True
         time.sleep(3)
     return False
-def do_rotate(target=None):
+def do_rotate(target=None, force_tunnel=False):
     wl, state = whitelist(), load_state()
     quit_app()
     time.sleep(2)
@@ -229,7 +230,7 @@ def do_rotate(target=None):
     cur_name = cur[0]["name"] if cur else None
     old_ip = egress_ip()
     log(f"rotate from={cur_name} egress={old_ip}")
-    if not target and at_home(net_cfg()) and old_ip not in (net_cfg().get("home_ips") or []):
+    if not target and not force_tunnel and at_home(net_cfg()) and old_ip not in (net_cfg().get("home_ips") or []):
         log("home network — naked home IP is preferred, trying it first")
         if try_naked(wl, state, old_ip):
             return True
@@ -246,15 +247,15 @@ def do_rotate(target=None):
         name = cand["name"]
         srv, _ = slot_server(name)
         log(f"trying slot {name} server={srv}")
-        if cur_name:
-            sh(["scutil", "--nc", "stop", cur_name])
-            wait_state([cur_name], "Disconnected", old_ip, timeout=25)
         sh(["scutil", "--nc", "start", name])
         if not wait_state([name], "Connected", old_ip):
             log(f"slot {name} did not connect with new IP");
             state["slot_fail"][name] = time.time()
             save_state(state)
+            sh(["scutil", "--nc", "stop", name])
             continue
+        if cur_name and cur_name != name:
+            sh(["scutil", "--nc", "stop", cur_name])
         ip = egress_ip()
         probe = binance_probe()
         state["slot_exit"][name] = {"ip": ip, "server": srv, "ts": time.time()}
@@ -262,11 +263,13 @@ def do_rotate(target=None):
             log(f"slot {name} egress={ip} NOT in Binance whitelist — skipping (orders would -2015)")
             state["slot_fail"][name] = time.time()
             save_state(state)
+            sh(["scutil", "--nc", "stop", name])
             continue
         if probe.get("ping") == 418:
             log(f"slot {name} egress={ip} Binance still 418 — skipping")
             state["slot_fail"][name] = time.time()
             save_state(state)
+            sh(["scutil", "--nc", "stop", name])
             continue
         state["last_rotate_ts"] = time.time()
         state["rotations"] = state.get("rotations", 0) + 1
@@ -333,6 +336,13 @@ def cmd_watch(interval=15):
             if rc != 0 and time.time() - load_state().get("last_rotate_ts", 0) >= COOLDOWN_S:
                 log(f"watch: check rc={rc} -> rotating")
                 do_rotate()
+            if rc == 0 and not [s for s in slots() if s["status"] == "Connected"]:
+                st = load_state()
+                if time.time() - st.get("last_restore_try", 0) >= RESTORE_TRY_S:
+                    log("watch: link healthy but no tunnel — restoring always-on tunnel")
+                    st["last_restore_try"] = time.time()
+                    save_state(st)
+                    do_rotate(force_tunnel=True)
             time.sleep(interval)
         except Exception as e:
             log(f"watch error: {e}")
