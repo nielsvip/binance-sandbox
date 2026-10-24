@@ -28,8 +28,8 @@ def test_account_colors():
 
 
 def test_mismatch_constants_faint():
-    assert lth.MISMATCH_VEC_MPL == ("#eeeeee", 0.50)
-    assert lth.MISMATCH_LIVE_MPL == ("#9e9e9e", 0.85)
+    assert lth.MISMATCH_VEC_MPL == ("#bdbdbd", 0.90)
+    assert lth.MISMATCH_LIVE_MPL == ("#757575", 0.90)
 
 
 def test_strips_draw_on_datetime_axis():
@@ -94,14 +94,16 @@ def test_draw_mismatch_lines_both_colors():
     base = datetime(2026, 10, 20, tzinfo=timezone.utc)
     sig = [base.replace(hour=10), base.replace(hour=14)]
     fills = [base.replace(hour=10, minute=10)]
+    lo0, hi0 = ax.get_ylim()
     nv, nl = lth.draw_mismatch_lines(ax, base.replace(hour=9), base.replace(hour=16),
                                      sig, [], fills, [], lambda t: t.timestamp())
     assert (nv, nl) == (1, 0)
     vecs = [l for l in ax.get_children() if isinstance(l, Line2D)
-            and l.get_color() == lth.MISMATCH_VEC_MPL[0]]
+            and l.get_marker() == "^" and l.get_color() == lth.MISMATCH_VEC_MPL[0]]
     assert len(vecs) == 1
     assert abs(vecs[0].get_alpha() - lth.MISMATCH_VEC_MPL[1]) < 1e-9
-    assert lth.MISMATCH_VEC_MPL[0] == "#eeeeee" and lth.MISMATCH_LIVE_MPL[0] == "#9e9e9e"
+    assert vecs[0].get_ydata()[0] < lo0
+    assert lth.MISMATCH_VEC_MPL[0] == "#bdbdbd" and lth.MISMATCH_LIVE_MPL[0] == "#757575"
     plt.close(fig)
 
 
@@ -190,12 +192,14 @@ def test_draw_mismatch_lines_live_side():
     from matplotlib.lines import Line2D
     fig, ax = plt.subplots()
     base = datetime(2026, 10, 20, tzinfo=timezone.utc)
+    lo0, hi0 = ax.get_ylim()
     nv2, nl2 = lth.draw_mismatch_lines(ax, base.replace(hour=9), base.replace(hour=16),
                                        [], [], [], [base.replace(hour=12)], lambda t: t.timestamp())
     assert (nv2, nl2) == (0, 1)
     lives = [l for l in ax.get_children() if isinstance(l, Line2D)
-             and l.get_color() == lth.MISMATCH_LIVE_MPL[0]]
+             and l.get_marker() == "v" and l.get_color() == lth.MISMATCH_LIVE_MPL[0]]
     assert len(lives) == 1
+    assert lives[0].get_ydata()[0] > hi0
     plt.close(fig)
 
 

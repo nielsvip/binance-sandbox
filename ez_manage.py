@@ -13857,6 +13857,8 @@ class SnapshotLoader:
     def __init__(self, trade_manager, data_dir):
         self.trade_manager = trade_manager
         self.data_dir = Path(data_dir)
+        self._glob_sig = None
+        self._glob_target = None
         self.last_loaded_file = None
         self._shutdown = False
         if not hasattr(self.trade_manager, "indicators_snapshot"):
@@ -13866,18 +13868,31 @@ class SnapshotLoader:
         """Starts the background loop."""
         asyncio.create_task(self._loader_loop())
 
+    def _pick_target_file(self):
+        """2026-10-24 loop-stall fix: the data-dir glob+sort ran on the event loop every 2s (pathlib stat storms in stall dumps). A directory mtime (ns) changes on every create/replace/delete, so an unchanged listing reuses the previous pick byte-for-byte, including the static fallback and the None case."""
+        try:
+            sig = self.data_dir.stat().st_mtime_ns
+        except Exception:
+            sig = None
+        if sig is not None and sig == self._glob_sig:
+            return self._glob_target
+        candidates = list(self.data_dir.glob("market_data_*.json"))
+        target_file = None
+        if candidates:
+            candidates.sort(key=lambda p: p.name, reverse=True)
+            target_file = candidates[0]
+        else:
+            static = self.data_dir / "latest_market_data.json"
+            if static.exists():
+                target_file = static
+        self._glob_sig = sig
+        self._glob_target = target_file
+        return target_file
+
     async def _loader_loop(self):
         while not self._shutdown:
             try:
-                candidates = list(self.data_dir.glob("market_data_*.json"))
-                target_file = None
-                if candidates:
-                    candidates.sort(key=lambda p: p.name, reverse=True)
-                    target_file = candidates[0]
-                else:
-                    static = self.data_dir / "latest_market_data.json"
-                    if static.exists():
-                        target_file = static
+                target_file = self._pick_target_file()
                 if target_file and target_file != self.last_loaded_file:
                     async with aiofiles.open(target_file, "rb") as f:
                         content = await f.read()
@@ -13889,6 +13904,15 @@ class SnapshotLoader:
             except Exception as e:
                 print(f"❌ Snapshot Load Error: {e}")
             await asyncio.sleep(2)
+
+
+def _reconnect_delay_s(fails: int, base: float = 1.0, cap: float = 30.0) -> float:
+    """2026-10-24 loop-stall fix: a dead/slow shared-memory server made _maintain_connection_loop hammer blocking Manager IPC on the trading loop with a flat 1s retry (100+ loop-stall dumps with the loop in _recv). Backs off 1s doubling to cap. Pure; pinned by tests/test_loopstall_ipc_glob.py."""
+    try:
+        n = max(0, int(fails))
+    except Exception:
+        n = 0
+    return min(float(cap), float(base) * (2.0 ** min(n, 5)))
 
 
 class IndicatorsBridge:
@@ -13910,12 +13934,18 @@ class IndicatorsBridge:
 
         from ez_share_ind import get_shared_memory_client
 
+        _fails = 0
         while not self._shutdown:
             try:
                 if self.shared_proxy is None:
                     c = await asyncio.to_thread(get_shared_memory_client)  # 2026-10-14
                     if c:
-                        self.shared_proxy = c.get_store()
+                        self.shared_proxy = await asyncio.to_thread(c.get_store)  # 2026-10-24: sync Manager IPC (_recv) blocked the event loop in 100+ stall dumps
+                    if self.shared_proxy is None:
+                        _fails += 1
+                        await asyncio.sleep(_reconnect_delay_s(_fails))
+                        continue
+                    _fails = 0
                 data_found = False
                 if self.shared_proxy:
                     try:
@@ -13939,6 +13969,10 @@ class IndicatorsBridge:
                 #                     data_found = True
                 #     except Exception: pass
             except Exception:
+                if self.shared_proxy is None:  # 2026-10-24: connect raising (not just None) backed off too
+                    _fails += 1
+                    await asyncio.sleep(_reconnect_delay_s(_fails))
+                    continue
                 await asyncio.sleep(1)
             await asyncio.sleep(
                 1.0

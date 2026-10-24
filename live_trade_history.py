@@ -19,8 +19,8 @@ TRB_BUY_COLOR = "#00e676"
 TRB_SELL_COLOR = "#ff1744"
 VEC_ONLY_COLOR = "rgba(248,113,113,0.55)"
 LIVE_ONLY_COLOR = "rgba(74,222,128,0.55)"
-MISMATCH_VEC_MPL = ("#eeeeee", 0.50)
-MISMATCH_LIVE_MPL = ("#9e9e9e", 0.85)
+MISMATCH_VEC_MPL = ("#bdbdbd", 0.90)
+MISMATCH_LIVE_MPL = ("#757575", 0.90)
 MISMATCH_LW = 1.0
 WIN_COLOR = "#00e676"
 LOSS_COLOR = "#ff1744"
@@ -67,8 +67,13 @@ def draw_outcome_lines(ax_plot, x_left_ts, x_right_ts, events, x_of):
     return n_win, n_loss
 
 
+MISMATCH_MARKER_SIZE = 7
+
+
 def draw_mismatch_lines(ax_plot, x_left_ts, x_right_ts, sig_buy, sig_sell, fill_buy, fill_sell, x_of, tol_min=30.0):
-    """Faint discrepancy vlines: reddish = signal without fill, greenish = fill without signal.
+    """Discrepancy markers outside the panel, no vertical lines: grey UP
+    arrow tucked under the box = vector signal with no live fill, grey DOWN
+    arrow above the box = live fill with no vector signal.
 
     x_of maps an event timestamp to the axes x-coordinate (plot_idx on stocks,
     raw timestamps on crypto). Returns (n_vec_only, n_live_only).
@@ -80,22 +85,32 @@ def draw_mismatch_lines(ax_plot, x_left_ts, x_right_ts, sig_buy, sig_sell, fill_
     ms_v, ms_l = greedy_match(ss, fs, tol_s)
     vc, va = MISMATCH_VEC_MPL
     lc, la = MISMATCH_LIVE_MPL
+    try:
+        _lo, _hi = ax_plot.get_ylim()
+        _span = _hi - _lo if _hi > _lo else 1.0
+    except Exception:
+        _lo, _span = 0.0, 1.0
+    y_below, y_above = _lo - 0.015 * _span, _lo + 1.015 * _span
     n_vec = n_live = 0
     for i, t in enumerate(sb):
         if i not in mb_v and x_left_ts <= t <= x_right_ts:
-            ax_plot.axvline(x=x_of(t), color=vc, alpha=va, lw=MISMATCH_LW, zorder=6)
+            ax_plot.plot(x_of(t), y_below, marker="^", color=vc, alpha=va,
+                         ms=MISMATCH_MARKER_SIZE, linestyle="None", zorder=9, clip_on=False)
             n_vec += 1
     for i, t in enumerate(ss):
         if i not in ms_v and x_left_ts <= t <= x_right_ts:
-            ax_plot.axvline(x=x_of(t), color=vc, alpha=va, lw=MISMATCH_LW, zorder=6)
+            ax_plot.plot(x_of(t), y_below, marker="^", color=vc, alpha=va,
+                         ms=MISMATCH_MARKER_SIZE, linestyle="None", zorder=9, clip_on=False)
             n_vec += 1
     for j, t in enumerate(fb):
         if j not in mb_l and x_left_ts <= t <= x_right_ts:
-            ax_plot.axvline(x=x_of(t), color=lc, alpha=la, lw=MISMATCH_LW, zorder=6)
+            ax_plot.plot(x_of(t), y_above, marker="v", color=lc, alpha=la,
+                         ms=MISMATCH_MARKER_SIZE, linestyle="None", zorder=9, clip_on=False)
             n_live += 1
     for j, t in enumerate(fs):
         if j not in ms_l and x_left_ts <= t <= x_right_ts:
-            ax_plot.axvline(x=x_of(t), color=lc, alpha=la, lw=MISMATCH_LW, zorder=6)
+            ax_plot.plot(x_of(t), y_above, marker="v", color=lc, alpha=la,
+                         ms=MISMATCH_MARKER_SIZE, linestyle="None", zorder=9, clip_on=False)
             n_live += 1
     return n_vec, n_live
 
