@@ -1301,3 +1301,61 @@ def test_write_intent_ttl_and_audit(repo):
     assert json.loads(p.read_text())["symbol"] == "DOGEUSDT"
     audit = (repo / "data" / "manual_orders" / "audit.jsonl").read_text()
     assert intent["uuid"] in audit and "STAGED" in audit
+
+
+def _paper(ts, sym, side, qty, price):
+    e = _ev(ts, sym, side, "REDUCE", qty, price)
+    e["reason"] = "VEC_DRIVEN_CLOSE_PURE_BOARD_BOARD_FLAT_LIVE_HOLDS_X"
+    return e
+
+
+def test_paper_twin_exact_match_prices():
+    day = "2026-10-24"
+    prow = _paper(day + "T02:21:00+00:00", "MSK", "SHORT", 65.0, 0.3955)
+    twins = {("MSK", day, "BUY"): [[100.0, 65.0, 0.3955, 2.24, "1"]]}
+    out, sm = srv.realized_walk([prow], broker_twins=twins)
+    row = [e for e in out if e.get("action") == "REDUCE"][0]
+    assert row.get("paper") is True
+    assert row.get("paper_twin") is True
+    assert row.get("rpnl") == 2.24
+    assert sm["paper_twinned"] == 1 and sm["paper_twinned_pnl"] == 2.24
+
+
+def test_paper_twin_priced_rows_claim_first():
+    day = "2026-10-24"
+    live = _ev(day + "T01:00:00+00:00", "MSK", "SHORT", "OPEN", 65.0, 0.39)
+    live["reason"] = "STRAT"
+    close = _ev(day + "T02:00:00+00:00", "MSK", "SHORT", "REDUCE", 65.0, 0.3955)
+    close["reason"] = "STRAT_X"
+    prow = _paper(day + "T03:00:00+00:00", "MSK", "SHORT", 65.0, 0.3955)
+    twins = {("MSK", day, "BUY"): [[100.0, 65.0, 0.3955, 2.24, "1"]]}
+    out, sm = srv.realized_walk([live, close, prow], broker_twins=twins)
+    prow_out = [e for e in out if e.get("paper")]
+    assert len(prow_out) == 1 and prow_out[0].get("rpnl") is None
+    assert sm["paper_twinned"] == 0
+
+
+def test_paper_twin_first_of_dupes_only():
+    day = "2026-10-24"
+    p1 = _paper(day + "T02:21:00+00:00", "MSK", "SHORT", 65.0, 0.3955)
+    p2 = _paper(day + "T03:21:00+00:00", "MSK", "SHORT", 65.0, 0.3955)
+    twins = {("MSK", day, "BUY"): [[100.0, 65.0, 0.3955, 2.24, "1"]]}
+    out, sm = srv.realized_walk([p1, p2], broker_twins=twins)
+    rpnls = sorted(
+        (e.get("rpnl") is None, e.get("rpnl"))
+        for e in out
+        if e.get("action") == "REDUCE"
+    )
+    assert rpnls == [(False, 2.24), (True, None)]
+    assert sm["paper_twinned"] == 1
+
+
+def test_paper_twin_never_cross_day_or_veto():
+    day = "2026-10-24"
+    prow = _paper(day + "T02:21:00+00:00", "MSK", "SHORT", 65.0, 0.3955)
+    veto = _paper(day + "T03:21:00+00:00", "MSK", "SHORT", 65.0, 0.3955)
+    veto["reason"] = "BROKER_SYNC_REJECTED_X"
+    twins = {("MSK", "2026-10-23", "BUY"): [[100.0, 65.0, 0.3955, 9.99, "1"]]}
+    out, sm = srv.realized_walk([prow, veto], broker_twins=twins)
+    assert all(e.get("rpnl") is None for e in out if e.get("action") == "REDUCE")
+    assert sm["paper_twinned"] == 0
