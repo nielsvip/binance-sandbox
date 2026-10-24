@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-24T12:20:04Z",
+ "generated_utc": "2026-10-24T12:40:10Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
@@ -15,7 +15,7 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "filled_today": 210,
+    "filled_today": 234,
     "filled_before_open": 0
    },
    "detail": "no board was filled before the open"
@@ -40,7 +40,7 @@
    "measured": {
     "built_at": "2026-10-24T11:21:15.208140+00:00",
     "n": 523,
-    "age_at_open_s": 3529
+    "age_at_open_s": 4735
    },
    "detail": "built 2026-10-24T11:21:15.208140+00:00 n=523"
   },
@@ -208,16 +208,22 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "symbols": 330,
-    "stale_over_90min": 2,
-    "stale_pct": 0.6,
-    "median_age_min": 20.1,
+    "symbols": 329,
+    "stale_over_90min": 13,
+    "stale_pct": 4.0,
+    "median_age_min": 0.0,
     "sample": [
-     "DUSKUSDT",
-     "ONEUSDT"
+     "ARKMUSDT",
+     "ARMUSDT",
+     "ASTERUSDT",
+     "AWEUSDT",
+     "AXSUSDT",
+     "BEUSDT",
+     "BTCUSDC",
+     "BXUSDT"
     ]
    },
-   "detail": "2/330 symbols past the live 90-min entry gate (0.6%)"
+   "detail": "13/329 symbols past the live 90-min entry gate (4.0%)"
   },
   {
    "name": "s1_sets_synced",
