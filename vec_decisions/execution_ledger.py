@@ -60,10 +60,12 @@ def classify_history_type(action, is_full_close=False):
     double-log the same fill. Everything else accepted at the funnel gets a type.
     """
     act = str(action or "").upper()
+    # Service-owned first: anything the positions service persists as an
+    # AUGMENT/REDUCE fill (incl. UAG/HAIKU ladder families) must not be re-logged.
+    if "AUGMENT" in act or "REDUCE" in act or "UAG" in act or "HAIKU" in act:
+        return None
     if "REENTRY" in act:
         return "REENTRY"
-    if "AUGMENT" in act or "REDUCE" in act:
-        return None
     if "OPEN" in act and "CLOSE" not in act:
         return "OPEN"
     if bool(is_full_close) or "CLOSE" in act:

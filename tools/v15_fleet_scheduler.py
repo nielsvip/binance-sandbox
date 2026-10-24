@@ -4675,6 +4675,8 @@ def tick(args, cfg, now):
                     launched_keys.add(a["key"])
                 if any(a.get("floor") for a in acts):
                     floor_launched += 1
+                    log["floor_fills"] = log.get("floor_fills", {})
+                    log["floor_fills"][h["name"]] = log["floor_fills"].get(h["name"], 0) + 1
             else:
                 pd = s.get("pdir") or cfg.get("fallback_pdir")
                 if not pd:
