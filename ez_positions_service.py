@@ -7467,18 +7467,21 @@ class PositionService:
         if self.failed_price_counts[symbol] >= max_failures:
             logger.error(f"Exceeded max failures for {symbol}. Closing position.")
 
-    def deteriorate_reentry_amounts(self, position: Position, progress: float, current_price: float):
+    def deteriorate_reentry_amounts(self, position: Position, progress: float, current_price: float, position_key: Optional[str] = None):
         if not current_price or current_price <= 0:
             return
         try :
-            position_key = None
-            for account_key, account_positions in self.positions_by_account.items():
-                for pk, pos in account_positions.items():
-                    if pos == position:
-                        position_key = pk
+            if position_key is None:
+                # 2026-10-24 loop-stall fix: the O(all positions) identity scan parked the event loop (188 stall
+                # dumps). Both live callers already hold this position's key, so they pass it; the scan stays only
+                # as the fallback for unknown callers. Pinned by tests/test_loopstall_filecache.py.
+                for account_key, account_positions in self.positions_by_account.items():
+                    for pk, pos in account_positions.items():
+                        if pos == position:
+                            position_key = pk
+                            break
+                    if position_key:
                         break
-                if position_key:
-                    break
             if not position_key or position_key not in self.reentry_data:
                 return
             reentry_data = self.reentry_data[position_key]
@@ -7555,7 +7558,7 @@ class PositionService:
                                     ref_price = safe_fetch_float(getattr(position, "mark_price", 0.0), 0.0) or safe_fetch_float(getattr(position, "entry_price", 0.0), 0.0) or safe_fetch_float(getattr(position, "last_reduction_price", 0.0), 0.0)
                                     if ref_price > 0:
                                         before_amount = reentry_data_pos.get("reentry_amount", 0.0)
-                                        self.deteriorate_reentry_amounts(position, progress, ref_price)
+                                        self.deteriorate_reentry_amounts(position, progress, ref_price, position_key)  # 2026-10-24: key known here, skip O(n) scan
                                         after_amount = self.reentry_data.get(position_key, {}).get("reentry_amount", before_amount)
                                         if abs(after_amount - before_amount) > 1e-6:
                                             updated = True
@@ -9431,7 +9434,7 @@ class PositionService:
             else:
                 progress = 1.0
             try :
-                self.deteriorate_reentry_amounts(position, progress, current_price)
+                self.deteriorate_reentry_amounts(position, progress, current_price, position_key)  # 2026-10-24: key known here, skip O(n) scan
             except Exception as exc:
                 logger.debug(f"[reentry] deterioration failed for {position_key}: {exc}")
 

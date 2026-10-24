@@ -2034,7 +2034,36 @@ async def _get_freshest_kline(symbol: str, interval: str, redis_sources=None):
     elif not best_df.empty:
         logger.debug(f"[Freshest][{symbol}_{interval}] Using Redis data: {len(best_df)} bars from {best_source} (no file data)")
     return best_df, best_source, best_ts
-    
+
+
+_JSON_FILE_CACHE: Dict[str, Tuple[Tuple[int, int], Any]] = {}
+_JSON_FILE_CACHE_MAX = 24
+
+
+def _cached_json_file(path: Any) -> Any:
+    """2026-10-24 loop-stall fix: get_current_price re-read + re-parsed up to 14 JSON files per symbol per call (180+ loop-stall dumps inside raw_decode). Content keyed by (mtime_ns, size) returns identical values with zero re-parse while files are unchanged; missing/unparseable files raise like the inline code did. Callers must treat the result READ-ONLY (shared object) — every current caller only .get/indexes. Pinned by tests/test_loopstall_filecache.py."""
+    key = str(path)
+    try:
+        st = os.stat(key)
+        sig = (st.st_mtime_ns, st.st_size)
+    except Exception:
+        sig = None
+    if sig is not None:
+        hit = _JSON_FILE_CACHE.get(key)
+        if hit is not None and hit[0] == sig:
+            return hit[1]
+    with open(key, "r") as fh:
+        data = json.load(fh)
+    if sig is not None:
+        if len(_JSON_FILE_CACHE) >= _JSON_FILE_CACHE_MAX:
+            try:
+                _JSON_FILE_CACHE.pop(next(iter(_JSON_FILE_CACHE)))
+            except Exception:
+                pass
+        _JSON_FILE_CACHE[key] = (sig, data)
+    return data
+
+
 async def get_current_price(symbol: str) -> Tuple[Optional[float], Optional[datetime]]:
     """Robust multi-source price fetcher: Memory -> Redis -> Disk -> Indicators -> Positions -> Klines."""
     now_utc = datetime.now(timezone.utc); best_price, best_timestamp = None, None
@@ -2060,28 +2089,25 @@ async def get_current_price(symbol: str) -> Tuple[Optional[float], Optional[date
     for cache_file in [config.PRICE_CACHE_FILE, getattr(config, "PRICE_CACHE_FILE_2", None), config.PRICE_CACHE_FILE_3]:
         if cache_file and Path(cache_file).exists():
             try:
-                async with FILE_READ_SEMAPHORE:
-                    async with aiofiles.open(cache_file, "r") as f: cache_data = json.loads(await f.read())
-                    if symbol in cache_data:
-                        entry = cache_data[symbol]; p = float(entry.get("price", 0)) if isinstance(entry, dict) else float(entry)
-                        ts = (isoparse(entry.get("timestamp")) if isinstance(entry, dict) and entry.get("timestamp") else None)
-                        if ts and ts.tzinfo is None: ts = ts.replace(tzinfo=timezone.utc)
-                        if p > 0:
-                            if ts and (now_utc - ts).total_seconds() < 2.0: return p, ts
-                            if not best_timestamp or (ts and ts > best_timestamp): best_price, best_timestamp = p, ts
+                cache_data = _cached_json_file(cache_file)  # 2026-10-24: mtime-keyed, identical values
+                if symbol in cache_data:
+                    entry = cache_data[symbol]; p = float(entry.get("price", 0)) if isinstance(entry, dict) else float(entry)
+                    ts = (isoparse(entry.get("timestamp")) if isinstance(entry, dict) and entry.get("timestamp") else None)
+                    if ts and ts.tzinfo is None: ts = ts.replace(tzinfo=timezone.utc)
+                    if p > 0:
+                        if ts and (now_utc - ts).total_seconds() < 2.0: return p, ts
+                        if not best_timestamp or (ts and ts > best_timestamp): best_price, best_timestamp = p, ts
             except Exception: continue
     try:
         data_dir = getattr(config, 'DATA_DIR', Path('data')); market_data_files = sorted(list(Path(data_dir).glob("market_data_*.json")), key=lambda p: p.stat().st_mtime, reverse=True)
         for market_file in market_data_files[:3]:
             try:
-                async with FILE_READ_SEMAPHORE:
-                    async with aiofiles.open(market_file, 'r') as f:
-                        file_data = json.loads(await f.read())
-                        if symbol in file_data:
-                            p = safe_fetch_float(file_data[symbol].get('current_price'), 0.0)
-                            if p > 0:
-                                ts = datetime.fromtimestamp(market_file.stat().st_mtime, tz=timezone.utc)
-                                if not best_timestamp or ts > best_timestamp: best_price, best_timestamp = p, ts
+                file_data = _cached_json_file(market_file)  # 2026-10-24: mtime-keyed, identical values
+                if symbol in file_data:
+                    p = safe_fetch_float(file_data[symbol].get('current_price'), 0.0)
+                    if p > 0:
+                        ts = datetime.fromtimestamp(market_file.stat().st_mtime, tz=timezone.utc)
+                        if not best_timestamp or ts > best_timestamp: best_price, best_timestamp = p, ts
             except Exception: continue
     except Exception: pass
     try:
@@ -2091,14 +2117,13 @@ async def get_current_price(symbol: str) -> Tuple[Optional[float], Optional[date
                 pos_file = base_path / account / f"{side}_positions.json"
                 if pos_file.exists():
                     try:
-                        async with aiofiles.open(pos_file, 'r') as f:
-                            pos_data = json.loads(await f.read())
-                            for pk, p_info in pos_data.items():
-                                if symbol in pk:
-                                    p = safe_fetch_float(p_info.get('mark_price'), 0.0)
-                                    if p > 0:
-                                        ts = datetime.fromtimestamp(pos_file.stat().st_mtime, tz=timezone.utc)
-                                        if not best_timestamp or ts > best_timestamp: best_price, best_timestamp = p, ts
+                        pos_data = _cached_json_file(pos_file)  # 2026-10-24: mtime-keyed, identical values
+                        for pk, p_info in pos_data.items():
+                            if symbol in pk:
+                                p = safe_fetch_float(p_info.get('mark_price'), 0.0)
+                                if p > 0:
+                                    ts = datetime.fromtimestamp(pos_file.stat().st_mtime, tz=timezone.utc)
+                                    if not best_timestamp or ts > best_timestamp: best_price, best_timestamp = p, ts
                     except Exception: continue
     except Exception: pass
     if not best_price:
@@ -2114,7 +2139,7 @@ async def get_current_price(symbol: str) -> Tuple[Optional[float], Optional[date
             except Exception: pass
     if not best_price or best_price <= 0:
         try:
-            _valid_symbols = set(json.load(open(Path(getattr(config, 'BASE_PATH', Path.home() / 'binance')) / 'symbols.json')))
+            _valid_symbols = set(_cached_json_file(Path(getattr(config, 'BASE_PATH', Path.home() / 'binance')) / 'symbols.json'))  # 2026-10-24: cached; set() copies, also fixes the unclosed handle
         except Exception:
             _valid_symbols = set()
         if _valid_symbols and symbol not in _valid_symbols:

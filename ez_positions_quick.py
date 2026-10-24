@@ -2392,9 +2392,12 @@ def calculate_dynamic_quantity(
     return final_qty
 
 
+_last_events_cache_sig = None
+
+
 def _refresh_last_events_cache():
     """Refresh the in-memory cache of last_events.json data."""
-    global _last_events_cache, _last_events_cache_time
+    global _last_events_cache, _last_events_cache_time, _last_events_cache_sig
     try:
         last_events_path = os.path.join("data", "last_events.json")
         if not os.path.exists(last_events_path):
@@ -2402,8 +2405,17 @@ def _refresh_last_events_cache():
             _last_events_cache = {}
             _last_events_cache_time = time.time()
             return
+        try:
+            _st = os.stat(last_events_path)
+            _sig = (_st.st_mtime_ns, _st.st_size)
+        except Exception:
+            _sig = None
+        if _sig is not None and _sig == _last_events_cache_sig and isinstance(_last_events_cache, dict) and _last_events_cache:
+            _last_events_cache_time = time.time()  # 2026-10-24 loop-stall fix: file unchanged (mtime+size) -> identical content, skip the 2MB re-parse (50+ stall dumps). Readers only .get (audited), so the shared object is safe.
+            return
         with open(last_events_path, "rb") as f:
             _last_events_cache = safe_json_loads(f.read())
+        _last_events_cache_sig = _sig
         _last_events_cache_time = time.time()
         logger.debug(
             f"Refreshed last_events.json cache with {len(_last_events_cache)} symbols"
@@ -26453,10 +26465,25 @@ async def check_exit_candidates_for_account(
                                 current_price, _bbr_u, _bbr_l, _bbr_k, is_long
                             )
                         ):
-                            hard_exit_reason = f"BB_RECOVERY_EXIT_TRADIER_{position_side}_px{current_price:.4f}_k{_bbr_k:.0f}"
-                            logger.critical(
-                                f"[BB_RECOVERY_EXIT] {position_key}: {hard_exit_reason}"
-                            )
+                            _bbr_reason = f"BB_RECOVERY_EXIT_TRADIER_{position_side}_px{current_price:.4f}_k{_bbr_k:.0f}"
+                            # USER 2026-10-24 VEC_ clean-run: file a pre-emptive vec hold instead of
+                            # firing unconfirmed (the backstop refused every such fire). Fail-open:
+                            # hold failure fires natively as before. No jsonl here — silence is the point.
+                            _bbr_held = None
+                            try:
+                                from live_twins.vec_pending import file_preemptive_hold as _bbr_hold_fn
+                                _bbr_held = _bbr_hold_fn("crypto", position_key, "REDUCE", _bbr_reason)
+                            except Exception:
+                                _bbr_held = None
+                            if _bbr_held is None:
+                                hard_exit_reason = _bbr_reason
+                                logger.critical(
+                                    f"[BB_RECOVERY_EXIT] {position_key}: {hard_exit_reason}"
+                                )
+                            elif _bbr_held[2]:
+                                logger.warning(
+                                    f"[BB_RECOVERY_VEC_HOLD] {position_key}: {_bbr_reason} — held for vec confirm, not fired"
+                                )
                     except Exception:
                         pass
                 # ═══ PARABOLIC EXHAUSTION EXIT (USER RULE 2026-04-10): k_15m extreme + DC breakout + 3m structure crack ═══
