@@ -81,6 +81,8 @@ def draw_mismatch_lines(ax_plot, x_left_ts, x_right_ts, sig_buy, sig_sell, fill_
     tol_s = tol_min * 60.0
     sb, ss = sorted(sig_buy), sorted(sig_sell)
     fb, fs = sorted(fill_buy), sorted(fill_sell)
+    if not sb and not ss:
+        return 0, 0
     mb_v, mb_l = greedy_match(sb, fb, tol_s)
     ms_v, ms_l = greedy_match(ss, fs, tol_s)
     vc, va = MISMATCH_VEC_MPL

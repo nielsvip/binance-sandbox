@@ -184,6 +184,22 @@ def test_draw_outcome_lines_win_loss_skip_unknown():
     plt.close(fig)
 
 
+def test_draw_mismatch_lines_skips_without_signal_feed():
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from datetime import datetime, timezone
+    from matplotlib.lines import Line2D
+    fig, ax = plt.subplots()
+    base = datetime(2026, 10, 20, tzinfo=timezone.utc)
+    n0 = len(ax.get_children())
+    nv, nl = lth.draw_mismatch_lines(ax, base.replace(hour=9), base.replace(hour=16),
+                                     [], [], [base.replace(hour=10)], [], lambda t: t.timestamp())
+    assert (nv, nl) == (0, 0)
+    assert len(ax.get_children()) == n0
+    plt.close(fig)
+
+
 def test_draw_mismatch_lines_live_side():
     import matplotlib
     matplotlib.use("Agg")
