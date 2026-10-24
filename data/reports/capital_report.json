@@ -1,32 +1,67 @@
 {
- "generated_at": "2026-10-24 11:22 UTC",
- "total_capital_usd": 24.77,
+ "generated_at": "2026-10-24 11:47 UTC",
+ "total_capital_usd": 120.86,
  "tier_capital": {
-  "A": 0.0,
-  "B": 24.77,
-  "C": 0.0
+  "A": 45.17,
+  "B": 30.93,
+  "C": 44.77
  },
  "tier_count": {
-  "A": 0,
-  "B": 1,
-  "C": 0
+  "A": 1,
+  "B": 2,
+  "C": 1
  },
- "winners": [],
- "losers": [],
- "mediocre": [
-  "inf:TRXUSDT_SHORT"
+ "winners": [
+  "flz:XMRUSDT_LONG"
  ],
+ "losers": [
+  "flz:BTCDOMUSDT_LONG"
+ ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "inf:TRXUSDT_SHORT",
-   "symbol": "TRXUSDT",
-   "account": "inf",
-   "value_usd": 24.77,
-   "gain_pct": -0.246,
+   "pk": "flz:XMRUSDT_LONG",
+   "symbol": "XMRUSDT",
+   "account": "flz",
+   "value_usd": 45.17,
+   "gain_pct": 0.561,
+   "tier": "A",
+   "perf_mult": 10.0,
+   "amt": 0.076,
+   "mark": 594.29116667
+  },
+  {
+   "pk": "flz:BTCDOMUSDT_LONG",
+   "symbol": "BTCDOMUSDT",
+   "account": "flz",
+   "value_usd": 44.77,
+   "gain_pct": 0.024,
+   "tier": "C",
+   "perf_mult": 0.53,
+   "amt": 0.008,
+   "mark": 5596.14378258
+  },
+  {
+   "pk": "flz:ETHUSDC_SHORT",
+   "symbol": "ETHUSDC",
+   "account": "flz",
+   "value_usd": 23.62,
+   "gain_pct": 0.162,
    "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 75.0,
-   "mark": 0.33028
+   "perf_mult": 2.09,
+   "amt": 0.01,
+   "mark": 2362.06751109
+  },
+  {
+   "pk": "flz:BNBUSDC_SHORT",
+   "symbol": "BNBUSDC",
+   "account": "flz",
+   "value_usd": 7.31,
+   "gain_pct": 1.18,
+   "tier": "B",
+   "perf_mult": 0.72,
+   "amt": 0.01,
+   "mark": 730.88
   }
  ]
 }
