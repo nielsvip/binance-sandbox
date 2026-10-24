@@ -101,7 +101,11 @@ import vec_decisions.check_entry_candidates_stocks__lh_hl_filter
 import vec_decisions.check_entry_candidates_stocks__rsi_sma_mfi_gates
 import vec_decisions.check_entry_candidates_stocks__rvol_lrpctb_gates
 import vec_decisions.check_entry_candidates_stocks__stdev_breakout_bounce
-import vec_decisions.check_entry_swing_budget  # 2026-10-24 USER template-governed entries: ENABLE_TR_SWING_ENTRIES knob mirror (ONE call site at VETO-FINAL)
+try:
+    from vec_decisions import check_entry_swing_budget  # 2026-10-24 USER template-governed entries: ENABLE_TR_SWING_ENTRIES knob mirror (ONE call site at VETO-FINAL)
+except ImportError:  # fail-open 2026-10-24: one missing veto module must never kill the engine fleet-wide (16h split-brain stall); guarded at VETO-FINAL
+    check_entry_swing_budget = None
+    print("[V12-SWING-BUDGET-warn] vec_decisions.check_entry_swing_budget missing — swing veto skipped (fail-open)", flush=True)
 import vec_decisions.check_exit_candidates_crypto__augmented_dc_break
 import vec_decisions.check_exit_candidates_crypto__breakeven_dc_struct
 import vec_decisions.check_exit_candidates_crypto__emergency_dc1h_breach
@@ -18593,7 +18597,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     if _e921_ok_final is not None:
         entry_sig = entry_sig & _e921_ok_final
     # 2026-10-24 USER template-governed entries: ENABLE_TR_SWING_ENTRIES knob mirror of tradier_manage.is_swing_entry_allowed (knob half). Tradier-only; None when the knob allows (no-op) or in crypto MODE. In-loop reentry fires never read entry_sig, so mandatory cross-back reentries keep flowing on both legs, exactly like the live _xb_reentry_fired bypass. Budget arithmetic past the knob stays live-only (no NPZ source for market snapshot/sentiment) — see vec_decisions.check_entry_swing_budget.
-    _swing_knob_mask = vec_decisions.check_entry_swing_budget.entry_mask_vec(cfg, n)
+    _swing_knob_mask = check_entry_swing_budget.entry_mask_vec(cfg, n) if check_entry_swing_budget is not None else None
     if _swing_knob_mask is not None:
         entry_sig = entry_sig & _swing_knob_mask
     # V17 2026-10-13 FILTER_EXEMPTIONS (vec_decisions/filter_exemptions.py). Probe pass: hand the final pre-loop gate state
