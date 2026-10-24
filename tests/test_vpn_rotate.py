@@ -166,8 +166,7 @@ def test_ovpn_remotes_sane():
         )
 
 
-def test_ovpn_only_excludes_app_slots(monkeypatch):
-    assert vpn.OVPN_ONLY is True
+def test_ovpn_only_flag_gates_app_slots(monkeypatch):
     monkeypatch.setattr(
         vpn,
         "slots",
@@ -180,11 +179,13 @@ def test_ovpn_only_excludes_app_slots(monkeypatch):
     monkeypatch.setattr(
         vpn, "slot_server", lambda n: ("uk-lon.prod.surfshark.com", None)
     )
-    got = [
-        s["name"]
-        for s in vpn.eligible_slots(set(), {"slot_fail": {}, "slot_exit": {}}, None)
-    ]
+    state = {"slot_fail": {}, "slot_exit": {}}
+    monkeypatch.setattr(vpn, "OVPN_ONLY", True)
+    got = [s["name"] for s in vpn.eligible_slots(set(), state, None)]
     assert got == ["OVPN:uk-lon"]
+    monkeypatch.setattr(vpn, "OVPN_ONLY", False)
+    got = sorted(s["name"] for s in vpn.eligible_slots(set(), state, None))
+    assert got == ["OVPN:uk-lon", "Surfshark. Dausos", "Surfshark. WireGuard"]
 
 
 def test_slot_rank_covers_static_geos():

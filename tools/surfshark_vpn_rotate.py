@@ -67,10 +67,11 @@ def scan_logs_for_ban():
 FAPI = "https://fapi.binance.com"
 COOLDOWN_S = 120
 FAIL_SKIP_S = 300
-# USER 2026-10-24: app profiles (Dausos/WireGuard) are RETIRED — OVPN on the 8
-# operator statics does all tunnel work. When set, rotation candidates and the
-# geo-tour never include app slots (status display still shows them).
-OVPN_ONLY = True
+# USER 2026-10-24 (fallback): OVPN handshakes stay server-silent, so the app's
+# static profiles (Dausos/WireGuard, scutil-managed, GUI stays dead) are
+# re-admitted as rotation candidates alongside the OVPN static legs. Set True
+# only once OVPN legs prove they connect. Status display always shows all slots.
+OVPN_ONLY = False
 # USER 2026-10-24: 600s left single-path dark windows far too long ("tunnels fail
 # every couple minutes"). 180s re-probes a failed slot 3x sooner; FAIL_SKIP_S still
 # gates hot-looping and every attempt is fail-closed (never drops the working link).
