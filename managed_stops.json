@@ -19,5 +19,26 @@
     "entry_sig": "2026-10-24 04:12:12.298000+00:00",
     "symbol": "XPLUSDT",
     "side": "SHORT"
+  },
+  "men:1000LUNCUSDT_SHORT": {
+    "orderId": "2000001537001143",
+    "stopPrice": 0.04756,
+    "entry_sig": "2026-10-24 08:27:54.832000+00:00",
+    "symbol": "1000LUNCUSDT",
+    "side": "SHORT"
+  },
+  "men:CRVUSDC_LONG": {
+    "orderId": "2000001537002136",
+    "stopPrice": 0.3514,
+    "entry_sig": "2026-10-24 08:28:51.186000+00:00",
+    "symbol": "CRVUSDC",
+    "side": "LONG"
+  },
+  "men:STRKUSDT_LONG": {
+    "orderId": "2000001537002891",
+    "stopPrice": 0.04798,
+    "entry_sig": "2026-10-24 08:28:47.977000+00:00",
+    "symbol": "STRKUSDT",
+    "side": "LONG"
   }
 }
