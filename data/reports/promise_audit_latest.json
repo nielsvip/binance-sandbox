@@ -1,20 +1,16 @@
 {
- "generated_utc": "2026-10-24T14:12:11.331624+00:00",
+ "generated_utc": "2026-10-24T15:12:13.950742+00:00",
  "days": 1.0,
  "totals": {
-  "exit_promises": 95,
-  "exit_broken_no_delivery": 88,
+  "exit_promises": 94,
   "exit_skipped_inflight": 105,
   "exit_kept_late": 5,
   "entry_promises": 36,
   "entry_broken_no_delivery": 36,
+  "exit_broken_no_delivery": 87,
   "exit_kept_in_bar": 2
  },
  "per_key": {
-  "fin:COMPUSDT_LONG": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
-  },
   "men:ACTUSDT_SHORT": {
    "exit_promises": 2,
    "exit_skipped_inflight": 10,
@@ -206,16 +202,6 @@
   }
  },
  "detail": [
-  {
-   "acct": "fin",
-   "sym_side": "COMPUSDT_LONG",
-   "kind": "exit",
-   "bar": "10-23 12:15",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "LH_LL_TOP_EXIT arm=4h_LH+LL leg=WT15M",
-   "outcome": "NO_DELIVERY"
-  },
   {
    "acct": "men",
    "sym_side": "ACTUSDT_SHORT",
