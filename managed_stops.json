@@ -1,72 +1,16 @@
 {
-  "ang:RVNUSDT_SHORT": {
-    "orderId": "4000001991496381",
-    "stopPrice": 0.001428,
-    "entry_sig": "2026-10-24 02:24:16.984000+00:00",
-    "symbol": "RVNUSDT",
-    "side": "SHORT"
-  },
-  "ang:RAYSOLUSDT_LONG": {
-    "orderId": "4000001991496704",
-    "stopPrice": 1.7813,
-    "entry_sig": "2026-10-24 02:24:23.967000+00:00",
-    "symbol": "RAYSOLUSDT",
-    "side": "LONG"
-  },
-  "ang:MINAUSDT_SHORT": {
-    "orderId": "4000001991496877",
-    "stopPrice": 0.07166,
-    "entry_sig": "2026-10-24 02:24:13.118000+00:00",
-    "symbol": "MINAUSDT",
-    "side": "SHORT"
-  },
-  "ang:SNXUSDT_SHORT": {
-    "orderId": "4000001991497606",
-    "stopPrice": 0.2181,
-    "entry_sig": "2026-10-24 02:24:48.756000+00:00",
-    "symbol": "SNXUSDT",
-    "side": "SHORT"
-  },
-  "ang:ARKMUSDT_LONG": {
-    "orderId": "4000001991497609",
-    "stopPrice": 0.1325,
-    "entry_sig": "2026-10-24 02:25:10.846095+00:00",
-    "symbol": "ARKMUSDT",
-    "side": "LONG"
-  },
-  "ang:WIFUSDC_SHORT": {
-    "orderId": "4000001991497610",
-    "stopPrice": 0.1938,
-    "entry_sig": "2026-10-24 02:25:11.378966+00:00",
-    "symbol": "WIFUSDC",
-    "side": "SHORT"
-  },
-  "ang:AXSUSDT_SHORT": {
-    "orderId": "4000001991497608",
-    "stopPrice": 1.0819,
-    "entry_sig": "2026-10-24 02:25:09.306371+00:00",
-    "symbol": "AXSUSDT",
-    "side": "SHORT"
-  },
-  "ang:BLURUSDT_SHORT": {
-    "orderId": "4000001991502564",
+  "men:BLURUSDT_SHORT": {
+    "orderId": "2000001536487823",
     "stopPrice": 0.00863,
-    "entry_sig": "2026-10-24 02:29:16.222000+00:00",
+    "entry_sig": "2026-10-24 02:33:11.164000+00:00",
     "symbol": "BLURUSDT",
     "side": "SHORT"
   },
-  "ang:AVAXUSDC_LONG": {
-    "orderId": "4000001991503059",
-    "stopPrice": 8.806,
-    "entry_sig": "2026-10-24 02:24:09.789000+00:00",
-    "symbol": "AVAXUSDC",
-    "side": "LONG"
-  },
-  "ang:NMRUSDT_SHORT": {
-    "orderId": "4000001991503067",
-    "stopPrice": 10.747,
-    "entry_sig": "2026-10-24 02:24:11.174000+00:00",
-    "symbol": "NMRUSDT",
+  "men:ENJUSDT_SHORT": {
+    "orderId": "2000001536489356",
+    "stopPrice": 0.02682,
+    "entry_sig": "2026-10-24 02:34:24.793000+00:00",
+    "symbol": "ENJUSDT",
     "side": "SHORT"
   }
 }

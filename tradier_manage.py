@@ -16060,6 +16060,12 @@ async def process_position(
                     )
                 if not _gx_fire and bool(_gx_c("TRADIER_DC_DAYTRADE_ENABLED", False)):
                     _gx_stop, _gx_tgt = _dc_channel_exits.resolve_daytrade_dc(_gx_c)
+                    # USER 2026-10-24 (BABA_SHORT 19:58Z DAYTRADE_TARGET dc_4h_low close on stale touch):
+                    # DAYTRADE_TARGET is not a switch (no ENABLE knob exists) so it is DISABLED
+                    # COMPLETELY — TARGET specs forced empty, STOPS untouched. Vec (v12 daytrade_on)
+                    # still models it: boards carrying DAYTRADE_DC_TARGET_TF will diverge until
+                    # re-swept or the vec is benched. Never re-enable without explicit USER order.
+                    _gx_tgt = []
                     if _gx_stop or _gx_tgt:
                         _gx_prior = bool(_gx_c("DC_PRIOR_BAR_CHANNEL", True))
                         _gx_stopf = {_sp["field_long"] if is_long else _sp["field_short"] for _sp in _gx_stop}
@@ -35768,7 +35774,8 @@ class StockStrategy:
             _pgp_min_peak = float(_cfg_auto("PEAK_GIVEBACK_MIN_PEAK_PCT", 0.3))
             _be_grace = float(_cfg_auto("BREAKEVEN_GRACE_MINUTES", 15.0))
             _pgp_drop = float(_cfg_auto("PEAK_GIVEBACK_DROP_PCT", 2.0))
-            _pgp_hard_zero = bool(_cfg_auto("PEAK_GIVEBACK_HARD_ZERO_ENABLED", True)) and _peak_giveback_scope_ok(_cfg_auto("PEAK_GIVEBACK_SCOPE", "all"), position_key, "stocks")  # 2026-10-17 vector twin scope
+            _pgp_pk = (getattr(position, "position_key", "") or f"{_exit_acct_top or 'trb'}:{symbol}_{'LONG' if is_long else 'SHORT'}")
+            _pgp_hard_zero = bool(_cfg_auto("PEAK_GIVEBACK_HARD_ZERO_ENABLED", True)) and _peak_giveback_scope_ok(_cfg_auto("PEAK_GIVEBACK_SCOPE", "all"), _pgp_pk, "stocks")  # 2026-10-17 vector twin scope
             _pgp_ind = indicators if indicators else i
             # 2026-10-20 wire-vectoronly: vec erosion_confirm (v12:21629-21631 WIN_TRAIL_EROSION gate) — PEAK_GIVEBACK_BE_EROSION_FILTER_TF
             # + BREAKEVEN_GAIN_EROSION_FILTER_TF 'wt_against' must confirm before an erosion close. config_tradier default OFF on both = inert.
@@ -61801,6 +61808,8 @@ class StockDaytradeWing:
             _dt_stop_specs, _dt_tgt_specs = _dc_channel_exits.resolve_daytrade_dc(
                 _dt_get
             )
+            # USER 2026-10-24: DAYTRADE_TARGET hard-disabled (see grey-twin site) — STOPS only.
+            _dt_tgt_specs = []
             if _dt_stop_specs or _dt_tgt_specs:
                 _dt_prior = bool(_dt_get("DC_PRIOR_BAR_CHANNEL", True))
                 _dt_stopf = {_sp["field_long"] if is_long else _sp["field_short"] for _sp in _dt_stop_specs}

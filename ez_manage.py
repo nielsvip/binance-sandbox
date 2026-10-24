@@ -53225,6 +53225,9 @@ async def process_position(
                 _gx_fire, _gx_reason = True, f"WT_LOWER_CROSS_EXIT_wt_{_gx_tf}_{'lower' if _gx_is_long else 'higher'}_wt+price"
             if not _gx_fire and bool(getattr(config, "DC_DAYTRADE_ENABLED", False)):
                 _gx_stop, _gx_tgt = _dc_channel_exits.resolve_daytrade_dc(lambda _k, _d: _psym_get(symbol, position_side, _k, _d))
+                # USER 2026-10-24: DAYTRADE_TARGET hard-disabled fleet-wide (no ENABLE knob
+                # exists; BABA_SHORT 19:58Z close) — TARGET specs forced empty, STOPS untouched.
+                _gx_tgt = []
                 if _gx_stop or _gx_tgt:
                     # PARITY LANE B 2026-10-06: STOP levels from the prior-bar channel (vec DC_PRIOR_BAR_CHANNEL, default True); targets same-bar. Only active when a STOP TF is set (default OFF).
                     try:

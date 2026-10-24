@@ -315,9 +315,61 @@ def test_stale_basis_excluded_from_sums_not_hidden():
         5.0 * ((10 * 112.0 + 11 * 101.0) / 21.0 - 99.0), 2
     )
     assert s["pnl_total"] == 0.0
-    assert [e for e in out if e.get("rpnl") is not None][0]["stale_excluded"] is True
+    row = [e for e in out if e.get("stale_excluded")][0]
+    assert row["rpnl"] is None
     out2, s2 = srv.realized_walk([old, new, close])
     assert s2["stale_excluded"] == 0 and s2["known"] == 1 and s2["pnl_total"] != 0.0
+
+
+def _seed_1m(symbol, pairs):
+    import time as _t
+
+    srv._cache[f"kline1m:{symbol}"] = (_t.time(), sorted(pairs))
+
+
+def test_clean_close_keeps_journal_price_despite_klines():
+    # HOOD lesson: journal 98.12 matched broker 98.15 to 3c while the 1m bar
+    # printed 99.64 (displaced timestamp). Kline must never overrule a clean
+    # close — it only prices the fresh-basis display of stale closes.
+    e0 = srv._parse_ts("2026-10-22T18:17:00+00:00").timestamp()
+    e1 = srv._parse_ts("2026-10-23T19:58:00+00:00").timestamp()
+    _seed_1m("KLINE", [(e0 - 30, 101.85), (e1 - 30, 99.55)])
+    op = _ev("2026-10-22T18:17:00+00:00", "KLINE", "SHORT", "OPEN", 11.0, 102.10)
+    op["reason"] = "WT_OPEN"
+    cl = _ev("2026-10-23T19:58:00+00:00", "KLINE", "SHORT", "CLOSE", 11.0, 99.50)
+    cl["reason"] = "DAYTRADE_TARGET"
+    out, s = srv.realized_walk([op, cl], use_kline_px=True)
+    row = [e for e in out if e.get("rpnl") is not None][0]
+    assert row["rpnl"] == round(11.0 * (102.10 - 99.50), 2)
+    assert "px_warn" not in row
+
+
+def test_stale_close_shows_fresh_basis_number():
+    e0 = srv._parse_ts("2026-09-02T13:36:00+00:00").timestamp()
+    e1 = srv._parse_ts("2026-10-22T18:17:00+00:00").timestamp()
+    e2 = srv._parse_ts("2026-10-23T19:58:00+00:00").timestamp()
+    _seed_1m("FRESH", [(e0 - 30, 112.0), (e1 - 30, 101.85), (e2 - 30, 99.55)])
+    old = _ev("2026-09-02T13:36:00+00:00", "FRESH", "SHORT", "OPEN", 10.0, 112.0)
+    old["reason"] = "DC_OPEN"
+    new = _ev("2026-10-22T18:17:00+00:00", "FRESH", "SHORT", "OPEN", 11.0, 101.90)
+    new["reason"] = "WT_OPEN"
+    close = _ev("2026-10-23T19:58:00+00:00", "FRESH", "SHORT", "CLOSE", 11.0, 99.60)
+    close["reason"] = "DAYTRADE_TARGET"
+    out, s = srv.realized_walk([old, new, close], stale_basis_days=7, use_kline_px=True)
+    row = [e for e in out if e.get("stale_excluded")][0]
+    assert row["rpnl"] == round(11.0 * (101.85 - 99.55), 2)
+    assert row["fresh_basis"] is True
+    assert s["pnl_total"] == 0.0 and s["stale_excluded"] == 1
+
+
+def test_stale_close_without_fresh_cover_shows_dash():
+    old = _ev("2026-09-02T13:36:00+00:00", "NOFRESH", "SHORT", "OPEN", 10.0, 112.0)
+    old["reason"] = "DC_OPEN"
+    close = _ev("2026-10-23T19:58:00+00:00", "NOFRESH", "SHORT", "CLOSE", 5.0, 99.0)
+    close["reason"] = "DAYTRADE_TARGET"
+    out, s = srv.realized_walk([old, close], stale_basis_days=7, use_kline_px=True)
+    row = [e for e in out if e.get("stale_excluded")][0]
+    assert row["rpnl"] is None and s["pnl_total"] == 0.0
 
 
 def test_recent_basis_still_sums_with_stale_param():
