@@ -1163,9 +1163,10 @@ class MarketDataEngine:
         try: logger.info("[REST_REPAIR] starting independent 1m/3m history repair (~60s cycle)")
         except Exception: pass
         base = "https://fapi.binance.com/fapi/v1/klines"
-        # 2026-10-24: sem 8 starved the broadcast loop (ages flapped 54-69s).
-        # The repair is a backstop — it yields to broadcast, which owns the age.
-        sem = asyncio.Semaphore(4)
+        # 2026-10-24: fingerprint re-stamps made broadcast passes seconds-long,
+        # so the repair loop can use full concurrency again (a ~95s full cycle
+        # heals pre-fix flat bars baked into klines_cache files).
+        sem = asyncio.Semaphore(8)
         timeout = aiohttp.ClientTimeout(total=10, sock_connect=5, sock_read=8)
         try:
             session = aiohttp.ClientSession(timeout=timeout)

@@ -22881,6 +22881,51 @@ async def process_position(
                             reason = f"TRADIER_DC_BREAKOUT_{'L' if is_long else 'S'}_adx{_dc_adx:.0f}"
                     except Exception:
                         pass
+                    # USER 2026-10-24 VEC-LAST catch-up: tiered DC-breakout via the SHARED
+                    # core (same predicate the vector sweeps as DC_BREAKOUT_ENTRY). Fires only
+                    # when the single-TF branch above did not. No extra cooldown (matches the
+                    # single-TF branch; any over-fire vs the vec 900s seam is measured as
+                    # LIVE_ONLY in parity). Kill: DC_BREAKOUT_ENTRY_ENABLED=False.
+                    if action_type != "OPEN":
+                        try:
+                            from vec_decisions import (
+                                check_entry_candidates_crypto__dc_breakout_tiered as _dc_tiered,
+                            )
+
+                            class _DCTieredCfg:
+                                def __init__(self, _ga):
+                                    self._ga = _ga
+
+                                def __getattr__(self, _k):
+                                    if _k.startswith("_"):
+                                        raise AttributeError(_k)
+                                    _defs = {
+                                        "DC_BREAKOUT_ALLOW_15M": False,
+                                        "DC_BREAKOUT_ALLOW_3M": False,
+                                        "DC_BREAKOUT_OVERBOUGHT_K15M_CAP": 95.0,
+                                        "USE_1M_3M_SIGNALS_ENABLED": False,
+                                    }
+                                    return self._ga(_k, _defs.get(_k))
+
+                            _dc_t_fire, _dc_t_mult, _dc_t_rsn = _dc_tiered.check_dc_breakout_tiered(
+                                _DCTieredCfg(_cfg_auto),
+                                dict(_dc_ind or {}),
+                                float(current_price or 0),
+                                bool(is_long),
+                            )
+                            if _dc_t_fire:
+                                _base_qty = (
+                                    float(_cfg_auto("START_POSITION_SIZE", 600))
+                                    / current_price
+                                    if current_price and current_price > 0
+                                    else 1
+                                )
+                                action_type = "OPEN"
+                                qty = int(max(1, _base_qty))
+                                conf = 70.0
+                                reason = f"TRADIER_DC_BREAKOUT_{'L' if is_long else 'S'}_TIERED_{_dc_t_rsn}"
+                        except Exception:
+                            pass
                 # ═══════════════════════════════════════════════════════════════════════
                 # 🚩 GR_HTF_DIRECT_ENTRY — 2026-05-12 USER MANDATE
                 # Direct entry signal: Score = n_tfs_aligned × GOLDEN_RULE_MIN_IND.
