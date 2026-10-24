@@ -40,5 +40,19 @@
     "entry_sig": "2026-10-24 08:28:47.977000+00:00",
     "symbol": "STRKUSDT",
     "side": "LONG"
+  },
+  "men:TIAUSDC_LONG": {
+    "orderId": "2000001537012504",
+    "stopPrice": 0.5357,
+    "entry_sig": "2026-10-24 08:35:32.129000+00:00",
+    "symbol": "TIAUSDC",
+    "side": "LONG"
+  },
+  "men:ACTUSDT_SHORT": {
+    "orderId": "2000001537016819",
+    "stopPrice": 0.008968,
+    "entry_sig": "2026-10-24 08:37:58.483000+00:00",
+    "symbol": "ACTUSDT",
+    "side": "SHORT"
   }
 }
