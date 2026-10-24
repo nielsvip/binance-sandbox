@@ -1,51 +1,37 @@
 {
-  "flz:XMRUSDT_LONG": {
-    "orderId": "1000002641197237",
+  "fin:MAGICUSDT_SHORT": {
+    "orderId": "3000002271782315",
+    "stopPrice": 0.08817,
+    "entry_sig": "2026-10-24 16:06:51.714000+00:00",
+    "symbol": "MAGICUSDT",
+    "side": "SHORT"
+  },
+  "fin:XMRUSDT_LONG": {
+    "orderId": "3000002271787066",
     "stopPrice": 562.18,
-    "entry_sig": "2026-10-24 10:57:30.137000+00:00",
+    "entry_sig": "2026-10-24 15:59:44.239000+00:00",
     "symbol": "XMRUSDT",
     "side": "LONG"
   },
-  "flz:GRAMUSDT_LONG": {
-    "orderId": "1000002641002339",
-    "stopPrice": 1.148,
-    "entry_sig": "2026-10-24 12:51:46.036000+00:00",
-    "symbol": "GRAMUSDT",
-    "side": "LONG"
-  },
-  "flz:BNBUSDC_SHORT": {
-    "orderId": "1000002641196942",
-    "stopPrice": 753.06,
-    "entry_sig": "2026-10-24 03:34:37.262000+00:00",
-    "symbol": "BNBUSDC",
+  "fin:SKLUSDT_SHORT": {
+    "orderId": "3000002271788361",
+    "stopPrice": 0.004098,
+    "entry_sig": "2026-10-24 16:09:29.252000+00:00",
+    "symbol": "SKLUSDT",
     "side": "SHORT"
   },
-  "flz:XMRUSDT_SHORT": {
-    "orderId": "1000002640997811",
-    "stopPrice": 634.77,
-    "entry_sig": "2026-10-24 12:47:17.024000+00:00",
-    "symbol": "XMRUSDT",
+  "fin:RLCUSDT_SHORT": {
+    "orderId": "3000002271788757",
+    "stopPrice": 0.737,
+    "entry_sig": "2026-10-24 16:00:36.428000+00:00",
+    "symbol": "RLCUSDT",
     "side": "SHORT"
   },
-  "flz:ETHUSDC_SHORT": {
-    "orderId": "1000002641196944",
-    "stopPrice": 2396.48,
-    "entry_sig": "2026-10-24 13:02:13.322000+00:00",
-    "symbol": "ETHUSDC",
-    "side": "SHORT"
-  },
-  "flz:XRPUSDC_SHORT": {
-    "orderId": "1000002641196947",
-    "stopPrice": 1.2923,
-    "entry_sig": "2026-10-24 13:01:56.480000+00:00",
-    "symbol": "XRPUSDC",
-    "side": "SHORT"
-  },
-  "flz:SOLUSDC_SHORT": {
-    "orderId": "1000002641197238",
-    "stopPrice": 107.76,
-    "entry_sig": "2026-10-24 13:02:14.642000+00:00",
-    "symbol": "SOLUSDC",
+  "fin:ZILUSDT_SHORT": {
+    "orderId": "3000002271795960",
+    "stopPrice": 0.002279,
+    "entry_sig": "2026-10-24 15:59:37.002000+00:00",
+    "symbol": "ZILUSDT",
     "side": "SHORT"
   }
 }
