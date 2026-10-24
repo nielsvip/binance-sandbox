@@ -47,6 +47,14 @@ def test_history_reader_finds_trb_aapl():
     assert ts == sorted(ts)
 
 
+def test_history_reader_dedupes_synced_copies():
+    out = trr.fetch_account_trades_from_history("BIDU")
+    evs = out.get("trb", [])
+    assert len(evs) == 2
+    keys = [(e["timestamp"].isoformat(), e["type"], e["direction"]) for e in evs]
+    assert len(set(keys)) == len(keys)
+
+
 def test_history_reader_empty_symbol():
     assert trr.fetch_account_trades_from_history("NO_SUCH_SYM_ZZZ") == {}
     assert trr.fetch_account_trades_from_history("") == {}

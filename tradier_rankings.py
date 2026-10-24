@@ -1003,8 +1003,15 @@ def fetch_account_trades_from_history(symbol):
                         continue
                     events.append({"timestamp": ts, "direction": _history_event_direction(rec.get("type"), side), "type": str(rec.get("type") or "")})
         if events:
-            events.sort(key=lambda e: e["timestamp"])
-            out[acct] = events
+            seen = set()
+            uniq = []
+            for ev in events:
+                key = (ev["timestamp"].isoformat(), ev["type"], ev["direction"])
+                if key not in seen:
+                    seen.add(key)
+                    uniq.append(ev)
+            uniq.sort(key=lambda e: e["timestamp"])
+            out[acct] = uniq
     return out
 
 def _wilder_rsi(close, period=14):

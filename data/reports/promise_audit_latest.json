@@ -1,14 +1,16 @@
 {
- "generated_utc": "2026-10-24T02:12:09.848646+00:00",
+ "generated_utc": "2026-10-24T03:12:07.407898+00:00",
  "days": 1.0,
  "totals": {
-  "exit_promises": 14,
-  "exit_broken_no_delivery": 11,
-  "entry_promises": 6,
-  "entry_broken_no_delivery": 6,
-  "exit_skipped_inflight": 51,
-  "exit_kept_late": 1,
-  "exit_kept_in_bar": 2
+  "exit_promises": 27,
+  "exit_broken_no_delivery": 20,
+  "entry_promises": 13,
+  "entry_broken_no_delivery": 10,
+  "exit_skipped_inflight": 59,
+  "exit_kept_late": 3,
+  "entry_pending": 3,
+  "exit_kept_in_bar": 2,
+  "exit_pending": 2
  },
  "per_key": {
   "fin:RLCUSDT_SHORT": {
@@ -28,7 +30,9 @@
   "men:ACTUSDT_SHORT": {
    "exit_promises": 1,
    "exit_skipped_inflight": 10,
-   "exit_kept_late": 1
+   "exit_kept_late": 1,
+   "entry_promises": 1,
+   "entry_pending": 1
   },
   "inf:ENAUSDC_LONG": {
    "exit_promises": 2,
@@ -42,11 +46,13 @@
    "exit_kept_in_bar": 1
   },
   "men:BIOUSDC_SHORT": {
-   "entry_promises": 1,
-   "entry_broken_no_delivery": 1,
-   "exit_promises": 1,
+   "entry_promises": 2,
+   "entry_broken_no_delivery": 2,
+   "exit_promises": 3,
    "exit_skipped_inflight": 19,
-   "exit_kept_in_bar": 1
+   "exit_kept_in_bar": 1,
+   "exit_broken_no_delivery": 1,
+   "exit_pending": 1
   },
   "fin:ENAUSDC_LONG": {
    "exit_promises": 2,
@@ -67,6 +73,56 @@
   "men:ETHFIUSDC_LONG": {
    "exit_promises": 1,
    "exit_broken_no_delivery": 1
+  },
+  "inf:ALTUSDT_LONG": {
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1
+  },
+  "men:ALTUSDT_LONG": {
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1
+  },
+  "men:ARUSDT_LONG": {
+   "exit_promises": 1,
+   "exit_skipped_inflight": 6,
+   "exit_kept_late": 1
+  },
+  "inf:TRXUSDT_SHORT": {
+   "exit_promises": 4,
+   "exit_broken_no_delivery": 3,
+   "exit_pending": 1
+  },
+  "ang:NMRUSDT_SHORT": {
+   "entry_promises": 1,
+   "entry_broken_no_delivery": 1
+  },
+  "ang:WIFUSDC_SHORT": {
+   "exit_promises": 1,
+   "exit_skipped_inflight": 2,
+   "exit_kept_late": 1
+  },
+  "inf:GRAMUSDT_SHORT": {
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1
+  },
+  "ang:MINAUSDT_SHORT": {
+   "entry_promises": 1,
+   "entry_broken_no_delivery": 1
+  },
+  "ang:WUSDT_SHORT": {
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1
+  },
+  "ang:ARKMUSDT_LONG": {
+   "entry_promises": 2,
+   "entry_broken_no_delivery": 1,
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1,
+   "entry_pending": 1
+  },
+  "men:ARBUSDC_LONG": {
+   "entry_promises": 1,
+   "entry_pending": 1
   }
  },
  "detail": [
@@ -248,6 +304,156 @@
    "late_min": null,
    "action": "REDUCE",
    "reason": "WT_CROSS_EXIT_1h_bear",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "ALTUSDT_LONG",
+   "kind": "exit",
+   "bar": "10-24 02:00",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "EXIT_VELOCITY_WT against-long g-0.56%",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "men",
+   "sym_side": "ALTUSDT_LONG",
+   "kind": "exit",
+   "bar": "10-24 02:00",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "EXIT_VELOCITY_WT against-long g-0.56%",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "men",
+   "sym_side": "BIOUSDC_SHORT",
+   "kind": "exit",
+   "bar": "10-24 02:00",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "EXIT_VELOCITY_WT against-short g-0.52%",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "men",
+   "sym_side": "ARUSDT_LONG",
+   "kind": "exit",
+   "bar": "10-24 02:00",
+   "late_min": 21.1,
+   "action": "CLOSE",
+   "reason": "R2_WT_VEL_SLOW_DECEL_D_g0.198%",
+   "outcome": "SUCCESS"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "TRXUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-24 02:00",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "WT_CROSS_EXIT_1h_bull",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "NMRUSDT_SHORT",
+   "kind": "entry",
+   "bar": "10-24 02:00",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "HARDCODED_RALLY_REENTRY",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "WIFUSDC_SHORT",
+   "kind": "exit",
+   "bar": "10-24 02:00",
+   "late_min": 27.1,
+   "action": "CLOSE",
+   "reason": "MTF_BB_REJECT_1h",
+   "outcome": "SUCCESS"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "GRAMUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-24 02:00",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "WT_LOWER_CROSS_EXIT wt_1h higher wt+price",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "MINAUSDT_SHORT",
+   "kind": "entry",
+   "bar": "10-24 02:00",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "HARDCODED_RALLY_REENTRY",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "WUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-24 02:15",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "WT_CROSS_EXIT_1h_bull",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "ARKMUSDT_LONG",
+   "kind": "entry",
+   "bar": "10-24 02:15",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "B_SATOSHIT_ENTRY",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "TRXUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-24 02:15",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "WT_CROSS_EXIT_1h_bull",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "ARKMUSDT_LONG",
+   "kind": "exit",
+   "bar": "10-24 02:30",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "EXIT_VELOCITY_WT against-long g0.07%",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "TRXUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-24 02:30",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "WT_CROSS_EXIT_1h_bull",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "men",
+   "sym_side": "BIOUSDC_SHORT",
+   "kind": "entry",
+   "bar": "10-24 02:30",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "HARDCODED_RALLY_REENTRY",
    "outcome": "NO_DELIVERY"
   }
  ],
