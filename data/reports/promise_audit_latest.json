@@ -1,20 +1,16 @@
 {
- "generated_utc": "2026-10-24T12:12:11.003283+00:00",
+ "generated_utc": "2026-10-24T13:12:11.687329+00:00",
  "days": 1.0,
  "totals": {
-  "entry_promises": 37,
-  "entry_broken_no_delivery": 37,
-  "exit_promises": 90,
-  "exit_broken_no_delivery": 83,
+  "exit_promises": 94,
+  "exit_broken_no_delivery": 87,
   "exit_skipped_inflight": 105,
   "exit_kept_late": 5,
+  "entry_promises": 36,
+  "entry_broken_no_delivery": 36,
   "exit_kept_in_bar": 2
  },
  "per_key": {
-  "fin:GRASSUSDT_LONG": {
-   "entry_promises": 1,
-   "entry_broken_no_delivery": 1
-  },
   "fin:COMPUSDT_LONG": {
    "exit_promises": 1,
    "exit_broken_no_delivery": 1
@@ -89,8 +85,8 @@
    "exit_kept_late": 1
   },
   "inf:TRXUSDT_SHORT": {
-   "exit_promises": 15,
-   "exit_broken_no_delivery": 15
+   "exit_promises": 19,
+   "exit_broken_no_delivery": 19
   },
   "ang:NMRUSDT_SHORT": {
    "entry_promises": 1,
@@ -210,16 +206,6 @@
   }
  },
  "detail": [
-  {
-   "acct": "fin",
-   "sym_side": "GRASSUSDT_LONG",
-   "kind": "entry",
-   "bar": "10-23 12:15",
-   "late_min": null,
-   "action": "OPEN",
-   "reason": "B09",
-   "outcome": "NO_DELIVERY"
-  },
   {
    "acct": "fin",
    "sym_side": "COMPUSDT_LONG",
@@ -1455,6 +1441,46 @@
    "sym_side": "TRXUSDT_SHORT",
    "kind": "exit",
    "bar": "10-24 11:30",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "WT_CROSS_EXIT_1h_bull",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "TRXUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-24 11:45",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "WT_CROSS_EXIT_1h_bull",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "TRXUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-24 12:00",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "WT_CROSS_EXIT_1h_bull",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "TRXUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-24 12:15",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "WT_CROSS_EXIT_1h_bull",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "TRXUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-24 12:30",
    "late_min": null,
    "action": "REDUCE",
    "reason": "WT_CROSS_EXIT_1h_bull",
