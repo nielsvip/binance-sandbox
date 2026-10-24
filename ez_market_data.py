@@ -803,7 +803,8 @@ class MarketDataEngine:
                 # one synth per outage, then silence until a fresh tick. And the synth re-stamped
                 # the STALE buf time, so _tick_ts / minute buckets could never advance without ticks.
                 # Now: a buf older than 3s synthesizes on WALL CLOCK (last price carried forward),
-                # throttled to one pass per symbol per 5s, until fresh ticks resume.
+                # throttled per symbol (45s full recompute; frozen-input passes only
+                # re-stamp the cached payload), until fresh ticks resume.
                 _now_ts = time.time()
                 _buf_age = _now_ts - float(buf.get('t', 0) or 0)
                 _is_synthetic = False
@@ -824,6 +825,31 @@ class MarketDataEngine:
                         continue
                     self._synth_ts[sym] = _now_ts
                     _is_synthetic = True
+                    # 2026-10-24: frozen-input re-stamp. Overwrite-only synth + an
+                    # unchanged buf_t + no REST merge since the last compute means
+                    # the arrays (hence k/d/WT) are bit-identical — recomputing
+                    # 353 symbols every pass took 90s and flapped ALL ages past
+                    # the TTL. Re-stamp the cached payload instead (same honesty:
+                    # values frozen, tick fresh); full compute runs on any change.
+                    _fp = (float(buf.get('t', 0) or 0), int(store.get('rest_ver', 0) or 0))
+                    _cached = self._payload_cache.get(sym)
+                    if _cached is not None and self._calc_fp.get(sym) == _fp:
+                        try:
+                            self.market.update_synthetic(sym, store.get('last_price') or buf['p'], _now_ts)
+                            _lp = dict(_cached)
+                            _lp['_tick_ts'] = _now_ts
+                            _lp['_calc_ts'] = _now_ts
+                            _lp['timestamp_1m'] = _now_ts
+                            if _lp.get('timestamp_3m') is not None:
+                                _lp['timestamp_3m'] = _now_ts
+                            _lp['price'] = store.get('last_price') or buf['p']
+                            _lp['_synthetic_kline'] = True
+                            light_results.append((sym, _lp))
+                            self._payload_cache[sym] = _lp
+                            store['last_calc_ts'] = _now_ts
+                        except Exception:
+                            pass
+                        continue
                 elif buf['t'] <= store.get('last_calc_ts', 0.0):
                     # STRICT SYNC CHECK (real ticks only): skip prices already calculated with.
                     continue
@@ -843,9 +869,10 @@ class MarketDataEngine:
                 c1, c3, price, tick_ts = snap
 
                 # 5. QUEUE CALCULATION
-                tasks_data.append((sym, c1, c3, price, tick_ts, _is_synthetic))
+                _qfp = (float(buf.get('t', 0) or 0), int(store.get('rest_ver', 0) or 0))
+                tasks_data.append((sym, c1, c3, price, tick_ts, _is_synthetic, _qfp))
 
-            if not tasks_data:
+            if not tasks_data and not light_results:
                 await asyncio.sleep(0.5) # Wait for new price ticks
                 continue
 
@@ -856,11 +883,11 @@ class MarketDataEngine:
                 chunk = tasks_data[i:i+chunk_size]
                 futures = []
                 for item in chunk:
-                    sym, c1, c3, p, t, _syn = item
+                    sym, c1, c3, p, t, _syn, _qfp = item
                     fut = loop.run_in_executor(self.executor, cpu_bound_calculation, c1, c3, p, t)
-                    futures.append((sym, fut, t, _syn)) # Track timestamp to update store
+                    futures.append((sym, fut, t, _syn, _qfp)) # Track timestamp to update store
 
-                for sym, fut, t, _syn in futures:
+                for sym, fut, t, _syn, _qfp in futures:
                     try:
                         res = await fut
                         if res:
@@ -868,8 +895,12 @@ class MarketDataEngine:
                                 res['_synthetic_kline'] = True # wall-clock carry-forward, not a fresh tick
                             results.append((sym, res))
                             self.market.data[sym]['last_calc_ts'] = t # Mark as calculated
+                            self._calc_fp[sym] = _qfp
+                            self._payload_cache[sym] = res
                     except Exception as e:
                         logger.error(f"Calc error {sym}: {e}")
+            if light_results:
+                results = light_results + results
 
             # 5. Publish Results
             if results:

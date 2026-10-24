@@ -35904,7 +35904,7 @@ class MultiAccountTradeManager:
                     # USER 2026-10-24: per sym_side from the board, never GLOBAL (which ignored every promotion).
                     import live_entry_gates as _leg_mg  # batch5
                     _uag_min_gain = _leg_mg.effective_min_gain(lambda _k, _d: _psym_get(symbol, position_side, _k, getattr(config, _k, _d)))  # MIN_GAIN_TO_BUY_AGGRESSIVELY swept switch (floor 2.5); AUGMENT_MIN_GAIN_PCT>0 = override
-                    try:  # UNW-L 2026-10-01: AUGMENT_BOUNCE/BREAKOUT_MIN_GAIN_PCT replace the generic tier when AUGMENT_TYPED_MIN_GAIN_ENABLED (default False = unchanged)
+                    try:  # USER 2026-10-24: AUGMENT_BOUNCE/BREAKOUT_MIN_GAIN_PCT always replace the generic tier for typed reasons (no master deadlock)
                         from vec_decisions.live_unw_gates import augment_tier_min_gain as _unw_tier
                         _uag_min_gain = _unw_tier(lambda _k, _d=None: _psym_get(symbol, position_side, _k, getattr(config, _k, _d)), reason, _uag_min_gain)
                     except Exception as _unw_tier_e:

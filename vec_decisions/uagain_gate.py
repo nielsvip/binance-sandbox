@@ -30,7 +30,7 @@ def effective_min_gain(config):
 def uagain_gate_pass(config, is_long: bool, px: float, last_aug_px: float, raw_gain_pct: float, max_gain_pct: float, min_gain_override=None) -> bool:
     if not bool(getattr(config, "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED", True)):
         return True
-    min_gain = effective_min_gain(config) if min_gain_override is None else float(min_gain_override)  # [UNWV/002] typed tier (AUGMENT_TYPED_MIN_GAIN_ENABLED) replaces the generic tier for typed augments
+    min_gain = effective_min_gain(config) if min_gain_override is None else float(min_gain_override)  # USER 2026-10-24: typed override (from augment_tier_min_gain) replaces the generic tier for typed augments
     if not (last_aug_px and last_aug_px > 0 and px and px > 0):
         return True  # live fail-open: no reference price -> gate not evaluated
     gain_since = ((px - last_aug_px) / last_aug_px * 100.0) if is_long else ((last_aug_px - px) / last_aug_px * 100.0)

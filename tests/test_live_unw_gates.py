@@ -75,10 +75,13 @@ def test_wtdc_combo_matches_vector_resolver():
 
 
 def test_augment_typed_tier_default_neutral_and_typed():
+    # USER 2026-10-24: typed thresholds always dispatch by reason type (the retired
+    # master deadlocked the family: threshold rows fill before the master row, so
+    # gating on it measured ~0 forever). Untyped reason -> generic tier.
     generic = 3.0
-    assert G.augment_tier_min_gain(_get({}), "AUG_B_WT_CROSS_15m_g1.0%", generic) == generic
-    assert G.augment_tier_min_gain(_get({"AUGMENT_BOUNCE_MIN_GAIN_PCT": 0.25}), "AUG_B_WT_CROSS_15m", generic) == generic  # master off
-    on = {"AUGMENT_TYPED_MIN_GAIN_ENABLED": True, "AUGMENT_BOUNCE_MIN_GAIN_PCT": 1.0, "AUGMENT_BREAKOUT_MIN_GAIN_PCT": 4.0}
+    assert G.augment_tier_min_gain(_get({}), "AUG_B_WT_CROSS_15m_g1.0%", generic) == 0.5  # bounce default, no master needed
+    assert G.augment_tier_min_gain(_get({"AUGMENT_BOUNCE_MIN_GAIN_PCT": 0.25}), "AUG_B_WT_CROSS_15m", generic) == 0.25
+    on = {"AUGMENT_BOUNCE_MIN_GAIN_PCT": 1.0, "AUGMENT_BREAKOUT_MIN_GAIN_PCT": 4.0}
     assert G.augment_tier_min_gain(_get(on), "AUG_B_WT_CROSS_15m_g1.0%", generic) == 1.0
     assert G.augment_tier_min_gain(_get(on), "AUG_A_BLOWPAST_g2.0%", generic) == 4.0
     assert G.augment_tier_min_gain(_get(on), "DC_TIER2_1h_AUG", generic) == 4.0

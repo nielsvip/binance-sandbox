@@ -44,6 +44,26 @@ def test_parse_rest_klines():
     assert emd.parse_rest_klines([["bad"]]) == {}
 
 
+def test_apply_rest_bars_bumps_rest_ver(monkeypatch):
+    m = _seeded(monkeypatch)
+    assert m.data["T1USDC"]["rest_ver"] == 0
+    bars = {1700000000 + i * 60: 50.0 + i * 0.01 for i in range(10)}
+    assert m.apply_rest_bars("T1USDC", "1m", bars) == 10
+    assert m.data["T1USDC"]["rest_ver"] == 1
+    assert m.apply_rest_bars("T1USDC", "1m", {}) == 0
+    assert m.data["T1USDC"]["rest_ver"] == 1
+
+
+def test_frozen_inputs_recompute_identically():
+    closes = [100.0 + (i % 7) * 0.1 for i in range(60)]
+    c3 = [100.0 + (i % 5) * 0.2 for i in range(40)]
+    r1 = emd.cpu_bound_calculation(list(closes), list(c3), 101.0, 1700000000.0)
+    r2 = emd.cpu_bound_calculation(list(closes), list(c3), 101.0, 1700000000.0)
+    assert r1 is not None and r2 is not None
+    for k in ("k_1m", "d_1m", "k_3m", "d_3m", "wt1_1m", "wt1_3m"):
+        assert r1[k] == r2[k]
+
+
 def test_apply_rest_bars_replaces_flat_and_caps_length(monkeypatch):
     m = _seeded(monkeypatch)
     for k in m.data["T1USDC"]["closes_1m"]:

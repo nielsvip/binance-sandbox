@@ -302,9 +302,7 @@ class Config:
     )
     # === 2026-09-06 AUGMENT SCOPE EXPANSION — bounce vs breakout + fallback reduce ===
     AUGMENT_MIN_GAIN_PCT: float = 3.0
-    AUGMENT_TYPED_MIN_GAIN_ENABLED: bool = (
-        False  # UNW-L 2026-10-01: True => AUGMENT_BOUNCE_MIN_GAIN_PCT / AUGMENT_BREAKOUT_MIN_GAIN_PCT REPLACE the generic MIN_GAIN_TO_BUY_AGGRESSIVELY/AUGMENT_MIN_GAIN_PCT tier per augment type (live: ez_manage UAG choke point + tradier evaluate_augment DC_TIER; vector twin must match). False = today's behaviour.
-    )
+    # 2026-10-24 REMOVED (USER "no dead paths"): AUGMENT_TYPED_MIN_GAIN_ENABLED master — typed thresholds now always dispatch by reason type; the master row filled after the threshold rows, deadlocking the family at defaults. Boards carrying it resume safely (unknown override keys are skipped).
     AUGMENT_BOUNCE_MIN_GAIN_PCT: float = 0.5
     AUGMENT_BREAKOUT_MIN_GAIN_PCT: float = 2.0
     AUGMENT_FALLBACK_REDUCE_ENABLED: bool = False

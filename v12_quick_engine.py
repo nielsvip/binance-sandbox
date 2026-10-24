@@ -5002,9 +5002,7 @@ class QuickConfig:
     AUGMENT_BREAKOUT_MIN_GAIN_PCT: float = (
         2.0  # FIX 2026-09-06: LIVE_ONLY — breakout min gain
     )
-    AUGMENT_TYPED_MIN_GAIN_ENABLED: bool = (
-        False  # [UNWV/002] live typed augment tier (UNW-L master; False = generic effective_min_gain, neutral): bounce/breakout thresholds replace the generic tier for typed augments
-    )
+    # 2026-10-24 REMOVED (USER "no dead paths"): AUGMENT_TYPED_MIN_GAIN_ENABLED master — typed thresholds now always dispatch by reason type (see config.py).
     BULL_HOLD_EXIT_DELAY_BARS: int = (
         0  # [UNWV/002] was only a getattr default (field missing => sweep overrides were ignored); live: config.py 0
     )

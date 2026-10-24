@@ -5271,9 +5271,7 @@ class TradierConfig:
     AUGMENT_MIN_GAIN_PCT: float = (
         3.0  # generic augment MIN_GAIN (sweep 0.5,1.0,1.5,2.0,3.0,5.0)
     )
-    AUGMENT_TYPED_MIN_GAIN_ENABLED: bool = (
-        False  # UNW-L 2026-10-01: True => AUGMENT_BOUNCE_MIN_GAIN_PCT / AUGMENT_BREAKOUT_MIN_GAIN_PCT REPLACE the generic MIN_GAIN_TO_BUY_AGGRESSIVELY/AUGMENT_MIN_GAIN_PCT tier per augment type (live: ez_manage UAG choke point + tradier evaluate_augment DC_TIER; vector twin must match). False = today's behaviour.
-    )
+    # 2026-10-24 REMOVED (USER "no dead paths"): AUGMENT_TYPED_MIN_GAIN_ENABLED master — typed thresholds now always dispatch by reason type (see config.py).
     AUGMENT_BOUNCE_MIN_GAIN_PCT: float = (
         0.5  # bounce adds at lower gain (sweep 0.0,0.5,1.0,1.5)
     )

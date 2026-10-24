@@ -11588,6 +11588,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         "evaluate_stop_calls": 0,
         "e02_parents_evaluated": 0,
         "e02_signals": 0,
+        "process_status_hist": {},
     }
     # ═══════════════════════════════════════════════════════════════════════════
     # 2026-07-09 MINERVINI/CLENOW FAITHFUL TIER-2 HOOK — calls the REAL
@@ -12908,6 +12909,13 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 _ordinary_route_telemetry_t["process_data_error"] += 1
             elif _pp_label_t in {"NO_DATA", "STALE_ABSOLUTE_NO_POS"}:
                 _ordinary_route_telemetry_t["process_no_data"] += 1
+            if os.environ.get("V8_PROCESS_STATUS_HISTOGRAM") == "1":
+                try:
+                    _pp_hist_key_t = (_pp_label_t.split(":")[0].strip() or "?")[:60]
+                    _pp_hist_t = _ordinary_route_telemetry_t["process_status_hist"]
+                    _pp_hist_t[_pp_hist_key_t] = _pp_hist_t.get(_pp_hist_key_t, 0) + 1
+                except Exception:
+                    pass
         if _candidate_diag_t < 5:
             v8_logger.info(
                 f"[V8_CANDIDATE_DIAG] step={step} open={len(open_keys)} "
@@ -13322,6 +13330,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         "ordinary_evaluate_stop_calls": _ordinary_route_telemetry_t["evaluate_stop_calls"],
         "ordinary_e02_parents_evaluated": _ordinary_route_telemetry_t["e02_parents_evaluated"],
         "ordinary_e02_signals": _ordinary_route_telemetry_t["e02_signals"],
+        "ordinary_process_status_hist": dict(sorted(_ordinary_route_telemetry_t["process_status_hist"].items(), key=lambda _kv: -_kv[1])[:25]),
     }
     _extra_result_t.update(
         open_sizing_telemetry(
@@ -13497,6 +13506,11 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             ),
             flush=True,
         )
+    if os.environ.get("V8_PROCESS_STATUS_HISTOGRAM") == "1":
+        try:
+            print("V8_PROCESS_STATUS_HISTOGRAM: " + json.dumps(_extra_result_t.get("ordinary_process_status_hist", {}), sort_keys=True, default=str), flush=True)
+        except Exception:
+            pass
     _v8_result_from_trades(executed_trades, capital, _extra_result_t)
     _write_chart_trades(executed_trades)
     log_dir = BASE_PATH / "backtest_v8" / "logs"

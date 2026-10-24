@@ -40503,7 +40503,7 @@ class StockStrategy:
             _aug_min_gain = _live_entry_gates.effective_min_gain(
                 lambda _k, _d: _cfg_auto(_k, _d)
             )  # batch5: MIN_GAIN_TO_BUY_AGGRESSIVELY is the swept switch (floor 2.5); AUGMENT_MIN_GAIN_PCT>0 = explicit override
-            try:  # UNW-L 2026-10-01: DC_TIER augments are the BREAKOUT type -> AUGMENT_BREAKOUT_MIN_GAIN_PCT replaces the generic tier when AUGMENT_TYPED_MIN_GAIN_ENABLED (default False = unchanged)
+            try:  # USER 2026-10-24: DC_TIER augments are the BREAKOUT type -> AUGMENT_BREAKOUT_MIN_GAIN_PCT always replaces the generic tier (no master deadlock)
                 from vec_decisions.live_unw_gates import (
                     augment_tier_min_gain as _unw_tier,
                 )
