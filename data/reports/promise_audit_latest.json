@@ -1,9 +1,9 @@
 {
- "generated_utc": "2026-10-24T13:12:11.687329+00:00",
+ "generated_utc": "2026-10-24T14:12:11.331624+00:00",
  "days": 1.0,
  "totals": {
-  "exit_promises": 94,
-  "exit_broken_no_delivery": 87,
+  "exit_promises": 95,
+  "exit_broken_no_delivery": 88,
   "exit_skipped_inflight": 105,
   "exit_kept_late": 5,
   "entry_promises": 36,
@@ -85,8 +85,8 @@
    "exit_kept_late": 1
   },
   "inf:TRXUSDT_SHORT": {
-   "exit_promises": 19,
-   "exit_broken_no_delivery": 19
+   "exit_promises": 20,
+   "exit_broken_no_delivery": 20
   },
   "ang:NMRUSDT_SHORT": {
    "entry_promises": 1,
@@ -1481,6 +1481,16 @@
    "sym_side": "TRXUSDT_SHORT",
    "kind": "exit",
    "bar": "10-24 12:30",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "WT_CROSS_EXIT_1h_bull",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "TRXUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-24 13:00",
    "late_min": null,
    "action": "REDUCE",
    "reason": "WT_CROSS_EXIT_1h_bull",
