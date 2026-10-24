@@ -2,16 +2,9 @@
   "men:KMNOUSDT_LONG": {
     "orderId": "2000001536631569",
     "stopPrice": 0.04059,
-    "entry_sig": "2026-10-24 04:15:51.836703+00:00",
+    "entry_sig": "2026-10-24 04:15:52.097000+00:00",
     "symbol": "KMNOUSDT",
     "side": "LONG"
-  },
-  "men:XPLUSDT_SHORT": {
-    "orderId": "2000001536633433",
-    "stopPrice": 0.08686,
-    "entry_sig": "2026-10-24 04:12:12.298000+00:00",
-    "symbol": "XPLUSDT",
-    "side": "SHORT"
   },
   "men:GALAUSDT_SHORT": {
     "orderId": "2000001536710281",
@@ -20,8 +13,15 @@
     "symbol": "GALAUSDT",
     "side": "SHORT"
   },
+  "men:XPLUSDT_SHORT": {
+    "orderId": "2000001536633433",
+    "stopPrice": 0.08686,
+    "entry_sig": "2026-10-24 04:12:12.298000+00:00",
+    "symbol": "XPLUSDT",
+    "side": "SHORT"
+  },
   "men:BIOUSDC_SHORT": {
-    "orderId": "2000001536775329",
+    "orderId": "2000001536733598",
     "stopPrice": 0.02358,
     "entry_sig": "2026-10-24 05:11:26.091000+00:00",
     "symbol": "BIOUSDC",
