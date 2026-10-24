@@ -334,6 +334,22 @@ def update_3m_candle(store, price, tick_ts):
     while len(store['closes_3m']) > 180:
         store['closes_3m'].popitem(last=False)
 
+def parse_rest_klines(rows) -> dict:
+    """Binance fapi klines rows -> {bucket_ts_sec: close}. Pure, tested."""
+    out = {}
+    try:
+        for row in rows or []:
+            try:
+                ts = int(int(row[0]) // 1000)
+                close = float(row[4])
+                if ts > 0 and close > 0:
+                    out[ts] = close
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return out
+
 class HighResMarketData:
     def __init__(self):
         self.data = {} 
@@ -385,6 +401,49 @@ class HighResMarketData:
         store['last_tick_ts'] = timestamp
         update_1m_candle(store, price, timestamp)
         update_3m_candle(store, price, timestamp)
+
+    def update_synthetic(self, symbol: str, price: float, timestamp: float):
+        """2026-10-24 (DUSKUSDT 3m 0/10 vs real 74/80): wall-clock freshness WITHOUT
+        flat-line poisoning. Overwrites the forming bar only, never opens new
+        buckets — new buckets come from real ticks or the REST repair loop.
+        get_snapshot may still append one forming bar to the compute arrays;
+        the stored history stays real so stoch cannot collapse to 0/0."""
+        store = self.data.get(symbol)
+        if not store: return
+        store['last_price'] = price
+        store['last_tick_ts'] = timestamp
+        try:
+            c1 = store.get('closes_1m')
+            if c1:
+                c1[next(reversed(c1))] = price
+            c3 = store.get('closes_3m')
+            if c3:
+                c3[next(reversed(c3))] = price
+        except Exception:
+            pass
+
+    def apply_rest_bars(self, symbol: str, tf: str, bars: dict) -> int:
+        """Merge authoritative REST bars into history. Returns bars merged."""
+        store = self.data.get(symbol)
+        if not store or not bars: return 0
+        key = 'closes_1m' if tf == '1m' else 'closes_3m'
+        closes = store.get(key)
+        if closes is None: return 0
+        n = 0
+        for ts, close in bars.items():
+            try:
+                closes[int(ts)] = float(close)
+                n += 1
+            except Exception:
+                continue
+        while len(closes) > 180:
+            closes.popitem(last=False)
+        if n and closes:
+            try:
+                store['last_price'] = float(closes[next(reversed(closes))])
+            except Exception:
+                pass
+        return n
     def get_snapshot(self, symbol):
         store = self.data.get(symbol)
         if not store or len(store['closes_1m']) < 40: return None
@@ -485,8 +544,8 @@ class MarketDataEngine:
         self.symbols = set()
         self.running = True
         self.shared_proxy = None
-        self.executor = ThreadPoolExecutor(max_workers=4)
-        
+        self.executor = ThreadPoolExecutor(max_workers=8)
+
         # THE BRAIN: Stores the freshest price found across all sources
         self.price_buffer = {} # { 'BTCUSDC': {'p': 50.0, 't': 1700.0} }
         self._synth_ts = {} # { sym: last wall-clock synthetic pass } — wall-clock kline synthesis when ticks stall
@@ -756,10 +815,11 @@ class MarketDataEngine:
                     continue
 
                 # 3. ATOMIC UPDATE & SNAPSHOT
-                # Real tick: stamp the tick. Synthetic pass: carry last price forward on WALL
-                # CLOCK so a new minute/3m bucket opens as time passes and _tick_ts stays fresh.
+                # Real tick: stamp the tick. Synthetic pass: freshness on WALL CLOCK
+                # but overwrite-only (never open flat buckets — the REST loop owns
+                # real history, so stoch cannot collapse to 0/0 mid-outage).
                 if _is_synthetic:
-                    self.market.update(sym, store.get('last_price') or buf['p'], _now_ts)
+                    self.market.update_synthetic(sym, store.get('last_price') or buf['p'], _now_ts)
                 else:
                     self.market.update(sym, buf['p'], buf['t'])
 
@@ -1037,6 +1097,66 @@ class MarketDataEngine:
                 logger.error(f"[KLINES_WRITEBACK] Error: {e}")
             await asyncio.sleep(60)
 
+    async def rest_klines_repair_loop(self):
+        """2026-10-24 (DUSKUSDT 3m 0/10 vs real 74/80): INDEPENDENT history source.
+
+        All four price injectors share one WS failure mode, and the three kline
+        file dirs go stale together. This loop refetches 1m+3m closes straight
+        from Binance Futures REST (no WS, no Redis, no files) on a ~60s cycle
+        so stored 1m/3m history — and therefore k/d — can never be more than
+        ~1 minute old, even mid-throttle. Fail-open: any error skips the symbol."""
+        await asyncio.sleep(20)
+        base = "https://fapi.binance.com/fapi/v1/klines"
+        sem = asyncio.Semaphore(8)
+        timeout = aiohttp.ClientTimeout(total=10, sock_connect=5, sock_read=8)
+        try:
+            session = aiohttp.ClientSession(timeout=timeout)
+        except Exception:
+            return
+        try:
+            while self.running:
+                t0 = time.time()
+                symbols = sorted(self.market.data.keys()) or sorted(self.symbols)
+                if not symbols:
+                    await asyncio.sleep(10)
+                    continue
+
+                async def _fetch(sym, tf):
+                    async with sem:
+                        try:
+                            params = {"symbol": sym, "interval": tf, "limit": 60}
+                            async with session.get(base, params=params) as r:
+                                if r.status != 200:
+                                    return sym, tf, {}
+                                rows = await r.json()
+                            return sym, tf, parse_rest_klines(rows)
+                        except Exception:
+                            return sym, tf, {}
+
+                tasks = []
+                for sym in symbols:
+                    tasks.append(_fetch(sym, "1m"))
+                    tasks.append(_fetch(sym, "3m"))
+                n_ok = 0
+                try:
+                    for i in range(0, len(tasks), 100):
+                        chunk = tasks[i:i + 100]
+                        for sym, tf, bars in await asyncio.gather(*chunk):
+                            try:
+                                if bars and self.market.apply_rest_bars(sym, tf, bars):
+                                    n_ok += 1
+                            except Exception:
+                                pass
+                except Exception as e:
+                    try: logger.warning(f"[REST_REPAIR] cycle error: {e}")
+                    except Exception: pass
+                try: logger.info(f"[REST_REPAIR] refreshed 1m/3m for {n_ok}/{len(symbols)} syms in {time.time() - t0:.1f}s")
+                except Exception: pass
+                await asyncio.sleep(max(5.0, 60.0 - (time.time() - t0)))
+        finally:
+            try: await session.close()
+            except Exception: pass
+
     async def main(self):
         await self.load_symbols()
         try:
@@ -1049,6 +1169,7 @@ class MarketDataEngine:
                 self.heartbeat(),
                 self.shared_mem_watchdog(),
                 self.klines_cache_writeback(),
+                self.rest_klines_repair_loop(),
                 self.funding_rate_loop(),  # 2026-04-27: live funding-rate refresh into market.data[sym]['funding_rate']
                 self.open_interest_loop(),  # 2026-04-27: live OI refresh into market.data[sym]['oi_value','oi_change_1h_pct']
             )

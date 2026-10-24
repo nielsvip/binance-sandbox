@@ -33018,7 +33018,11 @@ class MultiAccountTradeManager:
         # backstop. Vec (mirrors live_twins/vector_enforce._is_board_confirmed plus the
         # RECONCILE_ wire): VEC_DRIVEN_*/RECONCILE_/|VEC_EXACT/BOARD_CONVERGE_/EXIT_OWED
         # (FORCE escalations carry the token). Refused POLICY (never escalated: no watcher,
-        # no FORCE). NATIVE_EXITS_DISABLED=0 restores legacy behavior. ───
+        # no FORCE). NATIVE_EXITS_DISABLED=0 restores legacy behavior.
+        # USER 2026-10-24 VEC-LAST: recorded here, enforced at VEC_LAST_BACKSTOP after all
+        # native gates — a native refusal keeps its own string; VEC only refuses what native
+        # would allow. ───
+        _vec_last_refuse = ""
         try:
             _voe_disabled = bool(getattr(_ezm_base_config, "NATIVE_EXITS_DISABLED", getattr(config, "NATIVE_EXITS_DISABLED", True)))
         except Exception:
@@ -33039,13 +33043,13 @@ class MultiAccountTradeManager:
         if _voe_disabled and _xg.is_exit_action(action, is_full_close) and not _voe_ratio_scale:
             _voe_vec = _voe_reason_is_vec(reason)
             if not _voe_vec:
-                logger.critical(f"🛑 [NON_VECTOR_EXIT_DISABLED] {position_key} {action} reason={str(reason)[:80]} — refused (USER 2026-10-21 backstop; NATIVE_EXITS_DISABLED=0 restores)")
+                logger.debug(f"[VEC_LAST_DEFER] {position_key} {action} non-vec exit recorded for late refusal (USER 2026-10-24 VEC-LAST; NATIVE_EXITS_DISABLED=0 restores)")
                 try:
                     if _paper_nv.enabled(config):
                         _paper_nv.record("crypto", account_key, position_key, _paper_nv.kind_of(action, side, position_side), action, reason, "NON_VECTOR_EXIT_REFUSED", old_price, quantity)
                 except Exception:
                     pass
-                return "POLICY_NON_VECTOR_EXIT_DISABLED"
+                _vec_last_refuse = _vec_last_refuse or "POLICY_NON_VECTOR_EXIT_DISABLED"
         # ─── EXIT GUARANTEE FORCE LEG (2026-10-14 USER "make sure at least EXITS will never be compromised again") ───
         # Only reached via exit_guarantee escalation of a refused/unconfirmed FULL close (or a stuck one): exchange truth ->
         # cancel own working orders on the leg -> ONE market reduce-only close of the broker qty -> verify flat. Inside execute_now.
@@ -33066,7 +33070,7 @@ class MultiAccountTradeManager:
         if not _hm_ok:
             if _paper_nv.enabled(config):
                 _paper_nv.record("crypto", account_key, position_key, _paper_nv.kind_of(action, side, position_side), action, reason, "HERMETIC", old_price, quantity)
-            return "BLOCKED_HERMETIC_NOT_VEC"
+            _vec_last_refuse = _vec_last_refuse or "BLOCKED_HERMETIC_NOT_VEC"
         # ─── VEC-DECIDED SUPREMACY (USER 2026-10-21: NOTHING goes against a vectorized trade
         # decision). One flag: vec-twin provenance, the in-script twin tag, or a VEC_DRIVEN
         # reason on a live sym_side. Vec decisions already passed the vector's own gates. ───
@@ -33146,8 +33150,8 @@ class MultiAccountTradeManager:
             if _vec_exact_mode_on():
                 _pok, _pcode = _peg.allows(reason, action, bool(is_full_close))
                 if not _pok:
-                    logger.critical(f"🛑 [PARITY_NATIVE_{_pcode}] {position_key}: BLOCKED — non-vec trade in exact mode. action={action} reason={(reason or '')[:100]}")
-                    return f"BLOCKED_PARITY_NATIVE_{_pcode}_{position_key}"
+                    logger.debug(f"[VEC_LAST_DEFER] {position_key}: non-vec trade in exact mode recorded for late refusal (USER 2026-10-24 VEC-LAST)")
+                    _vec_last_refuse = _vec_last_refuse or f"BLOCKED_PARITY_NATIVE_{_pcode}_{position_key}"
         except Exception as _pn_e:
             logger.warning(f"[PARITY_NATIVE] {position_key}: gate error (fail-open): {_pn_e}")
         # ─── X3 VEC-DRIVEN LIVE (2026-10-06 USER "THE SECOND A VECTORIZED TRADE WOULD OCCUR A LIVE TRADE OCCURS") ───
@@ -33171,17 +33175,9 @@ class MultiAccountTradeManager:
         # at a 15m bar change; exits only on cross/board-intent/stop; a violating family is refused, DISABLED
         # in the kill registry, and FLAGGED — manual restore only (tools/vector_violations.py). Backstops,
         # reconcile bookkeeping, correctness, infra, locks and halts are untouched by the enforcer.
-        try:
-            from live_twins import vector_enforce as _ve_mod
-            _ve_ok, _ve_verdict = _ve_mod.check(action, position_key, reason)
-        except Exception:
-            _ve_ok, _ve_verdict = True, "ENFORCE_ERROR_FAILOPEN"
-        if not _ve_ok:
-            if _ve_verdict == "OFF_BAR_WINDOW":
-                logger.info(f"⏳ [VECTOR_EXEC_REFUSED] {position_key} action={action} reason={(reason or '')[:80]} — outside 15m bar window, waits for next bar (USER 2026-10-21)")
-            else:
-                logger.critical(f"🛑 [VECTOR_EXEC_REFUSED] {position_key} action={action} verdict={_ve_verdict} reason={(reason or '')[:80]} — family disabled until manual restore (USER 2026-10-21)")
-            return f"BLOCKED_VECTOR_EXEC_{_ve_verdict[:40]}"
+        # USER 2026-10-24 VEC-LAST: the enforcer runs at VEC_LAST_BACKSTOP (after all native
+        # gates) so a native refusal keeps its own string; _ve_deferred carries the request.
+        _ve_deferred = True
         if bool(getattr(_ezm_base_config, "VEC_DRIVEN_ENABLED", False)):
             try:
                 from live_twins import vec_driven as _vdm_en
@@ -33194,14 +33190,14 @@ class MultiAccountTradeManager:
                     elif _zp_ns:
                         logger.warning(f"[ZERO_PASS_ALLOW] {position_key} action={action} reason={(reason or '')[:80]} — native decision on vec-driven sym_side allowed (USER 2026-10-21)")
                     else:
-                        logger.warning(f"⛔ [VEC_DRIVEN_NATIVE_SUPPRESSED] {position_key} action={action} reason={(reason or '')[:80]} — sym_side is VEC_DRIVEN live; native decision refused")
-                        return "BLOCKED_VEC_DRIVEN_NATIVE_SUPPRESSED"
+                        logger.debug(f"[VEC_LAST_DEFER] {position_key} native decision on vec-driven sym_side recorded for late refusal (USER 2026-10-24 VEC-LAST)")
+                        _vec_last_refuse = _vec_last_refuse or "BLOCKED_VEC_DRIVEN_NATIVE_SUPPRESSED"
                 # USER 2026-10-06 PARITY: only vectorized trades open/increase positions on EVERY key; native exits still manage existing positions
                 elif _zp_ns and not _vdm_en.is_vec_driven_reason(reason) and not _broker_sync_is_exit(action) and not _vec_exact_reason_ok(reason):
                     logger.warning(f"[ZERO_PASS_ALLOW] {position_key} action={action} reason={(reason or '')[:80]} — native increase allowed (USER 2026-10-21)")
                 elif bool(getattr(_ezm_base_config, "VEC_DRIVEN_NATIVE_ENTRY_BLOCK_ALL", True)) and not _vdm_en.is_vec_driven_reason(reason) and not _broker_sync_is_exit(action) and not _vec_exact_reason_ok(reason):
-                    logger.warning(f"⛔ [NATIVE_ENTRY_BLOCK_VEC_DRIVEN] {position_key} action={action} reason={(reason or '')[:80]} — native position increase refused (only VEC_DRIVEN trades open)")
-                    return "BLOCKED_NATIVE_ENTRY_VEC_DRIVEN"
+                    logger.debug(f"[VEC_LAST_DEFER] {position_key} native position increase recorded for late refusal (USER 2026-10-24 VEC-LAST)")
+                    _vec_last_refuse = _vec_last_refuse or "BLOCKED_NATIVE_ENTRY_VEC_DRIVEN"
             except Exception as _vd_e:
                 logger.warning(f"[VEC_DRIVEN] {position_key}: gate error {_vd_e} (no exemption)")
         # parity-loop-crypto 2026-10-06: in-script vec twin orders (PARITY_VEC_EXACT_MODE) share the vec-decided exemption set
