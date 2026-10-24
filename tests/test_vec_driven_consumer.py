@@ -189,14 +189,18 @@ def test_native_emergency_exit_allowed(monkeypatch):
 
     def _stop(*a, **k):
         raise _Stop()
+    _orig_bsts = EZ._broker_sync_freshest_ts
     monkeypatch.setattr(EZ, "_broker_sync_freshest_ts", _stop)
     # The emergency CLOSE must reach the broker path (raises the probe): vector_enforce exempts it (EMERGENCY_EXIT)
     # and the vec-only-exits backstop passes it (_voe_reason_is_vec). An emergency OPEN is still refused — a native
     # entry waits for the bar window like any other, and refusing an entry never traps a position.
     with pytest.raises(_Stop):
         _run_exec(action="CLOSE", reason="LIQUIDATION_PROTECT", is_full_close=True)
+    # USER 2026-10-24 VEC-LAST: the OPEN now traverses native gates (incl. broker sync)
+    # before the late VEC suppress, so the probe is scoped to the CLOSE it instruments.
+    monkeypatch.setattr(EZ, "_broker_sync_freshest_ts", _orig_bsts)
     res = _run_exec(action="OPEN", reason="EMERGENCY_MARGIN_OPEN")
-    assert res.startswith(("BLOCKED_VEC_DRIVEN_NATIVE_SUPPRESSED", "BLOCKED_VECTOR_EXEC_")), res
+    assert res.startswith("BLOCKED_"), res
 
 
 def test_vec_driven_reason_passes_365d(monkeypatch):

@@ -902,19 +902,28 @@ class MarketDataEngine:
                                 payload[_k] = _v
                 except Exception:
                     pass
-                # Update Bridge
+                # Update Redis Pipeline FIRST — it carries the 60s TTL freshness
+                # guarantee ang displays as Age1m. It must never wait behind the
+                # bridge: 2026-10-24 a saturated shared-mem server wedged
+                # update_batch for minutes, publish never ran, ALL hot keys
+                # expired at once while queueing/heartbeat looked alive.
+                try:
+                    async with self.redis.pipeline() as pipe:
+                        for sym, payload in results:
+                            pipe.set(f"hot_metrics_ts:{sym}", payload['_tick_ts'], ex=90)
+                            pipe.set(f"hot_metrics:{sym}", orjson.dumps(payload, option=orjson.OPT_SERIALIZE_NUMPY), ex=90)
+                        await pipe.execute()
+                except Exception as _rpe:
+                    try: logger.warning(f"[PUBLISH] redis pipeline failed: {_rpe}")
+                    except Exception: pass
+                # Update Bridge, best-effort with a hard bound so a saturated
+                # server can delay shared memory but never freshness.
                 if self.shared_proxy:
                     try:
                         batch_payload = {sym: payload for sym, payload in results}
-                        await asyncio.to_thread(self.shared_proxy.update_batch, batch_payload)
+                        await asyncio.wait_for(asyncio.to_thread(self.shared_proxy.update_batch, batch_payload), timeout=5.0)
                     except Exception:
                         self.shared_proxy = None
-                # Update Redis Pipeline
-                async with self.redis.pipeline() as pipe:
-                    for sym, payload in results:
-                        pipe.set(f"hot_metrics_ts:{sym}", payload['_tick_ts'], ex=60)
-                        pipe.set(f"hot_metrics:{sym}", orjson.dumps(payload, option=orjson.OPT_SERIALIZE_NUMPY), ex=60)
-                    await pipe.execute()
 
             # Ensure we don't spin uncontrollably
             await asyncio.sleep(0.1)
@@ -1106,8 +1115,12 @@ class MarketDataEngine:
         so stored 1m/3m history — and therefore k/d — can never be more than
         ~1 minute old, even mid-throttle. Fail-open: any error skips the symbol."""
         await asyncio.sleep(20)
+        try: logger.info("[REST_REPAIR] starting independent 1m/3m history repair (~60s cycle)")
+        except Exception: pass
         base = "https://fapi.binance.com/fapi/v1/klines"
-        sem = asyncio.Semaphore(8)
+        # 2026-10-24: sem 8 starved the broadcast loop (ages flapped 54-69s).
+        # The repair is a backstop — it yields to broadcast, which owns the age.
+        sem = asyncio.Semaphore(4)
         timeout = aiohttp.ClientTimeout(total=10, sock_connect=5, sock_read=8)
         try:
             session = aiohttp.ClientSession(timeout=timeout)
