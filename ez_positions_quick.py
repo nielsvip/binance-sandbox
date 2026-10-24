@@ -16411,8 +16411,9 @@ class FastDataManager:
                         # 2026-10-23: 0.1s starved the fetch on a loaded box (own loop delay
                         # ate the budget; Redis p99 is 3ms) — every miss fell back to ~30min
                         # cold data. 1.0s costs nothing when fast, rescues slow loops.
+                        # USER 2026-10-24: 1.0s → 2.5s (stale scan ages with fresh Redis = fetch misses under load 160+).
                         raw_json = await asyncio.wait_for(
-                            client.get(f"hot_metrics:{clean_sym}"), timeout=1.0
+                            client.get(f"hot_metrics:{clean_sym}"), timeout=2.5
                         )
                         if raw_json:
                             redis_hot = orjson.loads(raw_json)
@@ -16573,6 +16574,17 @@ class FastDataManager:
                 is_fresh = True
         except:
             pass
+        if not is_fresh:
+            try:
+                _now2 = time.time()
+                _ml = self.__dict__.setdefault("_hot_miss_log", {})
+                if _now2 - _ml.get(clean_sym, 0) > 300.0:
+                    _ml[clean_sym] = _now2
+                    try: _age2 = now - final_ts
+                    except Exception: _age2 = -1
+                    logger.warning(f"[HOT_MISS] {clean_sym} serving cold — no fresh bridge/Redis (age>{_age2:.0f}s)")
+            except Exception:
+                pass
         return metrics, combined_data, k_1m, d_1m, k_3m, d_3m, is_fresh
 
     async def get_fresh_price(self, symbol: str) -> tuple[float, float]:

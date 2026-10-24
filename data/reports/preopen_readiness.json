@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-24T18:00:02Z",
+ "generated_utc": "2026-10-24T18:20:06Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
@@ -14,7 +14,7 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "filled_today": 236,
+    "filled_today": 259,
     "filled_before_open": 0
    },
    "detail": "no board was filled before the open"
@@ -27,10 +27,10 @@
     "mac_done_stamp": true,
     "s1_stamp": "{\n \"date\": \"20261024\",\n \"status\": \"DONE\",\n \"started\": \"2026-10-24T12:15:01Z\",\n \"ended\": \"2026-10-24T13:02:13.386510Z\",\n \"steps_ok\": \"1,2,2a,2b,3,4,4c,4b,4d,4e,4e,5,6,6b\",\n \"agg\": \"SPREADSHEETS/v15_avg_delta/v15_avg_delta_20261024.xlsx\",\n \"promoted_keys\": [\n  \"ADX_REGIME_FILTER_ENABLED\",\n  \"ATR_LONG_WINDOW\",\n  \"BB_SQUEEZE_ENTRY_ENABLED\",\n  \"BREAKEVEN_GAIN_EROSION_FILTER_TF\",\n  \"BREAKOUT_RETEST_FILT",
     "cat_side_defaults_4_at": "2026-10-21T04:54:49Z",
-    "cat_side_age_days": 3.5,
+    "cat_side_age_days": 3.6,
     "cat_side_note": "rebuilt only by v15_daily_template_update --sync-defaults, a deliberate manual step \u2014 reported, never fails this gate"
    },
-   "detail": "mac stamp 20261024=True, s1 stamp {\n \"date\": \"20261024\",\n \"status\": \"DONE\",\n \"started\": \"2026-10-24T12:15:01Z\",\n \"ended\": \"2026-10-24T13:02:13.386510Z\",\n \"steps_ok\": \"1,2,2a,2b,3,4,4c,, cat_side layer 3.5d old"
+   "detail": "mac stamp 20261024=True, s1 stamp {\n \"date\": \"20261024\",\n \"status\": \"DONE\",\n \"started\": \"2026-10-24T12:15:01Z\",\n \"ended\": \"2026-10-24T13:02:13.386510Z\",\n \"steps_ok\": \"1,2,2a,2b,3,4,4c,, cat_side layer 3.6d old"
   },
   {
    "name": "selection_fresh",
@@ -39,7 +39,7 @@
    "measured": {
     "built_at": "2026-10-24T17:51:31.571488+00:00",
     "n": 523,
-    "age_at_open_s": 511
+    "age_at_open_s": 1715
    },
    "detail": "built 2026-10-24T17:51:31.571488+00:00 n=523"
   },
@@ -210,7 +210,7 @@
     "symbols": 330,
     "stale_over_90min": 2,
     "stale_pct": 0.6,
-    "median_age_min": 15.0,
+    "median_age_min": 20.1,
     "sample": [
      "DUSKUSDT",
      "ONEUSDT"
