@@ -132,6 +132,33 @@ def test_annotate_round_trips_unmatched_and_open_stay_grey():
     assert [e["win"] for e in evs] == [None, None]
 
 
+def test_dedupe_mirror_lines_before_accounting():
+    from datetime import datetime, timezone
+    ts = datetime(2026, 10, 15, 8, 0, tzinfo=timezone.utc)
+    recs = [{"timestamp": ts, "side": "LONG", "type": "OPEN", "qty": 5.0, "price": 100.0},
+            dict(timestamp=ts, side="LONG", type="OPEN", qty=5.0, price=100.0)]
+    assert len(lth._dedupe_mirror_lines(recs)) == 1
+
+
+def test_collapse_stuck_relogs_keeps_first():
+    from datetime import datetime, timezone
+    base = datetime(2026, 10, 15, 8, 0, tzinfo=timezone.utc)
+    from datetime import timedelta
+    recs = [{"timestamp": base + timedelta(minutes=2 * i), "side": "SHORT",
+             "type": "AUGMENT", "qty": 21.0, "price": 89.075} for i in range(5)]
+    out = lth._collapse_stuck_relogs(recs)
+    assert len(out) == 1 and out[0]["timestamp"] == base
+
+
+def test_no_phantom_win_without_exit():
+    from datetime import datetime, timezone
+    ts = datetime(2026, 10, 15, 8, 0, tzinfo=timezone.utc)
+    recs = [{"timestamp": ts, "side": "LONG", "type": "OPEN", "qty": 5.0, "price": 100.0},
+            dict(timestamp=ts, side="LONG", type="OPEN", qty=5.0, price=100.0)]
+    evs = lth.annotate_round_trips(lth.mark_boundaries(lth._dedupe_mirror_lines(recs)), "LONG")
+    assert [e["win"] for e in lth.boundary_events(evs)] == [None]
+
+
 def test_draw_outcome_lines_win_loss_skip_unknown():
     import matplotlib
     matplotlib.use("Agg")

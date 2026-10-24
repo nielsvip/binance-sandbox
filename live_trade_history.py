@@ -241,17 +241,46 @@ def fetch_trades(symbol, accounts, hist_dirs):
         events = []
         for side, recs in by_side.items():
             recs.sort(key=lambda e: e["timestamp"])
+            recs = _dedupe_mirror_lines(recs)
+            recs = _collapse_stuck_relogs(recs)
             events.extend(annotate_round_trips(mark_boundaries(recs), side))
         if events:
-            seen = set()
-            uniq = []
-            for ev in events:
-                key = (ev["timestamp"].isoformat(), ev["type"], ev["direction"])
-                if key not in seen:
-                    seen.add(key)
-                    uniq.append(ev)
-            uniq.sort(key=lambda e: e["timestamp"])
-            out[acct] = uniq
+            events.sort(key=lambda e: e["timestamp"])
+            out[acct] = events
+    return out
+
+
+def _dedupe_mirror_lines(recs):
+    """Drop cross-root mirror copies BEFORE balance accounting.
+
+    data/history and data/tradier/history carry the same fills in different
+    JSON formatting, so byte comparison never matches. Key on content
+    instead; keep the first occurrence so a later distinct record survives.
+    """
+    seen, uniq = set(), []
+    for r in recs:
+        key = (r["timestamp"].isoformat(), r["side"], r["type"], r["qty"], r["price"])
+        if key not in seen:
+            seen.add(key)
+            uniq.append(r)
+    return uniq
+
+
+def _collapse_stuck_relogs(recs):
+    """Collapse runs of identical consecutive state re-logs.
+
+    The strategy loggers re-emit the same (side, type, qty, price) record
+    every ~2 min while a state persists (e.g. 150x AUGMENT 21.0 @ same
+    price). Each copy would otherwise inflate the position balance and no
+    round trip could ever close. Genuine consecutive fills at exactly the
+    same price are rare; keep the first of a run.
+    """
+    out = []
+    for r in recs:
+        if out and (out[-1]["side"], out[-1]["type"], out[-1]["qty"], out[-1]["price"]) == \
+                (r["side"], r["type"], r["qty"], r["price"]):
+            continue
+        out.append(r)
     return out
 
 
