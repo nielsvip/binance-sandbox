@@ -47,3 +47,11 @@ def test_eligible_honors_skip_name(monkeypatch):
 
 def test_fail_skip_window_is_minutes_not_hours():
     assert vpn.FAIL_SKIP_S <= 600
+
+
+def test_tour_walks_ring_skipping_current():
+    order = ["Surfshark. Dausos", "Surfshark. WireGuard", "(no-vpn)"]
+    assert vpn._tour_next("Surfshark. Dausos", order) == "Surfshark. WireGuard"
+    assert vpn._tour_next("(no-vpn)", order) == "Surfshark. Dausos"
+    assert vpn._tour_next("Surfshark. Dausos", ["Surfshark. Dausos"]) is None
+    assert vpn._tour_next("x", []) is None

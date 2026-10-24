@@ -132,13 +132,26 @@ def test_annotate_round_trips_unmatched_and_open_stay_grey():
     assert [e["win"] for e in evs] == [None, None]
 
 
-def test_arrow_style_win_loss_unknown():
-    f, e, a = lth.arrow_style({"win": True, "direction": "buy", "phase": "entry"}, "trb")
-    assert f == lth.WIN_COLOR and e == lth.account_color("trb", "buy") and a == lth.ENTRY_ALPHA
-    f, e, a = lth.arrow_style({"win": False, "direction": "sell", "phase": "exit"}, "ang")
-    assert f == lth.LOSS_COLOR and e == lth.account_color("ang", "sell") and a == lth.EXIT_ALPHA
-    f, _, _ = lth.arrow_style({"direction": "buy"}, "trb")
-    assert f == lth.UNKNOWN_COLOR
+def test_draw_outcome_lines_win_loss_skip_unknown():
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from datetime import datetime, timezone
+    from matplotlib.lines import Line2D
+    fig, ax = plt.subplots()
+    base = datetime(2026, 10, 20, tzinfo=timezone.utc)
+    lo, hi = base.replace(hour=9), base.replace(hour=16)
+    evs = [{"timestamp": base.replace(hour=10), "win": True},
+           {"timestamp": base.replace(hour=11), "win": False},
+           {"timestamp": base.replace(hour=12), "win": None},
+           {"timestamp": base.replace(hour=18), "win": True}]
+    nw, nl = lth.draw_outcome_lines(ax, lo, hi, evs, lambda t: t.timestamp())
+    assert (nw, nl) == (1, 1)
+    greens = [l for l in ax.get_children() if isinstance(l, Line2D) and l.get_color() == lth.WIN_COLOR]
+    reds = [l for l in ax.get_children() if isinstance(l, Line2D) and l.get_color() == lth.LOSS_COLOR]
+    assert len(greens) == 1 and len(reds) == 1
+    assert abs(greens[0].get_alpha() - lth.OUTCOME_ALPHA) < 1e-9
+    plt.close(fig)
 
 
 def test_draw_mismatch_lines_live_side():

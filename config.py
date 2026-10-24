@@ -2852,8 +2852,10 @@ class Config:
         False  # 2026-09-21 CHURN FIX ≥15m parity — disabled 3m force-open (was True 2026-09-07). Live churn: 3m WT cross queued OPENs that backtest per_sym 15m settings never produced (tradeable_keys pruned 133→57). Re-enable only after forward 15m-only proves +delta. ROLLBACK: True.
     )
     # 2026-09-03 FLZ 10/min CHURN GUARD — hard halt at 10 trades/min (EMERGENCY_BRAKE). ROLLBACK: 0 to disable.
+    # USER 2026-10-24: raised 10 -> 30 (crypto; vec-dictated converge bursts run 14-24/min,
+    # and the counter now admits exchange-accepted fills only).
     EMERGENCY_BRAKE_MAX_TRADES_PER_MIN: int = (
-        10  # 10 trades/min → halt & .FLZ_TRADING_HALTED sentinel. Profitable closes (>0.1% gain) still bypass.
+        30  # 30 trades/min → halt & .FLZ_TRADING_HALTED sentinel. Profitable closes (>0.1% gain) still bypass.
     )
     WT_3M_FORCE_OPEN_BYPASS_GATES: bool = (
         True  # USER 2026-06-01: Enable bypass gates to ensure always-open operative status.

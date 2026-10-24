@@ -22555,33 +22555,17 @@ async def execute_trade_wrapper(
                 from datetime import timezone as _ch_tz
                 from pathlib import Path as _ChPath
 
-                _ch_cut = _ch_dt.now(_ch_tz.utc) - _ch_td(seconds=60)
-                _ch_file = (
-                    _ChPath(
-                        getattr(config, "BASE_PATH", "/Users/niels/Documents/binance")
-                    )
-                    / "data"
-                    / "decisions"
-                    / f"decisions_{account_key}_{_ch_dt.now(_ch_tz.utc).strftime('%Y%m%d')}.jsonl"
-                )
+                # USER 2026-10-24: per-minute churn = exchange-accepted fills only
+                # (execution_ledger) — raw decision lines count self-refused retries.
                 _ch_cnt = 0
                 try:
-                    with open(str(_ch_file), errors="replace") as _cf:
-                        _cf.seek(0, 2)
-                        _sz = _cf.tell()
-                        _cf.seek(max(0, _sz - 200000))
-                        if _sz > 200000:
-                            _cf.readline()
-                        for _ln in _cf:
-                            try:
-                                _dj = _ch_json.loads(_ln)
-                                _ts = _dj.get("timestamp", "")
-                                _dtp = _ch_dt.fromisoformat(_ts.replace("Z", "+00:00"))
-                                if _dtp >= _ch_cut:
-                                    _ch_cnt += 1
-                            except Exception:
-                                pass
-                except FileNotFoundError:
+                    from vec_decisions import execution_ledger as _ch_exledger
+                    _ch_cnt = _ch_exledger.count_recent_accepted(
+                        getattr(config, "BASE_PATH", "/Users/niels/Documents/binance"),
+                        account_key,
+                        _ch_dt.now(_ch_tz.utc) - _ch_td(seconds=60),
+                    )
+                except Exception:
                     _ch_cnt = 0
                 if _ch_cnt >= _ch_max:
                     logger.critical(

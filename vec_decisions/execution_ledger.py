@@ -29,6 +29,8 @@ def append_execution(base_path, account_key, position_key, action, reason, resul
     try:
         if os.environ.get("V8_SIM_TS"):
             return False
+        path = executions_path(base_path, account_key)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         rec = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "position_key": position_key,
@@ -37,7 +39,7 @@ def append_execution(base_path, account_key, position_key, action, reason, resul
             "reason": str(reason or "")[:200],
             "result": str(result or "")[:200],
         }
-        with open(executions_path(base_path, account_key), "a") as f:
+        with open(path, "a") as f:
             f.write(json.dumps(rec) + "\n")
         return True
     except Exception:

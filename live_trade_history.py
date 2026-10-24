@@ -35,6 +35,34 @@ def arrow_alpha(event):
     return ENTRY_ALPHA if event.get("phase", "entry") == "entry" else EXIT_ALPHA
 
 
+OUTCOME_LW = 1.2
+OUTCOME_ALPHA = 0.55
+
+
+def draw_outcome_lines(ax_plot, x_left_ts, x_right_ts, events, x_of):
+    """Win/loss vertical bars: green = event belongs to a winning round trip,
+    red = losing round trip, skipped when outcome unknown (still open).
+
+    events: boundary dicts with timestamp + win (from annotate_round_trips).
+    x_of maps a timestamp to the axes x-coordinate. Returns (n_win, n_loss).
+    """
+    n_win = n_loss = 0
+    for e in events or []:
+        w = e.get("win")
+        if w is None:
+            continue
+        t = e.get("timestamp")
+        if t is None or not (x_left_ts <= t <= x_right_ts):
+            continue
+        if w is True:
+            ax_plot.axvline(x=x_of(t), color=WIN_COLOR, alpha=OUTCOME_ALPHA, lw=OUTCOME_LW, zorder=6)
+            n_win += 1
+        elif w is False:
+            ax_plot.axvline(x=x_of(t), color=LOSS_COLOR, alpha=OUTCOME_ALPHA, lw=OUTCOME_LW, zorder=6)
+            n_loss += 1
+    return n_win, n_loss
+
+
 def draw_mismatch_lines(ax_plot, x_left_ts, x_right_ts, sig_buy, sig_sell, fill_buy, fill_sell, x_of, tol_min=30.0):
     """Faint discrepancy vlines: reddish = signal without fill, greenish = fill without signal.
 
@@ -136,12 +164,6 @@ def annotate_round_trips(events, side):
                     o["win"] = win
             open_evts, open_q, open_cost = [], 0.0, 0.0
     return events
-
-
-def arrow_style(event, acct):
-    w = event.get("win")
-    face = WIN_COLOR if w is True else LOSS_COLOR if w is False else UNKNOWN_COLOR
-    return face, account_color(acct, event.get("direction", "buy")), arrow_alpha(event)
 
 
 def mark_boundaries(records):

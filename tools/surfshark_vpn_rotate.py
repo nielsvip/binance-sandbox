@@ -9,6 +9,7 @@ FAPI = "https://fapi.binance.com"
 COOLDOWN_S = 120
 FAIL_SKIP_S = 300
 RESTORE_TRY_S = 600
+TOUR_INTERVAL_S = 4 * 3600
 def log(m):
     line = time.strftime("%Y-%m-%d %H:%M:%S") + " " + m
     print(line, flush=True)
@@ -80,9 +81,18 @@ def ban_active():
     return False, None, 0.0
 def quit_app():
     try:
-        sh(["osascript", "-e", 'tell application "Surfshark" to quit'], timeout=15)
+        sh(["pkill", "-x", "Surfshark"], timeout=15)
     except Exception as e:
         log(f"app quit attempt: {e}")
+
+
+def _tour_next(current, cands):
+    """USER 2026-10-24: scheduled geo-tour — round-robin next exit != current. Pure, tested."""
+    try:
+        rest = [c for c in (cands or []) if c != current]
+        return rest[0] if rest else None
+    except Exception:
+        return None
 def stop_all():
     for s in slots():
         if s["status"] != "Disconnected":
@@ -340,6 +350,7 @@ def cmd_watch(interval=15):
             if rc != 0 and time.time() - load_state().get("last_rotate_ts", 0) >= COOLDOWN_S:
                 log(f"watch: check rc={rc} -> rotating")
                 do_rotate()
+            restored = False
             if rc == 0 and not [s for s in slots() if s["status"] == "Connected"]:
                 st = load_state()
                 if time.time() - st.get("last_restore_try", 0) >= RESTORE_TRY_S:
@@ -347,6 +358,30 @@ def cmd_watch(interval=15):
                     st["last_restore_try"] = time.time()
                     save_state(st)
                     do_rotate(force_tunnel=True)
+                    restored = True
+            if rc == 0 and not restored:
+                try:
+                    r = sh(["pgrep", "-x", "Surfshark"], timeout=10)
+                    if r.stdout.strip():
+                        log("watch: Surfshark.app running — quitting (tunnels are scutil-managed, the app only fights them)")
+                        quit_app()
+                except Exception:
+                    pass
+                st = load_state()
+                if st.get("tour_last_ts", 0) == 0:
+                    st["tour_last_ts"] = time.time()
+                    save_state(st)
+                elif time.time() - st["tour_last_ts"] >= TOUR_INTERVAL_S:
+                    cur = [s for s in slots() if s["status"] == "Connected"]
+                    cur_name = cur[0]["name"] if cur else "(no-vpn)"
+                    order = [s["name"] for s in slots()] + ["(no-vpn)"]
+                    nxt = _tour_next(cur_name, order)
+                    if nxt:
+                        log(f"watch: scheduled geo-tour {cur_name} -> {nxt}")
+                        do_rotate(target=("none" if nxt == "(no-vpn)" else nxt))
+                    st = load_state()
+                    st["tour_last_ts"] = time.time()
+                    save_state(st)
             time.sleep(interval)
         except Exception as e:
             log(f"watch error: {e}")

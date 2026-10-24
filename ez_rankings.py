@@ -6612,8 +6612,8 @@ async def plot_dfs_subplots(
                 _fill_buy = sorted([e["timestamp"] for evs in _fills.values() for e in _lth.boundary_events(evs) if e["direction"] == "buy"])
                 _fill_sell = sorted([e["timestamp"] for evs in _fills.values() for e in _lth.boundary_events(evs) if e["direction"] == "sell"])
                 if SHOW_CRYPTO_MISMATCH:
-                    _lth.draw_mismatch_lines(ax_plot, x_left_ts, x_right_ts, _sig_buy, _sig_sell,
-                                             _fill_buy, _fill_sell, lambda _t: _t, CRYPTO_MISMATCH_TOL_MIN)
+                    _outcome_evs = [e for evs in _fills.values() for e in _lth.boundary_events(evs)]
+                    _lth.draw_outcome_lines(ax_plot, x_left_ts, x_right_ts, _outcome_evs, lambda _t: _t)
                 if SHOW_CRYPTO_LIVE_ARROWS and _fills:
                     for _acct in CRYPTO_ARROW_ACCOUNTS:
                         for _ev in _lth.boundary_events(_fills.get(_acct)):
@@ -6626,8 +6626,8 @@ async def plot_dfs_subplots(
                                 _yp = _row["low"] - margin_abs_val * 0.5 if _is_buy else _row["high"] + margin_abs_val * 0.5
                             except (IndexError, KeyError):
                                 continue
-                            _face, _edge, _alpha = _lth.arrow_style(_ev, _acct)
-                            ax_plot.scatter([_t], [_yp], color=_face, marker="^" if _is_buy else "v", s=30, zorder=8, alpha=_alpha, edgecolors=_edge, linewidths=0.8)
+                            _ac = _lth.ACCOUNT_ARROW_COLORS[_acct]
+                            ax_plot.scatter([_t], [_yp], color=_ac, marker="^" if _is_buy else "v", s=30, zorder=8, alpha=_lth.arrow_alpha(_ev), edgecolors="white", linewidths=0.6)
             except Exception as _e_live:
                 logger.debug(f"[plot_dfs_subplots] live overlay error: {_e_live}")
 

@@ -23220,6 +23220,15 @@ async def process_position(
                             )
                         except Exception:
                             pass
+                        if bool(__import__("os").environ.get("V8_GOLDEN_DIAG")):
+                            try:
+                                _gld_keys = sorted((_gld_row or {}).keys())
+                            except Exception:
+                                _gld_keys = []
+                            print(
+                                f"V8_LOG GOLDEN_DIAG sym={symbol} fire={bool(_gld_out.get('fire'))} phase={_gld_out.get('phase')} nkeys={len(_gld_keys)} hask15p={('k_15m_prev' in _gld_keys)} hassk={('stoch_k_15m' in _gld_keys)} hasbb={('bb_upper_1h' in _gld_keys)} hasdcb={('dc_basis_1h' in _gld_keys)} hasw2={('wt2_15m' in _gld_keys)} hasd={('d_15m' in _gld_keys)} px={current_price}",
+                                flush=True,
+                            )
                         if _gld_out.get("fire"):
                             _gld_qty = (
                                 int(max(1, float(_cfg_auto("START_POSITION_SIZE", 600)) / current_price))
