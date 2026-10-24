@@ -49,6 +49,14 @@ def test_live_legs_gated():
     )
 
 
+def test_delta_refused_at_ez_layer_despite_cross_token():
+    from live_twins.vector_enforce import CROSS_PATTERNS
+
+    assert family_of("DELTA_EXIT_DC15M_FLOOR_BREAK") == "DELTA"
+    assert "DELTA" not in VEC_SWITCH_EXIT_FAMILIES
+    assert any(p in "DELTA_EXIT_DC15M_FLOOR_BREAK" for p in CROSS_PATTERNS)
+
+
 def test_profit_template_rows_crypto():
     for fn in ("TEMPLATE_CRYPTO_LONG.xlsx", "TEMPLATE_CRYPTO_SHORT.xlsx"):
         wb = openpyxl.load_workbook(

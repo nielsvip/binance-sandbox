@@ -10,10 +10,10 @@ HTML FEED (frozen at publish)
     never contribute old numbers. Frozen the moment the backtest is published.
 
 FORWARD FEED (moves with the npz bars)
-    vec_trips_all + live_trips_all from the newest
-    data/reports/trade_parity_collected/**/*{SYM}_{SIDE}_trade_parity.json
-    (pulled off S1/s2 by tools/v15_forward_confirm.py --pull). Freshness of
-    this feed equals the last pull.
+    vec_window_events from data/forward_parity/crypto_latest.json (24/7,
+    every 15min via tools/forward_live_vs_vector/cron_hourly.sh) plus the
+    newest stocks run (RTH). Vector trades on the newest NPZ, round-trip
+    tagged like live fills. Freshness equals the last forward tick.
 
 Results are cached per (sym, side) for the life of the process: plots call
 per symbol per TF panel, parsing happens once.
@@ -26,7 +26,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 HTML_DIR = ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL"
-FWD_DIR = ROOT / "data" / "reports" / "trade_parity_collected"
+FWD_CRYPTO = ROOT / "data" / "forward_parity" / "crypto_latest.json"
+FWD_RUNS = ROOT / "data" / "forward_parity" / "runs"
 
 sys.path.insert(0, str(ROOT / "tools"))
 try:
@@ -95,44 +96,63 @@ def load_html_trades(sym, side):
     return entries, exits
 
 
-def _forward_index():
+def _forward_docs():
+    """Fresh forward docs, reloaded when the hourly job rewrites them.
+
+    crypto_latest.json (24/7, every 15min) plus the newest stocks run (RTH).
+    Each row carries vec_window_events = vector trades on the newest NPZ.
+    """
     global _fwd_index
-    if _fwd_index is None:
-        _fwd_index = {}
-        if FWD_DIR.is_dir():
-            for f in glob.glob(str(FWD_DIR / "**" / "*_trade_parity.json"), recursive=True):
-                p = Path(f)
-                name = p.name
-                if "_trade_parity.json" not in name:
-                    continue
-                symside = name.split("_trade_parity.json")[0]
-                prev = _fwd_index.get(symside)
-                if prev is None or p.stat().st_mtime > prev.stat().st_mtime:
-                    _fwd_index[symside] = p
-    return _fwd_index
+    cands = []
+    if FWD_CRYPTO.is_file():
+        cands.append(FWD_CRYPTO)
+    if FWD_RUNS.is_dir():
+        stocks = sorted(FWD_RUNS.glob("stocks_*.json"), key=lambda p: p.stat().st_mtime)
+        if stocks:
+            cands.append(stocks[-1])
+    key = tuple((str(p), p.stat().st_mtime) for p in cands)
+    if _fwd_index is None or _fwd_index[0] != key:
+        rows = {}
+        for p in cands:
+            try:
+                d = json.loads(p.read_text())
+            except Exception:
+                continue
+            for r in d.get("rows") or []:
+                if r.get("ss"):
+                    rows.setdefault(str(r["ss"]).upper(), []).append(r)
+        _fwd_index = (key, rows)
+    return _fwd_index[1]
+
+
+_fwd_index = None
+
+
+_VEC_ENTRY_TOKENS = ("OPEN", "BUY", "ADD", "REOPEN", "AUGMENT")
+_VEC_EXIT_TOKENS = ("CLOSE", "EXIT", "COVER", "SELL", "TAKE")
 
 
 def load_forward_trips(sym, side):
-    """(entries, exits) datetimes from the newest forward parity report."""
+    """(entries, exits) datetimes from the fresh forward job's vec window.
+
+    vec_window_events ([epoch, TYPE, reason]) carry no qty, so there is no
+    balance to account: engine OPEN/AUGMENT = entry side, engine CLOSE =
+    flat. REDUCE (partial, no boundary) is skipped.
+    """
     symside = f"{str(sym).upper()}_{str(side).upper()}"
     entries, exits = [], []
-    p = _forward_index().get(symside)
-    if p is not None:
-        try:
-            d = json.loads(p.read_text())
-        except Exception:
-            d = {}
-        for trip in (d.get("vec_trips_all") or []) + (d.get("live_trips_all") or []):
-            if not isinstance(trip, dict):
-                continue
+    for r in _forward_docs().get(symside, []):
+        for ev in r.get("vec_window_events") or []:
             try:
-                if trip.get("entry_ts"):
-                    entries.append(datetime.fromtimestamp(float(trip["entry_ts"]), tz=timezone.utc))
-                if trip.get("exit_ts"):
-                    exits.append(datetime.fromtimestamp(float(trip["exit_ts"]), tz=timezone.utc))
+                ts = datetime.fromtimestamp(float(ev[0]), tz=timezone.utc)
+                typ = str(ev[1] or "").upper()
             except Exception:
                 continue
-    return entries, exits
+            if any(k in typ for k in _VEC_EXIT_TOKENS):
+                exits.append(ts)
+            elif any(k in typ for k in _VEC_ENTRY_TOKENS):
+                entries.append(ts)
+    return sorted(entries), sorted(exits)
 
 
 def vec_trades_for_plot(sym):

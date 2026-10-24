@@ -100,19 +100,22 @@ def test_load_html_trades_stale_365d_excluded_fresh_one_joins(tmp_path, monkeypa
     assert days == [2, 3] and len(hx) == 2
 
 
-def test_load_forward_trips_reads_newest_report(tmp_path, monkeypatch):
+def test_load_forward_trips_tags_round_trips(tmp_path, monkeypatch):
     import json
     import vec_trade_feeds as v
     d = tmp_path / "fwd"
     d.mkdir()
-    rep = {"vec_trips_all": [{"entry_ts": 1760512800.0, "exit_ts": 1760520000.0}],
-           "live_trips_all": [{"entry_ts": 1760600000.0, "exit_ts": None}]}
-    (d / "TST_LONG_trade_parity.json").write_text(json.dumps(rep))
-    monkeypatch.setattr(v, "FWD_DIR", d)
+    rep = {"rows": [{"ss": "TST_LONG",
+                     "vec_window_events": [[1760512800.0, "OPEN", "x"],
+                                           [1760516400.0, "AUGMENT", "y"],
+                                           [1760520000.0, "CLOSE", "z"]]}]}
+    (d / "crypto_latest.json").write_text(json.dumps(rep))
+    monkeypatch.setattr(v, "FWD_CRYPTO", d / "crypto_latest.json")
+    monkeypatch.setattr(v, "FWD_RUNS", d / "noruns")
     v._fwd_index = None
     try:
         fe, fx = v.load_forward_trips("TST", "LONG")
     finally:
         v._fwd_index = None
-    assert len(fe) == 2 and len(fx) == 1
-    assert fe[0].tzinfo is not None
+    assert len(fe) == 1 and len(fx) == 1
+    assert fe[0].tzinfo is not None and fx[0] > fe[0]

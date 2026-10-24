@@ -269,11 +269,18 @@ def stage_collect(st, dry):
     parts = []
     for h, pd in hpdirs:
         pf = f"/tmp/v15_partial_{h['name']}.json"
+        emit = f"/home/niels/.conda/envs/binance_env_mac/bin/python tools/v15_vector_delta_rebuild.py --files /tmp/v15_files.txt --emit-partial {pf}"
         if winners is None:
             manifest = f"ls {pd}/*_v14_progress.json > /tmp/v15_files.txt"
+            cmd = f"cd {h['root']} && {manifest} && {emit}"
         else:
-            manifest = "cat > /tmp/v15_files.txt <<'V15EOF'\n" + "\n".join(winners[h["name"]]) + "\nV15EOF"
-        cmd = f"cd {h['root']} && {manifest} && /home/niels/.conda/envs/binance_env_mac/bin/python tools/v15_vector_delta_rebuild.py --files /tmp/v15_files.txt --emit-partial {pf}"
+            # 2026-10-24: the rebuild invocation must stay on the SAME command
+            # line as the heredoc redirect — a trailing `&& ...` after the
+            # V15EOF terminator is a syntax error, and without a trailing
+            # newline the shell swallows the invocation as heredoc content
+            # (rc 0, no partial) and the round can never roll.
+            manifest = f"cat > /tmp/v15_files.txt <<'V15EOF' && {emit}\n" + "\n".join(winners[h["name"]]) + "\nV15EOF\n"
+            cmd = f"cd {h['root']} && {manifest}"
         rc, o = rsh(h, cmd, timeout=900)
         if rc != 0:
             log(f"collect: {h['name']} emit-partial failed {o[-200:]}"); return False
