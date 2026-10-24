@@ -264,6 +264,43 @@ def test_ledger_audit_gap(tmp_path):
     assert srv._ledger_audit("nosuch", 1.0, 0.0, 1.0, 1.0, now_s) is None
 
 
+def test_sync_rejected_orders_never_form_basis_or_pnl():
+    evs = [
+        _ev("2026-09-02T13:36:00+00:00", "BABA", "SHORT", "OPEN", 10.0, 112.845),
+        _ev("2026-09-02T13:43:00+00:00", "BABA", "SHORT", "OPEN", 11.0, 112.53),
+        _ev("2026-10-22T18:17:00+00:00", "BABA", "SHORT", "OPEN", 12.0, 101.835),
+        _ev("2026-10-23T19:58:00+00:00", "BABA", "SHORT", "CLOSE", 11.0, 99.555),
+    ]
+    evs[0]["reason"] = "BROKER_SYNC_REJECTED_TOTAL_VALUE_CAP_2720>2500"
+    evs[1]["reason"] = "BROKER_SYNC_REJECTED_TOTAL_VALUE_CAP_2720>2500"
+    evs[2]["reason"] = "WT_15M_BOUNCE_OPEN_S"
+    evs[3]["reason"] = "DAYTRADE_TARGET_dc_4h_low"
+    out, s = srv.realized_walk(evs)
+    assert s["rejected_skipped"] == 2
+    assert s["known"] == 1
+    closes = [e for e in out if e.get("rpnl") is not None]
+    assert len(closes) == 1
+    assert closes[0]["rpnl"] == round(11.0 * (101.835 - 99.555), 2)
+    rej = _ev("2026-10-23T20:00:00+00:00", "BABA", "SHORT", "CLOSE", 5.0, 99.0)
+    rej["reason"] = "BROKER_SYNC_REJECTED_AUG_VALUE_CAP_3007>2000"
+    out2, s2 = srv.realized_walk(evs + [rej])
+    assert s2["rejected_skipped"] == 3 and s2["known"] == 1
+    assert sum(1 for e in out2 if e.get("rpnl") is not None) == 1
+    assert all(not e.get("rejected_hidden") or e.get("rpnl") is None for e in out2)
+
+
+def test_strategy_reject_exits_still_price():
+    evs = [
+        _ev("2026-10-23T13:00:00+00:00", "X", "LONG", "OPEN", 10.0, 100.0),
+        _ev("2026-10-23T14:00:00+00:00", "X", "LONG", "CLOSE", 10.0, 101.0),
+    ]
+    evs[0]["reason"] = "SOME_OPEN"
+    evs[1]["reason"] = "WICK_REJECT_EXIT_1h_upper-wick0.94_g1.64_qty_10"
+    out, s = srv.realized_walk(evs)
+    assert s["rejected_skipped"] == 0 and s["known"] == 1
+    assert [e for e in out if e.get("rpnl") is not None][0]["rpnl"] == 10.0
+
+
 def test_unpriced_row_stays_missing_never_zero(repo):
     rows = {
         "x:ZOMB_SHORT": {

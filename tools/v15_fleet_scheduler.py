@@ -1962,10 +1962,47 @@ def round_env_inline(round_id, path=None):
         doc = json.loads(pathlib.Path(path or (ROOT / "data" / "v15_round_env.json")).read_text())
     except (OSError, ValueError):
         return ""
-    if str(doc.get("round") or "") != str(round_id or ""):
+    entry = _round_env_entry(doc, round_id)
+    if entry is None:
         return ""
-    env = doc.get("env") or {}
+    env = entry.get("env") or {}
     return "".join(f" {k}={shlex.quote(str(v))}" for k, v in sorted(env.items()) if GATE_ENV_KEY_RE.match(str(k)))
+
+
+def _round_env_entry(doc, round_id):
+    """USER 2026-10-24 "schedule next: a 60D catchup test ... after the 30D slow test is completed": the pin file may carry a QUEUE of
+    later rounds so the operator never has to be awake at a roll — {"round": "run36", "env": {...}, "queue": [{"round": "run37", "env":
+    {...}}, {"round": "run38", "env": {...}}]}. The top-level pin wins for its own round; otherwise the first queue entry naming the
+    round. Every entry is still round-scoped and self-expiring (round_env_inline's rule). None when nothing names round_id."""
+    if not isinstance(doc, dict) or not round_id:
+        return None
+    rid = str(round_id)
+    if str(doc.get("round") or "") == rid:
+        return doc
+    for ent in doc.get("queue") or []:
+        if isinstance(ent, dict) and str(ent.get("round") or "") == rid:
+            return ent
+    return None
+
+
+def _round_window_days(round_id, path=None):
+    """Board window pinned for THIS round (env V15_SCHED_WINDOW_DAYS in its pin / queue entry), default 30. USER 2026-10-24: run38 =
+    60D test on the 30D best sets. Until the scheduler threads a window through side_cmd / progress names / preflight / completion
+    (SCHED_WINDOW_SUPPORT), a round pinned to another window HOLDS every new launch instead of boarding it as 30D. Never raises."""
+    doc = _jload(path or (ROOT / "data" / "v15_round_env.json"), None)
+    ent = _round_env_entry(doc, round_id)
+    try:
+        return int(str(((ent or {}).get("env") or {}).get("V15_SCHED_WINDOW_DAYS", "30")).strip() or 30)
+    except ValueError:
+        return 30
+
+
+SCHED_WINDOW_SUPPORT = (30,)  # windows side_cmd/progress names/preflight/completion can run today; a pinned window outside -> hold
+
+
+def _round_window_ok(round_id, path=None):
+    """False = the round pins a window this scheduler cannot board yet -> no new launches (loud idle_reason), nothing wrong computed."""
+    return _round_window_days(round_id, path) in SCHED_WINDOW_SUPPORT
 
 
 def _workers_for(sym, workers):
@@ -2388,9 +2425,10 @@ def _round_forces_slow(round_id, path=None):
     """True when data/v15_round_env.json is for THIS round and pins V18_CATCHUP=0 (or V15_BOARD_BUDGET=0) — the operator's 'full slow round'.
     A file naming another round has expired (round_env_inline's own rule). Never raises."""
     doc = _jload(path or (ROOT / "data" / "v15_round_env.json"), None)
-    if not isinstance(doc, dict) or not round_id or str(doc.get("round") or "") != str(round_id):
+    ent = _round_env_entry(doc, round_id)
+    if ent is None:
         return False
-    env = doc.get("env") or {}
+    env = ent.get("env") or {}
     return str(env.get("V18_CATCHUP", "")).strip() == "0" or str(env.get("V15_BOARD_BUDGET", "")).strip() == "0"
 
 
@@ -4293,6 +4331,7 @@ def tick(args, cfg, now):
             proj_mem = s["mem_avail_mb"] - reserve - _debt
         swap_ok = _swap_admit_ok(s)
         disk_ok = _disk_admit_ok(s)
+        win_ok = _round_window_ok(_round_id_of(cur_pdir))  # USER 2026-10-24: a round pinned to a window this scheduler cannot board yet holds new launches
         used = len(held[h["name"]])
         if os.environ.get("V15_SCHED_MEM_CAP", "1") == "1":
             # 2026-10-13 USER "all servers at full capacity": max_pairs is the floor; free memory (after reserve + growth
@@ -4362,7 +4401,7 @@ def tick(args, cfg, now):
             if needs_slot and new_launched >= args.max_launch:
                 _fate("budget: host max-launch reached")
                 continue  # budget counts only NEW pairs; never break (a break skips held chains sorted later and froze the fleet 03:00-03:35Z)
-            if needs_slot and (used >= cap or proj_mem < _est_sym(sym) or cpu >= cfg.get("cpu_target_pct", 90) or not swap_ok or not disk_ok):
+            if needs_slot and (used >= cap or proj_mem < _est_sym(sym) or cpu >= cfg.get("cpu_target_pct", 90) or not swap_ok or not disk_ok or not win_ok):
                 _fate("slots full" if used >= cap else "mem guard" if proj_mem < _est_sym(sym) else "cpu guard" if cpu >= cfg.get("cpu_target_pct", 90) else "swap guard" if not swap_ok else "disk guard")
                 continue  # over-cap/exhausted host: skip this admission, keep evaluating (held chains need no slot)
             if venue_of(sym) not in h["venues"]:
@@ -4387,7 +4426,7 @@ def tick(args, cfg, now):
             if needs_slot and not _pinned_sym and _quota_blocks(sym, _gtiers, chain_state) and nonw_used >= nonw_quota and f"{sym}_LONG" not in redo and f"{sym}_SHORT" not in redo:
                 log.setdefault("skipped_quota", []).append(f"{h['name']}:{sym}")
                 continue  # USER 2026-10-10 (82 redo backlog): refills never consume winner quota
-            if not needs_slot and (proj_mem < _est_sym(sym) / 2 or cpu >= 120 or not swap_ok or not disk_ok):
+            if not needs_slot and (proj_mem < _est_sym(sym) / 2 or cpu >= 120 or not swap_ok or not disk_ok or not win_ok):
                 _fate("chain mem/cpu/swap/disk guard")
                 continue
             if not needs_slot and held[h["name"]].get(sym) != "running" and (running_cnt >= cap or chain_launched >= max(args.max_launch, 4)):
@@ -4693,7 +4732,7 @@ def tick(args, cfg, now):
                     break
             if _pf:
                 npz_prefetch.append((h, _pf))
-        if launched == 0 and used < cap and proj_mem >= est_gate and cpu < cfg.get("cpu_target_pct", 90) and swap_ok and disk_ok and new_launched < args.max_launch:  # USER 2026-10-10: backfill must respect the disk guard — it fires exactly when the guarded main loop correctly launches 0
+        if launched == 0 and used < cap and proj_mem >= est_gate and cpu < cfg.get("cpu_target_pct", 90) and swap_ok and disk_ok and win_ok and new_launched < args.max_launch:  # USER 2026-10-10: backfill must respect the disk guard — it fires exactly when the guarded main loop correctly launches 0
             _bf_ts = st.setdefault("backfill_ts", {})
             blo = []
             for ss in _deferred_sides:
@@ -4764,7 +4803,7 @@ def tick(args, cfg, now):
         info["slots"] = f"{len(held[h['name']])}/{cap}"
         HB[h["name"]].update(used=len(held[h["name"]]), proj_mem=proj_mem, launched=launched, new_launched=new_launched, held_syms=sorted(held[h["name"]]))
         if cpu < cfg.get("cpu_target_pct", 90) and launched == 0:
-            info["idle_reason"] = "disk guard" if not disk_ok else "slots full" if used >= cap else "mem guard" if proj_mem < est_gate else "NO PROGRESS DIR on host (~/v15_current_progress_dir.txt missing)" if not (s.get("pdir") or cfg.get("fallback_pdir")) else "no eligible ready symbol for this host"
+            info["idle_reason"] = f"ROUND-WINDOW HOLD: round pins V15_SCHED_WINDOW_DAYS={_round_window_days(_round_id_of(cur_pdir))} but this scheduler boards only {SCHED_WINDOW_SUPPORT} (build the window lane, spec 24)" if not win_ok else "disk guard" if not disk_ok else "slots full" if used >= cap else "mem guard" if proj_mem < est_gate else "NO PROGRESS DIR on host (~/v15_current_progress_dir.txt missing)" if not (s.get("pdir") or cfg.get("fallback_pdir")) else "no eligible ready symbol for this host"
             info["idle_detail"] = {"proj_mem_mb": round(proj_mem), "est_gate_mb": round(est_gate), "mem_avail_mb": s["mem_avail_mb"], "venues": _gate_venues, "used": used, "cap": cap, "cpu": round(cpu), "npz_stale_jit": len(log.get("npz_stale_jit", [])), "npz_stale_held": sum(1 for v_ in (log.get("skipped_unready") or {}).values() if "stale" in str(v_) and str(v_).startswith(h["name"])), "npz_stale_refused_150s": _dispatch_stale_recent()}
         log["hosts"][h["name"]] = info
     _ph("launch_pass")

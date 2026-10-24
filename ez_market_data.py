@@ -787,8 +787,12 @@ class MarketDataEngine:
     async def broadcast_loop(self):
         logger.info("📡 Starting Calculation Loop (Buffered Real-Time Injection)...")
         loop = asyncio.get_running_loop()
-        
+        _pass_n = 0
+        _pass_log_ts = 0.0
+
         while self.running:
+            _pass_t0 = time.time()
+            _pass_n += 1
             tasks_data = []
             light_results = []
 
@@ -979,6 +983,12 @@ class MarketDataEngine:
                     except Exception:
                         self.shared_proxy = None
 
+            # Pass timing (2026-10-24: ages flapped with no visibility into why).
+            # Log every 10th pass or any pass slower than 15s.
+            _pass_dt = time.time() - _pass_t0
+            if _pass_n % 10 == 0 or _pass_dt > 15.0:
+                try: logger.info(f"[BROADCAST] pass {_pass_n}: {len(tasks_data)} computed + {len(light_results)} re-stamped in {_pass_dt:.1f}s")
+                except Exception: pass
             # Ensure we don't spin uncontrollably
             await asyncio.sleep(0.1)
 

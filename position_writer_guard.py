@@ -213,6 +213,21 @@ def flat_row(symbol, position_side):
 _archived = set()
 
 
+def _broker_unconfirmed(row):
+    """True when a row carries a quantity NO broker report ever confirmed — a frozen phantom, not exposure.
+
+    A row outside the processing universe is never visited by process_account_update, so it keeps whatever it held
+    when its symbol left the universe, forever. The tell is that the writer's own broker-sourced stamps were never
+    set: a genuinely held row always has a fresh last_updated plus a mark_price (all 15 real ang shorts shared one
+    timestamp), while ang:DYDXUSDT_SHORT sat at 102.7 with mark_price / last_updated / broker_synced_at all null
+    since 2026-03-10, and futures_position_information for ang returned no DYDXUSDT at all. Requiring ALL THREE to
+    be empty keeps this conservative: one broker stamp of any kind means the row is treated as real exposure.
+    """
+    if not isinstance(row, dict):
+        return False
+    return not any(row.get(f) not in (None, "", 0, 0.0) for f in ("mark_price", "last_updated", "broker_synced_at"))
+
+
 def archive_rows(path, dropped):
     """Append pruned rows to data/position_archive/<acct>_<side>.jsonl before they leave the live file. A row that
     leaves the universe is still history (realized_pnl, opened_at, max_gain), so it is moved, never destroyed."""
@@ -291,7 +306,7 @@ def ensure_universe(path, rows, disk_rows=None, log=None, role=None):
             symbol, canon = canonical_key(k, r, account, side)
             if symbol in universe and canon == k:
                 continue
-            if _amt(r) > 0:
+            if _amt(r) > 0 and not _broker_unconfirmed(r):
                 held_foreign.append(k)
                 continue
             pruned[k] = rows.pop(k)
@@ -299,17 +314,19 @@ def ensure_universe(path, rows, disk_rows=None, log=None, role=None):
         fresh = {k: v for k, v in pruned.items() if (str(p), k) not in _archived}
         archive_rows(p, fresh)
         _archived.update((str(p), k) for k in fresh)
-        _alert("POSITION_UNIVERSE_PRUNED", {"file": str(p), "account": account, "pruned": len(pruned), "keys": sorted(pruned)[:40]}, p.parent.parent)
         if _rate_limited(f"floor_prune:{p}", 60.0):
+            _alert("POSITION_UNIVERSE_PRUNED", {"file": str(p), "account": account, "pruned": len(pruned), "keys": sorted(pruned)[:40]}, p.parent.parent)
             log.warning(f"🧹 [POSITION_FLOOR] {account}/{p.name}: pruned {len(pruned)} row(s) outside the symbol universe (archived to data/position_archive/) — e.g. {sorted(pruned)[:5]}")
     for k in held_foreign:
         if _rate_limited(f"foreign_held:{k}", 300.0):
             log.critical(f"🛑 [POSITION_FOREIGN_HELD] {k} is NOT in the symbol universe but reports positionAmt {rows[k].get('positionAmt')} — KEPT (dropping it would hide real exposure). Verify against the broker and remove by hand if flat.")
             _alert("POSITION_FOREIGN_HELD", {"key": k, "file": str(p), "positionAmt": rows[k].get("positionAmt")}, p.parent.parent)
-    if restored:
+    # Both the alert and the log are throttled TOGETHER. 2026-10-24: the alert was outside the rate limit, so a
+    # restore that repeated on every save wrote 26,349 rows (13.7 MB) into data/alerts/position_writer_guard.jsonl
+    # at ~1000/h — a synchronous mkdir+append on the save path of a host already at load 200+.
+    if restored and _rate_limited(f"floor_restore:{p}", 60.0):
         _alert("POSITION_FLOOR_RESTORED", {"file": str(p), "account": account, "restored": restored}, p.parent.parent)
-        if _rate_limited(f"floor_restore:{p}", 60.0):
-            log.critical(f"🛡️ [POSITION_FLOOR] {account}/{p.name}: RESTORED {restored} row(s) this write would have ERASED (role={role or process_role()} pid={os.getpid()})")
+        log.critical(f"🛡️ [POSITION_FLOOR] {account}/{p.name}: RESTORED {restored} row(s) this write would have ERASED (role={role or process_role()} pid={os.getpid()})")
     if seeded and _rate_limited(f"floor_seed:{p}", 60.0):
         log.warning(f"🛡️ [POSITION_FLOOR] {account}/{p.name}: seeded {seeded} missing universe row(s) flat")
     return restored, seeded, len(pruned)
@@ -594,7 +611,8 @@ def before_write(path, rows, role=None, log=None, overlay=True):
         if _rate_limited(f"deny:{path}"):
             log.info(f"[SINGLE_WRITER] {role} write to {path} skipped: {why}")
         return False
-    disk = seeded_disk_rows(path)
+    disk_file = read_json(path)
+    disk = seeded_disk_rows(path, disk_file)
     rejected = enforce_identity(rows, disk)  # identity first, so the overlay is matched against the TRUE lifecycle
     apply_overlay(rows, read_json(overlay_path(path)))
     for k, disk_mg, new_mg in enforce_max_gain(rows, disk):
@@ -603,7 +621,16 @@ def before_write(path, rows, role=None, log=None, overlay=True):
     for k, disk_oa, new_oa in rejected:
         log.critical(f"🛑 [OPENED_AT_CHANGE_REJECTED] {k}: kept {disk_oa}, refused {new_oa} (role={role} pid={os.getpid()})")
         _alert("OPENED_AT_CHANGE_REJECTED", {"key": k, "kept": disk_oa, "refused": new_oa, "file": str(path)}, Path(path).parent.parent)
-    ensure_universe(path, rows, disk, log=log, role=role)  # last: the floor restores verbatim, so it needs no identity work
+    # disk_file, NOT disk: the floor may only restore rows that are REALLY IN THE FILE. seeded_disk_rows() merges
+    # .identity_seed.json on top, and that seed is an identity REFERENCE for rows the writer already holds — never a
+    # row source. 2026-10-23/24 regression: live_failover rewrites those seeds every 1-2 min, and for the ~6s after
+    # each rewrite `written_epoch > file mtime` makes the seed apply, so this call injected every seed row missing
+    # from memory back into the file — including positions closed in MARCH. The cap then refused to prune them
+    # because the frozen rows still carried a quantity. Measured: exactly 1 row restored on EVERY save of
+    # ang/men/flz short_positions.json (26,349 alerts, ~1000/h), files stuck at 202 rows, and
+    # ang:DYDXUSDT_SHORT 102.7 / flz:DYDXUSDT_SHORT 1588.1 / men:TUSDT_SHORT 1574.0 permanently contradicting a
+    # broker that reports none of them.
+    ensure_universe(path, rows, disk_file, log=log, role=role)  # last: the floor restores verbatim, so it needs no identity work
     return True
 
 
