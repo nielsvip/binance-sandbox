@@ -763,6 +763,30 @@ def _floor_left(st, key):
     return max(0, extra - used)
 
 
+def _verdict_skips(early_by_host, now_ts, skip_s):
+    """{sym_side: exit mtime} for sides whose FRESH sweep log ends in a TERMINAL-verdict structural exit
+    ([SOFT-SKIP]/[IMPOSSIBLE-SKIP]: the pilot recomputes nothing on the same NPZ — 'reruns on NPZ refresh').
+    Relaunching one this cooldown only reproduces the verdict while burning dispatch+budgets (s6 HOOD/FLOKI/ADA
+    relaunched 28-39x into identical soft-skips, pinned or not). STALE/DEDUP/gate exits are NOT included: a fresh
+    dispatch, a finished sibling, or a healed template can succeed next tick. Pure (tested)."""
+    out = {}
+    try:
+        skip_s = float(skip_s)
+    except (TypeError, ValueError):
+        return out
+    if skip_s <= 0:
+        return out
+    for _hn, _ex in (early_by_host or {}).items():
+        for _ss, _v in ((_ex or {}) if isinstance(_ex, dict) else {}).items():
+            try:
+                _mt, _mk = float((_v or [0])[0]), str((_v or [""])[1])
+            except (TypeError, ValueError, IndexError):
+                continue
+            if ("[SOFT-SKIP]" in _mk or "[IMPOSSIBLE-SKIP]" in _mk) and now_ts - _mt < skip_s:
+                out[str(_ss)] = _mt
+    return out
+
+
 def _below_floor_hosts(held, caps):
     """[host names] holding fewer pairs than their floor target. Pure (tested). caps = {host: cap}."""
     out = []
@@ -4225,6 +4249,10 @@ def tick(args, cfg, now):
                     continue
                 if _now_ts - _mt < _skip_s:
                     _floor_skip[str(_ss)] = _mt
+    # USER 2026-10-24: terminal-verdict skips hold on EVERY admission path (normal, floor, steal, pinned) — the
+    # floor-only _floor_skip above still covers all markers for crash protection; this one is the narrow
+    # relaunch-into-identical-verdict ban the pilot's own contract demands ("reruns on NPZ refresh").
+    _verdict_skip = _verdict_skips({_hn: ((_sx or {}).get("early_exits") or {}) for _hn, _sx in (stats or {}).items()}, _now_ts, _skip_s)
 
     def _host_cap_base(name):
         if name not in _cap_by_host:
@@ -4254,6 +4282,9 @@ def tick(args, cfg, now):
                 if w == "30D" and not sim and not _parity_gate_ok(venue_of(sym), side, _tmpl_dir_by_host.get(host_name) or next(iter(_tmpl_dir_by_host.values()), "SPREADSHEETS"), _parity_cache):
                     log.setdefault("skipped_parity_gate", {}).setdefault(f"{'CRYPTO' if venue_of(sym) == 'crypto' else 'STOCKS'}_{side}", _parity_cache.get((venue_of(sym), side), (None, ""))[1])
                     continue  # 2026-10-13: the pilot refuses to fill (PARITY-GATE hard disparity) -> launching only burned a slice/attempt per tick  # USER 2026-10-09: 30D 6->3 fresh (hopeless sides stop burning slots); USER 2026-10-10: redo resume FREE; USER 2026-10-12: sliced (started) 30D sides draw the 20-slice budget, not attempts
+                if w == "30D" and f"{sym}_{side}" in _verdict_skip:
+                    log.setdefault("verdict_skip_hold", []).append(f"{host_name}:{sym}_{side}")
+                    continue  # USER 2026-10-24: terminal verdict on current inputs — relaunching only reproduces it (s6 HOOD/FLOKI/ADA 28-39x). Holds on every path (normal/floor/steal/pinned) until the cooldown passes (NPZ may have refreshed); STALE/DEDUP/gate exits are NOT held (fresh dispatch/sibling/heal can succeed next tick)
                 acts.append({"sym": sym, "side": side, "window": w, "attempt": att or 1, "key": key, "floor": _via_floor})
         return acts
 
@@ -4635,7 +4666,9 @@ def tick(args, cfg, now):
                         _ss, _key = f"{sym}_{_sd}", f"{sym}_{_sd}|30D"
                         if _sst in ("need30", "need365", "needrepair", "needgs"):
                             _w = {"need30": "30D", "need365": "365D", "needrepair": "REPAIR", "needgs": "GS"}[_sst]
-                            if _launch_exhausted(_key if _w == "30D" else f"{_ss}|{_w}{_att or ''}", _w, _ss, st, started, redo, _pin_sides):
+                            if _w == "30D" and _ss in _verdict_skip:
+                                _why[_sd] = f"{_sst}-verdict-skip-cooldown"
+                            elif _launch_exhausted(_key if _w == "30D" else f"{_ss}|{_w}{_att or ''}", _w, _ss, st, started, redo, _pin_sides):
                                 _why[_sd] = f"{_sst}-budget-exhausted"
                             elif f"{_ss}" in running:
                                 _why[_sd] = "pilot-running"
@@ -4666,7 +4699,7 @@ def tick(args, cfg, now):
                     # 2026-10-16: the sibling rides along ONLY when it needs a 30D board itself — a finished/fresh/deferred
                     # sibling re-ran on every launch of its pair (PUMPUSDT_SHORT re-published 57.32 eight times on 10-16).
                     log.setdefault("pair_sibling_skipped_done", []).append(f"{h['name']}:{sym}_{_sib}:{_sib_state}")
-                elif f"{sym}_{_sib}" not in running and _sk not in launched_keys and not _launched_recently(_sk, st.get("dispatch_q"), _now_ts, _DISPATCH_GRACE_S) and not _launched_recently(_sk, st.get("launched_at"), _now_ts):
+                elif f"{sym}_{_sib}" not in running and _sk not in launched_keys and not _launched_recently(_sk, st.get("dispatch_q"), _now_ts, _DISPATCH_GRACE_S) and not _launched_recently(_sk, st.get("launched_at"), _now_ts) and f"{sym}_{_sib}" not in _verdict_skip:
                     acts.append({"sym": sym, "side": _sib, "window": "30D", "attempt": 1, "key": _sk})
                     log.setdefault("pair_sibling_added", []).append(f"{h['name']}:{sym}_{_sib}")
             if needs_slot and not _pair_gate_ok(sym, acts, owner, chain_state, st["attempts"], pend_sides={a["side"] for a in pending_actions(sym, h["name"]) if f"{a['sym']}_{a['side']}" not in running}):  # fresh syms: every launchable side covered; terminal/capped sides don't block siblings

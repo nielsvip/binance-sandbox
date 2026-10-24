@@ -32979,7 +32979,18 @@ class MultiAccountTradeManager:
         # orders keep today's verdict. Nothing executes while held.) ───
         try:
             from live_twins import vec_pending as _vp_w
-            if _vp_w.holdable(_res) and not _parity_vec_order(reason):
+            from vec_decisions import vec_parity_gates as _vpg_pend
+            try:
+                _vpg_defer = bool(getattr(_ezm_base_config, "VEC_PENDING_DEFER_NATIVE_ENABLED", getattr(config, "VEC_PENDING_DEFER_NATIVE_ENABLED", True)))
+            except Exception:
+                _vpg_defer = True
+            try:
+                _vpg_ttl = _vpg_pend.pending_ttl_s(getattr(_ezm_base_config, "VEC_PENDING_TTL_S", getattr(config, "VEC_PENDING_TTL_S", 300.0)))
+                if str(os.environ.get("VEC_PENDING_CONFIRM_S") or "") != str(_vpg_ttl):
+                    os.environ["VEC_PENDING_CONFIRM_S"] = str(_vpg_ttl)
+            except Exception:
+                pass
+            if _vpg_defer and _vp_w.holdable(_res) and not _parity_vec_order(reason):
                 _vp_auth = False
                 try:
                     _vp_auth = _vec_driven_mode(symbol, position_side, account_key) == "live"
@@ -33178,6 +33189,13 @@ class MultiAccountTradeManager:
             _voe_ratio_scale = False
         if _voe_disabled and _xg.is_exit_action(action, is_full_close) and not _voe_ratio_scale:
             _voe_vec = _voe_reason_is_vec(reason)
+            try:
+                from vec_decisions import vec_parity_gates as _vpg_ref
+                _vpg_master = bool(getattr(_ezm_base_config, "VEC_REFUSE_NON_VECTOR_EXIT_ENABLED", getattr(config, "VEC_REFUSE_NON_VECTOR_EXIT_ENABLED", True)))
+                _vpg_quick = bool(getattr(_ezm_base_config, "VEC_REFUSE_QUICK_REDUCE_ENABLED", getattr(config, "VEC_REFUSE_QUICK_REDUCE_ENABLED", True)))
+                _voe_vec = _voe_vec or not _vpg_ref.non_vector_exit_refused(reason, _vpg_master, _vpg_quick)
+            except Exception:
+                pass
             if not _voe_vec:
                 logger.debug(f"[VEC_LAST_DEFER] {position_key} {action} non-vec exit recorded for late refusal (USER 2026-10-24 VEC-LAST; NATIVE_EXITS_DISABLED=0 restores)")
                 try:
@@ -37343,6 +37361,13 @@ class MultiAccountTradeManager:
         except Exception as _vl_e:
             _vl_ok, _vl_tag, _vl_detail = True, "VEC_LAST_CLEAN", ""
             logger.debug(f"[VEC_LAST] {position_key}: decide error (fail-open): {_vl_e}")
+        try:
+            from vec_decisions import vec_parity_gates as _vpg_ovr
+            _vpg_ovr_on = bool(getattr(_ezm_base_config, "VEC_OVERRIDE_ENABLED", getattr(config, "VEC_OVERRIDE_ENABLED", True)))
+            _vpg_brk_on = bool(getattr(_ezm_base_config, "VEC_OVERRIDE_BYPASS_CIRCUIT_BREAKER", getattr(config, "VEC_OVERRIDE_BYPASS_CIRCUIT_BREAKER", True)))
+            _vl_tag, _vl_detail, _vpg_ovr_keep = _vpg_ovr.override_verdict(_vl_tag, _vl_detail, _vec_last_refuse, _vpg_ovr_on, _vpg_brk_on)
+        except Exception:
+            pass
         if _vl_tag == "VEC_LAST_OVERRIDE":
             logger.warning(f"🧭 [VEC_LAST_OVERRIDE] {position_key} {action} reason={(reason or '')[:80]} — vec-dictated, native gates bypassed [{_vl_detail}] (USER 2026-10-24: fix these paths)")
             try:
@@ -37391,12 +37416,29 @@ class MultiAccountTradeManager:
                         _vlp.parent.mkdir(parents=True, exist_ok=True)
                         with open(str(_vlp), "a") as _vlf:
                             _vlf.write(json.dumps({"ts": time.time(), "venue": "crypto", "kind": "VEC_STATE_DISAGREE", "position_key": position_key, "action": action, "reason": str(reason)[:160], "vec_target": str(((_st_last or {}).get("target_state"))), "vec_bar_ts": (_st_last or {}).get("bar_ts"), "fix": "wire live to emit this vec path through its own producer"}) + "\n")
+                        try:
+                            from vec_decisions import vec_parity_gates as _vpg_dis
+                            _vpg_flat = _tgt_last is False
+                            _vpg_blk_on = bool(getattr(_ezm_base_config, "VEC_DISAGREE_FLAT_OPEN_BLOCK", getattr(config, "VEC_DISAGREE_FLAT_OPEN_BLOCK", True)))
+                            if not bool(is_hedge) and _vpg_dis.flat_open_blocked(action, reason, _vpg_flat, _vpg_blk_on):
+                                return "BLOCKED_VEC_FLAT_OPEN"
+                            _vpg_kill_on = bool(getattr(_ezm_base_config, "VEC_DISAGREE_KILL_ENABLED", getattr(config, "VEC_DISAGREE_KILL_ENABLED", False)))
+                            if _vpg_dis.disagree_refuse(True, _vpg_kill_on):
+                                return "BLOCKED_VEC_DISAGREE"
+                        except Exception:
+                            pass
             except Exception:
                 pass
         # ─── VEC CONFIRM RELEASE (USER 2026-10-24 pending-confirm: a vec dictate passing here consumes the held
         # native intent it confirms — the vec order itself executes, the held native is dropped, never doubled.
         # The unflag is logged so the switch-creation flag can be retired.) ───
-        if _vl_dictated:
+        try:
+            from vec_decisions import vec_parity_gates as _vpg_cfm
+            _vpg_cfm_board = bool(getattr(_ezm_base_config, "VEC_CONFIRM_REQUIRE_BOARD_ENABLED", getattr(config, "VEC_CONFIRM_REQUIRE_BOARD_ENABLED", True)))
+            _vpg_cfm_ok = _vpg_cfm.confirm_release_ok(bool(_vl_dictated), bool(_parity_vec_order(reason)), _vpg_cfm_board)
+        except Exception:
+            _vpg_cfm_ok = bool(_vl_dictated)
+        if _vpg_cfm_ok:
             try:
                 from live_twins import vec_pending as _vp_last
                 _vp_rel = _vp_last.release_for(position_key, _vp_last.direction_of(action))
@@ -52575,6 +52617,11 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager, 
             _stf_on = bool(getattr(config, "VEC_STALE_FLATTEN_ENABLED", True))
         except Exception:
             _stf_on = True
+        try:
+            if not bool(getattr(config, "VEC_HOLD_EXPIRY_FLATTEN_ENABLED", True)):
+                _stf_on = False
+        except Exception:
+            pass
         if _stf_on and _parity_forward_holds(position_key):
             logger.warning(f"[VEC_EXACT_STALE_FLATTEN] {position_key}: forward best-settings paper lane HOLDS this key — stale flatten refused (USER 2026-10-22)")
             _stf_on = False

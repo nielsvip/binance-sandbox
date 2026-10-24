@@ -19,6 +19,26 @@ import v15_fleet_scheduler as _SCHED
 from v15_fleet_scheduler import _below_floor_hosts, _burn_launch, _floor_left, _floor_target_n, tick
 
 
+class VerdictSkipsTest(unittest.TestCase):
+    NOW = 10 * 86400.0
+
+    def test_fresh_terminal_verdicts_held(self):
+        ex = {"s6": {"A_LONG": [self.NOW - 60, "[SOFT-SKIP]"], "B_SHORT": [self.NOW - 60, "[IMPOSSIBLE-SKIP] verdict NO_TRADES"]}}
+        got = _SCHED._verdict_skips(ex, self.NOW, 3600)
+        self.assertEqual(set(got), {"A_LONG", "B_SHORT"})
+
+    def test_stale_and_other_markers_pass(self):
+        ex = {"s6": {"A_LONG": [self.NOW - 7200, "[SOFT-SKIP]"], "B_SHORT": [self.NOW - 60, "STALE_NPZ_SKIPPED"],
+                      "C_LONG": [self.NOW - 60, "[DEDUP]"], "D_SHORT": [self.NOW - 60, "[DEFAULTS-GATE]"]}}
+        self.assertEqual(_SCHED._verdict_skips(ex, self.NOW, 3600), {})
+
+    def test_junk_safe(self):
+        self.assertEqual(_SCHED._verdict_skips(None, self.NOW, 3600), {})
+        self.assertEqual(_SCHED._verdict_skips({"s6": None, "s5": {"X_LONG": "bad"}}, self.NOW, 3600), {})
+        self.assertEqual(_SCHED._verdict_skips({"s6": {"X_LONG": [self.NOW, "[SOFT-SKIP]"]}}, self.NOW, 0), {})
+        self.assertEqual(_SCHED._verdict_skips({"s6": {"X_LONG": [self.NOW, "[SOFT-SKIP]"]}}, self.NOW, "bogus"), {})
+
+
 class BelowFloorHostsTest(unittest.TestCase):
     def test_names_below_floor(self):
         self.assertEqual(_below_floor_hosts({"a": {"X": 1}, "b": {"w": 1, "x": 1, "y": 1, "z": 1}}, {"a": 8, "b": 8}), ["a"])
@@ -197,7 +217,7 @@ class FloorTickTest(unittest.TestCase):
     HOST = "floortest"
     NOW = datetime.datetime(2026, 10, 22, 15, 30, tzinfo=datetime.timezone.utc)
 
-    def _run_tick(self, floor_on, early_age_s=None):
+    def _run_tick(self, floor_on, early_age_s=None, att=3):
         import v15_universe as _U
         uni, _how = _U.load_or_build(ROOT, self.NOW, write=False)
         syms = {str(s) for s in list(uni.get("stocks", [])) + list(uni.get("crypto", []))}
@@ -213,7 +233,7 @@ class FloorTickTest(unittest.TestCase):
         early = {}
         for s in syms:
             for side in ("LONG", "SHORT"):
-                keys[f"{s}_{side}|30D"] = 3
+                keys[f"{s}_{side}|30D"] = att
                 slices[f"{s}_{side}|30D"] = 40
                 if early_age_s is not None:
                     early[f"{s}_{side}"] = [self.NOW.timestamp() - early_age_s, "[SOFT-SKIP]"]
@@ -280,6 +300,20 @@ class FloorSkipCooldownTest(unittest.TestCase):
         h = log["hosts"][FloorTickTest.HOST]
         self.assertGreaterEqual(h.get("launched_pairs", 0), 1)
         self.assertGreaterEqual(log.get("floor_fills", {}).get(FloorTickTest.HOST, 0), 1)
+
+
+class VerdictHoldTickTest(unittest.TestCase):
+    """Terminal-verdict skips hold on the NORMAL path too: fresh budgets,
+    floor on, every side freshly soft-skipped -> nothing launches and the
+    hold is named (s6 HOOD/FLOKI/ADA cycled 28-39x on PINNED normal budgets)."""
+
+    def test_fresh_verdicts_hold_despite_budgets(self):
+        t = FloorTickTest("_run_tick")
+        log = FloorTickTest._run_tick(t, floor_on=True, early_age_s=60, att=0)
+        h = log["hosts"][FloorTickTest.HOST]
+        self.assertEqual(h.get("launched_pairs"), 0)
+        self.assertEqual(log.get("launched"), [])
+        self.assertTrue(log.get("verdict_skip_hold"))
 
 
 if __name__ == "__main__":

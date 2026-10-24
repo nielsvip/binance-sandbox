@@ -1,33 +1,8 @@
 {
-  "ts": "2026-10-24T20:16:48Z",
+  "ts": "2026-10-24T20:21:22Z",
   "n_universe": 785,
-  "n_current": 780,
-  "behind": [
-    {
-      "sym_side": "1000FLOKIUSDT_LONG",
-      "live": "2026-10-11T19:22:42Z",
-      "board": "2026-10-13T03:16:29Z",
-      "at": "worker:s1-pub"
-    },
-    {
-      "sym_side": "ALB_SHORT",
-      "live": "2026-10-18T07:00:40Z",
-      "board": "2026-10-22T00:23:33Z",
-      "at": "worker:s5"
-    },
-    {
-      "sym_side": "ASTSUSDT_LONG",
-      "live": "2026-10-13T03:14:24Z",
-      "board": "2026-10-13T03:16:48Z",
-      "at": "worker:s1-pub"
-    },
-    {
-      "sym_side": "INTC_SHORT",
-      "live": "2026-10-19T15:59:38Z",
-      "board": "2026-10-21T09:45:44Z",
-      "at": "worker:s5"
-    }
-  ],
+  "n_current": 784,
+  "behind": [],
   "missing": [],
   "no_board": [
     "ICXUSDT_SHORT"

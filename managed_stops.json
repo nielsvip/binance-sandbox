@@ -1,1 +1,30 @@
-{}
+{
+  "flz:XMRUSDT_SHORT": {
+    "orderId": "1000002640997811",
+    "stopPrice": 635.12,
+    "entry_sig": "2026-10-24 12:47:17.024000+00:00",
+    "symbol": "XMRUSDT",
+    "side": "SHORT"
+  },
+  "flz:DOGEUSDC_LONG": {
+    "orderId": "1000002641427839",
+    "stopPrice": 0.07433,
+    "entry_sig": "2026-10-24 16:28:30.704000+00:00",
+    "symbol": "DOGEUSDC",
+    "side": "LONG"
+  },
+  "flz:WLDUSDC_LONG": {
+    "orderId": "1000002641685238",
+    "stopPrice": 0.4544,
+    "entry_sig": "2026-10-24 20:22:56.064000+00:00",
+    "symbol": "WLDUSDC",
+    "side": "LONG"
+  },
+  "flz:HYPEUSDT_LONG": {
+    "orderId": "1000002641686081",
+    "stopPrice": 74.807,
+    "entry_sig": "2026-10-24 16:27:52.114000+00:00",
+    "symbol": "HYPEUSDT",
+    "side": "LONG"
+  }
+}
