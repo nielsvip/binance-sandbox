@@ -1,52 +1,30 @@
 {
-  "ang:LINKUSDC_LONG": {
-    "orderId": "4000001991901556",
-    "stopPrice": 11.573,
-    "entry_sig": "2026-10-24 07:19:23.588000+00:00",
-    "symbol": "LINKUSDC",
+  "flz:XRPUSDC_SHORT": {
+    "orderId": "1000002640632960",
+    "stopPrice": 1.2922,
+    "entry_sig": "2026-10-24 07:27:35.962000+00:00",
+    "symbol": "XRPUSDC",
+    "side": "SHORT"
+  },
+  "flz:BTCDOMUSDT_LONG": {
+    "orderId": "1000002640538014",
+    "stopPrice": 5536.8,
+    "entry_sig": "2026-10-24 05:58:15.551000+00:00",
+    "symbol": "BTCDOMUSDT",
     "side": "LONG"
   },
-  "ang:RAYSOLUSDT_LONG": {
-    "orderId": "4000001991875172",
-    "stopPrice": 1.8057,
-    "entry_sig": "2026-10-24 06:25:09.618000+00:00",
-    "symbol": "RAYSOLUSDT",
-    "side": "LONG",
-    "disaster_backstop": true
-  },
-  "ang:MANAUSDT_SHORT": {
-    "orderId": "4000001991921869",
-    "stopPrice": 0.08191,
-    "entry_sig": "2026-10-24 05:04:13.875000+00:00",
-    "symbol": "MANAUSDT",
+  "flz:ZECUSDC_SHORT": {
+    "orderId": "1000002640564228",
+    "stopPrice": 1263.63,
+    "entry_sig": "2026-10-23 21:19:36.766644+00:00",
+    "symbol": "ZECUSDC",
     "side": "SHORT"
   },
-  "ang:ENJUSDT_SHORT": {
-    "orderId": "4000001991870690",
-    "stopPrice": 0.02629,
-    "entry_sig": "2026-10-24 06:27:00.154000+00:00",
-    "symbol": "ENJUSDT",
-    "side": "SHORT"
-  },
-  "ang:AXSUSDT_SHORT": {
-    "orderId": "4000001991915125",
-    "stopPrice": 1.0828,
-    "entry_sig": "2026-10-24 05:11:17.631000+00:00",
-    "symbol": "AXSUSDT",
-    "side": "SHORT"
-  },
-  "ang:ARKMUSDT_LONG": {
-    "orderId": "4000001991938628",
-    "stopPrice": 0.1307,
-    "entry_sig": "2026-10-24 07:25:41.538000+00:00",
-    "symbol": "ARKMUSDT",
-    "side": "LONG"
-  },
-  "ang:ONEUSDT_SHORT": {
-    "orderId": "4000001991938633",
-    "stopPrice": 0.0014593,
-    "entry_sig": "2026-10-24 07:20:58.950000+00:00",
-    "symbol": "ONEUSDT",
+  "flz:BNBUSDC_SHORT": {
+    "orderId": "1000002640639107",
+    "stopPrice": 753.06,
+    "entry_sig": "2026-10-24 03:34:37.262000+00:00",
+    "symbol": "BNBUSDC",
     "side": "SHORT"
   }
 }
