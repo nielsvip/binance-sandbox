@@ -390,7 +390,8 @@ class HighResMarketData:
             'closes_3m': closes_3m,
             'last_price': last_price,
             'last_tick_ts': last_ts,
-            'last_calc_ts': 0.0  # Prevents redundant calculations
+            'last_calc_ts': 0.0,  # Prevents redundant calculations
+            'rest_ver': 0  # Bumped by apply_rest_bars; with buf_t forms the calc fingerprint
         }
         self.data[symbol] = store
 
@@ -441,6 +442,10 @@ class HighResMarketData:
         if n and closes:
             try:
                 store['last_price'] = float(closes[next(reversed(closes))])
+            except Exception:
+                pass
+            try:
+                store['rest_ver'] = int(store.get('rest_ver', 0)) + 1
             except Exception:
                 pass
         return n
@@ -550,6 +555,8 @@ class MarketDataEngine:
         self.price_buffer = {} # { 'BTCUSDC': {'p': 50.0, 't': 1700.0} }
         self._synth_ts = {} # { sym: last wall-clock synthetic pass } — wall-clock kline synthesis when ticks stall
         self._wb_sig = {} # { sym: last writeback signature } — skip files whose buckets did not change
+        self._calc_fp = {} # { sym: (buf_t, rest_ver) } — inputs the last compute ran on
+        self._payload_cache = {} # { sym: last computed hot payload } — re-stamped while inputs frozen
         
         self._connect_shared()
 
@@ -774,6 +781,7 @@ class MarketDataEngine:
         
         while self.running:
             tasks_data = []
+            light_results = []
 
             for sym in self.symbols:
                 # 1. READ FROM CACHE (Buffer)

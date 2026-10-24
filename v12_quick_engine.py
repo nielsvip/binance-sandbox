@@ -16464,17 +16464,13 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _dd_live_scope = bool(
         getattr(cfg, "WT_D_BOUNCE_DD_STOP_LIVE_SCOPE_ENABLED", True)
     )  # 2026-10-20 USER ruling: live scope is the default (only the legs live arms are cut)
-    _typed_aug_on = bool(
-        getattr(cfg, "AUGMENT_TYPED_MIN_GAIN_ENABLED", False)
-    )  # [UNWV/002]
-    _typed_aug_fn = None
-    if _typed_aug_on:
-        try:
-            import vec_decisions.live_unw_gates as _lug_t
+    _typed_aug_fn = None  # USER 2026-10-24: typed tiers always dispatch (no master deadlock); untyped reasons fall back to generic
+    try:
+        import vec_decisions.live_unw_gates as _lug_t
 
-            _typed_aug_fn = _lug_t.augment_tier_min_gain
-        except Exception:
-            _typed_aug_on = False
+        _typed_aug_fn = _lug_t.augment_tier_min_gain
+    except Exception:
+        _typed_aug_fn = None
     _n4_lr = None
     if (
         getattr(cfg, "MODE", "crypto") == "tradier"
@@ -21368,6 +21364,32 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _hq_reason = ""  # consumed by the REDUCE event; must not leak into an AUGMENT reason below
         except Exception:
             _hq_fire, _hq_qty, _hq_reason, _hq_st = False, 0.0, "", None
+        # AUGMENT_FALLBACK giveback-reduce (USER 2026-10-24): twin of live
+        # evaluate_augmentation's AUGMENT_FALLBACK leg (ez_manage.py:43582,
+        # tradier_manage.py:19883) via vec_decisions.twin_reentry_staged. Gain
+        # fell back from peak by >= AUGMENT_FALLBACK_GAIN_PCT -> reduce frac of
+        # the LAST augment. Fail-closed without a tracked last augment (live
+        # FIELD GAP); never to flat (an act to flat is an EXIT, never blocked).
+        try:
+            _afb_rq = 0.0
+            if pos is not None and float(pos.get("qty", 0) or 0) > 0:
+                import vec_decisions.twin_reentry_staged as _twin_afb
+                _afb_get = lambda _k, _d=None: getattr(cfg, _k, _d)
+                _afb_last = float(pos.get("last_aug_qty", 0) or 0)
+                _afb_frac = _twin_afb.augment_fallback_reduce_frac(_afb_get)
+                if _afb_last > 0 and _afb_frac > 0 and _twin_afb.augment_fallback_fires(_afb_get, float(live_pnl_pct), float(pos.get("peak_pnl_pct", 0.0))):
+                    _afb_rq = min(_afb_last * _afb_frac, float(pos["qty"]))
+                    if _afb_rq > 0 and _sd_ok("REDUCE", _sd_flat(_afb_rq)):
+                        _afb_realized = ((px - pos["avg_price"]) * _afb_rq if is_long else (pos["avg_price"] - px) * _afb_rq)
+                        pos["realized"] += _afb_realized
+                        pos["fees"] += abs(_afb_rq * px) * half_fee
+                        pos["qty"] -= _afb_rq
+                        _afb_reason = f"AUGMENT_FALLBACK_g{float(live_pnl_pct):.2f}%_peak{float(pos.get('peak_pnl_pct', 0.0)):.2f}%_frac{_afb_frac:.2f}"
+                        _afb_ts = (float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0)
+                        events.append({"type": "REDUCE", "ts": _afb_ts, "price": float(px), "qty": float(_afb_rq), "pos_deployed": float(pos["deployed"]), "bar": int(i), "reason": _afb_reason})
+                        pos["last_reduce_bar"] = int(i)
+        except Exception:
+            pass
         # FAST_RISER quick-jump double (ez_manage.py:52393-52468): TF jump signal + profit floor
         _fr_fire = (
             _fr_arr is not None
@@ -21451,7 +21473,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     )
                     pos["n4_wtd_pending"] = _wd_state
         _uag_typed_min = None
-        if _typed_aug_on and augment_sig[i] and not _fr_fire:
+        if _typed_aug_fn is not None and augment_sig[i] and not _fr_fire:
             try:  # [UNWV/002] live typed tier (live_unw_gates.augment_tier_min_gain): pyramid source = breakout type, bounce source = bounce type
                 _uag_typed_min = _typed_aug_fn(
                     lambda k, d=None: getattr(cfg, k, d),

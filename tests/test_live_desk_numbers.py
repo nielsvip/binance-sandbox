@@ -264,6 +264,30 @@ def test_ledger_audit_gap(tmp_path):
     assert srv._ledger_audit("nosuch", 1.0, 0.0, 1.0, 1.0, now_s) is None
 
 
+def test_unpriced_row_stays_missing_never_zero(repo):
+    rows = {
+        "x:ZOMB_SHORT": {
+            "symbol": "ZOMB",
+            "position_side": "SHORT",
+            "positionAmt": 102.7,
+            "entry_price": 0.08525143297099039,
+            "mark_price": None,
+            "gain": None,
+            "max_gain": 1.246,
+            "unrealized_pnl_USD": None,
+            "realized_pnl": None,
+            "opened_at": "2026-03-10T21:29:05Z",
+            "last_updated": None,
+        }
+    }
+    (repo / "fin" / "short_positions.json").write_text(json.dumps(rows))
+    snap = srv.read_positions("fin")
+    z = [r for r in snap["sides"]["short"] if r["symbol"] == "ZOMB"][0]
+    assert z["mark"] is None and z["gain"] is None and z["upnl"] is None
+    assert z["entry"] == 0.08525143297099039
+    assert snap["totals"]["upnl"] == 25.0
+
+
 def test_close_flag_key_and_label():
     k = srv._flag_key("BABA", "short", "2026-10-23T19:58:35.139028+00:00", 99.555)
     assert k == "BABA|SHORT|2026-10-23T19:58:35.139028+00:00|99.555"

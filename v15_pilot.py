@@ -128,10 +128,14 @@ DEAD_VEC_TABS = set()
 # Remove a name once it gets a real vectorized path.
 DEAD_VEC_SWITCHES = frozenset({
     # 2026-09-28 augment/reduce revival: these tab rows are STILL not vectorizable — no
-    # functional live read (AUGMENT_FALLBACK/BOUNCE/BREAKOUT MIN_GAIN: tradier_manage.py:32293
-    # is a `_=_aug` stub) or live logic needs data absent from NPZs (stale-price, HTF force-close
-    # confirm, ALL_TF close rater, band-arrow scorer, DD bounce) — do not fake:
-    "AUGMENT_FALLBACK_GAIN_PCT",
+    # functional live read or live logic needs data absent from NPZs (stale-price, HTF force-close
+    # confirm, ALL_TF close rater, band-arrow scorer, DD bounce) — do not fake.
+    # 2026-10-24 REMOVED from this set (now vectorized, USER "no dead paths"): AUGMENT_FALLBACK_GAIN_PCT
+    # (v12 fallback-reduce hook via twin_reentry_staged; live ez_manage.py:43582 / tradier_manage.py:19883).
+    # 2026-10-24 ADDED (USER "no dead paths"): AUGMENT_WT_4H_BOUNCE_ENABLED — its only vector reads sit
+    # after _batch1_template_wiring's early return (dead code) and live has no functional read, so its
+    # board delta is structurally 0. Remove here the moment a real vec predicate + live consumer land.
+    "AUGMENT_WT_4H_BOUNCE_ENABLED",
     "LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED",
     # BAND_ARROW_SLOPE_DEADBAND + HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H removed 2026-10-15: both now proven real on BOTH
     # sides by the dead-range-aware + stub-aware probe — vec_decisions/{wirec_band_arrow,twin_entry_ports_b}.py and

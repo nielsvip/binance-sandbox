@@ -84,9 +84,20 @@ def _ez_augment_fn_source():
 
 
 def test_live_aug_tier_is_per_sym_not_global():
-    # AUG_A-D must tier off the board's per-sym gain value, not GLOBAL MIN_GAIN.
+    # AUG_A-D must tier off the board's per-sym gain value: the generic tier feeds
+    # from _psym_get, and the WT-cross / blowpast gates compare against the typed
+    # per-sym tiers — never bare GLOBAL MIN_GAIN (a fail-open import fallback may
+    # still name it, but no gate may compare against it).
     fn_src = _ez_augment_fn_source()
-    assert 'getattr(config, "MIN_GAIN", 5.0)' not in fn_src, "WT-cross/blowpast tiers must resolve per sym_side (_psym_get), not global MIN_GAIN"
+    assert "effective_min_gain(_tier_get)" in fn_src
+    assert "_tier_get = lambda _k, _d=None: _psym_get(symbol" in fn_src
+    assert "gain >= 3 * _blowpast_tier" in fn_src
+    assert "gain >= _wtcross_tier" in fn_src
+    # No gate may compare against GLOBAL MIN_GAIN; the single remaining naming is
+    # the fail-open import fallback assignment (which no gate reads).
+    for ln in fn_src.splitlines():
+        if 'getattr(config, "MIN_GAIN"' in ln:
+            assert "_generic_tier = safe_fetch_float" in ln, f"GLOBAL MIN_GAIN outside fail-open fallback: {ln.strip()}"
 
 
 def test_live_typed_thresholds_compared_not_stubbed():

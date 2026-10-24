@@ -48,12 +48,11 @@ def dc_tier_fire(cfg, is_long, px, raw_gain_pct, cur_value, dc15, dc1h, dc4h, pp
     if not bool(getattr(cfg, "DC_TIER_AUG_ENABLED", True)):
         return False, 0.0, ""
     _mg = min_gain(cfg)
-    if bool(getattr(cfg, "AUGMENT_TYPED_MIN_GAIN_ENABLED", False)):  # [UNWV/002] live DC_TIER = breakout type: AUGMENT_BREAKOUT_MIN_GAIN_PCT replaces the generic tier (same fn as live)
-        try:
-            import vec_decisions.live_unw_gates as _lug
-            _mg = _lug.augment_tier_min_gain(lambda k, d=None: getattr(cfg, k, d), "DC_TIER_AUG", _mg)
-        except Exception:
-            pass
+    try:  # USER 2026-10-24: DC_TIER = breakout type, always tiers off AUGMENT_BREAKOUT_MIN_GAIN_PCT (no master deadlock; same fn as live)
+        import vec_decisions.live_unw_gates as _lug
+        _mg = _lug.augment_tier_min_gain(lambda k, d=None: getattr(cfg, k, d), "DC_TIER_AUG", _mg)
+    except Exception:
+        pass
     if effective_gain(cfg, raw_gain_pct, ppl_fired, ppl_frac) < _mg:
         return False, 0.0, ""
     tier = active_tier(is_long, px, dc15, dc1h, dc4h)

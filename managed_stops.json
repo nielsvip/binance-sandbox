@@ -1,51 +1,44 @@
 {
-  "inf:BTCDOMUSDT_LONG": {
-    "orderId": "2000001536126312",
-    "stopPrice": 5506.7,
-    "entry_sig": "2026-10-23 23:09:59.396000+00:00",
-    "symbol": "BTCDOMUSDT",
+  "men:ENJUSDT_SHORT": {
+    "orderId": "2000001536136029",
+    "stopPrice": 0.02694,
+    "entry_sig": "2026-10-23 23:13:58.022000+00:00",
+    "symbol": "ENJUSDT",
+    "side": "SHORT"
+  },
+  "men:ACTUSDT_SHORT": {
+    "orderId": "2000001536245663",
+    "stopPrice": 0.009148,
+    "entry_sig": "2026-10-24 00:08:14.467000+00:00",
+    "symbol": "ACTUSDT",
+    "side": "SHORT"
+  },
+  "men:BEAMXUSDT_LONG": {
+    "orderId": "2000001536246106",
+    "stopPrice": 0.003148,
+    "entry_sig": "2026-10-24 00:08:37.861000+00:00",
+    "symbol": "BEAMXUSDT",
     "side": "LONG"
   },
-  "inf:COTIUSDT_SHORT": {
-    "orderId": "2000001536213469",
-    "stopPrice": 0.011347,
-    "entry_sig": "2026-10-23 23:56:13.791000+00:00",
-    "symbol": "COTIUSDT",
+  "men:BLURUSDT_SHORT": {
+    "orderId": "2000001536359870",
+    "stopPrice": 0.00863,
+    "entry_sig": "2026-10-24 01:14:53.682000+00:00",
+    "symbol": "BLURUSDT",
     "side": "SHORT"
   },
-  "inf:BNBUSDC_LONG": {
-    "orderId": "2000001536284442",
-    "stopPrice": 721.9,
-    "entry_sig": "2026-10-23 23:47:47.839000+00:00",
-    "symbol": "BNBUSDC",
+  "men:ALTUSDT_LONG": {
+    "orderId": "2000001536362092",
+    "stopPrice": 0.007075,
+    "entry_sig": "2026-10-24 01:06:08.541000+00:00",
+    "symbol": "ALTUSDT",
     "side": "LONG"
   },
-  "inf:VETUSDT_LONG": {
-    "orderId": "2000001536338556",
-    "stopPrice": 0.00684,
-    "entry_sig": "2026-10-24 00:32:14.157000+00:00",
-    "symbol": "VETUSDT",
+  "men:GRASSUSDT_LONG": {
+    "orderId": "2000001536362722",
+    "stopPrice": 0.6235,
+    "entry_sig": "2026-10-24 01:06:26.864000+00:00",
+    "symbol": "GRASSUSDT",
     "side": "LONG"
-  },
-  "inf:XRPUSDC_SHORT": {
-    "orderId": "2000001536339796",
-    "stopPrice": 1.3157,
-    "entry_sig": "2026-10-24 00:32:32.821000+00:00",
-    "symbol": "XRPUSDC",
-    "side": "SHORT"
-  },
-  "inf:AVAXUSDC_SHORT": {
-    "orderId": "2000001536340769",
-    "stopPrice": 9.903,
-    "entry_sig": "2026-10-23 23:47:27.905000+00:00",
-    "symbol": "AVAXUSDC",
-    "side": "SHORT"
-  },
-  "inf:TRXUSDT_SHORT": {
-    "orderId": "2000001536341436",
-    "stopPrice": 0.33177,
-    "entry_sig": "2026-10-23 23:07:22.497000+00:00",
-    "symbol": "TRXUSDT",
-    "side": "SHORT"
   }
 }

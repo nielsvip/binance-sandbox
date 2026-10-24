@@ -91,7 +91,10 @@ def exit_hold_blocked(get, ind, is_long, reason):
 
 
 # ── typed augment min-gain (AUGMENT_BOUNCE_MIN_GAIN_PCT / AUGMENT_BREAKOUT_MIN_GAIN_PCT replace the generic MIN_GAIN_TO_BUY_AGGRESSIVELY / AUGMENT_MIN_GAIN_PCT tier) ──
-# master AUGMENT_TYPED_MIN_GAIN_ENABLED default False => generic tier unchanged (today's live + vector). The vector twin MUST call these same functions.
+# USER 2026-10-24: always dispatched by reason type, never behind the retired
+# AUGMENT_TYPED_MIN_GAIN_ENABLED master (its rows filled AFTER the threshold rows,
+# so gating on it deadlocked the whole family at defaults: thresholds measured ~0,
+# never promoted, master never revisited). Untyped reason -> generic tier.
 BOUNCE_TOKENS = ("BOUNCE", "WT_CROSS")                      # live crypto AUG_B_WT_CROSS_*, stocks WT_D_BOUNCE_AUG
 BREAKOUT_TOKENS = ("BREAKOUT", "BLOWPAST", "DC_TIER", "PYRAMID", "DC_BREAK")  # live crypto AUG_A_BLOWPAST_*, stocks DC_TIER{n}_*_AUG
 
@@ -106,9 +109,7 @@ def augment_type(reason):
 
 
 def augment_tier_min_gain(get, reason, generic):
-    """The min gain-since-last-add tier for this augment. master off or untyped reason -> `generic` (effective_min_gain, floor 2.5). No floor on the typed keys (swept values 0.25-6)."""
-    if not bool(get("AUGMENT_TYPED_MIN_GAIN_ENABLED", False)):
-        return generic
+    """The min gain-since-last-add tier for this augment. Untyped reason -> `generic` (effective_min_gain, floor 2.5). No floor on the typed keys (swept values 0.25-6)."""
     t = augment_type(reason)
     if t == "bounce":
         return _f(get("AUGMENT_BOUNCE_MIN_GAIN_PCT", 0.5), 0.5)

@@ -35901,8 +35901,9 @@ class MultiAccountTradeManager:
                 _uag_min_qty = float(self.min_qty.get(symbol, 0.0001))
                 if _uag_amt > _uag_min_qty:
                     # 2026-09-06 AUGMENT SCOPE EXPANSION — use AUGMENT_MIN_GAIN_PCT if set (sweepable), else legacy
+                    # USER 2026-10-24: per sym_side from the board, never GLOBAL (which ignored every promotion).
                     import live_entry_gates as _leg_mg  # batch5
-                    _uag_min_gain = _leg_mg.effective_min_gain(lambda _k, _d: getattr(config, _k, _d))  # MIN_GAIN_TO_BUY_AGGRESSIVELY swept switch (floor 2.5); AUGMENT_MIN_GAIN_PCT>0 = override
+                    _uag_min_gain = _leg_mg.effective_min_gain(lambda _k, _d: _psym_get(symbol, position_side, _k, getattr(config, _k, _d)))  # MIN_GAIN_TO_BUY_AGGRESSIVELY swept switch (floor 2.5); AUGMENT_MIN_GAIN_PCT>0 = override
                     try:  # UNW-L 2026-10-01: AUGMENT_BOUNCE/BREAKOUT_MIN_GAIN_PCT replace the generic tier when AUGMENT_TYPED_MIN_GAIN_ENABLED (default False = unchanged)
                         from vec_decisions.live_unw_gates import augment_tier_min_gain as _unw_tier
                         _uag_min_gain = _unw_tier(lambda _k, _d=None: _psym_get(symbol, position_side, _k, getattr(config, _k, _d)), reason, _uag_min_gain)
@@ -43866,11 +43867,36 @@ async def evaluate_augmentation(ctx: dict) -> Optional[Signal]:
         k_not_exhausted = k_3m > 15 and k_15m > 15
     wt_tf_aligned = sum([wt_dir_3m, wt_dir_15m, wt_dir_1h])
     has_wt_cross = wt_cross_bull_3m or wt_cross_bull_15m
-    min_gain = safe_fetch_float(getattr(config, "MIN_GAIN", 5.0), 5.0)
+    # USER 2026-10-24 (augment "always enforced at the best value"): tiers resolve
+    # per sym_side from the board (AUGMENT_MIN_GAIN_PCT else MIN_GAIN_TO_BUY_AGGRESSIVELY,
+    # floor 2.5), with the typed thresholds dispatching by augment type (bounce-type
+    # AUG_B off AUGMENT_BOUNCE_MIN_GAIN_PCT, breakout-type AUG_A off
+    # AUGMENT_BREAKOUT_MIN_GAIN_PCT) — never GLOBAL MIN_GAIN, which ignored every board.
+    _tier_side = "LONG" if is_long else "SHORT"
+    _tier_get = lambda _k, _d=None: _psym_get(symbol, _tier_side, _k, getattr(config, _k, _d))
+    try:
+        import live_entry_gates as _leg_tier
+        _generic_tier = float(_leg_tier.effective_min_gain(_tier_get))
+    except Exception:
+        _generic_tier = safe_fetch_float(getattr(config, "MIN_GAIN", 5.0), 5.0)
+    try:
+        from vec_decisions.live_unw_gates import augment_tier_min_gain as _unw_tier_fn
+    except Exception:
+        _unw_tier_fn = None
+    def _aug_tier(_reason):
+        try:
+            if _unw_tier_fn is not None:
+                return float(_unw_tier_fn(_tier_get, _reason, _generic_tier))
+        except Exception:
+            pass
+        return float(_generic_tier)
+    min_gain = float(_generic_tier)
+    _blowpast_tier = _aug_tier("AUG_A_BLOWPAST")
+    _wtcross_tier = _aug_tier("AUG_B_WT_CROSS")
     base_qty = _psym_sps(symbol, "LONG" if is_long else "SHORT") / current_price
-    # AUG_A: BLOWPAST (gain >= 3×min_gain, conviction 90) — highest conviction
+    # AUG_A: BLOWPAST (gain >= 3×breakout-tier, conviction 90) — highest conviction
     if getattr(config, "AUGMENT_BLOWPAST_ENABLED", True):
-        if gain >= 3 * min_gain and k_not_exhausted:
+        if gain >= 3 * _blowpast_tier and k_not_exhausted:
             aug_qty = min(pos_amt * 0.30, base_qty * 2.0)
             return Signal(
                 action="AUGMENT",
@@ -43878,9 +43904,9 @@ async def evaluate_augmentation(ctx: dict) -> Optional[Signal]:
                 conviction=90.0,
                 quantity=aug_qty,
             )
-    # AUG_B: WT cross + aligned 2/3 TFs (conviction 80)
+    # AUG_B: WT cross + aligned 2/3 TFs (conviction 80), bounce-tier gain gate
     if getattr(config, "AUGMENT_WT_CROSS_ENABLED", True):
-        if has_wt_cross and wt_tf_aligned >= 2 and gain >= min_gain and k_not_exhausted:
+        if has_wt_cross and wt_tf_aligned >= 2 and gain >= _wtcross_tier and k_not_exhausted:
             aug_qty = base_qty * k_runway
             cross_tf = "3m" if wt_cross_bull_3m else "15m"
             return Signal(
@@ -66262,14 +66288,10 @@ def _ensure_ez_all(config):
     # BATCH 5 — final 224 TEMPLATE switches to reach 359 BOTH_WIRED 2026-09-07
     if getattr(config, "ATR_LONG_WINDOW", None) is not None: _ = 1  # ATR_LONG_WINDOW — BATCH 5
     if getattr(config, "ATR_TRAIL_FILTER_TF", None) is not None: _ = 1  # ATR_TRAIL_FILTER_TF — BATCH 5
-    if bool(getattr(config, "AUGMENT_BOUNCE_MIN_GAIN_PCT", False)):
-        try: _a=float(locals().get("position", {}).get("gain",0) if 'position' in locals() else 0)
-        except: _a=0
-        _=_a  # AUGMENT_BOUNCE_MIN_GAIN_PCT
-    if bool(getattr(config, "AUGMENT_BREAKOUT_MIN_GAIN_PCT", False)):
-        try: _a=float(locals().get("position", {}).get("gain",0) if 'position' in locals() else 0)
-        except: _a=0
-        _=_a  # AUGMENT_BREAKOUT_MIN_GAIN_PCT
+    # 2026-10-24 REMOVED (USER "no dead paths"): AUGMENT_BOUNCE/BREAKOUT_MIN_GAIN_PCT
+    # census-stubs (bool(threshold) + discarded gain read, never a comparison) inside
+    # never-called _ensure_ez_all. The REAL per-sym_side consumers are evaluate_augmentation's
+    # AUG_A-D tiers (augment_tier_min_gain) and the UAGAIN choke point.
     # AUGMENT_FALLBACK_GAIN_PCT stub removed 2026-10-15: the real per-sym_side consumer is
     # evaluate_augmentation (ez_manage.py:42110, twin_reentry_staged.augment_fallback_fires).
     if bool(getattr(config, "AUGMENT_FALLBACK_REDUCE_ENABLED", False)):
@@ -67074,8 +67096,8 @@ def _ensure_ez_all(config):
         _ = "GOLDEN_RULE_BASE_USD"
     if bool(getattr(config, "WT_15M_BOUNCE_OPEN_ENABLED", False)):
         _ = "WT_15M_BOUNCE_OPEN_ENABLED"
-    if float(getattr(config, "AUGMENT_BOUNCE_MIN_GAIN_PCT", 0)) > 0:
-        _ = "AUGMENT_BOUNCE_MIN_GAIN_PCT"
+    # 2026-10-24 REMOVED (USER "no dead paths"): AUGMENT_BOUNCE_MIN_GAIN_PCT census-stub
+    # (string no-op inside never-called _ensure_ez_all); real consumers are the AUG tiers.
     if float(getattr(config, "AUGMENT_MIN_GAIN_PCT", 0)) > 0:
         _ = "AUGMENT_MIN_GAIN_PCT"
     if bool(getattr(config, "ALL_TF_AGAINST_CLOSE_ENABLED", False)):
