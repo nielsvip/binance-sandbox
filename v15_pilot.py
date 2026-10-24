@@ -1677,6 +1677,7 @@ def _result_stamp(progress: dict, symside: str) -> None:
                            ("result_config_md5", ROOT / ("config_tradier.py" if _is_stocks else "config.py"))):
                 progress[_k] = _hl.md5(_p.read_bytes()).hexdigest()
         progress["result_done_utc"] = datetime.now(timezone.utc).isoformat()
+        progress["result_done_fresh_evals"] = int(progress.get("last_run_fresh_evals") or 0)
         try:  # USER 2026-10-14 throughput: real CPU per board (self + reaped pool workers) + launch workers -> core-min/board
             import resource as _rs
             _ru_s, _ru_c = _rs.getrusage(_rs.RUSAGE_SELF), _rs.getrusage(_rs.RUSAGE_CHILDREN)
@@ -1686,6 +1687,16 @@ def _result_stamp(progress: dict, symside: str) -> None:
             pass
     except Exception:
         pass
+
+def _stamp_allowed(progress: dict) -> bool:
+    """USER 2026-10-24: result_done_utc may only wear a new date when THIS launch evaluated >=1 fresh cell.
+    A resume/refusal that computed nothing keeps its prior date (else old cells wear new dates fleet-wide).
+    last_run_fresh_evals is reset to 0 at every spec-fill start and incremented only on fresh (non-cached,
+    non-error) engine evals. Pure (tested)."""
+    try:
+        return int((progress or {}).get("last_run_fresh_evals") or 0) > 0
+    except (TypeError, ValueError, AttributeError):
+        return False
 
 def _ram_fp(symside):
     """In-RAM NPZ fingerprint: proves row evals and promotion measured identical bytes. None when cold (fail-open: tripwire covers the hot path only). NaN-normalized so the fp is stable."""
@@ -5050,7 +5061,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     _v18_io = bool(_V18P is not None and _V18P.io_throttle_on())
     _v18_wb = {"on": bool(_V18P is not None and _V18P.ledger_writeback_on()), "pending": [], "ver": None, "tag": None, "capture": None}
     _v18_logx = [bool(_V18P is not None and any(_V18P.flag_on(_k) for _k in ("V18_BRAIN", "V18_WINNERS", "V18_EXIT_REPAIR", "V18_ABLATION", "V18_FLOOR", "V18_MUST", "V18_PROFILE_YELLOWS", "V18_LINKNET_FIRST")))]  # E8 hook §4: brain_p / brain_model / phase on every eval line
-    _v18_vint = {"last_eval_ts": None}  # newest fresh engine eval of this launch (manifest cells_vintage)
+    _v18_vint = {"last_eval_ts": None, "n_fresh": 0}  # newest fresh engine eval of this launch (manifest cells_vintage) + fresh-eval count (result_done_utc gate)
+    progress["last_run_fresh_evals"] = 0  # USER 2026-10-24: reset every launch — a resume that evaluates nothing must not inherit yesterday's count into its date stamp
     _v18_lx: dict = {}  # label -> extra delta-log fields of a V18 phase eval (companions / family / remedy_class / from_cat_side)
     if _v18_ids is not None or _v18_io or _v18_wb["on"]:
         print(f"[V18] {new_symside} identity_settle={_v18_ids is not None} io_throttle={_v18_io} ledger_writeback={_v18_wb['on']}", flush=True)
@@ -7045,6 +7057,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             _V18_ACTIVITY["evals"] = _V18_ACTIVITY.get("evals", 0) + 1
         if res is not None and not err and not cached:
             _v18_vint["last_eval_ts"] = utcnow()
+            _v18_vint["n_fresh"] = int(_v18_vint.get("n_fresh") or 0) + 1
+            progress["last_run_fresh_evals"] = int(_v18_vint["n_fresh"])  # same condition, always in sync — no exit-point bookkeeping
         if _v18_ids is not None and res is not None and not err:
             _v18_ids.note(hash(ck), cum_before, f"{sname}!{rr}:{label}")
         return res, err
@@ -10612,7 +10626,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     progress.pop("unprotected", None)
                     progress["essential_measured_zero"] = {sw: info["reason"] for sw, info in _eg.items() if info.get("measured_zero")}
                     print(f"[ESSENTIAL-GATE] {new_symside} all {len(_eg)} essential filters proven non-zero", flush=True)
-            _result_stamp(progress, new_symside)
+            if _stamp_allowed(progress):
+                _result_stamp(progress, new_symside)
+            else:  # USER 2026-10-24: zero fresh evals this launch — old cells keep their prior date, never today's
+                print(f"[NO-STAMP] {new_symside} zero fresh evals this launch — result_done_utc keeps its prior date", flush=True)
         # USER 2026-10-13 BELOW-BH: results below B&H still GO LIVE (like negative-gain results, small entry quantity via
         # the size tiers; winners up to 4x START_POS). Never withheld, never re-run here: the extra round-2 search already
         # ran in this run (BH-CHASE focus). The real number publishes, flagged below_bh for sizing/ledger.
@@ -14313,7 +14330,10 @@ def _main_single():
         print(f"[spec-fill] workbook complete, {rows_filled} rows filled, returning early cum={cumulative_gain:.4f}", flush=True)
         print(f"[mandatory-yellows] {_mandatory_summary()}", flush=True)
         try:
-            _result_stamp(progress, new_symside)
+            if _stamp_allowed(progress):
+                _result_stamp(progress, new_symside)
+            else:  # USER 2026-10-24: zero fresh evals this launch — old cells keep their prior date, never today's
+                print(f"[NO-STAMP] {new_symside} zero fresh evals this launch — result_done_utc keeps its prior date", flush=True)
             _atomic_write_json(progress_path, progress)
         except Exception:
             pass

@@ -210,7 +210,8 @@ def test_draw_mismatch_lines_live_side():
     base = datetime(2026, 10, 20, tzinfo=timezone.utc)
     lo0, hi0 = ax.get_ylim()
     nv2, nl2 = lth.draw_mismatch_lines(ax, base.replace(hour=9), base.replace(hour=16),
-                                       [], [], [], [base.replace(hour=12)], lambda t: t.timestamp())
+                                       [base.replace(hour=10)], [], [base.replace(hour=10, minute=5),
+                                       base.replace(hour=12)], [], lambda t: t.timestamp())
     assert (nv2, nl2) == (0, 1)
     lives = [l for l in ax.get_children() if isinstance(l, Line2D)
              and l.get_marker() == "v" and l.get_color() == lth.MISMATCH_LIVE_MPL[0]]

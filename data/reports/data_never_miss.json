@@ -1,6 +1,6 @@
 {
- "generated_utc": "2026-10-24T19:27:09Z",
- "secs": 64.8,
+ "generated_utc": "2026-10-24T19:30:53Z",
+ "secs": 47.0,
  "universe": {
   "crypto": 201,
   "stocks": 224
@@ -8,34 +8,20 @@
  "unreachable": {},
  "healed": {
   "s1:binance": {
-   "files": 128,
-   "rows": 102,
-   "skipped": {}
-  },
-  "mac:/Users/niels/Documents/binance": {
-   "files": 24,
-   "rows": 13,
+   "files": 3,
+   "rows": 4,
    "skipped": {}
   }
  },
  "kline_breaches": [
   {
-   "host": "mac",
-   "venue": "crypto",
-   "symbol": "JUPUSDT",
-   "tf": "15m",
-   "last": "2026-10-24T18:45",
-   "expect": "2026-10-24T19:00",
-   "bars_behind": 1.0
-  },
-  {
    "host": "s1",
-   "venue": "crypto",
-   "symbol": "JUPUSDT",
+   "venue": "stocks",
+   "symbol": "QRVO",
    "tf": "15m",
-   "last": "2026-10-24T18:45",
-   "expect": "2026-10-24T19:00",
-   "bars_behind": 1.0
+   "last": "2026-10-02T20:00",
+   "expect": "2026-10-23T19:45",
+   "bars_behind": 2015.0
   },
   {
    "host": "mac",
@@ -48,15 +34,6 @@
   },
   {
    "host": "s1",
-   "venue": "stocks",
-   "symbol": "QRVO",
-   "tf": "15m",
-   "last": "2026-10-02T20:00",
-   "expect": "2026-10-23T19:45",
-   "bars_behind": 2015.0
-  },
-  {
-   "host": "mac",
    "venue": "stocks",
    "symbol": "COE",
    "tf": "15m",
@@ -65,7 +42,7 @@
    "bars_behind": 9.0
   },
   {
-   "host": "s1",
+   "host": "mac",
    "venue": "stocks",
    "symbol": "COE",
    "tf": "15m",
@@ -75,13 +52,6 @@
   }
  ],
  "unhealable": [
-  {
-   "venue": "crypto",
-   "symbol": "JUPUSDT",
-   "tf": "15m",
-   "best": "2026-10-24T18:45",
-   "expect": "2026-10-24T19:00"
-  },
   {
    "venue": "stocks",
    "symbol": "QRVO",
@@ -105,83 +75,83 @@
   {
    "host": "mac",
    "file": "crypto prices",
-   "age_s": 7.5,
+   "age_s": 70.4,
    "max_s": 60,
-   "ok": true,
+   "ok": false,
    "files": {
-    "price_cache_1.json": 7.5,
-    "price_cache_2.json": 70.1,
-    "price_cache_3.json": 48.0
+    "price_cache_1.json": 128.9,
+    "price_cache_2.json": 117.8,
+    "price_cache_3.json": 70.4
    }
   },
   {
    "host": "mac",
    "file": "crypto snapshot (market_data_*)",
-   "age_s": 1754.1,
+   "age_s": 1971.9,
    "max_s": 90,
    "ok": false,
    "files": {
-    "data/market_data_NEWEST": 1754.1
+    "data/market_data_NEWEST": 1971.9
    }
   },
   {
    "host": "mac",
    "file": "crypto latest_market_data",
-   "age_s": 188.0,
+   "age_s": 405.8,
    "max_s": 90,
    "ok": false,
    "files": {
-    "data/latest_market_data.json": 188.0
+    "data/latest_market_data.json": 405.8
    }
   },
   {
    "host": "s1",
    "file": "crypto snapshot on S1 (Mac push or own stack)",
-   "age_s": 17.1,
+   "age_s": 25.5,
    "max_s": 180,
    "ok": true,
    "files": {
-    "data/market_data_NEWEST": 1699.7,
-    "ez_s1_stack/data/latest_market_data.json": 17.1
+    "data/market_data_NEWEST": 1942.0,
+    "ez_s1_stack/data/latest_market_data.json": 25.5
    }
   },
   {
    "host": "s1",
    "file": "crypto prices on S1 (Mac push or own stack)",
-   "age_s": 12.6,
+   "age_s": -0.3,
    "max_s": 300,
    "ok": true,
    "files": {
-    "price_cache_1.json": 144.7,
-    "price_cache_2.json": 130.0,
-    "price_cache_3.json": 88.3,
-    "ez_s1_stack/price_cache_1.json": 1612708.2,
-    "ez_s1_stack/price_cache_2.json": 15.5,
-    "ez_s1_stack/price_cache_3.json": 12.6
+    "price_cache_1.json": 123.0,
+    "price_cache_2.json": 46.1,
+    "price_cache_3.json": 29.8,
+    "ez_s1_stack/price_cache_1.json": 1612950.5,
+    "ez_s1_stack/price_cache_2.json": 3.9,
+    "ez_s1_stack/price_cache_3.json": -0.3
    }
   },
   {
    "host": "gw",
    "file": "crypto market_data",
-   "age_s": 574.5,
+   "age_s": 375.4,
    "max_s": 300,
    "ok": false,
    "files": {
-    "data/latest_market_data.json": 574.5
+    "data/latest_market_data.json": 375.4
    }
   },
   {
    "host": "mac",
    "file": "disk free /Users/niels/Documents/binance",
    "age_s": null,
-   "free_gb": 17.1,
+   "free_gb": 15.5,
    "ok": true
   },
   {
    "host": "s1",
    "file": "disk free binance",
    "age_s": null,
-   "free_gb": 10.2,
+   "free_gb": 10.7,
    "ok": true
   },
   {
