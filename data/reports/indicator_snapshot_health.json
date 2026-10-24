@@ -1,13 +1,13 @@
 {
- "generated_utc": "2026-10-24T17:02:49Z",
+ "generated_utc": "2026-10-24T17:07:50Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 148.3,
+  "age_s": 449.4,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 46725,
-  "proc_age_s": 36301.0,
+  "proc_age_s": 36602.0,
   "log_age_s": 55.3,
   "warmup_done": true,
   "timeframes_since_restart": [
@@ -57,21 +57,20 @@
   "mode": "ACTIVE",
   "since_epoch": 1792602182.2042153,
   "activations": 163,
-  "hb_mtime": 1792861121.7038205,
-  "mac_snapshot_age_s": 31.003194332122803,
+  "hb_mtime": 1792861361.6155963,
+  "mac_snapshot_age_s": 2.3647918701171875,
   "mac_stale": false,
-  "lease_holder": "s1",
-  "lease_venues": "crypto",
-  "lease_since": "2026-10-24T16:58:10Z",
-  "lease_reason": "Mac reachable but NOT TRADING: crypto: not_trading_account: ang idle 110s (102 live keys), flz idle 667s (27 live keys) \u2014 no vec decision executed for >30s while the board lane is live (registry age 1672s) for 50s",
-  "now": 1792861125.4917612,
-  "from_cache_age_s": 243.6,
-  "heartbeat_age_s": 3.8,
-  "active_s": 258943.3,
-  "note": "producers are CORRECT: S1 holds the TRADING lease (venues='crypto', since 2026-10-24T16:58:10Z, reason 'Mac reachable but NOT TRADING: crypto: not_trading_account: ang idle 110s (102 live keys), flz idle 667s (27 live keys) \u2014 no vec decision executed for >30s while the board lane is live (registry age 1672s) for 50s'), so S1 must produce crypto data. Do NOT stop the producers. The question to chase is the LEASE/failback, not this unit."
+  "lease_holder": "mac",
+  "lease_venues": null,
+  "lease_since": "2026-10-24T17:02:49Z",
+  "lease_reason": "manual force-mac",
+  "now": 1792861430.835745,
+  "from_cache_age_s": 239.3,
+  "heartbeat_age_s": 69.2,
+  "active_s": 259248.6
  },
  "alerts": [
-  "S1 HOLDS THE LIVE CRYPTO LEASE WHILE THE MAC LOOKS HEALTHY: lease venues='crypto' since 2026-10-24T16:58:10Z (reason 'Mac reachable but NOT TRADING: crypto: not_trading_account: ang idle 110s (102 live keys), flz idle 667s (27 live keys) \u2014 no vec decision executed for >30s while the board lane is live (registry age 1672s) for 50s'), Mac heartbeat 3s, Mac snapshot 148s. S1 is therefore running the live engines AND the producers instead of backtests. This is a LEASE/failback question \u2014 do NOT stop the producers (that would leave the trading host blind). Operator decision: hand the lease back to the Mac only after confirming the Mac's pushes and heartbeat are stable."
+  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 259248s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (69s) AND the Mac snapshot is fresh (449s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
  ],
  "verdict": "ALERT"
 }

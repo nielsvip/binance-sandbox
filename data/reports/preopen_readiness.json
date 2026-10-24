@@ -1,12 +1,13 @@
 {
- "generated_utc": "2026-10-24T16:40:08Z",
+ "generated_utc": "2026-10-24T17:00:02Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
  "verdict": "FAIL",
  "failed_critical": [
   "boards_recomputed",
-  "live_set_matches_selection"
+  "live_set_matches_selection",
+  "indicators_fresh"
  ],
  "checks": [
   {
@@ -14,7 +15,7 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "filled_today": 244,
+    "filled_today": 243,
     "filled_before_open": 0
    },
    "detail": "no board was filled before the open"
@@ -37,11 +38,11 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "built_at": "2026-10-24T15:51:04.919738+00:00",
+    "built_at": "2026-10-24T16:51:16.986289+00:00",
     "n": 523,
-    "age_at_open_s": 2944
+    "age_at_open_s": 526
    },
-   "detail": "built 2026-10-24T15:51:04.919738+00:00 n=523"
+   "detail": "built 2026-10-24T16:51:16.986289+00:00 n=523"
   },
   {
    "name": "apply_report_written",
@@ -61,9 +62,9 @@
    "critical": true,
    "measured": {
     "selection_n": 523,
-    "exact": 131,
+    "exact": 129,
     "benign_divergence_only": 313,
-    "material_divergence": 78,
+    "material_divergence": 80,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -186,37 +187,43 @@
       ]
      },
      {
-      "sym_side": "SHOP_LONG",
-      "published_at": "2026-10-22T04:02:56Z",
-      "material": 42,
+      "sym_side": "STXUSDT_SHORT",
+      "published_at": "2026-10-24T16:29:52Z",
+      "material": 47,
       "sample": [
-       "ATR_ADAPTIVE_SIZING_ENABLED",
        "ATR_ADAPTIVE_SIZING_TARGET_PCT",
-       "ATR_ADAPTIVE_STOP_MULT",
-       "ATR_ADAPTIVE_STOP_TF",
-       "DC_EDGE_SIZING_MIN_MULT",
-       "DC_HARD_STOP_1H_ENABLED"
+       "BULL_HOLD_EXIT_DELAY_BARS",
+       "CIRCUIT_SHARPE_GATES_FILTER_TF",
+       "DC_EDGE_SIZING_MAX_MULT",
+       "EMA_DIST_SIZING_ENABLED",
+       "EMA_DIST_SIZING_MULT"
       ]
      }
     ]
    },
-   "detail": "131 exact, 313 benign-only, 78 with material divergence, 1 with no live row"
+   "detail": "129 exact, 313 benign-only, 80 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
-   "ok": true,
+   "ok": false,
    "critical": true,
    "measured": {
-    "symbols": 330,
-    "stale_over_90min": 2,
-    "stale_pct": 0.6,
-    "median_age_min": 0.0,
+    "symbols": 201,
+    "stale_over_90min": 199,
+    "stale_pct": 99.0,
+    "median_age_min": 135.0,
     "sample": [
-     "DUSKUSDT",
-     "ONEUSDT"
+     "1000CHEEMSUSDT",
+     "1000FLOKIUSDT",
+     "1000LUNCUSDT",
+     "1000PEPEUSDC",
+     "1000SATSUSDT",
+     "1000SHIBUSDC",
+     "1000XECUSDT",
+     "1INCHUSDT"
     ]
    },
-   "detail": "2/330 symbols past the live 90-min entry gate (0.6%)"
+   "detail": "199/201 symbols past the live 90-min entry gate (99.0%)"
   },
   {
    "name": "s1_sets_synced",
