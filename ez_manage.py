@@ -10763,6 +10763,8 @@ class AccountConfig:
             return True
         except Exception as e:
             logger.error(f"[{self.prefix}] Failed to sync time with Binance: {e}")
+            try: self._last_time_sync_fail = current_time
+            except Exception: pass
             return False
 
     def get_binance_timestamp(self):
@@ -12882,6 +12884,8 @@ class WebSocketManager:
             and (current_time - self._last_time_sync) < 3600
         ):
             return True
+        if (current_time - getattr(self, "_last_time_sync_fail", 0.0)) < 600.0:
+            return False
         try:
             server_time_response = self.client.futures_time()
             server_time = server_time_response["serverTime"]
@@ -12901,6 +12905,8 @@ class WebSocketManager:
             logger.error(
                 f"[{','.join(self.account_keys)}] Failed to sync time with Binance: {e}"
             )
+            try: self._last_time_sync_fail = current_time
+            except Exception: pass
             return False
 
     async def user_data_websocket_loop(self, url, account_key):
