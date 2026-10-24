@@ -1057,16 +1057,20 @@ class MarketDataEngine:
                                 payload[_k] = _v
                 except Exception:
                     pass
-                # Update Redis Pipeline FIRST — it carries the 60s TTL freshness
+                # Update Redis Pipeline FIRST — it carries the TTL freshness
                 # guarantee ang displays as Age1m. It must never wait behind the
                 # bridge: 2026-10-24 a saturated shared-mem server wedged
                 # update_batch for minutes, publish never ran, ALL hot keys
                 # expired at once while queueing/heartbeat looked alive.
+                # USER 2026-10-24: ex 90→300. Broadcast computes ~201/342 per pass
+                # (45s synth cadence) so 90s TTL deleted keys between computes and
+                # fetches fell to 30-min cold (HOT_MISS). 300s bridges the rotation;
+                # _tick_ts/_calc_ts + merge guards keep every consumer age-honest.
                 try:
                     async with self.redis.pipeline() as pipe:
                         for sym, payload in results:
-                            pipe.set(f"hot_metrics_ts:{sym}", payload['_tick_ts'], ex=90)
-                            pipe.set(f"hot_metrics:{sym}", orjson.dumps(payload, option=orjson.OPT_SERIALIZE_NUMPY), ex=90)
+                            pipe.set(f"hot_metrics_ts:{sym}", payload['_tick_ts'], ex=300)
+                            pipe.set(f"hot_metrics:{sym}", orjson.dumps(payload, option=orjson.OPT_SERIALIZE_NUMPY), ex=300)
                         await pipe.execute()
                 except Exception as _rpe:
                     try: logger.warning(f"[PUBLISH] redis pipeline failed: {_rpe}")

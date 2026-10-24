@@ -36,7 +36,7 @@ def arrow_alpha(event):
 
 
 OUTCOME_LW = 1.5
-OUTCOME_ALPHA = 0.90
+OUTCOME_ALPHA = 0.20
 
 
 def draw_outcome_lines(ax_plot, x_left_ts, x_right_ts, events, x_of):
