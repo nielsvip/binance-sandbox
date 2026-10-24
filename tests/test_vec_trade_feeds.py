@@ -47,24 +47,57 @@ def test_draw_vec_mismatch_empty_vec_draws_nothing():
     plt.close(fig)
 
 
-def test_load_html_trades_merges_files_with_dedupe(tmp_path, monkeypatch):
+def _write_trades(path, *trips):
+    import json
+    path.write_text("const TRADES = [%s];" % ",".join(json.dumps(t) for t in trips))
+
+
+def test_load_html_trades_newest_30d_only(tmp_path, monkeypatch):
+    import os
     import vec_trade_feeds as v
     d = tmp_path / "sheets"
     d.mkdir()
     t1 = {"entry_time": "2026-10-01T10:00:00+00:00", "exit_time": "2026-10-01T12:00:00+00:00"}
     t2 = {"entry_time": "2026-10-02T10:00:00+00:00", "exit_time": "2026-10-02T12:00:00+00:00"}
-    (d / "TST_LONG_a_30d_matrix.html").write_text('const TRADES = [%s];' % ",".join(
-        __import__("json").dumps(t) for t in [t1, t2]))
-    (d / "TST_LONG_b_365d_matrix.html").write_text('const TRADES = [%s];' % ",".join(
-        __import__("json").dumps(t) for t in [t2]))
+    pa = d / "TST_LONG_a_30d_matrix.html"
+    pb = d / "TST_LONG_b_30d_matrix.html"
+    _write_trades(pa, t1)
+    _write_trades(pb, t2)
+    os.utime(pb, (2000000000, 2000000000))
     monkeypatch.setattr(v, "HTML_DIR", d)
     v._html_cache.clear()
     try:
         he, hx = v.load_html_trades("TST", "LONG")
     finally:
         v._html_cache.clear()
-    assert len(he) == 2 and len(hx) == 2
-    assert he[0].day == 1 and he[1].day == 2
+    assert len(he) == 1 and len(hx) == 1 and he[0].day == 2
+
+
+def test_load_html_trades_stale_365d_excluded_fresh_one_joins(tmp_path, monkeypatch):
+    import os
+    import vec_trade_feeds as v
+    d = tmp_path / "sheets"
+    d.mkdir()
+    t30 = {"entry_time": "2026-10-02T10:00:00+00:00", "exit_time": "2026-10-02T12:00:00+00:00"}
+    told = {"entry_time": "2026-01-05T10:00:00+00:00", "exit_time": "2026-01-05T12:00:00+00:00"}
+    tnew = {"entry_time": "2026-10-03T10:00:00+00:00", "exit_time": "2026-10-03T12:00:00+00:00"}
+    p30 = d / "TST_LONG_x_30d_matrix.html"
+    pold = d / "TST_LONG_y_365d_matrix.html"
+    pnew = d / "TST_LONG_z_365d_matrix.html"
+    _write_trades(p30, t30)
+    _write_trades(pold, told)
+    _write_trades(pnew, tnew)
+    os.utime(pold, (1000000000, 1000000000))
+    os.utime(p30, (1500000000, 1500000000))
+    os.utime(pnew, (2000000000, 2000000000))
+    monkeypatch.setattr(v, "HTML_DIR", d)
+    v._html_cache.clear()
+    try:
+        he, hx = v.load_html_trades("TST", "LONG")
+    finally:
+        v._html_cache.clear()
+    days = sorted(e.day for e in he)
+    assert days == [2, 3] and len(hx) == 2
 
 
 def test_load_forward_trips_reads_newest_report(tmp_path, monkeypatch):

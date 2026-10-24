@@ -3,6 +3,7 @@
 (DELTA floor leg per-sym gated but family refused; PROFIT leg default-OFF).
 Source-level pins, no live stack import.
 """
+
 from __future__ import annotations
 
 import sys
@@ -44,8 +45,7 @@ def test_live_legs_gated():
     src = (ROOT / "ez_manage.py").read_text()
     assert '_psym_get(symbol, position_side, "DELTA_EXIT_ENABLED", True)' in src
     assert (
-        '_psym_get(symbol, position_side, "DC_BASIS_PROFIT_EXIT_ENABLED", False)'
-        in src
+        '_psym_get(symbol, position_side, "DC_BASIS_PROFIT_EXIT_ENABLED", False)' in src
     )
 
 

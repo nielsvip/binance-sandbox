@@ -4,10 +4,10 @@
 Two feeds, both compared against the real fills from /history/ (live_trade_history.fetch_trades):
 
 HTML FEED (frozen at publish)
-    TRADES from SPREADSHEETS/V15_V16_CELL_BY_CELL/{SYM}_{SIDE}_*_matrix.html.
-    All matching files merge with (entry_time, exit_time) dedupe, so a 365D
-    board lands next to the 30d boards and the plot sees ~11 months of vec
-    trades. Frozen the moment the backtest is published — never moves.
+    TRADES from the newest SPREADSHEETS/V15_V16_CELL_BY_CELL
+    {SYM}_{SIDE}_*_30d_matrix.html. A 60D/365D board joins only once a fresh
+    one appears (mtime newer than the picked 30D) — stale long-window boards
+    never contribute old numbers. Frozen the moment the backtest is published.
 
 FORWARD FEED (moves with the npz bars)
     vec_trips_all + live_trips_all from the newest
@@ -48,16 +48,33 @@ def _to_utc(s):
     return dt.astimezone(timezone.utc)
 
 
+def _pick_html_files(files):
+    """Newest 30D board only; a 60D/365D board joins only when it is fresher.
+
+    USER 2026-10-24: stale long-window boards must never contribute old
+    numbers. The vec side is the latest 30D test until a new 60D/365D board
+    appears (mtime newer than the picked 30D board).
+    """
+    by_mtime = sorted(files, key=lambda p: p.stat().st_mtime)
+    short = [p for p in by_mtime if "_30d_matrix.html" in p.name]
+    longw = [p for p in by_mtime if "_30d_matrix.html" not in p.name]
+    picked = short[-1:] if short else []
+    if picked and longw:
+        picked += [p for p in longw if p.stat().st_mtime >= picked[0].stat().st_mtime]
+    elif longw:
+        picked += longw[-1:]
+    return picked
+
+
 def load_html_trades(sym, side):
-    """(entries, exits) datetimes merged over every matrix HTML for sym_side."""
+    """(entries, exits) datetimes from the picked matrix HTML(s) for sym_side."""
     key = (str(sym).upper(), str(side).upper())
     if key in _html_cache:
         return _html_cache[key]
     entries, exits = [], []
     if extract_js_array is not None and HTML_DIR.is_dir():
         seen = set()
-        for hp in sorted(HTML_DIR.glob(f"{key[0]}_{key[1]}_*_matrix.html"),
-                         key=lambda p: p.stat().st_mtime):
+        for hp in _pick_html_files(list(HTML_DIR.glob(f"{key[0]}_{key[1]}_*_matrix.html"))):
             try:
                 text = hp.read_text(errors="replace")
                 trades = extract_js_array(text, "TRADES")
