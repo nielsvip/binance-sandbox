@@ -83,6 +83,7 @@ SHOW_TOP_BOTTOM_ARROWS = False  # USER 2026-10-24: temporarily off — detect_to
 SHOW_STOCH_HEATMAP = False  # USER 2026-10-24: red/green stoch_rsi background gradient off, code kept
 SHOW_CRYPTO_LIVE_ARROWS = True  # USER 2026-10-24: per-account live fills as arrows on crypto plots
 SHOW_CRYPTO_MISMATCH = True  # USER 2026-10-24: reddish/greenish vlines for signal/fill discrepancies
+SHOW_CRYPTO_SIGNAL_ARROWS = False  # USER 2026-10-24: WT/winners lime-red triangles hidden (signal markers, not trades); code kept, marker_events still collected for mismatch
 CRYPTO_ARROW_ACCOUNTS = ["ang", "inf", "flz", "men", "fin"]
 CRYPTO_MISMATCH_TOL_MIN = 30.0
 SHOW_CRYPTO_RSI_STRIP = True  # USER 2026-10-24: tiny RSI strip at the bottom of each crypto TF panel
@@ -6592,7 +6593,8 @@ async def plot_dfs_subplots(
                                 y_pos = candle_row['high'] + margin_abs_val * 0.5
                         except IndexError:
                             pass
-                        ax_plot.plot(ts_event, y_pos, marker=marker_style, color=color_style, ms=marker_size, linestyle='None', zorder=7)
+                        if marker_style not in ('^', 'v') or SHOW_CRYPTO_SIGNAL_ARROWS:
+                            ax_plot.plot(ts_event, y_pos, marker=marker_style, color=color_style, ms=marker_size, linestyle='None', zorder=7)
                         if marker_style in ('^', 'v'):
                             marker_events.append((ts_event, 'buy' if marker_style == '^' else 'sell'))
 
