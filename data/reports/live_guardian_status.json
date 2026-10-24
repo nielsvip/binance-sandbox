@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-24T18:51:31Z",
+ "ts": "2026-10-24T18:56:28Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 129,
+   "fills_6h": 117,
    "open_positions": 5,
-   "unrealised_usd": -0.19,
+   "unrealised_usd": -0.33,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 1,
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 69,
    "open_positions": 15,
-   "unrealised_usd": -0.01,
+   "unrealised_usd": -0.21,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 86,
+   "fills_6h": 85,
    "open_positions": 20,
-   "unrealised_usd": 0.2,
+   "unrealised_usd": 0.05,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 1,
@@ -77,13 +77,13 @@
   "inf": {
    "fills_6h": 32,
    "open_positions": 1,
-   "unrealised_usd": -0.24,
+   "unrealised_usd": -0.28,
    "pos_mismatch": 0,
    "vec_parity": {
-    "live_vec_decisions": 6,
+    "live_vec_decisions": 5,
     "state_divergent": 0,
     "filled": 1,
-    "refused_non_safety": 4,
+    "refused_non_safety": 3,
     "safety_refusals": 0,
     "not_filled_no_log": 1,
     "vec_exact_fills_without_decision": 0,
@@ -91,9 +91,9 @@
    }
   },
   "flz": {
-   "fills_6h": 40,
+   "fills_6h": 38,
    "open_positions": 5,
-   "unrealised_usd": -0.08,
+   "unrealised_usd": -0.03,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -111,9 +111,9 @@
  "tradeable_guard": {
   "poison": false,
   "restored": false,
-  "total": 215,
+  "total": 216,
   "per_acct": {
-   "ang": 75,
+   "ang": 76,
    "flz": 26,
    "fin": 42,
    "men": 50,
@@ -127,161 +127,133 @@
     "34112"
    ],
    "starts_30m": 3,
-   "log_age_s": 330.0
+   "log_age_s": 154.0
   },
   "men": {
    "pids": [
     "33497"
    ],
    "starts_30m": 2,
-   "log_age_s": 249.0
+   "log_age_s": 136.0
   },
   "ang": {
    "pids": [
     "33220"
    ],
    "starts_30m": 3,
-   "log_age_s": 453.0
+   "log_age_s": 201.0
   },
   "inf": {
    "pids": [
     "33295"
    ],
-   "starts_30m": 3,
-   "log_age_s": 595.0
+   "starts_30m": 2,
+   "log_age_s": 102.0
   },
   "flz": {
    "pids": [
     "33074"
    ],
-   "starts_30m": 3,
-   "log_age_s": 461.0
+   "starts_30m": 2,
+   "log_age_s": 157.0
   },
   "trb": {
    "pids": [
     "15079"
    ],
    "starts_30m": 1,
-   "log_age_s": 10.0
+   "log_age_s": -8.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 40835.0
+   "log_age_s": 41133.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-24T18:51:31Z",
+   "ts": "2026-10-24T18:56:28Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "fin:MOVRUSDT_SHORT",
    "evidence": "REDUCE PPL_TP_g0.67%>=0.56%_stopBE1.1073 decided 2026-10-24T17:31:06Z bar=2026-10-24T16:15:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-24T18:51:31Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "inf:TRXUSDT_SHORT",
-   "evidence": "REDUCE WT_CROSS_EXIT_1h_bull bar=2026-10-24T11:45:00Z refused by non-safety gate: 24 12:59:10 - WARNING - [inf] [VEC_EXACT_EXPIRED] TRXUSDT_SHORT REDUCE WT_CROSS_EXIT_1h_bull bar=1792837800 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-24T18:51:31Z",
+   "ts": "2026-10-24T18:56:29Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "inf:TRXUSDT_SHORT",
    "evidence": "REDUCE WT_CROSS_EXIT_1h_bull bar=2026-10-24T12:00:00Z refused by non-safety gate: 24 12:59:10 - WARNING - [inf] [VEC_EXACT_EXPIRED] TRXUSDT_SHORT REDUCE WT_CROSS_EXIT_1h_bull bar=1792837800 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
   },
   {
-   "ts": "2026-10-24T18:51:31Z",
+   "ts": "2026-10-24T18:56:29Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "inf:TRXUSDT_SHORT",
    "evidence": "REDUCE WT_CROSS_EXIT_1h_bull bar=2026-10-24T12:15:00Z refused by non-safety gate: 24 12:59:10 - WARNING - [inf] [VEC_EXACT_EXPIRED] TRXUSDT_SHORT REDUCE WT_CROSS_EXIT_1h_bull bar=1792837800 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
   },
   {
-   "ts": "2026-10-24T18:51:31Z",
+   "ts": "2026-10-24T18:56:29Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "inf:TRXUSDT_SHORT",
    "evidence": "REDUCE WT_CROSS_EXIT_1h_bull bar=2026-10-24T12:30:00Z refused by non-safety gate: 24 12:59:10 - WARNING - [inf] [VEC_EXACT_EXPIRED] TRXUSDT_SHORT REDUCE WT_CROSS_EXIT_1h_bull bar=1792837800 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
   },
   {
-   "ts": "2026-10-24T18:51:31Z",
+   "ts": "2026-10-24T18:56:29Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:TRXUSDT_SHORT",
    "evidence": "REDUCE WT_CROSS_EXIT_1h_bull decided 2026-10-24T13:54:54Z bar=2026-10-24T13:00:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-24T18:51:32Z",
+   "ts": "2026-10-24T18:56:39Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "fin",
    "evidence": "3 new process ids in 30 min (['25071', '59507', '34112'])"
   },
   {
-   "ts": "2026-10-24T18:51:32Z",
+   "ts": "2026-10-24T18:56:39Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 330s"
+   "evidence": "ez_manage_fin.log not written for 154s"
   },
   {
-   "ts": "2026-10-24T18:51:32Z",
+   "ts": "2026-10-24T18:56:39Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "men",
-   "evidence": "ez_manage_men.log not written for 249s"
+   "evidence": "ez_manage_men.log not written for 136s"
   },
   {
-   "ts": "2026-10-24T18:51:32Z",
+   "ts": "2026-10-24T18:56:39Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "ang",
    "evidence": "3 new process ids in 30 min (['21823', '54682', '33220'])"
   },
   {
-   "ts": "2026-10-24T18:51:32Z",
+   "ts": "2026-10-24T18:56:39Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 453s"
+   "evidence": "ez_manage_ang.log not written for 201s"
   },
   {
-   "ts": "2026-10-24T18:51:32Z",
-   "severity": "CRITICAL",
-   "kind": "RESTART_LOOP",
-   "key": "inf",
-   "evidence": "3 new process ids in 30 min (['4850', '64761', '33295'])"
-  },
-  {
-   "ts": "2026-10-24T18:51:32Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "inf",
-   "evidence": "ez_manage_inf.log not written for 595s"
-  },
-  {
-   "ts": "2026-10-24T18:51:32Z",
-   "severity": "CRITICAL",
-   "kind": "RESTART_LOOP",
-   "key": "flz",
-   "evidence": "3 new process ids in 30 min (['9223', '49926', '33074'])"
-  },
-  {
-   "ts": "2026-10-24T18:51:32Z",
+   "ts": "2026-10-24T18:56:39Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 461s"
+   "evidence": "ez_manage_flz.log not written for 157s"
   }
  ],
  "alert_counts": {
   "VEC_DECISION_NOT_FILLED": 2,
-  "VEC_DECISION_REFUSED": 4,
-  "RESTART_LOOP": 4,
-  "STALE_LOG": 5
+  "VEC_DECISION_REFUSED": 3,
+  "RESTART_LOOP": 2,
+  "STALE_LOG": 4
  },
  "active_interventions": {
   "acct:trc": {
@@ -320,25 +292,11 @@
    "undo": "alert-only (never-halt policy 2026-10-10)",
    "dry_run": false
   },
-  "key:fin:ZKUSDT_SHORT": {
-   "ts": 1792860977.160438,
-   "until": 1792868177.160456,
-   "why": "SIZE_ANOMALY order $932.23 > 1.5x MAX_ORDER_VALUE",
-   "undo": "redis-cli -p 6379 DEL open_blocked:fin:ZKUSDT_SHORT",
-   "dry_run": false
-  },
   "key:fin:STRKUSDT_SHORT": {
    "ts": 1792861233.753246,
    "until": 1792868433.753247,
    "why": "SIZE_ANOMALY entry notional $116.46 (median $24.94, MAX_ORDER_VALUE $300) @ 2026-10-24T17:00:14Z VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_1",
    "undo": "redis-cli -p 6379 DEL open_blocked:fin:STRKUSDT_SHORT",
-   "dry_run": false
-  },
-  "key:fin:FLUXUSDT_SHORT": {
-   "ts": 1792860977.1713212,
-   "until": 1792868177.171336,
-   "why": "SIZE_ANOMALY BREAKOUT_SIZE_LADDER qty 3479.41->10438.2 ($664) past 1.5x MAX_ORDER_VALUE",
-   "undo": "redis-cli -p 6379 DEL open_blocked:fin:FLUXUSDT_SHORT",
    "dry_run": false
   },
   "key:fin:NMRUSDT_SHORT": {
@@ -363,5 +321,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.25
+ "sweep_s": 10.56
 }
