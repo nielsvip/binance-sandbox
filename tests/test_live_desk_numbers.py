@@ -446,6 +446,21 @@ def test_backfill_short_book_leaves_honest_unknown():
     assert sm["unknown"] == 1 and sm["unknown_partial"] == 1
 
 
+def test_backfill_never_uses_future_fills():
+    # Lookahead bias: a September fill must not price a March close.
+    from datetime import timedelta
+
+    now = datetime.now(timezone.utc)
+    fut_ep = (now + timedelta(days=180)).timestamp()
+    cl = _ev((now - timedelta(days=200)).isoformat(), "BF", "SHORT", "CLOSE", 10.0, 99.0)
+    books = {("BF", "SHORT"): [[fut_ep, 10.0, 101.0]]}
+    out, sm = srv.realized_walk([cl], broker_books=books)
+    row = [e for e in out if e.get("action") == "CLOSE"][0]
+    assert row.get("rpnl") is None
+    assert sm["unknown"] == 1 and sm["broker_filled"] == 0
+    assert books[("BF", "SHORT")] == [[fut_ep, 10.0, 101.0]]
+
+
 def test_backfill_broker_lots_expire_like_journal():
     from datetime import timedelta
 

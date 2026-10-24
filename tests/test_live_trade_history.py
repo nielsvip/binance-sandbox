@@ -84,5 +84,28 @@ def test_boundary_events_and_arrow_alpha():
     assert lth.arrow_alpha({"phase": "entry"}) > lth.arrow_alpha({"phase": "exit"})
 
 
+def test_draw_mismatch_lines_both_colors():
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from datetime import datetime, timezone
+    from matplotlib.lines import Line2D
+    fig, ax = plt.subplots()
+    base = datetime(2026, 10, 20, tzinfo=timezone.utc)
+    sig = [base.replace(hour=10), base.replace(hour=14)]
+    fills = [base.replace(hour=10, minute=10)]
+    nv, nl = lth.draw_mismatch_lines(ax, base.replace(hour=9), base.replace(hour=16),
+                                     sig, [], fills, [], lambda t: t.timestamp())
+    assert (nv, nl) == (1, 0)
+    reds = [l for l in ax.get_children() if isinstance(l, Line2D)
+            and l.get_color() == lth.MISMATCH_VEC_MPL[0]]
+    assert len(reds) == 1
+    assert abs(reds[0].get_alpha() - lth.MISMATCH_VEC_MPL[1]) < 1e-9
+    nv2, nl2 = lth.draw_mismatch_lines(ax, base.replace(hour=9), base.replace(hour=16),
+                                       [], [], [], [base.replace(hour=12)], lambda t: t.timestamp())
+    assert (nv2, nl2) == (0, 1)
+    plt.close(fig)
+
+
 def test_fetch_empty_symbol():
     assert lth.fetch_trades("NO_SUCH_SYM_ZZZ", ["trb"], [ROOT / "data" / "tradier" / "history"]) == {}

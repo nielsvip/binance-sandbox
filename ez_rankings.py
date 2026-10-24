@@ -6607,27 +6607,13 @@ async def plot_dfs_subplots(
                     except Exception:
                         continue
                 _fills = _lth.fetch_trades(symbol, CRYPTO_ARROW_ACCOUNTS, _hdirs)
-                _tol_s = CRYPTO_MISMATCH_TOL_MIN * 60.0
                 _sig_buy = sorted([t for t, s in marker_events if s == "buy"])
                 _sig_sell = sorted([t for t, s in marker_events if s == "sell"])
                 _fill_buy = sorted([e["timestamp"] for evs in _fills.values() for e in _lth.boundary_events(evs) if e["direction"] == "buy"])
                 _fill_sell = sorted([e["timestamp"] for evs in _fills.values() for e in _lth.boundary_events(evs) if e["direction"] == "sell"])
-                _mb_v, _mb_l = _lth.greedy_match(_sig_buy, _fill_buy, _tol_s)
-                _ms_v, _ms_l = _lth.greedy_match(_sig_sell, _fill_sell, _tol_s)
                 if SHOW_CRYPTO_MISMATCH:
-                    _mc_vec, _mc_live = _lth.MISMATCH_VEC_MPL, _lth.MISMATCH_LIVE_MPL
-                    for _i, _t in enumerate(_sig_buy):
-                        if _i not in _mb_v and x_left_ts <= _t <= x_right_ts:
-                            ax_plot.axvline(x=_t, color=_mc_vec[0], alpha=_mc_vec[1], lw=_lth.MISMATCH_LW, zorder=6)
-                    for _i, _t in enumerate(_sig_sell):
-                        if _i not in _ms_v and x_left_ts <= _t <= x_right_ts:
-                            ax_plot.axvline(x=_t, color=_mc_vec[0], alpha=_mc_vec[1], lw=_lth.MISMATCH_LW, zorder=6)
-                    for _j, _t in enumerate(_fill_buy):
-                        if _j not in _mb_l and x_left_ts <= _t <= x_right_ts:
-                            ax_plot.axvline(x=_t, color=_mc_live[0], alpha=_mc_live[1], lw=_lth.MISMATCH_LW, zorder=6)
-                    for _j, _t in enumerate(_fill_sell):
-                        if _j not in _ms_l and x_left_ts <= _t <= x_right_ts:
-                            ax_plot.axvline(x=_t, color=_mc_live[0], alpha=_mc_live[1], lw=_lth.MISMATCH_LW, zorder=6)
+                    _lth.draw_mismatch_lines(ax_plot, x_left_ts, x_right_ts, _sig_buy, _sig_sell,
+                                             _fill_buy, _fill_sell, lambda _t: _t, CRYPTO_MISMATCH_TOL_MIN)
                 if SHOW_CRYPTO_LIVE_ARROWS and _fills:
                     for _acct in CRYPTO_ARROW_ACCOUNTS:
                         for _ev in _lth.boundary_events(_fills.get(_acct)):

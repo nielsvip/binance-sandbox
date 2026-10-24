@@ -31,6 +31,39 @@ def boundary_events(events):
 def arrow_alpha(event):
     return ENTRY_ALPHA if event.get("phase", "entry") == "entry" else EXIT_ALPHA
 
+
+def draw_mismatch_lines(ax_plot, x_left_ts, x_right_ts, sig_buy, sig_sell, fill_buy, fill_sell, x_of, tol_min=30.0):
+    """Faint discrepancy vlines: reddish = signal without fill, greenish = fill without signal.
+
+    x_of maps an event timestamp to the axes x-coordinate (plot_idx on stocks,
+    raw timestamps on crypto). Returns (n_vec_only, n_live_only).
+    """
+    tol_s = tol_min * 60.0
+    sb, ss = sorted(sig_buy), sorted(sig_sell)
+    fb, fs = sorted(fill_buy), sorted(fill_sell)
+    mb_v, mb_l = greedy_match(sb, fb, tol_s)
+    ms_v, ms_l = greedy_match(ss, fs, tol_s)
+    vc, va = MISMATCH_VEC_MPL
+    lc, la = MISMATCH_LIVE_MPL
+    n_vec = n_live = 0
+    for i, t in enumerate(sb):
+        if i not in mb_v and x_left_ts <= t <= x_right_ts:
+            ax_plot.axvline(x=x_of(t), color=vc, alpha=va, lw=MISMATCH_LW, zorder=6)
+            n_vec += 1
+    for i, t in enumerate(ss):
+        if i not in ms_v and x_left_ts <= t <= x_right_ts:
+            ax_plot.axvline(x=x_of(t), color=vc, alpha=va, lw=MISMATCH_LW, zorder=6)
+            n_vec += 1
+    for j, t in enumerate(fb):
+        if j not in mb_l and x_left_ts <= t <= x_right_ts:
+            ax_plot.axvline(x=x_of(t), color=lc, alpha=la, lw=MISMATCH_LW, zorder=6)
+            n_live += 1
+    for j, t in enumerate(fs):
+        if j not in ms_l and x_left_ts <= t <= x_right_ts:
+            ax_plot.axvline(x=x_of(t), color=lc, alpha=la, lw=MISMATCH_LW, zorder=6)
+            n_live += 1
+    return n_vec, n_live
+
 _BUY_TOKENS = ("OPEN", "AUGMENT", "ADD", "REOPEN", "BUY")
 _SELL_TOKENS = ("REDUCE", "CLOSE", "SELL", "EXIT", "COVER", "TAKE")
 
