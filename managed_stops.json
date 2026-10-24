@@ -1,44 +1,38 @@
 {
-  "men:RVNUSDT_SHORT": {
-    "orderId": "2000001538398650",
-    "stopPrice": 0.001427,
-    "entry_sig": "2026-10-24 14:13:14.031000+00:00",
-    "symbol": "RVNUSDT",
+  "flz:ZECUSDC_SHORT": {
+    "orderId": "1000002641687602",
+    "stopPrice": 1212.24,
+    "entry_sig": "2026-10-24 20:25:51.600000+00:00",
+    "symbol": "ZECUSDC",
+    "side": "SHORT",
+    "disaster_backstop": true
+  },
+  "flz:ETHUSDC_SHORT": {
+    "orderId": "1000002641787640",
+    "stopPrice": 2385.17,
+    "entry_sig": "2026-10-24 20:26:31.069000+00:00",
+    "symbol": "ETHUSDC",
     "side": "SHORT"
   },
-  "men:BIOUSDC_SHORT": {
-    "orderId": "2000001538471968",
-    "stopPrice": 0.02279,
-    "entry_sig": "2026-10-24 22:04:32.885000+00:00",
-    "symbol": "BIOUSDC",
+  "flz:WLDUSDC_SHORT": {
+    "orderId": "1000002641787641",
+    "stopPrice": 0.49,
+    "entry_sig": "2026-10-24 20:26:08.109000+00:00",
+    "symbol": "WLDUSDC",
     "side": "SHORT"
   },
-  "men:1000BONKUSDC_SHORT": {
-    "orderId": "2000001538511221",
-    "stopPrice": 0.003273,
-    "entry_sig": "2026-10-24 22:35:34.034000+00:00",
-    "symbol": "1000BONKUSDC",
-    "side": "SHORT"
+  "flz:BNBUSDC_LONG": {
+    "orderId": "1000002641802244",
+    "stopPrice": 714.17,
+    "entry_sig": "2026-10-24 20:25:58.116000+00:00",
+    "symbol": "BNBUSDC",
+    "side": "LONG"
   },
-  "men:BLURUSDT_SHORT": {
-    "orderId": "2000001538520156",
-    "stopPrice": 0.00819,
-    "entry_sig": "2026-10-24 22:42:43.310000+00:00",
-    "symbol": "BLURUSDT",
-    "side": "SHORT"
-  },
-  "men:1000LUNCUSDT_SHORT": {
-    "orderId": "2000001538522861",
-    "stopPrice": 0.04756,
-    "entry_sig": "2026-10-24 20:33:20.175000+00:00",
-    "symbol": "1000LUNCUSDT",
-    "side": "SHORT"
-  },
-  "men:ACTUSDT_SHORT": {
-    "orderId": "2000001538523333",
-    "stopPrice": 0.00878,
-    "entry_sig": "2026-10-24 22:40:26.401000+00:00",
-    "symbol": "ACTUSDT",
-    "side": "SHORT"
+  "flz:BTCUSDC_LONG": {
+    "orderId": "1000002641802925",
+    "stopPrice": 79085.8,
+    "entry_sig": "2026-10-24 22:51:10.578000+00:00",
+    "symbol": "BTCUSDC",
+    "side": "LONG"
   }
 }
