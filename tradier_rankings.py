@@ -179,7 +179,7 @@ SHOW_RSI_STRIP = True  # tiny RSI strip at the bottom of each TF panel
 SHOW_STOCH_STRIP = True  # tiny StochRSI %K/%D strip below the RSI strip, %K blue when K>D red when K<D
 SHOW_TOP_LEGEND = False  # top legend removed to regain vertical space
 SHOW_STOCK_MISMATCH = True  # USER 2026-10-24: faint reddish/greenish vlines for signal/fill discrepancies
-SHOW_STOCK_SIGNAL_ARROWS = False  # USER 2026-10-24: WT/winners lime-red triangles hidden (signal markers, not trades); code kept, marker_events still collected for mismatch
+SHOW_STOCK_SIGNAL_ARROWS = False  # USER 2026-10-24: WT/winners lime-red triangles hidden (signal markers, not trades); code kept
 STOCK_MISMATCH_TOL_MIN = 30.0
 import live_trade_history as _lth
 ACCOUNT_ARROW_ORDER = _lth.ACCOUNT_ARROW_ORDER
@@ -1166,16 +1166,16 @@ async def plot_dfs_subplots(
                             ax_plot.plot(t_idx, y_pos, marker=marker_style, color=color_style, ms=marker_size, linestyle='None', zorder=7)
                         if marker_style in ('^', 'v'):
                             marker_events.append((ts_event, 'buy' if marker_style == '^' else 'sell'))
-        if SHOW_STOCK_MISMATCH and (marker_events or acct_trades) and len(df_tf) > 1:
+        if SHOW_STOCK_MISMATCH and acct_trades and len(df_tf) > 1:
             try:
-                _sig_buy = sorted([t for t, s in marker_events if s == "buy"])
-                _sig_sell = sorted([t for t, s in marker_events if s == "sell"])
-                _fill_buy = sorted([e["timestamp"] for evs in acct_trades.values() for e in _lth.boundary_events(evs) if e["direction"] == "buy"])
-                _fill_sell = sorted([e["timestamp"] for evs in acct_trades.values() for e in _lth.boundary_events(evs) if e["direction"] == "sell"])
-                _lth.draw_mismatch_lines(ax_plot, x_left_ts, x_right_ts, _sig_buy, _sig_sell,
-                                         _fill_buy, _fill_sell, get_x_idx, STOCK_MISMATCH_TOL_MIN)
-                _outcome_evs = [e for evs in acct_trades.values() for e in _lth.boundary_events(evs)]
-                _lth.draw_outcome_lines(ax_plot, x_left_ts, x_right_ts, _outcome_evs, get_x_idx)
+                import vec_trade_feeds as _vtf
+                _bevs = [e for evs in acct_trades.values() for e in _lth.boundary_events(evs)]
+                _fe = sorted([e["timestamp"] for e in _bevs if e.get("phase") == "entry"])
+                _fx = sorted([e["timestamp"] for e in _bevs if e.get("phase") == "exit"])
+                _ve, _vx = _vtf.vec_trades_for_plot(symbol)
+                _vtf.draw_vec_mismatch(ax_plot, x_left_ts, x_right_ts, _ve, _vx,
+                                       _fe, _fx, get_x_idx, STOCK_MISMATCH_TOL_MIN)
+                _lth.draw_outcome_lines(ax_plot, x_left_ts, x_right_ts, _bevs, get_x_idx)
             except Exception: pass
         if len(df_tf) > 2 and 'close' in df_tf.columns:
             try:

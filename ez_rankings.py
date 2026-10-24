@@ -83,7 +83,7 @@ SHOW_TOP_BOTTOM_ARROWS = False  # USER 2026-10-24: temporarily off — detect_to
 SHOW_STOCH_HEATMAP = False  # USER 2026-10-24: red/green stoch_rsi background gradient off, code kept
 SHOW_CRYPTO_LIVE_ARROWS = True  # USER 2026-10-24: per-account live fills as arrows on crypto plots
 SHOW_CRYPTO_MISMATCH = True  # USER 2026-10-24: reddish/greenish vlines for signal/fill discrepancies
-SHOW_CRYPTO_SIGNAL_ARROWS = False  # USER 2026-10-24: WT/winners lime-red triangles hidden (signal markers, not trades); code kept, marker_events still collected for mismatch
+SHOW_CRYPTO_SIGNAL_ARROWS = False  # USER 2026-10-24: WT/winners lime-red triangles hidden (signal markers, not trades); code kept
 CRYPTO_ARROW_ACCOUNTS = ["ang", "inf", "flz", "men", "fin"]
 CRYPTO_MISMATCH_TOL_MIN = 30.0
 SHOW_CRYPTO_RSI_STRIP = True  # USER 2026-10-24: tiny RSI strip at the bottom of each crypto TF panel
@@ -6609,15 +6609,15 @@ async def plot_dfs_subplots(
                     except Exception:
                         continue
                 _fills = _lth.fetch_trades(symbol, CRYPTO_ARROW_ACCOUNTS, _hdirs)
-                _sig_buy = sorted([t for t, s in marker_events if s == "buy"])
-                _sig_sell = sorted([t for t, s in marker_events if s == "sell"])
-                _fill_buy = sorted([e["timestamp"] for evs in _fills.values() for e in _lth.boundary_events(evs) if e["direction"] == "buy"])
-                _fill_sell = sorted([e["timestamp"] for evs in _fills.values() for e in _lth.boundary_events(evs) if e["direction"] == "sell"])
                 if SHOW_CRYPTO_MISMATCH:
-                    _outcome_evs = [e for evs in _fills.values() for e in _lth.boundary_events(evs)]
-                    _lth.draw_mismatch_lines(ax_plot, x_left_ts, x_right_ts, _sig_buy, _sig_sell,
-                                             _fill_buy, _fill_sell, lambda _t: _t, CRYPTO_MISMATCH_TOL_MIN)
-                    _lth.draw_outcome_lines(ax_plot, x_left_ts, x_right_ts, _outcome_evs, lambda _t: _t)
+                    import vec_trade_feeds as _vtf
+                    _bevs = [e for evs in _fills.values() for e in _lth.boundary_events(evs)]
+                    _fe = sorted([e["timestamp"] for e in _bevs if e.get("phase") == "entry"])
+                    _fx = sorted([e["timestamp"] for e in _bevs if e.get("phase") == "exit"])
+                    _ve, _vx = _vtf.vec_trades_for_plot(symbol)
+                    _vtf.draw_vec_mismatch(ax_plot, x_left_ts, x_right_ts, _ve, _vx,
+                                           _fe, _fx, lambda _t: _t, CRYPTO_MISMATCH_TOL_MIN)
+                    _lth.draw_outcome_lines(ax_plot, x_left_ts, x_right_ts, _bevs, lambda _t: _t)
                 if SHOW_CRYPTO_LIVE_ARROWS and _fills:
                     for _acct in CRYPTO_ARROW_ACCOUNTS:
                         for _ev in _lth.boundary_events(_fills.get(_acct)):

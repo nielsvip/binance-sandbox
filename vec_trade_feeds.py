@@ -1,0 +1,182 @@
+#!/usr/bin/env python3
+"""Vec-side trade feeds for plot mismatch markers.
+
+Two feeds, both compared against the real fills from /history/ (live_trade_history.fetch_trades):
+
+HTML FEED (frozen at publish)
+    TRADES from SPREADSHEETS/V15_V16_CELL_BY_CELL/{SYM}_{SIDE}_*_matrix.html.
+    All matching files merge with (entry_time, exit_time) dedupe, so a 365D
+    board lands next to the 30d boards and the plot sees ~11 months of vec
+    trades. Frozen the moment the backtest is published — never moves.
+
+FORWARD FEED (moves with the npz bars)
+    vec_trips_all + live_trips_all from the newest
+    data/reports/trade_parity_collected/**/*{SYM}_{SIDE}_trade_parity.json
+    (pulled off S1/s2 by tools/v15_forward_confirm.py --pull). Freshness of
+    this feed equals the last pull.
+
+Results are cached per (sym, side) for the life of the process: plots call
+per symbol per TF panel, parsing happens once.
+"""
+import glob
+import json
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+HTML_DIR = ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL"
+FWD_DIR = ROOT / "data" / "reports" / "trade_parity_collected"
+
+sys.path.insert(0, str(ROOT / "tools"))
+try:
+    from v15_html_parity_vlines import extract_js_array, to_utc
+except Exception:
+    extract_js_array = None
+    to_utc = None
+
+_html_cache = {}
+_fwd_index = None
+
+
+def _to_utc(s):
+    if to_utc is not None:
+        return to_utc(s)
+    dt = datetime.fromisoformat(str(s).replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def load_html_trades(sym, side):
+    """(entries, exits) datetimes merged over every matrix HTML for sym_side."""
+    key = (str(sym).upper(), str(side).upper())
+    if key in _html_cache:
+        return _html_cache[key]
+    entries, exits = [], []
+    if extract_js_array is not None and HTML_DIR.is_dir():
+        seen = set()
+        for hp in sorted(HTML_DIR.glob(f"{key[0]}_{key[1]}_*_matrix.html"),
+                         key=lambda p: p.stat().st_mtime):
+            try:
+                text = hp.read_text(errors="replace")
+                trades = extract_js_array(text, "TRADES")
+            except Exception:
+                continue
+            for t in trades or []:
+                try:
+                    k = (str(t.get("entry_time")), str(t.get("exit_time")))
+                    if k in seen:
+                        continue
+                    seen.add(k)
+                    entries.append(_to_utc(t["entry_time"]))
+                    if t.get("exit_time"):
+                        exits.append(_to_utc(t["exit_time"]))
+                except Exception:
+                    continue
+    _html_cache[key] = (entries, exits)
+    return entries, exits
+
+
+def _forward_index():
+    global _fwd_index
+    if _fwd_index is None:
+        _fwd_index = {}
+        if FWD_DIR.is_dir():
+            for f in glob.glob(str(FWD_DIR / "**" / "*_trade_parity.json"), recursive=True):
+                p = Path(f)
+                name = p.name
+                if "_trade_parity.json" not in name:
+                    continue
+                symside = name.split("_trade_parity.json")[0]
+                prev = _fwd_index.get(symside)
+                if prev is None or p.stat().st_mtime > prev.stat().st_mtime:
+                    _fwd_index[symside] = p
+    return _fwd_index
+
+
+def load_forward_trips(sym, side):
+    """(entries, exits) datetimes from the newest forward parity report."""
+    symside = f"{str(sym).upper()}_{str(side).upper()}"
+    entries, exits = [], []
+    p = _forward_index().get(symside)
+    if p is not None:
+        try:
+            d = json.loads(p.read_text())
+        except Exception:
+            d = {}
+        for trip in (d.get("vec_trips_all") or []) + (d.get("live_trips_all") or []):
+            if not isinstance(trip, dict):
+                continue
+            try:
+                if trip.get("entry_ts"):
+                    entries.append(datetime.fromtimestamp(float(trip["entry_ts"]), tz=timezone.utc))
+                if trip.get("exit_ts"):
+                    exits.append(datetime.fromtimestamp(float(trip["exit_ts"]), tz=timezone.utc))
+            except Exception:
+                continue
+    return entries, exits
+
+
+def vec_trades_for_plot(sym):
+    """Merged vec side for one symbol across LONG+SHORT and both feeds.
+
+    Returns (entries, exits) sorted datetime lists. HTML (frozen) and forward
+    (fresh) unioned — a live fill matching either counts as explained.
+    """
+    entries, exits = [], []
+    for side in ("LONG", "SHORT"):
+        he, hx = load_html_trades(sym, side)
+        fe, fx = load_forward_trips(sym, side)
+        entries += he + fe
+        exits += hx + fx
+    return sorted(entries), sorted(exits)
+
+
+def draw_vec_mismatch(ax_plot, x_left_ts, x_right_ts, vec_entries, vec_exits,
+                      fill_entries, fill_exits, x_of, tol_min=30.0):
+    """Trade-based discrepancy markers (replaces indicator-signal matching).
+
+    Grey UP arrow under the box = vec trade (HTML frozen or forward) with no
+    /history/ fill nearby. Grey DOWN arrow above the box = live fill with no
+    vec trade nearby. Entries match entries, exits match exits. Either side
+    empty (no vec feed for this symbol) -> (0, 0), nothing drawn.
+    """
+    import live_trade_history as lth
+    ve, vx = sorted(vec_entries), sorted(vec_exits)
+    fe, fx = sorted(fill_entries), sorted(fill_exits)
+    if not ve and not vx:
+        return 0, 0
+    tol_s = tol_min * 60.0
+    me_v, me_l = lth.greedy_match(ve, fe, tol_s)
+    mx_v, mx_l = lth.greedy_match(vx, fx, tol_s)
+    vc, va = lth.MISMATCH_VEC_MPL
+    lc, la = lth.MISMATCH_LIVE_MPL
+    try:
+        _lo, _hi = ax_plot.get_ylim()
+        _span = _hi - _lo if _hi > _lo else 1.0
+    except Exception:
+        _lo, _span = 0.0, 1.0
+    y_below, y_above = _lo - 0.015 * _span, _lo + 1.015 * _span
+    n_vec = n_live = 0
+    for i, t in enumerate(ve):
+        if i not in me_v and x_left_ts <= t <= x_right_ts:
+            ax_plot.plot(x_of(t), y_below, marker="^", color=vc, alpha=va,
+                         ms=lth.MISMATCH_MARKER_SIZE, linestyle="None", zorder=9, clip_on=False)
+            n_vec += 1
+    for i, t in enumerate(vx):
+        if i not in mx_v and x_left_ts <= t <= x_right_ts:
+            ax_plot.plot(x_of(t), y_below, marker="^", color=vc, alpha=va,
+                         ms=lth.MISMATCH_MARKER_SIZE, linestyle="None", zorder=9, clip_on=False)
+            n_vec += 1
+    for j, t in enumerate(fe):
+        if j not in me_l and x_left_ts <= t <= x_right_ts:
+            ax_plot.plot(x_of(t), y_above, marker="v", color=lc, alpha=la,
+                         ms=lth.MISMATCH_MARKER_SIZE, linestyle="None", zorder=9, clip_on=False)
+            n_live += 1
+    for j, t in enumerate(fx):
+        if j not in mx_l and x_left_ts <= t <= x_right_ts:
+            ax_plot.plot(x_of(t), y_above, marker="v", color=lc, alpha=la,
+                         ms=lth.MISMATCH_MARKER_SIZE, linestyle="None", zorder=9, clip_on=False)
+            n_live += 1
+    return n_vec, n_live
