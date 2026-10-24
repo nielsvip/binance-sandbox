@@ -1,56 +1,93 @@
 {
- "generated_at": "2026-10-23 23:49 UTC",
- "total_capital_usd": 24.71,
+ "generated_at": "2026-10-24 00:01 UTC",
+ "total_capital_usd": 128.0,
  "tier_capital": {
-  "A": 10.52,
-  "B": 8.22,
-  "C": 5.97
+  "A": 0.0,
+  "B": 39.53,
+  "C": 88.47
  },
  "tier_count": {
-  "A": 1,
-  "B": 1,
-  "C": 1
+  "A": 0,
+  "B": 2,
+  "C": 4
  },
- "winners": [
-  "flz:XMRUSDT_SHORT"
- ],
+ "winners": [],
  "losers": [
-  "flz:DASHUSDT_SHORT"
+  "inf:BTCDOMUSDT_LONG",
+  "inf:AVAXUSDC_SHORT",
+  "inf:COTIUSDT_SHORT",
+  "inf:GRAMUSDT_SHORT"
  ],
- "mediocre": [],
+ "mediocre": [
+  "inf:TRXUSDT_SHORT",
+  "inf:BNBUSDC_LONG"
+ ],
  "positions": [
   {
-   "pk": "flz:XMRUSDT_SHORT",
-   "symbol": "XMRUSDT",
-   "account": "flz",
-   "value_usd": 10.52,
-   "gain_pct": 1.237,
-   "tier": "A",
-   "perf_mult": 10.0,
-   "amt": 0.018,
-   "mark": 584.62
-  },
-  {
-   "pk": "flz:ZECUSDC_SHORT",
-   "symbol": "ZECUSDC",
-   "account": "flz",
-   "value_usd": 8.22,
-   "gain_pct": 4.556,
-   "tier": "B",
-   "perf_mult": 1.28,
-   "amt": 0.007,
-   "mark": 1174.81171304
-  },
-  {
-   "pk": "flz:DASHUSDT_SHORT",
-   "symbol": "DASHUSDT",
-   "account": "flz",
-   "value_usd": 5.97,
-   "gain_pct": 3.696,
+   "pk": "inf:COTIUSDT_SHORT",
+   "symbol": "COTIUSDT",
+   "account": "inf",
+   "value_usd": 45.32,
+   "gain_pct": -0.146,
    "tier": "C",
-   "perf_mult": 0.38,
-   "amt": 0.115,
-   "mark": 51.88859791
+   "perf_mult": 0.39,
+   "amt": 4124.0,
+   "mark": 0.01099
+  },
+  {
+   "pk": "inf:GRAMUSDT_SHORT",
+   "symbol": "GRAMUSDT",
+   "account": "inf",
+   "value_usd": 26.22,
+   "gain_pct": 0.682,
+   "tier": "C",
+   "perf_mult": 0.17,
+   "amt": 21.5,
+   "mark": 1.2196225
+  },
+  {
+   "pk": "inf:TRXUSDT_SHORT",
+   "symbol": "TRXUSDT",
+   "account": "inf",
+   "value_usd": 24.75,
+   "gain_pct": -0.153,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 75.0,
+   "mark": 0.32997524
+  },
+  {
+   "pk": "inf:BNBUSDC_LONG",
+   "symbol": "BNBUSDC",
+   "account": "inf",
+   "value_usd": 14.78,
+   "gain_pct": 0.065,
+   "tier": "B",
+   "perf_mult": 0.62,
+   "amt": 0.02,
+   "mark": 739.02
+  },
+  {
+   "pk": "inf:BTCDOMUSDT_LONG",
+   "symbol": "BTCDOMUSDT",
+   "account": "inf",
+   "value_usd": 11.14,
+   "gain_pct": -0.349,
+   "tier": "C",
+   "perf_mult": 0.49,
+   "amt": 0.002,
+   "mark": 5571.4
+  },
+  {
+   "pk": "inf:AVAXUSDC_SHORT",
+   "symbol": "AVAXUSDC",
+   "account": "inf",
+   "value_usd": 5.79,
+   "gain_pct": -0.203,
+   "tier": "C",
+   "perf_mult": 0.2,
+   "amt": 0.64,
+   "mark": 9.04231364
   }
  ]
 }
