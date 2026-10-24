@@ -1,13 +1,14 @@
 {
- "generated_utc": "2026-10-24T21:20:16Z",
+ "generated_utc": "2026-10-24T21:40:17Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
  "verdict": "FAIL",
  "failed_critical": [
   "boards_recomputed",
-  "live_set_matches_selection",
-  "indicators_fresh"
+  "defaults_chain_completed",
+  "selection_fresh",
+  "live_set_matches_selection"
  ],
  "checks": [
   {
@@ -15,34 +16,34 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "filled_today": 297,
+    "filled_today": 299,
     "filled_before_open": 0
    },
    "detail": "no board was filled before the open"
   },
   {
    "name": "defaults_chain_completed",
-   "ok": true,
+   "ok": false,
    "critical": true,
    "measured": {
     "mac_done_stamp": true,
-    "s1_stamp": "{\n \"date\": \"20261024\",\n \"status\": \"DONE\",\n \"started\": \"2026-10-24T12:15:01Z\",\n \"ended\": \"2026-10-24T13:02:13.386510Z\",\n \"steps_ok\": \"1,2,2a,2b,3,4,4c,4b,4d,4e,4e,5,6,6b\",\n \"agg\": \"SPREADSHEETS/v15_avg_delta/v15_avg_delta_20261024.xlsx\",\n \"promoted_keys\": [\n  \"ADX_REGIME_FILTER_ENABLED\",\n  \"ATR_LONG_WINDOW\",\n  \"BB_SQUEEZE_ENTRY_ENABLED\",\n  \"BREAKEVEN_GAIN_EROSION_FILTER_TF\",\n  \"BREAKOUT_RETEST_FILT",
+    "s1_stamp": "NO_STAMP",
     "cat_side_defaults_4_at": "2026-10-21T04:54:49Z",
     "cat_side_age_days": 3.7,
     "cat_side_note": "rebuilt only by v15_daily_template_update --sync-defaults, a deliberate manual step \u2014 reported, never fails this gate"
    },
-   "detail": "mac stamp 20261024=True, s1 stamp {\n \"date\": \"20261024\",\n \"status\": \"DONE\",\n \"started\": \"2026-10-24T12:15:01Z\",\n \"ended\": \"2026-10-24T13:02:13.386510Z\",\n \"steps_ok\": \"1,2,2a,2b,3,4,4c,, cat_side layer 3.7d old"
+   "detail": "mac stamp 20261024=True, s1 stamp NO_STAMP, cat_side layer 3.7d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
   },
   {
    "name": "selection_fresh",
-   "ok": true,
+   "ok": false,
    "critical": true,
    "measured": {
     "built_at": "2026-10-24T19:21:18.893987+00:00",
     "n": 523,
-    "age_at_open_s": 7138
+    "age_at_open_s": 8338
    },
-   "detail": "built 2026-10-24T19:21:18.893987+00:00 n=523"
+   "detail": "built 2026-10-24T19:21:18.893987+00:00 n=523 \u2014 8338s before the open > 7200s"
   },
   {
    "name": "apply_report_written",
@@ -62,9 +63,9 @@
    "critical": true,
    "measured": {
     "selection_n": 523,
-    "exact": 127,
-    "benign_divergence_only": 311,
-    "material_divergence": 84,
+    "exact": 126,
+    "benign_divergence_only": 310,
+    "material_divergence": 86,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -201,29 +202,24 @@
      }
     ]
    },
-   "detail": "127 exact, 311 benign-only, 84 with material divergence, 1 with no live row"
+   "detail": "126 exact, 310 benign-only, 86 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
-   "ok": false,
+   "ok": true,
    "critical": true,
    "measured": {
-    "symbols": 329,
-    "stale_over_90min": 299,
-    "stale_pct": 90.9,
-    "median_age_min": 125.3,
+    "symbols": 330,
+    "stale_over_90min": 3,
+    "stale_pct": 0.9,
+    "median_age_min": 25.3,
     "sample": [
-     "ARBUSDC",
-     "ARKMUSDT",
-     "ARMUSDT",
-     "ARPAUSDT",
-     "ARUSDT",
-     "ASMLUSDT",
-     "ASTERUSDT",
-     "ASTSUSDT"
+     "DUSKUSDT",
+     "ONEUSDT",
+     "SMCIUSDT"
     ]
    },
-   "detail": "299/329 symbols past the live 90-min entry gate (90.9%)"
+   "detail": "3/330 symbols past the live 90-min entry gate (0.9%)"
   },
   {
    "name": "s1_sets_synced",
