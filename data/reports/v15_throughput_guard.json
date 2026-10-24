@@ -1,5 +1,5 @@
 {
- "at": "2026-10-24T01:11:13Z",
+ "at": "2026-10-24T02:11:05Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
@@ -10,75 +10,97 @@
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [],
-   "mem_avail_mb": 10474,
-   "load1": 27.77,
+   "mem_avail_mb": 3485,
+   "load1": 48.14,
    "nproc": 16,
    "slots": "0/8",
-   "binding_reason": "scheduler mem guard (disk 16163 MB, mem 616 MB, est_pair 6000 MB) \u2014 slots 0/8",
+   "binding_reason": "scheduler mem guard (disk 13543 MB, mem 5089 MB, est_pair 6000 MB) \u2014 slots 0/8",
    "error": null,
    "published": [],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 11.4,
+   "minutes_since_last_improved": 71.3,
    "last_improved_symside": "ENSUSDT_LONG",
    "cadence_ok": false,
-   "improved_gap_min_median_24h": 43.3,
+   "improved_gap_min_median_24h": 64.2,
    "improved_gap_min_max_24h": 240.7,
-   "improved_finishes_24h": 21,
-   "board_cpu_s_median_24h": 3869.6,
-   "board_wall_s_median_24h": 1919.0393319129944,
+   "improved_finishes_24h": 17,
+   "board_cpu_s_median_24h": 4994.3,
+   "board_wall_s_median_24h": 2023.7935230731964,
    "board_cores": 0.0,
-   "nonboard_cores_competing": 12.19,
-   "nonboard_cores_niced": 2.06,
+   "nonboard_cores_competing": 6.84,
+   "nonboard_cores_niced": 8.58,
    "cores_by_bucket": {
-    "other": 8.78,
-    "live_helpers": 2.45,
-    "klines_append": 0.96
+    "other": 4.07,
+    "live_helpers": 2.41,
+    "klines_append": 0.36
    },
    "cores_by_bucket_niced": {
-    "klines_vault": 1.92,
-    "other": 0.14
+    "klines_vault": 0.12,
+    "other": 8.26,
+    "npz_precompute": 0.2
    }
   },
   "s2": {
-   "improved": 1,
-   "improved_per_hour": 1.0,
-   "published_n": 1,
+   "improved": 4,
+   "improved_per_hour": 4.0,
+   "published_n": 4,
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [],
-   "mem_avail_mb": 24430,
-   "load1": 5.19,
+   "mem_avail_mb": 24290,
+   "load1": 4.84,
    "nproc": 16,
-   "slots": "0/8",
-   "binding_reason": "host IDLE, not CPU-bound: 0 running sides pull 0.0 cores of 14.7 usable -> 0.0 boards/h against target 12/h. Nothing is dispatched here: 12/h needs 7.8 board-cores. Check the scheduler's idle_reason for this host (slots 0/8) and whether the round is exhausted (tools/v15_round_watchdog.sh quorum rule rolls it).",
+   "slots": "1/8",
+   "binding_reason": "host IDLE, not CPU-bound: 0 running sides pull 0.0 cores of 14.7 usable -> 0.0 boards/h against target 12/h. Nothing is dispatched here: 12/h needs 7.3 board-cores. Check the scheduler's idle_reason for this host (slots 1/8) and whether the round is exhausted (tools/v15_round_watchdog.sh quorum rule rolls it).",
    "error": null,
    "published": [
     {
-     "symside": "XPLUSDT_SHORT",
-     "at": "2026-10-24T00:23:21Z",
-     "baseline": 81.796447771936,
-     "final": 81.80766902817493,
+     "symside": "AU_SHORT",
+     "at": "2026-10-24T01:53:59Z",
+     "baseline": 22.28268784718094,
+     "final": 27.711123187277025,
+     "state": "improved"
+    },
+    {
+     "symside": "A_LONG",
+     "at": "2026-10-24T02:01:00Z",
+     "baseline": 24.53001280399172,
+     "final": 32.25971570812208,
+     "state": "improved"
+    },
+    {
+     "symside": "COHR_SHORT",
+     "at": "2026-10-24T01:54:17Z",
+     "baseline": 54.550453620027554,
+     "final": 55.65855093861545,
+     "state": "improved"
+    },
+    {
+     "symside": "MP_SHORT",
+     "at": "2026-10-24T02:08:20Z",
+     "baseline": 49.37201580399781,
+     "final": 54.32413382830157,
      "state": "improved"
     }
    ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 31.2,
-   "last_improved_symside": "ONEUSDT_SHORT",
-   "cadence_ok": false,
-   "improved_gap_min_median_24h": 9.9,
+   "minutes_since_last_improved": 2.5,
+   "last_improved_symside": "GE_SHORT",
+   "cadence_ok": true,
+   "improved_gap_min_median_24h": 8.4,
    "improved_gap_min_max_24h": 103.7,
-   "improved_finishes_24h": 88,
-   "board_cpu_s_median_24h": 2333.7,
-   "board_wall_s_median_24h": 1075.4303390979767,
+   "improved_finishes_24h": 93,
+   "board_cpu_s_median_24h": 2197.7,
+   "board_wall_s_median_24h": 1006.3915960788727,
    "board_cores": 0.0,
-   "nonboard_cores_competing": 1.26,
-   "nonboard_cores_niced": 3.0,
+   "nonboard_cores_competing": 1.27,
+   "nonboard_cores_niced": 3.02,
    "cores_by_bucket": {
     "other": 0.02,
-    "live_helpers": 1.24
+    "live_helpers": 1.25
    },
    "cores_by_bucket_niced": {
-    "other": 3.0
+    "other": 3.02
    }
   }
  },
@@ -87,7 +109,6 @@
   "s2"
  ],
  "cadence_breach": [
-  "s1",
-  "s2"
+  "s1"
  ]
 }
