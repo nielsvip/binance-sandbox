@@ -1,30 +1,9 @@
 {
-  "men:RAYSOLUSDT_LONG": {
-    "orderId": "2000001536528172",
-    "stopPrice": 1.7813,
-    "entry_sig": "2026-10-24 02:50:40.311000+00:00",
-    "symbol": "RAYSOLUSDT",
-    "side": "LONG"
-  },
-  "men:SCRUSDT_SHORT": {
-    "orderId": "2000001536537888",
-    "stopPrice": 0.01973,
-    "entry_sig": "2026-10-24 03:12:01.946000+00:00",
-    "symbol": "SCRUSDT",
-    "side": "SHORT"
-  },
-  "men:BLURUSDT_SHORT": {
-    "orderId": "2000001536532713",
-    "stopPrice": 0.00863,
-    "entry_sig": "2026-10-24 02:33:11.164000+00:00",
-    "symbol": "BLURUSDT",
-    "side": "SHORT"
-  },
-  "men:ENJUSDT_SHORT": {
-    "orderId": "2000001536549462",
-    "stopPrice": 0.02682,
-    "entry_sig": "2026-10-24 03:20:11.240000+00:00",
-    "symbol": "ENJUSDT",
+  "inf:TRXUSDT_SHORT": {
+    "orderId": "2000001536552970",
+    "stopPrice": 0.33177,
+    "entry_sig": "2026-10-23 23:07:22.497000+00:00",
+    "symbol": "TRXUSDT",
     "side": "SHORT"
   }
 }
