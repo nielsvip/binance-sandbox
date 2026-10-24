@@ -51,6 +51,28 @@ def test_tag_two_token_granularity():
     assert _cb_path_tag("SCALPV3") == "SCALPV3"
 
 
+def test_tag_vec_reasons_go_four_tokens_deep():
+    assert _cb_path_tag("VEC_DRIVEN_OPEN_PURE_BOARD_X") == "VEC_DRIVEN_OPEN_PURE"
+    assert _cb_path_tag("VEC_DRIVEN_OPEN_RECONCILE_X") == "VEC_DRIVEN_OPEN_RECONCILE"
+    assert _cb_path_tag("VEC_DRIVEN_CLOSE_RECONCILE_X") == "VEC_DRIVEN_CLOSE_RECONCILE"
+    assert _cb_path_tag("VEC_CONVERGE_TO_FLAT") == "VEC_CONVERGE_TO_FLAT"
+    assert _cb_path_tag("VEC_STALE_FLATTEN") == "VEC_STALE"
+    assert _cb_path_tag("VEC_EXIT_OWED") == "VEC_EXIT"
+
+
+def test_bad_vec_family_does_not_disable_sibling_family(tmp_path):
+    cb = _cb(tmp_path)
+    pos = {}
+    for sym in ("AUSDT", "BUSDT", "CUSDT"):
+        pk = f"inf:{sym}_LONG"
+        cb.record_entry(pk, 1.0, "VEC_DRIVEN_OPEN_PURE_BOARD_X", indicators=_ind(4, 4))
+        pos[pk] = _losing()
+    cb.check_and_update(pos, get_indicators_fn=lambda s: {})
+    assert cb.is_blocked("VEC_DRIVEN_OPEN_PURE_BOARD_Y")
+    assert not cb.is_blocked("VEC_DRIVEN_OPEN_RECONCILE_X")
+    assert not cb.is_blocked("VEC_DRIVEN_CLOSE_RECONCILE_X")
+
+
 def test_single_loser_cannot_disable(tmp_path):
     cb = _cb(tmp_path)
     cb.record_entry("inf:AUSDT_LONG", 1.0, "B_KZONE |VEC_EXACT", indicators=_ind(4, 4))

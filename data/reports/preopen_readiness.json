@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-24T04:00:04Z",
+ "generated_utc": "2026-10-24T04:20:05Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
@@ -16,7 +16,7 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "filled_today": 359,
+    "filled_today": 356,
     "filled_before_open": 0
    },
    "detail": "no board was filled before the open"
@@ -41,7 +41,7 @@
    "measured": {
     "built_at": "2026-10-24T03:51:00.438924+00:00",
     "n": 523,
-    "age_at_open_s": 544
+    "age_at_open_s": 1745
    },
    "detail": "built 2026-10-24T03:51:00.438924+00:00 n=523"
   },
@@ -212,7 +212,7 @@
     "symbols": 330,
     "stale_over_90min": 2,
     "stale_pct": 0.6,
-    "median_age_min": 30.1,
+    "median_age_min": 35.1,
     "sample": [
      "DUSKUSDT",
      "ONEUSDT"

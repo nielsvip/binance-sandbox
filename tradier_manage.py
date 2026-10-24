@@ -51230,14 +51230,27 @@ class TradierTradeManager:
             if _vl_tag_tr == "VEC_LAST_OVERRIDE":
                 logger.warning(f"🧭 [VEC_LAST_OVERRIDE] {position_key} {action} reason={(reason or '')[:80]} — vec-dictated, native gates bypassed [{_vl_detail_tr}] (USER 2026-10-24: fix these paths)")
                 try:
-                    _vlp_tr = Path(_cfg_auto("BASE_PATH", "/users/niels/documents/binance")) / "data" / "vector_disparity_queue.jsonl"
-                    _vlp_tr.parent.mkdir(parents=True, exist_ok=True)
-                    with open(str(_vlp_tr), "a") as _vlf_tr:
-                        _vlf_tr.write(json.dumps({"ts": time.time(), "venue": "stocks", "position_key": position_key, "action": action, "reason": str(reason)[:160], "gates": _vl_detail_tr.split("+")}) + "\n")
+                    if not os.environ.get("PYTEST_CURRENT_TEST"):
+                        _vlp_tr = Path(_cfg_auto("BASE_PATH", "/users/niels/documents/binance")) / "data" / "vector_disparity_queue.jsonl"
+                        _vlp_tr.parent.mkdir(parents=True, exist_ok=True)
+                        with open(str(_vlp_tr), "a") as _vlf_tr:
+                            _vlf_tr.write(json.dumps({"ts": time.time(), "venue": "stocks", "kind": "VEC_LAST_OVERRIDE", "position_key": position_key, "action": action, "reason": str(reason)[:160], "gates": _vl_detail_tr.split("+"), "vec_path": str(reason)[:80], "fix": "wire live to emit this vec path through its own producer"}) + "\n")
+                        from live_twins.vector_enforce import _queue_retrace as _qr_last_tr
+                        _qr_last_tr(f"VEC_LAST_OVERRIDE:{_vl_detail_tr[:40]}", action, position_key, reason)
                 except Exception:
                     pass
             elif _vl_tag_tr == "VEC_LAST_REFUSE":
                 logger.warning(f"🛑 [VEC_LAST_REFUSE] {position_key} {action} reason={(reason or '')[:80]} — {_vl_detail_tr} (USER 2026-10-24 VEC-LAST: refused last, native allowed it)")
+                try:
+                    if not os.environ.get("PYTEST_CURRENT_TEST"):
+                        _vlp_tr = Path(_cfg_auto("BASE_PATH", "/users/niels/documents/binance")) / "data" / "vector_disparity_queue.jsonl"
+                        _vlp_tr.parent.mkdir(parents=True, exist_ok=True)
+                        with open(str(_vlp_tr), "a") as _vlf_tr:
+                            _vlf_tr.write(json.dumps({"ts": time.time(), "venue": "stocks", "kind": "VEC_LAST_REFUSE", "position_key": position_key, "action": action, "reason": str(reason)[:160], "gates": [_vl_detail_tr], "vec_path": str(reason)[:80], "fix": "native allowed what the vector refuses — gate the native producer on this vec path"}) + "\n")
+                        from live_twins.vector_enforce import _queue_retrace as _qr_last_tr
+                        _qr_last_tr(f"VEC_LAST_REFUSE:{_vl_detail_tr[:40]}", action, position_key, reason)
+                except Exception:
+                    pass
                 if lock_acquired and self.redis_manager:
                     await self.redis_manager.delete(exec_lock_key)
                 return _vl_detail_tr

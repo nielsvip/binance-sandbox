@@ -276,18 +276,15 @@ def evaluate_tradeable_state_gates_core(
                 )
 
     # ── 2. FLAGGED_ORIGIN_BLOCK ───────────────────────────────────────────────
+    # USER 2026-10-24: stale flags never veto — count only strikes within
+    # FLAGGED_ORIGIN_MAX_AGE_H (default 7d) via flagged_hit_count.
     if _flag_enabled and position_key and quarantine_set:
+        import time as _tmod
+        _flag_age_h = _cfg_get(config, "FLAGGED_ORIGIN_MAX_AGE_H", 168.0)
         _entry = quarantine_set.get(position_key) if isinstance(quarantine_set, Mapping) else None
         _flag_count = 0
         if _entry is not None:
-            if isinstance(_entry, Mapping):
-                try:
-                    _flag_count = int(_entry.get("count", 0) or 0)
-                except (TypeError, ValueError):
-                    _flag_count = 0
-            else:
-                # Treat plain membership in a set as a single hit.
-                _flag_count = 1
+            _flag_count = flagged_hit_count(_entry, _tmod.time(), _flag_age_h)
         elif isinstance(quarantine_set, (set, frozenset)) and position_key in quarantine_set:
             _flag_count = max(_flag_thr, 3)  # any set membership counts as a block
         if _flag_count >= _flag_thr:
@@ -403,6 +400,37 @@ def evaluate_tradeable_state_gates_vec(
 # ════════════════════════════════════════════════════════════════════════════════
 # Helpers — load quarantine / flagged_origins JSON (utility, opt-in)
 # ════════════════════════════════════════════════════════════════════════════════
+
+def flagged_hit_count(entry: Any, now_ts: float, max_age_h: float = 168.0) -> int:
+    """Flag strikes that still count (USER 2026-10-24: stale flags never veto).
+
+    A flag means the origin recently needed rescue hedges; entries whose last
+    strike is older than max_age_h (default 7d) expired — a 2022 flag must not
+    veto today's entries while the vector dictates through. Non-mapping
+    entries keep the old plain-membership convention (counted, age unknown).
+    """
+    try:
+        max_age_h = float(max_age_h)
+    except (TypeError, ValueError):
+        max_age_h = 168.0
+    if isinstance(entry, Mapping):
+        try:
+            count = int(entry.get("count", 0) or 0)
+        except (TypeError, ValueError):
+            return 0
+        if count <= 0:
+            return 0
+        try:
+            last_ts = float(entry.get("last_ts", 0) or 0)
+        except (TypeError, ValueError):
+            last_ts = 0.0
+        if last_ts > 0 and now_ts - last_ts > max_age_h * 3600.0:
+            return 0
+        return count
+    if entry is None:
+        return 0
+    return 1
+
 
 def load_flagged_origins(path: Any) -> Dict[str, Dict[str, Any]]:
     """Load data/flagged_origins.json into the dict shape expected here.

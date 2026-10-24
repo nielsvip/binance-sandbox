@@ -14467,8 +14467,13 @@ def _parity_forward_holds(position_key) -> bool:
 def _cb_path_tag(reason):
     """entry-path tag for the breaker (2026-10-08: first TWO underscore tokens — one token nuked whole families:
     'B' killed B_KZONE/B_SRS/B_MOM5/B_EMADIST/B_SMA200DIST together, 'ENTRY' killed every entry strategy, and the
-    account went silent). record_entry and is_blocked MUST use this same function."""
+    account went silent). record_entry and is_blocked MUST use this same function.
+    2026-10-24: VEC_ reasons go FOUR tokens deep — every vec-dictated open tagged
+    plain VEC_DRIVEN, so 3 bad fills disabled the whole vector lane for 24h while
+    the vector kept dictating (934 bypasses/hr). Native reasons keep two tokens."""
     parts = str(reason or "").split("_")
+    if parts[0] == "VEC" and len(parts) > 3:
+        return "_".join(parts[:4])
     return "_".join(parts[:2]) if len(parts) > 1 else str(reason or "")[:20]
 
 
@@ -35607,7 +35612,9 @@ class MultiAccountTradeManager:
                     with open(_flag_path) as _ff:
                         _flags_map = _fjmod.load(_ff)
                     _flag_entry = _flags_map.get(position_key, {})
-                    _flag_count = int(_flag_entry.get("count", 0) or 0)
+                    from vec_paths.tradeable_state_gates import flagged_hit_count as _flag_hits
+                    _flag_max_age_h = getattr(config, "FLAGGED_ORIGIN_MAX_AGE_H", 168.0)
+                    _flag_count = _flag_hits(_flag_entry, time.time(), _flag_max_age_h)
                     if _flag_count >= 3 and (_vd_exempt or _parity_vec_order(reason)):
                         logger.warning(f"[FLAGGED_ORIGIN_PARITY_EXEMPT] {position_key}: flagged {_flag_count}× — vec-dictated {action} proceeds (USER 2026-10-22: no vector decision is refused)")
                         _vec_last_bypassed.append("FLAGGED_ORIGIN")
