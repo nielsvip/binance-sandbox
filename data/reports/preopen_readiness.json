@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-24T08:20:02Z",
+ "generated_utc": "2026-10-24T08:40:08Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
@@ -7,7 +7,8 @@
  "failed_critical": [
   "boards_recomputed",
   "defaults_chain_completed",
-  "live_set_matches_selection"
+  "live_set_matches_selection",
+  "indicators_fresh"
  ],
  "checks": [
   {
@@ -15,7 +16,7 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "filled_today": 272,
+    "filled_today": 261,
     "filled_before_open": 0
    },
    "detail": "no board was filled before the open"
@@ -28,10 +29,10 @@
     "mac_done_stamp": false,
     "s1_stamp": "NO_STAMP",
     "cat_side_defaults_4_at": "2026-10-21T04:54:49Z",
-    "cat_side_age_days": 3.1,
+    "cat_side_age_days": 3.2,
     "cat_side_note": "rebuilt only by v15_daily_template_update --sync-defaults, a deliberate manual step \u2014 reported, never fails this gate"
    },
-   "detail": "mac stamp 20261024=False, s1 stamp NO_STAMP, cat_side layer 3.1d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
+   "detail": "mac stamp 20261024=False, s1 stamp NO_STAMP, cat_side layer 3.2d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
   },
   {
    "name": "selection_fresh",
@@ -40,7 +41,7 @@
    "measured": {
     "built_at": "2026-10-24T07:51:15.103849+00:00",
     "n": 523,
-    "age_at_open_s": 1728
+    "age_at_open_s": 2933
    },
    "detail": "built 2026-10-24T07:51:15.103849+00:00 n=523"
   },
@@ -49,12 +50,12 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "reports_today": 2,
-    "newest_report": "persym_golive_20261024_refresh_0654.json",
-    "newest_report_at": "2026-10-24T07:26:12Z",
-    "tiers_at": "2026-10-24T07:26:56Z"
+    "reports_today": 3,
+    "newest_report": "persym_golive_20261024_refresh_0753.json",
+    "newest_report_at": "2026-10-24T08:20:34Z",
+    "tiers_at": "2026-10-24T08:21:58Z"
    },
-   "detail": "persym_golive_20261024_refresh_0654.json at 2026-10-24T07:26:12Z, tiers 2026-10-24T07:26:56Z"
+   "detail": "persym_golive_20261024_refresh_0753.json at 2026-10-24T08:20:34Z, tiers 2026-10-24T08:21:58Z"
   },
   {
    "name": "live_set_matches_selection",
@@ -205,19 +206,25 @@
   },
   {
    "name": "indicators_fresh",
-   "ok": true,
+   "ok": false,
    "critical": true,
    "measured": {
-    "symbols": 330,
-    "stale_over_90min": 2,
-    "stale_pct": 0.6,
-    "median_age_min": 20.0,
+    "symbols": 201,
+    "stale_over_90min": 178,
+    "stale_pct": 88.6,
+    "median_age_min": 100.1,
     "sample": [
-     "DUSKUSDT",
-     "ONEUSDT"
+     "1000FLOKIUSDT",
+     "1000LUNCUSDT",
+     "1000PEPEUSDC",
+     "1000SATSUSDT",
+     "1000SHIBUSDC",
+     "1000XECUSDT",
+     "1INCHUSDT",
+     "1MBABYDOGEUSDT"
     ]
    },
-   "detail": "2/330 symbols past the live 90-min entry gate (0.6%)"
+   "detail": "178/201 symbols past the live 90-min entry gate (88.6%)"
   },
   {
    "name": "s1_sets_synced",
