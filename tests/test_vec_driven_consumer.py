@@ -170,6 +170,15 @@ def _run_exec(**kw):
     _sym = f"T{_run_exec.n}USDT"
     args = dict(position_key=f"men:{_sym}_LONG", account_key="men", symbol=_sym, position_side="LONG", action="OPEN", reason="X", quantity=1.0)
     args.update(kw)
+    # USER 2026-10-24 vector-authority: the key under test is tradeable (live converge keys always are) so gate
+    # assertions exercise decision vetoes, not the sacred-list hard block.
+    self.tradeable_keys = {args["position_key"]}
+    self.min_qty = {}
+
+    async def _stub_cleanup_reached():
+        raise _Stop()
+
+    self.cleanup_old_dedupe_keys = _stub_cleanup_reached
     return asyncio.run(EZ.MultiAccountTradeManager.execute_now(self, **args))
 
 
@@ -572,7 +581,9 @@ def test_board_converge_open_bypasses_board_entry_block(monkeypatch, caplog):
     live-set-vs-board entry block must record-and-continue (named for the late VEC_LAST backstop), never
     hard-refuse before it. The synthetic key has NO_LATEST_BOARD, which exercises the block."""
     _mode_live(monkeypatch)
+    # cleanup_old_dedupe_keys is the first execution-path step after the late backstop: reaching it proves every
+    # decision gate (GATES-A, tradeable, board-entry) let the vec-dictated force-open through.
     with caplog.at_level("WARNING"):
-        res = _run_exec(action="OPEN", reason="BOARD_CONVERGE_OPEN vec=VEC_DRIVEN_TEST")
-    assert not str(res).startswith("BLOCKED_BOARD_ENTRY"), res
+        with pytest.raises(_Stop):
+            _run_exec(action="OPEN", reason="BOARD_CONVERGE_OPEN vec=VEC_DRIVEN_TEST")
     assert "BOARD_ENTRY_BLOCK" in caplog.text
