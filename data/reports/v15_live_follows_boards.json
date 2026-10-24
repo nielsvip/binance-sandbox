@@ -1,9 +1,34 @@
 {
- "at": "2026-10-23T23:38:01Z",
+ "at": "2026-10-24T00:38:01Z",
  "reports": [
   {
+   "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261023_refresh_2355.json",
+   "age_min": 14.9,
+   "applied": true,
+   "n": null,
+   "results": {
+    "REFUSED": 12,
+    "PASS": 19,
+    "SKIP": 8
+   },
+   "registered": 6,
+   "already_live_skipped": 13,
+   "refused_by_class": {
+    "type-gate refused ALL (1 bad)": 7,
+    "golive-blocklisted": 5,
+    "live row is a MEASURED h2h decision (2026-10-19T14": 2,
+    "live row is a MEASURED h2h decision (2026-10-19T22": 1,
+    "live row is a MEASURED h2h decision (2026-10-23T19": 1,
+    "live row is a MEASURED h2h decision (2026-10-22T14": 1,
+    "live row is a MEASURED h2h decision (2026-10-22T20": 1,
+    "published": 1,
+    "live row is a MEASURED h2h decision (2026-10-22T08": 1
+   },
+   "changed_symsides": []
+  },
+  {
    "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261023_preopen_0945.json",
-   "age_min": 703.9,
+   "age_min": 763.9,
    "applied": true,
    "n": null,
    "results": {
@@ -24,35 +49,10 @@
     "live row is a MEASURED h2h decision (2026-10-22T08": 1
    },
    "changed_symsides": []
-  },
-  {
-   "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261022_preopen_1242.json",
-   "age_min": 2078.3,
-   "applied": true,
-   "n": null,
-   "results": {
-    "REFUSED": 11,
-    "SKIP": 7,
-    "PASS": 15
-   },
-   "registered": 8,
-   "already_live_skipped": 6,
-   "refused_by_class": {
-    "type-gate refused ALL (1 bad)": 6,
-    "golive-blocklisted": 5,
-    "live row is a MEASURED h2h decision (2026-10-19T14": 2,
-    "live row is a MEASURED h2h decision (2026-10-22T06": 1,
-    "live row is a MEASURED h2h decision (2026-10-19T22": 1,
-    "published": 1,
-    "live row is a MEASURED h2h decision (2026-10-22T08": 1,
-    "live row is a MEASURED h2h decision (2026-10-18T16": 1
-   },
-   "changed_symsides": []
   }
  ],
  "fails": [
-  "newest go-live report is 704 min old (> 135) \u2014 V15_GOLIVE_REFRESH is not landing, live keeps its old sets",
-  "two consecutive runs still had pending sets (8 then 27) \u2014 live is not converging on the boards"
+  "two consecutive runs still had pending sets (27 then 6) \u2014 live is not converging on the boards"
  ],
- "refused_total": 19
+ "refused_total": 20
 }
