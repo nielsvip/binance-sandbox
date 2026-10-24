@@ -37,3 +37,42 @@ def test_vec_absent_key_skips_like_live():
     assert gftf._cond("bar_pattern_side", d, n, "D", True, np.zeros(n), safe) is None
     ok, _ = _parity_filter_tf_gates({"close": 100.0}, True, 100.0)
     assert ok is True
+
+
+def test_atr_trail_15m_inert_like_vec_twin():
+    # VEC-TRUTH 2026-10-24: wirec_batch1_gates.atr_trail_filter_tf_allow returns
+    # all-allow unless tf in (1h,4h,D,W). The veto must not invent 15m refusals.
+    ind = {"close": 100.0, "wt1_15m": -15.0, "wt2_15m": -8.0}
+    ok, why = _parity_filter_tf_gates(ind, True, 100.0)
+    assert ok is True, why
+    ind1h = {"close": 100.0, "wt1_1h": -15.0, "wt2_1h": -8.0}
+    get1h = lambda n, d: {"ATR_TRAIL_FILTER_TF": "1h"}.get(n, d)
+    ok, why = _parity_filter_tf_gates(ind1h, True, 100.0, cfg_get=get1h)
+    assert ok is False and "ATR_TRAIL_TF_1h_BLOCK" in why
+
+
+def test_circuit_sharpe_15m_inert_like_vec_twin():
+    ind = {"close": 100.0, "wt1_15m": -15.0, "wt2_15m": -8.0}
+    ok, why = _parity_filter_tf_gates(ind, True, 100.0)
+    assert ok is True, why
+
+
+def test_cfg_get_resolver_binds_board_values():
+    # Per-sym resolver overrides the global default (production board values).
+    ind = {"close": 100.0, "wt1_1h": -15.0, "wt2_1h": -8.0}
+    get_off = lambda n, d: {"ATR_TRAIL_FILTER_TF": "OFF"}.get(n, d)
+    ok, _ = _parity_filter_tf_gates(ind, True, 100.0, cfg_get=get_off)
+    assert ok is True
+    get_on = lambda n, d: {"ATR_TRAIL_FILTER_TF": "1h"}.get(n, d)
+    ok, why = _parity_filter_tf_gates(ind, True, 100.0, cfg_get=get_on)
+    assert ok is False and "ATR_TRAIL_TF_1h_BLOCK" in why
+
+
+def test_family_lane_tags_kzone_fires_per_sym():
+    # Shared helper: KZONE fires at k=7 with the board switch on, silent when off.
+    from ez_positions_quick import _family_lane_tags
+    ind = {"k_15m": 7.27, "close": 0.0047}
+    get_on = lambda n, d: {"K_ZONE_ENTRY_ENABLED": True}.get(n, d)
+    assert "B_KZONE_FAMILY" in _family_lane_tags(ind, 0.0047, True, get_on)
+    get_off = lambda n, d: {"K_ZONE_ENTRY_ENABLED": False}.get(n, d)
+    assert "B_KZONE_FAMILY" not in _family_lane_tags(ind, 0.0047, True, get_off)

@@ -298,10 +298,14 @@ def compute_applied_ratio(
 # live twins of the vec generic FILTER_TF entry gates (vec_decisions/generic_filter_tf.py
 # + filter_tf_gates.py). Every switch defaults OFF -> bit-neutral until a sweep promotes
 # a TF; every gate fails OPEN when its TF data is missing (same as vec).
-def _parity_filter_tf_gates(indicators: Dict[str, Any], is_long: bool, current_price: float = 0) -> Tuple[bool, str]:
+def _parity_filter_tf_gates(indicators: Dict[str, Any], is_long: bool, current_price: float = 0, cfg_get=None) -> Tuple[bool, str]:
+    # 2026-10-24 per-sym resolution: cfg_get(name, default) (worker passes a
+    # _psym_get closure so board values bind; default = global config, preserves
+    # the line-735 caller and all existing tests byte-for-byte).
     try:
+        _cg = cfg_get or (lambda n, d: getattr(config, n, d))
         def _tf(name):
-            v = str(getattr(config, name, "OFF") or "OFF").strip()
+            v = str(_cg(name, "OFF") or "OFF").strip()
             return None if v.upper() == "OFF" else v
         i = indicators
         price = float(current_price or 0)
@@ -310,7 +314,7 @@ def _parity_filter_tf_gates(indicators: Dict[str, Any], is_long: bool, current_p
             c3 = float(i.get(f"close_3bar_{tf}", 0) or 0)
             if c3 > 0:
                 m3 = (price - c3) / c3 * 100
-                ok = (m3 < config.MOM3_LONG_THRESHOLD) if is_long else (m3 > config.MOM3_SHORT_THRESHOLD)
+                ok = (m3 < float(_cg("MOM3_LONG_THRESHOLD", -1.0))) if is_long else (m3 > float(_cg("MOM3_SHORT_THRESHOLD", 1.0)))
                 if not ok:
                     return False, f"MOM3_FILTER_TF_{tf}_BLOCK({m3:.2f}%)"
         tf = _tf("MOMENTUM_BREAKOUT_FILTER_TF")
@@ -356,8 +360,12 @@ def _parity_filter_tf_gates(indicators: Dict[str, Any], is_long: bool, current_p
                     return False, f"BT_WT_CROSS_TF_{tf}_BLOCK(wt1={float(w1):.1f}_wt2={float(w2):.1f})"
         # LANE-I1b 2026-10-05: live twins ported from vec (wirec_batch1_gates + generic_filter_tf)
         # + I1 dead-batch1 predicates into the REACHED entry-veto gate. OFF = skip (fail-open).
+        # 2026-10-24 VEC-TRUTH (vec_decisions/wirec_batch1_gates.atr_trail_filter_tf_allow):
+        # default '15m' -> all allow; only 1h/4h/D/W enforce wt-side. A literal 15m
+        # enforcement here invented refusals vec never makes (proven: PUMPUSDT_LONG
+        # vec-B_KZONE bars refused live-only by ATR_TRAIL_TF_15m_BLOCK).
         tf = _tf("ATR_TRAIL_FILTER_TF")
-        if tf:
+        if tf and tf in ("1h", "4h", "D", "W"):
             try:
                 w1, w2 = i.get(f"wt1_{tf}"), i.get(f"wt2_{tf}")
                 if w1 is not None and w2 is not None:
@@ -370,7 +378,7 @@ def _parity_filter_tf_gates(indicators: Dict[str, Any], is_long: bool, current_p
                         )
             except Exception as e:
                 logger.debug(f"[FTF_ATR_TRAIL] fail-open {e}")
-        if bool(getattr(config, "ATR_TRAIL_SWEEP_ENABLED", False)):
+        if bool(_cg("ATR_TRAIL_SWEEP_ENABLED", False)):
             try:
                 atr = i.get("atr_1h")
                 if atr is not None and float(atr) <= 0.5:
@@ -408,8 +416,11 @@ def _parity_filter_tf_gates(indicators: Dict[str, Any], is_long: bool, current_p
                         )
             except Exception as e:
                 logger.debug(f"[FTF_RETEST] fail-open {e}")
+        # 2026-10-24 VEC-TRUTH (vec_decisions/wirec_batch1_gates.circuit_sharpe_gates_filter_tf_allow):
+        # default '15m' -> all allow; only 1h/4h/D/W enforce. Same invented-refusal
+        # class as ATR_TRAIL above (PUMPUSDT_LONG vec-B_KZONE bars).
         tf = _tf("CIRCUIT_SHARPE_GATES_FILTER_TF")
-        if tf:
+        if tf and tf in ("1h", "4h", "D", "W"):
             try:
                 w1, w2 = i.get(f"wt1_{tf}"), i.get(f"wt2_{tf}")
                 if w1 is not None and w2 is not None:
@@ -438,7 +449,7 @@ def _parity_filter_tf_gates(indicators: Dict[str, Any], is_long: bool, current_p
             except Exception as e:
                 logger.debug(f"[FTF_BTC_DEDICATED] fail-open {e}")
         # LANE-J2 2026-10-05 WT_AGAINST_FILTER_ENABLED LONG B11 leg (tradier _v12_b11_reentry_allowed LONG: wt1_15m>wt2_15m else reject; vec lane_vec_stub4.wt_against_allow_mask LONG-only). Default False = inert.
-        if is_long and bool(getattr(config, "WT_AGAINST_FILTER_ENABLED", False)):
+        if is_long and bool(_cg("WT_AGAINST_FILTER_ENABLED", False)):
             try:
                 w1, w2 = i.get("wt1_15m"), i.get("wt2_15m")
                 if w1 is not None and w2 is not None and not (float(w1) > float(w2)):

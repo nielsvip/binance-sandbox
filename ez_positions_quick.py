@@ -3522,6 +3522,69 @@ def _btc_dedicated_exit_decision(
 # ────────────────────────── End BTC dedicated loop hooks ────────────────
 
 
+def _family_lane_tags(ind, current_price, is_long, get):
+    """2026-10-24 shared B-family lane predicates (vec-wired entry families as scoring
+    contributors, +35 STRONG tier each). SINGLE definition used by
+    AdvancedSignalRater.rate() and the scoring-worker FTF-veto exemption (vec
+    B-blocks fire unvetoed, incl. on GFTF-dead bars — proven PUMPUSDT_LONG).
+    get(name, default) = per-sym resolver (both callers pass a _psym_get closure so
+    board values bind in production; replay overlay keeps single-sym runs identical).
+    Predicate logic verbatim = the 2026-10-24 lane wiring (same switches/defaults,
+    15m-analog keys); only the switch source changed (global getattr -> get)."""
+    tags = []
+    try:
+        import vec_decisions.check_entry_mom3 as _fam_mom3
+        if bool(get("MOM3_ENTRY_ENABLED", False)):
+            _fam_c15 = safe_fetch_float(ind.get("close_15m"), 0) or safe_fetch_float(ind.get("close"), 0)
+            _fam_c3 = safe_fetch_float(ind.get("close_3bar_15m"), 0)
+            if _fam_mom3.mom3_fires_scalar(_fam_c15, _fam_c3, float(get("MOM3_LONG_THRESHOLD", -1.0)), float(get("MOM3_SHORT_THRESHOLD", 1.0)), is_long):
+                tags.append("B_MOM3_FAMILY")
+    except Exception:
+        pass
+    try:
+        import vec_decisions.check_entry_srs_permission as _fam_srs
+        if bool(get("STRUCTURAL_RANGE_SHIFT_EXIT", True)):
+            _fam_skey = _fam_srs.pctb_key_for_tf(get("STRUCTURAL_RANGE_SHIFT_TF", "bb_1h"))
+            _fam_pctb = safe_fetch_float(ind.get(_fam_skey), 0.5)
+            if not _fam_srs.srs_blocked_scalar(_fam_pctb, is_long):
+                tags.append("B_SRS_ENTRY_FAMILY")
+    except Exception:
+        pass
+    try:
+        import vec_decisions.check_entry_b15_trend as _fam_b15
+        if bool(get("REENTRY_B15_STRONG_TREND_ENABLED", True)):
+            _fam_dc4 = safe_fetch_float(ind.get("dc_high_4h" if is_long else "dc_low_4h"), 0)
+            if _fam_b15.b15_fires_scalar(safe_fetch_float(ind.get("close"), 0) or current_price, _fam_dc4, safe_fetch_float(ind.get("wt_velocity_1h"), 0), safe_fetch_float(ind.get("stoch_k_1h"), 50), is_long):
+                tags.append("B15_FAMILY")
+    except Exception:
+        pass
+    try:
+        import vec_decisions.check_entry_b14_ha_stack as _fam_b14
+        if bool(get("REENTRY_B14_HA_TREND_ENABLED", True)):
+            if _fam_b14.b14_fires_scalar(ind.get("ha_15m"), ind.get("ha_15m"), ind.get("ha_1h"), safe_fetch_float(ind.get("k_15m"), 50), is_long):
+                tags.append("B14_FAMILY")
+    except Exception:
+        pass
+    try:
+        import vec_decisions.check_entry_b12_wt_mom as _fam_b12
+        if bool(get("REENTRY_B12_WT_MOM_ENABLED", True)):
+            _fam_w1_15 = safe_fetch_float(ind.get("wt1_15m"), 0)
+            _fam_w2_15 = safe_fetch_float(ind.get("wt2_15m"), 0)
+            if _fam_b12.b12_fires_scalar(_fam_w1_15, _fam_w2_15, _fam_w1_15, _fam_w2_15, safe_fetch_float(ind.get("wt1_1h"), 0), safe_fetch_float(ind.get("wt2_1h"), 0), safe_fetch_float(ind.get("wt_velocity_15m"), 0), is_long):
+                tags.append("B12_FAMILY")
+    except Exception:
+        pass
+    try:
+        if bool(get("K_ZONE_ENTRY_ENABLED", False)):
+            _fam_k15 = safe_fetch_float(ind.get("k_15m"), 50)
+            _fam_kfire = (_fam_k15 < float(get("K_ZONE_LONG_THRESHOLD", 35))) if is_long else (_fam_k15 > float(get("K_ZONE_SHORT_THRESHOLD", 65)))
+            if _fam_kfire:
+                tags.append("B_KZONE_FAMILY")
+    except Exception:
+        pass
+    return tags
+
+
 class AdvancedSignalRater:
     @staticmethod
     async def rate(
@@ -8906,59 +8969,11 @@ class AdvancedSignalRater:
             # vec reads 3m slots from 15m series, so live passes 15m legs into 3m slots, B12 precedent).
             if not is_exit:
                 try:
-                    import vec_decisions.check_entry_mom3 as _fam_mom3
-                    if bool(getattr(config, "MOM3_ENTRY_ENABLED", False)):
-                        _fam_c15 = safe_fetch_float(ind.get("close_15m"), 0) or safe_fetch_float(ind.get("close"), 0)
-                        _fam_c3 = safe_fetch_float(ind.get("close_3bar_15m"), 0)
-                        if _fam_mom3.mom3_fires_scalar(_fam_c15, _fam_c3, float(getattr(config, "MOM3_LONG_THRESHOLD", -1.0)), float(getattr(config, "MOM3_SHORT_THRESHOLD", 1.0)), is_long):
-                            score += 35
-                            reasons.append("B_MOM3_FAMILY")
-                except Exception:
-                    pass
-                try:
-                    import vec_decisions.check_entry_srs_permission as _fam_srs
-                    if bool(getattr(config, "STRUCTURAL_RANGE_SHIFT_EXIT", True)):
-                        _fam_skey = _fam_srs.pctb_key_for_tf(getattr(config, "STRUCTURAL_RANGE_SHIFT_TF", "bb_1h"))
-                        _fam_pctb = safe_fetch_float(ind.get(_fam_skey), 0.5)
-                        if not _fam_srs.srs_blocked_scalar(_fam_pctb, is_long):
-                            score += 35
-                            reasons.append("B_SRS_ENTRY_FAMILY")
-                except Exception:
-                    pass
-                try:
-                    import vec_decisions.check_entry_b15_trend as _fam_b15
-                    if bool(getattr(config, "REENTRY_B15_STRONG_TREND_ENABLED", True)):
-                        _fam_dc4 = safe_fetch_float(ind.get("dc_high_4h" if is_long else "dc_low_4h"), 0)
-                        if _fam_b15.b15_fires_scalar(safe_fetch_float(ind.get("close"), 0) or current_price, _fam_dc4, safe_fetch_float(ind.get("wt_velocity_1h"), 0), safe_fetch_float(ind.get("stoch_k_1h"), 50), is_long):
-                            score += 35
-                            reasons.append("B15_FAMILY")
-                except Exception:
-                    pass
-                try:
-                    import vec_decisions.check_entry_b14_ha_stack as _fam_b14
-                    if bool(getattr(config, "REENTRY_B14_HA_TREND_ENABLED", True)):
-                        if _fam_b14.b14_fires_scalar(ind.get("ha_15m"), ind.get("ha_15m"), ind.get("ha_1h"), safe_fetch_float(ind.get("k_15m"), 50), is_long):
-                            score += 35
-                            reasons.append("B14_FAMILY")
-                except Exception:
-                    pass
-                try:
-                    import vec_decisions.check_entry_b12_wt_mom as _fam_b12
-                    if bool(getattr(config, "REENTRY_B12_WT_MOM_ENABLED", True)):
-                        _fam_w1_15 = safe_fetch_float(ind.get("wt1_15m"), 0)
-                        _fam_w2_15 = safe_fetch_float(ind.get("wt2_15m"), 0)
-                        if _fam_b12.b12_fires_scalar(_fam_w1_15, _fam_w2_15, _fam_w1_15, _fam_w2_15, safe_fetch_float(ind.get("wt1_1h"), 0), safe_fetch_float(ind.get("wt2_1h"), 0), safe_fetch_float(ind.get("wt_velocity_15m"), 0), is_long):
-                            score += 35
-                            reasons.append("B12_FAMILY")
-                except Exception:
-                    pass
-                try:
-                    if bool(getattr(config, "K_ZONE_ENTRY_ENABLED", False)):
-                        _fam_k15 = safe_fetch_float(ind.get("k_15m"), 50)
-                        _fam_kfire = (_fam_k15 < float(getattr(config, "K_ZONE_LONG_THRESHOLD", 35))) if is_long else (_fam_k15 > float(getattr(config, "K_ZONE_SHORT_THRESHOLD", 65)))
-                        if _fam_kfire:
-                            score += 35
-                            reasons.append("B_KZONE_FAMILY")
+                    _fam_side = "LONG" if is_long else "SHORT"
+                    _fam_get = lambda n, d: _psym_get(symbol, _fam_side, n, getattr(config, n, d))
+                    for _fam_tag in _family_lane_tags(ind, current_price, is_long, _fam_get):
+                        score += 35
+                        reasons.append(_fam_tag)
                 except Exception:
                     pass
             # USER 2026-05-30: a confirmed DC breakout is NOT gutted for being overbought — riding a breakout
@@ -31257,9 +31272,21 @@ async def check_entry_candidates_for_account(
                     # mask constrains fresh entries; augments ride the augment gates. Fail-open on error.
                     if curr_amt == 0:
                         try:
-                            _wftf_ok, _wftf_why = trading_policy.parity_filter_tf_gates(indicators, is_long, float(current_price or 0))
-                        except Exception as _wftf_e:
-                            _wftf_ok, _wftf_why = True, f"FTF_EVAL_FAIL_OPEN({_wftf_e})"
+                            _wftf_get = lambda n, d: _psym_get(symbol, position_side, n, getattr(config, n, d))
+                            _wftf_fam = _family_lane_tags(indicators, current_price, is_long, _wftf_get)
+                        except Exception:
+                            _wftf_fam = []
+                        if _wftf_fam:
+                            # 2026-10-24 VEC-TRUTH: vec B-blocks fire unvetoed (proven: they open
+                            # on GFTF-dead bars, PUMPUSDT_LONG). A firing B-family lane carries
+                            # the vec block's own predicate — vetoing it invents refusals.
+                            logger.info(f"[WORKER_FTF_FAMILY_BYPASS] {position_key}: {','.join(_wftf_fam)} — B-family open skips FTF veto")
+                            _wftf_ok, _wftf_why = True, f"FAMILY_BYPASS({','.join(_wftf_fam)})"
+                        else:
+                            try:
+                                _wftf_ok, _wftf_why = trading_policy.parity_filter_tf_gates(indicators, is_long, float(current_price or 0), cfg_get=_wftf_get)
+                            except Exception as _wftf_e:
+                                _wftf_ok, _wftf_why = True, f"FTF_EVAL_FAIL_OPEN({_wftf_e})"
                         if not _wftf_ok:
                             logger.warning(f"[WORKER_FTF_VETO] {position_key}: {_wftf_why} — scoring OPEN refused")
                             return
