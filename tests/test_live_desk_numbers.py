@@ -305,6 +305,8 @@ def test_close_carries_basis_provenance():
 
 
 def test_stale_close_provenance_shows_fresh_lots_not_zombies():
+    from datetime import timedelta
+
     now = datetime.now(timezone.utc)
     old = (now - timedelta(days=30)).isoformat()
     new = (now - timedelta(days=1)).isoformat()
