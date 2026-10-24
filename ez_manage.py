@@ -59294,7 +59294,11 @@ async def process_position(
         fell_through_floor = (
             is_long and dc_low_15m > 0 and current_price < dc_low_15m
         ) or (not is_long and dc_high_15m > 0 and current_price > dc_high_15m)
-        if fell_through_floor and current_gain < 0.0:
+        try:
+            _delta_exit_on = bool(_psym_get(symbol, position_side, "DELTA_EXIT_ENABLED", True))
+        except Exception:
+            _delta_exit_on = True
+        if fell_through_floor and current_gain < 0.0 and _delta_exit_on:
             if is_strict_no_loss_account(config, account_key) and not getattr(
                 config, "DELTA_ENGINE_ENABLED", False
             ):
@@ -59418,11 +59422,16 @@ async def process_position(
         basis_crossed = (
             is_long and dc_basis_15m > 0 and current_price < dc_basis_15m
         ) or (not is_long and dc_basis_15m > 0 and current_price > dc_basis_15m)
+        try:
+            _dc_profit_on = bool(_psym_get(symbol, position_side, "DC_BASIS_PROFIT_EXIT_ENABLED", False))
+        except Exception:
+            _dc_profit_on = False
         if (
             current_gain > 3.0
             and basis_crossed
             and not _is_trend_acct_m
             and not _recently_reduced
+            and _dc_profit_on
         ):
             logger.info(
                 f"⚖️ [DC_BASIS_PROFIT_EXIT] {position_key} at {current_gain:.2f}% gain. Price crossed basis. Exiting before floor hit."

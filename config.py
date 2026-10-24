@@ -2131,6 +2131,9 @@ class Config:
     DC_BASIS_3M_REDUCE_ENABLED: bool = (
         True  # ez_manage reduce when price crosses 3m DC level
     )
+    DC_BASIS_PROFIT_EXIT_ENABLED: bool = (
+        False  # USER 2026-10-24 retrace: pre-emptive full close on 15m basis cross above +3% gain. NO vec twin — stays dead unless a board promotes it WITH a twin (sweep reads honest 0 until then). Kill: False (default).
+    )
     WT_CROSS_EXIT_3M_VETO_MAX_AGE: float = 30.0  # was getattr-only default
     TREND_REGIME_VETO_ENABLED: bool = True  # was getattr-only default (True)
     K1M_EXTREME_REVERSE_ENABLED: bool = False  # was getattr-only default (False)

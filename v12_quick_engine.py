@@ -7101,6 +7101,9 @@ class QuickConfig:
     DC_BASIS_3M_REDUCE_ENABLED: bool = (
         True  # vec-only toggle: live DC_BASIS_3M_REDUCE has NO switch (always on unless HEDGE_MODE)
     )
+    DC_BASIS_PROFIT_EXIT_ENABLED: bool = (
+        False  # USER 2026-10-24 retrace: no vec twin for the 15m-basis profit leg; mirror only (sweep reads honest 0). Live default OFF.
+    )
     DC_PRIOR_BAR_CHANNEL: bool = (
         True  # b6: DC-channel STOP/breach exits compare close with the PREVIOUS bar's channel (NPZ dc_* include the current bar -> same-bar `close<=dc_low*(1-buf)` is impossible); targets stay same-bar
     )
