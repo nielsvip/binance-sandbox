@@ -185,6 +185,25 @@ def test_cancel_same_bar_pairs_drops_net_zero_keeps_flip():
     assert [(r["phase"], r["qty"]) for r in out] == [("exit", 3.0), ("entry", 9.0)]
 
 
+def test_net_bucket_filter_wash_drops_both():
+    from datetime import datetime, timezone
+    b = datetime(2026, 10, 15, 8, 2, tzinfo=timezone.utc)
+    recs = [{"timestamp": b, "side": "LONG", "phase": "exit", "qty": 186.0},
+            {"timestamp": b.replace(minute=9), "side": "LONG", "phase": "entry", "qty": 185.0}]
+    assert lth._net_bucket_filter(recs) == []
+
+
+def test_net_bucket_filter_keeps_net_side():
+    from datetime import datetime, timezone
+    b = datetime(2026, 10, 15, 8, 2, tzinfo=timezone.utc)
+    take = [{"timestamp": b, "side": "LONG", "phase": "entry", "qty": 5708.0},
+            {"timestamp": b.replace(minute=4), "side": "LONG", "phase": "exit", "qty": 516.0}]
+    assert [(r["phase"], r["qty"]) for r in lth._net_bucket_filter(take)] == [("entry", 5708.0)]
+    cut = [{"timestamp": b, "side": "LONG", "phase": "exit", "qty": 100.0},
+           {"timestamp": b.replace(minute=6), "side": "LONG", "phase": "entry", "qty": 50.0}]
+    assert [(r["phase"], r["qty"]) for r in lth._net_bucket_filter(cut)] == [("exit", 100.0)]
+
+
 def test_mark_stale_trailing_only_when_old_and_unclosed():
     from datetime import datetime, timezone, timedelta
     now = datetime.now(timezone.utc)

@@ -270,6 +270,7 @@ def fetch_trades(symbol, accounts, hist_dirs):
             recs = _collapse_stuck_relogs(recs)
             marked = mark_boundaries(recs)
             marked = _cancel_same_bar_pairs(marked)
+            marked = _net_bucket_filter(marked)
             marked = annotate_round_trips(marked, side)
             if trusted and (acct, sym, side) not in open_set:
                 _mark_stale_trailing(marked)
@@ -488,6 +489,47 @@ def _mark_stale_trailing(marked, max_age_s=1800.0):
             continue
         if age > max_age_s:
             e["phase"] = "stale"
+
+
+def _net_bucket_filter(recs, bar_min=15, wash_pct=0.01):
+    """One phase per 15m bucket per side: net the signed qty.
+
+    We only trade 15m bars and up, so a bucket holding both entries and
+    exits is intra-bar churn, never two bar-close decisions. Net entries
+    (+) against exits (-): a wash (|net| <= 1% of bucket volume, e.g. close
+    186 + reopen 185) drops both; a take with trims (entry 5708, trim 516)
+    keeps the entries; a reduction keeps the exits. Entries-only and
+    exits-only buckets pass through untouched. Adapts never participate.
+    """
+    from datetime import timezone
+    buckets = {}
+    for r in recs:
+        if r.get("phase") not in ("entry", "exit"):
+            continue
+        ts = r["timestamp"].astimezone(timezone.utc)
+        key = (ts.replace(minute=(ts.minute // bar_min) * bar_min, second=0, microsecond=0),
+               r.get("side"))
+        buckets.setdefault(key, []).append(r)
+    drop = set()
+    for members in buckets.values():
+        kinds = set(r.get("phase") for r in members)
+        if len(kinds) < 2:
+            continue
+        net = sum(float(r.get("qty") or 0) * (1.0 if r.get("phase") == "entry" else -1.0)
+                  for r in members)
+        vol = sum(abs(float(r.get("qty") or 0)) for r in members)
+        if abs(net) <= max(1e-9, wash_pct * vol):
+            for r in members:
+                drop.add(id(r))
+        elif net > 0:
+            for r in members:
+                if r.get("phase") == "exit":
+                    drop.add(id(r))
+        else:
+            for r in members:
+                if r.get("phase") == "entry":
+                    drop.add(id(r))
+    return [r for r in recs if id(r) not in drop]
 
 
 def _collapse_stuck_relogs(recs):

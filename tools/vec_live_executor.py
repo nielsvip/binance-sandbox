@@ -4,7 +4,9 @@
 "PARITY = THE SECOND A VECTORIZED TRADE WOULD OCCUR A LIVE TRADE OCCURS."
 
 Runs on S1 (~/binance-sandbox). Each cycle, for every sym_side listed in
-data/vec_live/vec_driven.json whose NPZ gained a new completed 15m bar, it runs
+data/vec_live/vec_driven.json (mode/account registry, pure_board-owned) whose
+proven set resolves from data/vec_live/vec_driven_sets.json (--build-driven owned)
+and whose NPZ gained a new completed 15m bar, it runs
 the SAME vectorized engine that fills the sheets (v12_quick_engine.simulate_one
 via tools/opt/v12_pilot.evaluate_prepared_sanitized, include_ledger=True) with
 that sym_side's PROVEN override set, takes the ledger events whose ts == the
@@ -47,6 +49,7 @@ SHADOW_LEDGER = VL / "shadow_ledger.jsonl"
 INTENT_LEDGER = VL / "intent_ledger.jsonl"
 CYCLE_LOG = VL / "cycle_log.jsonl"
 VEC_DRIVEN = VL / "vec_driven.json"
+SETS = VL / "vec_driven_sets.json"
 CANDIDATES = VL / "candidates.json"
 PUBLISH_DIR = Path(os.path.expanduser("~/binance/data/vec_live"))
 STALE_SEC = 20 * 60
@@ -443,9 +446,23 @@ def process(ss: str, entry: dict, overrides: dict, emd5: str, force: bool = Fals
 def load_sets():
     vd = json.loads(VEC_DRIVEN.read_text()) if VEC_DRIVEN.exists() else {}
     cands = json.loads(CANDIDATES.read_text()) if CANDIDATES.exists() else {}
+    # USER 2026-10-25 forward-data speed: proven override sets live in vec_driven_sets.json, owned by
+    # --build-driven. data/vec_live/vec_driven.json is owned by pure_board_trader (mode/account/expiry
+    # registry — its merge strips everything else by 10-23 design), so sets kept there are stripped within
+    # minutes and the lane starves (measured 23:33Z: 165/165 NO_SET, 0 acted). Sets-file first, legacy
+    # sources as fallback. Mode/account still resolve from the registry (pure_board's authority).
+    try:
+        _sets_doc = json.loads(SETS.read_text())
+        _sets = {k: v for k, v in _sets_doc.items() if isinstance(v, dict)} if isinstance(_sets_doc, dict) else {}
+    except Exception:
+        _sets = {}
     out = {}
     for ss, entry in vd.items():
         if ss.startswith("_") or not isinstance(entry, dict):
+            continue
+        _se = _sets.get(ss)
+        if isinstance(_se, dict) and isinstance(_se.get("overrides"), dict) and _se.get("mode") == "live":
+            out[ss] = ({"mode": entry.get("mode") or "live", "account": entry.get("account") or []}, _se.get("overrides"))
             continue
         src = str(entry.get("overrides_src") or "candidates.json")
         if src == "candidates.json":
@@ -517,6 +534,17 @@ PROGRESS_GLOBS = [str(ROOT / "data" / "reports" / "lifecycle_pilot" / "*_v14_pro
 
 
 def _universe() -> tuple:
+    # USER 2026-10-25 forward-data speed: tradeable_keys.json is the live authority both lanes share
+    # (mirrors pure_board_trader.universe crypto filter). The books snapshot (Oct 6) missed the majors
+    # (BTC/ETH/SOL/BLUR), so the lane evaluated a stale subset. Books kept as fallback only.
+    try:
+        tks = json.loads((ROOT / "tradeable_keys.json").read_text())
+        if isinstance(tks, list) and tks:
+            bases = sorted({str(k).split(":", 1)[-1].rsplit("_", 1)[0] for k in tks if ":" in str(k) and str(k).split(":", 1)[-1].rsplit("_", 1)[0].endswith(("USDT", "USDC", "USD1", "USDS", "BUSD", "FDUSD", "TUSD", "DAI"))})
+            if bases:
+                return bases, "tradeable_keys.json", hashlib.md5((ROOT / "tradeable_keys.json").read_bytes()).hexdigest()
+    except Exception:
+        pass
     for p in (VL / "books" / "symbols_active.json", Path(os.path.expanduser("~/binance/symbols_active.json")), ROOT / "symbols_active.json"):
         if p.exists():
             d = json.loads(p.read_text())
@@ -612,9 +640,11 @@ def build_driven(write: bool = True) -> dict:
         _append_jsonl(VL / "fabrication_rejections.jsonl", dict(r, t=_iso(_now())))
         print(f"[vec_live] FABRICATION-CLASS set rejected {r}", file=sys.stderr)
     if write:
-        if VEC_DRIVEN.exists():
-            shutil.copy2(VEC_DRIVEN, VL / f"vec_driven.before_{dt.datetime.now(dt.timezone.utc).strftime('%Y%m%d%H%M')}.json")
-        _atomic_json(VEC_DRIVEN, out)
+        # USER 2026-10-25 forward-data speed: sets go to vec_driven_sets.json, NEVER vec_driven.json —
+        # pure_board_trader owns that file and its merge strips everything but mode/account/expiry.
+        if SETS.exists():
+            shutil.copy2(SETS, VL / f"vec_driven_sets.before_{dt.datetime.now(dt.timezone.utc).strftime('%Y%m%d%H%M')}.json")
+        _atomic_json(SETS, out)
     return out
 
 
@@ -634,7 +664,7 @@ def main() -> int:
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--force", action="store_true", help="re-run even without a new bar (idempotent: intent_ids never re-emitted)")
     ap.add_argument("--init-example", action="store_true")
-    ap.add_argument("--build-driven", action="store_true", help="rebuild vec_driven.json: every tradeable crypto key with a proven set -> live")
+    ap.add_argument("--build-driven", action="store_true", help="rebuild vec_driven_sets.json: every tradeable crypto key with a proven set -> live")
     a = ap.parse_args()
     if a.init_example:
         init_example()
