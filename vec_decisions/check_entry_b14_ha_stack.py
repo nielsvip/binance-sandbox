@@ -14,8 +14,25 @@ chain scores it per sym_side like every family.
 from __future__ import annotations
 
 
+def ha_to_num(v) -> float:
+    """Live HA legs are 'green'/'red'/'neutral' strings (both venues); NPZ lanes
+    carry ±1 ints. Map once here so every caller shares one coercion."""
+    try:
+        if isinstance(v, str):
+            s = v.strip().lower()
+            if s == "green":
+                return 1.0
+            if s == "red":
+                return -1.0
+            return 0.0
+        return float(v)
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def b14_fires_scalar(ha_3m, ha_15m, ha_1h, k_3m, is_long) -> bool:
     try:
+        ha_3m, ha_15m, ha_1h = ha_to_num(ha_3m), ha_to_num(ha_15m), ha_to_num(ha_1h)
         if bool(is_long):
             return bool(
                 float(ha_3m) == 1.0
