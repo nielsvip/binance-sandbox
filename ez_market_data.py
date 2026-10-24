@@ -460,10 +460,13 @@ class HighResMarketData:
 
     def update_synthetic(self, symbol: str, price: float, timestamp: float):
         """2026-10-24 (DUSKUSDT 3m 0/10 vs real 74/80): wall-clock freshness WITHOUT
-        flat-line poisoning. Overwrites the forming bar only, never opens new
-        buckets — new buckets come from real ticks or the REST repair loop.
-        get_snapshot may still append one forming bar to the compute arrays;
-        the stored history stays real so stoch cannot collapse to 0/0."""
+        flat-line poisoning. Overwrites the forming bar, and opens the CURRENT
+        bucket when the clock advanced with no real tick (USER 2026-10-24: WS dead
+        11h + repair capped below decay rate = permanent 60-deep backlog, ages to
+        2500s. Candles are close-only so a live-mark bucket is structurally
+        identical to a real-tick bucket). Never backfills older holes — those stay
+        for the REST repair loop. get_snapshot may still append one forming bar
+        to the compute arrays; stored history stays real so stoch cannot collapse."""
         store = self.data.get(symbol)
         if not store: return
         store['last_price'] = price
@@ -475,6 +478,24 @@ class HighResMarketData:
             c3 = store.get('closes_3m')
             if c3:
                 c3[next(reversed(c3))] = price
+        except Exception:
+            pass
+        try:
+            if price > 0 and abs(time.time() - timestamp) < 30:
+                c1 = store.get('closes_1m')
+                if c1:
+                    b1 = int(timestamp - (timestamp % 60))
+                    if b1 > max(c1):
+                        c1[b1] = price
+                        while len(c1) > 180:
+                            c1.popitem(last=False)
+                c3 = store.get('closes_3m')
+                if c3:
+                    b3 = int(timestamp - (timestamp % 180))
+                    if b3 > max(c3):
+                        c3[b3] = price
+                        while len(c3) > 180:
+                            c3.popitem(last=False)
         except Exception:
             pass
 
@@ -1292,7 +1313,7 @@ class MarketDataEngine:
         base = "https://fapi.binance.com/fapi/v1/klines"
         timeout = aiohttp.ClientTimeout(total=10, sock_connect=5, sock_read=8)
         try:
-            session = aiohttp.ClientSession(timeout=timeout)
+            session = aiohttp.ClientSession(timeout=timeout, connector=aiohttp.TCPConnector(ttl_dns_cache=300))
         except Exception:
             return
         consec_throttle = 0

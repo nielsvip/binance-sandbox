@@ -111,3 +111,36 @@ async def test_wb_write_big_file_overlap_is_fast_and_correct(tmp_path, monkeypat
     iso_new = datetime.fromtimestamp(base + 2999 * 60, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
     assert by_ts[iso_new]["close"] == 51.0
     assert by_ts[iso_new]["high"] == 51.0
+
+
+def test_synth_opens_current_bucket_on_advanced_clock(monkeypatch):
+    m = _seeded_market(monkeypatch)
+    before_max = max(m.data["TESTUSDC"]["closes_1m"])
+    now = time.time()
+    m.update_synthetic("TESTUSDC", 105.0, now)
+    after = m.data["TESTUSDC"]["closes_1m"]
+    assert max(after) == int(now - (now % 60)) > before_max
+    assert after[max(after)] == 105.0
+
+
+def test_synth_never_backfills_holes(monkeypatch):
+    m = _seeded_market(monkeypatch)
+    n0 = len(m.data["TESTUSDC"]["closes_1m"])
+    m.update_synthetic("TESTUSDC", 106.0, time.time())
+    assert len(m.data["TESTUSDC"]["closes_1m"]) == n0 + 1
+
+
+def test_synth_ignores_stale_timestamp(monkeypatch):
+    m = _seeded_market(monkeypatch)
+    n0 = len(m.data["TESTUSDC"]["closes_1m"])
+    m.update_synthetic("TESTUSDC", 107.0, time.time() - 3600)
+    assert len(m.data["TESTUSDC"]["closes_1m"]) == n0
+
+
+def test_synth_same_bucket_no_dup(monkeypatch):
+    m = _seeded_market(monkeypatch)
+    now = time.time()
+    m.update_synthetic("TESTUSDC", 108.0, now)
+    n1 = len(m.data["TESTUSDC"]["closes_1m"])
+    m.update_synthetic("TESTUSDC", 108.5, now)
+    assert len(m.data["TESTUSDC"]["closes_1m"]) == n1
