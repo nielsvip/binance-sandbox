@@ -26968,23 +26968,6 @@ class MultiAccountTradeManager:
             if result and "SUCCESS" not in result:
                 if self.order_execution_monitor:
                     self.order_execution_monitor.pending_orders.pop(position_key, None)
-            try:
-                # USER 2026-10-24: same funnel recording as the main path (this
-                # reduce fast-path returns early) — outcome ledger + routed history.
-                from vec_decisions import execution_ledger as _exledgerR
-                _exledgerR.append_execution(
-                    getattr(config, "BASE_PATH", "/Users/niels/Documents/binance"),
-                    account_key, position_key, action, reason, result,
-                )
-                if result and "SUCCESS" in result:
-                    _htR = _exledgerR.classify_history_type(action, is_full_close)
-                    if _htR is not None:
-                        _exledgerR.append_history_fill(
-                            getattr(config, "BASE_PATH", "/Users/niels/Documents/binance"),
-                            account_key, position_key, _htR, quantity, current_price, reason,
-                        )
-            except Exception:
-                pass
             return result
         elif is_reduce and not config.MANAGE_REDUCE:
             return "BLOCKED - EZ_MANAGE NOT ALLOWED TO REDUCE"
@@ -27333,10 +27316,9 @@ class MultiAccountTradeManager:
                         f"🧹 [SUBSTITUTION] Killing {shittiest_pk} (Gain: {lowest_gain:.2f}%) to make room for {position_key}"
                     )
 
-                    # Fire-and-forget close (stays non-blocking; a done-callback
-                    # records the outcome so substitution closes are never
-                    # invisible in the ledgers — USER 2026-10-24).
-                    _sub_task = asyncio.create_task(
+                    # Fire-and-forget close (stays non-blocking; the execute_now
+                    # wrapper records its outcome — no path bypasses it).
+                    asyncio.create_task(
                         self.execute_now(
                             shittiest_pk,
                             account_key,
@@ -27352,32 +27334,6 @@ class MultiAccountTradeManager:
                             "QUICK_CLOSE",
                         )
                     )
-                    try:
-                        _sub_px = safe_fetch_float(getattr(s_pos, "mark_price", 0.0), 0.0)
-                    except Exception:
-                        _sub_px = 0.0
-
-                    def _substitution_done(_t, _pk=shittiest_pk, _ak=account_key,
-                                           _sq=s_amt, _px=_sub_px):
-                        try:
-                            _r = _t.result()
-                        except Exception as _e:
-                            _r = f"TASK-ERROR {type(_e).__name__}"
-                        try:
-                            from vec_decisions import execution_ledger as _exledgerS
-                            _b = getattr(config, "BASE_PATH", "/Users/niels/Documents/binance")
-                            _exledgerS.append_execution(
-                                _b, _ak, _pk, "QUICK_CLOSE", "SUBSTITUTION_CLOSE", _r)
-                            if _r and "SUCCESS" in _r:
-                                _exledgerS.append_history_fill(
-                                    _b, _ak, _pk, "CLOSE", _sq, _px, "SUBSTITUTION_CLOSE")
-                        except Exception:
-                            pass
-
-                    try:
-                        _sub_task.add_done_callback(_substitution_done)
-                    except Exception:
-                        pass
                     # Small sleep to let the order process
                     await asyncio.sleep(0.2)
 
@@ -27561,23 +27517,6 @@ class MultiAccountTradeManager:
                         self.order_execution_monitor.pending_orders.pop(
                             position_key, None
                         )
-                try:
-                    # USER 2026-10-24: same funnel recording as the main path (this
-                    # exit-action path returns early) — outcome ledger + routed history.
-                    from vec_decisions import execution_ledger as _exledgerX
-                    _exledgerX.append_execution(
-                        getattr(config, "BASE_PATH", "/Users/niels/Documents/binance"),
-                        account_key, position_key, action, reason, result,
-                    )
-                    if result and "SUCCESS" in result:
-                        _htX = _exledgerX.classify_history_type(action, is_full_close)
-                        if _htX is not None:
-                            _exledgerX.append_history_fill(
-                                getattr(config, "BASE_PATH", "/Users/niels/Documents/binance"),
-                                account_key, position_key, _htX, quantity, current_price, reason,
-                            )
-                except Exception:
-                    pass
                 return result
             min_order_value_usd = max(
                 6.50, self.min_qty.get(symbol, 0.0001) * 1.2 * current_price
@@ -30328,27 +30267,6 @@ class MultiAccountTradeManager:
         logger.warning(
             f"🔍 [WH_TRACE_2_done] after_execute_now pk={position_key} result={result[:60] if result else 'None'}"
         )
-        try:
-            # USER 2026-10-24: execution-outcome ledger for the per-minute churn brake.
-            # The brake used to count raw decision lines (attempts incl. self-refused
-            # retries); it now counts exchange-accepted outcomes from here.
-            from vec_decisions import execution_ledger as _exledger
-            _exledger.append_execution(
-                getattr(config, "BASE_PATH", "/Users/niels/Documents/binance"),
-                account_key, position_key, action, reason, result,
-            )
-            # USER 2026-10-24: no positionAmt movement unrecorded in data/history/.
-            # The service owns AUGMENT/REDUCE fills; the funnel records the rest here
-            # (OPEN/CLOSE/REENTRY/...), SUCCESS-only, tail-guarded against doubles.
-            if result and "SUCCESS" in result:
-                _hist_type = _exledger.classify_history_type(action, is_full_close)
-                if _hist_type is not None:
-                    _exledger.append_history_fill(
-                        getattr(config, "BASE_PATH", "/Users/niels/Documents/binance"),
-                        account_key, position_key, _hist_type, quantity, current_price, reason,
-                    )
-        except Exception:
-            pass
         if result and "SUCCESS" not in result:
             logger.warning(
                 f"🔍 [WH_TRACE_3_done] NO SUCCESSFUL RESULT after_execute_now pk={position_key} result={result[:60] if result else 'None'}"
@@ -33044,6 +32962,27 @@ class MultiAccountTradeManager:
                                 pass
                         logger.warning(f"⏳ [VEC_PENDING_CONFIRM] {position_key} {action} reason={(reason or '')[:80]} — vec hasn't confirmed (refused {_res}); held {int(_vp_w.window_s())}s flagged for switch creation, NOT executed")
                         _res = _vp_w.DEFERRED
+        except Exception:
+            pass
+        try:
+            # USER 2026-10-24: THE recording point — execute_now is the one and only
+            # gate, so every one of the 98+ call sites (funnel paths, loops, margin
+            # cleanup, interventions, substitution closes) lands here with its final
+            # verdict. Outcome ledger takes all results; data/history takes accepted
+            # fills the service does not already record. Stop-admin (CANCEL_STOP /
+            # PLACE_STOP, qty-0 order management) moves no positionAmt: skipped.
+            _rec_act = str(action or "").upper()
+            if "CANCEL_STOP" not in _rec_act and "PLACE_STOP" not in _rec_act:
+                from vec_decisions import execution_ledger as _exledgerW
+                _rec_base = getattr(config, "BASE_PATH", "/Users/niels/Documents/binance")
+                _exledgerW.append_execution(
+                    _rec_base, account_key, position_key, action, reason, _res)
+                if _res and "SUCCESS" in str(_res):
+                    _rec_ht = _exledgerW.classify_history_type(action, is_full_close)
+                    if _rec_ht is not None:
+                        _exledgerW.append_history_fill(
+                            _rec_base, account_key, position_key, _rec_ht,
+                            quantity, old_price, reason)
         except Exception:
             pass
         return _res
