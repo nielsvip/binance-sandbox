@@ -168,10 +168,11 @@ def test_draw_outcome_lines_win_loss_skip_unknown():
     fig, ax = plt.subplots()
     base = datetime(2026, 10, 20, tzinfo=timezone.utc)
     lo, hi = base.replace(hour=9), base.replace(hour=16)
-    evs = [{"timestamp": base.replace(hour=10), "win": True},
-           {"timestamp": base.replace(hour=11), "win": False},
-           {"timestamp": base.replace(hour=12), "win": None},
-           {"timestamp": base.replace(hour=18), "win": True}]
+    evs = [{"timestamp": base.replace(hour=10), "win": True, "phase": "exit"},
+           {"timestamp": base.replace(hour=11), "win": False, "phase": "exit"},
+           {"timestamp": base.replace(hour=12), "win": None, "phase": "exit"},
+           {"timestamp": base.replace(hour=13), "win": True, "phase": "entry"},
+           {"timestamp": base.replace(hour=18), "win": True, "phase": "exit"}]
     nw, nl = lth.draw_outcome_lines(ax, lo, hi, evs, lambda t: t.timestamp())
     assert (nw, nl) == (1, 1)
     greens = [l for l in ax.get_children() if isinstance(l, Line2D) and l.get_color() == lth.WIN_COLOR]

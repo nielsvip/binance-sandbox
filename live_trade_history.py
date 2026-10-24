@@ -36,18 +36,22 @@ def arrow_alpha(event):
 
 
 OUTCOME_LW = 1.5
-OUTCOME_ALPHA = 0.80
+OUTCOME_ALPHA = 0.90
 
 
 def draw_outcome_lines(ax_plot, x_left_ts, x_right_ts, events, x_of):
-    """Win/loss vertical bars: green = event belongs to a winning round trip,
-    red = losing round trip, skipped when outcome unknown (still open).
+    """Win/loss vertical bars at the EXIT of each closed round trip only:
+    green = winning exit, red = losing exit. Entries never get a bar even
+    when their trip's outcome is known, and open trips get none.
 
-    events: boundary dicts with timestamp + win (from annotate_round_trips).
-    x_of maps a timestamp to the axes x-coordinate. Returns (n_win, n_loss).
+    events: boundary dicts with timestamp + phase + win (from
+    annotate_round_trips). x_of maps a timestamp to the axes x-coordinate.
+    Returns (n_win, n_loss).
     """
     n_win = n_loss = 0
     for e in events or []:
+        if e.get("phase") != "exit":
+            continue
         w = e.get("win")
         if w is None:
             continue
