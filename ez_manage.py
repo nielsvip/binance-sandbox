@@ -10746,6 +10746,8 @@ class AccountConfig:
             and (current_time - self._last_time_sync) < 3600
         ):
             return True
+        if (current_time - getattr(self, "_last_time_sync_fail", 0.0)) < 600.0:
+            return False
         try:
             server_time_response = self.client.futures_time()
             server_time = server_time_response["serverTime"]
