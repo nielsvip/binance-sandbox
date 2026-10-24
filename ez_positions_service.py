@@ -4114,6 +4114,31 @@ class StopLevelsManager:
                                 loaded_count += 1
         logger.debug(f"[load_stop_levels] Loaded {loaded_count} stops for {account_key}")
 
+async def _guardian_cached_json(src_path: Any, cache: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """2026-10-24 loop-stall fix: the reentry guardian re-read + re-parsed the same ~7 account files per position missing reentry data (20+ loop-stall dumps in raw_decode; tracker.json is MBs). Pass-local content cache keyed by (mtime_ns, size) returns identical dicts; the guardian only .gets (audited) so sharing is safe. Unparseable/missing/tiny files return None exactly where the inline code `continue`d. Pinned by tests/test_loopstall_guardian.py."""
+    try:
+        key = str(src_path)
+        try:
+            st = os.stat(key)
+            sig = (st.st_mtime_ns, st.st_size)
+        except Exception:
+            return None
+        hit = cache.get(key)
+        if hit is not None and hit[0] == sig:
+            return hit[1]
+        async with aiofiles.open(key, "r") as fh:
+            raw = await fh.read()
+        if not raw or len(raw) < 3:
+            return None
+        data = json.loads(raw)
+        if not isinstance(data, dict):
+            return None
+        cache[key] = (sig, data)
+        return data
+    except Exception:
+        return None
+
+
 class PositionService: 
 
     def __init__(self, *, config: Optional[Config] = None, base_path: Optional[Path] = None, logger=None, loop: Optional[asyncio.AbstractEventLoop] = None, accounts: Optional[Dict[str, Any]] = None, execute_now: Optional[Callable[..., Awaitable[Any]]] = None, order_queue: Optional[Any] = None, get_cached_open_orders: Optional[Callable[..., Awaitable[Any]]] = None, indicator_fetcher: Optional[Callable[[str], Awaitable[Dict[str, Any]]] | Callable[[str], Dict[str, Any]]] = None) -> None:
@@ -9601,6 +9626,7 @@ class PositionService:
         while not self._housekeeping_stop:
             try:
                 recovered = 0
+                _file_cache: Dict[str, Any] = {}  # 2026-10-24: one content snapshot per guardian pass; identical files parsed once, not once per position
                 for account_key in sorted(self.positions_by_account.keys()):
                     acc_positions = self.positions_by_account.get(account_key, {})
                     for pk, pos in list(acc_positions.items()):
@@ -9628,39 +9654,34 @@ class PositionService:
                         _ts_fields = ('timestamp', 'last_reduction_time', 'last_exit_timestamp', 'reduced_at', 'updated_at')
                         for src_path in sources_to_check:
                             try:
-                                if not src_path.exists():
+                                src_data = await _guardian_cached_json(src_path, _file_cache)
+                                if not isinstance(src_data, dict):
                                     continue
-                                async with aiofiles.open(src_path, 'r') as f:
-                                    raw = await f.read()
-                                if not raw or len(raw) < 3:
-                                    continue
-                                src_data = json.loads(raw)
-                                if isinstance(src_data, dict):
-                                    entry = src_data.get(pk, {})
-                                    if isinstance(entry, dict):
-                                        rl = 0.0
-                                        for _pf in _price_fields:
-                                            _v = float(entry.get(_pf, 0) or 0)
-                                            if _v > 0:
-                                                rl = _v
-                                                break
-                                        ra = 0.0
-                                        for _af in _amt_fields:
-                                            _v = float(entry.get(_af, 0) or 0)
-                                            if _v > 0:
-                                                ra = _v
-                                                break
-                                        src_ts = ""
-                                        for _tf in _ts_fields:
-                                            _v = str(entry.get(_tf, "") or "")
-                                            if _v and len(_v) > 10:
-                                                src_ts = _v
-                                                break
-                                        if rl > 0 and (not best_ts or src_ts > best_ts):
-                                            best_rl = rl
-                                            best_ra = ra if ra > 0 else best_ra
-                                            best_source = str(src_path.name)
-                                            best_ts = src_ts
+                                entry = src_data.get(pk, {})
+                                if isinstance(entry, dict):
+                                    rl = 0.0
+                                    for _pf in _price_fields:
+                                        _v = float(entry.get(_pf, 0) or 0)
+                                        if _v > 0:
+                                            rl = _v
+                                            break
+                                    ra = 0.0
+                                    for _af in _amt_fields:
+                                        _v = float(entry.get(_af, 0) or 0)
+                                        if _v > 0:
+                                            ra = _v
+                                            break
+                                    src_ts = ""
+                                    for _tf in _ts_fields:
+                                        _v = str(entry.get(_tf, "") or "")
+                                        if _v and len(_v) > 10:
+                                            src_ts = _v
+                                            break
+                                    if rl > 0 and (not best_ts or src_ts > best_ts):
+                                        best_rl = rl
+                                        best_ra = ra if ra > 0 else best_ra
+                                        best_source = str(src_path.name)
+                                        best_ts = src_ts
                             except Exception:
                                 continue
                         if best_rl <= 0:

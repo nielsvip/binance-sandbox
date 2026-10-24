@@ -54,3 +54,19 @@ for h in ["s2", "s5", "s6"]:
 sys.exit(rc)
 EOF
 echo "push rc=$? (s6 note: s1 cannot resolve s6; staged via Mac, scp fallback for big files)"
+# USER 2026-10-24 (16h split-brain: v12's line-104 vec_decisions import reached
+# workers ~11 h before the module did; every pilot died at import until 18:29Z
+# while md5s looked "fine" per-file). md5-identical is NOT importable: after any
+# push — and on --check-only — smoke-import the engine on every host with the
+# pilots' own interpreter. Fail-closed like push failures (rc=1). Read-only.
+SMOKE_RC=0
+for h in s1-int s2 s5 s6; do
+  if ssh -o BatchMode=yes -o ConnectTimeout=10 "$h" \
+    "cd ~/binance-sandbox && /home/niels/.conda/envs/binance_env_mac/bin/python -c 'import v12_quick_engine; print(\"IMPORT_SMOKE_OK\")'" 2>/dev/null | grep -q IMPORT_SMOKE_OK; then
+    echo "smoke $h: IMPORTS_OK"
+  else
+    echo "smoke $h: IMPORT_FAIL (v12_quick_engine or its vec_decisions imports broken — DO NOT dispatch here)"
+    SMOKE_RC=1
+  fi
+done
+[ "$SMOKE_RC" = "0" ] || exit 1

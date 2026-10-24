@@ -7597,6 +7597,12 @@ class Config:
     DC_DAYTRADE_STOP_USE_DC4_15M: bool = (
         False  # 2026-09-24: use dc_low4/high4_15m (4-bar tight) as stop — sweepable variant, was 3/5m hard stop replacement (3/5m not in npz, 15m is)
     )
+    TRADIER_DC_DAYTRADE_STOP_USE_DC_15M: bool = (
+        False  # 2026-10-24 template revision: TRADIER_ alias leg of the shared resolve_daytrade_dc _b() fallback (vec_decisions/dc_channel_exits.py) — read on both venues via the crypto per-sym getter; False = inert, DC_ key governs
+    )
+    TRADIER_DC_DAYTRADE_STOP_USE_DC4_15M: bool = (
+        False  # 2026-10-24 template revision: TRADIER_ alias leg of the shared resolve_daytrade_dc _b() fallback — False = inert, DC_ key governs
+    )
     DC_DAYTRADE_TARGET_PCT: float = (
         0.01  # 1% profit target — 2026-09-24: sweep several % (0.005, 0.01, 0.015, 0.02) via TEMPLATE, plus dc variants below
     )
