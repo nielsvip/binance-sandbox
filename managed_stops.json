@@ -1,58 +1,100 @@
 {
-  "flz:XMRUSDT_LONG": {
-    "orderId": "1000002641197237",
-    "stopPrice": 562.18,
-    "entry_sig": "2026-10-24 10:57:30.137000+00:00",
-    "symbol": "XMRUSDT",
+  "men:WOOUSDT_SHORT": {
+    "orderId": "2000001537731608",
+    "stopPrice": 0.01265,
+    "entry_sig": "2026-10-24 14:58:06.099000+00:00",
+    "symbol": "WOOUSDT",
+    "side": "SHORT"
+  },
+  "men:RVNUSDT_SHORT": {
+    "orderId": "2000001537735756",
+    "stopPrice": 0.001427,
+    "entry_sig": "2026-10-24 14:13:14.031000+00:00",
+    "symbol": "RVNUSDT",
+    "side": "SHORT"
+  },
+  "men:BLURUSDT_SHORT": {
+    "orderId": "2000001537740874",
+    "stopPrice": 0.00845,
+    "entry_sig": "2026-10-24 11:24:56.983000+00:00",
+    "symbol": "BLURUSDT",
+    "side": "SHORT"
+  },
+  "men:CRVUSDC_LONG": {
+    "orderId": "2000001537741799",
+    "stopPrice": 0.3454,
+    "entry_sig": "2026-10-24 15:01:24.662626+00:00",
+    "symbol": "CRVUSDC",
     "side": "LONG"
   },
-  "flz:GRAMUSDT_LONG": {
-    "orderId": "1000002641002339",
-    "stopPrice": 1.148,
-    "entry_sig": "2026-10-24 12:51:46.036000+00:00",
-    "symbol": "GRAMUSDT",
+  "men:ACTUSDT_SHORT": {
+    "orderId": "2000001537741813",
+    "stopPrice": 0.00884,
+    "entry_sig": "2026-10-24 14:57:13.176000+00:00",
+    "symbol": "ACTUSDT",
+    "side": "SHORT"
+  },
+  "men:TLMUSDT_SHORT": {
+    "orderId": "2000001537742980",
+    "stopPrice": 0.001252,
+    "entry_sig": "2026-10-24 14:57:42.103000+00:00",
+    "symbol": "TLMUSDT",
+    "side": "SHORT"
+  },
+  "men:ZECUSDC_LONG": {
+    "orderId": "2000001537744046",
+    "stopPrice": 1116.74,
+    "entry_sig": "2026-10-24 14:58:13.878000+00:00",
+    "symbol": "ZECUSDC",
     "side": "LONG"
   },
-  "flz:BNBUSDC_SHORT": {
-    "orderId": "1000002641196942",
-    "stopPrice": 753.06,
-    "entry_sig": "2026-10-24 03:34:37.262000+00:00",
-    "symbol": "BNBUSDC",
+  "men:BBUSDT_SHORT": {
+    "orderId": "2000001537747566",
+    "stopPrice": 0.008283,
+    "entry_sig": "2026-10-24 14:59:09.367309+00:00",
+    "symbol": "BBUSDT",
     "side": "SHORT"
   },
-  "flz:XMRUSDT_SHORT": {
-    "orderId": "1000002640997811",
-    "stopPrice": 634.77,
-    "entry_sig": "2026-10-24 12:47:17.024000+00:00",
-    "symbol": "XMRUSDT",
+  "men:1000BONKUSDC_SHORT": {
+    "orderId": "2000001537747834",
+    "stopPrice": 0.003339,
+    "entry_sig": "2026-10-24 14:59:16.286000+00:00",
+    "symbol": "1000BONKUSDC",
     "side": "SHORT"
   },
-  "flz:ETHUSDC_SHORT": {
-    "orderId": "1000002641196944",
-    "stopPrice": 2396.48,
-    "entry_sig": "2026-10-24 13:02:13.322000+00:00",
-    "symbol": "ETHUSDC",
+  "men:SKYAIUSDT_SHORT": {
+    "orderId": "2000001537748992",
+    "stopPrice": 0.03216,
+    "entry_sig": "2026-10-24 14:59:43.013000+00:00",
+    "symbol": "SKYAIUSDT",
     "side": "SHORT"
   },
-  "flz:XRPUSDC_SHORT": {
-    "orderId": "1000002641196947",
-    "stopPrice": 1.2923,
-    "entry_sig": "2026-10-24 13:01:56.480000+00:00",
-    "symbol": "XRPUSDC",
+  "men:BEAMXUSDT_LONG": {
+    "orderId": "2000001537750625",
+    "stopPrice": 0.003169,
+    "entry_sig": "2026-10-24 14:18:30.784000+00:00",
+    "symbol": "BEAMXUSDT",
+    "side": "LONG"
+  },
+  "men:ENJUSDT_SHORT": {
+    "orderId": "2000001537751836",
+    "stopPrice": 0.026,
+    "entry_sig": "2026-10-24 13:59:54.503000+00:00",
+    "symbol": "ENJUSDT",
     "side": "SHORT"
   },
-  "flz:SOLUSDC_SHORT": {
-    "orderId": "1000002641197238",
-    "stopPrice": 107.76,
-    "entry_sig": "2026-10-24 13:02:14.642000+00:00",
-    "symbol": "SOLUSDC",
+  "men:GALAUSDT_SHORT": {
+    "orderId": "2000001537750644",
+    "stopPrice": 0.002028,
+    "entry_sig": "2026-10-24 10:21:18.272000+00:00",
+    "symbol": "GALAUSDT",
     "side": "SHORT"
   },
-  "flz:DOGEUSDC_SHORT": {
-    "orderId": "1000002641196946",
-    "stopPrice": 0.08425,
-    "entry_sig": "2026-10-24 12:59:24.145000+00:00",
-    "symbol": "DOGEUSDC",
-    "side": "SHORT"
+  "men:INJUSDT_LONG": {
+    "orderId": "2000001537775749",
+    "stopPrice": 7.414,
+    "entry_sig": "2026-10-24 15:02:47.184000+00:00",
+    "symbol": "INJUSDT",
+    "side": "LONG"
   }
 }
