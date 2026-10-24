@@ -66,15 +66,18 @@ def test_alias_equality_in_row():
 
 
 def test_should_update_and_append():
+    from unittest.mock import patch
     tmpdir = Path(tempfile.mkdtemp())
     npz_path = tmpdir / "TEST.npz"
     now = datetime.now(timezone.utc)
     ts_old = int((now - timedelta(hours=2)).timestamp())
     ts_new = int(now.timestamp())
-    np.savez_compressed(str(npz_path), timestamps=np.array([ts_old - 900, ts_old], dtype=np.int64), close=np.array([100.0, 101.0], dtype=np.float32))
-    assert gen._should_update_npz(npz_path, now) is True
-    old_close = datetime.fromtimestamp(ts_old - 900, tz=timezone.utc)
-    assert gen._should_update_npz(npz_path, old_close) is False
+    np.savez_compressed(str(npz_path), timestamps=np.array([ts_old - 900, ts_old], dtype=np.int64), close=np.array([100.0, 101.0], dtype=np.float32), close_15m=np.array([100.0, 101.0], dtype=np.float32), k_15m=np.array([40.0, 45.0], dtype=np.float32), stoch_k_15m=np.array([40.0, 45.0], dtype=np.float32), k_15m_prev=np.array([38.0, 40.0], dtype=np.float32), stoch_k_15m_prev=np.array([38.0, 40.0], dtype=np.float32), k_15m_ant=np.array([38.0, 40.0], dtype=np.float32))
+    with patch.object(gen, "_is_s1_host", return_value=True):
+        assert gen._should_update_npz(npz_path, now) is True
+        old_close = datetime.fromtimestamp(ts_old - 900, tz=timezone.utc)
+        assert gen._should_update_npz(npz_path, old_close) is False
+    assert gen._should_update_npz(npz_path, now) is False
     row = {"timestamps": ts_new, "close": 102.0, "close_15m": 102.0, "k_15m": 55.0, "stoch_k_15m": 55.0, "k_15m_prev": 50.0, "stoch_k_15m_prev": 50.0, "k_15m_ant": 50.0}
     ok = gen._append_row_to_npz(npz_path, row)
     assert ok is True

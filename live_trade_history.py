@@ -265,6 +265,7 @@ def fetch_trades(symbol, accounts, hist_dirs):
         for side, recs in by_side.items():
             recs.sort(key=lambda e: e["timestamp"])
             recs = _dedupe_mirror_lines(recs)
+            recs = _merge_order_fragments(recs)
             recs = _collapse_echo_fills(recs)
             recs = _collapse_stuck_relogs(recs)
             marked = mark_boundaries(recs)
@@ -306,7 +307,45 @@ def _fill_class(typ):
 
 def _is_sync_echo(reason):
     r = str(reason or "").upper()
-    return "BROKER_SYNC" in r or r.startswith("BROKER SYNC") or "BROKER SYNC" in r
+    return "BROKER_SYNC" in r or "BROKER SYNC" in r or "BROKER_RECONCILED" in r
+
+
+def _merge_order_fragments(recs):
+    """Merge partial-fill fragments sharing one broker order number.
+
+    The broker logs one logical fill as several same-second records
+    (e.g. REDUCE 41 + REDUCE 140, one order=... number) and the strategy
+    logs the same fill again under its own reason. Summing fragments first
+    turns them into the single fill they are: summed qty, earliest ts,
+    qty-weighted price, strategy reason preferred. Without this, fragments
+    masquerade as separate entries/exits inside one 15m bar.
+    """
+    import re as _re
+    groups, order_of, singles = {}, [], []
+    for r in recs:
+        m = _re.search(r"order=(\d+)", str(r.get("reason") or ""))
+        if not m:
+            singles.append(r)
+            continue
+        groups.setdefault(m.group(1), []).append(r)
+        if m.group(1) not in order_of:
+            order_of.append(m.group(1))
+    merged = []
+    for oid in order_of:
+        g = sorted(groups[oid], key=lambda e: e["timestamp"])
+        if len(g) == 1:
+            merged.append(g[0])
+            continue
+        qty = sum(abs(float(r.get("qty") or 0)) for r in g)
+        px = sum(abs(float(r.get("qty") or 0)) * float(r.get("price") or 0) for r in g)
+        strat = [r for r in g if not _is_sync_echo(r.get("reason"))]
+        base = dict(strat[0] if strat else g[0])
+        base["timestamp"] = g[0]["timestamp"]
+        base["qty"] = qty
+        base["price"] = (px / qty) if qty > 0 else 0.0
+        merged.append(base)
+    out = sorted(singles + merged, key=lambda e: e["timestamp"])
+    return out
 
 
 def _collapse_echo_fills(recs, window_s=90.0):
