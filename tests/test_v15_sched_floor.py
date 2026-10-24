@@ -41,6 +41,25 @@ class BelowFloorHostsTest(unittest.TestCase):
         self.assertEqual(_below_floor_hosts({"a": 1}, {"a": 8}), [])
 
 
+class BoardedMergeTest(unittest.TestCase):
+    """Only a manifest dates a board: result_done_utc without one is a run
+    that published nothing (INTC_LONG wore 18:24 with 6-day-old cells)."""
+
+    def test_manifest_dates_board(self):
+        self.assertEqual(_SCHED._boarded_merge({}, {"X_LONG": 100.0}, {"X_LONG": 200.0}), {"X_LONG": 100.0})
+
+    def test_done_utc_without_manifest_contributes_nothing(self):
+        self.assertEqual(_SCHED._boarded_merge({"Y_LONG": 50.0}, {}, {"X_LONG": 200.0}), {"Y_LONG": 50.0})
+
+    def test_max_with_existing(self):
+        self.assertEqual(_SCHED._boarded_merge({"X_LONG": 150.0}, {"X_LONG": 100.0}, {"X_LONG": 200.0}), {"X_LONG": 150.0})
+        self.assertEqual(_SCHED._boarded_merge({}, {"X_LONG": 300.0}, {"X_LONG": 200.0}), {"X_LONG": 300.0})
+
+    def test_junk_safe(self):
+        self.assertEqual(_SCHED._boarded_merge(None, None, None), {})
+        self.assertEqual(_SCHED._boarded_merge({}, {"X_LONG": "bogus"}, {"X_LONG": 1.0}), {})
+
+
 class RefreshZeroWindowTest(unittest.TestCase):
     """A zeroed defer window means 'never defer', not 'never refresh' (S1
     zeroes M/L deferral for daily recalcs — M/L boards must still requeue

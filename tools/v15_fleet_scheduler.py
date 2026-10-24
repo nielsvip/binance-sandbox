@@ -379,6 +379,53 @@ if mode == "probe":
             json.dump(cache, open(cache_p, "w"))
         except Exception:
             pass
+        try:  # USER 2026-10-24: a board's date is its manifest's published_utc, never result_done_utc (stamped on
+            # refusals and non-publishing completions too — INTC_LONG wore 18:24 with 6-day-old cells). Per-side newest
+            # 30D manifest publish epoch; tick uses it instead of done_utc for recency. Fail-closed: no manifest here
+            # means unknown date (recalc sooner), never fresh.
+            def _ep(_v):
+                try:
+                    _s = str(_v).replace("Z", "+00:00")
+                    _d, _t = _s.split("T")
+                    _Y, _M, _D = [int(x) for x in _d.split("-")]
+                    _tt = _t.split("+")[0].split("-")[0].split(".")[0]
+                    _h, _m, _ss = [int(x) for x in _tt.split(":")]
+                    import calendar as _cal
+                    return _cal.timegm((_Y, _M, _D, _h, _m, _ss, 0, 0, 0))
+                except Exception:
+                    return None
+            _mdir = os.path.join(HOME, "binance-sandbox", "SPREADSHEETS", "V15_V16_CELL_BY_CELL")
+            _mcache_p = "/tmp/v15_sched_manifest_cache_v1.json"
+            try:
+                _mcache = json.load(open(_mcache_p))
+            except Exception:
+                _mcache = {}
+            _mpub = {}
+            for _mf in glob.glob(os.path.join(_mdir, "*_30d_matrix_manifest.json")):
+                try:
+                    _mst = os.stat(_mf)
+                    _mk = "%s|%s|%s" % (_mf, _mst.st_mtime, _mst.st_size)
+                    if _mk not in _mcache:
+                        for _k in [k for k in _mcache if k.startswith(_mf + "|")]:
+                            _mcache.pop(_k, None)
+                        try:
+                            _mm = json.load(open(_mf))
+                            _mcache[_mk] = [_mm.get("symside"), _ep(_mm.get("published_utc"))]
+                        except Exception:
+                            _mcache[_mk] = [None, None]
+                    _ss2, _ep2 = _mcache.get(_mk) or (None, None)
+                    if _ss2 and _ep2:
+                        _mpub[_ss2] = max(_mpub.get(_ss2, 0), _ep2)
+                except Exception:
+                    pass
+            try:
+                json.dump(_mcache, open(_mcache_p, "w"))
+            except Exception:
+                pass
+            if _mpub:
+                o["manifest_pub"] = _mpub
+        except Exception:
+            pass
         w = os.path.join(os.path.dirname(pdir.rstrip("/")), "chain")
 
         def verdict(f):
@@ -1190,6 +1237,21 @@ def _npz_end_ts(path):
 
 
 _HARD24 = {"at": {}, "pins": set(), "now": 0.0, "blocked": []}
+
+
+def _boarded_merge(bat, mpub, boarded):
+    """Merge one host's recency evidence into the boarded-at index. boarded = probe boarded_at (result_done_utc per
+    side); mpub = probe manifest_pub (manifest published_utc per side on that host). USER 2026-10-24: only a manifest
+    dates a board — result_done_utc without one is a run that published nothing and contributes nothing. Pure (tested)."""
+    bat = dict(bat or {})
+    for _ssm, _tt in (boarded or {}).items():
+        try:
+            _mp = (mpub or {}).get(_ssm)
+            if _mp:
+                bat[_ssm] = max(float(_mp), bat.get(_ssm, 0.0))
+        except (TypeError, ValueError, AttributeError):
+            continue
+    return bat
 
 
 def _boarded_within(ss, boarded_at, now_ts, hours=None, pins=None):
@@ -4006,9 +4068,7 @@ def tick(args, cfg, now):
                 if _rec and _rec[0]:
                     _bat[_ssm] = max(float(_rec[0]), _bat.get(_ssm, 0.0))
             for _hn, _sx in (stats or {}).items():
-                for _ssm, _tt in ((_sx or {}).get("boarded_at") or {}).items():
-                    if _tt:
-                        _bat[_ssm] = max(float(_tt), _bat.get(_ssm, 0.0))
+                _bat = _boarded_merge(_bat, (_sx or {}).get("manifest_pub"), (_sx or {}).get("boarded_at"))
             _HARD24.update(at=_bat, pins=set(_pin_sides or ()), now=_now_ts, blocked=[])
         except Exception as _he:
             print(f"[sched] HARD-24H index failed ({_he}) — rule fail-open this tick", flush=True)
