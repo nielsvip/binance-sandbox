@@ -41,6 +41,38 @@ class BelowFloorHostsTest(unittest.TestCase):
         self.assertEqual(_below_floor_hosts({"a": 1}, {"a": 8}), [])
 
 
+class RefreshZeroWindowTest(unittest.TestCase):
+    """A zeroed defer window means 'never defer', not 'never refresh' (S1
+    zeroes M/L deferral for daily recalcs — M/L boards must still requeue
+    daily or the fleet starves once the round drains)."""
+
+    NOW = 10 * 86400.0
+
+    def test_zero_window_falls_back_to_daily(self):
+        tiers = {"X_LONG": {"tier": "M", "mtime": self.NOW - 1.1 * 86400.0}}
+        self.assertTrue(_SCHED._refresh_due("X_LONG", tiers, self.NOW, {"M": 0.0, "L": 0.0}))
+        fresh = {"X_LONG": {"tier": "M", "mtime": self.NOW - 0.5 * 86400.0}}
+        self.assertFalse(_SCHED._refresh_due("X_LONG", fresh, self.NOW, {"M": 0.0, "L": 0.0}))
+
+    def test_positive_window_unchanged(self):
+        tiers = {"X_LONG": {"tier": "M", "mtime": self.NOW - 1.1 * 86400.0}}
+        self.assertTrue(_SCHED._refresh_due("X_LONG", tiers, self.NOW, {"M": 1.0, "L": 2.0}))
+        fresh = {"X_LONG": {"tier": "M", "mtime": self.NOW - 0.5 * 86400.0}}
+        self.assertFalse(_SCHED._refresh_due("X_LONG", fresh, self.NOW, {"M": 1.0, "L": 2.0}))
+
+    def test_refresh_all_off_still_gates(self):
+        old = os.environ.get("V15_SCHED_REFRESH_ALL")
+        os.environ["V15_SCHED_REFRESH_ALL"] = "0"
+        try:
+            tiers = {"X_LONG": {"tier": "M", "mtime": self.NOW - 5 * 86400.0}}
+            self.assertFalse(_SCHED._refresh_due("X_LONG", tiers, self.NOW, {"M": 0.0, "L": 0.0}))
+        finally:
+            if old is None:
+                os.environ.pop("V15_SCHED_REFRESH_ALL", None)
+            else:
+                os.environ["V15_SCHED_REFRESH_ALL"] = old
+
+
 class RefundTerminalTest(unittest.TestCase):
     def test_terminal_verdict_skips_never_refund(self):
         st = {"attempts": {"FLOKI_SHORT|30D": 3, "ADA_SHORT|30D": 3}}

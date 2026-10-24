@@ -1413,7 +1413,7 @@ def _refresh_due(ss, tiers, now_ts, windows=None):
         except (TypeError, ValueError, AttributeError):
             return False
         if win_s <= 0:
-            return False
+            win_s = 86400.0  # USER 2026-10-24: a zeroed defer window means "never defer" (recalc everything daily, 10-14 law) — it must NOT mean "never refresh", or M/L boards never requeue and the fleet starves once the round drains (s1/s5 idle at 1-2/8 with 88 stale crypto sides). V15_SCHED_REFRESH_ALL=0 still gates M/L entirely.
     else:
         return False
     try:
@@ -5001,11 +5001,17 @@ def tick(args, cfg, now):
             if not s or h["name"] not in HB or h["name"] in _drained:
                 continue
             B = HB[h["name"]]
+            # USER 2026-10-24: never deepen a hole to fill a hole — hosts at/below their pair floor are closed as
+            # steal victims (s2 raided s1's only side while s1 starved: pure churn, zero new compute). Surplus hosts share.
+            _raid_closed = set(_below_floor_hosts(held, {n_: (HB.get(n_) or {}).get("cap") or 4 for n_ in HB}))
+            _pick_owner = {s_: o_ for s_, o_ in (owner or {}).items() if o_ not in _raid_closed}
+            if _raid_closed:
+                log.setdefault("steal30_raid_closed", []).append(f"{h['name']}-sees-closed:{sorted(_raid_closed)}")
             for _try in range(12):
                 if B.get("new_launched", 0) >= args.max_launch or B.get("proj_mem", 0) < B["est_pair"] or B["cpu"] >= cfg.get("cpu_target_pct", 90) or not _disk_admit_ok(s):
                     break
                 _free = B["cap"] - len(held[h["name"]])
-                sym, _victim = _steal30_pick(h["name"], _free, B.get("new_launched", 0) > 0 and _try == 0, owner, [x for x in _need if venue_of(x) in h["venues"]], _order_all, _run_syms, _tried)
+                sym, _victim = _steal30_pick(h["name"], _free, B.get("new_launched", 0) > 0 and _try == 0, _pick_owner, [x for x in _need if venue_of(x) in h["venues"]], _order_all, _run_syms, _tried)
                 if not sym:
                     break
                 _tried.add(sym)
