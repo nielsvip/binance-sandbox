@@ -5,6 +5,40 @@ WL_PATH = os.path.join(BASE, "data", "vpn_whitelist.json")
 STATE_PATH = os.path.join(BASE, "data", "vpn_rotate_state.json")
 LOG_PATH = os.path.expanduser("~/logs/vpn_rotate.log")
 BAN_FILES = [os.path.join(BASE, "data", "ez_klines_ban_state.json"), os.path.join(BASE, "data", "klines_canonical_ban.json")]
+BAN_LOG_FILES = [os.path.join(os.path.expanduser("~"), "logs", n) for n in
+                 ("ez_market_data.log", "ez_manage_ang.log", "ez_manage_men.log",
+                  "ez_manage_inf.log", "ez_manage_fin.log", "ez_manage_flz.log")]
+BAN_LOG_PATTERNS = ("-1003", "banned until", "Too many requests", " 429 ", "429 Too Many Requests")
+
+
+def scan_logs_for_ban():
+    """USER 2026-10-24: engine-side ban evidence -> tripwire file the watcher
+    honors (rc=5). No locked-file edits needed: anyone logging a throttle
+    trips a rotation. Fail-closed on read errors; patterns avoid qty matches."""
+    try:
+        now = time.time()
+        for path in BAN_LOG_FILES:
+            try:
+                if now - os.path.getmtime(path) > 180:
+                    continue
+                with open(path, "rb") as f:
+                    f.seek(0, os.SEEK_END)
+                    f.seek(max(0, f.tell() - 65536))
+                    tail = f.read().decode("utf8", "ignore")
+            except Exception:
+                continue
+            for ln in tail.splitlines()[-300:]:
+                if any(p in ln for p in BAN_LOG_PATTERNS):
+                    try:
+                        open(BAN_FILES[0], "w").write(json.dumps(
+                            {"ban_until_ms": (now + 600) * 1000.0,
+                             "source": os.path.basename(path)}))
+                    except Exception:
+                        pass
+                    return True
+    except Exception:
+        pass
+    return False
 FAPI = "https://fapi.binance.com"
 COOLDOWN_S = 120
 FAIL_SKIP_S = 300
@@ -343,6 +377,10 @@ def cmd_watch(interval=15):
     n = 0
     while True:
         try:
+            try:
+                scan_logs_for_ban()
+            except Exception:
+                pass
             rc = cmd_check_quiet()
             n += 1
             if n % 120 == 0:

@@ -34,3 +34,9 @@
 - DC D-edge measured: prevs never all-zero on PUMP — non-issue, dropped.
 - Monitor triage (Mac 2h): CIRCUIT_BREAKER bypasses = breaker auto-disable vs vec-dictated (FIXED via exemption); EMA_BLANKET (vec gate exists — edge conformance); POLICY_NON_VECTOR_EXIT_DISABLED (207, working: live exits vec never ordered stay refused); EXIT_LH_LL (154, working: vec exits never re-gated).
 - PUMP forensics: vec KZONE/RALLY trips open on GFTF-dead bars via reentry-bypass lanes wearing block labels (fixed via honesty guard); live rally predicate matches vec — gaps are history-divergence, self-resolving as opens converge.
+
+## 2026-10-24 08:3xZ — lane-verification round (Mac probes, S1 sweep untouched at 97/330)
+- Tradier GOLDEN lane verified structurally: scalar replay fires 8x on TRGP window but live opens 0; root-caused to (a) my replay harness passing None through __getattr__ (vacuous consensus) and (b) lane correctly silent where vec is also silent (TRGP/SOLUSDC_SHORT 0-0, no golden gap on current engine). Positive proof awaits a vec-GOLDEN window from the sweep. Env-gated V8_GOLDEN_DIAG kept (B12 precedent).
+- Live rally == vec rally predicate (live_rally_filters == RallyFilters): RALLY gaps are position-history divergence, self-resolving as opens converge.
+- "B" bucket decoded (EMA20SLOPE 40 + SMA200DIST 19 + MOM5 12 — all have live paths); family() whitelist fix synced set-safe.
+- Mac PUMP probe (EPQ lane positive proof) running; result pending.
