@@ -44360,6 +44360,11 @@ class TradierTradeManager:
         # global. (The 2026-10-22 global-True bypass is reverted: it carried
         # no LOCKED_FILES entry and standing decisions belong to backtests.)
         _sw_side = position_side or side
+        # USER 2026-10-23 doctrine intact: per-sym set decides; venue default
+        # False (config_tradier) vetoes unless a board carries True. NOTE
+        # 2026-10-24 parity: templates carry NO swing row, so no board CAN carry
+        # it — every native swing OPEN currently dies here while the vector
+        # models entries (QuickConfig default True). See parity register.
         try:
             _sw_on = _cfg(
                 "ENABLE_TR_SWING_ENTRIES", False, account_key, symbol, _sw_side

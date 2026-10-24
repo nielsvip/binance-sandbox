@@ -37174,19 +37174,53 @@ class MultiAccountTradeManager:
         if _vl_tag == "VEC_LAST_OVERRIDE":
             logger.warning(f"🧭 [VEC_LAST_OVERRIDE] {position_key} {action} reason={(reason or '')[:80]} — vec-dictated, native gates bypassed [{_vl_detail}] (USER 2026-10-24: fix these paths)")
             try:
-                _vlp = Path(getattr(config, "BASE_PATH", ".")) / "data" / "vector_disparity_queue.jsonl"
-                _vlp.parent.mkdir(parents=True, exist_ok=True)
-                with open(str(_vlp), "a") as _vlf:
-                    _vlf.write(json.dumps({"ts": time.time(), "venue": "crypto", "position_key": position_key, "action": action, "reason": str(reason)[:160], "gates": _vl_detail.split("+")}) + "\n")
+                if not os.environ.get("PYTEST_CURRENT_TEST"):
+                    _vlp = Path(getattr(config, "BASE_PATH", ".")) / "data" / "vector_disparity_queue.jsonl"
+                    _vlp.parent.mkdir(parents=True, exist_ok=True)
+                    with open(str(_vlp), "a") as _vlf:
+                        _vlf.write(json.dumps({"ts": time.time(), "venue": "crypto", "kind": "VEC_LAST_OVERRIDE", "position_key": position_key, "action": action, "reason": str(reason)[:160], "gates": _vl_detail.split("+"), "vec_path": str(reason)[:80], "fix": "wire live to emit this vec path through its own producer"}) + "\n")
+                    from live_twins.vector_enforce import _queue_retrace as _qr_last
+                    _qr_last(f"VEC_LAST_OVERRIDE:{_vl_detail[:40]}", action, position_key, reason)
             except Exception:
                 pass
         elif _vl_tag == "VEC_LAST_REFUSE":
             logger.warning(f"🛑 [VEC_LAST_REFUSE] {position_key} {action} reason={(reason or '')[:80]} — {_vl_detail} (USER 2026-10-24 VEC-LAST: refused last, native allowed it)")
             try:
+                if not os.environ.get("PYTEST_CURRENT_TEST"):
+                    _vlp = Path(getattr(config, "BASE_PATH", ".")) / "data" / "vector_disparity_queue.jsonl"
+                    _vlp.parent.mkdir(parents=True, exist_ok=True)
+                    with open(str(_vlp), "a") as _vlf:
+                        _vlf.write(json.dumps({"ts": time.time(), "venue": "crypto", "kind": "VEC_LAST_REFUSE", "position_key": position_key, "action": action, "reason": str(reason)[:160], "gates": [_vl_detail], "vec_path": str(reason)[:80], "fix": "native allowed what the vector refuses — gate the native producer on this vec path"}) + "\n")
+                    _parity_breach_record(position_key, action, reason, _vl_detail)
+            except Exception:
+                pass
+            try:
                 _peg.release_claim(f"{(position_key or f'{account_key}:{symbol}_{position_side}')}|INC")
             except Exception:
                 pass
             return _vl_detail
+        else:
+            try:
+                if not os.environ.get("PYTEST_CURRENT_TEST") and not _vl_dictated:
+                    from live_twins import vec_driven as _vdf_last
+                    _ss_last = position_key.split(":", 1)[1] if ":" in str(position_key) else str(position_key)
+                    _st_last = _vdf_last.load_state(_vdf_last.vec_live_dir(getattr(config, "BASE_PATH", ".")) / "state", _ss_last)
+                    _tgt_last = _vdf_last.normalize_target(((_st_last or {}).get("target_state")))
+                    _age_last = -1.0
+                    try:
+                        _age_last = time.time() - (float((_st_last or {}).get("bar_ts") or 0.0) + 900.0)
+                    except Exception:
+                        _age_last = -1.0
+                    _au_last = str(action or "").upper()
+                    _dis_last = _tgt_last is not None and 0.0 <= _age_last <= 1800.0 and ((_tgt_last is False and _au_last in ("OPEN", "AUGMENT")) or (_tgt_last is True and _au_last == "CLOSE"))
+                    if _dis_last:
+                        logger.warning(f"🧭 [VEC_STATE_DISAGREE] {position_key} {action} reason={(reason or '')[:80]} — vector target={(_st_last or {}).get('target_state')} (USER 2026-10-24: vector defines open/flat; fix live to this path)")
+                        _vlp = Path(getattr(config, "BASE_PATH", ".")) / "data" / "vector_disparity_queue.jsonl"
+                        _vlp.parent.mkdir(parents=True, exist_ok=True)
+                        with open(str(_vlp), "a") as _vlf:
+                            _vlf.write(json.dumps({"ts": time.time(), "venue": "crypto", "kind": "VEC_STATE_DISAGREE", "position_key": position_key, "action": action, "reason": str(reason)[:160], "vec_target": str(((_st_last or {}).get("target_state"))), "vec_bar_ts": (_st_last or {}).get("bar_ts"), "fix": "wire live to emit this vec path through its own producer"}) + "\n")
+            except Exception:
+                pass
         shadow_start_amt = original_positionAmt
         i = await ii(self, symbol)
         keep_lock_active = False
