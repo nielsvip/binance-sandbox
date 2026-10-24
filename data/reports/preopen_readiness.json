@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-24T09:40:05Z",
+ "generated_utc": "2026-10-24T10:00:02Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
@@ -7,6 +7,7 @@
  "failed_critical": [
   "boards_recomputed",
   "defaults_chain_completed",
+  "apply_report_written",
   "live_set_matches_selection"
  ],
  "checks": [
@@ -15,7 +16,7 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "filled_today": 255,
+    "filled_today": 253,
     "filled_before_open": 0
    },
    "detail": "no board was filled before the open"
@@ -38,23 +39,23 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "built_at": "2026-10-24T08:51:25.678145+00:00",
+    "built_at": "2026-10-24T09:51:12.578078+00:00",
     "n": 523,
-    "age_at_open_s": 2920
+    "age_at_open_s": 530
    },
-   "detail": "built 2026-10-24T08:51:25.678145+00:00 n=523"
+   "detail": "built 2026-10-24T09:51:12.578078+00:00 n=523"
   },
   {
    "name": "apply_report_written",
-   "ok": true,
+   "ok": false,
    "critical": true,
    "measured": {
-    "reports_today": 4,
-    "newest_report": "persym_golive_20261024_refresh_0852.json",
-    "newest_report_at": "2026-10-24T09:05:15Z",
+    "reports_today": 5,
+    "newest_report": "persym_golive_20261024_refresh_0952.json",
+    "newest_report_at": "2026-10-24T10:00:22Z",
     "tiers_at": "2026-10-24T09:07:48Z"
    },
-   "detail": "persym_golive_20261024_refresh_0852.json at 2026-10-24T09:05:15Z, tiers 2026-10-24T09:07:48Z"
+   "detail": "persym_golive_20261024_refresh_0952.json at 2026-10-24T10:00:22Z, tiers 2026-10-24T09:07:48Z \u2014 the apply never finished (no report / stale tiers): the live set is PARTIAL"
   },
   {
    "name": "live_set_matches_selection",
@@ -208,13 +209,16 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "symbols": 201,
-    "stale_over_90min": 0,
-    "stale_pct": 0.0,
-    "median_age_min": 55.1,
-    "sample": []
+    "symbols": 330,
+    "stale_over_90min": 2,
+    "stale_pct": 0.6,
+    "median_age_min": 15.0,
+    "sample": [
+     "DUSKUSDT",
+     "ONEUSDT"
+    ]
    },
-   "detail": "0/201 symbols past the live 90-min entry gate (0.0%)"
+   "detail": "2/330 symbols past the live 90-min entry gate (0.6%)"
   },
   {
    "name": "s1_sets_synced",
