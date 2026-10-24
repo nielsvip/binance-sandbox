@@ -12,6 +12,12 @@ and the per-minute brake counts only exchange-accepted outcomes ("SUCCESS" in
 result — the same acceptance token the WH_TRACE logs use). Hourly entry/total
 guards stay on the decisions file (decision-storm detection, unchanged).
 Backtest/sim fills never land here (callers gate on V8_SIM_TS).
+
+Why not count data/history/ instead: crypto history records AUGMENT/REDUCE fills
+only — OPEN/CLOSE are never written there (census 2026-10-24: 0 across all five
+crypto accounts; the 05:09 halt burst was OPEN attempts). Stocks history IS
+complete (OPEN/CLOSE/REENTRY/AUGMENT). This ledger is the only per-account source
+covering every action with its outcome, on both venues.
 """
 import json
 import os

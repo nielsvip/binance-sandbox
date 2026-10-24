@@ -1,9 +1,37 @@
 {
-  "inf:BTCDOMUSDT_LONG": {
-    "orderId": "2000001537974793",
-    "stopPrice": 5566.5,
-    "entry_sig": "2026-10-24 16:29:01.412000+00:00",
-    "symbol": "BTCDOMUSDT",
+  "fin:MAGICUSDT_SHORT": {
+    "orderId": "3000002271782315",
+    "stopPrice": 0.08817,
+    "entry_sig": "2026-10-24 16:06:51.714000+00:00",
+    "symbol": "MAGICUSDT",
+    "side": "SHORT"
+  },
+  "fin:FLUXUSDT_SHORT": {
+    "orderId": "3000002271897863",
+    "stopPrice": 0.06655,
+    "entry_sig": "2026-10-24 16:57:19.776000+00:00",
+    "symbol": "FLUXUSDT",
+    "side": "SHORT"
+  },
+  "fin:ZKUSDT_SHORT": {
+    "orderId": "3000002271897973",
+    "stopPrice": 0.012997,
+    "entry_sig": "2026-10-24 16:57:43.242000+00:00",
+    "symbol": "ZKUSDT",
+    "side": "SHORT"
+  },
+  "fin:XMRUSDT_LONG": {
+    "orderId": "3000002271900559",
+    "stopPrice": 562.18,
+    "entry_sig": "2026-10-24 15:59:44.239000+00:00",
+    "symbol": "XMRUSDT",
     "side": "LONG"
+  },
+  "fin:STRKUSDT_SHORT": {
+    "orderId": "3000002271901776",
+    "stopPrice": 0.04855,
+    "entry_sig": "2026-10-24 17:00:05.560000+00:00",
+    "symbol": "STRKUSDT",
+    "side": "SHORT"
   }
 }
