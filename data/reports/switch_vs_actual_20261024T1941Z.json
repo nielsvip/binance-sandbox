@@ -1,0 +1,37 @@
+{
+ "window_from": "10-24 18:37",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 207,
+  "status_OK": 143,
+  "EXTRA": 2
+ },
+ "rows": [
+  {
+   "acct": "inf",
+   "sym_side": "BTCDOMUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-24 19:25",
+   "actual": "REDUCE",
+   "actual_reason": "FIXED_STOP_LONG_px5618.088973_lvl5639.865000_g-0.64",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "inf",
+   "sym_side": "BTCDOMUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-24 19:28",
+   "actual": "CLOSE",
+   "actual_reason": "FIXED_STOP_LONG_px5618.088973_lvl5639.865000_g-0.64",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  }
+ ]
+}
