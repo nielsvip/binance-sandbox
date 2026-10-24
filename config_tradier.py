@@ -3894,6 +3894,13 @@ class TradierConfig:
     ENABLE_TR_REENTRY_PERIODIC: bool = False
     UVE_LIVE_ENABLED: bool = False  # PIN 2026-10-21: was absent (fallback False); 5m UVE leg stays off. Per-sym read kept.
     VECTOR_ENFORCE_ENABLED: bool = True  # USER 2026-10-21: absolute backstopper on stocks — vector_enforce.check gates _execute_now_inner + queue_trade_action (entries/exits only at 15m bar change; exits only on cross/board/stop; violating families refused+disabled+flagged). Kill: False.
+    VEC_OVERRIDE_ENABLED: bool = True  # USER 2026-10-24: VEC_LAST_OVERRIDE master (stocks) — False never bypasses native gates for vec orders. Default True = current behavior, inert.
+    VEC_OVERRIDE_BYPASS_CIRCUIT_BREAKER: bool = True  # USER 2026-10-24: vec orders bypass the breaker (stocks). False lets it veto vec orders. Default True = current behavior, inert.
+    VEC_DISAGREE_KILL_ENABLED: bool = False  # USER 2026-10-24: stocks disagree is evidence-only today — True refuses the disagreeing order. Default False = current behavior, inert.
+    VEC_DISAGREE_FLAT_OPEN_BLOCK: bool = True  # USER 2026-10-24 zero tolerance (stocks): native OPEN/AUGMENT refused while the forward vec target is flat (never CLOSEs/stops/hedges; vec-dictated never reach it). Kill: False restores evidence-only.
+    VEC_PENDING_TTL_S: float = 300.0  # USER 2026-10-24: VEC_PENDING_CONFIRM hold window in seconds, stocks (shared live_twins/vec_pending.WINDOW_S). Default 300.0 = current window, inert.
+    VEC_PENDING_DEFER_NATIVE_ENABLED: bool = True  # USER 2026-10-24: hold stocks native fires for vec confirm. False restores the immediate native verdict. Default True = current behavior, inert.
+    VEC_CONFIRM_REQUIRE_BOARD_ENABLED: bool = True  # USER 2026-10-24: stocks CONFIRM RELEASE consumes held natives on vec dictates (today's rule). False also releases on any vec-ordered reason. Default True = current behavior, inert.
     RULE_B_W_TREND_4H_PULLBACK_ENABLED: bool = False
     RULE_NAME_TAGGING_ENABLED: bool = True
     RZ_BASELINE_BOUNCE_SHORT_ENABLED: bool = False

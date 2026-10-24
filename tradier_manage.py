@@ -49335,7 +49335,18 @@ class TradierTradeManager:
         # own orders keep today's verdict. Nothing executes while held.) ───
         try:
             from live_twins import vec_pending as _vp_w_tr
-            if _vp_w_tr.holdable(_res) and not _tr_parity_vec_order(reason):
+            from vec_decisions import vec_parity_gates as _vpg_pend_tr
+            try:
+                _vpg_defer_tr = bool(_cfg_auto("VEC_PENDING_DEFER_NATIVE_ENABLED", True))
+            except Exception:
+                _vpg_defer_tr = True
+            try:
+                _vpg_ttl_tr = _vpg_pend_tr.pending_ttl_s(_cfg_auto("VEC_PENDING_TTL_S", 300.0))
+                if str(os.environ.get("VEC_PENDING_CONFIRM_S") or "") != str(_vpg_ttl_tr):
+                    os.environ["VEC_PENDING_CONFIRM_S"] = str(_vpg_ttl_tr)
+            except Exception:
+                pass
+            if _vpg_defer_tr and _vp_w_tr.holdable(_res) and not _tr_parity_vec_order(reason):
                 _vp_auth_tr = False
                 try:
                     _vp_auth_tr = _vp_w_tr.lane_watching(_cfg_auto("BASE_PATH", "/users/niels/documents/binance"), position_key)
@@ -51537,6 +51548,13 @@ class TradierTradeManager:
             except Exception as _vl_e_tr:
                 _vl_ok_tr, _vl_tag_tr, _vl_detail_tr = True, "VEC_LAST_CLEAN", ""
                 logger.debug(f"[VEC_LAST] {position_key}: decide error (fail-open): {_vl_e_tr}")
+            try:
+                from vec_decisions import vec_parity_gates as _vpg_ovr_tr
+                _vpg_ovr_on_tr = bool(_cfg_auto("VEC_OVERRIDE_ENABLED", True))
+                _vpg_brk_on_tr = bool(_cfg_auto("VEC_OVERRIDE_BYPASS_CIRCUIT_BREAKER", True))
+                _vl_tag_tr, _vl_detail_tr, _vpg_ovr_keep_tr = _vpg_ovr_tr.override_verdict(_vl_tag_tr, _vl_detail_tr, _vec_last_refuse, _vpg_ovr_on_tr, _vpg_brk_on_tr)
+            except Exception:
+                pass
             if _vl_tag_tr == "VEC_LAST_OVERRIDE":
                 logger.warning(f"🧭 [VEC_LAST_OVERRIDE] {position_key} {action} reason={(reason or '')[:80]} — vec-dictated, native gates bypassed [{_vl_detail_tr}] (USER 2026-10-24: fix these paths)")
                 try:
@@ -51564,9 +51582,50 @@ class TradierTradeManager:
                 if lock_acquired and self.redis_manager:
                     await self.redis_manager.delete(exec_lock_key)
                 return _vl_detail_tr
+            if not _vl_dictated_tr:
+                try:
+                    from live_twins import vec_driven as _vdf_dis_tr
+                    from vec_decisions import vec_parity_gates as _vpg_dis_tr
+                    _ss_dis_tr = position_key.split(":", 1)[1] if ":" in str(position_key) else str(position_key)
+                    _st_dis_tr = _vdf_dis_tr.load_state(_vdf_dis_tr.vec_live_dir(_cfg_auto("BASE_PATH", "/users/niels/documents/binance")) / "state", _ss_dis_tr)
+                    _tgt_dis_tr = _vdf_dis_tr.normalize_target(((_st_dis_tr or {}).get("target_state")))
+                    _age_dis_tr = -1.0
+                    try:
+                        _age_dis_tr = time.time() - (float((_st_dis_tr or {}).get("bar_ts") or 0.0) + 900.0)
+                    except Exception:
+                        _age_dis_tr = -1.0
+                    _au_dis_tr = str(action or "").upper()
+                    _fresh_dis_tr = _tgt_dis_tr is not None and 0.0 <= _age_dis_tr <= 1800.0
+                    _any_dis_tr = bool(_fresh_dis_tr and ((_tgt_dis_tr is False and _au_dis_tr in ("OPEN", "AUGMENT")) or (_tgt_dis_tr is True and _au_dis_tr == "CLOSE")))
+                    if _any_dis_tr and not os.environ.get("PYTEST_CURRENT_TEST"):
+                        try:
+                            _vlp_dis_tr = Path(_cfg_auto("BASE_PATH", "/users/niels/documents/binance")) / "data" / "vector_disparity_queue.jsonl"
+                            _vlp_dis_tr.parent.mkdir(parents=True, exist_ok=True)
+                            with open(str(_vlp_dis_tr), "a") as _vlf_dis_tr:
+                                _vlf_dis_tr.write(json.dumps({"ts": time.time(), "venue": "stocks", "kind": "VEC_STATE_DISAGREE", "position_key": position_key, "action": action, "reason": str(reason)[:160], "vec_target": str(((_st_dis_tr or {}).get("target_state"))), "vec_bar_ts": (_st_dis_tr or {}).get("bar_ts"), "fix": "wire live to emit this vec path through its own producer"}) + "\n")
+                        except Exception:
+                            pass
+                    _vpg_blk_tr = bool(_cfg_auto("VEC_DISAGREE_FLAT_OPEN_BLOCK", True))
+                    if _vpg_dis_tr.flat_open_blocked(action, reason, bool(_fresh_dis_tr and _tgt_dis_tr is False), _vpg_blk_tr):
+                        if lock_acquired and self.redis_manager:
+                            await self.redis_manager.delete(exec_lock_key)
+                        return "BLOCKED_VEC_FLAT_OPEN"
+                    _vpg_kill_tr = bool(_cfg_auto("VEC_DISAGREE_KILL_ENABLED", False))
+                    if _vpg_dis_tr.disagree_refuse(_any_dis_tr, _vpg_kill_tr):
+                        if lock_acquired and self.redis_manager:
+                            await self.redis_manager.delete(exec_lock_key)
+                        return "BLOCKED_VEC_DISAGREE"
+                except Exception:
+                    pass
             # ─── VEC CONFIRM RELEASE (USER 2026-10-24 pending-confirm: a vec dictate passing here consumes the held
             # native intent it confirms — the vec order itself executes, the held native is dropped, never doubled.) ───
-            if _vl_dictated_tr:
+            try:
+                from vec_decisions import vec_parity_gates as _vpg_cfm_tr
+                _vpg_cfm_board_tr = bool(_cfg_auto("VEC_CONFIRM_REQUIRE_BOARD_ENABLED", True))
+                _vpg_cfm_ok_tr = _vpg_cfm_tr.confirm_release_ok(bool(_vl_dictated_tr), bool(_tr_parity_vec_order(reason)), _vpg_cfm_board_tr)
+            except Exception:
+                _vpg_cfm_ok_tr = bool(_vl_dictated_tr)
+            if _vpg_cfm_ok_tr:
                 try:
                     from live_twins import vec_pending as _vp_last_tr
                     _vp_rel_tr = _vp_last_tr.release_for(position_key, _vp_last_tr.direction_of(action))

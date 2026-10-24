@@ -136,3 +136,54 @@ def test_template_rows_crypto():
                 assert len(hits) >= 2, f"{fn}:{tab}:{sw}"
         finally:
             wb.close()
+
+
+STOCKS_SWITCHES = {
+    "VEC_OVERRIDE_ENABLED": True,
+    "VEC_OVERRIDE_BYPASS_CIRCUIT_BREAKER": True,
+    "VEC_DISAGREE_KILL_ENABLED": False,
+    "VEC_DISAGREE_FLAT_OPEN_BLOCK": True,
+    "VEC_PENDING_TTL_S": 300.0,
+    "VEC_PENDING_DEFER_NATIVE_ENABLED": True,
+    "VEC_CONFIRM_REQUIRE_BOARD_ENABLED": True,
+}
+
+CRYPTO_ONLY = (
+    "VEC_REFUSE_NON_VECTOR_EXIT_ENABLED",
+    "VEC_REFUSE_QUICK_REDUCE_ENABLED",
+    "VEC_HOLD_EXPIRY_FLATTEN_ENABLED",
+)
+
+
+def test_tradier_config_defaults_and_venue_scope():
+    import config_tradier as CT
+
+    for sw, default in STOCKS_SWITCHES.items():
+        assert getattr(CT.TradierConfig, sw) == default, sw
+    for sw in CRYPTO_ONLY:
+        assert not hasattr(CT.TradierConfig, sw), sw
+
+
+def test_tradier_live_gates_wired():
+    src = (ROOT / "tradier_manage.py").read_text()
+    assert "vec_parity_gates" in src
+    for sw in STOCKS_SWITCHES:
+        assert f'"{sw}"' in src, sw
+
+
+def test_template_rows_stocks():
+    for fn in ("TEMPLATE_STOCKS_LONG.xlsx", "TEMPLATE_STOCKS_SHORT.xlsx"):
+        wb = openpyxl.load_workbook(
+            ROOT / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM" / fn, read_only=True
+        )
+        try:
+            for sw in STOCKS_SWITCHES:
+                ws = wb[TABS[sw]]
+                hits = [
+                    r[0].value
+                    for r in ws.iter_rows(min_row=3, max_col=1)
+                    if r[0].value == sw
+                ]
+                assert len(hits) >= 2, f"{fn}:{TABS[sw]}:{sw}"
+        finally:
+            wb.close()
