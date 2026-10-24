@@ -304,6 +304,26 @@ def test_close_carries_basis_provenance():
     assert row["basis"][0]["reason"] == "WT_15M_BOUNCE_OPEN_S"
 
 
+def test_stale_close_provenance_shows_fresh_lots_not_zombies():
+    now = datetime.now(timezone.utc)
+    old = (now - timedelta(days=30)).isoformat()
+    new = (now - timedelta(days=1)).isoformat()
+    zt = _ev(old, "ZMB", "SHORT", "OPEN", 100.0, 112.0)
+    zt["reason"] = "DC_BREAK_LOW_15M"
+    fr = _ev(new, "ZMB", "SHORT", "OPEN", 12.0, 101.0)
+    fr["reason"] = "WT_15M_BOUNCE_OPEN_S"
+    cl = _ev(now.isoformat(), "ZMB", "SHORT", "CLOSE", 11.0, 99.0)
+    out, s = srv.realized_walk([zt, fr, cl], stale_basis_days=7, use_kline_px=True)
+    row = [e for e in out if e.get("action") == "CLOSE"][0]
+    assert row.get("stale_excluded") is True
+    assert row["rpnl"] == round(11.0 * (101.0 - 99.0), 2)
+    assert row["basis_n"] == 1
+    assert row["basis"][0]["px"] == 101.0
+    assert row["basis"][0]["reason"] == "WT_15M_BOUNCE_OPEN_S"
+    assert all("DC_BREAK" not in (b.get("reason") or "") for b in row["basis"])
+    assert s["pnl_total"] == 0.0
+
+
 def test_crosscheck_direction_mapping():
     import importlib.util
 
