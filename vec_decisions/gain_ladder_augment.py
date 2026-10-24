@@ -19,9 +19,12 @@ LIVE SOURCE:
 - ez_manage.py:31736 — AUGMENTATION_COOLDOWN_SECONDS map applies to ALL augments at the
   choke point; vector converts seconds -> bars for the sim base timeframe.
 
-NOT mirrored (no functional live read exists — do not fake): AUGMENT_FALLBACK_GAIN_PCT,
-AUGMENT_BOUNCE_MIN_GAIN_PCT, AUGMENT_BREAKOUT_MIN_GAIN_PCT (tradier_manage.py:32293 is a
-vigilance stub `_=_aug`, not logic).
+NOT mirrored in the ladder: AUGMENT_FALLBACK_GAIN_PCT (giveback-reduce lives in
+twin_reentry_staged + the v12 fallback hook, not here).
+Typed tiers (USER 2026-10-24): the caller passes the bar's source-typed tier as
+`tier_override` (bounce bars -> AUGMENT_BOUNCE_MIN_GAIN_PCT, pyramid/breakout bars ->
+AUGMENT_BREAKOUT_MIN_GAIN_PCT, untyped -> generic) so swept thresholds bind on the
+main obligatory path instead of only on the rarely-reached signal veto.
 """
 from __future__ import annotations
 
@@ -67,14 +70,21 @@ def cooldown_bars(config, bar_minutes: float) -> int:
     return max(bars, 1)
 
 
-def gain_ladder_fire(config, is_long: bool, px: float, last_aug_px: float, raw_gain_pct: float, max_gain_pct: float):
+def gain_ladder_fire(config, is_long: bool, px: float, last_aug_px: float, raw_gain_pct: float, max_gain_pct: float, tier_override=None):
     """PURE per-bar augment decision. Returns (fire: bool, reason: str).
 
     Caller enforces cooldown (cooldown_bars) and any per-position cap; this predicate
     is the ladder itself: obligatory tier when gain since the last add reaches
     AUGMENT_MIN_GAIN_PCT, or the pullback dip after a >=min_gain peak.
+    `tier_override` (USER 2026-10-24): the bar's source-typed tier replaces the
+    generic tier for BOTH legs; None (or untyped) keeps the generic tier.
     """
     enabled, min_gain, pb_enabled, pb_reversal_min = ladder_params(config)
+    if tier_override is not None:
+        try:
+            min_gain = float(tier_override)
+        except (TypeError, ValueError):
+            pass
     if not enabled:
         return False, ""
     if not profit_gate_ok(config, raw_gain_pct):

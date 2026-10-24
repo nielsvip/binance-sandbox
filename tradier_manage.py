@@ -22965,9 +22965,10 @@ async def process_position(
                             _b12dbg = globals().setdefault("_B12_DIAG", {"n": 0})
                             _b12dbg["n"] += 1
                             if _b12dbg["n"] <= 3:
-                                _wtkeys = sorted(k for k in (_b12_ind or {}).keys() if k.startswith("wt"))
+                                _rawkeys = set((indicators_raw or {}).keys())
+                                _ikeys = set((i or {}).keys()) if isinstance(i, dict) else set()
                                 print(
-                                    f"V8_LOG B12_DIAG n={_b12dbg['n']} nkeys={len((_b12_ind or {}).keys())} wtkeys={_wtkeys} px={current_price}",
+                                    f"V8_LOG B12_DIAG n={_b12dbg['n']} raw_vel1h={'wt_velocity_1h' in _rawkeys} i_vel1h={'wt_velocity_1h' in _ikeys} raw_wt1h={'wt1_1h' in _rawkeys} i_wt1h={'wt1_1h' in _ikeys} px={current_price}",
                                     flush=True,
                                 )
 
@@ -22985,7 +22986,7 @@ async def process_position(
                             _b12_wtvel = (_b12_ind or {}).get("wt_velocity_15m")
                         if _b12_wtvel is None:
                             _b12_wtvel = (_b12_ind or {}).get("wt_velocity_1h")
-                        if _b12_core.b12_fires_scalar(
+                        _b12_fire = _b12_core.b12_fires_scalar(
                             _b12_wt1_3m if _b12_wt1_3m is not None else _b12f("wt1_15m"),
                             _b12_wt2_3m if _b12_wt2_3m is not None else _b12f("wt2_15m"),
                             _b12f("wt1_15m"),
@@ -22994,7 +22995,16 @@ async def process_position(
                             _b12f("wt2_1h"),
                             _b12_wtvel if _b12_wtvel is not None else 0.0,
                             bool(is_long),
-                        ):
+                        )
+                        if os.environ.get("V8_B12_DIAG"):
+                            _b12dbg2 = globals().setdefault("_B12_DIAG2", {"n": 0})
+                            _b12dbg2["n"] += 1
+                            if _b12dbg2["n"] <= 5 or _b12_fire:
+                                print(
+                                    f"V8_LOG B12_FIRE n={_b12dbg2['n']} fire={_b12_fire} w15={_b12f('wt1_15m'):.1f}/{_b12f('wt2_15m'):.1f} w1h={_b12f('wt1_1h'):.1f}/{_b12f('wt2_1h'):.1f} vel={_b12_wtvel} long={bool(is_long)}",
+                                    flush=True,
+                                )
+                        if _b12_fire:
                             _base_qty = (
                                 float(_cfg_auto("START_POSITION_SIZE", 600))
                                 / current_price

@@ -71,8 +71,8 @@ def _install(F):
     import vec_decisions.aug_gain_gate as AG
     o_gl, o_ug, o_ag, o_al = GL.gain_ladder_fire, UG.uagain_gate_pass, AG.passes, V._augment_allowed
 
-    def gl(config, is_long, px, last_aug_px, raw, mx):
-        r = o_gl(config, is_long, px, last_aug_px, raw, mx)
+    def gl(config, is_long, px, last_aug_px, raw, mx, *a, **k):
+        r = o_gl(config, is_long, px, last_aug_px, raw, mx, *a, **k)
         F.c["gl_calls"] += 1
         mg = GL.effective_min_gain(config)
         F.min_gain = mg

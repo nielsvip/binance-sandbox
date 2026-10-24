@@ -131,12 +131,21 @@ def decide(get: Get, is_long: bool, px: float, entry_px: float, last_aug_px: flo
         return False, "", "", 0.0
     cfg = _Cfg(get)
     ref = _f(last_aug_px, 0.0) or _f(entry_px, 0.0)
-    fire, reason = _gla.gain_ladder_fire(cfg, is_long, px, ref, gain_pct, max_gain_pct)
+    # USER 2026-10-24: typed ladder tier, same as the vector loop — concurrent
+    # pyramid/bounce signals type this bar's ladder tier (untyped bars keep generic).
+    _py = pyramid_sig(get, m, is_long)
+    _bo = (not _py) and bounce_sig(get, m, is_long, px, k_prev)
+    try:
+        from vec_decisions.live_unw_gates import augment_tier_min_gain as _ac_tier
+        from vec_decisions.uagain_gate import effective_min_gain as _ac_eff
+        _tier = _ac_tier(get, "PYRAMID_AUG" if _py else ("BOUNCE_AUG" if _bo else "UNTYPED_AUG"), _ac_eff(cfg))
+    except Exception:
+        _tier = None
+    fire, reason = _gla.gain_ladder_fire(cfg, is_long, px, ref, gain_pct, max_gain_pct, _tier)
     source, mult = ("LADDER", VEC_AUGMENT_MULT) if fire else ("", 0.0)
     if not fire:
-        py = pyramid_sig(get, m, is_long)
-        bo = (not py) and bounce_sig(get, m, is_long, px, k_prev)
-        if (py or bo) and _uag.uagain_gate_pass(cfg, is_long, px, ref, gain_pct, max_gain_pct, None):
+        py, bo = _py, _bo
+        if (py or bo) and _uag.uagain_gate_pass(cfg, is_long, px, ref, gain_pct, max_gain_pct, _tier):
             fire = True
             source = "PYRAMID" if py else "BOUNCE"
             mult = _f(get("PYRAMID_SIZE_MULT", 0.5), 0.5) if py else VEC_AUGMENT_MULT

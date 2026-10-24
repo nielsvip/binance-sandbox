@@ -21265,6 +21265,25 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         # augments alongside the legacy bounce/pyramid signals. AUGMENTATION_COOLDOWN_SECONDS
         # applies to ALL augment sources at this choke point (live cooldown map,
         # ez_manage.py:31736) — also kills the per-bar pyramid compounding bug.
+        # USER 2026-10-24: the ladder tiers by concurrent source type — bounce-signal bars
+        # tier off AUGMENT_BOUNCE_MIN_GAIN_PCT, pyramid bars off AUGMENT_BREAKOUT_MIN_GAIN_PCT,
+        # untyped bars off the generic tier (dispatcher returns generic for untyped).
+        _gl_tier = None
+        try:
+            import vec_decisions.live_unw_gates as _lug_gl
+            _gl_tier = _lug_gl.augment_tier_min_gain(
+                lambda k, d=None: getattr(cfg, k, d),
+                (
+                    "PYRAMID_AUG"
+                    if bool(_aug_pyramid_sig[i])
+                    else (
+                        "BOUNCE_AUG" if bool(_aug_bounce_sig[i]) else "UNTYPED_AUG"
+                    )
+                ),
+                vec_decisions.uagain_gate.effective_min_gain(cfg),
+            )
+        except Exception:
+            _gl_tier = None
         _gl_fire, _gl_reason = vec_decisions.gain_ladder_augment.gain_ladder_fire(
             cfg,
             is_long,
@@ -21273,6 +21292,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             or float(pos.get("entry_price", pos["avg_price"])),
             live_pnl_pct,
             float(pos.get("peak_pnl_pct", 0.0)),
+            _gl_tier,
         )
         # [w2-haiku] HAIKU_WINNER winner-augment — HaikuOverseer.manage_winners()
         # twin (ez_manage.py:57015-57178). ONE call per bar per open position.

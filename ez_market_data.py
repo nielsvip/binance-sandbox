@@ -1003,6 +1003,20 @@ class MarketDataEngine:
             logger.info(f"💓 Engine Alive | Symbols: {len(self.market.data)} | {status}")
             await asyncio.sleep(30)
 
+    async def loop_watchdog(self):
+        """2026-10-24: 45s publish/exec stalls with no owner — this 5s ticker
+        separates event-loop starvation (ticker gaps too) from a blocked stage
+        (ticker steady while a pass stage burns)."""
+        _last = time.monotonic()
+        while self.running:
+            await asyncio.sleep(5)
+            _now = time.monotonic()
+            _gap = _now - _last
+            _last = _now
+            if _gap > 12.0:
+                try: logger.warning(f"[LOOP_WATCHDOG] event loop gap {_gap:.1f}s (want 5s) — loop starved, not a stage")
+                except Exception: pass
+
     async def funding_rate_loop(self):
         """═══ 2026-04-27 FUNDING-RATE LIVE REFRESH (USER DIRECTIVE) ═══
         Polls Binance Futures /fapi/v1/fundingRate every FUNDING_LIVE_REFRESH_HOURS for tracked symbols
@@ -1259,6 +1273,7 @@ class MarketDataEngine:
                 self.json_injector(),
                 self.broadcast_loop(),
                 self.heartbeat(),
+                self.loop_watchdog(),
                 self.shared_mem_watchdog(),
                 self.klines_cache_writeback(),
                 self.rest_klines_repair_loop(),

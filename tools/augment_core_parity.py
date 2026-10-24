@@ -91,8 +91,8 @@ def main():
     calls = []
     orig = GLA.gain_ladder_fire
 
-    def rec(config, is_long, px, last_aug_px, raw_gain_pct, max_gain_pct):
-        res = orig(config, is_long, px, last_aug_px, raw_gain_pct, max_gain_pct)
+    def rec(config, is_long, px, last_aug_px, raw_gain_pct, max_gain_pct, *a, **k):
+        res = orig(config, is_long, px, last_aug_px, raw_gain_pct, max_gain_pct, *a, **k)
         calls.append({"px": float(px), "last": float(last_aug_px), "gain": float(raw_gain_pct), "peak": float(max_gain_pct), "fire": bool(res[0]), "reason": res[1]})
         return res
 
