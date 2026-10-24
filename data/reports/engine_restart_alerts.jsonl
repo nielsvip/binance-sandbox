@@ -781,3 +781,4 @@
 {"ts":1792872858,"account":"inf","kind":"engine_restart_suppressed","msg":"ez_manage SILENT (455s > 120s) but host overloaded (load 193.12 on 12 cores) — kill DEFERRED to break the kill→bootstrap→load loop"}
 {"ts":1792874174,"account":"inf","kind":"engine_restart_suppressed","msg":"ez_manage SILENT (171s > 120s) but host overloaded (load 363.05 on 12 cores) — kill DEFERRED to break the kill→bootstrap→load loop"}
 {"ts":1792874380,"account":"flz","kind":"engine_restart_suppressed","msg":"NO ENGINE CHILD for 192s and the 24h budget was already spent (last 82099s ago) — starting anyway: an account is never left without an engine"}
+{"ts":1792876423,"account":"inf","kind":"engine_restart_suppressed","msg":"ez_manage SILENT (150s > 120s) but the 24h restart budget is spent (last restart 2108s ago) and the account is PROVABLY FLAT — NOT restarting; a genuinely wedged engine now needs a human/code fix"}
