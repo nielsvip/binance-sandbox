@@ -35,9 +35,37 @@ sys.path.insert(0, str(ROOT / "tools"))
 import preopen_readiness_gate as gate  # noqa: E402
 
 
+def live_ahead_rows(offenders):
+    """USER 2026-10-24: never regress an immediate row. An offender whose live
+    per_sym_active.updated_at is NEWER than its published_at already runs a
+    board newer than the selection (minute-absorb or pilot LIVE-PUT landed
+    after publish) — applying the older published board would clobber it.
+    Fail-open: any error keeps every offender."""
+    try:
+        import per_sym_store as pss
+        live_ts = {r[0]: r[1] for r in pss._connect().execute(
+            "SELECT sym_side, updated_at FROM per_sym_active")}
+    except Exception:
+        return set()
+    ahead = set()
+    for o in offenders:
+        try:
+            lt, pat = live_ts.get(o["sym_side"]), o.get("published_at") or ""
+            if lt and pat and lt > pat:
+                ahead.add(o["sym_side"])
+        except Exception:
+            continue
+    return ahead
+
+
 def build(selection_path, out_path, limit=None, include_missing=True):
     items, exact, benign_only, offenders, missing_rows = gate.scan_selection(selection_path)
     source = json.loads(Path(selection_path).read_text())
+    skipped_live_ahead = sorted(live_ahead_rows(offenders))
+    if skipped_live_ahead:
+        print(f"[golive-delta] skip {len(skipped_live_ahead)} live-ahead rows "
+              f"(never regress): {skipped_live_ahead[:8]}", flush=True)
+    offenders = [o for o in offenders if o["sym_side"] not in set(skipped_live_ahead)]
     wanted = [o["sym_side"] for o in offenders]
     if include_missing:
         wanted += [k for k in missing_rows if k not in wanted]
@@ -56,6 +84,7 @@ def build(selection_path, out_path, limit=None, include_missing=True):
             "exact": exact,
             "benign_divergence_only": benign_only,
             "material_divergence": len(offenders),
+            "skipped_live_ahead": len(skipped_live_ahead),
             "no_live_row": len(missing_rows),
             "order": "published_at desc",
         },

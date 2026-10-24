@@ -188,6 +188,22 @@ def absorb():
                     FLAG_PATH.write_text(f"{ss} {meta['absorbed_at']} absorbed:{host}")
                 except Exception:
                     pass
+                if not ss.upper().endswith(("USDT", "USDC", "USD1", "BUSD", "FDUSD", "TUSD", "DAI")):
+                    try:
+                        tp = ROOT / "data" / "hourly_reconfig" / "trb" / "active_config.json"
+                        tp.parent.mkdir(parents=True, exist_ok=True)
+                        tall = json.loads(tp.read_text()) if tp.exists() else {}
+                        tmeta = tall.pop("_meta", None) if isinstance(tall, dict) else None
+                        entry = dict(meta)
+                        entry["overrides"] = ov
+                        tall[ss] = entry
+                        if tmeta is not None:
+                            tall["_meta"] = tmeta
+                        ttmp = tp.with_suffix(".json.tmp")
+                        ttmp.write_text(json.dumps(tall, indent=2, default=str))
+                        ttmp.replace(tp)
+                    except Exception as te:
+                        log(f"{ss} trb mirror warn: {str(te)[:120]}")
                 applied += 1
                 mac_all[ss] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
                 log(f"ABSORBED {ss} from {host} src={ts} mac_had={mac_ts}")
