@@ -84,6 +84,9 @@ def test_ovpn_hidden_until_supervisor_installed(tmp_path, monkeypatch):
     d.mkdir()
     (d / "uk-lon.prod.surfshark.comsurfshark_openvpn_udp.ovpn").write_text("remote x\n")
     monkeypatch.setattr(vpn, "OVPN_DIR", str(tmp_path))
+    real_exists = os.path.exists
+    monkeypatch.setattr(vpn.os.path, "exists",
+                        lambda p: False if p == "/Library/LaunchDaemons/com.binance.ovpn-supervisor.plist" else real_exists(p))
     assert vpn.ovpn_servers() == {}
 
 
@@ -110,3 +113,45 @@ def test_tour_walks_ring_skipping_current():
     assert vpn._tour_next("(no-vpn)", order) == "Surfshark. Dausos"
     assert vpn._tour_next("Surfshark. Dausos", ["Surfshark. Dausos"]) is None
     assert vpn._tour_next("x", []) is None
+
+
+def _staged_servers():
+    import pytest
+    d = Path(vpn.OVPN_DIR) / "servers"
+    files = sorted(d.glob("*.ovpn")) if d.is_dir() else []
+    if not files:
+        pytest.skip("no staged OVPN server files on this host")
+    return files
+
+
+def test_ovpn_remotes_whitelisted():
+    import re
+    wl = vpn.whitelist()
+    for f in _staged_servers():
+        ips = re.findall(r"^remote\s+(\d+\.\d+\.\d+\.\d+)\s", f.read_text(), re.M)
+        assert ips, f"{f.name}: no pinned-IP remote (single-hostname mode wedges on dead pool members)"
+        assert set(ips) <= wl, f"{f.name}: non-whitelisted remotes {set(ips) - wl} would deny orders"
+
+
+def test_ovpn_hardening_knobs():
+    for f in _staged_servers():
+        txt = f.read_text()
+        for knob in ["ping-restart 60", "hand-window 20", "tls-timeout 5", "persist-tun",
+                     "persist-key", "explicit-exit-notify 1", "mssfix 1400", "remote-random"]:
+            assert knob in txt, f"{f.name}: missing {knob}"
+        assert "ping-restart 0" not in txt, f"{f.name}: dead-peer detection disabled"
+
+
+def test_build_active_preserves_hardening(tmp_path, monkeypatch):
+    monkeypatch.setattr(vpn, "OVPN_DIR", str(tmp_path))
+    monkeypatch.setattr(vpn, "OVPN_AUTH", "/auth.txt")
+    src = ("dev tun\nauth-user-pass\nremote 1.2.3.4 1194\nremote-random\n"
+           "ping-restart 60\nhand-window 20\npersist-tun\npersist-key\n")
+    (tmp_path / "s.ovpn").write_text(src)
+    assert vpn.ovpn_build_active(str(tmp_path / "s.ovpn")) is True
+    txt = (tmp_path / "active.conf").read_text()
+    assert "remote 1.2.3.4 1194" in txt and "persist-tun" in txt and "hand-window 20" in txt
+
+
+def test_restore_try_bounded():
+    assert vpn.RESTORE_TRY_S <= 180

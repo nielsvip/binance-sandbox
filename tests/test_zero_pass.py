@@ -126,7 +126,9 @@ def test_no_suppress_keeps_correctness_and_infra():
     ez = (ROOT / "ez_manage.py").read_text()
     for needle in (
         "BLOCKED_INVALID_POSITION_KEY",
-        "BLOCKED_POSITIONS_BROKER_UNREACHABLE",
+        # USER 2026-10-24 unreachable-real-fix: the unreachable refusal is revoked (orders proceed unverified);
+        # the proceed marker keeps this test's intent (every bar-open decision point stays named in code).
+        "OPEN_ON_LEFTOVER_UNVERIFIED_PROCEED",
         "BLOCKED_PARITY_DEDUP_",
         "BLOCKED_NO_DOUBLE_OPEN_",
         "BLOCKED_EMERGENCY_BRAKE_10_PER_MIN_CHURN",

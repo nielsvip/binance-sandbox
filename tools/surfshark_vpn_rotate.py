@@ -42,7 +42,10 @@ def scan_logs_for_ban():
 FAPI = "https://fapi.binance.com"
 COOLDOWN_S = 120
 FAIL_SKIP_S = 300
-RESTORE_TRY_S = 600
+# USER 2026-10-24: 600s left single-path dark windows far too long ("tunnels fail
+# every couple minutes"). 180s re-probes a failed slot 3x sooner; FAIL_SKIP_S still
+# gates hot-looping and every attempt is fail-closed (never drops the working link).
+RESTORE_TRY_S = 180
 TOUR_INTERVAL_S = 4 * 3600
 def log(m):
     line = time.strftime("%Y-%m-%d %H:%M:%S") + " " + m

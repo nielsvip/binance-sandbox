@@ -53,7 +53,9 @@ TIER_B_RETURNS = [
     "BLOCKED_EMERGENCY_BRAKE_MAX_TRADES",
     "BLOCKED_BLACKLIST",
     "BLOCKED_NON_TRADEABLE",
-    "BLOCKED_POSITIONS_BROKER_UNREACHABLE",
+    # USER 2026-10-24 unreachable-real-fix: BLOCKED_POSITIONS_BROKER_UNREACHABLE revoked from Tier B — a missing
+    # broker-truth slot is a reading failure, never execution evidence; orders proceed, the broker attests at
+    # place-time. Pinned gone by test_open_on_leftover_single_waitfree_read_then_proceeds + the truth suite.
     "BLOCKED_BY_HEDGE_MODE",
     "BLOCKED_HEDGE_MISIDENT",
     "BLOCKED_ACCOUNT_ENTRY_BANNED",
@@ -82,3 +84,11 @@ def test_tier_b_still_refuses():
 def test_wrapper_breach_both_venues():
     assert "_parity_vec_order(reason)" in EZ and "_parity_breach_record(position_key, action, reason, _res)" in EZ
     assert "_tr_parity_vec_order(reason)" in TR and "_parity_breach_record_tradier(position_key, action, reason, _res)" in TR
+
+
+def test_vec_preflight_failopen_unreachable():
+    """USER 2026-10-24 unreachable-real-fix: a vec-dictated order fails OPEN on the unverifiable-broker-state
+    preflight class (the lie class, no evidence of a live order); OPEN_ORDER_EXISTS / LAST_ORDER_* still refuse."""
+    i = EZ.index("ORDER_DEDUPE_GUARD (USER 2026-10-06 ABSOLUTE)")
+    seg = EZ[i:i + 3000]
+    assert "[VEC_PREFLIGHT_FAILOPEN]" in seg and "_parity_vec_order(reason)" in seg and "_FX_UNREACHABLE_PREFLIGHT_CODES" in seg

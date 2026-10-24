@@ -82,7 +82,9 @@ def test_stale_local_falls_back_to_broker(caplog):
     with caplog.at_level("WARNING"):
         res = run(pt.ez_pre_order_check(mgr, "men", "GALAUSDT", "men:GALAUSDT_SHORT", "SHORT", "REDUCE", config=CFG))
     assert res is None
-    assert fb.position_calls == 1
+    # USER 2026-10-24 unreachable-real-fix: the refresher-path inline seed serves the WS-fed store with ZERO
+    # REST weight (was: empty slot -> None -> refusal; the old assertion pinned 1 REST call here).
+    assert fb.position_calls == 0
     assert mgr._ptruth_pre["men:GALAUSDT_SHORT"]["source"] == "broker"
     assert mgr._ptruth_pre["men:GALAUSDT_SHORT"]["pre"] == 100.0
     assert "POSITIONS_STALE_FALLBACK" in caplog.text
@@ -146,21 +148,46 @@ def test_stale_flat_snapshot_never_skips_exit():
     assert res is None  # exits proceed when broker truth is unknown
 
 
-def test_ip_ban_refuses_poll_entries_blocked_exits_proceed(monkeypatch):
+def test_ip_ban_entries_proceed_store_first_no_rest(monkeypatch):
+    """USER 2026-10-24 unreachable-real-fix: an entry is NEVER refused for missing broker truth. Under an IP ban
+    the WS-fed service store still serves (zero REST weight, ban respected) and the order proceeds."""
     fb = FakeBinance()
     monkeypatch.setattr(pt, "_ban_remaining_binance", lambda: 300.0)
     mgr = FakeMgr(fb)
     mgr.positions_service.positions_last_sync = None
-    assert run(pt.ez_pre_order_check(mgr, "men", "XUSDT", "men:XUSDT_LONG", "LONG", "OPEN", config=CFG)) == "BLOCKED_POSITIONS_BROKER_UNREACHABLE"
+    assert run(pt.ez_pre_order_check(mgr, "men", "XUSDT", "men:XUSDT_LONG", "LONG", "OPEN", config=CFG)) is None
     assert run(pt.ez_pre_order_check(mgr, "men", "XUSDT", "men:XUSDT_LONG", "LONG", "CLOSE", config=CFG)) is None
     assert fb.position_calls == 0
 
 
-def test_broker_unreachable_blocks_entry():
+def test_broker_unreachable_entries_proceed_unverified():
+    """USER 2026-10-24 unreachable-real-fix: store unreachable AND REST failing (double failure) still proceeds —
+    the broker attests reality at place-time; post-trade confirmation reconciles. The failover signal fires separately."""
     fb = FakeBinance()
     fb.fail = True
     mgr = FakeMgr(fb)
-    assert run(pt.ez_pre_order_check(mgr, "men", "XUSDT", "men:XUSDT_LONG", "LONG", "AUGMENT", config=CFG)) == "BLOCKED_POSITIONS_BROKER_UNREACHABLE"
+    mgr.positions_service = None  # writer store unreachable: PRIMARY misses, REST raises
+    assert run(pt.ez_pre_order_check(mgr, "men", "XUSDT", "men:XUSDT_LONG", "LONG", "AUGMENT", config=CFG)) is None
+    assert mgr._ptruth_pre["men:XUSDT_LONG"]["source"] == "none"
+
+
+def test_seed_before_broker_still_arms_refresher():
+    """USER 2026-10-24 unreachable-real-fix: seed_snapshot() landing before the first ez_broker() call used to
+    poison _CACHES (sync_fetch None forever) so the refresher never started and every snapshot fell back to the
+    loop-timed single-flight path whose starvation timeouts manufactured BROKER_UNREACHABLE."""
+    fb = FakeBinance()
+    fb.amts[("SOLUSDC", "LONG")] = 5.0
+    assert pt.seed_snapshot("binance", "men", fb.futures_position_information()) is True
+    mgr = FakeMgr(fb)
+    mgr.positions_service.positions["men:SOLUSDC_LONG"] = _pos(5.0)
+    mgr.positions_service.positions_last_sync = time.time() - 30.0  # stale local -> broker path
+    pt.ez_broker(mgr, "men", CFG)
+    bp = pt._CACHES[("binance", "men")]
+    assert bp.sync_fetch is not None, "reuse must adopt sync_fetch so the refresher arms"
+    res = run(pt.ez_pre_order_check(mgr, "men", "SOLUSDC", "men:SOLUSDC_LONG", "LONG", "OPEN", config=CFG))
+    assert res is None
+    assert mgr._ptruth_pre["men:SOLUSDC_LONG"]["source"] == "broker"
+    assert mgr._ptruth_pre["men:SOLUSDC_LONG"]["pre"] == 5.0
 
 
 # ── restart with stale files -> broker truth wins ─────────────────────────────────────

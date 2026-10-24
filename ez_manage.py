@@ -26130,7 +26130,10 @@ class MultiAccountTradeManager:
         # allowed to block (USER: a wss timeout can never cost the trading path a wait).
         position = None
         try:
-            position = await self.get_position(position_key, max_age_s=5.0)
+            # USER 2026-10-24 unreachable-real-fix: this await used to hang past the outer guard, aborting the
+            # whole read BEFORE the local-dict + writer-file fallbacks below ran — one stuck broker read skipped
+            # the key for the cycle. Bound it tight so the fallbacks always run; the outer guard stays backstop.
+            position = await _ptruth.await_abandonable(self.get_position(position_key, max_age_s=5.0), timeout=2.0)
         except Exception:
             position = None
         amt = abs(safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0)) if position else 0.0
@@ -36020,26 +36023,14 @@ class MultiAccountTradeManager:
             except Exception:
                 _lo_acct, _lo_sym, _lo_ps = account_key, symbol, position_side
             if _lo_acct and not is_sandbox_account(config, _lo_acct):
+                # USER 2026-10-24 unreachable-real-fix: ONE wait-free slot read, never a sleep-retry on the
+                # order path (each retry second was execution latency, and the 2026-10-23 retry still refused
+                # a persistently stale slot). Unknown truth proceeds as OPEN — post-trade broker confirmation
+                # reconciles a real leftover, and a truly dead broker fails the placement itself with a
+                # broker-attested error. Leftover-to-AUGMENT conversion below is unchanged.
                 _lo_snap = await _ptruth.ez_broker(self, _lo_acct, config, logger).snapshot(reason=f"open_on_leftover {position_key}")
-                # USER 2026-10-23 vec-native parity: the slot read above is wait-free (positions_truth
-                # serves the background-refresher slot with no loop-timed waiting), so a transiently
-                # stale slot under load refused 1,237 vec OPENs on 2026-10-22 in staggered bursts while
-                # fetches seconds later succeeded. Bounded retry lets the refresher land; a persistently
-                # unreachable broker still refuses exactly as before (fail-closed, same gate string).
-                _lo_tries = 0
-                while _lo_snap is None and _lo_tries < 2:
-                    _lo_tries += 1
-                    try:
-                        await asyncio.sleep(1.0)
-                    except Exception:
-                        pass
-                    try:
-                        _lo_snap = await _ptruth.ez_broker(self, _lo_acct, config, logger).snapshot(reason=f"open_on_leftover_retry{_lo_tries} {position_key}")
-                    except Exception:
-                        _lo_snap = None
                 if _lo_snap is None:
-                    logger.critical(f"🛑 [OPEN_ON_LEFTOVER] {position_key}: broker position unknown after {_lo_tries + 1} reads — OPEN refused (fail closed)")
-                    return "BLOCKED_POSITIONS_BROKER_UNREACHABLE"
+                    logger.critical(f"⚠️ [OPEN_ON_LEFTOVER_UNVERIFIED_PROCEED] {position_key}: broker position unknown — OPEN proceeds unverified (no sleep-retry, no refusal)")
                 _lo_amt = _lo_snap.amount(_lo_sym, _lo_ps)
                 if _lo_amt > 0:
                     import live_entry_gates as _leg_lo
@@ -37594,6 +37585,12 @@ class MultiAccountTradeManager:
                 if not _odg_dec.allowed:
                     if _fixed_stop_preflight_failopen(reason, _odg_dec.code):
                         logger.critical(f"🛡️ [FIXED_STOP_PREFLIGHT_FAILOPEN] {position_key}: preflight {_odg_dec.code} is unverifiable broker state (no evidence of a live order) — FIXED_STOP emergency exit attempts anyway (wire guard re-checks at submit)")
+                    elif _parity_vec_order(reason) and str(_odg_dec.code or "") in _FX_UNREACHABLE_PREFLIGHT_CODES:
+                        # USER 2026-10-24 unreachable-real-fix: the unreachable class is unverifiable broker state
+                        # (no evidence of a live order — the lie class), so a vec-dictated order attempts anyway;
+                        # the wire guard re-checks at submit and the broker attests reality. OPEN_ORDER_EXISTS /
+                        # LAST_ORDER_* still refuse (evidence of a real order, not the lie).
+                        logger.critical(f"🛡️ [VEC_PREFLIGHT_FAILOPEN] {position_key}: preflight {_odg_dec.code} is unverifiable broker state — vec-dictated {action} attempts anyway (wire guard re-checks at submit)")
                     elif _xg_full:
                         # 2026-10-14 USER EXITS NEVER COMPROMISED (ang:SNXUSDT_SHORT 10-13: 5 vec CLOSEs refused BROKER_UNREACHABLE_OPEN_ORDERS,
                         # held until FIXED_STOP): a FULL close is never refused by the symbol-wide preflight. The wire exit path

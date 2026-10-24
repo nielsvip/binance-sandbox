@@ -495,15 +495,17 @@ def test_boot_stagger_spreads_accounts_and_disables(monkeypatch):
     assert EZ._boot_stagger_s("men") == 0.0
 
 
-def test_open_on_leftover_broker_retry_then_fail_closed():
-    """USER 2026-10-23 vec-native parity: the broker-truth slot read is wait-free, so a transiently
-    stale slot gets a bounded retry before the OPEN is refused; a persistently unreachable broker
-    still refuses with the same gate string (fail-closed)."""
+def test_open_on_leftover_single_waitfree_read_then_proceeds():
+    """USER 2026-10-24 unreachable-real-fix: ONE wait-free slot read, no sleep-retry on the order path, and an
+    unknown broker truth PROCEEDS as OPEN (post-trade confirmation reconciles a real leftover) — the
+    BLOCKED_POSITIONS_BROKER_UNREACHABLE refusal is gone from ez. Leftover-to-AUGMENT conversion stays."""
     src = Path(EZ.__file__).read_text()
     i_snap = src.index('snapshot(reason=f"open_on_leftover {position_key}")')
-    i_refuse = src.index('"BLOCKED_POSITIONS_BROKER_UNREACHABLE"')
-    seg = src[i_snap:i_refuse]
-    assert "while _lo_snap is None" in seg and "await asyncio.sleep" in seg and "open_on_leftover_retry" in seg, seg[-400:]
+    i_proceed = src.index("[OPEN_ON_LEFTOVER_UNVERIFIED_PROCEED]")
+    seg = src[i_snap:i_proceed]
+    assert "while _lo_snap is None" not in seg and "await asyncio.sleep" not in seg and "open_on_leftover_retry" not in seg, seg[-400:]
+    assert '"BLOCKED_POSITIONS_BROKER_UNREACHABLE"' not in src, "the lie refuses nowhere in ez"
+    assert "OPEN_ON_LEFTOVER_TO_AUGMENT" in src[i_proceed:], "leftover conversion intact"
 
 
 def test_dictates_not_refused_while_flat(tmp_path, monkeypatch):

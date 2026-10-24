@@ -470,6 +470,21 @@ class BrokerPositions:
                 last = self.last
             if last is not None and (self.clock() - float(last.fetched_at or 0.0)) <= self._slot_stale_s():
                 return last
+            if last is None:
+                # USER 2026-10-24 unreachable-real-fix: the first call after (re)start races the refresher
+                # thread (its first poll lands one interval later), so the slot is always empty exactly when
+                # the first orders of the process arrive. Seed inline once — the sync_fetch PRIMARY is a
+                # lock-free store read (no REST weight, no ban risk); only a double failure (store unreachable
+                # AND broker dead) pays one REST timeout here, once per process start.
+                try:
+                    rows = self.sync_fetch()
+                    if isinstance(rows, list):
+                        amounts, entries = (normalize_binance if self.broker == "binance" else normalize_tradier)(rows)
+                        with self._slot_lock:
+                            self.last = BrokerSnapshot(self.broker, self.account, self.clock(), amounts, entries)
+                            return self.last
+                except Exception:
+                    pass
             self._note_genuine_miss(reason)
             return None
         if not force and self._fresh():
@@ -592,13 +607,26 @@ def hang_ok(service: Any, account_key: str) -> None:
         pass
 
 
-def get_broker_positions(broker: str, account: str, fetch: Callable[[], Awaitable[Any]], config: Any = None, ban_remaining: Optional[Callable[[], float]] = None, logger: Optional[logging.Logger] = None) -> BrokerPositions:
+def get_broker_positions(broker: str, account: str, fetch: Callable[[], Awaitable[Any]], config: Any = None, ban_remaining: Optional[Callable[[], float]] = None, logger: Optional[logging.Logger] = None, sync_fetch: Optional[Callable[[], Any]] = None) -> BrokerPositions:
     k = (broker, account)
     bp = _CACHES.get(k)
     if bp is None:
-        bp = _CACHES[k] = BrokerPositions(broker, account, fetch, config=config, ban_remaining=ban_remaining, logger=logger)
+        bp = _CACHES[k] = BrokerPositions(broker, account, fetch, config=config, ban_remaining=ban_remaining, logger=logger, sync_fetch=sync_fetch)
     else:
         bp.fetch = fetch
+        # USER 2026-10-24 unreachable-real-fix: seed_snapshot() creates this entry WITHOUT sync_fetch, so a
+        # seed landing before the first ez_broker() call used to poison the slot forever — the refresher never
+        # started (ensure_refresher early-returns on sync_fetch None) and every snapshot fell back to the
+        # loop-timed single-flight path whose starvation timeouts manufactured BROKER_UNREACHABLE. Refresh the
+        # whole closure set on reuse so the first real caller always arms the refresher.
+        if sync_fetch is not None:
+            bp.sync_fetch = sync_fetch
+        if config is not None:
+            bp.config = config
+        if ban_remaining is not None:
+            bp.ban_remaining = ban_remaining
+        if logger is not None:
+            bp.log = logger
     return bp
 
 
@@ -823,6 +851,24 @@ def _ez_local(mgr: Any, position_key: str) -> Tuple[Optional[float], Optional[fl
     return amt, entry_written_at(pos, sync_ts)
 
 
+def _store_is_broker_backed(svc: Any, config: Any = None) -> bool:
+    """Positive sync evidence that the service store reflects the broker (not stale disk rows at restart):
+    a fresh REST stamp, or a live WS subscription (no update means nothing changed — the 10-22 doctrine)."""
+    try:
+        now = time.time()
+        sync_ts = _epoch(getattr(svc, "positions_last_sync", None))
+        if sync_ts and (now - sync_ts) <= max(float(cfg(config, "POSITIONS_BROKER_CACHE_S")), float(cfg(config, "POSITIONS_BROKER_SLOT_STALE_S"))):
+            return True
+        stamps = getattr(svc, "_ws_update_timestamps", None)
+        if isinstance(stamps, dict) and stamps:
+            ws_ts = max([_f(v) for v in stamps.values()] + [0.0])
+            if ws_ts > 0 and (now - ws_ts) < float(cfg(config, "POSITIONS_WS_ALIVE_S")):
+                return True
+    except Exception:
+        pass
+    return False
+
+
 def ez_broker(mgr: Any, account_key: str, config: Any = None, logger: Optional[logging.Logger] = None) -> BrokerPositions:
     _cli = _ez_client(mgr, account_key)
     _dedicated = {"client": None}
@@ -832,10 +878,14 @@ def ez_broker(mgr: Any, account_key: str, config: Any = None, logger: Optional[l
         # REST-reconciled every 3 s inside the service's own loop. Lock-free
         # read here: zero added REST weight (the fleet already earns bans near
         # ~275 fetches/min) and it cannot hang like a socket call.
+        # USER 2026-10-24 unreachable-real-fix: the store counts as BROKER truth only with positive sync
+        # evidence (fresh REST stamp or live WS subscription). At restart the store holds STALE DISK ROWS
+        # with positions_last_sync None — serving those as broker truth blinded mismatch AND leftover
+        # detection (proven by test_restart_with_stale_files_broker_truth_wins). No evidence -> REST decides.
         try:
             svc = getattr(mgr, "positions_service", None)
             store = getattr(svc, "positions", None)
-            if store is not None:
+            if store is not None and _store_is_broker_backed(svc, config):
                 try:
                     items = list(store.items())
                 except RuntimeError:
@@ -883,7 +933,16 @@ def ez_broker(mgr: Any, account_key: str, config: Any = None, logger: Optional[l
         # Never the manager's shared client, whose pool wedges under load and
         # hangs this thread forever (measured S1 20:23-20:43Z: slot never
         # filled, zero REFRESH_FAIL, ban 0.0).
+        # USER 2026-10-24 unreachable-real-fix: never extend an IP ban for a read whose absence no longer
+        # blocks anything (the proceed path owns it). The refresher thread already skips on ban; this covers
+        # the inline first-call seed, the only other caller of this closure.
         try:
+            try:
+                _ban = float(_ban_remaining_binance())
+            except Exception:
+                _ban = 0.0
+            if _ban > 0:
+                return None
             cli = _dedicated["client"]
             if cli is None:
                 from binance.client import Client as _BinClient
@@ -902,7 +961,7 @@ def ez_broker(mgr: Any, account_key: str, config: Any = None, logger: Optional[l
             return inner.futures_position_information()
         except Exception:
             return None
-    bp = get_broker_positions("binance", account_key, binance_fetcher(_cli, config), config=config, ban_remaining=_ban_remaining_binance, logger=logger)
+    bp = get_broker_positions("binance", account_key, binance_fetcher(_cli, config), config=config, ban_remaining=_ban_remaining_binance, logger=logger, sync_fetch=_sync_fetch)
     bp.sync_fetch = _sync_fetch
     bp.ensure_refresher()
     return bp
@@ -939,12 +998,16 @@ async def ez_pre_order_check(mgr: Any, account_key: str, symbol: str, position_k
         snap = None  # 2026-10-13: a stale snapshot may never veto an exit as "broker flat" (NEAR ang 25h stranding)
     if snap is None:
         store[position_key] = {"pre": None, "local": local_amt, "source": "none", "ts": t, **({"call": _call} if _call is not None else {})}
+        # USER 2026-10-24 unreachable-real-fix ("broker is NEVER unreachable — fix the real reason, every order
+        # executes immediately, not shoot the message"): a missing slot is a READING failure, never execution
+        # evidence — the broker attests reality itself at place-time (a truly dead broker fails the placement
+        # with a real, broker-attested error, and post-trade confirmation reconciles from broker post + fill).
+        # The genuine-miss failover signal was already emitted inside snapshot(); the order always proceeds.
         if not exit_like:
-            log.warning(f"[POSITIONS_PREORDER_NO_TRUTH] {position_key}: no broker truth for {action} — refused (genuine miss already signaled separately)")
-        if exit_like:
-            log.critical(f"⚠️ [POSITIONS_BROKER_UNREACHABLE] {position_key}: broker poll failed — EXIT {action} proceeds (exits never blocked); result must still be broker-confirmed")
+            log.critical(f"⚠️ [POSITIONS_BROKER_UNVERIFIED_PROCEED] {position_key}: no broker truth for {action} — order proceeds unverified (failover signaled separately); post-trade broker confirmation owns the record")
             return None
-        return "BLOCKED_POSITIONS_BROKER_UNREACHABLE"
+        log.critical(f"⚠️ [POSITIONS_BROKER_UNREACHABLE] {position_key}: broker poll failed — EXIT {action} proceeds (exits never blocked); result must still be broker-confirmed")
+        return None
     broker_amt = snap.amount(symbol, position_side)
     store[position_key] = {"pre": broker_amt, "local": local_amt, "source": "broker", "ts": t, "fetched_at": snap.fetched_at, **({"call": _call} if _call is not None else {})}
     if abs(broker_amt - local_amt) > qty_tol(config, broker_amt, local_amt):
