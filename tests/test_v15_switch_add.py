@@ -86,7 +86,7 @@ class NoRemovalLawTest(unittest.TestCase):
         import openpyxl
         with tempfile.TemporaryDirectory() as td:
             shutil.copy(ROOT / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM" / "TEMPLATE_CRYPTO_LONG.xlsx", Path(td) / "TEMPLATE_CRYPTO_LONG.xlsx")
-            base = ["--switch", "DC_DAYTRADE_TARGET_PCT", "--reason", "no-removal law unit test", "--venues", "crypto", "--sides", "long", "--templates-dir", td]
+            base = ["--switch", "DC_DAYTRADE_TARGET_PCT", "--reason", "no-removal law unit test", "--venues", "CRYPTO", "--sides", "LONG", "--templates-dir", td]
             g = run_tool(GREY_TOOL, *base, "--apply")
             self.assertEqual(g.returncode, 0, g.stdout + g.stderr)
             self.assertIn("greyed 4 rows", g.stdout)
@@ -112,7 +112,7 @@ class NoRemovalLawTest(unittest.TestCase):
         import openpyxl
         with tempfile.TemporaryDirectory() as td:
             shutil.copy(ROOT / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM" / "TEMPLATE_CRYPTO_LONG.xlsx", Path(td) / "TEMPLATE_CRYPTO_LONG.xlsx")
-            run_tool(GREY_TOOL, "--switch", "DC_DAYTRADE_TARGET_PCT", "--reason", "no-removal law unit test", "--venues", "crypto", "--sides", "long", "--templates-dir", td, "--apply")
+            run_tool(GREY_TOOL, "--switch", "DC_DAYTRADE_TARGET_PCT", "--reason", "no-removal law unit test", "--venues", "CRYPTO", "--sides", "LONG", "--templates-dir", td, "--apply")
             r = run("--switch", "DC_DAYTRADE_TARGET_PCT", "--tab", "EXIT_STRUCTURAL", "--candidates", "0.005,0.01,0.015,0.02", "--default", "0.01",
                     "--venues", "crypto", "--sides", "long", "--templates-dir", td, "--extend")
             self.assertNotEqual(r.returncode, 0)

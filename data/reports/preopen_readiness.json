@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-24T23:00:10Z",
+ "generated_utc": "2026-10-24T23:20:04Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
@@ -14,7 +14,7 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "filled_today": 295,
+    "filled_today": 305,
     "filled_before_open": 0
    },
    "detail": "no board was filled before the open"
@@ -39,7 +39,7 @@
    "measured": {
     "built_at": "2026-10-24T21:53:24.175720+00:00",
     "n": 523,
-    "age_at_open_s": 4006
+    "age_at_open_s": 5200
    },
    "detail": "built 2026-10-24T21:53:24.175720+00:00 n=523"
   },
@@ -51,9 +51,9 @@
     "reports_today": 14,
     "newest_report": "persym_golive_20261024_refresh_2205.json",
     "newest_report_at": "2026-10-24T22:58:30Z",
-    "tiers_at": "2026-10-24T20:20:55Z"
+    "tiers_at": "2026-10-24T23:03:49Z"
    },
-   "detail": "persym_golive_20261024_refresh_2205.json at 2026-10-24T22:58:30Z, tiers 2026-10-24T20:20:55Z"
+   "detail": "persym_golive_20261024_refresh_2205.json at 2026-10-24T22:58:30Z, tiers 2026-10-24T23:03:49Z"
   },
   {
    "name": "live_set_matches_selection",
@@ -210,7 +210,7 @@
     "symbols": 330,
     "stale_over_90min": 2,
     "stale_pct": 0.6,
-    "median_age_min": 60.2,
+    "median_age_min": 35.1,
     "sample": [
      "DUSKUSDT",
      "ONEUSDT"

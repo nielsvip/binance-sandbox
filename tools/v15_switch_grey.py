@@ -20,8 +20,8 @@ def main():
     ap = argparse.ArgumentParser(description="Grey (skip) or un-grey template rows. Values/bolds/positions never touched.")
     ap.add_argument("--switch", required=True)
     ap.add_argument("--reason", required=True, help="why (recorded in output; dead keys cite the destroy/audit)")
-    ap.add_argument("--venues", default="both", choices=["both", "CRYPTO", "STOCKS"])
-    ap.add_argument("--sides", default="both", choices=["both", "LONG", "SHORT"])
+    ap.add_argument("--venues", default="both", choices=["both", "CRYPTO", "STOCKS", "crypto", "stocks"])
+    ap.add_argument("--sides", default="both", choices=["both", "LONG", "SHORT", "long", "short"])
     ap.add_argument("--ungrey", action="store_true")
     ap.add_argument("--restore-from", default=None, help="backup xlsx to copy the row back from (restore mode)")
     ap.add_argument("--row", type=int, default=None, help="original row number in --restore-from/--tab")
@@ -39,9 +39,9 @@ def main():
     total = 0
     for cs, fn in FILES.items():
         v, s = cs.split("_")
-        if a.venues != "both" and v != a.venues:
+        if a.venues != "both" and v != a.venues.upper():
             continue
-        if a.sides != "both" and s != a.sides:
+        if a.sides != "both" and s != a.sides.upper():
             continue
         p = tdir / fn
         if not p.exists():
@@ -62,9 +62,9 @@ def _main_restore(a, sw, grey, tdir):
         die("--restore-from needs --row and --tab")
     for cs, fn in FILES.items():
         v, s = cs.split("_")
-        if a.venues != "both" and v != a.venues:
+        if a.venues != "both" and v != a.venues.upper():
             continue
-        if a.sides != "both" and s != a.sides:
+        if a.sides != "both" and s != a.sides.upper():
             continue
         p = tdir / fn
         if not p.exists():
