@@ -76,11 +76,11 @@
     "symbol": "BBUSDT",
     "side": "SHORT"
   },
-  "men:WOOUSDT_SHORT": {
-    "orderId": "2000001537845766",
-    "stopPrice": 0.01265,
-    "entry_sig": "2026-10-24 14:58:06.099000+00:00",
-    "symbol": "WOOUSDT",
+  "men:1000BONKUSDC_SHORT": {
+    "orderId": "2000001537747834",
+    "stopPrice": 0.003339,
+    "entry_sig": "2026-10-24 14:59:16.286000+00:00",
+    "symbol": "1000BONKUSDC",
     "side": "SHORT"
   },
   "men:RVNUSDT_SHORT": {
@@ -90,11 +90,11 @@
     "symbol": "RVNUSDT",
     "side": "SHORT"
   },
-  "men:1000BONKUSDC_SHORT": {
-    "orderId": "2000001537747834",
-    "stopPrice": 0.003339,
-    "entry_sig": "2026-10-24 14:59:16.286000+00:00",
-    "symbol": "1000BONKUSDC",
+  "men:WOOUSDT_SHORT": {
+    "orderId": "2000001537845766",
+    "stopPrice": 0.01265,
+    "entry_sig": "2026-10-24 14:58:06.099000+00:00",
+    "symbol": "WOOUSDT",
     "side": "SHORT"
   }
 }

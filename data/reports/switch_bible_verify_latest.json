@@ -1,5 +1,5 @@
 {
- "broken": 82,
+ "broken": 81,
  "checks": {
   "TEMPLATE_NO_CONFIG": [
    "REENTRY_TIER2_MAX_MINUTES_TRADIER: in templates ['STOCKS_LONG'] but in no config"
@@ -84,7 +84,6 @@
    "OPENING_BUFFER_NO_CLOSE_MINUTES: wired live+vec (['tradier_manage.py:11491(in_opening_buffer)'] / ['v12_quick_engine.py:18491(simulate_one)']) but in no template",
    "QTY_LIVE_ORDER_CAP_MULT: wired live+vec (['vec_decisions/qty_quantizers.py:140(cap_dollar)'] / ['vec_decisions/qty_quantizers.py:140(cap_dollar)']) but in no template",
    "QTY_LIVE_POSITION_CAP_MULT: wired live+vec (['vec_decisions/qty_quantizers.py:149(cap_add_qty)'] / ['vec_decisions/qty_quantizers.py:149(cap_add_qty)']) but in no template",
-   "QUICK_OPEN_STRONG_VEC_ENABLED: wired live+vec (['ez_positions_quick.py:18675(TrackerManager.calculate_trading_signals)'] / ['vec_decisions/quick_open_strong.py:141(augment_fire_from_state)']) but in no template",
    "R2_TF_LIST: wired live+vec (['ez_manage.py:54435(process_position)'] / ['v12_quick_engine.py:17233(simulate_one)']) but in no template",
    "RECENT_REDUCTION_GUARD_USE_4BAR: wired live+vec (['ez_manage.py:36210(MultiAccountTradeManager._execute_now_inner)'] / ['vec_decisions/wirec_execnow_guards.py:119(recent_reduction_guard_allow)']) but in no template",
    "REENTRY_BLANKET_FIRE_ENABLED: wired live+vec (['live_twins/vec_reentry.py:92(fires)'] / ['v12_quick_engine.py:19369(simulate_one)']) but in no template",
