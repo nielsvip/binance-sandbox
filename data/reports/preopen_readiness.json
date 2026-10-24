@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-24T19:20:04Z",
+ "generated_utc": "2026-10-24T19:40:07Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
@@ -14,7 +14,7 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "filled_today": 300,
+    "filled_today": 302,
     "filled_before_open": 0
    },
    "detail": "no board was filled before the open"
@@ -37,11 +37,11 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "built_at": "2026-10-24T17:51:31.571488+00:00",
+    "built_at": "2026-10-24T19:21:18.893987+00:00",
     "n": 523,
-    "age_at_open_s": 5312
+    "age_at_open_s": 1128
    },
-   "detail": "built 2026-10-24T17:51:31.571488+00:00 n=523"
+   "detail": "built 2026-10-24T19:21:18.893987+00:00 n=523"
   },
   {
    "name": "apply_report_written",
@@ -61,9 +61,9 @@
    "critical": true,
    "measured": {
     "selection_n": 523,
-    "exact": 129,
+    "exact": 127,
     "benign_divergence_only": 312,
-    "material_divergence": 81,
+    "material_divergence": 83,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -95,6 +95,19 @@
       ]
      },
      {
+      "sym_side": "ONDOUSDT_LONG",
+      "published_at": "2026-10-24T19:16:29Z",
+      "material": 92,
+      "sample": [
+       "ADX_RANGING_THRESHOLD",
+       "ALL_TF_AGAINST_BLOCK_ENTRY_ENABLED",
+       "ATR_ADAPTIVE_STOP_ENABLED",
+       "ATR_ADAPTIVE_STOP_MULT",
+       "ATR_ADAPTIVE_STOP_TF",
+       "BAND_SLOPE_SIZING_V2_ENABLED"
+      ]
+     },
+     {
       "sym_side": "NXE_SHORT",
       "published_at": "2026-10-21T01:32:19Z",
       "material": 83,
@@ -121,6 +134,19 @@
       ]
      },
      {
+      "sym_side": "ZCSH_LONG",
+      "published_at": "2026-10-24T18:04:13Z",
+      "material": 76,
+      "sample": [
+       "ADX_REGIME_FILTER_ENABLED",
+       "ALL_TF_AGAINST_CLOSE_ENABLED",
+       "ATR_ADAPTIVE_STOP_MULT",
+       "ATR_ADAPTIVE_STOP_TF",
+       "AUGMENTATION_COOLDOWN_SECONDS",
+       "AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER"
+      ]
+     },
+     {
       "sym_side": "ICPUSDT_LONG",
       "published_at": "2026-10-13T08:02:23Z",
       "material": 72,
@@ -131,6 +157,19 @@
        "BB_PROFIT_TAKE_TF",
        "BB_PULLBACK_GATE_ON_FINAL",
        "BB_PULLBACK_GATE_TF"
+      ]
+     },
+     {
+      "sym_side": "RIFUSDT_SHORT",
+      "published_at": "2026-10-24T19:07:05Z",
+      "material": 62,
+      "sample": [
+       "ATR_ADAPTIVE_STOP_MULT",
+       "COUNTER_TREND_ADD_BLOCK_ENABLED",
+       "CRYPTO_REENTRY_PATHWAYS_ENABLED",
+       "DAYTRADE_DC_TARGET_TF",
+       "DC_BREACH_REDUCE_FILTER_TF",
+       "DC_BREAKOUT_TF_EXPANDED"
       ]
      },
      {
@@ -147,19 +186,6 @@
       ]
      },
      {
-      "sym_side": "RENDERUSDT_SHORT",
-      "published_at": "2026-10-14T07:52:35Z",
-      "material": 54,
-      "sample": [
-       "AUGMENT_INTO_REENTRY_ENABLED",
-       "BB_BOUNCE_ENTRY_TF",
-       "DAYTRADE_DC_TARGET_TF",
-       "DC_BREACH_REDUCE_FILTER_TF",
-       "DC_BREAKOUT_TF_EXPANDED",
-       "DC_HARD_STOP_TF"
-      ]
-     },
-     {
       "sym_side": "QBTS_SHORT",
       "published_at": "2026-10-21T09:52:12Z",
       "material": 53,
@@ -171,36 +197,10 @@
        "COOLDOWN_BARS",
        "COOLDOWN_BARS_TRADIER"
       ]
-     },
-     {
-      "sym_side": "ACN_LONG",
-      "published_at": "2026-10-23T06:02:03Z",
-      "material": 50,
-      "sample": [
-       "ATR_ADAPTIVE_STOP_MULT",
-       "ATR_ADAPTIVE_STOP_TF",
-       "AUGMENT_FALLBACK_REDUCE_PCT",
-       "BB_PULLBACK_GATE_ENABLED",
-       "BB_SQUEEZE_ENTRY_ENABLED",
-       "COUNTER_TREND_ADD_BLOCK_ENABLED"
-      ]
-     },
-     {
-      "sym_side": "SHOP_LONG",
-      "published_at": "2026-10-22T04:02:56Z",
-      "material": 42,
-      "sample": [
-       "ATR_ADAPTIVE_SIZING_ENABLED",
-       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
-       "ATR_ADAPTIVE_STOP_MULT",
-       "ATR_ADAPTIVE_STOP_TF",
-       "DC_EDGE_SIZING_MIN_MULT",
-       "DC_HARD_STOP_1H_ENABLED"
-      ]
      }
     ]
    },
-   "detail": "129 exact, 312 benign-only, 81 with material divergence, 1 with no live row"
+   "detail": "127 exact, 312 benign-only, 83 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
@@ -210,7 +210,7 @@
     "symbols": 330,
     "stale_over_90min": 2,
     "stale_pct": 0.6,
-    "median_age_min": 20.1,
+    "median_age_min": 10.1,
     "sample": [
      "DUSKUSDT",
      "ONEUSDT"
