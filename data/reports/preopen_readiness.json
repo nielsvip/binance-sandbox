@@ -1,13 +1,11 @@
 {
- "generated_utc": "2026-10-24T21:40:17Z",
+ "generated_utc": "2026-10-24T22:00:16Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
  "verdict": "FAIL",
  "failed_critical": [
   "boards_recomputed",
-  "defaults_chain_completed",
-  "selection_fresh",
   "live_set_matches_selection"
  ],
  "checks": [
@@ -16,34 +14,34 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "filled_today": 299,
+    "filled_today": 297,
     "filled_before_open": 0
    },
    "detail": "no board was filled before the open"
   },
   {
    "name": "defaults_chain_completed",
-   "ok": false,
+   "ok": true,
    "critical": true,
    "measured": {
     "mac_done_stamp": true,
-    "s1_stamp": "NO_STAMP",
+    "s1_stamp": "{\n \"date\": \"20261024\",\n \"status\": \"DONE\",\n \"started\": \"2026-10-24T12:15:01Z\",\n \"ended\": \"2026-10-24T13:02:13.386510Z\",\n \"steps_ok\": \"1,2,2a,2b,3,4,4c,4b,4d,4e,4e,5,6,6b\",\n \"agg\": \"SPREADSHEETS/v15_avg_delta/v15_avg_delta_20261024.xlsx\",\n \"promoted_keys\": [\n  \"ADX_REGIME_FILTER_ENABLED\",\n  \"ATR_LONG_WINDOW\",\n  \"BB_SQUEEZE_ENTRY_ENABLED\",\n  \"BREAKEVEN_GAIN_EROSION_FILTER_TF\",\n  \"BREAKOUT_RETEST_FILT",
     "cat_side_defaults_4_at": "2026-10-21T04:54:49Z",
     "cat_side_age_days": 3.7,
     "cat_side_note": "rebuilt only by v15_daily_template_update --sync-defaults, a deliberate manual step \u2014 reported, never fails this gate"
    },
-   "detail": "mac stamp 20261024=True, s1 stamp NO_STAMP, cat_side layer 3.7d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
+   "detail": "mac stamp 20261024=True, s1 stamp {\n \"date\": \"20261024\",\n \"status\": \"DONE\",\n \"started\": \"2026-10-24T12:15:01Z\",\n \"ended\": \"2026-10-24T13:02:13.386510Z\",\n \"steps_ok\": \"1,2,2a,2b,3,4,4c,, cat_side layer 3.7d old"
   },
   {
    "name": "selection_fresh",
-   "ok": false,
+   "ok": true,
    "critical": true,
    "measured": {
-    "built_at": "2026-10-24T19:21:18.893987+00:00",
+    "built_at": "2026-10-24T21:53:24.175720+00:00",
     "n": 523,
-    "age_at_open_s": 8338
+    "age_at_open_s": 412
    },
-   "detail": "built 2026-10-24T19:21:18.893987+00:00 n=523 \u2014 8338s before the open > 7200s"
+   "detail": "built 2026-10-24T21:53:24.175720+00:00 n=523"
   },
   {
    "name": "apply_report_written",
@@ -94,6 +92,19 @@
        "ALL_TF_AGAINST_BLOCK_ENTRY_ENABLED",
        "ATR_ADAPTIVE_SIZING_ENABLED",
        "ATR_ADAPTIVE_STOP_MULT"
+      ]
+     },
+     {
+      "sym_side": "SUSHIUSDT_SHORT",
+      "published_at": "2026-10-24T21:17:27Z",
+      "material": 99,
+      "sample": [
+       "ATR_ADAPTIVE_STOP_ENABLED",
+       "ATR_ADAPTIVE_STOP_MULT",
+       "AUGMENT_INTO_REENTRY_ENABLED",
+       "AUGMENT_MIN_GAIN_PCT",
+       "BEAR_HOLD_EXIT_DELAY_BARS",
+       "CIRCUIT_SHARPE_GATES_FILTER_TF"
       ]
      },
      {
@@ -186,19 +197,6 @@
        "DC_HARD_STOP_15M_ENABLED",
        "DC_MOMENTUM_BOTA_SCORER_FILTER_TF"
       ]
-     },
-     {
-      "sym_side": "QBTS_SHORT",
-      "published_at": "2026-10-21T09:52:12Z",
-      "material": 53,
-      "sample": [
-       "ATR_ADAPTIVE_SIZING_ENABLED",
-       "ATR_ADAPTIVE_STOP_ENABLED",
-       "ATR_ADAPTIVE_STOP_MULT",
-       "CANDLE_PATTERN_STOPS_FILTER_TF",
-       "COOLDOWN_BARS",
-       "COOLDOWN_BARS_TRADIER"
-      ]
      }
     ]
    },
@@ -210,16 +208,21 @@
    "critical": true,
    "measured": {
     "symbols": 330,
-    "stale_over_90min": 3,
-    "stale_pct": 0.9,
-    "median_age_min": 25.3,
+    "stale_over_90min": 13,
+    "stale_pct": 3.9,
+    "median_age_min": 45.3,
     "sample": [
+     "CRDOUSDT",
      "DUSKUSDT",
+     "EWJUSDT",
+     "HPEUSDT",
+     "INTWUSDT",
+     "IRENUSDT",
      "ONEUSDT",
-     "SMCIUSDT"
+     "PAYPUSDT"
     ]
    },
-   "detail": "3/330 symbols past the live 90-min entry gate (0.9%)"
+   "detail": "13/330 symbols past the live 90-min entry gate (3.9%)"
   },
   {
    "name": "s1_sets_synced",
