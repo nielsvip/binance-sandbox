@@ -1,58 +1,100 @@
 {
-  "men:RVNUSDT_SHORT": {
-    "orderId": "2000001536860322",
-    "stopPrice": 0.00141,
-    "entry_sig": "2026-10-24 06:25:06.283000+00:00",
-    "symbol": "RVNUSDT",
+  "fin:MAGICUSDT_SHORT": {
+    "orderId": "3000002270746757",
+    "stopPrice": 0.0889,
+    "entry_sig": "2026-10-24 07:16:16.877000+00:00",
+    "symbol": "MAGICUSDT",
     "side": "SHORT"
   },
-  "men:BBUSDT_SHORT": {
-    "orderId": "2000001536860410",
-    "stopPrice": 0.008335,
-    "entry_sig": "2026-10-24 06:25:12.288000+00:00",
-    "symbol": "BBUSDT",
+  "fin:BEAMXUSDT_LONG": {
+    "orderId": "3000002270780726",
+    "stopPrice": 0.003159,
+    "entry_sig": "2026-10-24 07:30:38.249000+00:00",
+    "symbol": "BEAMXUSDT",
+    "side": "LONG"
+  },
+  "fin:BLURUSDT_SHORT": {
+    "orderId": "3000002270808254",
+    "stopPrice": 0.00842,
+    "entry_sig": "2026-10-24 07:18:56.533000+00:00",
+    "symbol": "BLURUSDT",
     "side": "SHORT"
   },
-  "men:XPLUSDT_SHORT": {
-    "orderId": "2000001536861181",
-    "stopPrice": 0.08686,
-    "entry_sig": "2026-10-24 04:12:12.298000+00:00",
-    "symbol": "XPLUSDT",
+  "fin:ACEUSDT_SHORT": {
+    "orderId": "3000002270809820",
+    "stopPrice": 0.15175,
+    "entry_sig": "2026-10-24 07:14:50.822000+00:00",
+    "symbol": "ACEUSDT",
     "side": "SHORT"
   },
-  "men:1000LUNCUSDT_SHORT": {
-    "orderId": "2000001537001143",
-    "stopPrice": 0.04756,
-    "entry_sig": "2026-10-24 08:27:54.832000+00:00",
-    "symbol": "1000LUNCUSDT",
-    "side": "SHORT"
-  },
-  "men:CRVUSDC_LONG": {
-    "orderId": "2000001537002136",
-    "stopPrice": 0.3514,
-    "entry_sig": "2026-10-24 08:28:51.186000+00:00",
+  "fin:CRVUSDC_LONG": {
+    "orderId": "3000002270809821",
+    "stopPrice": 0.3512,
+    "entry_sig": "2026-10-24 07:29:53.612000+00:00",
     "symbol": "CRVUSDC",
     "side": "LONG"
   },
-  "men:STRKUSDT_LONG": {
-    "orderId": "2000001537002891",
-    "stopPrice": 0.04798,
-    "entry_sig": "2026-10-24 08:28:47.977000+00:00",
-    "symbol": "STRKUSDT",
-    "side": "LONG"
-  },
-  "men:TIAUSDC_LONG": {
-    "orderId": "2000001537012504",
-    "stopPrice": 0.5357,
-    "entry_sig": "2026-10-24 08:35:32.129000+00:00",
-    "symbol": "TIAUSDC",
-    "side": "LONG"
-  },
-  "men:ACTUSDT_SHORT": {
-    "orderId": "2000001537016819",
-    "stopPrice": 0.008968,
-    "entry_sig": "2026-10-24 08:37:58.483000+00:00",
-    "symbol": "ACTUSDT",
+  "fin:SKLUSDT_SHORT": {
+    "orderId": "3000002270810907",
+    "stopPrice": 0.004091,
+    "entry_sig": "2026-10-24 07:30:27.484000+00:00",
+    "symbol": "SKLUSDT",
     "side": "SHORT"
+  },
+  "fin:STXUSDT_SHORT": {
+    "orderId": "3000002270816268",
+    "stopPrice": 0.3166,
+    "entry_sig": "2026-10-24 05:59:10.673000+00:00",
+    "symbol": "STXUSDT",
+    "side": "SHORT"
+  },
+  "fin:AWEUSDT_LONG": {
+    "orderId": "3000002270877637",
+    "stopPrice": 0.0637,
+    "entry_sig": "2026-10-24 08:22:53.872000+00:00",
+    "symbol": "AWEUSDT",
+    "side": "LONG"
+  },
+  "fin:MOVRUSDT_SHORT": {
+    "orderId": "3000002270816532",
+    "stopPrice": 1.2234,
+    "entry_sig": "2026-10-24 07:23:41.270000+00:00",
+    "symbol": "MOVRUSDT",
+    "side": "SHORT"
+  },
+  "fin:BOMEUSDC_SHORT": {
+    "orderId": "3000002270882234",
+    "stopPrice": 0.000642,
+    "entry_sig": "2026-10-24 08:20:19.245000+00:00",
+    "symbol": "BOMEUSDC",
+    "side": "SHORT"
+  },
+  "fin:NMRUSDT_SHORT": {
+    "orderId": "3000002270886345",
+    "stopPrice": 10.408,
+    "entry_sig": "2026-10-24 08:22:58.087000+00:00",
+    "symbol": "NMRUSDT",
+    "side": "SHORT"
+  },
+  "fin:SKYAIUSDT_LONG": {
+    "orderId": "3000002270887850",
+    "stopPrice": 0.03167,
+    "entry_sig": "2026-10-24 08:24:19.156000+00:00",
+    "symbol": "SKYAIUSDT",
+    "side": "LONG"
+  },
+  "fin:VETUSDT_LONG": {
+    "orderId": "3000002270888143",
+    "stopPrice": 0.006968,
+    "entry_sig": "2026-10-24 08:24:41.765000+00:00",
+    "symbol": "VETUSDT",
+    "side": "LONG"
+  },
+  "fin:IOSTUSDT_LONG": {
+    "orderId": "3000002270926818",
+    "stopPrice": 0.0007238,
+    "entry_sig": "2026-10-24 08:54:35.363000+00:00",
+    "symbol": "IOSTUSDT",
+    "side": "LONG"
   }
 }
