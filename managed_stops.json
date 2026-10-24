@@ -1,23 +1,16 @@
 {
-  "men:ACTUSDT_SHORT": {
-    "orderId": "2000001536245663",
-    "stopPrice": 0.009148,
-    "entry_sig": "2026-10-24 00:08:14.467000+00:00",
-    "symbol": "ACTUSDT",
-    "side": "SHORT"
-  },
-  "men:BEAMXUSDT_LONG": {
-    "orderId": "2000001536246106",
-    "stopPrice": 0.003148,
-    "entry_sig": "2026-10-24 00:08:37.861000+00:00",
-    "symbol": "BEAMXUSDT",
-    "side": "LONG"
-  },
   "men:ENJUSDT_SHORT": {
     "orderId": "2000001536136029",
     "stopPrice": 0.02694,
     "entry_sig": "2026-10-23 23:13:58.022000+00:00",
     "symbol": "ENJUSDT",
+    "side": "SHORT"
+  },
+  "men:ACTUSDT_SHORT": {
+    "orderId": "2000001536245663",
+    "stopPrice": 0.009148,
+    "entry_sig": "2026-10-24 00:08:14.467000+00:00",
+    "symbol": "ACTUSDT",
     "side": "SHORT"
   },
   "men:MOVEUSDT_SHORT": {
@@ -27,11 +20,39 @@
     "symbol": "MOVEUSDT",
     "side": "SHORT"
   },
-  "men:GRASSUSDT_LONG": {
-    "orderId": "2000001536409298",
-    "stopPrice": 0.6339,
-    "entry_sig": "2026-10-24 01:06:26.864000+00:00",
-    "symbol": "GRASSUSDT",
+  "men:BEAMXUSDT_LONG": {
+    "orderId": "2000001536246106",
+    "stopPrice": 0.003148,
+    "entry_sig": "2026-10-24 00:08:37.861000+00:00",
+    "symbol": "BEAMXUSDT",
+    "side": "LONG"
+  },
+  "men:ENAUSDC_LONG": {
+    "orderId": "2000001536462713",
+    "stopPrice": 0.19144,
+    "entry_sig": "2026-10-24 02:19:52.352000+00:00",
+    "symbol": "ENAUSDC",
+    "side": "LONG"
+  },
+  "men:EDUUSDT_LONG": {
+    "orderId": "2000001536462726",
+    "stopPrice": 0.06097,
+    "entry_sig": "2026-10-24 02:19:51.523000+00:00",
+    "symbol": "EDUUSDT",
+    "side": "LONG"
+  },
+  "men:STXUSDT_LONG": {
+    "orderId": "2000001536463238",
+    "stopPrice": 0.3062,
+    "entry_sig": "2026-10-24 02:20:01.684000+00:00",
+    "symbol": "STXUSDT",
+    "side": "LONG"
+  },
+  "men:ETHFIUSDC_LONG": {
+    "orderId": "2000001536463264",
+    "stopPrice": 0.6353,
+    "entry_sig": "2026-10-24 02:19:54.185000+00:00",
+    "symbol": "ETHFIUSDC",
     "side": "LONG"
   }
 }

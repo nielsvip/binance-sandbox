@@ -302,6 +302,34 @@ def test_crosscheck_direction_mapping():
     assert mod._kline_day_check("NOSUCH", "2026-10-22", 1.0) is None
 
 
+def test_stale_basis_excluded_from_sums_not_hidden():
+    old = _ev("2026-09-02T13:36:00+00:00", "BABA", "SHORT", "OPEN", 10.0, 112.0)
+    old["reason"] = "DC_BREAK_LOW_15M"
+    new = _ev("2026-10-22T18:17:00+00:00", "BABA", "SHORT", "OPEN", 11.0, 101.0)
+    new["reason"] = "WT_OPEN"
+    close = _ev("2026-10-23T19:58:00+00:00", "BABA", "SHORT", "CLOSE", 5.0, 99.0)
+    close["reason"] = "DAYTRADE_TARGET"
+    out, s = srv.realized_walk([old, new, close], stale_basis_days=7)
+    assert s["known"] == 1 and s["stale_excluded"] == 1
+    assert s["stale_excluded_sum"] == round(
+        5.0 * ((10 * 112.0 + 11 * 101.0) / 21.0 - 99.0), 2
+    )
+    assert s["pnl_total"] == 0.0
+    assert [e for e in out if e.get("rpnl") is not None][0]["stale_excluded"] is True
+    out2, s2 = srv.realized_walk([old, new, close])
+    assert s2["stale_excluded"] == 0 and s2["known"] == 1 and s2["pnl_total"] != 0.0
+
+
+def test_recent_basis_still_sums_with_stale_param():
+    new = _ev("2026-10-22T18:17:00+00:00", "BABA", "SHORT", "OPEN", 11.0, 101.0)
+    new["reason"] = "WT_OPEN"
+    close = _ev("2026-10-23T19:58:00+00:00", "BABA", "SHORT", "CLOSE", 11.0, 99.0)
+    close["reason"] = "DAYTRADE_TARGET"
+    out, s = srv.realized_walk([new, close], stale_basis_days=7)
+    assert s["stale_excluded"] == 0 and s["known"] == 1
+    assert [e for e in out if e.get("rpnl") is not None][0]["rpnl"] == 22.0
+
+
 def test_strategy_reject_exits_still_price():
     evs = [
         _ev("2026-10-23T13:00:00+00:00", "X", "LONG", "OPEN", 10.0, 100.0),
