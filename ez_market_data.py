@@ -350,6 +350,43 @@ def parse_rest_klines(rows) -> dict:
         pass
     return out
 
+REST_REPAIR_STALE_1M_S = 75.0
+REST_REPAIR_STALE_3M_S = 195.0
+REST_REPAIR_MAX_SYMS = 60
+REST_REPAIR_BASE_CONC = 8
+REST_REPAIR_BACKOFF_CAP_S = 300.0
+
+
+def _repair_due(now, max_1m, max_3m, n_bars):
+    """USER 2026-10-24: stale-first repair — returns (due_1m, due_3m). Empty history always due."""
+    if n_bars <= 0:
+        return True, True
+    return (now - (max_1m or 0)) > REST_REPAIR_STALE_1M_S, (now - (max_3m or 0)) > REST_REPAIR_STALE_3M_S
+
+
+def _repair_backoff_s(consec):
+    """USER 2026-10-24: throttle backoff — 15s doubling to a 300s cap."""
+    try: return min(REST_REPAIR_BACKOFF_CAP_S, 15.0 * (2.0 ** max(0, int(consec) - 1)))
+    except Exception: return REST_REPAIR_BACKOFF_CAP_S
+
+
+def _pick_due_stale(data, now):
+    """USER 2026-10-24: stalest-first repair queue, capped. Pure, tested."""
+    due = []
+    try:
+        for sym, store in (data or {}).items():
+            store = store or {}
+            s1 = store.get("closes_1m") or {}
+            s3 = store.get("closes_3m") or {}
+            d1, d3 = _repair_due(now, max(s1) if s1 else 0, max(s3) if s3 else 0, len(s1) + len(s3))
+            if d1 or d3:
+                age = max(now - (max(s1) if s1 and d1 else now), now - (max(s3) if s3 and d3 else now))
+                due.append((age, sym, d1, d3))
+    except Exception:
+        return []
+    due.sort(reverse=True)
+    return [(sym, d1, d3) for _, sym, d1, d3 in due[:REST_REPAIR_MAX_SYMS]]
+
 class HighResMarketData:
     def __init__(self):
         self.data = {} 
@@ -1222,60 +1259,87 @@ class MarketDataEngine:
 
         All four price injectors share one WS failure mode, and the three kline
         file dirs go stale together. This loop refetches 1m+3m closes straight
-        from Binance Futures REST (no WS, no Redis, no files) on a ~60s cycle
-        so stored 1m/3m history — and therefore k/d — can never be more than
-        ~1 minute old, even mid-throttle. Fail-open: any error skips the symbol."""
+        from Binance Futures REST (no WS, no Redis, no files) so stored 1m/3m
+        history — and therefore k/d — can never be more than ~1 minute old,
+        even mid-throttle. Fail-open: any error skips the symbol.
+        USER 2026-10-24 (RLCUSDT 1588s + IP -1003 storm): SELF-SUSTAINING — the
+        old sweep-everything cycle (706 calls, fixed 60s) throttled the whole IP
+        into congestion collapse. Now: repair ONLY stale symbols stalest-first
+        (capped), back off exponentially on 429/418, and shrink concurrency
+        while throttled. Steady state costs ~zero calls, so the throttle that
+        caused this can never recur from this loop."""
         await asyncio.sleep(20)
-        try: logger.info("[REST_REPAIR] starting independent 1m/3m history repair (~60s cycle)")
+        try: logger.info("[REST_REPAIR] starting self-sustaining stale-first 1m/3m repair")
         except Exception: pass
         base = "https://fapi.binance.com/fapi/v1/klines"
-        # 2026-10-24: fingerprint re-stamps made broadcast passes seconds-long,
-        # so the repair loop can use full concurrency again (a ~95s full cycle
-        # heals pre-fix flat bars baked into klines_cache files).
-        sem = asyncio.Semaphore(8)
         timeout = aiohttp.ClientTimeout(total=10, sock_connect=5, sock_read=8)
         try:
             session = aiohttp.ClientSession(timeout=timeout)
         except Exception:
             return
+        consec_throttle = 0
+        throttled_until = 0.0
+        conc = REST_REPAIR_BASE_CONC
         try:
             while self.running:
                 t0 = time.time()
+                if t0 < throttled_until:
+                    await asyncio.sleep(min(60.0, throttled_until - t0))
+                    continue
                 symbols = sorted(self.market.data.keys()) or sorted(self.symbols)
                 if not symbols:
                     await asyncio.sleep(10)
                     continue
+                try:
+                    picked = _pick_due_stale(self.market.data, t0)
+                except Exception:
+                    picked = []
+                sem = asyncio.Semaphore(max(1, conc))
 
                 async def _fetch(sym, tf):
                     async with sem:
                         try:
                             params = {"symbol": sym, "interval": tf, "limit": 60}
                             async with session.get(base, params=params) as r:
+                                if r.status in (418, 429):
+                                    return sym, tf, {}, True
                                 if r.status != 200:
-                                    return sym, tf, {}
+                                    return sym, tf, {}, False
                                 rows = await r.json()
-                            return sym, tf, parse_rest_klines(rows)
+                            return sym, tf, parse_rest_klines(rows), False
                         except Exception:
-                            return sym, tf, {}
+                            return sym, tf, {}, False
 
                 tasks = []
-                for sym in symbols:
-                    tasks.append(_fetch(sym, "1m"))
-                    tasks.append(_fetch(sym, "3m"))
+                for sym, d1, d3 in picked:
+                    if d1:
+                        tasks.append(_fetch(sym, "1m"))
+                    if d3:
+                        tasks.append(_fetch(sym, "3m"))
                 n_ok = 0
+                n_thr = 0
                 try:
                     for i in range(0, len(tasks), 100):
                         chunk = tasks[i:i + 100]
-                        for sym, tf, bars in await asyncio.gather(*chunk):
+                        for sym, tf, bars, thr in await asyncio.gather(*chunk):
                             try:
-                                if bars and self.market.apply_rest_bars(sym, tf, bars):
+                                if thr:
+                                    n_thr += 1
+                                elif bars and self.market.apply_rest_bars(sym, tf, bars):
                                     n_ok += 1
                             except Exception:
                                 pass
                 except Exception as e:
                     try: logger.warning(f"[REST_REPAIR] cycle error: {e}")
                     except Exception: pass
-                try: logger.info(f"[REST_REPAIR] refreshed 1m/3m for {n_ok}/{len(symbols)} syms in {time.time() - t0:.1f}s")
+                if n_thr:
+                    consec_throttle += 1
+                    throttled_until = t0 + _repair_backoff_s(consec_throttle) + random.uniform(0, 5)
+                    conc = max(1, REST_REPAIR_BASE_CONC >> consec_throttle)
+                else:
+                    consec_throttle = 0
+                    conc = REST_REPAIR_BASE_CONC
+                try: logger.info(f"[REST_REPAIR] refreshed {n_ok} pairs ({len(picked)} due/{len(symbols)} syms) in {time.time() - t0:.1f}s throttle={n_thr} backoff={max(0.0, throttled_until - time.time()):.0f}s conc={conc}")
                 except Exception: pass
                 await asyncio.sleep(max(5.0, 60.0 - (time.time() - t0)))
         finally:
