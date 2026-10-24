@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-24T11:03:48Z",
+ "generated_utc": "2026-10-24T11:08:54Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 73.5,
+  "age_s": 170.8,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 46725,
-  "proc_age_s": 14759.0,
-  "log_age_s": 169.0,
+  "proc_age_s": 15067.0,
+  "log_age_s": 143.0,
   "warmup_done": true,
   "timeframes_since_restart": [
    "4h",
@@ -49,20 +49,20 @@
   "mode": "ACTIVE",
   "since_epoch": 1792602182.2042153,
   "activations": 163,
-  "hb_mtime": 1792839638.2642522,
-  "mac_snapshot_age_s": 4.873505115509033,
+  "hb_mtime": 1792839943.3523808,
+  "mac_snapshot_age_s": 28.781253337860107,
   "mac_stale": false,
   "lease_holder": "mac",
   "lease_venues": null,
-  "lease_since": "2026-10-24T10:59:10Z",
-  "lease_reason": "manual force-mac",
-  "now": 1792839645.4611554,
-  "from_cache_age_s": 182.6,
-  "heartbeat_age_s": 7.2,
-  "active_s": 237463.3
+  "lease_since": "2026-10-24T11:05:30Z",
+  "lease_reason": "yield: Mac never fenced for 180s \u2014 accounts must never be unattended",
+  "now": 1792839960.198095,
+  "from_cache_age_s": 174.7,
+  "heartbeat_age_s": 16.8,
+  "active_s": 237778.0
  },
  "alerts": [
-  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 237463s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (7s) AND the Mac snapshot is fresh (73s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
+  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 237777s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (16s) AND the Mac snapshot is fresh (170s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
  ],
  "verdict": "ALERT"
 }
