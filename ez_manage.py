@@ -33214,8 +33214,14 @@ class MultiAccountTradeManager:
         # parity-loop-crypto 2026-10-06: in-script vec twin orders (PARITY_VEC_EXACT_MODE) share the vec-decided exemption set
         # USER 2026-10-24 vector-authority: BOARD_CONVERGE_/PURE_BOARD force-opens carry the board's own decision too —
         # without this every native entry veto below hard-refuses them before the late VEC_LAST backstop. Same
-        # predicate the backstop uses (_parity_vec_order), so exemption and enforcement cannot drift.
-        if not _vd_exempt and (_vec_exact_reason_ok(reason) or _parity_vec_order(reason)):
+        # predicate the backstop uses (_parity_vec_order), so exemption and enforcement cannot drift. Master-gated:
+        # VEC_DRIVEN_ENABLED=False stays byte-identical (test_default_off_byte_identical pins this).
+        _vo_armed = False
+        try:
+            _vo_armed = bool(getattr(_ezm_base_config, "VEC_DRIVEN_ENABLED", False)) and bool(_parity_vec_order(reason))
+        except Exception:
+            _vo_armed = False
+        if not _vd_exempt and (_vec_exact_reason_ok(reason) or _vo_armed):
             _vd_exempt = True
             logger.info(f"🧬 [VEC_EXACT_EXEC] {position_key} action={action} qty={quantity} reason={(reason or '')[:80]} — vec-decided (in-script twin), discretionary gates exempt")
         # ─── 365D CONFIRMATION GATE (2026-09-28 USER MANDATE — fail-closed, no bypasses) ───
@@ -34234,19 +34240,21 @@ class MultiAccountTradeManager:
                 if _bg_is_entry:
                     from live_twins import vec_exact as _bg_vx
                     try:
-                        _bg_ok, _bg_why = _bg_vx.latest_board_ok(_sym, position_side)
+                        # USER 2026-10-24 vector-authority: this read `_sym` (unbound here -> NameError ->
+                        # fail-open True), so the gate NEVER gated and the vec exemption below never fired.
+                        _bg_ok, _bg_why = _bg_vx.latest_board_ok(symbol, position_side)
                     except Exception as _bg_e:
                         _bg_ok, _bg_why = True, f"board check error {_bg_e}"
                     if not _bg_ok:
                         _zp_allow = False
                         try:
                             from live_twins import zero_pass as _zp_bg
-                            _zp_allow = _zp_bg.trade_all_on() and _zp_bg.calculated(_sym, position_side)
+                            _zp_allow = _zp_bg.trade_all_on() and _zp_bg.calculated(symbol, position_side)
                         except Exception:
                             _zp_allow = False
                         if _zp_allow:
                             logger.warning(f"🧮 [ZERO_PASS_ALLOW] {position_key}: {_bg_why} — calculated sym_side trades (USER 2026-10-21 zero-pass goes completely; risk carried by size). action={action} reason={(reason or '')[:70]}")
-                        elif _parity_vec_order(reason):
+                        elif _vo_armed:
                             _vec_last_bypassed.append("BOARD_ENTRY_BLOCK")
                             logger.warning(f"🧮 [BOARD_ENTRY_VEC_CONTINUE] {position_key}: {_bg_why} — vec-dictated force-open carries the board's own decision; block recorded for VEC_LAST, order continues (USER 2026-10-24 vector-authority). action={action} reason={(reason or '')[:70]}")
                         else:
@@ -43949,7 +43957,7 @@ async def evaluate_augmentation(ctx: dict) -> Optional[Signal]:
     base_qty = _psym_sps(symbol, "LONG" if is_long else "SHORT") / current_price
     # AUG_A: BLOWPAST (gain >= 3×breakout-tier, conviction 90) — highest conviction
     if getattr(config, "AUGMENT_BLOWPAST_ENABLED", True):
-        if gain >= 3 * _blowpast_tier and k_not_exhausted:
+        if gain >= 3 * _blowpast_tier:
             aug_qty = min(pos_amt * 0.30, base_qty * 2.0)
             return Signal(
                 action="AUGMENT",
@@ -43959,7 +43967,7 @@ async def evaluate_augmentation(ctx: dict) -> Optional[Signal]:
             )
     # AUG_B: WT cross + aligned 2/3 TFs (conviction 80), bounce-tier gain gate
     if getattr(config, "AUGMENT_WT_CROSS_ENABLED", True):
-        if has_wt_cross and wt_tf_aligned >= 2 and gain >= _wtcross_tier and k_not_exhausted:
+        if has_wt_cross and wt_tf_aligned >= 2 and gain >= _wtcross_tier:
             aug_qty = base_qty * k_runway
             cross_tf = "3m" if wt_cross_bull_3m else "15m"
             return Signal(
@@ -43970,13 +43978,7 @@ async def evaluate_augmentation(ctx: dict) -> Optional[Signal]:
             )
     # AUG_C: WT aligned 3/3 LTF + smaller gain (conviction 70)
     if getattr(config, "AUGMENT_WT_3TF_ENABLED", True):
-        if (
-            wt_tf_aligned >= 3
-            and wt_dir_3m
-            and gain >= 0.5 * min_gain
-            and k_not_exhausted
-            and k_runway > 0.25
-        ):
+        if wt_tf_aligned >= 3 and wt_dir_3m and gain >= 0.5 * min_gain:
             aug_qty = base_qty * 0.5 * k_runway
             return Signal(
                 action="AUGMENT",
@@ -43986,7 +43988,7 @@ async def evaluate_augmentation(ctx: dict) -> Optional[Signal]:
             )
     # AUG_D: HTF trend only (conviction 65) — lowest bar, most frequent
     if getattr(config, "AUGMENT_HTF_TREND_ENABLED", True):
-        if gain >= min_gain and wt_dir_15m and wt_dir_1h and k_runway > 0.30:
+        if gain >= min_gain and wt_dir_15m and wt_dir_1h:
             aug_qty = base_qty * 0.3 * k_runway
             return Signal(
                 action="AUGMENT",

@@ -106,6 +106,16 @@ def test_live_gain_gate_and_tradier_wall_are_per_sym():
     assert "effective_min_gain(lambda _k, _d: _cfg_auto(_k, _d))" in tsrc, "tradier MIN_GAIN wall must resolve the board tier"
 
 
+def test_no_stoch_k_veto_on_augment_tiers():
+    # USER 2026-10-24: the hardcoded stoch-K exhaustion veto (k>15/k<85, k_runway>
+    # floors) was not a switch, never vectorized, never tested — and the user trades
+    # WT, not stoch. AUG_A-D gate on WT conditions + gain tiers only. k_runway stays
+    # as a SIZING mult (sizing stays live's job); reason strings keep k_run= cosmetics.
+    fn_src = _ez_augment_fn_source()
+    assert "k_not_exhausted" not in fn_src, "stoch-K veto must stay removed from AUG tiers"
+    assert "k_runway > 0.25" not in fn_src and "k_runway > 0.30" not in fn_src, "hardcoded K-runway floors must stay removed from AUG gates"
+
+
 def test_ladder_tiers_by_source_type():
     # The ladder is the main obligatory path: a bounce-signal bar must tier off
     # AUGMENT_BOUNCE_MIN_GAIN_PCT, a pyramid bar off AUGMENT_BREAKOUT_MIN_GAIN_PCT.
