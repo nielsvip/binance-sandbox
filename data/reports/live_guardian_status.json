@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-24T20:08:39Z",
+ "ts": "2026-10-24T20:13:48Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,7 +29,7 @@
   "fin": {
    "fills_6h": 104,
    "open_positions": 4,
-   "unrealised_usd": -0.06,
+   "unrealised_usd": -0.07,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 1,
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 56,
+   "fills_6h": 50,
    "open_positions": 15,
-   "unrealised_usd": -0.34,
+   "unrealised_usd": -0.43,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 56,
    "open_positions": 20,
-   "unrealised_usd": 0.09,
+   "unrealised_usd": -0.05,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 1,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 32,
    "open_positions": 5,
-   "unrealised_usd": -0.19,
+   "unrealised_usd": -0.26,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,70 +127,70 @@
     "80318"
    ],
    "starts_30m": 1,
-   "log_age_s": 53.0
+   "log_age_s": 4.0
   },
   "men": {
    "pids": [
     "98039"
    ],
    "starts_30m": 2,
-   "log_age_s": 440.0
+   "log_age_s": 748.0
   },
   "ang": {
    "pids": [
     "98075"
    ],
    "starts_30m": 2,
-   "log_age_s": 55.0
+   "log_age_s": 6.0
   },
   "inf": {
    "pids": [
     "97384"
    ],
    "starts_30m": 2,
-   "log_age_s": 120.0
+   "log_age_s": 428.0
   },
   "flz": {
    "pids": [
     "98054"
    ],
    "starts_30m": 2,
-   "log_age_s": 588.0
+   "log_age_s": 6.0
   },
   "trb": {
    "pids": [
     "19432"
    ],
    "starts_30m": 1,
-   "log_age_s": 10.0
+   "log_age_s": 0.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 45464.0
+   "log_age_s": 45773.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-24T20:08:40Z",
+   "ts": "2026-10-24T20:13:48Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "fin:MOVRUSDT_SHORT",
    "evidence": "REDUCE PPL_TP_g0.67%>=0.56%_stopBE1.1073 decided 2026-10-24T17:31:06Z bar=2026-10-24T16:15:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-24T20:08:41Z",
+   "ts": "2026-10-24T20:13:50Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "men",
-   "evidence": "ez_manage_men.log not written for 440s"
+   "evidence": "ez_manage_men.log not written for 748s"
   },
   {
-   "ts": "2026-10-24T20:08:41Z",
+   "ts": "2026-10-24T20:13:50Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
-   "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 588s"
+   "key": "inf",
+   "evidence": "ez_manage_inf.log not written for 428s"
   }
  ],
  "alert_counts": {
@@ -235,5 +235,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.78
+ "sweep_s": 1.46
 }
