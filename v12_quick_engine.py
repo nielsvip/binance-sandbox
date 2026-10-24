@@ -101,6 +101,7 @@ import vec_decisions.check_entry_candidates_stocks__lh_hl_filter
 import vec_decisions.check_entry_candidates_stocks__rsi_sma_mfi_gates
 import vec_decisions.check_entry_candidates_stocks__rvol_lrpctb_gates
 import vec_decisions.check_entry_candidates_stocks__stdev_breakout_bounce
+import vec_decisions.check_entry_swing_budget  # 2026-10-24 USER template-governed entries: ENABLE_TR_SWING_ENTRIES knob mirror (ONE call site at VETO-FINAL)
 import vec_decisions.check_exit_candidates_crypto__augmented_dc_break
 import vec_decisions.check_exit_candidates_crypto__breakeven_dc_struct
 import vec_decisions.check_exit_candidates_crypto__emergency_dc1h_breach
@@ -8142,6 +8143,7 @@ class QuickConfig:
     ENABLE_IP_ROTATION: bool = False
     ENABLE_LOSS_PROTECTION: bool = True
     ENABLE_MULTI_INSTANCE_ON_MACBOOK: bool = False
+    ENABLE_TR_SWING_ENTRIES: bool = False  # 2026-10-24 USER template-governed entries: matches TradierConfig False (doctrine — no global flip; the TEMPLATE row + daily chain promote per sym_side). Tradier-only knob; vec mirrors the knob half of tradier_manage.is_swing_entry_allowed via vec_decisions.check_entry_swing_budget (ONE call site at VETO-FINAL).
     ENTRY_MIN_ALIGNMENT: int = 5
     ENTRY_VET_NO_STRUCT_OR_BREAKOUT_REQUIRED: bool = True
     ENTRY_VET_RELAX_MODE: int = 3
@@ -18542,6 +18544,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         entry_sig = entry_sig & _kg2_ok_final
     if _e921_ok_final is not None:
         entry_sig = entry_sig & _e921_ok_final
+    # 2026-10-24 USER template-governed entries: ENABLE_TR_SWING_ENTRIES knob mirror of tradier_manage.is_swing_entry_allowed (knob half). Tradier-only; None when the knob allows (no-op) or in crypto MODE. In-loop reentry fires never read entry_sig, so mandatory cross-back reentries keep flowing on both legs, exactly like the live _xb_reentry_fired bypass. Budget arithmetic past the knob stays live-only (no NPZ source for market snapshot/sentiment) — see vec_decisions.check_entry_swing_budget.
+    _swing_knob_mask = vec_decisions.check_entry_swing_budget.entry_mask_vec(cfg, n)
+    if _swing_knob_mask is not None:
+        entry_sig = entry_sig & _swing_knob_mask
     # V17 2026-10-13 FILTER_EXEMPTIONS (vec_decisions/filter_exemptions.py). Probe pass: hand the final pre-loop gate state
     # to the caller and stop (no bar walk). Main pass with a non-empty map: ENTRY paths OR their filters-off bars (restricted
     # to the family's raw bars) and take the filters-off open-gate state on those bars; REENTRY keeps the filters-off gate
