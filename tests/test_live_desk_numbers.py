@@ -613,6 +613,55 @@ def test_order_fill_map_reads_cache_files():
         srv._cache.pop("ordercomm:tst", None)
 
 
+def test_twopass_releases_unpriced_close_burn():
+    # SELL fills feed the SHORT book, but a phantom LONG reduce burns them
+    # in pass one — leaving the SHORT close (no journal basis) unknown.
+    # Releasing the unpriced reduce lets the close backfill honestly.
+    fills = {"TP": [(None, -10.0, 100.0, "2026-10-23")]}
+    phantom = _ev("2026-10-23T15:00:00+00:00", "TP", "LONG", "REDUCE", 10.0, 95.0)
+    close = _ev("2026-10-23T19:00:00+00:00", "TP", "SHORT", "CLOSE", 10.0, 95.0)
+    chains = {("TP", "LONG"): [phantom], ("TP", "SHORT"): [close]}
+    books1 = srv._build_broker_books(chains, fills)
+    assert books1.get(("TP", "SHORT")) is None
+    out1, _ = srv.realized_walk([phantom, close], broker_books=books1)
+    assert all(e.get("rpnl") is None for e in out1 if e.get("action") in ("CLOSE", "REDUCE"))
+    release = ({srv._burn_key(phantom)}, set())
+    books2 = srv._build_broker_books(chains, fills, release=release)
+    assert books2.get(("TP", "SHORT")) == [[None, 10.0, 100.0]]
+    out2, sm2 = srv.realized_walk([phantom, close], broker_books=books2)
+    rows = {e["ts"]: e for e in out2 if e.get("action") in ("CLOSE", "REDUCE")}
+    assert rows[close["ts"]]["rpnl"] == 50.0
+    assert "rpnl" not in rows[phantom["ts"]]
+    assert sm2["broker_filled"] == 1 and sm2["unknown"] == 1
+
+
+def test_twopass_priced_rows_keep_burns():
+    # A fully journal-priced round trip owns its fills: the phantom close
+    # must stay unknown in both passes (no dilution from freed books).
+    fills = {"TQ": [(7, 10.0, 100.0, "2026-10-23"), (8, -10.0, 110.0, "2026-10-23")]}
+    o = _ev("2026-10-23T10:00:00+00:00", "TQ", "LONG", "OPEN", 10.0, 100.0)
+    c = _ev("2026-10-23T15:00:00+00:00", "TQ", "LONG", "CLOSE", 10.0, 110.0)
+    ph = _ev("2026-10-23T19:00:00+00:00", "TQ", "LONG", "CLOSE", 10.0, 110.0)
+    chains = {("TQ", "LONG"): [o, c, ph]}
+    books1 = srv._build_broker_books(chains, fills)
+    out1, sm1 = srv.realized_walk([o, c, ph], broker_books=books1)
+    assert sm1["unknown"] == 1 and sm1["pnl_total"] == 100.0
+    release = ({srv._burn_key(ph)}, set())
+    books2 = srv._build_broker_books(chains, fills, release=release)
+    out2, sm2 = srv.realized_walk([o, c, ph], broker_books=books2)
+    assert sm2["unknown"] == 1 and sm2["pnl_total"] == 100.0
+
+
+def test_twopass_veto_burns_never_release():
+    fills = {"TV": [(7, -10.0, 100.0, "2026-10-23")]}
+    veto = _ev("2026-10-23T10:00:00+00:00", "TV", "SHORT", "OPEN", 10.0, 90.0)
+    veto["reason"] = "BROKER_SYNC_REJECTED_VALUE_CAP"
+    close = _ev("2026-10-23T19:00:00+00:00", "TV", "SHORT", "CLOSE", 10.0, 95.0)
+    chains = {("TV", "SHORT"): [veto, close]}
+    books = srv._build_broker_books(chains, fills, release=({srv._burn_key(veto)}, {("TV", "SHORT")}))
+    assert books.get(("TV", "SHORT")) is None
+
+
 def test_36h_lots_expire_per_max_hold_ruling():
     o = _ev("2026-10-20T10:00:00+00:00", "ZX", "LONG", "OPEN", 10.0, 50.0)
     o["reason"] = "STRAT"

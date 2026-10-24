@@ -31,7 +31,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 os.chdir(ROOT)
 
-HOSTS = ("s1-pub", "s5", "10.0.0.4")
+HOSTS = ("s1-pub", "s5", "10.0.0.4", "10.0.0.6")
 REMOTE_DB = "/home/niels/binance-sandbox/data/hourly_reconfig/per_sym_store.db"
 WM_PATH = ROOT / "data" / "per_sym_absorb_watermark.json"
 AUDIT_PATH = ROOT / "data" / "reports" / "per_sym_absorb_audit.json"

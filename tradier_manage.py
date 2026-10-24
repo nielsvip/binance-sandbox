@@ -43189,6 +43189,12 @@ async def _xg_tr_confirmed(mgr, a, c, result):
             _stale_set_halt.record_close("tradier", _acct, _sym, _ps, _pnl, _reason, cfg=config, lifecycle=_life, notional_usd=_notional)
         except Exception as _se:
             logger.warning(f"[STALE_SET_HALT] close-record err {_pk}: {_se}")
+    if _force and _qty > 0:
+        try:
+            from vec_decisions import execution_ledger as _exledger_tr
+            _exledger_tr.append_history_fill(getattr(config, "BASE_PATH", "/Users/niels/Documents/binance"), _acct, _pk, "CLOSE", _qty, _px, _reason, venue_subdir="tradier")
+        except Exception:
+            pass
 
 
 _XG_TR_HOOKS = _xg.Hooks(force=_xg_tr_force, broker=_xg_tr_broker, confirmed=_xg_tr_confirmed, cfg=lambda: config, logger=lambda: logger)

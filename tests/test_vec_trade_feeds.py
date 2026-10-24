@@ -117,5 +117,5 @@ def test_load_forward_trips_tags_round_trips(tmp_path, monkeypatch):
         fe, fx = v.load_forward_trips("TST", "LONG")
     finally:
         v._fwd_index = None
-    assert len(fe) == 1 and len(fx) == 1
-    assert fe[0].tzinfo is not None and fx[0] > fe[0]
+    assert len(fe) == 2 and len(fx) == 1
+    assert fe[0].tzinfo is not None and fx[0] > fe[-1]
