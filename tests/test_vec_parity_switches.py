@@ -2,6 +2,7 @@
 switches pin the vec backstop to native producers. Source-level pins, helpers
 tested directly (mirrors test_ratio_rebalance_master.py).
 """
+
 from __future__ import annotations
 
 import sys
@@ -51,15 +52,30 @@ def test_config_and_quickconfig_defaults():
 
 
 def test_override_verdict():
-    assert G.override_verdict("VEC_LAST_CLEAN", "", "", True, True)[0] == "VEC_LAST_CLEAN"
-    assert G.override_verdict("VEC_LAST_OVERRIDE", "CIRCUIT_BREAKER", "NATIVE_X", True, True)[0] == "VEC_LAST_OVERRIDE"
-    tag, detail, _ = G.override_verdict("VEC_LAST_OVERRIDE", "CIRCUIT_BREAKER", "NATIVE_X", False, True)
+    assert (
+        G.override_verdict("VEC_LAST_CLEAN", "", "", True, True)[0] == "VEC_LAST_CLEAN"
+    )
+    assert (
+        G.override_verdict(
+            "VEC_LAST_OVERRIDE", "CIRCUIT_BREAKER", "NATIVE_X", True, True
+        )[0]
+        == "VEC_LAST_OVERRIDE"
+    )
+    tag, detail, _ = G.override_verdict(
+        "VEC_LAST_OVERRIDE", "CIRCUIT_BREAKER", "NATIVE_X", False, True
+    )
     assert tag == "VEC_LAST_REFUSE" and detail == "NATIVE_X"
-    tag, detail, _ = G.override_verdict("VEC_LAST_OVERRIDE", "CIRCUIT_BREAKER", "", False, True)
+    tag, detail, _ = G.override_verdict(
+        "VEC_LAST_OVERRIDE", "CIRCUIT_BREAKER", "", False, True
+    )
     assert tag == "VEC_LAST_CLEAN" and detail == "VEC_OVERRIDE_DISABLED"
-    tag, detail, _ = G.override_verdict("VEC_LAST_OVERRIDE", "CIRCUIT_BREAKER", "NATIVE_X", True, False)
+    tag, detail, _ = G.override_verdict(
+        "VEC_LAST_OVERRIDE", "CIRCUIT_BREAKER", "NATIVE_X", True, False
+    )
     assert tag == "VEC_LAST_REFUSE" and detail == "NATIVE_X"
-    tag, detail, _ = G.override_verdict("VEC_LAST_OVERRIDE", "OTHER_GATE", "", True, False)
+    tag, detail, _ = G.override_verdict(
+        "VEC_LAST_OVERRIDE", "OTHER_GATE", "", True, False
+    )
     assert tag == "VEC_LAST_OVERRIDE"
 
 
@@ -106,11 +122,17 @@ def test_live_gates_wired():
 
 def test_template_rows_crypto():
     for fn in ("TEMPLATE_CRYPTO_LONG.xlsx", "TEMPLATE_CRYPTO_SHORT.xlsx"):
-        wb = openpyxl.load_workbook(ROOT / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM" / fn, read_only=True)
+        wb = openpyxl.load_workbook(
+            ROOT / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM" / fn, read_only=True
+        )
         try:
             for sw, tab in TABS.items():
                 ws = wb[tab]
-                hits = [r[0].value for r in ws.iter_rows(min_row=3, max_col=1) if r[0].value == sw]
+                hits = [
+                    r[0].value
+                    for r in ws.iter_rows(min_row=3, max_col=1)
+                    if r[0].value == sw
+                ]
                 assert len(hits) >= 2, f"{fn}:{tab}:{sw}"
         finally:
             wb.close()
