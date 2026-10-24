@@ -19,9 +19,12 @@ TRB_BUY_COLOR = "#00e676"
 TRB_SELL_COLOR = "#ff1744"
 VEC_ONLY_COLOR = "rgba(248,113,113,0.55)"
 LIVE_ONLY_COLOR = "rgba(74,222,128,0.55)"
-MISMATCH_VEC_MPL = ("#16a34a", 0.30)
-MISMATCH_LIVE_MPL = ("#f87171", 0.14)
+MISMATCH_VEC_MPL = ("#e0e0e0", 0.30)
+MISMATCH_LIVE_MPL = ("#616161", 0.55)
 MISMATCH_LW = 0.8
+WIN_COLOR = "#00e676"
+LOSS_COLOR = "#ff1744"
+UNKNOWN_COLOR = "#9e9e9e"
 
 
 def boundary_events(events):
@@ -98,6 +101,49 @@ def _qty(rec):
         return 0.0
 
 
+def _px(rec):
+    try:
+        return float(rec.get("price") or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def annotate_round_trips(events, side):
+    """FIFO win/loss per closed round trip, in place.
+
+    events: time-sorted, single side, phase-tagged, with qty+price. Entries
+    accumulate cost; a boundary exit closes everything open since the last flat
+    and stamps win (pnl>0, side-signed, qty-weighted entry) on the exit and its
+    entries. Unmatched exits and still-open entries keep win=None (grey).
+    """
+    sign = -1.0 if side == "SHORT" else 1.0
+    open_evts, open_q, open_cost = [], 0.0, 0.0
+    for e in events:
+        e["win"] = None
+        ph = e.get("phase")
+        q = abs(_qty(e))
+        px = _px(e)
+        if ph == "entry":
+            open_evts.append(e)
+            open_q += q
+            open_cost += px * q
+        elif ph == "exit":
+            if open_evts and open_q > 0 and px > 0:
+                avg = open_cost / open_q
+                win = ((px - avg) / avg * sign) > 0 if avg > 0 else None
+                e["win"] = win
+                for o in open_evts:
+                    o["win"] = win
+            open_evts, open_q, open_cost = [], 0.0, 0.0
+    return events
+
+
+def arrow_style(event, acct):
+    w = event.get("win")
+    face = WIN_COLOR if w is True else LOSS_COLOR if w is False else UNKNOWN_COLOR
+    return face, account_color(acct, event.get("direction", "buy")), arrow_alpha(event)
+
+
 def mark_boundaries(records):
     """Tag ledger records with round-trip phase via cumulative qty.
 
@@ -168,12 +214,12 @@ def fetch_trades(symbol, accounts, hist_dirs):
                     typ = str(rec.get("type") or "")
                     by_side.setdefault(side, []).append(
                         {"timestamp": ts, "direction": event_direction(typ, side),
-                         "type": typ, "qty": _qty(rec), "side": side,
+                         "type": typ, "qty": _qty(rec), "price": _px(rec), "side": side,
                          "reason": str(rec.get("reason") or "")[:80]})
         events = []
         for side, recs in by_side.items():
             recs.sort(key=lambda e: e["timestamp"])
-            events.extend(mark_boundaries(recs))
+            events.extend(annotate_round_trips(mark_boundaries(recs), side))
         if events:
             seen = set()
             uniq = []

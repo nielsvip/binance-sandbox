@@ -4,6 +4,10 @@ Pins the 2026-10-08 fix: two-token path tags (one token silenced whole families)
 distinct-position counting (one chronic loser re-diagnosed on every OPEN used to
 disable a path alone), and 24h decay with strike purge (disables never cleared).
 Also pins the untouched half: bad-entry criteria and the HTF_EXHAUST exit.
+2026-10-24 USER "live can NEVER ignore a vec trade" contract change: vec-dictated
+orders (_parity_vec_order) are never tracked and never blocked — the tests below
+that used VEC-flavored reasons now assert exemption; native granularity is pinned
+with native reasons instead.
 """
 import os
 import sys
@@ -60,26 +64,28 @@ def test_tag_vec_reasons_go_four_tokens_deep():
     assert _cb_path_tag("VEC_EXIT_OWED") == "VEC_EXIT"
 
 
-def test_bad_vec_family_does_not_disable_sibling_family(tmp_path):
+def test_vec_dictated_orders_never_tracked_nor_blocked(tmp_path):
+    # 2026-10-24 mandate: three bad fills must never disable the vector lane again.
     cb = _cb(tmp_path)
     pos = {}
     for sym in ("AUSDT", "BUSDT", "CUSDT"):
         pk = f"inf:{sym}_LONG"
         cb.record_entry(pk, 1.0, "VEC_DRIVEN_OPEN_PURE_BOARD_X", indicators=_ind(4, 4))
         pos[pk] = _losing()
+    assert cb._entries == {}
     cb.check_and_update(pos, get_indicators_fn=lambda s: {})
-    assert cb.is_blocked("VEC_DRIVEN_OPEN_PURE_BOARD_Y")
-    assert not cb.is_blocked("VEC_DRIVEN_OPEN_RECONCILE_X")
-    assert not cb.is_blocked("VEC_DRIVEN_CLOSE_RECONCILE_X")
+    assert not cb.is_blocked("VEC_DRIVEN_OPEN_PURE_BOARD_Y")
+    assert not cb.is_blocked("VEC_DRIVEN_OPEN_PURE_BOARD_X")
+    assert cb._bad_entries == []
 
 
 def test_single_loser_cannot_disable(tmp_path):
     cb = _cb(tmp_path)
-    cb.record_entry("inf:AUSDT_LONG", 1.0, "B_KZONE |VEC_EXACT", indicators=_ind(4, 4))
+    cb.record_entry("inf:AUSDT_LONG", 1.0, "B_KZONE_NATIVE_X", indicators=_ind(4, 4))
     pos = {"inf:AUSDT_LONG": _losing()}
     for _ in range(5):
         assert cb.check_and_update(pos, get_indicators_fn=lambda s: {}) == []
-    assert not cb.is_blocked("B_KZONE |VEC_EXACT")
+    assert not cb.is_blocked("B_KZONE_NATIVE_X")
 
 
 def test_three_distinct_bad_disable_only_that_subpath(tmp_path):
@@ -87,12 +93,12 @@ def test_three_distinct_bad_disable_only_that_subpath(tmp_path):
     pos = {}
     for sym in ("AUSDT", "BUSDT", "CUSDT"):
         pk = f"inf:{sym}_LONG"
-        cb.record_entry(pk, 1.0, "B_KZONE |VEC_EXACT", indicators=_ind(4, 4))
+        cb.record_entry(pk, 1.0, "B_KZONE_NATIVE_X", indicators=_ind(4, 4))
         pos[pk] = _losing()
     cb.check_and_update(pos, get_indicators_fn=lambda s: {})
-    assert cb.is_blocked("B_KZONE |VEC_EXACT")
-    assert cb.is_blocked("B_KZONE |VEC_EXACT") is True
-    assert not cb.is_blocked("B_MOM5 |VEC_EXACT")
+    assert cb.is_blocked("B_KZONE_NATIVE_X")
+    assert cb.is_blocked("B_KZONE_NATIVE_X") is True
+    assert not cb.is_blocked("B_MOM5_NATIVE_X")
     assert not cb.is_blocked("ENTRY_BREAKOUT_X")
 
 
@@ -103,7 +109,7 @@ def test_decay_rearms_and_purges_strikes(tmp_path):
         pk = f"inf:{sym}_LONG"
         cb.record_entry(pk, 1.0, "DC_BREAKOUT_X", indicators=_ind(4, 4))
         pos[pk] = _losing()
-    cb.record_entry("inf:ZUSDT_LONG", 1.0, "B_KZONE |VEC_EXACT", indicators=_ind(4, 4))
+    cb.record_entry("inf:ZUSDT_LONG", 1.0, "B_KZONE_NATIVE_X", indicators=_ind(4, 4))
     pos["inf:ZUSDT_LONG"] = _losing()
     cb.check_and_update(pos, get_indicators_fn=lambda s: {})
     assert cb.is_blocked("DC_BREAKOUT_X")
@@ -111,7 +117,7 @@ def test_decay_rearms_and_purges_strikes(tmp_path):
     cb._disabled_paths["DC_BREAKOUT"] -= 25 * 3600
     assert not cb.is_blocked("DC_BREAKOUT_X")
     assert [b for b in cb._bad_entries if b[1] == "DC_BREAKOUT"] == []
-    assert [b for b in cb._bad_entries if b[1] == "B_KZONE |VEC"] != []
+    assert [b for b in cb._bad_entries if b[1] == "B_KZONE"] != []
     cb.check_and_update({"inf:AUSDT_LONG": _losing(), "inf:BUSDT_LONG": _losing()}, get_indicators_fn=lambda s: {})
     assert not cb.is_blocked("DC_BREAKOUT_X")
 

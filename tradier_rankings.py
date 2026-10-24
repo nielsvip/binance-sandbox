@@ -1114,10 +1114,7 @@ async def plot_dfs_subplots(
                     if t_ts < x_left_ts or t_ts > x_right_ts:
                         continue
                     is_buy = ev["direction"] == "buy"
-                    if acct == "trb":
-                        ecol = TRB_BUY_COLOR if is_buy else TRB_SELL_COLOR
-                    else:
-                        ecol = ACCOUNT_ARROW_COLORS[acct]
+                    _face, _edge, _alpha = _lth.arrow_style(ev, acct)
                     t_idx = get_x_idx(t_ts) + x_off
                     try:
                         row_idx = df_tf["close_time"].searchsorted(t_ts)
@@ -1126,7 +1123,7 @@ async def plot_dfs_subplots(
                         y_pos = candle_row["low"] - margin_abs_val * 0.5 if is_buy else candle_row["high"] + margin_abs_val * 0.5
                     except (IndexError, KeyError):
                         continue
-                    ax_plot.scatter([t_idx], [y_pos], color=ecol, marker="^" if is_buy else "v", s=30, zorder=8, alpha=_lth.arrow_alpha(ev), edgecolors="white", linewidths=0.6)
+                    ax_plot.scatter([t_idx], [y_pos], color=_face, marker="^" if is_buy else "v", s=30, zorder=8, alpha=_alpha, edgecolors=_edge, linewidths=0.8)
         marker_events = []
         if symbol in signals_data and tf_plot_loop in signals_data[symbol]:
             for etype, ev_list in signals_data[symbol][tf_plot_loop].items():

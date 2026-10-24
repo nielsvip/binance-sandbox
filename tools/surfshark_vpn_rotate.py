@@ -285,6 +285,10 @@ def do_rotate(target=None, force_tunnel=False):
                 except Exception as e:
                     log(f"could not clear {path}: {e}")
         return True
+    still = [s for s in slots() if s["status"] == "Connected"]
+    if still:
+        log(f"keeping current link {still[0]['name']} — a sick link beats a dark one; next cooldown retries");
+        return False
     log("all candidate slots failed — trying naked egress, then ensuring the link is not dark");
     if try_naked(wl, state, old_ip):
         return True

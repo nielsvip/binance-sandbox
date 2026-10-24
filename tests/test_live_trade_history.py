@@ -28,8 +28,8 @@ def test_account_colors():
 
 
 def test_mismatch_constants_faint():
-    assert lth.MISMATCH_VEC_MPL == ("#16a34a", 0.30)
-    assert lth.MISMATCH_LIVE_MPL[1] <= 0.25
+    assert lth.MISMATCH_VEC_MPL == ("#e0e0e0", 0.30)
+    assert lth.MISMATCH_LIVE_MPL == ("#616161", 0.55)
 
 
 def test_strips_draw_on_datetime_axis():
@@ -101,7 +101,54 @@ def test_draw_mismatch_lines_both_colors():
             and l.get_color() == lth.MISMATCH_VEC_MPL[0]]
     assert len(vecs) == 1
     assert abs(vecs[0].get_alpha() - lth.MISMATCH_VEC_MPL[1]) < 1e-9
-    assert lth.MISMATCH_VEC_MPL[0] == "#16a34a" and lth.MISMATCH_LIVE_MPL[0] == "#f87171"
+    assert lth.MISMATCH_VEC_MPL[0] == "#e0e0e0" and lth.MISMATCH_LIVE_MPL[0] == "#616161"
+    plt.close(fig)
+
+
+def _wlt(h, phase, qty, px):
+    from datetime import datetime, timezone
+    return {"ts": datetime(2026, 10, 15, h, 0, tzinfo=timezone.utc),
+            "phase": phase, "qty": qty, "price": px, "type": "OPEN"}
+
+
+def test_annotate_round_trips_long_win():
+    evs = [_wlt(8, "entry", 5.0, 100.0), _wlt(9, "exit", 5.0, 110.0)]
+    lth.annotate_round_trips(evs, "LONG")
+    assert [e["win"] for e in evs] == [True, True]
+
+
+def test_annotate_round_trips_long_loss_and_short_sign():
+    evs = [_wlt(8, "entry", 5.0, 100.0), _wlt(9, "exit", 5.0, 90.0)]
+    lth.annotate_round_trips(evs, "LONG")
+    assert [e["win"] for e in evs] == [False, False]
+    evs = [_wlt(8, "entry", 5.0, 100.0), _wlt(9, "exit", 5.0, 90.0)]
+    lth.annotate_round_trips(evs, "SHORT")
+    assert [e["win"] for e in evs] == [True, True]
+
+
+def test_annotate_round_trips_unmatched_and_open_stay_grey():
+    evs = [_wlt(8, "exit", 5.0, 90.0), _wlt(9, "entry", 5.0, 100.0)]
+    lth.annotate_round_trips(evs, "LONG")
+    assert [e["win"] for e in evs] == [None, None]
+
+
+def test_arrow_style_win_loss_unknown():
+    f, e, a = lth.arrow_style({"win": True, "direction": "buy", "phase": "entry"}, "trb")
+    assert f == lth.WIN_COLOR and e == lth.account_color("trb", "buy") and a == lth.ENTRY_ALPHA
+    f, e, a = lth.arrow_style({"win": False, "direction": "sell", "phase": "exit"}, "ang")
+    assert f == lth.LOSS_COLOR and e == lth.account_color("ang", "sell") and a == lth.EXIT_ALPHA
+    f, _, _ = lth.arrow_style({"direction": "buy"}, "trb")
+    assert f == lth.UNKNOWN_COLOR
+
+
+def test_draw_mismatch_lines_live_side():
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from datetime import datetime, timezone
+    from matplotlib.lines import Line2D
+    fig, ax = plt.subplots()
+    base = datetime(2026, 10, 20, tzinfo=timezone.utc)
     nv2, nl2 = lth.draw_mismatch_lines(ax, base.replace(hour=9), base.replace(hour=16),
                                        [], [], [], [base.replace(hour=12)], lambda t: t.timestamp())
     assert (nv2, nl2) == (0, 1)

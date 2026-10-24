@@ -18,3 +18,10 @@
 - PROOF: RSRUSDT_LONG 42-0 -> 0-0; PUMPUSDT_LONG gaps honestly renamed (REENTRY_MANDATORY 22, RALLY 16).
 - Rows queued: RZ_ENTRY_ENABLED (crypto), QUICK_OPEN_STRONG_VEC_ENABLED (crypto). Bible rebuilt+verified (WARN-only).
 - INERT UNTIL RECYCLE. Next: live reentry lanes, GOLDEN/WR/DC-conform, B-residual, DC_BREAK D-edge, alignment audit, re-aggregation, burn-down + monitor.
+
+## 2026-10-24 07:45Z — clean-sweep launch + breaker vec-exemption + tradier GOLDEN lane (Mac-only, NO S1 sync: sweep purity)
+- Launched clean 330-sym sweep on current engine (v12 9618db84) -> /tmp/parity_native_engine_cur (ENGINE_MD5 recorded), PAR=6, 12 workers alive, 22 reports banked. Prior 247 reports span 19 engine versions (pre-twin) — aggregate only by md5_set.
+- Breaker vec-exemption (USER "live can NEVER ignore a vec trade"): SmartCircuitBreaker.record_entry/is_blocked (ez) + EntryCircuitBreaker (tradier) now honor _parity_vec_order/_tr_parity_vec_order (vec orders never tracked/judged). Monitor showed 1150 CIRCUIT_BREAKER bypasses/2h — the 24h auto-disable could never block vec again. 3 breaker tests encoded the condemned contract -> rewritten to the mandate (native granularity kept). 7/7 green.
+- Tradier GOLDEN_RULE lane via golden_loop.scalar_fire (stateful prev_above/breakout_ts, sim-time clock, first-claim-wins). 5/5 tests. Fixes definitely-missing stocks producer (16 trips, 0 callers).
+- Deferred (need fresh-sweep honest ranking, not stale labels): LEGACY_PSR/MOM5 (board-conditional defaults False), RALLY/GOLDEN-crypto/WR/DC conformance (live paths exist), reentry state-machine timing (REENTRY_MANDATORY/RALLY), TIER1 (exists), STDEV (exists crypto).
+- Noted: tradier breaker still 1-token tags (native B-family nuking on stocks) — queued.

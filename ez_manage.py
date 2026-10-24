@@ -14499,6 +14499,10 @@ class SmartCircuitBreaker:
         self._log_path = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "data" / "circuit_breaker_log.jsonl"
 
     def record_entry(self, pk, price, reason, indicators=None):
+        # 2026-10-24 USER "live can NEVER ignore a vec trade": vec-dictated orders are
+        # never tracked for strikes (_parity_vec_order: live only executes, never judges).
+        if _parity_vec_order(reason):
+            return
         tag = _cb_path_tag(reason)
         is_long = pk.endswith("_LONG")
         wt_state = {}
@@ -14655,6 +14659,10 @@ class SmartCircuitBreaker:
         return False
 
     def is_blocked(self, reason):
+        # 2026-10-24 USER "live can NEVER ignore a vec trade": the breaker can never
+        # refuse a vec-dictated order (belt+suspenders: record_entry already skips them).
+        if _parity_vec_order(reason):
+            return False
         return self._path_disabled(_cb_path_tag(reason))
 
 

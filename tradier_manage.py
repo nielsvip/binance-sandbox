@@ -23165,6 +23165,77 @@ async def process_position(
                                 pass
                     except Exception:
                         pass
+                # ─── GOLDEN_RULE loop entry (USER parity: wire missing producer) ───
+                # Shared scalar vec_decisions.golden_loop.scalar_fire (same admission the
+                # vector sweeps as GOLDEN_RULE_ENTRY: breakout cross + WT, retest + k-turn).
+                # State (prev_above/breakout_ts) persists per sym_side in a process-global
+                # dict, advanced on every entry evaluation (frozen while holding —
+                # documented seam vs always-on vec; measured in parity). Fires only when
+                # no earlier path claimed OPEN. Kill: GOLDEN_RULE_ENABLED=False.
+                if action_type != "OPEN" and bool(
+                    _cfg_auto("GOLDEN_RULE_ENABLED", True)
+                ):
+                    try:
+                        from vec_decisions import golden_loop as _gld_mod
+
+                        class _GoldenCfg:
+                            def __init__(self, _ga):
+                                self._ga = _ga
+
+                            def __getattr__(self, _k):
+                                if _k.startswith("_"):
+                                    raise AttributeError(_k)
+                                _defs = {
+                                    "GOLDEN_RULE_MULT_BREAKOUT": 0.1,
+                                    "GOLDEN_RULE_MULT_RETEST": 5.0,
+                                    "GOLDEN_RULE_RETEST_WINDOW_S": 14400.0,
+                                    "GOLDEN_RULE_BASE_USD": 5.0,
+                                }
+                                return self._ga(_k, _defs.get(_k))
+
+                        _gld_state = globals().setdefault("_GOLDEN_STATE", {})
+                        _gld_key = (str(symbol), "L" if is_long else "S")
+                        _gld_prev, _gld_bts = _gld_state.get(_gld_key, (False, 0.0))
+                        _gld_row = indicators_raw if indicators_raw else i
+                        try:
+                            from datetime import datetime as _gld_dt
+                            from datetime import timezone as _gld_tz
+
+                            _gld_ts = float(_gld_dt.now(_gld_tz.utc).timestamp())
+                        except Exception:
+                            _gld_ts = 0.0
+                        _gld_out = _gld_mod.scalar_fire(
+                            _gld_row or {},
+                            bool(_gld_prev),
+                            float(_gld_bts or 0.0),
+                            float(_gld_ts or 0.0),
+                            bool(is_long),
+                            "tradier",
+                            _GoldenCfg(_cfg_auto),
+                        )
+                        try:
+                            _gld_state[_gld_key] = (
+                                bool(_gld_out.get("prev_above")),
+                                float(_gld_out.get("breakout_ts") or 0.0),
+                            )
+                        except Exception:
+                            pass
+                        if _gld_out.get("fire"):
+                            _gld_qty = (
+                                int(max(1, float(_cfg_auto("START_POSITION_SIZE", 600)) / current_price))
+                                if current_price and current_price > 0
+                                else 1
+                            )
+                            action_type = "OPEN"
+                            qty = _gld_qty
+                            conf = 70.0
+                            reason = f"TRADIER_GOLDEN_RULE_{'L' if is_long else 'S'}_P{int(_gld_out.get('phase') or 0)}_{_gld_out.get('reason') or ''}"
+                            try:
+                                _entry_score = max(float(_entry_score or 0.0), float(conf))
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
                 # ═══════════════════════════════════════════════════════════════════════
                 # 🚩 GR_HTF_DIRECT_ENTRY — 2026-05-12 USER MANDATE
                 # Direct entry signal: Score = n_tfs_aligned × GOLDEN_RULE_MIN_IND.
@@ -32353,6 +32424,10 @@ class EntryCircuitBreaker:
         self._disabled_paths = set()
 
     def record_entry(self, pk, price, reason, indicators=None):
+        # 2026-10-24 USER "live can NEVER ignore a vec trade" (stocks twin of the ez fix):
+        # vec-dictated orders are never tracked for strikes.
+        if _tr_parity_vec_order(reason):
+            return
         tag = reason.split("_")[0] if reason else "UNKNOWN"
         is_long = "LONG" in pk
         wt_fav = {}
@@ -32402,6 +32477,9 @@ class EntryCircuitBreaker:
                 self._entries.pop(pk, None)
 
     def is_blocked(self, reason):
+        # 2026-10-24 USER "live can NEVER ignore a vec trade": never refuse vec-dictated.
+        if _tr_parity_vec_order(reason):
+            return False
         tag = reason.split("_")[0] if reason else "UNKNOWN"
         return tag in self._disabled_paths
 

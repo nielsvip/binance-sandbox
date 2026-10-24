@@ -6626,7 +6626,8 @@ async def plot_dfs_subplots(
                                 _yp = _row["low"] - margin_abs_val * 0.5 if _is_buy else _row["high"] + margin_abs_val * 0.5
                             except (IndexError, KeyError):
                                 continue
-                            ax_plot.scatter([_t], [_yp], color=_lth.ACCOUNT_ARROW_COLORS[_acct], marker="^" if _is_buy else "v", s=30, zorder=8, alpha=_lth.arrow_alpha(_ev), edgecolors="white", linewidths=0.6)
+                            _face, _edge, _alpha = _lth.arrow_style(_ev, _acct)
+                            ax_plot.scatter([_t], [_yp], color=_face, marker="^" if _is_buy else "v", s=30, zorder=8, alpha=_alpha, edgecolors=_edge, linewidths=0.8)
             except Exception as _e_live:
                 logger.debug(f"[plot_dfs_subplots] live overlay error: {_e_live}")
 

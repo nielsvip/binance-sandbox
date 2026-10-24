@@ -206,10 +206,10 @@ def main():
     vec_bars = sorted({b for b, _ in vec_only})
     live_bars = sorted({nearest_bar(t) for t in live_only_ts})
     injection = (
-        "{label:'vec only (no live fill)',data:%s,type:'line',borderColor:'rgba(22,163,74,0.70)',"
-        "backgroundColor:'rgba(22,163,74,0.70)',borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:20},"
-        "{label:'live only (no vec trade)',data:%s,type:'line',borderColor:'rgba(248,113,113,0.55)',"
-        "backgroundColor:'rgba(248,113,113,0.55)',borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:20},"
+        "{label:'vec only (no live fill)',data:%s,type:'line',borderColor:'rgba(224,224,224,0.85)',"
+        "backgroundColor:'rgba(224,224,224,0.85)',borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:20},"
+        "{label:'live only (no vec trade)',data:%s,type:'line',borderColor:'rgba(97,97,97,0.85)',"
+        "backgroundColor:'rgba(97,97,97,0.85)',borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:20},"
         % (json.dumps(seg(vec_bars)), json.dumps(seg(live_bars)))
     )
     banner = (
