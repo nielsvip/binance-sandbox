@@ -124,13 +124,28 @@ def _staged_servers():
     return files
 
 
-def test_ovpn_remotes_whitelisted():
+def test_ovpn_remotes_sane():
     import re
     wl = vpn.whitelist()
     for f in _staged_servers():
-        ips = re.findall(r"^remote\s+(\d+\.\d+\.\d+\.\d+)\s", f.read_text(), re.M)
-        assert ips, f"{f.name}: no pinned-IP remote (single-hostname mode wedges on dead pool members)"
-        assert set(ips) <= wl, f"{f.name}: non-whitelisted remotes {set(ips) - wl} would deny orders"
+        txt = f.read_text()
+        ips = re.findall(r"^remote\s+(\d+\.\d+\.\d+\.\d+)\s", txt, re.M)
+        hosts = re.findall(r"^remote\s+([a-z0-9.-]+\.prod\.surfshark\.com)\s", txt, re.M)
+        assert ips or hosts, f"{f.name}: no remote at all"
+        assert set(ips) <= wl, f"{f.name}: non-whitelisted IP remotes {set(ips) - wl} would deny orders"
+        assert set(hosts) <= set(vpn.POOL_HOSTS), f"{f.name}: unknown pool hostname {set(hosts)}"
+
+
+def test_pool_members_unions_rounds():
+    calls = {"n": 0}
+
+    def fake(host):
+        calls["n"] += 1
+        return {"10.0.0.1"} if calls["n"] % 2 else {"10.0.0.1", "10.0.0.2"}
+
+    got = vpn.pool_members(["h"], rounds=3, resolver=fake)
+    assert set(got) == {"10.0.0.1", "10.0.0.2"}
+    assert got["10.0.0.1"] == ["h"]
 
 
 def test_ovpn_hardening_knobs():
@@ -138,7 +153,7 @@ def test_ovpn_hardening_knobs():
         txt = f.read_text()
         for knob in ["ping-restart 60", "hand-window 20", "tls-timeout 5", "persist-tun",
                      "persist-key", "explicit-exit-notify 1", "mssfix 1400", "remote-random",
-                     "replay-window 64 60"]:
+                     "replay-window 64 60", "resolv-retry 10"]:
             assert knob in txt, f"{f.name}: missing {knob}"
         assert "ping-restart 0" not in txt, f"{f.name}: dead-peer detection disabled"
 

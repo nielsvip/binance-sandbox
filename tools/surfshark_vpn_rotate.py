@@ -171,6 +171,44 @@ def ovpn_down(name):
         return False
 
 
+POOL_HOSTS = ["uk-lon.prod.surfshark.com", "sg-sng.prod.surfshark.com", "co-bog.prod.surfshark.com"]
+
+
+def _dig_a(host):
+    try:
+        out = sh(["dig", "+short", "+time=2", "+tries=1", host, "A"], timeout=15).stdout
+        return {ln.strip() for ln in out.splitlines() if re.match(r"^\d+\.\d+\.\d+\.\d+$", ln.strip())}
+    except Exception:
+        return set()
+
+
+def pool_members(hosts=None, rounds=6, resolver=None):
+    """Union of pool member IPs across DNS rounds. USER 2026-10-24: the pool
+    churns across adjacent IPs (harvest: 33 members, .170 live next to
+    whitelisted .171) so no static list survives; harvest instead, then cover."""
+    res = resolver or _dig_a
+    found = {}
+    for _ in range(max(1, rounds)):
+        for h in (hosts or POOL_HOSTS):
+            try:
+                for ip in res(h):
+                    found.setdefault(ip, set()).add(h)
+            except Exception:
+                pass
+    return {ip: sorted(hs) for ip, hs in found.items()}
+
+
+def cmd_poolmap():
+    wl = whitelist()
+    members = pool_members()
+    missing = sorted(ip for ip in members if ip not in wl)
+    print(f"pool members seen: {len(members)}, whitelisted: {len(members) - len(missing)}")
+    print("add to Binance whitelist to cover rotation:")
+    for ip in missing:
+        print(f"  {ip}  ({','.join(members[ip])})")
+    return 0
+
+
 def _slot_start(name):
     if _is_ovpn(name):
         return ovpn_up(name)
@@ -580,6 +618,8 @@ if __name__ == "__main__":
     elif c == "watch":
         iv = int(sys.argv[2]) if len(sys.argv) > 2 else 15
         sys.exit(cmd_watch(iv))
+    elif c == "poolmap":
+        sys.exit(cmd_poolmap())
     else:
-        print("usage: surfshark_vpn_rotate.py status|check|rotate [slot|none]|watch [interval]");
+        print("usage: surfshark_vpn_rotate.py status|check|rotate [slot|none]|watch [interval]|poolmap");
         sys.exit(2)

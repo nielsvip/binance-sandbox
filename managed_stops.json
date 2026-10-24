@@ -27,13 +27,6 @@
     "symbol": "ENJUSDT",
     "side": "SHORT"
   },
-  "men:1000LUNCUSDT_SHORT": {
-    "orderId": "2000001538500938",
-    "stopPrice": 0.04512,
-    "entry_sig": "2026-10-24 20:33:20.175000+00:00",
-    "symbol": "1000LUNCUSDT",
-    "side": "SHORT"
-  },
   "men:ARBUSDC_LONG": {
     "orderId": "2000001538501262",
     "stopPrice": 0.16343,
@@ -41,18 +34,18 @@
     "symbol": "ARBUSDC",
     "side": "LONG"
   },
-  "men:BATUSDT_LONG": {
-    "orderId": "2000001538502185",
-    "stopPrice": 0.15299,
-    "entry_sig": "2026-10-24 22:28:29.257000+00:00",
-    "symbol": "BATUSDT",
-    "side": "LONG"
-  },
   "men:ETHFIUSDC_LONG": {
-    "orderId": "2000001538502920",
-    "stopPrice": 0.6101,
+    "orderId": "2000001538502119",
+    "stopPrice": 0.6033,
     "entry_sig": "2026-10-24 21:52:50.590000+00:00",
     "symbol": "ETHFIUSDC",
     "side": "LONG"
+  },
+  "men:1000LUNCUSDT_SHORT": {
+    "orderId": "2000001538504254",
+    "stopPrice": 0.04756,
+    "entry_sig": "2026-10-24 20:33:20.175000+00:00",
+    "symbol": "1000LUNCUSDT",
+    "side": "SHORT"
   }
 }

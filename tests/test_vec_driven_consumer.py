@@ -412,15 +412,32 @@ def test_reconcile_retries_open_while_flat_but_closes_once(tmp_path, monkeypatch
     assert len(calls3) == 1, calls3
 
 
-def test_reconcile_no_late_open(tmp_path, monkeypatch):
+def test_reconcile_late_open_executes_by_default(tmp_path, monkeypatch):
+    """USER 2026-10-21/22 standing orders (STALENESS NEVER REFUSES; a key still flat toward a target the board
+    still holds retries, no exceptions): a reconcile OPEN executes even when the decision bar is 3600s old.
+    Replaces test_reconcile_no_late_open, which pinned the repealed refusal law."""
     base, vl, tm, calls = _setup(tmp_path, monkeypatch, REG_LIVE)
     (vl / "state" / "BTCUSDT_LONG.json").write_text(json.dumps({"target_state": "LONG", "bar_ts": time.time() - 3600}))
     monkeypatch.setattr(EZ._ezm_base_config, "VEC_DRIVEN_RECONCILE_GRACE_S", 0.0, raising=False)
     _run_loop(tm, monkeypatch, cycles=2)
-    assert calls == []
+    assert any(c.get("action") == "OPEN" for c in calls), calls
 
 
-def test_stale_intent_not_executed(tmp_path, monkeypatch):
+def test_stale_intent_executes_late_by_default(tmp_path, monkeypatch):
+    """USER 2026-10-21 standing order (late dictates still trade, ZERO_PASS_ALLOW): a 400s-old intent executes
+    by default. Replaces the refusal half of test_stale_intent_not_executed (repealed law); the lever arm below
+    keeps refusal coverage through the sanctioned switch."""
+    base, vl, tm, calls = _setup(tmp_path, monkeypatch, REG_LIVE)
+    _intent(vl, "old", "BTCUSDT_LONG", "OPEN", time.time() - 400)
+    _run_loop(tm, monkeypatch, cycles=1)
+    assert any(c.get("action") == "OPEN" for c in calls), calls
+    assert VD.ConsumedStore(vl / "consumed_men.json").has("old")
+
+
+def test_stale_intent_refuses_with_stale_refuses_lever(tmp_path, monkeypatch):
+    """VEC_DRIVEN_STALE_REFUSES=1 restores the old stale refusal (consumed without order) — the sanctioned lever
+    for operators who want it. Default stays execute-late (previous test)."""
+    monkeypatch.setenv("VEC_DRIVEN_STALE_REFUSES", "1")
     base, vl, tm, calls = _setup(tmp_path, monkeypatch, REG_LIVE)
     _intent(vl, "old", "BTCUSDT_LONG", "OPEN", time.time() - 400)
     _run_loop(tm, monkeypatch, cycles=1)
@@ -585,7 +602,7 @@ def test_native_unconfirmed_held_for_vec_confirm(monkeypatch):
     assert res == "DEFERRED_VEC_CONFIRM_WAIT", res
 
 
-def test_board_converge_open_bypasses_board_entry_block(monkeypatch, caplog):
+def test_board_converge_open_bypasses_board_entry_block(monkeypatch, capfd):
     """USER 2026-10-24 vector-authority: a vec-dictated force-open carries the board's own decision, so the
     live-set-vs-board entry block must record-and-continue (named for the late VEC_LAST backstop), never
     hard-refuse before it. The synthetic key has NO_LATEST_BOARD, which exercises the block."""
@@ -593,7 +610,9 @@ def test_board_converge_open_bypasses_board_entry_block(monkeypatch, caplog):
     # The execution path past the late backstop touches broker/lock methods the stub does not carry: any
     # AttributeError from those proves every decision gate (GATES-A, tradeable, board-entry) let the
     # vec-dictated force-open through. Pre-fix this returns BLOCKED_GATES_A_* and raises nothing.
-    with caplog.at_level("WARNING"):
-        with pytest.raises(AttributeError):
-            _run_exec(action="OPEN", reason="BOARD_CONVERGE_OPEN vec=VEC_DRIVEN_TEST")
-    assert "BOARD_ENTRY_BLOCK" in caplog.text
+    # USER 2026-10-24 unreachable-real-fix: asserted on capfd (fd-level), not caplog — the TradeLogger_*
+    # loggers set propagate=False (10-13 NEVER-AGAIN), so their records never reach caplog.
+    with pytest.raises(AttributeError):
+        _run_exec(action="OPEN", reason="BOARD_CONVERGE_OPEN vec=VEC_DRIVEN_TEST")
+    out, _ = capfd.readouterr()
+    assert "BOARD_ENTRY_VEC_CONTINUE" in out
