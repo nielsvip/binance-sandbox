@@ -23923,6 +23923,11 @@ async def process_position(
                         log_reason = "Signal Mismatch (Long)"
                     else:
                         # --- BALANCER LOGIC START ---
+                        if os.environ.get("V8_B12_DIAG"):
+                            print(
+                                f"V8_LOG BALANCER_ENTER sym={symbol} side={position_side} reason={(reason or '')[:60]}",
+                                flush=True,
+                            )
                         global_sentiment = float(i.get("sentiment", 0))
                         trade_manager.update_sentiment_history(global_sentiment)
 
@@ -23959,6 +23964,11 @@ async def process_position(
                                 blocked_by_balancer = True
                                 block_reason = f"Index Bullish ({breadth:.2f})"
                         # --- BALANCER LOGIC END ---
+                        if os.environ.get("V8_B12_DIAG"):
+                            print(
+                                f"V8_LOG BALANCER_VERDICT sym={symbol} blocked={blocked_by_balancer} why={block_reason} breadth={breadth:.2f}",
+                                flush=True,
+                            )
 
                         if (
                             blocked_by_balancer
@@ -24208,6 +24218,11 @@ async def process_position(
                                         _direct_claims[position_key] = (
                                             _shared_direct_handoff_claim
                                         )
+                                        if os.environ.get("V8_B12_DIAG"):
+                                            print(
+                                                f"V8_LOG QUEUE_OFFER sym={symbol} side={position_side} action={action_type} reason={(reason or '')[:80]} qty={qty}",
+                                                flush=True,
+                                            )
                                         try:
                                             _direct_dispatch_result = (
                                                 await queue_trade_action(
