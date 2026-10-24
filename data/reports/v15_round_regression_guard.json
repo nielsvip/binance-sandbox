@@ -1,5 +1,5 @@
 {
- "at": "2026-10-24T15:26:01Z",
+ "at": "2026-10-24T16:26:01Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
@@ -8,8 +8,8 @@
    "published_n": 3,
    "per_hour": 1.5,
    "improved_vs_best_start": 3,
-   "mean_uplift_vs_best_start": 24.0732,
-   "median_uplift": 9.7509,
+   "mean_uplift_vs_best_start": 34.899,
+   "median_uplift": 42.2284,
    "chained_from_previous_published": 2,
    "no_floor_recorded": 0,
    "backslides": [],
@@ -34,21 +34,6 @@
      "npz_age_h_at_publish": 3.15
     },
     {
-     "symside": "DOTUSDT_SHORT",
-     "published_at": 1792851166.0344672,
-     "final_gain": 69.3643910081653,
-     "best_start_gain": 59.61344698488602,
-     "best_start_chosen": "history_0",
-     "best_start_candidates": 9,
-     "baseline_gain": 59.61344698488602,
-     "npz_ts_last": 1792844100.0,
-     "npz_md5": "7063694323ca44e041b235fdb3d2db75",
-     "npz_bars": 40837,
-     "bh": 4.497708172134841,
-     "verdict": null,
-     "npz_age_h_at_publish": 1.96
-    },
-    {
      "symside": "STRKUSDT_LONG",
      "published_at": 1792853244.2467744,
      "final_gain": 144.87619503133124,
@@ -62,54 +47,39 @@
      "bh": 23.93781699348045,
      "verdict": null,
      "npz_age_h_at_publish": 2.79
+    },
+    {
+     "symside": "STRKUSDT_SHORT",
+     "published_at": 1792855580.648879,
+     "final_gain": 118.94891566236328,
+     "best_start_gain": 76.72048859790783,
+     "best_start_chosen": "history_0",
+     "best_start_candidates": 8,
+     "baseline_gain": 76.72048859790783,
+     "npz_ts_last": 1792843200.0,
+     "npz_md5": "9df7c4dbe7479b0b9af01fe5aec0e801",
+     "npz_bars": 93773,
+     "bh": -23.93781699348045,
+     "verdict": null,
+     "npz_age_h_at_publish": 3.44
     }
    ],
    "error": null
   },
   "s2": {
-   "published_n": 5,
-   "per_hour": 2.5,
-   "improved_vs_best_start": 5,
-   "mean_uplift_vs_best_start": 17.5365,
-   "median_uplift": 10.7025,
-   "chained_from_previous_published": 5,
+   "published_n": 4,
+   "per_hour": 2.0,
+   "improved_vs_best_start": 4,
+   "mean_uplift_vs_best_start": 13.963,
+   "median_uplift": 23.9781,
+   "chained_from_previous_published": 4,
    "no_floor_recorded": 0,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 2.5/h < 12.0/h (one per 5 min)"
+    "throughput 2.0/h < 12.0/h (one per 5 min)"
    ],
    "rows": [
-    {
-     "symside": "ENJUSDT_SHORT",
-     "published_at": 1792849108.5235956,
-     "final_gain": 84.98563157546857,
-     "best_start_gain": 37.36104203241972,
-     "best_start_chosen": "history_3",
-     "best_start_candidates": 10,
-     "baseline_gain": 37.36104203241972,
-     "npz_ts_last": 1792844100.0,
-     "npz_md5": "63fb23f2959538563744d4612dbb0c42",
-     "npz_bars": 40837,
-     "bh": 5.239854392014077,
-     "verdict": null,
-     "npz_age_h_at_publish": 1.39
-    },
-    {
-     "symside": "GRAMUSDT_SHORT",
-     "published_at": 1792851272.6534243,
-     "final_gain": 57.14490470630231,
-     "best_start_gain": 46.44241381070538,
-     "best_start_chosen": "history_3",
-     "best_start_candidates": 8,
-     "baseline_gain": 46.44241381070538,
-     "npz_ts_last": 1792848600.0,
-     "npz_md5": "81d91c9c104a7c0f3e38306a0a49412f",
-     "npz_bars": 10967,
-     "bh": 11.024179899872678,
-     "verdict": null,
-     "npz_age_h_at_publish": 0.74
-    },
     {
      "symside": "IOTAUSDT_SHORT",
      "published_at": 1792852996.1917026,
@@ -139,6 +109,21 @@
      "bh": 0.21352675500952134,
      "verdict": null,
      "npz_age_h_at_publish": 0.56
+    },
+    {
+     "symside": "RLCUSDT_SHORT",
+     "published_at": 1792857479.639901,
+     "final_gain": 94.07838908920023,
+     "best_start_gain": 67.58209279714991,
+     "best_start_chosen": "history_0",
+     "best_start_candidates": 9,
+     "baseline_gain": 67.58209279714991,
+     "npz_ts_last": 1792854000.0,
+     "npz_md5": "4eb517ce47a9320cdc29157c1e0bf9be",
+     "npz_bars": 40847,
+     "bh": -71.77104743240088,
+     "verdict": null,
+     "npz_age_h_at_publish": 0.97
     },
     {
      "symside": "WUSDT_SHORT",
