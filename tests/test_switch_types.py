@@ -179,10 +179,18 @@ class FixTypesWriter(Base):
         self.assertEqual(openpyxl.load_workbook(str(p))["GLOBAL_RISK_GATES"].cell(4, 2).value, "0.0", "dry-run never writes")
         A.fix_types([str(td)], apply=True, root=self.root, ts="T1")
         ws = openpyxl.load_workbook(str(p))["GLOBAL_RISK_GATES"]
+        # USER 2026-10-24: row removal is impossible — ambiguous/duplicate rows
+        # are greyed in place, never deleted. All 10 rows survive.
         got = [(ws.cell(r, 1).value, ws.cell(r, 2).value, ws.cell(r, 12).value) for r in range(3, ws.max_row + 1) if ws.cell(r, 1).value]
-        self.assertEqual(got, [("FOO_ENABLED", True, "YES"), ("FOO_ENABLED", False, "NO"), ("BAR_COUNT", 4, "YES"), ("BAR_COUNT", 2, "NO"), ("QUX_TF", "OFF", "YES"), ("QUX_TF", "4h", "NO")])
+        self.assertEqual(got, [("FOO_ENABLED", True, "YES"), ("FOO_ENABLED", False, "NO"), ("FOO_ENABLED", "1.0", "NO"), ("FOO_ENABLED", "2.0", "NO"),
+                               ("BAR_COUNT", 4, "YES"), ("BAR_COUNT", "0.5", "NO"), ("BAR_COUNT", 2, "NO"),
+                               ("QUX_TF", "OFF", "YES"), ("QUX_TF", False, "NO"), ("QUX_TF", "4h", "NO")])
+        def _grey(r):
+            f = ws.cell(r, 1).font
+            return f is not None and f.color is not None and str(getattr(f.color, "rgb", "") or "").upper() == "FFBFBFBF"
+        self.assertEqual([r for r in range(3, ws.max_row + 1) if _grey(r)], [5, 6, 8, 11], "ambiguous/duplicate rows are grey-fonted")
         self.assertTrue((self.root / "backups" / "before_fix_types_T1_tpl_TEMPLATE_CRYPTO_LONG.xlsx").exists())
-        self.assertEqual(ST.scan_workbook(p, root=self.root), [], "a repaired template scans clean")
+        self.assertEqual(ST.scan_workbook(p, root=self.root), [], "a repaired template scans clean (grey rows skipped)")
 
 
 class WriterRefusals(Base):

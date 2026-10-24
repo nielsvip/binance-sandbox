@@ -447,9 +447,9 @@ def scan_workbook(path, root=None):
             ws = wb[tab]
             hdr = None
             isd = None
-            for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+            for i, row in enumerate(ws.iter_rows(min_row=2), start=2):
                 if i == 2:
-                    hdr = list(row)
+                    hdr = [c.value for c in row]
                     isd = next((j for j, h in enumerate(hdr) if str(h or "").strip().lower() == "is_default"), None)
                     for j, h in enumerate(hdr):
                         if isinstance(h, str) and "=" in h and j > 1:
@@ -461,15 +461,20 @@ def scan_workbook(path, root=None):
                             if not ok:
                                 out.append({"file": str(path), "tab": tab, "row": 2, "col": j + 1, "kind": "header", "field": f, "value": opt, "bold": None, "ok": False, "coerced": None, "reason": why})
                     continue
-                a = row[0] if row else None
+                a = row[0].value if row else None
                 if not isinstance(a, str) or not re.fullmatch(r"[A-Z0-9_]{3,}", a.strip()):
                     continue
-                v = row[1] if len(row) > 1 else None
+                # USER 2026-10-24: row removal is impossible — grey rows are
+                # skipped everywhere, including type scans.
+                _af = row[0].font
+                if _af is not None and _af.color is not None and str(getattr(_af.color, "rgb", "") or "").upper() == "FFBFBFBF":
+                    continue
+                v = row[1].value if len(row) > 1 else None
                 if v is None:
                     continue
                 f = a.strip()
                 ok, cv, why = coerce(f, v, venue, root=root)
-                bold = bool(isd is not None and isd < len(row) and str(row[isd] or "").strip().upper() == "YES")
+                bold = bool(isd is not None and isd < len(row) and str(row[isd].value or "").strip().upper() == "YES")
                 if ok and canonical(f, v, venue, root):
                     continue
                 out.append({"file": str(path), "tab": tab, "row": i, "col": 2, "kind": "row", "field": f, "value": v, "bold": bold, "ok": ok, "coerced": cv if ok else None, "reason": why or f"not canonical ({type(v).__name__} for {field_spec(f, venue, root)['kind']})"})

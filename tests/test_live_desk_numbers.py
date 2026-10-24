@@ -1375,34 +1375,27 @@ def test_backfill_refuses_weekend_stock_close():
     assert [e for e in out2 if e.get("action") == "REDUCE"][0].get("rpnl") is not None
 
 
-def test_reconciler_adopted_opens_capped_at_excess():
-    # STX-style fantasy: reconciler adopts 100 @9.00 with no position, then
-    # re-adopts; closes must not price off invented lots. A genuine first
-    # adoption (empty book) still forms lots.
+def test_reconciler_adopted_opens_form_no_lots():
+    # STX-style fantasy: reconciler adopts 100 @9.00 (twice); closes must
+    # not price off invented basis. Genuine holdings still price when entry
+    # fills sit on tape (backfill); without fills they go honest unknown.
     from datetime import timedelta
 
     now = datetime.now(timezone.utc)
     iso = lambda dt: dt.isoformat()
+    ep = lambda dt: dt.timestamp()
     a1 = _ev(iso(now - timedelta(hours=3)), "S", "SHORT", "OPEN", 100.0, 9.00)
     a1["reason"] = "VEC_DRIVEN_OPEN_RECONCILE_X"
-    a2 = _ev(iso(now - timedelta(hours=2)), "S", "SHORT", "OPEN", 100.0, 9.00)
-    a2["reason"] = "VEC_DRIVEN_OPEN_RECONCILE_X"
     c = _ev(iso(now - timedelta(hours=1)), "S", "SHORT", "REDUCE", 100.0, 8.00)
     c["reason"] = "STRAT"
-    out, sm = srv.realized_walk([a1, a2, c])
-    got = [e for e in out if e.get("action") == "REDUCE"][0]
-    assert got.get("rpnl") == round(100.0 * (9.00 - 8.00), 2)
-    c2 = _ev(iso(now - timedelta(minutes=10)), "S", "SHORT", "REDUCE", 100.0, 8.00)
-    c2["reason"] = "STRAT"
-    out2, sm2 = srv.realized_walk([a1, a2, c, c2])
-    got2 = sorted(
-        (str(e.get("ts") or ""), e.get("rpnl"))
-        for e in out2
-        if e.get("action") == "REDUCE"
-    )
-    assert got2[0][1] == round(100.0 * (9.00 - 8.00), 2)
-    assert got2[1][1] is None
-    assert sm2["unknown"] == 1
+    out, sm = srv.realized_walk([a1, c])
+    assert [e for e in out if e.get("action") == "REDUCE"][0].get("rpnl") is None
+    assert sm["unknown"] == 1
+    books = {("S", "SHORT"): [[ep(now - timedelta(hours=4)), 100.0, 9.50]]}
+    out2, sm2 = srv.realized_walk([a1, c], broker_books=books)
+    got = [e for e in out2 if e.get("action") == "REDUCE"][0]
+    assert got.get("rpnl") == round(100.0 * (9.50 - 8.00), 2)
+    assert sm2["broker_filled"] == 1
 
 
 def test_sync_close_without_basis_stays_hidden():

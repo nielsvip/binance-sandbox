@@ -265,6 +265,17 @@ DEAD_VEC_SWITCHES = frozenset({
     "REENTRY_TIER2_MIN_MINUTES_TRADIER",  # tradier-only cooldown param, no vec twin
     "HTF_GATE_BYPASS_RZ",  # live entry gate bypass, no vec twin
     "HIGH_GAIN_AUGMENTATION_MIN_SIZE",  # SIZING floor (bible §68.3a: sizing stays live's job) — board must not tune it
+    # 🔴 2026-10-24 NO-REMOVAL LAW (USER "it should be impossible to remove rows ... grey them out and make sure
+    # they always get skipped everywhere"): TARGET mechanism killed USER 2026-10-24 in shared resolve_daytrade_dc
+    # (TARGET specs never built, knobs never read) + fixed-% branches deleted per USER SPEC — zero functional reads
+    # on BOTH sides (vec QuickConfig defs only; twin daytrade_*_note documents DEAD/inert). Template rows stay and
+    # are grey-fonted (pilot skips grey groups); listed here so no board can promote them if un-greyed by mistake.
+    # DC_DAYTRADE_TARGET_PCT + TRADIER_DC_DAYTRADE_TARGET_PCT are EXCLUDED (real live reads: ez NOLOSS floor,
+    # tradier research gates) — they stay live and testable.
+    "DC_DAYTRADE_TARGET_USE_DC_15M", "DC_DAYTRADE_TARGET_USE_DC4_15M", "DC_DAYTRADE_TARGET_DC_BUFFER_PCT",
+    "DAYTRADE_DC_TARGET_TF", "DAYTRADE_DC_TARGET_BUFFER_PCT",
+    "TRADIER_DC_DAYTRADE_TARGET_USE_DC_15M", "TRADIER_DC_DAYTRADE_TARGET_USE_DC4_15M",
+    "TRADIER_DC_DAYTRADE_TARGET_DC_BUFFER_PCT",
 })
 # Portfolio-level live reduce paths (intraday L/S ratio trims, EOD slim, sentiment rebalance):
 # single-symbol NPZ evals cannot see portfolio state, so these are live-only by construction,
