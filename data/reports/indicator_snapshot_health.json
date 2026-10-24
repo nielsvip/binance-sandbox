@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-24T12:51:53Z",
+ "generated_utc": "2026-10-24T12:56:45Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 64.1,
+  "age_s": 52.7,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 46725,
-  "proc_age_s": 21245.0,
-  "log_age_s": 670.0,
+  "proc_age_s": 21538.0,
+  "log_age_s": 11.4,
   "warmup_done": true,
   "timeframes_since_restart": [
    "4h",
@@ -51,20 +51,20 @@
   "mode": "ACTIVE",
   "since_epoch": 1792602182.2042153,
   "activations": 163,
-  "hb_mtime": 1792846118.8387182,
-  "mac_snapshot_age_s": 5.5161004066467285,
+  "hb_mtime": 1792846410.320261,
+  "mac_snapshot_age_s": 21.48505139350891,
   "mac_stale": false,
   "lease_holder": "mac",
   "lease_venues": null,
-  "lease_since": "2026-10-24T12:47:55Z",
-  "lease_reason": "yield: Mac never fenced for 180s \u2014 accounts must never be unattended",
-  "now": 1792846126.6021972,
-  "from_cache_age_s": 186.9,
-  "heartbeat_age_s": 7.8,
-  "active_s": 243944.4
+  "lease_since": "2026-10-24T12:53:30Z",
+  "lease_reason": "yield: Mac never fenced for 270s \u2014 accounts must never be unattended",
+  "now": 1792846427.2909477,
+  "from_cache_age_s": 178.4,
+  "heartbeat_age_s": 17.0,
+  "active_s": 244245.1
  },
  "alerts": [
-  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 243944s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (7s) AND the Mac snapshot is fresh (64s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
+  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 244245s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (16s) AND the Mac snapshot is fresh (52s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
  ],
  "verdict": "ALERT"
 }
