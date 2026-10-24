@@ -158,6 +158,11 @@ def _run_exec(**kw):
     self._last_tradeable_update = 0.0
     self.tradeable_lock = None
     self.tracker_manager = None
+    self.positions_service = SimpleNamespace(positions={}, positions_by_account={})
+
+    async def _stub_get_position(position_key):
+        return None
+    self.get_position = _stub_get_position
     # A FRESH key per call: execute_now's same-key dedup claim (_peg.try_claim, TTL in seconds) is process-global, so
     # reusing one position_key made the second entry of a test — or of the next test — return BLOCKED_PARITY_DEDUP
     # instead of reaching the gate under test.

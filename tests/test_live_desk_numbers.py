@@ -264,6 +264,14 @@ def test_ledger_audit_gap(tmp_path):
     assert srv._ledger_audit("nosuch", 1.0, 0.0, 1.0, 1.0, now_s) is None
 
 
+def test_close_flag_key_and_label():
+    k = srv._flag_key("BABA", "short", "2026-10-23T19:58:35.139028+00:00", 99.555)
+    assert k == "BABA|SHORT|2026-10-23T19:58:35.139028+00:00|99.555"
+    assert srv._flag_label({"stub": True, "stale_d": 51.2}) == "stub-basis basis~51.2d"
+    assert srv._flag_label({"oor": [90.0, 91.0]}) == "off-kline"
+    assert srv._flag_label({}) == "?"
+
+
 def test_basisless_echo_twins_hidden():
     now = datetime.now(timezone.utc).replace(microsecond=0)
     iso = lambda dt: dt.isoformat()
