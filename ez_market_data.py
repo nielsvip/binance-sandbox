@@ -370,11 +370,16 @@ def _repair_backoff_s(consec):
     except Exception: return REST_REPAIR_BACKOFF_CAP_S
 
 
-def _pick_due_stale(data, now, limit=REST_REPAIR_MAX_SYMS):
+def _pick_due_stale(data, now, limit=REST_REPAIR_MAX_SYMS, skip=None):
     """USER 2026-10-24: stalest-first repair queue, capped. Pure, tested."""
     due = []
     try:
         for sym, store in (data or {}).items():
+            try:
+                if skip and skip.get(sym, 0) > now:
+                    continue
+            except Exception:
+                pass
             store = store or {}
             s1 = store.get("closes_1m") or {}
             s3 = store.get("closes_3m") or {}
@@ -1280,6 +1285,8 @@ class MarketDataEngine:
         consec_throttle = 0
         throttled_until = 0.0
         conc = REST_REPAIR_BASE_CONC
+        fail_count = {}
+        skip_until = {}
         try:
             while self.running:
                 t0 = time.time()
@@ -1291,7 +1298,7 @@ class MarketDataEngine:
                     await asyncio.sleep(10)
                     continue
                 try:
-                    picked = _pick_due_stale(self.market.data, t0, REST_REPAIR_MAX_SYMS >> min(consec_throttle, 4))
+                    picked = _pick_due_stale(self.market.data, t0, REST_REPAIR_MAX_SYMS >> min(consec_throttle, 4), skip_until)
                 except Exception:
                     picked = []
                 sem = asyncio.Semaphore(max(1, conc))
@@ -1318,6 +1325,8 @@ class MarketDataEngine:
                         tasks.append(_fetch(sym, "3m"))
                 n_ok = 0
                 n_thr = 0
+                ok_syms = set()
+                thr_syms = set()
                 try:
                     for i in range(0, len(tasks), 100):
                         chunk = tasks[i:i + 100]
@@ -1325,13 +1334,30 @@ class MarketDataEngine:
                             try:
                                 if thr:
                                     n_thr += 1
+                                    thr_syms.add(sym)
                                 elif bars and self.market.apply_rest_bars(sym, tf, bars):
                                     n_ok += 1
+                                    ok_syms.add(sym)
                             except Exception:
                                 pass
                 except Exception as e:
                     try: logger.warning(f"[REST_REPAIR] cycle error: {e}")
                     except Exception: pass
+                try:
+                    for sym, _, _ in picked:
+                        if sym in ok_syms:
+                            fail_count.pop(sym, None)
+                            skip_until.pop(sym, None)
+                        elif sym in thr_syms:
+                            pass
+                        else:
+                            fail_count[sym] = fail_count.get(sym, 0) + 1
+                            if fail_count[sym] >= 5:
+                                skip_until[sym] = t0 + 1800.0
+                                fail_count[sym] = 0
+                except Exception:
+                    pass
+                n_skip = sum(1 for v in skip_until.values() if v > t0)
                 if n_thr:
                     consec_throttle += 1
                     throttled_until = t0 + _repair_backoff_s(consec_throttle) + random.uniform(0, 5)
@@ -1339,7 +1365,7 @@ class MarketDataEngine:
                 else:
                     consec_throttle = 0
                     conc = REST_REPAIR_BASE_CONC
-                try: logger.info(f"[REST_REPAIR] refreshed {n_ok} pairs ({len(picked)} due/{len(symbols)} syms) in {time.time() - t0:.1f}s throttle={n_thr} backoff={max(0.0, throttled_until - time.time()):.0f}s conc={conc}")
+                try: logger.info(f"[REST_REPAIR] refreshed {n_ok} pairs ({len(picked)} due/{len(symbols)} syms) in {time.time() - t0:.1f}s throttle={n_thr} backoff={max(0.0, throttled_until - time.time()):.0f}s conc={conc} skip={n_skip}")
                 except Exception: pass
                 await asyncio.sleep(max(5.0, 60.0 - (time.time() - t0)))
         finally:

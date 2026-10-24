@@ -89,3 +89,10 @@ def test_pick_limit_shrinks_under_throttle():
     assert len(_pick_due_stale(data, NOW, 60 >> 1)) == 30
     assert len(_pick_due_stale(data, NOW, 60 >> 4)) == 3
     assert _pick_due_stale(data, NOW, 60 >> 4)[0][0] == "S039"
+
+
+def test_pick_honors_skip_until_expiry():
+    data = {f"S{i:03d}": _store(1000 + i, 1000 + i) for i in range(5)}
+    skip = {"S004": NOW + 1800.0, "S003": NOW - 1.0}
+    picked = _pick_due_stale(data, NOW, 60, skip)
+    assert [s for s, _, _ in picked] == ["S003", "S002", "S001", "S000"]

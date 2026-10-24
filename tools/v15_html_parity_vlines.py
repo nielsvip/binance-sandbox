@@ -60,42 +60,46 @@ def load_live(accts, sym, side):
     if isinstance(accts, str):
         accts = ["trb", "ang", "inf", "flz", "men", "fin"] if accts == "all" else [a.strip() for a in accts.split(",")]
     seen = set()
-    raw = []
-    for root in [ROOT / "data" / "tradier" / "history", ROOT / "data" / "history"]:
-        fpath = root / acct / f"{sym}_{side}.jsonl"
-        if not fpath.is_file():
-            continue
-        for line in fpath.read_text().splitlines():
-            try:
-                rec = json.loads(line)
-            except Exception:
+    per_acct = {}
+    for acct in accts:
+        raw = []
+        for root in [ROOT / "data" / "tradier" / "history", ROOT / "data" / "history"]:
+            fpath = root / acct / f"{sym}_{side}.jsonl"
+            if not fpath.is_file():
                 continue
-            try:
-                ts = to_utc(rec.get("ts"))
-            except Exception:
-                continue
-            typ = str(rec.get("type") or "").upper()
-            key = (ts.isoformat(), typ)
-            if key in seen:
-                continue
-            seen.add(key)
-            try:
-                qty = float(rec.get("qty") or 0)
-            except (TypeError, ValueError):
-                qty = 0.0
-            raw.append({"ts": ts, "type": typ, "qty": qty,
-                        "reason": str(rec.get("reason") or "")[:80], "price": rec.get("price")})
-    raw.sort(key=lambda e: e["ts"])
+            for line in fpath.read_text().splitlines():
+                try:
+                    rec = json.loads(line)
+                except Exception:
+                    continue
+                try:
+                    ts = to_utc(rec.get("ts"))
+                except Exception:
+                    continue
+                typ = str(rec.get("type") or "").upper()
+                key = (ts.isoformat(), typ)
+                if key in seen:
+                    continue
+                seen.add(key)
+                try:
+                    qty = float(rec.get("qty") or 0)
+                except (TypeError, ValueError):
+                    qty = 0.0
+                raw.append({"ts": ts, "type": typ, "qty": qty, "acct": acct,
+                            "reason": str(rec.get("reason") or "")[:80], "price": rec.get("price")})
+        raw.sort(key=lambda e: e["ts"])
+        per_acct[acct] = raw
     events = []
-    for r in lth.mark_boundaries(raw):
-        if r["phase"] == "entry":
-            kind = "open"
-        elif r["phase"] == "exit":
-            kind = "close"
-        else:
-            continue
-        events.append({"ts": r["ts"], "kind": kind, "type": r["type"],
-                       "reason": r["reason"], "price": r["price"], "qty": r["qty"]})
+    for acct, raw in per_acct.items():
+        for r in lth.mark_boundaries(raw):
+            if r["phase"] == "entry":
+                kind = "open"
+            elif r["phase"] == "exit":
+                kind = "close"
+            else:
+                continue
+            events.append({"ts": r["ts"], "kind": kind, "type": r["type"], "acct": acct,
+                           "reason": r["reason"], "price": r["price"], "qty": r["qty"]})
     events.sort(key=lambda e: e["ts"])
     return events
 
@@ -186,10 +190,11 @@ def main():
         if (e["ts"].isoformat(), e["type"]) in _oor:
             continue
         b = nearest_bar(e["ts"])
+        tag = "[%s] %s" % (e.get("acct", "?"), e["reason"])
         if e["kind"] == "open":
-            live_js.append({"bar_entry": b, "ts": e["ts"].isoformat(), "reason": e["reason"]})
+            live_js.append({"bar_entry": b, "ts": e["ts"].isoformat(), "reason": tag})
         else:
-            live_js.append({"bar_exit": b, "ts": e["ts"].isoformat(), "reason": e["reason"]})
+            live_js.append({"bar_exit": b, "ts": e["ts"].isoformat(), "reason": tag})
 
     def seg(bar_list):
         pts = []
