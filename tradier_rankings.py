@@ -172,6 +172,16 @@ ez_rankings.RANKINGS_FILE = config.DATA_DIR / "tradier_rankings.json"
 ez_rankings.PLOTS_DIR = PLOTS_DIR
 ez_rankings.INDICATORS_FILE = config.DATA_DIR / "tradier_indicators_latest.json"
 
+# ===== PLOT OVERLAY SWITCHES (USER 2026-10-24) =====
+SHOW_TOP_BOTTOM_ARROWS = False  # temporarily off: detect_tops_bottoms green/red arrows hidden, code kept
+SHOW_ACCOUNT_TRADE_ARROWS = True  # overlay per-account /history/ trades as arrows on stocks plots
+SHOW_RSI_STRIP = True  # tiny RSI strip at the bottom of each TF panel
+SHOW_TOP_LEGEND = False  # top legend removed to regain vertical space
+ACCOUNT_ARROW_ORDER = ["trb", "ang", "inf", "flz", "men", "fin"]
+ACCOUNT_ARROW_COLORS = {"ang": "#2ecc71", "inf": "#42a5f5", "flz": "#ff5252", "men": "#ffa726", "fin": "#9e9e9e"}
+TRB_BUY_COLOR = "#2ecc71"
+TRB_SELL_COLOR = "#ff5252"
+
 # ===== GLOBAL STATE =====
 RANKING_DATA = []
 RANKING_INFO = {}
@@ -932,8 +942,107 @@ def plot_candles(ax, df):
         linewidth=0.5,
         alpha=0.95,
         zorder=3,    )
+def _account_history_dirs():
+    dirs = []
+    for cand in [Path(config.DATA_DIR) / "history", Path(config.BASE_PATH) / "data" / "history"]:
+        try:
+            if cand.is_dir():
+                dirs.append(cand)
+        except Exception:
+            continue
+    return dirs
+
+_BUY_TOKENS = ("OPEN", "AUGMENT", "ADD", "REOPEN", "BUY")
+_SELL_TOKENS = ("REDUCE", "CLOSE", "SELL", "EXIT", "COVER", "TAKE")
+
+def _history_event_direction(event_type, side):
+    t = str(event_type or "").upper()
+    if any(k in t for k in _SELL_TOKENS):
+        base = "sell"
+    elif any(k in t for k in _BUY_TOKENS):
+        base = "buy"
+    else:
+        base = "buy" if side == "LONG" else "sell"
+    if side == "SHORT":
+        base = "sell" if base == "buy" else "buy"
+    return base
+
+def fetch_account_trades_from_history(symbol):
+    out = {}
+    sym = str(symbol or "").upper()
+    if not sym:
+        return out
+    hdirs = _account_history_dirs()
+    if not hdirs:
+        return out
+    for acct in ACCOUNT_ARROW_ORDER:
+        events = []
+        for hdir in hdirs:
+            adir = hdir / acct
+            if not adir.is_dir():
+                continue
+            for side in ("LONG", "SHORT"):
+                fpath = adir / f"{sym}_{side}.jsonl"
+                if not fpath.is_file():
+                    continue
+                try:
+                    lines = fpath.read_text().splitlines()[-400:]
+                except Exception:
+                    continue
+                for line in lines:
+                    try:
+                        rec = json.loads(line)
+                    except Exception:
+                        continue
+                    try:
+                        ts = pd.to_datetime(rec.get("ts"), utc=True)
+                    except Exception:
+                        continue
+                    if pd.isna(ts):
+                        continue
+                    events.append({"timestamp": ts, "direction": _history_event_direction(rec.get("type"), side), "type": str(rec.get("type") or "")})
+        if events:
+            events.sort(key=lambda e: e["timestamp"])
+            out[acct] = events
+    return out
+
+def _wilder_rsi(close, period=14):
+    c = pd.to_numeric(close, errors="coerce")
+    delta = c.diff()
+    gain = delta.clip(lower=0.0)
+    loss = -delta.clip(upper=0.0)
+    avg_gain = gain.ewm(alpha=1.0 / period, min_periods=period, adjust=False).mean()
+    avg_loss = loss.ewm(alpha=1.0 / period, min_periods=period, adjust=False).mean()
+    rsi = pd.Series(50.0, index=c.index)
+    up_only = (avg_loss == 0) & (avg_gain > 0)
+    rsi[up_only] = 100.0
+    rest = ~((avg_gain == 0) & (avg_loss == 0)) & ~up_only
+    rsi[rest] = 100.0 - (100.0 / (1.0 + (avg_gain / avg_loss)))[rest]
+    return rsi.fillna(50.0).clip(0.0, 100.0)
+
+def _draw_rsi_strip(ax_plot, x_vals, rsi_vals):
+    x = np.asarray(x_vals)
+    r = np.asarray(rsi_vals, dtype=float)
+    if len(x) < 2 or len(x) != len(r):
+        return
+    rsi_ax = ax_plot.inset_axes([0.0, 0.0, 1.0, 0.13])
+    rsi_ax.set_facecolor("#1e2427")
+    rsi_ax.patch.set_alpha(0.85)
+    up = r >= 50.0
+    rsi_ax.plot(x, np.where(up, r, np.nan), color="#5b9dff", lw=0.9, zorder=3)
+    rsi_ax.plot(x, np.where(~up, r, np.nan), color="#ff6b6b", lw=0.9, zorder=3)
+    rsi_ax.axhline(50.0, color="#8a8a8a", lw=0.5, alpha=0.6, zorder=2)
+    rsi_ax.set_xlim(x[0] - 0.5, x[-1] + 0.5)
+    rsi_ax.set_ylim(0.0, 100.0)
+    rsi_ax.set_xticks([])
+    rsi_ax.set_yticks([])
+    for spine in rsi_ax.spines.values():
+        spine.set_color("#5a5a5a")
+    rsi_ax.text(0.01, 0.85, "RSI", transform=rsi_ax.transAxes, fontsize=6, color="#9e9e9e", va="top", ha="left", zorder=4)
+    rsi_ax.set_zorder(6)
+
 async def plot_dfs_subplots(
-    rank_label: str, symbol: str, dfs: dict, final_score: float, 
+    rank_label: str, symbol: str, dfs: dict, final_score: float,
     final_score_norm_arg: float, final_score_recent_arg: float,
     prox_norm_arg: float, band_score_arg: float, trend_val_arg: float, rp_global_arg: float,
     proximity_score_norm: float = 0.0,
@@ -948,6 +1057,7 @@ async def plot_dfs_subplots(
         return
 
     trades = await fetch_trb_trades_from_log(symbol)
+    acct_trades = fetch_account_trades_from_history(symbol)
 
     fig, axes = plt.subplots(len(valid_tfs_with_data), 1, figsize=(14, 4 * len(valid_tfs_with_data)), dpi=110, sharex=False)
     if len(valid_tfs_with_data) == 1:
@@ -1060,6 +1170,30 @@ async def plot_dfs_subplots(
                     l_width = min(max(trade['value'] / 5000, 0.8), 6.0)
                     t_idx = get_x_idx(t_ts)
                     ax_plot.axvline(x=t_idx, color=l_color, linewidth=l_width, alpha=0.6, zorder=2)
+        if SHOW_ACCOUNT_TRADE_ARROWS and acct_trades:
+            for ai, acct in enumerate(ACCOUNT_ARROW_ORDER):
+                evs = acct_trades.get(acct) or []
+                if not evs:
+                    continue
+                x_off = (ai - (len(ACCOUNT_ARROW_ORDER) - 1) / 2.0) * 0.18
+                for ev in evs:
+                    t_ts = ev["timestamp"]
+                    if t_ts < x_left_ts or t_ts > x_right_ts:
+                        continue
+                    is_buy = ev["direction"] == "buy"
+                    if acct == "trb":
+                        ecol = TRB_BUY_COLOR if is_buy else TRB_SELL_COLOR
+                    else:
+                        ecol = ACCOUNT_ARROW_COLORS[acct]
+                    t_idx = get_x_idx(t_ts) + x_off
+                    try:
+                        row_idx = df_tf["close_time"].searchsorted(t_ts)
+                        row_idx = max(0, min(row_idx, len(df_tf) - 1))
+                        candle_row = df_tf.iloc[row_idx]
+                        y_pos = candle_row["low"] - margin_abs_val * 0.5 if is_buy else candle_row["high"] + margin_abs_val * 0.5
+                    except (IndexError, KeyError):
+                        continue
+                    ax_plot.scatter([t_idx], [y_pos], color=ecol, marker="^" if is_buy else "v", s=30, zorder=8, alpha=0.95, edgecolors="white", linewidths=0.6)
         if symbol in signals_data and tf_plot_loop in signals_data[symbol]:
             for etype, ev_list in signals_data[symbol][tf_plot_loop].items():
                 for event in ev_list:
@@ -1120,16 +1254,17 @@ async def plot_dfs_subplots(
                 img_data[0, :, 3] = 0.12
                 ax_plot.imshow(img_data, extent=[-0.5, n_bars - 0.5, ymin_data - margin_abs_val, ymax_data + margin_abs_val], aspect='auto', origin='lower', zorder=-15, interpolation='bilinear')
             except Exception: pass
-        try:
-            from ez_rankings import detect_tops_bottoms
-            df_tf_tops_bottoms = detect_tops_bottoms(df_tf.copy(), distance=10 if tf_plot_loop == "5m" else 20, prominence=1e-5)
-            topdf = df_tf_tops_bottoms.dropna(subset=["top"])
-            botdf = df_tf_tops_bottoms.dropna(subset=["bottom"])
-            top_size = 15 if tf_plot_loop == "5m" else 20
-            bottom_size = 15 if tf_plot_loop == "5m" else 20
-            if not topdf.empty: ax_plot.scatter(topdf["plot_idx"], topdf["top"], color="red", marker="v", s=top_size, zorder=3, label="Top")
-            if not botdf.empty: ax_plot.scatter(botdf["plot_idx"], botdf["bottom"], color="lime", marker="^", s=bottom_size, zorder=3, label="Bottom")
-        except Exception: pass
+        if SHOW_TOP_BOTTOM_ARROWS:
+            try:
+                from ez_rankings import detect_tops_bottoms
+                df_tf_tops_bottoms = detect_tops_bottoms(df_tf.copy(), distance=10 if tf_plot_loop == "5m" else 20, prominence=1e-5)
+                topdf = df_tf_tops_bottoms.dropna(subset=["top"])
+                botdf = df_tf_tops_bottoms.dropna(subset=["bottom"])
+                top_size = 15 if tf_plot_loop == "5m" else 20
+                bottom_size = 15 if tf_plot_loop == "5m" else 20
+                if not topdf.empty: ax_plot.scatter(topdf["plot_idx"], topdf["top"], color="red", marker="v", s=top_size, zorder=3, label="Top")
+                if not botdf.empty: ax_plot.scatter(botdf["plot_idx"], botdf["bottom"], color="lime", marker="^", s=bottom_size, zorder=3, label="Bottom")
+            except Exception: pass
         if highlight_heatmap and "proximity_score_norm" in df_tf.columns and not df_tf["proximity_score_norm"].isnull().all():
             prox_gradient_vals = pd.to_numeric(df_tf["proximity_score_norm"], errors='coerce').fillna(0).values
             if len(prox_gradient_vals) > 1:
@@ -1181,18 +1316,23 @@ async def plot_dfs_subplots(
         ax_plot.xaxis.set_major_formatter(mticker.FuncFormatter(make_formatter(tf_captured, timestamps_et, n_bars)))
         ax_plot.tick_params(axis='x', rotation=15, labelsize=8)
         ax_plot.tick_params(axis='y', labelsize=8)
+        if SHOW_RSI_STRIP and "close" in df_tf.columns and len(df_tf) > 15:
+            try:
+                _draw_rsi_strip(ax_plot, x_indices, _wilder_rsi(df_tf["close"]).values)
+            except Exception: pass
 
     # Wrap up Global legend
-    try:
-        from ez_rankings import get_legend_handles_labels
-        handles_combined, labels_combined = get_legend_handles_labels(axes)
-        if labels_combined:
-            fig.legend(handles_combined, labels_combined, loc='upper center', 
-                       bbox_to_anchor=(0.5, 1.00), ncol=min(len(labels_combined), 8),
-                       fontsize=7, frameon=False, labelcolor='#d0d0d0')
-    except Exception: pass
+    if SHOW_TOP_LEGEND:
+        try:
+            from ez_rankings import get_legend_handles_labels
+            handles_combined, labels_combined = get_legend_handles_labels(axes)
+            if labels_combined:
+                fig.legend(handles_combined, labels_combined, loc='upper center',
+                           bbox_to_anchor=(0.5, 1.00), ncol=min(len(labels_combined), 8),
+                           fontsize=7, frameon=False, labelcolor='#d0d0d0')
+        except Exception: pass
 
-    fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+    fig.tight_layout(rect=[0, 0.03, 1, 0.95 if SHOW_TOP_LEGEND else 0.98])
     os.makedirs(output_dir, exist_ok=True)
     safe_rank_label = rank_label.replace("#","_").replace(":","_")
     fpath = Path(output_dir) / f"{safe_rank_label}_{symbol}.png"

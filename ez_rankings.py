@@ -79,6 +79,7 @@ class _InfSaveSuspended(Exception):
 BACKTEST_SHARPE = {"COTIUSDT": 5855, "ARUSDT": 3194, "XTZUSDT": 3111, "AAVEUSDC": 3069, "UNIUSDC": 2945, "GRTUSDT": 2537, "EGLDUSDT": 2419, "IOTXUSDT": 2123, "DOTUSDT": 2022, "WLDUSDC": 1923, "THETAUSDT": 1784, "KSMUSDT": 1602, "1000BONKUSDC": 1511, "IOTAUSDT": 1374, "AIAUSDT": 1306, "SANDUSDT": 1878, "ARBUSDC": 449, "ZENUSDT": 400, "ACEUSDT": 383, "GOOGLUSDT": 346, "SOLUSDC": 338, "BTCDOMUSDT": 262, "DASHUSDT": 162, "ARKMUSDT": -80, "AGLDUSDT": -98}
 
 # ===== VOLUME FILTERING CONFIGURATION =====
+SHOW_TOP_BOTTOM_ARROWS = False  # USER 2026-10-24: temporarily off — detect_tops_bottoms green/red arrows hidden, code kept
 ENABLE_VOLUME_FILTERING = True  # Set to False to disable volume filtering entirely
 VOLUME_THRESHOLD_USDT = 80000.0  # Conservative threshold: 80k USDT (only removes truly low-volume tokens)
 logger = setup_logger('ez_rankings', str(config.LOG_FILE_EZ_RANKINGS), logging.INFO)
@@ -6642,8 +6643,9 @@ async def plot_dfs_subplots(
         botdf = df_tf_tops_bottoms.dropna(subset=["bottom"])
         top_size = 15 if tf_plot_loop == "3m" else 20
         bottom_size = 15 if tf_plot_loop == "3m" else 20
-        ax_plot.scatter(topdf["close_time"], topdf["top"], color="red", marker="v", s=top_size, zorder=3, label="Top")
-        ax_plot.scatter(botdf["close_time"], botdf["bottom"], color="lime", marker="^", s=bottom_size, zorder=3, label="Bottom")
+        if SHOW_TOP_BOTTOM_ARROWS:
+            ax_plot.scatter(topdf["close_time"], topdf["top"], color="red", marker="v", s=top_size, zorder=3, label="Top")
+            ax_plot.scatter(botdf["close_time"], botdf["bottom"], color="lime", marker="^", s=bottom_size, zorder=3, label="Bottom")
 
         if highlight_heatmap and "proximity_score_norm" in df_tf.columns and not df_tf["proximity_score_norm"].isnull().all():
             prox_gradient_vals = pd.to_numeric(df_tf["proximity_score_norm"], errors='coerce').fillna(0).values

@@ -147,6 +147,17 @@ def _run_exec(**kw):
     AttributeError before reaching a gate."""
     self = SimpleNamespace()
     self._execute_now_inner = lambda **a: EZ.MultiAccountTradeManager._execute_now_inner(self, **a)
+    # USER 2026-10-24 VEC-LAST: orders travel past the early chokepoint to the late
+    # backstop, so the stub carries the production-present methods the path touches.
+    async def _stub_load_tradeable():
+        return []
+    self.load_tradeable = _stub_load_tradeable
+    self.redis_manager = None
+    self._allowed_accounts = {"men", "fin", "flz", "inf", "ang"}
+    self.tradeable_keys = set()
+    self._last_tradeable_update = 0.0
+    self.tradeable_lock = None
+    self.tracker_manager = None
     # A FRESH key per call: execute_now's same-key dedup claim (_peg.try_claim, TTL in seconds) is process-global, so
     # reusing one position_key made the second entry of a test — or of the next test — return BLOCKED_PARITY_DEDUP
     # instead of reaching the gate under test.
@@ -159,11 +170,13 @@ def _run_exec(**kw):
 
 def test_native_suppressed_when_vec_driven_live(monkeypatch):
     """A native decision never trades a vec-driven key. Since 2026-10-21 the vector-copy enforcer (bar window / killed
-    family) usually refuses it FIRST, so the contract is the refusal, not which gate got there first."""
+    family) usually refuses it FIRST, so the contract is the refusal, not which gate got there first.
+    USER 2026-10-24 VEC-LAST: native gates act before the VEC suppress, so a native
+    refusal string also satisfies the contract — the order must never trade."""
     _mode_live(monkeypatch)
     for action, reason in (("OPEN", "WT_DC_ENTRY"), ("CLOSE", "EXIT_VELOCITY_WT_1h"), ("AUGMENT", "GOLDEN_RULE_LONG"), ("REDUCE", "DC_BREACH_REDUCE")):
         res = _run_exec(action=action, reason=reason)
-        assert res.startswith(("BLOCKED_VEC_DRIVEN_NATIVE_SUPPRESSED", "BLOCKED_VECTOR_EXEC_", "POLICY_NON_VECTOR_EXIT_DISABLED")), f"{action}/{reason} -> {res}"
+        assert res.startswith(("BLOCKED_VEC_DRIVEN_NATIVE_SUPPRESSED", "BLOCKED_VECTOR_EXEC_", "POLICY_NON_VECTOR_EXIT_DISABLED", "BLOCKED_")), f"{action}/{reason} -> {res}"
 
 
 def test_native_emergency_exit_allowed(monkeypatch):
