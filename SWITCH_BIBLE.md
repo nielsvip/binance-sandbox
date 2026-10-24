@@ -16,7 +16,7 @@
 6. **PARITY_PROVEN** is reserved for scalar-vs-vec parity evidence (list in `data/wiring/parity_proven.json`). `ledger_flip_proven` = a real NPZ ledger flip (data/wiring/wired_proven.json) only.
 
 
-_Generated 2026-10-24T20:55:33.659771Z · 3838 names · vec modules never reached from simulate_one: 125/312_
+_Generated 2026-10-24T21:03:03.878630Z · 3838 names · vec modules never reached from simulate_one: 125/312_
 
 ## Status counts (all names)
 
@@ -52,7 +52,7 @@ _Generated 2026-10-24T20:55:33.659771Z · 3838 names · vec modules never reache
 - `ez_positions.py` `4b9cb9a316`
 - `ez_positions_quick.py` `92900d2a42`
 - `ez_positions_service.py` `f8e88a6d2f`
-- `ez_rankings.py` `698d217b29`
+- `ez_rankings.py` `3c587a6e4c`
 - `ez_reentry.py` `a7a5e99612`
 - `ez_reentry_vectorized.py` `3755c6cdd5`
 - `ez_regime.py` `37920420d4`
@@ -561,7 +561,7 @@ _Generated 2026-10-24T20:55:33.659771Z · 3838 names · vec modules never reache
 | `BB_SQUEEZE_COOLDOWN` | unclassified | 300.0 / 300.0 / 300.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:30821(check_entry_candidates_for_account.worker) · ez_positions_quick.py:30821(check_entry_candidates_for_account.worker) | — |
 | `BB_SQUEEZE_THRESHOLD_15M` | unclassified | 0.025 / 0.025 / 0.025 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:28594(_apply_research_only_live_gates) | — |
 | `BB_SQUEEZE_THRESHOLD_1H` | unclassified | 0.03 / 0.03 / 0.03 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:28607(_apply_research_only_live_gates) | — |
-| `BEAR_SCENARIO_SYMBOLS` | unclassified | <absent> / {'GLD', 'UVXY', 'EGO', 'XLE', 'GDX', 'AGI', 'MAG', 'RGLD',  | — | DEAD | LIVE_ONLY | — · tradier_manage.py:51743(TradierTradeManager._execute_now_inner) | — |
+| `BEAR_SCENARIO_SYMBOLS` | unclassified | <absent> / {'RGLD', 'USO', 'SLV', 'UCO', 'XOP', 'NEM', 'BTG', 'GDX', ' | — | DEAD | LIVE_ONLY | — · tradier_manage.py:51743(TradierTradeManager._execute_now_inner) | — |
 | `BINANCE_API_BASE` | unclassified | https://fapi.binance.com / <absent> / https://fapi.binance.com | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:113(<module>) · ez_rankings.py:113(<module>) | — |
 | `BLACKLIST` | unclassified | <absent> / ['SLV', 'COPX', 'PYPL', 'QBTS', 'DINO', 'RBLX', 'MPC'] / <a | — | DEAD | LIVE_ONLY | — · tradier_manage.py:43261(TradierTradeManager.__init__) | — |
 | `BLACKLIST_SYMBOLS` | unclassified | [] / [] / [] | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:26834(MultiAccountTradeManager.execute_trade_action)<br>(+1) · tradier_manage.py:23790(process_position) | vec_decisions/blacklist_strand.py:37(is_blacklisted) |
@@ -1644,7 +1644,7 @@ _Generated 2026-10-24T20:55:33.659771Z · 3838 names · vec modules never reache
 | `NOLOSS_BB1H_GATE_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:36137(StockStrategy.evaluate_stop) | vec_decisions/check_exit_candidates_stocks__noloss_bb1h.py:44(check_noloss_bb1h) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_stocks__noloss_bb1h.py:65(check_noloss_bb1h_vec) [UNREACHABLE] |
 | `NOLOSS_DC4H_GATE_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:27597(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:27597(check_exit_candidates_for_account.process_single_exit) | — |
 | `NOLOSS_MIN_PROFIT_PCT_TRADIER_LIVE` | unclassified | <absent> / <absent> / 0.01 | — | VEC_ONLY | VEC_ONLY | — · — | vec_decisions/noloss_gate.py:20(noloss_blocks) |
-| `NON_SHORTABLE` | unclassified | <absent> / {'FIX', 'WEAT', 'QUBT', 'SBLK', 'GBTC', 'MAG', 'ASC', 'EGLE | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32500(StockStrategy.__init__)<br>(+6) | — |
+| `NON_SHORTABLE` | unclassified | <absent> / {'SMG', 'GBTC', 'SBLK', 'FRO', 'LSB', 'BTC', 'SQM', 'LAC',  | — | DEAD | LIVE_ONLY | — · tradier_manage.py:32500(StockStrategy.__init__)<br>(+6) | — |
 | `OBLIGATORY_EMA50_15M_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:41152(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
 | `OBLIGATORY_EMA50_15M_PCT` | unclassified | 1.0 / 1.0 / 1.0 | — | LIVE_ONLY | DEAD | ez_manage.py:41153(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
 | `OBLIGATORY_HEDGE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:36976(MultiAccountTradeManager._execute_now_inner)<br>(+6) · ez_positions_quick.py:24407(execute_trade_wrapper) | — |
