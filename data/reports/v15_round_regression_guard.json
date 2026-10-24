@@ -1,5 +1,5 @@
 {
- "at": "2026-10-24T12:26:00Z",
+ "at": "2026-10-24T13:26:01Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
@@ -21,19 +21,95 @@
    "error": null
   },
   "s2": {
-   "published_n": 0,
-   "per_hour": 0.0,
-   "improved_vs_best_start": 0,
-   "mean_uplift_vs_best_start": null,
-   "median_uplift": null,
-   "chained_from_previous_published": 0,
+   "published_n": 5,
+   "per_hour": 2.5,
+   "improved_vs_best_start": 5,
+   "mean_uplift_vs_best_start": 21.0591,
+   "median_uplift": 17.218,
+   "chained_from_previous_published": 3,
    "no_floor_recorded": 0,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 0.0/h < 12.0/h (one per 5 min)"
+    "throughput 2.5/h < 12.0/h (one per 5 min)"
    ],
-   "rows": [],
+   "rows": [
+    {
+     "symside": "BTCUSDC_LONG",
+     "published_at": 1792846730.3344011,
+     "final_gain": 14.679244560740765,
+     "best_start_gain": 5.022396329331202,
+     "best_start_chosen": "history_0",
+     "best_start_candidates": 7,
+     "baseline_gain": 5.022396329331202,
+     "npz_ts_last": 1792844100.0,
+     "npz_md5": "b7d0a758b6d4560433501ef14237e5e2",
+     "npz_bars": 40837,
+     "bh": -3.399484214381328,
+     "verdict": null,
+     "npz_age_h_at_publish": 0.73
+    },
+    {
+     "symside": "EDUUSDT_LONG",
+     "published_at": 1792847575.418748,
+     "final_gain": 84.90887772749903,
+     "best_start_gain": 55.74500254684543,
+     "best_start_chosen": "history_2",
+     "best_start_candidates": 8,
+     "baseline_gain": 55.74500254684543,
+     "npz_ts_last": 1792843200.0,
+     "npz_md5": "2ba0b04417c779f6dcfceecc07501373",
+     "npz_bars": 43154,
+     "bh": 29.784195577734717,
+     "verdict": null,
+     "npz_age_h_at_publish": 1.22
+    },
+    {
+     "symside": "HYPEUSDT_LONG",
+     "published_at": 1792846888.5999668,
+     "final_gain": 22.961213529816924,
+     "best_start_gain": 5.7432437314703275,
+     "best_start_chosen": "history_2",
+     "best_start_candidates": 9,
+     "baseline_gain": 5.7432437314703275,
+     "npz_ts_last": 1792843200.0,
+     "npz_md5": "49f5944f88df3c0d7714bde135932991",
+     "npz_bars": 40835,
+     "bh": -17.383258094976494,
+     "verdict": null,
+     "npz_age_h_at_publish": 1.02
+    },
+    {
+     "symside": "HYPEUSDT_SHORT",
+     "published_at": 1792847206.3311057,
+     "final_gain": 35.21574507314973,
+     "best_start_gain": -1.3691132098370056,
+     "best_start_chosen": "incumbent",
+     "best_start_candidates": 9,
+     "baseline_gain": -1.3691132098370056,
+     "npz_ts_last": 1792843200.0,
+     "npz_md5": "49f5944f88df3c0d7714bde135932991",
+     "npz_bars": 40835,
+     "bh": 17.383258094976494,
+     "verdict": null,
+     "npz_age_h_at_publish": 1.11
+    },
+    {
+     "symside": "MAGICUSDT_SHORT",
+     "published_at": 1792847744.8124187,
+     "final_gain": 49.41972173753458,
+     "best_start_gain": 36.74766972521397,
+     "best_start_chosen": "incumbent",
+     "best_start_candidates": 5,
+     "baseline_gain": 37.47939843284606,
+     "npz_ts_last": 1792845900.0,
+     "npz_md5": "79896d9bde6f2b5f6e6c3c9df2eeb54f",
+     "npz_bars": 131368,
+     "bh": -80.34897782415345,
+     "verdict": null,
+     "npz_age_h_at_publish": 0.51
+    }
+   ],
    "error": null
   }
  },
