@@ -49076,6 +49076,38 @@ class TradierTradeManager:
             self._mark_entry_unprotected_tradier(position_key, account_key, symbol, position_side, f"requirement_error:{_rq_e}")
         if str(_res or "").upper().startswith(("BLOCKED", "REFUSED")) and _tr_parity_vec_order(reason):
             _parity_breach_record_tradier(position_key, action, reason, _res)
+        # ─── PENDING-CONFIRM HOLD (USER 2026-10-24: a native fire the vec hasn't confirmed may be vec-behind-live,
+        # not a bad trade — hold it flagged for switch creation instead of refusing outright; the first identical
+        # vec dictate inside the window consumes it. Authority on stocks = the lane demonstrably mid-cycle on the
+        # key (fresh state file); a sick/absent lane refuses exactly as before. Protective reasons and the vec's
+        # own orders keep today's verdict. Nothing executes while held.) ───
+        try:
+            from live_twins import vec_pending as _vp_w_tr
+            if _vp_w_tr.holdable(_res) and not _tr_parity_vec_order(reason):
+                _vp_auth_tr = False
+                try:
+                    _vp_auth_tr = _vp_w_tr.lane_watching(_cfg_auto("BASE_PATH", "/users/niels/documents/binance"), position_key)
+                except Exception:
+                    _vp_auth_tr = False
+                if _vp_auth_tr:
+                    _vp_filed_tr = _vp_w_tr.file_hold("stocks", position_key, action, reason, _res)
+                    if _vp_filed_tr is not None:
+                        _vp_hold_tr, _vp_expired_tr, _vp_is_new_tr = _vp_filed_tr
+                        if not os.environ.get("PYTEST_CURRENT_TEST"):
+                            try:
+                                _vlp_tr = Path(_cfg_auto("BASE_PATH", "/users/niels/documents/binance")) / "data" / "vector_disparity_queue.jsonl"
+                                _vlp_tr.parent.mkdir(parents=True, exist_ok=True)
+                                with open(str(_vlp_tr), "a") as _vlf_tr:
+                                    if _vp_is_new_tr:
+                                        _vlf_tr.write(json.dumps({"ts": time.time(), "venue": "stocks", "kind": "VEC_PENDING_CONFIRM", "position_key": position_key, "action": action, "reason": str(reason)[:160], "refusal": str(_res)[:80], "window_s": _vp_w_tr.window_s(), "fix": "native path fired without vec confirmation — wire it as a measured switch if the vec never confirms"}) + "\n")
+                                    for _vp_dead_tr in (_vp_expired_tr or []):
+                                        _vlf_tr.write(json.dumps({"ts": time.time(), "venue": "stocks", "kind": "VEC_HOLD_EXPIRED", "position_key": _vp_dead_tr.get("position_key"), "action": _vp_dead_tr.get("action"), "reason": str(_vp_dead_tr.get("reason"))[:160], "fix": "vec never confirmed — switch-creation evidence stands"}) + "\n")
+                            except Exception:
+                                pass
+                        logger.warning(f"⏳ [VEC_PENDING_CONFIRM] {position_key} {action} reason={(reason or '')[:80]} — vec hasn't confirmed (refused {_res}); held {int(_vp_w_tr.window_s())}s flagged for switch creation, NOT executed")
+                        _res = _vp_w_tr.DEFERRED
+        except Exception:
+            pass
         return _res
 
     def _mark_entry_unprotected_tradier(self, position_key, account_key, symbol, position_side, why):
@@ -51280,6 +51312,24 @@ class TradierTradeManager:
                 if lock_acquired and self.redis_manager:
                     await self.redis_manager.delete(exec_lock_key)
                 return _vl_detail_tr
+            # ─── VEC CONFIRM RELEASE (USER 2026-10-24 pending-confirm: a vec dictate passing here consumes the held
+            # native intent it confirms — the vec order itself executes, the held native is dropped, never doubled.) ───
+            if _vl_dictated_tr:
+                try:
+                    from live_twins import vec_pending as _vp_last_tr
+                    _vp_rel_tr = _vp_last_tr.release_for(position_key, _vp_last_tr.direction_of(action))
+                    if _vp_rel_tr is not None:
+                        logger.warning(f"✅ [VEC_CONFIRMED] {position_key} {action} — vec dictate arrived inside the window; held native {str(_vp_rel_tr.get('reason'))[:60]} consumed (unflagged), vec order executes")
+                        if not os.environ.get("PYTEST_CURRENT_TEST"):
+                            try:
+                                _vlp_tr = Path(_cfg_auto("BASE_PATH", "/users/niels/documents/binance")) / "data" / "vector_disparity_queue.jsonl"
+                                _vlp_tr.parent.mkdir(parents=True, exist_ok=True)
+                                with open(str(_vlp_tr), "a") as _vlf_tr:
+                                    _vlf_tr.write(json.dumps({"ts": time.time(), "venue": "stocks", "kind": "VEC_CONFIRMED", "position_key": position_key, "action": action, "reason": str(reason)[:160], "held_reason": str(_vp_rel_tr.get("reason"))[:120], "fix": "vec confirmed the native fire — no switch needed"}) + "\n")
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
             current_price = old_price
             if not current_price or current_price <= 0:
                 current_price, ts = await self.get_current_price(symbol)

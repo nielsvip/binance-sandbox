@@ -181,11 +181,13 @@ def test_native_suppressed_when_vec_driven_live(monkeypatch):
     """A native decision never trades a vec-driven key. Since 2026-10-21 the vector-copy enforcer (bar window / killed
     family) usually refuses it FIRST, so the contract is the refusal, not which gate got there first.
     USER 2026-10-24 VEC-LAST: native gates act before the VEC suppress, so a native
-    refusal string also satisfies the contract — the order must never trade."""
+    refusal string also satisfies the contract — the order must never trade.
+    USER 2026-10-24 pending-confirm: DEFERRED_VEC_CONFIRM_WAIT equally satisfies it — a held order executes
+    nothing; the vec's own later dictate is the only thing that can trade the key."""
     _mode_live(monkeypatch)
     for action, reason in (("OPEN", "WT_DC_ENTRY"), ("CLOSE", "EXIT_VELOCITY_WT_1h"), ("AUGMENT", "GOLDEN_RULE_LONG"), ("REDUCE", "DC_BREACH_REDUCE")):
         res = _run_exec(action=action, reason=reason)
-        assert res.startswith(("BLOCKED_VEC_DRIVEN_NATIVE_SUPPRESSED", "BLOCKED_VECTOR_EXEC_", "POLICY_NON_VECTOR_EXIT_DISABLED", "BLOCKED_")), f"{action}/{reason} -> {res}"
+        assert res.startswith(("BLOCKED_VEC_DRIVEN_NATIVE_SUPPRESSED", "BLOCKED_VECTOR_EXEC_", "POLICY_NON_VECTOR_EXIT_DISABLED", "DEFERRED_VEC_CONFIRM_WAIT", "BLOCKED_")), f"{action}/{reason} -> {res}"
 
 
 def test_native_emergency_exit_allowed(monkeypatch):
