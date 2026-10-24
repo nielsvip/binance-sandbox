@@ -328,6 +328,61 @@ def test_stale_close_provenance_shows_fresh_lots_not_zombies():
     assert s["pnl_total"] == 0.0
 
 
+def test_collapse_drops_sync_before_strategy_twin():
+    from datetime import timedelta
+
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    iso = lambda dt: dt.isoformat()
+    s = _ev(iso(now), "W", "LONG", "REDUCE", 1.0, 10.0)
+    s["reason"] = "Broker sync"
+    t = _ev(iso(now + timedelta(seconds=6)), "W", "LONG", "REDUCE", 1.0, 10.0)
+    t["reason"] = "CYCLE_TP_TIERED"
+    kept, n = srv.collapse_echoes([s, t])
+    assert n == 1 and len(kept) == 1 and kept[0]["reason"] == "CYCLE_TP_TIERED"
+
+
+def test_collapse_chains_echo_train_beyond_120s():
+    from datetime import timedelta
+
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    iso = lambda dt: dt.isoformat()
+    k = _ev(iso(now), "W", "LONG", "CLOSE", 4.0, 10.0)
+    k["reason"] = "DAYTRADE_TARGET"
+    train = [k]
+    for s in (40, 132, 212, 259):
+        r = _ev(iso(now + timedelta(seconds=s)), "W", "LONG", "CLOSE", 4.0, 10.0)
+        r["reason"] = "BROKER_SYNC_CLOSE"
+        train.append(r)
+    kept, n = srv.collapse_echoes(train)
+    assert len(kept) == 1 and kept[0]["reason"] == "DAYTRADE_TARGET" and n == 4
+
+
+def test_collapse_keeps_lone_sync_beyond_120s():
+    from datetime import timedelta
+
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    iso = lambda dt: dt.isoformat()
+    k = _ev(iso(now), "W", "LONG", "CLOSE", 4.0, 10.0)
+    k["reason"] = "DAYTRADE_TARGET"
+    s = _ev(iso(now + timedelta(seconds=500)), "W", "LONG", "CLOSE", 4.0, 10.0)
+    s["reason"] = "Broker sync"
+    kept, n = srv.collapse_echoes([k, s])
+    assert len(kept) == 2 and n == 0
+
+
+def test_collapse_keeps_strategy_pair():
+    from datetime import timedelta
+
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    iso = lambda dt: dt.isoformat()
+    a = _ev(iso(now), "W", "LONG", "REDUCE", 4.0, 10.0)
+    a["reason"] = "STRAT_A"
+    b = _ev(iso(now + timedelta(seconds=30)), "W", "LONG", "REDUCE", 4.0, 10.0)
+    b["reason"] = "STRAT_B"
+    kept, n = srv.collapse_echoes([a, b])
+    assert len(kept) == 2 and n == 0
+
+
 def test_crosscheck_direction_mapping():
     import importlib.util
 

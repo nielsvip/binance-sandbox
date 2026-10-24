@@ -34,18 +34,20 @@ def test_vector_uses_tf():
     assert "ULTIMATE_DC_" in src
 
 def test_template_has_switch():
-    # Minimal focused: check canonical TEMPLATE.xlsx only (5-file loop caused ZIP already closed in CI)
-    path = ROOT / "SPREADSHEETS/TEMPLATE.xlsx"
-    wb = openpyxl.load_workbook(str(path), read_only=False, data_only=False)
-    try:
-        ws_name = "EXIT_VELOCITY" if "EXIT_VELOCITY" in wb.sheetnames else "EXIT_STRUCTURAL"
-        ws = wb[ws_name]
-        vals = [str(ws.cell(r,1).value or "") for r in range(1, ws.max_row+1)]
-        assert any("DC_HARD_STOP_TF" in v for v in vals), f"{path} missing DC_HARD_STOP_TF"
-        assert any("DC_HARD_STOP_TF=4h" in v for v in vals)
-        assert any("DC_HARD_STOP_TF=D" in v for v in vals)
-    finally:
-        wb.close()
+    # USER 2026-10-24: canonical TEMPLATE.xlsx is legacy/deleted — FINAL_NORM is what
+    # v15_pilot reads (v15_pilot.py:761). Check all four FINAL_NORM workbooks.
+    for fn in ("TEMPLATE_CRYPTO_LONG.xlsx", "TEMPLATE_CRYPTO_SHORT.xlsx", "TEMPLATE_STOCKS_LONG.xlsx", "TEMPLATE_STOCKS_SHORT.xlsx"):
+        path = ROOT / "SPREADSHEETS/TEMPLATE_FINAL_NORM" / fn
+        wb = openpyxl.load_workbook(str(path), read_only=True, data_only=True)
+        try:
+            ws_name = "EXIT_VELOCITY" if "EXIT_VELOCITY" in wb.sheetnames else "EXIT_STRUCTURAL"
+            ws = wb[ws_name]
+            rows = [(str(ws.cell(r, 1).value or ""), str(ws.cell(r, 2).value or "")) for r in range(1, ws.max_row + 1)]
+            assert any("DC_HARD_STOP_TF" in a for a, _ in rows), f"{path} missing DC_HARD_STOP_TF"
+            assert any(a == "DC_HARD_STOP_TF" and b == "4h" for a, b in rows), f"{path} missing 4h"
+            assert any(a == "DC_HARD_STOP_TF" and b == "D" for a, b in rows), f"{path} missing D"
+        finally:
+            wb.close()
 
 def test_monitor_counts_stops():
     # v12 quick engine should tag trades with correct TF in reason, enabling per-sym monitoring

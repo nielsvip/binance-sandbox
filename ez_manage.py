@@ -43909,7 +43909,8 @@ async def evaluate_augmentation(ctx: dict) -> Optional[Signal]:
         wt_cross_bull_3m = wt_cross_3m == "BULL"
         wt_cross_bull_15m = wt_cross_15m == "BULL"
         k_runway = min(100 - k_3m, 100 - k_15m, 100 - k_1h) / 100.0
-        k_not_exhausted = k_3m < 85 and k_15m < 85
+        # USER 2026-10-24: stoch-K exhaustion veto REMOVED (not a switch, never vectorized,
+        # never tested; user trades WT, not stoch). k_runway stays as a SIZING mult only.
     else:
         wt_dir_3m = wt1_3m < wt2_3m
         wt_dir_15m = wt1_15m < wt2_15m
@@ -43917,7 +43918,6 @@ async def evaluate_augmentation(ctx: dict) -> Optional[Signal]:
         wt_cross_bull_3m = wt_cross_3m == "BEAR"
         wt_cross_bull_15m = wt_cross_15m == "BEAR"
         k_runway = min(k_3m, k_15m, k_1h) / 100.0
-        k_not_exhausted = k_3m > 15 and k_15m > 15
     wt_tf_aligned = sum([wt_dir_3m, wt_dir_15m, wt_dir_1h])
     has_wt_cross = wt_cross_bull_3m or wt_cross_bull_15m
     # USER 2026-10-24 (augment "always enforced at the best value"): tiers resolve
