@@ -178,10 +178,11 @@ SHOW_ACCOUNT_TRADE_ARROWS = True  # overlay per-account /history/ trades as arro
 SHOW_RSI_STRIP = True  # tiny RSI strip at the bottom of each TF panel
 SHOW_STOCH_STRIP = True  # tiny StochRSI %K/%D strip below the RSI strip, %K blue when K>D red when K<D
 SHOW_TOP_LEGEND = False  # top legend removed to regain vertical space
-ACCOUNT_ARROW_ORDER = ["trb", "ang", "inf", "flz", "men", "fin"]
-ACCOUNT_ARROW_COLORS = {"ang": "#2ecc71", "inf": "#42a5f5", "flz": "#ff5252", "men": "#ffa726", "fin": "#9e9e9e"}
-TRB_BUY_COLOR = "#2ecc71"
-TRB_SELL_COLOR = "#ff5252"
+import live_trade_history as _lth
+ACCOUNT_ARROW_ORDER = _lth.ACCOUNT_ARROW_ORDER
+ACCOUNT_ARROW_COLORS = _lth.ACCOUNT_ARROW_COLORS
+TRB_BUY_COLOR = _lth.TRB_BUY_COLOR
+TRB_SELL_COLOR = _lth.TRB_SELL_COLOR
 
 # ===== GLOBAL STATE =====
 RANKING_DATA = []
@@ -953,66 +954,11 @@ def _account_history_dirs():
             continue
     return dirs
 
-_BUY_TOKENS = ("OPEN", "AUGMENT", "ADD", "REOPEN", "BUY")
-_SELL_TOKENS = ("REDUCE", "CLOSE", "SELL", "EXIT", "COVER", "TAKE")
-
 def _history_event_direction(event_type, side):
-    t = str(event_type or "").upper()
-    if any(k in t for k in _SELL_TOKENS):
-        base = "sell"
-    elif any(k in t for k in _BUY_TOKENS):
-        base = "buy"
-    else:
-        base = "buy" if side == "LONG" else "sell"
-    if side == "SHORT":
-        base = "sell" if base == "buy" else "buy"
-    return base
+    return _lth.event_direction(event_type, side)
 
 def fetch_account_trades_from_history(symbol):
-    out = {}
-    sym = str(symbol or "").upper()
-    if not sym:
-        return out
-    hdirs = _account_history_dirs()
-    if not hdirs:
-        return out
-    for acct in ACCOUNT_ARROW_ORDER:
-        events = []
-        for hdir in hdirs:
-            adir = hdir / acct
-            if not adir.is_dir():
-                continue
-            for side in ("LONG", "SHORT"):
-                fpath = adir / f"{sym}_{side}.jsonl"
-                if not fpath.is_file():
-                    continue
-                try:
-                    lines = fpath.read_text().splitlines()[-400:]
-                except Exception:
-                    continue
-                for line in lines:
-                    try:
-                        rec = json.loads(line)
-                    except Exception:
-                        continue
-                    try:
-                        ts = pd.to_datetime(rec.get("ts"), utc=True)
-                    except Exception:
-                        continue
-                    if pd.isna(ts):
-                        continue
-                    events.append({"timestamp": ts, "direction": _history_event_direction(rec.get("type"), side), "type": str(rec.get("type") or "")})
-        if events:
-            seen = set()
-            uniq = []
-            for ev in events:
-                key = (ev["timestamp"].isoformat(), ev["type"], ev["direction"])
-                if key not in seen:
-                    seen.add(key)
-                    uniq.append(ev)
-            uniq.sort(key=lambda e: e["timestamp"])
-            out[acct] = uniq
-    return out
+    return _lth.fetch_trades(symbol, ACCOUNT_ARROW_ORDER, _account_history_dirs())
 
 def _wilder_rsi(close, period=14):
     c = pd.to_numeric(close, errors="coerce")

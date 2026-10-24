@@ -28,10 +28,14 @@ CLOSE_TOKENS = ("REDUCE", "CLOSE", "SELL", "EXIT", "COVER", "TAKE")
 
 def parse_args():
     p = argparse.ArgumentParser()
-    p.add_argument("html", help="matrix HTML with embedded LABELS/TRADES")
+    p.add_argument("html", nargs="+", help="matrix HTML(s) with embedded LABELS/TRADES; "
+                   "pass several (e.g. 30d + 365d windows) to merge, or --auto-longest")
     p.add_argument("--acct", default="trb")
     p.add_argument("--tol-min", type=float, default=30.0)
     p.add_argument("--tol2-min", type=float, default=60.0)
+    p.add_argument("--auto-longest", action="store_true",
+                   help="also glob {SYM}_{SIDE}_*matrix.html siblings and merge; base = longest window, "
+                   "so a 365d file is picked up automatically as soon as it lands")
     p.add_argument("--out", default=None)
     return p.parse_args()
 
@@ -102,19 +106,41 @@ def greedy_match(vec, live, tol_s):
 
 def main():
     args = parse_args()
-    html_path = Path(args.html)
-    text = html_path.read_text()
-    m = re.match(r"(.+)_([A-Z]+)_.*_matrix\.html", html_path.name)
+    first = Path(args.html[0])
+    m = re.match(r"(.+)_([A-Z]+)_.*_matrix\.html", first.name)
     if not m:
-        raise SystemExit(f"cannot parse SYM_SIDE from {html_path.name}")
+        raise SystemExit(f"cannot parse SYM_SIDE from {first.name}")
     sym, side = m.group(1), m.group(2)
-    labels = extract_js_array(text, "LABELS")
-    trades = extract_js_array(text, "TRADES")
-    closes = extract_js_array(text, "CLOSE")
+    html_paths = [Path(h) for h in args.html]
+    if args.auto_longest:
+        for cand in sorted(first.parent.glob(f"{sym}_{side}_*matrix.html")):
+            if cand.name.endswith(".parity.html") or cand in html_paths:
+                continue
+            if re.match(r"(.+)_([A-Z]+)_.*_matrix\.html", cand.name):
+                html_paths.append(cand)
+    blobs = []
+    for hp in html_paths:
+        t = hp.read_text()
+        blobs.append({"path": hp, "text": t, "labels": extract_js_array(t, "LABELS"),
+                      "trades": extract_js_array(t, "TRADES"), "closes": extract_js_array(t, "CLOSE")})
+    base = max(blobs, key=lambda b: len(b["labels"]))
+    text = base["text"]
+    html_path = base["path"]
+    labels = base["labels"]
+    closes = base["closes"]
     bar_ts = [to_utc(l) for l in labels]
     ymin, ymax = min(closes), max(closes)
-    vec_entries = [(to_utc(t["entry_time"]), int(t["bar_entry"])) for t in trades]
-    vec_exits = [(to_utc(t["exit_time"]), int(t["bar_exit"])) for t in trades]
+    seen_trips = set()
+    vec_entries, vec_exits = [], []
+    for b in blobs:
+        for t in b["trades"]:
+            key = (str(t.get("entry_time")), str(t.get("exit_time")))
+            if key in seen_trips:
+                continue
+            seen_trips.add(key)
+            vec_entries.append(to_utc(t["entry_time"]))
+            vec_exits.append(to_utc(t["exit_time"]))
+    src_names = ",".join(b["path"].name[:32] for b in blobs)
     live = load_live(args.acct, sym, side)
     live_opens = [e["ts"] for e in live if e["kind"] == "open"]
     live_closes = [e["ts"] for e in live if e["kind"] == "close"]
@@ -131,14 +157,14 @@ def main():
 
     def report(tol_min):
         tol_s = tol_min * 60.0
-        me_v, me_l = greedy_match([t for t, _ in vec_entries], live_opens, tol_s)
-        mx_v, mx_l = greedy_match([t for t, _ in vec_exits], live_closes, tol_s)
+        me_v, me_l = greedy_match(vec_entries, live_opens, tol_s)
+        mx_v, mx_l = greedy_match(vec_exits, live_closes, tol_s)
         return {"me_v": me_v, "me_l": me_l, "mx_v": mx_v, "mx_l": mx_l}
 
     r1 = report(args.tol_min)
     r2 = report(args.tol2_min)
-    vec_only = sorted([[vec_entries[i][1], "entry"] for i in range(len(vec_entries)) if i not in r1["me_v"]]
-                      + [[vec_exits[i][1], "exit"] for i in range(len(vec_exits)) if i not in r1["mx_v"]])
+    vec_only = sorted([[nearest_bar(vec_entries[i]), "entry"] for i in range(len(vec_entries)) if i not in r1["me_v"]]
+                      + [[nearest_bar(vec_exits[i]), "exit"] for i in range(len(vec_exits)) if i not in r1["mx_v"]])
     live_only_idx = ([i for i in range(len(live_opens)) if i not in r1["me_l"]],
                      [i for i in range(len(live_closes)) if i not in r1["mx_l"]])
     live_only_ts = [live_opens[i] for i in live_only_idx[0]] + [live_closes[i] for i in live_only_idx[1]]
@@ -170,12 +196,12 @@ def main():
         % (json.dumps(seg(vec_bars)), json.dumps(seg(live_bars)))
     )
     banner = (
-        "<div class='metrics' style='border-color:#a855f7'>PARITY VS LIVE (%s %s_%s tol %.0fm): "
+        "<div class='metrics' style='border-color:#a855f7'>PARITY VS LIVE (%s %s_%s tol %.0fm src %d file(s) %s): "
         "vec entries %d matched %d · vec exits %d matched %d · live opens %d matched %d · "
         "live closes %d matched %d · <span style='color:#f87171'>vec-only %d</span> · "
         "<span style='color:#4ade80'>live-only %d</span> · tol %.0fm recount: vec-only %d live-only %d · "
         "chart models 0 bps costs; live sample n=%d</div>"
-        % (args.acct, sym, side, args.tol_min, len(vec_entries), len(r1["me_v"]), len(vec_exits),
+        % (args.acct, sym, side, args.tol_min, len(blobs), src_names, len(vec_entries), len(r1["me_v"]), len(vec_exits),
            len(r1["mx_v"]), len(live_opens), len(r1["me_l"]), len(live_closes), len(r1["mx_l"]),
            len(vec_only), len(live_only_ts), args.tol2_min,
            len(vec_entries) - len(r2["me_v"]) + len(vec_exits) - len(r2["mx_v"]),

@@ -80,6 +80,11 @@ BACKTEST_SHARPE = {"COTIUSDT": 5855, "ARUSDT": 3194, "XTZUSDT": 3111, "AAVEUSDC"
 
 # ===== VOLUME FILTERING CONFIGURATION =====
 SHOW_TOP_BOTTOM_ARROWS = False  # USER 2026-10-24: temporarily off — detect_tops_bottoms green/red arrows hidden, code kept
+SHOW_STOCH_HEATMAP = False  # USER 2026-10-24: red/green stoch_rsi background gradient off, code kept
+SHOW_CRYPTO_LIVE_ARROWS = True  # USER 2026-10-24: per-account live fills as arrows on crypto plots
+SHOW_CRYPTO_MISMATCH = True  # USER 2026-10-24: reddish/greenish vlines for signal/fill discrepancies
+CRYPTO_ARROW_ACCOUNTS = ["ang", "inf", "flz", "men", "fin"]
+CRYPTO_MISMATCH_TOL_MIN = 30.0
 ENABLE_VOLUME_FILTERING = True  # Set to False to disable volume filtering entirely
 VOLUME_THRESHOLD_USDT = 80000.0  # Conservative threshold: 80k USDT (only removes truly low-volume tokens)
 logger = setup_logger('ez_rankings', str(config.LOG_FILE_EZ_RANKINGS), logging.INFO)
@@ -6531,6 +6536,7 @@ async def plot_dfs_subplots(
                         alpha=0.6, 
                         zorder=2   )
 
+        marker_events = []
         if symbol in signals_data and tf_plot_loop in signals_data[symbol]:
             logger.info(
                 f"[plot_dfs_subplots] Plotting signals for {symbol}-{tf_plot_loop}: {list(signals_data[symbol][tf_plot_loop].keys())}"
@@ -6584,6 +6590,55 @@ async def plot_dfs_subplots(
                         except IndexError:
                             pass
                         ax_plot.plot(ts_event, y_pos, marker=marker_style, color=color_style, ms=marker_size, linestyle='None', zorder=7)
+                        if marker_style in ('^', 'v'):
+                            marker_events.append((ts_event, 'buy' if marker_style == '^' else 'sell'))
+
+        if (SHOW_CRYPTO_LIVE_ARROWS or SHOW_CRYPTO_MISMATCH) and len(df_tf) > 1:
+            try:
+                import live_trade_history as _lth
+                _hdirs = []
+                for _cand in [Path(getattr(config, "DATA_DIR", ".")) / "history", Path(getattr(config, "BASE_PATH", ".")) / "data" / "history"]:
+                    try:
+                        if _cand.is_dir() and _cand not in _hdirs:
+                            _hdirs.append(_cand)
+                    except Exception:
+                        continue
+                _fills = _lth.fetch_trades(symbol, CRYPTO_ARROW_ACCOUNTS, _hdirs)
+                _tol_s = CRYPTO_MISMATCH_TOL_MIN * 60.0
+                _sig_buy = sorted([t for t, s in marker_events if s == "buy"])
+                _sig_sell = sorted([t for t, s in marker_events if s == "sell"])
+                _fill_buy = sorted([e["timestamp"] for evs in _fills.values() for e in evs if e["direction"] == "buy"])
+                _fill_sell = sorted([e["timestamp"] for evs in _fills.values() for e in evs if e["direction"] == "sell"])
+                _mb_v, _mb_l = _lth.greedy_match(_sig_buy, _fill_buy, _tol_s)
+                _ms_v, _ms_l = _lth.greedy_match(_sig_sell, _fill_sell, _tol_s)
+                if SHOW_CRYPTO_MISMATCH:
+                    for _i, _t in enumerate(_sig_buy):
+                        if _i not in _mb_v and x_left_ts <= _t <= x_right_ts:
+                            ax_plot.axvline(x=_t, color="#f87171", alpha=0.45, lw=1.2, zorder=6)
+                    for _i, _t in enumerate(_sig_sell):
+                        if _i not in _ms_v and x_left_ts <= _t <= x_right_ts:
+                            ax_plot.axvline(x=_t, color="#f87171", alpha=0.45, lw=1.2, zorder=6)
+                    for _j, _t in enumerate(_fill_buy):
+                        if _j not in _mb_l and x_left_ts <= _t <= x_right_ts:
+                            ax_plot.axvline(x=_t, color="#4ade80", alpha=0.45, lw=1.2, zorder=6)
+                    for _j, _t in enumerate(_fill_sell):
+                        if _j not in _ms_l and x_left_ts <= _t <= x_right_ts:
+                            ax_plot.axvline(x=_t, color="#4ade80", alpha=0.45, lw=1.2, zorder=6)
+                if SHOW_CRYPTO_LIVE_ARROWS and _fills:
+                    for _acct in CRYPTO_ARROW_ACCOUNTS:
+                        for _ev in _fills.get(_acct) or []:
+                            _t = _ev["timestamp"]
+                            if _t < x_left_ts or _t > x_right_ts:
+                                continue
+                            _is_buy = _ev["direction"] == "buy"
+                            try:
+                                _row = df_tf[df_tf["close_time"] >= _t].iloc[0]
+                                _yp = _row["low"] - margin_abs_val * 0.5 if _is_buy else _row["high"] + margin_abs_val * 0.5
+                            except (IndexError, KeyError):
+                                continue
+                            ax_plot.scatter([_t], [_yp], color=_lth.ACCOUNT_ARROW_COLORS[_acct], marker="^" if _is_buy else "v", s=30, zorder=8, alpha=0.95, edgecolors="white", linewidths=0.6)
+            except Exception as _e_live:
+                logger.debug(f"[plot_dfs_subplots] live overlay error: {_e_live}")
 
         if len(df_tf) > 2 and 'close' in df_tf.columns:
             try:
@@ -6605,7 +6660,7 @@ async def plot_dfs_subplots(
             except Exception as e_slope:
                 logger.debug(f"[plo t_dfs_subplots] => Slope/Band line error /{tf_plot_loop}: {e_slope}")#{symbol_plot}
 
-        if "stoch_rsi" in df_tf.columns and not df_tf["stoch_rsi"].isnull().all():
+        if SHOW_STOCH_HEATMAP and "stoch_rsi" in df_tf.columns and not df_tf["stoch_rsi"].isnull().all():
             try:
                 # Normalize StochRSI to 0-1 range
                 stoch_norm = df_tf["stoch_rsi"].fillna(50) / 100.0
