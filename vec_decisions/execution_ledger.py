@@ -52,6 +52,82 @@ def append_execution(base_path, account_key, position_key, action, reason, resul
         return False
 
 
+def classify_history_type(action, is_full_close=False):
+    """Map an execute_now action to its data/history/{acct}/{SYM_SIDE}.jsonl type.
+
+    Returns None for types the positions service already records (AUGMENT/REDUCE
+    fills via ez_positions_service._append_to_history) so two writers can never
+    double-log the same fill. Everything else accepted at the funnel gets a type.
+    """
+    act = str(action or "").upper()
+    if "REENTRY" in act:
+        return "REENTRY"
+    if "AUGMENT" in act or "REDUCE" in act:
+        return None
+    if "OPEN" in act and "CLOSE" not in act:
+        return "OPEN"
+    if bool(is_full_close) or "CLOSE" in act:
+        return "CLOSE"
+    return act[:24] if act else None
+
+
+def append_history_fill(base_path, account_key, position_key, hist_type, qty, price, reason):
+    """Append one accepted fill to data/history/{acct}/{SYM_SIDE}.jsonl.
+
+    USER 2026-10-24: no positionAmt movement may go unrecorded. The funnel calls
+    this for every accepted outcome the service does not already record (see
+    classify_history_type). Tail guard: same type+qty+price within 120 s is
+    already on disk (service write or retry) — never double-log. Never raises.
+    """
+    try:
+        if os.environ.get("V8_SIM_TS"):
+            return False
+        parts = str(position_key or "").split(":")
+        acct = str(account_key or (parts[0] if parts else "unknown")).strip() or "unknown"
+        symside = (parts[1] if len(parts) > 1 else str(position_key or "")).strip()
+        if not symside:
+            return False
+        path = os.path.join(str(base_path), "data", "history", acct, f"{symside}.jsonl")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        q = round(float(qty), 6)
+        p = round(float(price), 8)
+        now = datetime.now(timezone.utc)
+        try:
+            with open(path, "rb") as f:
+                f.seek(max(0, os.path.getsize(path) - 4096))
+                tail = f.read().decode("utf-8", "replace").splitlines()
+            for line in reversed(tail):
+                try:
+                    rec = json.loads(line)
+                except Exception:
+                    continue
+                try:
+                    rts = datetime.fromisoformat(str(rec.get("ts", "")).replace("Z", "+00:00"))
+                except Exception:
+                    continue
+                if (now - rts).total_seconds() > 120:
+                    break
+                if (str(rec.get("type", "")).upper() == str(hist_type).upper()
+                        and abs(float(rec.get("qty", -1)) - q) < 1e-9
+                        and abs(float(rec.get("price", -1)) - p) < 1e-9):
+                    return False
+        except FileNotFoundError:
+            pass
+        rec = {
+            "ts": now.isoformat(),
+            "type": hist_type,
+            "qty": q,
+            "price": p,
+            "value": round(q * p, 2),
+            "reason": str(reason or "")[:200],
+        }
+        with open(path, "a") as f:
+            f.write(json.dumps(rec) + "\n")
+        return True
+    except Exception:
+        return False
+
+
 def count_recent_accepted(base_path, account_key, cutoff, day=None):
     """Exchange-accepted executions at/after cutoff (datetime). Never raises."""
     n = 0

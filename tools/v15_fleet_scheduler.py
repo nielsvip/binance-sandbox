@@ -10,6 +10,7 @@ Per host: max_pairs concurrent symbols (fleet_hosts*.json, default 3, clamped 2.
 Admission of a NEW symbol needs: free slot, MemAvailable - mem_reserve >= estimated pair memory (measured PSS of running pairs x1.2,
 else default_pair_mb, + its NPZ size), cpu < cpu_target_pct, NPZ readiness on that host, both templates present, and at most
 --max-launch new pairs per host per tick (no ramp, shared by pass 1 + steal pass). Symbols whose data is not ready are SKIPPED and listed in the state.
+PAIR FLOOR (USER 2026-10-24): a host holding fewer than min(cap, V15_SCHED_MIN_PAIRS=4) pairs admits budget-exhausted sides past the attempt/slice caps AND past --max-launch (tagged floor=True, drawing V15_SCHED_FLOOR_EXTRA=6 extra launches per side) — every safety gate still applies, so a still-idle host names a real gate, never an empty budget.
 
 UNIVERSE (tools/v15_universe.py, written to data/daily_universe/<date>.json): STOCKS = symbols that traded in the last 30d in the real
 ledger (data/history/{tra,trb,trc,inf}); CRYPTO = union of symbols_{flz,men,ang}_{long,short}.json. --extend-universe (off) adds the
@@ -680,6 +681,38 @@ _VERDICT_TERMINAL_RE = re.compile(r'"verdict":\s*"(IMPOSSIBLE|NO_TRADES|BEST_EFF
 
 _LAUNCH_CAPS = {"30D": 3, "365D": 2, "REPAIR": 1, "GS": 1}  # USER 2026-10-09: single source of truth (gate + pending_actions); 30D 6->3, 40-min slices + free resume make more unnecessary
 _SLICE_RESUME_CAP = 20  # USER 2026-10-12: sliced-board resume budget (BG_SHORT stalled 23+ min at 3/3 attempts with 1769/3383 rows done — slices are resumes, not fresh attempts; 20x40min bounds any board, crash-loops still die at 20 quick spawns)
+_MIN_PAIRS_FLOOR = 4  # USER 2026-10-24 weekend: a paid host never idles while boards exist — a host holding fewer pairs than this gets a floor pass that ignores launch-budget exhaustion (attempt/slice caps) while keeping every safety gate (mem/cpu/disk/swap, NPZ readiness, venue, parity, running-dedup). V15_SCHED_MIN_PAIRS overrides; 0 disables the floor.
+_FLOOR_EXTRA = 6  # extra launches per side beyond the attempt/slice caps, granted ONLY by the floor pass (V15_SCHED_FLOOR_EXTRA overrides; the crash-loop bound)
+
+
+def _floor_target_n(cap):
+    """Pairs a host must hold before the floor pass stops (min(cap, V15_SCHED_MIN_PAIRS)). Pure (tested)."""
+    try:
+        want = int(os.environ.get("V15_SCHED_MIN_PAIRS", _MIN_PAIRS_FLOOR))
+    except (TypeError, ValueError):
+        want = _MIN_PAIRS_FLOOR
+    if want <= 0:
+        return 0
+    try:
+        cap = int(cap)
+    except (TypeError, ValueError):
+        cap = 2
+    return max(0, min(cap, want))
+
+
+def _floor_left(st, key):
+    """Floor launches remaining for this side key (each floor launch burns one). Pure (tested)."""
+    try:
+        extra = int(os.environ.get("V15_SCHED_FLOOR_EXTRA", _FLOOR_EXTRA))
+    except (TypeError, ValueError):
+        extra = _FLOOR_EXTRA
+    if extra <= 0:
+        return 0
+    try:
+        used = int((st.get("floor") or {}).get(key, 0))
+    except (TypeError, ValueError, AttributeError):
+        used = 0
+    return max(0, extra - used)
 
 
 def _launch_exhausted(key, window, ss, st, started, redo, pinned=None):
@@ -694,9 +727,11 @@ def _launch_exhausted(key, window, ss, st, started, redo, pinned=None):
     return (st.get("attempts", {}) or {}).get(key, 0) >= _LAUNCH_CAPS[window]
 
 
-def _burn_launch(key, window, ss, st, started, n=1):
-    """Burn the right budget: slice counter for started-30D resumes (attempts frozen — rotation keeps near-done boards early), attempts otherwise."""
-    if window == "30D" and ss in (started or set()):
+def _burn_launch(key, window, ss, st, started, n=1, floor=False):
+    """Burn the right budget: slice counter for started-30D resumes (attempts frozen — rotation keeps near-done boards early), attempts otherwise. floor=True burns the floor-extra counter instead (the floor pass admits budget-exhausted sides; the crash-loop bound moves with it)."""
+    if floor:
+        st.setdefault("floor", {})[key] = st.get("floor", {}).get(key, 0) + n
+    elif window == "30D" and ss in (started or set()):
         st.setdefault("slices", {})[key] = st.get("slices", {}).get(key, 0) + n
     else:
         st.setdefault("attempts", {})[key] = st.get("attempts", {}).get(key, 0) + n
@@ -4094,18 +4129,33 @@ def tick(args, cfg, now):
     _tmpl_dir_by_host = {h_["name"]: h_.get("template_dir", "SPREADSHEETS") for h_ in hosts}
     _parity_cache = {}
 
-    def pending_actions(sym, host_name):
+    _cap_by_host = {}
+
+    def _host_cap_base(name):
+        if name not in _cap_by_host:
+            _cap_by_host[name] = max(2, min(12, int(next((x.get("max_pairs", 3) for x in hosts if x.get("name") == name), 3))))
+        return _cap_by_host[name]
+
+    def pending_actions(sym, host_name, floor=True):
+        """Chain actions launchable for sym on host_name. floor=True (launch path, USER 2026-10-24): a host below its
+        pair floor (_floor_target_n) admits budget-exhausted sides, tagged floor=True and drawing the floor-extra budget
+        instead of attempts/slices — budget exhaustion no longer idles a paid host. floor=False preserves the strict
+        predicate (venue-phase probe: an exhausted side must not pin the phase)."""
         acts = []
         for side, (s, att) in chain_state[sym].items():
             if s in ("need30", "need365", "needrepair", "needgs"):
                 w = {"need30": "30D", "need365": "365D", "needrepair": "REPAIR", "needgs": "GS"}[s]
                 key = f"{sym}_{side}|{w}{att if w in ('REPAIR', 'GS') else ''}"
+                _via_floor = False
                 if _launch_exhausted(key, w, f"{sym}_{side}", st, started, redo, _pin_sides):
-                    continue
+                    _cap_now = HB.get(host_name, {}).get("cap") or _host_cap_base(host_name)
+                    if not floor or len(held.get(host_name, {})) >= _floor_target_n(_cap_now) or _floor_left(st, key) <= 0:
+                        continue
+                    _via_floor = True
                 if w == "30D" and not sim and not _parity_gate_ok(venue_of(sym), side, _tmpl_dir_by_host.get(host_name) or next(iter(_tmpl_dir_by_host.values()), "SPREADSHEETS"), _parity_cache):
                     log.setdefault("skipped_parity_gate", {}).setdefault(f"{'CRYPTO' if venue_of(sym) == 'crypto' else 'STOCKS'}_{side}", _parity_cache.get((venue_of(sym), side), (None, ""))[1])
                     continue  # 2026-10-13: the pilot refuses to fill (PARITY-GATE hard disparity) -> launching only burned a slice/attempt per tick  # USER 2026-10-09: 30D 6->3 fresh (hopeless sides stop burning slots); USER 2026-10-10: redo resume FREE; USER 2026-10-12: sliced (started) 30D sides draw the 20-slice budget, not attempts
-                acts.append({"sym": sym, "side": side, "window": w, "attempt": att or 1, "key": key})
+                acts.append({"sym": sym, "side": side, "window": w, "attempt": att or 1, "key": key, "floor": _via_floor})
         return acts
 
     _CONT_FREEZE_ON = os.environ.get("V15_SCHED_CONT_NPZ_FREEZE", "1") == "1"
@@ -4123,6 +4173,7 @@ def tick(args, cfg, now):
         except (TypeError, ValueError):
             return False
 
+    HB, launched_keys = {}, set()
     released = {}
     for hn_ in list(held):
         for sym_ in list(held[hn_]):
@@ -4147,7 +4198,6 @@ def tick(args, cfg, now):
     adopted.sort(key=_trk)
     _native_syms = {s for s in all_syms if venue_of(s) == "stocks"}  # TEMPORARY USER 2026-10-10: base-name set for the stocks-only gate (USDT stock variants pass)
     mapped_unready = {}
-    HB, launched_keys = {}, set()
     npz_prefetch = []  # USER 2026-10-13: (host, [next candidate syms]) — s1 pre-generates their NPZ after the launch pass
     try:
         # 2026-10-20 USER LAW: COVERAGE metric + catch-up mode with hysteresis + throughput line (see _coverage/_select_catchup_mode/_throughput)
@@ -4342,6 +4392,7 @@ def tick(args, cfg, now):
         launched = 0
         new_launched = 0
         chain_launched = 0
+        floor_launched = 0  # USER 2026-10-24: pairs admitted past the launch budgets by the pair-floor pass
         running_cnt = sum(1 for v_ in held[h["name"]].values() if v_ == "running")  # concurrent pairs actually running: hard cap = cap (s1 OOM 13:48Z when 9 held pairs all ran)
         HB[h["name"]] = {"cap": cap, "workers": workers, "cpu": cpu, "est_pair": est_pair}
         # continue chains of held symbols first (no new slot); then admit adopted-but-unheld; then new
@@ -4372,8 +4423,8 @@ def tick(args, cfg, now):
                 for _ps, _pns in order:
                     if not _pns or venue_of(_ps) != "stocks" or (_ps in owner and owner[_ps] != h["name"]):
                         continue
-                    _pa = [a for a in pending_actions(_ps, h["name"]) if a["key"] not in launched_keys and not _launched_recently(a["key"], st.get("launched_at"), _now_ts) and not _launched_recently(a["key"], st.get("dispatch_q"), _now_ts, _DISPATCH_GRACE_S) and f"{a['sym']}_{a['side']}" not in running]
-                    if _pa and _pair_gate_ok(_ps, _pa, owner, chain_state, st["attempts"], pend_sides={a["side"] for a in pending_actions(_ps, h["name"]) if f"{a['sym']}_{a['side']}" not in running}):
+                    _pa = [a for a in pending_actions(_ps, h["name"], floor=False) if a["key"] not in launched_keys and not _launched_recently(a["key"], st.get("launched_at"), _now_ts) and not _launched_recently(a["key"], st.get("dispatch_q"), _now_ts, _DISPATCH_GRACE_S) and f"{a['sym']}_{a['side']}" not in running]
+                    if _pa and _pair_gate_ok(_ps, _pa, owner, chain_state, st["attempts"], pend_sides={a["side"] for a in pending_actions(_ps, h["name"], floor=False) if f"{a['sym']}_{a['side']}" not in running}):
                         _can_stock = True
                         break
                 if not _can_stock:
@@ -4398,9 +4449,9 @@ def tick(args, cfg, now):
             if _pinned_sym and _pin_hosts and h["name"] not in _pin_hosts:
                 _fate("pin restricted to other hosts")
                 continue
-            if needs_slot and new_launched >= args.max_launch:
+            if needs_slot and new_launched >= args.max_launch and len(held[h["name"]]) >= _floor_target_n(cap):
                 _fate("budget: host max-launch reached")
-                continue  # budget counts only NEW pairs; never break (a break skips held chains sorted later and froze the fleet 03:00-03:35Z)
+                continue  # budget counts only NEW pairs; never break (a break skips held chains sorted later and froze the fleet 03:00-03:35Z)  # USER 2026-10-24: below the pair floor the tick fills to the floor past max-launch
             if needs_slot and (used >= cap or proj_mem < _est_sym(sym) or cpu >= cfg.get("cpu_target_pct", 90) or not swap_ok or not disk_ok or not win_ok):
                 _fate("slots full" if used >= cap else "mem guard" if proj_mem < _est_sym(sym) else "cpu guard" if cpu >= cfg.get("cpu_target_pct", 90) else "swap guard" if not swap_ok else "disk guard")
                 continue  # over-cap/exhausted host: skip this admission, keep evaluating (held chains need no slot)
@@ -4622,6 +4673,8 @@ def tick(args, cfg, now):
                 log["launched"].append(tag + " (dry)")
                 for a in acts:
                     launched_keys.add(a["key"])
+                if any(a.get("floor") for a in acts):
+                    floor_launched += 1
             else:
                 pd = s.get("pdir") or cfg.get("fallback_pdir")
                 if not pd:
@@ -4673,11 +4726,15 @@ def tick(args, cfg, now):
                 for a in acts:
                     if a["window"] == "30D":
                         _slice_progress_reset(st, a["key"], started_mt.get(f"{a['sym']}_{a['side']}"))
-                    _burn_launch(a["key"], a["window"], f"{a['sym']}_{a['side']}", st, started)
+                    _burn_launch(a["key"], a["window"], f"{a['sym']}_{a['side']}", st, started, floor=bool(a.get("floor")))
                     st.setdefault("last_act", {})[a["key"].split("|")[0]] = a["key"]
                     st["launched_at"][a["key"]] = _now_ts
                     launched_keys.add(a["key"])
                 log["launched"].append(tag)
+                if any(a.get("floor") for a in acts):
+                    floor_launched += 1
+                    log["floor_fills"] = log.get("floor_fills", {})
+                    log["floor_fills"][h["name"]] = log["floor_fills"].get(h["name"], 0) + 1
             if needs_slot:
                 used += 1; proj_mem -= _est_sym(sym) + float(rd.get("size_mb") or 0)
                 if _sym_quota_hit(sym, _gtiers):
@@ -4800,6 +4857,9 @@ def tick(args, cfg, now):
                 launched += 1
                 new_launched += 1
         info["launched_pairs"] = launched
+        _floor_need = _floor_target_n(cap) - len(held[h["name"]])
+        if _floor_need > 0 or floor_launched:
+            log.setdefault("floor", {})[h["name"]] = {"target": _floor_target_n(cap), "held": len(held[h["name"]]), "filled": floor_launched}  # USER 2026-10-24: the pair floor names its own shortfall every tick
         info["slots"] = f"{len(held[h['name']])}/{cap}"
         HB[h["name"]].update(used=len(held[h["name"]]), proj_mem=proj_mem, launched=launched, new_launched=new_launched, held_syms=sorted(held[h["name"]]))
         if cpu < cfg.get("cpu_target_pct", 90) and launched == 0:
@@ -4866,7 +4926,7 @@ def tick(args, cfg, now):
                     except subprocess.TimeoutExpired:
                         print(f"[sched] steal launch ssh timeout {h['name']} {sym} (job may still have started; pgrep dedups)", flush=True)
                 for a in acts:
-                    st["attempts"][a["key"]] = st["attempts"].get(a["key"], 0) + 1
+                    _burn_launch(a["key"], a["window"], f"{a['sym']}_{a['side']}", st, started, floor=bool(a.get("floor")))
                     st.setdefault("last_act", {})[a["key"].split("|")[0]] = a["key"]
                     st["launched_at"][a["key"]] = _now_ts
                     launched_keys.add(a["key"])

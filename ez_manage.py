@@ -30275,6 +30275,16 @@ class MultiAccountTradeManager:
                 getattr(config, "BASE_PATH", "/Users/niels/Documents/binance"),
                 account_key, position_key, action, reason, result,
             )
+            # USER 2026-10-24: no positionAmt movement unrecorded in data/history/.
+            # The service owns AUGMENT/REDUCE fills; the funnel records the rest here
+            # (OPEN/CLOSE/REENTRY/...), SUCCESS-only, tail-guarded against doubles.
+            if result and "SUCCESS" in result:
+                _hist_type = _exledger.classify_history_type(action, is_full_close)
+                if _hist_type is not None:
+                    _exledger.append_history_fill(
+                        getattr(config, "BASE_PATH", "/Users/niels/Documents/binance"),
+                        account_key, position_key, _hist_type, quantity, current_price, reason,
+                    )
         except Exception:
             pass
         if result and "SUCCESS" not in result:
