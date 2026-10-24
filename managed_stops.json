@@ -1,23 +1,51 @@
 {
-  "flz:BNBUSDC_SHORT": {
-    "orderId": "1000002640782979",
-    "stopPrice": 753.06,
-    "entry_sig": "2026-10-24 03:34:37.262000+00:00",
-    "symbol": "BNBUSDC",
+  "fin:MAGICUSDT_SHORT": {
+    "orderId": "3000002271069425",
+    "stopPrice": 0.0889,
+    "entry_sig": "2026-10-24 07:16:16.877000+00:00",
+    "symbol": "MAGICUSDT",
     "side": "SHORT"
   },
-  "flz:BTCDOMUSDT_LONG": {
-    "orderId": "1000002640807283",
-    "stopPrice": 5542.3,
-    "entry_sig": "2026-10-24 10:04:04.146000+00:00",
-    "symbol": "BTCDOMUSDT",
+  "fin:MASKUSDT_LONG": {
+    "orderId": "3000002271194634",
+    "stopPrice": 0.3919,
+    "entry_sig": "2026-10-24 08:54:50.006000+00:00",
+    "symbol": "MASKUSDT",
     "side": "LONG"
   },
-  "flz:XMRUSDT_LONG": {
-    "orderId": "1000002640933209",
-    "stopPrice": 562.18,
-    "entry_sig": "2026-10-24 10:57:30.137000+00:00",
-    "symbol": "XMRUSDT",
-    "side": "LONG"
+  "fin:NMRUSDT_SHORT": {
+    "orderId": "3000002271199405",
+    "stopPrice": 10.353,
+    "entry_sig": "2026-10-24 10:36:13.622000+00:00",
+    "symbol": "NMRUSDT",
+    "side": "SHORT"
+  },
+  "fin:KSMUSDT_SHORT": {
+    "orderId": "3000002271210739",
+    "stopPrice": 4.005,
+    "entry_sig": "2026-10-24 10:59:29.191000+00:00",
+    "symbol": "KSMUSDT",
+    "side": "SHORT"
+  },
+  "fin:STXUSDT_SHORT": {
+    "orderId": "3000002271267007",
+    "stopPrice": 0.3139,
+    "entry_sig": "2026-10-24 11:30:23.806000+00:00",
+    "symbol": "STXUSDT",
+    "side": "SHORT"
+  },
+  "fin:MOVRUSDT_SHORT": {
+    "orderId": "3000002271303458",
+    "stopPrice": 1.1886,
+    "entry_sig": "2026-10-24 11:56:08.451000+00:00",
+    "symbol": "MOVRUSDT",
+    "side": "SHORT"
+  },
+  "fin:BLURUSDT_SHORT": {
+    "orderId": "3000002271311073",
+    "stopPrice": 0.00845,
+    "entry_sig": "2026-10-24 09:54:38.442000+00:00",
+    "symbol": "BLURUSDT",
+    "side": "SHORT"
   }
 }
