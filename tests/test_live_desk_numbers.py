@@ -1350,6 +1350,23 @@ def test_paper_twin_first_of_dupes_only():
     assert sm["paper_twinned"] == 1
 
 
+def test_recon_backfill_trb_gated():
+    now = datetime.now(timezone.utc)
+    ep = now.timestamp()
+    row = _ev(now.isoformat(), "MU", "SHORT", "REDUCE", 2.0, 860.0)
+    row["reason"] = "Broker sync"
+    books = {("MU", "SHORT"): [[ep - 3600, 2.0, 864.0]]}
+    out, sm = srv.realized_walk([row], broker_books=books)
+    assert [e for e in out if e.get("action") == "REDUCE"][0].get("rpnl") is None
+    out2, sm2 = srv.realized_walk(
+        [row], broker_books={("MU", "SHORT"): [[ep - 3600, 2.0, 864.0]]},
+        recon_backfill=True,
+    )
+    got = [e for e in out2 if e.get("action") == "REDUCE"][0]
+    assert got.get("rpnl") == 8.0
+    assert sm2["broker_filled"] == 1 and sm2["unknown"] == 0
+
+
 def test_paper_twin_never_cross_day_or_veto():
     day = "2026-10-24"
     prow = _paper(day + "T02:21:00+00:00", "MSK", "SHORT", 65.0, 0.3955)
