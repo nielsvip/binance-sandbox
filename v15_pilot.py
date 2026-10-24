@@ -13659,7 +13659,7 @@ def _main_single():
                 print(f"[EMPTY_GUARD-ERR] {e}", flush=True)
         threading.Thread(target=_check, daemon=True).start()
     _empty_guard()
-    # IMMEDIATE STUCK-CELL GUARD: warn after 60s if still at first cell r3 F/G None, abort after 1h — never 6h silence
+    # STUCK-CELL GUARD: warn after V15_STUCK_WARN_S (default 1500s) if still at first cell r3 F/G None, abort after 1h — never 6h silence
     def _stuck_cell_guard():
         import threading, time as _t2
         def _check2():
@@ -13687,10 +13687,11 @@ def _main_single():
                     if _ev_now != _ev_seen[0]:
                         _stuck = _stuck and _ev_seen[0] < 0 and _ev_now == 0
                     _ev_seen[0] = _ev_now
-                    if _stuck and _elapsed > 60:
-                        print(f"[STUCK-CELL-GUARD] {new_symside} STUCK AT FIRST CELL r3 F=None G=None after {_elapsed:.0f}s done {_done} — WARNING IMMEDIATE, not 6h! NPZ/workers/template check. Will abort at 1h.", flush=True)
+                    _warn_after = float(__import__("os").environ.get("V15_STUCK_WARN_S", "1500"))
+                    if _stuck and _elapsed > _warn_after:
+                        print(f"[STUCK-CELL-GUARD] {new_symside} STUCK AT FIRST CELL r3 F=None G=None after {_elapsed:.0f}s done {_done} — NPZ/workers/template check. Will abort at 1h.", flush=True)
                         try:
-                            _macbook_desktop_notify(f"STUCK FIRST CELL {new_symside}", f"r3 F/G None after {_elapsed:.0f}s — immediate warning", critical=True)
+                            _macbook_desktop_notify(f"STUCK FIRST CELL {new_symside}", f"r3 F/G None after {_elapsed:.0f}s", critical=True)
                         except: pass
                         if _elapsed > 3600:
                             print(f"[STUCK-CELL-ABORT] {new_symside} stuck 1h at r3 — aborting to free herd", flush=True)

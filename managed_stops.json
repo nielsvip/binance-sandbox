@@ -1,17 +1,16 @@
 {
-  "flz:ZECUSDC_SHORT": {
-    "orderId": "1000002641687602",
-    "stopPrice": 1212.24,
-    "entry_sig": "2026-10-24 20:25:51.600000+00:00",
-    "symbol": "ZECUSDC",
-    "side": "SHORT",
-    "disaster_backstop": true
-  },
   "flz:ETHUSDC_SHORT": {
     "orderId": "1000002641787640",
     "stopPrice": 2385.17,
     "entry_sig": "2026-10-24 20:26:31.069000+00:00",
     "symbol": "ETHUSDC",
+    "side": "SHORT"
+  },
+  "flz:ZECUSDC_SHORT": {
+    "orderId": "1000002641687602",
+    "stopPrice": 1212.24,
+    "entry_sig": "2026-10-24 20:25:51.600000+00:00",
+    "symbol": "ZECUSDC",
     "side": "SHORT"
   },
   "flz:WLDUSDC_SHORT": {
@@ -22,16 +21,16 @@
     "side": "SHORT"
   },
   "flz:BNBUSDC_LONG": {
-    "orderId": "1000002641802244",
-    "stopPrice": 714.17,
+    "orderId": "1000002641805515",
+    "stopPrice": 728.18,
     "entry_sig": "2026-10-24 20:25:58.116000+00:00",
     "symbol": "BNBUSDC",
     "side": "LONG"
   },
   "flz:BTCUSDC_LONG": {
-    "orderId": "1000002641802925",
-    "stopPrice": 79085.8,
-    "entry_sig": "2026-10-24 22:51:10.578000+00:00",
+    "orderId": "1000002641807129",
+    "stopPrice": 80107.7,
+    "entry_sig": "2026-10-24 22:58:13.625000+00:00",
     "symbol": "BTCUSDC",
     "side": "LONG"
   }
