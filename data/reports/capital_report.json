@@ -1,67 +1,104 @@
 {
- "generated_at": "2026-10-24 01:31 UTC",
- "total_capital_usd": 76.94,
+ "generated_at": "2026-10-24 01:35 UTC",
+ "total_capital_usd": 154.65,
  "tier_capital": {
   "A": 0.0,
-  "B": 27.19,
-  "C": 49.75
+  "B": 92.26,
+  "C": 62.38
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
-  "C": 2
+  "B": 4,
+  "C": 3
  },
  "winners": [],
  "losers": [
-  "fin:FLUXUSDT_SHORT",
-  "fin:ACEUSDT_SHORT",
-  "fin:RIFUSDT_SHORT"
+  "inf:COTIUSDT_SHORT",
+  "inf:BTCDOMUSDT_LONG",
+  "inf:AVAXUSDC_SHORT"
  ],
- "mediocre": [],
+ "mediocre": [
+  "inf:TRXUSDT_SHORT",
+  "inf:XRPUSDC_SHORT",
+  "inf:BNBUSDC_LONG"
+ ],
  "positions": [
   {
-   "pk": "fin:FLUXUSDT_SHORT",
-   "symbol": "FLUXUSDT",
-   "account": "fin",
-   "value_usd": 25.2,
-   "gain_pct": -1.064,
-   "tier": "B",
-   "perf_mult": 4.52,
-   "amt": 379.0,
-   "mark": 0.0665
-  },
-  {
-   "pk": "fin:RIFUSDT_SHORT",
-   "symbol": "RIFUSDT",
-   "account": "fin",
-   "value_usd": 25.0,
-   "gain_pct": -0.224,
+   "pk": "inf:COTIUSDT_SHORT",
+   "symbol": "COTIUSDT",
+   "account": "inf",
+   "value_usd": 45.47,
+   "gain_pct": -0.476,
    "tier": "C",
-   "perf_mult": 0.21,
-   "amt": 344.0,
-   "mark": 0.0726887
+   "perf_mult": 0.39,
+   "amt": 4124.0,
+   "mark": 0.01102625
   },
   {
-   "pk": "fin:ACEUSDT_SHORT",
-   "symbol": "ACEUSDT",
-   "account": "fin",
-   "value_usd": 24.75,
-   "gain_pct": -0.523,
-   "tier": "C",
-   "perf_mult": 0.13,
-   "amt": 169.39,
-   "mark": 0.1461
-  },
-  {
-   "pk": "fin:MAGICUSDT_SHORT",
-   "symbol": "MAGICUSDT",
-   "account": "fin",
-   "value_usd": 1.99,
-   "gain_pct": 1.508,
+   "pk": "inf:VETUSDT_LONG",
+   "symbol": "VETUSDT",
+   "account": "inf",
+   "value_usd": 28.22,
+   "gain_pct": 0.863,
    "tier": "B",
-   "perf_mult": 0.64,
-   "amt": 22.7,
-   "mark": 0.08754
+   "perf_mult": 0.32,
+   "amt": 3959.0,
+   "mark": 0.007128
+  },
+  {
+   "pk": "inf:TRXUSDT_SHORT",
+   "symbol": "TRXUSDT",
+   "account": "inf",
+   "value_usd": 24.72,
+   "gain_pct": -0.055,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 75.0,
+   "mark": 0.32965
+  },
+  {
+   "pk": "inf:XRPUSDC_SHORT",
+   "symbol": "XRPUSDC",
+   "account": "inf",
+   "value_usd": 24.58,
+   "gain_pct": -0.106,
+   "tier": "B",
+   "perf_mult": 0.53,
+   "amt": 19.1,
+   "mark": 1.28695738
+  },
+  {
+   "pk": "inf:BNBUSDC_LONG",
+   "symbol": "BNBUSDC",
+   "account": "inf",
+   "value_usd": 14.74,
+   "gain_pct": -0.196,
+   "tier": "B",
+   "perf_mult": 0.62,
+   "amt": 0.02,
+   "mark": 737.09
+  },
+  {
+   "pk": "inf:BTCDOMUSDT_LONG",
+   "symbol": "BTCDOMUSDT",
+   "account": "inf",
+   "value_usd": 11.14,
+   "gain_pct": -0.354,
+   "tier": "C",
+   "perf_mult": 0.49,
+   "amt": 0.002,
+   "mark": 5571.08354355
+  },
+  {
+   "pk": "inf:AVAXUSDC_SHORT",
+   "symbol": "AVAXUSDC",
+   "account": "inf",
+   "value_usd": 5.77,
+   "gain_pct": 0.089,
+   "tier": "C",
+   "perf_mult": 0.2,
+   "amt": 0.64,
+   "mark": 9.016
   }
  ]
 }

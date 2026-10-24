@@ -431,9 +431,14 @@ class HighResMarketData:
         closes = store.get(key)
         if closes is None: return 0
         n = 0
+        changed = 0
         for ts, close in bars.items():
             try:
-                closes[int(ts)] = float(close)
+                ts = int(ts)
+                close = float(close)
+                if closes.get(ts) != close:
+                    changed += 1
+                closes[ts] = close
                 n += 1
             except Exception:
                 continue
@@ -444,10 +449,14 @@ class HighResMarketData:
                 store['last_price'] = float(closes[next(reversed(closes))])
             except Exception:
                 pass
-            try:
-                store['rest_ver'] = int(store.get('rest_ver', 0)) + 1
-            except Exception:
-                pass
+            # The calc fingerprint keys on rest_ver: bump ONLY on real change,
+            # or every REST refetch (identical bars) defeats the re-stamp cache
+            # and forces a full 90s recompute pass forever.
+            if changed:
+                try:
+                    store['rest_ver'] = int(store.get('rest_ver', 0)) + 1
+                except Exception:
+                    pass
         return n
     def get_snapshot(self, symbol):
         store = self.data.get(symbol)

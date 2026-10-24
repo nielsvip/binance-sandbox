@@ -221,6 +221,31 @@ DEAD_VEC_SWITCHES = frozenset({
     # transitions). 13 Tradier positions gave back their entire peak that day (CRWD_SHORT +13.01%
     # -> -0.20%, SNDK_SHORT +7.71% -> -0.68%, UUUU_SHORT +5.51% -> -7.10%).
     # NEVER re-add a switch here on a getattr-count. Dataflow-verify both sides first.
+    # 🔴 2026-10-24 NO-DEAD-PATHS AUDIT (USER "make sure NO dead paths remain also outside of augment").
+    # Each name below was dataflow-verified this session (vec body reads outside dead ranges +
+    # twin-module callers + live consumers; tools/v15_deadvec_wiring_audit.py classifiers for the
+    # sweep direction, /tmp/verify_names.py per-name proof). Blocking stops future noise promotions
+    # (board nondeterminism is +/-0.48 gain); live behaviour is UNCHANGED by every entry here.
+    # Remove a name the moment a real vectorized path + live consumer land.
+    # Fully dead (zero vec reads, zero live consumers — the 2026-10-20 LOCKED verdicts re-confirmed):
+    "ULTIMATE_DC_4H_STOP_ENABLED",  # safety: kill-switch for the unconditional 4h hard stop; zero consumers anywhere
+    "HARD_AUGMENT_LOCK_SEC", "HARD_REDUCE_LOCK_SEC", "ABSOLUTE_OPEN_LOCK_SEC",  # NAME SPLIT: real knobs are the _SECONDS spellings
+    "REENTRY_TIER2_MAX_MINUTES", "REENTRY_TIER2_MAX_MINUTES_TRADIER",  # retired, zero references repo-wide
+    "STALE_HOLD_ENABLED", "BALANCE_FLOOR_USD",  # read by nothing anywhere
+    "DC_DAYTRADE_STOP_PCT",  # vec assigns daytrade_stop and never reads it; no live consumer (TARGET twin is wired, STOP is not)
+    "AUGMENTED_DC_BREAK_ENABLED",  # vec imports the module but never calls it (import != wiring); orphan twin read; zero live mentions
+    "REGIME_RANGING_EXIT_GAIN_MIN", "REGIME_TRENDING_EXIT_GAIN_MIN",  # coverage-farm stubs only, both venues
+    "GR_FILTER_VEC_MIN_TFS", "STDEV_SUPPRESS_EARLY_EXIT", "REVERSE_ON_EXIT_ENABLED",  # coverage-farm stubs only
+    "WORKER_INSTANCE_ID", "WORKER_TOTAL_INSTANCES",  # scheduler ops identity, zero reads
+    # Live-infra / execution plumbing (real GLOBAL live reads; single-symbol NPZs cannot model them — board can never move them):
+    "EXECUTE_NOW_MAX_MARK_AGE_S", "EZ_MANAGE_THROTTLER_RATE", "OPEN_RATE_BREAKER_ENABLED", "OPEN_RATE_MAX",
+    # Live-runs-unmeasured strategy (real live consumers; vector never models them — vectorize first, tune after):
+    "HTF_TREND_VETO_BYPASS_ENABLED", "HTF_TREND_VETO_BYPASS_REASONS",  # reason-string bypass, not vectorizable per vec_decisions/ported_entry.py
+    "MARKET_QUALITY_SCORE_ENABLED",  # live entry score bonus; default False
+    "BEAR_MARKET_MODE_TRADIER",  # side preference; vector sweeps sides separately
+    "REENTRY_TIER2_MIN_MINUTES_TRADIER",  # tradier-only cooldown param, no vec twin
+    "HTF_GATE_BYPASS_RZ",  # live entry gate bypass, no vec twin
+    "HIGH_GAIN_AUGMENTATION_MIN_SIZE",  # SIZING floor (bible §68.3a: sizing stays live's job) — board must not tune it
 })
 # Portfolio-level live reduce paths (intraday L/S ratio trims, EOD slim, sentiment rebalance):
 # single-symbol NPZ evals cannot see portfolio state, so these are live-only by construction,

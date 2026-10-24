@@ -11646,6 +11646,12 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             for _eside_t in _active_sides_t:
                 _exposure_seconds_t[_eside_t] += _dt_t
         _sim_ts[0] = float(ts)
+        # USER 2026-10-24 backtest fidelity: evaluate market sessions in SIM time
+        # (tradier is_regular_trading_hours prefers V8_SIM_TS; live never sets it).
+        try:
+            os.environ["V8_SIM_TS"] = str(float(ts))
+        except Exception:
+            pass
         if _SWEEP_MODE:
             _now_real = _real_time_module.time()
             if _now_real - _last_heartbeat_t > 10.0:

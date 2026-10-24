@@ -11384,16 +11384,32 @@ def minutes_since(timestamp_obj, now=None):
         return 999999
 
 
-def is_regular_trading_hours():
-    """Checks if current time is Mon-Fri, 9:30 AM - 4:00 PM ET (handles DST)."""
+def is_regular_trading_hours(ts=None):
+    """Checks if current time is Mon-Fri, 9:30 AM - 4:00 PM ET (handles DST).
+    USER 2026-10-24 backtest fidelity: when the backtest sets V8_SIM_TS the
+    session is evaluated in SIM time so weekend/off-hours runs replay RTH bars
+    faithfully; live never sets it, so live behavior is byte-identical."""
     try:
         from zoneinfo import ZoneInfo
 
-        now_et = datetime.now(ZoneInfo("America/New_York"))
+        _tz = ZoneInfo("America/New_York")
     except ImportError:
         import pytz
 
-        now_et = datetime.now(pytz.timezone("America/New_York"))
+        _tz = pytz.timezone("America/New_York")
+    try:
+        _sim_ts_env = float(os.environ.get("V8_SIM_TS") or 0)
+    except (TypeError, ValueError):
+        _sim_ts_env = 0
+    if ts is None and _sim_ts_env > 0:
+        ts = _sim_ts_env
+    if ts is not None:
+        try:
+            now_et = datetime.fromtimestamp(float(ts), _tz)
+        except (TypeError, ValueError, OverflowError, OSError):
+            now_et = datetime.now(_tz)
+    else:
+        now_et = datetime.now(_tz)
     now_est = now_et
     if now_est.weekday() >= 5:
         return False

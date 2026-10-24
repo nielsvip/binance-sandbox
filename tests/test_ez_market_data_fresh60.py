@@ -44,13 +44,15 @@ def test_parse_rest_klines():
     assert emd.parse_rest_klines([["bad"]]) == {}
 
 
-def test_apply_rest_bars_bumps_rest_ver(monkeypatch):
+def test_apply_rest_bars_bumps_rest_ver_only_on_change(monkeypatch):
     m = _seeded(monkeypatch)
     assert m.data["T1USDC"]["rest_ver"] == 0
     bars = {1700000000 + i * 60: 50.0 + i * 0.01 for i in range(10)}
     assert m.apply_rest_bars("T1USDC", "1m", bars) == 10
     assert m.data["T1USDC"]["rest_ver"] == 1
     assert m.apply_rest_bars("T1USDC", "1m", {}) == 0
+    assert m.data["T1USDC"]["rest_ver"] == 1
+    assert m.apply_rest_bars("T1USDC", "1m", bars) == 10
     assert m.data["T1USDC"]["rest_ver"] == 1
 
 
