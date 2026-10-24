@@ -289,6 +289,21 @@ def test_sync_rejected_orders_never_form_basis_or_pnl():
     assert all(not e.get("rejected_hidden") or e.get("rpnl") is None for e in out2)
 
 
+def test_close_carries_basis_provenance():
+    o1 = _ev("2026-10-22T18:17:00+00:00", "BAS", "SHORT", "OPEN", 12.0, 101.835)
+    o1["reason"] = "WT_15M_BOUNCE_OPEN_S"
+    o2 = _ev("2026-10-22T18:18:00+00:00", "BAS", "SHORT", "OPEN", 11.0, 101.865)
+    o2["reason"] = "BROKER_SYNC_OPEN_FROM_FLAT_STUB"
+    cl = _ev("2026-10-23T19:58:00+00:00", "BAS", "SHORT", "CLOSE", 11.0, 99.555)
+    cl["reason"] = "DAYTRADE_TARGET"
+    out, _ = srv.realized_walk([o1, o2, cl])
+    row = [e for e in out if e.get("rpnl") is not None][0]
+    assert row["basis_n"] == 1
+    assert row["basis"][0]["px"] == 101.835
+    assert row["basis"][0]["ts"] == "2026-10-22T18:17:00+00:00"
+    assert row["basis"][0]["reason"] == "WT_15M_BOUNCE_OPEN_S"
+
+
 def test_crosscheck_direction_mapping():
     import importlib.util
 
