@@ -10,12 +10,18 @@ tradier_rankings both use it without import cycles.
 """
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
+
 ACCOUNT_ARROW_ORDER = ["trb", "ang", "inf", "flz", "men", "fin"]
-ACCOUNT_ARROW_COLORS = {"ang": "#2ecc71", "inf": "#42a5f5", "flz": "#ff5252", "men": "#ffa726", "fin": "#9e9e9e"}
-TRB_BUY_COLOR = "#2ecc71"
-TRB_SELL_COLOR = "#ff5252"
+ACCOUNT_ARROW_COLORS = {"ang": "#00e676", "inf": "#2196f3", "flz": "#ff1744", "men": "#ff9100", "fin": "#cfd8dc"}
+TRB_BUY_COLOR = "#00e676"
+TRB_SELL_COLOR = "#ff1744"
 VEC_ONLY_COLOR = "rgba(248,113,113,0.55)"
 LIVE_ONLY_COLOR = "rgba(74,222,128,0.55)"
+MISMATCH_VEC_MPL = ("#f87171", 0.20)
+MISMATCH_LIVE_MPL = ("#4ade80", 0.20)
+MISMATCH_LW = 0.9
 
 _BUY_TOKENS = ("OPEN", "AUGMENT", "ADD", "REOPEN", "BUY")
 _SELL_TOKENS = ("REDUCE", "CLOSE", "SELL", "EXIT", "COVER", "TAKE")
@@ -42,7 +48,6 @@ def account_color(acct, direction):
 
 def fetch_trades(symbol, accounts, hist_dirs):
     import json
-    import pandas as pd
     out = {}
     sym = str(symbol or "").upper()
     if not sym:
@@ -86,6 +91,93 @@ def fetch_trades(symbol, accounts, hist_dirs):
             uniq.sort(key=lambda e: e["timestamp"])
             out[acct] = uniq
     return out
+
+
+def wilder_rsi(close, period=14):
+    c = pd.to_numeric(close, errors="coerce")
+    delta = c.diff()
+    gain = delta.clip(lower=0.0)
+    loss = -delta.clip(upper=0.0)
+    avg_gain = gain.ewm(alpha=1.0 / period, min_periods=period, adjust=False).mean()
+    avg_loss = loss.ewm(alpha=1.0 / period, min_periods=period, adjust=False).mean()
+    rsi = pd.Series(50.0, index=c.index)
+    up_only = (avg_loss == 0) & (avg_gain > 0)
+    rsi[up_only] = 100.0
+    rest = ~((avg_gain == 0) & (avg_loss == 0)) & ~up_only
+    rsi[rest] = 100.0 - (100.0 / (1.0 + (avg_gain / avg_loss)))[rest]
+    return rsi.fillna(50.0).clip(0.0, 100.0)
+
+
+def stoch_kd(close, window=14, smooth_k=3, smooth_d=3):
+    c = pd.to_numeric(close, errors="coerce")
+    try:
+        from ta.momentum import StochRSIIndicator
+        k = StochRSIIndicator(close=c, window=window, smooth1=smooth_k, smooth2=smooth_d, fillna=True).stochrsi() * 100.0
+        k = pd.Series(k, index=c.index).clip(0.0, 100.0)
+    except Exception:
+        k = pd.Series(50.0, index=c.index)
+    d = k.rolling(smooth_d, min_periods=1).mean()
+    return k.fillna(50.0).clip(0.0, 100.0), d.fillna(50.0).clip(0.0, 100.0)
+
+
+def _num_x(x_vals):
+    import matplotlib.dates as mdates
+    xa = np.asarray(x_vals)
+    try:
+        if np.issubdtype(xa.dtype, np.datetime64):
+            return mdates.date2num(xa)
+    except TypeError:
+        pass
+    if len(xa) and hasattr(xa.flat[0], "strftime"):
+        return mdates.date2num(pd.to_datetime(xa, utc=True))
+    return xa.astype(float)
+
+
+def draw_rsi_strip(ax_plot, x_vals, rsi_vals):
+    r = np.asarray(rsi_vals, dtype=float)
+    x = _num_x(x_vals)
+    if len(x) < 2 or len(x) != len(r):
+        return
+    rsi_ax = ax_plot.inset_axes([0.0, 0.07, 1.0, 0.06])
+    rsi_ax.set_facecolor("#1e2427")
+    rsi_ax.patch.set_alpha(0.85)
+    up = r >= 50.0
+    rsi_ax.plot(x, np.where(up, r, np.nan), color="#5b9dff", lw=0.9, zorder=3)
+    rsi_ax.plot(x, np.where(~up, r, np.nan), color="#ff6b6b", lw=0.9, zorder=3)
+    rsi_ax.axhline(50.0, color="#8a8a8a", lw=0.5, alpha=0.6, zorder=2)
+    rsi_ax.set_xlim(ax_plot.get_xlim())
+    rsi_ax.set_ylim(0.0, 100.0)
+    rsi_ax.set_xticks([])
+    rsi_ax.set_yticks([])
+    for spine in rsi_ax.spines.values():
+        spine.set_color("#5a5a5a")
+    rsi_ax.text(0.01, 0.85, "RSI", transform=rsi_ax.transAxes, fontsize=6, color="#9e9e9e", va="top", ha="left", zorder=4)
+    rsi_ax.set_zorder(6)
+
+
+def draw_stoch_strip(ax_plot, x_vals, k_vals, d_vals):
+    k = np.asarray(k_vals, dtype=float)
+    d = np.asarray(d_vals, dtype=float)
+    x = _num_x(x_vals)
+    if len(x) < 2 or len(x) != len(k) or len(x) != len(d):
+        return
+    st_ax = ax_plot.inset_axes([0.0, 0.0, 1.0, 0.07])
+    st_ax.set_facecolor("#1e2427")
+    st_ax.patch.set_alpha(0.85)
+    up = k >= d
+    st_ax.plot(x, np.where(up, k, np.nan), color="#5b9dff", lw=0.9, zorder=3)
+    st_ax.plot(x, np.where(~up, k, np.nan), color="#ff5252", lw=0.9, zorder=3)
+    st_ax.plot(x, d, color="#e0e0e0", lw=0.6, alpha=0.8, zorder=3)
+    st_ax.axhline(80.0, color="#8a8a8a", lw=0.5, alpha=0.5, linestyle=":", zorder=2)
+    st_ax.axhline(20.0, color="#8a8a8a", lw=0.5, alpha=0.5, linestyle=":", zorder=2)
+    st_ax.set_xlim(ax_plot.get_xlim())
+    st_ax.set_ylim(0.0, 100.0)
+    st_ax.set_xticks([])
+    st_ax.set_yticks([])
+    for spine in st_ax.spines.values():
+        spine.set_color("#5a5a5a")
+    st_ax.text(0.01, 0.82, "STOCH", transform=st_ax.transAxes, fontsize=5, color="#9e9e9e", va="top", ha="left", zorder=4)
+    st_ax.set_zorder(6)
 
 
 def greedy_match(vec_ts, live_ts, tol_s):

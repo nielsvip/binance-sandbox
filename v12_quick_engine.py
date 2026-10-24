@@ -21685,6 +21685,17 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     _aug_add_mult = max(
                         _aug_add_mult, 1.0 * _aug_regime
                     )  # FAST_RISER_DOUBLE = 100% add
+                # USER 2026-10-24: WT-runway sizing on every UAG-family add — the shared twin
+                # vec_decisions.live_unw_gates.wt_runway, the exact factor live AUG_B/C/D apply
+                # (v12 unlocked this turn). DD/HAIKU/AAL/N4 overwrite add_qty below, like live
+                # sizes those legs exactly. Never re-derive it here.
+                try:
+                    import vec_decisions.live_unw_gates as _lug_rw
+                    _aug_add_mult = _aug_add_mult * _lug_rw.wt_runway(
+                        _safe(npz, "wt1_3m", n)[i], _safe(npz, "wt1_15m", n)[i], _safe(npz, "wt1_1h", n)[i], is_long
+                    )
+                except Exception:
+                    pass
                 add_qty = (
                     _size_qty(cfg, pos["qty"] * px * _aug_add_mult, px)
                     if is_tradier

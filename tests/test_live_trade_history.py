@@ -18,13 +18,38 @@ def test_direction_mapping():
 
 
 def test_account_colors():
-    assert lth.account_color("trb", "buy") == "#2ecc71"
-    assert lth.account_color("trb", "sell") == "#ff5252"
-    assert lth.account_color("ang", "buy") == lth.account_color("ang", "sell") == "#2ecc71"
-    assert lth.account_color("inf", "buy") == "#42a5f5"
-    assert lth.account_color("flz", "sell") == "#ff5252"
-    assert lth.account_color("men", "buy") == "#ffa726"
-    assert lth.account_color("fin", "sell") == "#9e9e9e"
+    assert lth.account_color("trb", "buy") == "#00e676"
+    assert lth.account_color("trb", "sell") == "#ff1744"
+    assert lth.account_color("ang", "buy") == lth.account_color("ang", "sell") == "#00e676"
+    assert lth.account_color("inf", "buy") == "#2196f3"
+    assert lth.account_color("flz", "sell") == "#ff1744"
+    assert lth.account_color("men", "buy") == "#ff9100"
+    assert lth.account_color("fin", "sell") == "#cfd8dc"
+
+
+def test_mismatch_constants_faint():
+    assert lth.MISMATCH_VEC_MPL[1] <= 0.25
+    assert lth.MISMATCH_LIVE_MPL[1] <= 0.25
+
+
+def test_strips_draw_on_datetime_axis():
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import pandas as pd
+    fig, ax = plt.subplots()
+    idx = pd.date_range(end="2026-10-24T00:00:00Z", periods=120, freq="15min", tz="UTC")
+    close = pd.Series(100 + np.sin(np.arange(120) / 4.0) * 5, index=range(120))
+    ax.plot(idx, close.values)
+    ax.set_xlim(idx[0], idx[-1])
+    lth.draw_rsi_strip(ax, idx, lth.wilder_rsi(close).values)
+    k, d = lth.stoch_kd(close)
+    lth.draw_stoch_strip(ax, idx, k.values, d.values)
+    from matplotlib.axes import Axes as _Axes
+    insets = [c for c in ax.get_children() if isinstance(c, _Axes)]
+    assert len(insets) == 2
+    plt.close(fig)
 
 
 def test_fetch_dedupes_mirror_and_sorts():

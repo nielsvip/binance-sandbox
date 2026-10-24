@@ -154,4 +154,11 @@ def decide(get: Get, is_long: bool, px: float, entry_px: float, last_aug_px: flo
         return False, "", "", 0.0
     if not profit_ok(get, gain_pct) or not cooldown_ok(get, secs_since_last_aug):
         return False, "", "", 0.0
-    return True, source, f"AUGMENT_CORE_{source} {reason}", float(pos_qty) * float(mult)
+    # USER 2026-10-24: WT-runway sizing via the shared twin (v12 unlocked this turn, so the
+    # vector's UAG-family sizing takes the same twin — core, vector and live AUG_B/C/D agree).
+    try:
+        from vec_decisions.live_unw_gates import wt_runway as _ac_rw
+        _ac_rw_val = float(_ac_rw(m.get("wt1_3m"), m.get("wt1_15m"), m.get("wt1_1h"), is_long))
+    except Exception:
+        _ac_rw_val = 0.5
+    return True, source, f"AUGMENT_CORE_{source} {reason}", float(pos_qty) * float(mult) * _ac_rw_val

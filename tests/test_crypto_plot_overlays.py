@@ -35,6 +35,9 @@ def test_crypto_overlay_flags():
     assert ezr.SHOW_STOCH_HEATMAP is False
     assert ezr.SHOW_CRYPTO_LIVE_ARROWS is True
     assert ezr.SHOW_CRYPTO_MISMATCH is True
+    assert ezr.SHOW_CRYPTO_RSI_STRIP is True
+    assert ezr.SHOW_CRYPTO_STOCH_STRIP is True
+    assert ezr.SHOW_CRYPTO_TOP_LEGEND is False
     assert ezr.CRYPTO_ARROW_ACCOUNTS == ["ang", "inf", "flz", "men", "fin"]
 
 

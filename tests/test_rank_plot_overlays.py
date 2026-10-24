@@ -22,7 +22,8 @@ def test_arrow_flags_default_off_but_present():
     assert trr.SHOW_ACCOUNT_TRADE_ARROWS is True
     assert trr.SHOW_RSI_STRIP is True
     assert trr.SHOW_TOP_LEGEND is False
-    assert trr.ACCOUNT_ARROW_COLORS == {"ang": "#2ecc71", "inf": "#42a5f5", "flz": "#ff5252", "men": "#ffa726", "fin": "#9e9e9e"}
+    assert trr.ACCOUNT_ARROW_COLORS == {"ang": "#00e676", "inf": "#2196f3", "flz": "#ff1744", "men": "#ff9100", "fin": "#cfd8dc"}
+    assert trr.SHOW_STOCK_MISMATCH is True
 
 
 def test_history_direction_mapping():

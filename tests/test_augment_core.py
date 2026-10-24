@@ -41,7 +41,21 @@ def test_ladder_matches_engine_predicate():
         cf, src, reason, add = AC.decide(_get({"MIN_GAIN_TO_BUY_AGGRESSIVELY": 3.0}), True, px, 100.0, last, gain, peak, 10.0)
         assert cf == f
         if f:
-            assert src == "LADDER" and reason == f"AUGMENT_CORE_LADDER {r}" and add == 5.0
+            # USER 2026-10-24: core sizes by the shared WT-runway twin (same as live AUG_B/C/D
+            # and v12); no WT legs here -> fail-safe 0.5 -> 10*0.5*0.5 = 2.5, not 5.0.
+            assert src == "LADDER" and reason == f"AUGMENT_CORE_LADDER {r}" and add == 2.5
+
+
+def test_core_runway_scales_qty():
+    # Full WT room -> full mult; pinned floor -> dust. Same twin the vector + live use.
+    # LONG mirrors: room is at wt1=-100 (oversold), dust at +100 (overbought).
+    g = _get({"MIN_GAIN_TO_BUY_AGGRESSIVELY": 3.0})
+    full = {"wt1_3m": -100.0, "wt1_15m": -100.0, "wt1_1h": -100.0}
+    flat = {"wt1_3m": 100.0, "wt1_15m": 100.0, "wt1_1h": 100.0}
+    assert AC.decide(g, True, 103.5, 100.0, 100.0, 3.5, 3.6, 10.0, full)[3] == 5.0
+    assert AC.decide(g, True, 103.5, 100.0, 100.0, 3.5, 3.6, 10.0, flat)[3] == 0.0
+    short_full = {"wt1_3m": 100.0, "wt1_15m": 100.0, "wt1_1h": 100.0}
+    assert AC.decide(g, False, 96.5, 100.0, 100.0, 3.5, 3.6, 10.0, short_full)[3] == 5.0
 
 
 def test_cooldown_and_profit_gate():
@@ -127,7 +141,7 @@ def test_tradier_hook_inert_by_default():
 def test_tradier_hook_fires_through_queue_with_provenance():
     tag, queued = _tradier_stub(False)
     assert tag == "AUGMENT_CORE:LADDER"
-    assert len(queued) == 1 and queued[0]["action"] == "AUGMENT" and queued[0]["qty"] == 5.0
+    assert len(queued) == 1 and queued[0]["action"] == "AUGMENT" and queued[0]["qty"] == 2.0  # USER 2026-10-24: decide 2.5, whole-share int() truncation (live sizing doctrine)
     assert queued[0]["reason"].startswith("AUGMENT_CORE_LADDER UAG_LADDER")
     assert queued[0]["prov"]["pk"] == "trb:SHOP_LONG" and queued[0]["prov"]["kind"] == "AUGMENT_CORE" and queued[0]["prov"]["act"] == "AUGMENT:LADDER"
 
@@ -164,7 +178,7 @@ def test_ez_hook_inert_by_default():
 
 def test_ez_hook_fires_when_enabled():
     sig = _ez_stub(True)
-    assert sig is not None and sig.action == "AUGMENT" and str(sig.reason).startswith("AUGMENT_CORE_LADDER UAG_LADDER") and abs(sig.quantity - 5.0) < 1e-9
+    assert sig is not None and sig.action == "AUGMENT" and str(sig.reason).startswith("AUGMENT_CORE_LADDER UAG_LADDER") and abs(sig.quantity - 2.475) < 1e-9  # USER 2026-10-24: 10*0.5*0.495, LONG wt1_15m=1.0 mirrors to (100-1)/200
 
 
 def test_no_cap_refusal_and_broken_promise_on_zero_size():
@@ -178,7 +192,7 @@ def test_no_cap_refusal_and_broken_promise_on_zero_size():
     PL.delivery = lambda *a, **k: rows.append(("DELIVERY", a))
     try:
         tag, queued = _tradier_stub(False, extra={"MAX_SYMBOL_VALUE_TRADIER": 1000.0})  # vector add is never refused by a cap in the core
-        assert tag == "AUGMENT_CORE:LADDER" and queued[0]["qty"] == 5.0
+        assert tag == "AUGMENT_CORE:LADDER" and queued[0]["qty"] == 2.0  # USER 2026-10-24: decide 2.5, whole-share int() truncation
         assert [r[0] for r in rows] == ["PROMISE"]  # DELIVERY/BROKEN come from the queue worker after execute_trade_action
         rows.clear()
         orig = T.queue_trade_action

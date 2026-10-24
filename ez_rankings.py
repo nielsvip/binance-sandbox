@@ -85,6 +85,9 @@ SHOW_CRYPTO_LIVE_ARROWS = True  # USER 2026-10-24: per-account live fills as arr
 SHOW_CRYPTO_MISMATCH = True  # USER 2026-10-24: reddish/greenish vlines for signal/fill discrepancies
 CRYPTO_ARROW_ACCOUNTS = ["ang", "inf", "flz", "men", "fin"]
 CRYPTO_MISMATCH_TOL_MIN = 30.0
+SHOW_CRYPTO_RSI_STRIP = True  # USER 2026-10-24: tiny RSI strip at the bottom of each crypto TF panel
+SHOW_CRYPTO_STOCH_STRIP = True  # USER 2026-10-24: tiny StochRSI %K/%D strip below the RSI strip
+SHOW_CRYPTO_TOP_LEGEND = False  # USER 2026-10-24: top legend removed to regain vertical space
 ENABLE_VOLUME_FILTERING = True  # Set to False to disable volume filtering entirely
 VOLUME_THRESHOLD_USDT = 80000.0  # Conservative threshold: 80k USDT (only removes truly low-volume tokens)
 logger = setup_logger('ez_rankings', str(config.LOG_FILE_EZ_RANKINGS), logging.INFO)
@@ -6612,18 +6615,19 @@ async def plot_dfs_subplots(
                 _mb_v, _mb_l = _lth.greedy_match(_sig_buy, _fill_buy, _tol_s)
                 _ms_v, _ms_l = _lth.greedy_match(_sig_sell, _fill_sell, _tol_s)
                 if SHOW_CRYPTO_MISMATCH:
+                    _mc_vec, _mc_live = _lth.MISMATCH_VEC_MPL, _lth.MISMATCH_LIVE_MPL
                     for _i, _t in enumerate(_sig_buy):
                         if _i not in _mb_v and x_left_ts <= _t <= x_right_ts:
-                            ax_plot.axvline(x=_t, color="#f87171", alpha=0.45, lw=1.2, zorder=6)
+                            ax_plot.axvline(x=_t, color=_mc_vec[0], alpha=_mc_vec[1], lw=_lth.MISMATCH_LW, zorder=6)
                     for _i, _t in enumerate(_sig_sell):
                         if _i not in _ms_v and x_left_ts <= _t <= x_right_ts:
-                            ax_plot.axvline(x=_t, color="#f87171", alpha=0.45, lw=1.2, zorder=6)
+                            ax_plot.axvline(x=_t, color=_mc_vec[0], alpha=_mc_vec[1], lw=_lth.MISMATCH_LW, zorder=6)
                     for _j, _t in enumerate(_fill_buy):
                         if _j not in _mb_l and x_left_ts <= _t <= x_right_ts:
-                            ax_plot.axvline(x=_t, color="#4ade80", alpha=0.45, lw=1.2, zorder=6)
+                            ax_plot.axvline(x=_t, color=_mc_live[0], alpha=_mc_live[1], lw=_lth.MISMATCH_LW, zorder=6)
                     for _j, _t in enumerate(_fill_sell):
                         if _j not in _ms_l and x_left_ts <= _t <= x_right_ts:
-                            ax_plot.axvline(x=_t, color="#4ade80", alpha=0.45, lw=1.2, zorder=6)
+                            ax_plot.axvline(x=_t, color=_mc_live[0], alpha=_mc_live[1], lw=_lth.MISMATCH_LW, zorder=6)
                 if SHOW_CRYPTO_LIVE_ARROWS and _fills:
                     for _acct in CRYPTO_ARROW_ACCOUNTS:
                         for _ev in _fills.get(_acct) or []:
@@ -6743,15 +6747,27 @@ async def plot_dfs_subplots(
         ax_plot.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M %d-%b'))
         ax_plot.tick_params(axis='x', rotation=15, labelsize=8)
         ax_plot.tick_params(axis='y', labelsize=8)
+        if SHOW_CRYPTO_RSI_STRIP and "close" in df_tf.columns and len(df_tf) > 15:
+            try:
+                import live_trade_history as _lth_strip
+                _lth_strip.draw_rsi_strip(ax_plot, df_tf["close_time"], _lth_strip.wilder_rsi(df_tf["close"]).values)
+            except Exception: pass
+        if SHOW_CRYPTO_STOCH_STRIP and "close" in df_tf.columns and len(df_tf) > 20:
+            try:
+                import live_trade_history as _lth_strip
+                _sk, _sd = _lth_strip.stoch_kd(df_tf["close"])
+                _lth_strip.draw_stoch_strip(ax_plot, df_tf["close_time"], _sk.values, _sd.values)
+            except Exception: pass
 
-    handles_combined, labels_combined = get_legend_handles_labels(axes)
-    if labels_combined:
-        fig.legend(handles_combined, labels_combined, loc='upper center', 
-                   bbox_to_anchor=(0.5, 1.00),
-                   ncol=min(len(labels_combined), 8),
-                   fontsize=7, frameon=False, labelcolor='#d0d0d0')
+    if SHOW_CRYPTO_TOP_LEGEND:
+        handles_combined, labels_combined = get_legend_handles_labels(axes)
+        if labels_combined:
+            fig.legend(handles_combined, labels_combined, loc='upper center',
+                       bbox_to_anchor=(0.5, 1.00),
+                       ncol=min(len(labels_combined), 8),
+                       fontsize=7, frameon=False, labelcolor='#d0d0d0')
 
-    fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+    fig.tight_layout(rect=[0, 0.03, 1, 0.95 if SHOW_CRYPTO_TOP_LEGEND else 0.98])
 
     os.makedirs(output_dir, exist_ok=True)
     safe_rank_label = rank_label.replace("#","_").replace(":","_")

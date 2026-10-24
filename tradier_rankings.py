@@ -178,6 +178,8 @@ SHOW_ACCOUNT_TRADE_ARROWS = True  # overlay per-account /history/ trades as arro
 SHOW_RSI_STRIP = True  # tiny RSI strip at the bottom of each TF panel
 SHOW_STOCH_STRIP = True  # tiny StochRSI %K/%D strip below the RSI strip, %K blue when K>D red when K<D
 SHOW_TOP_LEGEND = False  # top legend removed to regain vertical space
+SHOW_STOCK_MISMATCH = True  # USER 2026-10-24: faint reddish/greenish vlines for signal/fill discrepancies
+STOCK_MISMATCH_TOL_MIN = 30.0
 import live_trade_history as _lth
 ACCOUNT_ARROW_ORDER = _lth.ACCOUNT_ARROW_ORDER
 ACCOUNT_ARROW_COLORS = _lth.ACCOUNT_ARROW_COLORS
@@ -961,74 +963,16 @@ def fetch_account_trades_from_history(symbol):
     return _lth.fetch_trades(symbol, ACCOUNT_ARROW_ORDER, _account_history_dirs())
 
 def _wilder_rsi(close, period=14):
-    c = pd.to_numeric(close, errors="coerce")
-    delta = c.diff()
-    gain = delta.clip(lower=0.0)
-    loss = -delta.clip(upper=0.0)
-    avg_gain = gain.ewm(alpha=1.0 / period, min_periods=period, adjust=False).mean()
-    avg_loss = loss.ewm(alpha=1.0 / period, min_periods=period, adjust=False).mean()
-    rsi = pd.Series(50.0, index=c.index)
-    up_only = (avg_loss == 0) & (avg_gain > 0)
-    rsi[up_only] = 100.0
-    rest = ~((avg_gain == 0) & (avg_loss == 0)) & ~up_only
-    rsi[rest] = 100.0 - (100.0 / (1.0 + (avg_gain / avg_loss)))[rest]
-    return rsi.fillna(50.0).clip(0.0, 100.0)
+    return _lth.wilder_rsi(close, period)
 
 def _stoch_kd(close, window=14, smooth_k=3, smooth_d=3):
-    c = pd.to_numeric(close, errors="coerce")
-    try:
-        from ta.momentum import StochRSIIndicator
-        k = StochRSIIndicator(close=c, window=window, smooth1=smooth_k, smooth2=smooth_d, fillna=True).stochrsi() * 100.0
-        k = pd.Series(k, index=c.index).clip(0.0, 100.0)
-    except Exception:
-        k = pd.Series(50.0, index=c.index)
-    d = k.rolling(smooth_d, min_periods=1).mean()
-    return k.fillna(50.0).clip(0.0, 100.0), d.fillna(50.0).clip(0.0, 100.0)
+    return _lth.stoch_kd(close, window, smooth_k, smooth_d)
 
 def _draw_stoch_strip(ax_plot, x_vals, k_vals, d_vals):
-    x = np.asarray(x_vals)
-    k = np.asarray(k_vals, dtype=float)
-    d = np.asarray(d_vals, dtype=float)
-    if len(x) < 2 or len(x) != len(k) or len(x) != len(d):
-        return
-    st_ax = ax_plot.inset_axes([0.0, 0.0, 1.0, 0.07])
-    st_ax.set_facecolor("#1e2427")
-    st_ax.patch.set_alpha(0.85)
-    up = k >= d
-    st_ax.plot(x, np.where(up, k, np.nan), color="#5b9dff", lw=0.9, zorder=3)
-    st_ax.plot(x, np.where(~up, k, np.nan), color="#ff5252", lw=0.9, zorder=3)
-    st_ax.plot(x, d, color="#e0e0e0", lw=0.6, alpha=0.8, zorder=3)
-    st_ax.axhline(80.0, color="#8a8a8a", lw=0.5, alpha=0.5, linestyle=":", zorder=2)
-    st_ax.axhline(20.0, color="#8a8a8a", lw=0.5, alpha=0.5, linestyle=":", zorder=2)
-    st_ax.set_xlim(x[0] - 0.5, x[-1] + 0.5)
-    st_ax.set_ylim(0.0, 100.0)
-    st_ax.set_xticks([])
-    st_ax.set_yticks([])
-    for spine in st_ax.spines.values():
-        spine.set_color("#5a5a5a")
-    st_ax.text(0.01, 0.82, "STOCH", transform=st_ax.transAxes, fontsize=5, color="#9e9e9e", va="top", ha="left", zorder=4)
-    st_ax.set_zorder(6)
+    return _lth.draw_stoch_strip(ax_plot, x_vals, k_vals, d_vals)
 
 def _draw_rsi_strip(ax_plot, x_vals, rsi_vals):
-    x = np.asarray(x_vals)
-    r = np.asarray(rsi_vals, dtype=float)
-    if len(x) < 2 or len(x) != len(r):
-        return
-    rsi_ax = ax_plot.inset_axes([0.0, 0.07, 1.0, 0.06])
-    rsi_ax.set_facecolor("#1e2427")
-    rsi_ax.patch.set_alpha(0.85)
-    up = r >= 50.0
-    rsi_ax.plot(x, np.where(up, r, np.nan), color="#5b9dff", lw=0.9, zorder=3)
-    rsi_ax.plot(x, np.where(~up, r, np.nan), color="#ff6b6b", lw=0.9, zorder=3)
-    rsi_ax.axhline(50.0, color="#8a8a8a", lw=0.5, alpha=0.6, zorder=2)
-    rsi_ax.set_xlim(x[0] - 0.5, x[-1] + 0.5)
-    rsi_ax.set_ylim(0.0, 100.0)
-    rsi_ax.set_xticks([])
-    rsi_ax.set_yticks([])
-    for spine in rsi_ax.spines.values():
-        spine.set_color("#5a5a5a")
-    rsi_ax.text(0.01, 0.85, "RSI", transform=rsi_ax.transAxes, fontsize=6, color="#9e9e9e", va="top", ha="left", zorder=4)
-    rsi_ax.set_zorder(6)
+    return _lth.draw_rsi_strip(ax_plot, x_vals, rsi_vals)
 
 async def plot_dfs_subplots(
     rank_label: str, symbol: str, dfs: dict, final_score: float,
@@ -1183,6 +1127,7 @@ async def plot_dfs_subplots(
                     except (IndexError, KeyError):
                         continue
                     ax_plot.scatter([t_idx], [y_pos], color=ecol, marker="^" if is_buy else "v", s=30, zorder=8, alpha=0.95, edgecolors="white", linewidths=0.6)
+        marker_events = []
         if symbol in signals_data and tf_plot_loop in signals_data[symbol]:
             for etype, ev_list in signals_data[symbol][tf_plot_loop].items():
                 for event in ev_list:
@@ -1217,6 +1162,31 @@ async def plot_dfs_subplots(
                             elif marker_style == 'v': y_pos = candle_row['high'] + margin_abs_val * 0.5
                         except IndexError: pass
                         ax_plot.plot(t_idx, y_pos, marker=marker_style, color=color_style, ms=marker_size, linestyle='None', zorder=7)
+                        if marker_style in ('^', 'v'):
+                            marker_events.append((ts_event, 'buy' if marker_style == '^' else 'sell'))
+        if SHOW_STOCK_MISMATCH and (marker_events or acct_trades) and len(df_tf) > 1:
+            try:
+                _tol_s = STOCK_MISMATCH_TOL_MIN * 60.0
+                _sig_buy = sorted([t for t, s in marker_events if s == "buy"])
+                _sig_sell = sorted([t for t, s in marker_events if s == "sell"])
+                _fill_buy = sorted([e["timestamp"] for evs in acct_trades.values() for e in evs if e["direction"] == "buy"])
+                _fill_sell = sorted([e["timestamp"] for evs in acct_trades.values() for e in evs if e["direction"] == "sell"])
+                _mb_v, _mb_l = _lth.greedy_match(_sig_buy, _fill_buy, _tol_s)
+                _ms_v, _ms_l = _lth.greedy_match(_sig_sell, _fill_sell, _tol_s)
+                _constituted_vec, _constituted_live = _lth.MISMATCH_VEC_MPL, _lth.MISMATCH_LIVE_MPL
+                for _i, _t in enumerate(_sig_buy):
+                    if _i not in _mb_v and x_left_ts <= _t <= x_right_ts:
+                        ax_plot.axvline(x=get_x_idx(_t), color=_constituted_vec[0], alpha=_constituted_vec[1], lw=_lth.MISMATCH_LW, zorder=6)
+                for _i, _t in enumerate(_sig_sell):
+                    if _i not in _ms_v and x_left_ts <= _t <= x_right_ts:
+                        ax_plot.axvline(x=get_x_idx(_t), color=_constituted_vec[0], alpha=_constituted_vec[1], lw=_lth.MISMATCH_LW, zorder=6)
+                for _j, _t in enumerate(_fill_buy):
+                    if _j not in _mb_l and x_left_ts <= _t <= x_right_ts:
+                        ax_plot.axvline(x=get_x_idx(_t), color=_constituted_live[0], alpha=_constituted_live[1], lw=_lth.MISMATCH_LW, zorder=6)
+                for _j, _t in enumerate(_fill_sell):
+                    if _j not in _ms_l and x_left_ts <= _t <= x_right_ts:
+                        ax_plot.axvline(x=get_x_idx(_t), color=_constituted_live[0], alpha=_constituted_live[1], lw=_lth.MISMATCH_LW, zorder=6)
+            except Exception: pass
         if len(df_tf) > 2 and 'close' in df_tf.columns:
             try:
                 from ez_rankings import (
