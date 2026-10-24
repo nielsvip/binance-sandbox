@@ -1,8 +1,8 @@
 {
- "at": "2026-10-24T13:45:10Z",
+ "at": "2026-10-24T14:00:12Z",
  "s1": {
   "host": "niels",
-  "now": 1792849506.376556,
+  "now": 1792850403.323989,
   "merge_crypto": {
    "n": 12,
    "max_lag_min": 15.0,
@@ -23,22 +23,22 @@
    "WLFIUSDC",
    "XVGUSDT"
   ],
-  "append_log_age_min": 3.3,
-  "append_last_secs": 705.7,
-  "append_last_stats": "'appended': 1038, 'created': 0, 'up_to_date': 5275, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
+  "append_log_age_min": 3.5,
+  "append_last_secs": 690.6,
+  "append_last_stats": "'appended': 981, 'created': 0, 'up_to_date': 5332, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
   "npz_loop_pids": 1,
   "npz_loop_has_settle": true,
-  "sched_tick_age_min": 1.1,
+  "sched_tick_age_min": 2.0,
   "sched_launched": 2,
   "archive_n": 195,
   "archive_mb": 2323.4,
-  "archive_newest_min": 594.9,
+  "archive_newest_min": 609.9,
   "_via": "s1-int"
  },
  "red": [],
  "warn": [
   "L3 4 crypto NPZ(s) carry no htf_align so the append loop refuses them forever \u2014 they need a full rebuild: HBARUSDC NEOUSDC WLFIUSDC XVGUSDT",
-  "L5 newest archived board NPZ is 595 min old \u2014 publishes may not be recording"
+  "L5 newest archived board NPZ is 610 min old \u2014 publishes may not be recording"
  ],
  "ok": true
 }
