@@ -52,6 +52,10 @@ FILES = {"CRYPTO_LONG": "TEMPLATE_CRYPTO_LONG.xlsx", "CRYPTO_SHORT": "TEMPLATE_C
 # every --fleet run end in "connect failed: Connection timed out / rsync error ... (code 20)" after the two
 # real hosts had already succeeded, which reads like the push failed when it did not.
 FLEET = ["s1-via-gateway", "s2"]
+# USER 2026-10-24: row removal is impossible — dead rows are greyed out with this
+# col-A font color (same convention as v15_pilot.GREY_SKIP_RGB, which skips them
+# everywhere: defaults, evaluation promotion, live application).
+GREY_SKIP_FONT = "FFBFBFBF"
 
 
 
@@ -441,23 +445,23 @@ def _set_bold(cell, bold):
 
 
 def plan_fix_types_ws(ws, venue, cs_defaults, root=ROOT):
-    """BIBLE §96 type repair plan for ONE switch tab. Returns {'writes': {row: value}, 'drops': {row: reason}, 'bold_moves': [(old, new)],
+    """BIBLE §96 type repair plan for ONE switch tab. Returns {'writes': {row: value}, 'greyed': {row: reason}, 'bold_moves': [(old, new)],
     'log': [...], 'unresolved': [...]} — read-only. Rules: an unambiguous coercion is written in place (typed); an ambiguous
-    candidate row is dropped (never guessed); a refused BOLD row is realigned to the cat_side default (= what live and the store
-    run, BIBLE §90 builder placeholders) — bold moves onto the row already carrying that value, else the cell is rewritten to it;
-    a rewritten row that now duplicates a kept row of the same switch (same typed value AND every other cell identical in value +
-    fill, so no yellow/family information is lost) is dropped (bold / untouched rows are kept); a duplicate whose other cells
-    differ is kept, typed."""
+    candidate row is GREYED (never guessed, never deleted — USER 2026-10-24 row removal is impossible, pilot skips grey rows);
+    a refused BOLD row is realigned to the cat_side default (= what live and the store run, BIBLE §90 builder placeholders) —
+    bold moves onto the row already carrying that value, else the cell is rewritten to it; a rewritten row that now duplicates
+    a kept row of the same switch (same typed value AND every other cell identical in value + fill, so no yellow/family
+    information is lost) is greyed (bold / untouched rows are kept); a duplicate whose other cells differ is kept, typed."""
     hdr = [ws.cell(2, c).value for c in range(1, ws.max_column + 1)]
     if not hdr or hdr[0] != "Switch" or "is_default" not in hdr:
-        return {"writes": {}, "drops": {}, "bold_moves": [], "log": [], "unresolved": []}
+        return {"writes": {}, "greyed": {}, "bold_moves": [], "log": [], "unresolved": []}
     isd = hdr.index("is_default") + 1
     groups = {}
     for r in range(3, ws.max_row + 1):
         a = ws.cell(r, 1).value
         if isinstance(a, str) and re.fullmatch(r"[A-Z0-9_]{3,}", a.strip()) and ws.cell(r, 2).value is not None:
             groups.setdefault(a.strip(), []).append(r)
-    writes, drops, moves, log, unresolved = {}, {}, [], [], []
+    writes, greyed, moves, log, unresolved = {}, {}, [], [], []
     for field, rows in groups.items():
         bold = [r for r in rows if str(ws.cell(r, isd).value or "").strip().upper() == "YES"]
         typed = {}
@@ -470,8 +474,8 @@ def plan_fix_types_ws(ws, venue, cs_defaults, root=ROOT):
                     writes[r] = cv
                     log.append({"tab": ws.title, "row": r, "field": field, "action": "coerced", "from": repr(raw), "to": repr(cv), "bold": r in bold, "why": why})
             elif r not in bold:
-                drops[r] = why
-                log.append({"tab": ws.title, "row": r, "field": field, "action": "dropped", "from": repr(raw), "to": None, "bold": False, "why": why})
+                greyed[r] = why
+                log.append({"tab": ws.title, "row": r, "field": field, "action": "greyed", "from": repr(raw), "to": None, "bold": False, "why": why})
         for r in bold:
             if r in typed:
                 continue
@@ -486,12 +490,12 @@ def plan_fix_types_ws(ws, venue, cs_defaults, root=ROOT):
             if not ok_t:
                 unresolved.append({"tab": ws.title, "row": r, "field": field, "value": repr(raw), "why": f"bold value refused and no typed cat_side default ({tgt!r}) to realign to"})
                 continue
-            match = [x for x in rows if x != r and x in typed and x not in drops and ST.same_value(typed[x], tv)]
+            match = [x for x in rows if x != r and x in typed and x not in greyed and ST.same_value(typed[x], tv)]
             if match:
                 moves.append((r, match[0]))
-                drops[r] = f"refused bold {raw!r} — bold moved to the cat_side default row {match[0]} ({tv!r})"
+                greyed[r] = f"refused bold {raw!r} — bold moved to the cat_side default row {match[0]} ({tv!r})"
                 bold = [match[0] if x == r else x for x in bold]
-                log.append({"tab": ws.title, "row": r, "field": field, "action": "bold_moved_dropped", "from": repr(raw), "to": f"row {match[0]} {tv!r}", "bold": True, "why": drops[r]})
+                log.append({"tab": ws.title, "row": r, "field": field, "action": "bold_moved_greyed", "from": repr(raw), "to": f"row {match[0]} {tv!r}", "bold": True, "why": greyed[r]})
             else:
                 typed[r] = tv
                 writes[r] = tv
@@ -503,7 +507,7 @@ def plan_fix_types_ws(ws, venue, cs_defaults, root=ROOT):
                 sigs[x] = tuple(_cell_sig(ws.cell(x, c)) for c in range(1, ws.max_column + 1) if c not in (2, isd))
             return sigs[x]
         for r in rows:
-            if r in drops or r not in typed:
+            if r in greyed or r not in typed:
                 continue
             k = next((x for x in kept if ST.same_value(typed[x], typed[r]) and _sig(x) == _sig(r)), None)
             if k is None:
@@ -518,12 +522,12 @@ def plan_fix_types_ws(ws, venue, cs_defaults, root=ROOT):
             if loser in bold:
                 kept.append(r)
                 continue
-            drops[loser] = f"duplicate of row {r if loser == k else k} after typing ({typed[loser]!r})"
+            greyed[loser] = f"duplicate of row {r if loser == k else k} after typing ({typed[loser]!r})"
             writes.pop(loser, None)
-            log.append({"tab": ws.title, "row": loser, "field": field, "action": "dropped_duplicate", "from": repr(ws.cell(loser, 2).value), "to": None, "bold": False, "why": drops[loser]})
+            log.append({"tab": ws.title, "row": loser, "field": field, "action": "greyed_duplicate", "from": repr(ws.cell(loser, 2).value), "to": None, "bold": False, "why": greyed[loser]})
             if loser == k:
                 kept[kept.index(k)] = r
-    return {"writes": writes, "drops": drops, "bold_moves": moves, "log": log, "unresolved": unresolved, "isd": isd}
+    return {"writes": writes, "greyed": greyed, "bold_moves": moves, "log": log, "unresolved": unresolved, "isd": isd}
 
 
 def _default_violations(ws):
@@ -576,7 +580,7 @@ def fix_types(templates_dirs, apply=False, root=ROOT, lock_wait_s=1800, ts=None)
             csd = _cat_side_defaults(cs, root)
             wb = openpyxl.load_workbook(str(p))
             try:
-                plans, rep = {}, {"coerced": 0, "dropped": 0, "bold_realigned": 0, "bold_moved": 0, "unresolved": [], "log": []}
+                plans, rep = {}, {"coerced": 0, "greyed": 0, "bold_realigned": 0, "bold_moved": 0, "unresolved": [], "log": []}
                 for tab in SWITCH_SHEETS:
                     if tab not in wb.sheetnames:
                         continue
@@ -584,18 +588,18 @@ def fix_types(templates_dirs, apply=False, root=ROOT, lock_wait_s=1800, ts=None)
                     plans[tab] = pl
                     rep["log"].extend(pl["log"])
                     rep["unresolved"].extend(pl["unresolved"])
-                    rep["coerced"] += sum(1 for x in pl["log"] if x["action"] == "coerced" and x["row"] not in pl["drops"])
-                    rep["dropped"] += len(pl["drops"])
+                    rep["coerced"] += sum(1 for x in pl["log"] if x["action"] == "coerced" and x["row"] not in pl["greyed"])
+                    rep["greyed"] += len(pl["greyed"])
                     rep["bold_realigned"] += sum(1 for x in pl["log"] if x["action"] == "bold_realigned")
                     rep["bold_moved"] += len(pl["bold_moves"])
                 summary["files"][str(p)] = rep
-                n_change = sum(len(pl["writes"]) + len(pl["drops"]) for pl in plans.values())
-                print(f"[fix-types] {p.parent.name}/{p.name}: coerced={rep['coerced']} dropped={rep['dropped']} bold_realigned={rep['bold_realigned']} bold_moved={rep['bold_moved']} unresolved={len(rep['unresolved'])}", flush=True)
+                n_change = sum(len(pl["writes"]) + len(pl["greyed"]) for pl in plans.values())
+                print(f"[fix-types] {p.parent.name}/{p.name}: coerced={rep['coerced']} greyed={rep['greyed']} bold_realigned={rep['bold_realigned']} bold_moved={rep['bold_moved']} unresolved={len(rep['unresolved'])}", flush=True)
                 if not apply or n_change == 0:
                     continue
                 shutil.copy2(p, root / "backups" / f"before_fix_types_{ts}_{p.parent.name}_{p.name}")
                 for tab, pl in plans.items():
-                    if not (pl["writes"] or pl["drops"]):
+                    if not (pl["writes"] or pl["greyed"]):
                         continue
                     ws = wb[tab]
                     isd = pl["isd"]
@@ -610,12 +614,17 @@ def fix_types(templates_dirs, apply=False, root=ROOT, lock_wait_s=1800, ts=None)
                         _set_bold(ws.cell(new, isd), True)
                         ws.cell(old, isd).value = "NO"
                         _set_bold(ws.cell(old, 2), False)
-                    for r in sorted(pl["drops"], reverse=True):
-                        ws.delete_rows(r, 1)
+                    # USER 2026-10-24: row removal is impossible — grey the row
+                    # (col-A font; fingerprints cover value+fill only, so this
+                    # is fingerprint-neutral) instead of deleting it. Pilot skips grey rows.
+                    for r in sorted(pl["greyed"]):
+                        a = ws.cell(r, 1)
+                        f0 = a.font
+                        a.font = Font(name=(f0.name if f0 else None) or "Arial", size=(f0.size if f0 else None) or 10, bold=bool(f0.b) if f0 else False, color=GREY_SKIP_FONT)
                     after_fp = fingerprints(ws, skip)
                     lost, gained = sum((before_fp - after_fp).values()), sum((after_fp - before_fp).values())
-                    if lost != len(pl["drops"]) or gained:
-                        _refuse(f"{p.name}!{tab}: integrity broken (lost {lost} != {len(pl['drops'])} dropped, gained {gained}) — file untouched")
+                    if lost or gained:
+                        _refuse(f"{p.name}!{tab}: integrity broken (lost {lost}, gained {gained}) — file untouched")
                     new_viol = _default_violations(ws) - before_viol
                     if new_viol:
                         _refuse(f"{p.name}!{tab}: one-default rule broken for {sorted(new_viol)[:5]} — file untouched")
@@ -721,6 +730,13 @@ def main():
         try:
             ws = wb[a.tab]
             have = {_opt_key(ws.cell(r, 2).value) for r in range(3, ws.max_row + 1) if ws.cell(r, 1).value == sw and ws.cell(r, 2).value is not None}
+            # USER 2026-10-24: row removal is impossible and grey rows are skipped
+            # everywhere — never install into a grey group; un-grey first.
+            for r in range(3, ws.max_row + 1):
+                if ws.cell(r, 1).value == sw:
+                    _f = ws.cell(r, 1).font
+                    if _f is not None and _f.color is not None and str(getattr(_f.color, "rgb", "") or "").upper() == GREY_SKIP_FONT:
+                        die(f"{sw} is grey in {fn}!{a.tab} (row {r}) — un-grey first: python3 tools/v15_switch_grey.py --switch {sw} --ungrey [--apply]")
             if have and not a.extend:
                 die(f"{sw} already has rows in {fn}!{a.tab} — pass --extend to install only the MISSING candidates")
             if have:

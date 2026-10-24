@@ -1,17 +1,11 @@
-"""v15_switch_remove — THE switch-removing tool (USER 2026-10-08, sibling of v15_switch_add.py).
+"""v15_switch_remove — DISABLED (USER 2026-10-24: removing template rows is impossible).
 
-Removes EVERY row of ONE switch (column A == NAME) from every SWITCH_SHEETS tab of the
-TEMPLATE_*.xlsx files in --templates-dir. Whole-row delete only; every other row must
-survive byte-for-byte (template_row_guard fingerprints: lost == removed rows, gained == 0).
-Refuses while the switch is still a config / QuickConfig field (remove the code first —
-a template row for a live key is never deleted) and refuses truncated saves.
+Row removal is IMPOSSIBLE by standing order. Dead switches are greyed out
+(switch-name font grey, pilot skips them everywhere) via tools/v15_switch_grey.py —
+rows are never deleted. THIS TOOL unconditionally refuses in every mode (dry-run
+included) so no caller, chain step, or agent can delete rows through it.
 
-Order of operations:
-  1. remove the key from config + QuickConfig + live/vec key lists (code first, tests green)
-  2. THIS TOOL dry-run (default), review, then --apply (backs up each file first)
-  3. run it on the template SOURCE host (S1) for both template sets, then --fleet / md5
-
-Usage: python3 tools/v15_switch_remove.py --switch NAME [--templates-dir DIR] [--apply] [--fleet]
+Usage: python3 tools/v15_switch_grey.py --switch NAME --reason TEXT [--apply]
 """
 import argparse
 import datetime
@@ -46,31 +40,8 @@ def plan_file(path, sw):
 
 
 def remove_file(path, sw, hits, ts):
-    shutil.copy2(path, ROOT / "backups" / f"before_switch_remove_{sw}_{ts}_{path.name}")
-    wb = openpyxl.load_workbook(str(path))
-    try:
-        removed = 0
-        for tab, rows in hits.items():
-            ws = wb[tab]
-            before = fingerprints(ws)
-            for r in sorted(rows, reverse=True):
-                ws.delete_rows(r, 1)
-            after = fingerprints(ws)
-            lost, gained = sum((before - after).values()), sum((after - before).values())
-            if lost != len(rows) or gained:
-                die(f"{path.name}!{tab}: integrity broken (lost {lost} != {len(rows)} removed, gained {gained}) — restore backups/before_switch_remove_{sw}_{ts}_{path.name}")
-            if any(ws.cell(r, 1).value == sw for r in range(3, ws.max_row + 1)):
-                die(f"{path.name}!{tab}: {sw} rows survived the delete")
-            removed += len(rows)
-        tmp = str(path) + ".rmtmp"
-        wb.save(tmp)
-        with zipfile.ZipFile(tmp) as z:
-            if len(z.namelist()) < 10:
-                die(f"refusing truncated save {path.name}")
-        os.replace(tmp, str(path))
-        return removed
-    finally:
-        wb.close()
+    # USER 2026-10-24: row removal is impossible — this path is dead on purpose.
+    die(f"row removal is impossible — grey {sw} instead: python3 tools/v15_switch_grey.py --switch {sw} --reason TEXT [--apply]")
 
 
 def main():
@@ -81,6 +52,7 @@ def main():
     ap.add_argument("--fleet", action="store_true")
     a = ap.parse_args()
     sw = a.switch.strip().upper()
+    die(f"row removal is impossible (USER 2026-10-24) — grey {sw} instead: python3 tools/v15_switch_grey.py --switch {sw} --reason TEXT [--apply]")
     for fn, cls in (("config.py", "Config"), ("config_tradier.py", "TradierConfig"), ("v12_quick_engine.py", "QuickConfig")):
         if sw in ast_assigns(ROOT / fn, cls):
             die(f"{sw} is still a {cls} field in {fn} — remove the code first, the template row of a live key is never deleted")

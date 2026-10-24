@@ -69,8 +69,11 @@ def fix_dc_breach(ws, report):
         extra = DC_BREACH_VALUES[len(rows):]
         insert_at = rows[-1] + 1
         surplus = rows[len(DC_BREACH_VALUES):]
-        for r in reversed(surplus):
-            ws.delete_rows(r)
+        # USER 2026-10-24: row removal is impossible — surplus rows are greyed
+        # (pilot skips them everywhere), never deleted.
+        for r in surplus:
+            a = ws.cell(row=r, column=1)
+            a.font = Font(name=a.font.name or "Arial", size=a.font.size or 10, bold=a.font.b, color=GREY)
     else:
         oranges = [r for r in range(3, ws.max_row + 1) if is_orange(ws.cell(row=r, column=1))]
         insert_at = (oranges[-1] + 1) if oranges else ws.max_row + 1
@@ -199,7 +202,7 @@ def sync_live(ws, live, qfields, report):
         a = ws.cell(row=r, column=1).value
         if isinstance(a, str) and a.strip() and a.strip().upper() not in ("SWITCH", "FILTER", "GENERAL"):
             groups.setdefault(a.strip(), []).append(r)
-    stats = {"grey": 0, "filled": 0, "added": 0, "bold_fixed": 0, "dropped": 0}
+    stats = {"grey": 0, "filled": 0, "added": 0, "bold_fixed": 0, "greyed": 0}
     for name in sorted(groups, key=lambda k: -groups[k][-1]):
         rows = groups[name]
         a_font = lambda r, grey: setattr(ws.cell(row=r, column=1), "font", Font(name=ws.cell(row=r, column=1).font.name or "Arial", size=ws.cell(row=r, column=1).font.size or 10, bold=ws.cell(row=r, column=1).font.b, color=GREY if grey else None))
@@ -216,18 +219,17 @@ def sync_live(ws, live, qfields, report):
         empty = [r for r, c in cands.items() if c in (None, "", "None", "none")]
         has_live = any(same_value(c, v) for c in cands.values())
         qv = qfields.get(name)
-        drop = []
+        # USER 2026-10-24: row removal is impossible — excess empty rows are
+        # greyed (pilot skips them everywhere), never deleted.
         for r in empty:
             if not has_live:
                 ws.cell(row=r, column=2).value = v; has_live = True; stats["filled"] += 1
             elif not any(same_value(c, qv) for c in cands.values()) and not same_value(qv, v):
                 ws.cell(row=r, column=2).value = qv; stats["filled"] += 1
             else:
-                drop.append(r)
-        for r in sorted(drop, reverse=True):
-            ws.delete_rows(r); stats["dropped"] += 1
-        rows = [r for r in rows if r not in drop]
-        rows = [r - sum(1 for d in drop if d < r) for r in rows]
+                a = ws.cell(row=r, column=1)
+                a.font = Font(name=a.font.name or "Arial", size=a.font.size or 10, bold=a.font.b, color=GREY)
+                stats["greyed"] += 1
         if not any(same_value(ws.cell(row=r, column=2).value, v) for r in rows):
             at = rows[-1] + 1
             ws.insert_rows(at)

@@ -59,7 +59,7 @@ def test_fetch_dedupes_mirror_and_sorts():
     assert len(evs) == 2
     ts = [e["timestamp"] for e in evs]
     assert ts == sorted(ts)
-    assert [e["phase"] for e in evs] == ["entry", "adapt"]
+    assert evs[0]["phase"] in ("entry", "stale") and evs[1]["phase"] == "adapt"
 
 
 def test_mark_boundaries_round_trip():
@@ -150,6 +150,48 @@ def test_collapse_stuck_relogs_keeps_first():
              "type": "AUGMENT", "qty": 21.0, "price": 89.075} for i in range(5)]
     out = lth._collapse_stuck_relogs(recs)
     assert len(out) == 1 and out[0]["timestamp"] == base
+
+
+def test_collapse_echo_fills_prefers_strategy_reason():
+    from datetime import datetime, timezone, timedelta
+    base = datetime(2026, 10, 15, 8, 0, tzinfo=timezone.utc)
+    recs = [{"timestamp": base, "side": "LONG", "type": "OPEN", "qty": 5.0, "price": 100.0,
+             "reason": "BROKER_SYNC_OPEN_FROM_FLAT_STUB"},
+            {"timestamp": base + timedelta(seconds=30), "side": "LONG", "type": "OPEN",
+             "qty": 5.0, "price": 100.1, "reason": "DC_BREAK_HIGH_15M"}]
+    out = lth._collapse_echo_fills(recs)
+    assert len(out) == 1 and out[0]["reason"] == "DC_BREAK_HIGH_15M"
+
+
+def test_collapse_echo_fills_keeps_genuine_repeats():
+    from datetime import datetime, timezone, timedelta
+    base = datetime(2026, 10, 15, 8, 0, tzinfo=timezone.utc)
+    recs = [{"timestamp": base, "side": "LONG", "type": "OPEN", "qty": 5.0, "price": 100.0, "reason": "A"},
+            {"timestamp": base + timedelta(minutes=20), "side": "LONG", "type": "OPEN",
+             "qty": 5.0, "price": 101.0, "reason": "B"},
+            {"timestamp": base + timedelta(minutes=21), "side": "LONG", "type": "OPEN",
+             "qty": 7.0, "price": 101.0, "reason": "C"}]
+    assert len(lth._collapse_echo_fills(recs)) == 3
+
+
+def test_cancel_same_bar_pairs_drops_net_zero_keeps_flip():
+    from datetime import datetime, timezone
+    b = datetime(2026, 10, 15, 8, 2, tzinfo=timezone.utc)
+    recs = [{"timestamp": b, "side": "LONG", "phase": "entry", "qty": 5.0, "type": "OPEN"},
+            {"timestamp": b.replace(minute=5), "side": "LONG", "phase": "exit", "qty": 5.0, "type": "CLOSE"},
+            {"timestamp": b.replace(minute=7), "side": "LONG", "phase": "exit", "qty": 3.0, "type": "REDUCE"},
+            {"timestamp": b.replace(minute=9), "side": "LONG", "phase": "entry", "qty": 9.0, "type": "OPEN"}]
+    out = lth._cancel_same_bar_pairs(recs)
+    assert [(r["phase"], r["qty"]) for r in out] == [("exit", 3.0), ("entry", 9.0)]
+
+
+def test_mark_stale_trailing_only_when_old_and_unclosed():
+    from datetime import datetime, timezone, timedelta
+    now = datetime.now(timezone.utc)
+    recs = [{"timestamp": now - timedelta(days=2), "phase": "entry", "win": None},
+            {"timestamp": now - timedelta(minutes=5), "phase": "entry", "win": None}]
+    lth._mark_stale_trailing(recs)
+    assert [r["phase"] for r in recs] == ["stale", "entry"]
 
 
 def test_no_phantom_win_without_exit():

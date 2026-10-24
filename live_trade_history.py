@@ -260,6 +260,7 @@ def fetch_trades(symbol, accounts, hist_dirs):
                         {"timestamp": ts, "direction": event_direction(typ, side),
                          "type": typ, "qty": _qty(rec), "price": _px(rec), "side": side,
                          "reason": str(rec.get("reason") or "")[:80]})
+        open_set, trusted = _load_open_set(hist_dirs)
         events = []
         for side, recs in by_side.items():
             recs.sort(key=lambda e: e["timestamp"])
@@ -268,7 +269,10 @@ def fetch_trades(symbol, accounts, hist_dirs):
             recs = _collapse_stuck_relogs(recs)
             marked = mark_boundaries(recs)
             marked = _cancel_same_bar_pairs(marked)
-            events.extend(annotate_round_trips(marked, side))
+            marked = annotate_round_trips(marked, side)
+            if trusted and (acct, sym, side) not in open_set:
+                _mark_stale_trailing(marked)
+            events.extend(marked)
         if events:
             events.sort(key=lambda e: e["timestamp"])
             out[acct] = events
@@ -369,6 +373,82 @@ def _cancel_same_bar_pairs(recs, bar_min=15):
                     drop.add(id(x))
                     break
     return [r for r in recs if id(r) not in drop]
+
+
+def _load_open_set(hist_dirs):
+    """Live broker-flat truth: (acct, sym, side) triples currently holding.
+
+    Reads {root}/{acct}/{long,short}_positions.json next to each history root
+    (root = parent of data/). Only accounts whose files are fresher than 24h
+    count as trusted; anything else (missing/stale files) keeps ledger entries
+    untouched rather than risk hiding a real position.
+    """
+    import json
+    import time
+    from pathlib import Path as _P
+    open_set, trusted = set(), False
+    for hdir in hist_dirs or []:
+        try:
+            proot = _P(hdir).parent.parent
+            adirs = [d for d in _P(hdir).iterdir() if d.is_dir()]
+        except Exception:
+            continue
+        for adir in adirs:
+            acct = adir.name
+            fresh = False
+            for side, fname in (("LONG", "long_positions.json"), ("SHORT", "short_positions.json")):
+                fp = proot / acct / fname
+                try:
+                    if not fp.is_file() or time.time() - fp.stat().st_mtime > 86400:
+                        continue
+                    fresh = True
+                    data = json.loads(fp.read_text())
+                except Exception:
+                    continue
+                if isinstance(data, dict):
+                    for k, v in data.items():
+                        try:
+                            amt = float((v or {}).get("positionAmt") or 0)
+                        except (TypeError, ValueError):
+                            continue
+                        if abs(amt) <= 1e-9:
+                            continue
+                        import re as _re
+                        parts = str(k).split(":")
+                        sym = (parts[1] if len(parts) > 1 else parts[0]).upper()
+                        sym = _re.sub(r"_(LONG|SHORT)$", "", sym)
+                        open_set.add((acct, sym, side))
+            if fresh:
+                trusted = True
+    return open_set, trusted
+
+
+def _mark_stale_trailing(marked, max_age_s=1800.0):
+    """Demote trailing unclosed entries when the broker is flat.
+
+    The ledger's last word is an entry with no close and the live position
+    file says flat: the trip ended off-ledger (or the entry is a phantom).
+    Showing it as an entry arrow implies an open position that does not
+    exist. Phase becomes "stale": kept for audit, excluded from arrows,
+    bars and mismatch fills. Entries fresher than max_age_s keep the benefit
+    of the doubt (position file may lag a just-opened position).
+    """
+    import time
+    now = time.time()
+    last_exit = -1
+    for i, e in enumerate(marked):
+        if e.get("phase") == "exit":
+            last_exit = i
+    for i in range(last_exit + 1, len(marked)):
+        e = marked[i]
+        if e.get("phase") != "entry" or e.get("win") is not None:
+            continue
+        try:
+            age = now - e["timestamp"].timestamp()
+        except Exception:
+            continue
+        if age > max_age_s:
+            e["phase"] = "stale"
 
 
 def _collapse_stuck_relogs(recs):

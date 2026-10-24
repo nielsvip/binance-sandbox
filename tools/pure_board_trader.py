@@ -50,6 +50,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 os.environ.setdefault("V12_ALLOW_STALE_NPZ", "1")
 BAR_S = 900.0
+NPZ_FRESH_S = 120.0
+NPZ_FETCH_MAX_BYTES = 32 * 1024 * 1024
+S1_NPZ_DIR = "binance-sandbox/backtest_v8/indicators"
 OUT = ROOT / "data" / "pure_board"
 FROZEN = Path(os.environ.get("VEC_EXACT_FROZEN_DIR", "/tmp/vec_exact_frozen"))
 ACCOUNTS = ("ang", "fin", "flz", "inf", "men")
@@ -242,16 +245,82 @@ async def execute_live(tm, acct, ss, action, qty, price, reason):
                                          reason=f"{reason} |PURE_BOARD", is_reduce=(not opening), is_full_close=(a == "CLOSE"))
 
 
+def _npz_covers(raw, close_ts) -> bool:
+    """True when the store's tail covers the closed bar (tail >= close-120s). Data-domain
+    gate: independent of file mtimes and host clocks."""
+    try:
+        import numpy as _np
+        ts = _np.asarray((raw or {}).get("timestamps", ()), dtype=float)
+        ts = ts[_np.isfinite(ts)]
+        return bool(ts.size) and float(ts[-1]) >= float(close_ts) - NPZ_FRESH_S
+    except Exception:
+        return False
+
+
+def _fresh_npz(sym: str, close_ts: float):
+    """Prebuilt-NPZ fast path (S1 regen output): first-FRESH-wins — the file is used only
+    when BOTH gates pass (mtime <=120s behind the closed bar AND tail covers the closed
+    bar); otherwise None and the caller falls back to local compute. Never accept stale
+    data just because it answers first. Fleet hosts read their own S1-built file; Mac
+    fetches one fresh small file over the existing s1-int channel. Any failure -> None."""
+    import io
+    import numpy as _np
+    name = f"{sym}.npz"
+    try:
+        local = Path.home() / S1_NPZ_DIR / name
+    except Exception:
+        local = None
+    if local is not None and local.exists():
+        try:
+            if close_ts - local.stat().st_mtime <= NPZ_FRESH_S:
+                with _np.load(str(local), allow_pickle=True) as z:
+                    raw = dict(z)
+                if _npz_covers(raw, close_ts):
+                    log(f"_fresh_npz {sym} source=s1_npz_local lag={(close_ts - local.stat().st_mtime):.0f}s")
+                    return raw
+                log(f"_fresh_npz {sym} local NPZ tail stale, falling back to compute")
+            return None
+        except Exception as exc:
+            log(f"_fresh_npz {sym} local NPZ unusable ({type(exc).__name__}), falling back to compute")
+            return None
+    ssh = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5", "s1-int"]
+    rmt = f"/home/niels/{S1_NPZ_DIR}/{name}"
+    try:
+        st = subprocess.run(ssh + [f"stat -c '%Y %s' {rmt}"], capture_output=True, text=True, timeout=15)
+        mt, size = (st.stdout or "").split()[:2]
+        if close_ts - float(mt) > NPZ_FRESH_S or not 0 < int(size) <= NPZ_FETCH_MAX_BYTES:
+            return None
+        cat = subprocess.run(ssh + [f"cat {rmt}"], capture_output=True, timeout=30)
+        with _np.load(io.BytesIO(cat.stdout or b""), allow_pickle=True) as z:
+            raw = dict(z)
+        if _npz_covers(raw, close_ts):
+            log(f"_fresh_npz {sym} source=s1_npz_fetch lag={(close_ts - float(mt)):.0f}s size={int(size)}")
+            return raw
+        log(f"_fresh_npz {sym} S1 NPZ tail stale, falling back to compute")
+        return None
+    except Exception as exc:
+        log(f"_fresh_npz {sym} S1 fetch unusable ({type(exc).__name__}), falling back to compute")
+        return None
+
+
 def _fresh_raw(symside: str):
     """USER 2026-10-21 lane repair: build this bar's arrays from canonical klines.
     The frozen pkl store rotted (twin off -> no _freeze since Oct 20); deciding on it births
     intents the 300s consumer rule correctly refuses (70% REFUSED_STALE). Engine-side imports
-    only (backtest_v8_precompute + htf align twin) — no trading scripts, per the 10-18 lane rule."""
+    only (backtest_v8_precompute + htf align twin) — no trading scripts, per the 10-18 lane rule.
+    USER 2026-10-24 NPZ freshness: first-FRESH-wins — the S1 prebuilt NPZ is used only when
+    fresh (<=120s behind kline arrival, mtime AND tail gated); else local compute as before."""
     try:
         import backtest_v8_precompute as _pc
         _sym = symside.rsplit("_", 1)[0]
         _mode = "crypto" if _sym.endswith(("USDT", "USDC", "USD1", "USDS", "BUSD", "FDUSD", "TUSD", "DAI")) else "tradier"
-        raw = _pc.compute_symbol(_sym, _mode, return_arrays=True)
+        _close = last_closed_bar()
+        _t0 = time.time()
+        raw = _fresh_npz(_sym, _close)
+        _src = "s1_npz" if raw is not None else None
+        if raw is None:
+            raw = _pc.compute_symbol(_sym, _mode, return_arrays=True)
+            _src = "local_compute"
         if not isinstance(raw, dict):
             return None
         try:
@@ -259,6 +328,7 @@ def _fresh_raw(symside: str):
             raw = _hta(raw, _sym, _mode)
         except ImportError:
             return None
+        log(f"_fresh_raw {_sym} source={_src} ({time.time() - _t0:.1f}s)")
         return raw
     except Exception:
         return None

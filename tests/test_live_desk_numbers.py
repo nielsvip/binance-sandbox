@@ -274,7 +274,7 @@ def test_broker_fills_counted_once_and_unattributed_hidden():
     # still banned, attribution is not. Row stays hidden either way.
     assert len(lrcx) == 1
     assert lrcx[0].get("sync_hidden") is True
-    assert lrcx[0].get("rpnl") == round(13.0 * (235.70 - 263.12), 2)
+    assert lrcx[0].get("rpnl") == round(13.0 * (263.12 - 235.70), 2)
     fills = [
         e
         for e in out
@@ -294,7 +294,7 @@ def test_broker_fills_counted_once_and_unattributed_hidden():
     assert s["known"] == 5
     assert s["unknown"] == 0
     assert s["pnl_total"] == round(
-        13.0 * (235.70 - 263.12)
+        13.0 * (263.12 - 235.70)
         + 30.7 * (0.6432 - 0.6433)
         + 8.8 * (0.6431 - 0.6433)
         + 3.9 * (0.6431 - 0.6433)
@@ -1359,6 +1359,52 @@ def test_paper_twin_first_of_dupes_only():
     assert sm["paper_twinned"] == 1
 
 
+def test_backfill_refuses_weekend_stock_close():
+    # AAPL 2026-10-24 (Saturday) CLOSE @101.5 priced -1911.40 off a 10-20
+    # fill; markets closed, klines end Friday. Weekend stock closes never
+    # backfill (crypto unaffected: use_kline_px gates the lane).
+    sat = datetime(2026, 10, 24, 22, 41, tzinfo=timezone.utc)
+    fri = datetime(2026, 10, 23, 15, 0, tzinfo=timezone.utc)
+    row = _ev(sat.isoformat(), "A", "LONG", "REDUCE", 10.0, 101.5)
+    books = {("A", "LONG"): [[fri.timestamp(), 10.0, 340.42]]}
+    out, sm = srv.realized_walk([row], broker_books=books, use_kline_px=True)
+    got = [e for e in out if e.get("action") == "REDUCE"][0]
+    assert got.get("rpnl") is None
+    assert sm["unknown"] == 1
+    out2, _ = srv.realized_walk([row], broker_books=books, use_kline_px=False)
+    assert [e for e in out2 if e.get("action") == "REDUCE"][0].get("rpnl") is not None
+
+
+def test_reconciler_adopted_opens_capped_at_excess():
+    # STX-style fantasy: reconciler adopts 100 @9.00 with no position, then
+    # re-adopts; closes must not price off invented lots. A genuine first
+    # adoption (empty book) still forms lots.
+    from datetime import timedelta
+
+    now = datetime.now(timezone.utc)
+    iso = lambda dt: dt.isoformat()
+    a1 = _ev(iso(now - timedelta(hours=3)), "S", "SHORT", "OPEN", 100.0, 9.00)
+    a1["reason"] = "VEC_DRIVEN_OPEN_RECONCILE_X"
+    a2 = _ev(iso(now - timedelta(hours=2)), "S", "SHORT", "OPEN", 100.0, 9.00)
+    a2["reason"] = "VEC_DRIVEN_OPEN_RECONCILE_X"
+    c = _ev(iso(now - timedelta(hours=1)), "S", "SHORT", "REDUCE", 100.0, 8.00)
+    c["reason"] = "STRAT"
+    out, sm = srv.realized_walk([a1, a2, c])
+    got = [e for e in out if e.get("action") == "REDUCE"][0]
+    assert got.get("rpnl") == round(100.0 * (9.00 - 8.00), 2)
+    c2 = _ev(iso(now - timedelta(minutes=10)), "S", "SHORT", "REDUCE", 100.0, 8.00)
+    c2["reason"] = "STRAT"
+    out2, sm2 = srv.realized_walk([a1, a2, c, c2])
+    got2 = sorted(
+        (str(e.get("ts") or ""), e.get("rpnl"))
+        for e in out2
+        if e.get("action") == "REDUCE"
+    )
+    assert got2[0][1] == round(100.0 * (9.00 - 8.00), 2)
+    assert got2[1][1] is None
+    assert sm2["unknown"] == 1
+
+
 def test_sync_close_without_basis_stays_hidden():
     # LRCX lesson, narrowed and preserved: a sync close with NO journal
     # basis and NO tape basis never prices (fabrication stays banned).
@@ -1381,7 +1427,8 @@ def test_recon_backfill_trb_gated():
     out, sm = srv.realized_walk([row], broker_books=books)
     assert [e for e in out if e.get("action") == "REDUCE"][0].get("rpnl") is None
     out2, sm2 = srv.realized_walk(
-        [row], broker_books={("MU", "SHORT"): [[ep - 3600, 2.0, 864.0]]},
+        [row],
+        broker_books={("MU", "SHORT"): [[ep - 3600, 2.0, 864.0]]},
         recon_backfill=True,
     )
     got = [e for e in out2 if e.get("action") == "REDUCE"][0]
