@@ -81,3 +81,11 @@ def test_pick_empty_or_broken_is_empty():
     assert _pick_due_stale({}, NOW) == []
     assert _pick_due_stale(None, NOW) == []
     assert _pick_due_stale({"X": None}, NOW) == [("X", True, True)]
+
+
+def test_pick_limit_shrinks_under_throttle():
+    data = {f"S{i:03d}": _store(1000 + i, 1000 + i) for i in range(40)}
+    assert len(_pick_due_stale(data, NOW, 60)) == 40
+    assert len(_pick_due_stale(data, NOW, 60 >> 1)) == 30
+    assert len(_pick_due_stale(data, NOW, 60 >> 4)) == 3
+    assert _pick_due_stale(data, NOW, 60 >> 4)[0][0] == "S039"

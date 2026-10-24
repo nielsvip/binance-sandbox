@@ -39,7 +39,7 @@ if [ -n "$_DENY" ]; then
   for _s in $_DENY; do echo "${_s}.npz"; echo "${_s}_*"; done >> "$EXCL"
   echo "$(date -u +%FT%TZ) DENY $(echo $_DENY | wc -w) TradFi symbols excluded" >> /tmp/sync_indicators.log
 fi
-for ip in 10.0.0.4 10.0.0.5 10.0.0.6; do  # 2026-10-20 s5/s6 revived (USER); 10-13 note: were destroyed
+for ip in 10.0.0.4 10.0.0.5 10.0.0.6; do  # USER 2026-10-24: s2/s5/s6 ALWAYS receive S1-latest NPZ before any backtest (overrides the 10-20 s5-NPZ-free hot-edit on the fleet copy); per-dispatch JIT (v15_dispatch_job) + pilot STALE_NPZ_SKIPPED stay as defense in depth, this push is the base layer
   _excl_arg=""
   [ -f "$EXCL" ] && _excl_arg="--exclude-from=$EXCL"
   # shellcheck disable=SC2086

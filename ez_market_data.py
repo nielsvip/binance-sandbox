@@ -370,7 +370,7 @@ def _repair_backoff_s(consec):
     except Exception: return REST_REPAIR_BACKOFF_CAP_S
 
 
-def _pick_due_stale(data, now):
+def _pick_due_stale(data, now, limit=REST_REPAIR_MAX_SYMS):
     """USER 2026-10-24: stalest-first repair queue, capped. Pure, tested."""
     due = []
     try:
@@ -385,7 +385,7 @@ def _pick_due_stale(data, now):
     except Exception:
         return []
     due.sort(reverse=True)
-    return [(sym, d1, d3) for _, sym, d1, d3 in due[:REST_REPAIR_MAX_SYMS]]
+    return [(sym, d1, d3) for _, sym, d1, d3 in due[:max(1, limit)]]
 
 class HighResMarketData:
     def __init__(self):
@@ -1291,7 +1291,7 @@ class MarketDataEngine:
                     await asyncio.sleep(10)
                     continue
                 try:
-                    picked = _pick_due_stale(self.market.data, t0)
+                    picked = _pick_due_stale(self.market.data, t0, REST_REPAIR_MAX_SYMS >> min(consec_throttle, 4))
                 except Exception:
                     picked = []
                 sem = asyncio.Semaphore(max(1, conc))
