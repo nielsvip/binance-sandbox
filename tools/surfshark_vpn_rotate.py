@@ -1,14 +1,32 @@
 #!/usr/bin/env python3
 import json, os, re, subprocess, sys, time, urllib.request
+
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WL_PATH = os.path.join(BASE, "data", "vpn_whitelist.json")
 STATE_PATH = os.path.join(BASE, "data", "vpn_rotate_state.json")
 LOG_PATH = os.path.expanduser("~/logs/vpn_rotate.log")
-BAN_FILES = [os.path.join(BASE, "data", "ez_klines_ban_state.json"), os.path.join(BASE, "data", "klines_canonical_ban.json")]
-BAN_LOG_FILES = [os.path.join(os.path.expanduser("~"), "logs", n) for n in
-                 ("ez_market_data.log", "ez_manage_ang.log", "ez_manage_men.log",
-                  "ez_manage_inf.log", "ez_manage_fin.log", "ez_manage_flz.log")]
-BAN_LOG_PATTERNS = ("-1003", "banned until", "Too many requests", " 429 ", "429 Too Many Requests")
+BAN_FILES = [
+    os.path.join(BASE, "data", "ez_klines_ban_state.json"),
+    os.path.join(BASE, "data", "klines_canonical_ban.json"),
+]
+BAN_LOG_FILES = [
+    os.path.join(os.path.expanduser("~"), "logs", n)
+    for n in (
+        "ez_market_data.log",
+        "ez_manage_ang.log",
+        "ez_manage_men.log",
+        "ez_manage_inf.log",
+        "ez_manage_fin.log",
+        "ez_manage_flz.log",
+    )
+]
+BAN_LOG_PATTERNS = (
+    "-1003",
+    "banned until",
+    "Too many requests",
+    " 429 ",
+    "429 Too Many Requests",
+)
 
 
 def scan_logs_for_ban():
@@ -30,23 +48,36 @@ def scan_logs_for_ban():
             for ln in tail.splitlines()[-300:]:
                 if any(p in ln for p in BAN_LOG_PATTERNS):
                     try:
-                        open(BAN_FILES[0], "w").write(json.dumps(
-                            {"ban_until_ms": (now + 600) * 1000.0,
-                             "source": os.path.basename(path)}))
+                        open(BAN_FILES[0], "w").write(
+                            json.dumps(
+                                {
+                                    "ban_until_ms": (now + 600) * 1000.0,
+                                    "source": os.path.basename(path),
+                                }
+                            )
+                        )
                     except Exception:
                         pass
                     return True
     except Exception:
         pass
     return False
+
+
 FAPI = "https://fapi.binance.com"
 COOLDOWN_S = 120
 FAIL_SKIP_S = 300
+# USER 2026-10-24: app profiles (Dausos/WireGuard) are RETIRED — OVPN on the 8
+# operator statics does all tunnel work. When set, rotation candidates and the
+# geo-tour never include app slots (status display still shows them).
+OVPN_ONLY = True
 # USER 2026-10-24: 600s left single-path dark windows far too long ("tunnels fail
 # every couple minutes"). 180s re-probes a failed slot 3x sooner; FAIL_SKIP_S still
 # gates hot-looping and every attempt is fail-closed (never drops the working link).
 RESTORE_TRY_S = 180
 TOUR_INTERVAL_S = 4 * 3600
+
+
 def log(m):
     line = time.strftime("%Y-%m-%d %H:%M:%S") + " " + m
     print(line, flush=True)
@@ -55,12 +86,20 @@ def log(m):
         open(LOG_PATH, "a").write(line + "\n")
     except Exception:
         pass
+
+
 def sh(args, timeout=30):
     return subprocess.run(args, capture_output=True, text=True, timeout=timeout)
+
+
 def whitelist():
     return set(json.load(open(WL_PATH))["binance_ip_whitelist"])
+
+
 OVPN_DIR = os.path.join(os.path.expanduser("~"), ".config", "surfshark", "ovpn")
-OVPN_AUTH = os.path.join(os.path.expanduser("~"), ".config", "surfshark", "manual_auth.txt")
+OVPN_AUTH = os.path.join(
+    os.path.expanduser("~"), ".config", "surfshark", "manual_auth.txt"
+)
 OVPN_MGMT_PORT = 7505
 
 
@@ -74,11 +113,15 @@ def _is_ovpn(name):
 def ovpn_servers():
     out = {}
     try:
-        if not os.path.exists("/Library/LaunchDaemons/com.binance.ovpn-supervisor.plist"):
+        if not os.path.exists(
+            "/Library/LaunchDaemons/com.binance.ovpn-supervisor.plist"
+        ):
             return {}
         for f in sorted(os.listdir(os.path.join(OVPN_DIR, "servers"))):
             if f.endswith(".ovpn"):
-                out[f"OVPN:{f.split('.prod')[0]}"] = os.path.join(OVPN_DIR, "servers", f)
+                out[f"OVPN:{f.split('.prod')[0]}"] = os.path.join(
+                    OVPN_DIR, "servers", f
+                )
     except Exception:
         pass
     return out
@@ -86,6 +129,7 @@ def ovpn_servers():
 
 def _ovpn_mgmt(cmd, timeout=8):
     import socket
+
     s = None
     try:
         s = socket.create_connection(("127.0.0.1", OVPN_MGMT_PORT), timeout=timeout)
@@ -171,44 +215,6 @@ def ovpn_down(name):
         return False
 
 
-POOL_HOSTS = ["uk-lon.prod.surfshark.com", "sg-sng.prod.surfshark.com", "co-bog.prod.surfshark.com"]
-
-
-def _dig_a(host):
-    try:
-        out = sh(["dig", "+short", "+time=2", "+tries=1", host, "A"], timeout=15).stdout
-        return {ln.strip() for ln in out.splitlines() if re.match(r"^\d+\.\d+\.\d+\.\d+$", ln.strip())}
-    except Exception:
-        return set()
-
-
-def pool_members(hosts=None, rounds=6, resolver=None):
-    """Union of pool member IPs across DNS rounds. USER 2026-10-24: the pool
-    churns across adjacent IPs (harvest: 33 members, .170 live next to
-    whitelisted .171) so no static list survives; harvest instead, then cover."""
-    res = resolver or _dig_a
-    found = {}
-    for _ in range(max(1, rounds)):
-        for h in (hosts or POOL_HOSTS):
-            try:
-                for ip in res(h):
-                    found.setdefault(ip, set()).add(h)
-            except Exception:
-                pass
-    return {ip: sorted(hs) for ip, hs in found.items()}
-
-
-def cmd_poolmap():
-    wl = whitelist()
-    members = pool_members()
-    missing = sorted(ip for ip in members if ip not in wl)
-    print(f"pool members seen: {len(members)}, whitelisted: {len(members) - len(missing)}")
-    print("add to Binance whitelist to cover rotation:")
-    for ip in missing:
-        print(f"  {ip}  ({','.join(members[ip])})")
-    return 0
-
-
 def _slot_start(name):
     if _is_ovpn(name):
         return ovpn_up(name)
@@ -235,6 +241,8 @@ def slots():
         except Exception:
             pass
     return out
+
+
 def slot_server(name):
     if _is_ovpn(name):
         try:
@@ -255,7 +263,11 @@ def slot_server(name):
         if c and not srv:
             srv = c.group(1)
     return srv, sip
+
+
 IP_RE = re.compile(r"^\d{1,3}(\.\d{1,3}){3}$")
+
+
 def egress_ip():
     for url in ("https://ifconfig.me/ip", "https://api.ipify.org"):
         try:
@@ -266,20 +278,32 @@ def egress_ip():
         except Exception:
             continue
     return None
+
+
 def binance_probe():
     try:
-        req = urllib.request.Request(FAPI + "/fapi/v1/ping", headers={"User-Agent": "vpn-rotate"})
+        req = urllib.request.Request(
+            FAPI + "/fapi/v1/ping", headers={"User-Agent": "vpn-rotate"}
+        )
         r = urllib.request.urlopen(req, timeout=10)
         probe = {"ping": r.status, "weight": 0}
     except urllib.error.HTTPError as e:
-        return {"ping": e.code, "weight": 0, "body": e.read(200).decode("utf8", "ignore")}
+        return {
+            "ping": e.code,
+            "weight": 0,
+            "body": e.read(200).decode("utf8", "ignore"),
+        }
     try:
-        req = urllib.request.Request(FAPI + "/fapi/v1/time", headers={"User-Agent": "vpn-rotate"})
+        req = urllib.request.Request(
+            FAPI + "/fapi/v1/time", headers={"User-Agent": "vpn-rotate"}
+        )
         r = urllib.request.urlopen(req, timeout=10)
         probe["weight"] = int(r.headers.get("X-MBX-USED-WEIGHT-1M", "0") or 0)
     except Exception:
         pass
     return probe
+
+
 def ban_active():
     now = time.time() * 1000.0
     for path in BAN_FILES:
@@ -291,6 +315,8 @@ def ban_active():
         if until > now:
             return True, os.path.basename(path), (until - now) / 1000.0
     return False, None, 0.0
+
+
 def quit_app():
     try:
         sh(["pkill", "-x", "Surfshark"], timeout=15)
@@ -305,10 +331,14 @@ def _tour_next(current, cands):
         return rest[0] if rest else None
     except Exception:
         return None
+
+
 def stop_all():
     for s in slots():
         if s["status"] != "Disconnected":
             _slot_stop(s["name"])
+
+
 def try_naked(wl, state, old_ip, home_only=True):
     cfg = net_cfg()
     stop_all()
@@ -320,11 +350,11 @@ def try_naked(wl, state, old_ip, home_only=True):
     state["slot_exit"]["(no-vpn)"] = {"ip": ip, "server": None, "ts": time.time()}
     ok_ips = cfg.get("home_ips") or [] if home_only else list(wl)
     if not ip or ip not in ok_ips:
-        log(f"naked egress={ip} not a home IP — cannot use");
+        log(f"naked egress={ip} not a home IP — cannot use")
         save_state(state)
         return False
     if probe.get("ping") == 418:
-        log(f"naked egress={ip} Binance 418 — cannot use");
+        log(f"naked egress={ip} Binance 418 — cannot use")
         save_state(state)
         return False
     state["last_rotate_ts"] = time.time()
@@ -332,6 +362,8 @@ def try_naked(wl, state, old_ip, home_only=True):
     save_state(state)
     log(f"ROTATED OK slot=(no-vpn) egress={ip} binance={probe}")
     return True
+
+
 def ensure_tunnel(wl, state):
     if [s for s in slots() if s["status"] == "Connected"]:
         return True
@@ -339,31 +371,41 @@ def ensure_tunnel(wl, state):
         return True
     cands = eligible_slots(wl, state, None)
     if not cands:
-        log("INVARIANT FAIL-CLOSED: no whitelisted slot available, leaving link down (no non-whitelisted egress)");
+        log(
+            "INVARIANT FAIL-CLOSED: no whitelisted slot available, leaving link down (no non-whitelisted egress)"
+        )
         return False
     name = cands[0]["name"]
     log(f"ensure_tunnel: restoring {name}, verifying whitelist before accepting")
     _slot_start(name)
     if not wait_state([name], "Connected", egress_ip(), timeout=45):
-        log("INVARIANT FAIL-CLOSED: restored slot did not connect, leaving link down");
+        log("INVARIANT FAIL-CLOSED: restored slot did not connect, leaving link down")
         return False
     ip = egress_ip()
     probe = binance_probe()
     if ip not in wl or probe.get("ping") == 418:
-        log(f"INVARIANT FAIL-CLOSED: restored egress={ip} not usable (whitelisted={ip in wl} binance={probe}) — stopping it");
+        log(
+            f"INVARIANT FAIL-CLOSED: restored egress={ip} not usable (whitelisted={ip in wl} binance={probe}) — stopping it"
+        )
         _slot_stop(name)
         return False
     log(f"ensure_tunnel OK egress={ip} binance={probe}")
     return True
+
+
 def load_state():
     try:
         return json.load(open(STATE_PATH))
     except Exception:
         return {"slot_exit": {}, "slot_fail": {}, "last_rotate_ts": 0, "rotations": 0}
+
+
 def save_state(s):
     tmp = STATE_PATH + ".tmp"
     open(tmp, "w").write(json.dumps(s, indent=1))
     os.replace(tmp, STATE_PATH)
+
+
 def cmd_status():
     wl = whitelist()
     print("slots:")
@@ -374,16 +416,22 @@ def cmd_status():
     print(f"egress={ip} whitelisted={ip in wl if ip else '?'}")
     print(f"binance={binance_probe()}")
     print(f"ban_active={ban_active()}")
+
+
 def net_cfg():
     try:
         return json.load(open(WL_PATH))
     except Exception:
         return {}
+
+
 def slot_rank(server):
     cc = (server or "").split("-")[0].lower()
     if cc in ("nl", "us"):
         return None
     return {"uk": 1, "sg": 2}.get(cc, 3)
+
+
 def gateway_mac():
     try:
         gw = None
@@ -398,6 +446,8 @@ def gateway_mac():
         return m.group(1).lower() if m else None
     except Exception:
         return None
+
+
 def wifi_ssid():
     try:
         r = sh(["networksetup", "-getairportnetwork", "en0"], timeout=10).stdout
@@ -405,6 +455,8 @@ def wifi_ssid():
         return m.group(1).strip() if m else None
     except Exception:
         return None
+
+
 def at_home(cfg):
     if wifi_ssid() in (cfg.get("home_ssids") or []):
         return True
@@ -415,10 +467,14 @@ def at_home(cfg):
         if egress_ip() in (cfg.get("home_ips") or []):
             return True
     return False
+
+
 def eligible_slots(wl, state, skip):
     out = []
     for s in slots():
         if s["name"] == skip:
+            continue
+        if OVPN_ONLY and not _is_ovpn(s["name"]):
             continue
         fail_ts = state["slot_fail"].get(s["name"], 0)
         if time.time() - fail_ts < FAIL_SKIP_S:
@@ -430,6 +486,8 @@ def eligible_slots(wl, state, skip):
         out.append((rank, s["name"], s))
     out.sort(key=lambda t: (t[0], t[1]))
     return [t[2] for t in out]
+
+
 def wait_state(names, want, old_ip, timeout=75):
     end = time.time() + timeout
     while time.time() < end:
@@ -442,6 +500,8 @@ def wait_state(names, want, old_ip, timeout=75):
                 return True
         time.sleep(3)
     return False
+
+
 def do_rotate(target=None, force_tunnel=False):
     wl, state = whitelist(), load_state()
     quit_app()
@@ -452,7 +512,12 @@ def do_rotate(target=None, force_tunnel=False):
     cur_name = cur[0]["name"] if cur else None
     old_ip = egress_ip()
     log(f"rotate from={cur_name} egress={old_ip}")
-    if not target and not force_tunnel and at_home(net_cfg()) and old_ip not in (net_cfg().get("home_ips") or []):
+    if (
+        not target
+        and not force_tunnel
+        and at_home(net_cfg())
+        and old_ip not in (net_cfg().get("home_ips") or [])
+    ):
         log("home network — naked home IP is preferred, trying it first")
         if try_naked(wl, state, old_ip):
             return True
@@ -460,10 +525,10 @@ def do_rotate(target=None, force_tunnel=False):
     if target:
         cands = [s for s in slots() if s["name"] == target]
         if not cands:
-            log(f"no such slot {target}");
+            log(f"no such slot {target}")
             return False
     if not cands:
-        log("no eligible slot — falling back to naked egress");
+        log("no eligible slot — falling back to naked egress")
         return try_naked(wl, state, old_ip)
     for cand in cands:
         name = cand["name"]
@@ -471,7 +536,7 @@ def do_rotate(target=None, force_tunnel=False):
         log(f"trying slot {name} server={srv}")
         _slot_start(name)
         if not wait_state([name], "Connected", old_ip):
-            log(f"slot {name} did not connect with new IP");
+            log(f"slot {name} did not connect with new IP")
             state["slot_fail"][name] = time.time()
             save_state(state)
             _slot_stop(name)
@@ -482,7 +547,9 @@ def do_rotate(target=None, force_tunnel=False):
         probe = binance_probe()
         state["slot_exit"][name] = {"ip": ip, "server": srv, "ts": time.time()}
         if ip not in wl:
-            log(f"slot {name} egress={ip} NOT in Binance whitelist — skipping (orders would -2015)")
+            log(
+                f"slot {name} egress={ip} NOT in Binance whitelist — skipping (orders would -2015)"
+            )
             state["slot_fail"][name] = time.time()
             save_state(state)
             _slot_stop(name)
@@ -502,54 +569,64 @@ def do_rotate(target=None, force_tunnel=False):
             for path in BAN_FILES:
                 try:
                     if os.path.exists(path):
-                        log(f"clearing stale per-IP ban state {os.path.basename(path)} (ban was against {old_ip})")
+                        log(
+                            f"clearing stale per-IP ban state {os.path.basename(path)} (ban was against {old_ip})"
+                        )
                         os.remove(path)
                 except Exception as e:
                     log(f"could not clear {path}: {e}")
         return True
     still = [s for s in slots() if s["status"] == "Connected"]
     if still:
-        log(f"keeping current link {still[0]['name']} — a sick link beats a dark one; next cooldown retries");
+        log(
+            f"keeping current link {still[0]['name']} — a sick link beats a dark one; next cooldown retries"
+        )
         return False
-    log("all candidate slots failed — trying naked egress, then ensuring the link is not dark");
+    log(
+        "all candidate slots failed — trying naked egress, then ensuring the link is not dark"
+    )
     if try_naked(wl, state, old_ip):
         return True
     ensure_tunnel(wl, state)
     return False
+
+
 def cmd_check():
     wl = whitelist()
     ip = egress_ip()
     if not ip:
-        print("CHECK FAIL: no egress IP");
+        print("CHECK FAIL: no egress IP")
         return 2
     if ip not in wl:
-        print(f"CHECK FAIL: egress {ip} not in Binance whitelist (orders would -2015)");
+        print(f"CHECK FAIL: egress {ip} not in Binance whitelist (orders would -2015)")
         return 2
     probe = binance_probe()
     if probe.get("ping") == 418:
-        print(f"CHECK FAIL: Binance 418 on {ip}");
+        print(f"CHECK FAIL: Binance 418 on {ip}")
         return 3
     if probe.get("weight", 0) > 5500:
-        print(f"CHECK FAIL: usedWeight {probe['weight']} near limit");
+        print(f"CHECK FAIL: usedWeight {probe['weight']} near limit")
         return 4
     b, f, rem = ban_active()
     if b:
-        print(f"CHECK FAIL: ban file {f} active {rem:.0f}s");
+        print(f"CHECK FAIL: ban file {f} active {rem:.0f}s")
         return 5
-    print(f"CHECK OK egress={ip} binance={probe}");
+    print(f"CHECK OK egress={ip} binance={probe}")
     return 0
+
+
 def cmd_watch(interval=15):
     lock = "/tmp/vpn_rotate_watch.lock"
     try:
         old = open(lock).read().strip()
         os.kill(int(old), 0)
-        print(f"watch already running as pid {old}");
+        print(f"watch already running as pid {old}")
         return 1
     except Exception:
         try:
             open(lock, "w").write(str(os.getpid()))
         except Exception as e:
-            print(f"cannot write lock: {e}");
+            print(f"cannot write lock: {e}")
             return 1
     log(f"watch start interval={interval}s")
     n = 0
@@ -562,15 +639,22 @@ def cmd_watch(interval=15):
             rc = cmd_check_quiet()
             n += 1
             if n % 120 == 0:
-                log(f"AUDIT egress={egress_ip()} binance={binance_probe()} ban={ban_active()}")
-            if rc != 0 and time.time() - load_state().get("last_rotate_ts", 0) >= COOLDOWN_S:
+                log(
+                    f"AUDIT egress={egress_ip()} binance={binance_probe()} ban={ban_active()}"
+                )
+            if (
+                rc != 0
+                and time.time() - load_state().get("last_rotate_ts", 0) >= COOLDOWN_S
+            ):
                 log(f"watch: check rc={rc} -> rotating")
                 do_rotate()
             restored = False
             if rc == 0 and not [s for s in slots() if s["status"] == "Connected"]:
                 st = load_state()
                 if time.time() - st.get("last_restore_try", 0) >= RESTORE_TRY_S:
-                    log("watch: link healthy but no tunnel — restoring always-on tunnel")
+                    log(
+                        "watch: link healthy but no tunnel — restoring always-on tunnel"
+                    )
                     st["last_restore_try"] = time.time()
                     save_state(st)
                     do_rotate(force_tunnel=True)
@@ -579,7 +663,9 @@ def cmd_watch(interval=15):
                 try:
                     r = sh(["pgrep", "-x", "Surfshark"], timeout=10)
                     if r.stdout.strip():
-                        log("watch: Surfshark.app running — quitting (tunnels are scutil-managed, the app only fights them)")
+                        log(
+                            "watch: Surfshark.app running — quitting (tunnels are scutil-managed, the app only fights them)"
+                        )
                         quit_app()
                 except Exception:
                     pass
@@ -590,7 +676,11 @@ def cmd_watch(interval=15):
                 elif time.time() - st["tour_last_ts"] >= TOUR_INTERVAL_S:
                     cur = [s for s in slots() if s["status"] == "Connected"]
                     cur_name = cur[0]["name"] if cur else "(no-vpn)"
-                    order = [s["name"] for s in slots()] + ["(no-vpn)"]
+                    order = [
+                        s["name"]
+                        for s in slots()
+                        if not OVPN_ONLY or _is_ovpn(s["name"])
+                    ] + ["(no-vpn)"]
                     nxt = _tour_next(cur_name, order)
                     if nxt:
                         log(f"watch: scheduled geo-tour {cur_name} -> {nxt}")
@@ -602,10 +692,15 @@ def cmd_watch(interval=15):
         except Exception as e:
             log(f"watch error: {e}")
             time.sleep(interval)
+
+
 def cmd_check_quiet():
     import io, contextlib
+
     with contextlib.redirect_stdout(io.StringIO()):
         return cmd_check()
+
+
 if __name__ == "__main__":
     c = sys.argv[1] if len(sys.argv) > 1 else "status"
     if c == "status":
@@ -613,13 +708,17 @@ if __name__ == "__main__":
     elif c == "check":
         sys.exit(cmd_check())
     elif c == "rotate":
-        tgt = sys.argv[2] if len(sys.argv) > 2 and not sys.argv[2].startswith("-") else None
+        tgt = (
+            sys.argv[2]
+            if len(sys.argv) > 2 and not sys.argv[2].startswith("-")
+            else None
+        )
         sys.exit(0 if do_rotate(tgt) else 1)
     elif c == "watch":
         iv = int(sys.argv[2]) if len(sys.argv) > 2 else 15
         sys.exit(cmd_watch(iv))
-    elif c == "poolmap":
-        sys.exit(cmd_poolmap())
     else:
-        print("usage: surfshark_vpn_rotate.py status|check|rotate [slot|none]|watch [interval]|poolmap");
+        print(
+            "usage: surfshark_vpn_rotate.py status|check|rotate [slot|none]|watch [interval]"
+        )
         sys.exit(2)

@@ -2,12 +2,15 @@
 simultaneously skipped, must restore a tunnel even when naked is healthy,
 and must never tear down the working link before the replacement verifies
 (make-before-break). Pins the pure selection logic behind those laws."""
+
 import importlib.util
 import time
 from pathlib import Path
 
 SPEC = importlib.util.spec_from_file_location(
-    "vpn_rotate", Path(__file__).resolve().parent.parent / "tools" / "surfshark_vpn_rotate.py")
+    "vpn_rotate",
+    Path(__file__).resolve().parent.parent / "tools" / "surfshark_vpn_rotate.py",
+)
 vpn = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(vpn)
 
@@ -21,15 +24,22 @@ def test_slot_rank_prefers_uk_sg_never_nl_us():
 
 
 def _fake_env(monkeypatch, fails):
-    monkeypatch.setattr(vpn, "slots", lambda: [
-        {"name": "Surfshark. Dausos", "status": "Disconnected"},
-        {"name": "Surfshark. WireGuard", "status": "Disconnected"},
-    ])
-    monkeypatch.setattr(vpn, "slot_server", lambda n: ("uk-lon-st002.prod.surfshark.com", None))
+    monkeypatch.setattr(
+        vpn,
+        "slots",
+        lambda: [
+            {"name": "Surfshark. Dausos", "status": "Disconnected"},
+            {"name": "Surfshark. WireGuard", "status": "Disconnected"},
+        ],
+    )
+    monkeypatch.setattr(
+        vpn, "slot_server", lambda n: ("uk-lon-st002.prod.surfshark.com", None)
+    )
     return {"slot_fail": fails, "slot_exit": {}}
 
 
 def test_eligible_skips_recent_fail_but_not_old(monkeypatch):
+    monkeypatch.setattr(vpn, "OVPN_ONLY", False)
     now = time.time()
     state = _fake_env(monkeypatch, {"Surfshark. Dausos": now - 60})
     got = [s["name"] for s in vpn.eligible_slots(set(), state, None)]
@@ -40,6 +50,7 @@ def test_eligible_skips_recent_fail_but_not_old(monkeypatch):
 
 
 def test_eligible_honors_skip_name(monkeypatch):
+    monkeypatch.setattr(vpn, "OVPN_ONLY", False)
     state = _fake_env(monkeypatch, {})
     got = [s["name"] for s in vpn.eligible_slots(set(), state, "Surfshark. Dausos")]
     assert got == ["Surfshark. WireGuard"]
@@ -52,8 +63,11 @@ def test_fail_skip_window_is_minutes_not_hours():
 def test_scan_trips_on_fresh_ban_line(tmp_path, monkeypatch):
     import json
     import os
+
     f = tmp_path / "ez_manage_fin.log"
-    f.write_text("24 06:00:00 - ERROR - [fin] Failed: APIError(code=-1003): Way too many requests\n")
+    f.write_text(
+        "24 06:00:00 - ERROR - [fin] Failed: APIError(code=-1003): Way too many requests\n"
+    )
     ban = tmp_path / "ban.json"
     monkeypatch.setattr(vpn, "BAN_LOG_FILES", [str(f)])
     monkeypatch.setattr(vpn, "BAN_FILES", [str(ban)])
@@ -65,6 +79,7 @@ def test_scan_trips_on_fresh_ban_line(tmp_path, monkeypatch):
 def test_scan_ignores_stale_file_and_clean_tail(tmp_path, monkeypatch):
     import os
     import time
+
     f = tmp_path / "ez_manage_fin.log"
     f.write_text("24 06:00:00 - ERROR - APIError(code=-1003): banned\n")
     old = time.time() - 600
@@ -80,13 +95,21 @@ def test_scan_ignores_stale_file_and_clean_tail(tmp_path, monkeypatch):
 
 def test_ovpn_hidden_until_supervisor_installed(tmp_path, monkeypatch):
     import os
+
     d = tmp_path / "servers"
     d.mkdir()
     (d / "uk-lon.prod.surfshark.comsurfshark_openvpn_udp.ovpn").write_text("remote x\n")
     monkeypatch.setattr(vpn, "OVPN_DIR", str(tmp_path))
     real_exists = os.path.exists
-    monkeypatch.setattr(vpn.os.path, "exists",
-                        lambda p: False if p == "/Library/LaunchDaemons/com.binance.ovpn-supervisor.plist" else real_exists(p))
+    monkeypatch.setattr(
+        vpn.os.path,
+        "exists",
+        lambda p: (
+            False
+            if p == "/Library/LaunchDaemons/com.binance.ovpn-supervisor.plist"
+            else real_exists(p)
+        ),
+    )
     assert vpn.ovpn_servers() == {}
 
 
@@ -117,6 +140,7 @@ def test_tour_walks_ring_skipping_current():
 
 def _staged_servers():
     import pytest
+
     d = Path(vpn.OVPN_DIR) / "servers"
     files = sorted(d.glob("*.ovpn")) if d.is_dir() else []
     if not files:
@@ -126,34 +150,65 @@ def _staged_servers():
 
 def test_ovpn_remotes_sane():
     import re
+
     wl = vpn.whitelist()
     for f in _staged_servers():
         txt = f.read_text()
         ips = re.findall(r"^remote\s+(\d+\.\d+\.\d+\.\d+)\s", txt, re.M)
-        hosts = re.findall(r"^remote\s+([a-z0-9.-]+\.prod\.surfshark\.com)\s", txt, re.M)
-        assert ips or hosts, f"{f.name}: no remote at all"
-        assert set(ips) <= wl, f"{f.name}: non-whitelisted IP remotes {set(ips) - wl} would deny orders"
-        assert set(hosts) <= set(vpn.POOL_HOSTS), f"{f.name}: unknown pool hostname {set(hosts)}"
+        hosts = re.findall(r"^remote\s+([a-zA-Z0-9.-]+)\s", txt, re.M)
+        hosts = [h for h in hosts if not re.match(r"^\d+\.\d+\.\d+\.\d+$", h)]
+        # STATIC-ONLY doctrine (operator): pool hostnames churn, so every remote
+        # must be a literal operator static inside the Binance whitelist.
+        assert ips, f"{f.name}: no static-IP remote"
+        assert not hosts, f"{f.name}: pool-hostname remote {hosts} (churns; use statics)"
+        assert set(ips) <= wl, (
+            f"{f.name}: non-whitelisted remotes {set(ips) - wl} would deny orders"
+        )
 
 
-def test_pool_members_unions_rounds():
-    calls = {"n": 0}
+def test_ovpn_only_excludes_app_slots(monkeypatch):
+    assert vpn.OVPN_ONLY is True
+    monkeypatch.setattr(
+        vpn,
+        "slots",
+        lambda: [
+            {"name": "Surfshark. Dausos", "status": "Disconnected"},
+            {"name": "Surfshark. WireGuard", "status": "Disconnected"},
+            {"name": "OVPN:uk-lon", "status": "Disconnected"},
+        ],
+    )
+    monkeypatch.setattr(
+        vpn, "slot_server", lambda n: ("uk-lon.prod.surfshark.com", None)
+    )
+    got = [
+        s["name"]
+        for s in vpn.eligible_slots(set(), {"slot_fail": {}, "slot_exit": {}}, None)
+    ]
+    assert got == ["OVPN:uk-lon"]
 
-    def fake(host):
-        calls["n"] += 1
-        return {"10.0.0.1"} if calls["n"] % 2 else {"10.0.0.1", "10.0.0.2"}
 
-    got = vpn.pool_members(["h"], rounds=3, resolver=fake)
-    assert set(got) == {"10.0.0.1", "10.0.0.2"}
-    assert got["10.0.0.1"] == ["h"]
+def test_slot_rank_covers_static_geos():
+    assert vpn.slot_rank("br-sao-static.prod.surfshark.com") == 3
+    assert vpn.slot_rank("au-syd-static.prod.surfshark.com") == 3
+    assert vpn.slot_rank("fr-par-static.prod.surfshark.com") == 3
+    assert vpn.slot_rank("de-fra-static.prod.surfshark.com") == 3
 
 
 def test_ovpn_hardening_knobs():
     for f in _staged_servers():
         txt = f.read_text()
-        for knob in ["ping-restart 60", "hand-window 20", "tls-timeout 5", "persist-tun",
-                     "persist-key", "explicit-exit-notify 1", "mssfix 1400", "remote-random",
-                     "replay-window 64 60", "resolv-retry 10"]:
+        for knob in [
+            "ping-restart 60",
+            "hand-window 20",
+            "tls-timeout 5",
+            "persist-tun",
+            "persist-key",
+            "explicit-exit-notify 1",
+            "mssfix 1400",
+            "remote-random",
+            "replay-window 64 60",
+            "resolv-retry 10",
+        ]:
             assert knob in txt, f"{f.name}: missing {knob}"
         assert "ping-restart 0" not in txt, f"{f.name}: dead-peer detection disabled"
 
@@ -161,12 +216,18 @@ def test_ovpn_hardening_knobs():
 def test_build_active_preserves_hardening(tmp_path, monkeypatch):
     monkeypatch.setattr(vpn, "OVPN_DIR", str(tmp_path))
     monkeypatch.setattr(vpn, "OVPN_AUTH", "/auth.txt")
-    src = ("dev tun\nauth-user-pass\nremote 1.2.3.4 1194\nremote-random\n"
-           "ping-restart 60\nhand-window 20\npersist-tun\npersist-key\n")
+    src = (
+        "dev tun\nauth-user-pass\nremote 1.2.3.4 1194\nremote-random\n"
+        "ping-restart 60\nhand-window 20\npersist-tun\npersist-key\n"
+    )
     (tmp_path / "s.ovpn").write_text(src)
     assert vpn.ovpn_build_active(str(tmp_path / "s.ovpn")) is True
     txt = (tmp_path / "active.conf").read_text()
-    assert "remote 1.2.3.4 1194" in txt and "persist-tun" in txt and "hand-window 20" in txt
+    assert (
+        "remote 1.2.3.4 1194" in txt
+        and "persist-tun" in txt
+        and "hand-window 20" in txt
+    )
 
 
 def test_restore_try_bounded():

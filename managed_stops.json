@@ -20,20 +20,6 @@
     "symbol": "1000BONKUSDC",
     "side": "SHORT"
   },
-  "men:1000LUNCUSDT_SHORT": {
-    "orderId": "2000001538517381",
-    "stopPrice": 0.04756,
-    "entry_sig": "2026-10-24 20:33:20.175000+00:00",
-    "symbol": "1000LUNCUSDT",
-    "side": "SHORT"
-  },
-  "men:ACTUSDT_SHORT": {
-    "orderId": "2000001538517637",
-    "stopPrice": 0.00878,
-    "entry_sig": "2026-10-24 22:40:26.401000+00:00",
-    "symbol": "ACTUSDT",
-    "side": "SHORT"
-  },
   "men:BLURUSDT_SHORT": {
     "orderId": "2000001538520156",
     "stopPrice": 0.00819,
@@ -41,11 +27,18 @@
     "symbol": "BLURUSDT",
     "side": "SHORT"
   },
-  "men:ETHFIUSDC_LONG": {
-    "orderId": "2000001538521152",
-    "stopPrice": 0.6033,
-    "entry_sig": "2026-10-24 21:52:50.590000+00:00",
-    "symbol": "ETHFIUSDC",
-    "side": "LONG"
+  "men:1000LUNCUSDT_SHORT": {
+    "orderId": "2000001538522861",
+    "stopPrice": 0.04756,
+    "entry_sig": "2026-10-24 20:33:20.175000+00:00",
+    "symbol": "1000LUNCUSDT",
+    "side": "SHORT"
+  },
+  "men:ACTUSDT_SHORT": {
+    "orderId": "2000001538523333",
+    "stopPrice": 0.00878,
+    "entry_sig": "2026-10-24 22:40:26.401000+00:00",
+    "symbol": "ACTUSDT",
+    "side": "SHORT"
   }
 }
