@@ -1,13 +1,13 @@
 {
- "generated_utc": "2026-10-24T17:12:10.483802+00:00",
+ "generated_utc": "2026-10-24T18:12:13.583190+00:00",
  "days": 1.0,
  "totals": {
-  "exit_promises": 96,
+  "exit_promises": 97,
   "exit_skipped_inflight": 109,
   "exit_kept_late": 5,
   "entry_promises": 36,
   "entry_broken_no_delivery": 36,
-  "exit_broken_no_delivery": 88,
+  "exit_broken_no_delivery": 89,
   "exit_kept_in_bar": 3
  },
  "per_key": {
@@ -201,6 +201,10 @@
    "entry_broken_no_delivery": 1
   },
   "men:SKYAIUSDT_SHORT": {
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1
+  },
+  "fin:MOVRUSDT_SHORT": {
    "exit_promises": 1,
    "exit_broken_no_delivery": 1
   }
@@ -1494,6 +1498,16 @@
    "late_min": null,
    "action": "REDUCE",
    "reason": "SATOSHIT_EXIT_PARTIAL 0.70",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "fin",
+   "sym_side": "MOVRUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-24 16:15",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "PPL_TP_g0.67%>=0.56%_stopBE1.1073",
    "outcome": "NO_DELIVERY"
   }
  ],
