@@ -1,9 +1,23 @@
 {
-  "men:ENJUSDT_SHORT": {
-    "orderId": "2000001536136029",
-    "stopPrice": 0.02694,
-    "entry_sig": "2026-10-23 23:13:58.022000+00:00",
-    "symbol": "ENJUSDT",
+  "fin:AWEUSDT_LONG": {
+    "orderId": "3000002270092275",
+    "stopPrice": 0.06318,
+    "entry_sig": "2026-10-23 23:54:13.356000+00:00",
+    "symbol": "AWEUSDT",
+    "side": "LONG"
+  },
+  "fin:RIFUSDT_SHORT": {
+    "orderId": "3000002270093614",
+    "stopPrice": 0.07402,
+    "entry_sig": "2026-10-23 23:49:40.999000+00:00",
+    "symbol": "RIFUSDT",
+    "side": "SHORT"
+  },
+  "fin:MAGICUSDT_SHORT": {
+    "orderId": "3000002270112228",
+    "stopPrice": 0.09234,
+    "entry_sig": "2026-10-23 21:40:59.535000+00:00",
+    "symbol": "MAGICUSDT",
     "side": "SHORT"
   }
 }
