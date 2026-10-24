@@ -40,5 +40,19 @@
     "entry_sig": "2026-10-24 09:23:38.404000+00:00",
     "symbol": "MOVEUSDT",
     "side": "SHORT"
+  },
+  "men:RLCUSDT_LONG": {
+    "orderId": "2000001537199590",
+    "stopPrice": 0.6017,
+    "entry_sig": "2026-10-24 10:17:01.981000+00:00",
+    "symbol": "RLCUSDT",
+    "side": "LONG"
+  },
+  "men:ZILUSDT_SHORT": {
+    "orderId": "2000001537200252",
+    "stopPrice": 0.002269,
+    "entry_sig": "2026-10-24 10:17:34.604000+00:00",
+    "symbol": "ZILUSDT",
+    "side": "SHORT"
   }
 }
