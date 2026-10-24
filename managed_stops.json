@@ -1,30 +1,51 @@
 {
-  "inf:KMNOUSDT_LONG": {
-    "orderId": "2000001536725178",
+  "men:KMNOUSDT_LONG": {
+    "orderId": "2000001536631569",
     "stopPrice": 0.04059,
-    "entry_sig": "2026-10-24 05:15:58.749764+00:00",
+    "entry_sig": "2026-10-24 04:15:51.836703+00:00",
     "symbol": "KMNOUSDT",
     "side": "LONG"
   },
-  "inf:TRXUSDT_SHORT": {
-    "orderId": "2000001536752677",
-    "stopPrice": 0.33177,
-    "entry_sig": "2026-10-23 23:07:22.497000+00:00",
-    "symbol": "TRXUSDT",
+  "men:STXUSDT_LONG": {
+    "orderId": "2000001536811735",
+    "stopPrice": 0.3083,
+    "entry_sig": "2026-10-24 06:25:32.726000+00:00",
+    "symbol": "STXUSDT",
+    "side": "LONG"
+  },
+  "men:QNTUSDT_LONG": {
+    "orderId": "2000001536812730",
+    "stopPrice": 176.86,
+    "entry_sig": "2026-10-24 06:25:14.997000+00:00",
+    "symbol": "QNTUSDT",
+    "side": "LONG"
+  },
+  "men:ZILUSDT_SHORT": {
+    "orderId": "2000001536816183",
+    "stopPrice": 0.002269,
+    "entry_sig": "2026-10-24 06:29:07.270000+00:00",
+    "symbol": "ZILUSDT",
     "side": "SHORT"
   },
-  "inf:BTCDOMUSDT_LONG": {
-    "orderId": "2000001536827931",
-    "stopPrice": 5536.8,
-    "entry_sig": "2026-10-24 04:55:40.307000+00:00",
-    "symbol": "BTCDOMUSDT",
-    "side": "LONG"
+  "men:RVNUSDT_SHORT": {
+    "orderId": "2000001536860322",
+    "stopPrice": 0.00141,
+    "entry_sig": "2026-10-24 06:25:06.283000+00:00",
+    "symbol": "RVNUSDT",
+    "side": "SHORT"
   },
-  "inf:SKYAIUSDT_LONG": {
-    "orderId": "2000001536834525",
-    "stopPrice": 0.03145,
-    "entry_sig": "2026-10-24 06:22:24.808000+00:00",
-    "symbol": "SKYAIUSDT",
-    "side": "LONG"
+  "men:BBUSDT_SHORT": {
+    "orderId": "2000001536860410",
+    "stopPrice": 0.008335,
+    "entry_sig": "2026-10-24 06:25:12.288000+00:00",
+    "symbol": "BBUSDT",
+    "side": "SHORT"
+  },
+  "men:XPLUSDT_SHORT": {
+    "orderId": "2000001536861181",
+    "stopPrice": 0.08686,
+    "entry_sig": "2026-10-24 04:12:12.298000+00:00",
+    "symbol": "XPLUSDT",
+    "side": "SHORT"
   }
 }

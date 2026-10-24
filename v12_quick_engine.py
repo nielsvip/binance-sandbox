@@ -5542,6 +5542,8 @@ class QuickConfig:
         # 2026-10-06 globals push: CL-pushed base differs from SL truth — overlay restores stocks truth (MAX_ORDER excluded §17.3)
         self.COOLDOWN_BARS = 3
         self.EXIT_TOP_FADE_FILTER_TF = "15m"
+        self.BAR_PATTERNS_FILTER_TF = "OFF"  # 2026-10-24 venue-truth: tradier Config OFF
+        self.BREAKOUT_RETEST_FILTER_TF = "OFF"  # 2026-10-24 venue-truth: tradier Config OFF
         self.MIN_GAIN_TO_BUY_AGGRESSIVELY = 6.0
         self.MTF_ATR_TRAIL_FILTER_TF = "15m"
         self.MTF_DC_REJECT_EXIT_TF = "1h"
@@ -7169,7 +7171,7 @@ class QuickConfig:
     BAND_ARROW_ENABLED: bool = False  # auto-added TEMPLATE
     BAND_ARROW_SLOPE_DEADBAND: float = 0.0  # auto-added TEMPLATE generic
     BAR_PATTERNS_FILTER_TF: str = (
-        "OFF"  # 2026-09-28 WAVE3: real wiring; OFF default behavior-neutral
+        "15m"  # 2026-10-24 live-truth: crypto Config 15m (was OFF; live vetoed, vec skipped)
     )
     BB_PULLBACK_GATE_FILTER_TF: str = (
         "OFF"  # 2026-09-28 WAVE2: generic_filter_tf real gate; OFF default behavior-neutral (only dead-farm reads before)
@@ -7193,7 +7195,7 @@ class QuickConfig:
     BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT: bool = True  # auto-added TEMPLATE generic
     BREAKOUT_LEASH_REENTRY_MULT: float = 1.5  # auto-added TEMPLATE
     BREAKOUT_RETEST_FILTER_TF: str = (
-        "15m"  # 2026-10-04 §17.4 C2: config.py/config_tradier 15m (live filters); was OFF
+        "1h"  # 2026-10-24 live-truth: crypto Config 1h (was 15m; stale comment also fixed)
     )
     BTC_ACCEL_RAMP_REQUIRE_POSITIVE: bool = True  # auto-added TEMPLATE generic
     BTC_BREAKOUT_ENTRY_ENABLED: bool = True  # auto-added TEMPLATE
