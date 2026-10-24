@@ -289,6 +289,19 @@ def test_sync_rejected_orders_never_form_basis_or_pnl():
     assert all(not e.get("rejected_hidden") or e.get("rpnl") is None for e in out2)
 
 
+def test_crosscheck_direction_mapping():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("trb_broker_crosscheck", str(ROOT / "tools" / "live_desk" / "trb_broker_crosscheck.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert mod._jdir("OPEN", "LONG") == "BUY"
+    assert mod._jdir("CLOSE", "SHORT") == "BUY"
+    assert mod._jdir("OPEN", "SHORT") == "SELL"
+    assert mod._jdir("REDUCE", "LONG") == "SELL"
+    assert mod._kline_day_check("NOSUCH", "2026-10-22", 1.0) is None
+
+
 def test_strategy_reject_exits_still_price():
     evs = [
         _ev("2026-10-23T13:00:00+00:00", "X", "LONG", "OPEN", 10.0, 100.0),

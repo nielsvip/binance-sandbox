@@ -22965,10 +22965,8 @@ async def process_position(
                             _b12dbg = globals().setdefault("_B12_DIAG", {"n": 0})
                             _b12dbg["n"] += 1
                             if _b12dbg["n"] <= 3:
-                                _rawkeys = set((indicators_raw or {}).keys())
-                                _ikeys = set((i or {}).keys()) if isinstance(i, dict) else set()
                                 print(
-                                    f"V8_LOG B12_DIAG n={_b12dbg['n']} raw_vel1h={'wt_velocity_1h' in _rawkeys} i_vel1h={'wt_velocity_1h' in _ikeys} raw_wt1h={'wt1_1h' in _rawkeys} i_wt1h={'wt1_1h' in _ikeys} px={current_price}",
+                                    f"V8_LOG B12_DIAG n={_b12dbg['n']} vel3m={(_b12_ind or {}).get('wt_velocity_3m')!r} vel15m={(_b12_ind or {}).get('wt_velocity_15m')!r} vel1h={(_b12_ind or {}).get('wt_velocity_1h')!r} wt1h={(_b12_ind or {}).get('wt1_1h')!r} wt115m={(_b12_ind or {}).get('wt1_15m')!r} px={current_price}",
                                     flush=True,
                                 )
 
@@ -22979,13 +22977,16 @@ async def process_position(
                             except (TypeError, ValueError):
                                 return 0.0
 
-                        _b12_wt1_3m = (_b12_ind or {}).get("wt1_3m")
-                        _b12_wt2_3m = (_b12_ind or {}).get("wt2_3m")
-                        _b12_wtvel = (_b12_ind or {}).get("wt_velocity_3m")
-                        if _b12_wtvel is None:
-                            _b12_wtvel = (_b12_ind or {}).get("wt_velocity_15m")
-                        if _b12_wtvel is None:
-                            _b12_wtvel = (_b12_ind or {}).get("wt_velocity_1h")
+                        # NOTE: the lane dict subclass coerces missing->0.0 on .get,
+                        # so presence (not None) decides the NO-3M fallback chain.
+                        _b12_src = _b12_ind or {}
+                        _b12_wt1_3m = _b12_src["wt1_3m"] if "wt1_3m" in _b12_src else None
+                        _b12_wt2_3m = _b12_src["wt2_3m"] if "wt2_3m" in _b12_src else None
+                        _b12_wtvel = None
+                        for _vk in ("wt_velocity_3m", "wt_velocity_15m", "wt_velocity_1h"):
+                            if _vk in _b12_src and _b12_src[_vk] is not None:
+                                _b12_wtvel = _b12_src[_vk]
+                                break
                         _b12_fire = _b12_core.b12_fires_scalar(
                             _b12_wt1_3m if _b12_wt1_3m is not None else _b12f("wt1_15m"),
                             _b12_wt2_3m if _b12_wt2_3m is not None else _b12f("wt2_15m"),

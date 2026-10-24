@@ -106,6 +106,25 @@ def test_live_gain_gate_and_tradier_wall_are_per_sym():
     assert "effective_min_gain(lambda _k, _d: _cfg_auto(_k, _d))" in tsrc, "tradier MIN_GAIN wall must resolve the board tier"
 
 
+def test_ladder_tiers_by_source_type():
+    # The ladder is the main obligatory path: a bounce-signal bar must tier off
+    # AUGMENT_BOUNCE_MIN_GAIN_PCT, a pyramid bar off AUGMENT_BREAKOUT_MIN_GAIN_PCT.
+    from vec_decisions import gain_ladder_augment as _gla
+
+    class _Cfg:
+        AUGMENT_MIN_GAIN_PCT = 3.0
+        MIN_GAIN_TO_BUY_AGGRESSIVELY = 3.0
+        AUGMENT_BOUNCE_MIN_GAIN_PCT = 1.0
+        AUGMENT_BREAKOUT_MIN_GAIN_PCT = 2.0
+
+    fire_lo, _ = _gla.gain_ladder_fire(_Cfg(), True, 101.5, 100.0, 1.5, 1.5, 1.0)
+    assert fire_lo is True, "bounce tier 1.0 must fire at gain_since 1.5%"
+    fire_hi, _ = _gla.gain_ladder_fire(_Cfg(), True, 101.5, 100.0, 1.5, 1.5, 2.0)
+    assert fire_hi is False, "breakout tier 2.0 must not fire at gain_since 1.5%"
+    fire_gen, _ = _gla.gain_ladder_fire(_Cfg(), True, 101.5, 100.0, 1.5, 1.5, None)
+    assert fire_gen is False, "generic tier 3.0 must not fire at gain_since 1.5%"
+
+
 def test_live_aug_tier_is_per_sym_not_global():
     # AUG_A-D must tier off the board's per-sym gain value: the generic tier feeds
     # from _psym_get, and the WT-cross / blowpast gates compare against the typed
