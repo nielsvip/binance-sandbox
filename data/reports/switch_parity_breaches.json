@@ -123,22 +123,6 @@
       "TEMPLATE_CRYPTO_SHORT.xlsx!ENTRY_REVERSAL_BOUNCE"
      ]
     },
-    "TRADIER_DC_DAYTRADE_STOP_USE_DC4_15M": {
-     "class": "WRONG_TEMPLATE_LEAK",
-     "other_config_has_it": true,
-     "sheets": [
-      "TEMPLATE_CRYPTO_LONG.xlsx!EXIT_STRUCTURAL",
-      "TEMPLATE_CRYPTO_SHORT.xlsx!EXIT_STRUCTURAL"
-     ]
-    },
-    "TRADIER_DC_DAYTRADE_STOP_USE_DC_15M": {
-     "class": "WRONG_TEMPLATE_LEAK",
-     "other_config_has_it": true,
-     "sheets": [
-      "TEMPLATE_CRYPTO_LONG.xlsx!EXIT_STRUCTURAL",
-      "TEMPLATE_CRYPTO_SHORT.xlsx!EXIT_STRUCTURAL"
-     ]
-    },
     "TRADIER_DC_DAYTRADE_TARGET_DC_BUFFER_PCT": {
      "class": "WRONG_TEMPLATE_LEAK",
      "other_config_has_it": true,
@@ -180,7 +164,7 @@
      ]
     }
    },
-   "missing_count": 22,
+   "missing_count": 20,
    "switch_keys_checked": 1109,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
@@ -363,5 +347,5 @@
    ]
   }
  },
- "generated": "2026-10-24T20:18:49.219019+00:00"
+ "generated": "2026-10-24T22:25:17.861350+00:00"
 }

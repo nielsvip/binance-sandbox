@@ -602,17 +602,21 @@ def test_native_unconfirmed_held_for_vec_confirm(monkeypatch):
     assert res == "DEFERRED_VEC_CONFIRM_WAIT", res
 
 
-def test_board_converge_open_bypasses_board_entry_block(monkeypatch, capfd):
+def test_board_converge_open_bypasses_board_entry_block(monkeypatch):
     """USER 2026-10-24 vector-authority: a vec-dictated force-open carries the board's own decision, so the
     live-set-vs-board entry block must record-and-continue (named for the late VEC_LAST backstop), never
     hard-refuse before it. The synthetic key has NO_LATEST_BOARD, which exercises the block."""
     _mode_live(monkeypatch)
     # The execution path past the late backstop touches broker/lock methods the stub does not carry: any
     # AttributeError from those proves every decision gate (GATES-A, tradeable, board-entry) let the
-    # vec-dictated force-open through. Pre-fix this returns BLOCKED_GATES_A_* and raises nothing.
-    # USER 2026-10-24 unreachable-real-fix: asserted on capfd (fd-level), not caplog — the TradeLogger_*
-    # loggers set propagate=False (10-13 NEVER-AGAIN), so their records never reach caplog.
+    # vec-dictated force-open through — a hard refusal would RETURN a string, never raise. Pre-fix this
+    # returns BLOCKED_GATES_A_* and raises nothing.
+    # USER 2026-10-24 unreachable-real-fix: the record-and-continue marker is source-pinned (fallthrough-audit
+    # pattern), not log-asserted — TradeLogger_* sets propagate=False (10-13 NEVER-AGAIN) so caplog can never
+    # see it, and the pytest file handlers filter harness records by account.
     with pytest.raises(AttributeError):
         _run_exec(action="OPEN", reason="BOARD_CONVERGE_OPEN vec=VEC_DRIVEN_TEST")
-    out, _ = capfd.readouterr()
-    assert "BOARD_ENTRY_VEC_CONTINUE" in out
+    src = Path(EZ.__file__).read_text()
+    seg = src[src.index("CRYPTO_BOARD_ENTRY_BLOCK"):src.index("CRYPTO_BOARD_ENTRY_BLOCK") + 2000]
+    assert '_vec_last_bypassed.append("BOARD_ENTRY_BLOCK")' in seg
+    assert "[BOARD_ENTRY_VEC_CONTINUE]" in seg
