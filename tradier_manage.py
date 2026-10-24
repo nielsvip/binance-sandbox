@@ -22855,7 +22855,7 @@ async def process_position(
                     except Exception:
                         pass
                 if action_type != "OPEN" and bool(
-                    _cfg_auto("DC_BREAKOUT_ENTRY_ENABLED", False)
+                    _cfg_auto("DC_BREAKOUT_ENTRY_ENABLED", True)
                 ):
                     try:
                         _dc_ind = indicators_raw if indicators_raw else i
@@ -22940,50 +22940,59 @@ async def process_position(
                                 qty = int(max(1, _base_qty))
                                 conf = 70.0
                                 reason = f"TRADIER_DC_BREAKOUT_{'L' if is_long else 'S'}_TIERED_{_dc_t_rsn}"
-                        except Exception:
-                            pass
-                    # USER 2026-10-24 VEC-LAST catch-up: B12 WT-momentum via the SHARED
-                    # core (same predicate the vector sweeps as WT_CROSS_B12). Fires only
-                    # when no earlier path claimed OPEN. Kill: REENTRY_B12_WT_MOM_ENABLED=False.
-                    if action_type != "OPEN" and bool(
-                        _cfg_auto("REENTRY_B12_WT_MOM_ENABLED", False)
-                    ):
-                        try:
-                            from vec_decisions import (
-                                check_entry_b12_wt_mom as _b12_core,
-                            )
-
-                            _b12_ind = indicators_raw if indicators_raw else i
-
-                            def _b12f(_k):
                                 try:
-                                    _v = (_b12_ind or {}).get(_k, 0.0)
-                                    return float(_v) if _v is not None else 0.0
-                                except (TypeError, ValueError):
-                                    return 0.0
-
-                            if _b12_core.b12_fires_scalar(
-                                _b12f("wt1_3m"),
-                                _b12f("wt2_3m"),
-                                _b12f("wt1_15m"),
-                                _b12f("wt2_15m"),
-                                _b12f("wt1_1h"),
-                                _b12f("wt2_1h"),
-                                _b12f("wt_velocity_3m"),
-                                bool(is_long),
-                            ):
-                                _base_qty = (
-                                    float(_cfg_auto("START_POSITION_SIZE", 600))
-                                    / current_price
-                                    if current_price and current_price > 0
-                                    else 1
-                                )
-                                action_type = "OPEN"
-                                qty = int(max(1, _base_qty))
-                                conf = 70.0
-                                reason = f"TRADIER_B12_WT_MOM_{'L' if is_long else 'S'}"
+                                    _entry_score = max(float(_entry_score or 0.0), float(conf))
+                                except Exception:
+                                    pass
                         except Exception:
                             pass
+                # USER 2026-10-24 VEC-LAST catch-up: B12 WT-momentum via the SHARED
+                # core (same predicate the vector sweeps as WT_CROSS_B12). Fires only
+                # when no earlier path claimed OPEN. Default True matches the venue
+                # default (TradierConfig) and the vector (QuickConfig). Kill: OFF.
+                if action_type != "OPEN" and bool(
+                    _cfg_auto("REENTRY_B12_WT_MOM_ENABLED", True)
+                ):
+                    try:
+                        from vec_decisions import (
+                            check_entry_b12_wt_mom as _b12_core,
+                        )
+
+                        _b12_ind = indicators_raw if indicators_raw else i
+
+                        def _b12f(_k):
+                            try:
+                                _v = (_b12_ind or {}).get(_k, 0.0)
+                                return float(_v) if _v is not None else 0.0
+                            except (TypeError, ValueError):
+                                return 0.0
+
+                        if _b12_core.b12_fires_scalar(
+                            _b12f("wt1_3m"),
+                            _b12f("wt2_3m"),
+                            _b12f("wt1_15m"),
+                            _b12f("wt2_15m"),
+                            _b12f("wt1_1h"),
+                            _b12f("wt2_1h"),
+                            _b12f("wt_velocity_3m"),
+                            bool(is_long),
+                        ):
+                            _base_qty = (
+                                float(_cfg_auto("START_POSITION_SIZE", 600))
+                                / current_price
+                                if current_price and current_price > 0
+                                else 1
+                            )
+                            action_type = "OPEN"
+                            qty = int(max(1, _base_qty))
+                            conf = 70.0
+                            reason = f"TRADIER_B12_WT_MOM_{'L' if is_long else 'S'}"
+                            try:
+                                _entry_score = max(float(_entry_score or 0.0), float(conf))
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
                 # ═══════════════════════════════════════════════════════════════════════
                 # 🚩 GR_HTF_DIRECT_ENTRY — 2026-05-12 USER MANDATE
                 # Direct entry signal: Score = n_tfs_aligned × GOLDEN_RULE_MIN_IND.

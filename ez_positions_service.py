@@ -10147,8 +10147,15 @@ class PositionService:
                 if symbol in universe[side] and position_key == f"{account_key}:{symbol}_{side}":
                     continue
                 if abs(float(getattr(position, "positionAmt", 0) or 0)) > 0:
-                    logger.critical(f"🛑 [POSITION_FOREIGN_HELD][memory] {position_key} is outside the symbol universe but holds {position.positionAmt} — KEPT in memory (never drop live exposure)")
-                    continue
+                    # Mirror the file cap EXACTLY, or the two layers fight: 2026-10-24, memory kept these rows as
+                    # "held" while the write guard pruned them as broker-unconfirmed phantoms, so every save
+                    # re-supplied men:TUSDT_SHORT and flz:DYDXUSDT_SHORT from memory and the cap removed them again
+                    # — a prune every minute, forever. A quantity no broker report ever confirmed is not exposure.
+                    stamps = {f: getattr(position, f, None) for f in ("mark_price", "last_updated", "broker_synced_at")}
+                    if not _pwg._broker_unconfirmed(stamps):
+                        logger.critical(f"🛑 [POSITION_FOREIGN_HELD][memory] {position_key} is outside the symbol universe but holds {position.positionAmt} — KEPT in memory (never drop live exposure)")
+                        continue
+                    logger.critical(f"🧹 [POSITION_FLOOR][memory] {position_key} claims {position.positionAmt} but no broker stamp was ever set (mark_price/last_updated/broker_synced_at all empty) — frozen phantom, dropping")
                 account_positions.pop(position_key, None)
                 self.positions.pop(position_key, None)
                 removed += 1

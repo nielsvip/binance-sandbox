@@ -1139,7 +1139,16 @@ class MarketDataEngine:
         cache_dir = BASE_PATH / "klines_cache"
         sem = asyncio.Semaphore(8)
         await asyncio.sleep(60)
+        _wb_first_pass = True
         while self.running:
+            # 2026-10-24: the first pass after (re)start rewrote ~700 files into
+            # an empty _wb_sig and stalled the event loop 50s (measured), flapping
+            # ALL hot ages past the TTL at once. Files persist across restarts and
+            # the REST loop re-dirties what's actually stale — skip one pass.
+            if _wb_first_pass:
+                _wb_first_pass = False
+                await asyncio.sleep(60)
+                continue
             try:
                 # 2026-10-23: the pass rewrote ~400 JSON files sequentially (~25 min under
                 # load) so files lagged the buckets badly. Skip symbols whose buckets did not

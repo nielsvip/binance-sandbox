@@ -1,23 +1,37 @@
 {
-  "flz:BTCDOMUSDT_LONG": {
-    "orderId": "1000002640208063",
-    "stopPrice": 5516.0,
-    "entry_sig": "2026-10-24 00:25:53.779000+00:00",
-    "symbol": "BTCDOMUSDT",
-    "side": "LONG"
-  },
-  "flz:SOLUSDC_SHORT": {
-    "orderId": "1000002640282947",
-    "stopPrice": 104.72,
-    "entry_sig": "2026-10-24 00:25:43.713000+00:00",
-    "symbol": "SOLUSDC",
+  "men:ACTUSDT_SHORT": {
+    "orderId": "2000001536245663",
+    "stopPrice": 0.009148,
+    "entry_sig": "2026-10-24 00:08:14.467000+00:00",
+    "symbol": "ACTUSDT",
     "side": "SHORT"
   },
-  "flz:BNBUSDC_LONG": {
-    "orderId": "1000002640283346",
-    "stopPrice": 721.9,
-    "entry_sig": "2026-10-24 00:25:47.605000+00:00",
-    "symbol": "BNBUSDC",
+  "men:BEAMXUSDT_LONG": {
+    "orderId": "2000001536246106",
+    "stopPrice": 0.003148,
+    "entry_sig": "2026-10-24 00:08:37.861000+00:00",
+    "symbol": "BEAMXUSDT",
+    "side": "LONG"
+  },
+  "men:ENJUSDT_SHORT": {
+    "orderId": "2000001536136029",
+    "stopPrice": 0.02694,
+    "entry_sig": "2026-10-23 23:13:58.022000+00:00",
+    "symbol": "ENJUSDT",
+    "side": "SHORT"
+  },
+  "men:MOVEUSDT_SHORT": {
+    "orderId": "2000001536367085",
+    "stopPrice": 0.007349,
+    "entry_sig": "2026-10-24 01:19:16.440000+00:00",
+    "symbol": "MOVEUSDT",
+    "side": "SHORT"
+  },
+  "men:GRASSUSDT_LONG": {
+    "orderId": "2000001536409298",
+    "stopPrice": 0.6339,
+    "entry_sig": "2026-10-24 01:06:26.864000+00:00",
+    "symbol": "GRASSUSDT",
     "side": "LONG"
   }
 }
