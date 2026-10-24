@@ -3789,6 +3789,7 @@ class TradingPolicy:
     _sf = staticmethod(_sf)
     compute_applied_ratio = staticmethod(compute_applied_ratio)
     check_entry_alignment = staticmethod(check_entry_alignment)
+    parity_filter_tf_gates = staticmethod(_parity_filter_tf_gates)
     _dc_pos_single = staticmethod(_dc_pos_single)
     compute_dc_position_multiplier = staticmethod(compute_dc_position_multiplier)
     check_htf_trend = staticmethod(check_htf_trend)

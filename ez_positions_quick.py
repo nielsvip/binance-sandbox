@@ -31201,6 +31201,19 @@ async def check_entry_candidates_for_account(
                     # QUICK_OPEN_STRONG_VEC_ENABLED=False). QUICK orders from this file are legitimate crypto trading, NOT false
                     # positives — they must trade live AND gain identical vectorized equivalents + TEMPLATE_CRYPTO_LONG/SHORT
                     # switches. Trace-every-path parity work follows; this gate must NOT be re-added without vector twin.
+                    # 2026-10-24 USER "exact same lanes, not one more not one less": scoring OPENs (flat)
+                    # enforce the shared FILTER_TF veto chain — the same function vec mirrors via
+                    # generic_filter_tf (boards promote these switches; unenforced live = over-trade vs
+                    # the board's own measurement + 932 QUICK LIVE_ONLY legs). OPEN-only: vec GFTF entry
+                    # mask constrains fresh entries; augments ride the augment gates. Fail-open on error.
+                    if curr_amt == 0:
+                        try:
+                            _wftf_ok, _wftf_why = trading_policy.parity_filter_tf_gates(indicators, is_long, float(current_price or 0))
+                        except Exception as _wftf_e:
+                            _wftf_ok, _wftf_why = True, f"FTF_EVAL_FAIL_OPEN({_wftf_e})"
+                        if not _wftf_ok:
+                            logger.warning(f"[WORKER_FTF_VETO] {position_key}: {_wftf_why} — scoring OPEN refused")
+                            return
                     await tracker_manager.set_processing(position_key)
                     await tracker_manager.transition_to_exit(
                         account_key,

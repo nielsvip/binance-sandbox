@@ -102,15 +102,20 @@ def _cond(kind, npz, n, tf, is_long, close, safe):
         missing = a < 0
         return np.where(missing, True, above if is_long else ~above)
     if kind in ("bar_pattern_side", "bar_pattern_against"):
-        bp = safe(npz, f"bar_pattern_{tf}", n, -1)
-        bull = np.isin(bp, (1, 3, 5, 7, 9, 11, 16, 18))
-        bear = np.isin(bp, (2, 4, 6, 8, 10, 12, 17, 19))
-        missing = bp < 0
-        if kind == "bar_pattern_side":
-            c = bull if is_long else bear
-        else:  # pattern AGAINST the position confirms the stop
-            c = bear if is_long else bull
-        return np.where(missing, True, c)
+        # 2026-10-24 live-truth conformance: live _parity_filter_tf_gates reads bar_direction_{tf}
+        # (missing -> skip). NPZ carries it -> direction semantics; absent -> None (skip, like live).
+        try:
+            _has_dir = f"bar_direction_{tf}" in npz
+        except Exception:
+            _has_dir = False
+        if _has_dir:
+            bd = safe(npz, f"bar_direction_{tf}", n, 0.0)
+            if kind == "bar_pattern_side":
+                c = (bd > 0) if is_long else (bd < 0)
+            else:
+                c = (bd < 0) if is_long else (bd > 0)
+            return c
+        return None  # live skips when the direction field is missing — no legacy-code fallback
     if kind == "dc_retest_hold":
         lvl = safe(npz, f"dc_high_{tf}_prev" if is_long else f"dc_low_{tf}_prev", n, 0.0)
         lo = safe(npz, f"low_{tf}", n, 0.0)
