@@ -1,30 +1,51 @@
 {
-  "inf:COTIUSDT_SHORT": {
-    "orderId": "2000001540087565",
-    "stopPrice": 0.010494,
-    "entry_sig": "2026-10-25 15:52:40.229000+00:00",
-    "symbol": "COTIUSDT",
+  "flz:SOLUSDC_SHORT": {
+    "orderId": "1000002642790811",
+    "stopPrice": 102.85,
+    "entry_sig": "2026-10-25 12:45:38.609000+00:00",
+    "symbol": "SOLUSDC",
     "side": "SHORT"
   },
-  "inf:GRASSUSDT_LONG": {
-    "orderId": "2000001540131023",
-    "stopPrice": 0.659,
-    "entry_sig": "2026-10-25 16:21:06.977000+00:00",
-    "symbol": "GRASSUSDT",
+  "flz:WLDUSDC_SHORT": {
+    "orderId": "1000002642880948",
+    "stopPrice": 0.4718,
+    "entry_sig": "2026-10-25 11:43:47.811000+00:00",
+    "symbol": "WLDUSDC",
+    "side": "SHORT"
+  },
+  "flz:BNBUSDC_LONG": {
+    "orderId": "1000002642912520",
+    "stopPrice": 715.5,
+    "entry_sig": "2026-10-25 16:26:06.065000+00:00",
+    "symbol": "BNBUSDC",
     "side": "LONG"
   },
-  "inf:GALAUSDT_SHORT": {
-    "orderId": "2000001540131038",
-    "stopPrice": 0.00199,
-    "entry_sig": "2026-10-25 15:51:35.684000+00:00",
-    "symbol": "GALAUSDT",
+  "flz:DOGEUSDC_LONG": {
+    "orderId": "1000002642912542",
+    "stopPrice": 0.07599,
+    "entry_sig": "2026-10-25 16:10:42.304000+00:00",
+    "symbol": "DOGEUSDC",
+    "side": "LONG"
+  },
+  "flz:BTCDOMUSDT_SHORT": {
+    "orderId": "1000002642913441",
+    "stopPrice": 5632.1,
+    "entry_sig": "2026-10-25 16:01:46.447000+00:00",
+    "symbol": "BTCDOMUSDT",
     "side": "SHORT"
   },
-  "inf:VETUSDT_LONG": {
-    "orderId": "2000001540132486",
-    "stopPrice": 0.006772,
-    "entry_sig": "2026-10-25 16:20:31.517000+00:00",
-    "symbol": "VETUSDT",
+  "flz:ZECUSDC_SHORT": {
+    "orderId": "1000002642913832",
+    "stopPrice": 1230.96,
+    "entry_sig": "2026-10-25 15:06:25.299000+00:00",
+    "symbol": "ZECUSDC",
+    "side": "SHORT"
+  },
+  "flz:XMRUSDT_LONG": {
+    "orderId": "1000002642914376",
+    "stopPrice": 580.72,
+    "entry_sig": "2026-10-25 16:12:40.068000+00:00",
+    "symbol": "XMRUSDT",
     "side": "LONG"
   }
 }

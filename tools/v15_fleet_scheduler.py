@@ -2056,6 +2056,11 @@ def _spawn_guard(ss, window, body):
     """USER 2026-10-11 (5x dup stacks + burned attempt caps): every remote launch is guarded by a real pgrep — the old 'pgrep dedups' comments had no implementation. FIX 21:50Z: patterns are ^-ANCHORED to a python argv[0] — the first version matched its own bash -c wrapper (whose cmdline contains the literal pilot invocation) and self-skipped every launch fleet-wide. Skip logs [spawnguard] to the sweep log. 2026-10-13 (2x5 live dup stacks, TERM-immune): the pgrep-or-launch was not atomic — two wrappers racing inside the same minute both saw an empty ps and both launched. FIX: serialize guard+launch per side+window under a non-blocking flock; the launcher holds the lock 3s after forking so the child python is visible in ps before the next contender's pgrep runs. Lock contention skips silently (scheduler retries next tick)."""
     pat = {"30D": f"^[^ ]*python[^ ]* -u [^ ]*v15_pilot.py --sym-side {ss}( |$)", "365D": f"^[^ ]*python[^ ]* -u [^ ]*tools/v15_365_cycle.py --sym-side {ss}( |$)", "REPAIR": f"^[^ ]*python[^ ]* -u [^ ]*tools/v15_365_cycle.py --sym-side {ss}( |$)", "GS": f"^[^ ]*python[^ ]* -u [^ ]*tools/v15_graph_search.py --symsides {ss}( |$)"}[window]
     inner = f"pgrep -f \"{pat}\" >/dev/null 2>&1 && echo \"[spawnguard] {ss} {window} already running on $(hostname)\" || {{ {body}; sleep 3; }}"
+    # USER 2026-10-25 box-count gate: no 5th symbol until a workbook finishes (V15_BOX_MAX_SIDES,
+    # default 4). Counts OTHER sides (excludes self so the guard's own wrapper never self-blocks;
+    # concurrent contenders over-count and skip safe). Wraps the per-side guard (E1 halves design).
+    inner = (f"_nrun=$(pgrep -af \"python[^ ]* -u v15_pilot.py --sym-side \" 2>/dev/null | grep -oE -- '--sym-side [A-Z0-9_]+' | grep -v -- '--sym-side {ss} ' | sort -u | wc -l); "
+             f"[ \"$_nrun\" -ge \"${{V15_BOX_MAX_SIDES:-4}}\" ] && echo \"[boxfull] {ss} {window} box holds $_nrun\" || {{ {inner}; }}")
     # flock(1) ships on the Linux workers (atomic guard+launch); macOS dev/test has no flock -> plain guard there.
     _perside = (f"if command -v flock >/dev/null 2>&1; then flock -n /tmp/v15_launch_{ss}_{window}.lock bash -c {shlex.quote(inner)} "
                 f"|| echo \"[launchlock] {ss} {window} launcher race, retry next tick\"; else bash -c {shlex.quote(inner)}; fi")
@@ -2991,11 +2996,36 @@ def _launched_actions(actions):
     return acts
 
 
+_HALVES = {"at": 0.0, "syms": None}
+
+
+def _in_self_half(sym):
+    """USER 2026-10-25: s5/s6 self-schedule alphabet halves (pair-mode LONG+SHORT in-RAM);
+    the S1 scheduler (backup only) must not launch those symbols on s1/s2 (cross-host dupes
+    with divergent boards). data/v15_half_s5/6.txt, cached 120s, fail-open (missing = no filter)."""
+    try:
+        now = time.time()
+        if _HALVES["syms"] is None or now - _HALVES["at"] > 120:
+            s = set()
+            for _f in ("data/v15_half_s5.txt", "data/v15_half_s6.txt"):
+                try:
+                    s |= {str(_l).strip().upper() for _l in open(ROOT / _f) if str(_l).strip()}
+                except OSError:
+                    pass
+            _HALVES.update(at=now, syms=s)
+        return str(sym or "").upper() in (_HALVES["syms"] or set())
+    except Exception:
+        return False
+
+
 def pair_launch_cmd(host, actions, pdir, workers):
     """one ssh command that detaches every side job of a symbol (subshell > /dev/null so ssh returns at once)."""
     parts = []
     _seen_ssw = set()  # 2026-10-25 same-second 8x dup stacks (QQQ_LONG x9 on s5): one tick must never launch the same sym/side/window twice
+    _hn = str((host or {}).get("name") or "").lower()
     for a in _launched_actions(actions):
+        if _hn in ("s1", "s2") and _in_self_half(a.get("sym")):
+            continue  # self-managed half on s5/s6 — S1 backup stays off this symbol (no cross-host dupes)
         _ssw = (a.get("sym"), a.get("side"), a.get("window"))
         if _ssw in _seen_ssw:
             continue
