@@ -128,8 +128,11 @@ def dictate_only_exempt(action, reason, sym_side=None):
     # ratio sizing (RATIO_REDUCE_*/RATIO_REBALANCE_AUGMENT_* — USER 2026-10-25:
     # ratio balance always works, augments and reduces, never touches bar
     # parity). RATIO_CLOSE_OW_* full closes DO change side and stay under the
-    # law. Stops, emergencies, hedges, oversize trims, bookkeeping-as-trade:
-    # all blocked unless the vector dictates them. (BROKER_RECONCILED
+    # law. Emergencies, hedges, oversize trims, bookkeeping-as-trade: all blocked
+    # unless the vector dictates them. FIXED_STOP exempt per 2026-10-25 fact
+    # ruling (non-negotiable, not a switch). Switch-dictated exits
+    # (PEAK_GIVEBACK/DC4/BREAKEVEN families) pass on their per_sym master knob.
+    # (BROKER_RECONCILED
     # infrastructure writes are not trades and never reach this gate as
     # actions.) Kill: VEC_DICTATE_ONLY_ENABLED=False.
     try:
@@ -149,6 +152,25 @@ def dictate_only_exempt(action, reason, sym_side=None):
             _fam = _r[3:] if _r.startswith("BT_") else ""
             _knob = (_fam.split("_g=")[0] + "_ENABLED") if _fam else ""
             if _knob and _per_sym_knob_true(sym_side, _knob) is True:
+                return True
+            # USER 2026-10-25 (unlock): switch-dictated exit families pass exactly like BT_ paths —
+            # their live reasons carry no BT_ prefix, so map prefix -> master knob explicitly.
+            # The knob is the same one live itself gates on; per_sym True overrides global.
+            for _pfx, _kb in (
+                ("QUICK_PEAK_GIVEBACK_", "PEAK_GIVEBACK_PROTECTION_ENABLED"),
+                ("PEAK_GIVEBACK_", "PEAK_GIVEBACK_PROTECTION_ENABLED"),
+                ("QUICK_DC4_", "BREAKEVEN_DC_LOW4_ENABLED"),
+                ("DC4_", "BREAKEVEN_DC_LOW4_ENABLED"),
+                ("QUICK_BREAKEVEN_", "BREAKEVEN_GAIN_EROSION_ENABLED"),
+                ("BREAKEVEN_GAIN_EROSION", "BREAKEVEN_GAIN_EROSION_ENABLED"),
+            ):
+                if _r.startswith(_pfx) or _ru.startswith(_pfx):
+                    if _per_sym_knob_true(sym_side, _kb) is True:
+                        return True
+                    break
+            # USER 2026-10-25 (unlock): FIXED_STOP is NON-NEGOTIABLE FACT, not a switch
+            # (dc_low_15m -0.25% at entry, dc_low_4h -0.25% anytime, vv shorts mirrored).
+            if _r.startswith("FIXED_STOP_") or _ru.startswith("FIXED_STOP_"):
                 return True
     except Exception:
         return True

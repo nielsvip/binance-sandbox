@@ -25765,24 +25765,8 @@ class MultiAccountTradeManager:
             asyncio.create_task(self.stop_manager._flush_registry())
         return success
 
-    def place_okx_trailing_stop(self, symbol, side, quantity, callback_ratio=0.02):
-        trade_client = self.accounts.get(
-            "okx"
-        )  # Assuming OKX client is stored in self.accounts
-        if not trade_client:
-            logger.error("OKX client not found in accounts")
-            return None
-        side_opposite = "sell" if side == "buy" else "buy"
-        response = trade_client.place_order(
-            instId=symbol,
-            tdMode="isolated",
-            side=side_opposite,
-            ordType="trailing_stop",
-            sz=str(quantity),
-            callbackRatio=str(callback_ratio),
-        )
-        return response
-
+    # USER 2026-10-25: trailing stops removed outright (only switch-driven stops
+    # plus the two non-negotiable FIXED_STOPS may exist). Dead stub deleted.
     def is_same_direction(self, side, position_side) -> bool:
         return (side == "BUY" and position_side == "LONG") or (
             side == "SELL" and position_side == "SHORT"
@@ -52373,35 +52357,14 @@ async def _pp_unconditional_hard_stops(trade_manager, account_key, position_key,
                         await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=_sym, original_positionAmt=_amt, side=_side_o, position_side=_side, quantity=_amt, old_price=_px, unique_id=f"VIGILANCE_DC4_{_vg_tf}_{int(time.time())}", reason=f"VIGILANCE_DC4_{_vg_tf}_HARD_STOP_USER_{'LONG' if _is_long else 'SHORT'}_g{_gain:.2f}_lvl{_vg_lvl:.6f}", is_full_close=True, action="CLOSE")
                         _fired = f"VIGILANCE_DC4_{_vg_tf}"  # USER 2026-10-21 vec-only: _fired only inside the live-exit branch above
         if _fired is None:
-            try:
-                _hs_tf = str(getattr(__import__("config").Config(), "DC_HARD_STOP_TF", "4h") or "4h").strip().upper()
-            except Exception:
-                _hs_tf = "4h"
-            try:
-                if _ind and "DC_HARD_STOP_TF" in _ind:
-                    _hs_tf = str(_ind.get("DC_HARD_STOP_TF") or _hs_tf).strip().upper()
-            except Exception:
-                pass
-            _hs_tf = "D" if _hs_tf in ("D", "1D", "DAILY") else "4h"
-            _k_lo = "dc_low_D" if _hs_tf == "D" else "dc_low_4h"
-            _k_hi = "dc_high_D" if _hs_tf == "D" else "dc_high_4h"
+            # USER 2026-10-25: dc_4h stop is TF 4h always (no D variant), the
+            # CHANNEL ∓0.25%, anytime, no WT veto.
+            _hs_tf = "4h"
+            _k_lo = "dc_low_4h"
+            _k_hi = "dc_high_4h"
             _u_lo = safe_fetch_float(_ind.get(_k_lo, 0) or _ind.get("dc_low_4h", 0) or 0, 0.0)
             _u_hi = safe_fetch_float(_ind.get(_k_hi, 0) or _ind.get("dc_high_4h", 0) or 0, 0.0)
-            _br = (_is_long and _u_lo > 0 and _px <= _u_lo) or ((not _is_long) and _u_hi > 0 and _px >= _u_hi)
-            if _br and bool(getattr(_cfg, "BOTTOM_EXIT_HTF_WT_VETO_ENABLED", True)):
-                try:
-                    _w1h1 = safe_fetch_float(_ind.get("wt1_1h", 0), 0.0)
-                    _w1h2 = safe_fetch_float(_ind.get("wt2_1h", 0), 0.0)
-                    _w151 = safe_fetch_float(_ind.get("wt1_15m", 0), 0.0)
-                    _w152 = safe_fetch_float(_ind.get("wt2_15m", 0), 0.0)
-                    _w4h1 = safe_fetch_float(_ind.get("wt1_4h", 0), 0.0)
-                    _w4h2 = safe_fetch_float(_ind.get("wt2_4h", 0), 0.0)
-                    _with = (_is_long and (_w1h1 > _w1h2 or _w151 > _w152 or _w4h1 > _w4h2)) or ((not _is_long) and (_w1h1 < _w1h2 or _w151 < _w152 or _w4h1 < _w4h2))
-                    if _with:
-                        logger.warning(f"🛡️ [PRE_TWIN_BOTTOM_EXIT_HTF_WT_VETO_ULTIMATE_DC] {position_key}: DC_{_hs_tf} breached {_px:.6f} vs {(_u_lo if _is_long else _u_hi):.6f} BUT HTF WT still WITH position → VETO bottom exit, hold for top exit")
-                        _br = False
-                except Exception:
-                    pass
+            _br = (_is_long and _u_lo > 0 and _px <= _u_lo * 0.9975) or ((not _is_long) and _u_hi > 0 and _px >= _u_hi * 1.0025)
             if _br:
                 _lvl = _u_lo if _is_long else _u_hi
                 _side_o = "SELL" if _is_long else "BUY"
@@ -53452,8 +53415,28 @@ async def process_position(
         # don't await here — breach check is awaited at each gated exit; just log generic block now
         logger.debug(f"[MIN_HOLD_BLOCK] {position_key}: age {_pp_age_min_for_hold:.2f}m < {_min_hold_bars_for_exit}bars ({_min_hold_sec_for_exit/60:.1f}m) — all TIMED exits (HTF/R1/MTF/GR) deferred until hold satisfied unless dc_15m breach. Gain {safe_fetch_float(getattr(position,'gain',0),0):.2f}%")
     # USER 2026-10-25: only switch-driven stops plus the two non-negotiable
-    # FIXED_STOPS (frozen dc_15m ∓0.25% at entry, dc_4h ∓0.25% anytime) may
-    # exist — the NEGBOOK WT-turn exit is removed outright (no switch).
+    # ═══ NEGBOOK WT-TURN EXIT (USER 2026-09-28): neg-book sym_side with an OPEN position holds
+    # while WT is with it and closes at the next WT turn against it. Reason carries NEGBOOK_WT_TURN
+    # (UNIVERSAL_NOLOSS_GATE bypass) + HARD_STOP/USER (HPO bypass).
+    if position and abs(safe_float(getattr(position, "positionAmt", 0))) > 0 and bool(getattr(config, "NEGBOOK_WT_TURN_EXIT_ENABLED", True)):
+        try:
+            _nb_is_long = position_side == "LONG"
+            if ez_negbook_is_blocked(symbol, position_side):
+                if _pp_shared_ind is None:
+                    _pp_shared_ind = await ii(trade_manager, symbol) or {}
+                _nb_tf = str(getattr(config, "NEGBOOK_WT_EXIT_TF", "15m") or "15m").strip()
+                _nb_w1 = safe_fetch_float(_pp_shared_ind.get(f"wt1_{_nb_tf}", 0), 0.0)
+                _nb_w2 = safe_fetch_float(_pp_shared_ind.get(f"wt2_{_nb_tf}", 0), 0.0)
+                _nb_against = (_nb_w1 != 0 or _nb_w2 != 0) and ((_nb_is_long and _nb_w1 < _nb_w2) or ((not _nb_is_long) and _nb_w1 > _nb_w2))
+                if _nb_against and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
+                    _nb_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
+                    _nb_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
+                    logger.critical(f"🚨 [NEGBOOK_WT_TURN_EXIT] {position_key}: neg-book side, wt1_{_nb_tf} {_nb_w1:.1f} turned against ({_nb_w2:.1f}) g={_nb_gain:.2f}% → CLOSE (USER 2026-09-28)")
+                    await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_nb_amt, side="SELL" if _nb_is_long else "BUY", position_side=position_side, quantity=_nb_amt, old_price=current_price, unique_id=f"NEGBOOK_WT_TURN_{int(time.time())}", reason=f"NEGBOOK_WT_TURN_HARD_STOP_USER_{'LONG' if _nb_is_long else 'SHORT'}_wt{_nb_tf}_g{_nb_gain:.2f}", is_full_close=True, action="CLOSE")
+                    trade_manager.processing_keys.discard(position_key)
+                    return f"{EvalStatus.ACTION_TAKEN}:NEGBOOK_WT_TURN_CLOSED"
+        except Exception as _nb_e:
+            logger.warning(f"[NEGBOOK] probe err {position_key}: {_nb_e}")
     # ═══════════════════════════════════════════════════════════════════════════
     # VIGILANCE GUARD (USER 2026-09-28, 3rd mandate: "we do not use fix %"): STRUCTURAL stop —
     # position at a loss AND price breaches dc_low4_{TF} (LONG) / dc_high4_{TF} (SHORT), TF from
@@ -53570,39 +53553,15 @@ async def process_position(
             if _pp_shared_ind is None:
                 _pp_shared_ind = await ii(trade_manager, symbol) or {}
             _ult_is_long = position_side == "LONG"
-            # per-sym TF via config (crypto Config) — 4h default, D wider so fewer stops
-            try:
-                _hs_tf_ez = str(getattr(__import__("config").Config(), "DC_HARD_STOP_TF", "4h") or "4h").strip().upper()
-            except:
-                _hs_tf_ez = "4h"
-            # also honor live overrides dict if present (hustle per-sym)
-            try:
-                if _pp_shared_ind and "DC_HARD_STOP_TF" in _pp_shared_ind:
-                    _hs_tf_ez = str(_pp_shared_ind.get("DC_HARD_STOP_TF") or _hs_tf_ez).strip().upper()
-            except:
-                pass
-            _hs_tf_ez = "D" if _hs_tf_ez in ("D", "1D", "DAILY") else "4h"
-            _hs_k_low_ez = "dc_low_D" if _hs_tf_ez == "D" else "dc_low_4h"
-            _hs_k_high_ez = "dc_high_D" if _hs_tf_ez == "D" else "dc_high_4h"
+            # USER 2026-10-25: the dc_4h stop is TF 4h, always — no D variant.
+            _hs_tf_ez = "4h"
+            _hs_k_low_ez = "dc_low_4h"
+            _hs_k_high_ez = "dc_high_4h"
             _ult_dc_low = safe_fetch_float(_pp_shared_ind.get(_hs_k_low_ez, 0) or _pp_shared_ind.get("dc_low_4h", 0) or 0, 0.0)
             _ult_dc_high = safe_fetch_float(_pp_shared_ind.get(_hs_k_high_ez, 0) or _pp_shared_ind.get("dc_high_4h", 0) or 0, 0.0)
-            _ult_breached = (_ult_is_long and _ult_dc_low > 0 and current_price <= _ult_dc_low) or ((not _ult_is_long) and _ult_dc_high > 0 and current_price >= _ult_dc_high)
-            if _ult_breached:
-                # 2026-09-27 BOTTOM-EXIT FIX: don't exit at bottom when HTF WT still with position — exit at top not bottom
-                if bool(getattr(config, "BOTTOM_EXIT_HTF_WT_VETO_ENABLED", True)):
-                    try:
-                        _v_wt1_1h = safe_fetch_float(_pp_shared_ind.get("wt1_1h", 0), 0.0)
-                        _v_wt2_1h = safe_fetch_float(_pp_shared_ind.get("wt2_1h", 0), 0.0)
-                        _v_wt1_15m = safe_fetch_float(_pp_shared_ind.get("wt1_15m", 0), 0.0)
-                        _v_wt2_15m = safe_fetch_float(_pp_shared_ind.get("wt2_15m", 0), 0.0)
-                        _v_wt1_4h = safe_fetch_float(_pp_shared_ind.get("wt1_4h", 0), 0.0)
-                        _v_wt2_4h = safe_fetch_float(_pp_shared_ind.get("wt2_4h", 0), 0.0)
-                        _v_htf_with = (_ult_is_long and (_v_wt1_1h > _v_wt2_1h or _v_wt1_15m > _v_wt2_15m or _v_wt1_4h > _v_wt2_4h)) or ((not _ult_is_long) and (_v_wt1_1h < _v_wt2_1h or _v_wt1_15m < _v_wt2_15m or _v_wt1_4h < _v_wt2_4h))
-                        if _v_htf_with:
-                            logger.warning(f"🛡️ [BOTTOM_EXIT_HTF_WT_VETO_ULTIMATE_DC] {position_key}: DC_{_hs_tf_ez} breached {current_price:.6f} <= {_ult_dc_low if _ult_is_long else _ult_dc_high:.6f} BUT HTF WT still WITH position (wt1_1h {_v_wt1_1h:.1f}/{_v_wt2_1h:.1f} wt15m {_v_wt1_15m:.1f}/{_v_wt2_15m:.1f} wt4h {_v_wt1_4h:.1f}/{_v_wt2_4h:.1f}) → VETO bottom exit, hold for top exit")
-                            _ult_breached = False
-                    except Exception:
-                        pass
+            # USER 2026-10-25: dc_4h stop is the CHANNEL ∓0.25% (LONG px <=
+            # dc_low_4h*0.9975, SHORT px >= dc_high_4h*1.0025), anytime, no veto.
+            _ult_breached = (_ult_is_long and _ult_dc_low > 0 and current_price <= _ult_dc_low * 0.9975) or ((not _ult_is_long) and _ult_dc_high > 0 and current_price >= _ult_dc_high * 1.0025)
             if _ult_breached and not _voe_native_exits_disabled("stop"):  # USER 2026-10-22: ULTIMATE_DC hard stop, price protection, never stood down
                 _ult_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                 _ult_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
