@@ -1,5 +1,5 @@
 {
- "at": "2026-10-24T23:11:19Z",
+ "at": "2026-10-25T00:11:09Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
@@ -10,46 +10,45 @@
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "BA_SHORT",
-    "JASMYUSDT_SHORT"
+    "AAPL_LONG"
    ],
-   "mem_avail_mb": 10258,
-   "load1": 36.28,
+   "mem_avail_mb": 7006,
+   "load1": 29.1,
    "nproc": 16,
-   "slots": "3/4",
-   "binding_reason": "scheduler mem guard (disk 8296 MB, mem 5894 MB, est_pair 7658 MB) \u2014 slots 3/4",
+   "slots": "1/4",
+   "binding_reason": "scheduler mem guard (disk 11109 MB, mem 9211 MB, est_pair 9450 MB) \u2014 slots 1/4",
    "error": null,
    "published": [
     {
-     "symside": "CRWD_SHORT",
-     "at": "2026-10-24T22:43:42Z",
-     "baseline": 0.0,
-     "final": 22.175162878499755,
+     "symside": "JASMYUSDT_SHORT",
+     "at": "2026-10-24T23:49:52Z",
+     "baseline": 10.128550370572146,
+     "final": 28.97118075855171,
      "state": "improved"
     }
    ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 27.2,
-   "last_improved_symside": "CRWD_SHORT",
+   "minutes_since_last_improved": 19.9,
+   "last_improved_symside": "JASMYUSDT_SHORT",
    "cadence_ok": false,
-   "improved_gap_min_median_24h": null,
-   "improved_gap_min_max_24h": null,
-   "improved_finishes_24h": 1,
+   "improved_gap_min_median_24h": 67.1,
+   "improved_gap_min_max_24h": 67.1,
+   "improved_finishes_24h": 2,
    "board_cpu_s_median_24h": 2440.8,
    "board_wall_s_median_24h": 2559.4197568893433,
-   "board_cores": 2.65,
-   "nonboard_cores_competing": 6.53,
-   "nonboard_cores_niced": 6.39,
+   "board_cores": 1.4,
+   "nonboard_cores_competing": 9.54,
+   "nonboard_cores_niced": 4.44,
    "cores_by_bucket": {
-    "other": 2.93,
-    "live_helpers": 2.77,
-    "boards": 2.65,
-    "klines_append": 0.83
+    "other": 6.03,
+    "live_helpers": 2.71,
+    "boards": 1.4,
+    "klines_append": 0.8
    },
    "cores_by_bucket_niced": {
-    "klines_vault": 0.51,
-    "npz_precompute": 1.57,
-    "other": 4.31
+    "klines_vault": 0.89,
+    "other": 1.3,
+    "npz_precompute": 2.25
    }
   },
   "s2": {
@@ -59,42 +58,43 @@
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "CHRUSDT_LONG",
-    "RIO_SHORT",
-    "SLV_SHORT",
-    "VICR_SHORT"
+    "AMD_LONG",
+    "LMT_LONG",
+    "RVNUSDT_SHORT",
+    "WLDUSDC_LONG"
    ],
-   "mem_avail_mb": 16908,
-   "load1": 10.27,
+   "mem_avail_mb": 11298,
+   "load1": 22.06,
    "nproc": 16,
    "slots": "5/8",
    "binding_reason": "concurrency 5 boards: 12/h needs <= 25 min per sym_side (measured median 17 min) \u2014 raise concurrent sides or cut evals per board",
    "error": null,
    "published": [
     {
-     "symside": "PUMPUSDT_LONG",
-     "at": "2026-10-24T22:56:56Z",
-     "baseline": 84.09031988962506,
-     "final": 90.76041301263699,
+     "symside": "GALAUSDT_SHORT",
+     "at": "2026-10-24T23:48:18Z",
+     "baseline": 62.36005200480208,
+     "final": 64.01170039687811,
      "state": "improved"
     }
    ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 2.7,
-   "last_improved_symside": "INTC_SHORT",
+   "minutes_since_last_improved": 1.9,
+   "last_improved_symside": "1000PEPEUSDC_LONG",
    "cadence_ok": true,
-   "improved_gap_min_median_24h": 5.3,
+   "improved_gap_min_median_24h": 5.2,
    "improved_gap_min_max_24h": 642.2,
-   "improved_finishes_24h": 73,
-   "board_cpu_s_median_24h": 2278.3,
-   "board_wall_s_median_24h": 1027.2277801036835,
-   "board_cores": 7.88,
-   "nonboard_cores_competing": 2.66,
+   "improved_finishes_24h": 82,
+   "board_cpu_s_median_24h": 2214.2,
+   "board_wall_s_median_24h": 990.5870440006256,
+   "board_cores": 11.05,
+   "nonboard_cores_competing": 4.87,
    "nonboard_cores_niced": 0,
    "cores_by_bucket": {
-    "other": 0.03,
-    "boards": 7.88,
-    "live_helpers": 2.63
+    "other": 0.04,
+    "boards": 11.05,
+    "npz_precompute": 3.36,
+    "live_helpers": 1.47
    },
    "cores_by_bucket_niced": {}
   }

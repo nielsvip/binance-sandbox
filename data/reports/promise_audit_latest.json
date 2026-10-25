@@ -1,47 +1,44 @@
 {
- "generated_utc": "2026-10-24T23:12:23.122938+00:00",
+ "generated_utc": "2026-10-25T00:12:17.437516+00:00",
  "days": 1.0,
  "totals": {
-  "exit_promises": 123,
-  "exit_broken_no_delivery": 111,
-  "entry_promises": 54,
-  "entry_pending": 4,
-  "entry_broken_no_delivery": 50,
-  "exit_skipped_inflight": 110,
+  "exit_promises": 125,
+  "exit_broken_no_delivery": 114,
+  "entry_promises": 55,
+  "entry_broken_no_delivery": 55,
+  "exit_skipped_inflight": 119,
   "exit_kept_late": 7,
-  "exit_pending": 3,
-  "exit_kept_in_bar": 2
+  "exit_kept_in_bar": 4
  },
  "per_key": {
   "inf:ALTUSDT_LONG": {
-   "exit_promises": 2,
-   "exit_broken_no_delivery": 2,
+   "exit_promises": 3,
+   "exit_broken_no_delivery": 3,
    "entry_promises": 1,
-   "entry_pending": 1
+   "entry_broken_no_delivery": 1
   },
   "men:ALTUSDT_LONG": {
    "exit_promises": 2,
    "exit_broken_no_delivery": 2,
    "entry_promises": 2,
-   "entry_broken_no_delivery": 1,
-   "entry_pending": 1
+   "entry_broken_no_delivery": 2
   },
   "men:BIOUSDC_SHORT": {
    "exit_promises": 4,
    "exit_broken_no_delivery": 1,
    "entry_promises": 1,
    "entry_broken_no_delivery": 1,
-   "exit_skipped_inflight": 50,
+   "exit_skipped_inflight": 53,
    "exit_kept_late": 2,
-   "exit_pending": 1
+   "exit_kept_in_bar": 1
   },
   "men:ARUSDT_LONG": {
    "exit_promises": 2,
-   "exit_skipped_inflight": 6,
+   "exit_skipped_inflight": 12,
    "exit_kept_late": 1,
    "entry_promises": 1,
    "entry_broken_no_delivery": 1,
-   "exit_pending": 1
+   "exit_kept_in_bar": 1
   },
   "inf:TRXUSDT_SHORT": {
    "exit_promises": 21,
@@ -289,15 +286,23 @@
   },
   "ang:MOVRUSDT_SHORT": {
    "entry_promises": 1,
-   "entry_pending": 1
+   "entry_broken_no_delivery": 1
   },
   "ang:BEAMXUSDT_LONG": {
    "entry_promises": 1,
-   "entry_pending": 1
+   "entry_broken_no_delivery": 1
   },
   "ang:SANDUSDT_SHORT": {
    "exit_promises": 1,
-   "exit_pending": 1
+   "exit_broken_no_delivery": 1
+  },
+  "ang:ARUSDT_LONG": {
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1
+  },
+  "men:BEAMXUSDT_LONG": {
+   "entry_promises": 1,
+   "entry_broken_no_delivery": 1
   }
  },
  "detail": [
@@ -1980,6 +1985,86 @@
    "action": "OPEN",
    "reason": "REENTRY_EXIT_PRICE_BREAK",
    "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "MOVRUSDT_SHORT",
+   "kind": "entry",
+   "bar": "10-24 22:45",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "LEGACY_PSR_REENTRY",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "BEAMXUSDT_LONG",
+   "kind": "entry",
+   "bar": "10-24 22:45",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "TIER1_PRICE_CROSS_REENTRY_exit0.0032_cur0.0032_k3m72",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "men",
+   "sym_side": "ALTUSDT_LONG",
+   "kind": "entry",
+   "bar": "10-24 22:45",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "B_EMADIST",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "SANDUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-24 22:45",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "WT_CROSS_EXIT_1h_bull",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "ALTUSDT_LONG",
+   "kind": "entry",
+   "bar": "10-24 22:45",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "B_EMADIST",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "ARUSDT_LONG",
+   "kind": "exit",
+   "bar": "10-24 22:45",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "R2_WT_VEL_SLOW_DECEL_D_g0.116%",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "men",
+   "sym_side": "BEAMXUSDT_LONG",
+   "kind": "entry",
+   "bar": "10-24 22:45",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "TIER1_PRICE_CROSS_REENTRY_exit0.0032_cur0.0032_k3m72",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "ALTUSDT_LONG",
+   "kind": "exit",
+   "bar": "10-24 23:00",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "EXIT_VELOCITY_WT against-long g-0.09%",
+   "outcome": "NO_DELIVERY"
   }
  ],
  "broken": [
@@ -2034,6 +2119,19 @@
    "bar_ts": null,
    "lag_s": null,
    "detail": "inflight_age_s=105"
+  },
+  {
+   "ts": 1792883648.552667,
+   "kind": "BROKEN",
+   "acct": "men",
+   "key": "men:ARUSDT_LONG",
+   "sym_side": "ARUSDT_LONG",
+   "label": "CLOSE VEC_EXIT_OWED",
+   "why": "EXIT_WEDGED_FORCED",
+   "is_exit": true,
+   "bar_ts": 1792881900.0,
+   "lag_s": 848.6,
+   "detail": "inflight_age_s=114"
   }
  ]
 }

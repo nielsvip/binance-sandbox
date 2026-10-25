@@ -82,6 +82,20 @@ TOUR_INTERVAL_S = 4 * 3600
 # tunnel is raised only when the current path is unusable (ban / not
 # whitelisted / Binance failing).
 TOUR_ENABLED = False
+# USER 2026-10-24: when Colombia gets banned, LONDON kicks in first — the proven
+# app static first, the armed OVPN London leg second, everything else after.
+BAN_FALLBACK_ORDER = ["Surfshark. WireGuard®", "OVPN:uk-lon"]
+
+
+def order_candidates(cands):
+    """Ban-fallback priority: listed London slots first (in listed order), the
+    rest keep their rank order. Pure; do_rotate/ensure_tunnel apply it."""
+    try:
+        first = [c for n in BAN_FALLBACK_ORDER for c in cands if c["name"] == n]
+        rest = [c for c in cands if c["name"] not in BAN_FALLBACK_ORDER]
+        return first + rest
+    except Exception:
+        return cands
 
 
 def should_stay_put(egress, probe, wl, home_ips):

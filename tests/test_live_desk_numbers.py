@@ -1463,29 +1463,9 @@ def test_third_dupe_close_excused_not_unknown():
     assert all(e.get("rpnl") is None for e in closes[1:])
 
 
-def test_day_registry_dupes_past_pool_window():
-    # R1: same-day same-qty re-logs hours apart (pool 600 s blind) excuse
-    # once a sibling booked the event. P&L counted exactly once.
-    from datetime import timedelta
-
-    iso = lambda dt: dt.isoformat()
-    now = datetime.now(timezone.utc)
-    o = _ev(iso(now), "W", "SHORT", "OPEN", 5.0, 50.0)
-    o["reason"] = "STRAT_OPEN"
-    c1 = _ev(iso(now), "W", "SHORT", "CLOSE", 5.0, 40.0)
-    c1["reason"] = "STRAT_CLOSE"
-    c2 = _ev(iso(now + timedelta(hours=3)), "W", "SHORT", "REDUCE", 5.0, 40.0)
-    c2["reason"] = "STRAT_CLOSE_LATE_RELOG"
-    out, sm = srv.realized_walk([o, c1, c2], expiry_days=60)
-    assert sm["known"] == 1
-    assert sm["unknown"] == 0
-    assert sm["sync_hidden"] == 1
-    assert sm["pnl_total"] == round(5.0 * (50.0 - 40.0), 2)
-
-
-def test_day_registry_unbooked_never_hides():
-    # R1 negative: with no priced sibling, the registry stays empty and the
-    # row keeps its honest unknown (fabrication/hiding both banned).
+def test_untagged_far_apart_stays_unknown():
+    # Pinned law (see test_twopass_priced_rows_keep_burns): far-apart pairs
+    # without pool adjacency keep honest unknown — no day-wide excuse.
     iso = lambda dt: dt.isoformat()
     now = datetime.now(timezone.utc)
     lone = _ev(iso(now), "Z", "LONG", "REDUCE", 7.0, 9.0)
