@@ -296,6 +296,7 @@ def sweep_once(base, cat_side, workers=WORKERS, sibling=None, sibling_base=None)
         "error": 0,
         "compacted": 0,
         "mirrored": 0,
+        "error_syms": [],
     }
     if not jobs:
         return rec
@@ -310,9 +311,22 @@ def sweep_once(base, cat_side, workers=WORKERS, sibling=None, sibling_base=None)
 
     def one(job):
         npz, sym, lc = job
-        r = sweep_symbol(
-            npz, sym, lc, compute, now_s=now, on_append=on_append if sibling else None
-        )
+        try:
+            r = sweep_symbol(
+                npz,
+                sym,
+                lc,
+                compute,
+                now_s=now,
+                on_append=on_append if sibling else None,
+            )
+        except Exception:
+            r = "error"
+        if r == "error":
+            try:
+                rec["error_syms"].append(sym)
+            except Exception:
+                pass
         c = 0
         if r == "appended" and tail_len(npz) >= COMPACT_AT:
             try:

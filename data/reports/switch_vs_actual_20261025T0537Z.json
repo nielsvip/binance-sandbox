@@ -1,0 +1,25 @@
+{
+ "window_from": "10-25 04:37",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 289,
+  "status_OK": 61,
+  "dictated_but_no_account_traded_it": 22,
+  "STATE_CONVERGENCE": 1
+ },
+ "rows": [
+  {
+   "acct": "inf",
+   "sym_side": "ZENUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-25 04:51",
+   "actual": "AUGMENT",
+   "actual_reason": "VEC_DRIVEN_OPEN_RECONCILE_",
+   "late_bars": null,
+   "verdict": "STATE_CONVERGENCE",
+   "vec_tagged": false
+  }
+ ]
+}
