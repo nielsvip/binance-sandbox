@@ -1836,6 +1836,24 @@ def split_universe(a):
         stocks = []
     elif a.mode == "stocks":
         crypto = []
+    try:  # USER 2026-10-25 per-cat_side NPZ ownership: with VEC_SHARD set, refresh only the
+        # symbols this host's lane serves (live keys in vec_driven_sets.json). Unset = all
+        # (today). Fail-open: any error serves all. The S1->worker rsync -u keeps fresher
+        # local builds standing, so shard refresh never fights the push.
+        from tools import vec_shard as _vsh
+        _sh = _vsh.active_shard()
+    except Exception:
+        _sh = "all"
+    if _sh != "all":
+        try:
+            _sd = json.loads((ROOT / "data" / "vec_live" / "vec_driven_sets.json").read_text())
+            _srv = {str(_k).rsplit("_", 1)[0].upper() for _k, _v in _sd.items() if not str(_k).startswith("_") and isinstance(_v, dict) and _v.get("mode") == "live" and _vsh.serves(str(_k), _sh)}
+            _nc, _ns = len(crypto), len(stocks)
+            crypto = [s for s in crypto if s in _srv]
+            stocks = [s for s in stocks if s in _srv]
+            log(f"shard={_sh} scoped refresh: crypto {_nc}->{len(crypto)}, stocks {_ns}->{len(stocks)}")
+        except Exception as _e:
+            log(f"shard scope failed open: {_e}")
     try:  # USER 2026-10-13: TradFi perps (AAPLUSDT etc.) are not tradeable — never refresh/build their NPZ
         from excluded_tokenized_stocks import filter_syms as _excl_filter
         crypto = _excl_filter(crypto)
