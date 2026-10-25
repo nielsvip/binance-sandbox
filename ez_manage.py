@@ -42516,14 +42516,9 @@ class MultiAccountTradeManager:
                         )
                         if not _rrr_tk or f"{account_key}:{s}_{open_side}" in _rrr_tk
                     ]
-                    # USER 2026-10-22 (operator: ratio ON, parity law intact):
-                    # RATIO closes/reduces flow (de-risk toward target), but
-                    # RATIO opens/augments stay stood down — an open is never
-                    # vector-dictated. Say the word to lift this too.
-                    if _voe_native_exits_disabled():
-                        if candidates:
-                            logger.info(f"[RATIO_REBALANCE] {account_key}: {len(candidates)} open/augment candidates stood down (parity law: opens are vector-dictated)")
-                        candidates = []
+                    # USER 2026-10-25: ratio balance ALWAYS works (augments and
+                    # reduces) — the word was said. Side-preserving sizing never
+                    # touches bar parity, so opens/augments flow like reduces.
                     candidates = candidates[:30]
                     opened = 0
                     _already_open = {}  # sym -> position_key for augment
@@ -52361,10 +52356,10 @@ async def _pp_unconditional_hard_stops(trade_manager, account_key, position_key,
         _gain = safe_fetch_float(getattr(_pos, "gain", 0), 0.0)
         _amt = abs(safe_float(getattr(_pos, "positionAmt", 0)))
         _fired = None
-        # USER 2026-10-16: "the low4 are switches that need to be tried on every sym_side like everything else" —
-        # the dc_low4/high4 structural stop is therefore NOT a hardcoded exit path. It fires only where a board has
-        # armed it (VIGILANCE_DC4_STOP_ARMED, per-sym resolvable); the non-negotiable stop is the one resting at the
-        # exchange on dc_low_15m/dc_high_15m -/+ 0.25%, which is untouched by this.
+        # USER 2026-10-16: the dc_low4/high4 structural stop fires only where a
+        # board has armed it (VIGILANCE_DC4_STOP_ARMED, per-sym resolvable) —
+        # switch-driven stops stay (USER 2026-10-25). The non-negotiable stop is
+        # the one resting at the exchange on dc_low_15m/dc_high_15m -/+ 0.25%.
         if bool(getattr(_cfg, "VIGILANCE_GUARD_ENABLED", True)) and bool(getattr(_cfg, "VIGILANCE_DC4_STOP_ARMED", False)):
             _vg_tf = str(getattr(_cfg, "VIGILANCE_DC4_STOP_TF", "15m") or "OFF").strip()
             if _vg_tf.upper() != "OFF" and _gain < 0:
@@ -53456,28 +53451,9 @@ async def process_position(
     if not _min_hold_ok_for_exit and position and abs(safe_float(getattr(position, "positionAmt", 0))) > 0:
         # don't await here — breach check is awaited at each gated exit; just log generic block now
         logger.debug(f"[MIN_HOLD_BLOCK] {position_key}: age {_pp_age_min_for_hold:.2f}m < {_min_hold_bars_for_exit}bars ({_min_hold_sec_for_exit/60:.1f}m) — all TIMED exits (HTF/R1/MTF/GR) deferred until hold satisfied unless dc_15m breach. Gain {safe_fetch_float(getattr(position,'gain',0),0):.2f}%")
-    # ═══ NEGBOOK WT-TURN EXIT (USER 2026-09-28): neg-book sym_side with an OPEN position holds
-    # while WT is with it and closes at the next WT turn against it. Reason carries NEGBOOK_WT_TURN
-    # (UNIVERSAL_NOLOSS_GATE bypass) + HARD_STOP/USER (HPO bypass).
-    if position and abs(safe_float(getattr(position, "positionAmt", 0))) > 0 and bool(getattr(config, "NEGBOOK_WT_TURN_EXIT_ENABLED", True)):
-        try:
-            _nb_is_long = position_side == "LONG"
-            if ez_negbook_is_blocked(symbol, position_side):
-                if _pp_shared_ind is None:
-                    _pp_shared_ind = await ii(trade_manager, symbol) or {}
-                _nb_tf = str(getattr(config, "NEGBOOK_WT_EXIT_TF", "15m") or "15m").strip()
-                _nb_w1 = safe_fetch_float(_pp_shared_ind.get(f"wt1_{_nb_tf}", 0), 0.0)
-                _nb_w2 = safe_fetch_float(_pp_shared_ind.get(f"wt2_{_nb_tf}", 0), 0.0)
-                _nb_against = (_nb_w1 != 0 or _nb_w2 != 0) and ((_nb_is_long and _nb_w1 < _nb_w2) or ((not _nb_is_long) and _nb_w1 > _nb_w2))
-                if _nb_against and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
-                    _nb_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
-                    _nb_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
-                    logger.critical(f"🚨 [NEGBOOK_WT_TURN_EXIT] {position_key}: neg-book side, wt1_{_nb_tf} {_nb_w1:.1f} turned against ({_nb_w2:.1f}) g={_nb_gain:.2f}% → CLOSE (USER 2026-09-28)")
-                    await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_nb_amt, side="SELL" if _nb_is_long else "BUY", position_side=position_side, quantity=_nb_amt, old_price=current_price, unique_id=f"NEGBOOK_WT_TURN_{int(time.time())}", reason=f"NEGBOOK_WT_TURN_HARD_STOP_USER_{'LONG' if _nb_is_long else 'SHORT'}_wt{_nb_tf}_g{_nb_gain:.2f}", is_full_close=True, action="CLOSE")
-                    trade_manager.processing_keys.discard(position_key)
-                    return f"{EvalStatus.ACTION_TAKEN}:NEGBOOK_WT_TURN_CLOSED"
-        except Exception as _nb_e:
-            logger.warning(f"[NEGBOOK] probe err {position_key}: {_nb_e}")
+    # USER 2026-10-25: only switch-driven stops plus the two non-negotiable
+    # FIXED_STOPS (frozen dc_15m ∓0.25% at entry, dc_4h ∓0.25% anytime) may
+    # exist — the NEGBOOK WT-turn exit is removed outright (no switch).
     # ═══════════════════════════════════════════════════════════════════════════
     # VIGILANCE GUARD (USER 2026-09-28, 3rd mandate: "we do not use fix %"): STRUCTURAL stop —
     # position at a loss AND price breaches dc_low4_{TF} (LONG) / dc_high4_{TF} (SHORT), TF from

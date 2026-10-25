@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-25T21:00:02Z",
+ "generated_utc": "2026-10-25T21:20:02Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
@@ -15,7 +15,7 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "filled_today": 473,
+    "filled_today": 471,
     "filled_before_open": 0
    },
    "detail": "no board was filled before the open"
@@ -40,7 +40,7 @@
    "measured": {
     "built_at": "2026-10-25T20:50:48.730518+00:00",
     "n": 525,
-    "age_at_open_s": 553
+    "age_at_open_s": 1754
    },
    "detail": "built 2026-10-25T20:50:48.730518+00:00 n=525"
   },
@@ -208,22 +208,22 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "symbols": 201,
-    "stale_over_90min": 64,
-    "stale_pct": 31.8,
-    "median_age_min": 15.0,
+    "symbols": 330,
+    "stale_over_90min": 85,
+    "stale_pct": 25.8,
+    "median_age_min": 35.0,
     "sample": [
-     "RAYSOLUSDT",
-     "RENDERUSDT",
-     "RIFUSDT",
-     "RLCUSDT",
-     "RONINUSDT",
-     "ROSEUSDT",
-     "RSRUSDT",
-     "RUNEUSDT"
+     "BOTUSDT",
+     "COSTUSDT",
+     "CSCOUSDT",
+     "DELLUSDT",
+     "DISUSDT",
+     "DKNGUSDT",
+     "DRAMUSDT",
+     "EBAYUSDT"
     ]
    },
-   "detail": "64/201 symbols past the live 90-min entry gate (31.8%)"
+   "detail": "85/330 symbols past the live 90-min entry gate (25.8%)"
   },
   {
    "name": "s1_sets_synced",
