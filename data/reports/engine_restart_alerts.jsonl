@@ -874,3 +874,4 @@
 {"ts":1792899320,"account":"ang","kind":"engine_restart_suppressed","msg":"ez_manage SILENT (273s > 120s) but host overloaded (load 242.16 on 12 cores) — kill DEFERRED to break the kill→bootstrap→load loop"}
 {"ts":1792899732,"account":"inf","kind":"engine_restart_suppressed","msg":"NO ENGINE CHILD for 56s and the 24h budget was already spent (last 25432s ago) — starting anyway: an account is never left without an engine"}
 {"ts":1792899735,"account":"flz","kind":"engine_restart_suppressed","msg":"NO ENGINE CHILD for 56s and the 24h budget was already spent (last 25364s ago) — starting anyway: an account is never left without an engine"}
+{"ts":1792910283,"account":"ang","kind":"engine_restart_suppressed","msg":"NO ENGINE CHILD for 61s and the 24h budget was already spent (last 36050s ago) — starting anyway: an account is never left without an engine"}
