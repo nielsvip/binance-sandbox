@@ -1,19 +1,19 @@
 {
- "generated_utc": "2026-10-25T13:12:03.691840+00:00",
+ "generated_utc": "2026-10-25T14:12:03.115611+00:00",
  "days": 1.0,
  "totals": {
-  "exit_promises": 140,
-  "exit_broken_no_delivery": 121,
+  "exit_promises": 141,
   "exit_skipped_inflight": 1511,
   "exit_kept_in_bar": 8,
+  "exit_broken_no_delivery": 121,
   "exit_kept_late": 11,
   "entry_promises": 92,
-  "entry_broken_no_delivery": 92
+  "entry_broken_no_delivery": 92,
+  "exit_pending": 1
  },
  "per_key": {
   "inf:TRXUSDT_SHORT": {
-   "exit_promises": 2,
-   "exit_broken_no_delivery": 1,
+   "exit_promises": 1,
    "exit_skipped_inflight": 4,
    "exit_kept_in_bar": 1
   },
@@ -358,8 +358,8 @@
   "fin:STXUSDT_SHORT": {
    "entry_promises": 4,
    "entry_broken_no_delivery": 4,
-   "exit_promises": 2,
-   "exit_broken_no_delivery": 2
+   "exit_promises": 3,
+   "exit_broken_no_delivery": 3
   },
   "fin:GRASSUSDT_LONG": {
    "entry_promises": 6,
@@ -376,9 +376,10 @@
    "exit_broken_no_delivery": 1
   },
   "flz:BTCDOMUSDT_SHORT": {
-   "exit_promises": 1,
+   "exit_promises": 2,
    "exit_skipped_inflight": 2,
-   "exit_kept_in_bar": 1
+   "exit_kept_in_bar": 1,
+   "exit_pending": 1
   },
   "fin:ACEUSDT_SHORT": {
    "exit_promises": 4,
@@ -432,16 +433,6 @@
   }
  },
  "detail": [
-  {
-   "acct": "inf",
-   "sym_side": "TRXUSDT_SHORT",
-   "kind": "exit",
-   "bar": "10-24 13:00",
-   "late_min": null,
-   "action": "REDUCE",
-   "reason": "WT_CROSS_EXIT_1h_bull",
-   "outcome": "NO_DELIVERY"
-  },
   {
    "acct": "ang",
    "sym_side": "MINAUSDT_SHORT",
@@ -2670,6 +2661,16 @@
    "late_min": null,
    "action": "REDUCE",
    "reason": "SATOSHIT_EXIT_PARTIAL 0.70",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "fin",
+   "sym_side": "STXUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-25 13:15",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "WT_CROSS_EXIT_1h_bull",
    "outcome": "NO_DELIVERY"
   }
  ],
