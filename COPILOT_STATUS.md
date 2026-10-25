@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-25 04:15:52 UTC
+# Copilot Status — 2026-10-25 04:20:58 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-25T04:11:48
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T04:11:48
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T04:12:29
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T04:13:29
-- **STALE_INDICATORS** [tradier]  — 2026-10-25T04:13:50
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T04:13:50
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T04:14:30
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T04:15:31
 - **STALE_INDICATORS** [tradier]  — 2026-10-25T04:15:52
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T04:15:52
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T04:16:33
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T04:17:34
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T04:17:55
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T04:18:35
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T04:19:36
+- **STALE_INDICATORS** [tradier]  — 2026-10-25T04:19:57
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T04:19:57
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T04:20:37
 
 ## Missed Trades (trader comparison)
 
@@ -30,7 +30,7 @@ _None_
 **Held:** 4 | **Watching for reentry:** 5 | **Reentered:** 0
 
 - HELD: **ARM** SHORT (tradier) peak +8.3%, now +-0.5%
-- HELD: **WLDUSDC** LONG (crypto) peak +7.3%, now +0.0%
+- HELD: **WLDUSDC** LONG (crypto) peak +7.3%, now +0.2%
 - HELD: **CDE** SHORT (tradier) peak +5.0%, now +2.1%
 - HELD: **NXE** SHORT (tradier) peak +3.3%, now +-0.4%
 
@@ -46,7 +46,7 @@ _None_
 
 **Issues (last 1h):** 50
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] tradier_positions.py running but log stale (74min)
+- [MEDIUM] tradier_positions.py running but log stale (79min)
 - [LOW] tradier_rankings.py is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] tradier_positions.py running but log stale (75min)
+- [MEDIUM] tradier_positions.py running but log stale (80min)

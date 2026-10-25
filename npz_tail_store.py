@@ -87,7 +87,14 @@ def _json_safe(value):
         if value != value or value in (float("inf"), float("-inf")):
             return 0.0
         return value
-    return value
+    try:
+        json.dumps(value)
+        return value
+    except Exception:
+        try:
+            return float(value)
+        except Exception:
+            return str(value)[:64]
 
 
 def _tail_tip_ts(tail_path):
