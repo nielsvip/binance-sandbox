@@ -32,7 +32,7 @@ PUBLIC_SHELL="ssh -i /Users/niels/.ssh/id_ed25519 -o BatchMode=yes -o ConnectTim
 EXCLUDES=(--include 'SPREADSHEETS/' --include 'SPREADSHEETS/TEMPLATE_FINAL_NORM/' --include 'SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx' --include 'SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx' --include 'SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_LONG.xlsx' --include 'SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_SHORT.xlsx' --exclude 'SPREADSHEETS/TEMPLATE_FINAL_NORM/*' --exclude 'SPREADSHEETS/*'
   --include 'data/' --include 'data/livecode_sync.json' --exclude 'data/*' --exclude 'logs/' --exclude '*.log'
   --exclude '.venv/' --exclude '__pycache__/' --exclude '.git/' --exclude '.env*' --exclude '*secret*'
-  --exclude '*.pem' --exclude '*.key' --exclude 'backups/' --exclude 'tests/' --exclude 'SPREADSHEETS/'
+  --exclude '*.pem' --exclude '*.key' --exclude 'backups/' --exclude 'tests/' --exclude 'projects/' --exclude 'SPREADSHEETS/'
   --exclude '*.xlsx' --exclude '*.npz' --exclude '.agents/' --exclude '.muse/' --exclude '.codex/'
   --exclude 'node_modules/' --exclude '.nova/' --exclude '*.pyc' --exclude '.DS_Store'
   --exclude 'ang/' --exclude 'inf/' --exclude 'flz/' --exclude 'men/' --exclude 'fin/'
