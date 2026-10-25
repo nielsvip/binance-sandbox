@@ -1,58 +1,37 @@
 {
-  "flz:BTCDOMUSDT_LONG": {
-    "orderId": "1000002642477913",
-    "stopPrice": 5538.5,
-    "entry_sig": "2026-10-25 09:41:36.881000+00:00",
-    "symbol": "BTCDOMUSDT",
+  "men:ZROUSDT_LONG": {
+    "orderId": "2000001539563790",
+    "stopPrice": 1.6766,
+    "entry_sig": "2026-10-25 10:29:56.595000+00:00",
+    "symbol": "ZROUSDT",
     "side": "LONG"
   },
-  "flz:GRAMUSDT_LONG": {
-    "orderId": "1000002642517553",
-    "stopPrice": 1.148,
-    "entry_sig": "2026-10-25 10:26:10.410000+00:00",
-    "symbol": "GRAMUSDT",
-    "side": "LONG"
-  },
-  "flz:HYPEUSDT_SHORT": {
-    "orderId": "1000002642518537",
-    "stopPrice": 77.145,
-    "entry_sig": "2026-10-25 08:25:06.258000+00:00",
-    "symbol": "HYPEUSDT",
+  "men:XPLUSDT_SHORT": {
+    "orderId": "2000001539568887",
+    "stopPrice": 0.07285,
+    "entry_sig": "2026-10-25 07:36:52.012000+00:00",
+    "symbol": "XPLUSDT",
     "side": "SHORT"
   },
-  "flz:BNBUSDC_LONG": {
-    "orderId": "1000002642519186",
-    "stopPrice": 715.5,
-    "entry_sig": "2026-10-25 10:22:50.431000+00:00",
-    "symbol": "BNBUSDC",
-    "side": "LONG"
-  },
-  "flz:DOGEUSDC_SHORT": {
-    "orderId": "1000002642520488",
-    "stopPrice": 0.08425,
-    "entry_sig": "2026-10-25 10:29:30.420000+00:00",
-    "symbol": "DOGEUSDC",
+  "men:ENJUSDT_SHORT": {
+    "orderId": "2000001539568901",
+    "stopPrice": 0.0254,
+    "entry_sig": "2026-10-25 08:53:26.009000+00:00",
+    "symbol": "ENJUSDT",
     "side": "SHORT"
   },
-  "flz:WLDUSDC_SHORT": {
-    "orderId": "1000002642520506",
-    "stopPrice": 0.4718,
-    "entry_sig": "2026-10-25 10:14:07.583000+00:00",
-    "symbol": "WLDUSDC",
+  "men:ACTUSDT_SHORT": {
+    "orderId": "2000001539570612",
+    "stopPrice": 0.008417,
+    "entry_sig": "2026-10-25 09:54:04.906000+00:00",
+    "symbol": "ACTUSDT",
     "side": "SHORT"
   },
-  "flz:ZECUSDC_SHORT": {
-    "orderId": "1000002642520600",
-    "stopPrice": 1230.96,
-    "entry_sig": "2026-10-25 10:14:26.923018+00:00",
-    "symbol": "ZECUSDC",
-    "side": "SHORT"
-  },
-  "flz:SOLUSDC_SHORT": {
-    "orderId": "1000002642520678",
-    "stopPrice": 102.85,
-    "entry_sig": "2026-10-25 10:14:30.316000+00:00",
-    "symbol": "SOLUSDC",
+  "men:RVNUSDT_SHORT": {
+    "orderId": "2000001539571226",
+    "stopPrice": 0.001331,
+    "entry_sig": "2026-10-25 10:21:48.146000+00:00",
+    "symbol": "RVNUSDT",
     "side": "SHORT"
   }
 }
