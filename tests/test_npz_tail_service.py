@@ -119,6 +119,29 @@ def test_sweep_appends_with_float_now(tmp_path):
     assert r == "appended" and tail_len(str(npz)) == 1
 
 
+def test_appended_row_carries_parent_labels(tmp_path):
+    from npz_tail_store import load_merged
+
+    npz = tmp_path / "TSTPUSDT.npz"
+    np.savez_compressed(
+        str(npz),
+        timestamps=np.array([1792899000 - 900], dtype=np.int64),
+        timestamp_15m=np.array([1792899000 - 900], dtype=np.int64),
+        close=np.ones(1),
+    )
+    r = sweep_symbol(
+        str(npz),
+        "TSTPUSDT",
+        1792899000,
+        lambda s, t: {"close": 9.0},
+        now_s=1792899000 + 120.0,
+    )
+    assert r == "appended"
+    m = load_merged(str(npz))
+    assert int(m["timestamp_15m"][-1]) == 1792899000
+    assert int(m["timestamps"][-1]) == 1792899000
+
+
 def test_sweep_refuses_forming_bar(tmp_path):
     npz = tmp_path / "TST2USDT.npz"
     np.savez_compressed(

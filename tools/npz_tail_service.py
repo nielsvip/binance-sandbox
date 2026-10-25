@@ -144,8 +144,12 @@ def sweep_symbol(
         return "error"
     if not row:
         return "error"
+    final = dict(row, timestamps=int(last_close_ts))
+    # Same parent-label rule as _append_row_to_npz: base-TF availability ts = the new bar itself.
+    for _tf in ("15m", "5m", "3m", "1m"):
+        final[f"timestamp_{_tf}"] = int(last_close_ts)
     try:
-        ok = append_tail_row(npz_path, dict(row, timestamps=int(last_close_ts)))
+        ok = append_tail_row(npz_path, final)
     except Exception:
         return "error"
     if ok and on_append is not None:
