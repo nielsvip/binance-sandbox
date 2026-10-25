@@ -127,6 +127,26 @@ def test_drop_forming_bar():
     assert len(gen._drop_forming_bar(df, "BOGUS")) == 2
 
 
+def test_compute_uses_fresh_calculator():
+    from ez_indicators import IndicatorCalculator
+    tmpdir = Path(tempfile.mkdtemp())
+    sym = "FRESHUSDT"
+    end = datetime.now(timezone.utc).replace(second=0, microsecond=0)
+    end = end.replace(minute=(end.minute // 15) * 15) - timedelta(minutes=60)
+    for tf, n in [("15m", 600), ("3m", 800), ("1h", 400), ("4h", 200), ("D", 120)]:
+        _make_klines(tmpdir, sym, tf, n, end)
+    orig = gen._resolve_kline_path
+    def _fake(s, tf_, m, bp):
+        p = tmpdir / f"{s}_{tf_}.json"
+        return p if p.exists() else None
+    gen._resolve_kline_path = _fake
+    try:
+        row = gen._compute_row_for_15m_close(sym, end, None, None, "crypto")
+    finally:
+        gen._resolve_kline_path = orig
+    assert row is not None and "close" in row
+
+
 def test_label_table_matches_vec_exact():
     import tradier_vec_exact as t
     for pre, m in t._INT_ENCODE.items():

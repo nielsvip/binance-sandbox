@@ -60,12 +60,24 @@ def main():
         state = json.loads(STATE_FILE.read_text())
     except Exception:
         state = {}
+    for _h, _v in list(state.items()):
+        if isinstance(_v, dict) and "adds" not in _v and "sides" in _v:
+            state[_h] = {"cursor": _v.get("cursor", 0), "adds": [{"sides": _v.get("sides", []), "ts": _v.get("ts", "2000-01-01+00:00")}]}
     now = datetime.datetime.now(datetime.timezone.utc)
     try:
         pins = json.loads(PIN_FILE.read_text())
     except Exception:
         pins = {"sides": [], "hosts": []}
-    mine = {h: v for h, v in state.items() if (now - datetime.datetime.fromisoformat(v.get("ts", "2000-01-01+00:00"))).total_seconds() < PIN_TTL_MIN * 60}
+    ever_added = {s for v in state.values() for a in v.get("adds", []) for s in a.get("sides", [])}
+    active = set()
+    for v in state.values():
+        for a in v.get("adds", []):
+            try:
+                age = (now - datetime.datetime.fromisoformat(a.get("ts", "2000-01-01+00:00"))).total_seconds()
+            except Exception:
+                age = 10 ** 9
+            if age < PIN_TTL_MIN * 60:
+                active.update(a.get("sides", []))
     fired = {}
     for host in hosts:
         name = host.get("name", "")
@@ -79,7 +91,8 @@ def main():
         sides = _duty_sides(host)
         if not sides:
             continue
-        start = mine.get(name, {}).get("cursor", 0)
+        rec = state.get(name, {})
+        start = rec.get("cursor", 0)
         pick = []
         for i in range(len(sides)):
             s = sides[(start + i) % len(sides)]
@@ -88,13 +101,15 @@ def main():
             if len(pick) >= N_PIN:
                 break
         if pick:
-            mine[name] = {"cursor": (start + len(pick)) % len(sides), "ts": now.isoformat(), "sides": pick}
+            adds = [a for a in rec.get("adds", []) if (now - datetime.datetime.fromisoformat(a.get("ts", "2000-01-01+00:00"))).total_seconds() < 7200]
+            adds.append({"sides": pick, "ts": now.isoformat()})
+            state[name] = {"cursor": (start + len(pick)) % len(sides), "adds": adds}
             fired[name] = (round(sat, 2), pick)
-    if fired:
-        keep_hosts = sorted({h for h in pins.get("hosts", [])} | {h for h in mine})
-        keep_sides = sorted(set(pins.get("sides", [])) | {s for v in mine.values() for s in v.get("sides", [])})
+    if fired or (ever_added - active):
+        keep_hosts = sorted({h for h in pins.get("hosts", [])} | set(state))
+        keep_sides = sorted((set(pins.get("sides", [])) - (ever_added - active)) | active)
         _atomic_write(PIN_FILE, {"sides": keep_sides, "hosts": keep_hosts})
-    STATE_FILE.write_text(json.dumps(mine, indent=1))
+    STATE_FILE.write_text(json.dumps(state, indent=1))
     print("idle_detector sat-floor=%s fired=%s" % (FLOOR, json.dumps(fired)))
 
 

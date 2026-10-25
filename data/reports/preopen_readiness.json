@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-25T02:00:09Z",
+ "generated_utc": "2026-10-25T02:20:19Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
@@ -7,7 +7,8 @@
  "failed_critical": [
   "boards_recomputed",
   "defaults_chain_completed",
-  "live_set_matches_selection"
+  "live_set_matches_selection",
+  "indicators_fresh"
  ],
  "checks": [
   {
@@ -15,7 +16,7 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "filled_today": 349,
+    "filled_today": 345,
     "filled_before_open": 0
    },
    "detail": "no board was filled before the open"
@@ -40,7 +41,7 @@
    "measured": {
     "built_at": "2026-10-25T01:51:56.263076+00:00",
     "n": 524,
-    "age_at_open_s": 493
+    "age_at_open_s": 1704
    },
    "detail": "built 2026-10-25T01:51:56.263076+00:00 n=524"
   },
@@ -148,19 +149,6 @@
       ]
      },
      {
-      "sym_side": "STXUSDT_LONG",
-      "published_at": "2026-10-25T01:41:48Z",
-      "material": 62,
-      "sample": [
-       "ADX_REGIME_FILTER_ENABLED",
-       "ATR_ADAPTIVE_STOP_TF",
-       "AUGMENT_FALLBACK_REDUCE_ENABLED",
-       "AUGMENT_FALLBACK_REDUCE_PCT",
-       "BAR_PATTERNS_FILTER_TF",
-       "BB_BREAKOUT_ENTRY_TF"
-      ]
-     },
-     {
       "sym_side": "APO_SHORT",
       "published_at": "2026-10-20T11:43:52Z",
       "material": 55,
@@ -198,6 +186,19 @@
        "BB_SQUEEZE_ENTRY_ENABLED",
        "COUNTER_TREND_ADD_BLOCK_ENABLED"
       ]
+     },
+     {
+      "sym_side": "SHOP_LONG",
+      "published_at": "2026-10-22T04:02:56Z",
+      "material": 42,
+      "sample": [
+       "ATR_ADAPTIVE_SIZING_ENABLED",
+       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
+       "ATR_ADAPTIVE_STOP_MULT",
+       "ATR_ADAPTIVE_STOP_TF",
+       "DC_EDGE_SIZING_MIN_MULT",
+       "DC_HARD_STOP_1H_ENABLED"
+      ]
      }
     ]
    },
@@ -205,19 +206,25 @@
   },
   {
    "name": "indicators_fresh",
-   "ok": true,
+   "ok": false,
    "critical": true,
    "measured": {
-    "symbols": 330,
-    "stale_over_90min": 2,
-    "stale_pct": 0.6,
-    "median_age_min": 30.2,
+    "symbols": 329,
+    "stale_over_90min": 118,
+    "stale_pct": 35.9,
+    "median_age_min": 65.3,
     "sample": [
-     "DUSKUSDT",
-     "ONEUSDT"
+     "ARMUSDT",
+     "ARPAUSDT",
+     "ASTSUSDT",
+     "ATOMUSDT",
+     "AVGOUSDT",
+     "AXLUSDT",
+     "AXTIUSDT",
+     "BABAUSDT"
     ]
    },
-   "detail": "2/330 symbols past the live 90-min entry gate (0.6%)"
+   "detail": "118/329 symbols past the live 90-min entry gate (35.9%)"
   },
   {
    "name": "s1_sets_synced",

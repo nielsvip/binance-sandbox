@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-25T02:22:47Z",
+ "generated_utc": "2026-10-25T02:27:56Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 960.6,
+  "age_s": 50.0,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 46725,
-  "proc_age_s": 69899.0,
-  "log_age_s": 697.1,
+  "proc_age_s": 70208.0,
+  "log_age_s": 195.3,
   "warmup_done": true,
   "timeframes_since_restart": [
    "4h",
@@ -60,21 +60,20 @@
   "mode": "ACTIVE",
   "since_epoch": 1792602182.2042153,
   "activations": 163,
-  "hb_mtime": 1792894702.8736827,
-  "mac_snapshot_age_s": 34.96530842781067,
-  "mac_stale": true,
+  "hb_mtime": 1792895015.8416557,
+  "mac_snapshot_age_s": 18.295177459716797,
+  "mac_stale": false,
   "lease_holder": "mac",
   "lease_venues": null,
-  "lease_since": "2026-10-25T02:16:23Z",
+  "lease_since": "2026-10-25T02:19:39Z",
   "lease_reason": "manual force-mac",
-  "now": 1792894706.4889839,
-  "from_cache_age_s": 260.1,
-  "heartbeat_age_s": 3.6,
-  "active_s": 292524.3,
-  "note": "ACTIVE is CORRECT while the Mac snapshot is stale \u2014 fix the Mac, S1 returns to NORMAL on its own"
+  "now": 1792895036.2221105,
+  "from_cache_age_s": 240.2,
+  "heartbeat_age_s": 20.4,
+  "active_s": 292854.0
  },
  "alerts": [
-  "SNAPSHOT STALE: latest_market_data.json is 960s old (> 600s). ez_indicators pid=46725 warmup_done=True tfs_since_restart=['4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h'] restarts_last_hour=0. Live crypto decisions are reading a stale indicator snapshot."
+  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 292854s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (20s) AND the Mac snapshot is fresh (49s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
  ],
  "verdict": "ALERT"
 }

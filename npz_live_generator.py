@@ -182,6 +182,17 @@ def _compute_row_for_15m_close(
     IndicatorCalculator.compute, then collect the scalar results for the new row.
     Returns dict of {key: value} for that row, or None if insufficient data.
     """
+    # USER 2026-10-25: always compute with a FRESH calculator, never the caller's shared one. Measured on S1:
+    # 8 threads sharing one IndicatorCalculator took 33-51 s/symbol (GIL/state contention); fresh calculators do
+    # the same row in ~7 s. The daemon shares its hot calculator across its live loop and 8 NPZ workers, which is
+    # what wedged every cycle past the bar window. Lazy import (ez_indicators imports this module at its top).
+    try:
+        from ez_indicators import IndicatorCalculator as _FreshCalc
+        calculator = _FreshCalc()
+    except Exception:
+        pass
+    if calculator is None:
+        return None
     row: Dict[str, Any] = {}
     # 15m base close timestamp as epoch seconds (for NPZ timestamps array)
     # NPZ stores timestamps as int64 seconds since epoch (UTC)
