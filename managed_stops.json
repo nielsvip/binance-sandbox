@@ -1,13 +1,20 @@
 {
-  "inf:VETUSDT_LONG": {
-    "orderId": "2000001540082092",
-    "stopPrice": 0.006771,
-    "entry_sig": "2026-10-25 15:48:41.387000+00:00",
-    "symbol": "VETUSDT",
-    "side": "LONG"
+  "inf:GALAUSDT_SHORT": {
+    "orderId": "2000001540086403",
+    "stopPrice": 0.00199,
+    "entry_sig": "2026-10-25 15:51:35.684000+00:00",
+    "symbol": "GALAUSDT",
+    "side": "SHORT"
+  },
+  "inf:COTIUSDT_SHORT": {
+    "orderId": "2000001540087565",
+    "stopPrice": 0.010494,
+    "entry_sig": "2026-10-25 15:52:40.229000+00:00",
+    "symbol": "COTIUSDT",
+    "side": "SHORT"
   },
   "inf:BATUSDT_LONG": {
-    "orderId": "2000001540082324",
+    "orderId": "2000001540089471",
     "stopPrice": 0.15495,
     "entry_sig": "2026-10-25 15:43:29.469000+00:00",
     "symbol": "BATUSDT",
