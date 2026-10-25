@@ -24,6 +24,26 @@ import sys,json,os
 import numpy as np
 sidesf,sb,sp,pdir,tb,pb=sys.argv[1:7]
 sides=[l.strip() for l in open(sidesf) if l.strip()]
+sides=[s for s in sides if s.endswith('_SHORT')]
+cache_path=pb+'.state.json'
+try: cache=json.load(open(cache_path))
+except (OSError,ValueError): cache={}
+next_cache={}
+def progress_state(path):
+    try: st=os.stat(path)
+    except OSError: return 0,0
+    key=str(st.st_mtime_ns)+':'+str(st.st_size)
+    old=cache.get(path)
+    if isinstance(old,dict) and old.get('key')==key:
+        next_cache[path]=old
+        return int(old.get('done') or 0),int(old.get('ts') or 0)
+    try:
+        j=json.load(open(path))
+        done=int(j.get('final_gain') is not None)
+        ts=int(j.get('npz_last_bar_ts') or (j.get('npz_id') or {}).get('ts_last') or 0)
+    except (OSError,ValueError,TypeError,OverflowError): return 0,0
+    next_cache[path]={'key':key,'done':done,'ts':ts}
+    return done,ts
 syms=sorted({s.rsplit('_',1)[0] for s in sides})
 with open(tb,'w') as f:
     for sym in syms:
@@ -34,14 +54,15 @@ with open(pb,'w') as f:
     for s in sides:
         fg=0;ts=0
         for d in (sp,pdir):
-            try: j=json.load(open(os.path.join(d,s+'_v14_progress.json')))
-            except Exception: continue
-            if j.get('final_gain') is not None: fg=1
-            try: ts=max(ts,int(j.get('npz_last_bar_ts') or 0))
-            except Exception: pass
+            done,bar=progress_state(os.path.join(d,s+'_v14_progress.json'))
+            fg=max(fg,done);ts=max(ts,bar)
         f.write('%s %d %d\n'%(s,fg,ts))
+tmp=cache_path+'.tmp'+str(os.getpid())
+with open(tmp,'w') as f: json.dump(next_cache,f)
+os.replace(tmp,cache_path)
 PYEOF
 for ss in $(cat "$SIDES" 2>/dev/null); do
+  case "$ss" in *_SHORT) ;; *) continue ;; esac
   [ "$nrun" -ge "$MAX" ] && break
   pgrep -f "python[^ ]* -u v15_pilot.py --sym-side ${ss} " >/dev/null 2>&1 && continue
   _rec="/tmp/dispatched_${ss}"
@@ -82,7 +103,7 @@ for ss in $(cat "$SIDES" 2>/dev/null); do
     if [ -n "$_curt" ] && [ "$_curt" != "0" ] && [ $(( ($_curt - $_rects) / 900 )) -lt 48 ]; then _fresh_board=1; fi
   fi
   if { [ "$done1" = "1" ] || [ "$done2" = "1" ]; } && [ "$_fresh_board" = "1" ]; then continue; fi
-  _out=$(bash /tmp/overload_run.sh "$ss" "$T" "$W" "$MAX" 2>&1 | grep -E "LAUNCHED|ALREADY" | head -n 1)
+  _out=$(bash "$SB/tools/worker_lanes/s6/overload_run.sh" "$ss" "$T" "$W" "$MAX" 2>&1 | grep -E "LAUNCHED|ALREADY" | head -n 1)
   echo "$_out"
   case "$_out" in LAUNCHED-*) _lt=$(awk -v s="${ss%_*}" '$1==s{print $2}' "$_TB" 2>/dev/null); echo "$(date +%s) ${_lt:-0}" > "/tmp/dispatched_${ss}";; esac
   case "$_out" in LAUNCHED-*|ALREADY-*) nrun=$((nrun + 1));; esac

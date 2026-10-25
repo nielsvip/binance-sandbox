@@ -15,6 +15,7 @@ mkdir -p "$SP"
 rsync -az --timeout=60 niels@10.0.0.3:v15_run36_20261024/progress/ "$SP/" >/dev/null 2>&1
 nrun=$(pgrep -af "python[^ ]* -u v15_pilot.py --sym-side " 2>/dev/null | grep -oE -- '--sym-side [A-Z0-9_]+' | sort -u | wc -l)
 for ss in $(cat "$SIDES" 2>/dev/null); do
+  case "$ss" in *_LONG) ;; *) continue ;; esac
   [ "$nrun" -ge "$MAX" ] && break
   pgrep -f "python[^ ]* -u v15_pilot.py --sym-side ${ss} " >/dev/null 2>&1 && continue
   _rec="/tmp/dispatched_${ss}"
@@ -48,7 +49,7 @@ for ss in $(cat "$SIDES" 2>/dev/null); do
     fi
   done
   if { [ "$done1" = "1" ] || [ "$done2" = "1" ]; } && [ "$_fresh_board" = "1" ]; then continue; fi
-  _out=$(bash /tmp/overload_run.sh "$ss" "$T" "$W" "$MAX" 2>&1 | grep -E "LAUNCHED|ALREADY" | head -n 1)
+  _out=$(bash "$SB/tools/worker_lanes/s2/overload_run.sh" "$ss" "$T" "$W" "$MAX" 2>&1 | grep -E "LAUNCHED|ALREADY" | head -n 1)
   echo "$_out"
   case "$_out" in LAUNCHED-*) _lt=$(/home/niels/.conda/envs/binance_env_mac/bin/python -c "import numpy as np;print(int(np.load('$SB/backtest_v8/indicators/${ss%_*}.npz',mmap_mode='r')['timestamps'][-1]))" 2>/dev/null || echo 0); echo "$(date +%s) ${_lt:-0}" > "/tmp/dispatched_${ss}";; esac
   case "$_out" in LAUNCHED-*|ALREADY-*) nrun=$((nrun + 1));; esac

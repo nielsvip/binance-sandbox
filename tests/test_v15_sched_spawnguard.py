@@ -1,9 +1,11 @@
 """Scheduler spawn-guard + fair rotation (USER 2026-10-11): every sym gets its turn, no dup stacks."""
 
 import subprocess
+import shutil
 import sys
 import time
 import unittest
+import uuid
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -13,6 +15,18 @@ from v15_fleet_scheduler import _place_order, _spawn_guard, pair_launch_cmd, sid
 
 
 class SpawnGuardShellTest(unittest.TestCase):
+    @unittest.skipUnless(shutil.which("flock"), "Linux fleet lock test")
+    def test_global_lock_released_while_board_runs(self):
+        # A foreground pilot used to hold the host-wide lock for hours, leaving
+        # every other free slot idle. The lock must cover spawning only.
+        ss = "Z" + uuid.uuid4().hex[:10].upper() + "_LONG"
+        g = _spawn_guard(ss, "30D", "sleep 7")
+        started = time.monotonic()
+        subprocess.run(["bash", "-c", g], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True, timeout=6)
+        self.assertLess(time.monotonic() - started, 5.5)
+        probe = subprocess.run(["flock", "-n", "/tmp/v15_fleet_launch.lock", "true"], capture_output=True)
+        self.assertEqual(probe.returncode, 0, probe.stderr)
+
     def test_body_runs_when_idle_no_self_match(self):
         # REGRESSION 21:50Z: the body MUST contain the literal pilot invocation (as
         # production side_cmd emits) — the first guard matched its own bash -c wrapper

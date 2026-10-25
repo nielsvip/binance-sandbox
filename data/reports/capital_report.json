@@ -1,92 +1,139 @@
 {
- "generated_at": "2026-10-25 22:20 UTC",
- "total_capital_usd": 260.64,
+ "generated_at": "2026-10-25 22:32 UTC",
+ "total_capital_usd": 118.04,
  "tier_capital": {
   "A": 0.0,
-  "B": 48.59,
-  "C": 212.04
+  "B": 21.34,
+  "C": 96.7
  },
  "tier_count": {
   "A": 0,
   "B": 3,
-  "C": 3
+  "C": 7
  },
  "winners": [],
  "losers": [
-  "inf:COTIUSDT_SHORT",
-  "inf:BTCUSDC_SHORT",
-  "inf:PENGUUSDC_LONG"
+  "men:TIAUSDC_LONG",
+  "men:ZROUSDT_LONG",
+  "men:ETHFIUSDC_LONG",
+  "men:ZILUSDT_SHORT",
+  "men:GALAUSDT_SHORT",
+  "men:RVNUSDT_SHORT",
+  "men:ENJUSDT_SHORT",
+  "men:INJUSDT_LONG",
+  "men:PARTIUSDT_SHORT"
  ],
- "mediocre": [
-  "inf:GRAMUSDT_SHORT",
-  "inf:ZENUSDT_SHORT"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "inf:BTCUSDC_SHORT",
-   "symbol": "BTCUSDC",
-   "account": "inf",
-   "value_usd": 160.89,
-   "gain_pct": 0.017,
+   "pk": "men:GALAUSDT_SHORT",
+   "symbol": "GALAUSDT",
+   "account": "men",
+   "value_usd": 27.95,
+   "gain_pct": 0.169,
    "tier": "C",
-   "perf_mult": 0.51,
-   "amt": 0.002,
-   "mark": 80444.38597083
+   "perf_mult": 0.13,
+   "amt": 16110.0,
+   "mark": 0.00173507
   },
   {
-   "pk": "inf:COTIUSDT_SHORT",
-   "symbol": "COTIUSDT",
-   "account": "inf",
-   "value_usd": 44.14,
-   "gain_pct": -0.163,
+   "pk": "men:RVNUSDT_SHORT",
+   "symbol": "RVNUSDT",
+   "account": "men",
+   "value_usd": 24.84,
+   "gain_pct": 0.47,
    "tier": "C",
+   "perf_mult": 0.16,
+   "amt": 18919.0,
+   "mark": 0.0013128
+  },
+  {
+   "pk": "men:TIAUSDC_LONG",
+   "symbol": "TIAUSDC",
+   "account": "men",
+   "value_usd": 17.47,
+   "gain_pct": -0.657,
+   "tier": "C",
+   "perf_mult": 0.18,
+   "amt": 33.0,
+   "mark": 0.5295
+  },
+  {
+   "pk": "men:ZROUSDT_LONG",
+   "symbol": "ZROUSDT",
+   "account": "men",
+   "value_usd": 8.83,
+   "gain_pct": -0.603,
+   "tier": "B",
    "perf_mult": 0.42,
-   "amt": 4230.0,
-   "mark": 0.010435
+   "amt": 5.0,
+   "mark": 1.7663
   },
   {
-   "pk": "inf:LTCUSDC_SHORT",
-   "symbol": "LTCUSDC",
-   "account": "inf",
-   "value_usd": 20.53,
-   "gain_pct": 0.133,
-   "tier": "B",
-   "perf_mult": 2.05,
-   "amt": 0.361,
-   "mark": 56.87521496
-  },
-  {
-   "pk": "inf:GRAMUSDT_SHORT",
-   "symbol": "GRAMUSDT",
-   "account": "inf",
-   "value_usd": 18.9,
-   "gain_pct": 0.158,
-   "tier": "B",
-   "perf_mult": 0.53,
-   "amt": 15.0,
-   "mark": 1.26
-  },
-  {
-   "pk": "inf:ZENUSDT_SHORT",
-   "symbol": "ZENUSDT",
-   "account": "inf",
-   "value_usd": 9.16,
-   "gain_pct": -0.299,
-   "tier": "B",
-   "perf_mult": 0.78,
-   "amt": 1.6,
-   "mark": 5.72784483
-  },
-  {
-   "pk": "inf:PENGUUSDC_LONG",
-   "symbol": "PENGUUSDC",
-   "account": "inf",
-   "value_usd": 7.01,
-   "gain_pct": 0.197,
+   "pk": "men:ZILUSDT_SHORT",
+   "symbol": "ZILUSDT",
+   "account": "men",
+   "value_usd": 7.0,
+   "gain_pct": -0.08,
    "tier": "C",
-   "perf_mult": 0.51,
-   "amt": 935.0,
-   "mark": 0.00750262
+   "perf_mult": 0.14,
+   "amt": 3710.0,
+   "mark": 0.0018865
+  },
+  {
+   "pk": "men:1000BONKUSDC_SHORT",
+   "symbol": "1000BONKUSDC",
+   "account": "men",
+   "value_usd": 6.92,
+   "gain_pct": 1.155,
+   "tier": "B",
+   "perf_mult": 0.23,
+   "amt": 2310.0,
+   "mark": 0.002996
+  },
+  {
+   "pk": "men:PARTIUSDT_SHORT",
+   "symbol": "PARTIUSDT",
+   "account": "men",
+   "value_usd": 6.89,
+   "gain_pct": 1.34,
+   "tier": "C",
+   "perf_mult": 0.28,
+   "amt": 208.0,
+   "mark": 0.03312
+  },
+  {
+   "pk": "men:INJUSDT_LONG",
+   "symbol": "INJUSDT",
+   "account": "men",
+   "value_usd": 6.33,
+   "gain_pct": 1.215,
+   "tier": "C",
+   "perf_mult": 0.43,
+   "amt": 0.8,
+   "mark": 7.911
+  },
+  {
+   "pk": "men:ENJUSDT_SHORT",
+   "symbol": "ENJUSDT",
+   "account": "men",
+   "value_usd": 6.22,
+   "gain_pct": 0.504,
+   "tier": "C",
+   "perf_mult": 0.14,
+   "amt": 252.0,
+   "mark": 0.02467508
+  },
+  {
+   "pk": "men:ETHFIUSDC_LONG",
+   "symbol": "ETHFIUSDC",
+   "account": "men",
+   "value_usd": 5.59,
+   "gain_pct": -0.554,
+   "tier": "B",
+   "perf_mult": 0.84,
+   "amt": 8.9,
+   "mark": 0.6286
   }
  ]
 }
