@@ -1,8 +1,8 @@
 {
- "at": "2026-10-25T14:45:08Z",
+ "at": "2026-10-25T15:00:07Z",
  "s1": {
   "host": "niels",
-  "now": 1792939504.3855424,
+  "now": 1792940403.512163,
   "merge_crypto": {
    "n": 12,
    "max_lag_min": 0.0,
@@ -18,9 +18,9 @@
    "dead": []
   },
   "npz_legacy_crypto": [],
-  "append_log_age_min": 9.3,
-  "append_last_secs": 645.1,
-  "append_last_stats": "'appended': 891, 'created': 0, 'up_to_date': 5476, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
+  "append_log_age_min": 9.8,
+  "append_last_secs": 611.7,
+  "append_last_stats": "'appended': 853, 'created': 0, 'up_to_date': 5514, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
   "npz_loop_pids": 0,
   "npz_cycle_last_utc": "13:17:40",
   "npz_cycle_installed": 16,
@@ -29,7 +29,7 @@
   "npz_loop_has_settle": false,
   "archive_n": 199,
   "archive_mb": 2394.9,
-  "archive_newest_min": 665.8,
+  "archive_newest_min": 680.8,
   "_via": "s1-int"
  },
  "red": [
@@ -37,7 +37,7 @@
   "L4 scheduler last ticked None min ago (cron */2)"
  ],
  "warn": [
-  "L5 newest archived board NPZ is 666 min old \u2014 publishes may not be recording"
+  "L5 newest archived board NPZ is 681 min old \u2014 publishes may not be recording"
  ],
  "ok": false
 }
