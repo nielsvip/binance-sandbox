@@ -460,6 +460,7 @@ def _mark_stale_trailing(marked, max_age_s=1800.0):
 SCALP_FLOOR_BYPASS_REASONS = (
     "HARD_STOP", "VIGILANCE_DC4", "NEGBOOK_WT_TURN", "BROKER_SYNC",
     "BROKER SYNC", "LIQUIDAT", "FIXED_STOP", "STOP_LOSS", "EMERGENCY",
+    "GIVEBACK",
 )
 
 

@@ -275,7 +275,8 @@ def test_scalp_floor_never_touches_entries():
 def test_scalp_floor_stop_family_bypasses():
     for reason in ["FIXED_STOP_HIT", "HARD_STOP_USER", "VIGILANCE_DC4_CLOSE",
                    "NEGBOOK_WT_TURN_HARD_STOP_USER_LONG", "BROKER_SYNC_CLOSE",
-                   "Broker sync", "LIQUIDATION_PROTECT", "STOP_LOSS_EXIT", "EMERGENCY_FLAT"]:
+                   "Broker sync", "LIQUIDATION_PROTECT", "STOP_LOSS_EXIT", "EMERGENCY_FLAT",
+                   "QUICK_PEAK_GIVEBACK_GAIN_EROSION_STOP_peak3.96_cur-0.03"]:
         assert lth.scalp_floor_refusal(True, True, reason, 5.0, 180.0) == "", reason
 
 

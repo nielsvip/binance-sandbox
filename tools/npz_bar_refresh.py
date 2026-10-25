@@ -1851,6 +1851,10 @@ def split_universe(a):
             _nc, _ns = len(crypto), len(stocks)
             crypto = [s for s in crypto if s in _srv]
             stocks = [s for s in stocks if s in _srv]
+            _extra = {s.strip().upper() for s in (os.environ.get("VEC_NPZ_EXTRA_SYMS") or "").replace(",", " ").split() if s.strip()}
+            if _extra:
+                crypto = sorted(set(crypto) | {s for s in _extra if s.endswith(("USDT", "USDC", "USD1"))})
+                stocks = sorted(set(stocks) | {s for s in _extra if not s.endswith(("USDT", "USDC", "USD1"))})
             log(f"shard={_sh} scoped refresh: crypto {_nc}->{len(crypto)}, stocks {_ns}->{len(stocks)}")
         except Exception as _e:
             log(f"shard scope failed open: {_e}")
