@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-25T22:40:01Z",
+ "generated_utc": "2026-10-25T23:00:06Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
@@ -14,7 +14,7 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "filled_today": 479,
+    "filled_today": 488,
     "filled_before_open": 0
    },
    "detail": "no board was filled before the open"
@@ -27,21 +27,21 @@
     "mac_done_stamp": true,
     "s1_stamp": "{\n \"date\": \"20261025\",\n \"status\": \"DONE\",\n \"started\": \"2026-10-25T12:15:01Z\",\n \"ended\": \"2026-10-25T12:52:48.636814Z\",\n \"steps_ok\": \"1,2,2a,2b!TYPE_ALERT,3,4,4c,4b,4d,4e,4e,5,6,6b\",\n \"agg\": \"SPREADSHEETS/v15_avg_delta/v15_avg_delta_20261025.xlsx\",\n \"promoted_keys\": [\n  \"ADX_REGIME_FILTER_ENABLED\",\n  \"BB_EXIT_AT_LOSS_TF\",\n  \"BB_SQUEEZE_ENTRY_ENABLED\",\n  \"BREAKEVEN_GAIN_EROSION_FILTER_TF\",\n  \"DAYTRA",
     "cat_side_defaults_4_at": "2026-10-21T04:54:49Z",
-    "cat_side_age_days": 4.7,
+    "cat_side_age_days": 4.8,
     "cat_side_note": "rebuilt only by v15_daily_template_update --sync-defaults, a deliberate manual step \u2014 reported, never fails this gate"
    },
-   "detail": "mac stamp 20261025=True, s1 stamp {\n \"date\": \"20261025\",\n \"status\": \"DONE\",\n \"started\": \"2026-10-25T12:15:01Z\",\n \"ended\": \"2026-10-25T12:52:48.636814Z\",\n \"steps_ok\": \"1,2,2a,2b!TYPE_AL, cat_side layer 4.7d old"
+   "detail": "mac stamp 20261025=True, s1 stamp {\n \"date\": \"20261025\",\n \"status\": \"DONE\",\n \"started\": \"2026-10-25T12:15:01Z\",\n \"ended\": \"2026-10-25T12:52:48.636814Z\",\n \"steps_ok\": \"1,2,2a,2b!TYPE_AL, cat_side layer 4.8d old"
   },
   {
    "name": "selection_fresh",
    "ok": true,
    "critical": true,
    "measured": {
-    "built_at": "2026-10-25T20:50:48.730518+00:00",
-    "n": 525,
-    "age_at_open_s": 6553
+    "built_at": "2026-10-25T22:50:42.439005+00:00",
+    "n": 527,
+    "age_at_open_s": 564
    },
-   "detail": "built 2026-10-25T20:50:48.730518+00:00 n=525"
+   "detail": "built 2026-10-25T22:50:42.439005+00:00 n=527"
   },
   {
    "name": "apply_report_written",
@@ -60,10 +60,10 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "selection_n": 525,
-    "exact": 110,
-    "benign_divergence_only": 274,
-    "material_divergence": 140,
+    "selection_n": 527,
+    "exact": 111,
+    "benign_divergence_only": 273,
+    "material_divergence": 142,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -147,6 +147,19 @@
       ]
      },
      {
+      "sym_side": "MPC_LONG",
+      "published_at": "2026-10-25T21:43:30Z",
+      "material": 57,
+      "sample": [
+       "ATR_ADAPTIVE_SIZING_ENABLED",
+       "ATR_ADAPTIVE_STOP_MULT",
+       "ATR_ADAPTIVE_STOP_TF",
+       "AUGMENT_INTO_REENTRY_ENABLED",
+       "COOLDOWN_BARS_TRADIER",
+       "DAYTRADE_DC_STOP_TF"
+      ]
+     },
+     {
       "sym_side": "APO_SHORT",
       "published_at": "2026-10-20T11:43:52Z",
       "material": 55,
@@ -184,36 +197,26 @@
        "BB_SQUEEZE_ENTRY_ENABLED",
        "COUNTER_TREND_ADD_BLOCK_ENABLED"
       ]
-     },
-     {
-      "sym_side": "SHOP_LONG",
-      "published_at": "2026-10-22T04:02:56Z",
-      "material": 42,
-      "sample": [
-       "ATR_ADAPTIVE_SIZING_ENABLED",
-       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
-       "ATR_ADAPTIVE_STOP_MULT",
-       "ATR_ADAPTIVE_STOP_TF",
-       "DC_EDGE_SIZING_MIN_MULT",
-       "DC_HARD_STOP_1H_ENABLED"
-      ]
      }
     ]
    },
-   "detail": "110 exact, 274 benign-only, 140 with material divergence, 1 with no live row"
+   "detail": "111 exact, 273 benign-only, 142 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
    "ok": true,
    "critical": true,
    "measured": {
-    "symbols": 201,
-    "stale_over_90min": 0,
-    "stale_pct": 0.0,
-    "median_age_min": 55.0,
-    "sample": []
+    "symbols": 330,
+    "stale_over_90min": 2,
+    "stale_pct": 0.6,
+    "median_age_min": 30.1,
+    "sample": [
+     "DUSKUSDT",
+     "ONEUSDT"
+    ]
    },
-   "detail": "0/201 symbols past the live 90-min entry gate (0.0%)"
+   "detail": "2/330 symbols past the live 90-min entry gate (0.6%)"
   },
   {
    "name": "s1_sets_synced",
