@@ -86,6 +86,52 @@ def read_live_snapshots(root, account, max_age_s=MAX_SNAPSHOT_AGE_S, now=None):
     return out, (max(mtimes) if mtimes else 0.0)
 
 
+def _forward_state_verdicts(pure_board_dir, account, have_sides, now, max_age_s):
+    """USER 2026-10-25 VEC forward-state backstop: data/forward_state/<SYM_SIDE>.json
+    recomputed on every 15m NPZ refresh is a verdict source BESIDE the pure-board
+    lane. Fallback precedence: a sym_side WITH a fresh pure verdict keeps it;
+    sides the pure lane is silent on fall back to the forward state (fresh file
+    mtime AND fresh npz tail, ok=True, open bool). Same schema, same guards
+    downstream (stale refusal, dedup, record, kill switch all unchanged)."""
+    out = []
+    try:
+        fwd = Path(pure_board_dir).parent / "forward_state"
+        if not fwd.is_dir():
+            return out
+        for fp in glob.glob(str(fwd / "*_LONG.json")) + glob.glob(str(fwd / "*_SHORT.json")):
+            try:
+                st = json.loads(Path(fp).read_text())
+            except Exception:
+                continue
+            try:
+                if not isinstance(st, dict) or not st.get("ok"):
+                    continue
+                if not isinstance(st.get("open"), bool):
+                    continue
+                ss = str(st.get("sym_side") or Path(fp).stem).upper()
+                if ss in have_sides:
+                    continue
+                try:
+                    mtime = os.path.getmtime(fp)
+                except OSError:
+                    continue
+                if now - mtime > max_age_s:
+                    continue
+                tail = float(st.get("npz_tail") or 0.0)
+                if tail <= 0 or now - (tail + BAR_S) > max_age_s:
+                    continue
+                src = str(st.get("src") or "forward_state")
+                out.append({"acct": account, "action": CONVERGE_OPEN if st["open"] else CONVERGE_CLOSE,
+                            "sym_side": ss, "bar_ts": tail, "ts": mtime,
+                            "vec_leg": f"fwd:{src}", "board_md5": "", "engine_trades": st.get("trades"),
+                            "engine_gain": st.get("gain_pct")})
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return out
+
+
 def fresh_verdicts(pure_board_dir, account, now=None, max_age_s=MAX_VERDICT_AGE_S):
     """Fresh CONVERGE rows for one account: decided recently AND on a recent bar."""
     now = float(now if now is not None else time.time())
@@ -104,6 +150,11 @@ def fresh_verdicts(pure_board_dir, account, now=None, max_age_s=MAX_VERDICT_AGE_
             out.append(r)
         except Exception:
             continue
+    try:
+        have = {str(r.get("sym_side") or "").upper() for r in out}
+        out.extend(_forward_state_verdicts(pure_board_dir, account, have, now, max_age_s))
+    except Exception:
+        pass
     out.sort(key=lambda r: (r.get("sym_side") or "", r.get("bar_ts") or 0.0))
     return out
 

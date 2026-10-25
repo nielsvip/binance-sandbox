@@ -9606,26 +9606,32 @@ async def board_state_converge_loop(trade_manager):
                         if qty <= 0:
                             res = "SKIPPED_NO_PRICE_OR_SIZE"
                         else:
+                            _cv_r = f"BOARD_CONVERGE_OPEN vec={vec_leg[:60]}"
+                            if str(vec_leg or "").startswith("fwd:"):
+                                _cv_r = f"VEC_FWD_MISSING_OPEN fwd={vec_leg[4:64]}"
                             res = await trade_manager.execute_now(
                                 position_key=pk, account_key=acct, symbol=sym,
                                 original_positionAmt=0.0, side=("BUY" if is_long else "SELL"),
                                 position_side=("LONG" if is_long else "SHORT"), quantity=qty,
                                 old_price=px, unique_id=uid,
-                                reason=f"BOARD_CONVERGE_OPEN vec={vec_leg[:60]}",
+                                reason=_cv_r,
                                 is_full_close=False, action="OPEN")
                     else:
+                        _cv_r = f"BOARD_CONVERGE_CLOSE vec={vec_leg[:60]}"
+                        if str(vec_leg or "").startswith("fwd:"):
+                            _cv_r = f"VEC_FWD_MISSING_FLAT fwd={vec_leg[4:64]}"
                         res = await trade_manager.execute_now(
                             position_key=pk, account_key=acct, symbol=sym,
                             original_positionAmt=lh, side=("SELL" if is_long else "BUY"),
                             position_side=("LONG" if is_long else "SHORT"), quantity=lh,
                             old_price=float((held.get((acct, ss)) or {}).get("mark") or 0.0),
-                            unique_id=uid, reason=f"BOARD_CONVERGE_CLOSE vec={vec_leg[:60]}",
+                            unique_id=uid, reason=_cv_r,
                             is_full_close=True, action="CLOSE")
                     _bsc.append_record(rpath, _bsc.build_record(
                         time.time(), bar, acct, ss, v.get("action"), vec_leg,
                         v.get("board_md5"), v.get("engine_trades"), v.get("engine_gain"),
                         lh, refusal, res))
-                    logger.warning(f"[BOARD_CONVERGE] {acct}:{ss} {v.get('action')} qty_before={lh:.6f} -> {str(res)[:80]}")
+                    logger.warning(f"[BOARD_CONVERGE] {acct}:{ss} {v.get('action')} qty_before={lh:.6f} leg={vec_leg[:60]} -> {str(res)[:80]}")
         except asyncio.CancelledError:
             break
         except Exception as exc:
@@ -52858,7 +52864,8 @@ async def process_position(
     try:
         from live_twins import vec_backstop as _vbs
         _vbs_cfg = getattr(trade_manager, "config", None)
-        if _vbs.enabled(_vbs_cfg):
+        _vbs_live_ctx = not bool(os.environ.get("V12_NPZ_DIR"))
+        if _vbs_live_ctx and _vbs.enabled(_vbs_cfg):
             try:
                 _vbs_ak, _vbs_rest = (position_key.split(":", 1) if ":" in str(position_key) else (account_key, position_key))
             except Exception:

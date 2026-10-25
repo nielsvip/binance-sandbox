@@ -41,6 +41,27 @@ def test_due_once_per_bar():
     assert vb.due("ZZZ_T_SIDE", "b2") is True
 
 
+def test_fresh_state_edge_only(tmp_path):
+    (tmp_path / "data" / "forward_state").mkdir(parents=True)
+    p = tmp_path / "data" / "forward_state" / "B_SHORT.json"
+    p.write_text(json.dumps(dict(_st(True), sym_side="B_SHORT", ts="t")))
+    os.utime(p, (1000000000, 1000000000))
+    first = vb.fresh_state("B_SHORT", base_path=tmp_path, max_age_s=0)
+    assert first is not None and first["open"] is True
+    assert vb.fresh_state("B_SHORT", base_path=tmp_path, max_age_s=0) is None
+    p.write_text(json.dumps(dict(_st(False, tail=10), sym_side="B_SHORT", ts="t2")))
+    os.utime(p, (1000000001, 1000000001))
+    second = vb.fresh_state("B_SHORT", base_path=tmp_path, max_age_s=0)
+    assert second is not None and second["open"] is False
+
+
+def test_record_appends_jsonl(tmp_path):
+    vb.record(tmp_path, {"ts": 1.0, "key": "k", "action": "FLAT"})
+    lines = (tmp_path / "data" / "vec_backstop_actions.jsonl").read_text().strip().splitlines()
+    assert len(lines) == 1
+    assert json.loads(lines[0])["action"] == "FLAT"
+
+
 def test_read_state_fresh_and_stale(tmp_path):
     (tmp_path / "data" / "forward_state").mkdir(parents=True)
     p = tmp_path / "data" / "forward_state" / "A_LONG.json"
