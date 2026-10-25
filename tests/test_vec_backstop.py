@@ -71,3 +71,14 @@ def test_read_state_fresh_and_stale(tmp_path):
     os.utime(p, (old, old))
     assert vb.read_state("A_LONG", base_path=tmp_path) is None
     assert vb.read_state("NOPE_LONG", base_path=tmp_path) is None
+
+
+def test_tradier_recognizes_vec_fwd_reasons():
+    # USER 2026-10-25: stocks backstop fires VEC_FWD_MISSING_* through
+    # execute_now — the parity gate must treat them as vector-dictated
+    # (never refused by a live opinion gate), same as the crypto twin.
+    import tradier_manage as tm
+    assert tm._tr_parity_vec_order("VEC_FWD_MISSING_OPEN fwd=A_LONG") is True
+    assert tm._tr_parity_vec_order("VEC_FWD_MISSING_FLAT fwd=A_SHORT") is True
+    assert tm._tr_parity_vec_order("vec_fwd_missing_open fwd=a_long") is True
+    assert tm._tr_parity_vec_order("NATIVE_REPLAY_A") is False

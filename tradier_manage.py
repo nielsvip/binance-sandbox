@@ -15410,6 +15410,59 @@ async def process_position(
             if _vx_res != "VEC_EXACT_STALE":
                 return _vx_res
             # STALE twin -> fall through to native exits below until the twin buffer is fresh again.
+        # USER 2026-10-25 VEC FORWARD-STATE BACKSTOP (stocks twin of the crypto
+        # block): each server owns its cat_side NPZ row-append + open/closed
+        # state; S1 aggregates; the fresh file IS the vector. When it disagrees
+        # with live, force parity through execute_now the same instant — OPEN is
+        # OPEN, CLOSED is CLOSED. Fail-open on missing/stale/unparsed.
+        # Kill: VEC_BACKSTOP_ENABLED=0. Provenance: VEC_FWD_MISSING_* (vec-dictated).
+        try:
+            from live_twins import vec_backstop as _vbs
+        except Exception as _vbs_e:
+            logger.error(f"[VEC_BACKSTOP] {position_key} import failed: {_vbs_e}")
+            _vbs = None
+        if _vbs is not None and _vbs.enabled(getattr(trade_manager, "config", None)):
+            _vbs_side = "LONG" if position_side == "LONG" else "SHORT"
+            _vbs_ss = f"{symbol}_{_vbs_side}"
+            _vbs_st = _vbs.fresh_state(
+                os.path.join(str(getattr(config, "BASE_PATH", ".")), "data", "forward_state"), _vbs_ss)
+            _vbs_want = _vbs.divergence(_vbs_st, bool(has_position))
+            if _vbs_want in ("OPEN", "FLAT") and _vbs.due(position_side, _vbs_side, _vbs_st):
+                _vbs_uid = f"VXBS{int(_vbs_st['npz_tail'])}"
+                if _vbs_want == "OPEN":
+                    try:
+                        _vbs_px, _ = await trade_manager.get_current_price(symbol)
+                    except Exception:
+                        _vbs_px = 0.0
+                    _vbs_px = float(_vbs_px or 0.0)
+                    _vbs_n = float(_cfg("START_POSITION_SIZE", 500.0, account_key, symbol, _vbs_side) or 0.0)
+                    _vbs_qty = _vbs_n / _vbs_px if (_vbs_n > 0 and _vbs_px > 0) else 0.0
+                    if _vbs_qty <= 0:
+                        logger.warning(f"[VEC_BACKSTOP] {position_key} DIVERGENT-open but no price/size — logged, not forced")
+                    else:
+                        _vbs_r = f"VEC_FWD_MISSING_OPEN fwd={_vbs_ss}"
+                        await trade_manager.execute_now(
+                            position_key, account_key, symbol, 0.0, ("BUY" if _vbs_side == "LONG" else "SELL"), _vbs_side,
+                            _vbs_qty, _vbs_px, _vbs_uid, _vbs_r, False, action="OPEN")
+                        _vbs.record(action="OPEN", sym_side=_vbs_ss, tail=int(_vbs_st["npz_tail"]), reason=_vbs_r, qty=_vbs_qty, price=_vbs_px)
+                        logger.warning(f"[VEC_BACKSTOP] {position_key} state=OPEN live=flat FORCED qty={_vbs_qty:.6f}")
+                        return "VEC_BACKSTOP_OPEN_FORCED"
+                else:
+                    _vbs_q = abs(float(getattr(position, "positionAmt", 0) or 0))
+                    if _vbs_q <= 0:
+                        logger.warning(f"[VEC_BACKSTOP] {position_key} DIVERGENT-flat but no live qty — logged, not forced")
+                    else:
+                        _vbs_r = f"VEC_FWD_MISSING_FLAT fwd={_vbs_ss}"
+                        try:
+                            _vbs_mark, _ = await trade_manager.get_current_price(symbol)
+                        except Exception:
+                            _vbs_mark = 0.0
+                        await trade_manager.execute_now(
+                            position_key, account_key, symbol, _vbs_q, ("SELL" if _vbs_side == "LONG" else "BUY"), _vbs_side,
+                            _vbs_q, float(_vbs_mark or 0.0), _vbs_uid, _vbs_r, True, action="CLOSE")
+                        _vbs.record(action="CLOSE", sym_side=_vbs_ss, tail=int(_vbs_st["npz_tail"]), reason=_vbs_r, qty=_vbs_q, price=float(_vbs_mark or 0.0))
+                        logger.warning(f"[VEC_BACKSTOP] {position_key} state=FLAT live=open FORCED qty={_vbs_q:.6f}")
+                        return "VEC_BACKSTOP_CLOSE_FORCED"
 
         i = trade_manager.strategy.parse_market_data(indicators_raw)
         # Warm the shared Bottom-A trail history while flat.  Active-position
@@ -43216,7 +43269,7 @@ def _tr_parity_vec_order(reason) -> bool:
     u = r.upper()
     return (
         "|VEC_EXACT" in r
-        or u.startswith(("VEC_DRIVEN_", "BOARD_CONVERGE_"))
+        or u.startswith(("VEC_DRIVEN_", "BOARD_CONVERGE_", "VEC_FWD_"))
         or "PURE_BOARD" in u
     )
 

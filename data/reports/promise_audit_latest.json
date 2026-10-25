@@ -1,11 +1,11 @@
 {
- "generated_utc": "2026-10-25T01:12:11.787959+00:00",
+ "generated_utc": "2026-10-25T02:12:18.400990+00:00",
  "days": 1.0,
  "totals": {
-  "exit_promises": 125,
-  "exit_broken_no_delivery": 114,
-  "entry_promises": 55,
-  "entry_broken_no_delivery": 55,
+  "exit_promises": 129,
+  "exit_broken_no_delivery": 118,
+  "entry_promises": 56,
+  "entry_broken_no_delivery": 56,
   "exit_skipped_inflight": 119,
   "exit_kept_late": 7,
   "exit_kept_in_bar": 4
@@ -100,8 +100,8 @@
   "flz:ZECUSDC_SHORT": {
    "entry_promises": 1,
    "entry_broken_no_delivery": 1,
-   "exit_promises": 3,
-   "exit_broken_no_delivery": 3
+   "exit_promises": 4,
+   "exit_broken_no_delivery": 4
   },
   "ang:ARBUSDC_LONG": {
    "exit_promises": 1,
@@ -303,6 +303,22 @@
   "men:BEAMXUSDT_LONG": {
    "entry_promises": 1,
    "entry_broken_no_delivery": 1
+  },
+  "flz:HYPEUSDT_LONG": {
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1
+  },
+  "flz:ZECUSDC_LONG": {
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1
+  },
+  "flz:GRAMUSDT_LONG": {
+   "entry_promises": 1,
+   "entry_broken_no_delivery": 1
+  },
+  "inf:WUSDT_SHORT": {
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1
   }
  },
  "detail": [
@@ -2064,6 +2080,56 @@
    "late_min": null,
    "action": "CLOSE",
    "reason": "EXIT_VELOCITY_WT against-long g-0.09%",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "flz",
+   "sym_side": "HYPEUSDT_LONG",
+   "kind": "exit",
+   "bar": "10-25 01:30",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "REDUCE_TO_FLAT",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "flz",
+   "sym_side": "ZECUSDC_LONG",
+   "kind": "exit",
+   "bar": "10-25 01:30",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "EXIT_VELOCITY_WT against-long g0.46%",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "flz",
+   "sym_side": "GRAMUSDT_LONG",
+   "kind": "entry",
+   "bar": "10-25 01:30",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "TIER1_PRICE_CROSS_REENTRY_exit1.2480_cur1.2520_k3m19",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "WUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-25 01:30",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "WT_CROSS_EXIT_1h_bull",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "flz",
+   "sym_side": "ZECUSDC_SHORT",
+   "kind": "exit",
+   "bar": "10-25 01:30",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "REDUCE_TO_FLAT",
    "outcome": "NO_DELIVERY"
   }
  ],
