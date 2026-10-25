@@ -132,6 +132,19 @@ def test_dictate_only_exemptions():
     assert G.dictate_only_exempt("CLOSE", "QUICK_REDUCE_X") is False
 
 
+def test_dictate_only_persym_overrides_global():
+    from unittest.mock import patch
+    with patch("per_sym_store.get_overrides", return_value={"STOCH_XTREME_EXIT_ENABLED": True}):
+        assert G.dictate_only_exempt("QUICK_CLOSE", "BT_STOCH_XTREME_EXIT_g=0.06%", "BTCDOMUSDT_SHORT") is True
+    with patch("per_sym_store.get_overrides", return_value={"STOCH_XTREME_EXIT_ENABLED": False}):
+        assert G.dictate_only_exempt("QUICK_CLOSE", "BT_STOCH_XTREME_EXIT_g=0.06%", "BTCDOMUSDT_SHORT") is False
+    with patch("per_sym_store.get_overrides", return_value={}):
+        assert G.dictate_only_exempt("QUICK_CLOSE", "BT_STOCH_XTREME_EXIT_g=0.06%", "BTCDOMUSDT_SHORT") is False
+    with patch("per_sym_store.get_overrides", return_value={"STOCH_XTREME_EXIT_ENABLED": True}):
+        assert G.dictate_only_exempt("CLOSE", "FIXED_STOP_LONG_px", "BTCDOMUSDT_SHORT") is False
+        assert G.dictate_only_exempt("CLOSE", "QUICK_PEAK_GIVEBACK_X", "BTCDOMUSDT_SHORT") is False
+
+
 def test_exec_board_ok():
     assert G.exec_board_ok("OPEN", True, True) is True
     assert G.exec_board_ok("OPEN", False, True) is False

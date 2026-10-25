@@ -33280,63 +33280,6 @@ class MultiAccountTradeManager:
                 return _sc_ref
         except Exception as _sc_e:
             logger.debug(f"[SCALP_FLOOR] check err (fail-open): {_sc_e}")
-        # ─── BAR-STATE ENFORCEMENT (USER 2026-10-25: every server calculates every sym_side's
-        # OPEN/CLOSED state on every 15m bar; execute_now follows it the same bar, no discrepancies) ───
-        # A non-vec exposure increase (OPEN/AUGMENT) while the canonical vec state for the CURRENT
-        # 15m bar is FLAT is REFUSED here at the ONLY gate. VEC-dictated orders ARE the state
-        # transitions and always pass ("VEC_ overrides"); OPEN state, undecided/WARMUP bars, stale
-        # bars and any lookup failure fail open. RATIO rebalancer increases and the stop/protection
-        # family are exempt; hedges are not (guards apply to ALL callers). Exits are untouched by
-        # this gate (vec-only-exits mode + VEC_STALE_FLATTEN + SCALP_FLOOR already govern that
-        # direction). Kill: VEC_BAR_STATE_ENFORCE_ENABLED=False.
-        try:
-            _st_ref = ""
-            _st_act = str(action or "").upper()
-            _st_incr = not (bool(is_full_close) or "CLOSE" in _st_act or "REDUCE" in _st_act or "STOP" in _st_act) and (
-                bool(is_hedge)
-                or (str(position_side or "").upper() == "LONG" and str(side or "").upper() == "BUY")
-                or (str(position_side or "").upper() == "SHORT" and str(side or "").upper() == "SELL"))
-            if _st_incr:
-                _st_on = True
-                try:
-                    _st_on = bool(getattr(config, "VEC_BAR_STATE_ENFORCE_ENABLED", True))
-                except Exception:
-                    _st_on = True
-                if _st_on:
-                    _st_vec = False
-                    try:
-                        _st_vec = bool(_voe_reason_is_vec(reason))
-                    except Exception:
-                        _st_vec = False
-                    _st_holds, _st_bar = None, None
-                    try:
-                        import time as _st_time
-                        from live_twins.vec_exact import holds_at_now as _st_holds_at
-                        _st_holds, _st_bar = _st_holds_at(symbol, position_side, _st_time.time())
-                    except Exception:
-                        _st_holds, _st_bar = None, None
-                    _st_ratio = False
-                    try:
-                        from live_twins.vector_enforce import family_of as _ve_fam_st
-                        _st_ratio = _ve_fam_st(reason) == "RATIO"
-                    except Exception:
-                        _st_ratio = False
-                    try:
-                        import time as _st_time2
-                        import live_trade_history as _lth_st
-                        _st_ref = _lth_st.state_closed_refusal(_st_incr, _st_vec, reason, _st_holds, _st_bar, _st_time2.time(), _st_ratio)
-                    except Exception:
-                        _st_ref = ""
-            if _st_ref:
-                logger.critical(f"🛑 [STATE_CLOSED] {position_key} {action} reason={(reason or '')[:80]} — vec state FLAT this 15m bar, non-vec increase REFUSED (USER 2026-10-25 bar-state enforcement)")
-                try:
-                    if _paper_nv.enabled(config):
-                        _paper_nv.record("crypto", account_key, position_key, _paper_nv.kind_of(action, side, position_side), action, reason, "STATE_CLOSED_REFUSED", old_price, quantity)
-                except Exception:
-                    pass
-                return _st_ref
-        except Exception as _st_e:
-            logger.debug(f"[STATE_CLOSED] check err (fail-open): {_st_e}")
         _xg_full = _xg.is_full_close(action, is_full_close)  # full close: mechanical refusals below never apply (FORCE backstop behind them)
         # ─── HERMETIC VEC-ONLY GATE (2026-10-14 USER "make this totally hermetic so for now it can ONLY trade in tandem with what the
         # vectorized would trade") ─── an exposure increase (BUY on LONG / SELL on SHORT / hedge) must carry structural vec provenance

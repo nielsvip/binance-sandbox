@@ -1,14 +1,14 @@
 {
- "generated_at": "2026-10-25 03:02 UTC",
- "total_capital_usd": 6.96,
+ "generated_at": "2026-10-25 03:13 UTC",
+ "total_capital_usd": 21.86,
  "tier_capital": {
   "A": 0.0,
-  "B": 0.0,
-  "C": 6.96
+  "B": 14.89,
+  "C": 6.97
  },
  "tier_count": {
   "A": 0,
-  "B": 0,
+  "B": 1,
   "C": 1
  },
  "winners": [],
@@ -18,15 +18,26 @@
  "mediocre": [],
  "positions": [
   {
+   "pk": "flz:BNBUSDC_LONG",
+   "symbol": "BNBUSDC",
+   "account": "flz",
+   "value_usd": 14.89,
+   "gain_pct": 0.02,
+   "tier": "B",
+   "perf_mult": 1.32,
+   "amt": 0.02,
+   "mark": 744.66876197
+  },
+  {
    "pk": "flz:GRAMUSDT_SHORT",
    "symbol": "GRAMUSDT",
    "account": "flz",
-   "value_usd": 6.96,
+   "value_usd": 6.97,
    "gain_pct": -0.161,
    "tier": "C",
    "perf_mult": 0.22,
    "amt": 5.6,
-   "mark": 1.24353033
+   "mark": 1.244
   }
  ]
 }

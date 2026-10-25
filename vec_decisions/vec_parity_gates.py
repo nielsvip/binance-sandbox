@@ -104,7 +104,22 @@ def confirm_release_ok(dictated, vec_order, require_board):
     return False
 
 
-def dictate_only_exempt(action, reason):
+def _per_sym_knob_true(sym_side, knob):
+    """per_sym layer for one knob (USER 2026-10-25 doctrine: a per_sym switch value, when it exists, overrides
+    global). Reads the same full per_sym set live readers resolve first. Any failure -> None (fail-closed)."""
+    try:
+        if not sym_side or not knob:
+            return None
+        import per_sym_store as _pss
+        full = _pss.get_overrides(str(sym_side))
+        if isinstance(full, dict) and knob in full:
+            return bool(full[knob])
+    except Exception:
+        pass
+    return None
+
+
+def dictate_only_exempt(action, reason, sym_side=None):
     # USER 2026-10-24 STEP1 narrowed: ONLY ratio trims/augments (no open/close
     # state change), board-confirmed vec speech, and bookkeeping survive.
     # Stops, emergencies, hedges (dead months ago), oversize trims: disabled
@@ -119,6 +134,14 @@ def dictate_only_exempt(action, reason):
         up = str(reason or "").upper()
         if any(b in up for b in _ve.BOOKKEEPING):
             return True
+        if sym_side:
+            # per_sym switch honors the board that measured it: BT_<FAMILY>_... reasons carry the family whose
+            # <FAMILY>_ENABLED knob the sym_side's full set may enable (e.g. BTCDOMUSDT_SHORT STOCH_XTREME_EXIT).
+            _r = str(reason or "")
+            _fam = _r[3:] if _r.startswith("BT_") else ""
+            _knob = (_fam.split("_g=")[0] + "_ENABLED") if _fam else ""
+            if _knob and _per_sym_knob_true(sym_side, _knob) is True:
+                return True
         act = str(action or "").upper()
         if "CLOSE" in act or "OPEN" in act or "ENTRY" in act:
             return False
