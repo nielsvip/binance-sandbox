@@ -1,52 +1,23 @@
 {
-  "fin:VETUSDT_LONG": {
-    "orderId": "3000002273708617",
-    "stopPrice": 0.00668,
-    "entry_sig": "2026-10-25 14:34:15.533000+00:00",
-    "symbol": "VETUSDT",
-    "side": "LONG",
-    "disaster_backstop": true
-  },
-  "fin:BBUSDT_LONG": {
-    "orderId": "3000002273861990",
-    "stopPrice": 0.007304,
-    "entry_sig": "2026-10-25 16:01:54.755000+00:00",
-    "symbol": "BBUSDT",
-    "side": "LONG"
-  },
-  "fin:PENGUUSDC_LONG": {
-    "orderId": "3000002273899074",
-    "stopPrice": 0.0073,
-    "entry_sig": "2026-10-25 15:30:43.051000+00:00",
-    "symbol": "PENGUUSDC",
-    "side": "LONG"
-  },
-  "fin:MASKUSDT_LONG": {
-    "orderId": "3000002273901378",
-    "stopPrice": 0.3974,
-    "entry_sig": "2026-10-25 14:09:46.748000+00:00",
-    "symbol": "MASKUSDT",
-    "side": "LONG"
-  },
-  "fin:BLURUSDT_SHORT": {
-    "orderId": "3000002273901956",
-    "stopPrice": 0.00811,
-    "entry_sig": "2026-10-25 16:34:03.150000+00:00",
-    "symbol": "BLURUSDT",
+  "flz:SOLUSDC_SHORT": {
+    "orderId": "1000002642790811",
+    "stopPrice": 102.85,
+    "entry_sig": "2026-10-25 12:45:38.609000+00:00",
+    "symbol": "SOLUSDC",
     "side": "SHORT"
   },
-  "fin:ETHFIUSDC_LONG": {
-    "orderId": "3000002273902880",
-    "stopPrice": 0.603,
-    "entry_sig": "2026-10-25 15:38:47.477000+00:00",
-    "symbol": "ETHFIUSDC",
-    "side": "LONG"
+  "flz:XRPUSDC_SHORT": {
+    "orderId": "1000002642922743",
+    "stopPrice": 1.3172,
+    "entry_sig": "2026-10-25 16:35:43.576000+00:00",
+    "symbol": "XRPUSDC",
+    "side": "SHORT"
   },
-  "fin:GRASSUSDT_LONG": {
-    "orderId": "3000002273903465",
-    "stopPrice": 0.659,
-    "entry_sig": "2026-10-25 16:04:30.530000+00:00",
-    "symbol": "GRASSUSDT",
-    "side": "LONG"
+  "flz:ZECUSDC_SHORT": {
+    "orderId": "1000002642924641",
+    "stopPrice": 1230.96,
+    "entry_sig": "2026-10-25 15:06:25.299000+00:00",
+    "symbol": "ZECUSDC",
+    "side": "SHORT"
   }
 }
