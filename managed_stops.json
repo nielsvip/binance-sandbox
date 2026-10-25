@@ -1,23 +1,58 @@
 {
-  "flz:HYPEUSDT_SHORT": {
-    "orderId": "1000002642419673",
-    "stopPrice": 76.42,
-    "entry_sig": "2026-10-25 08:25:06.258000+00:00",
-    "symbol": "HYPEUSDT",
+  "ang:RLCUSDT_SHORT": {
+    "orderId": "4000001994793831",
+    "stopPrice": 0.7252,
+    "entry_sig": "2026-10-25 08:38:51.804000+00:00",
+    "symbol": "RLCUSDT",
     "side": "SHORT"
   },
-  "flz:BTCUSDC_SHORT": {
-    "orderId": "1000002642424563",
-    "stopPrice": 81153.2,
-    "entry_sig": "2026-10-25 09:03:47.751000+00:00",
-    "symbol": "BTCUSDC",
+  "ang:SANDUSDT_SHORT": {
+    "orderId": "4000001994793830",
+    "stopPrice": 0.05078,
+    "entry_sig": "2026-10-25 08:38:50.808000+00:00",
+    "symbol": "SANDUSDT",
     "side": "SHORT"
   },
-  "flz:BTCDOMUSDT_LONG": {
-    "orderId": "1000002642425421",
-    "stopPrice": 5588.5,
-    "entry_sig": "2026-10-25 09:04:48.622000+00:00",
-    "symbol": "BTCDOMUSDT",
-    "side": "LONG"
+  "ang:STRKUSDT_SHORT": {
+    "orderId": "4000001994793832",
+    "stopPrice": 0.0476,
+    "entry_sig": "2026-03-12 05:29:19.663496+00:00",
+    "symbol": "STRKUSDT",
+    "side": "SHORT"
+  },
+  "ang:EGLDUSDT_SHORT": {
+    "orderId": "4000001994793939",
+    "stopPrice": 3.372,
+    "entry_sig": "2026-10-25 08:38:59.930000+00:00",
+    "symbol": "EGLDUSDT",
+    "side": "SHORT"
+  },
+  "ang:MOVRUSDT_SHORT": {
+    "orderId": "4000001994796516",
+    "stopPrice": 1.1345,
+    "entry_sig": "2026-10-25 08:56:25.005000+00:00",
+    "symbol": "MOVRUSDT",
+    "side": "SHORT"
+  },
+  "ang:AXSUSDT_SHORT": {
+    "orderId": "4000001994797144",
+    "stopPrice": 1.0819,
+    "entry_sig": "2026-10-25 08:41:33.513000+00:00",
+    "symbol": "AXSUSDT",
+    "side": "SHORT"
+  },
+  "ang:STXUSDT_SHORT": {
+    "orderId": "4000001994797448",
+    "stopPrice": 0.3096,
+    "entry_sig": "2026-10-25 08:16:21.165000+00:00",
+    "symbol": "STXUSDT",
+    "side": "SHORT"
+  },
+  "ang:ENJUSDT_SHORT": {
+    "orderId": "4000001994798932",
+    "stopPrice": 0.02568,
+    "entry_sig": "2026-10-25 08:58:00.293000+00:00",
+    "symbol": "ENJUSDT",
+    "side": "SHORT"
   }
 }
