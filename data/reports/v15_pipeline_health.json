@@ -1,43 +1,11 @@
 {
- "at": "2026-10-25T18:15:09Z",
+ "at": "2026-10-25T18:30:22Z",
  "s1": {
-  "host": "niels",
-  "now": 1792952105.3088665,
-  "merge_crypto": {
-   "n": 12,
-   "max_lag_min": 15.0,
-   "median_lag_min": 15.0,
-   "worst": "1000BONKUSDC",
-   "dead": []
-  },
-  "merge_stocks": {
-   "n": 11,
-   "max_lag_min": 0.0,
-   "median_lag_min": 0.0,
-   "worst": "A",
-   "dead": []
-  },
-  "npz_legacy_crypto": [],
-  "append_log_age_min": 4.4,
-  "append_last_secs": 634.8,
-  "append_last_stats": "'appended': 1040, 'created': 0, 'up_to_date': 5331, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
-  "npz_loop_pids": 0,
-  "npz_cycle_last_utc": "13:17:40",
-  "npz_cycle_installed": 16,
-  "npz_cycle_not_ready": 0,
-  "npz_cycle_no_new": 0,
-  "npz_loop_has_settle": false,
-  "archive_n": 199,
-  "archive_mb": 2394.9,
-  "archive_newest_min": 875.8,
-  "_via": "s1-int"
+  "error": "s1-int: ssh: connect to host 127.0.0.1 port 2201: Connection refused | s1-pub: Connection timed out during banner exchange\nConnection to 157.180.125.52 port 22 timed out"
  },
  "red": [
-  "L3 npz append loop is not running (the */15 watchdog should relaunch it)",
-  "L4 scheduler last ticked None min ago (cron */2)"
+  "s1 unreachable: s1-int: ssh: connect to host 127.0.0.1 port 2201: Connection refused | s1-pub: Connection timed out during banner exchange\nConnection to 157.180.125.52 port 22 timed out"
  ],
- "warn": [
-  "L5 newest archived board NPZ is 876 min old \u2014 publishes may not be recording"
- ],
+ "warn": [],
  "ok": false
 }
