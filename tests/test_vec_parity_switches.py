@@ -124,7 +124,7 @@ def test_dictate_only_exemptions():
     assert G.dictate_only_exempt("AUGMENT", "RATIO_AUGMENT_X") is True
     assert G.dictate_only_exempt("OPEN", "RATIO_OPEN_X") is False
     assert G.dictate_only_exempt("CLOSE", "RATIO_CLOSE_X") is False
-    assert G.dictate_only_exempt("CLOSE", "FIXED_STOP_LONG_px") is False
+    assert G.dictate_only_exempt("CLOSE", "FIXED_STOP_LONG_px") is True  # USER 2026-10-25: stops wired (STOP_PROTECTION)
     assert G.dictate_only_exempt("CLOSE", "LIQUIDATION_PROTECT_X") is False
     assert G.dictate_only_exempt("OPEN", "HEDGE_OPEN_X") is False
     assert G.dictate_only_exempt("REDUCE", "OVERSIZE_TRIM_X") is False

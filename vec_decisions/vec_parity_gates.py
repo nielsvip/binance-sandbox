@@ -107,8 +107,9 @@ def confirm_release_ok(dictated, vec_order, require_board):
 def dictate_only_exempt(action, reason):
     # USER 2026-10-24 STEP1 narrowed: ONLY ratio trims/augments (no open/close
     # state change), board-confirmed vec speech, and bookkeeping survive.
-    # Stops, emergencies, hedges (dead months ago), oversize trims: disabled
-    # first, wired correctly later. Kill: VEC_DICTATE_ONLY_ENABLED=False.
+    # Emergencies, hedges (dead months ago), oversize trims: still disabled.
+    # USER 2026-10-25: stops wired (STOP_PROTECTION via _is_stop_reason below).
+    # Kill: VEC_DICTATE_ONLY_ENABLED=False.
     try:
         from live_twins import vector_enforce as _ve
     except Exception:
@@ -119,6 +120,8 @@ def dictate_only_exempt(action, reason):
         up = str(reason or "").upper()
         if any(b in up for b in _ve.BOOKKEEPING):
             return True
+        if _ve._is_stop_reason(reason):
+            return True  # USER 2026-10-25: stops are price protection (STOP/TRAILING/BACKSTOP), never dictate-gated; vector cannot dictate intra-bar.
         act = str(action or "").upper()
         if "CLOSE" in act or "OPEN" in act or "ENTRY" in act:
             return False
