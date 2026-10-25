@@ -415,6 +415,28 @@ def wrap_execute_now(venue: str, hooks_getter: Callable[[], Hooks]):
     return deco
 
 
+def _vec_holds_position(position_key: str, max_age_s: float = 600.0) -> bool:
+    """True only on FRESH lane state holding this exact side (USER 2026-10-25 zero tolerance).
+
+    A strategy-gate refusal (REFUSED) of a close the lane still holds is a parity HOLD,
+    never FORCE. Fail-open: missing/unreadable/stale state, unknown side, or any error
+    returns False so genuine failures still escalate."""
+    try:
+        ss = str(position_key).split(":", 1)[1] if ":" in str(position_key) else str(position_key)
+        side = "long" if ss.endswith("_LONG") else "short" if ss.endswith("_SHORT") else None
+        if not side:
+            return False
+        base = os.environ.get("VEC_LIVE_STATE_DIR") or os.path.join(os.getcwd(), "data", "vec_live", "state")
+        with open(os.path.join(base, ss + ".json")) as fh:
+            st = json.load(fh)
+        if str((st.get("target_state") or {}).get("side") or "").lower() != side:
+            return False
+        ts = st.get("written_at")
+        return isinstance(ts, (int, float)) and (time.time() - float(ts)) < max_age_s
+    except Exception:
+        return False
+
+
 async def _after(mgr, hooks: Hooks, cfg, venue: str, args: Dict[str, Any], c: Dict[str, Any], res: Any, depth: int):
     key, full = c["key"], c["full"]
     reason = str(args.get("reason") or "")
@@ -435,6 +457,9 @@ async def _after(mgr, hooks: Hooks, cfg, venue: str, args: Dict[str, Any], c: Di
                         _arm_watcher(mgr, hooks, cfg, venue, args, c, f"REMAINDER_FORCE_FAILED:{str(fres)[:60]}")
         return res
     if depth > 0 or cls in ("NOOP", "POLICY"):
+        return res
+    if full and cls == "REFUSED" and _vec_holds_position(key):
+        log_event(venue, "VEC_HOLD", cfg, key=key, action=c.get("action"), full=full, reason=reason[:120], result=str(res)[:160], cls=cls, depth=depth, note="lane holds this side; parity stand-down, never FORCE")
         return res
     if inflight(key) > 0:
         log.warning(f"[EXIT_GUARANTEE] {key}: {res} while another exit call for the key is in flight — that call owns the close (watcher armed)")

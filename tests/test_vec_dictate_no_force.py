@@ -31,3 +31,23 @@ def test_genuine_failures_still_escalate():
 
 def test_strategy_gate_refusal_of_dictated_close_still_refused():
     assert xg.classify("BLOCKED_NOLOSS_MIN_GAIN", "VEC_DRIVEN_OPEN_PURE_BOARD", True) == "REFUSED"
+
+
+def test_vec_holds_position_only_on_fresh_matching_state(tmp_path, monkeypatch):
+    import json, time
+    d = tmp_path / "state"
+    d.mkdir()
+    (d / "ARBUSDC_LONG.json").write_text(json.dumps(
+        {"target_state": {"side": "long"}, "written_at": time.time()}))
+    (d / "BATUSDT_LONG.json").write_text(json.dumps(
+        {"target_state": {"side": "flat"}, "written_at": time.time()}))
+    (d / "OLDUSDC_SHORT.json").write_text(json.dumps(
+        {"target_state": {"side": "short"}, "written_at": time.time() - 3600}))
+    monkeypatch.setenv("VEC_LIVE_STATE_DIR", str(d))
+    assert xg._vec_holds_position("men:ARBUSDC_LONG") is True
+    assert xg._vec_holds_position("men:BATUSDT_LONG") is False
+    assert xg._vec_holds_position("men:OLDUSDC_SHORT") is False
+    assert xg._vec_holds_position("men:MISSING_LONG") is False
+    assert xg._vec_holds_position("men:WEIRD") is False
+    monkeypatch.delenv("VEC_LIVE_STATE_DIR")
+    assert xg._vec_holds_position("men:ARBUSDC_LONG") is False

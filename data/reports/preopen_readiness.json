@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-25T02:20:19Z",
+ "generated_utc": "2026-10-25T02:40:07Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
@@ -7,8 +7,7 @@
  "failed_critical": [
   "boards_recomputed",
   "defaults_chain_completed",
-  "live_set_matches_selection",
-  "indicators_fresh"
+  "live_set_matches_selection"
  ],
  "checks": [
   {
@@ -16,7 +15,7 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "filled_today": 345,
+    "filled_today": 366,
     "filled_before_open": 0
    },
    "detail": "no board was filled before the open"
@@ -41,7 +40,7 @@
    "measured": {
     "built_at": "2026-10-25T01:51:56.263076+00:00",
     "n": 524,
-    "age_at_open_s": 1704
+    "age_at_open_s": 2892
    },
    "detail": "built 2026-10-25T01:51:56.263076+00:00 n=524"
   },
@@ -50,12 +49,12 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "reports_today": 1,
-    "newest_report": "persym_golive_20261025_refresh_0056.json",
-    "newest_report_at": "2026-10-25T01:18:39Z",
-    "tiers_at": "2026-10-25T01:20:59Z"
+    "reports_today": 2,
+    "newest_report": "persym_golive_20261025_refresh_0157.json",
+    "newest_report_at": "2026-10-25T02:27:55Z",
+    "tiers_at": "2026-10-25T02:30:26Z"
    },
-   "detail": "persym_golive_20261025_refresh_0056.json at 2026-10-25T01:18:39Z, tiers 2026-10-25T01:20:59Z"
+   "detail": "persym_golive_20261025_refresh_0157.json at 2026-10-25T02:27:55Z, tiers 2026-10-25T02:30:26Z"
   },
   {
    "name": "live_set_matches_selection",
@@ -206,25 +205,18 @@
   },
   {
    "name": "indicators_fresh",
-   "ok": false,
+   "ok": true,
    "critical": true,
    "measured": {
     "symbols": 329,
-    "stale_over_90min": 118,
-    "stale_pct": 35.9,
-    "median_age_min": 65.3,
+    "stale_over_90min": 1,
+    "stale_pct": 0.3,
+    "median_age_min": 0.0,
     "sample": [
-     "ARMUSDT",
-     "ARPAUSDT",
-     "ASTSUSDT",
-     "ATOMUSDT",
-     "AVGOUSDT",
-     "AXLUSDT",
-     "AXTIUSDT",
-     "BABAUSDT"
+     "ONEUSDT"
     ]
    },
-   "detail": "118/329 symbols past the live 90-min entry gate (35.9%)"
+   "detail": "1/329 symbols past the live 90-min entry gate (0.3%)"
   },
   {
    "name": "s1_sets_synced",

@@ -29,7 +29,7 @@ ROOT = Path(__file__).resolve().parents[1]
 LOG_DIR = Path(os.path.expanduser("~/logs"))
 ACCOUNTS = ("ang", "fin", "men", "flz", "inf")
 OPEN_CLS = {"REFUSED", "VERIFY"}
-CLOSE_EVENTS = {"CONFIRMED", "WATCH_DONE"}
+CLOSE_EVENTS = {"CONFIRMED", "WATCH_DONE", "VEC_HOLD"}  # USER 2026-10-25: a dictate/lane hold that stands down FORCE resolves the episode, never an alert
 RE_TS = re.compile(r"^(\d{2}) (\d{2}):(\d{2}):(\d{2})")
 RE_DECISION = re.compile(r"\[VEC_EXACT_EXEC\] (\S+) action=CLOSE|\] (\S+): .*action=CLOSE reason=(FIXED_STOP\S*)")
 RE_CONFIRMED = re.compile(r"\[POSITIONS_CONFIRMED\] (\S+): SUCCESS kind=reduce.* post=0(?:\.0+)? |\[EXIT_FORCE_CONFIRMED\] (\S+):|\[EXIT_FORCE\] (\S+): broker FLAT")
