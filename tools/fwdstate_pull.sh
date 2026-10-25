@@ -18,6 +18,8 @@ done
 NEWEST=$(ls -t "$DEST" 2>/dev/null | head -n 1)
 AGE="?"; [ -n "$NEWEST" ] && AGE=$(( $(date +%s) - $(stat -f %m "$DEST/$NEWEST" 2>/dev/null || echo 0) ))
 echo "[$NOW] rc=$RC newest_age_s=$AGE elapsed_s=$((SECONDS-E))" >>"$LOG"
-if [ "$AGE" != "?" ] && [ "$AGE" -gt 180 ]; then
+# STALL = a full 15m state cycle missed (writes land in quarter bursts by
+# design; newest_age < 120 s most minutes, never steadily < 60 s).
+if [ "$AGE" != "?" ] && [ "$AGE" -gt 900 ]; then
   echo "[$NOW] STALL forward_state newest $AGE s old" >>"$LOG"
 fi
