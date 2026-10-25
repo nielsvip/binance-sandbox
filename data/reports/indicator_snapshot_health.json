@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-25T19:25:44Z",
+ "generated_utc": "2026-10-25T19:30:48Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 21.3,
+  "age_s": 61.4,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 4524,
-  "proc_age_s": 56470.0,
-  "log_age_s": 13.8,
+  "proc_age_s": 56774.0,
+  "log_age_s": 46.4,
   "warmup_done": true,
   "timeframes_since_restart": [
    "D",
@@ -97,20 +97,20 @@
   "mode": "ACTIVE",
   "since_epoch": 1792602182.2042153,
   "activations": 163,
-  "hb_mtime": 1792956117.8936126,
-  "mac_snapshot_age_s": 112.6774034500122,
+  "hb_mtime": 1792956523.2417512,
+  "mac_snapshot_age_s": 169.22201657295227,
   "mac_stale": true,
   "lease_holder": "mac",
   "lease_venues": null,
-  "lease_since": "2026-10-25T19:21:52Z",
-  "lease_reason": "yield: Mac never fenced for 180s \u2014 accounts must never be unattended",
-  "now": 1792956166.1362731,
-  "from_cache_age_s": 178.3,
-  "heartbeat_age_s": 48.2,
-  "active_s": 353983.9
+  "lease_since": "2026-10-25T19:25:28Z",
+  "lease_reason": "yield crypto: S1 was not running it and holds nothing else",
+  "now": 1792956524.207294,
+  "from_cache_age_s": 124.9,
+  "heartbeat_age_s": 1.0,
+  "active_s": 354342.0
  },
  "alerts": [
-  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 353983s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (48s) AND the Mac snapshot is fresh (21s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
+  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 354342s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (0s) AND the Mac snapshot is fresh (61s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
  ],
  "verdict": "ALERT"
 }
