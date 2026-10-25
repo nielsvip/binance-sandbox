@@ -14480,7 +14480,7 @@ def _parity_vec_order(reason) -> bool:
     except Exception:
         pass
     u = r.upper()
-    return "|VEC_EXACT" in r or u.startswith(("VEC_DRIVEN_", "BOARD_CONVERGE_")) or "PURE_BOARD" in u
+    return "|VEC_EXACT" in r or u.startswith(("VEC_DRIVEN_", "BOARD_CONVERGE_", "VEC_FWD_")) or "PURE_BOARD" in u
 
 
 def _parity_breach_record(position_key, action, reason, result) -> None:
@@ -52849,6 +52849,71 @@ async def process_position(
     if _vx_backstop:
         if await _vec_exact_process_position(account_key, position_key, trade_manager, _backstop_only=True):
             return
+    # ─── VEC FORWARD-STATE BACKSTOP (USER 2026-10-25): LAST RESORT in the order path. The trigger is the state
+    # calculation itself: tools/v15_forward_state.py rewrites data/forward_state/<SYM_SIDE>.json on every 15m NPZ
+    # refresh, and this edge fires the moment the fresh file arrives (no polling loop, no 2/17min wait). Anything the
+    # twin + converge layers left divergent is FORCED to absolute vec-live parity here through execute_now, the one
+    # and only gate. Every firing is recorded to data/vec_backstop_actions.jsonl so template/script fuckups get fixed
+    # later. Kill: VEC_BACKSTOP_ENABLED=False. Fail-open: missing/stale/unknown state never acts.
+    try:
+        from live_twins import vec_backstop as _vbs
+        _vbs_cfg = getattr(trade_manager, "config", None)
+        if _vbs.enabled(_vbs_cfg):
+            try:
+                _vbs_ak, _vbs_rest = (position_key.split(":", 1) if ":" in str(position_key) else (account_key, position_key))
+            except Exception:
+                _vbs_ak, _vbs_rest = account_key, position_key
+            _vbs_sym, _vbs_side = ((_vbs_rest or "").rsplit("_", 1) + [""])[:2]
+            if _vbs_side in ("LONG", "SHORT"):
+                _vbs_base = getattr(_vbs_cfg, "BASE_PATH", ".")
+                _vbs_st = _vbs.fresh_state(f"{_vbs_sym}_{_vbs_side}", _vbs_base)
+                if _vbs_st:
+                    _vbs_live_open = False
+                    try:
+                        _vbs_ep = None
+                        if hasattr(trade_manager, 'positions_by_account'):
+                            _vbs_ep = trade_manager.positions_by_account.get((_vbs_ak or account_key), {}).get(position_key)
+                        if _vbs_ep is None and hasattr(trade_manager, 'positions'):
+                            _vbs_ep = trade_manager.positions.get(position_key)
+                        _vbs_live_open = bool(_vbs_ep and abs(safe_fetch_float(getattr(_vbs_ep, 'positionAmt', 0.0), 0.0)) > 0.0001)
+                    except Exception:
+                        _vbs_live_open = False
+                    _vbs_act, _vbs_reason = _vbs.divergence(_vbs_live_open, _vbs_st)
+                    _vbs_tail = str((_vbs_st or {}).get("npz_tail") or "?")
+                    if _vbs_act and _vbs.due(f"{_vbs_sym}_{_vbs_side}", _vbs_tail):
+                        _vbs_px = 0.0
+                        try:
+                            _vbs_px = float((await trade_manager.get_current_price(_vbs_sym))[0] or 0.0)
+                        except Exception:
+                            _vbs_px = 0.0
+                        _vbs_qty, _vbs_full, _vbs_oside = 0.0, False, ("SELL" if _vbs_side == "LONG" else "BUY")
+                        if _vbs_act == "FLAT":
+                            try:
+                                _vbs_pos = trade_manager.positions.get(position_key) if hasattr(trade_manager, "positions") else None
+                                _vbs_qty = abs(safe_fetch_float(getattr(_vbs_pos, "positionAmt", 0), 0))
+                            except Exception:
+                                _vbs_qty = 0.0
+                            _vbs_full = True
+                        else:
+                            try:
+                                _vbs_base_n = float(_psym_sps(_vbs_sym, _vbs_side) or 0.0)
+                            except Exception:
+                                _vbs_base_n = 0.0
+                            _vbs_qty = _vbs_base_n / _vbs_px if (_vbs_base_n > 0 and _vbs_px > 0) else 0.0
+                            _vbs_oside = ("BUY" if _vbs_side == "LONG" else "SELL")
+                        if _vbs_qty > 0:
+                            logger.warning(f"[VEC_BACKSTOP] {_vbs_ak}:{_vbs_sym}_{_vbs_side} live_open={bool(_vbs_live_open)} fwd_open={bool((_vbs_st or {}).get('open'))} -> {_vbs_act} ({_vbs_reason})")
+                            _vbs_res = await trade_manager.execute_now(position_key=position_key, account_key=_vbs_ak or account_key, symbol=_vbs_sym, original_positionAmt=0.0, side=_vbs_oside, position_side=_vbs_side, quantity=_vbs_qty, old_price=_vbs_px, unique_id=f"VXBS{_vbs_tail}", reason=_vbs_reason, is_full_close=_vbs_full, action=("CLOSE" if _vbs_act == "FLAT" else "OPEN"))
+                            try:
+                                _vbs.record(_vbs_base, {"ts": time.time(), "key": position_key, "action": _vbs_act, "reason": _vbs_reason, "qty": _vbs_qty, "px": _vbs_px, "result": str(_vbs_res)[:120]})
+                            except Exception:
+                                pass
+                            if str(_vbs_res or "").upper().startswith("SUCCESS"):
+                                return f"{EvalStatus.ACTION_TAKEN}:VEC_BACKSTOP_{_vbs_act}"
+                        else:
+                            logger.warning(f"[VEC_BACKSTOP] {_vbs_ak}:{_vbs_sym}_{_vbs_side} DIVERGENT ({_vbs_reason}) but qty<=0 (px={_vbs_px}) — logged, not forced")
+    except Exception as _vbs_e:
+        logger.debug(f"[VEC_BACKSTOP] probe err: {_vbs_e}")
     # ANG TIMING EXITS (2026-10-09 USER smarter exits) — USER 2026-10-10 NO EXCEPTIONS: OFF while the vec
     # twin owns EXIT. Twin-idle means NOBODY acts — a native trim without a vec CLOSE act is a parity violation.
     if not _vx_native_off() and await _pp_ang_timing_exits(trade_manager, account_key, position_key):
