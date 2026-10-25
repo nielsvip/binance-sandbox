@@ -2983,7 +2983,12 @@ def _launched_actions(actions):
 def pair_launch_cmd(host, actions, pdir, workers):
     """one ssh command that detaches every side job of a symbol (subshell > /dev/null so ssh returns at once)."""
     parts = []
+    _seen_ssw = set()  # 2026-10-25 same-second 8x dup stacks (QQQ_LONG x9 on s5): one tick must never launch the same sym/side/window twice
     for a in _launched_actions(actions):
+        _ssw = (a.get("sym"), a.get("side"), a.get("window"))
+        if _ssw in _seen_ssw:
+            continue
+        _seen_ssw.add(_ssw)
         body = side_cmd(host, a["sym"], a["side"], a["window"], pdir, a.get("attempt", 1), workers)
         parts.append(f"(cd {host['root']} && mkdir -p logs && setsid nohup bash -c {shlex.quote(body)} >> /tmp/sweep_{a['sym']}_{a['side']}_{a['window']}.log 2>&1 < /dev/null &) > /dev/null 2>&1")
     return "; ".join(parts)

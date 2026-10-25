@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
-from v15_fleet_scheduler import _place_order, _spawn_guard, side_cmd
+from v15_fleet_scheduler import _place_order, _spawn_guard, pair_launch_cmd, side_cmd
 
 
 class SpawnGuardShellTest(unittest.TestCase):
@@ -146,6 +146,34 @@ class SideCmdGuardTest(unittest.TestCase):
             body = side_cmd(h, "AAA", "SHORT", w, "/tmp/p", 1, 4)
             self.assertIn("pgrep -f", body)
             self.assertIn("[spawnguard]", body)
+
+
+class PairLaunchDedupTest(unittest.TestCase):
+    def test_same_side_twice_in_one_tick_launches_once(self):
+        # 2026-10-25: one S1 tick emitted QQQ_LONG 8x in the same second (9 stacks
+        # on s5) — pair_launch_cmd must collapse identical sym/side/window to one.
+        h = {"root": "/tmp/r", "template_dir": "SPREADSHEETS"}
+        acts = [
+            {"sym": "QQQ", "side": "LONG", "window": "30D", "attempt": 1}
+            for _ in range(8)
+        ]
+        cmd = pair_launch_cmd(h, acts, "/tmp/p", 4)
+        # one detached job per unique action: 8 duplicate actions collapse to
+        # a single setsid launch (guard pattern + invocation both name the
+        # side, so count launches, not names)
+        self.assertEqual(cmd.count("setsid nohup"), 1)
+
+    def test_distinct_windows_all_launch(self):
+        # pair-in-RAM collapses multi-30D to the first side; distinct windows
+        # must still all launch (dedup is per sym/side/window, not per sym).
+        h = {"root": "/tmp/r", "template_dir": "SPREADSHEETS"}
+        acts = [
+            {"sym": "QQQ", "side": "LONG", "window": "30D", "attempt": 1},
+            {"sym": "QQQ", "side": "LONG", "window": "365D", "attempt": 1},
+        ]
+        cmd = pair_launch_cmd(h, acts, "/tmp/p", 4)
+        self.assertIn("--sym-side QQQ_LONG", cmd)
+        self.assertIn("v15_365_cycle.py --sym-side QQQ_LONG", cmd)
 
 
 class PlaceOrderRotationTest(unittest.TestCase):
