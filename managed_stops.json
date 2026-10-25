@@ -1,30 +1,23 @@
 {
-  "fin:MOVRUSDT_SHORT": {
-    "orderId": "3000002273185267",
-    "stopPrice": 1.1345,
-    "entry_sig": "2026-10-25 08:39:22.163000+00:00",
-    "symbol": "MOVRUSDT",
+  "flz:BTCDOMUSDT_SHORT": {
+    "orderId": "1000002642412795",
+    "stopPrice": 5632.1,
+    "entry_sig": "2026-10-25 08:31:07.137000+00:00",
+    "symbol": "BTCDOMUSDT",
     "side": "SHORT"
   },
-  "fin:RLCUSDT_SHORT": {
-    "orderId": "3000002273186096",
-    "stopPrice": 0.7252,
-    "entry_sig": "2026-10-25 08:39:48.981000+00:00",
-    "symbol": "RLCUSDT",
+  "flz:HYPEUSDT_SHORT": {
+    "orderId": "1000002642412800",
+    "stopPrice": 76.42,
+    "entry_sig": "2026-10-25 08:25:06.258000+00:00",
+    "symbol": "HYPEUSDT",
     "side": "SHORT"
   },
-  "fin:FLUXUSDT_SHORT": {
-    "orderId": "3000002273187852",
-    "stopPrice": 0.06581,
-    "entry_sig": "2026-10-25 08:51:16.819000+00:00",
-    "symbol": "FLUXUSDT",
-    "side": "SHORT"
-  },
-  "fin:MAGICUSDT_SHORT": {
-    "orderId": "3000002273191023",
-    "stopPrice": 0.08571,
-    "entry_sig": "2026-10-25 08:53:28.700000+00:00",
-    "symbol": "MAGICUSDT",
+  "flz:ZECUSDC_SHORT": {
+    "orderId": "1000002642414408",
+    "stopPrice": 1190.38,
+    "entry_sig": "2026-10-25 08:57:09.279000+00:00",
+    "symbol": "ZECUSDC",
     "side": "SHORT"
   }
 }

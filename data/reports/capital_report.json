@@ -1,125 +1,32 @@
 {
- "generated_at": "2026-10-25 08:53 UTC",
- "total_capital_usd": 207.94,
+ "generated_at": "2026-10-25 08:59 UTC",
+ "total_capital_usd": 27.6,
  "tier_capital": {
   "A": 0.0,
-  "B": 45.63,
-  "C": 162.32
+  "B": 0.0,
+  "C": 27.6
  },
  "tier_count": {
   "A": 0,
-  "B": 3,
-  "C": 6
+  "B": 0,
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "men:TIAUSDC_LONG",
-  "men:ENAUSDC_LONG",
-  "men:EDUUSDT_LONG",
-  "men:TLMUSDT_SHORT",
-  "men:GALAUSDT_SHORT",
-  "men:RVNUSDT_SHORT"
+  "inf:ZENUSDT_SHORT"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "men:TIAUSDC_LONG",
-   "symbol": "TIAUSDC",
-   "account": "men",
-   "value_usd": 88.96,
-   "gain_pct": -0.679,
+   "pk": "inf:ZENUSDT_SHORT",
+   "symbol": "ZENUSDT",
+   "account": "inf",
+   "value_usd": 27.6,
+   "gain_pct": -0.018,
    "tier": "C",
-   "perf_mult": 0.49,
-   "amt": 169.0,
-   "mark": 0.5264
-  },
-  {
-   "pk": "men:RVNUSDT_SHORT",
-   "symbol": "RVNUSDT",
-   "account": "men",
-   "value_usd": 24.68,
-   "gain_pct": 1.073,
-   "tier": "C",
-   "perf_mult": 0.14,
-   "amt": 18628.0,
-   "mark": 0.00132463
-  },
-  {
-   "pk": "men:XPLUSDT_SHORT",
-   "symbol": "XPLUSDT",
-   "account": "men",
-   "value_usd": 24.68,
-   "gain_pct": 1.111,
-   "tier": "B",
-   "perf_mult": 1.75,
-   "amt": 344.0,
-   "mark": 0.07174406
-  },
-  {
-   "pk": "men:EDUUSDT_LONG",
-   "symbol": "EDUUSDT",
-   "account": "men",
-   "value_usd": 21.59,
-   "gain_pct": 0.033,
-   "tier": "C",
-   "perf_mult": 0.16,
-   "amt": 360.0,
-   "mark": 0.05997748
-  },
-  {
-   "pk": "men:GALAUSDT_SHORT",
-   "symbol": "GALAUSDT",
-   "account": "men",
-   "value_usd": 14.92,
-   "gain_pct": 0.858,
-   "tier": "C",
-   "perf_mult": 0.12,
-   "amt": 8608.0,
-   "mark": 0.001733
-  },
-  {
-   "pk": "men:ACTUSDT_SHORT",
-   "symbol": "ACTUSDT",
-   "account": "men",
-   "value_usd": 11.21,
-   "gain_pct": 0.273,
-   "tier": "B",
-   "perf_mult": 5.84,
-   "amt": 1337.0,
-   "mark": 0.00838407
-  },
-  {
-   "pk": "men:GRASSUSDT_LONG",
-   "symbol": "GRASSUSDT",
-   "account": "men",
-   "value_usd": 9.74,
-   "gain_pct": -0.068,
-   "tier": "B",
-   "perf_mult": 2.06,
-   "amt": 14.6,
-   "mark": 0.66700667
-  },
-  {
-   "pk": "men:TLMUSDT_SHORT",
-   "symbol": "TLMUSDT",
-   "account": "men",
-   "value_usd": 6.23,
-   "gain_pct": 0.27,
-   "tier": "C",
-   "perf_mult": 0.29,
-   "amt": 5381.0,
-   "mark": 0.00115687
-  },
-  {
-   "pk": "men:ENAUSDC_LONG",
-   "symbol": "ENAUSDC",
-   "account": "men",
-   "value_usd": 5.94,
-   "gain_pct": -0.31,
-   "tier": "C",
-   "perf_mult": 0.41,
-   "amt": 31.0,
-   "mark": 0.19158
+   "perf_mult": 0.31,
+   "amt": 4.9,
+   "mark": 5.63348333
   }
  ]
 }
