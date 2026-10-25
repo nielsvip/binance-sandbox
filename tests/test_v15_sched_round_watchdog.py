@@ -29,7 +29,7 @@ def _run(ticks, drain_hosts=(), env_drain="", workdir=None):
     p = subprocess.run([sys.executable, "-c", _snippet()], input="\n".join(json.dumps(t) for t in ticks),
                        capture_output=True, text=True, cwd=str(d or ROOT), env=env, timeout=60)
     assert p.returncode == 0, p.stderr
-    return int(p.stdout.strip())
+    return int(p.stdout.split()[0])  # production verdict also reports quorum, ticks and host names
 
 
 def _tick(hosts, launched=()):

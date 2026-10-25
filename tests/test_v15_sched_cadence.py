@@ -41,6 +41,7 @@ def test_w_cap_per_pool_keeps_highest_gain():
 def test_defer_windows_weekly_biweekly(monkeypatch):
     monkeypatch.delenv("V15_TIER_DEFER_M_D", raising=False)
     monkeypatch.delenv("V15_TIER_DEFER_L_D", raising=False)
+    monkeypatch.setattr(S._RANKPRI, "is_ranking_side", lambda _ss: False)
     assert S._defer_windows() == {"M": 1.0, "L": 1.0}  # USER 2026-10-13: ALL symbols EVERY day on s1+s2
     now = 10_000_000.0
     tiers = {"A_LONG": {"tier": "M", "mtime": now - 0.5 * 86400}, "B_LONG": {"tier": "L", "mtime": now - 0.5 * 86400}, "C_LONG": {"tier": "W", "mtime": now - 3 * 86400}}
