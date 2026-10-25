@@ -1,10 +1,10 @@
 {
- "generated_at": "2026-10-25 06:47 UTC",
- "total_capital_usd": 71.11,
+ "generated_at": "2026-10-25 06:53 UTC",
+ "total_capital_usd": 71.05,
  "tier_capital": {
   "A": 0.0,
-  "B": 45.7,
-  "C": 25.41
+  "B": 45.67,
+  "C": 25.38
  },
  "tier_count": {
   "A": 0,
@@ -24,45 +24,45 @@
    "pk": "men:BATUSDT_LONG",
    "symbol": "BATUSDT",
    "account": "men",
-   "value_usd": 31.78,
+   "value_usd": 31.77,
    "gain_pct": -0.597,
    "tier": "B",
-   "perf_mult": 0.96,
+   "perf_mult": 0.93,
    "amt": 203.1,
-   "mark": 0.15645121
+   "mark": 0.15640259
   },
   {
    "pk": "men:STRKUSDT_LONG",
    "symbol": "STRKUSDT",
    "account": "men",
-   "value_usd": 14.25,
+   "value_usd": 14.24,
    "gain_pct": 0.043,
    "tier": "C",
    "perf_mult": 0.28,
    "amt": 310.4,
-   "mark": 0.04592296
+   "mark": 0.04589
   },
   {
    "pk": "men:ACTUSDT_SHORT",
    "symbol": "ACTUSDT",
    "account": "men",
-   "value_usd": 11.13,
+   "value_usd": 11.11,
    "gain_pct": -0.0,
    "tier": "B",
    "perf_mult": 6.83,
    "amt": 1310.0,
-   "mark": 0.00849954
+   "mark": 0.008483
   },
   {
    "pk": "men:CRVUSDC_LONG",
    "symbol": "CRVUSDC",
    "account": "men",
-   "value_usd": 9.94,
+   "value_usd": 9.92,
    "gain_pct": 0.944,
    "tier": "C",
    "perf_mult": 0.16,
    "amt": 28.7,
-   "mark": 0.34624757
+   "mark": 0.34574885
   },
   {
    "pk": "men:ALTUSDT_LONG",
@@ -73,7 +73,7 @@
    "tier": "B",
    "perf_mult": 4.38,
    "amt": 423.0,
-   "mark": 0.006604
+   "mark": 0.006598
   },
   {
    "pk": "men:BEAMXUSDT_LONG",
@@ -84,7 +84,7 @@
    "tier": "C",
    "perf_mult": 0.24,
    "amt": 391.0,
-   "mark": 0.00311461
+   "mark": 0.003115
   }
  ]
 }
