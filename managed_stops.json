@@ -1,37 +1,58 @@
 {
-  "men:TIAUSDC_LONG": {
-    "orderId": "2000001539575183",
+  "ang:TIAUSDC_LONG": {
+    "orderId": "4000001994910292",
     "stopPrice": 0.5183,
-    "entry_sig": "2026-10-25 10:37:03.427000+00:00",
+    "entry_sig": "2026-10-25 10:19:28.212000+00:00",
     "symbol": "TIAUSDC",
     "side": "LONG"
   },
-  "men:RVNUSDT_SHORT": {
-    "orderId": "2000001539663119",
-    "stopPrice": 0.001331,
-    "entry_sig": "2026-10-25 10:21:48.146000+00:00",
-    "symbol": "RVNUSDT",
+  "ang:AXSUSDT_SHORT": {
+    "orderId": "4000001994978347",
+    "stopPrice": 0.9257,
+    "entry_sig": "2026-10-25 10:56:33.660000+00:00",
+    "symbol": "AXSUSDT",
     "side": "SHORT"
   },
-  "men:NEARUSDC_LONG": {
-    "orderId": "2000001539665014",
-    "stopPrice": 4.383,
-    "entry_sig": "2026-10-25 11:27:45.135000+00:00",
-    "symbol": "NEARUSDC",
+  "ang:COTIUSDT_SHORT": {
+    "orderId": "4000001994986133",
+    "stopPrice": 0.010735,
+    "entry_sig": "2026-10-25 11:07:58.521000+00:00",
+    "symbol": "COTIUSDT",
+    "side": "SHORT"
+  },
+  "ang:ZROUSDT_LONG": {
+    "orderId": "4000001995007198",
+    "stopPrice": 1.6766,
+    "entry_sig": "2026-10-25 11:27:09.985000+00:00",
+    "symbol": "ZROUSDT",
     "side": "LONG"
   },
-  "men:GRASSUSDT_LONG": {
-    "orderId": "2000001539669110",
-    "stopPrice": 0.6663,
-    "entry_sig": "2026-10-25 11:19:33.398000+00:00",
-    "symbol": "GRASSUSDT",
-    "side": "LONG"
+  "ang:STRKUSDT_SHORT": {
+    "orderId": "4000001995022774",
+    "stopPrice": 0.04517,
+    "entry_sig": "2026-03-12 05:29:19.663496+00:00",
+    "symbol": "STRKUSDT",
+    "side": "SHORT"
   },
-  "men:1000LUNCUSDT_SHORT": {
-    "orderId": "2000001539669158",
-    "stopPrice": 0.04509,
-    "entry_sig": "2026-10-25 11:22:44.270000+00:00",
-    "symbol": "1000LUNCUSDT",
+  "ang:NMRUSDT_SHORT": {
+    "orderId": "4000001995027564",
+    "stopPrice": 9.84,
+    "entry_sig": "2026-10-25 11:17:04.867000+00:00",
+    "symbol": "NMRUSDT",
+    "side": "SHORT"
+  },
+  "ang:RLCUSDT_SHORT": {
+    "orderId": "4000001995027568",
+    "stopPrice": 0.5267,
+    "entry_sig": "2026-10-25 10:56:54.283000+00:00",
+    "symbol": "RLCUSDT",
+    "side": "SHORT"
+  },
+  "ang:ZENUSDT_SHORT": {
+    "orderId": "4000001995028878",
+    "stopPrice": 5.655,
+    "entry_sig": "2026-10-25 11:30:38.661000+00:00",
+    "symbol": "ZENUSDT",
     "side": "SHORT"
   }
 }
