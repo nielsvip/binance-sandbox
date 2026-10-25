@@ -1,7 +1,85 @@
 {
- "findings": [],
- "n_findings": 0,
- "n_positions": 0,
- "positions": [],
- "ts": "2026-10-25T07:31:15.173518+00:00"
+ "findings": [
+  {
+   "armed": true,
+   "code": "LEVEL_NOT_ENTRY_BAR",
+   "entry_bar_level": 739.3869000000001,
+   "key": "ang:BNBUSDC_LONG",
+   "live_level": 716.58405,
+   "mark": 744.93,
+   "opened_at": "2026-10-25T07:40:11.040000Z",
+   "resting_trigger": 715.5
+  },
+  {
+   "armed": true,
+   "code": "LEVEL_NOT_ENTRY_BAR",
+   "entry_bar_level": 0.07809474999999999,
+   "key": "ang:DOGEUSDC_SHORT",
+   "live_level": 0.08411849999999998,
+   "mark": 0.07691087,
+   "opened_at": "2026-10-25T07:39:57.749000Z",
+   "resting_trigger": 0.08425
+  },
+  {
+   "armed": true,
+   "code": "LEVEL_NOT_ENTRY_BAR",
+   "entry_bar_level": 0.065212625,
+   "key": "fin:FLUXUSDT_SHORT",
+   "live_level": 0.06391939999999999,
+   "mark": 0.06369,
+   "opened_at": "2026-10-25T07:38:15.447000Z",
+   "resting_trigger": 0.0
+  },
+  {
+   "armed": true,
+   "code": "LEVEL_NOT_ENTRY_BAR",
+   "entry_bar_level": 0.0743053,
+   "key": "men:XPLUSDT_SHORT",
+   "live_level": 0.072731375,
+   "mark": 0.07253,
+   "opened_at": "2026-10-25T07:36:52.012000Z",
+   "resting_trigger": 0.07285
+  }
+ ],
+ "n_findings": 4,
+ "n_positions": 4,
+ "positions": [
+  {
+   "armed": true,
+   "entry_bar_level": 739.3869000000001,
+   "key": "ang:BNBUSDC_LONG",
+   "live_level": 716.58405,
+   "mark": 744.93,
+   "opened_at": "2026-10-25T07:40:11.040000Z",
+   "resting_trigger": 715.5
+  },
+  {
+   "armed": true,
+   "entry_bar_level": 0.07809474999999999,
+   "key": "ang:DOGEUSDC_SHORT",
+   "live_level": 0.08411849999999998,
+   "mark": 0.07691087,
+   "opened_at": "2026-10-25T07:39:57.749000Z",
+   "resting_trigger": 0.08425
+  },
+  {
+   "armed": true,
+   "entry_bar_level": 0.065212625,
+   "key": "fin:FLUXUSDT_SHORT",
+   "live_level": 0.06391939999999999,
+   "mark": 0.06369,
+   "opened_at": "2026-10-25T07:38:15.447000Z",
+   "resting_trigger": 0.0
+  },
+  {
+   "armed": true,
+   "entry_bar_level": 0.0743053,
+   "key": "men:XPLUSDT_SHORT",
+   "live_level": 0.072731375,
+   "mark": 0.07253,
+   "opened_at": "2026-10-25T07:36:52.012000Z",
+   "resting_trigger": 0.07285
+  }
+ ],
+ "ts": "2026-10-25T07:40:41.472226+00:00"
 }

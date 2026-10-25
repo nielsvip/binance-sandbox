@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-25T07:37:41Z",
+ "generated_utc": "2026-10-25T07:42:46Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 69.3,
+  "age_s": 61.6,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 4524,
-  "proc_age_s": 13987.0,
-  "log_age_s": 2.0,
+  "proc_age_s": 14292.0,
+  "log_age_s": 26.9,
   "warmup_done": true,
   "timeframes_since_restart": [
    "D",
@@ -55,20 +55,20 @@
   "mode": "ACTIVE",
   "since_epoch": 1792602182.2042153,
   "activations": 163,
-  "hb_mtime": 1792913619.3825886,
-  "mac_snapshot_age_s": 2.089139223098755,
+  "hb_mtime": 1792914090.306053,
+  "mac_snapshot_age_s": 16.734552145004272,
   "mac_stale": false,
   "lease_holder": "mac",
   "lease_venues": null,
-  "lease_since": "2026-10-25T07:33:28Z",
-  "lease_reason": "yield crypto: S1 was not running it and holds nothing else",
-  "now": 1792913752.178101,
-  "from_cache_age_s": 109.6,
-  "heartbeat_age_s": 132.8,
-  "active_s": 311570.0
+  "lease_since": "2026-10-25T07:41:08Z",
+  "lease_reason": "all scoped accounts yielded back to a live Mac",
+  "now": 1792914104.9510508,
+  "from_cache_age_s": 62.0,
+  "heartbeat_age_s": 14.6,
+  "active_s": 311922.7
  },
  "alerts": [
-  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 311569s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (132s) AND the Mac snapshot is fresh (69s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
+  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 311922s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (14s) AND the Mac snapshot is fresh (61s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
  ],
  "verdict": "ALERT"
 }

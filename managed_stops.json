@@ -1,9 +1,16 @@
 {
-  "fin:XMRUSDT_LONG": {
-    "orderId": "3000002273065804",
-    "stopPrice": 605.95,
-    "entry_sig": "2026-10-25 07:32:18.144000+00:00",
-    "symbol": "XMRUSDT",
-    "side": "LONG"
+  "fin:FLUXUSDT_SHORT": {
+    "orderId": "3000002273074215",
+    "stopPrice": 0.06581,
+    "entry_sig": "2026-10-25 07:38:15.447000+00:00",
+    "symbol": "FLUXUSDT",
+    "side": "SHORT"
+  },
+  "fin:MAGICUSDT_SHORT": {
+    "orderId": "3000002273079039",
+    "stopPrice": 0.08571,
+    "entry_sig": "2026-10-25 07:41:11.471000+00:00",
+    "symbol": "MAGICUSDT",
+    "side": "SHORT"
   }
 }
