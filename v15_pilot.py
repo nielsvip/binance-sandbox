@@ -14272,6 +14272,7 @@ def _main_single():
         # USER 2026-09-29: "0 trades is impossible" — name the gates that veto every entry, then SWEEP anyway
         # (promotion still requires a valid >=floor-trade candidate, so a sweep can only lift the side out of the floor)
         _blockers = []
+        _subfloor = []
         for _bk, _bv in defaults.items():
             if not isinstance(_bv, bool) or _bk == "SIMPLE_PRICE_GT0_ENABLED":  # SIMPLE_PRICE_GT0 = always-trade test switch, not a real unblock
                 continue
@@ -14282,20 +14283,49 @@ def _main_single():
                 _br = evaluate_prepared_sanitized(prepared, {**cumulative_overrides, _bk: not _cur}, args.window_days) or {}
             except Exception:
                 continue
-            if int(_br.get("trades") or 0) >= min_trades:
+            _br_trades = int(_br.get("trades") or 0)
+            if _br_trades >= min_trades:
                 _blockers.append({"switch": _bk, "flip_to": not _cur, "trades": _br.get("trades"), "gain_pct": _br.get("gain_pct"), "valid": _br.get("valid")})
+            elif _br_trades > 0:
+                _subfloor.append({"switch": _bk, "flip_to": not _cur, "trades": _br_trades, "gain_pct": _br.get("gain_pct"), "valid": _br.get("valid"), "res": _br})
         progress["floor_blockers"] = _blockers
         _atomic_write_json(progress_path, progress)
         print(f"[FLOOR-BLOCKERS] {new_symside} baseline {baseline_trades} trades; single flips that restore >={min_trades} trades: {[(b['switch'], b['flip_to'], b['trades']) for b in _blockers][:12]}", flush=True)
         if baseline_trades == 0 and not _blockers:
-            progress["verdict"] = "NO_TRADES"
-            progress["verdict_reasons"] = [f"baseline 0 trades, no single bool flip restores >={min_trades} — sweep skipped, no REDO (USER 2026-10-03: skip dead fills)"]
-            progress["verdict_npz_mtime_ns"] = _npz_mtime_ns(new_symside)
-            progress.pop("needs_redo", None)
-            progress.pop("final_path", None)
-            _atomic_write_json(progress_path, progress)
-            print(f"[NO-TRADES-SKIP] {new_symside} baseline 0 trades + no unblock flip — XLS kept, sweep skipped, no REDO; reruns only on newer NPZ", flush=True)
-            return
+            # USER 2026-10-25 unseal (stocks 0-trade seal since the 10-24 swing knob): a flip restoring
+            # >0 trades (even below floor) proves entries flow — seed the sweep with the best such
+            # flip INSTEAD of skipping, so the sweep can honestly climb from a trading baseline.
+            # SAFETY: only when cumulative_gain == 0 (nothing ever promoted — nothing to lose);
+            # promotion still requires valid >=floor candidates; the seed eval is a real recorded eval.
+            _seed = None
+            try:
+                if float(cumulative_gain or 0.0) == 0.0 and _subfloor:
+                    _seed = sorted(_subfloor, key=lambda b: (int(b["trades"]), float(b["gain_pct"] or 0.0)))[-1]
+            except Exception:
+                _seed = None
+            if _seed is not None and os.environ.get("V15_SKIP_BELOW_FLOOR", "0") != "1":
+                try:
+                    cumulative_overrides = dict(cumulative_overrides)
+                    cumulative_overrides[_seed["switch"]] = _seed["flip_to"]
+                    baseline_vec = dict(_seed["res"])
+                    baseline_gain = float(_seed["res"].get("gain_pct") or 0.0)
+                    baseline_trades = int(_seed["res"].get("trades") or 0)
+                    cumulative_gain = float(baseline_gain)
+                    progress["seed_flip"] = {"switch": _seed["switch"], "flip_to": _seed["flip_to"], "trades": baseline_trades, "gain_pct": baseline_gain}
+                    _atomic_write_json(progress_path, progress)
+                    print(f"[SEED-FLIP] {new_symside} seeded sweep with {_seed['switch']}={_seed['flip_to']} ({baseline_trades} trades, gain {baseline_gain:.4f}%) — baseline re-anchored, sweeping", flush=True)
+                except Exception as _seed_e:
+                    print(f"[SEED-FLIP-ERR] {new_symside} seed failed ({_seed_e}) — keeping SKIP", flush=True)
+                    _seed = None
+            if _seed is None:
+                progress["verdict"] = "NO_TRADES"
+                progress["verdict_reasons"] = [f"baseline 0 trades, no single bool flip restores >={min_trades} — sweep skipped, no REDO (USER 2026-10-03: skip dead fills)"]
+                progress["verdict_npz_mtime_ns"] = _npz_mtime_ns(new_symside)
+                progress.pop("needs_redo", None)
+                progress.pop("final_path", None)
+                _atomic_write_json(progress_path, progress)
+                print(f"[NO-TRADES-SKIP] {new_symside} baseline 0 trades + no unblock flip — XLS kept, sweep skipped, no REDO; reruns only on newer NPZ", flush=True)
+                return
         if os.environ.get("V15_SKIP_BELOW_FLOOR", "0") == "1":
             progress["diagnostic_only"] = progress["baseline_below_floor"]
             _atomic_write_json(progress_path, progress)
