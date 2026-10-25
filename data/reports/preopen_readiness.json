@@ -1,12 +1,13 @@
 {
- "generated_utc": "2026-10-25T20:40:03Z",
+ "generated_utc": "2026-10-25T21:00:02Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
  "verdict": "FAIL",
  "failed_critical": [
   "boards_recomputed",
-  "live_set_matches_selection"
+  "live_set_matches_selection",
+  "indicators_fresh"
  ],
  "checks": [
   {
@@ -37,23 +38,23 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "built_at": "2026-10-25T19:51:29.553848+00:00",
+    "built_at": "2026-10-25T20:50:48.730518+00:00",
     "n": 525,
-    "age_at_open_s": 2914
+    "age_at_open_s": 553
    },
-   "detail": "built 2026-10-25T19:51:29.553848+00:00 n=525"
+   "detail": "built 2026-10-25T20:50:48.730518+00:00 n=525"
   },
   {
    "name": "apply_report_written",
    "ok": true,
    "critical": true,
    "measured": {
-    "reports_today": 21,
-    "newest_report": "persym_golive_20261025_refresh_1955.json",
-    "newest_report_at": "2026-10-25T20:12:09Z",
-    "tiers_at": "2026-10-25T20:13:50Z"
+    "reports_today": 22,
+    "newest_report": "persym_golive_20261025_refresh_2052.json",
+    "newest_report_at": "2026-10-25T20:57:18Z",
+    "tiers_at": "2026-10-25T20:58:00Z"
    },
-   "detail": "persym_golive_20261025_refresh_1955.json at 2026-10-25T20:12:09Z, tiers 2026-10-25T20:13:50Z"
+   "detail": "persym_golive_20261025_refresh_2052.json at 2026-10-25T20:57:18Z, tiers 2026-10-25T20:58:00Z"
   },
   {
    "name": "live_set_matches_selection",
@@ -62,8 +63,8 @@
    "measured": {
     "selection_n": 525,
     "exact": 111,
-    "benign_divergence_only": 275,
-    "material_divergence": 138,
+    "benign_divergence_only": 274,
+    "material_divergence": 139,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -200,20 +201,29 @@
      }
     ]
    },
-   "detail": "111 exact, 275 benign-only, 138 with material divergence, 1 with no live row"
+   "detail": "111 exact, 274 benign-only, 139 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
-   "ok": true,
+   "ok": false,
    "critical": true,
    "measured": {
     "symbols": 201,
-    "stale_over_90min": 0,
-    "stale_pct": 0.0,
-    "median_age_min": 85.1,
-    "sample": []
+    "stale_over_90min": 64,
+    "stale_pct": 31.8,
+    "median_age_min": 15.0,
+    "sample": [
+     "RAYSOLUSDT",
+     "RENDERUSDT",
+     "RIFUSDT",
+     "RLCUSDT",
+     "RONINUSDT",
+     "ROSEUSDT",
+     "RSRUSDT",
+     "RUNEUSDT"
+    ]
    },
-   "detail": "0/201 symbols past the live 90-min entry gate (0.0%)"
+   "detail": "64/201 symbols past the live 90-min entry gate (31.8%)"
   },
   {
    "name": "s1_sets_synced",

@@ -41,13 +41,6 @@
     "symbol": "LTCUSDC",
     "side": "SHORT"
   },
-  "inf:COTIUSDT_SHORT": {
-    "orderId": "2000001540469084",
-    "stopPrice": 0.010526,
-    "entry_sig": "2026-10-25 20:52:24.330000+00:00",
-    "symbol": "COTIUSDT",
-    "side": "SHORT"
-  },
   "inf:GRAMUSDT_SHORT": {
     "orderId": "2000001540469965",
     "stopPrice": 1.268,
@@ -60,6 +53,13 @@
     "stopPrice": 0.006805,
     "entry_sig": "2026-10-25 20:55:20.938000+00:00",
     "symbol": "VETUSDT",
+    "side": "LONG"
+  },
+  "inf:ARBUSDC_LONG": {
+    "orderId": "2000001540479280",
+    "stopPrice": 0.16889,
+    "entry_sig": "2026-10-25 21:02:31.324000+00:00",
+    "symbol": "ARBUSDC",
     "side": "LONG"
   }
 }
