@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-25 12:23:39 UTC
+# Copilot Status — 2026-10-25 12:28:43 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T12:17:43
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T12:18:44
-- **STALE_INDICATORS** [tradier]  — 2026-10-25T12:19:45
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T12:19:45
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T12:19:45
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T12:20:46
-- **STALE_INDICATORS** [tradier]  — 2026-10-25T12:21:47
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T12:21:47
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T12:21:47
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T12:22:48
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T12:23:49
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T12:24:50
+- **STALE_INDICATORS** [tradier]  — 2026-10-25T12:25:50
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T12:25:50
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T12:25:51
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T12:26:51
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-25T12:26:51
+- **STALE_INDICATORS** [tradier]  — 2026-10-25T12:27:52
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T12:27:52
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T12:27:52
 
 ## Missed Trades (trader comparison)
 
@@ -27,17 +27,15 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 5 | **Watching for reentry:** 7 | **Reentered:** 0
+**Held:** 5 | **Watching for reentry:** 5 | **Reentered:** 0
 
 - HELD: **ARM** SHORT (tradier) peak +8.3%, now +-0.5%
 - HELD: **CDE** SHORT (tradier) peak +5.0%, now +2.1%
-- HELD: **WLDUSDC** SHORT (crypto) peak +4.1%, now +-0.8%
-- HELD: **GRAMUSDT** SHORT (crypto) peak +4.0%, now +0.0%
+- HELD: **MAGICUSDT** SHORT (crypto) peak +4.7%, now +0.0%
+- HELD: **WLDUSDC** SHORT (crypto) peak +4.1%, now +-0.4%
 - HELD: **NXE** SHORT (tradier) peak +3.3%, now +-0.4%
 
-- WATCHING: **ACEUSDT** SHORT (crypto) peaked +7.7%, exited 0m ago
 - WATCHING: **RLCUSDT** SHORT (crypto) peaked +7.6%, exited 0m ago
-- WATCHING: **GRASSUSDT** LONG (crypto) peaked +5.6%, exited 0m ago
 - WATCHING: **SKYAIUSDT** LONG (crypto) peaked +5.3%, exited 0m ago
 - WATCHING: **NMRUSDT** SHORT (crypto) peaked +4.3%, exited 0m ago
 - WATCHING: **TIAUSDC** LONG (crypto) peaked +3.8%, exited 0m ago
