@@ -1438,3 +1438,26 @@ def test_paper_twin_never_cross_day_or_veto():
     out, sm = srv.realized_walk([prow, veto], broker_twins=twins)
     assert all(e.get("rpnl") is None for e in out if e.get("action") == "REDUCE")
     assert sm["paper_twinned"] == 0
+
+
+def test_third_dupe_close_excused_not_unknown():
+    # BONK 10-24 lesson: service REDUCE + funnel CLOSE + sync echo log one
+    # fill 3x. The 3rd record must excuse (pool entries are not consumed),
+    # never print unknown — sums identical either way, w/o-basis drops.
+    now = datetime.now(timezone.utc)
+    iso = now.isoformat()
+    o = _ev(iso, "T", "LONG", "OPEN", 10.0, 100.0)
+    o["reason"] = "STRAT_OPEN"
+    c1 = _ev(iso, "T", "LONG", "CLOSE", 10.0, 120.0)
+    c1["reason"] = "STRAT_CLOSE"
+    c2 = _ev(iso, "T", "LONG", "REDUCE", 10.0, 120.0)
+    c2["reason"] = "STRAT_CLOSE_ECHO"
+    c3 = _ev(iso, "T", "LONG", "CLOSE", 10.0, 120.0)
+    c3["reason"] = "BROKER_SYNC_CLOSE"
+    out, sm = srv.realized_walk([o, c1, c2, c3], expiry_days=60)
+    closes = [e for e in out if e.get("action") in ("CLOSE", "REDUCE")]
+    assert sm["known"] == 1
+    assert sm["unknown"] == 0
+    assert sm["sync_hidden"] == 2
+    assert sm["pnl_total"] == round(10.0 * (120.0 - 100.0), 2)
+    assert all(e.get("rpnl") is None for e in closes[1:])
