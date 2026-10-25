@@ -43,15 +43,18 @@ def _sat(host):
 def _duty_sides(host):
     name = host.get("name", "")
     sf = SIDES_FILES.get(name)
+    allowed = {str(side).upper() for side in host.get("sides", []) if str(side).upper() in ("LONG", "SHORT")}
+    if not allowed:
+        allowed = {"LONG", "SHORT"}
     if name == "s1":
         try:
-            return [l.strip() for l in open(S1_CRYPTO_SHORT) if l.strip()]
+            return [s for l in open(S1_CRYPTO_SHORT) if (s := l.strip()) and s.rsplit("_", 1)[-1] in allowed]
         except Exception:
             return []
     if not sf:
         return []
     out = _ssh(host.get("ssh", []), "cat %s 2>/dev/null" % sf)
-    return [l.strip() for l in out.split("\n") if l.strip()]
+    return [s for l in out.split("\n") if (s := l.strip()) and s.rsplit("_", 1)[-1] in allowed]
 
 
 def main():
@@ -70,7 +73,8 @@ def main():
         pins = {"sides": [], "hosts": []}
     ever_added = {s for v in state.values() for a in v.get("adds", []) for s in a.get("sides", [])}
     active = set()
-    for v in state.values():
+    active_by_host = {}
+    for host_name, v in state.items():
         for a in v.get("adds", []):
             try:
                 age = (now - datetime.datetime.fromisoformat(a.get("ts", "2000-01-01+00:00"))).total_seconds()
@@ -78,6 +82,7 @@ def main():
                 age = 10 ** 9
             if age < PIN_TTL_MIN * 60:
                 active.update(a.get("sides", []))
+                active_by_host.setdefault(host_name, set()).update(a.get("sides", []))
     fired = {}
     for host in hosts:
         name = host.get("name", "")
@@ -87,6 +92,8 @@ def main():
         if sat is None:
             continue
         if sat >= FLOOR:
+            continue
+        if active_by_host.get(name):
             continue
         sides = _duty_sides(host)
         if not sides:
@@ -104,6 +111,7 @@ def main():
             adds = [a for a in rec.get("adds", []) if (now - datetime.datetime.fromisoformat(a.get("ts", "2000-01-01+00:00"))).total_seconds() < 7200]
             adds.append({"sides": pick, "ts": now.isoformat()})
             state[name] = {"cursor": (start + len(pick)) % len(sides), "adds": adds}
+            active.update(pick)
             fired[name] = (round(sat, 2), pick)
     if fired or (ever_added - active):
         keep_hosts = sorted({h for h in pins.get("hosts", [])} | set(state))
