@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-25T22:12:42Z",
+ "generated_utc": "2026-10-25T22:17:46Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 68.8,
+  "age_s": 148.5,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 4524,
-  "proc_age_s": 66488.0,
-  "log_age_s": 22.1,
+  "proc_age_s": 66791.0,
+  "log_age_s": 99.4,
   "warmup_done": true,
   "timeframes_since_restart": [
    "D",
@@ -106,20 +106,20 @@
   "mode": "ACTIVE",
   "since_epoch": 1792602182.2042153,
   "activations": 163,
-  "hb_mtime": 1792966120.4452653,
-  "mac_snapshot_age_s": 29.375555515289307,
+  "hb_mtime": 1792966453.2915847,
+  "mac_snapshot_age_s": 9.037110805511475,
   "mac_stale": false,
   "lease_holder": "mac",
   "lease_venues": null,
-  "lease_since": "2026-10-25T22:07:19Z",
-  "lease_reason": "manual force-mac",
-  "now": 1792966123.4214058,
-  "from_cache_age_s": 239.3,
-  "heartbeat_age_s": 3.0,
-  "active_s": 363941.2
+  "lease_since": "2026-10-25T22:13:34Z",
+  "lease_reason": "yield: Mac never fenced for 180s \u2014 accounts must never be unattended",
+  "now": 1792966483.9676902,
+  "from_cache_age_s": 182.3,
+  "heartbeat_age_s": 30.7,
+  "active_s": 364301.8
  },
  "alerts": [
-  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 363941s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (2s) AND the Mac snapshot is fresh (68s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
+  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 364301s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (30s) AND the Mac snapshot is fresh (148s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
  ],
  "verdict": "ALERT"
 }
