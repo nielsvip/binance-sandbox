@@ -360,6 +360,23 @@ def _load_klines_df(path: Path) -> Optional[pd.DataFrame]:
         logger.debug(f"load klines failed {path}: {e}")
         return None
 
+_TF_SECONDS = {"1m": 60, "3m": 180, "5m": 300, "15m": 900, "1h": 3600, "4h": 14400, "D": 86400, "W": 604800, "M": 2678400}
+
+
+def _drop_forming_bar(df, tf_label: str):
+    """Closed bars only: drop the still-forming trailing bar(s). The kline files carry the forming bar; without
+    this the live loop appends provisional values that later block the closed-bar append ("already up to") and
+    leak next-bar data into the indicators (measured 2026-10-25: provisional 01:30 row written 01:40, closed 01:15
+    skipped). A bar is closed once its full span + 30 s settle have passed. Unknown TF -> unchanged (fail-open)."""
+    try:
+        tf_s = _TF_SECONDS.get(str(tf_label))
+        if tf_s and df is not None and not df.empty:
+            return df[df.index <= (datetime.now(timezone.utc) - timedelta(seconds=tf_s + 30))]
+    except Exception:
+        pass
+    return df
+
+
 def _resolve_kline_path(symbol: str, tf: str, mode: str, base_path: Path) -> Optional[Path]:
     cands: list[Path] = []
     if mode == "tradier":
@@ -420,6 +437,9 @@ def export_bar_for_symbol(
         if f is None:
             return False
         df15 = _load_klines_df(f)
+        if df15 is None or df15.empty:
+            return False
+        df15 = _drop_forming_bar(df15, f.stem.rsplit("_", 1)[-1])
         if df15 is None or df15.empty:
             return False
         last_close = df15.index[-1].to_pydatetime().astimezone(timezone.utc)
@@ -490,6 +510,9 @@ def update_npz_for_symbol(
             logger.debug(f"klines not found for {symbol} {mode}")
             return False
         df15 = _load_klines_df(f)
+        if df15 is None or df15.empty:
+            return False
+        df15 = _drop_forming_bar(df15, f.stem.rsplit("_", 1)[-1])
         if df15 is None or df15.empty:
             return False
         last_close = df15.index[-1].to_pydatetime().astimezone(timezone.utc)

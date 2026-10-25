@@ -115,6 +115,18 @@ def test_append_encodes_live_labels():
     assert len(data["timestamps"]) == 3
 
 
+def test_drop_forming_bar():
+    import pandas as pd
+    from datetime import datetime, timedelta, timezone
+    now = datetime.now(timezone.utc).replace(second=0, microsecond=0)
+    closed = now.replace(minute=(now.minute // 15) * 15) - timedelta(minutes=30)
+    forming = now.replace(minute=(now.minute // 15) * 15)
+    df = pd.DataFrame({"close": [1.0, 2.0]}, index=pd.DatetimeIndex([closed, forming], tz=timezone.utc))
+    got = gen._drop_forming_bar(df, "15m")
+    assert len(got) == 1 and got.index[-1].to_pydatetime() <= closed + timedelta(seconds=1)
+    assert len(gen._drop_forming_bar(df, "BOGUS")) == 2
+
+
 def test_label_table_matches_vec_exact():
     import tradier_vec_exact as t
     for pre, m in t._INT_ENCODE.items():
