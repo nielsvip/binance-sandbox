@@ -3338,6 +3338,27 @@ def _load_drain(path=None):
     return out
 
 
+_SIDES_ALL = frozenset(("LONG", "SHORT"))
+
+
+def _host_sides(host_or_name, hosts=None):
+    """USER 2026-10-25 (one cat_side per server): optional per-host "sides": ["LONG"] in
+    fleet_hosts_final.json. Absent/empty/unknown = both sides (legacy behaviour, fail-open)."""
+    try:
+        if isinstance(host_or_name, dict):
+            _sv = host_or_name.get("sides") or []
+        else:
+            _sv = []
+            for _hh in (hosts or []):
+                if _hh.get("name") == host_or_name:
+                    _sv = _hh.get("sides") or []
+                    break
+        _out = {str(_s).upper() for _s in _sv if str(_s).upper() in _SIDES_ALL}
+        return _out or set(_SIDES_ALL)
+    except Exception:
+        return set(_SIDES_ALL)
+
+
 def _load_pinned(path=None):
     """2026-10-13: operator-pinned sym_sides {"sides": [...], "hosts": [...]} — launched before everything else,
     exempt from tier deferral / fresh-skip / base wait / venue phase / quota / allowlist, only on "hosts"
@@ -3783,6 +3804,9 @@ def tick(args, cfg, now):
     running, owner, started, done, quar, redo, v365, repair, gs, gains = {}, {}, set(), set(), set(), set(), {}, {}, {}, {}
     done_host, v365_host, rep_host = {}, {}, {}
     _drained = _load_drain()
+    _hsides = {str(_hh.get("name")): _host_sides(_hh) for _hh in (hosts or [])}
+    _pinned_mode = any(_v != set(_SIDES_ALL) for _v in _hsides.values())
+    owner_side = {}
     _pin_sides, _pin_hosts = _load_pinned()
     started_mt = {}
     _newest_mt = {}
@@ -3792,6 +3816,7 @@ def tick(args, cfg, now):
         for ss, r in s["running"].items():
             running[ss] = {**r, "host": n}
             owner.setdefault(ss.rsplit("_", 1)[0], n)
+            owner_side.setdefault(ss, n)
         for ss, _mt in (s.get("started_mt") or {}).items():
             if n not in _drained and _mt is not None and _mt > started_mt.get(ss, -1):
                 started_mt[ss] = _mt
@@ -3799,6 +3824,7 @@ def tick(args, cfg, now):
             started.add(ss)
             if n not in _drained:  # 2026-10-13: a draining host (s5/s6 about to be deleted) owns nothing new — its boards re-home on s1/s2
                 owner.setdefault(ss.rsplit("_", 1)[0], n)
+                owner_side.setdefault(ss, n)
         for ss, _mt in (s.get("started_mt") or {}).items():
             if _mt is not None and _mt > _newest_mt.get(ss, (-1, None))[0]:
                 _newest_mt[ss] = (_mt, n)

@@ -42,8 +42,8 @@ pull_one() {
 }
 pull_once() {
   local spec ok=0 fail=0
-  # 2026-10-25 cutover: S1 crypto_short + S2 crypto_long (S5/S6 join when their lanes exist).
-  for spec in ${VEC_LIVE_PULL_HOSTS:-$HOST:$REMOTE s2:binance-sandbox/data/vec_live}; do
+  # 2026-10-25 cutover: S1 crypto_short + S2 crypto_long + S5 stock_long + S6 stock_short.
+  for spec in ${VEC_LIVE_PULL_HOSTS:-$HOST:$REMOTE s2:binance-sandbox/data/vec_live niels@10.0.0.5:binance-sandbox/data/vec_live niels@10.0.0.6:binance-sandbox/data/vec_live}; do
     if pull_one "${spec%%:*}" "${spec#*:}"; then ok=$((ok + 1)); else fail=$((fail + 1)); fi
   done
   if [ $fail -eq 0 ]; then date -u +%s >"$DEST/.last_pull_ok"; fi
