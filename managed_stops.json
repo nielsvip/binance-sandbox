@@ -1,9 +1,37 @@
 {
-  "flz:GRAMUSDT_LONG": {
-    "orderId": "1000002642955535",
-    "stopPrice": 1.253,
-    "entry_sig": "2026-10-25 16:42:04.088000+00:00",
+  "inf:COTIUSDT_SHORT": {
+    "orderId": "2000001540249936",
+    "stopPrice": 0.010503,
+    "entry_sig": "2026-10-25 17:35:47.153000+00:00",
+    "symbol": "COTIUSDT",
+    "side": "SHORT"
+  },
+  "inf:GALAUSDT_SHORT": {
+    "orderId": "2000001540251068",
+    "stopPrice": 0.001757,
+    "entry_sig": "2026-10-25 17:36:29.676000+00:00",
+    "symbol": "GALAUSDT",
+    "side": "SHORT"
+  },
+  "inf:GRAMUSDT_SHORT": {
+    "orderId": "2000001540254139",
+    "stopPrice": 1.271,
+    "entry_sig": "2026-10-25 17:38:35.801000+00:00",
     "symbol": "GRAMUSDT",
+    "side": "SHORT"
+  },
+  "inf:LTCUSDC_SHORT": {
+    "orderId": "2000001540254353",
+    "stopPrice": 57.34,
+    "entry_sig": "2026-10-25 17:38:43.992000+00:00",
+    "symbol": "LTCUSDC",
+    "side": "SHORT"
+  },
+  "inf:PENGUUSDC_LONG": {
+    "orderId": "2000001540254358",
+    "stopPrice": 0.007494,
+    "entry_sig": "2026-10-25 17:38:42.980000+00:00",
+    "symbol": "PENGUUSDC",
     "side": "LONG"
   }
 }
