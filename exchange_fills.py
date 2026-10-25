@@ -210,14 +210,63 @@ def trip_tagged(events):
     return out
 
 
+def _broker_open(accts, sym):
+    """(acct, side) currently holding per live position files (fresh only)."""
+    import json as _json
+    import time as _time
+    sym = str(sym).upper()
+    open_set = set()
+    for acct in accts or []:
+        for side, fname in (("LONG", "long_positions.json"), ("SHORT", "short_positions.json")):
+            fp = ROOT / acct / fname
+            try:
+                if not fp.is_file() or _time.time() - fp.stat().st_mtime > 86400:
+                    continue
+                data = _json.loads(fp.read_text())
+            except Exception:
+                continue
+            if isinstance(data, dict):
+                for k, v in data.items():
+                    try:
+                        if abs(float((v or {}).get("positionAmt") or 0)) <= 1e-9:
+                            continue
+                        s = str((v or {}).get("symbol") or "").upper()
+                        if not s:
+                            parts = str(k).split(":")
+                            s = parts[1] if len(parts) > 1 else parts[0]
+                            import re as _re
+                            s = _re.sub(r"_(LONG|SHORT)$", "", s.upper())
+                        if s == sym:
+                            open_set.add((acct, side))
+                    except (TypeError, ValueError):
+                        continue
+    return open_set
+
+
 def fetch_exchange_events(sym, accts, lookback_days=40):
-    """{acct: [entry/exit/adapt events]} from exchange fills. Plots filter."""
+    """{acct: [entry/exit/adapt events]} from exchange fills. Plots filter.
+
+    Trailing unclosed entries older than 30min on a broker-flat side go
+    stale (same rule as the ledger path): the close is missing from API
+    coverage, and a phantom open arrow is worse than none.
+    """
+    import live_trade_history as lth
+    sym_u = str(sym).upper()
+    open_set = _broker_open(accts, sym_u)
     out = {}
     for acct in accts or []:
         try:
             rows = refresh_symbol(acct, sym, lookback_days)
         except Exception:
             continue
-        if rows:
-            out[acct] = trip_tagged(_to_events(rows))
+        if not rows:
+            continue
+        evs = trip_tagged(_to_events(rows))
+        by_side = {}
+        for e in evs:
+            by_side.setdefault(e["side"], []).append(e)
+        for side, recs in by_side.items():
+            if (acct, side) not in open_set:
+                lth._mark_stale_trailing(recs)
+        out[acct] = evs
     return out

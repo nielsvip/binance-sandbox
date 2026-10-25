@@ -1,16 +1,16 @@
 {
- "at": "2026-10-24T23:26:07Z",
+ "at": "2026-10-25T00:26:04Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
  "hosts": {
   "s1": {
-   "published_n": 1,
-   "per_hour": 0.5,
-   "improved_vs_best_start": 1,
-   "mean_uplift_vs_best_start": 22.1752,
+   "published_n": 2,
+   "per_hour": 1.0,
+   "improved_vs_best_start": 2,
+   "mean_uplift_vs_best_start": 20.5089,
    "median_uplift": 22.1752,
-   "chained_from_previous_published": 0,
+   "chained_from_previous_published": 1,
    "no_floor_recorded": 0,
    "backslides": [],
    "stale_npz": [
@@ -20,8 +20,7 @@
     }
    ],
    "fails": [
-    "throughput 0.5/h < 12.0/h (one per 5 min)",
-    "1/1 boards fitted an NPZ older than 6.0 h \u2014 not new bars"
+    "throughput 1.0/h < 12.0/h (one per 5 min)"
    ],
    "rows": [
     {
@@ -38,24 +37,54 @@
      "bh": -19.424587170098608,
      "verdict": null,
      "npz_age_h_at_publish": 26.98
+    },
+    {
+     "symside": "JASMYUSDT_SHORT",
+     "published_at": 1792885792.6425173,
+     "final_gain": 28.97118075855171,
+     "best_start_gain": 10.128550370572146,
+     "best_start_chosen": "history_1",
+     "best_start_candidates": 7,
+     "baseline_gain": 10.128550370572146,
+     "npz_ts_last": 1792877400.0,
+     "npz_md5": "366864ebdd4a61d4412d0a2f467b9209",
+     "npz_bars": 40962,
+     "bh": 0.981920785827602,
+     "verdict": null,
+     "npz_age_h_at_publish": 2.33
     }
    ],
    "error": null
   },
   "s2": {
-   "published_n": 1,
-   "per_hour": 0.5,
-   "improved_vs_best_start": 1,
-   "mean_uplift_vs_best_start": 6.6701,
+   "published_n": 2,
+   "per_hour": 1.0,
+   "improved_vs_best_start": 2,
+   "mean_uplift_vs_best_start": 4.1608,
    "median_uplift": 6.6701,
-   "chained_from_previous_published": 1,
+   "chained_from_previous_published": 2,
    "no_floor_recorded": 0,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 0.5/h < 12.0/h (one per 5 min)"
+    "throughput 1.0/h < 12.0/h (one per 5 min)"
    ],
    "rows": [
+    {
+     "symside": "GALAUSDT_SHORT",
+     "published_at": 1792885698.8152156,
+     "final_gain": 64.01170039687811,
+     "best_start_gain": 62.36005200480208,
+     "best_start_chosen": "history_0",
+     "best_start_candidates": 10,
+     "baseline_gain": 62.36005200480208,
+     "npz_ts_last": 1792883700.0,
+     "npz_md5": "3c1c7b7dbebfe217b86c5d0e92cec2a1",
+     "npz_bars": 40881,
+     "bh": 11.81455398189167,
+     "verdict": null,
+     "npz_age_h_at_publish": 0.56
+    },
     {
      "symside": "PUMPUSDT_LONG",
      "published_at": 1792882616.921654,

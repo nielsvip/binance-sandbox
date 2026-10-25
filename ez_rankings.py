@@ -6601,14 +6601,8 @@ async def plot_dfs_subplots(
         if (SHOW_CRYPTO_LIVE_ARROWS or SHOW_CRYPTO_MISMATCH) and len(df_tf) > 1:
             try:
                 import live_trade_history as _lth
-                _hdirs = []
-                for _cand in [Path(getattr(config, "DATA_DIR", ".")) / "history", Path(getattr(config, "BASE_PATH", ".")) / "data" / "history"]:
-                    try:
-                        if _cand.is_dir() and _cand not in _hdirs:
-                            _hdirs.append(_cand)
-                    except Exception:
-                        continue
-                _fills = _lth.fetch_trades(symbol, CRYPTO_ARROW_ACCOUNTS, _hdirs)
+                import exchange_fills as _xf
+                _fills = _xf.fetch_exchange_events(symbol, CRYPTO_ARROW_ACCOUNTS)
                 if SHOW_CRYPTO_MISMATCH:
                     import vec_trade_feeds as _vtf
                     _bevs = [e for evs in _fills.values() for e in _lth.boundary_events(evs)]

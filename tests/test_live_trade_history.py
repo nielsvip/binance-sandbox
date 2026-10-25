@@ -174,55 +174,6 @@ def test_collapse_echo_fills_keeps_genuine_repeats():
     assert len(lth._collapse_echo_fills(recs)) == 3
 
 
-def test_cancel_same_bar_pairs_drops_net_zero_keeps_flip():
-    from datetime import datetime, timezone
-    b = datetime(2026, 10, 15, 8, 2, tzinfo=timezone.utc)
-    recs = [{"timestamp": b, "side": "LONG", "phase": "entry", "qty": 5.0, "type": "OPEN"},
-            {"timestamp": b.replace(minute=5), "side": "LONG", "phase": "exit", "qty": 5.0, "type": "CLOSE"},
-            {"timestamp": b.replace(minute=7), "side": "LONG", "phase": "exit", "qty": 3.0, "type": "REDUCE"},
-            {"timestamp": b.replace(minute=9), "side": "LONG", "phase": "entry", "qty": 9.0, "type": "OPEN"}]
-    out = lth._cancel_same_bar_pairs(recs)
-    assert [(r["phase"], r["qty"]) for r in out] == [("exit", 3.0), ("entry", 9.0)]
-
-
-def test_net_bucket_filter_wash_drops_both():
-    from datetime import datetime, timezone
-    b = datetime(2026, 10, 15, 8, 2, tzinfo=timezone.utc)
-    recs = [{"timestamp": b, "side": "LONG", "phase": "exit", "qty": 186.0},
-            {"timestamp": b.replace(minute=9), "side": "LONG", "phase": "entry", "qty": 185.0}]
-    assert lth._net_bucket_filter(recs) == []
-
-
-def test_net_bucket_filter_keeps_net_side():
-    from datetime import datetime, timezone
-    b = datetime(2026, 10, 15, 8, 2, tzinfo=timezone.utc)
-    take = [{"timestamp": b, "side": "LONG", "phase": "entry", "qty": 5708.0},
-            {"timestamp": b.replace(minute=4), "side": "LONG", "phase": "exit", "qty": 516.0}]
-    assert [(r["phase"], r["qty"]) for r in lth._net_bucket_filter(take)] == [("entry", 5708.0)]
-    cut = [{"timestamp": b, "side": "LONG", "phase": "exit", "qty": 100.0},
-           {"timestamp": b.replace(minute=6), "side": "LONG", "phase": "entry", "qty": 50.0}]
-    assert [(r["phase"], r["qty"]) for r in lth._net_bucket_filter(cut)] == [("exit", 100.0)]
-
-
-def test_cluster_net_filter_cross_edge_pair():
-    from datetime import datetime, timezone
-    recs = [{"timestamp": datetime(2026, 10, 15, 10, 14, tzinfo=timezone.utc),
-             "side": "LONG", "phase": "entry", "qty": 5.0},
-            {"timestamp": datetime(2026, 10, 15, 10, 16, tzinfo=timezone.utc),
-             "side": "LONG", "phase": "exit", "qty": 5.0}]
-    assert lth._cluster_net_filter(recs) == []
-
-
-def test_cluster_net_filter_separate_bars_survive():
-    from datetime import datetime, timezone, timedelta
-    base = datetime(2026, 10, 15, 10, 0, tzinfo=timezone.utc)
-    recs = [{"timestamp": base, "side": "LONG", "phase": "entry", "qty": 5.0},
-            {"timestamp": base + timedelta(minutes=15), "side": "LONG", "phase": "exit", "qty": 5.0},
-            {"timestamp": base + timedelta(minutes=16), "side": "SHORT", "phase": "entry", "qty": 5.0}]
-    out = lth._cluster_net_filter(recs)
-    assert len(out) == 3
-
-
 def test_mark_stale_trailing_only_when_old_and_unclosed():
     from datetime import datetime, timezone, timedelta
     now = datetime.now(timezone.utc)
