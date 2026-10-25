@@ -12,7 +12,10 @@ SIDES=${1:?sides}; T=${2:?template}; W=${3:-6}; MAX=${4:-6}
 PDIR=/home/niels/v15_run36_20261024/progress
 SP=/tmp/sched_progress
 mkdir -p "$SP"
-rsync -az --timeout=60 niels@10.0.0.3:v15_run36_20261024/progress/ "$SP/" >/dev/null 2>&1
+if [ $(( $(date +%s) - $(stat -c %Y "$SP" 2>/dev/null || stat -f %m "$SP" 2>/dev/null || echo 0) )) -gt 240 ]; then
+  rsync -az --timeout=60 niels@10.0.0.3:v15_run36_20261024/progress/ "$SP/" >/dev/null 2>&1
+  touch "$SP"
+fi
 nrun=$(pgrep -af "python[^ ]* -u v15_pilot.py --sym-side " 2>/dev/null | grep -oE -- '--sym-side [A-Z0-9_]+' | sort -u | wc -l)
 _TB=/tmp/tails_$(basename $SIDES .txt).cache
 _PB=/tmp/prog_$(basename $SIDES .txt).cache

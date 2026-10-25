@@ -5,13 +5,13 @@
   "/Users/niels/Documents/binance/SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_LONG.xlsx",
   "/Users/niels/Documents/binance/SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_SHORT.xlsx"
  ],
- "n_keys": 1335,
+ "n_keys": 1284,
  "verdicts": {
-  "OK": 1174,
+  "OK": 1153,
   "ABSENT": 34,
-  "INERT": 39,
-  "ROUTED_PSYM": 75,
-  "GLOBAL_LEAK": 13
+  "ROUTED_PSYM": 66,
+  "GLOBAL_LEAK": 13,
+  "INERT": 18
  },
  "n_leak_keys": 13,
  "n_global_sites_fixable_in_place": 39,
@@ -276,13 +276,10 @@
    "n_dead": 0,
    "n_proxy_psym": 1,
    "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
     "TEMPLATE_STOCKS_LONG.xlsx",
     "TEMPLATE_STOCKS_SHORT.xlsx"
    ],
    "switch_tabs": [
-    "ENTRY_CONFIRMATION_GATES",
     "REENTRY_WINDOWED"
    ],
    "filter_tabs": [],
@@ -394,28 +391,6 @@
    ],
    "switch_tabs": [
     "REENTRY_WINDOWED"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "ABLATION_DISABLE_SCALP_GUARD",
-   "verdict": "OK",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 4,
-   "n_dead": 0,
-   "n_proxy_psym": 2,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
    "global_sites": [],
@@ -864,28 +839,6 @@
    ],
    "switch_tabs": [
     "REDUCE_SIGNAL_RATER"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "AUGMENTATION_COOLDOWN_MINUTES",
-   "verdict": "INERT",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 1,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "AUGMENT_TREND"
    ],
    "filter_tabs": [],
    "global_sites": [],
@@ -2331,8 +2284,6 @@
    "n_dead": 0,
    "n_proxy_psym": 0,
    "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
     "TEMPLATE_STOCKS_LONG.xlsx",
     "TEMPLATE_STOCKS_SHORT.xlsx"
    ],
@@ -2382,6 +2333,28 @@
    ],
    "switch_tabs": [
     "GLOBAL_RISK_GATES"
+   ],
+   "filter_tabs": [],
+   "global_sites": [],
+   "routed_sites": []
+  },
+  {
+   "key": "BB_SQUEEZE_COOLDOWN",
+   "verdict": "OK",
+   "n_psym": 1,
+   "n_global": 0,
+   "n_discarded": 0,
+   "n_namelist": 5,
+   "n_dead": 0,
+   "n_proxy_psym": 1,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG.xlsx",
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
+   ],
+   "switch_tabs": [
+    "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
    "global_sites": [],
@@ -4525,26 +4498,6 @@
    "routed_sites": []
   },
   {
-   "key": "DC_BASIS_PROFIT_EXIT_ENABLED",
-   "verdict": "OK",
-   "n_psym": 1,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 0,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "REDUCE_PROFIT_LOCK"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
    "key": "DC_BREACH_REDUCE_FILTER_TF",
    "verdict": "OK",
    "n_psym": 4,
@@ -4650,6 +4603,28 @@
    "n_namelist": 6,
    "n_dead": 0,
    "n_proxy_psym": 3,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG.xlsx",
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
+   ],
+   "switch_tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "filter_tabs": [],
+   "global_sites": [],
+   "routed_sites": []
+  },
+  {
+   "key": "DC_BREAKOUT_OVERBOUGHT_K15M_CAP",
+   "verdict": "OK",
+   "n_psym": 0,
+   "n_global": 0,
+   "n_discarded": 0,
+   "n_namelist": 1,
+   "n_dead": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -5210,8 +5185,7 @@
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
+    "TEMPLATE_STOCKS_LONG.xlsx"
    ],
    "switch_tabs": [
     "EXIT_VELOCITY"
@@ -10745,6 +10719,28 @@
    "routed_sites": []
   },
   {
+   "key": "GOLDEN_RULE_COOLDOWN_S",
+   "verdict": "OK",
+   "n_psym": 1,
+   "n_global": 0,
+   "n_discarded": 0,
+   "n_namelist": 0,
+   "n_dead": 0,
+   "n_proxy_psym": 1,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG.xlsx",
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
+   ],
+   "switch_tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "filter_tabs": [],
+   "global_sites": [],
+   "routed_sites": []
+  },
+  {
    "key": "GOLDEN_RULE_ENABLED",
    "verdict": "OK",
    "n_psym": 4,
@@ -10802,6 +10798,50 @@
    "routed_sites": []
   },
   {
+   "key": "GOLDEN_RULE_EXIT_MIN_IND",
+   "verdict": "OK",
+   "n_psym": 1,
+   "n_global": 0,
+   "n_discarded": 0,
+   "n_namelist": 5,
+   "n_dead": 0,
+   "n_proxy_psym": 0,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG.xlsx",
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
+   ],
+   "switch_tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "filter_tabs": [],
+   "global_sites": [],
+   "routed_sites": []
+  },
+  {
+   "key": "GOLDEN_RULE_EXIT_MIN_TFS",
+   "verdict": "OK",
+   "n_psym": 1,
+   "n_global": 0,
+   "n_discarded": 0,
+   "n_namelist": 5,
+   "n_dead": 0,
+   "n_proxy_psym": 0,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG.xlsx",
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
+   ],
+   "switch_tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "filter_tabs": [],
+   "global_sites": [],
+   "routed_sites": []
+  },
+  {
    "key": "GOLDEN_RULE_HTF_MIN_TFS",
    "verdict": "OK",
    "n_psym": 12,
@@ -10834,7 +10874,9 @@
    "n_proxy_psym": 0,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx"
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
    ],
    "switch_tabs": [
     "GLOBAL_RISK_GATES"
@@ -10877,6 +10919,28 @@
    "routed_sites": []
   },
   {
+   "key": "GOLDEN_RULE_MAX_FIRES_PER_TICK",
+   "verdict": "OK",
+   "n_psym": 0,
+   "n_global": 0,
+   "n_discarded": 0,
+   "n_namelist": 0,
+   "n_dead": 0,
+   "n_proxy_psym": 1,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG.xlsx",
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
+   ],
+   "switch_tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "filter_tabs": [],
+   "global_sites": [],
+   "routed_sites": []
+  },
+  {
    "key": "GOLDEN_RULE_MIN_IND",
    "verdict": "OK",
    "n_psym": 12,
@@ -10909,7 +10973,9 @@
    "n_proxy_psym": 0,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx"
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
    ],
    "switch_tabs": [
     "ENTRY_BREAKOUT_CHANNEL"
@@ -10973,7 +11039,9 @@
    "n_proxy_psym": 0,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx"
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
    ],
    "switch_tabs": [
     "ENTRY_BREAKOUT_CHANNEL"
@@ -10993,7 +11061,9 @@
    "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx"
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
    ],
    "switch_tabs": [
     "ENTRY_CONFIRMATION_GATES"
@@ -11013,7 +11083,9 @@
    "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx"
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
    ],
    "switch_tabs": [
     "ENTRY_CONFIRMATION_GATES"
@@ -11038,8 +11110,7 @@
     "TEMPLATE_STOCKS_SHORT.xlsx"
    ],
    "switch_tabs": [
-    "ENTRY_REVERSAL_BOUNCE",
-    "GLOBAL_RISK_GATES"
+    "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [
     "ENTRY_BREAKOUT_CHANNEL",
@@ -11816,7 +11887,7 @@
     "TEMPLATE_STOCKS_SHORT.xlsx"
    ],
    "switch_tabs": [
-    "REENTRY_WINDOWED"
+    "GLOBAL_RISK_GATES"
    ],
    "filter_tabs": [
     "REENTRY_ADAPTIVE",
@@ -11848,8 +11919,7 @@
     "TEMPLATE_STOCKS_SHORT.xlsx"
    ],
    "switch_tabs": [
-    "GLOBAL_RISK_GATES",
-    "REENTRY_WINDOWED"
+    "GLOBAL_RISK_GATES"
    ],
    "filter_tabs": [
     "REENTRY_ADAPTIVE",
@@ -12110,6 +12180,28 @@
      "symbol_bound_in_func": false
     }
    ],
+   "routed_sites": []
+  },
+  {
+   "key": "HEDGE_TRIGGER_GR_SCORE_ENABLED",
+   "verdict": "OK",
+   "n_psym": 0,
+   "n_global": 0,
+   "n_discarded": 0,
+   "n_namelist": 3,
+   "n_dead": 0,
+   "n_proxy_psym": 2,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG.xlsx",
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
+   ],
+   "switch_tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "filter_tabs": [],
+   "global_sites": [],
    "routed_sites": []
   },
   {
@@ -13325,7 +13417,9 @@
    "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx"
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
    ],
    "switch_tabs": [
     "GLOBAL_RISK_GATES"
@@ -14581,28 +14675,6 @@
    ]
   },
   {
-   "key": "LIVE_ENTRY_ENGINE_DC_ENABLED",
-   "verdict": "OK",
-   "n_psym": 1,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 12,
-   "n_dead": 0,
-   "n_proxy_psym": 1,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "ENTRY_CONFIRMATION_GATES"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
    "key": "LIVE_ENTRY_ENGINE_ENABLED",
    "verdict": "OK",
    "n_psym": 1,
@@ -14654,94 +14726,6 @@
     "REENTRY_ADAPTIVE",
     "REENTRY_WINDOWED"
    ],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "LIVE_ENTRY_ENGINE_HTF_ENABLED",
-   "verdict": "OK",
-   "n_psym": 1,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 12,
-   "n_dead": 0,
-   "n_proxy_psym": 1,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "ENTRY_CONFIRMATION_GATES"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED",
-   "verdict": "OK",
-   "n_psym": 1,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 10,
-   "n_dead": 0,
-   "n_proxy_psym": 1,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "ENTRY_CONFIRMATION_GATES"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "LIVE_ENTRY_ENGINE_STOCH_ENABLED",
-   "verdict": "OK",
-   "n_psym": 1,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 12,
-   "n_dead": 0,
-   "n_proxy_psym": 1,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "ENTRY_CONFIRMATION_GATES"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "LIVE_ENTRY_ENGINE_WT_ENABLED",
-   "verdict": "OK",
-   "n_psym": 1,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 12,
-   "n_dead": 0,
-   "n_proxy_psym": 1,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "ENTRY_CONFIRMATION_GATES"
-   ],
-   "filter_tabs": [],
    "global_sites": [],
    "routed_sites": []
   },
@@ -14866,50 +14850,6 @@
    ],
    "switch_tabs": [
     "REDUCE_SIGNAL_RATER"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "LOSS_PRONE_ENTRY_FILTER_ENABLED",
-   "verdict": "INERT",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 2,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "ENTRY_CONFIRMATION_GATES"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "LOSS_PRONE_ENTRY_MIN_FILTERS",
-   "verdict": "ABSENT",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 0,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
    "global_sites": [],
@@ -19871,28 +19811,6 @@
    "routed_sites": []
   },
   {
-   "key": "PEAK_GIVEBACK_SCOPE",
-   "verdict": "OK",
-   "n_psym": 1,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 2,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "REDUCE_PROFIT_LOCK"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
    "key": "PENNY_STOCK_LONG_BLOCK_ENABLED",
    "verdict": "OK",
    "n_psym": 1,
@@ -19945,72 +19863,6 @@
    ],
    "switch_tabs": [
     "GLOBAL_RISK_GATES"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "PPL_REAUGMENT_ENABLED",
-   "verdict": "OK",
-   "n_psym": 1,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 3,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "REDUCE_PROFIT_LOCK"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "PPL_REAUGMENT_SIZE_MULT",
-   "verdict": "OK",
-   "n_psym": 1,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 3,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "REDUCE_PROFIT_LOCK"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "PPL_REAUGMENT_TRIGGER",
-   "verdict": "OK",
-   "n_psym": 1,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 3,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "REDUCE_PROFIT_LOCK"
    ],
    "filter_tabs": [],
    "global_sites": [],
@@ -20406,160 +20258,6 @@
    ]
   },
   {
-   "key": "QTY_STREAK_LOSS_COUNT",
-   "verdict": "INERT",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 1,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "STDEV_SLOPE_SIZING"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "QTY_STREAK_LOSS_MULT",
-   "verdict": "INERT",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 1,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "STDEV_SLOPE_SIZING"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "QTY_STREAK_MAX_MULT",
-   "verdict": "INERT",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 1,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "STDEV_SLOPE_SIZING"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "QTY_STREAK_MIN_MOVE_PCT",
-   "verdict": "INERT",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 1,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "STDEV_SLOPE_SIZING"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "QTY_STREAK_SIZING_ENABLED",
-   "verdict": "INERT",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 1,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "STDEV_SLOPE_SIZING"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "QTY_STREAK_WIN_COUNT",
-   "verdict": "INERT",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 1,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "STDEV_SLOPE_SIZING"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "QTY_STREAK_WIN_STEP",
-   "verdict": "INERT",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 1,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "STDEV_SLOPE_SIZING"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
    "key": "QUICK_OPEN_STRONG_VEC_ENABLED",
    "verdict": "OK",
    "n_psym": 0,
@@ -20735,26 +20433,6 @@
    ],
    "switch_tabs": [
     "ENTRY_CONFIRMATION_GATES"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "RATIO_REBALANCE_ENABLED",
-   "verdict": "OK",
-   "n_psym": 1,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 0,
-   "n_dead": 0,
-   "n_proxy_psym": 2,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "REDUCE_SIGNAL_RATER"
    ],
    "filter_tabs": [],
    "global_sites": [],
@@ -22303,196 +21981,6 @@
    ]
   },
   {
-   "key": "REENTRY_MASK_ARM_BREAKOUT_RETEST_ENABLED",
-   "verdict": "ROUTED_PSYM",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 3,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "REENTRY_WINDOWED"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": [
-    {
-     "read": "vec_decisions.reentry_mask_arm.py:42 in armed()",
-     "live_callers": [
-      "ez_manage.py:56373",
-      "tradier_manage.py:19395"
-     ]
-    }
-   ]
-  },
-  {
-   "key": "REENTRY_MASK_ARM_CIRCUIT_SHARPE_GATES_ENABLED",
-   "verdict": "ROUTED_PSYM",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 3,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx"
-   ],
-   "switch_tabs": [
-    "REENTRY_WINDOWED"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": [
-    {
-     "read": "vec_decisions.reentry_mask_arm.py:38 in armed()",
-     "live_callers": [
-      "ez_manage.py:56373",
-      "tradier_manage.py:19395"
-     ]
-    }
-   ]
-  },
-  {
-   "key": "REENTRY_MASK_ARM_DC_BREAK_ENABLED",
-   "verdict": "ROUTED_PSYM",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 3,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "REENTRY_WINDOWED"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": [
-    {
-     "read": "vec_decisions.reentry_mask_arm.py:40 in armed()",
-     "live_callers": [
-      "ez_manage.py:56373",
-      "tradier_manage.py:19395"
-     ]
-    }
-   ]
-  },
-  {
-   "key": "REENTRY_MASK_ARM_DC_MOMENTUM_BOTA_SCORER_ENABLED",
-   "verdict": "ROUTED_PSYM",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 3,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_STOCKS_LONG.xlsx"
-   ],
-   "switch_tabs": [
-    "REENTRY_WINDOWED"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": [
-    {
-     "read": "vec_decisions.reentry_mask_arm.py:44 in armed()",
-     "live_callers": [
-      "ez_manage.py:56373",
-      "tradier_manage.py:19395"
-     ]
-    }
-   ]
-  },
-  {
-   "key": "REENTRY_MASK_ARM_DELTA_ENGINE_ENABLED",
-   "verdict": "ROUTED_PSYM",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 3,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "REENTRY_WINDOWED"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": [
-    {
-     "read": "vec_decisions.reentry_mask_arm.py:46 in armed()",
-     "live_callers": [
-      "ez_manage.py:56373",
-      "tradier_manage.py:19395"
-     ]
-    }
-   ]
-  },
-  {
-   "key": "REENTRY_MASK_ARM_MOM3_ENABLED",
-   "verdict": "ROUTED_PSYM",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 3,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_STOCKS_LONG.xlsx"
-   ],
-   "switch_tabs": [
-    "REENTRY_WINDOWED"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": [
-    {
-     "read": "vec_decisions.reentry_mask_arm.py:48 in armed()",
-     "live_callers": [
-      "ez_manage.py:56373",
-      "tradier_manage.py:19395"
-     ]
-    }
-   ]
-  },
-  {
-   "key": "REENTRY_MASK_ARM_MOMENTUM_BREAKOUT_ENABLED",
-   "verdict": "ROUTED_PSYM",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 3,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "REENTRY_WINDOWED"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": [
-    {
-     "read": "vec_decisions.reentry_mask_arm.py:50 in armed()",
-     "live_callers": [
-      "ez_manage.py:56373",
-      "tradier_manage.py:19395"
-     ]
-    }
-   ]
-  },
-  {
    "key": "REENTRY_MAX_PRICE_DIVERGENCE_PCT",
    "verdict": "OK",
    "n_psym": 1,
@@ -22530,73 +22018,7 @@
     "TEMPLATE_STOCKS_SHORT.xlsx"
    ],
    "switch_tabs": [
-    "REENTRY_WINDOWED"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "REENTRY_ON_DC4_15M_BREAK_ENABLED",
-   "verdict": "OK",
-   "n_psym": 3,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 3,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "REENTRY_WINDOWED"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "REENTRY_ON_EXIT_PRICE_BREAK_ENABLED",
-   "verdict": "OK",
-   "n_psym": 3,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 3,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "REENTRY_WINDOWED"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "REENTRY_ON_HIGHER_LOW_ENABLED",
-   "verdict": "OK",
-   "n_psym": 3,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 3,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "REENTRY_WINDOWED"
+    "REENTRY_ADAPTIVE"
    ],
    "filter_tabs": [],
    "global_sites": [],
@@ -22927,37 +22349,6 @@
    "routed_sites": []
   },
   {
-   "key": "REENTRY_REQUIRES_EXIT_CROSSBACK_ENABLED",
-   "verdict": "ROUTED_PSYM",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 1,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "REENTRY_WINDOWED"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": [
-    {
-     "read": "vec_decisions.reentry_crossback.py:32 in law_enabled()",
-     "live_callers": [
-      "ez_manage.py:56361",
-      "tradier_manage.py:19323",
-      "tradier_manage.py:19324"
-     ]
-    }
-   ]
-  },
-  {
    "key": "REENTRY_SIZE_BREAKOUT_MULT",
    "verdict": "OK",
    "n_psym": 0,
@@ -23230,7 +22621,10 @@
    "n_dead": 0,
    "n_proxy_psym": 0,
    "templates": [
-    "TEMPLATE_STOCKS_LONG.xlsx"
+    "TEMPLATE_CRYPTO_LONG.xlsx",
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
    ],
    "switch_tabs": [
     "REENTRY_WINDOWED"
@@ -23269,7 +22663,9 @@
    "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx"
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
    ],
    "switch_tabs": [
     "REENTRY_WINDOWED"
@@ -23309,7 +22705,31 @@
    "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx"
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
+   ],
+   "switch_tabs": [
+    "REENTRY_WINDOWED"
+   ],
+   "filter_tabs": [],
+   "global_sites": [],
+   "routed_sites": []
+  },
+  {
+   "key": "REENTRY_TIER_MODEL_ENABLED",
+   "verdict": "INERT",
+   "n_psym": 0,
+   "n_global": 0,
+   "n_discarded": 0,
+   "n_namelist": 3,
+   "n_dead": 0,
+   "n_proxy_psym": 0,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG.xlsx",
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
    ],
    "switch_tabs": [
     "REENTRY_WINDOWED"
@@ -24061,28 +23481,6 @@
    "n_namelist": 12,
    "n_dead": 0,
    "n_proxy_psym": 4,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "EXIT_VELOCITY"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "RULE_B_5M_EXIT_ENABLED",
-   "verdict": "OK",
-   "n_psym": 1,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 7,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -24951,154 +24349,6 @@
    ]
   },
   {
-   "key": "SCALE_DIRECTION_BAND_PCT",
-   "verdict": "OK",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 1,
-   "n_dead": 0,
-   "n_proxy_psym": 1,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "REDUCE_PROFIT_LOCK"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": [
-    {
-     "read": "live_twins.scale_direction_live.py:258 in check()",
-     "live_callers": [
-      "ez_manage.py:32942",
-      "tradier_manage.py:49359"
-     ]
-    }
-   ]
-  },
-  {
-   "key": "SCALE_DIRECTION_BLOCK_AUGMENT_ON_ADVERSE",
-   "verdict": "OK",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 1,
-   "n_dead": 0,
-   "n_proxy_psym": 1,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "AUGMENT_TREND"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "SCALE_DIRECTION_BLOCK_REDUCE_ON_FAVOURABLE",
-   "verdict": "OK",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 1,
-   "n_dead": 0,
-   "n_proxy_psym": 1,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "REDUCE_PROFIT_LOCK"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "SCALE_DIRECTION_EXEMPT_EXIT_CHAIN",
-   "verdict": "INERT",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 2,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "EXIT_STRUCTURAL"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "SCALE_DIRECTION_LAW_ENABLED",
-   "verdict": "OK",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 2,
-   "n_dead": 0,
-   "n_proxy_psym": 1,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "REDUCE_PROFIT_LOCK"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "SCALE_DIRECTION_LOOKBACK_BARS",
-   "verdict": "OK",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 1,
-   "n_dead": 0,
-   "n_proxy_psym": 1,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "REDUCE_PROFIT_LOCK"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": [
-    {
-     "read": "live_twins.scale_direction_live.py:249 in check()",
-     "live_callers": [
-      "ez_manage.py:32942",
-      "tradier_manage.py:49359"
-     ]
-    }
-   ]
-  },
-  {
    "key": "SCALP_V3_AUG_BE_STOP_ENABLED",
    "verdict": "OK",
    "n_psym": 0,
@@ -25353,26 +24603,6 @@
    ],
    "switch_tabs": [
     "REDUCE_SIGNAL_RATER"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "SESSION_OPEN_STOP_REFREEZE_ENABLED",
-   "verdict": "OK",
-   "n_psym": 1,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 1,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "EXIT_STRUCTURAL"
    ],
    "filter_tabs": [],
    "global_sites": [],
@@ -26075,7 +25305,9 @@
    "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx"
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
    ],
    "switch_tabs": [
     "ENTRY_REVERSAL_BOUNCE"
@@ -26094,7 +25326,9 @@
    "n_dead": 0,
    "n_proxy_psym": 2,
    "templates": [
+    "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
     "TEMPLATE_STOCKS_SHORT.xlsx"
    ],
    "switch_tabs": [
@@ -26111,6 +25345,28 @@
    "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 5,
+   "n_dead": 0,
+   "n_proxy_psym": 2,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG.xlsx",
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
+   ],
+   "switch_tabs": [
+    "ENTRY_REVERSAL_BOUNCE"
+   ],
+   "filter_tabs": [],
+   "global_sites": [],
+   "routed_sites": []
+  },
+  {
+   "key": "STDEV_BOUNCE_SCORE",
+   "verdict": "OK",
+   "n_psym": 0,
+   "n_global": 0,
+   "n_discarded": 0,
+   "n_namelist": 0,
    "n_dead": 0,
    "n_proxy_psym": 2,
    "templates": [
@@ -26472,50 +25728,6 @@
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
     "TEMPLATE_STOCKS_LONG.xlsx"
-   ],
-   "switch_tabs": [
-    "STDEV_SLOPE_SIZING"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "STDEV_LADDER_MAX_MULT",
-   "verdict": "INERT",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 1,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "STDEV_SLOPE_SIZING"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "STDEV_LADDER_TF",
-   "verdict": "INERT",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 1,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
    ],
    "switch_tabs": [
     "STDEV_SLOPE_SIZING"
@@ -27233,36 +26445,6 @@
    "routed_sites": []
   },
   {
-   "key": "STOCK_AUGMENT_VENUE_GUARD_ENABLED",
-   "verdict": "ROUTED_PSYM",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 2,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "AUGMENT_TREND"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": [
-    {
-     "read": "vec_decisions.augment_core.py:77 in live_enabled()",
-     "live_callers": [
-      "ez_manage.py:44182",
-      "ez_manage.py:44191",
-      "tradier_manage.py:14747",
-      "tradier_manage.py:14762"
-     ]
-    }
-   ]
-  },
-  {
    "key": "STOP_LOSS_ENABLED",
    "verdict": "OK",
    "n_psym": 1,
@@ -27325,160 +26507,6 @@
      ]
     }
    ]
-  },
-  {
-   "key": "STOP_RECLAIM_BUFFER_PCT",
-   "verdict": "INERT",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 1,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "REENTRY_WINDOWED"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "STOP_RECLAIM_EXCLUSIVE",
-   "verdict": "INERT",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 1,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "REENTRY_WINDOWED"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "STOP_RECLAIM_MAX_SWEEP_PCT",
-   "verdict": "INERT",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 1,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "REENTRY_WINDOWED"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "STOP_RECLAIM_REENTRY_ENABLED",
-   "verdict": "OK",
-   "n_psym": 1,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 2,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "REENTRY_WINDOWED"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "STOP_RECLAIM_REQUIRE_HTF",
-   "verdict": "INERT",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 1,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "REENTRY_WINDOWED"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "STOP_RECLAIM_SIZE_MULT",
-   "verdict": "INERT",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 1,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "REENTRY_WINDOWED"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "STOP_RECLAIM_WINDOW_BARS",
-   "verdict": "INERT",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 2,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "REENTRY_WINDOWED"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
   },
   {
    "key": "STRENGTH_FILTER_ENABLED",
@@ -29220,28 +28248,6 @@
    "routed_sites": []
   },
   {
-   "key": "UNCOND_DC_HARD_STOP_BUFFER_PCT",
-   "verdict": "OK",
-   "n_psym": 1,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 1,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "EXIT_STRUCTURAL"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
    "key": "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED",
    "verdict": "OK",
    "n_psym": 1,
@@ -29416,28 +28422,6 @@
    "routed_sites": []
   },
   {
-   "key": "VEC_DICTATE_ONLY_ENABLED",
-   "verdict": "OK",
-   "n_psym": 1,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 0,
-   "n_dead": 0,
-   "n_proxy_psym": 2,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "GLOBAL_RISK_GATES"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
    "key": "VEC_DISAGREE_FLAT_OPEN_BLOCK",
    "verdict": "OK",
    "n_psym": 1,
@@ -29476,50 +28460,6 @@
    ],
    "switch_tabs": [
     "GLOBAL_RISK_GATES"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "VEC_EXEC_BOARD_CLOSE_ENABLED",
-   "verdict": "OK",
-   "n_psym": 1,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 0,
-   "n_dead": 0,
-   "n_proxy_psym": 2,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "EXIT_STRUCTURAL"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "VEC_EXEC_BOARD_OPEN_ENABLED",
-   "verdict": "OK",
-   "n_psym": 1,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 0,
-   "n_dead": 0,
-   "n_proxy_psym": 2,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
    "global_sites": [],
@@ -29980,6 +28920,28 @@
    "routed_sites": []
   },
   {
+   "key": "VOL_SPIKE_COOLDOWN",
+   "verdict": "OK",
+   "n_psym": 0,
+   "n_global": 0,
+   "n_discarded": 0,
+   "n_namelist": 3,
+   "n_dead": 0,
+   "n_proxy_psym": 2,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG.xlsx",
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
+   ],
+   "switch_tabs": [
+    "ENTRY_CONFIRMATION_GATES"
+   ],
+   "filter_tabs": [],
+   "global_sites": [],
+   "routed_sites": []
+  },
+  {
    "key": "VOL_SPIKE_ENABLED",
    "verdict": "OK",
    "n_psym": 0,
@@ -29990,7 +28952,31 @@
    "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx"
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
+   ],
+   "switch_tabs": [
+    "ENTRY_CONFIRMATION_GATES"
+   ],
+   "filter_tabs": [],
+   "global_sites": [],
+   "routed_sites": []
+  },
+  {
+   "key": "VOL_SPIKE_LS_MAX_IMBALANCE",
+   "verdict": "OK",
+   "n_psym": 0,
+   "n_global": 0,
+   "n_discarded": 0,
+   "n_namelist": 3,
+   "n_dead": 0,
+   "n_proxy_psym": 2,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG.xlsx",
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
    ],
    "switch_tabs": [
     "ENTRY_CONFIRMATION_GATES"
@@ -30608,6 +29594,25 @@
    ]
   },
   {
+   "key": "WIN_TRAIL_EROSION_PCT",
+   "verdict": "ABSENT",
+   "n_psym": 0,
+   "n_global": 0,
+   "n_discarded": 0,
+   "n_namelist": 0,
+   "n_dead": 0,
+   "n_proxy_psym": 0,
+   "templates": [
+    "TEMPLATE_CRYPTO_SHORT.xlsx"
+   ],
+   "switch_tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "filter_tabs": [],
+   "global_sites": [],
+   "routed_sites": []
+  },
+  {
    "key": "WORKER_INSTANCE_ID",
    "verdict": "OK",
    "n_psym": 0,
@@ -30681,28 +29686,6 @@
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "ENTRY_CONFIRMATION_GATES"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "WT15_CROSS_DC_BASIS_GATE_ENABLED",
-   "verdict": "OK",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 0,
-   "n_dead": 0,
-   "n_proxy_psym": 1,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
    ],
    "switch_tabs": [
     "ENTRY_CONFIRMATION_GATES"
@@ -30871,8 +29854,7 @@
     "TEMPLATE_STOCKS_SHORT.xlsx"
    ],
    "switch_tabs": [
-    "ENTRY_CONFIRMATION_GATES",
-    "ENTRY_REVERSAL_BOUNCE"
+    "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
    "global_sites": [],
@@ -30906,7 +29888,6 @@
    "switch_tabs": [
     "AUGMENT_RISK_SIZING",
     "ENTRY_BREAKOUT_CHANNEL",
-    "ENTRY_CONFIRMATION_GATES",
     "ENTRY_REVERSAL_BOUNCE",
     "EXIT_STRUCTURAL",
     "EXIT_VELOCITY",
@@ -30961,7 +29942,6 @@
    "switch_tabs": [
     "AUGMENT_RISK_SIZING",
     "ENTRY_BREAKOUT_CHANNEL",
-    "ENTRY_CONFIRMATION_GATES",
     "ENTRY_REVERSAL_BOUNCE",
     "EXIT_STRUCTURAL",
     "EXIT_VELOCITY",
@@ -31014,7 +29994,6 @@
     "TEMPLATE_STOCKS_SHORT.xlsx"
    ],
    "switch_tabs": [
-    "ENTRY_CONFIRMATION_GATES",
     "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
@@ -31162,8 +30141,7 @@
     "TEMPLATE_STOCKS_SHORT.xlsx"
    ],
    "switch_tabs": [
-    "ENTRY_CONFIRMATION_GATES",
-    "ENTRY_REVERSAL_BOUNCE"
+    "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
    "global_sites": [],
@@ -31893,26 +30871,6 @@
    "routed_sites": []
   },
   {
-   "key": "WT_CROSSUNDER_15M_SHORT",
-   "verdict": "OK",
-   "n_psym": 1,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 5,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "ENTRY_CONFIRMATION_GATES"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
    "key": "WT_CROSSUNDER_FINAL_ENABLED",
    "verdict": "OK",
    "n_psym": 1,
@@ -32024,7 +30982,6 @@
     "TEMPLATE_STOCKS_SHORT.xlsx"
    ],
    "switch_tabs": [
-    "EXIT_STRUCTURAL",
     "EXIT_VELOCITY"
    ],
    "filter_tabs": [],
@@ -32084,28 +31041,6 @@
      ]
     }
    ]
-  },
-  {
-   "key": "WT_CROSS_REQUIRE_HTF_AGREE",
-   "verdict": "OK",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 0,
-   "n_dead": 0,
-   "n_proxy_psym": 1,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "ENTRY_CONFIRMATION_GATES"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
   },
   {
    "key": "WT_DC_DC_POS_MIN",
@@ -33673,116 +32608,6 @@
    ],
    "switch_tabs": [
     "ENTRY_CONFIRMATION_GATES"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "WT_TOP_ENTRY_DIV_MODE",
-   "verdict": "INERT",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 4,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "ENTRY_REVERSAL_BOUNCE"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "WT_TOP_ENTRY_ENABLED",
-   "verdict": "OK",
-   "n_psym": 1,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 6,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "ENTRY_REVERSAL_BOUNCE"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "WT_TOP_ENTRY_HTF_CONFIRM_TF",
-   "verdict": "INERT",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 4,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "ENTRY_REVERSAL_BOUNCE"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "WT_TOP_ENTRY_MODE",
-   "verdict": "INERT",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 4,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "ENTRY_REVERSAL_BOUNCE"
-   ],
-   "filter_tabs": [],
-   "global_sites": [],
-   "routed_sites": []
-  },
-  {
-   "key": "WT_TOP_ENTRY_TF",
-   "verdict": "INERT",
-   "n_psym": 0,
-   "n_global": 0,
-   "n_discarded": 0,
-   "n_namelist": 4,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
    "global_sites": [],
