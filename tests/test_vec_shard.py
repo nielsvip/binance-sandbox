@@ -50,6 +50,29 @@ def test_unknown_shard_fails_open():
     assert _with_shard("crypto_mid", lambda: vs.serves("BTCUSDC_LONG")) is True
 
 
+def test_load_sets_unions_sets_file_live_keys():
+    import json
+    import tools.vec_live_executor as le
+    import tempfile, os
+    with tempfile.TemporaryDirectory() as td:
+        vd = {"BTCUSDC_LONG": {"mode": "live", "account": ["men"]}}
+        st = {"BTCUSDC_LONG": {"mode": "live", "account": ["men"], "overrides": {"A": 1}},
+              "AAPL_LONG": {"mode": "live", "account": ["trb"], "overrides": {"B": 2}},
+              "XXX_LONG": {"mode": "shadow", "account": ["trb"], "overrides": {"C": 3}}}
+        open(os.path.join(td, "vec_driven.json"), "w").write(json.dumps(vd))
+        open(os.path.join(td, "vec_driven_sets.json"), "w").write(json.dumps(st))
+        old_vd, old_sets, old_cands = le.VEC_DRIVEN, le.SETS, le.CANDIDATES
+        from pathlib import Path
+        try:
+            le.VEC_DRIVEN, le.SETS, le.CANDIDATES = Path(td) / "vec_driven.json", Path(td) / "vec_driven_sets.json", Path(td) / "candidates.json"
+            out = le.load_sets()
+        finally:
+            le.VEC_DRIVEN, le.SETS, le.CANDIDATES = old_vd, old_sets, old_cands
+    assert out["BTCUSDC_LONG"][1] == {"A": 1}
+    assert out["AAPL_LONG"] == ({"mode": "live", "account": ["trb"]}, {"B": 2})
+    assert "XXX_LONG" not in out
+
+
 def test_venue_matches_lane_authority():
     from tools.opt import evaluate_v12 as e
     for ss, cat in CASES:

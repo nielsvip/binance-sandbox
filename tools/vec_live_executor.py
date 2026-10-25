@@ -474,6 +474,14 @@ def load_sets():
             d = json.loads(p.read_text()) if p.exists() else {}
             ov = (d.get(ss) or {}).get("overrides") if ss in d else d.get("overrides")
         out[ss] = (entry, ov)
+    # USER 2026-10-25 stock shards: keys proven live in the sets file but absent from the
+    # registry (pure_board publishes crypto only) resolve from the sets entry itself —
+    # mode/account/overrides all rule-derived from real boards, registry file untouched.
+    for ss, se in _sets.items():
+        if ss.startswith("_") or ss in out or not isinstance(se, dict):
+            continue
+        if se.get("mode") == "live" and isinstance(se.get("overrides"), dict):
+            out[ss] = ({"mode": "live", "account": se.get("account") or "trb"}, se.get("overrides"))
     return out
 
 
@@ -578,12 +586,27 @@ def _fabricated(overrides: dict):
 
 def build_driven(write: bool = True) -> dict:
     """USER 2026-10-06: every tradeable crypto key with a proven vectorized set is mode=live.
+    USER 2026-10-25 stock shards: proven STOCK keys join under the SAME tier rules
+    (gain > 0, fabrication screen) — universe = symbols_trb_long/short; set account = trb.
 
     Per key, preference: both-window (30D + 365D) qualified set > 30D-best set; within a tier
     repair_dual (engine-verified, accepted) > go-live candidates > latest progress cumulative_overrides.
     A 30D set is used only when its proven gain > 0. Reads the universe/books, never edits them."""
     import glob
     syms, upath, umd5 = _universe()
+    try:
+        _tsyms = set()
+        for _tf in (ROOT / "symbols_trb_long.json", ROOT / "symbols_trb_short.json"):
+            try:
+                _d = json.loads(_tf.read_text())
+                _tsyms.update(str(s).strip().upper() for s in (_d if isinstance(_d, list) else list(_d)))
+            except Exception:
+                pass
+        _tsyms = {s for s in _tsyms if s and not s.endswith(("USDT", "USDC", "USD1", "USDS", "BUSD", "FDUSD", "TUSD", "DAI"))}
+        if _tsyms:
+            syms = sorted(set(syms) | _tsyms)
+    except Exception:
+        pass
     cands = json.loads(CANDIDATES.read_text()) if CANDIDATES.exists() else {}
     repair = {}
     for f in REPAIR_DUAL_DIR.glob("*_*.json"):
@@ -644,7 +667,14 @@ def build_driven(write: bool = True) -> dict:
                 fab_log.append({"ss": ss, "rejected": rejected, "fallback": (f"{clean[0][0]}:{clean[0][1]}" if clean else "NONE -> shadow")})
             tier, src, s = clean[0] if clean else opts[0]
             mode = "live" if clean else "shadow"
-            out[ss] = {"mode": mode, "account": (prev.get(ss) or {}).get("account", "ez"), "overrides_src": "inline", "overrides": s["overrides"], "set_source": src, "set_tier": tier, "set_src_path": s.get("src"), "set_gain_30d": s.get("gain_30d"), "set_trades": s.get("trades"), "set_md5": set_md5(s["overrides"]), "alternatives": [f"{t}:{n}:{(x.get('gain_30d'))}" for t, n, x in (clean[1:] if clean else opts[1:])], "rejected_fabrication_sets": rejected, "shadow_reason": None if clean else "every proven set contains a fabrication-class test switch (BIBLE §19)"}
+            _pacct = (prev.get(ss) or {}).get("account")
+            if not _pacct:
+                try:
+                    from tools import vec_shard as _vsh
+                    _pacct = "trb" if not _vsh.is_crypto_sym(sym) else "ez"
+                except Exception:
+                    _pacct = "ez"
+            out[ss] = {"mode": mode, "account": _pacct, "overrides_src": "inline", "overrides": s["overrides"], "set_source": src, "set_tier": tier, "set_src_path": s.get("src"), "set_gain_30d": s.get("gain_30d"), "set_trades": s.get("trades"), "set_md5": set_md5(s["overrides"]), "alternatives": [f"{t}:{n}:{(x.get('gain_30d'))}" for t, n, x in (clean[1:] if clean else opts[1:])], "rejected_fabrication_sets": rejected, "shadow_reason": None if clean else "every proven set contains a fabrication-class test switch (BIBLE §19)"}
     out["_no_set"] = no_set
     out["_fabrication_rejections"] = fab_log
     for r in fab_log:
