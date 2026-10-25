@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-25T23:13:42Z",
+ "generated_utc": "2026-10-25T23:18:54Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 113.6,
+  "age_s": 194.8,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 4524,
-  "proc_age_s": 70148.0,
-  "log_age_s": 21.5,
+  "proc_age_s": 70452.0,
+  "log_age_s": 42.3,
   "warmup_done": true,
   "timeframes_since_restart": [
    "D",
@@ -111,20 +111,19 @@
   "mode": "ACTIVE",
   "since_epoch": 1792602182.2042153,
   "activations": 163,
-  "hb_mtime": 1792969937.2071993,
-  "mac_snapshot_age_s": 0.6797852516174316,
+  "hb_mtime": 1792970332.7270598,
+  "mac_snapshot_age_s": 43.243929386138916,
   "mac_stale": false,
   "lease_holder": "mac",
   "lease_venues": null,
-  "lease_since": "2026-10-25T23:12:39Z",
-  "lease_reason": "yield: Mac never fenced for 330s \u2014 accounts must never be unattended",
-  "now": 1792969966.1879032,
-  "from_cache_age_s": 50.0,
-  "heartbeat_age_s": 29.0,
-  "active_s": 367784.0
+  "lease_since": "2026-10-25T23:16:34Z",
+  "lease_reason": "yield: Mac never fenced for 180s \u2014 accounts must never be unattended",
+  "now": 1792970333.4030504,
+  "heartbeat_age_s": 0.7,
+  "active_s": 368151.2
  },
  "alerts": [
-  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 367783s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (28s) AND the Mac snapshot is fresh (113s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
+  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 368151s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (0s) AND the Mac snapshot is fresh (194s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
  ],
  "verdict": "ALERT"
 }
