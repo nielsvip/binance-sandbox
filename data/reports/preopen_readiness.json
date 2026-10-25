@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-25T11:40:02Z",
+ "generated_utc": "2026-10-25T12:00:02Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
@@ -38,23 +38,23 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "built_at": "2026-10-25T11:20:52.267991+00:00",
+    "built_at": "2026-10-25T11:50:58.733900+00:00",
     "n": 524,
-    "age_at_open_s": 1150
+    "age_at_open_s": 543
    },
-   "detail": "built 2026-10-25T11:20:52.267991+00:00 n=524"
+   "detail": "built 2026-10-25T11:50:58.733900+00:00 n=524"
   },
   {
    "name": "apply_report_written",
    "ok": true,
    "critical": true,
    "measured": {
-    "reports_today": 12,
-    "newest_report": "persym_golive_20261025_refresh_1123.json",
-    "newest_report_at": "2026-10-25T11:24:55Z",
-    "tiers_at": "2026-10-25T11:25:20Z"
+    "reports_today": 13,
+    "newest_report": "persym_golive_20261025_refresh_1153.json",
+    "newest_report_at": "2026-10-25T11:56:04Z",
+    "tiers_at": "2026-10-25T11:56:33Z"
    },
-   "detail": "persym_golive_20261025_refresh_1123.json at 2026-10-25T11:24:55Z, tiers 2026-10-25T11:25:20Z"
+   "detail": "persym_golive_20261025_refresh_1153.json at 2026-10-25T11:56:04Z, tiers 2026-10-25T11:56:33Z"
   },
   {
    "name": "live_set_matches_selection",
@@ -208,15 +208,13 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "symbols": 329,
-    "stale_over_90min": 1,
-    "stale_pct": 0.3,
-    "median_age_min": 40.0,
-    "sample": [
-     "ONEUSDT"
-    ]
+    "symbols": 201,
+    "stale_over_90min": 0,
+    "stale_pct": 0.0,
+    "median_age_min": 45.0,
+    "sample": []
    },
-   "detail": "1/329 symbols past the live 90-min entry gate (0.3%)"
+   "detail": "0/201 symbols past the live 90-min entry gate (0.0%)"
   },
   {
    "name": "s1_sets_synced",

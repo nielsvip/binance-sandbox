@@ -1,18 +1,19 @@
 {
- "generated_at": "2026-10-25 11:51 UTC",
- "total_capital_usd": 33.81,
+ "generated_at": "2026-10-25 12:03 UTC",
+ "total_capital_usd": 67.83,
  "tier_capital": {
   "A": 0.0,
-  "B": 0.0,
-  "C": 33.81
+  "B": 22.96,
+  "C": 44.87
  },
  "tier_count": {
   "A": 0,
-  "B": 0,
-  "C": 2
+  "B": 1,
+  "C": 3
  },
  "winners": [],
  "losers": [
+  "fin:MASKUSDT_LONG",
   "fin:ACEUSDT_SHORT",
   "fin:NMRUSDT_SHORT"
  ],
@@ -22,23 +23,45 @@
    "pk": "fin:NMRUSDT_SHORT",
    "symbol": "NMRUSDT",
    "account": "fin",
-   "value_usd": 27.53,
-   "gain_pct": -0.299,
+   "value_usd": 27.45,
+   "gain_pct": 0.239,
    "tier": "C",
    "perf_mult": 0.26,
    "amt": 2.8,
-   "mark": 9.8330679
+   "mark": 9.80353111
+  },
+  {
+   "pk": "fin:XMRUSDT_LONG",
+   "symbol": "XMRUSDT",
+   "account": "fin",
+   "value_usd": 22.96,
+   "gain_pct": -0.056,
+   "tier": "B",
+   "perf_mult": 4.43,
+   "amt": 0.038,
+   "mark": 604.25
+  },
+  {
+   "pk": "fin:MASKUSDT_LONG",
+   "symbol": "MASKUSDT",
+   "account": "fin",
+   "value_usd": 11.14,
+   "gain_pct": -0.518,
+   "tier": "C",
+   "perf_mult": 0.26,
+   "amt": 28.0,
+   "mark": 0.39802738
   },
   {
    "pk": "fin:ACEUSDT_SHORT",
    "symbol": "ACEUSDT",
    "account": "fin",
    "value_usd": 6.28,
-   "gain_pct": -0.445,
+   "gain_pct": -0.442,
    "tier": "C",
    "perf_mult": 0.16,
    "amt": 44.81,
-   "mark": 0.14004
+   "mark": 0.14004582
   }
  ]
 }
