@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-25T00:40:11Z",
+ "generated_utc": "2026-10-25T01:00:05Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
@@ -8,7 +8,8 @@
   "boards_recomputed",
   "defaults_chain_completed",
   "apply_report_written",
-  "live_set_matches_selection"
+  "live_set_matches_selection",
+  "indicators_fresh"
  ],
  "checks": [
   {
@@ -16,7 +17,7 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "filled_today": 333,
+    "filled_today": 332,
     "filled_before_open": 0
    },
    "detail": "no board was filled before the open"
@@ -39,11 +40,11 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "built_at": "2026-10-24T23:51:54.859029+00:00",
-    "n": 523,
-    "age_at_open_s": 2896
+    "built_at": "2026-10-25T00:52:13.316752+00:00",
+    "n": 524,
+    "age_at_open_s": 472
    },
-   "detail": "built 2026-10-24T23:51:54.859029+00:00 n=523"
+   "detail": "built 2026-10-25T00:52:13.316752+00:00 n=524"
   },
   {
    "name": "apply_report_written",
@@ -53,19 +54,19 @@
     "reports_today": 0,
     "newest_report": null,
     "newest_report_at": null,
-    "tiers_at": "2026-10-24T23:03:49Z"
+    "tiers_at": "2026-10-25T00:40:49Z"
    },
-   "detail": "NO REPORT at None, tiers 2026-10-24T23:03:49Z \u2014 the apply never finished (no report / stale tiers): the live set is PARTIAL"
+   "detail": "NO REPORT at None, tiers 2026-10-25T00:40:49Z \u2014 the apply never finished (no report / stale tiers): the live set is PARTIAL"
   },
   {
    "name": "live_set_matches_selection",
    "ok": false,
    "critical": true,
    "measured": {
-    "selection_n": 523,
-    "exact": 125,
+    "selection_n": 524,
+    "exact": 124,
     "benign_divergence_only": 312,
-    "material_divergence": 85,
+    "material_divergence": 87,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -202,22 +203,29 @@
      }
     ]
    },
-   "detail": "125 exact, 312 benign-only, 85 with material divergence, 1 with no live row"
+   "detail": "124 exact, 312 benign-only, 87 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
-   "ok": true,
+   "ok": false,
    "critical": true,
    "measured": {
-    "symbols": 329,
-    "stale_over_90min": 1,
-    "stale_pct": 0.3,
-    "median_age_min": 0.0,
+    "symbols": 201,
+    "stale_over_90min": 201,
+    "stale_pct": 100.0,
+    "median_age_min": 480.1,
     "sample": [
-     "ONEUSDT"
+     "1000000MOGUSDT",
+     "1000BONKUSDC",
+     "1000CHEEMSUSDT",
+     "1000FLOKIUSDT",
+     "1000LUNCUSDT",
+     "1000PEPEUSDC",
+     "1000SATSUSDT",
+     "1000SHIBUSDC"
     ]
    },
-   "detail": "1/329 symbols past the live 90-min entry gate (0.3%)"
+   "detail": "201/201 symbols past the live 90-min entry gate (100.0%)"
   },
   {
    "name": "s1_sets_synced",
