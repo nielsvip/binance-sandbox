@@ -140,7 +140,7 @@
    "REENTRY_BLANKET_FIRE_ENABLED: wired live+vec (['live_twins/vec_reentry.py:92(fires)'] / ['v12_quick_engine.py:19394(simulate_one)']) but in no template",
    "REENTRY_GR_HLHH_MODE: wired live+vec (['tradier_manage.py:53645(TradierTradeManager.reentry_monitor_loop)'] / ['vec_decisions/reentry_overdue.py:71(fire)']) but in no template",
    "REENTRY_GR_MIN_TFS: wired live+vec (['tradier_manage.py:53647(TradierTradeManager.reentry_monitor_loop)'] / ['vec_decisions/reentry_overdue.py:73(fire)']) but in no template",
-   "REENTRY_SYMGATE_SPEED_MIN: wired live+vec (['ez_positions_quick.py:29953(check_entry_candidates_for_account.worker)'] / ['vec_decisions/stocks_symgate_reentry_vec.py:214(precompute)']) but in no template",
+   "REENTRY_SYMGATE_SPEED_MIN: wired live+vec (['ez_positions_quick.py:29949(check_entry_candidates_for_account.worker)'] / ['vec_decisions/stocks_symgate_reentry_vec.py:214(precompute)']) but in no template",
    "SLOPE_SIZING_LIVE_TWIN_ENABLED: wired live+vec (['live_twins/sizing.py:47(stdev_slope_mult)'] / ['v12_quick_engine.py:14156(compute_regime_sizing_mult)']) but in no template",
    "STDEV_BOUNCE_HTF_LIST: wired live+vec (['ez_positions_quick.py:22225(detect_stdev_bounce)'] / ['vec_decisions/check_entry_candidates_stocks__stdev_breakout_bounce.py:66(check_stdev_bounce) [UNREACHABLE]']) but in no template",
    "STOCKS_OPENING_BUFFER_ENTRY_ENABLED: wired live+vec (['tradier_manage.py:20525(process_position)'] / ['v12_quick_engine.py:20013(simulate_one)']) but in no template",

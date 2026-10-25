@@ -1,7 +1,47 @@
 {
- "findings": [],
- "n_findings": 0,
- "n_positions": 0,
- "positions": [],
- "ts": "2026-10-25T05:40:57.420282+00:00"
+ "findings": [
+  {
+   "account": "fin",
+   "code": "BROKER_UNREACHABLE",
+   "error": "BinanceAPIException(<Response [418]>, 418, '{\"code\":-1003,\"msg\":\"Way too many requests; IP(200.118.16.10) banned until 1792913277708. Please use the websocket f"
+  },
+  {
+   "account": "inf",
+   "code": "BROKER_UNREACHABLE",
+   "error": "BinanceAPIException(<Response [418]>, 418, '{\"code\":-1003,\"msg\":\"Way too many requests; IP(200.118.16.10) banned until 1792913277708. Please use the websocket f"
+  },
+  {
+   "armed": true,
+   "code": "LEVEL_NOT_ENTRY_BAR",
+   "entry_bar_level": 0.0781148,
+   "key": "flz:DOGEUSDC_SHORT",
+   "live_level": 0.08411849999999998,
+   "mark": 0.07685117,
+   "opened_at": "2026-10-25T05:44:33.853905Z",
+   "resting_trigger": 0.08425
+  }
+ ],
+ "n_findings": 3,
+ "n_positions": 2,
+ "positions": [
+  {
+   "armed": true,
+   "entry_bar_level": 0.20299124999999998,
+   "key": "ang:SUSHIUSDT_LONG",
+   "live_level": 0.20299124999999998,
+   "mark": 0.20303114,
+   "opened_at": "2026-10-25T05:44:22.645523Z",
+   "resting_trigger": 0.2026
+  },
+  {
+   "armed": true,
+   "entry_bar_level": 0.0781148,
+   "key": "flz:DOGEUSDC_SHORT",
+   "live_level": 0.08411849999999998,
+   "mark": 0.07685117,
+   "opened_at": "2026-10-25T05:44:33.853905Z",
+   "resting_trigger": 0.08425
+  }
+ ],
+ "ts": "2026-10-25T05:50:55.346283+00:00"
 }
