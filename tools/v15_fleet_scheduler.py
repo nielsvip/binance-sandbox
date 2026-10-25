@@ -1799,11 +1799,15 @@ def _disk_admit_ok(stats, min_mb=5000.0):
         return True
 
 
-def _launched_recently(key, launched_at, now_ts, grace_s=180.0):
+def _launched_recently(key, launched_at, now_ts, grace_s=None):
     """True when key launched within the grace window (USER 2026-10-10: fresh pilots are
     probe-invisible for minutes under load; relaunching them spawns cross-host duplicates that
-    burn attempts to cap at birth). Missing/junk fails open (launch)."""
+    burn attempts to cap at birth). Missing/junk fails open (launch). USER 2026-10-25: grace
+    env-tunable via V15_LAUNCH_GRACE_S (default 600s) — under fleet load conda pilot
+    startup exceeds 180s probe-visibility so ticks relaunched 16-32x stampedes; S1 cron sets 600."""
     try:
+        if grace_s is None:
+            grace_s = float(os.environ.get("V15_LAUNCH_GRACE_S", "600"))
         ts = (launched_at or {}).get(key)
         if ts is None:
             return False

@@ -84,9 +84,11 @@ class LaunchedRecentlyTest(unittest.TestCase):
         self.assertFalse(_launched_recently("K", {"K": None}, 1000.0))
 
     def test_window(self):
+        # USER 2026-10-25: default grace 180s -> 600s (V15_LAUNCH_GRACE_S; stampede fix).
         self.assertTrue(_launched_recently("K", {"K": 990.0}, 1000.0))
         self.assertTrue(_launched_recently("K", {"K": 821.0}, 1000.0))
-        self.assertFalse(_launched_recently("K", {"K": 819.0}, 1000.0))
+        self.assertTrue(_launched_recently("K", {"K": 401.0}, 1000.0))
+        self.assertFalse(_launched_recently("K", {"K": 399.0}, 1000.0))
         self.assertFalse(_launched_recently("K", {"K": 100.0}, 1000.0))
 
     def test_junk_safe(self):
