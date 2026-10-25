@@ -3513,9 +3513,7 @@ class TradierConfig:
     OVERBOUGHT_SCORE_GUT_BREAKOUT_BYPASS: bool = True
     OVERNIGHT_GAP_HEDGE_CLOSE_MINUTES: float = 5.0
     OVERNIGHT_GAP_HEDGE_ENABLED: bool = (
-        True  # USER 2026-10-21: gap protection on by default. Same-sector mate hedges 15min
-        # pre-close on |sentiment|>20, closed 09:35 ET. Hedge mates are tagged positions, never
-        # board positions; per-sym kill: OVERNIGHT_GAP_HEDGE_ENABLED=False. ROLLBACK: False.
+        False  # USER 2026-10-25: hedging is FORBIDDEN — gap mate hedges never open (was True 2026-10-21). No-held-overnight risk is carried by exits, not hedges. ROLLBACK: True only by explicit user order.
     )
     NATIVE_REPLAY_ENABLED: bool = (
         True  # USER 2026-10-22: enforce refused native OPENs immediately — a sym_side whose native

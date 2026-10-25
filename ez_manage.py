@@ -66078,9 +66078,9 @@ async def main():
             )
             trade_manager.websocket_managers = websocket_managers
             background_tasks.append(asyncio.create_task(log_timing_summary()))
-            background_tasks.append(
-                asyncio.create_task(monitor_hedges_continuously(trade_manager))
-            )
+            # USER 2026-10-25: hedging is FORBIDDEN — the hedge monitor loop is
+            # never tasked (engine stays None-bound above; same-symbol hedges
+            # additionally refuse inside HedgeEngine).
             background_tasks.append(
                 asyncio.create_task(trade_manager.redis_listener_signals())
             )

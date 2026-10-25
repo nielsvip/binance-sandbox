@@ -86,6 +86,27 @@ def test_prioritize_vec_first_capped_no_starvation():
     assert prioritize([], {"a"}) == []
 
 
+def test_hedging_forbidden_no_loops_no_engine():
+    import asyncio
+
+    ez = (ROOT / "ez_manage.py").read_text()
+    tr = (ROOT / "tradier_manage.py").read_text()
+    assert "create_task(monitor_hedges_continuously" not in ez
+    assert "create_task(obligatory_sector_hedge_or_close_loop" not in tr
+    assert "create_task(overnight_gap_hedge_loop" not in tr
+    from ez_positions_quick import HedgeEngine
+
+    async def _go():
+        return await HedgeEngine.execute_same_symbol_hedge(
+            None, None, None, None, None, None, None
+        )
+
+    assert asyncio.run(_go()) is False
+    import config_tradier
+
+    assert config_tradier.TradierConfig.OVERNIGHT_GAP_HEDGE_ENABLED is False
+
+
 def test_both_inners_wire_hold_verify_priority():
     ez = (ROOT / "ez_manage.py").read_text()
     tr = (ROOT / "tradier_manage.py").read_text()

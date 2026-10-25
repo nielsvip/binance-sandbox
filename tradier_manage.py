@@ -60468,14 +60468,9 @@ class TradierTradeManager:
         )
         self.background_tasks.append(asyncio.create_task(self.copilot_bridge_loop()))
         self.background_tasks.append(asyncio.create_task(self.reentry_monitor_loop()))
-        # 2026-05-09 USER MANDATE: trb obligatory sector hedge / fallback close. Approximate hedge — monitor.
-        self.background_tasks.append(
-            asyncio.create_task(obligatory_sector_hedge_or_close_loop(self))
-        )
-        # 2026-05-15: overnight gap hedge — same-sector opposite-side before close (default OFF).
-        self.background_tasks.append(
-            asyncio.create_task(overnight_gap_hedge_loop(self))
-        )
+        # USER 2026-10-25: hedging is FORBIDDEN — neither hedge loop is ever
+        # tasked (sector obligatory + overnight gap). Exits carry all risk.
+        _ = (obligatory_sector_hedge_or_close_loop, overnight_gap_hedge_loop)
         # USER 2026-10-21 BOARD-STATE CONVERGE: force board-state parity through execute_now.
         self.background_tasks.append(
             asyncio.create_task(board_state_converge_loop(self))
