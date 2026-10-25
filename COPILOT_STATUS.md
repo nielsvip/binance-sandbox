@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-25 10:57:23 UTC
+# Copilot Status — 2026-10-25 11:02:27 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] flz — 2026-10-25T10:52:28
-- **RATIO_IMBALANCE** [crypto] flz — 2026-10-25T10:53:29
-- **STALE_INDICATORS** [tradier]  — 2026-10-25T10:54:30
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T10:54:30
-- **RATIO_IMBALANCE** [crypto] flz — 2026-10-25T10:54:30
-- **RATIO_IMBALANCE** [crypto] flz — 2026-10-25T10:55:31
-- **STALE_INDICATORS** [tradier]  — 2026-10-25T10:56:32
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T10:56:32
-- **RATIO_IMBALANCE** [crypto] ang — 2026-10-25T10:56:32
-- **RATIO_IMBALANCE** [crypto] flz — 2026-10-25T10:56:32
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-25T10:58:34
+- **RATIO_IMBALANCE** [crypto] flz — 2026-10-25T10:58:34
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-25T10:59:35
+- **RATIO_IMBALANCE** [crypto] flz — 2026-10-25T10:59:35
+- **STALE_INDICATORS** [tradier]  — 2026-10-25T11:00:35
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T11:00:35
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-25T11:00:36
+- **RATIO_IMBALANCE** [crypto] flz — 2026-10-25T11:00:36
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-25T11:01:37
+- **RATIO_IMBALANCE** [crypto] flz — 2026-10-25T11:01:37
 
 ## Missed Trades (trader comparison)
 
@@ -29,15 +29,15 @@ _None_
 
 **Held:** 10 | **Watching for reentry:** 4 | **Reentered:** 0
 
-- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +0.1%
+- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +-0.1%
 - HELD: **ARM** SHORT (tradier) peak +8.3%, now +-0.5%
-- HELD: **ZECUSDC** SHORT (crypto) peak +7.3%, now +0.4%
+- HELD: **ZECUSDC** SHORT (crypto) peak +7.3%, now +-0.1%
 - HELD: **CDE** SHORT (tradier) peak +5.0%, now +2.1%
-- HELD: **MAGICUSDT** SHORT (crypto) peak +4.7%, now +-0.1%
-- HELD: **DOGEUSDC** SHORT (crypto) peak +4.5%, now +0.0%
+- HELD: **MAGICUSDT** SHORT (crypto) peak +4.7%, now +-0.3%
+- HELD: **DOGEUSDC** SHORT (crypto) peak +4.5%, now +-0.2%
 - HELD: **WLDUSDC** SHORT (crypto) peak +4.1%, now +0.5%
-- HELD: **SOLUSDC** SHORT (crypto) peak +3.6%, now +0.1%
-- HELD: **HYPEUSDT** SHORT (crypto) peak +3.6%, now +0.6%
+- HELD: **SOLUSDC** SHORT (crypto) peak +3.6%, now +-0.0%
+- HELD: **HYPEUSDT** SHORT (crypto) peak +3.6%, now +0.4%
 - HELD: **NXE** SHORT (tradier) peak +3.3%, now +-0.4%
 
 - WATCHING: **AXSUSDT** SHORT (crypto) peaked +5.7%, exited 0m ago
@@ -54,4 +54,4 @@ _None_
 - [HIGH] ez_share_ind.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] tradier_positions.py running but log stale (27min)
+- [MEDIUM] tradier_positions.py running but log stale (32min)

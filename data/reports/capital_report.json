@@ -1,91 +1,32 @@
 {
- "generated_at": "2026-10-25 10:53 UTC",
- "total_capital_usd": 83.89,
+ "generated_at": "2026-10-25 10:59 UTC",
+ "total_capital_usd": 27.49,
  "tier_capital": {
   "A": 0.0,
-  "B": 24.69,
-  "C": 59.2
+  "B": 0.0,
+  "C": 27.49
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 5
+  "B": 0,
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "men:TIAUSDC_LONG",
-  "men:BIOUSDC_SHORT",
-  "men:ENJUSDT_SHORT",
-  "men:RVNUSDT_SHORT",
-  "men:MOVEUSDT_SHORT"
+  "inf:ZENUSDT_SHORT"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "men:TIAUSDC_LONG",
-   "symbol": "TIAUSDC",
-   "account": "men",
-   "value_usd": 27.88,
-   "gain_pct": -0.223,
+   "pk": "inf:ZENUSDT_SHORT",
+   "symbol": "ZENUSDT",
+   "account": "inf",
+   "value_usd": 27.49,
+   "gain_pct": -0.039,
    "tier": "C",
-   "perf_mult": 0.2,
-   "amt": 53.0,
-   "mark": 0.52602685
-  },
-  {
-   "pk": "men:XPLUSDT_SHORT",
-   "symbol": "XPLUSDT",
-   "account": "men",
-   "value_usd": 24.69,
-   "gain_pct": 1.058,
-   "tier": "B",
-   "perf_mult": 1.75,
-   "amt": 344.0,
-   "mark": 0.07178236
-  },
-  {
-   "pk": "men:RVNUSDT_SHORT",
-   "symbol": "RVNUSDT",
-   "account": "men",
-   "value_usd": 13.03,
-   "gain_pct": 0.134,
-   "tier": "C",
-   "perf_mult": 0.14,
-   "amt": 9847.0,
-   "mark": 0.00132322
-  },
-  {
-   "pk": "men:MOVEUSDT_SHORT",
-   "symbol": "MOVEUSDT",
-   "account": "men",
-   "value_usd": 6.38,
-   "gain_pct": 0.218,
-   "tier": "C",
-   "perf_mult": 0.21,
-   "amt": 931.0,
-   "mark": 0.006853
-  },
-  {
-   "pk": "men:ENJUSDT_SHORT",
-   "symbol": "ENJUSDT",
-   "account": "men",
-   "value_usd": 6.21,
-   "gain_pct": 0.121,
-   "tier": "C",
-   "perf_mult": 0.15,
-   "amt": 254.0,
-   "mark": 0.0244405
-  },
-  {
-   "pk": "men:BIOUSDC_SHORT",
-   "symbol": "BIOUSDC",
-   "account": "men",
-   "value_usd": 5.7,
-   "gain_pct": 0.025,
-   "tier": "C",
-   "perf_mult": 0.39,
-   "amt": 258.0,
-   "mark": 0.0220944
+   "perf_mult": 0.31,
+   "amt": 4.9,
+   "mark": 5.61024138
   }
  ]
 }
