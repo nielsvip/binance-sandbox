@@ -2073,8 +2073,9 @@ def _spawn_guard(ss, window, body):
                 f"|| echo \"[launchlock] {ss} {window} launcher race, retry next tick\"; else bash -c {shlex.quote(inner)}; fi")
     # USER 2026-10-25 global launch lock: scheduler ssh-launches and worker self-dispatch
     # (overload_run.sh) share /tmp/v15_fleet_launch_v2.lock so the box never exceeds 4 symbols
-    # even when both fire the same minute. Non-blocking: contention skips, retry next tick.
-    return (f"if command -v flock >/dev/null 2>&1; then flock -n -o /tmp/v15_fleet_launch_v2.lock bash -c {shlex.quote(_perside)} "
+    # even when both fire the same minute. Wait for the short launch critical section:
+    # an immediate lock miss was reported by the detached dispatcher as a successful launch.
+    return (f"if command -v flock >/dev/null 2>&1; then flock -w 20 -o /tmp/v15_fleet_launch_v2.lock bash -c {shlex.quote(_perside)} "
             f"|| echo \"[globallaunch] {ss} {window} box busy, retry next tick\"; else bash -c {shlex.quote(_perside)}; fi")
 
 
@@ -3005,36 +3006,11 @@ def _launched_actions(actions):
     return acts
 
 
-_HALVES = {"at": 0.0, "syms": None}
-
-
-def _in_self_half(sym):
-    """USER 2026-10-25: s5/s6 self-schedule alphabet halves (pair-mode LONG+SHORT in-RAM);
-    the S1 scheduler (backup only) must not launch those symbols on s1/s2 (cross-host dupes
-    with divergent boards). data/v15_half_s5/6.txt, cached 120s, fail-open (missing = no filter)."""
-    try:
-        now = time.time()
-        if _HALVES["syms"] is None or now - _HALVES["at"] > 120:
-            s = set()
-            for _f in ("data/v15_half_s5.txt", "data/v15_half_s6.txt"):
-                try:
-                    s |= {str(_l).strip().upper() for _l in open(ROOT / _f) if str(_l).strip()}
-                except OSError:
-                    pass
-            _HALVES.update(at=now, syms=s)
-        return str(sym or "").upper() in (_HALVES["syms"] or set())
-    except Exception:
-        return False
-
-
 def pair_launch_cmd(host, actions, pdir, workers):
     """one ssh command that detaches every side job of a symbol (subshell > /dev/null so ssh returns at once)."""
     parts = []
     _seen_ssw = set()  # 2026-10-25 same-second 8x dup stacks (QQQ_LONG x9 on s5): one tick must never launch the same sym/side/window twice
-    _hn = str((host or {}).get("name") or "").lower()
     for a in _launched_actions(actions):
-        if _hn in ("s1", "s2") and _in_self_half(a.get("sym")):
-            continue  # self-managed half on s5/s6 — S1 backup stays off this symbol (no cross-host dupes)
         _ssw = (a.get("sym"), a.get("side"), a.get("window"))
         if _ssw in _seen_ssw:
             continue
@@ -4709,9 +4685,6 @@ def tick(args, cfg, now):
             # USER 2026-10-22 fate log: every skip of a top-40 symbol names its blocker, so the ORDER-AUDIT
             # never cries ORDER_VIOLATION over a logged reason and an idling fleet names its own gate.
             _fate = (lambda _r, _s=sym: log.setdefault("fate", {}).setdefault(h["name"], {}).setdefault(_s, _r)) if _rank0 < 40 else (lambda _r: None)
-            if h["name"] in ("s1", "s2") and _in_self_half(sym):
-                _fate("self-managed on s5/s6")
-                continue
             _pinned_sym = sym in _pin_syms
             if _pinned_sym and _pin_hosts and h["name"] not in _pin_hosts:
                 _fate("pin restricted to other hosts")
@@ -5109,8 +5082,6 @@ def tick(args, cfg, now):
                 blo.append((0 if t2 == "M" else 1, -g2, ss, sym2, sd2, key2))
             blo.sort()
             for _, _, ss, sym2, sd2, key2 in blo:
-                if h["name"] in ("s1", "s2") and _in_self_half(sym2):
-                    continue
                 if used >= cap or proj_mem < est_gate or new_launched >= args.max_launch:
                     break
                 rd = is_ready(h["name"], sym2)
@@ -5181,8 +5152,6 @@ def tick(args, cfg, now):
             continue
         B = HB[h["name"]]
         for sym in adopted:
-            if h["name"] in ("s1", "s2") and _in_self_half(sym):
-                continue
             if _pinned_mode and _hsides.get(h["name"], set(_SIDES_ALL)) != set(_SIDES_ALL):
                 if all(owner_side.get(f"{sym}_{_sd}") == h["name"] for _sd in _hsides[h["name"]]):
                     continue
@@ -5277,8 +5246,6 @@ def tick(args, cfg, now):
                 if not sym:
                     break
                 _tried.add(sym)
-                if h["name"] in ("s1", "s2") and _in_self_half(sym):
-                    continue
                 _src_ok, _src_why = _s1_source_tail_ok(sym)
                 if not _src_ok:
                     log.setdefault("steal30_skipped", []).append(f"{h['name']}:{sym}:npz {_src_why}")

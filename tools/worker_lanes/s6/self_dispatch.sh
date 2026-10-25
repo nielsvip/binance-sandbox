@@ -9,11 +9,12 @@
 # Pending = not running locally AND not done (S1 progress pull or local).
 SB=$HOME/binance-sandbox
 SIDES=${1:?sides}; T=${2:?template}; W=${3:-6}; MAX=${4:-6}
-PDIR=/home/niels/v15_run36_20261024/progress
-SP=/tmp/sched_progress
+PDIR=$(head -n 1 "$HOME/v15_current_progress_dir.txt" 2>/dev/null)
+[[ "$PDIR" == /home/niels/v15_run*/progress ]] || { echo "INVALID ROUND POINTER: $PDIR" >&2; exit 2; }
+SP=/tmp/sched_progress_$(basename "$(dirname "$PDIR")")
 mkdir -p "$SP"
 if [ $(( $(date +%s) - $(stat -c %Y "$SP" 2>/dev/null || stat -f %m "$SP" 2>/dev/null || echo 0) )) -gt 240 ]; then
-  rsync -az --timeout=60 niels@10.0.0.3:v15_run36_20261024/progress/ "$SP/" >/dev/null 2>&1
+  rsync -az --timeout=60 "niels@10.0.0.3:$PDIR/" "$SP/" >/dev/null 2>&1
   touch "$SP"
 fi
 nrun=$(pgrep -af "python[^ ]* -u v15_pilot.py --sym-side " 2>/dev/null | grep -oE -- '--sym-side [A-Z0-9_]+' | sort -u | wc -l)

@@ -35,7 +35,23 @@ Lying Sharpe/gain/DD wiped out half the user's net worth in 4 months. Every metr
 
 ---
 
-## 0. STATE OF THE SYSTEM — 2026-10-13 (READ FIRST — supersedes any older text that conflicts)
+## 0. CURRENT OPERATING CONTRACT — 2026-10-25 (supersedes old fleet descriptions below)
+
+**Ownership and failover.** S1 owns crypto SHORT, S2 crypto LONG, S5 stocks LONG, S6 stocks SHORT while S5/S6 remain rented. S5/S6 are temporary and must be drained before deletion; after deletion S1/S2 absorb stock work as well. Host presence and `data/fleet_drain_hosts.json` determine dispatch eligibility. An idle host may take pending work from another cat_side, with the latest NPZ and unfinished progress transferred, after its own eligible work is exhausted. There must be no duplicate live board for one sym_side across hosts. On host failure, reassign its unfinished work. The highest gainers from the previous round get the shortest refresh cadence; every side must receive a real completion or a recorded terminal reason. A round rolls only after the completion record has no launchable pending side; run36 must precede run37. Never force a roll to hide pending work.
+
+**S1 live-data and compute duties.** Every newly closed kline of a tradeable crypto symbol must update its NPZ tail and forward STATE promptly. The Mac consumers (`ez_manage` and `tradier_manage`) must see current state and act on a genuine target-versus-position discrepancy under their safety gates. S1's failover trading managers are standby only while Mac is healthy; S1's NPZ ingest, crypto tail service, and forward STATE writer are production duties, not optional failover jobs. S5 does the stock NPZ/STATE equivalent during market hours. `ez_indicators` on S1 is not the NPZ-tail writer and runs only when the Mac indicator path has failed and failover is explicitly active. Backtest memory/CPU limits must reserve enough for these time-critical duties; OOM throttling reduces backtest concurrency before state freshness is lost.
+
+**Fleet throughput.** The scheduler runs on S1 every two minutes. Each available host targets over 80% useful CPU, S1 over 90% when the state pipeline is healthy, with four distinct symbols and seven pilot workers per side as the starting cap. Count real running pilots and completed sym_side results, not accepted dispatch commands, process children, or held slots. Target more than four genuine sym_side results per host per hour. If a host misses the target, report its actual blocker (NPZ, budget, memory, CPU, terminal verdict, progress transfer, or launch failure) and repair it; a target is not a measured guarantee.
+
+**Pre-market chain and account windows.** Before each stock market open, rebuild avg_delta and pos_sym, reorder each cat_side template, promote the best proven positive delta to the bold/default row, demote its alternative, and propagate the resulting defaults to the live settings surfaces with the existing parity gates. A separate 7D pre-market pass must interrupt ordinary 30D backtests, start from the best verified 30D settings, and cover tradeable sym_sides actually traded during the preceding 7D. Its output is the live source for FIN and TRC (paper); MEN and TRB use the 30D result from the next market day. Publish either window only after its own evaluation and parity/provenance checks. Missing or stale 7D output must be reported, never silently relabeled as a 30D result.
+
+**Audit at 2026-10-25 23:49 UTC.** S1 NPZ ingest and forward STATE cron paths are present; the crypto SHORT kline-triggered vector STATE producer was restored and observed running. S1 failover trading units remain inactive. The scheduler was corrected to stop accepting empty launch commands and to return crypto work to S1/S2; `PTBUSDT_SHORT` was observed as a real S1 pilot with seven workers. S5/S6 stock self dispatchers had hard-coded run36 directories; their scripts now read each host's current round pointer. Run36 still had 52 pending sides (29 launchable at 23:40) and must not roll yet. The 7D interrupt and FIN/TRC versus MEN/TRB 7D/30D account routing were **not verified or found as an active pre-market production path** in this audit; treat Monday activation as open until proved end to end. The scheduler's accepted launches are not proof of >80% CPU or >4 results/hour. Older sections describing a two-host fleet, S1 as merely a standby state source, or NPZ as exclusively backtest JIT reflect earlier configurations and do not override this contract.
+
+**Pre-open defect found at 23:50 UTC.** The 2026-10-25 S1 daily chain stamped `DONE`, but Mac application reached per-sym go-live at 13:33 UTC, after the 13:30 UTC stock open; that step timed out after 2400 seconds (`rc=124`), and the old script still wrote a Mac `DONE` stamp at 14:17 UTC. The Mac apply script now fails and writes `FAILED` when go-live exits nonzero or its report is absent. This is a fail-closed stamp correction, not proof that the chain can finish before Monday's open; the pre-open runtime still needs measurement and a working 7D pass.
+
+---
+
+## 0A. HISTORICAL STATE — 2026-10-13 (superseded by current contract above)
 
 Day summary for the next agent. Each law below is USER-authoritative; the referenced sections carry the detail. Archived
 (superseded) sections live verbatim in `BACKTEST_BIBLE_ARCHIVE.md` — never resurrect them.
@@ -102,7 +118,7 @@ now disabled); mem guard on S1 (only 2 pairs). Throughput math: 12/h/server = 80
 
 ---
 
-## 1. INFRASTRUCTURE — GATEWAY + S1 ALWAYS STAY; s2 IS THE ONLY OTHER WORKER (2026-10-13)
+## 1. INFRASTRUCTURE — HISTORICAL 2026-10-13 SNAPSHOT; SEE CURRENT CONTRACT ABOVE
 
 **Gateway + S1 never deleted, never wiped.**
 
@@ -110,7 +126,7 @@ now disabled); mem guard on S1 (only 2 pairs). Throughput math: 12/h/server = 80
   `ssh -fNT s1-sftp-direct` (public IP) — both expose S1 as `s1-int` on `127.0.0.1:2201`. Fallback `s1-pub` (`157.180.125.52:22`).
 - **S1** `10.0.0.3`, 16c / 30 GB: fleet scheduler (cron */2), NPZ source (`backtest_v8/indicators`), board pilots, STANDBY live stack
   (`~/binance`, `~/binance/ez_s1_stack`); S1 trades live only on failover (lease-fenced).
-- **s2** `10.0.0.4` (reach via S1: `ssh s1-int ssh 10.0.0.4`), 16c / 30 GB: board pilots. s5/s6 destroyed 2026-10-13.
+- **s2** `10.0.0.4` (reach via S1: `ssh s1-int ssh 10.0.0.4`), 16c / 30 GB: board pilots. The old s5/s6 deletion claim is superseded by the current contract above.
 - **Mac** — LIVE trading + dashboard only, never backtests (Mac NPZ truncated → `0 trades DATA_ERROR`).
 
 **Code sync:** edit on the Mac, deploy changed runtime files to S1 `~/binance-sandbox` (+ `~/binance` for the pilot) and s2 `~/binance-sandbox`,
