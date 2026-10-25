@@ -49615,6 +49615,61 @@ class TradierTradeManager:
         # cancel our working orders + protective stop handoff -> ONE market sell / buy_to_cover of the broker qty -> verify flat.
         if str(action or "").upper() == _xg.FORCE_ACTION:
             return await self._exit_force_market_stocks(position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, reason=reason, old_price=old_price)
+        # ─── SCALP FLOOR (USER 2026-10-25: genuine 1-minute scalps disabled immediately, anywhere) ───
+        # Twin of the crypto gate at ez_manage.py (~33222): measured 526 stock ledger pairs closing
+        # under 120s after entry. Any CLOSE/REDUCE on a position younger than SCALP_MIN_HOLD_SEC
+        # (default 180s) is REFUSED here at the ONLY gate. The request is retried next cycle, so this
+        # is a DEFER, not a skip — the exit guarantee stands (stops/protection/FORCE/vec pass below,
+        # everything else fires seconds later once aged). Vec-dictated orders always pass (parity law).
+        # Read off `config` (= TradierConfig()) NOT per-sym: no row may switch a kill-switch off.
+        try:
+            _sc_act = str(action or "").upper()
+            _sc_is_exit = bool(_xg.is_exit_action(action, is_full_close)) or "CLOSE" in _sc_act or "REDUCE" in _sc_act
+            _sc_ref = ""
+            if _sc_is_exit or bool(is_full_close):
+                _sc_floor = 180.0
+                try:
+                    _sc_floor = float(getattr(config, "SCALP_MIN_HOLD_SEC", 180.0))
+                except Exception:
+                    _sc_floor = 180.0
+                _sc_age = None
+                try:
+                    _sc_pos = None
+                    try:
+                        _sc_pos = self.get_position(position_key)
+                    except Exception:
+                        _sc_pos = None
+                    import live_trade_history as _lth_sc
+                    _sc_age = _lth_sc.position_age_sec(getattr(_sc_pos, "opened_at", None) if _sc_pos is not None else None)
+                except Exception:
+                    _sc_age = None
+                _sc_ratio = False
+                try:
+                    if not bool(is_full_close) and "REDUCE" in _sc_act and "CLOSE" not in _sc_act:
+                        from live_twins.vector_enforce import family_of as _ve_fam_sc
+                        _sc_ratio = _ve_fam_sc(reason) == "RATIO"
+                except Exception:
+                    _sc_ratio = False
+                _sc_vecd = False
+                try:
+                    _sc_vecd = bool(_tr_parity_vec_order(reason))
+                except Exception:
+                    _sc_vecd = False
+                try:
+                    import live_trade_history as _lth_sc2
+                    _sc_ref = _lth_sc2.scalp_floor_refusal(_sc_is_exit, is_full_close, reason, _sc_age, _sc_floor, _sc_ratio, _sc_vecd)
+                except Exception:
+                    _sc_ref = ""
+            if _sc_ref:
+                logger.critical(f"🛑 [SCALP_FLOOR] {position_key} {action} reason={(reason or '')[:80]} — position age {(_sc_age if _sc_age is not None else -1):.0f}s < floor {_sc_floor:.0f}s — REFUSED, retries next cycle (USER 2026-10-25 scalp kill-switch)")
+                try:
+                    if _paper_nv.enabled(config):
+                        _paper_nv.record("stocks", account_key, position_key, _paper_nv.kind_of(action, side, position_side), action, reason, "SCALP_FLOOR_REFUSED", old_price, quantity)
+                except Exception:
+                    pass
+                return _sc_ref
+        except Exception as _sc_e:
+            logger.debug(f"[SCALP_FLOOR] check err (fail-open): {_sc_e}")
         _xg_full = _xg.is_full_close(action, is_full_close)  # full close: mechanical refusals below never apply (FORCE backstop behind them)
         _xg_exit = _xg.is_exit_action(action, is_full_close) or (str(side).upper() == "SELL" and str(position_side).upper() == "LONG") or (str(side).upper() == "BUY" and str(position_side).upper() == "SHORT")
         # ─── LATEST-BOARD ENTRY GATE — STOCKS (2026-10-16 USER "live trading executes the trades dictated by the latest

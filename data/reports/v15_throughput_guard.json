@@ -1,5 +1,5 @@
 {
- "at": "2026-10-25T14:11:02Z",
+ "at": "2026-10-25T15:11:25Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
@@ -9,18 +9,16 @@
    "published_n": 0,
    "flat_or_worse": 0,
    "unknown": 0,
-   "boards_running": [
-    "ZILUSDT_SHORT"
-   ],
-   "mem_avail_mb": 3941,
-   "load1": 24.16,
+   "boards_running": [],
+   "mem_avail_mb": 562,
+   "load1": 80.6,
    "nproc": 16,
-   "slots": "1/4",
-   "binding_reason": "scheduler mem guard (disk 24841 MB, mem 6222 MB, est_pair 6000 MB) \u2014 slots 1/4",
+   "slots": "0/4",
+   "binding_reason": "scheduler mem guard (disk 23561 MB, mem 461 MB, est_pair 6000 MB) \u2014 slots 0/4",
    "error": null,
    "published": [],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 603.2,
+   "minutes_since_last_improved": 663.9,
    "last_improved_symside": "ZKUSDT_SHORT",
    "cadence_ok": false,
    "improved_gap_min_median_24h": 23.4,
@@ -28,56 +26,82 @@
    "improved_finishes_24h": 9,
    "board_cpu_s_median_24h": 1657.1,
    "board_wall_s_median_24h": 1522.0295741558075,
-   "board_cores": 6.76,
-   "nonboard_cores_competing": 5.75,
-   "nonboard_cores_niced": 2.54,
+   "board_cores": 0.0,
+   "nonboard_cores_competing": 11.22,
+   "nonboard_cores_niced": 1.13,
    "cores_by_bucket": {
-    "other": 2.85,
-    "live_helpers": 2.27,
-    "boards": 6.76,
-    "klines_append": 0.63
+    "other": 7.58,
+    "live_helpers": 3.1,
+    "klines_append": 0.54
    },
    "cores_by_bucket_niced": {
-    "klines_vault": 0.42,
-    "other": 2.12
+    "klines_vault": 0.45,
+    "other": 0.68
    }
   },
   "s2": {
-   "improved": 0,
-   "improved_per_hour": 0.0,
-   "published_n": 0,
+   "improved": 4,
+   "improved_per_hour": 4.0,
+   "published_n": 4,
    "flat_or_worse": 0,
    "unknown": 0,
-   "boards_running": [
-    "STRKUSDT_LONG",
-    "STXUSDT_LONG",
-    "TIAUSDC_LONG"
-   ],
-   "mem_avail_mb": 9054,
-   "load1": 38.04,
+   "boards_running": [],
+   "mem_avail_mb": 21587,
+   "load1": 7.16,
    "nproc": 16,
-   "slots": "3/4",
-   "binding_reason": "scheduler mem guard (disk 10369 MB, mem 5291 MB, est_pair 9528 MB) \u2014 slots 3/4",
+   "slots": "1/4",
+   "binding_reason": "scheduler mem guard (disk 8575 MB, mem 12816 MB, est_pair 9528 MB) \u2014 slots 1/4",
    "error": null,
-   "published": [],
+   "published": [
+    {
+     "symside": "RENDERUSDT_LONG",
+     "at": "2026-10-25T14:51:42Z",
+     "baseline": 25.15608101263018,
+     "final": 40.1159878695714,
+     "state": "improved"
+    },
+    {
+     "symside": "STXUSDT_LONG",
+     "at": "2026-10-25T14:21:10Z",
+     "baseline": 17.02941546525442,
+     "final": 81.46789409219043,
+     "state": "improved"
+    },
+    {
+     "symside": "STXUSDT_SHORT",
+     "at": "2026-10-25T14:12:38Z",
+     "baseline": 2.765628778615175,
+     "final": 48.54491805479644,
+     "state": "improved"
+    },
+    {
+     "symside": "TIAUSDC_LONG",
+     "at": "2026-10-25T14:32:05Z",
+     "baseline": 32.37774814392244,
+     "final": 83.57178798373396,
+     "state": "improved"
+    }
+   ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 0.6,
-   "last_improved_symside": "STRKUSDT_LONG",
-   "cadence_ok": true,
-   "improved_gap_min_median_24h": 6.1,
+   "minutes_since_last_improved": 8.0,
+   "last_improved_symside": "ARKMUSDT_LONG",
+   "cadence_ok": false,
+   "improved_gap_min_median_24h": 6.2,
    "improved_gap_min_max_24h": 87.1,
-   "improved_finishes_24h": 143,
-   "board_cpu_s_median_24h": 2214.2,
-   "board_wall_s_median_24h": 1126.832993030548,
-   "board_cores": 13.32,
-   "nonboard_cores_competing": 1.96,
-   "nonboard_cores_niced": 0,
+   "improved_finishes_24h": 140,
+   "board_cpu_s_median_24h": 2235.6,
+   "board_wall_s_median_24h": 1182.276085138321,
+   "board_cores": 8.0,
+   "nonboard_cores_competing": 3.55,
+   "nonboard_cores_niced": 0.0,
    "cores_by_bucket": {
-    "other": 0.04,
-    "live_helpers": 1.92,
-    "boards": 13.32
+    "other": 1.09,
+    "live_helpers": 2.46,
+    "boards": 8.0
    },
-   "cores_by_bucket_niced": {}
+   "cores_by_bucket_niced": {
+    "other": 0.0
+   }
   }
  },
  "under_target": [
@@ -85,6 +109,7 @@
   "s2"
  ],
  "cadence_breach": [
-  "s1"
+  "s1",
+  "s2"
  ]
 }
