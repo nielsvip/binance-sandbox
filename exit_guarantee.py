@@ -62,7 +62,11 @@ DEFAULTS = {
 }
 # result codes that are deliberate policy (never escalated): the decision is not authorised to trade on this box / key
 # USER 2026-10-21 vec-only exits: POLICY_NON_VECTOR_EXIT_DISABLED refusal never escalates (no watcher, no FORCE).
-POLICY_PREFIXES = ("GFV_BLOCKED", "BLOCKED_GFV_ACCOUNT_RULE", "GFV_SETTLED_CASH_BLOCK", "BLOCKED_PARITY_NATIVE_", "BLOCKED_VEC_DRIVEN_NATIVE_SUPPRESSED", "BLOCKED_VEC_PARITY_", "SKIPPED_SCALP_REDUCE_DISABLED", "BLOCKED_SERVER_HEARTBEAT_ACTIVE", "BLOCK WRONG ACCOUNT KEY", "BLOCKED_ACCOUNT_NOT_MANAGED", "SKIPPED_SANDBOX", "MARKET_CLOSED", "BLOCKED_MARKET_CLOSED", "POLICY_NON_VECTOR_EXIT", "DEFERRED_VEC_CONFIRM_WAIT")
+# USER 2026-10-25 VEC_DICTATE_ONLY: a dictate refusal is a parity HOLD (board keeps the side, live stays as-is).
+# Forcing it flat churns open->flat->reopen, bleeds fees and strands keys flat-vs-board (444 crypto + 148 stock
+# force-closes in 3d). Genuine failures (TIMEOUT/ERROR -> VERIFY) and strategy-gate refusals of DICTATED closes
+# still escalate; only vec-dictate verdicts stand down.
+POLICY_PREFIXES = ("GFV_BLOCKED", "BLOCKED_GFV_ACCOUNT_RULE", "GFV_SETTLED_CASH_BLOCK", "BLOCKED_PARITY_NATIVE_", "BLOCKED_VEC_DRIVEN_NATIVE_SUPPRESSED", "BLOCKED_VEC_PARITY_", "SKIPPED_SCALP_REDUCE_DISABLED", "BLOCKED_SERVER_HEARTBEAT_ACTIVE", "BLOCK WRONG ACCOUNT KEY", "BLOCKED_ACCOUNT_NOT_MANAGED", "SKIPPED_SANDBOX", "MARKET_CLOSED", "BLOCKED_MARKET_CLOSED", "POLICY_NON_VECTOR_EXIT", "DEFERRED_VEC_CONFIRM_WAIT", "BLOCKED_NON_VEC_DICTATE", "BLOCKED_HERMETIC_NOT_VEC", "BLOCKED_VECTOR_EXEC_", "VEC_EXEC_BOARD_WITHHELD")
 POLICY_CONTAINS = ("WAIT MEANS WAIT",)
 # strategy refusals of a NATIVE close (noloss / hedge regime / newborn / exit confirmation gates). A vec-decided, emergency,
 # stop, sync or flatten close is authorised -> these become ordinary refusals and are escalated.

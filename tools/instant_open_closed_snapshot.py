@@ -117,6 +117,10 @@ def load_holds(now):
 
 def main():
     now = time.time()
+    try:
+        universe = set(json.load(open(os.path.join(HERE, "tradeable_keys.json"))))
+    except Exception:
+        universe = set()
     intents = load_intents()
     delivered = load_delivered()
     live = load_live_positions()
@@ -159,6 +163,10 @@ def main():
         elif now - inten.get("bar_ts", now) < PENDING_SLA_S:
             verdict = "IN_FLIGHT" + stale
             counts["IN_FLIGHT" if not stale else "STALE_BAR"] += 1
+        elif universe and (acct + ":" + ss) not in universe and implied == "FLAT":
+            verdict = "UNIVERSE_DROPPED" + stale
+            counts.setdefault("UNIVERSE_DROPPED", 0)
+            counts["UNIVERSE_DROPPED"] += 1
         else:
             verdict = "DIVERGED" + stale
             counts["DIVERGED"] += 1
