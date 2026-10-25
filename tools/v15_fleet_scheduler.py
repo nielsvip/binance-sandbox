@@ -635,7 +635,8 @@ elif mode == "reap":
                     else:
                         os.kill(p, signal.SIGTERM)
                         _how = " (TERM)"
-                        try: open(_sent, "w").write(str(now))
+                        try:
+                            if _sage < 0: open(_sent, "w").write(str(now))  # USER 2026-10-25: never refresh — re-TERming reset grace so SIGKILL never fired (BBUSDT_LONG hung 8min past grace); absent marker stamps, present marker lets grace accumulate to KILL
                         except Exception: pass
                 except Exception:
                     pass
