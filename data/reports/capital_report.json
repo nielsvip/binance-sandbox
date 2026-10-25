@@ -1,18 +1,19 @@
 {
- "generated_at": "2026-10-25 09:02 UTC",
- "total_capital_usd": 42.8,
+ "generated_at": "2026-10-25 09:17 UTC",
+ "total_capital_usd": 38.25,
  "tier_capital": {
   "A": 0.0,
-  "B": 11.75,
-  "C": 31.05
+  "B": 0.0,
+  "C": 38.25
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 3
+  "B": 0,
+  "C": 4
  },
  "winners": [],
  "losers": [
+  "fin:STXUSDT_SHORT",
   "fin:KSMUSDT_SHORT",
   "fin:MAGICUSDT_SHORT",
   "fin:RLCUSDT_SHORT"
@@ -23,45 +24,45 @@
    "pk": "fin:RLCUSDT_SHORT",
    "symbol": "RLCUSDT",
    "account": "fin",
-   "value_usd": 13.25,
-   "gain_pct": 0.3,
+   "value_usd": 13.18,
+   "gain_pct": 0.797,
    "tier": "C",
    "perf_mult": 0.15,
    "amt": 25.2,
-   "mark": 0.52563709
-  },
-  {
-   "pk": "fin:FLUXUSDT_SHORT",
-   "symbol": "FLUXUSDT",
-   "account": "fin",
-   "value_usd": 11.75,
-   "gain_pct": 0.184,
-   "tier": "B",
-   "perf_mult": 1.11,
-   "amt": 187.0,
-   "mark": 0.06286
+   "mark": 0.523
   },
   {
    "pk": "fin:MAGICUSDT_SHORT",
    "symbol": "MAGICUSDT",
    "account": "fin",
-   "value_usd": 11.02,
-   "gain_pct": 0.152,
+   "value_usd": 10.97,
+   "gain_pct": 0.587,
    "tier": "C",
    "perf_mult": 0.17,
    "amt": 132.1,
-   "mark": 0.08339833
+   "mark": 0.08302
+  },
+  {
+   "pk": "fin:STXUSDT_SHORT",
+   "symbol": "STXUSDT",
+   "account": "fin",
+   "value_usd": 7.37,
+   "gain_pct": 0.395,
+   "tier": "C",
+   "perf_mult": 0.14,
+   "amt": 25.0,
+   "mark": 0.29483099
   },
   {
    "pk": "fin:KSMUSDT_SHORT",
    "symbol": "KSMUSDT",
    "account": "fin",
-   "value_usd": 6.78,
-   "gain_pct": -0.213,
+   "value_usd": 6.73,
+   "gain_pct": 0.559,
    "tier": "C",
    "perf_mult": 0.13,
    "amt": 1.8,
-   "mark": 3.76766771
+   "mark": 3.738
   }
  ]
 }
