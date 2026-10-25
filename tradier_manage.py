@@ -13933,6 +13933,28 @@ async def monitor_entries(
         for _ in range(min(len(q_data["queue"]), 100)):
             batch.append(q_data["queue"].popleft())
             q_data["set"].discard(batch[-1])
+        # USER 2026-10-25: VEC-dictated sym_sides sweep first (order-only, gates
+        # unchanged; priority slice capped so natives never starve).
+        try:
+            from live_twins import vec_priority as _vprio_tr
+            if bool(_cfg_auto("VEC_PRIORITY_ENABLED", True)) and len(batch) > 1:
+                _vprio_fresh_tr = set()
+                try:
+                    _vprio_dir_tr = Path(_cfg_auto("BASE_PATH", "/users/niels/documents/binance")) / "data" / "forward_state"
+                    _vprio_now_tr = time.time()
+                    for _vk_tr in batch:
+                        _vss_tr = _vk_tr.split(":", 1)[1] if ":" in str(_vk_tr) else str(_vk_tr)
+                        try:
+                            if _vprio_now_tr - (_vprio_dir_tr / f"{_vss_tr.upper()}.json").stat().st_mtime <= 900.0:
+                                _vprio_fresh_tr.add(_vk_tr)
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+                if _vprio_fresh_tr:
+                    batch = _vprio_tr.prioritize(batch, _vprio_fresh_tr)
+        except Exception:
+            pass
 
         # 4. The Gates
         for position_key in batch:
@@ -51714,6 +51736,19 @@ class TradierTradeManager:
                 from vec_decisions import vec_parity_gates as _vpg_do_tr
                 _vpg_do_on_tr = bool(_cfg_auto("VEC_DICTATE_ONLY_ENABLED", True))
                 if _vpg_do_on_tr and not bool(_vl_dictated_tr) and not _vpg_do_tr.dictate_only_exempt(action, reason):
+                    try:
+                        from live_twins import vec_pending as _vp_pre_tr
+                        _vp_defer_on_tr = bool(_cfg_auto("VEC_PENDING_DEFER_NATIVE_ENABLED", True))
+                        _vp_base_tr = Path(_cfg_auto("BASE_PATH", "/users/niels/documents/binance"))
+                        if _vp_defer_on_tr and _vp_pre_tr.lane_watching(_vp_base_tr, position_key):
+                            _vp_hold_tr = _vp_pre_tr.file_preemptive_hold("stocks", position_key, action, reason)
+                            if _vp_hold_tr is not None:
+                                logger.warning(f"⏸️ [VEC_HOLD_BEFORE_JUDGEMENT] {position_key} {action} reason={(reason or '')[:80]} — lane watching, held for the bar judgement (USER 2026-10-25: early native fires wait, then verify)")
+                                if lock_acquired and self.redis_manager:
+                                    await self.redis_manager.delete(exec_lock_key)
+                                return _vp_pre_tr.DEFERRED
+                    except Exception:
+                        pass
                     logger.warning(f"⛔ [VEC_DICTATE_ONLY_BLOCK] {position_key} {action} reason={(reason or '')[:80]} — no vec dictate (fix: VEC_DICTATE_ONLY_ENABLED; only ratio trims/augments survive STEP1)")
                     try:
                         if not os.environ.get("PYTEST_CURRENT_TEST"):
@@ -51776,13 +51811,18 @@ class TradierTradeManager:
                     from live_twins import vec_pending as _vp_last_tr
                     _vp_rel_tr = _vp_last_tr.release_for(position_key, _vp_last_tr.direction_of(action))
                     if _vp_rel_tr is not None:
-                        logger.warning(f"✅ [VEC_CONFIRMED] {position_key} {action} — vec dictate arrived inside the window; held native {str(_vp_rel_tr.get('reason'))[:60]} consumed (unflagged), vec order executes")
+                        _vp_same_tr = bool(_vp_last_tr.reasons_match(_vp_rel_tr.get("reason"), reason))
+                        _vp_kind_tr = _vp_last_tr.VERIFIED_IDENTICAL if _vp_same_tr else "VEC_CONFIRMED"
+                        logger.warning(f"✅ [{_vp_kind_tr}] {position_key} {action} — vec dictate arrived inside the window; held native {str(_vp_rel_tr.get('reason'))[:60]} consumed (unflagged), vec order executes")
                         if not os.environ.get("PYTEST_CURRENT_TEST"):
                             try:
                                 _vlp_tr = Path(_cfg_auto("BASE_PATH", "/users/niels/documents/binance")) / "data" / "vector_disparity_queue.jsonl"
                                 _vlp_tr.parent.mkdir(parents=True, exist_ok=True)
                                 with open(str(_vlp_tr), "a") as _vlf_tr:
-                                    _vlf_tr.write(json.dumps({"ts": time.time(), "venue": "stocks", "kind": "VEC_CONFIRMED", "position_key": position_key, "action": action, "reason": str(reason)[:160], "held_reason": str(_vp_rel_tr.get("reason"))[:120], "fix": "vec confirmed the native fire — no switch needed"}) + "\n")
+                                    _vlf_tr.write(json.dumps({"ts": time.time(), "venue": "stocks", "kind": _vp_kind_tr, "position_key": position_key, "action": action, "reason": str(reason)[:160], "held_reason": str(_vp_rel_tr.get("reason"))[:120], "fix": ("verified identical — never list for vectorization" if _vp_same_tr else "reason differs — candidate for switch/vectorization")}) + "\n")
+                                if not _vp_same_tr:
+                                    from live_twins.vector_enforce import _queue_retrace as _qr_cfm_tr
+                                    _qr_cfm_tr(f"VEC_CONFIRMED_REASON_DIFF:{str(_vp_rel_tr.get('reason'))[:40]}", action, position_key, reason)
                             except Exception:
                                 pass
                 except Exception:

@@ -1,13 +1,13 @@
 {
- "at": "2026-10-25T20:30:17Z",
+ "at": "2026-10-25T20:48:13Z",
  "s1": {
   "host": "niels",
-  "now": 1792960210.8121,
+  "now": 1792961152.8390899,
   "merge_crypto": {
    "n": 12,
-   "max_lag_min": 15.0,
+   "max_lag_min": 30.0,
    "median_lag_min": 15.0,
-   "worst": "1000000MOGUSDT",
+   "worst": "1000SATSUSDT",
    "dead": []
   },
   "merge_stocks": {
@@ -18,14 +18,14 @@
    "dead": []
   },
   "npz_legacy_crypto": [],
-  "append_log_age_min": 18.6,
-  "append_last_secs": 693.5,
-  "append_last_stats": "'appended': 1218, 'created': 0, 'up_to_date': 5153, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
+  "append_log_age_min": 11.5,
+  "append_last_secs": 1161.3,
+  "append_last_stats": "'appended': 798, 'created': 0, 'up_to_date': 5573, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
   "npz_loop_pids": 0,
   "npz_loop_has_settle": false,
   "archive_n": 199,
   "archive_mb": 2394.9,
-  "archive_newest_min": 1010.9,
+  "archive_newest_min": 1026.6,
   "_via": "s1-pub"
  },
  "red": [
@@ -33,7 +33,7 @@
   "L4 scheduler last ticked None min ago (cron */2)"
  ],
  "warn": [
-  "L5 newest archived board NPZ is 1011 min old \u2014 publishes may not be recording"
+  "L5 newest archived board NPZ is 1027 min old \u2014 publishes may not be recording"
  ],
  "ok": false
 }

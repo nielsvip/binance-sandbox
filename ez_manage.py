@@ -37469,6 +37469,21 @@ class MultiAccountTradeManager:
                 from vec_decisions import vec_parity_gates as _vpg_do
                 _vpg_do_on = bool(getattr(_ezm_base_config, "VEC_DICTATE_ONLY_ENABLED", getattr(config, "VEC_DICTATE_ONLY_ENABLED", True)))
                 if _vpg_do_on and not bool(_vl_dictated) and not _vpg_do.dictate_only_exempt(action, reason):
+                    try:
+                        from live_twins import vec_pending as _vp_pre
+                        _vp_defer_on = bool(getattr(_ezm_base_config, "VEC_PENDING_DEFER_NATIVE_ENABLED", getattr(config, "VEC_PENDING_DEFER_NATIVE_ENABLED", True)))
+                        _vp_base = Path(getattr(config, "BASE_PATH", "."))
+                        if _vp_defer_on and _vp_pre.lane_watching(_vp_base, position_key):
+                            _vp_hold = _vp_pre.file_preemptive_hold("crypto", position_key, action, reason)
+                            if _vp_hold is not None:
+                                logger.warning(f"⏸️ [VEC_HOLD_BEFORE_JUDGEMENT] {position_key} {action} reason={(reason or '')[:80]} — lane watching, held for the bar judgement (USER 2026-10-25: early native fires wait, then verify)")
+                                try:
+                                    _peg.release_claim(f"{(position_key or f'{account_key}:{symbol}_{position_side}')}|INC")
+                                except Exception:
+                                    pass
+                                return _vp_pre.DEFERRED
+                    except Exception:
+                        pass
                     logger.warning(f"⛔ [VEC_DICTATE_ONLY_BLOCK] {position_key} {action} reason={(reason or '')[:80]} — no vec dictate (fix: VEC_DICTATE_ONLY_ENABLED; only ratio trims/augments survive STEP1)")
                     if not os.environ.get("PYTEST_CURRENT_TEST"):
                         _vlp_do = Path(getattr(config, "BASE_PATH", ".")) / "data" / "vector_disparity_queue.jsonl"
@@ -37529,13 +37544,18 @@ class MultiAccountTradeManager:
                 from live_twins import vec_pending as _vp_last
                 _vp_rel = _vp_last.release_for(position_key, _vp_last.direction_of(action))
                 if _vp_rel is not None:
-                    logger.warning(f"✅ [VEC_CONFIRMED] {position_key} {action} — vec dictate arrived inside the window; held native {str(_vp_rel.get('reason'))[:60]} consumed (unflagged), vec order executes")
+                    _vp_same = bool(_vp_last.reasons_match(_vp_rel.get("reason"), reason))
+                    _vp_kind = _vp_last.VERIFIED_IDENTICAL if _vp_same else "VEC_CONFIRMED"
+                    logger.warning(f"✅ [{_vp_kind}] {position_key} {action} — vec dictate arrived inside the window; held native {str(_vp_rel.get('reason'))[:60]} consumed (unflagged), vec order executes")
                     if not os.environ.get("PYTEST_CURRENT_TEST"):
                         try:
                             _vlp = Path(getattr(config, "BASE_PATH", ".")) / "data" / "vector_disparity_queue.jsonl"
                             _vlp.parent.mkdir(parents=True, exist_ok=True)
                             with open(str(_vlp), "a") as _vlf:
-                                _vlf.write(json.dumps({"ts": time.time(), "venue": "crypto", "kind": "VEC_CONFIRMED", "position_key": position_key, "action": action, "reason": str(reason)[:160], "held_reason": str(_vp_rel.get("reason"))[:120], "fix": "vec confirmed the native fire — no switch needed"}) + "\n")
+                                _vlf.write(json.dumps({"ts": time.time(), "venue": "crypto", "kind": _vp_kind, "position_key": position_key, "action": action, "reason": str(reason)[:160], "held_reason": str(_vp_rel.get("reason"))[:120], "fix": ("verified identical — never list for vectorization" if _vp_same else "reason differs — candidate for switch/vectorization")}) + "\n")
+                            if not _vp_same:
+                                from live_twins.vector_enforce import _queue_retrace as _qr_cfm
+                                _qr_cfm(f"VEC_CONFIRMED_REASON_DIFF:{str(_vp_rel.get('reason'))[:40]}", action, position_key, reason)
                         except Exception:
                             pass
             except Exception:
@@ -43422,6 +43442,27 @@ async def monitor_entries(
             except Exception:
                 pass
 
+    try:
+        from live_twins import vec_priority as _vprio
+        _vprio_on = bool(getattr(_ezm_base_config, "VEC_PRIORITY_ENABLED", getattr(config, "VEC_PRIORITY_ENABLED", True)))
+        if _vprio_on and len(incoming_keys) > 1:
+            _vprio_fresh = set()
+            try:
+                _vprio_dir = Path(getattr(getattr(trade_manager, "config", None), "BASE_PATH", ".")) / "data" / "forward_state"
+                _vprio_now = time.time()
+                for _vk in incoming_keys:
+                    _vss = _vk.split(":", 1)[1] if ":" in str(_vk) else str(_vk)
+                    try:
+                        if _vprio_now - (_vprio_dir / f"{_vss.upper()}.json").stat().st_mtime <= 900.0:
+                            _vprio_fresh.add(_vk)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            if _vprio_fresh:
+                incoming_keys = _vprio.prioritize(incoming_keys, _vprio_fresh)
+    except Exception:
+        pass
     for key in incoming_keys:
         asyncio.create_task(_protected_process(key))
 
