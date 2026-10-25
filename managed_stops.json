@@ -1,16 +1,67 @@
 {
-  "inf:COTIUSDT_SHORT": {
-    "orderId": "2000001539928238",
-    "stopPrice": 0.010444,
-    "entry_sig": "2026-10-25 14:18:49.401290+00:00",
+  "ang:COTIUSDT_SHORT": {
+    "orderId": "4000001995132074",
+    "stopPrice": 0.010599,
+    "entry_sig": "2026-10-25 12:49:27.160000+00:00",
     "symbol": "COTIUSDT",
     "side": "SHORT"
   },
-  "inf:GALAUSDT_SHORT": {
-    "orderId": "2000001539931249",
-    "stopPrice": 0.00199,
-    "entry_sig": "2026-10-25 14:19:34.022000+00:00",
-    "symbol": "GALAUSDT",
+  "ang:RLCUSDT_SHORT": {
+    "orderId": "4000001995190095",
+    "stopPrice": 0.7252,
+    "entry_sig": "2026-10-25 10:56:54.283000+00:00",
+    "symbol": "RLCUSDT",
     "side": "SHORT"
+  },
+  "ang:ZROUSDT_LONG": {
+    "orderId": "4000001995236116",
+    "stopPrice": 1.6766,
+    "entry_sig": "2026-10-25 13:59:50.534000+00:00",
+    "symbol": "ZROUSDT",
+    "side": "LONG"
+  },
+  "ang:RENDERUSDT_LONG": {
+    "orderId": "4000001995260232",
+    "stopPrice": 1.678,
+    "entry_sig": "2026-10-25 14:14:16.905000+00:00",
+    "symbol": "RENDERUSDT",
+    "side": "LONG",
+    "disaster_backstop": true
+  },
+  "ang:WUSDT_SHORT": {
+    "orderId": "4000001995262645",
+    "stopPrice": 0.012427,
+    "entry_sig": "2026-10-25 12:34:16.243000+00:00",
+    "symbol": "WUSDT",
+    "side": "SHORT"
+  },
+  "ang:UNIUSDC_LONG": {
+    "orderId": "4000001995262415",
+    "stopPrice": 6.685,
+    "entry_sig": "2026-10-25 13:14:11.526000+00:00",
+    "symbol": "UNIUSDC",
+    "side": "LONG",
+    "disaster_backstop": true
+  },
+  "ang:NMRUSDT_SHORT": {
+    "orderId": "4000001995272240",
+    "stopPrice": 10.223,
+    "entry_sig": "2026-10-25 13:41:23.539000+00:00",
+    "symbol": "NMRUSDT",
+    "side": "SHORT"
+  },
+  "ang:ACEUSDT_SHORT": {
+    "orderId": "4000001995274716",
+    "stopPrice": 0.14574,
+    "entry_sig": "2026-10-25 14:08:50.915771+00:00",
+    "symbol": "ACEUSDT",
+    "side": "SHORT"
+  },
+  "ang:BNBUSDC_LONG": {
+    "orderId": "4000001995277211",
+    "stopPrice": 715.5,
+    "entry_sig": "2026-10-25 14:25:44.638000+00:00",
+    "symbol": "BNBUSDC",
+    "side": "LONG"
   }
 }
