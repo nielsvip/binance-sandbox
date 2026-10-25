@@ -8,8 +8,13 @@ DEST=$ROOT/data/forward_state
 LOG=/tmp/fwdstate_pull.log
 NOW=$(date -u +%FT%TZ)
 E=$SECONDS
-rsync -az -u --timeout=50 -e "ssh -o BatchMode=yes -o ConnectTimeout=10" niels@157.180.125.52:binance-sandbox/data/forward_state/ "$DEST/" >>"$LOG" 2>&1
-RC=$?
+# s1-int (gateway tunnel 127.0.0.1:2201) first, s1-pub direct as fallback.
+RC=255
+for H in "s1-int:binance-sandbox" "157.180.125.52:binance-sandbox"; do
+  rsync -az -u --timeout=40 -e "ssh -o BatchMode=yes -o ConnectTimeout=8" "niels@$H/data/forward_state/" "$DEST/" >>"$LOG" 2>&1
+  RC=$?
+  [ "$RC" = "0" ] && break
+done
 NEWEST=$(ls -t "$DEST" 2>/dev/null | head -n 1)
 AGE="?"; [ -n "$NEWEST" ] && AGE=$(( $(date +%s) - $(stat -f %m "$DEST/$NEWEST" 2>/dev/null || echo 0) ))
 echo "[$NOW] rc=$RC newest_age_s=$AGE elapsed_s=$((SECONDS-E))" >>"$LOG"

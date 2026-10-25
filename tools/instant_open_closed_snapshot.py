@@ -121,6 +121,12 @@ def main():
         universe = set(json.load(open(os.path.join(HERE, "tradeable_keys.json"))))
     except Exception:
         universe = set()
+    try:
+        for _tf, _side in (("symbols_trb_long.json", "_LONG"), ("symbols_trb_short.json", "_SHORT")):
+            for _s in json.load(open(os.path.join(HERE, _tf))):
+                universe.add("trb:%s%s" % (str(_s).strip().upper(), _side))
+    except Exception:
+        pass
     intents = load_intents()
     delivered = load_delivered()
     live = load_live_positions()

@@ -1,65 +1,23 @@
 {
-  "flz:ETHUSDC_SHORT": {
-    "orderId": "1000002641836088",
-    "stopPrice": 2385.17,
-    "entry_sig": "2026-10-24 20:26:31.069000+00:00",
-    "symbol": "ETHUSDC",
-    "side": "SHORT"
-  },
-  "flz:HYPEUSDT_LONG": {
-    "orderId": "1000002641925059",
-    "stopPrice": 74.441,
-    "entry_sig": "2026-10-25 00:58:34.033000+00:00",
-    "symbol": "HYPEUSDT",
-    "side": "LONG"
-  },
-  "flz:BTCDOMUSDT_SHORT": {
-    "orderId": "1000002641925323",
-    "stopPrice": 5685.4,
-    "entry_sig": "2026-10-25 00:58:53.016000+00:00",
-    "symbol": "BTCDOMUSDT",
-    "side": "SHORT"
-  },
-  "flz:BTCDOMUSDT_LONG": {
-    "orderId": "1000002641926107",
-    "stopPrice": 5553.5,
-    "entry_sig": "2026-10-25 00:59:52.237000+00:00",
+  "inf:BTCDOMUSDT_LONG": {
+    "orderId": "2000001538760395",
+    "stopPrice": 5552.0,
+    "entry_sig": "2026-10-25 01:44:46.317000+00:00",
     "symbol": "BTCDOMUSDT",
     "side": "LONG"
   },
-  "flz:DOGEUSDC_SHORT": {
-    "orderId": "1000002641926109",
-    "stopPrice": 0.07805,
-    "entry_sig": "2026-10-25 00:59:52.934000+00:00",
-    "symbol": "DOGEUSDC",
+  "inf:ZENUSDT_SHORT": {
+    "orderId": "2000001538768111",
+    "stopPrice": 5.825,
+    "entry_sig": "2026-10-25 01:45:08.438000+00:00",
+    "symbol": "ZENUSDT",
     "side": "SHORT"
   },
-  "flz:DOGEUSDC_LONG": {
-    "orderId": "1000002641927324",
-    "stopPrice": 0.07653,
-    "entry_sig": "2026-10-25 01:00:35.593000+00:00",
-    "symbol": "DOGEUSDC",
-    "side": "LONG"
-  },
-  "flz:BTCUSDC_LONG": {
-    "orderId": "1000002641943769",
-    "stopPrice": 79085.8,
-    "entry_sig": "2026-10-24 22:58:13.625000+00:00",
-    "symbol": "BTCUSDC",
-    "side": "LONG"
-  },
-  "flz:XMRUSDT_LONG": {
-    "orderId": "1000002641966250",
-    "stopPrice": 562.18,
-    "entry_sig": "2026-10-25 01:44:15.962000+00:00",
-    "symbol": "XMRUSDT",
-    "side": "LONG"
-  },
-  "flz:BTCUSDC_SHORT": {
-    "orderId": "1000002641966495",
-    "stopPrice": 81046.2,
-    "entry_sig": "2026-10-25 01:44:31.566000+00:00",
-    "symbol": "BTCUSDC",
+  "inf:WUSDT_SHORT": {
+    "orderId": "2000001538768113",
+    "stopPrice": 0.012592,
+    "entry_sig": "2026-10-25 01:45:08.110000+00:00",
+    "symbol": "WUSDT",
     "side": "SHORT"
   }
 }
