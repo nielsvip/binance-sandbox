@@ -1,140 +1,149 @@
 {
- "generated_at": "2026-10-25 14:18 UTC",
- "total_capital_usd": 249.32,
+ "generated_at": "2026-10-25 14:35 UTC",
+ "total_capital_usd": 150.91,
  "tier_capital": {
-  "A": 0.0,
-  "B": 112.05,
-  "C": 137.26
+  "A": 6.7,
+  "B": 72.1,
+  "C": 72.11
  },
  "tier_count": {
-  "A": 0,
-  "B": 3,
-  "C": 7
+  "A": 1,
+  "B": 5,
+  "C": 5
  },
  "winners": [],
  "losers": [
-  "flz:WLDUSDC_SHORT",
-  "flz:DOGEUSDC_SHORT",
-  "flz:DOGEUSDC_LONG",
-  "flz:SOLUSDC_SHORT",
-  "flz:BNBUSDC_LONG",
-  "flz:XRPUSDC_SHORT",
-  "flz:GRAMUSDT_LONG"
+  "men:KMNOUSDT_LONG",
+  "men:MOVEUSDT_SHORT",
+  "men:GALAUSDT_SHORT",
+  "men:ENJUSDT_SHORT",
+  "men:1000LUNCUSDT_SHORT",
+  "men:RVNUSDT_SHORT"
  ],
  "mediocre": [
-  "flz:BTCDOMUSDT_LONG",
-  "flz:ZECUSDC_SHORT"
+  "men:ZECUSDC_LONG"
  ],
  "positions": [
   {
-   "pk": "flz:BTCDOMUSDT_LONG",
-   "symbol": "BTCDOMUSDT",
-   "account": "flz",
-   "value_usd": 44.83,
-   "gain_pct": -0.0,
-   "tier": "B",
-   "perf_mult": 0.24,
-   "amt": 0.008,
-   "mark": 5603.68889135
-  },
-  {
-   "pk": "flz:XMRUSDT_LONG",
-   "symbol": "XMRUSDT",
-   "account": "flz",
-   "value_usd": 44.43,
-   "gain_pct": -0.091,
-   "tier": "B",
-   "perf_mult": 5.05,
-   "amt": 0.073,
-   "mark": 608.676
-  },
-  {
-   "pk": "flz:WLDUSDC_SHORT",
-   "symbol": "WLDUSDC",
-   "account": "flz",
-   "value_usd": 28.06,
-   "gain_pct": -0.314,
-   "tier": "C",
-   "perf_mult": 0.29,
-   "amt": 62.7,
-   "mark": 0.4476
-  },
-  {
-   "pk": "flz:GRAMUSDT_LONG",
-   "symbol": "GRAMUSDT",
-   "account": "flz",
+   "pk": "men:GALAUSDT_SHORT",
+   "symbol": "GALAUSDT",
+   "account": "men",
    "value_usd": 27.98,
-   "gain_pct": 0.241,
+   "gain_pct": -0.058,
    "tier": "C",
-   "perf_mult": 0.29,
-   "amt": 22.4,
-   "mark": 1.249
+   "perf_mult": 0.12,
+   "amt": 16293.0,
+   "mark": 0.001717
   },
   {
-   "pk": "flz:DOGEUSDC_SHORT",
-   "symbol": "DOGEUSDC",
-   "account": "flz",
-   "value_usd": 25.04,
-   "gain_pct": -0.288,
-   "tier": "C",
-   "perf_mult": 0.3,
-   "amt": 327.0,
-   "mark": 0.07659
+   "pk": "men:ALTUSDT_LONG",
+   "symbol": "ALTUSDT",
+   "account": "men",
+   "value_usd": 24.96,
+   "gain_pct": -0.213,
+   "tier": "B",
+   "perf_mult": 4.82,
+   "amt": 3810.0,
+   "mark": 0.006551
   },
   {
-   "pk": "flz:SOLUSDC_SHORT",
-   "symbol": "SOLUSDC",
-   "account": "flz",
-   "value_usd": 24.17,
-   "gain_pct": -0.069,
-   "tier": "C",
-   "perf_mult": 0.18,
-   "amt": 0.24,
-   "mark": 100.71976607
+   "pk": "men:XPLUSDT_SHORT",
+   "symbol": "XPLUSDT",
+   "account": "men",
+   "value_usd": 24.86,
+   "gain_pct": 0.654,
+   "tier": "B",
+   "perf_mult": 0.7,
+   "amt": 348.0,
+   "mark": 0.07143
   },
   {
-   "pk": "flz:ZECUSDC_SHORT",
+   "pk": "men:RVNUSDT_SHORT",
+   "symbol": "RVNUSDT",
+   "account": "men",
+   "value_usd": 24.83,
+   "gain_pct": 0.68,
+   "tier": "C",
+   "perf_mult": 0.14,
+   "amt": 18896.0,
+   "mark": 0.001314
+  },
+  {
+   "pk": "men:GRASSUSDT_LONG",
+   "symbol": "GRASSUSDT",
+   "account": "men",
+   "value_usd": 11.26,
+   "gain_pct": 0.49,
+   "tier": "B",
+   "perf_mult": 3.69,
+   "amt": 16.5,
+   "mark": 0.68252833
+  },
+  {
+   "pk": "men:MOVEUSDT_SHORT",
+   "symbol": "MOVEUSDT",
+   "account": "men",
+   "value_usd": 6.99,
+   "gain_pct": -0.078,
+   "tier": "C",
+   "perf_mult": 0.23,
+   "amt": 1010.0,
+   "mark": 0.00692337
+  },
+  {
+   "pk": "men:UNIUSDC_LONG",
+   "symbol": "UNIUSDC",
+   "account": "men",
+   "value_usd": 6.7,
+   "gain_pct": -0.283,
+   "tier": "A",
+   "perf_mult": 10.0,
+   "amt": 1.0,
+   "mark": 6.702
+  },
+  {
+   "pk": "men:ENJUSDT_SHORT",
+   "symbol": "ENJUSDT",
+   "account": "men",
+   "value_usd": 6.23,
+   "gain_pct": 0.146,
+   "tier": "C",
+   "perf_mult": 0.15,
+   "amt": 255.0,
+   "mark": 0.02444417
+  },
+  {
+   "pk": "men:1000LUNCUSDT_SHORT",
+   "symbol": "1000LUNCUSDT",
+   "account": "men",
+   "value_usd": 6.08,
+   "gain_pct": 0.419,
+   "tier": "C",
+   "perf_mult": 0.27,
+   "amt": 136.0,
+   "mark": 0.04472189
+  },
+  {
+   "pk": "men:ZECUSDC_LONG",
    "symbol": "ZECUSDC",
-   "account": "flz",
-   "value_usd": 22.79,
-   "gain_pct": 0.095,
+   "account": "men",
+   "value_usd": 5.98,
+   "gain_pct": -0.186,
    "tier": "B",
    "perf_mult": 0.56,
-   "amt": 0.019,
-   "mark": 1199.33
+   "amt": 0.005,
+   "mark": 1195.76
   },
   {
-   "pk": "flz:BNBUSDC_LONG",
-   "symbol": "BNBUSDC",
-   "account": "flz",
-   "value_usd": 14.75,
-   "gain_pct": 0.025,
-   "tier": "C",
-   "perf_mult": 0.57,
-   "amt": 0.02,
-   "mark": 737.71231458
-  },
-  {
-   "pk": "flz:DOGEUSDC_LONG",
-   "symbol": "DOGEUSDC",
-   "account": "flz",
-   "value_usd": 11.18,
-   "gain_pct": -0.273,
-   "tier": "C",
-   "perf_mult": 0.3,
-   "amt": 146.0,
-   "mark": 0.07659
-  },
-  {
-   "pk": "flz:XRPUSDC_SHORT",
-   "symbol": "XRPUSDC",
-   "account": "flz",
-   "value_usd": 6.08,
-   "gain_pct": 0.046,
-   "tier": "C",
-   "perf_mult": 0.32,
-   "amt": 4.7,
-   "mark": 1.293
+   "pk": "men:KMNOUSDT_LONG",
+   "symbol": "KMNOUSDT",
+   "account": "men",
+   "value_usd": 5.04,
+   "gain_pct": -1.112,
+   "tier": "B",
+   "perf_mult": 6.33,
+   "amt": 126.0,
+   "mark": 0.04002
   }
  ]
 }

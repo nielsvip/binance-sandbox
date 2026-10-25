@@ -1,9 +1,26 @@
 {
- "at": "2026-10-25T13:38:02Z",
+ "at": "2026-10-25T14:38:02Z",
  "reports": [
   {
+   "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261025_refresh_1352.json",
+   "age_min": 41.5,
+   "applied": true,
+   "n": null,
+   "results": {
+    "REFUSED": 8,
+    "PASS": 3
+   },
+   "registered": 2,
+   "already_live_skipped": 0,
+   "refused_by_class": {
+    "type-gate refused ALL (1 bad)": 7,
+    "golive-blocklisted": 1
+   },
+   "changed_symsides": []
+  },
+  {
    "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261025_refresh_1252.json",
-   "age_min": 39.4,
+   "age_min": 99.4,
    "applied": true,
    "n": null,
    "results": {
@@ -17,26 +34,10 @@
     "golive-blocklisted": 1
    },
    "changed_symsides": []
-  },
-  {
-   "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261025_refresh_1153.json",
-   "age_min": 102.0,
-   "applied": true,
-   "n": null,
-   "results": {
-    "REFUSED": 8,
-    "PASS": 1
-   },
-   "registered": 0,
-   "already_live_skipped": 0,
-   "refused_by_class": {
-    "type-gate refused ALL (1 bad)": 7,
-    "golive-blocklisted": 1
-   },
-   "changed_symsides": []
   }
  ],
- "fails": [],
- "note": "3 set(s) written on the last run (normal right after a new board publishes)",
+ "fails": [
+  "two consecutive runs still had pending sets (3 then 2) \u2014 live is not converging on the boards"
+ ],
  "refused_total": 8
 }
