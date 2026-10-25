@@ -1,90 +1,52 @@
 {
- "generated_at": "2026-10-25 06:00 UTC",
- "total_capital_usd": 71.31,
+ "generated_at": "2026-10-25 06:01 UTC",
+ "total_capital_usd": 220.39,
  "tier_capital": {
-  "A": 0.0,
-  "B": 60.11,
-  "C": 11.19
+  "A": 44.61,
+  "B": 175.78,
+  "C": 0.0
  },
  "tier_count": {
-  "A": 0,
-  "B": 4,
-  "C": 2
+  "A": 1,
+  "B": 2,
+  "C": 0
  },
  "winners": [],
- "losers": [
-  "men:BEAMXUSDT_LONG",
-  "men:BATUSDT_LONG",
-  "men:STRKUSDT_LONG",
-  "men:CRVUSDC_LONG"
- ],
+ "losers": [],
  "mediocre": [],
  "positions": [
   {
-   "pk": "men:BATUSDT_LONG",
-   "symbol": "BATUSDT",
-   "account": "men",
-   "value_usd": 31.79,
-   "gain_pct": -0.999,
+   "pk": "flz:BTCUSDC_SHORT",
+   "symbol": "BTCUSDC",
+   "account": "flz",
+   "value_usd": 160.92,
+   "gain_pct": 0.3,
    "tier": "B",
-   "perf_mult": 1.23,
-   "amt": 203.1,
-   "mark": 0.15654
+   "perf_mult": 0.83,
+   "amt": 0.002,
+   "mark": 80458.2
   },
   {
-   "pk": "men:STRKUSDT_LONG",
-   "symbol": "STRKUSDT",
-   "account": "men",
-   "value_usd": 14.3,
-   "gain_pct": -0.651,
+   "pk": "flz:XMRUSDT_LONG",
+   "symbol": "XMRUSDT",
+   "account": "flz",
+   "value_usd": 44.61,
+   "gain_pct": -0.025,
+   "tier": "A",
+   "perf_mult": 10.0,
+   "amt": 0.073,
+   "mark": 611.078
+  },
+  {
+   "pk": "flz:BNBUSDC_LONG",
+   "symbol": "BNBUSDC",
+   "account": "flz",
+   "value_usd": 14.86,
+   "gain_pct": -0.199,
    "tier": "B",
-   "perf_mult": 0.31,
-   "amt": 310.4,
-   "mark": 0.04608
-  },
-  {
-   "pk": "men:ACTUSDT_SHORT",
-   "symbol": "ACTUSDT",
-   "account": "men",
-   "value_usd": 11.17,
-   "gain_pct": 0.664,
-   "tier": "B",
-   "perf_mult": 6.83,
-   "amt": 1310.0,
-   "mark": 0.008528
-  },
-  {
-   "pk": "men:CRVUSDC_LONG",
-   "symbol": "CRVUSDC",
-   "account": "men",
-   "value_usd": 9.97,
-   "gain_pct": -0.553,
-   "tier": "C",
-   "perf_mult": 0.16,
-   "amt": 28.7,
-   "mark": 0.3474
-  },
-  {
-   "pk": "men:ALTUSDT_LONG",
-   "symbol": "ALTUSDT",
-   "account": "men",
-   "value_usd": 2.85,
-   "gain_pct": 1.927,
-   "tier": "B",
-   "perf_mult": 4.38,
-   "amt": 423.0,
-   "mark": 0.00673845
-  },
-  {
-   "pk": "men:BEAMXUSDT_LONG",
-   "symbol": "BEAMXUSDT",
-   "account": "men",
-   "value_usd": 1.22,
-   "gain_pct": -3.023,
-   "tier": "C",
-   "perf_mult": 0.24,
-   "amt": 391.0,
-   "mark": 0.003115
+   "perf_mult": 1.86,
+   "amt": 0.02,
+   "mark": 743.11692225
   }
  ]
 }
