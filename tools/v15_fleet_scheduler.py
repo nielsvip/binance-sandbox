@@ -653,8 +653,8 @@ elif mode == "reap":
         elif len(i["roots"]) > 1 and sum(1 for r in i["roots"] if i["kids"][r]) == 1:
             orph = [r for r in i["roots"] if not i["kids"][r]]
             kill(orph, "orphaned workers (parent gone)", ss)
-        elif i["roots"] and all(i["kids"].get(r, 0) == 0 for r in i["roots"]) and i["idle"] > 20 * 60 and i.get("min_age", 0) > 15 * 60:
-            kill(i["pids"], "wedged: no linked workers, no output for %.0fmin" % (i["idle"] / 60), ss); dead.add(ss)  # USER 2026-10-07: S1 UNI pair wedged 30+ min (0 CPU, slots held, nothing finished) — auto-clear instead of waiting for the 60-min stall trip. 2026-10-08: min_age grace — piped/starting pilots have no kids + stale log cands for minutes; TERMing a 23s-old healthy pilot churns (KSMUSDT_SHORT).
+        elif i["roots"] and all(i["kids"].get(r, 0) == 0 for r in i["roots"]) and i["idle"] > 40 * 60 and i.get("min_age", 0) > 30 * 60:
+            kill(i["pids"], "wedged: no linked workers, no output for %.0fmin" % (i["idle"] / 60), ss); dead.add(ss)  # USER 2026-10-07: S1 UNI pair wedged 30+ min (0 CPU, slots held, nothing finished) — auto-clear instead of waiting for the 60-min stall trip. 2026-10-08: min_age grace — piped/starting pilots have no kids + stale log cands for minutes; TERMing a 23s-old healthy pilot churns (KSMUSDT_SHORT). USER 2026-10-25: 20/15min murdered healthy thread-pool pilots on 4x-oversubscribed 16-core workers (heavy tabs go quiet 20+min: BBUSDT_LONG termed 15:44, ALTUSDT group 15:54, then hang at cell boundary — queue never advances); 40/30min.
     if mem < arg["oom_mb"]:
         _rov, _pdr, _pir = None, None, None
         try:

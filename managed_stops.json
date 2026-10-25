@@ -1,23 +1,58 @@
 {
-  "inf:GALAUSDT_SHORT": {
-    "orderId": "2000001540086403",
-    "stopPrice": 0.00199,
-    "entry_sig": "2026-10-25 15:51:35.684000+00:00",
-    "symbol": "GALAUSDT",
+  "flz:DOGEUSDC_SHORT": {
+    "orderId": "1000002642780358",
+    "stopPrice": 0.08425,
+    "entry_sig": "2026-10-25 12:45:38.607000+00:00",
+    "symbol": "DOGEUSDC",
     "side": "SHORT"
   },
-  "inf:COTIUSDT_SHORT": {
-    "orderId": "2000001540087565",
-    "stopPrice": 0.010494,
-    "entry_sig": "2026-10-25 15:52:40.229000+00:00",
-    "symbol": "COTIUSDT",
+  "flz:SOLUSDC_SHORT": {
+    "orderId": "1000002642790811",
+    "stopPrice": 102.85,
+    "entry_sig": "2026-10-25 12:45:38.609000+00:00",
+    "symbol": "SOLUSDC",
     "side": "SHORT"
   },
-  "inf:BATUSDT_LONG": {
-    "orderId": "2000001540089471",
-    "stopPrice": 0.15495,
-    "entry_sig": "2026-10-25 15:43:29.469000+00:00",
-    "symbol": "BATUSDT",
+  "flz:ETHUSDC_LONG": {
+    "orderId": "1000002642841130",
+    "stopPrice": 2309.5,
+    "entry_sig": "2026-10-25 14:33:25.608000+00:00",
+    "symbol": "ETHUSDC",
     "side": "LONG"
+  },
+  "flz:ZECUSDC_LONG": {
+    "orderId": "1000002642878176",
+    "stopPrice": 1205.1,
+    "entry_sig": "2026-10-25 15:43:56.209000+00:00",
+    "symbol": "ZECUSDC",
+    "side": "LONG"
+  },
+  "flz:BTCDOMUSDT_LONG": {
+    "orderId": "1000002642878685",
+    "stopPrice": 5562.6,
+    "entry_sig": "2026-10-25 15:44:31.068000+00:00",
+    "symbol": "BTCDOMUSDT",
+    "side": "LONG"
+  },
+  "flz:XRPUSDC_LONG": {
+    "orderId": "1000002642879281",
+    "stopPrice": 1.2876,
+    "entry_sig": "2026-10-25 15:14:42.254000+00:00",
+    "symbol": "XRPUSDC",
+    "side": "LONG"
+  },
+  "flz:WLDUSDC_SHORT": {
+    "orderId": "1000002642880948",
+    "stopPrice": 0.4718,
+    "entry_sig": "2026-10-25 11:43:47.811000+00:00",
+    "symbol": "WLDUSDC",
+    "side": "SHORT"
+  },
+  "flz:ZECUSDC_SHORT": {
+    "orderId": "1000002642880955",
+    "stopPrice": 1230.96,
+    "entry_sig": "2026-10-25 15:06:25.299000+00:00",
+    "symbol": "ZECUSDC",
+    "side": "SHORT"
   }
 }
