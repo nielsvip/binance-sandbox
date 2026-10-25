@@ -496,7 +496,7 @@ def position_age_sec(opened_at, now_s=None):
 
 
 def scalp_floor_refusal(is_exit, is_full_close, reason, age_sec, floor_sec,
-                        is_ratio_partial=False):
+                        is_ratio_partial=False, is_vec_dictate=False):
     """'REFUSED_SCALP_FLOOR' when a sub-floor exit must not fire, else ''.
 
     Venue-neutral core of the 1-minute-scalp kill switch: any CLOSE/REDUCE
@@ -505,12 +505,19 @@ def scalp_floor_refusal(is_exit, is_full_close, reason, age_sec, floor_sec,
     stock ledger pairs) cannot execute. Protection exits (stop/hard-stop/
     liquidation/broker-sync reconciliation) always pass; unknown age and
     non-positive floors fail open; RATIO rebalancer partials are exempt.
+    Vec-dictated orders (S1/S2 forward STATE applies immediately — Mac has
+    no say) always pass.
     """
     try:
         if not bool(is_exit) and not bool(is_full_close):
             return ""
     except Exception:
         return ""
+    try:
+        if bool(is_vec_dictate):
+            return ""
+    except Exception:
+        pass
     try:
         if bool(is_ratio_partial) and not bool(is_full_close):
             return ""

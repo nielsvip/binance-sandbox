@@ -33265,9 +33265,14 @@ class MultiAccountTradeManager:
                         _sc_ratio = _ve_fam_sc(reason) == "RATIO"
                 except Exception:
                     _sc_ratio = False
+                _sc_vecd = False
+                try:
+                    _sc_vecd = bool(_parity_vec_order(reason))
+                except Exception:
+                    _sc_vecd = False
                 try:
                     import live_trade_history as _lth_sc2
-                    _sc_ref = _lth_sc2.scalp_floor_refusal(_sc_is_exit, is_full_close, reason, _sc_age, _sc_floor, _sc_ratio)
+                    _sc_ref = _lth_sc2.scalp_floor_refusal(_sc_is_exit, is_full_close, reason, _sc_age, _sc_floor, _sc_ratio, _sc_vecd)
                 except Exception:
                     _sc_ref = ""
             if _sc_ref:

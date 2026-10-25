@@ -25,7 +25,26 @@ HELD_KINDS = {"VEC_STATE_DISAGREE", "VEC_DICTATE_ONLY_BLOCK", "VEC_LAST_REFUSE"}
 
 
 def load_intents():
+    # Primary: per-tick lane STATES (target_state + written_at + bar_ts). Intents fire
+    # only on actionable events and fossilize; states refresh every lane tick.
     latest = {}
+    for f in glob.glob(os.path.join(HERE, "data", "vec_live", "state", "*.json")):
+        try:
+            d = json.load(open(f))
+        except Exception:
+            continue
+        ss = d.get("ss") or os.path.basename(f)[:-5]
+        _ts = d.get("target_state") or ""
+        tgt = _ts if isinstance(_ts, str) else _ts.get("side", "")
+        accts = d.get("account") or []
+        if isinstance(accts, str):
+            accts = [accts]
+        for acct in accts:
+            key = (acct, ss)
+            ts = d.get("bar_ts", 0)
+            if ts >= latest.get(key, {}).get("bar_ts", -1):
+                latest[key] = {"account": acct, "ss": ss, "target_state": tgt,
+                               "bar_ts": ts, "written_at": d.get("written_at", 0)}
     for f in glob.glob(os.path.join(INTENTS, "*.json")):
         try:
             d = json.load(open(f))
@@ -35,7 +54,7 @@ def load_intents():
         if not key[0] or not key[1]:
             continue
         ts = d.get("bar_ts", 0)
-        if ts >= latest.get(key, {}).get("bar_ts", -1):
+        if key not in latest and ts >= latest.get(key, {}).get("bar_ts", -1):
             latest[key] = d
     return latest
 
@@ -144,7 +163,8 @@ def main():
                                    "bar_ts": now, "reason": "no intent file"}
     for (acct, ss), inten in sorted(intents.items()):
         tgt = (inten.get("target_state") or "").upper()
-        bar_age = now - inten.get("bar_ts", now)
+        # Bars are labeled by OPEN; freshness = age since CLOSE (bar_ts+900).
+        bar_age = now - (inten.get("bar_ts", now) + 900)
         liver = delivered.get((acct, ss))
         in_live = (acct + ":" + ss) in live
         implied = ("OPEN" if in_live else "FLAT")

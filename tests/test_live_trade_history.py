@@ -292,6 +292,13 @@ def test_scalp_floor_ratio_partial_exempt_full_close_not():
     assert lth.scalp_floor_refusal(True, True, "RATIO_REDUCE_TRIM", 5.0, 180.0, True) == "REFUSED_SCALP_FLOOR"
 
 
+def test_scalp_floor_vec_dictate_always_passes():
+    assert lth.scalp_floor_refusal(True, True, "VEC_FWD_MISSING_FLAT:X_SHORT_v14@17928", 18.0, 180.0, False, True) == ""
+    assert lth.scalp_floor_refusal(True, False, "REENTRY_HIGHER_LOW |VEC_EXACT", 58.0, 180.0, False, True) == ""
+    assert lth.scalp_floor_refusal(True, True, "VEC_DRIVEN_CLOSE", 5.0, 180.0, False, True) == ""
+    assert lth.scalp_floor_refusal(True, True, "NATIVE_QUICK_EXIT", 5.0, 180.0, False, False) == "REFUSED_SCALP_FLOOR"
+
+
 def test_position_age_sec_parses_all_forms():
     import time
     now = time.time()

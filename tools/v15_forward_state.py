@@ -69,14 +69,36 @@ def state_for(symside, window_days=30):
     return out
 
 
+def _one(ss):
+    try:
+        r = state_for(ss.strip().upper())
+    except Exception as e:
+        r = {"ts": time.strftime("%FT%TZ", time.gmtime()), "sym_side": ss, "ok": False, "reason": f"{e}"[:160]}
+    return r
+
+
 def main(argv):
     OUT.mkdir(parents=True, exist_ok=True)
+    syms = [ss.strip().upper() for ss in argv[1:]]
     n = 0
-    for ss in argv[1:]:
-        try:
-            r = state_for(ss.strip().upper())
-        except Exception as e:
-            r = {"ts": time.strftime("%FT%TZ", time.gmtime()), "sym_side": ss, "ok": False, "reason": f"{e}"[:160]}
+    # 2026-10-25 USER "STATE calculated within seconds of any 15m bar": the
+    # per-sym eval is pure (own NPZ + own progress JSON in, own file out), so
+    # the serial loop parallelizes with identical outputs. Workers=8 keeps
+    # half the S1 box free for herds; single worker on tiny boxes.
+    import os as _os
+    workers = 8
+    try:
+        if (_os.cpu_count() or 8) < 4:
+            workers = 1
+    except Exception:
+        pass
+    if workers <= 1 or len(syms) <= 1:
+        results = [_one(ss) for ss in syms]
+    else:
+        from concurrent.futures import ProcessPoolExecutor
+        with ProcessPoolExecutor(max_workers=workers) as _ex:
+            results = list(_ex.map(_one, syms))
+    for ss, r in zip(syms, results):
         (OUT / f"{r.get('sym_side', ss).upper()}.json").write_text(json.dumps(r, indent=1))
         print(f"{r.get('sym_side')}: ok={r.get('ok')} open={r.get('open')} src={r.get('src')}", flush=True)
         n += 1
