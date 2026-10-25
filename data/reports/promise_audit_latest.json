@@ -1,12 +1,12 @@
 {
- "generated_utc": "2026-10-25T19:12:03.698698+00:00",
+ "generated_utc": "2026-10-25T20:12:16.156874+00:00",
  "days": 1.0,
  "totals": {
   "exit_promises": 177,
   "exit_skipped_inflight": 1533,
   "exit_broken_no_delivery": 155,
-  "entry_promises": 109,
-  "entry_broken_no_delivery": 109,
+  "entry_promises": 110,
+  "entry_broken_no_delivery": 110,
   "exit_kept_late": 13,
   "exit_kept_in_bar": 9
  },
@@ -109,8 +109,8 @@
    "exit_broken_no_delivery": 1
   },
   "men:ETHFIUSDC_LONG": {
-   "entry_promises": 3,
-   "entry_broken_no_delivery": 3,
+   "entry_promises": 4,
+   "entry_broken_no_delivery": 4,
    "exit_promises": 4,
    "exit_broken_no_delivery": 4
   },
@@ -3275,6 +3275,16 @@
    "late_min": null,
    "action": "CLOSE",
    "reason": "LH_LL_TOP_EXIT arm=D_LH+LL leg=DC1H",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "men",
+   "sym_side": "ETHFIUSDC_LONG",
+   "kind": "entry",
+   "bar": "10-25 19:00",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "LEGACY_PSR_REENTRY",
    "outcome": "NO_DELIVERY"
   }
  ],
