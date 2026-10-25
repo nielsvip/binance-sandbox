@@ -20,19 +20,19 @@
     "symbol": "ZENUSDT",
     "side": "SHORT"
   },
-  "inf:ATOMUSDT_SHORT": {
-    "orderId": "2000001540464622",
-    "stopPrice": 1.647,
-    "entry_sig": "2026-10-25 20:48:13.662000+00:00",
-    "symbol": "ATOMUSDT",
-    "side": "SHORT"
-  },
   "inf:ENAUSDC_LONG": {
     "orderId": "2000001540464762",
     "stopPrice": 0.20497,
     "entry_sig": "2026-10-25 20:48:20.708000+00:00",
     "symbol": "ENAUSDC",
     "side": "LONG"
+  },
+  "inf:ATOMUSDT_SHORT": {
+    "orderId": "2000001540464622",
+    "stopPrice": 1.647,
+    "entry_sig": "2026-10-25 20:48:13.662000+00:00",
+    "symbol": "ATOMUSDT",
+    "side": "SHORT"
   },
   "inf:LTCUSDC_SHORT": {
     "orderId": "2000001540465103",
@@ -48,18 +48,18 @@
     "symbol": "GRAMUSDT",
     "side": "SHORT"
   },
-  "inf:VETUSDT_LONG": {
-    "orderId": "2000001540471649",
-    "stopPrice": 0.006805,
-    "entry_sig": "2026-10-25 20:55:20.938000+00:00",
-    "symbol": "VETUSDT",
-    "side": "LONG"
-  },
   "inf:ARBUSDC_LONG": {
     "orderId": "2000001540479280",
     "stopPrice": 0.16889,
     "entry_sig": "2026-10-25 21:02:31.324000+00:00",
     "symbol": "ARBUSDC",
     "side": "LONG"
+  },
+  "inf:GALAUSDT_SHORT": {
+    "orderId": "2000001540484591",
+    "stopPrice": 0.001741,
+    "entry_sig": "2026-10-25 21:07:41.977000+00:00",
+    "symbol": "GALAUSDT",
+    "side": "SHORT"
   }
 }

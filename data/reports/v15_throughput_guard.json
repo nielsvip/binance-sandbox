@@ -1,5 +1,5 @@
 {
- "at": "2026-10-25T20:11:33Z",
+ "at": "2026-10-25T21:11:01Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
@@ -13,9 +13,9 @@
    "mem_avail_mb": null,
    "load1": null,
    "nproc": null,
-   "slots": "1/4",
-   "binding_reason": "scheduler mem guard (disk 17561 MB, mem 8849 MB, est_pair 6000 MB) \u2014 slots 1/4",
-   "error": "no output",
+   "slots": null,
+   "binding_reason": "concurrency 0 boards: 12/h needs <= 0 min per sym_side \u2014 raise concurrent sides or cut evals per board",
+   "error": "ssh: connect to host 127.0.0.1 port 2201: Connection refused\n",
    "published": null,
    "cadence_target_min": 5.0,
    "minutes_since_last_improved": null,
@@ -39,30 +39,33 @@
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [],
-   "mem_avail_mb": 20883,
-   "load1": 3.97,
+   "mem_avail_mb": 19132,
+   "load1": 8.06,
    "nproc": 16,
-   "slots": "0/4",
-   "binding_reason": "scheduler disk guard (disk 0 MB, mem 20588 MB, est_pair 6000 MB) \u2014 slots 0/4",
+   "slots": null,
+   "binding_reason": "host IDLE, not CPU-bound: 0 running sides pull 0.0 cores of 13.9 usable -> 0.0 boards/h against target 12/h. Nothing is dispatched here: 12/h needs 6.9 board-cores. Check the scheduler's idle_reason for this host (slots ?) and whether the round is exhausted (tools/v15_round_watchdog.sh quorum rule rolls it).",
    "error": null,
    "published": [],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 89.8,
+   "minutes_since_last_improved": 148.7,
    "last_improved_symside": "1000PEPEUSDC_LONG",
    "cadence_ok": false,
-   "improved_gap_min_median_24h": 6.6,
-   "improved_gap_min_max_24h": 129.8,
-   "improved_finishes_24h": 108,
-   "board_cpu_s_median_24h": 2163.6,
-   "board_wall_s_median_24h": 1300.634728193283,
+   "improved_gap_min_median_24h": 6.5,
+   "improved_gap_min_max_24h": 4000.7,
+   "improved_finishes_24h": 103,
+   "board_cpu_s_median_24h": 2058.1,
+   "board_wall_s_median_24h": 1254.935434103012,
    "board_cores": 0.0,
-   "nonboard_cores_competing": 3.17,
-   "nonboard_cores_niced": 0,
+   "nonboard_cores_competing": 2.14,
+   "nonboard_cores_niced": 4.0,
    "cores_by_bucket": {
-    "other": 1.02,
-    "live_helpers": 2.15
+    "klines_append": 0.99,
+    "other": 0.02,
+    "live_helpers": 1.13
    },
-   "cores_by_bucket_niced": {}
+   "cores_by_bucket_niced": {
+    "other": 4.0
+   }
   }
  },
  "under_target": [
