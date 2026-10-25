@@ -36,7 +36,18 @@ for ss in $(cat "$SIDES" 2>/dev/null); do
   fi
   done1=$(python3 -c "import json;d=json.load(open('$SP/${ss}_v14_progress.json'));print(int(d.get('final_gain') is not None))" 2>/dev/null || echo 0)
   done2=$(python3 -c "import json;d=json.load(open('$PDIR/${ss}_v14_progress.json'));print(int(d.get('final_gain') is not None))" 2>/dev/null || echo 0)
-  if [ "$done1" = "1" ] || [ "$done2" = "1" ]; then continue; fi
+  # USER 2026-10-25 stocks_short-10h: a board on a STALE NPZ is not done — relaunch unless
+  # ANY progress file proves a board within 48 bars of the current tail (same 48-bar rule).
+  _fresh_board=0
+  for _pf in "$SP/${ss}_v14_progress.json" "$PDIR/${ss}_v14_progress.json"; do
+    _rects=$(python3 -c "import json;d=json.load(open('$_pf'));print(int(d.get('npz_last_bar_ts') or 0))" 2>/dev/null || echo 0)
+    if [ -n "$_rects" ] && [ "$_rects" != "0" ]; then
+      _sym=${ss%_*}
+      _curt=$(/home/niels/.conda/envs/binance_env_mac/bin/python -c "import numpy as np;print(int(np.load('$SB/backtest_v8/indicators/${_sym}.npz',mmap_mode='r')['timestamps'][-1]))" 2>/dev/null || echo 0)
+      if [ -n "$_curt" ] && [ "$_curt" != "0" ] && [ $(( ($_curt - $_rects) / 900 )) -lt 48 ]; then _fresh_board=1; fi
+    fi
+  done
+  if { [ "$done1" = "1" ] || [ "$done2" = "1" ]; } && [ "$_fresh_board" = "1" ]; then continue; fi
   _out=$(bash /tmp/overload_run.sh "$ss" "$T" "$W" 2>&1 | grep -E "LAUNCHED|ALREADY" | head -n 1)
   echo "$_out"
   case "$_out" in LAUNCHED-*) _lt=$(/home/niels/.conda/envs/binance_env_mac/bin/python -c "import numpy as np;print(int(np.load('$SB/backtest_v8/indicators/${ss%_*}.npz',mmap_mode='r')['timestamps'][-1]))" 2>/dev/null || echo 0); echo "$(date +%s) ${_lt:-0}" > "/tmp/dispatched_${ss}";; esac
