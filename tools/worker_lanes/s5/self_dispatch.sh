@@ -48,7 +48,7 @@ for ss in $(cat "$SIDES" 2>/dev/null); do
     fi
   done
   if { [ "$done1" = "1" ] || [ "$done2" = "1" ]; } && [ "$_fresh_board" = "1" ]; then continue; fi
-  _out=$(bash /tmp/overload_run.sh "$ss" "$T" "$W" 2>&1 | grep -E "LAUNCHED|ALREADY" | head -n 1)
+  _out=$(bash /tmp/overload_run.sh "$ss" "$T" "$W" "$MAX" 2>&1 | grep -E "LAUNCHED|ALREADY" | head -n 1)
   echo "$_out"
   case "$_out" in LAUNCHED-*) _lt=$(/home/niels/.conda/envs/binance_env_mac/bin/python -c "import numpy as np;print(int(np.load('$SB/backtest_v8/indicators/${ss%_*}.npz',mmap_mode='r')['timestamps'][-1]))" 2>/dev/null || echo 0); echo "$(date +%s) ${_lt:-0}" > "/tmp/dispatched_${ss}";; esac
   case "$_out" in LAUNCHED-*|ALREADY-*) nrun=$((nrun + 1));; esac

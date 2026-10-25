@@ -2057,8 +2057,13 @@ def _spawn_guard(ss, window, body):
     pat = {"30D": f"^[^ ]*python[^ ]* -u [^ ]*v15_pilot.py --sym-side {ss}( |$)", "365D": f"^[^ ]*python[^ ]* -u [^ ]*tools/v15_365_cycle.py --sym-side {ss}( |$)", "REPAIR": f"^[^ ]*python[^ ]* -u [^ ]*tools/v15_365_cycle.py --sym-side {ss}( |$)", "GS": f"^[^ ]*python[^ ]* -u [^ ]*tools/v15_graph_search.py --symsides {ss}( |$)"}[window]
     inner = f"pgrep -f \"{pat}\" >/dev/null 2>&1 && echo \"[spawnguard] {ss} {window} already running on $(hostname)\" || {{ {body}; sleep 3; }}"
     # flock(1) ships on the Linux workers (atomic guard+launch); macOS dev/test has no flock -> plain guard there.
-    return (f"if command -v flock >/dev/null 2>&1; then flock -n /tmp/v15_launch_{ss}_{window}.lock bash -c {shlex.quote(inner)} "
-            f"|| echo \"[launchlock] {ss} {window} launcher race, retry next tick\"; else bash -c {shlex.quote(inner)}; fi")
+    _perside = (f"if command -v flock >/dev/null 2>&1; then flock -n /tmp/v15_launch_{ss}_{window}.lock bash -c {shlex.quote(inner)} "
+                f"|| echo \"[launchlock] {ss} {window} launcher race, retry next tick\"; else bash -c {shlex.quote(inner)}; fi")
+    # USER 2026-10-25 global launch lock: scheduler ssh-launches and worker self-dispatch
+    # (overload_run.sh) share /tmp/v15_fleet_launch.lock so the box never exceeds 4 symbols
+    # even when both fire the same minute. Non-blocking: contention skips, retry next tick.
+    return (f"if command -v flock >/dev/null 2>&1; then flock -n /tmp/v15_fleet_launch.lock bash -c {shlex.quote(_perside)} "
+            f"|| echo \"[globallaunch] {ss} {window} box busy, retry next tick\"; else bash -c {shlex.quote(_perside)}; fi")
 
 
 GATE_ENV_KEY_RE = re.compile(r"^V1[25]_[A-Z0-9_]+$")
