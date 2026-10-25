@@ -261,7 +261,7 @@
     "price_precision": 7,
     "quantity_precision": 0,
     "step_size": 1.0,
-    "tick_size": 1e-06
+    "tick_size": 1e-05
   },
   "AI16ZUSDT": {
     "price_precision": 7,
@@ -695,6 +695,12 @@
     "step_size": 1.0,
     "tick_size": 1e-05
   },
+  "BACUSDT": {
+    "price_precision": 5,
+    "quantity_precision": 2,
+    "step_size": 0.01,
+    "tick_size": 0.01
+  },
   "BADGERUSDT": {
     "price_precision": 6,
     "quantity_precision": 0,
@@ -849,7 +855,7 @@
     "price_precision": 7,
     "quantity_precision": 0,
     "step_size": 1.0,
-    "tick_size": 1e-05
+    "tick_size": 1e-06
   },
   "BIOUSDC": {
     "price_precision": 7,
@@ -1005,7 +1011,7 @@
     "price_precision": 7,
     "quantity_precision": 0,
     "step_size": 1.0,
-    "tick_size": 1e-05
+    "tick_size": 0.0001
   },
   "BSBUSDT": {
     "price_precision": 7,
@@ -1192,6 +1198,12 @@
     "quantity_precision": 0,
     "step_size": 1.0,
     "tick_size": 1e-05
+  },
+  "CEGUSDT": {
+    "price_precision": 5,
+    "quantity_precision": 2,
+    "step_size": 0.01,
+    "tick_size": 0.01
   },
   "CELOUSDT": {
     "price_precision": 6,
@@ -1815,7 +1827,7 @@
     "price_precision": 7,
     "quantity_precision": 0,
     "step_size": 1.0,
-    "tick_size": 1e-05
+    "tick_size": 1e-06
   },
   "ESPUSDT": {
     "price_precision": 7,
@@ -2483,6 +2495,12 @@
     "step_size": 0.01,
     "tick_size": 0.01
   },
+  "IBKRUSDT": {
+    "price_precision": 5,
+    "quantity_precision": 2,
+    "step_size": 0.01,
+    "tick_size": 0.01
+  },
   "IBMUSDT": {
     "price_precision": 5,
     "quantity_precision": 2,
@@ -2517,7 +2535,7 @@
     "price_precision": 7,
     "quantity_precision": 0,
     "step_size": 1.0,
-    "tick_size": 1e-05
+    "tick_size": 1e-06
   },
   "IDUSDT": {
     "price_precision": 7,
@@ -3066,10 +3084,10 @@
     "tick_size": 0.01
   },
   "MDTUSDT": {
-    "price_precision": 7,
-    "quantity_precision": 0,
-    "step_size": 1.0,
-    "tick_size": 1e-05
+    "price_precision": 5,
+    "quantity_precision": 2,
+    "step_size": 0.01,
+    "tick_size": 0.01
   },
   "MEGAUSDT": {
     "price_precision": 7,

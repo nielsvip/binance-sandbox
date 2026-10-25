@@ -463,6 +463,10 @@
     "minNotional": 5.0,
     "minQty": 1.0
   },
+  "BACUSDT": {
+    "minNotional": 5.0,
+    "minQty": 0.01
+  },
   "BADGERUSDT": {
     "minNotional": 5.0,
     "minQty": 5.982292414453219
@@ -786,6 +790,10 @@
   "CCUSDT": {
     "minNotional": 5.0,
     "minQty": 1.0
+  },
+  "CEGUSDT": {
+    "minNotional": 5.0,
+    "minQty": 0.01
   },
   "CELOUSDT": {
     "minNotional": 5.0,
@@ -1639,6 +1647,10 @@
     "minNotional": 5.0,
     "minQty": 0.01
   },
+  "IBKRUSDT": {
+    "minNotional": 5.0,
+    "minQty": 0.01
+  },
   "IBMUSDT": {
     "minNotional": 5.0,
     "minQty": 0.01
@@ -2021,7 +2033,7 @@
   },
   "MDTUSDT": {
     "minNotional": 5.0,
-    "minQty": 78.976465013426
+    "minQty": 0.01
   },
   "MEGAUSDT": {
     "minNotional": 5.0,

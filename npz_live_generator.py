@@ -537,30 +537,30 @@ def update_npz_for_symbol(
             # Use df's last timestamp directly, so if it's 16:00, it's valid
             pass
         npz_path = _npz_path(base_path, symbol)
-        if not _should_update_npz(npz_path, last_close):
-            return False
-        # If gap is large (>100 bars ~25h), trigger full rebuild for correctness and efficiency
-        try:
-            existing = _load_npz(npz_path)
-            if existing is not None and "timestamps" in existing and len(existing["timestamps"]) > 0:
-                last_npz_ts = int(existing["timestamps"][-1])
-                gap_bars = (int(last_close.timestamp()) - last_npz_ts) // 900
-                if gap_bars > 100:
-                    logger.info(f"NPZ {symbol} gap {gap_bars} bars ({gap_bars*15/60:.1f}h) -> full rebuild")
-                    try:
-                        import backtest_v8_precompute
-                        m = "crypto" if symbol.endswith(("USDT","USDC")) else "tradier"
-                        ok = backtest_v8_precompute.compute_symbol(symbol, m)
-                        return bool(ok)
-                    except Exception as e:
-                        logger.warning(f"full rebuild failed for {symbol}: {e}")
-                        # Fall through to incremental single append
-        except Exception:
-            pass
+        # Single NPZ load per call (was: _should_update + gap check + append = 3 full 60k-row loads).
+        existing = _load_npz(npz_path)
+        if existing is not None and "timestamps" in existing and len(existing["timestamps"]) > 0:
+            last_npz_ts = int(existing["timestamps"][-1])
+            if not _is_s1_host():
+                return False
+            if datetime.fromtimestamp(last_npz_ts, tz=timezone.utc) >= last_close:
+                return False
+            # If gap is large (>100 bars ~25h), trigger full rebuild for correctness and efficiency
+            gap_bars = (int(last_close.timestamp()) - last_npz_ts) // 900
+            if gap_bars > 100:
+                logger.info(f"NPZ {symbol} gap {gap_bars} bars ({gap_bars*15/60:.1f}h) -> full rebuild")
+                try:
+                    import backtest_v8_precompute
+                    m = "crypto" if symbol.endswith(("USDT","USDC")) else "tradier"
+                    ok = backtest_v8_precompute.compute_symbol(symbol, m)
+                    return bool(ok)
+                except Exception as e:
+                    logger.warning(f"full rebuild failed for {symbol}: {e}")
+                    # Fall through to incremental single append
         row = _compute_row_for_15m_close(symbol, last_close, kline_manager, calculator, mode)
         if row is None:
             return False
-        return _append_row_to_npz(npz_path, row)
+        return _append_row_to_npz(npz_path, row, _data=existing)
     except Exception as e:
         logger.warning(f"update failed for {symbol}: {e}")
         return False
@@ -588,7 +588,7 @@ def _encode_row_label(key: str, value: str):
     return None
 
 
-def _append_row_to_npz(npz_path: Path, row: Dict[str, Any]) -> bool:
+def _append_row_to_npz(npz_path: Path, row: Dict[str, Any], _data=None) -> bool:
     """Append one row to NPZ, preserving all existing keys.
 
     NOT "fills missing keys with 0" (what this docstring said until 2026-10-17, left behind by the 2026-09-29
@@ -596,7 +596,7 @@ def _append_row_to_npz(npz_path: Path, row: Dict[str, Any]) -> bool:
     the Mac->S1 trickle correct for every HTF key -- a weekly or daily value is unchanged until its bucket closes,
     so carrying it is the true value, not a filler -- and zeroing them instead would wipe 137 W + 137 M keys on
     every 15m bar."""
-    data = _load_npz(npz_path)
+    data = _data if _data is not None else _load_npz(npz_path)
     if data is None:
         # No existing file: do full rebuild via precompute if possible, else create minimal
         # Try full rebuild
