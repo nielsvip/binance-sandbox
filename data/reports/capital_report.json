@@ -1,10 +1,10 @@
 {
- "generated_at": "2026-10-25 17:16 UTC",
- "total_capital_usd": 73.05,
+ "generated_at": "2026-10-25 17:18 UTC",
+ "total_capital_usd": 52.46,
  "tier_capital": {
   "A": 0.0,
   "B": 0.0,
-  "C": 73.04
+  "C": 52.46
  },
  "tier_count": {
   "A": 0,
@@ -13,32 +13,32 @@
  },
  "winners": [],
  "losers": [
-  "inf:COTIUSDT_SHORT",
-  "inf:VETUSDT_LONG"
+  "flz:SOLUSDC_SHORT",
+  "flz:GRAMUSDT_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "inf:COTIUSDT_SHORT",
-   "symbol": "COTIUSDT",
-   "account": "inf",
-   "value_usd": 44.91,
-   "gain_pct": 0.067,
+   "pk": "flz:GRAMUSDT_LONG",
+   "symbol": "GRAMUSDT",
+   "account": "flz",
+   "value_usd": 28.06,
+   "gain_pct": 0.397,
    "tier": "C",
-   "perf_mult": 0.35,
-   "amt": 4326.0,
-   "mark": 0.01038225
+   "perf_mult": 0.34,
+   "amt": 22.2,
+   "mark": 1.264
   },
   {
-   "pk": "inf:VETUSDT_LONG",
-   "symbol": "VETUSDT",
-   "account": "inf",
-   "value_usd": 28.13,
-   "gain_pct": 0.495,
+   "pk": "flz:SOLUSDC_SHORT",
+   "symbol": "SOLUSDC",
+   "account": "flz",
+   "value_usd": 24.4,
+   "gain_pct": -1.013,
    "tier": "C",
-   "perf_mult": 0.45,
-   "amt": 4123.0,
-   "mark": 0.00682361
+   "perf_mult": 0.18,
+   "amt": 0.24,
+   "mark": 101.67
   }
  ]
 }
