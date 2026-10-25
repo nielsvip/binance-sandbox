@@ -1,43 +1,56 @@
 {
- "generated_at": "2026-10-25 03:23 UTC",
- "total_capital_usd": 21.87,
+ "generated_at": "2026-10-25 03:31 UTC",
+ "total_capital_usd": 33.72,
  "tier_capital": {
   "A": 0.0,
-  "B": 14.89,
-  "C": 6.98
+  "B": 0.0,
+  "C": 33.73
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 1
+  "B": 0,
+  "C": 3
  },
  "winners": [],
  "losers": [
-  "flz:GRAMUSDT_SHORT"
+  "fin:COMPUSDT_LONG",
+  "fin:CRVUSDC_LONG",
+  "fin:RLCUSDT_SHORT"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "flz:BNBUSDC_LONG",
-   "symbol": "BNBUSDC",
-   "account": "flz",
-   "value_usd": 14.89,
-   "gain_pct": 0.005,
-   "tier": "B",
-   "perf_mult": 1.32,
-   "amt": 0.02,
-   "mark": 744.57147527
+   "pk": "fin:COMPUSDT_LONG",
+   "symbol": "COMPUSDT",
+   "account": "fin",
+   "value_usd": 22.37,
+   "gain_pct": -0.721,
+   "tier": "C",
+   "perf_mult": 0.29,
+   "amt": 0.955,
+   "mark": 23.42
   },
   {
-   "pk": "flz:GRAMUSDT_SHORT",
-   "symbol": "GRAMUSDT",
-   "account": "flz",
-   "value_usd": 6.98,
-   "gain_pct": -0.322,
+   "pk": "fin:CRVUSDC_LONG",
+   "symbol": "CRVUSDC",
+   "account": "fin",
+   "value_usd": 11.25,
+   "gain_pct": 0.168,
    "tier": "C",
-   "perf_mult": 0.22,
-   "amt": 5.6,
-   "mark": 1.246
+   "perf_mult": 0.16,
+   "amt": 32.0,
+   "mark": 0.35148849
+  },
+  {
+   "pk": "fin:RLCUSDT_SHORT",
+   "symbol": "RLCUSDT",
+   "account": "fin",
+   "value_usd": 0.11,
+   "gain_pct": 4.262,
+   "tier": "C",
+   "perf_mult": 0.15,
+   "amt": 0.2,
+   "mark": 0.54666316
   }
  ]
 }

@@ -54,6 +54,19 @@ CANDIDATES = VL / "candidates.json"
 PUBLISH_DIR = Path(os.path.expanduser("~/binance/data/vec_live"))
 STALE_SEC = 20 * 60
 BAR_SEC = int(float(os.environ.get("VEC_LANE_BAR_SECONDS") or 900))
+
+
+def is_bar_stale(bar_ts, now_s):
+    """True when the bar CLOSED more than STALE_SEC ago.
+
+    Bars are labeled by OPEN; a 15m bar is current until bar_ts + BAR_SEC.
+    (2026-10-25: ageing from the label marked every state STALE ~5 min after
+    its NPZ tail landed, actionable=False, and the Mac consumer skipped it.)
+    """
+    try:
+        return (float(now_s) - (float(bar_ts) + BAR_SEC)) > STALE_SEC
+    except (TypeError, ValueError):
+        return True
 REANCHOR_AGE_SEC = 86400
 MIN_BARS = 100
 ENGINE_FILES = ["v12_quick_engine.py", "tools/opt/evaluate_v12.py", "tools/opt/v12_pilot.py", "tools/opt/lifecycle_pilot.py", "min_decision_tf_guard.py", "cat_side_defaults.py", "data/per_sym_settings.json", "data/sweep_cat_overrides.json", "data/switch_dependencies.json"]
@@ -396,7 +409,7 @@ def process(ss: str, entry: dict, overrides: dict, emd5: str, force: bool = Fals
     # Ageing from the label stole 15 min from every bar: with a ~5 min NPZ tail the
     # state was born STALE (open-age >20 while close-age ~5), actionable=False, and
     # the Mac consumer skipped it — closes enforced, opens refused, book bled vs boards.
-    stale = (t0 - (bar_ts + BAR_SEC)) > STALE_SEC
+    stale = is_bar_stale(bar_ts, t0)
     _base = base_prepared(ss) or {}
     base_size = float(((_base.get("base_cfg_dict") or {}).get("START_POSITION_SIZE")) or 0.0)
     status = "OK"
