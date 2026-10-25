@@ -1,11 +1,4 @@
 {
-  "flz:GRAMUSDT_SHORT": {
-    "orderId": "1000002642452926",
-    "stopPrice": 1.266,
-    "entry_sig": "2026-10-25 09:13:52.781000+00:00",
-    "symbol": "GRAMUSDT",
-    "side": "SHORT"
-  },
   "flz:HYPEUSDT_SHORT": {
     "orderId": "1000002642455449",
     "stopPrice": 77.145,
@@ -14,10 +7,24 @@
     "side": "SHORT"
   },
   "flz:SOLUSDC_SHORT": {
-    "orderId": "1000002642456548",
+    "orderId": "1000002642462204",
     "stopPrice": 102.85,
     "entry_sig": "2026-10-25 09:11:34.727000+00:00",
     "symbol": "SOLUSDC",
+    "side": "SHORT"
+  },
+  "flz:GRAMUSDT_SHORT": {
+    "orderId": "1000002642464496",
+    "stopPrice": 1.266,
+    "entry_sig": "2026-10-25 09:13:52.781000+00:00",
+    "symbol": "GRAMUSDT",
+    "side": "SHORT"
+  },
+  "flz:BTCUSDC_SHORT": {
+    "orderId": "1000002642465011",
+    "stopPrice": 81217.2,
+    "entry_sig": "2026-10-25 09:34:29.819000+00:00",
+    "symbol": "BTCUSDC",
     "side": "SHORT"
   }
 }

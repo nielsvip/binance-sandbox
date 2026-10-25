@@ -124,7 +124,10 @@ def load_bmap(cs: str, bmap_dir: Path):
 
 def hygiene(cs: str, items: dict, bm) -> tuple:
     """-> (published items, dropped {reason: n}, dropped sample, demoted_to_row n, beats_unknown n). Spec 22 §4.1/§4.2."""
-    from tools import v18_binding_map as BM
+    try:
+        from tools import v18_binding_map as BM  # USER 2026-10-25: fallback — script runs as tools/v15_v18_must_index.py (tools/ on sys.path[0], no parent package)
+    except ImportError:
+        import v18_binding_map as BM
     out, dropped, sample, demoted, unknown = {}, {}, [], 0, 0
     for k, e in items.items():
         try:
