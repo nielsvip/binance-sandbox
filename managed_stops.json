@@ -1,9 +1,30 @@
 {
-  "fin:ACEUSDT_SHORT": {
-    "orderId": "3000002273268730",
-    "stopPrice": 0.14046,
-    "entry_sig": "2026-10-25 09:48:57.169000+00:00",
-    "symbol": "ACEUSDT",
+  "ang:COTIUSDT_SHORT": {
+    "orderId": "4000001994881539",
+    "stopPrice": 0.010829,
+    "entry_sig": "2026-10-25 09:59:17.008562+00:00",
+    "symbol": "COTIUSDT",
+    "side": "SHORT"
+  },
+  "ang:ENJUSDT_SHORT": {
+    "orderId": "4000001994881546",
+    "stopPrice": 0.02568,
+    "entry_sig": "2026-10-25 08:58:00.293000+00:00",
+    "symbol": "ENJUSDT",
+    "side": "SHORT"
+  },
+  "ang:MAGICUSDT_LONG": {
+    "orderId": "4000001994881752",
+    "stopPrice": 0.08249,
+    "entry_sig": "2026-10-25 09:59:21.427000+00:00",
+    "symbol": "MAGICUSDT",
+    "side": "LONG"
+  },
+  "ang:DOGEUSDC_SHORT": {
+    "orderId": "4000001994882518",
+    "stopPrice": 0.08425,
+    "entry_sig": "2026-10-25 09:54:31.575000+00:00",
+    "symbol": "DOGEUSDC",
     "side": "SHORT"
   }
 }

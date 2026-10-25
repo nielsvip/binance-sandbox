@@ -1,55 +1,32 @@
 {
- "generated_at": "2026-10-25 09:53 UTC",
- "total_capital_usd": 45.86,
+ "generated_at": "2026-10-25 09:59 UTC",
+ "total_capital_usd": 27.57,
  "tier_capital": {
   "A": 0.0,
-  "B": 24.78,
-  "C": 21.08
+  "B": 0.0,
+  "C": 27.57
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 2
+  "B": 0,
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "men:ENJUSDT_SHORT",
-  "men:GALAUSDT_SHORT"
+  "inf:ZENUSDT_SHORT"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "men:XPLUSDT_SHORT",
-   "symbol": "XPLUSDT",
-   "account": "men",
-   "value_usd": 24.78,
-   "gain_pct": 0.717,
-   "tier": "B",
-   "perf_mult": 1.75,
-   "amt": 344.0,
-   "mark": 0.07203
-  },
-  {
-   "pk": "men:GALAUSDT_SHORT",
-   "symbol": "GALAUSDT",
-   "account": "men",
-   "value_usd": 14.83,
-   "gain_pct": 1.43,
+   "pk": "inf:ZENUSDT_SHORT",
+   "symbol": "ZENUSDT",
+   "account": "inf",
+   "value_usd": 27.57,
+   "gain_pct": 0.027,
    "tier": "C",
-   "perf_mult": 0.12,
-   "amt": 8608.0,
-   "mark": 0.001723
-  },
-  {
-   "pk": "men:ENJUSDT_SHORT",
-   "symbol": "ENJUSDT",
-   "account": "men",
-   "value_usd": 6.25,
-   "gain_pct": -0.492,
-   "tier": "C",
-   "perf_mult": 0.15,
-   "amt": 254.0,
-   "mark": 0.02459042
+   "perf_mult": 0.32,
+   "amt": 4.9,
+   "mark": 5.62748333
   }
  ]
 }
