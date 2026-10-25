@@ -45,6 +45,39 @@ def test_preemptive_hold_fail_open_on_protective():
     assert vp.pending_count() == 0
 
 
+def test_ratio_sizing_never_held():
+    from live_twins.vec_pending import protective
+
+    vp._HOLDS.clear()
+    assert protective("RATIO_REDUCE_SHORT_L60_S40_tgt50/50_breadth10%_gain1.0%") is True
+    assert protective("RATIO_REBALANCE_AUGMENT_LONG_L40_S60_tgt50/50_4x_score7") is True
+    assert protective("RATIO_CLOSE_OW_SHORT_L70_S30_tgt50/50_wt15d1.2_g2.00%") is False
+    assert vp.pending_count() == 0
+
+
+def test_ratio_sizing_exempt_from_dictate_only():
+    from vec_decisions.vec_parity_gates import dictate_only_exempt
+
+    assert (
+        dictate_only_exempt(
+            "REDUCE", "RATIO_REDUCE_SHORT_L60_S40_tgt50/50_breadth10%_gain1.0%"
+        )
+        is True
+    )
+    assert (
+        dictate_only_exempt(
+            "AUGMENT", "RATIO_REBALANCE_AUGMENT_LONG_L40_S60_tgt50/50_4x_score7"
+        )
+        is True
+    )
+    assert (
+        dictate_only_exempt(
+            "CLOSE", "RATIO_CLOSE_OW_SHORT_L70_S30_tgt50/50_wt15d1.2_g2.00%"
+        )
+        is False
+    )
+
+
 def test_prioritize_vec_first_capped_no_starvation():
     keys = ["a", "b", "c", "d"]
     assert prioritize(keys, {"c", "d"}) == ["c", "d", "a", "b"]

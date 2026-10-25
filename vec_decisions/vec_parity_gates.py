@@ -124,16 +124,22 @@ def _per_sym_knob_true(sym_side, knob):
 def dictate_only_exempt(action, reason, sym_side=None):
     # USER 2026-10-25: ONLY vec parity decides — no family, lane, or dispatcher
     # exemption, QUICK included. Survivors are vec speech itself: board-confirmed
-    # reasons and the board-measured per_sym switch dictate. RATIO trims, stops,
-    # emergencies, hedges, oversize trims, bookkeeping-as-trade: all blocked
-    # unless the vector dictates them. (BROKER_RECONCILED infrastructure writes
-    # are not trades and never reach this gate as actions.) Kill:
-    # VEC_DICTATE_ONLY_ENABLED=False.
+    # reasons, the board-measured per_sym switch dictate, and side-preserving
+    # ratio sizing (RATIO_REDUCE_*/RATIO_REBALANCE_AUGMENT_* — USER 2026-10-25:
+    # ratio balance always works, augments and reduces, never touches bar
+    # parity). RATIO_CLOSE_OW_* full closes DO change side and stay under the
+    # law. Stops, emergencies, hedges, oversize trims, bookkeeping-as-trade:
+    # all blocked unless the vector dictates them. (BROKER_RECONCILED
+    # infrastructure writes are not trades and never reach this gate as
+    # actions.) Kill: VEC_DICTATE_ONLY_ENABLED=False.
     try:
         from live_twins import vector_enforce as _ve
     except Exception:
         return True
     try:
+        _ru = str(reason or "").upper()
+        if _ru.startswith(("RATIO_REDUCE_", "RATIO_REBALANCE_AUGMENT_")):
+            return True
         if _ve._is_board_confirmed(reason):
             return True
         if sym_side:
