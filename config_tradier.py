@@ -3904,6 +3904,7 @@ class TradierConfig:
     VEC_DICTATE_ONLY_ENABLED: bool = True  # USER 2026-10-24 STEP1 (stocks): no script may trade anything the vec does not dictate. Same exemptions as crypto. Kill: False.
     VEC_EXEC_BOARD_OPEN_ENABLED: bool = True  # USER 2026-10-24 STEP2 (stocks): backstop executes board-holds-live-flat OPENs. Default True = current behavior, inert.
     VEC_EXEC_BOARD_CLOSE_ENABLED: bool = True  # USER 2026-10-24 STEP2 (stocks): backstop executes board-flat-live-holds CLOSEs. Default True = current behavior, inert.
+    VEC_PRIORITY_ENABLED: bool = True  # USER 2026-10-25: VEC-dictated sym_sides sweep first each cycle, stocks (order-only, gates unchanged). False restores legacy sweep order.
     RULE_B_W_TREND_4H_PULLBACK_ENABLED: bool = False
     RULE_NAME_TAGGING_ENABLED: bool = True
     RZ_BASELINE_BOUNCE_SHORT_ENABLED: bool = False

@@ -1896,6 +1896,7 @@ class Config:
     VEC_DICTATE_ONLY_ENABLED: bool = True  # USER 2026-10-24 STEP1: no script may trade anything the vec does not dictate — non-dictated, non-exempt orders refused (exempt: stops, emergencies, hedges, ratio/oversize trims, bookkeeping, board-confirmed). Kill: False restores pre-law native flow.
     VEC_EXEC_BOARD_OPEN_ENABLED: bool = True  # USER 2026-10-24 STEP2: backstop executes board-holds-live-flat OPENs (the vec-dictated class natives never emit). False withholds them. Default True = current behavior, inert.
     VEC_EXEC_BOARD_CLOSE_ENABLED: bool = True  # USER 2026-10-24 STEP2: backstop executes board-flat-live-holds CLOSEs. False withholds them. Default True = current behavior, inert.
+    VEC_PRIORITY_ENABLED: bool = True  # USER 2026-10-25: VEC-dictated sym_sides sweep first each cycle (order-only, gates unchanged; priority slice capped so natives never starve). False restores legacy sweep order.
     REENTRY_ON_EXIT_PRICE_BREAK_ENABLED: bool = (
         True  # USER 2026-10-14 re-entry trigger 1/3 (all 3 can be on): after any exit, close crosses back through the exit price (+15m WT confirm). vec_decisions/reentry_triggers.py
     )

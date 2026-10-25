@@ -8382,6 +8382,9 @@ class QuickConfig:
     VEC_DICTATE_ONLY_ENABLED: bool = True
     VEC_EXEC_BOARD_OPEN_ENABLED: bool = True
     VEC_EXEC_BOARD_CLOSE_ENABLED: bool = True
+    # USER 2026-10-25 mirror: sweep priority (order-only). No simulate_one
+    # counterpart — LIVE_ONLY precedent.
+    VEC_PRIORITY_ENABLED: bool = True
     INTRADAY_RATIO_CHECK_INTERVAL_MIN: int = 15
     INTRADAY_RATIO_COOLDOWN_MIN: int = 30
     INTRADAY_RATIO_DEVIATION_THR: float = 0.10
