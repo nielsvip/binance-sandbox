@@ -1583,7 +1583,7 @@ def _repair_allowed_for_tier(tier, measured):
     return os.environ.get("V15_REPAIR_ALL_TIERS") == "1" or tier == "W" or not measured
 
 
-def _place_order(held_ordered, adopted_owned, new_syms, tiers, redo=None, attempts=None, launched_at=None, pri=frozenset(), cont=None, pinned=None, recent=None, age_key=None):
+def _place_order(held_ordered, adopted_owned, new_syms, tiers, redo=None, attempts=None, launched_at=None, pri=frozenset(), cont=None, pinned=None, recent=None, age_key=None, venue_first=None):
     """USER 2026-10-09 (trb gainers absolute priority): W chains + W new before ALL M/L work. Stable sort
     keeps chain-first within a tier. Running pilots are never touched — this orders new launches only.
     USER 2026-10-10 (82 redo backlog): needs_redo RESUMES outrank everything (paid work finalises in
@@ -1618,7 +1618,8 @@ def _place_order(held_ordered, adopted_owned, new_syms, tiers, redo=None, attemp
     # the same resume class — never-boarded / older boards first; it still runs when nothing else is launchable.
     _rec = recent or frozenset()
     _ak = age_key or (lambda b: (2, 0.0, 0.0))  # 2026-10-20 USER: catch-up violators, then due live gainers, then oldest-first; default = no effect
-    seq.sort(key=lambda t: (_rk(t[0]), _ak(t[0]), 1 if t[0] in _rec else 0, _sym_tier_rank(t[0], tiers), 0 if t[0] in _rkpairs else 1, 1 if t[1] else 0, 0 if t[0] in _pri else 1, _min_att.get(t[0], -1.0), _old_ts.get(t[0], -1.0)))
+    _vf = None if venue_first is None else {str(_v).lower() for _v in venue_first}
+    seq.sort(key=lambda t: (0 if _vf is None or venue_of(t[0]).lower() in _vf else 1, _rk(t[0]), _ak(t[0]), 1 if t[0] in _rec else 0, _sym_tier_rank(t[0], tiers), 0 if t[0] in _rkpairs else 1, 1 if t[1] else 0, 0 if t[0] in _pri else 1, _min_att.get(t[0], -1.0), _old_ts.get(t[0], -1.0)))
     return seq
 
 
@@ -3364,6 +3365,34 @@ def _host_sides(host_or_name, hosts=None):
         return set(_SIDES_ALL)
 
 
+def _host_overflow_venues(host):
+    """USER 2026-10-25 overflow: extra venues a host may take 30D work from once
+    out of own-venue work (s5/s6 help crypto before Monday 00:00Z). Absent/empty/
+    unknown = no overflow (legacy behaviour, fail-closed)."""
+    try:
+        _own = {str(_v).lower() for _v in ((host or {}).get("venues") or [])}
+        return [str(_v) for _v in ((host or {}).get("overflow_venues") or []) if str(_v).lower() not in _own and str(_v).lower() in ("crypto", "stocks")]
+    except Exception:
+        return []
+
+
+def _overflow_take_ok(host, sym, launched_this_tick, running_syms):
+    """True only when an overflow-venue sym may launch on this host: the sym is
+    in overflow (never own) venues, nothing launched on this host yet this tick
+    (own-first order gives own work first refusal), and no own-venue board is
+    currently running here. Pure (tested)."""
+    try:
+        _own = {str(_v).lower() for _v in ((host or {}).get("venues") or [])}
+        _over = {str(_v).lower() for _v in _host_overflow_venues(host)}
+        if venue_of(sym).lower() not in _over:
+            return False
+        if (launched_this_tick or 0) > 0:
+            return False
+        return not any(venue_of(str(_ss).rsplit("_", 1)[0]).lower() in _own for _ss in (running_syms or {}))
+    except Exception:
+        return False
+
+
 def _load_pinned(path=None):
     """2026-10-13: operator-pinned sym_sides {"sides": [...], "hosts": [...]} — launched before everything else,
     exempt from tier deferral / fresh-skip / base wait / venue phase / quota / allowlist, only on "hosts"
@@ -4564,8 +4593,11 @@ def tick(args, cfg, now):
         nonw_quota = max(1, cap // _NONW_QUOTA_DIV)  # USER 2026-10-09: winners own the host; non-winners get 1 new-pair slot (chains still drain, discovery exempt)
         if _recent_syms is None:
             _recent_syms = _recent_board_syms(all_syms, _mindex, _allowed, _now_ts)
+        _h_own_v = set(h.get("venues") or [])
+        _h_over_v = _host_overflow_venues(h)
+        _h_venue_first = _h_own_v if _h_over_v else None
         order = _place_order(held_ordered, [sym for sym in adopted if owner.get(sym) == h["name"] and sym not in held[h["name"]]],
-                             [sym for sym in new_syms if venue_of(sym) in h["venues"]], _gtiers, redo, st["attempts"], st.get("launched_at"), pri, cont=_cont_all, pinned=_pin_sides, recent=_recent_syms, age_key=_AGE_KEY[0])
+                             [sym for sym in new_syms if venue_of(sym) in _h_own_v or venue_of(sym) in _h_over_v], _gtiers, redo, st["attempts"], st.get("launched_at"), pri, cont=_cont_all, pinned=_pin_sides, recent=_recent_syms, age_key=_AGE_KEY[0], venue_first=_h_venue_first)
         _ORDER_BY_HOST[h["name"]] = [_o[0] for _o in order if _o[1]]
         # 2026-10-13 USER LAW: a server never takes a new symbol while one of its own boards is unfinished — enforced by
         # _place_order (pinned=0, unfinished/redo=1, fresh=2): every unfinished board this host owns is evaluated and
@@ -4618,9 +4650,17 @@ def tick(args, cfg, now):
             if needs_slot and (used >= cap or proj_mem < _est_sym(sym) or cpu >= cfg.get("cpu_target_pct", 90) or not swap_ok or not disk_ok or not win_ok):
                 _fate("slots full" if used >= cap else "mem guard" if proj_mem < _est_sym(sym) else "cpu guard" if cpu >= cfg.get("cpu_target_pct", 90) else "swap guard" if not swap_ok else "disk guard")
                 continue  # over-cap/exhausted host: skip this admission, keep evaluating (held chains need no slot)
-            if venue_of(sym) not in h["venues"]:
+            if venue_of(sym) not in _h_own_v and venue_of(sym) not in _h_over_v:
                 _fate("venue not on host")
                 continue
+            if venue_of(sym) in _h_over_v:
+                # USER 2026-10-25 overflow: idle stocks workers help crypto 30D.
+                # Own-first order gives own work first refusal; take overflow only
+                # when nothing launched here yet and no own-venue board runs here.
+                if not _overflow_take_ok(h, sym, launched, s.get("running") or {}):
+                    _fate("overflow: own work first")
+                    continue
+                log.setdefault("overflow_take", []).append(f"{h['name']}:{sym}")
             # USER 2026-10-18 "100% stocks until all stocks are done": a PRIORITY PIN is a hint about ORDER, it may not
             # override an explicit venue pin. V15_SCHED_PRIORITY_SYMS is regenerated with crypto symbols at the front
             # (RLCUSDT, BBUSDT, COMPUSDT, ... at 00:30Z), and because pinned symbols skipped this gate entirely the
