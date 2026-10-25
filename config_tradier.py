@@ -5198,6 +5198,9 @@ class TradierConfig:
     MIN_HOLD_MINUTES_TRADIER: float = (
         30.0  # No exits before 30 min. Bypassed only if loss > -5%. ; WIRED 2026-04-16 (priority 90/100) — tradier_manage.py:3891 stock min hold fallback
     )
+    SCALP_MIN_HOLD_SEC: float = (
+        180.0  # 2026-10-25 USER scalp kill-switch — no CLOSE/REDUCE may execute on a position younger than this, any venue, any reason except the stop/protection family. Measured 317 true sub-120s flat-to-flat broker scalps crypto + 526 stock ledger pairs. Enforced at execute_now (the ONLY gate). 0 disables.
+    )
     # MULTI-TF EXIT CONFIRMATION — exits must mirror entry strength
     # Entry needs multi-TF WT alignment → exit needs multi-TF WT disalignment
     # Prevents 5m noise from killing positions that 15m/1h/4h still support

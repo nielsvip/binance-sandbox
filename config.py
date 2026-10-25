@@ -2640,6 +2640,9 @@ class Config:
     MIN_HOLD_BARS_BEFORE_EXIT: int = (
         10  # 2026-09-07 UNLOCK per user — was 32 (96min at 3m). Lowered to 10 (30min) to let MTF/WT exits fire sooner; was blocking profitable exits on FLZ. Per_sym 48 still overrides FLZ winners where proven. ROLLBACK: 32.
     )
+    SCALP_MIN_HOLD_SEC: float = (
+        180.0  # 2026-10-25 USER scalp kill-switch — no CLOSE/REDUCE may execute on a position younger than this, any venue, any reason except the stop/protection family (HARD_STOP/VIGILANCE_DC4/NEGBOOK_WT_TURN/BROKER_SYNC/LIQUIDAT/FIXED_STOP/STOP_LOSS/EMERGENCY). Measured 317 true sub-120s flat-to-flat broker scalps crypto + 526 stock ledger pairs. Enforced at execute_now (the ONLY gate). 0 disables.
+    )
     # === BOUNCE-TOP EXIT FOR LOSERS (proven on stocks, adapted for crypto) ===
     # Wait for price to bounce toward entry, exit at TOP of bounce = smallest possible loss
     # Mandatory reentry follows: 150% at pullback, 200% at rising WT cross

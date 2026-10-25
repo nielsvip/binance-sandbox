@@ -253,3 +253,53 @@ def test_draw_mismatch_lines_live_side():
 
 def test_fetch_empty_symbol():
     assert lth.fetch_trades("NO_SUCH_SYM_ZZZ", ["trb"], [ROOT / "data" / "tradier" / "history"]) == {}
+
+
+def test_scalp_floor_blocks_sub_floor_close():
+    assert lth.scalp_floor_refusal(True, True, "VEC_EXACT_CLOSE", 58.0, 180.0) == "REFUSED_SCALP_FLOOR"
+
+
+def test_scalp_floor_blocks_sub_floor_reduce():
+    assert lth.scalp_floor_refusal(True, False, "REENTRY_HIGHER_LOW |VEC_EXACT", 58.0, 180.0) == "REFUSED_SCALP_FLOOR"
+
+
+def test_scalp_floor_allows_after_floor():
+    assert lth.scalp_floor_refusal(True, True, "VEC_EXACT_CLOSE", 181.0, 180.0) == ""
+    assert lth.scalp_floor_refusal(True, False, "TECHNICAL_TARGET", 3600.0, 180.0) == ""
+
+
+def test_scalp_floor_never_touches_entries():
+    assert lth.scalp_floor_refusal(False, False, "DC_BREAK_HIGH_15M", 5.0, 180.0) == ""
+
+
+def test_scalp_floor_stop_family_bypasses():
+    for reason in ["FIXED_STOP_HIT", "HARD_STOP_USER", "VIGILANCE_DC4_CLOSE",
+                   "NEGBOOK_WT_TURN_HARD_STOP_USER_LONG", "BROKER_SYNC_CLOSE",
+                   "Broker sync", "LIQUIDATION_PROTECT", "STOP_LOSS_EXIT", "EMERGENCY_FLAT"]:
+        assert lth.scalp_floor_refusal(True, True, reason, 5.0, 180.0) == "", reason
+
+
+def test_scalp_floor_fail_open_unknown_age_or_floor():
+    assert lth.scalp_floor_refusal(True, True, "VEC_EXACT_CLOSE", None, 180.0) == ""
+    assert lth.scalp_floor_refusal(True, True, "VEC_EXACT_CLOSE", -3.0, 180.0) == ""
+    assert lth.scalp_floor_refusal(True, True, "VEC_EXACT_CLOSE", 5.0, 0) == ""
+    assert lth.scalp_floor_refusal(True, True, "VEC_EXACT_CLOSE", 5.0, None) == ""
+
+
+def test_scalp_floor_ratio_partial_exempt_full_close_not():
+    assert lth.scalp_floor_refusal(True, False, "RATIO_REDUCE_TRIM", 5.0, 180.0, True) == ""
+    assert lth.scalp_floor_refusal(True, True, "RATIO_REDUCE_TRIM", 5.0, 180.0, True) == "REFUSED_SCALP_FLOOR"
+
+
+def test_position_age_sec_parses_all_forms():
+    import time
+    now = time.time()
+    import pytest
+    assert lth.position_age_sec(now - 60.0, now) == pytest.approx(60.0)
+    import datetime
+    assert lth.position_age_sec(datetime.datetime.fromtimestamp(now - 60.0, datetime.timezone.utc), now) == pytest.approx(60.0)
+    assert lth.position_age_sec(datetime.datetime.fromtimestamp(now - 60.0).isoformat(), now) == pytest.approx(60.0)
+    assert lth.position_age_sec(None) is None
+    assert lth.position_age_sec("") is None
+    assert lth.position_age_sec("garbage") is None
+    assert lth.position_age_sec(now + 60.0, now) is None

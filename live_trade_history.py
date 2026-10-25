@@ -457,6 +457,88 @@ def _mark_stale_trailing(marked, max_age_s=1800.0):
             e["phase"] = "stale"
 
 
+SCALP_FLOOR_BYPASS_REASONS = (
+    "HARD_STOP", "VIGILANCE_DC4", "NEGBOOK_WT_TURN", "BROKER_SYNC",
+    "BROKER SYNC", "LIQUIDAT", "FIXED_STOP", "STOP_LOSS", "EMERGENCY",
+)
+
+
+def position_age_sec(opened_at, now_s=None):
+    """Seconds since opened_at (datetime/str/epoch). None when unknown.
+
+    Unknown means fail-open for every caller: a gate that cannot prove a
+    position is young must never block its exit.
+    """
+    import time
+    try:
+        if opened_at is None or opened_at == "":
+            return None
+        if isinstance(opened_at, (int, float)):
+            ts = float(opened_at)
+        else:
+            import datetime as _dt
+            d = opened_at
+            if isinstance(d, str):
+                d = _dt.datetime.fromisoformat(d)
+            if not isinstance(d, _dt.datetime):
+                return None
+            if d.tzinfo is None:
+                d = d.replace(tzinfo=_dt.timezone.utc)
+            ts = d.timestamp()
+        if ts <= 0:
+            return None
+        now = float(now_s) if now_s is not None else time.time()
+        age = now - ts
+        return age if age >= 0 else None
+    except Exception:
+        return None
+
+
+def scalp_floor_refusal(is_exit, is_full_close, reason, age_sec, floor_sec,
+                        is_ratio_partial=False):
+    """'REFUSED_SCALP_FLOOR' when a sub-floor exit must not fire, else ''.
+
+    Venue-neutral core of the 1-minute-scalp kill switch: any CLOSE/REDUCE
+    on a position younger than floor_sec is refused so the 7-120s round
+    trips measured on every account (317 crypto true flat-to-flat, 526
+    stock ledger pairs) cannot execute. Protection exits (stop/hard-stop/
+    liquidation/broker-sync reconciliation) always pass; unknown age and
+    non-positive floors fail open; RATIO rebalancer partials are exempt.
+    """
+    try:
+        if not bool(is_exit) and not bool(is_full_close):
+            return ""
+    except Exception:
+        return ""
+    try:
+        if bool(is_ratio_partial) and not bool(is_full_close):
+            return ""
+    except Exception:
+        pass
+    try:
+        r = str(reason or "").upper()
+    except Exception:
+        r = ""
+    for tag in SCALP_FLOOR_BYPASS_REASONS:
+        if tag and tag in r:
+            return ""
+    try:
+        age = float(age_sec)
+    except (TypeError, ValueError):
+        return ""
+    try:
+        floor = float(floor_sec)
+    except (TypeError, ValueError):
+        return ""
+    if floor <= 0:
+        return ""
+    if not (age >= 0):
+        return ""
+    if age < floor:
+        return "REFUSED_SCALP_FLOOR"
+    return ""
+
+
 def _collapse_stuck_relogs(recs):
     """Collapse runs of identical consecutive state re-logs.
 

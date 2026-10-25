@@ -4946,6 +4946,7 @@ _FULL_COVERAGE_PARAMS_EZ = ['ABLATION_DISABLE_AGGRESSIVE_HEDGE',
     'SCALP_MAX_HOLD_MINUTES',
     'SCALP_MAX_POSITIONS_PER_SIDE',
     'SCALP_MAX_POSITION_SIZE',
+    'SCALP_MIN_HOLD_SEC',
     'SCALP_MIN_MOVE_PCT',
     'SCALP_MIN_REL_VOL',
     'SCALP_MODE',
@@ -33218,6 +33219,67 @@ class MultiAccountTradeManager:
         # cancel own working orders on the leg -> ONE market reduce-only close of the broker qty -> verify flat. Inside execute_now.
         if _fx_act0 == _xg.FORCE_ACTION:
             return await self._exit_force_market(position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, reason=reason, old_price=old_price)
+        # ─── SCALP FLOOR (USER 2026-10-25: genuine 1-minute scalps disabled immediately, anywhere) ───
+        # Measured 317 true sub-120s flat-to-flat broker round trips across all 5 crypto accounts
+        # (e.g. AUGMENT 04:55:51 → full-quantity REDUCE 04:56:49 on a frozen indicator vector).
+        # Any CLOSE/REDUCE on a position younger than SCALP_MIN_HOLD_SEC (default 180s) is REFUSED
+        # here at the ONLY gate, so no exit path — native, vec-dictated (VEC_EXACT), or sync — can
+        # scalp. The request is simply retried next cycle; after the floor it executes normally.
+        # Protection exits (HARD_STOP/VIGILANCE_DC4/NEGBOOK_WT_TURN/BROKER_SYNC/LIQUIDAT/FIXED_STOP/
+        # STOP_LOSS/EMERGENCY), the FORCE escalation above, STOP order actions, RATIO rebalancer
+        # partials and OPEN/AUGMENT are never touched; unknown age and floor<=0 fail open.
+        try:
+            _sc_act = str(action or "").upper()
+            _sc_is_exit = bool(_xg.is_exit_action(action, is_full_close)) or "CLOSE" in _sc_act or "REDUCE" in _sc_act
+            _sc_ref = ""
+            if _sc_is_exit or bool(is_full_close):
+                _sc_floor = 180.0
+                try:
+                    _sc_floor = float(_psym_get(symbol, position_side, "SCALP_MIN_HOLD_SEC", getattr(config, "SCALP_MIN_HOLD_SEC", 180.0)))
+                except Exception:
+                    try:
+                        _sc_floor = float(getattr(config, "SCALP_MIN_HOLD_SEC", 180.0))
+                    except Exception:
+                        _sc_floor = 180.0
+                _sc_age = None
+                try:
+                    _sc_pos = None
+                    try:
+                        _sc_pos = self.positions.get(position_key) if hasattr(self, "positions") else None
+                    except Exception:
+                        _sc_pos = None
+                    if _sc_pos is None:
+                        try:
+                            _sc_tm = getattr(self, "trade_manager", None)
+                            _sc_pos = _sc_tm.positions.get(position_key) if _sc_tm is not None and hasattr(_sc_tm, "positions") else None
+                        except Exception:
+                            _sc_pos = None
+                    import live_trade_history as _lth_sc
+                    _sc_age = _lth_sc.position_age_sec(getattr(_sc_pos, "opened_at", None) if _sc_pos is not None else None)
+                except Exception:
+                    _sc_age = None
+                _sc_ratio = False
+                try:
+                    if not bool(is_full_close) and "REDUCE" in _sc_act and "CLOSE" not in _sc_act:
+                        from live_twins.vector_enforce import family_of as _ve_fam_sc
+                        _sc_ratio = _ve_fam_sc(reason) == "RATIO"
+                except Exception:
+                    _sc_ratio = False
+                try:
+                    import live_trade_history as _lth_sc2
+                    _sc_ref = _lth_sc2.scalp_floor_refusal(_sc_is_exit, is_full_close, reason, _sc_age, _sc_floor, _sc_ratio)
+                except Exception:
+                    _sc_ref = ""
+            if _sc_ref:
+                logger.critical(f"🛑 [SCALP_FLOOR] {position_key} {action} reason={(reason or '')[:80]} — position age {(_sc_age if _sc_age is not None else -1):.0f}s < floor {_sc_floor:.0f}s — REFUSED, retries next cycle (USER 2026-10-25 scalp kill-switch)")
+                try:
+                    if _paper_nv.enabled(config):
+                        _paper_nv.record("crypto", account_key, position_key, _paper_nv.kind_of(action, side, position_side), action, reason, "SCALP_FLOOR_REFUSED", old_price, quantity)
+                except Exception:
+                    pass
+                return _sc_ref
+        except Exception as _sc_e:
+            logger.debug(f"[SCALP_FLOOR] check err (fail-open): {_sc_e}")
         _xg_full = _xg.is_full_close(action, is_full_close)  # full close: mechanical refusals below never apply (FORCE backstop behind them)
         # ─── HERMETIC VEC-ONLY GATE (2026-10-14 USER "make this totally hermetic so for now it can ONLY trade in tandem with what the
         # vectorized would trade") ─── an exposure increase (BUY on LONG / SELL on SHORT / hedge) must carry structural vec provenance
