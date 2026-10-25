@@ -5,5 +5,27 @@
     "entry_sig": "2026-10-25 10:37:30.184000+00:00",
     "symbol": "MAGICUSDT",
     "side": "SHORT"
+  },
+  "fin:VETUSDT_LONG": {
+    "orderId": "3000002273352297",
+    "stopPrice": 0.006708,
+    "entry_sig": "2026-10-25 10:43:00.435000+00:00",
+    "symbol": "VETUSDT",
+    "side": "LONG",
+    "disaster_backstop": true
+  },
+  "fin:STRKUSDT_SHORT": {
+    "orderId": "3000002273353071",
+    "stopPrice": 0.04758,
+    "entry_sig": "2026-10-25 10:42:24.428000+00:00",
+    "symbol": "STRKUSDT",
+    "side": "SHORT"
+  },
+  "fin:XMRUSDT_LONG": {
+    "orderId": "3000002273353212",
+    "stopPrice": 580.72,
+    "entry_sig": "2026-10-25 10:43:31.082000+00:00",
+    "symbol": "XMRUSDT",
+    "side": "LONG"
   }
 }

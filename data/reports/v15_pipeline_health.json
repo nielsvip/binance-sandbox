@@ -1,13 +1,13 @@
 {
- "at": "2026-10-25T10:30:08Z",
+ "at": "2026-10-25T10:45:22Z",
  "s1": {
   "host": "niels",
-  "now": 1792924204.4653604,
+  "now": 1792925117.7615232,
   "merge_crypto": {
    "n": 12,
    "max_lag_min": 15.0,
-   "median_lag_min": 15.0,
-   "worst": "1000000MOGUSDT",
+   "median_lag_min": 0.0,
+   "worst": "AAVEUSDC",
    "dead": []
   },
   "merge_stocks": {
@@ -18,22 +18,23 @@
    "dead": []
   },
   "npz_legacy_crypto": [],
-  "append_log_age_min": 14.0,
-  "append_last_secs": 664.0,
-  "append_last_stats": "'appended': 1056, 'created': 0, 'up_to_date': 5311, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
+  "append_log_age_min": 0.0,
+  "append_last_secs": 612.8,
+  "append_last_stats": "'appended': 866, 'created': 0, 'up_to_date': 5501, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
   "npz_loop_pids": 0,
   "npz_loop_has_settle": false,
   "archive_n": 199,
   "archive_mb": 2394.9,
-  "archive_newest_min": 410.8,
+  "archive_newest_min": 426.0,
   "_via": "s1-int"
  },
  "red": [
+  "L2 appender silent for 0.0 min (cron */5) ",
   "L3 npz append loop is not running (the */15 watchdog should relaunch it)",
   "L4 scheduler last ticked None min ago (cron */2)"
  ],
  "warn": [
-  "L5 newest archived board NPZ is 411 min old \u2014 publishes may not be recording"
+  "L5 newest archived board NPZ is 426 min old \u2014 publishes may not be recording"
  ],
  "ok": false
 }
