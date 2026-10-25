@@ -1,5 +1,5 @@
 {
- "at": "2026-10-25T02:26:03Z",
+ "at": "2026-10-25T03:26:02Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
@@ -21,22 +21,17 @@
    "error": null
   },
   "s2": {
-   "published_n": 8,
-   "per_hour": 4.0,
-   "improved_vs_best_start": 8,
-   "mean_uplift_vs_best_start": 37.769,
-   "median_uplift": 38.5443,
-   "chained_from_previous_published": 4,
+   "published_n": 5,
+   "per_hour": 2.5,
+   "improved_vs_best_start": 5,
+   "mean_uplift_vs_best_start": 45.6232,
+   "median_uplift": 60.1597,
+   "chained_from_previous_published": 1,
    "no_floor_recorded": 0,
    "backslides": [],
-   "stale_npz": [
-    {
-     "symside": "LMT_LONG",
-     "npz_age_h": 28.9
-    }
-   ],
+   "stale_npz": [],
    "fails": [
-    "throughput 4.0/h < 12.0/h (one per 5 min)"
+    "throughput 2.5/h < 12.0/h (one per 5 min)"
    ],
    "rows": [
     {
@@ -70,34 +65,34 @@
      "npz_age_h_at_publish": 1.04
     },
     {
-     "symside": "LMT_LONG",
-     "published_at": 1792888737.4278426,
-     "final_gain": 20.577652554079762,
-     "best_start_gain": 0.0,
+     "symside": "AVAXUSDC_LONG",
+     "published_at": 1792895447.367122,
+     "final_gain": 0.708716341145492,
+     "best_start_gain": -3.833799838945979,
      "best_start_chosen": "incumbent",
-     "best_start_candidates": 4,
-     "baseline_gain": 0.0,
-     "npz_ts_last": 1792784700.0,
-     "npz_md5": "2b314ecc598bd856463b9bd5fbe55ff9",
-     "npz_bars": 20475,
-     "bh": 14.876801493070685,
-     "verdict": null,
-     "npz_age_h_at_publish": 28.9
+     "best_start_candidates": 3,
+     "baseline_gain": -3.833799838945979,
+     "npz_ts_last": 1792892700.0,
+     "npz_md5": "3587e3c8ac1bd1d3751b7e077728086b",
+     "npz_bars": 46380,
+     "bh": -12.195121951219512,
+     "verdict": "BEST_EFFORT",
+     "npz_age_h_at_publish": 0.76
     },
     {
-     "symside": "RVNUSDT_SHORT",
-     "published_at": 1792888101.0131404,
-     "final_gain": 70.6161634327819,
-     "best_start_gain": 64.50989820859147,
-     "best_start_chosen": "history_0",
-     "best_start_candidates": 11,
-     "baseline_gain": 64.50989820859147,
-     "npz_ts_last": 1792885500.0,
-     "npz_md5": "6706e96c34b322b2b6da7942871a8237",
-     "npz_bars": 43201,
-     "bh": 42.336683637563425,
+     "symside": "AWEUSDT_LONG",
+     "published_at": 1792897863.2398255,
+     "final_gain": 22.538215121369234,
+     "best_start_gain": -1.2564394006493822,
+     "best_start_chosen": "incumbent",
+     "best_start_candidates": 5,
+     "baseline_gain": -1.2564394006493822,
+     "npz_ts_last": 1792895400.0,
+     "npz_md5": "0d7181e21bf53288fac551e6a168a37e",
+     "npz_bars": 43212,
+     "bh": -2.5107836594492516,
      "verdict": null,
-     "npz_age_h_at_publish": 0.72
+     "npz_age_h_at_publish": 0.68
     },
     {
      "symside": "STXUSDT_LONG",
@@ -113,51 +108,6 @@
      "bh": -1.9108318340424515,
      "verdict": null,
      "npz_age_h_at_publish": 1.2
-    },
-    {
-     "symside": "STXUSDT_SHORT",
-     "published_at": 1792891348.8826773,
-     "final_gain": 37.45916577954842,
-     "best_start_gain": 2.765628778615175,
-     "best_start_chosen": "incumbent",
-     "best_start_candidates": 3,
-     "baseline_gain": 2.765628778615175,
-     "npz_ts_last": 1792888200.0,
-     "npz_md5": "8a843e546794107ca0865aa5da33ee3f",
-     "npz_bars": 43204,
-     "bh": 1.9108318340424515,
-     "verdict": null,
-     "npz_age_h_at_publish": 0.87
-    },
-    {
-     "symside": "WLDUSDC_LONG",
-     "published_at": 1792889691.4078748,
-     "final_gain": 108.87165034101554,
-     "best_start_gain": 106.41990211230691,
-     "best_start_chosen": "history_1",
-     "best_start_candidates": 9,
-     "baseline_gain": 106.41990211230691,
-     "npz_ts_last": 1792885500.0,
-     "npz_md5": "5846b75c3e233ad7323aa1b4649ddb73",
-     "npz_bars": 43201,
-     "bh": 6.461889339739894,
-     "verdict": null,
-     "npz_age_h_at_publish": 1.16
-    },
-    {
-     "symside": "WLDUSDC_SHORT",
-     "published_at": 1792888983.570415,
-     "final_gain": 104.75993003202768,
-     "best_start_gain": 66.21560260282197,
-     "best_start_chosen": "history_1",
-     "best_start_candidates": 9,
-     "baseline_gain": 66.21560260282197,
-     "npz_ts_last": 1792885500.0,
-     "npz_md5": "5846b75c3e233ad7323aa1b4649ddb73",
-     "npz_bars": 43201,
-     "bh": -6.461889339739894,
-     "verdict": null,
-     "npz_age_h_at_publish": 0.97
     }
    ],
    "error": null
