@@ -1,18 +1,13 @@
 {
  "findings": [
   {
-   "account": "men",
+   "account": "ang",
    "code": "BROKER_UNREACHABLE",
-   "error": "BinanceAPIException(<Response [418]>, 418, '{\"code\":-1003,\"msg\":\"Way too many requests; IP(200.118.16.10) banned until 1792906738685. Please use the websocket f"
-  },
-  {
-   "account": "inf",
-   "code": "BROKER_UNREACHABLE",
-   "error": "BinanceAPIException(<Response [418]>, 418, '{\"code\":-1003,\"msg\":\"Way too many requests; IP(200.118.16.10) banned until 1792906738685. Please use the websocket f"
+   "error": "BinanceAPIException(<Response [418]>, 418, '{\"code\":-1003,\"msg\":\"Way too many requests; IP(200.118.16.10) banned until 1792906979908. Please use the websocket f"
   }
  ],
- "n_findings": 2,
+ "n_findings": 1,
  "n_positions": 0,
  "positions": [],
- "ts": "2026-10-25T05:10:25.121067+00:00"
+ "ts": "2026-10-25T05:20:59.527271+00:00"
 }
