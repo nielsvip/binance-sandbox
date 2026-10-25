@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-25T20:00:06Z",
+ "generated_utc": "2026-10-25T20:20:01Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
@@ -14,7 +14,7 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "filled_today": 473,
+    "filled_today": 474,
     "filled_before_open": 0
    },
    "detail": "no board was filled before the open"
@@ -39,7 +39,7 @@
    "measured": {
     "built_at": "2026-10-25T19:51:29.553848+00:00",
     "n": 525,
-    "age_at_open_s": 517
+    "age_at_open_s": 1712
    },
    "detail": "built 2026-10-25T19:51:29.553848+00:00 n=525"
   },
@@ -48,12 +48,12 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "reports_today": 20,
-    "newest_report": "persym_golive_20261025_refresh_1922.json",
-    "newest_report_at": "2026-10-25T19:26:57Z",
-    "tiers_at": "2026-10-25T19:27:22Z"
+    "reports_today": 21,
+    "newest_report": "persym_golive_20261025_refresh_1955.json",
+    "newest_report_at": "2026-10-25T20:12:09Z",
+    "tiers_at": "2026-10-25T20:13:50Z"
    },
-   "detail": "persym_golive_20261025_refresh_1922.json at 2026-10-25T19:26:57Z, tiers 2026-10-25T19:27:22Z"
+   "detail": "persym_golive_20261025_refresh_1955.json at 2026-10-25T20:12:09Z, tiers 2026-10-25T20:13:50Z"
   },
   {
    "name": "live_set_matches_selection",
@@ -92,19 +92,6 @@
        "ALL_TF_AGAINST_BLOCK_ENTRY_ENABLED",
        "ATR_ADAPTIVE_SIZING_ENABLED",
        "ATR_ADAPTIVE_STOP_MULT"
-      ]
-     },
-     {
-      "sym_side": "LNG_LONG",
-      "published_at": "2026-10-25T19:40:15Z",
-      "material": 93,
-      "sample": [
-       "ADX_REGIME_FILTER_ENABLED",
-       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
-       "ATR_ADAPTIVE_STOP_TF",
-       "AUGMENT_FALLBACK_REDUCE_ENABLED",
-       "AUGMENT_FALLBACK_REDUCE_PCT",
-       "AUGMENT_INTO_REENTRY_ENABLED"
       ]
      },
      {
@@ -160,19 +147,6 @@
       ]
      },
      {
-      "sym_side": "LMT_LONG",
-      "published_at": "2026-10-25T19:22:43Z",
-      "material": 65,
-      "sample": [
-       "ATR_ADAPTIVE_SIZING_ENABLED",
-       "ATR_ADAPTIVE_STOP_MULT",
-       "ATR_ADAPTIVE_STOP_TF",
-       "AUGMENT_INTO_REENTRY_ENABLED",
-       "BREAKEVEN_DC_LOW4_ENABLED",
-       "BULL_HOLD_EXIT_DELAY_BARS"
-      ]
-     },
-     {
       "sym_side": "APO_SHORT",
       "published_at": "2026-10-20T11:43:52Z",
       "material": 55,
@@ -197,6 +171,32 @@
        "COOLDOWN_BARS",
        "COOLDOWN_BARS_TRADIER"
       ]
+     },
+     {
+      "sym_side": "ACN_LONG",
+      "published_at": "2026-10-23T06:02:03Z",
+      "material": 50,
+      "sample": [
+       "ATR_ADAPTIVE_STOP_MULT",
+       "ATR_ADAPTIVE_STOP_TF",
+       "AUGMENT_FALLBACK_REDUCE_PCT",
+       "BB_PULLBACK_GATE_ENABLED",
+       "BB_SQUEEZE_ENTRY_ENABLED",
+       "COUNTER_TREND_ADD_BLOCK_ENABLED"
+      ]
+     },
+     {
+      "sym_side": "SHOP_LONG",
+      "published_at": "2026-10-22T04:02:56Z",
+      "material": 42,
+      "sample": [
+       "ATR_ADAPTIVE_SIZING_ENABLED",
+       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
+       "ATR_ADAPTIVE_STOP_MULT",
+       "ATR_ADAPTIVE_STOP_TF",
+       "DC_EDGE_SIZING_MIN_MULT",
+       "DC_HARD_STOP_1H_ENABLED"
+      ]
      }
     ]
    },
@@ -210,7 +210,7 @@
     "symbols": 330,
     "stale_over_90min": 2,
     "stale_pct": 0.6,
-    "median_age_min": 30.1,
+    "median_age_min": 35.0,
     "sample": [
      "DUSKUSDT",
      "ONEUSDT"
