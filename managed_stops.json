@@ -1,44 +1,44 @@
 {
-  "ang:TIAUSDC_LONG": {
-    "orderId": "4000001994910292",
+  "men:TIAUSDC_LONG": {
+    "orderId": "2000001539575183",
     "stopPrice": 0.5183,
-    "entry_sig": "2026-10-25 10:19:28.212000+00:00",
+    "entry_sig": "2026-10-25 10:37:03.427000+00:00",
     "symbol": "TIAUSDC",
     "side": "LONG"
   },
-  "ang:DOGEUSDC_SHORT": {
-    "orderId": "4000001994939690",
-    "stopPrice": 0.08425,
-    "entry_sig": "2026-10-25 09:54:31.575000+00:00",
-    "symbol": "DOGEUSDC",
+  "men:XPLUSDT_SHORT": {
+    "orderId": "2000001539586970",
+    "stopPrice": 0.0842,
+    "entry_sig": "2026-10-25 07:36:52.012000+00:00",
+    "symbol": "XPLUSDT",
     "side": "SHORT"
   },
-  "ang:AXSUSDT_SHORT": {
-    "orderId": "4000001994976461",
-    "stopPrice": 1.0819,
-    "entry_sig": "2026-10-25 10:56:33.660000+00:00",
-    "symbol": "AXSUSDT",
+  "men:ENJUSDT_SHORT": {
+    "orderId": "2000001539626996",
+    "stopPrice": 0.02568,
+    "entry_sig": "2026-10-25 08:53:26.009000+00:00",
+    "symbol": "ENJUSDT",
     "side": "SHORT"
   },
-  "ang:RLCUSDT_SHORT": {
-    "orderId": "4000001994977024",
-    "stopPrice": 0.7252,
-    "entry_sig": "2026-10-25 10:56:54.283000+00:00",
-    "symbol": "RLCUSDT",
+  "men:TLMUSDT_SHORT": {
+    "orderId": "2000001539628815",
+    "stopPrice": 0.001236,
+    "entry_sig": "2026-10-25 10:57:18.814000+00:00",
+    "symbol": "TLMUSDT",
     "side": "SHORT"
   },
-  "ang:COTIUSDT_SHORT": {
-    "orderId": "4000001994978674",
-    "stopPrice": 0.010735,
-    "entry_sig": "2026-10-25 11:07:58.521000+00:00",
-    "symbol": "COTIUSDT",
+  "men:RVNUSDT_SHORT": {
+    "orderId": "2000001539629142",
+    "stopPrice": 0.001393,
+    "entry_sig": "2026-10-25 10:21:48.146000+00:00",
+    "symbol": "RVNUSDT",
     "side": "SHORT"
   },
-  "ang:DOTUSDT_SHORT": {
-    "orderId": "4000001994978955",
-    "stopPrice": 1.0607,
-    "entry_sig": "2026-10-25 10:58:02.298000+00:00",
-    "symbol": "DOTUSDT",
+  "men:BIOUSDC_SHORT": {
+    "orderId": "2000001539630331",
+    "stopPrice": 0.02316,
+    "entry_sig": "2026-10-25 10:42:47.659000+00:00",
+    "symbol": "BIOUSDC",
     "side": "SHORT"
   }
 }
