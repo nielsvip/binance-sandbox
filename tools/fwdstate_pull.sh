@@ -15,6 +15,12 @@ for H in "s1-int:binance-sandbox" "157.180.125.52:binance-sandbox"; do
   RC=$?
   [ "$RC" = "0" ] && break
 done
+# S5 (stocks; disjoint universe from S1 — always attempt, never fallback-gated).
+# USER 2026-10-25: S5 computes per-sym_side stock STATE (250 promoted incl. SHORTs,
+# which exist nowhere else); Mac must carry them for Monday open.
+rsync -az -u --timeout=60 -e "ssh -J niels@157.90.168.35 -o BatchMode=yes -o ConnectTimeout=10" "niels@10.0.0.5:binance-sandbox/data/forward_state/" "$DEST/" >>"$LOG" 2>&1
+RC5=$?
+echo "[$NOW] s5_rc=$RC5" >>"$LOG"
 NEWEST=$(ls -t "$DEST" 2>/dev/null | head -n 1)
 AGE="?"; [ -n "$NEWEST" ] && AGE=$(( $(date +%s) - $(stat -f %m "$DEST/$NEWEST" 2>/dev/null || echo 0) ))
 echo "[$NOW] rc=$RC newest_age_s=$AGE elapsed_s=$((SECONDS-E))" >>"$LOG"

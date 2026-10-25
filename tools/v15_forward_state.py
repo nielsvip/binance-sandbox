@@ -83,10 +83,11 @@ def main(argv):
     n = 0
     # 2026-10-25 USER "STATE calculated within seconds of any 15m bar": the
     # per-sym eval is pure (own NPZ + own progress JSON in, own file out), so
-    # the serial loop parallelizes with identical outputs. Workers=8 keeps
-    # half the S1 box free for herds; single worker on tiny boxes.
+    # the serial loop parallelizes with identical outputs. Workers=4 MAX
+    # (USER 2026-10-25: max 4 syms in RAM at a time — 8-worker passes helped
+    # OOM-reboot S1 twice); single worker on tiny boxes.
     import os as _os
-    workers = 8
+    workers = 4
     try:
         if (_os.cpu_count() or 8) < 4:
             workers = 1
