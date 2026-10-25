@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-25T23:00:06Z",
+ "generated_utc": "2026-10-25T23:20:01Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
@@ -14,7 +14,7 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "filled_today": 488,
+    "filled_today": 492,
     "filled_before_open": 0
    },
    "detail": "no board was filled before the open"
@@ -39,7 +39,7 @@
    "measured": {
     "built_at": "2026-10-25T22:50:42.439005+00:00",
     "n": 527,
-    "age_at_open_s": 564
+    "age_at_open_s": 1759
    },
    "detail": "built 2026-10-25T22:50:42.439005+00:00 n=527"
   },
@@ -48,12 +48,12 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "reports_today": 22,
-    "newest_report": "persym_golive_20261025_refresh_2052.json",
-    "newest_report_at": "2026-10-25T20:57:18Z",
-    "tiers_at": "2026-10-25T20:58:00Z"
+    "reports_today": 23,
+    "newest_report": "persym_golive_20261025_refresh_2252.json",
+    "newest_report_at": "2026-10-25T23:04:50Z",
+    "tiers_at": "2026-10-25T23:05:16Z"
    },
-   "detail": "persym_golive_20261025_refresh_2052.json at 2026-10-25T20:57:18Z, tiers 2026-10-25T20:58:00Z"
+   "detail": "persym_golive_20261025_refresh_2252.json at 2026-10-25T23:04:50Z, tiers 2026-10-25T23:05:16Z"
   },
   {
    "name": "live_set_matches_selection",
@@ -147,19 +147,6 @@
       ]
      },
      {
-      "sym_side": "MPC_LONG",
-      "published_at": "2026-10-25T21:43:30Z",
-      "material": 57,
-      "sample": [
-       "ATR_ADAPTIVE_SIZING_ENABLED",
-       "ATR_ADAPTIVE_STOP_MULT",
-       "ATR_ADAPTIVE_STOP_TF",
-       "AUGMENT_INTO_REENTRY_ENABLED",
-       "COOLDOWN_BARS_TRADIER",
-       "DAYTRADE_DC_STOP_TF"
-      ]
-     },
-     {
       "sym_side": "APO_SHORT",
       "published_at": "2026-10-20T11:43:52Z",
       "material": 55,
@@ -197,6 +184,19 @@
        "BB_SQUEEZE_ENTRY_ENABLED",
        "COUNTER_TREND_ADD_BLOCK_ENABLED"
       ]
+     },
+     {
+      "sym_side": "SHOP_LONG",
+      "published_at": "2026-10-22T04:02:56Z",
+      "material": 42,
+      "sample": [
+       "ATR_ADAPTIVE_SIZING_ENABLED",
+       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
+       "ATR_ADAPTIVE_STOP_MULT",
+       "ATR_ADAPTIVE_STOP_TF",
+       "DC_EDGE_SIZING_MIN_MULT",
+       "DC_HARD_STOP_1H_ENABLED"
+      ]
      }
     ]
    },
@@ -207,16 +207,13 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "symbols": 330,
-    "stale_over_90min": 2,
-    "stale_pct": 0.6,
-    "median_age_min": 30.1,
-    "sample": [
-     "DUSKUSDT",
-     "ONEUSDT"
-    ]
+    "symbols": 201,
+    "stale_over_90min": 0,
+    "stale_pct": 0.0,
+    "median_age_min": 50.0,
+    "sample": []
    },
-   "detail": "2/330 symbols past the live 90-min entry gate (0.6%)"
+   "detail": "0/201 symbols past the live 90-min entry gate (0.0%)"
   },
   {
    "name": "s1_sets_synced",
