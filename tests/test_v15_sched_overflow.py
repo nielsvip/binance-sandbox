@@ -52,6 +52,15 @@ class OverflowTakeTest(unittest.TestCase):
         self.assertFalse(_SCHED._overflow_take_ok(_S2, "NVDA", 0, {}))
 
 
+class OverflowReadinessTest(unittest.TestCase):
+    def test_overflow_venues_probed(self):
+        self.assertEqual(_SCHED._readiness_cand_venues(_S6), ["stocks", "crypto"])
+
+    def test_no_overflow_unchanged(self):
+        self.assertEqual(_SCHED._readiness_cand_venues(_S2), ["crypto"])
+        self.assertEqual(_SCHED._readiness_cand_venues({}), [])
+
+
 class OverflowOrderTest(unittest.TestCase):
     def test_legacy_order_untouched_without_venue_first(self):
         new = ["XRPUSDC", "NVDA", "SOLUSDC", "AAPL"]

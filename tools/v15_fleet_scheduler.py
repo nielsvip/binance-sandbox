@@ -3376,6 +3376,16 @@ def _host_overflow_venues(host):
         return []
 
 
+def _readiness_cand_venues(host):
+    """USER 2026-10-25 overflow: NPZ-readiness probes cover overflow venues too,
+    or every overflow take would die at is_ready with "not probed". Pure."""
+    try:
+        _out = [str(_v) for _v in ((host or {}).get("venues") or [])]
+        return _out + [_v for _v in _host_overflow_venues(host) if _v not in _out]
+    except Exception:
+        return [str(_v) for _v in ((host or {}).get("venues") or [])]
+
+
 def _overflow_take_ok(host, sym, launched_this_tick, running_syms):
     """True only when an overflow-venue sym may launch on this host: the sym is
     in overflow (never own) venues, nothing launched on this host yet this tick
@@ -3910,7 +3920,7 @@ def tick(args, cfg, now):
             readiness_by_host[h["name"]] = sim.get("ready", {}).get(h["name"], {})
             continue
         cand = {}
-        for v in h["venues"]:
+        for v in _readiness_cand_venues(h):
             cand[v] = [s for s in (stocks if v == "stocks" else crypto)]
         rb = {}
         for v, syms in cand.items():

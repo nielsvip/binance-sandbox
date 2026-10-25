@@ -27375,14 +27375,14 @@ async def check_exit_candidates_for_account(
                             getattr(config, "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED", False)
                         )
                         if _pgp_hard_zero and current_gain < 0.08:
-                            hard_exit_reason = f"PEAK_GIVEBACK_GAIN_EROSION_STOP_peak{_pgp_max_g:.2f}%_cur{current_gain:.2f}%"
+                            hard_exit_reason = f"PEAK_GIVEBACK_GAIN_EROSION_STOP_peak{_pgp_max_g:.2f}%_cur{current_gain:.2f}%|VEC_EXACT"
                             logger.critical(
                                 f"🔥[PEAK_GIVEBACK] {position_key}: WAS profitable peak={_pgp_max_g:.2f}% near-zero cur={current_gain:.2f}% — EXITING (technicals first; HTF veto bypassed)"
                             )
                         elif (
                             _pgp_drop_enabled and current_gain < _pgp_max_g - _pgp_drop
                         ):
-                            hard_exit_reason = f"PEAK_GIVEBACK_GAIN_EROSION_STOP_peak{_pgp_max_g:.2f}%_drop{_pgp_drop:.1f}%_cur{current_gain:.2f}%"
+                            hard_exit_reason = f"PEAK_GIVEBACK_GAIN_EROSION_STOP_peak{_pgp_max_g:.2f}%_drop{_pgp_drop:.1f}%_cur{current_gain:.2f}%|VEC_EXACT"
                             logger.critical(
                                 f"🔥[PEAK_GIVEBACK] {position_key}: gave back >{_pgp_drop:.1f}% from peak={_pgp_max_g:.2f}% cur={current_gain:.2f}% — EXITING"
                             )
