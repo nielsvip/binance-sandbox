@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-25 05:07:10 UTC
+# Copilot Status — 2026-10-25 05:12:15 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T05:01:26
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T05:02:27
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T05:03:07
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T05:03:27
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T05:04:28
-- **STALE_INDICATORS** [tradier]  — 2026-10-25T05:05:09
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T05:05:09
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T05:05:29
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T05:06:30
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T05:07:10
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T05:07:31
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T05:08:32
+- **STALE_INDICATORS** [tradier]  — 2026-10-25T05:09:12
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T05:09:12
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T05:09:32
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T05:10:33
+- **STALE_INDICATORS** [tradier]  — 2026-10-25T05:11:14
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T05:11:14
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T05:11:34
 
 ## Missed Trades (trader comparison)
 
@@ -30,7 +30,7 @@ _None_
 **Held:** 4 | **Watching for reentry:** 5 | **Reentered:** 0
 
 - HELD: **ARM** SHORT (tradier) peak +8.3%, now +-0.5%
-- HELD: **WLDUSDC** LONG (crypto) peak +7.3%, now +-0.0%
+- HELD: **WLDUSDC** LONG (crypto) peak +7.3%, now +0.0%
 - HELD: **CDE** SHORT (tradier) peak +5.0%, now +2.1%
 - HELD: **NXE** SHORT (tradier) peak +3.3%, now +-0.4%
 
@@ -49,4 +49,4 @@ _None_
 - [HIGH] ez_share_ind.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] tradier_positions.py running but log stale (126min)
+- [MEDIUM] tradier_positions.py running but log stale (131min)
