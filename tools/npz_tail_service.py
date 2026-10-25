@@ -38,7 +38,14 @@ from npz_tail_store import (  # noqa: E402
 logger = logging.getLogger("npz_tail_service")
 
 STABLE = ("USDT", "USDC", "USD1", "USDS", "BUSD", "FDUSD", "TUSD", "DAI")
-CAT_SIDES = ("crypto_short", "crypto_long", "stock_long", "stock_short")
+CAT_SIDES = (
+    "crypto_short",
+    "crypto_long",
+    "stock_long",
+    "stock_short",
+    "crypto",
+    "stocks",
+)
 SWEEP_S = 30.0
 WORKERS = 8
 COMPACT_AT = 4
@@ -49,6 +56,16 @@ def is_crypto_symbol(sym):
 
 
 def owned_symbols(universe, cat_side):
+    # Rows are side-agnostic: S1 computes ALL crypto rows for S2, S5 ALL stock rows for S6.
+    if cat_side in ("crypto", "stocks"):
+        want_crypto = cat_side == "crypto"
+        return sorted(
+            {
+                s.rsplit("_", 1)[0]
+                for s in universe
+                if "_" in s and is_crypto_symbol(s.rsplit("_", 1)[0]) == want_crypto
+            }
+        )
     side = cat_side.rsplit("_", 1)[-1].upper()
     want_crypto = cat_side.startswith("crypto")
     out = []
@@ -81,7 +98,37 @@ def tip_of(npz_path):
         return None
 
 
-def sweep_symbol(npz_path, symbol, last_close_ts, compute_fn, now_s=None):
+def push_to_sibling(base, tail_abspath, sibling, sibling_base):
+    """Best-effort sub-second mirror of one tail file. Never blocks the hot path."""
+    try:
+        import subprocess
+
+        rel = os.path.relpath(str(tail_abspath), str(base))
+        if rel.startswith(".."):
+            return False
+        dest = f"{sibling}:{sibling_base.rstrip('/')}/{rel}"
+        subprocess.Popen(
+            [
+                "scp",
+                "-q",
+                "-o",
+                "BatchMode=yes",
+                "-o",
+                "ConnectTimeout=5",
+                str(tail_abspath),
+                dest,
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return True
+    except Exception:
+        return False
+
+
+def sweep_symbol(
+    npz_path, symbol, last_close_ts, compute_fn, now_s=None, on_append=None
+):
     """One symbol: append exactly one owed row. Returns appended|current|refused|error."""
     try:
         tip = tip_of(npz_path)
@@ -101,6 +148,13 @@ def sweep_symbol(npz_path, symbol, last_close_ts, compute_fn, now_s=None):
         ok = append_tail_row(npz_path, dict(row, timestamps=int(last_close_ts)))
     except Exception:
         return "error"
+    if ok and on_append is not None:
+        try:
+            from npz_tail_store import tail_path_for_npz
+
+            on_append(str(tail_path_for_npz(npz_path)))
+        except Exception:
+            pass
     return "appended" if ok else "refused"
 
 
@@ -123,6 +177,16 @@ def load_universe(base):
                 s = str(s).strip().upper()
                 if s:
                     uni.append(f"{s}_{side}")
+        except Exception:
+            pass
+    if not any(not is_crypto_symbol(s.rsplit("_", 1)[0]) for s in uni if "_" in s):
+        # symbols_trb_* erased/empty (tradier_rankings incident): fall back to stock NPZs on disk.
+        try:
+            for p in (base / "backtest_v8" / "indicators").glob("*.npz"):
+                sym = p.stem.upper()
+                if sym and not is_crypto_symbol(sym):
+                    uni.append(f"{sym}_LONG")
+                    uni.append(f"{sym}_SHORT")
         except Exception:
             pass
     return sorted(set(uni))
@@ -186,7 +250,7 @@ def npz_for(base, symbol):
     return str(p) if p.exists() else None
 
 
-def sweep_once(base, cat_side, workers=WORKERS):
+def sweep_once(base, cat_side, workers=WORKERS, sibling=None, sibling_base=None):
     uni = load_universe(base)
     owned = owned_symbols(uni, cat_side)
     mode = "crypto" if cat_side.startswith("crypto") else "tradier"
@@ -195,8 +259,11 @@ def sweep_once(base, cat_side, workers=WORKERS):
         return {"error": "no-compute"}
     now = time.time()
     jobs = []
-    for ss in owned:
-        sym = ss.rsplit("_", 1)[0]
+    for entry in owned:
+        if entry.endswith(("_LONG", "_SHORT")):
+            sym = entry.rsplit("_", 1)[0]
+        else:
+            sym = entry
         npz = npz_for(base, sym)
         if npz is None:
             continue
@@ -213,13 +280,24 @@ def sweep_once(base, cat_side, workers=WORKERS):
         "refused": 0,
         "error": 0,
         "compacted": 0,
+        "mirrored": 0,
     }
     if not jobs:
         return rec
 
+    def on_append(tail_abspath):
+        if sibling:
+            try:
+                if push_to_sibling(base, tail_abspath, sibling, sibling_base or base):
+                    rec["mirrored"] += 1
+            except Exception:
+                pass
+
     def one(job):
         npz, sym, lc = job
-        r = sweep_symbol(npz, sym, lc, compute, now_s=now)
+        r = sweep_symbol(
+            npz, sym, lc, compute, now_s=now, on_append=on_append if sibling else None
+        )
         c = 0
         if r == "appended" and tail_len(npz) >= COMPACT_AT:
             try:
@@ -242,6 +320,8 @@ def main():
     ap.add_argument("--once", action="store_true")
     ap.add_argument("--sweep-s", type=float, default=SWEEP_S)
     ap.add_argument("--workers", type=int, default=WORKERS)
+    ap.add_argument("--sibling", default=os.environ.get("TAIL_SIBLING", ""))
+    ap.add_argument("--sibling-base", default=os.environ.get("TAIL_SIBLING_BASE", ""))
     a = ap.parse_args()
     if a.cat_side not in CAT_SIDES:
         print(
@@ -258,7 +338,13 @@ def main():
         base = a.base or str(ROOT)
     while True:
         try:
-            rec = sweep_once(base, a.cat_side, workers=a.workers)
+            rec = sweep_once(
+                base,
+                a.cat_side,
+                workers=a.workers,
+                sibling=a.sibling or None,
+                sibling_base=a.sibling_base or None,
+            )
         except Exception as exc:
             rec = {"error": f"{type(exc).__name__}: {exc}"}
         print(json.dumps(rec, sort_keys=True), flush=True)

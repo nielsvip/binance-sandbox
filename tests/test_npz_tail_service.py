@@ -12,12 +12,64 @@ from tools.npz_tail_service import (
 )
 
 
+def test_universe_falls_back_to_stock_npz(tmp_path):
+    import numpy as np
+
+    from tools.npz_tail_service import load_universe, owned_symbols
+
+    (tmp_path / "symbols_trb_long.json").write_text("[]")
+    (tmp_path / "symbols_trb_short.json").write_text("[]")
+    ind = tmp_path / "backtest_v8" / "indicators"
+    ind.mkdir(parents=True)
+    np.savez_compressed(
+        str(ind / "AAPL.npz"), timestamps=np.array([1]), close=np.ones(1)
+    )
+    np.savez_compressed(
+        str(ind / "BTCUSDC.npz"), timestamps=np.array([1]), close=np.ones(1)
+    )
+    uni = load_universe(tmp_path)
+    assert "AAPL_LONG" in uni and "AAPL_SHORT" in uni
+    assert owned_symbols(uni, "stocks") == ["AAPL"]
+
+
 def test_owned_symbols_split():
     uni = ["BTCUSDC_LONG", "BTCUSDC_SHORT", "AAPL_LONG", "AAPL_SHORT", "XMRUSDT_LONG"]
     assert owned_symbols(uni, "crypto_short") == ["BTCUSDC_SHORT"]
     assert owned_symbols(uni, "crypto_long") == ["BTCUSDC_LONG", "XMRUSDT_LONG"]
     assert owned_symbols(uni, "stock_long") == ["AAPL_LONG"]
     assert owned_symbols(uni, "stock_short") == ["AAPL_SHORT"]
+    assert owned_symbols(uni, "crypto") == ["BTCUSDC", "XMRUSDT"]
+    assert owned_symbols(uni, "stocks") == ["AAPL"]
+
+
+def test_on_append_fires_once(tmp_path):
+    from npz_tail_store import tail_len
+
+    npz = tmp_path / "TSTCUSDT.npz"
+    np.savez_compressed(
+        str(npz),
+        timestamps=np.array([1792899000 - 900], dtype=np.int64),
+        close=np.ones(1),
+    )
+    fired = []
+    r = sweep_symbol(
+        str(npz),
+        "TSTCUSDT",
+        1792899000,
+        lambda s, t: {"timestamps": t, "close": 3.0},
+        now_s=1792899000 + 120.0,
+        on_append=fired.append,
+    )
+    assert r == "appended" and len(fired) == 1 and fired[0].endswith(".jsonl")
+    r2 = sweep_symbol(
+        str(npz),
+        "TSTCUSDT",
+        1792899000,
+        lambda s, t: {"timestamps": t},
+        now_s=1792899000 + 120.0,
+        on_append=fired.append,
+    )
+    assert r2 == "current" and len(fired) == 1
 
 
 def test_sweep_appends_one_row_idempotent(tmp_path):
