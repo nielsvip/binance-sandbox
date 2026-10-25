@@ -221,6 +221,20 @@ def test_home_ips_whitelisted():
     assert cfg["home_ips"] == ["200.118.16.10"]
 
 
+def test_ban_fallback_london_first():
+    assert vpn.BAN_FALLBACK_ORDER[0] == "Surfshark. WireGuard®"
+    cands = [{"name": n} for n in ["OVPN:sg-sng", "OVPN:uk-lon", "Surfshark. Dausos"]]
+    assert [c["name"] for c in vpn.order_candidates(cands)] == [
+        "OVPN:uk-lon",
+        "OVPN:sg-sng",
+        "Surfshark. Dausos",
+    ]
+    cands = [{"name": n} for n in ["OVPN:de-fra-static", "Surfshark. WireGuard®"]]
+    assert [c["name"] for c in vpn.order_candidates(cands)][
+        0
+    ] == "Surfshark. WireGuard®"
+
+
 def test_slot_rank_covers_static_geos():
     assert vpn.slot_rank("br-sao-static.prod.surfshark.com") == 3
     assert vpn.slot_rank("au-syd-static.prod.surfshark.com") == 3

@@ -1475,3 +1475,31 @@ def test_untagged_far_apart_stays_unknown():
     assert got.get("rpnl") is None
     assert got.get("sync_hidden") is None
     assert sm["unknown"] == 1
+
+
+def test_backfill_hold_days_caps_stale_fills():
+    # DASH/AR lesson: anonymous leftover fills older than broker_hold_days
+    # never price (they priced dup re-logs off 28-35 h stale basis).
+    # Default (None) follows expiry_days — existing behavior unchanged.
+    from datetime import timedelta
+
+    now = datetime.now(timezone.utc)
+    iso = lambda dt: dt.isoformat()
+    books = {("H", "LONG"): [[(now - timedelta(hours=30)).timestamp(), 10.0, 100.0]]}
+    cl = _ev(iso(now), "H", "LONG", "CLOSE", 10.0, 110.0)
+    cl["reason"] = "STRAT_CLOSE"
+    out, sm = srv.realized_walk(
+        [cl],
+        broker_books={k: [list(vv) for vv in v] for k, v in books.items()},
+        broker_hold_days=1.0,
+    )
+    got = [e for e in out if e.get("action") == "CLOSE"][0]
+    assert got.get("rpnl") is None and sm["unknown"] == 1
+    out2, sm2 = srv.realized_walk(
+        [cl],
+        broker_books={k: [list(vv) for vv in v] for k, v in books.items()},
+        broker_hold_days=2.0,
+    )
+    got2 = [e for e in out2 if e.get("action") == "CLOSE"][0]
+    assert got2.get("rpnl") == round(10.0 * (110.0 - 100.0), 2)
+    assert sm2["unknown"] == 0

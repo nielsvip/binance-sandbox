@@ -404,7 +404,7 @@ def ensure_tunnel(wl, state):
         return True
     if (egress_ip() or "") in wl and binance_probe().get("ping") != 418:
         return True
-    cands = eligible_slots(wl, state, None)
+    cands = order_candidates(eligible_slots(wl, state, None))
     if not cands:
         log(
             "INVARIANT FAIL-CLOSED: no whitelisted slot available, leaving link down (no non-whitelisted egress)"
@@ -567,6 +567,8 @@ def do_rotate(target=None, force_tunnel=False):
         if not cands:
             log(f"no such slot {target}")
             return False
+    if not target:
+        cands = order_candidates(cands)
     if not cands:
         log("no eligible slot — falling back to naked egress")
         return try_naked(wl, state, old_ip)
