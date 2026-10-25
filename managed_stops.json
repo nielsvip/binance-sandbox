@@ -1,9 +1,30 @@
 {
+  "flz:BTCUSDC_SHORT": {
+    "orderId": "1000002642349117",
+    "stopPrice": 80825.1,
+    "entry_sig": "2026-10-25 08:03:45.324000+00:00",
+    "symbol": "BTCUSDC",
+    "side": "SHORT"
+  },
   "flz:XMRUSDT_SHORT": {
-    "orderId": "1000002642339066",
+    "orderId": "1000002642350725",
     "stopPrice": 636.64,
     "entry_sig": "2026-10-25 07:47:04.427000+00:00",
     "symbol": "XMRUSDT",
+    "side": "SHORT"
+  },
+  "flz:XMRUSDT_LONG": {
+    "orderId": "1000002642350959",
+    "stopPrice": 603.04,
+    "entry_sig": "2026-10-25 08:05:24.530000+00:00",
+    "symbol": "XMRUSDT",
+    "side": "LONG"
+  },
+  "flz:DOGEUSDC_SHORT": {
+    "orderId": "1000002642352260",
+    "stopPrice": 0.07706,
+    "entry_sig": "2026-10-25 08:06:50.123000+00:00",
+    "symbol": "DOGEUSDC",
     "side": "SHORT"
   }
 }
