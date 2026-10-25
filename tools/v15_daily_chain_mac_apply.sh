@@ -261,27 +261,34 @@ else
 fi
 # USER 2026-10-13: live trades EXACTLY the latest published board per sym_side -> source = S1 per_sym_history publish rows
 # (md5-verified vs the sheet manifest, board evidence, no re-eval), every board key pinned per-sym (--pin-all).
-# Fallback (S1 build/pull failed): the legacy avg_delta selection, logged.
+# A failed S1 build/pull fails this chain; stale avg-delta selection is not substituted.
 PSEL=$DEST/data/published_selection.json
 GLOG=$ROOT/data/daily_chain/persym_golive_${DATE}.log
 [ "$DRYRUN" = 1 ] && GLOG=$DEST/persym_golive_${DATE}.log
+DELTA=$DEST/data/daily_chain/published_selection_delta_${DATE}.json
 mkdir -p "$(dirname "$PSEL")"
 if rsync -az -e "$SSH" tools/v15_published_selection.py "$S1:binance-sandbox/tools/v15_published_selection.py" 2>/dev/null \
   && $SSH "$S1" "cd ~/binance-sandbox && rm -f data/published_selection.json && /home/niels/.conda/envs/binance_env_mac/bin/python -u tools/v15_published_selection.py --out data/published_selection.json" 2>&1 | tail -1 | sed 's/^/[mac-apply] step5b /' \
   && rsync -az -e "$SSH" "$S1:binance-sandbox/data/published_selection.json" "$PSEL" 2>/dev/null && [ -s "$PSEL" ]; then
-  log "step5b per-sym go-live PUBLISHED --pin-all ${GAPPLY:-DRY-RUN} (source $PSEL -> $GOUT)"
-  timeout 2400 "$PY" -u tools/v15_persym_golive.py --published "$PSEL" --pin-all $GAPPLY --out "$GOUT" --date "$DATE" >"$GLOG" 2>&1
-  GRC=$?
+  "$PY" -u tools/golive_delta_selection.py --selection "$PSEL" --out "$DELTA" >"$GLOG" 2>&1 || fail 5b "delta selection failed; see $GLOG"
+  NEED=$("$PY" -c 'import json,sys; print(int(json.load(open(sys.argv[1]))["_meta"]["n"]))' "$DELTA") || fail 5b "delta count unreadable"
+  log "step5b published selection: $NEED material sym_sides require go-live"
+  if [ "$NEED" -gt 0 ]; then
+    log "step5b per-sym go-live DELTA --pin-all ${GAPPLY:-DRY-RUN} (source $DELTA -> $GOUT)"
+    timeout 2400 "$PY" -u tools/v15_persym_golive.py --published "$DELTA" --pin-all $GAPPLY --out "$GOUT" --date "$DATE" >>"$GLOG" 2>&1
+    GRC=$?
+  else
+    GRC=0
+    log "step5b every published board already live or held by a newer measured decision"
+  fi
 else
-  log "step5b WARN: published selection build/pull FAILED -> legacy per-sym go-live --all-finished ${GAPPLY:-DRY-RUN} (selection $SEL -> $GOUT)"
-  timeout 2400 "$PY" -u tools/v15_persym_golive.py --all-finished $GAPPLY --selection "$SEL" --out "$GOUT" --date "$DATE" >"$GLOG" 2>&1
-  GRC=$?
+  fail 5b "published selection build or pull failed; refusing stale fallback"
 fi
 tail -n 12 "$GLOG" | grep -v "Warning\|Loaded 1 symbols\|  PASS" || true
-[ "$GRC" -eq 0 ] && [ -s "$GOUT" ] || fail 5b "per-sym go-live rc=$GRC or report missing; see $GLOG"
+[ "$GRC" -eq 0 ] && { [ "$NEED" -eq 0 ] || [ -s "$GOUT" ]; } || fail 5b "per-sym go-live rc=$GRC or report missing; see $GLOG"
 TOUT=$ROOT/data/persym_size_tiers.json
 [ "$DRYRUN" = 1 ] && TOUT=$DEST/persym_size_tiers.json
-if [ -s "$GOUT" ]; then
+if [ "$NEED" -gt 0 ] && [ -s "$GOUT" ]; then
   log "step5c size tiers -> $TOUT"
   "$PY" -u tools/v15_persym_size_tiers.py --report "$GOUT" --out "$TOUT" || log "step5c size tiers rc=$? (non-fatal; live keeps the previous tiers file)"
 else

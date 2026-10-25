@@ -1,1 +1,77 @@
-{"ts":"2026-10-25T23:45:00Z","round":"?","alerts":"","elapsed_s":40}
+{
+  "ts": "2026-10-25T23:55:10.842336+00:00",
+  "tick": "2026-10-25T23:54:01.633271+00:00",
+  "tick_age_s": 69,
+  "round": {
+    "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run36.json",
+    "round": "run36",
+    "complete": false,
+    "universe_n": 172,
+    "n_complete": 120,
+    "n_pending": 52,
+    "n_refused_only": 0,
+    "n_excluded": 0,
+    "n_launchable_pending": 26,
+    "hosts_not_visible": []
+  },
+  "hosts": {
+    "s5": {
+      "cpu_pct": 44,
+      "slots": "3/4",
+      "observed_running": [
+        "CMC",
+        "CME",
+        "COHR"
+      ],
+      "published_last_hour": 2,
+      "idle_reason": "no eligible ready symbol for this host",
+      "mem_avail_mb": 27700
+    },
+    "s1": {
+      "cpu_pct": 100,
+      "slots": "4/4",
+      "observed_running": [
+        "PTBUSDT",
+        "RLCUSDT",
+        "WLDUSDC"
+      ],
+      "published_last_hour": 0,
+      "idle_reason": "slots full",
+      "mem_avail_mb": 14788
+    },
+    "s2": {
+      "cpu_pct": 100,
+      "slots": "4/4",
+      "observed_running": [
+        "BBUSDT",
+        "ETHFIUSDC",
+        "STRKUSDT"
+      ],
+      "published_last_hour": 1,
+      "idle_reason": "slots full",
+      "mem_avail_mb": 17094
+    },
+    "s6": {
+      "cpu_pct": 65,
+      "slots": "4/4",
+      "observed_running": [
+        "PLTR",
+        "PR",
+        "PRI",
+        "PWR"
+      ],
+      "published_last_hour": 2,
+      "idle_reason": "slots full",
+      "mem_avail_mb": 16608
+    }
+  },
+  "one_hour_total": 5,
+  "alerts": [
+    "LOW_THROUGHPUT:s5:2/h",
+    "LOW_CPU:s5:44%",
+    "LOW_THROUGHPUT:s1:0/h",
+    "LOW_THROUGHPUT:s2:1/h",
+    "LOW_THROUGHPUT:s6:2/h",
+    "LOW_CPU:s6:65%"
+  ]
+}

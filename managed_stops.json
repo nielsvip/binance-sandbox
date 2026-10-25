@@ -1,37 +1,51 @@
 {
-  "men:ENJUSDT_SHORT": {
-    "orderId": "2000001540398006",
-    "stopPrice": 0.0249,
-    "entry_sig": "2026-10-25 19:44:36.513000+00:00",
-    "symbol": "ENJUSDT",
+  "ang:ZENUSDT_SHORT": {
+    "orderId": "4000001995740617",
+    "stopPrice": 5.775,
+    "entry_sig": "2026-10-25 19:44:35.067000+00:00",
+    "symbol": "ZENUSDT",
     "side": "SHORT"
   },
-  "men:ZROUSDT_LONG": {
-    "orderId": "2000001540460916",
-    "stopPrice": 1.7281,
-    "entry_sig": "2026-10-25 20:44:52.795000+00:00",
-    "symbol": "ZROUSDT",
+  "ang:ATOMUSDT_SHORT": {
+    "orderId": "4000001996029857",
+    "stopPrice": 1.651,
+    "entry_sig": "2026-10-25 23:37:14.371000+00:00",
+    "symbol": "ATOMUSDT",
+    "side": "SHORT"
+  },
+  "ang:UNIUSDC_LONG": {
+    "orderId": "4000001996035575",
+    "stopPrice": 6.765,
+    "entry_sig": "2026-10-25 13:14:11.526000+00:00",
+    "symbol": "UNIUSDC",
     "side": "LONG"
   },
-  "men:RLCUSDT_LONG": {
-    "orderId": "2000001540689227",
-    "stopPrice": 0.5327,
-    "entry_sig": "2026-10-25 23:33:23.093000+00:00",
-    "symbol": "RLCUSDT",
-    "side": "LONG"
+  "ang:MAGICUSDT_SHORT": {
+    "orderId": "4000001996039425",
+    "stopPrice": 0.08348,
+    "entry_sig": "2026-10-25 23:37:47.143000+00:00",
+    "symbol": "MAGICUSDT",
+    "side": "SHORT"
   },
-  "men:RAYSOLUSDT_LONG": {
-    "orderId": "2000001540691869",
-    "stopPrice": 1.8098,
-    "entry_sig": "2026-10-25 23:33:56.167000+00:00",
-    "symbol": "RAYSOLUSDT",
-    "side": "LONG"
+  "ang:DOTUSDT_SHORT": {
+    "orderId": "4000001996033879",
+    "stopPrice": 1.0326,
+    "entry_sig": "2026-10-25 23:38:39.940000+00:00",
+    "symbol": "DOTUSDT",
+    "side": "SHORT"
   },
-  "men:MOVEUSDT_SHORT": {
-    "orderId": "2000001540699558",
-    "stopPrice": 0.007124,
-    "entry_sig": "2026-10-25 23:33:37.579000+00:00",
-    "symbol": "MOVEUSDT",
+  "ang:LTCUSDC_SHORT": {
+    "orderId": "4000001996044208",
+    "stopPrice": 56.75,
+    "entry_sig": "2026-10-25 23:46:12.314000+00:00",
+    "symbol": "LTCUSDC",
+    "side": "SHORT"
+  },
+  "ang:COTIUSDT_SHORT": {
+    "orderId": "4000001996045348",
+    "stopPrice": 0.010526,
+    "entry_sig": "2026-10-25 23:46:43.991000+00:00",
+    "symbol": "COTIUSDT",
     "side": "SHORT"
   }
 }
