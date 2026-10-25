@@ -21,6 +21,12 @@ done
 rsync -az -u --timeout=60 -e "ssh -J niels@157.90.168.35 -o BatchMode=yes -o ConnectTimeout=10" "niels@10.0.0.5:binance-sandbox/data/forward_state/" "$DEST/" >>"$LOG" 2>&1
 RC5=$?
 echo "[$NOW] s5_rc=$RC5" >>"$LOG"
+# S2 (crypto alpha half-B) + S6 (stocks alpha half-B) — disjoint halves, always attempt.
+# USER 2026-10-25: four-box alpha split, no side division (S1/S2 crypto, S5/S6 stocks).
+for H in "10.0.0.4" "10.0.0.6"; do
+  rsync -az -u --timeout=60 -e "ssh -J niels@157.90.168.35 -o BatchMode=yes -o ConnectTimeout=10" "niels@$H:binance-sandbox/data/forward_state/" "$DEST/" >>"$LOG" 2>&1
+  echo "[$NOW] ${H}_rc=$?" >>"$LOG"
+done
 NEWEST=$(ls -t "$DEST" 2>/dev/null | head -n 1)
 AGE="?"; [ -n "$NEWEST" ] && AGE=$(( $(date +%s) - $(stat -f %m "$DEST/$NEWEST" 2>/dev/null || echo 0) ))
 echo "[$NOW] rc=$RC newest_age_s=$AGE elapsed_s=$((SECONDS-E))" >>"$LOG"
