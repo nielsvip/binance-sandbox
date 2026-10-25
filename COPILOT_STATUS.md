@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-25 07:24:20 UTC
+# Copilot Status — 2026-10-25 07:29:25 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-25T07:21:17
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T07:21:17
-- **RATIO_IMBALANCE** [crypto] ang — 2026-10-25T07:21:27
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T07:21:27
-- **RATIO_IMBALANCE** [crypto] ang — 2026-10-25T07:22:28
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T07:22:28
-- **STALE_INDICATORS** [tradier]  — 2026-10-25T07:23:19
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T07:23:19
-- **RATIO_IMBALANCE** [crypto] ang — 2026-10-25T07:23:29
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T07:23:29
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-25T07:26:32
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T07:26:32
+- **STALE_INDICATORS** [tradier]  — 2026-10-25T07:27:23
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T07:27:23
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-25T07:27:33
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T07:27:33
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-25T07:28:34
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T07:28:34
+- **STALE_INDICATORS** [tradier]  — 2026-10-25T07:29:25
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T07:29:25
 
 ## Missed Trades (trader comparison)
 
@@ -31,11 +31,11 @@ _None_
 
 - HELD: **ARM** SHORT (tradier) peak +8.3%, now +-0.5%
 - HELD: **WLDUSDC** LONG (crypto) peak +7.3%, now +-1.1%
-- HELD: **DASHUSDT** SHORT (crypto) peak +5.8%, now +-0.6%
+- HELD: **DASHUSDT** SHORT (crypto) peak +5.8%, now +-0.5%
 - HELD: **CDE** SHORT (tradier) peak +5.0%, now +2.1%
 - HELD: **DOGEUSDC** SHORT (crypto) peak +4.5%, now +0.3%
-- HELD: **GRAMUSDT** SHORT (crypto) peak +4.0%, now +-0.4%
-- HELD: **HYPEUSDT** SHORT (crypto) peak +3.6%, now +-0.5%
+- HELD: **GRAMUSDT** SHORT (crypto) peak +4.0%, now +-0.2%
+- HELD: **HYPEUSDT** SHORT (crypto) peak +3.6%, now +-0.4%
 - HELD: **NXE** SHORT (tradier) peak +3.3%, now +-0.4%
 
 - WATCHING: **XMRUSDT** LONG (crypto) peaked +7.0%, exited 0m ago
