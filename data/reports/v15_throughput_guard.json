@@ -1,5 +1,5 @@
 {
- "at": "2026-10-25T05:11:01Z",
+ "at": "2026-10-25T06:11:03Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
@@ -9,18 +9,16 @@
    "published_n": 0,
    "flat_or_worse": 0,
    "unknown": 0,
-   "boards_running": [
-    "EGLDUSDT_SHORT"
-   ],
-   "mem_avail_mb": 5846,
-   "load1": 31.55,
+   "boards_running": [],
+   "mem_avail_mb": 9864,
+   "load1": 17.84,
    "nproc": 16,
-   "slots": "1/4",
-   "binding_reason": "board CPU DEMAND, not host capacity: 1 running sides pull only 4.7 cores (4.68 core/side) of 11.5 usable -> 10.2 boards/h. 12/h needs 5.5 board-cores = 1 sides at this per-side draw (niced filler 5.68 cores yields). Lever: more concurrent sides (RAM-bound) or deeper eval pipelining per side (V15_PREFETCH_TASKCAP on an idle host).",
+   "slots": "0/4",
+   "binding_reason": "host IDLE, not CPU-bound: 0 running sides pull 0.0 cores of 9.7 usable -> 0.0 boards/h against target 12/h. Nothing is dispatched here: 12/h needs 5.5 board-cores. Check the scheduler's idle_reason for this host (slots 0/4) and whether the round is exhausted (tools/v15_round_watchdog.sh quorum rule rolls it).",
    "error": null,
    "published": [],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 63.1,
+   "minutes_since_last_improved": 123.2,
    "last_improved_symside": "ZKUSDT_SHORT",
    "cadence_ok": false,
    "improved_gap_min_median_24h": 23.4,
@@ -28,87 +26,79 @@
    "improved_finishes_24h": 9,
    "board_cpu_s_median_24h": 1657.1,
    "board_wall_s_median_24h": 1522.0295741558075,
-   "board_cores": 4.68,
-   "nonboard_cores_competing": 4.46,
-   "nonboard_cores_niced": 5.68,
+   "board_cores": 0.0,
+   "nonboard_cores_competing": 6.34,
+   "nonboard_cores_niced": 3.2,
    "cores_by_bucket": {
-    "other": 1.76,
-    "live_helpers": 2.14,
-    "boards": 4.68,
-    "klines_append": 0.56
+    "other": 2.32,
+    "live_helpers": 3.04,
+    "klines_append": 0.98
    },
    "cores_by_bucket_niced": {
-    "klines_vault": 0.29,
-    "other": 5.39
+    "klines_vault": 1.98,
+    "other": 1.22
    }
   },
   "s2": {
-   "improved": 4,
-   "improved_per_hour": 4.0,
-   "published_n": 4,
+   "improved": 3,
+   "improved_per_hour": 3.0,
+   "published_n": 3,
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "DUSKUSDT_LONG",
-    "EDUUSDT_LONG",
-    "ETCUSDT_LONG",
-    "XRPUSDC_LONG"
+    "ARBUSDC_LONG",
+    "ETHFIUSDC_LONG",
+    "ETHUSDC_LONG",
+    "FILUSDC_LONG"
    ],
-   "mem_avail_mb": 7793,
-   "load1": 26.21,
+   "mem_avail_mb": 7302,
+   "load1": 44.91,
    "nproc": 16,
    "slots": "4/4",
-   "binding_reason": "concurrency 4 boards: 12/h needs <= 20 min per sym_side (measured median 18 min) \u2014 raise concurrent sides or cut evals per board",
+   "binding_reason": "scheduler disk guard (disk 2722 MB, mem 6944 MB, est_pair 8070 MB) \u2014 slots 4/4",
    "error": null,
    "published": [
     {
-     "symside": "BTCUSDC_LONG",
-     "at": "2026-10-25T04:22:48Z",
-     "baseline": 14.235711297044643,
-     "final": 18.344280991296234,
-     "state": "improved"
-    },
-    {
-     "symside": "CRVUSDC_LONG",
-     "at": "2026-10-25T04:49:15Z",
-     "baseline": -4.973815387164055,
-     "final": 44.483548875606274,
-     "state": "improved"
-    },
-    {
-     "symside": "DASHUSDT_LONG",
-     "at": "2026-10-25T04:19:29Z",
-     "baseline": -0.7739581828304898,
-     "final": 11.148019264997627,
+     "symside": "EDUUSDT_LONG",
+     "at": "2026-10-25T05:34:33Z",
+     "baseline": 79.27180073349496,
+     "final": 86.61593588011411,
      "state": "improved"
     },
     {
      "symside": "MAGICUSDT_SHORT",
-     "at": "2026-10-25T04:46:50Z",
+     "at": "2026-10-25T05:35:53Z",
      "baseline": 50.16555605291432,
-     "final": 54.075745589991605,
+     "final": 54.57970976515297,
+     "state": "improved"
+    },
+    {
+     "symside": "XRPUSDC_SHORT",
+     "at": "2026-10-25T05:13:09Z",
+     "baseline": 19.97578270411428,
+     "final": 30.702040258813255,
      "state": "improved"
     }
    ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 21.4,
-   "last_improved_symside": "CRVUSDC_LONG",
+   "minutes_since_last_improved": 14.3,
+   "last_improved_symside": "ALGOUSDT_LONG",
    "cadence_ok": false,
-   "improved_gap_min_median_24h": 5.0,
+   "improved_gap_min_median_24h": 5.2,
    "improved_gap_min_max_24h": 642.2,
-   "improved_finishes_24h": 110,
-   "board_cpu_s_median_24h": 2272.6,
-   "board_wall_s_median_24h": 1105.1882028579712,
-   "board_cores": 8.23,
-   "nonboard_cores_competing": 6.21,
-   "nonboard_cores_niced": 1.45,
+   "improved_finishes_24h": 116,
+   "board_cpu_s_median_24h": 2300.0,
+   "board_wall_s_median_24h": 1126.832993030548,
+   "board_cores": 11.01,
+   "nonboard_cores_competing": 3.06,
+   "nonboard_cores_niced": 1.81,
    "cores_by_bucket": {
-    "other": 4.22,
-    "boards": 8.23,
-    "live_helpers": 1.99
+    "other": 0.93,
+    "boards": 11.01,
+    "live_helpers": 2.13
    },
    "cores_by_bucket_niced": {
-    "other": 1.45
+    "other": 1.81
    }
   }
  },
