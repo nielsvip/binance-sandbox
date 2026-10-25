@@ -1,5 +1,5 @@
 {
- "at": "2026-10-25T16:11:03Z",
+ "at": "2026-10-25T17:11:21Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
@@ -13,9 +13,9 @@
    "mem_avail_mb": null,
    "load1": null,
    "nproc": null,
-   "slots": "0/4",
-   "binding_reason": "scheduler mem guard (disk 23356 MB, mem 2627 MB, est_pair 6000 MB) \u2014 slots 0/4",
-   "error": "no output",
+   "slots": null,
+   "binding_reason": "concurrency 0 boards: 12/h needs <= 0 min per sym_side \u2014 raise concurrent sides or cut evals per board",
+   "error": "mux_client_request_session: read from master failed: Broken pipe\nControlSocket /Users/niels/.ssh/cm-s1-int already exists, disabling multiplexing\nConnection to 127.0.0.1 closed by remote host.\n",
    "published": null,
    "cadence_target_min": 5.0,
    "minutes_since_last_improved": null,
@@ -33,43 +33,45 @@
    "cores_by_bucket_niced": null
   },
   "s2": {
-   "improved": 0,
-   "improved_per_hour": 0.0,
-   "published_n": 0,
+   "improved": 1,
+   "improved_per_hour": 1.0,
+   "published_n": 1,
    "flat_or_worse": 0,
    "unknown": 0,
-   "boards_running": [
-    "BATUSDT_LONG",
-    "BEAMXUSDT_LONG",
-    "BNBUSDC_LONG",
-    "BTCDOMUSDT_LONG"
-   ],
-   "mem_avail_mb": 6865,
-   "load1": 48.16,
+   "boards_running": [],
+   "mem_avail_mb": 23963,
+   "load1": 6.86,
    "nproc": 16,
-   "slots": "4/4",
-   "binding_reason": "concurrency 4 boards: 12/h needs <= 20 min per sym_side (measured median 20 min) \u2014 raise concurrent sides or cut evals per board",
+   "slots": null,
+   "binding_reason": "host IDLE, not CPU-bound: 0 running sides pull 0.0 cores of 13.8 usable -> 0.0 boards/h against target 12/h. Nothing is dispatched here: 12/h needs 7.5 board-cores. Check the scheduler's idle_reason for this host (slots ?) and whether the round is exhausted (tools/v15_round_watchdog.sh quorum rule rolls it).",
    "error": null,
-   "published": [],
+   "published": [
+    {
+     "symside": "BEAMXUSDT_LONG",
+     "at": "2026-10-25T16:31:56Z",
+     "baseline": 5.04982372012564,
+     "final": 66.49426645775897,
+     "state": "improved"
+    }
+   ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 10.0,
-   "last_improved_symside": "BATUSDT_SHORT",
+   "minutes_since_last_improved": 41.1,
+   "last_improved_symside": "BEAMXUSDT_LONG",
    "cadence_ok": false,
-   "improved_gap_min_median_24h": 6.2,
+   "improved_gap_min_median_24h": 6.1,
    "improved_gap_min_max_24h": 87.1,
-   "improved_finishes_24h": 137,
-   "board_cpu_s_median_24h": 2210.6,
-   "board_wall_s_median_24h": 1220.4077770709991,
-   "board_cores": 10.86,
-   "nonboard_cores_competing": 3.11,
-   "nonboard_cores_niced": 1.57,
+   "improved_finishes_24h": 138,
+   "board_cpu_s_median_24h": 2241.7,
+   "board_wall_s_median_24h": 1252.4267070293427,
+   "board_cores": 0.0,
+   "nonboard_cores_competing": 2.16,
+   "nonboard_cores_niced": 3.92,
    "cores_by_bucket": {
-    "other": 1.16,
-    "live_helpers": 1.95,
-    "boards": 10.86
+    "other": 0.02,
+    "live_helpers": 2.14
    },
    "cores_by_bucket_niced": {
-    "other": 1.57
+    "other": 3.92
    }
   }
  },
