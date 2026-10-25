@@ -18,9 +18,11 @@ probe_worker() {
 }
 NOWS=$(date +%s)
 S2=$(probe_worker 10.0.0.4 s2); S5=$(probe_worker 10.0.0.5 s5); S6=$(probe_worker 10.0.0.6 s6)
-S1=$(/opt/homebrew/bin/timeout 25 ssh -o BatchMode=yes -o ConnectTimeout=8 s1-int "pgrep -c -f 'v15_pilot[.]py --sym-side'; cat /proc/loadavg | cut -d' ' -f1" 2>/dev/null | tr '\n' ' ')
-TICK=$(/opt/homebrew/bin/timeout 25 ssh -o BatchMode=yes -o ConnectTimeout=8 s1-int "grep '^{\"now\"' /tmp/v15_fleet_sched.log | tail -1" 2>/dev/null)
-ROUND=$(/opt/homebrew/bin/timeout 25 ssh -o BatchMode=yes -o ConnectTimeout=8 s1-int "timeout 30 python3 -c \"import json; d=json.load(open('/home/niels/binance-sandbox/data/reports/full_course_round_run36.json')); print(str(d.get('n_complete'))+'/'+str(d.get('universe_n'))+' pending:'+str(d.get('n_pending')))\"" 2>/dev/null)
+S1H=s1-int
+S1=$(/opt/homebrew/bin/timeout 20 ssh -o BatchMode=yes -o ConnectTimeout=6 $S1H "pgrep -c -f 'v15_pilot[.]py --sym-side'; cat /proc/loadavg | cut -d' ' -f1" 2>/dev/null | tr '\n' ' ')
+[ -z "$S1" ] && { S1H=s1-pub; S1=$(/opt/homebrew/bin/timeout 20 ssh -o BatchMode=yes -o ConnectTimeout=6 $S1H "pgrep -c -f 'v15_pilot[.]py --sym-side'; cat /proc/loadavg | cut -d' ' -f1" 2>/dev/null | tr '\n' ' '); }
+TICK=$(/opt/homebrew/bin/timeout 20 ssh -o BatchMode=yes -o ConnectTimeout=6 $S1H "grep '^{\"now\"' /tmp/v15_fleet_sched.log | tail -1" 2>/dev/null)
+ROUND=$(/opt/homebrew/bin/timeout 20 ssh -o BatchMode=yes -o ConnectTimeout=6 $S1H "timeout 30 python3 -c \"import json; d=json.load(open('/home/niels/binance-sandbox/data/reports/full_course_round_run36.json')); print(str(d.get('n_complete'))+'/'+str(d.get('universe_n'))+' pending:'+str(d.get('n_pending')))\"" 2>/dev/null)
 ALERTS=""
 chk() {
   local name=$1 rec=$2
