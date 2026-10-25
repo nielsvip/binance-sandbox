@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-25T16:57:19Z",
+ "generated_utc": "2026-10-25T17:03:03Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 437.5,
+  "age_s": 105.7,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 4524,
-  "proc_age_s": 47544.0,
-  "log_age_s": 461.5,
+  "proc_age_s": 47889.0,
+  "log_age_s": 2.0,
   "warmup_done": true,
   "timeframes_since_restart": [
    "D",
@@ -68,6 +68,8 @@
   "written": 0,
   "lines": [],
   "decisions": [
+   "warm-up already complete (steady state is self-sustaining)",
+   "warm-up already complete (steady state is self-sustaining)",
    "warm-up already complete (steady state is self-sustaining)",
    "warm-up already complete (steady state is self-sustaining)",
    "warm-up already complete (steady state is self-sustaining)",
