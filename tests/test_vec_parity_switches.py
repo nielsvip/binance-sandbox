@@ -120,8 +120,10 @@ def test_pending_confirm_and_ttl():
 
 
 def test_dictate_only_exemptions():
-    assert G.dictate_only_exempt("REDUCE", "RATIO_CLOSE_SHORT_X") is True
-    assert G.dictate_only_exempt("AUGMENT", "RATIO_AUGMENT_X") is True
+    # USER 2026-10-25 vec-parity-only: RATIO trims lost their exemption — only
+    # board-confirmed speech and per_sym dictate survive.
+    assert G.dictate_only_exempt("REDUCE", "RATIO_CLOSE_SHORT_X") is False
+    assert G.dictate_only_exempt("AUGMENT", "RATIO_AUGMENT_X") is False
     assert G.dictate_only_exempt("OPEN", "RATIO_OPEN_X") is False
     assert G.dictate_only_exempt("CLOSE", "RATIO_CLOSE_X") is False
     assert G.dictate_only_exempt("CLOSE", "FIXED_STOP_LONG_px") is False
@@ -134,15 +136,43 @@ def test_dictate_only_exemptions():
 
 def test_dictate_only_persym_overrides_global():
     from unittest.mock import patch
-    with patch("per_sym_store.get_overrides", return_value={"STOCH_XTREME_EXIT_ENABLED": True}):
-        assert G.dictate_only_exempt("QUICK_CLOSE", "BT_STOCH_XTREME_EXIT_g=0.06%", "BTCDOMUSDT_SHORT") is True
-    with patch("per_sym_store.get_overrides", return_value={"STOCH_XTREME_EXIT_ENABLED": False}):
-        assert G.dictate_only_exempt("QUICK_CLOSE", "BT_STOCH_XTREME_EXIT_g=0.06%", "BTCDOMUSDT_SHORT") is False
+
+    with patch(
+        "per_sym_store.get_overrides", return_value={"STOCH_XTREME_EXIT_ENABLED": True}
+    ):
+        assert (
+            G.dictate_only_exempt(
+                "QUICK_CLOSE", "BT_STOCH_XTREME_EXIT_g=0.06%", "BTCDOMUSDT_SHORT"
+            )
+            is True
+        )
+    with patch(
+        "per_sym_store.get_overrides", return_value={"STOCH_XTREME_EXIT_ENABLED": False}
+    ):
+        assert (
+            G.dictate_only_exempt(
+                "QUICK_CLOSE", "BT_STOCH_XTREME_EXIT_g=0.06%", "BTCDOMUSDT_SHORT"
+            )
+            is False
+        )
     with patch("per_sym_store.get_overrides", return_value={}):
-        assert G.dictate_only_exempt("QUICK_CLOSE", "BT_STOCH_XTREME_EXIT_g=0.06%", "BTCDOMUSDT_SHORT") is False
-    with patch("per_sym_store.get_overrides", return_value={"STOCH_XTREME_EXIT_ENABLED": True}):
-        assert G.dictate_only_exempt("CLOSE", "FIXED_STOP_LONG_px", "BTCDOMUSDT_SHORT") is False
-        assert G.dictate_only_exempt("CLOSE", "QUICK_PEAK_GIVEBACK_X", "BTCDOMUSDT_SHORT") is False
+        assert (
+            G.dictate_only_exempt(
+                "QUICK_CLOSE", "BT_STOCH_XTREME_EXIT_g=0.06%", "BTCDOMUSDT_SHORT"
+            )
+            is False
+        )
+    with patch(
+        "per_sym_store.get_overrides", return_value={"STOCH_XTREME_EXIT_ENABLED": True}
+    ):
+        assert (
+            G.dictate_only_exempt("CLOSE", "FIXED_STOP_LONG_px", "BTCDOMUSDT_SHORT")
+            is False
+        )
+        assert (
+            G.dictate_only_exempt("CLOSE", "QUICK_PEAK_GIVEBACK_X", "BTCDOMUSDT_SHORT")
+            is False
+        )
 
 
 def test_exec_board_ok():

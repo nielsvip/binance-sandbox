@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-25 04:46:23 UTC
+# Copilot Status — 2026-10-25 04:51:32 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T04:40:22
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T04:41:07
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T04:42:15
-- **STALE_INDICATORS** [tradier]  — 2026-10-25T04:42:27
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T04:42:27
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T04:43:22
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T04:44:32
-- **STALE_INDICATORS** [tradier]  — 2026-10-25T04:44:44
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T04:44:44
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T04:45:49
+- **STALE_INDICATORS** [tradier]  — 2026-10-25T04:46:57
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T04:46:57
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T04:47:46
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T04:48:54
+- **STALE_INDICATORS** [tradier]  — 2026-10-25T04:49:08
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T04:49:08
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T04:49:58
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T04:51:19
+- **STALE_INDICATORS** [tradier]  — 2026-10-25T04:51:32
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T04:51:32
 
 ## Missed Trades (trader comparison)
 
@@ -30,7 +30,7 @@ _None_
 **Held:** 4 | **Watching for reentry:** 7 | **Reentered:** 0
 
 - HELD: **ARM** SHORT (tradier) peak +8.3%, now +-0.5%
-- HELD: **WLDUSDC** LONG (crypto) peak +7.3%, now +0.4%
+- HELD: **WLDUSDC** LONG (crypto) peak +7.3%, now +0.5%
 - HELD: **CDE** SHORT (tradier) peak +5.0%, now +2.1%
 - HELD: **NXE** SHORT (tradier) peak +3.3%, now +-0.4%
 
@@ -47,8 +47,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] tradier_positions.py running but log stale (104min)
+- [MEDIUM] tradier_positions.py running but log stale (109min)
 - [LOW] tradier_rankings.py is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] tradier_positions.py running but log stale (105min)
+- [MEDIUM] ez_indicators.py running but log stale (14min)
+- [MEDIUM] tradier_positions.py running but log stale (110min)

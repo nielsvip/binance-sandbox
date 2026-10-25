@@ -106,11 +106,13 @@ def confirm_release_ok(dictated, vec_order, require_board):
 
 def _per_sym_knob_true(sym_side, knob):
     """per_sym layer for one knob (USER 2026-10-25 doctrine: a per_sym switch value, when it exists, overrides
-    global). Reads the same full per_sym set live readers resolve first. Any failure -> None (fail-closed)."""
+    global). Reads the same full per_sym set live readers resolve first. Any failure -> None (fail-closed).
+    """
     try:
         if not sym_side or not knob:
             return None
         import per_sym_store as _pss
+
         full = _pss.get_overrides(str(sym_side))
         if isinstance(full, dict) and knob in full:
             return bool(full[knob])
@@ -120,19 +122,19 @@ def _per_sym_knob_true(sym_side, knob):
 
 
 def dictate_only_exempt(action, reason, sym_side=None):
-    # USER 2026-10-24 STEP1 narrowed: ONLY ratio trims/augments (no open/close
-    # state change), board-confirmed vec speech, and bookkeeping survive.
-    # Stops, emergencies, hedges (dead months ago), oversize trims: disabled
-    # first, wired correctly later. Kill: VEC_DICTATE_ONLY_ENABLED=False.
+    # USER 2026-10-25: ONLY vec parity decides — no family, lane, or dispatcher
+    # exemption, QUICK included. Survivors are vec speech itself: board-confirmed
+    # reasons and the board-measured per_sym switch dictate. RATIO trims, stops,
+    # emergencies, hedges, oversize trims, bookkeeping-as-trade: all blocked
+    # unless the vector dictates them. (BROKER_RECONCILED infrastructure writes
+    # are not trades and never reach this gate as actions.) Kill:
+    # VEC_DICTATE_ONLY_ENABLED=False.
     try:
         from live_twins import vector_enforce as _ve
     except Exception:
         return True
     try:
         if _ve._is_board_confirmed(reason):
-            return True
-        up = str(reason or "").upper()
-        if any(b in up for b in _ve.BOOKKEEPING):
             return True
         if sym_side:
             # per_sym switch honors the board that measured it: BT_<FAMILY>_... reasons carry the family whose
@@ -142,11 +144,6 @@ def dictate_only_exempt(action, reason, sym_side=None):
             _knob = (_fam.split("_g=")[0] + "_ENABLED") if _fam else ""
             if _knob and _per_sym_knob_true(sym_side, _knob) is True:
                 return True
-        act = str(action or "").upper()
-        if "CLOSE" in act or "OPEN" in act or "ENTRY" in act:
-            return False
-        if _ve.family_of(reason) == "RATIO" and ("REDUCE" in act or "AUGMENT" in act):
-            return True
     except Exception:
         return True
     return False
