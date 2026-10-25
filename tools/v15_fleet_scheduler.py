@@ -3386,19 +3386,21 @@ def _readiness_cand_venues(host):
         return [str(_v) for _v in ((host or {}).get("venues") or [])]
 
 
-def _overflow_take_ok(host, sym, launched_this_tick, running_syms):
+def _overflow_take_ok(host, sym, launched_this_tick, cpu=None, cpu_target=90):
     """True only when an overflow-venue sym may launch on this host: the sym is
     in overflow (never own) venues, nothing launched on this host yet this tick
-    (own-first order gives own work first refusal), and no own-venue board is
-    currently running here. Pure (tested)."""
+    (own-first order gives own work first refusal), and host CPU is under the
+    intervention limit (USER 2026-10-25: <90% means fill it — board counts are
+    not the metric, CPU is). Pure (tested)."""
     try:
-        _own = {str(_v).lower() for _v in ((host or {}).get("venues") or [])}
         _over = {str(_v).lower() for _v in _host_overflow_venues(host)}
         if venue_of(sym).lower() not in _over:
             return False
         if (launched_this_tick or 0) > 0:
             return False
-        return not any(venue_of(str(_ss).rsplit("_", 1)[0]).lower() in _own for _ss in (running_syms or {}))
+        if cpu is None:
+            return True
+        return float(cpu) < float(cpu_target)
     except Exception:
         return False
 
@@ -4665,10 +4667,10 @@ def tick(args, cfg, now):
                 continue
             if venue_of(sym) in _h_over_v:
                 # USER 2026-10-25 overflow: idle stocks workers help crypto 30D.
-                # Own-first order gives own work first refusal; take overflow only
-                # when nothing launched here yet and no own-venue board runs here.
-                if not _overflow_take_ok(h, sym, launched, s.get("running") or {}):
-                    _fate("overflow: own work first")
+                # Own-first order gives own work first refusal; take overflow
+                # whenever this host is under the intervention limit (<90% CPU).
+                if not _overflow_take_ok(h, sym, launched, cpu, cfg.get("cpu_target_pct", 90)):
+                    _fate("overflow: at/over cpu limit" if (cpu or 0) >= cfg.get("cpu_target_pct", 90) else "overflow: own work first")
                     continue
                 log.setdefault("overflow_take", []).append(f"{h['name']}:{sym}")
             # USER 2026-10-18 "100% stocks until all stocks are done": a PRIORITY PIN is a hint about ORDER, it may not

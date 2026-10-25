@@ -34,22 +34,25 @@ class OverflowVenuesTest(unittest.TestCase):
 
 class OverflowTakeTest(unittest.TestCase):
     def test_idle_takes_overflow(self):
-        self.assertTrue(_SCHED._overflow_take_ok(_S6, "XRPUSDC", 0, {}))
+        self.assertTrue(_SCHED._overflow_take_ok(_S6, "XRPUSDC", 0, 0))
+
+    def test_under_90_takes(self):
+        self.assertTrue(_SCHED._overflow_take_ok(_S6, "XRPUSDC", 0, 89.9))
+
+    def test_at_90_blocks(self):
+        self.assertFalse(_SCHED._overflow_take_ok(_S6, "XRPUSDC", 0, 90))
+
+    def test_over_90_blocks(self):
+        self.assertFalse(_SCHED._overflow_take_ok(_S6, "XRPUSDC", 0, 150))
 
     def test_own_venue_never_overflow(self):
-        self.assertFalse(_SCHED._overflow_take_ok(_S6, "NVDA", 0, {}))
+        self.assertFalse(_SCHED._overflow_take_ok(_S6, "NVDA", 0, 0))
 
     def test_launch_this_tick_blocks(self):
-        self.assertFalse(_SCHED._overflow_take_ok(_S6, "XRPUSDC", 1, {}))
-
-    def test_own_running_blocks(self):
-        self.assertFalse(_SCHED._overflow_take_ok(_S6, "XRPUSDC", 0, {"NVDA_SHORT": {}}))
-
-    def test_foreign_running_does_not_block(self):
-        self.assertTrue(_SCHED._overflow_take_ok(_S6, "XRPUSDC", 0, {"XRPUSDC_SHORT": {}}))
+        self.assertFalse(_SCHED._overflow_take_ok(_S6, "XRPUSDC", 1, 0))
 
     def test_no_overflow_host(self):
-        self.assertFalse(_SCHED._overflow_take_ok(_S2, "NVDA", 0, {}))
+        self.assertFalse(_SCHED._overflow_take_ok(_S2, "NVDA", 0, 0))
 
 
 class OverflowReadinessTest(unittest.TestCase):

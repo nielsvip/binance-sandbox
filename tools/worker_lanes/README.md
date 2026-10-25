@@ -37,7 +37,15 @@ They stay out of cron and out of this directory.
 `NPZ_SHARD_REFRESH` and `NPZ_INBOX_INSTALL` cron lines are commented with
 `#SLOWRUN_20261025#` — stocks print no new bars on weekends, so the refresh
 lanes only stole CPU from the boards. `SELF_DISPATCH`, the vec registry sync
-and the `VEC_LIVE_EXECUTOR` shard stay on. A `NPZ_REARM_MON` cron line on each
-box uncomments the lanes Monday 12:00Z (08:00 ET premarket) before RTH.
+and the `VEC_LIVE_EXECUTOR` shard stay on. (The Monday re-arm line from this
+experiment was removed when the lanes were restored — see CORRECTION below.)
 Pre-suspend crons: `backups/cron_20261025_s5_slowrun.bak`,
 `backups/cron_20261025_s6_slowrun.bak`.
+
+2026-10-25 ~04:55Z CORRECTION: the lanes are BACK ON everywhere — suspending
+anything on billed boxes was wrong. NPZ calc stays on (gap-healing has real
+resolution value for unstarted sides); throughput comes from the boards, and
+the measured pace at full saturation is ~12 finishes/hr. Self caps raised for
+the push: s5 `8 10 -> 8 12`, s6 `28 30 -> 28 36` (direct cron args, no script
+change). The Monday 12:00Z re-arm line was removed again with the re-enable
+nothing left suspended, nothing to re-arm.
