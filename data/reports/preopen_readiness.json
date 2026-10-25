@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-25T10:00:01Z",
+ "generated_utc": "2026-10-25T10:20:02Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
@@ -7,8 +7,7 @@
  "failed_critical": [
   "boards_recomputed",
   "defaults_chain_completed",
-  "live_set_matches_selection",
-  "indicators_fresh"
+  "live_set_matches_selection"
  ],
  "checks": [
   {
@@ -16,7 +15,7 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "filled_today": 459,
+    "filled_today": 463,
     "filled_before_open": 0
    },
    "detail": "no board was filled before the open"
@@ -41,7 +40,7 @@
    "measured": {
     "built_at": "2026-10-25T09:50:56.556296+00:00",
     "n": 524,
-    "age_at_open_s": 545
+    "age_at_open_s": 1746
    },
    "detail": "built 2026-10-25T09:50:56.556296+00:00 n=524"
   },
@@ -206,25 +205,19 @@
   },
   {
    "name": "indicators_fresh",
-   "ok": false,
+   "ok": true,
    "critical": true,
    "measured": {
-    "symbols": 329,
-    "stale_over_90min": 112,
-    "stale_pct": 34.0,
-    "median_age_min": 45.0,
+    "symbols": 330,
+    "stale_over_90min": 2,
+    "stale_pct": 0.6,
+    "median_age_min": 50.0,
     "sample": [
-     "ARBUSDC",
-     "ARPAUSDT",
-     "ASMLUSDT",
-     "ASTERUSDT",
-     "ATOMUSDT",
-     "AVGOUSDT",
-     "AWEUSDT",
-     "AXSUSDT"
+     "DUSKUSDT",
+     "ONEUSDT"
     ]
    },
-   "detail": "112/329 symbols past the live 90-min entry gate (34.0%)"
+   "detail": "2/330 symbols past the live 90-min entry gate (0.6%)"
   },
   {
    "name": "s1_sets_synced",

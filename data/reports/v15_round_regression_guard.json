@@ -1,5 +1,5 @@
 {
- "at": "2026-10-25T09:26:02Z",
+ "at": "2026-10-25T10:26:02Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
@@ -21,34 +21,19 @@
    "error": null
   },
   "s2": {
-   "published_n": 4,
-   "per_hour": 2.0,
-   "improved_vs_best_start": 4,
-   "mean_uplift_vs_best_start": 32.2033,
+   "published_n": 5,
+   "per_hour": 2.5,
+   "improved_vs_best_start": 5,
+   "mean_uplift_vs_best_start": 36.5207,
    "median_uplift": 35.1015,
-   "chained_from_previous_published": 0,
+   "chained_from_previous_published": 1,
    "no_floor_recorded": 0,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 2.0/h < 12.0/h (one per 5 min)"
+    "throughput 2.5/h < 12.0/h (one per 5 min)"
    ],
    "rows": [
-    {
-     "symside": "BEAMXUSDT_LONG",
-     "published_at": 1792913180.2893,
-     "final_gain": 6.30153373048706,
-     "best_start_gain": -0.6000633497327595,
-     "best_start_chosen": "incumbent",
-     "best_start_candidates": 3,
-     "baseline_gain": -0.6000633497327595,
-     "npz_ts_last": 1792911600.0,
-     "npz_md5": "7ae4f6f53a4259d7d64413d8a30c0e04",
-     "npz_bars": 102983,
-     "bh": 53.40235820235462,
-     "verdict": "BEST_EFFORT",
-     "npz_age_h_at_publish": 0.44
-    },
     {
      "symside": "ETHFIUSDC_LONG",
      "published_at": 1792919104.1421666,
@@ -93,6 +78,36 @@
      "bh": 0.31406244150150947,
      "verdict": null,
      "npz_age_h_at_publish": 0.93
+    },
+    {
+     "symside": "MEWUSDT_LONG",
+     "published_at": 1792923866.970133,
+     "final_gain": 69.85291730658662,
+     "best_start_gain": 60.78318598711449,
+     "best_start_chosen": "incumbent",
+     "best_start_candidates": 8,
+     "baseline_gain": 52.689008350946175,
+     "npz_ts_last": 1792920600.0,
+     "npz_md5": "dfb9a9b1108a95416b1d5d3fdd909b3d",
+     "npz_bars": 43240,
+     "bh": -7.55849310953317,
+     "verdict": null,
+     "npz_age_h_at_publish": 0.91
+    },
+    {
+     "symside": "STRKUSDT_SHORT",
+     "published_at": 1792921339.5321183,
+     "final_gain": 119.40284060152177,
+     "best_start_gain": 67.78046419739462,
+     "best_start_chosen": "history_0",
+     "best_start_candidates": 9,
+     "baseline_gain": 67.78046419739462,
+     "npz_ts_last": 1792917000.0,
+     "npz_md5": "37f3bf7bf07b68b9436ebe53c6f373cc",
+     "npz_bars": 93855,
+     "bh": -15.610000978606164,
+     "verdict": null,
+     "npz_age_h_at_publish": 1.21
     }
    ],
    "error": null
