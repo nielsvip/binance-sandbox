@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-25T08:20:02Z",
+ "generated_utc": "2026-10-25T08:40:02Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
@@ -15,7 +15,7 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "filled_today": 453,
+    "filled_today": 454,
     "filled_before_open": 0
    },
    "detail": "no board was filled before the open"
@@ -28,10 +28,10 @@
     "mac_done_stamp": false,
     "s1_stamp": "NO_STAMP",
     "cat_side_defaults_4_at": "2026-10-21T04:54:49Z",
-    "cat_side_age_days": 4.1,
+    "cat_side_age_days": 4.2,
     "cat_side_note": "rebuilt only by v15_daily_template_update --sync-defaults, a deliberate manual step \u2014 reported, never fails this gate"
    },
-   "detail": "mac stamp 20261025=False, s1 stamp NO_STAMP, cat_side layer 4.1d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
+   "detail": "mac stamp 20261025=False, s1 stamp NO_STAMP, cat_side layer 4.2d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
   },
   {
    "name": "selection_fresh",
@@ -40,7 +40,7 @@
    "measured": {
     "built_at": "2026-10-25T07:51:03.069975+00:00",
     "n": 524,
-    "age_at_open_s": 1740
+    "age_at_open_s": 2939
    },
    "detail": "built 2026-10-25T07:51:03.069975+00:00 n=524"
   },
@@ -63,8 +63,8 @@
    "measured": {
     "selection_n": 524,
     "exact": 116,
-    "benign_divergence_only": 302,
-    "material_divergence": 105,
+    "benign_divergence_only": 300,
+    "material_divergence": 107,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -201,7 +201,7 @@
      }
     ]
    },
-   "detail": "116 exact, 302 benign-only, 105 with material divergence, 1 with no live row"
+   "detail": "116 exact, 300 benign-only, 107 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
@@ -209,21 +209,14 @@
    "critical": true,
    "measured": {
     "symbols": 329,
-    "stale_over_90min": 18,
-    "stale_pct": 5.5,
-    "median_age_min": 50.0,
+    "stale_over_90min": 1,
+    "stale_pct": 0.3,
+    "median_age_min": 70.0,
     "sample": [
-     "AWEUSDT",
-     "BIOUSDC",
-     "BTCDOMUSDT",
-     "CRCLUSDT",
-     "ENAUSDC",
-     "FLNCUSDT",
-     "GOOGLUSDT",
-     "GRTUSDT"
+     "ONEUSDT"
     ]
    },
-   "detail": "18/329 symbols past the live 90-min entry gate (5.5%)"
+   "detail": "1/329 symbols past the live 90-min entry gate (0.3%)"
   },
   {
    "name": "s1_sets_synced",
