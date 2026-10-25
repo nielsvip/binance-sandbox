@@ -22,9 +22,9 @@ class SpawnGuardShellTest(unittest.TestCase):
         ss = "Z" + uuid.uuid4().hex[:10].upper() + "_LONG"
         g = _spawn_guard(ss, "30D", "sleep 7")
         started = time.monotonic()
-        subprocess.run(["bash", "-c", g], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True, timeout=6)
+        subprocess.run(["bash", "-c", g], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True, timeout=6)
         self.assertLess(time.monotonic() - started, 5.5)
-        probe = subprocess.run(["flock", "-n", "/tmp/v15_fleet_launch.lock", "true"], capture_output=True)
+        probe = subprocess.run(["flock", "-n", "/tmp/v15_fleet_launch_v2.lock", "true"], capture_output=True)
         self.assertEqual(probe.returncode, 0, probe.stderr)
 
     def test_body_runs_when_idle_no_self_match(self):

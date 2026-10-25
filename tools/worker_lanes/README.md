@@ -49,3 +49,26 @@ the measured pace at full saturation is ~12 finishes/hr. Self caps raised for
 the push: s5 `8 10 -> 8 12`, s6 `28 30 -> 28 36` (direct cron args, no script
 change). The Monday 12:00Z re-arm line was removed again with the re-enable
 nothing left suspended, nothing to re-arm.
+
+2026-10-25 22:50Z current dispatch contract:
+
+- `fleet_hosts_final.json` assigns s1 crypto SHORT, s2 crypto LONG, s5 stock
+  LONG, and s6 stock SHORT. Both the central scheduler and these local launchers
+  set `V15_PAIR_MODE=0`; a pilot must not calculate the other host's side.
+- Central and local launches share `/tmp/v15_fleet_launch_v2.lock`. The former
+  forks the pilot and closes both launch lock descriptors; every worker
+  `overload_run.sh` closes inherited descriptors before `nohup`. Locks cover
+  counting and spawning only. v2 retires a legacy lock held by pilots started
+  before the fix. Do not mix v1 and v2 launchers. The central scheduler counts
+  every observed pilot, including locally dispatched symbols outside its
+  tradeable universe, against the four symbol cap and in its slot snapshot.
+- Local self-dispatch filters to its configured side. s2/s5/s6 read progress
+  once per file change, cache `final_gain` and `npz_id.ts_last`, and use the
+  existing 48-bar cooldown to avoid recomputing a current completed board.
+  The local cache is disposable; progress JSON remains the source of truth.
+- The central scheduler still enforces memory, swap and disk admission. At
+  22:48Z s1 had 6.3 GB available with a 6 GB reserve and a 6 GB estimated
+  board; s2 had 4.0 GB available with a 4 GB reserve and the same board
+  estimate. Four boards per host cannot be guaranteed on those 32 GB boxes
+  while their live data services occupy memory. Do not force slots past the
+  memory gate to satisfy a CPU percentage.

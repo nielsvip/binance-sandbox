@@ -40,6 +40,13 @@ class VerdictSkipsTest(unittest.TestCase):
 
 
 class BelowFloorHostsTest(unittest.TestCase):
+    def test_local_dispatchers_consume_slots_once(self):
+        self.assertEqual(_SCHED._occupied_n({"AR": "running"}, {"AR", "BA", "BHP"}), 3)
+        hosts = [{"name": "s5", "max_pairs": 4}, {"name": "s6", "max_pairs": 4}]
+        held = {"s5": {"AR": "running"}, "s6": {"MP": "running"}}
+        observed = {"s5": {"AR", "BA", "BHP"}, "s6": {"MP"}}
+        self.assertEqual([h["name"] for h in _SCHED._host_order(hosts, held, observed)], ["s6", "s5"])
+
     def test_names_below_floor(self):
         self.assertEqual(_below_floor_hosts({"a": {"X": 1}, "b": {"w": 1, "x": 1, "y": 1, "z": 1}}, {"a": 8, "b": 8}), ["a"])
         self.assertEqual(_below_floor_hosts({}, {"a": 8}), ["a"])

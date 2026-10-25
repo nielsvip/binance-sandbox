@@ -2,10 +2,10 @@
 # usage: overload_run.sh SS TEMPLATE WORKERS [MAXSIDES]  (runs on worker, cwd anywhere)
 SS=$1; T=$2; W=$3; MAX=${4:-4}
 # USER 2026-10-25 global launch lock: scheduler ssh-launches and self-dispatch share
-# /tmp/v15_fleet_launch.lock so the box never exceeds MAXSIDES even when both fire the
+# /tmp/v15_fleet_launch_v2.lock so the box never exceeds MAXSIDES even when both fire the
 # same minute (4 symbols max — no 5th until a workbook finishes). Non-blocking: contention
 # echoes BUSY and the caller retries next cycle/tick. Count is INSIDE the lock (no TOCTOU).
-if [ "${OVL_LOCKED}" != 1 ]; then exec env OVL_LOCKED=1 flock -n "/tmp/v15_fleet_launch.lock" "$0" "$@"; echo "BUSY-${SS}"; exit 0; fi
+if [ "${OVL_LOCKED}" != 1 ]; then exec env OVL_LOCKED=1 flock -n "/tmp/v15_fleet_launch_v2.lock" "$0" "$@"; echo "BUSY-${SS}"; exit 0; fi
 _nrun=$(pgrep -af "python[^ ]* -u v15_pilot.py --sym-side " 2>/dev/null | grep -oE -- '--sym-side [A-Z0-9_]+' | sort -u | wc -l)
 [ "$_nrun" -ge "$MAX" ] && { echo FULL-"${SS}"; exit 0; }
 PDIR=/home/niels/v15_run36_20261024/progress

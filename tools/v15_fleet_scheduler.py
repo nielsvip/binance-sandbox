@@ -1077,13 +1077,18 @@ def _phase_launchable(ss, st, started, redo, quar=None, pinned=None):
     return not _launch_exhausted(f"{ss}|30D", "30D", ss, st, started, redo, pinned)
 
 
-def _host_order(hosts, held):
+def _occupied_n(held_symbols, foreign_symbols=()):
+    """Count distinct symbols, including locally dispatched pilots outside the scheduler universe."""
+    return len(set(held_symbols or ()) | set(foreign_symbols or ()))
+
+
+def _host_order(hosts, held, observed_by_host=None):
     """USER 2026-10-12 "divide the load between s1 s2 s5 s6 while available": admit new pairs on the host with the most
     free capacity first (free-slot ratio, then free slots, then name) instead of config order (s1 — the live host — filled
     first). Pure (tested)."""
     def _key(h):
         cap = max(2, min(12, int(h.get("max_pairs", 3))))
-        used = len((held or {}).get(h.get("name"), {}) or {})
+        used = _occupied_n((held or {}).get(h.get("name"), {}), (observed_by_host or {}).get(h.get("name"), ()))
         free = max(0, cap - used)
         return (-(free / float(cap)), -free, str(h.get("name")))
     return sorted(list(hosts or []), key=_key)
@@ -2067,9 +2072,9 @@ def _spawn_guard(ss, window, body):
     _perside = (f"if command -v flock >/dev/null 2>&1; then flock -n -o /tmp/v15_launch_{ss}_{window}.lock bash -c {shlex.quote(inner)} "
                 f"|| echo \"[launchlock] {ss} {window} launcher race, retry next tick\"; else bash -c {shlex.quote(inner)}; fi")
     # USER 2026-10-25 global launch lock: scheduler ssh-launches and worker self-dispatch
-    # (overload_run.sh) share /tmp/v15_fleet_launch.lock so the box never exceeds 4 symbols
+    # (overload_run.sh) share /tmp/v15_fleet_launch_v2.lock so the box never exceeds 4 symbols
     # even when both fire the same minute. Non-blocking: contention skips, retry next tick.
-    return (f"if command -v flock >/dev/null 2>&1; then flock -n -o /tmp/v15_fleet_launch.lock bash -c {shlex.quote(_perside)} "
+    return (f"if command -v flock >/dev/null 2>&1; then flock -n -o /tmp/v15_fleet_launch_v2.lock bash -c {shlex.quote(_perside)} "
             f"|| echo \"[globallaunch] {ss} {window} box busy, retry next tick\"; else bash -c {shlex.quote(_perside)}; fi")
 
 
@@ -4304,6 +4309,10 @@ def tick(args, cfg, now):
             held[hn][sym] = "dispatching"
     st["held"] = {hn: {s: st["held"].get(hn, {}).get(s, now.isoformat()) for s in d} for hn, d in held.items()}
     foreign = {ss: r for ss, r in running.items() if ss.rsplit("_", 1)[0] not in universe_syms["stocks"] | universe_syms["crypto"]}
+    observed_by_host = {host["name"]: set() for host in hosts}
+    for ss, record in running.items():
+        if isinstance(record, dict) and record.get("host") in observed_by_host:
+            observed_by_host[record["host"]].add(ss.rsplit("_", 1)[0])
     # USER 2026-10-10 ZERO WASTE: auto-kill double-confirmed dead pilots — running sym_side absent from
     # a FRESH universe allowlist (today's file or just-rebuilt; open positions are already IN allowed,
     # so absence = dead). Sym_side-precise: never kills the good side of a half-allowed symbol, only
@@ -4563,7 +4572,7 @@ def tick(args, cfg, now):
     except Exception as _nfe:
         log["npz_freeze_error"] = str(_nfe)[:120]
     _ph("cont_overage_freeze")
-    for h in _host_order(hosts, held):  # USER 2026-10-12: most free capacity first (load divided across s1/s2/s5/s6)
+    for h in _host_order(hosts, held, observed_by_host):  # USER 2026-10-12: most free capacity first (load divided across s1/s2/s5/s6)
         s = stats[h["name"]]
         if not s:
             log["hosts"][h["name"]] = "UNREACHABLE"
@@ -4630,18 +4639,18 @@ def tick(args, cfg, now):
         swap_ok = _swap_admit_ok(s)
         disk_ok = _disk_admit_ok(s)
         win_ok = _round_window_ok(_round_id_of(cur_pdir))  # USER 2026-10-24: a round pinned to a window this scheduler cannot board yet holds new launches
-        used = len(held[h["name"]])
+        used = _occupied_n(held[h["name"]], observed_by_host[h["name"]])
         if os.environ.get("V15_SCHED_MEM_CAP", "1") == "1":
             # 2026-10-13 USER "all servers at full capacity": max_pairs is the floor; free memory (after reserve + growth
             # debt of running pairs) buys more pair slots up to 12. The cpu target + mem/swap/disk guards still gate each admission.
             cap = max(cap, min(12, used + int(max(0.0, proj_mem) // max(1.0, est_pair))))
-        info = {"cpu": round(cpu), "cpu_real": round(float(s.get("busy_pct") or 0)), "mem_avail_mb": s["mem_avail_mb"], "disk_avail_mb": s.get("disk_avail_mb"), "slots": f"{used}/{cap}", "held": sorted(held[h["name"]]), "est_pair_mb": round(est_pair), "est_venue_mb": {k: round(v) for k, v in est_v.items()}, "proj_mem_mb": round(proj_mem),
+        info = {"cpu": round(cpu), "cpu_real": round(float(s.get("busy_pct") or 0)), "mem_avail_mb": s["mem_avail_mb"], "disk_avail_mb": s.get("disk_avail_mb"), "slots": f"{used}/{cap}", "held": sorted(held[h["name"]]), "observed_running": sorted(observed_by_host[h["name"]]), "est_pair_mb": round(est_pair), "est_venue_mb": {k: round(v) for k, v in est_v.items()}, "proj_mem_mb": round(proj_mem),
                 "growth_debt_mb": round(_debt), "debt_frac": _debt_frac, "workers_per_side": workers, "launched_pairs": 0}
         launched = 0
         new_launched = 0
         chain_launched = 0
         floor_launched = 0  # USER 2026-10-24: pairs admitted past the launch budgets by the pair-floor pass
-        running_cnt = sum(1 for v_ in held[h["name"]].values() if v_ == "running")  # concurrent pairs actually running: hard cap = cap (s1 OOM 13:48Z when 9 held pairs all ran)
+        running_cnt = sum(1 for v_ in held[h["name"]].values() if v_ == "running") + len(observed_by_host[h["name"]] - set(held[h["name"]]))  # local dispatchers also consume slots
         HB[h["name"]] = {"cap": cap, "workers": workers, "cpu": cpu, "est_pair": est_pair}
         # continue chains of held symbols first (no new slot); then admit adopted-but-unheld; then new
         held_ordered = sorted(held[h["name"]], key=_trk)
@@ -4700,7 +4709,7 @@ def tick(args, cfg, now):
             if _pinned_sym and _pin_hosts and h["name"] not in _pin_hosts:
                 _fate("pin restricted to other hosts")
                 continue
-            if needs_slot and new_launched >= args.max_launch and len(held[h["name"]]) >= _floor_target_n(cap):
+            if needs_slot and new_launched >= args.max_launch and _occupied_n(held[h["name"]], observed_by_host[h["name"]]) >= _floor_target_n(cap):
                 _fate("budget: host max-launch reached")
                 continue  # budget counts only NEW pairs; never break (a break skips held chains sorted later and froze the fleet 03:00-03:35Z)  # USER 2026-10-24: below the pair floor the tick fills to the floor past max-launch
             if needs_slot and (used >= cap or proj_mem < _est_sym(sym) or cpu >= cfg.get("cpu_target_pct", 90) or not swap_ok or not disk_ok or not win_ok):
@@ -5132,11 +5141,11 @@ def tick(args, cfg, now):
                 launched += 1
                 new_launched += 1
         info["launched_pairs"] = launched
-        _floor_need = _floor_target_n(cap) - len(held[h["name"]])
+        _floor_need = _floor_target_n(cap) - _occupied_n(held[h["name"]], observed_by_host[h["name"]])
         if _floor_need > 0 or floor_launched:
-            log.setdefault("floor", {})[h["name"]] = {"target": _floor_target_n(cap), "held": len(held[h["name"]]), "filled": floor_launched}  # USER 2026-10-24: the pair floor names its own shortfall every tick
-        info["slots"] = f"{len(held[h['name']])}/{cap}"
-        HB[h["name"]].update(used=len(held[h["name"]]), proj_mem=proj_mem, launched=launched, new_launched=new_launched, held_syms=sorted(held[h["name"]]))
+            log.setdefault("floor", {})[h["name"]] = {"target": _floor_target_n(cap), "held": _occupied_n(held[h["name"]], observed_by_host[h["name"]]), "filled": floor_launched}  # USER 2026-10-24: the pair floor names its own shortfall every tick
+        info["slots"] = f"{_occupied_n(held[h['name']], observed_by_host[h['name']])}/{cap}"
+        HB[h["name"]].update(used=_occupied_n(held[h["name"]], observed_by_host[h["name"]]), proj_mem=proj_mem, launched=launched, new_launched=new_launched, held_syms=sorted(held[h["name"]]))
         if cpu < cfg.get("cpu_target_pct", 90) and launched == 0:
             info["idle_reason"] = f"ROUND-WINDOW HOLD: round pins V15_SCHED_WINDOW_DAYS={_round_window_days(_round_id_of(cur_pdir))} but this scheduler boards only {SCHED_WINDOW_SUPPORT} (build the window lane, spec 24)" if not win_ok else "disk guard" if not disk_ok else "slots full" if used >= cap else "mem guard" if proj_mem < est_gate else "NO PROGRESS DIR on host (~/v15_current_progress_dir.txt missing)" if not (s.get("pdir") or cfg.get("fallback_pdir")) else "no eligible ready symbol for this host"
             info["idle_detail"] = {"proj_mem_mb": round(proj_mem), "est_gate_mb": round(est_gate), "mem_avail_mb": s["mem_avail_mb"], "venues": _gate_venues, "used": used, "cap": cap, "cpu": round(cpu), "npz_stale_jit": len(log.get("npz_stale_jit", [])), "npz_stale_held": sum(1 for v_ in (log.get("skipped_unready") or {}).values() if "stale" in str(v_) and str(v_).startswith(h["name"])), "npz_stale_refused_150s": _dispatch_stale_recent()}
@@ -5172,7 +5181,7 @@ def tick(args, cfg, now):
             acts = [a for a in pending_actions(sym, h["name"]) if a["key"] not in launched_keys and not _launched_recently(a["key"], st.get("launched_at"), _now_ts) and (a["window"] == "365D" or (a["window"] == "REPAIR" and a["attempt"] == 1)) and f"{sym}_{a['side']}" not in running]
             if not acts:
                 continue
-            if B["new_launched"] >= args.max_launch or len(held[h["name"]]) >= B["cap"] or B["proj_mem"] < B["est_pair"] or B["cpu"] >= cfg.get("cpu_target_pct", 90) or not _disk_admit_ok(s):  # USER 2026-10-10: pass-2 steal must respect the disk guard
+            if B["new_launched"] >= args.max_launch or _occupied_n(held[h["name"]], observed_by_host[h["name"]]) >= B["cap"] or B["proj_mem"] < B["est_pair"] or B["cpu"] >= cfg.get("cpu_target_pct", 90) or not _disk_admit_ok(s):  # USER 2026-10-10: pass-2 steal must respect the disk guard
                 break
             if venue_of(sym) not in h["venues"]:
                 continue
@@ -5242,14 +5251,15 @@ def tick(args, cfg, now):
             B = HB[h["name"]]
             # USER 2026-10-24: never deepen a hole to fill a hole — hosts at/below their pair floor are closed as
             # steal victims (s2 raided s1's only side while s1 starved: pure churn, zero new compute). Surplus hosts share.
-            _raid_closed = set(_below_floor_hosts(held, {n_: (HB.get(n_) or {}).get("cap") or 4 for n_ in HB}))
+            _held_capacity = {name: {**active, **{symbol: "foreign" for symbol in observed_by_host.get(name, ())}} for name, active in held.items()}
+            _raid_closed = set(_below_floor_hosts(_held_capacity, {n_: (HB.get(n_) or {}).get("cap") or 4 for n_ in HB}))
             _pick_owner = {s_: o_ for s_, o_ in (owner or {}).items() if o_ not in _raid_closed}
             if _raid_closed:
                 log.setdefault("steal30_raid_closed", []).append(f"{h['name']}-sees-closed:{sorted(_raid_closed)}")
             for _try in range(12):
                 if B.get("new_launched", 0) >= args.max_launch or B.get("proj_mem", 0) < B["est_pair"] or B["cpu"] >= cfg.get("cpu_target_pct", 90) or not _disk_admit_ok(s):
                     break
-                _free = B["cap"] - len(held[h["name"]])
+                _free = B["cap"] - _occupied_n(held[h["name"]], observed_by_host[h["name"]])
                 sym, _victim = _steal30_pick(h["name"], _free, B.get("new_launched", 0) > 0 and _try == 0, _pick_owner, [x for x in _need if venue_of(x) in h["venues"]], _order_all, _run_syms, _tried)
                 if not sym:
                     break
