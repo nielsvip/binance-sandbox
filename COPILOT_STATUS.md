@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-25 06:28:22 UTC
+# Copilot Status — 2026-10-25 06:33:37 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-25T06:24:17
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T06:24:17
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T06:24:38
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T06:25:39
-- **STALE_INDICATORS** [tradier]  — 2026-10-25T06:26:19
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T06:26:19
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T06:26:40
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T06:27:41
 - **STALE_INDICATORS** [tradier]  — 2026-10-25T06:28:21
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T06:28:22
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T06:28:42
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T06:29:43
+- **STALE_INDICATORS** [tradier]  — 2026-10-25T06:30:24
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T06:30:24
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T06:30:44
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T06:31:45
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-25T06:32:26
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-25T06:32:46
 
 ## Missed Trades (trader comparison)
 
@@ -30,7 +30,7 @@ _None_
 **Held:** 5 | **Watching for reentry:** 8 | **Reentered:** 0
 
 - HELD: **ARM** SHORT (tradier) peak +8.3%, now +-0.5%
-- HELD: **WLDUSDC** LONG (crypto) peak +7.3%, now +-0.6%
+- HELD: **WLDUSDC** LONG (crypto) peak +7.3%, now +-1.2%
 - HELD: **CDE** SHORT (tradier) peak +5.0%, now +2.1%
 - HELD: **DOGEUSDC** SHORT (crypto) peak +4.5%, now +0.1%
 - HELD: **NXE** SHORT (tradier) peak +3.3%, now +-0.4%
@@ -49,8 +49,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [HIGH] ez_prices.py is NOT running
 - [HIGH] ez_rankings.py is NOT running
 - [HIGH] ez_share_ind.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
+- [HIGH] ez_manage.py for flz is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
