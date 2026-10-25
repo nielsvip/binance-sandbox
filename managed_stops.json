@@ -1,31 +1,59 @@
 {
-  "ang:COTIUSDT_SHORT": {
-    "orderId": "4000001995132074",
-    "stopPrice": 0.010599,
-    "entry_sig": "2026-10-25 12:49:27.160000+00:00",
-    "symbol": "COTIUSDT",
-    "side": "SHORT"
-  },
-  "ang:UNIUSDC_LONG": {
-    "orderId": "4000001995262415",
-    "stopPrice": 6.685,
-    "entry_sig": "2026-10-25 13:14:11.526000+00:00",
-    "symbol": "UNIUSDC",
+  "fin:VETUSDT_LONG": {
+    "orderId": "3000002273708617",
+    "stopPrice": 0.00668,
+    "entry_sig": "2026-10-25 14:34:15.533000+00:00",
+    "symbol": "VETUSDT",
     "side": "LONG",
     "disaster_backstop": true
   },
-  "ang:RLCUSDT_SHORT": {
-    "orderId": "4000001995307081",
-    "stopPrice": 0.5267,
-    "entry_sig": "2026-10-25 10:56:54.283000+00:00",
-    "symbol": "RLCUSDT",
+  "fin:IOSTUSDT_LONG": {
+    "orderId": "3000002273722384",
+    "stopPrice": 0.0007488,
+    "entry_sig": "2026-10-25 14:37:59.072000+00:00",
+    "symbol": "IOSTUSDT",
+    "side": "LONG"
+  },
+  "fin:RIFUSDT_SHORT": {
+    "orderId": "3000002273754276",
+    "stopPrice": 0.07212,
+    "entry_sig": "2026-10-25 12:29:45.625000+00:00",
+    "symbol": "RIFUSDT",
     "side": "SHORT"
   },
-  "ang:NMRUSDT_SHORT": {
-    "orderId": "4000001995326352",
-    "stopPrice": 9.825,
-    "entry_sig": "2026-10-25 13:41:23.539000+00:00",
+  "fin:STXUSDT_SHORT": {
+    "orderId": "3000002273757733",
+    "stopPrice": 0.3096,
+    "entry_sig": "2026-10-25 12:46:39.893000+00:00",
+    "symbol": "STXUSDT",
+    "side": "SHORT"
+  },
+  "fin:ETHFIUSDC_LONG": {
+    "orderId": "3000002273763690",
+    "stopPrice": 0.603,
+    "entry_sig": "2026-10-25 15:06:52.189000+00:00",
+    "symbol": "ETHFIUSDC",
+    "side": "LONG"
+  },
+  "fin:MASKUSDT_LONG": {
+    "orderId": "3000002273764899",
+    "stopPrice": 0.3974,
+    "entry_sig": "2026-10-25 14:09:46.748000+00:00",
+    "symbol": "MASKUSDT",
+    "side": "LONG"
+  },
+  "fin:NMRUSDT_SHORT": {
+    "orderId": "3000002273765208",
+    "stopPrice": 10.223,
+    "entry_sig": "2026-10-25 13:41:16.864000+00:00",
     "symbol": "NMRUSDT",
+    "side": "SHORT"
+  },
+  "fin:ACEUSDT_SHORT": {
+    "orderId": "3000002273765891",
+    "stopPrice": 0.14574,
+    "entry_sig": "2026-10-25 15:02:46.568000+00:00",
+    "symbol": "ACEUSDT",
     "side": "SHORT"
   }
 }
