@@ -8,9 +8,9 @@ import config, config_tradier
 import v12_quick_engine as vq
 
 
-def _mk(n, close, dl, dh):
+def _mk(n, close, dl, dh, dl15=None, dh15=None):
     ts = np.arange(1700000000, 1700000000 + n * 180, 180)
-    return {
+    d = {
         "close_3m": close,
         "close_15m": close,
         "close_5m": close,
@@ -31,6 +31,22 @@ def _mk(n, close, dl, dh):
         "wt1_D": np.zeros(n),
         "wt2_D": np.zeros(n),
     }
+    # FIXED_STOP reads the 15m channel (frozen at entry): without it the
+    # fallback entry-based stop fires in 2-3 bars and the 4h breach is never
+    # reached. Flat channels keep FIXED quiet until past the 4h cross.
+    if dl15 is not None:
+        d["dc_low_15m"] = dl15
+    if dh15 is not None:
+        d["dc_high_15m"] = dh15
+    return d
+
+
+def _wide_uncond(cfg):
+    # Widen the switch-driven UNCOND leg (same ±buffer family) so the
+    # ABSOLUTE ULTIMATE backstop is the executor under test. FIXED_STOP has
+    # its own buffer knob and is unaffected.
+    cfg.UNCOND_DC_HARD_STOP_BUFFER_PCT = 2.0
+    return cfg
 
 
 def test_config_flag_enabled():
@@ -46,10 +62,14 @@ def _closes(r):
 
 
 def _ult_exits(r):
+    # Case-insensitive: live emits ULTIMATE_DC_4h_HARD_STOP_* (both venues),
+    # v12 emits ULTIMATE_DC_4h_HARD_STOP at dc_4h_* 0.25pct channel.
     return [
         t
         for t in _closes(r)
-        if str(t.get("exit_reason") or "").startswith("ULTIMATE_DC_4H_HARD_STOP")
+        if str(t.get("exit_reason") or "")
+        .upper()
+        .startswith("ULTIMATE_DC_4H_HARD_STOP")
     ]
 
 
@@ -70,7 +90,7 @@ def test_v12_long_breach_is_hard_stop():
     close = np.linspace(0.0285, 0.0239, n)
     dl = np.full(n, 0.027)
     dh = np.full(n, 0.031)
-    cfg = vq.QuickConfig()
+    cfg = _wide_uncond(vq.QuickConfig())
     cfg.MODE = "crypto"
     cfg.BASE_TF = "3m"
     cfg.START_POSITION_SIZE = 500
@@ -80,7 +100,11 @@ def test_v12_long_breach_is_hard_stop():
     cfg.PROFIT_TARGET_ENABLED = False
     cfg.STOP_LOSS_ENABLED = False
     r = vq.simulate_one(
-        _mk(n, close, dl, dh), "T_LONG", True, cfg, force_initial_seed=True
+        _mk(n, close, dl, dh, np.full(n, 0.0269), np.full(n, 0.031)),
+        "T_LONG",
+        True,
+        cfg,
+        force_initial_seed=True,
     )
     ults = _ult_exits(r)
     assert ults, "expected ULTIMATE_DC_4H exit"
@@ -93,7 +117,7 @@ def test_v12_long_breach_is_hard_stop():
 def test_v12_short_breach_is_hard_stop():
     n = 150
     close = np.linspace(0.020, 0.025, n)
-    cfg = vq.QuickConfig()
+    cfg = _wide_uncond(vq.QuickConfig())
     cfg.MODE = "crypto"
     cfg.BASE_TF = "3m"
     cfg.START_POSITION_SIZE = 500
@@ -103,7 +127,14 @@ def test_v12_short_breach_is_hard_stop():
     cfg.PROFIT_TARGET_ENABLED = False
     cfg.STOP_LOSS_ENABLED = False
     r = vq.simulate_one(
-        _mk(n, close, np.full(n, 0.018), np.full(n, 0.022)),
+        _mk(
+            n,
+            close,
+            np.full(n, 0.018),
+            np.full(n, 0.022),
+            np.full(n, 0.018),
+            np.full(n, 0.0221),
+        ),
         "T_SHORT",
         False,
         cfg,
@@ -124,8 +155,17 @@ def test_v12_no_breach_and_missing_dc_hold():
     cfg.NOLOSS_ENABLED = True
     cfg.PROFIT_TARGET_ENABLED = False
     cfg.STOP_LOSS_ENABLED = False
+    # 15m channel present so FIXED stays quiet: the position must be HELD
+    # the whole run (FINAL_MTM at the last bar), never ultimate-stopped.
     r = vq.simulate_one(
-        _mk(n, close, np.full(n, 0.010), np.full(n, 0.05)),
+        _mk(
+            n,
+            close,
+            np.full(n, 0.010),
+            np.full(n, 0.05),
+            np.full(n, 0.009),
+            np.full(n, 0.05),
+        ),
         "T_NOB",
         True,
         cfg,
@@ -147,7 +187,7 @@ def test_v12_min_hold_and_noloss_bypass():
     close = np.linspace(0.0285, 0.0239, n)
     dl = np.full(n, 0.027)
     dh = np.full(n, 0.031)
-    cfg = vq.QuickConfig()
+    cfg = _wide_uncond(vq.QuickConfig())
     cfg.MODE = "crypto"
     cfg.BASE_TF = "3m"
     cfg.START_POSITION_SIZE = 500
@@ -157,7 +197,11 @@ def test_v12_min_hold_and_noloss_bypass():
     cfg.PROFIT_TARGET_ENABLED = False
     cfg.STOP_LOSS_ENABLED = False
     r = vq.simulate_one(
-        _mk(n, close, dl, dh), "T_MH", True, cfg, force_initial_seed=True
+        _mk(n, close, dl, dh, np.full(n, 0.0269), np.full(n, 0.031)),
+        "T_MH",
+        True,
+        cfg,
+        force_initial_seed=True,
     )
     cross = int(np.where(close <= 0.027 * 0.9975)[0][0])
     ults = _ult_exits(r)
@@ -165,8 +209,10 @@ def test_v12_min_hold_and_noloss_bypass():
 
 
 def test_template_flags_present():
+    # NOTE: generic SPREADSHEETS/TEMPLATE.xlsx was deleted 2026-09-28; the
+    # four per-venue workbooks are the live set (same pre-existing class as
+    # test_dc_hard_stop_tf::test_template_has_switch).
     for name in [
-        "TEMPLATE.xlsx",
         "TEMPLATE_CRYPTO_LONG.xlsx",
         "TEMPLATE_CRYPTO_SHORT.xlsx",
         "TEMPLATE_STOCKS_LONG.xlsx",

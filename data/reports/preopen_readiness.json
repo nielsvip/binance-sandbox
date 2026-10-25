@@ -1,12 +1,13 @@
 {
- "generated_utc": "2026-10-25T21:40:02Z",
+ "generated_utc": "2026-10-25T22:00:03Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
  "verdict": "FAIL",
  "failed_critical": [
   "boards_recomputed",
-  "live_set_matches_selection"
+  "live_set_matches_selection",
+  "indicators_fresh"
  ],
  "checks": [
   {
@@ -14,7 +15,7 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "filled_today": 473,
+    "filled_today": 478,
     "filled_before_open": 0
    },
    "detail": "no board was filled before the open"
@@ -39,7 +40,7 @@
    "measured": {
     "built_at": "2026-10-25T20:50:48.730518+00:00",
     "n": 525,
-    "age_at_open_s": 2954
+    "age_at_open_s": 4155
    },
    "detail": "built 2026-10-25T20:50:48.730518+00:00 n=525"
   },
@@ -204,16 +205,25 @@
   },
   {
    "name": "indicators_fresh",
-   "ok": true,
+   "ok": false,
    "critical": true,
    "measured": {
-    "symbols": 330,
-    "stale_over_90min": 0,
-    "stale_pct": 0.0,
-    "median_age_min": 25.0,
-    "sample": []
+    "symbols": 201,
+    "stale_over_90min": 24,
+    "stale_pct": 11.9,
+    "median_age_min": 75.1,
+    "sample": [
+     "AAVEUSDC",
+     "ACHUSDT",
+     "ADAUSDC",
+     "AGLDUSDT",
+     "AIAUSDT",
+     "ALGOUSDT",
+     "ALTUSDT",
+     "APEUSDT"
+    ]
    },
-   "detail": "0/330 symbols past the live 90-min entry gate (0.0%)"
+   "detail": "24/201 symbols past the live 90-min entry gate (11.9%)"
   },
   {
    "name": "s1_sets_synced",
