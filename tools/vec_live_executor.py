@@ -642,6 +642,24 @@ def build_driven(write: bool = True) -> dict:
             prog[ss] = {"overrides": ov, "gain_30d": g, "trades": d.get("final_trades"), "when": when, "src": f, "engine_md5": d.get("result_engine_md5")}
     prev = json.loads(VEC_DRIVEN.read_text()) if VEC_DRIVEN.exists() else {}
     out = {"_schema": {"SYMBOL_SIDE": {"mode": "live|shadow", "account": "ez", "overrides_src": "inline", "set_source": "repair_dual|candidates|progress", "set_tier": "BOTH_WINDOW|30D_BEST", "set_md5": "md5 of overrides"}}, "_built_at": _iso(_now()), "_universe": {"path": upath, "md5": umd5, "n_symbols": len(syms)}, "_rule": "USER 2026-10-06: ALL TRADEABLE KEYS NEED POSITIONS WHENEVER JUSTIFIED BY THE VECTORIZED BACKTEST — tier BOTH_WINDOW > 30D_BEST; repair_dual > candidates > progress; 30D set needs proven gain > 0"}
+    # USER 2026-10-25 stock shards: a proven board must never need universe membership —
+    # the tier rules (gain > 0, fabrication screen) are the gate. Include bases seen in
+    # repair/candidates/progress. Variant studies (AAPL_BF_LONG) excluded: real bases
+    # never contain an underscore.
+    try:
+        _extra = set()
+        for _src in (repair, cands, prog):
+            for _ss in _src:
+                if not isinstance(_ss, str) or "_" not in _ss:
+                    continue
+                _side = _ss.rsplit("_", 1)[-1]
+                _base = _ss.rsplit("_", 1)[0]
+                if _side in ("LONG", "SHORT") and _base and "_" not in _base:
+                    _extra.add(_base)
+        if _extra:
+            syms = sorted(set(syms) | _extra)
+    except Exception:
+        pass
     no_set, fab_log = [], []
     for sym in syms:
         for side in ("LONG", "SHORT"):

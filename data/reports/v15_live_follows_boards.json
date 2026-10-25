@@ -1,9 +1,28 @@
 {
- "at": "2026-10-25T00:38:04Z",
+ "at": "2026-10-25T01:38:04Z",
  "reports": [
   {
+   "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261025_refresh_0056.json",
+   "age_min": 19.4,
+   "applied": true,
+   "n": null,
+   "results": {
+    "REFUSED": 8,
+    "SKIP": 1,
+    "PASS": 3
+   },
+   "registered": 1,
+   "already_live_skipped": 0,
+   "refused_by_class": {
+    "type-gate refused ALL (1 bad)": 7,
+    "live row is a MEASURED h2h decision (2026-10-25T00": 1,
+    "golive-blocklisted": 1
+   },
+   "changed_symsides": []
+  },
+  {
    "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261024_refresh_2357.json",
-   "age_min": 0.6,
+   "age_min": 60.6,
    "applied": true,
    "n": null,
    "results": {
@@ -19,29 +38,10 @@
     "golive-blocklisted": 1
    },
    "changed_symsides": []
-  },
-  {
-   "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261024_refresh_2205.json",
-   "age_min": 99.6,
-   "applied": true,
-   "n": null,
-   "results": {
-    "REFUSED": 8,
-    "PASS": 5,
-    "SKIP": 1
-   },
-   "registered": 3,
-   "already_live_skipped": 0,
-   "refused_by_class": {
-    "type-gate refused ALL (1 bad)": 7,
-    "golive-blocklisted": 1,
-    "live row is a MEASURED h2h decision (2026-10-24T22": 1
-   },
-   "changed_symsides": []
   }
  ],
  "fails": [
-  "two consecutive runs still had pending sets (3 then 2) \u2014 live is not converging on the boards"
+  "two consecutive runs still had pending sets (2 then 1) \u2014 live is not converging on the boards"
  ],
  "refused_total": 9
 }

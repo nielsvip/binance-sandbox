@@ -22,6 +22,9 @@ WORKERS=${NPZ_LOOP_WORKERS:-6}
 # all, so 314 of its 704 NPZs were over a day stale (CTRA 17,122 bars = 178 days). S2 is also the only host that
 # may build stock NPZs. Crypto stays on S1 so S2 never adds a second Binance REST IP to the 418/429 problem.
 MODE=${NPZ_LOOP_MODE:-both}
+# USER 2026-10-25: per-server refresh ownership — S1 refreshes ONLY its own
+# cat_side symbols (NPZ_LOOP_SYMBOLS comma list); empty = all (legacy).
+SYMS=${NPZ_LOOP_SYMBOLS:-}
 
 klog() { echo "$(date -u +%FT%TZ) $*"; }
 
@@ -57,5 +60,8 @@ klog "starting loop (workers $WORKERS, cap $NPZ_LOOP_MAX_WORKERS, settle ${NPZ_L
 PY_CONDA=/home/niels/.conda/envs/binance_env_mac/bin/python
 if [ ! -x "$PY_CONDA" ] && [ -x "$ROOT/tools/pyinterp.sh" ]; then
     PY_CONDA=$("$ROOT/tools/pyinterp.sh" 2>/dev/null || echo "$PY_CONDA")
+fi
+if [ -n "$SYMS" ]; then
+    exec setsid nice -n 15 "$PY_CONDA" -u tools/npz_bar_refresh.py --mode "$MODE" --symbols "$SYMS" --workers "$WORKERS" --w15 2500 --loop >> "$LOG" 2>&1 < /dev/null
 fi
 exec setsid nice -n 15 "$PY_CONDA" -u tools/npz_bar_refresh.py --mode "$MODE" --workers "$WORKERS" --w15 2500 --loop >> "$LOG" 2>&1 < /dev/null

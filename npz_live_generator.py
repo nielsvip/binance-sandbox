@@ -531,6 +531,29 @@ def update_npz_for_symbol(
         logger.warning(f"update failed for {symbol}: {e}")
         return False
 
+# Live-label -> NPZ integer codes. Mirrors tradier_vec_exact._INT_ENCODE (sourced from backtest_v8_precompute,
+# decoded by backtest_v8_harness._INT_DECODE); tests/test_npz_live_generator.py pins equality so the two cannot drift.
+_LABEL_ENCODE = {
+    "wt_cross_": {"BEAR": -1.0, "NONE": 0.0, "BULL": 1.0},
+    "wt_signal_": {"BEAR": -1.0, "NEUTRAL": 0.0, "BULL": 1.0},
+    "wt_divergence_": {"BEAR": -1.0, "": 0.0, "BULL": 1.0},
+    "wt_momentum_state_": {"EXHAUST_DOWN": -2.0, "IMPULSE_DOWN": -1.0, "NEUTRAL": 0.0, "IMPULSE_UP": 1.0, "EXHAUST_UP": 2.0},
+    "wt_peak_structure_": {"LH": -1.0, "NEUTRAL": 0.0, "HH": 1.0},
+    "wt_trough_structure_": {"LL": -1.0, "NEUTRAL": 0.0, "HL": 1.0},
+    "wt_structure_": {"LH": -1.0, "NEUTRAL": 0.0, "HH": 1.0},
+    "wt_wave_phase_": {"CONTRACTING": -1.0, "NEUTRAL": 0.0, "EXPANDING": 1.0},
+    "wt_composite_bias": {"SHORT": -1.0, "NEUTRAL": 0.0, "LONG": 1.0},
+    "ha_": {"red": -1.0, "neutral": 0.0, "green": 1.0},
+}
+
+
+def _encode_row_label(key: str, value: str):
+    for pre, m in _LABEL_ENCODE.items():
+        if key.startswith(pre) and value in m:
+            return m[value]
+    return None
+
+
 def _append_row_to_npz(npz_path: Path, row: Dict[str, Any]) -> bool:
     """Append one row to NPZ, preserving all existing keys.
 
@@ -622,6 +645,7 @@ def _append_row_to_npz(npz_path: Path, row: Dict[str, Any]) -> bool:
         # row carry the last value forward (timestamp_{base} = new bar ts); new keys are NOT invented; lengths verified.
         n_old = len(data["timestamps"])
         out = {}
+        _carried = []
         for k in list(data.keys()):
             arr = data[k]
             if getattr(arr, "ndim", 0) != 1 or len(arr) != n_old:
@@ -635,9 +659,22 @@ def _append_row_to_npz(npz_path: Path, row: Dict[str, Any]) -> bool:
                 v = arr[-1] if n_old else 0  # carry forward (HTF values/availability, object labels)
             try:
                 out[k] = np.append(arr, np.array([v], dtype=object)) if arr.dtype == object else np.concatenate([arr, np.array([v], dtype=arr.dtype)])
-            except Exception as e:
-                logger.error(f"NPZ append ABORTED {npz_path.name}: key {k} ({arr.dtype}) value {v!r}: {e} — file left untouched")
-                return False
+            except Exception:
+                # USER 2026-10-25: one uncoercible key (live 'BULL' label vs int8 NPZ code) must not abort the whole
+                # bar — that stalled the entire live loop (zero appends at 105% CPU). Encode known labels, else carry.
+                enc = _encode_row_label(k, v) if isinstance(v, str) else None
+                if enc is None:
+                    _carried.append(k)
+                    v = arr[-1] if n_old else 0
+                else:
+                    v = enc
+                try:
+                    out[k] = np.append(arr, np.array([v], dtype=object)) if arr.dtype == object else np.concatenate([arr, np.array([v], dtype=arr.dtype)])
+                except Exception as e2:
+                    logger.error(f"NPZ append ABORTED {npz_path.name}: key {k} ({arr.dtype}) value {v!r}: {e2} — file left untouched")
+                    return False
+        if _carried:
+            logger.warning(f"NPZ {npz_path.name}: {len(_carried)} unencodable keys carried forward: {_carried[:8]}")
         _new_keys = [k for k in row if k not in data]
         if _new_keys:
             logger.warning(f"NPZ {npz_path.name}: {len(_new_keys)} row keys not in NPZ schema skipped (no zero-backfilled history): {_new_keys[:8]}")

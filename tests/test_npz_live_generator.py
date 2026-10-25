@@ -101,6 +101,26 @@ def test_npz_path_empty_outdir_falls_back_per_file(monkeypatch):
     assert gen._npz_path(stack, "NOSUCHUSDT") == stack / "backtest_v8" / "indicators" / "NOSUCHUSDT.npz"
 
 
+def test_append_encodes_live_labels():
+    import numpy as np
+    tmpdir = Path(tempfile.mkdtemp())
+    npz_path = tmpdir / "LBL.npz"
+    np.savez_compressed(str(npz_path), timestamps=np.array([900], dtype=np.int64), wt_cross_15m=np.array([0], dtype=np.int8), close=np.array([1.0], dtype=np.float32))
+    assert gen._append_row_to_npz(npz_path, {"timestamps": 1800, "wt_cross_15m": "BULL", "close": 2.0}) is True
+    data = gen._load_npz(npz_path)
+    assert int(data["wt_cross_15m"][-1]) == 1
+    assert gen._append_row_to_npz(npz_path, {"timestamps": 2700, "wt_cross_15m": "MAYBE", "close": 3.0}) is True
+    data = gen._load_npz(npz_path)
+    assert int(data["wt_cross_15m"][-1]) == 1  # unencodable -> carried forward, bar still appended
+    assert len(data["timestamps"]) == 3
+
+
+def test_label_table_matches_vec_exact():
+    import tradier_vec_exact as t
+    for pre, m in t._INT_ENCODE.items():
+        assert gen._LABEL_ENCODE[pre] == m
+
+
 def test_live_vs_vectorized_parity():
     tmpdir = Path(tempfile.mkdtemp())
     sym = "PARITYUSDT"
