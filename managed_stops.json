@@ -1,32 +1,4 @@
 {
-  "ang:MAGICUSDT_LONG": {
-    "orderId": "4000001994701868",
-    "stopPrice": 0.08336,
-    "entry_sig": "2026-10-25 08:08:20.910000+00:00",
-    "symbol": "MAGICUSDT",
-    "side": "LONG"
-  },
-  "ang:ZROUSDT_LONG": {
-    "orderId": "4000001994707504",
-    "stopPrice": 1.6978,
-    "entry_sig": "2026-10-25 08:10:15.673000+00:00",
-    "symbol": "ZROUSDT",
-    "side": "LONG"
-  },
-  "ang:TIAUSDC_LONG": {
-    "orderId": "4000001994718655",
-    "stopPrice": 0.5223,
-    "entry_sig": "2026-10-25 08:20:08.856000+00:00",
-    "symbol": "TIAUSDC",
-    "side": "LONG"
-  },
-  "ang:NMRUSDT_SHORT": {
-    "orderId": "4000001994734080",
-    "stopPrice": 10.223,
-    "entry_sig": "2026-10-25 08:29:47.851000+00:00",
-    "symbol": "NMRUSDT",
-    "side": "SHORT"
-  },
   "ang:SNXUSDT_SHORT": {
     "orderId": "4000001994734622",
     "stopPrice": 0.2035,
@@ -34,32 +6,39 @@
     "symbol": "SNXUSDT",
     "side": "SHORT"
   },
+  "ang:NMRUSDT_SHORT": {
+    "orderId": "4000001994744238",
+    "stopPrice": 10.223,
+    "entry_sig": "2026-10-25 08:29:47.851000+00:00",
+    "symbol": "NMRUSDT",
+    "side": "SHORT"
+  },
+  "ang:TIAUSDC_LONG": {
+    "orderId": "4000001994745263",
+    "stopPrice": 0.5223,
+    "entry_sig": "2026-10-25 08:20:08.856000+00:00",
+    "symbol": "TIAUSDC",
+    "side": "LONG"
+  },
   "ang:DOGEUSDC_SHORT": {
-    "orderId": "4000001994736065",
+    "orderId": "4000001994745591",
     "stopPrice": 0.08425,
     "entry_sig": "2026-10-25 07:39:57.749000+00:00",
     "symbol": "DOGEUSDC",
     "side": "SHORT"
   },
   "ang:STXUSDT_SHORT": {
-    "orderId": "4000001994737830",
+    "orderId": "4000001994747494",
     "stopPrice": 0.3096,
     "entry_sig": "2026-10-25 08:16:21.165000+00:00",
     "symbol": "STXUSDT",
     "side": "SHORT"
   },
   "ang:WUSDT_SHORT": {
-    "orderId": "4000001994739709",
+    "orderId": "4000001994749579",
     "stopPrice": 0.012427,
     "entry_sig": "2026-10-25 07:52:00.480000+00:00",
     "symbol": "WUSDT",
-    "side": "SHORT"
-  },
-  "ang:BLURUSDT_SHORT": {
-    "orderId": "4000001994741360",
-    "stopPrice": 0.00811,
-    "entry_sig": "2026-10-25 08:33:39.531000+00:00",
-    "symbol": "BLURUSDT",
     "side": "SHORT"
   }
 }
