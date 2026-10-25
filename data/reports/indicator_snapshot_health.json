@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-25T09:45:45Z",
+ "generated_utc": "2026-10-25T09:50:47Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 93.1,
+  "age_s": 394.6,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 4524,
-  "proc_age_s": 21671.0,
-  "log_age_s": 22.5,
+  "proc_age_s": 21973.0,
+  "log_age_s": 55.1,
   "warmup_done": true,
   "timeframes_since_restart": [
    "D",
@@ -61,20 +61,20 @@
   "mode": "ACTIVE",
   "since_epoch": 1792602182.2042153,
   "activations": 163,
-  "hb_mtime": 1792921293.9602149,
-  "mac_snapshot_age_s": 16.784198760986328,
+  "hb_mtime": 1792921663.36267,
+  "mac_snapshot_age_s": 34.036476135253906,
   "mac_stale": false,
   "lease_holder": "mac",
   "lease_venues": null,
-  "lease_since": "2026-10-25T09:41:16Z",
+  "lease_since": "2026-10-25T09:46:17Z",
   "lease_reason": "manual force-mac",
-  "now": 1792921307.7535646,
-  "from_cache_age_s": 238.2,
-  "heartbeat_age_s": 13.8,
-  "active_s": 319125.5
+  "now": 1792921665.6890225,
+  "from_cache_age_s": 181.8,
+  "heartbeat_age_s": 2.3,
+  "active_s": 319483.5
  },
  "alerts": [
-  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 319125s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (13s) AND the Mac snapshot is fresh (93s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
+  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 319483s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (2s) AND the Mac snapshot is fresh (394s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
  ],
  "verdict": "ALERT"
 }
