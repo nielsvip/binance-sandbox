@@ -5228,7 +5228,7 @@ def tick(args, cfg, now):
             B["launched"] += 1
             if isinstance(log["hosts"].get(h["name"]), dict):
                 log["hosts"][h["name"]]["launched_pairs"] = log["hosts"][h["name"]].get("launched_pairs", 0) + 1
-                log["hosts"][h["name"]]["slots"] = f"{len(held[h['name']])}/{B['cap']}"
+                log["hosts"][h["name"]]["slots"] = f"{_occupied_n(held[h['name']], observed_by_host[h['name']])}/{B['cap']}"
                 log["hosts"][h["name"]].setdefault("held", []).append(sym)
                 log["hosts"][h["name"]].pop("idle_reason", None)
     # ---- pass 2b (coordinator 2026-10-22): in a slow-pinned round an IDLE host backfills a pending 30D side owned by a busy host.
@@ -5311,7 +5311,7 @@ def tick(args, cfg, now):
                 B["new_launched"] = B.get("new_launched", 0) + 1
                 _run_syms.add(sym)
                 if isinstance(log["hosts"].get(h["name"]), dict):
-                    log["hosts"][h["name"]]["slots"] = f"{len(held[h['name']])}/{B['cap']}"
+                    log["hosts"][h["name"]]["slots"] = f"{_occupied_n(held[h['name']], observed_by_host[h['name']])}/{B['cap']}"
                     log["hosts"][h["name"]].pop("idle_reason", None)
     _ph("steal_pass")
     # ---- NPZ PREFETCH (USER 2026-10-13): s1 readies the NEXT symbol's NPZ while the current boards finish, so a

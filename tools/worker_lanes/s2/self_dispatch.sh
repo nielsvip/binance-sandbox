@@ -17,6 +17,13 @@ if [ $(( $(date +%s) - $(stat -c %Y "$SP" 2>/dev/null || stat -f %m "$SP" 2>/dev
   touch "$SP"
 fi
 nrun=$(pgrep -af "python[^ ]* -u v15_pilot.py --sym-side " 2>/dev/null | grep -oE -- '--sym-side [A-Z0-9_]+' | sort -u | wc -l)
+_avail_mb=$(awk '/^MemAvailable:/ {print int($2/1024)}' /proc/meminfo)
+_extra=$(( (_avail_mb - 4000) / 10000 ))
+[ "$_extra" -lt 0 ] && _extra=0
+_mem_cap=$((nrun + _extra))
+[ "$_mem_cap" -lt "$MAX" ] && MAX=$_mem_cap
+_last_launch=$(stat -c %Y /tmp/s2_self_last_launch 2>/dev/null || echo 0)
+[ $(( $(date +%s) - _last_launch )) -lt 600 ] && MAX=$nrun
 _TB=/tmp/tails_$(basename $SIDES .txt).cache
 _PB=/tmp/prog_$(basename $SIDES .txt).cache
 /home/niels/.conda/envs/binance_env_mac/bin/python - "$SIDES" "$SB" "$SP" "$PDIR" "$_TB" "$_PB" <<'PYEOF' 2>/dev/null
@@ -92,7 +99,7 @@ for ss in $(cat "$SIDES" 2>/dev/null); do
   if [ "$done1" = "1" ] && [ "$_fresh_board" = "1" ]; then continue; fi
   _out=$(bash "$SB/tools/worker_lanes/s2/overload_run.sh" "$ss" "$T" "$W" "$MAX" 2>&1 | grep -E "LAUNCHED|ALREADY" | head -n 1)
   echo "$_out"
-  case "$_out" in LAUNCHED-*) _lt=$(awk -v s="${ss%_*}" '$1==s{print $2}' "$_TB" 2>/dev/null); echo "$(date +%s) ${_lt:-0}" > "/tmp/dispatched_${ss}";; esac
+  case "$_out" in LAUNCHED-*) _lt=$(awk -v s="${ss%_*}" '$1==s{print $2}' "$_TB" 2>/dev/null); echo "$(date +%s) ${_lt:-0}" > "/tmp/dispatched_${ss}"; touch /tmp/s2_self_last_launch; nrun=$((nrun + 1)); break;; esac
   case "$_out" in LAUNCHED-*|ALREADY-*) nrun=$((nrun + 1));; esac
 done
-echo "$(date -u +%FT%TZ) self-dispatch $(basename $SIDES) running=$nrun" >> /tmp/self_dispatch.log
+echo "$(date -u +%FT%TZ) self-dispatch $(basename $SIDES) running=$nrun cap=$MAX mem_avail_mb=$_avail_mb" >> /tmp/self_dispatch.log

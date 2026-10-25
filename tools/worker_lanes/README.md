@@ -72,3 +72,11 @@ nothing left suspended, nothing to re-arm.
   estimate. Four boards per host cannot be guaranteed on those 32 GB boxes
   while their live data services occupy memory. Do not force slots past the
   memory gate to satisfy a CPU percentage.
+
+2026-10-25 23:00Z s2 admission: its cron now passes a four-symbol ceiling.
+The self dispatcher admits one additional crypto board only when Linux
+`MemAvailable` exceeds a 4 GB reserve plus 10 GB per additional board. It
+launches at most one board per cycle and waits ten minutes before another.
+The launcher repeats the 14 GB admission threshold while holding the shared
+launch lock, after recounting live pilots.
+The ceiling is therefore a target, not an order to exceed measured memory.
