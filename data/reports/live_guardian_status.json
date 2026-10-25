@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-25T05:55:14Z",
+ "ts": "2026-10-25T06:00:32Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,7 +29,7 @@
   "fin": {
    "fills_6h": 56,
    "open_positions": 2,
-   "unrealised_usd": 0.18,
+   "unrealised_usd": 0.11,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 2,
@@ -91,7 +91,7 @@
    }
   },
   "flz": {
-   "fills_6h": 129,
+   "fills_6h": 130,
    "open_positions": 5,
    "unrealised_usd": -0.03,
    "pos_mismatch": 0,
@@ -127,231 +127,203 @@
     "48871"
    ],
    "starts_30m": 1,
-   "log_age_s": 8.0
+   "log_age_s": 11.0
   },
   "men": {
    "pids": [
     "48872"
    ],
    "starts_30m": 1,
-   "log_age_s": 694.0
+   "log_age_s": 1012.0
   },
   "ang": {
    "pids": [
     "49670"
    ],
    "starts_30m": 1,
-   "log_age_s": 648.0
+   "log_age_s": 966.0
   },
   "inf": {
    "pids": [
     "49429"
    ],
    "starts_30m": 1,
-   "log_age_s": 23.0
+   "log_age_s": 6.0
   },
   "flz": {
    "pids": [
     "55658"
    ],
-   "starts_30m": 1,
-   "log_age_s": 2.0
+   "starts_30m": 0,
+   "log_age_s": 4.0
   },
   "trb": {
    "pids": [
     "4757"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 11.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 80659.0
+   "log_age_s": 80976.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-25T05:55:15Z",
+   "ts": "2026-10-25T06:00:32Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "fin:ENAUSDC_LONG",
    "evidence": "AUGMENT AUGMENT_AT_LOSS_HL decided 2026-10-25T04:32:24Z bar=2026-10-25T04:15:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-25T05:55:15Z",
+   "ts": "2026-10-25T06:00:32Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "fin:WLDUSDC_LONG",
    "evidence": "CLOSE STATEFUL_PORTED_EXIT g-0.47% age60m bar=2026-10-25T04:15:00Z refused by non-safety gate: 25 04:33:19 - INFO - [fin] [VEC_EXACT] fin:WLDUSDC_LONG CLOSE VEC_EXIT_OWED qty=96.000000 -> SKIPPED_VX_INFLIGHT"
   },
   {
-   "ts": "2026-10-25T05:55:15Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "men:XPLUSDT_SHORT",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 1639.61->4918.82 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 1639.61)"
-  },
-  {
-   "ts": "2026-10-25T05:55:15Z",
+   "ts": "2026-10-25T06:00:32Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "men:GALAUSDT_SHORT",
    "evidence": "BREAKOUT_SIZE_LADDER resized qty 68493.2->205479 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 68493.2)"
   },
   {
-   "ts": "2026-10-25T05:55:15Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 604.23->1812.69 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 604.23)"
-  },
-  {
-   "ts": "2026-10-25T05:55:15Z",
+   "ts": "2026-10-25T06:00:32Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "ang:RLCUSDT_SHORT",
    "evidence": "REDUCE REDUCE_TO_FLAT bar=2026-10-25T05:00:00Z refused by non-safety gate: 25 05:24:38 - CRITICAL - [ang] \ud83e\udde8 [VECTOR_PARITY_BREACH] ang:RLCUSDT_SHORT: the vector decided CLOSE and live REFUSED it \u2014 BLOCKED_MAKER_SUPPRESS_WEBHOOK (reason=VEC_CONVERGE_TO_FLAT paper-flat-live-holds |VEC_EXACT). The"
   },
   {
-   "ts": "2026-10-25T05:55:15Z",
+   "ts": "2026-10-25T06:00:32Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "ang:BATUSDT_LONG",
    "evidence": "CLOSE MTF_GR_WT_EXIT_15m_grTFs=3 bar=2026-10-25T05:00:00Z refused by non-safety gate: 25 05:36:36 - CRITICAL - [ang] \ud83e\udde8 [VECTOR_PARITY_BREACH] ang:BATUSDT_LONG: the vector decided CLOSE and live REFUSED it \u2014 BLOCKED_MAKER_SUPPRESS_WEBHOOK (reason=VEC_EXIT_OWED paper-flat-live-holds-retry |VEC_EXACT). The g"
   },
   {
-   "ts": "2026-10-25T05:55:15Z",
+   "ts": "2026-10-25T06:00:33Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "flz:XRPUSDC_LONG",
    "evidence": "CLOSE ALL_TF_AGAINST_CLOSE g0.00% bar=2026-10-25T04:00:00Z refused by non-safety gate: 25 04:31:07 - INFO - [flz] [VEC_EXACT] flz:XRPUSDC_LONG CLOSE VEC_EXIT_OWED qty=5.300000 -> SKIPPED_VX_INFLIGHT"
   },
   {
-   "ts": "2026-10-25T05:55:15Z",
+   "ts": "2026-10-25T06:00:33Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "flz:XMRUSDT_LONG",
    "evidence": "REDUCE REGIME_REDUCE decided 2026-10-25T04:16:57Z bar=2026-10-25T04:00:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-25T05:55:15Z",
+   "ts": "2026-10-25T06:00:33Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "flz:XMRUSDT_LONG",
    "evidence": "REDUCE REGIME_REDUCE decided 2026-10-25T04:32:23Z bar=2026-10-25T04:15:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-25T05:55:15Z",
+   "ts": "2026-10-25T06:00:33Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "flz:WLDUSDC_LONG",
    "evidence": "CLOSE STATEFUL_PORTED_EXIT g-0.47% age60m bar=2026-10-25T04:15:00Z refused by non-safety gate: 25 04:35:33 - INFO - [flz] [VEC_EXACT] flz:WLDUSDC_LONG CLOSE VEC_EXIT_OWED qty=28.800000 -> SKIPPED_VX_INFLIGHT"
   },
   {
-   "ts": "2026-10-25T05:55:15Z",
+   "ts": "2026-10-25T06:00:33Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "flz:XMRUSDT_LONG",
    "evidence": "REDUCE REGIME_REDUCE decided 2026-10-25T04:47:54Z bar=2026-10-25T04:30:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-25T05:55:15Z",
+   "ts": "2026-10-25T06:00:33Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "flz:XMRUSDT_LONG",
    "evidence": "REDUCE REGIME_REDUCE decided 2026-10-25T04:58:46Z bar=2026-10-25T04:30:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-25T05:55:15Z",
+   "ts": "2026-10-25T06:00:33Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "flz:XMRUSDT_LONG",
    "evidence": "REDUCE REGIME_REDUCE decided 2026-10-25T05:00:50Z bar=2026-10-25T04:30:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-25T05:55:15Z",
+   "ts": "2026-10-25T06:00:33Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "flz:XMRUSDT_LONG",
    "evidence": "REDUCE REGIME_REDUCE decided 2026-10-25T05:01:49Z bar=2026-10-25T04:45:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-25T05:55:15Z",
+   "ts": "2026-10-25T06:00:33Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "flz:XMRUSDT_LONG",
    "evidence": "REDUCE REGIME_REDUCE decided 2026-10-25T05:16:40Z bar=2026-10-25T05:00:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-25T05:55:15Z",
-   "severity": "WARN",
-   "kind": "ATTEMPT_STORM_KEY",
-   "key": "men:BATUSDT_LONG",
-   "evidence": "44 execute_now attempts in 5 min (pre-gate)"
-  },
-  {
-   "ts": "2026-10-25T05:55:15Z",
-   "severity": "WARN",
-   "kind": "ATTEMPT_STORM_KEY",
-   "key": "ang:FILUSDC_LONG",
-   "evidence": "32 execute_now attempts in 5 min (pre-gate)"
-  },
-  {
-   "ts": "2026-10-25T05:55:15Z",
-   "severity": "WARN",
-   "kind": "ATTEMPT_STORM_KEY",
-   "key": "ang:BATUSDT_LONG",
-   "evidence": "31 execute_now attempts in 5 min (pre-gate)"
-  },
-  {
-   "ts": "2026-10-25T05:55:15Z",
-   "severity": "WARN",
-   "kind": "ATTEMPT_STORM_KEY",
-   "key": "ang:ARUSDT_LONG",
-   "evidence": "30 execute_now attempts in 5 min (pre-gate)"
-  },
-  {
-   "ts": "2026-10-25T05:55:15Z",
-   "severity": "WARN",
-   "kind": "ATTEMPT_STORM_KEY",
-   "key": "men:CRVUSDC_LONG",
-   "evidence": "38 execute_now attempts in 5 min (pre-gate)"
-  },
-  {
-   "ts": "2026-10-25T05:55:15Z",
-   "severity": "WARN",
-   "kind": "ATTEMPT_STORM_KEY",
-   "key": "men:BEAMXUSDT_LONG",
-   "evidence": "44 execute_now attempts in 5 min (pre-gate)"
-  },
-  {
-   "ts": "2026-10-25T05:55:15Z",
+   "ts": "2026-10-25T06:00:33Z",
    "severity": "WARN",
    "kind": "ATTEMPT_STORM_KEY",
    "key": "men:STRKUSDT_LONG",
-   "evidence": "60 execute_now attempts in 5 min (pre-gate)"
+   "evidence": "59 execute_now attempts in 5 min (pre-gate)"
   },
   {
-   "ts": "2026-10-25T05:55:15Z",
+   "ts": "2026-10-25T06:00:33Z",
+   "severity": "WARN",
+   "kind": "ATTEMPT_STORM_KEY",
+   "key": "flz:WLDUSDC_LONG",
+   "evidence": "30 execute_now attempts in 5 min (pre-gate)"
+  },
+  {
+   "ts": "2026-10-25T06:00:33Z",
+   "severity": "WARN",
+   "kind": "ATTEMPT_STORM_KEY",
+   "key": "men:BATUSDT_LONG",
+   "evidence": "37 execute_now attempts in 5 min (pre-gate)"
+  },
+  {
+   "ts": "2026-10-25T06:00:33Z",
+   "severity": "WARN",
+   "kind": "ATTEMPT_STORM_KEY",
+   "key": "men:CRVUSDC_LONG",
+   "evidence": "37 execute_now attempts in 5 min (pre-gate)"
+  },
+  {
+   "ts": "2026-10-25T06:00:33Z",
+   "severity": "WARN",
+   "kind": "ATTEMPT_STORM_KEY",
+   "key": "men:BEAMXUSDT_LONG",
+   "evidence": "40 execute_now attempts in 5 min (pre-gate)"
+  },
+  {
+   "ts": "2026-10-25T06:00:33Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "men",
-   "evidence": "ez_manage_men.log not written for 694s"
+   "evidence": "ez_manage_men.log not written for 1012s"
   },
   {
-   "ts": "2026-10-25T05:55:15Z",
+   "ts": "2026-10-25T06:00:33Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 648s"
+   "evidence": "ez_manage_ang.log not written for 966s"
   }
  ],
  "alert_counts": {
   "VEC_DECISION_NOT_FILLED": 8,
   "VEC_DECISION_REFUSED": 5,
-  "SIZE_ANOMALY": 3,
-  "ATTEMPT_STORM_KEY": 7,
+  "SIZE_ANOMALY": 1,
+  "ATTEMPT_STORM_KEY": 5,
   "STALE_LOG": 2
  },
  "active_interventions": {
@@ -447,5 +419,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.61
+ "sweep_s": 1.14
 }
