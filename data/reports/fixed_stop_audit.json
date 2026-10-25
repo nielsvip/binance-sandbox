@@ -1,7 +1,13 @@
 {
- "findings": [],
- "n_findings": 0,
+ "findings": [
+  {
+   "account": "fin",
+   "code": "BROKER_UNREACHABLE",
+   "error": "BinanceAPIException(<Response [418]>, 418, '{\"code\":-1003,\"msg\":\"Way too many requests; IP(200.118.16.10) banned until 1792913397748. Please use the websocket f"
+  }
+ ],
+ "n_findings": 1,
  "n_positions": 0,
  "positions": [],
- "ts": "2026-10-25T07:10:54.533991+00:00"
+ "ts": "2026-10-25T07:20:38.937807+00:00"
 }
