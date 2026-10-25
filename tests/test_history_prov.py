@@ -275,7 +275,10 @@ def test_stock_history_off_identical_then_on_carries_prov(tmp_path, monkeypatch)
     pc = H.attribute("EXIT_VELOCITY_WT against-long g-0.10%", "CLOSE", "LONG", "stocks", sset, "AAPL_LONG")
     H.register_dispatch("trb:AAPL_LONG", "VEC_EXACT_OPEN_B_SRS_ENTRY", po, "OPEN", tm.config)
     H.register_dispatch("trb:AAPL_LONG", "VEC_EXACT_CLOSE_EXIT_VELOCITY_WT against-long g-0.10%", pc, "CLOSE", tm.config)
-    asyncio.run(fn(stub, "trb:AAPL_LONG", "OPEN", 2.0, 100.0, "VEC_EXACT_OPEN_B_SRS_ENTRY"))
+    # NOTE (conservation era): the on-transition OPEN must differ in price
+    # from the off OPEN — an identical re-log is now suppressed as a dup
+    # (history_write_allowed), so the fixture uses 100.5 to keep both rows.
+    asyncio.run(fn(stub, "trb:AAPL_LONG", "OPEN", 2.0, 100.5, "VEC_EXACT_OPEN_B_SRS_ENTRY"))
     asyncio.run(fn(stub, "trb:AAPL_LONG", "CLOSE", 2.0, 99.0, "VEC_EXACT_CLOSE_EXIT_VELOCITY_WT against-long g-0.10%"))
     _, o, c = _last(tmp_path, "trb", "AAPL_LONG")
     assert o["prov"]["switch"] == "STRUCTURAL_RANGE_SHIFT_EXIT" and o["reason"].startswith("VEC_EXACT_OPEN_B_SRS_ENTRY|SW=STRUCTURAL_RANGE_SHIFT_EXIT|F=")
@@ -287,8 +290,11 @@ def test_stock_native_and_broker_events_classified(tmp_path, monkeypatch):
     tm, stub = _stock_mgr(tmp_path, True)
     monkeypatch.setattr(tm.config, "HISTORY_PROV_ENABLED", True, raising=False)
     fn = tm.TradierTradeManager._append_to_history
+    # NOTE (conservation era): the native close must differ in price from
+    # the sync close — identical re-logs are now suppressed as dups, so the
+    # fixture uses 1.5 to keep both rows and their prov labels.
     asyncio.run(fn(stub, "trb:MU_SHORT", "CLOSE", 1.0, 1.0, "BROKER_SYNC_CLOSE"))
-    asyncio.run(fn(stub, "trb:MU_SHORT", "CLOSE", 1.0, 1.0, "FIXED_STOP_SHORT_px12.0"))
+    asyncio.run(fn(stub, "trb:MU_SHORT", "CLOSE", 1.0, 1.5, "FIXED_STOP_SHORT_px12.0"))
     b, f = _last(tmp_path, "trb", "MU_SHORT")
     assert b["prov"]["src"] == "BROKER" and b["reason"] == "BROKER_SYNC_CLOSE"
     assert f["prov"]["src"] == "FIXED_STOP" and f["prov"]["switch"] == "NONE"

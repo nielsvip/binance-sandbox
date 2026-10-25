@@ -103,13 +103,14 @@ def conservation_allows(path, trade_type, qty):
 def history_write_allowed(path, trade_type, qty, price):
     try:
         t = str(trade_type or "").upper()
-        if t in _CLOSE_TYPES:
+        if t in _CLOSE_TYPES or t in _OPEN_TYPES:
             q = round(float(qty), 6)
             try:
                 with open(path, "rb") as f:
                     f.seek(max(0, os.path.getsize(path) - 8192))
                     tail = f.read().decode("utf-8", "replace").splitlines()
                 now = datetime.now(timezone.utc)
+                seen_close_since = False
                 for line in reversed(tail[-16:]):
                     try:
                         rec = json.loads(line)
@@ -124,7 +125,14 @@ def history_write_allowed(path, trade_type, qty, price):
                     if (now - rts).total_seconds() > 900:
                         break
                     rt = str(rec.get("type", "") or "").upper()
-                    if rt in _CLOSE_TYPES and abs(float(rec.get("qty", -1)) - q) < 1e-9:
+                    if rt in _CLOSE_TYPES:
+                        seen_close_since = True
+                    match = (
+                        (rt in _CLOSE_TYPES)
+                        if t in _CLOSE_TYPES
+                        else (rt in _OPEN_TYPES)
+                    )
+                    if match and abs(float(rec.get("qty", -1)) - q) < 1e-9:
                         try:
                             if abs(float(rec.get("price", -1)) - float(price)) > max(
                                 1e-8, abs(float(price)) * 1e-6
@@ -132,10 +140,12 @@ def history_write_allowed(path, trade_type, qty, price):
                                 continue
                         except Exception:
                             continue
+                        if t in _OPEN_TYPES and seen_close_since:
+                            continue
                         return False
             except (FileNotFoundError, OSError):
                 pass
-            if not conservation_allows(path, trade_type, qty):
+            if t in _CLOSE_TYPES and not conservation_allows(path, trade_type, qty):
                 return False
         return True
     except Exception:

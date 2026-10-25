@@ -510,12 +510,23 @@ def cycle(workers: int, force: bool = False) -> list:
     em = engine_md5()
     os.environ["VEC_LIVE_ENGINE_MD5"] = em["combined"]
     sets = load_sets()
+    try:
+        from tools import vec_shard as _shard
+        _shard_name = _shard.active_shard()
+    except Exception:
+        _shard, _shard_name = None, "all"
     jobs, recs = [], []
+    _skipped = 0
     for ss, (entry, ov) in sorted(sets.items()):
+        if _shard is not None and not _shard.serves(ss, _shard_name):
+            _skipped += 1
+            continue
         if ov is None:
             recs.append({"ss": ss, "status": "NO_SET", "why": "no overrides resolved"})
             continue
         jobs.append((ss, entry, ov, em["combined"], force))
+    if _skipped:
+        print("[vec_live] shard=%s served=%d skipped=%d" % (_shard_name, len(jobs), _skipped))
     if workers > 1 and len(jobs) > 1:
         import multiprocessing as mp
         with mp.get_context("fork").Pool(min(workers, len(jobs))) as pool:

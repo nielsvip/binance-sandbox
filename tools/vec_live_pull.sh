@@ -19,22 +19,33 @@ if [ "${VEC_LIVE_PULL_LOCKED:-0}" != "1" ]; then
   exec /usr/bin/lockf -s -t 0 "$LOCK" "$0" "$@"
 fi
 SSH="ssh -o BatchMode=yes -o ConnectTimeout=8 -o ServerAliveInterval=5"
-pull_once() {
-  local ts rc
+# USER 2026-10-25 per-cat_side shards: one lane host per shard (S1 crypto_short, S2 crypto_long,
+# S5 stock_long, S6 stock_short). VEC_LIVE_PULL_HOSTS="h1:dir1 h2:dir2 ..." pulls every shard into
+# the same dirs (merge rsync, never --delete: disjoint shards, disjoint sym_sides). Default = today's
+# single S1 source, byte-identical behavior. Registry stays Mac-local unless VEC_LIVE_PULL_REGISTRY=1.
+pull_one() {
+  local host="$1" remote="$2" ts rc
   ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-  rsync -az --timeout=15 -e "$SSH" --partial-dir=.rsync-partial --delay-updates --include='*.json' --exclude='*' "$HOST:$REMOTE/intents/" "$DEST/intents/" >>"$LOG" 2>&1
+  rsync -az --timeout=15 -e "$SSH" --partial-dir=.rsync-partial --delay-updates --include='*.json' --exclude='*' "$host:$remote/intents/" "$DEST/intents/" >>"$LOG" 2>&1
   rc=$?
-  rsync -az --timeout=15 -e "$SSH" --partial-dir=.rsync-partial --delay-updates --include='*.json' --exclude='*' "$HOST:$REMOTE/state/" "$DEST/state/" >>"$LOG" 2>&1
+  rsync -az --timeout=15 -e "$SSH" --partial-dir=.rsync-partial --delay-updates --include='*.json' --exclude='*' "$host:$remote/state/" "$DEST/state/" >>"$LOG" 2>&1
   rc=$((rc + $?))
   if [ "${VEC_LIVE_PULL_REGISTRY:-0}" = "1" ]; then
-    rsync -az --timeout=15 -e "$SSH" "$HOST:$REMOTE/vec_driven.json" "$DEST/vec_driven.json" >>"$LOG" 2>&1
+    rsync -az --timeout=15 -e "$SSH" "$host:$remote/vec_driven.json" "$DEST/vec_driven.json" >>"$LOG" 2>&1
     rc=$((rc + $?))
   fi
   if [ $rc -ne 0 ]; then
-    echo "$ts PULL_FAIL rc=$rc host=$HOST" >>"$LOG"
-  else
-    date -u +%s >"$DEST/.last_pull_ok"
+    echo "$ts PULL_FAIL rc=$rc host=$host" >>"$LOG"
+    return 1
   fi
+  return 0
+}
+pull_once() {
+  local spec ok=0 fail=0
+  for spec in ${VEC_LIVE_PULL_HOSTS:-"$HOST:$REMOTE"}; do
+    if pull_one "${spec%%:*}" "${spec#*:}"; then ok=$((ok + 1)); else fail=$((fail + 1)); fi
+  done
+  if [ $fail -eq 0 ]; then date -u +%s >"$DEST/.last_pull_ok"; fi
 }
 if [ "${1:-}" = "--loop" ]; then
   every="${2:-20}"

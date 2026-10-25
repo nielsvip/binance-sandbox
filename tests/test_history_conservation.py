@@ -122,3 +122,81 @@ def test_tail_cross_type_same_fill_suppressed(tmp_path):
     _write(p, [_row(now - timedelta(minutes=5), "REDUCE", 110.0, 0.405)])
     assert _el.history_write_allowed(p, "CLOSE", 110.0, 0.405) is False
     assert _el.history_write_allowed(p, "CLOSE", 110.0, 0.500) is True
+
+
+def test_echo_open_exact_relog_suppressed(tmp_path):
+    # BONK lesson: PURE_BOARD AUGMENT + BROKER_SYNC AUGMENT log one fill
+    # twice (same qty+price, minutes apart, no close between). The second
+    # lands only if a close cycle intervened (genuine reopen).
+    now = datetime.now(timezone.utc)
+    p = str(tmp_path / "X.jsonl")
+    _write(p, [_row(now - timedelta(minutes=5), "AUGMENT", 100.0, 1.5)])
+    assert _el.history_write_allowed(p, "AUGMENT", 100.0, 1.5) is False
+
+
+def test_reopen_after_close_allowed(tmp_path):
+    # Mirror of the WIF alternating-scalp law for opens: a close cycle
+    # between two identical opens proves the second is a genuine reopen.
+    now = datetime.now(timezone.utc)
+    p = str(tmp_path / "Y.jsonl")
+    _write(p, [_row(now - timedelta(minutes=8), "AUGMENT", 100.0, 1.5)])
+    _write(p, [_row(now - timedelta(minutes=4), "REDUCE", 100.0, 1.6)])
+    assert _el.history_write_allowed(p, "AUGMENT", 100.0, 1.5) is True
+
+
+def test_open_different_price_allowed(tmp_path):
+    # Scale-in at a new price is never a re-log, however close in time.
+    now = datetime.now(timezone.utc)
+    p = str(tmp_path / "Z.jsonl")
+    _write(p, [_row(now - timedelta(minutes=5), "AUGMENT", 100.0, 1.5)])
+    assert _el.history_write_allowed(p, "AUGMENT", 100.0, 1.7) is True
+
+
+def test_close_law_unchanged_by_open_extension(tmp_path):
+    # The opens extension must not alter close verdicts: storm repeat
+    # still suppressed, covered first close still allowed.
+    now = datetime.now(timezone.utc)
+    p = str(tmp_path / "W.jsonl")
+    _write(p, [_row(now - timedelta(hours=2), "AUGMENT", 32.6, 0.15)])
+    assert _el.history_write_allowed(p, "REDUCE", 32.6, 0.15) is True
+    _write(p, [_row(now - timedelta(minutes=5), "REDUCE", 32.6, 0.15)])
+    assert _el.history_write_allowed(p, "REDUCE", 32.6, 0.15) is False
+
+
+def test_tradier_writer_suppresses_repeat_close(tmp_path, monkeypatch):
+    # Wiring: tradier _append_to_history must enforce the same conservation
+    # gate as the service (CVX 10-22: 67 journal shares vs 30 tape sales).
+    # Unbound-method call with stub self; history_prov stays default-off.
+    import asyncio
+    from types import SimpleNamespace
+
+    import tradier_manage as _tm
+
+    monkeypatch.setenv("HISTORY_PROV_ENABLED", "0")
+    dd = tmp_path / "data"
+    self_stub = SimpleNamespace(config=SimpleNamespace(DATA_DIR=str(dd)))
+    fn = _tm.TradierTradeManager._append_to_history
+    pk = "trb:CVX_SHORT"
+    asyncio.run(fn(self_stub, pk, "AUGMENT", 22.0, 228.125, "GAP_MORNING_REENTRY"))
+    asyncio.run(fn(self_stub, pk, "CLOSE", 22.0, 224.10, "UNCOND_CLOSE"))
+    asyncio.run(fn(self_stub, pk, "CLOSE", 22.0, 224.10, "UNCOND_CLOSE_DUP"))
+    lines = (dd / "history" / "trb" / "CVX_SHORT.jsonl").read_text().splitlines()
+    assert len(lines) == 2
+    assert json.loads(lines[0])["type"] == "AUGMENT"
+    assert json.loads(lines[1])["type"] == "CLOSE"
+
+
+def test_tradier_writer_first_close_always_allowed(tmp_path, monkeypatch):
+    # Fail-open: a first close with covering opens always lands.
+    import asyncio
+    from types import SimpleNamespace
+
+    import tradier_manage as _tm
+
+    monkeypatch.setenv("HISTORY_PROV_ENABLED", "0")
+    dd = tmp_path / "data"
+    self_stub = SimpleNamespace(config=SimpleNamespace(DATA_DIR=str(dd)))
+    fn = _tm.TradierTradeManager._append_to_history
+    asyncio.run(fn(self_stub, "trb:AAPL_LONG", "CLOSE", 10.0, 347.0, "X"))
+    lines = (dd / "history" / "trb" / "AAPL_LONG.jsonl").read_text().splitlines()
+    assert len(lines) == 1

@@ -52784,6 +52784,14 @@ class TradierTradeManager:
                         reason = _hp.with_tail(reason, _hp_block)
             except Exception as _hp_e:
                 logger.debug(f"[HISTORY_PROV] {position_key}: {_hp_e}")
+            try:
+                if str(trade_type or "").upper() in ("REDUCE", "CLOSE", "OPEN", "AUGMENT", "REENTRY", "GHOST_CLOSE"):
+                    from vec_decisions import execution_ledger as _exledgerC
+                    if not _exledgerC.history_write_allowed(str(filename), trade_type, float(qty), float(price)):
+                        logger.warning(f"[HISTORY_CONSERVATION] {position_key} {trade_type} qty={qty} suppressed (already covered on disk — phantom re-log)")
+                        return
+            except Exception:
+                pass
             entry = {
                 "ts": datetime.now(timezone.utc).isoformat(),
                 "type": trade_type,
