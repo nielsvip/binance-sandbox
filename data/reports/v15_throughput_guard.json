@@ -1,5 +1,5 @@
 {
- "at": "2026-10-25T12:11:04Z",
+ "at": "2026-10-25T13:11:04Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
@@ -10,15 +10,15 @@
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [],
-   "mem_avail_mb": 4857,
-   "load1": 17.81,
+   "mem_avail_mb": 8347,
+   "load1": 17.02,
    "nproc": 16,
    "slots": "0/4",
-   "binding_reason": "scheduler mem guard (disk 26847 MB, mem 8717 MB, est_pair 6000 MB) \u2014 slots 0/4",
+   "binding_reason": "scheduler mem guard (disk 24113 MB, mem 10579 MB, est_pair 6000 MB) \u2014 slots 0/4",
    "error": null,
    "published": [],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 483.2,
+   "minutes_since_last_improved": 543.3,
    "last_improved_symside": "ZKUSDT_SHORT",
    "cadence_ok": false,
    "improved_gap_min_median_24h": 23.4,
@@ -27,53 +27,90 @@
    "board_cpu_s_median_24h": 1657.1,
    "board_wall_s_median_24h": 1522.0295741558075,
    "board_cores": 0.0,
-   "nonboard_cores_competing": 5.42,
-   "nonboard_cores_niced": 8.46,
+   "nonboard_cores_competing": 7.15,
+   "nonboard_cores_niced": 6.41,
    "cores_by_bucket": {
-    "other": 2.47,
-    "live_helpers": 2.03,
-    "klines_append": 0.92
+    "other": 3.65,
+    "live_helpers": 2.53,
+    "klines_append": 0.97
    },
    "cores_by_bucket_niced": {
-    "klines_vault": 1.5,
-    "other": 6.96
+    "other": 4.59,
+    "klines_vault": 1.82
    }
   },
   "s2": {
-   "improved": 0,
-   "improved_per_hour": 0.0,
-   "published_n": 0,
+   "improved": 5,
+   "improved_per_hour": 5.0,
+   "published_n": 5,
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "MASKUSDT_LONG",
-    "SKYAIUSDT_LONG"
+    "SPXUSDT_LONG"
    ],
-   "mem_avail_mb": 9728,
-   "load1": 32.46,
+   "mem_avail_mb": 19008,
+   "load1": 7.66,
    "nproc": 16,
-   "slots": "2/4",
-   "binding_reason": "scheduler mem guard (disk 6372 MB, mem 7979 MB, est_pair 10610 MB) \u2014 slots 2/4",
+   "slots": "1/4",
+   "binding_reason": "scheduler disk guard (disk 4646 MB, mem 21244 MB, est_pair 9528 MB) \u2014 slots 1/4",
    "error": null,
-   "published": [],
+   "published": [
+    {
+     "symside": "MASKUSDT_SHORT",
+     "at": "2026-10-25T12:13:32Z",
+     "baseline": 29.95283474839362,
+     "final": 46.29752857048274,
+     "state": "improved"
+    },
+    {
+     "symside": "RLCUSDT_LONG",
+     "at": "2026-10-25T12:58:27Z",
+     "baseline": 161.8988513529559,
+     "final": 259.3704924241001,
+     "state": "improved"
+    },
+    {
+     "symside": "SKYAIUSDT_LONG",
+     "at": "2026-10-25T12:31:21Z",
+     "baseline": 16.68938398839559,
+     "final": 53.242305459613114,
+     "state": "improved"
+    },
+    {
+     "symside": "SKYAIUSDT_SHORT",
+     "at": "2026-10-25T12:22:00Z",
+     "baseline": 11.471365136730762,
+     "final": 40.734434747183926,
+     "state": "improved"
+    },
+    {
+     "symside": "SOLUSDC_SHORT",
+     "at": "2026-10-25T12:58:53Z",
+     "baseline": 30.611488783466616,
+     "final": 36.82941253419221,
+     "state": "improved"
+    }
+   ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 6.4,
-   "last_improved_symside": "MASKUSDT_LONG",
+   "minutes_since_last_improved": 12.0,
+   "last_improved_symside": "SOLUSDC_SHORT",
    "cadence_ok": false,
-   "improved_gap_min_median_24h": 5.7,
-   "improved_gap_min_max_24h": 642.2,
-   "improved_finishes_24h": 148,
+   "improved_gap_min_median_24h": 5.9,
+   "improved_gap_min_max_24h": 87.1,
+   "improved_finishes_24h": 149,
    "board_cpu_s_median_24h": 2241.7,
-   "board_wall_s_median_24h": 1182.276085138321,
-   "board_cores": 13.01,
-   "nonboard_cores_competing": 2.91,
-   "nonboard_cores_niced": 0,
+   "board_wall_s_median_24h": 1126.832993030548,
+   "board_cores": 1.0,
+   "nonboard_cores_competing": 2.08,
+   "nonboard_cores_niced": 1.01,
    "cores_by_bucket": {
-    "boards": 13.01,
-    "other": 0.91,
-    "live_helpers": 2.0
+    "other": 0.05,
+    "boards": 1.0,
+    "live_helpers": 2.03
    },
-   "cores_by_bucket_niced": {}
+   "cores_by_bucket_niced": {
+    "other": 1.01
+   }
   }
  },
  "under_target": [

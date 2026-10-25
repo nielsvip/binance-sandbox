@@ -1,32 +1,115 @@
 {
- "generated_at": "2026-10-25 13:09 UTC",
- "total_capital_usd": 27.74,
+ "generated_at": "2026-10-25 13:13 UTC",
+ "total_capital_usd": 135.86,
  "tier_capital": {
   "A": 0.0,
-  "B": 27.74,
-  "C": 0.0
+  "B": 44.98,
+  "C": 90.87
  },
  "tier_count": {
   "A": 0,
   "B": 1,
-  "C": 0
+  "C": 7
  },
  "winners": [],
- "losers": [],
- "mediocre": [
-  "inf:ZENUSDT_SHORT"
+ "losers": [
+  "fin:RIFUSDT_SHORT",
+  "fin:MOVRUSDT_SHORT",
+  "fin:KSMUSDT_SHORT",
+  "fin:STXUSDT_SHORT",
+  "fin:RLCUSDT_SHORT",
+  "fin:PENGUUSDC_LONG",
+  "fin:ENAUSDC_LONG"
  ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "inf:ZENUSDT_SHORT",
-   "symbol": "ZENUSDT",
-   "account": "inf",
-   "value_usd": 27.74,
-   "gain_pct": -0.053,
+   "pk": "fin:XMRUSDT_LONG",
+   "symbol": "XMRUSDT",
+   "account": "fin",
+   "value_usd": 44.98,
+   "gain_pct": 0.147,
    "tier": "B",
-   "perf_mult": 0.47,
-   "amt": 4.9,
-   "mark": 5.662
+   "perf_mult": 4.38,
+   "amt": 0.074,
+   "mark": 607.83
+  },
+  {
+   "pk": "fin:MOVRUSDT_SHORT",
+   "symbol": "MOVRUSDT",
+   "account": "fin",
+   "value_usd": 28.03,
+   "gain_pct": -0.141,
+   "tier": "C",
+   "perf_mult": 0.21,
+   "amt": 26.34,
+   "mark": 1.06432312
+  },
+  {
+   "pk": "fin:RLCUSDT_SHORT",
+   "symbol": "RLCUSDT",
+   "account": "fin",
+   "value_usd": 24.91,
+   "gain_pct": 0.153,
+   "tier": "C",
+   "perf_mult": 0.15,
+   "amt": 47.5,
+   "mark": 0.52439816
+  },
+  {
+   "pk": "fin:STXUSDT_SHORT",
+   "symbol": "STXUSDT",
+   "account": "fin",
+   "value_usd": 13.1,
+   "gain_pct": 0.15,
+   "tier": "C",
+   "perf_mult": 0.13,
+   "amt": 44.0,
+   "mark": 0.29775275
+  },
+  {
+   "pk": "fin:ENAUSDC_LONG",
+   "symbol": "ENAUSDC",
+   "account": "fin",
+   "value_usd": 7.04,
+   "gain_pct": 0.907,
+   "tier": "C",
+   "perf_mult": 0.38,
+   "amt": 36.0,
+   "mark": 0.19548736
+  },
+  {
+   "pk": "fin:RIFUSDT_SHORT",
+   "symbol": "RIFUSDT",
+   "account": "fin",
+   "value_usd": 6.23,
+   "gain_pct": -0.17,
+   "tier": "C",
+   "perf_mult": 0.21,
+   "amt": 89.0,
+   "mark": 0.07004888
+  },
+  {
+   "pk": "fin:KSMUSDT_SHORT",
+   "symbol": "KSMUSDT",
+   "account": "fin",
+   "value_usd": 6.03,
+   "gain_pct": 0.0,
+   "tier": "C",
+   "perf_mult": 0.14,
+   "amt": 1.6,
+   "mark": 3.771
+  },
+  {
+   "pk": "fin:PENGUUSDC_LONG",
+   "symbol": "PENGUUSDC",
+   "account": "fin",
+   "value_usd": 5.53,
+   "gain_pct": 0.463,
+   "tier": "C",
+   "perf_mult": 0.45,
+   "amt": 748.0,
+   "mark": 0.00739103
   }
  ]
 }
