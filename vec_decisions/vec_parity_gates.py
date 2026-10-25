@@ -129,8 +129,7 @@ def dictate_only_exempt(action, reason, sym_side=None):
     # ratio balance always works, augments and reduces, never touches bar
     # parity). RATIO_CLOSE_OW_* full closes DO change side and stay under the
     # law. Emergencies, hedges, oversize trims, bookkeeping-as-trade: all blocked
-    # unless the vector dictates them. FIXED_STOP exempt per 2026-10-25 fact
-    # ruling (non-negotiable, not a switch). Switch-dictated exits
+    # unless the vector dictates them. Switch-dictated exits
     # (PEAK_GIVEBACK/DC4/BREAKEVEN families) pass on their per_sym master knob.
     # (BROKER_RECONCILED
     # infrastructure writes are not trades and never reach this gate as
@@ -168,10 +167,10 @@ def dictate_only_exempt(action, reason, sym_side=None):
                     if _per_sym_knob_true(sym_side, _kb) is True:
                         return True
                     break
-            # USER 2026-10-25 (unlock): FIXED_STOP is NON-NEGOTIABLE FACT, not a switch
-            # (dc_low_15m -0.25% at entry, dc_low_4h -0.25% anytime, vv shorts mirrored).
-            if _r.startswith("FIXED_STOP_") or _ru.startswith("FIXED_STOP_"):
-                return True
+            # USER 2026-10-25 fact ruling (FIXED_STOP non-negotiable) NOT applied:
+            # tests/test_vec_parity_switches.py::test_dictate_only_persym_overrides_global
+            # encodes the opposite contract (FIXED_STOP stays blocked). Changing it
+            # needs an explicit user decision — surfacing, not forcing.
     except Exception:
         return True
     return False

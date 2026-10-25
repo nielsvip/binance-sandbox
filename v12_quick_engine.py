@@ -15533,19 +15533,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _fx_bar_lo = _base_safe(npz, "low", n, cfg)
     _fx_bar_hi = _base_safe(npz, "high", n, cfg)
     _fx_bar_op = _base_safe(npz, "open", n, cfg)
-    # HARD_STOP TF switch: 4h (tight) vs D (wide) per sym_side
-    _hs_tf_v12 = str(getattr(cfg, "DC_HARD_STOP_TF", "4h") or "4h").strip().upper()
-    _hs_tf_v12 = "D" if _hs_tf_v12 in ("D", "1D", "DAILY") else "4h"
-    if _hs_tf_v12 == "D":
-        dc_high_4h = _safe(npz, "dc_high_D", n)
-        dc_low_4h = _safe(npz, "dc_low_D", n)
-        # fallback to 4h if D missing
-        if (dc_high_4h == 0).all() and (dc_low_4h == 0).all():
-            dc_high_4h = _safe(npz, "dc_high_4h", n)
-            dc_low_4h = _safe(npz, "dc_low_4h", n)
-    else:
-        dc_high_4h = _safe(npz, "dc_high_4h", n)
-        dc_low_4h = _safe(npz, "dc_low_4h", n)
+    # USER 2026-10-25: HARD_STOP TF is 4h always (no D variant) — mirrors live.
+    _hs_tf_v12 = "4h"
+    dc_high_4h = _safe(npz, "dc_high_4h", n)
+    dc_low_4h = _safe(npz, "dc_low_4h", n)
     _uh_h4 = _safe(npz, "dc_high_4h", n, 0)
     _uh_h1 = _safe(npz, "dc_high_1h", n, 0)
     _uh_h15 = _safe(
@@ -20956,8 +20947,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 continue
         except Exception:
             pass
-        # 2026-09-19 USER MANDATE — ABSOLUTE ULTIMATE STOP: DC CHANNEL BREACH TF = DC_HARD_STOP_TF (4h|D)
-        # No trade may be held through dc_low_TF (LONG) / dc_high_TF (SHORT) at any loss. TF per sym_side, D wider.
+        # USER 2026-10-25: ABSOLUTE ULTIMATE STOP is the dc_4h CHANNEL ∓0.25%
+        # (LONG px <= dc_low_4h*0.9975, SHORT px >= dc_high_4h*1.0025), TF 4h
+        # always, anytime, no veto — mirrors live both venues.
         try:
             _ult_j = (
                 (i - 1)
@@ -20968,19 +20960,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 float(dc_low_4h[_ult_j]) if is_long else float(dc_high_4h[_ult_j])
             )
             _ult_breach = (_ult_lvl > 0) and (
-                (is_long and px <= _ult_lvl) or ((not is_long) and px >= _ult_lvl)
+                (is_long and px <= _ult_lvl * 0.9975)
+                or ((not is_long) and px >= _ult_lvl * 1.0025)
             )
-            if (
-                _ult_breach
-                and _be_veto is not None
-                and i < len(_be_veto)
-                and bool(_be_veto[i])
-            ):
-                _ult_breach = False  # BOTTOM_EXIT_HTF_WT_VETO twin (live ez:46767-46782 clears the breach)
-            if _ult_breach and _htfv_block(i, "ULTIMATE_DC_HARD_STOP"):
-                _ult_breach = (
-                    False  # lane-D: stocks HTF_TREND_VETO_ON_REDUCE refuses the close
-                )
             if _ult_breach:
                 pos["fees"] += abs(pos["qty"] * px) * half_fee
                 _pnl = (
@@ -20996,7 +20978,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _tsu = (
                     float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
                 )
-                _hs_reason = f"ULTIMATE_DC_{_hs_tf_v12}_HARD_STOP at dc_{_hs_tf_v12}_{'low' if is_long else 'high'} 0% breach"
+                _hs_reason = f"ULTIMATE_DC_{_hs_tf_v12}_HARD_STOP at dc_{_hs_tf_v12}_{'low' if is_long else 'high'} 0.25pct channel"
                 trades.append(
                     {
                         "pnl_dollars": _pnl,

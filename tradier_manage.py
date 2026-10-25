@@ -14391,50 +14391,20 @@ async def _pre_twin_hard_stops(
                     )
                     _fired = f"VIGILANCE_DC4_{_vg_tf}"
         if _fired is None:
-            _hs_tf = (
-                str(
-                    _cfg("DC_HARD_STOP_TF", "4h", account_key, symbol, position_side)
-                    or "4h"
-                )
-                .strip()
-                .upper()
-            )
-            _hs_tf = "D" if _hs_tf in ("D", "1D", "DAILY") else "4h"
-            _hs_keys = (
-                ("dc_low_D", "dc_high_D")
-                if _hs_tf == "D"
-                else ("dc_low_4h", "dc_high_4h")
-            )
+            # USER 2026-10-25: dc_4h stop is TF 4h always (no D variant), the
+            # CHANNEL ∓0.25% (LONG px <= dc_low_4h*0.9975, SHORT px >=
+            # dc_high_4h*1.0025), anytime, no WT veto.
+            _hs_tf = "4h"
+            _hs_keys = ("dc_low_4h", "dc_high_4h")
             _ult_dc_low = safe_fetch_float(
                 i.get(_hs_keys[0], 0) or i.get("dc_low_4h", 0) or 0, 0.0
             )
             _ult_dc_high = safe_fetch_float(
                 i.get(_hs_keys[1], 0) or i.get("dc_high_4h", 0) or 0, 0.0
             )
-            _br = (is_long and _ult_dc_low > 0 and _px <= _ult_dc_low) or (
-                (not is_long) and _ult_dc_high > 0 and _px >= _ult_dc_high
+            _br = (is_long and _ult_dc_low > 0 and _px <= _ult_dc_low * 0.9975) or (
+                (not is_long) and _ult_dc_high > 0 and _px >= _ult_dc_high * 1.0025
             )
-            if _br and bool(getattr(config, "BOTTOM_EXIT_HTF_WT_VETO_ENABLED", True)):
-                try:
-                    _w1h1 = safe_fetch_float(i.get("wt1_1h", 0), 0.0)
-                    _w1h2 = safe_fetch_float(i.get("wt2_1h", 0), 0.0)
-                    _w151 = safe_fetch_float(i.get("wt1_15m", 0), 0.0)
-                    _w152 = safe_fetch_float(i.get("wt2_15m", 0), 0.0)
-                    _w4h1 = safe_fetch_float(i.get("wt1_4h", 0), 0.0)
-                    _w4h2 = safe_fetch_float(i.get("wt2_4h", 0), 0.0)
-                    _with = (
-                        is_long and (_w1h1 > _w1h2 or _w151 > _w152 or _w4h1 > _w4h2)
-                    ) or (
-                        (not is_long)
-                        and (_w1h1 < _w1h2 or _w151 < _w152 or _w4h1 < _w4h2)
-                    )
-                    if _with:
-                        logger.warning(
-                            f"🛡️ [PRE_TWIN_BOTTOM_EXIT_HTF_WT_VETO_ULTIMATE_DC] {position_key}: DC_{_hs_tf} breached {_px:.6f} vs {(_ult_dc_low if is_long else _ult_dc_high):.6f} BUT HTF WT still WITH position → VETO bottom exit, hold for top exit"
-                        )
-                        _br = False
-                except Exception:
-                    pass
             if _br:
                 _ult_lvl = _ult_dc_low if is_long else _ult_dc_high
                 logger.critical(
@@ -16037,13 +16007,11 @@ async def process_position(
                 and position is not None
                 and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
             ):
-                _hs_tf = str(_cfg_auto("DC_HARD_STOP_TF", "4h") or "4h").strip().upper()
-                _hs_tf = "D" if _hs_tf in ("D", "1D", "DAILY") else "4h"
-                _hs_keys = (
-                    ("dc_low_D", "dc_high_D")
-                    if _hs_tf == "D"
-                    else ("dc_low_4h", "dc_high_4h")
-                )
+                # USER 2026-10-25: dc_4h stop is TF 4h always (no D variant), the
+                # CHANNEL ∓0.25% (LONG px <= dc_low_4h*0.9975, SHORT px >=
+                # dc_high_4h*1.0025), anytime, no WT veto.
+                _hs_tf = "4h"
+                _hs_keys = ("dc_low_4h", "dc_high_4h")
                 _ult_dc_low = safe_fetch_float(
                     i.get(_hs_keys[0], 0) or i.get("dc_low_4h", 0) or 0, 0.0
                 )
@@ -16051,44 +16019,14 @@ async def process_position(
                     i.get(_hs_keys[1], 0) or i.get("dc_high_4h", 0) or 0, 0.0
                 )
                 _ult_breach = (
-                    is_long and _ult_dc_low > 0 and current_price <= _ult_dc_low
+                    is_long
+                    and _ult_dc_low > 0
+                    and current_price <= _ult_dc_low * 0.9975
                 ) or (
-                    (not is_long) and _ult_dc_high > 0 and current_price >= _ult_dc_high
+                    (not is_long)
+                    and _ult_dc_high > 0
+                    and current_price >= _ult_dc_high * 1.0025
                 )
-                # 2026-09-27 BOTTOM-EXIT FIX (carbon-copy of ez_manage.py:46605-46618): don't exit at
-                # bottom when HTF WT still WITH position — hold for the top exit, not the bottom.
-                if _ult_breach and bool(
-                    getattr(config, "BOTTOM_EXIT_HTF_WT_VETO_ENABLED", True)
-                ):
-                    try:
-                        _v_wt1_1h = safe_fetch_float(i.get("wt1_1h", 0), 0.0)
-                        _v_wt2_1h = safe_fetch_float(i.get("wt2_1h", 0), 0.0)
-                        _v_wt1_15m = safe_fetch_float(i.get("wt1_15m", 0), 0.0)
-                        _v_wt2_15m = safe_fetch_float(i.get("wt2_15m", 0), 0.0)
-                        _v_wt1_4h = safe_fetch_float(i.get("wt1_4h", 0), 0.0)
-                        _v_wt2_4h = safe_fetch_float(i.get("wt2_4h", 0), 0.0)
-                        _v_htf_with = (
-                            is_long
-                            and (
-                                _v_wt1_1h > _v_wt2_1h
-                                or _v_wt1_15m > _v_wt2_15m
-                                or _v_wt1_4h > _v_wt2_4h
-                            )
-                        ) or (
-                            (not is_long)
-                            and (
-                                _v_wt1_1h < _v_wt2_1h
-                                or _v_wt1_15m < _v_wt2_15m
-                                or _v_wt1_4h < _v_wt2_4h
-                            )
-                        )
-                        if _v_htf_with:
-                            logger.warning(
-                                f"🛡️ [BOTTOM_EXIT_HTF_WT_VETO_ULTIMATE_DC] {position_key}: DC_{_hs_tf} breached {current_price:.6f} <= {_ult_dc_low if is_long else _ult_dc_high:.6f} BUT HTF WT still WITH position (wt1_1h {_v_wt1_1h:.1f}/{_v_wt2_1h:.1f} wt15m {_v_wt1_15m:.1f}/{_v_wt2_15m:.1f} wt4h {_v_wt1_4h:.1f}/{_v_wt2_4h:.1f}) → VETO bottom exit, hold for top exit"
-                            )
-                            _ult_breach = False
-                    except Exception:
-                        pass
                 if _ult_breach:
                     _ult_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
                     _ult_lvl = _ult_dc_low if is_long else _ult_dc_high

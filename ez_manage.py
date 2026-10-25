@@ -53414,7 +53414,6 @@ async def process_position(
     if not _min_hold_ok_for_exit and position and abs(safe_float(getattr(position, "positionAmt", 0))) > 0:
         # don't await here — breach check is awaited at each gated exit; just log generic block now
         logger.debug(f"[MIN_HOLD_BLOCK] {position_key}: age {_pp_age_min_for_hold:.2f}m < {_min_hold_bars_for_exit}bars ({_min_hold_sec_for_exit/60:.1f}m) — all TIMED exits (HTF/R1/MTF/GR) deferred until hold satisfied unless dc_15m breach. Gain {safe_fetch_float(getattr(position,'gain',0),0):.2f}%")
-    # USER 2026-10-25: only switch-driven stops plus the two non-negotiable
     # ═══ NEGBOOK WT-TURN EXIT (USER 2026-09-28): neg-book sym_side with an OPEN position holds
     # while WT is with it and closes at the next WT turn against it. Reason carries NEGBOOK_WT_TURN
     # (UNIVERSAL_NOLOSS_GATE bypass) + HARD_STOP/USER (HPO bypass).
