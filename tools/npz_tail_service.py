@@ -185,9 +185,20 @@ def load_universe(base):
             pass
     if not any(not is_crypto_symbol(s.rsplit("_", 1)[0]) for s in uni if "_" in s):
         # symbols_trb_* erased/empty (tradier_rankings incident): fall back to stock NPZs on disk.
+        # Skip dotfiles and orphan *.TMP/BARREFRESH debris (never real symbols).
         try:
             for p in (base / "backtest_v8" / "indicators").glob("*.npz"):
-                sym = p.stem.upper()
+                stem = p.name[:-4]
+                if (
+                    not stem
+                    or stem.startswith(".")
+                    or ".TMP" in stem.upper()
+                    or "BARREFRESH" in stem.upper()
+                ):
+                    continue
+                sym = stem.upper()
+                if not sym.replace(".", "").replace("-", "").isalnum():
+                    continue
                 if sym and not is_crypto_symbol(sym):
                     uni.append(f"{sym}_LONG")
                     uni.append(f"{sym}_SHORT")
