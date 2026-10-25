@@ -1,13 +1,12 @@
 {
- "generated_utc": "2026-10-25T21:20:02Z",
+ "generated_utc": "2026-10-25T21:40:02Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
  "verdict": "FAIL",
  "failed_critical": [
   "boards_recomputed",
-  "live_set_matches_selection",
-  "indicators_fresh"
+  "live_set_matches_selection"
  ],
  "checks": [
   {
@@ -15,7 +14,7 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "filled_today": 471,
+    "filled_today": 473,
     "filled_before_open": 0
    },
    "detail": "no board was filled before the open"
@@ -40,7 +39,7 @@
    "measured": {
     "built_at": "2026-10-25T20:50:48.730518+00:00",
     "n": 525,
-    "age_at_open_s": 1754
+    "age_at_open_s": 2954
    },
    "detail": "built 2026-10-25T20:50:48.730518+00:00 n=525"
   },
@@ -62,9 +61,9 @@
    "critical": true,
    "measured": {
     "selection_n": 525,
-    "exact": 111,
+    "exact": 110,
     "benign_divergence_only": 274,
-    "material_divergence": 139,
+    "material_divergence": 140,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -201,29 +200,20 @@
      }
     ]
    },
-   "detail": "111 exact, 274 benign-only, 139 with material divergence, 1 with no live row"
+   "detail": "110 exact, 274 benign-only, 140 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
-   "ok": false,
+   "ok": true,
    "critical": true,
    "measured": {
     "symbols": 330,
-    "stale_over_90min": 85,
-    "stale_pct": 25.8,
-    "median_age_min": 35.0,
-    "sample": [
-     "BOTUSDT",
-     "COSTUSDT",
-     "CSCOUSDT",
-     "DELLUSDT",
-     "DISUSDT",
-     "DKNGUSDT",
-     "DRAMUSDT",
-     "EBAYUSDT"
-    ]
+    "stale_over_90min": 0,
+    "stale_pct": 0.0,
+    "median_age_min": 25.0,
+    "sample": []
    },
-   "detail": "85/330 symbols past the live 90-min entry gate (25.8%)"
+   "detail": "0/330 symbols past the live 90-min entry gate (0.0%)"
   },
   {
    "name": "s1_sets_synced",
