@@ -1,28 +1,7 @@
 {
- "findings": [
-  {
-   "armed": true,
-   "code": "LEVEL_NOT_ENTRY_BAR",
-   "entry_bar_level": 0.047678899999999996,
-   "key": "fin:STRKUSDT_SHORT",
-   "live_level": 0.046425774999999996,
-   "mark": 0.04605,
-   "opened_at": "2026-10-25T05:43:23.716000Z",
-   "resting_trigger": 0.0476
-  }
- ],
- "n_findings": 1,
- "n_positions": 1,
- "positions": [
-  {
-   "armed": true,
-   "entry_bar_level": 0.047678899999999996,
-   "key": "fin:STRKUSDT_SHORT",
-   "live_level": 0.046425774999999996,
-   "mark": 0.04605,
-   "opened_at": "2026-10-25T05:43:23.716000Z",
-   "resting_trigger": 0.0476
-  }
- ],
- "ts": "2026-10-25T06:01:05.108226+00:00"
+ "findings": [],
+ "n_findings": 0,
+ "n_positions": 0,
+ "positions": [],
+ "ts": "2026-10-25T06:10:36.600618+00:00"
 }
