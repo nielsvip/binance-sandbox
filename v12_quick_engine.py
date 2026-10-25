@@ -17953,6 +17953,21 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _bge_get = lambda k, d: getattr(cfg, k, d)  # noqa: E731
         _bge_bmin = _bar_minutes(cfg)
         _bge_wt = {k: _safe(npz, k, n) for k in ("wt1_1h", "wt2_1h", "wt1_4h", "wt2_4h", "wt1_D", "wt2_D")}
+    # 2026-10-25 QUICK_DC4 twin inputs (live ez_positions_quick.py:27185-27241) — 4-bar Donchian 3m
+    # structural stop + HTF veto, causal same-bar reads, NumPy-only. Independent of _bge_on: the live
+    # DC4 block is a separate gate (own BREAKEVEN_DC_LOW4_ENABLED flag, default True to match live).
+    _dc4_on = bool(getattr(cfg, "BREAKEVEN_DC_LOW4_ENABLED", True))
+    if _dc4_on:
+        _dc4_get = lambda k, d: getattr(cfg, k, d)  # noqa: E731
+        _dc4_bmin = _bar_minutes(cfg)
+        if _bge_on:
+            _dc4_wt = _bge_wt
+        else:
+            _dc4_wt = {k: _safe(npz, k, n) for k in ("wt1_1h", "wt2_1h", "wt1_4h", "wt2_4h", "wt1_D", "wt2_D")}
+        _dc4_l4 = _safe(npz, "dc_low4_3m", n)
+        _dc4_h4 = _safe(npz, "dc_high4_3m", n)
+        _dc4_l = _safe(npz, "dc_low_3m", n)
+        _dc4_h = _safe(npz, "dc_high_3m", n)
     _lp_on = _lpm is not None and bool(_lp_flags) and bool(getattr(cfg, "LOSS_PRONE_ENTRY_FILTER_ENABLED", True))
     if _lp_on:
         _lp_w11, _lp_w21 = _safe(npz, "wt1_1h", n), _safe(npz, "wt2_1h", n)
@@ -20784,6 +20799,42 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             _bge_pnl = pos["realized"] + ((px - pos["avg_price"]) * pos["qty"] if is_long else (pos["avg_price"] - px) * pos["qty"]) - pos["fees"]
                             _bge_ts = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
                             trades.append({"pnl_dollars": _bge_pnl, "pnl_pct": float(_bge_pnl / pos["deployed"] * 100 if pos["deployed"] else 0.0), "deployed": pos["deployed"], "reason": _bge_rs, "type": "CLOSE", "ts": _bge_ts, "price": float(px), "bar_entry": int(pos["entry_bar"]), "bar_exit": int(i), "entry_price": float(pos.get("entry_price", pos["avg_price"])), "exit_price": float(px), "qty": float(pos["qty"]), "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"), "exit_reason": _bge_rs, "bars_held": int(i - pos["entry_bar"]), "hbf_override": _bge_why == "FIRE_HBF_OVERRIDE"})
+                            pos = None
+                            cd = cooldown_bars
+                            has_closed_before = True
+                            continue
+            except Exception:
+                pass
+        if _dc4_on and pos is not None:  # 2026-10-25 QUICK_DC4 twin — live ez_positions_quick.py:27185-27241 (DC4 4-bar break + HTF veto, causal same-bar, NumPy-only)
+            try:
+                _dc4_avg = float(pos.get("avg_price") or 0.0)
+                if _dc4_avg > 0:
+                    _dc4_g = ((px - _dc4_avg) / _dc4_avg * 100.0) if is_long else ((_dc4_avg - px) / _dc4_avg * 100.0)
+                    _dc4_age = float(i - int(pos.get("entry_bar", i))) * _dc4_bmin
+                    if not _bgem.in_grace(_dc4_age, "REENTRY" in str(pos.get("entry_reason", "")).upper(), int(pos.get("n_augments", 0)) > 0, getattr(cfg, "REENTRY_GRACE_MINUTES", 30.0)):
+                        _dc4_mode = str(getattr(cfg, "BREAKEVEN_DC_FIELD_MODE", "DC4")).upper()
+                        if _dc4_mode == "DC":
+                            _dc4_lo = float(_dc4_l[i]) if i < len(_dc4_l) else 0.0
+                            _dc4_hi = float(_dc4_h[i]) if i < len(_dc4_h) else 0.0
+                            _dc4_tag = "DC"
+                        else:
+                            _dc4_lo = float(_dc4_l4[i]) if i < len(_dc4_l4) else 0.0
+                            _dc4_hi = float(_dc4_h4[i]) if i < len(_dc4_h4) else 0.0
+                            _dc4_tag = "DC4"
+                        _dc4_w = {k: float(v[i]) for k, v in _dc4_wt.items()}
+                        _dc4_veto = _bgem.htf_veto(_dc4_get, _dc4_g, is_long, _dc4_w)[0]
+                        _dc4_fire = ""
+                        if is_long and _dc4_lo > 0 and px > 0 and px < _dc4_lo:
+                            if not _dc4_veto:
+                                _dc4_fire = f"{_dc4_tag}_LOW_3M_GAIN_EROSION_STOP_p{px:.6f}<{_dc4_tag.lower()}{_dc4_lo:.6f}_g{_dc4_g:.2f}%"
+                        elif (not is_long) and _dc4_hi > 0 and px > 0 and px > _dc4_hi:
+                            if not _dc4_veto:
+                                _dc4_fire = f"{_dc4_tag}_HIGH_3M_GAIN_EROSION_STOP_p{px:.6f}>{_dc4_tag.lower()}{_dc4_hi:.6f}_g{_dc4_g:.2f}%"
+                        if _dc4_fire:
+                            pos["fees"] += abs(pos["qty"] * px) * half_fee
+                            _dc4_pnl = pos["realized"] + ((px - pos["avg_price"]) * pos["qty"] if is_long else (pos["avg_price"] - px) * pos["qty"]) - pos["fees"]
+                            _dc4_ts = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+                            trades.append({"pnl_dollars": _dc4_pnl, "pnl_pct": float(_dc4_pnl / pos["deployed"] * 100 if pos["deployed"] else 0.0), "deployed": pos["deployed"], "reason": _dc4_fire, "type": "CLOSE", "ts": _dc4_ts, "price": float(px), "bar_entry": int(pos["entry_bar"]), "bar_exit": int(i), "entry_price": float(pos.get("entry_price", pos["avg_price"])), "exit_price": float(px), "qty": float(pos["qty"]), "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"), "exit_reason": _dc4_fire, "bars_held": int(i - pos["entry_bar"])})
                             pos = None
                             cd = cooldown_bars
                             has_closed_before = True

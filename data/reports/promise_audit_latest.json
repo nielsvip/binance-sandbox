@@ -1,15 +1,14 @@
 {
- "generated_utc": "2026-10-25T18:12:03.169646+00:00",
+ "generated_utc": "2026-10-25T19:12:03.698698+00:00",
  "days": 1.0,
  "totals": {
-  "exit_promises": 169,
+  "exit_promises": 177,
   "exit_skipped_inflight": 1533,
-  "exit_broken_no_delivery": 147,
-  "entry_promises": 105,
-  "entry_broken_no_delivery": 105,
-  "exit_kept_late": 12,
-  "exit_kept_in_bar": 8,
-  "exit_pending": 2
+  "exit_broken_no_delivery": 155,
+  "entry_promises": 109,
+  "entry_broken_no_delivery": 109,
+  "exit_kept_late": 13,
+  "exit_kept_in_bar": 9
  },
  "per_key": {
   "flz:WLDUSDC_SHORT": {
@@ -104,16 +103,16 @@
    "exit_broken_no_delivery": 1
   },
   "fin:ETHFIUSDC_LONG": {
-   "entry_promises": 1,
-   "entry_broken_no_delivery": 1,
+   "entry_promises": 2,
+   "entry_broken_no_delivery": 2,
    "exit_promises": 1,
    "exit_broken_no_delivery": 1
   },
   "men:ETHFIUSDC_LONG": {
    "entry_promises": 3,
    "entry_broken_no_delivery": 3,
-   "exit_promises": 3,
-   "exit_broken_no_delivery": 3
+   "exit_promises": 4,
+   "exit_broken_no_delivery": 4
   },
   "fin:MAGICUSDT_SHORT": {
    "entry_promises": 3,
@@ -302,9 +301,9 @@
    "exit_broken_no_delivery": 1
   },
   "men:STRKUSDT_LONG": {
-   "exit_promises": 1,
+   "exit_promises": 2,
    "exit_skipped_inflight": 102,
-   "exit_broken_no_delivery": 1,
+   "exit_broken_no_delivery": 2,
    "entry_promises": 1,
    "entry_broken_no_delivery": 1
   },
@@ -457,32 +456,34 @@
   },
   "inf:VETUSDT_LONG": {
    "exit_promises": 7,
-   "exit_broken_no_delivery": 7
+   "exit_broken_no_delivery": 7,
+   "entry_promises": 1,
+   "entry_broken_no_delivery": 1
   },
   "ang:GRASSUSDT_LONG": {
    "entry_promises": 1,
    "entry_broken_no_delivery": 1
   },
   "inf:GRASSUSDT_LONG": {
-   "entry_promises": 3,
-   "entry_broken_no_delivery": 3,
-   "exit_promises": 2,
-   "exit_broken_no_delivery": 1,
-   "exit_pending": 1
+   "entry_promises": 5,
+   "entry_broken_no_delivery": 5,
+   "exit_promises": 3,
+   "exit_broken_no_delivery": 3
   },
   "inf:LTCUSDC_SHORT": {
    "entry_promises": 1,
    "entry_broken_no_delivery": 1
   },
   "ang:UNIUSDC_LONG": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
+   "exit_promises": 2,
+   "exit_broken_no_delivery": 2
   },
   "inf:RAYSOLUSDT_LONG": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1,
+   "exit_promises": 2,
+   "exit_kept_late": 1,
    "entry_promises": 1,
-   "entry_broken_no_delivery": 1
+   "entry_broken_no_delivery": 1,
+   "exit_broken_no_delivery": 1
   },
   "ang:BLURUSDT_SHORT": {
    "exit_promises": 1,
@@ -490,7 +491,19 @@
   },
   "inf:ARBUSDC_LONG": {
    "exit_promises": 1,
-   "exit_pending": 1
+   "exit_broken_no_delivery": 1
+  },
+  "inf:BATUSDT_LONG": {
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1
+  },
+  "inf:COTIUSDT_SHORT": {
+   "exit_promises": 1,
+   "exit_kept_in_bar": 1
+  },
+  "flz:HYPEUSDT_SHORT": {
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1
   }
  },
  "detail": [
@@ -3029,10 +3042,10 @@
    "sym_side": "RAYSOLUSDT_LONG",
    "kind": "exit",
    "bar": "10-25 17:15",
-   "late_min": null,
+   "late_min": 50.2,
    "action": "CLOSE",
    "reason": "EXIT_VELOCITY_WT against-long g-0.65%",
-   "outcome": "NO_DELIVERY"
+   "outcome": "SUCCESS"
   },
   {
    "acct": "men",
@@ -3132,6 +3145,136 @@
    "late_min": null,
    "action": "OPEN",
    "reason": "TIER1_PRICE_CROSS_REENTRY_exit1.8241_cur1.8278_k3m55",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "ARBUSDC_LONG",
+   "kind": "exit",
+   "bar": "10-25 17:45",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "LH_LL_TOP_EXIT arm=D_LH+LL leg=WT15M",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "GRASSUSDT_LONG",
+   "kind": "exit",
+   "bar": "10-25 17:45",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "E_3_STRUCTURE_EXIT_3TF_15m_1h_4h",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "fin",
+   "sym_side": "ETHFIUSDC_LONG",
+   "kind": "entry",
+   "bar": "10-25 17:45",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "REENTRY_HIGHER_LOW",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "RAYSOLUSDT_LONG",
+   "kind": "exit",
+   "bar": "10-25 18:00",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "EXIT_VELOCITY_WT against-long g0.01%",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "GRASSUSDT_LONG",
+   "kind": "entry",
+   "bar": "10-25 18:00",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "REENTRY_MANDATORY",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "BATUSDT_LONG",
+   "kind": "exit",
+   "bar": "10-25 18:15",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "BB_FROZEN_STOP_BREACH_g-0.71%",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "GRASSUSDT_LONG",
+   "kind": "exit",
+   "bar": "10-25 18:15",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "E_3_STRUCTURE_EXIT_3TF_15m_1h_4h",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "men",
+   "sym_side": "STRKUSDT_LONG",
+   "kind": "exit",
+   "bar": "10-25 17:15",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "MTF_GR_WT_EXIT_15m_grTFs=2",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "VETUSDT_LONG",
+   "kind": "entry",
+   "bar": "10-25 18:15",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "REENTRY_HIGHER_LOW",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "UNIUSDC_LONG",
+   "kind": "exit",
+   "bar": "10-25 17:15",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "SATOSHIT_EXIT_PARTIAL 0.35",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "GRASSUSDT_LONG",
+   "kind": "entry",
+   "bar": "10-25 18:30",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "TIER1_PRICE_CROSS_REENTRY_exit0.7146_cur0.7184_k3m59",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "flz",
+   "sym_side": "HYPEUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-25 18:30",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "EXIT_VELOCITY_WT against-short g-0.06%",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "men",
+   "sym_side": "ETHFIUSDC_LONG",
+   "kind": "exit",
+   "bar": "10-25 18:30",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "LH_LL_TOP_EXIT arm=D_LH+LL leg=DC1H",
    "outcome": "NO_DELIVERY"
   }
  ],
