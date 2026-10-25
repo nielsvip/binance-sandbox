@@ -51,6 +51,8 @@ AGE=$(( $(date -u +%s) - ${STAGED:-0} ))
 mkdir -p "$(dirname "$STATE")"
 printf '{"generated_utc":"%s","running":%s,"action":"%s","staged_sample":"klines_cache_macbook/tradier/SAP_15m.json","staged_age_s":%s}\n' \
     "$NOW" "${RUNNING:-0}" "$ACTION" "$AGE" > "$STATE"
-if [ "${STAGED:-0}" = "0" ] || [ "$AGE" -gt "${KLINES_PUSH_MAX_AGE_S:-3600}" ]; then
+if [ "${STAGED:-0}" = "0" ]; then
+    echo "[$NOW] [klines-push-keepalive] WARN staged-sample probe failed (ssh or file missing) — pusher running=${RUNNING:-0}, not a staleness verdict"
+elif [ "$AGE" -gt "${KLINES_PUSH_MAX_AGE_S:-3600}" ]; then
     echo "[$NOW] [klines-push-keepalive] ALERT staged stock klines on S1 are ${AGE}s old (> ${KLINES_PUSH_MAX_AGE_S:-3600}s) — stock NPZs will stay behind"
 fi

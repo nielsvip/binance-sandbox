@@ -42,6 +42,8 @@ GRID_S = 900
 def last_closed_15m_epoch(now=None):
     if now is None:
         now = datetime.now(timezone.utc)
+    elif isinstance(now, (int, float)):
+        now = datetime.fromtimestamp(float(now), tz=timezone.utc)
     if now.tzinfo is None:
         now = now.replace(tzinfo=timezone.utc)
     effective = now - timedelta(seconds=FORMING_SETTLE_S)
