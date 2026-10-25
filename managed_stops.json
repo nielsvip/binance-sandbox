@@ -1,44 +1,37 @@
 {
-  "fin:PENGUUSDC_LONG": {
-    "orderId": "3000002273929105",
-    "stopPrice": 0.007422,
-    "entry_sig": "2026-10-25 15:30:43.051000+00:00",
-    "symbol": "PENGUUSDC",
+  "flz:BNBUSDC_LONG": {
+    "orderId": "1000002642998364",
+    "stopPrice": 739.19,
+    "entry_sig": "2026-10-25 17:42:14.841000+00:00",
+    "symbol": "BNBUSDC",
     "side": "LONG"
   },
-  "fin:MASKUSDT_LONG": {
-    "orderId": "3000002273928787",
-    "stopPrice": 0.3956,
-    "entry_sig": "2026-10-25 14:09:46.748000+00:00",
-    "symbol": "MASKUSDT",
+  "flz:GRAMUSDT_LONG": {
+    "orderId": "1000002643079113",
+    "stopPrice": 1.255,
+    "entry_sig": "2026-10-25 18:25:35.807000+00:00",
+    "symbol": "GRAMUSDT",
     "side": "LONG"
   },
-  "fin:CRVUSDC_LONG": {
-    "orderId": "3000002274086284",
-    "stopPrice": 0.342,
-    "entry_sig": "2026-10-25 18:53:17.557000+00:00",
-    "symbol": "CRVUSDC",
-    "side": "LONG"
-  },
-  "fin:FLUXUSDT_SHORT": {
-    "orderId": "3000002274112040",
-    "stopPrice": 0.06367,
-    "entry_sig": "2026-10-25 19:18:00.460000+00:00",
-    "symbol": "FLUXUSDT",
+  "flz:DOGEUSDC_SHORT": {
+    "orderId": "1000002643073456",
+    "stopPrice": 0.07747,
+    "entry_sig": "2026-10-25 19:00:37.780000+00:00",
+    "symbol": "DOGEUSDC",
     "side": "SHORT"
   },
-  "fin:KASUSDT_LONG": {
-    "orderId": "3000002274113953",
-    "stopPrice": 0.03583,
-    "entry_sig": "2026-10-25 19:20:01.223000+00:00",
-    "symbol": "KASUSDT",
-    "side": "LONG"
+  "flz:WLDUSDC_SHORT": {
+    "orderId": "1000002643003334",
+    "stopPrice": 0.4625,
+    "entry_sig": "2026-10-25 17:42:15.040000+00:00",
+    "symbol": "WLDUSDC",
+    "side": "SHORT"
   },
-  "fin:BLURUSDT_SHORT": {
-    "orderId": "3000002274136981",
-    "stopPrice": 0.00775,
-    "entry_sig": "2026-10-25 19:41:04.295000+00:00",
-    "symbol": "BLURUSDT",
+  "flz:BTCUSDC_SHORT": {
+    "orderId": "1000002643095790",
+    "stopPrice": 80755.9,
+    "entry_sig": "2026-10-25 19:27:38.230000+00:00",
+    "symbol": "BTCUSDC",
     "side": "SHORT"
   }
 }
