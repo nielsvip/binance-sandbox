@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-25T01:00:05Z",
+ "generated_utc": "2026-10-25T01:20:08Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
@@ -7,9 +7,7 @@
  "failed_critical": [
   "boards_recomputed",
   "defaults_chain_completed",
-  "apply_report_written",
-  "live_set_matches_selection",
-  "indicators_fresh"
+  "live_set_matches_selection"
  ],
  "checks": [
   {
@@ -17,7 +15,7 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "filled_today": 332,
+    "filled_today": 335,
     "filled_before_open": 0
    },
    "detail": "no board was filled before the open"
@@ -30,10 +28,10 @@
     "mac_done_stamp": false,
     "s1_stamp": "NO_STAMP",
     "cat_side_defaults_4_at": "2026-10-21T04:54:49Z",
-    "cat_side_age_days": 3.8,
+    "cat_side_age_days": 3.9,
     "cat_side_note": "rebuilt only by v15_daily_template_update --sync-defaults, a deliberate manual step \u2014 reported, never fails this gate"
    },
-   "detail": "mac stamp 20261025=False, s1 stamp NO_STAMP, cat_side layer 3.8d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
+   "detail": "mac stamp 20261025=False, s1 stamp NO_STAMP, cat_side layer 3.9d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
   },
   {
    "name": "selection_fresh",
@@ -42,21 +40,21 @@
    "measured": {
     "built_at": "2026-10-25T00:52:13.316752+00:00",
     "n": 524,
-    "age_at_open_s": 472
+    "age_at_open_s": 1675
    },
    "detail": "built 2026-10-25T00:52:13.316752+00:00 n=524"
   },
   {
    "name": "apply_report_written",
-   "ok": false,
+   "ok": true,
    "critical": true,
    "measured": {
-    "reports_today": 0,
-    "newest_report": null,
-    "newest_report_at": null,
+    "reports_today": 1,
+    "newest_report": "persym_golive_20261025_refresh_0056.json",
+    "newest_report_at": "2026-10-25T01:18:39Z",
     "tiers_at": "2026-10-25T00:40:49Z"
    },
-   "detail": "NO REPORT at None, tiers 2026-10-25T00:40:49Z \u2014 the apply never finished (no report / stale tiers): the live set is PARTIAL"
+   "detail": "persym_golive_20261025_refresh_0056.json at 2026-10-25T01:18:39Z, tiers 2026-10-25T00:40:49Z"
   },
   {
    "name": "live_set_matches_selection",
@@ -65,8 +63,8 @@
    "measured": {
     "selection_n": 524,
     "exact": 124,
-    "benign_divergence_only": 312,
-    "material_divergence": 87,
+    "benign_divergence_only": 313,
+    "material_divergence": 86,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -203,29 +201,24 @@
      }
     ]
    },
-   "detail": "124 exact, 312 benign-only, 87 with material divergence, 1 with no live row"
+   "detail": "124 exact, 313 benign-only, 86 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
-   "ok": false,
+   "ok": true,
    "critical": true,
    "measured": {
-    "symbols": 201,
-    "stale_over_90min": 201,
-    "stale_pct": 100.0,
-    "median_age_min": 480.1,
+    "symbols": 329,
+    "stale_over_90min": 3,
+    "stale_pct": 0.9,
+    "median_age_min": 80.1,
     "sample": [
-     "1000000MOGUSDT",
-     "1000BONKUSDC",
-     "1000CHEEMSUSDT",
-     "1000FLOKIUSDT",
-     "1000LUNCUSDT",
-     "1000PEPEUSDC",
-     "1000SATSUSDT",
-     "1000SHIBUSDC"
+     "ONEUSDT",
+     "UVXYUSDT",
+     "ZRXUSDT"
     ]
    },
-   "detail": "201/201 symbols past the live 90-min entry gate (100.0%)"
+   "detail": "3/329 symbols past the live 90-min entry gate (0.9%)"
   },
   {
    "name": "s1_sets_synced",

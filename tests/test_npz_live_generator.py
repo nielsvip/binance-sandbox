@@ -87,6 +87,20 @@ def test_should_update_and_append():
     assert data["k_15m"][-1] == data["stoch_k_15m"][-1] == 55.0
 
 
+def test_npz_path_empty_outdir_falls_back_per_file(monkeypatch):
+    from pathlib import Path
+    import tempfile
+    stack = Path(tempfile.mkdtemp())
+    (stack / "backtest_v8" / "indicators").mkdir(parents=True)  # exists, 0 files (S1 2026-10-06 poison)
+    fb = Path(tempfile.mkdtemp())
+    (fb / "backtest_v8" / "indicators").mkdir(parents=True)
+    import numpy as np
+    np.savez_compressed(str(fb / "backtest_v8" / "indicators" / "FAKEUSDT.npz"), timestamps=np.array([1], dtype=np.int64))
+    monkeypatch.setenv("NPZ_FALLBACK_DIR", str(fb))
+    assert gen._npz_path(stack, "FAKEUSDT") == fb / "backtest_v8" / "indicators" / "FAKEUSDT.npz"
+    assert gen._npz_path(stack, "NOSUCHUSDT") == stack / "backtest_v8" / "indicators" / "NOSUCHUSDT.npz"
+
+
 def test_live_vs_vectorized_parity():
     tmpdir = Path(tempfile.mkdtemp())
     sym = "PARITYUSDT"

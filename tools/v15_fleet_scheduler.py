@@ -4292,6 +4292,8 @@ def tick(args, cfg, now):
         predicate (venue-phase probe: an exhausted side must not pin the phase)."""
         acts = []
         for side, (s, att) in chain_state[sym].items():
+            if side not in _host_sides(host_name, hosts):
+                continue  # USER 2026-10-25: one cat_side per server — this host never launches the other side
             if s in ("need30", "need365", "needrepair", "needgs"):
                 w = {"need30": "30D", "need365": "365D", "needrepair": "REPAIR", "needgs": "GS"}[s]
                 key = f"{sym}_{side}|{w}{att if w in ('REPAIR', 'GS') else ''}"
@@ -4338,7 +4340,7 @@ def tick(args, cfg, now):
                 del held[hn_][sym_]
                 st["held"].get(hn_, {}).pop(sym_, None)  # nothing running and every chain action exhausted: free the slot
     log["released_slots"] = released
-    new_syms = [s for s in all_syms if s not in owner and not terminal(s)]
+    new_syms = [s for s in all_syms if (s not in owner or (_pinned_mode and any(f"{s}_{_sd}" not in owner_side for _sd in _SIDES_ALL))) and not terminal(s)]
     vrank = {v: i for i, v in enumerate(vorder)}
     pri = priority_syms()
     # USER 2026-10-09: winners first, losers last. USER 2026-10-14: ranking top-25 breaks tier ties
@@ -4350,7 +4352,7 @@ def tick(args, cfg, now):
         pass
     _trk = lambda s: (_sym_tier_rank(s, _gtiers), 0 if s in _rkpairs else 1, sym_rank_key(s, vrank, all_syms, pri))
     new_syms.sort(key=_trk)
-    adopted = [s for s in all_syms if s in owner and not terminal(s)]
+    adopted = [s for s in all_syms if (s in owner or (_pinned_mode and any(f"{s}_{_sd}" in owner_side for _sd in _SIDES_ALL))) and not terminal(s)]
     adopted.sort(key=_trk)
     _native_syms = {s for s in all_syms if venue_of(s) == "stocks"}  # TEMPORARY USER 2026-10-10: base-name set for the stocks-only gate (USDT stock variants pass)
     mapped_unready = {}
@@ -4627,7 +4629,11 @@ def tick(args, cfg, now):
             if (needs_slot or _VENUE_ONLY) and not _pin_may_bypass_venue and not _venue_allowed(sym, _native_syms, phase=_host_phase):
                 log.setdefault("skipped_venue_only", []).append(f"{h['name']}:{sym}")
                 continue  # TEMPORARY USER 2026-10-10: stocks-only weekend push — new crypto pairs blocked; held chains (needs_slot=False) drain untouched
-            if sym in owner and owner[sym] != h["name"]:
+            if _pinned_mode and _hsides.get(h["name"], set(_SIDES_ALL)) != set(_SIDES_ALL):
+                if not any(owner_side.get(f"{sym}_{_sd}") in (None, h["name"]) for _sd in _hsides[h["name"]]):
+                    _fate("sides owned elsewhere")
+                    continue
+            elif sym in owner and owner[sym] != h["name"]:
                 _fate(f"owned by {owner.get(sym)}")
                 continue
             if needs_slot and not _pinned_sym and _quota_blocks(sym, _gtiers, chain_state) and nonw_used >= nonw_quota and f"{sym}_LONG" not in redo and f"{sym}_SHORT" not in redo:
@@ -4725,7 +4731,7 @@ def tick(args, cfg, now):
                     # 2026-10-16: the sibling rides along ONLY when it needs a 30D board itself — a finished/fresh/deferred
                     # sibling re-ran on every launch of its pair (PUMPUSDT_SHORT re-published 57.32 eight times on 10-16).
                     log.setdefault("pair_sibling_skipped_done", []).append(f"{h['name']}:{sym}_{_sib}:{_sib_state}")
-                elif f"{sym}_{_sib}" not in running and _sk not in launched_keys and not _launched_recently(_sk, st.get("dispatch_q"), _now_ts, _DISPATCH_GRACE_S) and not _launched_recently(_sk, st.get("launched_at"), _now_ts) and f"{sym}_{_sib}" not in _verdict_skip:
+                elif _sib in _hsides.get(h["name"], set(_SIDES_ALL)) and f"{sym}_{_sib}" not in running and _sk not in launched_keys and not _launched_recently(_sk, st.get("dispatch_q"), _now_ts, _DISPATCH_GRACE_S) and not _launched_recently(_sk, st.get("launched_at"), _now_ts) and f"{sym}_{_sib}" not in _verdict_skip:
                     acts.append({"sym": sym, "side": _sib, "window": "30D", "attempt": 1, "key": _sk})
                     log.setdefault("pair_sibling_added", []).append(f"{h['name']}:{sym}_{_sib}")
             if needs_slot and not _pair_gate_ok(sym, acts, owner, chain_state, st["attempts"], pend_sides={a["side"] for a in pending_actions(sym, h["name"]) if f"{a['sym']}_{a['side']}" not in running}):  # fresh syms: every launchable side covered; terminal/capped sides don't block siblings
@@ -4902,6 +4908,8 @@ def tick(args, cfg, now):
                 held[h["name"]][sym] = "new"
                 st["held"].setdefault(h["name"], {})[sym] = now.isoformat()
                 owner[sym] = h["name"]
+                for _a in acts:
+                    owner_side[f"{sym}_{_a['side']}"] = h["name"]
             launched += 1
             if needs_slot:
                 new_launched += 1
@@ -4956,11 +4964,16 @@ def tick(args, cfg, now):
                 if ss in _fresh_map:
                     continue  # USER 2026-10-12: 4-day fresh-skip — backfill never re-calculates a side computed in the last 4 days
                 sym2, sd2 = ss.rsplit("_", 1)
+                if sd2 not in _hsides.get(h["name"], set(_SIDES_ALL)):
+                    continue  # USER 2026-10-25: one cat_side per server
                 if venue_of(sym2) not in h["venues"]:
                     continue
                 if not _venue_allowed(sym2, _native_syms, phase=_phase):
                     continue  # TEMPORARY USER 2026-10-10: stocks-only weekend push — backfill takes new slots, crypto blocked
-                if sym2 in owner and owner[sym2] != h["name"]:
+                if _pinned_mode and _hsides.get(h["name"], set(_SIDES_ALL)) != set(_SIDES_ALL):
+                    if owner_side.get(ss) not in (None, h["name"]):
+                        continue
+                elif sym2 in owner and owner[sym2] != h["name"]:
                     continue
                 if sym2 in held[h["name"]]:
                     continue
@@ -5014,6 +5027,7 @@ def tick(args, cfg, now):
                 held[h["name"]][sym2] = "new"
                 st["held"].setdefault(h["name"], {})[sym2] = now.isoformat()
                 owner[sym2] = h["name"]
+                owner_side[ss] = h["name"]
                 launched += 1
                 new_launched += 1
         info["launched_pairs"] = launched
@@ -5047,7 +5061,10 @@ def tick(args, cfg, now):
             continue
         B = HB[h["name"]]
         for sym in adopted:
-            if sym in owner and owner[sym] == h["name"]:
+            if _pinned_mode and _hsides.get(h["name"], set(_SIDES_ALL)) != set(_SIDES_ALL):
+                if all(owner_side.get(f"{sym}_{_sd}") == h["name"] for _sd in _hsides[h["name"]]):
+                    continue
+            elif sym in owner and owner[sym] == h["name"]:
                 continue
             if terminal(sym):
                 continue
@@ -5095,6 +5112,8 @@ def tick(args, cfg, now):
             held[h["name"]][sym] = "new"
             st["held"].setdefault(h["name"], {})[sym] = now.isoformat()
             owner[sym] = h["name"]
+            for _a in acts:
+                owner_side[f"{sym}_{_a['side']}"] = h["name"]
             B["new_launched"] += 1
             B["launched"] += 1
             if isinstance(log["hosts"].get(h["name"]), dict):
@@ -5176,6 +5195,8 @@ def tick(args, cfg, now):
                 held[h["name"]][sym] = "new"
                 st["held"].setdefault(h["name"], {})[sym] = now.isoformat()
                 owner[sym] = h["name"]
+                for _a in acts:
+                    owner_side[f"{sym}_{_a['side']}"] = h["name"]
                 B["new_launched"] = B.get("new_launched", 0) + 1
                 _run_syms.add(sym)
                 if isinstance(log["hosts"].get(h["name"]), dict):

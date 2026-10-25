@@ -8,8 +8,10 @@
    ],
    "root": "~/binance-sandbox",
    "venues": [
-    "stocks",
     "crypto"
+   ],
+   "sides": [
+    "SHORT"
    ],
    "mem_reserve_mb": 6000,
    "max_pairs": 8,
@@ -25,8 +27,10 @@
    ],
    "root": "~/binance-sandbox",
    "venues": [
-    "stocks",
     "crypto"
+   ],
+   "sides": [
+    "LONG"
    ],
    "mem_reserve_mb": 4000,
    "max_pairs": 8,
@@ -42,8 +46,10 @@
    ],
    "root": "~/binance-sandbox",
    "venues": [
-    "stocks",
-    "crypto"
+    "stocks"
+   ],
+   "sides": [
+    "LONG"
    ],
    "mem_reserve_mb": 4000,
    "max_pairs": 8,
@@ -59,8 +65,10 @@
    ],
    "root": "~/binance-sandbox",
    "venues": [
-    "stocks",
-    "crypto"
+    "stocks"
+   ],
+   "sides": [
+    "SHORT"
    ],
    "mem_reserve_mb": 4000,
    "max_pairs": 8,
@@ -75,6 +83,7 @@
  "order_dir": "data/reports/per_sym_recheck_20260929",
  "default_pair_mb": 4000,
  "_doc2": "max_pairs = concurrent SYMBOL pairs per host (clamped 2..6; s5 hybrid under memory pressure 2-3); workers_per_side = pilot --workers",
+ "_doc_catside_20261025": "USER 2026-10-25: ONE cat_side per server, aligned to the quarter-hour NPZ/state lanes — s1=CRYPTO_SHORT, s2=CRYPTO_LONG, s5=STOCKS_LONG, s6=STOCKS_SHORT. venues+sides gate every scheduler launch path (_host_sides); running opposite-side boards drain naturally, never killed.",
  "_doc3": "2026-10-01: venues stocks-only on all hosts until crypto NPZs are rebuilt (NPZ integrity audit: crypto NPZ affected by the 09-24..10-01 klines-tail issue); then restore s1 ['crypto'] and s5 ['crypto','stocks']",
  "_doc5": "2026-10-01 05:45Z: all hosts run the sweep on the user's FINAL templates (normalised copy TEMPLATE_FINAL_NORM, yellow painted); Agent Y discovery shares CPU",
  "_doc6": "2026-10-01 CPU guard: admission uses real busy% (/proc/stat) not load1; clamp max_pairs 8; s2 8 pairs x4 workers (was dipping to 70%).",

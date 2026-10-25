@@ -108,10 +108,18 @@ def _npz_path(base_path: Path, symbol: str) -> Path:
         out_dir = base_path / "backtest_v8" / "indicators"
     # Also handle sandbox path on Linux
     if not out_dir.exists():
-        alt = Path("/home/niels/binance-sandbox") / "backtest_v8" / "indicators"
+        alt = Path(os.environ.get("NPZ_FALLBACK_DIR", "/home/niels/binance-sandbox")) / "backtest_v8" / "indicators"
         if alt.exists():
             out_dir = alt
-    return out_dir / f"{symbol}.npz"
+    cand = out_dir / f"{symbol}.npz"
+    if not cand.exists():
+        # USER 2026-10-25: per-FILE fallback — an existing-but-empty out_dir (S1 ez_s1_stack/backtest_v8/
+        # indicators, created 2026-10-06, 0 files) must not shadow the canonical store. Every symbol then
+        # resolved "missing" -> 27 s full precompute -> refused -> the live loop appended NOTHING at 105% CPU.
+        alt_file = Path(os.environ.get("NPZ_FALLBACK_DIR", "/home/niels/binance-sandbox")) / "backtest_v8" / "indicators" / f"{symbol}.npz"
+        if alt_file.exists():
+            return alt_file
+    return cand
 
 def _load_npz(path: Path) -> Optional[Dict[str, np.ndarray]]:
     if not path.exists():
