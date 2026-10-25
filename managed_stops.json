@@ -1,23 +1,30 @@
 {
-  "men:INJUSDT_LONG": {
-    "orderId": "2000001540342688",
-    "stopPrice": 7.784,
-    "entry_sig": "2026-10-25 17:37:12.060000+00:00",
-    "symbol": "INJUSDT",
-    "side": "LONG"
-  },
-  "men:PARTIUSDT_SHORT": {
-    "orderId": "2000001540176219",
-    "stopPrice": 0.03371,
-    "entry_sig": "2026-10-25 15:54:03.798000+00:00",
-    "symbol": "PARTIUSDT",
+  "inf:LTCUSDC_SHORT": {
+    "orderId": "2000001540465103",
+    "stopPrice": 57.15,
+    "entry_sig": "2026-10-25 20:48:37.977000+00:00",
+    "symbol": "LTCUSDC",
     "side": "SHORT"
   },
-  "men:1000BONKUSDC_SHORT": {
-    "orderId": "2000001540355697",
-    "stopPrice": 0.003044,
-    "entry_sig": "2026-10-25 18:36:19.494000+00:00",
-    "symbol": "1000BONKUSDC",
+  "inf:BTCUSDC_SHORT": {
+    "orderId": "2000001540489352",
+    "stopPrice": 80770.5,
+    "entry_sig": "2026-10-25 19:38:25.640000+00:00",
+    "symbol": "BTCUSDC",
+    "side": "SHORT"
+  },
+  "inf:PENGUUSDC_LONG": {
+    "orderId": "2000001540506487",
+    "stopPrice": 0.007459,
+    "entry_sig": "2026-10-25 21:28:42.554000+00:00",
+    "symbol": "PENGUUSDC",
+    "side": "LONG"
+  },
+  "inf:ZENUSDT_SHORT": {
+    "orderId": "2000001540508018",
+    "stopPrice": 5.726,
+    "entry_sig": "2026-10-25 21:30:22.416000+00:00",
+    "symbol": "ZENUSDT",
     "side": "SHORT"
   }
 }
