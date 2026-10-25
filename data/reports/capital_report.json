@@ -1,32 +1,57 @@
 {
- "generated_at": "2026-10-25 09:59 UTC",
- "total_capital_usd": 27.57,
+ "generated_at": "2026-10-25 10:05 UTC",
+ "total_capital_usd": 37.52,
  "tier_capital": {
   "A": 0.0,
-  "B": 0.0,
-  "C": 27.57
+  "B": 5.61,
+  "C": 31.92
  },
  "tier_count": {
   "A": 0,
-  "B": 0,
-  "C": 1
+  "B": 1,
+  "C": 2
  },
  "winners": [],
  "losers": [
-  "inf:ZENUSDT_SHORT"
+  "flz:DOGEUSDC_SHORT",
+  "flz:HYPEUSDT_SHORT"
  ],
- "mediocre": [],
+ "mediocre": [
+  "flz:BTCDOMUSDT_LONG"
+ ],
  "positions": [
   {
-   "pk": "inf:ZENUSDT_SHORT",
-   "symbol": "ZENUSDT",
-   "account": "inf",
-   "value_usd": 27.57,
-   "gain_pct": 0.027,
+   "pk": "flz:DOGEUSDC_SHORT",
+   "symbol": "DOGEUSDC",
+   "account": "flz",
+   "value_usd": 25.09,
+   "gain_pct": -0.445,
    "tier": "C",
-   "perf_mult": 0.32,
-   "amt": 4.9,
-   "mark": 5.62748333
+   "perf_mult": 0.34,
+   "amt": 328.0,
+   "mark": 0.0764788
+  },
+  {
+   "pk": "flz:HYPEUSDT_SHORT",
+   "symbol": "HYPEUSDT",
+   "account": "flz",
+   "value_usd": 6.83,
+   "gain_pct": 0.325,
+   "tier": "C",
+   "perf_mult": 0.31,
+   "amt": 0.09,
+   "mark": 75.86774856
+  },
+  {
+   "pk": "flz:BTCDOMUSDT_LONG",
+   "symbol": "BTCDOMUSDT",
+   "account": "flz",
+   "value_usd": 5.61,
+   "gain_pct": -0.085,
+   "tier": "B",
+   "perf_mult": 0.24,
+   "amt": 0.001,
+   "mark": 5607.55555302
   }
  ]
 }
