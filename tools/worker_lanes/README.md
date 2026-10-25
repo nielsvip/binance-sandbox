@@ -32,3 +32,12 @@ and must not be unified without measuring first:
 Not persisted here on purpose: one-shot kill/relaunch/debug scripts
 (`s6_kill.sh`, `s6_relaunch.sh`, `s6_fix2.sh`, `s6_trig.sh`, `wp1_*.sh`, ...).
 They stay out of cron and out of this directory.
+
+2026-10-25 SLOW-RUN (weekend): on s5/s6 the `NPZ_QUARTER`,
+`NPZ_SHARD_REFRESH` and `NPZ_INBOX_INSTALL` cron lines are commented with
+`#SLOWRUN_20261025#` — stocks print no new bars on weekends, so the refresh
+lanes only stole CPU from the boards. `SELF_DISPATCH`, the vec registry sync
+and the `VEC_LIVE_EXECUTOR` shard stay on. A `NPZ_REARM_MON` cron line on each
+box uncomments the lanes Monday 12:00Z (08:00 ET premarket) before RTH.
+Pre-suspend crons: `backups/cron_20261025_s5_slowrun.bak`,
+`backups/cron_20261025_s6_slowrun.bak`.

@@ -1,95 +1,28 @@
 {
  "findings": [
   {
-   "armed": true,
-   "code": "LEVEL_NOT_ENTRY_BAR",
-   "entry_bar_level": 0.006677265000000001,
-   "key": "fin:VETUSDT_LONG",
-   "live_level": 0.006656317500000001,
-   "mark": 0.00684163,
-   "opened_at": "2026-10-24T20:18:36.724000Z",
-   "resting_trigger": 0.006815
-  },
-  {
-   "armed": true,
-   "code": "LEVEL_NOT_ENTRY_BAR",
-   "entry_bar_level": 0.0041413275,
-   "key": "fin:SKLUSDT_SHORT",
-   "live_level": 0.0040029825,
-   "mark": 0.00399954,
-   "opened_at": "2026-10-25T03:49:29.630000Z",
-   "resting_trigger": 0.004009
-  },
-  {
-   "armed": true,
-   "code": "LEVEL_NOT_ENTRY_BAR",
-   "entry_bar_level": 0.01229867,
-   "key": "fin:ZKUSDT_SHORT",
-   "live_level": 0.012190399999999999,
-   "mark": 0.01220479,
-   "opened_at": "2026-10-25T03:49:36.826000Z",
-   "resting_trigger": 0.012209
-  },
-  {
-   "armed": true,
-   "code": "LEVEL_NOT_ENTRY_BAR",
-   "entry_bar_level": 10.1663525,
-   "key": "fin:NMRUSDT_SHORT",
-   "live_level": 10.017982500000002,
-   "mark": 9.99003301,
-   "opened_at": "2026-10-25T03:49:28.223000Z",
-   "resting_trigger": 10.033
-  },
-  {
-   "account": "inf",
+   "account": "ang",
    "code": "BROKER_UNREACHABLE",
-   "error": "BinanceAPIException(<Response [429]>, 429, '{\"code\":-1003,\"msg\":\"Too many requests; current limit of IP(200.118.16.10) is 2400 requests per minute. Please use t"
+   "error": "BinanceAPIException(<Response [418]>, 418, '{\"code\":-1003,\"msg\":\"Way too many requests; IP(200.118.16.10) banned until 1792906738685. Please use the websocket f"
+  },
+  {
+   "account": "fin",
+   "code": "BROKER_UNREACHABLE",
+   "error": "BinanceAPIException(<Response [418]>, 418, '{\"code\":-1003,\"msg\":\"Way too many requests; IP(200.118.16.10) banned until 1792906738685. Please use the websocket f"
+  },
+  {
+   "account": "men",
+   "code": "BROKER_UNREACHABLE",
+   "error": "BinanceAPIException(<Response [418]>, 418, '{\"code\":-1003,\"msg\":\"Way too many requests; IP(200.118.16.10) banned until 1792906979908. Please use the websocket f"
   },
   {
    "account": "flz",
    "code": "BROKER_UNREACHABLE",
-   "error": "BinanceAPIException(<Response [429]>, 429, '{\"code\":-1003,\"msg\":\"Too many requests; current limit of IP(200.118.16.10) is 2400 requests per minute. Please use t"
+   "error": "BinanceAPIException(<Response [418]>, 418, '{\"code\":-1003,\"msg\":\"Way too many requests; IP(200.118.16.10) banned until 1792906738685. Please use the websocket f"
   }
  ],
- "n_findings": 6,
- "n_positions": 4,
- "positions": [
-  {
-   "armed": true,
-   "entry_bar_level": 0.006677265000000001,
-   "key": "fin:VETUSDT_LONG",
-   "live_level": 0.006656317500000001,
-   "mark": 0.00684163,
-   "opened_at": "2026-10-24T20:18:36.724000Z",
-   "resting_trigger": 0.006815
-  },
-  {
-   "armed": true,
-   "entry_bar_level": 0.0041413275,
-   "key": "fin:SKLUSDT_SHORT",
-   "live_level": 0.0040029825,
-   "mark": 0.00399954,
-   "opened_at": "2026-10-25T03:49:29.630000Z",
-   "resting_trigger": 0.004009
-  },
-  {
-   "armed": true,
-   "entry_bar_level": 0.01229867,
-   "key": "fin:ZKUSDT_SHORT",
-   "live_level": 0.012190399999999999,
-   "mark": 0.01220479,
-   "opened_at": "2026-10-25T03:49:36.826000Z",
-   "resting_trigger": 0.012209
-  },
-  {
-   "armed": true,
-   "entry_bar_level": 10.1663525,
-   "key": "fin:NMRUSDT_SHORT",
-   "live_level": 10.017982500000002,
-   "mark": 9.99003301,
-   "opened_at": "2026-10-25T03:49:28.223000Z",
-   "resting_trigger": 10.033
-  }
- ],
- "ts": "2026-10-25T04:01:58.380906+00:00"
+ "n_findings": 4,
+ "n_positions": 0,
+ "positions": [],
+ "ts": "2026-10-25T04:21:06.230161+00:00"
 }
