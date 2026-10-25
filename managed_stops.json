@@ -14,17 +14,24 @@
     "side": "SHORT"
   },
   "ang:STRKUSDT_SHORT": {
-    "orderId": "4000001994951331",
+    "orderId": "4000001994958084",
     "stopPrice": 0.04758,
     "entry_sig": "2026-03-12 05:29:19.663496+00:00",
     "symbol": "STRKUSDT",
     "side": "SHORT"
   },
-  "ang:NMRUSDT_SHORT": {
-    "orderId": "4000001994952168",
-    "stopPrice": 10.223,
-    "entry_sig": "2026-10-25 10:29:30.384000+00:00",
-    "symbol": "NMRUSDT",
+  "ang:EGLDUSDT_SHORT": {
+    "orderId": "4000001994960782",
+    "stopPrice": 3.372,
+    "entry_sig": "2026-10-25 10:56:00.581000+00:00",
+    "symbol": "EGLDUSDT",
+    "side": "SHORT"
+  },
+  "ang:AXSUSDT_SHORT": {
+    "orderId": "4000001994961358",
+    "stopPrice": 1.0819,
+    "entry_sig": "2026-10-25 10:56:33.660000+00:00",
+    "symbol": "AXSUSDT",
     "side": "SHORT"
   }
 }
