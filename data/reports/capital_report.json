@@ -1,68 +1,80 @@
 {
- "generated_at": "2026-10-25 12:32 UTC",
- "total_capital_usd": 99.12,
+ "generated_at": "2026-10-25 12:44 UTC",
+ "total_capital_usd": 91.45,
  "tier_capital": {
   "A": 0.0,
-  "B": 0.0,
-  "C": 99.12
+  "B": 34.14,
+  "C": 57.31
  },
  "tier_count": {
   "A": 0,
-  "B": 0,
-  "C": 4
+  "B": 2,
+  "C": 3
  },
  "winners": [],
  "losers": [
-  "men:TIAUSDC_LONG",
-  "men:QNTUSDT_LONG",
-  "men:1000LUNCUSDT_SHORT",
-  "men:RAYSOLUSDT_LONG"
+  "ang:TIAUSDC_LONG",
+  "ang:WUSDT_SHORT",
+  "ang:RLCUSDT_SHORT"
  ],
- "mediocre": [],
+ "mediocre": [
+  "ang:ZROUSDT_LONG"
+ ],
  "positions": [
   {
-   "pk": "men:QNTUSDT_LONG",
-   "symbol": "QNTUSDT",
-   "account": "men",
-   "value_usd": 36.47,
-   "gain_pct": 0.055,
-   "tier": "C",
-   "perf_mult": 0.25,
-   "amt": 0.2,
-   "mark": 182.34
-  },
-  {
-   "pk": "men:RAYSOLUSDT_LONG",
-   "symbol": "RAYSOLUSDT",
-   "account": "men",
-   "value_usd": 28.79,
-   "gain_pct": 0.258,
-   "tier": "C",
-   "perf_mult": 0.25,
-   "amt": 15.9,
-   "mark": 1.81055745
-  },
-  {
-   "pk": "men:TIAUSDC_LONG",
+   "pk": "ang:TIAUSDC_LONG",
    "symbol": "TIAUSDC",
-   "account": "men",
-   "value_usd": 27.76,
-   "gain_pct": -0.664,
+   "account": "ang",
+   "value_usd": 27.28,
+   "gain_pct": -1.374,
    "tier": "C",
    "perf_mult": 0.2,
-   "amt": 53.0,
-   "mark": 0.5237
+   "amt": 52.0,
+   "mark": 0.5246
   },
   {
-   "pk": "men:1000LUNCUSDT_SHORT",
-   "symbol": "1000LUNCUSDT",
-   "account": "men",
-   "value_usd": 6.1,
-   "gain_pct": 0.067,
+   "pk": "ang:RLCUSDT_SHORT",
+   "symbol": "RLCUSDT",
+   "account": "ang",
+   "value_usd": 24.98,
+   "gain_pct": 0.392,
    "tier": "C",
-   "perf_mult": 0.27,
-   "amt": 136.0,
-   "mark": 0.04488
+   "perf_mult": 0.15,
+   "amt": 47.8,
+   "mark": 0.52254535
+  },
+  {
+   "pk": "ang:ENSUSDT_LONG",
+   "symbol": "ENSUSDT",
+   "account": "ang",
+   "value_usd": 24.19,
+   "gain_pct": 0.114,
+   "tier": "B",
+   "perf_mult": 3.03,
+   "amt": 4.6,
+   "mark": 5.259
+  },
+  {
+   "pk": "ang:ZROUSDT_LONG",
+   "symbol": "ZROUSDT",
+   "account": "ang",
+   "value_usd": 9.95,
+   "gain_pct": -0.174,
+   "tier": "B",
+   "perf_mult": 0.88,
+   "amt": 5.8,
+   "mark": 1.71530162
+  },
+  {
+   "pk": "ang:WUSDT_SHORT",
+   "symbol": "WUSDT",
+   "account": "ang",
+   "value_usd": 5.05,
+   "gain_pct": -0.013,
+   "tier": "C",
+   "perf_mult": 0.14,
+   "amt": 425.1,
+   "mark": 0.0118812
   }
  ]
 }

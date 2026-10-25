@@ -8,58 +8,51 @@
   },
   "fin:RIFUSDT_SHORT": {
     "orderId": "3000002273526282",
-    "stopPrice": 0.07212,
+    "stopPrice": 0.07021,
     "entry_sig": "2026-10-25 12:29:45.625000+00:00",
     "symbol": "RIFUSDT",
     "side": "SHORT"
   },
   "fin:ENAUSDC_LONG": {
-    "orderId": "3000002273533122",
-    "stopPrice": 0.19083,
+    "orderId": "3000002273541826",
+    "stopPrice": 0.19245,
     "entry_sig": "2026-10-25 12:33:12.255000+00:00",
     "symbol": "ENAUSDC",
     "side": "LONG"
   },
-  "fin:FLUXUSDT_SHORT": {
-    "orderId": "3000002273535183",
-    "stopPrice": 0.06581,
-    "entry_sig": "2026-10-25 12:35:25.983000+00:00",
-    "symbol": "FLUXUSDT",
-    "side": "SHORT"
-  },
-  "fin:ZECUSDC_LONG": {
-    "orderId": "3000002273536823",
-    "stopPrice": 1190.22,
-    "entry_sig": "2026-10-25 12:31:07.307000+00:00",
-    "symbol": "ZECUSDC",
-    "side": "LONG"
-  },
   "fin:SKYAIUSDT_LONG": {
-    "orderId": "3000002273540006",
-    "stopPrice": 0.03272,
+    "orderId": "3000002273543992",
+    "stopPrice": 0.03567,
     "entry_sig": "2026-10-25 12:17:59.491000+00:00",
     "symbol": "SKYAIUSDT",
     "side": "LONG"
   },
-  "fin:RLCUSDT_SHORT": {
-    "orderId": "3000002273540598",
-    "stopPrice": 0.7252,
-    "entry_sig": "2026-10-25 12:18:18.606000+00:00",
-    "symbol": "RLCUSDT",
+  "fin:MOVRUSDT_SHORT": {
+    "orderId": "3000002273544883",
+    "stopPrice": 1.0671,
+    "entry_sig": "2026-10-25 12:18:34.268000+00:00",
+    "symbol": "MOVRUSDT",
+    "side": "SHORT"
+  },
+  "fin:FLUXUSDT_SHORT": {
+    "orderId": "3000002273544884",
+    "stopPrice": 0.06311,
+    "entry_sig": "2026-10-25 12:35:25.983000+00:00",
+    "symbol": "FLUXUSDT",
     "side": "SHORT"
   },
   "fin:PENGUUSDC_LONG": {
-    "orderId": "3000002273541003",
-    "stopPrice": 0.0073,
+    "orderId": "3000002273544885",
+    "stopPrice": 0.007327,
     "entry_sig": "2026-10-25 12:18:33.945000+00:00",
     "symbol": "PENGUUSDC",
     "side": "LONG"
   },
-  "fin:MOVRUSDT_SHORT": {
-    "orderId": "3000002273541015",
-    "stopPrice": 1.1345,
-    "entry_sig": "2026-10-25 12:18:34.268000+00:00",
-    "symbol": "MOVRUSDT",
+  "fin:RLCUSDT_SHORT": {
+    "orderId": "3000002273544894",
+    "stopPrice": 0.5274,
+    "entry_sig": "2026-10-25 12:18:18.606000+00:00",
+    "symbol": "RLCUSDT",
     "side": "SHORT"
   }
 }
