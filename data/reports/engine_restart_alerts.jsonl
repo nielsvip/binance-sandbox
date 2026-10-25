@@ -877,3 +877,4 @@
 {"ts":1792910283,"account":"ang","kind":"engine_restart_suppressed","msg":"NO ENGINE CHILD for 61s and the 24h budget was already spent (last 36050s ago) — starting anyway: an account is never left without an engine"}
 {"ts":1792910896,"account":"ang","kind":"engine_restart_suppressed","msg":"ez_manage SILENT (179s > 120s) but host overloaded (load 89.01 on 12 cores) — kill DEFERRED to break the kill→bootstrap→load loop"}
 {"ts":1792914371,"account":"fin","kind":"engine_restart_suppressed","msg":"ez_manage SILENT (135s > 120s) but host overloaded (load 83.19 on 12 cores) — kill DEFERRED to break the kill→bootstrap→load loop"}
+{"ts":1792915024,"account":"fin","kind":"engine_restart_suppressed","msg":"ez_manage SILENT (792s > 120s) but host overloaded (load 68.00 on 12 cores) — kill DEFERRED to break the kill→bootstrap→load loop"}
