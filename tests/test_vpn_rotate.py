@@ -160,10 +160,12 @@ def test_ovpn_remotes_sane():
         # STATIC-ONLY doctrine (operator): pool hostnames churn, so every remote
         # must be a literal operator static inside the Binance whitelist.
         assert ips, f"{f.name}: no static-IP remote"
-        assert not hosts, f"{f.name}: pool-hostname remote {hosts} (churns; use statics)"
-        assert set(ips) <= wl, (
-            f"{f.name}: non-whitelisted remotes {set(ips) - wl} would deny orders"
-        )
+        assert (
+            not hosts
+        ), f"{f.name}: pool-hostname remote {hosts} (churns; use statics)"
+        assert (
+            set(ips) <= wl
+        ), f"{f.name}: non-whitelisted remotes {set(ips) - wl} would deny orders"
 
 
 def test_ovpn_only_flag_gates_app_slots(monkeypatch):
@@ -191,9 +193,32 @@ def test_ovpn_only_flag_gates_app_slots(monkeypatch):
 def test_wait_state_same_ip_ok_for_statics(monkeypatch):
     monkeypatch.setattr(vpn, "slots", lambda: [{"name": "X", "status": "Connected"}])
     monkeypatch.setattr(vpn, "egress_ip", lambda: "1.2.3.4")
-    assert vpn.wait_state(["X"], "Connected", "1.2.3.4", timeout=5, same_ip_ok=True) is True
+    assert (
+        vpn.wait_state(["X"], "Connected", "1.2.3.4", timeout=5, same_ip_ok=True)
+        is True
+    )
     assert vpn.wait_state(["X"], "Connected", "1.2.3.4", timeout=0) is False
     assert vpn.wait_state(["X"], "Connected", "9.9.9.9", timeout=5) is True
+
+
+def test_should_stay_put_doctrine():
+    wl = {"200.118.16.10", "185.134.22.81"}
+    home = ["200.118.16.10"]
+    assert vpn.should_stay_put("200.118.16.10", {"ping": 200}, wl, home) is True
+    assert vpn.should_stay_put("185.134.22.81", {"ping": 200}, wl, home) is False
+    assert vpn.should_stay_put("200.118.16.10", {"ping": 418}, wl, home) is False
+    assert vpn.should_stay_put("9.9.9.9", {"ping": 200}, wl, home) is False
+    assert vpn.should_stay_put(None, {"ping": 200}, wl, home) is False
+
+
+def test_tour_disabled_by_doctrine():
+    assert vpn.TOUR_ENABLED is False
+
+
+def test_home_ips_whitelisted():
+    cfg = vpn.net_cfg()
+    assert set(cfg["home_ips"]) <= vpn.whitelist()
+    assert cfg["home_ips"] == ["200.118.16.10"]
 
 
 def test_slot_rank_covers_static_geos():

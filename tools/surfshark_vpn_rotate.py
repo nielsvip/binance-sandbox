@@ -77,6 +77,26 @@ OVPN_ONLY = False
 # gates hot-looping and every attempt is fail-closed (never drops the working link).
 RESTORE_TRY_S = 180
 TOUR_INTERVAL_S = 4 * 3600
+# USER 2026-10-24 (stay-put doctrine): rotation happens ONLY on a ban. No
+# scheduled geo-tour; at rest the box sits on home Colombia naked egress, and a
+# tunnel is raised only when the current path is unusable (ban / not
+# whitelisted / Binance failing).
+TOUR_ENABLED = False
+
+
+def should_stay_put(egress, probe, wl, home_ips):
+    """True when the current path is healthy home egress (Bogota naked): no
+    tunnel wanted, no rotation wanted. Anything else -> tunnel may be needed."""
+    try:
+        if not egress or egress not in wl:
+            return False
+        if egress not in (home_ips or []):
+            return False
+        if (probe or {}).get("ping") == 418:
+            return False
+        return True
+    except Exception:
+        return False
 
 
 def log(m):
@@ -541,8 +561,12 @@ def do_rotate(target=None, force_tunnel=False):
         srv, _ = slot_server(name)
         log(f"trying slot {name} server={srv}")
         _slot_start(name)
-        if not wait_state([name], "Connected", old_ip,
-                            same_ip_ok=(old_ip in wl and not ban_active()[0])):
+        if not wait_state(
+            [name],
+            "Connected",
+            old_ip,
+            same_ip_ok=(old_ip in wl and not ban_active()[0]),
+        ):
             log(f"slot {name} did not connect with new IP")
             state["slot_fail"][name] = time.time()
             save_state(state)
@@ -657,15 +681,21 @@ def cmd_watch(interval=15):
                 do_rotate()
             restored = False
             if rc == 0 and not [s for s in slots() if s["status"] == "Connected"]:
-                st = load_state()
-                if time.time() - st.get("last_restore_try", 0) >= RESTORE_TRY_S:
-                    log(
-                        "watch: link healthy but no tunnel — restoring always-on tunnel"
-                    )
-                    st["last_restore_try"] = time.time()
-                    save_state(st)
-                    do_rotate(force_tunnel=True)
-                    restored = True
+                wl0, cfg0 = whitelist(), net_cfg()
+                if should_stay_put(
+                    egress_ip(), binance_probe(), wl0, cfg0.get("home_ips") or []
+                ):
+                    pass  # doctrine: healthy home Colombia naked needs no tunnel
+                else:
+                    st = load_state()
+                    if time.time() - st.get("last_restore_try", 0) >= RESTORE_TRY_S:
+                        log(
+                            "watch: link has no tunnel and home path unusable — restoring tunnel"
+                        )
+                        st["last_restore_try"] = time.time()
+                        save_state(st)
+                        do_rotate(force_tunnel=True)
+                        restored = True
             if rc == 0 and not restored:
                 try:
                     r = sh(["pgrep", "-x", "Surfshark"], timeout=10)
@@ -680,7 +710,9 @@ def cmd_watch(interval=15):
                 if st.get("tour_last_ts", 0) == 0:
                     st["tour_last_ts"] = time.time()
                     save_state(st)
-                elif time.time() - st["tour_last_ts"] >= TOUR_INTERVAL_S:
+                elif (
+                    TOUR_ENABLED and time.time() - st["tour_last_ts"] >= TOUR_INTERVAL_S
+                ):
                     cur = [s for s in slots() if s["status"] == "Connected"]
                     cur_name = cur[0]["name"] if cur else "(no-vpn)"
                     order = [
