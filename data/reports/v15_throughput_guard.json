@@ -1,5 +1,5 @@
 {
- "at": "2026-10-25T11:11:02Z",
+ "at": "2026-10-25T12:11:04Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
@@ -10,15 +10,15 @@
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [],
-   "mem_avail_mb": 4609,
-   "load1": 91.84,
+   "mem_avail_mb": 4857,
+   "load1": 17.81,
    "nproc": 16,
    "slots": "0/4",
-   "binding_reason": "host IDLE, not CPU-bound: 0 running sides pull 0.0 cores of 5.6 usable -> 0.0 boards/h against target 12/h. Nothing is dispatched here: 12/h needs 5.5 board-cores. Check the scheduler's idle_reason for this host (slots 0/4) and whether the round is exhausted (tools/v15_round_watchdog.sh quorum rule rolls it).",
+   "binding_reason": "scheduler mem guard (disk 26847 MB, mem 8717 MB, est_pair 6000 MB) \u2014 slots 0/4",
    "error": null,
    "published": [],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 423.2,
+   "minutes_since_last_improved": 483.2,
    "last_improved_symside": "ZKUSDT_SHORT",
    "cadence_ok": false,
    "improved_gap_min_median_24h": 23.4,
@@ -27,78 +27,53 @@
    "board_cpu_s_median_24h": 1657.1,
    "board_wall_s_median_24h": 1522.0295741558075,
    "board_cores": 0.0,
-   "nonboard_cores_competing": 10.41,
-   "nonboard_cores_niced": 3.27,
+   "nonboard_cores_competing": 5.42,
+   "nonboard_cores_niced": 8.46,
    "cores_by_bucket": {
-    "other": 5.06,
-    "live_helpers": 5.35
+    "other": 2.47,
+    "live_helpers": 2.03,
+    "klines_append": 0.92
    },
    "cores_by_bucket_niced": {
-    "klines_vault": 0.09,
-    "other": 3.18
+    "klines_vault": 1.5,
+    "other": 6.96
    }
   },
   "s2": {
-   "improved": 3,
-   "improved_per_hour": 3.0,
-   "published_n": 3,
+   "improved": 0,
+   "improved_per_hour": 0.0,
+   "published_n": 0,
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "PENGUUSDC_LONG",
-    "PUMPUSDT_LONG",
-    "QNTUSDT_LONG",
-    "RAYSOLUSDT_LONG"
+    "MASKUSDT_LONG",
+    "SKYAIUSDT_LONG"
    ],
-   "mem_avail_mb": 14491,
-   "load1": 11.08,
+   "mem_avail_mb": 9728,
+   "load1": 32.46,
    "nproc": 16,
-   "slots": "3/4",
-   "binding_reason": "board CPU DEMAND, not host capacity: 4 running sides pull only 4.3 cores (1.08 core/side) of 11.4 usable -> 7.0 boards/h. 12/h needs 7.5 board-cores = 7 sides at this per-side draw (niced filler 5.98 cores yields). Lever: more concurrent sides (RAM-bound) or deeper eval pipelining per side (V15_PREFETCH_TASKCAP on an idle host).",
+   "slots": "2/4",
+   "binding_reason": "scheduler mem guard (disk 6372 MB, mem 7979 MB, est_pair 10610 MB) \u2014 slots 2/4",
    "error": null,
-   "published": [
-    {
-     "symside": "MEWUSDT_LONG",
-     "at": "2026-10-25T10:24:26Z",
-     "baseline": 52.689008350946175,
-     "final": 69.85291730658662,
-     "state": "improved"
-    },
-    {
-     "symside": "ONDOUSDT_LONG",
-     "at": "2026-10-25T10:58:23Z",
-     "baseline": 15.509250692225537,
-     "final": 30.085801720373052,
-     "state": "improved"
-    },
-    {
-     "symside": "WLDUSDC_SHORT",
-     "at": "2026-10-25T10:44:02Z",
-     "baseline": 67.19963311514705,
-     "final": 108.65466503444681,
-     "state": "improved"
-    }
-   ],
+   "published": [],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 3.2,
-   "last_improved_symside": "NEARUSDC_LONG",
-   "cadence_ok": true,
-   "improved_gap_min_median_24h": 5.5,
+   "minutes_since_last_improved": 6.4,
+   "last_improved_symside": "MASKUSDT_LONG",
+   "cadence_ok": false,
+   "improved_gap_min_median_24h": 5.7,
    "improved_gap_min_max_24h": 642.2,
-   "improved_finishes_24h": 145,
-   "board_cpu_s_median_24h": 2235.6,
+   "improved_finishes_24h": 148,
+   "board_cpu_s_median_24h": 2241.7,
    "board_wall_s_median_24h": 1182.276085138321,
-   "board_cores": 4.34,
-   "nonboard_cores_competing": 4.62,
-   "nonboard_cores_niced": 5.98,
+   "board_cores": 13.01,
+   "nonboard_cores_competing": 2.91,
+   "nonboard_cores_niced": 0,
    "cores_by_bucket": {
-    "other": 2.67,
-    "boards": 4.34,
-    "live_helpers": 1.95
+    "boards": 13.01,
+    "other": 0.91,
+    "live_helpers": 2.0
    },
-   "cores_by_bucket_niced": {
-    "other": 5.98
-   }
+   "cores_by_bucket_niced": {}
   }
  },
  "under_target": [
@@ -106,6 +81,7 @@
   "s2"
  ],
  "cadence_breach": [
-  "s1"
+  "s1",
+  "s2"
  ]
 }
