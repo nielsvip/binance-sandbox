@@ -1,6 +1,6 @@
 {
- "generated_utc": "2026-10-25T18:14:59Z",
- "secs": 58.5,
+ "generated_utc": "2026-10-25T18:19:53Z",
+ "secs": 231.2,
  "universe": {
   "crypto": 201,
   "stocks": 224
@@ -8,21 +8,17 @@
  "unreachable": {},
  "healed": {
   "s1:binance": {
-   "files": 297,
-   "rows": 394,
+   "files": 113,
+   "rows": 113,
+   "skipped": {}
+  },
+  "mac:/Users/niels/Documents/binance": {
+   "files": 118,
+   "rows": 38,
    "skipped": {}
   }
  },
  "kline_breaches": [
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "QRVO",
-   "tf": "15m",
-   "last": "2026-10-02T20:00",
-   "expect": "2026-10-23T19:45",
-   "bars_behind": 2015.0
-  },
   {
    "host": "mac",
    "venue": "stocks",
@@ -34,6 +30,15 @@
   },
   {
    "host": "s1",
+   "venue": "stocks",
+   "symbol": "QRVO",
+   "tf": "15m",
+   "last": "2026-10-02T20:00",
+   "expect": "2026-10-23T19:45",
+   "bars_behind": 2015.0
+  },
+  {
+   "host": "mac",
    "venue": "stocks",
    "symbol": "COE",
    "tf": "15m",
@@ -42,7 +47,7 @@
    "bars_behind": 9.0
   },
   {
-   "host": "mac",
+   "host": "s1",
    "venue": "stocks",
    "symbol": "COE",
    "tf": "15m",
@@ -75,90 +80,90 @@
   {
    "host": "mac",
    "file": "crypto prices",
-   "age_s": 0.6,
+   "age_s": 3.6,
    "max_s": 60,
    "ok": true,
    "files": {
-    "price_cache_1.json": 0.9,
-    "price_cache_2.json": 38.5,
-    "price_cache_3.json": 0.6
+    "price_cache_1.json": 3.6,
+    "price_cache_2.json": 116.5,
+    "price_cache_3.json": 6.0
    }
   },
   {
    "host": "mac",
    "file": "crypto snapshot (market_data_*)",
-   "age_s": 42.3,
+   "age_s": 115.5,
    "max_s": 90,
-   "ok": true,
+   "ok": false,
    "files": {
-    "data/market_data_NEWEST": 42.3
+    "data/market_data_NEWEST": 115.5
    }
   },
   {
    "host": "mac",
    "file": "crypto latest_market_data",
-   "age_s": 1.5,
+   "age_s": 154.9,
    "max_s": 90,
-   "ok": true,
+   "ok": false,
    "files": {
-    "data/latest_market_data.json": 1.5
+    "data/latest_market_data.json": 154.9
    }
   },
   {
    "host": "s1",
    "file": "crypto snapshot on S1 (Mac push or own stack)",
-   "age_s": 8.6,
+   "age_s": -0.3,
    "max_s": 180,
    "ok": true,
    "files": {
-    "data/market_data_NEWEST": 80.6,
-    "ez_s1_stack/data/latest_market_data.json": 8.6
+    "data/market_data_NEWEST": 85.9,
+    "ez_s1_stack/data/latest_market_data.json": -0.3
    }
   },
   {
    "host": "s1",
    "file": "crypto prices on S1 (Mac push or own stack)",
-   "age_s": 5.3,
+   "age_s": -2.2,
    "max_s": 300,
    "ok": true,
    "files": {
-    "price_cache_1.json": 109.6,
-    "price_cache_2.json": 55.4,
-    "price_cache_3.json": 6.4,
-    "ez_s1_stack/price_cache_1.json": 1694811.1,
-    "ez_s1_stack/price_cache_2.json": 5.3,
-    "ez_s1_stack/price_cache_3.json": 6.4
+    "price_cache_1.json": 67.9,
+    "price_cache_2.json": 49.5,
+    "price_cache_3.json": 12.8,
+    "ez_s1_stack/price_cache_1.json": 1694938.4,
+    "ez_s1_stack/price_cache_2.json": 8.4,
+    "ez_s1_stack/price_cache_3.json": -2.2
    }
   },
   {
    "host": "gw",
    "file": "crypto market_data",
-   "age_s": 709.7,
+   "age_s": 114.5,
    "max_s": 300,
-   "ok": false,
+   "ok": true,
    "files": {
-    "data/latest_market_data.json": 709.7
+    "data/latest_market_data.json": 114.5
    }
   },
   {
    "host": "mac",
    "file": "disk free /Users/niels/Documents/binance",
    "age_s": null,
-   "free_gb": 11.5,
+   "free_gb": 12.2,
    "ok": true
   },
   {
    "host": "s1",
    "file": "disk free binance",
    "age_s": null,
-   "free_gb": 20.1,
+   "free_gb": 19.6,
    "ok": true
   },
   {
    "host": "s1",
    "file": "disk free binance-sandbox",
    "age_s": null,
-   "free_gb": 20.2,
+   "free_gb": 19.6,
    "ok": true
   },
   {
