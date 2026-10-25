@@ -291,6 +291,28 @@ def test_scalp_floor_ratio_partial_exempt_full_close_not():
     assert lth.scalp_floor_refusal(True, True, "RATIO_REDUCE_TRIM", 5.0, 180.0, True) == "REFUSED_SCALP_FLOOR"
 
 
+def test_state_closed_refusal_matrix():
+    now = 1792887000.0
+    bar = (now // 900) * 900
+    # vec FLAT + non-vec increase, fresh bar -> refuse
+    assert lth.state_closed_refusal(True, False, "DC_BREAK_HIGH_15M", False, bar, now) == "REFUSED_STATE_CLOSED"
+    # VEC overrides: vec-dictated always passes
+    assert lth.state_closed_refusal(True, True, "VEC_EXACT_OPEN", False, bar, now) == ""
+    assert lth.state_closed_refusal(True, True, "VEC_DRIVEN_OPEN_PURE", False, bar, now) == ""
+    # OPEN state, undecided, stale bar -> fail open
+    assert lth.state_closed_refusal(True, False, "DC_BREAK_HIGH_15M", True, bar, now) == ""
+    assert lth.state_closed_refusal(True, False, "DC_BREAK_HIGH_15M", None, None, now) == ""
+    assert lth.state_closed_refusal(True, False, "DC_BREAK_HIGH_15M", False, bar - 900, now) == ""
+    # exits and entries untouched
+    assert lth.state_closed_refusal(False, False, "TECHNICAL_TARGET", False, bar, now) == ""
+    # RATIO + protection bypass
+    assert lth.state_closed_refusal(True, False, "RATIO_AUGMENT_UP", False, bar, now, True) == ""
+    assert lth.state_closed_refusal(True, False, "BROKER_SYNC_OPEN_FROM_FLAT_STUB", False, bar, now) == ""
+    assert lth.state_closed_refusal(True, False, "EMERGENCY_FLAT", False, bar, now) == ""
+    # hedges are not exempt
+    assert lth.state_closed_refusal(True, False, "HEDGE_OPEN", False, bar, now) == "REFUSED_STATE_CLOSED"
+
+
 def test_position_age_sec_parses_all_forms():
     import time
     now = time.time()

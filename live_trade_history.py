@@ -539,6 +539,60 @@ def scalp_floor_refusal(is_exit, is_full_close, reason, age_sec, floor_sec,
     return ""
 
 
+STATE_CLOSED_BYPASS_REASONS = (
+    "HARD_STOP", "VIGILANCE_DC4", "NEGBOOK_WT_TURN", "BROKER_SYNC",
+    "BROKER SYNC", "LIQUIDAT", "FIXED_STOP", "STOP_LOSS", "EMERGENCY",
+)
+
+
+def state_closed_refusal(is_exposure_increase, is_vec, reason, holds,
+                         bar_ts, now_s, is_ratio_partial=False, bar_s=900.0):
+    """'REFUSED_STATE_CLOSED' when an exposure increase contradicts vec FLAT.
+
+    Venue-neutral core of the per-bar state enforcement: every server computes
+    every sym_side's OPEN/CLOSED state on every 15m bar; execute_now follows
+    it the same bar. A non-vec exposure increase (OPEN/AUGMENT) while the
+    canonical vec state for the CURRENT bar is FLAT is refused. VEC-dictated
+    orders ARE the state transitions and always pass; OPEN state, undecided
+    bars, stale bars and unknown inputs fail open (other gates govern those).
+    RATIO rebalancer increases are exempt; hedges are not.
+    """
+    try:
+        if not bool(is_exposure_increase):
+            return ""
+    except Exception:
+        return ""
+    try:
+        if bool(is_vec):
+            return ""
+    except Exception:
+        pass
+    try:
+        if holds is not False:
+            return ""
+    except Exception:
+        return ""
+    try:
+        fresh = (int(float(bar_ts) // float(bar_s)) == int(float(now_s) // float(bar_s)))
+    except (TypeError, ValueError, ZeroDivisionError):
+        return ""
+    if not fresh:
+        return ""
+    try:
+        if bool(is_ratio_partial):
+            return ""
+    except Exception:
+        pass
+    try:
+        r = str(reason or "").upper()
+    except Exception:
+        r = ""
+    for tag in STATE_CLOSED_BYPASS_REASONS:
+        if tag and tag in r:
+            return ""
+    return "REFUSED_STATE_CLOSED"
+
+
 def _collapse_stuck_relogs(recs):
     """Collapse runs of identical consecutive state re-logs.
 

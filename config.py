@@ -2643,6 +2643,12 @@ class Config:
     SCALP_MIN_HOLD_SEC: float = (
         180.0  # 2026-10-25 USER scalp kill-switch — no CLOSE/REDUCE may execute on a position younger than this, any venue, any reason except the stop/protection family (HARD_STOP/VIGILANCE_DC4/NEGBOOK_WT_TURN/BROKER_SYNC/LIQUIDAT/FIXED_STOP/STOP_LOSS/EMERGENCY). Measured 317 true sub-120s flat-to-flat broker scalps crypto + 526 stock ledger pairs. Enforced at execute_now (the ONLY gate). 0 disables.
     )
+    VEC_BAR_STATE_ENFORCE_ENABLED: bool = (
+        True  # 2026-10-25 USER bar-state enforcement — non-vec exposure increases while canonical vec state is FLAT this 15m bar are REFUSED at execute_now (VEC-dictated orders always pass). False disables.
+    )
+    VEC_BAR_STATE_PUBLISH_ENABLED: bool = (
+        True  # 2026-10-25 USER bar-state enforcement — vec twin publishes canonical OPEN/CLOSED per sym_side per 15m bar to data/vec_bar_state/ (audit trail + cross-host hash compare). False disables.
+    )
     # === BOUNCE-TOP EXIT FOR LOSERS (proven on stocks, adapted for crypto) ===
     # Wait for price to bounce toward entry, exit at TOP of bounce = smallest possible loss
     # Mandatory reentry follows: 150% at pullback, 200% at rising WT cross
