@@ -1,5 +1,5 @@
 {
- "at": "2026-10-25T08:11:05Z",
+ "at": "2026-10-25T09:11:02Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
@@ -9,18 +9,16 @@
    "published_n": 0,
    "flat_or_worse": 0,
    "unknown": 0,
-   "boards_running": [
-    "EGLDUSDT_SHORT"
-   ],
-   "mem_avail_mb": 6327,
-   "load1": 30.82,
+   "boards_running": [],
+   "mem_avail_mb": 11292,
+   "load1": 18.29,
    "nproc": 16,
-   "slots": "1/4",
-   "binding_reason": "scheduler mem guard (disk 31899 MB, mem 8608 MB, est_pair 6000 MB) \u2014 slots 1/4",
+   "slots": "0/4",
+   "binding_reason": "scheduler mem guard (disk 30798 MB, mem 5923 MB, est_pair 6000 MB) \u2014 slots 0/4",
    "error": null,
    "published": [],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 243.3,
+   "minutes_since_last_improved": 303.2,
    "last_improved_symside": "ZKUSDT_SHORT",
    "cadence_ok": false,
    "improved_gap_min_median_24h": 23.4,
@@ -28,65 +26,77 @@
    "improved_finishes_24h": 9,
    "board_cpu_s_median_24h": 1657.1,
    "board_wall_s_median_24h": 1522.0295741558075,
-   "board_cores": 3.45,
-   "nonboard_cores_competing": 5.05,
-   "nonboard_cores_niced": 6.3,
+   "board_cores": 0.0,
+   "nonboard_cores_competing": 6.25,
+   "nonboard_cores_niced": 6.74,
    "cores_by_bucket": {
-    "other": 1.26,
-    "live_helpers": 2.99,
-    "klines_append": 0.8,
-    "boards": 3.45
+    "other": 2.91,
+    "live_helpers": 2.36,
+    "klines_append": 0.98
    },
    "cores_by_bucket_niced": {
-    "klines_vault": 1.0,
-    "other": 5.3
+    "klines_vault": 1.84,
+    "other": 4.9
    }
   },
   "s2": {
-   "improved": 1,
-   "improved_per_hour": 1.0,
-   "published_n": 1,
+   "improved": 3,
+   "improved_per_hour": 3.0,
+   "published_n": 3,
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "KASUSDT_LONG",
-    "RAYSOLUSDT_LONG",
-    "ZECUSDC_LONG"
+    "KMNOUSDT_LONG",
+    "STRKUSDT_LONG"
    ],
-   "mem_avail_mb": 7622,
-   "load1": 46.33,
+   "mem_avail_mb": 8514,
+   "load1": 28.32,
    "nproc": 16,
-   "slots": "3/4",
-   "binding_reason": "concurrency 3 boards: 12/h needs <= 15 min per sym_side (measured median 18 min) \u2014 raise concurrent sides or cut evals per board",
+   "slots": "2/4",
+   "binding_reason": "scheduler mem guard (disk 9347 MB, mem 8077 MB, est_pair 8316 MB) \u2014 slots 2/4",
    "error": null,
    "published": [
     {
-     "symside": "BEAMXUSDT_LONG",
-     "at": "2026-10-25T07:26:20Z",
-     "baseline": -0.6000633497327595,
-     "final": 6.30153373048706,
+     "symside": "ETHFIUSDC_LONG",
+     "at": "2026-10-25T09:05:04Z",
+     "baseline": -0.8556879170722114,
+     "final": 34.24582387193315,
+     "state": "improved"
+    },
+    {
+     "symside": "IOSTUSDT_LONG",
+     "at": "2026-10-25T08:50:13Z",
+     "baseline": 1.9212224091126697,
+     "final": 88.66061934220586,
+     "state": "improved"
+    },
+    {
+     "symside": "KAVAUSDT_LONG",
+     "at": "2026-10-25T08:40:40Z",
+     "baseline": 16.503032479558534,
+     "final": 16.573568682749126,
      "state": "improved"
     }
    ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 9.1,
-   "last_improved_symside": "PENGUUSDC_LONG",
+   "minutes_since_last_improved": 5.7,
+   "last_improved_symside": "ETHFIUSDC_LONG",
    "cadence_ok": false,
-   "improved_gap_min_median_24h": 5.0,
+   "improved_gap_min_median_24h": 5.3,
    "improved_gap_min_max_24h": 642.2,
-   "improved_finishes_24h": 135,
-   "board_cpu_s_median_24h": 2104.9,
-   "board_wall_s_median_24h": 1061.0344469547272,
-   "board_cores": 8.56,
-   "nonboard_cores_competing": 5.83,
-   "nonboard_cores_niced": 1.49,
+   "improved_finishes_24h": 138,
+   "board_cpu_s_median_24h": 2210.6,
+   "board_wall_s_median_24h": 1105.1882028579712,
+   "board_cores": 3.0,
+   "nonboard_cores_competing": 2.29,
+   "nonboard_cores_niced": 1.93,
    "cores_by_bucket": {
-    "other": 3.6,
-    "boards": 8.56,
-    "live_helpers": 2.23
+    "boards": 3.0,
+    "other": 1.11,
+    "live_helpers": 1.18
    },
    "cores_by_bucket_niced": {
-    "other": 1.49
+    "other": 1.93
    }
   }
  },
