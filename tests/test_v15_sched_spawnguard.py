@@ -154,6 +154,11 @@ class SideCmdGuardTest(unittest.TestCase):
             body,
         )
 
+    def test_side_assigned_host_disables_pair_partner(self):
+        h = {"root": "/tmp/r", "template_dir": "SPREADSHEETS", "sides": ["SHORT"]}
+        body = side_cmd(h, "AAA", "SHORT", "30D", "/tmp/p", 1, 7)
+        self.assertIn("V15_PAIR_MODE=0", body)
+
     def test_all_windows_guarded(self):
         h = {"root": "/tmp/r", "template_dir": "SPREADSHEETS"}
         for w in ("30D", "365D", "REPAIR", "GS"):
