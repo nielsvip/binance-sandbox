@@ -10,6 +10,7 @@ import sys
 import tempfile
 import types
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -17,6 +18,17 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import v15_fleet_scheduler as _SCHED
 from v15_fleet_scheduler import _below_floor_hosts, _burn_launch, _floor_left, _floor_target_n, tick
+
+
+class EmptyDispatchTest(unittest.TestCase):
+    def test_empty_launch_command_never_starts_dispatch_job(self):
+        act = {"sym": "TEST", "side": "SHORT", "window": "30D", "key": "TEST_SHORT|30D"}
+        with patch.object(_SCHED, "_drop_untradeable", return_value=[act]), \
+             patch.object(_SCHED, "pair_launch_cmd", return_value=""), \
+             patch.object(_SCHED.subprocess, "Popen") as popen, \
+             patch.dict(os.environ, {"V15_SCHED_HARD_RECENT": "0"}):
+            self.assertFalse(_SCHED._dispatch_async({"ssh": ["localhost"]}, "TEST", [act], "/tmp", 7, "test"))
+        popen.assert_not_called()
 
 
 class VerdictSkipsTest(unittest.TestCase):

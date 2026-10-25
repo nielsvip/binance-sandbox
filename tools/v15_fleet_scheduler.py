@@ -3652,12 +3652,16 @@ def _dispatch_async(host, symbol, acts, pdir, workers, tag):
     if not acts:
         print(f"[sched] dispatch SKIPPED for {symbol}: no tradeable side left (tag={tag})", flush=True)
         return False
+    launch_cmd = pair_launch_cmd(host, acts, pdir, workers)
+    if not launch_cmd.strip():
+        print(f"[sched] dispatch SKIPPED for {symbol}: host has no launchable side (tag={tag})", flush=True)
+        return False
     import tempfile
     tgt = (host.get("ssh") or [None])[0]
     push = str(tgt) if tgt and str(tgt) not in ("127.0.0.1", "localhost", "::1") else ""
     fd, cmd_file = tempfile.mkstemp(prefix=f"v15_dispatch_{symbol}_", suffix=".sh", dir="/tmp")
     with os.fdopen(fd, "w") as f:
-        f.write(pair_launch_cmd(host, acts, pdir, workers))
+        f.write(launch_cmd)
     cmd = [sys.executable, str(ROOT / "tools" / "v15_dispatch_job.py"), "--symbol", str(symbol), "--push", push, "--via", host.get("_via", host["ssh"][0]), "--cmd-file", cmd_file, "--tag", tag]
     subprocess.Popen(cmd, cwd=str(ROOT), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=open("/tmp/v15_dispatch_job.err", "a"), start_new_session=True)
     return True
@@ -4705,6 +4709,9 @@ def tick(args, cfg, now):
             # USER 2026-10-22 fate log: every skip of a top-40 symbol names its blocker, so the ORDER-AUDIT
             # never cries ORDER_VIOLATION over a logged reason and an idling fleet names its own gate.
             _fate = (lambda _r, _s=sym: log.setdefault("fate", {}).setdefault(h["name"], {}).setdefault(_s, _r)) if _rank0 < 40 else (lambda _r: None)
+            if h["name"] in ("s1", "s2") and _in_self_half(sym):
+                _fate("self-managed on s5/s6")
+                continue
             _pinned_sym = sym in _pin_syms
             if _pinned_sym and _pin_hosts and h["name"] not in _pin_hosts:
                 _fate("pin restricted to other hosts")
@@ -5102,6 +5109,8 @@ def tick(args, cfg, now):
                 blo.append((0 if t2 == "M" else 1, -g2, ss, sym2, sd2, key2))
             blo.sort()
             for _, _, ss, sym2, sd2, key2 in blo:
+                if h["name"] in ("s1", "s2") and _in_self_half(sym2):
+                    continue
                 if used >= cap or proj_mem < est_gate or new_launched >= args.max_launch:
                     break
                 rd = is_ready(h["name"], sym2)
@@ -5120,7 +5129,8 @@ def tick(args, cfg, now):
                     launched_keys.add(key2)
                 else:
                     if _ALL_LAUNCH_NPZ:
-                        _dispatch_async(h, sym2, acts, pd, _workers_for(sym2, workers), f"{h['name']}:{sym2}:{sd2[0]}30D")
+                        if not _dispatch_async(h, sym2, acts, pd, _workers_for(sym2, workers), f"{h['name']}:{sym2}:{sd2[0]}30D"):
+                            continue
                         _dispatch_q_mark(st, [key2], _now_ts)
                     else:
                         try:
@@ -5171,6 +5181,8 @@ def tick(args, cfg, now):
             continue
         B = HB[h["name"]]
         for sym in adopted:
+            if h["name"] in ("s1", "s2") and _in_self_half(sym):
+                continue
             if _pinned_mode and _hsides.get(h["name"], set(_SIDES_ALL)) != set(_SIDES_ALL):
                 if all(owner_side.get(f"{sym}_{_sd}") == h["name"] for _sd in _hsides[h["name"]]):
                     continue
@@ -5205,7 +5217,8 @@ def tick(args, cfg, now):
                 if specs and not _steal_fetch(hosts, h, sym, specs, log):
                     continue
                 if _ALL_LAUNCH_NPZ:
-                    _dispatch_async(h, sym, acts, pd, _workers_for(sym, B["workers"]), tag.replace("[steal]", ""))
+                    if not _dispatch_async(h, sym, acts, pd, _workers_for(sym, B["workers"]), tag.replace("[steal]", "")):
+                        continue
                     _dispatch_q_mark(st, [a["key"] for a in acts], _now_ts)
                 else:
                     try:
@@ -5264,6 +5277,8 @@ def tick(args, cfg, now):
                 if not sym:
                     break
                 _tried.add(sym)
+                if h["name"] in ("s1", "s2") and _in_self_half(sym):
+                    continue
                 _src_ok, _src_why = _s1_source_tail_ok(sym)
                 if not _src_ok:
                     log.setdefault("steal30_skipped", []).append(f"{h['name']}:{sym}:npz {_src_why}")
@@ -5294,7 +5309,8 @@ def tick(args, cfg, now):
                     log.setdefault("steal30_skipped", []).append(f"{h['name']}:{sym}:source archive failed (thief copy kept, not launched)")
                     continue
                 tag = f"{h['name']}:{sym}:" + "+".join(f"{a['side'][0]}{a['window']}" for a in acts) + f"[steal30<-{_victim}]"
-                _dispatch_async(h, sym, acts, pd, _workers_for(sym, B["workers"]), tag.split("[")[0])
+                if not _dispatch_async(h, sym, acts, pd, _workers_for(sym, B["workers"]), tag.split("[")[0]):
+                    continue
                 _dispatch_q_mark(st, [a["key"] for a in acts], _now_ts)
                 for a in acts:
                     _burn_launch(a["key"], a["window"], f"{a['sym']}_{a['side']}", st, started, floor=bool(a.get("floor")))
