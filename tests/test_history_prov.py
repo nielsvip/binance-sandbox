@@ -278,7 +278,9 @@ def test_stock_history_off_identical_then_on_carries_prov(tmp_path, monkeypatch)
     # NOTE (conservation era): the on-transition OPEN must differ in price
     # from the off OPEN — an identical re-log is now suppressed as a dup
     # (history_write_allowed), so the fixture uses 100.5 to keep both rows.
-    asyncio.run(fn(stub, "trb:AAPL_LONG", "OPEN", 2.0, 100.5, "VEC_EXACT_OPEN_B_SRS_ENTRY"))
+    asyncio.run(
+        fn(stub, "trb:AAPL_LONG", "OPEN", 2.0, 100.5, "VEC_EXACT_OPEN_B_SRS_ENTRY")
+    )
     asyncio.run(fn(stub, "trb:AAPL_LONG", "CLOSE", 2.0, 99.0, "VEC_EXACT_CLOSE_EXIT_VELOCITY_WT against-long g-0.10%"))
     _, o, c = _last(tmp_path, "trb", "AAPL_LONG")
     assert o["prov"]["switch"] == "STRUCTURAL_RANGE_SHIFT_EXIT" and o["reason"].startswith("VEC_EXACT_OPEN_B_SRS_ENTRY|SW=STRUCTURAL_RANGE_SHIFT_EXIT|F=")
