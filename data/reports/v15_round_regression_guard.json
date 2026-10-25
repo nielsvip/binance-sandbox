@@ -1,5 +1,5 @@
 {
- "at": "2026-10-25T16:26:04Z",
+ "at": "2026-10-25T17:26:01Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
@@ -18,51 +18,36 @@
     "throughput 0.0/h < 12.0/h (one per 5 min)"
    ],
    "rows": [],
-   "error": null
+   "error": "ssh: connect to host 127.0.0.1 port 2201: Connection refused\n"
   },
   "s2": {
-   "published_n": 2,
-   "per_hour": 1.0,
-   "improved_vs_best_start": 2,
-   "mean_uplift_vs_best_start": 21.9652,
-   "median_uplift": 29.0295,
-   "chained_from_previous_published": 2,
+   "published_n": 1,
+   "per_hour": 0.5,
+   "improved_vs_best_start": 1,
+   "mean_uplift_vs_best_start": 50.9347,
+   "median_uplift": 50.9347,
+   "chained_from_previous_published": 1,
    "no_floor_recorded": 0,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 1.0/h < 12.0/h (one per 5 min)"
+    "throughput 0.5/h < 12.0/h (one per 5 min)"
    ],
    "rows": [
     {
-     "symside": "RENDERUSDT_LONG",
-     "published_at": 1792939902.2945378,
-     "final_gain": 40.1159878695714,
-     "best_start_gain": 25.21518542819996,
-     "best_start_chosen": "history_1",
-     "best_start_candidates": 8,
-     "baseline_gain": 25.15608101263018,
-     "npz_ts_last": 1792936800.0,
-     "npz_md5": "33555a165bfa52652f08199df26ac70e",
-     "npz_bars": 41117,
-     "bh": -11.95822333708329,
+     "symside": "BEAMXUSDT_LONG",
+     "published_at": 1792945916.484872,
+     "final_gain": 66.49426645775897,
+     "best_start_gain": 15.559580973342854,
+     "best_start_chosen": "history_3",
+     "best_start_candidates": 7,
+     "baseline_gain": 5.04982372012564,
+     "npz_ts_last": 1792942200.0,
+     "npz_md5": "2893435c0b10922969eb760edd33e824",
+     "npz_bars": 103017,
+     "bh": 38.04762185109016,
      "verdict": null,
-     "npz_age_h_at_publish": 0.86
-    },
-    {
-     "symside": "TIAUSDC_LONG",
-     "published_at": 1792938725.171307,
-     "final_gain": 83.57178798373396,
-     "best_start_gain": 54.54233360916052,
-     "best_start_chosen": "history_0",
-     "best_start_candidates": 6,
-     "baseline_gain": 32.37774814392244,
-     "npz_ts_last": 1792934100.0,
-     "npz_md5": "571df6e9428a72d08079ef1c710d0df3",
-     "npz_bars": 43255,
-     "bh": 4.65489670272345,
-     "verdict": null,
-     "npz_age_h_at_publish": 1.28
+     "npz_age_h_at_publish": 1.03
     }
    ],
    "error": null

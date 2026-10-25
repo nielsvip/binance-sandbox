@@ -1,6 +1,6 @@
 {
- "generated_utc": "2026-10-25T17:22:11Z",
- "secs": 9.3,
+ "generated_utc": "2026-10-25T17:26:16Z",
+ "secs": 14.5,
  "universe": {
   "crypto": 201,
   "stocks": 224
@@ -8,26 +8,14 @@
  "unreachable": {
   "s1": "JSONDecodeError: Expecting value: line 1 column 1 (char 0) ssh: connect to host 127.0.0.1 port 2201: Connection refused\n"
  },
- "healed": {},
+ "healed": {
+  "mac:/Users/niels/Documents/binance": {
+   "files": 2,
+   "rows": 2,
+   "skipped": {}
+  }
+ },
  "kline_breaches": [
-  {
-   "host": "mac",
-   "venue": "crypto",
-   "symbol": "OPUSDT",
-   "tf": "15m",
-   "last": "2026-10-25T16:45",
-   "expect": "2026-10-25T17:00",
-   "bars_behind": 1.0
-  },
-  {
-   "host": "mac",
-   "venue": "crypto",
-   "symbol": "TWTUSDT",
-   "tf": "15m",
-   "last": "2026-10-25T16:45",
-   "expect": "2026-10-25T17:00",
-   "bars_behind": 1.0
-  },
   {
    "host": "mac",
    "venue": "crypto",
@@ -66,20 +54,6 @@
   }
  ],
  "unhealable": [
-  {
-   "venue": "crypto",
-   "symbol": "OPUSDT",
-   "tf": "15m",
-   "best": "2026-10-25T16:45",
-   "expect": "2026-10-25T17:00"
-  },
-  {
-   "venue": "crypto",
-   "symbol": "TWTUSDT",
-   "tf": "15m",
-   "best": "2026-10-25T16:45",
-   "expect": "2026-10-25T17:00"
-  },
   {
    "venue": "crypto",
    "symbol": "ICXUSDT",
@@ -124,50 +98,50 @@
   {
    "host": "mac",
    "file": "crypto prices",
-   "age_s": 1.3,
+   "age_s": 2.6,
    "max_s": 60,
    "ok": true,
    "files": {
-    "price_cache_1.json": 1.3,
-    "price_cache_2.json": 20.3,
-    "price_cache_3.json": 1.3
+    "price_cache_1.json": 2.6,
+    "price_cache_2.json": 76.9,
+    "price_cache_3.json": 2.6
    }
   },
   {
    "host": "mac",
    "file": "crypto snapshot (market_data_*)",
-   "age_s": 16.7,
+   "age_s": 21.2,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/market_data_NEWEST": 16.7
+    "data/market_data_NEWEST": 21.2
    }
   },
   {
    "host": "mac",
    "file": "crypto latest_market_data",
-   "age_s": 18.7,
+   "age_s": 43.6,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/latest_market_data.json": 18.7
+    "data/latest_market_data.json": 43.6
    }
   },
   {
    "host": "gw",
    "file": "crypto market_data",
-   "age_s": 21.6,
+   "age_s": 165.1,
    "max_s": 300,
    "ok": true,
    "files": {
-    "data/latest_market_data.json": 21.6
+    "data/latest_market_data.json": 165.1
    }
   },
   {
    "host": "mac",
    "file": "disk free /Users/niels/Documents/binance",
    "age_s": null,
-   "free_gb": 16.7,
+   "free_gb": 16.2,
    "ok": true
   },
   {
