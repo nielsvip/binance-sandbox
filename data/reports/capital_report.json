@@ -1,80 +1,32 @@
 {
- "generated_at": "2026-10-25 12:44 UTC",
- "total_capital_usd": 91.45,
+ "generated_at": "2026-10-25 13:09 UTC",
+ "total_capital_usd": 27.74,
  "tier_capital": {
   "A": 0.0,
-  "B": 34.14,
-  "C": 57.31
+  "B": 27.74,
+  "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
-  "C": 3
+  "B": 1,
+  "C": 0
  },
  "winners": [],
- "losers": [
-  "ang:TIAUSDC_LONG",
-  "ang:WUSDT_SHORT",
-  "ang:RLCUSDT_SHORT"
- ],
+ "losers": [],
  "mediocre": [
-  "ang:ZROUSDT_LONG"
+  "inf:ZENUSDT_SHORT"
  ],
  "positions": [
   {
-   "pk": "ang:TIAUSDC_LONG",
-   "symbol": "TIAUSDC",
-   "account": "ang",
-   "value_usd": 27.28,
-   "gain_pct": -1.374,
-   "tier": "C",
-   "perf_mult": 0.2,
-   "amt": 52.0,
-   "mark": 0.5246
-  },
-  {
-   "pk": "ang:RLCUSDT_SHORT",
-   "symbol": "RLCUSDT",
-   "account": "ang",
-   "value_usd": 24.98,
-   "gain_pct": 0.392,
-   "tier": "C",
-   "perf_mult": 0.15,
-   "amt": 47.8,
-   "mark": 0.52254535
-  },
-  {
-   "pk": "ang:ENSUSDT_LONG",
-   "symbol": "ENSUSDT",
-   "account": "ang",
-   "value_usd": 24.19,
-   "gain_pct": 0.114,
+   "pk": "inf:ZENUSDT_SHORT",
+   "symbol": "ZENUSDT",
+   "account": "inf",
+   "value_usd": 27.74,
+   "gain_pct": -0.053,
    "tier": "B",
-   "perf_mult": 3.03,
-   "amt": 4.6,
-   "mark": 5.259
-  },
-  {
-   "pk": "ang:ZROUSDT_LONG",
-   "symbol": "ZROUSDT",
-   "account": "ang",
-   "value_usd": 9.95,
-   "gain_pct": -0.174,
-   "tier": "B",
-   "perf_mult": 0.88,
-   "amt": 5.8,
-   "mark": 1.71530162
-  },
-  {
-   "pk": "ang:WUSDT_SHORT",
-   "symbol": "WUSDT",
-   "account": "ang",
-   "value_usd": 5.05,
-   "gain_pct": -0.013,
-   "tier": "C",
-   "perf_mult": 0.14,
-   "amt": 425.1,
-   "mark": 0.0118812
+   "perf_mult": 0.47,
+   "amt": 4.9,
+   "mark": 5.662
   }
  ]
 }

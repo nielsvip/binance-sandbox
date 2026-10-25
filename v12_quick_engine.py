@@ -5613,6 +5613,10 @@ class QuickConfig:
         self.LEGACY_REENTRY_PSR_QUICK_RECOVERY = True
         self.WT_15M_BOUNCE_HIGH_1H_GT_PREV = False
         self.EXIT_R1_R2_FILTER_TF = '1h'
+        # parity-sync 20261025: stocks-uniform bold differs from the raw (crypto) value — §67 overlay
+        self.REENTRY_AUGMENT_REQUIRE_NO_PRIOR_AUGMENT = True
+        self.MANDATORY_REENTRY_WT_FILTER_TF_MODE = '5m_or_15m'
+        self.UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED = False
 
     ABLATION_DISABLE_AGGRESSIVE_HEDGE: bool = False  # auto-wired 625
     ABLATION_DISABLE_AUGMENTATION: bool = False  # auto-wired 625

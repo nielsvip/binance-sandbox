@@ -3588,7 +3588,7 @@ class Config:
     REENTRY_AUGMENT_REQUIRE_HIGHER_LOW: bool = True  # V17 LONG reentry > previous trade reference / SHORT < (lower high)
     REENTRY_AUGMENT_HL_REF: str = "entry"  # V17 'entry' = previous trade entry price, 'low' = previous trade adverse swing
     REENTRY_AUGMENT_WINDOW_SEC: float = 86400.0  # V17 reentry must open within this many seconds of the previous close (0 = no limit)
-    REENTRY_AUGMENT_REQUIRE_NO_PRIOR_AUGMENT: bool = True  # V17 carry only when the previous position never augmented
+    REENTRY_AUGMENT_REQUIRE_NO_PRIOR_AUGMENT: bool = False  # V17 carry only when the previous position never augmented
     AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED: bool = (
         True  # USER 2026-10-13: default True — augment tab never fired (exit on any WT cross); carry augment into the next higher-low open  # V17 LIVE KILL SWITCH (real money, global only, never swept): False = a vec OPEN carrying an augment is sized as a plain open live; True = open x (1 + carry), every live cap still binds
     )

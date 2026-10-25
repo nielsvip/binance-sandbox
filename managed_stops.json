@@ -1,30 +1,58 @@
 {
-  "ang:COTIUSDT_SHORT": {
-    "orderId": "4000001995132074",
-    "stopPrice": 0.010599,
-    "entry_sig": "2026-10-25 12:49:27.160000+00:00",
-    "symbol": "COTIUSDT",
+  "fin:RIFUSDT_SHORT": {
+    "orderId": "3000002273526282",
+    "stopPrice": 0.07212,
+    "entry_sig": "2026-10-25 12:29:45.625000+00:00",
+    "symbol": "RIFUSDT",
     "side": "SHORT"
   },
-  "ang:ENSUSDT_LONG": {
-    "orderId": "4000001995140303",
-    "stopPrice": 5.13,
-    "entry_sig": "2026-10-25 12:30:15.515000+00:00",
-    "symbol": "ENSUSDT",
+  "fin:STXUSDT_SHORT": {
+    "orderId": "3000002273581096",
+    "stopPrice": 0.3096,
+    "entry_sig": "2026-10-25 12:46:39.893000+00:00",
+    "symbol": "STXUSDT",
+    "side": "SHORT"
+  },
+  "fin:XMRUSDT_LONG": {
+    "orderId": "3000002273582110",
+    "stopPrice": 580.72,
+    "entry_sig": "2026-10-25 12:52:32.665000+00:00",
+    "symbol": "XMRUSDT",
     "side": "LONG"
   },
-  "ang:WUSDT_SHORT": {
-    "orderId": "4000001995145701",
-    "stopPrice": 0.012427,
-    "entry_sig": "2026-10-25 12:34:16.243000+00:00",
-    "symbol": "WUSDT",
+  "fin:KSMUSDT_SHORT": {
+    "orderId": "3000002273582681",
+    "stopPrice": 3.952,
+    "entry_sig": "2026-10-25 12:58:00.283000+00:00",
+    "symbol": "KSMUSDT",
     "side": "SHORT"
   },
-  "ang:RLCUSDT_SHORT": {
-    "orderId": "4000001995153155",
+  "fin:RLCUSDT_SHORT": {
+    "orderId": "3000002273583550",
     "stopPrice": 0.7252,
-    "entry_sig": "2026-10-25 10:56:54.283000+00:00",
+    "entry_sig": "2026-10-25 12:18:18.606000+00:00",
     "symbol": "RLCUSDT",
     "side": "SHORT"
+  },
+  "fin:PENGUUSDC_LONG": {
+    "orderId": "3000002273583916",
+    "stopPrice": 0.0073,
+    "entry_sig": "2026-10-25 12:18:33.945000+00:00",
+    "symbol": "PENGUUSDC",
+    "side": "LONG"
+  },
+  "fin:MOVRUSDT_SHORT": {
+    "orderId": "3000002273583917",
+    "stopPrice": 1.1345,
+    "entry_sig": "2026-10-25 12:18:34.268000+00:00",
+    "symbol": "MOVRUSDT",
+    "side": "SHORT"
+  },
+  "fin:ENAUSDC_LONG": {
+    "orderId": "3000002273584924",
+    "stopPrice": 0.19083,
+    "entry_sig": "2026-10-25 13:04:59.030000+00:00",
+    "symbol": "ENAUSDC",
+    "side": "LONG"
   }
 }

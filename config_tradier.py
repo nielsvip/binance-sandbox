@@ -4353,7 +4353,7 @@ class TradierConfig:
     UNDERWATER_HEDGE_OR_CLOSE_ENABLED: bool = False
     UNDERWATER_HEDGE_OR_CLOSE_HTF_CLOSE_REQUIRED: int = 2
     UNDERWATER_HOC_USDC_MAKER_BYPASS: bool = False
-    UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED: bool = True
+    UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED: bool = False
     UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS: list = field(
         default_factory=lambda: [
             # 2026-04-24 CLEARED again: account draining via GAIN_EROSION bypass. MOVR closed at -13%, RLC at -0.22%,
