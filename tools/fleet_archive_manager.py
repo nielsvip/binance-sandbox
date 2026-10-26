@@ -23,6 +23,8 @@ REPORT = Path.home() / "Library" / "Logs" / "fleet_archive_manager.jsonl"
 STATE = Path.home() / "Library" / "Caches" / "com.binance.fleetarchive" / "verified.json"
 KEY = Path(os.environ.get("V15_ARCHIVE_GOOGLE_KEY", Path.home() / "Downloads/civil-ripple-439101-j3-d50fb6537cdb.json"))
 GOOGLE_FOLDER_ID = os.environ.get("V15_ARCHIVE_GOOGLE_FOLDER_ID", "")
+DRIVE_REMOTE = os.environ.get("V15_ARCHIVE_RCLONE_REMOTE", "").strip()
+DRIVE_CONFIG_PATH = Path(os.environ.get("V15_ARCHIVE_RCLONE_CONFIG", Path.home() / ".config" / "rclone" / "rclone.conf"))
 GCS_FALLBACK = os.environ.get("V15_ARCHIVE_GCS_FALLBACK", "1") == "1"
 HOSTS = {"s1": "s1-pub", "s2": "s2", "s5": "s5", "s6": "s6"}
 DISK_WARN_MB = {"s1": 7000, "s2": 6000, "s5": 8000, "s6": 8000}
@@ -321,21 +323,29 @@ def _archive_to_external(host: str, source: str, drive: Path, apply: bool) -> No
 
 
 def _drive_config(folder_id: str):
+    if DRIVE_REMOTE:
+        if not DRIVE_CONFIG_PATH.is_file():
+            raise RuntimeError("OAuth rclone config is missing")
+        env = os.environ.copy()
+        env["RCLONE_CONFIG"] = str(DRIVE_CONFIG_PATH)
+        os.chmod(DRIVE_CONFIG_PATH, 0o600)
+        return None, env, f"{DRIVE_REMOTE}:"
     tmp = tempfile.TemporaryDirectory(prefix="fleet-archive-rclone-")
     config = Path(tmp.name) / "rclone.conf"
     env = os.environ.copy()
     env["RCLONE_CONFIG"] = str(config)
     subprocess.run(["rclone", "config", "create", "fleetarchive", "drive", f"service_account_file={KEY}", "scope=drive", f"root_folder_id={folder_id}"], env=env, capture_output=True, check=True)
     os.chmod(config, 0o600)
-    return tmp, env
+    return tmp, env, "fleetarchive:"
 
 
 def _archive_to_google(host: str, source: str, folder_id: str, apply: bool) -> None:
-    if not KEY.is_file() or not folder_id:
-        _log("google_archive_unavailable", key_present=KEY.is_file(), folder_id_configured=bool(folder_id))
+    if (not DRIVE_REMOTE and not KEY.is_file()) or (not DRIVE_REMOTE and not folder_id):
+        _log("google_archive_unavailable", key_present=KEY.is_file(), folder_id_configured=bool(folder_id), oauth_remote_configured=bool(DRIVE_REMOTE))
         return
     state = _state_load()
-    key = f"{host}:{source}->google:{folder_id}"
+    target_id = f"oauth:{DRIVE_REMOTE}" if DRIVE_REMOTE else folder_id
+    key = f"{host}:{source}->google:{target_id}"
     signature = _source_signature(host, source)
     if state.get(key) == signature:
         _log("google_archive_current", host=host, source=source)
@@ -346,9 +356,9 @@ def _archive_to_google(host: str, source: str, folder_id: str, apply: bool) -> N
         return
     if shutil.disk_usage(Path(tempfile.gettempdir())).free < 8 * 1024**3:
         raise RuntimeError("Mac staging disk has less than 8 GB free")
-    tmp, env = _drive_config(folder_id)
+    tmp, env, remote_root = _drive_config(folder_id)
     try:
-        probe = subprocess.run(["rclone", "lsd", "fleetarchive:"], env=env, capture_output=True, text=True, timeout=60)
+        probe = subprocess.run(["rclone", "lsd", remote_root], env=env, capture_output=True, text=True, timeout=60)
         if probe.returncode:
             raise RuntimeError("Google Drive folder access failed; source retained")
         with tempfile.TemporaryDirectory(prefix="fleet-archive-stage-") as stage_name:
@@ -356,7 +366,7 @@ def _archive_to_google(host: str, source: str, folder_id: str, apply: bool) -> N
             local, expected = _make_local_archive(host, source, stage)
             if local.stat().st_size + 5 * 1024**3 > shutil.disk_usage(stage).free:
                 raise RuntimeError("Mac lacks safe staging headroom for Google Drive upload")
-            remote = f"fleetarchive:{host}/{local.stem}.{expected[:12]}{local.suffix}"
+            remote = f"{remote_root}{host}/{local.stem}.{expected[:12]}{local.suffix}"
             put = subprocess.run(["rclone", "copyto", str(local), remote], env=env, capture_output=True, text=True, timeout=1800)
             if put.returncode:
                 raise RuntimeError(f"Google Drive upload failed; source retained: {put.stderr[-300:]}")
@@ -367,7 +377,8 @@ def _archive_to_google(host: str, source: str, folder_id: str, apply: bool) -> N
             _state_save(state)
             _log("google_archive_verified", source=f"{host}:{source}", destination=remote, sha256=expected)
     finally:
-        tmp.cleanup()
+        if tmp:
+            tmp.cleanup()
 
 
 def _archive_to_gcs(host: str, source: str, apply: bool, raw: bool = False) -> None:
@@ -429,7 +440,7 @@ def main() -> int:
             except Exception as exc:
                 _log("external_archive_failed", host=host, drive=str(drive), error=str(exc))
         drive_copy_ok = False
-        if args.google_folder_id:
+        if args.google_folder_id or DRIVE_REMOTE:
             try:
                 _archive_to_google(host, source, args.google_folder_id, args.apply)
                 drive_copy_ok = True

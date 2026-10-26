@@ -15002,6 +15002,33 @@ def _cycle_tp_closed_vector_event(base_path, position_key, indicators, now=None)
     return False, closed_ts, "no current-bar CYCLE_TP REDUCE event"
 
 
+def _cycle_tp_durable_bar_path(base_path, position_key):
+    account_key, sym_side = position_key.split(":", 1)
+    return Path(base_path) / "data" / "vec_live" / "cycle_tp_native_sent" / account_key / f"{sym_side}.json"
+
+
+def _cycle_tp_durable_sent_bar(base_path, position_key):
+    try:
+        payload = json.loads(_cycle_tp_durable_bar_path(base_path, position_key).read_text())
+        return int(payload.get("bar_ts") or 0)
+    except (OSError, TypeError, ValueError, AttributeError):
+        return 0
+
+
+def _cycle_tp_record_durable_bar(base_path, position_key, bar_ts, reason):
+    path = _cycle_tp_durable_bar_path(base_path, position_key)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = path.with_name(f".{path.name}.{os.getpid()}.{time.time_ns()}.tmp")
+    try:
+        with temp.open("w") as handle:
+            json.dump({"bar_ts": int(bar_ts), "reason": str(reason), "queued_at": time.time()}, handle)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temp, path)
+    finally:
+        temp.unlink(missing_ok=True)
+
+
 def _cb_path_tag(reason):
     """entry-path tag for the breaker (2026-10-08: first TWO underscore tokens — one token nuked whole families:
     'B' killed B_KZONE/B_SRS/B_MOM5/B_EMADIST/B_SMA200DIST together, 'ENTRY' killed every entry strategy, and the
@@ -59882,8 +59909,9 @@ async def process_position(
                     _tpt_vec_ready, _tpt_vec_bar, _tpt_vec_why = _cycle_tp_closed_vector_event(config.BASE_PATH, position_key, i)
                 except Exception as _tpt_vec_err:
                     _tpt_vec_ready, _tpt_vec_bar, _tpt_vec_why = False, 0, str(_tpt_vec_err)
-                if not _tpt_vec_ready or _tiered_tp_last_vector_bar.get(position_key) == _tpt_vec_bar:
-                    logger.info(f"[CYCLE_TP_DEFER_VECTOR_BAR] {position_key}: {_tpt_vec_why} already_sent={_tiered_tp_last_vector_bar.get(position_key) == _tpt_vec_bar}")
+                _tpt_already_sent = _tiered_tp_last_vector_bar.get(position_key) == _tpt_vec_bar or _cycle_tp_durable_sent_bar(config.BASE_PATH, position_key) == _tpt_vec_bar
+                if not _tpt_vec_ready or _tpt_already_sent:
+                    logger.info(f"[CYCLE_TP_DEFER_VECTOR_BAR] {position_key}: {_tpt_vec_why} already_sent={_tpt_already_sent}")
                 else:
                     _tpt_levels = _psym_get(symbol, position_side, "CYCLE_TP_TIERED_LEVELS", getattr(config, "CYCLE_TP_TIERED_LEVELS", [0.0015, 0.003, 0.005, 0.007, 0.010, 0.015, 0.020, 0.030]))
                     _tpt_frac = _psym_get(symbol, position_side, "CYCLE_TP_TIERED_FRAC", getattr(config, "CYCLE_TP_TIERED_FRAC", 0.25))
@@ -59911,10 +59939,14 @@ async def process_position(
                                     0.80,
                                     override_qty=_tpt_reduce_qty,
                                 )
-                                if result:
+                                if str(result or "").startswith(("QUEUED", "SUCCESS")):
                                     _tpt_hit.add(_tpt_idx)
                                     _tiered_tp_hit[position_key] = _tpt_hit
                                     _tiered_tp_last_vector_bar[position_key] = _tpt_vec_bar
+                                    try:
+                                        _cycle_tp_record_durable_bar(config.BASE_PATH, position_key, _tpt_vec_bar, f"CYCLE_TP_TIERED_T{_tpt_idx}")
+                                    except Exception as _tpt_record_err:
+                                        logger.critical(f"[CYCLE_TP_DURABLE_RECORD_FAIL] {position_key}: {_tpt_record_err}")
                                     _tpt_fired = True
                                     break
                     if _tpt_fired:

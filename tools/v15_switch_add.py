@@ -156,6 +156,11 @@ def validate_switch(sw, tab, cands, default, venues, sides, root=ROOT, bible=Non
         if sw not in cfg:
             _refuse(f"{sw} is not a field of {'config.py' if v == 'CRYPTO' else 'config_tradier.py'} — add the config field first")
         dv = cfg[sw]
+        if sw == "EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED" and v == "CRYPTO" and len(sides) == 1:
+            _cat_defaults = json.loads((root / "data" / "cat_side_defaults_4.json").read_text())
+            _cat_key = f"CRYPTO_{sides[0]}"
+            if sw in _cat_defaults.get(_cat_key, {}):
+                dv = _cat_defaults[_cat_key][sw]
         if dv is None or isinstance(dv, (tuple, list, dict)):
             _refuse(f"{sw} {v} config default {dv!r} is not a scalar — rows need a typed scalar encoding first")
         t = _type_of(dv)

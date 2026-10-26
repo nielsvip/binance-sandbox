@@ -32,6 +32,7 @@ import hashlib
 import json
 import os
 import re
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -51,12 +52,19 @@ def mtime_day(p: Path) -> str:
     return dt.datetime.fromtimestamp(p.stat().st_mtime, dt.timezone.utc).strftime("%Y-%m-%d")
 
 
+def protected_file(path):
+    return bool(path.stat().st_flags & getattr(stat, "UF_IMMUTABLE", 2)) or any("untouchable" in part.lower() for part in path.parts)
+
+
 def plan(keep_recent: int, keep_tars: int, min_age_h: float, keep_days: int = 0):
     now = dt.datetime.now(dt.timezone.utc).timestamp()
     keep, drop = [], []
     groups = collections.defaultdict(list)
     for f in glob.glob(str(ROOT / "backups" / "*.db")) + glob.glob(str(ROOT / "backups" / "*.db-wal")):
         p = Path(f)
+        if protected_file(p):
+            keep.append((p, "explicitly protected backup"))
+            continue
         groups[group_of(p.name)].append(p)
     for g, files in groups.items():
         files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
@@ -88,10 +96,14 @@ def plan(keep_recent: int, keep_tars: int, min_age_h: float, keep_days: int = 0)
                 keep.append((p, f"last snapshot of {day}"))
                 continue
             drop.append((p, f"redundant hourly copy ({day}, {age_h:.0f}h old, group has {len(files)})"))
-    tars = sorted(glob.glob(str(ROOT / "backups" / "board_name_truth" / "*.tar")), key=os.path.getmtime, reverse=True)
+    tars = sorted((f for f in glob.glob(str(ROOT / "backups" / "board_name_truth" / "*.tar")) if not protected_file(Path(f))), key=os.path.getmtime, reverse=True)
     for i, f in enumerate(tars):
         p = Path(f)
         (keep if i < keep_tars else drop).append((p, f"board tar #{i + 1} newest" if i < keep_tars else f"board tar #{i + 1} beyond --keep-tars {keep_tars}"))
+    for f in glob.glob(str(ROOT / "backups" / "board_name_truth" / "*.tar")):
+        p = Path(f)
+        if protected_file(p):
+            keep.append((p, "explicitly protected backup"))
     return keep, drop
 
 

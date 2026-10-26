@@ -194,7 +194,9 @@ def _tar_zstd(source: str, level: int = 3, threads: int = 2):
     parent, leaf = os.path.split(source.rstrip("/"))
     idle = "ionice -c3 " if shutil.which("ionice") else ""
     command = "set -o pipefail; nice -n 19 %star -C %s -cf - -- %s | nice -n 19 %szstd -T%d -%d -c" % (idle, shlex.quote(parent or "/"), shlex.quote(leaf), idle, threads, level)
-    return subprocess.Popen(["bash", "-lc", command], stdout=subprocess.PIPE, bufsize=0)
+    env = os.environ.copy()
+    env["PATH"] = "/opt/homebrew/bin:/usr/local/bin:" + env.get("PATH", "/usr/bin:/bin")
+    return subprocess.Popen(["bash", "-lc", command], stdout=subprocess.PIPE, bufsize=0, env=env)
 
 
 def push_local(source: str, name: str, token: str, bucket: str = BUCKET, raw: bool = False) -> dict:

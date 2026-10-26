@@ -5,7 +5,7 @@ Daily job: uploads 50 files (~2GB) to avoid API throttling.
 If Google Drive >70% capacity, offloads to connected external drives.
 """
 
-import hashlib, json, os, sys, subprocess, shutil
+import hashlib, json, os, sys, subprocess, shutil, stat
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -14,13 +14,16 @@ CREDS_JSON = "/Users/niels/Downloads/civil-ripple-439101-j3-d50fb6537cdb.json"
 LOG_FILE = "/Users/niels/Documents/binance/data/reports/gdrive_backup.log"
 RCLONE_CONFIG = "/tmp/rclone_gdrive_backup.conf"
 GOOGLE_FOLDER_ID = os.environ.get("V15_ARCHIVE_GOOGLE_FOLDER_ID", "").strip()
+DRIVE_REMOTE = os.environ.get("V15_ARCHIVE_RCLONE_REMOTE", "").strip()
+DRIVE_CONFIG_PATH = Path(os.environ.get("V15_ARCHIVE_RCLONE_CONFIG", Path.home() / ".config" / "rclone" / "rclone.conf"))
+RCLONE_REMOTE = "binance-gdrive"
 
 # External drive mount points (checked in order, first available wins)
 EXT_DRIVE_MOUNTS = [
     "/Volumes/TOSHIBA_EXT",
-    "/Volumes/EXTERNAL_SSD",
-    "/Volumes/EXT_DRIVE_2",
-    "/Volumes/EXT_DRIVE_3",
+    "/Volumes/SSD2T",
+    "/Volumes/E3T",
+    "/Volumes/WD25",
 ]
 EXT_BACKUP_FOLDER = "binance_backups_archive"
 GDRIVE_CAPACITY_THRESHOLD = 0.70  # Fallback if >70% capacity
@@ -40,6 +43,15 @@ def log(msg, level="INFO"):
         f.write(msg_fmt + "\n")
 
 def setup_rclone():
+    global RCLONE_CONFIG, RCLONE_REMOTE
+    if DRIVE_REMOTE:
+        if not DRIVE_CONFIG_PATH.is_file():
+            log("OAuth rclone config is missing", "ERROR")
+            return False
+        os.chmod(DRIVE_CONFIG_PATH, 0o600)
+        RCLONE_CONFIG = str(DRIVE_CONFIG_PATH)
+        RCLONE_REMOTE = DRIVE_REMOTE
+        return True
     if not Path(CREDS_JSON).exists():
         log("ERROR: Credentials not found", "ERROR")
         return False
@@ -72,6 +84,9 @@ def get_old_files(days=KEEP_LOCAL_DAYS, max_count=MAX_FILES_PER_RUN):
         for fpath in sorted(Path(BACKUP_DIR).rglob("*.json")):
             if len(old_files) >= max_count or total_size > MAX_SIZE_GB * 1024**3:
                 break
+            if any("untouchable" in part.lower() for part in fpath.parts) or fpath.stat().st_flags & getattr(stat, "UF_IMMUTABLE", 2):
+                log(f"Preserving protected backup {fpath.relative_to(BACKUP_DIR)}", "WARN")
+                continue
 
             mtime = datetime.fromtimestamp(fpath.stat().st_mtime)
             if mtime < cutoff:
@@ -87,7 +102,7 @@ def upload_file(fpath):
     try:
         digest = sha256_file(fpath)
         remote_name = f"{fpath.stem}_{digest[:16]}{fpath.suffix}"
-        remote = f"binance-gdrive:binance_backups/{remote_name}"
+        remote = f"{RCLONE_REMOTE}:binance_backups/{remote_name}"
         result = subprocess.run([
             "rclone", "copyto", str(fpath),
             remote,
@@ -116,7 +131,7 @@ def get_gdrive_capacity():
     """Check Google Drive usage. Returns (used_gb, total_gb, percent_used) or None if unavailable."""
     try:
         result = subprocess.run([
-            "rclone", "about", "binance-gdrive:", "--config", RCLONE_CONFIG, "--json"
+            "rclone", "about", f"{RCLONE_REMOTE}:", "--config", RCLONE_CONFIG, "--json"
         ], capture_output=True, timeout=60)
         if result.returncode == 0:
             import json
@@ -134,7 +149,7 @@ def find_available_ext_drive():
     """Find first available external drive with sufficient free space. Returns path or None."""
     for mount in EXT_DRIVE_MOUNTS:
         mount_path = Path(mount)
-        if not mount_path.exists():
+        if not mount_path.exists() or not os.path.ismount(mount_path):
             continue
         try:
             stat = shutil.disk_usage(mount_path)
@@ -159,7 +174,7 @@ def copy_to_ext_drive(fpath, ext_drive_path):
         shutil.copy2(fpath, dest_file)
 
         # Verify
-        if sha256_file(dest_file) == digest:
+        if sha256_file(dest_file) == digest and sha256_file(fpath) == digest:
             log(f"✓ Copied to {ext_drive_path.name}: {fpath.name}")
             return True
         else:
@@ -235,7 +250,7 @@ def main():
     # Probe Google Drive only if not using fallback
     if drive_ready and not use_ext_drive_fallback and not use_gcs_fallback:
         try:
-            probe = subprocess.run(["rclone", "lsd", "binance-gdrive:", "--config", RCLONE_CONFIG], capture_output=True, timeout=60)
+            probe = subprocess.run(["rclone", "lsd", f"{RCLONE_REMOTE}:", "--config", RCLONE_CONFIG], capture_output=True, timeout=60)
             if probe.returncode:
                 log(f"Google Drive destination is not accessible: {probe.stderr.decode(errors='replace')[-300:]}", "WARN")
                 ext_drive_path = find_available_ext_drive()

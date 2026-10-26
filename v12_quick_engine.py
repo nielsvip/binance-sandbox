@@ -18682,11 +18682,35 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             except Exception:
                 _wsx_score = None
 
+    if not is_tradier and bool(getattr(cfg, "HTF_TREND_VETO_ON_REDUCE_ENABLED", False)):
+        try:
+            import vec_decisions.stocks_live_session_gates as _slsg_crypto_htfv
+
+            _htfv_sup = _slsg_crypto_htfv.daily_wt_supports_mask(
+                _safe(npz, "wt1_D", n, 0.0), _safe(npz, "wt2_D", n, 0.0), is_long
+            )
+        except Exception:
+            _htfv_sup = None
+
     def _htfv_block(_bi, _reason):
-        # live tradier execute_now HTF_TREND_VETO_ON_REDUCE: refuse REDUCE/CLOSE while Daily WT supports the side
+        # live execute_now HTF_TREND_VETO_ON_REDUCE: refuse REDUCE/CLOSE while Daily WT supports the side
         if _htfv_sup is None:
             return False
         try:
+            if not is_tradier:
+                _reason_up = str(_reason or "").upper()
+                _crypto_bypass = (
+                    "R1_" in _reason_up
+                    or "HEDGE_FAILED" in _reason_up
+                    or "EMERGENCY" in _reason_up
+                    or "LIQUIDATION" in _reason_up
+                    or "R3_HTF_FLIP" in _reason_up
+                    or "R4_STDEV_MACRO" in _reason_up
+                    or "STRUCTURAL_RANGE_SHIFT" in _reason_up
+                )
+                if ("HEDGE" in _reason_up and "HEDGE_FAILED" not in _reason_up) or _crypto_bypass:
+                    return False
+                return bool(_htfv_sup[_bi])
             return vec_decisions.stocks_live_session_gates.htf_veto_blocks(
                 _reason, bool(_htfv_sup[_bi])
             )
