@@ -34,7 +34,9 @@ import os
 import shutil
 import sqlite3
 import sys
+import threading
 import time
+from collections import OrderedDict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -165,11 +167,30 @@ def _load_store(sym: str):
             return {k: np.asarray(z[k]) for k in z.files}
 
 
+def _load_timestamps(sym: str):
+    import numpy as np
+
+    path = npz_path(sym)
+    with np.load(str(path), allow_pickle=True) as z:
+        base = np.asarray(z["timestamps"], dtype="float64")
+        parent = np.asarray(z["timestamp_15m"], dtype="float64") if "timestamp_15m" in z.files else base
+    try:
+        from npz_tail_store import tail_rows
+
+        rows = tail_rows(str(path))
+    except Exception:
+        rows = []
+    if rows:
+        base = np.concatenate((base, np.asarray([r["timestamps"] for r in rows], dtype="float64")))
+        parent = np.concatenate((parent, np.asarray([r.get("timestamp_15m", r["timestamps"]) for r in rows], dtype="float64")))
+    return {"timestamps": base, "timestamp_15m": parent}
+
+
 def npz_last_parent(sym: str):
     """Cheap new-bar probe: last completed-15m parent ts + last base ts (lazy member read)."""
     import numpy as np
 
-    z = _load_store(sym)
+    z = _load_timestamps(sym)
     par = np.asarray(z["timestamp_15m"], dtype="float64")
     base = np.asarray(z["timestamps"], dtype="float64")
     ok = np.flatnonzero(np.isfinite(par) & (par > 0))
@@ -228,6 +249,65 @@ def build_npz(raw: dict, sym: str, mode: str, anchor_ts: float):
 
 
 _BASE_PREP = {}
+_WINDOW_NPZ_CACHE = OrderedDict()
+_WINDOW_NPZ_CACHE_LOCK = threading.Lock()
+_WINDOW_NPZ_BUILDING = {}
+
+
+def _store_fingerprint(sym: str):
+    path = npz_path(sym)
+    parts = []
+    for candidate in (path, path.parent / ".tail" / f"{sym}.jsonl"):
+        try:
+            st = candidate.stat()
+            parts.append((st.st_mtime_ns, st.st_size))
+        except OSError:
+            parts.append((0, 0))
+    return tuple(parts)
+
+
+def _window_npz(sym: str, anchor: dict, end_ts: float = None):
+    key = (
+        sym,
+        _store_fingerprint(sym),
+        float(anchor["anchor_ts"]),
+        float(anchor["load_start_ts"]),
+        None if end_ts is None else float(end_ts),
+    )
+    while True:
+        with _WINDOW_NPZ_CACHE_LOCK:
+            cached = _WINDOW_NPZ_CACHE.get(key)
+            if cached is not None:
+                _WINDOW_NPZ_CACHE.move_to_end(key)
+                return dict(cached)
+            ready = _WINDOW_NPZ_BUILDING.get(key)
+            if ready is None:
+                ready = threading.Event()
+                _WINDOW_NPZ_BUILDING[key] = ready
+                build_here = True
+            else:
+                build_here = False
+        if not build_here:
+            ready.wait()
+            continue
+        try:
+            raw = load_raw(sym, anchor["load_start_ts"])
+            if end_ts is not None:
+                raw = truncate_raw(raw, end_ts)
+            built = build_npz(raw, sym, anchor["mode"], anchor["anchor_ts"])
+            if built is None:
+                return None
+            with _WINDOW_NPZ_CACHE_LOCK:
+                _WINDOW_NPZ_CACHE[key] = built
+                _WINDOW_NPZ_CACHE.move_to_end(key)
+                while len(_WINDOW_NPZ_CACHE) > 8:
+                    _WINDOW_NPZ_CACHE.popitem(last=False)
+            return dict(built)
+        finally:
+            with _WINDOW_NPZ_CACHE_LOCK:
+                ready = _WINDOW_NPZ_BUILDING.pop(key, None)
+                if ready is not None:
+                    ready.set()
 
 
 def base_prepared(ss: str):
@@ -261,7 +341,7 @@ def canonical_anchor(ss: str) -> dict:
 
     sym, side = split_ss(ss)
     mode = "crypto" if E.is_crypto(sym) else "tradier"
-    z = _load_store(sym)
+    z = _load_timestamps(sym)
     ts = np.asarray(z["timestamps"], dtype="float64")
     fin = ts[np.isfinite(ts) & (ts > 0)]
     sec = fin / (1000.0 if float(fin[-1]) > 1e11 else 1.0)
@@ -307,10 +387,13 @@ def run_engine(
     if isinstance(base, dict) and base.get("_stale"):
         return {"valid": False, "invalid_reason": str(base["_stale"])}, None
     if raw is None:
-        raw = load_raw(sym, anchor["load_start_ts"])
-    if end_ts is not None:
-        raw = truncate_raw(raw, end_ts)
-    npz = build_npz(raw, sym, mode, anchor["anchor_ts"])
+        npz = _window_npz(sym, anchor, end_ts)
+    else:
+        if end_ts is not None:
+            raw = truncate_raw(raw, end_ts)
+        npz = build_npz(raw, sym, mode, anchor["anchor_ts"])
+    if npz is None:
+        return {"valid": False, "invalid_reason": "NPZ window build failed"}, None
     prep = dict(base)
     prep["npz_prepared"] = npz
     prep["bh"] = E._bh(npz, side)

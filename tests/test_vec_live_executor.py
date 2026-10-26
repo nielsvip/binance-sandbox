@@ -142,22 +142,66 @@ def test_canonical_anchor_tracks_latest_30_sessions_and_crypto_days(monkeypatch)
 
     day = 86400.0
     stock_ts = 1_700_000_000.0 + np.arange(45) * day
-    monkeypatch.setattr(X, "_load_store", lambda sym: {"timestamps": stock_ts})
+    monkeypatch.setattr(X, "_load_timestamps", lambda sym: {"timestamps": stock_ts})
     monkeypatch.setattr(E, "is_crypto", lambda sym: False)
     first = X.canonical_anchor("TEST_LONG")
     expected_stock_anchor = (stock_ts[-30] // day) * day
     assert first["anchor_ts"] == expected_stock_anchor
     assert first["window_policy"] == "30_trading_sessions"
-    monkeypatch.setattr(X, "_load_store", lambda sym: {"timestamps": stock_ts + day})
+    monkeypatch.setattr(X, "_load_timestamps", lambda sym: {"timestamps": stock_ts + day})
     second = X.canonical_anchor("TEST_LONG")
     assert second["anchor_ts"] == first["anchor_ts"] + day
 
     crypto_ts = 1_700_000_000.0 + np.arange(45) * day
-    monkeypatch.setattr(X, "_load_store", lambda sym: {"timestamps": crypto_ts})
+    monkeypatch.setattr(X, "_load_timestamps", lambda sym: {"timestamps": crypto_ts})
     monkeypatch.setattr(E, "is_crypto", lambda sym: True)
     anchor = X.canonical_anchor("TESTUSDT_LONG")
     assert anchor["anchor_ts"] == crypto_ts[-1] - 30 * day
     assert anchor["window_policy"] == "30_calendar_days"
+
+
+def test_window_npz_build_is_shared_between_sides(tmp_path, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    import numpy as np
+
+    source = tmp_path / "TESTUSDT.npz"
+    source.write_bytes(b"source")
+    calls = []
+
+    def fake_build(raw, sym, mode, anchor_ts):
+        calls.append(sym)
+        time.sleep(0.05)
+        return {"timestamps": np.array([anchor_ts]), "close": np.array([1.0])}
+
+    monkeypatch.setattr(X, "npz_path", lambda sym: source)
+    monkeypatch.setattr(X, "load_raw", lambda sym, load_start: {"raw": sym})
+    monkeypatch.setattr(X, "build_npz", fake_build)
+    X._WINDOW_NPZ_CACHE.clear()
+    X._WINDOW_NPZ_BUILDING.clear()
+    anchor = {"anchor_ts": 1700000000.0, "load_start_ts": 1697408000.0, "mode": "crypto"}
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(lambda _: X._window_npz("TESTUSDT", anchor), range(2)))
+    assert calls == ["TESTUSDT"]
+    assert all(result["timestamps"][0] == anchor["anchor_ts"] for result in results)
+    assert results[0] is not results[1]
+
+
+def test_load_timestamps_includes_hot_tail(tmp_path, monkeypatch):
+    import numpy as np
+
+    path = tmp_path / "TESTUSDT.npz"
+    np.savez_compressed(
+        path,
+        timestamps=np.array([1000, 1900], dtype=np.int64),
+        timestamp_15m=np.array([1000, 1900], dtype=np.int64),
+    )
+    tail = path.parent / ".tail" / "TESTUSDT.jsonl"
+    tail.parent.mkdir()
+    tail.write_text(json.dumps({"timestamps": 2800, "timestamp_15m": 2800}) + "\n")
+    monkeypatch.setattr(X, "npz_path", lambda sym: path)
+    result = X._load_timestamps("TESTUSDT")
+    assert result["timestamps"].tolist() == [1000.0, 1900.0, 2800.0]
+    assert result["timestamp_15m"].tolist() == [1000.0, 1900.0, 2800.0]
 
 
 def test_replay_computation_is_separate_from_promotion_floors():
