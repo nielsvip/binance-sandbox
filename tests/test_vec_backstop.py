@@ -1,11 +1,12 @@
 import json
 import os
 import time
+from types import SimpleNamespace
 from live_twins import vec_backstop as vb
 
 
 def _st(open=None, ok=True, src="s", tail=9):
-    return {"ok": ok, "open": open, "src": src, "npz_tail": tail}
+    return {"ok": ok, "valid": ok, "audit_only": False, "open": open, "src": src, "npz_tail": tail}
 
 
 def test_agree_open_no_action():
@@ -26,6 +27,39 @@ def test_missing_flat_reason_carries_path():
     act, reason = vb.divergence(True, _st(False, src="f.json:cum", tail=123))
     assert act == "FLAT"
     assert reason == "VEC_FWD_MISSING_FLAT:f.json:cum@123"
+
+
+def test_position_resolver_prefers_exact_account_book_over_global_mirror():
+    scoped = SimpleNamespace(positionAmt=2.0)
+    stale = SimpleNamespace(positionAmt=7.0)
+    key = "acct_a:BTCUSDT_LONG"
+    manager = SimpleNamespace(
+        positions_by_account={"acct_a": {key: scoped}},
+        positions={key: stale},
+    )
+    assert vb.position_for_account(manager, "acct_a", key) is scoped
+
+
+def test_position_resolver_rejects_account_key_mismatch():
+    wrong_account = SimpleNamespace(positionAmt=7.0)
+    key = "acct_b:BTCUSDT_LONG"
+    manager = SimpleNamespace(
+        positions_by_account={"acct_a": {key: wrong_account}},
+        positions={key: wrong_account},
+    )
+    assert vb.position_for_account(manager, "acct_a", key) is None
+
+
+def test_position_resolver_uses_same_account_service_book_then_global_fallback():
+    scoped = SimpleNamespace(positionAmt=3.0)
+    key = "acct_a:BTCUSDT_LONG"
+    service = SimpleNamespace(positions_by_account={"acct_a": {key: scoped}}, positions={})
+    manager = SimpleNamespace(positions_service=service, positions_by_account={}, positions={})
+    assert vb.position_for_account(manager, "acct_a", key) is scoped
+    global_position = SimpleNamespace(positionAmt=4.0)
+    service.positions[key] = global_position
+    service.positions_by_account["acct_a"].clear()
+    assert vb.position_for_account(manager, "acct_a", key) is global_position
 
 
 def test_unknown_target_never_acts():

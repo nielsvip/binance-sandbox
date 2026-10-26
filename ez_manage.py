@@ -14776,6 +14776,22 @@ def _cb_path_tag(reason):
     return "_".join(parts[:2]) if len(parts) > 1 else str(reason or "")[:20]
 
 
+def _cb_path_is_currently_disabled(circuit_breaker, reason, config_obj, now=None):
+    """Read-only test for an effective breaker bypass; preserve expiry state."""
+    if not bool(getattr(config_obj, "CIRCUIT_BREAKER_ENABLED", False)):
+        return False
+    try:
+        tag = _cb_path_tag(reason or "")
+        disabled_at = circuit_breaker._disabled_paths.get(tag)
+        if disabled_at is None:
+            return False
+        decay_h = float(getattr(config_obj, "CIRCUIT_BREAKER_PATH_DECAY_HOURS", 24.0))
+        current = time.time() if now is None else float(now)
+        return (current - float(disabled_at)) < decay_h * 3600.0
+    except Exception:
+        return False
+
+
 class SmartCircuitBreaker:
     """Smart entry quality monitor. Records WT+DC state at entry time.
     When position is losing: check if entry was WRONG (WT/DC against trade) vs market event (WT/DC were correct).
@@ -34897,11 +34913,11 @@ class MultiAccountTradeManager:
         # 🚫 EXIT BLOCKER LH/LL — 2026-09-15 USER: block REDUCE/CLOSE unless LH (closed 15m) OR LL (forming) ===
         try:
             _vd_lhll_vec = bool(_parity_vec_order(reason)) and ("REDUCE" in _kill_act or "CLOSE" in _kill_act)
-            if _vd_lhll_vec and bool(getattr(config, "EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED", False)):
-                _vec_last_bypassed.append("EXIT_LH_LL")
+            # Vec exits skip this predicate below, so do not claim the native
+            # LH/LL gate was bypassed when it was never evaluated.
             if (bool(getattr(config, "EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED", False))
                 and not _vd_exempt  # lane A 2026-10-06 (CHRUSDT_LONG 173x BLOCKED_EXIT_LH_LL_REQUIRED): a vec-decided exit is never re-gated
-                and not _vd_lhll_vec  # USER 2026-10-24: vec-decided exits skip re-gating (bypass recorded above)
+                and not _vd_lhll_vec  # USER 2026-10-24: vec-decided exits skip re-gating
                 and ("REDUCE" in _kill_act or "CLOSE" in _kill_act)
                 and "HEDGE" not in (reason or "").upper()):
                 _blk_sym = symbol or (position_key.split(":")[-1].rsplit("_", 1)[0] if position_key else "")
@@ -36425,7 +36441,9 @@ class MultiAccountTradeManager:
             if _parity_vec_order(reason) or _vd_exempt or _zp_ns:
                 # Record a real bypass only when the enabled breaker would have
                 # refused this order. An inactive/clear breaker is no parity gap.
-                _cb_would_block = bool(getattr(config, "CIRCUIT_BREAKER_ENABLED", False)) and self.circuit_breaker.is_blocked(reason or "")
+                _cb_would_block = _cb_path_is_currently_disabled(
+                    self.circuit_breaker, reason or "", config
+                )
                 if _cb_would_block:
                     logger.info(f"[CIRCUIT_BREAKER_PARITY_EXEMPT] {position_key}: vec-dictated order overrides active breaker. action={action} reason={(reason or '')[:70]}")
                     _vec_last_bypassed.append("CIRCUIT_BREAKER")
@@ -53340,16 +53358,8 @@ async def process_position(
                 _vbs_base = getattr(_vbs_cfg, "BASE_PATH", ".")
                 _vbs_st = _vbs.fresh_state(f"{_vbs_sym}_{_vbs_side}", _vbs_base)
                 if _vbs_st:
-                    _vbs_live_open = False
-                    try:
-                        _vbs_ep = None
-                        if hasattr(trade_manager, 'positions_by_account'):
-                            _vbs_ep = trade_manager.positions_by_account.get((_vbs_ak or account_key), {}).get(position_key)
-                        if _vbs_ep is None and hasattr(trade_manager, 'positions'):
-                            _vbs_ep = trade_manager.positions.get(position_key)
-                        _vbs_live_open = bool(_vbs_ep and abs(safe_fetch_float(getattr(_vbs_ep, 'positionAmt', 0.0), 0.0)) > 0.0001)
-                    except Exception:
-                        _vbs_live_open = False
+                    _vbs_ep = _vbs.position_for_account(trade_manager, _vbs_ak or account_key, position_key)
+                    _vbs_live_open = bool(_vbs_ep and abs(safe_fetch_float(getattr(_vbs_ep, 'positionAmt', 0.0), 0.0)) > 0.0001)
                     _vbs_act, _vbs_reason = _vbs.divergence(_vbs_live_open, _vbs_st)
                     _vbs_tail = str((_vbs_st or {}).get("npz_tail") or "?")
                     if _vbs_act and _vbs.due(f"{_vbs_sym}_{_vbs_side}", _vbs_tail):
@@ -53360,11 +53370,7 @@ async def process_position(
                             _vbs_px = 0.0
                         _vbs_qty, _vbs_full, _vbs_oside = 0.0, False, ("SELL" if _vbs_side == "LONG" else "BUY")
                         if _vbs_act == "FLAT":
-                            try:
-                                _vbs_pos = trade_manager.positions.get(position_key) if hasattr(trade_manager, "positions") else None
-                                _vbs_qty = abs(safe_fetch_float(getattr(_vbs_pos, "positionAmt", 0), 0))
-                            except Exception:
-                                _vbs_qty = 0.0
+                            _vbs_qty = abs(safe_fetch_float(getattr(_vbs_ep, "positionAmt", 0), 0))
                             _vbs_full = True
                         else:
                             try:
