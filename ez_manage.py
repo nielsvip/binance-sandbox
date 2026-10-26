@@ -32084,6 +32084,17 @@ class MultiAccountTradeManager:
         await self.clear_active_lock(position_key)
         await self.clear_recent_signal(position_key)
 
+    @staticmethod
+    def _maker_best_prices(book):
+        try:
+            bid = Decimal(str(book["bids"][0][0]))
+            ask = Decimal(str(book["asks"][0][0]))
+            if not bid.is_finite() or not ask.is_finite() or bid <= 0 or ask <= bid:
+                return None
+            return bid, ask
+        except (TypeError, KeyError, IndexError, ValueError, ArithmeticError):
+            return None
+
     async def place_maker_order(
         self,
         account_key: str,
@@ -32510,10 +32521,14 @@ class MultiAccountTradeManager:
                         book = await asyncio.to_thread(
                             client.futures_order_book, symbol=symbol, limit=5
                         )
-                        bb, ba = (
-                            Decimal(book["bids"][0][0]),
-                            Decimal(book["asks"][0][0]),
-                        )
+                        _quote = self._maker_best_prices(book)
+                        if _quote is None:
+                            logger.warning(f"[MAKER_BOOK_EMPTY] {position_key} {symbol} {ta}: no usable bid/ask")
+                            if ta == "REDUCE":
+                                break
+                            await asyncio.sleep(RETRY_DELAY)
+                            continue
+                        bb, ba = _quote
                         _mid = float((bb + ba) / 2)
                         if _init_mid is None:
                             self._maker_initial_mid[position_key] = _mid

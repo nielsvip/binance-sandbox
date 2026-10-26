@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import re
 import signal
+import shutil
 import subprocess
 import sys
 
@@ -106,31 +107,51 @@ def run_one(queue_path: Path, ss: str, result_dir: Path, workers: int,
     queue = json.loads(queue_path.read_text())
     command, env, folder = build_launch(queue, ss, result_dir, workers, python)
     log = folder / "pilot.log"
-    with _host_slot_guard():
-        with log.open("ab") as f:
-            proc = subprocess.Popen(command, cwd=ROOT, env=env, stdout=f, stderr=subprocess.STDOUT,
-                                    start_new_session=True)
-            try:
-                rc = proc.wait(timeout=timeout_sec)
-            except subprocess.TimeoutExpired:
-                os.killpg(proc.pid, signal.SIGTERM)
-                try:
-                    proc.wait(timeout=10)
-                except subprocess.TimeoutExpired:
-                    os.killpg(proc.pid, signal.SIGKILL)
-                    proc.wait()
-                rc = 124
-    today = dt.datetime.now(dt.timezone.utc).date().isoformat()
+    overlay_dir = folder / "npz_overlay"
+    stock_overlay = str(queue["sym_sides"][ss].get("cat_side", "")).startswith("STOCKS_")
     try:
-        result = validate_one(ss, queue["sym_sides"][ss], result_dir, today)
-        valid = True
-        why = None
-    except (OSError, ValueError, KeyError, TypeError) as exc:
-        valid = False
-        why = str(exc)
-    return {"sym_side": ss, "rc": rc, "valid": valid and rc == 0,
-            "why": why if why else (f"pilot rc={rc}" if rc else None),
-            "result_dir": str(folder), "log": str(log)}
+        if stock_overlay:
+            from tools.opt.evaluate_v12 import resolve_tokenised
+            from tools.v15_preopen_7d_npz import build_overlay
+
+            symbol, _ = resolve_tokenised(ss.rsplit("_", 1)[0])
+            overlay = build_overlay(symbol, overlay_dir)
+            env["V12_NPZ_DIR"] = str(overlay_dir)
+            env["V15_7D_NPZ_OVERLAY"] = "1"
+            (folder / "npz_overlay_manifest.json").write_text(json.dumps(overlay, sort_keys=True) + "\n")
+        with _host_slot_guard():
+            with log.open("ab") as f:
+                proc = subprocess.Popen(command, cwd=ROOT, env=env, stdout=f, stderr=subprocess.STDOUT,
+                                        start_new_session=True)
+                try:
+                    rc = proc.wait(timeout=timeout_sec)
+                except subprocess.TimeoutExpired:
+                    os.killpg(proc.pid, signal.SIGTERM)
+                    try:
+                        proc.wait(timeout=10)
+                    except subprocess.TimeoutExpired:
+                        os.killpg(proc.pid, signal.SIGKILL)
+                        proc.wait()
+                    rc = 124
+        today = dt.datetime.now(dt.timezone.utc).date().isoformat()
+        try:
+            result = validate_one(ss, queue["sym_sides"][ss], result_dir, today)
+            valid = True
+            why = None
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            valid = False
+            why = str(exc)
+        return {"sym_side": ss, "rc": rc, "valid": valid and rc == 0,
+                "why": why if why else (f"pilot rc={rc}" if rc else None),
+                "result_dir": str(folder), "log": str(log),
+                "npz_overlay_sha256": overlay.get("overlay_sha256") if stock_overlay else None,
+                "premarket_row_count": overlay.get("premarket_row_count") if stock_overlay else None}
+    except (OSError, RuntimeError, ValueError, KeyError, TypeError) as exc:
+        return {"sym_side": ss, "rc": 2, "valid": False, "why": str(exc),
+                "result_dir": str(folder), "log": str(log)}
+    finally:
+        if stock_overlay:
+            shutil.rmtree(overlay_dir, ignore_errors=True)
 
 
 def main() -> int:

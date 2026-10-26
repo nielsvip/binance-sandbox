@@ -48,11 +48,10 @@ HISTORY_STAMP="$SCRATCH/.persym_history_s1_pushed_at"
 history_last=0
 [ -f "$HISTORY_STAMP" ] && history_last=$(cat "$HISTORY_STAMP" 2>/dev/null || echo 0)
 if [ "$(( $(date +%s) - history_last ))" -ge 600 ] && ! pgrep -f '[p]er_sym_history_sync.py --host' >/dev/null; then
-  if /opt/anaconda3/envs/binance_env/bin/python "$BASE/tools/per_sym_history_sync.py" --host "$HOST"; then
-    date +%s > "$HISTORY_STAMP"
-  else
-    echo "$(date -u +%FT%TZ) S1 append-only history sync failed"
-  fi
+  nohup /bin/bash -c 'if "$1" "$2" --host "$3"; then date +%s > "$4"; else echo "$(date -u +%FT%TZ) S1 append-only history sync failed"; fi' _ \
+    /opt/anaconda3/envs/binance_env/bin/python "$BASE/tools/per_sym_history_sync.py" "$HOST" "$HISTORY_STAMP" \
+    >> "$BASE/logs/per_sym_history_sync.log" 2>&1 < /dev/null &
+  echo "$(date -u +%FT%TZ) S1 append-only history sync started pid=$!"
 fi
 
 # ── small files every run ──────────────────────────────────────────────────────
