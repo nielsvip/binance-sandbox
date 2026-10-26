@@ -108,7 +108,7 @@ def _write_provisional_stock_15m(path, bar):
                 for previous in rows:
                     if timestamp_epoch(previous.get('timestamp')) != incoming_ts:
                         continue
-                    if previous.get('volume') is not None and not previous.get('_provisional'):
+                    if previous.get('volume') is not None and not previous.get('_provisional') and not previous.get('provisional'):
                         return False
                     if previous.get('_closed') and not bar.get('_closed'):
                         return False
@@ -128,7 +128,7 @@ def _write_provisional_stock_15m_unlocked(path, bar):
                 return False
         for index, row in enumerate(existing):
             if isinstance(row, dict) and row.get('timestamp') == bar['timestamp']:
-                if 'volume' in row and not row.get('_provisional'):
+                if 'volume' in row and not row.get('_provisional') and not row.get('provisional'):
                     return False
                 existing[index] = bar
                 break
@@ -144,7 +144,7 @@ def _write_provisional_stock_15m_unlocked(path, bar):
             if path.exists():
                 latest = json.loads(path.read_text(encoding='utf-8'))
                 for row in latest if isinstance(latest, list) else []:
-                    if isinstance(row, dict) and row.get('timestamp') == bar['timestamp'] and 'volume' in row and not row.get('_provisional'):
+                    if isinstance(row, dict) and row.get('timestamp') == bar['timestamp'] and 'volume' in row and not row.get('_provisional') and not row.get('provisional'):
                         os.unlink(tmp)
                         return False
             os.replace(tmp, path)

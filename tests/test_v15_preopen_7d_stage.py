@@ -121,6 +121,17 @@ def test_stage_refuses_sql_baseline_replaced_by_category_defaults(tmp_path):
         validate_one("AAAUSDT_SHORT", {"source_kind": "per_sym_sql", "overrides": {"X": 1}}, results, today)
 
 
+def test_stage_refuses_best_effort_pilot_result(tmp_path):
+    today, queue, results, *_ = _fixture(tmp_path)
+    progress = results / "AAAUSDT_SHORT/progress/AAAUSDT_SHORT_7d_progress.json"
+    data = json.loads(progress.read_text())
+    data["publish_class"] = "BEST_EFFORT"
+    data["not_compliant"] = "ESSENTIAL-ROWS"
+    progress.write_text(json.dumps(data))
+    with pytest.raises(ValueError, match="qualification gate"):
+        validate_one("AAAUSDT_SHORT", {"overrides": {"X": 1}}, results, today)
+
+
 def test_stage_refuses_missing_or_unverified_result(tmp_path):
     today, queue, results, db, sets, stocks, published = _fixture(tmp_path)
     manifest = next((results / "AAAUSDT_SHORT/out").glob("*_manifest.json"))

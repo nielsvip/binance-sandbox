@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
 import v15_fleet_scheduler as _SCHED
-from v15_fleet_scheduler import _disk_admit_ok, _est_pair_mb, _growth_debt_mb, _launched_recently, _progress_done_rows, _rank_oom_victim, _reap_burn_weight, _reap_burns, _stall_tick, _swap_admit_ok, _venue_allowed, tick
+from v15_fleet_scheduler import _disk_admit_ok, _est_pair_mb, _growth_debt_mb, _launched_recently, _memory_worker_plan, _progress_done_rows, _rank_oom_victim, _reap_burn_weight, _reap_burns, _stall_tick, _swap_admit_ok, _venue_allowed, tick
 
 
 class EstPairTest(unittest.TestCase):
@@ -28,6 +28,20 @@ class EstPairTest(unittest.TestCase):
     def test_junk_safe(self):
         self.assertEqual(_est_pair_mb(["x", None], 12000), 12000)
         self.assertEqual(_est_pair_mb([5000], "bogus"), 12000)
+
+
+class MemoryWorkerPlanTest(unittest.TestCase):
+    def test_full_workers_when_projected_headroom_fits(self):
+        self.assertEqual(_memory_worker_plan(7, 14000, 12000, 3500), (7, 12000.0, False))
+
+    def test_throttle_to_one_worker_when_full_forecast_does_not_fit(self):
+        self.assertEqual(_memory_worker_plan(7, 6000, 12000, 3500), (1, 3500.0, True))
+
+    def test_wait_below_reserved_one_job_floor(self):
+        self.assertEqual(_memory_worker_plan(7, 3499, 12000, 3500), (None, 3500.0, True))
+
+    def test_invalid_measurement_fails_closed(self):
+        self.assertEqual(_memory_worker_plan(7, "unknown", 12000, 3500), (None, 0.0, True))
 
 
 class GrowthDebtTest(unittest.TestCase):

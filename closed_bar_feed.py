@@ -8,7 +8,15 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 
-_CACHE_WRITES = ThreadPoolExecutor(max_workers=8, thread_name_prefix='closed15mcache')
+_CACHE_WRITES = ThreadPoolExecutor(max_workers=2, thread_name_prefix='closed15mcache')
+
+
+def write_history_outside_boundary(writer, path, row):
+    while True:
+        phase = time.time() % 900
+        if 30 <= phase < 720:
+            return writer(path, row)
+        time.sleep(min(1.0, (30 - phase) if phase < 30 else (930 - phase)))
 
 
 def timestamp_epoch(value):
@@ -80,7 +88,7 @@ def publish_closed_15m(path, row, writer, base_path, mode, symbol):
             recent = stream.read().decode('utf-8')
         for match in reversed(list(re.finditer(r'\{[^{}]*\}', recent))):
             candidate = json.loads(match.group())
-            if timestamp_epoch(candidate.get('timestamp')) == start and candidate.get('volume') is not None and not candidate.get('_provisional'):
+            if timestamp_epoch(candidate.get('timestamp')) == start and candidate.get('volume') is not None and not candidate.get('_provisional') and not candidate.get('provisional'):
                 chosen = candidate
                 break
     except (OSError, ValueError, TypeError):
@@ -89,7 +97,7 @@ def publish_closed_15m(path, row, writer, base_path, mode, symbol):
     receive_closed_15m(base_path, event, require_history=False)
     destination = Path(base_path) / 'data' / 'closed_15m_outbox' / mode / f'{symbol}_{start}.json'
     atomic_json(destination, event)
-    _CACHE_WRITES.submit(writer, path, row)
+    _CACHE_WRITES.submit(write_history_outside_boundary, writer, path, row)
     return True
 
 
@@ -124,7 +132,7 @@ def receive_closed_15m(base_path, event, now_s=None, require_history=True):
             raise ValueError('invalid cache')
         for index, previous in enumerate(rows):
             if timestamp_epoch(previous.get('timestamp')) == start:
-                if previous.get('volume') is not None and not previous.get('_provisional'):
+                if previous.get('volume') is not None and not previous.get('_provisional') and not previous.get('provisional'):
                     row = previous
                 rows[index] = row
                 break

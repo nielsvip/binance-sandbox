@@ -3,7 +3,19 @@ import os
 from pathlib import Path
 import time
 
-from tools.history_7d_sync import apply, export, lease_authorized, merge
+from tools.history_7d_sync import apply, export, lease_authorized, merge, resolve_host
+
+
+def test_auto_host_falls_back_when_internal_tunnel_is_down(monkeypatch):
+    calls = []
+    def probe(command, timeout=90):
+        calls.append(command[-2])
+        if command[-2] == "s1-int":
+            raise RuntimeError("tunnel down")
+        return "niels\n"
+    monkeypatch.setattr("tools.history_7d_sync._run", probe)
+    assert resolve_host("auto") == "s1-pub"
+    assert calls == ["s1-int", "s1-pub"]
 
 
 def _event(ts, kind, price):

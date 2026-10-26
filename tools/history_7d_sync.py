@@ -346,7 +346,21 @@ def _run(command, timeout=90):
     return result.stdout
 
 
+def resolve_host(host):
+    if host != "auto":
+        return host
+    failures = []
+    for candidate in ("s1-int", "s1-pub"):
+        try:
+            _run(SSH + [candidate, "hostname"], timeout=12)
+            return candidate
+        except (RuntimeError, subprocess.TimeoutExpired) as exc:
+            failures.append(f"{candidate}: {exc}")
+    raise RuntimeError("S1 history sync hosts unavailable: " + "; ".join(failures))
+
+
 def sync(root, host, days, dry_run=False):
+    host = resolve_host(host)
     lock_path = root / "data/history/.history_7d_sync.lock"
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     with lock_path.open("a") as lock:

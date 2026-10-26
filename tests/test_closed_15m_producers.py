@@ -49,7 +49,7 @@ async def run_clock_once(ns, method, obj, now):
     async def stop(_):
         obj.running = False
     ns['time'] = SimpleNamespace(time=lambda: now, time_ns=time.time_ns)
-    ns['asyncio'] = SimpleNamespace(get_running_loop=asyncio.get_running_loop, gather=asyncio.gather, sleep=stop)
+    ns['asyncio'] = SimpleNamespace(get_running_loop=asyncio.get_running_loop, gather=asyncio.gather, sleep=stop, Semaphore=asyncio.Semaphore)
     from unittest.mock import patch
     with patch('closed_bar_feed.time.time', return_value=now):
         await ns[method](obj)
@@ -266,3 +266,65 @@ async def test_stock_fast_batch_updates_capture_cache_before_slow_batch_and_fail
     slow.set()
     result = await task
     assert result['S50'] is cached and result['S50']['received_at'] == old
+
+
+@pytest.mark.parametrize('filename,writer', [('ez_market_data.py', '_write_provisional_15m'), ('tradier_prices.py', '_write_provisional_stock_15m')])
+def test_full_history_forming_worker_refuses_critical_window_and_stale_queued_bar(tmp_path, filename, writer):
+    ns = load_functions(filename, {'_forming_15m_allowed', '_write_forming_15m'}, tmp_path)
+    base = int(datetime(2026, 10, 26, 19, 0, tzinfo=timezone.utc).timestamp())
+    calls = []
+    ns[writer] = lambda path, row: calls.append(row) or True
+    row = {'timestamp': datetime.fromtimestamp(base, timezone.utc).isoformat()}
+    for elapsed, allowed in [(0, False), (29.999, False), (30, True), (719.999, True), (720, False), (899.999, False)]:
+        ns['time'] = SimpleNamespace(time=lambda elapsed=elapsed: base + elapsed)
+        before = len(calls)
+        assert ns['_write_forming_15m'](tmp_path / 'TEST_15m.json', row) is allowed
+        assert len(calls) - before == int(allowed)
+    ns['time'] = SimpleNamespace(time=lambda: base + 931)
+    assert ns['_write_forming_15m'](tmp_path / 'TEST_15m.json', row) is False
+
+
+@pytest.mark.asyncio
+async def test_crypto_mark_sampler_captures_fresh_price_without_history_or_disk(tmp_path):
+    ns = load_functions('ez_market_data.py', {'closed_15m_mark_capture_loop'}, tmp_path)
+    now = int(datetime(2026, 10, 26, 19, 13, tzinfo=timezone.utc).timestamp())
+    obj = SimpleNamespace(running=True, symbols=['LIVE', 'STALE'], price_buffer={'LIVE': {'p': 123, 't': now - 0.1}, 'STALE': {'p': 999, 't': now - 30}})
+    await run_clock_once(ns, 'closed_15m_mark_capture_loop', obj, now)
+    assert obj._closed_15m_mark_minutes['LIVE'][now]['close'] == 123
+    assert 'STALE' not in obj._closed_15m_mark_minutes
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.asyncio
+async def test_stock_critical_capture_never_reads_history_or_writes_forming_file(tmp_path):
+    names = {'_write_provisional_15m', '_timestamp_epoch', '_tradier_15m_bucket', '_forming_15m_allowed'}
+    ns = load_functions('tradier_prices.py', names, tmp_path)
+    now = int(datetime(2026, 10, 26, 19, 13, tzinfo=timezone.utc).timestamp())
+    ns['time'] = SimpleNamespace(time=lambda: now)
+    def forbidden(*args):
+        raise AssertionError('critical mark capture must not access disk')
+    ns['_load_cached_subbars'] = forbidden
+    ns['_write_forming_15m'] = forbidden
+    obj = SimpleNamespace(symbols=['LIVE'], config=SimpleNamespace(BASE_PATH=tmp_path, KLINES_CACHE_DIR=tmp_path), _provisional_15m={}, _provisional_15m_sig={}, _provisional_write_sem=asyncio.Semaphore(2), fetcher_id='test')
+    await ns['_write_provisional_15m'](obj, {'LIVE': {'price': 120, 'timestamp': now - 3600, 'received_at': now}})
+    assert obj._provisional_15m['LIVE']['minute_bars'][now]['close'] == 120
+    assert obj._provisional_io_tasks == {}
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.asyncio
+async def test_stock_forming_write_once_per_minute_tradeables_only_while_all_quotes_capture(tmp_path):
+    names = {'_write_provisional_15m', '_timestamp_epoch', '_tradier_15m_bucket', '_forming_15m_allowed', '_write_forming_15m'}
+    ns = load_functions('tradier_prices.py', names, tmp_path)
+    base = int(datetime(2026, 10, 26, 19, 0, tzinfo=timezone.utc).timestamp())
+    clock = [base + 120]
+    ns['time'] = SimpleNamespace(time=lambda: clock[0])
+    calls = []
+    ns['_write_provisional_stock_15m'] = lambda path, row: calls.append(path.name) or True
+    obj = SimpleNamespace(symbols=['LIVE', 'OTHER'], config=SimpleNamespace(BASE_PATH=tmp_path, KLINES_CACHE_DIR=tmp_path), _closed_15m_universe=['LIVE'], _provisional_15m={}, _provisional_15m_sig={}, _provisional_write_sem=asyncio.Semaphore(2), fetcher_id='test')
+    for elapsed, price in [(120, 100), (150, 101), (180, 102)]:
+        clock[0] = base + elapsed
+        await ns['_write_provisional_15m'](obj, {symbol: {'price': price, 'timestamp': clock[0], 'received_at': clock[0]} for symbol in obj.symbols})
+        await asyncio.gather(*obj._provisional_io_tasks.values())
+    assert calls == ['LIVE_15m.json', 'LIVE_15m.json']
+    assert obj._provisional_15m['OTHER']['minute_bars'][base + 180]['close'] == 102

@@ -73,3 +73,27 @@ async def test_expired_deadline_does_not_request_or_fabricate(tmp_path):
     assert result['ready'] == 0 and result['requested'] == 0
     assert result['results'][0]['status'] == 'DEADLINE'
     assert not (tmp_path / 'klines_cache/tradier/TEST_1m.json').exists()
+
+
+@pytest.mark.asyncio
+async def test_entire_disk_probe_network_merge_chain_has_bounded_concurrency(tmp_path, monkeypatch):
+    import threading
+    import time
+    count = {'active': 0, 'maximum': 0}
+    lock = threading.Lock()
+    bucket = 1793042100
+    def probe(*args):
+        with lock:
+            count['active'] += 1
+            count['maximum'] = max(count['maximum'], count['active'])
+        time.sleep(0.01)
+        with lock:
+            count['active'] -= 1
+        return {bucket}
+    monkeypatch.setattr(P, 'missing_prefix', probe)
+    class API:
+        async def get_timesales(self, *args, **kwargs):
+            return []
+    result = await P.prepare_cycle(tmp_path, API(), bucket, [f'TEST{i}' for i in range(12)], {}, now_fn=lambda: bucket + 790)
+    assert count['maximum'] <= 4
+    assert result['requested'] == 12

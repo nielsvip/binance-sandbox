@@ -22073,7 +22073,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     _ctp_valid_qty = _ctp_qty > 0.0 and _ctp_qty < float(pos["qty"])
                     if is_tradier:
                         _ctp_valid_qty = _ctp_qty >= 1.0 and float(pos["qty"]) - _ctp_qty >= 1.0
-                    if _ctp_valid_qty and not (_qta_eb_block is not None and bool(_qta_eb_block[i])):
+                    if _ctp_valid_qty and not (_qta_eb_block is not None and bool(_qta_eb_block[i])) and not _htfv_block(i, "CYCLE_TP_TIERED"):
                         _ctp_reason = f"CYCLE_TP_TIERED_T{_ctp_idx}_{_ctp_level * 100:.2f}pct_gain{live_pnl_pct:.2f}"
                         _ctp_ts = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
                         _ctp_event = {"type": "REDUCE", "ts": _ctp_ts, "price": float(px), "qty": float(_ctp_qty), "pos_deployed": float(pos["deployed"]), "bar": int(i), "reason": _ctp_reason}

@@ -1678,6 +1678,27 @@ def _est_pair_mb(pair_measure, floor_mb=12000):
     return max(floor, mx * 1.25)
 
 
+def _memory_worker_plan(requested_workers, projected_mb, full_estimate_mb, one_job_mb=3500):
+    """Keep a host working through projected-memory pressure by throttling to one worker.
+
+    The forecast remains useful at full concurrency. When it rejects that estimate,
+    admit one worker if the reserved headroom can still hold one measured default job.
+    Return (workers, reservation, throttled); None workers means there is no safe slot.
+    """
+    try:
+        requested = max(1, int(requested_workers))
+        projected = float(projected_mb)
+        estimate = max(0.0, float(full_estimate_mb))
+        floor = max(1.0, float(one_job_mb))
+    except (TypeError, ValueError):
+        return (None, 0.0, True)
+    if projected >= estimate:
+        return (requested, estimate, False)
+    if projected >= floor:
+        return (1, floor, True)
+    return (None, floor, True)
+
+
 def _growth_debt_mb(pairs_pss, est_pair):
     """Committed-but-not-yet-resident memory: young pairs grow toward est_pair.
     USER 2026-10-08 follow-up: s2 admitted a 3rd pair across ticks (young RSS
@@ -3862,13 +3883,17 @@ def tick(args, cfg, now):
         print(f"[sched] PREOPEN_7D_GATE_ERROR {type(_seven_exc).__name__}: {_seven_exc}", flush=True)
         # A gate error cannot authorize an untracked 7D or pause ordinary work.
     reaped = {}
+    oom_paused_hosts = set()
     if not (args.dry_run or sim or args.no_reap):
         for h_ in hosts:
             if not stats[h_["name"]]:
                 continue
-            r_ = host_py(h_, "reap", {"oom_mb": int(h_.get("oom_mb", 500)), "stall_min": int(h_.get("stall_min", 60)), "hard_min": int(h_.get("hard_min", 480)), "apply": True})
+            _oom_pause_mb = int(h_.get("mem_reserve_mb", 3000)) + int(cfg.get("default_job_rss_mb", 3500))
+            r_ = host_py(h_, "reap", {"oom_mb": max(int(h_.get("oom_mb", 500)), _oom_pause_mb), "stall_min": int(h_.get("stall_min", 60)), "hard_min": int(h_.get("hard_min", 480)), "apply": True})
             if r_ and r_.get("actions"):
                 reaped[h_["name"]] = r_["actions"]
+                if any(str(a_.get("why", "")).startswith("OOM guard:") for a_ in r_["actions"]):
+                    oom_paused_hosts.add(h_["name"])
                 gone = {a_["ss"] for a_ in r_["actions"] if not a_["why"].startswith("orphaned")}
                 for ss_ in gone:
                     stats[h_["name"]]["running"].pop(ss_, None)
@@ -4733,9 +4758,15 @@ def tick(args, cfg, now):
             if needs_slot and new_launched >= args.max_launch and _occupied_n(held[h["name"]], observed_by_host[h["name"]]) >= _floor_target_n(cap):
                 _fate("budget: host max-launch reached")
                 continue  # budget counts only NEW pairs; never break (a break skips held chains sorted later and froze the fleet 03:00-03:35Z)  # USER 2026-10-24: below the pair floor the tick fills to the floor past max-launch
-            if needs_slot and (used >= cap or proj_mem < _est_sym(sym) or cpu >= cfg.get("cpu_target_pct", 90) or not swap_ok or not disk_ok or not win_ok):
-                _fate("slots full" if used >= cap else "mem guard" if proj_mem < _est_sym(sym) else "cpu guard" if cpu >= cfg.get("cpu_target_pct", 90) else "swap guard" if not swap_ok else "disk guard")
+            _worker_plan = _memory_worker_plan(_workers_for(sym, workers), proj_mem, _est_sym(sym), cfg.get("default_job_rss_mb", 3500))
+            if needs_slot and h["name"] in oom_paused_hosts:
+                _fate("OOM checkpoint pause; queued to resume next tick")
+                continue
+            if needs_slot and (used >= cap or _worker_plan[0] is None or cpu >= cfg.get("cpu_target_pct", 90) or not swap_ok or not disk_ok or not win_ok):
+                _fate("slots full" if used >= cap else "mem guard: awaiting safe worker headroom" if _worker_plan[0] is None else "cpu guard" if cpu >= cfg.get("cpu_target_pct", 90) else "swap guard" if not swap_ok else "disk guard")
                 continue  # over-cap/exhausted host: skip this admission, keep evaluating (held chains need no slot)
+            if _worker_plan[2]:
+                log.setdefault("memory_throttle", []).append(f"{h['name']}:{sym}:{_workers_for(sym, workers)}->{_worker_plan[0]} workers")
             if venue_of(sym) not in _h_own_v and venue_of(sym) not in _h_over_v:
                 _fate("venue not on host")
                 continue
@@ -4770,7 +4801,7 @@ def tick(args, cfg, now):
             if needs_slot and not _pinned_sym and _quota_blocks(sym, _gtiers, chain_state) and nonw_used >= nonw_quota and f"{sym}_LONG" not in redo and f"{sym}_SHORT" not in redo:
                 log.setdefault("skipped_quota", []).append(f"{h['name']}:{sym}")
                 continue  # USER 2026-10-10 (82 redo backlog): refills never consume winner quota
-            if not needs_slot and (proj_mem < _est_sym(sym) / 2 or cpu >= 120 or not swap_ok or not disk_ok or not win_ok):
+            if not needs_slot and (_worker_plan[0] is None or cpu >= 120 or not swap_ok or not disk_ok or not win_ok):
                 _fate("chain mem/cpu/swap/disk guard")
                 continue
             if not needs_slot and held[h["name"]].get(sym) != "running" and (running_cnt >= cap or chain_launched >= max(args.max_launch, 4)):
@@ -4985,7 +5016,7 @@ def tick(args, cfg, now):
                     # the key launched, set the dispatch grace and reported it in `launched` — the fleet then idled
                     # while the log claimed 2-4 launches every tick. VICR_LONG's sweep log was 4 DAYS old while being
                     # "launched" every 2 minutes. A skipped dispatch is now visible and retried, not booked.
-                    if not _dispatch_async(h, sym, acts, pd, _workers_for(sym, workers), tag):
+                    if not _dispatch_async(h, sym, acts, pd, _worker_plan[0], tag):
                         log.setdefault("dispatch_skipped", []).append(tag)
                         continue
                     _dispatch_q_mark(st, [a["key"] for a in acts], _now_ts)
@@ -5003,7 +5034,7 @@ def tick(args, cfg, now):
                     _rc, _err = 0, ""
                     for _t_i, _target in enumerate([h.get("_via") or h["ssh"][0]] + [x for x in h["ssh"] if x != (h.get("_via") or h["ssh"][0])]):
                         try:
-                            _r = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", _target, pair_launch_cmd(h, acts, pd, _workers_for(sym, workers))],
+                            _r = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", _target, pair_launch_cmd(h, acts, pd, _worker_plan[0])],
                                                 timeout=40, capture_output=True, text=True)
                             _rc, _err = _r.returncode, (_r.stderr or "").strip()
                             if _rc == 0:
@@ -5033,7 +5064,7 @@ def tick(args, cfg, now):
                     log["floor_fills"] = log.get("floor_fills", {})
                     log["floor_fills"][h["name"]] = log["floor_fills"].get(h["name"], 0) + 1
             if needs_slot:
-                used += 1; proj_mem -= _est_sym(sym) + float(rd.get("size_mb") or 0)
+                used += 1; proj_mem -= _worker_plan[1] + float(rd.get("size_mb") or 0)
                 if _sym_quota_hit(sym, _gtiers):
                     nonw_used += 1
                 held[h["name"]][sym] = "new"

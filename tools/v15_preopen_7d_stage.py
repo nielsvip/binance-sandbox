@@ -43,6 +43,8 @@ def validate_one(ss: str, source: dict, result_dir: Path, today: str) -> dict:
         raise ValueError(f"{ss}: progress is not 7D")
     if not progress.get("result_done_utc") or not progress.get("final_path"):
         raise ValueError(f"{ss}: 7D optimization has not completed")
+    if progress.get("publish_class") == "BEST_EFFORT" or progress.get("not_compliant") or progress.get("unprotected"):
+        raise ValueError(f"{ss}: 7D result failed the pilot qualification gate")
     expected_source = digest(source["overrides"])
     if progress.get("source_30d_sha256") != expected_source:
         raise ValueError(f"{ss}: 30D source hash mismatch")
