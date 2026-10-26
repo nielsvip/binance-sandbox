@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-26T12:15:31Z",
+ "ts": "2026-10-26T12:20:36Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 439,
-   "open_positions": 16,
-   "unrealised_usd": -1.31,
+   "fills_6h": 430,
+   "open_positions": 14,
+   "unrealised_usd": -1.42,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 377,
+   "fills_6h": 365,
    "open_positions": 14,
-   "unrealised_usd": -1.25,
+   "unrealised_usd": -1.37,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 678,
-   "open_positions": 23,
-   "unrealised_usd": -1.0,
+   "fills_6h": 679,
+   "open_positions": 24,
+   "unrealised_usd": -1.67,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 100,
    "open_positions": 7,
-   "unrealised_usd": -0.16,
+   "unrealised_usd": -0.04,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,118 +127,104 @@
     "69538"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": -0.0
   },
   "men": {
    "pids": [
     "81122"
    ],
    "starts_30m": 1,
-   "log_age_s": 51.0
+   "log_age_s": 13.0
   },
   "ang": {
    "pids": [
     "37824"
    ],
    "starts_30m": 1,
-   "log_age_s": 1141.0
+   "log_age_s": 114.0
   },
   "inf": {
    "pids": [
     "69983"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 13.0
   },
   "flz": {
    "pids": [
     "69233"
    ],
    "starts_30m": 1,
-   "log_age_s": 166.0
+   "log_age_s": 478.0
   },
   "trb": {
    "pids": [
     "62546"
    ],
    "starts_30m": 1,
-   "log_age_s": 27.0
+   "log_age_s": 10.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 189881.0
+   "log_age_s": 190194.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-26T12:15:31Z",
+   "ts": "2026-10-26T12:20:36Z",
    "severity": "CRITICAL",
    "kind": "CHURN_KEY",
    "key": "fin:RLCUSDT_LONG",
-   "evidence": "4 open->flat round trips in 60 min"
+   "evidence": "3 open->flat round trips in 60 min"
   },
   {
-   "ts": "2026-10-26T12:15:31Z",
+   "ts": "2026-10-26T12:20:37Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
-   "key": "fin:RUNEUSDT_LONG",
-   "evidence": "entry notional $49.37 (median $6.76, MAX_ORDER_VALUE $300) @ 2026-10-26T12:03:59Z VEC_DRIVEN_OPEN_RECONCILE_"
+   "key": "fin:KMNOUSDT_LONG",
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 4187.24->12561.7 = $540.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 4187.24)"
   },
   {
-   "ts": "2026-10-26T12:15:31Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "fin:RUNEUSDT_LONG",
-   "evidence": "entry notional $160.38 (median $6.76, MAX_ORDER_VALUE $300) @ 2026-10-26T12:04:06Z VEC_DRIVEN_OPEN_RECONCILE_"
-  },
-  {
-   "ts": "2026-10-26T12:15:34Z",
+   "ts": "2026-10-26T12:20:42Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "ang:ADAUSDC_SHORT",
    "evidence": "entry notional $25.63 (median $6.25, MAX_ORDER_VALUE $300) @ 2026-10-26T12:13:26Z VEC_DRIVEN_OPEN_RECONCILE_"
   },
   {
-   "ts": "2026-10-26T12:15:34Z",
+   "ts": "2026-10-26T12:20:42Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "ang:ADAUSDC_SHORT",
    "evidence": "entry notional $25.64 (median $6.25, MAX_ORDER_VALUE $300) @ 2026-10-26T12:13:31Z VEC_DRIVEN_OPEN_RECONCILE_"
   },
   {
-   "ts": "2026-10-26T12:15:34Z",
+   "ts": "2026-10-26T12:20:42Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "ang:BLURUSDT_SHORT",
    "evidence": "entry notional $164.88 (median $6.25, MAX_ORDER_VALUE $300) @ 2026-10-26T12:11:54Z VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_2"
   },
   {
-   "ts": "2026-10-26T12:15:34Z",
+   "ts": "2026-10-26T12:20:42Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "ang:BLURUSDT_SHORT",
    "evidence": "entry notional $164.89 (median $6.25, MAX_ORDER_VALUE $300) @ 2026-10-26T12:12:11Z VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_2"
   },
   {
-   "ts": "2026-10-26T12:15:39Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 1141s"
-  },
-  {
-   "ts": "2026-10-26T12:15:39Z",
+   "ts": "2026-10-26T12:20:51Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 166s"
+   "evidence": "ez_manage_flz.log not written for 478s"
   }
  ],
  "alert_counts": {
   "CHURN_KEY": 1,
-  "SIZE_ANOMALY": 6,
-  "STALE_LOG": 2
+  "SIZE_ANOMALY": 5,
+  "STALE_LOG": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -396,5 +382,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 8.42
+ "sweep_s": 15.43
 }
