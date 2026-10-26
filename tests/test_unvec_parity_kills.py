@@ -76,9 +76,22 @@ def test_sub15m_trigger_refuses_at_defaults():
     assert reason == "SUB15M_TRIGGER_OFF_PARITY"
 
 
-def test_backstop_switches_default_on():
-    assert C.Config().VEC_BACKSTOP_SYNC_ENABLED is True
+def test_vec_backstop_switches_default_off():
+    assert C.Config().VEC_BACKSTOP_SYNC_ENABLED is False
+    assert C.Config().VEC_BACKSTOP_ENABLED is False
     assert CT.TradierConfig().VECTOR_ENFORCE_ENABLED is True
+    src_ez = (ROOT / "ez_manage.py").read_text()
+    assert "_vx_backstop = (not _vx_exact_on) and bool(getattr(_ezm_base_config, \"VEC_BACKSTOP_SYNC_ENABLED\", False))" in src_ez
+
+
+def test_forward_state_backstop_orders_default_off():
+    from live_twins import vec_backstop
+
+    assert C.Config().VEC_BACKSTOP_ENABLED is False
+    assert vec_backstop.enabled(C.Config()) is False
+    assert vec_backstop.enabled() is False
+    src = (ROOT / "ez_manage.py").read_text()
+    assert "if _vbs_live_ctx and _vbs.enabled(_vbs_cfg):" in src
 
 
 def test_enforce_venue_override_and_pass_reasons():

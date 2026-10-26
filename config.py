@@ -1883,7 +1883,8 @@ class Config:
     VEC_CONVERGE_FRESH_FILL_GRACE_S: float = (
         900.0  # USER 2026-10-21: converge-to-flat never flattens a fill the twin never saw (measured: flz:ZECUSDC_LONG native AUG filled 22:52:04, flattened as paper-flat-live-holds 44 s later = pure churn). A position opened/augmented within this many seconds is skipped by legacy-converge; stale-flatten (2 bars) and exit-owed are unaffected. 0 = no grace. ROLLBACK: 0.
     )
-    VEC_BACKSTOP_SYNC_ENABLED: bool = True  # USER 2026-10-21: absolute backstopper — with PARITY_VEC_EXACT_MODE off, _vec_exact_process_position still runs in backstop-only mode (legacy-converge-to-flat + stale-flatten + exit-owed; NO twin act dispatch, NO converge-open). No paper state -> no-op. Kill: False.
+    VEC_BACKSTOP_SYNC_ENABLED: bool = False  # USER 2026-10-26: keep native process_position active when exact mode is off; disable legacy vec exit-owed/converge/stale-flatten backstop-only orders. Mandatory native stops and ordinary VEC_DRIVEN orders remain separate.
+    VEC_BACKSTOP_ENABLED: bool = False  # USER 2026-10-26: disable only forward_state-driven OPEN/CLOSE orders; ordinary VEC_DRIVEN execution and native paths remain active.
     VEC_OVERRIDE_ENABLED: bool = True  # USER 2026-10-24: VEC_LAST_OVERRIDE master — False never bypasses native gates for vec orders (native verdict stands). Default True = current behavior, inert.
     VEC_OVERRIDE_BYPASS_CIRCUIT_BREAKER: bool = True  # USER 2026-10-24: vec orders bypass CIRCUIT_BREAKER (measured: every men/fin OVERRIDE names it). False lets the breaker veto vec orders. Default True = current behavior, inert.
     VEC_REFUSE_NON_VECTOR_EXIT_ENABLED: bool = True  # USER 2026-10-24: VECTOR-ONLY EXITS BACKSTOP master — False restores pre-law behavior (native exits never refused as non-vector). Default True = current behavior, inert.

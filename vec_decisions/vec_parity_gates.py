@@ -90,11 +90,14 @@ def disagree_refuse(disagree, kill_on):
 
 
 def nonvectorizable_state_disagreement(action, reason):
-    """Return an auditable reason for exact native paths the vector cannot model."""
+    """Return an auditable reason for exact native paths absent from closed 15m state."""
     if str(action or "").upper() not in ("CLOSE", "QUICK_CLOSE"):
         return ""
-    if re.match(r"^QUICK_DC4_(?:HIGH|LOW)_3M_GAIN_EROSION_STOP(?:_|$)", str(reason or "").upper()):
+    r = str(reason or "").upper()
+    if re.match(r"^QUICK_DC4_(?:HIGH|LOW)_3M_GAIN_EROSION_STOP(?:_|$)", r):
         return "NATIVE_DC4_3M_INPUT_UNAVAILABLE_IN_15M_VECTOR"
+    if re.fullmatch(r"FIXED_STOP_(?:LONG|SHORT)_PX\d+(?:\.\d+)?_LVL\d+(?:\.\d+)?_G[-+]?\d+(?:\.\d+)?", r):
+        return "NATIVE_DC15_FIXED_STOP_INTRABAR_UNAVAILABLE_IN_CLOSED_15M_STATE"
     return ""
 
 

@@ -37816,11 +37816,12 @@ class MultiAccountTradeManager:
                     _dis_nv_reason = _vpg_nvd.nonvectorizable_state_disagreement(action, reason) if _dis_raw else ""
                     _dis_last = _dis_raw and not _dis_nv_reason
                     if _dis_nv_reason:
-                        logger.warning(f"🧭 [NONVECTORIZABLE_NATIVE_DC4_3M] {position_key} {action} reason={(reason or '')[:80]} exemption={_dis_nv_reason}")
+                        _nv_kind = "NONVECTORIZABLE_NATIVE_DC15_FIXED_STOP_INTRABAR" if _dis_nv_reason.startswith("NATIVE_DC15_FIXED_STOP_INTRABAR") else "NONVECTORIZABLE_NATIVE_DC4_3M"
+                        logger.warning(f"🧭 [{_nv_kind}] {position_key} {action} reason={(reason or '')[:80]} exemption={_dis_nv_reason}")
                         _nv_path = Path(getattr(config, "BASE_PATH", ".")) / "data" / "vector_disparity_queue.jsonl"
                         _nv_path.parent.mkdir(parents=True, exist_ok=True)
                         with open(str(_nv_path), "a") as _nv_file:
-                            _nv_file.write(json.dumps({"ts": time.time(), "venue": "crypto", "kind": "NONVECTORIZABLE_NATIVE_DC4_3M", "position_key": position_key, "action": action, "reason": str(reason)[:160], "exemption": _dis_nv_reason, "fix": "native 3m DC4 path has no matching 3m input in the 15m vector set; preserve native execution"}) + "\n")
+                            _nv_file.write(json.dumps({"ts": time.time(), "venue": "crypto", "kind": _nv_kind, "position_key": position_key, "action": action, "reason": str(reason)[:160], "exemption": _dis_nv_reason, "fix": "native DC15 software stop fires on live price inside the open 15m bar; last closed-bar state cannot reflect the intrabar stop yet; preserve mandatory stop execution" if _nv_kind == "NONVECTORIZABLE_NATIVE_DC15_FIXED_STOP_INTRABAR" else "native 3m DC4 path has no matching 3m input in the 15m vector set; preserve native execution"}) + "\n")
                     if _dis_last:
                         logger.warning(f"🧭 [VEC_STATE_DISAGREE] {position_key} {action} reason={(reason or '')[:80]} — vector target={(_st_last or {}).get('target_state')} (USER 2026-10-24: vector defines open/flat; fix live to this path)")
                         _vlp = Path(getattr(config, "BASE_PATH", ".")) / "data" / "vector_disparity_queue.jsonl"
@@ -53257,7 +53258,7 @@ async def process_position(
     if _vx_exact_on:
         if await _vec_exact_process_position(account_key, position_key, trade_manager):
             return
-    _vx_backstop = (not _vx_exact_on) and bool(getattr(_ezm_base_config, "VEC_BACKSTOP_SYNC_ENABLED", True))
+    _vx_backstop = (not _vx_exact_on) and bool(getattr(_ezm_base_config, "VEC_BACKSTOP_SYNC_ENABLED", False))
     if _vx_backstop:
         if await _vec_exact_process_position(account_key, position_key, trade_manager, _backstop_only=True):
             return

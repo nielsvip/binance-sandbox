@@ -86,6 +86,14 @@ def test_override_verdict():
     assert tag == "VEC_LAST_OVERRIDE"
 
 
+def test_nonvectorizable_state_disagreement_stops_and_subbar_paths():
+    assert G.nonvectorizable_state_disagreement("CLOSE", "FIXED_STOP_LONG_px0.342274_lvl0.343639_g-0.65") == "NATIVE_DC15_FIXED_STOP_INTRABAR_UNAVAILABLE_IN_CLOSED_15M_STATE"
+    assert G.nonvectorizable_state_disagreement("CLOSE", "FIXED_STOP_SHORT_px51.87_lvl51.86_g-0.25") == "NATIVE_DC15_FIXED_STOP_INTRABAR_UNAVAILABLE_IN_CLOSED_15M_STATE"
+    assert G.nonvectorizable_state_disagreement("OPEN", "FIXED_STOP_LONG_px1.0_lvl1.0_g0.0") == ""
+    assert G.nonvectorizable_state_disagreement("CLOSE", "FIXED_STOP_LONG_px1.0_lvl1.0_g0.0_REFdc_basis.4h.b0.25") == ""
+    assert G.nonvectorizable_state_disagreement("CLOSE", "QUICK_DC4_HIGH_3M_GAIN_EROSION_STOP_p1.02") == "NATIVE_DC4_3M_INPUT_UNAVAILABLE_IN_15M_VECTOR"
+
+
 def test_non_vector_exit_refused():
     assert G.non_vector_exit_refused("REDUCE X", False, True) is False
     assert G.non_vector_exit_refused("QUICK_REDUCE_REDUCE_k", True, False) is False
