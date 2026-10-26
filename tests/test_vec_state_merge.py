@@ -29,3 +29,18 @@ def test_newer_settings_recalculation_on_same_bar_advances(tmp_path):
     path.write_text(json.dumps(dict(state, written_at=230, set_md5='new')))
     assert merge(source, destination, 'stock_long')['updated'] == 1
     assert json.loads((destination / 'state' / path.name).read_text())['set_md5'] == 'new'
+
+
+def test_newer_missing_set_invalidates_old_actionable_bar(tmp_path):
+    source, destination = tmp_path / 'source', tmp_path / 'destination'
+    (source / 'state').mkdir(parents=True)
+    (destination / 'state').mkdir(parents=True)
+    path = source / 'state' / 'RUNEUSDT_LONG.json'
+    target = destination / 'state' / path.name
+    target.write_text(json.dumps({'ss': 'RUNEUSDT_LONG', 'bar_ts': 200, 'written_at': 220, 'actionable': True, 'target_state': {'side': 'LONG'}}))
+    path.write_text(json.dumps({'ss': 'RUNEUSDT_LONG', 'written_at': 230, 'status': 'NO_ACTIVE_SET', 'actionable': False, 'target_state': {'side': 'unknown'}}))
+    assert merge(source, destination, 'crypto_long')['updated'] == 1
+    assert json.loads(target.read_text())['status'] == 'NO_ACTIVE_SET'
+    path.write_text(json.dumps({'ss': 'RUNEUSDT_LONG', 'bar_ts': 100, 'written_at': 240, 'actionable': True, 'target_state': {'side': 'LONG'}}))
+    assert merge(source, destination, 'crypto_long')['updated'] == 1
+    assert json.loads(target.read_text())['bar_ts'] == 100

@@ -23,7 +23,7 @@ REPORT = Path.home() / "Library" / "Logs" / "fleet_archive_manager.jsonl"
 STATE = Path.home() / "Library" / "Caches" / "com.binance.fleetarchive" / "verified.json"
 KEY = Path(os.environ.get("V15_ARCHIVE_GOOGLE_KEY", Path.home() / "Downloads/civil-ripple-439101-j3-d50fb6537cdb.json"))
 GOOGLE_FOLDER_ID = os.environ.get("V15_ARCHIVE_GOOGLE_FOLDER_ID", "")
-HOSTS = {"s1": "s1-int", "s2": "s2", "s5": "s5", "s6": "s6"}
+HOSTS = {"s1": "s1-pub", "s2": "s2", "s5": "s5", "s6": "s6"}
 DISK_WARN_MB = {"s1": 7000, "s2": 6000, "s5": 8000, "s6": 8000}
 S6_SOURCE = "/home/niels/rebuild_scratch_s6/experience_cold/run34_35_20261022"
 S5_MIRROR = "/home/niels/rebuild_scratch_s5/experience_cold"
@@ -55,7 +55,7 @@ def _log(event: str, **fields) -> None:
 
 
 def _ssh(host: str, command: str, timeout: int = 90, check: bool = True) -> subprocess.CompletedProcess:
-    result = subprocess.run(["ssh", "-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", HOSTS[host], command], capture_output=True, text=True, timeout=timeout)
+    result = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", HOSTS[host], command], capture_output=True, text=True, timeout=timeout)
     if check and result.returncode:
         raise RuntimeError(f"{host}: remote command failed rc={result.returncode}: {result.stderr[-300:]}")
     return result
@@ -115,7 +115,7 @@ def _remove_verified_s6_duplicate(apply: bool) -> None:
     handles = _open_handles("s6", S6_SOURCE)
     if handles:
         raise RuntimeError(f"S6 archive has {handles} open file handles; source retained")
-    _log("s6_duplicate_verified", free_mb=free, files=len(source), mirror_host="s5", mirror_path=S5_MIRROR, apply=apply)
+    _log("s6_duplicate_verified", free_mb=free, files=len(EXPERIENCE_SHA256), mirror_host="s5", mirror_path=S5_MIRROR, apply=apply)
     if apply:
         py = "import pathlib,shutil; p=pathlib.Path(%s); assert str(p)==%s and p.is_dir() and not p.is_symlink(); shutil.rmtree(p)" % (repr(S6_SOURCE), repr(S6_SOURCE))
         _ssh("s6", "python3 -c %s" % shlex.quote(py))
@@ -141,8 +141,8 @@ print(json.dumps(out))"""
 
 
 def _verify_tar_against_stage(batch: str, archive: str) -> None:
-    source = subprocess.Popen(["ssh", "-S", "none", "-o", "BatchMode=yes", "s5", "nice -n 19 ionice -c3 zstd -dc %s" % shlex.quote(archive)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    compare = subprocess.Popen(["ssh", "-S", "none", "-o", "BatchMode=yes", "s1-int", "nice -n 19 ionice -c3 tar -df - -C %s" % shlex.quote(S1_STAGING)], stdin=source.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    source = subprocess.Popen(["ssh", "-o", "BatchMode=yes", "s5", "nice -n 19 ionice -c3 zstd -dc %s" % shlex.quote(archive)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    compare = subprocess.Popen(["ssh", "-o", "BatchMode=yes", "s1-pub", "nice -n 19 ionice -c3 tar -df - -C %s" % shlex.quote(S1_STAGING)], stdin=source.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     source.stdout.close()
     _, compare_err = compare.communicate(timeout=1800)
     source_err = source.stderr.read()
@@ -179,10 +179,10 @@ def _archive_s1_staging(apply: bool) -> None:
         prep = "import pathlib; d=pathlib.Path(%s); d.mkdir(parents=True,exist_ok=True); pathlib.Path(%s).unlink(missing_ok=True)" % (repr(S5_ARCHIVE_ROOT), repr(part))
         _ssh("s5", "python3 -c %s" % shlex.quote(prep))
         remote_tar = "nice -n 19 ionice -c3 tar -C %s -cf - -- %s" % (shlex.quote(S1_STAGING), shlex.quote(name))
-        src = subprocess.Popen(["ssh", "-S", "none", "-o", "BatchMode=yes", "s1-int", "bash", "-lc", remote_tar], stdout=subprocess.PIPE)
+        src = subprocess.Popen(["ssh", "-o", "BatchMode=yes", "s1-pub", "bash -lc %s" % shlex.quote(remote_tar)], stdout=subprocess.PIPE)
         zst = subprocess.Popen(["nice", "-n", "19", "/opt/homebrew/bin/zstd", "-T1", "-3", "-c"], stdin=src.stdout, stdout=subprocess.PIPE)
         src.stdout.close()
-        put = subprocess.Popen(["ssh", "-S", "none", "-o", "BatchMode=yes", "s5", "cat > %s" % shlex.quote(part)], stdin=subprocess.PIPE)
+        put = subprocess.Popen(["ssh", "-o", "BatchMode=yes", "s5", "cat > %s" % shlex.quote(part)], stdin=subprocess.PIPE)
         digest = hashlib.sha256()
         for block in iter(lambda: zst.stdout.read(1024 * 1024), b""):
             digest.update(block)

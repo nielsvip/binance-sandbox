@@ -29,7 +29,10 @@ def merge(source, destination, shard):
                 if output.exists():
                     previous = json.loads(output.read_text())
                     if category == 'state':
-                        if float(previous.get('bar_ts') or 0) > float(data.get('bar_ts') or 0) or float(previous.get('written_at') or 0) >= float(data.get('written_at') or 0):
+                        invalidation = data.get('actionable') is False or previous.get('actionable') is False
+                        older_bar = float(previous.get('bar_ts') or 0) > float(data.get('bar_ts') or 0)
+                        older_write = float(previous.get('written_at') or 0) >= float(data.get('written_at') or 0)
+                        if older_write or (older_bar and not invalidation):
                             counts['older'] += 1
                             continue
                     elif previous == data:

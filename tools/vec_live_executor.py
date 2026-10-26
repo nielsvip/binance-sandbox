@@ -914,7 +914,7 @@ def process(
         "window_policy": anchor.get("window_policy"),
         "window_end_ts": anchor.get("npz_end_ts"),
         "bars_from_anchor": n_bars,
-        "engine_valid": res.get("valid"),
+        "engine_valid": replay_computed(res),
         "performance_valid": res.get("valid") is True,
         "performance_invalid_reason": res.get("invalid_reason") if res.get("valid") is not True else None,
         "engine_invalid_reason": res.get("invalid_reason"),

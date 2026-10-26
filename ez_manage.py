@@ -26855,6 +26855,7 @@ class MultiAccountTradeManager:
                     _seen_dictate = set()
                     _dispatch = []
                     _vd_intent_sidebook_skips = 0
+                    _vd_invalid_states = {}
                     for it in intents:
                         ss = it["ss"]
                         mode = modes.get(ss)
@@ -26873,6 +26874,14 @@ class MultiAccountTradeManager:
                         _it_acct = it.get("account")
                         if isinstance(_it_acct, str) and _it_acct.strip() and _it_acct.strip() != account_key:
                             continue
+                        if str(it.get("type") or "").upper() in ("OPEN", "AUGMENT"):
+                            if ss not in _vd_invalid_states:
+                                _vd_state = _vdm.load_state(base / "state", ss)
+                                _vd_invalid_states[ss] = bool(_vd_state and _vd_state.get("actionable") is False)
+                            if _vd_invalid_states[ss]:
+                                store.mark(it["intent_id"])
+                                _vdm.append_jsonl(base / f"live_exec_{account_key}.jsonl", {"ts": time.time(), "intent_id": it["intent_id"], "ss": ss, "bar_ts": it.get("bar_ts"), "type": it["type"], "action": None, "result": "REFUSED_INVALID_FORWARD_STATE"})
+                                continue
                         # USER 2026-10-22: the lane writes one intent file per (account, sym_side, bar), and this
                         # process answers for its own accounts only, so N files for the same sym_side+bar+type are ONE
                         # vector decision — collapsed here, not refused downstream. tradeable_keys decides which keys
