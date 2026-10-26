@@ -28596,7 +28596,23 @@ class MultiAccountTradeManager:
                 and not _is_strong_buy_or_quick_bypass
                 and not _vec_decided_reason_ok(reason)
             ):
-                _d_sig = self.delta_tracker.update(symbol, i)
+                try:
+                    from delta_capture import DeltaInputCapture, capture_live_delta_update, capture_timestamp
+                    _delta_inputs = DeltaInputCapture(i)
+                except Exception:
+                    _delta_inputs = i
+                _d_sig = self.delta_tracker.update(symbol, _delta_inputs)
+                try:
+                    from delta_capture import capture_db_path, capture_live_delta_update, capture_timestamp
+                    _delta_capture_ts = capture_timestamp(i)
+                    if _d_sig is not None and _delta_capture_ts > 0:
+                        capture_live_delta_update(
+                            capture_db_path(os.path.join(config.BASE_PATH, "data", "delta_capture"), symbol, "order", _delta_capture_ts),
+                            symbol=symbol, timestamp=_delta_capture_ts, indicators=getattr(_delta_inputs, "captured", i),
+                            signal=_d_sig,
+                        )
+                except Exception as _delta_capture_error:
+                    logger.debug(f"[DELTA_CAPTURE] {symbol}: {_delta_capture_error}")
                 _delta_ok = _d_sig and (
                     (is_long and _d_sig.entry_long)
                     or (not is_long and _d_sig.entry_short)

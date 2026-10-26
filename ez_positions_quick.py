@@ -4588,7 +4588,23 @@ class AdvancedSignalRater:
                     if positionAmt > 0
                     else None
                 )
-                _delta_sig = data_manager.delta_tracker.update(symbol, ind, _pos_state)
+                try:
+                    from delta_capture import DeltaInputCapture, capture_live_delta_update, capture_timestamp
+                    _delta_inputs = DeltaInputCapture(ind)
+                except Exception:
+                    _delta_inputs = ind
+                _delta_sig = data_manager.delta_tracker.update(symbol, _delta_inputs, _pos_state)
+                try:
+                    from delta_capture import capture_db_path, capture_live_delta_update, capture_timestamp
+                    _delta_capture_ts = capture_timestamp(ind)
+                    if _delta_sig is not None and _delta_capture_ts > 0:
+                        capture_live_delta_update(
+                            capture_db_path(os.path.join(config.BASE_PATH, "data", "delta_capture"), symbol, "quick", _delta_capture_ts),
+                            symbol=symbol, timestamp=_delta_capture_ts, indicators=getattr(_delta_inputs, "captured", ind),
+                            signal=_delta_sig, position_state=_pos_state,
+                        )
+                except Exception as _delta_capture_error:
+                    logger.debug(f"[DELTA_CAPTURE] {symbol}: {_delta_capture_error}")
                 if _delta_sig:
                     _delta_active_tfs = getattr(
                         _delta_sig,

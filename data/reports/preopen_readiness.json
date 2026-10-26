@@ -1,24 +1,24 @@
 {
- "generated_utc": "2026-10-26T03:40:02Z",
+ "generated_utc": "2026-10-26T04:00:03Z",
  "host": "MacBook-Pro.local",
- "session_open_utc": null,
+ "session_open_utc": "2026-10-26T13:30:00Z",
  "market_open": false,
  "verdict": "FAIL",
  "failed_critical": [
-  "boards_recomputed",
   "defaults_chain_completed",
+  "selection_fresh",
   "live_set_matches_selection"
  ],
  "checks": [
   {
    "name": "boards_recomputed",
-   "ok": false,
+   "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 514,
-    "filled_before_open": 0
+    "filled_today": 138,
+    "filled_before_open": 138
    },
-   "detail": "no board was filled before the open"
+   "detail": "138 boards filled before the open (138 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -28,33 +28,33 @@
     "mac_done_stamp": false,
     "s1_stamp": "NO_STAMP",
     "cat_side_defaults_4_at": "2026-10-21T04:54:49Z",
-    "cat_side_age_days": 4.9,
+    "cat_side_age_days": 5.0,
     "cat_side_note": "rebuilt only by v15_daily_template_update --sync-defaults, a deliberate manual step \u2014 reported, never fails this gate"
    },
-   "detail": "mac stamp 20261026=False, s1 stamp NO_STAMP, cat_side layer 4.9d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
+   "detail": "mac stamp 20261026=False, s1 stamp NO_STAMP, cat_side layer 5.0d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
   },
   {
    "name": "selection_fresh",
-   "ok": true,
+   "ok": false,
    "critical": true,
    "measured": {
-    "built_at": "2026-10-26T01:51:20.030537+00:00",
+    "built_at": "2026-10-26T03:50:50.302744+00:00",
     "n": 532,
-    "age_at_open_s": 6523
+    "age_at_open_s": 34750
    },
-   "detail": "built 2026-10-26T01:51:20.030537+00:00 n=532"
+   "detail": "built 2026-10-26T03:50:50.302744+00:00 n=532 \u2014 34750s before the open > 7200s"
   },
   {
    "name": "apply_report_written",
    "ok": true,
    "critical": true,
    "measured": {
-    "reports_today": 2,
-    "newest_report": "persym_golive_20261026_refresh_0154.json",
-    "newest_report_at": "2026-10-26T02:13:51Z",
-    "tiers_at": "2026-10-26T02:14:41Z"
+    "reports_today": 3,
+    "newest_report": "persym_golive_20261026_refresh_0354.json",
+    "newest_report_at": "2026-10-26T03:59:22Z",
+    "tiers_at": "2026-10-26T03:59:43Z"
    },
-   "detail": "persym_golive_20261026_refresh_0154.json at 2026-10-26T02:13:51Z, tiers 2026-10-26T02:14:41Z"
+   "detail": "persym_golive_20261026_refresh_0354.json at 2026-10-26T03:59:22Z, tiers 2026-10-26T03:59:43Z"
   },
   {
    "name": "live_set_matches_selection",
@@ -62,9 +62,9 @@
    "critical": true,
    "measured": {
     "selection_n": 532,
-    "exact": 107,
+    "exact": 106,
     "benign_divergence_only": 266,
-    "material_divergence": 158,
+    "material_divergence": 159,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -96,19 +96,6 @@
       ]
      },
      {
-      "sym_side": "SOLUSDC_LONG",
-      "published_at": "2026-10-24T04:55:41Z",
-      "material": 110,
-      "sample": [
-       "ADX_RANGING_THRESHOLD",
-       "BB_BREAKOUT_ENTRY_TF",
-       "BB_EXIT_AT_LOSS_TF",
-       "BB_PROFIT_TAKE_TF",
-       "BB_SQUEEZE_ENTRY_ENABLED",
-       "BB_SQUEEZE_WIDTH_PERCENTILE"
-      ]
-     },
-     {
       "sym_side": "NXE_SHORT",
       "published_at": "2026-10-21T01:32:19Z",
       "material": 83,
@@ -119,19 +106,6 @@
        "AUGMENT_INTO_REENTRY_ENABLED",
        "BB_BOUNCE_ENTRY_FILTER_ENABLED",
        "CIRCUIT_SHARPE_GATES_FILTER_TF"
-      ]
-     },
-     {
-      "sym_side": "GALAUSDT_SHORT",
-      "published_at": "2026-10-24T23:48:20Z",
-      "material": 83,
-      "sample": [
-       "ATR_ADAPTIVE_SIZING_ENABLED",
-       "ATR_ADAPTIVE_STOP_TF",
-       "BAR_PATTERNS_FILTER_TF",
-       "BB_BOUNCE_ENTRY_FILTER_ENABLED",
-       "BB_FROZEN_STOP_ENABLED",
-       "BB_PROFIT_TAKE_TF"
       ]
      },
      {
@@ -198,10 +172,36 @@
        "DC_HARD_STOP_15M_ENABLED",
        "DC_MOMENTUM_BOTA_SCORER_FILTER_TF"
       ]
+     },
+     {
+      "sym_side": "ACN_LONG",
+      "published_at": "2026-10-23T06:02:03Z",
+      "material": 50,
+      "sample": [
+       "ATR_ADAPTIVE_STOP_MULT",
+       "ATR_ADAPTIVE_STOP_TF",
+       "AUGMENT_FALLBACK_REDUCE_PCT",
+       "BB_PULLBACK_GATE_ENABLED",
+       "BB_SQUEEZE_ENTRY_ENABLED",
+       "COUNTER_TREND_ADD_BLOCK_ENABLED"
+      ]
+     },
+     {
+      "sym_side": "SHOP_LONG",
+      "published_at": "2026-10-22T04:02:56Z",
+      "material": 42,
+      "sample": [
+       "ATR_ADAPTIVE_SIZING_ENABLED",
+       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
+       "ATR_ADAPTIVE_STOP_MULT",
+       "ATR_ADAPTIVE_STOP_TF",
+       "DC_EDGE_SIZING_MIN_MULT",
+       "DC_HARD_STOP_1H_ENABLED"
+      ]
      }
     ]
    },
-   "detail": "107 exact, 266 benign-only, 158 with material divergence, 1 with no live row"
+   "detail": "106 exact, 266 benign-only, 159 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
@@ -209,14 +209,12 @@
    "critical": true,
    "measured": {
     "symbols": 202,
-    "stale_over_90min": 1,
-    "stale_pct": 0.5,
-    "median_age_min": 55.0,
-    "sample": [
-     "KAITOUSDT"
-    ]
+    "stale_over_90min": 0,
+    "stale_pct": 0.0,
+    "median_age_min": 30.1,
+    "sample": []
    },
-   "detail": "1/202 symbols past the live 90-min entry gate (0.5%)"
+   "detail": "0/202 symbols past the live 90-min entry gate (0.0%)"
   },
   {
    "name": "s1_sets_synced",
