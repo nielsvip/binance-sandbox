@@ -35,8 +35,8 @@ def test_settings_require_fresh_s1_publication_and_exact_full_set(tmp_path):
 def test_s1_stream_announces_new_sql_switches_without_waiting_for_next_bar(tmp_path):
     path = tmp_path / 'source.db'
     connection = sqlite3.connect(path)
-    connection.execute('CREATE TABLE per_sym_active(sym_side TEXT PRIMARY KEY,updated_at TEXT,epoch REAL,full_config_json TEXT)')
-    connection.execute('INSERT INTO per_sym_active VALUES(?,?,?,?)', ('TESTUSDT_LONG', 'first', 1, json.dumps({'SWITCH': True})))
+    connection.execute('CREATE TABLE per_sym_active(sym_side TEXT PRIMARY KEY,updated_at TEXT,full_config_json TEXT)')
+    connection.execute('INSERT INTO per_sym_active VALUES(?,?,?)', ('TESTUSDT_LONG', 'first', json.dumps({'SWITCH': True})))
     connection.commit()
     process = subprocess.Popen([sys.executable, '-u', 'tools/per_sym_settings_feed.py', 'serve', '--db', str(path)], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
     try:
@@ -46,7 +46,7 @@ def test_s1_stream_announces_new_sql_switches_without_waiting_for_next_bar(tmp_p
         assert first['full_config'] == {'SWITCH': True}
         assert json.loads(process.stdout.readline())['kind'] == 'index'
         assert json.loads(process.stdout.readline())['kind'] == 'heartbeat'
-        connection.execute('UPDATE per_sym_active SET updated_at=?,epoch=?,full_config_json=?', ('second', 2, json.dumps({'SWITCH': False, 'NEW_FILTER': ['D', 'UP']})))
+        connection.execute('UPDATE per_sym_active SET updated_at=?,full_config_json=?', ('first', json.dumps({'SWITCH': False, 'NEW_FILTER': ['D', 'UP']})))
         connection.commit()
         deadline = time.monotonic() + 3
         found = None
@@ -58,7 +58,7 @@ def test_s1_stream_announces_new_sql_switches_without_waiting_for_next_bar(tmp_p
                 found = packet
                 break
         assert found is not None
-        assert found['updated_at'] == 'second'
+        assert found['updated_at'] == 'first'
         assert found['full_config'] == {'SWITCH': False, 'NEW_FILTER': ['D', 'UP']}
     finally:
         process.terminate()

@@ -58339,11 +58339,7 @@ async def process_position(
                                 )
                                 or {}
                             )
-                            if (
-                                _r6_ec.get("is_hedge")
-                                or _r6_ec.get("hedge_for")
-                                or "HEDGE" in str(_r6_ec.get("last_reason", "")).upper()
-                            ):
+                            if _r6_ec.get("is_hedge") or _r6_ec.get("hedge_for"):
                                 _r6_is_hedge = True
                         except Exception:
                             pass

@@ -47,12 +47,14 @@ def sys_stats():
         used_pct=(total-avail)/total*100 if total else 0
     except:
         total, avail, used_pct=0,0,0
+    pilot_sides=set()
     try:
         ps=sh("ps -eo args=", timeout=5)
         pilot_sides=set(re.findall(r"v15_pilot(?:_7d)?\.py[^\n]*--sym-side\s+([A-Z0-9_]+)", ps))
         pilots=len(pilot_sides)
     except:
         pilots=0
+        pilot_sides=set()
         ps=""
     try:
         herd_ps=sh("pgrep -a -f v15_local_herd | grep -v -- --cron-check", timeout=5)

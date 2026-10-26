@@ -44,20 +44,21 @@ def serve(db):
         while True:
             version = connection.execute('PRAGMA data_version').fetchone()[0]
             if version != previous_version:
-                current = connection.execute('SELECT sym_side,updated_at,epoch FROM per_sym_active').fetchall()
-                for symbol_side, updated, epoch in current:
-                    if versions.get(symbol_side) == (updated, epoch):
+                current = []
+                for symbol_side, updated, full_json in connection.execute('SELECT sym_side,updated_at,full_config_json FROM per_sym_active'):
+                    current.append(symbol_side)
+                    if not full_json:
                         continue
-                    value = connection.execute('SELECT full_config_json FROM per_sym_active WHERE sym_side=?', (symbol_side,)).fetchone()
-                    if not value or not value[0]:
+                    row_version = (updated, hashlib.md5(full_json.encode()).hexdigest())
+                    if versions.get(symbol_side) == row_version:
                         continue
-                    record = row_record(symbol_side, updated, value[0])
+                    record = row_record(symbol_side, updated, full_json)
                     rows[symbol_side] = {'updated_at': updated, 'full_config_md5': record['full_config_md5']}
                     if known.get(symbol_side) != record['full_config_md5']:
                         print(json.dumps(record, separators=(',', ':')), flush=True)
                         known[symbol_side] = record['full_config_md5']
-                    versions[symbol_side] = (updated, epoch)
-                current_sides = {item[0] for item in current}
+                    versions[symbol_side] = row_version
+                current_sides = set(current)
                 rows = {key: value for key, value in rows.items() if key in current_sides}
                 snapshot = hashlib.md5(json.dumps(rows, sort_keys=True).encode()).hexdigest()
                 print(json.dumps({'kind': 'index', 'source_db': str(Path(db).resolve()), 'rows': rows, 'snapshot_md5': snapshot}, separators=(',', ':')), flush=True)
@@ -91,6 +92,7 @@ def follow(base, host, db, seed_db):
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
         return
+    atomic(root / '_required.json', {'source_db': db, 'installed_at': time.time()})
     seed(root, seed_db)
     while True:
         process = None
@@ -106,7 +108,7 @@ def follow(base, host, db, seed_db):
                 process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1)
             else:
                 remote = ' '.join(shlex.quote(part) for part in command)
-                process = subprocess.Popen(['ssh', '-T', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=8', '-o', 'ServerAliveInterval=5', host, remote], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1)
+                process = subprocess.Popen(['ssh', '-T', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=8', '-o', 'ServerAliveInterval=5', '-o', 'StrictHostKeyChecking=accept-new', host, remote], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1)
             process.stdin.write(json.dumps({'known': known}, separators=(',', ':')) + '\n')
             process.stdin.flush()
             while True:
