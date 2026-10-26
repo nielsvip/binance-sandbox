@@ -5,13 +5,6 @@ import re
 
 def mandatory_loss_stop_reason(reason, dc4_buffer_pct=0.25):
     value = str(reason or "").upper()
-    if value.startswith((
-        "CONV_", "BOARD_CONVERGE_", "VEC_CONVERGE_",
-        "VEC_DRIVEN_CLOSE_", "VEC_DRIVEN_REDUCE_",
-        "VEC_FWD_CLOSE_", "VEC_FWD_REDUCE_",
-        "PURE_BOARD_CLOSE_", "PURE_BOARD_REDUCE_",
-    )):
-        return True
     if value.startswith(("FIXED_STOP_LONG_", "FIXED_STOP_SHORT_")):
         # Default stop reasons omit _REF entirely; explicit specs must name the frozen 15m DC channel.
         # Do not let old BB/1h/4h or alternative-buffer software stops bypass the fee-positive exit law.

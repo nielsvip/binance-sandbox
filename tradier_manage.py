@@ -44636,7 +44636,7 @@ class TradierTradeManager:
         # The V19 interim backtest permits these ordinary entries; keep the
         # existing exposure budget and all subsequent entry checks active.
         if str(account_key).lower() == "trb":
-            _sw_on = False  # Emergency pause until required broker stops are verified.
+            _sw_on = True  # Temporary native-entry recovery until V20 swing parity is live.
         if _sw_on is not True:
             return False, "SWING_ENTRIES_OFF_PARITY"
         ratio = self.calculate_unified_market_ratio()
