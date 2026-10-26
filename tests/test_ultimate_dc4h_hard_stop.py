@@ -6,15 +6,19 @@ import pathlib, openpyxl
 import numpy as np
 import config, config_tradier
 import v12_quick_engine as vq
+import pytest
 
 
-def _mk(n, close, dl, dh, dl15=None, dh15=None):
+def _mk(n, close, dl, dh, dl15=None, dh15=None, low3=None, high3=None, open3=None):
     ts = np.arange(1700000000, 1700000000 + n * 180, 180)
     d = {
         "close_3m": close,
         "close_15m": close,
         "close_5m": close,
         "close": close,
+        "low_3m": np.asarray(low3 if low3 is not None else close, dtype=float),
+        "high_3m": np.asarray(high3 if high3 is not None else close, dtype=float),
+        "open_3m": np.asarray(open3 if open3 is not None else close, dtype=float),
         "dc_low_4h": dl,
         "dc_high_4h": dh,
         "timestamps": ts,
@@ -206,6 +210,47 @@ def test_v12_min_hold_and_noloss_bypass():
     cross = int(np.where(close <= 0.027 * 0.9975)[0][0])
     ults = _ult_exits(r)
     assert ults and ults[0]["bar_exit"] == cross  # breach < MIN_HOLD still closes
+
+
+def test_v12_dc4h_intrabar_wick_touch_closes_after_recovery():
+    n = 150
+    close = np.full(n, 0.0285)
+    low = close.copy()
+    low[50] = 0.0268  # touches dc_low_4h * 0.9975 then recovers before this bar closes
+    cfg = _wide_uncond(vq.QuickConfig())
+    cfg.MODE = "crypto"
+    cfg.BASE_TF = "3m"
+    cfg.START_POSITION_SIZE = 500
+    cfg.COOLDOWN_BARS = 0
+    cfg.MIN_HOLD_BARS = 0
+    cfg.PROFIT_TARGET_ENABLED = False
+    r = vq.simulate_one(
+        _mk(n, close, np.full(n, 0.027), np.full(n, 0.031), np.full(n, 0.025), np.full(n, 0.031), low3=low, open3=close),
+        "T_WICK_LONG",
+        True,
+        cfg,
+        force_initial_seed=True,
+    )
+    ults = _ult_exits(r)
+    assert ults and ults[0]["bar_exit"] == 50
+    assert ults[0]["price"] == pytest.approx(0.027 * 0.9975)
+
+
+def test_v12_rolling_1h_15m_levels_do_not_create_loss_stops():
+    n = 150
+    close = np.full(n, 0.0285)
+    cfg = _wide_uncond(vq.QuickConfig())
+    cfg.MODE = "crypto"
+    cfg.BASE_TF = "3m"
+    cfg.START_POSITION_SIZE = 500
+    cfg.COOLDOWN_BARS = 0
+    cfg.MIN_HOLD_BARS = 0
+    cfg.PROFIT_TARGET_ENABLED = False
+    npz = _mk(n, close, np.full(n, 0.020), np.full(n, 0.040), np.full(n, 0.030), np.full(n, 0.027))
+    npz["dc_low_1h"] = np.full(n, 0.030)
+    npz["dc_low_15m"] = np.full(n, 0.030)
+    r = vq.simulate_one(npz, "T_NO_ROLLING", True, cfg, force_initial_seed=True)
+    assert not _ult_exits(r)
 
 
 def test_template_flags_present():

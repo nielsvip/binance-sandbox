@@ -15712,71 +15712,15 @@ async def process_position(
                 _uh_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
                 _uh_fire = ""
                 _uh_prior = bool(_cfg("DC_PRIOR_BAR_CHANNEL", True, account_key, symbol, position_side))
-                _uh_tol = _udcs.buffer_pct_value(_cfg("UNCOND_DC_HARD_STOP_BUFFER_PCT", _udcs.DEFAULT_BUFFER_PCT, account_key, symbol, position_side))
+                _uh_tol = _udcs.DEFAULT_BUFFER_PCT
                 if is_long:
                     _uh_l4 = _dc_stop_prev_aware(i, "dc_low_4h", _uh_prior)
                     if _ftf_twins.long_dc_low_stop_fires(_uh_px, _uh_l4, _uh_tol):
                         _uh_fire = f"DC_LOW_4H_UNCOND_px{_uh_px:.4f}_lvl{_uh_l4:.4f}"
-                    if not _uh_fire and _ftf_twins.truthy(
-                        _cfg(
-                            "DC_HARD_STOP_1H_ENABLED",
-                            True,
-                            account_key,
-                            symbol,
-                            position_side,
-                        )
-                    ):
-                        _uh_l1 = _dc_stop_prev_aware(i, "dc_low_1h", _uh_prior)
-                        if _ftf_twins.long_dc_low_stop_fires(_uh_px, _uh_l1, _uh_tol):
-                            _uh_fire = (
-                                f"DC_LOW_1H_UNCOND_px{_uh_px:.4f}_lvl{_uh_l1:.4f}"
-                            )
-                    if not _uh_fire and _ftf_twins.truthy(
-                        _cfg(
-                            "DC_HARD_STOP_15M_ENABLED",
-                            True,
-                            account_key,
-                            symbol,
-                            position_side,
-                        )
-                    ):
-                        _uh_l15 = _dc_stop_prev_aware(i, "dc_low_15m", _uh_prior)
-                        if _ftf_twins.long_dc_low_stop_fires(_uh_px, _uh_l15, _uh_tol):
-                            _uh_fire = (
-                                f"DC_LOW_15M_UNCOND_px{_uh_px:.4f}_lvl{_uh_l15:.4f}"
-                            )
                 else:
                     _uh_h4 = _dc_stop_prev_aware(i, "dc_high_4h", _uh_prior)
                     if _ftf_twins.short_dc_high_stop_fires(_uh_px, _uh_h4, _uh_tol):
                         _uh_fire = f"DC_HIGH_4H_UNCOND_px{_uh_px:.4f}_lvl{_uh_h4:.4f}"
-                    if not _uh_fire and _ftf_twins.truthy(
-                        _cfg(
-                            "DC_HARD_STOP_1H_ENABLED",
-                            True,
-                            account_key,
-                            symbol,
-                            position_side,
-                        )
-                    ):
-                        _uh_h1 = _dc_stop_prev_aware(i, "dc_high_1h", _uh_prior)
-                        if _ftf_twins.short_dc_high_stop_fires(_uh_px, _uh_h1, _uh_tol):
-                            _uh_fire = (
-                                f"DC_HIGH_1H_UNCOND_px{_uh_px:.4f}_lvl{_uh_h1:.4f}"
-                            )
-                    if not _uh_fire and _ftf_twins.truthy(
-                        _cfg(
-                            "DC_HARD_STOP_15M_ENABLED",
-                            True,
-                            account_key,
-                            symbol,
-                            position_side,
-                        )
-                    ):
-                        _uh_h15 = _dc_stop_prev_aware(i, "dc_high_15m", _uh_prior)
-                        if _ftf_twins.short_dc_high_stop_fires(_uh_px, _uh_h15, _uh_tol):
-                            _uh_fire = (
-                                f"DC_HIGH_15M_UNCOND_px{_uh_px:.4f}_lvl{_uh_h15:.4f}"
-                            )
                 if _uh_fire:
                     logger.critical(
                         f"⛔ [UNCOND_DC_HARD_STOP] {position_key}: {position_side} {_uh_fire} g={_uh_gain:.2f}% → IMMEDIATE CLOSE (USER 2026-10-06, no veto)"

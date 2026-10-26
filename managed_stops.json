@@ -1,16 +1,16 @@
 {
-  "flz:HYPEUSDT_LONG": {
-    "orderId": "1000002643874887",
-    "stopPrice": 74.635,
-    "entry_sig": "2026-10-26 05:13:40.227000+00:00",
-    "symbol": "HYPEUSDT",
-    "side": "LONG"
+  "men:FARTCOINUSDT_SHORT": {
+    "orderId": "2000001541232440",
+    "stopPrice": 0.1242,
+    "entry_sig": "2026-10-26 03:20:29.505000+00:00",
+    "symbol": "FARTCOINUSDT",
+    "side": "SHORT"
   },
-  "flz:DASHUSDT_SHORT": {
-    "orderId": "1000002643927751",
-    "stopPrice": 51.87,
-    "entry_sig": "2026-10-26 05:58:00.064000+00:00",
-    "symbol": "DASHUSDT",
+  "men:1000LUNCUSDT_SHORT": {
+    "orderId": "2000001541187610",
+    "stopPrice": 0.04435,
+    "entry_sig": "2026-10-26 03:20:35.568000+00:00",
+    "symbol": "1000LUNCUSDT",
     "side": "SHORT"
   }
 }

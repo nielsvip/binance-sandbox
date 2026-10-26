@@ -1887,12 +1887,8 @@ class TradierConfig:
     ULTIMATE_DC_4H_STOP_ENABLED: bool = (
         True  # ABSOLUTE — LONG close <= dc_low_4h, SHORT close >= dc_high_4h
     )
-    DC_HARD_STOP_1H_ENABLED: bool = (
-        True  # USER 2026-10-06 — SHORT px>=dc_high_1h*1.0025 / LONG px<=dc_low_1h*0.9975 → CLOSE, no veto (sweepable; False wins if higher delta)
-    )
-    DC_HARD_STOP_15M_ENABLED: bool = (
-        True  # USER 2026-10-06 — SHORT px>=dc_high_15m*1.0025 / LONG px<=dc_low_15m*0.9975 → CLOSE, no veto (sweepable; False wins if higher delta)
-    )
+    DC_HARD_STOP_1H_ENABLED: bool = False  # USER 2026-10-26: retired rolling loss stop; only frozen DC15 + DC4h remain
+    DC_HARD_STOP_15M_ENABLED: bool = False  # USER 2026-10-26: rolling live loss stop retired; exchange DC15 order remains pinned on
     # USER 2026-05-18: FROZEN ACTIVATION-TF STOP — per stocks team finding: frozen dc_low_4h@entry + -8% floor.
     # Worst-case stocks loss capped at -9% (vs -12.6% baseline / -17% intra-trade). 250 stops × 30 syms × 2.1yr = 4/sym/yr.
     FROZEN_ACTIVATION_STOP_ENABLED: bool = (

@@ -4532,12 +4532,8 @@ class QuickConfig:
     DC_HARD_STOP_TF: str = (
         "4h"  # ULTIMATE_DC HARD_STOP TF: 4h|D — per sym_side sweepable; D wider = fewer stops
     )
-    DC_HARD_STOP_1H_ENABLED: bool = (
-        True  # USER 2026-10-06 — SHORT px >= dc_high_1h*1.0025 → CLOSE, no veto (sweepable)
-    )
-    DC_HARD_STOP_15M_ENABLED: bool = (
-        True  # USER 2026-10-06 — SHORT px >= dc_high_15m*1.0025 → CLOSE, no veto (sweepable)
-    )
+    DC_HARD_STOP_1H_ENABLED: bool = False  # USER 2026-10-26: retired rolling loss-stop path; only frozen DC15 + DC4h remain
+    DC_HARD_STOP_15M_ENABLED: bool = False  # USER 2026-10-26: retired rolling loss-stop path; exchange DC15 stop remains pinned live
     WT_LOWER_CROSS_EXIT_TF: str = (
         "1h"  # WT lower cross exit TF: OFF/15m/1h/4h — LONG wt cross down + price lower, SHORT opposite; added 2026-09-27 as option in big WT TF sweep
     )
@@ -20941,98 +20937,6 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         continue
             except Exception:
                 pass
-        # 2026-10-06 USER MANDATE twin — UNCONDITIONAL DC STOP BOTH SIDES (hardcoded 4h + switched 1h/15m, ±0.25%). No veto.
-        try:
-            _uh_j = (
-                (i - 1)
-                if (i > 0 and bool(getattr(cfg, "DC_PRIOR_BAR_CHANNEL", True)))
-                else i
-            )
-            _uh_fire = ""
-            _uh_lo_f, _uh_hi_f = _udcs.buffer_factors(cfg)
-            if pos is not None:
-                if is_long:
-                    _uh_llvl4 = float(_uh_l4[_uh_j]) if _uh_j < len(_uh_l4) else 0.0
-                    if _uh_llvl4 > 0 and px <= _uh_llvl4 * _uh_lo_f:
-                        _uh_fire = "UNCOND_DC_LOW_4H"
-                    if not _uh_fire and bool(
-                        getattr(cfg, "DC_HARD_STOP_1H_ENABLED", True)
-                    ):
-                        _uh_llvl1 = float(_uh_l1[_uh_j]) if _uh_j < len(_uh_l1) else 0.0
-                        if _uh_llvl1 > 0 and px <= _uh_llvl1 * _uh_lo_f:
-                            _uh_fire = "UNCOND_DC_LOW_1H"
-                    if not _uh_fire and bool(
-                        getattr(cfg, "DC_HARD_STOP_15M_ENABLED", True)
-                    ):
-                        _uh_llvl15 = (
-                            float(_uh_l15[_uh_j]) if _uh_j < len(_uh_l15) else 0.0
-                        )
-                        if _uh_llvl15 > 0 and px <= _uh_llvl15 * _uh_lo_f:
-                            _uh_fire = "UNCOND_DC_LOW_15M"
-                else:
-                    _uh_lvl4 = float(_uh_h4[_uh_j]) if _uh_j < len(_uh_h4) else 0.0
-                    if _uh_lvl4 > 0 and px >= _uh_lvl4 * _uh_hi_f:
-                        _uh_fire = "UNCOND_DC_HIGH_4H"
-                    if not _uh_fire and bool(
-                        getattr(cfg, "DC_HARD_STOP_1H_ENABLED", True)
-                    ):
-                        _uh_lvl1 = float(_uh_h1[_uh_j]) if _uh_j < len(_uh_h1) else 0.0
-                        if _uh_lvl1 > 0 and px >= _uh_lvl1 * _uh_hi_f:
-                            _uh_fire = "UNCOND_DC_HIGH_1H"
-                    if not _uh_fire and bool(
-                        getattr(cfg, "DC_HARD_STOP_15M_ENABLED", True)
-                    ):
-                        _uh_lvl15 = (
-                            float(_uh_h15[_uh_j]) if _uh_j < len(_uh_h15) else 0.0
-                        )
-                        if _uh_lvl15 > 0 and px >= _uh_lvl15 * _uh_hi_f:
-                            _uh_fire = "UNCOND_DC_HIGH_15M"
-            if _uh_fire:
-                pos["fees"] += abs(pos["qty"] * px) * half_fee
-                _pnl = (
-                    pos["realized"]
-                    + (
-                        (px - pos["avg_price"]) * pos["qty"]
-                        if is_long
-                        else (pos["avg_price"] - px) * pos["qty"]
-                    )
-                    - pos["fees"]
-                )
-                _pct = _pnl / pos["deployed"] * 100 if pos["deployed"] else 0.0
-                _tsu = (
-                    float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
-                )
-                trades.append(
-                    {
-                        "pnl_dollars": _pnl,
-                        "pnl_pct": float(_pct),
-                        "deployed": pos["deployed"],
-                        "reason": _uh_fire,
-                        "type": "CLOSE",
-                        "ts": _tsu,
-                        "price": float(px),
-                        "bar_entry": int(pos["entry_bar"]),
-                        "bar_exit": int(i),
-                        "entry_price": float(pos.get("entry_price", pos["avg_price"])),
-                        "exit_price": float(px),
-                        "qty": float(pos["qty"]),
-                        "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"),
-                        "exit_reason": _uh_fire,
-                        "bars_held": int(i - pos["entry_bar"]),
-                    }
-                )
-                pos = None
-                cd = cooldown_bars
-                has_closed_before = True
-                if is_tradier:
-                    _dc_cd_h = float(
-                        getattr(cfg, "DC_HARD_STOP_REENTRY_COOLDOWN_HOURS", 4.0) or 0.0
-                    )
-                    if _dc_cd_h > 0:
-                        cd = max(cd, int(round(_dc_cd_h * 60.0 / max(bmin, 1))))
-                continue
-        except Exception:
-            pass
         # USER 2026-10-25: ABSOLUTE ULTIMATE STOP is the dc_4h CHANNEL ∓0.25%
         # (LONG px <= dc_low_4h*0.9975, SHORT px >= dc_high_4h*1.0025), TF 4h
         # always, anytime, no veto — mirrors live both venues.
@@ -21045,11 +20949,22 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _ult_lvl = (
                 float(dc_low_4h[_ult_j]) if is_long else float(dc_high_4h[_ult_j])
             )
-            _ult_breach = (_ult_lvl > 0) and (
-                (is_long and px <= _ult_lvl * 0.9975)
-                or ((not is_long) and px >= _ult_lvl * 1.0025)
+            _ult_stop = _ult_lvl * (0.9975 if is_long else 1.0025)
+            _ult_bar = _fx_bar_lo if is_long else _fx_bar_hi
+            _ult_wick = float(_ult_bar[i]) if i < len(_ult_bar) else 0.0
+            _ult_open = float(_fx_bar_op[i]) if i < len(_fx_bar_op) else 0.0
+            _ult_breach = _ult_lvl > 0 and (
+                (is_long and px <= _ult_stop)
+                or ((not is_long) and px >= _ult_stop)
+                or (
+                    pos is not None
+                    and int(pos.get("entry_bar", i)) < i
+                    and _ult_wick > 0
+                    and ((is_long and _ult_wick <= _ult_stop) or ((not is_long) and _ult_wick >= _ult_stop))
+                )
             )
             if _ult_breach:
+                px = (min(_ult_stop, _ult_open) if is_long else max(_ult_stop, _ult_open)) if _ult_open > 0 else _ult_stop
                 pos["fees"] += abs(pos["qty"] * px) * half_fee
                 _pnl = (
                     pos["realized"]

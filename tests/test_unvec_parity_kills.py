@@ -64,7 +64,9 @@ def test_tradier_kills_default_false():
 def test_kill_sites_at_function_heads():
     for switch, (path, names) in {**CRYPTO_KILLS, **TRADIER_KILLS}.items():
         for name in names:
-            head = _fn_head_source(path, name)[:1200]
+            # Some guarded functions carry a longer policy comment before the
+            # early return. Keep this bounded while covering the first guard.
+            head = _fn_head_source(path, name)[:2400]
             assert switch in head, f"{switch} not at head of {path}:{name}"
 
 
