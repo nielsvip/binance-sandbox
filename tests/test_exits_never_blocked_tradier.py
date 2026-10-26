@@ -249,7 +249,10 @@ def _block(anchor, span=3600):
 def test_source_decorator_order_and_force_branch():
     i = SRC.index("    async def execute_now(\n        self,\n        position_key: str,")
     head = SRC[i - 700:i]
-    assert head.index("_odg.execute_now_gate(") < head.index("@_xg.wrap_execute_now(\"tradier\"") < head.index("@_ptruth.tradier_confirmed")
+    # USER 2026-10-26: innermost decorator renamed @_ptruth.tradier_confirmed -> @_execute_now_qty_guard_tr
+    # when positions_truth.py was deleted. Pinned invariant unchanged: the dedupe gate and the
+    # exit-guarantee wrapper both sit OUTSIDE the zero-qty guard.
+    assert head.index("_odg.execute_now_gate(") < head.index("@_xg.wrap_execute_now(\"tradier\"") < head.index("@_execute_now_qty_guard_tr")
     body = SRC[i:i + 2500]
     assert "_xg.FORCE_ACTION" in body and "_exit_force_market_stocks" in body and "_xg_full = _xg.is_full_close(action, is_full_close)" in body
 

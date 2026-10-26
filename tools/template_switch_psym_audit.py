@@ -58,7 +58,7 @@ GLOBAL_OBJS = {"config", "config_tradier", "_ezm_base_config", "_lc"}
 # live decision modules only: the engines (v12_*, v8_*, v11_*) and vec_paths/* are the VECTOR, which is HANDED a
 # per-sym cfg and legitimately reads it flat. Auditing them would measure the wrong thing.
 LIVE_MODULES = ("ez_manage.py", "ez_positions_quick.py", "ez_positions_service.py", "tradier_manage.py",
-                "tradier_vec_exact.py", "positions_truth.py", "ez_positions_service_main.py")
+                "tradier_vec_exact.py", "ez_positions_service_main.py")  # positions_truth.py DELETED 2026-10-26 (USER)
 LIVE_GLOBS = ("live_twins/*.py",)
 # SHARED CORES. `vec_decisions/*.py` is not simply "the vector": the live modules IMPORT 38 of them and call into
 # them with a PER-SYM cfg — fixed_stop, bb_stoch_exits, dc_channel_exits, breakeven_gain_erosion, qty_quantizers,
