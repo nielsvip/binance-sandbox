@@ -22047,6 +22047,11 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             or "VEC_AUGMENT_SIG",
                         }
                     )
+                    _bar_pos_snapshot = copy.deepcopy(pos)
+                    _bar_control_snapshot = (cd, has_closed_before, bars_in_pos)
+                    if _pending_exit_restore is not None:
+                        _pending_exit_restore = copy.deepcopy(pos)
+                        _pending_exit_control_restore = _bar_control_snapshot
                     try:
                         _ot_d = vec_decisions.overtrade_guard.day_of(_ts_aug)
                         _ot_cnt[_ot_d] = _ot_cnt.get(_ot_d, 0) + 1
