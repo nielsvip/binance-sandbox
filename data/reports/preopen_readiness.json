@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-26T14:20:25Z",
+ "generated_utc": "2026-10-26T14:40:06Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-26T13:30:00Z",
  "market_open": true,
@@ -52,9 +52,9 @@
     "reports_today": 11,
     "newest_report": "persym_golive_20261026_refresh_1053.json",
     "newest_report_at": "2026-10-26T11:03:18Z",
-    "tiers_at": "2026-10-26T11:04:20Z"
+    "tiers_at": "2026-10-26T14:32:00Z"
    },
-   "detail": "persym_golive_20261026_refresh_1053.json at 2026-10-26T11:03:18Z, tiers 2026-10-26T11:04:20Z"
+   "detail": "persym_golive_20261026_refresh_1053.json at 2026-10-26T11:03:18Z, tiers 2026-10-26T14:32:00Z"
   },
   {
    "name": "live_set_matches_selection",
@@ -208,15 +208,15 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "symbols": 202,
+    "symbols": 329,
     "stale_over_90min": 1,
-    "stale_pct": 0.5,
-    "median_age_min": 50.4,
+    "stale_pct": 0.3,
+    "median_age_min": 70.1,
     "sample": [
-     "KAITOUSDT"
+     "ONEUSDT"
     ]
    },
-   "detail": "1/202 symbols past the live 90-min entry gate (0.5%)"
+   "detail": "1/329 symbols past the live 90-min entry gate (0.3%)"
   },
   {
    "name": "s1_sets_synced",
