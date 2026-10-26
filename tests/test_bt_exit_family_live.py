@@ -53,7 +53,7 @@ def test_bt_switch_exit_families_bypass_stale_bt_kill_narrowly(tmp_path, monkeyp
     )
 
 
-def _simulate_rsi2(close_at_signal, enabled=True):
+def _simulate_bt_exit(close_at_signal, switch="RSI2_XTREME_EXIT", enabled=True):
     import v12_quick_engine as vq
 
     n = 110
@@ -80,6 +80,11 @@ def _simulate_rsi2(close_at_signal, enabled=True):
         "dc_high_15m": np.full(n, 120.0),
         "rsi_2_1h": rsi,
     }
+    if switch == "STOCH_XTREME_EXIT":
+        npz["stoch_k_1h"] = np.r_[np.full(2, 50.0), np.full(n - 2, 90.0)]
+    elif switch == "WICK_REJECT_EXIT":
+        npz["bar_upper_wick_1h"] = np.r_[np.full(2, 0.1), np.full(n - 2, 0.7)]
+        npz["bar_body_ratio_1h"] = np.r_[np.full(2, 0.5), np.full(n - 2, 0.2)]
     for tf in ("15m", "1h", "4h", "D"):
         npz[f"wt1_{tf}"] = np.zeros(n)
         npz[f"wt2_{tf}"] = np.zeros(n)
@@ -95,24 +100,26 @@ def _simulate_rsi2(close_at_signal, enabled=True):
             token in key for token in ("EXIT", "TP", "STOP", "PROFIT", "SATOSHIT")
         ):
             setattr(cfg, key, False)
-    cfg.RSI2_XTREME_EXIT_ENABLED = enabled
-    cfg.RSI2_XTREME_EXIT_TF = "1h"
+    setattr(cfg, f"{switch}_ENABLED", enabled)
+    setattr(cfg, f"{switch}_TF", "1h")
     cfg.VEC_EXIT_SIG_IS_TRIGGER = False
     cfg.ABLATION_DISABLE_REENTRY = True
+    cfg.BB_RECOVERY_EXIT_ENABLED_TRADIER = False
     return vq.simulate_one(npz, "RSI2_TEST_LONG", True, cfg, force_initial_seed=True)
 
 
 def test_simulate_one_books_switch_reason_only_when_enabled_and_fee_positive():
-    enabled = _simulate_rsi2(100.30, enabled=True)
-    closes = [
-        row for row in enabled["ledger"]
-        if row.get("type") == "CLOSE" and row.get("reason") == "BT_RSI2_XTREME_EXIT"
-    ]
-    assert closes
-    assert closes[0]["pnl_pct"] > 0.0
+    for switch in ("RSI2_XTREME_EXIT", "STOCH_XTREME_EXIT", "WICK_REJECT_EXIT"):
+        reason = f"BT_{switch}"
+        enabled = _simulate_bt_exit(100.30, switch=switch, enabled=True)
+        closes = [
+            row for row in enabled["ledger"]
+            if row.get("type") == "CLOSE" and row.get("reason") == reason
+        ]
+        assert closes and closes[0]["pnl_pct"] > 0.0, (switch, enabled["ledger"])
 
-    disabled = _simulate_rsi2(100.30, enabled=False)
-    assert not [row for row in disabled["ledger"] if row.get("reason") == "BT_RSI2_XTREME_EXIT"]
+        disabled = _simulate_bt_exit(100.30, switch=switch, enabled=False)
+        assert not [row for row in disabled["ledger"] if row.get("reason") == reason]
 
-    below_fee_floor = _simulate_rsi2(100.01, enabled=True)
-    assert not [row for row in below_fee_floor["ledger"] if row.get("reason") == "BT_RSI2_XTREME_EXIT"]
+        below_fee_floor = _simulate_bt_exit(100.01, switch=switch, enabled=True)
+        assert not [row for row in below_fee_floor["ledger"] if row.get("reason") == reason]

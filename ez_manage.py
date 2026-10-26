@@ -8648,6 +8648,15 @@ def _psym_get(symbol: str, side: str, knob: str, default):
     return getattr(config, knob, default)
 
 
+def _nonvectorizable_ratio_trim(action, reason):
+    try:
+        from vec_decisions.vec_parity_gates import nonvectorizable_portfolio_action
+
+        return nonvectorizable_portfolio_action(action, reason)
+    except Exception:
+        return False
+
+
 _LANE_B_SIZING_HOLD_LOGGED: set = set()
 
 
@@ -33765,6 +33774,8 @@ class MultiAccountTradeManager:
                         logger.info(f"🧭 [VEC_DRIVEN_EXEC] {position_key} action={action} qty={quantity} reason={(reason or '')[:80]} — vec-decided, discretionary gates exempt")
                     elif _vdm_en.is_emergency_reason(reason) and (is_full_close or _broker_sync_is_exit(action)):
                         logger.critical(f"🚨🚨 [VEC_DRIVEN_EMERGENCY_NATIVE] {position_key} action={action} reason={(reason or '')[:80]} — native EMERGENCY exit allowed on a vec-driven sym_side")
+                    elif _nonvectorizable_ratio_trim(action, reason):
+                        logger.info(f"[NONVECTORIZABLE_PORTFOLIO_ACTION] {position_key} action={action} reason={(reason or '')[:80]} — account-level ratio trim has no single-sym NPZ equivalent")
                     elif _zp_ns:
                         logger.warning(f"[ZERO_PASS_ALLOW] {position_key} action={action} reason={(reason or '')[:80]} — native decision on vec-driven sym_side allowed (USER 2026-10-21)")
                     else:

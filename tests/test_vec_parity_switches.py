@@ -230,6 +230,22 @@ def test_switch_dictate_uses_cat_side_default_when_sym_side_has_no_full_set():
         ) is False
 
 
+def test_ratio_close_ow_reduce_is_explicitly_nonvectorizable_before_vec_last():
+    import pathlib
+    source = pathlib.Path("ez_manage.py").read_text()
+    start = source.index("# ─── X3 VEC-DRIVEN LIVE")
+    end = source.index("# parity-loop-crypto", start)
+    block = source[start:end]
+    assert "_nonvectorizable_ratio_trim(action, reason)" in block
+    assert "NONVECTORIZABLE_PORTFOLIO_ACTION" in block
+    assert G.nonvectorizable_portfolio_action(
+        "REDUCE", "RATIO_CLOSE_OW_LONG_L51_S49_tgt25/75"
+    )
+    assert not G.nonvectorizable_portfolio_action(
+        "CLOSE", "RATIO_CLOSE_OW_LONG_L51_S49_tgt25/75"
+    )
+
+
 def test_exec_board_ok():
     assert G.exec_board_ok("OPEN", True, True) is True
     assert G.exec_board_ok("OPEN", False, True) is False

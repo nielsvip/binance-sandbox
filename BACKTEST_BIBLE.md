@@ -4837,3 +4837,15 @@ candidate adds named full-close attribution and passes six synthetic checks; the
 cannot be replayed because the local NPZ ends before it. Required crypto template rows are `EXIT_STRUCTURAL`,
 True bold/default and False alternate. This candidate is not deployed until those rows and a valid template
 baseline are available.
+
+### 118.20 BT BOTTOM/TOP EXITS: PRESERVE SWITCH IDENTITY AND FEE-POSITIVE EXECUTION (2026-10-26)
+
+The live `ez_manage` bottom/top exit producer emits `BT_<SWITCH>_g=...` for switch-gated RSI2, stochastic-extreme, and wick-rejection exits. The vector simulator must retain that same switch identity from `bottom_top_signals.exit_fire_masks`; routing it through generic `TECHNICAL_EXIT` silently drops the close under the ordinary `VEC_EXIT_SIG_IS_TRIGGER=False` setting. The project-copy candidate and the active local engine now retain `BT_<SWITCH>_EXIT` through the ledger, so a switch acts as itself without enabling the global generic-exit trigger.
+
+These are ordinary exits and may close only when net gain remains strictly positive after modeled execution fees and the remaining `COMMISSION_BUFFER_PCT` estimate. The live producer applies the same configured fee floor before queuing a BT close; an RSI2 signal at a fee-negative gain is held. Mandatory frozen DC15 / DC4 stop paths remain the separately governed loss exceptions. Never treat a below-fee BT signal as a vector omission that should be forced through.
+
+The project-copy and active synthetic `simulate_one` checks cover all three BT families with the switch enabled, disabled, a gain above the estimated fee floor, and a gain below it. The source-level switch gate resolves the symbol-side full settings first and falls back to current cat-side defaults when a key is absent; it must not rely on a global config default in place of either selected baseline. This code has not been loaded by the running live manager processes until they are deliberately reloaded and verified.
+
+### 118.21 PORTFOLIO RATIO REDUCTIONS ARE NON-VECTORIZABLE AT SINGLE-SYMBOL SCOPE (2026-10-26)
+
+`RATIO_CLOSE_OW_*` is an account-level partial reduction selected from current exposure across multiple positions. A single-symbol NPZ does not contain the other live positions needed to make that portfolio decision, so do not fabricate a per-symbol vector mask. Keep the live 50% trim under its existing ratio settings and classify only the `REDUCE` action as non-vectorizable; a `CLOSE` with this prefix remains subject to normal exit parity. This exception concerns bar/path parity, not exact partial-reduction amount accounting.

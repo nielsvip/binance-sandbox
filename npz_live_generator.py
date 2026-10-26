@@ -187,7 +187,10 @@ def _compute_row_for_15m_close(
     # the same row in ~7 s. The daemon shares its hot calculator across its live loop and 8 NPZ workers, which is
     # what wedged every cycle past the bar window. Lazy import (ez_indicators imports this module at its top).
     try:
-        from ez_indicators import IndicatorCalculator as _FreshCalc
+        if mode == "tradier":
+            from tradier_indicators import IndicatorCalculator as _FreshCalc
+        else:
+            from ez_indicators import IndicatorCalculator as _FreshCalc
         calculator = _FreshCalc()
     except Exception:
         pass

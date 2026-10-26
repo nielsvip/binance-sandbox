@@ -181,6 +181,14 @@ def mandatory_stop_exempt(action, reason, ultimate_buffer_pct=None):
     ) is not None
 
 
+def nonvectorizable_portfolio_action(action, reason):
+    """Single-symbol vectors lack the account exposure used for this partial ratio trim."""
+    return (
+        str(action or "").upper() == "REDUCE"
+        and str(reason or "").upper().startswith("RATIO_CLOSE_OW_")
+    )
+
+
 def dictate_only_exempt(action, reason, sym_side=None, ultimate_buffer_pct=None):
     # USER 2026-10-25: ONLY vec parity decides — no family, lane, or dispatcher
     # exemption, QUICK included. Survivors are vec speech itself: board-confirmed
@@ -204,7 +212,7 @@ def dictate_only_exempt(action, reason, sym_side=None, ultimate_buffer_pct=None)
         _ru = str(reason or "").upper()
         if _ru.startswith(("RATIO_REDUCE_", "RATIO_REBALANCE_AUGMENT_")):
             return True
-        if str(action or "").upper() == "REDUCE" and _ru.startswith("RATIO_CLOSE_OW_"):
+        if nonvectorizable_portfolio_action(action, reason):
             return True
         if mandatory_stop_exempt(action, reason, ultimate_buffer_pct):
             return True
