@@ -4,6 +4,7 @@ import logging
 import os
 import signal
 import sys
+import tempfile
 import time
 import uuid
 from datetime import datetime, timezone, timedelta
@@ -48,6 +49,82 @@ logger.addHandler(file_handler)
 
 stop_event = asyncio.Event()
 
+
+def _timestamp_epoch(value):
+    try:
+        if isinstance(value, (int, float)):
+            return float(value) / 1000.0 if value > 1e11 else float(value)
+        parsed = datetime.fromisoformat(str(value).replace('Z', '+00:00'))
+        if parsed.tzinfo is None:
+            return parsed.replace(tzinfo=timezone.utc).timestamp()
+        return parsed.timestamp()
+    except Exception:
+        return 0.0
+
+
+def _tradier_15m_bucket(timestamp):
+    from zoneinfo import ZoneInfo
+    local = datetime.fromtimestamp(timestamp, ZoneInfo('America/New_York'))
+    if local.weekday() >= 5 or (local.hour, local.minute) < (9, 30) or (local.hour, local.minute) >= (16, 0):
+        return None
+    elapsed = (local.hour * 60 + local.minute) - (9 * 60 + 30)
+    minute = (elapsed // 15) * 15
+    start = local.replace(hour=9, minute=30, second=0, microsecond=0) + timedelta(minutes=minute)
+    return int(start.astimezone(timezone.utc).timestamp())
+
+
+def _load_cached_subbars(path, bucket_ts, interval_seconds):
+    bars = {}
+    try:
+        rows = json.loads(path.read_text(encoding='utf-8'))
+        if not isinstance(rows, list):
+            return bars
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            ts = _timestamp_epoch(row.get('timestamp') or row.get('time'))
+            if not bucket_ts <= ts < bucket_ts + 900:
+                continue
+            values = {key: float(row[key]) for key in ('open', 'high', 'low', 'close') if row.get(key) is not None}
+            if len(values) == 4:
+                bars[int(ts - (ts % interval_seconds))] = values
+    except Exception:
+        pass
+    return bars
+
+
+def _write_provisional_stock_15m(path, bar):
+    try:
+        existing = []
+        if path.exists():
+            existing = json.loads(path.read_text(encoding='utf-8'))
+            if not isinstance(existing, list):
+                return False
+        for index, row in enumerate(existing):
+            if isinstance(row, dict) and row.get('timestamp') == bar['timestamp']:
+                if 'volume' in row and not row.get('_provisional'):
+                    return False
+                existing[index] = bar
+                break
+        else:
+            existing.append(bar)
+        existing.sort(key=lambda row: row.get('timestamp', '') if isinstance(row, dict) else '')
+        fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=f'.{path.name}.', suffix='.tmp')
+        try:
+            with os.fdopen(fd, 'w', encoding='utf-8') as handle:
+                json.dump(existing, handle, separators=(',', ':'))
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(tmp, path)
+        except Exception:
+            try: os.unlink(tmp)
+            except OSError: pass
+            raise
+        return True
+    except Exception as exc:
+        logger.warning(f"Provisional Tradier 15m write failed {path.name}: {exc}")
+        return False
+
 class TradierPriceFetcher:
     def __init__(self):
         self.config = config
@@ -56,6 +133,9 @@ class TradierPriceFetcher:
         self.running = False
         self.api_client: Optional[TradierAPIClient] = None
         self.redis_manager = None
+        self._provisional_15m = {}
+        self._provisional_15m_sig = {}
+        self._provisional_write_sem = asyncio.Semaphore(16)
         # --- FIX: Define fetcher_id ---
         self.fetcher_id = uuid.uuid4().hex[:6]
         logger.info(f"Initialized PriceFetcher [{self.fetcher_id}]")
@@ -187,6 +267,57 @@ class TradierPriceFetcher:
         except Exception as e:
             logger.error(f"[{self.fetcher_id}] Disk Save Failed: {e}")
 
+    async def _write_provisional_15m(self, prices):
+        now = time.time()
+        writes = []
+        for symbol, quote in prices.items():
+            try:
+                price = float(quote.get('price') or quote.get('last') or 0.0)
+                quote_ts = _timestamp_epoch(quote.get('timestamp'))
+                if price <= 0 or quote_ts <= 0 or now - quote_ts > 5.0:
+                    continue
+                bucket_ts = _tradier_15m_bucket(now)
+                if bucket_ts is None:
+                    continue
+                state = self._provisional_15m.get(symbol)
+                if state is None or state['bucket_ts'] != bucket_ts:
+                    minute_bars = await asyncio.to_thread(_load_cached_subbars, self.config.KLINES_CACHE_DIR / f"{symbol}_1m.json", bucket_ts, 60)
+                    if not minute_bars:
+                        minute_bars = await asyncio.to_thread(_load_cached_subbars, self.config.KLINES_CACHE_DIR / f"{symbol}_5m.json", bucket_ts, 300)
+                    state = {'bucket_ts': bucket_ts, 'minute_bars': minute_bars}
+                    self._provisional_15m[symbol] = state
+                minute_ts = int(now - (now % 60))
+                minute_bar = state['minute_bars'].get(minute_ts)
+                if minute_bar is None:
+                    state['minute_bars'][minute_ts] = {'open': price, 'high': price, 'low': price, 'close': price}
+                else:
+                    minute_bar['high'] = max(minute_bar['high'], price)
+                    minute_bar['low'] = min(minute_bar['low'], price)
+                    minute_bar['close'] = price
+                bars = sorted(state['minute_bars'].items())
+                values = [bar for _, bar in bars]
+                opening = float(values[0]['open'])
+                high = max(float(bar['high']) for bar in values)
+                low = min(float(bar['low']) for bar in values)
+                close = float(values[-1]['close'])
+                stamp = datetime.fromtimestamp(bucket_ts, timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+                signature = (stamp, opening, high, low, close)
+                if self._provisional_15m_sig.get(symbol) == signature:
+                    continue
+                self._provisional_15m_sig[symbol] = signature
+                bar = {'timestamp': stamp, 'open': opening, 'high': high, 'low': low, 'close': close, '_provisional': True}
+                path = self.config.KLINES_CACHE_DIR / f"{symbol}_15m.json"
+
+                async def _write(target=path, row=bar):
+                    async with self._provisional_write_sem:
+                        return await asyncio.to_thread(_write_provisional_stock_15m, target, row)
+
+                writes.append(_write())
+            except Exception as exc:
+                logger.debug(f"[{self.fetcher_id}] provisional 15m skipped {symbol}: {exc}")
+        if writes:
+            await asyncio.gather(*writes, return_exceptions=True)
+
     async def update_prices_loop(self):
         logger.info(f"🚀 Starting Price Loop [{self.fetcher_id}] - Interval: {self.config.PRICE_UPDATE_INTERVAL}s")
         while self.running:
@@ -212,6 +343,14 @@ class TradierPriceFetcher:
                 logger.error(f"Loop error: {e}")
                 await asyncio.sleep(10)
 
+    async def provisional_15m_clock_loop(self):
+        while self.running:
+            try:
+                await self._write_provisional_15m(self.price_cache)
+            except Exception as exc:
+                logger.warning(f"[{self.fetcher_id}] provisional 15m clock loop: {exc}")
+            await asyncio.sleep(0.1)
+
     async def start(self):
         """Start the price fetcher"""
         try:
@@ -232,7 +371,12 @@ class TradierPriceFetcher:
         
         self.running = True
         logger.info(f"[{self.fetcher_id}] Main Loop Active.")
-        await self.update_prices_loop()
+        provisional_task = asyncio.create_task(self.provisional_15m_clock_loop())
+        try:
+            await self.update_prices_loop()
+        finally:
+            provisional_task.cancel()
+            await asyncio.gather(provisional_task, return_exceptions=True)
         
     async def stop(self):
         logger.info(f"[{self.fetcher_id}] Stopping...")

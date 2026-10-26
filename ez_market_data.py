@@ -324,9 +324,19 @@ class KlineLoader:
 def update_1m_candle(store, price, tick_ts):
     minute_ts = int(tick_ts - (tick_ts % 60))
     store['closes_1m'][minute_ts] = price
+    ohlc_1m = store.setdefault('ohlc_1m', OrderedDict())
+    bar = ohlc_1m.get(minute_ts)
+    if bar is None:
+        ohlc_1m[minute_ts] = {'open': price, 'high': price, 'low': price, 'close': price}
+    else:
+        bar['high'] = max(bar['high'], price)
+        bar['low'] = min(bar['low'], price)
+        bar['close'] = price
     store['last_tick_ts'] = tick_ts
     while len(store['closes_1m']) > 180:
         store['closes_1m'].popitem(last=False)
+    while len(ohlc_1m) > 180:
+        ohlc_1m.popitem(last=False)
 
 def update_3m_candle(store, price, tick_ts):
     tf_ts = int(tick_ts - (tick_ts % 180))
@@ -436,6 +446,7 @@ class HighResMarketData:
                             closes_3m[ts_base + t * 180] = close
         while len(closes_1m) > 180: closes_1m.popitem(last=False)
         while len(closes_3m) > 180: closes_3m.popitem(last=False)
+        ohlc_1m = OrderedDict((ts, {'open': price, 'high': price, 'low': price, 'close': price}) for ts, price in closes_1m.items())
 
         last_price = list(closes_1m.values())[-1] if closes_1m else 0.0
         last_ts = 0.0 
@@ -443,6 +454,7 @@ class HighResMarketData:
         store = {
             'closes_1m': closes_1m,
             'closes_3m': closes_3m,
+            'ohlc_1m': ohlc_1m,
             'last_price': last_price,
             'last_tick_ts': last_ts,
             'last_calc_ts': 0.0,  # Prevents redundant calculations
@@ -471,6 +483,9 @@ class HighResMarketData:
         if not store: return
         store['last_price'] = price
         store['last_tick_ts'] = timestamp
+        if price > 0 and abs(time.time() - timestamp) < 30:
+            update_1m_candle(store, price, timestamp)
+            update_3m_candle(store, price, timestamp)
         try:
             c1 = store.get('closes_1m')
             if c1:
@@ -480,6 +495,35 @@ class HighResMarketData:
                 c3[next(reversed(c3))] = price
         except Exception:
             pass
+
+
+def _write_provisional_15m(path: Path, bar: dict) -> bool:
+    try:
+        existing = []
+        if path.exists():
+            with path.open('rb') as handle:
+                existing = orjson.loads(handle.read())
+            if not isinstance(existing, list):
+                return False
+        for index, row in enumerate(existing):
+            if isinstance(row, dict) and row.get('timestamp') == bar['timestamp']:
+                if row.get('volume') is not None and not row.get('_provisional'):
+                    return False
+                existing[index] = bar
+                break
+        else:
+            existing.append(bar)
+        existing.sort(key=lambda row: row.get('timestamp', '') if isinstance(row, dict) else '')
+        tmp = path.with_name(f".{path.name}.{os.getpid()}.{time.time_ns()}.tmp")
+        with tmp.open('wb') as handle:
+            handle.write(orjson.dumps(existing))
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp, path)
+        return True
+    except Exception as exc:
+        logger.warning(f"[PROVISIONAL_15M] write failed {path.name}: {exc}")
+        return False
         try:
             if price > 0 and abs(time.time() - timestamp) < 30:
                 c1 = store.get('closes_1m')
@@ -658,6 +702,7 @@ class MarketDataEngine:
         # THE BRAIN: Stores the freshest price found across all sources
         self.price_buffer = {} # { 'BTCUSDC': {'p': 50.0, 't': 1700.0} }
         self._synth_ts = {} # { sym: last wall-clock synthetic pass } — wall-clock kline synthesis when ticks stall
+        self._provisional_15m_sig = {}
         self._wb_sig = {} # { sym: last writeback signature } — skip files whose buckets did not change
         self._calc_fp = {} # { sym: (buf_t, rest_ver) } — inputs the last compute ran on
         self._payload_cache = {} # { sym: last computed hot payload } — re-stamped while inputs frozen
@@ -1297,6 +1342,64 @@ class MarketDataEngine:
                 logger.error(f"[KLINES_WRITEBACK] Error: {e}")
             await asyncio.sleep(60)
 
+    async def provisional_15m_writeback(self):
+        """Publish mark-built OHLC rows at 15m boundaries until Binance OHLCV arrives."""
+        cache_dir = BASE_PATH / "klines_cache"
+        sem = asyncio.Semaphore(16)
+        while self.running:
+            now = time.time()
+            bucket_ts = int(now - (now % 900))
+            writes = []
+            for symbol in list(self.symbols):
+                buf = self.price_buffer.get(symbol) or {}
+                price = float(buf.get('p') or 0.0)
+                mark_ts = float(buf.get('t') or 0.0)
+                if price <= 0 or now - mark_ts > 5.0:
+                    continue
+                store = self.market.data.get(symbol)
+                if not store:
+                    try:
+                        await asyncio.to_thread(self.market.init_symbol_from_disk, symbol)
+                    except Exception:
+                        continue
+                    store = self.market.data.get(symbol)
+                if not store:
+                    continue
+                bars = store.get('ohlc_1m') or {}
+                minute_ts = int(now - (now % 60))
+                minute_bar = bars.get(minute_ts)
+                if minute_bar is None:
+                    bars[minute_ts] = {'open': price, 'high': price, 'low': price, 'close': price}
+                else:
+                    minute_bar['high'] = max(minute_bar['high'], price)
+                    minute_bar['low'] = min(minute_bar['low'], price)
+                    minute_bar['close'] = price
+                current = [(ts, bar) for ts, bar in bars.items() if bucket_ts <= int(ts) < bucket_ts + 900]
+                if not current:
+                    continue
+                current.sort(key=lambda item: item[0])
+                values = [bar for _, bar in current]
+                opening = float(values[0]['open'])
+                high = max(float(bar['high']) for bar in values)
+                low = min(float(bar['low']) for bar in values)
+                close = float(values[-1]['close'])
+                stamp = datetime.fromtimestamp(bucket_ts, tz=timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+                signature = (stamp, opening, high, low, close)
+                if self._provisional_15m_sig.get(symbol) == signature:
+                    continue
+                self._provisional_15m_sig[symbol] = signature
+                bar = {'timestamp': stamp, 'open': opening, 'high': high, 'low': low, 'close': close, '_provisional': True}
+                path = cache_dir / f"{symbol}_15m.json"
+
+                async def _write(target=path, row=bar):
+                    async with sem:
+                        return await asyncio.to_thread(_write_provisional_15m, target, row)
+
+                writes.append(_write())
+            if writes:
+                await asyncio.gather(*writes, return_exceptions=True)
+            await asyncio.sleep(0.1)
+
     async def rest_klines_repair_loop(self):
         """2026-10-24 (DUSKUSDT 3m 0/10 vs real 74/80): INDEPENDENT history source.
 
@@ -1429,6 +1532,7 @@ class MarketDataEngine:
                 self.loop_watchdog(),
                 self.shared_mem_watchdog(),
                 self.klines_cache_writeback(),
+                self.provisional_15m_writeback(),
                 self.rest_klines_repair_loop(),
                 self.funding_rate_loop(),  # 2026-04-27: live funding-rate refresh into market.data[sym]['funding_rate']
                 self.open_interest_loop(),  # 2026-04-27: live OI refresh into market.data[sym]['oi_value','oi_change_1h_pct']
