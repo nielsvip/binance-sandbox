@@ -187,8 +187,6 @@ def dictate_only_exempt(action, reason, sym_side=None, ultimate_buffer_pct=None)
         _ru = str(reason or "").upper()
         if _ru.startswith(("RATIO_REDUCE_", "RATIO_REBALANCE_AUGMENT_")):
             return True
-        if str(action or "").upper() == "REDUCE" and re.match(r"^RATIO_CLOSE_(?:LONG|SHORT)_", _ru):
-            return True
         if mandatory_stop_exempt(action, reason, ultimate_buffer_pct):
             return True
         if _ve._is_board_confirmed(reason):

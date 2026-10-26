@@ -4814,3 +4814,26 @@ Both deserve their own pass; neither was touched here.
 ### 118.18 CONFIG OPTIONS MUST BE TEST ROWS (2026-10-26)
 
 For every live/vector-causal switch, each explicit config-provided option must appear as an active candidate in every applicable `TEMPLATE_FINAL_NORM` cat-side workbook. Missing options are added as test rows; allow roughly two days for the slower, broader backtest coverage. Preserve the current bold config default as the starting value. Candidate coverage only makes an option testable: it never promotes or changes a default. Promotion remains governed solely by the existing per-sym/avg-delta law. Options without a causal vector path are inventoried as unmapped and are not assigned a fabricated delta.
+
+### 118.19 LIVE/VECTOR PARITY REPAIR AND NON-VECTORIZABLE EXEMPTION (2026-10-26)
+
+The 2026-10-26 TIAUSDC_LONG review found that `EMA_BLANKET_FILTER_TF=OFF` means the live fixed
+15m/1h/4h/D EMA scan, not “filter disabled.” The vector yellow-filter helper treated `OFF` as no mask, and
+later OR-entry sources could bypass EMA because the final vector entry veto omitted it. `v12_quick_engine.py`
+now reapplies the same per-sym EMA mask after all entry sources. B14 uses the live 15m HA, 1h HA and 15m
+stochastic inputs. On the fresh 30D active TIA set, the corrected run was valid (102 trades, +49.3214%); the
+pre-fix comparison was valid (99 trades, +55.2683%). The tested engine was atomically deployed to
+S1/S2/S5/S6 at 05:15Z (deployment `20261026051551`, v12 MD5 `f2c6972066fb104a6a50eebc742a711d`).
+
+The native `QUICK_DC4_{HIGH|LOW}_3M_GAIN_EROSION_STOP` path is explicitly non-vectorizable while the
+producer supplies only 15m bars: the live decision needs 3m DC4, which cannot be inferred from the 15m
+series. Keep the native stop and its net-after-fees gate. The parity classifier records this as
+`NONVECTORIZABLE_NATIVE_DC4_3M` with reason `NATIVE_DC4_3M_INPUT_UNAVAILABLE_IN_15M_VECTOR`; it must not
+enter the VEC open/flat backstop. Do not approximate it with 15m data.
+
+Crypto `BB_RECOVERY_EXIT_ENABLED_TRADIER` already has a live scalar predicate and a vector predicate, but
+the active QuickConfig disables the crypto mask and both crypto template workbooks lack its row. A project-only
+candidate adds named full-close attribution and passes six synthetic checks; the exact historical ZEC bar
+cannot be replayed because the local NPZ ends before it. Required crypto template rows are `EXIT_STRUCTURAL`,
+True bold/default and False alternate. This candidate is not deployed until those rows and a valid template
+baseline are available.

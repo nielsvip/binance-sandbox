@@ -52,6 +52,13 @@ VEC_ENTRY_TOKENS = (
     "DIRECTION_FAVORABLE_REENTRY",            # vec DIRECTION_FAVORABLE_REENTRY
     "HEDGE_SAME_SYM_LAST_RESORT",             # vec QUICK_HEDGE_SAME_SYM_LAST_RESORT (live QUICK_-prefixed)
     "GUARANTEED_REENTRY",                     # vec REENTRY_TREND / all BN_* block-reentry families
+    "HARDCODED_RALLY_REENTRY",                # v12 simulate_one: stocks rally-reclaim reentry, same live family
+    "HTF_WT_CHURN_REENTRY",                   # v12 twin_vec_special + post-close age check, same live family
+    "REENTRY_PRICE_CROSS_BACK",               # stocks_reentry_sources PRICE_CROSS_BACK on closed-side state
+    "MANDATORY_REENTRY_PRICE_CROSS",           # live guaranteed reclaim; v12 stocks PRICE_CROSS_BACK path
+    "TRADIER_DC_BREAKOUT_",                   # live alias for v12 DC_BREAKOUT_TF_EXPANDED mask
+    "WT_SIMPLE_GUARANTEE_",                   # v12 twin_p0_stocks WT-cross entry guarantee
+    "WT_15M_BOUNCE_OPEN_",                     # v12 WT_15M_BOUNCE_OPEN vector entry twin
 )
 
 # ── EXIT families the vectorized engine produces (live raw substrings) ───────
@@ -87,6 +94,12 @@ VEC_EXIT_TOKENS = (
     "GAP_MOC_EXIT",                           # v12_quick_engine reason "GAP_MOC_EXIT" (live GAP_MOC_EXIT_VV_*)
     "WT_PERCENTILE",                          # vec_decisions/ported_exit.py WT_PERCENTILE_EXIT (D/4h OB/OS) on exit_sig
     "OVERSIZE_TRIM_LOSS",                     # 2026-10-17 USER: parity CORRECTION — the vector never holds more than its position cap; trims live back to it (oversize_trim.py)
+    "ALL_TF_AGAINST_CLOSE",                   # v12 process_position close predicate
+    "GAP_RISK_EXIT_",                          # v12 stocks GAP_RISK_EXIT vector twin
+    "WICK_REJECT_EXIT_",                       # v12 twin_exits_dead wick exit mask
+    "WT_SIMPLE_GUARANTEE_",                   # v12 twin_p0_stocks opposite-WT exit OR
+    "E_1_WT_DELTA_EXIT",                       # v12 process_position_crypto__e1_wt_delta_exit mask
+    "LR_BAND_LADDER_PARITY_TARGET_",           # shared LR ladder parity resolver in live and v12
 )
 # NOT vector exits (live-only, no emitting line in the engine) — blocked under STRICT_VEC_PARITY_GATE_EXITS:
 #   PRE_CLOSE (stocks flatten; engine has the DC_DAYTRADE_PRE_CLOSE_MINUTES field but never emits the close),

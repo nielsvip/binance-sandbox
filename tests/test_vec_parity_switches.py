@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from vec_decisions import vec_parity_gates as G
+from vec_paths import vec_parity_gate as P
 
 SWITCHES = {
     "VEC_OVERRIDE_ENABLED": True,
@@ -91,6 +92,29 @@ def test_non_vector_exit_refused():
     assert G.non_vector_exit_refused("QUICK_BB_RECOVERY_EXIT_T", True, False) is False
     assert G.non_vector_exit_refused("QUICK_REDUCE_REDUCE_k", True, True) is True
     assert G.non_vector_exit_refused("RATIO_CLOSE_X", True, True) is True
+
+
+def test_stock_shadow_reasons_with_quick_engine_twins_are_vec_achievable():
+    # These reasons appeared in rotated Tradier STRICT_VEC_PARITY_SHADOW logs.
+    # Each is backed by an existing v12 QuickEngine mask/stateful path.
+    for reason in (
+        "HARDCODED_RALLY_REENTRY_LONG_close1679>exit1658",
+        "HTF_WT_CHURN_REENTRY_SHORT_age96m",
+        "REENTRY_PRICE_CROSS_BACK_exit982.63_cur998.89_dist1.66%_age8680m",
+        "MANDATORY_REENTRY_PRICE_CROSS_exit17.75_cur17.74_dist0.03%_age2m_CROSSED_BACK",
+        "WT_SIMPLE_GUARANTEE_L_wt1=89.9_wt2=83.1",
+        "TRADIER_DC_BREAKOUT_S_adx35",
+        "WT_15M_BOUNCE_OPEN_S_wt1=-61.2_wt2=-60.8",
+        "ALL_TF_AGAINST_CLOSE_1of5_g-0.56%",
+        "GAP_RISK_EXIT_A_OPEN_RECLAIM+B_STRUCT_BREAK_g0.65%",
+        "WICK_REJECT_EXIT_15m_upper-wick1.00_g-0.23",
+        "E_1_WT_DELTA_EXIT_delta=-60_thr=50_g-0.04",
+        "LR_BAND_LADDER_PARITY_TARGET_x5.260_usd10521_4h",
+        "WT_SIMPLE_GUARANTEE_15m_wt10vs12",
+    ):
+        assert P.is_vec_achievable(reason), reason
+    # The gate must continue to distinguish live-only exits with no vector emitter.
+    assert not P.is_vec_achievable("E3_STRUCT_EXIT_2of3_g0.00%")
 
 
 def test_flat_open_block_never_closes():
