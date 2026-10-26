@@ -182,7 +182,7 @@ def check_volume_confirmation(config, indicators: dict) -> Tuple[bool, str]:
 # 6. SYMBOL CIRCUIT BREAKER — halt after consecutive losses
 # ═══════════════════════════════════════════════════════════════════
 def record_trade_outcome(symbol: str, account: str, gain_pct: float):
-    """Track consecutive losses for circuit breaker."""
+    """Track completed position outcomes for symbol and account breakers."""
     if gain_pct < 0:
         _symbol_consecutive_losses[symbol] += 1
         _account_consecutive_losses[account] += 1
@@ -191,24 +191,31 @@ def record_trade_outcome(symbol: str, account: str, gain_pct: float):
         _account_consecutive_losses[account] = 0
 
 
-def check_circuit_breaker(config, symbol: str, account: str) -> Tuple[bool, str]:
-    """Return (allow_entry, reason). Halts if threshold breached."""
-    if not getattr(config, "CIRCUIT_BREAKER_ENABLED", False):
+def check_symbol_loss_streak_breaker(config, symbol: str) -> Tuple[bool, str]:
+    """Return (allow_entry, reason) for the independently switchable symbol breaker."""
+    if not getattr(config, "SYMBOL_LOSS_STREAK_BREAKER_ENABLED", False):
         return True, ""
     now = time.time()
     if symbol in _symbol_halt_until and now < _symbol_halt_until[symbol]:
         remain = int(_symbol_halt_until[symbol] - now)
         return False, f"CB_SYMBOL_HALTED {symbol} {remain}s_remaining"
-    if account in _account_halt_until and now < _account_halt_until[account]:
-        remain = int(_account_halt_until[account] - now)
-        return False, f"CB_ACCOUNT_HALTED {account} {remain}s_remaining"
-
     sym_thresh = int(getattr(config, "CIRCUIT_BREAKER_SYMBOL_LOSSES", 3))
     sym_halt_min = int(getattr(config, "CIRCUIT_BREAKER_SYMBOL_HALT_MIN", 30))
     if _symbol_consecutive_losses[symbol] >= sym_thresh:
         _symbol_halt_until[symbol] = now + sym_halt_min * 60
         _symbol_consecutive_losses[symbol] = 0
         return False, f"CB_SYMBOL_TRIP {symbol} {sym_thresh} losses → halt {sym_halt_min}min"
+    return True, ""
+
+
+def check_circuit_breaker(config, symbol: str, account: str) -> Tuple[bool, str]:
+    """Return (allow_entry, reason). Halts if threshold breached."""
+    if not getattr(config, "CIRCUIT_BREAKER_ENABLED", False):
+        return True, ""
+    now = time.time()
+    if account in _account_halt_until and now < _account_halt_until[account]:
+        remain = int(_account_halt_until[account] - now)
+        return False, f"CB_ACCOUNT_HALTED {account} {remain}s_remaining"
 
     acct_thresh = int(getattr(config, "CIRCUIT_BREAKER_ACCOUNT_LOSSES", 5))
     acct_halt_min = int(getattr(config, "CIRCUIT_BREAKER_ACCOUNT_HALT_MIN", 60))

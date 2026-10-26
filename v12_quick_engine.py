@@ -1117,6 +1117,7 @@ AUTO_WIRED_PARAMS = [
     "CIRCUIT_BREAKER_ACCOUNT_LOSSES",
     "CIRCUIT_BREAKER_COOLDOWN",
     "CIRCUIT_BREAKER_ENABLED",
+    "SYMBOL_LOSS_STREAK_BREAKER_ENABLED",
     "CIRCUIT_BREAKER_SYMBOL_HALT_MIN",
     "CIRCUIT_BREAKER_SYMBOL_LOSSES",
     "CLENOW_ENABLED",
@@ -5782,6 +5783,7 @@ class QuickConfig:
     CATALYST_VOLUME_GATE_ENABLED: bool = False  # auto-wired 625
     CATALYST_VOLUME_RATIO: float = 1.5  # auto-wired 625
     CIRCUIT_BREAKER_ENABLED: bool = False  # auto-wired 625
+    SYMBOL_LOSS_STREAK_BREAKER_ENABLED: bool = False
     CLENOW_ENABLED: bool = False  # auto-wired 625
     CLENOW_GATE_ENABLED: bool = False  # auto-wired 625
     CLENOW_GATE_MIN_SCORE: float = 30.0  # auto-wired 625
@@ -6836,6 +6838,10 @@ class QuickConfig:
     )
     WT_TECHNICAL_WAIT_LOWER_HIGH_ONLY: bool = True  # gate: require LH/div wait
     EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED: bool = False  # EXIT BLOCKER parity
+    EXIT_BLOCKER_LH_LL_15M_ENABLED: bool = False
+    EXIT_BLOCKER_LH_LL_1H_ENABLED: bool = False
+    EXIT_BLOCKER_LH_LL_4H_ENABLED: bool = False
+    EXIT_BLOCKER_LH_LL_D_ENABLED: bool = False
     EXIT_BLOCKER_LH_TF: str = "15m"
     EXIT_BLOCKER_LL_TF: str = "15m"
     DC_BREAK_WAIT_WT15_CLOSE_ENABLED: bool = (
@@ -14485,6 +14491,7 @@ _DEFAULTS_625 = {
     "CHOP_RANGING_THRESHOLD": 61.8,
     "CHOP_TRENDING_THRESHOLD": 38.2,
     "CIRCUIT_BREAKER_ENABLED": False,
+    "SYMBOL_LOSS_STREAK_BREAKER_ENABLED": False,
     "CLENOW_ENABLED": False,
     "CLENOW_GATE_ENABLED": False,
     "CLENOW_GATE_MIN_SCORE": 15.0,
@@ -18212,24 +18219,19 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     # dominated by MI_EXIT / MULTI_TF_EXIT / PROFIT_TARGET sites. Same predicate as vec_decisions/ported_exit.py (data: wt_*_structure_15m, low/high_15m(_prev)).
     _qta_eb_block = None
     try:
-        if bool(getattr(cfg, "EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED", False)):
-            _eb_pk = _safe(npz, "wt_peak_structure_15m", n, 0.0)
-            _eb_tr = _safe(npz, "wt_trough_structure_15m", n, 0.0)
-            _eb_lo, _eb_lop = _safe(npz, "low_15m", n, 0.0), _safe(
-                npz, "low_15m_prev", n, 0.0
-            )
-            _eb_hi, _eb_hip = _safe(npz, "high_15m", n, 0.0), _safe(
-                npz, "high_15m_prev", n, 0.0
-            )
-            _eb_fll = ((_eb_lo > 0) & (_eb_lop > 0) & (_eb_lo < _eb_lop)) | (
-                (_eb_hi > 0) & (_eb_hip > 0) & (_eb_hi < _eb_hip)
-            )
-            _eb_pass = (
-                ((_eb_pk == -1) | _eb_fll)
-                if is_long
-                else (((_eb_pk == -1) | (_eb_tr == 1)) | _eb_fll)
-            )
-            _qta_eb_block = ~_eb_pass
+        import vec_decisions.exit_lh_ll as _ell
+
+        _ell_tfs = _ell.enabled_timeframes(
+            {
+                "15m": bool(getattr(cfg, "EXIT_BLOCKER_LH_LL_15M_ENABLED", False)),
+                "1h": bool(getattr(cfg, "EXIT_BLOCKER_LH_LL_1H_ENABLED", False)),
+                "4h": bool(getattr(cfg, "EXIT_BLOCKER_LH_LL_4H_ENABLED", False)),
+                "D": bool(getattr(cfg, "EXIT_BLOCKER_LH_LL_D_ENABLED", False)),
+            },
+            bool(getattr(cfg, "EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED", False)),
+        )
+        if _ell_tfs:
+            _qta_eb_block = _ell.blocked_mask(npz, n, _ell_tfs, is_long, _safe)
     except Exception:
         _qta_eb_block = None
     _sr_ema = None

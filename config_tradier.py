@@ -2577,6 +2577,7 @@ class TradierConfig:
     CIRCUIT_BREAKER_ACCOUNT_LOSSES: int = 5
     CIRCUIT_BREAKER_COOLDOWN: int = 60
     CIRCUIT_BREAKER_ENABLED: bool = False
+    SYMBOL_LOSS_STREAK_BREAKER_ENABLED: bool = False
     CIRCUIT_BREAKER_SYMBOL_HALT_MIN: int = 30
     CIRCUIT_BREAKER_SYMBOL_LOSSES: int = 3
     CLENOW_GATE_ENABLED: bool = False
@@ -6275,6 +6276,10 @@ class TradierConfig:
     EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED: bool = (
         False  # when True, REDUCE/CLOSE requires lower-high (closed 15m) OR lower-low (forming candle)
     )
+    EXIT_BLOCKER_LH_LL_15M_ENABLED: bool = False
+    EXIT_BLOCKER_LH_LL_1H_ENABLED: bool = False
+    EXIT_BLOCKER_LH_LL_4H_ENABLED: bool = False
+    EXIT_BLOCKER_LH_LL_D_ENABLED: bool = False
     EXIT_BLOCKER_LH_TF: str = (
         "15m"  # TF for closed-bar LH check (wt_peak_structure_15m == LH)
     )

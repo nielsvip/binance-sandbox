@@ -50936,19 +50936,17 @@ class TradierTradeManager:
                                     )
 
             # === EXIT BLOCKER — 2026-09-15 USER: block any REDUCE/CLOSE not accompanied by LH (closed 15m) OR LL (forming candle) ===
-            if (
-                bool(
-                    _cfg(
-                        "EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED",
-                        False,
-                        account_key,
-                        symbol,
-                        position_side,
-                    )
-                )
-                and _is_exit_or_reduce
-                and not is_hedge
-            ):
+            import vec_decisions.exit_lh_ll as _ell
+
+            _ell_flags = {
+                "15m": bool(_cfg("EXIT_BLOCKER_LH_LL_15M_ENABLED", False, account_key, symbol, position_side)),
+                "1h": bool(_cfg("EXIT_BLOCKER_LH_LL_1H_ENABLED", False, account_key, symbol, position_side)),
+                "4h": bool(_cfg("EXIT_BLOCKER_LH_LL_4H_ENABLED", False, account_key, symbol, position_side)),
+                "D": bool(_cfg("EXIT_BLOCKER_LH_LL_D_ENABLED", False, account_key, symbol, position_side)),
+            }
+            _ell_legacy = bool(_cfg("EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED", False, account_key, symbol, position_side))
+            _ell_tfs = _ell.enabled_timeframes(_ell_flags, _ell_legacy)
+            if _ell_tfs and _is_exit_or_reduce and not is_hedge:
                 try:
                     _blk_ind = None
                     try:
@@ -50960,38 +50958,13 @@ class TradierTradeManager:
                     except Exception:
                         _blk_ind = None
                     if _blk_ind:
-                        _blk_pk_s = str(_blk_ind.get("wt_peak_structure_15m", ""))
-                        _blk_tr_s = str(_blk_ind.get("wt_trough_structure_15m", ""))
-                        _blk_low = float(_blk_ind.get("low_15m", 0) or 0)
-                        _blk_low_prev = float(_blk_ind.get("low_15m_prev", 0) or 0)
-                        _blk_high = float(_blk_ind.get("high_15m", 0) or 0)
-                        _blk_high_prev = float(_blk_ind.get("high_15m_prev", 0) or 0)
-                        _blk_closed_lh = _blk_pk_s == "LH" or _blk_pk_s == "-1"
-                        _blk_closed_hl = (
-                            _blk_pk_s == "LH" or _blk_tr_s == "HL"
-                        )  # parity: also check LH for shorts
-                        _blk_forming_ll = (
-                            _blk_low > 0
-                            and _blk_low_prev > 0
-                            and _blk_low < _blk_low_prev
-                        ) or (
-                            _blk_high > 0
-                            and _blk_high_prev > 0
-                            and _blk_high < _blk_high_prev
-                        )
-                        # For LONG: need LH closed OR LL forming; for SHORT: need HL? mirror to same check per user spec (LH OR LL)
-                        _blk_pass = (
-                            _blk_closed_lh or _blk_forming_ll
-                            if is_long
-                            else (_blk_closed_hl or _blk_forming_ll)
-                        )
-                        # Strict per user spec: either LH in latest closed 15m bar OR LL in currently forming candle (vv shorts)
+                        _blk_pass = _ell.live_pass(_blk_ind, _ell_tfs, is_long)
                         if not _blk_pass and not _vx_ex:
                             if _tr_parity_vec_order(reason):
                                 _tr_bypass("EXIT_LH_LL")
                             else:
                                 logger.warning(
-                                    f"[EXIT_BLOCKER_LH_LL] {position_key}: BLOCKED action={action} reason={(reason or '')[:60]} — no LH closed (pk={_blk_pk_s}) nor LL forming (low={_blk_low:.4f} prev={_blk_low_prev:.4f})"
+                                    f"[EXIT_BLOCKER_LH_LL] {position_key}: BLOCKED action={action} tfs={','.join(_ell_tfs)} reason={(reason or '')[:60]}"
                                 )
                                 if lock_acquired and self.redis_manager:
                                     await self.redis_manager.delete(exec_lock_key)

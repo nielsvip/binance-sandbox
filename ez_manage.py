@@ -35132,30 +35132,31 @@ class MultiAccountTradeManager:
         # ═══════════════════════════════════════════════════════════════════════════
         # 🚫 EXIT BLOCKER LH/LL — 2026-09-15 USER: block REDUCE/CLOSE unless LH (closed 15m) OR LL (forming) ===
         try:
+            import vec_decisions.exit_lh_ll as _ell
+
+            _blk_sym = symbol or (position_key.split(":")[-1].rsplit("_", 1)[0] if position_key else "")
+            _blk_flags = {
+                "15m": bool(_psym_get(_blk_sym, position_side or "LONG", "EXIT_BLOCKER_LH_LL_15M_ENABLED", getattr(config, "EXIT_BLOCKER_LH_LL_15M_ENABLED", False))),
+                "1h": bool(_psym_get(_blk_sym, position_side or "LONG", "EXIT_BLOCKER_LH_LL_1H_ENABLED", getattr(config, "EXIT_BLOCKER_LH_LL_1H_ENABLED", False))),
+                "4h": bool(_psym_get(_blk_sym, position_side or "LONG", "EXIT_BLOCKER_LH_LL_4H_ENABLED", getattr(config, "EXIT_BLOCKER_LH_LL_4H_ENABLED", False))),
+                "D": bool(_psym_get(_blk_sym, position_side or "LONG", "EXIT_BLOCKER_LH_LL_D_ENABLED", getattr(config, "EXIT_BLOCKER_LH_LL_D_ENABLED", False))),
+            }
+            _blk_legacy = bool(_psym_get(_blk_sym, position_side or "LONG", "EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED", getattr(config, "EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED", False)))
+            _blk_tfs = _ell.enabled_timeframes(_blk_flags, _blk_legacy)
             _vd_lhll_vec = bool(_parity_vec_order(reason)) and ("REDUCE" in _kill_act or "CLOSE" in _kill_act)
             # Vec exits skip this predicate below, so do not claim the native
             # LH/LL gate was bypassed when it was never evaluated.
-            if (bool(getattr(config, "EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED", False))
+            if (_blk_tfs
                 and not _vd_exempt  # lane A 2026-10-06 (CHRUSDT_LONG 173x BLOCKED_EXIT_LH_LL_REQUIRED): a vec-decided exit is never re-gated
                 and not _vd_lhll_vec  # USER 2026-10-24: vec-decided exits skip re-gating
                 and ("REDUCE" in _kill_act or "CLOSE" in _kill_act)
                 and "HEDGE" not in (reason or "").upper()):
-                _blk_sym = symbol or (position_key.split(":")[-1].rsplit("_", 1)[0] if position_key else "")
                 if _blk_sym:
                     _blk_ind = await ii(self, _blk_sym) or {}
-                    _blk_pk_s = str(_blk_ind.get('wt_peak_structure_15m', ''))
-                    _blk_tr_s = str(_blk_ind.get('wt_trough_structure_15m', ''))
-                    _blk_low = safe_fetch_float(_blk_ind.get('low_15m', 0), 0.0)
-                    _blk_low_prev = safe_fetch_float(_blk_ind.get('low_15m_prev', 0), 0.0)
-                    _blk_high = safe_fetch_float(_blk_ind.get('high_15m', 0), 0.0)
-                    _blk_high_prev = safe_fetch_float(_blk_ind.get('high_15m_prev', 0), 0.0)
                     _blk_is_long = (position_side or "LONG") == "LONG"
-                    _blk_closed_lh = (_blk_pk_s == 'LH' or _blk_pk_s == '-1')
-                    _blk_closed_hl = (_blk_pk_s == 'LH' or _blk_tr_s == 'HL')
-                    _blk_forming_ll = (_blk_low > 0 and _blk_low_prev > 0 and _blk_low < _blk_low_prev) or (_blk_high > 0 and _blk_high_prev > 0 and _blk_high < _blk_high_prev)
-                    _blk_pass = (_blk_closed_lh or _blk_forming_ll) if _blk_is_long else (_blk_closed_hl or _blk_forming_ll)
+                    _blk_pass = _ell.live_pass(_blk_ind, _blk_tfs, _blk_is_long)
                     if not _blk_pass:
-                        logger.warning(f"[EXIT_BLOCKER_LH_LL] {position_key}: BLOCKED action={action} reason={(reason or '')[:60]} — no LH closed (pk={_blk_pk_s}) nor LL forming (low={_blk_low:.4f} prev={_blk_low_prev:.4f})")
+                        logger.warning(f"[EXIT_BLOCKER_LH_LL] {position_key}: BLOCKED action={action} tfs={','.join(_blk_tfs)} reason={(reason or '')[:60]}")
                         try:
                             from live_filter_per_sym_retest import maybe_queue_filter_retest as _lfq
                             _lfq(symbol or (position_key.split(':')[-1].rsplit('_',1)[0] if position_key else ''), position_side, "BLOCKED_EXIT_LH_LL_REQUIRED", account_key or (position_key.split(':',1)[0] if position_key and ':' in position_key else ''))

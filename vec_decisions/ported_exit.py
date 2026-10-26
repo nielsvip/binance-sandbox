@@ -136,20 +136,19 @@ def apply(npz, n, is_long, cfg, sig, _safe, close):
     #   pass (SHORT) = (wt_peak_structure_15m == -1 OR wt_trough_structure_15m == +1)  OR  forming LL
     # Blocked exits are removed: exit_sig &= pass.
     try:
-        if bool(getattr(cfg, 'EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED', False)):
-            _pk = _safe(npz, 'wt_peak_structure_15m', n, 0.0)
-            _tr = _safe(npz, 'wt_trough_structure_15m', n, 0.0)
-            _lo = _safe(npz, 'low_15m', n, 0.0)
-            _lop = _safe(npz, 'low_15m_prev', n, 0.0)
-            _hi = _safe(npz, 'high_15m', n, 0.0)
-            _hip = _safe(npz, 'high_15m_prev', n, 0.0)
-            _forming_ll = (((_lo > 0) & (_lop > 0) & (_lo < _lop))
-                           | ((_hi > 0) & (_hip > 0) & (_hi < _hip)))
-            if is_long:
-                _pass = (_pk == -1) | _forming_ll
-            else:
-                _pass = ((_pk == -1) | (_tr == 1)) | _forming_ll
-            sig = sig & _pass
+        import vec_decisions.exit_lh_ll as _ell
+
+        _ell_tfs = _ell.enabled_timeframes(
+            {
+                "15m": bool(getattr(cfg, "EXIT_BLOCKER_LH_LL_15M_ENABLED", False)),
+                "1h": bool(getattr(cfg, "EXIT_BLOCKER_LH_LL_1H_ENABLED", False)),
+                "4h": bool(getattr(cfg, "EXIT_BLOCKER_LH_LL_4H_ENABLED", False)),
+                "D": bool(getattr(cfg, "EXIT_BLOCKER_LH_LL_D_ENABLED", False)),
+            },
+            bool(getattr(cfg, 'EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED', False)),
+        )
+        if _ell_tfs:
+            sig = sig & ~_ell.blocked_mask(npz, n, _ell_tfs, is_long, _safe)
     except Exception:
         pass
 

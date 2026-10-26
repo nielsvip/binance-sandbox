@@ -1108,6 +1108,7 @@ class Config:
     CIRCUIT_BREAKER_ENABLED: bool = (
         False  # TIER_C: Sharpe +0.1. Prevents regime-mismatch bleed.
     )
+    SYMBOL_LOSS_STREAK_BREAKER_ENABLED: bool = False
     CIRCUIT_BREAKER_SYMBOL_LOSSES: int = 3  # N consec losses/symbol → halt
     CIRCUIT_BREAKER_SYMBOL_HALT_MIN: int = 30  # halt duration (min)
     CIRCUIT_BREAKER_ACCOUNT_LOSSES: int = 5  # N consec losses/account → halt
@@ -10309,6 +10310,10 @@ class Config:
     )
     # === EXIT BLOCKER parity (tradier mirror) — 2026-09-15 ===
     EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED: bool = False
+    EXIT_BLOCKER_LH_LL_15M_ENABLED: bool = False
+    EXIT_BLOCKER_LH_LL_1H_ENABLED: bool = False
+    EXIT_BLOCKER_LH_LL_4H_ENABLED: bool = False
+    EXIT_BLOCKER_LH_LL_D_ENABLED: bool = False
     EXIT_BLOCKER_LH_TF: str = "15m"
     EXIT_BLOCKER_LL_TF: str = "15m"
     WT_FORCE_OPEN_FRESH_CROSS_ONLY: bool = (
