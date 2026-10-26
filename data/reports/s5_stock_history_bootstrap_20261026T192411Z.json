@@ -1,0 +1,317 @@
+{
+  "completed_at": 1793042651.635093,
+  "action": "rsync --ignore-existing; only missing full15m histories",
+  "universe": 119,
+  "before_main_missing": [
+    "FCX",
+    "LRCX",
+    "MOS",
+    "ORCL",
+    "PWR",
+    "QBTS",
+    "RIO",
+    "SMCI",
+    "T",
+    "UEC",
+    "VALE",
+    "VICR",
+    "VZ"
+  ],
+  "validated_mac_sources": [
+    {
+      "symbol": "FCX",
+      "path": "klines_cache/tradier/FCX_15m.json",
+      "checked_at": 1793042615.31332,
+      "status": "VALID",
+      "rows": 1210,
+      "native_rows": 1207,
+      "first_ts": 1787232600,
+      "last_ts": 1793042100,
+      "last_closed_ts": 1793041200,
+      "bytes": 208454,
+      "sha256": "b6a73782c00c9931be44d50cc7ae92a6dfc7c5761ce93f090885f847d970e8d4"
+    },
+    {
+      "symbol": "LRCX",
+      "path": "klines_cache/tradier/LRCX_15m.json",
+      "checked_at": 1793042615.315618,
+      "status": "VALID",
+      "rows": 1228,
+      "native_rows": 1228,
+      "first_ts": 1787596200,
+      "last_ts": 1793042100,
+      "last_closed_ts": 1793041200,
+      "bytes": 238323,
+      "sha256": "15199161d775aa30c0073cc0c60a51446f2b0e92b5ee3c5fa93a00712e38bab0"
+    },
+    {
+      "symbol": "MOS",
+      "path": "klines_cache/tradier/MOS_15m.json",
+      "checked_at": 1793042615.318538,
+      "status": "VALID",
+      "rows": 2021,
+      "native_rows": 2021,
+      "first_ts": 1783945800,
+      "last_ts": 1793042100,
+      "last_closed_ts": 1793041200,
+      "bytes": 230107,
+      "sha256": "e2f9e2fb0aa691b6c237ace31cac17b203daf56e7bb9f3a66391a264b76d3b32"
+    },
+    {
+      "symbol": "ORCL",
+      "path": "klines_cache/tradier/ORCL_15m.json",
+      "checked_at": 1793042615.3227232,
+      "status": "VALID",
+      "rows": 2270,
+      "native_rows": 2270,
+      "first_ts": 1783945800,
+      "last_ts": 1793042100,
+      "last_closed_ts": 1793041200,
+      "bytes": 266579,
+      "sha256": "fa132c5c4c8e56bca08336e78645834ffcfd906b4273246e7f35e82d5af856a8"
+    },
+    {
+      "symbol": "PWR",
+      "path": "klines_cache/tradier/PWR_15m.json",
+      "checked_at": 1793042615.327693,
+      "status": "VALID",
+      "rows": 1429,
+      "native_rows": 1429,
+      "first_ts": 1785501900,
+      "last_ts": 1793042100,
+      "last_closed_ts": 1793041200,
+      "bytes": 169085,
+      "sha256": "18a5b00b1fbded29585edd5ae6e53dc491c30eaafff7f65c11a449c8e46a3dd3"
+    },
+    {
+      "symbol": "QBTS",
+      "path": "klines_cache/tradier/QBTS_15m.json",
+      "checked_at": 1793042615.330674,
+      "status": "VALID",
+      "rows": 2262,
+      "native_rows": 2262,
+      "first_ts": 1783945800,
+      "last_ts": 1793042100,
+      "last_closed_ts": 1793041200,
+      "bytes": 258314,
+      "sha256": "3145a7c3f441d962cbb01aa0a17075fc8abd4ff9244b4500a293624a74a661d5"
+    },
+    {
+      "symbol": "RIO",
+      "path": "klines_cache/tradier/RIO_15m.json",
+      "checked_at": 1793042615.3342679,
+      "status": "VALID",
+      "rows": 1945,
+      "native_rows": 1945,
+      "first_ts": 1783945800,
+      "last_ts": 1793042100,
+      "last_closed_ts": 1793041200,
+      "bytes": 220433,
+      "sha256": "e9504e252eba00640472a1d571ca0a1778d0b48c864ddbdee5dc11fe533cb285"
+    },
+    {
+      "symbol": "SMCI",
+      "path": "klines_cache/tradier/SMCI_15m.json",
+      "checked_at": 1793042615.337961,
+      "status": "VALID",
+      "rows": 2049,
+      "native_rows": 2049,
+      "first_ts": 1783945800,
+      "last_ts": 1793042100,
+      "last_closed_ts": 1793041200,
+      "bytes": 233384,
+      "sha256": "8c6a6a6ac5499b058de5f07d6707275ed65c4c32a7f6c5650376c40b813476e7"
+    },
+    {
+      "symbol": "T",
+      "path": "klines_cache/tradier/T_15m.json",
+      "checked_at": 1793042615.341593,
+      "status": "VALID",
+      "rows": 2174,
+      "native_rows": 2174,
+      "first_ts": 1783945800,
+      "last_ts": 1793042100,
+      "last_closed_ts": 1793041200,
+      "bytes": 247383,
+      "sha256": "4e9ad2b5720c44c7a9411986761e380a69b32d168701508eacdc7cbdf6522356"
+    },
+    {
+      "symbol": "UEC",
+      "path": "klines_cache/tradier/UEC_15m.json",
+      "checked_at": 1793042615.345132,
+      "status": "VALID",
+      "rows": 2160,
+      "native_rows": 2160,
+      "first_ts": 1783945800,
+      "last_ts": 1793042100,
+      "last_closed_ts": 1793041200,
+      "bytes": 240693,
+      "sha256": "99e5b46b10d937e5b99cbdf6003a03d15733138d89dae532a1e4bb9b385b186c"
+    },
+    {
+      "symbol": "VALE",
+      "path": "klines_cache/tradier/VALE_15m.json",
+      "checked_at": 1793042615.3486001,
+      "status": "VALID",
+      "rows": 1961,
+      "native_rows": 1961,
+      "first_ts": 1783946700,
+      "last_ts": 1793042100,
+      "last_closed_ts": 1793041200,
+      "bytes": 223337,
+      "sha256": "78819972409aa2bdd8484e3da7a37a88c158551834bf94b99e8febe72bd7d016"
+    },
+    {
+      "symbol": "VICR",
+      "path": "klines_cache/tradier/VICR_15m.json",
+      "checked_at": 1793042615.3528981,
+      "status": "VALID",
+      "rows": 817,
+      "native_rows": 817,
+      "first_ts": 1788378300,
+      "last_ts": 1793042100,
+      "last_closed_ts": 1793041200,
+      "bytes": 95780,
+      "sha256": "6d306db92cecdb51996d1d0aee9fd99676fa3d879935e1f9e8339984a6b7b049"
+    },
+    {
+      "symbol": "VZ",
+      "path": "klines_cache/tradier/VZ_15m.json",
+      "checked_at": 1793042615.354516,
+      "status": "VALID",
+      "rows": 1960,
+      "native_rows": 1959,
+      "first_ts": 1783945800,
+      "last_ts": 1793042100,
+      "last_closed_ts": 1793041200,
+      "bytes": 223490,
+      "sha256": "b3ea8f3eb79dd434d5f08fb3bf3c5ae0924c6fde6760019c960e19931510945d"
+    }
+  ],
+  "after": {
+    "universe": 119,
+    "main_present": 119,
+    "main_missing": [],
+    "files": [
+      {
+        "symbol": "FCX",
+        "bytes": 208454,
+        "rows": 1210,
+        "first": "2026-08-20T13:30:00.000000Z",
+        "last": "2026-10-26T19:15:00.000000Z",
+        "sha256": "b6a73782c00c9931be44d50cc7ae92a6dfc7c5761ce93f090885f847d970e8d4"
+      },
+      {
+        "symbol": "LRCX",
+        "bytes": 238323,
+        "rows": 1228,
+        "first": "2026-08-24T18:30:00.000000Z",
+        "last": "2026-10-26T19:15:00.000000Z",
+        "sha256": "15199161d775aa30c0073cc0c60a51446f2b0e92b5ee3c5fa93a00712e38bab0"
+      },
+      {
+        "symbol": "MOS",
+        "bytes": 230107,
+        "rows": 2021,
+        "first": "2026-07-13T12:30:00.000000Z",
+        "last": "2026-10-26T19:15:00.000000Z",
+        "sha256": "e2f9e2fb0aa691b6c237ace31cac17b203daf56e7bb9f3a66391a264b76d3b32"
+      },
+      {
+        "symbol": "ORCL",
+        "bytes": 266579,
+        "rows": 2270,
+        "first": "2026-07-13T12:30:00.000000Z",
+        "last": "2026-10-26T19:15:00.000000Z",
+        "sha256": "fa132c5c4c8e56bca08336e78645834ffcfd906b4273246e7f35e82d5af856a8"
+      },
+      {
+        "symbol": "PWR",
+        "bytes": 169085,
+        "rows": 1429,
+        "first": "2026-07-31T12:45:00.000000Z",
+        "last": "2026-10-26T19:15:00.000000Z",
+        "sha256": "18a5b00b1fbded29585edd5ae6e53dc491c30eaafff7f65c11a449c8e46a3dd3"
+      },
+      {
+        "symbol": "QBTS",
+        "bytes": 258314,
+        "rows": 2262,
+        "first": "2026-07-13T12:30:00.000000Z",
+        "last": "2026-10-26T19:15:00.000000Z",
+        "sha256": "3145a7c3f441d962cbb01aa0a17075fc8abd4ff9244b4500a293624a74a661d5"
+      },
+      {
+        "symbol": "RIO",
+        "bytes": 220433,
+        "rows": 1945,
+        "first": "2026-07-13T12:30:00.000000Z",
+        "last": "2026-10-26T19:15:00.000000Z",
+        "sha256": "e9504e252eba00640472a1d571ca0a1778d0b48c864ddbdee5dc11fe533cb285"
+      },
+      {
+        "symbol": "SMCI",
+        "bytes": 233384,
+        "rows": 2049,
+        "first": "2026-07-13T12:30:00.000000Z",
+        "last": "2026-10-26T19:15:00.000000Z",
+        "sha256": "8c6a6a6ac5499b058de5f07d6707275ed65c4c32a7f6c5650376c40b813476e7"
+      },
+      {
+        "symbol": "T",
+        "bytes": 247383,
+        "rows": 2174,
+        "first": "2026-07-13T12:30:00.000000Z",
+        "last": "2026-10-26T19:15:00.000000Z",
+        "sha256": "4e9ad2b5720c44c7a9411986761e380a69b32d168701508eacdc7cbdf6522356"
+      },
+      {
+        "symbol": "UEC",
+        "bytes": 240693,
+        "rows": 2160,
+        "first": "2026-07-13T12:30:00.000000Z",
+        "last": "2026-10-26T19:15:00.000000Z",
+        "sha256": "99e5b46b10d937e5b99cbdf6003a03d15733138d89dae532a1e4bb9b385b186c"
+      },
+      {
+        "symbol": "VALE",
+        "bytes": 223337,
+        "rows": 1961,
+        "first": "2026-07-13T12:45:00.000000Z",
+        "last": "2026-10-26T19:15:00.000000Z",
+        "sha256": "78819972409aa2bdd8484e3da7a37a88c158551834bf94b99e8febe72bd7d016"
+      },
+      {
+        "symbol": "VICR",
+        "bytes": 95780,
+        "rows": 817,
+        "first": "2026-09-02T19:45:00.000000Z",
+        "last": "2026-10-26T19:15:00.000000Z",
+        "sha256": "6d306db92cecdb51996d1d0aee9fd99676fa3d879935e1f9e8339984a6b7b049"
+      },
+      {
+        "symbol": "VZ",
+        "bytes": 223490,
+        "rows": 1960,
+        "first": "2026-07-13T12:30:00.000000Z",
+        "last": "2026-10-26T19:15:00.000000Z",
+        "sha256": "b3ea8f3eb79dd434d5f08fb3bf3c5ae0924c6fde6760019c960e19931510945d"
+      }
+    ]
+  },
+  "hash_matches": [
+    "FCX",
+    "LRCX",
+    "MOS",
+    "ORCL",
+    "PWR",
+    "QBTS",
+    "RIO",
+    "SMCI",
+    "T",
+    "UEC",
+    "VALE",
+    "VICR",
+    "VZ"
+  ]
+}

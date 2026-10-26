@@ -1,5 +1,5 @@
 {
- "at": "2026-10-26T18:26:02Z",
+ "at": "2026-10-26T19:26:05Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
@@ -18,45 +18,22 @@
     "throughput 0.0/h < 12.0/h (one per 5 min)"
    ],
    "rows": [],
-   "error": null
+   "error": "no output"
   },
   "s2": {
-   "published_n": 2,
-   "per_hour": 1.0,
+   "published_n": 1,
+   "per_hour": 0.5,
    "improved_vs_best_start": 1,
-   "mean_uplift_vs_best_start": 1.4483,
+   "mean_uplift_vs_best_start": 4.8433,
    "median_uplift": 4.8433,
    "chained_from_previous_published": 1,
    "no_floor_recorded": 0,
-   "backslides": [
-    {
-     "symside": "MAGICUSDT_LONG",
-     "final": 196.0988304361597,
-     "best_start": 198.0456073820076,
-     "lost": -1.9468
-    }
-   ],
+   "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 1.0/h < 12.0/h (one per 5 min)",
-    "1 board(s) published BELOW their best_start \u2014 the best-start law is broken"
+    "throughput 0.5/h < 12.0/h (one per 5 min)"
    ],
    "rows": [
-    {
-     "symside": "MAGICUSDT_LONG",
-     "published_at": 1793034556.025139,
-     "final_gain": 196.0988304361597,
-     "best_start_gain": 198.0456073820076,
-     "best_start_chosen": "incumbent",
-     "best_start_candidates": 6,
-     "baseline_gain": 151.12186607416825,
-     "npz_ts_last": 1793030400.0,
-     "npz_md5": "86103dc2e5f66271c004a343135f9eb1",
-     "npz_bars": 131573,
-     "bh": 59.21786847522531,
-     "verdict": null,
-     "npz_age_h_at_publish": 1.15
-    },
     {
      "symside": "RSRUSDT_LONG",
      "published_at": 1793036904.2410605,

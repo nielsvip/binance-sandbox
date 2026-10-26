@@ -49426,8 +49426,30 @@ class TradierTradeManager:
         _t0 = time.time()
         _timeout = float(getattr(config, "TRADIER_ENTRY_STOP_REQUIRE_TIMEOUT_S", 25.0) or 25.0)
         _pos = self.get_position(position_key)  # USER 2026-10-22 await-fix: get_position is sync (def,
+        # A broker fill can precede the Redis reader by one or two sync cycles. Wait for the
+        # held position so the mandatory exchange stop can be placed in this entry call.
+        for _wait_s in range(10):
+            if _pos is not None:
+                break
+            try:
+                _pm = getattr(self, "position_manager", None)
+                _pos = _pm.get_position(position_key) if _pm is not None else None
+            except Exception:
+                _pos = None
+            if _pos is not None:
+                break
+            if _wait_s == 0:
+                try:
+                    await self.reader.sync([account_key])
+                except Exception:
+                    pass
+                _pos = self.get_position(position_key)
+                if _pos is not None:
+                    break
+            await asyncio.sleep(1)
+            _pos = self.get_position(position_key)
         if _pos is None:  # not async) — awaiting its TradierPosition ERRORED every post-fill stop check.
-            logger.warning(f"🛡️ [ENTRY_STOP_REQUIRED] {position_key}: {result} but position unreadable — the 10s reconcile will pick it up")
+            logger.critical(f"🛡️ [ENTRY_STOP_REQUIRED] {position_key}: {result} but position unreadable after 10s — broker stop still required")
             self._mark_entry_unprotected_tradier(position_key, account_key, symbol, position_side, "position_unreadable")
             return "SKIPPED_NO_POSITION"
         try:
@@ -49468,6 +49490,24 @@ class TradierTradeManager:
         # VERIFY AT THE BROKER, never on the return string. None = listing failed = UNVERIFIED, which is not "fine":
         # it is exactly the state that let 14 unprotected positions look healthy, so it is recorded like a failure.
         _stops = await self._fixed_stop_broker_stops(account_key, symbol, position_side)
+        for _attempt in range(3):
+            if _stops:
+                break
+            _remaining = _timeout - (time.time() - _t0)
+            if _remaining <= 2:
+                break
+            await asyncio.sleep(min(2, _remaining))
+            _stops = await self._fixed_stop_broker_stops(account_key, symbol, position_side)
+            if _stops or _stops is None:
+                continue
+            try:
+                _remaining = _timeout - (time.time() - _t0)
+                if _remaining <= 1:
+                    break
+                _r = await asyncio.wait_for(self.ensure_fixed_stop_backstop_tradier(account_key=account_key, symbol=symbol, position_key=position_key, position_side=position_side, position=_pos, soft_level=_soft, current_price=_cp, dc_low_15m=safe_fetch_float(_ind.get("dc_low_15m", 0) or 0, 0.0), dc_high_15m=safe_fetch_float(_ind.get("dc_high_15m", 0) or 0, 0.0)), timeout=min(10.0, _remaining))
+                _stops = await self._fixed_stop_broker_stops(account_key, symbol, position_side)
+            except asyncio.TimeoutError:
+                logger.critical(f"🛡️ [ENTRY_STOP_REQUIRED] {position_key}: retry {_attempt + 1} timed out; stop still unverified")
         if _stops is None:
             logger.critical(f"🛡️ [ENTRY_STOP_REQUIRED] {position_key}: {result} filled but the stop listing is UNVERIFIED (ensure -> {_r}) — cannot prove protection")
             self._mark_entry_unprotected_tradier(position_key, account_key, symbol, position_side, f"unverified_listing:{_r}")

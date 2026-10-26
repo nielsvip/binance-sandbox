@@ -22,7 +22,7 @@ Nothing is killed here; `--kill-out-of-universe [--apply-kill]` lists/kills pilo
 
   --once  --dry-run  --simulate F (host-stats JSON; implies dry-run)  --now ISO  --hosts FILE  --extend-universe
 """
-import argparse, datetime, fcntl, json, os, pathlib, re, shlex, subprocess, sys, time
+import argparse, datetime, fcntl, hashlib, json, os, pathlib, re, shlex, subprocess, sys, time
 from zoneinfo import ZoneInfo
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -2994,7 +2994,11 @@ def side_cmd(host, sym, side, window, pdir, attempt, workers):
         # New stock boards retain the proven V19 calculation while the V20
         # swing-entry row is repaired. Crypto uses V20 only after its same-NPZ
         # proof and engine fleet sync are explicitly activated for this launcher.
-        _crypto_v20_ready = venue == "crypto" and (os.environ.get("V15_CRYPTO_V20_READY") == "1" or (ROOT / "v20_runtime" / "CRYPTO_V20_READY").exists())
+        _v20_root = ROOT / "v20_runtime"
+        _v20_marker = _v20_root / "CRYPTO_V20_READY"
+        _v20_engine = _v20_root / "v12_quick_engine.py"
+        _v20_marked = _v20_marker.is_file() and _v20_engine.is_file() and _v20_marker.read_text().strip() == hashlib.md5(_v20_engine.read_bytes()).hexdigest()
+        _crypto_v20_ready = venue == "crypto" and (os.environ.get("V15_CRYPTO_V20_READY") == "1" or _v20_marked)
         if _crypto_v20_ready:
             env += " V15_V19_INTERIM=0 V15_UNWIRED_SKIP=1 V15_START_OVERRIDES="
         else:

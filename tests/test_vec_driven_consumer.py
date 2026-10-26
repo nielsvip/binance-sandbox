@@ -205,10 +205,15 @@ def test_native_emergency_exit_allowed(monkeypatch):
     monkeypatch.setattr(EZ, "_broker_sync_freshest_ts", _stop)
     # A rolling vector-convergence close is authoritative even when the live position is below breakeven.
     # It still traverses the ordinary execute_now path; the broker-sync sentinel proves it passed the net-gain gate.
-    with pytest.raises(_Stop):
-        _run_exec(action="CLOSE", reason="VEC_DRIVEN_CLOSE_RECONCILE_", is_full_close=True, _position_gain=-0.25)
-    with pytest.raises(_Stop):
-        _run_exec(action="CLOSE", reason="VEC_DRIVEN_CLOSE_RECONCILE_", is_full_close=True, _position_gain=0.25)
+    from live_twins import vec_provenance
+    token = vec_provenance.mark("men:T5USDT_LONG", time.time() - 900, "CLOSE", "VEC_DRIVEN_STATE")
+    try:
+        with pytest.raises(_Stop):
+            _run_exec(action="CLOSE", reason="VEC_DRIVEN_CLOSE_RECONCILE_", is_full_close=True, _position_gain=-0.25)
+        with pytest.raises(_Stop):
+            _run_exec(action="CLOSE", reason="VEC_DRIVEN_CLOSE_RECONCILE_", is_full_close=True, _position_gain=0.25)
+    finally:
+        vec_provenance.reset(token)
     # USER 2026-10-24 VEC-LAST: the OPEN now traverses native gates (incl. broker sync)
     # before the late VEC suppress, so the probe is scoped to the CLOSE it instruments.
     monkeypatch.setattr(EZ, "_broker_sync_freshest_ts", _orig_bsts)
