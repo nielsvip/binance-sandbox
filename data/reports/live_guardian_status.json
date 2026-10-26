@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-26T15:13:17Z",
+ "ts": "2026-10-26T15:18:43Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -35,13 +35,13 @@
   "trc": {
    "fills_6h": 3,
    "open_positions": 3,
-   "unrealised_usd": 11.8,
+   "unrealised_usd": 13.87,
    "pos_mismatch": 0
   },
   "fin": {
-   "fills_6h": 283,
+   "fills_6h": 279,
    "open_positions": 8,
-   "unrealised_usd": 1.01,
+   "unrealised_usd": 1.17,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -57,7 +57,7 @@
   "men": {
    "fills_6h": 183,
    "open_positions": 12,
-   "unrealised_usd": 0.71,
+   "unrealised_usd": 1.21,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -71,9 +71,9 @@
    }
   },
   "ang": {
-   "fills_6h": 473,
+   "fills_6h": 472,
    "open_positions": 14,
-   "unrealised_usd": 1.31,
+   "unrealised_usd": 1.57,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -104,8 +104,8 @@
   },
   "flz": {
    "fills_6h": 37,
-   "open_positions": 6,
-   "unrealised_usd": -0.17,
+   "open_positions": 5,
+   "unrealised_usd": -0.25,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -137,15 +137,15 @@
    "pids": [
     "69538"
    ],
-   "starts_30m": 1,
-   "log_age_s": 17.0
+   "starts_30m": 0,
+   "log_age_s": -1.0
   },
   "men": {
    "pids": [
     "11529"
    ],
-   "starts_30m": 2,
-   "log_age_s": 318.0
+   "starts_30m": 1,
+   "log_age_s": 639.0
   },
   "ang": {
    "pids": [
@@ -158,15 +158,15 @@
    "pids": [
     "69983"
    ],
-   "starts_30m": 1,
-   "log_age_s": -0.0
+   "starts_30m": 0,
+   "log_age_s": 8.0
   },
   "flz": {
    "pids": [
     "69233"
    ],
-   "starts_30m": 1,
-   "log_age_s": -1.0
+   "starts_30m": 0,
+   "log_age_s": 9.0
   },
   "trb": {
    "pids": [
@@ -174,58 +174,58 @@
     "95849"
    ],
    "starts_30m": 2,
-   "log_age_s": 489.0
+   "log_age_s": 810.0
   },
   "trc": {
    "pids": [
     "33820"
    ],
    "starts_30m": 1,
-   "log_age_s": 42.0
+   "log_age_s": 28.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-26T15:13:17Z",
+   "ts": "2026-10-26T15:18:43Z",
    "severity": "CRITICAL",
    "kind": "ACCOUNT_EQUITY_DROP",
    "key": "trc",
-   "evidence": "unrealised PnL of the same open positions fell $54.98 since 2026-10-26T14:13:42Z (now $+11.80)"
+   "evidence": "unrealised PnL of the same open positions fell $52.91 since 2026-10-26T14:18:53Z (now $+13.87)"
   },
   {
-   "ts": "2026-10-26T15:13:26Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "flz:ZECUSDC_LONG",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 0.09619->0.288571 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 0.09619)"
-  },
-  {
-   "ts": "2026-10-26T15:13:26Z",
+   "ts": "2026-10-26T15:18:48Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "flz:ZECUSDC_LONG",
    "evidence": "BREAKOUT_SIZE_LADDER resized qty 0.09616->0.288479 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 0.09616)"
   },
   {
-   "ts": "2026-10-26T15:13:26Z",
+   "ts": "2026-10-26T15:18:48Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "flz:ZECUSDC_LONG",
    "evidence": "BREAKOUT_SIZE_LADDER resized qty 0.095503->0.286508 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 0.095503)"
   },
   {
-   "ts": "2026-10-26T15:13:28Z",
+   "ts": "2026-10-26T15:18:48Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "flz:ZECUSDC_LONG",
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 0.095727->0.28718 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 0.095727)"
+  },
+  {
+   "ts": "2026-10-26T15:18:51Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "men",
-   "evidence": "ez_manage_men.log not written for 318s"
+   "evidence": "ez_manage_men.log not written for 639s"
   },
   {
-   "ts": "2026-10-26T15:13:28Z",
+   "ts": "2026-10-26T15:18:51Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "trb",
-   "evidence": "tradier_manage_trb.log not written for 489s"
+   "evidence": "tradier_manage_trb.log not written for 810s"
   }
  ],
  "alert_counts": {
@@ -347,5 +347,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 11.57
+ "sweep_s": 8.06
 }

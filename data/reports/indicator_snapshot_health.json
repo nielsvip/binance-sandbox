@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-26T15:12:52Z",
+ "generated_utc": "2026-10-26T15:18:20Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 155.0,
+  "age_s": 181.4,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": null,
   "proc_age_s": null,
-  "log_age_s": 5098.8,
+  "log_age_s": 5422.9,
   "warmup_done": true,
   "timeframes_since_restart": [
    "3m",
@@ -228,6 +228,7 @@
    "no ez_indicators process",
    "no ez_indicators process",
    "no ez_indicators process",
+   "no ez_indicators process",
    "no ez_indicators process"
   ],
   "policy": {
@@ -248,10 +249,10 @@
   "lease_venues": null,
   "lease_since": "2026-10-25T23:35:46Z",
   "lease_reason": "manual force-mac",
-  "now": 1793027487.9676785,
-  "from_cache_age_s": 84.8,
-  "heartbeat_age_s": 7081.0,
-  "active_s": 425305.8,
+  "now": 1793027809.7460272,
+  "from_cache_age_s": 91.2,
+  "heartbeat_age_s": 7402.8,
+  "active_s": 425627.5,
   "note": "ACTIVE is CORRECT while the Mac snapshot is stale \u2014 fix the Mac, S1 returns to NORMAL on its own"
  },
  "alerts": [],

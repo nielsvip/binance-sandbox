@@ -1,8 +1,8 @@
 {
- "at": "2026-10-26T15:00:27Z",
+ "at": "2026-10-26T15:15:16Z",
  "s1": {
   "host": "niels",
-  "now": 1793026824.0974646,
+  "now": 1793027706.5735307,
   "merge_crypto": {
    "n": 12,
    "max_lag_min": 150.0,
@@ -18,25 +18,25 @@
    "dead": []
   },
   "npz_legacy_crypto": [],
-  "append_log_age_min": 6.2,
+  "append_log_age_min": 1.0,
   "append_last_secs": 573.5,
   "append_last_stats": "'appended': 0, 'created': 0, 'up_to_date': 5990, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0, 'guard-blocked': 401",
   "npz_loop_pids": 0,
   "npz_loop_has_settle": false,
-  "sched_tick_age_min": 110.4,
+  "sched_tick_age_min": 125.1,
   "sched_launched": 2,
   "archive_n": 202,
   "archive_mb": 2461.8,
-  "archive_newest_min": 458.0,
+  "archive_newest_min": 472.7,
   "_via": "s1-int"
  },
  "red": [
   "L2 merge crypto: s1's long store is 150 min behind the freshest copy on the box (worst 1000000MOGUSDT) \u2014 klines_append is not merging",
   "L3 npz append loop is not running (the */15 watchdog should relaunch it)",
-  "L4 scheduler last ticked 110.4 min ago (cron */2)"
+  "L4 scheduler last ticked 125.1 min ago (cron */2)"
  ],
  "warn": [
-  "L5 newest archived board NPZ is 458 min old \u2014 publishes may not be recording"
+  "L5 newest archived board NPZ is 473 min old \u2014 publishes may not be recording"
  ],
  "ok": false
 }
