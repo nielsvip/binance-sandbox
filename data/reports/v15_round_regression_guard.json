@@ -1,85 +1,24 @@
 {
- "at": "2026-10-26T02:26:01Z",
+ "at": "2026-10-26T03:26:01Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
  "hosts": {
   "s1": {
-   "published_n": 4,
-   "per_hour": 2.0,
-   "improved_vs_best_start": 4,
-   "mean_uplift_vs_best_start": 31.1162,
-   "median_uplift": 50.9153,
-   "chained_from_previous_published": 4,
+   "published_n": 0,
+   "per_hour": 0.0,
+   "improved_vs_best_start": 0,
+   "mean_uplift_vs_best_start": null,
+   "median_uplift": null,
+   "chained_from_previous_published": 0,
    "no_floor_recorded": 0,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 2.0/h < 12.0/h (one per 5 min)"
+    "throughput 0.0/h < 12.0/h (one per 5 min)"
    ],
-   "rows": [
-    {
-     "symside": "ACTUSDT_SHORT",
-     "published_at": 1792977602.5038202,
-     "final_gain": 63.7588808563813,
-     "best_start_gain": 11.241139832146262,
-     "best_start_chosen": "history_0",
-     "best_start_candidates": 7,
-     "baseline_gain": 11.241139832146262,
-     "npz_ts_last": 1792972800.0,
-     "npz_md5": "81c7d7e5e7a979b71c44be279a7f4658",
-     "npz_bars": 68496,
-     "bh": 24.593382815775154,
-     "verdict": null,
-     "npz_age_h_at_publish": 1.33
-    },
-    {
-     "symside": "PTBUSDT_SHORT",
-     "published_at": 1792975803.9791865,
-     "final_gain": 153.92007364268918,
-     "best_start_gain": 137.9681793618126,
-     "best_start_chosen": "history_0",
-     "best_start_candidates": 9,
-     "baseline_gain": 137.9681793618126,
-     "npz_ts_last": 1792971000.0,
-     "npz_md5": "335228656b2f5396b6ab5206d87ce871",
-     "npz_bars": 40077,
-     "bh": 63.953856336171086,
-     "verdict": null,
-     "npz_age_h_at_publish": 1.33
-    },
-    {
-     "symside": "WLDUSDC_SHORT",
-     "published_at": 1792975246.5374894,
-     "final_gain": 111.78617139574594,
-     "best_start_gain": 106.70635746691528,
-     "best_start_chosen": "history_0",
-     "best_start_candidates": 9,
-     "baseline_gain": 106.70635746691528,
-     "npz_ts_last": 1792971000.0,
-     "npz_md5": "04a6059575b2556c670070ec525f226f",
-     "npz_bars": 43296,
-     "bh": 9.797233523656947,
-     "verdict": null,
-     "npz_age_h_at_publish": 1.18
-    },
-    {
-     "symside": "ZILUSDT_SHORT",
-     "published_at": 1792978998.564753,
-     "final_gain": 69.93176237953111,
-     "best_start_gain": 19.016488328798122,
-     "best_start_chosen": "history_1",
-     "best_start_candidates": 6,
-     "baseline_gain": 19.00784563307093,
-     "npz_ts_last": 1792972800.0,
-     "npz_md5": "161f2e265353a42d7245b1e4d13dd8b8",
-     "npz_bars": 57690,
-     "bh": 50.5609195625724,
-     "verdict": null,
-     "npz_age_h_at_publish": 1.72
-    }
-   ],
-   "error": null
+   "rows": [],
+   "error": "Connection timed out during banner exchange\nConnection to 127.0.0.1 port 2201 timed out\n"
   },
   "s2": {
    "published_n": 0,
