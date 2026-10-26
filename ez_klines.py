@@ -92,7 +92,7 @@ def _normalize_df(df):
     if df is None or df.empty: return pd.DataFrame(columns=expected_columns)
     for col in expected_columns:
         if col not in df: df[col]=pd.NA
-    df=df[expected_columns]
+    df=df[expected_columns + [column for column in df.columns if column.startswith('_')]]
     df['timestamp']=pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
     for col in expected_columns[1:]: df[col]=pd.to_numeric(df[col], errors='coerce')
     df=df.dropna(subset=['timestamp'])
@@ -110,7 +110,24 @@ def _read_existing_df(file_path):
         except Exception:
             return pd.DataFrame(columns=expected_columns)
     return pd.DataFrame(columns=expected_columns)
+def native_kline_row(kline, received_at=None):
+    received_at = time.time() if received_at is None else float(received_at)
+    closed = len(kline) > 6 and float(kline[6]) < received_at * 1000
+    row = {'timestamp': datetime.fromtimestamp(kline[0] / 1000, tz=timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ'), 'open': float(kline[1]), 'high': float(kline[2]), 'low': float(kline[3]), 'close': float(kline[4]), 'volume': float(kline[5]), '_provisional': not closed, '_closed': closed, '_source': 'binance_rest_kline'}
+    if closed:
+        row['_closed_verified_at'] = received_at
+    return row
+
 def merge_and_write(symbol, interval, rows):
+    import fcntl
+    from pathlib import Path
+    path = Path(cfg.KLINES_CACHE_DIR) / f'{symbol}_{interval}.json'
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.with_name(f'.{path.name}.mark.lock').open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        return _merge_and_write_locked(symbol, interval, rows)
+
+def _merge_and_write_locked(symbol, interval, rows):
     file_path=f'{cfg.KLINES_CACHE_DIR}/{symbol}_{interval}.json'
     new_df=_normalize_df(pd.DataFrame(rows))
     if new_df.empty: return 0
@@ -378,7 +395,7 @@ async def fetch_klines_api(symbol, interval, semaphore, session):
                         klines_data = []
                         for kline in data:
                             try:
-                                klines_data.append({'timestamp': datetime.fromtimestamp(kline[0] / 1000, tz=timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ'),'open': float(kline[1]),'high': float(kline[2]),'low': float(kline[3]),'close': float(kline[4]),'volume': float(kline[5])})
+                                klines_data.append(native_kline_row(kline))
                             except (ValueError, TypeError, IndexError):
                                 continue
 
@@ -398,7 +415,7 @@ async def fetch_klines_api(symbol, interval, semaphore, session):
                     klines_data = []
                     for kline in data:
                         try:
-                            klines_data.append({'timestamp': datetime.fromtimestamp(kline[0] / 1000, tz=timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ'),'open': float(kline[1]),'high': float(kline[2]),'low': float(kline[3]),'close': float(kline[4]),'volume': float(kline[5])})
+                            klines_data.append(native_kline_row(kline))
                         except (ValueError, TypeError, IndexError):
                             continue
 
@@ -781,7 +798,7 @@ async def fetch_historical_paginated(symbol, interval, session, semaphore):
             break
         rows = []
         for kline in data:
-            try: rows.append({'timestamp': datetime.fromtimestamp(kline[0] / 1000, tz=timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ'), 'open': float(kline[1]), 'high': float(kline[2]), 'low': float(kline[3]), 'close': float(kline[4]), 'volume': float(kline[5])})
+            try: rows.append(native_kline_row(kline))
             except Exception: continue
         if not rows: break
         added = merge_and_write(symbol, interval, rows)

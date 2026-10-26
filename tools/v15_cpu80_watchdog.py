@@ -88,12 +88,37 @@ def ensure_lane(host, pilot_sides):
     if pathlib.Path("/tmp/v15_preopen_7d.pause").exists():
         return
     lane = {
-        "s2": ("/tmp/npz_sides_s2.txt", "TEMPLATE_CRYPTO_LONG.xlsx"),
-        "s5": ("/tmp/npz_sides_s5.txt", "TEMPLATE_STOCKS_LONG.xlsx"),
-        "s6": ("/tmp/npz_sides_s6.txt", "TEMPLATE_STOCKS_SHORT.xlsx"),
+        "s2": ("/tmp/npz_sides_s2.txt", "TEMPLATE_CRYPTO_LONG.xlsx", "LONG", True),
+        "s5": ("/tmp/npz_sides_s5.txt", "TEMPLATE_STOCKS_LONG.xlsx", "LONG", False),
+        "s6": ("/tmp/npz_sides_s6.txt", "TEMPLATE_STOCKS_SHORT.xlsx", "SHORT", False),
     }.get(host)
     if lane and len(pilot_sides) < 4:
-        sides, template = lane
+        sides, template, side, is_crypto = lane
+        snapshot = pathlib.Path("/tmp/v15_best_first.json")
+        if host == "niels":
+            snapshot = ROOT / "data" / "v15_best_first.json"
+        elif not snapshot.exists() or time.time() - snapshot.stat().st_mtime > 60:
+            subprocess.run(["rsync", "-az", "--timeout=15", "niels@10.0.0.3:binance-sandbox/data/v15_best_first.json", str(snapshot)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=20, check=False)
+        try:
+            data = json.loads(snapshot.read_text())
+            if time.time() - float(data.get("generated_at") or 0) <= 600:
+                allowed = []
+                for sym_side in data.get("allowed") or []:
+                    if not str(sym_side).endswith("_" + side):
+                        continue
+                    symbol = str(sym_side).rsplit("_", 1)[0]
+                    if symbol.endswith(("USDT", "USDC")) != is_crypto:
+                        continue
+                    allowed.append(str(sym_side))
+                gains = data.get("gains") or {}
+                allowed.sort(key=lambda sym_side: (0, -float(gains[sym_side]), sym_side) if sym_side in gains else (1, 0.0, sym_side))
+                content = "\n".join(allowed) + ("\n" if allowed else "")
+                if not pathlib.Path(sides).exists() or pathlib.Path(sides).read_text() != content:
+                    tmp = pathlib.Path(sides + ".tmp")
+                    tmp.write_text(content)
+                    os.replace(tmp, sides)
+        except Exception:
+            pass
         template_path = ROOT / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM" / template
         lane_lock = f"/tmp/self_dispatch_{pathlib.Path(sides).stem}.lock"
         lock_probe = subprocess.run(["flock", "-n", lane_lock, "-c", "true"], check=False)

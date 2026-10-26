@@ -25,6 +25,22 @@ def apply_overlay(base, overlay):
     rows = json.loads(overlay.read_text())
     closed = [row for row in rows if timestamp_epoch(row['timestamp']) + 900 <= time.time() and row.get('_closed')]
     row = max(closed, key=lambda item: timestamp_epoch(item['timestamp'])) if closed else None
+    with history.open('rb') as stream:
+        stream.seek(max(0, history.stat().st_size - 32768))
+        cache_tail = stream.read()
+    for match in re.finditer(rb'\{[^{}]*\}', cache_tail):
+        forming = json.loads(match.group())
+        if timestamp_epoch(forming['timestamp']) + 900 > time.time() and not forming.get('_provisional'):
+            merge_closed_history(history, dict(forming, _provisional=True, _closed=False, _finality_reason='current_unclosed_native'))
+    for match in reversed(list(re.finditer(rb'\{[^{}]*\}', cache_tail))):
+        native = json.loads(match.group())
+        stamp = timestamp_epoch(native['timestamp'])
+        if stamp + 900 > time.time() or not is_verified_closed_native(native, stamp + 900):
+            continue
+        if row is None or stamp > timestamp_epoch(row['timestamp']) or stamp == timestamp_epoch(row['timestamp']) and preferred_closed_row(row, native, stamp + 900) != row:
+            publish_closed_15m(history, native, None, base, mode, symbol)
+            row = native
+        break
     canonical = base / 'klines_canonical' / f'{symbol}_15m.json'
     if mode == 'crypto' and canonical.exists():
         with canonical.open('rb') as stream:
@@ -36,7 +52,7 @@ def apply_overlay(base, overlay):
             if start + 900 <= time.time() and is_verified_closed_native(native, start + 900, canonical):
                 if row is not None and timestamp_epoch(row['timestamp']) > start:
                     break
-                native = dict(native, _closed=True, _provisional=False, _closed_verified_at=time.time(), _source='binance_canonical_closed')
+                native = dict(native, _closed=True, _provisional=False, _closed_verified_at=float(native.get('_closed_verified_at') or max(canonical.stat().st_mtime, start + 900)), _source='binance_canonical_closed')
                 if row is None or timestamp_epoch(row['timestamp']) < start or not is_verified_closed_native(row) or any(row.get(key) != native.get(key) for key in ('open', 'high', 'low', 'close', 'volume')):
                     publish_closed_15m(history, native, None, base, mode, symbol)
                     row = native
@@ -59,7 +75,11 @@ def run(base):
                 result = future.result()
                 result['event'] = 'closed_15m_usual_cache'
                 print(json.dumps(result), flush=True)
-                applied[key] = stamp
+                if not result.get('error'):
+                    history = base / 'klines_cache' / ('tradier/' if key.parent.name == 'tradier' else '') / f'{key.stem}_15m.json'
+                    applied[key] = (stamp[0], stamp[1], history.stat().st_mtime_ns)
+                else:
+                    applied[key] = stamp
             except Exception as exc:
                 print(json.dumps({'event': 'closed_cache_error', 'path': str(key), 'error': str(exc), 'at': time.time()}), flush=True)
             pending.pop(key)
@@ -68,7 +88,8 @@ def run(base):
                 if path in pending:
                     continue
                 canonical = base / 'klines_canonical' / f'{path.stem}_15m.json'
-                stamp = (path.stat().st_mtime_ns, canonical.stat().st_mtime_ns if mode == 'crypto' and canonical.exists() else None)
+                history = base / 'klines_cache' / ('tradier/' if mode == 'tradier' else '') / f'{path.stem}_15m.json'
+                stamp = (path.stat().st_mtime_ns, canonical.stat().st_mtime_ns if mode == 'crypto' and canonical.exists() else None, history.stat().st_mtime_ns if history.exists() else None)
                 if applied.get(path) == stamp:
                     continue
                 pending[path] = (pool.submit(apply_overlay, base, path), stamp)

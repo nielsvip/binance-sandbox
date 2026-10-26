@@ -1,32 +1,32 @@
 {
-  "ts": "2026-10-26T20:45:11.591703+00:00",
-  "tick": "2026-10-26T20:44:02.406212+00:00",
-  "tick_age_s": 69,
+  "ts": "2026-10-26T20:50:15.268986+00:00",
+  "tick": "2026-10-26T20:48:02.213968+00:00",
+  "tick_age_s": 133,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run37.json",
     "round": "run37",
     "complete": false,
     "universe_n": 208,
-    "n_complete": 132,
-    "n_pending": 75,
+    "n_complete": 133,
+    "n_pending": 74,
     "n_refused_only": 1,
     "n_excluded": 0,
-    "n_launchable_pending": 54,
+    "n_launchable_pending": 52,
     "hosts_not_visible": []
   },
   "hosts": {
-    "s5": {
-      "cpu_pct": 38,
+    "s6": {
+      "cpu_pct": 15,
       "slots": "1/4",
       "observed_running": [
-        "AAPL"
+        "VZ"
       ],
-      "published_last_hour": 0,
-      "idle_reason": "no eligible ready symbol for this host",
-      "mem_avail_mb": 23529
+      "published_last_hour": 1,
+      "idle_reason": "disk guard",
+      "mem_avail_mb": 26750
     },
     "s1": {
-      "cpu_pct": 86,
+      "cpu_pct": 100,
       "slots": "3/4",
       "observed_running": [
         "AXSUSDT",
@@ -35,44 +35,41 @@
       ],
       "published_last_hour": 0,
       "idle_reason": "mem guard",
-      "mem_avail_mb": 9350
+      "mem_avail_mb": 4430
     },
     "s2": {
-      "cpu_pct": 66,
+      "cpu_pct": 100,
       "slots": "4/4",
       "observed_running": [
         "ARKMUSDT",
         "CHRUSDT",
-        "GRASSUSDT",
-        "SKYUSDT"
+        "COMPUSDT",
+        "GRASSUSDT"
       ],
       "published_last_hour": 0,
       "idle_reason": "slots full",
-      "mem_avail_mb": 6731
+      "mem_avail_mb": 6772
     },
-    "s6": {
-      "cpu_pct": 46,
+    "s5": {
+      "cpu_pct": 82,
       "slots": "4/4",
       "observed_running": [
-        "LRCX",
-        "MP",
-        "MU",
-        "ORCL"
+        "ABBV",
+        "ACN",
+        "ADBE",
+        "CME"
       ],
-      "published_last_hour": 1,
-      "idle_reason": "disk guard",
-      "mem_avail_mb": 24359
+      "published_last_hour": 0,
+      "idle_reason": "slots full",
+      "mem_avail_mb": 20382
     }
   },
   "one_hour_total": 1,
   "alerts": [
-    "LOW_THROUGHPUT:s5:0/h",
-    "LOW_CPU:s5:38%",
-    "LOW_THROUGHPUT:s1:0/h",
-    "LOW_CPU:s1:86%",
-    "LOW_THROUGHPUT:s2:0/h",
-    "LOW_CPU:s2:66%",
     "LOW_THROUGHPUT:s6:1/h",
-    "LOW_CPU:s6:46%"
+    "LOW_CPU:s6:15%",
+    "LOW_THROUGHPUT:s1:0/h",
+    "LOW_THROUGHPUT:s2:0/h",
+    "LOW_THROUGHPUT:s5:0/h"
   ]
 }
