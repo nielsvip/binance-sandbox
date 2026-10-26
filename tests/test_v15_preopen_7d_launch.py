@@ -40,4 +40,4 @@ def test_slot_guard_counts_distinct_pilot_symbols_only():
         "/env/bin/python -u /work/v15_pilot.py --sym-side AAPL_SHORT --workers 7",
         "/env/bin/python -u /work/v15_pilot_7d.py --sym-side ABBV_LONG --workers 7",
         "bash -c /env/bin/python -u /work/v15_pilot.py --sym-side FAKE_LONG",
-    ]) == {"AAPL", "ABBV"}
+    ]) == {"AAPL_LONG", "AAPL_SHORT", "ABBV_LONG"}

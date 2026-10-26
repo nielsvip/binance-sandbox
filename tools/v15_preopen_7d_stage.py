@@ -98,13 +98,17 @@ def _account(ss: str, queue: dict) -> str:
     return accts[0]
 
 
-def _fallback_sets(source_sets: dict, queue: dict, stock_symbols: set[str]) -> dict:
+def _fallback_sets(source_sets: dict, published: dict, stock_symbols: set[str]) -> dict:
     out = {}
+    published_sides = published.get("sym_sides") or {}
     for ss, entry in source_sets.items():
         if (ss.startswith("_") or not isinstance(entry, dict) or entry.get("mode") != "live"
                 or entry.get("set_tier") != "30D_BEST"):
             continue
         if not isinstance(entry.get("overrides"), dict) or not entry["overrides"]:
+            continue
+        proof = published_sides.get(ss) or {}
+        if proof.get("manifest_ok") is not True or proof.get("overrides") != entry["overrides"]:
             continue
         sym, side = ss.rsplit("_", 1) if "_" in ss else (ss, "")
         if side not in ("LONG", "SHORT"):
@@ -121,7 +125,8 @@ def _fallback_sets(source_sets: dict, queue: dict, stock_symbols: set[str]) -> d
 
 
 def stage(queue_path: Path, result_dir: Path, source_db: Path, source_sets_path: Path,
-          stock_symbols_path: Path, out_dir: Path, today: str) -> dict:
+          stock_symbols_path: Path, out_dir: Path, today: str,
+          published_selection_path: Path | None = None) -> dict:
     queue = json.loads(queue_path.read_text())
     sources = queue.get("sym_sides") or {}
     if not sources or queue.get("_meta", {}).get("window_days") != 7:
@@ -132,8 +137,11 @@ def stage(queue_path: Path, result_dir: Path, source_db: Path, source_sets_path:
     if len(results) != int(queue["_meta"]["n"]):
         raise ValueError("incomplete 7D queue")
     source_sets = json.loads(source_sets_path.read_text())
+    if published_selection_path is None:
+        published_selection_path = Path(__file__).resolve().parents[1] / "data/published_selection.json"
+    published = json.loads(published_selection_path.read_text())
     stock_symbols = set(json.loads(stock_symbols_path.read_text()))
-    sets = _fallback_sets(source_sets, queue, stock_symbols)
+    sets = _fallback_sets(source_sets, published, stock_symbols)
     for ss, result in results.items():
         account = _account(ss, queue)
         sets[ss] = {"mode": "live", "account": account, "window_days": 7,
@@ -194,10 +202,12 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     for name in ("queue", "result-dir", "source-db", "source-sets", "stock-symbols", "out-dir"):
         ap.add_argument(f"--{name}", required=True)
+    ap.add_argument("--published-selection", required=True)
     ap.add_argument("--day", default=dt.datetime.now(dt.timezone.utc).date().isoformat())
     a = ap.parse_args()
     print(json.dumps(stage(Path(a.queue), Path(a.result_dir), Path(a.source_db),
-                           Path(a.source_sets), Path(a.stock_symbols), Path(a.out_dir), a.day)))
+                           Path(a.source_sets), Path(a.stock_symbols), Path(a.out_dir), a.day,
+                           Path(a.published_selection))))
 
 
 if __name__ == "__main__":

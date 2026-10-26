@@ -57,15 +57,20 @@ def _fixture(tmp_path):
                                           "set_tier": "30D_BEST"},
                                       "BBBUSDT_LONG": {"mode": "live", "account": ["fin"],
                                                        "overrides": {"X": 9}, "set_tier": "30D_BEST"}}))
+    published = tmp_path / "published.json"
+    published.write_text(json.dumps({"sym_sides": {
+        ss: {"manifest_ok": True, "overrides": source},
+        "BBBUSDT_LONG": {"manifest_ok": True, "overrides": {"X": 9}},
+    }}))
     stocks = tmp_path / "stocks.json"
     stocks.write_text("[]")
-    return today, queue_path, result_dir, db, source_sets, stocks
+    return today, queue_path, result_dir, db, source_sets, stocks, published
 
 
 def test_stage_creates_isolated_db_and_7d_vector_set(tmp_path):
     args = _fixture(tmp_path)
-    today, queue, results, db, sets, stocks = args
-    report = stage(queue, results, db, sets, stocks, tmp_path / "stage", today)
+    today, queue, results, db, sets, stocks, published = args
+    report = stage(queue, results, db, sets, stocks, tmp_path / "stage", today, published)
     assert report["stage_only"] is True
     assert report["selected_7d"] == 1
     assert report["fallback_30d"] == 1
@@ -82,20 +87,31 @@ def test_stage_creates_isolated_db_and_7d_vector_set(tmp_path):
 
 
 def test_stage_refuses_missing_or_unverified_result(tmp_path):
-    today, queue, results, db, sets, stocks = _fixture(tmp_path)
+    today, queue, results, db, sets, stocks, published = _fixture(tmp_path)
     manifest = next((results / "AAAUSDT_SHORT/out").glob("*_manifest.json"))
     data = json.loads(manifest.read_text())
     data["npz_age_min"] = 45
     manifest.write_text(json.dumps(data))
     with pytest.raises(ValueError, match="stale"):
-        stage(queue, results, db, sets, stocks, tmp_path / "stage", today)
+        stage(queue, results, db, sets, stocks, tmp_path / "stage", today, published)
     assert not (tmp_path / "stage/per_sym_store_7d.db").exists()
 
 
+def test_stage_does_not_mark_mismatched_30d_fallback_verified(tmp_path):
+    today, queue, results, db, sets, stocks, published = _fixture(tmp_path)
+    selection = json.loads(published.read_text())
+    selection["sym_sides"]["BBBUSDT_LONG"]["overrides"] = {"X": 8}
+    published.write_text(json.dumps(selection))
+    report = stage(queue, results, db, sets, stocks, tmp_path / "stage", today, published)
+    assert report["fallback_30d"] == 0
+    staged = json.loads((tmp_path / "stage/vec_driven_sets.json").read_text())
+    assert "BBBUSDT_LONG" not in staged
+
+
 def test_runtime_requires_matching_db_and_vector_sets(tmp_path, monkeypatch):
-    today, queue, results, db, sets, stocks = _fixture(tmp_path)
+    today, queue, results, db, sets, stocks, published = _fixture(tmp_path)
     stage_dir = tmp_path / "stage"
-    stage(queue, results, db, sets, stocks, stage_dir, today)
+    stage(queue, results, db, sets, stocks, stage_dir, today, published)
     lane = tmp_path / "data/vec_live_7d"
     lane.mkdir(parents=True)
     for name in ("vec_driven_sets.json", "vec_driven.json", "validation.json"):

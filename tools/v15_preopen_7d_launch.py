@@ -24,7 +24,7 @@ def _active_symbols(lines: list[str]) -> set[str]:
     for line in lines:
         match = re.match(r"^\S*python\S*(?: -u)? (?:\S*/)?v15_(?:pilot(?:_7d)?|365_cycle)\.py --sym-side ([A-Z0-9_]+)", line)
         if match:
-            active.add(match.group(1).rsplit("_", 1)[0])
+            active.add(match.group(1))
     return active
 
 
@@ -40,7 +40,7 @@ def _host_slot_guard():
             lines = subprocess.check_output(["ps", "-eo", "args"], text=True).splitlines()
             active = _active_symbols(lines)
             if len(active) >= 4:
-                raise RuntimeError(f"7D host full: {len(active)} active symbols {sorted(active)}")
+                raise RuntimeError(f"7D host full: {len(active)} active sym_sides {sorted(active)}")
             meminfo = Path("/proc/meminfo")
             if meminfo.is_file():
                 available = re.search(r"^MemAvailable:\s+(\d+) kB$", meminfo.read_text(), re.MULTILINE)

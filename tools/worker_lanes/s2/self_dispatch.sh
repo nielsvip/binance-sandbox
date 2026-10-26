@@ -16,7 +16,7 @@ if [ $(( $(date +%s) - $(stat -c %Y "$SP" 2>/dev/null || stat -f %m "$SP" 2>/dev
   rsync -az --timeout=60 niels@10.0.0.3:v15_run36_20261024/progress/ "$SP/" >/dev/null 2>&1
   touch "$SP"
 fi
-nrun=$(pgrep -af "python[^ ]* -u v15_pilot.py --sym-side " 2>/dev/null | grep -oE -- '--sym-side [A-Z0-9_]+' | sort -u | wc -l)
+nrun=$(pgrep -af "^[^ ]*python[^ ]* -u ([^ ]*/)?v15_pilot(_7d)?[.]py --sym-side " 2>/dev/null | grep -oE -- '--sym-side [A-Z0-9_]+' | sort -u | wc -l)
 _avail_mb=$(awk '/^MemAvailable:/ {print int($2/1024)}' /proc/meminfo)
 _extra=$(( (_avail_mb - 4000) / 10000 ))
 [ "$_extra" -lt 0 ] && _extra=0
@@ -71,7 +71,7 @@ PYEOF
 for ss in $(cat "$SIDES" 2>/dev/null); do
   case "$ss" in *_LONG) ;; *) continue ;; esac
   [ "$nrun" -ge "$MAX" ] && break
-  pgrep -f "python[^ ]* -u v15_pilot.py --sym-side ${ss} " >/dev/null 2>&1 && continue
+  pgrep -f "^[^ ]*python[^ ]* -u ([^ ]*/)?v15_pilot(_7d)?[.]py --sym-side ${ss} " >/dev/null 2>&1 && continue
   _rec="/tmp/dispatched_${ss}"
   if [ -f "$_rec" ]; then
     _rage=$(( $(date +%s) - $(stat -c %Y "$_rec" 2>/dev/null || stat -f %m "$_rec" 2>/dev/null || echo 0) ))
