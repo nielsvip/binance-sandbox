@@ -21,12 +21,10 @@ if [ $(( $(date +%s) - $(stat -c %Y "$SP" 2>/dev/null || stat -f %m "$SP" 2>/dev
 fi
 nrun=$(pgrep -af "^[^ ]*python[^ ]* -u ([^ ]*/)?v15_pilot(_7d)?[.]py --sym-side " 2>/dev/null | grep -oE -- '--sym-side [A-Z0-9_]+' | sort -u | wc -l)
 _avail_mb=$(awk '/^MemAvailable:/ {print int($2/1024)}' /proc/meminfo)
-_extra=$(( (_avail_mb - 4000) / 10000 ))
+_extra=$(( (_avail_mb - 4000) / 3500 ))
 [ "$_extra" -lt 0 ] && _extra=0
 _mem_cap=$((nrun + _extra))
 [ "$_mem_cap" -lt "$MAX" ] && MAX=$_mem_cap
-_last_launch=$(stat -c %Y /tmp/s2_self_last_launch 2>/dev/null || echo 0)
-[ $(( $(date +%s) - _last_launch )) -lt 600 ] && MAX=$nrun
 _TB=/tmp/tails_$(basename $SIDES .txt).cache
 _PB=/tmp/prog_$(basename $SIDES .txt).cache
 /home/niels/.conda/envs/binance_env_mac/bin/python - "$SIDES" "$SB" "$SP" "$PDIR" "$_TB" "$_PB" <<'PYEOF' 2>/dev/null

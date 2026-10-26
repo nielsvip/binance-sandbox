@@ -108,7 +108,8 @@ def preferred_closed_row(previous, incoming, bar_close_ts=None):
 def merge_closed_history(path, row):
     import fcntl
     path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
+    if not path.exists():
+        return False
     lock_path = path.with_name(f'.{path.name}.mark.lock')
     with lock_path.open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)

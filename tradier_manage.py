@@ -49315,8 +49315,16 @@ class TradierTradeManager:
                     _v20_state = json.load(_v20_file)
                 _v20_age = time.time() - (float(_v20_state.get("bar_ts") or 0) + 900.0)
                 _v20_target = str((_v20_state.get("target_state") or {}).get("side") or "").upper()
-                _v20_hash = {"LONG": "c26111b7c992c18a46c3d71a6a0d073e", "SHORT": "447b10b703b4501be70f6ac98e21d55e"}.get(str(position_side or "").upper())
-                _v20_ok = _v20_hash is not None and _v20_state.get("engine_md5") == _v20_hash and _v20_state.get("status") == "OK" and _v20_state.get("actionable") is True and 0.0 <= _v20_age <= 1200.0 and _v20_target == str(position_side or "").upper()
+                import hashlib as _v20_hashlib, sqlite3 as _v20_sqlite3
+                import per_sym_store as _v20_store
+                _v20_db = _v20_sqlite3.connect(f"file:{_v20_store.DB_PATH}?mode=ro", uri=True, timeout=2.0)
+                try:
+                    _v20_row = _v20_db.execute("SELECT full_config_json FROM per_sym_active WHERE sym_side=?", (f"{symbol}_{position_side}",)).fetchone()
+                finally:
+                    _v20_db.close()
+                _v20_full = json.loads(_v20_store._maybe_decompress(_v20_row[0])) if _v20_row and _v20_row[0] else None
+                _v20_set_hash = _v20_hashlib.md5(json.dumps(_v20_full, sort_keys=True, default=str).encode()).hexdigest() if isinstance(_v20_full, dict) and _v20_full else None
+                _v20_ok = _v20_state.get("v12_quick_engine_md5") == "95ddae52a6539978b696d97a4326057d" and _v20_set_hash is not None and _v20_state.get("set_md5") == _v20_set_hash and _v20_state.get("status") == "OK" and _v20_state.get("engine_valid") is True and _v20_state.get("actionable") is True and 0.0 <= _v20_age <= 1200.0 and _v20_target == str(position_side or "").upper()
             except Exception as _v20_e:
                 _v20_ok = False
                 logger.warning(f"[TRB_V20_STATE] {position_key}: state read failed: {_v20_e}")

@@ -1,22 +1,13 @@
 #!/usr/bin/env python3
-"""
-v15_cpu80_watchdog — runs ON EACH SERVER (s1/s2/s5/s6) via cron every 2 min.
-Guarantees:
-  - CPU >80% (load1/nproc*100) else auto-heal herd launch
-  - RAM >80% or avail low check (herd will saturate)
-  - No stall: heartbeat /tmp/v15_*.log mtime <5m, progress.json done increasing, pilots running >0
-  - No stop: herd daemon pgrep v15_local_herd else restart, pilots 0 -> relaunch
-  - Keep all servers cpu>80% via continuous saturation (herd max_parallel/workers)
+"""Keep the four scheduler-owned backtest lanes filled and alert on stalls.
 
-Cron on each server (installed by deploy_v15_watchdogs.sh):
-  */2 * * * * /home/niels/.conda/envs/binance_env_mac/bin/python -u /home/niels/binance-sandbox/tools/v15_cpu80_watchdog.py >> /tmp/v15_cpu80_watchdog.log 2>&1
-  @reboot sleep 30; nohup /home/niels/.conda/envs/binance_env_mac/bin/python -u /home/niels/binance-sandbox/tools/v15_local_herd.py >> /tmp/v15_local_herd.log 2>&1 &
-  * * * * * /home/niels/.conda/envs/binance_env_mac/bin/python /home/niels/binance-sandbox/tools/v15_local_herd.py --cron-check >> /tmp/v15_local_herd_cron.log 2>&1
-
-Also used by Mac warn daemon: same thresholds (CPU_WARN=80 now, was 95) for unified alerting.
+Run as a locked daemon on S1/S2/S5/S6. Worker hosts re-run their own cat_side
+self-dispatch when fewer than four distinct sym_sides are active. S1 retries
+the fleet scheduler when its tick is stale, the lane is underfilled, and disk
+headroom permits. The normal cron remains the recovery path if the daemon exits.
 """
 from __future__ import annotations
-import subprocess, pathlib, time, json, re, os, sys
+import subprocess, pathlib, time, json, re, os, sys, argparse, shutil
 from datetime import datetime, timezone
 
 ROOT = pathlib.Path.home() / "binance-sandbox"
@@ -57,10 +48,9 @@ def sys_stats():
     except:
         total, avail, used_pct=0,0,0
     try:
-        ps=sh("ps aux | grep v15_pilot | grep -v grep", timeout=5)
-        pilots=len(re.findall(r"v15_pilot[^\\n]*--sym-side", ps))
-        # also count purely
-        pilots_raw=ps.count("v15_pilot")
+        ps=sh("ps -eo args=", timeout=5)
+        pilot_sides=set(re.findall(r"v15_pilot(?:_7d)?\.py[^\n]*--sym-side\s+([A-Z0-9_]+)", ps))
+        pilots=len(pilot_sides)
     except:
         pilots=0
         ps=""
@@ -90,7 +80,40 @@ def sys_stats():
         prog_recent_n=int(prog_recent) if prog_recent.isdigit() else 0
     except:
         prog_recent_n=0
-    return {"nproc":nproc,"load1":load1,"cpu_pct":cpu_pct,"mem_total_m":total,"mem_avail_m":avail,"mem_used_pct":used_pct,"pilots":pilots,"herd_ok":herd_ok,"herd_cnt":herd_cnt,"oom":oom,"hb_recent":hb_recent,"hb_total":hb_total,"prog_recent":prog_recent_n,"raw_ps":ps[:500]}
+    return {"nproc":nproc,"load1":load1,"cpu_pct":cpu_pct,"mem_total_m":total,"mem_avail_m":avail,"mem_used_pct":used_pct,"pilots":pilots,"pilot_sides":sorted(pilot_sides),"herd_ok":herd_ok,"herd_cnt":herd_cnt,"oom":oom,"hb_recent":hb_recent,"hb_total":hb_total,"prog_recent":prog_recent_n,"raw_ps":ps[:500]}
+
+def ensure_lane(host, pilot_sides):
+    if pathlib.Path("/tmp/v15_preopen_7d.pause").exists():
+        return
+    lane = {
+        "s2": ("/tmp/npz_sides_s2.txt", "TEMPLATE_CRYPTO_LONG.xlsx"),
+        "s5": ("/tmp/npz_sides_s5.txt", "TEMPLATE_STOCKS_LONG.xlsx"),
+        "s6": ("/tmp/npz_sides_s6.txt", "TEMPLATE_STOCKS_SHORT.xlsx"),
+    }.get(host)
+    if lane and len(pilot_sides) < 4:
+        sides, template = lane
+        template_path = ROOT / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM" / template
+        cmdline = f"self_dispatch.sh {sides}"
+        running = sh("ps -eo args=", timeout=5)
+        if cmdline not in running:
+            out = pathlib.Path(f"/tmp/v15_lane_watchdog_{host}.log").open("a")
+            subprocess.Popen(["bash", str(ROOT / "tools" / "worker_lanes" / host / "self_dispatch.sh"), sides, str(template_path), "7", "4"], cwd=str(ROOT), stdout=out, stderr=subprocess.STDOUT, start_new_session=True)
+            log(f"LANE-REFILL host={host} sides={len(pilot_sides)}/4 queue={sides}")
+    if host == "niels" and len(pilot_sides) < 4:
+        sched = ROOT / "tools" / "v15_fleet_scheduler.py"
+        log_path = pathlib.Path("/tmp/v15_fleet_sched.log")
+        last_tick_age = time.time() - log_path.stat().st_mtime if log_path.exists() else 1e9
+        running = sh("pgrep -af '[v]15_fleet_scheduler.py'", timeout=5)
+        disk = shutil.disk_usage("/").free // (1024 * 1024)
+        if not running.strip() and last_tick_age >= 20 and disk >= 5000:
+            env = os.environ.copy()
+            env.update({"V15_SCHED_FLOOR_SKIP_S":"3600", "V15_SCHED_RUN_STALE":"0", "V15_SCHED_PEAK_Q":"0.5", "V15_SCHED_WORKERS_PER_SIDE":"7", "V15_CONT_NPZ_MAX_AGE_H":"4", "V15_SCHED_WORKERS_PER_SIDE_CRYPTO":"7", "V15_SCHED_CATCHUP_ANY_D":"inf", "V15_SCHED_CATCHUP_TRADING_D":"inf", "V15_SCHED_MEM_CAP":"0", "V15_SCHED_PAIR_FLOOR_MB":"6000", "V15_SCHED_PAIR_FLOOR_MB_STOCKS":"4000", "V15_SCHED_30D_ONLY":"1", "V15_SCHED_REQUIRE_BASE":"1", "V15_TIER_DEFER_M_D":"0", "V15_TIER_DEFER_L_D":"0", "V15_NONW_QUOTA_DIV":"1", "V15_FRESH_SKIP_DAYS":"0.33", "V15_REFRESH_W_STALE_H":"8", "V15_DIAG_REPAIR_S":"300", "V15_ENDGAME_S":"240", "V15_FOCUS_S_WINNER":"300", "V15_FOCUS_S_MEDIOCRE":"150", "V15_GS_BUDGET":"1200", "V15_SCHED_AUTOKILL_DEAD":"0", "V15_SCHED_HARD_RECENT":"0", "V15_SCHED_PHASE_FALLTHROUGH":"0", "V15_SCHED_NPZ_PREFETCH":"1"})
+            priority = pathlib.Path.home() / "v15_priority_syms.txt"
+            if priority.exists():
+                env["V15_SCHED_PRIORITY_SYMS"] = priority.read_text().strip()
+            stdout = pathlib.Path("/tmp/v15_fleet_sched.log").open("a")
+            subprocess.Popen(["flock", "-n", "/tmp/v15_fleet_tick.lock", "timeout", "600", sys.executable, "-u", str(sched), "--once", "--hosts", "tools/fleet_hosts_final.json", "--max-attempts", "2", "--max-launch", "4"], cwd=str(ROOT), env=env, stdout=stdout, stderr=subprocess.STDOUT, start_new_session=True)
+            log(f"FLEET-REFILL host=niels pilots={len(pilot_sides)}/4 scheduler_log_age={last_tick_age:.0f}s")
 
 def auto_heal(reason: str, host: str=""):
     log(f"AUTO-HEAL reason={reason} host={host}")
@@ -106,6 +129,7 @@ def auto_heal(reason: str, host: str=""):
 def main():
     host=sh("hostname", timeout=5).strip() or "unknown"
     st=sys_stats()
+    ensure_lane(host, st["pilot_sides"])
     log(f"CHECK host={host} cpu {st['cpu_pct']:.1f}% load {st['load1']:.1f}/{st['nproc']} ram {st['mem_used_pct']:.1f}% avail {st['mem_avail_m']}M pilots {st['pilots']} herd_ok={st['herd_ok']} hb_recent {st['hb_recent']}/{st['hb_total']} prog_recent {st['prog_recent']} oom={st['oom']}")
     alerts=[]
     healed=False
@@ -186,4 +210,17 @@ def main():
         return 0
 
 if __name__=="__main__":
+    parser=argparse.ArgumentParser()
+    parser.add_argument("--daemon", action="store_true")
+    args=parser.parse_args()
+    if args.daemon:
+        while True:
+            try:
+                host=sh("hostname", timeout=5).strip() or "unknown"
+                ps=sh("ps -eo args=", timeout=5)
+                sides=set(re.findall(r"v15_pilot(?:_7d)?\.py[^\n]*--sym-side\s+([A-Z0-9_]+)", ps))
+                ensure_lane(host, sides)
+            except Exception as exc:
+                log(f"WATCHDOG-ERROR {type(exc).__name__}: {exc}")
+            time.sleep(10)
     sys.exit(main())

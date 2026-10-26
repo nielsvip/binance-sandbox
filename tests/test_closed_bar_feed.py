@@ -43,6 +43,7 @@ def test_receiver_preserves_history_and_authoritative_exchange_row(tmp_path):
     path = tmp_path / 'klines_cache' / 'TESTUSDT_15m.json'
     native = dict(event()['row'], timestamp='2026-10-26T18:00:00+00:00', close=120, volume=7)
     native.pop('_provisional')
+    native['_closed_verified_at'] = START + 900
     older = dict(native, timestamp='2026-10-26T17:45:00+00:00')
     atomic_json(path, [older, native])
     receipt = receive_closed_15m(tmp_path, event(), now_s=START + 900)
@@ -89,3 +90,54 @@ def test_tail_watcher_accepts_boundary_without_thirty_second_wait(tmp_path):
     assert kline_last_close(tmp_path, 'TESTUSDT', 'crypto', now_s=START + 899.999) is None
     assert kline_last_close(tmp_path, 'TESTUSDT', 'crypto', now_s=START + 900) == START
     assert kline_last_close(tmp_path, 'TESTUSDT', 'crypto', now_s=START + 930) == START
+
+
+def test_volume_alone_does_not_override_completed_mark_row(tmp_path):
+    from closed_bar_feed import preferred_closed_row
+    unverified = dict(event()['row'], close=999, volume=8, _provisional=False)
+    assert preferred_closed_row(unverified, event()['row'], START + 900)['close'] == event()['row']['close']
+    path = tmp_path / 'klines_cache/TESTUSDT_15m.json'
+    atomic_json(path, [unverified])
+    publish_closed_15m(path, event()['row'], None, tmp_path, 'crypto', 'TESTUSDT')
+    envelope = json.loads(next((tmp_path / 'data/closed_15m_outbox/crypto').glob('*.json')).read_text())
+    assert envelope['row']['close'] == event()['row']['close']
+
+
+def test_verified_native_zero_volume_replaces_marks_and_accepts_newer_correction(tmp_path):
+    from closed_bar_feed import preferred_closed_row
+    mark = event()['row']
+    native = dict(mark, close=120, volume=0, _provisional=False, _closed_verified_at=START + 901)
+    assert preferred_closed_row(native, mark, START + 900) is native
+    assert preferred_closed_row(mark, native, START + 900) is native
+    correction = dict(native, close=125, _closed_verified_at=START + 902)
+    assert preferred_closed_row(native, correction, START + 900) is correction
+    path = tmp_path / 'klines_cache/TESTUSDT_15m.json'
+    atomic_json(path, [mark])
+    receive_closed_15m(tmp_path, event(), now_s=START + 905)
+    receive_closed_15m(tmp_path, dict(event(), row=native), now_s=START + 905)
+    receive_closed_15m(tmp_path, dict(event(), row=correction), now_s=START + 905)
+    receive_closed_15m(tmp_path, event(), now_s=START + 905)
+    overlay = json.loads((tmp_path / 'data/closed_15m_bars/crypto/TESTUSDT.json').read_text())
+    assert overlay[-1]['close'] == 125
+
+
+def test_trusted_closed_canonical_source_has_explicit_finality(tmp_path):
+    native = dict(event()['row'], close=130, volume=9, _provisional=False)
+    canonical = tmp_path / 'klines_canonical/TESTUSDT_15m.json'
+    path = tmp_path / 'klines_cache/TESTUSDT_15m.json'
+    atomic_json(canonical, [native])
+    atomic_json(path, [event()['row']])
+    publish_closed_15m(path, event()['row'], None, tmp_path, 'crypto', 'TESTUSDT')
+    envelope = json.loads(next((tmp_path / 'data/closed_15m_outbox/crypto').glob('*.json')).read_text())
+    assert envelope['row']['close'] == 130
+    assert envelope['row']['_source'] == 'binance_canonical_closed'
+    assert envelope['row']['_closed_verified_at'] >= START + 900
+
+
+def test_unverified_overlay_native_cannot_block_a_verified_correction(tmp_path):
+    unverified = dict(event()['row'], close=999, volume=100, _provisional=False)
+    native = dict(unverified, close=120, _closed_verified_at=START + 901)
+    path = tmp_path / 'data/closed_15m_bars/crypto/TESTUSDT.json'
+    atomic_json(path, [unverified])
+    receive_closed_15m(tmp_path, dict(event(), row=native), now_s=START + 905, require_history=False)
+    assert json.loads(path.read_text())[-1]['close'] == 120
