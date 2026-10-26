@@ -1,16 +1,44 @@
 {
-  "flz:HYPEUSDT_LONG": {
-    "orderId": "1000002643874887",
-    "stopPrice": 74.635,
-    "entry_sig": "2026-10-26 05:13:40.227000+00:00",
-    "symbol": "HYPEUSDT",
+  "fin:1000LUNCUSDT_SHORT": {
+    "orderId": "3000002274807778",
+    "stopPrice": 0.04691,
+    "entry_sig": "2026-10-26 03:33:07.034000+00:00",
+    "symbol": "1000LUNCUSDT",
+    "side": "SHORT"
+  },
+  "fin:ZILUSDT_SHORT": {
+    "orderId": "3000002274849907",
+    "stopPrice": 0.001928,
+    "entry_sig": "2026-10-26 03:51:13.383000+00:00",
+    "symbol": "ZILUSDT",
+    "side": "SHORT"
+  },
+  "fin:KAVAUSDT_LONG": {
+    "orderId": "3000002275020384",
+    "stopPrice": 0.06862,
+    "entry_sig": "2026-10-26 05:41:30.326000+00:00",
+    "symbol": "KAVAUSDT",
     "side": "LONG"
   },
-  "flz:BTCDOMUSDT_LONG": {
-    "orderId": "1000002643894996",
-    "stopPrice": 5549.7,
-    "entry_sig": "2026-10-26 05:29:22.480000+00:00",
-    "symbol": "BTCDOMUSDT",
+  "fin:KMNOUSDT_LONG": {
+    "orderId": "3000002275022713",
+    "stopPrice": 0.04091,
+    "entry_sig": "2026-10-26 05:43:03.742000+00:00",
+    "symbol": "KMNOUSDT",
+    "side": "LONG"
+  },
+  "fin:TIAUSDC_LONG": {
+    "orderId": "3000002275028942",
+    "stopPrice": 0.5212,
+    "entry_sig": "2026-10-26 05:47:17.305000+00:00",
+    "symbol": "TIAUSDC",
+    "side": "LONG"
+  },
+  "fin:STXUSDT_LONG": {
+    "orderId": "3000002275029435",
+    "stopPrice": 0.2985,
+    "entry_sig": "2026-10-26 05:47:35.638000+00:00",
+    "symbol": "STXUSDT",
     "side": "LONG"
   }
 }

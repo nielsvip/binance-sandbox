@@ -111,6 +111,7 @@ def test_stock_shadow_reasons_with_quick_engine_twins_are_vec_achievable():
         "E_1_WT_DELTA_EXIT_delta=-60_thr=50_g-0.04",
         "LR_BAND_LADDER_PARITY_TARGET_x5.260_usd10521_4h",
         "WT_SIMPLE_GUARANTEE_15m_wt10vs12",
+        "WT_4H_VEL_TWIN_SHORT_vel=3.4_g=0.82%",
     ):
         assert P.is_vec_achievable(reason), reason
     # The gate must continue to distinguish live-only exits with no vector emitter.

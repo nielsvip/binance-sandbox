@@ -70,6 +70,7 @@ VEC_EXIT_TOKENS = (
     "RIDICULOUS_HOLD",                        # vec RIDICULOUS_HOLD
     "RIDICULOUS_LOSS",                        # vec RIDICULOUS_LOSS
     "WT_4H_VEL_EXIT",                         # vec WT_NH_VEL_EXIT (4H->NH stub)
+    "WT_4H_VEL_TWIN",                         # live alias of the stateful WT_4H_VEL_EXIT twin
     "WT_NH_VEL_EXIT",                         # vec WT_NH_VEL_EXIT (in case live emits stub form)
     "PPL_TP",                                 # vec PPL_TP (partial-profit-lock take-profit)
     "PPL_SL",                                 # vec PPL_SL_CLOSE_* (partial-profit-lock stop)

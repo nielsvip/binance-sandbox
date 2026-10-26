@@ -4,8 +4,8 @@ LONG:  software level frozen at entry bar dc_low_15m * 0.9975  (SHORT: vv).
 Exchange STOP_MARKET backstop sits 0.05% beyond the software level so the
 regular (maker) exit is tried first and taker fees are the last resort.
 Never switched off — runs in EVERY vec calc, every live-trading bar, and the
-live backtest (same code paths). Since 2026-10-20 (E7) the REFERENCE it freezes
-at is a tested switch family (tests/test_fixed_stop_family.py); defaults = above.
+live backtest (same code paths). Legacy E7 reference options are superseded by
+the 2026-10-26 user stop law and do not redirect the vector stop from dc15.
 """
 import dataclasses as dc
 import numpy as np
@@ -136,11 +136,9 @@ def test_v12_unconditional_despite_trailing_switch_off():
     assert "FIXED_STOP" in [t.get("exit_reason") for t in r["ledger"]]
 
 
-def test_config_fields_only_choose_the_reference_and_default_is_todays_level():
-    """RE-BASED 2026-10-20 (E7, USER "fixed stop can get switches"): was "no config field may switch the stop".
-    Now: the only FIXED_STOP_* fields that reach the stop level are the five E7 reference fields (plus the Tradier broker
-    infra knobs, which never move a level); their defaults are equal on all three surfaces and the stop level the vector
-    freezes for the configured reference equals the core's level — with defaults that is today's dc_15m -/+0.25%."""
+def test_current_v12_stop_ignores_superseded_e7_reference_fields():
+    """The 2026-10-26 user stop law fixes vector stops to entry-time dc15 ±0.25%.
+    Legacy E7 config fields remain present but cannot redirect v12 to another reference."""
     import config as C, config_tradier as CT, v12_quick_engine as V
     infra = {"TRADIER_FIXED_STOP_BROKER_BACKSTOP_ENABLED", "TRADIER_FIXED_STOP_ORDERS_MEMO_TTL_SEC"}
     for cls in (C.Config, CT.TradierConfig, V.QuickConfig):
@@ -153,19 +151,15 @@ def test_config_fields_only_choose_the_reference_and_default_is_todays_level():
     close = np.linspace(101.0, 94.0, n)
     dl = np.full(n, 95.0); dl[0] = 100.0
     dh = np.full(n, 150.0)
-    for spec, want in ((None, 100.0 * 0.9975), (("dc_low", "1h", 0.25), 50.0 * 0.9975)):
+    want = 100.0 * 0.9975
+    for spec in (None, ("dc_low", "1h", 0.25)):
         cfg = _cfg()
         if spec:
             cfg.FIXED_STOP_REF_FIELD, cfg.FIXED_STOP_REF_TF, cfg.FIXED_STOP_BUFFER_PCT = spec
         npz = _mk(n, close, dl, dh)
-        lvl = fx.freeze_level_spec(True, fx.spec_from(lambda k, d: getattr(cfg, k, d)), lambda k: float(npz[k][0]) if k in npz else None, float(close[0]))[0]
-        assert abs(lvl - want) < 1e-9, (spec, lvl, want)
         r = V.simulate_one(npz, "FX_REF", True, cfg, force_initial_seed=True)
         first = [t for t in r["ledger"] if t.get("exit_reason") == "FIXED_STOP"]
-        if spec is None:
-            assert first and first[0]["bar_exit"] == int(np.where(close <= want)[0][0])
-        else:
-            assert not first or first[0]["exit_price"] <= want + 1e-9
+        assert first and first[0]["bar_exit"] == int(np.where(close <= want)[0][0]), (spec, first[:1])
 
 
 def test_parity_gate_exempts_fixed_stop():
