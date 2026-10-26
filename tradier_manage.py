@@ -6,7 +6,50 @@ import stale_set_halt as _stale_set_halt  # 2026-10-14 USER STALE-SET 2-LOSS HAL
 import exit_guarantee as _xg  # 2026-10-14 USER EXITS NEVER COMPROMISED: full close never refused (FORCE leg), reduce retry, ledger once per confirmed fill
 import vec_decisions.qty_quantizers as _qq  # 2026-10-16 USER STDEV 1-5x ladder + streak quantizer: same code as v12_quick_engine/ez_manage
 import paper_nonvec as _paper_nv  # 2026-10-17 USER: live-only decisions refused + paper-traded next to the vector trades
-import positions_truth as _ptruth  # 2026-10-06 USER POSITIONS_TRUTH: zero-qty refusal, broker-confirmed SUCCESS, local!=broker refuses entries
+import position_writer_guard as _pwg_meta  # USER 2026-10-26: positions-file freshness readers (positions_truth.py deleted)
+from utils import offloop_serialized as _offloop_serialized  # USER 2026-10-26: generic off-loop helper
+
+
+def _execute_now_qty_guard_tr(fn):
+    """Decorator on the Tradier execute_now, replacing positions_truth.tradier_confirmed (USER 2026-10-26).
+
+    KEPT — a zero / non-finite quantity is never sent and never reported as SUCCESS (returns the same
+    "BLOCKED_ZERO_QTY" string the retired guard returned).
+
+    DROPPED — the per-order broker confirmation. It polled Tradier holdings before and after each order and
+    rewrote a real SUCCESS into UNCONFIRMED_BY_BROKER_<code> whenever the post-order read disagreed or could
+    not be read, which made completed exits look failed and drove duplicate escalations. Redis plus
+    {acct}/{long,short}_positions.json, written by tradier_positions.py from its own API sync, own the record.
+
+    FORCE_CLOSE_MARKET stays exempt — the exit-guarantee leg verifies broker-flat itself.
+    """
+    import functools as _ft
+
+    @_ft.wraps(fn)
+    async def _wrapped(self, *args, **kwargs):
+        try:
+            import inspect as _in
+            bound = _in.signature(fn).bind_partial(self, *args, **kwargs).arguments
+        except Exception:
+            bound = kwargs
+        action = str(bound.get("action") or "").upper()
+        if action == "FORCE_CLOSE_MARKET":
+            return await fn(self, *args, **kwargs)
+        if not bool(bound.get("is_full_close")):
+            qty = bound.get("quantity", 0.0)
+            try:
+                import math as _m
+                q = float(qty)
+                bad = (not _m.isfinite(q)) or q <= 0.0
+            except (TypeError, ValueError):
+                bad = True
+            if bad:
+                pk = bound.get("position_key") or f"{bound.get('account_key')}:{bound.get('symbol')}_{bound.get('position_side')}"
+                logger.critical(f"🛑 [POSITIONS_ZERO_QTY_REFUSED] {pk}: action={action} qty={qty!r} — never sent, never SUCCESS")
+                return "BLOCKED_ZERO_QTY"
+        return await fn(self, *args, **kwargs)
+
+    return _wrapped
 import tradier_broker_snapshot as _bsnap  # 2026-10-16 USER "TOTAL AND COMPLETE SYNCHRONICITY": broker positions+orders read on a dedicated thread, immune to main-loop freezes
 from live_rally_filters import rally_ok as _rally_ok
 import tradier_filter_tf_twins as _ftf_twins  # PARITY LANE C 2026-10-06: vec entry FILTER_TF predicates (stocks live)
@@ -7791,6 +7834,21 @@ def _cfg(
 
     2026-10-15: a SUB-15m hard block sits above every layer here — see _sub15m_blocked().
     """
+    # Master blocks precede forward-live and per-symbol values so a promotion
+    # cannot re-enable a path that has no vector counterpart.
+    if _sub15m_blocked(param):
+        return SUB15M_BLOCKED_SWITCHES[param]
+    try:
+        _config_base = object.__getattribute__(config, "_inner")
+    except Exception:
+        _config_base = config
+    _nonvec_keys = getattr(
+        config_tradier.TradierConfig, "PARITY_NON_VECTORIZABLE_SWITCHES", ()
+    )
+    if param in _nonvec_keys and bool(
+        getattr(_config_base, "PARITY_DISABLE_NON_VECTORIZABLE", True)
+    ):
+        return False
     try:  # USER 2026-10-22 forward auto-promote: a live promotion exempts exactly this (sym_side, knob)
         import forward_live_settings as _fls_tr
 
@@ -7799,8 +7857,6 @@ def _cfg(
             return _fls_hit[0]
     except Exception:
         pass
-    if _sub15m_blocked(param):
-        return SUB15M_BLOCKED_SWITCHES[param]
     # USER 2026-10-16: the bottom stop-market order rests AT the exchange with the entry, so no per_sym set, board
     # or sweep override may switch it off. Pinned above every layer here, as on the crypto side
     # (ez_manage.EXCHANGE_RESTING_STOPS). 39 live sym_sides were carrying False when this was added.
@@ -14460,7 +14516,7 @@ async def _vec_exact_process_twin(
         return "VEC_EXACT_STALE"
     _now = _time.time()
     try:
-        _st = await _ptruth.offloop_serialized(_vx.actions_at, symbol, position_side, _now)
+        _st = await _offloop_serialized(_vx.actions_at, symbol, position_side, _now)
     except Exception as _tw_e:
         logger.warning(f"[VEC_EXACT_STALE_FALLBACK] {position_key}: twin error {_tw_e} -> native exits run")
         return "VEC_EXACT_STALE"
@@ -14479,7 +14535,7 @@ async def _vec_exact_process_twin(
         want = ("CLOSE", "REDUCE") + (("AUGMENT",) if "AUGMENT" in fams else ())
     else:
         want = ("OPEN",)
-    _acts_now, _acts_catch = await _ptruth.offloop_serialized(_vx.take_all, symbol, position_side, _now, want)
+    _acts_now, _acts_catch = await _offloop_serialized(_vx.take_all, symbol, position_side, _now, want)
     _out = []
     # USER 2026-10-13 rule (crypto twin): "NO exit can EVER be skipped AT ALL" — a vec full exit that expired unconsumed (> 4 bars)
     # is owed now when it was decided after this live position opened; one decided before the entry belongs to another lifecycle.
@@ -27822,14 +27878,14 @@ class PositionReader:
                 data = await self.redis_client.get(key)
                 if data:
                     wrapper = pickle.loads(data)
-                    _pt_wa = _ptruth.tradier_reader_written_at(wrapper)
+                    _pt_wa = _pwg_meta.tradier_reader_written_at(wrapper)
                     # 2026-10-14 USER: Redis (tradier_positions) must be fresh; the JSON (written ~4 s) is the backup source.
                     # A stale Redis snapshot is never authority: use the JSON when it is fresher.
                     try:
                         _rd_age = time.time() - float(_pt_wa) if _pt_wa is not None else 1e9
                         if _rd_age > float(getattr(config, "TRADIER_READER_REDIS_MAX_AGE_SEC", 15.0) or 15.0):
                             _acc_dir = (config.get_account_config(acc) or {}).get("account_dir") or (config.BASE_PATH / acc)
-                            _js_wa = [w for w in (_ptruth.read_written_at(os.path.join(str(_acc_dir), f)) for f in ("long_positions.json", "short_positions.json")) if w is not None]
+                            _js_wa = [w for w in (_pwg_meta.read_written_at(os.path.join(str(_acc_dir), f)) for f in ("long_positions.json", "short_positions.json")) if w is not None]
                             if _js_wa and (_pt_wa is None or min(_js_wa) > float(_pt_wa)):
                                 logger.warning(f"[Reader] Redis positions for {acc} stale {_rd_age:.0f}s — loading tradier_positions JSON (fresher)")
                                 data = None
@@ -27900,7 +27956,7 @@ class PositionReader:
                     continue
 
                 data = await load_json_safe(fpath)
-                _pt_wa = _ptruth.read_written_at(
+                _pt_wa = _pwg_meta.read_written_at(
                     fpath
                 )  # 2026-10-06 POSITIONS_TRUTH: no meta = unknown = stale
                 if _pt_wa is None:
@@ -46690,26 +46746,13 @@ class TradierTradeManager:
                 if (_pt_pm is not None and position_side)
                 else None
             )
-            _pt_blk = None
-            if not (_tr_truth_unknown and _tr_parity_vec_order(reason)):
-                _pt_blk = _ptruth.tradier_pre_order(
-                    account_key,
-                    symbol,
-                    position_side or "LONG",
-                    action,
-                    current_qty,
-                    (
-                        abs(float(getattr(_pt_lp, "positionAmt", 0) or 0))
-                        if _pt_lp is not None
-                        else None
-                    ),
-                    (getattr(_pt_pm, "written_at", None) or {}).get(account_key),
-                    reason,
-                    config,
-                    logger,
-                )
-            if _pt_blk:
-                return {"errors": {"error": [_pt_blk]}}
+            # USER 2026-10-26: positions_truth.tradier_pre_order is gone. It compared the local row against
+            # the broker holdings this function had just fetched and refused position-increasing orders as
+            # POSITIONS_BROKER_MISMATCH, using POSITIONS_MAX_AGE_S (1.0 s) as its staleness test — shorter
+            # than the reconcile interval, so local data was "stale" essentially always. It also wrote the
+            # positions file from here (rewrite_row_from_broker), a second writer racing tradier_positions.
+            # current_qty below is the broker's own TRUE holdings read moments ago, so it is already the
+            # authority for sizing; Redis + {acct}/{long,short}_positions.json own the record.
 
             is_exception = symbol.upper() in self.exceptions
             max_order = (
@@ -49137,12 +49180,8 @@ class TradierTradeManager:
                 b = await _read()
                 if b is None:
                     _fb_amt, _fb_src = 0.0, "none"
-                    try:
-                        _bp = getattr(_ptruth, "_CACHES", {}).get(("tradier", acct))
-                        if _bp is not None and getattr(_bp, "last", None) is not None:
-                            _fb_amt, _fb_src = abs(float(_bp.last.amount(sym, ps))), "last_broker_snapshot"
-                    except Exception:
-                        pass
+                    # USER 2026-10-26: the broker-snapshot cache died with positions_truth.py; the position
+                    # manager's own store below is the truth.
                     if _fb_amt <= 0:
                         try:
                             _lp = self.position_manager.positions.get(position_key) if self.position_manager else None
@@ -49236,7 +49275,7 @@ class TradierTradeManager:
         "tradier"
     )  # POSITIONS REVAMP 2026-10-06: execute_now token — the wire refuses exposure-increasing orders without it
     @_xg.wrap_execute_now("tradier", lambda: _XG_TR_HOOKS)
-    @_ptruth.tradier_confirmed  # 2026-10-06 USER POSITIONS_TRUTH: SUCCESS only when the broker-confirmed position matches (order id alone is not a fill)
+    @_execute_now_qty_guard_tr  # USER 2026-10-26: zero/invalid qty never sent; per-order broker confirmation retired with positions_truth.py (Redis + positions JSON own the record)
     async def execute_now(
         self,
         position_key: str,

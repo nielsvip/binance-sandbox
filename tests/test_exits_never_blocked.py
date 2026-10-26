@@ -384,7 +384,7 @@ def test_C5_nonfinal_ledger_row_and_unreflected_file_never_block_force(binance, 
     broker, guard, client = binance
     broker.pos[("ZRXUSDT", "LONG")] = [500.0, 0.3]
     guard.ledger.mutate("ZRXUSDT", lambda o: o.append({"client_order_id": "old1", "order_id": None, "side": "SELL", "position_side": "LONG", "qty": 500, "submitted_at": 0, "state": "UNKNOWN", "final": False}))
-    import positions_truth as pt
+    import position_writer_guard as pt  # USER 2026-10-26: file_reflects moved here (positions_truth.py deleted)
     monkeypatch.setattr(pt, "file_reflects", lambda *a, **k: (False, {"why": "stale file"}))
     with _full_ctx(xg.FORCE_ACTION):
         _sell(client)

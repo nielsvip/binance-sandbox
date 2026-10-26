@@ -2291,12 +2291,19 @@ class IndicatorCalculator:
         # the causal backtest could never have seen.
         if timeframe in ("15m", "1h", "4h", "D"):
             try:
+                _formation_window = 40
+                _formation_frame = df
+                if len(df) > _formation_window:
+                    _formation_tail = df.iloc[-_formation_window:]
+                    _formation_values = _formation_tail[["open", "high", "low", "close", "volume"]].to_numpy(dtype=float)
+                    if np.isfinite(_formation_values[0]).all():
+                        _formation_frame = _formation_tail
                 _formation_fields = formation_fields_from_ohlcv(
-                    df["open"].to_numpy(dtype=float),
-                    df["high"].to_numpy(dtype=float),
-                    df["low"].to_numpy(dtype=float),
-                    df["close"].to_numpy(dtype=float),
-                    df["volume"].to_numpy(dtype=float),
+                    _formation_frame["open"].to_numpy(dtype=float),
+                    _formation_frame["high"].to_numpy(dtype=float),
+                    _formation_frame["low"].to_numpy(dtype=float),
+                    _formation_frame["close"].to_numpy(dtype=float),
+                    _formation_frame["volume"].to_numpy(dtype=float),
                     timeframe=timeframe,
                 )
                 result.update(latest_formation_fields(_formation_fields))

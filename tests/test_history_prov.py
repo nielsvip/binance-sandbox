@@ -175,33 +175,32 @@ def _last(tmp_path, acct, ss):
 
 def _order(pk, qty, tagged_reason_text, prov):
     """what the wire does inside the dispatch task: tagged_reason() set the ContextVar, place_maker_order called note_order_reason."""
-    import positions_truth as pt
+    import ez_positions_service as _eps
     from live_twins import vec_provenance as vp
 
     vp.set_history_prov(tagged_reason_text, prov)
-    pt.note_order_reason(pk, qty, "MAKER_PROFIT_EXIT_" + tagged_reason_text if prov and prov.get("ev") in ("REDUCE", "CLOSE") else tagged_reason_text)
+    _eps.note_order_reason(pk, qty, "MAKER_PROFIT_EXIT_" + tagged_reason_text if prov and prov.get("ev") in ("REDUCE", "CLOSE") else tagged_reason_text)
 
 
 def test_crypto_history_off_is_identical_to_today(tmp_path, monkeypatch):
-    import positions_truth as pt
-
+    import ez_positions_service as _eps
     monkeypatch.delenv("HISTORY_PROV_ENABLED", raising=False)
     fn, stub = _crypto_service(tmp_path, False)
-    pt._RECENT_ORDER_REASONS.clear()
-    pt.note_order_reason("men:X_LONG", 5.0, "B_KZONE |VEC_EXACT")
+    _eps._RECENT_ORDER_REASONS.clear()
+    _eps.note_order_reason("men:X_LONG", 5.0, "B_KZONE |VEC_EXACT")
     asyncio.run(fn(stub, "men:X_LONG", "OPEN", 5.0, 10.0, {"snapshot": {"price": 10.0}}))
     ev = _last(tmp_path, "men", "X_LONG")[0]
     assert "prov" not in ev and ev["reason"] == "B_KZONE |VEC_EXACT" and set(ev) == {"ts", "type", "qty", "price", "value", "reason", "indicators"}
 
 
 def test_crypto_open_and_close_carry_prov(tmp_path, monkeypatch):
-    import positions_truth as pt
+    import ez_positions_service as _eps
     from live_twins import vec_exact as vx
 
     monkeypatch.delenv("HISTORY_PROV_ENABLED", raising=False)
     fn, stub = _crypto_service(tmp_path, True)
-    pt._RECENT_ORDER_REASONS.clear()
-    pt._RECENT_ORDER_PROV.clear()
+    _eps._RECENT_ORDER_REASONS.clear()
+    _eps._RECENT_ORDER_PROV.clear()
     monkeypatch.setattr(vx, "_CFG", [SimpleNamespace(HISTORY_PROV_ENABLED=True)])
     a_open = {"n": 1, "type": "OPEN", "reason": "B_KZONE", "reason_x": 1}
     a_open["prov"] = H.attribute(a_open["reason"], "OPEN", "LONG", "crypto", SET, "X_LONG")
@@ -211,7 +210,7 @@ def test_crypto_open_and_close_carry_prov(tmp_path, monkeypatch):
     async def go():
         for a, qty, t, px in ((a_open, 5.0, "OPEN", 10.0), (a_close, 5.0, "CLOSE", 9.5)):
             r = vx.tagged_reason(a)
-            pt.note_order_reason("men:X_LONG", qty, ("MAKER_PROFIT_EXIT_" + r) if t == "CLOSE" else r)
+            _eps.note_order_reason("men:X_LONG", qty, ("MAKER_PROFIT_EXIT_" + r) if t == "CLOSE" else r)
             await fn(stub, "men:X_LONG", t, qty, px, {})
 
     asyncio.run(go())
@@ -222,28 +221,26 @@ def test_crypto_open_and_close_carry_prov(tmp_path, monkeypatch):
 
 
 def test_crypto_unmatched_vec_fill_is_unattributed_not_guessed(tmp_path, monkeypatch):
-    import positions_truth as pt
-
+    import ez_positions_service as _eps
     monkeypatch.delenv("HISTORY_PROV_ENABLED", raising=False)
     fn, stub = _crypto_service(tmp_path, True)
-    pt._RECENT_ORDER_REASONS.clear()
-    pt._RECENT_ORDER_PROV.clear()
-    pt.note_order_reason("men:Y_LONG", 3.0, "B12 |VEC_EXACT")  # no prov registered for it
+    _eps._RECENT_ORDER_REASONS.clear()
+    _eps._RECENT_ORDER_PROV.clear()
+    _eps.note_order_reason("men:Y_LONG", 3.0, "B12 |VEC_EXACT")  # no prov registered for it
     asyncio.run(fn(stub, "men:Y_LONG", "OPEN", 3.0, 1.0, {}))
     ev = _last(tmp_path, "men", "Y_LONG")[0]
     assert ev["prov"]["switch"] == "UNATTRIBUTED:vec_prov_not_matched_to_fill" and ev["reason"].endswith("|SW=UNATTRIBUTED:vec_prov_not_matched_to_fill|F=-")
 
 
 def test_crypto_fixed_stop_and_broker_events(tmp_path, monkeypatch):
-    import positions_truth as pt
-
+    import ez_positions_service as _eps
     monkeypatch.delenv("HISTORY_PROV_ENABLED", raising=False)
     fn, stub = _crypto_service(tmp_path, True)
-    pt._RECENT_ORDER_REASONS.clear()
-    pt._RECENT_ORDER_PROV.clear()
+    _eps._RECENT_ORDER_REASONS.clear()
+    _eps._RECENT_ORDER_PROV.clear()
 
     async def go():
-        pt.note_order_reason("men:Z_LONG", 2.0, "MAKER_PROFIT_EXIT_FIXED_STOP |VEC_EXACT")
+        _eps.note_order_reason("men:Z_LONG", 2.0, "MAKER_PROFIT_EXIT_FIXED_STOP |VEC_EXACT")
         await fn(stub, "men:Z_LONG", "CLOSE", 2.0, 5.0, {})
         await fn(stub, "men:Z_LONG", "OPEN", 1.5, 5.0, {"reason": "BROKER_RECONCILED order=1"})
 
@@ -315,16 +312,15 @@ def test_tagged_reason_is_byte_identical_with_flag_on_or_off(monkeypatch):
 
 
 def test_note_order_reason_ring_unchanged_by_prov(monkeypatch):
-    import positions_truth as pt
-
+    import ez_positions_service as _eps
     from live_twins import vec_provenance as vp
 
     vp._HIST_PROV.set(None)
-    pt._RECENT_ORDER_REASONS.clear()
-    pt._RECENT_ORDER_PROV.clear()
-    pt.note_order_reason("men:Q_LONG", 4.0, "B12 |VEC_EXACT")
-    assert pt.match_recent_order_reason("men:Q_LONG", 4.0) == "B12 |VEC_EXACT"
-    assert pt.match_recent_order_prov("men:Q_LONG", 4.0) is None
+    _eps._RECENT_ORDER_REASONS.clear()
+    _eps._RECENT_ORDER_PROV.clear()
+    _eps.note_order_reason("men:Q_LONG", 4.0, "B12 |VEC_EXACT")
+    assert _eps.match_recent_order_reason("men:Q_LONG", 4.0) == "B12 |VEC_EXACT"
+    assert _eps.match_recent_order_prov("men:Q_LONG", 4.0) is None
 
 
 def test_attribute_never_raises_on_garbage():
@@ -334,18 +330,18 @@ def test_attribute_never_raises_on_garbage():
 
 
 def test_leaked_block_never_crosses_position_keys():
-    import positions_truth as pt
+    import ez_positions_service as _eps
     from live_twins import vec_provenance as vp
 
-    pt._RECENT_ORDER_REASONS.clear()
-    pt._RECENT_ORDER_PROV.clear()
+    _eps._RECENT_ORDER_REASONS.clear()
+    _eps._RECENT_ORDER_PROV.clear()
     vp.set_history_prov("B12 |VEC_EXACT", {"switch": "REENTRY_B12_WT_MOM_ENABLED"})
     tok = vp.mark("men:A_LONG", 1.0, "OPEN")
     try:
-        pt.note_order_reason("men:B_LONG", 4.0, "B12 |VEC_EXACT")
-        assert pt.match_recent_order_prov("men:B_LONG", 4.0) is None
-        pt.note_order_reason("men:A_LONG", 4.0, "B12 |VEC_EXACT")
-        assert pt.match_recent_order_prov("men:A_LONG", 4.0)["switch"] == "REENTRY_B12_WT_MOM_ENABLED"
+        _eps.note_order_reason("men:B_LONG", 4.0, "B12 |VEC_EXACT")
+        assert _eps.match_recent_order_prov("men:B_LONG", 4.0) is None
+        _eps.note_order_reason("men:A_LONG", 4.0, "B12 |VEC_EXACT")
+        assert _eps.match_recent_order_prov("men:A_LONG", 4.0)["switch"] == "REENTRY_B12_WT_MOM_ENABLED"
     finally:
         vp.reset(tok)
         vp._HIST_PROV.set(None)
@@ -357,15 +353,14 @@ def test_venue_is_decided_by_symbol_not_by_set_mode():
 
 
 def test_unserialisable_prov_never_loses_the_history_line(tmp_path, monkeypatch):
-    import positions_truth as pt
-
+    import ez_positions_service as _eps
     monkeypatch.delenv("HISTORY_PROV_ENABLED", raising=False)
     fn, stub = _crypto_service(tmp_path, True)
-    pt._RECENT_ORDER_REASONS.clear()
-    pt._RECENT_ORDER_PROV.clear()
+    _eps._RECENT_ORDER_REASONS.clear()
+    _eps._RECENT_ORDER_PROV.clear()
     bad = {"switch": "S", "filters": [], "cand": object()}
-    pt.note_order_reason("men:W_LONG", 2.0, "B12 |VEC_EXACT")
-    pt._RECENT_ORDER_PROV["men:W_LONG"] = [(__import__("time").time(), 2.0, "B12 |VEC_EXACT", bad)]
+    _eps.note_order_reason("men:W_LONG", 2.0, "B12 |VEC_EXACT")
+    _eps._RECENT_ORDER_PROV["men:W_LONG"] = [(__import__("time").time(), 2.0, "B12 |VEC_EXACT", bad)]
     asyncio.run(fn(stub, "men:W_LONG", "OPEN", 2.0, 1.0, {}))
     ev = _last(tmp_path, "men", "W_LONG")[0]
     assert "prov" not in ev and ev["qty"] == 2.0 and ev["reason"].startswith("B12 |VEC_EXACT")
@@ -373,13 +368,13 @@ def test_unserialisable_prov_never_loses_the_history_line(tmp_path, monkeypatch)
 
 # ───────────── r2: exits that inherited an ENTRY label (coordinator 2026-10-20) + stock broker echoes ─────────────
 def test_exit_with_inherited_entry_label_is_not_attributed_to_the_entry_switch(tmp_path, monkeypatch):
-    import positions_truth as pt
+    import ez_positions_service as _eps
     from live_twins import vec_provenance as vp
 
     monkeypatch.delenv("HISTORY_PROV_ENABLED", raising=False)
     fn, stub = _crypto_service(tmp_path, True)
-    pt._RECENT_ORDER_REASONS.clear()
-    pt._RECENT_ORDER_PROV.clear()
+    _eps._RECENT_ORDER_REASONS.clear()
+    _eps._RECENT_ORDER_PROV.clear()
     vp._RECENT_VEC_EXITS.clear()
     # no matched order (position vanished from the API), decision-context fallback handed back the previous line's entry reason
     ctx = {"reason": "B14 |VEC_EXACT"}

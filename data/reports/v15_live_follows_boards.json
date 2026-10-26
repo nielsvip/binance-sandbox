@@ -1,9 +1,9 @@
 {
- "at": "2026-10-26T22:38:25Z",
+ "at": "2026-10-26T23:38:05Z",
  "reports": [
   {
-   "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261026_refresh_2200.json",
-   "age_min": 34.6,
+   "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261026_refresh_2300.json",
+   "age_min": 35.0,
    "applied": true,
    "n": null,
    "results": {
@@ -18,13 +18,12 @@
    "changed_symsides": []
   },
   {
-   "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261026_refresh_2059.json",
-   "age_min": 89.6,
+   "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261026_refresh_2200.json",
+   "age_min": 94.2,
    "applied": true,
    "n": null,
    "results": {
-    "REFUSED": 8,
-    "PASS": 1
+    "REFUSED": 8
    },
    "registered": 0,
    "already_live_skipped": 0,

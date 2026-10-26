@@ -180,7 +180,6 @@ def test_memory_opened_at_may_change_when_flat():
 
 
 def test_reader_memory_resyncs_from_writer_files(acct):
-    import positions_truth
     for side in ("long", "short"):
         (acct / f".{side}_positions.json.meta.json").write_text(json.dumps({"written_at": time.time(), "writer": "ez_positions.atomic_save:service:1"}))
     pos = _position(OA_RESTAMP)
@@ -199,12 +198,15 @@ def test_reader_resync_skipped_when_files_stale(acct):
     assert pwg.resync_memory_from_files({"fin:ETHUSDC_LONG": pos}, acct) == []
 
 
-def test_broker_rewrite_deferred_in_manage_role(acct, monkeypatch):
-    import positions_truth
-    monkeypatch.setenv(pwg.ROLE_ENV, "manage")
-    before = (acct / "long_positions.json").read_bytes()
-    assert positions_truth.rewrite_row_from_broker("binance", "fin", "ETHUSDC", "LONG", {"amt": 0.03, "entry": 2511.0}) is True
-    assert (acct / "long_positions.json").read_bytes() == before
+def test_no_module_can_rewrite_position_files_outside_the_writer():
+    """USER 2026-10-26: positions_truth.rewrite_row_from_broker is DELETED, so a manage-role process can no
+    longer rewrite {acct}/{long,short}_positions.json at all. This replaces the old
+    test_broker_rewrite_deferred_in_manage_role, which only checked that the rewrite DEFERRED; the single
+    writer law is now structural rather than conditional."""
+    import importlib, re
+    assert importlib.util.find_spec("positions_truth") is None, "positions_truth.py is deleted and must stay deleted"
+    import order_dedupe_guard as odg
+    assert re.search(r"rewrite_row_from_broker\s*\(", open(odg.__file__).read()) is None
 
 
 def test_max_gain_never_decreases_within_lifecycle(acct):
@@ -386,15 +388,14 @@ def test_tradier_positions_merges_manage_overlay_same_lifecycle(tmp_path):
     assert r["entry_price"] == 170.64  # overlay never carries identity
 
 
-def test_tradier_broker_rewrite_deferred_in_manage_role(tmp_path, monkeypatch):
-    import positions_truth
-    monkeypatch.setenv("POSITIONS_BASE_DIR", str(tmp_path))
-    monkeypatch.setenv(pwg.ROLE_ENV, "manage")
-    (tmp_path / "trb").mkdir()
-    (tmp_path / "trb" / "long_positions.json").write_text(json.dumps({"trb:A_LONG": _stock_row()}))
-    before = (tmp_path / "trb" / "long_positions.json").read_bytes()
-    assert positions_truth.rewrite_row_from_broker("tradier", "trb", "A", "LONG", {"amt": 4.0}) is True
-    assert (tmp_path / "trb" / "long_positions.json").read_bytes() == before
+def test_tradier_manage_has_no_position_file_writer(tmp_path, monkeypatch):
+    """USER 2026-10-26: replaces test_tradier_broker_rewrite_deferred_in_manage_role. The rewrite path it
+    exercised (positions_truth.rewrite_row_from_broker) is deleted, so tradier_manage cannot write
+    {acct}/{long,short}_positions.json at all — tradier_positions.py remains the only writer."""
+    import re
+    src = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tradier_manage.py")).read()
+    assert re.search(r"rewrite_row_from_broker\s*\(", src) is None
+    assert re.search(r"^\s*import positions_truth", src, re.M) is None
 
 
 def test_tradier_overlay_only_for_owned_accounts(tmp_path, monkeypatch):

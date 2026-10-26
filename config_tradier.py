@@ -3538,6 +3538,13 @@ class TradierConfig:
         False  # Enable paper trading mode - records trades without executing
     )
     PARITY_DISABLE_NON_VECTORIZABLE: bool = True
+    PARITY_NON_VECTORIZABLE_SWITCHES: ClassVar[tuple[str, ...]] = (
+        "RED_ZONE_TRADIER_GATE_ENABLED",
+        "INTRADAY_RATIO_REBALANCE_ENABLED",
+        "LS_RATIO_ENFORCE_TRADIER",
+        "SECTOR_LS_RATIO_ENABLED",
+        "STOCKS_FRESH_ENTRY_TREND_GATES_ENABLED",
+    )
     PARITY_MIN_DECISION_TF: str = "15m"
     PARTIAL_EXIT_FRAC: float = 0.75
     PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT: float = 1.75
