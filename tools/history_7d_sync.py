@@ -143,7 +143,7 @@ def merge(packs):
     return {"schema": 1, "now": now, "days": days, "rows": rows}
 
 
-def lease_authorized(pack, alerts):
+def lease_authorized(pack, alerts, known=None):
     transitions = []
     for line in alerts.splitlines():
         try:
@@ -156,6 +156,11 @@ def lease_authorized(pack, alerts):
     epochs = [item[0] for item in transitions]
     rows = {}
     accepted = rejected = 0
+    already_synced = 0
+    known_ids = {
+        rel: {_identity(line)[0] for line in lines if _identity(line) is not None}
+        for rel, lines in (known or {}).get("rows", {}).items()
+    }
     for rel, lines in pack["rows"].items():
         account = rel.split("/", 1)[0]
         venue = (
@@ -165,6 +170,9 @@ def lease_authorized(pack, alerts):
         )
         for line in lines:
             item = _identity(line)
+            if item is not None and item[0] in known_ids.get(rel, set()):
+                already_synced += 1
+                continue
             if item is None or venue is None:
                 rejected += 1
                 continue
@@ -184,6 +192,7 @@ def lease_authorized(pack, alerts):
     return {**pack, "rows": rows}, {
         "s1_lease_rows": accepted,
         "s1_unproven_rows": rejected,
+        "already_on_mac": already_synced,
         "lease_transitions": len(transitions),
     }
 
@@ -337,7 +346,9 @@ def sync(root, host, days, dry_run=False):
                     str(alerts_path),
                 ]
             )
-            s1_live, lease_audit = lease_authorized(packs[2], alerts_path.read_text())
+            s1_live, lease_audit = lease_authorized(
+                packs[2], alerts_path.read_text(), local
+            )
             packs = [local, s1_live]
             union = merge(packs)
             union_path = temp / "union.json"

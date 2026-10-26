@@ -46,9 +46,10 @@ def test_receiver_preserves_history_and_authoritative_exchange_row(tmp_path):
     older = dict(native, timestamp='2026-10-26T17:45:00+00:00')
     atomic_json(path, [older, native])
     receipt = receive_closed_15m(tmp_path, event(), now_s=START + 900)
-    rows = json.loads(path.read_text())
+    from npz_live_generator import _load_klines_df
+    rows = _load_klines_df(path)
     assert len(rows) == 2
-    assert rows[-1]['close'] == 120 and rows[-1]['volume'] == 7
+    assert rows.iloc[-1]['close'] == 120 and rows.iloc[-1]['volume'] == 7
     assert receipt['bar_close_ts'] == START + 900
     assert (tmp_path / 'data' / 'closed_15m_receipts.jsonl').exists()
     with pytest.raises(ValueError, match='not closed'):
@@ -62,17 +63,22 @@ def test_receiver_appends_completed_bar_without_replacing_other_rows(tmp_path):
     atomic_json(path, [old, current])
     payload = dict(event(), mode='tradier')
     receive_closed_15m(tmp_path, payload, now_s=START + 900)
-    rows = json.loads(path.read_text())
-    assert len(rows) == 3 and rows[0] == old and rows[-1] == current
-    assert rows[1]['timestamp'] == payload['row']['timestamp']
+    from npz_live_generator import _load_klines_df
+    rows = _load_klines_df(path)
+    assert len(rows) == 3
+    assert rows.iloc[0]['close'] == old['close']
+    assert rows.iloc[1]['close'] == payload['row']['close']
+    assert json.loads(path.read_text()) == [old, current]
 
 
-def test_failed_producer_write_does_not_ship_stale_provisional_row(tmp_path):
+def test_completed_overlay_is_available_without_waiting_for_history_rewrite(tmp_path):
     path = tmp_path / 'TESTUSDT_15m.json'
     stale = dict(event()['row'], close=3)
     atomic_json(path, [stale])
-    assert not publish_closed_15m(path, event()['row'], lambda *_: False, tmp_path, 'crypto', 'TESTUSDT')
-    assert not list((tmp_path / 'data').rglob('*.json'))
+    assert publish_closed_15m(path, event()['row'], lambda *_: False, tmp_path, 'crypto', 'TESTUSDT')
+    published = json.loads(next((tmp_path / 'data/closed_15m_outbox/crypto').glob('*.json')).read_text())
+    assert published['row']['close'] == event()['row']['close']
+    assert json.loads(path.read_text()) == [stale]
 
 
 def test_tail_watcher_accepts_boundary_without_thirty_second_wait(tmp_path):

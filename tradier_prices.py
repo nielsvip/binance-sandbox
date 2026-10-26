@@ -444,12 +444,14 @@ class TradierPriceFetcher:
         logger.info(f"[{self.fetcher_id}] Main Loop Active.")
         provisional_task = asyncio.create_task(self.provisional_15m_clock_loop())
         closed_task = asyncio.create_task(self.closed_15m_clock_loop())
+        quote_task = asyncio.create_task(self.update_prices_loop())
         try:
-            await self.update_prices_loop()
+            await asyncio.gather(quote_task, provisional_task, closed_task)
         finally:
+            quote_task.cancel()
             provisional_task.cancel()
             closed_task.cancel()
-            await asyncio.gather(provisional_task, closed_task, return_exceptions=True)
+            await asyncio.gather(quote_task, provisional_task, closed_task, return_exceptions=True)
             tasks = list(self.__dict__.get("_provisional_io_tasks", {}).values())
             for task in tasks:
                 task.cancel()
@@ -465,15 +467,22 @@ async def main():
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, lambda: stop_event.set())
-    
     fetcher = TradierPriceFetcher()
+    fetcher_task = asyncio.create_task(fetcher.start())
+    stop_task = asyncio.create_task(stop_event.wait())
     try:
-        fetcher_task = asyncio.create_task(fetcher.start())
-        await stop_event.wait()
-    except Exception as e:
-        logger.error(f"Main failure: {e}")
+        done, _ = await asyncio.wait((fetcher_task, stop_task), return_when=asyncio.FIRST_COMPLETED)
+        if fetcher_task in done and not stop_event.is_set():
+            await fetcher_task
+            raise RuntimeError('Tradier price feed exited before shutdown; supervisor must restart it')
+    except Exception as exc:
+        logger.error(f'Tradier price feed failed; exiting for supervisor restart: {exc}', exc_info=True)
+        raise
     finally:
         await fetcher.stop()
+        fetcher_task.cancel()
+        stop_task.cancel()
+        await asyncio.gather(fetcher_task, stop_task, return_exceptions=True)
 
 if __name__ == "__main__":
     try:

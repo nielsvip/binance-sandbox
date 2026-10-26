@@ -321,6 +321,32 @@ class KlineLoader:
                     return history_map  
         return {}
 
+    @staticmethod
+    def load_ohlc_history(symbol: str, interval: str) -> dict:
+        from closed_bar_feed import timestamp_epoch
+        history = {}
+        for cache_dir in KLINES_DIRS:
+            for filename in (f'{symbol}_{interval}.json', f'{symbol.lower()}_{interval}.json'):
+                path = Path(cache_dir).expanduser().resolve() / filename
+                if not path.exists():
+                    continue
+                rows = resilient_json_load(path)
+                if not isinstance(rows, list):
+                    continue
+                for item in rows[-1000:]:
+                    try:
+                        if isinstance(item, dict):
+                            stamp = timestamp_epoch(item.get('timestamp') or item.get('time'))
+                            bar = {key: float(item[key]) for key in ('open', 'high', 'low', 'close')}
+                        else:
+                            stamp = timestamp_epoch(item[0])
+                            bar = dict(zip(('open', 'high', 'low', 'close'), map(float, item[1:5])))
+                        if stamp > 0 and len(bar) == 4 and all(np.isfinite(value) and value > 0 for value in bar.values()):
+                            history.setdefault(int(stamp), bar)
+                    except (TypeError, ValueError, KeyError, IndexError):
+                        continue
+        return history
+
 def update_1m_candle(store, price, tick_ts):
     minute_ts = int(tick_ts - (tick_ts % 60))
     store['closes_1m'][minute_ts] = price
@@ -508,7 +534,8 @@ class HighResMarketData:
                             closes_3m[ts_base + t * 180] = close
         while len(closes_1m) > 180: closes_1m.popitem(last=False)
         while len(closes_3m) > 180: closes_3m.popitem(last=False)
-        ohlc_1m = OrderedDict((ts, {'open': price, 'high': price, 'low': price, 'close': price}) for ts, price in closes_1m.items())
+        real_ohlc_1m = KlineLoader.load_ohlc_history(symbol, '1m')
+        ohlc_1m = OrderedDict((ts, real_ohlc_1m[ts]) for ts in sorted(real_ohlc_1m)[-180:])
 
         last_price = list(closes_1m.values())[-1] if closes_1m else 0.0
         last_ts = 0.0 
@@ -545,36 +572,12 @@ class HighResMarketData:
         if not store: return
         store['last_price'] = price
         store['last_tick_ts'] = timestamp
-        if price > 0 and abs(time.time() - timestamp) < 30:
-            update_1m_candle(store, price, timestamp)
-            update_3m_candle(store, price, timestamp)
-        try:
-            c1 = store.get('closes_1m')
-            if c1:
-                c1[next(reversed(c1))] = price
-            c3 = store.get('closes_3m')
-            if c3:
-                c3[next(reversed(c3))] = price
-        except Exception:
-            pass
-        try:
-            if price > 0 and abs(time.time() - timestamp) < 30:
-                c1 = store.get('closes_1m')
-                if c1:
-                    b1 = int(timestamp - (timestamp % 60))
-                    if b1 > max(c1):
-                        c1[b1] = price
-                        while len(c1) > 180:
-                            c1.popitem(last=False)
-                c3 = store.get('closes_3m')
-                if c3:
-                    b3 = int(timestamp - (timestamp % 180))
-                    if b3 > max(c3):
-                        c3[b3] = price
-                        while len(c3) > 180:
-                            c3.popitem(last=False)
-        except Exception:
-            pass
+        now = time.time()
+        if price > 0 and abs(now - timestamp) < 30:
+            if int(timestamp // 60) == int(now // 60):
+                update_1m_candle(store, price, timestamp)
+            if int(timestamp // 180) == int(now // 180):
+                update_3m_candle(store, price, timestamp)
 
     def apply_rest_bars(self, symbol: str, tf: str, bars: dict) -> int:
         """Merge authoritative REST bars into history. Returns bars merged."""

@@ -221,6 +221,13 @@ def kline_last_close(base, symbol, mode, now_s=None):
     except Exception:
         return None
     try:
+        from closed_bar_feed import timestamp_epoch
+        overlay = Path(base) / 'data' / 'closed_15m_bars' / mode / f'{symbol}.json'
+        if overlay.is_file():
+            now = time.time() if now_s is None else float(now_s)
+            eligible = [timestamp_epoch(row['timestamp']) for row in json.loads(overlay.read_text()) if timestamp_epoch(row['timestamp']) + 900 <= now]
+            if eligible and max(eligible) >= int(now // 900) * 900 - 900:
+                return max(eligible)
         f = _resolve_kline_path(symbol, "15m", mode, Path(base))
         if f is None:
             return None

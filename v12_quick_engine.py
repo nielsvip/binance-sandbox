@@ -15919,7 +15919,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         nonlocal pos, _pending_exit_restore, cd, has_closed_before, bars_in_pos, _pending_exit_control_restore
         try:
             from vec_decisions.net_exit_gate import vector_exit_event_allowed as _exit_allowed
-            _configured_fee_pct = max(0.0, float(getattr(cfg, "COMMISSION_BUFFER_PCT", 0.08) or 0.0))
+            _configured_fee_pct = 0.0 if is_tradier else max(0.0, float(getattr(cfg, "COMMISSION_BUFFER_PCT", 0.08) or 0.0))
             _additional_fee_pct = max(0.0, _configured_fee_pct - float(commission_pct or 0.0))
             _accepted = _exit_allowed(event, pos, _bar_pos_snapshot, 0.25, is_long, half_fee, _additional_fee_pct)
         except Exception:
@@ -23630,7 +23630,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 ):
                     from vec_decisions.bb_recovery_exit import positive_after_estimated_fees
 
-                    _bb_recovery_fee_pct = max(
+                    _bb_recovery_fee_pct = 0.0 if is_tradier else max(
                         0.0,
                         float(getattr(cfg, "COMMISSION_BUFFER_PCT", 0.08) or 0.0),
                     )
@@ -23669,7 +23669,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         tradier_recovery_bypass_mask,
                     )
 
-                    _bb_recov_fee_pct = max(
+                    _bb_recov_fee_pct = 0.0 if is_tradier else max(
                         0.0, float(getattr(cfg, "COMMISSION_BUFFER_PCT", 0.08) or 0.0)
                     )
                     _bb_recov_hit = bool(
@@ -23701,7 +23701,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 continue  # lane-D: stocks HTF_TREND_VETO_ON_REDUCE
             _exit_fee = abs(pos["qty"] * px) * half_fee
             pnl_dollars = pnl_preview - (pos["fees"] + _exit_fee)
-            _fee_buffer_pct = max(
+            _fee_buffer_pct = 0.0 if is_tradier else max(
                 0.0, float(getattr(cfg, "COMMISSION_BUFFER_PCT", 0.08) or 0.0)
             )
             _unmodeled_fee_pct = max(

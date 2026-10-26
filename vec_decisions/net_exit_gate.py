@@ -11,7 +11,9 @@ def mandatory_loss_stop_reason(reason, dc4_buffer_pct=0.25):
         if "_REF" not in value:
             return True
         return bool(re.search(r"_REFDC_(?:LOW|HIGH)\.15M(?:\.B0\.25)?$", value))
-    if value.startswith(("ULTIMATE_DC_4H_HARD_STOP_LONG_", "ULTIMATE_DC_4H_HARD_STOP_SHORT_")):
+    if value.startswith(("ULTIMATE_DC_4H_HARD_STOP_LONG_", "ULTIMATE_DC_4H_HARD_STOP_SHORT_", "QUICK_ULTIMATE_DC_4H_HARD_STOP_LONG_", "QUICK_ULTIMATE_DC_4H_HARD_STOP_SHORT_")):
+        return True
+    if re.match(r"^EXIT_GUARANTEE_FORCE\[[^\]]+\]\s+ULTIMATE_DC_4H_HARD_STOP_(?:LONG|SHORT)_", value):
         return True
     if value.startswith("ULTIMATE_DC_4H_HARD_STOP AT DC_4H_LOW 0.25PCT CHANNEL") or value.startswith("ULTIMATE_DC_4H_HARD_STOP AT DC_4H_HIGH 0.25PCT CHANNEL"):
         return True

@@ -50,7 +50,9 @@ async def run_clock_once(ns, method, obj, now):
         obj.running = False
     ns['time'] = SimpleNamespace(time=lambda: now, time_ns=time.time_ns)
     ns['asyncio'] = SimpleNamespace(get_running_loop=asyncio.get_running_loop, gather=asyncio.gather, sleep=stop)
-    await ns[method](obj)
+    from unittest.mock import patch
+    with patch('closed_bar_feed.time.time', return_value=now):
+        await ns[method](obj)
 
 
 @pytest.mark.asyncio
@@ -109,3 +111,66 @@ async def test_stock_rollover_buffers_quote_without_waiting_for_disk(tmp_path):
     assert obj._provisional_15m['TEST']['bucket_ts'] == now
     assert ('TEST', now - 900) in obj._pending_closed_15m
     await asyncio.gather(*obj._provisional_io_tasks.values())
+
+
+@pytest.mark.asyncio
+async def test_stock_main_propagates_feed_failure_for_supervisor(tmp_path):
+    ns = load_functions('tradier_prices.py', {'main'}, tmp_path)
+    import signal
+    stopped = []
+    class FailedFetcher:
+        async def start(self):
+            raise RuntimeError('quote task failed')
+        async def stop(self):
+            stopped.append(True)
+    ns.update(TradierPriceFetcher=FailedFetcher, signal=signal, stop_event=asyncio.Event())
+    ns['asyncio'] = SimpleNamespace(get_running_loop=lambda: SimpleNamespace(add_signal_handler=lambda *args: None), create_task=asyncio.create_task, wait=asyncio.wait, FIRST_COMPLETED=asyncio.FIRST_COMPLETED, gather=asyncio.gather)
+    with pytest.raises(RuntimeError, match='quote task failed'):
+        await ns['main']()
+    assert stopped == [True]
+
+
+@pytest.mark.asyncio
+async def test_stock_main_preserves_requested_shutdown(tmp_path):
+    ns = load_functions('tradier_prices.py', {'main'}, tmp_path)
+    import signal
+    stopped = []
+    class WaitingFetcher:
+        async def start(self):
+            await asyncio.Event().wait()
+        async def stop(self):
+            stopped.append(True)
+    stop = asyncio.Event()
+    stop.set()
+    ns.update(TradierPriceFetcher=WaitingFetcher, signal=signal, stop_event=stop)
+    ns['asyncio'] = SimpleNamespace(get_running_loop=lambda: SimpleNamespace(add_signal_handler=lambda *args: None), create_task=asyncio.create_task, wait=asyncio.wait, FIRST_COMPLETED=asyncio.FIRST_COMPLETED, gather=asyncio.gather)
+    await ns['main']()
+    assert stopped == [True]
+
+
+def test_crypto_ohlc_hydration_preserves_high_low_and_skips_close_only_rows(tmp_path):
+    import numpy as np
+    names = {'load_ohlc_history'}
+    ns = load_functions('ez_market_data.py', names, tmp_path)
+    ns.update(KLINES_DIRS=[tmp_path], resilient_json_load=lambda path: json.loads(path.read_text()), np=np)
+    path = tmp_path / 'TEST_1m.json'
+    path.write_text(json.dumps([{'timestamp': '2026-10-26T18:30:00Z', 'open': 100, 'high': 120, 'low': 90, 'close': 110}, {'timestamp': '2026-10-26T18:31:00Z', 'close': 111}]))
+    rows = ns['load_ohlc_history']('TEST', '1m')
+    assert len(rows) == 1
+    assert next(iter(rows.values())) == {'open': 100, 'high': 120, 'low': 90, 'close': 110}
+
+
+def test_synthetic_price_cannot_overwrite_previous_closed_minute(tmp_path):
+    names = {'update_synthetic', 'update_1m_candle', 'update_3m_candle'}
+    ns = load_functions('ez_market_data.py', names, tmp_path)
+    now = int(datetime(2026, 10, 26, 18, 45, tzinfo=timezone.utc).timestamp())
+    prior = now - 60
+    store = {'closes_1m': OrderedDict([(prior, 100)]), 'closes_3m': OrderedDict([(now - 180, 100)]), 'ohlc_1m': OrderedDict([(prior, {'open': 99, 'high': 101, 'low': 98, 'close': 100})])}
+    obj = SimpleNamespace(data={'TEST': store})
+    ns['time'] = SimpleNamespace(time=lambda: now)
+    ns['update_synthetic'](obj, 'TEST', 999, now - 0.5)
+    assert store['closes_1m'][prior] == 100
+    assert store['ohlc_1m'][prior] == {'open': 99, 'high': 101, 'low': 98, 'close': 100}
+    ns['update_synthetic'](obj, 'TEST', 110, now)
+    assert store['closes_1m'][now] == 110 and store['closes_1m'][prior] == 100
+    assert store['ohlc_1m'][prior]['close'] == 100

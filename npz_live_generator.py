@@ -342,6 +342,22 @@ def _load_klines_df(path: Path) -> Optional[pd.DataFrame]:
             data = json.load(f)
         if not data:
             return None
+        if path.stem.endswith('_15m'):
+            from closed_bar_feed import timestamp_epoch
+            mode = 'tradier' if path.parent.name == 'tradier' else 'crypto'
+            symbol = path.stem[:-4]
+            for root in path.parents:
+                overlay = root / 'data' / 'closed_15m_bars' / mode / f'{symbol}.json'
+                if not overlay.is_file():
+                    continue
+                index = {timestamp_epoch(item.get('timestamp') or item.get('timestamp_dt')): item for item in data}
+                for item in json.loads(overlay.read_text()):
+                    stamp = timestamp_epoch(item['timestamp'])
+                    previous = index.get(stamp)
+                    if previous is None or previous.get('volume') is None or previous.get('_provisional'):
+                        index[stamp] = item
+                data = [item for _, item in sorted(index.items())]
+                break
         df = pd.DataFrame(data)
         for col in ["open", "high", "low", "close", "volume"]:
             if col in df.columns:

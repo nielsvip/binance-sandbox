@@ -4,8 +4,11 @@ import os
 import re
 import tempfile
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
+
+_CACHE_WRITES = ThreadPoolExecutor(max_workers=8, thread_name_prefix='closed15mcache')
 
 
 def timestamp_epoch(value):
@@ -50,19 +53,28 @@ def atomic_json(path, payload):
 
 
 def publish_closed_15m(path, row, writer, base_path, mode, symbol):
-    written = writer(path, row)
-    rows = json.loads(Path(path).read_text())
     start = timestamp_epoch(row['timestamp'])
-    chosen = next((item for item in reversed(rows) if timestamp_epoch(item.get('timestamp')) == start), None)
-    if chosen is None or (not written and not (chosen.get('volume') is not None and not chosen.get('_provisional'))):
-        return False
+    chosen = row
+    try:
+        with Path(path).open('rb') as stream:
+            stream.seek(max(0, Path(path).stat().st_size - 131072))
+            recent = stream.read().decode('utf-8')
+        for match in reversed(list(re.finditer(r'\{[^{}]*\}', recent))):
+            candidate = json.loads(match.group())
+            if timestamp_epoch(candidate.get('timestamp')) == start and candidate.get('volume') is not None and not candidate.get('_provisional'):
+                chosen = candidate
+                break
+    except (OSError, ValueError, TypeError):
+        pass
     event = {'symbol': symbol, 'mode': mode, 'bar_start_ts': start, 'bar_close_ts': start + 900, 'published_at': time.time(), 'row': chosen}
+    receive_closed_15m(base_path, event, require_history=False)
     destination = Path(base_path) / 'data' / 'closed_15m_outbox' / mode / f'{symbol}_{start}.json'
     atomic_json(destination, event)
+    _CACHE_WRITES.submit(writer, path, row)
     return True
 
 
-def receive_closed_15m(base_path, event, now_s=None):
+def receive_closed_15m(base_path, event, now_s=None, require_history=True):
     import fcntl
     now_s = time.time() if now_s is None else float(now_s)
     symbol, mode = event['symbol'], event['mode']
@@ -80,14 +92,15 @@ def receive_closed_15m(base_path, event, now_s=None):
     cache = root / 'klines_cache'
     if mode == 'tradier':
         cache = cache / 'tradier'
-    path = cache / f'{symbol}_15m.json'
-    if not path.exists():
+    history = cache / f'{symbol}_15m.json'
+    if require_history and not history.exists():
         raise ValueError('missing history; refusing to create a one-bar cache')
+    path = root / 'data' / 'closed_15m_bars' / mode / f'{symbol}.json'
     lock = root / 'data' / 'closed_15m_locks' / f'{mode}_{symbol}.lock'
     lock.parent.mkdir(parents=True, exist_ok=True)
     with lock.open('a') as handle:
         fcntl.flock(handle, fcntl.LOCK_EX)
-        rows = json.loads(path.read_text())
+        rows = json.loads(path.read_text()) if path.exists() else []
         if not isinstance(rows, list):
             raise ValueError('invalid cache')
         for index, previous in enumerate(rows):
@@ -99,7 +112,7 @@ def receive_closed_15m(base_path, event, now_s=None):
         else:
             rows.append(row)
         rows.sort(key=lambda item: timestamp_epoch(item['timestamp']))
-        atomic_json(path, rows)
+        atomic_json(path, rows[-96:])
     receipt = {'symbol': symbol, 'mode': mode, 'bar_start_ts': start, 'bar_close_ts': start + 900, 'published_at': event['published_at'], 'received_at': time.time(), 'path': str(path)}
     ledger = root / 'data' / 'closed_15m_receipts.jsonl'
     with ledger.open('a') as stream:

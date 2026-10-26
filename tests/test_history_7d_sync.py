@@ -82,6 +82,14 @@ def test_s1_rows_import_only_during_account_scoped_s1_lease():
     assert audit["s1_unproven_rows"] == 3
     assert len(filtered["rows"]["men/ARBUSDC_LONG.jsonl"]) == 1
     assert "ang/ARBUSDC_LONG.jsonl" not in filtered["rows"]
+    filtered_again, audit_again = lease_authorized(
+        pack,
+        alerts,
+        {"rows": {"men/ARBUSDC_LONG.jsonl": [_event(150, "OPEN", 1.1).strip()]}},
+    )
+    assert audit_again["already_on_mac"] == 1
+    assert audit_again["s1_lease_rows"] == 0
+    assert "men/ARBUSDC_LONG.jsonl" not in filtered_again["rows"]
 
 
 def test_near_identical_trade_needs_manual_reconciliation(tmp_path):
