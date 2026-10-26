@@ -1,7 +1,7 @@
 {
-  "ts": "2026-10-26T00:20:05.829796+00:00",
-  "tick": "2026-10-26T00:18:01.547862+00:00",
-  "tick_age_s": 124,
+  "ts": "2026-10-26T00:25:04.234085+00:00",
+  "tick": "2026-10-26T00:24:02.340047+00:00",
+  "tick_age_s": 62,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run36.json",
     "round": "run36",
@@ -15,61 +15,62 @@
     "hosts_not_visible": []
   },
   "hosts": {
-    "s1": {
-      "cpu_pct": 100,
+    "s2": {
+      "cpu_pct": 92,
       "slots": "3/4",
       "observed_running": [
-        "PTBUSDT",
-        "WLDUSDC"
-      ],
-      "published_last_hour": 1,
-      "idle_reason": null,
-      "mem_avail_mb": 14627
-    },
-    "s2": {
-      "cpu_pct": 100,
-      "slots": "4/4",
-      "observed_running": [
-        "ETHUSDC",
         "FILUSDC",
         "STRKUSDT"
       ],
       "published_last_hour": 2,
-      "idle_reason": "slots full",
-      "mem_avail_mb": 10149
+      "idle_reason": null,
+      "mem_avail_mb": 12080
+    },
+    "s1": {
+      "cpu_pct": 100,
+      "slots": "3/4",
+      "observed_running": [
+        "ACTUSDT",
+        "PTBUSDT",
+        "WLDUSDC"
+      ],
+      "published_last_hour": 1,
+      "idle_reason": "mem guard",
+      "mem_avail_mb": 9609
     },
     "s5": {
-      "cpu_pct": 34,
+      "cpu_pct": 75,
       "slots": "4/4",
       "observed_running": [
-        "AAPL_SEQ",
-        "DELL",
-        "DINO",
+        "AAPL_BF",
+        "ASML",
+        "ASTS",
         "ETN"
       ],
       "published_last_hour": 2,
       "idle_reason": "slots full",
-      "mem_avail_mb": 18473
+      "mem_avail_mb": 22701
     },
     "s6": {
-      "cpu_pct": 96,
+      "cpu_pct": 100,
       "slots": "4/4",
       "observed_running": [
         "QBTS",
-        "RBLX",
-        "RDDT",
-        "RRC"
+        "RRC",
+        "RS",
+        "SAP"
       ],
-      "published_last_hour": 5,
+      "published_last_hour": 4,
       "idle_reason": "slots full",
-      "mem_avail_mb": 17237
+      "mem_avail_mb": 20798
     }
   },
-  "one_hour_total": 10,
+  "one_hour_total": 9,
   "alerts": [
-    "LOW_THROUGHPUT:s1:1/h",
     "LOW_THROUGHPUT:s2:2/h",
+    "LOW_THROUGHPUT:s1:1/h",
     "LOW_THROUGHPUT:s5:2/h",
-    "LOW_CPU:s5:34%"
+    "LOW_CPU:s5:75%",
+    "LOW_THROUGHPUT:s6:4/h"
   ]
 }

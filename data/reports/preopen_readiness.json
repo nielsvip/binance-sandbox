@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-26T00:00:05Z",
+ "generated_utc": "2026-10-26T00:20:02Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
@@ -16,7 +16,7 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "filled_today": 492,
+    "filled_today": 508,
     "filled_before_open": 0
    },
    "detail": "no board was filled before the open"
@@ -41,7 +41,7 @@
    "measured": {
     "built_at": "2026-10-25T23:50:54.062952+00:00",
     "n": 529,
-    "age_at_open_s": 552
+    "age_at_open_s": 1748
    },
    "detail": "built 2026-10-25T23:50:54.062952+00:00 n=529"
   },
@@ -53,9 +53,9 @@
     "reports_today": 0,
     "newest_report": null,
     "newest_report_at": null,
-    "tiers_at": "2026-10-25T23:05:16Z"
+    "tiers_at": "2026-10-26T00:07:25Z"
    },
-   "detail": "NO REPORT at None, tiers 2026-10-25T23:05:16Z \u2014 the apply never finished (no report / stale tiers): the live set is PARTIAL"
+   "detail": "NO REPORT at None, tiers 2026-10-26T00:07:25Z \u2014 the apply never finished (no report / stale tiers): the live set is PARTIAL"
   },
   {
    "name": "live_set_matches_selection",
@@ -94,19 +94,6 @@
        "ALL_TF_AGAINST_BLOCK_ENTRY_ENABLED",
        "ATR_ADAPTIVE_SIZING_ENABLED",
        "ATR_ADAPTIVE_STOP_MULT"
-      ]
-     },
-     {
-      "sym_side": "PBF_SHORT",
-      "published_at": "2026-10-25T23:44:07Z",
-      "material": 90,
-      "sample": [
-       "ADX_REGIME_FILTER_ENABLED",
-       "ATR_ADAPTIVE_STOP_MULT",
-       "BB_EXIT_AT_LOSS_TF",
-       "BB_PULLBACK_GATE_TF",
-       "BEAR_HOLD_EXIT_DELAY_BARS",
-       "BOUNCE_AUGMENT_MIN_LOSS_PCT"
       ]
      },
      {
@@ -199,6 +186,19 @@
        "BB_SQUEEZE_ENTRY_ENABLED",
        "COUNTER_TREND_ADD_BLOCK_ENABLED"
       ]
+     },
+     {
+      "sym_side": "SHOP_LONG",
+      "published_at": "2026-10-22T04:02:56Z",
+      "material": 42,
+      "sample": [
+       "ATR_ADAPTIVE_SIZING_ENABLED",
+       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
+       "ATR_ADAPTIVE_STOP_MULT",
+       "ATR_ADAPTIVE_STOP_TF",
+       "DC_EDGE_SIZING_MIN_MULT",
+       "DC_HARD_STOP_1H_ENABLED"
+      ]
      }
     ]
    },
@@ -209,13 +209,22 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "symbols": 201,
-    "stale_over_90min": 0,
-    "stale_pct": 0.0,
-    "median_age_min": 30.1,
-    "sample": []
+    "symbols": 329,
+    "stale_over_90min": 22,
+    "stale_pct": 6.7,
+    "median_age_min": 50.0,
+    "sample": [
+     "ATOMUSDT",
+     "BBXUSDT",
+     "BSPUSDT",
+     "COMPUSDT",
+     "CRWDUSDT",
+     "DRAMUSDT",
+     "EIGENUSDT",
+     "GMTUSDT"
+    ]
    },
-   "detail": "0/201 symbols past the live 90-min entry gate (0.0%)"
+   "detail": "22/329 symbols past the live 90-min entry gate (6.7%)"
   },
   {
    "name": "s1_sets_synced",

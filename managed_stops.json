@@ -1,9 +1,30 @@
 {
-  "inf:COTIUSDT_SHORT": {
-    "orderId": "2000001540772072",
-    "stopPrice": 0.010523,
-    "entry_sig": "2026-10-26 00:10:08.928000+00:00",
-    "symbol": "COTIUSDT",
+  "men:ENJUSDT_SHORT": {
+    "orderId": "2000001540398006",
+    "stopPrice": 0.0249,
+    "entry_sig": "2026-10-25 19:44:36.513000+00:00",
+    "symbol": "ENJUSDT",
+    "side": "SHORT"
+  },
+  "men:ARUSDT_LONG": {
+    "orderId": "2000001540723309",
+    "stopPrice": 3.36,
+    "entry_sig": "2026-10-25 23:50:59.600000+00:00",
+    "symbol": "ARUSDT",
+    "side": "LONG"
+  },
+  "men:KMNOUSDT_LONG": {
+    "orderId": "2000001540733536",
+    "stopPrice": 0.04238,
+    "entry_sig": "2026-10-25 23:58:07.957000+00:00",
+    "symbol": "KMNOUSDT",
+    "side": "LONG"
+  },
+  "men:XPLUSDT_SHORT": {
+    "orderId": "2000001540772441",
+    "stopPrice": 0.07433,
+    "entry_sig": "2026-10-26 00:11:09.277000+00:00",
+    "symbol": "XPLUSDT",
     "side": "SHORT"
   }
 }
