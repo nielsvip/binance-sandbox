@@ -251,3 +251,4 @@ data/wiring/queue/C2/005/needs_live.csv: 47 stocks keys, insertion points + desi
 - 23:41Z [M deploy 20261002233708] selltop §63 sanction+bypass+minhold+cd0 files=4 engine=0b43055f hosts_bad=none imports=['bash: line 1: .venv/bin/python: No such file or directory', 'ok']
 - ## 2026-10-04T02:45Z MONDAY-READY (resume-claude): disk_guard hardened + 12G archive offloaded (s1 raw 89->85.6%); CURRENT.json=e467eb7b identical x4; s5 cat-side=s1 truth; host_scan+lifecycle; T0 herd-stop/TEND restart; rehearsal 275/286 GREEN. See BIBLE §66.
 - 20:52Z [M deploy 20261004205201] parity-cut4 files=253 engine=5db47685 hosts_bad=none imports=[]
+- 00:44Z [M deploy 20261026004325] 2026-10-26 four-host engine parity reconciled files=1 engine=c021b10b hosts_bad=none imports=['ok', 'syntax-ok']

@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-26T00:41:23Z",
+ "ts": "2026-10-26T00:46:39Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 209,
+   "fills_6h": 204,
    "open_positions": 2,
-   "unrealised_usd": 0.26,
+   "unrealised_usd": 0.19,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 2,
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 259,
-   "open_positions": 12,
-   "unrealised_usd": -0.03,
+   "fills_6h": 249,
+   "open_positions": 7,
+   "unrealised_usd": 0.25,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 2,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 146,
+   "fills_6h": 137,
    "open_positions": 6,
-   "unrealised_usd": -0.09,
+   "unrealised_usd": -0.28,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -75,9 +75,9 @@
    }
   },
   "inf": {
-   "fills_6h": 383,
-   "open_positions": 4,
-   "unrealised_usd": 0.2,
+   "fills_6h": 392,
+   "open_positions": 3,
+   "unrealised_usd": 0.02,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 10,
@@ -91,9 +91,9 @@
    }
   },
   "flz": {
-   "fills_6h": 236,
-   "open_positions": 5,
-   "unrealised_usd": 0.06,
+   "fills_6h": 237,
+   "open_positions": 7,
+   "unrealised_usd": 0.02,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 3,
@@ -127,133 +127,148 @@
     "78410"
    ],
    "starts_30m": 1,
-   "log_age_s": 2927.0
+   "log_age_s": 3243.0
   },
   "men": {
    "pids": [
-    "66093"
+    "58613"
    ],
    "starts_30m": 1,
-   "log_age_s": 9.0
+   "log_age_s": 6.0
   },
   "ang": {
    "pids": [
-    "44110"
+    "55450"
    ],
    "starts_30m": 2,
-   "log_age_s": 33.0
+   "log_age_s": -0.0
   },
   "inf": {
    "pids": [
     "49429"
    ],
    "starts_30m": 1,
-   "log_age_s": 2377.0
+   "log_age_s": 2693.0
   },
   "flz": {
    "pids": [
-    "76476"
+    "65486"
    ],
    "starts_30m": 1,
-   "log_age_s": 762.0
+   "log_age_s": 1.0
   },
   "trb": {
    "pids": [
     "84595"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 0.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 148227.0
+   "log_age_s": 148543.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-26T00:41:23Z",
+   "ts": "2026-10-26T00:46:39Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "fin:MAGICUSDT_SHORT",
    "evidence": "OPEN REENTRY_MANDATORY bar=2026-10-25T22:30:00Z: live already holds 575.167 (state divergence)"
   },
   {
-   "ts": "2026-10-26T00:41:23Z",
+   "ts": "2026-10-26T00:46:39Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "fin:ENAUSDC_LONG",
    "evidence": "OPEN TIER1_PRICE_CROSS_REENTRY_exit0.2089_cur bar=2026-10-25T22:30:00Z: live already holds 175.691 (state divergence)"
   },
   {
-   "ts": "2026-10-26T00:41:23Z",
+   "ts": "2026-10-26T00:46:39Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "men:PARTIUSDT_SHORT",
    "evidence": "CLOSE FIXED_STOP decided 2026-10-25T22:43:38Z bar=2026-10-25T22:15:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-26T00:41:23Z",
+   "ts": "2026-10-26T00:46:39Z",
    "severity": "CRITICAL",
    "kind": "CHURN_KEY",
    "key": "inf:COTIUSDT_SHORT",
    "evidence": "4 open->flat round trips in 60 min"
   },
   {
-   "ts": "2026-10-26T00:41:23Z",
+   "ts": "2026-10-26T00:46:39Z",
    "severity": "CRITICAL",
    "kind": "CHURN_KEY",
    "key": "inf:GRAMUSDT_SHORT",
    "evidence": "3 open->flat round trips in 60 min"
   },
   {
-   "ts": "2026-10-26T00:41:23Z",
+   "ts": "2026-10-26T00:46:39Z",
    "severity": "CRITICAL",
    "kind": "CHURN_KEY",
    "key": "inf:LTCUSDC_SHORT",
    "evidence": "5 open->flat round trips in 60 min"
   },
   {
-   "ts": "2026-10-26T00:41:23Z",
+   "ts": "2026-10-26T00:46:39Z",
+   "severity": "CRITICAL",
+   "kind": "CHURN_KEY",
+   "key": "inf:GALAUSDT_SHORT",
+   "evidence": "3 open->flat round trips in 60 min"
+  },
+  {
+   "ts": "2026-10-26T00:46:39Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:PENGUUSDC_LONG",
    "evidence": "CLOSE WT_CROSS_EXIT_1h_bear decided 2026-10-25T23:34:20Z bar=2026-10-25T23:15:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-26T00:41:24Z",
+   "ts": "2026-10-26T00:46:39Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "flz:ZECUSDC_SHORT",
    "evidence": "REDUCE PPL_TP_g1.61%>=1.50%_stopBE1217.4362 decided 2026-10-26T00:07:33Z bar=2026-10-25T23:30:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-26T00:41:24Z",
+   "ts": "2026-10-26T00:46:39Z",
+   "severity": "WARN",
+   "kind": "ATTEMPT_STORM_KEY",
+   "key": "men:CRVUSDC_LONG",
+   "evidence": "30 execute_now attempts in 5 min (pre-gate)"
+  },
+  {
+   "ts": "2026-10-26T00:46:39Z",
+   "severity": "WARN",
+   "kind": "ATTEMPT_STORM_KEY",
+   "key": "men:STRKUSDT_LONG",
+   "evidence": "30 execute_now attempts in 5 min (pre-gate)"
+  },
+  {
+   "ts": "2026-10-26T00:46:40Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 2927s"
+   "evidence": "ez_manage_fin.log not written for 3243s"
   },
   {
-   "ts": "2026-10-26T00:41:24Z",
+   "ts": "2026-10-26T00:46:40Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "inf",
-   "evidence": "ez_manage_inf.log not written for 2377s"
-  },
-  {
-   "ts": "2026-10-26T00:41:24Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 762s"
+   "evidence": "ez_manage_inf.log not written for 2693s"
   }
  ],
  "alert_counts": {
   "VEC_OPEN_WHILE_LIVE_IN": 2,
   "VEC_DECISION_NOT_FILLED": 3,
-  "CHURN_KEY": 3,
-  "STALE_LOG": 3
+  "CHURN_KEY": 4,
+  "ATTEMPT_STORM_KEY": 2,
+  "STALE_LOG": 2
  },
  "active_interventions": {
   "acct:trc": {
@@ -348,6 +363,13 @@
    "undo": "redis-cli -p 6379 DEL open_blocked:inf:GRAMUSDT_SHORT",
    "dry_run": false
   },
+  "key:inf:GALAUSDT_SHORT": {
+   "ts": 1792975326.879637,
+   "until": 1792982526.879641,
+   "why": "CHURN_KEY 3 round trips/60min",
+   "undo": "redis-cli -p 6379 DEL open_blocked:inf:GALAUSDT_SHORT",
+   "dry_run": false
+  },
   "acct:flz": {
    "ts": 1792873584.008171,
    "why": "ORDER_STORM_ACCOUNT 27 fills/10min",
@@ -390,5 +412,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.15
+ "sweep_s": 0.47
 }

@@ -12,7 +12,7 @@ SSH = ["ssh", "-S", "none", "-o", "StrictHostKeyChecking=accept-new", "-o", "Con
 def md5(p): return hashlib.md5(open(p, "rb").read()).hexdigest()
 def sh(cmd, **k): return subprocess.run(cmd, capture_output=True, text=True, **k)
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument("--stage", required=True); ap.add_argument("--label", default=""); ap.add_argument("--no-hosts", action="store_true"); ap.add_argument("--changed", default="", help="comma list of FILTER=opt / SWITCH keys whose behaviour changed (union of the queue MANIFESTs changed_keys)"); ap.add_argument("--wired-now", default="", help="comma list of keys newly wired (removed from vec_unwired)")
+    ap = argparse.ArgumentParser(); ap.add_argument("--stage", required=True); ap.add_argument("--label", default=""); ap.add_argument("--no-hosts", action="store_true"); ap.add_argument("--reconcile", action="store_true", help="verify already-deployed bytes and imports, then update CURRENT without copying again"); ap.add_argument("--changed", default="", help="comma list of FILTER=opt / SWITCH keys whose behaviour changed (union of the queue MANIFESTs changed_keys)"); ap.add_argument("--wired-now", default="", help="comma list of keys newly wired (removed from vec_unwired)")
     a = ap.parse_args(); stage = os.path.abspath(a.stage)
     ts = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
     files = []
@@ -40,29 +40,40 @@ def main():
         src = os.path.join(ROOT, r)
         if os.path.exists(src):
             os.makedirs(os.path.dirname(os.path.join(bk, r)), exist_ok=True); shutil.copy2(src, os.path.join(bk, r))
-    # Mac atomic install
+    # Mac atomic install, or verify an earlier partial deploy without rewriting it.
     for r in files:
         dst = os.path.join(ROOT, r); os.makedirs(os.path.dirname(dst), exist_ok=True)
-        tmp = dst + f".new.{ts}"; shutil.copy2(os.path.join(stage, r), tmp); os.replace(tmp, dst)
+        if a.reconcile:
+            if not os.path.exists(dst) or md5(dst) != md5(os.path.join(stage, r)):
+                sys.exit(f"REFUSED reconcile: Mac {r} differs from staged bytes")
+        else:
+            tmp = dst + f".new.{ts}"; shutil.copy2(os.path.join(stage, r), tmp); os.replace(tmp, dst)
     res = {"ts": ts, "label": a.label, "files": {r: md5(os.path.join(stage, r)) for r in files}, "hosts": {}}
     if not a.no_hosts:
         for h in HOSTS:
             for d in DIRS:
                 base = f"~/{d}"
-                sh(SSH + [h, f"mkdir -p ~/binance-sandbox/backups/before_engine_{ts}"])
-                if d == "binance-sandbox":
-                    cp = " ".join(f"--relative {r}" for r in files)
-                    sh(SSH + [h, "cd ~/binance-sandbox && tar cf - " + " ".join(r for r in files) + f" 2>/dev/null | (cd backups/before_engine_{ts} && tar xf - 2>/dev/null); true"])
-                # upload all to temp names first
-                for r in files:
-                    sh(["rsync", "-az", "-e", " ".join(SSH), "--relative", f"./{r}", f"{h}:{base}/.stage_{ts}/"], cwd=stage)
-                mv = " && ".join(f"mkdir -p $(dirname {r}) && mv -f .stage_{ts}/{r} {r}" for r in files)
-                o = sh(SSH + [h, f"cd {base} && ({mv}) && rm -rf .stage_{ts} && echo moved"])
+                moved = True
+                if not a.reconcile:
+                    sh(SSH + [h, f"mkdir -p ~/binance-sandbox/backups/before_engine_{ts}"])
+                    if d == "binance-sandbox":
+                        sh(SSH + [h, "cd ~/binance-sandbox && tar cf - " + " ".join(r for r in files) + f" 2>/dev/null | (cd backups/before_engine_{ts} && tar xf - 2>/dev/null); true"])
+                    # upload all to temp names first
+                    for r in files:
+                        sh(["rsync", "-az", "-e", " ".join(SSH), "--relative", f"./{r}", f"{h}:{base}/.stage_{ts}/"], cwd=stage)
+                    mv = " && ".join(f"mkdir -p $(dirname {r}) && mv -f .stage_{ts}/{r} {r}" for r in files)
+                    o = sh(SSH + [h, f"cd {base} && ({mv}) && rm -rf .stage_{ts} && echo moved"])
+                    moved = "moved" in o.stdout
                 chk = sh(SSH + [h, f"cd {base} && md5sum " + " ".join(files)])
                 got = {l.split()[1]: l.split()[0] for l in chk.stdout.splitlines() if len(l.split()) == 2}
                 bad = [r for r in files if got.get(r) != res["files"][r]]
-                imp = sh(SSH + [h, f"cd {base} && /home/niels/.conda/envs/binance_env_mac/bin/python -c 'import v12_quick_engine, evaluate_v12; print(\"ok\")' 2>&1 | tail -1"]).stdout.strip()
-                res["hosts"][f"{h}:{d}"] = {"moved": "moved" in o.stdout, "md5_bad": bad, "import": imp}
+                # Production pilots run from binance-sandbox and import tools.opt.v12_pilot.
+                # The standby ~/binance trees can lack those runtime dependencies; syntax
+                # still matters there, but their import result cannot judge production.
+                probe = ("import v12_quick_engine; from tools.opt import v12_pilot; print('ok')"
+                         if d == "binance-sandbox" else "import py_compile; py_compile.compile('v12_quick_engine.py', doraise=True); print('syntax-ok')")
+                imp = sh(SSH + [h, f"cd {base} && /home/niels/.conda/envs/binance_env_mac/bin/python -c \"{probe}\" 2>&1 | tail -1"]).stdout.strip()
+                res["hosts"][f"{h}:{d}"] = {"moved": moved, "md5_bad": bad, "import": imp}
     os.makedirs(os.path.join(ROOT, "data/engine_deploy"), exist_ok=True)
     cur = {}
     cp_ = os.path.join(ROOT, "data/engine_deploy/CURRENT.json")
@@ -70,7 +81,7 @@ def main():
     cur.update(res["files"])
     json.dump(res, open(os.path.join(ROOT, f"data/engine_deploy/{ts}.json"), "w"), indent=1)
     bad_any = [k for k, v in res["hosts"].items()
-               if v["md5_bad"] or not v["moved"] or v["import"] != "ok"]
+               if v["md5_bad"] or not v["moved"] or v["import"] != ("ok" if k.endswith(":binance-sandbox") else "syntax-ok")]
     if not a.no_hosts and (bad_any or len(res["hosts"]) != len(HOSTS) * len(DIRS)):
         print(f"[engine_deploy] INCOMPLETE hosts={bad_any} checked={len(res['hosts'])}; CURRENT unchanged", file=sys.stderr)
         raise SystemExit(1)

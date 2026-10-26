@@ -1,17 +1,17 @@
 {
-  "men:ENJUSDT_SHORT": {
-    "orderId": "2000001540398006",
-    "stopPrice": 0.0249,
-    "entry_sig": "2026-10-25 19:44:36.513000+00:00",
-    "symbol": "ENJUSDT",
-    "side": "SHORT"
-  },
   "men:ARUSDT_LONG": {
     "orderId": "2000001540723309",
     "stopPrice": 3.36,
     "entry_sig": "2026-10-25 23:50:59.600000+00:00",
     "symbol": "ARUSDT",
     "side": "LONG"
+  },
+  "men:ENJUSDT_SHORT": {
+    "orderId": "2000001540398006",
+    "stopPrice": 0.0249,
+    "entry_sig": "2026-10-25 19:44:36.513000+00:00",
+    "symbol": "ENJUSDT",
+    "side": "SHORT"
   },
   "men:XPLUSDT_SHORT": {
     "orderId": "2000001540772441",
@@ -27,6 +27,13 @@
     "symbol": "ZROUSDT",
     "side": "LONG"
   },
+  "men:RAYSOLUSDT_LONG": {
+    "orderId": "2000001540822522",
+    "stopPrice": 1.8207,
+    "entry_sig": "2026-10-26 00:34:42.574000+00:00",
+    "symbol": "RAYSOLUSDT",
+    "side": "LONG"
+  },
   "men:GRASSUSDT_LONG": {
     "orderId": "2000001540823309",
     "stopPrice": 0.7116,
@@ -34,11 +41,11 @@
     "symbol": "GRASSUSDT",
     "side": "LONG"
   },
-  "men:RAYSOLUSDT_LONG": {
-    "orderId": "2000001540822522",
-    "stopPrice": 1.8207,
-    "entry_sig": "2026-10-26 00:34:42.574000+00:00",
-    "symbol": "RAYSOLUSDT",
-    "side": "LONG"
+  "men:GALAUSDT_SHORT": {
+    "orderId": "2000001540829220",
+    "stopPrice": 0.001744,
+    "entry_sig": "2026-10-26 00:37:54.386000+00:00",
+    "symbol": "GALAUSDT",
+    "side": "SHORT"
   }
 }

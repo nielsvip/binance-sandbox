@@ -1,14 +1,14 @@
 {
-  "ts": "2026-10-26T00:40:04.209930+00:00",
-  "tick": "2026-10-26T00:38:01.703166+00:00",
-  "tick_age_s": 123,
+  "ts": "2026-10-26T00:45:05.418342+00:00",
+  "tick": "2026-10-26T00:44:01.675866+00:00",
+  "tick_age_s": 64,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run36.json",
     "round": "run36",
     "complete": false,
     "universe_n": 172,
-    "n_complete": 120,
-    "n_pending": 52,
+    "n_complete": 122,
+    "n_pending": 50,
     "n_refused_only": 0,
     "n_excluded": 0,
     "n_launchable_pending": 28,
@@ -17,62 +17,60 @@
   "hosts": {
     "s1": {
       "cpu_pct": 100,
-      "slots": "3/4",
+      "slots": "2/4",
       "observed_running": [
         "ACTUSDT",
-        "PTBUSDT",
-        "WLDUSDC"
+        "PTBUSDT"
       ],
-      "published_last_hour": 1,
+      "published_last_hour": 2,
       "idle_reason": "mem guard",
-      "mem_avail_mb": 5864
+      "mem_avail_mb": 8406
     },
     "s2": {
-      "cpu_pct": 100,
-      "slots": "3/4",
+      "cpu_pct": 60,
+      "slots": "4/4",
       "observed_running": [
-        "STRKUSDT",
+        "GRASSUSDT",
         "SUSHIUSDT",
         "WLDUSDC"
       ],
       "published_last_hour": 2,
-      "idle_reason": "mem guard",
-      "mem_avail_mb": 8330
+      "idle_reason": "slots full",
+      "mem_avail_mb": 17425
     },
     "s5": {
-      "cpu_pct": 51,
+      "cpu_pct": 44,
       "slots": "4/4",
       "observed_running": [
-        "CRM",
-        "CRWD",
-        "CRWV",
-        "DAR"
+        "AAPL_CYCLE",
+        "FIX",
+        "GDX",
+        "GLD"
       ],
-      "published_last_hour": 3,
+      "published_last_hour": 2,
       "idle_reason": "slots full",
-      "mem_avail_mb": 26846
+      "mem_avail_mb": 29212
     },
     "s6": {
-      "cpu_pct": 72,
-      "slots": "6/4",
+      "cpu_pct": 80,
+      "slots": "4/4",
       "observed_running": [
-        "MPC",
-        "SAP",
         "SCCO",
         "SLV",
-        "SMCI"
+        "SMCI",
+        "SMG"
       ],
-      "published_last_hour": 5,
+      "published_last_hour": 6,
       "idle_reason": "slots full",
-      "mem_avail_mb": 23911
+      "mem_avail_mb": 17971
     }
   },
-  "one_hour_total": 11,
+  "one_hour_total": 12,
   "alerts": [
-    "LOW_THROUGHPUT:s1:1/h",
+    "LOW_THROUGHPUT:s1:2/h",
     "LOW_THROUGHPUT:s2:2/h",
-    "LOW_THROUGHPUT:s5:3/h",
-    "LOW_CPU:s5:51%",
-    "LOW_CPU:s6:72%"
+    "LOW_CPU:s2:60%",
+    "LOW_THROUGHPUT:s5:2/h",
+    "LOW_CPU:s5:44%"
   ]
 }
