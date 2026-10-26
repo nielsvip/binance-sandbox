@@ -14,6 +14,7 @@ import argparse
 import json
 import os
 import sys
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -24,6 +25,7 @@ if str(ROOT) not in sys.path:
 
 TRIGGER_S = 1.0
 WORKERS = 4
+_PRODUCER_ENGINES = {}
 
 
 def held_sides(base):
@@ -75,7 +77,7 @@ def publish_producer(base, shard, engine):
         return
     path = Path(base) / "data" / "vec_live" / f"producer_{shard}.json"
     payload = {"shard": shard, "engine_md5": engine["combined"], "v12_quick_engine_md5": engine["v12_quick_engine.py"], "generated_at": time.time(), "pid": os.getpid()}
-    temporary = path.with_suffix(f".{os.getpid()}.tmp")
+    temporary = path.with_suffix(f".{os.getpid()}.{threading.get_ident()}.tmp")
     temporary.write_text(json.dumps(payload, sort_keys=True))
     os.replace(temporary, path)
 
@@ -94,6 +96,7 @@ def run_once(base, shard, workers=WORKERS, verbose=False):
     em = E.engine_md5()
     os.environ["VEC_LIVE_ENGINE_MD5"] = em["combined"]
     sets = E.load_sets()
+    _PRODUCER_ENGINES[shard] = em
     publish_producer(base, shard, em)
     held = held_sides(base)
     sides = shard_sides(sets, serves, shard, held)
@@ -166,6 +169,17 @@ def main():
         fcntl.flock(singleton, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
         return 0
+    if not a.once:
+        def heartbeat():
+            while True:
+                time.sleep(15)
+                engine = _PRODUCER_ENGINES.get(a.shard)
+                if engine is not None:
+                    try:
+                        publish_producer(base, a.shard, engine)
+                    except Exception:
+                        pass
+        threading.Thread(target=heartbeat, daemon=True).start()
     while True:
         try:
             rec = run_once(base, a.shard, workers=a.workers, verbose=True)

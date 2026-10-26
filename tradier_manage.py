@@ -49332,6 +49332,28 @@ class TradierTradeManager:
             if not _v20_ok:
                 logger.warning(f"[TRB_V20_STATE_BLOCK] {position_key}: {action} requires fresh actionable V20 state targeting {position_side}")
                 return "BLOCKED_TRB_V20_STATE"
+        _cb_open = str(action or "").upper() in ("OPEN", "REENTER", "REENTRY", "REENTRY_OPEN") and abs(safe_float(original_position_amt, 0.0)) <= 0.0
+        if _cb_open:
+            try:
+                import strategy_enhancements as _sxe_cb
+                _cb_ok, _cb_reason = _sxe_cb.check_symbol_loss_streak_breaker(config, symbol)
+                if not _cb_ok:
+                    logger.warning(f"[CIRCUIT_BREAKER_BLOCK] {position_key}: {_cb_reason}")
+                    return f"BLOCKED_CIRCUIT_BREAKER_{_cb_reason[:40]}"
+            except Exception as _cb_error:
+                logger.warning(f"[CIRCUIT_BREAKER_CHECK] {position_key}: check failed open: {_cb_error}")
+        _cb_close_action = is_full_close or "CLOSE" in str(action or "").upper()
+        _cb_close_outcome = None
+        if _cb_close_action:
+            try:
+                _cb_pm = getattr(self, "position_manager", None)
+                _cb_pos = (_cb_pm.positions or {}).get(position_key) if _cb_pm else None
+                if _cb_pos is not None and hasattr(_cb_pos, "realized_pnl") and hasattr(_cb_pos, "unrealized_pnl"):
+                    _cb_close_outcome = safe_float(_cb_pos.realized_pnl, 0.0) + safe_float(_cb_pos.unrealized_pnl, 0.0)
+                elif _cb_pos is not None:
+                    _cb_close_outcome = safe_float(getattr(_cb_pos, "gain", None), float("nan"))
+            except Exception:
+                _cb_close_outcome = None
         _res = await self._execute_now_inner(
             position_key=position_key, account_key=account_key, symbol=symbol,
             original_position_amt=original_position_amt, side=side, position_side=position_side,
@@ -49399,6 +49421,12 @@ class TradierTradeManager:
                         _res = _vp_w_tr.DEFERRED
         except Exception:
             pass
+        if _cb_close_action and _cb_close_outcome is not None and str(_res or "").upper().startswith("SUCCESS"):
+            try:
+                import strategy_enhancements as _sxe_close
+                _sxe_close.record_trade_outcome(symbol, account_key or "", _cb_close_outcome, config)
+            except Exception as _cb_record_error:
+                logger.warning(f"[CIRCUIT_BREAKER_OUTCOME] {position_key}: close outcome record failed: {_cb_record_error}")
         return _res
 
     def _mark_entry_unprotected_tradier(self, position_key, account_key, symbol, position_side, why):

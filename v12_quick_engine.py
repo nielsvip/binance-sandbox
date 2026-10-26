@@ -18937,6 +18937,12 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _ppl_wt1_15 = _safe(npz, "wt1_15m", n)
     _ppl_wt2_15 = _safe(npz, "wt2_15m", n)
     _ppl_wt_15 = _ppl_wt1_15 + _ppl_wt2_15
+    _symbol_cb_enabled = bool(getattr(cfg, "SYMBOL_LOSS_STREAK_BREAKER_ENABLED", False))
+    _symbol_cb_losses = 0
+    _symbol_cb_halt_until = 0.0
+    _symbol_cb_trade_index = 0
+    if _symbol_cb_enabled:
+        import vec_decisions.symbol_loss_streak as _symbol_cb
     for i in range(n):
         if _pending_exit_restore is not None:
             pos = _pending_exit_restore
@@ -19146,6 +19152,23 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 cd -= 1
                 continue
         if pos is None:
+            if _symbol_cb_enabled:
+                for _cb_trade in trades[_symbol_cb_trade_index:]:
+                    if str(_cb_trade.get("type", "")) != "CLOSE":
+                        continue
+                    _symbol_cb_ts = float(_cb_trade.get("ts") or (ts[i] if i < len(ts) else 0.0))
+                    _symbol_cb_losses, _symbol_cb_halt_until = _symbol_cb.record_close(
+                        _symbol_cb_losses,
+                        _symbol_cb_halt_until,
+                        _cb_trade.get("pnl_dollars", _cb_trade.get("pnl_pct", 0.0)),
+                        _symbol_cb_ts,
+                        getattr(cfg, "CIRCUIT_BREAKER_SYMBOL_LOSSES", 3),
+                        float(getattr(cfg, "CIRCUIT_BREAKER_SYMBOL_HALT_MIN", 30)) * 60.0,
+                    )
+                _symbol_cb_trade_index = len(trades)
+                _symbol_cb_now = float(ts[i]) if i < len(ts) else 0.0
+                if _symbol_cb.is_blocked(_symbol_cb_now, _symbol_cb_halt_until):
+                    continue
             # ABLATION reentry block: if flagged, no reentry after first close
             if has_closed_before and (
                 getattr(cfg, "_ABLATION_BLOCK_REENTRY", False)

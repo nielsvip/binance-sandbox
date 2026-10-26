@@ -1,0 +1,25 @@
+{
+  "bar_start_ts": 1793047500,
+  "bar_close_ts": 1793048400,
+  "audit_started_before_boundary": true,
+  "required": 117,
+  "source_by_1_second": 117,
+  "cache_by_1_second": 99,
+  "cache_by_5_seconds": 117,
+  "first_ohlc_equal": 117,
+  "last_source_latency_s": 0.5530638694763184,
+  "last_cache_latency_s": 1.0490870475769043,
+  "verified_crypto_source": true,
+  "verified_stock_live_deadline": false,
+  "proof": "data/reports/crypto_2100_source_and_usual_cache_proof.json",
+  "source_md5": {
+    "closed_bar_feed.py": "4fccb58b33bee8e8c46f68bcc9578b44",
+    "tools/closed_15m_feed.py": "40e095c6faf11061c14eb45ba9704cef",
+    "tools/closed_15m_cache_bridge.py": "ea7bdbd8120d8abc73e35ddbe9202b6c",
+    "ez_market_data.py": "ca959259a022aa16118bfe0dda3618c3",
+    "ez_klines.py": "22db72a5b412384e6d5ea6ab23527f15",
+    "tools/npz_tail_service.py": "24c03534478364f04148db010e862c38",
+    "npz_tail_store.py": "f38e4655cf5cc8a8b0c3a76d78d09ffd",
+    "tools/npz_tail_compactor.py": "331bb4888a576cc22146bcf2ac53318f"
+  }
+}
