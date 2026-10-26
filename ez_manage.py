@@ -1152,6 +1152,214 @@ _WIRE_RECONCILE_MIN_AGE_S = 180.0
 _WIRE_RECONCILE_THROTTLE_S = 60.0
 
 
+def _intervention_action_from_payload(cmd):
+    action = str((cmd or {}).get("action") or "OPEN").strip().upper()
+    return action if action in {"OPEN", "AUGMENT", "REDUCE", "CLOSE"} else None
+
+
+def _intervention_retry_payload(cmd, now=None, ttl_s=300.0):
+    retry = dict(cmd or {})
+    retry["ttl_epoch"] = float(now if now is not None else time.time()) + max(30.0, float(ttl_s))
+    return json.dumps(retry, separators=(",", ":"))
+
+
+def _intervention_migrate_legacy_owed_close(cmd, base_path):
+    payload = dict(cmd or {})
+    reason = str(payload.get("reason") or "")
+    prefix = "VEC_DRIVEN_EXIT_OWED_CLOSE_"
+    if not reason.startswith(prefix):
+        return None
+    owed = reason[len(prefix):]
+    if "_bar" not in owed:
+        return None
+    sym_side, bar_text = owed.rsplit("_bar", 1)
+    try:
+        bar_ts = int(float(bar_text.split(":", 1)[0]))
+    except (TypeError, ValueError):
+        return None
+    state_path = Path(base_path) / "data" / "vec_live" / "state" / f"{sym_side}.json"
+    try:
+        state = json.loads(state_path.read_text())
+    except (OSError, ValueError, TypeError):
+        return None
+    if not isinstance(state, dict) or state.get("mode") != "live" or not state.get("actionable"):
+        return None
+    if str(state.get("ss") or sym_side) != sym_side:
+        return None
+    try:
+        if int(float(state.get("bar_ts") or 0)) != bar_ts:
+            return None
+    except (TypeError, ValueError):
+        return None
+    target = state.get("target_state") or {}
+    target_side = target.get("side") if isinstance(target, dict) else target
+    if str(target_side or "").lower() != "flat":
+        return None
+    closes = [
+        event for event in (state.get("events_this_bar") or [])
+        if isinstance(event, dict)
+        and str(event.get("type") or event.get("engine_type") or "").upper() == "CLOSE"
+    ]
+    if not closes:
+        return None
+    event = closes[-1]
+    vector_reason = str(event.get("reason") or "").strip()
+    try:
+        price_ref = float(event.get("price_ref") or (target.get("price_ref") if isinstance(target, dict) else 0.0) or 0.0)
+    except (TypeError, ValueError):
+        return None
+    if not vector_reason or price_ref <= 0:
+        return None
+    payload["action"] = "CLOSE"
+    payload["vector_exit_reason"] = vector_reason
+    payload["vector_price_ref"] = price_ref
+    payload["vector_bar_ts"] = float(bar_ts)
+    payload["reason"] = f"{reason}:{vector_reason}"
+    return payload
+
+
+def _intervention_close_net_guard(position, reason, commission_buffer_pct, now=None, max_mark_age_s=60.0):
+    reason_upper = str(reason or "").upper()
+    mandatory_dc_stop = (
+        reason_upper == "FIXED_STOP"
+        or ("FIXED_STOP" in reason_upper and ("15M" in reason_upper or "DC_LOW.15M" in reason_upper or "DC_HIGH.15M" in reason_upper))
+        or "ULTIMATE_DC_4H_HARD_STOP" in reason_upper
+        or "VIGILANCE_DC4" in reason_upper
+        or any(token in reason_upper for token in ("DC15M_STOP", "DC4H_STOP"))
+    )
+    if mandatory_dc_stop:
+        return True, "MANDATORY_DC_STOP", None, None
+    if position is None:
+        return False, "POSITION_UNAVAILABLE", None, None
+    try:
+        mark = float(getattr(position, "mark_price", 0.0) or 0.0)
+        entry = float(getattr(position, "entry_price", 0.0) or 0.0)
+        side = str(getattr(position, "position_side", "") or "").upper()
+        updated = getattr(position, "mark_price_last_updated", None)
+        if isinstance(updated, str):
+            updated = isoparse(updated)
+        if not isinstance(updated, datetime):
+            return False, "MARK_TIMESTAMP_MISSING", None, mark or None
+        now = now or datetime.now(timezone.utc)
+        if updated.tzinfo is None:
+            updated = updated.replace(tzinfo=timezone.utc)
+        if now.tzinfo is None:
+            now = now.replace(tzinfo=timezone.utc)
+        age_s = (now - updated).total_seconds()
+        if age_s < 0 or age_s > float(max_mark_age_s):
+            return False, "MARK_STALE", None, mark or None
+        if mark <= 0 or entry <= 0 or side not in ("LONG", "SHORT"):
+            return False, "PRICE_OR_ENTRY_INVALID", None, mark or None
+        gross_gain_pct = ((mark - entry) / entry * 100.0) if side == "LONG" else ((entry - mark) / entry * 100.0)
+        net_gain_pct = gross_gain_pct - float(commission_buffer_pct)
+        if net_gain_pct <= 0:
+            return False, "NET_GAIN_NOT_POSITIVE_AFTER_FEES", net_gain_pct, mark
+        return True, "NET_GAIN_POSITIVE_AFTER_FEES", net_gain_pct, mark
+    except Exception:
+        return False, "MARK_CHECK_ERROR", None, None
+
+
+def _ppl_lifecycle_id(position):
+    opened_at = getattr(position, "opened_at", None) if position is not None else None
+    if isinstance(opened_at, str):
+        try:
+            opened_at = isoparse(opened_at)
+        except Exception:
+            return ""
+    elif isinstance(opened_at, (int, float)):
+        try:
+            opened_at = datetime.fromtimestamp(float(opened_at), tz=timezone.utc)
+        except Exception:
+            return ""
+    if not isinstance(opened_at, datetime):
+        return ""
+    if opened_at.tzinfo is None:
+        opened_at = opened_at.replace(tzinfo=timezone.utc)
+    return opened_at.astimezone(timezone.utc).isoformat(timespec="microseconds")
+
+
+def _ppl_state_get(trade_manager, account_key, position_key, position):
+    lifecycle_id = _ppl_lifecycle_id(position)
+    if not lifecycle_id:
+        return {}
+    if not isinstance(getattr(trade_manager, "partial_profit_lock_state", None), dict):
+        trade_manager.partial_profit_lock_state = {}
+    loaded_accounts = getattr(trade_manager, "_ppl_state_loaded_accounts", None)
+    if not isinstance(loaded_accounts, set):
+        loaded_accounts = set()
+        trade_manager._ppl_state_loaded_accounts = loaded_accounts
+    account = str(account_key or "").lower()
+    if account and account not in loaded_accounts:
+        try:
+            import ppl_state_store as _ppl_store
+
+            base_path = getattr(config, "BASE_PATH", Path(__file__).resolve().parent)
+            persisted = _ppl_store.load_account(base_path, account)
+            for key, value in persisted.items():
+                if isinstance(value, dict) and key not in trade_manager.partial_profit_lock_state:
+                    trade_manager.partial_profit_lock_state[key] = value
+        except Exception as load_error:
+            logger.critical(f"[PPL_STATE_LOAD_FAILED] {account}: {type(load_error).__name__}: {load_error}")
+        loaded_accounts.add(account)
+    state = trade_manager.partial_profit_lock_state.get(position_key)
+    if isinstance(state, dict) and state.get("_position_opened_at") != lifecycle_id:
+        trade_manager.partial_profit_lock_state.pop(position_key, None)
+        if account:
+            try:
+                import ppl_state_store as _ppl_store
+
+                _ppl_store.delete_state(getattr(config, "BASE_PATH", Path(__file__).resolve().parent), account, position_key)
+            except Exception as stale_delete_error:
+                logger.critical(f"[PPL_STATE_STALE_DELETE_FAILED] {position_key}: {type(stale_delete_error).__name__}: {stale_delete_error}")
+        return {}
+    if not isinstance(state, dict):
+        return {}
+    return state
+
+
+def _ppl_state_set(trade_manager, account_key, position_key, position, state):
+    lifecycle_id = _ppl_lifecycle_id(position)
+    if not lifecycle_id:
+        logger.critical(f"[PPL_STATE_NOT_PERSISTED] {position_key}: opened_at missing; refusing lifecycle-unsafe state")
+        return False
+    _ppl_state_get(trade_manager, account_key, position_key, position)
+    stored = dict(state or {})
+    stored["_position_opened_at"] = lifecycle_id
+    trade_manager.partial_profit_lock_state[position_key] = stored
+    try:
+        import ppl_state_store as _ppl_store
+
+        base_path = getattr(config, "BASE_PATH", Path(__file__).resolve().parent)
+        _ppl_store.save_state(base_path, account_key, position_key, stored)
+        return True
+    except Exception as save_error:
+        logger.critical(f"[PPL_STATE_SAVE_FAILED] {position_key}: {type(save_error).__name__}: {save_error}")
+        return False
+
+
+def _ppl_state_pop(trade_manager, account_key, position_key, position):
+    state = _ppl_state_get(trade_manager, account_key, position_key, position)
+    if not state:
+        return None
+    trade_manager.partial_profit_lock_state.pop(position_key, None)
+    try:
+        import ppl_state_store as _ppl_store
+
+        base_path = getattr(config, "BASE_PATH", Path(__file__).resolve().parent)
+        _ppl_store.delete_state(base_path, account_key, position_key)
+    except Exception as delete_error:
+        logger.critical(f"[PPL_STATE_DELETE_FAILED] {position_key}: {type(delete_error).__name__}: {delete_error}")
+    return state
+
+
+def _ppl_stop_close_due(fired, stop_level, position_amount, min_qty, current_price, is_long, native_stop_disabled):
+    if not fired or float(stop_level or 0.0) <= 0 or abs(float(position_amount or 0.0)) <= float(min_qty or 0.0):
+        return False
+    if native_stop_disabled or float(current_price or 0.0) <= 0:
+        return False
+    return float(current_price) <= float(stop_level) if is_long else float(current_price) >= float(stop_level)
+
+
 async def _reconcile_wire_sanction(client, position_key, symbol):
     """2026-10-11 USER fix-as-discovered: a stale OPEN sanction wedged inf:XTZUSDT_LONG 5h (refuse-before-verify deadlock — every new act dies at _sanction_execution before any verify/clear path runs). Re-query each OPEN order via cancel-then-classify and retire broker-confirmed terminal ones so the NEXT act can place. Current act stays refused (fail-safe). Fresh sanctions (<180s, inside the maker loop window) are never touched; at most one reconcile per key per 60s."""
     if not _wire_guard_enabled() or client is None or not position_key or not symbol:
@@ -14867,6 +15075,7 @@ class MultiAccountTradeManager:
             positions_service, "direct_high_gain_augmented", {}
         )
         self.partial_profit_lock_state = {}
+        self._ppl_state_loaded_accounts = set()
         self._snapshot_lock = DummyLock()  # Indicators Snapshot
         self._price_cache_lock = DummyLock()  # Price Cache
         self._positions_lock = DummyLock()  # Position Updates
@@ -19134,12 +19343,26 @@ class MultiAccountTradeManager:
                         except Exception:
                             qty = 0.0
                         reason = str(cmd.get("reason") or "INTERVENTION_QUEUE")
+                        action = _intervention_action_from_payload(cmd)
                         is_hedge = bool(cmd.get("is_hedge", False))
                         hedge_for = cmd.get("hedge_for")
                         try:
                             ttl_epoch = float(cmd.get("ttl_epoch") or 0.0)
                         except Exception:
                             ttl_epoch = 0.0
+                        if not cmd.get("action") and reason.startswith("VEC_DRIVEN_EXIT_OWED_CLOSE_"):
+                            migrated = _intervention_migrate_legacy_owed_close(cmd, getattr(config, "BASE_PATH", Path(__file__).resolve().parent))
+                            if migrated is None:
+                                logger.critical(f"[INTERVENTION_QUEUE_HELD] legacy owed CLOSE {account_key}:{sym}_{pside} has no matching same-bar forward CLOSE; retaining queue item")
+                                try:
+                                    await client.lpush(qkey, _intervention_retry_payload(cmd, ttl_s=getattr(config, "INTERVENTION_QUEUE_RETRY_TTL_S", 300.0)))
+                                except Exception as requeue_error:
+                                    logger.critical(f"[INTERVENTION_QUEUE_REQUEUE_FAILED] legacy owed CLOSE {account_key}:{sym}_{pside}: {type(requeue_error).__name__}: {requeue_error}")
+                                break
+                            cmd = migrated
+                            action = "CLOSE"
+                            reason = str(cmd.get("reason") or reason)
+                            ttl_epoch = time.time() + float(getattr(config, "INTERVENTION_QUEUE_RETRY_TTL_S", 300.0))
                         if ttl_epoch > 0 and time.time() > ttl_epoch:
                             logger.warning(
                                 f"[INTERVENTION_QUEUE] {account_key} expired: {sym} {pside} qty={qty}"
@@ -19150,12 +19373,41 @@ class MultiAccountTradeManager:
                             or side not in ("BUY", "SELL")
                             or pside not in ("LONG", "SHORT")
                             or qty <= 0
+                            or action is None
                         ):
                             logger.warning(
                                 f"[INTERVENTION_QUEUE] {account_key} invalid cmd: {cmd}"
                             )
                             continue
                         pkey = f"{account_key}:{sym}_{pside}"
+                        dispatch_price = 0.0
+                        if action == "CLOSE":
+                            queued_vector_reason = str(cmd.get("vector_exit_reason") or "").strip()
+                            if not queued_vector_reason:
+                                logger.critical(f"[INTERVENTION_QUEUE_HELD] {pkey} CLOSE lacks original vector exit reason; retaining queue item")
+                                try:
+                                    await client.lpush(qkey, _intervention_retry_payload(cmd, ttl_s=getattr(config, "INTERVENTION_QUEUE_RETRY_TTL_S", 300.0)))
+                                except Exception as requeue_error:
+                                    logger.critical(f"[INTERVENTION_QUEUE_REQUEUE_FAILED] {pkey} close reason missing: {type(requeue_error).__name__}: {requeue_error}")
+                                break
+                            try:
+                                queued_position = await self.tracker_manager.get_position(pkey) if self.tracker_manager else None
+                            except Exception as position_error:
+                                queued_position = None
+                                logger.warning(f"[INTERVENTION_QUEUE_PRICE_LOOKUP_FAILED] {pkey}: {type(position_error).__name__}: {position_error}")
+                            close_ok, close_code, close_net_gain, close_mark = _intervention_close_net_guard(
+                                queued_position,
+                                queued_vector_reason,
+                                getattr(config, "COMMISSION_BUFFER_PCT", 0.10),
+                            )
+                            if not close_ok:
+                                logger.critical(f"[INTERVENTION_QUEUE_HELD] {pkey} CLOSE reason={queued_vector_reason[:80]} status={close_code} net_gain_pct={close_net_gain} mark={close_mark} — retain and retry")
+                                try:
+                                    await client.lpush(qkey, _intervention_retry_payload(cmd, ttl_s=getattr(config, "INTERVENTION_QUEUE_RETRY_TTL_S", 300.0)))
+                                except Exception as requeue_error:
+                                    logger.critical(f"[INTERVENTION_QUEUE_REQUEUE_FAILED] {pkey} close guard={close_code}: {type(requeue_error).__name__}: {requeue_error}")
+                                break
+                            dispatch_price = float(close_mark or 0.0)
                         try:
                             result = await self.execute_now(
                                 position_key=pkey,
@@ -19164,8 +19416,9 @@ class MultiAccountTradeManager:
                                 side=side,
                                 position_side=pside,
                                 quantity=qty,
+                                old_price=dispatch_price,
                                 reason=reason,
-                                action="OPEN",
+                                action=action,
                                 is_hedge=is_hedge,
                                 hedge_for=hedge_for,
                             )
@@ -27061,9 +27314,7 @@ class MultiAccountTradeManager:
         if is_augment and not _is_reentry and not is_hedge and i:
             _eta_min_gain = safe_fetch_float(getattr(config, "MIN_GAIN", 3.0), 3.0)
             _eta_raw_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
-            _eta_ppl_st = getattr(self, "partial_profit_lock_state", {}).get(
-                position_key, {}
-            )
+            _eta_ppl_st = _ppl_state_get(self, account_key, position_key, position)
             _eta_ppl_eff = float(_eta_ppl_st.get("effective_entry", 0.0))
             _eta_pos_gain = (
                 (
@@ -28027,9 +28278,7 @@ class MultiAccountTradeManager:
                     return failure_reason
                 # PPL effective_gain: after partial close, use lowered cost basis so augment
                 # fires sooner on pullback (the captured partial profit reduces effective entry).
-                _aug_ppl_state = getattr(self, "partial_profit_lock_state", {}).get(
-                    position_key, {}
-                )
+                _aug_ppl_state = _ppl_state_get(self, account_key, position_key, position)
                 _aug_ppl_eff_entry = float(_aug_ppl_state.get("effective_entry", 0.0))
                 if (
                     _aug_ppl_state.get("fired")
@@ -53269,7 +53518,7 @@ async def process_position(
                     ):
                         _ag_pos_gain = safe_float(getattr(position, "gain", 0))
                         _ag_ppl_min_g = float(_psym_get(symbol, position_side, "PARTIAL_PROFIT_LOCK_GAIN_PCT", 1.5))
-                        _ag_ppl_st = getattr(trade_manager, "partial_profit_lock_state", {}).get(position_key, {})
+                        _ag_ppl_st = _ppl_state_get(trade_manager, account_key, position_key, position)
                         if not _ag_ppl_st.get("fired", False) and _ag_pos_gain >= _ag_ppl_min_g:
                             try:
                                 _ag_cur_px, _ = await get_current_price(symbol)
@@ -53302,18 +53551,16 @@ async def process_position(
                                             False, "QUICK_REDUCE", url_variant="2",
                                         )
                                         if "SUCCESS" in str(_ag_ppl_res or "").upper():
-                                            if not hasattr(trade_manager, "partial_profit_lock_state"):
-                                                trade_manager.partial_profit_lock_state = {}
                                             _ag_ppl_eff = (
                                                 _ag_entry_px * (1.0 - _ag_ppl_frac * (1.0 + _ag_pos_gain / 100.0)) / (1.0 - _ag_ppl_frac)
                                                 if _ag_is_long_ppl
                                                 else _ag_entry_px * (1.0 - _ag_ppl_frac * (1.0 - _ag_pos_gain / 100.0)) / (1.0 - _ag_ppl_frac)
                                             )
-                                            trade_manager.partial_profit_lock_state[position_key] = {
+                                            _ppl_state_set(trade_manager, account_key, position_key, position, {
                                                 "fired": True, "first_exit_price": _ag_cur_px,
                                                 "stop_level": _ag_be_stop, "stop_upgraded": False,
                                                 "effective_entry": _ag_ppl_eff,
-                                            }
+                                            })
                             except Exception as _ag_ppl_e:
                                 logger.warning(f"[PPL_IN_AGENT_HOLD_ERR] {position_key}: {_ag_ppl_e}")
                     _ag_adv.log_application(
@@ -58787,11 +59034,7 @@ async def process_position(
                 _ppl_use_maker = bool(
                     getattr(config, "PARTIAL_PROFIT_LOCK_USE_MAKER", True)
                 )
-                if not hasattr(trade_manager, "partial_profit_lock_state"):
-                    trade_manager.partial_profit_lock_state = {}
-                _ppl_state = trade_manager.partial_profit_lock_state.get(
-                    position_key, {}
-                )
+                _ppl_state = _ppl_state_get(trade_manager, account_key, position_key, position)
                 _ppl_fired = _ppl_state.get("fired", False)
                 _ppl_first_exit_px = float(_ppl_state.get("first_exit_price", 0.0))
                 _ppl_stop_level = float(_ppl_state.get("stop_level", 0.0))
@@ -58873,7 +59116,7 @@ async def process_position(
                                 )
                             except (TypeError, ValueError):
                                 _ppl_reaug_m = 1.0
-                            trade_manager.partial_profit_lock_state[position_key] = {
+                            _ppl_state_set(trade_manager, account_key, position_key, position, {
                                 "fired": True,
                                 "first_exit_price": current_price,
                                 "stop_level": _ppl_be_stop,
@@ -58884,7 +59127,7 @@ async def process_position(
                                     float(_ppl_reduce_qty) if _ppl_reaug_arm else 0.0
                                 ),
                                 "reaug_mult": _ppl_reaug_m if _ppl_reaug_arm else 0.0,
-                            }
+                            })
                             logger.info(
                                 f"[PPL_EFF_ENTRY] {position_key}: entry={_ppl_entry_px:.6f} → effective_entry={_ppl_eff_entry:.6f} (gain_locked={_pp_gain:.4f}%, frac={_ppl_frac})"
                             )
@@ -58895,19 +59138,15 @@ async def process_position(
                     and _pp_gain >= _ppl_arm_gain
                     and _ppl_first_exit_px > 0
                 ):
-                    trade_manager.partial_profit_lock_state[position_key] = {
+                    _ppl_state_set(trade_manager, account_key, position_key, position, {
                         **_ppl_state,
                         "stop_level": _ppl_first_exit_px,
                         "stop_upgraded": True,
-                    }
+                    })
                     logger.warning(
                         f"[PPL_STOP_UPGRADED] {position_key}: gain={_pp_gain:.2f}% ≥ {_ppl_arm_gain}% — stop upgraded BE→first_exit {_ppl_first_exit_px:.6f} (locks +0.5% scalp)"
                     )
-                if _ppl_fired and _ppl_stop_level > 0 and _ppl_pos_amt > pos_min_qty and not _voe_native_exits_disabled("stop"):  # USER 2026-10-22: PPL stop level, price protection, never stood down
-                    _sl_hit = (is_long and current_price <= _ppl_stop_level) or (
-                        not is_long and current_price >= _ppl_stop_level
-                    )
-                    if _sl_hit:
+                if _ppl_stop_close_due(_ppl_fired, _ppl_stop_level, _ppl_pos_amt, pos_min_qty, current_price, is_long, _voe_native_exits_disabled("stop")):  # USER 2026-10-22: PPL stop level, price protection, never stood down
                         _ppl_sl_uid = f"PPL_SL_{position_key}_{int(time.time())}"
                         _ppl_sl_reason = f"PPL_SL_{'upgraded' if _ppl_stop_upgraded else 'BE'}_px{current_price:.6f}_stop{_ppl_stop_level:.6f}"
                         logger.warning(
@@ -58929,9 +59168,7 @@ async def process_position(
                         )
                         _sl_ok = "SUCCESS" in str(_sl_result or "").upper()
                         if _sl_ok:
-                            trade_manager.partial_profit_lock_state.pop(
-                                position_key, None
-                            )
+                            _ppl_state_pop(trade_manager, account_key, position_key, position)
                             return f"{EvalStatus.ACTION_TAKEN}:PPL_SL_CLOSE"
             # USER 2026-10-23 PPL re-augment triggers (per-sym_side switch +
             # PPL_REAUGMENT_TRIGGER, backtest decides): armed at the PPL tap;
@@ -59019,14 +59256,13 @@ async def process_position(
                                 "QUICK_AUGMENT",
                             )
                             if "SUCCESS" in str(_rg_res or "").upper():
-                                trade_manager.partial_profit_lock_state[
-                                    position_key
-                                ] = {
-                                    **trade_manager.partial_profit_lock_state.get(
-                                        position_key, {}
-                                    ),
-                                    "reaug_armed": False,
-                                }
+                                _ppl_state_set(
+                                    trade_manager,
+                                    account_key,
+                                    position_key,
+                                    position,
+                                    {**_ppl_state_get(trade_manager, account_key, position_key, position), "reaug_armed": False},
+                                )
                                 return f"{EvalStatus.ACTION_TAKEN}:PPL_REAUGMENT_{_rg_trig}"
                 except Exception as _rg_e:
                     logger.warning(f"[PPL_REAUGMENT_ERR] {position_key}: {_rg_e}")
@@ -61573,7 +61809,6 @@ async def periodic_lock_cleanup(trade_manager):
 
 
 _AUX_STATE_DICT_ATTRS = (
-    "partial_profit_lock_state",
     "reentry_invalidated",
     "recent_augmentations",
     "position_last_processed",

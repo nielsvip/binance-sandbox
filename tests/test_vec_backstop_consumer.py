@@ -14,7 +14,10 @@ def _st(ss, side, mode="live", age_min=10, now=None):
         "mode": mode,
         "actionable": True,
         "bar_ts": now - age_min * 60,
-        "target_state": {"side": side},
+        "target_state": {"side": side, "price_ref": 100.0},
+        "events_this_bar": [
+            {"type": "CLOSE", "reason": "PPL_SL_CLOSE_test", "price_ref": 100.0}
+        ] if side == "flat" else [],
     }
 
 
@@ -30,6 +33,7 @@ def test_flat_live_open_pushes_close():
     c = cmds[0]
     assert c["symbol"] == "BTCUSDC" and c["position_side"] == "SHORT"
     assert c["side"] == "BUY" and c["quantity"] == 12.5
+    assert c["action"] == "CLOSE" and c["vector_exit_reason"] == "PPL_SL_CLOSE_test"
     assert c["reason"].startswith("VEC_DRIVEN_") and "EXIT_OWED" in c["reason"]
 
 

@@ -132,6 +132,8 @@ from ez_manage import MultiAccountTradeManager, OrderQueue
 from ez_manage import Signal as _EM_Signal
 from ez_manage import TradingPolicy as trading_policy
 from ez_manage import _last_events_cache_time
+from ez_manage import _ppl_state_get as _ez_ppl_state_get
+from ez_manage import _ppl_state_set as _ez_ppl_state_set
 from ez_manage import check_dc_high_break_retest as _ez_check_dc_high_break_retest
 from ez_manage import check_reentry_delta_tolerant as _ez_check_reentry_delta_tolerant
 from ez_manage import generate_unique_id
@@ -35688,9 +35690,7 @@ async def _scalp_v3_protective_exits(
                         ),
                     )
                 )
-                if not hasattr(trade_manager, "partial_profit_lock_state"):
-                    trade_manager.partial_profit_lock_state = {}
-                _fppl_state = trade_manager.partial_profit_lock_state.get(pk, {})
+                _fppl_state = _ez_ppl_state_get(trade_manager, account_key, pk, p)
                 if not _fppl_state.get("fired", False) and gain >= _fppl_min_gain:
                     _fppl_entry = safe_fetch_float(getattr(p, "entry_price", 0.0), 0.0)
                     if _fppl_entry > 0:
@@ -35740,12 +35740,12 @@ async def _scalp_v3_protective_exits(
                         )
                         _fppl_ok = "SUCCESS" in str(_fppl_result or "").upper()
                         if _fppl_ok:
-                            trade_manager.partial_profit_lock_state[pk] = {
+                            _ez_ppl_state_set(trade_manager, account_key, pk, p, {
                                 "fired": True,
                                 "first_exit_price": _fppl_px,
                                 "stop_level": _fppl_be_stop,
                                 "stop_upgraded": False,
-                            }
+                            })
                             fires += 1
                             continue  # skip this iteration's full-CLOSE — half is locked
             if not triggers:

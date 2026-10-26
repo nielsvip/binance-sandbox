@@ -85,8 +85,27 @@ def collect_owed(states, positions, now_s, pushed, max_bar_age_min=MAX_BAR_AGE_M
             continue
         if st.get("mode") != "live":
             continue
-        tgt = (st.get("target_state") or {}).get("side")
-        if tgt != "flat":
+        target_state = st.get("target_state") or {}
+        tgt = target_state.get("side") if isinstance(target_state, dict) else target_state
+        if str(tgt or "").lower() != "flat":
+            continue
+        events = st.get("events_this_bar") or st.get("emitted_events") or []
+        close_events = [
+            event
+            for event in events
+            if isinstance(event, dict)
+            and str(event.get("type") or event.get("engine_type") or "").upper() == "CLOSE"
+        ]
+        if not close_events:
+            continue
+        close_event = close_events[-1]
+        vector_reason = str(close_event.get("reason") or "").strip()
+        try:
+            target_price = target_state.get("price_ref") if isinstance(target_state, dict) else 0.0
+            vector_price = float(close_event.get("price_ref") or target_price or 0.0)
+        except (TypeError, ValueError):
+            vector_price = 0.0
+        if not vector_reason or vector_price <= 0:
             continue
         try:
             age_min = (float(now_s) - float(st.get("bar_ts") or 0.0)) / 60.0
@@ -119,7 +138,11 @@ def collect_owed(states, positions, now_s, pushed, max_bar_age_min=MAX_BAR_AGE_M
                 "side": CLOSE_SIDE[pside],
                 "position_side": pside,
                 "quantity": abs(amt),
-                "reason": f"VEC_DRIVEN_EXIT_OWED_CLOSE_{ss}_bar{int(float(st.get('bar_ts')))}",
+                "action": "CLOSE",
+                "reason": f"VEC_DRIVEN_EXIT_OWED_CLOSE_{ss}_bar{int(float(st.get('bar_ts')))}:{vector_reason}",
+                "vector_exit_reason": vector_reason,
+                "vector_price_ref": vector_price,
+                "vector_bar_ts": float(st.get("bar_ts")),
                 "ttl_epoch": float(now_s) + TTL_S,
                 "key": key,
                 "bar_age_min": round(age_min, 1),
@@ -167,7 +190,11 @@ def push_cmds(redis_client, cmds):
                 "side",
                 "position_side",
                 "quantity",
+                "action",
                 "reason",
+                "vector_exit_reason",
+                "vector_price_ref",
+                "vector_bar_ts",
                 "ttl_epoch",
             )
         }
