@@ -1,68 +1,69 @@
 {
-  "ts": "2026-10-26T19:05:13.280795+00:00",
-  "tick": "2026-10-26T19:04:01.987191+00:00",
-  "tick_age_s": 71,
+  "ts": "2026-10-26T19:10:08.594254+00:00",
+  "tick": "2026-10-26T19:08:01.816678+00:00",
+  "tick_age_s": 127,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run37.json",
     "round": "run37",
     "complete": false,
     "universe_n": 204,
-    "n_complete": 127,
-    "n_pending": 77,
+    "n_complete": 128,
+    "n_pending": 76,
     "n_refused_only": 0,
     "n_excluded": 0,
-    "n_launchable_pending": 56,
+    "n_launchable_pending": 57,
     "hosts_not_visible": []
   },
   "hosts": {
     "s1": {
-      "cpu_pct": 90,
+      "cpu_pct": 89,
       "slots": "0/4",
       "observed_running": [],
       "published_last_hour": 0,
       "idle_reason": "disk guard",
-      "mem_avail_mb": 16741
-    },
-    "s6": {
-      "cpu_pct": 35,
-      "slots": "0/4",
-      "observed_running": [],
-      "published_last_hour": 0,
-      "idle_reason": "mem guard",
-      "mem_avail_mb": 10684
+      "mem_avail_mb": 15047
     },
     "s2": {
-      "cpu_pct": 99,
-      "slots": "2/4",
+      "cpu_pct": 60,
+      "slots": "3/4",
       "observed_running": [
-        "GRASSUSDT",
-        "SANDUSDT"
+        "CHRUSDT"
       ],
       "published_last_hour": 0,
-      "idle_reason": "mem guard",
-      "mem_avail_mb": 5025
+      "idle_reason": null,
+      "mem_avail_mb": 16454
+    },
+    "s6": {
+      "cpu_pct": 34,
+      "slots": "1/4",
+      "observed_running": [
+        "VZ"
+      ],
+      "published_last_hour": 0,
+      "idle_reason": "no eligible ready symbol for this host",
+      "mem_avail_mb": 27046
     },
     "s5": {
-      "cpu_pct": 99,
+      "cpu_pct": 100,
       "slots": "3/4",
       "observed_running": [
         "ACN",
-        "SPY",
-        "VT"
+        "SPY"
       ],
       "published_last_hour": 0,
-      "idle_reason": "mem guard",
-      "mem_avail_mb": 10109
+      "idle_reason": null,
+      "mem_avail_mb": 17569
     }
   },
   "one_hour_total": 0,
   "alerts": [
     "LOW_THROUGHPUT:s1:0/h",
+    "LOW_CPU:s1:89%",
     "IDLE:s1:disk guard",
-    "LOW_THROUGHPUT:s6:0/h",
-    "LOW_CPU:s6:35%",
-    "IDLE:s6:mem guard",
     "LOW_THROUGHPUT:s2:0/h",
+    "LOW_CPU:s2:60%",
+    "LOW_THROUGHPUT:s6:0/h",
+    "LOW_CPU:s6:34%",
     "LOW_THROUGHPUT:s5:0/h"
   ]
 }

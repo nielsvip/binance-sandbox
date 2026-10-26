@@ -1,0 +1,128 @@
+{
+ "window_from": "10-26 18:07",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 350,
+  "EXTRA": 7,
+  "STATE_CONVERGENCE": 2
+ },
+ "rows": [
+  {
+   "acct": "ang",
+   "sym_side": "1000BONKUSDC_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-26 18:40",
+   "actual": "REDUCE",
+   "actual_reason": "FIXED_STOP_SHORT_px0.003046_lvl0.003042_g-0.16",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "1000BONKUSDC_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-26 18:56",
+   "actual": "REDUCE",
+   "actual_reason": "FIXED_STOP_SHORT_px0.003046_lvl0.003042_g-0.16",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "ATOMUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-26 18:41",
+   "actual": "CLOSE",
+   "actual_reason": "EXIT_GUARANTEE_FORCE[REFUSED:BLOCKED_REGIME_HOLD_SHORT] WT_4H_VEL_EXIT_vel=16.4_g=0.51%_k3",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "inf",
+   "sym_side": "ATOMUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-26 19:00",
+   "actual": "CLOSE",
+   "actual_reason": "EXIT_GUARANTEE_FORCE[REFUSED:BLOCKED_REGIME_HOLD_SHORT] WT_4H_VEL_EXIT_vel=16.4_g=0.43%_k3",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "BATUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-26 18:57",
+   "actual": "CLOSE",
+   "actual_reason": "QUICK_ULTIMATE_DC_4h_HARD_STOP_LONG_px0.139303_lvl0.140560_g0.45_REDUCE",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "fin",
+   "sym_side": "EDUUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-26 18:17",
+   "actual": "CLOSE",
+   "actual_reason": "EXIT_GUARANTEE_FORCE[REFUSED:BLOCKED_MAKER_SUPPRESS_WEBHOOK] BT_WICK_REJECT_EXIT_g=0.18%",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "EGLDUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-26 18:52",
+   "actual": "REDUCE",
+   "actual_reason": "VEC_DRIVEN_REDUCE_CYCLE_TP_TIERED_T1_0.30PCT_GAIN0.40",
+   "late_bars": null,
+   "verdict": "STATE_CONVERGENCE",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "IOTAUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-26 18:57",
+   "actual": "CLOSE",
+   "actual_reason": "VEC_DRIVEN_CLOSE_RECONCILE_",
+   "late_bars": null,
+   "verdict": "STATE_CONVERGENCE",
+   "vec_tagged": false
+  },
+  {
+   "acct": "inf",
+   "sym_side": "PENGUUSDC_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-26 18:58",
+   "actual": "REDUCE",
+   "actual_reason": "FIXED_STOP_LONG_px0.007516_lvl0.007520_g-0.34",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  }
+ ]
+}

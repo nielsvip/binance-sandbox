@@ -1,5 +1,5 @@
 {
- "at": "2026-10-26T18:11:03Z",
+ "at": "2026-10-26T19:11:05Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
@@ -33,49 +33,43 @@
    "cores_by_bucket_niced": null
   },
   "s2": {
-   "improved": 1,
-   "improved_per_hour": 1.0,
-   "published_n": 1,
+   "improved": 0,
+   "improved_per_hour": 0.0,
+   "published_n": 0,
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "BATUSDT_LONG",
-    "QNTUSDT_LONG",
-    "STXUSDT_LONG"
+    "CHRUSDT_LONG",
+    "GRASSUSDT_LONG",
+    "ZROUSDT_LONG"
    ],
-   "mem_avail_mb": 7861,
-   "load1": 22.8,
+   "mem_avail_mb": 9765,
+   "load1": 24.64,
    "nproc": 16,
    "slots": null,
-   "binding_reason": "concurrency 0 boards: 12/h needs <= 0 min per sym_side (measured median 18 min) \u2014 raise concurrent sides or cut evals per board",
+   "binding_reason": "CPU budget: median board 4281 core-s, 16 cores minus 4.2 competing non-board cores ({'other': 0.86, 'boards': 10.04, 'live_helpers': 3.36}) = 11.8 usable -> host ceiling 9.9 boards/h. Move nice-0 non-board work off the host and/or cut core-s per board.",
    "error": null,
-   "published": [
-    {
-     "symside": "RSRUSDT_LONG",
-     "at": "2026-10-26T17:48:24Z",
-     "baseline": 62.376421981015284,
-     "final": 67.21974730568115,
-     "state": "improved"
-    }
-   ],
+   "published": [],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 22.3,
-   "last_improved_symside": "RSRUSDT_LONG",
+   "minutes_since_last_improved": 33.9,
+   "last_improved_symside": "BATUSDT_LONG",
    "cadence_ok": false,
-   "improved_gap_min_median_24h": 10.0,
+   "improved_gap_min_median_24h": 10.1,
    "improved_gap_min_max_24h": 294.5,
-   "improved_finishes_24h": 39,
-   "board_cpu_s_median_24h": 3171.0,
-   "board_wall_s_median_24h": 1075.9679281711578,
-   "board_cores": 10.68,
-   "nonboard_cores_competing": 2.57,
-   "nonboard_cores_niced": 0,
+   "improved_finishes_24h": 42,
+   "board_cpu_s_median_24h": 4281.1,
+   "board_wall_s_median_24h": 1308.4834320545197,
+   "board_cores": 10.04,
+   "nonboard_cores_competing": 4.22,
+   "nonboard_cores_niced": 0.93,
    "cores_by_bucket": {
-    "other": 1.42,
-    "live_helpers": 1.15,
-    "boards": 10.68
+    "other": 0.86,
+    "boards": 10.04,
+    "live_helpers": 3.36
    },
-   "cores_by_bucket_niced": {}
+   "cores_by_bucket_niced": {
+    "other": 0.93
+   }
   }
  },
  "under_target": [
