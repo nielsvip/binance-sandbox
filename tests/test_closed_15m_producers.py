@@ -34,7 +34,7 @@ def minute_bars(start):
 def test_native_bar_and_completed_bar_survive_late_forming_writer(tmp_path, filename, name):
     ns = load_functions(filename, {name, name + '_unlocked'}, tmp_path)
     path = tmp_path / 'TEST_15m.json'
-    native = {'timestamp': '2026-10-26T18:00:00+00:00', 'open': 1, 'high': 3, 'low': 1, 'close': 2, 'volume': 0}
+    native = {'timestamp': '2026-10-26T18:00:00+00:00', 'open': 1, 'high': 3, 'low': 1, 'close': 2, 'volume': 0, '_closed_verified_at': datetime(2026, 10, 26, 18, 15, tzinfo=timezone.utc).timestamp()}
     path.write_text(json.dumps([native]))
     provisional = dict(native, timestamp='2026-10-26T18:00:00.000000Z', close=999, _provisional=True)
     assert ns[name](path, provisional) is False
@@ -43,6 +43,17 @@ def test_native_bar_and_completed_bar_survive_late_forming_writer(tmp_path, file
     path.write_text(json.dumps([completed]))
     assert ns[name](path, provisional) is False
     assert json.loads(path.read_text()) == [completed]
+
+
+@pytest.mark.parametrize('filename,name', [('ez_market_data.py', '_write_provisional_15m'), ('tradier_prices.py', '_write_provisional_stock_15m')])
+def test_unverified_zero_volume_never_blocks_completed_marks(tmp_path, filename, name):
+    ns = load_functions(filename, {name, name + '_unlocked'}, tmp_path)
+    path = tmp_path / 'TEST_15m.json'
+    unverified = {'timestamp': '2026-10-26T18:00:00+00:00', 'open': 1, 'high': 3, 'low': 1, 'close': 2, 'volume': 0}
+    path.write_text(json.dumps([unverified]))
+    completed = dict(unverified, timestamp='2026-10-26T18:00:00.000000Z', close=999, _provisional=True, _closed=True)
+    assert ns[name](path, completed)
+    assert json.loads(path.read_text())[0]['close'] == 999
 
 
 async def run_clock_once(ns, method, obj, now):

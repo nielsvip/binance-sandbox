@@ -102,7 +102,7 @@ def preferred_closed_row(previous, incoming, bar_close_ts=None):
             return previous
     if not old_native and not new_native and previous.get('_producer') == 'independent_crypto_15m_clock' and incoming.get('_producer') != 'independent_crypto_15m_clock':
         return previous
-    if not old_native and not new_native and previous.get('_producer') == incoming.get('_producer') == 'independent_crypto_15m_clock' and int(previous.get('_producer_generation', 1)) > int(incoming.get('_producer_generation', 1)):
+    if not old_native and not new_native and previous.get('_producer') == incoming.get('_producer') == 'independent_crypto_15m_clock' and int(previous.get('_producer_generation') or 1) > int(incoming.get('_producer_generation') or 1):
         return previous
     return incoming
 

@@ -32,11 +32,15 @@ def apply_overlay(base, overlay):
         forming = json.loads(match.group())
         if timestamp_epoch(forming['timestamp']) + 900 > time.time() and not forming.get('_provisional'):
             merge_closed_history(history, dict(forming, _provisional=True, _closed=False, _finality_reason='current_unclosed_native'))
+        if forming.get('_producer') == 'independent_crypto_15m_clock' and forming.get('_producer_generation') is None:
+            merge_closed_history(history, dict(forming, _producer_generation=1))
     for match in reversed(list(re.finditer(rb'\{[^{}]*\}', cache_tail))):
         native = json.loads(match.group())
         stamp = timestamp_epoch(native['timestamp'])
-        if stamp + 900 > time.time() or not is_verified_closed_native(native, stamp + 900):
+        if stamp + 900 > time.time() or not (is_verified_closed_native(native, stamp + 900) or native.get('_producer') == 'independent_crypto_15m_clock'):
             continue
+        if native.get('_producer') == 'independent_crypto_15m_clock' and native.get('_producer_generation') is None:
+            native = dict(native, _producer_generation=1)
         if row is None or stamp > timestamp_epoch(row['timestamp']) or stamp == timestamp_epoch(row['timestamp']) and preferred_closed_row(row, native, stamp + 900) != row:
             publish_closed_15m(history, native, None, base, mode, symbol)
             row = native

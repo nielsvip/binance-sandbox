@@ -203,6 +203,7 @@ def test_fast_tail_preserves_full_history_and_forming_next_row(tmp_path):
 def test_new_clock_generation_wins_until_verified_native_is_available():
     from closed_bar_feed import preferred_closed_row
     old = dict(event()['row'], _producer='independent_crypto_15m_clock')
+    old['_producer_generation'] = None
     current = dict(old, close=130, _producer_generation=2)
     assert preferred_closed_row(current, old, START + 900) is current
     assert preferred_closed_row(old, current, START + 900) is current
