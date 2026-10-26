@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-26T11:00:03Z",
+ "generated_utc": "2026-10-26T11:20:03Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-26T13:30:00Z",
  "market_open": false,
@@ -15,10 +15,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 288,
-    "filled_before_open": 288
+    "filled_today": 293,
+    "filled_before_open": 293
    },
-   "detail": "288 boards filled before the open (288 today)"
+   "detail": "293 boards filled before the open (293 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -49,12 +49,12 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "reports_today": 10,
-    "newest_report": "persym_golive_20261026_preopen_0945.json",
-    "newest_report_at": "2026-10-26T09:52:08Z",
-    "tiers_at": "2026-10-26T09:53:49Z"
+    "reports_today": 11,
+    "newest_report": "persym_golive_20261026_refresh_1053.json",
+    "newest_report_at": "2026-10-26T11:03:18Z",
+    "tiers_at": "2026-10-26T11:04:20Z"
    },
-   "detail": "persym_golive_20261026_preopen_0945.json at 2026-10-26T09:52:08Z, tiers 2026-10-26T09:53:49Z"
+   "detail": "persym_golive_20261026_refresh_1053.json at 2026-10-26T11:03:18Z, tiers 2026-10-26T11:04:20Z"
   },
   {
    "name": "live_set_matches_selection",
@@ -211,7 +211,7 @@
     "symbols": 202,
     "stale_over_90min": 1,
     "stale_pct": 0.5,
-    "median_age_min": 0.0,
+    "median_age_min": 5.1,
     "sample": [
      "KAITOUSDT"
     ]
