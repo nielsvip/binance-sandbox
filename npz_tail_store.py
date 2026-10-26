@@ -113,18 +113,20 @@ def _tail_tip_ts(tail_path):
             size = fh.tell()
             if size == 0:
                 return None
-            step = min(size, 4096)
-            fh.seek(-step, os.SEEK_END)
-            chunk = fh.read().decode("utf-8", errors="replace")
-        for line in reversed(chunk.splitlines()):
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                return int(json.loads(line).get("timestamps", 0)) or None
-            except Exception:
-                continue
-        return None
+            step = min(size, 65536)
+            while True:
+                fh.seek(-step, os.SEEK_END)
+                lines = fh.read().splitlines()
+                if step < size:
+                    lines = lines[1:]
+                for line in reversed(lines):
+                    try:
+                        return int(json.loads(line).get("timestamps", 0)) or None
+                    except (ValueError, TypeError, AttributeError):
+                        continue
+                if step == size:
+                    return None
+                step = min(size, step * 2)
     except FileNotFoundError:
         return None
     except Exception:

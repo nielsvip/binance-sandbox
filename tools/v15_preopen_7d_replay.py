@@ -37,7 +37,7 @@ def replay_one(queue_path: Path, result_dir: Path, ss: str,
     source = queue["sym_sides"][ss]
     result = validate_one(ss, source, result_dir, now.date().isoformat())
     full = result["full_config"]
-    from tools.opt.v12_pilot import evaluate_prepared_sanitized, npz_freshness, prepare_batch
+    from tools.opt.v12_pilot import evaluate_prepared_sanitized, prepare_batch
     from tools.opt.evaluate_v12 import resolve_tokenised, is_crypto
     import numpy as np
 
@@ -47,9 +47,10 @@ def replay_one(queue_path: Path, result_dir: Path, ss: str,
     overlay = None
     try:
         if stock_overlay:
-            from tools.v15_preopen_7d_npz import build_overlay
+            from tools.v15_preopen_7d_npz import build_overlay, install_overlay_for_process
             overlay = build_overlay(symbol, overlay_dir, now)
             os.environ["V12_NPZ_DIR"] = str(overlay_dir)
+            overlay_freshness = install_overlay_for_process()
             npz = overlay_dir / f"{symbol}.npz"
         else:
             npz = ROOT / "backtest_v8/indicators" / f"{symbol}.npz"
@@ -60,7 +61,11 @@ def replay_one(queue_path: Path, result_dir: Path, ss: str,
             latest_premarket = dt.datetime.fromtimestamp(max(overlay["premarket_rows"]), dt.timezone.utc)
             if latest_premarket > now.astimezone(dt.timezone.utc) or latest_premarket.astimezone(NY).date() != local.date():
                 raise ValueError(f"{ss}: temporary NPZ premarket rows are not current-day completed bars")
-        fresh, why = npz_freshness(ss)
+        if stock_overlay:
+            fresh, why = overlay_freshness(ss)
+        else:
+            from tools.opt.v12_pilot import npz_freshness
+            fresh, why = npz_freshness(ss)
         if not fresh:
             raise ValueError(f"{ss}: stale replay NPZ: {why}")
         prepared = prepare_batch(ss, 7)

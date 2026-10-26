@@ -52,13 +52,23 @@ def build_overlay(symbol: str, overlay_dir: Path, now: dt.datetime | None = None
     pm_keep = set(pm_candidates[-4:])
     if len(pm_keep) < 4:
         raise ValueError(f"{symbol}: need four completed current-day premarket NPZ rows; found {len(pm_keep)}")
-    end = max(int(ts_s[-1]), max(pm_keep))
-    start = end - 7 * 86400
-    keep = np.asarray([
-        (int(value) >= start and int(value) <= end and
-         (is_rth_bar_start(int(value)) or int(value) in pm_keep))
+    rth_days = []
+    for value in ts_s:
+        if is_rth_bar_start(int(value)):
+            day = dt.datetime.fromtimestamp(int(value), dt.timezone.utc).astimezone(NY).date()
+            if day not in rth_days:
+                rth_days.append(day)
+    selected_days = set(rth_days[-7:])
+    if len(selected_days) < 7:
+        raise ValueError(f"{symbol}: canonical NPZ has only {len(selected_days)} RTH sessions; 7D requires seven")
+    rth_keep = np.asarray([
+        is_rth_bar_start(int(value)) and
+        dt.datetime.fromtimestamp(int(value), dt.timezone.utc).astimezone(NY).date() in selected_days
         for value in ts_s
     ], dtype=bool)
+    end = max(int(ts_s[np.flatnonzero(rth_keep)[-1]]), max(pm_keep))
+    start = int(ts_s[np.flatnonzero(rth_keep)[0]])
+    keep = rth_keep | np.asarray([int(value) in pm_keep for value in ts_s], dtype=bool)
     if int(keep.sum()) < 10:
         raise ValueError(f"{symbol}: temporary 7D NPZ has only {int(keep.sum())} rows")
     out_arrays = {}
@@ -95,9 +105,52 @@ def build_overlay(symbol: str, overlay_dir: Path, now: dt.datetime | None = None
         "window_end_utc": dt.datetime.fromtimestamp(end, dt.timezone.utc).isoformat(),
         "premarket_rows": sorted(pm_keep),
         "premarket_row_count": len(pm_keep),
+        "rth_session_dates": [day.isoformat() for day in rth_days[-7:]],
         "rth_row_count": int(sum(is_rth_bar_start(int(value)) for value in out_ts_s)),
         "total_rows": int(len(out_ts_s)),
         "trade_mask": "stocks_live_session_gates.rth_mask",
     }
     (overlay_dir / f"{symbol}.manifest.json").write_text(json.dumps(manifest, sort_keys=True) + "\n")
     return manifest
+
+
+def install_overlay_for_process():
+    """Make the existing v12 loader and 7D freshness check consume this process's overlay."""
+    import os
+
+    overlay_dir = os.environ.get("V12_NPZ_DIR", "")
+    if not overlay_dir:
+        return None
+    import v12_quick_engine as engine
+
+    original_load = engine.load_npz
+
+    def load_overlay_npz(mode, symbols, start_date, npz_dir=""):
+        return original_load(mode, symbols, start_date, npz_dir or overlay_dir)
+
+    engine.load_npz = load_overlay_npz
+    from tools.opt import v12_pilot as pilot
+
+    def overlay_freshness(symside: str):
+        from tools.opt.evaluate_v12 import is_crypto, resolve_tokenised
+        from tools.npz_cutoffs import MAX_NPZ_AGE_MIN, last_closed_bar, last_stock_data_bar
+
+        symbol, _ = resolve_tokenised(symside.rsplit("_", 1)[0])
+        mode = "crypto" if is_crypto(symside.rsplit("_", 1)[0]) else "tradier"
+        path = Path(overlay_dir) / f"{symbol}.npz"
+        if not path.is_file():
+            return False, f"7D overlay missing: {path}"
+        try:
+            with np.load(path, mmap_mode="r", allow_pickle=True) as archive:
+                last = int(np.asarray(archive["timestamps"], dtype=np.int64)[-1])
+            last = last // 1000 if last > 10**11 else last
+            cutoff = int(last_closed_bar()) if mode == "crypto" else int(last_stock_data_bar())
+            age = max(0.0, (cutoff - last) / 60.0)
+            if age > MAX_NPZ_AGE_MIN:
+                return False, f"STALE_7D_OVERLAY: {symbol} is {age:.1f} minutes behind current input cutoff"
+            return True, ""
+        except Exception as exc:
+            return False, f"INVALID_7D_OVERLAY: {type(exc).__name__}: {exc}"
+
+    pilot.npz_freshness = overlay_freshness
+    return overlay_freshness

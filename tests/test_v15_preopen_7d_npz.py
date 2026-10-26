@@ -7,6 +7,8 @@ import pandas as pd
 
 import npz_live_generator as live_npz
 import tools.v15_preopen_7d_npz as overlay_npz
+import v12_quick_engine as engine
+from tools.opt import v12_pilot as pilot
 
 
 NY = ZoneInfo("America/New_York")
@@ -51,7 +53,25 @@ def test_overlay_keeps_rth_and_only_four_current_day_premarket_rows(tmp_path, mo
     assert all(stamp.date() == today for stamp in premarket)
     assert np.all(np.diff(result_ts) > 0)
     assert manifest["premarket_row_count"] == 4
-    assert manifest["rth_row_count"] == int(sum(
+    rth_days = {stamp.date() for stamp in labels if dt.time(9, 30) <= stamp.time() < dt.time(16, 0)}
+    assert len(rth_days) == 7
+    assert manifest["rth_row_count"] == sum(
         dt.time(9, 30) <= stamp.time() < dt.time(16, 0) and stamp.weekday() < 5
         for stamp in labels
-    ))
+    )
+
+
+def test_7d_process_hook_routes_loader_and_freshness_to_overlay(tmp_path, monkeypatch):
+    stamp = int(dt.datetime.now(NY).replace(hour=15, minute=45, second=0, microsecond=0).timestamp())
+    overlay = tmp_path / "TEST.npz"
+    np.savez_compressed(overlay, timestamps=np.asarray([stamp], dtype=np.int64))
+    monkeypatch.setenv("V12_NPZ_DIR", str(tmp_path))
+    monkeypatch.setattr(engine, "load_npz", lambda *args, **kwargs: (args, kwargs))
+    from tools import npz_cutoffs
+    monkeypatch.setattr(npz_cutoffs, "last_stock_data_bar", lambda now=None: stamp)
+
+    freshness = overlay_npz.install_overlay_for_process()
+    loaded = engine.load_npz("tradier", ["TEST"], "2026-10-01")
+    assert loaded[0][3] == str(tmp_path)
+    assert freshness("TEST_LONG") == (True, "")
+    assert pilot.npz_freshness("TEST_LONG") == (True, "")

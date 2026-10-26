@@ -17322,6 +17322,9 @@ if __name__ == "__main__":
     try:
         _MAIN_PID["v"] = os.getpid()
         os.environ["V17_COMBO_IN_PILOT"] = "1"  # combo engine must use the pilot's evaluator, never fork its own pool
+        if os.environ.get("V12_NPZ_DIR"):
+            from tools.v15_preopen_7d_npz import install_overlay_for_process
+            install_overlay_for_process()
         _sig.signal(_sig.SIGTERM, _sig_shutdown)
         _sig.signal(_sig.SIGINT, _sig_shutdown)
     except Exception: pass
