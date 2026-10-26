@@ -1,18 +1,18 @@
 {
- "generated_utc": "2026-10-26T17:10:05Z",
+ "generated_utc": "2026-10-26T17:15:06Z",
  "tol_min": 35,
  "crypto": {
   "status": "OK",
   "mode": "live",
   "missing": [],
-  "worst_lag_min": 10.1,
+  "worst_lag_min": 0.1,
   "worst_sym": "BTCUSDC"
  },
  "stocks": {
   "status": "OK",
   "mode": "live",
   "missing": [],
-  "worst_lag_min": 10.1,
+  "worst_lag_min": 0.1,
   "worst_sym": "SPY"
  }
 }
