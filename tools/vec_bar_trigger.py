@@ -83,6 +83,7 @@ def publish_producer(base, shard, engine):
 
 
 def run_once(base, shard, workers=WORKERS, verbose=False):
+    cycle_started = time.monotonic()
     sys.path.insert(0, str(Path(base)))
     os.chdir(str(base))
     import vec_live_executor as E
@@ -107,8 +108,9 @@ def run_once(base, shard, workers=WORKERS, verbose=False):
         if ov is None:
             continue
         sym, _ = split_ss(ss)
-        z, t = store_mtimes(base, sym, E.npz_path(sym))
-        if should_probe(ss, z, t, seen, revision=(E.set_md5(ov), em["combined"])):
+        source = E.npz_path(sym)
+        z, t = store_mtimes(base, sym, source)
+        if should_probe(ss, z, t, seen, revision=(E.set_md5(ov), em["combined"], str(source))):
             jobs.append((ss, entry, ov, em["combined"], False))
     run_once._seen = seen
     rec = {
@@ -120,6 +122,7 @@ def run_once(base, shard, workers=WORKERS, verbose=False):
         "errors": 0,
     }
     if not jobs:
+        rec["wall_sec"] = round(time.monotonic() - cycle_started, 2)
         return rec
     held_jobs = [job for job in jobs if job[0] in held]
     other_jobs = [job for job in jobs if job[0] not in held]
@@ -139,15 +142,18 @@ def run_once(base, shard, workers=WORKERS, verbose=False):
                     rec["acted"] += 1
                     if tier == "held":
                         try:
-                            E.publish()
+                            E.publish_side(r["ss"], r.get("intent_file"))
                         except Exception:
                             pass
+            if tier == "held":
+                rec["held_wall_sec"] = round(time.monotonic() - cycle_started, 2)
     if rec["acted"]:
         try:
             E.publish()
         except Exception:
             pass
     if verbose:
+        rec["wall_sec"] = round(time.monotonic() - cycle_started, 2)
         print(json.dumps(rec, sort_keys=True), flush=True)
     return rec
 

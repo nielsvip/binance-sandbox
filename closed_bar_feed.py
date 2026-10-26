@@ -100,7 +100,7 @@ def preferred_closed_row(previous, incoming, bar_close_ts=None):
     if old_native and new_native:
         if float(previous.get('_closed_verified_at') or 0) > float(incoming.get('_closed_verified_at') or 0):
             return previous
-    if not old_native and not new_native and previous.get('_producer') == 'independent_crypto_15m_clock' and incoming.get('_producer') != 'independent_crypto_15m_clock':
+    if not old_native and not new_native and previous.get('_producer') in ('independent_crypto_15m_clock', 'independent_stock_15m_clock') and incoming.get('_producer') not in ('independent_crypto_15m_clock', 'independent_stock_15m_clock'):
         return previous
     if not old_native and not new_native and previous.get('_producer') == incoming.get('_producer') == 'independent_crypto_15m_clock' and int(previous.get('_producer_generation') or 1) > int(incoming.get('_producer_generation') or 1):
         return previous

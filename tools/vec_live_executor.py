@@ -277,10 +277,15 @@ def _store_fingerprint(sym: str):
     for candidate in (path, path.parent / ".tail" / f"{sym}.jsonl"):
         try:
             st = candidate.stat()
-            parts.append((st.st_mtime_ns, st.st_size))
+            parts.append((str(candidate), st.st_mtime_ns, st.st_size))
         except OSError:
-            parts.append((0, 0))
+            parts.append((str(candidate), 0, 0))
     return tuple(parts)
+
+
+def _tail_prefix_md5(rows, end_ts):
+    prefix = [row for row in rows if _sec(row.get("timestamps") or 0) <= end_ts]
+    return hashlib.md5(json.dumps(prefix, sort_keys=True, default=str).encode()).hexdigest()
 
 
 
@@ -357,6 +362,7 @@ def _window_npz(sym: str, anchor: dict, end_ts: float = None):
                 _, old, delta = extension
                 expected = int(round(delta / 900.0))
                 current_tail = tail_rows(str(npz_path(sym)))
+                unchanged_prefix = old.get("tail_prefix_md5") == _tail_prefix_md5(current_tail, float(old["end_ts"]))
                 corrected_cached_bar = any(row.get('_replace_latest') and float(row.get('timestamps') or 0) <= float(old['end_ts']) for row in current_tail)
                 rows = [
                     row
@@ -365,7 +371,7 @@ def _window_npz(sym: str, anchor: dict, end_ts: float = None):
                     and float(row.get("timestamps") or 0.0) <= target_end
                 ]
                 rows.sort(key=lambda row: float(row["timestamps"]))
-                if not corrected_cached_bar and len(rows) == expected and all(
+                if unchanged_prefix and not corrected_cached_bar and len(rows) == expected and all(
                     abs(float(row["timestamps"]) - (float(old["end_ts"]) + 900 * (i + 1))) < 1
                     for i, row in enumerate(rows)
                 ):
@@ -380,6 +386,7 @@ def _window_npz(sym: str, anchor: dict, end_ts: float = None):
                             "mode": anchor["mode"],
                             "end_ts": target_end,
                             "steps": int(old.get("steps") or 0) + expected,
+                            "tail_prefix_md5": _tail_prefix_md5(current_tail, target_end),
                         }
                         _cache_window(key, entry)
                         return dict(built)
@@ -395,6 +402,8 @@ def _window_npz(sym: str, anchor: dict, end_ts: float = None):
                 "end_ts": target_end or float(built["timestamps"][-1]),
                 "steps": 0,
             }
+            from npz_tail_store import tail_rows
+            entry["tail_prefix_md5"] = _tail_prefix_md5(tail_rows(str(npz_path(sym))), float(entry["end_ts"]))
             _cache_window(key, entry)
             return dict(built)
         finally:
@@ -721,6 +730,12 @@ def process(
     st_path = STATE / f"{ss}.json"
     prev = json.loads(st_path.read_text()) if st_path.exists() else {}
     rec = {"ss": ss, "mode": mode_flag, "t_start": t0}
+    if entry.get("set_source") == "missing_per_sym_active":
+        state = {"ss": ss, "mode": mode_flag, "account": entry.get("account"), "status": "NO_ACTIVE_SET", "actionable": False, "why": "no selected per_sym_active full configuration", "target_state": {"side": "unknown"}, "engine_md5": emd5, "set_md5": set_md5(overrides), "written_at": t0, "written_iso": _iso(t0)}
+        if prev.get("status") != "NO_ACTIVE_SET" or prev.get("engine_md5") != emd5:
+            _atomic_json(st_path, state)
+        rec.update({"status": "NO_ACTIVE_SET", "why": state["why"]})
+        return rec
     fab = _fabricated(overrides)
     if fab:
         if prev.get("status") != "FABRICATION_SET":
@@ -948,8 +963,8 @@ def load_sets():
     cands = json.loads(CANDIDATES.read_text()) if CANDIDATES.exists() else {}
     if SCOPE == "30d":
         tradeable = ROOT / "tradeable_keys.json"
+        account_sides = {}
         if tradeable.is_file():
-            account_sides = {}
             for key in json.loads(tradeable.read_text()):
                 if ":" not in str(key):
                     continue
@@ -958,6 +973,14 @@ def load_sets():
                     account_sides.setdefault(symbol_side, set()).add(account)
             for symbol_side, accounts in account_sides.items():
                 vd.setdefault(symbol_side, {"mode": "live", "account": sorted(accounts)})
+        held_path = VL / "held_sides.json"
+        try:
+            held_doc = json.loads(held_path.read_text())
+            if _now() - float(held_doc["generated_ts"]) > 180:
+                raise ValueError("held sides stale")
+            eligible_crypto = (set(account_sides) | set(held_doc["held"])) if account_sides else None
+        except (OSError, ValueError, KeyError, TypeError):
+            eligible_crypto = None
         stock_sides = Path("/home/niels/fwd_stocks_syms.txt")
         if stock_sides.is_file():
             for symbol_side in stock_sides.read_text().split():
@@ -970,6 +993,7 @@ def load_sets():
         if not db.is_file():
             raise RuntimeError(f"current per-sym SQL store missing: {db}")
         from per_sym_live_set import _apply_caps
+        from tools.npz_cutoffs import is_crypto_symbol
         result = {}
         cat_doc = {}
         try:
@@ -983,12 +1007,19 @@ def load_sets():
             for symbol_side, entry in vd.items():
                 if symbol_side.startswith("_") or not isinstance(entry, dict) or entry.get("mode") != "live":
                     continue
+                symbol = symbol_side.rsplit("_", 1)[0]
+                crypto = is_crypto_symbol(symbol)
+                if crypto and eligible_crypto is not None and symbol_side not in eligible_crypto:
+                    continue
                 row = connection.execute("SELECT updated_at,full_config_json FROM per_sym_active WHERE sym_side=?", (symbol_side,)).fetchone()
                 if row and row[1]:
                     full = json.loads(row[1])
                     source = "per_sym_store.active"
                     updated = row[0]
                 else:
+                    if crypto:
+                        result[symbol_side] = ({"mode": "live", "account": entry.get("account") or "ez", "set_source": "missing_per_sym_active"}, {})
+                        continue
                     side = symbol_side.rsplit("_", 1)[-1]
                     full = cat_doc.get(f"CRYPTO_{side}") if symbol_side.endswith(("USDT_LONG", "USDT_SHORT", "USDC_LONG", "USDC_SHORT")) else None
                     source = "cat_side_defaults.live"
@@ -1095,6 +1126,19 @@ def _worker(args):
             "error": f"{type(exc).__name__}: {exc}",
             "tb": traceback.format_exc()[-1500:],
         }
+
+
+def publish_side(ss: str, intent_file: str = None) -> None:
+    for source, destination in ((STATE / f"{ss}.json", PUBLISH_DIR / "state" / f"{ss}.json"),):
+        if source.is_file():
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, destination)
+    if intent_file:
+        source = Path(intent_file)
+        if source.is_file():
+            destination = PUBLISH_DIR / "intents" / source.name
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, destination)
 
 
 def publish() -> None:

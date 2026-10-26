@@ -108,11 +108,44 @@ def pad_daily(target, daily):
     pad = daily[daily.index.tz_convert(ET).date < first]
     return pd.concat([pad, target]).sort_index() if not pad.empty else target
 
+def mark_native_finality(frame, span_s, now_s=None):
+    if frame.empty:
+        return frame
+    observed = datetime.now(timezone.utc).timestamp() if now_s is None else float(now_s)
+    frame = frame.copy()
+    closed = frame.index + pd.Timedelta(seconds=span_s) <= pd.Timestamp(observed, unit='s', tz='UTC')
+    frame['_closed'] = closed
+    frame['_provisional'] = ~closed
+    frame['_closed_verified_at'] = [observed if value else None for value in closed]
+    frame['_source'] = f'tradier_native_{span_s // 60}m'
+    return frame
+
+
 def export_atomic(df, path, replace_from=None):
+    import fcntl
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.with_name(f'.{path.name}.mark.lock').open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        written = _export_atomic_locked(df, path, replace_from)
+    if written and path.stem.endswith('_15m'):
+        from closed_bar_feed import is_verified_closed_native, publish_closed_15m
+        from tools.npz_cutoffs import is_rth_bar_start
+        candidates = df[df.index + pd.Timedelta(seconds=900) <= pd.Timestamp.now(tz='UTC')]
+        if not candidates.empty:
+            native = candidates.iloc[-1].to_dict()
+            stamp = candidates.index[-1]
+            native['timestamp'] = stamp.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+            if is_verified_closed_native(native, int(stamp.timestamp()) + 900) and is_rth_bar_start(stamp.timestamp()):
+                publish_closed_15m(path, native, None, path.parent.parent.parent, 'tradier', path.stem[:-4])
+    return written
+
+
+def _export_atomic_locked(df, path, replace_from=None):
     if df.empty: return False
     out = df.copy(); out.index = pd.DatetimeIndex(out.index)
     out["timestamp"] = out.index.tz_convert(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-    records = out[["timestamp","open","high","low","close","volume"]].to_dict("records")
+    columns = ["timestamp","open","high","low","close","volume"] + [key for key in out.columns if str(key).startswith('_')]
+    records = out[columns].astype(object).where(pd.notna(out[columns]), None).to_dict("records")
     # Append-only contract: preserve every valid historical row already on
     # disk. A repeated timestamp is an in-place correction of the open candle;
     # no older timestamp may be discarded.
@@ -131,7 +164,10 @@ def export_atomic(df, path, replace_from=None):
                 for row in records:
                     key = str(row["timestamp"])
                     prev = merged.get(key)
-                    if prev is not None and prev.get("_closed") and not row.get("_closed"):
+                    if path.stem.endswith('_15m') and prev is not None:
+                        from closed_bar_feed import preferred_closed_row
+                        row = preferred_closed_row(prev, row)
+                        merged[key] = row
                         continue
                     # Never overwrite better OHLCV (volume>0) with provisional OHLC (volume 0)
                     if prev is not None and float(prev.get("volume",0) or 0) > 0 and float(row.get("volume",0) or 0) == 0:
@@ -226,17 +262,17 @@ async def process_symbol(symbol, repair=False):
     daily = daily_frame(load_cached("D"))
     # Fetch each intraday TF natively via Time & Sales (1min/5min/15min) — each has authoritative volume.
     # Only resample as fallback when native returns <10 bars (API failure).
-    f1 = parse_intraday(await fetch(api_client.get_timesales(symbol, interval="1min", start=cached_start("1m", (now-timedelta(days=1)).strftime("%Y-%m-%d"))), "1m"))
+    f1 = mark_native_finality(parse_intraday(await fetch(api_client.get_timesales(symbol, interval="1min", start=cached_start("1m", (now-timedelta(days=1)).strftime("%Y-%m-%d"))), "1m")), 60)
     if f1.empty:
         f1 = parse_intraday(load_cached("1m"))
-    f5_native = parse_intraday(await fetch(api_client.get_timesales(symbol, interval="5min", start=(rwin if repair else cached_start("5m", (now-timedelta(days=5)).strftime("%Y-%m-%d")))), "5m"))
-    f15_native = parse_intraday(await fetch(api_client.get_timesales(symbol, interval="15min", start=(rwin if repair else cached_start("15m", (now-timedelta(days=5)).strftime("%Y-%m-%d")))), "15min"))
+    f5_native = mark_native_finality(parse_intraday(await fetch(api_client.get_timesales(symbol, interval="5min", start=(rwin if repair else cached_start("5m", (now-timedelta(days=5)).strftime("%Y-%m-%d")))), "5m")), 300)
+    f15_native = mark_native_finality(parse_intraday(await fetch(api_client.get_timesales(symbol, interval="15min", start=(rwin if repair else cached_start("15m", (now-timedelta(days=5)).strftime("%Y-%m-%d")))), "15min")), 900)
     # Fallback resampling preserves volume by summing 1m volumes; native with volume preferred
     if f5_native.empty or len(f5_native) < 10:
         f5 = resample(f1, "5min") if not f1.empty else parse_intraday(load_cached("5m"))
     else:
         f5 = f5_native
-    if f15_native.empty or len(f15_native) < 10:
+    if f15_native.empty:
         f15 = resample(f5, "15min") if not f5.empty else parse_intraday(load_cached("15m"))
     else:
         f15 = f15_native

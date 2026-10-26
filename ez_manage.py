@@ -33528,22 +33528,6 @@ class MultiAccountTradeManager:
                     return f"BLOCKED_CIRCUIT_BREAKER_{_cb_reason[:40]}"
             except Exception as _cb_error:
                 logger.warning(f"[CIRCUIT_BREAKER_CHECK] {position_key}: check failed open: {_cb_error}")
-        _cb_close_outcome = None
-        _cb_close_action = is_full_close or "CLOSE" in str(action or "").upper()
-        if _cb_close_action:
-            try:
-                _cb_books = getattr(self, "positions_by_account", None)
-                _cb_pos = (_cb_books.get(account_key) or {}).get(position_key) if isinstance(_cb_books, dict) else None
-                if _cb_pos is None:
-                    _cb_service = getattr(self, "positions_service", None)
-                    _cb_positions = getattr(_cb_service, "positions", None)
-                    _cb_pos = _cb_positions.get(position_key) if isinstance(_cb_positions, dict) else None
-                if _cb_pos is not None and hasattr(_cb_pos, "realized_pnl") and hasattr(_cb_pos, "unrealized_pnl_USD"):
-                    _cb_close_outcome = safe_fetch_float(_cb_pos.realized_pnl, 0.0) + safe_fetch_float(_cb_pos.unrealized_pnl_USD, 0.0)
-                elif _cb_pos is not None:
-                    _cb_close_outcome = safe_fetch_float(getattr(_cb_pos, "gain", None), float("nan"))
-            except Exception:
-                _cb_close_outcome = None
         _res = await self._execute_now_inner(
             position_key=position_key, account_key=account_key, symbol=symbol,
             original_positionAmt=original_positionAmt, side=side, position_side=position_side,
@@ -33569,12 +33553,6 @@ class MultiAccountTradeManager:
         except Exception as _rq_e:  # a stop failure must never unwind or mask a real fill
             logger.critical(f"🛡️ [ENTRY_STOP_REQUIRED] {position_key}: post-fill stop requirement ERRORED after {_res}: {_rq_e}")
             self._mark_entry_unprotected(position_key, account_key, symbol, position_side, f"requirement_error:{_rq_e}")
-        if _cb_close_action and _cb_close_outcome is not None and str(_res or "").upper().startswith("SUCCESS"):
-            try:
-                import strategy_enhancements as _sxe_close
-                _sxe_close.record_trade_outcome(symbol, account_key or "", _cb_close_outcome, config)
-            except Exception as _cb_record_error:
-                logger.warning(f"[CIRCUIT_BREAKER_OUTCOME] {position_key}: close outcome record failed: {_cb_record_error}")
         if str(_res or "").upper().startswith(("BLOCKED", "REFUSED")) and _parity_vec_order(reason):
             _parity_breach_record(position_key, action, reason, _res)
         # ─── PENDING-CONFIRM HOLD (USER 2026-10-24: a native fire the vec hasn't confirmed may be vec-behind-live,
