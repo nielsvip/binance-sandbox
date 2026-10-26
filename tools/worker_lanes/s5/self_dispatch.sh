@@ -9,6 +9,8 @@
 # Pending = not running locally AND not done (S1 progress pull or local).
 SB=$HOME/binance-sandbox
 SIDES=${1:?sides}; T=${2:?template}; W=${3:-6}; MAX=${4:-6}
+[[ -e /tmp/v15_preopen_7d.pause ]] && exit 0
+rsync -az --timeout=15 niels@10.0.0.3:binance-sandbox/data/v15_best_first.json /tmp/v15_best_first.json >/dev/null 2>&1 || exit 2
 PDIR=$(head -n 1 "$HOME/v15_current_progress_dir.txt" 2>/dev/null)
 [[ "$PDIR" == /home/niels/v15_run*/progress ]] || { echo "INVALID ROUND POINTER: $PDIR" >&2; exit 2; }
 SP=/tmp/sched_progress_$(basename "$(dirname "$PDIR")")
@@ -62,7 +64,7 @@ tmp=cache_path+'.tmp'+str(os.getpid())
 with open(tmp,'w') as f: json.dump(next_cache,f)
 os.replace(tmp,cache_path)
 PYEOF
-for ss in $(cat "$SIDES" 2>/dev/null); do
+for ss in $(/home/niels/.conda/envs/binance_env_mac/bin/python "$SB/tools/v15_best_first.py" --snapshot /tmp/v15_best_first.json --ordered "$SIDES"); do
   case "$ss" in *_LONG) ;; *) continue ;; esac
   [ "$nrun" -ge "$MAX" ] && break
   pgrep -f "^[^ ]*python[^ ]* -u ([^ ]*/)?v15_pilot(_7d)?[.]py --sym-side ${ss} " >/dev/null 2>&1 && continue

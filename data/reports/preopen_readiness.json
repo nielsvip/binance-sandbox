@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-26T01:20:01Z",
+ "generated_utc": "2026-10-26T01:40:01Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
@@ -7,8 +7,7 @@
  "failed_critical": [
   "boards_recomputed",
   "defaults_chain_completed",
-  "live_set_matches_selection",
-  "indicators_fresh"
+  "live_set_matches_selection"
  ],
  "checks": [
   {
@@ -16,7 +15,7 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "filled_today": 516,
+    "filled_today": 517,
     "filled_before_open": 0
    },
    "detail": "no board was filled before the open"
@@ -41,7 +40,7 @@
    "measured": {
     "built_at": "2026-10-26T00:50:33.495763+00:00",
     "n": 531,
-    "age_at_open_s": 1768
+    "age_at_open_s": 2968
    },
    "detail": "built 2026-10-26T00:50:33.495763+00:00 n=531"
   },
@@ -63,9 +62,9 @@
    "critical": true,
    "measured": {
     "selection_n": 531,
-    "exact": 111,
-    "benign_divergence_only": 269,
-    "material_divergence": 150,
+    "exact": 110,
+    "benign_divergence_only": 268,
+    "material_divergence": 152,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -188,43 +187,34 @@
       ]
      },
      {
-      "sym_side": "RRC_LONG",
-      "published_at": "2026-10-22T20:51:17Z",
-      "material": 37,
+      "sym_side": "ACTUSDT_SHORT",
+      "published_at": "2026-10-23T08:28:58Z",
+      "material": 40,
       "sample": [
-       "ATR_ADAPTIVE_SIZING_ENABLED",
+       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
+       "ATR_ADAPTIVE_STOP_ENABLED",
        "ATR_ADAPTIVE_STOP_MULT",
-       "ATR_ADAPTIVE_STOP_TF",
-       "BAR_PATTERNS_FILTER_TF",
-       "COOLDOWN_BARS_TRADIER",
-       "COUNTER_TREND_ADD_BLOCK_ENABLED"
+       "AUGMENT_FALLBACK_REDUCE_ENABLED",
+       "AUGMENT_FALLBACK_REDUCE_PCT",
+       "BT_WT_CROSS_LADDER_FILTER_TF"
       ]
      }
     ]
    },
-   "detail": "111 exact, 269 benign-only, 150 with material divergence, 1 with no live row"
+   "detail": "110 exact, 268 benign-only, 152 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
-   "ok": false,
+   "ok": true,
    "critical": true,
    "measured": {
     "symbols": 201,
-    "stale_over_90min": 197,
-    "stale_pct": 98.0,
-    "median_age_min": 110.0,
-    "sample": [
-     "1000LUNCUSDT",
-     "1000PEPEUSDC",
-     "1000SATSUSDT",
-     "1000SHIBUSDC",
-     "1000XECUSDT",
-     "1INCHUSDT",
-     "1MBABYDOGEUSDT",
-     "AAVEUSDC"
-    ]
+    "stale_over_90min": 0,
+    "stale_pct": 0.0,
+    "median_age_min": 40.0,
+    "sample": []
    },
-   "detail": "197/201 symbols past the live 90-min entry gate (98.0%)"
+   "detail": "0/201 symbols past the live 90-min entry gate (0.0%)"
   },
   {
    "name": "s1_sets_synced",

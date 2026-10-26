@@ -29956,10 +29956,12 @@ async def check_entry_candidates_for_account(
                         (now - _exit_tm) / 60.0 if _exit_tm > 0 else 0.0
                     )
                     _reentry_min_gap = float(
-                        getattr(config, "REENTRY_MIN_GAP_MINUTES", 3.0)
+                        _sw_get(symbol, position_side, "REENTRY_MIN_GAP_MINUTES", 3.0)
                     )
                     _gap_ok = _min_since_exit_epq >= _reentry_min_gap
-                    _symgate_on = bool(getattr(config, "REENTRY_SYMGATE_ENABLED", True))
+                    _symgate_on = bool(
+                        _sw_get(symbol, position_side, "REENTRY_SYMGATE_ENABLED", True)
+                    )
                     _symgate_blocked = False
                     if (
                         _symgate_on
@@ -29976,7 +29978,7 @@ async def check_entry_candidates_for_account(
                             )
                             if _sg_sig:
                                 _speed_min = float(
-                                    getattr(config, "REENTRY_SYMGATE_SPEED_MIN", 0.5)
+                                    _sw_get(symbol, position_side, "REENTRY_SYMGATE_SPEED_MIN", 0.5)
                                 )
                                 _bs = float(getattr(_sg_sig, "bull_speed", 0.0) or 0.0)
                                 _es = float(getattr(_sg_sig, "bear_speed", 0.0) or 0.0)
@@ -30001,7 +30003,8 @@ async def check_entry_candidates_for_account(
                     # 2026-04-17: REENTRY_RALLY_K15M_MAX live wiring (was sweep-only / live-dormant).
                     # Chapter-C 48-sym sweep validated 60.0 as bundle winner. Blocks reentry when k_15m extreme.
                     _rally_cap = float(
-                        getattr(config, "REENTRY_RALLY_K15M_MAX", 100.0) or 100.0
+                        _sw_get(symbol, position_side, "REENTRY_RALLY_K15M_MAX", 100.0)
+                        or 100.0
                     )
                     _rally_blocked = False
                     if _rally_cap < 100.0:
@@ -30018,18 +30021,24 @@ async def check_entry_candidates_for_account(
                             logger.info(
                                 f"[RALLY_K15M_BLOCK] {position_key}: SHORT reentry blocked — k_15m={_rally_k15m:.0f} <= floor={100.0 - _rally_cap:.0f}"
                             )
+                    _tier_model_enabled = bool(
+                        _sw_get(symbol, position_side, "REENTRY_TIER_MODEL_ENABLED", True)
+                    )
                     if (
-                        _reentry_px > 0
+                        _tier_model_enabled
+                        and _reentry_px > 0
                         and (_exit_tm <= 0 or (now - _exit_tm) < 72000)
                         and _gap_ok
                         and not _symgate_blocked
                         and not _rally_blocked
                     ):
                         _px_cross_pct = 0.001
-                        _t2_price_pct = getattr(
-                            config, "REENTRY_TIER2_PRICE_PCT", 0.003
+                        _t2_price_pct = _sw_get(
+                            symbol, position_side, "REENTRY_TIER2_PRICE_PCT", 0.003
                         )
-                        _t2_min_min = getattr(config, "REENTRY_TIER2_MIN_MINUTES", 10.0)
+                        _t2_min_min = _sw_get(
+                            symbol, position_side, "REENTRY_TIER2_MIN_MINUTES", 10.0
+                        )
                         _px_crossed = (
                             is_long
                             and current_price > _reentry_px * (1.0 + _px_cross_pct)
@@ -30047,7 +30056,7 @@ async def check_entry_candidates_for_account(
                         # 2026-10-06 NO-1m/3m PARITY (NOTE_3M_REENABLE): exhausted/momentum legs read 15m
                         # while the switch is off (NPZ has no 1m/3m; vec twin is 15m-only). Reason labels unchanged.
                         _px_no3m = not bool(
-                            getattr(config, "USE_1M_3M_SIGNALS_ENABLED", False)
+                            _sw_get(symbol, position_side, "USE_1M_3M_SIGNALS_ENABLED", False)
                         )
                         _px_k3m = safe_fetch_float(
                             indicators.get("k_15m" if _px_no3m else "k_3m", 50), 50
@@ -30076,8 +30085,13 @@ async def check_entry_candidates_for_account(
                         if _px_crossed:
                             should_trade = True
                             _dc_breakout_entry = True
-                            if _px_exhausted and getattr(
-                                config, "REENTRY_EXHAUSTED_PARTIAL_ENABLED", True
+                            if _px_exhausted and bool(
+                                _sw_get(
+                                    symbol,
+                                    position_side,
+                                    "REENTRY_EXHAUSTED_PARTIAL_ENABLED",
+                                    True,
+                                )
                             ):
                                 _reentry_tier = "TIER1_PARTIAL"
                                 score = max(score, 12.0)
@@ -31284,7 +31298,9 @@ async def check_entry_candidates_for_account(
                         )
                         del _hlr_top_exit_registry[position_key]
                     if _reentry_tier == "TIER1":
-                        _t1_mult = getattr(config, "REENTRY_TIER1_SIZE_MULT", 1.5)
+                        _t1_mult = _sw_get(
+                            symbol, position_side, "REENTRY_TIER1_SIZE_MULT", 1.5
+                        )
                         _t1_floor = (
                             _q_sps_usd(_pq_sym, _pq_side, 45.0) / current_price * _t1_mult
                             if current_price > 0
@@ -31295,7 +31311,9 @@ async def check_entry_candidates_for_account(
                             f"[TIER1_SIZE] {position_key}: qty={qty:.4f} ({_t1_mult}x SPS re_amt={_re_amount:.4f})"
                         )
                     elif _reentry_tier == "TIER2":
-                        _t2_mult = getattr(config, "REENTRY_TIER2_SIZE_MULT", 0.8)
+                        _t2_mult = _sw_get(
+                            symbol, position_side, "REENTRY_TIER2_SIZE_MULT", 0.8
+                        )
                         _t2_floor = (
                             _q_sps_usd(_pq_sym, _pq_side, 45.0) / current_price
                             if current_price > 0

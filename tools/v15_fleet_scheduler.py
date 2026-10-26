@@ -29,6 +29,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 import v15_universe as U  # noqa: E402
 import v15_ranking_priority as _RANKPRI  # noqa: E402  # USER 2026-10-14: ranking top-N queue priority (order+frequency only)
+import v15_best_first as _BEST  # noqa: E402
 
 HOSTS = ROOT / "tools" / "fleet_hosts.json"
 STATE = ROOT / "data" / "fleet_scheduler_state.json"
@@ -946,11 +947,9 @@ def _reachable_sym_sides():
 
 def _deny_unreachable_sides(acts, sym, label):
     """Drop the sym_sides no account can open. Returns the kept actions; logs what it cut, every tick."""
-    if not _SIDE_UNI_ON or not acts:
+    if not acts:
         return acts, []
-    uni, _src = _reachable_sym_sides()
-    if not uni:
-        return acts, []
+    uni = _BEST.tradeable(ROOT)
     keep = [a for a in acts if f"{sym}_{a['side']}".upper() in uni]
     cut = [f"{sym}_{a['side']}" for a in acts if f"{sym}_{a['side']}".upper() not in uni]
     return keep, cut
@@ -961,21 +960,15 @@ def _deny_untradeable(syms, label):
     board. _deny_tokenized only ever covered TOKENIZED stocks (AAPLUSDT…); 65 of the 266 live sym_sides in the
     2026-10-15 recalc triage sat outside the universe and were still being fully computed. V15_SCHED_TRADEABLE_FILTER=0
     restores the old behaviour."""
-    if os.environ.get("V15_SCHED_TRADEABLE_FILTER", "1") == "0":
-        return list(syms)
+    if not syms:
+        return []
     # USER 2026-10-20: "can only ever calculate NPZ FILES and do backtests on ..." — so the symbol-level gate
     # that guards NPZ builds must be the SAME law as the sym_side gate, not a second opinion. A symbol with no
     # allowed side gets no NPZ and no board. Projection of _reachable_sym_sides; the legacy
     # _tradeable_universe() stays as the fallback when that set is unavailable (fail-open).
-    uni, src = None, []
-    sides, ssrc = _reachable_sym_sides()
-    if sides:
-        uni = {ss.rsplit("_", 1)[0] for ss in sides}
-        src = ssrc
-    if not uni:
-        uni, src = _tradeable_universe()
-    if not uni:
-        return list(syms)
+    sides = _BEST.tradeable(ROOT)
+    uni = {ss.rsplit("_", 1)[0] for ss in sides}
+    src = ["current account side books"]
     keep = [s for s in syms if str(s).upper() in uni]
     cut = [s for s in syms if str(s).upper() not in uni]
     if cut:
@@ -1589,7 +1582,7 @@ def _repair_allowed_for_tier(tier, measured):
     return os.environ.get("V15_REPAIR_ALL_TIERS") == "1" or tier == "W" or not measured
 
 
-def _place_order(held_ordered, adopted_owned, new_syms, tiers, redo=None, attempts=None, launched_at=None, pri=frozenset(), cont=None, pinned=None, recent=None, age_key=None, venue_first=None):
+def _place_order(held_ordered, adopted_owned, new_syms, tiers, redo=None, attempts=None, launched_at=None, pri=frozenset(), cont=None, pinned=None, recent=None, age_key=None, venue_first=None, best_rank=None):
     """USER 2026-10-09 (trb gainers absolute priority): W chains + W new before ALL M/L work. Stable sort
     keeps chain-first within a tier. Running pilots are never touched — this orders new launches only.
     USER 2026-10-10 (82 redo backlog): needs_redo RESUMES outrank everything (paid work finalises in
@@ -1625,7 +1618,13 @@ def _place_order(held_ordered, adopted_owned, new_syms, tiers, redo=None, attemp
     _rec = recent or frozenset()
     _ak = age_key or (lambda b: (2, 0.0, 0.0))  # 2026-10-20 USER: catch-up violators, then due live gainers, then oldest-first; default = no effect
     _vf = None if venue_first is None else {str(_v).lower() for _v in venue_first}
-    seq.sort(key=lambda t: (0 if _vf is None or venue_of(t[0]).lower() in _vf else 1, _rk(t[0]), _ak(t[0]), 1 if t[0] in _rec else 0, _sym_tier_rank(t[0], tiers), 0 if t[0] in _rkpairs else 1, 1 if t[1] else 0, 0 if t[0] in _pri else 1, _min_att.get(t[0], -1.0), _old_ts.get(t[0], -1.0)))
+    _br = best_rank or {}
+    seq.sort(key=lambda t: (0 if _vf is None or venue_of(t[0]).lower() in _vf else 1,
+                            0 if t[0] in _br else 1, -_br.get(t[0], 0.0),
+                            _rk(t[0]), _ak(t[0]), 1 if t[0] in _rec else 0,
+                            _sym_tier_rank(t[0], tiers), 0 if t[0] in _rkpairs else 1,
+                            1 if t[1] else 0, 0 if t[0] in _pri else 1,
+                            _min_att.get(t[0], -1.0), _old_ts.get(t[0], -1.0)))
     return seq
 
 
@@ -3568,38 +3567,14 @@ def _tradeable_now():
     On a read failure it returns the last good set, and None if there has never been one — the caller then dispatches
     anyway. That is deliberate: a wasted sweep costs compute, a scheduler that stops dispatching costs every board.
     """
-    now = time.time()
-    if _TRADEABLE_MEMO["set"] is not None and now - _TRADEABLE_MEMO["ts"] < _TRADEABLE_TTL_S:
-        return _TRADEABLE_MEMO["set"]
-    try:
-        fresh = {str(x).upper() for x in (U.build(ROOT).get("allowed_sym_sides") or [])}
-        # USER 2026-10-16: "make sure ONLY tradeable_keys are considered (or tradeable stock) ... v15_fleet_scheduler
-        # needs to check BEFORE WASTING CPU on npz refresh, dispatching, server time". U.build's allowed_sym_sides is
-        # 3 wider than the raw files (DVN_LONG, JNJ_SHORT, VZ_SHORT — the known non-tradeable OPEN positions), so the
-        # side-exact file set is intersected in here, at the gate every dispatch already passes through, which is
-        # upstream of v15_dispatch_job's tail_refresh + NPZ push. The mandatory stock lists are NOT lost: both sides
-        # read TRADIER_MANDATORY_{LONG,SHORT}_TRB (v15_universe.py:123 and _file_tradeable below), verified 0 sym_sides
-        # dropped by the intersection that the files allow. Fail-open: an empty/unreadable file set changes nothing.
-        _ft = _file_tradeable()
-        if fresh and _ft:
-            _cut = fresh - _ft
-            if _cut:
-                print(f"[sched] tradeable intersect: {len(fresh)} -> {len(fresh & _ft)} sym_sides, not in tradeable_keys/trb/mandatory: {sorted(_cut)[:12]}", flush=True)
-            fresh &= _ft
-        if fresh:
-            _TRADEABLE_MEMO.update(ts=now, set=fresh)
-            return fresh
-        print("[sched] tradeable re-check: empty allowed_sym_sides — keeping last known set", flush=True)
-    except Exception as exc:
-        print(f"[sched] tradeable re-check failed ({exc!r}) — keeping last known set", flush=True)
-    return _TRADEABLE_MEMO["set"]
+    return _BEST.tradeable(ROOT)
 
 
 def _drop_untradeable(symbol, acts, tag):
     """Filter a dispatch down to sides that are STILL tradeable. Returns the surviving actions (possibly empty)."""
     allowed = _tradeable_now()
     if not allowed:
-        return list(acts)
+        return []
     keep, dropped = [], []
     for a in acts:
         key = f"{a.get('sym')}_{a.get('side')}".upper()
@@ -3809,15 +3784,22 @@ def tick(args, cfg, now):
         # schedules dead work. Rebuild in-tick (quorum-guarded: a bad build serves last_good).
         uni = U.build(ROOT, now); how = "rebuilt-tradeable-changed"
         print(f"[sched] universe rebuilt: {_tk_src or 'a tradeable source'} newer than universe build", flush=True)
+    _best = _BEST.publish(ROOT) if not (args.dry_run or sim) else (_jload(ROOT / "data" / "v15_best_first.json", {}) or {})
+    _tradeable = _BEST.tradeable(ROOT)
     stocks, crypto = list(uni["stocks"]), list(uni["crypto"])
-    for _pss in sorted(_load_pinned()[0]):  # 2026-10-13: operator-pinned sides are scheduled even outside today's universe
+    for _pss in sorted(_load_pinned()[0]):
+        if _pss not in _tradeable:
+            continue
         _psym = _pss.rsplit("_", 1)[0]
         _plst = crypto if venue_of(_psym) == "crypto" else stocks
         if _psym not in _plst:
             _plst.append(_psym)
+    _gains_prev = _best.get("gains") or {}
     rank = {v: legacy_rank(cfg, v) for v in ("stocks", "crypto")}
     for v, lst in (("stocks", stocks), ("crypto", crypto)):
-        lst.sort(key=lambda s: (rank[v].get(s, 10 ** 6), s))  # worst-first per the previous order file, unknown last
+        lst.sort(key=lambda s: (0 if any(f"{s}_{sd}" in _gains_prev for sd in ("LONG", "SHORT")) else 1,
+                                -max((float(_gains_prev.get(f"{s}_{sd}", float("-inf"))) for sd in ("LONG", "SHORT")), default=float("-inf")),
+                                rank[v].get(s, 10 ** 6), s))
     _ph("universe")
     st = load_state()
     st = _fresh_daily_state(st, now.strftime("%Y%m%d"))
@@ -3834,7 +3816,7 @@ def tick(args, cfg, now):
     # daily defaults must be DONE before it can take a 30D dispatch slot.
     try:
         import v15_preopen_7d_fleet as _pre7
-        _seven = _pre7.tick(ROOT, now, hosts, stats, dry_run=bool(args.dry_run or sim))
+        _seven = _pre7.tick(ROOT, now, hosts, stats, dry_run=bool(args.dry_run or sim), drained=_load_drain())
         if _seven and _seven.get("suppress_30d"):
             return {"preopen_7d": _seven, "phase_s": _PH["s"]}
     except Exception as _seven_exc:
@@ -4232,7 +4214,7 @@ def tick(args, cfg, now):
     _live_syms_now = _live_position_syms(_now_ts)
     _fresh_pri = priority_syms()
     _refresh_tick_n = [0]
-    _allowed = set(uni.get("allowed_sym_sides") or [])  # USER 2026-10-06: only tradeable keys are calculated
+    _allowed = set(uni.get("allowed_sym_sides") or []) & _tradeable
     if not _allowed:
         # USER 2026-10-10: empty allowlist fail-OPENS the entire fleet (every sym_side calculated).
         # Stay fail-open (never idle paid workers) but scream once per tick so the universe gets fixed.
@@ -4652,8 +4634,10 @@ def tick(args, cfg, now):
         _h_own_v = set(h.get("venues") or [])
         _h_over_v = _host_overflow_venues(h)
         _h_venue_first = _h_own_v if _h_over_v else None
+        _host_best = {sym: max((float(_gains_prev[f"{sym}_{sd}"]) for sd in _host_sides(h) if f"{sym}_{sd}" in _gains_prev and f"{sym}_{sd}" in _tradeable), default=float("-inf")) for sym in all_syms}
+        _host_best = {sym: g for sym, g in _host_best.items() if g != float("-inf")}
         order = _place_order(held_ordered, [sym for sym in adopted if owner.get(sym) == h["name"] and sym not in held[h["name"]]],
-                             [sym for sym in new_syms if venue_of(sym) in _h_own_v or venue_of(sym) in _h_over_v], _gtiers, redo, st["attempts"], st.get("launched_at"), pri, cont=_cont_all, pinned=_pin_sides, recent=_recent_syms, age_key=_AGE_KEY[0], venue_first=_h_venue_first)
+                             [sym for sym in new_syms if venue_of(sym) in _h_own_v or venue_of(sym) in _h_over_v], _gtiers, redo, st["attempts"], st.get("launched_at"), pri, cont=_cont_all, pinned=_pin_sides, recent=_recent_syms, age_key=_AGE_KEY[0], venue_first=_h_venue_first, best_rank=_host_best)
         _ORDER_BY_HOST[h["name"]] = [_o[0] for _o in order if _o[1]]
         # 2026-10-13 USER LAW: a server never takes a new symbol while one of its own boards is unfinished — enforced by
         # _place_order (pinned=0, unfinished/redo=1, fresh=2): every unfinished board this host owns is evaluated and

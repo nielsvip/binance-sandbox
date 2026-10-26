@@ -1,6 +1,9 @@
 #!/bin/bash
 # usage: overload_run.sh SS TEMPLATE WORKERS [MAXSIDES]  (runs on worker, cwd anywhere)
 SS=$1; T=$2; W=$3; MAX=${4:-4}
+[[ -e /tmp/v15_preopen_7d.pause ]] && { echo PAUSED-"${SS}"; exit 0; }
+rsync -az --timeout=15 niels@10.0.0.3:binance-sandbox/data/v15_best_first.json /tmp/v15_best_first.json >/dev/null 2>&1 || { echo NO-SNAPSHOT-"${SS}"; exit 0; }
+/home/niels/.conda/envs/binance_env_mac/bin/python "$HOME/binance-sandbox/tools/v15_best_first.py" --snapshot /tmp/v15_best_first.json --allowed "$SS" || { echo NOT-TRADEABLE-"${SS}"; exit 0; }
 # USER 2026-10-25 global launch lock: scheduler ssh-launches and self-dispatch share
 # /tmp/v15_fleet_launch_v2.lock so the box never exceeds MAXSIDES even when both fire the
 # same minute (4 symbols max — no 5th until a workbook finishes). Non-blocking: contention

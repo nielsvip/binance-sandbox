@@ -1,16 +1,65 @@
 {
-  "inf:ARBUSDC_LONG": {
-    "orderId": "2000001540946765",
-    "stopPrice": 0.16646,
-    "entry_sig": "2026-10-26 01:32:48.670000+00:00",
-    "symbol": "ARBUSDC",
+  "flz:HYPEUSDT_SHORT": {
+    "orderId": "1000002643436431",
+    "stopPrice": 76.98,
+    "entry_sig": "2026-10-26 00:42:29.122000+00:00",
+    "symbol": "HYPEUSDT",
+    "side": "SHORT"
+  },
+  "flz:WLDUSDC_SHORT": {
+    "orderId": "1000002643414251",
+    "stopPrice": 0.4509,
+    "entry_sig": "2026-10-26 00:28:31.545000+00:00",
+    "symbol": "WLDUSDC",
+    "side": "SHORT"
+  },
+  "flz:ZECUSDC_SHORT": {
+    "orderId": "1000002643451619",
+    "stopPrice": 1242.39,
+    "entry_sig": "2026-10-25 23:41:32.443000+00:00",
+    "symbol": "ZECUSDC",
+    "side": "SHORT"
+  },
+  "flz:XRPUSDC_SHORT": {
+    "orderId": "1000002643513873",
+    "stopPrice": 1.3008,
+    "entry_sig": "2026-10-26 01:26:45.518000+00:00",
+    "symbol": "XRPUSDC",
+    "side": "SHORT"
+  },
+  "flz:DOGEUSDC_SHORT": {
+    "orderId": "1000002643513872",
+    "stopPrice": 0.07724,
+    "entry_sig": "2026-10-26 01:26:45.519000+00:00",
+    "symbol": "DOGEUSDC",
+    "side": "SHORT"
+  },
+  "flz:BTCDOMUSDT_SHORT": {
+    "orderId": "1000002643516956",
+    "stopPrice": 5598.0,
+    "entry_sig": "2026-10-26 01:28:10.466000+00:00",
+    "symbol": "BTCDOMUSDT",
+    "side": "SHORT"
+  },
+  "flz:BTCUSDC_SHORT": {
+    "orderId": "1000002643514757",
+    "stopPrice": 80279.9,
+    "entry_sig": "2026-10-26 01:27:22.397000+00:00",
+    "symbol": "BTCUSDC",
+    "side": "SHORT"
+  },
+  "flz:BTCDOMUSDT_LONG": {
+    "orderId": "1000002643517705",
+    "stopPrice": 5546.8,
+    "entry_sig": "2026-10-25 23:51:14.326000+00:00",
+    "symbol": "BTCDOMUSDT",
     "side": "LONG"
   },
-  "inf:BTCUSDC_SHORT": {
-    "orderId": "2000001540953922",
-    "stopPrice": 80176.5,
-    "entry_sig": "2026-10-26 01:35:31.422000+00:00",
-    "symbol": "BTCUSDC",
+  "flz:GRAMUSDT_SHORT": {
+    "orderId": "1000002643529968",
+    "stopPrice": 1.245,
+    "entry_sig": "2026-10-26 01:33:58.122000+00:00",
+    "symbol": "GRAMUSDT",
     "side": "SHORT"
   }
 }

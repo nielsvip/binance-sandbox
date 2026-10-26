@@ -80,6 +80,8 @@ def allocate(queue: dict, hosts: list[dict], available: set[str], existing: dict
         if row.get("host") in counts and row.get("status") not in ("failed", "lost"):
             counts[row["host"]] += 1
     for ss, source in sorted((queue.get("sym_sides") or {}).items()):
+        if ss in placements and placements[ss].get("status") in ("running", "valid", "failed"):
+            continue
         if ss in placements and placements[ss].get("host") in available:
             continue
         cat = source.get("cat_side")
@@ -202,7 +204,7 @@ def _ensure_collect(root: Path, folder: Path, day: str, state: dict) -> None:
 
 
 def tick(root: Path, now: dt.datetime, hosts: list[dict], stats: dict,
-         dry_run: bool = False) -> dict | None:
+         dry_run: bool = False, drained: set[str] | None = None) -> dict | None:
     """Own the 7D queue after new four-category defaults; return None outside it."""
     if not _market_window(now):
         local = now.astimezone(NY)
@@ -237,7 +239,8 @@ def tick(root: Path, now: dt.datetime, hosts: list[dict], stats: dict,
         published = json.loads((root / "data/published_selection.json").read_text())
         queue = select(root, now.timestamp(), published)
         queue["_meta"].update(proof)
-        available = {h["name"] for h in hosts if stats.get(h["name"])}
+        reachable = {h["name"] for h in hosts if stats.get(h["name"])}
+        available = reachable - set(drained or ())
         placements = allocate(queue, hosts, available)
         state = {"day": day, "created_utc": now.isoformat(), "phase": "running",
                  "defaults": proof, "placements": placements, "queue_n": len(placements),
@@ -251,7 +254,30 @@ def tick(root: Path, now: dt.datetime, hosts: list[dict], stats: dict,
         state = json.loads(state_path.read_text())
         if state.get("defaults", {}).get("chain_sha256") != proof["chain_sha256"]:
             return {"phase": "defaults_changed_after_queue_freeze", "suppress_30d": True}
-        available = {h["name"] for h in hosts if stats.get(h["name"])}
+        # TRB's side books can populate after the first premarket tick. Add
+        # newly eligible sides until 09:00 ET without changing an already
+        # launched side's verified 30D source or ownership.
+        if state.get("phase") == "running" and now.astimezone(NY).time() < dt.time(9, 0):
+            try:
+                current = select(root, now.timestamp(), json.loads((root / "data/published_selection.json").read_text()))
+                added = set(current["sym_sides"]) - set(queue["sym_sides"])
+                for ss in sorted(added):
+                    queue["sym_sides"][ss] = current["sym_sides"][ss]
+                    for account, sides in current["accounts"].items():
+                        if ss in sides:
+                            queue["accounts"][account].append(ss)
+                if added:
+                    for sides in queue["accounts"].values():
+                        sides.sort()
+                    queue["_meta"]["n"] = len(queue["sym_sides"])
+                    state["queue_n"] = len(queue["sym_sides"])
+                    if not dry_run:
+                        _atomic(queue_path, queue)
+                    state.setdefault("added_late", []).extend(sorted(added))
+            except (OSError, ValueError, TypeError) as exc:
+                state["universe_refresh_error"] = str(exc)
+        reachable = {h["name"] for h in hosts if stats.get(h["name"])}
+        available = reachable - set(drained or ())
         state["placements"] = allocate(queue, hosts, available, state.get("placements"))
         if not dry_run:
             _atomic(folder / "hosts.json", {"hosts": hosts})
@@ -265,7 +291,7 @@ def tick(root: Path, now: dt.datetime, hosts: list[dict], stats: dict,
     # The presence marker stops the worker's own 30D top-up crons. It is
     # removed only after every side is terminal or the market opens.
     for host in hosts:
-        if host["name"] not in available:
+        if host["name"] not in reachable:
             continue
         try:
             _remote(host, "touch /tmp/v15_preopen_7d.pause")
@@ -273,7 +299,7 @@ def tick(root: Path, now: dt.datetime, hosts: list[dict], stats: dict,
             pass
     by_name = {h["name"]: h for h in hosts}
     for ss, row in state["placements"].items():
-        if row.get("status") != "running" or row.get("host") not in available:
+        if row.get("status") != "running" or row.get("host") not in reachable:
             continue
         host = by_name[row["host"]]
         result = _result(host, ss, day, "/home/niels/binance-sandbox")
@@ -325,7 +351,7 @@ def tick(root: Path, now: dt.datetime, hosts: list[dict], stats: dict,
         replay_slots = {h["name"]: sum(x.get("host") == h["name"] and x.get("replay_status") == "running"
                                         for x in state["placements"].values()) for h in hosts}
         for ss, row in state["placements"].items():
-            if row.get("status") != "valid" or row.get("host") not in available:
+            if row.get("status") != "valid" or row.get("host") not in reachable:
                 continue
             host = by_name[row["host"]]
             if row.get("replay_status") == "running":
