@@ -203,11 +203,10 @@ def test_native_emergency_exit_allowed(monkeypatch):
         raise _Stop()
     _orig_bsts = EZ._broker_sync_freshest_ts
     monkeypatch.setattr(EZ, "_broker_sync_freshest_ts", _stop)
-    # The account position fixture has a negative gain. The final exit law blocks even a vector-dictated close,
-    # and exit_guarantee must not bypass that refusal with a FORCE leg.
-    # Canonical frozen DC15/DC4h stop reasons are the only loss exceptions.
-    res = _run_exec(action="CLOSE", reason="VEC_DRIVEN_CLOSE_RECONCILE_", is_full_close=True, _position_gain=-0.25)
-    assert res == "BLOCKED_NET_GAIN"
+    # A rolling vector-convergence close is authoritative even when the live position is below breakeven.
+    # It still traverses the ordinary execute_now path; the broker-sync sentinel proves it passed the net-gain gate.
+    with pytest.raises(_Stop):
+        _run_exec(action="CLOSE", reason="VEC_DRIVEN_CLOSE_RECONCILE_", is_full_close=True, _position_gain=-0.25)
     with pytest.raises(_Stop):
         _run_exec(action="CLOSE", reason="VEC_DRIVEN_CLOSE_RECONCILE_", is_full_close=True, _position_gain=0.25)
     # USER 2026-10-24 VEC-LAST: the OPEN now traverses native gates (incl. broker sync)
