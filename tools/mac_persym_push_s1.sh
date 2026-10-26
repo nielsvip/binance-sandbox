@@ -54,20 +54,6 @@ if [ "$(( $(date +%s) - history_last ))" -ge 600 ] && ! pgrep -f '[p]er_sym_hist
   echo "$(date -u +%FT%TZ) S1 append-only history sync started pid=$!"
 fi
 
-# ── small files every run ──────────────────────────────────────────────────────
-SMALL=""
-for f in data/per_sym_settings.json data/persym_size_tiers.json data/cat_side_defaults_4.json \
-         tradeable_keys.json managed_stops.json data/confirmed_365d.json data/excluded_tokenized_stocks.json; do
-  [ -f "$BASE/$f" ] && SMALL="$SMALL $f"
-done
-if [ -n "$SMALL" ]; then
-  if rsync -az --relative --timeout=30 -e "$SSH" $(for f in $SMALL; do echo "$BASE/./$f"; done) "$HOST:~/binance/" 2>/dev/null; then
-    echo "$(date -u +%FT%TZ) small settings pushed to $HOST:$(echo $SMALL | wc -w | tr -d ' ') files"
-  else
-    echo "$(date -u +%FT%TZ) SMALL PUSH FAILED to $HOST"
-  fi
-fi
-
 # ── live per_sym db, throttled ─────────────────────────────────────────────────
 last=0
 [ -f "$STAMP" ] && last=$(cat "$STAMP" 2>/dev/null || echo 0)

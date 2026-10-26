@@ -12,7 +12,6 @@ import os
 import sqlite3
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -115,7 +114,9 @@ def run_push(host):
     last = int(subprocess.check_output(command, text=True, timeout=25).strip())
     known = set(subprocess.check_output([*SSH, host, f"python3 {REMOTE_SCRIPT} --uids"], text=True, timeout=40).splitlines())
     source = connect(MAC_DB)
-    spool = Path(tempfile.gettempdir()) / f"per_sym_history_mac_after_{last}.jsonl.gz"
+    spool_dir = Path(os.environ.get("PER_SYM_HISTORY_SPOOL_DIR", "/tmp/per_sym_history_spool"))
+    spool_dir.mkdir(parents=True, exist_ok=True)
+    spool = spool_dir / f"per_sym_history_mac_after_{last}.jsonl.gz"
     count = 0
     try:
         if not spool.is_file():

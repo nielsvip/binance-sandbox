@@ -49,6 +49,35 @@ few corpora a future network upgrade may want to re-derive features from, where 
 hoarding in a cheaper place. A purge is recorded in `data/reports/gcs_cold_store.jsonl` with the three test results
 and the freed bytes, so a later audit can tell a proven purge from a guess.
 
+**THE SCHEDULED ABSORPTION CYCLE — `tools/v20_absorb_cycle.py` on S2 (installed 2026-10-26 23:05Z).** Two cron lines
+tagged `V20_ABSORB_CYCLE`, sharing one `flock` so they can never overlap: `35 * * * *` runs `--phase absorb` across
+`s1,s2,s5,s6`, and `40 4 * * *` runs `--phase inventory,compress,report --apply` (after the 03:20 brain export, never
+during it). Installed by `tools/install_v20_absorb_cron.sh`, which **only ever writes a crontab from a file and
+refuses an empty backup** — nested ssh quoting wiped S2's entire crontab on 2026-10-13 and must never be used again.
+S2 was chosen over S6 because it already runs the daily brain export (proven toolchain and conda env), reaches S1/S5/S6
+directly on 10.0.0.x, and is not one of the boxes earmarked for deletion after run38.
+
+- **Absorb is incremental and distributed.** `v18_brain.py extract` keeps `watermarks_<host>.json`
+  (`{host:abspath -> {size, lines}}`) and skips any file whose size is unchanged, so a quiet hour is nearly free. The
+  extract runs **on each host** and only the spills travel: measured on S2, 12.8 GB of delta logs became a 124 MB
+  spill. The 82 GB of raw logs fleet-wide never move.
+- **Measured first run on S2 (23:0xZ):** 268 files, 11,591,183 lines, 426 boards, **6,114,932 eval lines**, 583,384
+  rows — and **27,037 FORWARD lines**, where design 22 recorded *0 FORWARD lines in production*. The forward head can
+  start being validated against real labels instead of board-to-board persistence.
+- **Shrink is gated, never bulk.** A file is compressed (`zstd -12`, in place, `.jsonl`/`.json` → `.zst`) only when:
+  its round is neither current nor previous (**fleet-wide** round numbers, not per host — a lagging host must not have
+  an October-11 run treated as the previous round); a watermark proves it was read to its current size; and, for a
+  delta log, its **newest row ts** is older than the brain window plus a margin (`V15_BRAIN_SINCE_D` 14 + 7 = 21 days,
+  so a change to the window cannot silently starve the daily export). Then on the host: `lsof` must be clean, and the
+  compressed copy must pass `zstd -t` **and** decompress to the original sha256 before the original is removed.
+- **Measured shrink, S2 first apply:** 298 files, **1,523.8 MB freed, zero failures**. The yield split is the thing to
+  understand: run34's delta logs were all correctly refused as `inside_brain_window`, while its **94 progress JSONs
+  freed 1,272 MB** — progress JSON is ~40% of a finished run directory and is not on the brain's `*.jsonl` glob at
+  all (it is read through `--source progress`), so it is compressible as soon as a round ends. Delta logs are the
+  larger but later win: ~25 GB of run33/34/35 logs age past the margin between 2026-11-09 and 2026-11-12 and the
+  04:40 job compresses them the day they do. Two files were refused for an unparseable last row rather than guessed.
+- **It never deletes a corpus.** Compression is reversible; deletion is not. Purging still requires tests 2 and 3.
+
 **Status 2026-10-26:** test 1 exists (the MANIFEST). Tests 2 and 3 are **not implemented** — today's reclaims used the
 older, weaker rule (absorbed + verified cold copy + outside the 14-day glob), which is why they were limited to
 archived duplicates on `~/s2_archive` and nothing in a live run path. Until tests 2 and 3 ship, no live run directory

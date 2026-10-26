@@ -1,27 +1,15 @@
 {
- "generated_utc": "2026-10-26T22:12:11.677819+00:00",
+ "generated_utc": "2026-10-26T23:12:06.607499+00:00",
  "days": 1.0,
  "totals": {
-  "exit_promises": 21,
-  "exit_broken_no_delivery": 18,
-  "entry_promises": 15,
-  "entry_broken_no_delivery": 15,
+  "entry_promises": 13,
+  "entry_broken_no_delivery": 13,
+  "exit_promises": 20,
   "exit_kept_late": 1,
+  "exit_broken_no_delivery": 17,
   "exit_kept_in_bar": 2
  },
  "per_key": {
-  "men:PARTIUSDT_SHORT": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
-  },
-  "fin:MAGICUSDT_SHORT": {
-   "entry_promises": 1,
-   "entry_broken_no_delivery": 1
-  },
-  "fin:ENAUSDC_LONG": {
-   "entry_promises": 1,
-   "entry_broken_no_delivery": 1
-  },
   "inf:RAYSOLUSDT_LONG": {
    "entry_promises": 1,
    "entry_broken_no_delivery": 1,
@@ -135,36 +123,6 @@
   }
  },
  "detail": [
-  {
-   "acct": "men",
-   "sym_side": "PARTIUSDT_SHORT",
-   "kind": "exit",
-   "bar": "10-25 22:15",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "FIXED_STOP",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "fin",
-   "sym_side": "MAGICUSDT_SHORT",
-   "kind": "entry",
-   "bar": "10-25 22:30",
-   "late_min": null,
-   "action": "OPEN",
-   "reason": "REENTRY_MANDATORY",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "fin",
-   "sym_side": "ENAUSDC_LONG",
-   "kind": "entry",
-   "bar": "10-25 22:30",
-   "late_min": null,
-   "action": "OPEN",
-   "reason": "TIER1_PRICE_CROSS_REENTRY_exit0.2089_cur0.2094_k3m38",
-   "outcome": "NO_DELIVERY"
-  },
   {
    "acct": "inf",
    "sym_side": "RAYSOLUSDT_LONG",
@@ -476,19 +434,5 @@
    "outcome": "NO_DELIVERY"
   }
  ],
- "broken": [
-  {
-   "ts": 1792969591.930304,
-   "kind": "BROKEN",
-   "acct": "inf",
-   "key": "inf:GRAMUSDT_SHORT",
-   "sym_side": "GRAMUSDT_SHORT",
-   "label": "CLOSE VEC_EXIT_OWED",
-   "why": "EXIT_WEDGED_FORCED",
-   "is_exit": true,
-   "bar_ts": null,
-   "lag_s": null,
-   "detail": "inflight_age_s=149"
-  }
- ]
+ "broken": []
 }
