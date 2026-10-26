@@ -269,3 +269,28 @@ def test_reverify_transport_failure_fail_closed():
     assert out == "OK_ALREADY_PLACED", out
     assert "exec" not in calls
     assert m._fixed_stop_verify_ts[pk] < time.time()
+
+
+def test_existing_exchange_stop_is_kept_during_software_spec_restore(monkeypatch):
+    calls = {}
+    m = _fake_stop_manager(True, calls)
+    pk = "men:LTCUSDC_LONG"
+
+    async def list_orders(_client, operation, **kwargs):
+        assert operation == "list"
+        return [{"orderType": "STOP_MARKET", "positionSide": "LONG", "algoId": "OLD999", "triggerPrice": "58.0"}]
+
+    async def tick(_account, _symbol):
+        return 0.5
+
+    m._fixed_stop_algo_call = list_orders
+    m._fixed_stop_tick = tick
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+    out = _run(m.ensure_fixed_stop_backstop(
+        account_key="men", symbol="LTCUSDC", position_key=pk,
+        position_side="LONG", position=_fake_stop_position(),
+        soft_level=60.0, current_price=61.6,
+    ))
+    assert out == "OK_EXISTING_STOP_KEPT"
+    assert m.managed_stop_registry[pk]["orderId"] == "OLD999"
+    assert "exec" not in calls

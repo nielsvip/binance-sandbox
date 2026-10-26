@@ -22601,6 +22601,12 @@ class MultiAccountTradeManager:
                                             pass
                                         logger.critical(f"🛡️ [FIXED_STOP_DISASTER_BACKSTOP_KEPT] {position_key}: correct level {_soft0:.8f} is already behind price {float(current_price or 0):.8f} (cross predates the fix) — keeping resting stop {_oid0} at {_trig0} rather than leaving the position naked")
                                         return "OK_DISASTER_BACKSTOP_KEPT"
+                                    if _oid0 and str(getattr(position, "exchange_stop_order_id", "") or "") == _oid0:
+                                        # This lifecycle already owns the exchange stop. The software
+                                        # level may still carry an older BB/1h spec in another writer;
+                                        # keep the broker's frozen entry-time dc15 order untouched.
+                                        reg[position_key] = {"orderId": _oid0, "stopPrice": _trig0, "entry_sig": _sig, "symbol": symbol, "side": position_side}
+                                        return "OK_EXISTING_STOP_KEPT"
                                     if _oid0 and _want0 > 0 and (_trig0 <= 0 or abs(_trig0 - _want0) > _tk0 * 1.5):  # exact exchange level (tick-rounded), no % tolerance
                                         # 2026-10-13 men AVAX: a resting stop at 9.779 (frozen 25h after a 10.942 entry) was adopted for hours — never adopt a wrong level
                                         logger.critical(f"🛡️ [FIXED_STOP_WRONG_LEVEL] {position_key}: resting stop {_oid0} at {_trig0} vs frozen level {_soft0:.6f} — cancelling, placing correct level")
