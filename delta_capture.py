@@ -110,7 +110,8 @@ def _load_rows(paths: str | Path | list[str | Path] | tuple[str | Path, ...]) ->
     sources = [paths] if isinstance(paths, (str, Path)) else list(paths)
     values = []
     for path in sources:
-        with _connect(path) as db:
+        uri = f"file:{Path(path).resolve()}?mode=ro"
+        with sqlite3.connect(uri, uri=True, timeout=15) as db:
             values.extend(db.execute("SELECT timestamp,payload FROM delta_capture ORDER BY timestamp").fetchall())
     values.sort(key=lambda item: int(item[0]))
     rows = [json.loads(zlib.decompress(payload).decode("utf-8")) for _, payload in values]

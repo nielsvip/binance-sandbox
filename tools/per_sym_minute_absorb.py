@@ -33,19 +33,23 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 os.chdir(ROOT)
 
-HOSTS = ("s1-pub", "s2", "s5", "10.0.0.4", "10.0.0.6")
+HOSTS = ("s1-pub", "s2", "s5", "s6")
 REMOTE_DB = "/home/niels/binance-sandbox/data/hourly_reconfig/per_sym_store.db"
 WM_PATH = ROOT / "data" / "per_sym_absorb_watermark.json"
 AUDIT_PATH = ROOT / "data" / "reports" / "per_sym_absorb_audit.json"
 FLAG_PATH = Path("/tmp/per_sym_live_promoted.flag")
 SSH = (
     "ssh",
-    "-S",
-    "none",
     "-o",
     "BatchMode=yes",
     "-o",
-    "ConnectTimeout=10",
+    "ConnectTimeout=6",
+    "-o",
+    "ControlMaster=auto",
+    "-o",
+    "ControlPersist=120",
+    "-o",
+    "ControlPath=/tmp/per_sym_delta_%r@%h:%p",
     "-o",
     "StrictHostKeyChecking=accept-new",
 )
@@ -310,18 +314,19 @@ def absorb():
         except Exception as e:
             log(f"Mac per_sym_full_sets rebuild error: {str(e)[:160]}")
     replicated = 0
-    with ThreadPoolExecutor(max_workers=max(1, len(remote_latest))) as pool:
-        push_futures = {pool.submit(push_latest_to_host, host, latest): host for host, latest in remote_latest.items()}
-        for future in as_completed(push_futures):
-            try:
-                written = future.result()
-                if written < 0:
+    if os.environ.get("PER_SYM_DELTA_BROADCAST_ENABLED") != "1":
+        with ThreadPoolExecutor(max_workers=max(1, len(remote_latest))) as pool:
+            push_futures = {pool.submit(push_latest_to_host, host, latest): host for host, latest in remote_latest.items()}
+            for future in as_completed(push_futures):
+                try:
+                    written = future.result()
+                    if written < 0:
+                        errors += 1
+                    else:
+                        replicated += written
+                except Exception as e:
                     errors += 1
-                else:
-                    replicated += written
-            except Exception as e:
-                errors += 1
-                log(f"{push_futures[future]} push worker error: {str(e)[:160]}")
+                    log(f"{push_futures[future]} push worker error: {str(e)[:160]}")
     save_wm(wm)
     log(f"pass done applied={applied} replicated={replicated} skipped={skipped} errors={errors}")
     return applied, skipped, errors
