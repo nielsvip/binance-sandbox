@@ -62,32 +62,25 @@
     "symbol": "ATOMUSDT",
     "side": "SHORT"
   },
-  "ang:LTCUSDC_SHORT": {
-    "orderId": "4000001996531887",
-    "stopPrice": 57.15,
-    "entry_sig": "2026-10-26 03:57:44.786000+00:00",
-    "symbol": "LTCUSDC",
-    "side": "SHORT"
-  },
-  "ang:RVNUSDT_LONG": {
-    "orderId": "4000001996534496",
-    "stopPrice": 0.001281,
-    "entry_sig": "2026-10-26 03:59:08.584000+00:00",
-    "symbol": "RVNUSDT",
-    "side": "LONG"
-  },
-  "ang:BBUSDT_SHORT": {
-    "orderId": "4000001996543598",
-    "stopPrice": 0.007678,
-    "entry_sig": "2026-10-26 03:57:45.432000+00:00",
-    "symbol": "BBUSDT",
-    "side": "SHORT"
-  },
   "ang:RSRUSDT_SHORT": {
     "orderId": "4000001996549486",
     "stopPrice": 0.001624,
     "entry_sig": "2026-10-26 04:00:13.021000+00:00",
     "symbol": "RSRUSDT",
+    "side": "SHORT"
+  },
+  "ang:BBUSDT_SHORT": {
+    "orderId": "4000001996555333",
+    "stopPrice": 0.007678,
+    "entry_sig": "2026-10-26 03:57:45.432000+00:00",
+    "symbol": "BBUSDT",
+    "side": "SHORT"
+  },
+  "ang:LTCUSDC_SHORT": {
+    "orderId": "4000001996555332",
+    "stopPrice": 57.15,
+    "entry_sig": "2026-10-26 03:57:44.786000+00:00",
+    "symbol": "LTCUSDC",
     "side": "SHORT"
   }
 }

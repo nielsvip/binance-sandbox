@@ -13,9 +13,9 @@ for ip in ${SYNC_FLEET_STATE_HOSTS:-10.0.0.5 10.0.0.6}; do
   $SSH niels@$ip "mkdir -p binance-sandbox/data/learn binance-sandbox/data/brain binance-sandbox/SPREADSHEETS/TEMPLATE_FINAL_NORM binance-sandbox/tools" >/dev/null 2>&1 || { echo "$(date -u +%FT%TZ) $ip UNREACHABLE" >> $L; continue; }
   rc=0
   for it in $ITEMS; do
-    nice -n 10 rsync -au --timeout=60 -e "$SSH" "$it" "niels@$ip:binance-sandbox/$it" >/dev/null 2>&1 || rc=$?
+    nice -n 10 rsync -acu --timeout=60 -e "$SSH" "$it" "niels@$ip:binance-sandbox/$it" >/dev/null 2>&1 || rc=$?
   done
-  [ -n "$V18" ] && { nice -n 10 rsync -au --timeout=60 -e "$SSH" $V18 "niels@$ip:binance-sandbox/tools/" >/dev/null 2>&1 || rc=$?; }
+  [ -n "$V18" ] && { nice -n 10 rsync -acu --timeout=60 -e "$SSH" $V18 "niels@$ip:binance-sandbox/tools/" >/dev/null 2>&1 || rc=$?; }
   echo "$(date -u +%FT%TZ) $ip rc=$rc env=$($SSH niels@$ip 'md5sum binance-sandbox/data/v15_gate_env.json 2>/dev/null' | cut -c1-8) s1env=$(md5sum data/v15_gate_env.json | cut -c1-8)" >> $L
 done
 for ip in 10.0.0.4; do

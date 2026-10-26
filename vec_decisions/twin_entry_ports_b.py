@@ -245,6 +245,25 @@ def ema20_slope_entry(get, is_long, ind):
         return False, ""
 
 
+def ema_dist_entry(get, is_long, ind):
+    try:
+        if not bool(get("EMA_DIST_ENTRY_ENABLED", True)):
+            return False, ""
+        ind = ind or {}
+        px = _f(ind, "current_price")
+        ema = _f(ind, "ema_20_1h")
+        dist = (px - ema) / ema * 100 if ema > 0 else 0.0
+        if is_long:
+            fire = dist < _cf(get, "EMA_DIST_LONG_THRESHOLD", -1.0)
+        else:
+            fire = dist > _cf(get, "EMA_DIST_SHORT_THRESHOLD", 1.0)
+        if not fire:
+            return False, ""
+        return True, f"EMA_DIST_{'L' if is_long else 'S'}_d={dist:.2f}"
+    except Exception:
+        return False, ""
+
+
 def sma200_dist_entry(get, is_long, ind):
     try:
         if not bool(get("SMA200_DIST_ENTRY_ENABLED", True)):

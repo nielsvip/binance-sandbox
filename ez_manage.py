@@ -50219,7 +50219,7 @@ async def _process_single_override_check(
                         # vec_decisions/twin_entry_ports_b predicate. Same flat-proposal mechanics as WT_3M_FORCE_OPEN:
                         # per-sym _psym_get reads, fail-open try/except, R1 freeze-at-entry, duplicate-open cooldown,
                         # queue_trade_action OPEN. Ungated branches only (default-OFF = inert).
-                        elif _twin_entry_ports_b is not None and bool(_psym_get(_sym_z, _side_z, "WT_15M_BOUNCE_OPEN_ENABLED", False)):
+                        elif _twin_entry_ports_b is not None and _twin_entry_ports_b.wt_15m_bounce(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _is_long_z, _ind_z)[0]:
                             try:
                                 _b15_ok, _b15_why = _twin_entry_ports_b.wt_15m_bounce(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _is_long_z, _ind_z)
                             except Exception:
@@ -50233,7 +50233,7 @@ async def _process_single_override_check(
                                     pass
                                 else:
                                     await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _b15_why, 75.0)
-                        elif _twin_entry_ports_b is not None and bool(_psym_get(_sym_z, _side_z, "WT_ENTRY_ENABLED", False)):
+                        elif _twin_entry_ports_b is not None and _twin_entry_ports_b.wt_entry(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _is_long_z, _ind_z)[0]:
                             try:
                                 _wte_ok, _wte_why = _twin_entry_ports_b.wt_entry(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _is_long_z, _ind_z)
                             except Exception:
@@ -50247,6 +50247,20 @@ async def _process_single_override_check(
                                     pass
                                 else:
                                     await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _wte_why, 75.0)
+                        elif _twin_entry_ports_b is not None and _twin_entry_ports_b.ema_dist_entry(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _is_long_z, _ind_z)[0] and not _twin_entry_ports_b.stoch_entry(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _is_long_z, _ind_z)[0]:
+                            try:
+                                _ed_ok, _ed_why = _twin_entry_ports_b.ema_dist_entry(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _is_long_z, _ind_z)
+                            except Exception:
+                                _ed_ok, _ed_why = False, ""
+                            if _ed_ok and _px_z > 0:
+                                logger.warning(f"[ENTRY_PORTS_B] {position_key}: {_ed_why} px={_px_z:.6f} -> OPEN")
+                                _r1s_ed = safe_fetch_float(_ind_z.get(("dc_low4_3m" if _is_long_z else "dc_high4_3m") if bool(getattr(config, "R1_USE_DC_4BAR", True)) else ("dc_low_3m" if _is_long_z else "dc_high_3m")), 0.0)
+                                if _r1s_ed > 0 and position and float(getattr(position, "r1_stop_price", 0.0) or 0.0) <= 0:
+                                    position.r1_stop_price = _r1s_ed
+                                if time.time() - _recent_opens.get(position_key, 0) < _DUPLICATE_OPEN_COOLDOWN:
+                                    pass
+                                else:
+                                    await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _ed_why, 75.0)
                         elif _twin_entry_ports_b is not None and bool(_psym_get(_sym_z, _side_z, "STOCH_ENTRY_ENABLED", False)):
                             try:
                                 _ste_ok, _ste_why = _twin_entry_ports_b.stoch_entry(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _is_long_z, _ind_z)
