@@ -1,7 +1,7 @@
 {
-  "ts": "2026-10-26T15:35:16.128044+00:00",
-  "tick": "2026-10-26T15:34:01.934193+00:00",
-  "tick_age_s": 74,
+  "ts": "2026-10-26T15:40:12.835219+00:00",
+  "tick": "2026-10-26T15:38:01.810665+00:00",
+  "tick_age_s": 131,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run37.json",
     "round": "run37",
@@ -11,55 +11,59 @@
     "n_pending": 71,
     "n_refused_only": 0,
     "n_excluded": 0,
-    "n_launchable_pending": 69,
+    "n_launchable_pending": 66,
     "hosts_not_visible": []
   },
   "hosts": {
     "s1": {
-      "cpu_pct": 92,
+      "cpu_pct": 57,
       "slots": "0/4",
       "observed_running": [],
       "published_last_hour": 0,
       "idle_reason": "disk guard",
-      "mem_avail_mb": 14866
+      "mem_avail_mb": 17873
     },
     "s2": {
-      "cpu_pct": 77,
+      "cpu_pct": 23,
       "slots": "0/4",
       "observed_running": [],
       "published_last_hour": 0,
       "idle_reason": "mem guard",
-      "mem_avail_mb": 4560
-    },
-    "s6": {
-      "cpu_pct": 23,
-      "slots": "1/4",
-      "observed_running": [],
-      "published_last_hour": 0,
-      "idle_reason": null,
-      "mem_avail_mb": 19419
+      "mem_avail_mb": 7834
     },
     "s5": {
-      "cpu_pct": 70,
-      "slots": "1/4",
-      "observed_running": [
-        "CDW"
-      ],
+      "cpu_pct": 23,
+      "slots": "0/4",
+      "observed_running": [],
       "published_last_hour": 0,
       "idle_reason": "disk guard",
-      "mem_avail_mb": 18486
+      "mem_avail_mb": 20831
+    },
+    "s6": {
+      "cpu_pct": 71,
+      "slots": "3/4",
+      "observed_running": [
+        "1000FLOKIUSDT",
+        "ATOMUSDT",
+        "BBUSDT"
+      ],
+      "published_last_hour": 0,
+      "idle_reason": "mem guard",
+      "mem_avail_mb": 14029
     }
   },
   "one_hour_total": 0,
   "alerts": [
     "LOW_THROUGHPUT:s1:0/h",
+    "LOW_CPU:s1:57%",
     "IDLE:s1:disk guard",
     "LOW_THROUGHPUT:s2:0/h",
-    "LOW_CPU:s2:77%",
+    "LOW_CPU:s2:23%",
     "IDLE:s2:mem guard",
-    "LOW_THROUGHPUT:s6:0/h",
-    "LOW_CPU:s6:23%",
     "LOW_THROUGHPUT:s5:0/h",
-    "LOW_CPU:s5:70%"
+    "LOW_CPU:s5:23%",
+    "IDLE:s5:disk guard",
+    "LOW_THROUGHPUT:s6:0/h",
+    "LOW_CPU:s6:71%"
   ]
 }

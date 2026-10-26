@@ -54,3 +54,12 @@ def target(cfg, is_long, i, pre, avail_ts, current_notional, seen):
     return C.strongest_absolute_target(events, side="LONG" if is_long else "SHORT", trigger=str(getattr(cfg, "LR_BAND_LADDER_TRIGGER", "union")), current_notional_usd=current_notional,
                                        pairs=pairs, mode=str(getattr(cfg, "LR_BAND_LADDER_MODE", "center_plateau")), base_unit_usd=float(getattr(cfg, "LR_BAND_LADDER_BASE_UNIT_USD", 2000.0)),
                                        capacity_usd=float(getattr(cfg, "LR_BAND_LADDER_CAPACITY_USD", 16000.0)), seen=seen)
+
+
+def fresh_open_target(cfg, is_long, i, pre, avail_ts, seen):
+    """Resolve the same live ordinary ladder contract for a flat-position OPEN."""
+    if not bool(getattr(cfg, "LR_BAND_LADDER_ENABLED", False)) or not bool(
+        getattr(cfg, "LR_BAND_LADDER_ORDINARY_PARITY_ENABLED", False)
+    ):
+        return None
+    return target(cfg, is_long, i, pre, avail_ts, 0.0, seen)

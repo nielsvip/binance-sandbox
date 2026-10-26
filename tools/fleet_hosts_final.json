@@ -57,9 +57,7 @@
    "oom_mb": 1500,
    "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM",
    "_note": "2026-10-22 MEASURED under a full 6/6 load (free -m): total 31280 MB, avail 16960 (s2) / 16124 (s5) / 13895 (s6) MB, cpu 51-66%, 16 cores. The 6-pair cap -- not memory -- was the limiter: every worker reported \"slots full\" with ~15 GB idle while 3 of 4 billed hosts had sat at 0/6 for 17 h. max_pairs 6->8 (8 pairs x 2 sides = 16 sides = 1 per core) and mem_reserve 4000 MB so the scheduler's measured-PSS gate (est_gate = PSS x1.2) and the OOM reaper are the real limiter instead of an arbitrary cap. Crypto peaks 5-10 GB/pair are why the reserve went UP as the cap went up.",
-   "overflow_venues": [
-    "crypto"
-   ]
+   "overflow_venues": []
   },
   {
    "name": "s6",
@@ -79,9 +77,7 @@
    "oom_mb": 1500,
    "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM",
    "_note": "2026-10-22 MEASURED under a full 6/6 load (free -m): total 31280 MB, avail 16960 (s2) / 16124 (s5) / 13895 (s6) MB, cpu 51-66%, 16 cores. The 6-pair cap -- not memory -- was the limiter: every worker reported \"slots full\" with ~15 GB idle while 3 of 4 billed hosts had sat at 0/6 for 17 h. max_pairs 6->8 (8 pairs x 2 sides = 16 sides = 1 per core) and mem_reserve 4000 MB so the scheduler's measured-PSS gate (est_gate = PSS x1.2) and the OOM reaper are the real limiter instead of an arbitrary cap. Crypto peaks 5-10 GB/pair are why the reserve went UP as the cap went up.",
-   "overflow_venues": [
-    "crypto"
-   ]
+   "overflow_venues": []
   }
  ],
  "cpu_target_pct": 90,

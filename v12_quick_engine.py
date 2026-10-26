@@ -16608,6 +16608,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     except Exception:
         _typed_aug_fn = None
     _n4_lr = None
+    _n4_lr_flat_seen = set()
     if (
         getattr(cfg, "MODE", "crypto") == "tradier"
         and bool(getattr(cfg, "LR_BAND_LADDER_ENABLED", False))
@@ -19195,12 +19196,34 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             if _hsc is not None and entry_sig[i] and not vec_decisions.htf_signal_consume.gate(_hsc, cfg, i, trades):
                 entry_sig[i] = False
             fire = entry_sig[i]
+            _lr_flat_open_target = None
+            if (
+                not fire
+                and pos is None
+                and _n4_lr is not None
+                and is_tradier
+                and bool(getattr(cfg, "LR_BAND_LADDER_ENABLED", False))
+                and bool(getattr(cfg, "LR_BAND_LADDER_ORDINARY_PARITY_ENABLED", False))
+            ):
+                _lr_flat_open_target = vec_decisions.lr_band_ladder_aug.fresh_open_target(
+                    cfg,
+                    is_long,
+                    i,
+                    _n4_lr,
+                    float(ts[i]) if i < len(ts) else 0.0,
+                    _n4_lr_flat_seen,
+                )
+                if _lr_flat_open_target is not None and _lr_flat_open_target.add_notional_usd > 0:
+                    fire = True
+            _ordinary_lr_flat_claim = _lr_flat_open_target is not None and _lr_flat_open_target.add_notional_usd > 0
             _fx_G = (
                 _fx_re_g
-                if (_fx_re_g is not None and has_closed_before and not bool(entry_sig[i]))
+                if (_fx_re_g is not None and has_closed_before and not bool(entry_sig[i]) and not _ordinary_lr_flat_claim)
                 else _fx_A
             )  # V17 FILTER_EXEMPTIONS 'REENTRY': reentry fires read the filters-off open-gate state; default = main-pass gates (identical objects)
             _fire_src = None  # 2026-10-06 ENTRY_SOURCE_LABEL: provenance of the in-loop fire below (first-writer-wins; label-only)
+            if _lr_flat_open_target is not None and _lr_flat_open_target.add_notional_usd > 0:
+                _fire_src = "LR_BAND_LADDER_PARITY_TARGET"
             # TWIN_VEC_SPECIAL H2a: HTF_WT_CHURN_REENTRY (live ez_manage.py:42701). Flat here (pos None); notional 0 < cap passes; age from last close bar. NOTE: live bypasses cooldown; vec honors cd above (checked before this block) — known gap, see COOLDOWN_BARS NEEDS-OPERATOR-DECISION.
             try:
                 if (
@@ -19662,7 +19685,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             # never get worse on the same NPZ"): True = a fire without the cross-back is a FRESH entry and must pass every entry filter (fresh
             # rule: all) and the final entry-gate stack when computed.
             _xb_true = False
-            if fire and has_closed_before and trades and not bool(entry_sig[i]):
+            if fire and has_closed_before and trades and not bool(entry_sig[i]) and not _ordinary_lr_flat_claim:
                 _xb_get = lambda _k, _d=None: getattr(cfg, _k, _d)
                 _xb_true = vec_decisions.reentry_crossback.crossed_back(
                     _xb_get, is_long, float(px), float(trades[-1].get("exit_price", 0) or 0)
@@ -19699,17 +19722,17 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     pass
             # 2026-09-29 USER: reentries bypassed every entry filter (reckless). Lenient gate: a reentry must pass at
             # least REENTRY_FILTER_MIN_PASS of the active entry filters; new entries (entry_sig) must pass ALL of them.
-            if fire and _rmarm_mask is not None and has_closed_before and not entry_sig[i] and not bool(_rmarm_mask[i]):
+            if fire and _rmarm_mask is not None and has_closed_before and not entry_sig[i] and not _ordinary_lr_flat_claim and not bool(_rmarm_mask[i]):
                 fire = False  # USER 2026-10-23 pv3 C3 REENTRY_MASK_ARM_<FAM>_ENABLED: the armed entry-mask family applies to reentry fires
-            if fire and _reentry_filter_on and has_closed_before and not entry_sig[i]:
+            if fire and _reentry_filter_on and has_closed_before and not entry_sig[i] and not _ordinary_lr_flat_claim:
                 if (
                     (sum(1 for _rm in _fx_G["_entry_filter_masks"] if bool(_rm[i])) + max(0, len(_entry_filter_masks) - len(_fx_G["_entry_filter_masks"])))
                     < _reentry_filter_need
                 ):
                     fire = False
-            if fire and _iso_on and has_closed_before and not entry_sig[i]:
+            if fire and _iso_on and has_closed_before and not entry_sig[i] and not _ordinary_lr_flat_claim:
                 fire = False  # [N1/004] ENTRY_ISOLATE_FAMILY: every reentry fire disabled (fresh entries of the isolated family only)
-            if fire and _sr_on and has_closed_before and trades and not entry_sig[i] and _sr_fired[0] != i:
+            if fire and _sr_on and has_closed_before and trades and not entry_sig[i] and not _ordinary_lr_flat_claim and _sr_fired[0] != i:
                 # 2026-10-17 STOP_RECLAIM_EXCLUSIVE: inside the reclaim window after a FIXED_STOP only the strict reclaim may re-enter
                 try:
                     if _srm.exclusive_blocks(cfg, trades[-1].get("exit_reason") or trades[-1].get("reason"), i - int(trades[-1].get("bar_exit", i))):
@@ -19720,6 +19743,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 fire
                 and _fx_G["_rag_pass"] is not None
                 and has_closed_before
+                and not _ordinary_lr_flat_claim
                 and not bool(_fx_G["_rag_pass"][i])
             ):
                 fire = False  # [N1/004] REENTRY_APPLY_ENTRY_GATES_ENABLED: reentry must pass the same final entry-gate stack as a fresh entry
@@ -19901,6 +19925,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     float(cfg.START_POSITION_SIZE) * float(regime_mult[i]) * float(mult)
                     * (float(_hsc["size"]) if _hsc is not None and entry_sig[i] else 1.0)
                 )
+                if _lr_flat_open_target is not None and _fire_src == "LR_BAND_LADDER_PARITY_TARGET":
+                    _dollar = float(_lr_flat_open_target.add_notional_usd)
                 if _wirec_size_mult is not None and i < len(_wirec_size_mult):
                     _dollar = _dollar * float(_wirec_size_mult[i])  # WIRING LANE C L1c
                 if _grd_open_mult is not None and i < len(_grd_open_mult):
