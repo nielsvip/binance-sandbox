@@ -7,6 +7,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
+def timestamp_epoch(value):
+    return int(datetime.fromisoformat(str(value).replace('Z', '+00:00')).timestamp())
+
+
 def aggregate_closed_15m(bars, bucket_ts, now_s):
     bucket_ts = int(bucket_ts)
     if float(now_s) < bucket_ts + 900:
@@ -45,10 +49,10 @@ def atomic_json(path, payload):
 def publish_closed_15m(path, row, writer, base_path, mode, symbol):
     written = writer(path, row)
     rows = json.loads(Path(path).read_text())
-    chosen = next((item for item in reversed(rows) if item.get('timestamp') == row['timestamp']), None)
+    start = timestamp_epoch(row['timestamp'])
+    chosen = next((item for item in reversed(rows) if timestamp_epoch(item.get('timestamp')) == start), None)
     if chosen is None or (not written and not (chosen.get('volume') is not None and not chosen.get('_provisional'))):
         return False
-    start = int(datetime.fromisoformat(row['timestamp'].replace('Z', '+00:00')).timestamp())
     event = {'symbol': symbol, 'mode': mode, 'bar_start_ts': start, 'bar_close_ts': start + 900, 'published_at': time.time(), 'row': chosen}
     destination = Path(base_path) / 'data' / 'closed_15m_outbox' / mode / f'{symbol}_{start}.json'
     atomic_json(destination, event)
@@ -65,7 +69,7 @@ def receive_closed_15m(base_path, event, now_s=None):
     if start % 900 or int(event['bar_close_ts']) != start + 900 or now_s < start + 900:
         raise ValueError('bar has not closed')
     row = dict(event['row'])
-    if int(datetime.fromisoformat(row['timestamp'].replace('Z', '+00:00')).timestamp()) != start:
+    if timestamp_epoch(row['timestamp']) != start:
         raise ValueError('row timestamp differs from envelope')
     if not all(math.isfinite(float(row[key])) and float(row[key]) > 0 for key in ('open', 'high', 'low', 'close')):
         raise ValueError('invalid OHLC')
@@ -84,7 +88,7 @@ def receive_closed_15m(base_path, event, now_s=None):
         if not isinstance(rows, list):
             raise ValueError('invalid cache')
         for index, previous in enumerate(rows):
-            if previous.get('timestamp') == row['timestamp']:
+            if timestamp_epoch(previous.get('timestamp')) == start:
                 if previous.get('volume') is not None and not previous.get('_provisional'):
                     row = previous
                 rows[index] = row

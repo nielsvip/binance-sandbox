@@ -1,0 +1,50 @@
+import json
+from pathlib import Path
+
+from tools.history_7d_sync import apply, export, merge
+
+
+def _event(ts, kind, price):
+    return json.dumps({"ts": ts, "type": kind, "qty": 1, "price": price}) + "\n"
+
+
+def test_two_hosts_merge_recent_trades_without_losing_older_history(tmp_path):
+    now = 1_800_000_000.0
+    mac, s1 = tmp_path / "mac", tmp_path / "s1"
+    rel = Path("data/history/men/ARBUSDC_LONG.jsonl")
+    for root in (mac, s1):
+        (root / rel).parent.mkdir(parents=True)
+    old = _event(now - 9 * 86400, "OPEN", 1.0)
+    mac_new = _event(now - 60, "CLOSE", 1.1)
+    s1_new = _event(now - 30, "OPEN", 1.2)
+    (mac / rel).write_text(old + mac_new)
+    (s1 / rel).write_text(old + s1_new + "malformed\n")
+    union = merge([export(mac, now), export(s1, now)])
+    assert sum(map(len, union["rows"].values())) == 2
+    first = apply(mac, union, "test")
+    second = apply(s1, union, "test")
+    assert first["added_rows"] == second["added_rows"] == 1
+    assert (mac / rel).read_text().startswith(old)
+    assert (s1 / rel).read_text().startswith(old)
+    assert mac_new in (s1 / rel).read_text() and s1_new in (mac / rel).read_text()
+    assert (
+        mac / "backups/before_history_7d_sync_test/men/ARBUSDC_LONG.jsonl"
+    ).read_text() == old + mac_new
+    assert apply(mac, union, "again")["added_rows"] == 0
+    assert apply(s1, union, "again")["added_rows"] == 0
+
+
+def test_rotated_recent_rows_reach_other_host_and_older_rows_do_not(tmp_path):
+    now = 1_800_000_000.0
+    source, dest = tmp_path / "source", tmp_path / "dest"
+    archive = source / "data/history/fin/QNTUSDT_SHORT.jsonl.202610261200.bak"
+    archive.parent.mkdir(parents=True)
+    archive.write_text(
+        _event(now - 8 * 86400, "OPEN", 3.0) + _event(now - 10, "CLOSE", 3.2)
+    )
+    pack = export(source, now)
+    assert sum(map(len, pack["rows"].values())) == 1
+    assert apply(dest, pack, "test")["added_rows"] == 1
+    target = dest / "data/history/fin/QNTUSDT_SHORT.jsonl"
+    assert '"price": 3.2' in target.read_text()
+    assert '"price": 3.0' not in target.read_text()

@@ -75,18 +75,10 @@ def _is_s1_host() -> bool:
 ET = ZoneInfo("America/New_York")
 
 def _last_15m_close_utc(now: datetime) -> datetime:
-    """Floor to last 15m close in UTC (crypto). 10:16 -> 10:15, 10:15:00 -> 10:00 (need closed)."""
-    # Use UTC 15m grid: :00, :15, :30, :45
-    # A bar is closed only after its close time has passed. Require 30s after close to allow klines to arrive.
-    # So at 10:15:01, last close is 10:00; at 10:15:31, last close is 10:15.
-    # We implement as: if now.second <30 and now.minute%15==0 -> still previous bar is last closed.
-    # Otherwise floor.
+    """Opening timestamp of the latest completed 15-minute interval."""
     if now.tzinfo is None:
         now = now.replace(tzinfo=timezone.utc)
-    # Budget 30s for kline arrival
-    effective = now - timedelta(seconds=30)
-    floored_minute = (effective.minute // 15) * 15
-    return effective.replace(minute=floored_minute, second=0, microsecond=0)
+    return datetime.fromtimestamp(int(now.timestamp() // 900) * 900 - 900, timezone.utc)
 
 def _is_tradier_market_hours(now: datetime) -> bool:
     """True if now (UTC) is within RTH or 30s after close where final bar should be written."""

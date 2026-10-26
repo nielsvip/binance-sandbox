@@ -209,7 +209,7 @@ def load_universe(base):
     return sorted(set(uni))
 
 
-def kline_last_close(base, symbol, mode):
+def kline_last_close(base, symbol, mode, now_s=None):
     """Last closed 15m bar ts from local kline files, or None."""
     try:
         from npz_live_generator import (
@@ -232,7 +232,8 @@ def kline_last_close(base, symbol, mode):
         if matches:
             import pandas as pd
 
-            cutoff = pd.Timestamp.now(tz="UTC") - pd.Timedelta(seconds=900)
+            now = pd.Timestamp.now(tz="UTC") if now_s is None else pd.Timestamp(now_s, unit="s", tz="UTC")
+            cutoff = now - pd.Timedelta(seconds=900)
             for value in reversed(matches):
                 ts = pd.to_datetime(value, utc=True, errors="coerce")
                 if not pd.isna(ts) and ts <= cutoff:

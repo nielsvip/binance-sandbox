@@ -58,8 +58,11 @@ def send_lane(base, mode, host, remote):
         except Exception as exc:
             print(json.dumps({'mode': mode, 'host': host, 'error': str(exc), 'at': time.time()}), flush=True)
             if connection is not None:
-                connection.kill()
-                connection.wait()
+                try:
+                    connection.kill()
+                    connection.wait()
+                except OSError:
+                    pass
                 connection = None
             time.sleep(1)
 
