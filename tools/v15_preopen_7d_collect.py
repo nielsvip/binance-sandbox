@@ -32,6 +32,10 @@ def collect(day: str, hosts_path: Path, root: Path = ROOT) -> dict:
     folder = root / "data/preopen_7d/fleet" / day
     state = json.loads((folder / "state.json").read_text())
     source = json.loads((folder / "queue.json").read_text())
+    if (source.get("_meta", {}).get("scope") != "fin_men_crypto"
+            or source.get("accounts", {}).get("trc")
+            or set(source.get("accounts", {}).get("fin", [])) != set(source.get("sym_sides", {}))):
+        raise ValueError("7D collection accepts only the FIN/MEN crypto queue")
     hosts = {h["name"]: h for h in json.loads(hosts_path.read_text())["hosts"]}
     eligible = tradeable(root)
     accepted = {ss: row for ss, row in state["placements"].items()
@@ -76,7 +80,7 @@ def collect(day: str, hosts_path: Path, root: Path = ROOT) -> dict:
     report = stage(queue_path, gathered,
                    root / "data/hourly_reconfig/per_sym_store.db",
                    root / "data/vec_live/vec_driven_sets.json", stock_path,
-                   folder / "stage", dt.datetime.now(dt.timezone.utc).date().isoformat(),
+                   folder / "stage", dt.datetime.strptime(day, "%Y%m%d").date().isoformat(),
                    root / "data/published_selection.json")
     # The 7D vector executor is sharded onto backtest workers; S1 remains free
     # of live executor processes. Publish only the validated settings/registry.

@@ -15,6 +15,9 @@ from pathlib import Path
 import sqlite3
 from zoneinfo import ZoneInfo
 
+NY = ZoneInfo("America/New_York")
+SCOPE = "fin_men_crypto"
+
 
 def digest(value: object, algorithm: str = "sha256") -> str:
     return getattr(hashlib, algorithm)(json.dumps(value, sort_keys=True, default=str).encode()).hexdigest()
@@ -91,7 +94,8 @@ def validate_one(ss: str, source: dict, result_dir: Path, today: str) -> dict:
     if age is None or float(age) > 20 or float(age) < -15:
         raise ValueError(f"{ss}: stale or invalid NPZ age {age}")
     published = dt.datetime.fromisoformat(str(manifest.get("published_utc")).replace("Z", "+00:00"))
-    if published.astimezone(dt.timezone.utc).date().isoformat() != today:
+    published_et = published.astimezone(NY)
+    if published_et.date().isoformat() != today or not dt.time(6, 0) <= published_et.time() < dt.time(9, 30):
         raise ValueError(f"{ss}: result is not from the requested premarket day")
     return {"sym_side": ss, "overrides": overrides, "defaults": defaults, "full_config": full,
             "metrics": metrics, "manifest": manifest, "manifest_path": str(manifest_path),
@@ -100,8 +104,8 @@ def validate_one(ss: str, source: dict, result_dir: Path, today: str) -> dict:
 
 def _account(ss: str, queue: dict) -> str:
     accts = [a for a, sides in queue["accounts"].items() if ss in sides]
-    if len(accts) != 1 or accts[0] not in ("fin", "trc"):
-        raise ValueError(f"{ss}: expected exactly one FIN/TRC account")
+    if len(accts) != 1 or accts[0] != "fin":
+        raise ValueError(f"{ss}: expected exactly one FIN account")
     return accts[0]
 
 
@@ -136,11 +140,20 @@ def stage(queue_path: Path, result_dir: Path, source_db: Path, source_sets_path:
           published_selection_path: Path | None = None) -> dict:
     queue = json.loads(queue_path.read_text())
     sources = queue.get("sym_sides") or {}
-    if not sources or queue.get("_meta", {}).get("window_days") != 7:
-        raise ValueError("empty or non-7D selection queue")
+    meta = queue.get("_meta", {})
+    if (not sources or meta.get("window_days") != 7 or meta.get("scope") != SCOPE
+            or meta.get("fin_book_source") != "men" or meta.get("require_replay") is not True
+            or meta.get("bar_minute", 15) not in (0, 15)):
+        raise ValueError("queue is empty or not a replay-required FIN/MEN crypto 7D queue")
+    fin_sides = set(queue.get("accounts", {}).get("fin", []))
+    if fin_sides != set(sources) or queue.get("accounts", {}).get("trc"):
+        raise ValueError("7D queue must contain only FIN sides; TRC is prohibited")
+    if any(not str(rec.get("cat_side", "")).startswith("CRYPTO_") for rec in sources.values()):
+        raise ValueError("7D queue contains a non-crypto side")
+    if any(rec.get("source_kind") != "per_sym_sql" or rec.get("sql_baseline_ok") is not True
+           for rec in sources.values()):
+        raise ValueError("7D queue must use current verified per-sym SQL rows")
     sql_sources = {ss: rec for ss, rec in sources.items() if rec.get("source_kind") == "per_sym_sql"}
-    if any(rec.get("manifest_ok") is not True and ss not in sql_sources for ss, rec in sources.items()):
-        raise ValueError("queue contains an unverified baseline source")
     if sql_sources:
         db_sha256 = file_sha256(source_db)
         src_check = sqlite3.connect(f"file:{source_db.resolve()}?mode=ro", uri=True)
@@ -236,20 +249,21 @@ def stage(queue_path: Path, result_dir: Path, source_db: Path, source_sets_path:
         dst.close()
     db_final = out_dir / "per_sym_store_7d.db"
     os.replace(db_tmp, db_final)
+    market_day = dt.date.fromisoformat(today)
+    expires = dt.datetime.combine(market_day + dt.timedelta(days=1), dt.time(9, 30), NY)
     registry = {ss: {"mode": "live", "account": entry["account"]} for ss, entry in sets.items()}
-    # Crypto FIN continues through the overnight session until the next
-    # premarket pass. Bound the handoff even if the next pass never completes.
-    registry["expires_utc"] = (dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=26)).isoformat()
+    registry["expires_utc"] = expires.astimezone(dt.timezone.utc).isoformat()
     (out_dir / "vec_driven_sets.json").write_text(json.dumps(sets, sort_keys=True) + "\n")
     (out_dir / "vec_driven.json").write_text(json.dumps(registry, sort_keys=True) + "\n")
-    report = {"day": today, "created_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+    report = {"day": today, "scope": SCOPE, "account": "fin", "created_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
               "queue_n": len(sources), "selected_7d": len(results),
-              "require_replay": queue.get("_meta", {}).get("require_replay") is True,
+              "require_replay": True,
               "replay_count": len(replays), "replay_sha256": digest(replays) if replays else None,
-              "fallback_30d": len(sets) - len(results), "stage_only": True,
+              "fallback_30d": 0, "stage_only": True,
               "db": str(db_final), "sets": str(out_dir / "vec_driven_sets.json"),
               "db_sha256": file_sha256(db_final),
-              "sets_sha256": file_sha256(out_dir / "vec_driven_sets.json")}
+              "sets_sha256": file_sha256(out_dir / "vec_driven_sets.json"),
+              "expires_utc": expires.astimezone(dt.timezone.utc).isoformat()}
     (out_dir / "validation.json").write_text(json.dumps(report, indent=2) + "\n")
     return report
 
@@ -259,7 +273,7 @@ def main() -> None:
     for name in ("queue", "result-dir", "source-db", "source-sets", "stock-symbols", "out-dir"):
         ap.add_argument(f"--{name}", required=True)
     ap.add_argument("--published-selection", required=True)
-    ap.add_argument("--day", default=dt.datetime.now(dt.timezone.utc).date().isoformat())
+    ap.add_argument("--day", default=dt.datetime.now(NY).date().isoformat())
     a = ap.parse_args()
     print(json.dumps(stage(Path(a.queue), Path(a.result_dir), Path(a.source_db),
                            Path(a.source_sets), Path(a.stock_symbols), Path(a.out_dir), a.day,

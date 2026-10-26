@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from tools.account_comparison_books import FIN_MIRROR_END, side_symbols, source_account  # noqa: E402
 from tools.v15_best_first import tradeable  # noqa: E402
-ACCOUNTS = {"fin": ("fin", "men"), "trc": ("trc", "trb")}
+SCOPE = "fin_men_crypto"
 
 
 def _epoch(value):
@@ -49,22 +49,29 @@ def _traded(sym_side, accounts, cutoff, root):
     return False
 
 
+def _is_crypto_side(sym_side):
+    from tools.opt.evaluate_v12 import is_crypto, resolve_tokenised
+
+    symbol = sym_side.rsplit("_", 1)[0]
+    return is_crypto(symbol) and not resolve_tokenised(symbol)[1]
+
+
 def select(root, now, selection, source_db=None):
     cutoff = now - 7 * 86400
     at = dt.datetime.fromtimestamp(now, dt.timezone.utc)
     source_db = Path(source_db or os.environ.get("V15_7D_SOURCE_DB") or root / "data/hourly_reconfig/per_sym_store.db")
     db_sha256 = hashlib.sha256(source_db.read_bytes()).hexdigest()
     fin_ok = set()
-    stock_ok = set()
+    if source_account("fin", at) != "men":
+        raise ValueError("7D FIN selection requires the active MEN mirror")
     for side in ("LONG", "SHORT"):
         fin_ok |= {f"{sym}_{side}" for sym in side_symbols(root, "fin", side, at)}
-        stock_ok |= {f"{sym}_{side}" for sym in side_symbols(root, "trc", side, at)}
     allowed_now = tradeable(root)
-    fin_ok &= allowed_now
-    stock_ok &= allowed_now
+    fin_ok = {ss for ss in fin_ok & allowed_now if _is_crypto_side(ss)}
     out = {"_meta": {"created_at": dt.datetime.fromtimestamp(now, dt.timezone.utc).isoformat(),
                       "cutoff": dt.datetime.fromtimestamp(cutoff, dt.timezone.utc).isoformat(),
-                      "source": "per_sym_active SQL + current tradeable side books",
+                      "source": "per_sym_active SQL + current MEN crypto side books",
+                      "scope": SCOPE,
                       "source_db_sha256": db_sha256,
                       "window_days": 7, "fin_book_source": source_account("fin", at),
                       "trc_book_source": "trb", "fin_mirror_end_utc": FIN_MIRROR_END.isoformat()},
@@ -72,7 +79,7 @@ def select(root, now, selection, source_db=None):
     missing = []
     con = sqlite3.connect(f"file:{source_db.resolve()}?mode=ro", uri=True)
     try:
-        for account, accepted in (("fin", fin_ok), ("trc", stock_ok)):
+        for account, accepted in (("fin", fin_ok),):
             for ss in sorted(accepted):
                 row = con.execute("SELECT updated_at, overrides_json, defaults_snapshot_json, full_config_json FROM per_sym_active WHERE sym_side=?", (ss,)).fetchone()
                 if row is None:
@@ -88,7 +95,7 @@ def select(root, now, selection, source_db=None):
                     missing.append(ss)
                     continue
                 out["accounts"][account].append(ss)
-                out["sym_sides"][ss] = {"cat_side": ("CRYPTO" if ss.rsplit("_", 1)[0].endswith(("USDT", "USDC")) else "STOCKS") + "_" + ss.rsplit("_", 1)[1],
+                out["sym_sides"][ss] = {"cat_side": "CRYPTO_" + ss.rsplit("_", 1)[1],
                                          "overrides": overrides, "source_kind": "per_sym_sql", "sql_baseline_ok": True,
                                          "source_db_sha256": db_sha256, "source_updated_at": updated_at,
                                          "source_row_sha256": hashlib.sha256(json.dumps({"sym_side": ss, "updated_at": updated_at, "overrides": overrides, "defaults": defaults, "full": full}, sort_keys=True, default=str).encode()).hexdigest()}

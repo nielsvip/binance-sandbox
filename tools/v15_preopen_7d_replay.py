@@ -34,7 +34,21 @@ def replay_one(queue_path: Path, result_dir: Path, ss: str,
     if local.weekday() >= 5 or local < cutoff:
         raise ValueError("09:15 ET premarket snapshot has not arrived")
     queue = json.loads(queue_path.read_text())
+    meta = queue.get("_meta", {})
+    if (meta.get("scope") != "fin_men_crypto" or meta.get("window_days") != 7
+            or meta.get("fin_book_source") != "men" or meta.get("require_replay") is not True
+            or queue.get("accounts", {}).get("trc")
+            or set(queue.get("accounts", {}).get("fin", [])) != set(queue.get("sym_sides", {}))):
+        raise ValueError("replay accepts only the current SQL-backed FIN/MEN crypto 7D queue")
     source = queue["sym_sides"][ss]
+    if (source.get("source_kind") != "per_sym_sql" or source.get("sql_baseline_ok") is not True
+            or not str(source.get("cat_side", "")).startswith("CRYPTO_")
+            or ss not in queue.get("accounts", {}).get("fin", [])):
+        raise ValueError(f"{ss}: replay source is not an authorized FIN/MEN crypto SQL side")
+    from tools.opt.evaluate_v12 import is_crypto, resolve_tokenised
+    symbol = ss.rsplit("_", 1)[0]
+    if not is_crypto(symbol) or resolve_tokenised(symbol)[1]:
+        raise ValueError(f"{ss}: replay only supports non-tokenized crypto")
     result = validate_one(ss, source, result_dir, now.date().isoformat())
     full = result["full_config"]
     from tools.opt.v12_pilot import evaluate_prepared_sanitized, prepare_batch

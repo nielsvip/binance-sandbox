@@ -36407,11 +36407,13 @@ class MultiAccountTradeManager:
                 return "BLOCKED_NOT_TRADEABLE_SIDE"
         if _is_open_action and account_key == "fin" and os.environ.get("VEC_LIVE_SCOPE", "30d").lower() == "7d":
             try:
-                from tools.v15_preopen_7d_runtime import assert_vector_stage_ready
-                assert_vector_stage_ready(Path(getattr(self.config, "BASE_PATH", Path.home() / "binance")) / "data/vec_live_7d")
+                from tools.v15_preopen_7d_runtime import fin_side_authorized
+                _fin_7d_root = Path(getattr(self.config, "BASE_PATH", Path.home() / "binance"))
+                if not fin_side_authorized(_fin_7d_root / "data/vec_live_7d", _fin_7d_root, symbol, position_side):
+                    raise RuntimeError(f"{symbol}_{position_side} is not in today's verified MEN crypto 7D set")
             except Exception:
                 if _pcl_acquired: _peg.release_claim(f"{_ckey}|INC")
-                return "BLOCKED_FIN_7D_NOT_READY"
+                return "BLOCKED_FIN_7D_SIDE_NOT_AUTHORIZED"
         # 2026-04-27 USER ABSOLUTE: NO MULTIPLE OPENS. EVER.
         # If a position is already alive for this key (positionAmt > 0), block any open of any kind.
         # AUGMENT is the ONLY legitimate add path (its own MIN_GAIN gates apply upstream).

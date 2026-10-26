@@ -1466,6 +1466,52 @@ def detect_divergence(price_arr: np.ndarray, ind_arr: np.ndarray, lookback: int 
     return rb, be, hb, hbe
 
 
+def detect_divergence_last_two(price_arr: np.ndarray, ind_arr: np.ndarray, lookback: int = 5, decay: int = 10, match_window: int = 3) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    # Live compute consumes only the latest and prior divergence flags. Keep full
+    # pivot detection, but skip price-pivot pairs that cannot affect those bars.
+    price = np.asarray(price_arr)
+    indicator = np.asarray(ind_arr)
+    n = len(price)
+    outputs = [np.zeros(2, dtype=np.int8) for _ in range(4)]
+    if n < 2 or len(indicator) != n or decay <= 0:
+        return tuple(outputs)
+    price_high, price_low = find_pivots_arr(price, lookback)
+    ind_high, ind_low = find_pivots_arr(indicator, lookback)
+    first_signal_pivot = n - 1 - decay - lookback
+    last_signal_pivot = n - 1 - lookback
+    for price_mask, ind_mask, is_low in ((price_low, ind_low, True), (price_high, ind_high, False)):
+        price_pivots = np.flatnonzero(price_mask)
+        ind_pivots = np.flatnonzero(ind_mask)
+        first_pair = max(1, int(np.searchsorted(price_pivots, first_signal_pivot, side="left")))
+        pair_stop = int(np.searchsorted(price_pivots, last_signal_pivot, side="right"))
+        for pair_index in range(first_pair, pair_stop):
+            current = int(price_pivots[pair_index])
+            previous = int(price_pivots[pair_index - 1])
+            confirm = current + lookback
+            end = min(n, confirm + decay)
+            matched = []
+            for pivot in (current, previous):
+                left = int(np.searchsorted(ind_pivots, pivot - match_window, side="left"))
+                right = int(np.searchsorted(ind_pivots, pivot + match_window, side="right"))
+                if left == right:
+                    matched.append(None)
+                else:
+                    candidates = ind_pivots[left:right]
+                    matched.append(int(candidates[np.argmin(np.abs(candidates - pivot))]))
+            if None in matched:
+                continue
+            current_ind, previous_ind = matched
+            if is_low:
+                conditions = ((price[current] < price[previous] and indicator[current_ind] > indicator[previous_ind], 0), (price[current] > price[previous] and indicator[current_ind] < indicator[previous_ind], 2))
+            else:
+                conditions = ((price[current] > price[previous] and indicator[current_ind] < indicator[previous_ind], 1), (price[current] < price[previous] and indicator[current_ind] > indicator[previous_ind], 3))
+            for matched_condition, output_index in conditions:
+                if matched_condition:
+                    for bar in range(max(n - 2, confirm), min(n, end)):
+                        outputs[output_index][bar - (n - 2)] = 1
+    return tuple(outputs)
+
+
 def bb_auto_tune(high_series: pd.Series, low_series: pd.Series, close_series: pd.Series, length: int = 20, lookback: int = 100, touch_pct: float = 0.002) -> Tuple[float, float, float, float, int]:
     """Auto-tune BB σ multiplier to maximize upper+lower band touches.
     Sweeps σ from 1.5 to 3.5, counts bars where high touches upper or low touches lower.
@@ -2409,7 +2455,7 @@ class IndicatorCalculator:
                 except Exception:
                     _bt_twt1 = None
                 if _bt_twt1 is not None and not getattr(_bt_twt1, "empty", True) and len(_bt_twt1) == len(_bt_cl):
-                    _bt_rb, _bt_be, _bt_hb, _bt_hbe = detect_divergence(_bt_cl, _bt_twt1.values.astype(np.float64), lookback=5, decay=10)
+                    _bt_rb, _bt_be, _bt_hb, _bt_hbe = detect_divergence_last_two(_bt_cl, _bt_twt1.values.astype(np.float64), lookback=5, decay=10)
                     result[f"div_reg_bull_wt_{timeframe}"] = int(_bt_rb[-1])
                     result[f"div_reg_bear_wt_{timeframe}"] = int(_bt_be[-1])
                     result[f"div_hid_bull_wt_{timeframe}"] = int(_bt_hb[-1])
@@ -2424,7 +2470,7 @@ class IndicatorCalculator:
                 _bt_pm = _bt_rmf.where(_bt_tp.diff() > 0, 0).rolling(14, min_periods=1).sum()
                 _bt_nm = _bt_rmf.where(_bt_tp.diff() < 0, 0).rolling(14, min_periods=1).sum()
                 _bt_mfi = 100.0 - (100.0 / (1.0 + _bt_pm / _bt_nm.replace(0, 1e-10)))
-                _bt_rb, _bt_be, _bt_hb, _bt_hbe = detect_divergence(_bt_cl, _bt_mfi.values.astype(np.float64), lookback=5, decay=10)
+                _bt_rb, _bt_be, _bt_hb, _bt_hbe = detect_divergence_last_two(_bt_cl, _bt_mfi.values.astype(np.float64), lookback=5, decay=10)
                 result[f"div_reg_bull_mfi_{timeframe}"] = int(_bt_rb[-1])
                 result[f"div_reg_bear_mfi_{timeframe}"] = int(_bt_be[-1])
                 result[f"div_hid_bull_mfi_{timeframe}"] = int(_bt_hb[-1])

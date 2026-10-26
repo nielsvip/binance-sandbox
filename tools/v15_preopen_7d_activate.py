@@ -102,13 +102,17 @@ def activate(now: dt.datetime | None = None, root: Path = ROOT):
     collection = json.loads((active / "checks/collection.json").read_text())
     if collection.get("day") != day or collection.get("stage_only") is not True or "s2" not in collection.get("distributed", []):
         raise RuntimeError("7D collection has no verified S2 vector distribution")
+    staged_report = collection.get("stage") or {}
+    if (staged_report.get("scope") != "fin_men_crypto" or staged_report.get("account") != "fin"
+            or staged_report.get("fallback_30d") != 0 or staged_report.get("stage_only") is not True):
+        raise RuntimeError("7D collection is not an isolated FIN/MEN crypto stage")
     lane = active / day
     _fetch(remote_base + "stage/", lane, timeout=300)
     registry = assert_vector_stage_ready(lane)
     accounts = sorted({row.get("account") for ss, row in registry.items()
-                       if isinstance(row, dict) and row.get("mode") == "live" and row.get("account") in ("fin", "trc")})
-    if not accounts:
-        raise RuntimeError("7D stage contains no FIN/TRC sides")
+                       if isinstance(row, dict) and row.get("mode") == "live"})
+    if accounts != ["fin"]:
+        raise RuntimeError("7D stage must contain FIN sides only; TRC is prohibited")
     db = lane / "per_sym_store_7d.db"
     if not db.is_file():
         raise RuntimeError("7D stage has no settings database")
@@ -139,8 +143,6 @@ def activate(now: dt.datetime | None = None, root: Path = ROOT):
     try:
         if "fin" in accounts:
             _restart_fin(root)
-        if "trc" in accounts:
-            _restart_trc(db)
     except Exception:
         if previous:
             _atomic(current, previous)

@@ -1070,8 +1070,11 @@ def load_sets():
         # An expired or partially copied premarket stage must stop producing
         # actionable 7D state, even if a supervisor keeps this process alive.
         from tools.v15_preopen_7d_runtime import assert_vector_stage_ready
-        from tools.account_comparison_books import side_allowed
-        assert_vector_stage_ready(VL)
+        from tools.account_comparison_books import side_allowed, source_account
+        from tools.npz_cutoffs import is_crypto_symbol
+        assert_vector_stage_ready(VL, ROOT)
+        if source_account("fin") != "men":
+            raise RuntimeError("7D executor requires the active FIN/MEN mirror")
         # The 7D lane has no fallback to 30D candidates, progress, or the
         # ordinary registry. Every set must carry its own verified provenance.
         return {
@@ -1081,8 +1084,9 @@ def load_sets():
             and se.get("mode") == "live"
             and se.get("verified") is True
             and se.get("window_days") == 7 and se.get("source") == "7d_optimized"
-            and se.get("account") in ("fin", "trc")
+            and se.get("account") == "fin"
             and "_" in ss
+            and is_crypto_symbol(ss.rsplit("_", 1)[0])
             and side_allowed(ROOT, se["account"], *ss.rsplit("_", 1))
             and isinstance(se.get("overrides"), dict)
             and isinstance(vd.get(ss), dict)

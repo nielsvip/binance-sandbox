@@ -14,10 +14,13 @@ import signal
 import shutil
 import subprocess
 import sys
+from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from tools.v15_preopen_7d_stage import digest, validate_one  # noqa: E402
+
+NY = ZoneInfo("America/New_York")
 
 
 def _active_symbols(lines: list[str]) -> set[str]:
@@ -54,20 +57,21 @@ def _host_slot_guard():
 
 
 def build_launch(queue: dict, ss: str, result_dir: Path, workers: int, python: str):
+    if (queue.get("_meta") or {}).get("scope") != "fin_men_crypto":
+        raise ValueError("7D launch requires the FIN/MEN crypto-only queue")
     source = (queue.get("sym_sides") or {}).get(ss)
-    if not isinstance(source, dict) or not (source.get("manifest_ok") is True or
-                                            (source.get("source_kind") == "per_sym_sql" and
-                                             source.get("sql_baseline_ok") is True and
-                                             source.get("source_db_sha256") and source.get("source_row_sha256"))):
-        raise ValueError(f"{ss}: missing verified per-sym SQL baseline")
+    if not isinstance(source, dict) or not (source.get("source_kind") == "per_sym_sql" and
+                                            source.get("sql_baseline_ok") is True and
+                                            source.get("source_db_sha256") and source.get("source_row_sha256")):
+        raise ValueError(f"{ss}: missing verified current SQL baseline")
     overrides = source.get("overrides")
     if not isinstance(overrides, dict) or not overrides:
         raise ValueError(f"{ss}: empty 30D start set")
     cat = source.get("cat_side")
-    if cat not in ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT"):
-        raise ValueError(f"{ss}: unknown category {cat!r}")
-    if ss not in queue.get("accounts", {}).get("fin", []) and ss not in queue.get("accounts", {}).get("trc", []):
-        raise ValueError(f"{ss}: not in FIN/TRC 7D queue")
+    if cat not in ("CRYPTO_LONG", "CRYPTO_SHORT"):
+        raise ValueError(f"{ss}: 7D permits crypto sides only, got {cat!r}")
+    if ss not in queue.get("accounts", {}).get("fin", []) or ss in queue.get("accounts", {}).get("trc", []):
+        raise ValueError(f"{ss}: not in the FIN/MEN 7D queue")
     folder = result_dir / ss
     out = folder / "out"
     progress = folder / "progress"
@@ -104,6 +108,9 @@ def build_launch(queue: dict, ss: str, result_dir: Path, workers: int, python: s
 
 def run_one(queue_path: Path, ss: str, result_dir: Path, workers: int,
             timeout_sec: int, python: str) -> dict:
+    local = dt.datetime.now(dt.timezone.utc).astimezone(NY)
+    if local.weekday() >= 5 or not dt.time(6, 0) <= local.time() < dt.time(9, 30):
+        raise ValueError("7D optimization is allowed only in the 06:00–09:30 ET morning window")
     queue = json.loads(queue_path.read_text())
     command, env, folder = build_launch(queue, ss, result_dir, workers, python)
     log = folder / "pilot.log"
