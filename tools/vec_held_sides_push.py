@@ -67,8 +67,11 @@ def main() -> None:
             zipped.write(json.dumps({"generated_ts": payload["generated_ts"], "rows": tails}, sort_keys=True).encode())
         tail_temp = Path(stream.name)
     os.replace(tail_temp, TAIL_DEST)
-    for host in ("s1-pub", "s2"):
-        subprocess.run(["rsync", "-az", "--timeout=30", "-e", "ssh -S none -o BatchMode=yes -o ConnectTimeout=8", str(DEST), f"{host}:~/binance-sandbox/data/vec_live/held_sides.json"], check=True, timeout=45)
+    subprocess.run(["rsync", "-az", "--timeout=30", "-e", "ssh -S none -o BatchMode=yes -o ConnectTimeout=8", str(DEST), "s1-pub:~/binance-sandbox/data/vec_live/held_sides.json"], check=True, timeout=45)
+    try:
+        subprocess.run(["ssh", "-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "s1-pub", "rsync", "-az", "/home/niels/binance-sandbox/data/vec_live/held_sides.json", "niels@10.0.0.4:/home/niels/binance-sandbox/data/vec_live/held_sides.json"], check=True, timeout=45)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        print(f"S2 held-side push failed: {exc}", flush=True)
     subprocess.run(["rsync", "-az", "--timeout=30", "-e", "ssh -S none -o BatchMode=yes -o ConnectTimeout=8", str(TAIL_DEST), "s1-pub:~/binance-sandbox/data/vec_live/held_cache_tails.json.gz"], check=True, timeout=45)
     stock_payload = {"generated_ts": time.time(), "held": held_stock_sides(ROOT)}
     with tempfile.NamedTemporaryFile(mode="w", prefix=".held_stocks.", suffix=".json", dir=STOCK_DEST.parent, delete=False) as stream:

@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 import redis
 from closed_bar_feed import aggregate_closed_15m, atomic_json, merge_closed_history, publish_closed_15m, timestamp_epoch
-from tools.crypto_15m_bar_clock import ObservedMarks, recent_rows
+from tools.crypto_15m_bar_clock import ObservedMarks, emit, recent_rows
 from tools.npz_cutoffs import is_rth_bar_start, stock_session_bounds
 
 
@@ -90,7 +90,7 @@ def native_prefix(base, symbol, start):
 
 async def main(base):
     base = Path(base)
-    print(json.dumps({'event': 'stock_clock_boot', 'at': time.time(), 'pid': __import__('os').getpid()}), flush=True)
+    emit({'event': 'stock_clock_boot', 'at': time.time(), 'pid': __import__('os').getpid()})
     from utils import load_environment_from_gpg
     load_environment_from_gpg(None)
     from config_tradier import TradierConfig
@@ -145,7 +145,7 @@ async def main(base):
                     direct_at = now
             for key, task in list(quote_tasks.items()):
                 if task.done():
-                    print(json.dumps({'event': 'stock_clock_quote_batch', **task.result()}), flush=True)
+                    emit({'event': 'stock_clock_quote_batch', **task.result()})
                     quote_tasks.pop(key)
             observed.prune(now)
             starts = ([bucket] if in_session and now - bucket >= 780 else []) + ([target] if is_rth_bar_start(target) else [])
@@ -163,9 +163,9 @@ async def main(base):
                     try:
                         future.result()
                         emitted.add(key)
-                        print(json.dumps({'event': 'stock_clock_published', 'symbol': key[0], 'bar_start_ts': key[1], 'available_at': time.time(), 'latency_s': time.time() - key[1] - 900}), flush=True)
+                        emit({'event': 'stock_clock_published', 'symbol': key[0], 'bar_start_ts': key[1], 'available_at': time.time(), 'latency_s': time.time() - key[1] - 900})
                     except Exception as exc:
-                        print(json.dumps({'event': 'stock_clock_publish_error', 'symbol': key[0], 'error': str(exc), 'at': time.time()}), flush=True)
+                        emit({'event': 'stock_clock_publish_error', 'symbol': key[0], 'error': str(exc), 'at': time.time()})
                     pending.pop(key)
             missing = []
             if is_rth_bar_start(target):
@@ -180,8 +180,11 @@ async def main(base):
                     pending[key] = loop.run_in_executor(publishers, publish_closed_15m, base / 'klines_cache/tradier' / f'{symbol}_15m.json', row, merge_closed_history, base, 'tradier', symbol)
             if now - status_at >= 5:
                 status = {'at': now, 'pid': __import__('os').getpid(), 'event': 'stock_clock_status', 'in_session': in_session, 'session_bounds': bounds, 'universe': len(symbols), 'fresh_redis_quotes': fresh, 'symbols_observed': len(observed.bars), 'bar_start_ts': target, 'published': sum((symbol, target) in emitted for symbol in symbols), 'missing_coverage': missing, 'quote_batches_inflight': len(quote_tasks), 'loop_s': time.time() - began}
-                atomic_json(base / 'data/reports/stock_15m_clock_latest.json', status)
-                print(json.dumps(status), flush=True)
+                try:
+                    atomic_json(base / 'data/reports/stock_15m_clock_latest.json', status)
+                except OSError:
+                    pass
+                emit(status)
                 status_at = now
             for mapping in (native,):
                 for key in list(mapping):

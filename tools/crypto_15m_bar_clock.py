@@ -19,6 +19,13 @@ from closed_bar_feed import aggregate_closed_15m, atomic_json, is_verified_close
 STABLE = ('USDT', 'USDC', 'USD1', 'USDS', 'BUSD', 'FDUSD', 'TUSD', 'DAI')
 
 
+def emit(payload):
+    try:
+        print(json.dumps(payload), flush=True)
+    except OSError:
+        pass
+
+
 def tradeable_symbols(base):
     base = Path(base)
     try:
@@ -146,7 +153,7 @@ def run(base, poll_s=0.1, publish_from=0, producer_generation=2):
     native, preparation, pending, emitted = {}, {}, {}, {}
     keys, universe, source = [], [], ''
     refreshed = books_at = status_at = 0
-    print(json.dumps({'event': 'crypto_clock_started', 'at': time.time(), 'pid': __import__('os').getpid(), 'publish_from': publish_from, 'producer_generation': producer_generation}), flush=True)
+    emit({'event': 'crypto_clock_started', 'at': time.time(), 'pid': __import__('os').getpid(), 'publish_from': publish_from, 'producer_generation': producer_generation})
     while True:
         began = now = time.time()
         bucket = int(now // 900) * 900
@@ -178,9 +185,9 @@ def run(base, poll_s=0.1, publish_from=0, producer_generation=2):
                     try:
                         future.result()
                         emitted[key] = time.time()
-                        print(json.dumps({'event': 'crypto_clock_published', 'symbol': key[0], 'bar_start_ts': key[1], 'available_at': emitted[key], 'latency_s': emitted[key] - key[1] - 900}), flush=True)
+                        emit({'event': 'crypto_clock_published', 'symbol': key[0], 'bar_start_ts': key[1], 'available_at': emitted[key], 'latency_s': emitted[key] - key[1] - 900})
                     except Exception as exc:
-                        print(json.dumps({'event': 'crypto_clock_publish_error', 'symbol': key[0], 'error': str(exc), 'at': time.time()}), flush=True)
+                        emit({'event': 'crypto_clock_publish_error', 'symbol': key[0], 'error': str(exc), 'at': time.time()})
                     pending.pop(key)
             reasons = {}
             for symbol in universe:
@@ -201,15 +208,18 @@ def run(base, poll_s=0.1, publish_from=0, producer_generation=2):
                 pending[key] = publishers.submit(publish_closed_15m, base / 'klines_cache' / f'{symbol}_15m.json', row, merge_closed_history, base, 'crypto', symbol)
             if now - status_at >= 5:
                 status = {'at': now, 'pid': __import__('os').getpid(), 'event': 'crypto_clock_status', 'redis_keys': len(keys), 'fresh_marks': fresh, 'symbols_observed': len(observed.bars), 'book': source, 'universe': len(universe), 'bar_start_ts': target, 'published': sum((symbol, target) in emitted for symbol in universe), 'pending': sum((symbol, target) in pending for symbol in universe), 'missing_reasons': reasons, 'loop_s': time.time() - began, 'publish_from': publish_from, 'producer_generation': producer_generation, 'warming_up': target < publish_from}
-                atomic_json(base / f'data/reports/crypto_15m_clock_{"shadow_" if publish_from else ""}latest.json', status)
-                print(json.dumps(status), flush=True)
+                try:
+                    atomic_json(base / f'data/reports/crypto_15m_clock_{"shadow_" if publish_from else ""}latest.json', status)
+                except OSError:
+                    pass
+                emit(status)
                 status_at = now
             for mapping in (native, emitted):
                 for key in list(mapping):
                     if key[1] < bucket - 2700:
                         mapping.pop(key, None)
         except Exception as exc:
-            print(json.dumps({'event': 'crypto_clock_error', 'at': time.time(), 'error': f'{type(exc).__name__}: {exc}'}), flush=True)
+            emit({'event': 'crypto_clock_error', 'at': time.time(), 'error': f'{type(exc).__name__}: {exc}'})
             refreshed = 0
             time.sleep(0.5)
         time.sleep(max(0, poll_s - (time.time() - began)))

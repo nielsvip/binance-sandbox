@@ -8763,6 +8763,20 @@ def _voe_reason_is_vec(reason) -> bool:
     return any(_t in _rx for _t in ("EXIT_OWED", "OBLIGATORY", "GUARANTEE", "FORCED", "LIQUIDATION", "EMERGENCY", "BALANCE_FLOOR", "MANUAL", "STOP", "TRAILING", "BACKSTOP", "BROKER_RECONCILED"))
 
 
+def _voe_simple_tp_reason_is_vec(reason, action, cfg) -> bool:
+    if str(action or "").upper() != "QUICK_REDUCE":
+        return False
+    _match = re.fullmatch(r"SIMPLE_TP_EXIT\(gain=(-?\d+(?:\.\d+)?)%>=tp=(-?\d+(?:\.\d+)?)%\)_bc139", str(reason or ""))
+    if _match is None:
+        return False
+    try:
+        from vec_decisions.quick_reduce_sources import simple_tp
+        _fires, _vector_reason = simple_tp(cfg, float(_match.group(1)))
+        return bool(_fires) and _vector_reason == str(reason)
+    except Exception:
+        return False
+
+
 _AIR_BARS_LOADER = None  # V17 AIR: callable(symbol, side) -> [(ts, low, high)] for REENTRY_AUGMENT_HL_REF='low'; None = klines_cache/{SYM}_15m.json (backtest_v12_engine injects frozen-NPZ bars)
 
 
@@ -33518,16 +33532,6 @@ class MultiAccountTradeManager:
             if not _net_exit_ok(_gross_gain, _fee_floor):
                 logger.warning(f"[EXECUTE_NOW_NET_GAIN_BLOCK] {position_key}: {action} blocked; gross_gain={_gross_gain!r}% estimated_fee={_fee_floor:.4f}% reason={str(reason or '')[:100]}")
                 return "BLOCKED_NET_GAIN"
-        _cb_fresh_open = str(action or "").upper() in ("OPEN", "REENTER", "REENTRY", "REENTRY_OPEN") and abs(safe_fetch_float(original_positionAmt, 0.0)) <= 0.0
-        if _cb_fresh_open:
-            try:
-                import strategy_enhancements as _sxe_cb
-                _cb_ok, _cb_reason = _sxe_cb.check_symbol_loss_streak_breaker(config, symbol)
-                if not _cb_ok:
-                    logger.warning(f"[CIRCUIT_BREAKER_BLOCK] {position_key}: {_cb_reason}")
-                    return f"BLOCKED_CIRCUIT_BREAKER_{_cb_reason[:40]}"
-            except Exception as _cb_error:
-                logger.warning(f"[CIRCUIT_BREAKER_CHECK] {position_key}: check failed open: {_cb_error}")
         _res = await self._execute_now_inner(
             position_key=position_key, account_key=account_key, symbol=symbol,
             original_positionAmt=original_positionAmt, side=side, position_side=position_side,
@@ -33773,6 +33777,8 @@ class MultiAccountTradeManager:
             _voe_vec = _voe_reason_is_vec(reason)
             if not _voe_vec and str(reason or "").upper().startswith("CYCLE_TP_TIERED_") and str(action or "").upper() == "REDUCE":
                 _voe_vec = bool(getattr(config, "CYCLE_TP_TIERED_ENABLED", False))
+            if not _voe_vec and _voe_simple_tp_reason_is_vec(reason, action, config):
+                _voe_vec = True
             try:
                 from vec_decisions import vec_parity_gates as _vpg_ref
                 _vpg_master = bool(getattr(_ezm_base_config, "VEC_REFUSE_NON_VECTOR_EXIT_ENABLED", getattr(config, "VEC_REFUSE_NON_VECTOR_EXIT_ENABLED", True)))

@@ -40,16 +40,12 @@ AUDIT_PATH = ROOT / "data" / "reports" / "per_sym_absorb_audit.json"
 FLAG_PATH = Path("/tmp/per_sym_live_promoted.flag")
 SSH = (
     "ssh",
+    "-S",
+    "none",
     "-o",
     "BatchMode=yes",
     "-o",
-    "ConnectTimeout=6",
-    "-o",
-    "ControlMaster=auto",
-    "-o",
-    "ControlPersist=120",
-    "-o",
-    "ControlPath=/tmp/per_sym_delta_%r@%h:%p",
+    "ConnectTimeout=10",
     "-o",
     "StrictHostKeyChecking=accept-new",
 )
@@ -147,7 +143,7 @@ def remote_rows(host, mode, *args):
             input=REMOTE_PY,
             capture_output=True,
             text=True,
-            timeout=16,
+            timeout=35,
         )
         if r.returncode != 0:
             log(f"{host} query failed: {r.stderr.strip()[:160]}")
@@ -186,7 +182,7 @@ def push_latest_to_host(host, remote_latest):
         con.close()
     try:
         cmd = f"cd /home/niels/binance-sandbox && python3 -c {shlex.quote(REMOTE_PUSH_PY)}"
-        result = subprocess.run((*SSH, host, cmd), input=json.dumps(rows), capture_output=True, text=True, timeout=30)
+        result = subprocess.run((*SSH, host, cmd), input=json.dumps(rows), capture_output=True, text=True, timeout=60)
         if result.returncode:
             log(f"{host} push failed: {result.stderr.strip()[:200]}")
             return -1
@@ -210,7 +206,7 @@ def absorb():
         )
     }
     remote_latest = {}
-    with ThreadPoolExecutor(max_workers=len(HOSTS)) as pool:
+    with ThreadPoolExecutor(max_workers=2) as pool:
         max_futures = {pool.submit(remote_rows, host, "max"): host for host in HOSTS}
         maxima_by_host = {max_futures[future]: future.result() for future in as_completed(max_futures)}
     fetch_need = {}
@@ -235,7 +231,7 @@ def absorb():
             if maxima:
                 wm[host] = max(wm.get(host, ""), max(mx for _, mx in maxima if mx))
             continue
-    with ThreadPoolExecutor(max_workers=max(1, len(fetch_need))) as pool:
+    with ThreadPoolExecutor(max_workers=min(2, max(1, len(fetch_need)))) as pool:
         get_futures = {pool.submit(remote_rows, host, "get", *need): host for host, need in fetch_need.items()}
         rows_by_host = {get_futures[future]: future.result() for future in as_completed(get_futures)}
     for host, rows in rows_by_host.items():

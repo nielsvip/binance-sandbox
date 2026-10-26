@@ -1,4 +1,5 @@
 import json
+import errno
 from pathlib import Path
 
 from tools.crypto_15m_bar_clock import ObservedMarks, build_completed, tradeable_symbols
@@ -82,3 +83,10 @@ def test_retention_covers_three_bars_without_flat_seeding():
     memory.prune(START + 3600)
     assert min(memory.bars['TESTUSDT']) >= START + 900
     assert len(memory.bars['TESTUSDT']) == 45
+def test_full_log_does_not_raise_and_discard_clock_ram(monkeypatch):
+    from tools.crypto_15m_bar_clock import emit
+    def full_log(*args, **kwargs):
+        raise OSError(errno.ENOSPC, 'No space left on device')
+    monkeypatch.setattr('builtins.print', full_log)
+    emit({'event': 'clock_status'})
+

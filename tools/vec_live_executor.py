@@ -429,12 +429,8 @@ def base_prepared(ss: str):
         if isinstance(payload, tuple) and len(payload) == 2 and payload[0] == fingerprint:
             _BASE_PREP[ss], _BASE_PREP_FINGERPRINT[ss] = payload[1], fingerprint
             return payload[1]
-    if npz_path(sym).parent == ROOT / "data" / "vec_live" / "forward_npz":
-        from tools.opt import evaluate_v12 as E
-        prep = E.prepare(ss, 30)
-    else:
-        from tools.opt import v12_pilot as P
-        prep = P.prepare_batch(ss, 30)
+    from tools.opt import evaluate_v12 as E
+    prep = E.prepare(ss, 30)
     if prep is not None:
         prep = {k: v for k, v in prep.items() if k not in ("npz_prepared", "bh")}
         if emd5:

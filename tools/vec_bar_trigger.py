@@ -11,12 +11,15 @@ engine (1-3s) -> STATE written -> publish(). No live file touched.
 
 from __future__ import annotations
 import argparse
+import hashlib
 import json
+import multiprocessing as mp
 import os
+import signal
 import sys
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -70,6 +73,15 @@ def store_mtimes(base, sym, path=None):
 
 def split_ss(ss):
     return ss.rsplit("_", 1)
+
+
+def crypto_pools(workers):
+    pools = getattr(run_once, "_crypto_pools", None)
+    if pools is None:
+        count = max(1, min(workers, int(os.environ.get("VEC_CRYPTO_PROCESSES", "4"))))
+        pools = [ProcessPoolExecutor(max_workers=1, mp_context=mp.get_context("spawn")) for _ in range(count)]
+        run_once._crypto_pools = pools
+    return pools
 
 
 def publish_producer(base, shard, engine):
@@ -127,14 +139,19 @@ def run_once(base, shard, workers=WORKERS, verbose=False):
     held_jobs = [job for job in jobs if job[0] in held]
     other_jobs = [job for job in jobs if job[0] not in held]
     rec["held_probed"] = len(held_jobs)
-    with ThreadPoolExecutor(max_workers=workers) as pool:
+    process_pools = crypto_pools(workers) if shard.startswith("crypto_") else None
+    thread_pool = None if process_pools else ThreadPoolExecutor(max_workers=workers)
+    rec["worker_processes"] = len(process_pools) if process_pools else 0
+    try:
         for tier, tier_jobs in (("held", held_jobs), ("other", other_jobs)):
-            futures = [pool.submit(E._worker, job) for job in tier_jobs]
+            futures = [process_pools[hashlib.md5(job[0].encode()).digest()[0] % len(process_pools)].submit(E._worker, job) if process_pools else thread_pool.submit(E._worker, job) for job in tier_jobs]
             for future in as_completed(futures):
                 try:
                     r = future.result()
-                except Exception:
+                except Exception as exc:
                     rec["errors"] += 1
+                    if type(exc).__name__ == "BrokenProcessPool":
+                        rec["pool_broken"] = True
                     continue
                 if r.get("status") == "EXCEPTION":
                     rec["errors"] += 1
@@ -147,6 +164,13 @@ def run_once(base, shard, workers=WORKERS, verbose=False):
                             pass
             if tier == "held":
                 rec["held_wall_sec"] = round(time.monotonic() - cycle_started, 2)
+    finally:
+        if thread_pool is not None:
+            thread_pool.shutdown(wait=True)
+    if rec.get("pool_broken"):
+        for pool in process_pools:
+            pool.shutdown(wait=False, cancel_futures=True)
+        run_once._crypto_pools = None
     if rec["acted"]:
         try:
             E.publish()
@@ -175,6 +199,12 @@ def main():
         fcntl.flock(singleton, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
         return 0
+    stopping = False
+    def stop(*_):
+        nonlocal stopping
+        stopping = True
+    signal.signal(signal.SIGTERM, stop)
+    signal.signal(signal.SIGINT, stop)
     if not a.once:
         def heartbeat():
             while True:
@@ -186,14 +216,17 @@ def main():
                     except Exception:
                         pass
         threading.Thread(target=heartbeat, daemon=True).start()
-    while True:
+    while not stopping:
         try:
             rec = run_once(base, a.shard, workers=a.workers, verbose=True)
         except Exception as exc:
             print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}), flush=True)
         if a.once:
-            return 0
+            break
         time.sleep(a.trigger_s)
+    for pool in getattr(run_once, "_crypto_pools", None) or ():
+        pool.shutdown(wait=True, cancel_futures=True)
+    return 0
 
 
 if __name__ == "__main__":

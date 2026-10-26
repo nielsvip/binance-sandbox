@@ -181,44 +181,14 @@ def check_volume_confirmation(config, indicators: dict) -> Tuple[bool, str]:
 # ═══════════════════════════════════════════════════════════════════
 # 6. SYMBOL CIRCUIT BREAKER — halt after consecutive losses
 # ═══════════════════════════════════════════════════════════════════
-def record_trade_outcome(symbol: str, account: str, gain_pct: float, config=None, now=None):
-    """Track completed position outcomes for symbol and account breakers."""
+def record_trade_outcome(symbol: str, account: str, gain_pct: float):
+    """Track consecutive losses for circuit breaker."""
     if gain_pct < 0:
+        _symbol_consecutive_losses[symbol] += 1
         _account_consecutive_losses[account] += 1
     else:
+        _symbol_consecutive_losses[symbol] = 0
         _account_consecutive_losses[account] = 0
-    if config is not None and getattr(config, "SYMBOL_LOSS_STREAK_BREAKER_ENABLED", False):
-        try:
-            from vec_decisions.symbol_loss_streak import record_close
-            _symbol_consecutive_losses[symbol], _symbol_halt_until[symbol] = record_close(
-                _symbol_consecutive_losses[symbol], _symbol_halt_until[symbol], gain_pct,
-                time.time() if now is None else now,
-                getattr(config, "CIRCUIT_BREAKER_SYMBOL_LOSSES", 3),
-                float(getattr(config, "CIRCUIT_BREAKER_SYMBOL_HALT_MIN", 30)) * 60.0,
-            )
-        except Exception:
-            pass
-    elif gain_pct < 0:
-        _symbol_consecutive_losses[symbol] += 1
-    else:
-        _symbol_consecutive_losses[symbol] = 0
-
-
-def check_symbol_loss_streak_breaker(config, symbol: str) -> Tuple[bool, str]:
-    """Return (allow_entry, reason) for the independently switchable symbol breaker."""
-    if not getattr(config, "SYMBOL_LOSS_STREAK_BREAKER_ENABLED", False):
-        return True, ""
-    now = time.time()
-    if symbol in _symbol_halt_until and now < _symbol_halt_until[symbol]:
-        remain = int(_symbol_halt_until[symbol] - now)
-        return False, f"CB_SYMBOL_HALTED {symbol} {remain}s_remaining"
-    sym_thresh = int(getattr(config, "CIRCUIT_BREAKER_SYMBOL_LOSSES", 3))
-    sym_halt_min = int(getattr(config, "CIRCUIT_BREAKER_SYMBOL_HALT_MIN", 30))
-    if _symbol_consecutive_losses[symbol] >= sym_thresh:
-        _symbol_halt_until[symbol] = now + sym_halt_min * 60
-        _symbol_consecutive_losses[symbol] = 0
-        return False, f"CB_SYMBOL_TRIP {symbol} {sym_thresh} losses → halt {sym_halt_min}min"
-    return True, ""
 
 
 def check_circuit_breaker(config, symbol: str, account: str) -> Tuple[bool, str]:

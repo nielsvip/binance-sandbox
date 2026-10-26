@@ -20,7 +20,7 @@ HOSTS = {
     "s5": ("/home/niels/binance-sandbox/data/hourly_reconfig/per_sym_forward_master.db", "/home/niels/binance-sandbox/data/hourly_reconfig/per_sym_store.db"),
     "s6": ("/home/niels/binance-sandbox/data/hourly_reconfig/per_sym_forward_master.db", "/home/niels/binance-sandbox/data/hourly_reconfig/per_sym_store.db"),
 }
-SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=6", "-o", "ControlMaster=auto", "-o", "ControlPersist=120", "-o", "ControlPath=/tmp/per_sym_delta_%r@%h:%p"]
+SSH_OPTS = ["-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10"]
 
 
 def _load_watermark():
@@ -61,12 +61,12 @@ def _needed(rows, mark):
 
 def _send(host, dbs, rows):
     names = [row[0] + ".json" for row in rows]
-    rsync = ["rsync", "-az", "--timeout=20", "-e", "ssh " + " ".join(SSH_OPTS), "--files-from=-", str(SHARDS) + "/", f"{host}:binance-sandbox/data/per_sym_rows_current/"]
-    sent = subprocess.run(rsync, input="\n".join(names) + "\n", text=True, capture_output=True, timeout=25)
+    rsync = ["rsync", "-az", "--timeout=60", "-e", "ssh " + " ".join(SSH_OPTS), "--files-from=-", str(SHARDS) + "/", f"{host}:binance-sandbox/data/per_sym_rows_current/"]
+    sent = subprocess.run(rsync, input="\n".join(names) + "\n", text=True, capture_output=True, timeout=90)
     if sent.returncode:
         return host, False, sent.stderr.strip()[-180:]
     remote = "cd /home/niels/binance-sandbox && python3 tools/per_sym_delta_apply.py " + " ".join("--db " + db for db in dbs)
-    applied = subprocess.run(["ssh", *SSH_OPTS, host, remote], input=json.dumps(names), text=True, capture_output=True, timeout=25)
+    applied = subprocess.run(["ssh", *SSH_OPTS, host, remote], input=json.dumps(names), text=True, capture_output=True, timeout=90)
     if applied.returncode:
         return host, False, applied.stderr.strip()[-180:]
     return host, True, applied.stdout.strip()[-180:]
@@ -100,7 +100,7 @@ def main():
         tmp.write_text(json.dumps({"sym_side": symbol_side, "updated_at": row[2], "row": row}, default=str))
         os.replace(tmp, target)
     results = []
-    with ThreadPoolExecutor(max_workers=len(HOSTS)) as pool:
+    with ThreadPoolExecutor(max_workers=2) as pool:
         futures = {pool.submit(_send, host, HOSTS[host], batch): host for host, batch in need.items() if batch}
         for future in as_completed(futures):
             try:
