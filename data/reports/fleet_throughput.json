@@ -1,7 +1,7 @@
 {
-  "ts": "2026-10-26T07:55:03.988676+00:00",
-  "tick": "2026-10-26T07:54:01.301485+00:00",
-  "tick_age_s": 63,
+  "ts": "2026-10-26T08:00:05.466114+00:00",
+  "tick": "2026-10-26T07:58:02.391632+00:00",
+  "tick_age_s": 123,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run37.json",
     "round": "run37",
@@ -11,28 +11,28 @@
     "n_pending": 113,
     "n_refused_only": 0,
     "n_excluded": 0,
-    "n_launchable_pending": 91,
+    "n_launchable_pending": 90,
     "hosts_not_visible": []
   },
   "hosts": {
     "s1": {
-      "cpu_pct": 68,
+      "cpu_pct": 93,
       "slots": "0/4",
       "observed_running": [],
       "published_last_hour": 2,
       "idle_reason": "disk guard",
-      "mem_avail_mb": 20024
+      "mem_avail_mb": 19443
     },
     "s5": {
-      "cpu_pct": 16,
+      "cpu_pct": 8,
       "slots": "0/4",
       "observed_running": [],
-      "published_last_hour": 5,
+      "published_last_hour": 4,
       "idle_reason": "disk guard",
-      "mem_avail_mb": 25122
+      "mem_avail_mb": 25102
     },
     "s2": {
-      "cpu_pct": 81,
+      "cpu_pct": 80,
       "slots": "2/4",
       "observed_running": [
         "QNTUSDT",
@@ -40,29 +40,29 @@
       ],
       "published_last_hour": 0,
       "idle_reason": "mem guard",
-      "mem_avail_mb": 4545
+      "mem_avail_mb": 4027
     },
     "s6": {
-      "cpu_pct": 46,
+      "cpu_pct": 96,
       "slots": "4/4",
       "observed_running": [
         "AMZN",
         "APO",
-        "HOOD"
+        "HOOD",
+        "SCHW"
       ],
-      "published_last_hour": 6,
+      "published_last_hour": 7,
       "idle_reason": null,
-      "mem_avail_mb": 21369
+      "mem_avail_mb": 16066
     }
   },
   "one_hour_total": 13,
   "alerts": [
     "LOW_THROUGHPUT:s1:2/h",
-    "LOW_CPU:s1:68%",
     "IDLE:s1:disk guard",
-    "LOW_CPU:s5:16%",
+    "LOW_THROUGHPUT:s5:4/h",
+    "LOW_CPU:s5:8%",
     "IDLE:s5:disk guard",
-    "LOW_THROUGHPUT:s2:0/h",
-    "LOW_CPU:s6:46%"
+    "LOW_THROUGHPUT:s2:0/h"
   ]
 }
