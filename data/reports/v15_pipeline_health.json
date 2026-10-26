@@ -1,12 +1,12 @@
 {
- "at": "2026-10-26T13:15:26Z",
+ "at": "2026-10-26T13:30:30Z",
  "s1": {
   "host": "niels",
-  "now": 1793020521.9629145,
+  "now": 1793021423.7810206,
   "merge_crypto": {
    "n": 12,
-   "max_lag_min": 120.0,
-   "median_lag_min": 105.0,
+   "max_lag_min": 150.0,
+   "median_lag_min": 135.0,
    "worst": "1000000MOGUSDT",
    "dead": []
   },
@@ -18,24 +18,25 @@
    "dead": []
   },
   "npz_legacy_crypto": [],
-  "append_log_age_min": 1.0,
+  "append_log_age_min": 5.9,
   "append_last_secs": 573.5,
   "append_last_stats": "'appended': 0, 'created': 0, 'up_to_date': 5990, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0, 'guard-blocked': 401",
   "npz_loop_pids": 0,
   "npz_loop_has_settle": false,
-  "sched_tick_age_min": 5.3,
+  "sched_tick_age_min": 20.4,
   "sched_launched": 2,
   "archive_n": 202,
   "archive_mb": 2461.8,
-  "archive_newest_min": 352.9,
+  "archive_newest_min": 368.0,
   "_via": "s1-int"
  },
  "red": [
-  "L2 merge crypto: s1's long store is 120 min behind the freshest copy on the box (worst 1000000MOGUSDT) \u2014 klines_append is not merging",
-  "L3 npz append loop is not running (the */15 watchdog should relaunch it)"
+  "L2 merge crypto: s1's long store is 150 min behind the freshest copy on the box (worst 1000000MOGUSDT) \u2014 klines_append is not merging",
+  "L3 npz append loop is not running (the */15 watchdog should relaunch it)",
+  "L4 scheduler last ticked 20.4 min ago (cron */2)"
  ],
  "warn": [
-  "L5 newest archived board NPZ is 353 min old \u2014 publishes may not be recording"
+  "L5 newest archived board NPZ is 368 min old \u2014 publishes may not be recording"
  ],
  "ok": false
 }
