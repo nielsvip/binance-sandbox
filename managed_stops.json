@@ -1,37 +1,23 @@
 {
-  "inf:BTCDOMUSDT_LONG": {
-    "orderId": "2000001542732731",
-    "stopPrice": 5545.1,
-    "entry_sig": "2026-10-26 15:25:35.524000+00:00",
-    "symbol": "BTCDOMUSDT",
+  "fin:RUNEUSDT_LONG": {
+    "orderId": "3000002275726535",
+    "stopPrice": 0.6156,
+    "entry_sig": "2026-10-26 12:03:50.239000+00:00",
+    "symbol": "RUNEUSDT",
     "side": "LONG"
   },
-  "inf:ARUSDT_LONG": {
-    "orderId": "2000001542794329",
-    "stopPrice": 3.322,
-    "entry_sig": "2026-10-26 15:50:54.204000+00:00",
-    "symbol": "ARUSDT",
+  "fin:MAGICUSDT_LONG": {
+    "orderId": "3000002275571346",
+    "stopPrice": 0.0801,
+    "entry_sig": "2026-10-26 11:11:53.148000+00:00",
+    "symbol": "MAGICUSDT",
     "side": "LONG"
   },
-  "inf:GRAMUSDT_SHORT": {
-    "orderId": "2000001542852610",
-    "stopPrice": 1.239,
-    "entry_sig": "2026-10-26 16:16:11.466000+00:00",
-    "symbol": "GRAMUSDT",
-    "side": "SHORT"
-  },
-  "inf:XRPUSDC_LONG": {
-    "orderId": "2000001542871791",
-    "stopPrice": 1.2736,
-    "entry_sig": "2026-10-26 16:24:56.400000+00:00",
-    "symbol": "XRPUSDC",
+  "fin:EDUUSDT_LONG": {
+    "orderId": "3000002275737799",
+    "stopPrice": 0.05673,
+    "entry_sig": "2026-10-26 12:44:37.766153+00:00",
+    "symbol": "EDUUSDT",
     "side": "LONG"
-  },
-  "inf:ATOMUSDT_SHORT": {
-    "orderId": "2000001542876745",
-    "stopPrice": 1.676,
-    "entry_sig": "2026-10-26 16:27:05.688000+00:00",
-    "symbol": "ATOMUSDT",
-    "side": "SHORT"
   }
 }

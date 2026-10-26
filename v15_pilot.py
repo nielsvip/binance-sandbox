@@ -1995,6 +1995,59 @@ def template_bold_defaults(template_path, defaults: dict, truth: dict | None = N
         ov.update(_switch_overrides(sw, v))
     return ov, bad
 
+def build_persym_baseline_candidate(entry: dict, defaults: dict) -> tuple[dict, dict]:
+    """Return the persisted live full set and its engine-sanitized evaluation mapping."""
+    full = dict(entry.get("full_config") or {})
+    if not full:
+        full = dict(entry.get("defaults_snapshot") or {})
+        full.update(entry.get("overrides") or {})
+    candidate, _ = sanitize_overrides(full, defaults)
+    return full, candidate
+
+
+def materialize_baseline_defaults(wb_path, full_config: dict, defaults: dict) -> list:
+    """Write the selected per_sym values into workbook option B and is_default markers."""
+    import copy as _copy
+    import openpyxl as _opx
+
+    changed = []
+    wb = _opx.load_workbook(str(wb_path))
+    for tab in SWITCH_SHEETS:
+        if tab not in wb.sheetnames:
+            continue
+        ws = wb[tab]
+        idc = next((c for c in range(1, ws.max_column + 1) if str(ws.cell(2, c).value or "").strip().lower().startswith("is_default")), None)
+        if idc is None:
+            continue
+        groups = {}
+        for row in range(3, ws.max_row + 1):
+            sw = ws.cell(row, 1).value
+            if sw not in (None, "") and str(sw).strip().lower() not in ("switch", "general", "blanket", "filter", "option value", "sheets applicable", "gates"):
+                groups.setdefault(str(sw).strip(), []).append(row)
+        for sw, rows in groups.items():
+            target = None
+            for row in rows:
+                parsed = _parse_opt_value(ws.cell(row, 2).value, defaults.get(sw))
+                mapped = _switch_overrides(sw, parsed)
+                if mapped and all(k in full_config and _same_default(v, full_config[k]) for k, v in mapped.items()):
+                    target = row
+                    break
+            if target is None and sw in full_config:
+                target = next((r for r in rows if str(ws.cell(r, idc).value or "").strip().upper() == "YES"), rows[0])
+                ws.cell(target, 2).value = full_config[sw]
+            if target is None:
+                continue
+            for row in rows:
+                ws.cell(row, idc).value = "YES" if row == target else "NO"
+                new_font = _copy.copy(ws.cell(row, 2).font)
+                new_font.bold = row == target
+                ws.cell(row, 2).font = new_font
+            changed.append((tab, sw, ws.cell(target, 2).value, target))
+    wb.save(str(wb_path))
+    wb.close()
+    return changed
+
+
 def _macbook_desktop_notify(title: str, msg: str, critical: bool = False):
     """Send to MacBook desktop: local osascript + ssh to macbook + persistent jsonl for warn-daemon."""
     # persistent log for Mac polling / warn daemon
@@ -13020,7 +13073,9 @@ def _main_single():
         # Bias-free baseline (backtest-expert: 80% breaking, no look-ahead): evaluate cat_side defaults first, then per_sym
         # full snapshot from last promotion, pick best credible as E3. Winning baseline's full set is diffed against
         # latest bold template defaults — every non-current default becomes an override in column C.
-        if prepared is not None and not os.environ.get("V15_START_OVERRIDES") and not locals().get("_nr_applied") and os.environ.get("V15_SKIP_CAT_PERSYM_BASELINE", "0") != "1":
+        _cat_persym_contract = bool(prepared is not None and not os.environ.get("V15_START_OVERRIDES") and not locals().get("_nr_applied") and os.environ.get("V15_SKIP_CAT_PERSYM_BASELINE", "0") != "1")
+        _cat_persym_selected = False
+        if _cat_persym_contract:
             try:
                 _cat_label, _cat_ov = "cat_side_defaults", dict(_tpl_defaults)
                 # _tpl_defaults is the current bold for this template; defaults dict is the 3314 full current cat_side layer
@@ -13037,27 +13092,18 @@ def _main_single():
                 # prepare per_sym overrides deterministically before parallel submit
                 _persym_ov_raw = None
                 try:
-                    import per_sym_store as _pss_bl
-                    _persym_entry = _pss_bl.get(new_symside)
-                    if _persym_entry and (_persym_entry.get("full_config") or _persym_entry.get("overrides")):
-                        _persym_full = _persym_entry.get("full_config") or {}
-                        if not _persym_full:
-                            _snap = _persym_entry.get("defaults_snapshot") or {}
-                            _persym_full = dict(_snap); _persym_full.update(_persym_entry.get("overrides") or {})
-                        _persym_ov_raw = dict(_persym_entry.get("overrides") or {})
-                        _persym_ov_san, _ = sanitize_overrides(dict(_persym_ov_raw), defaults)
-                        _persym_label = "per_sym_last_best"
+                    from tools.live_baseline_snapshot import load_live_entry as _load_live_entry
+                    _persym_entry = _load_live_entry(ROOT, new_symside, max_age_seconds=900)
+                    if _persym_entry and _persym_entry.get("full_config"):
+                        _persym_full, _persym_ov_san = build_persym_baseline_candidate(_persym_entry, defaults)
+                        _persym_label = "mac_live_full_set_snapshot"
+                        print(f"[BASELINE-PERSYM-SNAPSHOT] {new_symside} validated live full set keys={len(_persym_full)}", flush=True)
                     else:
-                        _persym_ov_raw = dict(_ingested_overrides) if '_ingested_overrides' in locals() and _ingested_overrides else {}
-                        if _persym_ov_raw:
-                            _persym_ov_san, _ = sanitize_overrides(dict(_persym_ov_raw), defaults)
-                            _persym_label = "per_sym_ingested"
-                            _persym_full = dict(defaults); _persym_full.update(_persym_ov_san)
-                        else:
-                            _persym_ov_san = None
+                        _persym_ov_san = None
+                        print(f"[BASELINE-PERSYM-SNAPSHOT] {new_symside} absent from valid manifest; cat_side is sole baseline", flush=True)
                 except Exception as _e_ps:
-                    print(f"[BASELINE-PERSYM-warn] {new_symside} {_e_ps}", flush=True)
-                    _persym_ov_san = None
+                    print(f"[BASELINE-PERSYM-SNAPSHOT-INVALID] {new_symside} {_e_ps} — refusing stale worker DB/ingested settings", flush=True)
+                    raise SystemExit(2)
                 # parallel re-evaluation on the new prepared NPZ slice (no look-ahead, 0.07s each, hot ALL_PREPARED)
                 import concurrent.futures as _cf_bl
                 _fut_cat = _fut_per = None
@@ -13124,6 +13170,8 @@ def _main_single():
                         _diff_san, _ = sanitize_overrides(_diff, defaults)
                         print(f"[BASELINE-WINNER] {new_symside} per_sym wins cat {float(_cat_vec.get('gain_pct') or 0):.2f} vs per_sym {float(_persym_vec.get('gain_pct') or 0):.2f} -> E3 per_sym, C diff {len(_diff_san)} overrides (full {len(_win_full)} vs bold {len(_cur_bold)})", flush=True)
                         overrides = _diff_san
+                        _baseline_winner_kind = "per_sym"
+                        _baseline_winner_full = dict(_win_full)
                         baseline_vec = _win_vec
                         _zero_trades_early = int(baseline_vec.get("trades") or 0) == 0
                         _adapt_report = {"baseline_winner": "per_sym", "cat_gain": _cat_vec.get("gain_pct"), "persym_gain": _persym_vec.get("gain_pct"), "diff_overrides": len(_diff_san)}
@@ -13131,17 +13179,23 @@ def _main_single():
                         print(f"[BASELINE-WINNER] {new_symside} cat_side wins cat {float(_cat_vec.get('gain_pct') or 0):.2f} vs per_sym {float(_persym_vec.get('gain_pct') or 0):.2f} -> E3 cat_side", flush=True)
                         # cat wins: keep cat baseline as E3, overrides = cat (template bold)
                         overrides = dict(_cat_ov_san)
+                        _baseline_winner_kind = "cat_side"
+                        _baseline_winner_full = None
                         baseline_vec = _cat_vec
                         _zero_trades_early = int(baseline_vec.get("trades") or 0) == 0
                         _adapt_report = {"baseline_winner": "cat_side", "cat_gain": _cat_vec.get("gain_pct"), "persym_gain": float(_persym_vec.get("gain_pct") or 0) if _persym_vec else None}
                     _cat_vs_persym_done = True
+                    _cat_persym_selected = True
                 else:
                     # no per_sym yet (first run): cat is baseline, no C adjustment needed
                     print(f"[BASELINE-WINNER] {new_symside} cat_side only (no per_sym) cat {float(_cat_vec.get('gain_pct') or 0):.2f} -> E3 cat_side", flush=True)
                     overrides = dict(_cat_ov_san)
+                    _baseline_winner_kind = "cat_side"
+                    _baseline_winner_full = None
                     baseline_vec = _cat_vec
                     _zero_trades_early = int(baseline_vec.get("trades") or 0) == 0
                     _cat_vs_persym_done = True
+                    _cat_persym_selected = True
                     _adapt_report = {"baseline_winner": "cat_side_first_run"}
             except Exception as _e_bl:
                 import traceback as _tb_bl
@@ -13234,8 +13288,8 @@ def _main_single():
         # USER 2026-09-29: a sheet must start from the BEST previous settings — in FRESH mode always compare live recipe /
         # previous best / template defaults on the CURRENT engine and start from the best credible one (not only when the
         # recipe fails). A V15_START_OVERRIDES (365D-repaired) run keeps its set unless it is not credible.
-        _always_best_base = os.environ.get("V15_FRESH_RUN", "0") == "1" and not os.environ.get("V15_START_OVERRIDES")
-        if prepared is not None and os.environ.get("V15_ADAPT_BASELINE", "1") == "1" and (_always_best_base or int(baseline_vec.get("trades") or 0) < ADAPT_FLOOR_TRADES or not baseline_vec.get("valid") or float(baseline_vec.get("gain_pct") or 0) < ADAPT_ULTRA_NEG_PCT):
+        _always_best_base = not locals().get("_cat_persym_selected") and os.environ.get("V15_FRESH_RUN", "0") == "1" and not os.environ.get("V15_START_OVERRIDES")
+        if prepared is not None and not locals().get("_cat_persym_selected") and os.environ.get("V15_ADAPT_BASELINE", "1") == "1" and (_always_best_base or int(baseline_vec.get("trades") or 0) < ADAPT_FLOOR_TRADES or not baseline_vec.get("valid") or float(baseline_vec.get("gain_pct") or 0) < ADAPT_ULTRA_NEG_PCT):
             # USER 2026-09-29: never sweep from a 0-trade / sub-floor / ultra-negative baseline — adapt to a credible one first
             _bases = [("live_recipe", dict(_recipe_only_overrides)), ("template_defaults", dict(_tpl_defaults)), ("current", dict(overrides))]
             if _ingested_overrides and _ingested_overrides != _recipe_only_overrides:
@@ -13276,7 +13330,7 @@ def _main_single():
     # so a final below the previous best is impossible. Candidates: the incumbent (start/challenger winner, which
     # already competed against cat_side defaults + per-sym), the top published sets from S1 per_sym_history
     # (shipped with the dispatch: ~/v15_prev_best/{ss}.json) and earlier finals on this host. V15_PREV_BEST_START=0 disables.
-    if prepared is not None and os.environ.get("V15_PREV_BEST_START", "1") == "1" and not locals().get("_nr_applied"):
+    if prepared is not None and not locals().get("_cat_persym_selected") and os.environ.get("V15_PREV_BEST_START", "1") == "1" and not locals().get("_nr_applied"):
         try:
             from baseline_select import score as _pb_score
             _pb_list = []
@@ -13466,6 +13520,10 @@ def _main_single():
     else:
         wb_path = clone_template(template, new_symside)
         print(f"[clone] -> {wb_path}", flush=True)
+
+    if locals().get("_baseline_winner_kind") == "per_sym":
+        _materialized = materialize_baseline_defaults(wb_path, _baseline_winner_full or {}, defaults)
+        print(f"[BASELINE-WINNER-WORKBOOK] {new_symside} materialized {len(_materialized)} per_sym defaults", flush=True)
 
     # baseline metrics sheet
     try:
