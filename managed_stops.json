@@ -1,23 +1,30 @@
 {
-  "flz:DOGEUSDC_LONG": {
-    "orderId": "1000002644321764",
-    "stopPrice": 0.07582,
-    "entry_sig": "2026-10-26 10:38:07.995000+00:00",
-    "symbol": "DOGEUSDC",
+  "fin:RUNEUSDT_LONG": {
+    "orderId": "3000002275726535",
+    "stopPrice": 0.6156,
+    "entry_sig": "2026-10-26 12:03:50.239000+00:00",
+    "symbol": "RUNEUSDT",
     "side": "LONG"
   },
-  "flz:DASHUSDT_SHORT": {
-    "orderId": "1000002644960668",
-    "stopPrice": 53.52,
-    "entry_sig": "2026-10-26 15:28:40.421000+00:00",
-    "symbol": "DASHUSDT",
-    "side": "SHORT"
+  "fin:MAGICUSDT_LONG": {
+    "orderId": "3000002275571346",
+    "stopPrice": 0.0801,
+    "entry_sig": "2026-10-26 11:11:53.148000+00:00",
+    "symbol": "MAGICUSDT",
+    "side": "LONG"
   },
-  "flz:XRPUSDC_LONG": {
-    "orderId": "1000002644989316",
-    "stopPrice": 1.2736,
-    "entry_sig": "2026-10-26 15:29:27.770000+00:00",
-    "symbol": "XRPUSDC",
+  "fin:ZROUSDT_LONG": {
+    "orderId": "3000002275434866",
+    "stopPrice": 1.652,
+    "entry_sig": "2026-10-26 09:42:05.252000+00:00",
+    "symbol": "ZROUSDT",
+    "side": "LONG"
+  },
+  "fin:EDUUSDT_LONG": {
+    "orderId": "3000002275737799",
+    "stopPrice": 0.05673,
+    "entry_sig": "2026-10-26 12:44:37.766153+00:00",
+    "symbol": "EDUUSDT",
     "side": "LONG"
   }
 }
