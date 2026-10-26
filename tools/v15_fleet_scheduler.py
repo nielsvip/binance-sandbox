@@ -2991,6 +2991,10 @@ def side_cmd(host, sym, side, window, pdir, attempt, workers):
         env += round_env_inline(_round_id_of(pdir))  # USER 2026-10-19: self-expiring, round-scoped override (see round_env_inline)
         if host.get("sides"):
             env += " V15_PAIR_MODE=0"
+        # Temporary V19 calculation path while the V20 stock entry gate is
+        # repaired.  This applies to NEW pilot processes only; live managers,
+        # NPZ producers, and already running pilots retain their loaded code.
+        env += " V15_V19_INTERIM=1 PYTHONPATH=/home/niels/binance-sandbox/tools/v19_runtime${PYTHONPATH:+:$PYTHONPATH}"
         body = f"{env} /home/niels/.conda/envs/binance_env_mac/bin/python -u v15_pilot.py --sym-side {ss} --template {t} --seq-mode worst2best --window-days 30 --vector-only --workers {workers}"
     elif window == "365D":
         body = (f"mkdir -p {chain}/v365 && nice -n 10 /home/niels/.conda/envs/binance_env_mac/bin/python -u tools/v15_365_cycle.py --sym-side {ss} --progress {pdir}/{ss}_v14_progress.json "

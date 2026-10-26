@@ -6,13 +6,6 @@
     "symbol": "DOGEUSDC",
     "side": "LONG"
   },
-  "flz:HYPEUSDT_LONG": {
-    "orderId": "1000002644255545",
-    "stopPrice": 75.36,
-    "entry_sig": "2026-10-26 09:43:19.369000+00:00",
-    "symbol": "HYPEUSDT",
-    "side": "LONG"
-  },
   "flz:BNBUSDC_LONG": {
     "orderId": "1000002644231328",
     "stopPrice": 728.94,
@@ -20,11 +13,18 @@
     "symbol": "BNBUSDC",
     "side": "LONG"
   },
-  "flz:SOLUSDC_LONG": {
-    "orderId": "1000002644391369",
-    "stopPrice": 99.39,
-    "entry_sig": "2026-10-26 11:33:39.493000+00:00",
-    "symbol": "SOLUSDC",
+  "flz:DASHUSDT_SHORT": {
+    "orderId": "1000002644960668",
+    "stopPrice": 53.52,
+    "entry_sig": "2026-10-26 15:28:40.421000+00:00",
+    "symbol": "DASHUSDT",
+    "side": "SHORT"
+  },
+  "flz:XRPUSDC_LONG": {
+    "orderId": "1000002644964229",
+    "stopPrice": 1.2736,
+    "entry_sig": "2026-10-26 15:29:27.770000+00:00",
+    "symbol": "XRPUSDC",
     "side": "LONG"
   }
 }

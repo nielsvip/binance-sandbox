@@ -1,64 +1,68 @@
 {
-  "ts": "2026-10-26T15:25:13.166652+00:00",
-  "tick": "2026-10-26T13:10:02.083155+00:00",
-  "tick_age_s": 8111,
+  "ts": "2026-10-26T15:30:14.957387+00:00",
+  "tick": "2026-10-26T15:28:02.324302+00:00",
+  "tick_age_s": 133,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run37.json",
     "round": "run37",
     "complete": false,
-    "universe_n": 206,
-    "n_complete": 117,
-    "n_pending": 89,
+    "universe_n": 205,
+    "n_complete": 118,
+    "n_pending": 87,
     "n_refused_only": 0,
     "n_excluded": 0,
-    "n_launchable_pending": 73,
+    "n_launchable_pending": 59,
     "hosts_not_visible": []
   },
   "hosts": {
     "s1": {
-      "cpu_pct": 94,
+      "cpu_pct": 93,
       "slots": "0/4",
       "observed_running": [],
       "published_last_hour": 0,
       "idle_reason": "disk guard",
-      "mem_avail_mb": 9808
+      "mem_avail_mb": 29221
     },
     "s2": {
-      "cpu_pct": 26,
-      "slots": "1/4",
-      "observed_running": [],
-      "published_last_hour": 0,
-      "idle_reason": null,
-      "mem_avail_mb": 10380
-    },
-    "s5": {
-      "cpu_pct": 16,
+      "cpu_pct": 27,
       "slots": "0/4",
       "observed_running": [],
       "published_last_hour": 0,
-      "idle_reason": "disk guard",
-      "mem_avail_mb": 22417
+      "idle_reason": "mem guard",
+      "mem_avail_mb": 7815
     },
     "s6": {
-      "cpu_pct": 10,
-      "slots": "1/4",
+      "cpu_pct": 18,
+      "slots": "0/4",
       "observed_running": [],
       "published_last_hour": 0,
-      "idle_reason": null,
-      "mem_avail_mb": 23750
+      "idle_reason": "no eligible ready symbol for this host",
+      "mem_avail_mb": 19635
+    },
+    "s5": {
+      "cpu_pct": 44,
+      "slots": "3/4",
+      "observed_running": [
+        "CDW",
+        "DVN",
+        "EOG"
+      ],
+      "published_last_hour": 0,
+      "idle_reason": "disk guard",
+      "mem_avail_mb": 20728
     }
   },
   "one_hour_total": 0,
   "alerts": [
-    "SCHEDULER_STALE:8111s",
     "LOW_THROUGHPUT:s1:0/h",
     "IDLE:s1:disk guard",
     "LOW_THROUGHPUT:s2:0/h",
-    "LOW_CPU:s2:26%",
-    "LOW_THROUGHPUT:s5:0/h",
-    "LOW_CPU:s5:16%",
-    "IDLE:s5:disk guard",
+    "LOW_CPU:s2:27%",
+    "IDLE:s2:mem guard",
     "LOW_THROUGHPUT:s6:0/h",
-    "LOW_CPU:s6:10%"
+    "LOW_CPU:s6:18%",
+    "IDLE:s6:no eligible ready symbol for this host",
+    "LOW_THROUGHPUT:s5:0/h",
+    "LOW_CPU:s5:44%"
   ]
 }
