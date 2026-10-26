@@ -749,6 +749,10 @@ def load_sets():
     except Exception:
         _sets = {}
     if SCOPE == "7d":
+        # An expired or partially copied premarket stage must stop producing
+        # actionable 7D state, even if a supervisor keeps this process alive.
+        from tools.v15_preopen_7d_runtime import assert_vector_stage_ready
+        assert_vector_stage_ready(VL)
         # The 7D lane has no fallback to 30D candidates, progress, or the
         # ordinary registry. Every set must carry its own verified provenance.
         return {

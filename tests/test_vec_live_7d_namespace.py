@@ -1,4 +1,6 @@
 import json
+import datetime as dt
+import hashlib
 from pathlib import Path
 
 import pytest
@@ -22,6 +24,7 @@ def test_7d_executor_loads_only_verified_account_matched_sets(monkeypatch, tmp_p
     sets = tmp_path / "vec_driven_sets.json"
     candidates = tmp_path / "candidates.json"
     registry.write_text(json.dumps({
+        "expires_utc": (dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=1)).isoformat(),
         "A_LONG": {"mode": "live", "account": "fin"},
         "B_LONG": {"mode": "live", "account": "fin"},
         "C_LONG": {"mode": "live", "account": "trc"},
@@ -34,7 +37,14 @@ def test_7d_executor_loads_only_verified_account_matched_sets(monkeypatch, tmp_p
         "D_LONG": {"mode": "live", "account": "fin", "window_days": 30, "verified": True, "source": "verified_30d_fallback", "overrides": {"X": 4}},
     }))
     candidates.write_text(json.dumps({"B_LONG": {"overrides": {"X": 9}}}))
+    (tmp_path / "validation.json").write_text(json.dumps({
+        "day": dt.datetime.now(dt.timezone.utc).date().isoformat(),
+        "created_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "queue_n": 1, "selected_7d": 1, "stage_only": True,
+        "sets_sha256": hashlib.sha256(sets.read_bytes()).hexdigest(),
+    }))
     monkeypatch.setattr(lane, "SCOPE", "7d")
+    monkeypatch.setattr(lane, "VL", tmp_path)
     monkeypatch.setattr(lane, "VEC_DRIVEN", registry)
     monkeypatch.setattr(lane, "SETS", sets)
     monkeypatch.setattr(lane, "CANDIDATES", candidates)

@@ -10754,7 +10754,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _fresh_final = dict(_fresh_final or {}, gain_pct=float(_gt_g), vector_gain_pct=float(progress["gain_truth"]["vector_gain"]), gain_source="chart_ledger")
             else:
                 print(f"[GAIN-TRUTH] {new_symside} ok vector {float(final_gain):.4f} == chart-ledger {float(_gt_g):.4f} (|d|<=0.01)", flush=True)
-            _final_name = _final_matrix_name(new_symside, _bh_raw, float(final_gain), int(_gt_n if _gt_n else _final_trades), 30)
+            _final_name = _final_matrix_name(new_symside, _bh_raw, float(final_gain), int(_gt_n if _gt_n else _final_trades), args.window_days)
             import shutil as _sh_pub
             _cand_class = "BEST_EFFORT" if _best_effort is not None else "QUALIFIED"
             _zero_flush_book()

@@ -27150,6 +27150,8 @@ async def check_exit_candidates_for_account(
                 # Root cause: 3m structural stops fire on pullback-in-trend while 1h+4h+D still bearish.
                 # Rule: if 2+ of {1h,4h,D} WT aligned with position AND abs(gain) <= HTF_VETO_MAX_LOSS, skip.
                 _htf_veto_active, _hv_aligned = (False, 0) if is_hedge else _bge_core.htf_veto(lambda k, d: getattr(config, k, d), current_gain, is_long, indicators)  # 2026-10-17 shared core
+                _exit_fee_pct = safe_fetch_float(_sw_get(symbol, position_side, "COMMISSION_BUFFER_PCT", 0.08), 0.08)
+                _net_gain_positive = bool(np.isfinite(current_gain) and np.isfinite(_exit_fee_pct) and _exit_fee_pct >= 0 and current_gain > _exit_fee_pct)
                 if (
                     _trend_veto_active
                     and not hard_exit_reason
@@ -27171,6 +27173,8 @@ async def check_exit_candidates_for_account(
                     _be_grace = float(getattr(config, "BREAKEVEN_GRACE_MINUTES", 15.0))
                     _pos_max_g_be = safe_fetch_float(getattr(position, "max_gain", 0), 0)
                     _be_fire, _be_why, _be_rs = _bge_core.window_decision(lambda k, d: getattr(config, k, d), current_gain, _pos_max_g_be, _pos_age_min, _htf_veto_active)
+                    if _be_fire and not _net_gain_positive:
+                        _be_fire, _be_why = False, "NET_NONPOSITIVE"
                     if _be_why == "HTF_VETO":
                         logger.info(f"🛡️[HTF_VETO_BREAKEVEN] {position_key}: gain {current_gain:.2f}% but HTF still aligned ({_hv_aligned}/3) — skipping breakeven exit")
                     elif _be_why == "PEAK_GATE":
@@ -27211,6 +27215,7 @@ async def check_exit_candidates_for_account(
                         _dc_tag = "DC4"
                     if (
                         is_long
+                        and _net_gain_positive
                         and _be_dc_low_v > 0
                         and current_price > 0
                         and current_price < _be_dc_low_v
@@ -27226,6 +27231,7 @@ async def check_exit_candidates_for_account(
                             )
                     elif (
                         not is_long
+                        and _net_gain_positive
                         and _be_dc_high_v > 0
                         and current_price > 0
                         and current_price > _be_dc_high_v
@@ -27371,7 +27377,7 @@ async def check_exit_candidates_for_account(
                         _, _, _pgp_hz_gain, _, _pgp_drop = _pgp_thr(config)
                     except Exception:
                         _pgp_fires, _pgp_hz_gain, _pgp_drop = False, 0.08, 1.0
-                    if _pgp_fires:
+                    if _pgp_fires and _net_gain_positive:
                         if current_gain < _pgp_hz_gain:
                             hard_exit_reason = f"PEAK_GIVEBACK_GAIN_EROSION_STOP_peak{_pgp_max_g:.2f}%_cur{current_gain:.2f}%"
                             logger.critical(

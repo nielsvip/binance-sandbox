@@ -17,6 +17,28 @@ def _sha(path: Path) -> str:
     return h.hexdigest()
 
 
+def assert_vector_stage_ready(lane: Path) -> dict:
+    report = json.loads((lane / "validation.json").read_text())
+    now = dt.datetime.now(dt.timezone.utc)
+    try:
+        created = dt.datetime.fromisoformat(str(report.get("created_utc")).replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise RuntimeError("7D vector stage has no creation timestamp") from exc
+    if (created.tzinfo is None or created > now or (now - created).total_seconds() > 26 * 3600
+            or report.get("day") != created.astimezone(dt.timezone.utc).date().isoformat()
+            or report.get("queue_n") != report.get("selected_7d")
+            or not report.get("stage_only")):
+        raise RuntimeError("7D vector stage is incomplete or expired")
+    sets_path = lane / "vec_driven_sets.json"
+    if report.get("sets_sha256") != _sha(sets_path):
+        raise RuntimeError("7D vector sets differ from validated stage")
+    registry = json.loads((lane / "vec_driven.json").read_text())
+    expiry = dt.datetime.fromisoformat(str(registry.get("expires_utc")).replace("Z", "+00:00"))
+    if expiry <= now:
+        raise RuntimeError("7D vector registry expired")
+    return registry
+
+
 def assert_ready(account: str, root: Path) -> None:
     if os.environ.get("VEC_LIVE_SCOPE", "30d").lower() != "7d":
         return
@@ -27,9 +49,8 @@ def assert_ready(account: str, root: Path) -> None:
         raise RuntimeError("7D lane requires its staged per_sym_store_7d.db")
     report_path = db.parent / "validation.json"
     report = json.loads(report_path.read_text())
-    today = dt.datetime.now(dt.timezone.utc).date().isoformat()
-    if report.get("day") != today or report.get("queue_n") != report.get("selected_7d") or not report.get("stage_only"):
-        raise RuntimeError("7D stage is incomplete or for another market day")
+    if report.get("queue_n") != report.get("selected_7d") or not report.get("stage_only"):
+        raise RuntimeError("7D stage is incomplete")
     if report.get("db_sha256") != _sha(db):
         raise RuntimeError("7D settings database differs from validated stage")
     con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
@@ -39,14 +60,7 @@ def assert_ready(account: str, root: Path) -> None:
     finally:
         con.close()
     lane = Path(root) / "data" / "vec_live_7d"
-    sets_path = lane / "vec_driven_sets.json"
-    registry_path = lane / "vec_driven.json"
-    if report.get("sets_sha256") != _sha(sets_path):
-        raise RuntimeError("7D vector sets differ from validated stage")
-    registry = json.loads(registry_path.read_text())
-    expiry = dt.datetime.fromisoformat(str(registry.get("expires_utc")).replace("Z", "+00:00"))
-    if expiry <= dt.datetime.now(dt.timezone.utc):
-        raise RuntimeError("7D vector registry expired")
+    registry = assert_vector_stage_ready(lane)
     if not any(isinstance(v, dict) and v.get("account") == account and v.get("mode") == "live"
                for k, v in registry.items() if not k.startswith("_")):
         raise RuntimeError(f"7D vector registry has no live {account} keys")

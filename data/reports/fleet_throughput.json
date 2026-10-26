@@ -1,7 +1,7 @@
 {
-  "ts": "2026-10-26T00:45:05.418342+00:00",
-  "tick": "2026-10-26T00:44:01.675866+00:00",
-  "tick_age_s": 64,
+  "ts": "2026-10-26T00:50:04.256460+00:00",
+  "tick": "2026-10-26T00:48:01.482117+00:00",
+  "tick_age_s": 123,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run36.json",
     "round": "run36",
@@ -16,7 +16,7 @@
   },
   "hosts": {
     "s1": {
-      "cpu_pct": 100,
+      "cpu_pct": 97,
       "slots": "2/4",
       "observed_running": [
         "ACTUSDT",
@@ -24,35 +24,35 @@
       ],
       "published_last_hour": 2,
       "idle_reason": "mem guard",
-      "mem_avail_mb": 8406
+      "mem_avail_mb": 12145
     },
     "s2": {
-      "cpu_pct": 60,
-      "slots": "4/4",
+      "cpu_pct": 100,
+      "slots": "3/4",
       "observed_running": [
+        "DASHUSDT",
         "GRASSUSDT",
-        "SUSHIUSDT",
         "WLDUSDC"
       ],
       "published_last_hour": 2,
-      "idle_reason": "slots full",
-      "mem_avail_mb": 17425
+      "idle_reason": "mem guard",
+      "mem_avail_mb": 8960
     },
     "s5": {
-      "cpu_pct": 44,
-      "slots": "4/4",
+      "cpu_pct": 54,
+      "slots": "5/4",
       "observed_running": [
-        "AAPL_CYCLE",
-        "FIX",
-        "GDX",
+        "ABT",
+        "AEM",
+        "AGCO",
         "GLD"
       ],
       "published_last_hour": 2,
       "idle_reason": "slots full",
-      "mem_avail_mb": 29212
+      "mem_avail_mb": 25363
     },
     "s6": {
-      "cpu_pct": 80,
+      "cpu_pct": 100,
       "slots": "4/4",
       "observed_running": [
         "SCCO",
@@ -60,17 +60,16 @@
         "SMCI",
         "SMG"
       ],
-      "published_last_hour": 6,
+      "published_last_hour": 5,
       "idle_reason": "slots full",
-      "mem_avail_mb": 17971
+      "mem_avail_mb": 15762
     }
   },
-  "one_hour_total": 12,
+  "one_hour_total": 11,
   "alerts": [
     "LOW_THROUGHPUT:s1:2/h",
     "LOW_THROUGHPUT:s2:2/h",
-    "LOW_CPU:s2:60%",
     "LOW_THROUGHPUT:s5:2/h",
-    "LOW_CPU:s5:44%"
+    "LOW_CPU:s5:54%"
   ]
 }

@@ -172,10 +172,13 @@ def stage(queue_path: Path, result_dir: Path, source_db: Path, source_sets_path:
     db_final = out_dir / "per_sym_store_7d.db"
     os.replace(db_tmp, db_final)
     registry = {ss: {"mode": "live", "account": entry["account"]} for ss, entry in sets.items()}
-    registry["expires_utc"] = (dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=1)).isoformat()
+    # Crypto FIN continues through the overnight session until the next
+    # premarket pass. Bound the handoff even if the next pass never completes.
+    registry["expires_utc"] = (dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=26)).isoformat()
     (out_dir / "vec_driven_sets.json").write_text(json.dumps(sets, sort_keys=True) + "\n")
     (out_dir / "vec_driven.json").write_text(json.dumps(registry, sort_keys=True) + "\n")
-    report = {"day": today, "queue_n": len(sources), "selected_7d": len(results),
+    report = {"day": today, "created_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+              "queue_n": len(sources), "selected_7d": len(results),
               "fallback_30d": len(sets) - len(results), "stage_only": True,
               "db": str(db_final), "sets": str(out_dir / "vec_driven_sets.json"),
               "db_sha256": file_sha256(db_final),

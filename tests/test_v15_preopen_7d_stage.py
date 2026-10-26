@@ -96,7 +96,7 @@ def test_runtime_requires_matching_db_and_vector_sets(tmp_path, monkeypatch):
     stage(queue, results, db, sets, stocks, stage_dir, today)
     lane = tmp_path / "data/vec_live_7d"
     lane.mkdir(parents=True)
-    for name in ("vec_driven_sets.json", "vec_driven.json"):
+    for name in ("vec_driven_sets.json", "vec_driven.json", "validation.json"):
         shutil.copy2(stage_dir / name, lane / name)
     monkeypatch.setenv("VEC_LIVE_SCOPE", "7d")
     monkeypatch.setenv("PER_SYM_STORE_DB", str(stage_dir / "per_sym_store_7d.db"))
