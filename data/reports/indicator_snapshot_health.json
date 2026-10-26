@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-26T14:10:14Z",
+ "generated_utc": "2026-10-26T14:13:05Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 1340.6,
+  "age_s": 1513.9,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": null,
   "proc_age_s": null,
-  "log_age_s": 1338.4,
+  "log_age_s": 1511.3,
   "warmup_done": true,
   "timeframes_since_restart": [
    "3m",
@@ -228,6 +228,7 @@
    "no ez_indicators process",
    "no ez_indicators process",
    "no ez_indicators process",
+   "no ez_indicators process",
    "no ez_indicators process"
   ],
   "policy": {
@@ -249,12 +250,13 @@
   "lease_since": "2026-10-25T23:35:46Z",
   "lease_reason": "manual force-mac",
   "now": 1793023814.0841503,
+  "from_cache_age_s": 171.0,
   "heartbeat_age_s": 3407.2,
   "active_s": 421631.9,
   "note": "ACTIVE is CORRECT while the Mac snapshot is stale \u2014 fix the Mac, S1 returns to NORMAL on its own"
  },
  "alerts": [
-  "SNAPSHOT STALE: latest_market_data.json is 1340s old (> 600s). ez_indicators pid=None warmup_done=True tfs_since_restart=['3m', '3m', '3m', '15m', '3m', '1h', '3m', '3m', '3m', '1h', '3m', '1h', '3m', '3m', '15m', '3m', '3m', '1h', '1h', '3m', '1h', '3m', '1h', '3m', '3m', '3m', '3m', '3m', '1h', '3m', '15m', '3m', '3m', '1h', '3m', '1h', '3m', '3m', '3m', '3m', '3m', '15m', '3m', '3m', '1h', '3m', '3m', '3m', '3m', '1h', '3m', '3m', '3m', '3m', '1h', '3m', '1h', '15m', '3m', '3m', '3m', '3m', '3m', '1h', '3m', '15m', '3m', '3m', '3m', '3m', '3m', '3m', '3m', '3m', '3m', '3m', '3m', '15m', '3m', '3m', '3m', '3m', '3m', '3m', '3m', '3m', '3m', '15m', '3m', '3m', '3m', '3m', '3m', '3m', '3m', 'D', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '3m', '4h', '1h', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '1h', '15m', '3m', '15m', '3m', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '1h', '15m', '3m', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '1h', '15m', '3m', '1h', '15m', '3m', '1h', '15m', '3m', '1h', '15m', '3m', '1h', '15m', '3m', '3m', '1h', '15m', '3m', '1h', '15m', '3m', '15m', '3m', '3m', '1h'] restarts_last_hour=0. Live crypto decisions are reading a stale indicator snapshot."
+  "SNAPSHOT STALE: latest_market_data.json is 1513s old (> 600s). ez_indicators pid=None warmup_done=True tfs_since_restart=['3m', '3m', '3m', '15m', '3m', '1h', '3m', '3m', '3m', '1h', '3m', '1h', '3m', '3m', '15m', '3m', '3m', '1h', '1h', '3m', '1h', '3m', '1h', '3m', '3m', '3m', '3m', '3m', '1h', '3m', '15m', '3m', '3m', '1h', '3m', '1h', '3m', '3m', '3m', '3m', '3m', '15m', '3m', '3m', '1h', '3m', '3m', '3m', '3m', '1h', '3m', '3m', '3m', '3m', '1h', '3m', '1h', '15m', '3m', '3m', '3m', '3m', '3m', '1h', '3m', '15m', '3m', '3m', '3m', '3m', '3m', '3m', '3m', '3m', '3m', '3m', '3m', '15m', '3m', '3m', '3m', '3m', '3m', '3m', '3m', '3m', '3m', '15m', '3m', '3m', '3m', '3m', '3m', '3m', '3m', 'D', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '3m', '4h', '1h', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '1h', '15m', '3m', '15m', '3m', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '1h', '15m', '3m', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '1h', '15m', '3m', '1h', '15m', '3m', '1h', '15m', '3m', '1h', '15m', '3m', '1h', '15m', '3m', '3m', '1h', '15m', '3m', '1h', '15m', '3m', '15m', '3m', '3m', '1h'] restarts_last_hour=0. Live crypto decisions are reading a stale indicator snapshot."
  ],
  "verdict": "ALERT"
 }
