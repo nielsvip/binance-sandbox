@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-26T09:00:02Z",
+ "generated_utc": "2026-10-26T09:20:03Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-26T13:30:00Z",
  "market_open": false,
@@ -7,7 +7,8 @@
  "failed_critical": [
   "defaults_chain_completed",
   "selection_fresh",
-  "live_set_matches_selection"
+  "live_set_matches_selection",
+  "indicators_fresh"
  ],
  "checks": [
   {
@@ -15,10 +16,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 276,
-    "filled_before_open": 276
+    "filled_today": 277,
+    "filled_before_open": 277
    },
-   "detail": "276 boards filled before the open (276 today)"
+   "detail": "277 boards filled before the open (277 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -49,12 +50,12 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "reports_today": 8,
-    "newest_report": "persym_golive_20261026_refresh_0752.json",
-    "newest_report_at": "2026-10-26T08:08:55Z",
-    "tiers_at": "2026-10-26T08:09:20Z"
+    "reports_today": 9,
+    "newest_report": "persym_golive_20261026_refresh_0853.json",
+    "newest_report_at": "2026-10-26T09:16:22Z",
+    "tiers_at": "2026-10-26T09:17:20Z"
    },
-   "detail": "persym_golive_20261026_refresh_0752.json at 2026-10-26T08:08:55Z, tiers 2026-10-26T08:09:20Z"
+   "detail": "persym_golive_20261026_refresh_0853.json at 2026-10-26T09:16:22Z, tiers 2026-10-26T09:17:20Z"
   },
   {
    "name": "live_set_matches_selection",
@@ -122,19 +123,6 @@
       ]
      },
      {
-      "sym_side": "SCHW_SHORT",
-      "published_at": "2026-10-26T08:13:53Z",
-      "material": 73,
-      "sample": [
-       "ATR_ADAPTIVE_STOP_MULT",
-       "ATR_ADAPTIVE_STOP_TF",
-       "BB_PROFIT_TAKE_TF",
-       "BEAR_HOLD_EXIT_DELAY_BARS",
-       "DC_BREAKOUT_OVERBOUGHT_K15M_CAP",
-       "DC_EDGE_SIZING_MAX_MULT"
-      ]
-     },
-     {
       "sym_side": "ICPUSDT_LONG",
       "published_at": "2026-10-13T08:02:23Z",
       "material": 72,
@@ -145,19 +133,6 @@
        "BB_PROFIT_TAKE_TF",
        "BB_PULLBACK_GATE_ON_FINAL",
        "BB_PULLBACK_GATE_TF"
-      ]
-     },
-     {
-      "sym_side": "RIO_SHORT",
-      "published_at": "2026-10-26T08:24:34Z",
-      "material": 72,
-      "sample": [
-       "ATR_ADAPTIVE_STOP_MULT",
-       "BB_PULLBACK_GATE_ENABLED",
-       "BB_PULLBACK_GATE_FILTER_TF",
-       "COMMISSION_BUFFER_PCT",
-       "COOLDOWN_BARS_TRADIER",
-       "COUNTER_TREND_ADD_BLOCK_ENABLED"
       ]
      },
      {
@@ -174,29 +149,55 @@
       ]
      },
      {
-      "sym_side": "GDX_SHORT",
-      "published_at": "2026-10-26T07:53:29Z",
-      "material": 60,
+      "sym_side": "ONDOUSDT_SHORT",
+      "published_at": "2026-10-14T10:18:32Z",
+      "material": 57,
       "sample": [
-       "ATR_ADAPTIVE_STOP_ENABLED",
-       "ATR_ADAPTIVE_STOP_MULT",
-       "BEAR_HOLD_EXIT_DELAY_BARS",
-       "CANDLE_PATTERN_STOPS_FILTER_TF",
-       "COMMISSION_BUFFER_PCT",
+       "ADX_REGIME_FILTER_ENABLED",
+       "ATR_ADAPTIVE_SIZING_ENABLED",
+       "BREAKOUT_RETEST_ARMED_ENABLED",
+       "BREAKOUT_RETEST_FILTER_TF",
+       "CIRCUIT_SHARPE_GATES_FILTER_TF",
        "DAYTRADE_DC_TARGET_TF"
       ]
      },
      {
-      "sym_side": "ETN_SHORT",
-      "published_at": "2026-10-26T07:48:34Z",
-      "material": 59,
+      "sym_side": "PWR_SHORT",
+      "published_at": "2026-10-26T04:46:08Z",
+      "material": 57,
       "sample": [
-       "ATR_ADAPTIVE_STOP_TF",
-       "BEAR_HOLD_EXIT_DELAY_BARS",
-       "BREAKOUT_RETEST_ARMED_ENABLED",
-       "BREAKOUT_RETEST_FILTER_TF",
+       "ADX_REGIME_FILTER_ENABLED",
+       "ATR_ADAPTIVE_STOP_MULT",
+       "AUGMENT_INTO_REENTRY_ENABLED",
        "COOLDOWN_BARS_TRADIER",
+       "COUNTER_TREND_ADD_BLOCK_ENABLED",
        "DAYTRADE_DC_TARGET_TF"
+      ]
+     },
+     {
+      "sym_side": "APO_SHORT",
+      "published_at": "2026-10-20T11:43:52Z",
+      "material": 55,
+      "sample": [
+       "AUGMENT_BREAKOUT_MIN_GAIN_PCT",
+       "CIRCUIT_SHARPE_GATES_FILTER_TF",
+       "DAYTRADE_DC_TARGET_TF",
+       "DC_EDGE_SIZING_MAX_MULT",
+       "DC_HARD_STOP_15M_ENABLED",
+       "DC_MOMENTUM_BOTA_SCORER_FILTER_TF"
+      ]
+     },
+     {
+      "sym_side": "ACN_LONG",
+      "published_at": "2026-10-23T06:02:03Z",
+      "material": 50,
+      "sample": [
+       "ATR_ADAPTIVE_STOP_MULT",
+       "ATR_ADAPTIVE_STOP_TF",
+       "AUGMENT_FALLBACK_REDUCE_PCT",
+       "BB_PULLBACK_GATE_ENABLED",
+       "BB_SQUEEZE_ENTRY_ENABLED",
+       "COUNTER_TREND_ADD_BLOCK_ENABLED"
       ]
      }
     ]
@@ -205,18 +206,25 @@
   },
   {
    "name": "indicators_fresh",
-   "ok": true,
+   "ok": false,
    "critical": true,
    "measured": {
-    "symbols": 202,
-    "stale_over_90min": 1,
-    "stale_pct": 0.5,
-    "median_age_min": 60.0,
+    "symbols": 329,
+    "stale_over_90min": 53,
+    "stale_pct": 16.1,
+    "median_age_min": 65.1,
     "sample": [
-     "KAITOUSDT"
+     "ASMLUSDT",
+     "AVAXUSDC",
+     "AVGOUSDT",
+     "AXTIUSDT",
+     "BANDUSDT",
+     "BATUSDT",
+     "BEATUSDT",
+     "BIGTIMEUSDT"
     ]
    },
-   "detail": "1/202 symbols past the live 90-min entry gate (0.5%)"
+   "detail": "53/329 symbols past the live 90-min entry gate (16.1%)"
   },
   {
    "name": "s1_sets_synced",
