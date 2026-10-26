@@ -6,14 +6,6 @@
     "symbol": "AVAXUSDC",
     "side": "LONG"
   },
-  "ang:COMPUSDT_LONG": {
-    "orderId": "4000001998157291",
-    "stopPrice": 20.48,
-    "entry_sig": "2026-10-26 15:28:53.213000+00:00",
-    "symbol": "COMPUSDT",
-    "side": "LONG",
-    "disaster_backstop": true
-  },
   "ang:TIAUSDC_LONG": {
     "orderId": "4000001998176335",
     "stopPrice": 0.5268,
@@ -91,13 +83,6 @@
     "symbol": "ZROUSDT",
     "side": "LONG"
   },
-  "ang:BLURUSDT_SHORT": {
-    "orderId": "4000001998246287",
-    "stopPrice": 0.00752,
-    "entry_sig": "2026-10-26 16:01:20.997000+00:00",
-    "symbol": "BLURUSDT",
-    "side": "SHORT"
-  },
   "ang:1000PEPEUSDC_LONG": {
     "orderId": "4000001998255361",
     "stopPrice": 0.0042943,
@@ -105,18 +90,53 @@
     "symbol": "1000PEPEUSDC",
     "side": "LONG"
   },
-  "ang:BBUSDT_SHORT": {
-    "orderId": "4000001998267054",
-    "stopPrice": 0.007786,
-    "entry_sig": "2026-10-26 16:08:45.055000+00:00",
-    "symbol": "BBUSDT",
-    "side": "SHORT"
-  },
   "ang:COTIUSDT_SHORT": {
     "orderId": "4000001998276444",
     "stopPrice": 0.010643,
     "entry_sig": "2026-10-26 16:12:09.262000+00:00",
     "symbol": "COTIUSDT",
+    "side": "SHORT"
+  },
+  "ang:MAGICUSDT_LONG": {
+    "orderId": "4000001998278908",
+    "stopPrice": 0.08103,
+    "entry_sig": "2026-10-26 16:13:23.249000+00:00",
+    "symbol": "MAGICUSDT",
+    "side": "LONG"
+  },
+  "ang:KAVAUSDT_LONG": {
+    "orderId": "4000001998286154",
+    "stopPrice": 0.06896,
+    "entry_sig": "2026-10-26 16:16:06.726000+00:00",
+    "symbol": "KAVAUSDT",
+    "side": "LONG"
+  },
+  "ang:GRAMUSDT_SHORT": {
+    "orderId": "4000001998289435",
+    "stopPrice": 1.239,
+    "entry_sig": "2026-10-26 16:17:01.656000+00:00",
+    "symbol": "GRAMUSDT",
+    "side": "SHORT"
+  },
+  "ang:BCHUSDC_SHORT": {
+    "orderId": "4000001998290554",
+    "stopPrice": 281.63,
+    "entry_sig": "2026-10-26 16:17:45.333000+00:00",
+    "symbol": "BCHUSDC",
+    "side": "SHORT"
+  },
+  "ang:COMPUSDT_LONG": {
+    "orderId": "4000001998157291",
+    "stopPrice": 20.48,
+    "entry_sig": "2026-10-26 15:28:53.213000+00:00",
+    "symbol": "COMPUSDT",
+    "side": "LONG"
+  },
+  "ang:IOTAUSDT_SHORT": {
+    "orderId": "4000001998296155",
+    "stopPrice": 0.04337,
+    "entry_sig": "2026-10-26 16:20:00.642000+00:00",
+    "symbol": "IOTAUSDT",
     "side": "SHORT"
   }
 }
