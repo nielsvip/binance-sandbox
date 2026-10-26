@@ -30,6 +30,19 @@ def receive(base):
         print(json.dumps(result, separators=(',', ':')), flush=True)
 
 
+def acknowledge_unchanged(path, sent_bytes):
+    lock_path = path.with_suffix('.lock')
+    with lock_path.open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            if path.read_bytes() != sent_bytes:
+                return False
+            path.unlink()
+            return True
+        except FileNotFoundError:
+            return False
+
+
 def send_lane(base, mode, host, remote):
     connection = None
     outbox = Path(base) / 'data' / 'closed_15m_outbox' / mode
@@ -42,16 +55,17 @@ def send_lane(base, mode, host, remote):
             if not paths:
                 time.sleep(0.1)
                 continue
-            events = [json.loads(path.read_text()) for path in paths]
+            snapshots = [path.read_bytes() for path in paths]
+            events = [json.loads(snapshot) for snapshot in snapshots]
             connection.stdin.write(json.dumps(events, separators=(',', ':')) + '\n')
             connection.stdin.flush()
             if not select.select([connection.stdout], [], [], 15)[0]:
                 raise TimeoutError('receiver acknowledgement timed out')
             response = json.loads(connection.stdout.readline())
             accepted = {(symbol, int(start)) for symbol, start, _ in response['ok']}
-            for path, event in zip(paths, events):
+            for path, event, snapshot in zip(paths, events, snapshots):
                 if (event['symbol'], int(event['bar_start_ts'])) in accepted:
-                    path.unlink(missing_ok=True)
+                    acknowledge_unchanged(path, snapshot)
             print(json.dumps({'mode': mode, 'host': host, 'sent_at': time.time(), **response}), flush=True)
             if response['errors']:
                 time.sleep(1)

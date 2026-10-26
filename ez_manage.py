@@ -8777,6 +8777,72 @@ def _r6_explicit_main_without_active_hedge(tracker_entry, position_key, active_r
     )
 
 
+_R6_OPEN_RECEIPT_CACHE = {}
+_R6_OPEN_RECEIPT_LOCK = threading.Lock()
+
+
+def _r6_time_value(value):
+    if hasattr(value, "timestamp"):
+        try:
+            return float(value.timestamp())
+        except Exception:
+            pass
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        try:
+            return datetime.fromisoformat(str(value).replace("Z", "+00:00")).timestamp()
+        except Exception:
+            return None
+
+
+def _r6_has_current_vec_open_receipt(base_path, account_key, position_key, opened_at):
+    opened_ts = _r6_time_value(opened_at)
+    if opened_ts is None:
+        return False
+    path = Path(base_path) / "data" / "vec_live" / f"live_exec_{account_key}.jsonl"
+    try:
+        stat = path.stat()
+        signature = (stat.st_mtime_ns, stat.st_size)
+    except OSError:
+        return False
+    cache_key = str(path)
+    with _R6_OPEN_RECEIPT_LOCK:
+        cached = _R6_OPEN_RECEIPT_CACHE.get(cache_key)
+        if cached and cached[0] == signature:
+            latest_by_side = cached[1]
+        else:
+            receipts_by_side = {}
+            try:
+                with path.open("rb") as handle:
+                    if stat.st_size > 4 * 1024 * 1024:
+                        handle.seek(-4 * 1024 * 1024, 2)
+                        handle.readline()
+                    for raw_line in handle:
+                        try:
+                            event = json.loads(raw_line)
+                        except Exception:
+                            continue
+                        side = str(event.get("ss") or "").upper()
+                        if side != position_key.split(":", 1)[-1].upper():
+                            continue
+                        if str(event.get("type") or "").upper() != "OPEN" or str(event.get("action") or "").upper() != "OPEN":
+                            continue
+                        if str(event.get("result") or "").upper() != "SUCCESS":
+                            continue
+                        receipt_ts = _r6_time_value(event.get("ts"))
+                        if receipt_ts is not None:
+                            receipts = receipts_by_side.setdefault(side, [])
+                            receipts.append(receipt_ts)
+                            if len(receipts) > 256:
+                                del receipts[:-256]
+            except OSError:
+                return False
+            _R6_OPEN_RECEIPT_CACHE[cache_key] = (signature, receipts_by_side)
+    receipt_times = receipts_by_side.get(position_key.split(":", 1)[-1].upper(), [])
+    return any(opened_ts <= receipt_ts <= opened_ts + 600.0 for receipt_ts in receipt_times)
+
+
 def _r6_reconcile_explicit_main_position(trade_manager, position_key, position, account_key, logger_obj):
     tracker_manager = (
         getattr(trade_manager, "tracker_manager", None)
@@ -8789,6 +8855,11 @@ def _r6_reconcile_explicit_main_position(trade_manager, position_key, position, 
     active_records = list(getattr(tracker_manager, "active_hedges", None) or [])
     if not _r6_explicit_main_without_active_hedge(tracker_entry, position_key, active_records):
         return False
+    opened_at = getattr(position, "opened_at", None) or tracker_entry.get("opened_at")
+    has_current_main_receipt = _r6_has_current_vec_open_receipt(
+        getattr(config, "BASE_PATH", Path(__file__).resolve().parent),
+        account_key, position_key, opened_at,
+    )
     positions_service = (
         getattr(trade_manager, "positions_service", None)
         or getattr(trade_manager, "service", None)
@@ -8804,6 +8875,47 @@ def _r6_reconcile_explicit_main_position(trade_manager, position_key, position, 
     ]
     seen = set()
     changed = False
+    hedge_reason = str(
+        getattr(position, "augment_reason", "") or tracker_entry.get("augment_reason") or ""
+    ).upper()
+    hedge_reason_present = any(
+        tag in hedge_reason
+        for tag in ("HEDGE_PROTECT_", "HEDGE_ELECTED_", "QUICK_HEDGE_", "HEDGE_SAME_")
+    )
+    if not has_current_main_receipt and hedge_reason_present:
+        for target in targets:
+            if target is None or id(target) in seen:
+                continue
+            seen.add(id(target))
+            try:
+                if not bool(getattr(target, "is_hedge", False)):
+                    changed = True
+                    target.is_hedge = True
+                    target.last_updated = datetime.now(timezone.utc)
+            except Exception:
+                continue
+        if changed:
+            if positions_service is not None and hasattr(positions_service, "_schedule_task"):
+                try:
+                    from ez_positions_service import save_positions_guarded
+                    positions_service._schedule_task(
+                        save_positions_guarded(positions_service, account_key, force=True)
+                    )
+                except Exception as save_error:
+                    logger_obj.warning(
+                        f"[HEDGE_CLASS_RESTORE_SAVE_DEFERRED] {position_key}: supported position save scheduling failed: {save_error}"
+                    )
+            else:
+                logger_obj.warning(
+                    f"[HEDGE_CLASS_RESTORE_IN_MEMORY_ONLY] {position_key}: no supported position save service available"
+                )
+            logger_obj.critical(
+                f"[HEDGE_CLASS_RESTORE] {position_key}: no current-lifecycle VEC OPEN receipt and hedge reason remains; restored stale-cleared is_hedge flag"
+            )
+        return False
+    if not has_current_main_receipt:
+        return False
+    seen.clear()
     for target in targets:
         if target is None or id(target) in seen:
             continue
@@ -8831,7 +8943,7 @@ def _r6_reconcile_explicit_main_position(trade_manager, position_key, position, 
                 f"[HEDGE_CLASS_RECONCILE_IN_MEMORY_ONLY] {position_key}: no supported position save service available"
             )
         logger_obj.critical(
-            f"[HEDGE_CLASS_RECONCILE] {position_key}: explicit tracker main truth, no hedge links/active record; reset stale is_hedge flag"
+            f"[HEDGE_CLASS_RECONCILE] {position_key}: explicit tracker main truth plus current-lifecycle VEC OPEN receipt, no hedge links/active record; reset stale is_hedge flag"
         )
     return True
 
@@ -23704,7 +23816,7 @@ class MultiAccountTradeManager:
                             else (
                                 "OPEN"
                                 if base_amt
-                                <= _psym_sps(sym, _sa_side or "LONG") / current_price
+                                <= _psym_sps(symbol, _sa_side or "LONG") / current_price
                                 else "AUGMENT"
                             )
                         )
@@ -56959,7 +57071,7 @@ async def process_position(
                 if _hg_pos
                 else 0
             )
-            if _hg_pos and _hg_amt > 0:
+            if _hg_pos and _hg_amt > 0 and bool(getattr(config, "HEDGE_MODE", False)):
                 _is_hedge_attr = bool(getattr(_hg_pos, "is_hedge", False))
                 _is_hedge_tracker = False
                 _hedge_for_tracker = None
@@ -58276,6 +58388,8 @@ async def process_position(
             # Reopen is handled by scan_and_hedge_losers when the loser is still in loss AND wt1_15m flips against again.
             # Switches: HEDGE_EXIT_BYPASS_NOLOSS (default True), HEDGE_CLOSE_REMOVE_FROM_TRADEABLE (default True).
             if (
+                bool(getattr(config, "HEDGE_MODE", False))
+                and
                 hasattr(trade_manager, "tracker_manager")
                 and trade_manager.tracker_manager
             ):

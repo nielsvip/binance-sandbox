@@ -12,6 +12,26 @@ from tools.npz_tail_service import (
 )
 
 
+def test_changed_source_recalculates_latest_bar_once_and_keeps_history(tmp_path):
+    from npz_tail_store import compact_tail, load_merged
+    path = tmp_path / 'TESTUSDT.npz'
+    stamp = 1792899000
+    np.savez_compressed(path, timestamps=np.array([stamp - 900]), close=np.array([100.0]))
+    calls = []
+    def compute(symbol, close_ts):
+        calls.append(close_ts)
+        return {'close': 110.0 + len(calls)}
+    assert sweep_symbol(path, 'TESTUSDT', stamp, compute, revision='first') == 'appended'
+    compact_tail(path)
+    assert sweep_symbol(path, 'TESTUSDT', stamp, compute, revision='first') == 'current'
+    assert sweep_symbol(path, 'TESTUSDT', stamp, compute, revision='native-correction') == 'appended'
+    assert sweep_symbol(path, 'TESTUSDT', stamp, compute, revision='native-correction') == 'current'
+    assert calls == [stamp, stamp]
+    result = load_merged(path)
+    assert result['timestamps'].tolist() == [stamp - 900, stamp]
+    assert result['close'].tolist() == [100.0, 112.0]
+
+
 def test_universe_falls_back_to_stock_npz(tmp_path):
     import numpy as np
 

@@ -48,6 +48,24 @@ def _p95(samples):
     return ordered[min(len(ordered) - 1, int(0.95 * len(ordered)))]
 
 
+def test_latest_closed_correction_replaces_values_without_duplicate_timestamp(tmp_path):
+    path = _make_base_npz(tmp_path, n=20)
+    original = tail.load_merged(path)
+    stamp = int(original['timestamps'][-1]) + 900
+    assert tail.append_tail_row(path, _row(stamp, 120))
+    assert not tail.append_tail_row(path, _row(stamp, 999))
+    assert tail.append_tail_row(path, _row(stamp, 121), replace_latest=True)
+    merged = tail.load_merged(path)
+    np.testing.assert_array_equal(merged['timestamps'][:-1], original['timestamps'])
+    np.testing.assert_array_equal(merged['close'][:-1], original['close'])
+    assert len(merged['timestamps']) == 21 and merged['close'][-1] == 121
+    assert tail.compact_tail(path) == 2
+    assert tail.load_merged(path)['close'][-1] == 121
+    assert tail.append_tail_row(path, _row(stamp, 122), replace_latest=True)
+    assert tail.load_merged(path)['close'][-1] == 122
+    assert not tail.append_tail_row(path, _row(stamp - 900, 999), replace_latest=True)
+
+
 def test_append_one_bar_p95_under_50ms(tmp_path):
     npz_path = _make_base_npz(tmp_path, end_lag_bars=65)
     tip = int(np.load(str(npz_path))["timestamps"][-1])

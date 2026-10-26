@@ -165,3 +165,36 @@ def test_overlay_newer_than_cache_is_visible_after_a_missing_next_bar(tmp_path):
     atomic_json(path, [dict(event()['row'], timestamp='2026-10-26T17:45:00.000000Z')])
     atomic_json(tmp_path / 'data/closed_15m_bars/crypto/TESTUSDT.json', [event()['row']])
     assert kline_last_close(tmp_path, 'TESTUSDT', 'crypto', now_s=START + 1800) == START
+
+
+def test_outbox_retains_selected_independent_row_and_first_publication(tmp_path):
+    path = tmp_path / 'klines_cache/TESTUSDT_15m.json'
+    independent = dict(event()['row'], _producer='independent_crypto_15m_clock')
+    publish_closed_15m(path, independent, None, tmp_path, 'crypto', 'TESTUSDT')
+    outbox = tmp_path / f'data/closed_15m_outbox/crypto/TESTUSDT_{START}.json'
+    first = json.loads(outbox.read_text())
+    publish_closed_15m(path, dict(event()['row'], close=999), None, tmp_path, 'crypto', 'TESTUSDT')
+    second = json.loads(outbox.read_text())
+    assert second['row'] == independent
+    assert second['published_at'] == first['published_at']
+    assert second['first_published_at'] == first['first_published_at']
+
+
+def test_fast_tail_preserves_full_history_and_forming_next_row(tmp_path):
+    from closed_bar_feed import merge_closed_history
+    path = tmp_path / 'klines_cache/TESTUSDT_15m.json'
+    rows = [dict(event()['row'], timestamp=START - (6000 - index) * 900) for index in range(6001)]
+    rows.append(dict(event()['row'], timestamp=START + 900))
+    atomic_json(path, rows)
+    prefix = path.read_bytes()[:100000]
+    incoming = dict(event()['row'], close=150, _producer='independent_crypto_15m_clock')
+    assert merge_closed_history(path, incoming)
+    result = json.loads(path.read_text())
+    assert len(result) == len(rows)
+    assert result[:-2] == rows[:-2]
+    assert result[-2] == incoming and result[-1] == rows[-1]
+    assert path.read_bytes()[:100000] == prefix
+    verified = dict(incoming, close=155, volume=0, _provisional=False, _closed_verified_at=START + 901)
+    assert merge_closed_history(path, verified)
+    assert merge_closed_history(path, incoming)
+    assert json.loads(path.read_text())[-2] == verified

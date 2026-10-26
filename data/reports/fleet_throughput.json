@@ -1,7 +1,7 @@
 {
-  "ts": "2026-10-26T20:35:13.016544+00:00",
-  "tick": "2026-10-26T20:34:02.337868+00:00",
-  "tick_age_s": 71,
+  "ts": "2026-10-26T20:40:13.808161+00:00",
+  "tick": "2026-10-26T20:38:02.177726+00:00",
+  "tick_age_s": 132,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run37.json",
     "round": "run37",
@@ -11,65 +11,65 @@
     "n_pending": 75,
     "n_refused_only": 1,
     "n_excluded": 0,
-    "n_launchable_pending": 57,
+    "n_launchable_pending": 56,
     "hosts_not_visible": []
   },
   "hosts": {
     "s1": {
-      "cpu_pct": 97,
-      "slots": "2/4",
+      "cpu_pct": 96,
+      "slots": "3/4",
       "observed_running": [
-        "IOTAUSDT"
+        "IOTAUSDT",
+        "MOVRUSDT"
       ],
       "published_last_hour": 0,
       "idle_reason": null,
-      "mem_avail_mb": 14452
-    },
-    "s2": {
-      "cpu_pct": 100,
-      "slots": "2/4",
-      "observed_running": [
-        "ARKMUSDT",
-        "SKYUSDT"
-      ],
-      "published_last_hour": 0,
-      "idle_reason": null,
-      "mem_avail_mb": 4056
-    },
-    "s5": {
-      "cpu_pct": 57,
-      "slots": "4/4",
-      "observed_running": [
-        "AR",
-        "ASML",
-        "BNO",
-        "CRWD"
-      ],
-      "published_last_hour": 0,
-      "idle_reason": "slots full",
-      "mem_avail_mb": 21490
+      "mem_avail_mb": 12559
     },
     "s6": {
-      "cpu_pct": 64,
-      "slots": "4/4",
+      "cpu_pct": 33,
+      "slots": "2/4",
       "observed_running": [
         "QBTS",
-        "UEC",
-        "UUUU",
-        "VZ"
+        "UEC"
       ],
       "published_last_hour": 1,
       "idle_reason": "disk guard",
-      "mem_avail_mb": 24291
+      "mem_avail_mb": 25376
+    },
+    "s2": {
+      "cpu_pct": 99,
+      "slots": "3/4",
+      "observed_running": [
+        "ARKMUSDT",
+        "CHRUSDT",
+        "SKYUSDT"
+      ],
+      "published_last_hour": 0,
+      "idle_reason": "mem guard",
+      "mem_avail_mb": 6738
+    },
+    "s5": {
+      "cpu_pct": 50,
+      "slots": "4/4",
+      "observed_running": [
+        "CIBR",
+        "COPX",
+        "CRWD",
+        "CVX"
+      ],
+      "published_last_hour": 0,
+      "idle_reason": "slots full",
+      "mem_avail_mb": 19945
     }
   },
   "one_hour_total": 1,
   "alerts": [
     "LOW_THROUGHPUT:s1:0/h",
+    "LOW_THROUGHPUT:s6:1/h",
+    "LOW_CPU:s6:33%",
     "LOW_THROUGHPUT:s2:0/h",
     "LOW_THROUGHPUT:s5:0/h",
-    "LOW_CPU:s5:57%",
-    "LOW_THROUGHPUT:s6:1/h",
-    "LOW_CPU:s6:64%"
+    "LOW_CPU:s5:50%"
   ]
 }

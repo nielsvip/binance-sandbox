@@ -279,3 +279,30 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+
+
+def test_window_rebuilds_when_cached_last_candle_was_corrected(tmp_path, monkeypatch):
+    import numpy as np
+    import npz_tail_store
+    source = tmp_path / 'TESTUSDT.npz'
+    source.write_bytes(b'source')
+    calls = []
+    def build(raw, symbol, mode, anchor):
+        calls.append(symbol)
+        stamps = [1000] if len(calls) == 1 else [1000, 1900]
+        return {'timestamps': np.array(stamps), 'close': np.array([10.0] if len(calls) == 1 else [20.0, 21.0])}
+    monkeypatch.setattr(X, 'npz_path', lambda symbol: source)
+    monkeypatch.setattr(X, 'load_raw', lambda *args: {})
+    monkeypatch.setattr(X, 'build_npz', build)
+    rows = [{'timestamps': 1000, 'close': 20.0, '_replace_latest': True}, {'timestamps': 1900, 'close': 21.0}]
+    monkeypatch.setattr(npz_tail_store, 'tail_rows', lambda path: rows)
+    X._WINDOW_NPZ_CACHE.clear()
+    first = {'anchor_ts': 1000.0, 'load_start_ts': 1000.0, 'mode': 'crypto', 'npz_end_ts': 1000.0}
+    X._window_npz('TESTUSDT', first)
+    folder = source.parent / '.tail'
+    folder.mkdir()
+    (folder / 'TESTUSDT.jsonl').write_text(json.dumps(rows))
+    second = dict(first, npz_end_ts=1900.0)
+    result = X._window_npz('TESTUSDT', second)
+    assert calls == ['TESTUSDT', 'TESTUSDT']
+    assert result['close'].tolist() == [20.0, 21.0]

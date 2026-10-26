@@ -147,6 +147,17 @@ def split_ss(ss: str):
 
 
 def npz_path(sym: str) -> Path:
+    overlay_dir = ROOT / "data" / "vec_live" / "forward_npz"
+    try:
+        manifest_path = overlay_dir / "manifest.json"
+        if time.time() - manifest_path.stat().st_mtime <= 300:
+            manifest = json.loads(manifest_path.read_text())
+            if time.time() - float(manifest["generated_ts"]) <= 300 and sym in manifest["symbols"]:
+                overlay = overlay_dir / f"{sym}.npz"
+                if overlay.is_file():
+                    return overlay
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
     for prefix in ("backtest_v8", "backtest_v7"):
         p = ROOT / prefix / "indicators" / f"{sym}.npz"
         if p.exists():
@@ -181,8 +192,12 @@ def _load_timestamps(sym: str):
     except Exception:
         rows = []
     if rows:
-        base = np.concatenate((base, np.asarray([r["timestamps"] for r in rows], dtype="float64")))
-        parent = np.concatenate((parent, np.asarray([r.get("timestamp_15m", r["timestamps"]) for r in rows], dtype="float64")))
+        zip_last = _sec(base[-1])
+        rows = sorted((r for r in rows if _sec(r.get("timestamps") or 0) > zip_last), key=lambda r: _sec(r["timestamps"]))
+        rows = [r for i, r in enumerate(rows) if i == 0 or _sec(r["timestamps"]) > _sec(rows[i - 1]["timestamps"])]
+        if rows:
+            base = np.concatenate((base, np.asarray([r["timestamps"] for r in rows], dtype="float64")))
+            parent = np.concatenate((parent, np.asarray([r.get("timestamp_15m", r["timestamps"]) for r in rows], dtype="float64")))
     return {"timestamps": base, "timestamp_15m": parent}
 
 
@@ -249,6 +264,7 @@ def build_npz(raw: dict, sym: str, mode: str, anchor_ts: float):
 
 
 _BASE_PREP = {}
+_BASE_PREP_FINGERPRINT = {}
 _WINDOW_NPZ_CACHE = OrderedDict()
 _WINDOW_NPZ_CACHE_MAX = 128
 _WINDOW_NPZ_CACHE_LOCK = threading.Lock()
@@ -266,6 +282,25 @@ def _store_fingerprint(sym: str):
             parts.append((0, 0))
     return tuple(parts)
 
+
+
+def _prep_source_fingerprint(sym: str):
+    """Fingerprint ZIP and sidecar content so a stale prepare can be retried after repair."""
+    import hashlib
+
+    path = npz_path(sym)
+    digest = hashlib.blake2b(digest_size=16)
+    for candidate in (path, path.parent / ".tail" / f"{sym}.jsonl"):
+        try:
+            stat = candidate.stat()
+            digest.update(f"{candidate.name}:{stat.st_size}:{stat.st_mtime_ns}".encode())
+            with candidate.open("rb") as source:
+                digest.update(source.read(4096))
+                source.seek(max(0, stat.st_size - 65536))
+                digest.update(source.read())
+        except OSError:
+            digest.update(f"{candidate.name}:MISSING".encode())
+    return digest.hexdigest()
 
 
 def _cache_window(key, entry):
@@ -321,14 +356,16 @@ def _window_npz(sym: str, anchor: dict, end_ts: float = None):
 
                 _, old, delta = extension
                 expected = int(round(delta / 900.0))
+                current_tail = tail_rows(str(npz_path(sym)))
+                corrected_cached_bar = any(row.get('_replace_latest') and float(row.get('timestamps') or 0) <= float(old['end_ts']) for row in current_tail)
                 rows = [
                     row
-                    for row in tail_rows(str(npz_path(sym)))
+                    for row in current_tail
                     if float(row.get("timestamps") or 0.0) > float(old["end_ts"])
                     and float(row.get("timestamps") or 0.0) <= target_end
                 ]
                 rows.sort(key=lambda row: float(row["timestamps"]))
-                if len(rows) == expected and all(
+                if not corrected_cached_bar and len(rows) == expected and all(
                     abs(float(row["timestamps"]) - (float(old["end_ts"]) + 900 * (i + 1))) < 1
                     for i, row in enumerate(rows)
                 ):
@@ -369,26 +406,32 @@ def _window_npz(sym: str, anchor: dict, end_ts: float = None):
 
 def base_prepared(ss: str):
     """Canonical prepare() (base cfg incl. tradier/cat_side/sweep-cat layers, account, MIN_POSITION_SIZE)."""
-    if ss not in _BASE_PREP:
-        import pickle
+    sym, _ = split_ss(ss)
+    fingerprint = _prep_source_fingerprint(sym)
+    cached = _BASE_PREP.get(ss)
+    if cached is not None and _BASE_PREP_FINGERPRINT.get(ss) == fingerprint:
+        return cached
+    import pickle
 
-        emd5 = os.environ.get("VEC_LIVE_ENGINE_MD5", "")
-        cp = VL / "cache" / f"{ss}_{emd5}.pkl"
-        if emd5 and cp.exists():
-            _BASE_PREP[ss] = pickle.loads(cp.read_bytes())
-            return _BASE_PREP[ss]
-        from tools.opt import v12_pilot as P
+    emd5 = os.environ.get("VEC_LIVE_ENGINE_MD5", "")
+    cp = VL / "cache" / f"{ss}_{emd5}.pkl"
+    if emd5 and cp.exists():
+        payload = pickle.loads(cp.read_bytes())
+        if isinstance(payload, tuple) and len(payload) == 2 and payload[0] == fingerprint:
+            _BASE_PREP[ss], _BASE_PREP_FINGERPRINT[ss] = payload[1], fingerprint
+            return payload[1]
+    from tools.opt import v12_pilot as P
 
-        prep = P.prepare_batch(ss, 30)
-        if prep is not None:
-            prep = {k: v for k, v in prep.items() if k not in ("npz_prepared", "bh")}
-            if emd5:
-                cp.parent.mkdir(parents=True, exist_ok=True)
-                tmp = cp.with_suffix(".tmp%d" % os.getpid())
-                tmp.write_bytes(pickle.dumps(prep))
-                os.replace(tmp, cp)
-        _BASE_PREP[ss] = prep
-    return _BASE_PREP[ss]
+    prep = P.prepare_batch(ss, 30)
+    if prep is not None:
+        prep = {k: v for k, v in prep.items() if k not in ("npz_prepared", "bh")}
+        if emd5:
+            cp.parent.mkdir(parents=True, exist_ok=True)
+            tmp = cp.with_suffix(".tmp%d" % os.getpid())
+            tmp.write_bytes(pickle.dumps((fingerprint, prep)))
+            os.replace(tmp, cp)
+    _BASE_PREP[ss], _BASE_PREP_FINGERPRINT[ss] = prep, fingerprint
+    return prep
 
 
 def canonical_anchor(ss: str) -> dict:
@@ -667,7 +710,7 @@ def maybe_reanchor(
 
 
 def process(
-    ss: str, entry: dict, overrides: dict, emd5: str, force: bool = False
+    ss: str, entry: dict, overrides: dict, emd5: str, force: bool = False, engine_source_md5: str = None
 ) -> dict:
     t0 = _now()
     sym, side = split_ss(ss)
@@ -709,6 +752,12 @@ def process(
             "staleness_sec": round(t0 - base_last, 1),
         }
     )
+    from tools.npz_cutoffs import is_crypto_symbol, is_rth_bar_start
+    if not is_crypto_symbol(sym) and not is_rth_bar_start(par_ts):
+        reason = f"stock bar {_iso(par_ts)} starts outside the NYSE regular session"
+        _atomic_json(st_path, {"ss": ss, "mode": mode_flag, "account": entry.get("account"), "status": "OFF_SESSION_BAR", "actionable": False, "why": reason, "bar_ts": par_ts, "bar_iso": _iso(par_ts), "target_state": {"side": "unknown"}, "engine_md5": emd5, "v12_quick_engine_md5": engine_source_md5 or hashlib.md5((ROOT / "v12_quick_engine.py").read_bytes()).hexdigest(), "set_md5": set_md5(overrides), "npz_parent_last": par_ts, "npz_ts_last": base_last, "engine_valid": False, "written_at": _now(), "written_iso": _iso(_now())})
+        rec.update({"status": "OFF_SESSION_BAR", "why": reason})
+        return rec
     fingerprint = [list(part) for part in _store_fingerprint(sym)]
     if (
         not force
@@ -745,7 +794,9 @@ def process(
     )
     status = "OK"
     why = ""
-    if pre_err:
+    if not is_crypto_symbol(sym) and not is_rth_bar_start(bar_ts):
+        status, why = "OFF_SESSION_BAR", f"replay ends on stock bar {_iso(bar_ts)} outside the NYSE regular session"
+    elif pre_err:
         status, why = "ENGINE_ERROR", pre_err
     elif res.get("execution_ledger") is None:
         status, why = "ENGINE_ERROR", str(res.get("invalid_reason") or "execution ledger missing")
@@ -842,6 +893,7 @@ def process(
         "events_this_bar": raw_events,
         "emitted": emitted,
         "engine_md5": emd5,
+        "v12_quick_engine_md5": engine_source_md5 or hashlib.md5((ROOT / "v12_quick_engine.py").read_bytes()).hexdigest(),
         "set_md5": smd5,
         "anchor_ts": anchor["anchor_ts"],
         "anchor_iso": _iso(anchor["anchor_ts"]),
@@ -1024,9 +1076,13 @@ def load_sets():
 
 
 def _worker(args):
-    ss, entry, ov, emd5, force = args
+    if len(args) == 5:
+        ss, entry, ov, emd5, force = args
+        engine_source_md5 = hashlib.md5((ROOT / "v12_quick_engine.py").read_bytes()).hexdigest()
+    else:
+        ss, entry, ov, emd5, force, engine_source_md5 = args
     try:
-        return process(ss, entry, ov, emd5, force)
+        return process(ss, entry, ov, emd5, force, engine_source_md5)
     except Exception as exc:
         import traceback
 

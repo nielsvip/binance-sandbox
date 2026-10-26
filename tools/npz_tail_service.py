@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import glob
 import fcntl
+import hashlib
 import json
 import logging
 import os
@@ -129,15 +130,45 @@ def push_to_sibling(base, tail_abspath, sibling, sibling_base):
         return False
 
 
+def source_revision(base, symbol, mode, close_ts):
+    from closed_bar_feed import is_verified_closed_native, timestamp_epoch
+    path = Path(base) / 'data' / 'closed_15m_bars' / mode / f'{symbol}.json'
+    try:
+        for row in reversed(json.loads(path.read_text())):
+            if timestamp_epoch(row['timestamp']) == int(close_ts):
+                values = {key: row.get(key) for key in ('open', 'high', 'low', 'close', 'volume')}
+                values['verified_native'] = is_verified_closed_native(row, int(close_ts) + 900)
+                return hashlib.sha256(json.dumps(values, sort_keys=True).encode()).hexdigest()
+    except (OSError, ValueError, TypeError, KeyError):
+        pass
+    return None
+
+
+def source_marker(npz_path):
+    path = Path(npz_path)
+    return path.parent / '.tail_source' / f'{path.stem}.json'
+
+
+def source_changed(npz_path, close_ts, revision):
+    if not revision:
+        return False
+    try:
+        previous = json.loads(source_marker(npz_path).read_text())
+        return previous != {'bar_ts': int(close_ts), 'source_sha256': revision}
+    except (OSError, ValueError):
+        return True
+
+
 def sweep_symbol(
-    npz_path, symbol, last_close_ts, compute_fn, now_s=None, on_append=None
+    npz_path, symbol, last_close_ts, compute_fn, now_s=None, on_append=None, revision=None
 ):
     """One symbol: append exactly one owed row. Returns appended|current|refused|error."""
     try:
         tip = tip_of(npz_path)
     except Exception:
         return "error"
-    if tip is not None and int(last_close_ts) <= int(tip):
+    correction = tip is not None and int(last_close_ts) == int(tip) and source_changed(npz_path, last_close_ts, revision)
+    if tip is not None and int(last_close_ts) <= int(tip) and not correction:
         return "current"
     if not is_closed_bar(int(last_close_ts), now_s):
         return "refused"
@@ -152,9 +183,12 @@ def sweep_symbol(
     for _tf in ("15m", "5m", "3m", "1m"):
         final[f"timestamp_{_tf}"] = int(last_close_ts)
     try:
-        ok = append_tail_row(npz_path, final)
+        ok = append_tail_row(npz_path, final, now=now_s, replace_latest=correction)
     except Exception:
         return "error"
+    if ok and revision:
+        from closed_bar_feed import atomic_json
+        atomic_json(source_marker(npz_path), {'bar_ts': int(last_close_ts), 'source_sha256': revision})
     if ok and on_append is not None:
         try:
             from npz_tail_store import tail_path_for_npz
@@ -339,7 +373,7 @@ def sweep_once(base, cat_side, workers=WORKERS, sibling=None, sibling_base=None)
         lc = kline_last_close(base, sym, mode)
         if lc is None:
             return None
-        return npz, sym, lc
+        return npz, sym, lc, source_revision(base, sym, mode, lc)
 
     with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
         jobs = [job for job in pool.map(probe, owned) if job is not None]
@@ -367,25 +401,31 @@ def sweep_once(base, cat_side, workers=WORKERS, sibling=None, sibling_base=None)
                 pass
 
     ready = []
-    for npz, sym, lc in jobs:
+    for npz, sym, lc, revision in jobs:
         try:
-            if (tip_of(npz) is None or int(lc) > int(tip_of(npz))) and is_closed_bar(int(lc), now):
-                ready.append((npz, sym, lc))
+            tip = tip_of(npz)
+            changed = tip is not None and int(lc) == int(tip) and source_changed(npz, lc, revision)
+            if (tip is None or int(lc) > int(tip) or changed) and is_closed_bar(int(lc), now):
+                ready.append((npz, sym, lc, revision))
             else:
                 rec["current"] += 1
         except Exception:
             rec["error"] += 1
             rec["error_syms"].append(sym)
-    tasks = [(sym, int(lc), str(base), mode) for _, sym, lc in ready]
+    tasks = [(sym, int(lc), str(base), mode) for _, sym, lc, _ in ready]
     compactions = []
     with ProcessPoolExecutor(max_workers=min(max(1, workers), 8), mp_context=get_context("fork")) as pool:
         futures = {pool.submit(_compute_row_process, task): job for task, job in zip(tasks, ready)}
         for future in as_completed(futures):
-            npz, sym, lc = futures[future]
+            npz, sym, lc, revision = futures[future]
             row = future.result()
             if not row:
                 rec["error"] += 1
                 rec["error_syms"].append(sym)
+                continue
+            if source_revision(base, sym, mode, lc) != revision:
+                rec['error'] += 1
+                rec['error_syms'].append(sym)
                 continue
             try:
                 r = sweep_symbol(
@@ -395,6 +435,7 @@ def sweep_once(base, cat_side, workers=WORKERS, sibling=None, sibling_base=None)
                     lambda _symbol, _close_ts, result=row: result,
                     now_s=now,
                     on_append=on_append if sibling else None,
+                    revision=revision,
                 )
             except Exception:
                 r = "error"

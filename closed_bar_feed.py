@@ -113,6 +113,9 @@ def merge_closed_history(path, row):
     lock_path = path.with_name(f'.{path.name}.mark.lock')
     with lock_path.open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
+        fast = merge_closed_tail_locked(path, row)
+        if fast is not None:
+            return fast
         rows = json.loads(path.read_text()) if path.exists() else []
         if not isinstance(rows, list):
             raise ValueError('invalid full history')
@@ -126,6 +129,58 @@ def merge_closed_history(path, row):
         rows.sort(key=lambda item: timestamp_epoch(item['timestamp']))
         atomic_json(path, rows)
     return True
+
+
+def merge_closed_tail_locked(path, row):
+    import ctypes
+    import sys
+    path = Path(path)
+    if sys.platform != 'darwin':
+        return None
+    with path.open('rb') as stream:
+        size = path.stat().st_size
+        offset = max(0, size - 32768)
+        stream.seek(offset)
+        tail = stream.read()
+    matches = list(re.finditer(rb'\{[^{}]*\}', tail))
+    if not matches or not tail.rstrip().endswith(b']'):
+        return None
+    begin = matches[0].start()
+    try:
+        rows = json.loads(b'[' + tail[begin:])
+        start = timestamp_epoch(row['timestamp'])
+        if start < timestamp_epoch(rows[0]['timestamp']):
+            return None
+        for index, previous in enumerate(rows):
+            if timestamp_epoch(previous['timestamp']) == start:
+                selected = preferred_closed_row(previous, row, start + 900)
+                if selected == previous:
+                    return True
+                rows[index] = selected
+                break
+        else:
+            rows.append(row)
+        rows.sort(key=lambda item: timestamp_epoch(item['timestamp']))
+        suffix = json.dumps(rows, separators=(',', ':'), allow_nan=False).encode()[1:]
+    except (ValueError, TypeError, KeyError):
+        return None
+    temporary = path.with_name(f'.{path.name}.{os.getpid()}.{time.time_ns()}.clone')
+    clonefile = ctypes.CDLL(None, use_errno=True).clonefile
+    clonefile.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int]
+    clonefile.restype = ctypes.c_int
+    if clonefile(os.fsencode(path), os.fsencode(temporary), 0) != 0:
+        return None
+    try:
+        with temporary.open('r+b') as stream:
+            stream.seek(offset + begin)
+            stream.write(suffix)
+            stream.truncate()
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+        return True
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def publish_closed_15m(path, row, writer, base_path, mode, symbol):
@@ -151,11 +206,23 @@ def publish_closed_15m(path, row, writer, base_path, mode, symbol):
         except (OSError, ValueError, TypeError):
             continue
     event = {'symbol': symbol, 'mode': mode, 'bar_start_ts': start, 'bar_close_ts': start + 900, 'published_at': time.time(), 'row': chosen}
-    receive_closed_15m(base_path, event, require_history=False)
+    receipt = receive_closed_15m(base_path, event, require_history=False)
+    event['row'] = receipt['row']
     destination = Path(base_path) / 'data' / 'closed_15m_outbox' / mode / f'{symbol}_{start}.json'
-    atomic_json(destination, event)
+    import fcntl
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with destination.with_suffix('.lock').open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            previous = json.loads(destination.read_text())
+            event['first_published_at'] = min(float(previous.get('first_published_at', previous['published_at'])), event['published_at'])
+            if previous['row'] == event['row']:
+                event['published_at'] = previous['published_at']
+        except (OSError, ValueError, TypeError, KeyError):
+            event['first_published_at'] = event['published_at']
+        atomic_json(destination, event)
     if writer is not None:
-        _CACHE_WRITES.submit(write_history_outside_boundary, writer, path, chosen)
+        _CACHE_WRITES.submit(write_history_outside_boundary, writer, path, event['row'])
     return True
 
 
@@ -201,4 +268,4 @@ def receive_closed_15m(base_path, event, now_s=None, require_history=True):
     ledger = root / 'data' / 'closed_15m_receipts.jsonl'
     with ledger.open('a') as stream:
         stream.write(json.dumps(receipt, separators=(',', ':')) + '\n')
-    return receipt
+    return dict(receipt, row=row)

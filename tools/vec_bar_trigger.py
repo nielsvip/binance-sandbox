@@ -52,10 +52,11 @@ def should_probe(ss, zip_mtime, tail_mtime, seen, revision=None):
     return False
 
 
-def store_mtimes(base, sym):
+def store_mtimes(base, sym, path=None):
     ind = Path(base) / "backtest_v8" / "indicators"
+    npz = Path(path) if path is not None else ind / f"{sym}.npz"
     try:
-        z = (ind / f"{sym}.npz").stat().st_mtime
+        z = npz.stat().st_mtime
     except OSError:
         z = 0.0
     try:
@@ -92,7 +93,7 @@ def run_once(base, shard, workers=WORKERS, verbose=False):
         if ov is None:
             continue
         sym, _ = split_ss(ss)
-        z, t = store_mtimes(base, sym)
+        z, t = store_mtimes(base, sym, E.npz_path(sym))
         if should_probe(ss, z, t, seen, revision=(E.set_md5(ov), em["combined"])):
             jobs.append((ss, entry, ov, em["combined"], False))
     run_once._seen = seen

@@ -131,7 +131,7 @@ def _base_tip_ts(npz_path):
         return None
 
 
-def append_tail_row(npz_path, row, now=None):
+def append_tail_row(npz_path, row, now=None, replace_latest=False):
     npz_path = Path(npz_path)
     tail_path = tail_path_for_npz(npz_path)
     try:
@@ -149,11 +149,13 @@ def append_tail_row(npz_path, row, now=None):
     tip = _tail_tip_ts(tail_path)
     if tip is None:
         tip = _base_tip_ts(npz_path)
-    if tip is not None and ts_epoch <= tip:
+    if tip is not None and (ts_epoch < tip or (ts_epoch == tip and not replace_latest)):
         return False
     try:
         payload = {str(k): _json_safe(v) for k, v in dict(row).items()}
         payload["timestamps"] = ts_epoch
+        if replace_latest and tip == ts_epoch:
+            payload['_replace_latest'] = True
         line = (json.dumps(payload, separators=(",", ":")) + "\n").encode("utf-8")
     except Exception as e:
         logger.warning(
@@ -221,12 +223,14 @@ def _apply_row_in_memory(data, row):
         _encode = None
     new_ts = int(row["timestamps"])
     n_old = len(data["timestamps"])
+    replace_latest = bool(row.get('_replace_latest')) and n_old > 0 and new_ts == int(data['timestamps'][-1])
     out = {}
     for key in list(data.keys()):
         arr = data[key]
         if getattr(arr, "ndim", 0) != 1 or len(arr) != n_old:
             out[key] = arr
             continue
+        prefix = arr[:-1] if replace_latest else arr
         if key in row:
             value = row[key]
         elif key.startswith("timestamp_") and key[len("timestamp_") :] in (
@@ -240,9 +244,9 @@ def _apply_row_in_memory(data, row):
             value = arr[-1] if n_old else 0
         try:
             out[key] = (
-                _np.append(arr, _np.array([value], dtype=object))
+                _np.append(prefix, _np.array([value], dtype=object))
                 if arr.dtype == object
-                else _np.concatenate([arr, _np.array([value], dtype=arr.dtype)])
+                else _np.concatenate([prefix, _np.array([value], dtype=arr.dtype)])
             )
         except Exception:
             enc = _encode(key, value) if (_encode and isinstance(value, str)) else None
@@ -251,16 +255,16 @@ def _apply_row_in_memory(data, row):
             )
             try:
                 out[key] = (
-                    _np.append(arr, _np.array([value], dtype=object))
+                    _np.append(prefix, _np.array([value], dtype=object))
                     if arr.dtype == object
-                    else _np.concatenate([arr, _np.array([value], dtype=arr.dtype)])
+                    else _np.concatenate([prefix, _np.array([value], dtype=arr.dtype)])
                 )
             except Exception:
                 return None
     bad = [
         k
         for k, a in out.items()
-        if getattr(a, "ndim", 0) == 1 and len(data[k]) == n_old and len(a) != n_old + 1
+        if getattr(a, "ndim", 0) == 1 and len(data[k]) == n_old and len(a) != n_old + (0 if replace_latest else 1)
     ]
     if bad:
         return None
@@ -281,7 +285,7 @@ def load_merged(npz_path):
         return data
     for row in tail_rows(npz_path):
         try:
-            if int(row["timestamps"]) <= int(data["timestamps"][-1]):
+            if int(row["timestamps"]) < int(data["timestamps"][-1]) or (int(row["timestamps"]) == int(data["timestamps"][-1]) and not row.get('_replace_latest')):
                 continue
         except Exception:
             continue
@@ -315,7 +319,7 @@ def compact_tail(npz_path):
     applied = 0
     for row in rows:
         try:
-            if int(row["timestamps"]) <= int(data["timestamps"][-1]):
+            if int(row["timestamps"]) < int(data["timestamps"][-1]) or (int(row["timestamps"]) == int(data["timestamps"][-1]) and not row.get('_replace_latest')):
                 applied += 1
                 continue
         except Exception:

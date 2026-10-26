@@ -98,6 +98,7 @@ def canon_family(fn: str) -> str:
     and ..._thr are the same path (USER 2026-10-22 backstop hunt).
     """
     raw = str(fn or "").strip()
+    upper_raw = raw.upper()
     _wt_cross = re.match(
         r"^(QUICK_WT_CROSS_EXIT_[^_]+_[^_]+)", raw, flags=re.I
     )
@@ -681,6 +682,9 @@ def _template_backlog_rows(inventory, scores, parity, family):
         elif global_block:
             state = "GLOBALLY_DISABLED"
             next_step = "Keep disabled. Add a shared vector predicate and matching live switch before any activation."
+        elif path.startswith("HEDGE_") or "SCALP" in path:
+            state = "DISABLED_BY_OPERATOR"
+            next_step = "Disabled by operator. Do not add a switch, vector twin, or activation work."
         elif no_twin:
             state = "NO_VECTOR_TWIN"
             next_step = "Keep blocked by the VEC backstop; vectorize through a shared decision core or retain paper-only."

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Rsync changed complete per-sym SQL rows as JSON, then apply them to fleet stores."""
 import json
+import hashlib
 import os
 import sqlite3
 import subprocess
@@ -36,10 +37,26 @@ def _save_watermark(data):
     os.replace(tmp, WATERMARK)
 
 
+def _row_hash(row):
+    return hashlib.sha256(json.dumps(row, sort_keys=True, default=str, separators=(",", ":")).encode()).hexdigest()
+
+
+def _source_fingerprint():
+    parts = []
+    for path in (DB, DB.with_name(DB.name + "-wal")):
+        try:
+            stat = path.stat()
+            parts.append([path.name, stat.st_size, stat.st_mtime_ns])
+        except FileNotFoundError:
+            parts.append([path.name, None, None])
+    return parts
+
+
 def _needed(rows, mark):
     stamp = str(mark.get("ts") or "")
     seen = set(mark.get("seen") or [])
-    return [row for row in rows if row[2] > stamp or (row[2] == stamp and row[0] not in seen)]
+    hashes = mark.get("row_hashes") or {}
+    return [row for row in rows if row[2] > stamp or (row[2] == stamp and row[0] not in seen) or (row[0] in hashes and hashes[row[0]] != _row_hash(row))]
 
 
 def _send(host, dbs, rows):
@@ -59,13 +76,21 @@ def main():
     marks = _load_watermark()
     if not DB.is_file():
         raise SystemExit("missing Mac per_sym_store.db")
-    stamp = min((str((marks.get(host) or {}).get("ts") or "") for host in HOSTS), default="")
+    fingerprint = _source_fingerprint()
+    if all((marks.get(host) or {}).get("source_fingerprint") == fingerprint for host in HOSTS):
+        print(json.dumps({"source_unchanged": True}), flush=True)
+        return 0
     con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=5)
     try:
-        rows = [list(row) for row in con.execute(f"SELECT {COLS} FROM per_sym_active WHERE updated_at>=? ORDER BY updated_at,sym_side", (stamp,))]
+        rows = [list(row) for row in con.execute(f"SELECT {COLS} FROM per_sym_active ORDER BY updated_at,sym_side")]
     finally:
         con.close()
     need = {host: _needed(rows, marks.get(host) or {}) for host in HOSTS}
+    for host in HOSTS:
+        mark = marks.setdefault(host, {})
+        if "row_hashes" not in mark:
+            queued = {row[0] for row in need[host]}
+            mark["row_hashes"] = {row[0]: _row_hash(row) for row in rows if row[0] not in queued}
     union = {row[0]: row for batch in need.values() for row in batch}
     SHARDS.mkdir(parents=True, exist_ok=True)
     for symbol_side, row in union.items():
@@ -90,6 +115,12 @@ def main():
                 seen = set(previous.get("seen") or []) if previous.get("ts") == latest else set()
                 seen.update(row[0] for row in batch if row[2] == latest)
                 marks[host] = {"ts": latest, "seen": sorted(seen)}
+                marks[host]["row_hashes"] = dict(previous.get("row_hashes") or {})
+                marks[host]["row_hashes"].update({row[0]: _row_hash(row) for row in batch})
+    failed = {host for host, ok, _ in results if not ok}
+    for host in HOSTS:
+        if host not in failed:
+            marks[host]["source_fingerprint"] = fingerprint
     _save_watermark(marks)
     print(json.dumps({"local_rows": len(rows), "queued": {host: len(batch) for host, batch in need.items()}, "results": results}, sort_keys=True), flush=True)
     return 0 if all(ok for _, ok, _ in results) else 1

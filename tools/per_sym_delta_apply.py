@@ -47,7 +47,7 @@ def main():
             con.execute("BEGIN IMMEDIATE")
             for row in rows:
                 previous = con.execute(f"SELECT {columns} FROM per_sym_active WHERE sym_side=?", (row[0],)).fetchone()
-                if previous and str(previous[2] or "") >= str(row[2] or ""):
+                if previous and (str(previous[2] or "") > str(row[2] or "") or list(previous) == row):
                     continue
                 if previous:
                     backup = ROOT / "backups" / "per_sym_active_rows" / row[0]

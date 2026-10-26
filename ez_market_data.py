@@ -510,7 +510,7 @@ def _pick_due_stale(data, now, limit=REST_REPAIR_MAX_SYMS, skip=None):
 def _write_provisional_15m(path, bar):
     import fcntl
     import json
-    from closed_bar_feed import timestamp_epoch
+    from closed_bar_feed import preferred_closed_row, timestamp_epoch
     path.parent.mkdir(parents=True, exist_ok=True)
     lock = path.with_name(f'.{path.name}.mark.lock')
     with lock.open('a') as handle:
@@ -522,9 +522,9 @@ def _write_provisional_15m(path, bar):
                 for previous in rows:
                     if timestamp_epoch(previous.get('timestamp')) != incoming_ts:
                         continue
-                    if previous.get('volume') is not None and not previous.get('_provisional'):
-                        return False
                     if previous.get('_closed') and not bar.get('_closed'):
+                        return False
+                    if bar.get('_closed') and preferred_closed_row(previous, bar, incoming_ts + 900) == previous:
                         return False
                     bar = dict(bar, timestamp=previous['timestamp'])
                     break
@@ -534,6 +534,7 @@ def _write_provisional_15m(path, bar):
 
 
 def _write_provisional_15m_unlocked(path: Path, bar: dict) -> bool:
+    from closed_bar_feed import preferred_closed_row, timestamp_epoch
     try:
         existing = []
         if path.exists():
@@ -543,7 +544,7 @@ def _write_provisional_15m_unlocked(path: Path, bar: dict) -> bool:
                 return False
         for index, row in enumerate(existing):
             if isinstance(row, dict) and row.get('timestamp') == bar['timestamp']:
-                if row.get('volume') is not None and not row.get('_provisional'):
+                if preferred_closed_row(row, bar, timestamp_epoch(bar['timestamp']) + 900) == row:
                     return False
                 existing[index] = bar
                 break
@@ -559,7 +560,7 @@ def _write_provisional_15m_unlocked(path: Path, bar: dict) -> bool:
             with path.open('rb') as handle:
                 latest = orjson.loads(handle.read())
             for row in latest if isinstance(latest, list) else []:
-                if isinstance(row, dict) and row.get('timestamp') == bar['timestamp'] and row.get('volume') is not None and not row.get('_provisional'):
+                if isinstance(row, dict) and row.get('timestamp') == bar['timestamp'] and preferred_closed_row(row, bar, timestamp_epoch(bar['timestamp']) + 900) == row:
                     tmp.unlink(missing_ok=True)
                     return False
         os.replace(tmp, path)
