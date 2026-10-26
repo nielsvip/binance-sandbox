@@ -189,6 +189,7 @@ def test_resolve_kline_prefers_live_over_backtest(tmp_path):
     canonical = tmp_path / "klines_canonical" / "TSTUSDT_15m.json"
     canonical.parent.mkdir(parents=True)
     canonical.write_text("[]")
-    live.write_text("[]")
-    backtest.write_text("[]")
-    assert _resolve_kline_path("TSTUSDT", "15m", "binance", tmp_path) == live
+    live.write_text(json.dumps([{"timestamp": "2026-10-26T06:45:00.000000Z"}]))
+    canonical.write_text(json.dumps([{"timestamp": "2026-10-26T07:00:00.000000Z"}]))
+    backtest.write_text(json.dumps([{"timestamp": "2026-10-26T06:30:00.000000Z"}]))
+    assert _resolve_kline_path("TSTUSDT", "15m", "binance", tmp_path) == canonical

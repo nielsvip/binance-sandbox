@@ -21,7 +21,8 @@ import os
 import re
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from multiprocessing import get_context
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -275,6 +276,31 @@ def make_compute(base, mode):
     return compute
 
 
+def _compute_row_process(task):
+    symbol, close_ts, base, mode = task
+    from datetime import datetime, timezone
+    import types
+
+    try:
+        from npz_live_generator import _compute_row_for_15m_close
+
+        if mode == "tradier":
+            from tradier_indicators import IndicatorCalculator
+        else:
+            from ez_indicators import IndicatorCalculator
+        calculator = IndicatorCalculator()
+        manager = types.SimpleNamespace(base_path=Path(base))
+        return _compute_row_for_15m_close(
+            symbol,
+            datetime.fromtimestamp(close_ts, tz=timezone.utc),
+            manager,
+            calculator,
+            mode,
+        )
+    except Exception:
+        return None
+
+
 def npz_for(base, symbol):
     p = Path(base) / "backtest_v8" / "indicators" / f"{symbol}.npz"
     return str(p) if p.exists() else None
@@ -326,36 +352,43 @@ def sweep_once(base, cat_side, workers=WORKERS, sibling=None, sibling_base=None)
             except Exception:
                 pass
 
-    def one(job):
-        npz, sym, lc = job
+    ready = []
+    for npz, sym, lc in jobs:
         try:
-            r = sweep_symbol(
-                npz,
-                sym,
-                lc,
-                compute,
-                now_s=now,
-                on_append=on_append if sibling else None,
-            )
+            if (tip_of(npz) is None or int(lc) > int(tip_of(npz))) and is_closed_bar(int(lc), now):
+                ready.append((npz, sym, lc))
+            else:
+                rec["current"] += 1
         except Exception:
-            r = "error"
-        if r == "error":
-            try:
+            rec["error"] += 1
+            rec["error_syms"].append(sym)
+    tasks = [(sym, int(lc), str(base), mode) for _, sym, lc in ready]
+    with ProcessPoolExecutor(max_workers=min(max(1, workers), 8), mp_context=get_context("fork")) as pool:
+        rows = pool.map(_compute_row_process, tasks)
+        for (npz, sym, lc), row in zip(ready, rows):
+            if not row:
+                rec["error"] += 1
                 rec["error_syms"].append(sym)
-            except Exception:
-                pass
-        c = 0
-        if r == "appended" and tail_len(npz) >= COMPACT_AT:
+                continue
             try:
-                c = compact_tail(npz)
+                r = sweep_symbol(
+                    npz,
+                    sym,
+                    lc,
+                    lambda _symbol, _close_ts, result=row: result,
+                    now_s=now,
+                    on_append=on_append if sibling else None,
+                )
             except Exception:
-                c = 0
-        return r, c
-
-    with ThreadPoolExecutor(max_workers=workers) as pool:
-        for r, c in pool.map(one, jobs):
+                r = "error"
+            if r == "error":
+                rec["error_syms"].append(sym)
             rec[r if r in rec else "error"] += 1
-            rec["compacted"] += c or 0
+            if r == "appended" and tail_len(npz) >= COMPACT_AT:
+                try:
+                    rec["compacted"] += compact_tail(npz) or 0
+                except Exception:
+                    pass
     return rec
 
 

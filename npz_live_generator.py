@@ -29,6 +29,7 @@ import json
 import logging
 import os
 import platform
+import re
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -392,17 +393,42 @@ def _drop_forming_bar(df, tf_label: str):
 
 
 def _resolve_kline_path(symbol: str, tf: str, mode: str, base_path: Path) -> Optional[Path]:
-    cands: list[Path] = []
+    live: list[Path] = []
+    historical: list[Path] = []
     if mode == "tradier":
-        for b in [base_path / "klines_cache" / "tradier", base_path / "klines_cache_gateway" / "tradier", base_path / "klines_canonical" / "tradier", base_path / "klines_cache_backtest" / "tradier", Path("/home/niels/binance-sandbox") / "klines_cache_backtest" / "tradier"]:
-            cands.append(b / f"{symbol}_{tf}.json")
+        for b in [base_path / "klines_cache" / "tradier", base_path / "klines_cache_gateway" / "tradier", base_path / "klines_canonical" / "tradier"]:
+            live.append(b / f"{symbol}_{tf}.json")
+        for b in [base_path / "klines_cache_backtest" / "tradier", Path("/home/niels/binance-sandbox") / "klines_cache_backtest" / "tradier"]:
+            historical.append(b / f"{symbol}_{tf}.json")
     else:
-        for b in [base_path / "klines_cache", base_path / "klines_cache_gateway", base_path / "klines_canonical", base_path / "klines_cache_backtest", Path("/home/niels/binance-sandbox") / "klines_cache_backtest"]:
-            cands.append(b / f"{symbol}_{tf}.json")
-    for p in cands:
-        if p.exists():
-            return p
-    return None
+        for b in [base_path / "klines_cache", base_path / "klines_cache_gateway", base_path / "klines_canonical"]:
+            live.append(b / f"{symbol}_{tf}.json")
+        for b in [base_path / "klines_cache_backtest", Path("/home/niels/binance-sandbox") / "klines_cache_backtest"]:
+            historical.append(b / f"{symbol}_{tf}.json")
+    found = [p for p in live if p.is_file()]
+    if not found:
+        found = [p for p in historical if p.is_file()]
+    if not found:
+        return None
+    best = None
+    best_ts = None
+    for p in found:
+        try:
+            with open(p, "rb") as stream:
+                stream.seek(max(0, p.stat().st_size - 65536))
+                tail = stream.read().decode("utf-8", errors="ignore")
+            values = re.findall(r'"(?:timestamp|timestamp_dt)"\s*:\s*"?([^",}\s]+)', tail)
+            ts = None
+            for value in reversed(values):
+                parsed = pd.to_datetime(value, utc=True, errors="coerce")
+                if not pd.isna(parsed):
+                    ts = parsed
+                    break
+            if ts is not None and (best_ts is None or ts > best_ts):
+                best, best_ts = p, ts
+        except Exception:
+            continue
+    return best or found[0]
 
 def _should_update_npz(npz_path: Path, last_15m_close: datetime) -> bool:
     if not _is_s1_host():

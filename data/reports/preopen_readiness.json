@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-26T07:00:03Z",
+ "generated_utc": "2026-10-26T07:20:02Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-26T13:30:00Z",
  "market_open": false,
@@ -15,10 +15,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 233,
-    "filled_before_open": 233
+    "filled_today": 244,
+    "filled_before_open": 244
    },
-   "detail": "233 boards filled before the open (233 today)"
+   "detail": "244 boards filled before the open (244 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -49,12 +49,12 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "reports_today": 6,
-    "newest_report": "persym_golive_20261026_refresh_0551.json",
-    "newest_report_at": "2026-10-26T05:58:01Z",
-    "tiers_at": "2026-10-26T05:58:24Z"
+    "reports_today": 7,
+    "newest_report": "persym_golive_20261026_refresh_0652.json",
+    "newest_report_at": "2026-10-26T07:11:35Z",
+    "tiers_at": "2026-10-26T07:11:59Z"
    },
-   "detail": "persym_golive_20261026_refresh_0551.json at 2026-10-26T05:58:01Z, tiers 2026-10-26T05:58:24Z"
+   "detail": "persym_golive_20261026_refresh_0652.json at 2026-10-26T07:11:35Z, tiers 2026-10-26T07:11:59Z"
   },
   {
    "name": "live_set_matches_selection",
@@ -122,32 +122,6 @@
       ]
      },
      {
-      "sym_side": "WMT_LONG",
-      "published_at": "2026-10-26T06:17:45Z",
-      "material": 76,
-      "sample": [
-       "ATR_ADAPTIVE_STOP_TF",
-       "BOUNCE_AUGMENT_K_D_THRESHOLD",
-       "CIRCUIT_SHARPE_GATES_FILTER_TF",
-       "DC_BREAKOUT_OVERBOUGHT_K15M_CAP",
-       "DC_EDGE_SIZING_MAX_MULT",
-       "DC_EDGE_SIZING_MIN_MULT"
-      ]
-     },
-     {
-      "sym_side": "PAAS_SHORT",
-      "published_at": "2026-10-26T06:42:48Z",
-      "material": 75,
-      "sample": [
-       "ATR_ADAPTIVE_STOP_MULT",
-       "AUGMENT_FALLBACK_REDUCE_PCT",
-       "AUGMENT_INTO_REENTRY_ENABLED",
-       "BB_PROFIT_TAKE_TF",
-       "BB_SQUEEZE_EXIT_ENABLED",
-       "COMMISSION_BUFFER_PCT"
-      ]
-     },
-     {
       "sym_side": "ICPUSDT_LONG",
       "published_at": "2026-10-13T08:02:23Z",
       "material": 72,
@@ -158,19 +132,6 @@
        "BB_PROFIT_TAKE_TF",
        "BB_PULLBACK_GATE_ON_FINAL",
        "BB_PULLBACK_GATE_TF"
-      ]
-     },
-     {
-      "sym_side": "VALE_SHORT",
-      "published_at": "2026-10-26T06:45:53Z",
-      "material": 67,
-      "sample": [
-       "ADX_REGIME_FILTER_ENABLED",
-       "ATR_ADAPTIVE_STOP_MULT",
-       "AUGMENT_INTO_REENTRY_ENABLED",
-       "BREAKOUT_RETEST_ARMED_ENABLED",
-       "DAYTRADE_DC_TARGET_TF",
-       "DC_BREAKOUT_OVERBOUGHT_K15M_CAP"
       ]
      },
      {
@@ -187,16 +148,55 @@
       ]
      },
      {
-      "sym_side": "SAP_LONG",
-      "published_at": "2026-10-26T06:35:21Z",
-      "material": 60,
+      "sym_side": "ONDOUSDT_SHORT",
+      "published_at": "2026-10-14T10:18:32Z",
+      "material": 57,
       "sample": [
-       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
-       "AUGMENT_TYPED_MIN_GAIN_ENABLED",
-       "BB_BOUNCE_ENTRY_TF",
-       "BB_BREAKOUT_ENTRY_TF",
-       "BB_PROFIT_TAKE_TF",
-       "COMMISSION_BUFFER_PCT"
+       "ADX_REGIME_FILTER_ENABLED",
+       "ATR_ADAPTIVE_SIZING_ENABLED",
+       "BREAKOUT_RETEST_ARMED_ENABLED",
+       "BREAKOUT_RETEST_FILTER_TF",
+       "CIRCUIT_SHARPE_GATES_FILTER_TF",
+       "DAYTRADE_DC_TARGET_TF"
+      ]
+     },
+     {
+      "sym_side": "PWR_SHORT",
+      "published_at": "2026-10-26T04:46:08Z",
+      "material": 57,
+      "sample": [
+       "ADX_REGIME_FILTER_ENABLED",
+       "ATR_ADAPTIVE_STOP_MULT",
+       "AUGMENT_INTO_REENTRY_ENABLED",
+       "COOLDOWN_BARS_TRADIER",
+       "COUNTER_TREND_ADD_BLOCK_ENABLED",
+       "DAYTRADE_DC_TARGET_TF"
+      ]
+     },
+     {
+      "sym_side": "APO_SHORT",
+      "published_at": "2026-10-20T11:43:52Z",
+      "material": 55,
+      "sample": [
+       "AUGMENT_BREAKOUT_MIN_GAIN_PCT",
+       "CIRCUIT_SHARPE_GATES_FILTER_TF",
+       "DAYTRADE_DC_TARGET_TF",
+       "DC_EDGE_SIZING_MAX_MULT",
+       "DC_HARD_STOP_15M_ENABLED",
+       "DC_MOMENTUM_BOTA_SCORER_FILTER_TF"
+      ]
+     },
+     {
+      "sym_side": "ACN_LONG",
+      "published_at": "2026-10-23T06:02:03Z",
+      "material": 50,
+      "sample": [
+       "ATR_ADAPTIVE_STOP_MULT",
+       "ATR_ADAPTIVE_STOP_TF",
+       "AUGMENT_FALLBACK_REDUCE_PCT",
+       "BB_PULLBACK_GATE_ENABLED",
+       "BB_SQUEEZE_ENTRY_ENABLED",
+       "COUNTER_TREND_ADD_BLOCK_ENABLED"
       ]
      }
     ]
@@ -211,7 +211,7 @@
     "symbols": 329,
     "stale_over_90min": 1,
     "stale_pct": 0.3,
-    "median_age_min": 30.1,
+    "median_age_min": 35.0,
     "sample": [
      "ONEUSDT"
     ]
