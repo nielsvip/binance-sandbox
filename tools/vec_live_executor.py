@@ -267,6 +267,18 @@ def _store_fingerprint(sym: str):
     return tuple(parts)
 
 
+
+def _cache_window(key, entry):
+    with _WINDOW_NPZ_CACHE_LOCK:
+        for previous in list(_WINDOW_NPZ_CACHE):
+            if previous[0] == key[0] and previous != key:
+                _WINDOW_NPZ_CACHE.pop(previous)
+        _WINDOW_NPZ_CACHE[key] = entry
+        _WINDOW_NPZ_CACHE.move_to_end(key)
+        while len(_WINDOW_NPZ_CACHE) > _WINDOW_NPZ_CACHE_MAX:
+            _WINDOW_NPZ_CACHE.popitem(last=False)
+
+
 def _window_npz(sym: str, anchor: dict, end_ts: float = None):
     target_end = float(anchor.get("npz_end_ts") or end_ts or 0.0)
     fingerprint = _store_fingerprint(sym)
@@ -298,7 +310,7 @@ def _window_npz(sym: str, anchor: dict, end_ts: float = None):
             if target_end:
                 with _WINDOW_NPZ_CACHE_LOCK:
                     for old_key, old in reversed(_WINDOW_NPZ_CACHE.items()):
-                        if old_key[0] != sym or old.get("mode") != anchor["mode"]:
+                        if old_key[0] != sym or old.get("mode") != anchor["mode"] or old_key[1][0] != fingerprint[0]:
                             continue
                         delta = target_end - float(old.get("end_ts") or 0.0)
                         if 0 < delta <= 4 * 900 and int(old.get("steps") or 0) < 4:
@@ -332,11 +344,7 @@ def _window_npz(sym: str, anchor: dict, end_ts: float = None):
                             "end_ts": target_end,
                             "steps": int(old.get("steps") or 0) + expected,
                         }
-                        with _WINDOW_NPZ_CACHE_LOCK:
-                            _WINDOW_NPZ_CACHE[key] = entry
-                            _WINDOW_NPZ_CACHE.move_to_end(key)
-                            while len(_WINDOW_NPZ_CACHE) > _WINDOW_NPZ_CACHE_MAX:
-                                _WINDOW_NPZ_CACHE.popitem(last=False)
+                        _cache_window(key, entry)
                         return dict(built)
             raw = load_raw(sym, anchor["load_start_ts"])
             if end_ts is not None:
@@ -350,11 +358,7 @@ def _window_npz(sym: str, anchor: dict, end_ts: float = None):
                 "end_ts": target_end or float(built["timestamps"][-1]),
                 "steps": 0,
             }
-            with _WINDOW_NPZ_CACHE_LOCK:
-                _WINDOW_NPZ_CACHE[key] = entry
-                _WINDOW_NPZ_CACHE.move_to_end(key)
-                while len(_WINDOW_NPZ_CACHE) > _WINDOW_NPZ_CACHE_MAX:
-                    _WINDOW_NPZ_CACHE.popitem(last=False)
+            _cache_window(key, entry)
             return dict(built)
         finally:
             with _WINDOW_NPZ_CACHE_LOCK:
@@ -815,9 +819,13 @@ def process(
                     _append_jsonl(SHADOW_LEDGER, it)
             emitted = [it["intent_id"] for it in intents]
             rec["intent_file"] = str(fp)
-    reanchor_note = "rolling window refreshed from latest NPZ row"
+    extended_window = bool(npz is not None and _sec(npz["timestamps"][0]) < float(anchor["anchor_ts"]))
+    if extended_window:
+        anchor = dict(anchor, window_policy=anchor["window_policy"] + "_plus_up_to_4_appended_bars")
+    reanchor_note = "cached window extended; rolling rebase after four appended bars" if extended_window else "rolling window refreshed from latest NPZ row"
     t3 = _now()
     state = {
+        "effective_window_first_ts": _sec(npz["timestamps"][0]) if npz is not None else None,
         "npz_store_fingerprint": fingerprint,
         "ss": ss,
         "mode": mode_flag,
