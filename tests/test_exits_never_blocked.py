@@ -418,7 +418,10 @@ SRC = (ROOT / "ez_manage.py").read_text()
 def test_D1_decorator_order():
     i = SRC.index("    async def execute_now(")
     head = SRC[max(0, i - 600):i]
-    assert head.index("_odg.execute_now_gate(") < head.index("_xg.wrap_execute_now(") < head.index("_ptruth.ez_confirmed")
+    # USER 2026-10-26: innermost decorator renamed _ptruth.ez_confirmed -> _execute_now_qty_guard when
+    # positions_truth.py was deleted. The pinned invariant is unchanged: the dedupe gate and the
+    # exit-guarantee wrapper must both sit OUTSIDE the zero-qty guard.
+    assert head.index("_odg.execute_now_gate(") < head.index("_xg.wrap_execute_now(") < head.index("_execute_now_qty_guard")
 
 
 def test_D2_in_body_bypasses_present():
@@ -519,7 +522,10 @@ def test_E3_positionrisk_unreachable_falls_back_to_last_known_and_closes(ezm, bi
         return SimpleNamespace(positionAmt=500.0)
 
     m.__dict__["get_position"] = gp
-    monkeypatch.setattr(ezm._ptruth, "_CACHES", {}, raising=False)
+    # USER 2026-10-26: the separate broker-snapshot cache (positions_truth._CACHES) is deleted; the
+    # position store reached through get_position above IS the last-known-qty fallback, so there is
+    # nothing to blank out here. The assertions below still prove the exit completes while
+    # positionRisk is unreachable.
 
     async def go():
         with odg.execute_now_context("binance", symbol="ZRXUSDT", position_side="LONG", action=xg.FORCE_ACTION):

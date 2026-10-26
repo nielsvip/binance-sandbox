@@ -9876,12 +9876,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         if choice is not None:
             row_delta = choice[0]
         elif is_running:
-            # USER 2026-10-03 (running-identity): candidate == running set -> delta is 0 by identity
-            # (same overrides + same NPZ = bit-identical gain). An explained value, never a fake: the
-            # RUNNING_IDENTITY reason keeps it out of zero-audit suspicion, promotion, and calc guards.
-            row_delta = 0.0
+            # The running reference was not vector-evaluated as a row. A numeric zero
+            # belongs only to a completed vector evaluation.
+            row_delta = None
             if not reasons.get("naked"):
-                reasons["naked"] = "RUNNING_IDENTITY: candidate == running set, delta 0 by identity (no eval needed)"
+                reasons["naked"] = "RUNNING_IDENTITY_UNMEASURED: candidate equals running set; no row evaluation"
         else:
             row_delta = naked_delta
         promote = choice is not None
@@ -9984,9 +9983,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             if abs(float(row_delta)) < 1e-12 and not is_running:
                 _zr_log({"kind": "ZERO", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "col": "G", "cum_before": cumulative_before})
         elif is_running:
-            # USER 2026-10-03 (running-identity): G gets the definitional 0.0; F stays blank
-            # (hustle vs the original baseline is not quoted for the running reference itself).
-            _num_cell(ws, rr, cols["G"], 0.0, False)
+            # No row evaluation occurred, so G and F remain unmeasured.
+            ws.cell(row=rr, column=cols["G"]).value = None
             f.value = None
         elif reasons.get("naked") == "ZERO_TRADES":
             g.value = None
@@ -10034,7 +10032,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         progress["cumulative_gain"] = float(cumulative_gain)
         div = _write_div(sname, rr, [row_gain])
         _uw_tag = "UNWIRED_CALCULATED: switch is in the vec_unwired audit (no engine read found) — 0.0 is the honest eval delta" if (row_delta == 0 and str(switch).strip() in UNWIRED_TAG_SW) else ""
-        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "coarse_deferred_filters": st.get("coarse_deferred_filters") or [], "coarse_revived": st.get("coarse_revived") or [], "zero_skipped_filters": st.get("zero_skipped") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", "") or _uw_tag, "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "type_skipped": st.get("type_skipped") or [], "tab_level_excluded": st.get("excluded_tab_level") or [], "excluded_unwired": st.get("excluded_unwired") or [], "inert_filters": st.get("inert_filters") or [], "inert_sampled": bool(st.get("inert_sampled")), "inert_revived": bool(st.get("inert_revived")), "prior_skipped_filters": st.get("prior_skipped") or [], "prior_mode": st.get("prior_mode"), "prior_revived": st.get("prior_revived") or [], "carry_sampled": bool(st.get("carry_sampled")), "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain), "missing_yellows": list(missing_yellows), "npz": _run_npz_short, "policy": _policy_stamp(sname), "ramfp": (str(_RUN_RAMFP.get(new_symside)) if os.environ.get("V15_RAMFP", "0") == "1" else None), "complete": (not missing_yellows and (not (st.get("sampled_filters") or []) or (_COARSE_ON and not _redo_heal)) and not (st.get("excluded_tab_level") or []) and naked_settled and not _ramfp_stale)}
+        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "coarse_deferred_filters": st.get("coarse_deferred_filters") or [], "coarse_revived": st.get("coarse_revived") or [], "zero_skipped_filters": st.get("zero_skipped") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "live_delta_status": "UNMEASURED_VECTOR_ONLY" if args.vector_only else "DEFERRED_TO_SHEET_COMPLETE", "reason": _blk or joint_reason or reasons.get("naked", "") or _uw_tag, "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "type_skipped": st.get("type_skipped") or [], "tab_level_excluded": st.get("excluded_tab_level") or [], "excluded_unwired": st.get("excluded_unwired") or [], "inert_filters": st.get("inert_filters") or [], "inert_sampled": bool(st.get("inert_sampled")), "inert_revived": bool(st.get("inert_revived")), "prior_skipped_filters": st.get("prior_skipped") or [], "prior_mode": st.get("prior_mode"), "prior_revived": st.get("prior_revived") or [], "carry_sampled": bool(st.get("carry_sampled")), "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain), "missing_yellows": list(missing_yellows), "npz": _run_npz_short, "policy": _policy_stamp(sname), "ramfp": (str(_RUN_RAMFP.get(new_symside)) if os.environ.get("V15_RAMFP", "0") == "1" else None), "complete": (not missing_yellows and (not (st.get("sampled_filters") or []) or (_COARSE_ON and not _redo_heal)) and not (st.get("excluded_tab_level") or []) and naked_settled and not _ramfp_stale)}
         if _row_slow:
             progress["done"][key]["slow_cells"] = dict(_row_slow)
         if st.get("v18_floor"):
@@ -13428,79 +13426,13 @@ def _main_single():
     # into a fake loss (ZECUSDC_LONG -1.83 -> +1.83, PTBUSDT_LONG -30.79 -> +30.79, DIS_SHORT +2.01 -> -2.01),
     # shifting every first-row delta by 2x|baseline| and blocking promotion on negative-baseline syms.
     # Engine sign is authoritative — never flip baseline_gain or bh by side here.
-    # FIX 2026-09-23: baseline 0.00 is a lie — must be calculated from previous test OR defaults for cat_side, never 0.00
+    # A measured zero is a real result. Never copy a baseline from a different NPZ or run.
     if abs(baseline_gain) < 1e-9:
-        _fixed = False
-        try:
-            _prev_path = PROGRESS_DIR / f"{new_symside}_v14_progress.json"
-            if _prev_path.exists():
-                import json as _js_prev
-                _prev = json.loads(_prev_path.read_text())
-                _prev_base = float(_prev.get("baseline_gain") or 0)
-                _prev_bh = float(_prev.get("bh") or 0)
-                if abs(_prev_base) > 1e-9:
-                    baseline_gain = _prev_base
-                    if abs(_prev_bh) > 1e-9:
-                        bh = _prev_bh
-                    print(f"[baseline-fix] 0.00 lie -> using previous {baseline_gain:.4f} bh {bh:.4f}", flush=True)
-                    _fixed = True
-        except Exception as _e_prev:
-            print(f"[baseline-fix-prev-warn] {_e_prev}", flush=True)
-        if not _fixed:
-            try:
-                _cat_defaults = get_defaults_for_symside(new_symside)
-                # evaluate with cat_side defaults to get real baseline
-                _eval = None
-                if prepared_for_fallback is not None:
-                    from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_prep
-                    _eval = _eval_prep(prepared_for_fallback, {}, window_days=args.window_days)
-                else:
-                    from tools.opt.v12_pilot import evaluate_sanitized as _eval_san
-                    _eval = _eval_san(new_symside, {}, window_days=args.window_days)
-                if _eval and _eval.get("gain_pct") is not None:
-                    _recalc = float(_eval.get("gain_pct") or 0)
-                    _recalc_bh = float(_eval.get("bh_pct") or bh or 0)
-                    if abs(_recalc) > 1e-9:
-                        baseline_gain = _recalc
-                        bh = _recalc_bh
-                        print(f"[baseline-fix] 0.00 lie -> recalculated defaults {baseline_gain:.4f} bh {bh:.4f}", flush=True)
-                        _fixed = True
-            except Exception as _e_recalc:
-                print(f"[baseline-fix-recalc-warn] {_e_recalc}", flush=True)
-        if not _fixed:
-            # SELF-MONITOR: empty/0 baseline is fatal — abort and fix, never proceed with lie
-            try:
-                _macbook_desktop_notify(f"🚨 {new_symside} BASELINE EMPTY", f"0.00 lie could not be fixed bh {bh:.2f} trades {baseline_live.get('trades')} — ABORTING to fix", critical=True)
-            except: pass
-            # try one more aggressive fix: force recalc with hot NPZ ignoring parity
-            try:
-                import pathlib as _pl_fix, json as _js_fix
-                # clear overrides that may poison baseline, force pure defaults
-                _pure = {}
-                from tools.opt.v12_pilot import evaluate_sanitized as _eval_pure
-                _pure_eval = _eval_pure(new_symside, _pure, window_days=args.window_days)
-                if _pure_eval and abs(float(_pure_eval.get("gain_pct") or 0)) > 1e-9:
-                    baseline_gain = float(_pure_eval.get("gain_pct"))
-                    bh = float(_pure_eval.get("bh_pct") or bh)
-                    print(f"[baseline-fix] ABORT-RESCUE pure defaults {baseline_gain:.4f} bh {bh:.4f} — retrying instead of lying", flush=True)
-                    # don't abort, continue with rescued value
-                    _fixed = True
-                elif prepared is not None and int(baseline_vec.get("trades") or 0) == 0 and os.environ.get("V15_SKIP_BELOW_FLOOR", "0") != "1":
-                    # USER 2026-09-29: NPZ loaded fine and the engine returned 0 trades -> a real entry veto, not a lie;
-                    # 0.00 IS the true baseline — the below-floor path names the vetoing gate and sweeps for a way out
-                    print(f"[baseline-fix] {new_symside} genuine 0-trade baseline (NPZ ok, entries vetoed) — 0.00 kept, blocker scan + sweep follow", flush=True)
-                    _genuine_zero_baseline = True
-                    _fixed = True
-                else:
-                    print(f"[baseline-fix] ABORT {new_symside} baseline still 0.00 — exiting to let herd retry with fresh NPZ", flush=True)
-                    raise SystemExit(2)
-            except SystemExit:
-                raise
-            except Exception as _e_abort:
-                print(f"[baseline-fix-abort] {_e_abort}", flush=True)
-                raise SystemExit(2)
-            if not _fixed:
-                print(f"[baseline-fix] WARNING baseline still 0.00 for {new_symside} bh {bh:.4f} — will proceed but this is a lie", flush=True)
+        if prepared is None:
+            print(f"[BASELINE-NO-MEASUREMENT] {new_symside}: prepared NPZ absent; refusing workbook write", flush=True)
+            raise SystemExit(2)
+        _genuine_zero_baseline = True
+        print(f"[BASELINE-MEASURED-ZERO] {new_symside}: current NPZ returned {baseline_trades} trades; keeping computed zero and sample-floor status", flush=True)
 
     # clone — 2026-09-24: auto-select side-specific template if generic/default passed
     template = Path(args.template)
@@ -14232,7 +14164,7 @@ def _main_single():
             last_completed_value = None
             for key in progress["done"]:
                 rec = progress["done"][key]
-                if "cumulative_after" in rec and rec.get("delta", 0) > 0:
+                if "cumulative_after" in rec and isinstance(rec.get("delta"), (int, float)) and rec["delta"] > 0:
                     # Only take cumulative from rows that advanced (POS delta)
                     last_completed_value = float(rec.get("cumulative_after") or 0)
             if last_completed_value is not None and last_completed_value > baseline_gain:
@@ -15332,7 +15264,7 @@ def _main_single():
                     try:
                         _wsk = wb_keep[sheet] if sheet in wb_keep.sheetnames else None
                         if _wsk is not None:
-                            _pd = float(prev.get("delta") or 0)
+                            _pd = float(prev["delta"]) if isinstance(prev.get("delta"), (int, float)) else None
                             if not isinstance(_wsk.cell(row=r, column=6).value, float) and prev.get("delta_vs_initial") is not None:  # FZ: F only from a real recorded value, never float(None or 0)
                                 _wsk.cell(row=r, column=6).value = float(prev.get("delta_vs_initial"))
                             if not isinstance(_wsk.cell(row=r, column=7).value, float):
