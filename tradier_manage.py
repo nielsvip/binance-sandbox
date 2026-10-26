@@ -14324,7 +14324,7 @@ async def _pre_twin_hard_stops(
             return False
         _gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
         _fired = None
-        if bool(
+        if False and bool(
             _cfg("VIGILANCE_GUARD_ENABLED", True, account_key, symbol, position_side)
         ):
             _vg_tf = str(
@@ -15785,7 +15785,8 @@ async def process_position(
         # VIGILANCE_DC4_STOP_TF (user granted 15m) → IMMEDIATE CLOSE + sym_side entry-block until recovery.
         try:
             if (
-                bool(_cfg_auto("VIGILANCE_GUARD_ENABLED", True))
+                False
+                and bool(_cfg_auto("VIGILANCE_GUARD_ENABLED", True))
                 and has_position
                 and position is not None
                 and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
@@ -49295,6 +49296,25 @@ class TradierTradeManager:
             except Exception:
                 pass
             logger.warning(f"🧭 [SCALE_DIRECTION] {position_key} {action} — observed, NOT refused (USER 2026-10-22: live reduce/augment are never vector-gated): {_sd_obs}")
+        _exit_action = str(action or "").upper()
+        _is_exit = is_full_close or "CLOSE" in _exit_action or "REDUCE" in _exit_action or (
+            (str(position_side or "").upper() == "LONG" and str(side or "").upper() == "SELL")
+            or (str(position_side or "").upper() == "SHORT" and str(side or "").upper() == "BUY")
+        )
+        _mandatory_dc4_cfg = safe_fetch_float(_cfg("UNCOND_DC_HARD_STOP_BUFFER_PCT", 0.25, account_key, symbol, position_side), 0.25)
+        try:
+            from vec_decisions.net_exit_gate import mandatory_loss_stop_reason as _mandatory_exit, estimated_net_gain_positive as _net_exit_ok
+            _mandatory_loss_stop = _mandatory_exit(reason, _mandatory_dc4_cfg)
+        except Exception:
+            _mandatory_loss_stop = False
+            _net_exit_ok = lambda gross, fee: False
+        if _is_exit and not _mandatory_loss_stop and _exit_action not in ("PLACE_STOP", "CANCEL_STOP"):
+            _exit_pos = (getattr(self, "position_manager", None).positions or {}).get(position_key) if getattr(self, "position_manager", None) else None
+            _gross_gain = safe_fetch_float(getattr(_exit_pos, "gain", None), float("nan")) if _exit_pos is not None else float("nan")
+            _fee_floor = safe_fetch_float(_cfg("COMMISSION_BUFFER_PCT", 0.08, account_key, symbol, position_side), 0.08)
+            if not _net_exit_ok(_gross_gain, _fee_floor):
+                logger.warning(f"[EXECUTE_NOW_NET_GAIN_BLOCK_TR] {position_key}: {action} blocked; gross_gain={_gross_gain!r}% estimated_fee={_fee_floor:.4f}% reason={str(reason or '')[:100]}")
+                return "BLOCKED_NET_GAIN"
         _res = await self._execute_now_inner(
             position_key=position_key, account_key=account_key, symbol=symbol,
             original_position_amt=original_position_amt, side=side, position_side=position_side,

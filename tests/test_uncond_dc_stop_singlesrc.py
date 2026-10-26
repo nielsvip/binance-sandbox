@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def _fn_body(path, name):
     lines = (ROOT / path).read_text().split("\n")
-    start = next(i for i, l in enumerate(lines) if l.startswith(f"def {name}("))
+    start = next(i for i, l in enumerate(lines) if l.startswith((f"def {name}(", f"async def {name}(")))
     end = next((i for i in range(start + 1, len(lines)) if lines[i].startswith("def ") or lines[i].startswith("class ")), len(lines))
     return "\n".join(lines[start:end])
 
@@ -83,9 +83,14 @@ class TestTradierSingleSource(unittest.TestCase):
 
     def test_uncond_block_before_ultimate(self):
         ui = self.src.index("2026-09-19 USER MANDATE — ABSOLUTE ULTIMATE STOP")
-        for marker in ("DC_HIGH_4H_UNCOND", "DC_LOW_4H_UNCOND", "DC_HARD_STOP_1H_ENABLED", "DC_HARD_STOP_15M_ENABLED", "UNCOND_DC_CLOSED"):
+        for marker in ("DC_HIGH_4H_UNCOND", "DC_LOW_4H_UNCOND", "UNCOND_DC_CLOSED"):
             self.assertIn(marker, self.src)
             self.assertLess(self.src.index(marker), ui)
+        body = _fn_body("tradier_manage.py", "process_position")
+        stop = body[body.index("UNCONDITIONAL DC STOP BOTH SIDES"):body.index("NON-TRADEABLE", body.index("UNCONDITIONAL DC STOP BOTH SIDES"))]
+        self.assertNotIn("DC_HARD_STOP_1H_ENABLED", stop)
+        self.assertNotIn("DC_HARD_STOP_15M_ENABLED", stop)
+        self.assertIn("_uh_tol = _udcs.DEFAULT_BUFFER_PCT", stop)
 
     def test_all_confirm_sites_pass_gain(self):
         n = self.src.count("position_side)), safe_fetch_float(getattr(position, 'gain', 0), 0.0))")
@@ -129,84 +134,27 @@ class TestV12UncondTwin(unittest.TestCase):
     def setUpClass(cls):
         cls.src = (ROOT / "v12_quick_engine.py").read_text()
 
-    def test_quickconfig_switches_default_true(self):
-        self.assertIn("DC_HARD_STOP_1H_ENABLED: bool = True", self.src)
-        self.assertIn("DC_HARD_STOP_15M_ENABLED: bool = True", self.src)
+    def test_quickconfig_rolling_stop_switches_default_false(self):
+        self.assertIn("DC_HARD_STOP_1H_ENABLED: bool = False", self.src)
+        self.assertIn("DC_HARD_STOP_15M_ENABLED: bool = False", self.src)
 
     def test_twin_block(self):
-        for marker in ("UNCOND_DC_HIGH_4H", "UNCOND_DC_HIGH_1H", "UNCOND_DC_HIGH_15M", "UNCOND_DC_LOW_4H", "UNCOND_DC_LOW_1H", "UNCOND_DC_LOW_15M"):
-            self.assertIn(marker, self.src)
-        # 2026-10-22 USER: the ±0.25% literals became UNCOND_DC_HARD_STOP_BUFFER_PCT (default returns 0.9975/1.0025 exactly)
-        self.assertIn("_uh_lo_f, _uh_hi_f = _udcs.buffer_factors(cfg)", self.src)
-        self.assertEqual(self.src.count("* _uh_lo_f"), 3)
-        self.assertEqual(self.src.count("* _uh_hi_f"), 3)
+        self.assertIn("ULTIMATE_DC_{_hs_tf_v12}_HARD_STOP", self.src)
+        self.assertNotIn("UNCOND_DC_LOW_1H", self.src)
+        self.assertNotIn("UNCOND_DC_LOW_15M", self.src)
+        self.assertNotIn("UNCOND_DC_HIGH_1H", self.src)
+        self.assertNotIn("UNCOND_DC_HIGH_15M", self.src)
+        self.assertIn("0.9975 if is_long else 1.0025", self.src)
+        self.assertIn("_ult_wick <= _ult_stop", self.src)
+        self.assertIn("_ult_wick >= _ult_stop", self.src)
 
     def test_twin_precedes_ultimate(self):
-        ui = self.src.index("2026-09-19 USER MANDATE — ABSOLUTE ULTIMATE STOP")
-        self.assertLess(self.src.index("UNCOND_DC_HIGH_4H"), ui)
+        ui = self.src.index("USER 2026-10-25: ABSOLUTE ULTIMATE STOP")
+        self.assertLess(self.src.index("_ult_breach = _ult_lvl > 0"), self.src.index("# WT LOWER CROSS EXIT"))
 
     def test_xc_loss_bypass(self):
         self.assertIn("_xc_loss = pos is not None", self.src)
         self.assertIn("_xc_ok = _xc_loss or (", self.src)
-
-
-class TestUncondTwinBehavioral(unittest.TestCase):
-    """Executes the REAL twin block text (sliced, staged namespace) — reason, pnl, controls."""
-
-    @classmethod
-    def setUpClass(cls):
-        import textwrap
-
-        lines = (ROOT / "v12_quick_engine.py").read_text().split("\n")
-        t0 = next(i for i, l in enumerate(lines) if "USER MANDATE twin — UNCONDITIONAL DC STOP BOTH SIDES" in l)
-        t1 = next(i for i in range(t0, len(lines)) if lines[i].strip() == "except Exception:" and lines[i + 1].strip() == "pass")
-        cls.twin = "for _twin_probe in [0]:\n" + textwrap.indent(textwrap.dedent("\n".join(lines[t0:t1 + 2])), "    ")
-
-    def _fire(self, px, is_long, highs=(100.0, 200.0, 200.0), lows=(50.0, 50.0, 50.0), h1=True, h15=True):
-        import numpy as np
-
-        n = 10
-        arr = lambda v: np.full(n, v, dtype=float)
-
-        class Cfg:
-            DC_PRIOR_BAR_CHANNEL = True
-            DC_HARD_STOP_1H_ENABLED = h1
-            DC_HARD_STOP_15M_ENABLED = h15
-            DC_HARD_STOP_REENTRY_COOLDOWN_HOURS = 4.0
-
-        ns = {"i": 5, "px": px, "is_long": is_long, "pos": {"qty": 2.0, "avg_price": 100.0, "entry_price": 100.0,
-              "entry_qty": 2.0, "deployed": 200.0, "realized": 0.0, "entry_bar": 0, "peak_pnl_pct": 0.0,
-              "fees": 0.0, "entry_reason": "SEED"},
-              "cfg": Cfg(), "ts": np.arange(n, dtype=float) * 900.0, "half_fee": 0.0005,
-              "trades": [], "cd": 0, "cooldown_bars": 3, "has_closed_before": False,
-              "bmin": 15, "is_tradier": True,
-              "_uh_h4": arr(highs[0]), "_uh_h1": arr(highs[1]), "_uh_h15": arr(highs[2]),
-              "_uh_l4": arr(lows[0]), "_uh_l1": arr(lows[1]), "_uh_l15": arr(lows[2])}
-        import vec_decisions.uncond_dc_stop as _udcs
-
-        ns["_udcs"] = _udcs
-        exec(self.twin, {}, ns)
-        return ns
-
-    def test_short_4h_fires_with_loss(self):
-        r = self._fire(100.3, False)
-        self.assertEqual(len(r["trades"]), 1)
-        self.assertEqual(r["trades"][0]["exit_reason"], "UNCOND_DC_HIGH_4H")
-        self.assertLess(r["trades"][0]["pnl_pct"], 0)
-        self.assertIsNone(r["pos"])
-
-    def test_long_4h_fires_with_loss(self):
-        r = self._fire(99.7, True, lows=(100.0, 50.0, 50.0))
-        self.assertEqual(len(r["trades"]), 1)
-        self.assertEqual(r["trades"][0]["exit_reason"], "UNCOND_DC_LOW_4H")
-        self.assertLess(r["trades"][0]["pnl_pct"], 0)
-        self.assertIsNone(r["pos"])
-
-    def test_below_tolerance_holds(self):
-        r = self._fire(100.1, False)
-        self.assertEqual(r["trades"], [])
-        r = self._fire(99.9, True, lows=(100.0, 50.0, 50.0))
-        self.assertEqual(r["trades"], [])
 
 
 if __name__ == "__main__":

@@ -55,20 +55,26 @@ def test_twin_predicate_follows_tolerance():
     assert twins.long_dc_low_stop_fires(99.7, 100.0, U.buffer_pct_value(0.25)) == twins.long_dc_low_stop_fires(99.7, 100.0)
 
 
-def test_engine_reads_switch_in_uncond_block():
+def test_engine_uses_fixed_dc4h_threshold_not_buffer_switch():
     src = (ROOT / "v12_quick_engine.py").read_text()
-    assert "_uh_lo_f, _uh_hi_f = _udcs.buffer_factors(cfg)" in src
-    for lit in ("_uh_llvl4 * 0.9975", "_uh_llvl1 * 0.9975", "_uh_llvl15 * 0.9975", "_uh_lvl4 * 1.0025", "_uh_lvl1 * 1.0025", "_uh_lvl15 * 1.0025"):
-        assert lit not in src
+    assert "_ult_stop = _ult_lvl * (0.9975 if is_long else 1.0025)" in src
+    assert "_udcs.buffer_factors(cfg)" not in src
+    assert "UNCOND_DC_LOW_1H" not in src and "UNCOND_DC_LOW_15M" not in src
+    assert "UNCOND_DC_HIGH_1H" not in src and "UNCOND_DC_HIGH_15M" not in src
 
 
-def test_tradier_live_reads_per_sym_value(monkeypatch):
+def test_tradier_live_stop_ignores_per_sym_buffer(monkeypatch):
     import per_sym_store
     import tradier_manage as tm
 
     src = (ROOT / "tradier_manage.py").read_text()
-    assert f'_uh_tol = _udcs.buffer_pct_value(_cfg("{KEY}", _udcs.DEFAULT_BUFFER_PCT, account_key, symbol, position_side))' in src
-    assert src.count("_stop_fires(_uh_px, ") == 6 and src.count(", _uh_tol)") == 6
+    assert "_uh_tol = _udcs.DEFAULT_BUFFER_PCT" in src
+    start = src.index("async def process_position(")
+    body = src[start:src.index("\nasync def ", start + 1)]
+    block = body[body.index("UNCONDITIONAL DC STOP BOTH SIDES"):body.index("NON-TRADEABLE", body.index("UNCONDITIONAL DC STOP BOTH SIDES"))]
+    assert '_cfg("UNCOND_DC_HARD_STOP_BUFFER_PCT"' not in block
+    assert "DC_HARD_STOP_1H_ENABLED" not in block
+    assert "DC_HARD_STOP_15M_ENABLED" not in block
     monkeypatch.setattr(per_sym_store, "get_overrides", lambda ss: {KEY: 0.4} if ss == "ZZTEST_LONG" else None)
     monkeypatch.delenv("PER_SYM_STORE_SQLITE_DISABLED", raising=False)
     monkeypatch.delenv("V8_DISABLE_PER_SYM", raising=False)
@@ -102,13 +108,10 @@ def _run(ss, extra):
 
 
 @pytest.mark.parametrize("ss", ["CLX_LONG", "EGLDUSDT_SHORT"])
-def test_engine_default_identical_and_non_default_binds(ss):
+def test_engine_non_default_buffer_does_not_change_mandatory_stop(ss):
     sym = ss.rsplit("_", 1)[0]
     if not (ROOT / "backtest_v8" / "indicators" / f"{sym}.npz").exists():
         pytest.skip(f"no local NPZ for {sym}")
     base, n_base = _run(ss, {})
-    if n_base == 0:
-        pytest.skip(f"{ss}: no UNCOND_DC exit on this NPZ window")
     assert _run(ss, {KEY: 0.25})[0] == base
-    changed = [v for v in (0.10, 0.40, 0.60) if _run(ss, {KEY: v})[0] != base]
-    assert changed, f"{ss}: no non-default buffer changed the ledger"
+    assert _run(ss, {KEY: 0.40})[0] == base

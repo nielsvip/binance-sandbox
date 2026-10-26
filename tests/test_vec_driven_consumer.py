@@ -301,6 +301,9 @@ class _FakeTM:
 
 def _setup(tmp_path, monkeypatch, registry, amts=None, cycles=1, expires=None):
     base = tmp_path
+    base.mkdir(parents=True, exist_ok=True)
+    (base / "symbols_men_long.json").write_text(json.dumps(["BTCUSDT"]))
+    (base / "tradeable_keys.json").write_text(json.dumps(["men:BTCUSDT_LONG"]))
     vl = base / "data" / "vec_live"
     (vl / "intents").mkdir(parents=True, exist_ok=True)
     (vl / "state").mkdir(parents=True, exist_ok=True)
@@ -421,6 +424,23 @@ def test_reconcile_late_open_executes_by_default(tmp_path, monkeypatch):
     monkeypatch.setattr(EZ._ezm_base_config, "VEC_DRIVEN_RECONCILE_GRACE_S", 0.0, raising=False)
     _run_loop(tm, monkeypatch, cycles=2)
     assert any(c.get("action") == "OPEN" for c in calls), calls
+
+
+@pytest.mark.parametrize("source", ["intent", "reconcile"])
+def test_non_tradeable_side_book_blocks_vec_open_before_execute_now(tmp_path, monkeypatch, source):
+    """The side book remains authoritative even when the generic tradeable key is present."""
+    base, vl, tm, calls = _setup(tmp_path, monkeypatch, REG_LIVE)
+    tm.tradeable_keys = {"men:BTCUSDT_LONG"}
+    (base / "symbols_men_long.json").write_text("[]")
+    (base / "tradeable_keys.json").write_text(json.dumps(["men:BTCUSDT_LONG"]))
+    if source == "intent":
+        _intent(vl, "side-book-denied", "BTCUSDT_LONG", "OPEN", time.time() - 5)
+    else:
+        (vl / "state" / "BTCUSDT_LONG.json").write_text(json.dumps({"target_state": "LONG", "bar_ts": time.time() - 30}))
+    _run_loop(tm, monkeypatch, cycles=2)
+    assert calls == []
+    if source == "intent":
+        assert not VD.ConsumedStore(vl / "consumed_men.json").has("side-book-denied")
 
 
 def test_stale_intent_executes_late_by_default(tmp_path, monkeypatch):

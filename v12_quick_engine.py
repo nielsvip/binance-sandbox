@@ -17708,9 +17708,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     # of the live guards: a LOSING position whose price breaches dc_low4_{TF} (long) / dc_high4_{TF}
     # (short) forces an immediate close, and that stop OR VIGILANCE_CONSEC_LOSSES consecutive losing
     # closes blocks the sym_side until recovery. Default ON = live parity. NO fixed-% stop.
-    _vig_enabled = bool(
-        getattr(cfg, "VIGILANCE_GUARD_ENABLED", False)
-    )  # USER: a switch, not a default — False = whole guard inert
+    _vig_enabled = False  # User stop law: no Vigilance loss-close lane; only frozen DC15 and fixed DC4h stops may close red.
     _vig_tol = (
         float(getattr(cfg, "VIGILANCE_DC4_BREACH_TOLERANCE_PCT", 0.25) or 0.0) / 100.0
     )  # dc_low_15m - 0.25% convention

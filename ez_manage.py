@@ -8957,6 +8957,17 @@ def _vec_decided_reason_ok(reason) -> bool:
         return False
 
 
+def _vec_driven_entry_side_book_allows(base_path, account_key, symbol, side):
+    """Mirror execute_now's account-side book gate before dispatching vec OPEN/AUGMENT actions."""
+    if account_key not in ("ang", "flz", "inf", "fin", "men"):
+        return True
+    try:
+        from tools.account_comparison_books import crypto_entry_allowed
+        return bool(crypto_entry_allowed(Path(base_path), account_key, symbol, side))
+    except Exception:
+        return False
+
+
 def _vec_driven_mode(symbol: str, side: str, account_key: str) -> str:
     """X3 VEC-DRIVEN LIVE 2026-10-06: 'off' | 'shadow' | 'live' for this account's sym_side (live_twins/vec_driven.py).
     Global VEC_DRIVEN_ENABLED False -> 'off' without touching any file (byte-identical live)."""
@@ -26591,6 +26602,7 @@ class MultiAccountTradeManager:
                     stores[account_key] = store
                     _seen_dictate = set()
                     _dispatch = []
+                    _vd_intent_sidebook_skips = 0
                     for it in intents:
                         ss = it["ss"]
                         mode = modes.get(ss)
@@ -26633,6 +26645,9 @@ class MultiAccountTradeManager:
                             _vdm.append_jsonl(base / f"shadow_compare_{account_key}.jsonl", rec)
                             logger.info(f"🧭 [VEC_DRIVEN_SHADOW] {position_key} intent={it['intent_id']} {it['type']} bar={it.get('bar_ts')} would={would or why} native={rec['native_types']} match={rec['native_matches']}")
                             store.mark(it["intent_id"])
+                            continue
+                        if str(it.get("type") or "").upper() in ("OPEN", "AUGMENT") and not _vec_driven_entry_side_book_allows(getattr(self.config, "BASE_PATH", "."), account_key, symbol, side):
+                            _vd_intent_sidebook_skips += 1
                             continue
                         _it_age = _vdm.intent_age_s(it, now)
                         _zp_vd = False
@@ -26696,6 +26711,8 @@ class MultiAccountTradeManager:
                     # skip is now counted and the tally is logged once a minute per account — the sweep states why.
                     _rec_jobs = []
                     _rc_skip = defaultdict(int)
+                    if _vd_intent_sidebook_skips:
+                        _rc_skip["non_tradeable_side_book_intent"] += _vd_intent_sidebook_skips
                     for ss, mode in modes.items():
                         if mode != "live":
                             _rc_skip["mode_not_live"] += 1
@@ -26758,6 +26775,9 @@ class MultiAccountTradeManager:
                                 _tk = None
                             if _tk is not None and position_key not in set(_tk):
                                 _rc_skip["non_tradeable_close_only"] += 1
+                                continue
+                            if not _vec_driven_entry_side_book_allows(getattr(self.config, "BASE_PATH", "."), account_key, symbol, side):
+                                _rc_skip["non_tradeable_side_book_reconcile"] += 1
                                 continue
                         if _rc_done and act != "OPEN":
                             _rc_skip["close_already_tried_this_bar"] += 1
@@ -33233,6 +33253,24 @@ class MultiAccountTradeManager:
             except Exception:
                 pass
             logger.warning(f"🧭 [SCALE_DIRECTION] {position_key} {action} — observed, NOT refused (USER 2026-10-22: live reduce/augment are never vector-gated): {_sd_obs}")
+        _exit_action = str(action or "").upper()
+        _is_exit = is_full_close or "CLOSE" in _exit_action or "REDUCE" in _exit_action or (
+            (str(position_side or "").upper() == "LONG" and str(side or "").upper() == "SELL")
+            or (str(position_side or "").upper() == "SHORT" and str(side or "").upper() == "BUY")
+        )
+        try:
+            from vec_decisions.net_exit_gate import mandatory_loss_stop_reason as _mandatory_exit, estimated_net_gain_positive as _net_exit_ok
+            _mandatory_loss_stop = _mandatory_exit(reason)
+        except Exception:
+            _mandatory_loss_stop = False
+            _net_exit_ok = lambda gross, fee: False
+        if _is_exit and not _mandatory_loss_stop and _exit_action not in ("PLACE_STOP", "CANCEL_STOP"):
+            _exit_pos = (getattr(self, "position_manager", None).positions or {}).get(position_key) if getattr(self, "position_manager", None) else None
+            _gross_gain = safe_fetch_float(getattr(_exit_pos, "gain", None), float("nan")) if _exit_pos is not None else float("nan")
+            _fee_floor = safe_fetch_float(_psym_get(symbol, position_side, "COMMISSION_BUFFER_PCT", getattr(config, "COMMISSION_BUFFER_PCT", 0.08)), 0.08)
+            if not _net_exit_ok(_gross_gain, _fee_floor):
+                logger.warning(f"[EXECUTE_NOW_NET_GAIN_BLOCK] {position_key}: {action} blocked; gross_gain={_gross_gain!r}% estimated_fee={_fee_floor:.4f}% reason={str(reason or '')[:100]}")
+                return "BLOCKED_NET_GAIN"
         _res = await self._execute_now_inner(
             position_key=position_key, account_key=account_key, symbol=symbol,
             original_positionAmt=original_positionAmt, side=side, position_side=position_side,
@@ -52685,7 +52723,7 @@ async def _pp_unconditional_hard_stops(trade_manager, account_key, position_key,
         # board has armed it (VIGILANCE_DC4_STOP_ARMED, per-sym resolvable) —
         # switch-driven stops stay (USER 2026-10-25). The non-negotiable stop is
         # the one resting at the exchange on dc_low_15m/dc_high_15m -/+ 0.25%.
-        if bool(getattr(_cfg, "VIGILANCE_GUARD_ENABLED", True)) and bool(getattr(_cfg, "VIGILANCE_DC4_STOP_ARMED", False)):
+        if False and bool(getattr(_cfg, "VIGILANCE_GUARD_ENABLED", True)) and bool(getattr(_cfg, "VIGILANCE_DC4_STOP_ARMED", False)):
             _vg_tf = str(getattr(_cfg, "VIGILANCE_DC4_STOP_TF", "15m") or "OFF").strip()
             if _vg_tf.upper() != "OFF" and _gain < 0:
                 _vg_lvl = safe_fetch_float(_ind.get(f"dc_low4_{_vg_tf}" if _is_long else f"dc_high4_{_vg_tf}", 0), 0.0)
@@ -53781,7 +53819,7 @@ async def process_position(
     # VIGILANCE_DC4_STOP_TF (user granted 15m) → IMMEDIATE CLOSE + sym_side entry-block until
     # recovery. Reason carries VIGILANCE_DC4 (UNIVERSAL_NOLOSS_GATE bypass) + HARD_STOP/USER (HPO bypass).
     # ═══════════════════════════════════════════════════════════════════════════
-    if position and abs(safe_float(getattr(position, "positionAmt", 0))) > 0 and bool(getattr(config, "VIGILANCE_GUARD_ENABLED", True)):
+    if False and position and abs(safe_float(getattr(position, "positionAmt", 0))) > 0 and bool(getattr(config, "VIGILANCE_GUARD_ENABLED", True)):
         try:
             _vg_tf = str(getattr(config, "VIGILANCE_DC4_STOP_TF", "15m") or "OFF").strip()
             if _vg_tf.upper() != "OFF":
