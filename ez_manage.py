@@ -58997,7 +58997,7 @@ async def process_position(
                     > 0
                     and safe_fetch_float(getattr(_nle_opp_pos, "gain", 0), 0) < 0.0
                 )
-                if _nle_opp_in_loss:
+                if _nle_opp_in_loss and bool(getattr(config, "HEDGE_MODE", False)):
                     logger.warning(
                         f"⚡ [NO_LOSS_EXIT_BLOCKED] {position_key}: {_pp_noloss_reason} — BUT opposite {_nle_opp_key} in loss ({getattr(_nle_opp_pos, 'gain', 0):.2f}%), this IS the hedge, keeping it"
                     )
@@ -59034,6 +59034,8 @@ async def process_position(
             # RULE #3: WT_15M_SAME_HEDGE
             # Requires: 3m AND 1h WT against, gain < -0.5% (genuine loser only — not momentary dips to 0)
             if (
+                bool(getattr(config, "HEDGE_MODE", False))
+                and
                 getattr(config, "WT_15M_SAME_HEDGE_ENABLED", False)
                 and _wt3m_against
                 and _wt1h_against_sh
@@ -59270,6 +59272,9 @@ async def process_position(
                 getattr(config, "MANDATORY_HEDGE_GAIN_THRESHOLD_PCT", -0.5)
             )
             if (
+                bool(getattr(config, "HEDGE_MODE", False))
+                and bool(_psym_get(symbol, position_side, "MANDATORY_HEDGE_ON_NEGATIVE_ENABLED", getattr(config, "MANDATORY_HEDGE_ON_NEGATIVE_ENABLED", False)))
+                and
                 not bool(getattr(position, "is_hedge", False))
                 and _pp_gain < _mh_gain_thr
             ):
