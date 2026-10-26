@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from tools.v15_preopen_7d_stage import digest, file_md5, stage
+from tools.v15_preopen_7d_stage import digest, file_md5, file_sha256, stage
 from tools.v15_preopen_7d_runtime import assert_ready
 
 
@@ -85,6 +85,30 @@ def test_stage_creates_isolated_db_and_7d_vector_set(tmp_path):
     produced = json.loads((tmp_path / "stage/vec_driven_sets.json").read_text())
     assert produced["AAAUSDT_SHORT"]["source"] == "7d_optimized"
     assert "BBBUSDT_LONG" not in produced
+
+
+def test_stage_binds_sql_baseline_to_exact_database_row(tmp_path):
+    today, queue, results, db, sets, stocks, published = _fixture(tmp_path)
+    source_defaults = {"X": 0, "Y": True}
+    source_overrides = {"X": 1}
+    con = sqlite3.connect(db)
+    con.execute("UPDATE per_sym_active SET updated_at=?, overrides_json=?, defaults_snapshot_json=?, full_config_json=? WHERE sym_side=?",
+                (f"{today}T01:00:00Z", json.dumps(source_overrides), json.dumps(source_defaults), json.dumps({**source_defaults, **source_overrides}), "AAAUSDT_SHORT"))
+    con.commit()
+    con.close()
+    doc = json.loads(queue.read_text())
+    row = {"sym_side": "AAAUSDT_SHORT", "updated_at": f"{today}T01:00:00Z", "overrides": source_overrides,
+           "defaults": source_defaults, "full": {**source_defaults, **source_overrides}}
+    doc["sym_sides"]["AAAUSDT_SHORT"] = {"source_kind": "per_sym_sql", "sql_baseline_ok": True,
+                                             "source_db_sha256": file_sha256(db), "source_row_sha256": digest(row),
+                                             "overrides": source_overrides}
+    queue.write_text(json.dumps(doc))
+    report = stage(queue, results, db, sets, stocks, tmp_path / "sql_stage", today, published)
+    assert report["selected_7d"] == 1
+    doc["sym_sides"]["AAAUSDT_SHORT"]["source_row_sha256"] = "tampered"
+    queue.write_text(json.dumps(doc))
+    with pytest.raises(ValueError, match="row changed"):
+        stage(queue, results, db, sets, stocks, tmp_path / "tampered_stage", today, published)
 
 
 def test_stage_refuses_missing_or_unverified_result(tmp_path):

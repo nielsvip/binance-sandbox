@@ -1,6 +1,6 @@
 {
- "generated_utc": "2026-10-26T18:22:52Z",
- "secs": 47.4,
+ "generated_utc": "2026-10-26T18:25:29Z",
+ "secs": 84.9,
  "universe": {
   "crypto": 201,
   "stocks": 223
@@ -17,53 +17,53 @@
   {
    "host": "mac",
    "file": "crypto prices",
-   "age_s": -8.0,
+   "age_s": -10.8,
    "max_s": 60,
    "ok": true,
    "files": {
-    "price_cache_1.json": -8.0,
-    "price_cache_2.json": -7.0,
-    "price_cache_3.json": -8.0
+    "price_cache_1.json": -10.8,
+    "price_cache_2.json": 4.0,
+    "price_cache_3.json": -10.8
    }
   },
   {
    "host": "mac",
    "file": "crypto snapshot (market_data_*)",
-   "age_s": -0.9,
+   "age_s": 3.8,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/market_data_NEWEST": -0.9
+    "data/market_data_NEWEST": 3.8
    }
   },
   {
    "host": "mac",
    "file": "crypto latest_market_data",
-   "age_s": -0.9,
+   "age_s": 3.8,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/latest_market_data.json": -0.9
+    "data/latest_market_data.json": 3.8
    }
   },
   {
    "host": "mac",
    "file": "stock indicators",
-   "age_s": 51.7,
+   "age_s": 12.6,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/tradier/tradier_indicators_latest.json": 51.7
+    "data/tradier/tradier_indicators_latest.json": 12.6
    }
   },
   {
    "host": "gw",
    "file": "crypto market_data",
-   "age_s": 27.5,
+   "age_s": 56.2,
    "max_s": 300,
    "ok": true,
    "files": {
-    "data/latest_market_data.json": 27.5
+    "data/latest_market_data.json": 56.2
    }
   },
   {

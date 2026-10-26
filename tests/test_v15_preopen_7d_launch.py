@@ -36,6 +36,18 @@ def test_launcher_rejects_unverified_source(tmp_path):
         build_launch(queue, ss, tmp_path, 7, "python3")
 
 
+def test_launcher_accepts_hash_bound_sql_baseline(tmp_path):
+    ss = "AAAUSDT_SHORT"
+    source = {"X": 1}
+    queue = {"accounts": {"fin": [ss], "trc": []},
+             "sym_sides": {ss: {"source_kind": "per_sym_sql", "sql_baseline_ok": True,
+                                "source_db_sha256": "db-sha", "source_row_sha256": "row-sha",
+                                "cat_side": "CRYPTO_SHORT", "overrides": source}}}
+    _, env, folder = build_launch(queue, ss, tmp_path, 7, "python3")
+    assert env["V15_7D_SOURCE_SHA256"] == digest(source)
+    assert json.loads((folder / "start_30d.json").read_text()) == source
+
+
 def test_slot_guard_counts_distinct_pilot_symbols_only():
     assert _active_symbols([
         "/env/bin/python -u /work/v15_pilot.py --sym-side AAPL_LONG --workers 7",

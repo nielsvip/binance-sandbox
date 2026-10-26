@@ -17236,19 +17236,7 @@ async def process_position(
                                 _se_gain = safe_fetch_float(
                                     getattr(position, "gain", 0), 0
                                 )
-                                _se_fee_pct = max(
-                                    0.0,
-                                    safe_fetch_float(
-                                        _cfg(
-                                            "COMMISSION_BUFFER_PCT",
-                                            0.08,
-                                            account_key,
-                                            symbol,
-                                            position_side,
-                                        ),
-                                        0.08,
-                                    ),
-                                )
+                                _se_fee_pct = 0.0  # Tradier stocks have no fee buffer.
                                 _se_net_gain_pct = _se_gain - _se_fee_pct
                                 if _se_net_gain_pct > 0.0:
                                     logger.error(
@@ -49337,7 +49325,7 @@ class TradierTradeManager:
         if _is_exit and not _mandatory_loss_stop and _exit_action not in ("PLACE_STOP", "CANCEL_STOP"):
             _exit_pos = (getattr(self, "position_manager", None).positions or {}).get(position_key) if getattr(self, "position_manager", None) else None
             _gross_gain = safe_fetch_float(getattr(_exit_pos, "gain", None), float("nan")) if _exit_pos is not None else float("nan")
-            _fee_floor = safe_fetch_float(_cfg("COMMISSION_BUFFER_PCT", 0.08, account_key, symbol, position_side), 0.08)
+            _fee_floor = 0.0  # Stocks require a positive gross gain; no fee estimate.
             if not _net_exit_ok(_gross_gain, _fee_floor):
                 logger.warning(f"[EXECUTE_NOW_NET_GAIN_BLOCK_TR] {position_key}: {action} blocked; gross_gain={_gross_gain!r}% estimated_fee={_fee_floor:.4f}% reason={str(reason or '')[:100]}")
                 return "BLOCKED_NET_GAIN"
@@ -51179,9 +51167,7 @@ class TradierTradeManager:
                                     _br_tol_atr_m,
                                 )
                             )
-                            _br_fee_pct = float(
-                                _cfg_auto("COMMISSION_BUFFER_PCT", 0.08) or 0.0
-                            )
+                            _br_fee_pct = 0.0  # No stock fee buffer.
                             _bb_recov_bypass = _br_hit and positive_after_estimated_fees(
                                 _en_gain, _br_fee_pct
                             )

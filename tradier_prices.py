@@ -7,6 +7,7 @@ import sys
 import tempfile
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Any
@@ -94,6 +95,31 @@ def _load_cached_subbars(path, bucket_ts, interval_seconds):
 
 
 def _write_provisional_stock_15m(path, bar):
+    import fcntl
+    from closed_bar_feed import timestamp_epoch
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lock = path.with_name(f'.{path.name}.mark.lock')
+    with lock.open('a') as handle:
+        fcntl.flock(handle, fcntl.LOCK_EX)
+        if path.exists():
+            try:
+                rows = json.loads(path.read_text())
+                incoming_ts = timestamp_epoch(bar.get('timestamp'))
+                for previous in rows:
+                    if timestamp_epoch(previous.get('timestamp')) != incoming_ts:
+                        continue
+                    if previous.get('volume') is not None and not previous.get('_provisional'):
+                        return False
+                    if previous.get('_closed') and not bar.get('_closed'):
+                        return False
+                    bar = dict(bar, timestamp=previous['timestamp'])
+                    break
+            except (ValueError, TypeError, KeyError):
+                return False
+        return _write_provisional_stock_15m_unlocked(path, bar)
+
+
+def _write_provisional_stock_15m_unlocked(path, bar):
     try:
         existing = []
         if path.exists():
@@ -274,16 +300,14 @@ class TradierPriceFetcher:
             logger.error(f"[{self.fetcher_id}] Disk Save Failed: {e}")
 
     async def _write_provisional_15m(self, prices):
-        from closed_bar_feed import aggregate_closed_15m, publish_closed_15m
         now = time.time()
         writes = []
-        closed_sent = self.__dict__.setdefault('_closed_15m_sent', {})
+        pending = self.__dict__.setdefault('_pending_closed_15m', {})
+        io_tasks = self.__dict__.setdefault('_provisional_io_tasks', {})
         for symbol, quote in list(prices.items()):
             try:
                 path = self.config.KLINES_CACHE_DIR / f"{symbol}_15m.json"
                 state = self._provisional_15m.get(symbol)
-                previous_bucket = state['bucket_ts'] if state else None
-                completed = aggregate_closed_15m(state['minute_bars'], previous_bucket, now) if state and closed_sent.get(symbol) != previous_bucket else None
                 bar = None
                 signature = None
                 price = float(quote.get('price') or quote.get('last') or 0.0)
@@ -291,6 +315,8 @@ class TradierPriceFetcher:
                 bucket_ts = _tradier_15m_bucket(now)
                 if bucket_ts is not None and price > 0 and quote_ts > 0 and 0 <= now - quote_ts <= 5.0:
                     if state is None or state['bucket_ts'] != bucket_ts:
+                        if state is not None:
+                            pending[(symbol, state['bucket_ts'])] = state
                         minute_bars = {}
                         if state is None:
                             minute_bars = await asyncio.to_thread(_load_cached_subbars, self.config.KLINES_CACHE_DIR / f"{symbol}_1m.json", bucket_ts, 60)
@@ -315,20 +341,15 @@ class TradierPriceFetcher:
                     signature = (stamp, opening, high, low, close)
                     if self._provisional_15m_sig.get(symbol) != signature:
                         bar = {'timestamp': stamp, 'open': opening, 'high': high, 'low': low, 'close': close, '_provisional': True}
-                if completed is None and bar is None:
+                if bar is None or (symbol in io_tasks and not io_tasks[symbol].done()):
                     continue
-                async def _write(target=path, row=bar, final=completed, ticker=symbol, sig=signature, previous=previous_bucket):
+                async def _write(target=path, row=bar, ticker=symbol, sig=signature):
                     async with self._provisional_write_sem:
-                        if final is not None and await asyncio.to_thread(publish_closed_15m, target, final, _write_provisional_stock_15m, self.config.BASE_PATH, "tradier", ticker):
-                            closed_sent[ticker] = previous
-                        if row is not None and await asyncio.to_thread(_write_provisional_stock_15m, target, row):
+                        if await asyncio.to_thread(_write_provisional_stock_15m, target, row):
                             self._provisional_15m_sig[ticker] = sig
-                writes.append(_write())
+                io_tasks[symbol] = asyncio.create_task(_write())
             except Exception as exc:
                 logger.debug(f"[{self.fetcher_id}] provisional 15m skipped {symbol}: {exc}")
-        if writes:
-            await asyncio.gather(*writes, return_exceptions=True)
-
     async def update_prices_loop(self):
         logger.info(f"🚀 Starting Price Loop [{self.fetcher_id}] - Interval: {self.config.PRICE_UPDATE_INTERVAL}s")
         while self.running:
@@ -353,6 +374,45 @@ class TradierPriceFetcher:
             except Exception as e:
                 logger.error(f"Loop error: {e}")
                 await asyncio.sleep(10)
+
+    async def closed_15m_clock_loop(self):
+        from closed_bar_feed import aggregate_closed_15m, publish_closed_15m
+        loop = asyncio.get_running_loop()
+        executor = ThreadPoolExecutor(max_workers=8, thread_name_prefix='stockclosed15m')
+        sent = {}
+        reported = set()
+        try:
+            while self.running:
+                now = time.time()
+                pending = self.__dict__.setdefault('_pending_closed_15m', {})
+                candidates = dict(pending)
+                candidates.update({(symbol, state['bucket_ts']): state for symbol, state in list(self._provisional_15m.items()) if now >= state['bucket_ts'] + 900})
+                jobs = []
+                for (symbol, bucket_ts), state in candidates.items():
+                    if sent.get(symbol, 0) >= bucket_ts:
+                        pending.pop((symbol, bucket_ts), None)
+                        continue
+                    completed = aggregate_closed_15m(state['minute_bars'], bucket_ts, now)
+                    if completed is None:
+                        if (symbol, bucket_ts) not in reported:
+                            logger.warning(f'[CLOSED_15M_MISSING] stock {symbol} bar_start={bucket_ts} incomplete_1m={len(state["minute_bars"])}')
+                            reported.add((symbol, bucket_ts))
+                        continue
+                    path = self.config.KLINES_CACHE_DIR / f'{symbol}_15m.json'
+                    async def _publish(target=path, row=completed, ticker=symbol, bucket=bucket_ts):
+                        try:
+                            if await loop.run_in_executor(executor, publish_closed_15m, target, row, _write_provisional_stock_15m, self.config.BASE_PATH, 'tradier', ticker):
+                                sent[ticker] = bucket
+                                pending.pop((ticker, bucket), None)
+                                logger.info(f'[CLOSED_15M] stock {ticker} bar_start={bucket} bar_close={bucket + 900} published_at={time.time():.6f} latency_s={time.time() - bucket - 900:.3f}')
+                        except Exception as exc:
+                            logger.warning(f'[CLOSED_15M] stock {ticker} publish failed: {exc}')
+                    jobs.append(_publish())
+                if jobs:
+                    await asyncio.gather(*jobs)
+                await asyncio.sleep(0.1)
+        finally:
+            executor.shutdown(wait=False)
 
     async def provisional_15m_clock_loop(self):
         while self.running:
@@ -383,11 +443,17 @@ class TradierPriceFetcher:
         self.running = True
         logger.info(f"[{self.fetcher_id}] Main Loop Active.")
         provisional_task = asyncio.create_task(self.provisional_15m_clock_loop())
+        closed_task = asyncio.create_task(self.closed_15m_clock_loop())
         try:
             await self.update_prices_loop()
         finally:
             provisional_task.cancel()
-            await asyncio.gather(provisional_task, return_exceptions=True)
+            closed_task.cancel()
+            await asyncio.gather(provisional_task, closed_task, return_exceptions=True)
+            tasks = list(self.__dict__.get("_provisional_io_tasks", {}).values())
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
         
     async def stop(self):
         logger.info(f"[{self.fetcher_id}] Stopping...")

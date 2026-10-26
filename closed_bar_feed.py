@@ -1,6 +1,7 @@
 import json
 import math
 import os
+import re
 import tempfile
 import time
 from datetime import datetime, timezone
@@ -8,6 +9,8 @@ from pathlib import Path
 
 
 def timestamp_epoch(value):
+    if isinstance(value, (int, float)):
+        return int(value / 1000 if value > 1e11 else value)
     return int(datetime.fromisoformat(str(value).replace('Z', '+00:00')).timestamp())
 
 
@@ -63,7 +66,7 @@ def receive_closed_15m(base_path, event, now_s=None):
     import fcntl
     now_s = time.time() if now_s is None else float(now_s)
     symbol, mode = event['symbol'], event['mode']
-    if not symbol.isalnum() or mode not in ('crypto', 'tradier'):
+    if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.-]*', symbol) or mode not in ('crypto', 'tradier'):
         raise ValueError('invalid symbol or mode')
     start = int(event['bar_start_ts'])
     if start % 900 or int(event['bar_close_ts']) != start + 900 or now_s < start + 900:
@@ -95,7 +98,7 @@ def receive_closed_15m(base_path, event, now_s=None):
                 break
         else:
             rows.append(row)
-        rows.sort(key=lambda item: item.get('timestamp', ''))
+        rows.sort(key=lambda item: timestamp_epoch(item['timestamp']))
         atomic_json(path, rows)
     receipt = {'symbol': symbol, 'mode': mode, 'bar_start_ts': start, 'bar_close_ts': start + 900, 'published_at': event['published_at'], 'received_at': time.time(), 'path': str(path)}
     ledger = root / 'data' / 'closed_15m_receipts.jsonl'

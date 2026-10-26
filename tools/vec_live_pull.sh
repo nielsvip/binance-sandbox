@@ -30,9 +30,17 @@ SSH="ssh -o BatchMode=yes -o ConnectTimeout=8 -o ServerAliveInterval=5"
 # the same dirs (merge rsync, never --delete: disjoint shards, disjoint sym_sides). Default = today's
 # single S1 source, byte-identical behavior. Registry stays Mac-local unless VEC_LIVE_PULL_REGISTRY=1.
 pull_one() {
-  local host="$1" remote="$2" ts rc stage
+  local host="$1" remote="$2" ts rc stage shard cache_key
   ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-  stage=$(mktemp -d "$DEST/.incoming.XXXXXX") || return 1
+  cache_key=$(echo "$host" | tr -c 'A-Za-z0-9._-' '_')
+  stage="$DEST/.hostcache/$cache_key"
+  case "$host" in
+    s1*|*10.0.0.3|157.180.125.52) shard=crypto_short ;;
+    s2|*10.0.0.4) shard=crypto_long ;;
+    s5|*10.0.0.5) shard=stock_long ;;
+    s6|*10.0.0.6) shard=stock_short ;;
+    *) echo "$ts UNKNOWN_SHARD host=$host" >>"$LOG"; return 1 ;;
+  esac
   mkdir -p "$stage/intents" "$stage/state"
   rsync -az --timeout=15 -e "$SSH" --partial-dir=.rsync-partial --delay-updates --include='*.json' --exclude='*' "$host:$remote/intents/" "$stage/intents/" >>"$LOG" 2>&1
   rc=$?
@@ -44,13 +52,10 @@ pull_one() {
   fi
   if [ $rc -ne 0 ]; then
     echo "$ts PULL_FAIL rc=$rc host=$host" >>"$LOG"
-    rm -rf "$stage"
     return 1
   fi
-  rsync -az --remove-source-files "$stage/intents/" "$DEST/intents/" >>"$LOG" 2>&1 || rc=$((rc + $?))
-  rsync -az --remove-source-files "$stage/state/" "$DEST/state/" >>"$LOG" 2>&1 || rc=$((rc + $?))
+  "${VEC_PULL_PYTHON:-/opt/anaconda3/envs/binance_env/bin/python}" "$BASE/tools/vec_state_merge.py" "$stage" "$DEST" --shard "$shard" >>"$LOG" 2>&1 || rc=$((rc + $?))
   if [ -f "$stage/vec_driven.json" ]; then mv -f "$stage/vec_driven.json" "$DEST/vec_driven.json" || rc=$((rc + 1)); fi
-  rm -rf "$stage"
   if [ $rc -ne 0 ]; then
     echo "$ts PULL_MERGE_FAIL rc=$rc host=$host" >>"$LOG"
     return 1

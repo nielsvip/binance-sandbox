@@ -131,8 +131,26 @@ def stage(queue_path: Path, result_dir: Path, source_db: Path, source_sets_path:
     sources = queue.get("sym_sides") or {}
     if not sources or queue.get("_meta", {}).get("window_days") != 7:
         raise ValueError("empty or non-7D selection queue")
-    if any(rec.get("manifest_ok") is not True for rec in sources.values()):
-        raise ValueError("queue contains an unverified 30D source")
+    sql_sources = {ss: rec for ss, rec in sources.items() if rec.get("source_kind") == "per_sym_sql"}
+    if any(rec.get("manifest_ok") is not True and ss not in sql_sources for ss, rec in sources.items()):
+        raise ValueError("queue contains an unverified baseline source")
+    if sql_sources:
+        db_sha256 = file_sha256(source_db)
+        src_check = sqlite3.connect(f"file:{source_db.resolve()}?mode=ro", uri=True)
+        try:
+            for ss, rec in sql_sources.items():
+                if rec.get("sql_baseline_ok") is not True or rec.get("source_db_sha256") != db_sha256:
+                    raise ValueError(f"{ss}: SQL baseline database hash mismatch")
+                row = src_check.execute("SELECT updated_at, overrides_json, defaults_snapshot_json, full_config_json FROM per_sym_active WHERE sym_side=?", (ss,)).fetchone()
+                if row is None:
+                    raise ValueError(f"{ss}: SQL baseline row missing")
+                updated_at, overrides_raw, defaults_raw, full_raw = row
+                overrides, defaults, full = (json.loads(value) for value in (overrides_raw, defaults_raw, full_raw))
+                row_sha256 = digest({"sym_side": ss, "updated_at": updated_at, "overrides": overrides, "defaults": defaults, "full": full})
+                if rec.get("source_row_sha256") != row_sha256 or rec.get("overrides") != overrides or full != {**defaults, **overrides}:
+                    raise ValueError(f"{ss}: SQL baseline row changed or inconsistent")
+        finally:
+            src_check.close()
     results = {ss: validate_one(ss, rec, result_dir, today) for ss, rec in sorted(sources.items())}
     if len(results) != int(queue["_meta"]["n"]):
         raise ValueError("incomplete 7D queue")

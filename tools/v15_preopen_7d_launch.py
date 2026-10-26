@@ -54,8 +54,11 @@ def _host_slot_guard():
 
 def build_launch(queue: dict, ss: str, result_dir: Path, workers: int, python: str):
     source = (queue.get("sym_sides") or {}).get(ss)
-    if not isinstance(source, dict) or source.get("manifest_ok") is not True:
-        raise ValueError(f"{ss}: missing verified published 30D set")
+    if not isinstance(source, dict) or not (source.get("manifest_ok") is True or
+                                            (source.get("source_kind") == "per_sym_sql" and
+                                             source.get("sql_baseline_ok") is True and
+                                             source.get("source_db_sha256") and source.get("source_row_sha256"))):
+        raise ValueError(f"{ss}: missing verified per-sym SQL baseline")
     overrides = source.get("overrides")
     if not isinstance(overrides, dict) or not overrides:
         raise ValueError(f"{ss}: empty 30D start set")

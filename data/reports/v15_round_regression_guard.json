@@ -1,5 +1,5 @@
 {
- "at": "2026-10-26T17:26:03Z",
+ "at": "2026-10-26T18:26:02Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
@@ -24,8 +24,8 @@
    "published_n": 2,
    "per_hour": 1.0,
    "improved_vs_best_start": 1,
-   "mean_uplift_vs_best_start": -0.8871,
-   "median_uplift": 0.1726,
+   "mean_uplift_vs_best_start": 1.4483,
+   "median_uplift": 4.8433,
    "chained_from_previous_published": 1,
    "no_floor_recorded": 0,
    "backslides": [
@@ -39,8 +39,7 @@
    "stale_npz": [],
    "fails": [
     "throughput 1.0/h < 12.0/h (one per 5 min)",
-    "1 board(s) published BELOW their best_start \u2014 the best-start law is broken",
-    "rounds stopped learning: mean uplift vs best_start -0.8871"
+    "1 board(s) published BELOW their best_start \u2014 the best-start law is broken"
    ],
    "rows": [
     {
@@ -59,19 +58,19 @@
      "npz_age_h_at_publish": 1.15
     },
     {
-     "symside": "PUMPUSDT_LONG",
-     "published_at": 1793031660.2494678,
-     "final_gain": 101.4827091929073,
-     "best_start_gain": 101.31006357786185,
+     "symside": "RSRUSDT_LONG",
+     "published_at": 1793036904.2410605,
+     "final_gain": 67.21974730568115,
+     "best_start_gain": 62.376421981015284,
      "best_start_chosen": "history_0",
-     "best_start_candidates": 9,
-     "baseline_gain": 101.31006357786185,
-     "npz_ts_last": 1793028600.0,
-     "npz_md5": "bb174da700662bf37cf4a7df414f3963",
-     "npz_bars": 43360,
-     "bh": -1.8373326154867062,
-     "verdict": null,
-     "npz_age_h_at_publish": 0.85
+     "best_start_candidates": 8,
+     "baseline_gain": 62.376421981015284,
+     "npz_ts_last": 1793034000.0,
+     "npz_md5": "b296ff7e4aa1d8dcf937e1fb5cf5e56c",
+     "npz_bars": 41047,
+     "bh": -10.50885213593137,
+     "verdict": "BEST_EFFORT",
+     "npz_age_h_at_publish": 0.81
     }
    ],
    "error": null

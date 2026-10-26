@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from tools.history_7d_sync import apply, export, merge
+from tools.history_7d_sync import apply, export, lease_authorized, merge
 
 
 def _event(ts, kind, price):
@@ -48,3 +48,37 @@ def test_rotated_recent_rows_reach_other_host_and_older_rows_do_not(tmp_path):
     target = dest / "data/history/fin/QNTUSDT_SHORT.jsonl"
     assert '"price": 3.2' in target.read_text()
     assert '"price": 3.0' not in target.read_text()
+
+
+def test_s1_rows_import_only_during_account_scoped_s1_lease():
+    pack = {
+        "schema": 1,
+        "now": 1_800_000_000.0,
+        "days": 7,
+        "rows": {
+            "men/ARBUSDC_LONG.jsonl": [
+                _event(100, "OPEN", 1.0).strip(),
+                _event(150, "OPEN", 1.1).strip(),
+                _event(200, "CLOSE", 1.2).strip(),
+            ],
+            "ang/ARBUSDC_LONG.jsonl": [_event(150, "OPEN", 2.0).strip()],
+        },
+    }
+    alerts = "\n".join(
+        json.dumps(row)
+        for row in (
+            {"ts": 90, "kind": "LEASE_MAC"},
+            {
+                "ts": 120,
+                "kind": "LEASE_S1",
+                "venues": "crypto",
+                "accounts": {"crypto": ["men"]},
+            },
+            {"ts": 180, "kind": "LEASE_MAC"},
+        )
+    )
+    filtered, audit = lease_authorized(pack, alerts)
+    assert audit["s1_lease_rows"] == 1
+    assert audit["s1_unproven_rows"] == 3
+    assert len(filtered["rows"]["men/ARBUSDC_LONG.jsonl"]) == 1
+    assert "ang/ARBUSDC_LONG.jsonl" not in filtered["rows"]

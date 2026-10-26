@@ -7,6 +7,7 @@ has been offline.
 """
 
 import argparse
+import bisect
 import datetime as dt
 import fcntl
 import hashlib
@@ -38,6 +39,8 @@ RSYNC_SSH = (
     "ssh -o ControlMaster=no -o ControlPath=none -o BatchMode=yes -o ConnectTimeout=8"
 )
 REMOTE_ROOTS = ("/home/niels/binance-sandbox", "/home/niels/binance")
+CRYPTO_ACCOUNTS = {"ang", "fin", "flz", "inf", "men"}
+STOCK_ACCOUNTS = {"tra", "trb", "trc"}
 
 
 def _epoch(value):
@@ -140,6 +143,51 @@ def merge(packs):
     return {"schema": 1, "now": now, "days": days, "rows": rows}
 
 
+def lease_authorized(pack, alerts):
+    transitions = []
+    for line in alerts.splitlines():
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        if event.get("kind") in ("LEASE_S1", "LEASE_MAC"):
+            transitions.append((_epoch(event.get("ts")), event))
+    transitions.sort(key=lambda item: item[0])
+    epochs = [item[0] for item in transitions]
+    rows = {}
+    accepted = rejected = 0
+    for rel, lines in pack["rows"].items():
+        account = rel.split("/", 1)[0]
+        venue = (
+            "crypto"
+            if account in CRYPTO_ACCOUNTS
+            else "stocks" if account in STOCK_ACCOUNTS else None
+        )
+        for line in lines:
+            item = _identity(line)
+            if item is None or venue is None:
+                rejected += 1
+                continue
+            index = bisect.bisect_right(epochs, item[1]) - 1
+            event = transitions[index][1] if index >= 0 else {}
+            venues = event.get("venues")
+            accounts = event.get("accounts")
+            venue_ok = not venues or venue in venues
+            account_ok = not accounts or account in (
+                accounts.get(venue, []) if isinstance(accounts, dict) else []
+            )
+            if event.get("kind") == "LEASE_S1" and venue_ok and account_ok:
+                rows.setdefault(rel, []).append(line)
+                accepted += 1
+            else:
+                rejected += 1
+    return {**pack, "rows": rows}, {
+        "s1_lease_rows": accepted,
+        "s1_unproven_rows": rejected,
+        "lease_transitions": len(transitions),
+    }
+
+
 def _safe_rel(rel):
     path = Path(rel)
     return (
@@ -150,15 +198,26 @@ def _safe_rel(rel):
     )
 
 
+def _trade_signature(line):
+    try:
+        row = json.loads(line)
+        return (str(row.get("type") or "").upper(), float(row.get("qty")),
+                float(row.get("price"))), _epoch(row.get("ts"))
+    except (TypeError, ValueError):
+        return None
+
+
 def apply(root, pack, backup_stamp, dry_run=False):
     history = root / "data/history"
     changed = 0
     added = 0
+    ambiguous = 0
     for rel, lines in sorted(pack["rows"].items()):
         if not _safe_rel(rel) or not isinstance(lines, list):
             raise ValueError(f"unsafe history path {rel!r}")
         target = history / rel
         current = set()
+        signatures = {}
         for path in sorted(target.parent.glob(target.name + "*")):
             if _rel(path, history) != rel or not path.is_file():
                 continue
@@ -167,12 +226,21 @@ def apply(root, pack, backup_stamp, dry_run=False):
                     item = _identity(line)
                     if item is not None:
                         current.add(item[0])
+                    trade = _trade_signature(line)
+                    if trade is not None:
+                        signatures.setdefault(trade[0], []).append(trade[1])
         missing = []
         for line in lines:
             item = _identity(line)
             if item is None or item[0] in current:
                 continue
+            trade = _trade_signature(line)
+            if trade is not None and any(abs(stamp - trade[1]) < 3 for stamp in signatures.get(trade[0], [])):
+                ambiguous += 1
+                continue
             current.add(item[0])
+            if trade is not None:
+                signatures.setdefault(trade[0], []).append(trade[1])
             missing.append(line)
         if not missing:
             continue
@@ -194,6 +262,7 @@ def apply(root, pack, backup_stamp, dry_run=False):
         "root": str(root),
         "changed_files": changed,
         "added_rows": added,
+        "ambiguous_rows": ambiguous,
         "dry_run": dry_run,
     }
 
@@ -251,6 +320,20 @@ def sync(root, host, days, dry_run=False):
                     ]
                 )
                 packs.append(_load(dest))
+            alerts_path = temp / "s1_failover_alerts.jsonl"
+            _run(
+                [
+                    "rsync",
+                    "-az",
+                    "--timeout=45",
+                    "-e",
+                    RSYNC_SSH,
+                    f"{host}:binance/data/live_failover/ALERTS.jsonl",
+                    str(alerts_path),
+                ]
+            )
+            s1_live, lease_audit = lease_authorized(packs[2], alerts_path.read_text())
+            packs = [local, s1_live]
             union = merge(packs)
             union_path = temp / "union.json"
             union_path.write_text(json.dumps(union, separators=(",", ":")) + "\n")
@@ -290,6 +373,7 @@ def sync(root, host, days, dry_run=False):
                 "window_days": days,
                 "window_rows": sum(map(len, union["rows"].values())),
                 "window_files": len(union["rows"]),
+                "s1_lease_audit": lease_audit,
                 "mac": local_result,
                 "s1": remote_results,
             }

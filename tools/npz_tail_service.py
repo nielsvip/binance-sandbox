@@ -238,6 +238,7 @@ def kline_last_close(base, symbol, mode, now_s=None):
                 ts = pd.to_datetime(value, utc=True, errors="coerce")
                 if not pd.isna(ts) and ts <= cutoff:
                     return int(ts.timestamp())
+            return None
         df = _load_klines_df(f)
         if df is None or df.empty:
             return None

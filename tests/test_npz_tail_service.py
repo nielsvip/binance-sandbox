@@ -57,7 +57,7 @@ def test_on_append_fires_once(tmp_path):
         "TSTCUSDT",
         1792899000,
         lambda s, t: {"timestamps": t, "close": 3.0},
-        now_s=1792899000 + 120.0,
+        now_s=1792899000 + 900.0,
         on_append=fired.append,
     )
     assert r == "appended" and len(fired) == 1 and fired[0].endswith(".jsonl")
@@ -66,7 +66,7 @@ def test_on_append_fires_once(tmp_path):
         "TSTCUSDT",
         1792899000,
         lambda s, t: {"timestamps": t},
-        now_s=1792899000 + 120.0,
+        now_s=1792899000 + 900.0,
         on_append=fired.append,
     )
     assert r2 == "current" and len(fired) == 1
@@ -114,7 +114,7 @@ def test_sweep_appends_with_float_now(tmp_path):
         "TSTFUSDT",
         1792899000,
         lambda s, t: {"timestamps": t, "close": 2.0},
-        now_s=1792899000 + 120.0,
+        now_s=1792899000 + 900.0,
     )
     assert r == "appended" and tail_len(str(npz)) == 1
 
@@ -134,7 +134,7 @@ def test_appended_row_carries_parent_labels(tmp_path):
         "TSTPUSDT",
         1792899000,
         lambda s, t: {"close": 9.0},
-        now_s=1792899000 + 120.0,
+        now_s=1792899000 + 900.0,
     )
     assert r == "appended"
     m = load_merged(str(npz))

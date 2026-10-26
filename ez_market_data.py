@@ -415,7 +415,33 @@ def _pick_due_stale(data, now, limit=REST_REPAIR_MAX_SYMS, skip=None):
     due.sort(reverse=True)
     return [(sym, d1, d3) for _, sym, d1, d3 in due[:max(1, limit)]]
 
-def _write_provisional_15m(path: Path, bar: dict) -> bool:
+def _write_provisional_15m(path, bar):
+    import fcntl
+    import json
+    from closed_bar_feed import timestamp_epoch
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lock = path.with_name(f'.{path.name}.mark.lock')
+    with lock.open('a') as handle:
+        fcntl.flock(handle, fcntl.LOCK_EX)
+        if path.exists():
+            try:
+                rows = json.loads(path.read_text())
+                incoming_ts = timestamp_epoch(bar.get('timestamp'))
+                for previous in rows:
+                    if timestamp_epoch(previous.get('timestamp')) != incoming_ts:
+                        continue
+                    if previous.get('volume') is not None and not previous.get('_provisional'):
+                        return False
+                    if previous.get('_closed') and not bar.get('_closed'):
+                        return False
+                    bar = dict(bar, timestamp=previous['timestamp'])
+                    break
+            except (ValueError, TypeError, KeyError):
+                return False
+        return _write_provisional_15m_unlocked(path, bar)
+
+
+def _write_provisional_15m_unlocked(path: Path, bar: dict) -> bool:
     try:
         existing = []
         if path.exists():
@@ -1351,10 +1377,8 @@ class MarketDataEngine:
 
     async def provisional_15m_writeback(self):
         """Publish mark-built OHLC rows at 15m boundaries until Binance OHLCV arrives."""
-        from closed_bar_feed import aggregate_closed_15m, publish_closed_15m
         cache_dir = BASE_PATH / "klines_cache"
         sem = asyncio.Semaphore(16)
-        closed_sent = {}
         while self.running:
             now = time.time()
             bucket_ts = int(now - (now % 900))
@@ -1375,7 +1399,6 @@ class MarketDataEngine:
                 if not store:
                     continue
                 bars = store.setdefault('ohlc_1m', OrderedDict())
-                completed = aggregate_closed_15m(bars, bucket_ts - 900, now) if closed_sent.get(symbol) != bucket_ts - 900 else None
                 minute_ts = int(now - (now % 60))
                 minute_bar = bars.get(minute_ts)
                 if minute_bar is None:
@@ -1396,22 +1419,59 @@ class MarketDataEngine:
                 stamp = datetime.fromtimestamp(bucket_ts, tz=timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
                 signature = (stamp, opening, high, low, close)
                 write_current = self._provisional_15m_sig.get(symbol) != signature
-                if not write_current and completed is None:
+                if not write_current:
                     continue
                 bar = {'timestamp': stamp, 'open': opening, 'high': high, 'low': low, 'close': close, '_provisional': True}
                 path = cache_dir / f"{symbol}_15m.json"
 
-                async def _write(target=path, row=bar, final=completed, ticker=symbol, sig=signature, current_changed=write_current, previous_bucket=bucket_ts - 900):
+                async def _write(target=path, row=bar, ticker=symbol, sig=signature):
                     async with sem:
-                        if final is not None and await asyncio.to_thread(publish_closed_15m, target, final, _write_provisional_15m, BASE_PATH, "crypto", ticker):
-                            closed_sent[ticker] = previous_bucket
-                        if current_changed and await asyncio.to_thread(_write_provisional_15m, target, row):
+                        if await asyncio.to_thread(_write_provisional_15m, target, row):
                             self._provisional_15m_sig[ticker] = sig
 
                 writes.append(_write())
             if writes:
                 await asyncio.gather(*writes, return_exceptions=True)
             await asyncio.sleep(0.1)
+
+    async def closed_15m_writeback(self):
+        from closed_bar_feed import aggregate_closed_15m, publish_closed_15m
+        loop = asyncio.get_running_loop()
+        executor = ThreadPoolExecutor(max_workers=8, thread_name_prefix='closed15m')
+        sent = {}
+        reported_bucket = None
+        try:
+            while self.running:
+                now = time.time()
+                bucket_ts = int(now // 900) * 900 - 900
+                jobs = []
+                missing = []
+                for symbol in list(self.symbols):
+                    if sent.get(symbol) == bucket_ts:
+                        continue
+                    store = self.market.data.get(symbol) or {}
+                    bars = store.get('ohlc_1m') or {}
+                    completed = aggregate_closed_15m(bars, bucket_ts, now)
+                    if completed is None:
+                        missing.append(symbol)
+                        continue
+                    path = BASE_PATH / 'klines_cache' / f'{symbol}_15m.json'
+                    async def _publish(target=path, row=completed, ticker=symbol, bucket=bucket_ts):
+                        try:
+                            if await loop.run_in_executor(executor, publish_closed_15m, target, row, _write_provisional_15m, BASE_PATH, 'crypto', ticker):
+                                sent[ticker] = bucket
+                                logger.info(f'[CLOSED_15M] {ticker} bar_start={bucket} bar_close={bucket + 900} published_at={time.time():.6f} latency_s={time.time() - bucket - 900:.3f}')
+                        except Exception as exc:
+                            logger.warning(f'[CLOSED_15M] {ticker} publish failed: {exc}')
+                    jobs.append(_publish())
+                if missing and reported_bucket != bucket_ts:
+                    logger.warning(f'[CLOSED_15M_MISSING] crypto bar_start={bucket_ts} incomplete_1m={len(missing)} symbols={missing[:12]}')
+                    reported_bucket = bucket_ts
+                if jobs:
+                    await asyncio.gather(*jobs)
+                await asyncio.sleep(0.1)
+        finally:
+            executor.shutdown(wait=False)
 
     async def rest_klines_repair_loop(self):
         """2026-10-24 (DUSKUSDT 3m 0/10 vs real 74/80): INDEPENDENT history source.
@@ -1546,6 +1606,7 @@ class MarketDataEngine:
                 self.shared_mem_watchdog(),
                 self.klines_cache_writeback(),
                 self.provisional_15m_writeback(),
+                self.closed_15m_writeback(),
                 self.rest_klines_repair_loop(),
                 self.funding_rate_loop(),  # 2026-04-27: live funding-rate refresh into market.data[sym]['funding_rate']
                 self.open_interest_loop(),  # 2026-04-27: live OI refresh into market.data[sym]['oi_value','oi_change_1h_pct']
