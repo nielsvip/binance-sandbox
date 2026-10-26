@@ -196,6 +196,18 @@ def run(base, poll_s=0.1, publish_from=0, producer_generation=2):
                 key = (symbol, target)
                 if key in emitted or key in pending:
                     continue
+                # Give the direct exchange 15m close a short window to arrive. Publishing a
+                # mark-price reconstruction first makes the NPZ tail calculate the same bar twice.
+                if now < target + 930:
+                    continue
+                overlay = base / 'data/closed_15m_bars/crypto' / f'{symbol}.json'
+                try:
+                    latest = json.loads(overlay.read_text())[-1]
+                    if timestamp_epoch(latest['timestamp']) == target and is_verified_closed_native(latest, target + 900):
+                        emitted[key] = now
+                        continue
+                except (OSError, ValueError, TypeError, KeyError, IndexError):
+                    pass
                 prefix, canonical = native.get(key, ({}, None))
                 row, details = build_completed(observed.bars.get(symbol, {}), prefix, target, now)
                 if canonical is not None:

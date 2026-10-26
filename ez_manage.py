@@ -33955,11 +33955,13 @@ class MultiAccountTradeManager:
         # Local same-key exposure-increase claim: synchronous, race-proof inside this
         # process. The wire guard keys on broker-confirmed fills (lag seconds); two
         # signals ms apart both pass it. First claim wins; dup within TTL refused.
+        _pcl_acquired = False
         try:
             _act_u = str(action or "").upper()
             if _peg.is_entry_action(_act_u):
                 _ckey = position_key or f"{account_key}:{symbol}_{position_side}"
                 _claimed, _cage = _peg.try_claim(f"{_ckey}|INC")
+                _pcl_acquired = bool(_claimed)
                 if not _claimed and _vec_decided:
                     logger.warning(f"[VEC_DECIDED_DEDUP_ALLOW] {position_key}: same-key claim {_cage:.1f}s after prior (ttl={_peg.CLAIM_TTL_S:.0f}s) — allowed, vector fires once per bar (USER 2026-10-21)")
                 elif not _claimed:
@@ -35530,6 +35532,11 @@ class MultiAccountTradeManager:
                         logger.warning(
                             f"🚦 [OVERTRADE_GUARD] {position_key}: BLOCKED — already {_ot_n} fills today in history (cap={_ot_max}). action={action} reason={(reason or '')[:80]}"
                         )
+                        try:
+                            if _pcl_acquired:
+                                _peg.release_claim(f"{_ckey}|INC")
+                        except Exception:
+                            pass
                         return f"BLOCKED_OVERTRADE_{_ot_n}_OF_{_ot_max}"
         except Exception as _ot_e:
             logger.warning(f"[OVERTRADE_GUARD] check error (fail-open): {_ot_e}")
