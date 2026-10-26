@@ -131,16 +131,23 @@ def main(argv):
             workers = 1
     except Exception:
         pass
-    if workers <= 1 or len(syms) <= 1:
-        results = [_one(ss) for ss in syms]
-    else:
-        from concurrent.futures import ProcessPoolExecutor
-        with ProcessPoolExecutor(max_workers=workers) as _ex:
-            results = list(_ex.map(_one, syms))
-    for ss, r in zip(syms, results):
-        (OUT / f"{r.get('sym_side', ss).upper()}.json").write_text(json.dumps(r, indent=1))
-        print(f"{r.get('sym_side')}: ok={r.get('ok')} open={r.get('open')} src={r.get('src')}", flush=True)
+    def publish(ss, result):
+        nonlocal n
+        target = OUT / f"{result.get('sym_side', ss).upper()}.json"
+        tmp = target.with_name(target.name + f".new.{os.getpid()}")
+        tmp.write_text(json.dumps(result, indent=1))
+        os.replace(tmp, target)
+        print(f"{result.get('sym_side')}: ok={result.get('ok')} open={result.get('open')} src={result.get('src')}", flush=True)
         n += 1
+    if workers <= 1 or len(syms) <= 1:
+        for ss in syms:
+            publish(ss, _one(ss))
+    else:
+        from concurrent.futures import ProcessPoolExecutor, as_completed
+        with ProcessPoolExecutor(max_workers=workers) as executor:
+            futures = {executor.submit(_one, ss): ss for ss in syms}
+            for future in as_completed(futures):
+                publish(futures[future], future.result())
     return 0 if n else 2
 
 

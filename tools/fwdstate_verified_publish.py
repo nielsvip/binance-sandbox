@@ -64,8 +64,12 @@ def main():
                 old = candidates.get(symbol_side)
                 if old is None or (tail, state.get("ts", "")) > (int(old[0].get("npz_tail") or 0), old[0].get("ts", "")):
                     candidates[symbol_side] = (state, path)
-            except Exception:
+            except Exception as exc:
                 counts["unreadable_state"] += 1
+                if counts["unreadable_state"] <= 3:
+                    print(f"state_reject {path}: {type(exc).__name__}: {exc}", flush=True)
+                    import traceback
+                    traceback.print_exc()
         DEST.mkdir(parents=True, exist_ok=True)
         for symbol_side, (state, path) in candidates.items():
             target = DEST / f"{symbol_side}.json"
