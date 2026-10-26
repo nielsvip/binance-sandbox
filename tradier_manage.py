@@ -26300,6 +26300,7 @@ async def queue_trade_action(
                     if (
                         (not _leg_blk)
                         and "OPEN" in _leg_act
+                        and not bool(getattr(config, "PARITY_DISABLE_NON_VECTORIZABLE", True))
                         and bool(
                             _leg_c("STOCKS_FRESH_ENTRY_TREND_GATES_ENABLED", False)
                         )
@@ -26700,6 +26701,7 @@ async def queue_trade_action(
             # Block SHORT when underlying is within RED_ZONE_TRADIER_MIN_DISTANCE_PCT above max_put_oi_strike.
             if (
                 bool(_cfg_auto("RED_ZONE_TRADIER_GATE_ENABLED", False))
+                and not bool(getattr(config, "PARITY_DISABLE_NON_VECTORIZABLE", True))
                 and not _mandatory_reentry_qta
                 and not _ordinary_parity_qta
             ):
@@ -47871,7 +47873,8 @@ class TradierTradeManager:
                 "V8_BACKTEST_BYPASS_DRAWDOWN"
             ) == "1" or bool(os.environ.get("V8_LADDER_ONLY_SIDE"))
             if (
-                is_long
+                bool(getattr(config, "LTF_SUB15M_TRADING_ENABLED", False))
+                and is_long
                 and _dc4l_5m > 0
                 and current_price < _dc4l_5m
                 and not _band_entry_etf
@@ -47882,7 +47885,8 @@ class TradierTradeManager:
                 )
                 return f"BLOCKED_DC4_BOTTOM"
             if (
-                not is_long
+                bool(getattr(config, "LTF_SUB15M_TRADING_ENABLED", False))
+                and not is_long
                 and _dc4h_5m > 0
                 and current_price > _dc4h_5m
                 and not _v8_parity_bypass_dc4
@@ -51689,7 +51693,12 @@ class TradierTradeManager:
                 return _vl_detail_tr
             try:
                 from vec_decisions import vec_parity_gates as _vpg_do_tr
-                _vpg_do_on_tr = bool(_cfg_auto("VEC_DICTATE_ONLY_ENABLED", True))
+                # trb pilot recovery: native switched entries must be allowed
+                # while the missing vector paths are being wired and tested.
+                _vpg_do_on_tr = (
+                    str(account_key).lower() != "trb"
+                    and bool(_cfg_auto("VEC_DICTATE_ONLY_ENABLED", True))
+                )
                 if _vpg_do_on_tr and not bool(_vl_dictated_tr) and not _vpg_do_tr.dictate_only_exempt(action, reason, sym_side=f"{symbol}_{position_side}", ultimate_buffer_pct=_cfg("UNCOND_DC_HARD_STOP_BUFFER_PCT", 0.25, account_key, symbol, position_side)):
                     try:
                         from live_twins import vec_pending as _vp_pre_tr
@@ -51744,7 +51753,10 @@ class TradierTradeManager:
                                 _vlf_dis_tr.write(json.dumps({"ts": time.time(), "venue": "stocks", "kind": "VEC_STATE_DISAGREE", "position_key": position_key, "action": action, "reason": str(reason)[:160], "vec_target": str(((_st_dis_tr or {}).get("target_state"))), "vec_bar_ts": (_st_dis_tr or {}).get("bar_ts"), "fix": "wire live to emit this vec path through its own producer"}) + "\n")
                         except Exception:
                             pass
-                    _vpg_blk_tr = bool(_cfg_auto("VEC_DISAGREE_FLAT_OPEN_BLOCK", True))
+                    _vpg_blk_tr = (
+                        str(account_key).lower() != "trb"
+                        and bool(_cfg_auto("VEC_DISAGREE_FLAT_OPEN_BLOCK", True))
+                    )
                     if _vpg_dis_tr.flat_open_blocked(action, reason, bool(_fresh_dis_tr and _tgt_dis_tr is False), _vpg_blk_tr):
                         if lock_acquired and self.redis_manager:
                             await self.redis_manager.delete(exec_lock_key)
