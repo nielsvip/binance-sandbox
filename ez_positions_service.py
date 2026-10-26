@@ -10074,8 +10074,7 @@ class PositionService:
             return (None, {})
 
     async def _sync_memory_with_master_symbols(self):
-        """Dynamically instantiates empty positions for any new symbols in symbols.json
-        and removes keys not in symbols.json if their positionAmt is 0.0.
+        """Dynamically instantiates empty positions for any new symbols in symbols.json.
 
         2026-04-30: All disk I/O moved to asyncio.to_thread. Previously this read up to
         2 × N_accounts × N_symbols files synchronously on the event loop (~10 files for
@@ -10092,6 +10091,19 @@ class PositionService:
                 account_key = account_config.prefix
                 if account_key not in self.positions_by_account:
                     self.positions_by_account[account_key] = {}
+                # Restore every persisted record into memory, including flat historical rows
+                # outside today's symbol universe, so Redis and the account files share one set.
+                for side in ("LONG", "SHORT"):
+                    for pos_key, pos_blob in disk_blobs.get((account_key, side), {}).items():
+                        if pos_key in self.positions_by_account[account_key] or not isinstance(pos_blob, dict):
+                            continue
+                        try:
+                            disk_pos = Position.from_dict(pos_blob)
+                        except Exception:
+                            continue
+                        self.positions_by_account[account_key][pos_key] = disk_pos
+                        self.positions[pos_key] = disk_pos
+                        added_count += 1
                 for symbol in master_symbols:
                     for side in ["LONG", "SHORT"]:
                         pos_key = f"{account_key}:{symbol}_{side}"
@@ -10115,14 +10127,6 @@ class PositionService:
                         self.positions_by_account[account_key][pos_key] = disk_pos
                         self.positions[pos_key] = disk_pos
                         added_count += 1
-                keys_to_remove = []
-                for pos_key, pos_obj in list(self.positions_by_account[account_key].items()):
-                    if pos_obj.symbol not in master_symbols and abs(float(pos_obj.positionAmt)) == 0.0:
-                        keys_to_remove.append(pos_key)
-                for k in keys_to_remove:
-                    self.positions_by_account[account_key].pop(k, None)
-                    self.positions.pop(k, None)
-                    removed_count += 1
             if added_count > 0 or removed_count > 0:
                 self.logger.info(f"[SYMBOLS] Memory Sync: Added {added_count} new positions, Removed {removed_count} obsolete positions.")
         except Exception as e:
@@ -10137,9 +10141,20 @@ class PositionService:
             for side in ("LONG", "SHORT"):
                 side_file = self.base_path / account_key / f"{side.lower()}_positions.json"
                 symbols = _pwg.universe_symbols(side_file)
+                disk_blob = _pwg.read_json_any(side_file)
+                if isinstance(disk_blob, dict):
+                    for position_key, row in disk_blob.items():
+                        if position_key in account_positions or not isinstance(row, dict):
+                            continue
+                        try:
+                            position = Position.from_dict(row)
+                        except Exception:
+                            continue
+                        account_positions[position_key] = position
+                        self.positions[position_key] = position
+                        added += 1
                 if not symbols:
                     continue
-                disk_blob = _pwg.read_json_any(side_file)
                 if not isinstance(disk_blob, dict):
                     disk_blob = {}
                 for symbol in symbols:
@@ -10159,48 +10174,10 @@ class PositionService:
         return added
 
     def _prune_memory_universe_blocking(self) -> int:
-        import position_writer_guard as _pwg
-        removed = 0
-        for account_config in self.accounts.values():
-            account_key = account_config.prefix
-            account_positions = self.positions_by_account.get(account_key) or {}
-            universe = {}
-            for side in ("LONG", "SHORT"):
-                universe[side] = _pwg.universe_symbols(self.base_path / account_key / f"{side.lower()}_positions.json")
-            if not all(universe.values()):
-                continue
-            for position_key, position in list(account_positions.items()):
-                if position is None:
-                    continue
-                side = str(getattr(position, "position_side", "") or "").upper()
-                symbol = str(getattr(position, "symbol", "") or "").upper()
-                if side not in universe or not symbol:
-                    continue
-                if symbol in universe[side] and position_key == f"{account_key}:{symbol}_{side}":
-                    continue
-                if abs(float(getattr(position, "positionAmt", 0) or 0)) > 0:
-                    # Mirror the file cap EXACTLY, or the two layers fight: 2026-10-24, memory kept these rows as
-                    # "held" while the write guard pruned them as broker-unconfirmed phantoms, so every save
-                    # re-supplied men:TUSDT_SHORT and flz:DYDXUSDT_SHORT from memory and the cap removed them again
-                    # — a prune every minute, forever. A quantity no broker report ever confirmed is not exposure.
-                    stamps = {f: getattr(position, f, None) for f in ("mark_price", "last_updated", "broker_synced_at")}
-                    if not _pwg._broker_unconfirmed(stamps):
-                        logger.critical(f"🛑 [POSITION_FOREIGN_HELD][memory] {position_key} is outside the symbol universe but holds {position.positionAmt} — KEPT in memory (never drop live exposure)")
-                        continue
-                    logger.critical(f"🧹 [POSITION_FLOOR][memory] {position_key} claims {position.positionAmt} but no broker stamp was ever set (mark_price/last_updated/broker_synced_at all empty) — frozen phantom, dropping")
-                account_positions.pop(position_key, None)
-                self.positions.pop(position_key, None)
-                removed += 1
-                logger.warning(f"🧹 [POSITION_FLOOR][memory] dropped {position_key} (outside symbol universe, flat) — the file copy is archived by the write guard")
-        return removed
+        return 0
 
     async def prune_memory_universe(self) -> int:
-        """USER 2026-10-22 "only symbols that are in symbols.json are kept": the file cap lives in
-        position_writer_guard.ensure_universe, but redis is published straight from memory
-        (_broadcast_positions_to_redis snapshots positions_by_account), so a foreign row left in memory keeps
-        reappearing in redis and in every save. Mirrors the cap exactly — flat + outside the universe, or a key that
-        disagrees with its own symbol/side. A row with positionAmt != 0 is NEVER dropped (the Absolute Prohibition on
-        popping position entries exists so a real position can never vanish; a flat foreign row is not one)."""
+        """Compatibility entry point retained for callers; position records are never pruned."""
         try:
             removed = await asyncio.to_thread(self._prune_memory_universe_blocking)
         except Exception as e:

@@ -408,6 +408,11 @@ async def atomic_save_positions(position_service: PositionService, account_key: 
                     
             if sorted_by_side:
                 results = await asyncio.to_thread(_atomic_save_blocking, account_key, sorted_by_side, file_paths_by_side, do_backup_by_side)
+                if results and all(status == "OK" for status in results.values()):
+                    try:
+                        await position_service._broadcast_positions_to_redis(account_key, {})
+                    except Exception as redis_err:
+                        logger.error(f"[atomic_save][{account_key}] Redis snapshot after file commit failed: {redis_err}", exc_info=True)
                 for side, status in results.items():
                     if status == "OK":
                         logger.info(f"[atomic_save][{account_key}:{side}] ✅ SAVED {len(sorted_by_side.get(side, {}))} positions to {file_paths_by_side[side].name}")

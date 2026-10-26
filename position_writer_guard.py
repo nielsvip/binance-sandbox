@@ -294,33 +294,8 @@ def ensure_universe(path, rows, disk_rows=None, log=None, role=None):
         if k not in rows:
             rows[k] = flat_row(symbol, side)
             seeded += 1
-    # THE CAP (USER 2026-10-22 "only symbols that are in symbols.json are kept and only one record per sym_side").
-    # Skipped entirely when the universe is unreadable — an empty list must never be read as "prune everything".
-    # A HELD row is NEVER dropped even when foreign: that would hide real exposure, so it is kept and alerted on.
-    pruned, held_foreign = {}, []
-    if universe:
-        for k in list(rows.keys()):
-            r = rows.get(k)
-            if not isinstance(r, dict):
-                continue
-            symbol, canon = canonical_key(k, r, account, side)
-            if symbol in universe and canon == k:
-                continue
-            if _amt(r) > 0 and not _broker_unconfirmed(r):
-                held_foreign.append(k)
-                continue
-            pruned[k] = rows.pop(k)
-    if pruned:
-        fresh = {k: v for k, v in pruned.items() if (str(p), k) not in _archived}
-        archive_rows(p, fresh)
-        _archived.update((str(p), k) for k in fresh)
-        if _rate_limited(f"floor_prune:{p}", 60.0):
-            _alert("POSITION_UNIVERSE_PRUNED", {"file": str(p), "account": account, "pruned": len(pruned), "keys": sorted(pruned)[:40]}, p.parent.parent)
-            log.warning(f"🧹 [POSITION_FLOOR] {account}/{p.name}: pruned {len(pruned)} row(s) outside the symbol universe (archived to data/position_archive/) — e.g. {sorted(pruned)[:5]}")
-    for k in held_foreign:
-        if _rate_limited(f"foreign_held:{k}", 300.0):
-            log.critical(f"🛑 [POSITION_FOREIGN_HELD] {k} is NOT in the symbol universe but reports positionAmt {rows[k].get('positionAmt')} — KEPT (dropping it would hide real exposure). Verify against the broker and remove by hand if flat.")
-            _alert("POSITION_FOREIGN_HELD", {"key": k, "file": str(p), "positionAmt": rows[k].get("positionAmt")}, p.parent.parent)
+    # Existing position records are permanent, including flat records with lifecycle metadata.
+    # The current symbol universe only seeds missing records; it never authorizes deletion.
     # Both the alert and the log are throttled TOGETHER. 2026-10-24: the alert was outside the rate limit, so a
     # restore that repeated on every save wrote 26,349 rows (13.7 MB) into data/alerts/position_writer_guard.jsonl
     # at ~1000/h — a synchronous mkdir+append on the save path of a host already at load 200+.
@@ -329,7 +304,7 @@ def ensure_universe(path, rows, disk_rows=None, log=None, role=None):
         log.critical(f"🛡️ [POSITION_FLOOR] {account}/{p.name}: RESTORED {restored} row(s) this write would have ERASED (role={role or process_role()} pid={os.getpid()})")
     if seeded and _rate_limited(f"floor_seed:{p}", 60.0):
         log.warning(f"🛡️ [POSITION_FLOOR] {account}/{p.name}: seeded {seeded} missing universe row(s) flat")
-    return restored, seeded, len(pruned)
+    return restored, seeded, 0
 
 
 def heartbeat_path(account_dir):
