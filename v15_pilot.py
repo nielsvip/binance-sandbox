@@ -12325,6 +12325,15 @@ def _main_single():
     if args.window_days not in (30, 20, 7, 1, 365):
         print(f"BLOCKED: only 30/20/7/1/365 allowed, got {args.window_days}", file=sys.stderr)
         sys.exit(2)
+    if args.window_days == 7 and (not os.environ.get("V15_OUT_DIR") or not os.environ.get("V15_PROGRESS_DIR") or not os.environ.get("V15_START_OVERRIDES")):
+        print("BLOCKED: 7D optimization requires isolated V15_OUT_DIR, V15_PROGRESS_DIR, and verified V15_START_OVERRIDES", file=sys.stderr)
+        sys.exit(2)
+    if args.window_days == 7 and (
+        Path(os.environ["V15_OUT_DIR"]).resolve() == (ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL").resolve()
+        or Path(os.environ["V15_PROGRESS_DIR"]).resolve() == (ROOT / "data" / "reports" / "lifecycle_pilot").resolve()
+    ):
+        print("BLOCKED: 7D optimization cannot use canonical 30D output or progress directories", file=sys.stderr)
+        sys.exit(2)
 
     # BATCH 4 NPZs LONG+SHORT in one process — keep all hot, never erase, work until finished
     if args.batch_syms:
@@ -16958,7 +16967,9 @@ def _main_single():
             # USER 2026-10-21: publish EVERY workbook result — neg/low boards go live at tier-min size via
             # PERF_TIER_SIZING (risk carried by size, never by refusal). _beats is informational only now.
             # ROLLBACK: `_publish = _beats` restores the 30D-robustness gate.
-            _publish = True
+            # A 7D pre-open optimization has its own account-specific promotion
+            # path. Never write its result into the shared 30D live config.
+            _publish = args.window_days == 30
             if _publish:
                 # Backup current per_sym settings if existing
                 if _cur_entry:
