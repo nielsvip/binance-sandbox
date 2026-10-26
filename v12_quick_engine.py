@@ -10441,6 +10441,21 @@ def load_npz(mode, symbols, start_date, npz_dir=""):
     return stores
 
 
+def _ema_blanket_final_entry_mask(npz, n, is_long, cfg, close, safe):
+    if str(getattr(cfg, "MODE", "crypto")) == "tradier" or not bool(
+        getattr(cfg, "EMA_BLANKET_FILTER_ENABLED", False)
+    ):
+        return None
+    tf = str(getattr(cfg, "EMA_BLANKET_FILTER_FILTER_TF", "OFF") or "OFF").strip().upper()
+    if tf in ("", "OFF"):
+        import vec_decisions.wave4_families as _w4
+
+        return _w4.ema_blanket_entry_gate(npz, n, is_long, cfg, close, safe)
+    import vec_decisions.twin_yellow_filters as _tyf
+
+    return _tyf.ema_blanket_pass_vec(npz, n, is_long, cfg, safe)
+
+
 def compute_reentry_blocks(npz, n, is_long, cfg):
     """Returns dict of block_name -> boolean array (True = block fires)."""
     close = _base_safe(npz, "close", n, cfg)
@@ -18649,6 +18664,17 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         entry_sig = entry_sig & _kg2_ok_final
     if _e921_ok_final is not None:
         entry_sig = entry_sig & _e921_ok_final
+    # Live execute_now applies EMA_BLANKET after every OPEN producer. FILTER_TF=OFF
+    # means the legacy fixed 15m/1h/4h/D scan, not an inert gate; the yellow-filter
+    # pass treats OFF as no mask and later OR sources can otherwise bypass it.
+    try:
+        _eb_final = _ema_blanket_final_entry_mask(
+            npz, n, is_long, cfg, close, _safe
+        )
+        if _eb_final is not None:
+            entry_sig = entry_sig & np.asarray(_eb_final, dtype=bool)
+    except Exception:
+        pass
     # 2026-10-24 USER template-governed entries: ENABLE_TR_SWING_ENTRIES knob mirror of tradier_manage.is_swing_entry_allowed (knob half). Tradier-only; None when the knob allows (no-op) or in crypto MODE. In-loop reentry fires never read entry_sig, so mandatory cross-back reentries keep flowing on both legs, exactly like the live _xb_reentry_fired bypass. Budget arithmetic past the knob stays live-only (no NPZ source for market snapshot/sentiment) — see vec_decisions.check_entry_swing_budget.
     _swing_knob_mask = check_entry_swing_budget.entry_mask_vec(cfg, n) if check_entry_swing_budget is not None else None
     if _swing_knob_mask is not None:

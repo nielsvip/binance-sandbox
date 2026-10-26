@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Forward-state recompute (audit-only). After an NPZ install, recompute the
-forward vectorized open/closed state for affected sym_sides using the REAL
-board artifacts (stored override VALUES from progress JSONs) and the REAL
-vector engine (tools/opt/v12_pilot prepare_batch + evaluate with ledger).
+"""Recompute the current 30D open/closed state for affected sym_sides.
 
-Writes data/forward_state/<SYM_SIDE>.json — READ ONLY output. No live-trading
-effect. Enforcement lives behind the gated+paper-proof spec in
-data/forward_state_SPEC.md and is NOT implemented here.
+Reads the active published full switch set from SQL and evaluates it on the
+current NPZ through tools/opt/v12_pilot and v12_quick_engine. `ok`/`valid`
+describe whether a usable state decision was computed; `performance_valid`
+separately records the 30D metric gates. A completed replay can still produce
+a valid flat/open state when its trade count or performance metrics fail a
+promotion/reporting floor.
 """
 import json
 import os
@@ -91,16 +91,28 @@ def state_for(symside, window_days=30):
                 "reason": "npz_tail_behind_last_closed_bar", "src": src, "npz_tail": tail,
                 "expected_npz_tail": expected_tail, **setting_meta}
     res = evaluate_prepared_sanitized(prep, ov, window_days, include_ledger=True) or {}
-    if res.get("valid") is not True:
+    perf_valid = res.get("valid") is True
+    perf_reason = res.get("invalid_reason")
+    completed_performance_gate = perf_valid or bool(
+        perf_reason
+        and (
+            perf_reason.startswith("trades ")
+            or perf_reason.startswith("TIM ")
+            or perf_reason.startswith("DD ")
+        )
+    )
+    if not completed_performance_gate:
         return {"ts": time.strftime("%FT%TZ", time.gmtime()), "sym_side": symside, "ok": False,
-                "reason": "invalid_30d_replay", "src": src, "npz_tail": tail, **setting_meta}
+                "reason": perf_reason or "invalid_30d_replay", "src": src, "npz_tail": tail, **setting_meta}
     led = [t for t in (res.get("ledger") or []) if isinstance(t, dict)]
     cur = _open_ledger_position(led, len(tails) - 1)
     out = {"ts": time.strftime("%FT%TZ", time.gmtime()), "sym_side": symside, "ok": True,
            "src": src, "npz_tail": tail, "window_days": window_days,
            "engine_ast_sha256": _engine_ast_sha256(), **setting_meta,
            "gain_pct": res.get("gain_pct"), "trades": res.get("trades"),
-           "valid": res.get("valid"), "open": cur is not None,
+           "valid": True, "performance_valid": perf_valid,
+           "performance_invalid_reason": None if perf_valid else perf_reason,
+           "open": cur is not None,
            "entry_bar": int(tails[int(cur.get("bar", cur.get("bar_entry")))]) if cur is not None and cur.get("bar", cur.get("bar_entry")) is not None else None,
            "entry_px": cur.get("price", cur.get("entry_price")) if cur is not None else None,
            "audit_only": False}
