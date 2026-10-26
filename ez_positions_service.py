@@ -5894,12 +5894,33 @@ class PositionService:
         if _failover_writer_is_standby(account_key):
             self.logger.debug(f"[REDIS_SYNC_SKIP][{account_key}] Standby failover cannot publish positions while service heartbeat is fresh.")
             return
+        account_positions = self.positions_by_account.get(account_key, {})
+        memory_newest = memory_positions_newest(account_positions)
+        disk_newest = 0.0
+        for side in ("LONG", "SHORT"):
+            try:
+                disk_newest = max(disk_newest, self.get_position_file(account_key, side).stat().st_mtime)
+            except OSError:
+                pass
         if isinstance(arg2, str) and isinstance(arg3, dict):
             actual_updates = arg3
         elif isinstance(arg2, dict):
             actual_updates = arg2
         else:
             actual_updates = {}
+        disk_snapshot = None
+        memory_is_stale = memory_newest is None or memory_newest < disk_newest - 1.0 or time.time() - memory_newest > SAVE_STALE_REFUSE_S
+        if memory_is_stale:
+            self.logger.warning(f"[REDIS_SYNC_DISK_FALLBACK][{account_key}] Publishing the disk-authoritative snapshot; suppressing stale memory deltas.")
+            actual_updates = {}
+            try:
+                disk_snapshot, _ = await self._load_positions_raw_from_files(account_key)
+            except Exception as e:
+                self.logger.error(f"[REDIS_SYNC_SKIP_STALE][{account_key}] Could not load authoritative disk snapshot: {e}")
+                return
+            if not disk_snapshot:
+                self.logger.error(f"[REDIS_SYNC_SKIP_STALE][{account_key}] Disk snapshot is empty; refusing to publish an empty cache.")
+                return
         now = time.time()
         if not hasattr(self, '_last_full_redis_sync'):
             self._last_full_redis_sync = {}
@@ -5916,9 +5937,12 @@ class PositionService:
                     self.logger.error(f"[REDIS_SYNC_FAIL][{account_key}] publish delta timed out >5s — dropping (next PAU will re-broadcast)")
             last_full = self._last_full_redis_sync.get(account_key, 0)
             if (now - last_full) >= 3.0 or not actual_updates:
-                account_positions = self.positions_by_account.get(account_key, {})
-                if not account_positions: return
-                full_account_snapshot = { pk: p.to_dict() for pk, p in account_positions.items() if hasattr(p, "to_dict") }
+                if disk_snapshot is not None:
+                    full_account_snapshot = disk_snapshot
+                else:
+                    account_positions = self.positions_by_account.get(account_key, {})
+                    if not account_positions: return
+                    full_account_snapshot = { pk: p.to_dict() for pk, p in account_positions.items() if hasattr(p, "to_dict") }
                 if full_account_snapshot:
                     redis_key = f"positions:{account_key}"
                     full_payload = json_dumps({ "positions": full_account_snapshot, "meta": {"timestamp": now, "account": account_key} })

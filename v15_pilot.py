@@ -12359,12 +12359,12 @@ def _main_single():
         print("BLOCKED: 7D --out must be inside V15_OUT_DIR", file=sys.stderr)
         sys.exit(2)
     if args.window_days == 7 and (
-        os.environ.get("V15_SKIP_CAT_PERSYM_BASELINE") != "1"
+        os.environ.get("V15_SKIP_CAT_PERSYM_BASELINE") != "0"
         or os.environ.get("V15_PREV_BEST_START") != "0"
         or os.environ.get("V15_ADAPT_BASELINE") != "0"
         or os.environ.get("V15_FRESH_RUN") != "1"
     ):
-        print("BLOCKED: 7D must optimize from its explicit 30D winner without alternate baseline substitution", file=sys.stderr)
+        print("BLOCKED: 7D must compare the new cat_side defaults with its verified 30D per_sym start", file=sys.stderr)
         sys.exit(2)
 
     # BATCH 4 NPZs LONG+SHORT in one process — keep all hot, never erase, work until finished
@@ -13168,6 +13168,12 @@ def _main_single():
                 if _dc_per_ov is None and locals().get("_ingested_overrides"):
                     _dc_per_ov, _ = sanitize_overrides(dict(_ingested_overrides), defaults)
                     _dc_per_lbl = "per_sym_ingested"
+                if args.window_days == 7:
+                    # The hash-bound 30D start is the only allowed per_sym
+                    # baseline for this pass. The local store can lag the
+                    # scheduler's published selection on a borrowed host.
+                    _dc_per_ov = None
+                    _dc_per_lbl = "verified_30d_start"
                 import concurrent.futures as _cf_dc
                 # USER 2026-10-11: EVERY test chooses — a V15_START_OVERRIDES (autopsy/365D-repair) run evaluates its
                 # start set alongside cat + per_sym and adopts the winner (incumbent-biased credible-first rule).

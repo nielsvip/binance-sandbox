@@ -20,26 +20,44 @@ OUT = ROOT / "data" / "forward_state"
 
 
 def _load_overrides(symside):
-    """Stored override VALUES, newest progress first. No re-derivation."""
-    cands = [
-        Path.home() / "v15_run36_20261024" / "progress" / f"{symside}_v14_progress.json",
-        ROOT / "data" / "reports" / "lifecycle_pilot" / f"{symside}_v14_progress.json",
-    ]
-    for p in cands:
-        try:
-            d = json.loads(p.read_text())
-        except Exception:
+    """Use the same complete per-sym or cat-side set that live trading reads."""
+    import per_sym_live_set
+    import per_sym_settings
+
+    full = per_sym_live_set.full_set(symside)
+    if full:
+        return dict(full), "per_sym_live_set.full_set"
+    symbol, side = symside.rsplit("_", 1)
+    cat_side = per_sym_settings.cat_side_of(symbol, side)
+    defaults = per_sym_settings.defaults(cat_side)
+    if defaults:
+        return defaults, f"cat_side_defaults:{cat_side}"
+    return {}, "missing_live_settings"
+
+
+def _open_ledger_position(ledger, tail):
+    """Find the last opening still held at the final bar, ignoring the MTM mark."""
+    openings = [row for row in ledger if str(row.get("type", "")).upper() in ("OPEN", "AUGMENT")]
+    closes = [int(row.get("bar_exit")) for row in ledger
+              if str(row.get("type", "")).upper() == "CLOSE"
+              and not row.get("unrealised") and row.get("bar_exit") is not None]
+    current = None
+    for row in sorted(openings, key=lambda item: int(item.get("bar", item.get("bar_entry")) or 0)):
+        entry_bar = row.get("bar", row.get("bar_entry"))
+        if entry_bar is None:
             continue
-        for k in ("hustler_overrides", "cumulative_overrides"):
-            ov = d.get(k)
-            if isinstance(ov, dict) and ov:
-                return ov, f"{p.name}:{k}"
-    return {}, "none"
+        entry_bar = int(entry_bar)
+        if entry_bar <= tail and not any(exit_bar > entry_bar for exit_bar in closes):
+            current = row
+    return current
 
 
 def state_for(symside, window_days=30):
     from tools.opt.v12_pilot import prepare_batch, evaluate_prepared_sanitized
     ov, src = _load_overrides(symside)
+    if not ov:
+        return {"ts": time.strftime("%FT%TZ", time.gmtime()), "sym_side": symside,
+                "ok": False, "reason": "missing live settings", "src": src}
     prep = prepare_batch(symside, window_days)
     if prep is None or (isinstance(prep, dict) and prep.get("_stale")):
         return {"ts": time.strftime("%FT%TZ", time.gmtime()), "sym_side": symside,
@@ -51,20 +69,13 @@ def state_for(symside, window_days=30):
     tail = int(tails[-1]) if len(tails) else 0
     res = evaluate_prepared_sanitized(prep, ov, window_days, include_ledger=True) or {}
     led = [t for t in (res.get("ledger") or []) if isinstance(t, dict)]
-    open_rows = [t for t in led if str(t.get("type", "")).upper() in ("OPEN", "AUGMENT")]
-    close_bars = sorted(int(t.get("bar_exit") or 0) for t in led if t.get("bar_exit") is not None)
-    cur = None
-    for t in sorted(open_rows, key=lambda r: int(r.get("bar_entry") or 0)):
-        be = int(t.get("bar_entry") or 0)
-        closed_after = any(bx > be for bx in close_bars)
-        if be <= tail and not closed_after:
-            cur = t
+    cur = _open_ledger_position(led, len(tails) - 1)
     out = {"ts": time.strftime("%FT%TZ", time.gmtime()), "sym_side": symside, "ok": True,
            "src": src, "npz_tail": tail, "window_days": window_days,
            "gain_pct": res.get("gain_pct"), "trades": res.get("trades"),
            "valid": res.get("valid"), "open": cur is not None,
-           "entry_bar": int(cur.get("bar_entry")) if cur is not None and cur.get("bar_entry") is not None else None,
-           "entry_px": cur.get("entry_price") if cur is not None else None,
+           "entry_bar": int(tails[int(cur.get("bar", cur.get("bar_entry")))]) if cur is not None and cur.get("bar", cur.get("bar_entry")) is not None else None,
+           "entry_px": cur.get("price", cur.get("entry_price")) if cur is not None else None,
            "audit_only": True}
     return out
 
