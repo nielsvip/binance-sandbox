@@ -1,0 +1,2123 @@
+{
+  "asof_utc": "2026-10-26T21:57:40.360000+00:00",
+  "source_exchange": "data/reports/binance_fills_ang_20261026_2200.json",
+  "source_history": "data/history/ang/*.jsonl",
+  "source_intents": "data/vec_live/intents{,_archive}",
+  "exchange_fills": 977,
+  "exchange_orders": 720,
+  "exchange_realized_usd": -11.12423112,
+  "broker_gap_order_ids_matched": 187,
+  "broker_gap_order_ids_unmatched": 0,
+  "same_bar_opposite_producer_intents": [
+    {
+      "ss": "DOTUSDT_SHORT",
+      "bar_utc": "2026-10-26T07:45:00+00:00",
+      "pb": [
+        "OPEN"
+      ],
+      "v20": [
+        "REDUCE"
+      ]
+    },
+    {
+      "ss": "AXSUSDT_SHORT",
+      "bar_utc": "2026-10-26T20:15:00+00:00",
+      "pb": [
+        "OPEN"
+      ],
+      "v20": [
+        "REDUCE"
+      ]
+    },
+    {
+      "ss": "ZENUSDT_LONG",
+      "bar_utc": "2026-10-26T15:45:00+00:00",
+      "pb": [
+        "OPEN"
+      ],
+      "v20": [
+        "CLOSE"
+      ]
+    },
+    {
+      "ss": "SNXUSDT_SHORT",
+      "bar_utc": "2026-10-26T03:30:00+00:00",
+      "pb": [
+        "OPEN"
+      ],
+      "v20": [
+        "CLOSE"
+      ]
+    },
+    {
+      "ss": "MINAUSDT_SHORT",
+      "bar_utc": "2026-10-26T07:45:00+00:00",
+      "pb": [
+        "OPEN"
+      ],
+      "v20": [
+        "CLOSE"
+      ]
+    },
+    {
+      "ss": "MINAUSDT_SHORT",
+      "bar_utc": "2026-10-26T04:30:00+00:00",
+      "pb": [
+        "OPEN"
+      ],
+      "v20": [
+        "CLOSE"
+      ]
+    },
+    {
+      "ss": "MINAUSDT_SHORT",
+      "bar_utc": "2026-10-26T08:30:00+00:00",
+      "pb": [
+        "OPEN"
+      ],
+      "v20": [
+        "CLOSE"
+      ]
+    },
+    {
+      "ss": "LTCUSDC_SHORT",
+      "bar_utc": "2026-10-26T07:00:00+00:00",
+      "pb": [
+        "OPEN"
+      ],
+      "v20": [
+        "CLOSE"
+      ]
+    }
+  ],
+  "by_sym_side": {
+    "1000BONKUSDC_SHORT": {
+      "fills": 6,
+      "orders_open": 3,
+      "orders_close": 3,
+      "exchange_realized_usd": -0.094786,
+      "history": {
+        "AUGMENT": 4,
+        "CLOSE": 2,
+        "REDUCE": 6,
+        "OPEN": 2
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 5
+      },
+      "broker_gap_order_ids": 2
+    },
+    "1000FLOKIUSDT_SHORT": {
+      "fills": 6,
+      "orders_open": 3,
+      "orders_close": 2,
+      "exchange_realized_usd": -0.28881,
+      "history": {
+        "AUGMENT": 6,
+        "OPEN": 3,
+        "CLOSE": 2,
+        "REDUCE": 2
+      },
+      "v20_intents": {
+        "REDUCE": 8,
+        "CLOSE": 1
+      },
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 1
+    },
+    "1000LUNCUSDT_SHORT": {
+      "fills": 12,
+      "orders_open": 5,
+      "orders_close": 6,
+      "exchange_realized_usd": -0.05544999,
+      "history": {
+        "OPEN": 5,
+        "AUGMENT": 8,
+        "REDUCE": 10,
+        "CLOSE": 3
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 3
+      },
+      "broker_gap_order_ids": 2
+    },
+    "1000PEPEUSDC_LONG": {
+      "fills": 14,
+      "orders_open": 4,
+      "orders_close": 5,
+      "exchange_realized_usd": -0.82203649,
+      "history": {
+        "AUGMENT": 10,
+        "OPEN": 4,
+        "REDUCE": 8,
+        "CLOSE": 4
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 7
+      },
+      "broker_gap_order_ids": 3
+    },
+    "AAVEUSDC_LONG": {
+      "fills": 0,
+      "orders_open": 0,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {},
+      "v20_intents": {
+        "OPEN": 1
+      },
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "ACEUSDT_SHORT": {
+      "fills": 54,
+      "orders_open": 12,
+      "orders_close": 14,
+      "exchange_realized_usd": -1.1742184,
+      "history": {
+        "AUGMENT": 45,
+        "OPEN": 11,
+        "REDUCE": 25,
+        "CLOSE": 14
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 12,
+        "CLOSE": 1
+      },
+      "broker_gap_order_ids": 10
+    },
+    "ADAUSDC_LONG": {
+      "fills": 0,
+      "orders_open": 0,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {},
+      "v20_intents": {
+        "CLOSE": 2,
+        "REDUCE": 2,
+        "OPEN": 1
+      },
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "ADAUSDC_SHORT": {
+      "fills": 5,
+      "orders_open": 2,
+      "orders_close": 3,
+      "exchange_realized_usd": -0.43369,
+      "history": {
+        "AUGMENT": 3,
+        "OPEN": 2,
+        "CLOSE": 2,
+        "REDUCE": 3
+      },
+      "v20_intents": {
+        "REDUCE": 6,
+        "OPEN": 2,
+        "CLOSE": 1
+      },
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "ALGOUSDT_LONG": {
+      "fills": 5,
+      "orders_open": 2,
+      "orders_close": 2,
+      "exchange_realized_usd": -0.20348,
+      "history": {
+        "OPEN": 2,
+        "AUGMENT": 5,
+        "CLOSE": 3,
+        "REDUCE": 4
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 1
+    },
+    "ALGOUSDT_SHORT": {
+      "fills": 2,
+      "orders_open": 1,
+      "orders_close": 1,
+      "exchange_realized_usd": 0.06561,
+      "history": {
+        "OPEN": 1,
+        "AUGMENT": 1,
+        "REDUCE": 2
+      },
+      "v20_intents": {
+        "OPEN": 3,
+        "REDUCE": 1,
+        "CLOSE": 1
+      },
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 1
+    },
+    "APEUSDT_LONG": {
+      "fills": 0,
+      "orders_open": 0,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {},
+      "v20_intents": {
+        "OPEN": 1,
+        "CLOSE": 2
+      },
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "API3USDT_SHORT": {
+      "fills": 0,
+      "orders_open": 0,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {},
+      "v20_intents": {
+        "CLOSE": 1,
+        "OPEN": 1
+      },
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "ARBUSDC_LONG": {
+      "fills": 7,
+      "orders_open": 4,
+      "orders_close": 3,
+      "exchange_realized_usd": -0.059185,
+      "history": {
+        "AUGMENT": 9,
+        "OPEN": 4,
+        "CLOSE": 3,
+        "REDUCE": 3
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 3
+      },
+      "broker_gap_order_ids": 0
+    },
+    "ARKMUSDT_LONG": {
+      "fills": 15,
+      "orders_open": 5,
+      "orders_close": 7,
+      "exchange_realized_usd": 0.0116,
+      "history": {
+        "AUGMENT": 8,
+        "REDUCE": 17,
+        "CLOSE": 4,
+        "OPEN": 3
+      },
+      "v20_intents": {
+        "OPEN": 4,
+        "CLOSE": 2
+      },
+      "legacy_pb_intents": {
+        "OPEN": 4,
+        "CLOSE": 3
+      },
+      "broker_gap_order_ids": 5
+    },
+    "ARUSDT_LONG": {
+      "fills": 4,
+      "orders_open": 2,
+      "orders_close": 1,
+      "exchange_realized_usd": -0.845,
+      "history": {
+        "AUGMENT": 5,
+        "OPEN": 2,
+        "REDUCE": 2,
+        "CLOSE": 1
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 1
+    },
+    "ASTERUSDT_LONG": {
+      "fills": 1,
+      "orders_open": 1,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {
+        "AUGMENT": 2,
+        "OPEN": 1
+      },
+      "v20_intents": {
+        "CLOSE": 2,
+        "REDUCE": 4,
+        "OPEN": 1
+      },
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "ATOMUSDT_SHORT": {
+      "fills": 13,
+      "orders_open": 5,
+      "orders_close": 7,
+      "exchange_realized_usd": -0.17471,
+      "history": {
+        "REDUCE": 14,
+        "AUGMENT": 7,
+        "OPEN": 5,
+        "CLOSE": 5
+      },
+      "v20_intents": {
+        "REDUCE": 1,
+        "OPEN": 2,
+        "CLOSE": 2
+      },
+      "legacy_pb_intents": {
+        "OPEN": 11
+      },
+      "broker_gap_order_ids": 3
+    },
+    "AVAXUSDC_LONG": {
+      "fills": 8,
+      "orders_open": 3,
+      "orders_close": 2,
+      "exchange_realized_usd": 0.13459,
+      "history": {
+        "AUGMENT": 9,
+        "OPEN": 3,
+        "CLOSE": 2,
+        "REDUCE": 5
+      },
+      "v20_intents": {
+        "OPEN": 3,
+        "REDUCE": 2,
+        "CLOSE": 3
+      },
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 2
+    },
+    "AXSUSDT_SHORT": {
+      "fills": 4,
+      "orders_open": 1,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {
+        "OPEN": 1,
+        "AUGMENT": 4
+      },
+      "v20_intents": {
+        "REDUCE": 6
+      },
+      "legacy_pb_intents": {
+        "OPEN": 1
+      },
+      "broker_gap_order_ids": 1
+    },
+    "BATUSDT_LONG": {
+      "fills": 10,
+      "orders_open": 2,
+      "orders_close": 1,
+      "exchange_realized_usd": 0.098426,
+      "history": {
+        "AUGMENT": 5,
+        "OPEN": 2,
+        "REDUCE": 7,
+        "CLOSE": 1
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 2
+    },
+    "BBUSDT_SHORT": {
+      "fills": 29,
+      "orders_open": 9,
+      "orders_close": 16,
+      "exchange_realized_usd": -0.77192266,
+      "history": {
+        "AUGMENT": 20,
+        "OPEN": 9,
+        "REDUCE": 22,
+        "CLOSE": 7
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 15,
+        "CLOSE": 2
+      },
+      "broker_gap_order_ids": 7
+    },
+    "BCHUSDC_SHORT": {
+      "fills": 6,
+      "orders_open": 2,
+      "orders_close": 4,
+      "exchange_realized_usd": 0.05233,
+      "history": {
+        "AUGMENT": 4,
+        "OPEN": 2,
+        "CLOSE": 2,
+        "REDUCE": 7
+      },
+      "v20_intents": {
+        "OPEN": 1
+      },
+      "legacy_pb_intents": {
+        "CLOSE": 1
+      },
+      "broker_gap_order_ids": 2
+    },
+    "BEAMXUSDT_LONG": {
+      "fills": 18,
+      "orders_open": 7,
+      "orders_close": 8,
+      "exchange_realized_usd": -1.025088,
+      "history": {
+        "AUGMENT": 16,
+        "OPEN": 7,
+        "REDUCE": 11,
+        "CLOSE": 5
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 2
+      },
+      "broker_gap_order_ids": 2
+    },
+    "BEATUSDT_SHORT": {
+      "fills": 4,
+      "orders_open": 2,
+      "orders_close": 2,
+      "exchange_realized_usd": 0.05219,
+      "history": {
+        "OPEN": 2,
+        "AUGMENT": 3,
+        "REDUCE": 4,
+        "CLOSE": 2
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 1
+      },
+      "broker_gap_order_ids": 0
+    },
+    "BLURUSDT_SHORT": {
+      "fills": 23,
+      "orders_open": 5,
+      "orders_close": 14,
+      "exchange_realized_usd": 0.37112,
+      "history": {
+        "CLOSE": 6,
+        "AUGMENT": 16,
+        "OPEN": 4,
+        "REDUCE": 16
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 13,
+        "CLOSE": 1
+      },
+      "broker_gap_order_ids": 5
+    },
+    "BNBUSDC_LONG": {
+      "fills": 12,
+      "orders_open": 4,
+      "orders_close": 4,
+      "exchange_realized_usd": -0.0307,
+      "history": {
+        "AUGMENT": 7,
+        "REDUCE": 7,
+        "OPEN": 3,
+        "CLOSE": 2
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 10,
+        "CLOSE": 5
+      },
+      "broker_gap_order_ids": 4
+    },
+    "BTCUSDC_LONG": {
+      "fills": 0,
+      "orders_open": 0,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {},
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 1
+      },
+      "broker_gap_order_ids": 0
+    },
+    "COMPUSDT_LONG": {
+      "fills": 13,
+      "orders_open": 2,
+      "orders_close": 8,
+      "exchange_realized_usd": 0.64064,
+      "history": {
+        "AUGMENT": 4,
+        "OPEN": 2,
+        "REDUCE": 11,
+        "CLOSE": 1
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 2
+      },
+      "broker_gap_order_ids": 1
+    },
+    "COTIUSDT_SHORT": {
+      "fills": 33,
+      "orders_open": 8,
+      "orders_close": 9,
+      "exchange_realized_usd": -0.397338,
+      "history": {
+        "AUGMENT": 20,
+        "REDUCE": 29,
+        "CLOSE": 7,
+        "OPEN": 8
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "CLOSE": 5,
+        "OPEN": 7
+      },
+      "broker_gap_order_ids": 7
+    },
+    "DASHUSDT_LONG": {
+      "fills": 14,
+      "orders_open": 3,
+      "orders_close": 8,
+      "exchange_realized_usd": 0.21331,
+      "history": {
+        "AUGMENT": 8,
+        "OPEN": 3,
+        "REDUCE": 10,
+        "CLOSE": 2
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 2,
+        "CLOSE": 1
+      },
+      "broker_gap_order_ids": 2
+    },
+    "DOGEUSDC_SHORT": {
+      "fills": 7,
+      "orders_open": 3,
+      "orders_close": 3,
+      "exchange_realized_usd": 0.0971,
+      "history": {
+        "AUGMENT": 6,
+        "OPEN": 3,
+        "CLOSE": 3,
+        "REDUCE": 5
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 2
+      },
+      "broker_gap_order_ids": 1
+    },
+    "DOTUSDT_LONG": {
+      "fills": 2,
+      "orders_open": 1,
+      "orders_close": 1,
+      "exchange_realized_usd": 0.12636,
+      "history": {
+        "AUGMENT": 2,
+        "OPEN": 1,
+        "CLOSE": 2,
+        "REDUCE": 1
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "DOTUSDT_SHORT": {
+      "fills": 32,
+      "orders_open": 10,
+      "orders_close": 12,
+      "exchange_realized_usd": -0.34696999,
+      "history": {
+        "REDUCE": 32,
+        "AUGMENT": 15,
+        "OPEN": 8,
+        "CLOSE": 9
+      },
+      "v20_intents": {
+        "REDUCE": 6,
+        "OPEN": 4,
+        "CLOSE": 4
+      },
+      "legacy_pb_intents": {
+        "OPEN": 7,
+        "CLOSE": 3
+      },
+      "broker_gap_order_ids": 9
+    },
+    "DUSKUSDT_LONG": {
+      "fills": 6,
+      "orders_open": 3,
+      "orders_close": 3,
+      "exchange_realized_usd": -0.04639001,
+      "history": {
+        "AUGMENT": 4,
+        "REDUCE": 3,
+        "CLOSE": 3,
+        "OPEN": 2
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 6
+      },
+      "broker_gap_order_ids": 0
+    },
+    "EDUUSDT_LONG": {
+      "fills": 1,
+      "orders_open": 1,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {
+        "AUGMENT": 2,
+        "OPEN": 1
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "EDUUSDT_SHORT": {
+      "fills": 0,
+      "orders_open": 0,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {},
+      "v20_intents": {
+        "OPEN": 1
+      },
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "EGLDUSDT_LONG": {
+      "fills": 0,
+      "orders_open": 0,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {},
+      "v20_intents": {
+        "CLOSE": 2,
+        "OPEN": 2
+      },
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "EGLDUSDT_SHORT": {
+      "fills": 23,
+      "orders_open": 3,
+      "orders_close": 10,
+      "exchange_realized_usd": -0.0107,
+      "history": {
+        "AUGMENT": 9,
+        "OPEN": 3,
+        "CLOSE": 2,
+        "REDUCE": 17
+      },
+      "v20_intents": {
+        "OPEN": 2,
+        "REDUCE": 3,
+        "CLOSE": 1
+      },
+      "legacy_pb_intents": {
+        "OPEN": 1
+      },
+      "broker_gap_order_ids": 3
+    },
+    "ENAUSDC_LONG": {
+      "fills": 3,
+      "orders_open": 2,
+      "orders_close": 1,
+      "exchange_realized_usd": -0.02079,
+      "history": {
+        "AUGMENT": 2,
+        "OPEN": 2,
+        "CLOSE": 1,
+        "REDUCE": 2
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 1
+    },
+    "ENSUSDT_LONG": {
+      "fills": 4,
+      "orders_open": 2,
+      "orders_close": 2,
+      "exchange_realized_usd": -0.3121,
+      "history": {
+        "AUGMENT": 3,
+        "OPEN": 2,
+        "REDUCE": 3,
+        "CLOSE": 2
+      },
+      "v20_intents": {
+        "CLOSE": 2,
+        "OPEN": 2
+      },
+      "legacy_pb_intents": {
+        "CLOSE": 2
+      },
+      "broker_gap_order_ids": 1
+    },
+    "ETCUSDT_LONG": {
+      "fills": 0,
+      "orders_open": 0,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {},
+      "v20_intents": {
+        "OPEN": 3,
+        "CLOSE": 2
+      },
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "ETHUSDC_LONG": {
+      "fills": 2,
+      "orders_open": 1,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {
+        "OPEN": 1,
+        "AUGMENT": 3
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 1
+    },
+    "FARTCOINUSDT_SHORT": {
+      "fills": 3,
+      "orders_open": 1,
+      "orders_close": 1,
+      "exchange_realized_usd": -0.11844,
+      "history": {
+        "AUGMENT": 2,
+        "OPEN": 1,
+        "CLOSE": 1,
+        "REDUCE": 3
+      },
+      "v20_intents": {
+        "OPEN": 3,
+        "CLOSE": 3,
+        "REDUCE": 1
+      },
+      "legacy_pb_intents": {
+        "CLOSE": 1
+      },
+      "broker_gap_order_ids": 1
+    },
+    "FILUSDC_LONG": {
+      "fills": 0,
+      "orders_open": 0,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {},
+      "v20_intents": {
+        "OPEN": 2,
+        "CLOSE": 1
+      },
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "GALAUSDT_LONG": {
+      "fills": 0,
+      "orders_open": 0,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {},
+      "v20_intents": {
+        "OPEN": 2
+      },
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "GALAUSDT_SHORT": {
+      "fills": 3,
+      "orders_open": 1,
+      "orders_close": 1,
+      "exchange_realized_usd": 0.096882,
+      "history": {
+        "AUGMENT": 4,
+        "OPEN": 1,
+        "CLOSE": 1,
+        "REDUCE": 1
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 1
+    },
+    "GRAMUSDT_SHORT": {
+      "fills": 26,
+      "orders_open": 9,
+      "orders_close": 9,
+      "exchange_realized_usd": 0.03310002,
+      "history": {
+        "AUGMENT": 12,
+        "OPEN": 8,
+        "REDUCE": 19,
+        "CLOSE": 9
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 12,
+        "CLOSE": 2
+      },
+      "broker_gap_order_ids": 4
+    },
+    "GRASSUSDT_LONG": {
+      "fills": 6,
+      "orders_open": 3,
+      "orders_close": 3,
+      "exchange_realized_usd": -0.13988001,
+      "history": {
+        "AUGMENT": 5,
+        "OPEN": 3,
+        "CLOSE": 4,
+        "REDUCE": 4
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 1
+      },
+      "broker_gap_order_ids": 0
+    },
+    "GRTUSDT_LONG": {
+      "fills": 2,
+      "orders_open": 1,
+      "orders_close": 1,
+      "exchange_realized_usd": -0.02508,
+      "history": {
+        "OPEN": 1,
+        "AUGMENT": 1,
+        "CLOSE": 1,
+        "REDUCE": 1
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "GRTUSDT_SHORT": {
+      "fills": 0,
+      "orders_open": 0,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {},
+      "v20_intents": {
+        "CLOSE": 5,
+        "OPEN": 4
+      },
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "HYPEUSDT_LONG": {
+      "fills": 3,
+      "orders_open": 1,
+      "orders_close": 2,
+      "exchange_realized_usd": 0.12639,
+      "history": {
+        "AUGMENT": 2,
+        "OPEN": 1,
+        "REDUCE": 2,
+        "CLOSE": 1
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "CLOSE": 1
+      },
+      "broker_gap_order_ids": 1
+    },
+    "HYPEUSDT_SHORT": {
+      "fills": 3,
+      "orders_open": 1,
+      "orders_close": 2,
+      "exchange_realized_usd": -0.01108,
+      "history": {
+        "AUGMENT": 1,
+        "OPEN": 1,
+        "REDUCE": 2,
+        "CLOSE": 1
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 1
+    },
+    "INJUSDT_LONG": {
+      "fills": 8,
+      "orders_open": 3,
+      "orders_close": 4,
+      "exchange_realized_usd": -0.0656,
+      "history": {
+        "AUGMENT": 4,
+        "REDUCE": 6,
+        "OPEN": 2,
+        "CLOSE": 1
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 2
+      },
+      "broker_gap_order_ids": 1
+    },
+    "INXUSDT_SHORT": {
+      "fills": 7,
+      "orders_open": 1,
+      "orders_close": 3,
+      "exchange_realized_usd": 0.13246098,
+      "history": {
+        "AUGMENT": 3,
+        "OPEN": 1,
+        "REDUCE": 6,
+        "CLOSE": 3
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 1
+      },
+      "broker_gap_order_ids": 2
+    },
+    "IOSTUSDT_LONG": {
+      "fills": 2,
+      "orders_open": 1,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {
+        "OPEN": 1,
+        "AUGMENT": 3
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 1
+    },
+    "IOTAUSDT_SHORT": {
+      "fills": 12,
+      "orders_open": 4,
+      "orders_close": 3,
+      "exchange_realized_usd": 0.640339,
+      "history": {
+        "AUGMENT": 15,
+        "OPEN": 4,
+        "CLOSE": 3,
+        "REDUCE": 5
+      },
+      "v20_intents": {
+        "REDUCE": 10,
+        "OPEN": 5,
+        "CLOSE": 5
+      },
+      "legacy_pb_intents": {
+        "OPEN": 2
+      },
+      "broker_gap_order_ids": 4
+    },
+    "JASMYUSDT_SHORT": {
+      "fills": 6,
+      "orders_open": 3,
+      "orders_close": 2,
+      "exchange_realized_usd": -0.05378399,
+      "history": {
+        "AUGMENT": 4,
+        "OPEN": 2,
+        "REDUCE": 4
+      },
+      "v20_intents": {
+        "OPEN": 1,
+        "REDUCE": 1
+      },
+      "legacy_pb_intents": {
+        "CLOSE": 1
+      },
+      "broker_gap_order_ids": 1
+    },
+    "KASUSDT_LONG": {
+      "fills": 7,
+      "orders_open": 3,
+      "orders_close": 3,
+      "exchange_realized_usd": 0.01524,
+      "history": {
+        "AUGMENT": 5,
+        "OPEN": 3,
+        "CLOSE": 3,
+        "REDUCE": 5
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 1
+      },
+      "broker_gap_order_ids": 1
+    },
+    "KAVAUSDT_LONG": {
+      "fills": 3,
+      "orders_open": 1,
+      "orders_close": 1,
+      "exchange_realized_usd": 0.02807,
+      "history": {
+        "AUGMENT": 2,
+        "OPEN": 1,
+        "CLOSE": 1,
+        "REDUCE": 3
+      },
+      "v20_intents": {
+        "OPEN": 1,
+        "CLOSE": 1
+      },
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 1
+    },
+    "KMNOUSDT_LONG": {
+      "fills": 16,
+      "orders_open": 7,
+      "orders_close": 7,
+      "exchange_realized_usd": 0.27283,
+      "history": {
+        "AUGMENT": 10,
+        "OPEN": 6,
+        "REDUCE": 15,
+        "CLOSE": 6
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "CLOSE": 2,
+        "OPEN": 13
+      },
+      "broker_gap_order_ids": 2
+    },
+    "LINKUSDC_LONG": {
+      "fills": 7,
+      "orders_open": 3,
+      "orders_close": 2,
+      "exchange_realized_usd": 0.36965001,
+      "history": {
+        "AUGMENT": 6,
+        "OPEN": 2,
+        "REDUCE": 6,
+        "CLOSE": 3
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 1
+    },
+    "LINKUSDC_SHORT": {
+      "fills": 0,
+      "orders_open": 0,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {},
+      "v20_intents": {
+        "CLOSE": 2
+      },
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "LTCUSDC_LONG": {
+      "fills": 1,
+      "orders_open": 1,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {
+        "AUGMENT": 2,
+        "OPEN": 1
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "LTCUSDC_SHORT": {
+      "fills": 15,
+      "orders_open": 5,
+      "orders_close": 6,
+      "exchange_realized_usd": -0.02436998,
+      "history": {
+        "REDUCE": 13,
+        "AUGMENT": 12,
+        "OPEN": 4,
+        "CLOSE": 4
+      },
+      "v20_intents": {
+        "OPEN": 5,
+        "CLOSE": 4
+      },
+      "legacy_pb_intents": {
+        "OPEN": 7,
+        "CLOSE": 4
+      },
+      "broker_gap_order_ids": 3
+    },
+    "MAGICUSDT_LONG": {
+      "fills": 15,
+      "orders_open": 4,
+      "orders_close": 5,
+      "exchange_realized_usd": -0.06176101,
+      "history": {
+        "AUGMENT": 16,
+        "OPEN": 4,
+        "CLOSE": 4,
+        "REDUCE": 9
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 1
+      },
+      "broker_gap_order_ids": 3
+    },
+    "MAGICUSDT_SHORT": {
+      "fills": 9,
+      "orders_open": 3,
+      "orders_close": 4,
+      "exchange_realized_usd": 0.04528,
+      "history": {
+        "AUGMENT": 7,
+        "REDUCE": 8,
+        "OPEN": 3,
+        "CLOSE": 2
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "CLOSE": 6,
+        "OPEN": 5
+      },
+      "broker_gap_order_ids": 3
+    },
+    "MANAUSDT_SHORT": {
+      "fills": 0,
+      "orders_open": 0,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {},
+      "v20_intents": {
+        "CLOSE": 3,
+        "OPEN": 3
+      },
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "MASKUSDT_SHORT": {
+      "fills": 22,
+      "orders_open": 5,
+      "orders_close": 5,
+      "exchange_realized_usd": -1.5881,
+      "history": {
+        "OPEN": 5,
+        "AUGMENT": 13,
+        "CLOSE": 5,
+        "REDUCE": 16
+      },
+      "v20_intents": {
+        "REDUCE": 1
+      },
+      "legacy_pb_intents": {
+        "CLOSE": 1,
+        "OPEN": 1
+      },
+      "broker_gap_order_ids": 5
+    },
+    "MELANIAUSDT_SHORT": {
+      "fills": 0,
+      "orders_open": 0,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {},
+      "v20_intents": {
+        "OPEN": 4,
+        "CLOSE": 2,
+        "REDUCE": 1
+      },
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "MINAUSDT_SHORT": {
+      "fills": 32,
+      "orders_open": 9,
+      "orders_close": 8,
+      "exchange_realized_usd": -1.28563,
+      "history": {
+        "AUGMENT": 24,
+        "OPEN": 7,
+        "REDUCE": 19,
+        "CLOSE": 4
+      },
+      "v20_intents": {
+        "OPEN": 7,
+        "CLOSE": 9
+      },
+      "legacy_pb_intents": {
+        "OPEN": 9,
+        "CLOSE": 3
+      },
+      "broker_gap_order_ids": 4
+    },
+    "MOVRUSDT_LONG": {
+      "fills": 23,
+      "orders_open": 8,
+      "orders_close": 8,
+      "exchange_realized_usd": -0.47497599,
+      "history": {
+        "REDUCE": 21,
+        "AUGMENT": 15,
+        "OPEN": 6,
+        "CLOSE": 5
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 8,
+        "CLOSE": 3
+      },
+      "broker_gap_order_ids": 5
+    },
+    "NEARUSDC_LONG": {
+      "fills": 5,
+      "orders_open": 3,
+      "orders_close": 2,
+      "exchange_realized_usd": -0.696,
+      "history": {
+        "OPEN": 3,
+        "AUGMENT": 3,
+        "CLOSE": 3,
+        "REDUCE": 2
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 1
+    },
+    "NMRUSDT_SHORT": {
+      "fills": 18,
+      "orders_open": 6,
+      "orders_close": 9,
+      "exchange_realized_usd": -0.47360002,
+      "history": {
+        "REDUCE": 17,
+        "AUGMENT": 6,
+        "OPEN": 3,
+        "CLOSE": 5
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 6,
+        "CLOSE": 9
+      },
+      "broker_gap_order_ids": 3
+    },
+    "ONDOUSDT_LONG": {
+      "fills": 14,
+      "orders_open": 4,
+      "orders_close": 10,
+      "exchange_realized_usd": 0.31834,
+      "history": {
+        "AUGMENT": 6,
+        "OPEN": 4,
+        "CLOSE": 4,
+        "REDUCE": 13
+      },
+      "v20_intents": {
+        "OPEN": 2,
+        "CLOSE": 3
+      },
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "ONDOUSDT_SHORT": {
+      "fills": 3,
+      "orders_open": 1,
+      "orders_close": 1,
+      "exchange_realized_usd": -0.06864,
+      "history": {
+        "AUGMENT": 2,
+        "OPEN": 1,
+        "REDUCE": 3,
+        "CLOSE": 1
+      },
+      "v20_intents": {
+        "CLOSE": 1,
+        "OPEN": 1
+      },
+      "legacy_pb_intents": {
+        "OPEN": 4,
+        "CLOSE": 3
+      },
+      "broker_gap_order_ids": 1
+    },
+    "ONEUSDT_LONG": {
+      "fills": 0,
+      "orders_open": 0,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {},
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 1
+      },
+      "broker_gap_order_ids": 0
+    },
+    "ONEUSDT_SHORT": {
+      "fills": 5,
+      "orders_open": 2,
+      "orders_close": 3,
+      "exchange_realized_usd": 0.3402574,
+      "history": {
+        "OPEN": 2,
+        "AUGMENT": 4,
+        "CLOSE": 2,
+        "REDUCE": 5
+      },
+      "v20_intents": {
+        "OPEN": 1,
+        "CLOSE": 4
+      },
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 1
+    },
+    "QNTUSDT_LONG": {
+      "fills": 10,
+      "orders_open": 5,
+      "orders_close": 5,
+      "exchange_realized_usd": -0.99,
+      "history": {
+        "OPEN": 5,
+        "AUGMENT": 5,
+        "CLOSE": 3,
+        "REDUCE": 5
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 4
+    },
+    "RAYSOLUSDT_LONG": {
+      "fills": 29,
+      "orders_open": 7,
+      "orders_close": 8,
+      "exchange_realized_usd": -0.63507999,
+      "history": {
+        "REDUCE": 22,
+        "AUGMENT": 12,
+        "OPEN": 6,
+        "CLOSE": 7
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 10
+      },
+      "broker_gap_order_ids": 4
+    },
+    "RENDERUSDT_LONG": {
+      "fills": 5,
+      "orders_open": 1,
+      "orders_close": 3,
+      "exchange_realized_usd": 0.041,
+      "history": {
+        "OPEN": 1,
+        "AUGMENT": 1,
+        "REDUCE": 5
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 1
+      },
+      "broker_gap_order_ids": 1
+    },
+    "RENDERUSDT_SHORT": {
+      "fills": 0,
+      "orders_open": 0,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {},
+      "v20_intents": {
+        "REDUCE": 5,
+        "CLOSE": 4
+      },
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "RLCUSDT_LONG": {
+      "fills": 1,
+      "orders_open": 1,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {
+        "AUGMENT": 2,
+        "OPEN": 1
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "RSRUSDT_LONG": {
+      "fills": 11,
+      "orders_open": 3,
+      "orders_close": 3,
+      "exchange_realized_usd": -0.495864,
+      "history": {
+        "AUGMENT": 5,
+        "OPEN": 3,
+        "CLOSE": 3,
+        "REDUCE": 11
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 1
+      },
+      "broker_gap_order_ids": 3
+    },
+    "RSRUSDT_SHORT": {
+      "fills": 8,
+      "orders_open": 2,
+      "orders_close": 2,
+      "exchange_realized_usd": -0.119268,
+      "history": {
+        "AUGMENT": 2,
+        "CLOSE": 1,
+        "REDUCE": 7
+      },
+      "v20_intents": {
+        "REDUCE": 1,
+        "OPEN": 1,
+        "CLOSE": 2
+      },
+      "legacy_pb_intents": {
+        "OPEN": 5,
+        "CLOSE": 3
+      },
+      "broker_gap_order_ids": 2
+    },
+    "RUNEUSDT_LONG": {
+      "fills": 5,
+      "orders_open": 1,
+      "orders_close": 1,
+      "exchange_realized_usd": -0.9733,
+      "history": {
+        "AUGMENT": 3,
+        "OPEN": 1,
+        "CLOSE": 1,
+        "REDUCE": 5
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 1
+      },
+      "broker_gap_order_ids": 1
+    },
+    "RVNUSDT_LONG": {
+      "fills": 18,
+      "orders_open": 5,
+      "orders_close": 12,
+      "exchange_realized_usd": 0.26305,
+      "history": {
+        "REDUCE": 18,
+        "AUGMENT": 6,
+        "OPEN": 5,
+        "CLOSE": 2
+      },
+      "v20_intents": {
+        "OPEN": 7,
+        "CLOSE": 5
+      },
+      "legacy_pb_intents": {
+        "OPEN": 8
+      },
+      "broker_gap_order_ids": 0
+    },
+    "SANDUSDT_LONG": {
+      "fills": 3,
+      "orders_open": 1,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {
+        "OPEN": 1,
+        "AUGMENT": 4
+      },
+      "v20_intents": {
+        "OPEN": 1
+      },
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 1
+    },
+    "SANDUSDT_SHORT": {
+      "fills": 4,
+      "orders_open": 2,
+      "orders_close": 2,
+      "exchange_realized_usd": -0.06469,
+      "history": {
+        "AUGMENT": 4,
+        "OPEN": 2,
+        "CLOSE": 2,
+        "REDUCE": 2
+      },
+      "v20_intents": {
+        "REDUCE": 6,
+        "CLOSE": 3,
+        "OPEN": 3
+      },
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "SKLUSDT_SHORT": {
+      "fills": 3,
+      "orders_open": 2,
+      "orders_close": 1,
+      "exchange_realized_usd": -0.306031,
+      "history": {
+        "AUGMENT": 3,
+        "OPEN": 2,
+        "REDUCE": 2,
+        "CLOSE": 1
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 1,
+        "CLOSE": 1
+      },
+      "broker_gap_order_ids": 0
+    },
+    "SKYAIUSDT_SHORT": {
+      "fills": 1,
+      "orders_open": 1,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {
+        "AUGMENT": 1,
+        "OPEN": 1
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "SKYUSDT_LONG": {
+      "fills": 1,
+      "orders_open": 1,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {
+        "OPEN": 1,
+        "AUGMENT": 1
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "SKYUSDT_SHORT": {
+      "fills": 12,
+      "orders_open": 4,
+      "orders_close": 5,
+      "exchange_realized_usd": -0.2562,
+      "history": {
+        "AUGMENT": 12,
+        "OPEN": 3,
+        "REDUCE": 8,
+        "CLOSE": 3
+      },
+      "v20_intents": {
+        "REDUCE": 4,
+        "CLOSE": 1
+      },
+      "legacy_pb_intents": {
+        "CLOSE": 1,
+        "OPEN": 8
+      },
+      "broker_gap_order_ids": 2
+    },
+    "SNXUSDT_SHORT": {
+      "fills": 8,
+      "orders_open": 4,
+      "orders_close": 4,
+      "exchange_realized_usd": -0.02907,
+      "history": {
+        "AUGMENT": 6,
+        "OPEN": 4,
+        "REDUCE": 7,
+        "CLOSE": 2
+      },
+      "v20_intents": {
+        "OPEN": 3,
+        "CLOSE": 7
+      },
+      "legacy_pb_intents": {
+        "OPEN": 12,
+        "CLOSE": 2
+      },
+      "broker_gap_order_ids": 1
+    },
+    "SOLUSDC_LONG": {
+      "fills": 4,
+      "orders_open": 2,
+      "orders_close": 2,
+      "exchange_realized_usd": -0.009,
+      "history": {
+        "AUGMENT": 3,
+        "REDUCE": 3,
+        "OPEN": 1,
+        "CLOSE": 1
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 1,
+        "CLOSE": 2
+      },
+      "broker_gap_order_ids": 0
+    },
+    "SOLUSDC_SHORT": {
+      "fills": 8,
+      "orders_open": 1,
+      "orders_close": 7,
+      "exchange_realized_usd": 0.0975,
+      "history": {
+        "OPEN": 1,
+        "AUGMENT": 1,
+        "REDUCE": 7
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "SPXUSDT_LONG": {
+      "fills": 11,
+      "orders_open": 2,
+      "orders_close": 6,
+      "exchange_realized_usd": 0.315,
+      "history": {
+        "AUGMENT": 8,
+        "OPEN": 2,
+        "REDUCE": 10,
+        "CLOSE": 2
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 4
+      },
+      "broker_gap_order_ids": 3
+    },
+    "STRKUSDT_SHORT": {
+      "fills": 12,
+      "orders_open": 5,
+      "orders_close": 5,
+      "exchange_realized_usd": -0.069975,
+      "history": {
+        "AUGMENT": 7,
+        "OPEN": 5,
+        "REDUCE": 13,
+        "CLOSE": 5
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 6,
+        "CLOSE": 1
+      },
+      "broker_gap_order_ids": 4
+    },
+    "STXUSDT_SHORT": {
+      "fills": 9,
+      "orders_open": 4,
+      "orders_close": 5,
+      "exchange_realized_usd": 0.1239,
+      "history": {
+        "AUGMENT": 7,
+        "OPEN": 4,
+        "REDUCE": 11,
+        "CLOSE": 3
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 1
+      },
+      "broker_gap_order_ids": 2
+    },
+    "SUSHIUSDT_LONG": {
+      "fills": 2,
+      "orders_open": 1,
+      "orders_close": 1,
+      "exchange_realized_usd": 0.056,
+      "history": {
+        "AUGMENT": 1,
+        "OPEN": 1,
+        "CLOSE": 2,
+        "REDUCE": 2
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 3
+      },
+      "broker_gap_order_ids": 0
+    },
+    "SUSHIUSDT_SHORT": {
+      "fills": 3,
+      "orders_open": 1,
+      "orders_close": 1,
+      "exchange_realized_usd": -0.0139,
+      "history": {
+        "OPEN": 1,
+        "AUGMENT": 1,
+        "CLOSE": 1,
+        "REDUCE": 3
+      },
+      "v20_intents": {
+        "REDUCE": 4,
+        "CLOSE": 1,
+        "OPEN": 2
+      },
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 1
+    },
+    "THETAUSDT_LONG": {
+      "fills": 5,
+      "orders_open": 1,
+      "orders_close": 4,
+      "exchange_realized_usd": 0.43282,
+      "history": {
+        "AUGMENT": 2,
+        "OPEN": 1,
+        "REDUCE": 5,
+        "CLOSE": 1
+      },
+      "v20_intents": {
+        "CLOSE": 5,
+        "OPEN": 5
+      },
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "THETAUSDT_SHORT": {
+      "fills": 1,
+      "orders_open": 1,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {
+        "OPEN": 1,
+        "AUGMENT": 1
+      },
+      "v20_intents": {
+        "REDUCE": 1
+      },
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "TIAUSDC_LONG": {
+      "fills": 17,
+      "orders_open": 5,
+      "orders_close": 7,
+      "exchange_realized_usd": 0.05390001,
+      "history": {
+        "OPEN": 4,
+        "AUGMENT": 9,
+        "REDUCE": 15,
+        "CLOSE": 3
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 2,
+        "CLOSE": 3
+      },
+      "broker_gap_order_ids": 4
+    },
+    "TRBUSDT_LONG": {
+      "fills": 3,
+      "orders_open": 2,
+      "orders_close": 1,
+      "exchange_realized_usd": -0.5775,
+      "history": {
+        "AUGMENT": 3,
+        "OPEN": 2,
+        "CLOSE": 1,
+        "REDUCE": 2
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "CLOSE": 1,
+        "OPEN": 1
+      },
+      "broker_gap_order_ids": 0
+    },
+    "TRUMPUSDC_SHORT": {
+      "fills": 0,
+      "orders_open": 0,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {
+        "AUGMENT": 2,
+        "OPEN": 1
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "TRXUSDT_LONG": {
+      "fills": 1,
+      "orders_open": 1,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {
+        "OPEN": 1,
+        "AUGMENT": 1
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "UNIUSDC_LONG": {
+      "fills": 4,
+      "orders_open": 2,
+      "orders_close": 2,
+      "exchange_realized_usd": 0.469,
+      "history": {
+        "REDUCE": 3,
+        "CLOSE": 2,
+        "AUGMENT": 3,
+        "OPEN": 1
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "CLOSE": 13,
+        "OPEN": 1
+      },
+      "broker_gap_order_ids": 0
+    },
+    "VETUSDT_LONG": {
+      "fills": 6,
+      "orders_open": 2,
+      "orders_close": 2,
+      "exchange_realized_usd": -0.318219,
+      "history": {
+        "AUGMENT": 2,
+        "OPEN": 2,
+        "REDUCE": 6,
+        "CLOSE": 1
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 1,
+        "CLOSE": 1
+      },
+      "broker_gap_order_ids": 2
+    },
+    "WIFUSDC_SHORT": {
+      "fills": 16,
+      "orders_open": 5,
+      "orders_close": 6,
+      "exchange_realized_usd": -0.50939,
+      "history": {
+        "AUGMENT": 10,
+        "REDUCE": 11,
+        "CLOSE": 6,
+        "OPEN": 3
+      },
+      "v20_intents": {
+        "REDUCE": 1
+      },
+      "legacy_pb_intents": {
+        "OPEN": 7,
+        "CLOSE": 1
+      },
+      "broker_gap_order_ids": 5
+    },
+    "WLDUSDC_SHORT": {
+      "fills": 6,
+      "orders_open": 1,
+      "orders_close": 4,
+      "exchange_realized_usd": 0.14919,
+      "history": {
+        "OPEN": 1,
+        "AUGMENT": 3,
+        "REDUCE": 5,
+        "CLOSE": 1
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 1
+    },
+    "WOOUSDT_SHORT": {
+      "fills": 7,
+      "orders_open": 3,
+      "orders_close": 3,
+      "exchange_realized_usd": -0.14329,
+      "history": {
+        "AUGMENT": 8,
+        "OPEN": 3,
+        "REDUCE": 5,
+        "CLOSE": 3
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 3
+      },
+      "broker_gap_order_ids": 2
+    },
+    "WUSDT_SHORT": {
+      "fills": 7,
+      "orders_open": 3,
+      "orders_close": 4,
+      "exchange_realized_usd": -0.073005,
+      "history": {
+        "AUGMENT": 6,
+        "OPEN": 3,
+        "REDUCE": 5,
+        "CLOSE": 2
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 5,
+        "CLOSE": 1
+      },
+      "broker_gap_order_ids": 1
+    },
+    "XLMUSDT_LONG": {
+      "fills": 3,
+      "orders_open": 1,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {
+        "AUGMENT": 5,
+        "OPEN": 1
+      },
+      "v20_intents": {
+        "OPEN": 7,
+        "CLOSE": 8
+      },
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 1
+    },
+    "XMRUSDT_LONG": {
+      "fills": 1,
+      "orders_open": 1,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {
+        "AUGMENT": 1,
+        "OPEN": 1
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "XPLUSDT_SHORT": {
+      "fills": 15,
+      "orders_open": 5,
+      "orders_close": 4,
+      "exchange_realized_usd": 0.85286,
+      "history": {
+        "AUGMENT": 13,
+        "OPEN": 5,
+        "REDUCE": 11,
+        "CLOSE": 3
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 1
+      },
+      "broker_gap_order_ids": 3
+    },
+    "XRPUSDC_LONG": {
+      "fills": 3,
+      "orders_open": 2,
+      "orders_close": 1,
+      "exchange_realized_usd": 0.00809999,
+      "history": {
+        "AUGMENT": 3,
+        "OPEN": 2,
+        "CLOSE": 2,
+        "REDUCE": 1
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 1
+      },
+      "broker_gap_order_ids": 0
+    },
+    "YFIUSDT_LONG": {
+      "fills": 0,
+      "orders_open": 0,
+      "orders_close": 0,
+      "exchange_realized_usd": 0.0,
+      "history": {},
+      "v20_intents": {
+        "CLOSE": 1,
+        "OPEN": 4,
+        "REDUCE": 1
+      },
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "ZECUSDC_LONG": {
+      "fills": 9,
+      "orders_open": 4,
+      "orders_close": 5,
+      "exchange_realized_usd": 0.09886,
+      "history": {
+        "AUGMENT": 6,
+        "REDUCE": 8,
+        "OPEN": 3,
+        "CLOSE": 1
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 9
+      },
+      "broker_gap_order_ids": 2
+    },
+    "ZENUSDT_LONG": {
+      "fills": 6,
+      "orders_open": 2,
+      "orders_close": 2,
+      "exchange_realized_usd": -0.271,
+      "history": {
+        "AUGMENT": 3,
+        "OPEN": 2,
+        "CLOSE": 2,
+        "REDUCE": 6
+      },
+      "v20_intents": {
+        "CLOSE": 2
+      },
+      "legacy_pb_intents": {
+        "OPEN": 1
+      },
+      "broker_gap_order_ids": 2
+    },
+    "ZENUSDT_SHORT": {
+      "fills": 8,
+      "orders_open": 2,
+      "orders_close": 3,
+      "exchange_realized_usd": -0.2136,
+      "history": {
+        "REDUCE": 8,
+        "CLOSE": 2,
+        "AUGMENT": 5,
+        "OPEN": 2
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 7,
+        "CLOSE": 3
+      },
+      "broker_gap_order_ids": 3
+    },
+    "ZKUSDT_SHORT": {
+      "fills": 7,
+      "orders_open": 1,
+      "orders_close": 6,
+      "exchange_realized_usd": 0.043021,
+      "history": {
+        "AUGMENT": 1,
+        "REDUCE": 6,
+        "CLOSE": 1
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {},
+      "broker_gap_order_ids": 0
+    },
+    "ZROUSDT_LONG": {
+      "fills": 10,
+      "orders_open": 4,
+      "orders_close": 5,
+      "exchange_realized_usd": -0.14186,
+      "history": {
+        "REDUCE": 11,
+        "CLOSE": 5,
+        "AUGMENT": 7,
+        "OPEN": 3
+      },
+      "v20_intents": {},
+      "legacy_pb_intents": {
+        "OPEN": 7
+      },
+      "broker_gap_order_ids": 1
+    }
+  }
+}

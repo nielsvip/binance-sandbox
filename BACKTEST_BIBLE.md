@@ -12,6 +12,48 @@
 - **Access for agents:** Any agent rebuilding or auditing the system should know: (1) the launchd job is at `/Users/niels/Library/LaunchAgents/com.binance.backup-gdrive.plist`, (2) the script is at `/Users/niels/Documents/binance/tools/backup_to_gdrive.py` (simple, rate-limited to 50 files/2GB per run), (3) logs are at `/Users/niels/Documents/binance/data/reports/gdrive_backup.log`, (4) service account is `329002141504-compute@developer.gserviceaccount.com` with key at `~/Downloads/civil-ripple-439101-j3-d50fb6537cdb.json`. Check status: `launchctl list | grep backup-gdrive` (should show PID and status 0). Manual run: `python3 /Users/niels/Documents/binance/tools/backup_to_gdrive.py`. **Verify Google Drive API is enabled** before expecting uploads; if uploads fail with 403, enable Google Drive API in Google Cloud Console under project `civil-ripple-439101-j3`.
 - **Measured backup transfer status (2026-10-26):** the prior 21:57–21:59Z Drive run recorded `0/5` successful files and kept all five local; `rclone size` showed `0 B`. A service account cannot own files in consumer My Drive because it has no Drive quota. API enablement or sharing a regular folder does not provide quota; this account also has no Workspace Shared Drive. The backup script now refuses to run without a configured folder ID and checksum-verifies every copy before local deletion, but this key cannot supply a usable Drive destination. Treat Drive archival as unavailable until credentials with storage authority are configured. The GCS cold store remains the verified Google off-box route. The existing `backup_retention_prune.py` policy is independent and must not be described as an archive; inspect its current scheduler before relying on local retention.
 
+### PURGE GATE — OLD RUNS ARE DELETED ONCE THE NETWORK HAS ABSORBED *AND UNDERSTOOD* THEM (USER 2026-10-26)
+
+> **USER 2026-10-26, authoritative:** *"the real issue is to purge the old backtest runs once the neural network has
+> absorbed and understood the links between rows and deltas — we clearly can't keep everything forever — same on
+> servers."* Drive is only a momentary backup for when the ext drives are disconnected or full, never a permanent
+> archive. **Retention is bounded by design: the end state of an absorbed run is deletion, on the Mac and on every
+> server alike, not an ever-growing archive.** A copy existing somewhere is NOT the reason to delete, and not a reason
+> to keep either — the reason is that the corpus has no information left to give.
+
+**"Absorbed and understood" is three measurable tests, not a judgement.** A run is purgeable only when all three pass:
+
+1. **ABSORBED (coverage, exact).** Every `v15_delta_log` file of the run appears in a brain spill with its event count
+   reconciled, and `data/learn/<run>/MANIFEST.json` `sources` names it for every cat_side it touched. Coverage is
+   counted per file, never per run directory — a run half-extracted is not absorbed.
+2. **REDUNDANT (counts, cheap).** For every `(sym_side, tab, switch=cand, filter=opt)` cell the run contributes, the
+   remaining corpus already holds **≥ 8** other observations of that same cell — 8 because that is the brain's own
+   shrinkage prior (`m=8`), so below it the cell's estimate still moves with each new observation. A run all of whose
+   cells are covered ≥ 8 times elsewhere can no longer change a count or a graph edge.
+3. **UNDERSTOOD (leave-one-run-out, the real test).** Re-train and export with the run **held out**, and compare on the
+   chronological held-out board slice: never-tried-pair AUC of the production arm must not fall by more than **0.01**,
+   and the mean absolute shift in per-cell `p` must stay below **0.01**. If removing the run does not change what the
+   network predicts, the network has extracted everything that run had to teach — the links between rows and deltas
+   are in the model, not in the bytes. Run this once per purge **batch**, not per run; report n and positives with it.
+
+**Only after all three:** purge the run from the host and from the Mac. The structural safety conditions still bind —
+no file inside the brain's 14-day glob (`~/v15_run*/[progress/]v15_delta_log/*.jsonl`, hardcoded, filtered by row ts),
+no open handles (`lsof`), and the run must not be the current or previous round. A run that fails test 2 or 3 is kept
+on disk, because it still has information the model has not absorbed; a run that fails only the *space* test is the
+one that goes to the cold store first.
+
+**What the cold store is for, under this gate.** Not "keep everything forever". It holds (a) runs that pass tests 1–2
+but whose leave-one-out has not been run yet, so disk can be reclaimed today without pre-judging test 3, and (b) the
+few corpora a future network upgrade may want to re-derive features from, where test 3 is expected to fail for a
+*later* model. Everything that passes all three tests is **deleted, not archived** — archiving it would be the same
+hoarding in a cheaper place. A purge is recorded in `data/reports/gcs_cold_store.jsonl` with the three test results
+and the freed bytes, so a later audit can tell a proven purge from a guess.
+
+**Status 2026-10-26:** test 1 exists (the MANIFEST). Tests 2 and 3 are **not implemented** — today's reclaims used the
+older, weaker rule (absorbed + verified cold copy + outside the 14-day glob), which is why they were limited to
+archived duplicates on `~/s2_archive` and nothing in a live run path. Until tests 2 and 3 ship, no live run directory
+may be purged on the strength of "it has been absorbed".
+
 ### COLD STORE — GOOGLE CLOUD STORAGE IS THE OFF-FLEET TIER; DRIVE (SERVICE ACCOUNT ONLY) HAS NO QUOTA (MEASURED 2026-10-26)
 
 - **Google Drive service account has zero storage quota.** Service account `329002141504-compute@developer.gserviceaccount.com` (key `~/Downloads/civil-ripple-439101-j3-d50fb6537cdb.json`, project `civil-ripple-439101-j3`, owner-readable only, never leaves the Mac). A 1 MB probe upload returned `Error 403: Service Accounts do not have storage quota.` Its Drive shows `Used: 0 B`; it has no accessible Shared Drive. **Do not plan cold archives onto consumer My Drive with this service account.** The separate daily backup job is installed but has no usable Drive destination; it retains local files and now requires a verified checksum before deletion. For learning corpora and evaluation caches, use the GCS bucket instead.

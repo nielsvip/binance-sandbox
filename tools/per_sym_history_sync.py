@@ -45,8 +45,8 @@ def ingest_rows(target, source, rows):
         source_id = int(record["id"])
         if source_id <= last:
             continue
-        values = {column: record.get(column) for column in columns}
-        uid = hashlib.sha256(json.dumps(values, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()
+        values = None if record.get("_uid_only") else {column: record.get(column) for column in columns}
+        uid = record.get("_uid_only") or hashlib.sha256(json.dumps(values, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()
         pending.append((source_id, uid, values))
         if len(pending) >= 250:
             n, last = commit_batch(target, source, pending, columns)
@@ -66,6 +66,10 @@ def commit_batch(target, source, batch, columns):
     try:
         added = 0
         for _, uid, values in batch:
+            if values is None:
+                if target.execute("SELECT 1 FROM per_sym_history_sync_uid WHERE uid=?", (uid,)).fetchone() is None:
+                    raise ValueError("missing referenced history uid")
+                continue
             if target.execute("INSERT OR IGNORE INTO per_sym_history_sync_uid(uid) VALUES (?)", (uid,)).rowcount:
                 target.execute(f"INSERT INTO per_sym_history ({','.join(columns)}) VALUES ({marks})", [values[column] for column in columns])
                 added += 1
@@ -109,6 +113,7 @@ def run_push(host):
     subprocess.run(["rsync", "-az", "-e", "ssh -S none -o BatchMode=yes -o ConnectTimeout=12", str(Path(__file__).resolve()), f"{host}:{REMOTE_SCRIPT}"], check=True, timeout=90)
     command = [*SSH, host, f"python3 {REMOTE_SCRIPT} --watermark mac"]
     last = int(subprocess.check_output(command, text=True, timeout=25).strip())
+    known = set(subprocess.check_output([*SSH, host, f"python3 {REMOTE_SCRIPT} --uids"], text=True, timeout=40).splitlines())
     source = connect(MAC_DB)
     spool = Path(tempfile.gettempdir()) / f"per_sym_history_mac_after_{last}.jsonl.gz"
     count = 0
@@ -117,7 +122,11 @@ def run_push(host):
             building = spool.with_suffix(spool.suffix + ".building")
             with gzip.open(building, "wt", compresslevel=3) as output:
                 for row in source.execute("SELECT * FROM per_sym_history WHERE id>? ORDER BY id", (last,)):
-                    output.write(json.dumps(dict(row), separators=(",", ":"), default=str) + "\n")
+                    record = dict(row)
+                    values = {key: value for key, value in record.items() if key != "id"}
+                    uid = hashlib.sha256(json.dumps(values, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()
+                    payload = {"id": record["id"], "_uid_only": uid} if uid in known else record
+                    output.write(json.dumps(payload, separators=(",", ":"), default=str) + "\n")
                     count += 1
             os.replace(building, spool)
         source.close()
@@ -136,10 +145,18 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--host")
     parser.add_argument("--watermark")
+    parser.add_argument("--uids", action="store_true")
     parser.add_argument("--ingest")
     parser.add_argument("--ingest-file")
     args = parser.parse_args()
-    if args.watermark:
+    if args.uids:
+        target = connect(S1_DB)
+        try:
+            for (uid,) in target.execute("SELECT uid FROM per_sym_history_sync_uid"):
+                print(uid)
+        finally:
+            target.close()
+    elif args.watermark:
         target = connect(S1_DB)
         try:
             print(progress(target, args.watermark))

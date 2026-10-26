@@ -1039,11 +1039,37 @@ async def _ws_15m_chunk(symbols_chunk):
             await asyncio.sleep(5)
 
 async def ws_15m_klines():
-    symbols = sorted(get_active_symbols())
-    chunks = [symbols[i:i + 80] for i in range(0, len(symbols), 80)]
-    log(f'15m WS: starting {len(chunks)} connection(s) for {len(symbols)} symbols')
-    if chunks:
-        await asyncio.gather(*[_ws_15m_chunk(chunk) for chunk in chunks])
+    def roster():
+        symbols = set(get_active_symbols())
+        try:
+            for key in json.loads((Path(cfg.BASE_PATH) / 'tradeable_keys.json').read_text()):
+                if ':' in key and key.endswith(('_LONG', '_SHORT')):
+                    symbols.add(key.split(':', 1)[1].rsplit('_', 1)[0])
+        except (OSError, ValueError, TypeError):
+            pass
+        try:
+            held = json.loads((Path(cfg.BASE_PATH) / 'data/vec_live/held_sides.json').read_text())
+            for key in held.get('held', []):
+                if isinstance(key, str) and key.endswith(('_LONG', '_SHORT')):
+                    symbols.add(key.rsplit('_', 1)[0])
+        except (OSError, ValueError, TypeError):
+            pass
+        return sorted(symbols)
+    while True:
+        symbols = roster()
+        chunks = [symbols[i:i + 80] for i in range(0, len(symbols), 80)]
+        log(f'15m WS: starting {len(chunks)} connection(s) for {len(symbols)} symbols')
+        tasks = [asyncio.create_task(_ws_15m_chunk(chunk)) for chunk in chunks]
+        try:
+            while True:
+                await asyncio.sleep(60)
+                if roster() != symbols:
+                    log('15m WS roster changed; reconnecting')
+                    break
+        finally:
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
 
 async def scheduler(symbol_filter=None):
     log('Starting ez_klines scheduler...')

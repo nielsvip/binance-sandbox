@@ -19158,6 +19158,22 @@ class MultiAccountTradeManager:
         )
         self._cache_tasks.append(asyncio.create_task(self._intervention_queue_loop()))
 
+    def _golden_closed_bar_open_ready(self, symbol, is_long, indicators, now=None):
+        now = time.time() if now is None else float(now)
+        closed_ts = math.floor((now - 900.0) / 900.0) * 900
+        indicator_dt = safe_datetime(indicators.get("timestamp_15m"))
+        indicator_ts = int(indicator_dt.timestamp()) if indicator_dt else 0
+        if indicator_ts != closed_ts:
+            return False, f"indicator15={indicator_ts} required={closed_ts}"
+        from live_twins import vec_driven
+        sym_side = f"{symbol}_{'LONG' if is_long else 'SHORT'}"
+        state = vec_driven.load_state(vec_driven.vec_live_dir(getattr(self.config, "BASE_PATH", ".")) / "state", sym_side) or {}
+        target = state.get("target_state") or {}
+        target_side = target.get("side") if isinstance(target, dict) else None
+        if state.get("status") != "OK" or not state.get("actionable") or not state.get("engine_valid") or int(float(state.get("bar_ts") or 0)) != closed_ts or target_side != ("long" if is_long else "short"):
+            return False, f"state_bar={state.get('bar_ts')} required={closed_ts} status={state.get('status')} target={target_side}"
+        return True, "closed-bar vector target agrees"
+
     async def _golden_rule_loop(self):
         # GOLDEN RULE — restored 2026-05-05 per user directive.
         # For ANY tradeable symbol where wt1_3m > wt2_3m AND price > dc_high_15m,
@@ -19502,8 +19518,17 @@ class MultiAccountTradeManager:
                                 continue
                             if fired >= max_per_tick:
                                 break
-                            self._golden_last_trigger[pkey] = time.time()
                             action = "OPEN" if cur_amt == 0 else "AUGMENT"
+                            if action == "OPEN":
+                                try:
+                                    _gr_ready, _gr_defer_reason = self._golden_closed_bar_open_ready(sym, is_long, ind)
+                                except Exception as _gr_state_err:
+                                    logger.warning(f"[GOLDEN_RULE_DEFER_CLOSED_BAR] {pkey}: {_gr_state_err}")
+                                    continue
+                                if not _gr_ready:
+                                    logger.info(f"[GOLDEN_RULE_DEFER_CLOSED_BAR] {pkey}: {_gr_defer_reason}")
+                                    continue
+                            self._golden_last_trigger[pkey] = time.time()
                             side = "BUY" if is_long else "SELL"
                             pside = "LONG" if is_long else "SHORT"
                             reason_str = f"GOLDEN_RULE_{'LONG' if is_long else 'SHORT'}_mult{mult}"
@@ -50243,6 +50268,11 @@ async def _parity_flat_open_check(trade_manager, position_key: str, position, or
             _ex_px, _ex_rs, _ex_age = _parity_last_exit(trade_manager, position_key)
             _vr_ok, _vr_path = _lbvr.fires(_get_p, _ind_p, _long_p, _px_p, _ex_px, _ex_rs, _ex_age, rally_ok=_rally_ok)
             if _vr_ok:
+                if _vr_path == "HTF_WT_CHURN":
+                    _ch_ready, _ch_defer_reason = trade_manager._golden_closed_bar_open_ready(_sym_p, _long_p, _ind_p)
+                    if not _ch_ready:
+                        logger.info(f"[HTF_WT_CHURN_DEFER_CLOSED_BAR] {position_key}: {_ch_defer_reason}")
+                        return
                 _ok_p, _act_p = True, "REENTRY"
                 _why_p = f"CRYPTO_REENTRY_PATHWAY_{_vr_path}_{_side_p}_px{_px_p:.6f}_exit{_ex_px:.6f}_age{_ex_age:.0f}m"
         if not _ok_p:
