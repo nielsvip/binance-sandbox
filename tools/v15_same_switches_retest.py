@@ -41,16 +41,18 @@ def export_rows(db, asset, target):
             out.append({"id": row_id, "updated_at": updated, "sym_side": ss, "error": f"settings_decode:{exc}"})
             continue
         campaign = float(meta.get("campaign_ts") or dt.datetime.fromisoformat(updated.replace("Z", "+00:00")).timestamp())
+        npz_id = meta.get("npz_id")
+        original_end = float(npz_id.split("_", 1)[0][2:]) if isinstance(npz_id, str) and npz_id.startswith("ts") else campaign
         out.append({"id": row_id, "updated_at": updated, "sym_side": ss, "full_config": full, "settings_source": settings_source,
                     "template_md5": template_md5,
                     "settings_sha256": hashlib.sha256(json.dumps(full, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest(),
-                    "campaign_ts": campaign, "npz_id": meta.get("npz_id"), "published_gain_pct": gain,
+                    "campaign_ts": campaign, "original_end_ts": original_end, "npz_id": npz_id, "published_gain_pct": gain,
                     "published_trades": trades})
     Path(target).write_text(json.dumps(out, separators=(",", ":")))
     print(json.dumps({"asset": asset, "rows": len(out), "distinct_sides": len({r['sym_side'] for r in out}), "output": str(target)}))
 
 
-def retest(rows_path, db, output):
+def retest(rows_path, db, output, offset_days):
     import numpy as np
     import per_sym_live_set
     import v12_quick_engine as V
@@ -69,7 +71,7 @@ def retest(rows_path, db, output):
         ss = job["sym_side"]
         symbol = ss.rsplit("_", 1)[0]
         crypto = symbol.endswith(CRYPTO_SUFFIXES)
-        target = float(job["campaign_ts"]) + 2 * 86400
+        target = float(job.get("original_end_ts") or job["campaign_ts"]) + offset_days * 86400
         cache_key = (ss, job["settings_sha256"], int(target // 900))
         try:
             if cache_key not in cache:
@@ -111,7 +113,7 @@ def retest(rows_path, db, output):
                 cache[cache_key] = value
             else:
                 value = cache[cache_key]
-            results.append({**base, **value})
+            results.append({**base, "retest_offset_days": offset_days, **value})
         except Exception as exc:
             results.append({**base, "status": "ERROR", "reason": f"{type(exc).__name__}:{exc}"[:240]})
         if index % 25 == 0 or index == len(rows):
@@ -133,12 +135,13 @@ def main():
     parser.add_argument("--export-db")
     parser.add_argument("--asset", choices=("crypto", "stocks"), default="crypto")
     parser.add_argument("--rows")
+    parser.add_argument("--offset-days", type=int, default=2)
     parser.add_argument("--out", required=True)
     args = parser.parse_args()
     if args.export_db:
         export_rows(args.export_db, args.asset, args.out)
     elif args.rows:
-        retest(args.rows, None, args.out)
+        retest(args.rows, None, args.out, args.offset_days)
     else:
         parser.error("provide --export-db or --rows")
 

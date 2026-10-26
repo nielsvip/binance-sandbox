@@ -253,3 +253,4 @@ data/wiring/queue/C2/005/needs_live.csv: 47 stocks keys, insertion points + desi
 - 20:52Z [M deploy 20261004205201] parity-cut4 files=253 engine=5db47685 hosts_bad=none imports=[]
 - 00:44Z [M deploy 20261026004325] 2026-10-26 four-host engine parity reconciled files=1 engine=c021b10b hosts_bad=none imports=['ok', 'syntax-ok']
 - 04:27Z [M deploy 20261026042300] current V12 parity for verified forward states files=1 engine=a1f86c22 hosts_bad=none imports=['ok', 'syntax-ok']
+- 05:20Z [M deploy 20261026051551] TIA_EMA_FINAL_VETO_B14_LIVE_PARITY files=1 engine=f2c69720 hosts_bad=none imports=['ok', 'syntax-ok']
