@@ -390,6 +390,7 @@ class Config:
     QUICK_REDUCE_TECHNICAL_ONLY: bool = (
         True  # 2026-06-02 USER MANDATE: DISABLE the QUICK_REDUCE stochastic/euphoria traps (AB_S200/EUPHORIA_TIGHTEN/Overbought_safety/SIMPLE_TP/NO_PROFIT 'Get Out'/Stagnant — hardcoded since 2026-03-03, never approved, never backtested, cut 76% of reduces with no technical breakdown incl 164 above-sma200 winners). When True, a reduce/close from rate(is_exit) only fires if the reason carries a SANCTIONED TECHNICAL token (R1 dc_low4 / R2 WT-vel / MTF-ATR-trail / DC break / MTF / HTF/ALL_TF against / RULE_B 3m struct / FAST_CUT_LOSS / PARTIAL-PROFIT-LOCK / HEDGE_FAILED); pure stochastic reduces are suppressed (logged QUICK_REDUCE_TRAP_SUPPRESSED). Gate: ez_positions_quick.py ~14538. ROLLBACK: False.
     )
+    QUICK_REDUCE_NATIVE_ENABLED: bool = False  # Disabled until causal native 3m vector bar parity is verified.
     PARITY_COMPARISON_MODE: bool = (
         False  # 2026-06-02 USER MASTER SWITCH (crypto side, for symmetry). Default False = NORMAL LIVE (all gain-augmenting live-only signals ON). Set True ONLY during a live↔backtest parity A/B to suppress live-only augmenting behavior at once so live==backtest. AFTER confirming parity, set back to False. (Stocks equivalent in config_tradier.py gates the tradier strategy loop; crypto augmenting-signal gating to be wired here as needed.)
     )

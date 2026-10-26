@@ -84,6 +84,11 @@ def build_launch(queue: dict, ss: str, result_dir: Path, workers: int, python: s
                 "V15_ISOLATED_PROOF": "1", "V15_SKIP_CAT_PERSYM_BASELINE": "1",
                 "V15_PREV_BEST_START": "0", "V15_ADAPT_BASELINE": "0",
                 "V15_OTHER_SIDE_PROBE_RATE": "0", "V15_SKIP_LIVE_VERIFY": "1"})
+    # The regular pilot's diagnostic repair can consume a further 600 seconds
+    # after the row sweep. Bound it for the pre-open deadline without skipping
+    # the template row evaluations or the final parity gate.
+    env["V15_DIAG_REPAIR_S"] = "150"
+    env["V15_ENDGAME_S"] = "120"
     # The final live-engine parity run remains enabled. It is the promotion gate.
     env.pop("V15_SKIP_LIVE_AT_DONE", None)
     command = [python, "-u", str(ROOT / pilot_name), "--sym-side", ss,

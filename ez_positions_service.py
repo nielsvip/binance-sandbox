@@ -7407,6 +7407,8 @@ class PositionService:
                     _ghost_hold = True
                     logger.critical(f"[GHOST_RECONCILE_DEFERRED][{account_key}] {len(_held_missing)} held keys missing from one API report {sorted(_held_missing)[:6]} — mass absence, report distrusted, strikes deferred this cycle.")
 
+                _ghost_reconcile_deadline = time.monotonic() + 45.0
+                _ghost_budget_warning = False
                 for pk_ghost in keys_in_memory_not_in_api:
                     position_obj = account_positions.get(pk_ghost)
                     if not position_obj:
@@ -7423,36 +7425,45 @@ class PositionService:
                         is_confirmed = self._is_zero_confirmed(pk_ghost, threshold=config.ZERO_CONFIRMATION_THRESHOLD_API)
                         
                         if is_confirmed:
-                            logger.critical(f"[API_CONFIRMED_CLOSED][{pk_ghost}] 🚨 Position missing from API for {current_count} cycles. ZEROING OUT.")
+                            logger.critical(f"[API_CONFIRMED_CLOSED][{pk_ghost}] 🚨 Position missing from API for {current_count} cycles; reconciliation required.")
+                            _ghost_budget_remaining = _ghost_reconcile_deadline - time.monotonic()
+                            if _ghost_budget_remaining <= 0:
+                                if not _ghost_budget_warning:
+                                    logger.critical(f"[GHOST_RECONCILE_BUDGET][{account_key}] 45s reconciliation budget exhausted — remaining broker-missing positions stay unchanged for the next poll.")
+                                    _ghost_budget_warning = True
+                            else:
+                                # Resolve a final price for the record
+                                final_price = position_obj.mark_price or position_obj.entry_price or 1.0
+                                try:
+                                    qp = await asyncio.wait_for(quick_price(position_obj.symbol), timeout=min(5.0, _ghost_budget_remaining))
+                                    if qp: final_price = qp
+                                except: pass
 
-                            # Resolve a final price for the record
-                            final_price = position_obj.mark_price or position_obj.entry_price or 1.0
-                            try:
-                                qp = await quick_price(position_obj.symbol)
-                                if qp: final_price = qp
-                            except: pass
-
-                            # 2026-05-08: per-phantom 30s timeout. If one zero-out stalls
-                            # (e.g. on a slow disk write or downstream redis op), bail on
-                            # this phantom and continue with the next — do NOT let one
-                            # bad ghost trip the 120s outer PAU watchdog. The next PAU
-                            # cycle will see the same absence and retry.
-                            try:
-                                await asyncio.wait_for(
-                                    self.handle_reduction(
-                                        position_obj, pk_ghost, prev_amt, 0.0, prev_amt,
-                                        final_price, position_obj.entry_price,
-                                        reduction_source="api_absence_confirmed"),
-                                    timeout=30.0)
-                                # 2026-05-23 USER MANDATE: handle_reduction owns the positionAmt write.
-                                # Redundant direct write removed (was: position_obj.positionAmt = 0.0).
-                                # process_account_update routes through handle_* — that is sanctioned.
-                                position_obj.last_updated = now
-                                updated_keys_in_api.add(pk_ghost)
-                                self._clear_zero_report(pk_ghost)
-                            except asyncio.TimeoutError:
-                                logger.critical(f"[GHOST_RECONCILE_TIMEOUT][{pk_ghost}] handle_reduction stalled >30s — skipping this cycle, will retry. Last positionAmt={prev_amt} kept on disk.")
-                                continue
+                                # Bound the whole ghost pass as well as each individual reduction so several
+                                # slow rows cannot consume the outer 120s process_account_update deadline.
+                                _ghost_budget_remaining = _ghost_reconcile_deadline - time.monotonic()
+                                if _ghost_budget_remaining <= 0:
+                                    if not _ghost_budget_warning:
+                                        logger.critical(f"[GHOST_RECONCILE_BUDGET][{account_key}] 45s reconciliation budget exhausted — remaining broker-missing positions stay unchanged for the next poll.")
+                                        _ghost_budget_warning = True
+                                else:
+                                    _ghost_timeout = min(30.0, _ghost_budget_remaining)
+                                    try:
+                                        await asyncio.wait_for(
+                                            self.handle_reduction(
+                                                position_obj, pk_ghost, prev_amt, 0.0, prev_amt,
+                                                final_price, position_obj.entry_price,
+                                                reduction_source="api_absence_confirmed"),
+                                            timeout=_ghost_timeout)
+                                        # 2026-05-23 USER MANDATE: handle_reduction owns the positionAmt write.
+                                        # Redundant direct write removed (was: position_obj.positionAmt = 0.0).
+                                        # process_account_update routes through handle_* — that is sanctioned.
+                                        position_obj.last_updated = now
+                                        updated_keys_in_api.add(pk_ghost)
+                                        self._clear_zero_report(pk_ghost)
+                                    except asyncio.TimeoutError:
+                                        logger.critical(f"[GHOST_RECONCILE_TIMEOUT][{pk_ghost}] handle_reduction stalled >{_ghost_timeout:.1f}s — skipping this cycle, will retry. Last positionAmt={prev_amt} kept on disk.")
+                                        continue
                         else:
                             logger.warning(f"[API_ABSENCE_PENDING][{pk_ghost}] Missing from API (Strike {current_count}/{config.ZERO_CONFIRMATION_THRESHOLD_API}). Waiting for confirmation.")
                     

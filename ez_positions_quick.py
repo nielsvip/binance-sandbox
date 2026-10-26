@@ -28187,6 +28187,12 @@ async def check_exit_candidates_for_account(
                     should_close = False
                     reason_exit = str(reason_exit) + "_SCALP_DISABLED_DIRECT"
                     logger.info(f"[SCALP_REDUCE_DISABLED_DIRECT] {position_key}: rec={rec_exit} blocked on direct route — SCALP_REDUCE_ENABLED off for {symbol}_{position_side}")
+                if should_close and hard_exit_reason is None:
+                    from vec_decisions.quick_reduce_native_gate import allow_native_quick_reduce
+                    if not allow_native_quick_reduce(config, hard_exit_reason):
+                        should_close = False
+                        reason_exit = str(reason_exit) + "|NATIVE_QUICK_REDUCE_DISABLED"
+                        logger.warning(f"[QUICK_REDUCE_NATIVE_DISABLED] {position_key}: native quick reduction suppressed pending causal 3m vector parity (rec={rec_exit}, reason={reason_exit[:100]})")
                 if should_close:
                     if is_h_acc and not is_hedge:
                         async with tracker_manager._hedges_lock:
