@@ -2791,15 +2791,20 @@ def npz_age_stamp(symside: str, now=None) -> dict:
     """{npz_last_bar_ts, npz_last_bar_utc, cut_utc, npz_age_min} of THIS sym_side's NPZ: its own last timestamp vs the
     latest closed 15m bar (crypto) or the last RTH close (stocks) — the cut tools/opt/v12_pilot.npz_freshness uses."""
     import numpy as _np_a
-    from tools.npz_cutoffs import last_closed_bar as _lcb_a, last_rth_close_bar as _lrth_a
+    from tools.npz_cutoffs import last_closed_bar as _lcb_a, last_rth_close_bar as _lrth_a, last_stock_data_bar as _lsd_a
     p = _npz_path(symside)
+    _overlay_dir = os.environ.get("V12_NPZ_DIR", "")
+    _base = str(symside).rsplit("_", 1)[0].upper()
+    if _overlay_dir and not _base.endswith(("USDT", "USDC")):
+        from tools.opt.evaluate_v12 import resolve_tokenised as _resolve_npz_sym
+        _overlay_symbol, _ = _resolve_npz_sym(_base)
+        p = Path(_overlay_dir) / f"{_overlay_symbol}.npz"
     if p is None:
         return {"npz_last_bar_ts": None, "npz_age_min": None, "npz_path": None}
     with _np_a.load(str(p), mmap_mode="r", allow_pickle=True) as z:
         last = int(_np_a.asarray(z["timestamps"]).astype("int64")[-1])
     last = last // 1000 if last > 10 ** 11 else last
-    base = str(symside).rsplit("_", 1)[0].upper()
-    cut = int(_lcb_a(now)) if base.endswith(("USDT", "USDC")) else int(_lrth_a(now))
+    cut = int(_lcb_a(now)) if _base.endswith(("USDT", "USDC")) else int(_lsd_a(now) if _overlay_dir else _lrth_a(now))
     fmt = lambda t: datetime.datetime.utcfromtimestamp(t).strftime("%Y-%m-%dT%H:%M:%SZ") if t else None
     return {"npz_last_bar_ts": last, "npz_last_bar_utc": fmt(last), "cut_utc": fmt(cut), "npz_age_min": round(max(0.0, (cut - last) / 60.0), 1) if cut else None, "npz_path": str(p)}
 

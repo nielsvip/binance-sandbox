@@ -493,6 +493,10 @@ def export_bar_for_symbol(
             return False
         last_close = df15.index[-1].to_pydatetime().astimezone(timezone.utc)
         ts_epoch = int(last_close.timestamp())
+        if mode == "tradier":
+            from tools.npz_cutoffs import is_rth_bar_start
+            if not is_rth_bar_start(ts_epoch):
+                return False
         out_dir.mkdir(parents=True, exist_ok=True)
         out = out_dir / f"{symbol}_{ts_epoch}.json"
         if out.exists():
@@ -567,13 +571,9 @@ def update_npz_for_symbol(
         last_close = df15.index[-1].to_pydatetime().astimezone(timezone.utc)
         # For tradier, ensure last_close is within RTH (skip overnight gaps where df may have stale)
         if mode == "tradier":
-            et_close = last_close.astimezone(ET)
-            if et_close.weekday() >= 5:
+            from tools.npz_cutoffs import is_rth_bar_start
+            if not is_rth_bar_start(int(last_close.timestamp())):
                 return False
-            # Allow only 09:45-16:00 ET closes (15m grid from 09:30)
-            # If last_close is outside, it's either pre-market or stale, skip
-            # Use df's last timestamp directly, so if it's 16:00, it's valid
-            pass
         npz_path = _npz_path(base_path, symbol)
         # Single NPZ load per call (was: _should_update + gap check + append = 3 full 60k-row loads).
         existing = _load_npz(npz_path)

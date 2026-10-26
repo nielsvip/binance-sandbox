@@ -3007,17 +3007,19 @@ def side_cmd(host, sym, side, window, pdir, attempt, workers):
         # New stock boards retain the proven V19 calculation while the V20
         # swing-entry row is repaired. Crypto uses V20 only after its same-NPZ
         # proof and engine fleet sync are explicitly activated for this launcher.
-        _v20_root = ROOT / "v20_runtime"
+        _v20_root = ROOT / "v20_runtime_next"
         _v20_marker = _v20_root / "CRYPTO_V20_READY"
         _v20_engine = _v20_root / "v12_quick_engine.py"
         _v20_expected = hashlib.md5(_v20_engine.read_bytes()).hexdigest() if _v20_engine.is_file() else ""
         _v20_marked = _v20_marker.is_file() and _v20_engine.is_file() and _v20_marker.read_text().strip() == _v20_expected
         _crypto_v20_ready = venue == "crypto" and (os.environ.get("V15_CRYPTO_V20_READY") == "1" or _v20_marked)
         if _crypto_v20_ready:
+            t = f"{r}/v20_runtime_next/SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_{'CRYPTO' if venue == 'crypto' else 'STOCKS'}_{side}.xlsx"
+            env += f" V15_OUT_DIR={r}/v20_runtime_next/SPREADSHEETS/V15_V16_CELL_BY_CELL V15_BRAIN_DIR={r}/v20_runtime_next/data/brain V15_ENDGAME_KNOWLEDGE={r}/v20_runtime_next/data/endgame/endgame_knowledge_fleet.json V15_LEDGER_JSON={r}/v20_runtime_next/data/v15_symside_ledger.json"
             env += " V15_V19_INTERIM=0 V15_UNWIRED_SKIP=1 V15_START_OVERRIDES="
         else:
             env += " V15_V19_INTERIM=1 V15_UNWIRED_SKIP=1 V15_START_OVERRIDES= PYTHONPATH=/home/niels/binance-sandbox/tools/v19_runtime${PYTHONPATH:+:$PYTHONPATH}"
-        _pilot_root = "/home/niels/binance-sandbox/v20_runtime" if _crypto_v20_ready else "/home/niels/binance-sandbox"
+        _pilot_root = "/home/niels/binance-sandbox/v20_runtime_next" if _crypto_v20_ready else "/home/niels/binance-sandbox"
         body = f"cd {_pilot_root} && {env} /home/niels/.conda/envs/binance_env_mac/bin/python -u v15_pilot.py --sym-side {ss} --template {t} --seq-mode worst2best --window-days 30 --vector-only --workers {workers}"
         if _crypto_v20_ready:
             body = f"cd {_pilot_root} && /home/niels/.conda/envs/binance_env_mac/bin/python tools/v15_engine_vintage_guard.py --sym-side {ss} --progress-dir {pdir} --expected-md5 {_v20_expected} && {body}"

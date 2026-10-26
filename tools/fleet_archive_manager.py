@@ -25,6 +25,8 @@ KEY = Path(os.environ.get("V15_ARCHIVE_GOOGLE_KEY", Path.home() / "Downloads/civ
 GOOGLE_FOLDER_ID = os.environ.get("V15_ARCHIVE_GOOGLE_FOLDER_ID", "")
 DRIVE_REMOTE = os.environ.get("V15_ARCHIVE_RCLONE_REMOTE", "").strip()
 DRIVE_CONFIG_PATH = Path(os.environ.get("V15_ARCHIVE_RCLONE_CONFIG", Path.home() / ".config" / "rclone" / "rclone.conf"))
+DRIVE_SSH_HOST = os.environ.get("V15_ARCHIVE_RCLONE_HOST", "").strip()
+DRIVE_PREFIX = os.environ.get("V15_ARCHIVE_RCLONE_PREFIX", "binance_backups/fleet_archive").strip("/")
 GCS_FALLBACK = os.environ.get("V15_ARCHIVE_GCS_FALLBACK", "1") == "1"
 HOSTS = {"s1": "s1-pub", "s2": "s2", "s5": "s5", "s6": "s6"}
 DISK_WARN_MB = {"s1": 7000, "s2": 6000, "s5": 8000, "s6": 8000}
@@ -291,16 +293,16 @@ def _make_local_archive(host: str, source: str, stage: Path) -> tuple[Path, str]
     return dest, digest
 
 
-def _archive_to_external(host: str, source: str, drive: Path, apply: bool) -> None:
+def _archive_to_external(host: str, source: str, drive: Path, apply: bool) -> bool:
     state = _state_load()
     key = f"{host}:{source}->{drive}"
     signature = _source_signature(host, source)
     if state.get(key) == signature:
         _log("external_archive_current", host=host, source=source, drive=str(drive))
-        return
+        return True
     _log("external_archive_plan", host=host, source=source, destination=str(drive), apply=apply)
     if not apply:
-        return
+        return False
     if shutil.disk_usage(Path(tempfile.gettempdir())).free < 8 * 1024**3:
         raise RuntimeError("Mac staging disk has less than 8 GB free")
     free = shutil.disk_usage(drive).free
@@ -320,6 +322,7 @@ def _archive_to_external(host: str, source: str, drive: Path, apply: bool) -> No
         state[key] = signature
         _state_save(state)
         _log("external_archive_verified", source=f"{host}:{source}", destination=str(dest), sha256=digest)
+        return True
 
 
 def _drive_config(folder_id: str):
@@ -339,12 +342,53 @@ def _drive_config(folder_id: str):
     return tmp, env, "fleetarchive:"
 
 
+def _rclone_on_server(args: list[str], timeout: int = 600, stdin=None) -> subprocess.CompletedProcess:
+    command = '"$HOME/.local/bin/rclone" ' + " ".join(shlex.quote(str(arg)) for arg in args)
+    return subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", DRIVE_SSH_HOST, command], stdin=stdin, capture_output=True, timeout=timeout)
+
+
+def _archive_to_google_via_server(host: str, source: str, signature: str, state: dict) -> None:
+    if not DRIVE_REMOTE or not DRIVE_SSH_HOST:
+        raise RuntimeError("server-side Drive remote and SSH host must both be configured")
+    if shutil.disk_usage(Path(tempfile.gettempdir())).free < 8 * 1024**3:
+        raise RuntimeError("Mac staging disk has less than 8 GB free")
+    with tempfile.TemporaryDirectory(prefix="fleet-archive-stage-") as stage_name:
+        local, expected = _make_local_archive(host, source, Path(stage_name))
+        remote_dir = f"{DRIVE_REMOTE}:{DRIVE_PREFIX}/{host}"
+        remote = f"{remote_dir}/{local.stem}.{expected[:12]}{local.suffix}"
+        probe = _rclone_on_server(["lsd", f"{DRIVE_REMOTE}:"])
+        if probe.returncode:
+            raise RuntimeError("server-side Google Drive folder access failed; source retained")
+        made = _rclone_on_server(["mkdir", remote_dir])
+        if made.returncode:
+            raise RuntimeError(f"server-side Drive directory creation failed: {made.stderr.decode(errors='replace')[-300:]}")
+        md5 = hashlib.md5()
+        with local.open("rb") as stream:
+            for block in iter(lambda: stream.read(1024 * 1024), b""):
+                md5.update(block)
+        with local.open("rb") as stream:
+            put = _rclone_on_server(["rcat", remote], timeout=1800, stdin=stream)
+        if put.returncode:
+            raise RuntimeError(f"server-side Google Drive upload failed; source retained: {put.stderr.decode(errors='replace')[-300:]}")
+        checked = _rclone_on_server(["md5sum", remote], timeout=600)
+        if checked.returncode:
+            raise RuntimeError("server-side Drive checksum query failed; source retained")
+        fields = checked.stdout.decode(errors="replace").split()
+        if not fields or fields[0].lower() != md5.hexdigest():
+            raise RuntimeError("server-side Drive MD5 mismatch; source retained")
+        if _source_signature(host, source) != signature:
+            raise RuntimeError("archive source changed during Drive upload; source retained")
+        state[f"{host}:{source}->google:oauth:{DRIVE_SSH_HOST}:{DRIVE_REMOTE}"] = signature
+        _state_save(state)
+        _log("google_archive_verified", source=f"{host}:{source}", destination=remote, sha256=expected, remote_md5=fields[0])
+
+
 def _archive_to_google(host: str, source: str, folder_id: str, apply: bool) -> None:
     if (not DRIVE_REMOTE and not KEY.is_file()) or (not DRIVE_REMOTE and not folder_id):
         _log("google_archive_unavailable", key_present=KEY.is_file(), folder_id_configured=bool(folder_id), oauth_remote_configured=bool(DRIVE_REMOTE))
         return
     state = _state_load()
-    target_id = f"oauth:{DRIVE_REMOTE}" if DRIVE_REMOTE else folder_id
+    target_id = f"oauth:{DRIVE_SSH_HOST}:{DRIVE_REMOTE}" if DRIVE_REMOTE and DRIVE_SSH_HOST else f"oauth:{DRIVE_REMOTE}" if DRIVE_REMOTE else folder_id
     key = f"{host}:{source}->google:{target_id}"
     signature = _source_signature(host, source)
     if state.get(key) == signature:
@@ -353,6 +397,9 @@ def _archive_to_google(host: str, source: str, folder_id: str, apply: bool) -> N
     name = Path(source.rstrip("/")).name
     _log("google_archive_plan", host=host, source=source, object=name, apply=apply)
     if not apply:
+        return
+    if DRIVE_SSH_HOST:
+        _archive_to_google_via_server(host, source, signature, state)
         return
     if shutil.disk_usage(Path(tempfile.gettempdir())).free < 8 * 1024**3:
         raise RuntimeError("Mac staging disk has less than 8 GB free")
@@ -434,11 +481,17 @@ def main() -> int:
         _log("s6_reclaim_skipped", error=str(exc))
     drives = _mounts()
     for host, source in (("s6", S6_ARCHIVE), ("s5", S5_MIRROR)):
+        external_verified = False
         for drive in drives:
             try:
-                _archive_to_external(host, source, drive, args.apply)
+                external_verified = _archive_to_external(host, source, drive, args.apply) or external_verified
             except Exception as exc:
                 _log("external_archive_failed", host=host, drive=str(drive), error=str(exc))
+            if external_verified:
+                break
+        if external_verified:
+            _log("archive_external_preferred", host=host, source=source)
+            continue
         drive_copy_ok = False
         if args.google_folder_id or DRIVE_REMOTE:
             try:

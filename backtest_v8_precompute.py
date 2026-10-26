@@ -2044,9 +2044,8 @@ def compute_symbol(symbol: str, mode: str, *, return_arrays: bool = False):
         logger.warning(f"[SKIP] {symbol}: no {base_tf} klines")
         return False
     base_df = dfs[base_tf]
-    # PARITY LOOP STOCKS 2026-10-06 option A (BIBLE §68.2.6, director): stock 15m inputs use live's premarket+RTH filter;
-    # vector execution remains RTH-only via stocks_live_session_gates. 15m/1h/4h/D values are per-step on live's own
-    # (forming-bar, 600-clipped) frames — vec_decisions/stock_live_frames.py.
+    # Canonical stock NPZs stay RTH-only. The 7D pre-open lane builds a disposable overlay
+    # with only the current day's four completed premarket rows; vector execution remains RTH-only.
     # NPZ_STOCK_FRAMES_LEGACY=1 rebuilds the old frames (comparison only).
     _stock_live = mode == "tradier" and os.environ.get("NPZ_STOCK_FRAMES_LEGACY") != "1"
     _stock_auth = {}

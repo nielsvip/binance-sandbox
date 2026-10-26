@@ -316,6 +316,41 @@ def compress(host: str, paths: list, apply: bool) -> dict:
     return out
 
 
+def train(orchestrator: str, hosts: list) -> dict:
+    """Union train + export over EVERY spill on the orchestrator, then the MANIFEST that records what is absorbed.
+
+    Absorbing without training changes nothing the pilot reads: the heads only learn here. The cut is q80 of board
+    times, matching the published contract, so the held-out slice stays chronological and the AUCs stay comparable
+    with the v3u3 run. The MANIFEST is what the PURGE GATE reads for test 1, so it is written only on a clean train.
+    """
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    run_dir = f"{UNION_DIR}/auto_{stamp}"
+    spills = " ".join(f"--spill-dir {UNION_DIR}/spills/{host}" for host in hosts) + f" --spill-dir {SPILL_REMOTE}"
+    steps = [
+        ("train", f"cd {SANDBOX} && mkdir -p {run_dir}/brain_state {run_dir}/brain_union && nice -n 19 ionice -c3 {PYTHON} tools/v18_brain.py train "
+                  f"{spills} --state {run_dir}/brain_state/v18_brain_state.pkl --out-dir {run_dir}/brain_union "
+                  f"--report {run_dir}/brain_state/v18_brain_report.json --binding-map-dir {SANDBOX}/data/learn"),
+        ("export", f"cd {SANDBOX} && nice -n 19 ionice -c3 {PYTHON} tools/v18_brain.py export "
+                   f"--state {run_dir}/brain_state/v18_brain_state.pkl --out-dir {run_dir}/brain_union"),
+    ]
+    for name, command in steps:
+        result = sh(orchestrator, command, timeout=43200)
+        tail = (result.stdout or "")[-400:].strip().replace("\n", " | ")
+        log(f"train_{name}", orchestrator=orchestrator, rc=result.returncode, run_dir=run_dir, tail=tail, error=(result.stderr[-300:].strip() if result.returncode else ""))
+        if result.returncode:
+            return {"ok": False, "step": name, "run_dir": run_dir}
+    manifest = {
+        "built": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        "kind": f"AUTO absorption cycle on {orchestrator} (tools/v20_absorb_cycle.py)",
+        "global_corpus_last_ts": datetime.now(timezone.utc).isoformat(),
+        "sources": [f"{host}auto(logs+progress, watermarked incremental)" for host in hosts],
+        "run_dir": run_dir,
+    }
+    write = sh(orchestrator, "cat > %s/MANIFEST.json <<'MANIFEST_EOF'\n%s\nMANIFEST_EOF" % (run_dir, json.dumps(manifest, indent=1)), timeout=120)
+    log("train_manifest", orchestrator=orchestrator, rc=write.returncode, run_dir=run_dir, sources=manifest["sources"])
+    return {"ok": write.returncode == 0, "run_dir": run_dir}
+
+
 def free_mb(host: str) -> int:
     result = sh(host, "df -Pm / | awk 'NR==2 {print $4}'", timeout=60)
     try:
@@ -342,6 +377,8 @@ def main() -> int:
 
     if "absorb" in phases:
         absorb(hosts, args.orchestrator, args.full)
+    if "train" in phases:
+        train(args.orchestrator, hosts)
 
     report = inventory(hosts) if {"inventory", "compress", "report"} & set(phases) else {}
     totals = {"freed_mb": 0, "compressed": 0}

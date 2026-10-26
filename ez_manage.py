@@ -32085,6 +32085,13 @@ class MultiAccountTradeManager:
         await self.clear_recent_signal(position_key)
 
     @staticmethod
+    def _maker_exchange_status(exchange_info, symbol):
+        for row in (exchange_info or {}).get("symbols", []):
+            if isinstance(row, dict) and row.get("symbol") == symbol:
+                return str(row.get("status") or "").upper()
+        return ""
+
+    @staticmethod
     def _maker_best_prices(book):
         try:
             bid = Decimal(str(book["bids"][0][0]))
@@ -32478,6 +32485,7 @@ class MultiAccountTradeManager:
                 logger.warning(f"[WIRE_TIMEOUT] {position_key}: countdown_cancel_all no response in 15s — proceeding (maker loop re-covers)")
             except Exception:
                 pass
+            _book_status_checked = False
             while time.time() - placement_start_time < TIMEOUT:
                 # ═══ OVER-FILL GUARD (2026-06-04) — NEVER fill more than the intended qty_abs total. ═══
                 # The GTX cancel-replace chase re-placed the FULL qty every iteration; when a resting order
@@ -32523,6 +32531,17 @@ class MultiAccountTradeManager:
                         )
                         _quote = self._maker_best_prices(book)
                         if _quote is None:
+                            if ta == "OPEN" and not tracked_order_ids and not active_order_id and not _book_status_checked:
+                                _book_status_checked = True
+                                try:
+                                    _exchange_info = await asyncio.wait_for(asyncio.to_thread(client.futures_exchange_info), timeout=5.0)
+                                    _exchange_status = self._maker_exchange_status(_exchange_info, symbol)
+                                    if _exchange_status and _exchange_status != "TRADING":
+                                        logger.warning(f"[MAKER_SYMBOL_NOT_TRADING] {position_key} {symbol}: exchange status={_exchange_status}; no order sent")
+                                        await release_locks()
+                                        return False, -1.0
+                                except Exception as _status_error:
+                                    logger.warning(f"[MAKER_EXCHANGE_STATUS_UNKNOWN] {position_key} {symbol}: {_status_error}")
                             logger.warning(f"[MAKER_BOOK_EMPTY] {position_key} {symbol} {ta}: no usable bid/ask")
                             if ta == "REDUCE":
                                 break

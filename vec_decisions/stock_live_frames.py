@@ -1,15 +1,16 @@
-"""PARITY LOOP STOCKS 2026-10-06 — option A (director decision, USER "live != vec disparity must be impossible"): the stock NPZ is
-built on the SAME frames live tradier_indicators computes on, one 15m step at a time.
+"""Canonical stock NPZ frames remain RTH-only. The isolated 7D pre-open lane may add
+four current-day completed premarket rows to a disposable NPZ overlay; those rows never
+enter the canonical store or the engine's stock trading session.
 
 Live (tradier_indicators.TradierBarManager.get_bundle + run_cycle) at a moment t inside 15m bar j:
-  15m  timesales filtered by filter_strict_market_hours(is_fast_tf=True) (04:00 ET premarket through exchange close), merged into the json cache
+  15m  timesales filtered for premarket warmup and RTH through exchange close, merged into the json cache
   1h   merge_klines(json 1h, resample_tf(bundle 15m, "1h"))  -> 09:30-anchored bins, the bin holding t is FORMING (partial)
   4h   merge_klines(json 4h, resample_tf(bundle 1h, "4h"))   -> get_4h_bin session bins built from the 1h rows that carry close_time
                                                                 (the freshly resampled ones; json-only 1h rows are NaT there), FORMING
   D    json D (one row per ET date via the builder's _dedupe_daily_frame, same function live applies) + today's FORMING bar
   every TF clipped to the last LIVE_INDICATOR_MAX_BARS_PER_TF (600) rows, then IndicatorCalculator.compute -> value of the last row.
-step_frames() rebuilds exactly that bundle for every 15m row j (json history rows only when their label is strictly before the
-forming bin — no future rows), with the live functions themselves (filter_strict_market_hours, resample_tf, the get_bundle merge).
+step_frames() rebuilds exactly the canonical RTH bundle for every 15m row j (json history rows only when their label is strictly before the
+forming bin — no future rows), with the same aggregation functions (filter_strict_market_hours, resample_tf, the get_bundle merge).
 The forming D bar is today's regular-session (09:30 <= label < 16:00 ET) 15m rows up to j, labelled 16:00 ET like the json D rows.
 forming_values() evaluates a per-frame array function (backtest_v8_precompute.compute_tf_arrays) on each step frame and keeps the
 value of the last row -> per-15m-step arrays. W/M are unchanged (previous fully closed bar, already equal to live)."""
@@ -68,9 +69,10 @@ def bundle_merge(df_old: pd.DataFrame, df_new: pd.DataFrame) -> pd.DataFrame:
 
 
 def live_rth_15m(df15: pd.DataFrame) -> pd.DataFrame:
-    """The live stock 15m input filter (04:00 ET premarket through exchange close)."""
-    from tradier_indicators import filter_strict_market_hours
-    out = from_live_frame(filter_strict_market_hours(to_live_frame(df15), is_fast_tf=True))
+    """Canonical stock NPZ base frame; premarket rows belong only in the isolated 7D overlay."""
+    from tools.npz_cutoffs import is_rth_bar_start
+    out = from_live_frame(to_live_frame(df15))
+    out = out.loc[[is_rth_bar_start(int(index.timestamp())) for index in out.index]]
     return out[~out.index.duplicated(keep="last")].sort_index()
 
 

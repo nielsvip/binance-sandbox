@@ -13,6 +13,7 @@ import datetime as dt
 import json
 import os
 from pathlib import Path
+import shutil
 import sys
 from zoneinfo import ZoneInfo
 
@@ -37,29 +38,47 @@ def replay_one(queue_path: Path, result_dir: Path, ss: str,
     result = validate_one(ss, source, result_dir, now.date().isoformat())
     full = result["full_config"]
     from tools.opt.v12_pilot import evaluate_prepared_sanitized, npz_freshness, prepare_batch
-    from tools.opt.evaluate_v12 import resolve_tokenised
+    from tools.opt.evaluate_v12 import resolve_tokenised, is_crypto
     import numpy as np
 
     symbol, _ = resolve_tokenised(ss.rsplit("_", 1)[0])
-    npz = ROOT / "backtest_v8/indicators" / f"{symbol}.npz"
-    with np.load(npz, allow_pickle=False) as z:
-        last = float(z["timestamps"][-1])
-    last_utc = dt.datetime.fromtimestamp(last / (1000 if last > 1e11 else 1), dt.timezone.utc)
-    if last_utc < cutoff.astimezone(dt.timezone.utc) or npz.stat().st_mtime < cutoff.timestamp():
-        raise ValueError(f"{ss}: 09:15 ET NPZ row has not arrived")
-    fresh, why = npz_freshness(ss)
-    if not fresh:
-        raise ValueError(f"{ss}: stale replay NPZ: {why}")
-    prepared = prepare_batch(ss, 7)
-    if prepared.get("_stale"):
-        raise ValueError(f"{ss}: replay preparation stale: {prepared['_stale']}")
-    ev = evaluate_prepared_sanitized(prepared, full, 7)
+    stock_overlay = not is_crypto(ss.rsplit("_", 1)[0])
+    overlay_dir = result_dir / ss / "replay_npz_overlay"
+    overlay = None
+    try:
+        if stock_overlay:
+            from tools.v15_preopen_7d_npz import build_overlay
+            overlay = build_overlay(symbol, overlay_dir, now)
+            os.environ["V12_NPZ_DIR"] = str(overlay_dir)
+            npz = overlay_dir / f"{symbol}.npz"
+        else:
+            npz = ROOT / "backtest_v8/indicators" / f"{symbol}.npz"
+        with np.load(npz, allow_pickle=False) as z:
+            last = float(z["timestamps"][-1])
+        last_utc = dt.datetime.fromtimestamp(last / (1000 if last > 1e11 else 1), dt.timezone.utc)
+        if stock_overlay:
+            latest_premarket = dt.datetime.fromtimestamp(max(overlay["premarket_rows"]), dt.timezone.utc)
+            if latest_premarket > now.astimezone(dt.timezone.utc) or latest_premarket.astimezone(NY).date() != local.date():
+                raise ValueError(f"{ss}: temporary NPZ premarket rows are not current-day completed bars")
+        fresh, why = npz_freshness(ss)
+        if not fresh:
+            raise ValueError(f"{ss}: stale replay NPZ: {why}")
+        prepared = prepare_batch(ss, 7)
+        if prepared.get("_stale"):
+            raise ValueError(f"{ss}: replay preparation stale: {prepared['_stale']}")
+        ev = evaluate_prepared_sanitized(prepared, full, 7)
+    finally:
+        if stock_overlay:
+            os.environ.pop("V12_NPZ_DIR", None)
+        shutil.rmtree(overlay_dir, ignore_errors=True)
     evidence = {k: ev.get(k) for k in ("valid", "invalid_reason", "gain_pct", "trades", "tim_pct", "max_dd_pct", "window_days")}
     record = {"sym_side": ss, "account": next(a for a, sides in queue["accounts"].items() if ss in sides),
               "evaluated_at_utc": now.isoformat(), "bar_cutoff_et": cutoff.isoformat(),
               "npz_last_bar_utc": last_utc.isoformat(), "npz_mtime_utc": dt.datetime.fromtimestamp(npz.stat().st_mtime, dt.timezone.utc).isoformat(),
               "source_30d_sha256": digest(source["overrides"]), "optimized_full_sha256": digest(full),
               "manifest_path": result["manifest_path"], "evidence": evidence,
+              "npz_overlay_sha256": overlay["overlay_sha256"] if overlay else None,
+              "premarket_row_count": overlay["premarket_row_count"] if overlay else 0,
               "valid": ev.get("valid") is True and int(ev.get("trades") or 0) >= 10}
     return record
 

@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path
 import sqlite3
+from zoneinfo import ZoneInfo
 
 
 def digest(value: object, algorithm: str = "sha256") -> str:
@@ -167,13 +168,26 @@ def stage(queue_path: Path, result_dir: Path, source_db: Path, source_sets_path:
             replay = json.loads(replay_path.read_text())
             cutoff = dt.datetime.fromisoformat(str(replay.get("bar_cutoff_et")))
             npz_bar = dt.datetime.fromisoformat(str(replay.get("npz_last_bar_utc")))
+            stock_replay = str(sources[ss].get("cat_side", "")).startswith("STOCKS_")
+            if stock_replay:
+                from tools.npz_cutoffs import is_premarket_bar_start
+                _bar_epoch = int(npz_bar.timestamp()) if npz_bar.tzinfo is not None else 0
+                _bar_et = npz_bar.astimezone(ZoneInfo("America/New_York")) if npz_bar.tzinfo is not None else None
+                _bar_completed = _bar_et + dt.timedelta(minutes=15) if _bar_et else None
+                _premarket_ok = (_bar_et is not None and _bar_et.date().isoformat() == today
+                                 and is_premarket_bar_start(_bar_epoch)
+                                 and _bar_completed <= cutoff.astimezone(ZoneInfo("America/New_York")))
+                _rows_ok = int(replay.get("premarket_row_count") or 0) == 4 and bool(replay.get("npz_overlay_sha256"))
+            else:
+                _premarket_ok = npz_bar.tzinfo is not None and npz_bar >= cutoff.astimezone(dt.timezone.utc)
+                _rows_ok = True
             if (replay.get("valid") is not True or replay.get("sym_side") != ss
                     or replay.get("optimized_full_sha256") != digest(result["full_config"])
                     or replay.get("source_30d_sha256") != digest(sources[ss]["overrides"])
                     or cutoff.tzinfo is None or cutoff.date().isoformat() != today
                     or cutoff.hour != 9 or cutoff.minute != int(queue.get("_meta", {}).get("bar_minute", 15))
-                    or npz_bar.tzinfo is None or npz_bar < cutoff.astimezone(dt.timezone.utc)):
-                raise ValueError(f"{ss}: missing or invalid 09:15 ET replay")
+                    or not _premarket_ok or not _rows_ok):
+                raise ValueError(f"{ss}: missing or invalid current-day replay proof")
             replays[ss] = replay
     source_sets = json.loads(source_sets_path.read_text())
     if published_selection_path is None:

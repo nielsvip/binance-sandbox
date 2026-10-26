@@ -146,8 +146,12 @@ def split_ss(ss: str):
     return sym, side.upper()
 
 
+_SOURCE_BASE_TIPS = {}
+
+
 def npz_path(sym: str) -> Path:
     overlay_dir = ROOT / "data" / "vec_live" / "forward_npz"
+    source = ROOT / "backtest_v8" / "indicators" / f"{sym}.npz"
     try:
         manifest_path = overlay_dir / "manifest.json"
         if time.time() - manifest_path.stat().st_mtime <= 300:
@@ -155,7 +159,18 @@ def npz_path(sym: str) -> Path:
             if time.time() - float(manifest["generated_ts"]) <= 300 and sym in manifest["symbols"]:
                 overlay = overlay_dir / f"{sym}.npz"
                 if overlay.is_file():
-                    return overlay
+                    from npz_tail_store import _base_tip_ts, _tail_tip_ts, tail_path_for_npz
+                    source_tip = _tail_tip_ts(tail_path_for_npz(source))
+                    if source.is_file():
+                        stamp = source.stat().st_mtime_ns
+                        cached = _SOURCE_BASE_TIPS.get(str(source))
+                        if cached is None or cached[0] != stamp:
+                            cached = (stamp, _base_tip_ts(source))
+                            _SOURCE_BASE_TIPS[str(source)] = cached
+                        source_tip = max((tip for tip in (source_tip, cached[1]) if tip is not None), default=None)
+                    overlay_tip = int(manifest["symbols"][sym]["npz_end"])
+                    if source_tip is None or source_tip <= overlay_tip:
+                        return overlay
     except (OSError, ValueError, KeyError, TypeError):
         pass
     for prefix in ("backtest_v8", "backtest_v7"):

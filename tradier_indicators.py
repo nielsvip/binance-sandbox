@@ -4028,7 +4028,7 @@ class TradierIndicatorOrchestrator:
                 last_cleanup = now
 
     async def _npz_update_loop(self) -> None:
-        """Incremental NPZ updater — premarket/RTH inputs, with RTH-only execution bars."""
+        """Update canonical NPZ on RTH bars; raw premarket inputs are isolated to temporary 7D overlays."""
         if _npz_gen is None:
             logger.info("[NPZ] npz_live_generator not available — skipping tradier NPZ")
             return

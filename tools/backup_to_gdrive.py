@@ -5,7 +5,7 @@ Daily job: uploads 50 files (~2GB) to avoid API throttling.
 If Google Drive >70% capacity, offloads to connected external drives.
 """
 
-import hashlib, json, os, sys, subprocess, shutil, stat
+import hashlib, json, os, shlex, sys, subprocess, shutil, stat
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -16,7 +16,9 @@ RCLONE_CONFIG = "/tmp/rclone_gdrive_backup.conf"
 GOOGLE_FOLDER_ID = os.environ.get("V15_ARCHIVE_GOOGLE_FOLDER_ID", "").strip()
 DRIVE_REMOTE = os.environ.get("V15_ARCHIVE_RCLONE_REMOTE", "").strip()
 DRIVE_CONFIG_PATH = Path(os.environ.get("V15_ARCHIVE_RCLONE_CONFIG", Path.home() / ".config" / "rclone" / "rclone.conf"))
-RCLONE_REMOTE = "binance-gdrive"
+DRIVE_SSH_HOST = os.environ.get("V15_ARCHIVE_RCLONE_HOST", "").strip()
+DRIVE_PREFIX = os.environ.get("V15_ARCHIVE_RCLONE_PREFIX", "binance_backups").strip("/")
+RCLONE_REMOTE = DRIVE_REMOTE or "binance-gdrive"
 
 # External drive mount points (checked in order, first available wins)
 EXT_DRIVE_MOUNTS = [
@@ -45,6 +47,13 @@ def log(msg, level="INFO"):
 def setup_rclone():
     global RCLONE_CONFIG, RCLONE_REMOTE
     if DRIVE_REMOTE:
+        RCLONE_REMOTE = DRIVE_REMOTE
+        if DRIVE_SSH_HOST:
+            probe = rclone_on_server(["lsd", f"{RCLONE_REMOTE}:"])
+            if probe.returncode:
+                log(f"Server-side Google Drive remote unavailable: {probe.stderr.decode(errors='replace')[-300:]}", "ERROR")
+                return False
+            return True
         if not DRIVE_CONFIG_PATH.is_file():
             log("OAuth rclone config is missing", "ERROR")
             return False
@@ -67,6 +76,10 @@ root_folder_id = {GOOGLE_FOLDER_ID}
 """)
     os.chmod(RCLONE_CONFIG, 0o600)
     return True
+
+def rclone_on_server(args, timeout=300, stdin=None):
+    command = '"$HOME/.local/bin/rclone" ' + " ".join(shlex.quote(str(arg)) for arg in args)
+    return subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", DRIVE_SSH_HOST, command], stdin=stdin, capture_output=True, timeout=timeout)
 
 def sha256_file(fpath):
     digest = hashlib.sha256()
@@ -100,9 +113,33 @@ def get_old_files(days=KEEP_LOCAL_DAYS, max_count=MAX_FILES_PER_RUN):
 
 def upload_file(fpath):
     try:
+        before = fpath.stat()
         digest = sha256_file(fpath)
         remote_name = f"{fpath.stem}_{digest[:16]}{fpath.suffix}"
-        remote = f"{RCLONE_REMOTE}:binance_backups/{remote_name}"
+        remote = f"{RCLONE_REMOTE}:{DRIVE_PREFIX}/{remote_name}"
+        if DRIVE_SSH_HOST:
+            remote_dir = f"{RCLONE_REMOTE}:{DRIVE_PREFIX}"
+            made = rclone_on_server(["mkdir", remote_dir])
+            if made.returncode:
+                log(f"Drive directory creation failed for {fpath.name}: {made.stderr.decode(errors='replace')[-300:]}", "WARN")
+                return False
+            with fpath.open("rb") as stream:
+                result = rclone_on_server(["rcat", remote], timeout=1800, stdin=stream)
+            if result.returncode:
+                log(f"Server-side Drive upload failed for {fpath.name}: {result.stderr.decode(errors='replace')[-300:]}", "WARN")
+                return False
+            local_md5 = hashlib.md5()
+            with fpath.open("rb") as stream:
+                for block in iter(lambda: stream.read(1024 * 1024), b""):
+                    local_md5.update(block)
+            checked = rclone_on_server(["md5sum", remote], timeout=600)
+            fields = checked.stdout.decode(errors="replace").split()
+            after = fpath.stat()
+            if checked.returncode or not fields or fields[0].lower() != local_md5.hexdigest() or (before.st_size, before.st_mtime_ns, before.st_ctime_ns) != (after.st_size, after.st_mtime_ns, after.st_ctime_ns) or sha256_file(fpath) != digest:
+                log(f"Server-side Drive checksum/source-stability failed for {fpath.name}; keeping local", "WARN")
+                return False
+            log(f"Verified {fpath.name} sha256={digest} as {remote}")
+            return True
         result = subprocess.run([
             "rclone", "copyto", str(fpath),
             remote,
@@ -130,9 +167,12 @@ def upload_file(fpath):
 def get_gdrive_capacity():
     """Check Google Drive usage. Returns (used_gb, total_gb, percent_used) or None if unavailable."""
     try:
-        result = subprocess.run([
-            "rclone", "about", f"{RCLONE_REMOTE}:", "--config", RCLONE_CONFIG, "--json"
-        ], capture_output=True, timeout=60)
+        if DRIVE_SSH_HOST:
+            result = rclone_on_server(["about", f"{RCLONE_REMOTE}:", "--json"], timeout=60)
+        else:
+            result = subprocess.run([
+                "rclone", "about", f"{RCLONE_REMOTE}:", "--config", RCLONE_CONFIG, "--json"
+            ], capture_output=True, timeout=60)
         if result.returncode == 0:
             import json
             data = json.loads(result.stdout)
@@ -250,7 +290,10 @@ def main():
     # Probe Google Drive only if not using fallback
     if drive_ready and not use_ext_drive_fallback and not use_gcs_fallback:
         try:
-            probe = subprocess.run(["rclone", "lsd", f"{RCLONE_REMOTE}:", "--config", RCLONE_CONFIG], capture_output=True, timeout=60)
+            if DRIVE_SSH_HOST:
+                probe = rclone_on_server(["lsd", f"{RCLONE_REMOTE}:"])
+            else:
+                probe = subprocess.run(["rclone", "lsd", f"{RCLONE_REMOTE}:", "--config", RCLONE_CONFIG], capture_output=True, timeout=60)
             if probe.returncode:
                 log(f"Google Drive destination is not accessible: {probe.stderr.decode(errors='replace')[-300:]}", "WARN")
                 ext_drive_path = find_available_ext_drive()
