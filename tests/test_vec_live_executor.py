@@ -186,6 +186,41 @@ def test_window_npz_build_is_shared_between_sides(tmp_path, monkeypatch):
     assert results[0] is not results[1]
 
 
+def test_window_npz_appends_tail_row_without_rebuilding(tmp_path, monkeypatch):
+    import numpy as np
+    import npz_tail_store
+
+    source = tmp_path / "TESTUSDT.npz"
+    source.write_bytes(b"source")
+    build_calls = []
+
+    def fake_build(raw, sym, mode, anchor_ts):
+        build_calls.append(sym)
+        return {
+            "timestamps": np.array([1000], dtype=np.int64),
+            "timestamp_15m": np.array([1000], dtype=np.int64),
+            "close": np.array([10.0]),
+        }
+
+    row = {"timestamps": 1900, "timestamp_15m": 1900, "close": 11.0}
+    monkeypatch.setattr(X, "npz_path", lambda sym: source)
+    monkeypatch.setattr(X, "load_raw", lambda sym, load_start: {"raw": sym})
+    monkeypatch.setattr(X, "build_npz", fake_build)
+    monkeypatch.setattr(npz_tail_store, "tail_rows", lambda path: [row])
+    X._WINDOW_NPZ_CACHE.clear()
+    X._WINDOW_NPZ_BUILDING.clear()
+    first = {"anchor_ts": 1000.0, "load_start_ts": 1000.0, "mode": "crypto", "npz_end_ts": 1000.0}
+    X._window_npz("TESTUSDT", first)
+    tail = source.parent / ".tail" / "TESTUSDT.jsonl"
+    tail.parent.mkdir()
+    tail.write_text(json.dumps(row) + "\n")
+    second = {"anchor_ts": 1900.0, "load_start_ts": 1900.0, "mode": "crypto", "npz_end_ts": 1900.0}
+    updated = X._window_npz("TESTUSDT", second)
+    assert build_calls == ["TESTUSDT"]
+    assert updated["timestamps"].tolist() == [1000, 1900]
+    assert updated["close"].tolist() == [10.0, 11.0]
+
+
 def test_load_timestamps_includes_hot_tail(tmp_path, monkeypatch):
     import numpy as np
 

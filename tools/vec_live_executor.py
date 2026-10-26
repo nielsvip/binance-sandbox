@@ -250,6 +250,7 @@ def build_npz(raw: dict, sym: str, mode: str, anchor_ts: float):
 
 _BASE_PREP = {}
 _WINDOW_NPZ_CACHE = OrderedDict()
+_WINDOW_NPZ_CACHE_MAX = 128
 _WINDOW_NPZ_CACHE_LOCK = threading.Lock()
 _WINDOW_NPZ_BUILDING = {}
 
@@ -267,9 +268,11 @@ def _store_fingerprint(sym: str):
 
 
 def _window_npz(sym: str, anchor: dict, end_ts: float = None):
+    target_end = float(anchor.get("npz_end_ts") or end_ts or 0.0)
+    fingerprint = _store_fingerprint(sym)
     key = (
         sym,
-        _store_fingerprint(sym),
+        fingerprint,
         float(anchor["anchor_ts"]),
         float(anchor["load_start_ts"]),
         None if end_ts is None else float(end_ts),
@@ -279,7 +282,7 @@ def _window_npz(sym: str, anchor: dict, end_ts: float = None):
             cached = _WINDOW_NPZ_CACHE.get(key)
             if cached is not None:
                 _WINDOW_NPZ_CACHE.move_to_end(key)
-                return dict(cached)
+                return dict(cached["npz"])
             ready = _WINDOW_NPZ_BUILDING.get(key)
             if ready is None:
                 ready = threading.Event()
@@ -291,16 +294,66 @@ def _window_npz(sym: str, anchor: dict, end_ts: float = None):
             ready.wait()
             continue
         try:
+            extension = None
+            if target_end:
+                with _WINDOW_NPZ_CACHE_LOCK:
+                    for old_key, old in reversed(_WINDOW_NPZ_CACHE.items()):
+                        if old_key[0] != sym or old.get("mode") != anchor["mode"]:
+                            continue
+                        delta = target_end - float(old.get("end_ts") or 0.0)
+                        if 0 < delta <= 4 * 900 and int(old.get("steps") or 0) < 4:
+                            extension = (old_key, old, delta)
+                            break
+            if extension is not None:
+                from npz_tail_store import _apply_row_in_memory, tail_rows
+
+                _, old, delta = extension
+                expected = int(round(delta / 900.0))
+                rows = [
+                    row
+                    for row in tail_rows(str(npz_path(sym)))
+                    if float(row.get("timestamps") or 0.0) > float(old["end_ts"])
+                    and float(row.get("timestamps") or 0.0) <= target_end
+                ]
+                rows.sort(key=lambda row: float(row["timestamps"]))
+                if len(rows) == expected and all(
+                    abs(float(row["timestamps"]) - (float(old["end_ts"]) + 900 * (i + 1))) < 1
+                    for i, row in enumerate(rows)
+                ):
+                    built = old["npz"]
+                    for row in rows:
+                        built = _apply_row_in_memory(built, row)
+                        if built is None:
+                            break
+                    if built is not None and abs(float(built["timestamps"][-1]) - target_end) < 1:
+                        entry = {
+                            "npz": built,
+                            "mode": anchor["mode"],
+                            "end_ts": target_end,
+                            "steps": int(old.get("steps") or 0) + expected,
+                        }
+                        with _WINDOW_NPZ_CACHE_LOCK:
+                            _WINDOW_NPZ_CACHE[key] = entry
+                            _WINDOW_NPZ_CACHE.move_to_end(key)
+                            while len(_WINDOW_NPZ_CACHE) > _WINDOW_NPZ_CACHE_MAX:
+                                _WINDOW_NPZ_CACHE.popitem(last=False)
+                        return dict(built)
             raw = load_raw(sym, anchor["load_start_ts"])
             if end_ts is not None:
                 raw = truncate_raw(raw, end_ts)
             built = build_npz(raw, sym, anchor["mode"], anchor["anchor_ts"])
             if built is None:
                 return None
+            entry = {
+                "npz": built,
+                "mode": anchor["mode"],
+                "end_ts": target_end or float(built["timestamps"][-1]),
+                "steps": 0,
+            }
             with _WINDOW_NPZ_CACHE_LOCK:
-                _WINDOW_NPZ_CACHE[key] = built
+                _WINDOW_NPZ_CACHE[key] = entry
                 _WINDOW_NPZ_CACHE.move_to_end(key)
-                while len(_WINDOW_NPZ_CACHE) > 8:
+                while len(_WINDOW_NPZ_CACHE) > _WINDOW_NPZ_CACHE_MAX:
                     _WINDOW_NPZ_CACHE.popitem(last=False)
             return dict(built)
         finally:

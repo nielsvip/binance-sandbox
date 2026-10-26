@@ -415,6 +415,42 @@ def _pick_due_stale(data, now, limit=REST_REPAIR_MAX_SYMS, skip=None):
     due.sort(reverse=True)
     return [(sym, d1, d3) for _, sym, d1, d3 in due[:max(1, limit)]]
 
+def _write_provisional_15m(path: Path, bar: dict) -> bool:
+    try:
+        existing = []
+        if path.exists():
+            with path.open('rb') as handle:
+                existing = orjson.loads(handle.read())
+            if not isinstance(existing, list):
+                return False
+        for index, row in enumerate(existing):
+            if isinstance(row, dict) and row.get('timestamp') == bar['timestamp']:
+                if row.get('volume') is not None and not row.get('_provisional'):
+                    return False
+                existing[index] = bar
+                break
+        else:
+            existing.append(bar)
+        existing.sort(key=lambda row: row.get('timestamp', '') if isinstance(row, dict) else '')
+        tmp = path.with_name(f".{path.name}.{os.getpid()}.{time.time_ns()}.tmp")
+        with tmp.open('wb') as handle:
+            handle.write(orjson.dumps(existing))
+            handle.flush()
+            os.fsync(handle.fileno())
+        if path.exists():
+            with path.open('rb') as handle:
+                latest = orjson.loads(handle.read())
+            for row in latest if isinstance(latest, list) else []:
+                if isinstance(row, dict) and row.get('timestamp') == bar['timestamp'] and row.get('volume') is not None and not row.get('_provisional'):
+                    tmp.unlink(missing_ok=True)
+                    return False
+        os.replace(tmp, path)
+        return True
+    except Exception as exc:
+        logger.warning(f"[PROVISIONAL_15M] write failed {path.name}: {exc}")
+        return False
+
+
 class HighResMarketData:
     def __init__(self):
         self.data = {} 
@@ -495,35 +531,6 @@ class HighResMarketData:
                 c3[next(reversed(c3))] = price
         except Exception:
             pass
-
-
-def _write_provisional_15m(path: Path, bar: dict) -> bool:
-    try:
-        existing = []
-        if path.exists():
-            with path.open('rb') as handle:
-                existing = orjson.loads(handle.read())
-            if not isinstance(existing, list):
-                return False
-        for index, row in enumerate(existing):
-            if isinstance(row, dict) and row.get('timestamp') == bar['timestamp']:
-                if row.get('volume') is not None and not row.get('_provisional'):
-                    return False
-                existing[index] = bar
-                break
-        else:
-            existing.append(bar)
-        existing.sort(key=lambda row: row.get('timestamp', '') if isinstance(row, dict) else '')
-        tmp = path.with_name(f".{path.name}.{os.getpid()}.{time.time_ns()}.tmp")
-        with tmp.open('wb') as handle:
-            handle.write(orjson.dumps(existing))
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(tmp, path)
-        return True
-    except Exception as exc:
-        logger.warning(f"[PROVISIONAL_15M] write failed {path.name}: {exc}")
-        return False
         try:
             if price > 0 and abs(time.time() - timestamp) < 30:
                 c1 = store.get('closes_1m')

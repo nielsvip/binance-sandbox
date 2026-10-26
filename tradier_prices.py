@@ -115,6 +115,12 @@ def _write_provisional_stock_15m(path, bar):
                 json.dump(existing, handle, separators=(',', ':'))
                 handle.flush()
                 os.fsync(handle.fileno())
+            if path.exists():
+                latest = json.loads(path.read_text(encoding='utf-8'))
+                for row in latest if isinstance(latest, list) else []:
+                    if isinstance(row, dict) and row.get('timestamp') == bar['timestamp'] and 'volume' in row and not row.get('_provisional'):
+                        os.unlink(tmp)
+                        return False
             os.replace(tmp, path)
         except Exception:
             try: os.unlink(tmp)
