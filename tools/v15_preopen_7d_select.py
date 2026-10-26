@@ -47,27 +47,25 @@ def select(root, now, selection):
     keys = set(json.loads((root / "tradeable_keys.json").read_text()))
     fin_ok = {k.split(":", 1)[1] for k in keys if k.startswith("fin:")}
     stock_ok = set()
+    try:
+        stock_universe = set(json.loads((root / "stock_symbols.json").read_text()))
+    except (OSError, ValueError, TypeError):
+        stock_universe = set()
     for side in ("LONG", "SHORT"):
         p = root / f"symbols_trb_{side.lower()}.json"
         try:
-            stock_ok |= {f"{sym}_{side}" for sym in json.loads(p.read_text())}
+            side_syms = set(json.loads(p.read_text()))
         except (OSError, ValueError, TypeError):
-            pass
-    # The side-specific books can be empty outside RTH; use the active stock
-    # universe as the fallback, then require a published board and a real trade.
-    if not stock_ok:
-        try:
-            stock_ok = {f"{sym}_{side}" for sym in json.loads((root / "stock_symbols.json").read_text())
-                        for side in ("LONG", "SHORT")}
-        except (OSError, ValueError, TypeError):
-            pass
+            side_syms = set()
+        # A single side's book can be empty outside RTH. Fall back per side.
+        stock_ok |= {f"{sym}_{side}" for sym in (side_syms or stock_universe)}
     source = selection.get("sym_sides") or {}
     out = {"_meta": {"created_at": dt.datetime.fromtimestamp(now, dt.timezone.utc).isoformat(),
                       "cutoff": dt.datetime.fromtimestamp(cutoff, dt.timezone.utc).isoformat(),
                       "source": "published_selection + tradeable universe + executed trade history",
                       "window_days": 7}, "accounts": {"fin": [], "trc": []}, "sym_sides": {}}
     for ss, rec in source.items():
-        if not isinstance(rec, dict) or not isinstance(rec.get("overrides"), dict) or rec.get("manifest_ok") is False:
+        if not isinstance(rec, dict) or not isinstance(rec.get("overrides"), dict) or rec.get("manifest_ok") is not True:
             continue
         for account, accepted in (("fin", fin_ok), ("trc", stock_ok)):
             if ss not in accepted or not _traded(ss, ACCOUNTS[account], cutoff, root):

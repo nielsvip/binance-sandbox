@@ -12334,6 +12334,14 @@ def _main_single():
     ):
         print("BLOCKED: 7D optimization cannot use canonical 30D output or progress directories", file=sys.stderr)
         sys.exit(2)
+    if args.window_days == 7 and (
+        os.environ.get("V15_SKIP_CAT_PERSYM_BASELINE") != "1"
+        or os.environ.get("V15_PREV_BEST_START") != "0"
+        or os.environ.get("V15_ADAPT_BASELINE") != "0"
+        or os.environ.get("V15_FRESH_RUN") != "1"
+    ):
+        print("BLOCKED: 7D must optimize from its explicit 30D winner without alternate baseline substitution", file=sys.stderr)
+        sys.exit(2)
 
     # BATCH 4 NPZs LONG+SHORT in one process — keep all hot, never erase, work until finished
     if args.batch_syms:

@@ -1,7 +1,7 @@
 {
-  "ts": "2026-10-26T00:05:07.534618+00:00",
-  "tick": "2026-10-26T00:04:02.300418+00:00",
-  "tick_age_s": 65,
+  "ts": "2026-10-26T00:10:18.186901+00:00",
+  "tick": "2026-10-26T00:08:00.913803+00:00",
+  "tick_age_s": 137,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run36.json",
     "round": "run36",
@@ -11,7 +11,7 @@
     "n_pending": 52,
     "n_refused_only": 0,
     "n_excluded": 0,
-    "n_launchable_pending": 30,
+    "n_launchable_pending": 29,
     "hosts_not_visible": []
   },
   "hosts": {
@@ -19,13 +19,14 @@
       "cpu_pct": 100,
       "slots": "4/4",
       "observed_running": [
+        "ACEUSDT",
         "PTBUSDT",
         "RLCUSDT",
         "WLDUSDC"
       ],
       "published_last_hour": 0,
-      "idle_reason": null,
-      "mem_avail_mb": 12293
+      "idle_reason": "slots full",
+      "mem_avail_mb": 8338
     },
     "s2": {
       "cpu_pct": 100,
@@ -36,45 +37,43 @@
         "ETHUSDC",
         "STRKUSDT"
       ],
-      "published_last_hour": 1,
+      "published_last_hour": 0,
       "idle_reason": "slots full",
-      "mem_avail_mb": 9566
+      "mem_avail_mb": 8064
     },
     "s5": {
-      "cpu_pct": 39,
+      "cpu_pct": 83,
       "slots": "4/4",
       "observed_running": [
-        "DE",
+        "AAPL_SEQ",
         "DELL",
         "DINO",
-        "DVN"
+        "EPD"
       ],
       "published_last_hour": 2,
       "idle_reason": "slots full",
-      "mem_avail_mb": 29018
+      "mem_avail_mb": 23797
     },
     "s6": {
-      "cpu_pct": 70,
+      "cpu_pct": 74,
       "slots": "5/4",
       "observed_running": [
         "COTIUSDT",
-        "JPM",
-        "MCD",
         "PYPL",
-        "QBTS"
+        "QBTS",
+        "RBLX",
+        "RDDT"
       ],
-      "published_last_hour": 3,
-      "idle_reason": null,
-      "mem_avail_mb": 22912
+      "published_last_hour": 5,
+      "idle_reason": "slots full",
+      "mem_avail_mb": 22137
     }
   },
-  "one_hour_total": 6,
+  "one_hour_total": 7,
   "alerts": [
     "LOW_THROUGHPUT:s1:0/h",
-    "LOW_THROUGHPUT:s2:1/h",
+    "LOW_THROUGHPUT:s2:0/h",
     "LOW_THROUGHPUT:s5:2/h",
-    "LOW_CPU:s5:39%",
-    "LOW_THROUGHPUT:s6:3/h",
-    "LOW_CPU:s6:70%"
+    "LOW_CPU:s6:74%"
   ]
 }

@@ -31,7 +31,7 @@ def _atomic_json(path, doc):
 
 
 def evaluate_one(ss, queue):
-    from tools.opt.v12_pilot import evaluate_prepared_sanitized, prepare_batch
+    from tools.opt.v12_pilot import evaluate_prepared_sanitized, npz_freshness, prepare_batch
     from tools.opt.evaluate_v12 import resolve_tokenised
     from tools.v15_persym_golive import sanitize
 
@@ -52,7 +52,12 @@ def evaluate_one(ss, queue):
     except Exception as exc:
         rec["npz_error"] = f"{type(exc).__name__}: {exc}"
     try:
+        fresh, reason = npz_freshness(ss)
+        if not fresh:
+            raise ValueError(f"STALE_NPZ: {reason}")
         prepared = prepare_batch(ss, 7)
+        if prepared.get("_stale"):
+            raise ValueError(f"STALE_NPZ: {prepared['_stale']}")
         ev = evaluate_prepared_sanitized(prepared, overrides, 7)
         rec["evidence"] = {k: ev.get(k) for k in ("valid", "invalid_reason", "gain_pct", "trades", "tim_pct", "max_dd_pct", "pool_sharpe", "window_days")}
         rec["valid"] = bool(ev.get("valid"))
