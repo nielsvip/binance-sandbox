@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-26 12:32:24 UTC
+# Copilot Status — 2026-10-26 12:37:16 UTC
 
 **Market Hours:** NO | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-26T12:29:18
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-26T12:29:18
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-26T12:30:03
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-26T12:30:03
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-26T12:31:06
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-26T12:31:06
-- **STALE_INDICATORS** [tradier]  — 2026-10-26T12:31:28
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-26T12:31:28
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-26T12:32:12
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-26T12:32:12
+- **STALE_INDICATORS** [tradier]  — 2026-10-26T12:33:43
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-26T12:33:43
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-26T12:34:27
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-26T12:34:27
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-26T12:35:31
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-26T12:35:31
+- **STALE_INDICATORS** [tradier]  — 2026-10-26T12:35:52
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-26T12:35:52
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-26T12:36:34
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-26T12:36:34
 
 ## Missed Trades (trader comparison)
 
@@ -29,7 +29,7 @@ _None_
 
 **Held:** 6 | **Watching for reentry:** 9 | **Reentered:** 0
 
-- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +-1.7%
+- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +-0.5%
 - HELD: **ARM** SHORT (tradier) peak +8.3%, now +-0.5%
 - HELD: **CDE** SHORT (tradier) peak +5.0%, now +2.1%
 - HELD: **MINAUSDT** SHORT (crypto) peak +4.2%, now +-1.1%
@@ -54,5 +54,5 @@ _None_
 - [HIGH] ez_klines.py is NOT running
 - [LOW] tradier_positions.py is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] tradier_prices.py running but log stale (124min)
-- [MEDIUM] tradier_rankings.py running but log stale (313min)
+- [MEDIUM] tradier_prices.py running but log stale (128min)
+- [MEDIUM] tradier_rankings.py running but log stale (317min)
