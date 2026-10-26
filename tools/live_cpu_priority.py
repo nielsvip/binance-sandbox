@@ -56,7 +56,7 @@ def apply(role, dry_run=False):
     minute = datetime.datetime.now(datetime.timezone.utc).minute
     burst = minute % 15 in (14, 0, 1, 2)
     all_cores = set(range(os.cpu_count() or 16))
-    research_cores = set(range(4 if role == "s1" else 8)) if burst else all_cores
+    research_cores = set(range(2 if role == "s1" else 4)) if burst else all_cores
     found = processes()
     kinds = {pid: kind(args, role) for pid, (_, args) in found.items()}
     trigger_roots = {pid for pid, label in kinds.items() if label == "trigger"}

@@ -843,23 +843,40 @@ def _ez_local(mgr: Any, position_key: str) -> Tuple[Optional[float], Optional[fl
     # A LIVE WS SUBSCRIPTION IS ITSELF THE FRESHNESS PROOF: no update means nothing changed. This reuses the
     # service's OWN liveness measure (`_ws_update_timestamps`, `ws_alive = ws_age < 90` at :6683) rather than a
     # second opinion, so the two can never disagree. WS dead -> this adds nothing and the REST fallback stands.
+    # USER 2026-10-26 ONE DEFINITIVE FIX (BLOCKED_POSITIONS_BROKER_MISMATCH): freshness is the age of
+    # BROKER-CONFIRMED DATA. It is never wall-clock `now`, and a socket being connected is not a position read.
+    # What this replaced, and why it had to go:
+    #   `sync_ts = time.time()` whenever ANY of {this position's last event, the account's last event,
+    #   `{acct}_connected`} was < 90 s old. That reported age ~0 for EVERY row on the account — including rows
+    #   that had never received an event — so `ez_pre_order_check` returned at its `age <= POSITIONS_MAX_AGE_S`
+    #   line and the broker was never consulted. Measured 2026-10-26: ang 0 and inf 0 broker verifications all
+    #   day against 199 / 223 WS reconnects, while the mismatch detector fired 7 times fleet-wide.
+    #   Worse, `{acct}_connected` is stamped ONCE at connect (ez_positions_service.py:2699) and Binance does not
+    #   replay ACCOUNT_UPDATEs missed during a reconnect, so the 90 s after a reconnect — precisely when the store
+    #   is MOST likely to be wrong — was the window that claimed to be perfectly fresh.
+    # The three legitimate proofs, newest wins:
+    #   1. the row's own last_updated / mark_price_last_updated (stamped by the REST reconcile for THAT row)
+    #   2. an ACCOUNT_UPDATE for THIS position_key (a per-position WS event; the account-wide stamp proves
+    #      nothing about a different symbol's amount, so it is not accepted here)
+    #   3. positions_last_sync — the account-wide REST reconcile stamp
+    # Then the reconnect rule: any proof older than the last connect is discarded, because events in the
+    # reconnect gap were lost. No surviving proof -> None -> age_s() = inf -> STALE -> the caller polls the
+    # broker, which is the safe direction. This is the "verifies by api" leg of the design doing its job.
+    row_ts = entry_written_at(pos, None)
+    per_position_ws_ts = None
+    connect_ts = None
     try:
         stamps = getattr(svc, "_ws_update_timestamps", None) if svc is not None else None
         if isinstance(stamps, dict) and stamps:
             acct = str(position_key).split(":", 1)[0]
-            ws_ts = max(_f(stamps.get(position_key)), _f(stamps.get(acct)), _f(stamps.get(f"{acct}_connected")))
-            _nowt = time.time()
-            if ws_ts > 0 and (_nowt - ws_ts) < float(DEFAULTS["POSITIONS_WS_ALIVE_S"]):
-                # A LIVE subscription means the store reflects the broker AS OF NOW, so the age is ~0 — not the age
-                # of the last event. Returning the event age would be useless: POSITIONS_MAX_AGE_S is 1.0 s and a
-                # healthy quiet account's last ACCOUNT_UPDATE is routinely seconds or minutes old, so it would
-                # still take the REST path on every order. REST still reconciles in the background every
-                # POSITION_REFRESH_MIN_INTERVAL (3 s), and a WS that goes quiet past POSITIONS_WS_ALIVE_S stops
-                # qualifying here and the REST fallback returns.
-                sync_ts = _nowt
+            per_position_ws_ts = _epoch(stamps.get(position_key))
+            connect_ts = _epoch(stamps.get(f"{acct}_connected"))
     except Exception:
         pass
-    return amt, entry_written_at(pos, sync_ts)
+    proofs = [t for t in (row_ts, per_position_ws_ts, sync_ts) if t is not None]
+    if connect_ts is not None:
+        proofs = [t for t in proofs if t >= connect_ts]
+    return amt, (max(proofs) if proofs else None)
 
 
 def _store_is_broker_backed(svc: Any, config: Any = None) -> bool:

@@ -130,6 +130,30 @@ def install_overlay_for_process():
 
     engine.load_npz = load_overlay_npz
     from tools.opt import v12_pilot as pilot
+    import tools.v15_row_guards as row_guards
+
+    def overlay_identity(symside, indicators_dir=None, root=None):
+        from tools.opt.evaluate_v12 import resolve_tokenised
+
+        symbol, _ = resolve_tokenised(symside.rsplit("_", 1)[0])
+        path = Path(overlay_dir) / f"{symbol}.npz"
+        if not path.is_file():
+            return None
+        stat = path.stat()
+        try:
+            with np.load(path, mmap_mode="r", allow_pickle=True) as archive:
+                raw = np.asarray(archive["timestamps"], dtype=np.float64)
+            finite = raw[np.isfinite(raw) & (raw > 0)]
+            first = float(finite[0]) if finite.size else None
+            last = float(finite[-1]) if finite.size else None
+            count = int(raw.size)
+        except Exception:
+            first, last, count = None, None, None
+        return {"path": str(path), "mtime_ns": int(stat.st_mtime_ns), "size": int(stat.st_size),
+                "n": count, "ts_first": first, "ts_last": last,
+                "md5": hashlib.md5(path.read_bytes()).hexdigest()}
+
+    row_guards.npz_identity_for_symside = overlay_identity
 
     def overlay_freshness(symside: str):
         from tools.opt.evaluate_v12 import is_crypto, resolve_tokenised

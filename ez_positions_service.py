@@ -7265,6 +7265,17 @@ class PositionService:
             if not account_positions:
                 account_positions = self.positions_by_account.setdefault(account_key, {})
             logger.warning(f"[_process_account_update_impl][{account_key}] 🔄 Processing {len(raw_positions_data)} positions from API")
+            _service_rest_heartbeat = False
+            _service_rest_heartbeat_at = time.monotonic()
+            if complete_snapshot:
+                try:
+                    import position_writer_guard as _pwg_heartbeat
+                    if _pwg_heartbeat.process_role() == "service":
+                        _service_rest_heartbeat_dir = self.get_position_file(account_key, "LONG").parent
+                        _service_rest_heartbeat = True
+                        _pwg_heartbeat.write_heartbeat(_service_rest_heartbeat_dir, {"account": account_key, "note": "complete REST update active"})
+                except Exception:
+                    pass
             processed_count = 0
             skipped_count = 0
             for pos_api_data in raw_positions_data:
@@ -7426,7 +7437,12 @@ class PositionService:
                 self.positions[position_key] = existing_position
                 self._position_update_timestamps[position_key] = now
                 updated_keys_in_api.add(position_key)
+                if _service_rest_heartbeat and time.monotonic() - _service_rest_heartbeat_at >= 15.0:
+                    _pwg_heartbeat.write_heartbeat(_service_rest_heartbeat_dir, {"account": account_key, "note": "complete REST rows progressing"})
+                    _service_rest_heartbeat_at = time.monotonic()
             logger.warning(f"[_process_account_update_impl][{account_key}] Processed {processed_count} positions, skipped {skipped_count}, total updated_keys: {len(updated_keys_in_api)}")
+            if _service_rest_heartbeat:
+                _pwg_heartbeat.write_heartbeat(_service_rest_heartbeat_dir, {"account": account_key, "note": "complete REST ghost pass active"})
             try:
                 keys_in_memory_not_in_api = set(account_positions.keys()) - updated_keys_in_api
 

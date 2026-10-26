@@ -132,7 +132,26 @@ def run_push(host):
             os.replace(building, spool)
         source.close()
         remote_spool = S1_DB.parent / f"incoming_mac_history_after_{last}.jsonl.gz"
-        subprocess.run(["rsync", "-a", "--partial", "--append-verify", "--timeout=180", "-e", "ssh -S none -o BatchMode=yes -o ConnectTimeout=12", str(spool), f"{host}:{remote_spool}"], check=True, timeout=900)
+        remote_size = int(subprocess.check_output([*SSH, host, f"stat -c %s {remote_spool} 2>/dev/null || echo 0"], text=True, timeout=30).strip())
+        if remote_size > spool.stat().st_size:
+            raise ValueError("remote history spool exceeds source")
+        if remote_size:
+            remote_prefix = subprocess.check_output([*SSH, host, f"sha256sum {remote_spool}"], text=True, timeout=60).split()[0]
+            digest = hashlib.sha256()
+            with spool.open("rb") as stream:
+                remaining = remote_size
+                while remaining:
+                    chunk = stream.read(min(1024 * 1024, remaining))
+                    digest.update(chunk)
+                    remaining -= len(chunk)
+            if digest.hexdigest() != remote_prefix:
+                raise ValueError("remote history spool prefix differs from source")
+        subprocess.run(["rsync", "-a", "--append", "--timeout=180", "-e", "ssh -S none -o BatchMode=yes -o ConnectTimeout=12", str(spool), f"{host}:{remote_spool}"], check=True, timeout=7200)
+        remote_hash = subprocess.check_output([*SSH, host, f"sha256sum {remote_spool}"], text=True, timeout=60).split()[0]
+        with spool.open("rb") as stream:
+            local_hash = hashlib.file_digest(stream, "sha256").hexdigest()
+        if local_hash != remote_hash:
+            raise ValueError("remote history spool hash differs from source")
         result = subprocess.run([*SSH, host, f"python3 {REMOTE_SCRIPT} --ingest mac --ingest-file {remote_spool}"], capture_output=True, text=False, timeout=480)
         if result.returncode:
             raise RuntimeError(result.stderr.decode(errors="replace")[-1000:])

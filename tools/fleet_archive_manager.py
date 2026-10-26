@@ -344,7 +344,7 @@ def _drive_config(folder_id: str):
 
 def _rclone_on_server(args: list[str], timeout: int = 600, stdin=None) -> subprocess.CompletedProcess:
     command = '"$HOME/.local/bin/rclone" ' + " ".join(shlex.quote(str(arg)) for arg in args)
-    return subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", DRIVE_SSH_HOST, command], stdin=stdin, capture_output=True, timeout=timeout)
+    return subprocess.run(["ssh", "-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", DRIVE_SSH_HOST, command], stdin=stdin, capture_output=True, timeout=timeout)
 
 
 def _archive_to_google_via_server(host: str, source: str, signature: str, state: dict) -> None:
@@ -369,7 +369,8 @@ def _archive_to_google_via_server(host: str, source: str, signature: str, state:
         with local.open("rb") as stream:
             put = _rclone_on_server(["rcat", remote], timeout=1800, stdin=stream)
         if put.returncode:
-            raise RuntimeError(f"server-side Google Drive upload failed; source retained: {put.stderr.decode(errors='replace')[-300:]}")
+            detail = (put.stderr + put.stdout).decode(errors="replace")
+            raise RuntimeError(f"server-side Google Drive upload failed rc={put.returncode}; source retained: {detail[-400:]}")
         checked = _rclone_on_server(["md5sum", remote], timeout=600)
         if checked.returncode:
             raise RuntimeError("server-side Drive checksum query failed; source retained")

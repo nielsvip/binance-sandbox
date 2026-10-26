@@ -79,7 +79,7 @@ root_folder_id = {GOOGLE_FOLDER_ID}
 
 def rclone_on_server(args, timeout=300, stdin=None):
     command = '"$HOME/.local/bin/rclone" ' + " ".join(shlex.quote(str(arg)) for arg in args)
-    return subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", DRIVE_SSH_HOST, command], stdin=stdin, capture_output=True, timeout=timeout)
+    return subprocess.run(["ssh", "-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", DRIVE_SSH_HOST, command], stdin=stdin, capture_output=True, timeout=timeout)
 
 def sha256_file(fpath):
     digest = hashlib.sha256()
@@ -126,7 +126,8 @@ def upload_file(fpath):
             with fpath.open("rb") as stream:
                 result = rclone_on_server(["rcat", remote], timeout=1800, stdin=stream)
             if result.returncode:
-                log(f"Server-side Drive upload failed for {fpath.name}: {result.stderr.decode(errors='replace')[-300:]}", "WARN")
+                detail = (result.stderr + result.stdout).decode(errors="replace")
+                log(f"Server-side Drive upload failed rc={result.returncode} for {fpath.name}: {detail[-400:]}", "WARN")
                 return False
             local_md5 = hashlib.md5()
             with fpath.open("rb") as stream:

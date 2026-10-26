@@ -1,0 +1,172 @@
+{
+ "now": "2026-10-26T23:17:58.623997+00:00",
+ "coverage": 0.2264,
+ "covered": 60,
+ "n": 265,
+ "published_24h": 61,
+ "median_board_age_h": 76.1,
+ "mode": "catchup",
+ "per_cat": {
+  "CRYPTO_SHORT": {
+   "n": 68,
+   "covered": 12,
+   "coverage": 0.1765,
+   "published_24h": 12,
+   "published_but_npz_stale": 0,
+   "never_or_old": 56,
+   "median_board_age_h": 52.12
+  },
+  "CRYPTO_LONG": {
+   "n": 64,
+   "covered": 7,
+   "coverage": 0.1094,
+   "published_24h": 8,
+   "published_but_npz_stale": 1,
+   "never_or_old": 56,
+   "median_board_age_h": 58.27
+  },
+  "STOCKS_LONG": {
+   "n": 71,
+   "covered": 16,
+   "coverage": 0.2254,
+   "published_24h": 16,
+   "published_but_npz_stale": 0,
+   "never_or_old": 55,
+   "median_board_age_h": 94.44
+  },
+  "STOCKS_SHORT": {
+   "n": 62,
+   "covered": 25,
+   "coverage": 0.4032,
+   "published_24h": 25,
+   "published_but_npz_stale": 0,
+   "never_or_old": 37,
+   "median_board_age_h": 86.72
+  }
+ },
+ "throughput": {
+  "window_h": 1.0,
+  "target_per_host": 12,
+  "published_per_host": {},
+  "symbols_both_sides": 0,
+  "sym_sides": 0
+ },
+ "rules": {
+  "mode": true,
+  "n_tradeable": 265,
+  "n_never_qualifying": 14,
+  "n_never": 14,
+  "n_over_any": 2,
+  "n_trading": 125,
+  "n_trading_over": 31,
+  "never_counted_as_violator": false,
+  "max_age_any_h": 219.8,
+  "max_age_trading_h": 154.8,
+  "any_h": 216.0,
+  "trading_h": 96.0
+ },
+ "over_trading_sample": [
+  "MSTR_SHORT",
+  "KMNOUSDT_LONG",
+  "SOLUSDC_LONG",
+  "DOGEUSDC_LONG",
+  "XLMUSDT_LONG",
+  "INJUSDT_LONG",
+  "BBUSDT_SHORT",
+  "AAVEUSDC_LONG",
+  "PR_LONG",
+  "BCHUSDC_SHORT",
+  "JASMYUSDT_SHORT",
+  "DHR_LONG"
+ ],
+ "over_any_sample": [
+  "BMNR_SHORT",
+  "BKR_SHORT"
+ ],
+ "top_gainers": [
+  {
+   "sym_side": "LRCX_SHORT",
+   "pnl_usd_7d": 299.8242,
+   "board_age_h": 104.0,
+   "cadence_h": 6.0,
+   "next_due_in_h": 0.0
+  },
+  {
+   "sym_side": "ORCL_SHORT",
+   "pnl_usd_7d": 115.895,
+   "board_age_h": 113.5,
+   "cadence_h": 6.0,
+   "next_due_in_h": 0.0
+  },
+  {
+   "sym_side": "META_LONG",
+   "pnl_usd_7d": 100.566,
+   "board_age_h": 154.4,
+   "cadence_h": 6.0,
+   "next_due_in_h": 0.0
+  },
+  {
+   "sym_side": "ASML_LONG",
+   "pnl_usd_7d": 88.5628,
+   "board_age_h": 195.4,
+   "cadence_h": 6.0,
+   "next_due_in_h": 0.0
+  },
+  {
+   "sym_side": "ACN_LONG",
+   "pnl_usd_7d": 81.5568,
+   "board_age_h": 89.3,
+   "cadence_h": 6.0,
+   "next_due_in_h": 0.0
+  },
+  {
+   "sym_side": "XOM_LONG",
+   "pnl_usd_7d": 73.3417,
+   "board_age_h": 16.0,
+   "cadence_h": 6.0,
+   "next_due_in_h": 0.0
+  },
+  {
+   "sym_side": "AAPL_LONG",
+   "pnl_usd_7d": 73.2529,
+   "board_age_h": 112.9,
+   "cadence_h": 6.0,
+   "next_due_in_h": 0.0
+  },
+  {
+   "sym_side": "COST_LONG",
+   "pnl_usd_7d": 62.8889,
+   "board_age_h": 90.0,
+   "cadence_h": 6.0,
+   "next_due_in_h": 0.0
+  },
+  {
+   "sym_side": "CDE_SHORT",
+   "pnl_usd_7d": 49.6015,
+   "board_age_h": 87.7,
+   "cadence_h": 6.0,
+   "next_due_in_h": 0.0
+  },
+  {
+   "sym_side": "ALB_SHORT",
+   "pnl_usd_7d": 45.6746,
+   "board_age_h": 210.3,
+   "cadence_h": 6.0,
+   "next_due_in_h": 0.0
+  }
+ ],
+ "live_gain": {
+  "file_age_h": 0.3,
+  "sym_sides": 263,
+  "trading": 143
+ },
+ "never_class": true,
+ "n_never": 14,
+ "coverage_hysteresis_excl_never": true,
+ "budget": {
+  "slow_forced_by_round_env": false,
+  "evals": 12000,
+  "n_budget_launch_sides": 33,
+  "n_full_sides": 232
+ }
+}
