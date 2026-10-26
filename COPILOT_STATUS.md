@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-26 11:04:34 UTC
+# Copilot Status — 2026-10-26 11:09:43 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-26T10:53:37
-- **STALE_INDICATORS** [tradier]  — 2026-10-26T10:55:40
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-26T10:55:40
-- **STALE_INDICATORS** [tradier]  — 2026-10-26T10:57:43
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-26T10:57:43
 - **STALE_INDICATORS** [tradier]  — 2026-10-26T10:59:46
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-26T10:59:46
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-26T11:01:49
 - **STALE_INDICATORS** [tradier]  — 2026-10-26T11:03:53
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-26T11:03:53
+- **STALE_INDICATORS** [tradier]  — 2026-10-26T11:05:56
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-26T11:05:56
+- **STALE_INDICATORS** [tradier]  — 2026-10-26T11:08:00
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-26T11:08:00
 
 ## Missed Trades (trader comparison)
 
@@ -29,17 +29,17 @@ _None_
 
 **Held:** 6 | **Watching for reentry:** 9 | **Reentered:** 0
 
-- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +-0.3%
+- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +-0.1%
 - HELD: **ARM** SHORT (tradier) peak +8.3%, now +-0.5%
 - HELD: **CDE** SHORT (tradier) peak +5.0%, now +2.1%
-- HELD: **MINAUSDT** SHORT (crypto) peak +4.2%, now +-0.3%
+- HELD: **MINAUSDT** SHORT (crypto) peak +4.2%, now +-0.4%
 - HELD: **NXE** SHORT (tradier) peak +3.3%, now +-0.4%
 - HELD: **BNBUSDC** SHORT (crypto) peak +3.0%, now +-0.5%
 
 - WATCHING: **MASKUSDT** SHORT (crypto) peaked +10.0%, exited 0m ago
 - WATCHING: **GALAUSDT** SHORT (crypto) peaked +9.7%, exited 0m ago
-- WATCHING: **QNTUSDT** LONG (crypto) peaked +8.7%, exited 0m ago
 - WATCHING: **BEAMXUSDT** LONG (crypto) peaked +8.6%, exited 0m ago
+- WATCHING: **ACEUSDT** SHORT (crypto) peaked +7.7%, exited 0m ago
 - WATCHING: **STXUSDT** SHORT (crypto) peaked +5.5%, exited 0m ago
 - WATCHING: **INJUSDT** LONG (crypto) peaked +4.5%, exited 0m ago
 - WATCHING: **NMRUSDT** SHORT (crypto) peaked +4.3%, exited 0m ago
@@ -55,4 +55,4 @@ _None_
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_positions.py is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] tradier_prices.py running but log stale (36min)
+- [MEDIUM] tradier_prices.py running but log stale (41min)
