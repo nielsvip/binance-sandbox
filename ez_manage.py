@@ -26874,6 +26874,10 @@ class MultiAccountTradeManager:
                         _it_acct = it.get("account")
                         if isinstance(_it_acct, str) and _it_acct.strip() and _it_acct.strip() != account_key:
                             continue
+                        if str(it.get("intent_id") or "").startswith("PB-") and symbol.endswith(("USDT", "USDC", "USD1", "USDS", "BUSD", "FDUSD", "TUSD", "DAI")):
+                            store.mark(it["intent_id"])
+                            _vdm.append_jsonl(base / f"live_exec_{account_key}.jsonl", {"ts": time.time(), "intent_id": it["intent_id"], "ss": ss, "bar_ts": it.get("bar_ts"), "type": it["type"], "action": None, "result": "REFUSED_LEGACY_CRYPTO_PRODUCER"})
+                            continue
                         if str(it.get("type") or "").upper() in ("OPEN", "AUGMENT"):
                             if ss not in _vd_invalid_states:
                                 _vd_state = _vdm.load_state(base / "state", ss)

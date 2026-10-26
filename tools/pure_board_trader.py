@@ -511,6 +511,10 @@ def write_intent(acct: str, ss: str, bar_ts: float, typ: str, reason: str, targe
     return iid
 
 
+def _is_crypto_side(ss):
+    return ss.rsplit('_', 1)[0].endswith(("USDT", "USDC", "USD1", "USDS", "BUSD", "FDUSD", "TUSD", "DAI"))
+
+
 def _board_gain(pb):
     """The gain the published board claimed for this set (evidence is a dict on fresh selections, a JSON string on older)."""
     ev = (pb or {}).get("evidence")
@@ -650,6 +654,9 @@ def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4, held=N
                             # calculated key — refresh its state/ so reconcile (1200s
                             # horizon) and the per-key oracle see a current-bar verdict.
                             # No intent: nothing needs ordering when board and live agree.
+                            if _is_crypto_side(ss):
+                                stats["CRYPTO_V20_STATE_OWNER"] += 1
+                                continue
                             try:
                                 _hb = VEC_LIVE / "state"
                                 _hb.mkdir(parents=True, exist_ok=True)
@@ -679,7 +686,7 @@ def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4, held=N
                                "engine_gain": res.get("engine_gain"), "live_entry": (held.get((acct, ss)) or {}).get("entry"),
                                "live_gain_pct": (held.get((acct, ss)) or {}).get("gain")}
                         stats[f"CONV_{conv}"] += 1
-                        if vec_driven:
+                        if vec_driven and not _is_crypto_side(ss):
                             try:
                                 iid = write_intent(acct, ss, bar_ts, "CLOSE" if conv == "CONVERGE_CLOSE" else "OPEN",
                                                    row["reason"], target_holding=(conv == "CONVERGE_OPEN"),
@@ -689,6 +696,8 @@ def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4, held=N
                             except Exception as exc:
                                 row["intent_error"] = f"{type(exc).__name__}: {exc}"[:120]
                                 stats["INTENT_ERROR"] += 1
+                        elif vec_driven:
+                            stats["CRYPTO_V20_INTENT_OWNER"] += 1
                         if live_tm is not None:
                             try:
                                 px = float((held.get((acct, ss)) or {}).get("mark") or est.get("entry_price") or 0.0)

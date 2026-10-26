@@ -574,11 +574,30 @@ def test_same_bar_duplicate_dictates_collapse(tmp_path, monkeypatch):
     vector decision: collapsed in the consumer, not refused by a cap downstream."""
     base, vl, tm, calls = _setup(tmp_path, monkeypatch, REG_LIVE)
     bar = time.time() - 30
-    _intent(vl, "PB-ang-BTCUSDT_LONG-OPEN", "BTCUSDT_LONG", "OPEN", bar)
-    _intent(vl, "PB-men-BTCUSDT_LONG-OPEN", "BTCUSDT_LONG", "OPEN", bar)
-    _intent(vl, "PB-inf-BTCUSDT_LONG-OPEN", "BTCUSDT_LONG", "OPEN", bar)
+    _intent(vl, "V20-ang-BTCUSDT_LONG-OPEN", "BTCUSDT_LONG", "OPEN", bar)
+    _intent(vl, "V20-men-BTCUSDT_LONG-OPEN", "BTCUSDT_LONG", "OPEN", bar)
+    _intent(vl, "V20-inf-BTCUSDT_LONG-OPEN", "BTCUSDT_LONG", "OPEN", bar)
     _run_loop(tm, monkeypatch, cycles=1)
     assert len(calls) == 1, calls
+
+
+def test_legacy_crypto_producer_intent_is_consumed_without_order(tmp_path, monkeypatch):
+    base, vl, tm, calls = _setup(tmp_path, monkeypatch, REG_LIVE)
+    _intent(vl, "PB-men-BTCUSDT_LONG-OPEN", "BTCUSDT_LONG", "OPEN", time.time() - 5)
+    _run_loop(tm, monkeypatch, cycles=1)
+    assert calls == []
+    assert VD.ConsumedStore(vl / "consumed_men.json").has("PB-men-BTCUSDT_LONG-OPEN")
+    rows = [json.loads(line) for line in (vl / "live_exec_men.jsonl").read_text().splitlines()]
+    assert any(row.get("result") == "REFUSED_LEGACY_CRYPTO_PRODUCER" for row in rows)
+
+
+def test_invalid_forward_state_refuses_old_open_intent(tmp_path, monkeypatch):
+    base, vl, tm, calls = _setup(tmp_path, monkeypatch, REG_LIVE)
+    (vl / "state" / "BTCUSDT_LONG.json").write_text(json.dumps({"ss": "BTCUSDT_LONG", "status": "NO_ACTIVE_SET", "actionable": False, "written_at": time.time()}))
+    _intent(vl, "old-v20-open", "BTCUSDT_LONG", "OPEN", time.time() - 5)
+    _run_loop(tm, monkeypatch, cycles=1)
+    assert calls == []
+    assert VD.ConsumedStore(vl / "consumed_men.json").has("old-v20-open")
 
 
 def test_vec_close_is_never_dropped_when_any_source_shows_a_position(tmp_path, monkeypatch):

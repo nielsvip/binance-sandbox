@@ -141,8 +141,8 @@ print(json.dumps(out))"""
 
 
 def _verify_tar_against_stage(batch: str, archive: str) -> None:
-    source = subprocess.Popen(["ssh", "-o", "BatchMode=yes", "s5", "nice -n 19 ionice -c3 zstd -dc %s" % shlex.quote(archive)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    compare = subprocess.Popen(["ssh", "-o", "BatchMode=yes", "s1-pub", "nice -n 19 ionice -c3 tar -df - -C %s" % shlex.quote(S1_STAGING)], stdin=source.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    source = subprocess.Popen(["ssh", "-o", "BatchMode=yes", "s5", "nice -n 19 ionice -c2 -n7 zstd -dc %s" % shlex.quote(archive)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    compare = subprocess.Popen(["ssh", "-o", "BatchMode=yes", "s1-pub", "nice -n 19 ionice -c2 -n7 tar -df - -C %s" % shlex.quote(S1_STAGING)], stdin=source.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     source.stdout.close()
     _, compare_err = compare.communicate(timeout=1800)
     source_err = source.stderr.read()
@@ -176,29 +176,44 @@ def _archive_s1_staging(apply: bool) -> None:
         if _ssh("s5", "test -f %s" % shlex.quote(dest), check=False).returncode == 0:
             _log("s1_stage_retained", batch=name, reason="destination already exists; manual integrity review required")
             continue
-        prep = "import pathlib; d=pathlib.Path(%s); d.mkdir(parents=True,exist_ok=True); pathlib.Path(%s).unlink(missing_ok=True)" % (repr(S5_ARCHIVE_ROOT), repr(part))
-        _ssh("s5", "python3 -c %s" % shlex.quote(prep))
-        remote_tar = "nice -n 19 ionice -c3 tar -C %s -cf - -- %s" % (shlex.quote(S1_STAGING), shlex.quote(name))
-        src = subprocess.Popen(["ssh", "-o", "BatchMode=yes", "s1-pub", "bash -lc %s" % shlex.quote(remote_tar)], stdout=subprocess.PIPE)
-        zst = subprocess.Popen(["nice", "-n", "19", "/opt/homebrew/bin/zstd", "-T1", "-3", "-c"], stdin=src.stdout, stdout=subprocess.PIPE)
-        src.stdout.close()
-        put = subprocess.Popen(["ssh", "-o", "BatchMode=yes", "s5", "cat > %s" % shlex.quote(part)], stdin=subprocess.PIPE)
-        digest = hashlib.sha256()
-        for block in iter(lambda: zst.stdout.read(1024 * 1024), b""):
-            digest.update(block)
-            put.stdin.write(block)
-        put.stdin.close()
-        zst.stdout.close()
-        src_rc, zst_rc, put_rc = src.wait(timeout=1800), zst.wait(timeout=1800), put.wait(timeout=1800)
-        if src_rc or zst_rc or put_rc:
-            cleanup = "import pathlib; pathlib.Path(%s).unlink(missing_ok=True)" % repr(part)
-            _ssh("s5", "python3 -c %s" % shlex.quote(cleanup), check=False)
-            raise RuntimeError(f"S1 staged archive stream failed for {name}: {src_rc}/{zst_rc}/{put_rc}")
-        sha = digest.hexdigest()
-        remote_check = _ssh("s5", "zstd -t %s >/dev/null && sha256sum %s" % (shlex.quote(part), shlex.quote(part)))
-        if remote_check.stdout.split()[0] != sha:
-            raise RuntimeError(f"S1 staged archive SHA256 mismatch for {name}; source retained")
-        _verify_tar_against_stage(name, part)
+        sig_before = _source_signature("s1", source)
+        with tempfile.TemporaryDirectory(prefix="fleet-s1-stage-") as stage_name:
+            stage = Path(stage_name) / "payload"
+            stage.mkdir()
+            archive = Path(stage_name) / (name + ".tar.zst")
+            copied = subprocess.run(["rsync", "-a", "--whole-file", "--partial", "--bwlimit=60000", "--rsync-path=nice -n 19 ionice -c2 -n7 rsync", f"{HOSTS['s1']}:{source}/", f"{stage}/"], capture_output=True, text=True, timeout=2400)
+            if copied.returncode:
+                raise RuntimeError(f"S1 staging copy failed for {name}: {copied.stderr[-300:]}")
+            with archive.open("wb") as output:
+                tar_proc = subprocess.Popen(["tar", "-C", str(stage), "-cf", "-", "."], stdout=subprocess.PIPE)
+                zstd_proc = subprocess.Popen(["nice", "-n", "19", "/opt/homebrew/bin/zstd", "-T1", "-3", "-c"], stdin=tar_proc.stdout, stdout=output)
+                tar_proc.stdout.close()
+                zstd_rc = zstd_proc.wait(timeout=1800)
+                tar_rc = tar_proc.wait(timeout=1800)
+            if tar_rc or zstd_rc or subprocess.run(["zstd", "-t", str(archive)], capture_output=True).returncode:
+                raise RuntimeError(f"local archive integrity failed for S1 staging batch {name}")
+            unpack = subprocess.Popen(["zstd", "-dc", str(archive)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            compare = subprocess.Popen(["tar", "-df", "-", "-C", str(stage)], stdin=unpack.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            unpack.stdout.close()
+            _, compare_err = compare.communicate(timeout=1800)
+            unpack_err = unpack.stderr.read()
+            if unpack.wait(timeout=60) or compare.returncode:
+                raise RuntimeError(f"local archive content comparison failed for {name}: {unpack_err.decode(errors='replace')[-200:]} {compare_err.decode(errors='replace')[-200:]}")
+            h = hashlib.sha256()
+            with archive.open("rb") as stream:
+                for block in iter(lambda: stream.read(1024 * 1024), b""):
+                    h.update(block)
+            sha = h.hexdigest()
+            prep = "import pathlib; d=pathlib.Path(%s); d.mkdir(parents=True,exist_ok=True); pathlib.Path(%s).unlink(missing_ok=True)" % (repr(S5_ARCHIVE_ROOT), repr(part))
+            _ssh("s5", "python3 -c %s" % shlex.quote(prep))
+            sent = subprocess.run(["rsync", "-a", "--partial", str(archive), f"{HOSTS['s5']}:{part}"], capture_output=True, text=True, timeout=1800)
+            if sent.returncode:
+                raise RuntimeError(f"S5 archive transfer failed for {name}: {sent.stderr[-300:]}")
+            remote_check = _ssh("s5", "zstd -t %s >/dev/null && sha256sum %s" % (shlex.quote(part), shlex.quote(part)))
+            if remote_check.stdout.split()[0] != sha:
+                raise RuntimeError(f"S1 staged archive SHA256 mismatch for {name}; source retained")
+        if _source_signature("s1", source) != sig_before:
+            raise RuntimeError(f"S1 staged files changed during archive; source retained")
         if _open_handles("s1", source):
             raise RuntimeError(f"S1 staged batch {name} became busy during archive; source retained")
         _ssh("s5", "mv %s %s" % (shlex.quote(part), shlex.quote(dest)))
@@ -251,7 +266,7 @@ def _make_local_archive(host: str, source: str, stage: Path) -> tuple[Path, str]
     else:
         dest = stage / (name + ".tar.zst")
         parent, leaf = os.path.split(source.rstrip("/"))
-        remote = "set -o pipefail; nice -n 19 ionice -c3 tar -C %s -cf - -- %s | nice -n 19 ionice -c3 zstd -T1 -3 -c" % (shlex.quote(parent), shlex.quote(leaf))
+        remote = "set -o pipefail; nice -n 19 ionice -c2 -n7 tar -C %s -cf - -- %s | nice -n 19 ionice -c2 -n7 zstd -T1 -3 -c" % (shlex.quote(parent), shlex.quote(leaf))
         with dest.open("wb") as output:
             proc = subprocess.Popen(["ssh", "-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", HOSTS[host], "bash", "-lc", remote], stdout=subprocess.PIPE)
             for block in iter(lambda: proc.stdout.read(1024 * 1024), b""):
