@@ -51673,7 +51673,7 @@ class TradierTradeManager:
             try:
                 from vec_decisions import vec_parity_gates as _vpg_do_tr
                 _vpg_do_on_tr = bool(_cfg_auto("VEC_DICTATE_ONLY_ENABLED", True))
-                if _vpg_do_on_tr and not bool(_vl_dictated_tr) and not _vpg_do_tr.dictate_only_exempt(action, reason):
+                if _vpg_do_on_tr and not bool(_vl_dictated_tr) and not _vpg_do_tr.dictate_only_exempt(action, reason, sym_side=f"{symbol}_{position_side}", ultimate_buffer_pct=_cfg("UNCOND_DC_HARD_STOP_BUFFER_PCT", 0.25, account_key, symbol, position_side)):
                     try:
                         from live_twins import vec_pending as _vp_pre_tr
                         _vp_defer_on_tr = bool(_cfg_auto("VEC_PENDING_DEFER_NATIVE_ENABLED", True))

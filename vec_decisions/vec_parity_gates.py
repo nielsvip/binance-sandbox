@@ -7,6 +7,8 @@ VEC_DISAGREE_FLAT_OPEN_BLOCK, which implements the explicit zero-tolerance
 order (no OPEN while the forward vec target is flat).
 """
 
+import re
+
 CIRCUIT_BREAKER_TOKEN = "CIRCUIT_BREAKER"
 QUICK_REDUCE_TOKENS = ("QUICK_REDUCE", "QUICK_BB_RECOVERY")
 PROTECTED_TOKENS = (
@@ -121,7 +123,32 @@ def _per_sym_knob_true(sym_side, knob):
     return None
 
 
-def dictate_only_exempt(action, reason, sym_side=None):
+def mandatory_stop_exempt(action, reason, ultimate_buffer_pct=None):
+    """Allow only the two frozen DC stop laws through dictate-only parity."""
+    if str(action or "").upper() != "CLOSE":
+        return False
+    r = str(reason or "").upper()
+    if r.startswith(("ULTIMATE_DC_4H_HARD_STOP_", "QUICK_ULTIMATE_DC_4H_HARD_STOP_")):
+        try:
+            return float(ultimate_buffer_pct) == 0.25
+        except (TypeError, ValueError, OverflowError):
+            return False
+    if not r.startswith("FIXED_STOP_"):
+        return False
+    # The live producer omits the reference suffix for the canonical frozen
+    # entry dc_15m ±0.25% law. Any explicit REF tag must match a non-tightened
+    # dc_15m or dc_4h ±0.25% spec below.
+    if "_REF" not in r:
+        return re.fullmatch(
+            r"FIXED_STOP_(?:LONG|SHORT)_PX\d+(?:\.\d+)?_LVL\d+(?:\.\d+)?_G[-+]?\d+(?:\.\d+)?",
+            r,
+        ) is not None
+    return re.search(
+        r"_REFDC_(?:LOW|HIGH)\.(?:15M|4H)\.B0\.25$", r
+    ) is not None
+
+
+def dictate_only_exempt(action, reason, sym_side=None, ultimate_buffer_pct=None):
     # USER 2026-10-25: ONLY vec parity decides — no family, lane, or dispatcher
     # exemption, QUICK included. Survivors are vec speech itself: board-confirmed
     # reasons, the board-measured per_sym switch dictate, and side-preserving
@@ -141,6 +168,8 @@ def dictate_only_exempt(action, reason, sym_side=None):
     try:
         _ru = str(reason or "").upper()
         if _ru.startswith(("RATIO_REDUCE_", "RATIO_REBALANCE_AUGMENT_")):
+            return True
+        if mandatory_stop_exempt(action, reason, ultimate_buffer_pct):
             return True
         if _ve._is_board_confirmed(reason):
             return True
@@ -167,10 +196,6 @@ def dictate_only_exempt(action, reason, sym_side=None):
                     if _per_sym_knob_true(sym_side, _kb) is True:
                         return True
                     break
-            # USER 2026-10-25 fact ruling (FIXED_STOP non-negotiable) NOT applied:
-            # tests/test_vec_parity_switches.py::test_dictate_only_persym_overrides_global
-            # encodes the opposite contract (FIXED_STOP stays blocked). Changing it
-            # needs an explicit user decision — surfacing, not forcing.
     except Exception:
         return True
     return False

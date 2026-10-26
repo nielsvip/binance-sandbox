@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """engine_deploy (Agent M, permanent integrator): atomic deploy of a staged tree (mirrors repo paths: v12_quick_engine.py, vec_decisions/*.py,
-tools/opt/evaluate_v12.py, data/switch_dependencies.json, data/vec_unwired.json, backtest_v12_engine.py ...) to Mac + s1/s2/s5 (~/binance-sandbox and ~/binance).
+tools/opt/evaluate_v12.py, data/switch_dependencies.json, data/vec_unwired.json, backtest_v12_engine.py ...) to Mac + s1/s2/s5/s6 (~/binance-sandbox and ~/binance).
 Order: every non-engine file FIRST, v12_quick_engine.py LAST; each file is copied to <name>.new.<ts> then mv'd (atomic rename) so a starting pilot never imports a half-written file.
 Backups: backups/before_engine_<ts>/ (Mac) and ~/binance-sandbox/backups/before_engine_<ts>/ (hosts). Then md5 verify + import check; writes data/engine_deploy/<ts>.json + CURRENT.json.
   python tools/engine_deploy.py --stage DIR [--label TEXT] [--no-hosts]"""
 import argparse, datetime, hashlib, json, os, shutil, subprocess, sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-HOSTS = ["s1-pub", "s2", "s5"]
+HOSTS = ["s1-pub", "s2", "s5", "s6"]
 DIRS = ["binance-sandbox", "binance"]
 SSH = ["ssh", "-S", "none", "-o", "StrictHostKeyChecking=accept-new", "-o", "ConnectTimeout=15"]
 def md5(p): return hashlib.md5(open(p, "rb").read()).hexdigest()
@@ -69,6 +69,11 @@ def main():
     if os.path.exists(cp_): cur = json.load(open(cp_)).get("md5", {})
     cur.update(res["files"])
     json.dump(res, open(os.path.join(ROOT, f"data/engine_deploy/{ts}.json"), "w"), indent=1)
+    bad_any = [k for k, v in res["hosts"].items()
+               if v["md5_bad"] or not v["moved"] or v["import"] != "ok"]
+    if not a.no_hosts and (bad_any or len(res["hosts"]) != len(HOSTS) * len(DIRS)):
+        print(f"[engine_deploy] INCOMPLETE hosts={bad_any} checked={len(res['hosts'])}; CURRENT unchanged", file=sys.stderr)
+        raise SystemExit(1)
     _split = lambda x: [k.strip() for k in x.split(",") if k.strip()]
     _eng = res["files"].get("v12_quick_engine.py") or cur.get("v12_quick_engine.py") or ""
     _cf = {"engine_md5": _eng, "at": datetime.datetime.utcnow().isoformat() + "Z", "deploy": ts, "label": a.label, "changed": _split(a.changed), "wired_now": _split(a.wired_now)}
@@ -76,7 +81,6 @@ def main():
         _cf["changed"] = ["__UNSPECIFIED__"]   # Agent Y: unknown scope -> recompute everything (queue MANIFEST must list changed_keys)
     json.dump(_cf, open(os.path.join(ROOT, "data/engine_deploy/changed_filters.json"), "w"), indent=1)
     json.dump({"updated_utc": datetime.datetime.utcnow().isoformat() + "Z", "last_deploy": ts, "engine_md5": _eng, "changed_filters_file": "data/engine_deploy/changed_filters.json", "md5": cur}, open(cp_, "w"), indent=1)
-    bad_any = [k for k, v in res["hosts"].items() if v["md5_bad"] or not v["moved"]]
     line = f"{datetime.datetime.utcnow().strftime('%H:%MZ')} [M deploy {ts}] {a.label} files={len(files)} engine={res['files'].get('v12_quick_engine.py','-')[:8]} hosts_bad={bad_any or 'none'} imports={sorted({v['import'] for v in res['hosts'].values()})}"
     open(os.path.join(ROOT, "data/wiring/LOG.md"), "a").write("- " + line + "\n"); open(os.path.join(ROOT, "DAILY_AVG_DELTA_CHECKLIST.md"), "a").write("- " + line + "\n")
     print(line)

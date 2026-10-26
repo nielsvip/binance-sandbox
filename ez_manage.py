@@ -37452,7 +37452,7 @@ class MultiAccountTradeManager:
             try:
                 from vec_decisions import vec_parity_gates as _vpg_do
                 _vpg_do_on = bool(getattr(_ezm_base_config, "VEC_DICTATE_ONLY_ENABLED", getattr(config, "VEC_DICTATE_ONLY_ENABLED", True)))
-                if _vpg_do_on and not bool(_vl_dictated) and not _vpg_do.dictate_only_exempt(action, reason):
+                if _vpg_do_on and not bool(_vl_dictated) and not _vpg_do.dictate_only_exempt(action, reason, sym_side=f"{symbol}_{position_side}", ultimate_buffer_pct=_psym_get(symbol, position_side, "UNCOND_DC_HARD_STOP_BUFFER_PCT", getattr(config, "UNCOND_DC_HARD_STOP_BUFFER_PCT", None))):
                     try:
                         from live_twins import vec_pending as _vp_pre
                         _vp_defer_on = bool(getattr(_ezm_base_config, "VEC_PENDING_DEFER_NATIVE_ENABLED", getattr(config, "VEC_PENDING_DEFER_NATIVE_ENABLED", True)))
