@@ -78,7 +78,8 @@ VEC_EXIT_TOKENS = (
     "HLR_TOP_EXIT",                           # vec HLR_TOP_EXIT (live QUICK_-prefixed)
     "SENTIMENT_CUT_GAIN",                     # vec SENTIMENT_CUT_GAIN (live QUICK_SENTIMENT_CUT_GAIN)
     "DC_HOPELESS",                            # vec DC_HOPELESS_EXIT
-    "CYCLE_TP",                               # vec QUICK_CYCLE_TP_STOCH_AGAINST (live QUICK_CYCLE_TP_*, CYCLE_TP_TIERED_*)
+    "CYCLE_TP_TIERED_",                       # shared twin_sizing_reduce.cycle_tp_tier (live + v12)
+    "CYCLE_TP",                               # vec QUICK_CYCLE_TP_STOCH_AGAINST (live QUICK_CYCLE_TP_*)
     "HEDGE_CLOSE_WT",                         # vec HEDGE_CLOSE_WT (live HEDGE_CLOSE_WTNMNH_*)
     "WT15M_AGAINST",                            # vec v12 scalar WT15M force-close (live process_position twin) — D4 Edit 6 2026-10-04
     # 2026-10-17 USER "we need total parity so it should be True": every exit family below is EMITTED by the vector engine

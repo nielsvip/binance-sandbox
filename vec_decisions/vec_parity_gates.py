@@ -212,6 +212,7 @@ def dictate_only_exempt(action, reason, sym_side=None, ultimate_buffer_pct=None)
                 ("DC4_", "BREAKEVEN_DC_LOW4_ENABLED"),
                 ("QUICK_BREAKEVEN_", "BREAKEVEN_GAIN_EROSION_ENABLED"),
                 ("BREAKEVEN_GAIN_EROSION", "BREAKEVEN_GAIN_EROSION_ENABLED"),
+                ("CYCLE_TP_TIERED_", "CYCLE_TP_TIERED_ENABLED"),
             ):
                 if _r.startswith(_pfx) or _ru.startswith(_pfx):
                     if _per_sym_knob_true(sym_side, _kb) is True:

@@ -160,6 +160,13 @@ def test_canonical_anchor_tracks_latest_30_sessions_and_crypto_days(monkeypatch)
     assert anchor["window_policy"] == "30_calendar_days"
 
 
+def test_replay_computation_is_separate_from_promotion_floors():
+    assert X.replay_computed({"valid": False, "invalid_reason": "trades 0 < 10 (wd=30)", "execution_ledger": []})
+    assert X.replay_computed({"valid": False, "invalid_reason": "TIM 82.0% >80%", "execution_ledger": []})
+    assert not X.replay_computed({"valid": False, "invalid_reason": "DATA_SAWTOOTH", "execution_ledger": []})
+    assert not X.replay_computed({"valid": True, "execution_ledger": None})
+
+
 def test_equivalence():
     sss = [s for s in os.environ.get("VEC_LIVE_TEST_SS", "").split(",") if s]
     if not sss:

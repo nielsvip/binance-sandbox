@@ -21995,6 +21995,41 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     except Exception:
                         pass
 
+        # CYCLE_TP_TIERED (live ez_manage.process_position + tradier_manage.process_position):
+        # same shared threshold helper, per-position fired-tier state, exact live reason/quantity,
+        # and the execution ledger's strict estimated-fee-positive REDUCE gate.
+        if pos is not None:
+            try:
+                import vec_decisions.twin_sizing_reduce as _ctp_core
+                _ctp_fired = pos.setdefault("cycle_tp_tier_fired", set())
+                _ctp_hit = _ctp_core.cycle_tp_tier(
+                    lambda _key, _default: getattr(cfg, _key, _default),
+                    live_pnl_pct,
+                    _ctp_fired,
+                )
+                if _ctp_hit is not None:
+                    _ctp_idx, _ctp_level, _ctp_frac = _ctp_hit
+                    _ctp_qty = float(pos["qty"]) * float(_ctp_frac)
+                    if is_tradier:
+                        _ctp_qty = float(int(_ctp_qty))
+                    _ctp_valid_qty = _ctp_qty > 0.0 and _ctp_qty < float(pos["qty"])
+                    if is_tradier:
+                        _ctp_valid_qty = _ctp_qty >= 1.0 and float(pos["qty"]) - _ctp_qty >= 1.0
+                    if _ctp_valid_qty:
+                        _ctp_reason = f"CYCLE_TP_TIERED_T{_ctp_idx}_{_ctp_level * 100:.2f}pct_gain{live_pnl_pct:.2f}"
+                        _ctp_ts = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+                        _ctp_event = {"type": "REDUCE", "ts": _ctp_ts, "price": float(px), "qty": float(_ctp_qty), "pos_deployed": float(pos["deployed"]), "bar": int(i), "reason": _ctp_reason}
+                        _ctp_event_count = len(events)
+                        events.append(_ctp_event)
+                        if len(events) > _ctp_event_count:
+                            _ctp_fired.add(int(_ctp_idx))
+                            _ctp_realized = (px - pos["avg_price"]) * _ctp_qty if is_long else (pos["avg_price"] - px) * _ctp_qty
+                            pos["realized"] += _ctp_realized
+                            pos["fees"] += abs(_ctp_qty * px) * half_fee
+                            pos["qty"] -= _ctp_qty
+            except Exception:
+                pass
+
         # ═══ PARTIAL_PROFIT_LOCK v2 (2026-09-28 parity round 3) — faithful state machine of
         # tradier_manage.py:18720-18798 / ez_positions_quick.py:18586-18640 via
         # vec_decisions.reduce_profit_lock.ppl_step (TP -> BE stop -> arm upgrade -> SL close).

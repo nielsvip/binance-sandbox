@@ -355,6 +355,16 @@ def replay_state(ledger, upto_ts: float = None):
     }
 
 
+def replay_computed(res: dict) -> bool:
+    """Allow completed ledger state despite promotion-only metric-floor failures."""
+    if not isinstance(res, dict) or res.get("execution_ledger") is None:
+        return False
+    if res.get("valid") is True:
+        return True
+    reason = str(res.get("invalid_reason") or "")
+    return reason.startswith(("trades ", "TIM ", "DD "))
+
+
 def events_at(ledger, bar_ts: float):
     """Ledger rows that execute ON bar_ts (FINAL_MTM dropped; REDUCE trade-row deduped against its event row)."""
     rows = [
@@ -595,14 +605,12 @@ def process(
     why = ""
     if pre_err:
         status, why = "ENGINE_ERROR", pre_err
-    elif res.get("valid") is not True:
-        status, why = "INVALID_30D_REPLAY", str(res.get("invalid_reason") or "unverified 30D replay")
+    elif res.get("execution_ledger") is None:
+        status, why = "ENGINE_ERROR", str(res.get("invalid_reason") or "execution ledger missing")
     elif n_bars < MIN_BARS:
         status, why = "INSUFFICIENT_BARS", f"{n_bars} < {MIN_BARS} bars from anchor"
-    elif res.get("execution_ledger") is None and "v12 prepared" in str(
-        res.get("invalid_reason") or ""
-    ):
-        status, why = "ENGINE_ERROR", str(res.get("invalid_reason"))
+    elif not replay_computed(res):
+        status, why = "INVALID_30D_REPLAY", str(res.get("invalid_reason") or "unverified 30D replay")
     raw_events, tgt, consistent, cwhy = (
         ([], {"side": "unknown"}, False, "")
         if status != "OK"
@@ -694,6 +702,8 @@ def process(
         "window_end_ts": anchor.get("npz_end_ts"),
         "bars_from_anchor": n_bars,
         "engine_valid": res.get("valid"),
+        "performance_valid": res.get("valid") is True,
+        "performance_invalid_reason": res.get("invalid_reason") if res.get("valid") is not True else None,
         "engine_invalid_reason": res.get("invalid_reason"),
         "run_gain_pct": res.get("gain_pct"),
         "run_trades": res.get("trades"),
