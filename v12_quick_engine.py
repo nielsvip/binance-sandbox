@@ -5056,7 +5056,7 @@ class QuickConfig:
     AUGMENT_FALLBACK_REDUCE_PCT: float = 0.5
     AUGMENT_FALLBACK_GAIN_PCT: float = 1.0
     BB_RECOVERY_EXIT_ENABLED_TRADIER: bool = (
-        True  # live parity: config_tradier True (was False, caused 0 trades)
+        True  # crypto config.py default; apply_tradier_defaults keeps the stock default OFF
     )
     BB_RECOVERY_EXIT_TOLERANCE_ATR_MULT_TRADIER: float = 0.0
     BB_RECOVERY_EXIT_TOLERANCE_PCT_TRADIER: float = 0.3
@@ -15631,6 +15631,21 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             entry_sig = entry_sig & np.asarray(_btcde_m, dtype=bool)
     _hsc_core = _setup_memo("nonhtf_core", None, cfg, npz, n, is_long, lambda: vec_decisions.htf_signal_consume.nonhtf_core(cfg, npz, n, is_long, close, _safe, _base_safe, compute_reentry_blocks, compute_entry_signals))  # 2026-10-13 V17 TF law: exact non-HTF provenance (None = disabled / no HTF path)
     exit_sig = compute_exit_signals(npz, n, is_long, cfg, entry_sig)
+    _bb_recovery_on = (
+        str(getattr(cfg, "MODE", "crypto")) == "tradier"
+        and bool(getattr(cfg, "BB_RECOVERY_EXIT_ENABLED_TRADIER", False))
+    )
+    if _bb_recovery_on:
+        _bb_recovery_bb_upper = _safe(npz, "bb_high_1h", n)
+        _bb_recovery_bb_lower = _safe(npz, "bb_low_1h", n)
+        _bb_recovery_atr = _safe(npz, "atr_3m", n)
+        _bb_recovery_ha = _ha_int(npz, "ha_3m", n)
+        _bb_recovery_k = _safe(npz, "stoch_k_3m", n, np.nan)
+        _bb_recovery_k_prev = _safe(npz, "stoch_k_3m_prev", n, np.nan)
+    else:
+        _bb_recovery_bb_upper = _bb_recovery_bb_lower = None
+        _bb_recovery_atr = _bb_recovery_ha = None
+        _bb_recovery_k = _bb_recovery_k_prev = None
     _bt_exit_reason_masks = {}
     try:
         import vec_decisions.hybrid_struct_exit as _hybrid_struct
@@ -23621,7 +23636,41 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             ):
                 continue  # N2/011 live gain floor
             if vec_decisions.noloss_gate.noloss_blocks(cfg, _tech_reason, live_pnl_pct):
-                continue  # [C2 b5b] live UNIVERSAL_NOLOSS_GATE
+                _bb_recov_admitted = False
+                if _bb_recovery_on and pos.get("avg_price", 0) > 0:
+                    from vec_decisions.bb_recovery_exit import (
+                        positive_after_estimated_fees,
+                        tradier_recovery_bypass_mask,
+                    )
+
+                    _bb_recov_fee_pct = max(
+                        0.0, float(getattr(cfg, "COMMISSION_BUFFER_PCT", 0.08) or 0.0)
+                    )
+                    _bb_recov_hit = bool(
+                        tradier_recovery_bypass_mask(
+                            pos.get("entry_price", pos["avg_price"]),
+                            px,
+                            _bb_recovery_bb_upper[i],
+                            _bb_recovery_bb_lower[i],
+                            _bb_recovery_atr[i],
+                            _bb_recovery_ha[i],
+                            _bb_recovery_k[i],
+                            _bb_recovery_k_prev[i],
+                            is_long,
+                            getattr(cfg, "BB_RECOVERY_EXIT_TOLERANCE_PCT_TRADIER", 0.30),
+                            getattr(cfg, "BB_RECOVERY_EXIT_TOLERANCE_ATR_MULT_TRADIER", 0.0),
+                        )
+                    )
+                    _bb_recov_admitted = _bb_recov_hit and positive_after_estimated_fees(
+                        pnl_pct_preview, _bb_recov_fee_pct
+                    )
+                if not _bb_recov_admitted:
+                    continue  # [C2 b5b] live UNIVERSAL_NOLOSS_GATE
+                _tech_reason = (
+                    "BB_RECOVERY_EXIT_TRADIER_LONG"
+                    if is_long
+                    else "BB_RECOVERY_EXIT_TRADIER_SHORT"
+                )
             if _htfv_block(i, _tech_reason):
                 continue  # lane-D: stocks HTF_TREND_VETO_ON_REDUCE
             _exit_fee = abs(pos["qty"] * px) * half_fee

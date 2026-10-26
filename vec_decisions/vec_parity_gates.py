@@ -188,11 +188,17 @@ def mandatory_stop_exempt(action, reason, ultimate_buffer_pct=None):
 
 
 def nonvectorizable_portfolio_action(action, reason):
-    """Single-symbol vectors lack the account exposure used for this partial ratio trim."""
+    """Recognize account-wide ratio orders absent from a single-symbol NPZ.
+
+    The decision bar is driven by aggregate account exposure; the board cannot
+    replay it from one symbol's bars. Reduction sizing remains native-only.
+    """
+    act = str(action or "").upper()
+    r = str(reason or "").upper()
     return (
-        str(action or "").upper() == "REDUCE"
-        and str(reason or "").upper().startswith("RATIO_CLOSE_OW_")
-    )
+        act == "REDUCE"
+        and r.startswith(("RATIO_CLOSE_OW_", "RATIO_REDUCE_"))
+    ) or (act == "AUGMENT" and r.startswith("RATIO_REBALANCE_AUGMENT_"))
 
 
 def dictate_only_exempt(action, reason, sym_side=None, ultimate_buffer_pct=None):

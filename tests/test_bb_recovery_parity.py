@@ -5,6 +5,7 @@ import numpy as np
 from vec_decisions.bb_recovery_exit import (
     bb_recovery_exit_mask,
     positive_after_estimated_fees,
+    tradier_recovery_bypass_mask,
 )
 from vec_decisions.twin_p0_crypto_a import vec_bb_recovery_exit
 
@@ -102,3 +103,110 @@ def test_bb_recovery_switch_off_and_below_fee_floor_do_not_book_close():
     ]
     assert not positive_after_estimated_fees(0.08, 0.08)
     assert positive_after_estimated_fees(0.09, 0.08)
+
+
+def _simulate_tradier_bypass(enabled, target_price):
+    import v12_quick_engine as vq
+
+    n = 110
+    close = np.full(n, 100.0)
+    close[12:] = target_price
+    from datetime import datetime, timezone
+
+    start_ts = int(datetime(2026, 10, 26, 13, 30, tzinfo=timezone.utc).timestamp())
+    ts = np.arange(start_ts, start_ts + n * 300, 300)
+    npz = {
+        "close": close,
+        "close_5m": close,
+        "close_15m": close,
+        "timestamps": ts,
+        "timestamp_5m": ts,
+        "timestamp_15m": ts,
+        "low_5m": close,
+        "high_5m": close,
+        "open_5m": close,
+        "dc_low_15m": np.full(n, 80.0),
+        "dc_high_15m": np.full(n, 120.0),
+        "dc_low_4h": np.full(n, 80.0),
+        "dc_high_4h": np.full(n, 120.0),
+        "bb_high_1h": np.full(n, 99.0),
+        "bb_low_1h": np.full(n, 90.0),
+        "atr_3m": np.full(n, 0.1),
+        "ha_3m": np.full(n, -1, dtype=np.int8),
+        "stoch_k_3m": np.full(n, 25.0),
+        "stoch_k_3m_prev": np.full(n, 30.0),
+    }
+    for tf in ("15m", "1h", "4h", "D"):
+        npz[f"wt1_{tf}"] = np.zeros(n)
+        npz[f"wt2_{tf}"] = np.zeros(n)
+    cfg = vq.QuickConfig()
+    cfg.MODE = "tradier"
+    cfg.BASE_TF = "5m"
+    cfg.START_POSITION_SIZE = 500.0
+    cfg.COOLDOWN_BARS = 1000
+    cfg.COMMISSION_BUFFER_PCT = 0.08
+    cfg.COMMISSION_PCT = 0.0
+    cfg.BB_RECOVERY_EXIT_ENABLED_TRADIER = enabled
+    cfg.BB_RECOVERY_EXIT_TOLERANCE_PCT_TRADIER = 0.30
+    cfg.BB_RECOVERY_EXIT_TOLERANCE_ATR_MULT_TRADIER = 0.0
+    cfg.STOCKS_NOLOSS_HOLD_ENABLED = True
+    cfg.NOLOSS_MIN_PROFIT_PCT_TRADIER_LIVE = 0.50
+    cfg.VEC_EXIT_SIG_IS_TRIGGER = True
+    cfg.ABLATION_DISABLE_REENTRY = True
+    for key in vars(cfg):
+        if key.endswith("_ENABLED") and any(
+            token in key for token in ("EXIT", "TP", "STOP", "PROFIT", "SATOSHIT")
+        ):
+            setattr(cfg, key, False)
+    cfg.BB_RECOVERY_EXIT_ENABLED_TRADIER = enabled
+    cfg.STOCKS_NOLOSS_HOLD_ENABLED = True
+    cfg.NOLOSS_MIN_PROFIT_PCT_TRADIER_LIVE = 0.50
+    original = vq.compute_exit_signals
+    exit_mask = np.zeros(n, dtype=bool)
+    exit_mask[12] = True
+    vq.compute_exit_signals = lambda *args, **kwargs: exit_mask.copy()
+    try:
+        result = vq.simulate_one(
+            npz, "BB_RECOVERY_TR_TEST", True, cfg, force_initial_seed=True
+        )
+    finally:
+        vq.compute_exit_signals = original
+    return result, cfg
+
+
+def test_tradier_recovery_only_bypasses_existing_noloss_when_fee_positive():
+    admitted, cfg = _simulate_tradier_bypass(True, 100.20)
+    assert cfg.BB_RECOVERY_EXIT_ENABLED_TRADIER is True
+    close = next(
+        row for row in admitted["ledger"]
+        if row.get("type") == "CLOSE" and row.get("bar_exit") == 12
+    )
+    assert close["reason"] == "BB_RECOVERY_EXIT_TRADIER_LONG"
+
+    disabled, _ = _simulate_tradier_bypass(False, 100.20)
+    assert not any(
+        row.get("type") == "CLOSE" and row.get("bar_exit") == 12
+        for row in disabled["ledger"]
+    )
+    fee_blocked, _ = _simulate_tradier_bypass(True, 100.03)
+    assert not any(
+        row.get("type") == "CLOSE" and row.get("bar_exit") == 12
+        for row in fee_blocked["ledger"]
+    )
+
+
+def test_tradier_recovery_predicate_uses_entry_bb_tolerance_and_reversal():
+    args = (100.0, 100.2, 99.0, 90.0, 0.1, -1, 25.0, 30.0, True, 0.30, 0.0)
+    assert bool(tradier_recovery_bypass_mask(*args))
+    assert not bool(tradier_recovery_bypass_mask(*args[:1], 100.5, *args[2:]))
+    assert not bool(tradier_recovery_bypass_mask(*args[:5], 1, 30.0, 25.0, *args[8:]))
+
+
+def test_quickconfig_keeps_crypto_on_and_tradier_category_off():
+    import v12_quick_engine as vq
+
+    cfg = vq.QuickConfig()
+    assert cfg.BB_RECOVERY_EXIT_ENABLED_TRADIER is True
+    cfg.apply_tradier_defaults()
+    assert cfg.MODE == "tradier"
+    assert cfg.BB_RECOVERY_EXIT_ENABLED_TRADIER is False

@@ -186,6 +186,9 @@ def test_resolve_kline_prefers_live_over_backtest(tmp_path):
     backtest = tmp_path / "klines_cache_backtest" / "TSTUSDT_15m.json"
     live.parent.mkdir(parents=True)
     backtest.parent.mkdir(parents=True)
+    canonical = tmp_path / "klines_canonical" / "TSTUSDT_15m.json"
+    canonical.parent.mkdir(parents=True)
+    canonical.write_text("[]")
     live.write_text("[]")
     backtest.write_text("[]")
     assert _resolve_kline_path("TSTUSDT", "15m", "binance", tmp_path) == live

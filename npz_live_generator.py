@@ -394,10 +394,10 @@ def _drop_forming_bar(df, tf_label: str):
 def _resolve_kline_path(symbol: str, tf: str, mode: str, base_path: Path) -> Optional[Path]:
     cands: list[Path] = []
     if mode == "tradier":
-        for b in [base_path / "klines_canonical" / "tradier", base_path / "klines_cache_gateway" / "tradier", base_path / "klines_cache" / "tradier", base_path / "klines_cache_backtest" / "tradier", Path("/home/niels/binance-sandbox") / "klines_cache_backtest" / "tradier"]:
+        for b in [base_path / "klines_cache" / "tradier", base_path / "klines_cache_gateway" / "tradier", base_path / "klines_canonical" / "tradier", base_path / "klines_cache_backtest" / "tradier", Path("/home/niels/binance-sandbox") / "klines_cache_backtest" / "tradier"]:
             cands.append(b / f"{symbol}_{tf}.json")
     else:
-        for b in [base_path / "klines_canonical", base_path / "klines_cache_gateway", base_path / "klines_cache", base_path / "klines_cache_backtest", Path("/home/niels/binance-sandbox") / "klines_cache_backtest"]:
+        for b in [base_path / "klines_cache", base_path / "klines_cache_gateway", base_path / "klines_canonical", base_path / "klines_cache_backtest", Path("/home/niels/binance-sandbox") / "klines_cache_backtest"]:
             cands.append(b / f"{symbol}_{tf}.json")
     for p in cands:
         if p.exists():
@@ -504,10 +504,10 @@ def update_npz_for_symbol(
     def _find_kline_file(sym: str, tf: str, m: str) -> Optional[Path]:
         candidates = []
         if m == "tradier":
-            for base in [base_path / "klines_canonical" / "tradier", base_path / "klines_cache_gateway" / "tradier", base_path / "klines_cache" / "tradier", base_path / "klines_cache_backtest" / "tradier", Path("/home/niels/binance-sandbox") / "klines_cache_backtest" / "tradier"]:
+            for base in [base_path / "klines_cache" / "tradier", base_path / "klines_cache_gateway" / "tradier", base_path / "klines_canonical" / "tradier", base_path / "klines_cache_backtest" / "tradier", Path("/home/niels/binance-sandbox") / "klines_cache_backtest" / "tradier"]:
                 candidates.append(base / f"{sym}_{tf}.json")
         else:
-            for base in [base_path / "klines_canonical", base_path / "klines_cache_gateway", base_path / "klines_cache", base_path / "klines_cache_backtest", Path("/home/niels/binance-sandbox") / "klines_cache_backtest"]:
+            for base in [base_path / "klines_cache", base_path / "klines_cache_gateway", base_path / "klines_canonical", base_path / "klines_cache_backtest", Path("/home/niels/binance-sandbox") / "klines_cache_backtest"]:
                 candidates.append(base / f"{sym}_{tf}.json")
         for p in candidates:
             if p.exists():

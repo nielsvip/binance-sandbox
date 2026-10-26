@@ -30,18 +30,29 @@ SSH="ssh -o BatchMode=yes -o ConnectTimeout=8 -o ServerAliveInterval=5"
 # the same dirs (merge rsync, never --delete: disjoint shards, disjoint sym_sides). Default = today's
 # single S1 source, byte-identical behavior. Registry stays Mac-local unless VEC_LIVE_PULL_REGISTRY=1.
 pull_one() {
-  local host="$1" remote="$2" ts rc
+  local host="$1" remote="$2" ts rc stage
   ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-  rsync -az --timeout=15 -e "$SSH" --partial-dir=.rsync-partial --delay-updates --include='*.json' --exclude='*' "$host:$remote/intents/" "$DEST/intents/" >>"$LOG" 2>&1
+  stage=$(mktemp -d "$DEST/.incoming.XXXXXX") || return 1
+  mkdir -p "$stage/intents" "$stage/state"
+  rsync -az --timeout=15 -e "$SSH" --partial-dir=.rsync-partial --delay-updates --include='*.json' --exclude='*' "$host:$remote/intents/" "$stage/intents/" >>"$LOG" 2>&1
   rc=$?
-  rsync -az --timeout=15 -e "$SSH" --partial-dir=.rsync-partial --delay-updates --include='*.json' --exclude='*' "$host:$remote/state/" "$DEST/state/" >>"$LOG" 2>&1
+  rsync -az --timeout=15 -e "$SSH" --partial-dir=.rsync-partial --delay-updates --include='*.json' --exclude='*' "$host:$remote/state/" "$stage/state/" >>"$LOG" 2>&1
   rc=$((rc + $?))
   if [ "${VEC_LIVE_PULL_REGISTRY:-0}" = "1" ]; then
-    rsync -az --timeout=15 -e "$SSH" "$host:$remote/vec_driven.json" "$DEST/vec_driven.json" >>"$LOG" 2>&1
+    rsync -az --timeout=15 -e "$SSH" "$host:$remote/vec_driven.json" "$stage/vec_driven.json" >>"$LOG" 2>&1
     rc=$((rc + $?))
   fi
   if [ $rc -ne 0 ]; then
     echo "$ts PULL_FAIL rc=$rc host=$host" >>"$LOG"
+    rm -rf "$stage"
+    return 1
+  fi
+  rsync -az --remove-source-files "$stage/intents/" "$DEST/intents/" >>"$LOG" 2>&1 || rc=$((rc + $?))
+  rsync -az --remove-source-files "$stage/state/" "$DEST/state/" >>"$LOG" 2>&1 || rc=$((rc + $?))
+  if [ -f "$stage/vec_driven.json" ]; then mv -f "$stage/vec_driven.json" "$DEST/vec_driven.json" || rc=$((rc + 1)); fi
+  rm -rf "$stage"
+  if [ $rc -ne 0 ]; then
+    echo "$ts PULL_MERGE_FAIL rc=$rc host=$host" >>"$LOG"
     return 1
   fi
   return 0

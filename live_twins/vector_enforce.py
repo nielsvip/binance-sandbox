@@ -148,10 +148,6 @@ def _family_of(reason: str) -> str:
         "RSI2_XTREME_EXIT",
         "STOCH_XTREME_EXIT",
         "WICK_REJECT_EXIT",
-        # This exact crypto switch reason is booked by v12 with the matching
-        # mid-band/K mask and fee-positive close gate. Keep the old broad
-        # BB_RECOVERY kill active for every other reason in that family.
-        "BB_RECOVERY_SWITCHED",
     ):
         if full.startswith(f"BT_{_bt_family}"):
             return _bt_family
@@ -330,6 +326,9 @@ VEC_SWITCH_EXIT_FAMILIES = frozenset(
         "RSI2_XTREME_EXIT",
         "STOCH_XTREME_EXIT",
         "WICK_REJECT_EXIT",
+        # The exact crypto producer is switch-backed and fee-gated; the broad
+        # BB_RECOVERY kill still applies to every other reason shape.
+        "BB_RECOVERY_SWITCHED",
         # CYCLE_TP_TIERED is emitted by the same shared twin_sizing_reduce helper
         # in live and v12; its REDUCE is permitted only after the simulator's net-fee gate.
         "CYCLE_TP_TIERED",

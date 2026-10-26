@@ -51133,28 +51133,41 @@ class TradierTradeManager:
                                 )
                                 or 0.0
                             )
-                            _br_tol_abs = (
-                                (_br_tol_atr_m * _br_atr)
-                                if (_br_tol_atr_m > 0 and _br_atr > 0)
-                                else (_br_entry * _br_tol_pct / 100.0)
+                            from vec_decisions.bb_recovery_exit import (
+                                positive_after_estimated_fees,
+                                tradier_recovery_bypass_mask,
                             )
-                            _br_within = abs(_br_px - _br_entry) <= _br_tol_abs
-                            if _br_is_long and _br_entry > _bbh_1h > 0 and _br_within:
-                                if _br_ha == "red" or _br_k3 < _br_k3p:
-                                    _bb_recov_bypass = True
-                                    logger.warning(
-                                        f"[BB_RECOVERY_EXIT_BYPASS] {position_key}: LONG entry={_br_entry:.4f}>bb_high_1h={_bbh_1h:.4f}, recovered to {_br_px:.4f} (tol={_br_tol_abs:.4f}), 3m reversal — allowing close at gain={_en_gain:.2f}%"
-                                    )
-                            elif (
-                                (not _br_is_long)
-                                and 0 < _br_entry < _bbl_1h
-                                and _br_within
-                            ):
-                                if _br_ha == "green" or _br_k3 > _br_k3p:
-                                    _bb_recov_bypass = True
-                                    logger.warning(
-                                        f"[BB_RECOVERY_EXIT_BYPASS] {position_key}: SHORT entry={_br_entry:.4f}<bb_low_1h={_bbl_1h:.4f}, recovered to {_br_px:.4f} (tol={_br_tol_abs:.4f}), 3m reversal — allowing close at gain={_en_gain:.2f}%"
-                                    )
+
+                            _br_hit = bool(
+                                tradier_recovery_bypass_mask(
+                                    _br_entry,
+                                    _br_px,
+                                    _bbh_1h,
+                                    _bbl_1h,
+                                    _br_atr,
+                                    _br_ha,
+                                    _br_k3,
+                                    _br_k3p,
+                                    _br_is_long,
+                                    _br_tol_pct,
+                                    _br_tol_atr_m,
+                                )
+                            )
+                            _br_fee_pct = float(
+                                _cfg_auto("COMMISSION_BUFFER_PCT", 0.08) or 0.0
+                            )
+                            _bb_recov_bypass = _br_hit and positive_after_estimated_fees(
+                                _en_gain, _br_fee_pct
+                            )
+                            if _bb_recov_bypass:
+                                _br_tol_abs = (
+                                    _br_tol_atr_m * _br_atr
+                                    if _br_tol_atr_m > 0 and _br_atr > 0
+                                    else _br_entry * _br_tol_pct / 100.0
+                                )
+                                logger.warning(
+                                    f"[BB_RECOVERY_EXIT_BYPASS] {position_key}: {'LONG' if _br_is_long else 'SHORT'} entry={_br_entry:.4f}, recovered to {_br_px:.4f} (tol={_br_tol_abs:.4f}), 3m reversal — fee-positive bypass at gain={_en_gain:.2f}%"
+                                )
                     except Exception as _br_e:
                         logger.debug(
                             f"[BB_RECOVERY_EXIT_BYPASS] {position_key}: error: {_br_e}"

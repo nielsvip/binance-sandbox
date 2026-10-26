@@ -341,8 +341,17 @@ def test_ratio_close_ow_reduce_is_explicitly_nonvectorizable_before_vec_last():
     assert G.nonvectorizable_portfolio_action(
         "REDUCE", "RATIO_CLOSE_OW_LONG_L51_S49_tgt25/75"
     )
+    assert G.nonvectorizable_portfolio_action(
+        "REDUCE", "RATIO_REDUCE_LONG_L63_S37_tgt30/70_breadth86%_gain0.9%"
+    )
+    assert G.nonvectorizable_portfolio_action(
+        "AUGMENT", "RATIO_REBALANCE_AUGMENT_SHORT_L45_S55_tgt30/70"
+    )
     assert not G.nonvectorizable_portfolio_action(
         "CLOSE", "RATIO_CLOSE_OW_LONG_L51_S49_tgt25/75"
+    )
+    assert not G.nonvectorizable_portfolio_action(
+        "REDUCE", "RATIO_REBALANCE_AUGMENT_SHORT_L45_S55_tgt30/70"
     )
 
 
