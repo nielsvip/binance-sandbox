@@ -658,36 +658,8 @@ elif mode == "reap":
         elif i["roots"] and all(i["kids"].get(r, 0) == 0 for r in i["roots"]) and i["idle"] > 40 * 60 and i.get("min_age", 0) > 30 * 60:
             kill(i["pids"], "wedged: no linked workers, no output for %.0fmin" % (i["idle"] / 60), ss); dead.add(ss)  # USER 2026-10-07: S1 UNI pair wedged 30+ min (0 CPU, slots held, nothing finished) — auto-clear instead of waiting for the 60-min stall trip. 2026-10-08: min_age grace — piped/starting pilots have no kids + stale log cands for minutes; TERMing a 23s-old healthy pilot churns (KSMUSDT_SHORT). USER 2026-10-25: 20/15min murdered healthy thread-pool pilots on 4x-oversubscribed 16-core workers (heavy tabs go quiet 20+min: BBUSDT_LONG termed 15:44, ALTUSDT group 15:54, then hang at cell boundary — queue never advances); 40/30min.
     if mem < arg["oom_mb"]:
-        _rov, _pdr, _pir = None, None, None
-        try:
-            sys.path.insert(0, os.path.join(HOME, "binance-sandbox", "tools"))
-            from v15_fleet_scheduler import _rank_oom_victim as _rov, _progress_done_rows as _pdr, _progress_is_refill as _pir
-        except Exception:
-            _rov, _pdr, _pir = None, None, None
-        try:
-            from v15_fleet_scheduler import _progress_pinpoint_lifting as _ppl
-        except Exception:
-            _ppl = None
-        _victim = None
-        if _rov is not None and _pdr is not None:
-            try:
-                _cands = []
-                for _ss, _i in info.items():
-                    if _ss in dead:
-                        continue
-                    _pd = (groups.get(_ss) or {}).get("pdir") or ""
-                    _pp = os.path.join(_pd, _ss + "_v14_progress.json") if _pd else ""
-                    _done = _pdr(_pp) if _pp else None
-                    _cands.append((_ss, _done, _i["age"], bool(_pir and _pp and _pir(_pp)), bool(_ppl and _pp and _ppl(_pp))))
-                _victim = _rov(_cands)
-            except Exception:
-                _victim = None
-        if _victim is None:
-            _live = [(i["age"], ss) for ss, i in info.items() if ss not in dead]
-            _victim = min(_live)[1] if _live else None
-        if _victim is not None:
-            kill(info[_victim]["pids"], "OOM guard: MemAvailable %dMB < %dMB, least-progress victim" % (mem, arg["oom_mb"]), _victim)
-    print(json.dumps({"apply": bool(arg.get("apply")), "mem_avail_mb": mem, "actions": acts}))
+        print("[OOM-THROTTLE] MemAvailable %dMB < %dMB; active pilot processes retained, new admissions must use the memory worker plan or wait" % (mem, arg["oom_mb"]))
+    print(json.dumps({"apply": bool(arg.get("apply")), "mem_avail_mb": mem, "actions": acts, "oom_throttle": mem < arg["oom_mb"]}))
 
 elif mode == "kill":
     # arg: {symbols:[...out-of-universe...], pdir:..., apply:bool, sym_sides:[...exact...] (optional)}. Only processes that belong to the CURRENT progress dir

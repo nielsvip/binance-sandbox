@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
 import v15_fleet_scheduler as Sched
 from npz_cutoffs import last_closed_bar, last_rth_close_bar, tail_currency
 
-TUE_RTH = dt.datetime(2026, 10, 13, 14, 0, tzinfo=dt.timezone.utc)  # Tue 10:00 ET, live RTH
+TUE_RTH = dt.datetime(2026, 10, 13, 14, 30, tzinfo=dt.timezone.utc)  # Tue 10:30 ET, live RTH
 SUN = dt.datetime(2026, 10, 11, 12, 0, tzinfo=dt.timezone.utc)  # Sunday noon UTC
 
 
@@ -39,8 +39,8 @@ def test_stocks_tail_currency_rth_day():
 
 def test_stocks_weekend_expects_friday_close():
     cutoff = last_rth_close_bar(SUN)
-    fri_close = dt.datetime(2026, 10, 9, 16, 0, tzinfo=Sched.NY).timestamp()
-    assert cutoff == int(fri_close)
+    fri_final_open = dt.datetime(2026, 10, 9, 15, 45, tzinfo=Sched.NY).timestamp()
+    assert cutoff == int(fri_final_open)
     assert tail_currency(cutoff, "stocks", SUN)[0] is True
     thu_close = cutoff - 86400
     assert tail_currency(thu_close, "stocks", SUN)[0] is False

@@ -11,6 +11,7 @@ sys.path hacks or heavy imports (stdlib only).
 """
 import datetime as dt
 import time
+from functools import lru_cache
 from zoneinfo import ZoneInfo
 
 BAR = 900  # 15m
@@ -35,14 +36,42 @@ def last_closed_bar(now=None):
 
 
 def last_closed_stock_bar(now=None):
-    """latest 15m bar open (UTC grid — the stock grid is ts%900==0) that is CLOSED incl. Tradier propagation grace."""
-    now = int(now if now is not None else time.time())
-    return ((now - STOCK_CLOSE_GRACE) // BAR) * BAR - BAR
+    """Latest completed NYSE regular-session bar OPEN; never an after-hours bar."""
+    return last_rth_close_bar(now)
+
+
+@lru_cache(maxsize=32)
+def stock_session_bounds(day):
+    """UTC open/close for a NYSE date, including calendar half days when available."""
+    try:
+        import pandas_market_calendars as pmc
+
+        schedule = pmc.get_calendar("NYSE").schedule(start_date=day.isoformat(), end_date=day.isoformat())
+        if schedule.empty:
+            return None
+        row = schedule.iloc[0]
+        return int(row["market_open"].timestamp()), int(row["market_close"].timestamp())
+    except Exception:
+        if day.weekday() >= 5 or day.isoformat() in NYSE_HOLIDAYS:
+            return None
+        return (int(dt.datetime(day.year, day.month, day.day, 9, 30, tzinfo=ET).timestamp()), int(dt.datetime(day.year, day.month, day.day, 16, 0, tzinfo=ET).timestamp()))
+
+
+def is_rth_bar_start(timestamp):
+    """A stock bar is eligible only when its entire 15 minutes fit the exchange session."""
+    try:
+        stamp = int(timestamp)
+        if stamp % BAR:
+            return False
+        day = dt.datetime.fromtimestamp(stamp, dt.timezone.utc).astimezone(ET).date()
+        bounds = stock_session_bounds(day)
+        return bounds is not None and bounds[0] <= stamp and stamp + BAR <= bounds[1]
+    except (TypeError, ValueError, OverflowError):
+        return False
 
 
 def last_session_final_bar(now=None):
-    """most recent fully-closed weekday 19:45 ET bar (ext close), epoch; 0 when none in range (clock sanity).
-    Out-of-gate catch-up uses this (not an hour threshold): any stock older than the last closed session gets fetched."""
+    """Most recent fully closed NYSE session's final 15m bar OPEN."""
     now = now if now is not None else dt.datetime.now(dt.timezone.utc)
     if now.tzinfo is None:
         now = now.replace(tzinfo=dt.timezone.utc)
@@ -50,9 +79,10 @@ def last_session_final_bar(now=None):
     et_now = now.astimezone(ET)
     for back in range(10):
         d = (et_now - dt.timedelta(days=back)).date()
-        if d.weekday() >= 5:
+        bounds = stock_session_bounds(d)
+        if bounds is None:
             continue
-        cand = int(dt.datetime(d.year, d.month, d.day, 19, 45, tzinfo=ET).timestamp())
+        cand = bounds[1] - BAR
         if cand + BAR + STOCK_CLOSE_GRACE <= ts_now:
             return cand
     return 0
@@ -115,6 +145,10 @@ def tail_currency(tail_ts, venue, now=None):
     cutoff = last_rth_close_bar(now_dt)
     if not cutoff:
         return (False, "no-cutoff")
+    if not is_rth_bar_start(tail):
+        return (False, "last stock NPZ bar starts outside NYSE session")
+    if tail > cutoff:
+        return (False, "stock NPZ bar is newer than the latest completed NYSE bar")
     if tail >= cutoff - TAIL_GRACE_BARS_STOCKS * BAR:
         ahead_min = (tail - cutoff) / 60.0
         return (True, f"{ahead_min:+.0f}min vs RTH close")
@@ -123,23 +157,18 @@ def tail_currency(tail_ts, venue, now=None):
 
 
 def last_rth_close_bar(now=None):
-    """most recent RTH-session 15m-bar close, epoch; 0 when none in range (clock sanity). RTH = 9:30-16:00 ET
-    on non-holiday weekdays. Weekend/pre-open/holiday -> previous session's 16:00 ET close; live RTH -> latest
-    closed 15m bar; post-close -> today's 16:00 ET. THE freshness-gate cutoff for stocks (v12_pilot.npz_freshness):
-    rebuilt NPZs carry RTH bars, so the ext 19:45 close is the wrong bar to demand."""
+    """Latest completed NYSE regular-session 15m bar OPEN, including half days."""
     now = now if now is not None else dt.datetime.now(dt.timezone.utc)
     if now.tzinfo is None:
         now = now.replace(tzinfo=dt.timezone.utc)
     ts_now = now.timestamp()
     et_now = now.astimezone(ET)
-    mm = et_now.hour * 60 + et_now.minute
-    if et_now.weekday() < 5 and et_now.date().isoformat() not in NYSE_HOLIDAYS and 570 <= mm < 960:
-        return (int(ts_now) // BAR) * BAR - BAR
     for back in range(12):
         d = (et_now - dt.timedelta(days=back)).date()
-        if d.weekday() >= 5 or d.isoformat() in NYSE_HOLIDAYS:
+        bounds = stock_session_bounds(d)
+        if bounds is None:
             continue
-        cand = int(dt.datetime(d.year, d.month, d.day, 16, 0, tzinfo=ET).timestamp())
-        if cand + BAR <= ts_now:
+        cand = min(((int(ts_now) - STOCK_CLOSE_GRACE) // BAR) * BAR - BAR, bounds[1] - BAR)
+        if cand >= bounds[0] and cand + BAR + STOCK_CLOSE_GRACE <= ts_now:
             return cand
     return 0

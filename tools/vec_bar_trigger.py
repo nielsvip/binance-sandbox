@@ -15,7 +15,7 @@ import json
 import os
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -26,8 +26,20 @@ TRIGGER_S = 1.0
 WORKERS = 4
 
 
-def shard_sides(sets, serves, shard):
-    return sorted(ss for ss in sets if serves(ss, shard))
+def held_sides(base):
+    path = Path(base) / "data" / "vec_live" / "held_sides.json"
+    try:
+        payload = json.loads(path.read_text())
+        if time.time() - float(payload["generated_ts"]) > 180.0:
+            return set()
+        return set(payload["held"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return set()
+
+
+def shard_sides(sets, serves, shard, held=()):
+    held = set(held)
+    return sorted((ss for ss in sets if serves(ss, shard)), key=lambda ss: (ss not in held, ss))
 
 
 def should_probe(ss, zip_mtime, tail_mtime, seen, revision=None):
@@ -71,7 +83,8 @@ def run_once(base, shard, workers=WORKERS, verbose=False):
     em = E.engine_md5()
     os.environ["VEC_LIVE_ENGINE_MD5"] = em["combined"]
     sets = E.load_sets()
-    sides = shard_sides(sets, serves, shard)
+    held = held_sides(base)
+    sides = shard_sides(sets, serves, shard, held)
     seen = run_once._seen if hasattr(run_once, "_seen") else {}
     jobs = []
     for ss in sides:
@@ -93,12 +106,27 @@ def run_once(base, shard, workers=WORKERS, verbose=False):
     }
     if not jobs:
         return rec
+    held_jobs = [job for job in jobs if job[0] in held]
+    other_jobs = [job for job in jobs if job[0] not in held]
+    rec["held_probed"] = len(held_jobs)
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        for r in pool.map(lambda j: E._worker(j), jobs):
-            if r.get("status") == "EXCEPTION":
-                rec["errors"] += 1
-            elif r.get("status") != "NO_NEW_BAR":
-                rec["acted"] += 1
+        for tier, tier_jobs in (("held", held_jobs), ("other", other_jobs)):
+            futures = [pool.submit(E._worker, job) for job in tier_jobs]
+            for future in as_completed(futures):
+                try:
+                    r = future.result()
+                except Exception:
+                    rec["errors"] += 1
+                    continue
+                if r.get("status") == "EXCEPTION":
+                    rec["errors"] += 1
+                elif r.get("status") != "NO_NEW_BAR":
+                    rec["acted"] += 1
+                    if tier == "held":
+                        try:
+                            E.publish()
+                        except Exception:
+                            pass
     if rec["acted"]:
         try:
             E.publish()

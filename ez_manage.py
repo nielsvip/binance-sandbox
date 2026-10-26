@@ -8766,6 +8766,76 @@ def _voe_reason_is_vec(reason) -> bool:
 _AIR_BARS_LOADER = None  # V17 AIR: callable(symbol, side) -> [(ts, low, high)] for REENTRY_AUGMENT_HL_REF='low'; None = klines_cache/{SYM}_15m.json (backtest_v12_engine injects frozen-NPZ bars)
 
 
+def _r6_explicit_main_without_active_hedge(tracker_entry, position_key, active_records):
+    if not isinstance(tracker_entry, dict) or tracker_entry.get("is_hedge") is not False:
+        return False
+    if any(tracker_entry.get(key) for key in ("hedge_for", "losing_position_key", "hedge_id", "hedged_by", "hedged_by_symbols")):
+        return False
+    return not any(
+        isinstance(record, dict) and record.get("position_key") == position_key
+        for record in (active_records or [])
+    )
+
+
+def _r6_reconcile_explicit_main_position(trade_manager, position_key, position, account_key, logger_obj):
+    tracker_manager = (
+        getattr(trade_manager, "tracker_manager", None)
+        or getattr(getattr(trade_manager, "service", None), "tracker_manager", None)
+        or getattr(getattr(trade_manager, "positions_service", None), "tracker_manager", None)
+    )
+    if tracker_manager is None:
+        return False
+    tracker_entry = (getattr(tracker_manager, "exit_candidates", None) or {}).get(position_key, {})
+    active_records = list(getattr(tracker_manager, "active_hedges", None) or [])
+    if not _r6_explicit_main_without_active_hedge(tracker_entry, position_key, active_records):
+        return False
+    positions_service = (
+        getattr(trade_manager, "positions_service", None)
+        or getattr(trade_manager, "service", None)
+    )
+    account_positions = (
+        getattr(positions_service, "positions_by_account", {}) or {}
+    ).get(account_key, {})
+    targets = [
+        position,
+        (getattr(trade_manager, "positions", None) or {}).get(position_key),
+        account_positions.get(position_key),
+        (getattr(positions_service, "positions", None) or {}).get(position_key),
+    ]
+    seen = set()
+    changed = False
+    for target in targets:
+        if target is None or id(target) in seen:
+            continue
+        seen.add(id(target))
+        try:
+            if bool(getattr(target, "is_hedge", False)):
+                changed = True
+                target.is_hedge = False
+                target.last_updated = datetime.now(timezone.utc)
+        except Exception:
+            continue
+    if changed:
+        if positions_service is not None and hasattr(positions_service, "_schedule_task"):
+            try:
+                from ez_positions_service import save_positions_guarded
+                positions_service._schedule_task(
+                    save_positions_guarded(positions_service, account_key, force=True)
+                )
+            except Exception as save_error:
+                logger_obj.warning(
+                    f"[HEDGE_CLASS_RECONCILE_SAVE_DEFERRED] {position_key}: supported position save scheduling failed: {save_error}"
+                )
+        else:
+            logger_obj.warning(
+                f"[HEDGE_CLASS_RECONCILE_IN_MEMORY_ONLY] {position_key}: no supported position save service available"
+            )
+        logger_obj.critical(
+            f"[HEDGE_CLASS_RECONCILE] {position_key}: explicit tracker main truth, no hedge links/active record; reset stale is_hedge flag"
+        )
+    return True
+
+
 def _r6_confirmed_main_vec_open(tracker_entry):
     """True only when current tracker truth and its latest OPEN identify a main VEC position."""
     if not isinstance(tracker_entry, dict) or tracker_entry.get("is_hedge") is not False:
@@ -52823,7 +52893,7 @@ async def _pp_unconditional_hard_stops(trade_manager, account_key, position_key,
                 _lvl = _u_lo if _is_long else _u_hi
                 _side_o = "SELL" if _is_long else "BUY"
                 logger.critical(f"⛔ [PRE_TWIN_ULTIMATE_DC_{_hs_tf}_HARD_STOP] {position_key}: price {_px:.6f} breached {'dc_low' if _is_long else 'dc_high'}_{_hs_tf} {_lvl:.6f} g={_gain:.2f}% → HARD_STOP CLOSE TF={_hs_tf}")
-                if _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
+                if _voe_native_exits_disabled("stop"):
                     pass
                 else:
                     await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=_sym, original_positionAmt=_amt, side=_side_o, position_side=_side, quantity=_amt, old_price=_px, unique_id=f"ULTIMATE_DC_{_hs_tf}_HARD_STOP_{int(time.time())}", reason=f"ULTIMATE_DC_{_hs_tf}_HARD_STOP_{'LONG' if _is_long else 'SHORT'}_px{_px:.6f}_lvl{_lvl:.6f}_g{_gain:.2f}", is_full_close=True, action="CLOSE")
@@ -56896,12 +56966,17 @@ async def process_position(
                 _hedge_for_tracker = None
                 try:
                     _tm_tracker = getattr(trade_manager, "tracker_manager", None) or getattr(getattr(trade_manager, "service", None), "tracker_manager", None)
+                    _hg_tracker_main = _r6_reconcile_explicit_main_position(
+                        trade_manager, position_key, _hg_pos, account_key, logger,
+                    )
+                    if _hg_tracker_main:
+                        _is_hedge_attr = False
                     for _h in getattr(_tm_tracker, "active_hedges", None) or []:
                         if (
                             isinstance(_h, dict)
                             and _h.get("position_key") == position_key
                         ):
-                            _is_hedge_tracker = True
+                            _is_hedge_tracker = not _hg_tracker_main
                             _hedge_for_tracker = _h.get(
                                 "losing_position_key"
                             ) or _h.get("hedge_for")
@@ -58230,6 +58305,9 @@ async def process_position(
                     _r6_tracker_entry = (
                         getattr(trade_manager.tracker_manager, "exit_candidates", {}) or {}
                     ).get(position_key, {})
+                    _r6_explicit_main_now = _r6_reconcile_explicit_main_position(
+                        trade_manager, position_key, position, account_key, logger,
+                    )
                     _r6_latest_open_is_main_vec = _r6_confirmed_main_vec_open(_r6_tracker_entry)
                     for _hm in (
                         "HEDGE_PROTECT_",
@@ -58240,7 +58318,7 @@ async def process_position(
                         if _hm in _r6_reason:
                             _r6_reason_says_hedge = True
                             break
-                    if _r6_latest_open_is_main_vec:
+                    if _r6_explicit_main_now or _r6_latest_open_is_main_vec:
                         _r6_reason_says_hedge = False
                         _r6_pos_is_hedge_attr = False
                         try:

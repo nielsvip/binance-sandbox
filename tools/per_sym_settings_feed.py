@@ -38,20 +38,31 @@ def row_record(symbol_side, updated, full_json):
 
 def serve(db):
     known = json.loads(sys.stdin.readline()).get('known', {})
-    connection = sqlite3.connect(f'file:{Path(db).resolve()}?mode=ro', uri=True, timeout=1)
+    database = Path(db)
+    connection = sqlite3.connect(f'file:{database.resolve()}?mode=ro', uri=True, timeout=1)
+    file_identity = (database.stat().st_dev, database.stat().st_ino)
     rows, versions, previous_version, snapshot = {}, {}, None, ''
     try:
         while True:
+            current_identity = (database.stat().st_dev, database.stat().st_ino)
+            if current_identity != file_identity:
+                connection.close()
+                connection = sqlite3.connect(f'file:{database.resolve()}?mode=ro', uri=True, timeout=1)
+                file_identity = current_identity
+                previous_version = None
             version = connection.execute('PRAGMA data_version').fetchone()[0]
             if version != previous_version:
                 current = []
                 for symbol_side, updated, full_json in connection.execute('SELECT sym_side,updated_at,full_config_json FROM per_sym_active'):
-                    current.append(symbol_side)
-                    if not full_json:
+                    if not full_json or not re.fullmatch(r'[A-Za-z0-9_.-]+_(LONG|SHORT)', symbol_side):
+                        rows.pop(symbol_side, None)
                         continue
+                    current.append(symbol_side)
                     row_version = (updated, hashlib.md5(full_json.encode()).hexdigest())
                     if versions.get(symbol_side) == row_version:
                         continue
+                    if symbol_side in versions and str(updated or '') < str(versions[symbol_side][0] or ''):
+                        raise RuntimeError(f'authoritative SQL publication regressed for {symbol_side}')
                     record = row_record(symbol_side, updated, full_json)
                     rows[symbol_side] = {'updated_at': updated, 'full_config_md5': record['full_config_md5']}
                     if known.get(symbol_side) != record['full_config_md5']:
@@ -75,7 +86,7 @@ def seed(root, db):
     connection = sqlite3.connect(f'file:{Path(db).resolve()}?mode=ro', uri=True, timeout=1)
     try:
         for symbol_side, updated, full_json in connection.execute('SELECT sym_side,updated_at,full_config_json FROM per_sym_active'):
-            if not full_json:
+            if not full_json or not re.fullmatch(r'[A-Za-z0-9_.-]+_(LONG|SHORT)', symbol_side):
                 continue
             path = root / f'{symbol_side}.json'
             if not path.exists():
@@ -122,7 +133,12 @@ def follow(base, host, db, seed_db):
                 if kind == 'row':
                     if digest(record['full_config']) != record['full_config_md5']:
                         raise ValueError('S1 settings checksum differs')
-                    atomic(root / f'{record["sym_side"]}.json', record)
+                    target = root / f'{record["sym_side"]}.json'
+                    if target.exists():
+                        previous = json.loads(target.read_text())
+                        if str(record['updated_at'] or '') < str(previous['updated_at'] or ''):
+                            raise RuntimeError(f'S1 publication older than the current set for {record["sym_side"]}')
+                    atomic(target, record)
                 elif kind == 'index':
                     atomic(root / '_manifest.json', record)
                 elif kind == 'heartbeat':
