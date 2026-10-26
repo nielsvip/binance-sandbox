@@ -6941,6 +6941,9 @@ class PositionService:
         if account_key == "tra":
             logger.debug(f"[process_account_update][{account_key}] ⏭️ Skipping 'tra' account - completely handled by tradier_positions.py")
             return set()
+        if _failover_writer_is_standby(account_key):
+            logger.warning(f"[process_account_update][{account_key}] Standby failover discarded an update after the service heartbeat recovered.")
+            return set()
         if not self._loading_complete_event.is_set():
             logger.warning(f"[process_account_update][{account_key}] ⏳ Waiting for positions to load from files before processing API update...")
             try :

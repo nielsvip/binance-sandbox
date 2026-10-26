@@ -154,6 +154,53 @@ def _result(host: dict, ss: str, day: str, root: str) -> dict | None:
         return None
 
 
+def _launch_replay(host: dict, ss: str, day: str, root: str) -> None:
+    result_dir = f"{root}/data/preopen_7d/fleet/{day}/results"
+    queue = f"{root}/data/preopen_7d/fleet/queue.json"
+    log = f"{result_dir}/{ss}/replay.log"
+    cmd = (f"cd {shlex.quote(root)} && nohup {PILOT_PYTHON} -u "
+           f"tools/v15_preopen_7d_replay.py --queue {shlex.quote(queue)} "
+           f"--result-dir {shlex.quote(result_dir)} --sym-side {shlex.quote(ss)} "
+           f"> {shlex.quote(log)} 2>&1 < /dev/null &")
+    _remote(host, cmd, timeout=15)
+
+
+def _replay_result(host: dict, ss: str, day: str, root: str) -> dict | None:
+    path = f"{root}/data/preopen_7d/fleet/{day}/results/{ss}/replay.json"
+    try:
+        row = json.loads(_remote(host, f"test -s {shlex.quote(path)} && cat {shlex.quote(path)}", timeout=8).stdout)
+        return row if row.get("sym_side") == ss and "valid" in row else None
+    except (RuntimeError, ValueError, TypeError):
+        return None
+
+
+def _ensure_collect(root: Path, folder: Path, day: str, state: dict) -> None:
+    if not any(row.get("status") == "valid" and row.get("replay_status") == "valid"
+               for row in state.get("placements", {}).values()):
+        state["collection_status"] = "no_valid_replay"
+        _atomic(folder / "state.json", state)
+        return
+    if (folder / "collection.json").exists() or state.get("collector_attempts", 0) >= 4:
+        return
+    if state.get("collector_started_utc"):
+        try:
+            age = (dt.datetime.now(dt.timezone.utc) - dt.datetime.fromisoformat(state["collector_started_utc"])).total_seconds()
+            if age < 300:
+                return
+        except (ValueError, TypeError):
+            pass
+    log = folder / "collector.log"
+    with log.open("ab") as output:
+        subprocess.Popen(["flock", "-n", f"/tmp/v15_preopen_7d_collect_{day}.lock",
+                          PILOT_PYTHON, "-u", str(root / "tools/v15_preopen_7d_collect.py"),
+                          "--day", day, "--hosts", str(folder / "hosts.json")],
+                         cwd=root, stdout=output, stderr=subprocess.STDOUT,
+                         stdin=subprocess.DEVNULL, start_new_session=True)
+    state["collector_started_utc"] = dt.datetime.now(dt.timezone.utc).isoformat()
+    state["collector_attempts"] = state.get("collector_attempts", 0) + 1
+    _atomic(folder / "state.json", state)
+
+
 def tick(root: Path, now: dt.datetime, hosts: list[dict], stats: dict,
          dry_run: bool = False) -> dict | None:
     """Own the 7D queue after new four-category defaults; return None outside it."""
@@ -197,6 +244,7 @@ def tick(root: Path, now: dt.datetime, hosts: list[dict], stats: dict,
                  "bar_policy": "optimize after defaults; final 09:15 ET bar replay required before activation"}
         if not dry_run:
             _atomic(queue_path, queue)
+            _atomic(folder / "hosts.json", {"hosts": hosts})
             _atomic(state_path, state)
     else:
         queue = json.loads(queue_path.read_text())
@@ -205,11 +253,14 @@ def tick(root: Path, now: dt.datetime, hosts: list[dict], stats: dict,
             return {"phase": "defaults_changed_after_queue_freeze", "suppress_30d": True}
         available = {h["name"] for h in hosts if stats.get(h["name"])}
         state["placements"] = allocate(queue, hosts, available, state.get("placements"))
+        if not dry_run:
+            _atomic(folder / "hosts.json", {"hosts": hosts})
     if dry_run:
         return {"phase": "dry_run", "queue_n": state["queue_n"],
                 "by_host": {h["name"]: sum(x.get("host") == h["name"] for x in state["placements"].values()) for h in hosts},
                 "suppress_30d": False}
     if state.get("phase") == "complete":
+        _ensure_collect(root, folder, day, state)
         return {"phase": "complete", "queue_n": state["queue_n"], "suppress_30d": False}
     # The presence marker stops the worker's own 30D top-up crons. It is
     # removed only after every side is terminal or the market opens.
@@ -242,6 +293,8 @@ def tick(root: Path, now: dt.datetime, hosts: list[dict], stats: dict,
         name = host["name"]
         if name not in available:
             continue
+        if state.get("phase") != "running":
+            continue
         active_sides = set((stats.get(name) or {}).get("running") or {})
         active_sides.update(ss for ss, x in state["placements"].items()
                             if x.get("host") == name and x.get("status") == "running")
@@ -267,7 +320,31 @@ def tick(root: Path, now: dt.datetime, hosts: list[dict], stats: dict,
                 state.setdefault("host_errors", {})[name] = str(exc)
                 break
     if all(row.get("status") in ("valid", "failed") for row in state["placements"].values()):
-        state["phase"] = "complete"
+        state["phase"] = "await_replay" if any(row.get("status") == "valid" for row in state["placements"].values()) else "complete"
+    if state["phase"] == "await_replay" and now.astimezone(NY).time() >= dt.time(9, 15):
+        replay_slots = {h["name"]: sum(x.get("host") == h["name"] and x.get("replay_status") == "running"
+                                        for x in state["placements"].values()) for h in hosts}
+        for ss, row in state["placements"].items():
+            if row.get("status") != "valid" or row.get("host") not in available:
+                continue
+            host = by_name[row["host"]]
+            if row.get("replay_status") == "running":
+                replay = _replay_result(host, ss, day, "/home/niels/binance-sandbox")
+                if replay is not None:
+                    row.update({"replay_status": "valid" if replay.get("valid") else "failed",
+                                "replay": replay})
+                    replay_slots[row["host"]] -= 1
+            if row.get("replay_status") is None and replay_slots[row["host"]] < 4:
+                try:
+                    _launch_replay(host, ss, day, "/home/niels/binance-sandbox")
+                    row["replay_status"] = "running"
+                    replay_slots[row["host"]] += 1
+                except RuntimeError as exc:
+                    state.setdefault("host_errors", {})[row["host"]] = str(exc)
+        if all(row.get("status") != "valid" or row.get("replay_status") in ("valid", "failed")
+               for row in state["placements"].values()):
+            state["phase"] = "complete"
+    if state["phase"] == "complete":
         for host in hosts:
             if host["name"] in available:
                 try:
@@ -276,6 +353,8 @@ def tick(root: Path, now: dt.datetime, hosts: list[dict], stats: dict,
                     pass
     state["updated_utc"] = now.isoformat()
     _atomic(state_path, state)
+    if state["phase"] == "complete":
+        _ensure_collect(root, folder, day, state)
     counts = {status: sum(x.get("status") == status for x in state["placements"].values())
               for status in ("pending", "running", "valid", "failed")}
     return {"phase": state["phase"], "queue_n": state["queue_n"], "counts": counts,

@@ -2,6 +2,7 @@ import datetime as dt
 import json
 import sqlite3
 import shutil
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -95,6 +96,25 @@ def test_stage_refuses_missing_or_unverified_result(tmp_path):
     with pytest.raises(ValueError, match="stale"):
         stage(queue, results, db, sets, stocks, tmp_path / "stage", today, published)
     assert not (tmp_path / "stage/per_sym_store_7d.db").exists()
+
+
+def test_stage_requires_fresh_premarket_replay_when_requested(tmp_path):
+    today, queue, results, db, sets, stocks, published = _fixture(tmp_path)
+    doc = json.loads(queue.read_text())
+    doc["_meta"]["require_replay"] = True
+    queue.write_text(json.dumps(doc))
+    with pytest.raises(FileNotFoundError):
+        stage(queue, results, db, sets, stocks, tmp_path / "stage", today, published)
+    full = {"X": 2, "Y": True}
+    cutoff = dt.datetime.fromisoformat(today).replace(hour=9, minute=15, tzinfo=ZoneInfo("America/New_York"))
+    replay = {"sym_side": "AAAUSDT_SHORT", "valid": True,
+              "optimized_full_sha256": digest(full), "source_30d_sha256": digest({"X": 1}),
+              "bar_cutoff_et": cutoff.isoformat(),
+              "npz_last_bar_utc": cutoff.astimezone(dt.timezone.utc).isoformat()}
+    (results / "AAAUSDT_SHORT/replay.json").write_text(json.dumps(replay))
+    report = stage(queue, results, db, sets, stocks, tmp_path / "stage", today, published)
+    assert report["require_replay"] is True
+    assert report["replay_count"] == 1
 
 
 def test_stage_does_not_mark_mismatched_30d_fallback_verified(tmp_path):

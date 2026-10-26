@@ -31,6 +31,12 @@ def _active_symbols(lines: list[str]) -> set[str]:
 @contextmanager
 def _host_slot_guard():
     """Hold the shared 30D launch lock for a standalone 7D job."""
+    meminfo = Path("/proc/meminfo")
+    if meminfo.is_file():
+        available = re.search(r"^MemAvailable:\s+(\d+) kB$", meminfo.read_text(), re.MULTILINE)
+        floor_mb = int(os.environ.get("V15_7D_MIN_MEM_MB", "8192"))
+        if available and int(available.group(1)) // 1024 < floor_mb:
+            raise RuntimeError(f"7D OOM throttle: MemAvailable below {floor_mb} MB")
     if os.environ.get("V15_7D_ALREADY_PAUSED") == "1":
         yield
         return
@@ -41,12 +47,6 @@ def _host_slot_guard():
             active = _active_symbols(lines)
             if len(active) >= 4:
                 raise RuntimeError(f"7D host full: {len(active)} active sym_sides {sorted(active)}")
-            meminfo = Path("/proc/meminfo")
-            if meminfo.is_file():
-                available = re.search(r"^MemAvailable:\s+(\d+) kB$", meminfo.read_text(), re.MULTILINE)
-                floor_mb = int(os.environ.get("V15_7D_MIN_MEM_MB", "8192"))
-                if available and int(available.group(1)) // 1024 < floor_mb:
-                    raise RuntimeError(f"7D OOM throttle: MemAvailable below {floor_mb} MB")
             yield
         finally:
             fcntl.flock(lock, fcntl.LOCK_UN)

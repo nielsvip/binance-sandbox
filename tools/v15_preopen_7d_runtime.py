@@ -27,6 +27,7 @@ def assert_vector_stage_ready(lane: Path) -> dict:
     if (created.tzinfo is None or created > now or (now - created).total_seconds() > 26 * 3600
             or report.get("day") != created.astimezone(dt.timezone.utc).date().isoformat()
             or report.get("queue_n") != report.get("selected_7d")
+            or (report.get("require_replay") is True and report.get("replay_count") != report.get("selected_7d"))
             or not report.get("stage_only")):
         raise RuntimeError("7D vector stage is incomplete or expired")
     sets_path = lane / "vec_driven_sets.json"
@@ -51,6 +52,8 @@ def assert_ready(account: str, root: Path) -> None:
     report = json.loads(report_path.read_text())
     if report.get("queue_n") != report.get("selected_7d") or not report.get("stage_only"):
         raise RuntimeError("7D stage is incomplete")
+    if report.get("require_replay") is True and report.get("replay_count") != report.get("selected_7d"):
+        raise RuntimeError("7D stage lacks the premarket replay")
     if report.get("db_sha256") != _sha(db):
         raise RuntimeError("7D settings database differs from validated stage")
     con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)

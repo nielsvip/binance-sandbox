@@ -136,6 +136,21 @@ def stage(queue_path: Path, result_dir: Path, source_db: Path, source_sets_path:
     results = {ss: validate_one(ss, rec, result_dir, today) for ss, rec in sorted(sources.items())}
     if len(results) != int(queue["_meta"]["n"]):
         raise ValueError("incomplete 7D queue")
+    replays = {}
+    if queue.get("_meta", {}).get("require_replay") is True:
+        for ss, result in results.items():
+            replay_path = result_dir / ss / "replay.json"
+            replay = json.loads(replay_path.read_text())
+            cutoff = dt.datetime.fromisoformat(str(replay.get("bar_cutoff_et")))
+            npz_bar = dt.datetime.fromisoformat(str(replay.get("npz_last_bar_utc")))
+            if (replay.get("valid") is not True or replay.get("sym_side") != ss
+                    or replay.get("optimized_full_sha256") != digest(result["full_config"])
+                    or replay.get("source_30d_sha256") != digest(sources[ss]["overrides"])
+                    or cutoff.tzinfo is None or cutoff.date().isoformat() != today
+                    or cutoff.hour != 9 or cutoff.minute != 15
+                    or npz_bar.tzinfo is None or npz_bar < cutoff.astimezone(dt.timezone.utc)):
+                raise ValueError(f"{ss}: missing or invalid 09:15 ET replay")
+            replays[ss] = replay
     source_sets = json.loads(source_sets_path.read_text())
     if published_selection_path is None:
         published_selection_path = Path(__file__).resolve().parents[1] / "data/published_selection.json"
@@ -191,6 +206,8 @@ def stage(queue_path: Path, result_dir: Path, source_db: Path, source_sets_path:
     (out_dir / "vec_driven.json").write_text(json.dumps(registry, sort_keys=True) + "\n")
     report = {"day": today, "created_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
               "queue_n": len(sources), "selected_7d": len(results),
+              "require_replay": queue.get("_meta", {}).get("require_replay") is True,
+              "replay_count": len(replays), "replay_sha256": digest(replays) if replays else None,
               "fallback_30d": len(sets) - len(results), "stage_only": True,
               "db": str(db_final), "sets": str(out_dir / "vec_driven_sets.json"),
               "db_sha256": file_sha256(db_final),

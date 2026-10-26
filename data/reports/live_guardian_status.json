@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-26T01:32:35Z",
+ "ts": "2026-10-26T01:37:40Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 155,
+   "fills_6h": 153,
    "open_positions": 1,
-   "unrealised_usd": 0.13,
+   "unrealised_usd": 0.15,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 2,
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 223,
    "open_positions": 4,
-   "unrealised_usd": 0.48,
+   "unrealised_usd": 0.54,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 2,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 130,
+   "fills_6h": 128,
    "open_positions": 9,
-   "unrealised_usd": 0.33,
+   "unrealised_usd": 0.31,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -75,9 +75,9 @@
    }
   },
   "inf": {
-   "fills_6h": 447,
-   "open_positions": 4,
-   "unrealised_usd": 0.29,
+   "fills_6h": 457,
+   "open_positions": 5,
+   "unrealised_usd": 0.33,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 12,
@@ -91,9 +91,9 @@
    }
   },
   "flz": {
-   "fills_6h": 236,
-   "open_positions": 10,
-   "unrealised_usd": 0.42,
+   "fills_6h": 239,
+   "open_positions": 11,
+   "unrealised_usd": 0.37,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 3,
@@ -127,127 +127,120 @@
     "97695"
    ],
    "starts_30m": 4,
-   "log_age_s": 40.0
+   "log_age_s": 10.0
   },
   "men": {
    "pids": [
     "1388"
    ],
-   "starts_30m": 3,
-   "log_age_s": 12.0
+   "starts_30m": 2,
+   "log_age_s": 8.0
   },
   "ang": {
    "pids": [
     "11278"
    ],
-   "starts_30m": 2,
-   "log_age_s": 93.0
+   "starts_30m": 1,
+   "log_age_s": 398.0
   },
   "inf": {
    "pids": [
     "93174"
    ],
    "starts_30m": 1,
-   "log_age_s": -0.0
+   "log_age_s": 1.0
   },
   "flz": {
    "pids": [
     "78615"
    ],
    "starts_30m": 1,
-   "log_age_s": 71.0
+   "log_age_s": 67.0
   },
   "trb": {
    "pids": [
     "84595"
    ],
    "starts_30m": 1,
-   "log_age_s": -0.0
+   "log_age_s": 4.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 151299.0
+   "log_age_s": 151604.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-26T01:32:35Z",
+   "ts": "2026-10-26T01:37:40Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "fin:MAGICUSDT_SHORT",
    "evidence": "OPEN REENTRY_MANDATORY bar=2026-10-25T22:30:00Z: live already holds 575.167 (state divergence)"
   },
   {
-   "ts": "2026-10-26T01:32:35Z",
+   "ts": "2026-10-26T01:37:40Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "fin:ENAUSDC_LONG",
    "evidence": "OPEN TIER1_PRICE_CROSS_REENTRY_exit0.2089_cur bar=2026-10-25T22:30:00Z: live already holds 175.691 (state divergence)"
   },
   {
-   "ts": "2026-10-26T01:32:35Z",
+   "ts": "2026-10-26T01:37:40Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "men:PARTIUSDT_SHORT",
    "evidence": "CLOSE FIXED_STOP decided 2026-10-25T22:43:38Z bar=2026-10-25T22:15:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-26T01:32:35Z",
-   "severity": "CRITICAL",
-   "kind": "ORDER_STORM_KEY",
-   "key": "inf:COTIUSDT_SHORT",
-   "evidence": "6 fills in 10 min: REDUCE 4320 FIXED_STOP_SHORT_px0.010439_lvl0.010434_; CLOSE 4320 FIXED_STOP_SHORT_px0.010439_lvl0.010434_; REDUCE 1299 FIXED_STOP_SHORT_px0.010439_lvl0.010434_; AUGMENT 3970 VEC_DRIVEN_OPEN_RECONCILE_; OPEN 3970.16 VEC_DRIVEN_OPEN_RECONCILE_; AUGMENT 3970 VEC_DRIVEN_OPEN_RECONCILE_"
-  },
-  {
-   "ts": "2026-10-26T01:32:35Z",
+   "ts": "2026-10-26T01:37:40Z",
    "severity": "CRITICAL",
    "kind": "CHURN_KEY",
    "key": "inf:COTIUSDT_SHORT",
-   "evidence": "4 open->flat round trips in 60 min"
+   "evidence": "5 open->flat round trips in 60 min"
   },
   {
-   "ts": "2026-10-26T01:32:35Z",
+   "ts": "2026-10-26T01:37:40Z",
    "severity": "CRITICAL",
    "kind": "CHURN_KEY",
    "key": "inf:LTCUSDC_SHORT",
-   "evidence": "3 open->flat round trips in 60 min"
+   "evidence": "4 open->flat round trips in 60 min"
   },
   {
-   "ts": "2026-10-26T01:32:35Z",
+   "ts": "2026-10-26T01:37:41Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:PENGUUSDC_LONG",
    "evidence": "CLOSE WT_CROSS_EXIT_1h_bear decided 2026-10-25T23:34:20Z bar=2026-10-25T23:15:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-26T01:32:36Z",
+   "ts": "2026-10-26T01:37:41Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "flz:ZECUSDC_SHORT",
    "evidence": "REDUCE PPL_TP_g1.61%>=1.50%_stopBE1217.4362 decided 2026-10-26T00:07:33Z bar=2026-10-25T23:30:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-26T01:32:36Z",
+   "ts": "2026-10-26T01:37:41Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "fin",
    "evidence": "4 new process ids in 30 min (['93902', '94485', '97249', '97695'])"
   },
   {
-   "ts": "2026-10-26T01:32:36Z",
+   "ts": "2026-10-26T01:37:41Z",
    "severity": "CRITICAL",
-   "kind": "RESTART_LOOP",
-   "key": "men",
-   "evidence": "3 new process ids in 30 min (['57522', '223', '1388'])"
+   "kind": "STALE_LOG",
+   "key": "ang",
+   "evidence": "ez_manage_ang.log not written for 398s"
   }
  ],
  "alert_counts": {
   "VEC_OPEN_WHILE_LIVE_IN": 2,
   "VEC_DECISION_NOT_FILLED": 3,
-  "ORDER_STORM_KEY": 1,
   "CHURN_KEY": 2,
-  "RESTART_LOOP": 2
+  "RESTART_LOOP": 1,
+  "STALE_LOG": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -306,13 +299,6 @@
    "until": 1792980742.438844,
    "why": "SIZE_ANOMALY order $646.97 > 1.5x MAX_ORDER_VALUE",
    "undo": "redis-cli -p 6379 DEL open_blocked:ang:TIAUSDC_LONG",
-   "dry_run": false
-  },
-  "key:ang:SKLUSDT_SHORT": {
-   "ts": 1792971315.614927,
-   "until": 1792978515.614929,
-   "why": "SIZE_ANOMALY order $2527.31 > 1.5x MAX_ORDER_VALUE",
-   "undo": "redis-cli -p 6379 DEL open_blocked:ang:SKLUSDT_SHORT",
    "dry_run": false
   },
   "acct:fin": {
@@ -384,5 +370,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.66
+ "sweep_s": 1.31
 }

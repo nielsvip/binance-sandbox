@@ -151,14 +151,7 @@ def boards():
 
 
 def best_settings(ss, bds):
-    """(settings, source) for one sym_side — USER 2026-10-22: SKIP_NO_PUBLISHED_BOARD IS DESTROYED. Every tradeable
-    key is evaluated and traded on the best settings that exist for it, in CLAUDE.md's own order: the latest published
-    board, else the per_sym best set through its sanctioned reader (per_sym_live_set.full_set: per_sym_store SQL row
-    primary, JSON views second), else that key's own pilot progress overrides, else the engine/live defaults. A key is
-    never skipped for want of a board again; the source is reported per pass so a defaults key is visible, not silent."""
-    ov = ((bds or {}).get(ss) or {}).get("overrides") or {}
-    if ov:
-        return ov, "published_board"
+    """Use exactly the complete per-sym winner or its category-side defaults."""
     try:
         import per_sym_live_set as _psl
         fs = _psl.full_set(ss)
@@ -167,15 +160,15 @@ def best_settings(ss, bds):
     except Exception:
         pass
     try:
-        prog = ROOT / "data" / "reports" / "lifecycle_pilot" / f"{ss}_v14_progress.json"
-        if prog.exists():
-            d = json.load(open(prog))
-            po = d.get("cumulative_overrides") or d.get("hustler_overrides") or {}
-            if po:
-                return dict(po), "pilot_progress"
+        import per_sym_settings as _pss
+        symbol, side = ss.rsplit("_", 1)
+        cat_side = _pss.cat_side_of(symbol, side)
+        cat = _pss.defaults(cat_side)
+        if cat:
+            return cat, f"cat_side_defaults:{cat_side}"
     except Exception:
         pass
-    return {}, "live_defaults"
+    return {}, "missing_live_settings"
 
 
 def last_closed_bar(now=None):
@@ -646,8 +639,9 @@ def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4, held=N
     for ss in sorted(by_ss):
         ov, _src = best_settings(ss, bds)
         stats[f"SETTINGS_{_src}"] += 1
-        if _src != "published_board":
-            log(f"NO PUBLISHED BOARD for {ss} — evaluating on {_src} (USER 2026-10-22: no key is skipped)")
+        if not ov:
+            log(f"MISSING LIVE SETTINGS for {ss} — refusing vector judgment")
+            continue
         jobs.append((ss, ov, bar_ts))
     results = list(skipped)
     def _drain(triples):
