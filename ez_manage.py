@@ -58016,11 +58016,30 @@ async def process_position(
             _bt_fire, _bt_pre = False, None
         if _bt_fire:
             _bt_g = safe_fetch_float(getattr(position, "gain", 0), 0)
-            logger.warning(f"[BT_EXIT] {position_key}: {_bt_pre} g={_bt_g:.2f}%")
-            result = await queue_trade_action(order_queue, trade_manager, position_key, "QUICK_CLOSE", f"BT_{_bt_pre}_g={_bt_g:.2f}%", 0.95)
-            if result:
-                trade_manager.processing_keys.discard(position_key)
-                return f"{EvalStatus.ACTION_TAKEN}:BT_EXIT_{_bt_pre}"
+            _bt_fee_floor = safe_fetch_float(
+                _psym_get(
+                    symbol,
+                    position_side,
+                    "COMMISSION_BUFFER_PCT",
+                    getattr(config, "COMMISSION_BUFFER_PCT", 0.08),
+                ),
+                0.08,
+            )
+            try:
+                from vec_decisions.net_exit_gate import estimated_net_gain_positive as _bt_net_ok
+                _bt_profitable = _bt_net_ok(_bt_g, _bt_fee_floor)
+            except Exception:
+                _bt_profitable = False
+            if not _bt_profitable:
+                logger.info(
+                    f"[BT_EXIT_NET_GAIN_HOLD] {position_key}: {_bt_pre} gross={_bt_g:.2f}% fee_floor={_bt_fee_floor:.4f}%"
+                )
+            else:
+                logger.warning(f"[BT_EXIT] {position_key}: {_bt_pre} g={_bt_g:.2f}%")
+                result = await queue_trade_action(order_queue, trade_manager, position_key, "QUICK_CLOSE", f"BT_{_bt_pre}_g={_bt_g:.2f}%", 0.95)
+                if result:
+                    trade_manager.processing_keys.discard(position_key)
+                    return f"{EvalStatus.ACTION_TAKEN}:BT_EXIT_{_bt_pre}"
         # E-1 WT_EXIT_USE_DELTA (2026-04-19 default OFF) — exit when wt_composite_delta crosses threshold against position.
         # Fires alongside existing exits. LONG exits when delta < -THR, SHORT when delta > +THR.
         # USER 2026-10-22 parity restore: per-sym resolution (was global-only,

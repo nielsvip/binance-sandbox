@@ -156,6 +156,8 @@ def test_dictate_only_exemptions():
     # USER 2026-10-25 vec-parity-only: RATIO trims lost their exemption — only
     # board-confirmed speech and per_sym dictate survive.
     assert G.dictate_only_exempt("REDUCE", "RATIO_CLOSE_SHORT_X") is False
+    assert G.dictate_only_exempt("REDUCE", "RATIO_CLOSE_OW_LONG_L60_S40") is True
+    assert G.dictate_only_exempt("CLOSE", "RATIO_CLOSE_OW_LONG_L60_S40") is False
     assert G.dictate_only_exempt("AUGMENT", "RATIO_AUGMENT_X") is False
     assert G.dictate_only_exempt("OPEN", "RATIO_OPEN_X") is False
     assert G.dictate_only_exempt("CLOSE", "RATIO_CLOSE_X") is False
@@ -172,7 +174,7 @@ def test_dictate_only_persym_overrides_global():
 
     with patch(
         "per_sym_store.get_overrides", return_value={"STOCH_XTREME_EXIT_ENABLED": True}
-    ):
+    ), patch("cat_side_defaults.get_for", return_value=False):
         assert (
             G.dictate_only_exempt(
                 "QUICK_CLOSE", "BT_STOCH_XTREME_EXIT_g=0.06%", "BTCDOMUSDT_SHORT"
@@ -197,7 +199,7 @@ def test_dictate_only_persym_overrides_global():
         )
     with patch(
         "per_sym_store.get_overrides", return_value={"STOCH_XTREME_EXIT_ENABLED": True}
-    ):
+    ), patch("cat_side_defaults.get_for", return_value=False):
         assert (
             G.dictate_only_exempt("CLOSE", "FIXED_STOP_LONG_px", "BTCDOMUSDT_SHORT")
             is False
@@ -206,6 +208,26 @@ def test_dictate_only_persym_overrides_global():
             G.dictate_only_exempt("CLOSE", "QUICK_PEAK_GIVEBACK_X", "BTCDOMUSDT_SHORT")
             is False
         )
+
+
+def test_switch_dictate_uses_cat_side_default_when_sym_side_has_no_full_set():
+    from unittest.mock import patch
+
+    with patch("per_sym_store.get_overrides", return_value={}), patch(
+        "cat_side_defaults.get_for", return_value=True
+    ):
+        assert G.dictate_only_exempt(
+            "REDUCE", "CYCLE_TP_TIERED_T0_0.15pct_gain0.24", "ARUSDT_LONG"
+        ) is True
+        assert G.dictate_only_exempt(
+            "QUICK_CLOSE", "WT_EXHAUST_mom4h=EXHAUST_UP_g=0.34%", "ETHFIUSDC_LONG"
+        ) is True
+    with patch(
+        "per_sym_store.get_overrides", return_value={"CYCLE_TP_TIERED_ENABLED": False}
+    ), patch("cat_side_defaults.get_for", return_value=True):
+        assert G.dictate_only_exempt(
+            "REDUCE", "CYCLE_TP_TIERED_T0_0.15pct_gain0.24", "ARUSDT_LONG"
+        ) is False
 
 
 def test_exec_board_ok():

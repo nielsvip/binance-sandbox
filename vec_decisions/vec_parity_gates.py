@@ -128,9 +128,7 @@ def confirm_release_ok(dictated, vec_order, require_board):
 
 
 def _per_sym_knob_true(sym_side, knob):
-    """per_sym layer for one knob (USER 2026-10-25 doctrine: a per_sym switch value, when it exists, overrides
-    global). Reads the same full per_sym set live readers resolve first. Any failure -> None (fail-closed).
-    """
+    """Resolve the switch exactly like live: sym_side full set, then cat_side default."""
     try:
         if not sym_side or not knob:
             return None
@@ -139,6 +137,20 @@ def _per_sym_knob_true(sym_side, knob):
         full = _pss.get_overrides(str(sym_side))
         if isinstance(full, dict) and knob in full:
             return bool(full[knob])
+    except Exception:
+        pass
+    # A missing per_sym row or omitted key inherits the current cat_side
+    # template default. Ignoring that layer made default-ON live/vector twins
+    # look non-vector when a sym_side had no explicit copy of the switch.
+    try:
+        raw = str(sym_side).rsplit("_", 1)
+        if len(raw) == 2:
+            symbol, side = raw
+            import cat_side_defaults as _csd
+
+            value = _csd.get_for(knob, symbol, side, None)
+            if value is not None:
+                return bool(value)
     except Exception:
         pass
     return None
@@ -175,8 +187,10 @@ def dictate_only_exempt(action, reason, sym_side=None, ultimate_buffer_pct=None)
     # reasons, the board-measured per_sym switch dictate, and side-preserving
     # ratio sizing (RATIO_REDUCE_*/RATIO_REBALANCE_AUGMENT_* — USER 2026-10-25:
     # ratio balance always works, augments and reduces, never touches bar
-    # parity). RATIO_CLOSE_OW_* full closes DO change side and stay under the
-    # law. Emergencies, hedges, oversize trims, bookkeeping-as-trade: all blocked
+    # parity). RATIO_CLOSE_OW_* is also a live account-level partial trim whose
+    # decision requires portfolio exposure absent from a single-sym NPZ; it is
+    # explicitly classified non-vectorizable when the action is REDUCE.
+    # Emergencies, hedges, oversize trims, bookkeeping-as-trade: all blocked
     # unless the vector dictates them. Switch-dictated exits
     # (PEAK_GIVEBACK/DC4/BREAKEVEN families) pass on their per_sym master knob.
     # (BROKER_RECONCILED
@@ -189,6 +203,8 @@ def dictate_only_exempt(action, reason, sym_side=None, ultimate_buffer_pct=None)
     try:
         _ru = str(reason or "").upper()
         if _ru.startswith(("RATIO_REDUCE_", "RATIO_REBALANCE_AUGMENT_")):
+            return True
+        if str(action or "").upper() == "REDUCE" and _ru.startswith("RATIO_CLOSE_OW_"):
             return True
         if mandatory_stop_exempt(action, reason, ultimate_buffer_pct):
             return True
@@ -213,6 +229,7 @@ def dictate_only_exempt(action, reason, sym_side=None, ultimate_buffer_pct=None)
                 ("QUICK_BREAKEVEN_", "BREAKEVEN_GAIN_EROSION_ENABLED"),
                 ("BREAKEVEN_GAIN_EROSION", "BREAKEVEN_GAIN_EROSION_ENABLED"),
                 ("CYCLE_TP_TIERED_", "CYCLE_TP_TIERED_ENABLED"),
+                ("WT_EXHAUST_", "WT_EXHAUST_EXIT_ENABLED"),
             ):
                 if _r.startswith(_pfx) or _ru.startswith(_pfx):
                     if _per_sym_knob_true(sym_side, _kb) is True:

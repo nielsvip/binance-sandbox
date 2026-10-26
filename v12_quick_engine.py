@@ -15627,6 +15627,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             entry_sig = entry_sig & np.asarray(_btcde_m, dtype=bool)
     _hsc_core = _setup_memo("nonhtf_core", None, cfg, npz, n, is_long, lambda: vec_decisions.htf_signal_consume.nonhtf_core(cfg, npz, n, is_long, close, _safe, _base_safe, compute_reentry_blocks, compute_entry_signals))  # 2026-10-13 V17 TF law: exact non-HTF provenance (None = disabled / no HTF path)
     exit_sig = compute_exit_signals(npz, n, is_long, cfg, entry_sig)
+    _bt_exit_reason_masks = {}
     try:
         import vec_decisions.hybrid_struct_exit as _hybrid_struct
 
@@ -16428,8 +16429,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         import vec_decisions.bottom_top_signals as _bts
 
         _bt_ex = _bts.exit_fire_masks(npz, n, is_long, cfg)
-        for _m in _bt_ex.values():
-            exit_sig = exit_sig | np.asarray(_m, dtype=bool)
+        for _fam, _m in _bt_ex.items():
+            _mask = np.asarray(_m, dtype=bool)
+            _bt_exit_reason_masks[_fam] = _mask
+            exit_sig = exit_sig | _mask
     except Exception:
         pass
     # AUTO_WIRED parity: apply generic hash fallback so every catalog knob flips ledger even before causal per-param block
@@ -23568,6 +23571,13 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                 )
             except Exception:
                 pass
+            # Keep the source switch identity so a switch-backed exit remains
+            # actionable when generic TECHNICAL_EXIT triggers are disabled.
+            if _tech_reason == "TECHNICAL_EXIT":
+                for _bt_fam, _bt_mask in _bt_exit_reason_masks.items():
+                    if i < len(_bt_mask) and bool(_bt_mask[i]):
+                        _tech_reason = f"BT_{_bt_fam}_EXIT"
+                        break
             if _tech_reason == "TECHNICAL_EXIT" and not bool(
                 getattr(cfg, "VEC_EXIT_SIG_IS_TRIGGER", False)
             ):
@@ -23583,8 +23593,17 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 continue  # [C2 b5b] live UNIVERSAL_NOLOSS_GATE
             if _htfv_block(i, _tech_reason):
                 continue  # lane-D: stocks HTF_TREND_VETO_ON_REDUCE
-            pos["fees"] += abs(pos["qty"] * px) * half_fee
-            pnl_dollars = pnl_preview - pos["fees"]
+            _exit_fee = abs(pos["qty"] * px) * half_fee
+            pnl_dollars = pnl_preview - (pos["fees"] + _exit_fee)
+            _fee_buffer_pct = max(
+                0.0, float(getattr(cfg, "COMMISSION_BUFFER_PCT", 0.08) or 0.0)
+            )
+            _unmodeled_fee_pct = max(
+                0.0, _fee_buffer_pct - float(commission_pct or 0.0)
+            )
+            if pnl_dollars - abs(pos["qty"] * px) * (_unmodeled_fee_pct / 100.0) <= 0.0:
+                continue
+            pos["fees"] += _exit_fee
             pnl_pct = pnl_dollars / pos["deployed"] * 100 if pos["deployed"] else 0.0
             _ts_exit3 = (
                 float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
