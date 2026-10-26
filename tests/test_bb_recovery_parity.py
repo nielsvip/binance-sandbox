@@ -105,7 +105,7 @@ def test_bb_recovery_switch_off_and_below_fee_floor_do_not_book_close():
     assert positive_after_estimated_fees(0.09, 0.08)
 
 
-def _simulate_tradier_bypass(enabled, target_price):
+def _simulate_tradier_bypass(enabled, target_price, is_long=True):
     import v12_quick_engine as vq
 
     n = 110
@@ -129,12 +129,12 @@ def _simulate_tradier_bypass(enabled, target_price):
         "dc_high_15m": np.full(n, 120.0),
         "dc_low_4h": np.full(n, 80.0),
         "dc_high_4h": np.full(n, 120.0),
-        "bb_high_1h": np.full(n, 99.0),
-        "bb_low_1h": np.full(n, 90.0),
+        "bb_high_1h": np.full(n, 99.0 if is_long else 110.0),
+        "bb_low_1h": np.full(n, 90.0 if is_long else 101.0),
         "atr_3m": np.full(n, 0.1),
-        "ha_3m": np.full(n, -1, dtype=np.int8),
-        "stoch_k_3m": np.full(n, 25.0),
-        "stoch_k_3m_prev": np.full(n, 30.0),
+        "ha_3m": np.full(n, -1 if is_long else 1, dtype=np.int8),
+        "stoch_k_3m": np.full(n, 25.0 if is_long else 30.0),
+        "stoch_k_3m_prev": np.full(n, 30.0 if is_long else 25.0),
     }
     for tf in ("15m", "1h", "4h", "D"):
         npz[f"wt1_{tf}"] = np.zeros(n)
@@ -167,7 +167,7 @@ def _simulate_tradier_bypass(enabled, target_price):
     vq.compute_exit_signals = lambda *args, **kwargs: exit_mask.copy()
     try:
         result = vq.simulate_one(
-            npz, "BB_RECOVERY_TR_TEST", True, cfg, force_initial_seed=True
+            npz, "BB_RECOVERY_TR_TEST", is_long, cfg, force_initial_seed=True
         )
     finally:
         vq.compute_exit_signals = original
@@ -175,24 +175,26 @@ def _simulate_tradier_bypass(enabled, target_price):
 
 
 def test_tradier_recovery_only_bypasses_existing_noloss_when_fee_positive():
-    admitted, cfg = _simulate_tradier_bypass(True, 100.20)
-    assert cfg.BB_RECOVERY_EXIT_ENABLED_TRADIER is True
-    close = next(
-        row for row in admitted["ledger"]
-        if row.get("type") == "CLOSE" and row.get("bar_exit") == 12
-    )
-    assert close["reason"] == "BB_RECOVERY_EXIT_TRADIER_LONG"
+    for is_long, target, side in ((True, 100.20, "LONG"), (False, 99.80, "SHORT")):
+        admitted, cfg = _simulate_tradier_bypass(True, target, is_long)
+        assert cfg.BB_RECOVERY_EXIT_ENABLED_TRADIER is True
+        close = next(
+            row for row in admitted["ledger"]
+            if row.get("type") == "CLOSE" and row.get("bar_exit") == 12
+        )
+        assert close["reason"] == f"BB_RECOVERY_EXIT_TRADIER_{side}"
 
-    disabled, _ = _simulate_tradier_bypass(False, 100.20)
-    assert not any(
-        row.get("type") == "CLOSE" and row.get("bar_exit") == 12
-        for row in disabled["ledger"]
-    )
-    fee_blocked, _ = _simulate_tradier_bypass(True, 100.03)
-    assert not any(
-        row.get("type") == "CLOSE" and row.get("bar_exit") == 12
-        for row in fee_blocked["ledger"]
-    )
+        disabled, _ = _simulate_tradier_bypass(False, target, is_long)
+        assert not any(
+            row.get("type") == "CLOSE" and row.get("bar_exit") == 12
+            for row in disabled["ledger"]
+        )
+        fee_target = 100.03 if is_long else 99.97
+        fee_blocked, _ = _simulate_tradier_bypass(True, fee_target, is_long)
+        assert not any(
+            row.get("type") == "CLOSE" and row.get("bar_exit") == 12
+            for row in fee_blocked["ledger"]
+        )
 
 
 def test_tradier_recovery_predicate_uses_entry_bb_tolerance_and_reversal():

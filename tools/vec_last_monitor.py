@@ -27,7 +27,7 @@ import os
 import re
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
@@ -59,6 +59,40 @@ def _since_ts(hours):
     return time.time() - float(hours) * 3600.0
 
 
+def _log_line_timestamp(line, now=None):
+    """Parse the manager log timestamps used on this Mac; None means unknown."""
+    now = now or datetime.now().astimezone()
+    s = str(line or "").lstrip("\ufeff \t")
+    if s.startswith("["):
+        s = s[1:]
+    # ISO date, with optional milliseconds and UTC suffix.
+    m = re.match(r"^(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?(?:Z|[+-]\d{2}:?\d{2})?)", s)
+    if m:
+        raw = m.group(1).replace("Z", "+00:00")
+        try:
+            dt = datetime.fromisoformat(raw)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=now.tzinfo)
+            return dt.timestamp()
+        except ValueError:
+            return None
+    # Tradier logs commonly use MM-DD HH:MM:SS; crypto logs use DD HH:MM:SS.
+    m = re.match(r"^(\d{1,2})-(\d{1,2})\s+(\d{2}):(\d{2}):(\d{2})", s)
+    if m:
+        month, day, hour, minute, second = map(int, m.groups())
+        year = now.year
+    else:
+        m = re.match(r"^(\d{1,2})\s+(\d{2}):(\d{2}):(\d{2})", s)
+        if not m:
+            return None
+        day, hour, minute, second = map(int, m.groups())
+        month, year = now.month, now.year
+    try:
+        return datetime(year, month, day, hour, minute, second, tzinfo=now.tzinfo).timestamp()
+    except ValueError:
+        return None
+
+
 def scan_logs(log_dir, since_ts):
     tag_counts = collections.Counter()
     gate_counts = collections.Counter()
@@ -72,6 +106,9 @@ def scan_logs(log_dir, since_ts):
         try:
             with open(path, errors="replace") as fh:
                 for line in fh:
+                    line_ts = _log_line_timestamp(line)
+                    if line_ts is None or line_ts < since_ts:
+                        continue
                     m = TAG_RE.search(line)
                     if not m:
                         continue
@@ -151,9 +188,6 @@ def main():
     tag_counts, log_gates, n_logs = scan_logs(args.log_dir, since_ts)
     hist_fams, n_hist_vec = scan_history(since_ts)
     q_gates, n_queue = scan_queue()
-    fix_gates = collections.Counter()
-    fix_gates.update(log_gates)
-    fix_gates.update(q_gates)
     override_n = tag_counts.get("VEC_LAST_OVERRIDE", 0)
     refuse_n = tag_counts.get("VEC_LAST_REFUSE", 0)
     verdict = "VEC_SILENT" if (override_n == 0 and n_hist_vec == 0) else ("OVERRIDE_ZERO" if override_n == 0 else "OVERRIDE_ACTIVE")
@@ -162,7 +196,8 @@ def main():
         "since_h": args.since_h,
         "n_log_files": n_logs,
         "log_tags": dict(tag_counts.most_common()),
-        "override_gates": dict(fix_gates.most_common(20)),
+        "override_gates": dict(log_gates.most_common(20)),
+        "queue_gates_all_time": dict(q_gates.most_common(20)),
         "history_vec_events": n_hist_vec,
         "history_vec_top": dict(hist_fams.most_common(20)),
         "queue_rows": n_queue,
@@ -176,8 +211,10 @@ def main():
     except OSError:
         pass
     print(f"[VEC_LAST_MONITOR] verdict={verdict} override={override_n} refuse={refuse_n} hist_vec={n_hist_vec} logs={n_logs}")
-    for gate, c in fix_gates.most_common(15):
-        print(f"  FIX {c:6d} {gate}")
+    for gate, c in log_gates.most_common(15):
+        print(f"  LIVE_WINDOW {c:6d} {gate}")
+    for gate, c in q_gates.most_common(10):
+        print(f"  QUEUE_HIST  {c:6d} {gate}")
     for fam, c in hist_fams.most_common(10):
         print(f"  HIST {c:6d} {fam[:90]}")
     return 0
