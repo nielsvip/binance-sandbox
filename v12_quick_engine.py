@@ -15550,7 +15550,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     # E7 2026-10-20 FIXED_STOP switch family (USER "fixed stop can get switches ... if the numbers prove otherwise I go with the
     # numbers", doc 17 §3.7): the reference the stop freezes at. Defaults (dc_low/15m/0.25/off) take the unchanged
     # freeze_software_level(dc_low_15m, dc_high_15m) path below, so a board without these keys computes today's level exactly.
-    _fx_spec = vec_decisions.fixed_stop.normalize_spec(getattr(cfg, "FIXED_STOP_REF_FIELD", "dc_low"), getattr(cfg, "FIXED_STOP_REF_TF", "15m"), getattr(cfg, "FIXED_STOP_BUFFER_PCT", 0.25), getattr(cfg, "FIXED_STOP_TIGHTEN_MODE", "off"), getattr(cfg, "FIXED_STOP_TIGHTEN_TRIGGER_PCT", 1.0))
+    # Mandatory entry-time dc15 ±0.25% software stop has no tunable reference.
+    _fx_spec = vec_decisions.fixed_stop.DEFAULT_SPEC
     _fx_ref_default = vec_decisions.fixed_stop.is_default_reference(_fx_spec)
     _fx_tight_on = _fx_spec[3] != "off"
     _fx_ref_arr = {"dc_low_15m": _uh_l15, "dc_high_15m": _uh_h15}
