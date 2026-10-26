@@ -5591,7 +5591,7 @@ class AdvancedSignalRater:
                     )
         # BACKTEST_CHANGE_109: K-ZONE ENTRY — enter on K value zone + K turning + candle confirm (no crossover wait)
         # Backtest: k_zone_candle entries had 95-100% WR at 0.5-1.5% TP with bounce reentry
-        _kz_enabled = getattr(config, "K_ZONE_ENTRY_ENABLED", True)
+        _kz_enabled = bool(_psym_get(symbol, "LONG" if is_long else "SHORT", "K_ZONE_ENTRY_ENABLED", getattr(config, "K_ZONE_ENTRY_ENABLED", True)))
         _kz_bonus = getattr(config, "K_ZONE_ENTRY_BONUS", 25)
         if _kz_enabled and not is_exit:
             _kz_long_thr = getattr(config, "K_ZONE_LONG_THRESHOLD", 35)
@@ -18710,7 +18710,7 @@ class TrackerManager:
         # 2026-10-24 USER "every path covered with a switch": the position-state STRONG
         # promotion is the live QUICK path (vec twin: vec_decisions.quick_open_strong +
         # v12 augment driver). Default True = today's behavior preserved exactly.
-        _qos_on = bool(getattr(config, "QUICK_OPEN_STRONG_VEC_ENABLED", True))
+        _qos_on = bool(_psym_get(symbol, "LONG" if is_long else "SHORT", "QUICK_OPEN_STRONG_VEC_ENABLED", getattr(config, "QUICK_OPEN_STRONG_VEC_ENABLED", True)))
         if composite_score >= 80 and _qos_on:
             signals["action"] = "STRONG_BUY" if is_long else "STRONG_SELL"
         elif composite_score >= 60:

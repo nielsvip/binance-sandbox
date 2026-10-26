@@ -12,6 +12,10 @@ import json
 import os
 import sys
 import time
+import ast
+import hashlib
+import sqlite3
+from functools import lru_cache
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,19 +24,31 @@ OUT = ROOT / "data" / "forward_state"
 
 
 def _load_overrides(symside):
-    """Use the same complete per-sym or cat-side set that live trading reads."""
+    """Read the published full set from the explicitly selected active SQL store."""
     import per_sym_live_set
-    import per_sym_settings
+    db = os.environ.get("PER_SYM_STORE_DB")
+    if not db or not Path(db).is_file():
+        return {}, "missing_explicit_per_sym_store", {}
+    con = sqlite3.connect(f"file:{Path(db).resolve()}?mode=ro", uri=True, timeout=5)
+    try:
+        row = con.execute("SELECT updated_at,full_config_json,template_md5,defaults_round FROM per_sym_active WHERE sym_side=?", (symside,)).fetchone()
+    finally:
+        con.close()
+    if not row or not row[1]:
+        return {}, "missing_published_per_sym_row", {}
+    full = json.loads(row[1])
+    if not isinstance(full, dict) or not full:
+        return {}, "invalid_published_per_sym_row", {}
+    raw = json.dumps(full, sort_keys=True, separators=(",", ":"), default=str).encode()
+    effective = per_sym_live_set._apply_caps(symside, full)
+    return dict(effective), "per_sym_store.active", {"settings_updated_at": row[0], "settings_sha256": hashlib.sha256(raw).hexdigest(), "template_md5": row[2], "defaults_round": row[3]}
 
-    full = per_sym_live_set.full_set(symside)
-    if full:
-        return dict(full), "per_sym_live_set.full_set"
-    symbol, side = symside.rsplit("_", 1)
-    cat_side = per_sym_settings.cat_side_of(symbol, side)
-    defaults = per_sym_settings.defaults(cat_side)
-    if defaults:
-        return defaults, f"cat_side_defaults:{cat_side}"
-    return {}, "missing_live_settings"
+
+@lru_cache(maxsize=1)
+def _engine_ast_sha256():
+    source = (ROOT / "v12_quick_engine.py").read_text()
+    tree = ast.parse(source)
+    return hashlib.sha256(ast.dump(tree, include_attributes=False).encode()).hexdigest()
 
 
 def _open_ledger_position(ledger, tail):
@@ -54,7 +70,7 @@ def _open_ledger_position(ledger, tail):
 
 def state_for(symside, window_days=30):
     from tools.opt.v12_pilot import prepare_batch, evaluate_prepared_sanitized
-    ov, src = _load_overrides(symside)
+    ov, src, setting_meta = _load_overrides(symside)
     if not ov:
         return {"ts": time.strftime("%FT%TZ", time.gmtime()), "sym_side": symside,
                 "ok": False, "reason": "missing live settings", "src": src}
@@ -67,16 +83,27 @@ def state_for(symside, window_days=30):
     tails = _np.get("timestamps")
     tails = [] if tails is None else tails
     tail = int(tails[-1]) if len(tails) else 0
+    symbol = symside.rsplit("_", 1)[0]
+    is_crypto = symbol.endswith(("USDT", "USDC", "USD1", "USDS", "BUSD", "FDUSD", "TUSD", "DAI"))
+    expected_tail = (int(time.time()) // 900 - 1) * 900
+    if not tail or (is_crypto and tail < expected_tail):
+        return {"ts": time.strftime("%FT%TZ", time.gmtime()), "sym_side": symside, "ok": False,
+                "reason": "npz_tail_behind_last_closed_bar", "src": src, "npz_tail": tail,
+                "expected_npz_tail": expected_tail, **setting_meta}
     res = evaluate_prepared_sanitized(prep, ov, window_days, include_ledger=True) or {}
+    if res.get("valid") is not True:
+        return {"ts": time.strftime("%FT%TZ", time.gmtime()), "sym_side": symside, "ok": False,
+                "reason": "invalid_30d_replay", "src": src, "npz_tail": tail, **setting_meta}
     led = [t for t in (res.get("ledger") or []) if isinstance(t, dict)]
     cur = _open_ledger_position(led, len(tails) - 1)
     out = {"ts": time.strftime("%FT%TZ", time.gmtime()), "sym_side": symside, "ok": True,
            "src": src, "npz_tail": tail, "window_days": window_days,
+           "engine_ast_sha256": _engine_ast_sha256(), **setting_meta,
            "gain_pct": res.get("gain_pct"), "trades": res.get("trades"),
            "valid": res.get("valid"), "open": cur is not None,
            "entry_bar": int(tails[int(cur.get("bar", cur.get("bar_entry")))]) if cur is not None and cur.get("bar", cur.get("bar_entry")) is not None else None,
            "entry_px": cur.get("price", cur.get("entry_price")) if cur is not None else None,
-           "audit_only": True}
+           "audit_only": False}
     return out
 
 
