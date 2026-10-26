@@ -8,7 +8,17 @@ PY=/home/niels/.conda/envs/binance_env_mac/bin/python
 rsync -az --timeout=15 --include='symbols_men_*.json' --include='symbols_fin_*.json' --include='symbols_trb_*.json' --exclude='*' niels@10.0.0.3:binance-sandbox/ ./ >/dev/null 2>&1 || exit 2
 host=$(hostname -s)
 case "$host" in
-  s2) shards="crypto_long crypto_short" ;;
+  s2)
+    shards="crypto_long crypto_short"
+    # The stock boxes are temporary. S2 already has stock NPZs and takes over
+    # either shard as soon as its owner disappears, without waiting for a deploy.
+    if ! ssh -o BatchMode=yes -o ConnectTimeout=3 -o ConnectionAttempts=1 niels@10.0.0.5 true >/dev/null 2>&1; then
+      shards="$shards stock_long"
+    fi
+    if ! ssh -o BatchMode=yes -o ConnectTimeout=3 -o ConnectionAttempts=1 niels@10.0.0.6 true >/dev/null 2>&1; then
+      shards="$shards stock_short"
+    fi
+    ;;
   s5) shards="stock_long" ;;
   s6) shards="stock_short" ;;
   *) exit 2 ;;

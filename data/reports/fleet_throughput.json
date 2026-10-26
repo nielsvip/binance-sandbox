@@ -1,29 +1,41 @@
 {
-  "ts": "2026-10-26T02:05:08.920924+00:00",
-  "tick": "2026-10-26T02:04:00.810913+00:00",
-  "tick_age_s": 68,
+  "ts": "2026-10-26T02:10:06.674239+00:00",
+  "tick": "2026-10-26T02:08:02.291014+00:00",
+  "tick_age_s": 124,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run36.json",
     "round": "run36",
     "complete": false,
     "universe_n": 100,
-    "n_complete": 66,
-    "n_pending": 34,
+    "n_complete": 67,
+    "n_pending": 33,
     "n_refused_only": 0,
     "n_excluded": 0,
     "n_launchable_pending": 18,
     "hosts_not_visible": []
   },
   "hosts": {
-    "s5": {
-      "cpu_pct": 63,
-      "slots": "1/4",
+    "s2": {
+      "cpu_pct": 99,
+      "slots": "2/4",
       "observed_running": [
-        "RUNEUSDT"
+        "QNTUSDT",
+        "RLCUSDT"
       ],
       "published_last_hour": 0,
       "idle_reason": "no eligible ready symbol for this host",
-      "mem_avail_mb": 24946
+      "mem_avail_mb": 17474
+    },
+    "s5": {
+      "cpu_pct": 100,
+      "slots": "2/4",
+      "observed_running": [
+        "RUNEUSDT",
+        "SOLUSDC"
+      ],
+      "published_last_hour": 0,
+      "idle_reason": "no eligible ready symbol for this host",
+      "mem_avail_mb": 22496
     },
     "s1": {
       "cpu_pct": 100,
@@ -35,41 +47,26 @@
       ],
       "published_last_hour": 2,
       "idle_reason": "mem guard",
-      "mem_avail_mb": 5865
-    },
-    "s2": {
-      "cpu_pct": 100,
-      "slots": "3/4",
-      "observed_running": [
-        "ONEUSDT",
-        "RLCUSDT",
-        "SOLUSDC"
-      ],
-      "published_last_hour": 0,
-      "idle_reason": "no eligible ready symbol for this host",
-      "mem_avail_mb": 12642
+      "mem_avail_mb": 6038
     },
     "s6": {
-      "cpu_pct": 59,
+      "cpu_pct": 100,
       "slots": "4/4",
       "observed_running": [
-        "ACEUSDT",
+        "COTIUSDT",
         "FARTCOINUSDT",
         "VICR",
         "VLO"
       ],
-      "published_last_hour": 4,
+      "published_last_hour": 5,
       "idle_reason": "slots full",
-      "mem_avail_mb": 11401
+      "mem_avail_mb": 13199
     }
   },
-  "one_hour_total": 6,
+  "one_hour_total": 7,
   "alerts": [
-    "LOW_THROUGHPUT:s5:0/h",
-    "LOW_CPU:s5:63%",
-    "LOW_THROUGHPUT:s1:2/h",
     "LOW_THROUGHPUT:s2:0/h",
-    "LOW_THROUGHPUT:s6:4/h",
-    "LOW_CPU:s6:59%"
+    "LOW_THROUGHPUT:s5:0/h",
+    "LOW_THROUGHPUT:s1:2/h"
   ]
 }

@@ -3,6 +3,7 @@
 
 import time
 
+from tools import vec_backstop_consumer as consumer
 from tools.vec_backstop_consumer import collect_owed
 
 
@@ -104,3 +105,71 @@ def test_idempotent_same_bar():
     assert len(first) == 1
     pushed.add(first[0]["key"])
     assert collect_owed(states, pos, now, pushed) == []
+
+
+def _install_run_inputs(monkeypatch, states, positions, pushed=None):
+    pushed = set(pushed or ())
+    saved = []
+    events = []
+    monkeypatch.setattr(consumer, "load_states", lambda _state_dir: states)
+    monkeypatch.setattr(consumer, "load_live_positions", lambda _base, _account: positions)
+    monkeypatch.setattr(consumer, "load_pushed", lambda: set(pushed))
+    monkeypatch.setattr(consumer, "save_pushed", lambda values: saved.append(set(values)))
+    monkeypatch.setattr(consumer, "log_decision", lambda entry: events.append(entry))
+    return pushed, saved, events
+
+
+def test_run_dry_run_is_logged_but_not_marked_pushed(monkeypatch):
+    now = time.time()
+    states = {"BTCUSDC_SHORT": _st("BTCUSDC_SHORT", "flat", now=now)}
+    positions = {"flz:BTCUSDC_SHORT": 1.0}
+    pushed, saved, events = _install_run_inputs(monkeypatch, states, positions)
+
+    rec = consumer.run("/unused", "flz", redis_client=None, now_s=now, dry_run=True)
+
+    assert rec["pushed"] == 0
+    assert not saved and not pushed
+    assert events[0]["kind"] == "VEC_BACKSTOP_DRY_RUN"
+    assert events[0]["broker_execution_confirmed"] is False
+
+
+def test_run_without_redis_remains_retryable(monkeypatch):
+    now = time.time()
+    states = {"BTCUSDC_SHORT": _st("BTCUSDC_SHORT", "flat", now=now)}
+    positions = {"flz:BTCUSDC_SHORT": 1.0}
+    pushed, saved, events = _install_run_inputs(monkeypatch, states, positions)
+
+    rec = consumer.run("/unused", "flz", redis_client=None, now_s=now)
+
+    assert rec["pushed"] == 0
+    assert not saved and not pushed
+    assert events[0]["kind"] == "VEC_BACKSTOP_HELD"
+    assert events[0]["queue_confirmed"] is False
+
+
+def test_run_marks_only_successfully_enqueued_commands(monkeypatch):
+    now = time.time()
+    states = {
+        "BTCUSDC_SHORT": _st("BTCUSDC_SHORT", "flat", now=now),
+        "ETHUSDC_LONG": _st("ETHUSDC_LONG", "flat", now=now),
+    }
+    positions = {"flz:BTCUSDC_SHORT": 1.0, "ang:ETHUSDC_LONG": 2.0}
+    pushed, saved, events = _install_run_inputs(monkeypatch, states, positions)
+
+    class Redis:
+        def rpush(self, key, _payload):
+            if key.endswith(":ang"):
+                raise OSError("redis write failed")
+            return 1
+
+    rec = consumer.run("/unused", "flz", redis_client=Redis(), now_s=now)
+
+    assert rec["pushed"] == 1 and rec["failed"] == 1
+    assert len(saved) == 1
+    assert len(saved[0]) == 1
+    assert "BTCUSDC_SHORT|" in next(iter(saved[0]))
+    assert all("ETHUSDC_LONG|" not in key for key in saved[0])
+    assert events[0]["kind"] == "VEC_BACKSTOP_QUEUED"
+    assert events[0]["broker_execution_confirmed"] is False
+    assert events[1]["kind"] == "VEC_BACKSTOP_QUEUE_FAILED"
+    assert events[1]["queue_confirmed"] is False

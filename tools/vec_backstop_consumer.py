@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""vec_backstop_consumer — EVERY VEC_ backstop is EXECUTED immediately (USER 2026-10-25).
+"""Queue owed vector closes for the live intervention loop.
 
 No VEC_ verdict is ever "ignored per doctrine" again. Each minute this reads the
 executor STATE targets (data/vec_live/state/*.json) against live positions and
@@ -156,7 +156,8 @@ def save_pushed(pushed):
 
 
 def push_cmds(redis_client, cmds):
-    n = 0
+    queued = []
+    failed = []
     for c in cmds:
         qkey = f"intervention_queue:{c['account']}"
         payload = {
@@ -171,11 +172,13 @@ def push_cmds(redis_client, cmds):
             )
         }
         try:
-            redis_client.rpush(qkey, json.dumps(payload))
-            n += 1
-        except Exception:
-            pass
-    return n
+            result = redis_client.rpush(qkey, json.dumps(payload))
+            if not result:
+                raise RuntimeError("Redis RPUSH returned no queue length")
+            queued.append(c)
+        except Exception as exc:
+            failed.append((c, str(exc)))
+    return queued, failed
 
 
 def run(
@@ -199,23 +202,42 @@ def run(
         "owed": len(cmds),
         "pushed": 0,
     }
+    queued = []
+    failed = []
     if cmds and not dry_run and redis_client is not None:
-        rec["pushed"] = push_cmds(redis_client, cmds)
-        for c in cmds:
+        queued, failed = push_cmds(redis_client, cmds)
+        rec["pushed"] = len(queued)
+        rec["failed"] = len(failed)
+        for c in queued:
             pushed.add(c["key"])
-        save_pushed(pushed)
+        if queued:
+            save_pushed(pushed)
     for c in cmds:
+        if dry_run:
+            kind = "VEC_BACKSTOP_DRY_RUN"
+            detail = "dry run; no queue write attempted"
+        elif redis_client is None:
+            kind = "VEC_BACKSTOP_HELD"
+            detail = "Redis unavailable; key remains eligible for retry"
+        elif any(fc["key"] == c["key"] for fc, _ in failed):
+            kind = "VEC_BACKSTOP_QUEUE_FAILED"
+            detail = next(err for fc, err in failed if fc["key"] == c["key"])
+        else:
+            kind = "VEC_BACKSTOP_QUEUED"
+            detail = "successfully enqueued for live intervention; broker execution unconfirmed"
         log_decision(
             {
                 "ts": now_s,
                 "venue": "crypto",
-                "kind": "VEC_BACKSTOP_EXECUTED",
+                "kind": kind,
                 "position_key": f"{c['account']}:{c['symbol']}_{c['position_side']}",
                 "action": "CLOSE",
                 "reason": c["reason"][:160],
                 "vec_path": c["reason"][:80],
                 "dry_run": dry_run,
-                "fix": "batch-fix the native path that left this position open against a flat vector target",
+                "detail": detail[:240],
+                "queue_confirmed": kind == "VEC_BACKSTOP_QUEUED",
+                "broker_execution_confirmed": False,
             }
         )
     return rec

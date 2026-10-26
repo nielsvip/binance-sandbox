@@ -1,41 +1,24 @@
 {
- "generated_utc": "2026-10-26T01:12:02.917439+00:00",
+ "generated_utc": "2026-10-26T02:12:03.629807+00:00",
  "days": 1.0,
  "totals": {
-  "exit_promises": 159,
-  "exit_broken_no_delivery": 140,
+  "exit_promises": 158,
+  "exit_broken_no_delivery": 138,
   "entry_promises": 96,
-  "entry_broken_no_delivery": 96,
+  "entry_broken_no_delivery": 95,
   "exit_skipped_inflight": 1472,
   "exit_kept_late": 12,
-  "exit_kept_in_bar": 7
+  "exit_kept_in_bar": 8,
+  "entry_pending": 1
  },
  "per_key": {
-  "flz:HYPEUSDT_LONG": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
-  },
-  "flz:ZECUSDC_LONG": {
-   "exit_promises": 2,
-   "exit_broken_no_delivery": 2,
-   "entry_promises": 2,
-   "entry_broken_no_delivery": 2
-  },
   "flz:GRAMUSDT_LONG": {
-   "entry_promises": 2,
-   "entry_broken_no_delivery": 2,
    "exit_promises": 3,
    "exit_broken_no_delivery": 2,
+   "entry_promises": 1,
+   "entry_broken_no_delivery": 1,
    "exit_skipped_inflight": 24,
    "exit_kept_late": 1
-  },
-  "inf:WUSDT_SHORT": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
-  },
-  "flz:ZECUSDC_SHORT": {
-   "exit_promises": 3,
-   "exit_broken_no_delivery": 3
   },
   "flz:GRAMUSDT_SHORT": {
    "exit_promises": 3,
@@ -301,6 +284,10 @@
    "exit_promises": 2,
    "exit_broken_no_delivery": 2
   },
+  "flz:ZECUSDC_SHORT": {
+   "exit_promises": 2,
+   "exit_broken_no_delivery": 2
+  },
   "fin:XMRUSDT_LONG": {
    "entry_promises": 1,
    "entry_broken_no_delivery": 1
@@ -326,6 +313,12 @@
    "exit_broken_no_delivery": 2
   },
   "men:ENJUSDT_SHORT": {
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1
+  },
+  "flz:ZECUSDC_LONG": {
+   "entry_promises": 2,
+   "entry_broken_no_delivery": 2,
    "exit_promises": 1,
    "exit_broken_no_delivery": 1
   },
@@ -380,11 +373,11 @@
    "exit_broken_no_delivery": 2
   },
   "inf:RAYSOLUSDT_LONG": {
-   "exit_promises": 7,
+   "exit_promises": 8,
    "exit_kept_late": 3,
    "entry_promises": 2,
    "entry_broken_no_delivery": 2,
-   "exit_broken_no_delivery": 4
+   "exit_broken_no_delivery": 5
   },
   "men:ETHFIUSDC_LONG": {
    "exit_promises": 2,
@@ -419,8 +412,8 @@
    "exit_broken_no_delivery": 1
   },
   "inf:COTIUSDT_SHORT": {
-   "exit_promises": 1,
-   "exit_kept_in_bar": 1,
+   "exit_promises": 2,
+   "exit_kept_in_bar": 2,
    "entry_promises": 2,
    "entry_broken_no_delivery": 2
   },
@@ -443,59 +436,17 @@
   "inf:BTCUSDC_SHORT": {
    "entry_promises": 1,
    "entry_broken_no_delivery": 1
+  },
+  "inf:ATOMUSDT_SHORT": {
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1
+  },
+  "inf:BNBUSDC_SHORT": {
+   "entry_promises": 1,
+   "entry_pending": 1
   }
  },
  "detail": [
-  {
-   "acct": "flz",
-   "sym_side": "HYPEUSDT_LONG",
-   "kind": "exit",
-   "bar": "10-25 01:30",
-   "late_min": null,
-   "action": "REDUCE",
-   "reason": "REDUCE_TO_FLAT",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "flz",
-   "sym_side": "ZECUSDC_LONG",
-   "kind": "exit",
-   "bar": "10-25 01:30",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "EXIT_VELOCITY_WT against-long g0.46%",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "flz",
-   "sym_side": "GRAMUSDT_LONG",
-   "kind": "entry",
-   "bar": "10-25 01:30",
-   "late_min": null,
-   "action": "OPEN",
-   "reason": "TIER1_PRICE_CROSS_REENTRY_exit1.2480_cur1.2520_k3m19",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "inf",
-   "sym_side": "WUSDT_SHORT",
-   "kind": "exit",
-   "bar": "10-25 01:30",
-   "late_min": null,
-   "action": "REDUCE",
-   "reason": "WT_CROSS_EXIT_1h_bull",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "flz",
-   "sym_side": "ZECUSDC_SHORT",
-   "kind": "exit",
-   "bar": "10-25 01:30",
-   "late_min": null,
-   "action": "REDUCE",
-   "reason": "REDUCE_TO_FLAT",
-   "outcome": "NO_DELIVERY"
-  },
   {
    "acct": "flz",
    "sym_side": "GRAMUSDT_LONG",
@@ -2924,6 +2875,26 @@
    "late_min": null,
    "action": "REDUCE",
    "reason": "STDEV_REJECT_EXIT",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "RAYSOLUSDT_LONG",
+   "kind": "exit",
+   "bar": "10-26 01:00",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "STDEV_REJECT_EXIT",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "ATOMUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-26 01:15",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "SATOSHIT_EXIT_PARTIAL 0.70",
    "outcome": "NO_DELIVERY"
   }
  ],

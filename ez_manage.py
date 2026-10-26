@@ -53537,6 +53537,22 @@ async def process_position(
             except Exception:
                 _fx_oa_ep = 0.0
             _fx_anchor = safe_fetch_float(getattr(position, "fixed_stop_anchor", 0) or 0, 0.0)
+            # Existing exchange orders remain untouched. Their frozen dc15 ±0.40%
+            # trigger recovers the original entry-time dc15 software ±0.25% level
+            # when an older per_sym fixed-stop spec left a different software level.
+            _fx_reg = getattr(trade_manager, "managed_stop_registry", None)
+            _fx_saved = _fx_reg.get(position_key) if isinstance(_fx_reg, dict) else None
+            if isinstance(_fx_saved, dict) and str(_fx_saved.get("entry_sig", "")) == str(_fx_oa):
+                _fx_exchange = safe_fetch_float(_fx_saved.get("stopPrice", 0) or 0, 0.0)
+                if _fx_exchange > 0:
+                    _fx_entry_soft = _fx_exchange * ((1.0 - 0.25 / 100.0) / (1.0 - 0.40 / 100.0) if _fx_is_long else (1.0 + 0.25 / 100.0) / (1.0 + 0.40 / 100.0))
+                    if _fx_entry_soft > 0 and abs(_fx_entry_soft - _fx_lvl) > 1e-10:
+                        logger.critical(f"[FIXED_STOP_ENTRY_RESTORE] {position_key}: original exchange stop {_fx_exchange:.8f} recovers software {_fx_entry_soft:.8f} from {_fx_lvl:.8f}; exchange order kept")
+                        position.fixed_stop_price = _fx_entry_soft
+                        _fx_lvl = _fx_entry_soft
+                        if _fx_oa_ep > 0:
+                            position.fixed_stop_anchor = _fx_oa_ep
+                            _fx_anchor = _fx_oa_ep
             # 2026-10-15 LIFECYCLE-BOUND FREEZE (USER, COTI incident): _fixed_stop_level_absurd only ever caught a
             # WRONG-SIDE level (distance was removed per "NO 5% OR ANY% EXISTS"), so a level inherited from a PREVIOUS
             # lifecycle of the same key — correct side, 1-2 days old — was never re-frozen. ang/fin/men COTIUSDT_SHORT
