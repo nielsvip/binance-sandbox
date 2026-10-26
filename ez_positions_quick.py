@@ -32451,6 +32451,8 @@ async def evaluate_reentry_epq(ctx: dict):
     k_3m = _sf(i.get("k_3m"), 50)
     d_3m = _sf(i.get("d_3m"), 50)
     k_15m = _sf(i.get("k_15m"), 50)
+    d_15m = _sf(i.get("d_15m"), 50)
+    k_15m_prev = _sf(i.get("k_15m_prev"), k_15m)
     k_1h = _sf(i.get("k_1h"), 50)
     k_3m_prev = _sf(i.get("k_3m_prev"), k_3m)
     dc_high_4h = _sf(i.get("dc_high_4h"), 0)
@@ -32462,25 +32464,14 @@ async def evaluate_reentry_epq(ctx: dict):
     ha_3m = i.get("ha_3m", "neutral")
     ha_15m = i.get("ha_15m", "neutral")
     ha_1h = i.get("ha_1h", "neutral")
-
-    # === RE-6 WAVE_PHASE precondition helper (used by B11/B15) ===
-    def _re6_wave_phase_ok() -> bool:
-        if not bool(getattr(cfg, "RE_6_WAVE_PHASE_GATE_ENABLED", False)):
-            return True
-        _min_exp = int(getattr(cfg, "RE_6_MIN_EXPANDING_TFS", 2))
-        _exp_cnt = 0
-        for _tf in ("15m", "1h", "4h", "D"):
-            _ph = str(i.get(f"wt_wave_phase_{_tf}", "") or "").upper()
-            if _ph == "EXPANDING":
-                _exp_cnt += 1
-        return _exp_cnt >= _min_exp
+    _epq_close_15m = _sf(i.get("close_15m"), _sf(i.get("close"), current_price))
 
     # B15: STRONG TREND CONTINUATION
-    if bool(_sw_get(symbol, ctx.get("position_side", "LONG"), "REENTRY_B15_STRONG_TREND_ENABLED", getattr(cfg, "REENTRY_B15_STRONG_TREND_ENABLED", True))) and _re6_wave_phase_ok():
+    if bool(_sw_get(symbol, ctx.get("position_side", "LONG"), "REENTRY_B15_STRONG_TREND_ENABLED", getattr(cfg, "REENTRY_B15_STRONG_TREND_ENABLED", True))):
         if (
             is_long
             and dc_high_4h > 0
-            and current_price > dc_high_4h
+            and _epq_close_15m > dc_high_4h
             and wt_vel_1h > 2.0
             and k_1h < 85
         ):
@@ -32496,7 +32487,7 @@ async def evaluate_reentry_epq(ctx: dict):
         if (
             not is_long
             and dc_low_4h > 0
-            and current_price < dc_low_4h
+            and _epq_close_15m < dc_low_4h
             and wt_vel_1h < -2.0
             and k_1h > 15
         ):
@@ -32533,11 +32524,11 @@ async def evaluate_reentry_epq(ctx: dict):
                 quantity=_dcbr_qty,
             )
     # B11: DC CHANNEL BREAKOUT
-    if bool(_sw_get(symbol, ctx.get("position_side", "LONG"), "REENTRY_B11_DC_BREAK_ENABLED", getattr(cfg, "REENTRY_B11_DC_BREAK_ENABLED", True))) and _re6_wave_phase_ok():
+    if bool(_sw_get(symbol, ctx.get("position_side", "LONG"), "REENTRY_B11_DC_BREAK_ENABLED", getattr(cfg, "REENTRY_B11_DC_BREAK_ENABLED", True))):
         if (
             is_long
             and dc_high_1h > 0
-            and current_price > dc_high_1h * 1.001
+            and _epq_close_15m > dc_high_1h * 1.001
             and wt1_15m > wt2_15m
         ):
             log_.warning(
@@ -32552,7 +32543,7 @@ async def evaluate_reentry_epq(ctx: dict):
         if (
             not is_long
             and dc_low_1h > 0
-            and current_price < dc_low_1h * 0.999
+            and _epq_close_15m < dc_low_1h * 0.999
             and wt1_15m < wt2_15m
         ):
             log_.warning(
@@ -32642,61 +32633,59 @@ async def evaluate_reentry_epq(ctx: dict):
             _b14_conv = _b14_conv + _hs_w * min(float(_hs), float(_hs_cap))
         if (
             is_long
-            and _ha_val(ha_3m) == 1
             and _ha_val(ha_15m) == 1
             and _ha_val(ha_1h) == 1
-            and k_3m < 60
+            and k_15m < 60
         ):
             log_.info(
-                f"[REENTRY_B14_EPQ] {position_key}: HA_TREND_LONG k3m={k_3m:.0f} conv={_b14_conv:.0f}"
+                f"[REENTRY_B14_EPQ] {position_key}: HA_TREND_LONG k15m={k_15m:.0f} conv={_b14_conv:.0f}"
             )
             return _EM_Signal(
                 action="REENTRY",
-                reason=f"B14_HA_TREND_LONG_k3m={k_3m:.0f}",
+                reason=f"B14_HA_TREND_LONG_k15m={k_15m:.0f}",
                 conviction=_b14_conv,
                 quantity=re_qty,
             )
         if (
             not is_long
-            and _ha_val(ha_3m) == -1
             and _ha_val(ha_15m) == -1
             and _ha_val(ha_1h) == -1
-            and k_3m > 40
+            and k_15m > 40
         ):
             log_.info(
-                f"[REENTRY_B14_EPQ] {position_key}: HA_TREND_SHORT k3m={k_3m:.0f} conv={_b14_conv:.0f}"
+                f"[REENTRY_B14_EPQ] {position_key}: HA_TREND_SHORT k15m={k_15m:.0f} conv={_b14_conv:.0f}"
             )
             return _EM_Signal(
                 action="REENTRY",
-                reason=f"B14_HA_TREND_SHORT_k3m={k_3m:.0f}",
+                reason=f"B14_HA_TREND_SHORT_k15m={k_15m:.0f}",
                 conviction=_b14_conv,
                 quantity=re_qty,
             )
     # B10: STOCHASTIC REVERSAL
     if bool(_sw_get(symbol, ctx.get("position_side", "LONG"), "REENTRY_B10_STOCH_REV_ENABLED", getattr(cfg, "REENTRY_B10_STOCH_REV_ENABLED", True))):
-        if is_long and k_3m_prev <= d_3m and k_3m > d_3m and k_3m < 25 and k_15m < 40:
+        if is_long and k_15m_prev <= d_15m and k_15m > d_15m and k_15m < 25 and k_15m < 40:
             log_.info(
-                f"[REENTRY_B10_EPQ] {position_key}: STOCH_REV_LONG k3m={k_3m:.0f}"
+                f"[REENTRY_B10_EPQ] {position_key}: STOCH_REV_LONG k15m={k_15m:.0f}"
             )
             return _EM_Signal(
                 action="REENTRY",
-                reason=f"B10_STOCH_REV_LONG_k3m={k_3m:.0f}_k15m={k_15m:.0f}",
+                reason=f"B10_STOCH_REV_LONG_k15m={k_15m:.0f}",
                 conviction=72.0,
                 quantity=re_qty,
             )
         if (
             not is_long
-            and k_3m_prev >= d_3m
-            and k_3m < d_3m
-            and k_3m > 75
+            and k_15m_prev >= d_15m
+            and k_15m < d_15m
+            and k_15m > 75
             and k_15m > 60
         ):
             log_.info(
-                f"[REENTRY_B10_EPQ] {position_key}: STOCH_REV_SHORT k3m={k_3m:.0f}"
+                f"[REENTRY_B10_EPQ] {position_key}: STOCH_REV_SHORT k15m={k_15m:.0f}"
             )
             return _EM_Signal(
                 action="REENTRY",
-                reason=f"B10_STOCH_REV_SHORT_k3m={k_3m:.0f}_k15m={k_15m:.0f}",
+                reason=f"B10_STOCH_REV_SHORT_k15m={k_15m:.0f}",
                 conviction=72.0,
                 quantity=re_qty,
             )

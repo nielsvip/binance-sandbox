@@ -82,8 +82,8 @@ if files:
  p=max(files,key=os.path.getmtime)
  try:
   j=json.load(open(p)); fresh=time.time()-os.path.getmtime(p)<300
-  print(int(fresh and (j.get('complete') or
-        (j.get('launchable_known') and not j.get('n_launchable_pending') and not j.get('running_pending')))))
+  print(int(fresh and 'running_all' in j and not j.get('running_all') and not j.get('running_pending') and
+        (j.get('complete') or (j.get('launchable_known') and not j.get('n_launchable_pending')))))
  except Exception: print(0)
 else: print(0)
 PYEOF

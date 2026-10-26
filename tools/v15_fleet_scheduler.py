@@ -2831,7 +2831,8 @@ def build_round_completion(round_id, universe, rows, must_by_host, exclusions, n
             "n_pending": sum(c["pending"] for c in per_cat.values()), "n_refused_only": sum(c["refused_only"] for c in per_cat.values()),
             "refusal_reasons_outside_allowlist": dict(sorted(outside.items(), key=lambda kv: -kv[1])), "structural_allowlist": sorted(_STRUCTURAL_REFUSALS),
             "structural_prefixes": list(_STRUCTURAL_PREFIXES), "launchable_pending": launchable, "n_launchable_pending": len(launchable),
-            "running_pending": running_pending, "launchable_known": launchable_sides is not None or launchable_syms is not None,
+            "running_pending": running_pending, "running_all": sorted(run_set),
+            "launchable_known": launchable_sides is not None or launchable_syms is not None,
             "carried_from_previous_round": carried, "n_carried_from_previous_round": len(carried),
             "n_carried_resolved": sum(1 for c in carried if c["now"] in ("COMPLETE", "EXCLUDED")),
             "per_cat_side": per_cat, "sym_sides": per_ss}
@@ -2871,12 +2872,14 @@ def round_roll_decision(record, force=False, now_ts=None, max_age_s=1800.0):
            f"record_age_s={None if age is None else round(age)}{' STALE' if stale else ''} per_cat_side={json.dumps(pcs, sort_keys=True)}")
     if force:
         return True, "FORCED (V15_ROUND_ROLL_FORCE=1): " + msg
+    if "running_all" not in record:
+        return False, "REFUSED (fleet running inventory unknown): " + msg
+    if record.get("running_all") or record.get("running_pending"):
+        return False, "REFUSED (fleet pilots are still running): " + msg
     if record.get("complete"):
         return True, "ALLOWED (complete): " + msg
     if stale or not record.get("launchable_known", False):
         return False, "REFUSED (record stale or launchability unknown): " + msg
-    if record.get("running_pending"):
-        return False, "REFUSED (running sides have not finished): " + msg
     if nl > 0:
         return False, "REFUSED (launchable pending work exists): " + msg
     return True, "ALLOWED (exhausted: nothing launchable, record frozen incomplete): " + msg

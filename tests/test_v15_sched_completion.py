@@ -126,7 +126,7 @@ def test_tradeable_universe_one_source_alternatives_counted():
 
 
 def test_round_roll_decision_refuses_only_launchable_pending():
-    base = {"round": "run35", "generated_at": _iso(NOW - 60), "complete": False, "launchable_known": True,
+    base = {"round": "run35", "generated_at": _iso(NOW - 60), "complete": False, "launchable_known": True, "running_all": [],
             "per_cat_side": {"CRYPTO_LONG": {"n": 3, "pending": 2, "refused_only": 0, "complete": 1, "excluded": 0}}}
     ok, msg = S.round_roll_decision({**base, "n_launchable_pending": 2, "launchable_pending": ["A_LONG", "B_LONG"]}, False, NOW)
     assert ok is False and msg.startswith("REFUSED") and '"pending": 2' in msg
@@ -136,6 +136,8 @@ def test_round_roll_decision_refuses_only_launchable_pending():
     assert S.round_roll_decision({**base, "complete": True, "n_launchable_pending": 0}, False, NOW)[0] is True
     assert S.round_roll_decision({**base, "n_launchable_pending": 5, "generated_at": _iso(NOW - 7200)}, False, NOW)[0] is False  # stale cannot prove exhausted
     assert S.round_roll_decision({**base, "n_launchable_pending": 0, "running_pending": ["A_LONG"]}, False, NOW)[0] is False
+    assert S.round_roll_decision({**base, "n_launchable_pending": 0, "running_all": ["Z_SHORT"]}, False, NOW)[0] is False
+    assert S.round_roll_decision({k: v for k, v in base.items() if k != "running_all"}, False, NOW)[0] is False
     assert S.round_roll_decision({**base, "n_launchable_pending": 5, "launchable_known": False}, False, NOW)[0] is False
     assert S.round_roll_decision(None, False, NOW)[0] is False
 
