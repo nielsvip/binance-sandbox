@@ -6978,7 +6978,7 @@ class PositionService:
             logger.critical(f"[process_account_update][{account_key}] 🚨 CRITICAL: account_positions is EMPTY when it should have positions! This indicates positions were CLEARED or never loaded. API reports {len(raw_positions_data)} positions.")
         if config.VERBOSE_FETCH_LOGGING: logger.debug(f"[process_account_update][{account_key}] BEFORE: {positions_before} positions in memory: {list(positions_before_keys)[:5]}")
         await self._check_for_deletions(account_key, f"before _process_account_update_impl")
-        await self._process_account_update_impl(account_key, raw_positions_data, now, updated_keys_in_api, account_positions)
+        await self._process_account_update_impl(account_key, raw_positions_data, now, updated_keys_in_api, account_positions, complete_snapshot=(not single and isinstance(data, list)))
         await self._check_for_deletions(account_key, f"after _process_account_update_impl")
         # 2026-10-22 PAU BOUND (USER positions-reliability: the service must never hang, or the
         # realtime backup starts): the stop cycle is best-effort per fetch — a wedged klines/API leg may
@@ -7209,7 +7209,10 @@ class PositionService:
                             except Exception:
                                 pass
                             logger.critical(f"🛡️ [FIXED_STOP_ARMED] {position_key}: price {_px:.6f} back on the protected side of {_lvl:.6f} — stop is live again")
-                    if _fixed_stop_core.breached(_is_long, _px, _lvl) and bool(getattr(position, "fixed_stop_armed", True)):
+                    # Defer software firing until this lifecycle's original
+                    # entry-time dc15 channel has been verified. The existing
+                    # exchange stop remains active during the rebuild.
+                    if (_oa_ep is None or _fx_vkey in _fx_ver) and _fixed_stop_core.breached(_is_long, _px, _lvl) and bool(getattr(position, "fixed_stop_armed", True)):
                         if position_key in _inflight:
                             continue
                         try:
@@ -7257,7 +7260,7 @@ class PositionService:
         except Exception:
             pass
 
-    async def _process_account_update_impl(self, account_key: str, raw_positions_data: list, now: datetime, updated_keys_in_api: set, account_positions: dict):
+    async def _process_account_update_impl(self, account_key: str, raw_positions_data: list, now: datetime, updated_keys_in_api: set, account_positions: dict, complete_snapshot: bool = False):
         try :
             if not account_positions:
                 account_positions = self.positions_by_account.setdefault(account_key, {})
@@ -7428,23 +7431,39 @@ class PositionService:
                 keys_in_memory_not_in_api = set(account_positions.keys()) - updated_keys_in_api
 
                 # USER 2026-10-23 blindness guard: an empty/partial API report is AMBIGUOUS — it means
-                # "no positions" only when the API is trustworthy. During a recorded -1003 ban, or when
-                # 3+ held keys vanish in a single 5s cycle (a genuine simultaneous mass-close with no
-                # fills is implausible; a blind/forgetful report is likely), strikes must NOT accumulate:
-                # 2026-10-23 measured a held 0.001 BTCUSDC_LONG zeroed out of the writer JSON on forgetful
-                # reports during WS-drop + REST-failure windows, and the lane then read it as flat.
-                # Deferral costs one cycle; a false zero destroys years of position state. Strike counts
-                # are kept (not cleared), so a continued absence on the next believable report still zeroes.
+                # "no positions" only when the API is trustworthy. During a recorded -1003 ban, or the
+                # first two complete REST reports where 3+ held keys vanish together, defer reconciliation:
+                # a forgetful report during WS-drop + REST-failure windows previously zeroed a real position.
+                # Require three consecutive complete REST absences for each key, then apply the normal
+                # two-strike rule. Clear pre-existing strikes when the mass absence begins so old reports
+                # cannot make a newly missing position reconcile immediately.
                 _held_missing = [k for k in keys_in_memory_not_in_api
                                  if account_positions.get(k) and abs(account_positions[k].positionAmt or 0.0) > 0]
+                _absence_counts = self.__dict__.setdefault("_api_absence_snapshot_counts", {})
                 _ban_rem_ghost = _ban_remaining_seconds()
+                if complete_snapshot:
+                    for _present_key in updated_keys_in_api:
+                        _absence_counts.pop(_present_key, None)
+                    for _missing_key in _held_missing:
+                        if _ban_rem_ghost > 0:
+                            _absence_counts.pop(_missing_key, None)
+                            continue
+                        _absence_record = _absence_counts.get(_missing_key)
+                        _absence_count = (_absence_record or {}).get("count", 0) + 1
+                        _absence_counts[_missing_key] = {"count": _absence_count, "last_seen": now}
+                        if _absence_count == 1:
+                            self._clear_zero_report(_missing_key)
                 _ghost_hold = False
                 if _held_missing and _ban_rem_ghost > 0:
                     _ghost_hold = True
                     _log_ban_skip_throttled(logger, account_key, f"deferring {len(_held_missing)} ghost strikes")
                 elif len(_held_missing) >= 3:
                     _ghost_hold = True
-                    logger.critical(f"[GHOST_RECONCILE_DEFERRED][{account_key}] {len(_held_missing)} held keys missing from one API report {sorted(_held_missing)[:6]} — mass absence, report distrusted, strikes deferred this cycle.")
+                    if complete_snapshot:
+                        _mass_confirmed = [k for k in _held_missing if _absence_counts.get(k, {}).get("count", 0) >= 3]
+                        logger.critical(f"[GHOST_RECONCILE_DEFERRED][{account_key}] {len(_held_missing)} held keys missing from one API report {sorted(_held_missing)[:6]} — {len(_mass_confirmed)} have 3 consecutive complete REST absences and may enter normal two-strike reconciliation.")
+                    else:
+                        logger.critical(f"[GHOST_RECONCILE_DEFERRED][{account_key}] {len(_held_missing)} held keys missing from one API report {sorted(_held_missing)[:6]} — mass absence, report distrusted, strikes deferred this cycle.")
 
                 _ghost_reconcile_deadline = time.monotonic() + 45.0
                 _ghost_budget_warning = False
@@ -7456,7 +7475,8 @@ class PositionService:
                     prev_amt = abs(position_obj.positionAmt) if position_obj.positionAmt else 0.0
 
                     if _ghost_hold and prev_amt > 0:
-                        continue
+                        if not (complete_snapshot and _absence_counts.get(pk_ghost, {}).get("count", 0) >= 3 and _ban_rem_ghost <= 0):
+                            continue
 
                     # If position has an amount but is missing from API, apply the "Two-Strike" rule
                     if prev_amt > 0:
@@ -14145,7 +14165,11 @@ async def check_position_reductions(service, position_key: str, account_key: str
             except Exception:
                 pass
             logger.critical(f"🛡️ [FIXED_STOP_ARMED] {position_key}: price {current_price:.6f} back on the protected side of {_fx_lvl0:.6f} — stop is live again")
-        if _fx_lvl0 > 0 and bool(getattr(position, "fixed_stop_armed", True)) and _fixed_stop_core.breached(is_long, current_price, _fx_lvl0):
+        _fx_opened = getattr(position, "opened_at", None)
+        _fx_opened_epoch = _fx_opened.timestamp() if hasattr(_fx_opened, "timestamp") else None
+        _fx_entry_verified = getattr(service, "_fx_entry_verified", set())
+        _fx_software_ready = _fx_opened_epoch is None or (position_key, int(_fx_opened_epoch)) in _fx_entry_verified
+        if _fx_software_ready and _fx_lvl0 > 0 and bool(getattr(position, "fixed_stop_armed", True)) and _fixed_stop_core.breached(is_long, current_price, _fx_lvl0):
             _fx_side0 = 'SELL' if is_long else 'BUY'
             logger.critical(f"⛔ [FIXED_STOP] {position_key}: price {current_price:.6f} breached frozen {'dc_low_15m' if is_long else 'dc_high_15m'} stop {_fx_lvl0:.6f} g={float(gain or 0):.2f}% → HARD_STOP CLOSE (non-negotiable)")
             await service.trade_manager.execute_now(position_key, account_key, symbol, pos_amt, _fx_side0, position_side, pos_amt, current_price, f"FIXED_STOP_{int(time.time())}", f"FIXED_STOP_{position_side}_px{current_price:.6f}_lvl{_fx_lvl0:.6f}_g{float(gain or 0):.2f}{_svc_fixed_stop_ref_tag(_svc_fixed_stop_spec(symbol, position_side))}", True, 'CLOSE')
