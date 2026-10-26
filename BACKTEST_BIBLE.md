@@ -3,10 +3,10 @@
 ## 2026-10-26 fleet and premarket operating contract (supersedes older queue exceptions)
 
 - **S1 owns coordination and crypto SHORT**, S2 crypto LONG, S5 stocks LONG, S6 stocks SHORT while the rented stock boxes remain. A missing host's pending work is reassigned to the surviving boxes; added hosts take pending work. S5/S6 are temporary. Each healthy paid box targets four simultaneous symbols, 28 workers, >80% busy CPU, and >4 completed sym_sides/hour. These are measured targets, never assumed achievements. S1 also keeps the crypto NPZ/STATE and live discrepancy pipeline; no `ez_manage`, `tradier_manage`, `allez_`, or redundant `ez_indicators` runs there during normal Mac ownership.
-- **Best first is frozen per round.** `tools/v15_best_first.py` freezes each side's measured gain from `data/v15_symside_ledger.json` in `data/best_first_rounds/<round>.json` when the round first starts. S1 republishes `data/v15_best_first.json` every minute, with current side eligibility. The fleet scheduler and each worker's cron self-dispatch use that same descending previous-round gain order; the host uses the gain for its own side. An interrupted best gainer is retried before a lower-gain fresh side, subject to actual memory, NPZ and slot gates. At run37 the rank freezes anew before the first dispatch. An old `run_order_*.txt`, tier, age, pinned entry, held position, or stale queue cannot authorize a removed side.
+- **Best first is frozen per round.** `tools/v15_best_first.py` freezes the latest completed gain for each side in `data/best_first_rounds/<round>.json` when the round first starts. The scheduler writes fresh completed gains from all four host probes every tick to `data/v15_best_first_latest_gains.json`, and the next round's freeze takes those over the 30-minute ledger where newer. S1 republishes `data/v15_best_first.json` every minute, with current side eligibility. The fleet scheduler and each worker's cron self-dispatch use that same descending previous-round gain order; the host uses the gain for its own side. An interrupted best gainer is retried before a lower-gain fresh side, subject to actual memory, NPZ and slot gates. At run37 the rank freezes anew before the first dispatch. An old `run_order_*.txt`, tier, age, pinned entry, held position, or stale queue cannot authorize a removed side. The round watchdog runs each minute and rolls only on a fresh completion record with no running or launchable pending side; the autopilot restart preserves the four category owners.
 - **Side eligibility is exact and fail closed.** Crypto backtests require both `tradeable_keys.json` membership for the named account and its current `symbols_<account>_<side>.json`; FIN reads MEN's dynamic side book through 2026-11-09 01:10:12 UTC and then returns to its independently updated FIN book. Stocks require the current `symbols_trb_<side>.json` for fleet work. `data/open_position_sym_sides.json` remains relevant for closing positions but cannot create a new backtest or exposure-increasing trade. Every scheduler dispatch and worker overload launch rechecks eligibility. Mac `ez_manage` and `tradier_manage` enforce the account's current side book at final entry; exits still work. A missing/unreadable book or key refuses a new entry or launch.
-- **Premarket sequence:** S1 finishes the daily avg_delta/pos_sym, template row rearrangement, and four cat_side defaults before the 7D pass starts. The S1 fleet scheduler owns the dated 7D queue and per-side host/result ledger. It optimizes rows over the latest 7D using the new cat_side default and the verified per_sym 30D default as competing baselines, then requires a post-09:15 ET NPZ replay before staging. Only FIN and TRC may use the validated 7D overlay; MEN and TRB stay on 30D. FIN's entry book exactly mirrors MEN during the two-week comparison, while its own independent SMA classifier continues updating; TRC's entry book exactly mirrors TRB. The 09:15 ET replay cannot use an earlier row. If the run cannot finish by 09:30 ET, unfinished sides are marked failed and excluded; stage validation and promotion must never invent a fallback 7D result. A staged result is evidence, not live activation.
-- **Current proof limit (01:47 UTC):** run36's frozen rank and 100 currently eligible crypto sides were published on S1; the updated scheduler dry-run completed in 17.2 s; 53 focused queue tests passed. The first 7D canary failed its essential-row gate, so no verified 7D result has been activated. The four-box CPU/throughput targets and the Monday premarket pass still require measured verification.
+- **Premarket sequence:** S1 finishes the daily avg_delta/pos_sym, template row rearrangement, and four cat_side defaults before the 7D pass starts. The S1 fleet scheduler owns the dated 7D queue and per-side host/result ledger. It optimizes rows over the latest 7D using the new cat_side default and the verified per_sym 30D default as competing baselines. If all optimization ends by 09:00 ET, replay requires a new 09:15 ET NPZ row. Otherwise unfinished work stops at 09:00 and completed sides replay against that bar, leaving time to stage before 09:30. A replay cannot use an earlier row. S1 collects only verified results still in the current side books and distributes the isolated vector sets to S2/S5/S6. Mac `v15_preopen_7d_activate.py` verifies the staged DB, hashes and vector registry, then restarts only FIN/TRC accounts represented in the stage; FIN/TRC entries after 09:30 ET fail closed if the 7D lane is missing or expired. MEN and TRB stay on 30D. FIN's entry book exactly mirrors MEN during the two-week comparison, while its own independent SMA classifier continues updating; TRC's entry book exactly mirrors TRB. Unfinished or invalid sides are excluded and never given a 30D fallback inside the 7D lane.
+- **Current proof limit (02:0x UTC):** run36's frozen rank and 100 currently eligible crypto sides were published on S1; the updated scheduler dry-run completed in 17.2 s; 85 focused queue tests passed before the final freshness addition. The first 7D canary failed its essential-row gate, so no verified 7D result has been activated. The four-box CPU/throughput targets and the Monday premarket pass still require measured verification.
 
 > **Canonical file.** Mac `BACKTEST_BIBLE.md` is the only canonical copy.
 > After every edit, publish identical bytes by hand (the old `tools/sync_backtest_bible.sh`
@@ -31,6 +31,27 @@
 > rows correctly, and pass relevant parity checks. Back up and hash-verify the
 > installed copy; running backtests must not be overwritten mid-write. Older
 > blanket gate statements below are historical and superseded on this point.
+
+> **CURRENT BASELINE AND SWITCH CONTRACT — USER 2026-10-26.** A new sym_side
+> sweep compares exactly two complete settings sets on the current NPZ: its
+> currently live per_sym full set and today's cat_side template defaults. The
+> better measured set is the baseline. When per_sym wins, the cloned workbook's
+> option values in column B and `is_default` markers must show that full winning
+> set; when cat_side wins, the template defaults stay in place. History packs,
+> prior progress fragments, live recipes, and an autopsy start file cannot
+> replace either contender. A disconnected switch has delta `None`; `0.000`
+> means a vector evaluation actually ran and measured zero change. Every active
+> switch has at least two distinct, testable options. Ablation disables a group
+> of filters for a diagnostic retest so muted switches can expose their effect;
+> its delta is not a regular gain candidate for promotion.
+
+> **CURRENT STOP LAW — USER 2026-10-26.** Freeze the software stop from the
+> original entry bar's dc15 channel at ±0.25%; place the crypto exchange stop
+> at ±0.40% from that channel. The dc4 channel at ±0.25% is an anytime stop.
+> Existing exchange orders remain in place. Other exits require positive gain
+> after estimated fees. Older E7 fixed-stop reference, timeframe, buffer, and
+> tightening options below are superseded and must remain grey until a user
+> changes this law.
 
 > **RULE 0 — NEVER REVERT.** Find better version in `backups/` on S1+Mac before git.
 > Diff and patch current — never overwrite newer with older. Git is unreliable — check dates.

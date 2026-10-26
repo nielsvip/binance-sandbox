@@ -2575,9 +2575,10 @@ def _steal30_pick(thief, free_slots, launched_here, owner, need_syms, order, run
             queue.setdefault(o, []).append(sym)
     if not queue:
         return None, None
-    victim = max(sorted(queue), key=lambda h: len(queue[h]))
     rank = {sy: i for i, sy in enumerate(order or [])}
-    pick = min(queue[victim], key=lambda sy: (rank.get(sy, len(rank)), sy))
+    pick = min((sy for syms in queue.values() for sy in syms),
+               key=lambda sy: (rank.get(sy, len(rank)), sy))
+    victim = (owner or {})[pick]
     return pick, victim
 
 
@@ -3931,6 +3932,13 @@ def tick(args, cfg, now):
     for ss in _stale_done:
         done.discard(ss)
         done_host.pop(ss, None)
+    if not (args.dry_run or sim) and cur_pdir:
+        _latest_path = ROOT / "data/v15_best_first_latest_gains.json"
+        _latest_tmp = _latest_path.with_suffix(".tmp")
+        _latest_tmp.write_text(json.dumps({"round": pathlib.Path(cur_pdir).parent.name,
+                                           "generated_at": now.isoformat(),
+                                           "gains": {ss: row for ss, row in gains.items() if ss in done}}, sort_keys=True))
+        os.replace(_latest_tmp, _latest_path)
     stocks, crypto = _deny_tokenized(stocks), _deny_tokenized(crypto)  # USER 2026-10-13: tokenized stocks (AAPLUSDT…) are NOT tradeable — never scheduled, never held
     stocks, crypto = _deny_untradeable(stocks, "stocks"), _deny_untradeable(crypto, "crypto")  # USER 2026-10-15: outside the tradeable universe = no NPZ build, no board, no CPU
     universe_syms = {"stocks": set(stocks), "crypto": set(crypto)}
@@ -5230,11 +5238,16 @@ def tick(args, cfg, now):
             if not s or h["name"] not in HB or h["name"] in _drained:
                 continue
             B = HB[h["name"]]
-            # USER 2026-10-24: never deepen a hole to fill a hole — hosts at/below their pair floor are closed as
-            # steal victims (s2 raided s1's only side while s1 starved: pure churn, zero new compute). Surplus hosts share.
+            # Only pending, non-running sides can be borrowed. An idle box may
+            # borrow from a fuller host even when that host is below its floor;
+            # blocking all below-floor owners stranded S5 at 1/4 with 19
+            # launchable sides still assigned to S1/S2 at 3/4.
             _held_capacity = {name: {**active, **{symbol: "foreign" for symbol in observed_by_host.get(name, ())}} for name, active in held.items()}
             _raid_closed = set(_below_floor_hosts(_held_capacity, {n_: (HB.get(n_) or {}).get("cap") or 4 for n_ in HB}))
-            _pick_owner = {s_: o_ for s_, o_ in (owner or {}).items() if o_ not in _raid_closed}
+            _thief_used = _occupied_n(held[h["name"]], observed_by_host[h["name"]])
+            _pick_owner = {s_: o_ for s_, o_ in (owner or {}).items()
+                           if o_ not in _raid_closed or
+                           (_occupied_n(held.get(o_, {}), observed_by_host.get(o_, set())) > _thief_used)}
             if _raid_closed:
                 log.setdefault("steal30_raid_closed", []).append(f"{h['name']}-sees-closed:{sorted(_raid_closed)}")
             for _try in range(12):

@@ -1,7 +1,7 @@
 {
-  "ts": "2026-10-26T01:55:06.942461+00:00",
-  "tick": "2026-10-26T01:54:02.218905+00:00",
-  "tick_age_s": 65,
+  "ts": "2026-10-26T02:00:05.491639+00:00",
+  "tick": "2026-10-26T01:58:01.505277+00:00",
+  "tick_age_s": 124,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run36.json",
     "round": "run36",
@@ -11,22 +11,22 @@
     "n_pending": 34,
     "n_refused_only": 0,
     "n_excluded": 0,
-    "n_launchable_pending": 19,
+    "n_launchable_pending": 18,
     "hosts_not_visible": []
   },
   "hosts": {
     "s5": {
-      "cpu_pct": 57,
+      "cpu_pct": 64,
       "slots": "1/4",
       "observed_running": [
         "RUNEUSDT"
       ],
       "published_last_hour": 0,
       "idle_reason": "no eligible ready symbol for this host",
-      "mem_avail_mb": 25366
+      "mem_avail_mb": 25184
     },
     "s2": {
-      "cpu_pct": 89,
+      "cpu_pct": 82,
       "slots": "3/4",
       "observed_running": [
         "ONEUSDT",
@@ -35,7 +35,7 @@
       ],
       "published_last_hour": 0,
       "idle_reason": "no eligible ready symbol for this host",
-      "mem_avail_mb": 15624
+      "mem_avail_mb": 16872
     },
     "s1": {
       "cpu_pct": 100,
@@ -48,27 +48,28 @@
       ],
       "published_last_hour": 2,
       "idle_reason": "slots full",
-      "mem_avail_mb": 4210
+      "mem_avail_mb": 2510
     },
     "s6": {
-      "cpu_pct": 99,
+      "cpu_pct": 100,
       "slots": "4/4",
       "observed_running": [
         "ACEUSDT",
+        "ENJUSDT",
         "VICR",
-        "VLO",
-        "VZ"
+        "VLO"
       ],
-      "published_last_hour": 5,
+      "published_last_hour": 4,
       "idle_reason": "slots full",
-      "mem_avail_mb": 14317
+      "mem_avail_mb": 13033
     }
   },
-  "one_hour_total": 7,
+  "one_hour_total": 6,
   "alerts": [
     "LOW_THROUGHPUT:s5:0/h",
-    "LOW_CPU:s5:57%",
+    "LOW_CPU:s5:64%",
     "LOW_THROUGHPUT:s2:0/h",
-    "LOW_THROUGHPUT:s1:2/h"
+    "LOW_THROUGHPUT:s1:2/h",
+    "LOW_THROUGHPUT:s6:4/h"
   ]
 }

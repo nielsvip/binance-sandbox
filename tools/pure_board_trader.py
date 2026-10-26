@@ -97,27 +97,13 @@ _TRADEABLE_KEYS = frozenset()
 
 
 def tradeable_pair(acct: str, ss: str) -> bool:
-    """(acct, sym_side) may OPEN: present in tradeable_keys.json. Adopted keys (held but
-    untradeable) stay managed for CLOSEs only — USER 2026-10-23: a position on a non-tradeable
-    key persists for years and may only close its outstanding amount, never open further.
-    Fail-open True on a read error (an unreadable file must never sideline an open)."""
-    global _TRADEABLE_MTIME, _TRADEABLE_KEYS
-    if acct == "fin":
-        from tools.account_comparison_books import side_allowed
-        try:
-            sym, side = ss.rsplit("_", 1)
-        except ValueError:
-            return False
-        if not side_allowed(ROOT, "fin", sym, side):
-            return False
+    """OPEN requires today's account key and exact side book; CLOSE is elsewhere."""
     try:
-        mt = (ROOT / "tradeable_keys.json").stat().st_mtime
-        if mt != _TRADEABLE_MTIME:
-            _TRADEABLE_KEYS = frozenset(k for k in json.load(open(ROOT / "tradeable_keys.json")) if ":" in str(k))
-            _TRADEABLE_MTIME = mt
+        from tools.account_comparison_books import crypto_entry_allowed
+        sym, side = ss.rsplit("_", 1)
+        return crypto_entry_allowed(ROOT, acct, sym, side)
     except Exception:
-        return True
-    return f"{acct}:{ss}" in _TRADEABLE_KEYS
+        return False
 
 
 def live_positions(accounts):

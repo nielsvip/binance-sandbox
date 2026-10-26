@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-26T01:40:01Z",
+ "generated_utc": "2026-10-26T02:00:02Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
@@ -15,7 +15,7 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "filled_today": 517,
+    "filled_today": 519,
     "filled_before_open": 0
    },
    "detail": "no board was filled before the open"
@@ -38,11 +38,11 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "built_at": "2026-10-26T00:50:33.495763+00:00",
-    "n": 531,
-    "age_at_open_s": 2968
+    "built_at": "2026-10-26T01:51:20.030537+00:00",
+    "n": 532,
+    "age_at_open_s": 523
    },
-   "detail": "built 2026-10-26T00:50:33.495763+00:00 n=531"
+   "detail": "built 2026-10-26T01:51:20.030537+00:00 n=532"
   },
   {
    "name": "apply_report_written",
@@ -61,10 +61,10 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "selection_n": 531,
-    "exact": 110,
-    "benign_divergence_only": 268,
-    "material_divergence": 152,
+    "selection_n": 532,
+    "exact": 109,
+    "benign_divergence_only": 266,
+    "material_divergence": 156,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -135,6 +135,45 @@
       ]
      },
      {
+      "sym_side": "SNDK_SHORT",
+      "published_at": "2026-10-26T01:14:04Z",
+      "material": 72,
+      "sample": [
+       "ADX_REGIME_FILTER_ENABLED",
+       "ATR_ADAPTIVE_SIZING_ENABLED",
+       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
+       "AUGMENT_INTO_REENTRY_ENABLED",
+       "COOLDOWN_BARS_TRADIER",
+       "DAYTRADE_DC_TARGET_TF"
+      ]
+     },
+     {
+      "sym_side": "ZILUSDT_SHORT",
+      "published_at": "2026-10-26T01:43:20Z",
+      "material": 70,
+      "sample": [
+       "ALL_TF_AGAINST_CLOSE_MIN_TFS",
+       "ATR_ADAPTIVE_STOP_TF",
+       "BAR_PATTERNS_FILTER_TF",
+       "BBKC_EXIT_ENABLED",
+       "BB_PROFIT_TAKE_TF",
+       "BB_RECOVERY_FILTER_TF"
+      ]
+     },
+     {
+      "sym_side": "TTD_SHORT",
+      "published_at": "2026-10-26T01:29:55Z",
+      "material": 66,
+      "sample": [
+       "ATR_ADAPTIVE_STOP_MULT",
+       "ATR_ADAPTIVE_STOP_TF",
+       "AUGMENT_AT_LOSS_ENABLED",
+       "AUGMENT_INTO_REENTRY_ENABLED",
+       "BREAKOUT_RETEST_ARMED_ENABLED",
+       "BREAKOUT_RETEST_FILTER_TF"
+      ]
+     },
+     {
       "sym_side": "1000FLOKIUSDT_LONG",
       "published_at": "2026-10-13T03:39:04Z",
       "material": 65,
@@ -159,49 +198,10 @@
        "DC_HARD_STOP_15M_ENABLED",
        "DC_MOMENTUM_BOTA_SCORER_FILTER_TF"
       ]
-     },
-     {
-      "sym_side": "ACN_LONG",
-      "published_at": "2026-10-23T06:02:03Z",
-      "material": 50,
-      "sample": [
-       "ATR_ADAPTIVE_STOP_MULT",
-       "ATR_ADAPTIVE_STOP_TF",
-       "AUGMENT_FALLBACK_REDUCE_PCT",
-       "BB_PULLBACK_GATE_ENABLED",
-       "BB_SQUEEZE_ENTRY_ENABLED",
-       "COUNTER_TREND_ADD_BLOCK_ENABLED"
-      ]
-     },
-     {
-      "sym_side": "SHOP_LONG",
-      "published_at": "2026-10-22T04:02:56Z",
-      "material": 42,
-      "sample": [
-       "ATR_ADAPTIVE_SIZING_ENABLED",
-       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
-       "ATR_ADAPTIVE_STOP_MULT",
-       "ATR_ADAPTIVE_STOP_TF",
-       "DC_EDGE_SIZING_MIN_MULT",
-       "DC_HARD_STOP_1H_ENABLED"
-      ]
-     },
-     {
-      "sym_side": "ACTUSDT_SHORT",
-      "published_at": "2026-10-23T08:28:58Z",
-      "material": 40,
-      "sample": [
-       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
-       "ATR_ADAPTIVE_STOP_ENABLED",
-       "ATR_ADAPTIVE_STOP_MULT",
-       "AUGMENT_FALLBACK_REDUCE_ENABLED",
-       "AUGMENT_FALLBACK_REDUCE_PCT",
-       "BT_WT_CROSS_LADDER_FILTER_TF"
-      ]
      }
     ]
    },
-   "detail": "110 exact, 268 benign-only, 152 with material divergence, 1 with no live row"
+   "detail": "109 exact, 266 benign-only, 156 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
@@ -211,7 +211,7 @@
     "symbols": 201,
     "stale_over_90min": 0,
     "stale_pct": 0.0,
-    "median_age_min": 40.0,
+    "median_age_min": 60.0,
     "sample": []
    },
    "detail": "0/201 symbols past the live 90-min entry gate (0.0%)"

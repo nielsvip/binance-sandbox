@@ -20,3 +20,14 @@ def test_order_is_frozen_per_round_but_side_permission_is_live(tmp_path):
     again = best.publish(tmp_path, "run37")
     assert again["gains"] == first["gains"]
     assert again["allowed"] == ["BBBUSDT_LONG"]
+
+
+def test_next_round_uses_completed_gain_from_immediately_previous_run(tmp_path):
+    (tmp_path / "data").mkdir()
+    (tmp_path / "data/v15_symside_ledger.json").write_text(json.dumps({"sym_sides": {
+        "AAAUSDT_LONG": {"final_gain": 3}, "BBBUSDT_LONG": {"final_gain": 7}}}))
+    (tmp_path / "data/v15_best_first_latest_gains.json").write_text(json.dumps({
+        "round": "v15_run36_20261024", "gains": {"AAAUSDT_LONG": {"gain": 80, "mtime": 4}}}))
+    snap = best.publish(tmp_path, "v15_run37_20261026")
+    assert snap["gains"]["AAAUSDT_LONG"] == 80
+    assert snap["gains"]["BBBUSDT_LONG"] == 7

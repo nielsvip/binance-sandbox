@@ -8004,11 +8004,8 @@ def _cfg_auto(param, default=None):
 
 
 def _tr_fixed_stop_spec(account_key, symbol, side):
-    """E7 2026-10-20: FIXED_STOP reference spec of this sym_side through _cfg (per-sym > cat_side > TradierConfig). Never raises."""
-    try:
-        return _fixed_stop_core.normalize_spec(_cfg("FIXED_STOP_REF_FIELD", getattr(config, "FIXED_STOP_REF_FIELD", "dc_low"), account_key, symbol, side), _cfg("FIXED_STOP_REF_TF", getattr(config, "FIXED_STOP_REF_TF", "15m"), account_key, symbol, side), _cfg("FIXED_STOP_BUFFER_PCT", getattr(config, "FIXED_STOP_BUFFER_PCT", 0.25), account_key, symbol, side), _cfg("FIXED_STOP_TIGHTEN_MODE", getattr(config, "FIXED_STOP_TIGHTEN_MODE", "off"), account_key, symbol, side), _cfg("FIXED_STOP_TIGHTEN_TRIGGER_PCT", getattr(config, "FIXED_STOP_TIGHTEN_TRIGGER_PCT", 1.0), account_key, symbol, side))
-    except Exception:
-        return _fixed_stop_core.DEFAULT_SPEC
+    """The mandatory entry-time dc15 software stop is fixed at 0.25%."""
+    return _fixed_stop_core.DEFAULT_SPEC
 
 
 def _tr_fixed_stop_ref_default(account_key, symbol, side) -> bool:

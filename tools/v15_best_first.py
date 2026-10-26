@@ -8,6 +8,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import re
 import sys
 import time
 
@@ -104,6 +105,18 @@ def publish(root=ROOT, round_name=None):
         ledger = _read(root / "data" / "v15_symside_ledger.json") or {}
         gains = {str(ss).upper(): g for ss, row in (ledger.get("sym_sides") or {}).items()
                  if (g := _gain(row)) is not None}
+        latest = _read(root / "data" / "v15_best_first_latest_gains.json") or {}
+        try:
+            prior_number = int(re.search(r"run(\d+)", str(latest.get("round", ""))).group(1))
+            next_number = int(re.search(r"run(\d+)", str(round_name)).group(1))
+        except (ValueError, AttributeError):
+            prior_number = next_number = -1
+        if next_number == prior_number + 1:
+            for ss, row in (latest.get("gains") or {}).items():
+                try:
+                    gains[str(ss).upper()] = float(row["gain"])
+                except (TypeError, ValueError, KeyError):
+                    pass
         previous = {"round": round_name, "frozen_at": time.time(), "gains": gains}
         tmp = frozen.with_suffix(".tmp")
         tmp.write_text(json.dumps(previous, sort_keys=True))

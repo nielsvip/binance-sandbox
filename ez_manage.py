@@ -8651,11 +8651,8 @@ def _fixed_stop_freeze_level(is_long: bool, dc_low_15m: float, dc_high_15m: floa
 
 
 def _fixed_stop_spec_for(symbol, side):
-    """E7 2026-10-20: the FIXED_STOP reference spec of this sym_side (per-sym set > cat_side > config, like every switch). Never raises."""
-    try:
-        return _fixed_stop_core.normalize_spec(_psym_get(symbol, side, "FIXED_STOP_REF_FIELD", getattr(_ezm_base_config, "FIXED_STOP_REF_FIELD", "dc_low")), _psym_get(symbol, side, "FIXED_STOP_REF_TF", getattr(_ezm_base_config, "FIXED_STOP_REF_TF", "15m")), _psym_get(symbol, side, "FIXED_STOP_BUFFER_PCT", getattr(_ezm_base_config, "FIXED_STOP_BUFFER_PCT", 0.25)), _psym_get(symbol, side, "FIXED_STOP_TIGHTEN_MODE", getattr(_ezm_base_config, "FIXED_STOP_TIGHTEN_MODE", "off")), _psym_get(symbol, side, "FIXED_STOP_TIGHTEN_TRIGGER_PCT", getattr(_ezm_base_config, "FIXED_STOP_TIGHTEN_TRIGGER_PCT", 1.0)))
-    except Exception:
-        return _fixed_stop_core.DEFAULT_SPEC
+    """The mandatory entry-time dc15 software stop is fixed at 0.25%."""
+    return _fixed_stop_core.DEFAULT_SPEC
 
 
 def _fixed_stop_freeze_level_spec(symbol, side, is_long: bool, ind, entry_price: float):

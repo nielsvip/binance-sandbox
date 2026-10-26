@@ -2,7 +2,7 @@ import datetime as dt
 import json
 
 from tools.account_comparison_books import (FIN_MIRROR_END, FIN_MIRROR_START,
-                                            side_allowed, side_symbols,
+                                            crypto_entry_allowed, side_allowed, side_symbols,
                                             source_account)
 
 
@@ -30,3 +30,14 @@ def test_trc_mirrors_trb_exactly_and_missing_book_fails_closed(tmp_path):
     assert not side_allowed(tmp_path, "trc", "AAPL", "SHORT")
     (tmp_path / "symbols_trb_long.json").unlink()
     assert not side_allowed(tmp_path, "trc", "AAPL", "LONG")
+
+
+def test_crypto_entry_requires_exact_side_and_account_key(tmp_path):
+    (tmp_path / "symbols_men_long.json").write_text(json.dumps(["AAAUSDT"]))
+    (tmp_path / "symbols_fin_long.json").write_text("[]")
+    (tmp_path / "tradeable_keys.json").write_text(json.dumps(["men:AAAUSDT_LONG"]))
+    assert crypto_entry_allowed(tmp_path, "men", "AAAUSDT", "LONG")
+    assert not crypto_entry_allowed(tmp_path, "fin", "AAAUSDT", "LONG")
+    assert not crypto_entry_allowed(tmp_path, "men", "AAAUSDT", "SHORT")
+    (tmp_path / "tradeable_keys.json").unlink()
+    assert not crypto_entry_allowed(tmp_path, "men", "AAAUSDT", "LONG")
