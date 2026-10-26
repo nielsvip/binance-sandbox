@@ -15920,7 +15920,7 @@ async def process_position(
                     # 2026-10-14: broker-side GTC backstop OFF by default — it spawned a task per position per cycle, each pulling the full
                     # order list (2700+ orders, ~7 s); 2500+ rejected stops, exits stalled past 120 s, Tradier listing timed out.
                     # The software FIXED_STOP above (breach -> CLOSE via execute_now) stays active.
-                    _fx_ens = getattr(trade_manager, "ensure_fixed_stop_backstop_tradier", None) if bool(getattr(config, "TRADIER_FIXED_STOP_BROKER_BACKSTOP_ENABLED", False)) else None
+                    _fx_ens = getattr(trade_manager, "ensure_fixed_stop_backstop_tradier", None) if bool(getattr(config, "TRADIER_FIXED_STOP_BROKER_BACKSTOP_ENABLED", False)) and str(account_key).lower() != "trb" else None
                     if _fx_ens is not None:
                         asyncio.create_task(_fx_ens(account_key=account_key, symbol=symbol, position_key=position_key, position_side=position_side, position=position, soft_level=_fx_lvl, current_price=current_price, dc_low_15m=safe_fetch_float(i.get("dc_low_15m", 0) or 0, 0.0), dc_high_15m=safe_fetch_float(i.get("dc_high_15m", 0) or 0, 0.0)))
                 except Exception:
@@ -15931,7 +15931,7 @@ async def process_position(
                     if not isinstance(_fx_smap, dict):
                         _fx_smap = {}
                         trade_manager._fixed_stop_sweep_ts = _fx_smap
-                    if _fx_now - float(_fx_smap.get(account_key, 0.0) or 0.0) > 60:
+                    if str(account_key).lower() != "trb" and _fx_now - float(_fx_smap.get(account_key, 0.0) or 0.0) > 60:
                         _fx_smap[account_key] = _fx_now
                         _fx_sw = getattr(trade_manager, "sweep_fixed_stops_tradier", None)
                         if _fx_sw is not None:
@@ -44624,7 +44624,7 @@ class TradierTradeManager:
         # The V19 interim backtest permits these ordinary entries; keep the
         # existing exposure budget and all subsequent entry checks active.
         if str(account_key).lower() == "trb":
-            _sw_on = True  # Temporary native-entry recovery until V20 swing parity is live.
+            _sw_on = False  # Emergency pause: broker holds positions without mandatory dc15 stops.
         if _sw_on is not True:
             return False, "SWING_ENTRIES_OFF_PARITY"
         ratio = self.calculate_unified_market_ratio()
@@ -46425,6 +46425,8 @@ class TradierTradeManager:
                     await asyncio.sleep(_every)
                     continue
                 for _acct in list(self.target_accounts or []):
+                    if str(_acct).lower() == "trb":
+                        continue  # Emergency: halt cancel/reprice race; broker stops are verified externally while entries are paused.
                     _qmap = _bsnap.positions(_acct, max_age=_snap_max_age())
                     if _qmap is None:
                         logger.error(f"[STOP_RECONCILE] {_acct}: no fresh broker snapshot (age={_bsnap.age(_acct)}) — skipping this pass, nothing is guessed")

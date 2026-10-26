@@ -201,8 +201,11 @@ def _safe_rel(rel):
 def _trade_signature(line):
     try:
         row = json.loads(line)
-        return (str(row.get("type") or "").upper(), float(row.get("qty")),
-                float(row.get("price"))), _epoch(row.get("ts"))
+        return (
+            str(row.get("type") or "").upper(),
+            float(row.get("qty")),
+            float(row.get("price")),
+        ), _epoch(row.get("ts"))
     except (TypeError, ValueError):
         return None
 
@@ -235,7 +238,9 @@ def apply(root, pack, backup_stamp, dry_run=False):
             if item is None or item[0] in current:
                 continue
             trade = _trade_signature(line)
-            if trade is not None and any(abs(stamp - trade[1]) < 3 for stamp in signatures.get(trade[0], [])):
+            if trade is not None and any(
+                abs(stamp - trade[1]) < 3 for stamp in signatures.get(trade[0], [])
+            ):
                 ambiguous += 1
                 continue
             current.add(item[0])
@@ -339,35 +344,34 @@ def sync(root, host, days, dry_run=False):
             union_path.write_text(json.dumps(union, separators=(",", ":")) + "\n")
             local_result = apply(root, union, stamp, dry_run)
             remote_results = []
-            if not dry_run:
-                _run(
-                    [
-                        "rsync",
-                        "-az",
-                        "--timeout=45",
-                        "-e",
-                        RSYNC_SSH,
-                        str(union_path),
-                        f"{host}:{remote_path}",
-                    ]
-                )
-                for remote_root in REMOTE_ROOTS:
-                    raw = _run(
-                        SSH
-                        + [
-                            host,
-                            "python3",
-                            tool,
-                            "apply",
-                            "--root",
-                            remote_root,
-                            "--pack",
-                            remote_path,
-                            "--backup-stamp",
-                            stamp,
-                        ]
-                    )
-                    remote_results.append(json.loads(raw))
+            _run(
+                [
+                    "rsync",
+                    "-az",
+                    "--timeout=45",
+                    "-e",
+                    RSYNC_SSH,
+                    str(union_path),
+                    f"{host}:{remote_path}",
+                ]
+            )
+            for remote_root in REMOTE_ROOTS:
+                command = SSH + [
+                    host,
+                    "python3",
+                    tool,
+                    "apply",
+                    "--root",
+                    remote_root,
+                    "--pack",
+                    remote_path,
+                    "--backup-stamp",
+                    stamp,
+                ]
+                if dry_run:
+                    command.append("--dry-run")
+                raw = _run(command)
+                remote_results.append(json.loads(raw))
             _run(SSH + [host, "rm", "-f", remote_path])
             return {
                 "window_days": days,

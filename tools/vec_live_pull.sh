@@ -41,6 +41,7 @@ pull_one() {
     s6|*10.0.0.6) shard=stock_short ;;
     *) echo "$ts UNKNOWN_SHARD host=$host" >>"$LOG"; return 1 ;;
   esac
+  if [ "$SCOPE" = "7d" ]; then shard=all; fi
   mkdir -p "$stage/intents" "$stage/state"
   rsync -az --timeout=15 -e "$SSH" --partial-dir=.rsync-partial --delay-updates --include='*.json' --exclude='*' "$host:$remote/intents/" "$stage/intents/" >>"$LOG" 2>&1
   rc=$?

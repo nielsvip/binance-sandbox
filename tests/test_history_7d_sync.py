@@ -82,3 +82,20 @@ def test_s1_rows_import_only_during_account_scoped_s1_lease():
     assert audit["s1_unproven_rows"] == 3
     assert len(filtered["rows"]["men/ARBUSDC_LONG.jsonl"]) == 1
     assert "ang/ARBUSDC_LONG.jsonl" not in filtered["rows"]
+
+
+def test_near_identical_trade_needs_manual_reconciliation(tmp_path):
+    root = tmp_path / "mac"
+    target = root / "data/history/ang/BBUSDT_SHORT.jsonl"
+    target.parent.mkdir(parents=True)
+    target.write_text(_event(150, "OPEN", 2.0))
+    pack = {
+        "schema": 1,
+        "now": 200,
+        "days": 7,
+        "rows": {"ang/BBUSDT_SHORT.jsonl": [_event(152, "OPEN", 2.0).strip()]},
+    }
+    result = apply(root, pack, "test")
+    assert result["ambiguous_rows"] == 1
+    assert result["added_rows"] == 0
+    assert target.read_text() == _event(150, "OPEN", 2.0)

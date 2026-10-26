@@ -15,13 +15,14 @@ idempotent. The wedged in-daemon zip-rewrite updater is bypassed, not edited.
 from __future__ import annotations
 import argparse
 import glob
+import fcntl
 import json
 import logging
 import os
 import re
 import sys
 import time
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from multiprocessing import get_context
 from pathlib import Path
 
@@ -365,9 +366,12 @@ def sweep_once(base, cat_side, workers=WORKERS, sibling=None, sibling_base=None)
             rec["error"] += 1
             rec["error_syms"].append(sym)
     tasks = [(sym, int(lc), str(base), mode) for _, sym, lc in ready]
+    compactions = []
     with ProcessPoolExecutor(max_workers=min(max(1, workers), 8), mp_context=get_context("fork")) as pool:
-        rows = pool.map(_compute_row_process, tasks)
-        for (npz, sym, lc), row in zip(ready, rows):
+        futures = {pool.submit(_compute_row_process, task): job for task, job in zip(tasks, ready)}
+        for future in as_completed(futures):
+            npz, sym, lc = futures[future]
+            row = future.result()
             if not row:
                 rec["error"] += 1
                 rec["error_syms"].append(sym)
@@ -387,10 +391,12 @@ def sweep_once(base, cat_side, workers=WORKERS, sibling=None, sibling_base=None)
                 rec["error_syms"].append(sym)
             rec[r if r in rec else "error"] += 1
             if r == "appended" and tail_len(npz) >= COMPACT_AT:
-                try:
-                    rec["compacted"] += compact_tail(npz) or 0
-                except Exception:
-                    pass
+                compactions.append(npz)
+    for npz in compactions:
+        try:
+            rec["compacted"] += compact_tail(npz) or 0
+        except Exception:
+            pass
     return rec
 
 
@@ -417,6 +423,13 @@ def main():
         base = a.base or _Cfg.BASE_PATH
     except Exception:
         base = a.base or str(ROOT)
+    lock_path = Path(base) / "data" / f".npz_tail_service_{a.cat_side}.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    singleton = lock_path.open("a")
+    try:
+        fcntl.flock(singleton, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        return 0
     while True:
         try:
             rec = sweep_once(
