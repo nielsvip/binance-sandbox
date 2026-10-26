@@ -6,6 +6,14 @@ import asyncio
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_queued_quick_dc4_stop_preserves_mandatory_exemption():
+    from vec_decisions.vec_parity_gates import mandatory_stop_exempt, dictate_only_exempt
+
+    reason = "QUICK_ULTIMATE_DC_4h_HARD_STOP_LONG_px0.080210_lvl0.080430_g-2.73"
+    assert mandatory_stop_exempt("QUICK_QUICK_CLOSE", reason)
+    assert dictate_only_exempt("QUICK_QUICK_CLOSE", reason)
+
+
 def test_tradier_fixed_stop_quantity_suffix_preserves_mandatory_exemption():
     from vec_decisions.vec_parity_gates import mandatory_stop_exempt
 

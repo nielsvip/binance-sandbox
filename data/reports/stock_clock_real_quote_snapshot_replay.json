@@ -1,0 +1,721 @@
+{
+  "at": 1793050230.964353,
+  "kind": "actual_saved_quote_snapshot_ingestion_replay_only",
+  "universe": 118,
+  "accepted": 118,
+  "elapsed_ms": 1.2956250011484371,
+  "rows": [
+    {
+      "symbol": "A",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636622+00:00"
+    },
+    {
+      "symbol": "AAPL",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636649+00:00"
+    },
+    {
+      "symbol": "ABBV",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636658+00:00"
+    },
+    {
+      "symbol": "ACN",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636666+00:00"
+    },
+    {
+      "symbol": "ADBE",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636670+00:00"
+    },
+    {
+      "symbol": "ADP",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636673+00:00"
+    },
+    {
+      "symbol": "AG",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636680+00:00"
+    },
+    {
+      "symbol": "AGI",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636686+00:00"
+    },
+    {
+      "symbol": "ALB",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636690+00:00"
+    },
+    {
+      "symbol": "ALKT",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636693+00:00"
+    },
+    {
+      "symbol": "AMAT",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636699+00:00"
+    },
+    {
+      "symbol": "AMZN",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636705+00:00"
+    },
+    {
+      "symbol": "APO",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636712+00:00"
+    },
+    {
+      "symbol": "AR",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636714+00:00"
+    },
+    {
+      "symbol": "ASML",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636720+00:00"
+    },
+    {
+      "symbol": "ASTS",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636727+00:00"
+    },
+    {
+      "symbol": "AU",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636730+00:00"
+    },
+    {
+      "symbol": "BABA",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636745+00:00"
+    },
+    {
+      "symbol": "BHP",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636752+00:00"
+    },
+    {
+      "symbol": "BIDU",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636758+00:00"
+    },
+    {
+      "symbol": "BKR",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636761+00:00"
+    },
+    {
+      "symbol": "BMNR",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636764+00:00"
+    },
+    {
+      "symbol": "BNO",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636767+00:00"
+    },
+    {
+      "symbol": "BWXT",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636773+00:00"
+    },
+    {
+      "symbol": "CAT",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636776+00:00"
+    },
+    {
+      "symbol": "CDE",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636778+00:00"
+    },
+    {
+      "symbol": "CDW",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636781+00:00"
+    },
+    {
+      "symbol": "CIBR",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636792+00:00"
+    },
+    {
+      "symbol": "CLF",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636797+00:00"
+    },
+    {
+      "symbol": "CLS",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636800+00:00"
+    },
+    {
+      "symbol": "CME",
+      "accepted": true,
+      "actual_received_at": 1793044297.086381,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636809+00:00"
+    },
+    {
+      "symbol": "COHR",
+      "accepted": true,
+      "actual_received_at": 1793044297.087602,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.647838+00:00"
+    },
+    {
+      "symbol": "COIN",
+      "accepted": true,
+      "actual_received_at": 1793044297.087602,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.647842+00:00"
+    },
+    {
+      "symbol": "COP",
+      "accepted": true,
+      "actual_received_at": 1793044297.087602,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.647845+00:00"
+    },
+    {
+      "symbol": "COPX",
+      "accepted": true,
+      "actual_received_at": 1793044297.087602,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.647848+00:00"
+    },
+    {
+      "symbol": "COST",
+      "accepted": true,
+      "actual_received_at": 1793044297.087602,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.647852+00:00"
+    },
+    {
+      "symbol": "CRM",
+      "accepted": true,
+      "actual_received_at": 1793044297.087602,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.647859+00:00"
+    },
+    {
+      "symbol": "CRWD",
+      "accepted": true,
+      "actual_received_at": 1793044297.087602,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.647862+00:00"
+    },
+    {
+      "symbol": "CRWV",
+      "accepted": true,
+      "actual_received_at": 1793044297.087602,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.647866+00:00"
+    },
+    {
+      "symbol": "CVX",
+      "accepted": true,
+      "actual_received_at": 1793044297.087602,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.647873+00:00"
+    },
+    {
+      "symbol": "DAR",
+      "accepted": true,
+      "actual_received_at": 1793044297.087602,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.647877+00:00"
+    },
+    {
+      "symbol": "DHR",
+      "accepted": true,
+      "actual_received_at": 1793044297.087602,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.647887+00:00"
+    },
+    {
+      "symbol": "DVN",
+      "accepted": true,
+      "actual_received_at": 1793044297.087602,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.648189+00:00"
+    },
+    {
+      "symbol": "EOG",
+      "accepted": true,
+      "actual_received_at": 1793044297.087602,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.648196+00:00"
+    },
+    {
+      "symbol": "ETN",
+      "accepted": true,
+      "actual_received_at": 1793044297.087602,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.648226+00:00"
+    },
+    {
+      "symbol": "EXEL",
+      "accepted": true,
+      "actual_received_at": 1793044297.087602,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.648230+00:00"
+    },
+    {
+      "symbol": "FCN",
+      "accepted": true,
+      "actual_received_at": 1793044297.087602,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.648236+00:00"
+    },
+    {
+      "symbol": "FCX",
+      "accepted": true,
+      "actual_received_at": 1793044297.087602,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.648240+00:00"
+    },
+    {
+      "symbol": "GDX",
+      "accepted": true,
+      "actual_received_at": 1793044297.087602,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.648258+00:00"
+    },
+    {
+      "symbol": "GE",
+      "accepted": true,
+      "actual_received_at": 1793044297.087602,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.648265+00:00"
+    },
+    {
+      "symbol": "GLD",
+      "accepted": true,
+      "actual_received_at": 1793044297.087602,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.648271+00:00"
+    },
+    {
+      "symbol": "GME",
+      "accepted": true,
+      "actual_received_at": 1793044297.087602,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.648277+00:00"
+    },
+    {
+      "symbol": "GOOGL",
+      "accepted": true,
+      "actual_received_at": 1793044297.087602,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.648283+00:00"
+    },
+    {
+      "symbol": "HOOD",
+      "accepted": true,
+      "actual_received_at": 1793044297.087602,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.648300+00:00"
+    },
+    {
+      "symbol": "IBM",
+      "accepted": true,
+      "actual_received_at": 1793044297.087602,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.648309+00:00"
+    },
+    {
+      "symbol": "KGC",
+      "accepted": true,
+      "actual_received_at": 1793044297.087032,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636938+00:00"
+    },
+    {
+      "symbol": "LDOS",
+      "accepted": true,
+      "actual_received_at": 1793044297.087032,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636948+00:00"
+    },
+    {
+      "symbol": "LITE",
+      "accepted": true,
+      "actual_received_at": 1793044297.087032,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636955+00:00"
+    },
+    {
+      "symbol": "LLY",
+      "accepted": true,
+      "actual_received_at": 1793044297.087032,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636959+00:00"
+    },
+    {
+      "symbol": "LMT",
+      "accepted": true,
+      "actual_received_at": 1793044297.087032,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636962+00:00"
+    },
+    {
+      "symbol": "LNG",
+      "accepted": true,
+      "actual_received_at": 1793044297.087032,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636976+00:00"
+    },
+    {
+      "symbol": "LRCX",
+      "accepted": true,
+      "actual_received_at": 1793044297.087032,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636993+00:00"
+    },
+    {
+      "symbol": "LSCC",
+      "accepted": true,
+      "actual_received_at": 1793044297.087032,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636996+00:00"
+    },
+    {
+      "symbol": "MA",
+      "accepted": true,
+      "actual_received_at": 1793044297.087032,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.637044+00:00"
+    },
+    {
+      "symbol": "META",
+      "accepted": true,
+      "actual_received_at": 1793044297.087032,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.640219+00:00"
+    },
+    {
+      "symbol": "MNTS",
+      "accepted": true,
+      "actual_received_at": 1793044297.087032,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.640226+00:00"
+    },
+    {
+      "symbol": "MOS",
+      "accepted": true,
+      "actual_received_at": 1793044297.087032,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.640233+00:00"
+    },
+    {
+      "symbol": "MP",
+      "accepted": true,
+      "actual_received_at": 1793044297.087032,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.640275+00:00"
+    },
+    {
+      "symbol": "MRVL",
+      "accepted": true,
+      "actual_received_at": 1793044297.087032,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.640290+00:00"
+    },
+    {
+      "symbol": "MSFT",
+      "accepted": true,
+      "actual_received_at": 1793044297.087032,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.640293+00:00"
+    },
+    {
+      "symbol": "MSTR",
+      "accepted": true,
+      "actual_received_at": 1793044297.087032,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.640297+00:00"
+    },
+    {
+      "symbol": "MU",
+      "accepted": true,
+      "actual_received_at": 1793044297.087032,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.640302+00:00"
+    },
+    {
+      "symbol": "NLR",
+      "accepted": true,
+      "actual_received_at": 1793044297.087032,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.640316+00:00"
+    },
+    {
+      "symbol": "NUE",
+      "accepted": true,
+      "actual_received_at": 1793044297.087032,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.640322+00:00"
+    },
+    {
+      "symbol": "NVDA",
+      "accepted": true,
+      "actual_received_at": 1793044297.087032,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.647713+00:00"
+    },
+    {
+      "symbol": "NXE",
+      "accepted": true,
+      "actual_received_at": 1793044297.087032,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.647733+00:00"
+    },
+    {
+      "symbol": "OLED",
+      "accepted": true,
+      "actual_received_at": 1793044297.087032,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.647751+00:00"
+    },
+    {
+      "symbol": "ORCL",
+      "accepted": true,
+      "actual_received_at": 1793044297.087032,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.647760+00:00"
+    },
+    {
+      "symbol": "PAAS",
+      "accepted": true,
+      "actual_received_at": 1793044297.087032,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.647768+00:00"
+    },
+    {
+      "symbol": "PLTR",
+      "accepted": true,
+      "actual_received_at": 1793044294.5769012,
+      "old_exchange_timestamp": "2026-10-26T19:51:36.845770+00:00"
+    },
+    {
+      "symbol": "PR",
+      "accepted": true,
+      "actual_received_at": 1793044294.5769012,
+      "old_exchange_timestamp": "2026-10-26T19:51:36.845776+00:00"
+    },
+    {
+      "symbol": "PSX",
+      "accepted": true,
+      "actual_received_at": 1793044294.5769012,
+      "old_exchange_timestamp": "2026-10-26T19:51:36.845784+00:00"
+    },
+    {
+      "symbol": "PWR",
+      "accepted": true,
+      "actual_received_at": 1793044294.5769012,
+      "old_exchange_timestamp": "2026-10-26T19:51:36.845788+00:00"
+    },
+    {
+      "symbol": "QBTS",
+      "accepted": true,
+      "actual_received_at": 1793044294.5769012,
+      "old_exchange_timestamp": "2026-10-26T19:51:36.845795+00:00"
+    },
+    {
+      "symbol": "QLYS",
+      "accepted": true,
+      "actual_received_at": 1793044294.5769012,
+      "old_exchange_timestamp": "2026-10-26T19:51:36.845802+00:00"
+    },
+    {
+      "symbol": "QQQ",
+      "accepted": true,
+      "actual_received_at": 1793044294.5769012,
+      "old_exchange_timestamp": "2026-10-26T19:51:36.845805+00:00"
+    },
+    {
+      "symbol": "RBLX",
+      "accepted": true,
+      "actual_received_at": 1793044294.5769012,
+      "old_exchange_timestamp": "2026-10-26T19:51:36.845932+00:00"
+    },
+    {
+      "symbol": "RIO",
+      "accepted": true,
+      "actual_received_at": 1793044294.5769012,
+      "old_exchange_timestamp": "2026-10-26T19:51:36.845943+00:00"
+    },
+    {
+      "symbol": "RKLB",
+      "accepted": true,
+      "actual_received_at": 1793044294.5769012,
+      "old_exchange_timestamp": "2026-10-26T19:51:36.845947+00:00"
+    },
+    {
+      "symbol": "RRC",
+      "accepted": true,
+      "actual_received_at": 1793044294.5769012,
+      "old_exchange_timestamp": "2026-10-26T19:51:36.845956+00:00"
+    },
+    {
+      "symbol": "RS",
+      "accepted": true,
+      "actual_received_at": 1793044294.5769012,
+      "old_exchange_timestamp": "2026-10-26T19:51:36.845960+00:00"
+    },
+    {
+      "symbol": "SAP",
+      "accepted": true,
+      "actual_received_at": 1793044294.5769012,
+      "old_exchange_timestamp": "2026-10-26T19:51:36.845974+00:00"
+    },
+    {
+      "symbol": "SCCO",
+      "accepted": true,
+      "actual_received_at": 1793044294.5769012,
+      "old_exchange_timestamp": "2026-10-26T19:51:36.845981+00:00"
+    },
+    {
+      "symbol": "SCHW",
+      "accepted": true,
+      "actual_received_at": 1793044294.5769012,
+      "old_exchange_timestamp": "2026-10-26T19:51:36.846035+00:00"
+    },
+    {
+      "symbol": "SLV",
+      "accepted": true,
+      "actual_received_at": 1793044294.5769012,
+      "old_exchange_timestamp": "2026-10-26T19:51:36.846322+00:00"
+    },
+    {
+      "symbol": "SMCI",
+      "accepted": true,
+      "actual_received_at": 1793044294.5769012,
+      "old_exchange_timestamp": "2026-10-26T19:51:36.846326+00:00"
+    },
+    {
+      "symbol": "SNDK",
+      "accepted": true,
+      "actual_received_at": 1793044294.5769012,
+      "old_exchange_timestamp": "2026-10-26T19:51:36.846332+00:00"
+    },
+    {
+      "symbol": "SPOT",
+      "accepted": true,
+      "actual_received_at": 1793044294.5769012,
+      "old_exchange_timestamp": "2026-10-26T19:51:36.846339+00:00"
+    },
+    {
+      "symbol": "SPY",
+      "accepted": true,
+      "actual_received_at": 1793044294.5769012,
+      "old_exchange_timestamp": "2026-10-26T19:51:36.846342+00:00"
+    },
+    {
+      "symbol": "T",
+      "accepted": true,
+      "actual_received_at": 1793044294.5769012,
+      "old_exchange_timestamp": "2026-10-26T19:51:36.846355+00:00"
+    },
+    {
+      "symbol": "TSLA",
+      "accepted": true,
+      "actual_received_at": 1793044294.5769012,
+      "old_exchange_timestamp": "2026-10-26T19:51:36.846379+00:00"
+    },
+    {
+      "symbol": "U",
+      "accepted": true,
+      "actual_received_at": 1793044294.5769012,
+      "old_exchange_timestamp": "2026-10-26T19:51:36.846391+00:00"
+    },
+    {
+      "symbol": "UEC",
+      "accepted": true,
+      "actual_received_at": 1793044297.086634,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636844+00:00"
+    },
+    {
+      "symbol": "ULTA",
+      "accepted": true,
+      "actual_received_at": 1793044297.086634,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636847+00:00"
+    },
+    {
+      "symbol": "UNH",
+      "accepted": true,
+      "actual_received_at": 1793044297.086634,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636850+00:00"
+    },
+    {
+      "symbol": "UUUU",
+      "accepted": true,
+      "actual_received_at": 1793044297.086634,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636862+00:00"
+    },
+    {
+      "symbol": "V",
+      "accepted": true,
+      "actual_received_at": 1793044297.086634,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636865+00:00"
+    },
+    {
+      "symbol": "VALE",
+      "accepted": true,
+      "actual_received_at": 1793044297.086634,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636868+00:00"
+    },
+    {
+      "symbol": "VICR",
+      "accepted": true,
+      "actual_received_at": 1793044297.086634,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636871+00:00"
+    },
+    {
+      "symbol": "VLO",
+      "accepted": true,
+      "actual_received_at": 1793044297.086634,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636874+00:00"
+    },
+    {
+      "symbol": "VT",
+      "accepted": true,
+      "actual_received_at": 1793044297.086634,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636877+00:00"
+    },
+    {
+      "symbol": "VZ",
+      "accepted": true,
+      "actual_received_at": 1793044297.086634,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636881+00:00"
+    },
+    {
+      "symbol": "WDAY",
+      "accepted": true,
+      "actual_received_at": 1793044297.086634,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636884+00:00"
+    },
+    {
+      "symbol": "WMT",
+      "accepted": true,
+      "actual_received_at": 1793044297.086634,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636890+00:00"
+    },
+    {
+      "symbol": "XLE",
+      "accepted": true,
+      "actual_received_at": 1793044297.086634,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636897+00:00"
+    },
+    {
+      "symbol": "XOM",
+      "accepted": true,
+      "actual_received_at": 1793044297.086634,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636900+00:00"
+    },
+    {
+      "symbol": "ZCSH",
+      "accepted": true,
+      "actual_received_at": 1793044297.086634,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636906+00:00"
+    },
+    {
+      "symbol": "ZETA",
+      "accepted": true,
+      "actual_received_at": 1793044297.086634,
+      "old_exchange_timestamp": "2026-10-26T19:51:37.636909+00:00"
+    }
+  ],
+  "limitations": [
+    "One saved genuine quote snapshot per symbol, replayed at its original received_at.",
+    "No historical tick sequence was reconstructed. This does not prove an RTH boundary deadline."
+  ]
+}

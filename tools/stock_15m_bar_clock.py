@@ -14,10 +14,9 @@ from zoneinfo import ZoneInfo
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 import redis
-from closed_bar_feed import aggregate_closed_15m, atomic_json, merge_closed_history, publish_closed_15m
-from tools.crypto_15m_bar_clock import ObservedMarks
+from closed_bar_feed import aggregate_closed_15m, atomic_json, merge_closed_history, publish_closed_15m, timestamp_epoch
+from tools.crypto_15m_bar_clock import ObservedMarks, recent_rows
 from tools.npz_cutoffs import is_rth_bar_start, stock_session_bounds
-from tools.stock_closed_15m_prepare import producer_helpers
 
 
 def stock_symbols(base):
@@ -69,6 +68,26 @@ def completed_stock_row(observed, prefix, start, now):
     return row
 
 
+def native_prefix(base, symbol, start):
+    rows = {}
+    for interval, span in [('1m', 60), ('5m', 300)]:
+        for folder in ('klines_canonical', 'klines_cache', 'klines_cache_gateway'):
+            path = Path(base) / folder / 'tradier' / f'{symbol}_{interval}.json'
+            for row in recent_rows(path):
+                try:
+                    stamp = timestamp_epoch(row['timestamp'])
+                    if stamp < start or stamp + span > start + 780 or row.get('_provisional') or row.get('provisional'):
+                        continue
+                    if folder != 'klines_canonical' and float(row.get('_closed_verified_at') or 0) < stamp + span:
+                        continue
+                    prices = {key: float(row[key]) for key in ('open', 'high', 'low', 'close')}
+                    if all(math.isfinite(price) and price > 0 for price in prices.values()):
+                        rows.setdefault((stamp, span), dict(prices, _span_s=span, _source=f'kline_{interval}'))
+                except (TypeError, ValueError, KeyError):
+                    continue
+    return rows
+
+
 async def main(base):
     base = Path(base)
     print(json.dumps({'event': 'stock_clock_boot', 'at': time.time(), 'pid': __import__('os').getpid()}), flush=True)
@@ -80,7 +99,6 @@ async def main(base):
     await api.connect()
     store = redis.Redis(host='127.0.0.1', port=6379, db=0, socket_connect_timeout=0.2, socket_timeout=0.2)
     observed = ObservedMarks()
-    helpers = producer_helpers(base)
     readers = ThreadPoolExecutor(max_workers=4, thread_name_prefix='stockprefix')
     publishers = ThreadPoolExecutor(max_workers=8, thread_name_prefix='stockpublish')
     loop = asyncio.get_running_loop()
@@ -135,8 +153,7 @@ async def main(base):
                 for symbol in symbols:
                     key = (symbol, start)
                     if key not in native and key not in preparing:
-                        dirs = [base / folder / 'tradier' for folder in ('klines_cache', 'klines_cache_gateway', 'klines_canonical')]
-                        preparing[key] = loop.run_in_executor(readers, helpers['_load_closed_15m_prefix'], symbol, start, dirs, '5m')
+                        preparing[key] = loop.run_in_executor(readers, native_prefix, base, symbol, start)
             for key, future in list(preparing.items()):
                 if future.done():
                     native[key] = future.result()

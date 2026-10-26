@@ -15,6 +15,7 @@ from closed_bar_feed import is_verified_closed_native, merge_closed_history, pre
 
 def apply_overlay(base, overlay):
     mode = overlay.parent.name
+    from tools.npz_cutoffs import is_rth_bar_start
     symbol = overlay.stem
     history = base / 'klines_cache'
     if mode == 'tradier':
@@ -23,7 +24,7 @@ def apply_overlay(base, overlay):
     if not history.exists():
         return {'symbol': symbol, 'mode': mode, 'error': 'missing_full_history'}
     rows = json.loads(overlay.read_text())
-    closed = [row for row in rows if timestamp_epoch(row['timestamp']) + 900 <= time.time() and row.get('_closed')]
+    closed = [row for row in rows if timestamp_epoch(row['timestamp']) + 900 <= time.time() and row.get('_closed') and (mode != 'tradier' or is_rth_bar_start(timestamp_epoch(row['timestamp'])))]
     row = max(closed, key=lambda item: timestamp_epoch(item['timestamp'])) if closed else None
     with history.open('rb') as stream:
         stream.seek(max(0, history.stat().st_size - 32768))
@@ -37,6 +38,8 @@ def apply_overlay(base, overlay):
     for match in reversed(list(re.finditer(rb'\{[^{}]*\}', cache_tail))):
         native = json.loads(match.group())
         stamp = timestamp_epoch(native['timestamp'])
+        if mode == 'tradier' and not is_rth_bar_start(stamp):
+            continue
         if stamp + 900 > time.time() or not (is_verified_closed_native(native, stamp + 900) or native.get('_producer') == 'independent_crypto_15m_clock'):
             continue
         if native.get('_producer') == 'independent_crypto_15m_clock' and native.get('_producer_generation') is None:

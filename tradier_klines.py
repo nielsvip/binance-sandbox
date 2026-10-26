@@ -131,6 +131,7 @@ def export_atomic(df, path, replace_from=None):
         from closed_bar_feed import is_verified_closed_native, publish_closed_15m
         from tools.npz_cutoffs import is_rth_bar_start
         candidates = df[df.index + pd.Timedelta(seconds=900) <= pd.Timestamp.now(tz='UTC')]
+        candidates = candidates.loc[[is_rth_bar_start(stamp.timestamp()) for stamp in candidates.index]]
         if not candidates.empty:
             native = candidates.iloc[-1].to_dict()
             stamp = candidates.index[-1]
@@ -146,6 +147,11 @@ def _export_atomic_locked(df, path, replace_from=None):
     out["timestamp"] = out.index.tz_convert(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
     columns = ["timestamp","open","high","low","close","volume"] + [key for key in out.columns if str(key).startswith('_')]
     records = out[columns].astype(object).where(pd.notna(out[columns]), None).to_dict("records")
+    if path.stem.endswith('_15m'):
+        from closed_bar_feed import timestamp_epoch
+        record_key = lambda row: timestamp_epoch(row['timestamp'])
+    else:
+        record_key = lambda row: str(row['timestamp'])
     # Append-only contract: preserve every valid historical row already on
     # disk. A repeated timestamp is an in-place correction of the open candle;
     # no older timestamp may be discarded.
@@ -160,9 +166,9 @@ def _export_atomic_locked(df, path, replace_from=None):
                         # STKT repair pass: rows inside the re-fetched window are replaced wholesale by the authoritative bars
                         if replace_from and str(row["timestamp"]) >= replace_from and not row.get("_closed"):
                             continue
-                        merged[str(row["timestamp"])] = row
+                        merged[record_key(row)] = row
                 for row in records:
-                    key = str(row["timestamp"])
+                    key = record_key(row)
                     prev = merged.get(key)
                     if path.stem.endswith('_15m') and prev is not None:
                         from closed_bar_feed import preferred_closed_row

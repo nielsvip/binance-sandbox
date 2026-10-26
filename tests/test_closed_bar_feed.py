@@ -30,6 +30,14 @@ def test_boundary_aggregates_previous_minutes_and_excludes_new_minute():
     assert aggregate_closed_15m(incomplete, START, START + 900) is None
 
 
+def test_stock_forward_channel_refuses_after_hours_bar(tmp_path):
+    payload = dict(event(), mode='tradier', bar_start_ts=START + 7200, bar_close_ts=START + 8100)
+    payload['row'] = dict(payload['row'], timestamp='2026-10-26T20:00:00.000000Z')
+    with pytest.raises(ValueError, match='regular exchange session'):
+        receive_closed_15m(tmp_path, payload, now_s=START + 9000, require_history=False)
+    assert not (tmp_path / 'data/closed_15m_bars').exists()
+
+
 def test_open_time_labels_are_closed_exactly_at_the_next_boundary():
     for delay in (0, 0.001, 30, 899.999):
         now = START + 900 + delay

@@ -100,6 +100,8 @@ def preferred_closed_row(previous, incoming, bar_close_ts=None):
     if old_native and new_native:
         if float(previous.get('_closed_verified_at') or 0) > float(incoming.get('_closed_verified_at') or 0):
             return previous
+    if previous.get('_closed') is True and incoming.get('_closed') is not True and not new_native:
+        return previous
     if not old_native and not new_native and previous.get('_producer') in ('independent_crypto_15m_clock', 'independent_stock_15m_clock') and incoming.get('_producer') not in ('independent_crypto_15m_clock', 'independent_stock_15m_clock'):
         return previous
     if not old_native and not new_native and previous.get('_producer') == incoming.get('_producer') == 'independent_crypto_15m_clock' and int(previous.get('_producer_generation') or 1) > int(incoming.get('_producer_generation') or 1):
@@ -245,6 +247,10 @@ def receive_closed_15m(base_path, event, now_s=None, require_history=True):
     start = int(event['bar_start_ts'])
     if start % 900 or int(event['bar_close_ts']) != start + 900 or now_s < start + 900:
         raise ValueError('bar has not closed')
+    if mode == 'tradier':
+        from tools.npz_cutoffs import is_rth_bar_start
+        if not is_rth_bar_start(start):
+            raise ValueError('stock forward bar is outside the regular exchange session')
     row = dict(event['row'])
     if timestamp_epoch(row['timestamp']) != start:
         raise ValueError('row timestamp differs from envelope')

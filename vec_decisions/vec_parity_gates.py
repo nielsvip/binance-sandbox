@@ -91,7 +91,7 @@ def disagree_refuse(disagree, kill_on):
 
 def nonvectorizable_state_disagreement(action, reason, ultimate_buffer_pct=None):
     """Return an auditable reason for exact native paths absent from closed 15m state."""
-    if str(action or "").upper() not in ("CLOSE", "QUICK_CLOSE"):
+    if str(action or "").upper() not in ("CLOSE", "QUICK_CLOSE", "QUICK_QUICK_CLOSE"):
         return ""
     r = str(reason or "").upper()
     if re.match(r"^QUICK_DC4_(?:HIGH|LOW)_3M_GAIN_EROSION_STOP(?:_|$)", r):
@@ -160,7 +160,7 @@ def _per_sym_knob_true(sym_side, knob):
 
 def mandatory_stop_exempt(action, reason, ultimate_buffer_pct=None):
     """Allow only the two frozen DC stop laws through dictate-only parity."""
-    if str(action or "").upper() not in ("CLOSE", "QUICK_CLOSE"):
+    if str(action or "").upper() not in ("CLOSE", "QUICK_CLOSE", "QUICK_QUICK_CLOSE"):
         return False
     r = str(reason or "").upper()
     if r.startswith(("ULTIMATE_DC_4H_HARD_STOP_", "QUICK_ULTIMATE_DC_4H_HARD_STOP_")):

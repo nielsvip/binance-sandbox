@@ -256,11 +256,19 @@ def kline_last_close(base, symbol, mode, now_s=None):
         return None
     try:
         from closed_bar_feed import timestamp_epoch
+        now_epoch = time.time() if now_s is None else float(now_s)
+        def eligible_start(stamp):
+            if stamp + 900 > now_epoch:
+                return False
+            if mode == 'tradier':
+                from tools.npz_cutoffs import is_rth_bar_start
+                return is_rth_bar_start(stamp)
+            return True
         overlay_tip = None
         overlay = Path(base) / 'data' / 'closed_15m_bars' / mode / f'{symbol}.json'
         if overlay.is_file():
             now = time.time() if now_s is None else float(now_s)
-            eligible = [timestamp_epoch(row['timestamp']) for row in json.loads(overlay.read_text()) if timestamp_epoch(row['timestamp']) + 900 <= now]
+            eligible = [timestamp_epoch(row['timestamp']) for row in json.loads(overlay.read_text()) if eligible_start(timestamp_epoch(row['timestamp']))]
             overlay_tip = max(eligible) if eligible else None
             if overlay_tip is not None and overlay_tip >= int(now // 900) * 900 - 900:
                 return overlay_tip
@@ -280,13 +288,15 @@ def kline_last_close(base, symbol, mode, now_s=None):
             cutoff = now - pd.Timedelta(seconds=900)
             for value in reversed(matches):
                 ts = pd.to_datetime(value, utc=True, errors="coerce")
-                if not pd.isna(ts) and ts <= cutoff:
+                if not pd.isna(ts) and ts <= cutoff and eligible_start(int(ts.timestamp())):
                     return max(int(ts.timestamp()), overlay_tip or 0)
             return overlay_tip
         df = _load_klines_df(f)
         if df is None or df.empty:
             return overlay_tip
         df = _drop_forming_bar(df, f.stem.rsplit("_", 1)[-1])
+        if mode == 'tradier':
+            df = df.loc[[eligible_start(int(stamp.timestamp())) for stamp in df.index]]
         if df is None or df.empty:
             return overlay_tip
         return max(int(df.index[-1].to_pydatetime().timestamp()), overlay_tip or 0)

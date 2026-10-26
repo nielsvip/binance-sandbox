@@ -12,6 +12,16 @@ from tools.npz_tail_service import (
 )
 
 
+def test_stock_tip_uses_final_regular_session_row_not_after_hours_cache(tmp_path):
+    from closed_bar_feed import atomic_json
+    from tools.npz_tail_service import kline_last_close
+    from datetime import datetime, timezone
+    final = int(datetime(2026, 10, 26, 19, 45, tzinfo=timezone.utc).timestamp())
+    path = tmp_path / 'klines_cache/tradier/TEST_15m.json'
+    atomic_json(path, [{'timestamp': '2026-10-26T19:45:00Z'}, {'timestamp': '2026-10-26T20:00:00Z'}])
+    assert kline_last_close(tmp_path, 'TEST', 'tradier', now_s=final + 3600) == final
+
+
 def test_changed_source_recalculates_latest_bar_once_and_keeps_history(tmp_path):
     from npz_tail_store import compact_tail, load_merged
     path = tmp_path / 'TESTUSDT.npz'
