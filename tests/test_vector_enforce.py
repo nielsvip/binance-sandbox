@@ -694,10 +694,11 @@ def test_ratio_on_operator_order(tmp_path, monkeypatch):
     ok, verdict = ve.check("REDUCE", "fin:LINKUSDC_LONG", "RATIO_CLOSE_LONG_L100_S0_tgt30/70_gain1.5%")
     assert (ok, verdict) == (True, "VEC_SWITCH_EXIT")
     ez_src = (ROOT / "ez_manage.py").read_text()
+    enforce_src = (ROOT / "live_twins" / "vector_enforce.py").read_text()
     assert "for _rpk, _rpos, _rgain in _reduce_candidates:" in ez_src
     assert "for _cpk2, _cpos2, _cgain2 in _close_candidates:" in ez_src
     assert "for _ow_pk, _ow_pos, _ow_gain, _ow_delta in _ow_candidates:" in ez_src
-    assert "RATIO opens/augments stay stood down" in ez_src
+    assert "RATIO opens/augments stay stood down" in enforce_src
     assert not (tmp_path / "vector_kills.json").exists()
 
 
@@ -761,18 +762,12 @@ def test_trb_obligatory_entry_refused_no_kill(tmp_path, monkeypatch):
     assert "NONBOARD_ENTRY_REFUSED_NO_KILL" in v.read_text()
 
 
-def test_daytrade_target_twin_boundaries():
-    """USER 2026-10-22 parity restore: the shared daytrade_dc_exit twin fires
-    a 1h TARGET exactly at px >= dc_high_1h*(1-buf) LONG / px <= dc_low_1h*
-    (1+buf) SHORT — the killed LRCX dc_1h shape, boundary-probed."""
+def test_daytrade_target_remains_destroyed():
+    """DAYTRADE_TARGET was removed by the 2026-10-24 ruling; target specs are ignored."""
     from vec_decisions.dc_channel_exits import daytrade_dc_exit
     spec = {"tf": "1h", "field_long": "dc_high_1h", "field_short": "dc_low_1h", "buf": 0.001, "mode": "day", "tag": "dc_1h"}
     lv = lambda f: {"dc_high_1h": 100.0, "dc_low_1h": 90.0}.get(f, 0.0)
     fire, reason = daytrade_dc_exit(99.95, True, [], [spec], lv)
-    assert fire is True and reason.startswith("DAYTRADE_TARGET dc_1h_high -0.10%"), reason
-    fire2, _ = daytrade_dc_exit(99.85, True, [], [spec], lv)
-    assert fire2 is False
-    fire3, reason3 = daytrade_dc_exit(90.05, False, [], [spec], lv)
-    assert fire3 is True and reason3.startswith("DAYTRADE_TARGET dc_1h_low +0.10%"), reason3
-    fire4, _ = daytrade_dc_exit(90.15, False, [], [spec], lv)
-    assert fire4 is False
+    assert fire is False and reason == "", reason
+    fire2, reason2 = daytrade_dc_exit(90.05, False, [], [spec], lv)
+    assert fire2 is False and reason2 == "", reason2
