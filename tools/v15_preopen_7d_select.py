@@ -7,8 +7,11 @@ import argparse
 import datetime as dt
 import json
 from pathlib import Path
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from tools.account_comparison_books import FIN_MIRROR_END, side_symbols, source_account  # noqa: E402
 ACCOUNTS = {"fin": ("fin", "men"), "trc": ("trc", "trb")}
 
 
@@ -44,26 +47,19 @@ def _traded(sym_side, accounts, cutoff, root):
 
 def select(root, now, selection):
     cutoff = now - 7 * 86400
-    keys = set(json.loads((root / "tradeable_keys.json").read_text()))
-    fin_ok = {k.split(":", 1)[1] for k in keys if k.startswith("fin:")}
+    at = dt.datetime.fromtimestamp(now, dt.timezone.utc)
+    fin_ok = set()
     stock_ok = set()
-    try:
-        stock_universe = set(json.loads((root / "stock_symbols.json").read_text()))
-    except (OSError, ValueError, TypeError):
-        stock_universe = set()
     for side in ("LONG", "SHORT"):
-        p = root / f"symbols_trb_{side.lower()}.json"
-        try:
-            side_syms = set(json.loads(p.read_text()))
-        except (OSError, ValueError, TypeError):
-            side_syms = set()
-        # A single side's book can be empty outside RTH. Fall back per side.
-        stock_ok |= {f"{sym}_{side}" for sym in (side_syms or stock_universe)}
+        fin_ok |= {f"{sym}_{side}" for sym in side_symbols(root, "fin", side, at)}
+        stock_ok |= {f"{sym}_{side}" for sym in side_symbols(root, "trc", side, at)}
     source = selection.get("sym_sides") or {}
     out = {"_meta": {"created_at": dt.datetime.fromtimestamp(now, dt.timezone.utc).isoformat(),
                       "cutoff": dt.datetime.fromtimestamp(cutoff, dt.timezone.utc).isoformat(),
                       "source": "published_selection + tradeable universe + executed trade history",
-                      "window_days": 7}, "accounts": {"fin": [], "trc": []}, "sym_sides": {}}
+                      "window_days": 7, "fin_book_source": source_account("fin", at),
+                      "trc_book_source": "trb", "fin_mirror_end_utc": FIN_MIRROR_END.isoformat()},
+           "accounts": {"fin": [], "trc": []}, "sym_sides": {}}
     for ss, rec in source.items():
         if not isinstance(rec, dict) or not isinstance(rec.get("overrides"), dict) or rec.get("manifest_ok") is not True:
             continue

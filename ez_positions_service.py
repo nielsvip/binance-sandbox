@@ -4894,15 +4894,9 @@ class PositionService:
             loaded_count = 0
             for pos_key, pos_data in raw_positions.items():
                 try :
+                    if pos_key in account_positions:
+                        continue
                     pos_obj = Position.from_dict(pos_data)
-                    # GUARD: never overwrite good in-memory data with zeroed Redis data
-                    existing = account_positions.get(pos_key)
-                    if existing:
-                        ex_ep = float(getattr(existing, 'entry_price', 0) or 0)
-                        new_ep = float(getattr(pos_obj, 'entry_price', 0) or 0)
-                        if ex_ep > 0 and new_ep == 0:
-                            logger.critical(f"[REDIS_LOAD_BLOCKED] {pos_key}: Redis has entry_price=0 but memory has {ex_ep}. KEEPING memory.")
-                            continue
                     account_positions[pos_key] = pos_obj
                     self.positions[pos_key] = pos_obj
                     loaded_count += 1
@@ -14701,6 +14695,23 @@ async def bootstrap_position_service(logger=None, accounts: Optional[Dict[str, A
         if logger: logger.info("[bootstrap] ⚡ Attempting Redis Hydration...")
         for acc in resolved_accounts:
             loaded_from_redis = False
+            disk_loaded_count = 0
+            try:
+                disk_positions, _ = await service._load_positions_raw_from_files(acc)
+                disk_account_positions = service.positions_by_account.setdefault(acc, {})
+                for pos_key, pos_data in disk_positions.items():
+                    if pos_key in disk_account_positions or not isinstance(pos_data, dict):
+                        continue
+                    try:
+                        pos_obj = Position.from_dict(pos_data)
+                        disk_account_positions[pos_key] = pos_obj
+                        service.positions[pos_key] = pos_obj
+                        disk_loaded_count += 1
+                    except Exception as e:
+                        if logger: logger.error(f"[bootstrap] [{acc}] Disk position load failed for {pos_key}: {e}")
+                if disk_loaded_count and logger: logger.info(f"[bootstrap] [{acc}] Disk loaded {disk_loaded_count} positions before Redis; disk rows remain authoritative.")
+            except Exception as e:
+                if logger: logger.error(f"[bootstrap] [{acc}] Disk position load failed: {e}")
             try :
                 redis_key = f"positions:{acc}"
                 raw_data = await service.redis_manager.get(redis_key)
@@ -14716,6 +14727,8 @@ async def bootstrap_position_service(logger=None, accounts: Optional[Dict[str, A
                         if pos_key == 'meta': continue
                         if isinstance(pos_data, dict):
                             try :
+                                if pos_key in service.positions_by_account[acc]:
+                                    continue
                                 pos_obj = Position.from_dict(pos_data)
                                 # GUARD: skip Redis entries with zeroed critical fields — load from disk instead
                                 _ep = float(getattr(pos_obj, 'entry_price', 0) or 0)
@@ -14732,6 +14745,9 @@ async def bootstrap_position_service(logger=None, accounts: Optional[Dict[str, A
                     if loaded_count > 0:
                         if logger: logger.info(f"[bootstrap] [{acc}] Redis loaded {loaded_count} positions.")
                         loaded_from_redis = True
+                    elif disk_loaded_count > 0:
+                        loaded_from_redis = True
+                        if logger: logger.info(f"[bootstrap] [{acc}] Kept {disk_loaded_count} disk positions; Redis had no newer keys to hydrate.")
                     else:
                         if logger: logger.warning(f"[bootstrap] [{acc}] Redis data valid but contained 0 positions.")
             except Exception as e:

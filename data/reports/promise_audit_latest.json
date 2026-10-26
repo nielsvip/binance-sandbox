@@ -1,9 +1,9 @@
 {
- "generated_utc": "2026-10-26T00:12:03.517824+00:00",
+ "generated_utc": "2026-10-26T01:12:02.917439+00:00",
  "days": 1.0,
  "totals": {
-  "exit_promises": 156,
-  "exit_broken_no_delivery": 137,
+  "exit_promises": 159,
+  "exit_broken_no_delivery": 140,
   "entry_promises": 96,
   "entry_broken_no_delivery": 96,
   "exit_skipped_inflight": 1472,
@@ -205,8 +205,8 @@
   "flz:DASHUSDT_SHORT": {
    "entry_promises": 3,
    "entry_broken_no_delivery": 3,
-   "exit_promises": 3,
-   "exit_broken_no_delivery": 3
+   "exit_promises": 4,
+   "exit_broken_no_delivery": 4
   },
   "fin:FLUXUSDT_SHORT": {
    "entry_promises": 6,
@@ -380,11 +380,11 @@
    "exit_broken_no_delivery": 2
   },
   "inf:RAYSOLUSDT_LONG": {
-   "exit_promises": 5,
+   "exit_promises": 7,
    "exit_kept_late": 3,
    "entry_promises": 2,
    "entry_broken_no_delivery": 2,
-   "exit_broken_no_delivery": 2
+   "exit_broken_no_delivery": 4
   },
   "men:ETHFIUSDC_LONG": {
    "exit_promises": 2,
@@ -2894,6 +2894,36 @@
    "late_min": null,
    "action": "REDUCE",
    "reason": "PPL_TP_g1.61%>=1.50%_stopBE1217.4362",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "flz",
+   "sym_side": "DASHUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-25 23:45",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "STATEFUL_PORTED_EXIT g-0.53% age30m",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "RAYSOLUSDT_LONG",
+   "kind": "exit",
+   "bar": "10-26 00:00",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "STDEV_REJECT_EXIT",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "RAYSOLUSDT_LONG",
+   "kind": "exit",
+   "bar": "10-26 00:30",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "STDEV_REJECT_EXIT",
    "outcome": "NO_DELIVERY"
   }
  ],

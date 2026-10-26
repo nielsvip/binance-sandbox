@@ -1,7 +1,7 @@
 {
-  "ts": "2026-10-26T01:05:05.578595+00:00",
-  "tick": "2026-10-26T01:04:01.534237+00:00",
-  "tick_age_s": 64,
+  "ts": "2026-10-26T01:10:05.003045+00:00",
+  "tick": "2026-10-26T01:08:01.406080+00:00",
+  "tick_age_s": 124,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run36.json",
     "round": "run36",
@@ -16,7 +16,7 @@
   },
   "hosts": {
     "s1": {
-      "cpu_pct": 97,
+      "cpu_pct": 100,
       "slots": "2/4",
       "observed_running": [
         "ACTUSDT",
@@ -24,35 +24,33 @@
       ],
       "published_last_hour": 3,
       "idle_reason": "mem guard",
-      "mem_avail_mb": 13065
+      "mem_avail_mb": 11632
     },
     "s2": {
       "cpu_pct": 100,
       "slots": "3/4",
       "observed_running": [
         "BATUSDT",
-        "GRASSUSDT",
         "GRTUSDT"
       ],
       "published_last_hour": 2,
-      "idle_reason": "mem guard",
-      "mem_avail_mb": 9389
+      "idle_reason": null,
+      "mem_avail_mb": 12903
     },
     "s5": {
-      "cpu_pct": 45,
+      "cpu_pct": 31,
       "slots": "4/4",
       "observed_running": [
-        "ALMU",
-        "APA",
-        "BWXT",
-        "CAT"
+        "COIN",
+        "COST",
+        "CRK"
       ],
       "published_last_hour": 2,
-      "idle_reason": "slots full",
-      "mem_avail_mb": 27795
+      "idle_reason": null,
+      "mem_avail_mb": 27883
     },
     "s6": {
-      "cpu_pct": 82,
+      "cpu_pct": 98,
       "slots": "4/4",
       "observed_running": [
         "SLV",
@@ -62,7 +60,7 @@
       ],
       "published_last_hour": 3,
       "idle_reason": "slots full",
-      "mem_avail_mb": 14190
+      "mem_avail_mb": 13196
     }
   },
   "one_hour_total": 10,
@@ -70,7 +68,7 @@
     "LOW_THROUGHPUT:s1:3/h",
     "LOW_THROUGHPUT:s2:2/h",
     "LOW_THROUGHPUT:s5:2/h",
-    "LOW_CPU:s5:45%",
+    "LOW_CPU:s5:31%",
     "LOW_THROUGHPUT:s6:3/h"
   ]
 }
