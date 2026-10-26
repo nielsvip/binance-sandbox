@@ -1,68 +1,68 @@
 {
-  "ts": "2026-10-26T10:55:04.988080+00:00",
-  "tick": "2026-10-26T10:54:01.833762+00:00",
-  "tick_age_s": 63,
+  "ts": "2026-10-26T11:00:06.280338+00:00",
+  "tick": "2026-10-26T10:58:01.694306+00:00",
+  "tick_age_s": 125,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run37.json",
     "round": "run37",
     "complete": false,
     "universe_n": 203,
-    "n_complete": 111,
-    "n_pending": 92,
+    "n_complete": 112,
+    "n_pending": 91,
     "n_refused_only": 0,
     "n_excluded": 0,
-    "n_launchable_pending": 73,
+    "n_launchable_pending": 74,
     "hosts_not_visible": []
   },
   "hosts": {
     "s1": {
-      "cpu_pct": 97,
-      "slots": "0/4",
-      "observed_running": [],
-      "published_last_hour": 0,
-      "idle_reason": null,
-      "mem_avail_mb": 9545
-    },
-    "s5": {
-      "cpu_pct": 24,
+      "cpu_pct": 52,
       "slots": "0/4",
       "observed_running": [],
       "published_last_hour": 0,
       "idle_reason": "disk guard",
-      "mem_avail_mb": 22592
+      "mem_avail_mb": 11311
+    },
+    "s5": {
+      "cpu_pct": 25,
+      "slots": "0/4",
+      "observed_running": [],
+      "published_last_hour": 0,
+      "idle_reason": "disk guard",
+      "mem_avail_mb": 22692
     },
     "s2": {
-      "cpu_pct": 18,
-      "slots": "2/4",
+      "cpu_pct": 12,
+      "slots": "1/4",
       "observed_running": [
-        "KMNOUSDT",
         "RAYSOLUSDT"
       ],
       "published_last_hour": 0,
       "idle_reason": "mem guard",
-      "mem_avail_mb": 9092
+      "mem_avail_mb": 9065
     },
     "s6": {
-      "cpu_pct": 90,
+      "cpu_pct": 22,
       "slots": "2/4",
       "observed_running": [
-        "GRAMUSDT",
         "ONEUSDT"
       ],
       "published_last_hour": 3,
-      "idle_reason": "mem guard",
-      "mem_avail_mb": 12800
+      "idle_reason": null,
+      "mem_avail_mb": 17629
     }
   },
   "one_hour_total": 3,
   "alerts": [
     "LOW_THROUGHPUT:s1:0/h",
-    "IDLE:s1:unknown",
+    "LOW_CPU:s1:52%",
+    "IDLE:s1:disk guard",
     "LOW_THROUGHPUT:s5:0/h",
-    "LOW_CPU:s5:24%",
+    "LOW_CPU:s5:25%",
     "IDLE:s5:disk guard",
     "LOW_THROUGHPUT:s2:0/h",
-    "LOW_CPU:s2:18%",
-    "LOW_THROUGHPUT:s6:3/h"
+    "LOW_CPU:s2:12%",
+    "LOW_THROUGHPUT:s6:3/h",
+    "LOW_CPU:s6:22%"
   ]
 }

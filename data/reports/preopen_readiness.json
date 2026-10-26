@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-26T10:40:02Z",
+ "generated_utc": "2026-10-26T11:00:03Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-26T13:30:00Z",
  "market_open": false,
@@ -15,10 +15,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 285,
-    "filled_before_open": 285
+    "filled_today": 288,
+    "filled_before_open": 288
    },
-   "detail": "285 boards filled before the open (285 today)"
+   "detail": "288 boards filled before the open (288 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -28,21 +28,21 @@
     "mac_done_stamp": false,
     "s1_stamp": "NO_STAMP",
     "cat_side_defaults_4_at": "2026-10-21T04:54:49Z",
-    "cat_side_age_days": 5.2,
+    "cat_side_age_days": 5.3,
     "cat_side_note": "rebuilt only by v15_daily_template_update --sync-defaults, a deliberate manual step \u2014 reported, never fails this gate"
    },
-   "detail": "mac stamp 20261026=False, s1 stamp NO_STAMP, cat_side layer 5.2d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
+   "detail": "mac stamp 20261026=False, s1 stamp NO_STAMP, cat_side layer 5.3d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
   },
   {
    "name": "selection_fresh",
    "ok": false,
    "critical": true,
    "measured": {
-    "built_at": "2026-10-26T09:41:35.801831+00:00",
+    "built_at": "2026-10-26T10:51:01.259615+00:00",
     "n": 532,
-    "age_at_open_s": 13704
+    "age_at_open_s": 9539
    },
-   "detail": "built 2026-10-26T09:41:35.801831+00:00 n=532 \u2014 13704s before the open > 7200s"
+   "detail": "built 2026-10-26T10:51:01.259615+00:00 n=532 \u2014 9539s before the open > 7200s"
   },
   {
    "name": "apply_report_written",
@@ -62,9 +62,9 @@
    "critical": true,
    "measured": {
     "selection_n": 532,
-    "exact": 100,
-    "benign_divergence_only": 253,
-    "material_divergence": 178,
+    "exact": 98,
+    "benign_divergence_only": 251,
+    "material_divergence": 182,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -201,7 +201,7 @@
      }
     ]
    },
-   "detail": "100 exact, 253 benign-only, 178 with material divergence, 1 with no live row"
+   "detail": "98 exact, 251 benign-only, 182 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
