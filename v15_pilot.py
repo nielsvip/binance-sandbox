@@ -332,6 +332,13 @@ per_cell_deadline = YELLOW_TIMEOUT
 ROOT = Path(__file__).resolve().parent
 
 
+def _active_engine_source_path() -> Path:
+    """Fingerprint the engine actually imported by this pilot process."""
+    if os.environ.get("V15_V19_INTERIM") == "1":
+        return ROOT / "v12_quick_engine_v19.py"
+    return ROOT / "v12_quick_engine.py"
+
+
 def _load_gate_flags():
     """USER 2026-10-14: "make sure the verifier is in place on the fixed npz set on s2 that runs every new version of v15_pilot.py
     and subscripts and only allows a modification if results improve". Feature switches that change what the board evaluates
@@ -1671,7 +1678,7 @@ def _capture_start_stamp() -> None:
     try:
         import hashlib as _hl
         from datetime import datetime, timezone
-        _START_STAMP = {"result_engine_md5": _hl.md5((ROOT / "v12_quick_engine.py").read_bytes()).hexdigest(), "result_pilot_md5": _hl.md5(Path(__file__).resolve().read_bytes()).hexdigest(), "result_config_md5_crypto": _hl.md5((ROOT / "config.py").read_bytes()).hexdigest(), "result_config_md5_stocks": _hl.md5((ROOT / "config_tradier.py").read_bytes()).hexdigest(), "result_start_utc": datetime.now(timezone.utc).isoformat()}
+        _START_STAMP = {"result_engine_md5": _hl.md5(_active_engine_source_path().read_bytes()).hexdigest(), "result_pilot_md5": _hl.md5(Path(__file__).resolve().read_bytes()).hexdigest(), "result_config_md5_crypto": _hl.md5((ROOT / "config.py").read_bytes()).hexdigest(), "result_config_md5_stocks": _hl.md5((ROOT / "config_tradier.py").read_bytes()).hexdigest(), "result_start_utc": datetime.now(timezone.utc).isoformat()}
     except Exception:
         _START_STAMP = None
 def _result_stamp(progress: dict, symside: str) -> None:
@@ -1685,7 +1692,7 @@ def _result_stamp(progress: dict, symside: str) -> None:
             progress["result_config_md5"] = _START_STAMP["result_config_md5_stocks" if _is_stocks else "result_config_md5_crypto"]
             progress["result_start_utc"] = _START_STAMP["result_start_utc"]
         else:
-            for _k, _p in (("result_engine_md5", ROOT / "v12_quick_engine.py"),
+            for _k, _p in (("result_engine_md5", _active_engine_source_path()),
                            ("result_pilot_md5", Path(__file__).resolve()),
                            ("result_config_md5", ROOT / ("config_tradier.py" if _is_stocks else "config.py"))):
                 progress[_k] = _hl.md5(_p.read_bytes()).hexdigest()
@@ -2894,7 +2901,7 @@ def board_provenance(symside, overrides, final_gain, template_path=None, npz_id=
         _fg = None if final_gain is None else float(final_gain)
     except Exception:
         _fg = None
-    return {"engine_md5": _md5_file(ROOT / "v12_quick_engine.py"), "npz_sha": _nid.get("md5"), "npz_window": {k: _nid.get(k) for k in ("ts_first", "ts_last", "n", "size", "mtime_ns")}, "npz_name": (str(_nid.get("path") or "").rsplit("/", 1)[-1] or None), "template_md5": _md5_file(_tp) if _tp is not None else None, "published_set_hash": _ov_hash, "final_gain": _fg}
+    return {"engine_md5": _md5_file(_active_engine_source_path()), "npz_sha": _nid.get("md5"), "npz_window": {k: _nid.get(k) for k in ("ts_first", "ts_last", "n", "size", "mtime_ns")}, "npz_name": (str(_nid.get("path") or "").rsplit("/", 1)[-1] or None), "template_md5": _md5_file(_tp) if _tp is not None else None, "published_set_hash": _ov_hash, "final_gain": _fg}
 
 
 def forward_score_on() -> bool:
@@ -10332,7 +10339,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             _par_ev = {"n_promoted": _par_prom, "valid": bool((_par_vec or {}).get("valid")), "invalid_reason": (_par_vec or {}).get("invalid_reason"), "gain_pct": (_par_vec or {}).get("gain_pct"), "trades": (_par_vec or {}).get("trades"), "tim_pct": (_par_vec or {}).get("tim_pct"), "max_dd_pct": (_par_vec or {}).get("max_dd_pct"), "pool_sharpe": (_par_vec or {}).get("pool_sharpe"), "bh_pct": bh, "baseline_gain": baseline_gain}
             try:
                 import hashlib as _par_hl
-                _par_ev["engine_md5"] = _par_hl.md5((ROOT / "v12_quick_engine.py").read_bytes()).hexdigest()[:8]
+                _par_ev["engine_md5"] = _par_hl.md5(_active_engine_source_path().read_bytes()).hexdigest()[:8]
             except Exception:
                 _par_ev["engine_md5"] = ""
             try:

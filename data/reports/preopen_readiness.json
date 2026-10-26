@@ -1,12 +1,11 @@
 {
- "generated_utc": "2026-10-26T15:40:08Z",
+ "generated_utc": "2026-10-26T16:00:05Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-26T13:30:00Z",
  "market_open": true,
  "verdict": "FAIL",
  "failed_critical": [
   "defaults_chain_completed",
-  "selection_fresh",
   "live_set_matches_selection"
  ],
  "checks": [
@@ -15,10 +14,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 298,
+    "filled_today": 302,
     "filled_before_open": 288
    },
-   "detail": "288 boards filled before the open (298 today)"
+   "detail": "288 boards filled before the open (302 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -28,21 +27,21 @@
     "mac_done_stamp": false,
     "s1_stamp": "NO_STAMP",
     "cat_side_defaults_4_at": "2026-10-21T04:54:49Z",
-    "cat_side_age_days": 5.4,
+    "cat_side_age_days": 5.5,
     "cat_side_note": "rebuilt only by v15_daily_template_update --sync-defaults, a deliberate manual step \u2014 reported, never fails this gate"
    },
-   "detail": "mac stamp 20261026=False, s1 stamp NO_STAMP, cat_side layer 5.4d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
+   "detail": "mac stamp 20261026=False, s1 stamp NO_STAMP, cat_side layer 5.5d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
   },
   {
    "name": "selection_fresh",
-   "ok": false,
+   "ok": true,
    "critical": true,
    "measured": {
-    "built_at": "2026-10-26T10:51:01.259615+00:00",
+    "built_at": "2026-10-26T15:51:44.160227+00:00",
     "n": 532,
-    "age_at_open_s": 9539
+    "age_at_open_s": -8504
    },
-   "detail": "built 2026-10-26T10:51:01.259615+00:00 n=532 \u2014 9539s before the open > 7200s"
+   "detail": "built 2026-10-26T15:51:44.160227+00:00 n=532"
   },
   {
    "name": "apply_report_written",
@@ -63,8 +62,8 @@
    "measured": {
     "selection_n": 532,
     "exact": 98,
-    "benign_divergence_only": 251,
-    "material_divergence": 182,
+    "benign_divergence_only": 250,
+    "material_divergence": 183,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -106,6 +105,19 @@
        "AUGMENT_INTO_REENTRY_ENABLED",
        "BB_BOUNCE_ENTRY_FILTER_ENABLED",
        "CIRCUIT_SHARPE_GATES_FILTER_TF"
+      ]
+     },
+     {
+      "sym_side": "STXUSDT_SHORT",
+      "published_at": "2026-10-26T12:06:35Z",
+      "material": 79,
+      "sample": [
+       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
+       "ATR_ADAPTIVE_STOP_MULT",
+       "ATR_ADAPTIVE_STOP_TF",
+       "AUGMENT_INTO_REENTRY_ENABLED",
+       "BB_FROZEN_STOP_ENABLED",
+       "BULL_HOLD_EXIT_DELAY_BARS"
       ]
      },
      {
@@ -185,23 +197,10 @@
        "DC_HARD_STOP_15M_ENABLED",
        "DC_MOMENTUM_BOTA_SCORER_FILTER_TF"
       ]
-     },
-     {
-      "sym_side": "ACN_LONG",
-      "published_at": "2026-10-23T06:02:03Z",
-      "material": 50,
-      "sample": [
-       "ATR_ADAPTIVE_STOP_MULT",
-       "ATR_ADAPTIVE_STOP_TF",
-       "AUGMENT_FALLBACK_REDUCE_PCT",
-       "BB_PULLBACK_GATE_ENABLED",
-       "BB_SQUEEZE_ENTRY_ENABLED",
-       "COUNTER_TREND_ADD_BLOCK_ENABLED"
-      ]
      }
     ]
    },
-   "detail": "98 exact, 251 benign-only, 182 with material divergence, 1 with no live row"
+   "detail": "98 exact, 250 benign-only, 183 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",

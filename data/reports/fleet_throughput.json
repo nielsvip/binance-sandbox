@@ -1,7 +1,7 @@
 {
-  "ts": "2026-10-26T16:05:09.770521+00:00",
-  "tick": "2026-10-26T16:04:02.250037+00:00",
-  "tick_age_s": 68,
+  "ts": "2026-10-26T16:10:13.619923+00:00",
+  "tick": "2026-10-26T16:08:01.679751+00:00",
+  "tick_age_s": 132,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run37.json",
     "round": "run37",
@@ -11,40 +11,39 @@
     "n_pending": 67,
     "n_refused_only": 0,
     "n_excluded": 0,
-    "n_launchable_pending": 59,
+    "n_launchable_pending": 60,
     "hosts_not_visible": []
   },
   "hosts": {
+    "s1": {
+      "cpu_pct": 100,
+      "slots": "1/4",
+      "observed_running": [
+        "IOTAUSDT"
+      ],
+      "published_last_hour": 0,
+      "idle_reason": "mem guard",
+      "mem_avail_mb": 1086
+    },
     "s5": {
-      "cpu_pct": 47,
+      "cpu_pct": 53,
       "slots": "1/4",
       "observed_running": [
         "DUSKUSDT"
       ],
       "published_last_hour": 0,
       "idle_reason": "no eligible ready symbol for this host",
-      "mem_avail_mb": 16211
+      "mem_avail_mb": 15846
     },
     "s6": {
-      "cpu_pct": 74,
+      "cpu_pct": 29,
       "slots": "1/4",
       "observed_running": [
         "1000FLOKIUSDT"
       ],
       "published_last_hour": 0,
       "idle_reason": "no eligible ready symbol for this host",
-      "mem_avail_mb": 13556
-    },
-    "s1": {
-      "cpu_pct": 100,
-      "slots": "2/4",
-      "observed_running": [
-        "ETCUSDT",
-        "IOTAUSDT"
-      ],
-      "published_last_hour": 0,
-      "idle_reason": "mem guard",
-      "mem_avail_mb": 2363
+      "mem_avail_mb": 13348
     },
     "s2": {
       "cpu_pct": 100,
@@ -56,16 +55,16 @@
       ],
       "published_last_hour": 0,
       "idle_reason": "mem guard",
-      "mem_avail_mb": 3174
+      "mem_avail_mb": 7845
     }
   },
   "one_hour_total": 0,
   "alerts": [
-    "LOW_THROUGHPUT:s5:0/h",
-    "LOW_CPU:s5:47%",
-    "LOW_THROUGHPUT:s6:0/h",
-    "LOW_CPU:s6:74%",
     "LOW_THROUGHPUT:s1:0/h",
+    "LOW_THROUGHPUT:s5:0/h",
+    "LOW_CPU:s5:53%",
+    "LOW_THROUGHPUT:s6:0/h",
+    "LOW_CPU:s6:29%",
     "LOW_THROUGHPUT:s2:0/h"
   ]
 }
