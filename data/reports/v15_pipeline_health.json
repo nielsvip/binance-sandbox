@@ -1,37 +1,10 @@
 {
- "at": "2026-10-26T02:30:39Z",
+ "at": "2026-10-26T02:45:02Z",
  "s1": {
-  "host": "niels",
-  "now": 1792981825.2822592,
-  "merge_crypto": {
-   "n": 12,
-   "max_lag_min": 15.0,
-   "median_lag_min": 15.0,
-   "worst": "1000000MOGUSDT",
-   "dead": []
-  },
-  "merge_stocks": {
-   "n": 11,
-   "max_lag_min": 0.0,
-   "median_lag_min": 0.0,
-   "worst": "A",
-   "dead": []
-  },
-  "npz_legacy_crypto": [],
-  "append_log_age_min": 13.3,
-  "append_last_secs": 721.3,
-  "append_last_stats": "'appended': 1065, 'created': 0, 'up_to_date': 5310, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
-  "npz_loop_pids": 0,
-  "npz_loop_has_settle": false,
-  "sched_tick_age_min": 2.4,
-  "sched_launched": 0,
-  "archive_n": 202,
-  "archive_mb": 2460.7,
-  "archive_newest_min": 49.5,
-  "_via": "s1-int"
+  "error": "s1-int: ssh: connect to host 127.0.0.1 port 2201: Connection refused | s1-pub: ssh: connect to host 157.180.125.52 port 22: No route to host"
  },
  "red": [
-  "L3 npz append loop is not running (the */15 watchdog should relaunch it)"
+  "s1 unreachable: s1-int: ssh: connect to host 127.0.0.1 port 2201: Connection refused | s1-pub: ssh: connect to host 157.180.125.52 port 22: No route to host"
  ],
  "warn": [],
  "ok": false

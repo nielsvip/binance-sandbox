@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-26T02:39:43Z",
+ "ts": "2026-10-26T02:45:06Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,7 +27,7 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 86,
+   "fills_6h": 81,
    "open_positions": 1,
    "unrealised_usd": 0.01,
    "pos_mismatch": 0,
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 189,
+   "fills_6h": 179,
    "open_positions": 5,
-   "unrealised_usd": 1.19,
+   "unrealised_usd": 1.29,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 2,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 109,
    "open_positions": 7,
-   "unrealised_usd": 0.94,
+   "unrealised_usd": 1.4,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -75,7 +75,7 @@
    }
   },
   "inf": {
-   "fills_6h": 396,
+   "fills_6h": 385,
    "open_positions": 0,
    "unrealised_usd": 0.0,
    "pos_mismatch": 0,
@@ -85,15 +85,15 @@
     "filled": 13,
     "refused_non_safety": 0,
     "safety_refusals": 0,
-    "not_filled_no_log": 1,
+    "not_filled_no_log": 2,
     "vec_exact_fills_without_decision": 0,
     "matched_by_reason": 0
    }
   },
   "flz": {
-   "fills_6h": 206,
+   "fills_6h": 193,
    "open_positions": 4,
-   "unrealised_usd": 0.18,
+   "unrealised_usd": 0.28,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 3,
@@ -126,125 +126,132 @@
    "pids": [
     "68267"
    ],
-   "starts_30m": 4,
-   "log_age_s": 23.0
+   "starts_30m": 3,
+   "log_age_s": 3.0
   },
   "men": {
    "pids": [
     "68383"
    ],
-   "starts_30m": 5,
-   "log_age_s": 1.0
+   "starts_30m": 3,
+   "log_age_s": 3.0
   },
   "ang": {
    "pids": [
     "68218"
    ],
-   "starts_30m": 5,
-   "log_age_s": 36.0
+   "starts_30m": 3,
+   "log_age_s": 1.0
   },
   "inf": {
    "pids": [
     "67625"
    ],
-   "starts_30m": 4,
-   "log_age_s": 0.0
+   "starts_30m": 3,
+   "log_age_s": 6.0
   },
   "flz": {
    "pids": [
     "67939"
    ],
-   "starts_30m": 4,
-   "log_age_s": 15.0
+   "starts_30m": 3,
+   "log_age_s": 3.0
   },
   "trb": {
    "pids": [
     "42630"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 1.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 155327.0
+   "log_age_s": 155650.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-26T02:39:43Z",
+   "ts": "2026-10-26T02:45:06Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "fin:MAGICUSDT_SHORT",
    "evidence": "OPEN REENTRY_MANDATORY bar=2026-10-25T22:30:00Z: live already holds 575.167 (state divergence)"
   },
   {
-   "ts": "2026-10-26T02:39:43Z",
+   "ts": "2026-10-26T02:45:06Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "fin:ENAUSDC_LONG",
    "evidence": "OPEN TIER1_PRICE_CROSS_REENTRY_exit0.2089_cur bar=2026-10-25T22:30:00Z: live already holds 175.691 (state divergence)"
   },
   {
-   "ts": "2026-10-26T02:39:43Z",
+   "ts": "2026-10-26T02:45:06Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "men:PARTIUSDT_SHORT",
    "evidence": "CLOSE FIXED_STOP decided 2026-10-25T22:43:38Z bar=2026-10-25T22:15:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-26T02:39:44Z",
+   "ts": "2026-10-26T02:45:07Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:PENGUUSDC_LONG",
    "evidence": "CLOSE WT_CROSS_EXIT_1h_bear decided 2026-10-25T23:34:20Z bar=2026-10-25T23:15:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-26T02:39:44Z",
+   "ts": "2026-10-26T02:45:07Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_NOT_FILLED",
+   "key": "inf:BNBUSDC_SHORT",
+   "evidence": "AUGMENT AUGMENT_AT_LOSS_LH decided 2026-10-26T02:09:49Z bar=2026-10-26T01:45:00Z: no fill in 1800s and no refusal logged"
+  },
+  {
+   "ts": "2026-10-26T02:45:07Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "flz:ZECUSDC_SHORT",
    "evidence": "REDUCE PPL_TP_g1.61%>=1.50%_stopBE1217.4362 decided 2026-10-26T00:07:33Z bar=2026-10-25T23:30:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-26T02:39:44Z",
+   "ts": "2026-10-26T02:45:07Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "fin",
-   "evidence": "4 new process ids in 30 min (['78346', '99498', '20950', '68267'])"
+   "evidence": "3 new process ids in 30 min (['99498', '20950', '68267'])"
   },
   {
-   "ts": "2026-10-26T02:39:44Z",
+   "ts": "2026-10-26T02:45:07Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "men",
-   "evidence": "5 new process ids in 30 min (['64743', '78137', '99099', '20593', '68383'])"
+   "evidence": "3 new process ids in 30 min (['99099', '20593', '68383'])"
   },
   {
-   "ts": "2026-10-26T02:39:44Z",
+   "ts": "2026-10-26T02:45:07Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "ang",
-   "evidence": "5 new process ids in 30 min (['65474', '78149', '99874', '20628', '68218'])"
+   "evidence": "3 new process ids in 30 min (['99874', '20628', '68218'])"
   },
   {
-   "ts": "2026-10-26T02:39:44Z",
+   "ts": "2026-10-26T02:45:07Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "inf",
-   "evidence": "4 new process ids in 30 min (['75022', '96982', '20581', '67625'])"
+   "evidence": "3 new process ids in 30 min (['96982', '20581', '67625'])"
   },
   {
-   "ts": "2026-10-26T02:39:44Z",
+   "ts": "2026-10-26T02:45:07Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "flz",
-   "evidence": "4 new process ids in 30 min (['78318', '99833', '20636', '67939'])"
+   "evidence": "3 new process ids in 30 min (['99833', '20636', '67939'])"
   }
  ],
  "alert_counts": {
   "VEC_OPEN_WHILE_LIVE_IN": 2,
-  "VEC_DECISION_NOT_FILLED": 3,
+  "VEC_DECISION_NOT_FILLED": 4,
   "RESTART_LOOP": 5
  },
  "active_interventions": {
@@ -291,13 +298,6 @@
    "undo": "redis-cli -p 6379 DEL open_blocked:inf:COTIUSDT_SHORT",
    "dry_run": false
   },
-  "key:inf:GALAUSDT_SHORT": {
-   "ts": 1792975326.879637,
-   "until": 1792982526.879641,
-   "why": "CHURN_KEY 3 round trips/60min",
-   "undo": "redis-cli -p 6379 DEL open_blocked:inf:GALAUSDT_SHORT",
-   "dry_run": false
-  },
   "acct:flz": {
    "ts": 1792873584.008171,
    "why": "ORDER_STORM_ACCOUNT 27 fills/10min",
@@ -319,5 +319,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.06
+ "sweep_s": 0.85
 }

@@ -109,8 +109,7 @@ for row in to_write:
  con.execute(sql,row); written+=1
 con.commit(); con.close(); pss._invalidate_read_cache()
 if written:
- p=subprocess.run([sys.executable,"tools/build_per_sym_full_sets.py","--quiet"],cwd=str(pss.ROOT),capture_output=True,text=True,timeout=40)
- if p.returncode: raise RuntimeError("per_sym_full_sets rebuild failed: "+p.stderr[-300:])
+ subprocess.Popen(["flock","-n","/tmp/per_sym_full_sets_build.lock",sys.executable,"tools/build_per_sym_full_sets.py","--quiet"],cwd=str(pss.ROOT),stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
 print(json.dumps({"written":written,"newer":newer}))'''
 
 
@@ -186,13 +185,13 @@ def push_latest_to_host(host, remote_latest):
         result = subprocess.run((*SSH, host, cmd), input=json.dumps(rows), capture_output=True, text=True, timeout=30)
         if result.returncode:
             log(f"{host} push failed: {result.stderr.strip()[:200]}")
-            return 0
+            return -1
         report = json.loads(result.stdout or "{}")
         log(f"{host} replicated active SQL/JSON={report.get('written', 0)} newer_remote={report.get('newer', 0)}")
         return int(report.get("written", 0))
     except Exception as e:
         log(f"{host} push error: {str(e)[:160]}")
-        return 0
+        return -1
 
 
 def absorb():
@@ -315,7 +314,11 @@ def absorb():
         push_futures = {pool.submit(push_latest_to_host, host, latest): host for host, latest in remote_latest.items()}
         for future in as_completed(push_futures):
             try:
-                replicated += future.result()
+                written = future.result()
+                if written < 0:
+                    errors += 1
+                else:
+                    replicated += written
             except Exception as e:
                 errors += 1
                 log(f"{push_futures[future]} push worker error: {str(e)[:160]}")
