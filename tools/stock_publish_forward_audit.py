@@ -21,12 +21,14 @@ def replay(job, cutoff):
     from tools import vec_live_executor as lane
     from tools.opt import evaluate_v12 as evaluator
     from per_sym_live_set import _apply_caps
+    from per_sym_store import _maybe_decompress
     symbol_side = job["sym_side"]
     symbol, side = lane.split_ss(symbol_side)
     published = dt.datetime.fromisoformat(job["updated_at"].replace("Z", "+00:00")).timestamp()
-    full = json.loads(job["full_config_json"])
+    full_text = _maybe_decompress(job["full_config_json"])
+    full = json.loads(full_text)
     effective = _apply_caps(symbol_side, full)
-    result = {"id": job["id"], "sym_side": symbol_side, "published_at": job["updated_at"], "set_sha256": hashlib.sha256(job["full_config_json"].encode()).hexdigest(), "set_md5_effective": lane.set_md5(effective), "board_manifest": job.get("board_manifest"), "board_tail": job.get("board_tail")}
+    result = {"id": job["id"], "sym_side": symbol_side, "published_at": job["updated_at"], "set_sha256": hashlib.sha256(full_text.encode()).hexdigest(), "set_md5_effective": lane.set_md5(effective), "board_manifest": job.get("board_manifest"), "board_tail": job.get("board_tail")}
     if published >= cutoff:
         result["status"] = "NO_FRIDAY_FORWARD_PERIOD"
         return result
