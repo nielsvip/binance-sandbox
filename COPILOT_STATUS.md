@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-26 11:30:15 UTC
+# Copilot Status — 2026-10-26 11:35:23 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-26T11:20:19
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-26T11:20:19
-- **STALE_INDICATORS** [tradier]  — 2026-10-26T11:22:22
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-26T11:22:22
-- **STALE_INDICATORS** [tradier]  — 2026-10-26T11:24:25
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-26T11:24:25
 - **STALE_INDICATORS** [tradier]  — 2026-10-26T11:26:29
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-26T11:26:29
 - **STALE_INDICATORS** [tradier]  — 2026-10-26T11:28:32
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-26T11:28:32
+- **STALE_INDICATORS** [tradier]  — 2026-10-26T11:30:35
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-26T11:30:35
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-26T11:32:39
+- **STALE_INDICATORS** [tradier]  — 2026-10-26T11:34:42
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-26T11:34:42
 
 ## Missed Trades (trader comparison)
 
@@ -27,9 +27,10 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 5 | **Watching for reentry:** 9 | **Reentered:** 0
+**Held:** 6 | **Watching for reentry:** 9 | **Reentered:** 0
 
-- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +-0.7%
+- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +-0.0%
+- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +-0.8%
 - HELD: **ARM** SHORT (tradier) peak +8.3%, now +-0.5%
 - HELD: **CDE** SHORT (tradier) peak +5.0%, now +2.1%
 - HELD: **MINAUSDT** SHORT (crypto) peak +4.2%, now +-0.5%
@@ -54,4 +55,4 @@ _None_
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_positions.py is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] tradier_prices.py running but log stale (61min)
+- [MEDIUM] tradier_prices.py running but log stale (67min)
