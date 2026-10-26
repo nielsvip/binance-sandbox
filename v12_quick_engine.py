@@ -17942,6 +17942,15 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _lpm, _lp_flags = None, frozenset()
     _bel_on = bool(getattr(cfg, "PEAK_GIVEBACK_PROTECTION_ENABLED", True)) and (bool(getattr(cfg, "PEAK_GIVEBACK_HARD_ZERO_ENABLED", False)) or bool(getattr(cfg, "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED", False)))
     _bel_thr = vec_decisions.check_exit_candidates_crypto__peak_giveback._peak_giveback_thresholds(cfg)
+    _bel_ero_tf = str(getattr(cfg, "PEAK_GIVEBACK_BE_EROSION_FILTER_TF", "OFF") or "OFF").strip()
+    _bel_ero_mask = None
+    if _bel_on and _bel_ero_tf.upper() != "OFF":
+        _bel_ero_w1 = _safe(npz, f"wt1_{_bel_ero_tf}", n, 0.0)
+        _bel_ero_w2 = _safe(npz, f"wt2_{_bel_ero_tf}", n, 0.0)
+        _bel_ero_both0 = (_bel_ero_w1 == 0) & (_bel_ero_w2 == 0)
+        _bel_ero_against = (_bel_ero_w1 < _bel_ero_w2) if is_long else (_bel_ero_w1 > _bel_ero_w2)
+        _bel_ero_mask = _bel_ero_both0 | _bel_ero_against
+    _bel_fee_pct = float(getattr(cfg, "COMMISSION_BUFFER_PCT", 0.08))
     # 2026-10-17 BREAKEVEN_GAIN_EROSION exit twin (live ez_positions_quick) — HARD_BREAKEVEN_FLOOR is its override, HTF_EXIT_VETO / TREND_REGIME_VETO its vetoes
     _bge_on = bool(getattr(cfg, "BREAKEVEN_GAIN_EROSION_ENABLED", False))
     if _bge_on:
@@ -20844,7 +20853,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 if _bel_avg > 0 and _belm.scope_covers(cfg, pos["_bel_fam"], _lp_flags):
                     _bel_g = ((px - _bel_avg) / _bel_avg * 100.0) if is_long else ((_bel_avg - px) / _bel_avg * 100.0)
                     pos["_bel_mfe"] = max(float(pos.get("_bel_mfe", -1e9)), _bel_g)
-                    if int(pos.get("entry_bar", i)) < i and vec_decisions.check_exit_candidates_crypto__peak_giveback._peak_giveback_fires(pos["_bel_mfe"], _bel_g, *_bel_thr):
+                    if int(pos.get("entry_bar", i)) < i and _bel_g > _bel_fee_pct and (_bel_ero_mask is None or bool(_bel_ero_mask[i])) and vec_decisions.check_exit_candidates_crypto__peak_giveback._peak_giveback_fires(pos["_bel_mfe"], _bel_g, *_bel_thr):
                         pos["fees"] += abs(pos["qty"] * px) * half_fee
                         _bel_pnl = pos["realized"] + ((px - pos["avg_price"]) * pos["qty"] if is_long else (pos["avg_price"] - px) * pos["qty"]) - pos["fees"]
                         _bel_ts = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0

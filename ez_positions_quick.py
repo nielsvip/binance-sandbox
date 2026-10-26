@@ -27397,7 +27397,13 @@ async def check_exit_candidates_for_account(
                         _, _, _pgp_hz_gain, _, _pgp_drop = _pgp_thr(_exit_cfg)
                     except Exception:
                         _pgp_fires, _pgp_hz_gain, _pgp_drop = False, 0.08, 1.0
-                    if _pgp_fires and _net_gain_positive:
+                    _pgp_tf = str(_be_get("PEAK_GIVEBACK_BE_EROSION_FILTER_TF", "OFF") or "OFF").strip()
+                    _pgp_tf_confirm = True
+                    if _pgp_tf.upper() != "OFF":
+                        _pgp_w1 = safe_fetch_float(indicators.get(f"wt1_{_pgp_tf}"), 0.0)
+                        _pgp_w2 = safe_fetch_float(indicators.get(f"wt2_{_pgp_tf}"), 0.0)
+                        _pgp_tf_confirm = (_pgp_w1 == 0 and _pgp_w2 == 0) or ((_pgp_w1 < _pgp_w2) if is_long else (_pgp_w1 > _pgp_w2))
+                    if _pgp_fires and _net_gain_positive and _pgp_tf_confirm:
                         if current_gain < _pgp_hz_gain:
                             hard_exit_reason = f"PEAK_GIVEBACK_GAIN_EROSION_STOP_peak{_pgp_max_g:.2f}%_cur{current_gain:.2f}%"
                             logger.critical(
