@@ -1,41 +1,36 @@
 {
- "at": "2026-10-26T12:11:08Z",
+ "at": "2026-10-26T13:11:15Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
   "s1": {
    "improved": 0,
    "improved_per_hour": 0.0,
-   "published_n": 0,
-   "flat_or_worse": 0,
-   "unknown": 0,
-   "boards_running": [],
-   "mem_avail_mb": 10481,
-   "load1": 9.59,
-   "nproc": 16,
+   "published_n": null,
+   "flat_or_worse": null,
+   "unknown": null,
+   "boards_running": null,
+   "mem_avail_mb": null,
+   "load1": null,
+   "nproc": null,
    "slots": "0/4",
-   "binding_reason": "scheduler disk guard (disk 164 MB, mem 6629 MB, est_pair 6945 MB) \u2014 slots 0/4",
-   "error": null,
-   "published": [],
+   "binding_reason": "scheduler disk guard (disk 0 MB, mem 9808 MB, est_pair 6945 MB) \u2014 slots 0/4",
+   "error": "no output",
+   "published": null,
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 270.5,
-   "last_improved_symside": "MINAUSDT_SHORT",
+   "minutes_since_last_improved": null,
+   "last_improved_symside": null,
    "cadence_ok": false,
-   "improved_gap_min_median_24h": 27.5,
-   "improved_gap_min_max_24h": 52.7,
-   "improved_finishes_24h": 6,
-   "board_cpu_s_median_24h": 9010.9,
-   "board_wall_s_median_24h": 2646.4753589630127,
-   "board_cores": 0.0,
-   "nonboard_cores_competing": 4.78,
-   "nonboard_cores_niced": 1.97,
-   "cores_by_bucket": {
-    "other": 3.8,
-    "klines_append": 0.98
-   },
-   "cores_by_bucket_niced": {
-    "klines_vault": 1.97
-   }
+   "improved_gap_min_median_24h": null,
+   "improved_gap_min_max_24h": null,
+   "improved_finishes_24h": null,
+   "board_cpu_s_median_24h": null,
+   "board_wall_s_median_24h": null,
+   "board_cores": null,
+   "nonboard_cores_competing": null,
+   "nonboard_cores_niced": null,
+   "cores_by_bucket": null,
+   "cores_by_bucket_niced": null
   },
   "s2": {
    "improved": 0,
@@ -43,32 +38,35 @@
    "published_n": 0,
    "flat_or_worse": 0,
    "unknown": 0,
-   "boards_running": [],
-   "mem_avail_mb": 9419,
-   "load1": 5.54,
+   "boards_running": [
+    "RAYSOLUSDT_LONG"
+   ],
+   "mem_avail_mb": 7269,
+   "load1": 5.88,
    "nproc": 16,
    "slots": "1/4",
-   "binding_reason": "scheduler mem guard (disk 28382 MB, mem 7130 MB, est_pair 6000 MB) \u2014 slots 1/4",
+   "binding_reason": "board CPU DEMAND, not host capacity: 1 running sides pull only 6.8 cores (6.79 core/side) of 10.7 usable -> 8.6 boards/h. 12/h needs 9.5 board-cores = 1 sides at this per-side draw (niced filler 1.84 cores yields). Lever: more concurrent sides (RAM-bound) or deeper eval pipelining per side (V15_PREFETCH_TASKCAP on an idle host).",
    "error": null,
    "published": [],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 34.1,
+   "minutes_since_last_improved": 94.6,
    "last_improved_symside": "KMNOUSDT_LONG",
    "cadence_ok": false,
    "improved_gap_min_median_24h": 8.9,
    "improved_gap_min_max_24h": 294.5,
-   "improved_finishes_24h": 55,
-   "board_cpu_s_median_24h": 2750.3,
+   "improved_finishes_24h": 50,
+   "board_cpu_s_median_24h": 2843.6,
    "board_wall_s_median_24h": 1376.6243770122528,
-   "board_cores": 0.0,
-   "nonboard_cores_competing": 2.74,
-   "nonboard_cores_niced": 1.95,
+   "board_cores": 6.79,
+   "nonboard_cores_competing": 5.29,
+   "nonboard_cores_niced": 1.84,
    "cores_by_bucket": {
-    "other": 0.46,
-    "live_helpers": 2.28
+    "other": 2.44,
+    "boards": 6.79,
+    "live_helpers": 2.85
    },
    "cores_by_bucket_niced": {
-    "other": 1.95
+    "other": 1.84
    }
   }
  },

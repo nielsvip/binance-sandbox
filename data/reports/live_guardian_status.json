@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-26T13:07:33Z",
+ "ts": "2026-10-26T13:12:52Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,7 +29,7 @@
   "fin": {
    "fills_6h": 447,
    "open_positions": 10,
-   "unrealised_usd": 0.0,
+   "unrealised_usd": -0.06,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 355,
-   "open_positions": 10,
-   "unrealised_usd": 0.08,
+   "fills_6h": 352,
+   "open_positions": 11,
+   "unrealised_usd": -0.07,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 664,
-   "open_positions": 23,
-   "unrealised_usd": -1.44,
+   "fills_6h": 672,
+   "open_positions": 22,
+   "unrealised_usd": -0.92,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 79,
    "open_positions": 7,
-   "unrealised_usd": 0.22,
+   "unrealised_usd": 0.34,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -111,9 +111,9 @@
  "tradeable_guard": {
   "poison": false,
   "restored": false,
-  "total": 200,
+  "total": 203,
   "per_acct": {
-   "ang": 73,
+   "ang": 76,
    "fin": 50,
    "men": 50,
    "flz": 26,
@@ -127,77 +127,77 @@
     "69538"
    ],
    "starts_30m": 1,
-   "log_age_s": 269.0
+   "log_age_s": 590.0
   },
   "men": {
    "pids": [
     "81122"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": -0.0
   },
   "ang": {
    "pids": [
     "37824"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 1.0
   },
   "inf": {
    "pids": [
     "69983"
    ],
    "starts_30m": 1,
-   "log_age_s": 10.0
+   "log_age_s": 1.0
   },
   "flz": {
    "pids": [
     "69233"
    ],
    "starts_30m": 1,
-   "log_age_s": 3288.0
+   "log_age_s": 3609.0
   },
   "trb": {
    "pids": [
     "95849"
    ],
    "starts_30m": 2,
-   "log_age_s": 1.0
+   "log_age_s": -1.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 193004.0
+   "log_age_s": 193324.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-26T13:07:33Z",
+   "ts": "2026-10-26T13:12:52Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "fin:PTBUSDT_SHORT",
    "evidence": "BREAKOUT_SIZE_LADDER resized qty 821430->2.46429e+06 = $539.68 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 821430)"
   },
   {
-   "ts": "2026-10-26T13:07:33Z",
+   "ts": "2026-10-26T13:12:53Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "fin:ENAUSDC_LONG",
    "evidence": "BREAKOUT_SIZE_LADDER resized qty 866.76->2600.28 = $540.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 866.76)"
   },
   {
-   "ts": "2026-10-26T13:07:41Z",
+   "ts": "2026-10-26T13:13:02Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 269s"
+   "evidence": "ez_manage_fin.log not written for 590s"
   },
   {
-   "ts": "2026-10-26T13:07:41Z",
+   "ts": "2026-10-26T13:13:02Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 3288s"
+   "evidence": "ez_manage_flz.log not written for 3609s"
   }
  ],
  "alert_counts": {
@@ -283,13 +283,6 @@
    "undo": "redis-cli -p 6379 DEL open_blocked:fin:ENAUSDC_LONG",
    "dry_run": false
   },
-  "key:fin:BLURUSDT_SHORT": {
-   "ts": 1793012962.206035,
-   "until": 1793020162.206037,
-   "why": "SIZE_ANOMALY BREAKOUT_SIZE_LADDER qty 24324.3->72973 ($540) past 1.5x MAX_ORDER_VALUE",
-   "undo": "redis-cli -p 6379 DEL open_blocked:fin:BLURUSDT_SHORT",
-   "dry_run": false
-  },
   "acct:flz": {
    "ts": 1792873584.008171,
    "why": "ORDER_STORM_ACCOUNT 27 fills/10min",
@@ -339,5 +332,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 8.12
+ "sweep_s": 9.69
 }
