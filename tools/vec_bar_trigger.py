@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-TRIGGER_S = 15.0
+TRIGGER_S = 1.0
 WORKERS = 4
 
 

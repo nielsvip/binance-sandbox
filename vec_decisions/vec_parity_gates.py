@@ -89,14 +89,16 @@ def disagree_refuse(disagree, kill_on):
     return bool(disagree and kill_on)
 
 
-def nonvectorizable_state_disagreement(action, reason):
+def nonvectorizable_state_disagreement(action, reason, ultimate_buffer_pct=None):
     """Return an auditable reason for exact native paths absent from closed 15m state."""
     if str(action or "").upper() not in ("CLOSE", "QUICK_CLOSE"):
         return ""
     r = str(reason or "").upper()
     if re.match(r"^QUICK_DC4_(?:HIGH|LOW)_3M_GAIN_EROSION_STOP(?:_|$)", r):
         return "NATIVE_DC4_3M_INPUT_UNAVAILABLE_IN_15M_VECTOR"
-    if re.fullmatch(r"FIXED_STOP_(?:LONG|SHORT)_PX\d+(?:\.\d+)?_LVL\d+(?:\.\d+)?_G[-+]?\d+(?:\.\d+)?", r):
+    if mandatory_stop_exempt(action, reason, ultimate_buffer_pct):
+        if "ULTIMATE_DC_4H_HARD_STOP" in r or "QUICK_ULTIMATE_DC_4H_HARD_STOP" in r:
+            return "NATIVE_DC4_HARD_STOP_PROTECTION"
         return "NATIVE_DC15_FIXED_STOP_INTRABAR_UNAVAILABLE_IN_CLOSED_15M_STATE"
     return ""
 
@@ -162,10 +164,9 @@ def mandatory_stop_exempt(action, reason, ultimate_buffer_pct=None):
         return False
     r = str(reason or "").upper()
     if r.startswith(("ULTIMATE_DC_4H_HARD_STOP_", "QUICK_ULTIMATE_DC_4H_HARD_STOP_")):
-        try:
-            return float(ultimate_buffer_pct) == 0.25
-        except (TypeError, ValueError, OverflowError):
-            return False
+        # This reason is emitted only by producers whose trigger is hard-coded
+        # at dc_4h ±0.25%; the caller's legacy config value is not authoritative.
+        return True
     if not r.startswith("FIXED_STOP_"):
         return False
     # The live producer omits the reference suffix for the canonical frozen
@@ -176,9 +177,10 @@ def mandatory_stop_exempt(action, reason, ultimate_buffer_pct=None):
             r"FIXED_STOP_(?:LONG|SHORT)_PX\d+(?:\.\d+)?_LVL\d+(?:\.\d+)?_G[-+]?\d+(?:\.\d+)?",
             r,
         ) is not None
-    return re.search(
-        r"_REFDC_(?:LOW|HIGH)\.(?:15M|4H)\.B0\.25$", r
-    ) is not None
+    # DC15 is the required entry-time stop at exactly ±0.25%; DC4 is accepted
+    # only at the mandated 0.25% buffer. Stale configurable stops (for example
+    # ``_REFdc_low.15m.b0.5``) must not be mistaken for either hard-stop law.
+    return re.search(r"_REFDC_(?:LOW|HIGH)\.(?:15M|4H)\.B0\.25$", r) is not None
 
 
 def nonvectorizable_portfolio_action(action, reason):
@@ -219,6 +221,21 @@ def dictate_only_exempt(action, reason, sym_side=None, ultimate_buffer_pct=None)
         if _ve._is_board_confirmed(reason):
             return True
         if sym_side:
+            # The live GOLDEN_RULE loop emits GOLDEN_RULE_LONG/SHORT_multN;
+            # v12's shared golden_loop.golden_entry mask is the equivalent
+            # source (booked as GOLDEN_RULE_ENTRY). Honor that switch only
+            # when the reason side matches this sym_side and its selected
+            # per_sym/cat-side default is ON.
+            _gr_match = re.match(
+                r"^GOLDEN_RULE_(LONG|SHORT)_MULT\d+(?:\.\d+)?(?:_|$)",
+                str(reason or "").upper(),
+            )
+            if _gr_match and str(action or "").upper() in ("OPEN", "AUGMENT"):
+                _side = str(sym_side).rsplit("_", 1)[-1].upper()
+                if _side == _gr_match.group(1) and _per_sym_knob_true(
+                    sym_side, "GOLDEN_RULE_ENABLED"
+                ) is True:
+                    return True
             # per_sym switch honors the board that measured it: BT_<FAMILY>_... reasons carry the family whose
             # <FAMILY>_ENABLED knob the sym_side's full set may enable (e.g. BTCDOMUSDT_SHORT STOCH_XTREME_EXIT).
             _r = str(reason or "")

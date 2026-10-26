@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-26T07:00:58Z",
+ "ts": "2026-10-26T07:05:52Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 273,
-   "open_positions": 7,
-   "unrealised_usd": -1.52,
+   "fills_6h": 280,
+   "open_positions": 11,
+   "unrealised_usd": -1.63,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 4,
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 276,
    "open_positions": 13,
-   "unrealised_usd": 0.45,
+   "unrealised_usd": 0.25,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 3,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 229,
+   "fills_6h": 232,
    "open_positions": 10,
-   "unrealised_usd": 0.34,
+   "unrealised_usd": 0.46,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -75,7 +75,7 @@
    }
   },
   "inf": {
-   "fills_6h": 141,
+   "fills_6h": 131,
    "open_positions": 0,
    "unrealised_usd": 0.0,
    "pos_mismatch": 0,
@@ -91,9 +91,9 @@
    }
   },
   "flz": {
-   "fills_6h": 182,
-   "open_positions": 6,
-   "unrealised_usd": -0.14,
+   "fills_6h": 185,
+   "open_positions": 5,
+   "unrealised_usd": 0.02,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 3,
@@ -134,73 +134,101 @@
     "65699"
    ],
    "starts_30m": 2,
-   "log_age_s": 21.0
+   "log_age_s": 2.0
   },
   "ang": {
    "pids": [
-    "41723"
+    "47322"
    ],
-   "starts_30m": 1,
-   "log_age_s": 0.0
+   "starts_30m": 2,
+   "log_age_s": 1.0
   },
   "inf": {
    "pids": [
     "62431"
    ],
    "starts_30m": 2,
-   "log_age_s": 21.0
+   "log_age_s": 11.0
   },
   "flz": {
    "pids": [
     "60649"
    ],
    "starts_30m": 2,
-   "log_age_s": 5.0
+   "log_age_s": 2.0
   },
   "trb": {
    "pids": [
     "66885"
    ],
    "starts_30m": 1,
-   "log_age_s": 9.0
+   "log_age_s": 4.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 171002.0
+   "log_age_s": 171296.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-26T07:00:58Z",
+   "ts": "2026-10-26T07:05:52Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "fin:NEARUSDC_LONG",
+   "evidence": "entry notional $26.85 (median $6.73, MAX_ORDER_VALUE $300) @ 2026-10-26T07:04:46Z VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_3"
+  },
+  {
+   "ts": "2026-10-26T07:05:52Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "fin:BEAMXUSDT_LONG",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-long g0.71% bar=2026-10-26T04:30:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-26T07:00:58Z",
+   "ts": "2026-10-26T07:05:52Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "fin:GRASSUSDT_LONG",
    "evidence": "OPEN TIER1_PRICE_CROSS_REENTRY_exit0.6997_cur bar=2026-10-26T04:30:00Z: live already holds 43.7103 (state divergence)"
   },
   {
-   "ts": "2026-10-26T07:00:58Z",
+   "ts": "2026-10-26T07:05:52Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "fin:ETHFIUSDC_LONG",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-long g0.15% bar=2026-10-26T05:30:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-26T07:00:59Z",
+   "ts": "2026-10-26T07:05:52Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "ang:MINAUSDT_SHORT",
+   "evidence": "26 07:03:42 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:MINAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $84 on bounce (prior max 379.0000)"
+  },
+  {
+   "ts": "2026-10-26T07:05:52Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "ang:SKLUSDT_SHORT",
+   "evidence": "26 07:03:48 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:SKLUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $3086 on bounce (prior max 6951.0000)"
+  },
+  {
+   "ts": "2026-10-26T07:05:52Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "ang:SKLUSDT_SHORT",
+   "evidence": "order notional $3085.72 > MAX_ORDER_VALUE $300: 26 07:03:48 - INFO - [ang] [execute_trade_action][ang] \u2705 \u2705 \u2705 \u2705 OPEN ang:SKLUSDT_SHORT @ 0.003883 qty=794718.196584 ($3085.72) side=SELL | CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_SHORT_px0.003878_exit0."
+  },
+  {
+   "ts": "2026-10-26T07:05:52Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:BNBUSDC_SHORT",
    "evidence": "AUGMENT AUGMENT_AT_LOSS_LH decided 2026-10-26T02:09:49Z bar=2026-10-26T01:45:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-26T07:00:59Z",
+   "ts": "2026-10-26T07:05:53Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "flz:BNBUSDC_SHORT",
@@ -208,8 +236,10 @@
   }
  ],
  "alert_counts": {
+  "SIZE_ANOMALY": 2,
   "VEC_EXIT_WHILE_LIVE_FLAT": 3,
   "VEC_OPEN_WHILE_LIVE_IN": 1,
+  "CAP_BYPASS": 2,
   "VEC_DECISION_NOT_FILLED": 1
  },
  "active_interventions": {
@@ -241,6 +271,13 @@
    "ts": 1791791577.100162,
    "why": "ACCOUNT_EQUITY_DROP unrealised PnL of the same open positions fell $25.47 since 2026-10-12T07:51:49Z (now $+1.07)",
    "undo": "alert-only (never-halt policy 2026-10-10)",
+   "dry_run": false
+  },
+  "key:ang:SKLUSDT_SHORT": {
+   "ts": 1792998249.24099,
+   "until": 1793005449.2409909,
+   "why": "SIZE_ANOMALY order $3085.72 > 1.5x MAX_ORDER_VALUE",
+   "undo": "redis-cli -p 6379 DEL open_blocked:ang:SKLUSDT_SHORT",
    "dry_run": false
   },
   "acct:fin": {
@@ -296,7 +333,14 @@
    "why": "SIZE_ANOMALY entry notional $24.94 (median $6.75, MAX_ORDER_VALUE $300) @ 2026-10-26T06:35:06Z VEC_DRIVEN_OPEN_RECONCILE_",
    "undo": "redis-cli -p 6379 DEL open_blocked:fin:RUNEUSDT_LONG",
    "dry_run": false
+  },
+  "key:fin:NEARUSDC_LONG": {
+   "ts": 1792998290.4796932,
+   "until": 1793005490.479727,
+   "why": "SIZE_ANOMALY entry notional $26.85 (median $6.73, MAX_ORDER_VALUE $300) @ 2026-10-26T07:04:46Z VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_3",
+   "undo": "redis-cli -p 6379 DEL open_blocked:fin:NEARUSDC_LONG",
+   "dry_run": false
   }
  },
- "sweep_s": 0.94
+ "sweep_s": 0.62
 }

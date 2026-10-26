@@ -47,10 +47,17 @@ pull_one() {
   return 0
 }
 pull_once() {
-  local spec ok=0 fail=0
+  local spec host remote pid ok=0 fail=0
+  local pids=()
   # 2026-10-25 cutover: S1 crypto_short + S2 crypto_long + S5 stock_long + S6 stock_short.
   for spec in ${VEC_LIVE_PULL_HOSTS:-$HOST:$REMOTE s2:binance-sandbox/data/$LIVE_DIR niels@10.0.0.5:binance-sandbox/data/$LIVE_DIR niels@10.0.0.6:binance-sandbox/data/$LIVE_DIR}; do
-    if pull_one "${spec%%:*}" "${spec#*:}"; then ok=$((ok + 1)); else fail=$((fail + 1)); fi
+    host="${spec%%:*}"
+    remote="${spec#*:}"
+    pull_one "$host" "$remote" &
+    pids+=("$!")
+  done
+  for pid in "${pids[@]}"; do
+    if wait "$pid"; then ok=$((ok + 1)); else fail=$((fail + 1)); fi
   done
   # In the isolated 7D lane, removed stock boxes must not make a healthy S2
   # crypto pull look globally stale. Each intent/state still has its own age.

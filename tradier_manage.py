@@ -51715,6 +51715,9 @@ class TradierTradeManager:
                     _au_dis_tr = str(action or "").upper()
                     _fresh_dis_tr = _tgt_dis_tr is not None and 0.0 <= _age_dis_tr <= 1800.0
                     _any_dis_tr = bool(_fresh_dis_tr and ((_tgt_dis_tr is False and _au_dis_tr in ("OPEN", "AUGMENT")) or (_tgt_dis_tr is True and _au_dis_tr == "CLOSE")))
+                    _mandatory_dc_stop_tr = _vpg_dis_tr.mandatory_stop_exempt(action, reason, _cfg("UNCOND_DC_HARD_STOP_BUFFER_PCT", 0.25, account_key, symbol, position_side))
+                    if _mandatory_dc_stop_tr:
+                        _any_dis_tr = False
                     if _any_dis_tr and not os.environ.get("PYTEST_CURRENT_TEST"):
                         try:
                             _vlp_dis_tr = Path(_cfg_auto("BASE_PATH", "/users/niels/documents/binance")) / "data" / "vector_disparity_queue.jsonl"

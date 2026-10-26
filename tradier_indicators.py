@@ -2302,29 +2302,40 @@ class TradierBarManager:
                 _loud_skip(symbol, timeframe, f"force_api refresh failed: {_fe}")
 
         if path.exists() and path.stat().st_size > 0:
-            async with aiofiles.open(path, "rb") as f:
-                content = await f.read()
+            try:
+                async with aiofiles.open(path, "rb") as f:
+                    content = await f.read()
                 if not content.strip():
                     return None, None, None
                 data = safe_json_loads(content)
-                if data:
-                    df = pd.DataFrame(data)
-                    ts_col = "timestamp" if "timestamp" in df.columns else ("time" if "time" in df.columns else None)
-                    if ts_col:
-                        df["close_time"] = _to_utc(df[ts_col])
-                        df["timestamp_dt"] = df["close_time"]
-                        df = df.dropna(subset=["close_time"])
-                    else:
-                        return None, None, None
-                    if df.empty: return None, None, None
-                    last_ts = df["close_time"].iloc[-1]
-                    if hasattr(last_ts, "to_pydatetime"):
-                        close_ts = last_ts.to_pydatetime()
-                    elif isinstance(last_ts, datetime):
-                        close_ts = last_ts
-                    else:
-                        close_ts = pd.to_datetime(last_ts, utc=True).to_pydatetime()
-                    return df, close_ts, str(path)
+            except Exception as cache_error:
+                logger.warning(f"Invalid Tradier bar cache {path.name}: {cache_error}; refreshing symbol bundle")
+                try:
+                    await self.get_bundle(symbol, force_api=True)
+                    async with aiofiles.open(path, "rb") as f:
+                        content = await f.read()
+                    data = safe_json_loads(content) if content.strip() else []
+                except Exception as refresh_error:
+                    _loud_skip(symbol, timeframe, f"corrupt cache refresh failed: {refresh_error}")
+                    return None, None, None
+            if data:
+                df = pd.DataFrame(data)
+                ts_col = "timestamp" if "timestamp" in df.columns else ("time" if "time" in df.columns else None)
+                if ts_col:
+                    df["close_time"] = _to_utc(df[ts_col])
+                    df["timestamp_dt"] = df["close_time"]
+                    df = df.dropna(subset=["close_time"])
+                else:
+                    return None, None, None
+                if df.empty: return None, None, None
+                last_ts = df["close_time"].iloc[-1]
+                if hasattr(last_ts, "to_pydatetime"):
+                    close_ts = last_ts.to_pydatetime()
+                elif isinstance(last_ts, datetime):
+                    close_ts = last_ts
+                else:
+                    close_ts = pd.to_datetime(last_ts, utc=True).to_pydatetime()
+                return df, close_ts, str(path)
         return None, None, None
     
     async def get_bundle(self, symbol: str, force_api: bool = False) -> Dict[str, pd.DataFrame]:
@@ -2518,7 +2529,9 @@ class TradierBarManager:
                 content = await f.read()
                 if not content.strip(): return[]
                 return safe_json_loads(content)
-        except Exception: return []
+        except Exception as e:
+            logger.warning(f"Invalid Tradier cache JSON {path.name}: {e}; requesting fresh history")
+            return []
 
     async def _write_json(self, path: Path, data: List[Dict]):
         try:

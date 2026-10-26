@@ -3366,7 +3366,8 @@ async def main():
     global api_client, bar_manager, redis_manager, price_cache_manager
     def signal_handler(signum, frame):
         logger.info(f"Received signal {signum}, shutting down...")
-        sys.exit(0)
+        for task in asyncio.all_tasks():
+            task.cancel()
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
     if not _acquire_instance_lock():
@@ -3444,6 +3445,8 @@ async def main():
         await asyncio.gather(*tasks)
     except KeyboardInterrupt:
         logger.info("Interrupted by user")
+    except asyncio.CancelledError:
+        logger.info("Tradier rankings shutdown complete")
     except Exception as e:
         logger.error(f"Fatal error: {e}", exc_info=True)
     finally:

@@ -94,6 +94,36 @@ def test_nonvectorizable_state_disagreement_stops_and_subbar_paths():
     assert G.nonvectorizable_state_disagreement("CLOSE", "QUICK_DC4_HIGH_3M_GAIN_EROSION_STOP_p1.02") == "NATIVE_DC4_3M_INPUT_UNAVAILABLE_IN_15M_VECTOR"
 
 
+def test_mandatory_dc_stops_bypass_dictate_and_vector_gates_only_at_point25():
+    fixed_025 = "FIXED_STOP_SHORT_px51.87_lvl51.86_g-0.25_REFdc_low.15m.b0.25"
+    fixed_050 = "FIXED_STOP_SHORT_px51.87_lvl51.86_g-0.25_REFdc_low.15m.b0.5"
+    hard4h = "ULTIMATE_DC_4H_HARD_STOP_SHORT_px51.87_lvl51.86_g-0.25"
+    assert G.dictate_only_exempt("CLOSE", fixed_025, "LTCUSDC_SHORT")
+    assert not G.dictate_only_exempt("CLOSE", fixed_050, "LTCUSDC_SHORT")
+    assert G.nonvectorizable_state_disagreement("CLOSE", fixed_025) == "NATIVE_DC15_FIXED_STOP_INTRABAR_UNAVAILABLE_IN_CLOSED_15M_STATE"
+    assert G.dictate_only_exempt("CLOSE", hard4h, "LTCUSDC_SHORT", 0.25)
+    assert G.dictate_only_exempt("CLOSE", hard4h, "LTCUSDC_SHORT", 0.5)
+    assert G.nonvectorizable_state_disagreement("CLOSE", hard4h, 0.25) == "NATIVE_DC4_HARD_STOP_PROTECTION"
+    assert not G.dictate_only_exempt("REDUCE", fixed_025, "LTCUSDC_SHORT")
+
+    from live_twins import vector_enforce
+
+    assert vector_enforce.check("CLOSE", "fin:LTCUSDC_SHORT", fixed_050)[0]
+    assert vector_enforce.check("CLOSE", "fin:LTCUSDC_SHORT", hard4h)[0]
+
+    ez = (ROOT / "ez_manage.py").read_text()
+    tr = (ROOT / "tradier_manage.py").read_text()
+    v12 = (ROOT / "v12_quick_engine.py").read_text()
+    assert "return _fixed_stop_core.DEFAULT_SPEC" in ez
+    assert "return _fixed_stop_core.DEFAULT_SPEC" in tr
+    assert "_fx_spec = vec_decisions.fixed_stop.DEFAULT_SPEC" in v12
+    assert "freeze_software_level(is_long, dc_low_15m, dc_high_15m, entry_price)" in (ROOT / "vec_decisions/fixed_stop.py").read_text()
+    assert "_px <= _u_lo * 0.9975" in ez and "_px >= _u_hi * 1.0025" in ez
+    assert "_px <= _ult_dc_low * 0.9975" in tr and "_px >= _ult_dc_high * 1.0025" in tr
+    assert "_ult_stop = _ult_lvl * (0.9975 if is_long else 1.0025)" in v12
+    assert "_fx_fire = \"FIXED_STOP\"" in v12
+
+
 def test_non_vector_exit_refused():
     assert G.non_vector_exit_refused("REDUCE X", False, True) is False
     assert G.non_vector_exit_refused("QUICK_REDUCE_REDUCE_k", True, False) is False
@@ -228,6 +258,42 @@ def test_switch_dictate_uses_cat_side_default_when_sym_side_has_no_full_set():
         assert G.dictate_only_exempt(
             "REDUCE", "CYCLE_TP_TIERED_T0_0.15pct_gain0.24", "ARUSDT_LONG"
         ) is False
+
+
+def test_golden_rule_open_dictate_requires_matching_side_and_enabled_switch():
+    from unittest.mock import patch
+
+    reason = "GOLDEN_RULE_SHORT_mult5.0"
+    with patch(
+        "per_sym_store.get_overrides", return_value={"GOLDEN_RULE_ENABLED": True}
+    ):
+        assert G.dictate_only_exempt("OPEN", reason, "BIOUSDC_SHORT") is True
+        assert G.dictate_only_exempt("OPEN", reason, "BIOUSDC_LONG") is False
+        assert G.dictate_only_exempt("CLOSE", reason, "BIOUSDC_SHORT") is False
+    with patch(
+        "per_sym_store.get_overrides", return_value={"GOLDEN_RULE_ENABLED": False}
+    ), patch("cat_side_defaults.get_for", return_value=True):
+        assert G.dictate_only_exempt("OPEN", reason, "BIOUSDC_SHORT") is False
+
+
+def test_golden_rule_live_reason_is_vector_masked_entry_family():
+    import numpy as np
+    from vec_decisions import golden_loop
+
+    arrays = {
+        "close": np.array([110.0, 90.0, 90.0]),
+        "dc_low_1h": np.full(3, 100.0),
+        "wt1_15m": np.full(3, -2.0),
+        "wt2_15m": np.full(3, 0.0),
+        "k_15m": np.full(3, 40.0),
+        "d_15m": np.full(3, 45.0),
+    }
+    cfg = type("Cfg", (), {"GOLDEN_RULE_ENABLED": True})()
+    result = golden_loop.golden_entry(
+        arrays, np.array([900.0, 1800.0, 2700.0]), False, "crypto", cfg
+    )
+    assert result["fire"].tolist() == [False, True, False]
+    assert golden_loop.golden_reason(False, 5.0) == "GOLDEN_RULE_SHORT_mult5.0"
 
 
 def test_ratio_close_ow_reduce_is_explicitly_nonvectorizable_before_vec_last():

@@ -273,19 +273,21 @@ def sweep_once(base, cat_side, workers=WORKERS, sibling=None, sibling_base=None)
     if compute is None:
         return {"error": "no-compute"}
     now = time.time()
-    jobs = []
-    for entry in owned:
+    def probe(entry):
         if entry.endswith(("_LONG", "_SHORT")):
             sym = entry.rsplit("_", 1)[0]
         else:
             sym = entry
         npz = npz_for(base, sym)
         if npz is None:
-            continue
+            return None
         lc = kline_last_close(base, sym, mode)
         if lc is None:
-            continue
-        jobs.append((npz, sym, lc))
+            return None
+        return npz, sym, lc
+
+    with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
+        jobs = [job for job in pool.map(probe, owned) if job is not None]
     rec = {
         "t": now,
         "cat_side": cat_side,
