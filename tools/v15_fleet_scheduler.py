@@ -4660,7 +4660,7 @@ def tick(args, cfg, now):
             _debt = _growth_debt_mb(pairs, est_pair)
             proj_mem = s["mem_avail_mb"] - reserve - _debt
         swap_ok = _swap_admit_ok(s)
-        disk_ok = _disk_admit_ok(s)
+        disk_ok = _disk_admit_ok(s, h.get("disk_min_mb"))
         win_ok = _round_window_ok(_round_id_of(cur_pdir))  # USER 2026-10-24: a round pinned to a window this scheduler cannot board yet holds new launches
         used = _occupied_n(held[h["name"]], observed_by_host[h["name"]])
         if os.environ.get("V15_SCHED_MEM_CAP", "1") == "1":
@@ -5218,7 +5218,7 @@ def tick(args, cfg, now):
             acts = [a for a in pending_actions(sym, h["name"]) if a["key"] not in launched_keys and not _launched_recently(a["key"], st.get("launched_at"), _now_ts) and (a["window"] == "365D" or (a["window"] == "REPAIR" and a["attempt"] == 1)) and f"{sym}_{a['side']}" not in running]
             if not acts:
                 continue
-            if B["new_launched"] >= args.max_launch or _occupied_n(held[h["name"]], observed_by_host[h["name"]]) >= B["cap"] or B["cpu"] >= cfg.get("cpu_target_pct", 90) or not _disk_admit_ok(s):  # USER 2026-10-10: pass-2 steal must respect the disk guard
+            if B["new_launched"] >= args.max_launch or _occupied_n(held[h["name"]], observed_by_host[h["name"]]) >= B["cap"] or B["cpu"] >= cfg.get("cpu_target_pct", 90) or not _disk_admit_ok(s, h.get("disk_min_mb")):  # USER 2026-10-10: pass-2 steal must respect the disk guard
                 break
             if venue_of(sym) not in h["venues"]:
                 continue
@@ -5305,7 +5305,7 @@ def tick(args, cfg, now):
             if _raid_closed:
                 log.setdefault("steal30_raid_closed", []).append(f"{h['name']}-sees-closed:{sorted(_raid_closed)}")
             for _try in range(12):
-                if B.get("new_launched", 0) >= args.max_launch or B["cpu"] >= cfg.get("cpu_target_pct", 90) or not _disk_admit_ok(s):
+                if B.get("new_launched", 0) >= args.max_launch or B["cpu"] >= cfg.get("cpu_target_pct", 90) or not _disk_admit_ok(s, h.get("disk_min_mb")):
                     break
                 _free = B["cap"] - _occupied_n(held[h["name"]], observed_by_host[h["name"]])
                 # A host one slot below its floor must be able to borrow from a full host.

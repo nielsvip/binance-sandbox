@@ -23,7 +23,7 @@ def apply_overlay(base, overlay):
     if not history.exists():
         return {'symbol': symbol, 'mode': mode, 'error': 'missing_full_history'}
     rows = json.loads(overlay.read_text())
-    closed = [row for row in rows if timestamp_epoch(row['timestamp']) + 900 <= time.time() and (row.get('_closed') or is_verified_closed_native(row))]
+    closed = [row for row in rows if timestamp_epoch(row['timestamp']) + 900 <= time.time() and row.get('_closed')]
     row = max(closed, key=lambda item: timestamp_epoch(item['timestamp'])) if closed else None
     canonical = base / 'klines_canonical' / f'{symbol}_15m.json'
     if mode == 'crypto' and canonical.exists():
