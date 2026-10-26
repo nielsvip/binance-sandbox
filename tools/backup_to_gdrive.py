@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
-Automated backup archival to Google Drive.
+Automated backup archival to Google Drive with external drive fallback.
 Daily job: uploads 50 files (~2GB) to avoid API throttling.
+If Google Drive >70% capacity, offloads to connected external drives.
 """
 
-import os, sys, subprocess
+import hashlib, os, sys, subprocess, shutil
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -12,6 +13,18 @@ BACKUP_DIR = "/Users/niels/Documents/binance/backups"
 CREDS_JSON = "/Users/niels/Downloads/civil-ripple-439101-j3-d50fb6537cdb.json"
 LOG_FILE = "/Users/niels/Documents/binance/data/reports/gdrive_backup.log"
 RCLONE_CONFIG = "/tmp/rclone_gdrive_backup.conf"
+GOOGLE_FOLDER_ID = os.environ.get("V15_ARCHIVE_GOOGLE_FOLDER_ID", "").strip()
+
+# External drive mount points (checked in order, first available wins)
+EXT_DRIVE_MOUNTS = [
+    "/Volumes/TOSHIBA_EXT",
+    "/Volumes/EXTERNAL_SSD",
+    "/Volumes/EXT_DRIVE_2",
+    "/Volumes/EXT_DRIVE_3",
+]
+EXT_BACKUP_FOLDER = "binance_backups_archive"
+GDRIVE_CAPACITY_THRESHOLD = 0.70  # Fallback if >70% capacity
+EXT_DRIVE_MIN_FREE_GB = 50  # Require 50GB free on ext drive
 
 # Per-run limits (avoid API throttle)
 KEEP_LOCAL_DAYS = 14
@@ -30,12 +43,25 @@ def setup_rclone():
     if not Path(CREDS_JSON).exists():
         log("ERROR: Credentials not found", "ERROR")
         return False
+    if not GOOGLE_FOLDER_ID:
+        log("Google Drive archive skipped: V15_ARCHIVE_GOOGLE_FOLDER_ID is not configured", "WARN")
+        return False
 
     Path(RCLONE_CONFIG).write_text(f"""[binance-gdrive]
 type = drive
 service_account_file = {CREDS_JSON}
+scope = drive
+root_folder_id = {GOOGLE_FOLDER_ID}
 """)
+    os.chmod(RCLONE_CONFIG, 0o600)
     return True
+
+def sha256_file(fpath):
+    digest = hashlib.sha256()
+    with open(fpath, "rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 def get_old_files(days=KEEP_LOCAL_DAYS, max_count=MAX_FILES_PER_RUN):
     cutoff = datetime.now() - timedelta(days=days)
@@ -59,17 +85,92 @@ def get_old_files(days=KEEP_LOCAL_DAYS, max_count=MAX_FILES_PER_RUN):
 
 def upload_file(fpath):
     try:
+        digest = sha256_file(fpath)
+        remote_name = f"{fpath.stem}_{digest[:16]}{fpath.suffix}"
+        remote = f"binance-gdrive:binance_backups/{remote_name}"
         result = subprocess.run([
             "rclone", "copyto", str(fpath),
-            f"binance-gdrive:binance_backups/{fpath.name}",
+            remote,
             "--config", RCLONE_CONFIG,
-            "--ignore-checksum", "--no-update-modtime",
+            "--no-update-modtime",
             "--checkers=1", "--transfers=1", "--retries=1"
         ], capture_output=True, timeout=120)
-
-        return result.returncode == 0
+        if result.returncode:
+            log(f"Upload error {fpath.name}: {result.stderr.decode(errors='replace')[-300:]}", "WARN")
+            return False
+        checked = subprocess.run([
+            "rclone", "check", str(fpath), remote,
+            "--config", RCLONE_CONFIG,
+            "--checkers=1", "--one-way"
+        ], capture_output=True, timeout=120)
+        if checked.returncode:
+            log(f"Remote checksum verification failed for {fpath.name}: {checked.stderr.decode(errors='replace')[-300:]}", "WARN")
+            return False
+        log(f"Verified {fpath.name} sha256={digest} as {remote}")
+        return True
     except Exception as e:
         log(f"Upload error {fpath.name}: {e}", "WARN")
+        return False
+
+def get_gdrive_capacity():
+    """Check Google Drive usage. Returns (used_gb, total_gb, percent_used) or None if unavailable."""
+    try:
+        result = subprocess.run([
+            "rclone", "about", "binance-gdrive:", "--config", RCLONE_CONFIG, "--json"
+        ], capture_output=True, timeout=60)
+        if result.returncode == 0:
+            import json
+            data = json.loads(result.stdout)
+            used = data.get("used", 0) / (1024**3)
+            total = data.get("total", 1)  # Avoid div by zero
+            total_gb = total / (1024**3) if total > 0 else 1
+            percent = (used / total_gb) if total_gb > 0 else 0
+            return (used, total_gb, percent)
+    except Exception as e:
+        log(f"Could not check Google Drive capacity: {e}", "WARN")
+    return None
+
+def find_available_ext_drive():
+    """Find first available external drive with sufficient free space. Returns path or None."""
+    for mount in EXT_DRIVE_MOUNTS:
+        mount_path = Path(mount)
+        if not mount_path.exists():
+            continue
+        try:
+            stat = shutil.disk_usage(mount_path)
+            free_gb = stat.free / (1024**3)
+            if free_gb >= EXT_DRIVE_MIN_FREE_GB:
+                return mount_path
+            else:
+                log(f"⚠ {mount}: insufficient space ({free_gb:.1f}GB < {EXT_DRIVE_MIN_FREE_GB}GB)", "WARN")
+        except Exception as e:
+            log(f"⚠ Could not check {mount}: {e}", "WARN")
+    return None
+
+def copy_to_ext_drive(fpath, ext_drive_path):
+    """Copy backup file to external drive with verification. Returns True if successful."""
+    try:
+        dest_dir = ext_drive_path / EXT_BACKUP_FOLDER
+        dest_dir.mkdir(parents=True, exist_ok=True)
+
+        digest = sha256_file(fpath)
+        dest_file = dest_dir / f"{fpath.stem}_{digest[:16]}{fpath.suffix}"
+
+        shutil.copy2(fpath, dest_file)
+
+        # Verify
+        if sha256_file(dest_file) == digest:
+            log(f"✓ Copied to {ext_drive_path.name}: {fpath.name}")
+            return True
+        else:
+            log(f"⚠ Verify failed on {ext_drive_path.name} for {fpath.name}", "WARN")
+            try:
+                dest_file.unlink()
+            except:
+                pass
+            return False
+    except Exception as e:
+        log(f"⚠ Copy to {ext_drive_path.name} failed for {fpath.name}: {e}", "WARN")
         return False
 
 def main():
@@ -78,6 +179,41 @@ def main():
 
     if not setup_rclone():
         return 1
+
+    # Check Google Drive capacity
+    gdrive_status = get_gdrive_capacity()
+    use_ext_drive_fallback = False
+    ext_drive_path = None
+
+    if gdrive_status:
+        used_gb, total_gb, percent = gdrive_status
+        log(f"Google Drive: {used_gb:.1f}GB / {total_gb:.1f}GB ({percent*100:.1f}%)")
+
+        if percent > GDRIVE_CAPACITY_THRESHOLD:
+            log(f"⚠ Google Drive >70% capacity. Checking external drives...", "WARN")
+            ext_drive_path = find_available_ext_drive()
+            if ext_drive_path:
+                log(f"✓ Using fallback: {ext_drive_path.name}")
+                use_ext_drive_fallback = True
+            else:
+                log(f"⚠ No external drive available. Proceeding with Google Drive.", "WARN")
+    else:
+        log(f"⚠ Could not check Google Drive capacity. Checking external drives as fallback...", "WARN")
+        ext_drive_path = find_available_ext_drive()
+        if ext_drive_path:
+            log(f"✓ Using external drive: {ext_drive_path.name}")
+            use_ext_drive_fallback = True
+
+    # Probe Google Drive only if not using fallback
+    if not use_ext_drive_fallback:
+        try:
+            probe = subprocess.run(["rclone", "lsd", "binance-gdrive:", "--config", RCLONE_CONFIG], capture_output=True, timeout=60)
+            if probe.returncode:
+                log(f"Google Drive destination is not accessible: {probe.stderr.decode(errors='replace')[-300:]}", "ERROR")
+                return 1
+        except Exception as e:
+            log(f"Google Drive destination probe failed: {e}", "ERROR")
+            return 1
 
     old_files = get_old_files()
     if not old_files:
@@ -89,10 +225,18 @@ def main():
 
     uploaded = 0
     for fpath, fsize in old_files:
-        if upload_file(fpath):
+        success = False
+
+        if use_ext_drive_fallback and ext_drive_path:
+            if copy_to_ext_drive(fpath, ext_drive_path):
+                success = True
+        else:
+            if upload_file(fpath):
+                success = True
+
+        if success:
             try:
                 fpath.unlink()
-                log(f"✓ {fpath.name}")
                 uploaded += 1
             except Exception as e:
                 log(f"Delete failed {fpath.name}: {e}", "WARN")
@@ -100,7 +244,8 @@ def main():
             log(f"⚠ {fpath.name} (keeping local)", "WARN")
 
     log("=" * 60)
-    log(f"✓ Archival complete: {uploaded}/{len(old_files)} files")
+    dest = f"{ext_drive_path.name}" if use_ext_drive_fallback else "Google Drive"
+    log(f"✓ Archival complete: {uploaded}/{len(old_files)} files to {dest}")
     log("=" * 60)
     return 0
 

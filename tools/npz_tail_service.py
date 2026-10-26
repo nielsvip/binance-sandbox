@@ -255,20 +255,25 @@ def kline_last_close(base, symbol, mode, now_s=None):
     except Exception:
         return None
     try:
-        from closed_bar_feed import timestamp_epoch
+        from closed_bar_feed import is_verified_closed_native, timestamp_epoch
         now_epoch = time.time() if now_s is None else float(now_s)
+        current_start = int(now_epoch // 900) * 900 - 900
+        overlay = Path(base) / 'data' / 'closed_15m_bars' / mode / f'{symbol}.json'
+        overlay_rows = json.loads(overlay.read_text()) if overlay.is_file() else []
+        verified_current = any(timestamp_epoch(row['timestamp']) == current_start and is_verified_closed_native(row, current_start + 900) for row in overlay_rows)
         def eligible_start(stamp):
             if stamp + 900 > now_epoch:
+                return False
+            if mode == 'crypto' and stamp == current_start and now_epoch < current_start + 930 and not verified_current:
                 return False
             if mode == 'tradier':
                 from tools.npz_cutoffs import is_rth_bar_start
                 return is_rth_bar_start(stamp)
             return True
         overlay_tip = None
-        overlay = Path(base) / 'data' / 'closed_15m_bars' / mode / f'{symbol}.json'
-        if overlay.is_file():
+        if overlay_rows:
             now = time.time() if now_s is None else float(now_s)
-            eligible = [timestamp_epoch(row['timestamp']) for row in json.loads(overlay.read_text()) if eligible_start(timestamp_epoch(row['timestamp']))]
+            eligible = [timestamp_epoch(row['timestamp']) for row in overlay_rows if eligible_start(timestamp_epoch(row['timestamp']))]
             overlay_tip = max(eligible) if eligible else None
             if overlay_tip is not None and overlay_tip >= int(now // 900) * 900 - 900:
                 return overlay_tip

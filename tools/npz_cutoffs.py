@@ -102,7 +102,12 @@ def last_premarket_bar(now=None):
 
 def last_stock_data_bar(now=None):
     """Latest completed stock 15m input bar; RTH execution remains separately gated."""
-    now_dt = now if isinstance(now, dt.datetime) else dt.datetime.fromtimestamp(float(now), dt.timezone.utc) if now is not None else dt.datetime.now(dt.timezone.utc)
+    if isinstance(now, dt.datetime):
+        now_dt = now
+    elif now is not None:
+        now_dt = dt.datetime.fromtimestamp(float(now), dt.timezone.utc)
+    else:
+        now_dt = dt.datetime.now(dt.timezone.utc)
     if now_dt.tzinfo is None:
         now_dt = now_dt.replace(tzinfo=dt.timezone.utc)
     rth = last_rth_close_bar(now_dt)
@@ -144,7 +149,7 @@ TAIL_GRACE_BARS_STOCKS = int(MAX_NPZ_AGE_MIN * 60 // BAR)  # 20 min -> 1 bar
 
 
 def npz_age_min(last_ts, venue, now=None):
-    """minutes the NPZ's last bar (epoch s) is behind the latest closed bar (crypto) / last RTH close (stocks); None when no cutoff."""
+    """Minutes behind the latest closed crypto bar or stock premarket/RTH input bar."""
     now_ts, now_dt = _now_split(now)
     cut = last_closed_bar(now_ts) if str(venue).lower() == "crypto" else last_stock_data_bar(now_dt)
     if not cut:
@@ -164,11 +169,12 @@ def _now_split(now):
     return int(float(now)), now_dt
 
 
-def tail_currency(tail_ts, venue, now=None):
+def tail_currency(tail_ts, venue, now=None, allow_premarket=False):
     """USER 2026-10-12 dispatch gate: is this NPZ tail complete to the latest bar? Pure (unit-tested).
     tail_ts = last NPZ timestamp in epoch SECONDS; venue = 'crypto'|'stocks'. Returns (ok, detail).
     crypto: tail within TAIL_GRACE_BARS_CRYPTO of the last closed 15m bar. stocks: tail within
-    TAIL_GRACE_BARS_STOCKS of last_rth_close_bar (RTH-session aware: weekends/holidays expect no new bars)."""
+    TAIL_GRACE_BARS_STOCKS of last_rth_close_bar by default. allow_premarket=True uses the latest
+    completed premarket/RTH input bar for the isolated pre-open 7D data lane."""
     try:
         tail = float(tail_ts)
     except Exception:
@@ -182,18 +188,21 @@ def tail_currency(tail_ts, venue, now=None):
         if lag <= TAIL_GRACE_BARS_CRYPTO:
             return (True, f"lag{lag:.1f}bars")
         return (False, f"tail {lag:.1f} bars behind latest closed 15m")
-    cutoff = last_stock_data_bar(now_dt)
+    cutoff = last_stock_data_bar(now_dt) if allow_premarket else last_rth_close_bar(now_dt)
     if not cutoff:
         return (False, "no-cutoff")
-    if not (is_rth_bar_start(tail) or is_premarket_bar_start(tail)):
-        return (False, "last stock NPZ bar starts outside premarket/RTH input session")
+    valid_tail = is_rth_bar_start(tail) or (allow_premarket and is_premarket_bar_start(tail))
+    if not valid_tail:
+        return (False, "last stock NPZ bar starts outside the allowed session")
     if tail > cutoff:
         return (False, "stock NPZ bar is newer than the latest completed NYSE bar")
     if tail >= cutoff - TAIL_GRACE_BARS_STOCKS * BAR:
         ahead_min = (tail - cutoff) / 60.0
-        return (True, f"{ahead_min:+.0f}min vs RTH close")
+        label = "stock data cutoff" if allow_premarket else "RTH close"
+        return (True, f"{ahead_min:+.0f}min vs {label}")
     behind_min = (cutoff - tail) / 60.0
-    return (False, f"tail {behind_min:.0f}min behind RTH close")
+    label = "stock data cutoff" if allow_premarket else "RTH close"
+    return (False, f"tail {behind_min:.0f}min behind {label}")
 
 
 def last_rth_close_bar(now=None):

@@ -4028,7 +4028,7 @@ class TradierIndicatorOrchestrator:
                 last_cleanup = now
 
     async def _npz_update_loop(self) -> None:
-        """Incremental NPZ updater — tradier (RTH 09:30-16:00 ET), point-in-time to last 15m close."""
+        """Incremental NPZ updater — premarket/RTH inputs, with RTH-only execution bars."""
         if _npz_gen is None:
             logger.info("[NPZ] npz_live_generator not available — skipping tradier NPZ")
             return
@@ -4045,17 +4045,15 @@ class TradierIndicatorOrchestrator:
         while not self._shutdown.is_set():
             try:
                 now = datetime.now(timezone.utc)
-                # Outside RTH, sleep until next open (09:30 ET)
+                # Outside premarket/RTH data collection, sleep until the next 04:00 ET premarket.
                 if not _npz_gen._is_tradier_market_hours(now):
-                    # Sleep until 09:30 ET next open
                     et_now = now.astimezone(_npz_gen.ET)
-                    # Compute next 09:30 ET
-                    next_open_et = et_now.replace(hour=9, minute=30, second=0, microsecond=0)
+                    next_open_et = et_now.replace(hour=4, minute=0, second=0, microsecond=0)
                     if et_now >= next_open_et:
                         next_open_et += timedelta(days=1)
-                        # Skip weekend
-                        while next_open_et.weekday() >= 5:
-                            next_open_et += timedelta(days=1)
+                    from tools.npz_cutoffs import stock_session_bounds
+                    while stock_session_bounds(next_open_et.date()) is None:
+                        next_open_et += timedelta(days=1)
                     next_open_utc = next_open_et.astimezone(timezone.utc)
                     wait = (next_open_utc - now).total_seconds()
                     wait = max(60, min(wait, 3600))

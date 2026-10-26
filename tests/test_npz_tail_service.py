@@ -209,6 +209,20 @@ def test_kline_last_close_reads_tail_and_ignores_forming_bar(tmp_path, monkeypat
     assert kline_last_close(tmp_path, "TSTUSDT", "binance") == int(closed.timestamp())
 
 
+def test_crypto_current_bar_waits_for_verified_exchange_overlay(tmp_path, monkeypatch):
+    import npz_live_generator
+    from closed_bar_feed import atomic_json
+    from tools.npz_tail_service import kline_last_close
+    start = 1793053800 - 900
+    path = tmp_path / 'TSTUSDT_15m.json'
+    atomic_json(path, [{'timestamp': '2026-10-26T22:00:00Z'}, {'timestamp': '2026-10-26T22:15:00Z'}])
+    monkeypatch.setattr(npz_live_generator, '_resolve_kline_path', lambda *args: path)
+    assert kline_last_close(tmp_path, 'TSTUSDT', 'crypto', now_s=1793053803) == start - 900
+    overlay = tmp_path / 'data/closed_15m_bars/crypto/TSTUSDT.json'
+    atomic_json(overlay, [{'timestamp': '2026-10-26T22:15:00Z', 'volume': 1, '_closed': True, '_provisional': False, '_closed_verified_at': 1793053804}])
+    assert kline_last_close(tmp_path, 'TSTUSDT', 'crypto', now_s=1793053805) == start
+
+
 def test_resolve_kline_prefers_live_over_backtest(tmp_path):
     from npz_live_generator import _resolve_kline_path
 

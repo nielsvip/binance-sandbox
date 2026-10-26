@@ -78,11 +78,19 @@ def commit_batch(target, source, batch, columns):
     return added, last
 
 
-def run_ingest(source):
+def run_ingest(source, ingest_file=None):
     target = connect(S1_DB)
     try:
-        incoming = (json.loads(line) for line in gzip.GzipFile(fileobj=sys.stdin.buffer) if line.strip())
-        reports = [ingest_rows(target, source, incoming)]
+        if ingest_file:
+            incoming_file = Path(ingest_file)
+            if incoming_file.parent != S1_DB.parent or not incoming_file.name.startswith("incoming_mac_history_"):
+                raise ValueError("invalid incoming history path")
+            input_stream = gzip.open(incoming_file, "rb")
+        else:
+            input_stream = gzip.GzipFile(fileobj=sys.stdin.buffer)
+        with input_stream:
+            incoming = (json.loads(line) for line in input_stream if line.strip())
+            reports = [ingest_rows(target, source, incoming)]
         sandbox = connect(S1_SANDBOX_DB)
         try:
             last = progress(target, "s1_sandbox")
@@ -93,6 +101,8 @@ def run_ingest(source):
         print(json.dumps(reports), flush=True)
     finally:
         target.close()
+    if ingest_file:
+        Path(ingest_file).unlink()
 
 
 def run_push(host):
@@ -100,22 +110,26 @@ def run_push(host):
     command = [*SSH, host, f"python3 {REMOTE_SCRIPT} --watermark mac"]
     last = int(subprocess.check_output(command, text=True, timeout=25).strip())
     source = connect(MAC_DB)
-    tmp = tempfile.NamedTemporaryFile(prefix="per_sym_history_", suffix=".jsonl.gz", delete=False)
-    tmp.close()
+    spool = Path(tempfile.gettempdir()) / f"per_sym_history_mac_after_{last}.jsonl.gz"
     count = 0
     try:
-        with gzip.open(tmp.name, "wt", compresslevel=3) as output:
-            for row in source.execute("SELECT * FROM per_sym_history WHERE id>? ORDER BY id", (last,)):
-                output.write(json.dumps(dict(row), separators=(",", ":"), default=str) + "\n")
-                count += 1
+        if not spool.is_file():
+            building = spool.with_suffix(spool.suffix + ".building")
+            with gzip.open(building, "wt", compresslevel=3) as output:
+                for row in source.execute("SELECT * FROM per_sym_history WHERE id>? ORDER BY id", (last,)):
+                    output.write(json.dumps(dict(row), separators=(",", ":"), default=str) + "\n")
+                    count += 1
+            os.replace(building, spool)
         source.close()
-        with open(tmp.name, "rb") as input_file:
-            result = subprocess.run([*SSH, host, f"python3 {REMOTE_SCRIPT} --ingest mac"], stdin=input_file, capture_output=True, text=False, timeout=480)
+        remote_spool = S1_DB.parent / f"incoming_mac_history_after_{last}.jsonl.gz"
+        subprocess.run(["rsync", "-a", "--partial", "--append-verify", "--timeout=180", "-e", "ssh -S none -o BatchMode=yes -o ConnectTimeout=12", str(spool), f"{host}:{remote_spool}"], check=True, timeout=900)
+        result = subprocess.run([*SSH, host, f"python3 {REMOTE_SCRIPT} --ingest mac --ingest-file {remote_spool}"], capture_output=True, text=False, timeout=480)
         if result.returncode:
             raise RuntimeError(result.stderr.decode(errors="replace")[-1000:])
         print(json.dumps({"mac_rows_sent": count, "s1": result.stdout.decode(errors="replace").strip()}), flush=True)
+        spool.unlink()
     finally:
-        Path(tmp.name).unlink(missing_ok=True)
+        source.close()
 
 
 def main():
@@ -123,6 +137,7 @@ def main():
     parser.add_argument("--host")
     parser.add_argument("--watermark")
     parser.add_argument("--ingest")
+    parser.add_argument("--ingest-file")
     args = parser.parse_args()
     if args.watermark:
         target = connect(S1_DB)
@@ -131,7 +146,7 @@ def main():
         finally:
             target.close()
     elif args.ingest:
-        run_ingest(args.ingest)
+        run_ingest(args.ingest, args.ingest_file)
     elif args.host:
         run_push(args.host)
     else:

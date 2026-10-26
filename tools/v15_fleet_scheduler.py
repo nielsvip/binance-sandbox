@@ -1799,6 +1799,24 @@ def _disk_admit_ok(stats, min_mb=None):
         return True
 
 
+def _archive_recovery_nudge(stats):
+    limits = {"s1": 7000, "s2": 6000, "s5": 8000, "s6": 8000}
+    low = {name: int((stats.get(name) or {}).get("disk_avail_mb") or 0) for name, limit in limits.items()
+           if (stats.get(name) or {}).get("disk_avail_mb") is not None and int((stats.get(name) or {}).get("disk_avail_mb")) < limit}
+    if not low:
+        return {"requested": False, "reason": "all reachable hosts above archive warning floors"}
+    report = pathlib.Path.home() / "Library" / "Logs" / "fleet_archive_manager_launchd.log"
+    try:
+        age = time.time() - report.stat().st_mtime
+    except OSError:
+        age = float("inf")
+    if age < 300:
+        return {"requested": False, "reason": "archive manager ran within 300 seconds", "low_disk_mb": low}
+    subprocess.Popen(["/bin/bash", str(ROOT / "tools" / "fleet_archive_tick.sh")], cwd=str(ROOT),
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+    return {"requested": True, "low_disk_mb": low}
+
+
 def _launched_recently(key, launched_at, now_ts, grace_s=None):
     """True when key launched within the grace window (USER 2026-10-10: fresh pilots are
     probe-invisible for minutes under load; relaunching them spawns cross-host duplicates that
@@ -5656,6 +5674,11 @@ def tick(args, cfg, now):
         if not log["pending_symbols"] and not args.dry_run and not sim:
             ext = {"stocks": [s for s in rank["stocks"] if s not in universe_syms["stocks"]], "crypto": [s for s in rank["crypto"] if s not in universe_syms["crypto"]]}
             (ROOT / "data" / "daily_universe" / f"extension_{now.strftime('%Y%m%d')}.json").write_text(json.dumps(ext, indent=1))
+    if not args.dry_run and not sim:
+        try:
+            log["archive_recovery"] = _archive_recovery_nudge(stats)
+        except Exception as _archive_error:
+            log["archive_recovery"] = {"requested": False, "error": str(_archive_error)[:160]}
     _ph("ready_summary_order_audit")
     log["phase_s"] = dict(_PH["s"]); log["tick_s"] = round(time.time() - _PH["t0"], 1)
     print(f"[sched] TICK {log['tick_s']}s phases {log['phase_s']}", flush=True)

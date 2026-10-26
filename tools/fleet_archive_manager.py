@@ -23,6 +23,7 @@ REPORT = Path.home() / "Library" / "Logs" / "fleet_archive_manager.jsonl"
 STATE = Path.home() / "Library" / "Caches" / "com.binance.fleetarchive" / "verified.json"
 KEY = Path(os.environ.get("V15_ARCHIVE_GOOGLE_KEY", Path.home() / "Downloads/civil-ripple-439101-j3-d50fb6537cdb.json"))
 GOOGLE_FOLDER_ID = os.environ.get("V15_ARCHIVE_GOOGLE_FOLDER_ID", "")
+GCS_FALLBACK = os.environ.get("V15_ARCHIVE_GCS_FALLBACK", "1") == "1"
 HOSTS = {"s1": "s1-pub", "s2": "s2", "s5": "s5", "s6": "s6"}
 DISK_WARN_MB = {"s1": 7000, "s2": 6000, "s5": 8000, "s6": 8000}
 S6_SOURCE = "/home/niels/rebuild_scratch_s6/experience_cold/run34_35_20261022"
@@ -369,6 +370,35 @@ def _archive_to_google(host: str, source: str, folder_id: str, apply: bool) -> N
         tmp.cleanup()
 
 
+def _archive_to_gcs(host: str, source: str, apply: bool, raw: bool = False) -> None:
+    if not GCS_FALLBACK:
+        return
+    state = _state_load()
+    signature = _source_signature(host, source)
+    key = f"{host}:{source}->gcs"
+    if state.get(key) == signature:
+        _log("gcs_archive_current", host=host, source=source, sha256=signature)
+        return
+    leaf = Path(source.rstrip("/")).name
+    stem = leaf[:-8] if raw and leaf.endswith(".tar.zst") else leaf
+    object_name = f"fleet_archives/{host}/{stem}_{signature[:12]}.tar.zst"
+    _log("gcs_archive_plan", host=host, source=source, object=object_name, raw=raw, apply=apply)
+    if not apply:
+        return
+    command = [sys.executable, str(ROOT / "tools" / "gcs_cold_store.py"), "push", "--host", host, "--source", source, "--name", object_name]
+    if raw:
+        command.append("--raw")
+    result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=86400)
+    if result.returncode:
+        raise RuntimeError(f"GCS archive push failed; source retained: {result.stderr[-400:]}")
+    receipts = [line for line in result.stdout.splitlines() if line.startswith("{")]
+    if not receipts or json.loads(receipts[-1]).get("verified") is not True:
+        raise RuntimeError("GCS push returned without a verified receipt; source retained")
+    state[key] = signature
+    _state_save(state)
+    _log("gcs_archive_verified", host=host, source=source, object=object_name, source_signature=signature)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--once", action="store_true")
@@ -398,10 +428,18 @@ def main() -> int:
                 _archive_to_external(host, source, drive, args.apply)
             except Exception as exc:
                 _log("external_archive_failed", host=host, drive=str(drive), error=str(exc))
-        try:
-            _archive_to_google(host, source, args.google_folder_id, args.apply)
-        except Exception as exc:
-            _log("google_archive_failed", host=host, error=str(exc))
+        drive_copy_ok = False
+        if args.google_folder_id:
+            try:
+                _archive_to_google(host, source, args.google_folder_id, args.apply)
+                drive_copy_ok = True
+            except Exception as exc:
+                _log("google_archive_failed", host=host, error=str(exc))
+        if not drives and not drive_copy_ok:
+            try:
+                _archive_to_gcs(host, source, args.apply, raw=host == "s6")
+            except Exception as exc:
+                _log("gcs_archive_failed", host=host, error=str(exc))
     return 0
 
 

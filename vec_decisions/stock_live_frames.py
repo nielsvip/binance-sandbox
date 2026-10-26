@@ -2,7 +2,7 @@
 built on the SAME frames live tradier_indicators computes on, one 15m step at a time.
 
 Live (tradier_indicators.TradierBarManager.get_bundle + run_cycle) at a moment t inside 15m bar j:
-  15m  timesales filtered by filter_strict_market_hours(is_fast_tf=True) (08:30..16:00 ET bar labels), merged into the json cache
+  15m  timesales filtered by filter_strict_market_hours(is_fast_tf=True) (04:00 ET premarket through exchange close), merged into the json cache
   1h   merge_klines(json 1h, resample_tf(bundle 15m, "1h"))  -> 09:30-anchored bins, the bin holding t is FORMING (partial)
   4h   merge_klines(json 4h, resample_tf(bundle 1h, "4h"))   -> get_4h_bin session bins built from the 1h rows that carry close_time
                                                                 (the freshly resampled ones; json-only 1h rows are NaT there), FORMING
@@ -68,7 +68,7 @@ def bundle_merge(df_old: pd.DataFrame, df_new: pd.DataFrame) -> pd.DataFrame:
 
 
 def live_rth_15m(df15: pd.DataFrame) -> pd.DataFrame:
-    """the live 15m session filter (tradier_indicators.filter_strict_market_hours, is_fast_tf=True) on a DatetimeIndex frame."""
+    """The live stock 15m input filter (04:00 ET premarket through exchange close)."""
     from tradier_indicators import filter_strict_market_hours
     out = from_live_frame(filter_strict_market_hours(to_live_frame(df15), is_fast_tf=True))
     return out[~out.index.duplicated(keep="last")].sort_index()

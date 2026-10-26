@@ -36256,12 +36256,14 @@ class MultiAccountTradeManager:
             from tools.account_comparison_books import crypto_entry_allowed
             if not crypto_entry_allowed(Path(getattr(self.config, "BASE_PATH", Path.home() / "binance")), account_key, symbol, position_side):
                 logger.warning("[%s] %s %s refused: outside current side-specific book", account_key, symbol, position_side)
+                if _pcl_acquired: _peg.release_claim(f"{_ckey}|INC")
                 return "BLOCKED_NOT_TRADEABLE_SIDE"
         if _is_open_action and account_key == "fin" and os.environ.get("VEC_LIVE_SCOPE", "30d").lower() == "7d":
             try:
                 from tools.v15_preopen_7d_runtime import assert_vector_stage_ready
                 assert_vector_stage_ready(Path(getattr(self.config, "BASE_PATH", Path.home() / "binance")) / "data/vec_live_7d")
             except Exception:
+                if _pcl_acquired: _peg.release_claim(f"{_ckey}|INC")
                 return "BLOCKED_FIN_7D_NOT_READY"
         # 2026-04-27 USER ABSOLUTE: NO MULTIPLE OPENS. EVER.
         # If a position is already alive for this key (positionAmt > 0), block any open of any kind.
@@ -36326,6 +36328,7 @@ class MultiAccountTradeManager:
                         logger.critical(
                             f"[NO_DOUBLE_OPEN_BLOCK] {position_key}: BLOCKED action={action} positionAmt={_ndo_amt:.6f} > min_q={_ndo_min_q:.6f}. Only AUGMENT allowed (under MIN_GAIN rules). Reason='{(reason or '')[:80]}'"
                         )
+                        if _pcl_acquired: _peg.release_claim(f"{_ckey}|INC")
                         return f"BLOCKED_NO_DOUBLE_OPEN_{(action or '')[:20]}"
             except Exception as _ndo_e:
                 logger.warning(
@@ -36514,6 +36517,7 @@ class MultiAccountTradeManager:
                 logger.critical(
                     f"🚫🚫🚫 [POSITION_EXISTS_BLOCK] {position_key}: Position ${_pos_val_check:.1f} exists with gain={_pos_gain_check_raw:.2f}% (eff={_pos_gain_check:.2f}%) < MIN_GAIN. NO further opens/augents/reentries until profitable. action={action} reason={reason}"
                 )
+                if _pcl_acquired: _peg.release_claim(f"{_ckey}|INC")
                 return f"BLOCKED_POSITION_EXISTS_gain{_pos_gain_check_raw:.2f}_eff{_pos_gain_check:.2f}pct"
             # ═══ SHARPE-TRIPLE ENTRY GATES 2026-04-16 — regime / volume / circuit / hour ═══
             # All default OFF, switch-gated. Applied ONLY to fresh opens (not augments of winners).
@@ -38038,6 +38042,7 @@ class MultiAccountTradeManager:
             _ve_ok_late, _ve_verdict_late = True, "ENFORCE_ERROR_FAILOPEN"
         if not _ve_ok_late and str(_ve_verdict_late) == "OFF_BAR_WINDOW":
             logger.info(f"⏳ [VECTOR_EXEC_REFUSED] {position_key} action={action} reason={(reason or '')[:80]} — outside 15m bar window, waits for next bar (USER 2026-10-21; VEC-LAST keeps the deferral)")
+            if _pcl_acquired: _peg.release_claim(f"{_ckey}|INC")
             return "BLOCKED_VECTOR_EXEC_OFF_BAR_WINDOW"
         if not _ve_ok_late and not _vec_last_refuse:
             _vec_last_refuse = f"BLOCKED_VECTOR_EXEC_{str(_ve_verdict_late)[:40]}"
@@ -38156,9 +38161,11 @@ class MultiAccountTradeManager:
                             _vpg_flat = _tgt_last is False
                             _vpg_blk_on = bool(getattr(_ezm_base_config, "VEC_DISAGREE_FLAT_OPEN_BLOCK", getattr(config, "VEC_DISAGREE_FLAT_OPEN_BLOCK", True)))
                             if not bool(is_hedge) and _vpg_dis.flat_open_blocked(action, reason, _vpg_flat, _vpg_blk_on):
+                                if _pcl_acquired: _peg.release_claim(f"{_ckey}|INC")
                                 return "BLOCKED_VEC_FLAT_OPEN"
                             _vpg_kill_on = bool(getattr(_ezm_base_config, "VEC_DISAGREE_KILL_ENABLED", getattr(config, "VEC_DISAGREE_KILL_ENABLED", False)))
                             if _vpg_dis.disagree_refuse(True, _vpg_kill_on):
+                                if _pcl_acquired: _peg.release_claim(f"{_ckey}|INC")
                                 return "BLOCKED_VEC_DISAGREE"
                         except Exception:
                             pass

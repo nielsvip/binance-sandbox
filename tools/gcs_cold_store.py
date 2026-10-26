@@ -26,6 +26,7 @@ import hashlib
 import json
 import os
 import shlex
+import shutil
 import subprocess
 import sys
 import time
@@ -185,8 +186,14 @@ def _producer_guard(proc, source: str):
 
 
 def _tar_zstd(source: str, level: int = 3, threads: int = 2):
+    """tar|zstd at the lowest CPU and IO priority available, so a drain can never outrank a pilot.
+
+    `ionice` exists on the Linux workers and not on macOS, so it is probed rather than assumed: hardcoding it made the
+    Mac-local path exit 127 (`command not found`), which the upload guard correctly turned into "nothing was stored".
+    """
     parent, leaf = os.path.split(source.rstrip("/"))
-    command = "set -o pipefail; nice -n 19 tar -C %s -cf - -- %s | nice -n 19 zstd -T%d -%d -c" % (shlex.quote(parent or "/"), shlex.quote(leaf), threads, level)
+    idle = "ionice -c3 " if shutil.which("ionice") else ""
+    command = "set -o pipefail; nice -n 19 %star -C %s -cf - -- %s | nice -n 19 %szstd -T%d -%d -c" % (idle, shlex.quote(parent or "/"), shlex.quote(leaf), idle, threads, level)
     return subprocess.Popen(["bash", "-lc", command], stdout=subprocess.PIPE, bufsize=0)
 
 
@@ -211,23 +218,55 @@ def verify(name: str, token: str, bucket: str = BUCKET) -> dict:
     return json.loads(body)
 
 
-def _remote_push(host: str, source: str, name: str, token: str, bucket: str, level: int, threads: int) -> dict:
+SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=20", "-o", "ControlPath=none", "-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=40", "-o", "TCPKeepAlive=yes"]
+
+
+def object_present(name: str, token: str, bucket: str = BUCKET) -> dict | None:
+    try:
+        return verify(name, token, bucket)
+    except Exception:
+        return None
+
+
+def _remote_push_once(target: str, source: str, name: str, token: str, bucket: str, level: int, threads: int, raw: bool = False) -> dict:
+    session = open_session(name, token, bucket)
+    raw_arg = " --raw" if raw else ""
+    command = 'cd "$HOME" && python3 %s remote-stream --source %s --level %d --threads %d%s' % (shlex.quote(REMOTE_UPLOADER), shlex.quote(source), level, threads, raw_arg)
+    proc = subprocess.run(["ssh", *SSH_OPTS, target, "bash", "-lc", shlex.quote(command)], input=session + "\n", capture_output=True, text=True, timeout=86400)
+    if proc.returncode:
+        raise RuntimeError(f"rc={proc.returncode} {proc.stderr[-300:].strip()}")
+    lines = [line for line in proc.stdout.splitlines() if line.startswith("{")]
+    if not lines:
+        raise RuntimeError(f"remote uploader returned no result: {proc.stdout[-200:]}")
+    return json.loads(lines[-1])
+
+
+def _remote_push(host: str, source: str, name: str, token: str, bucket: str, level: int, threads: int, attempts: int = 2, raw: bool = False) -> dict:
+    """Push from the worker, retrying once. A dropped ssh is NOT evidence that nothing was stored: if the worker had
+    already finalised the object, GCS keeps it while the driver never saw the local md5. Such an object is UNVERIFIED
+    and must never count as a proof copy, so the retry overwrites it and verifies the bytes it just sent."""
     target = HOSTS.get(host, host)
-    local_copy = Path(__file__).resolve()
-    subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=20", "-o", "ControlPath=none", target, f"mkdir -p ~/{Path(REMOTE_UPLOADER).parent}"], check=True, capture_output=True, timeout=60)
-    sync = subprocess.run(["rsync", "-a", str(local_copy), f"{target}:{REMOTE_UPLOADER}"], capture_output=True, text=True, timeout=300)
+    subprocess.run(["ssh", *SSH_OPTS, target, f"mkdir -p ~/{Path(REMOTE_UPLOADER).parent}"], check=True, capture_output=True, timeout=60)
+    sync = subprocess.run(["rsync", "-a", "-e", "ssh " + " ".join(SSH_OPTS), str(Path(__file__).resolve()), f"{target}:{REMOTE_UPLOADER}"], capture_output=True, text=True, timeout=300)
     if sync.returncode:
         raise RuntimeError(f"could not install the uploader on {host}: {sync.stderr[-200:]}")
-    session = open_session(name, token, bucket)
-    command = 'cd "$HOME" && python3 %s remote-stream --source %s --level %d --threads %d' % (shlex.quote(REMOTE_UPLOADER), shlex.quote(source), level, threads)
-    proc = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=20", "-o", "ControlPath=none", target, "bash", "-lc", shlex.quote(command)], input=session + "\n", capture_output=True, text=True, timeout=86400)
-    if proc.returncode:
-        raise RuntimeError(f"remote upload failed on {host}: rc={proc.returncode} {proc.stderr[-400:]}")
-    result = json.loads([line for line in proc.stdout.splitlines() if line.startswith("{")][-1])
-    remote = verify(name, token, bucket)
-    if remote.get("md5Hash") != result["md5_b64"]:
-        raise RuntimeError(f"md5 mismatch for {name}: {host} sent {result['md5_b64']}, bucket holds {remote.get('md5Hash')}")
-    return {**result, "object": name, "bucket": bucket, "host": host, "source": source, "storage_class": remote.get("storageClass"), "remote_md5": remote.get("md5Hash"), "verified": True}
+    last = ""
+    for attempt in range(1, attempts + 1):
+        try:
+            result = _remote_push_once(target, source, name, token, bucket, level, threads, raw)
+        except Exception as exc:
+            last = str(exc)
+            stranded = object_present(name, token, bucket)
+            _log("push_attempt_failed", host=host, source=source, object=name, attempt=attempt, error=last, unverified_object_bytes=int(stranded.get("size", 0)) if stranded else 0)
+            if attempt < attempts:
+                time.sleep(15)
+                continue
+            raise RuntimeError(f"remote upload failed on {host} after {attempts} attempts: {last}" + (f" — an UNVERIFIED {int(stranded['size']):,}-byte object is present at {name} and must be re-pushed, not trusted" if stranded else ""))
+        remote = verify(name, token, bucket)
+        if remote.get("md5Hash") != result["md5_b64"]:
+            raise RuntimeError(f"md5 mismatch for {name}: {host} sent {result['md5_b64']}, bucket holds {remote.get('md5Hash')}")
+        return {**result, "object": name, "bucket": bucket, "host": host, "source": source, "attempts": attempt, "storage_class": remote.get("storageClass"), "remote_md5": remote.get("md5Hash"), "verified": True}
+    raise RuntimeError(f"remote upload failed on {host}: {last}")
 
 
 def main() -> int:
@@ -241,7 +280,7 @@ def main() -> int:
     parser.add_argument("--prefix", default="")
     parser.add_argument("--raw", action="store_true", help="upload the file as-is instead of tar|zstd")
     parser.add_argument("--level", type=int, default=3)
-    parser.add_argument("--threads", type=int, default=2)
+    parser.add_argument("--threads", type=int, default=1)
     args = parser.parse_args()
 
     if args.command == "remote-stream":
@@ -292,10 +331,10 @@ def main() -> int:
         if not args.host:
             raise SystemExit("--source needs --host (use --local for this machine)")
         _log("push_start", target=args.host, source=args.source, object=args.name, bucket=args.bucket)
-        result = _remote_push(args.host, args.source, args.name, token, args.bucket, args.level, args.threads)
+        result = _remote_push(args.host, args.source, args.name, token, args.bucket, args.level, args.threads, raw=args.raw)
     result["seconds"] = round(time.time() - started, 1)
     result["mb_per_s"] = round(result["bytes"] / 1048576 / max(result["seconds"], 0.001), 2)
-    _receipt(result)
+    _receipt({"event": "push_verified", **result})
     _log("push_verified", **{k: v for k, v in result.items() if k != "crc32c_local_zlib"})
     return 0
 
