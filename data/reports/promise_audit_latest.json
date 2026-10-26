@@ -1,25 +1,15 @@
 {
- "generated_utc": "2026-10-26T21:12:12.022894+00:00",
+ "generated_utc": "2026-10-26T22:12:11.677819+00:00",
  "days": 1.0,
  "totals": {
-  "exit_promises": 25,
-  "exit_broken_no_delivery": 22,
-  "entry_promises": 16,
-  "entry_broken_no_delivery": 16,
-  "exit_kept_in_bar": 2,
-  "exit_kept_late": 1
+  "exit_promises": 21,
+  "exit_broken_no_delivery": 18,
+  "entry_promises": 15,
+  "entry_broken_no_delivery": 15,
+  "exit_kept_late": 1,
+  "exit_kept_in_bar": 2
  },
  "per_key": {
-  "inf:PENGUUSDC_LONG": {
-   "exit_promises": 5,
-   "exit_broken_no_delivery": 5
-  },
-  "inf:COTIUSDT_SHORT": {
-   "entry_promises": 2,
-   "entry_broken_no_delivery": 2,
-   "exit_promises": 1,
-   "exit_kept_in_bar": 1
-  },
   "men:PARTIUSDT_SHORT": {
    "exit_promises": 1,
    "exit_broken_no_delivery": 1
@@ -38,6 +28,16 @@
    "exit_promises": 4,
    "exit_kept_late": 1,
    "exit_broken_no_delivery": 3
+  },
+  "inf:PENGUUSDC_LONG": {
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1
+  },
+  "inf:COTIUSDT_SHORT": {
+   "entry_promises": 1,
+   "entry_broken_no_delivery": 1,
+   "exit_promises": 1,
+   "exit_kept_in_bar": 1
   },
   "inf:LTCUSDC_SHORT": {
    "entry_promises": 1,
@@ -135,56 +135,6 @@
   }
  },
  "detail": [
-  {
-   "acct": "inf",
-   "sym_side": "PENGUUSDC_LONG",
-   "kind": "exit",
-   "bar": "10-25 21:00",
-   "late_min": null,
-   "action": "REDUCE",
-   "reason": "WT_CROSS_EXIT_1h_bear",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "inf",
-   "sym_side": "COTIUSDT_SHORT",
-   "kind": "entry",
-   "bar": "10-25 21:00",
-   "late_min": null,
-   "action": "OPEN",
-   "reason": "REENTRY_EXIT_PRICE_BREAK",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "inf",
-   "sym_side": "PENGUUSDC_LONG",
-   "kind": "exit",
-   "bar": "10-25 21:15",
-   "late_min": null,
-   "action": "REDUCE",
-   "reason": "WT_CROSS_EXIT_1h_bear",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "inf",
-   "sym_side": "PENGUUSDC_LONG",
-   "kind": "exit",
-   "bar": "10-25 21:30",
-   "late_min": null,
-   "action": "REDUCE",
-   "reason": "WT_CROSS_EXIT_1h_bear",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "inf",
-   "sym_side": "PENGUUSDC_LONG",
-   "kind": "exit",
-   "bar": "10-25 21:45",
-   "late_min": null,
-   "action": "REDUCE",
-   "reason": "WT_CROSS_EXIT_1h_bear",
-   "outcome": "NO_DELIVERY"
-  },
   {
    "acct": "men",
    "sym_side": "PARTIUSDT_SHORT",

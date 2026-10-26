@@ -439,7 +439,7 @@ def sweep_once(base, cat_side, workers=WORKERS, sibling=None, sibling_base=None)
             rec["error"] += 1
             rec["error_syms"].append(sym)
     tasks = [(sym, int(lc), str(base), mode) for _, sym, lc, _ in ready]
-    with ProcessPoolExecutor(max_workers=min(max(1, workers), 8), mp_context=get_context("fork")) as pool:
+    with ProcessPoolExecutor(max_workers=min(max(1, workers), 12), mp_context=get_context("fork")) as pool:
         futures = {pool.submit(_compute_row_process, task): job for task, job in zip(tasks, ready)}
         for future in as_completed(futures):
             npz, sym, lc, revision = futures[future]

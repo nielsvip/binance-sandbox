@@ -901,7 +901,7 @@ async def run_once(symbol_filter=None):
         log('SUMMARY: All bars complete! ✓')
     print_issue_report()
 
-WS_1M_URL = "wss://fstream.binance.com/stream"
+WS_1M_URL = "wss://fstream.binance.com/market/stream"
 WS_CHUNK_SIZE = 180  # max streams per connection (Binance limit 200)
 
 async def _fetch_stale_1m_rest(symbols):
@@ -981,6 +981,70 @@ async def ws_1m_klines():
     log(f'1m WS: starting {len(chunks)} connection(s) for {len(symbols)} symbols')
     await asyncio.gather(*[_ws_1m_chunk(chunk) for chunk in chunks])
 
+def closed_15m_ws_row(kline, received_at=None):
+    import math
+    received_at = time.time() if received_at is None else float(received_at)
+    try:
+        start_ms = int(kline['t'])
+        close_ms = int(kline['T'])
+        if not kline.get('x') or kline.get('i') != '15m' or start_ms % 900000 or close_ms != start_ms + 899999 or received_at * 1000 < close_ms:
+            return None
+        values = {name: float(kline[key]) for name, key in (('open', 'o'), ('high', 'h'), ('low', 'l'), ('close', 'c'), ('volume', 'v'))}
+        if not all(math.isfinite(value) for value in values.values()) or min(values['open'], values['high'], values['low'], values['close']) <= 0 or values['volume'] < 0 or values['low'] > min(values['open'], values['close']) or values['high'] < max(values['open'], values['close']):
+            return None
+        return {'timestamp': datetime.fromtimestamp(start_ms / 1000, tz=timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ'), **values, '_closed': True, '_provisional': False, '_closed_verified_at': received_at, '_source': 'binance_ws_kline'}
+    except (KeyError, TypeError, ValueError):
+        return None
+
+def publish_closed_15m_ws(symbol, kline):
+    from closed_bar_feed import merge_closed_history, publish_closed_15m
+    row = closed_15m_ws_row(kline)
+    if row is None:
+        return False
+    publish_closed_15m(Path(cfg.KLINES_CACHE_DIR) / f'{symbol}_15m.json', row, merge_closed_history, cfg.BASE_PATH, 'crypto', symbol)
+    return True
+
+async def _ws_15m_chunk(symbols_chunk):
+    streams = '/'.join(f'{symbol.lower()}@kline_15m' for symbol in symbols_chunk)
+    url = f'{WS_1M_URL}?streams={streams}'
+    allowed = set(symbols_chunk)
+    pending = set()
+    limit = asyncio.Semaphore(16)
+    async def publish(symbol, kline):
+        async with limit:
+            await asyncio.to_thread(publish_closed_15m_ws, symbol, kline)
+    def done(task):
+        pending.discard(task)
+        try:
+            task.result()
+        except Exception as exc:
+            log(f'15m WS closed-bar publish error: {type(exc).__name__}: {exc}')
+    while True:
+        try:
+            async with websockets.connect(url, ping_interval=20, ping_timeout=10, close_timeout=5) as ws:
+                log(f'15m WS connected: {len(symbols_chunk)} symbols')
+                while True:
+                    raw = await asyncio.wait_for(ws.recv(), timeout=10)
+                    try:
+                        kline = json.loads(raw).get('data', {}).get('k', {})
+                        symbol = kline.get('s')
+                        if symbol in allowed and kline.get('x') and kline.get('i') == '15m':
+                            task = asyncio.create_task(publish(symbol, kline))
+                            pending.add(task)
+                            task.add_done_callback(done)
+                    except (ValueError, TypeError):
+                        continue
+        except Exception as exc:
+            log(f'15m WS error ({len(symbols_chunk)} syms): {type(exc).__name__}: {exc} — reconnecting in 5s')
+            await asyncio.sleep(5)
+
+async def ws_15m_klines():
+    symbols = sorted(get_active_symbols())
+    chunks = [symbols[i:i + 80] for i in range(0, len(symbols), 80)]
+    log(f'15m WS: starting {len(chunks)} connection(s) for {len(symbols)} symbols')
+    if chunks:
+        await asyncio.gather(*[_ws_15m_chunk(chunk) for chunk in chunks])
+
 async def scheduler(symbol_filter=None):
     log('Starting ez_klines scheduler...')
     if RUN_AT_START:
@@ -1000,7 +1064,7 @@ async def scheduler(symbol_filter=None):
 async def _main():
     _load_ban_state()
     asyncio.create_task(fetch_all_max_historical(['3m', '15m', '1h', '4h', 'D']))
-    await asyncio.gather(scheduler(), ws_1m_klines())
+    await asyncio.gather(scheduler(), ws_1m_klines(), ws_15m_klines())
 
 if __name__ == '__main__':
     try:

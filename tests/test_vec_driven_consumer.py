@@ -671,3 +671,15 @@ def test_board_converge_open_bypasses_board_entry_block(monkeypatch):
     seg = src[src.index("CRYPTO_BOARD_ENTRY_BLOCK"):src.index("CRYPTO_BOARD_ENTRY_BLOCK") + 2000]
     assert '_vec_last_bypassed.append("BOARD_ENTRY_BLOCK")' in seg
     assert "[BOARD_ENTRY_VEC_CONTINUE]" in seg
+
+
+def test_vec_exact_open_bypasses_board_entry_block_with_vec_driven_off(monkeypatch):
+    """A PARITY_VEC_EXACT order remains vector-dictated even when the VEC_DRIVEN master is off."""
+    _mode_live(monkeypatch, on=False)
+    monkeypatch.setattr(EZ._ezm_base_config, "PARITY_VEC_EXACT_MODE", True, raising=False)
+    monkeypatch.setattr(EZ.config, "CRYPTO_BOARD_ENTRY_BLOCK", True, raising=False)
+    from live_twins import vec_exact
+
+    monkeypatch.setattr(vec_exact, "latest_board_ok", lambda *args: (False, "NO_LATEST_BOARD"))
+    with pytest.raises(AttributeError):
+        _run_exec(action="OPEN", reason="VEC_EXACT_TEST |VEC_EXACT")

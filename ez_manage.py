@@ -35078,7 +35078,7 @@ class MultiAccountTradeManager:
                             _zp_allow = False
                         if _zp_allow:
                             logger.warning(f"🧮 [ZERO_PASS_ALLOW] {position_key}: {_bg_why} — calculated sym_side trades (USER 2026-10-21 zero-pass goes completely; risk carried by size). action={action} reason={(reason or '')[:70]}")
-                        elif _vo_armed:
+                        elif _vd_exempt or _vo_armed:
                             _vec_last_bypassed.append("BOARD_ENTRY_BLOCK")
                             logger.warning(f"🧮 [BOARD_ENTRY_VEC_CONTINUE] {position_key}: {_bg_why} — vec-dictated force-open carries the board's own decision; block recorded for VEC_LAST, order continues (USER 2026-10-24 vector-authority). action={action} reason={(reason or '')[:70]}")
                         else:
@@ -36144,7 +36144,6 @@ class MultiAccountTradeManager:
                             # MEASURED 05:1xZ: 4 BLOCKED_LOSING_POSITION_GAIN on flz in 15 min, against 4,720 pending
                             # intents and 0 executions on three accounts.
                             logger.warning(f"[LOSING_POSITION_VEC_EXEMPT] {position_key}: eff={_lpb_gain:.2f}% < MIN_GAIN={_lpb_min:.2f}% but vector-dictated — allowed. action={action}")
-                            _vec_last_bypassed.append("LOSING_POSITION")
                         else:
                             logger.critical(
                                 f"🔨 [LOSING_POSITION_HARD_BLOCK] {position_key}: amt={_lpb_amt:.4f} gain={_lpb_gain_raw:.2f}% (eff={_lpb_gain:.2f}%) < MIN_GAIN={_lpb_min:.2f}% — NEVER augment/reopen/hedge/reenter losing position. action={action} reason={(reason or '')[:60]}"
@@ -36466,7 +36465,6 @@ class MultiAccountTradeManager:
                     _flag_count = _flag_hits(_flag_entry, time.time(), _flag_max_age_h)
                     if _flag_count >= 3 and (_vd_exempt or _vo_armed):
                         logger.warning(f"[FLAGGED_ORIGIN_PARITY_EXEMPT] {position_key}: flagged {_flag_count}× — vec-dictated {action} proceeds (USER 2026-10-22: no vector decision is refused)")
-                        _vec_last_bypassed.append("FLAGGED_ORIGIN")
                     elif _flag_count >= 3:
                         logger.critical(f"🚫 [FLAGGED_ORIGIN_BLOCK] {position_key}: flagged {_flag_count}× — entry BLOCKED. reasons={_flag_entry.get('reasons', [])[:3]}")
                         return f"BLOCKED_FLAGGED_ORIGIN_{_flag_count}x"
@@ -37225,7 +37223,6 @@ class MultiAccountTradeManager:
                     # not glitch churn. Count + log, no halt, no refusal. Native keeps it.
                     if _vd_exempt or _vo_armed:
                         logger.warning(f"[CHURN_PARITY_EXEMPT] {_acct}: {_cache.get('min_total',0)} trades/min on vec-dictated {action} — counted, proceeds (USER 2026-10-22)")
-                        _vec_last_bypassed.append("CHURN_BRAKE")
                     else:
                         logger.critical(f"🛑 [EMERGENCY_BRAKE_10/MIN] {_acct}: {_cache.get('min_total',0)} trades/min — HALTED. Max {int(getattr(config, 'EMERGENCY_BRAKE_MAX_TRADES_PER_MIN', 10))}. Churn detected.")
                         try:

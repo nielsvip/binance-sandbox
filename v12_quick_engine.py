@@ -4240,7 +4240,7 @@ class QuickConfig:
     # cat_side default (cat_side_defaults.get_for) > the single value in this class. False = old single-default behaviour.
     CAT_SIDE_DEFAULTS_ENABLED: bool = True
     LTF_SUB15M_TRADING_ENABLED: bool = False
-    ANG_TIMING_GATE_ENABLED: bool = True
+    ANG_TIMING_GATE_ENABLED: bool = False
     ANG_TIMING_VECTOR_ACCOUNT_KEY: str = ""  # shared forward state is account-neutral; live twin injects the real account
     ANG_TIMING_ACCOUNTS: tuple = ("ang",)
     ANG_TIMING_LOOKBACK: int = 20
