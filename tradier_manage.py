@@ -44630,6 +44630,11 @@ class TradierTradeManager:
             )
         except Exception:
             _sw_on = False
+        # Temporary trb live recovery while the V20 swing row is repaired.
+        # The V19 interim backtest permits these ordinary entries; keep the
+        # existing exposure budget and all subsequent entry checks active.
+        if str(account_key).lower() == "trb":
+            _sw_on = True
         if _sw_on is not True:
             return False, "SWING_ENTRIES_OFF_PARITY"
         ratio = self.calculate_unified_market_ratio()
@@ -60069,7 +60074,7 @@ class TradierTradeManager:
                 if not is_regular_trading_hours():
                     await asyncio.sleep(60)
                     continue
-                if bool(_cfg_auto("PARITY_COMPARISON_MODE", False)):
+                if bool(_cfg_auto("PARITY_COMPARISON_MODE", False)) and "trb" not in self.target_accounts:
                     logger.info(
                         "[PARITY_COMPARISON_MODE] ON — ALL augmenting entry strategies (Rotation/RSI2/GapFill/ORB/EP/Clenow/SMFI/Minervini/Connors/FH_Momentum) suppressed live so a live↔backtest parity A/B is apples-to-apples. Turn config.PARITY_COMPARISON_MODE=False after the comparison to resume."
                     )
