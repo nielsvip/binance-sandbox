@@ -1,22 +1,33 @@
 {
-  "ts": "2026-10-26T03:00:04.592991+00:00",
-  "tick": "2026-10-26T02:58:02.276548+00:00",
-  "tick_age_s": 122,
+  "ts": "2026-10-26T03:05:03.848506+00:00",
+  "tick": "2026-10-26T03:04:01.394851+00:00",
+  "tick_age_s": 62,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run37.json",
     "round": "run37",
     "complete": false,
     "universe_n": 212,
-    "n_complete": 1,
-    "n_pending": 211,
+    "n_complete": 2,
+    "n_pending": 210,
     "n_refused_only": 0,
     "n_excluded": 0,
     "n_launchable_pending": 199,
     "hosts_not_visible": []
   },
   "hosts": {
+    "s6": {
+      "cpu_pct": 26,
+      "slots": "4/4",
+      "observed_running": [
+        "GALAUSDT",
+        "PTBUSDT"
+      ],
+      "published_last_hour": 3,
+      "idle_reason": null,
+      "mem_avail_mb": 17077
+    },
     "s1": {
-      "cpu_pct": 72,
+      "cpu_pct": 89,
       "slots": "3/4",
       "observed_running": [
         "BLURUSDT",
@@ -25,34 +36,10 @@
       ],
       "published_last_hour": 0,
       "idle_reason": "mem guard",
-      "mem_avail_mb": 9259
-    },
-    "s5": {
-      "cpu_pct": 25,
-      "slots": "4/4",
-      "observed_running": [
-        "ACN",
-        "MAGICUSDT",
-        "RUNEUSDT"
-      ],
-      "published_last_hour": 1,
-      "idle_reason": null,
-      "mem_avail_mb": 20992
-    },
-    "s6": {
-      "cpu_pct": 56,
-      "slots": "3/4",
-      "observed_running": [
-        "COTIUSDT",
-        "GALAUSDT",
-        "PTBUSDT"
-      ],
-      "published_last_hour": 3,
-      "idle_reason": "mem guard",
-      "mem_avail_mb": 9756
+      "mem_avail_mb": 4915
     },
     "s2": {
-      "cpu_pct": 47,
+      "cpu_pct": 99,
       "slots": "4/4",
       "observed_running": [
         "GRASSUSDT",
@@ -62,18 +49,29 @@
       ],
       "published_last_hour": 0,
       "idle_reason": "slots full",
-      "mem_avail_mb": 14238
+      "mem_avail_mb": 6438
+    },
+    "s5": {
+      "cpu_pct": 52,
+      "slots": "4/4",
+      "observed_running": [
+        "ACN",
+        "MAGICUSDT",
+        "RUNEUSDT"
+      ],
+      "published_last_hour": 1,
+      "idle_reason": "slots full",
+      "mem_avail_mb": 20452
     }
   },
   "one_hour_total": 4,
   "alerts": [
-    "LOW_THROUGHPUT:s1:0/h",
-    "LOW_CPU:s1:72%",
-    "LOW_THROUGHPUT:s5:1/h",
-    "LOW_CPU:s5:25%",
     "LOW_THROUGHPUT:s6:3/h",
-    "LOW_CPU:s6:56%",
+    "LOW_CPU:s6:26%",
+    "LOW_THROUGHPUT:s1:0/h",
+    "LOW_CPU:s1:89%",
     "LOW_THROUGHPUT:s2:0/h",
-    "LOW_CPU:s2:47%"
+    "LOW_THROUGHPUT:s5:1/h",
+    "LOW_CPU:s5:52%"
   ]
 }

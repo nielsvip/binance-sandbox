@@ -7158,10 +7158,12 @@ class PositionService:
                                 except Exception:
                                     _ep = 0.0
                                 _new, _src = _fixed_stop_core.freeze_software_level(_is_long, _dlo, _dhi, _ep), "LIVE_CHANNEL"
-                            if _new > 0 and _lvl > 0 and _oa_ep is not None and abs(_anchor - float(_oa_ep)) <= 1.0 and _fixed_stop_core.loosens(_is_long, _lvl, _new):
+                            if _new > 0 and _lvl > 0 and _src != "ENTRY_BAR" and _oa_ep is not None and abs(_anchor - float(_oa_ep)) <= 1.0 and _fixed_stop_core.loosens(_is_long, _lvl, _new):
                                 # USER 2026-10-17: "can not move further away from entry price ever". opened_at still
                                 # matches the anchor, so this is the SAME trade — the level is frozen, not re-derived.
                                 # A new lifecycle re-stamps opened_at and is exempt (different trade, own entry bar).
+                                # An authenticated entry-bar rebuild is authoritative too: it replaces an
+                                # older BB/1h software level even when the canonical dc15 level is lower.
                                 logger.critical(f"🛡️ [FIXED_STOP_RATCHET] {position_key}: refusing {_lvl:.6f} -> {_new:.6f} — that is FURTHER from entry inside one lifecycle (opened_at unchanged); frozen level kept")
                                 if _src == "ENTRY_BAR":
                                     _fx_ver.add(_fx_vkey)
@@ -7193,13 +7195,9 @@ class PositionService:
                                     except Exception:
                                         pass
                                     _lvl = _new
-                                if _fx_changed and str(getattr(position, "exchange_stop_order_id", "") or ""):
-                                    # the resting backstop belongs to the OLD level: drop the record so the ensure leg
-                                    # cancels/replaces it at the new one instead of adopting a stop that can never trigger
-                                    try:
-                                        position.exchange_stop_order_id = ""
-                                    except Exception:
-                                        pass
+                                # Preserve the existing exchange order. It was placed at
+                                # the original entry-time dc15 ±0.40% level, so changing
+                                # an older software BB/1h stop must not cancel that order.
                                 _lvl = _new
                     if _lvl <= 0 or tm is None:
                         continue
@@ -14060,11 +14058,8 @@ def calculate_tier_mult(i: dict, is_long: bool) -> int:
 _SVC_CSD_MISSING = object()
 
 def _svc_fixed_stop_spec(symbol: str, side: str):
-    """E7 2026-10-20: FIXED_STOP reference spec of this sym_side via _svc_psym_get (same layers as ez_manage._fixed_stop_spec_for). Never raises."""
-    try:
-        return _fixed_stop_core.normalize_spec(_svc_psym_get(symbol, side, "FIXED_STOP_REF_FIELD", getattr(config, "FIXED_STOP_REF_FIELD", "dc_low")), _svc_psym_get(symbol, side, "FIXED_STOP_REF_TF", getattr(config, "FIXED_STOP_REF_TF", "15m")), _svc_psym_get(symbol, side, "FIXED_STOP_BUFFER_PCT", getattr(config, "FIXED_STOP_BUFFER_PCT", 0.25)), _svc_psym_get(symbol, side, "FIXED_STOP_TIGHTEN_MODE", getattr(config, "FIXED_STOP_TIGHTEN_MODE", "off")), _svc_psym_get(symbol, side, "FIXED_STOP_TIGHTEN_TRIGGER_PCT", getattr(config, "FIXED_STOP_TIGHTEN_TRIGGER_PCT", 1.0)))
-    except Exception:
-        return _fixed_stop_core.DEFAULT_SPEC
+    """The mandatory entry-time dc15 software stop is fixed at 0.25%."""
+    return _fixed_stop_core.DEFAULT_SPEC
 
 def _svc_fixed_stop_ref_tag(spec) -> str:
     """E7: reason tail for a non-default reference ("" for today's spec, so default reasons stay byte-identical)."""

@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-26T02:40:03Z",
+ "generated_utc": "2026-10-26T03:00:01Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": null,
  "market_open": false,
@@ -16,7 +16,7 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "filled_today": 519,
+    "filled_today": 514,
     "filled_before_open": 0
    },
    "detail": "no board was filled before the open"
@@ -41,7 +41,7 @@
    "measured": {
     "built_at": "2026-10-26T01:51:20.030537+00:00",
     "n": 532,
-    "age_at_open_s": 2923
+    "age_at_open_s": 4122
    },
    "detail": "built 2026-10-26T01:51:20.030537+00:00 n=532"
   },
@@ -149,6 +149,19 @@
       ]
      },
      {
+      "sym_side": "PWR_SHORT",
+      "published_at": "2026-10-26T00:01:57Z",
+      "material": 56,
+      "sample": [
+       "ADX_REGIME_FILTER_ENABLED",
+       "ATR_ADAPTIVE_STOP_MULT",
+       "ATR_ADAPTIVE_STOP_TF",
+       "AUGMENT_INTO_REENTRY_ENABLED",
+       "COOLDOWN_BARS_TRADIER",
+       "COUNTER_TREND_ADD_BLOCK_ENABLED"
+      ]
+     },
+     {
       "sym_side": "APO_SHORT",
       "published_at": "2026-10-20T11:43:52Z",
       "material": 55,
@@ -186,19 +199,6 @@
        "DC_EDGE_SIZING_MIN_MULT",
        "DC_HARD_STOP_1H_ENABLED"
       ]
-     },
-     {
-      "sym_side": "RRC_LONG",
-      "published_at": "2026-10-22T20:51:17Z",
-      "material": 37,
-      "sample": [
-       "ATR_ADAPTIVE_SIZING_ENABLED",
-       "ATR_ADAPTIVE_STOP_MULT",
-       "ATR_ADAPTIVE_STOP_TF",
-       "BAR_PATTERNS_FILTER_TF",
-       "COOLDOWN_BARS_TRADIER",
-       "COUNTER_TREND_ADD_BLOCK_ENABLED"
-      ]
      }
     ]
    },
@@ -210,21 +210,21 @@
    "critical": true,
    "measured": {
     "symbols": 202,
-    "stale_over_90min": 105,
-    "stale_pct": 52.0,
-    "median_age_min": 100.1,
+    "stale_over_90min": 197,
+    "stale_pct": 97.5,
+    "median_age_min": 120.0,
     "sample": [
+     "1000PEPEUSDC",
+     "1000SATSUSDT",
+     "1000SHIBUSDC",
+     "1000XECUSDT",
+     "1INCHUSDT",
+     "1MBABYDOGEUSDT",
      "AAVEUSDC",
-     "ACEUSDT",
-     "ACHUSDT",
-     "ACTUSDT",
-     "ADAUSDC",
-     "AGLDUSDT",
-     "AIAUSDT",
-     "ALGOUSDT"
+     "ACEUSDT"
     ]
    },
-   "detail": "105/202 symbols past the live 90-min entry gate (52.0%)"
+   "detail": "197/202 symbols past the live 90-min entry gate (97.5%)"
   },
   {
    "name": "s1_sets_synced",
