@@ -1,5 +1,7 @@
 import json
+import os
 from pathlib import Path
+import time
 
 from tools.history_7d_sync import apply, export, lease_authorized, merge
 
@@ -9,7 +11,7 @@ def _event(ts, kind, price):
 
 
 def test_two_hosts_merge_recent_trades_without_losing_older_history(tmp_path):
-    now = 1_800_000_000.0
+    now = time.time()
     mac, s1 = tmp_path / "mac", tmp_path / "s1"
     rel = Path("data/history/men/ARBUSDC_LONG.jsonl")
     for root in (mac, s1):
@@ -19,6 +21,8 @@ def test_two_hosts_merge_recent_trades_without_losing_older_history(tmp_path):
     s1_new = _event(now - 30, "OPEN", 1.2)
     (mac / rel).write_text(old + mac_new)
     (s1 / rel).write_text(old + s1_new + "malformed\n")
+    os.utime(mac / rel, (now, now))
+    os.utime(s1 / rel, (now, now))
     union = merge([export(mac, now), export(s1, now)])
     assert sum(map(len, union["rows"].values())) == 2
     first = apply(mac, union, "test")
@@ -35,13 +39,14 @@ def test_two_hosts_merge_recent_trades_without_losing_older_history(tmp_path):
 
 
 def test_rotated_recent_rows_reach_other_host_and_older_rows_do_not(tmp_path):
-    now = 1_800_000_000.0
+    now = time.time()
     source, dest = tmp_path / "source", tmp_path / "dest"
     archive = source / "data/history/fin/QNTUSDT_SHORT.jsonl.202610261200.bak"
     archive.parent.mkdir(parents=True)
     archive.write_text(
         _event(now - 8 * 86400, "OPEN", 3.0) + _event(now - 10, "CLOSE", 3.2)
     )
+    os.utime(archive, (now, now))
     pack = export(source, now)
     assert sum(map(len, pack["rows"].values())) == 1
     assert apply(dest, pack, "test")["added_rows"] == 1

@@ -85,6 +85,8 @@ def export(root, now, days=7):
         if rel is None or not path.is_file():
             continue
         try:
+            if path.stat().st_mtime < cutoff - 300:
+                continue
             with path.open(encoding="utf-8", errors="replace") as source:
                 for line in source:
                     item = _identity(line)
@@ -221,6 +223,7 @@ def _trade_signature(line):
 
 def apply(root, pack, backup_stamp, dry_run=False):
     history = root / "data/history"
+    cutoff = float(pack["now"]) - float(pack["days"]) * 86400
     changed = 0
     added = 0
     ambiguous = 0
@@ -232,6 +235,8 @@ def apply(root, pack, backup_stamp, dry_run=False):
         signatures = {}
         for path in sorted(target.parent.glob(target.name + "*")):
             if _rel(path, history) != rel or not path.is_file():
+                continue
+            if path.stat().st_mtime < cutoff - 300:
                 continue
             with path.open(encoding="utf-8", errors="replace") as source:
                 for line in source:
