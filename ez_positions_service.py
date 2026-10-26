@@ -6297,20 +6297,8 @@ class PositionService:
             logger.error(f"[_check_for_deletions] Error during check: {e}")
 
     def _restore_lifecycle_sanitize(self, position_key, pos_data, source):
-        """USER 2026-10-14: a restored FLAT row belongs to a closed lifecycle — never carry its opened_at / entry_price /
-        max_gain into whatever the broker holds now (the broker sync stamps the new lifecycle from broker truth)."""
-        try:
-            if abs(safe_fetch_float(pos_data.get("positionAmt", 0), 0)) > 0:
-                return pos_data
-            if pos_data.get("opened_at") or safe_fetch_float(pos_data.get("entry_price", 0), 0) > 0 or safe_fetch_float(pos_data.get("max_gain", 0), 0) != 0:
-                logger.warning(f"[RESTORE_LIFECYCLE_SANITIZED] {position_key}: flat row from {source} — closed-lifecycle opened_at={pos_data.get('opened_at')} entry={pos_data.get('entry_price')} max_gain={pos_data.get('max_gain')} NOT carried")
-            pos_data["opened_at"] = None
-            pos_data["entry_price"] = 0.0
-            pos_data["max_gain"] = 0.0
-            pos_data["gain"] = 0.0
-            return pos_data
-        except Exception:
-            return pos_data
+        """Keep historical fields on flat rows; broker quantity reconciliation does not erase their record."""
+        return pos_data
 
     def _restore_position_from_backups_blocking(self, account_key: str, symbol: str, position_side: str) -> Optional[Position]:
         """Synchronous worker for restore_position_from_backups. Performs all disk I/O. MUST be invoked via asyncio.to_thread — never on the event loop directly. Event-loop blocking here caused process_account_update HUNG > 120s on 2026-04-29."""
@@ -11698,8 +11686,6 @@ class PositionService:
         self._housekeeping_stop = False
         self._position_flush_event = asyncio.Event()
         self._prev_gain_task = asyncio.create_task(self.update_prev_gain_periodically())
-        self._pnl_deterioration_task = asyncio.create_task(self.update_pnl_deterioration_periodically())
-        self._pnl_decay_task = asyncio.create_task(self._pnl_decay_loop())
         self._position_logging_task = asyncio.create_task(self._log_top_positions_loop())
         self._position_flush_task = asyncio.create_task(self._position_flush_loop())
         self._redis_refresh_task = asyncio.create_task(self._positions_redis_refresh_loop())

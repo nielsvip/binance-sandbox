@@ -1,57 +1,32 @@
 {
- "generated_at": "2026-10-26 01:17 UTC",
- "total_capital_usd": 66.74,
+ "generated_at": "2026-10-26 01:20 UTC",
+ "total_capital_usd": 24.91,
  "tier_capital": {
   "A": 0.0,
-  "B": 8.39,
-  "C": 58.34
+  "B": 0.0,
+  "C": 24.91
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 2
+  "B": 0,
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "inf:RAYSOLUSDT_LONG",
-  "inf:COTIUSDT_SHORT"
+  "fin:MAGICUSDT_SHORT"
  ],
- "mediocre": [
-  "inf:LTCUSDC_SHORT"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "inf:RAYSOLUSDT_LONG",
-   "symbol": "RAYSOLUSDT",
-   "account": "inf",
-   "value_usd": 44.85,
-   "gain_pct": -0.037,
+   "pk": "fin:MAGICUSDT_SHORT",
+   "symbol": "MAGICUSDT",
+   "account": "fin",
+   "value_usd": 24.91,
+   "gain_pct": 0.498,
    "tier": "C",
-   "perf_mult": 0.37,
-   "amt": 24.6,
-   "mark": 1.82325647
-  },
-  {
-   "pk": "inf:COTIUSDT_SHORT",
-   "symbol": "COTIUSDT",
-   "account": "inf",
-   "value_usd": 13.49,
-   "gain_pct": 0.016,
-   "tier": "C",
-   "perf_mult": 0.45,
-   "amt": 1299.0,
-   "mark": 0.01038539
-  },
-  {
-   "pk": "inf:LTCUSDC_SHORT",
-   "symbol": "LTCUSDC",
-   "account": "inf",
-   "value_usd": 8.39,
-   "gain_pct": -0.029,
-   "tier": "B",
-   "perf_mult": 0.55,
-   "amt": 0.148,
-   "mark": 56.72
+   "perf_mult": 0.15,
+   "amt": 304.0,
+   "mark": 0.08193
   }
  ]
 }

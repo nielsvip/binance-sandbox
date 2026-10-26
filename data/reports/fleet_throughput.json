@@ -1,7 +1,7 @@
 {
-  "ts": "2026-10-26T01:15:05.219801+00:00",
-  "tick": "2026-10-26T01:14:01.979622+00:00",
-  "tick_age_s": 63,
+  "ts": "2026-10-26T01:20:04.671572+00:00",
+  "tick": "2026-10-26T01:18:01.751651+00:00",
+  "tick_age_s": 123,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run36.json",
     "round": "run36",
@@ -16,12 +16,12 @@
   },
   "hosts": {
     "s5": {
-      "cpu_pct": 21,
-      "slots": "0/4",
+      "cpu_pct": 64,
+      "slots": "1/4",
       "observed_running": [],
       "published_last_hour": 2,
-      "idle_reason": "no eligible ready symbol for this host",
-      "mem_avail_mb": 25287
+      "idle_reason": null,
+      "mem_avail_mb": 27157
     },
     "s1": {
       "cpu_pct": 100,
@@ -30,9 +30,9 @@
         "ACTUSDT",
         "ZILUSDT"
       ],
-      "published_last_hour": 3,
+      "published_last_hour": 2,
       "idle_reason": "mem guard",
-      "mem_avail_mb": 13124
+      "mem_avail_mb": 9453
     },
     "s2": {
       "cpu_pct": 100,
@@ -44,31 +44,28 @@
         "HYPEUSDT"
       ],
       "published_last_hour": 0,
-      "idle_reason": null,
-      "mem_avail_mb": 13916
+      "idle_reason": "slots full",
+      "mem_avail_mb": 8481
     },
     "s6": {
-      "cpu_pct": 40,
+      "cpu_pct": 97,
       "slots": "4/4",
       "observed_running": [
-        "SNDK",
         "T",
         "TTD",
-        "UEC"
+        "UEC",
+        "ULTA"
       ],
-      "published_last_hour": 4,
+      "published_last_hour": 5,
       "idle_reason": "slots full",
-      "mem_avail_mb": 24217
+      "mem_avail_mb": 22109
     }
   },
   "one_hour_total": 9,
   "alerts": [
     "LOW_THROUGHPUT:s5:2/h",
-    "LOW_CPU:s5:21%",
-    "IDLE:s5:no eligible ready symbol for this host",
-    "LOW_THROUGHPUT:s1:3/h",
-    "LOW_THROUGHPUT:s2:0/h",
-    "LOW_THROUGHPUT:s6:4/h",
-    "LOW_CPU:s6:40%"
+    "LOW_CPU:s5:64%",
+    "LOW_THROUGHPUT:s1:2/h",
+    "LOW_THROUGHPUT:s2:0/h"
   ]
 }

@@ -60,6 +60,16 @@ def closes_for(symbol, tf, min_bars):
     data = jload(ROOT / "klines_cache" / f"{symbol}_{tf}.json", None)
     if not isinstance(data, list) or len(data) < min_bars:
         return None
+    # The newest row is forming; require it to belong to the current UTC
+    # candle so [-2] is the most recently closed candle, never an old close.
+    try:
+        now = _dt.datetime.now(_dt.timezone.utc)
+        expected = now.replace(hour=0, minute=0, second=0, microsecond=0) if tf == "D" else now.replace(minute=0, second=0, microsecond=0)
+        newest = _dt.datetime.fromisoformat(str(data[-1]["timestamp"]).replace("Z", "+00:00"))
+        if newest.tzinfo is None or newest.astimezone(_dt.timezone.utc) != expected:
+            return None
+    except (KeyError, TypeError, ValueError):
+        return None
     out = []
     for bar in data:
         try:
@@ -295,6 +305,19 @@ def main(argv=None):
                 except Exception:
                     pass
                 atomic_write_json(dest, book)
+            # Generic readers use this union; keep it in step with the two
+            # directional SMA books, while admission remains side-specific.
+            union_dest = ROOT / f"symbols_{account}.json"
+            if union_dest.exists():
+                shutil.copy2(
+                    union_dest,
+                    ROOT / "backups" / f"before_outlier_universe_{tag}_{union_dest.name}",
+                )
+            atomic_write_json(
+                union_dest,
+                sorted(set(report["accounts"][account]["books"]["LONG"])
+                       | set(report["accounts"][account]["books"]["SHORT"])),
+            )
         report["applied"] = True
         print(f"[outlier-universe] APPLIED {_summary()}")
     else:
