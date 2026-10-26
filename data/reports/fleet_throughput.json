@@ -1,7 +1,7 @@
 {
-  "ts": "2026-10-26T13:55:09.513200+00:00",
+  "ts": "2026-10-26T14:00:09.233171+00:00",
   "tick": "2026-10-26T13:10:02.083155+00:00",
-  "tick_age_s": 2707,
+  "tick_age_s": 3007,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run37.json",
     "round": "run37",
@@ -50,7 +50,7 @@
   },
   "one_hour_total": 0,
   "alerts": [
-    "SCHEDULER_STALE:2707s",
+    "SCHEDULER_STALE:3007s",
     "LOW_THROUGHPUT:s1:0/h",
     "IDLE:s1:disk guard",
     "LOW_THROUGHPUT:s2:0/h",
