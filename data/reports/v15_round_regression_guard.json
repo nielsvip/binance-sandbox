@@ -1,21 +1,21 @@
 {
- "at": "2026-10-26T08:26:01Z",
+ "at": "2026-10-26T09:26:01Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
  "hosts": {
   "s1": {
-   "published_n": 3,
-   "per_hour": 1.5,
-   "improved_vs_best_start": 3,
-   "mean_uplift_vs_best_start": 41.2172,
-   "median_uplift": 27.6759,
-   "chained_from_previous_published": 2,
+   "published_n": 2,
+   "per_hour": 1.0,
+   "improved_vs_best_start": 2,
+   "mean_uplift_vs_best_start": 47.9879,
+   "median_uplift": 75.1217,
+   "chained_from_previous_published": 1,
    "no_floor_recorded": 0,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 1.5/h < 12.0/h (one per 5 min)"
+    "throughput 1.0/h < 12.0/h (one per 5 min)"
    ],
    "rows": [
     {
@@ -32,21 +32,6 @@
      "bh": 55.75914544408553,
      "verdict": null,
      "npz_age_h_at_publish": 1.42
-    },
-    {
-     "symside": "RVNUSDT_SHORT",
-     "published_at": 1792996402.523201,
-     "final_gain": 78.50171700776819,
-     "best_start_gain": 50.82578456165396,
-     "best_start_chosen": "history_1",
-     "best_start_candidates": 9,
-     "baseline_gain": 50.82578456165396,
-     "npz_ts_last": 1792992600.0,
-     "npz_md5": "c47a8226e4988ef1da5cab48d18ecfe3",
-     "npz_bars": 43320,
-     "bh": 45.31445035674195,
-     "verdict": null,
-     "npz_age_h_at_publish": 1.06
     },
     {
      "symside": "ZILUSDT_SHORT",
