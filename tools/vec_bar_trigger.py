@@ -118,6 +118,14 @@ def main():
     ap.add_argument("--workers", type=int, default=WORKERS)
     a = ap.parse_args()
     base = a.base or str(ROOT)
+    import fcntl
+    lock_path = Path(base) / 'data' / f'.vec_bar_trigger_{a.shard}.lock'
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    singleton = lock_path.open('a')
+    try:
+        fcntl.flock(singleton, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        return 0
     while True:
         try:
             rec = run_once(base, a.shard, workers=a.workers, verbose=True)

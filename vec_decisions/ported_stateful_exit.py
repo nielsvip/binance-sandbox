@@ -305,7 +305,7 @@ def masks(npz, n, is_long, cfg, _safe, close, sym=None):
     # k_against >= WRONG_SIDE_K_TFS_REQUIRED (no gain gate: 'bypasses STRICT_NO_LOSS by design'). 3m has no NPZ array -> 15m floor.
     # Live default ENABLED=False (config.py) -> baseline unchanged; flipping it (or the knobs while enabled) moves the ledger.
     try:
-        if str(getattr(cfg, 'MODE', 'crypto')) != 'tradier' and _fbool(cfg, 'WRONG_SIDE_ABS_KILL_ENABLED', False):
+        if str(getattr(cfg, 'MODE', 'crypto')) != 'tradier' and _fbool(cfg, 'LTF_SUB15M_TRADING_ENABLED', False) and _fbool(cfg, 'WRONG_SIDE_ABS_KILL_ENABLED', False):
             _ws_wt_req = int(_fnum(cfg, 'WRONG_SIDE_WT_TFS_REQUIRED', 5))
             _ws_k_req = int(_fnum(cfg, 'WRONG_SIDE_K_TFS_REQUIRED', 3))
             _ws_cnt = np.zeros(n, dtype=int)

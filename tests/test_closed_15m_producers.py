@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def load_functions(filename, names, base):
     tree = ast.parse((ROOT / filename).read_text())
     nodes = [node for node in ast.walk(tree) if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name in names]
-    namespace = dict(asyncio=asyncio, json=json, orjson=orjson, logging=logging, logger=logging.getLogger('test_closed'), os=os, tempfile=tempfile, time=time, OrderedDict=OrderedDict, ThreadPoolExecutor=ThreadPoolExecutor, datetime=datetime, timedelta=timedelta, timezone=timezone, Path=Path, BASE_PATH=base)
+    namespace = dict(Dict=dict, asyncio=asyncio, json=json, orjson=orjson, logging=logging, logger=logging.getLogger('test_closed'), os=os, tempfile=tempfile, time=time, OrderedDict=OrderedDict, ThreadPoolExecutor=ThreadPoolExecutor, datetime=datetime, timedelta=timedelta, timezone=timezone, Path=Path, BASE_PATH=base)
     exec(compile(ast.Module(body=nodes, type_ignores=[]), filename, 'exec'), namespace)
     return namespace
 
@@ -224,3 +224,45 @@ async def test_preparation_runs_at_minute13_and_loads_prefix_before_boundary(tmp
     await run_clock_once(ns, 'prepare_closed_15m_loop', obj, start + 780)
     assert len(obj._closed_15m_prepared[('TEST', start)]) == 13
     assert obj._closed_15m_universe == ['TEST']
+
+
+@pytest.mark.asyncio
+async def test_stock_capture_uses_fresh_receipt_while_preserving_old_exchange_timestamp(tmp_path):
+    names = {'_write_provisional_15m', '_timestamp_epoch', '_tradier_15m_bucket'}
+    ns = load_functions('tradier_prices.py', names, tmp_path)
+    now = int(datetime(2026, 10, 26, 19, 13, tzinfo=timezone.utc).timestamp())
+    ns['time'] = SimpleNamespace(time=lambda: now)
+    ns['_write_provisional_stock_15m'] = lambda path, row: True
+    bucket = now - 13 * 60
+    obj = SimpleNamespace(config=SimpleNamespace(BASE_PATH=tmp_path, KLINES_CACHE_DIR=tmp_path), _provisional_15m={'FRESH': {'bucket_ts': bucket, 'minute_bars': {}}, 'STALE': {'bucket_ts': bucket, 'minute_bars': {}}}, _provisional_15m_sig={}, _provisional_write_sem=asyncio.Semaphore(16), fetcher_id='test')
+    await ns['_write_provisional_15m'](obj, {'FRESH': {'price': 120, 'timestamp': now - 3600, 'received_at': now}, 'STALE': {'price': 999, 'timestamp': now - 3600, 'received_at': now - 30}})
+    assert obj._provisional_15m['FRESH']['minute_bars'][now]['close'] == 120
+    assert obj._provisional_15m['STALE']['minute_bars'] == {}
+    await asyncio.gather(*obj._provisional_io_tasks.values())
+
+
+@pytest.mark.asyncio
+async def test_stock_fast_batch_updates_capture_cache_before_slow_batch_and_failed_cache_not_restamped(tmp_path):
+    ns = load_functions('tradier_prices.py', {'fetch_quotes', '_timestamp_epoch'}, tmp_path)
+    slow = asyncio.Event()
+    old = int(datetime(2020, 1, 1, tzinfo=timezone.utc).timestamp())
+    class API:
+        async def get_quotes(self, symbols):
+            if symbols == ['S50']:
+                await slow.wait()
+                return {}
+            return {symbol: {'bid': 100, 'ask': 102, 'last': 90, 'volume': 1000, 'date': old * 1000} for symbol in symbols}
+    cached = {'price': 10, 'timestamp': old, 'received_at': old}
+    obj = SimpleNamespace(api_client=API(), symbols=[f'S{i}' for i in range(51)], price_cache={'S50': cached})
+    task = asyncio.create_task(ns['fetch_quotes'](obj))
+    for _ in range(20):
+        if 'S0' in obj.price_cache:
+            break
+        await asyncio.sleep(0.005)
+    assert not task.done()
+    assert obj.price_cache['S0']['price'] == 101
+    assert obj.price_cache['S0']['timestamp'].startswith('2020-01-01')
+    assert obj.price_cache['S0']['received_at'] > old
+    slow.set()
+    result = await task
+    assert result['S50'] is cached and result['S50']['received_at'] == old

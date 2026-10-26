@@ -908,18 +908,31 @@ def load_sets():
             raise RuntimeError(f"current per-sym SQL store missing: {db}")
         from per_sym_live_set import _apply_caps
         result = {}
+        cat_doc = {}
+        try:
+            cat_doc = json.loads((VL / "cat_side_full_defaults.json").read_text())
+            if _now() - float((cat_doc.get("_meta") or {}).get("generated_ts") or 0) > 1800:
+                cat_doc = {}
+        except (OSError, ValueError, TypeError):
+            cat_doc = {}
         connection = sqlite3.connect(f"file:{db.resolve()}?mode=ro", uri=True, timeout=5)
         try:
             for symbol_side, entry in vd.items():
                 if symbol_side.startswith("_") or not isinstance(entry, dict) or entry.get("mode") != "live":
                     continue
                 row = connection.execute("SELECT updated_at,full_config_json FROM per_sym_active WHERE sym_side=?", (symbol_side,)).fetchone()
-                if not row or not row[1]:
-                    continue
-                full = json.loads(row[1])
+                if row and row[1]:
+                    full = json.loads(row[1])
+                    source = "per_sym_store.active"
+                    updated = row[0]
+                else:
+                    side = symbol_side.rsplit("_", 1)[-1]
+                    full = cat_doc.get(f"CRYPTO_{side}") if symbol_side.endswith(("USDT_LONG", "USDT_SHORT", "USDC_LONG", "USDC_SHORT")) else None
+                    source = "cat_side_defaults.live"
+                    updated = (cat_doc.get("_meta") or {}).get("generated_utc")
                 if not isinstance(full, dict) or not full or _fabricated(full):
                     continue
-                result[symbol_side] = ({"mode": "live", "account": entry.get("account") or "ez", "set_source": "per_sym_store.active", "settings_updated_at": row[0]}, _apply_caps(symbol_side, full))
+                result[symbol_side] = ({"mode": "live", "account": entry.get("account") or "ez", "set_source": source, "settings_updated_at": updated}, _apply_caps(symbol_side, full))
         finally:
             connection.close()
         return result

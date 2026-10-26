@@ -2994,11 +2994,13 @@ def side_cmd(host, sym, side, window, pdir, attempt, workers):
         # New stock boards retain the proven V19 calculation while the V20
         # swing-entry row is repaired. Crypto uses V20 only after its same-NPZ
         # proof and engine fleet sync are explicitly activated for this launcher.
-        if venue == "crypto" and os.environ.get("V15_CRYPTO_V20_READY") == "1":
+        _crypto_v20_ready = venue == "crypto" and (os.environ.get("V15_CRYPTO_V20_READY") == "1" or (ROOT / "v20_runtime" / "CRYPTO_V20_READY").exists())
+        if _crypto_v20_ready:
             env += " V15_V19_INTERIM=0 V15_UNWIRED_SKIP=1 V15_START_OVERRIDES="
         else:
             env += " V15_V19_INTERIM=1 V15_UNWIRED_SKIP=1 V15_START_OVERRIDES= PYTHONPATH=/home/niels/binance-sandbox/tools/v19_runtime${PYTHONPATH:+:$PYTHONPATH}"
-        body = f"{env} /home/niels/.conda/envs/binance_env_mac/bin/python -u v15_pilot.py --sym-side {ss} --template {t} --seq-mode worst2best --window-days 30 --vector-only --workers {workers}"
+        _pilot_root = "/home/niels/binance-sandbox/v20_runtime" if _crypto_v20_ready else "/home/niels/binance-sandbox"
+        body = f"cd {_pilot_root} && {env} /home/niels/.conda/envs/binance_env_mac/bin/python -u v15_pilot.py --sym-side {ss} --template {t} --seq-mode worst2best --window-days 30 --vector-only --workers {workers}"
     elif window == "365D":
         body = (f"mkdir -p {chain}/v365 && nice -n 10 /home/niels/.conda/envs/binance_env_mac/bin/python -u tools/v15_365_cycle.py --sym-side {ss} --progress {pdir}/{ss}_v14_progress.json "
                 f"--template {t} --work {chain}/v365 --rounds 0 --workers {workers}")

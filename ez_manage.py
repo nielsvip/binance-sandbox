@@ -8473,6 +8473,7 @@ def _ezm_default(symbol: str, side: str, knob: str, default):
 # Only the knobs with a REAL (non-stub) sub-15m decision read in this file are listed.
 SUB15M_BLOCKED_SWITCHES = {
     "WT_3M_FORCE_OPEN_ENABLED": False,
+    "WRONG_SIDE_ABS_KILL_ENABLED": False,
     "WT_3M_OPEN_GATE_ENABLED": False,
     "DC_BASIS_3M_REDUCE_ENABLED": False,
     "R1_DC_LOW4_3M_EMERGENCY_ENABLED": False,
@@ -58472,7 +58473,7 @@ async def process_position(
             # That's 8-of-8 simultaneous against-signals — rare, decisive, bypasses STRICT_NO_LOSS.
             # Grace period: position must be older than WRONG_SIDE_MIN_AGE_MIN (default 30 min).
             # Skip hedges — HEDGE_CLEANUP_R6 above handles them with its own wt1_3m rule.
-            if getattr(config, "WRONG_SIDE_ABS_KILL_ENABLED", True):
+            if bool(getattr(_ezm_base_config, "LTF_SUB15M_TRADING_ENABLED", False)) and bool(_psym_get(symbol, position_side, "WRONG_SIDE_ABS_KILL_ENABLED", False)):
                 _ws_is_hedge = False
                 try:
                     _ws_is_hedge = bool(getattr(position, "is_hedge", False))

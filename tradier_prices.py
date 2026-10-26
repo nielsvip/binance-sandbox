@@ -257,17 +257,19 @@ class TradierPriceFetcher:
             try:
                 # Check for API ban
                 if time.time() < getattr(self.api_client, '_global_ban_expires', 0):
-                    return {}
-                return await self.api_client.get_quotes(batch)
+                    return {}, None
+                quotes = await self.api_client.get_quotes(batch)
+                return quotes, time.time()
             except Exception as e:
                 logger.error(f"Batch fetch error: {e}")
-                return {}
+                return {}, None
 
         # Create tasks for all batches to run in parallel
         batches = [self.symbols[i:i + batch_size] for i in range(0, len(self.symbols), batch_size)]
-        results = await asyncio.gather(*(fetch_batch(b) for b in batches))
-        
-        for quotes in results:
+        responses = [asyncio.create_task(fetch_batch(batch)) for batch in batches]
+        for response in asyncio.as_completed(responses):
+            quotes, received_at = await response
+            fresh_batch = {}
             for symbol, quote in quotes.items():
                 try:
                     bid = float(quote.get('bid', 0.0))
@@ -279,11 +281,10 @@ class TradierPriceFetcher:
                         ts = datetime.now(timezone.utc)
                         if raw_date:
                             try:
-                                val = raw_date / 1000.0 if raw_date > 1e11 else raw_date
-                                ts = datetime.fromtimestamp(val, tz=timezone.utc)
+                                ts = datetime.fromtimestamp(_timestamp_epoch(raw_date), tz=timezone.utc)
                             except Exception: pass
 
-                        all_quotes[symbol] = {
+                        fresh_batch[symbol] = {
                             'symbol': symbol,
                             'price': price,
                             'bid': float(quote.get('bid', 0.0)),
@@ -291,8 +292,11 @@ class TradierPriceFetcher:
                             'last': price,
                             'volume': int(quote.get('volume', 0)),
                             'timestamp': ts.isoformat(),
+                            'received_at': received_at,
                         }
                 except Exception: continue
+            all_quotes.update(fresh_batch)
+            self.price_cache.update(fresh_batch)
 
         # Ensure all self.symbols are present in all_quotes. Carry forward or alert.
         for symbol in self.symbols:
@@ -361,7 +365,7 @@ class TradierPriceFetcher:
                 bar = None
                 signature = None
                 price = float(quote.get('price') or quote.get('last') or 0.0)
-                quote_ts = _timestamp_epoch(quote.get('timestamp'))
+                quote_ts = _timestamp_epoch(quote.get('received_at') or quote.get('timestamp'))
                 bucket_ts = _tradier_15m_bucket(now)
                 if bucket_ts is not None and price > 0 and quote_ts > 0 and 0 <= now - quote_ts <= 5.0:
                     if state is None or state['bucket_ts'] != bucket_ts:

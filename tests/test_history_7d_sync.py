@@ -34,8 +34,10 @@ def test_two_hosts_merge_recent_trades_without_losing_older_history(tmp_path):
     assert (
         mac / "backups/before_history_7d_sync_test/men/ARBUSDC_LONG.jsonl"
     ).read_text() == old + mac_new
-    assert apply(mac, union, "again")["added_rows"] == 0
-    assert apply(s1, union, "again")["added_rows"] == 0
+    repeated_mac = apply(mac, union, "again")
+    repeated_s1 = apply(s1, union, "again")
+    assert repeated_mac["added_rows"] == repeated_s1["added_rows"] == 0
+    assert repeated_mac["cached_files"] == repeated_s1["cached_files"] == 1
 
 
 def test_rotated_recent_rows_reach_other_host_and_older_rows_do_not(tmp_path):

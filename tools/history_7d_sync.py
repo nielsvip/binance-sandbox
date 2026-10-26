@@ -224,13 +224,36 @@ def _trade_signature(line):
 def apply(root, pack, backup_stamp, dry_run=False):
     history = root / "data/history"
     cutoff = float(pack["now"]) - float(pack["days"]) * 86400
+    index_path = root / "data/history_sync_7d/apply_index.json"
+    try:
+        previous_index = json.loads(index_path.read_text())
+        if not isinstance(previous_index, dict):
+            previous_index = {}
+    except (OSError, ValueError):
+        previous_index = {}
+    next_index = dict(previous_index)
     changed = 0
     added = 0
     ambiguous = 0
+    cached = 0
     for rel, lines in sorted(pack["rows"].items()):
         if not _safe_rel(rel) or not isinstance(lines, list):
             raise ValueError(f"unsafe history path {rel!r}")
         target = history / rel
+        union_sha = hashlib.sha256(
+            json.dumps(lines, separators=(",", ":")).encode()
+        ).hexdigest()
+        stat = target.stat() if target.exists() else None
+        prior = previous_index.get(rel) or {}
+        if (
+            stat is not None
+            and prior.get("union_sha256") == union_sha
+            and prior.get("target_size") == stat.st_size
+            and prior.get("target_mtime_ns") == stat.st_mtime_ns
+        ):
+            cached += 1
+            ambiguous += int(prior.get("ambiguous_rows") or 0)
+            continue
         current = set()
         signatures = {}
         for path in sorted(target.parent.glob(target.name + "*")):
@@ -247,6 +270,7 @@ def apply(root, pack, backup_stamp, dry_run=False):
                     if trade is not None:
                         signatures.setdefault(trade[0], []).append(trade[1])
         missing = []
+        file_ambiguous = 0
         for line in lines:
             item = _identity(line)
             if item is None or item[0] in current:
@@ -256,32 +280,59 @@ def apply(root, pack, backup_stamp, dry_run=False):
                 abs(stamp - trade[1]) < 3 for stamp in signatures.get(trade[0], [])
             ):
                 ambiguous += 1
+                file_ambiguous += 1
                 continue
             current.add(item[0])
             if trade is not None:
                 signatures.setdefault(trade[0], []).append(trade[1])
             missing.append(line)
-        if not missing:
-            continue
-        changed += 1
-        added += len(missing)
-        if dry_run:
-            continue
-        target.parent.mkdir(parents=True, exist_ok=True)
-        if target.exists():
-            backup = root / "backups" / f"before_history_7d_sync_{backup_stamp}" / rel
+        if missing:
+            changed += 1
+            added += len(missing)
+            if not dry_run:
+                target.parent.mkdir(parents=True, exist_ok=True)
+                if target.exists():
+                    backup = (
+                        root
+                        / "backups"
+                        / f"before_history_7d_sync_{backup_stamp}"
+                        / rel
+                    )
+                    backup.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(target, backup)
+                with target.open("a", encoding="utf-8") as output:
+                    for line in missing:
+                        output.write(line + "\n")
+                    output.flush()
+                    os.fsync(output.fileno())
+        if not dry_run and target.exists():
+            stat = target.stat()
+            next_index[rel] = {
+                "union_sha256": union_sha,
+                "target_size": stat.st_size,
+                "target_mtime_ns": stat.st_mtime_ns,
+                "ambiguous_rows": file_ambiguous,
+            }
+    if not dry_run and next_index != previous_index:
+        index_path.parent.mkdir(parents=True, exist_ok=True)
+        if index_path.exists():
+            backup = (
+                root
+                / "backups"
+                / f"before_history_7d_sync_{backup_stamp}"
+                / "apply_index.json"
+            )
             backup.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(target, backup)
-        with target.open("a", encoding="utf-8") as output:
-            for line in missing:
-                output.write(line + "\n")
-            output.flush()
-            os.fsync(output.fileno())
+            shutil.copy2(index_path, backup)
+        tmp = index_path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(next_index, sort_keys=True) + "\n")
+        os.replace(tmp, index_path)
     return {
         "root": str(root),
         "changed_files": changed,
         "added_rows": added,
         "ambiguous_rows": ambiguous,
+        "cached_files": cached,
         "dry_run": dry_run,
     }
 
@@ -397,7 +448,7 @@ def sync(root, host, days, dry_run=False):
                 ]
                 if dry_run:
                     command.append("--dry-run")
-                raw = _run(command)
+                raw = _run(command, timeout=600)
                 remote_results.append(json.loads(raw))
             _run(SSH + [host, "rm", "-f", remote_path])
             return {

@@ -4243,8 +4243,9 @@ class QuickConfig:
     # data/per_sym_settings.json (built from the TEMPLATE bold defaults). Lookup order everywhere: per-sym override >
     # cat_side default (cat_side_defaults.get_for) > the single value in this class. False = old single-default behaviour.
     CAT_SIDE_DEFAULTS_ENABLED: bool = True
+    LTF_SUB15M_TRADING_ENABLED: bool = False
     ANG_TIMING_GATE_ENABLED: bool = True
-    ANG_TIMING_VECTOR_ACCOUNT_KEY: str = "ang"  # sweep measures ANG; live twin overrides with its real account
+    ANG_TIMING_VECTOR_ACCOUNT_KEY: str = ""  # shared forward state is account-neutral; live twin injects the real account
     ANG_TIMING_ACCOUNTS: tuple = ("ang",)
     ANG_TIMING_LOOKBACK: int = 20
     ANG_TIMING_FRESH_BARS: int = 3
@@ -18904,7 +18905,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     if _hsc is not None:
         entry_sig = np.array(entry_sig, dtype=bool, copy=True)  # a gated bar's entry_sig[i] is cleared in-loop (reentry pathways stay evaluable)
     _ang_timing_failed = None
-    _ang_account = str(getattr(cfg, "ANG_TIMING_VECTOR_ACCOUNT_KEY", "ang") or "").strip().lower()
+    _ang_account = str(getattr(cfg, "ANG_TIMING_VECTOR_ACCOUNT_KEY", "") or "").strip().lower()
     _ang_accounts = {str(a).strip().lower() for a in (getattr(cfg, "ANG_TIMING_ACCOUNTS", ("ang",)) or ())}
     if not is_tradier and _ang_account in _ang_accounts and bool(getattr(cfg, "ANG_TIMING_GATE_ENABLED", True)):
         try:
