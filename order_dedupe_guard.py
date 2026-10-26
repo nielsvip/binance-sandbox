@@ -194,7 +194,7 @@ class OrderLedger:
 
     def version(self, symbol: str) -> int:
         with self._locked():
-            return int((self._read().get(symbol.upper()) or {}).get("v", 0))
+            return int((self._read().get(symbol.upper()) or {}).get("v") or 0)
 
     def mutate(self, symbol: str, fn: Callable[[List[Dict[str, Any]]], Optional[bool]], expect_version: Optional[int] = None) -> bool:
         """Apply fn to the symbol's order list under the file lock. Returns False if expect_version mismatched."""
@@ -202,12 +202,12 @@ class OrderLedger:
         with self._locked():
             data = self._read()
             row = data.get(sym) or {"orders": [], "v": 0}
-            if expect_version is not None and int(row.get("v", 0)) != int(expect_version):
+            if expect_version is not None and int(row.get("v") or 0) != int(expect_version):
                 return False
             orders = list(row.get("orders") or [])
             fn(orders)
             row["orders"] = orders[-self.keep:]
-            row["v"] = int(row.get("v", 0)) + 1
+            row["v"] = int(row.get("v") or 0) + 1
             data[sym] = row
             self._write(data)
             return True

@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-26T17:39:47Z",
+ "ts": "2026-10-26T17:44:34Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,19 +29,19 @@
   "trb": {
    "fills_6h": 3,
    "open_positions": 2,
-   "unrealised_usd": 0.95,
+   "unrealised_usd": 1.27,
    "pos_mismatch": 0
   },
   "trc": {
    "fills_6h": 9,
    "open_positions": 1,
-   "unrealised_usd": 16.47,
+   "unrealised_usd": 16.52,
    "pos_mismatch": 0
   },
   "fin": {
-   "fills_6h": 118,
+   "fills_6h": 112,
    "open_positions": 3,
-   "unrealised_usd": 0.09,
+   "unrealised_usd": -0.03,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -55,9 +55,9 @@
    }
   },
   "men": {
-   "fills_6h": 62,
+   "fills_6h": 60,
    "open_positions": 9,
-   "unrealised_usd": -1.66,
+   "unrealised_usd": -2.3,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -71,9 +71,9 @@
    }
   },
   "ang": {
-   "fills_6h": 610,
-   "open_positions": 25,
-   "unrealised_usd": -4.01,
+   "fills_6h": 615,
+   "open_positions": 27,
+   "unrealised_usd": -3.96,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -87,9 +87,9 @@
    }
   },
   "inf": {
-   "fills_6h": 78,
-   "open_positions": 5,
-   "unrealised_usd": -0.52,
+   "fills_6h": 81,
+   "open_positions": 6,
+   "unrealised_usd": -0.4,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -103,9 +103,9 @@
    }
   },
   "flz": {
-   "fills_6h": 53,
+   "fills_6h": 54,
    "open_positions": 5,
-   "unrealised_usd": -0.2,
+   "unrealised_usd": -0.1,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -135,94 +135,118 @@
  "process": {
   "fin": {
    "pids": [
-    "69538"
+    "77136"
    ],
-   "starts_30m": 1,
-   "log_age_s": 1.0
+   "starts_30m": 2,
+   "log_age_s": 53.0
   },
   "men": {
    "pids": [
     "79879"
    ],
    "starts_30m": 1,
-   "log_age_s": 31.0
+   "log_age_s": 135.0
   },
   "ang": {
-   "pids": [
-    "37824"
-   ],
+   "pids": [],
    "starts_30m": 1,
-   "log_age_s": -0.0
+   "log_age_s": 18.0
   },
   "inf": {
    "pids": [
-    "69983"
+    "77362"
    ],
-   "starts_30m": 1,
-   "log_age_s": 281.0
+   "starts_30m": 2,
+   "log_age_s": 108.0
   },
   "flz": {
    "pids": [
-    "69233"
+    "76951"
    ],
-   "starts_30m": 1,
-   "log_age_s": 2.0
+   "starts_30m": 2,
+   "log_age_s": 54.0
   },
   "trb": {
-   "pids": [
-    "52848"
-   ],
-   "starts_30m": 4,
-   "log_age_s": -1.0
+   "pids": [],
+   "starts_30m": 5,
+   "log_age_s": 53.0
   },
   "trc": {
-   "pids": [
-    "7231"
-   ],
+   "pids": [],
    "starts_30m": 1,
-   "log_age_s": 11.0
+   "log_age_s": 58.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-26T17:39:48Z",
+   "ts": "2026-10-26T17:44:35Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "fin:ETHFIUSDC_LONG",
    "evidence": "26 17:37:03 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:ETHFIUSDC_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $35 on bounce (prior max 43.4000)"
   },
   {
-   "ts": "2026-10-26T17:39:48Z",
+   "ts": "2026-10-26T17:44:35Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "fin:ETHFIUSDC_LONG",
    "evidence": "26 17:37:23 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:ETHFIUSDC_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $31 on bounce (prior max 43.4000)"
   },
   {
-   "ts": "2026-10-26T17:39:49Z",
+   "ts": "2026-10-26T17:44:35Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "fin:PTBUSDT_SHORT",
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 487805->1.46341e+06 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 487805)"
+  },
+  {
+   "ts": "2026-10-26T17:44:37Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "flz:BNBUSDC_LONG",
    "evidence": "26 17:38:30 - WARNING - [flz] [REENTRY_GRANDFATHERED] flz:BNBUSDC_LONG: bypass MAX_ORDER_VALUE $90 / MAX_POSITION_SIZE $140 \u2014 restoring $42 on bounce (prior max 0.0600)"
   },
   {
-   "ts": "2026-10-26T17:39:50Z",
+   "ts": "2026-10-26T17:44:37Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
-   "key": "inf",
-   "evidence": "ez_manage_inf.log not written for 281s"
+   "key": "men",
+   "evidence": "ez_manage_men.log not written for 135s"
   },
   {
-   "ts": "2026-10-26T17:39:50Z",
+   "ts": "2026-10-26T17:44:37Z",
+   "severity": "CRITICAL",
+   "kind": "PROCESS_DOWN",
+   "key": "ang",
+   "evidence": "no ez_manage.py --account ang process"
+  },
+  {
+   "ts": "2026-10-26T17:44:37Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "trb",
-   "evidence": "4 new process ids in 30 min (['35131', '4592', '11800', '52848'])"
+   "evidence": "5 new process ids in 30 min (['35131', '4592', '11800', '52848', '56564'])"
+  },
+  {
+   "ts": "2026-10-26T17:44:37Z",
+   "severity": "CRITICAL",
+   "kind": "PROCESS_DOWN",
+   "key": "trb",
+   "evidence": "no tradier_manage.py --accounts trb process"
+  },
+  {
+   "ts": "2026-10-26T17:44:37Z",
+   "severity": "CRITICAL",
+   "kind": "PROCESS_DOWN",
+   "key": "trc",
+   "evidence": "no tradier_manage.py --accounts trc process"
   }
  ],
  "alert_counts": {
   "CAP_BYPASS": 3,
+  "SIZE_ANOMALY": 1,
   "STALE_LOG": 1,
+  "PROCESS_DOWN": 3,
   "RESTART_LOOP": 1
  },
  "active_interventions": {
@@ -430,5 +454,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 2.89
+ "sweep_s": 3.23
 }

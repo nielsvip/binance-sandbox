@@ -44636,7 +44636,7 @@ class TradierTradeManager:
         # The V19 interim backtest permits these ordinary entries; keep the
         # existing exposure budget and all subsequent entry checks active.
         if str(account_key).lower() == "trb":
-            _sw_on = True
+            _sw_on = False  # Emergency pause until required broker stops are verified.
         if _sw_on is not True:
             return False, "SWING_ENTRIES_OFF_PARITY"
         ratio = self.calculate_unified_market_ratio()
@@ -46176,9 +46176,9 @@ class TradierTradeManager:
                 except Exception:
                     _soft = 0.0
             if _soft <= 0:
-                _soft = _fixed_stop_core.freeze_software_level(_is_long, 0.0, 0.0, float(getattr(position, "entry_price", 0) or 0))
+                _soft = _fixed_stop_core.freeze_software_level(_is_long, float(dc_low_15m or 0), float(dc_high_15m or 0), float(getattr(position, "entry_price", 0) or 0))
                 if _soft > 0:
-                    logger.critical(f"🛡️ [FIXED_STOP_LEVEL_FALLBACK_TR] {position_key}: no frozen channel level — entry-based level {_soft:.4f}")
+                    logger.critical(f"🛡️ [FIXED_STOP_LEVEL_FALLBACK_TR] {position_key}: using {'dc_15m channel' if (dc_low_15m if _is_long else dc_high_15m) else 'entry price'} level {_soft:.4f}")
             if _soft <= 0:
                 logger.critical(f"⛔ [FIXED_STOP_NO_LEVEL_TR] {position_key}: no frozen level and no entry price — position UNPROTECTED at broker")
                 return "SKIPPED_STOP_NO_LEVEL"
@@ -46360,7 +46360,7 @@ class TradierTradeManager:
                 with _odg.execute_now_context("tradier", position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, action="PLACE_STOP", reason="FIXED_STOP_BACKSTOP_PLACE"):
                     _resp = await client.place_order(account_key, symbol, ("sell" if is_long else "buy_to_cover"), max(1, int(quantity or 0)), order_type="stop", stop=lvl, duration="gtc")
             except Exception as _e:
-                logger.error(f"[FIXED_STOP_PLACE_TR] {position_key}: place failed lvl={lvl}: {_e}")
+                logger.exception(f"[FIXED_STOP_PLACE_TR] {position_key}: place failed lvl={lvl}: {_e}")
                 return "FAILED_STOP_PLACE"
             finally:
                 try:
