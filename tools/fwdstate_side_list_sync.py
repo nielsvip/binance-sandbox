@@ -8,7 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 KEYS = ROOT / "tradeable_keys.json"
 CACHE = ROOT / "data" / "fwdstate_side_list_synced"
-SOURCES = (("s1-pub", "ALL"), ("s2", "LONG"))
+SOURCES = (("s1-pub", "ALL", "/home/niels/fwdstate_syms.txt"), ("s2", "LONG", "/home/niels/fwdstate_syms.txt"), ("s5", "STOCK", "/home/niels/fwd_stocks_syms.txt"))
 
 
 def main():
@@ -18,8 +18,12 @@ def main():
     sides = {str(key).split(":", 1)[-1].upper() for key in raw if ":" in str(key)}
     if not sides or any(not side.endswith(("_LONG", "_SHORT")) for side in sides):
         raise ValueError("invalid tradeable side list")
-    for host, direction in SOURCES:
-        selected = sorted(side for side in sides if direction == "ALL" or side.endswith("_" + direction))
+    stock_sides = set()
+    for direction in ("LONG", "SHORT"):
+        source = ROOT / f"symbols_trb_{direction.lower()}.json"
+        stock_sides.update(f"{str(symbol).upper()}_{direction}" for symbol in json.loads(source.read_text()))
+    for host, direction, remote_path in SOURCES:
+        selected = sorted(stock_sides if direction == "STOCK" else (side for side in sides if direction == "ALL" or side.endswith("_" + direction)))
         if not selected:
             raise ValueError("empty forward side list")
         payload = "\n".join(selected) + "\n"
@@ -27,7 +31,7 @@ def main():
         if marker.exists() and marker.read_text() == payload:
             continue
         command = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=6", host,
-                   "python3 -c 'import pathlib,sys,os; p=pathlib.Path(\"/home/niels/fwdstate_syms.txt\"); data=sys.stdin.read(); old=p.read_text() if p.exists() else \"\"; p.write_text(data) if data != old else None'"]
+                   f"python3 -c 'import pathlib,sys; p=pathlib.Path(\"{remote_path}\"); data=sys.stdin.read(); old=p.read_text() if p.exists() else \"\"; p.write_text(data) if data != old else None'"]
         try:
             result = subprocess.run(command, input=payload, text=True, capture_output=True, timeout=15)
         except subprocess.TimeoutExpired:

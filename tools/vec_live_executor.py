@@ -747,6 +747,11 @@ def load_sets():
                     account_sides.setdefault(symbol_side, set()).add(account)
             for symbol_side, accounts in account_sides.items():
                 vd.setdefault(symbol_side, {"mode": "live", "account": sorted(accounts)})
+        stock_sides = Path("/home/niels/fwd_stocks_syms.txt")
+        if stock_sides.is_file():
+            for symbol_side in stock_sides.read_text().split():
+                if symbol_side.endswith(("_LONG", "_SHORT")):
+                    vd.setdefault(symbol_side, {"mode": "live", "account": "trb"})
         canonical = Path("/home/niels/binance/data/hourly_reconfig/per_sym_store.db")
         replica = ROOT / "data" / "hourly_reconfig" / "per_sym_forward_master.db"
         local = ROOT / "data" / "hourly_reconfig" / "per_sym_store.db"

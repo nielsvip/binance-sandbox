@@ -13,7 +13,7 @@ silently kill a host's lane. Venue calls the same authority the lane uses
 import os
 import sys
 
-SHARDS = ("crypto_long", "crypto_short", "stock_long", "stock_short")
+SHARDS = ("crypto_long", "crypto_short", "stock_long", "stock_short", "stock_all")
 
 
 def active_shard() -> str:
@@ -52,6 +52,8 @@ def serves(ss: str, shard: str = None) -> bool:
     sh = shard or active_shard()
     if sh == "all":
         return True
+    if sh == "stock_all":
+        return cat_side_of(ss) in ("stock_long", "stock_short")
     return cat_side_of(ss) == sh
 
 

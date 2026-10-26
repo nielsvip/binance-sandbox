@@ -148,6 +148,22 @@ def recalc_anchor(row: Optional[dict], published: Optional[dict] = None, history
     apply_ep = iso_epoch(row.get("campaign_ts")) or iso_epoch(row.get("updated_at"))
     tag = str(row.get("winning_tag") or "")
     te = tag_epoch(tag)
+    measured_at = iso_epoch(meta.get("measured_at"))
+    try:
+        measured_window = float(meta.get("window_days") or 0)
+    except (TypeError, ValueError):
+        measured_window = 0.0
+    if (
+        str(meta.get("source") or "").startswith("v15_golive_headtohead")
+        and measured_at is not None
+        and apply_ep is not None
+        and measured_at <= apply_ep + 300
+        and measured_window >= 30
+        and isinstance(meta.get("trades"), (int, float))
+        and isinstance(meta.get("gain_pct"), (int, float))
+        and str(meta.get("why") or "").strip()
+    ):
+        return {"source": "measured_h2h", "recalc_epoch": measured_at, "apply_epoch": apply_ep, "tag": tag}
     if te is not None:
         pa = iso_epoch((published or {}).get("published_at"))
         if pa is not None and apply_ep is not None and pa <= apply_ep + 300:
@@ -426,6 +442,9 @@ def evaluate(ss: str, row: Optional[dict], published: Optional[dict], history: O
     since = anc.get("apply_epoch")
     if halt:
         h_at = iso_epoch(halt.get("halted_at")) or 0.0
+        fp_now = (row or {}).get("overrides_md5", "")
+        if anc.get("source") == "measured_h2h" and age_days <= days and fp_now and fp_now == halt.get("fingerprint", ""):
+            return {"action": "RELEASE", "sym_side": ss, "age_days": round(age_days, 2), "anchor": anc, "why": f"same active set fingerprint was measured by v15_golive_headtohead {_iso(anc.get('recalc_epoch'))} within {days:g}d; stale-anchor halt cleared"}
         if halt.get("reset_at"):
             since = max(since or 0.0, iso_epoch(halt.get("reset_at")) or 0.0)
         apply_ep = anc.get("apply_epoch") or 0.0
