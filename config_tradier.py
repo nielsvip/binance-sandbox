@@ -1898,6 +1898,8 @@ class TradierConfig:
     FROZEN_ACTIVATION_STOP_ENABLED: bool = (
         False  # 2026-06-02 USER MANDATE: OFF. Frozen-activation stop fires ~0% gain (48x in /history), is LIVE-ONLY (not in backtest) — a near-breakeven commission-burn exit, not a sanctioned technical exit. ROLLBACK: True.
     )
+    HYBRID_STRUCT_EXIT_ENABLED: bool = False
+    EXIT_STRUCT_TF: str = "None"
     LONG_STRUCT_EXIT_TF: str = "D"
     SHORT_STRUCT_EXIT_TF: str = "15m"
     EOD_SLIM_RATIO_ENABLED: bool = (
@@ -3626,6 +3628,7 @@ class TradierConfig:
     QUICK_SENTIMENT_CUT_REDUCE_FRAC: float = 0.5
     R3_HTF_FLIP_4H_TIER_ENABLED: bool = False
     R3_HTF_FLIP_EXIT_ENABLED: bool = False
+    R3_HTF_FLIP_REQUIRE_WT: bool = True
     R3_HTF_FLIP_NEWBORN_WINDOW_MIN: float = 15.0
     RANKING_LOOP_SLEEP_SECONDS: int = 120
     RANKING_MULT_ENABLED: bool = False

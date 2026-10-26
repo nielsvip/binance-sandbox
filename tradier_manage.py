@@ -17247,7 +17247,9 @@ async def process_position(
         # ═══════════════════════════════════════════════════════════════════════
         # HYBRID EXIT — Timeframe Exit Combinations for Lower-HL exits (Structure-Breakdown)
         # ═══════════════════════════════════════════════════════════════════════
-        if position and abs(safe_float(getattr(position, "positionAmt", 0))) > 0:
+        if position and abs(safe_float(getattr(position, "positionAmt", 0))) > 0 and bool(
+            _cfg("HYBRID_STRUCT_EXIT_ENABLED", False, account_key, symbol, position_side)
+        ):
             try:
                 _se_tf = _cfg(
                     "EXIT_STRUCT_TF", "None", account_key, symbol, position_side
@@ -17289,19 +17291,37 @@ async def process_position(
                                 _se_gain = safe_fetch_float(
                                     getattr(position, "gain", 0), 0
                                 )
-                                logger.error(
-                                    f"⛔ [HYBRID_STRUCT_EXIT] {position_key}: structure breakdown on {_se_tf} (high_prev={_se_high_prev:.4f} vs last_hp={_last_hp:.4f}, low_prev={_se_low_prev:.4f} vs last_lp={_last_lp:.4f}) → CLOSE"
+                                _se_fee_pct = max(
+                                    0.0,
+                                    safe_fetch_float(
+                                        _cfg(
+                                            "COMMISSION_BUFFER_PCT",
+                                            0.08,
+                                            account_key,
+                                            symbol,
+                                            position_side,
+                                        ),
+                                        0.08,
+                                    ),
                                 )
-                                await queue_trade_action(
-                                    order_queue,
-                                    trade_manager,
-                                    position_key,
-                                    "CLOSE",
-                                    f"HYBRID_STRUCT_EXIT_{_se_tf}_g{_se_gain:.2f}%",
-                                    100.0,
-                                    override_qty=999999,
+                                _se_net_gain_pct = _se_gain - _se_fee_pct
+                                if _se_net_gain_pct > 0.0:
+                                    logger.error(
+                                        f"⛔ [HYBRID_STRUCT_EXIT] {position_key}: structure breakdown on {_se_tf} (high_prev={_se_high_prev:.4f} vs last_hp={_last_hp:.4f}, low_prev={_se_low_prev:.4f} vs last_lp={_last_lp:.4f}) net={_se_net_gain_pct:.3f}% → CLOSE"
+                                    )
+                                    await queue_trade_action(
+                                        order_queue,
+                                        trade_manager,
+                                        position_key,
+                                        "CLOSE",
+                                        f"HYBRID_STRUCT_EXIT_{_se_tf}_g{_se_gain:.2f}%_net{_se_net_gain_pct:.2f}%",
+                                        100.0,
+                                        override_qty=999999,
+                                    )
+                                    return "HYBRID_STRUCT_EXIT_CLOSED"
+                                logger.debug(
+                                    f"[HYBRID_STRUCT_EXIT_HOLD_FEES] {position_key}: gross={_se_gain:.3f}% estimated_fee={_se_fee_pct:.3f}% net={_se_net_gain_pct:.3f}%"
                                 )
-                                return "HYBRID_STRUCT_EXIT_CLOSED"
             except Exception as _se_err:
                 logger.debug(f"[HYBRID_STRUCT_EXIT] {position_key} err: {_se_err}")
         # ═══════════════════════════════════════════════════════════════════════

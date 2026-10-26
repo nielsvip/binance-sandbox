@@ -5361,6 +5361,7 @@ class QuickConfig:
         # live evaluated 1h/4h/D that the vector never loaded — for 100% of stock sym_sides. Crypto is already
         # correct on both sides (("15m",), ez_manage.py:52405).
         self.R2_TF_LIST = ("1h", "4h", "D")
+        self.R3_HTF_FLIP_REQUIRE_WT = True
         self.STRUCTURAL_RANGE_SHIFT_TF = "bb_1h"
         self.GAP_RISK_EXIT_ENABLED = (
             True  # N2/007: live config_tradier True (2026-09-30)
@@ -5446,6 +5447,8 @@ class QuickConfig:
         self.K_LOWER_HIGH_EXIT_ENABLED = False
         self.LEADERBOARD_FILTER = False
         self.LH_HL_FILTER_AUGMENT_GATE_ENABLED = True
+        self.HYBRID_STRUCT_EXIT_ENABLED = False
+        self.EXIT_STRUCT_TF = "None"
         self.LONG_STRUCT_EXIT_TF = "D"
         self.LR_BAND_ENTRY_LO = 0.3
         self.LR_BAND_ENTRY_TF = "D"
@@ -6275,6 +6278,7 @@ class QuickConfig:
     R3_HTF_FLIP_EXIT_ENABLED: bool = (
         False  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     )
+    R3_HTF_FLIP_REQUIRE_WT: bool = True
     RATIO_MULTIPLIER_TRADIER: float = (
         3.5  # LIVE parity 2026-09-11: config_tradier 3.5 BACKTEST_T61 was 1.75
     )
@@ -8715,6 +8719,8 @@ class QuickConfig:
     LOG_FILE_TRADIER_PRICES: Path = Path("data")
     LOG_INTERVAL_SECONDS: int = 10
     LOG_MAX_BYTES: int = 1024 * 1024 * 20
+    HYBRID_STRUCT_EXIT_ENABLED: bool = False
+    EXIT_STRUCT_TF: str = "None"
     LONG_STRUCT_EXIT_TF: str = (
         "None"  # 2026-09-26 DISABLED HYBRID 449 closes NOT in per_sym — NON_VECTORIZABLE paper ON set D
     )
@@ -15606,6 +15612,19 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             entry_sig = entry_sig & np.asarray(_btcde_m, dtype=bool)
     _hsc_core = _setup_memo("nonhtf_core", None, cfg, npz, n, is_long, lambda: vec_decisions.htf_signal_consume.nonhtf_core(cfg, npz, n, is_long, close, _safe, _base_safe, compute_reentry_blocks, compute_entry_signals))  # 2026-10-13 V17 TF law: exact non-HTF provenance (None = disabled / no HTF path)
     exit_sig = compute_exit_signals(npz, n, is_long, cfg, entry_sig)
+    try:
+        import vec_decisions.hybrid_struct_exit as _hybrid_struct
+
+        _hybrid_enabled = bool(getattr(cfg, "HYBRID_STRUCT_EXIT_ENABLED", False))
+        _hybrid_tf = _hybrid_struct.struct_tf(cfg, is_long) if _hybrid_enabled else ""
+        _hybrid_open_arr = _safe(npz, f"open_{_hybrid_tf}", n, 0.0) if _hybrid_tf else None
+        _hybrid_high_prev_arr = _safe(npz, f"high_{_hybrid_tf}_prev", n, 0.0) if _hybrid_tf else None
+        _hybrid_low_prev_arr = _safe(npz, f"low_{_hybrid_tf}_prev", n, 0.0) if _hybrid_tf else None
+    except Exception:
+        _hybrid_struct = None
+        _hybrid_enabled = False
+        _hybrid_tf = ""
+        _hybrid_open_arr = _hybrid_high_prev_arr = _hybrid_low_prev_arr = None
     # TWIN_VEC_SPECIAL H1: pre-loop masks — DC breakout OR-entry (live ez_positions_quick.py:4555), R3 OR-exit (live ez_manage.py:48824). R3 stocks newborn/R1 guards need loop state (twin kw); pre-loop mask is the core flip.
     # cut#5: RSI T55 AND-gate REMOVED — live side dead (tradier touches only, cited lines rotted); it zeroed BTC LONG/ETH/MU (gate proof). Re-add only with functional live gate.
     # 2026-10-06 USER: the RSI-T55 veto twin (vec_decisions/entry_vet_rsi_t55.py) is REMOVED (never approved). History: cut#6 had re-added it — cut#5 premise REFUTED by S1 parity leg-1: live crypto gate IS functional
@@ -18263,6 +18282,13 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _ot_cnt[_ot_d] = _ot_cnt.get(_ot_d, 0) + 1  # [C2 b5b] executed fill today
         except Exception:
             pass
+        _hybrid_state = None
+        if _hybrid_enabled and _hybrid_tf and _hybrid_open_arr is not None and _hybrid_high_prev_arr is not None and _hybrid_low_prev_arr is not None:
+            _hybrid_op = float(_hybrid_open_arr[i]) if i < len(_hybrid_open_arr) else 0.0
+            _hybrid_hi = float(_hybrid_high_prev_arr[i]) if i < len(_hybrid_high_prev_arr) else 0.0
+            _hybrid_lo = float(_hybrid_low_prev_arr[i]) if i < len(_hybrid_low_prev_arr) else 0.0
+            if _hybrid_op > 0 and _hybrid_hi > 0 and _hybrid_lo > 0:
+                _hybrid_state = {"open": _hybrid_op, "high_prev": _hybrid_hi, "low_prev": _hybrid_lo}
         try:
             _fx_e15l = float(_uh_l15[i]) if i < len(_uh_l15) else 0.0
             _fx_e15h = float(_uh_h15[i]) if i < len(_uh_h15) else 0.0
@@ -18276,6 +18302,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             "deployed": abs(qty0 * px),
             "realized": 0.0,
             "entry_bar": i,
+            "hybrid_struct_state": _hybrid_state,
             "peak_pnl_pct": 0.0,
             "fees": abs(qty0 * px) * half_fee,
             "entry_reason": entry_reason,
@@ -23127,6 +23154,35 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             cd = cooldown_bars
             has_closed_before = True
             continue
+        _hybrid_fire = False
+        if pos is not None and _hybrid_enabled and _hybrid_tf and _hybrid_open_arr is not None:
+            _hybrid_fire, _hybrid_state = _hybrid_struct.hybrid_struct_exit_step(
+                _hybrid_open_arr[i],
+                _hybrid_high_prev_arr[i],
+                _hybrid_low_prev_arr[i],
+                pos.get("hybrid_struct_state"),
+                is_long,
+            )
+            pos["hybrid_struct_state"] = _hybrid_state
+        if pos is not None and _hybrid_fire and i > int(pos.get("entry_bar", i)):
+            _hybrid_gain = ((px - pos["avg_price"]) / pos["avg_price"] * 100.0 if is_long else (pos["avg_price"] - px) / pos["avg_price"] * 100.0) if pos["avg_price"] else 0.0
+            _hybrid_fee_pct = max(0.0, float(getattr(cfg, "COMMISSION_BUFFER_PCT", 0.08) or 0.0))
+            _hybrid_net_gain_pct = _hybrid_gain - _hybrid_fee_pct
+            if _hybrid_net_gain_pct > 0.0:
+                _hybrid_reason = f"HYBRID_STRUCT_EXIT_{_hybrid_tf}"
+                if vec_decisions.noloss_gate.noloss_blocks(cfg, _hybrid_reason, _hybrid_gain):
+                    continue
+                if _htfv_block(i, _hybrid_reason):
+                    continue
+                pos["fees"] += abs(pos["qty"] * px) * half_fee
+                _hybrid_pnl = pos["realized"] + ((px - pos["avg_price"]) * pos["qty"] if is_long else (pos["avg_price"] - px) * pos["qty"]) - pos["fees"]
+                _hybrid_pct = _hybrid_pnl / pos["deployed"] * 100 if pos["deployed"] else 0.0
+                _hybrid_ts = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+                trades.append({"pnl_dollars": _hybrid_pnl, "pnl_pct": float(_hybrid_pct), "deployed": pos["deployed"], "reason": f"{_hybrid_reason}_g{_hybrid_gain:.2f}%", "type": "CLOSE", "ts": _hybrid_ts, "price": float(px), "bar_entry": int(pos["entry_bar"]), "bar_exit": int(i), "entry_price": float(pos.get("entry_price", pos["avg_price"])), "exit_price": float(px), "qty": float(pos["qty"]), "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"), "exit_reason": f"{_hybrid_reason}_g{_hybrid_gain:.2f}%", "bars_held": int(i - pos["entry_bar"])})
+                pos = None
+                cd = cooldown_bars
+                has_closed_before = True
+                continue
         _xc_ap = pos["avg_price"] if pos is not None else 0
         _xc_loss = (
             pos is not None
