@@ -1,30 +1,51 @@
 {
-  "men:ENJUSDT_SHORT": {
-    "orderId": "2000001540398006",
-    "stopPrice": 0.0249,
-    "entry_sig": "2026-10-25 19:44:36.513000+00:00",
-    "symbol": "ENJUSDT",
-    "side": "SHORT"
-  },
-  "men:GALAUSDT_SHORT": {
-    "orderId": "2000001540829220",
-    "stopPrice": 0.001744,
-    "entry_sig": "2026-10-26 00:37:54.386000+00:00",
-    "symbol": "GALAUSDT",
-    "side": "SHORT"
-  },
-  "men:XPLUSDT_SHORT": {
-    "orderId": "2000001540772441",
-    "stopPrice": 0.07433,
-    "entry_sig": "2026-10-26 00:11:09.277000+00:00",
-    "symbol": "XPLUSDT",
-    "side": "SHORT"
-  },
-  "men:CRVUSDC_LONG": {
-    "orderId": "2000001540977569",
-    "stopPrice": 0.3357,
-    "entry_sig": "2026-10-26 01:44:01.169000+00:00",
-    "symbol": "CRVUSDC",
+  "flz:BTCDOMUSDT_LONG": {
+    "orderId": "1000002643517705",
+    "stopPrice": 5546.8,
+    "entry_sig": "2026-10-25 23:51:14.326000+00:00",
+    "symbol": "BTCDOMUSDT",
     "side": "LONG"
+  },
+  "flz:ZECUSDC_SHORT": {
+    "orderId": "1000002643451619",
+    "stopPrice": 1242.39,
+    "entry_sig": "2026-10-25 23:41:32.443000+00:00",
+    "symbol": "ZECUSDC",
+    "side": "SHORT"
+  },
+  "flz:DASHUSDT_SHORT": {
+    "orderId": "1000002643676144",
+    "stopPrice": 50.52,
+    "entry_sig": "2026-10-26 02:52:51.183000+00:00",
+    "symbol": "DASHUSDT",
+    "side": "SHORT"
+  },
+  "flz:BTCUSDC_SHORT": {
+    "orderId": "1000002643676148",
+    "stopPrice": 79677.0,
+    "entry_sig": "2026-10-26 02:52:45.030000+00:00",
+    "symbol": "BTCUSDC",
+    "side": "SHORT"
+  },
+  "flz:BNBUSDC_SHORT": {
+    "orderId": "1000002643676149",
+    "stopPrice": 736.72,
+    "entry_sig": "2026-10-26 02:52:49.458000+00:00",
+    "symbol": "BNBUSDC",
+    "side": "SHORT"
+  },
+  "flz:HYPEUSDT_SHORT": {
+    "orderId": "1000002643436431",
+    "stopPrice": 76.98,
+    "entry_sig": "2026-10-26 00:42:29.122000+00:00",
+    "symbol": "HYPEUSDT",
+    "side": "SHORT"
+  },
+  "flz:WLDUSDC_SHORT": {
+    "orderId": "1000002643414251",
+    "stopPrice": 0.4509,
+    "entry_sig": "2026-10-26 00:28:31.545000+00:00",
+    "symbol": "WLDUSDC",
+    "side": "SHORT"
   }
 }
