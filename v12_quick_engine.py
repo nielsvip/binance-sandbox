@@ -23669,7 +23669,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         tradier_recovery_bypass_mask,
                     )
 
-                    _bb_recov_fee_pct = 0.0 if is_tradier else max(
+                    _bb_recov_fee_pct = max(
                         0.0, float(getattr(cfg, "COMMISSION_BUFFER_PCT", 0.08) or 0.0)
                     )
                     _bb_recov_hit = bool(

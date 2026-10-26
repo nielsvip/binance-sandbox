@@ -5,15 +5,19 @@ import re
 
 def mandatory_loss_stop_reason(reason, dc4_buffer_pct=0.25):
     value = str(reason or "").upper()
+    while True:
+        stripped = re.sub(r"^(?:QUICK_|MAKER_PROFIT_EXIT_)+", "", value)
+        stripped = re.sub(r"^EXIT_GUARANTEE_FORCE\[[^\]]+\]\s+", "", stripped)
+        if stripped == value:
+            break
+        value = stripped
     if value.startswith(("FIXED_STOP_LONG_", "FIXED_STOP_SHORT_")):
         # Default stop reasons omit _REF entirely; explicit specs must name the frozen 15m DC channel.
         # Do not let old BB/1h/4h or alternative-buffer software stops bypass the fee-positive exit law.
         if "_REF" not in value:
             return True
         return bool(re.search(r"_REFDC_(?:LOW|HIGH)\.15M(?:\.B0\.25)?$", value))
-    if value.startswith(("ULTIMATE_DC_4H_HARD_STOP_LONG_", "ULTIMATE_DC_4H_HARD_STOP_SHORT_", "QUICK_ULTIMATE_DC_4H_HARD_STOP_LONG_", "QUICK_ULTIMATE_DC_4H_HARD_STOP_SHORT_")):
-        return True
-    if re.match(r"^EXIT_GUARANTEE_FORCE\[[^\]]+\]\s+ULTIMATE_DC_4H_HARD_STOP_(?:LONG|SHORT)_", value):
+    if value.startswith(("ULTIMATE_DC_4H_HARD_STOP_LONG_", "ULTIMATE_DC_4H_HARD_STOP_SHORT_")):
         return True
     if value.startswith("ULTIMATE_DC_4H_HARD_STOP AT DC_4H_LOW 0.25PCT CHANNEL") or value.startswith("ULTIMATE_DC_4H_HARD_STOP AT DC_4H_HIGH 0.25PCT CHANNEL"):
         return True
