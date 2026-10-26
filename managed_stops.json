@@ -1,1 +1,30 @@
-{}
+{
+  "men:ENJUSDT_SHORT": {
+    "orderId": "2000001540398006",
+    "stopPrice": 0.0249,
+    "entry_sig": "2026-10-25 19:44:36.513000+00:00",
+    "symbol": "ENJUSDT",
+    "side": "SHORT"
+  },
+  "men:GALAUSDT_SHORT": {
+    "orderId": "2000001540829220",
+    "stopPrice": 0.001744,
+    "entry_sig": "2026-10-26 00:37:54.386000+00:00",
+    "symbol": "GALAUSDT",
+    "side": "SHORT"
+  },
+  "men:XPLUSDT_SHORT": {
+    "orderId": "2000001540772441",
+    "stopPrice": 0.07433,
+    "entry_sig": "2026-10-26 00:11:09.277000+00:00",
+    "symbol": "XPLUSDT",
+    "side": "SHORT"
+  },
+  "men:CRVUSDC_LONG": {
+    "orderId": "2000001540977569",
+    "stopPrice": 0.3357,
+    "entry_sig": "2026-10-26 01:44:01.169000+00:00",
+    "symbol": "CRVUSDC",
+    "side": "LONG"
+  }
+}

@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-26T02:44:47Z",
+ "generated_utc": "2026-10-26T02:49:45Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 113.3,
+  "age_s": 90.0,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 4524,
-  "proc_age_s": 82812.0,
-  "log_age_s": 2.8,
+  "proc_age_s": 83111.0,
+  "log_age_s": 9.9,
   "warmup_done": true,
   "timeframes_since_restart": [
    "D",
@@ -91,10 +91,11 @@
    "1h",
    "15m",
    "3m",
-   "D"
+   "D",
+   "4h"
   ],
-  "last_timeframe": "D",
-  "last_timeframe_utc": "2026-10-26T02:29:03Z",
+  "last_timeframe": "4h",
+  "last_timeframe_utc": "2026-10-26T02:47:55Z",
   "last_restart_utc": "2026-10-25T03:44:34Z",
   "restarts_last_hour": 0
  },
@@ -117,9 +118,23 @@
   }
  },
  "s1_failover": {
-  "error": "ssh: connect to host 157.180.125.52 port 22: Operation timed out",
-  "from_cache_age_s": 172.0
+  "mode": "ACTIVE",
+  "since_epoch": 1792602182.2042153,
+  "activations": 163,
+  "hb_mtime": 1792982838.5116148,
+  "mac_snapshot_age_s": 1.6573302745819092,
+  "mac_stale": false,
+  "lease_holder": "mac",
+  "lease_venues": null,
+  "lease_since": "2026-10-25T23:35:46Z",
+  "lease_reason": "manual force-mac",
+  "now": 1792982872.3011527,
+  "from_cache_age_s": 113.5,
+  "heartbeat_age_s": 33.8,
+  "active_s": 380690.1
  },
- "alerts": [],
- "verdict": "OK"
+ "alerts": [
+  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 380690s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (33s) AND the Mac snapshot is fresh (89s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
+ ],
+ "verdict": "ALERT"
 }
