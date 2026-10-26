@@ -55,6 +55,8 @@ Lying Sharpe/gain/DD wiped out half the user's net worth in 4 months. Every metr
 
 **7D canary at 00:06–00:08 UTC.** An isolated ACEUSDT_SHORT pilot accepted `--window-days 7` and created only a separate `data/preopen_7d/canary_20261026` workbook. The tested published 30D winner measured -3.9085%/42 trades on seven days, but the pilot's ordinary best-start stage substituted `prior_reports` (+1.4091%/95 trades) before row optimization. The 90-second bounded canary entered its 3,443-row fill and completed no row; it was terminated after its graceful shutdown failed to finish promptly. The shared 30D live JSON had not been modified (mtime 2026-10-24). The 7D launch contract now also requires `V15_SKIP_CAT_PERSYM_BASELINE=1 V15_PREV_BEST_START=0 V15_ADAPT_BASELINE=0 V15_FRESH_RUN=1`, preserving the explicit verified 30D start. This canary shows the full 89-side row optimization needs a measured pre-open runtime and a bounded stop mechanism before activation.
 
+**Fleet measurement at 00:12 UTC.** S1 and S2 each used 100% useful CPU but completed zero and one sym_side respectively in the prior hour; S1 held three of four side slots because its memory guard reserved state-production capacity. S5 used 47% CPU with four full side slots and two completions; S6 used 90% CPU with four slots and five completions. The >4/hour target is measured on S6 only. The monitor now tries the public S1 SSH path first with multiplexing disabled and a bounded fallback, after the old tunnel-first route emitted a false `S1_SCHEDULER_UNREACHABLE` during S1 overload. A full slot count alone cannot prove useful CPU or completed boards.
+
 ---
 
 ## 0A. HISTORICAL STATE — 2026-10-13 (superseded by current contract above)
@@ -4752,3 +4754,9 @@ tally is `NO_SET` **428,158**, `EXCEPTION` **202,604**, `FABRICATION_SET` **192,
 `logs/stall_watch_alert.log` records `TRACEBACK STXUSDT_SHORT ModuleNotFoundError: No module named
 'vec_decisions.scale_di…'` on S1 at 01:40 and 01:50Z, which is the signature of an incomplete module push.
 Both deserve their own pass; neither was touched here.
+
+### 118.17 DELTA GATE AND SPIKE-FADE EXIT ABLATIONS (2026-10-26)
+
+`DELTA_GATE_BB_SQUEEZE` is currently a boolean gate, not a threshold switch. The stock live entry-veto branch is hard-gated with `and False`; its vector twin currently returns an all-true WOULD-BLOCK mask when enabled, and the active quick engine calls the twin without applying the result. Do not interpret any of these paths as measured delta semantics. A threshold candidate must name its source series, direction, comparison, and threshold before implementation; changing the boolean into a number without that contract is invalid.
+
+`ABLATION_DISABLE_SPIKE_FADE_EXIT` is an ablation instrument for `worst_first` / V20 retests: suppress the spike-fade exit group so blocked groups and other switches can be exposed. The operator's intended use is to give the many switches muted to zero delta by upstream filters another chance to show an effect, then use V20's learned connections among aligned switches to pinpoint the missing influence. Ablations can also measure a group's relative effect before its constituent switches are tested. It is not an ordinary gain-promoted switch and must remain off outside the explicit ablation evaluation. Its name does not authorize suppressing every exit. The live 1-minute-named monitor actually uses 3-minute structure and live mark price; the vector path has no matching causal per-bar source and currently clears the entire `exit_sig` array when the flag is set. Until a genuine shared causal source is available, do not claim live/vector parity or broaden this to a global exit disable.

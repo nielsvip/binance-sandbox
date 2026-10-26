@@ -57,11 +57,12 @@ def summarize(d, now=None):
 
 def main():
     doc = None
-    for alias in ("s1-int", "s1-pub"):
-        cmd = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=6", alias,
+    for alias in ("s1-pub", "s1-int"):
+        cmd = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=4",
+               "-o", "ControlMaster=no", "-o", "ControlPath=none", alias,
                "python3 -c " + shlex.quote(REMOTE)]
         try:
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=25)
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=12)
             if proc.returncode == 0:
                 doc = summarize(json.loads(proc.stdout))
                 break

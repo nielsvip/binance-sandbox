@@ -1,95 +1,74 @@
 {
- "at": "2026-10-25T23:11:02Z",
+ "at": "2026-10-26T00:11:12Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
   "s1": {
    "improved": 0,
    "improved_per_hour": 0.0,
+   "published_n": null,
+   "flat_or_worse": null,
+   "unknown": null,
+   "boards_running": null,
+   "mem_avail_mb": null,
+   "load1": null,
+   "nproc": null,
+   "slots": "3/4",
+   "binding_reason": "scheduler mem guard (disk 11218 MB, mem 11076 MB, est_pair 6000 MB) \u2014 slots 3/4",
+   "error": "no output",
+   "published": null,
+   "cadence_target_min": 5.0,
+   "minutes_since_last_improved": null,
+   "last_improved_symside": null,
+   "cadence_ok": false,
+   "improved_gap_min_median_24h": null,
+   "improved_gap_min_max_24h": null,
+   "improved_finishes_24h": null,
+   "board_cpu_s_median_24h": null,
+   "board_wall_s_median_24h": null,
+   "board_cores": null,
+   "nonboard_cores_competing": null,
+   "nonboard_cores_niced": null,
+   "cores_by_bucket": null,
+   "cores_by_bucket_niced": null
+  },
+  "s2": {
+   "improved": 0,
+   "improved_per_hour": 0.0,
    "published_n": 0,
    "flat_or_worse": 0,
    "unknown": 0,
-   "boards_running": [],
-   "mem_avail_mb": 8401,
-   "load1": 16.02,
+   "boards_running": [
+    "ALTUSDT_LONG",
+    "ETHFIUSDC_LONG",
+    "ETHUSDC_LONG",
+    "STRKUSDT_LONG"
+   ],
+   "mem_avail_mb": 10991,
+   "load1": 25.64,
    "nproc": 16,
-   "slots": "0/4",
-   "binding_reason": "scheduler mem guard (disk 13278 MB, mem 10858 MB, est_pair 6000 MB) \u2014 slots 0/4",
+   "slots": "4/4",
+   "binding_reason": "concurrency 4 boards: 12/h needs <= 20 min per sym_side (measured median 21 min) \u2014 raise concurrent sides or cut evals per board",
    "error": null,
    "published": [],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 1143.2,
-   "last_improved_symside": "ZKUSDT_SHORT",
+   "minutes_since_last_improved": 15.0,
+   "last_improved_symside": "BBUSDT_LONG",
    "cadence_ok": false,
-   "improved_gap_min_median_24h": 23.4,
-   "improved_gap_min_max_24h": 133.5,
-   "improved_finishes_24h": 8,
-   "board_cpu_s_median_24h": 1657.1,
-   "board_wall_s_median_24h": 1522.0295741558075,
-   "board_cores": 0.0,
-   "nonboard_cores_competing": 7.41,
-   "nonboard_cores_niced": 7.36,
-   "cores_by_bucket": {
-    "other": 4.16,
-    "live_helpers": 2.34,
-    "klines_append": 0.91
-   },
-   "cores_by_bucket_niced": {
-    "klines_vault": 1.48,
-    "other": 5.88
-   }
-  },
-  "s2": {
-   "improved": 2,
-   "improved_per_hour": 2.0,
-   "published_n": 2,
-   "flat_or_worse": 0,
-   "unknown": 0,
-   "boards_running": [
-    "EDUUSDT_LONG"
-   ],
-   "mem_avail_mb": 21522,
-   "load1": 12.67,
-   "nproc": 16,
-   "slots": "3/4",
-   "binding_reason": "concurrency 3 boards: 12/h needs <= 15 min per sym_side (measured median 21 min) \u2014 raise concurrent sides or cut evals per board",
-   "error": null,
-   "published": [
-    {
-     "symside": "CRVUSDC_LONG",
-     "at": "2026-10-25T22:37:35Z",
-     "baseline": -4.973815387164055,
-     "final": 48.25982659535225,
-     "state": "improved"
-    },
-    {
-     "symside": "DOTUSDT_LONG",
-     "at": "2026-10-25T23:05:56Z",
-     "baseline": -3.7266423985542834,
-     "final": 23.04220447627537,
-     "state": "improved"
-    }
-   ],
-   "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 4.7,
-   "last_improved_symside": "DOTUSDT_LONG",
-   "cadence_ok": true,
-   "improved_gap_min_median_24h": 8.6,
+   "improved_gap_min_median_24h": 9.4,
    "improved_gap_min_max_24h": 164.7,
-   "improved_finishes_24h": 94,
-   "board_cpu_s_median_24h": 2058.1,
-   "board_wall_s_median_24h": 1242.7808811664581,
-   "board_cores": 7.69,
-   "nonboard_cores_competing": 2.17,
-   "nonboard_cores_niced": 0.01,
+   "improved_finishes_24h": 82,
+   "board_cpu_s_median_24h": 2067.5,
+   "board_wall_s_median_24h": 1254.935434103012,
+   "board_cores": 9.77,
+   "nonboard_cores_competing": 4.69,
+   "nonboard_cores_niced": 0,
    "cores_by_bucket": {
-    "boards": 7.69,
-    "other": 0.02,
-    "live_helpers": 2.15
+    "other": 3.43,
+    "boards": 9.77,
+    "live_helpers": 1.26
    },
-   "cores_by_bucket_niced": {
-    "other": 0.01
-   }
+   "cores_by_bucket_niced": {}
   }
  },
  "under_target": [
@@ -97,6 +76,7 @@
   "s2"
  ],
  "cadence_breach": [
-  "s1"
+  "s1",
+  "s2"
  ]
 }
