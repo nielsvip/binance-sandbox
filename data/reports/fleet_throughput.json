@@ -1,7 +1,7 @@
 {
-  "ts": "2026-10-26T08:05:04.188187+00:00",
-  "tick": "2026-10-26T08:04:01.859423+00:00",
-  "tick_age_s": 62,
+  "ts": "2026-10-26T08:10:06.643754+00:00",
+  "tick": "2026-10-26T08:08:01.859228+00:00",
+  "tick_age_s": 125,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run37.json",
     "round": "run37",
@@ -11,28 +11,28 @@
     "n_pending": 111,
     "n_refused_only": 0,
     "n_excluded": 0,
-    "n_launchable_pending": 91,
+    "n_launchable_pending": 89,
     "hosts_not_visible": []
   },
   "hosts": {
     "s1": {
-      "cpu_pct": 99,
+      "cpu_pct": 93,
       "slots": "0/4",
       "observed_running": [],
       "published_last_hour": 2,
       "idle_reason": "disk guard",
-      "mem_avail_mb": 13042
+      "mem_avail_mb": 13198
     },
     "s5": {
-      "cpu_pct": 10,
+      "cpu_pct": 8,
       "slots": "0/4",
       "observed_running": [],
       "published_last_hour": 4,
       "idle_reason": "disk guard",
-      "mem_avail_mb": 25101
+      "mem_avail_mb": 25108
     },
     "s2": {
-      "cpu_pct": 77,
+      "cpu_pct": 72,
       "slots": "2/4",
       "observed_running": [
         "QNTUSDT",
@@ -40,18 +40,20 @@
       ],
       "published_last_hour": 0,
       "idle_reason": "mem guard",
-      "mem_avail_mb": 3027
+      "mem_avail_mb": 7257
     },
     "s6": {
-      "cpu_pct": 18,
-      "slots": "3/4",
+      "cpu_pct": 69,
+      "slots": "4/4",
       "observed_running": [
         "APO",
+        "DAR",
+        "RIO",
         "SCHW"
       ],
       "published_last_hour": 7,
-      "idle_reason": null,
-      "mem_avail_mb": 20210
+      "idle_reason": "slots full",
+      "mem_avail_mb": 15986
     }
   },
   "one_hour_total": 13,
@@ -59,10 +61,10 @@
     "LOW_THROUGHPUT:s1:2/h",
     "IDLE:s1:disk guard",
     "LOW_THROUGHPUT:s5:4/h",
-    "LOW_CPU:s5:10%",
+    "LOW_CPU:s5:8%",
     "IDLE:s5:disk guard",
     "LOW_THROUGHPUT:s2:0/h",
-    "LOW_CPU:s2:77%",
-    "LOW_CPU:s6:18%"
+    "LOW_CPU:s2:72%",
+    "LOW_CPU:s6:69%"
   ]
 }
