@@ -27230,6 +27230,7 @@ async def check_exit_candidates_for_account(
                 if (
                     not hard_exit_reason
                     and not _in_grace_period
+                    and bool(getattr(config, "LTF_SUB15M_TRADING_ENABLED", False))
                     and bool(_be_get("BREAKEVEN_DC_LOW4_ENABLED", True))
                 ):
                     # 2026-04-29 USER A/B: BREAKEVEN_DC_FIELD_MODE selects the emergency-exit Donchian basis.

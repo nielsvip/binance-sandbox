@@ -137,7 +137,7 @@ def build_completed(observed, prefix, start, now):
     return row, details
 
 
-def run(base, poll_s=0.1):
+def run(base, poll_s=0.1, publish_from=0, producer_generation=2):
     base = Path(base)
     store = redis.Redis(host='127.0.0.1', port=6379, db=0, socket_connect_timeout=0.5, socket_timeout=0.5)
     observed = ObservedMarks()
@@ -146,7 +146,7 @@ def run(base, poll_s=0.1):
     native, preparation, pending, emitted = {}, {}, {}, {}
     keys, universe, source = [], [], ''
     refreshed = books_at = status_at = 0
-    print(json.dumps({'event': 'crypto_clock_started', 'at': time.time(), 'pid': __import__('os').getpid()}), flush=True)
+    print(json.dumps({'event': 'crypto_clock_started', 'at': time.time(), 'pid': __import__('os').getpid(), 'publish_from': publish_from, 'producer_generation': producer_generation}), flush=True)
     while True:
         began = now = time.time()
         bucket = int(now // 900) * 900
@@ -163,6 +163,8 @@ def run(base, poll_s=0.1):
             observed.prune(now)
             starts = [target] + ([bucket] if now - bucket >= 780 else [])
             for start in starts:
+                if start < publish_from:
+                    continue
                 for symbol in universe:
                     key = (symbol, start)
                     if key not in native and key not in preparation:
@@ -182,6 +184,8 @@ def run(base, poll_s=0.1):
                     pending.pop(key)
             reasons = {}
             for symbol in universe:
+                if target < publish_from:
+                    continue
                 key = (symbol, target)
                 if key in emitted or key in pending:
                     continue
@@ -193,10 +197,11 @@ def run(base, poll_s=0.1):
                     reason = details['reason']
                     reasons[reason] = reasons.get(reason, 0) + 1
                     continue
+                row.update(_producer_generation=producer_generation, _producer_pid=__import__('os').getpid())
                 pending[key] = publishers.submit(publish_closed_15m, base / 'klines_cache' / f'{symbol}_15m.json', row, merge_closed_history, base, 'crypto', symbol)
             if now - status_at >= 5:
-                status = {'at': now, 'pid': __import__('os').getpid(), 'event': 'crypto_clock_status', 'redis_keys': len(keys), 'fresh_marks': fresh, 'symbols_observed': len(observed.bars), 'book': source, 'universe': len(universe), 'bar_start_ts': target, 'published': sum((symbol, target) in emitted for symbol in universe), 'pending': sum((symbol, target) in pending for symbol in universe), 'missing_reasons': reasons, 'loop_s': time.time() - began}
-                atomic_json(base / 'data/reports/crypto_15m_clock_latest.json', status)
+                status = {'at': now, 'pid': __import__('os').getpid(), 'event': 'crypto_clock_status', 'redis_keys': len(keys), 'fresh_marks': fresh, 'symbols_observed': len(observed.bars), 'book': source, 'universe': len(universe), 'bar_start_ts': target, 'published': sum((symbol, target) in emitted for symbol in universe), 'pending': sum((symbol, target) in pending for symbol in universe), 'missing_reasons': reasons, 'loop_s': time.time() - began, 'publish_from': publish_from, 'producer_generation': producer_generation, 'warming_up': target < publish_from}
+                atomic_json(base / f'data/reports/crypto_15m_clock_{"shadow_" if publish_from else ""}latest.json', status)
                 print(json.dumps(status), flush=True)
                 status_at = now
             for mapping in (native, emitted):
@@ -213,12 +218,16 @@ def run(base, poll_s=0.1):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--base', default=str(ROOT))
+    parser.add_argument('--lock-name', default='.crypto_15m_bar_clock.lock')
+    parser.add_argument('--publish-from', type=int, default=0)
     args = parser.parse_args()
-    lock = Path(args.base) / 'data/.crypto_15m_bar_clock.lock'
+    if Path(args.lock_name).name != args.lock_name:
+        parser.error('--lock-name must be a filename')
+    lock = Path(args.base) / 'data' / args.lock_name
     lock.parent.mkdir(parents=True, exist_ok=True)
     with lock.open('a') as handle:
         try:
             fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             sys.exit(0)
-        run(args.base)
+        run(args.base, publish_from=args.publish_from)

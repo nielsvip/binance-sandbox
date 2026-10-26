@@ -198,3 +198,27 @@ def test_fast_tail_preserves_full_history_and_forming_next_row(tmp_path):
     assert merge_closed_history(path, verified)
     assert merge_closed_history(path, incoming)
     assert json.loads(path.read_text())[-2] == verified
+
+
+def test_new_clock_generation_wins_until_verified_native_is_available():
+    from closed_bar_feed import preferred_closed_row
+    old = dict(event()['row'], _producer='independent_crypto_15m_clock')
+    current = dict(old, close=130, _producer_generation=2)
+    assert preferred_closed_row(current, old, START + 900) is current
+    assert preferred_closed_row(old, current, START + 900) is current
+    native = dict(old, close=140, volume=0, _provisional=False, _closed_verified_at=START + 901)
+    assert preferred_closed_row(current, native, START + 900) is native
+    assert preferred_closed_row(native, current, START + 900) is native
+
+
+def test_linux_tail_copy_fallback_preserves_history_without_json_reparse(tmp_path, monkeypatch):
+    import sys
+    from closed_bar_feed import merge_closed_history
+    path = tmp_path / 'TESTUSDT_15m.json'
+    rows = [dict(event()['row'], timestamp=START - (6000 - index) * 900) for index in range(6001)]
+    atomic_json(path, rows)
+    monkeypatch.setattr(sys, 'platform', 'linux')
+    incoming = dict(event()['row'], close=175)
+    assert merge_closed_history(path, incoming)
+    result = json.loads(path.read_text())
+    assert result[:-1] == rows[:-1] and result[-1] == incoming

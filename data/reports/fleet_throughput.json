@@ -1,7 +1,7 @@
 {
-  "ts": "2026-10-26T20:50:15.268986+00:00",
-  "tick": "2026-10-26T20:48:02.213968+00:00",
-  "tick_age_s": 133,
+  "ts": "2026-10-26T20:55:10.870893+00:00",
+  "tick": "2026-10-26T20:54:01.818035+00:00",
+  "tick_age_s": 69,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run37.json",
     "round": "run37",
@@ -15,18 +15,8 @@
     "hosts_not_visible": []
   },
   "hosts": {
-    "s6": {
-      "cpu_pct": 15,
-      "slots": "1/4",
-      "observed_running": [
-        "VZ"
-      ],
-      "published_last_hour": 1,
-      "idle_reason": "disk guard",
-      "mem_avail_mb": 26750
-    },
     "s1": {
-      "cpu_pct": 100,
+      "cpu_pct": 97,
       "slots": "3/4",
       "observed_running": [
         "AXSUSDT",
@@ -34,11 +24,11 @@
         "MOVRUSDT"
       ],
       "published_last_hour": 0,
-      "idle_reason": "mem guard",
-      "mem_avail_mb": 4430
+      "idle_reason": "disk guard",
+      "mem_avail_mb": 7829
     },
     "s2": {
-      "cpu_pct": 100,
+      "cpu_pct": 69,
       "slots": "4/4",
       "observed_running": [
         "ARKMUSDT",
@@ -48,28 +38,42 @@
       ],
       "published_last_hour": 0,
       "idle_reason": "slots full",
-      "mem_avail_mb": 6772
+      "mem_avail_mb": 8705
     },
     "s5": {
-      "cpu_pct": 82,
+      "cpu_pct": 84,
       "slots": "4/4",
       "observed_running": [
-        "ABBV",
-        "ACN",
-        "ADBE",
-        "CME"
+        "MRVL",
+        "PLTR",
+        "QLYS",
+        "ZETA"
       ],
       "published_last_hour": 0,
       "idle_reason": "slots full",
-      "mem_avail_mb": 20382
+      "mem_avail_mb": 21730
+    },
+    "s6": {
+      "cpu_pct": 34,
+      "slots": "4/4",
+      "observed_running": [
+        "CDE",
+        "COHR",
+        "MNTS",
+        "RKLB"
+      ],
+      "published_last_hour": 1,
+      "idle_reason": "slots full",
+      "mem_avail_mb": 25013
     }
   },
   "one_hour_total": 1,
   "alerts": [
-    "LOW_THROUGHPUT:s6:1/h",
-    "LOW_CPU:s6:15%",
     "LOW_THROUGHPUT:s1:0/h",
     "LOW_THROUGHPUT:s2:0/h",
-    "LOW_THROUGHPUT:s5:0/h"
+    "LOW_CPU:s2:69%",
+    "LOW_THROUGHPUT:s5:0/h",
+    "LOW_THROUGHPUT:s6:1/h",
+    "LOW_CPU:s6:34%"
   ]
 }

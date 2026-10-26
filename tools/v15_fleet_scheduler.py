@@ -3895,6 +3895,25 @@ def tick(args, cfg, now):
     _ph("reap")
     server_wd = _server_watchdog(hosts, stats, st, args)
     _ph("server_watchdog")
+    lane_refill = {}
+    if not (args.dry_run or sim):
+        for h_ in hosts:
+            name = h_.get("name")
+            s_ = stats.get(name) or {}
+            if name not in ("s2", "s5", "s6") or not s_ or len(s_.get("running") or {}) >= min(4, int(h_.get("max_pairs") or 4)):
+                continue
+            try:
+                disk_min = int(h_.get("disk_min_mb", os.environ.get("V15_SCHED_DISK_MIN_MB", "4500")))
+                if int(s_.get("disk_avail_mb") or 0) < disk_min:
+                    lane_refill[name] = {"requested": False, "reason": "disk guard", "disk_avail_mb": s_.get("disk_avail_mb"), "disk_min_mb": disk_min}
+                    continue
+                cmd_ = "cd %s && (nohup /home/niels/.conda/envs/binance_env_mac/bin/python -u tools/v15_cpu80_watchdog.py --refill-once >> /tmp/v15_scheduler_lane_refill.log 2>&1 </dev/null &)" % h_["root"]
+                out_ = sh_ssh(h_, cmd_, timeout=15)
+                lane_refill[name] = {"requested": out_ is not None, "reason": "underfilled; refreshed current best-first queue and requested lane refill" if out_ is not None else "ssh unavailable", "running": sorted(s_.get("running") or {})}
+            except Exception as exc_:
+                lane_refill[name] = {"requested": False, "reason": "%s: %s" % (type(exc_).__name__, str(exc_)[:100])}
+            if lane_refill[name].get("requested"):
+                print("[sched] LANE-REFILL %s running=%d/%d reason=%s" % (name, len(s_.get("running") or {}), min(4, int(h_.get("max_pairs") or 4)), lane_refill[name]["reason"]), flush=True)
     cur_pdir = next((x["pdir"] for x in stats.values() if x and x.get("pdir")), None)
     if cur_pdir and st.get("attempts_pdir") != cur_pdir:
         st["attempts"] = {}
@@ -4368,7 +4387,7 @@ def tick(args, cfg, now):
             print(f"[autokill] REPORT-ONLY (fresh={_ak_fresh} on={_ak_on} dry={bool(args.dry_run or sim)}): {json.dumps(_ak_report)}", flush=True)
     _ph("held_autokill")
     log = {"now": now.isoformat(), "market_open": is_open, "venue_order": vorder, "priority_syms": sorted(priority_syms()), "min_to_open": round(mto), "universe_source": how,
-           "universe": uni["counts"], "reaped": reaped, "server_watchdog": server_wd, "hosts": {}, "launched": [], "skipped_unready": {}, "foreign_running": {k: v["host"] for k, v in foreign.items()},
+           "universe": uni["counts"], "reaped": reaped, "server_watchdog": server_wd, "lane_refill": lane_refill, "hosts": {}, "launched": [], "skipped_unready": {}, "foreign_running": {k: v["host"] for k, v in foreign.items()},
            "autokilled": _ak_killed, "autokill_report": _ak_report}
     log["attempt_refunds"] = _attempt_refunds
 

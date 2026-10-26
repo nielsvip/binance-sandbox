@@ -239,7 +239,12 @@ def main():
 if __name__=="__main__":
     parser=argparse.ArgumentParser()
     parser.add_argument("--daemon", action="store_true")
+    parser.add_argument("--refill-once", action="store_true")
     args=parser.parse_args()
+    if args.refill_once:
+        host=sh("hostname", timeout=5).strip() or "unknown"
+        ensure_lane(host, sys_stats()["pilot_sides"])
+        sys.exit(0)
     if args.daemon:
         while True:
             try:

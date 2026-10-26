@@ -102,6 +102,8 @@ def preferred_closed_row(previous, incoming, bar_close_ts=None):
             return previous
     if not old_native and not new_native and previous.get('_producer') == 'independent_crypto_15m_clock' and incoming.get('_producer') != 'independent_crypto_15m_clock':
         return previous
+    if not old_native and not new_native and previous.get('_producer') == incoming.get('_producer') == 'independent_crypto_15m_clock' and int(previous.get('_producer_generation', 1)) > int(incoming.get('_producer_generation', 1)):
+        return previous
     return incoming
 
 
@@ -135,8 +137,6 @@ def merge_closed_tail_locked(path, row):
     import ctypes
     import sys
     path = Path(path)
-    if sys.platform != 'darwin':
-        return None
     with path.open('rb') as stream:
         size = path.stat().st_size
         offset = max(0, size - 32768)
@@ -165,11 +165,21 @@ def merge_closed_tail_locked(path, row):
     except (ValueError, TypeError, KeyError):
         return None
     temporary = path.with_name(f'.{path.name}.{os.getpid()}.{time.time_ns()}.clone')
-    clonefile = ctypes.CDLL(None, use_errno=True).clonefile
-    clonefile.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int]
-    clonefile.restype = ctypes.c_int
-    if clonefile(os.fsencode(path), os.fsencode(temporary), 0) != 0:
-        return None
+    if sys.platform == 'darwin':
+        clonefile = ctypes.CDLL(None, use_errno=True).clonefile
+        clonefile.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int]
+        clonefile.restype = ctypes.c_int
+        if clonefile(os.fsencode(path), os.fsencode(temporary), 0) != 0:
+            return None
+    else:
+        import fcntl
+        import shutil
+        try:
+            with path.open('rb') as source, temporary.open('xb') as target:
+                fcntl.ioctl(target.fileno(), 0x40049409, source.fileno())
+        except OSError:
+            temporary.unlink(missing_ok=True)
+            shutil.copyfile(path, temporary)
     try:
         with temporary.open('r+b') as stream:
             stream.seek(offset + begin)
@@ -198,7 +208,7 @@ def publish_closed_15m(path, row, writer, base_path, mode, symbol):
                 candidate = json.loads(match.group())
                 if timestamp_epoch(candidate.get('timestamp')) != start or not is_verified_closed_native(candidate, start + 900, candidate_path):
                     continue
-                candidate = dict(candidate, _closed=True, _closed_verified_at=float(candidate.get('_closed_verified_at') or time.time()), _provisional=False)
+                candidate = dict(candidate, _closed=True, _closed_verified_at=float(candidate.get('_closed_verified_at') or max(candidate_path.stat().st_mtime, start + 900)), _provisional=False)
                 if 'klines_canonical' in candidate_path.parts:
                     candidate['_source'] = 'binance_canonical_closed'
                 chosen = preferred_closed_row(candidate, chosen, start + 900)

@@ -1113,6 +1113,7 @@ class TradierConfig:
     # Block CLOSE/sell-to-close orders during first N minutes after market open.
     # Wired in tradier_manage.evaluate_stop AND tradier_options_analyzer.auto_sell.
     OPENING_BUFFER_NO_CLOSE_MINUTES: float = 30.0
+    STOCKS_OPENING_BUFFER_ENTRY_ENABLED: bool = True
     OPENING_BUFFER_DC4_INTRADAY_SKIP_ENABLED: bool = (
         True  # USER 2026-10-09: in-buffer, skip intraday-TF (15m/1h/...) VIGILANCE_DC4 stops (levels meaningless on 0-2 open bars); 4h/D + ULTIMATE_DC stay live. Kill switch: False restores pre-open-bleed-fix behavior.
     )

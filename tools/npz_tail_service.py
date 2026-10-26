@@ -413,7 +413,6 @@ def sweep_once(base, cat_side, workers=WORKERS, sibling=None, sibling_base=None)
             rec["error"] += 1
             rec["error_syms"].append(sym)
     tasks = [(sym, int(lc), str(base), mode) for _, sym, lc, _ in ready]
-    compactions = []
     with ProcessPoolExecutor(max_workers=min(max(1, workers), 8), mp_context=get_context("fork")) as pool:
         futures = {pool.submit(_compute_row_process, task): job for task, job in zip(tasks, ready)}
         for future in as_completed(futures):
@@ -442,13 +441,6 @@ def sweep_once(base, cat_side, workers=WORKERS, sibling=None, sibling_base=None)
             if r == "error":
                 rec["error_syms"].append(sym)
             rec[r if r in rec else "error"] += 1
-            if r == "appended" and tail_len(npz) >= COMPACT_AT:
-                compactions.append(npz)
-    for npz in compactions:
-        try:
-            rec["compacted"] += compact_tail(npz) or 0
-        except Exception:
-            pass
     return rec
 
 
@@ -482,6 +474,12 @@ def main():
         fcntl.flock(singleton, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
         return 0
+    if not a.once:
+        import subprocess
+        log_path = Path(base) / 'logs' / f'npz_tail_compactor_{a.cat_side}.jsonl'
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        with log_path.open('a') as stream:
+            subprocess.Popen([sys.executable, str(Path(__file__).with_name('npz_tail_compactor.py')), '--base', str(base), '--cat-side', a.cat_side, '--loop'], cwd=base, stdout=stream, stderr=subprocess.STDOUT, start_new_session=True)
     while True:
         try:
             rec = sweep_once(

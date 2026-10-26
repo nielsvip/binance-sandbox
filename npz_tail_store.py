@@ -27,16 +27,28 @@ store (npz_live_generator._drop_forming_bar doctrine). Duplicate/stale rows
 """
 
 import json
+import fcntl
 import logging
 import os
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from contextlib import contextmanager
 
 logger = logging.getLogger("npz_tail_store")
 TAIL_DIRNAME = ".tail"
 FORMING_SETTLE_S = 0
 GRID_S = 900
+
+
+@contextmanager
+def _store_lock(npz_path):
+    path = Path(npz_path)
+    lock_path = path.parent / '.tail_locks' / f'{path.stem}.lock'
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with lock_path.open('a') as handle:
+        fcntl.flock(handle, fcntl.LOCK_EX)
+        yield
 
 
 def last_closed_15m_epoch(now=None):
@@ -131,7 +143,7 @@ def _base_tip_ts(npz_path):
         return None
 
 
-def append_tail_row(npz_path, row, now=None, replace_latest=False):
+def _append_tail_row_unlocked(npz_path, row, now=None, replace_latest=False):
     npz_path = Path(npz_path)
     tail_path = tail_path_for_npz(npz_path)
     try:
@@ -183,6 +195,11 @@ def append_tail_row(npz_path, row, now=None, replace_latest=False):
             e,
         )
         return False
+
+
+def append_tail_row(npz_path, row, now=None, replace_latest=False):
+    with _store_lock(npz_path):
+        return _append_tail_row_unlocked(npz_path, row, now, replace_latest)
 
 
 def tail_rows(npz_path):
@@ -271,7 +288,7 @@ def _apply_row_in_memory(data, row):
     return out
 
 
-def load_merged(npz_path):
+def _load_merged_unlocked(npz_path):
     npz_path = Path(npz_path)
     try:
         import numpy as _np
@@ -301,7 +318,12 @@ def load_merged(npz_path):
     return data
 
 
-def compact_tail(npz_path):
+def load_merged(npz_path):
+    with _store_lock(npz_path):
+        return _load_merged_unlocked(npz_path)
+
+
+def _compact_tail_unlocked(npz_path):
     npz_path = Path(npz_path)
     rows = tail_rows(npz_path)
     if not rows:
@@ -345,3 +367,8 @@ def compact_tail(npz_path):
     except FileNotFoundError:
         pass
     return applied
+
+
+def compact_tail(npz_path):
+    with _store_lock(npz_path):
+        return _compact_tail_unlocked(npz_path)
