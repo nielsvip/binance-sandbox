@@ -13169,7 +13169,7 @@ def _main_single():
                                 _diff[_k] = _v
                         _diff_san, _ = sanitize_overrides(_diff, defaults)
                         print(f"[BASELINE-WINNER] {new_symside} per_sym wins cat {float(_cat_vec.get('gain_pct') or 0):.2f} vs per_sym {float(_persym_vec.get('gain_pct') or 0):.2f} -> E3 per_sym, C diff {len(_diff_san)} overrides (full {len(_win_full)} vs bold {len(_cur_bold)})", flush=True)
-                        overrides = _diff_san
+                        overrides = dict(_persym_ov_san)
                         _baseline_winner_kind = "per_sym"
                         _baseline_winner_full = dict(_win_full)
                         baseline_vec = _win_vec
