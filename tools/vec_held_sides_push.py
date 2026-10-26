@@ -28,6 +28,19 @@ def held_sides(root: Path) -> list[str]:
     return sorted(held)
 
 
+def held_accounts(root: Path) -> dict:
+    accounts = {}
+    for account in ("ang", "inf", "flz", "men", "fin"):
+        for side in ("long", "short"):
+            rows = json.loads((root / account / f"{side}_positions.json").read_text())
+            for key, row in rows.items():
+                if abs(float(row.get("positionAmt") or 0.0)) > 0.0:
+                    symbol_side = key.rsplit(":", 1)[-1]
+                    if symbol_side.endswith(("_LONG", "_SHORT")):
+                        accounts.setdefault(symbol_side, set()).add(account)
+    return {symbol_side: sorted(values) for symbol_side, values in accounts.items()}
+
+
 def held_stock_sides(root: Path) -> list[str]:
     held = set()
     for side in ("long", "short"):
@@ -55,7 +68,7 @@ def cache_tails(root: Path, sides: list[str]) -> dict:
 
 def main() -> None:
     sides = held_sides(ROOT)
-    payload = {"generated_ts": time.time(), "generated_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(), "held": sides}
+    payload = {"generated_ts": time.time(), "generated_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(), "held": sides, "held_accounts": held_accounts(ROOT)}
     DEST.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(mode="w", prefix=".held_sides.", suffix=".json", dir=DEST.parent, delete=False) as stream:
         json.dump(payload, stream, sort_keys=True)

@@ -975,8 +975,19 @@ def load_sets():
             if _now() - float(held_doc["generated_ts"]) > 180:
                 raise ValueError("held sides stale")
             eligible_crypto = (set(account_sides) | set(held_doc["held"])) if account_sides else None
+            held_accounts = held_doc.get("held_accounts") or {}
         except (OSError, ValueError, KeyError, TypeError):
             eligible_crypto = None
+            held_accounts = {}
+        for symbol_side, accounts in account_sides.items():
+            entry = dict(vd.get(symbol_side) or {})
+            entry.update({"mode": "live", "account": sorted(set(accounts) | set(held_accounts.get(symbol_side) or []))})
+            vd[symbol_side] = entry
+        for symbol_side, accounts in held_accounts.items():
+            if symbol_side not in account_sides:
+                entry = dict(vd.get(symbol_side) or {})
+                entry.update({"mode": "live", "account": sorted(set(accounts))})
+                vd[symbol_side] = entry
         stock_sides = Path("/home/niels/fwd_stocks_syms.txt")
         if stock_sides.is_file():
             for symbol_side in stock_sides.read_text().split():

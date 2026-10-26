@@ -71,6 +71,15 @@ def store_mtimes(base, sym, path=None):
     return z, t
 
 
+def retry_invalid_state(base, symbol_side, now=None):
+    path = Path(base) / "data" / "vec_live" / "state" / f"{symbol_side}.json"
+    try:
+        state = json.loads(path.read_text())
+        return state.get("status") == "ENGINE_ERROR" and (time.time() if now is None else now) - float(state.get("written_at") or 0) >= 60
+    except (OSError, ValueError, TypeError):
+        return False
+
+
 def split_ss(ss):
     return ss.rsplit("_", 1)
 
@@ -122,8 +131,10 @@ def run_once(base, shard, workers=WORKERS, verbose=False):
         sym, _ = split_ss(ss)
         source = E.npz_path(sym)
         z, t = store_mtimes(base, sym, source)
-        if should_probe(ss, z, t, seen, revision=(E.set_md5(ov), em["combined"], str(source))):
-            jobs.append((ss, entry, ov, em["combined"], False))
+        changed = should_probe(ss, z, t, seen, revision=(E.set_md5(ov), em["combined"], str(source)))
+        retry = not changed and retry_invalid_state(base, ss)
+        if changed or retry:
+            jobs.append((ss, entry, ov, em["combined"], retry))
     run_once._seen = seen
     rec = {
         "t": time.time(),
