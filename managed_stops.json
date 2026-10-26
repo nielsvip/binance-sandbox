@@ -6,13 +6,6 @@
     "symbol": "AVAXUSDC",
     "side": "LONG"
   },
-  "ang:TIAUSDC_LONG": {
-    "orderId": "4000001998176335",
-    "stopPrice": 0.5268,
-    "entry_sig": "2026-10-26 15:35:22.801000+00:00",
-    "symbol": "TIAUSDC",
-    "side": "LONG"
-  },
   "ang:RUNEUSDT_LONG": {
     "orderId": "4000001998199205",
     "stopPrice": 0.6223,
@@ -147,13 +140,6 @@
     "symbol": "MASKUSDT",
     "side": "SHORT"
   },
-  "ang:ARBUSDC_LONG": {
-    "orderId": "4000001998375804",
-    "stopPrice": 0.16592,
-    "entry_sig": "2026-10-26 16:49:53.075000+00:00",
-    "symbol": "ARBUSDC",
-    "side": "LONG"
-  },
   "ang:WOOUSDT_SHORT": {
     "orderId": "4000001998384956",
     "stopPrice": 0.01053,
@@ -173,6 +159,13 @@
     "stopPrice": 1.0392,
     "entry_sig": "2026-10-26 16:55:57.925000+00:00",
     "symbol": "DOTUSDT",
+    "side": "SHORT"
+  },
+  "ang:ACEUSDT_SHORT": {
+    "orderId": "4000001998393671",
+    "stopPrice": 0.14335,
+    "entry_sig": "2026-10-26 16:57:05.288000+00:00",
+    "symbol": "ACEUSDT",
     "side": "SHORT"
   }
 }
