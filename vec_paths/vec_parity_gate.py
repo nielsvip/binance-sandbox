@@ -98,6 +98,8 @@ VEC_EXIT_TOKENS = (
     "OVERSIZE_TRIM_LOSS",                     # 2026-10-17 USER: parity CORRECTION — the vector never holds more than its position cap; trims live back to it (oversize_trim.py)
     "ALL_TF_AGAINST_CLOSE",                   # v12 process_position close predicate
     "GAP_RISK_EXIT_",                          # v12 stocks GAP_RISK_EXIT vector twin
+    "RSI2_XTREME_EXIT_",                       # v12 bottom_top_signals.exit_fire_masks (live BT_ wrapper)
+    "STOCH_XTREME_EXIT_",                      # v12 bottom_top_signals.exit_fire_masks (live BT_ wrapper)
     "WICK_REJECT_EXIT_",                       # v12 twin_exits_dead wick exit mask
     "WT_SIMPLE_GUARANTEE_",                   # v12 twin_p0_stocks opposite-WT exit OR
     "E_1_WT_DELTA_EXIT",                       # v12 process_position_crypto__e1_wt_delta_exit mask
