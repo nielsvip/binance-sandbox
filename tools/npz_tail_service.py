@@ -364,9 +364,25 @@ def npz_for(base, symbol):
     return str(p) if p.exists() else None
 
 
+def held_first_symbols(base, owned, cat_side, now=None):
+    if not cat_side.startswith("crypto"):
+        return owned
+    try:
+        manifest = json.loads((Path(base) / "data" / "vec_live" / "held_sides.json").read_text())
+        when = time.time() if now is None else now
+        if when - float(manifest.get("generated_ts") or 0) > 180:
+            return owned
+        held = {str(ss).rsplit("_", 1)[0] for ss in manifest.get("held", []) if str(ss).endswith(("_LONG", "_SHORT"))}
+    except (OSError, ValueError, TypeError):
+        return owned
+    def symbol(entry):
+        return entry.rsplit("_", 1)[0] if entry.endswith(("_LONG", "_SHORT")) else entry
+    return sorted(owned, key=lambda entry: (symbol(entry) not in held, entry))
+
+
 def sweep_once(base, cat_side, workers=WORKERS, sibling=None, sibling_base=None):
     uni = load_universe(base)
-    owned = owned_symbols(uni, cat_side)
+    owned = held_first_symbols(base, owned_symbols(uni, cat_side), cat_side)
     mode = "crypto" if cat_side.startswith("crypto") else "tradier"
     compute = make_compute(base, mode)
     if compute is None:
