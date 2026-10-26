@@ -15579,7 +15579,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     # numbers", doc 17 §3.7): the reference the stop freezes at. Defaults (dc_low/15m/0.25/off) take the unchanged
     # freeze_software_level(dc_low_15m, dc_high_15m) path below, so a board without these keys computes today's level exactly.
     # Mandatory entry-time dc15 ±0.25% software stop has no tunable reference.
-    _fx_spec = vec_decisions.fixed_stop.spec_from(lambda knob, default: getattr(cfg, knob, default))
+    _fx_spec = vec_decisions.fixed_stop.DEFAULT_SPEC
     _fx_ref_default = vec_decisions.fixed_stop.is_default_reference(_fx_spec)
     _fx_tight_on = _fx_spec[3] != "off"
     _fx_ref_arr = {"dc_low_15m": _uh_l15, "dc_high_15m": _uh_h15}

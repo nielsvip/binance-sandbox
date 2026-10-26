@@ -3018,7 +3018,8 @@ def side_cmd(host, sym, side, window, pdir, attempt, workers):
         _v20_root = ROOT / "v20_runtime"
         _v20_marker = _v20_root / "CRYPTO_V20_READY"
         _v20_engine = _v20_root / "v12_quick_engine.py"
-        _v20_marked = _v20_marker.is_file() and _v20_engine.is_file() and _v20_marker.read_text().strip() == hashlib.md5(_v20_engine.read_bytes()).hexdigest()
+        _v20_expected = hashlib.md5(_v20_engine.read_bytes()).hexdigest() if _v20_engine.is_file() else ""
+        _v20_marked = _v20_marker.is_file() and _v20_engine.is_file() and _v20_marker.read_text().strip() == _v20_expected
         _crypto_v20_ready = venue == "crypto" and (os.environ.get("V15_CRYPTO_V20_READY") == "1" or _v20_marked)
         if _crypto_v20_ready:
             env += " V15_V19_INTERIM=0 V15_UNWIRED_SKIP=1 V15_START_OVERRIDES="
@@ -3026,6 +3027,10 @@ def side_cmd(host, sym, side, window, pdir, attempt, workers):
             env += " V15_V19_INTERIM=1 V15_UNWIRED_SKIP=1 V15_START_OVERRIDES= PYTHONPATH=/home/niels/binance-sandbox/tools/v19_runtime${PYTHONPATH:+:$PYTHONPATH}"
         _pilot_root = "/home/niels/binance-sandbox/v20_runtime" if _crypto_v20_ready else "/home/niels/binance-sandbox"
         body = f"cd {_pilot_root} && {env} /home/niels/.conda/envs/binance_env_mac/bin/python -u v15_pilot.py --sym-side {ss} --template {t} --seq-mode worst2best --window-days 30 --vector-only --workers {workers}"
+        if _crypto_v20_ready:
+            body = f"cd {_pilot_root} && /home/niels/.conda/envs/binance_env_mac/bin/python tools/v15_engine_vintage_guard.py --sym-side {ss} --progress-dir {pdir} --expected-md5 {_v20_expected} && {body}"
+        elif venue == "crypto":
+            body = "echo CRYPTO_V20_NOT_READY_ENGINE_HASH >&2; exit 75"
     elif window == "365D":
         body = (f"mkdir -p {chain}/v365 && nice -n 10 /home/niels/.conda/envs/binance_env_mac/bin/python -u tools/v15_365_cycle.py --sym-side {ss} --progress {pdir}/{ss}_v14_progress.json "
                 f"--template {t} --work {chain}/v365 --rounds 0 --workers {workers}")

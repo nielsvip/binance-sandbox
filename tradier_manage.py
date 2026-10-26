@@ -8005,7 +8005,7 @@ def _cfg_auto(param, default=None):
 
 def _tr_fixed_stop_spec(account_key, symbol, side):
     """The mandatory entry-time dc15 software stop is fixed at 0.25%."""
-    return _fixed_stop_core.spec_from(lambda knob, default: _cfg(knob, default, account_key, symbol, side))
+    return _fixed_stop_core.DEFAULT_SPEC
 
 
 def _tr_fixed_stop_ref_default(account_key, symbol, side) -> bool:

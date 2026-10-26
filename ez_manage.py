@@ -8766,6 +8766,20 @@ def _voe_reason_is_vec(reason) -> bool:
 _AIR_BARS_LOADER = None  # V17 AIR: callable(symbol, side) -> [(ts, low, high)] for REENTRY_AUGMENT_HL_REF='low'; None = klines_cache/{SYM}_15m.json (backtest_v12_engine injects frozen-NPZ bars)
 
 
+def _r6_confirmed_main_vec_open(tracker_entry):
+    """True only when current tracker truth and its latest OPEN identify a main VEC position."""
+    if not isinstance(tracker_entry, dict) or tracker_entry.get("is_hedge") is not False:
+        return False
+    if tracker_entry.get("hedge_for") or tracker_entry.get("hedged_by") or tracker_entry.get("hedged_by_symbols"):
+        return False
+    for event in reversed(tracker_entry.get("trade_log") or []):
+        if not isinstance(event, dict) or str(event.get("action", "")).upper() != "OPEN":
+            continue
+        reason = str(event.get("reason", "")).upper()
+        return "VEC_DRIVEN_OPEN_" in reason and not any(tag in reason for tag in ("HEDGE_PROTECT_", "QUICK_HEDGE_", "HEDGE_SAME_"))
+    return False
+
+
 def _air_trade_log(trade_manager, position_key) -> list:
     """V17 AIR: the persisted lifecycle log of one sym_side = tracker.json exit_candidates[pk].trade_log (on_trade_event, ISO ts)."""
     try:
@@ -8870,7 +8884,7 @@ def _fixed_stop_freeze_level(is_long: bool, dc_low_15m: float, dc_high_15m: floa
 
 def _fixed_stop_spec_for(symbol, side):
     """The mandatory entry-time dc15 software stop is fixed at 0.25%."""
-    return _fixed_stop_core.spec_from(lambda knob, default: _psym_get(symbol, side, knob, default))
+    return _fixed_stop_core.DEFAULT_SPEC
 
 
 def _fixed_stop_freeze_level_spec(symbol, side, is_long: bool, ind, entry_price: float):
@@ -58213,6 +58227,10 @@ async def process_position(
                     _r6_reason = str(
                         getattr(position, "augment_reason", "") or ""
                     ).upper()
+                    _r6_tracker_entry = (
+                        getattr(trade_manager.tracker_manager, "exit_candidates", {}) or {}
+                    ).get(position_key, {})
+                    _r6_latest_open_is_main_vec = _r6_confirmed_main_vec_open(_r6_tracker_entry)
                     for _hm in (
                         "HEDGE_PROTECT_",
                         "HEDGE_ELECTED_",
@@ -58222,6 +58240,16 @@ async def process_position(
                         if _hm in _r6_reason:
                             _r6_reason_says_hedge = True
                             break
+                    if _r6_latest_open_is_main_vec:
+                        _r6_reason_says_hedge = False
+                        _r6_pos_is_hedge_attr = False
+                        try:
+                            position.is_hedge = False
+                        except Exception:
+                            pass
+                        logger.critical(
+                            f"[HEDGE_CLEANUP_R6_STALE_CLASSIFICATION] {position_key}: tracker confirms latest VEC main OPEN with is_hedge=False; clearing stale in-memory hedge flag and ignoring stale augment_reason={_r6_reason[:80]}"
+                        )
                 except Exception:
                     pass
                 if not _r6_pos_is_hedge_attr and not _r6_reason_says_hedge:

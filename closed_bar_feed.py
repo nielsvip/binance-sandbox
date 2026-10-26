@@ -48,7 +48,7 @@ def aggregate_closed_15m(bars, bucket_ts, now_s):
             return []
         if start in memo:
             return memo[start]
-        for span, bar in sorted(options.get(start, []), key=lambda item: item[0]):
+        for span, bar in sorted(options.get(start, []), key=lambda item: (not str(item[1].get('_source', '')).startswith('kline_'), item[0])):
             rest = tile(start + span)
             if rest is not None:
                 memo[start] = [bar] + rest
@@ -79,25 +79,82 @@ def atomic_json(path, payload):
         raise
 
 
+def is_verified_closed_native(row, bar_close_ts=None, source_path=None):
+    try:
+        close = timestamp_epoch(row['timestamp']) + 900 if bar_close_ts is None else int(bar_close_ts)
+        volume = float(row['volume'])
+        if not math.isfinite(volume) or volume < 0 or row.get('_provisional') or row.get('provisional'):
+            return False
+        proof = float(row.get('_closed_verified_at') or 0)
+        canonical = source_path is not None and 'klines_canonical' in Path(source_path).parts
+        return (math.isfinite(proof) and proof >= close) or canonical
+    except (TypeError, ValueError, KeyError):
+        return False
+
+
+def preferred_closed_row(previous, incoming, bar_close_ts=None):
+    old_native = is_verified_closed_native(previous, bar_close_ts)
+    new_native = is_verified_closed_native(incoming, bar_close_ts)
+    if old_native and not new_native:
+        return previous
+    if old_native and new_native:
+        if float(previous.get('_closed_verified_at') or 0) > float(incoming.get('_closed_verified_at') or 0):
+            return previous
+    if not old_native and not new_native and previous.get('_producer') == 'independent_crypto_15m_clock' and incoming.get('_producer') != 'independent_crypto_15m_clock':
+        return previous
+    return incoming
+
+
+def merge_closed_history(path, row):
+    import fcntl
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = path.with_name(f'.{path.name}.mark.lock')
+    with lock_path.open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        rows = json.loads(path.read_text()) if path.exists() else []
+        if not isinstance(rows, list):
+            raise ValueError('invalid full history')
+        start = timestamp_epoch(row['timestamp'])
+        for index, previous in enumerate(rows):
+            if timestamp_epoch(previous['timestamp']) == start:
+                rows[index] = preferred_closed_row(previous, row, start + 900)
+                break
+        else:
+            rows.append(row)
+        rows.sort(key=lambda item: timestamp_epoch(item['timestamp']))
+        atomic_json(path, rows)
+    return True
+
+
 def publish_closed_15m(path, row, writer, base_path, mode, symbol):
     start = timestamp_epoch(row['timestamp'])
-    chosen = row
-    try:
-        with Path(path).open('rb') as stream:
-            stream.seek(max(0, Path(path).stat().st_size - 131072))
-            recent = stream.read().decode('utf-8')
-        for match in reversed(list(re.finditer(r'\{[^{}]*\}', recent))):
-            candidate = json.loads(match.group())
-            if timestamp_epoch(candidate.get('timestamp')) == start and candidate.get('volume') is not None and not candidate.get('_provisional') and not candidate.get('provisional'):
-                chosen = candidate
+    chosen = dict(row)
+    candidates = [Path(path)]
+    if mode == 'crypto':
+        candidates.append(Path(base_path) / 'klines_canonical' / f'{symbol}_15m.json')
+    for candidate_path in candidates:
+        try:
+            with candidate_path.open('rb') as stream:
+                stream.seek(max(0, candidate_path.stat().st_size - 16384))
+                recent = stream.read().decode('utf-8')
+            for match in reversed(list(re.finditer(r'\{[^{}]*\}', recent))):
+                candidate = json.loads(match.group())
+                if timestamp_epoch(candidate.get('timestamp')) != start or not is_verified_closed_native(candidate, start + 900, candidate_path):
+                    continue
+                candidate = dict(candidate, _closed=True, _closed_verified_at=float(candidate.get('_closed_verified_at') or time.time()), _provisional=False)
+                if 'klines_canonical' in candidate_path.parts:
+                    candidate['_source'] = 'binance_canonical_closed'
+                chosen = preferred_closed_row(candidate, chosen, start + 900)
                 break
-    except (OSError, ValueError, TypeError):
-        pass
+        except (OSError, ValueError, TypeError):
+            continue
     event = {'symbol': symbol, 'mode': mode, 'bar_start_ts': start, 'bar_close_ts': start + 900, 'published_at': time.time(), 'row': chosen}
     receive_closed_15m(base_path, event, require_history=False)
     destination = Path(base_path) / 'data' / 'closed_15m_outbox' / mode / f'{symbol}_{start}.json'
     atomic_json(destination, event)
-    _CACHE_WRITES.submit(write_history_outside_boundary, writer, path, row)
+    if writer is not None:
+        _CACHE_WRITES.submit(write_history_outside_boundary, writer, path, chosen)
     return True
 
 
@@ -132,8 +189,7 @@ def receive_closed_15m(base_path, event, now_s=None, require_history=True):
             raise ValueError('invalid cache')
         for index, previous in enumerate(rows):
             if timestamp_epoch(previous.get('timestamp')) == start:
-                if previous.get('volume') is not None and not previous.get('_provisional') and not previous.get('provisional'):
-                    row = previous
+                row = preferred_closed_row(previous, row, start + 900)
                 rows[index] = row
                 break
         else:

@@ -1,19 +1,15 @@
 {
- "generated_utc": "2026-10-26T19:12:33.178831+00:00",
+ "generated_utc": "2026-10-26T20:12:31.181982+00:00",
  "days": 1.0,
  "totals": {
-  "entry_promises": 19,
-  "entry_broken_no_delivery": 19,
+  "entry_promises": 18,
+  "entry_broken_no_delivery": 18,
   "exit_promises": 32,
   "exit_broken_no_delivery": 28,
   "exit_kept_late": 2,
   "exit_kept_in_bar": 2
  },
  "per_key": {
-  "men:ETHFIUSDC_LONG": {
-   "entry_promises": 1,
-   "entry_broken_no_delivery": 1
-  },
   "inf:GRASSUSDT_LONG": {
    "entry_promises": 2,
    "entry_broken_no_delivery": 2,
@@ -149,16 +145,6 @@
   }
  },
  "detail": [
-  {
-   "acct": "men",
-   "sym_side": "ETHFIUSDC_LONG",
-   "kind": "entry",
-   "bar": "10-25 19:00",
-   "late_min": null,
-   "action": "OPEN",
-   "reason": "LEGACY_PSR_REENTRY",
-   "outcome": "NO_DELIVERY"
-  },
   {
    "acct": "inf",
    "sym_side": "GRASSUSDT_LONG",

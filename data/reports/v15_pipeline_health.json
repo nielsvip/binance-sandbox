@@ -1,19 +1,19 @@
 {
- "at": "2026-10-26T20:01:22Z",
+ "at": "2026-10-26T20:15:09Z",
  "s1": {
   "host": "niels",
-  "now": 1793044878.3841643,
+  "now": 1793045705.6778927,
   "merge_crypto": {
    "n": 12,
-   "max_lag_min": 0.0,
-   "median_lag_min": 0.0,
-   "worst": "1000000MOGUSDT",
+   "max_lag_min": 15.0,
+   "median_lag_min": 15.0,
+   "worst": "1000CHEEMSUSDT",
    "dead": []
   },
   "merge_stocks": {
    "n": 1,
-   "max_lag_min": 165.0,
-   "median_lag_min": 165.0,
+   "max_lag_min": 0.0,
+   "median_lag_min": 0.0,
    "worst": "AG",
    "dead": [
     "A",
@@ -29,24 +29,23 @@
    ]
   },
   "npz_legacy_crypto": [],
-  "append_log_age_min": 2.3,
-  "append_last_secs": 585.3,
-  "append_last_stats": "'appended': 664, 'created': 0, 'up_to_date': 5727, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
+  "append_log_age_min": 5.0,
+  "append_last_secs": 604.7,
+  "append_last_stats": "'appended': 1170, 'created': 2, 'up_to_date': 5221, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
   "npz_loop_pids": 0,
   "npz_loop_has_settle": false,
-  "sched_tick_age_min": 9.3,
-  "sched_launched": 0,
+  "sched_tick_age_min": 1.1,
+  "sched_launched": 1,
   "archive_n": 202,
   "archive_mb": 2461.8,
-  "archive_newest_min": 758.9,
+  "archive_newest_min": 772.7,
   "_via": "s1-int"
  },
  "red": [
-  "L2 merge stocks: 165 min behind (worst AG) \u2014 check the tradier/ subdir path",
   "L3 npz append loop is not running (the */15 watchdog should relaunch it)"
  ],
  "warn": [
-  "L5 newest archived board NPZ is 759 min old \u2014 publishes may not be recording"
+  "L5 newest archived board NPZ is 773 min old \u2014 publishes may not be recording"
  ],
  "ok": false
 }
