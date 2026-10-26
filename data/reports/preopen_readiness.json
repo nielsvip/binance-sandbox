@@ -1,8 +1,8 @@
 {
- "generated_utc": "2026-10-26T13:20:09Z",
+ "generated_utc": "2026-10-26T13:40:15Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-26T13:30:00Z",
- "market_open": false,
+ "market_open": true,
  "verdict": "FAIL",
  "failed_critical": [
   "defaults_chain_completed",
@@ -16,9 +16,9 @@
    "critical": true,
    "measured": {
     "filled_today": 295,
-    "filled_before_open": 295
+    "filled_before_open": 292
    },
-   "detail": "295 boards filled before the open (295 today)"
+   "detail": "292 boards filled before the open (295 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -211,7 +211,7 @@
     "symbols": 202,
     "stale_over_90min": 1,
     "stale_pct": 0.5,
-    "median_age_min": 5.2,
+    "median_age_min": 10.3,
     "sample": [
      "KAITOUSDT"
     ]
