@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-26T00:51:30Z",
+ "ts": "2026-10-26T00:56:48Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 198,
+   "fills_6h": 190,
    "open_positions": 2,
-   "unrealised_usd": 0.26,
+   "unrealised_usd": 0.3,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 2,
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 252,
+   "fills_6h": 251,
    "open_positions": 4,
-   "unrealised_usd": 0.35,
+   "unrealised_usd": 0.33,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 2,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 133,
+   "fills_6h": 127,
    "open_positions": 6,
-   "unrealised_usd": -0.09,
+   "unrealised_usd": -0.14,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -75,9 +75,9 @@
    }
   },
   "inf": {
-   "fills_6h": 392,
-   "open_positions": 0,
-   "unrealised_usd": 0.0,
+   "fills_6h": 394,
+   "open_positions": 1,
+   "unrealised_usd": -0.01,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 11,
@@ -91,9 +91,9 @@
    }
   },
   "flz": {
-   "fills_6h": 239,
+   "fills_6h": 241,
    "open_positions": 6,
-   "unrealised_usd": -0.0,
+   "unrealised_usd": -0.01,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 3,
@@ -124,37 +124,35 @@
  "process": {
   "fin": {
    "pids": [
-    "78410"
+    "2118"
    ],
-   "starts_30m": 1,
-   "log_age_s": 3536.0
+   "starts_30m": 2,
+   "log_age_s": 0.0
   },
   "men": {
    "pids": [
     "92211"
    ],
    "starts_30m": 2,
-   "log_age_s": 65.0
+   "log_age_s": 5.0
   },
   "ang": {
    "pids": [
     "86185"
    ],
    "starts_30m": 3,
-   "log_age_s": 64.0
+   "log_age_s": 4.0
   },
   "inf": {
-   "pids": [
-    "49429"
-   ],
+   "pids": [],
    "starts_30m": 1,
-   "log_age_s": 2986.0
+   "log_age_s": 3302.0
   },
   "flz": {
    "pids": [
-    "65486"
+    "8766"
    ],
-   "starts_30m": 1,
+   "starts_30m": 2,
    "log_age_s": 1.0
   },
   "trb": {
@@ -162,106 +160,108 @@
     "84595"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": -0.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 148836.0
+   "log_age_s": 149152.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-26T00:51:30Z",
+   "ts": "2026-10-26T00:56:48Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "fin:MAGICUSDT_SHORT",
    "evidence": "OPEN REENTRY_MANDATORY bar=2026-10-25T22:30:00Z: live already holds 575.167 (state divergence)"
   },
   {
-   "ts": "2026-10-26T00:51:30Z",
+   "ts": "2026-10-26T00:56:48Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "fin:ENAUSDC_LONG",
    "evidence": "OPEN TIER1_PRICE_CROSS_REENTRY_exit0.2089_cur bar=2026-10-25T22:30:00Z: live already holds 175.691 (state divergence)"
   },
   {
-   "ts": "2026-10-26T00:51:31Z",
+   "ts": "2026-10-26T00:56:48Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "men:PARTIUSDT_SHORT",
    "evidence": "CLOSE FIXED_STOP decided 2026-10-25T22:43:38Z bar=2026-10-25T22:15:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-26T00:51:31Z",
+   "ts": "2026-10-26T00:56:49Z",
    "severity": "CRITICAL",
    "kind": "CHURN_KEY",
    "key": "inf:COTIUSDT_SHORT",
    "evidence": "5 open->flat round trips in 60 min"
   },
   {
-   "ts": "2026-10-26T00:51:31Z",
+   "ts": "2026-10-26T00:56:49Z",
    "severity": "CRITICAL",
    "kind": "CHURN_KEY",
    "key": "inf:GRAMUSDT_SHORT",
    "evidence": "3 open->flat round trips in 60 min"
   },
   {
-   "ts": "2026-10-26T00:51:31Z",
+   "ts": "2026-10-26T00:56:49Z",
    "severity": "CRITICAL",
    "kind": "CHURN_KEY",
    "key": "inf:LTCUSDC_SHORT",
    "evidence": "6 open->flat round trips in 60 min"
   },
   {
-   "ts": "2026-10-26T00:51:31Z",
-   "severity": "CRITICAL",
-   "kind": "CHURN_KEY",
-   "key": "inf:GALAUSDT_SHORT",
-   "evidence": "3 open->flat round trips in 60 min"
-  },
-  {
-   "ts": "2026-10-26T00:51:31Z",
+   "ts": "2026-10-26T00:56:49Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:PENGUUSDC_LONG",
    "evidence": "CLOSE WT_CROSS_EXIT_1h_bear decided 2026-10-25T23:34:20Z bar=2026-10-25T23:15:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-26T00:51:32Z",
+   "ts": "2026-10-26T00:56:49Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "flz:ZECUSDC_LONG",
+   "evidence": "entry notional $23.06 (median $7.00, MAX_ORDER_VALUE $300) @ 2026-10-26T00:52:13Z VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_0"
+  },
+  {
+   "ts": "2026-10-26T00:56:49Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "flz:ZECUSDC_SHORT",
    "evidence": "REDUCE PPL_TP_g1.61%>=1.50%_stopBE1217.4362 decided 2026-10-26T00:07:33Z bar=2026-10-25T23:30:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-26T00:51:32Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 3536s"
-  },
-  {
-   "ts": "2026-10-26T00:51:32Z",
+   "ts": "2026-10-26T00:56:49Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "ang",
    "evidence": "3 new process ids in 30 min (['44110', '55450', '86185'])"
   },
   {
-   "ts": "2026-10-26T00:51:32Z",
+   "ts": "2026-10-26T00:56:49Z",
+   "severity": "CRITICAL",
+   "kind": "PROCESS_DOWN",
+   "key": "inf",
+   "evidence": "no ez_manage.py --account inf process"
+  },
+  {
+   "ts": "2026-10-26T00:56:49Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "inf",
-   "evidence": "ez_manage_inf.log not written for 2986s"
+   "evidence": "ez_manage_inf.log not written for 3302s"
   }
  ],
  "alert_counts": {
   "VEC_OPEN_WHILE_LIVE_IN": 2,
   "VEC_DECISION_NOT_FILLED": 3,
-  "CHURN_KEY": 4,
-  "STALE_LOG": 2,
-  "RESTART_LOOP": 1
+  "CHURN_KEY": 3,
+  "SIZE_ANOMALY": 1,
+  "RESTART_LOOP": 1,
+  "PROCESS_DOWN": 1,
+  "STALE_LOG": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -405,5 +405,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 2.03
+ "sweep_s": 1.14
 }

@@ -3193,6 +3193,18 @@ def _sw_get(symbol: str, side: str, knob: str, default):
     return getattr(config, knob, default)
 
 
+class _SymSideConfig:
+    """Config view resolved through the winning per-sym or cat-side settings."""
+
+    def __init__(self, base_config, symbol, side):
+        self._base_config = base_config
+        self._symbol = symbol
+        self._side = side
+
+    def __getattr__(self, knob):
+        return _sw_get(self._symbol, self._side, knob, getattr(self._base_config, knob, None))
+
+
 def _psym_cs_get(symbol: str, side: str, knob: str, default):
     """USER 2026-10-12 tandem: identical to _sw_get (per-sym > cat_side > global). Separate name so switch_parity classifies reads as cat_side-resolved."""
     return _sw_get(symbol, side, knob, default)
@@ -27149,14 +27161,18 @@ async def check_exit_candidates_for_account(
                 # ALGOUSDT 2026-04-16: SHORT closed at -0.74% via BREAKEVEN right before big drop.
                 # Root cause: 3m structural stops fire on pullback-in-trend while 1h+4h+D still bearish.
                 # Rule: if 2+ of {1h,4h,D} WT aligned with position AND abs(gain) <= HTF_VETO_MAX_LOSS, skip.
-                _htf_veto_active, _hv_aligned = (False, 0) if is_hedge else _bge_core.htf_veto(lambda k, d: getattr(config, k, d), current_gain, is_long, indicators)  # 2026-10-17 shared core
+                _exit_cfg = _SymSideConfig(config, symbol, position_side)
+                _be_get = lambda k, d: _sw_get(symbol, position_side, k, d)
+                _htf_veto_active, _hv_aligned = (False, 0) if is_hedge else _bge_core.htf_veto(_be_get, current_gain, is_long, indicators)  # 2026-10-17 shared core
+                _exit_fee_pct = safe_fetch_float(_be_get("COMMISSION_BUFFER_PCT", 0.08), 0.08)
+                _net_gain_positive = bool(np.isfinite(current_gain) and np.isfinite(_exit_fee_pct) and _exit_fee_pct >= 0 and current_gain > _exit_fee_pct)
                 _exit_fee_pct = safe_fetch_float(_sw_get(symbol, position_side, "COMMISSION_BUFFER_PCT", 0.08), 0.08)
                 _net_gain_positive = bool(np.isfinite(current_gain) and np.isfinite(_exit_fee_pct) and _exit_fee_pct >= 0 and current_gain > _exit_fee_pct)
                 if (
                     _trend_veto_active
                     and not hard_exit_reason
                     and not is_hedge
-                    and bool(getattr(config, "BREAKEVEN_GAIN_EROSION_ENABLED", True))
+                    and bool(_be_get("BREAKEVEN_GAIN_EROSION_ENABLED", True))
                 ):
                     logger.info(
                         f"🛡️ [TREND_REGIME_VETO_BE] {position_key}: Strong 1h trend detected — vetoing breakeven gain erosion stop"
@@ -27165,20 +27181,22 @@ async def check_exit_candidates_for_account(
                     not hard_exit_reason
                     and not is_hedge
                     and not _in_grace_period
-                    and bool(getattr(config, "BREAKEVEN_GAIN_EROSION_ENABLED", True))
+                    and bool(_be_get("BREAKEVEN_GAIN_EROSION_ENABLED", True))
                     and not _trend_veto_active
                 ):
                     # 2026-04-28 USER RULE commission-aware window, 2026-05-21 kill-switch, HARD_BREAKEVEN_FLOOR override — decided by the
                     # shared core vec_decisions/breakeven_gain_erosion.py (2026-10-17), the same call v12_quick_engine makes per closed bar.
-                    _be_grace = float(getattr(config, "BREAKEVEN_GRACE_MINUTES", 15.0))
+                    _be_grace = float(_be_get("BREAKEVEN_GRACE_MINUTES", 15.0))
                     _pos_max_g_be = safe_fetch_float(getattr(position, "max_gain", 0), 0)
-                    _be_fire, _be_why, _be_rs = _bge_core.window_decision(lambda k, d: getattr(config, k, d), current_gain, _pos_max_g_be, _pos_age_min, _htf_veto_active)
+                    _be_fire, _be_why, _be_rs = _bge_core.window_decision(_be_get, current_gain, _pos_max_g_be, _pos_age_min, _htf_veto_active)
+                    if _be_fire and not _net_gain_positive:
+                        _be_fire, _be_why = False, "NET_NONPOSITIVE"
                     if _be_fire and not _net_gain_positive:
                         _be_fire, _be_why = False, "NET_NONPOSITIVE"
                     if _be_why == "HTF_VETO":
                         logger.info(f"🛡️[HTF_VETO_BREAKEVEN] {position_key}: gain {current_gain:.2f}% but HTF still aligned ({_hv_aligned}/3) — skipping breakeven exit")
                     elif _be_why == "PEAK_GATE":
-                        logger.info(f"🛡️[BREAKEVEN_PEAK_GATE] {position_key}: max_gain={_pos_max_g_be:.2f}% < {float(getattr(config, 'HARD_BREAKEVEN_MIN_PEAK_PCT', 0.5)):.1f}% — position hasn't peaked, waiting for R2/PPL window")
+                        logger.info(f"🛡️[BREAKEVEN_PEAK_GATE] {position_key}: max_gain={_pos_max_g_be:.2f}% < {float(_be_get('HARD_BREAKEVEN_MIN_PEAK_PCT', 0.5)):.1f}% — position hasn't peaked, waiting for R2/PPL window")
                     elif _be_why == "LOSS_HOLD":
                         logger.info(f"🛡️[BREAKEVEN_BLOCKED_LOSS] {position_key}: gain {current_gain:.2f}% < 0 — outside the erosion window, holding for technical exit")
                     elif _be_fire:
@@ -27189,13 +27207,13 @@ async def check_exit_candidates_for_account(
                 if (
                     not hard_exit_reason
                     and not _in_grace_period
-                    and getattr(config, "BREAKEVEN_DC_LOW4_ENABLED", True)
+                    and bool(_be_get("BREAKEVEN_DC_LOW4_ENABLED", True))
                 ):
                     # 2026-04-29 USER A/B: BREAKEVEN_DC_FIELD_MODE selects the emergency-exit Donchian basis.
                     # 'DC4' = dc_low4_3m / dc_high4_3m (4-bar low/high — current default, fires often, smaller losses but churn)
                     # 'DC'  = dc_low_3m  / dc_high_3m  (20-bar low/high — looser, bigger loss when fires but less churn)
                     _dc_mode = str(
-                        getattr(config, "BREAKEVEN_DC_FIELD_MODE", "DC4")
+                        _be_get("BREAKEVEN_DC_FIELD_MODE", "DC4")
                     ).upper()
                     if _dc_mode == "DC":
                         _be_dc_low_v = safe_fetch_float(
@@ -27360,8 +27378,8 @@ async def check_exit_candidates_for_account(
                     not hard_exit_reason
                     and not is_hedge
                     and not _in_grace_period
-                    and bool(getattr(config, "PEAK_GIVEBACK_PROTECTION_ENABLED", True))
-                    and _peak_giveback_scope_ok(config, position_key, "crypto")
+                    and bool(_be_get("PEAK_GIVEBACK_PROTECTION_ENABLED", True))
+                    and _peak_giveback_scope_ok(_exit_cfg, position_key, "crypto")
                 ):
                     _pgp_max_g = safe_fetch_float(getattr(position, "max_gain", 0), 0)
                     # USER 2026-10-25 parity by construction: the fire decision and the
@@ -27373,8 +27391,8 @@ async def check_exit_candidates_for_account(
                     try:
                         from vec_decisions.check_exit_candidates_crypto__peak_giveback import check_peak_giveback as _pgp_twin
                         from vec_decisions.check_exit_candidates_crypto__peak_giveback import _peak_giveback_thresholds as _pgp_thr
-                        _pgp_fires, _ = _pgp_twin(config, _pgp_max_g, current_gain)
-                        _, _, _pgp_hz_gain, _, _pgp_drop = _pgp_thr(config)
+                        _pgp_fires, _ = _pgp_twin(_exit_cfg, _pgp_max_g, current_gain)
+                        _, _, _pgp_hz_gain, _, _pgp_drop = _pgp_thr(_exit_cfg)
                     except Exception:
                         _pgp_fires, _pgp_hz_gain, _pgp_drop = False, 0.08, 1.0
                     if _pgp_fires and _net_gain_positive:

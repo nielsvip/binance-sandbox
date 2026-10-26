@@ -57,3 +57,24 @@ def test_7d_executor_namespace_is_separate(monkeypatch, tmp_path):
     # The default module import remains the production 30D path.
     assert lane.VL.name == "vec_live"
     assert Path(lane.PUBLISH_DIR).name == "vec_live"
+
+
+def test_7d_vector_stage_expires_and_refuses_tampered_sets(tmp_path):
+    from tools.v15_preopen_7d_runtime import assert_vector_stage_ready
+
+    now = dt.datetime.now(dt.timezone.utc)
+    sets = tmp_path / "vec_driven_sets.json"
+    sets.write_text('{"A_LONG": {"overrides": {"X": 1}}}')
+    (tmp_path / "validation.json").write_text(json.dumps({
+        "day": now.date().isoformat(), "created_utc": now.isoformat(),
+        "queue_n": 1, "selected_7d": 1, "stage_only": True,
+        "sets_sha256": hashlib.sha256(sets.read_bytes()).hexdigest(),
+    }))
+    registry = tmp_path / "vec_driven.json"
+    registry.write_text(json.dumps({"expires_utc": (now - dt.timedelta(seconds=1)).isoformat()}))
+    with pytest.raises(RuntimeError, match="expired"):
+        assert_vector_stage_ready(tmp_path)
+    registry.write_text(json.dumps({"expires_utc": (now + dt.timedelta(hours=1)).isoformat()}))
+    sets.write_text("{}")
+    with pytest.raises(RuntimeError, match="differ"):
+        assert_vector_stage_ready(tmp_path)

@@ -27,6 +27,8 @@ def _fixture(tmp_path):
     full = {**defaults, **overrides}
     (progress_dir / f"{ss}_7d_progress.json").write_text(json.dumps({
         "window_days": 7, "source_30d_sha256": digest(source), "cumulative_overrides": overrides,
+        "result_done_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "final_path": str(out_dir / f"{ss}_7d_matrix.xlsx"),
         "defaults_snapshot_7d": defaults, "full_config_7d": full,
         "live_verified": {"gain_pct": 2.0, "trades": 12, "parity": [True, ""], "reason": None},
     }))

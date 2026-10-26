@@ -41,6 +41,8 @@ def validate_one(ss: str, source: dict, result_dir: Path, today: str) -> dict:
     progress = json.loads(progress_path.read_text())
     if progress.get("window_days") != 7:
         raise ValueError(f"{ss}: progress is not 7D")
+    if not progress.get("result_done_utc") or not progress.get("final_path"):
+        raise ValueError(f"{ss}: 7D optimization has not completed")
     expected_source = digest(source["overrides"])
     if progress.get("source_30d_sha256") != expected_source:
         raise ValueError(f"{ss}: 30D source hash mismatch")
@@ -99,7 +101,8 @@ def _account(ss: str, queue: dict) -> str:
 def _fallback_sets(source_sets: dict, queue: dict, stock_symbols: set[str]) -> dict:
     out = {}
     for ss, entry in source_sets.items():
-        if ss.startswith("_") or not isinstance(entry, dict) or entry.get("mode") != "live":
+        if (ss.startswith("_") or not isinstance(entry, dict) or entry.get("mode") != "live"
+                or entry.get("set_tier") != "30D_BEST"):
             continue
         if not isinstance(entry.get("overrides"), dict) or not entry["overrides"]:
             continue

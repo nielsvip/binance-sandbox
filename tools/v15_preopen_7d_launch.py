@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import datetime as dt
+import fcntl
 import json
 import os
 from pathlib import Path
+import re
 import signal
 import subprocess
 import sys
@@ -14,6 +17,39 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from tools.v15_preopen_7d_stage import digest, validate_one  # noqa: E402
+
+
+def _active_symbols(lines: list[str]) -> set[str]:
+    active = set()
+    for line in lines:
+        match = re.match(r"^\S*python\S*(?: -u)? (?:\S*/)?v15_(?:pilot(?:_7d)?|365_cycle)\.py --sym-side ([A-Z0-9_]+)", line)
+        if match:
+            active.add(match.group(1).rsplit("_", 1)[0])
+    return active
+
+
+@contextmanager
+def _host_slot_guard():
+    """Hold the shared 30D launch lock for a standalone 7D job."""
+    if os.environ.get("V15_7D_ALREADY_PAUSED") == "1":
+        yield
+        return
+    with open("/tmp/v15_fleet_launch_v2.lock", "a+") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            lines = subprocess.check_output(["ps", "-eo", "args"], text=True).splitlines()
+            active = _active_symbols(lines)
+            if len(active) >= 4:
+                raise RuntimeError(f"7D host full: {len(active)} active symbols {sorted(active)}")
+            meminfo = Path("/proc/meminfo")
+            if meminfo.is_file():
+                available = re.search(r"^MemAvailable:\s+(\d+) kB$", meminfo.read_text(), re.MULTILINE)
+                floor_mb = int(os.environ.get("V15_7D_MIN_MEM_MB", "8192"))
+                if available and int(available.group(1)) // 1024 < floor_mb:
+                    raise RuntimeError(f"7D OOM throttle: MemAvailable below {floor_mb} MB")
+            yield
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
 
 
 def build_launch(queue: dict, ss: str, result_dir: Path, workers: int, python: str):
@@ -62,19 +98,20 @@ def run_one(queue_path: Path, ss: str, result_dir: Path, workers: int,
     queue = json.loads(queue_path.read_text())
     command, env, folder = build_launch(queue, ss, result_dir, workers, python)
     log = folder / "pilot.log"
-    with log.open("ab") as f:
-        proc = subprocess.Popen(command, cwd=ROOT, env=env, stdout=f, stderr=subprocess.STDOUT,
-                                start_new_session=True)
-        try:
-            rc = proc.wait(timeout=timeout_sec)
-        except subprocess.TimeoutExpired:
-            os.killpg(proc.pid, signal.SIGTERM)
+    with _host_slot_guard():
+        with log.open("ab") as f:
+            proc = subprocess.Popen(command, cwd=ROOT, env=env, stdout=f, stderr=subprocess.STDOUT,
+                                    start_new_session=True)
             try:
-                proc.wait(timeout=10)
+                rc = proc.wait(timeout=timeout_sec)
             except subprocess.TimeoutExpired:
-                os.killpg(proc.pid, signal.SIGKILL)
-                proc.wait()
-            rc = 124
+                os.killpg(proc.pid, signal.SIGTERM)
+                try:
+                    proc.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    os.killpg(proc.pid, signal.SIGKILL)
+                    proc.wait()
+                rc = 124
     today = dt.datetime.now(dt.timezone.utc).date().isoformat()
     try:
         result = validate_one(ss, queue["sym_sides"][ss], result_dir, today)
@@ -97,8 +134,11 @@ def main() -> int:
     ap.add_argument("--timeout-sec", type=int, default=2400)
     ap.add_argument("--python", default=sys.executable)
     a = ap.parse_args()
-    result = run_one(Path(a.queue), a.sym_side, Path(a.result_dir), a.workers,
-                     a.timeout_sec, a.python)
+    try:
+        result = run_one(Path(a.queue), a.sym_side, Path(a.result_dir), a.workers,
+                         a.timeout_sec, a.python)
+    except (OSError, RuntimeError, ValueError) as exc:
+        result = {"sym_side": a.sym_side, "rc": 2, "valid": False, "why": str(exc)}
     print(json.dumps(result))
     return 0 if result["valid"] else 2
 
