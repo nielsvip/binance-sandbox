@@ -13244,6 +13244,7 @@ def compute_entry_signals(npz, n, is_long, cfg):
 
 
 def compute_exit_signals(npz, n, is_long, cfg, entry_sig=None):
+    cfg.BB_RECOVERY_EXIT_INFO = {"mask": np.zeros(n, dtype=bool)}
     if getattr(cfg, "_G0_PURE_BH", False):
         import numpy as _np
 
@@ -13512,17 +13513,20 @@ def compute_exit_signals(npz, n, is_long, cfg, entry_sig=None):
             extra_exit = extra_exit | (rsi_hit & stoch_hit)
         else:
             extra_exit = extra_exit | (rsi_hit | stoch_hit)
-    # 2026-08-09: BB_RECOVERY_EXIT_ENABLED_TRADIER — exit when price recovers toward upper band (stocks mode)
-    if getattr(cfg, "BB_RECOVERY_EXIT_ENABLED_TRADIER", False):
+    # Shared twin of ez_positions_quick's per_sym-gated BB recovery exit.
+    if (
+        str(getattr(cfg, "MODE", "crypto")) != "tradier"
+        and bool(getattr(cfg, "BB_RECOVERY_EXIT_ENABLED_TRADIER", False))
+    ):
+        from vec_decisions.bb_recovery_exit import bb_recovery_exit_mask
+
         bb_upper_1h = _safe(npz, "bb_upper_1h", n)
         bb_lower_1h = _safe(npz, "bb_lower_1h", n)
-        bb_mid_1h = (bb_upper_1h + bb_lower_1h) / 2.0
-        if is_long:
-            # For a long, exit when price recovers to or above midline with stoch overbought
-            extra_exit = extra_exit | ((close >= bb_mid_1h) & (k_1h >= 70))
-        else:
-            # For a short, exit when price recovers to or below midline with stoch oversold
-            extra_exit = extra_exit | ((close <= bb_mid_1h) & (k_1h <= 30))
+        _bb_recovery_mask = bb_recovery_exit_mask(
+            close, bb_upper_1h, bb_lower_1h, k_1h, is_long
+        )
+        cfg.BB_RECOVERY_EXIT_INFO = {"mask": _bb_recovery_mask}
+        extra_exit = extra_exit | _bb_recovery_mask
     # Stoch cross 3m exit
     if getattr(cfg, "STOCH_CROSS_3M_EXIT_ENABLED", False):
         k_3m_arr2 = _base_safe(npz, "stoch_k", n, cfg, 50)
@@ -23571,6 +23575,33 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                 )
             except Exception:
                 pass
+            if _tech_reason == "TECHNICAL_EXIT":
+                _bb_recovery_info = getattr(cfg, "BB_RECOVERY_EXIT_INFO", None)
+                _bb_recovery_mask = (
+                    _bb_recovery_info.get("mask")
+                    if isinstance(_bb_recovery_info, dict)
+                    else None
+                )
+                if (
+                    _bb_recovery_mask is not None
+                    and i < len(_bb_recovery_mask)
+                    and bool(_bb_recovery_mask[i])
+                ):
+                    from vec_decisions.bb_recovery_exit import positive_after_estimated_fees
+
+                    _bb_recovery_fee_pct = max(
+                        0.0,
+                        float(getattr(cfg, "COMMISSION_BUFFER_PCT", 0.08) or 0.0),
+                    )
+                    if not positive_after_estimated_fees(
+                        pnl_pct_preview, _bb_recovery_fee_pct
+                    ):
+                        continue
+                    _tech_reason = (
+                        "BB_RECOVERY_EXIT_TRADIER_LONG"
+                        if is_long
+                        else "BB_RECOVERY_EXIT_TRADIER_SHORT"
+                    )
             # Keep the source switch identity so a switch-backed exit remains
             # actionable when generic TECHNICAL_EXIT triggers are disabled.
             if _tech_reason == "TECHNICAL_EXIT":

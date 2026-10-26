@@ -97,7 +97,7 @@ def nonvectorizable_state_disagreement(action, reason, ultimate_buffer_pct=None)
     if re.match(r"^QUICK_DC4_(?:HIGH|LOW)_3M_GAIN_EROSION_STOP(?:_|$)", r):
         return "NATIVE_DC4_3M_INPUT_UNAVAILABLE_IN_15M_VECTOR"
     if mandatory_stop_exempt(action, reason, ultimate_buffer_pct):
-        if "ULTIMATE_DC_4H_HARD_STOP" in r or "QUICK_ULTIMATE_DC_4H_HARD_STOP" in r:
+        if any(t in r for t in ("ULTIMATE_DC_4H_HARD_STOP", "QUICK_ULTIMATE_DC_4H_HARD_STOP", "UNCOND_DC_LOW_4H_UNCOND_", "UNCOND_DC_HIGH_4H_UNCOND_")):
             return "NATIVE_DC4_HARD_STOP_PROTECTION"
         return "NATIVE_DC15_FIXED_STOP_INTRABAR_UNAVAILABLE_IN_CLOSED_15M_STATE"
     return ""
@@ -167,6 +167,10 @@ def mandatory_stop_exempt(action, reason, ultimate_buffer_pct=None):
         # This reason is emitted only by producers whose trigger is hard-coded
         # at dc_4h ±0.25%; the caller's legacy config value is not authoritative.
         return True
+    if r.startswith(("UNCOND_DC_LOW_4H_UNCOND_", "UNCOND_DC_HIGH_4H_UNCOND_")):
+        # Tradier's unconditional 4h producer passes _udcs.DEFAULT_BUFFER_PCT,
+        # fixed at 0.25%, directly to the shared long/short stop predicates.
+        return True
     if not r.startswith("FIXED_STOP_"):
         return False
     # The live producer omits the reference suffix for the canonical frozen
@@ -221,6 +225,21 @@ def dictate_only_exempt(action, reason, sym_side=None, ultimate_buffer_pct=None)
         if _ve._is_board_confirmed(reason):
             return True
         if sym_side:
+            # The live flat-key crypto reentry twin and v12 both use the same
+            # group master. A reason emitted by that producer is valid only
+            # for the encoded side and only when the selected per_sym/cat-side
+            # switch is ON; without this, execute_now rejected the exact live
+            # twin that CRYPTO_REENTRY_PATHWAYS_ENABLED authorized.
+            _cr_reentry = re.match(
+                r"^CRYPTO_REENTRY_PATHWAY_(?:HTF_WT_CHURN|TARGET_DC_RECROSS|SELL_TOP_RECROSS|HARDCODED_RALLY|MANDATORY_BLANKET|MANDATORY_FAVORABLE)_(LONG|SHORT)(?:_|$)",
+                _ru,
+            )
+            if _cr_reentry and str(action or "").upper() in ("OPEN", "REENTRY"):
+                _side = str(sym_side).rsplit("_", 1)[-1].upper()
+                if _side == _cr_reentry.group(1) and _per_sym_knob_true(
+                    sym_side, "CRYPTO_REENTRY_PATHWAYS_ENABLED"
+                ) is True:
+                    return True
             # The live GOLDEN_RULE loop emits GOLDEN_RULE_LONG/SHORT_multN;
             # v12's shared golden_loop.golden_entry mask is the equivalent
             # source (booked as GOLDEN_RULE_ENTRY). Honor that switch only

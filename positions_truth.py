@@ -578,13 +578,24 @@ def truth_slot_age_s(broker: str, account: str, now: Optional[float] = None) -> 
 def hang_reconcile(service: Any, account_key: str, rows: Any, where: str, config: Any = None, logger: Optional[logging.Logger] = None) -> bool:
     """INVARIANT 6: a hung / failed position update must NOT os._exit and lose state. Instead: seed broker truth for order
     decisions, age the local sync stamp so every order-bound read falls back to the broker (ez_pre_order_check), and count
-    consecutive hangs. Returns True when the caller should give up and exit (POSITIONS_HANG_EXIT_AFTER consecutive)."""
+    consecutive writer hangs. Manager-cache stalls are logged locally without the writer-broken alarm or process exit."""
     log = logger or _LOG
     seeded = seed_snapshot("binance", account_key, rows)
     try:
         service.positions_last_sync = datetime.fromtimestamp(0, timezone.utc)
     except Exception:
         pass
+    try:
+        import position_writer_guard as _pwg
+        if _pwg.process_role() == "manage":
+            log.warning(f"[MANAGER_POSITION_CACHE_STALE][{account_key}] {where} — broker snapshot seeded={seeded}; manager cache marked stale, dedicated writer remains authoritative.")
+            snap = _CACHES.get(("binance", account_key))
+            if seeded and snap is not None and snap.last is not None:
+                for (sym, ps), amt in snap.last.amounts.items():
+                    rewrite_row_from_broker("binance", account_key, sym, ps, {"amt": amt, "entry": snap.last.entries.get((sym, ps), 0.0)}, logger=log)
+            return False
+    except Exception as e:
+        log.error(f"[MANAGER_POSITION_CACHE_STALE][{account_key}] cache refresh failed: {e!r}")
     cnt = service.__dict__.setdefault("_ptruth_hangs", {})
     cnt[account_key] = cnt.get(account_key, 0) + 1
     limit = int(getattr(config, "POSITIONS_HANG_EXIT_AFTER", 3) if config is not None else 3)

@@ -19,6 +19,7 @@ correctness (bad key/price/dup), infra freshness, locks/dedup/cooldowns, loss ha
 
 import json
 import os
+import re
 import time
 from pathlib import Path
 
@@ -134,6 +135,11 @@ def _family_of(reason: str) -> str:
         return "E3"
     if full.startswith("E3_STRUCT_EXIT"):
         return "E3_ANALOGUE"
+    if re.fullmatch(
+        r"(?:QUICK_)?BB_RECOVERY_EXIT_TRADIER_(?:LONG|SHORT)(?:_PX\d+(?:\.\d+)?_K\d+(?:\.\d+)?)?",
+        full,
+    ):
+        return "BB_RECOVERY_SWITCHED"
     # Bottom/top live reasons are prefixed with BT_ by ez_manage, while the
     # vector books the same switch-backed masks without that wrapper. Keep each
     # family narrow so the historical broad BT kill cannot swallow a modeled
@@ -142,6 +148,10 @@ def _family_of(reason: str) -> str:
         "RSI2_XTREME_EXIT",
         "STOCH_XTREME_EXIT",
         "WICK_REJECT_EXIT",
+        # This exact crypto switch reason is booked by v12 with the matching
+        # mid-band/K mask and fee-positive close gate. Keep the old broad
+        # BB_RECOVERY kill active for every other reason in that family.
+        "BB_RECOVERY_SWITCHED",
     ):
         if full.startswith(f"BT_{_bt_family}"):
             return _bt_family

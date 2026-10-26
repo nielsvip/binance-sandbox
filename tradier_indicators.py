@@ -2285,6 +2285,7 @@ class TradierBarManager:
         self._memory_cache = {}
         self._last_fetch_time = {}
         self._cache_lock = asyncio.Lock()
+        self._recovery_locks = {}
     
     async def get_latest(self, symbol: str, timeframe: str) -> Tuple[Optional[pd.DataFrame], Optional[datetime], Optional[str]]:
         path = self.cache_dir / f"{symbol}_{timeframe}.json"
@@ -2310,14 +2311,24 @@ class TradierBarManager:
                 data = safe_json_loads(content)
             except Exception as cache_error:
                 logger.warning(f"Invalid Tradier bar cache {path.name}: {cache_error}; refreshing symbol bundle")
-                try:
-                    await self.get_bundle(symbol, force_api=True)
-                    async with aiofiles.open(path, "rb") as f:
-                        content = await f.read()
-                    data = safe_json_loads(content) if content.strip() else []
-                except Exception as refresh_error:
-                    _loud_skip(symbol, timeframe, f"corrupt cache refresh failed: {refresh_error}")
-                    return None, None, None
+                async with self._cache_lock:
+                    recovery_lock = self._recovery_locks.setdefault(symbol, asyncio.Lock())
+                async with recovery_lock:
+                    try:
+                        async with aiofiles.open(path, "rb") as f:
+                            content = await f.read()
+                        try:
+                            data = safe_json_loads(content) if content.strip() else []
+                        except Exception:
+                            data = []
+                        if not data:
+                            await self.get_bundle(symbol, force_api=True)
+                            async with aiofiles.open(path, "rb") as f:
+                                content = await f.read()
+                            data = safe_json_loads(content) if content.strip() else []
+                    except Exception as refresh_error:
+                        _loud_skip(symbol, timeframe, f"corrupt cache refresh failed: {refresh_error}")
+                        return None, None, None
             if data:
                 df = pd.DataFrame(data)
                 ts_col = "timestamp" if "timestamp" in df.columns else ("time" if "time" in df.columns else None)

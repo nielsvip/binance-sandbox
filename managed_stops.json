@@ -1,51 +1,30 @@
 {
-  "fin:1000LUNCUSDT_SHORT": {
-    "orderId": "3000002274807778",
-    "stopPrice": 0.04691,
-    "entry_sig": "2026-10-26 03:33:07.034000+00:00",
-    "symbol": "1000LUNCUSDT",
-    "side": "SHORT"
-  },
-  "fin:ZILUSDT_SHORT": {
-    "orderId": "3000002274849907",
-    "stopPrice": 0.001928,
-    "entry_sig": "2026-10-26 03:51:13.383000+00:00",
-    "symbol": "ZILUSDT",
-    "side": "SHORT"
-  },
-  "fin:UNIUSDC_LONG": {
-    "orderId": "3000002275034521",
-    "stopPrice": 6.736,
-    "entry_sig": "2026-10-26 05:51:16.390000+00:00",
-    "symbol": "UNIUSDC",
+  "flz:HYPEUSDT_LONG": {
+    "orderId": "1000002643961063",
+    "stopPrice": 74.635,
+    "entry_sig": "2026-10-26 06:22:52.897000+00:00",
+    "symbol": "HYPEUSDT",
     "side": "LONG"
   },
-  "fin:MOVEUSDT_SHORT": {
-    "orderId": "3000002275041201",
-    "stopPrice": 0.007024,
-    "entry_sig": "2026-10-26 05:51:24.487000+00:00",
-    "symbol": "MOVEUSDT",
+  "flz:DASHUSDT_SHORT": {
+    "orderId": "1000002643961346",
+    "stopPrice": 51.68,
+    "entry_sig": "2026-10-26 06:23:01.701000+00:00",
+    "symbol": "DASHUSDT",
     "side": "SHORT"
   },
-  "fin:ARUSDT_LONG": {
-    "orderId": "3000002275065474",
-    "stopPrice": 3.31,
-    "entry_sig": "2026-10-26 06:11:18.772000+00:00",
-    "symbol": "ARUSDT",
-    "side": "LONG"
-  },
-  "fin:GRASSUSDT_LONG": {
-    "orderId": "3000002275099040",
-    "stopPrice": 0.6896,
-    "entry_sig": "2026-10-26 06:31:35.031000+00:00",
-    "symbol": "GRASSUSDT",
-    "side": "LONG"
-  },
-  "fin:BBUSDT_SHORT": {
-    "orderId": "3000002275151908",
-    "stopPrice": 0.007731,
-    "entry_sig": "2026-10-26 07:04:30.987000+00:00",
-    "symbol": "BBUSDT",
+  "flz:BNBUSDC_SHORT": {
+    "orderId": "1000002644005778",
+    "stopPrice": 746.11,
+    "entry_sig": "2026-10-26 06:56:12.863000+00:00",
+    "symbol": "BNBUSDC",
     "side": "SHORT"
+  },
+  "flz:BTCDOMUSDT_LONG": {
+    "orderId": "1000002644021067",
+    "stopPrice": 5549.7,
+    "entry_sig": "2026-10-26 06:56:10.566000+00:00",
+    "symbol": "BTCDOMUSDT",
+    "side": "LONG"
   }
 }

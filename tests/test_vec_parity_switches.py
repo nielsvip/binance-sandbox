@@ -98,12 +98,15 @@ def test_mandatory_dc_stops_bypass_dictate_and_vector_gates_only_at_point25():
     fixed_025 = "FIXED_STOP_SHORT_px51.87_lvl51.86_g-0.25_REFdc_low.15m.b0.25"
     fixed_050 = "FIXED_STOP_SHORT_px51.87_lvl51.86_g-0.25_REFdc_low.15m.b0.5"
     hard4h = "ULTIMATE_DC_4H_HARD_STOP_SHORT_px51.87_lvl51.86_g-0.25"
+    tr4h = "UNCOND_DC_HIGH_4H_UNCOND_px51.87_lvl51.86_g-0.25"
     assert G.dictate_only_exempt("CLOSE", fixed_025, "LTCUSDC_SHORT")
     assert not G.dictate_only_exempt("CLOSE", fixed_050, "LTCUSDC_SHORT")
     assert G.nonvectorizable_state_disagreement("CLOSE", fixed_025) == "NATIVE_DC15_FIXED_STOP_INTRABAR_UNAVAILABLE_IN_CLOSED_15M_STATE"
     assert G.dictate_only_exempt("CLOSE", hard4h, "LTCUSDC_SHORT", 0.25)
     assert G.dictate_only_exempt("CLOSE", hard4h, "LTCUSDC_SHORT", 0.5)
     assert G.nonvectorizable_state_disagreement("CLOSE", hard4h, 0.25) == "NATIVE_DC4_HARD_STOP_PROTECTION"
+    assert G.dictate_only_exempt("CLOSE", tr4h, "LTCUSDC_SHORT", 0.5)
+    assert G.nonvectorizable_state_disagreement("CLOSE", tr4h, 0.25) == "NATIVE_DC4_HARD_STOP_PROTECTION"
     assert not G.dictate_only_exempt("REDUCE", fixed_025, "LTCUSDC_SHORT")
 
     from live_twins import vector_enforce
@@ -114,14 +117,18 @@ def test_mandatory_dc_stops_bypass_dictate_and_vector_gates_only_at_point25():
     ez = (ROOT / "ez_manage.py").read_text()
     tr = (ROOT / "tradier_manage.py").read_text()
     v12 = (ROOT / "v12_quick_engine.py").read_text()
+    fixed_stop = (ROOT / "vec_decisions/fixed_stop.py").read_text()
     assert "return _fixed_stop_core.DEFAULT_SPEC" in ez
     assert "return _fixed_stop_core.DEFAULT_SPEC" in tr
     assert "_fx_spec = vec_decisions.fixed_stop.DEFAULT_SPEC" in v12
-    assert "freeze_software_level(is_long, dc_low_15m, dc_high_15m, entry_price)" in (ROOT / "vec_decisions/fixed_stop.py").read_text()
+    assert "return base * 0.9975 if is_long else base * 1.0025" in fixed_stop
     assert "_px <= _u_lo * 0.9975" in ez and "_px >= _u_hi * 1.0025" in ez
     assert "_px <= _ult_dc_low * 0.9975" in tr and "_px >= _ult_dc_high * 1.0025" in tr
     assert "_ult_stop = _ult_lvl * (0.9975 if is_long else 1.0025)" in v12
     assert "_fx_fire = \"FIXED_STOP\"" in v12
+    assert "_uh_tol = _udcs.DEFAULT_BUFFER_PCT" in tr
+    assert 'f"UNCOND_{_uh_fire}_g{_uh_gain:.2f}"' in tr
+    assert "DEFAULT_BUFFER_PCT = 0.25" in (ROOT / "vec_decisions/uncond_dc_stop.py").read_text()
 
 
 def test_non_vector_exit_refused():
@@ -238,6 +245,33 @@ def test_dictate_only_persym_overrides_global():
             G.dictate_only_exempt("CLOSE", "QUICK_PEAK_GIVEBACK_X", "BTCDOMUSDT_SHORT")
             is False
         )
+
+
+def test_crypto_rally_reentry_dictate_matches_live_and_vector_master():
+    from unittest.mock import patch
+
+    reason = "CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_LONG_px0.531600_exit0.531300_age408m"
+    with patch(
+        "per_sym_store.get_overrides",
+        return_value={"CRYPTO_REENTRY_PATHWAYS_ENABLED": True},
+    ), patch("cat_side_defaults.get_for", return_value=False):
+        assert G.dictate_only_exempt("OPEN", reason, "TIAUSDC_LONG")
+        assert not G.dictate_only_exempt("OPEN", reason, "TIAUSDC_SHORT")
+        assert not G.dictate_only_exempt("CLOSE", reason, "TIAUSDC_LONG")
+    with patch("per_sym_store.get_overrides", return_value={}), patch(
+        "cat_side_defaults.get_for", return_value=True
+    ):
+        assert G.dictate_only_exempt("REENTRY", reason, "TIAUSDC_LONG")
+    with patch(
+        "per_sym_store.get_overrides",
+        return_value={"CRYPTO_REENTRY_PATHWAYS_ENABLED": False},
+    ), patch("cat_side_defaults.get_for", return_value=True):
+        assert not G.dictate_only_exempt("OPEN", reason, "TIAUSDC_LONG")
+
+    vec = (ROOT / "v12_quick_engine.py").read_text()
+    live_twin = (ROOT / "live_twins/vec_reentry.py").read_text()
+    assert 'getattr(cfg, "CRYPTO_REENTRY_PATHWAYS_ENABLED", False)' in vec
+    assert 'return True, "HARDCODED_RALLY"' in live_twin
 
 
 def test_switch_dictate_uses_cat_side_default_when_sym_side_has_no_full_set():

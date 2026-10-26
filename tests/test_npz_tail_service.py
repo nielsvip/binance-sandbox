@@ -156,3 +156,36 @@ def test_sweep_refuses_forming_bar(tmp_path):
         now_s=now,
     )
     assert r == "refused"
+
+
+def test_kline_last_close_reads_tail_and_ignores_forming_bar(tmp_path, monkeypatch):
+    import pandas as pd
+    import npz_live_generator
+    from tools.npz_tail_service import kline_last_close
+
+    now = pd.Timestamp.now(tz="UTC").floor("15min")
+    closed = now - pd.Timedelta(minutes=15)
+    forming = now
+    path = tmp_path / "TSTUSDT_15m.json"
+    path.write_text(
+        json.dumps(
+            [
+                {"timestamp": closed.isoformat(), "close": 1},
+                {"timestamp": forming.isoformat(), "close": 2},
+            ]
+        )
+    )
+    monkeypatch.setattr(npz_live_generator, "_resolve_kline_path", lambda *args: path)
+    assert kline_last_close(tmp_path, "TSTUSDT", "binance") == int(closed.timestamp())
+
+
+def test_resolve_kline_prefers_live_over_backtest(tmp_path):
+    from npz_live_generator import _resolve_kline_path
+
+    live = tmp_path / "klines_cache" / "TSTUSDT_15m.json"
+    backtest = tmp_path / "klines_cache_backtest" / "TSTUSDT_15m.json"
+    live.parent.mkdir(parents=True)
+    backtest.parent.mkdir(parents=True)
+    live.write_text("[]")
+    backtest.write_text("[]")
+    assert _resolve_kline_path("TSTUSDT", "15m", "binance", tmp_path) == live

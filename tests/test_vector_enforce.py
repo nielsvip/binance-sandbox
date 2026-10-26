@@ -96,17 +96,22 @@ def test_vel_exit_exempt_with_faithful_twin(tmp_path, monkeypatch):
     assert (ok2, v2) == (False, "OFF_BAR_WINDOW")
 
 
-def test_bb_recovery_bbkc_stay_killed(tmp_path, monkeypatch):
-    """BB_RECOVERY + BBKC have vector masks but the vector books NEITHER with
-    VEC_EXIT_SIG_IS_TRIGGER=False fleet-wide (764 boards): exit_sig closes land as
-    bare TECHNICAL_EXIT and are suppressed (v12:22617-22620). Live fires are
-    unmodeled P&L — keep killed; vectorizable only via a pilot-proven trigger flip."""
-    assert "BB_RECOVERY" not in ve.VEC_SWITCH_EXIT_FAMILIES
+def test_bb_recovery_exact_switch_reason_allowed_unknown_bb_recovery_stays_killed(tmp_path, monkeypatch):
+    """Only the shared switch-backed crypto producer gets a narrow exception."""
+    assert "BB_RECOVERY_SWITCHED" in ve.VEC_SWITCH_EXIT_FAMILIES
     assert "BBKC" not in ve.VEC_SWITCH_EXIT_FAMILIES
     _iso(tmp_path, monkeypatch)
-    reason = "QUICK_BB_RECOVERY_EXIT_TRADIER_LONG_px3.9560_k81"
-    ok, _ = ve.check("REDUCE", "a", reason)
-    assert ok is False, "QUICK dispatcher prefix must not launder the family"
+    for reason in (
+        "QUICK_BB_RECOVERY_EXIT_TRADIER_LONG_px3.9560_k81",
+        "QUICK_BB_RECOVERY_EXIT_TRADIER_SHORT_px1_k2",
+        "BB_RECOVERY_EXIT_TRADIER_SHORT",
+    ):
+        assert ve.family_of(reason) == "BB_RECOVERY_SWITCHED"
+        ok, verdict = ve.check("CLOSE", "a", reason)
+        assert (ok, verdict) == (True, "VEC_SWITCH_EXIT")
+    unknown = "QUICK_BB_RECOVERY_EXIT_TRADIER_EXPERIMENTAL_px1_k2"
+    assert ve.family_of(unknown) == "BB_RECOVERY"
+    assert ve.check("CLOSE", "a", unknown)[0] is False
     assert ve.check("CLOSE", "a", "BBKC_EXIT_1h_px-above-kc-mid_g0.07")[0] is False
     # 2026-10-21 backlog audit: unvectorized rater output (REDUCE_K) stays killed.
     assert "REDUCE_K" not in ve.VEC_SWITCH_EXIT_FAMILIES

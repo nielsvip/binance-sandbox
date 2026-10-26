@@ -26502,12 +26502,24 @@ async def check_exit_candidates_for_account(
                         _bbr_u = safe_fetch_float(indicators.get("bb_upper_1h", 0), 0)
                         _bbr_l = safe_fetch_float(indicators.get("bb_lower_1h", 0), 0)
                         _bbr_k = safe_fetch_float(indicators.get("k_1h", 50), 50)
+                        from vec_decisions.bb_recovery_exit import positive_after_estimated_fees
+
+                        _bbr_fee_pct = safe_fetch_float(
+                            _sw_get(
+                                symbol,
+                                position_side,
+                                "COMMISSION_BUFFER_PCT",
+                                getattr(config, "COMMISSION_BUFFER_PCT", 0.08),
+                            ),
+                            0.08,
+                        )
                         if (
                             _bbr_u > 0
                             and _bbr_l > 0
                             and _twin_p0a.bb_recovery_exit(
                                 current_price, _bbr_u, _bbr_l, _bbr_k, is_long
                             )
+                            and positive_after_estimated_fees(current_gain, _bbr_fee_pct)
                         ):
                             _bbr_reason = f"BB_RECOVERY_EXIT_TRADIER_{position_side}_px{current_price:.4f}_k{_bbr_k:.0f}"
                             # USER 2026-10-24 VEC_ clean-run: file a pre-emptive vec hold instead of

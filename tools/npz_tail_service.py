@@ -18,6 +18,7 @@ import glob
 import json
 import logging
 import os
+import re
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -221,6 +222,20 @@ def kline_last_close(base, symbol, mode):
         f = _resolve_kline_path(symbol, "15m", mode, Path(base))
         if f is None:
             return None
+        # These cache files contain long histories; the 1s watcher needs only
+        # their final timestamps, not a full pandas parse on every pass.
+        with open(f, "rb") as stream:
+            stream.seek(max(0, f.stat().st_size - 131072))
+            tail = stream.read().decode("utf-8", errors="ignore")
+        matches = re.findall(r'"(?:timestamp|timestamp_dt)"\s*:\s*"([^"\\]+)', tail)
+        if matches:
+            import pandas as pd
+
+            cutoff = pd.Timestamp.now(tz="UTC") - pd.Timedelta(seconds=930)
+            for value in reversed(matches):
+                ts = pd.to_datetime(value, utc=True, errors="coerce")
+                if not pd.isna(ts) and ts <= cutoff:
+                    return int(ts.timestamp())
         df = _load_klines_df(f)
         if df is None or df.empty:
             return None
