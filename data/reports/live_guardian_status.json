@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-26T14:31:14Z",
+ "ts": "2026-10-26T14:36:35Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -35,13 +35,13 @@
   "trc": {
    "fills_6h": 3,
    "open_positions": 3,
-   "unrealised_usd": 61.81,
+   "unrealised_usd": 60.7,
    "pos_mismatch": 0
   },
   "fin": {
-   "fills_6h": 339,
+   "fills_6h": 318,
    "open_positions": 10,
-   "unrealised_usd": -0.16,
+   "unrealised_usd": -0.24,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -55,9 +55,9 @@
    }
   },
   "men": {
-   "fills_6h": 256,
+   "fills_6h": 236,
    "open_positions": 14,
-   "unrealised_usd": -1.27,
+   "unrealised_usd": -1.35,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -71,9 +71,9 @@
    }
   },
   "ang": {
-   "fills_6h": 510,
+   "fills_6h": 503,
    "open_positions": 24,
-   "unrealised_usd": -1.1,
+   "unrealised_usd": -1.18,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -87,9 +87,9 @@
    }
   },
   "inf": {
-   "fills_6h": 0,
-   "open_positions": 0,
-   "unrealised_usd": 0.0,
+   "fills_6h": 2,
+   "open_positions": 1,
+   "unrealised_usd": 0.07,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -103,9 +103,9 @@
    }
   },
   "flz": {
-   "fills_6h": 51,
+   "fills_6h": 50,
    "open_positions": 6,
-   "unrealised_usd": 0.78,
+   "unrealised_usd": 0.84,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -131,67 +131,42 @@
    "inf": 1
   }
  },
- "reconcile": {
-  "fin": {
-   "symbols": 11,
-   "broker_fills": 1,
-   "matched": 1,
-   "appended": 0
-  },
-  "ang": {
-   "symbols": 28,
-   "broker_fills": 10,
-   "matched": 10,
-   "appended": 0
-  },
-  "inf": {
-   "symbols": 0,
-   "broker_fills": 0,
-   "matched": 0,
-   "appended": 0
-  },
-  "flz": {
-   "symbols": 6,
-   "broker_fills": 2,
-   "matched": 2,
-   "appended": 0
-  }
- },
+ "reconcile": {},
  "process": {
   "fin": {
    "pids": [
     "69538"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 8.0
   },
   "men": {
    "pids": [
     "81122"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 2.0
   },
   "ang": {
    "pids": [
     "37824"
    ],
    "starts_30m": 1,
-   "log_age_s": -0.0
+   "log_age_s": 0.0
   },
   "inf": {
    "pids": [
     "69983"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 8.0
   },
   "flz": {
    "pids": [
     "69233"
    ],
    "starts_30m": 1,
-   "log_age_s": 12.0
+   "log_age_s": 0.0
   },
   "trb": {
    "pids": [
@@ -199,141 +174,71 @@
     "95849"
    ],
    "starts_30m": 2,
-   "log_age_s": 8.0
+   "log_age_s": 5.0
   },
   "trc": {
    "pids": [
     "33820"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 3.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-26T14:31:14Z",
+   "ts": "2026-10-26T14:36:36Z",
    "severity": "CRITICAL",
    "kind": "ACCOUNT_EQUITY_DROP",
    "key": "trc",
-   "evidence": "unrealised PnL of the same open positions fell $40.96 since 2026-10-26T13:59:21Z (now $+61.81)"
+   "evidence": "unrealised PnL of the same open positions fell $42.07 since 2026-10-26T13:59:21Z (now $+60.70)"
   },
   {
-   "ts": "2026-10-26T14:31:15Z",
+   "ts": "2026-10-26T14:36:36Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "fin:QNTUSDT_LONG",
    "evidence": "26 14:29:36 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:QNTUSDT_LONG: bypass MAX_ORDER_VALUE $180 / MAX_POSITION_SIZE $400 \u2014 restoring $21 on bounce (prior max 0.2000)"
   },
   {
-   "ts": "2026-10-26T14:31:15Z",
+   "ts": "2026-10-26T14:36:36Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "fin:GRASSUSDT_LONG",
    "evidence": "26 14:29:36 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:GRASSUSDT_LONG: bypass MAX_ORDER_VALUE $180 / MAX_POSITION_SIZE $400 \u2014 restoring $3 on bounce (prior max 60.8000)"
   },
   {
-   "ts": "2026-10-26T14:31:15Z",
+   "ts": "2026-10-26T14:36:36Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "fin:STXUSDT_LONG",
    "evidence": "26 14:29:36 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:STXUSDT_LONG: bypass MAX_ORDER_VALUE $180 / MAX_POSITION_SIZE $400 \u2014 restoring $2 on bounce (prior max 20.0000)"
   },
   {
-   "ts": "2026-10-26T14:31:17Z",
+   "ts": "2026-10-26T14:36:39Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
-   "key": "ang:STXUSDT_SHORT",
-   "evidence": "entry notional $308.63 (median $24.95, MAX_ORDER_VALUE $300) @ 2026-10-26T14:17:11Z CRYPTO_REENTRY_PATHWAY_HTF_WT_CHURN_SHORT_px0.303500_exit0.3"
+   "key": "inf:ARUSDT_LONG",
+   "evidence": "entry notional $44.81 (median $5.86, MAX_ORDER_VALUE $300) @ 2026-10-26T14:31:55Z VEC_DRIVEN_OPEN_RNTRY_MANDATORY"
   },
   {
-   "ts": "2026-10-26T14:31:17Z",
+   "ts": "2026-10-26T14:36:39Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
-   "key": "ang:TIAUSDC_LONG",
-   "evidence": "entry notional $96.25 (median $27.84, MAX_ORDER_VALUE $300) @ 2026-10-26T14:17:32Z CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_LONG_px0.533338_exit0"
+   "key": "inf:ARUSDT_LONG",
+   "evidence": "entry notional $45.00 (median $5.86, MAX_ORDER_VALUE $300) @ 2026-10-26T14:32:07Z VEC_DRIVEN_OPEN_RNTRY_MANDATORY"
   },
   {
-   "ts": "2026-10-26T14:31:17Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "ang:TRXUSDT_LONG",
-   "evidence": "26 14:16:40 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:TRXUSDT_LONG: bypass MAX_ORDER_VALUE $90 / MAX_POSITION_SIZE $280 \u2014 restoring $505 on bounce (prior max 276.0000)"
-  },
-  {
-   "ts": "2026-10-26T14:31:17Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "ang:TRXUSDT_LONG",
-   "evidence": "order notional $504.86 > MAX_ORDER_VALUE $300: 26 14:16:40 - INFO - [ang] [execute_trade_action][ang] \u2705 \u2705 \u2705 \u2705 OPEN ang:TRXUSDT_LONG @ 0.331016 qty=1525.171953 ($504.86) side=BUY | CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_LONG_px0.331016_exit0.285578"
-  },
-  {
-   "ts": "2026-10-26T14:31:17Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "ang:SKLUSDT_SHORT",
-   "evidence": "26 14:16:43 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:SKLUSDT_SHORT: bypass MAX_ORDER_VALUE $180 / MAX_POSITION_SIZE $280 \u2014 restoring $45 on bounce (prior max 6951.0000)"
-  },
-  {
-   "ts": "2026-10-26T14:31:17Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "ang:PENGUUSDC_LONG",
-   "evidence": "26 14:16:43 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:PENGUUSDC_LONG: bypass MAX_ORDER_VALUE $90 / MAX_POSITION_SIZE $280 \u2014 restoring $2 on bounce (prior max 34890.0000)"
-  },
-  {
-   "ts": "2026-10-26T14:31:17Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "ang:TIAUSDC_LONG",
-   "evidence": "26 14:16:43 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:TIAUSDC_LONG: bypass MAX_ORDER_VALUE $90 / MAX_POSITION_SIZE $280 \u2014 restoring $96 on bounce (prior max 53.0000)"
-  },
-  {
-   "ts": "2026-10-26T14:31:17Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "ang:STXUSDT_SHORT",
-   "evidence": "26 14:16:43 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:STXUSDT_SHORT: bypass MAX_ORDER_VALUE $180 / MAX_POSITION_SIZE $280 \u2014 restoring $309 on bounce (prior max 94.0000)"
-  },
-  {
-   "ts": "2026-10-26T14:31:17Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "ang:STXUSDT_SHORT",
-   "evidence": "order notional $308.63 > MAX_ORDER_VALUE $300: 26 14:16:43 - INFO - [ang] [execute_trade_action][ang] \u2705 \u2705 \u2705 \u2705 OPEN ang:STXUSDT_SHORT @ 0.303700 qty=1016.247702 ($308.63) side=SELL | CRYPTO_REENTRY_PATHWAY_HTF_WT_CHURN_SHORT_px0.303500_exit0.303100"
-  },
-  {
-   "ts": "2026-10-26T14:31:17Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "ang:TRXUSDT_LONG",
-   "evidence": "26 14:16:47 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:TRXUSDT_LONG: bypass MAX_ORDER_VALUE $90 \u2014 restoring $505 (prior max 276.0000) on bounce"
-  },
-  {
-   "ts": "2026-10-26T14:31:17Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "ang:STXUSDT_SHORT",
-   "evidence": "26 14:16:47 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:STXUSDT_SHORT: bypass MAX_ORDER_VALUE $180 \u2014 restoring $309 (prior max 94.0000) on bounce"
-  },
-  {
-   "ts": "2026-10-26T14:31:17Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "ang:TIAUSDC_LONG",
-   "evidence": "26 14:16:47 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:TIAUSDC_LONG: bypass MAX_ORDER_VALUE $90 \u2014 restoring $96 (prior max 53.0000) on bounce"
-  },
-  {
-   "ts": "2026-10-26T14:31:19Z",
+   "ts": "2026-10-26T14:36:40Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "flz:ZECUSDC_LONG",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 0.145906->0.437717 = $540.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 0.145906)"
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 0.14665->0.293301 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 0.14665)"
   }
  ],
  "alert_counts": {
   "ACCOUNT_EQUITY_DROP": 1,
-  "CAP_BYPASS": 11,
-  "SIZE_ANOMALY": 5
+  "CAP_BYPASS": 3,
+  "SIZE_ANOMALY": 3
  },
  "active_interventions": {
   "acct:trc": {
@@ -353,6 +258,13 @@
    "until": 1793030311.337791,
    "why": "SIZE_ANOMALY BREAKOUT_SIZE_LADDER qty 0.241739->0.483478 ($590) past 1.5x MAX_ORDER_VALUE",
    "undo": "redis-cli -p 6379 DEL open_blocked:flz:ZECUSDC_LONG",
+   "dry_run": false
+  },
+  "key:inf:ARUSDT_LONG": {
+   "ts": 1793025137.479916,
+   "until": 1793032337.4799511,
+   "why": "SIZE_ANOMALY entry notional $44.81 (median $5.86, MAX_ORDER_VALUE $300) @ 2026-10-26T14:31:55Z VEC_DRIVEN_OPEN_RNTRY_MANDATORY",
+   "undo": "redis-cli -p 6379 DEL open_blocked:inf:ARUSDT_LONG",
    "dry_run": false
   },
   "acct:ang": {
@@ -456,5 +368,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 34.32
+ "sweep_s": 7.69
 }
