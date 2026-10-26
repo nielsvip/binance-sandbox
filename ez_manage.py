@@ -33761,6 +33761,8 @@ class MultiAccountTradeManager:
             _voe_ratio_scale = False
         if _voe_disabled and _xg.is_exit_action(action, is_full_close) and not _voe_ratio_scale:
             _voe_vec = _voe_reason_is_vec(reason)
+            if not _voe_vec and str(reason or "").upper().startswith("CYCLE_TP_TIERED_") and str(action or "").upper() == "REDUCE":
+                _voe_vec = bool(getattr(config, "CYCLE_TP_TIERED_ENABLED", False))
             try:
                 from vec_decisions import vec_parity_gates as _vpg_ref
                 _vpg_master = bool(getattr(_ezm_base_config, "VEC_REFUSE_NON_VECTOR_EXIT_ENABLED", getattr(config, "VEC_REFUSE_NON_VECTOR_EXIT_ENABLED", True)))

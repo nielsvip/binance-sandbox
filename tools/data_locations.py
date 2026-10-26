@@ -246,7 +246,7 @@ REGISTRY: dict[str, dict[str, list[tuple]]] = {
     # Cold zstd copies (+ manifest sha256) of the S5 experience-store shards (run34 + run35 delta-log ingest, 2026-10-22).
     "experience_cold": {
         "ext": [("{ext}/binance_archive/experience_cold/run34_35_20261022", "archive", "UNVERIFIED copy (sha256 check stalled 2026-10-22 23:3xZ; experience_CRYPTO_LONG_202610.db.zst reported FAILED, re-copy with rsync -c needed) - S6 is the verified canonical until re-checked; run35 final pass will make them stale -> re-cold", None)],
-        "s6": [("/home/niels/rebuild_scratch_s6/experience_cold/run34_35_20261022", "canonical", "verified (sha256 -c + zstd -t on S6); S5/S6 deleted after the weekend of 2026-10-24", None)],
+        "s6": [("/home/niels/rebuild_scratch_s6/experience_cold/run34_35_20261022", "canonical", "verified (sha256 -c + zstd -t on S6); preserve for the next neural-learning update until a replacement copy is checksum-verified on a mounted external drive or another host", None)],
         "s5": [("/home/niels/rebuild_scratch_s5/experience_cold", "mirror", "origin of the zsts; same sha256", None)],
     },
     "priors_causal": {
@@ -283,7 +283,10 @@ REGISTRY: dict[str, dict[str, list[tuple]]] = {
         "s5": [("{base}/rebuild_scratch_s5", "staging", "USER 2026-10-22: scratch until S5/S6 deletion after the weekend of 2026-10-24; everything here must be on an ext drive or proven duplicate before deletion; s2_run33/ s2_eval_archive/ manifests/", None)],
     },
     "rebuild_scratch_s6": {
-        "s6": [("{base}/rebuild_scratch_s6", "staging", "USER 2026-10-22: scratch until S5/S6 deletion after the weekend of 2026-10-24; everything here must be on an ext drive or proven duplicate before deletion; s1_data_archive/ s1_backups/ manifests/", None)],
+        "s6": [("{base}/rebuild_scratch_s6", "staging", "S1 backups dated 2026-10-04..07 were tar-compare verified and compressed to s1_backups_archive_20261026.tar.zst (230 files, original bytes 1540580202, archive SHA256 95d23bff372926f17a63f3f79b00cbaf017a766a7ee5fcdd04228af2353be58e); other scratch remains until externally copied or proven duplicate", None)],
+    },
+    "s1_pre_purge_backups_archive": {
+        "s6": [("/home/niels/rebuild_scratch_s6/s1_backups_archive_20261026.tar.zst", "archive", "verified zstd and tar compare; 230 older S1 progress/config backups preserved compressed; expanded copy removed", None)],
     },
 }
 

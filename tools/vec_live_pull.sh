@@ -46,7 +46,7 @@ pull_one() {
   hour=$(date -u +%Y%m%dT%H)
   previous_hour=$(date -u -v-1H +%Y%m%dT%H)
   case "$shard" in *_short) side=SHORT ;; *_long) side=LONG ;; *) side='*' ;; esac
-  rsync -az --timeout=60 -e "$SSH" --partial-dir=.rsync-partial --delay-updates --include='/state/' --include="/state/*_${side}.json" --include='/intents/' --include="/intents/${hour}*.json" --include="/intents/${previous_hour}*.json" --exclude='*' "$host:$remote/" "$stage/" >>"$LOG" 2>&1
+  rsync -az --timeout=60 -e "$SSH" --partial-dir=.rsync-partial --delay-updates --include="/producer_${shard}.json" --include='/state/' --include="/state/*_${side}.json" --include='/intents/' --include="/intents/${hour}*.json" --include="/intents/${previous_hour}*.json" --exclude='*' "$host:$remote/" "$stage/" >>"$LOG" 2>&1
   rc=$?
   if [ "${VEC_LIVE_PULL_REGISTRY:-0}" = "1" ]; then
     rsync -az --timeout=60 -e "$SSH" "$host:$remote/vec_driven.json" "$stage/vec_driven.json" >>"$LOG" 2>&1
@@ -57,6 +57,9 @@ pull_one() {
     return 1
   fi
   "${VEC_PULL_PYTHON:-/opt/anaconda3/envs/binance_env/bin/python}" "$BASE/tools/vec_state_merge.py" "$stage" "$DEST" --shard "$shard" >>"$LOG" 2>&1 || rc=$((rc + $?))
+  if [ -f "$stage/producer_${shard}.json" ]; then
+    cp "$stage/producer_${shard}.json" "$DEST/.producer_${shard}.$$.tmp" && mv -f "$DEST/.producer_${shard}.$$.tmp" "$DEST/producer_${shard}.json" || rc=$((rc + 1))
+  fi
   if [ -f "$stage/vec_driven.json" ]; then mv -f "$stage/vec_driven.json" "$DEST/vec_driven.json" || rc=$((rc + 1)); fi
   if [ $rc -ne 0 ]; then
     echo "$ts PULL_MERGE_FAIL rc=$rc host=$host" >>"$LOG"

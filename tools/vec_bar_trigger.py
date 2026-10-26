@@ -70,6 +70,16 @@ def split_ss(ss):
     return ss.rsplit("_", 1)
 
 
+def publish_producer(base, shard, engine):
+    if shard not in ("crypto_long", "crypto_short", "stock_long", "stock_short"):
+        return
+    path = Path(base) / "data" / "vec_live" / f"producer_{shard}.json"
+    payload = {"shard": shard, "engine_md5": engine["combined"], "v12_quick_engine_md5": engine["v12_quick_engine.py"], "generated_at": time.time(), "pid": os.getpid()}
+    temporary = path.with_suffix(f".{os.getpid()}.tmp")
+    temporary.write_text(json.dumps(payload, sort_keys=True))
+    os.replace(temporary, path)
+
+
 def run_once(base, shard, workers=WORKERS, verbose=False):
     sys.path.insert(0, str(Path(base)))
     os.chdir(str(base))
@@ -84,6 +94,7 @@ def run_once(base, shard, workers=WORKERS, verbose=False):
     em = E.engine_md5()
     os.environ["VEC_LIVE_ENGINE_MD5"] = em["combined"]
     sets = E.load_sets()
+    publish_producer(base, shard, em)
     held = held_sides(base)
     sides = shard_sides(sets, serves, shard, held)
     seen = run_once._seen if hasattr(run_once, "_seen") else {}
