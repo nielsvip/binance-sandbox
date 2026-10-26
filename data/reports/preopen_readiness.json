@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-26T06:00:01Z",
+ "generated_utc": "2026-10-26T06:20:02Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-26T13:30:00Z",
  "market_open": false,
@@ -15,10 +15,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 195,
-    "filled_before_open": 195
+    "filled_today": 204,
+    "filled_before_open": 204
    },
-   "detail": "195 boards filled before the open (195 today)"
+   "detail": "204 boards filled before the open (204 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -28,10 +28,10 @@
     "mac_done_stamp": false,
     "s1_stamp": "NO_STAMP",
     "cat_side_defaults_4_at": "2026-10-21T04:54:49Z",
-    "cat_side_age_days": 5.0,
+    "cat_side_age_days": 5.1,
     "cat_side_note": "rebuilt only by v15_daily_template_update --sync-defaults, a deliberate manual step \u2014 reported, never fails this gate"
    },
-   "detail": "mac stamp 20261026=False, s1 stamp NO_STAMP, cat_side layer 5.0d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
+   "detail": "mac stamp 20261026=False, s1 stamp NO_STAMP, cat_side layer 5.1d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
   },
   {
    "name": "selection_fresh",
@@ -211,7 +211,7 @@
     "symbols": 202,
     "stale_over_90min": 1,
     "stale_pct": 0.5,
-    "median_age_min": 60.0,
+    "median_age_min": 35.0,
     "sample": [
      "KAITOUSDT"
     ]

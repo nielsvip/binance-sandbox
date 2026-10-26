@@ -93,8 +93,10 @@ class TestTradierSingleSource(unittest.TestCase):
         self.assertIn("_uh_tol = _udcs.DEFAULT_BUFFER_PCT", stop)
 
     def test_all_confirm_sites_pass_gain(self):
-        n = self.src.count("position_side)), safe_fetch_float(getattr(position, 'gain', 0), 0.0))")
-        self.assertEqual(n, 3)
+        sites = self.src.split("exit_confirm_block(")[1:]
+        self.assertEqual(len(sites), 3)
+        for site in sites:
+            self.assertIn("safe_fetch_float(getattr(position, \"gain\", 0), 0.0)", site[:1400])
 
     def test_non_tradeable_block(self):
         for marker in ("NON_TRADEABLE_WT15M_EXIT", "is_symbol_tradeable(symbol, account_key, position_side)", "NON_TRADEABLE_WT15M_CLOSED"):
@@ -153,7 +155,7 @@ class TestV12UncondTwin(unittest.TestCase):
         self.assertLess(self.src.index("_ult_breach = _ult_lvl > 0"), self.src.index("# WT LOWER CROSS EXIT"))
 
     def test_xc_loss_bypass(self):
-        self.assertIn("_xc_loss = pos is not None", self.src)
+        self.assertIn("pos is not None\n            and _xc_ap != 0", self.src[self.src.index("_xc_loss = ("):self.src.index("_xc_ok =")])
         self.assertIn("_xc_ok = _xc_loss or (", self.src)
 
 

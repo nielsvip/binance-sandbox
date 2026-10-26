@@ -1,29 +1,30 @@
 {
-  "ts": "2026-10-26T06:15:04.554105+00:00",
-  "tick": "2026-10-26T06:14:01.761672+00:00",
-  "tick_age_s": 63,
+  "ts": "2026-10-26T06:20:04.535669+00:00",
+  "tick": "2026-10-26T06:18:01.618125+00:00",
+  "tick_age_s": 123,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run37.json",
     "round": "run37",
     "complete": false,
     "universe_n": 212,
-    "n_complete": 64,
-    "n_pending": 148,
+    "n_complete": 67,
+    "n_pending": 145,
     "n_refused_only": 0,
     "n_excluded": 0,
-    "n_launchable_pending": 126,
+    "n_launchable_pending": 124,
     "hosts_not_visible": []
   },
   "hosts": {
     "s1": {
-      "cpu_pct": 69,
+      "cpu_pct": 100,
       "slots": "2/4",
       "observed_running": [
+        "MINAUSDT",
         "RVNUSDT"
       ],
       "published_last_hour": 0,
-      "idle_reason": null,
-      "mem_avail_mb": 14334
+      "idle_reason": "mem guard",
+      "mem_avail_mb": 6063
     },
     "s2": {
       "cpu_pct": 100,
@@ -34,41 +35,40 @@
       ],
       "published_last_hour": 0,
       "idle_reason": "mem guard",
-      "mem_avail_mb": 7938
+      "mem_avail_mb": 3329
     },
-    "s5": {
-      "cpu_pct": 100,
+    "s6": {
+      "cpu_pct": 61,
       "slots": "4/4",
       "observed_running": [
-        "COST",
+        "ALKT",
+        "ASTS",
+        "PAAS"
+      ],
+      "published_last_hour": 5,
+      "idle_reason": null,
+      "mem_avail_mb": 22426
+    },
+    "s5": {
+      "cpu_pct": 43,
+      "slots": "4/4",
+      "observed_running": [
+        "CRM",
         "META",
         "UNH",
         "WMT"
       ],
       "published_last_hour": 3,
       "idle_reason": "slots full",
-      "mem_avail_mb": 12035
-    },
-    "s6": {
-      "cpu_pct": 58,
-      "slots": "4/4",
-      "observed_running": [
-        "ALKT",
-        "ASTS",
-        "BMNR",
-        "NXE"
-      ],
-      "published_last_hour": 5,
-      "idle_reason": "slots full",
-      "mem_avail_mb": 16093
+      "mem_avail_mb": 12959
     }
   },
   "one_hour_total": 8,
   "alerts": [
     "LOW_THROUGHPUT:s1:0/h",
-    "LOW_CPU:s1:69%",
     "LOW_THROUGHPUT:s2:0/h",
+    "LOW_CPU:s6:61%",
     "LOW_THROUGHPUT:s5:3/h",
-    "LOW_CPU:s6:58%"
+    "LOW_CPU:s5:43%"
   ]
 }

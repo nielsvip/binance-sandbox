@@ -690,6 +690,8 @@ def process(
         "set_md5": smd5,
         "anchor_ts": anchor["anchor_ts"],
         "anchor_iso": _iso(anchor["anchor_ts"]),
+        "window_policy": anchor.get("window_policy"),
+        "window_end_ts": anchor.get("npz_end_ts"),
         "bars_from_anchor": n_bars,
         "engine_valid": res.get("valid"),
         "engine_invalid_reason": res.get("invalid_reason"),
@@ -967,26 +969,20 @@ def watch(workers: int, poll_sec: float = 1.0) -> int:
     stamps = {}
     all_pending = True
     code = engine_md5()["combined"]
-    settings_paths = [VEC_DRIVEN, SETS, CANDIDATES, ROOT / "tradeable_keys.json"]
     while not stopped:
         if engine_md5()["combined"] != code:
             os.execv(sys.executable, [sys.executable, *sys.argv])
         sets = load_sets()
-        changed_settings = False
-        for path in settings_paths:
-            key = ("settings", str(path))
-            now = _watch_stamp(path)
-            if stamps.get(key) != now:
-                changed_settings = key in stamps or changed_settings
-                stamps[key] = now
-        db = Path(os.environ.get("PER_SYM_STORE_DB") or "/home/niels/binance/data/hourly_reconfig/per_sym_store.db")
-        for path in (db, Path(str(db) + "-wal")):
-            key = ("settings", str(path))
-            now = _watch_stamp(path)
-            if stamps.get(key) != now:
-                changed_settings = key in stamps or changed_settings
-                stamps[key] = now
-        changed = set(sets) if all_pending or changed_settings else set()
+        current_sets = {
+            ss: hashlib.md5(json.dumps([entry, ov], sort_keys=True, default=str).encode()).hexdigest()
+            for ss, (entry, ov) in sets.items()
+        }
+        changed = {
+            ss for ss, digest in current_sets.items()
+            if all_pending or stamps.get(("set", ss)) != digest
+        }
+        for ss, digest in current_sets.items():
+            stamps[("set", ss)] = digest
         all_pending = False
         symbol_sides = {}
         for ss in sets:
