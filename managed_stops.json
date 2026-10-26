@@ -6,11 +6,25 @@
     "symbol": "ZENUSDT",
     "side": "SHORT"
   },
-  "inf:LTCUSDC_SHORT": {
-    "orderId": "2000001541011455",
-    "stopPrice": 56.77,
-    "entry_sig": "2026-10-26 01:57:15.465000+00:00",
-    "symbol": "LTCUSDC",
+  "inf:BNBUSDC_SHORT": {
+    "orderId": "2000001541031140",
+    "stopPrice": 742.35,
+    "entry_sig": "2026-10-26 02:05:24.830000+00:00",
+    "symbol": "BNBUSDC",
+    "side": "SHORT"
+  },
+  "inf:BTCUSDC_SHORT": {
+    "orderId": "2000001541031141",
+    "stopPrice": 80074.8,
+    "entry_sig": "2026-10-26 02:05:25.388000+00:00",
+    "symbol": "BTCUSDC",
+    "side": "SHORT"
+  },
+  "inf:GRAMUSDT_SHORT": {
+    "orderId": "2000001541034610",
+    "stopPrice": 1.248,
+    "entry_sig": "2026-10-26 02:06:48.017000+00:00",
+    "symbol": "GRAMUSDT",
     "side": "SHORT"
   }
 }

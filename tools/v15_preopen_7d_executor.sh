@@ -5,7 +5,7 @@ cd "$HOME/binance-sandbox" || exit 2
 [ -s data/vec_live_7d/validation.json ] || exit 0
 PY=/home/niels/.conda/envs/binance_env_mac/bin/python
 # Current dynamic books must arrive before load_sets checks side permission.
-rsync -az --timeout=15 --include='symbols_men_*.json' --include='symbols_trb_*.json' --exclude='*' niels@10.0.0.3:binance-sandbox/ ./ >/dev/null 2>&1 || exit 2
+rsync -az --timeout=15 --include='symbols_men_*.json' --include='symbols_fin_*.json' --include='symbols_trb_*.json' --exclude='*' niels@10.0.0.3:binance-sandbox/ ./ >/dev/null 2>&1 || exit 2
 host=$(hostname -s)
 case "$host" in
   s2) shards="crypto_long crypto_short" ;;

@@ -1,8 +1,4 @@
-"""One cat_side per server (USER 2026-10-25): per-host "sides" in fleet_hosts_final.json.
-
-_hosts with sides ["LONG"] only ever launch LONG boards (plus their venue gate =
-their cat_side); unpinned hosts keep legacy both-sides behaviour byte-identical.
-"""
+"""Preferred cat_side per server, with both-side overflow while underloaded."""
 import sys
 import unittest
 from pathlib import Path
@@ -39,6 +35,12 @@ class HostSidesTest(unittest.TestCase):
 
     def test_case_normalized(self):
         self.assertEqual(_SCHED._host_sides({"name": "s1", "sides": ["long"]}), {"LONG"})
+
+    def test_underloaded_host_opens_both_sides_and_other_venue(self):
+        host = {"name": "s5", "venues": ["stocks"], "sides": ["LONG"],
+                "_runtime_overflow": True, "_effective_sides": ["LONG", "SHORT"]}
+        self.assertEqual(_SCHED._host_sides(host), {"LONG", "SHORT"})
+        self.assertIn("crypto", _SCHED._host_overflow_venues(host))
 
 
 if __name__ == "__main__":

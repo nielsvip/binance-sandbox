@@ -72,6 +72,23 @@ if [ "$STRICT" -ge 3 ] && [ "$RUNNING" -eq 0 ]; then
 elif [ "$QUORUM" -ge "$QTICKS" ]; then
   REASON="quorum: [$STARVED] starved $QUORUM/$QTICKS consecutive ticks (other hosts busy/guarded, $RUNNING pilots here)"
 fi
+# A finished or exhausted round need not wait for the slot snapshot to say
+# 0/N. Old held ownership can outlive a pilot; the fresh completion record is
+# the side-exact authority and the guard below rechecks it before rolling.
+REC_READY=$(python3 - <<'PYEOF'
+import glob,json,os,time
+files=glob.glob('data/reports/full_course_round_run*.json')
+if files:
+ p=max(files,key=os.path.getmtime)
+ try:
+  j=json.load(open(p)); fresh=time.time()-os.path.getmtime(p)<300
+  print(int(fresh and (j.get('complete') or
+        (j.get('launchable_known') and not j.get('n_launchable_pending') and not j.get('running_pending')))))
+ except Exception: print(0)
+else: print(0)
+PYEOF
+)
+if [ "$REC_READY" = 1 ]; then REASON="fresh completion record has no running or launchable pending side"; fi
 if [ -n "$REASON" ]; then
   if [ "$AGE" -lt "$COOL" ]; then
     log "round exhausted ($REASON) but cooldown ${AGE}s < ${COOL}s -> not rolling"

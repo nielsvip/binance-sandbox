@@ -3379,12 +3379,12 @@ def _host_sides(host_or_name, hosts=None):
     fleet_hosts_final.json. Absent/empty/unknown = both sides (legacy behaviour, fail-open)."""
     try:
         if isinstance(host_or_name, dict):
-            _sv = host_or_name.get("sides") or []
+            _sv = host_or_name.get("_effective_sides") or host_or_name.get("sides") or []
         else:
             _sv = []
             for _hh in (hosts or []):
                 if _hh.get("name") == host_or_name:
-                    _sv = _hh.get("sides") or []
+                    _sv = _hh.get("_effective_sides") or _hh.get("sides") or []
                     break
         _out = {str(_s).upper() for _s in _sv if str(_s).upper() in _SIDES_ALL}
         return _out or set(_SIDES_ALL)
@@ -3398,7 +3398,10 @@ def _host_overflow_venues(host):
     unknown = no overflow (legacy behaviour, fail-closed)."""
     try:
         _own = {str(_v).lower() for _v in ((host or {}).get("venues") or [])}
-        return [str(_v) for _v in ((host or {}).get("overflow_venues") or []) if str(_v).lower() not in _own and str(_v).lower() in ("crypto", "stocks")]
+        configured = [str(_v) for _v in ((host or {}).get("overflow_venues") or []) if str(_v).lower() not in _own and str(_v).lower() in ("crypto", "stocks")]
+        if (host or {}).get("_runtime_overflow"):
+            configured += [v for v in ("crypto", "stocks") if v not in _own and v not in configured]
+        return configured
     except Exception:
         return []
 
@@ -3813,6 +3816,16 @@ def tick(args, cfg, now):
     except Exception:
         pass
     stats = {h["name"]: (sim["hosts"].get(h["name"]) if sim else probe(h)) for h in hosts}
+    for h in hosts:
+        s = stats.get(h["name"]) or {}
+        try:
+            busy = float(s.get("cpu", 100))
+            occupied = len({ss.rsplit("_", 1)[0] for ss in (s.get("running") or {})})
+            underfilled = busy < 80.0 and occupied < int(h.get("max_pairs") or 4)
+        except (TypeError, ValueError):
+            underfilled = False
+        h["_runtime_overflow"] = underfilled
+        h["_effective_sides"] = ["LONG", "SHORT"] if underfilled else list(h.get("sides") or [])
     _ph("probe_hosts")
     # The pre-open 7D pass is owned by this scheduler so its queue, host,
     # result and terminal reason live in one dated fleet ledger. Four-category

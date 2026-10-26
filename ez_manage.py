@@ -34558,7 +34558,7 @@ class MultiAccountTradeManager:
         # 🚫 EXIT BLOCKER LH/LL — 2026-09-15 USER: block REDUCE/CLOSE unless LH (closed 15m) OR LL (forming) ===
         try:
             _vd_lhll_vec = bool(_parity_vec_order(reason)) and ("REDUCE" in _kill_act or "CLOSE" in _kill_act)
-            if _vd_lhll_vec:
+            if _vd_lhll_vec and bool(getattr(config, "EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED", False)):
                 _vec_last_bypassed.append("EXIT_LH_LL")
             if (bool(getattr(config, "EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED", False))
                 and not _vd_exempt  # lane A 2026-10-06 (CHRUSDT_LONG 173x BLOCKED_EXIT_LH_LL_REQUIRED): a vec-decided exit is never re-gated
@@ -35632,6 +35632,15 @@ class MultiAccountTradeManager:
             and "REDUCE" not in _act_upper_early
             and "KILL" not in _act_upper_early
         )
+        # Some direct callers leave action blank. The wire direction still
+        # identifies exposure increases, so they cannot bypass the side book.
+        _is_open_action = _is_open_action or (
+            not is_full_close
+            and "CLOSE" not in _act_upper_early
+            and "REDUCE" not in _act_upper_early
+            and ((str(position_side).upper() == "LONG" and str(side).upper() == "BUY")
+                 or (str(position_side).upper() == "SHORT" and str(side).upper() == "SELL"))
+        )
         if _is_open_action and account_key in ("ang", "flz", "inf", "fin", "men"):
             from tools.account_comparison_books import crypto_entry_allowed
             if not crypto_entry_allowed(Path(getattr(self.config, "BASE_PATH", Path.home() / "binance")), account_key, symbol, position_side):
@@ -36075,8 +36084,12 @@ class MultiAccountTradeManager:
             # minute — i.e. the entry spread, judged by the live WT/DC opinion the vector replaces. Also honours
             # CIRCUIT_BREAKER_ENABLED, which this gate ignored while the flag read False.
             if _parity_vec_order(reason) or _vd_exempt or _zp_ns:
-                logger.info(f"[CIRCUIT_BREAKER_PARITY_EXEMPT] {position_key}: vec-dictated order — breaker has no vote. action={action} reason={(reason or '')[:70]}")
-                _vec_last_bypassed.append("CIRCUIT_BREAKER")
+                # Record a real bypass only when the enabled breaker would have
+                # refused this order. An inactive/clear breaker is no parity gap.
+                _cb_would_block = bool(getattr(config, "CIRCUIT_BREAKER_ENABLED", False)) and self.circuit_breaker.is_blocked(reason or "")
+                if _cb_would_block:
+                    logger.info(f"[CIRCUIT_BREAKER_PARITY_EXEMPT] {position_key}: vec-dictated order overrides active breaker. action={action} reason={(reason or '')[:70]}")
+                    _vec_last_bypassed.append("CIRCUIT_BREAKER")
             elif bool(getattr(config, "CIRCUIT_BREAKER_ENABLED", False)) and self.circuit_breaker.is_blocked(reason or ""):
                 logger.critical(f"🛑 [CIRCUIT_BREAKER] {position_key}: BLOCKED '{reason}' — path auto-disabled (WT/DC wrong at entry)")
                 return "CIRCUIT_BREAKER_BLOCKED"
