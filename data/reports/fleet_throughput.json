@@ -1,38 +1,38 @@
 {
-  "ts": "2026-10-26T07:50:04.601682+00:00",
-  "tick": "2026-10-26T07:48:01.291759+00:00",
-  "tick_age_s": 123,
+  "ts": "2026-10-26T07:55:03.988676+00:00",
+  "tick": "2026-10-26T07:54:01.301485+00:00",
+  "tick_age_s": 63,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run37.json",
     "round": "run37",
     "complete": false,
     "universe_n": 212,
-    "n_complete": 97,
-    "n_pending": 115,
+    "n_complete": 99,
+    "n_pending": 113,
     "n_refused_only": 0,
     "n_excluded": 0,
-    "n_launchable_pending": 93,
+    "n_launchable_pending": 91,
     "hosts_not_visible": []
   },
   "hosts": {
     "s1": {
-      "cpu_pct": 84,
+      "cpu_pct": 68,
       "slots": "0/4",
       "observed_running": [],
       "published_last_hour": 2,
       "idle_reason": "disk guard",
-      "mem_avail_mb": 18199
+      "mem_avail_mb": 20024
     },
     "s5": {
-      "cpu_pct": 3,
+      "cpu_pct": 16,
       "slots": "0/4",
       "observed_running": [],
       "published_last_hour": 5,
       "idle_reason": "disk guard",
-      "mem_avail_mb": 25457
+      "mem_avail_mb": 25122
     },
     "s2": {
-      "cpu_pct": 100,
+      "cpu_pct": 81,
       "slots": "2/4",
       "observed_running": [
         "QNTUSDT",
@@ -40,28 +40,29 @@
       ],
       "published_last_hour": 0,
       "idle_reason": "mem guard",
-      "mem_avail_mb": 3056
+      "mem_avail_mb": 4545
     },
     "s6": {
-      "cpu_pct": 84,
+      "cpu_pct": 46,
       "slots": "4/4",
       "observed_running": [
         "AMZN",
-        "ETN",
-        "GDX"
+        "APO",
+        "HOOD"
       ],
-      "published_last_hour": 5,
+      "published_last_hour": 6,
       "idle_reason": null,
-      "mem_avail_mb": 16708
+      "mem_avail_mb": 21369
     }
   },
-  "one_hour_total": 12,
+  "one_hour_total": 13,
   "alerts": [
     "LOW_THROUGHPUT:s1:2/h",
-    "LOW_CPU:s1:84%",
+    "LOW_CPU:s1:68%",
     "IDLE:s1:disk guard",
-    "LOW_CPU:s5:3%",
+    "LOW_CPU:s5:16%",
     "IDLE:s5:disk guard",
-    "LOW_THROUGHPUT:s2:0/h"
+    "LOW_THROUGHPUT:s2:0/h",
+    "LOW_CPU:s6:46%"
   ]
 }
