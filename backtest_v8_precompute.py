@@ -14,6 +14,7 @@ Usage:
     python3 backtest_v7_precompute.py --all --mode tradier --workers 8
 """
 import argparse
+import datetime as dt
 import json
 import logging
 import os
@@ -901,11 +902,25 @@ def load_klines(path: Path) -> Optional[pd.DataFrame]:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors="coerce")
         if "timestamp" in df.columns:
-            df["timestamp_dt"] = pd.to_datetime(df["timestamp"], utc=True, format="ISO8601")
+            timestamp_col = "timestamp"
         elif "timestamp_dt" in df.columns:
-            df["timestamp_dt"] = pd.to_datetime(df["timestamp_dt"], utc=True, format="ISO8601")
+            timestamp_col = "timestamp_dt"
         else:
             return None
+        timestamps = df[timestamp_col]
+        if path.name.endswith("_D.json") and "tradier" in {part.lower() for part in path.parts}:
+            import re
+            from zoneinfo import ZoneInfo
+            et = ZoneInfo("America/New_York")
+            def _normalize_tradier_daily_timestamp(value):
+                match = re.fullmatch(r"(\d{4}-\d{2}-\d{2})(?:\.\d+Z)?", str(value))
+                if not match:
+                    return value
+                day = dt.date.fromisoformat(match.group(1))
+                close_et = dt.datetime.combine(day, dt.time(16, 0), tzinfo=et)
+                return close_et.astimezone(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000000Z")
+            timestamps = timestamps.map(_normalize_tradier_daily_timestamp)
+        df["timestamp_dt"] = pd.to_datetime(timestamps, utc=True, format="ISO8601")
         df = df.set_index("timestamp_dt").sort_index()
         df = df[~df.index.duplicated(keep="last")]
         # Normalize daily bars: one bar per ET date (fix legacy 13:30+20:00 duplicates)
