@@ -34,6 +34,7 @@ import hashlib
 import json
 import os
 import shutil
+import sqlite3
 import sys
 import time
 from pathlib import Path
@@ -734,6 +735,41 @@ def process(
 def load_sets():
     vd = json.loads(VEC_DRIVEN.read_text()) if VEC_DRIVEN.exists() else {}
     cands = json.loads(CANDIDATES.read_text()) if CANDIDATES.exists() else {}
+    if SCOPE == "30d":
+        tradeable = ROOT / "tradeable_keys.json"
+        if tradeable.is_file():
+            account_sides = {}
+            for key in json.loads(tradeable.read_text()):
+                if ":" not in str(key):
+                    continue
+                account, symbol_side = str(key).split(":", 1)
+                if symbol_side.endswith(("_LONG", "_SHORT")):
+                    account_sides.setdefault(symbol_side, set()).add(account)
+            for symbol_side, accounts in account_sides.items():
+                vd.setdefault(symbol_side, {"mode": "live", "account": sorted(accounts)})
+        canonical = Path("/home/niels/binance/data/hourly_reconfig/per_sym_store.db")
+        replica = ROOT / "data" / "hourly_reconfig" / "per_sym_forward_master.db"
+        local = ROOT / "data" / "hourly_reconfig" / "per_sym_store.db"
+        db = Path(os.environ["PER_SYM_STORE_DB"]) if os.environ.get("PER_SYM_STORE_DB") else (canonical if canonical.is_file() else replica if replica.is_file() else local)
+        if not db.is_file():
+            raise RuntimeError(f"current per-sym SQL store missing: {db}")
+        from per_sym_live_set import _apply_caps
+        result = {}
+        connection = sqlite3.connect(f"file:{db.resolve()}?mode=ro", uri=True, timeout=5)
+        try:
+            for symbol_side, entry in vd.items():
+                if symbol_side.startswith("_") or not isinstance(entry, dict) or entry.get("mode") != "live":
+                    continue
+                row = connection.execute("SELECT updated_at,full_config_json FROM per_sym_active WHERE sym_side=?", (symbol_side,)).fetchone()
+                if not row or not row[1]:
+                    continue
+                full = json.loads(row[1])
+                if not isinstance(full, dict) or not full or _fabricated(full):
+                    continue
+                result[symbol_side] = ({"mode": "live", "account": entry.get("account") or "ez", "set_source": "per_sym_store.active", "settings_updated_at": row[0]}, _apply_caps(symbol_side, full))
+        finally:
+            connection.close()
+        return result
     # USER 2026-10-25 forward-data speed: proven override sets live in vec_driven_sets.json, owned by
     # --build-driven. data/vec_live/vec_driven.json is owned by pure_board_trader (mode/account/expiry
     # registry — its merge strips everything else by 10-23 design), so sets kept there are stripped within

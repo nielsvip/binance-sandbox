@@ -8,7 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 KEYS = ROOT / "tradeable_keys.json"
 CACHE = ROOT / "data" / "fwdstate_side_list_synced"
-SOURCES = (("s1-pub", "SHORT"), ("s2", "LONG"))
+SOURCES = (("s1-pub", "ALL"), ("s2", "LONG"))
 
 
 def main():
@@ -19,7 +19,7 @@ def main():
     if not sides or any(not side.endswith(("_LONG", "_SHORT")) for side in sides):
         raise ValueError("invalid tradeable side list")
     for host, direction in SOURCES:
-        selected = sorted(side for side in sides if side.endswith("_" + direction))
+        selected = sorted(side for side in sides if direction == "ALL" or side.endswith("_" + direction))
         if not selected:
             raise ValueError("empty forward side list")
         payload = "\n".join(selected) + "\n"

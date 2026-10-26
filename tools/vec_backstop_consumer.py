@@ -20,6 +20,8 @@ import argparse
 import glob
 import json
 import os
+import hashlib
+import sqlite3
 import sys
 import time
 from pathlib import Path
@@ -39,14 +41,31 @@ CLOSE_SIDE = {"LONG": "SELL", "SHORT": "BUY"}
 
 def load_states(state_dir=STATE_DIR):
     out = {}
-    for f in glob.glob(str(Path(state_dir) / "*.json")):
-        try:
-            d = json.load(open(f))
-        except Exception:
-            continue
-        ss = d.get("ss") or Path(f).stem
-        if isinstance(ss, str) and ss:
-            out[ss] = d
+    db = ROOT / "data" / "hourly_reconfig" / "per_sym_store.db"
+    if not db.is_file():
+        return out
+    from per_sym_live_set import _apply_caps
+    connection = sqlite3.connect(f"file:{db.resolve()}?mode=ro", uri=True, timeout=5)
+    try:
+        for f in glob.glob(str(Path(state_dir) / "*.json")):
+            try:
+                d = json.load(open(f))
+                ss = d.get("ss") or Path(f).stem
+                if not isinstance(ss, str) or not ss:
+                    continue
+                row = connection.execute("SELECT full_config_json FROM per_sym_active WHERE sym_side=?", (ss,)).fetchone()
+                if not row or not row[0]:
+                    continue
+                full = json.loads(row[0])
+                effective = _apply_caps(ss, full)
+                digest = hashlib.md5(json.dumps(effective, sort_keys=True, default=str).encode()).hexdigest()
+                if d.get("set_md5") != digest:
+                    continue
+                out[ss] = d
+            except Exception:
+                continue
+    finally:
+        connection.close()
     return out
 
 
