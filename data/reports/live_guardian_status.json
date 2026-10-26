@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-26T12:25:37Z",
+ "ts": "2026-10-26T12:30:37Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 433,
-   "open_positions": 13,
-   "unrealised_usd": -1.27,
+   "fills_6h": 436,
+   "open_positions": 11,
+   "unrealised_usd": -0.38,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 360,
-   "open_positions": 14,
-   "unrealised_usd": -1.5,
+   "fills_6h": 363,
+   "open_positions": 12,
+   "unrealised_usd": 1.08,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 93,
    "open_positions": 7,
-   "unrealised_usd": -0.18,
+   "unrealised_usd": -0.37,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -134,89 +134,82 @@
     "81122"
    ],
    "starts_30m": 1,
-   "log_age_s": 12.0
+   "log_age_s": 3.0
   },
   "ang": {
    "pids": [
     "37824"
    ],
    "starts_30m": 1,
-   "log_age_s": 406.0
+   "log_age_s": 709.0
   },
   "inf": {
    "pids": [
     "69983"
    ],
    "starts_30m": 1,
-   "log_age_s": 10.0
+   "log_age_s": 11.0
   },
   "flz": {
    "pids": [
     "69233"
    ],
    "starts_30m": 1,
-   "log_age_s": 771.0
+   "log_age_s": 1073.0
   },
   "trb": {
    "pids": [
     "62546"
    ],
    "starts_30m": 1,
-   "log_age_s": -2.0
+   "log_age_s": -1.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 190486.0
+   "log_age_s": 190789.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-26T12:25:37Z",
+   "ts": "2026-10-26T12:30:37Z",
    "severity": "CRITICAL",
    "kind": "CHURN_KEY",
    "key": "fin:RLCUSDT_LONG",
    "evidence": "3 open->flat round trips in 60 min"
   },
   {
-   "ts": "2026-10-26T12:25:37Z",
+   "ts": "2026-10-26T12:30:37Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "fin:KMNOUSDT_LONG",
    "evidence": "BREAKOUT_SIZE_LADDER resized qty 4187.24->12561.7 = $540.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 4187.24)"
   },
   {
-   "ts": "2026-10-26T12:25:42Z",
+   "ts": "2026-10-26T12:30:37Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
-   "key": "ang:BLURUSDT_SHORT",
-   "evidence": "entry notional $164.88 (median $6.25, MAX_ORDER_VALUE $300) @ 2026-10-26T12:11:54Z VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_2"
+   "key": "fin:KMNOUSDT_LONG",
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 4189.94->12569.8 = $540.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 4189.94)"
   },
   {
-   "ts": "2026-10-26T12:25:42Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "ang:BLURUSDT_SHORT",
-   "evidence": "entry notional $164.89 (median $6.25, MAX_ORDER_VALUE $300) @ 2026-10-26T12:12:11Z VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_2"
-  },
-  {
-   "ts": "2026-10-26T12:25:47Z",
+   "ts": "2026-10-26T12:30:46Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 406s"
+   "evidence": "ez_manage_ang.log not written for 709s"
   },
   {
-   "ts": "2026-10-26T12:25:47Z",
+   "ts": "2026-10-26T12:30:46Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 771s"
+   "evidence": "ez_manage_flz.log not written for 1073s"
   }
  ],
  "alert_counts": {
   "CHURN_KEY": 1,
-  "SIZE_ANOMALY": 3,
+  "SIZE_ANOMALY": 2,
   "STALE_LOG": 2
  },
  "active_interventions": {
@@ -319,13 +312,6 @@
    "undo": "redis-cli -p 6379 DEL open_blocked:fin:BLURUSDT_SHORT",
    "dry_run": false
   },
-  "key:fin:MOVRUSDT_SHORT": {
-   "ts": 1793010525.0936708,
-   "until": 1793017725.093673,
-   "why": "SIZE_ANOMALY BREAKOUT_SIZE_LADDER qty 170.713->512.14 ($540) past 1.5x MAX_ORDER_VALUE",
-   "undo": "redis-cli -p 6379 DEL open_blocked:fin:MOVRUSDT_SHORT",
-   "dry_run": false
-  },
   "acct:flz": {
    "ts": 1792873584.008171,
    "why": "ORDER_STORM_ACCOUNT 27 fills/10min",
@@ -375,5 +361,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 10.42
+ "sweep_s": 8.86
 }
