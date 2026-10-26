@@ -5576,6 +5576,7 @@ class Config:
     # timing states; ez_manage holds extended-top entries, sizes rebound full.
     # ROLLBACK: ANG_TIMING_GATE_ENABLED=False restores prior entry behavior.
     ANG_TIMING_GATE_ENABLED: bool = True
+    ANG_TIMING_ACCOUNT_VECTOR_READY: bool = False  # arm only after per-account ANG forward state and consumer are proven
     ANG_TIMING_ACCOUNTS: list = field(default_factory=lambda: ["ang"])
     ANG_TIMING_LOOKBACK: int = 20
     ANG_TIMING_FRESH_BARS: int = 3

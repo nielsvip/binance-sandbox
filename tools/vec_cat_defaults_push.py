@@ -28,6 +28,8 @@ def main():
     os.replace(temp, DEST)
     for host in ("s1-pub", "s2"):
         subprocess.run(["rsync", "-az", "-e", "ssh -S none -o BatchMode=yes -o ConnectTimeout=8", str(DEST), f"{host}:~/binance-sandbox/data/vec_live/cat_side_full_defaults.json"], check=True, timeout=90)
+        for source, remote in ((ROOT / "tradeable_keys.json", "~/binance-sandbox/tradeable_keys.json"), (ROOT / "data" / "vec_live" / "vec_driven.json", "~/binance-sandbox/data/vec_live/vec_driven.json")):
+            subprocess.run(["rsync", "-az", "-e", "ssh -S none -o BatchMode=yes -o ConnectTimeout=8", str(source), f"{host}:{remote}"], check=True, timeout=90)
     print(f"cat_defaults_pushed {payload['_meta']['generated_utc']} long={len(categories['CRYPTO_LONG'])} short={len(categories['CRYPTO_SHORT'])}", flush=True)
 
 

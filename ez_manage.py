@@ -26516,7 +26516,7 @@ class MultiAccountTradeManager:
             logger.warning(f"[VEC_DRIVEN_LIVE] {position_key}: live amount/price read error {_la_e} — key skipped this cycle")
             return None
 
-    async def _vec_driven_send(self, account_key: str, ss: str, action: str, vec_type: str, vec_reason, qty_frac, src: str, caps=None, modes=None) -> str:
+    async def _vec_driven_send(self, account_key: str, ss: str, action: str, vec_type: str, vec_reason, qty_frac, src: str, caps=None, modes=None, vector_bar_ts=0.0) -> str:
         """Translate one vec decision into the existing order path: queue_trade_action -> execute_trade_action -> execute_now.
         OPEN/AUGMENT size = qty_frac x calculate_final_order_quantity (same preliminary qty as queue_trade_action); REDUCE = qty_frac of
         the live amount; CLOSE = all. Always override_qty so execute_trade_action's discretionary entry vetting (incl. RSI veto) is skipped."""
@@ -26578,10 +26578,15 @@ class MultiAccountTradeManager:
         # qty as override_qty exactly as the queue path did. ROLLBACK: VEC_DRIVEN_SEND_VIA_QUEUE=True.
         _opening = final_action in ("OPEN", "AUGMENT")
         _oside = ("BUY" if side == "LONG" else "SELL") if _opening else ("SELL" if side == "LONG" else "BUY")
-        if bool(getattr(_ezm_base_config, "VEC_DRIVEN_SEND_VIA_QUEUE", False)):
-            res = await queue_trade_action(self.order_queue, self, position_key, final_action, reason, 0.5, override_qty=qty)
-        else:
-            res = await self.execute_trade_action(account_key=account_key, position_key=position_key, symbol=symbol, quantity=abs(float(qty)), current_price=price, side=_oside, position_side=side, unique_id=f"VD{int(time.time() * 1000)}", is_full_close=(final_action == "CLOSE"), action=final_action, reason=reason, override_qty=qty)
+        from live_twins import vec_provenance as _dispatch_provenance
+        _dispatch_token = _dispatch_provenance.mark(position_key, vector_bar_ts, final_action, "VEC_DRIVEN_STATE")
+        try:
+            if bool(getattr(_ezm_base_config, "VEC_DRIVEN_SEND_VIA_QUEUE", False)):
+                res = await queue_trade_action(self.order_queue, self, position_key, final_action, reason, 0.5, override_qty=qty)
+            else:
+                res = await self.execute_trade_action(account_key=account_key, position_key=position_key, symbol=symbol, quantity=abs(float(qty)), current_price=price, side=_oside, position_side=side, unique_id=f"VD{int(time.time() * 1000)}", is_full_close=(final_action == "CLOSE"), action=final_action, reason=reason, override_qty=qty)
+        finally:
+            _dispatch_provenance.reset(_dispatch_token)
         if final_action == "OPEN" and caps is not None and not str(res).upper().startswith(("REFUS", "BLOCKED", "SKIP")):
             caps.record(account_key, ss)
         logger.info(f"🧭 [VEC_DRIVEN_LIVE] {position_key}: {src} {vec_type}->{final_action} qty={qty:.8f} amt={amt:.8f} px={price} reason={reason} -> {res}")
@@ -26731,7 +26736,7 @@ class MultiAccountTradeManager:
                         async def _vd_one(_it, _ss, _action, _pk):
                             async with _vd_sem:
                                 try:
-                                    _r = await self._vec_driven_send(account_key, _ss, _action, _it["type"], _it.get("reason"), _it.get("qty_frac"), f"intent={_it['intent_id']}", caps=caps, modes=modes)
+                                    _r = await self._vec_driven_send(account_key, _ss, _action, _it["type"], _it.get("reason"), _it.get("qty_frac"), f"intent={_it['intent_id']}", caps=caps, modes=modes, vector_bar_ts=_it.get("bar_ts") or 0.0)
                                 except Exception as _vd_e:
                                     _r = f"ERROR_{type(_vd_e).__name__}"
                                     logger.error(f"[VEC_DRIVEN_LIVE] {_pk}: intent {_it['intent_id']} dispatch error: {_vd_e}", exc_info=True)
@@ -26858,7 +26863,7 @@ class MultiAccountTradeManager:
                         async def _rc_one(_ss, _pk, _act, _reason, _frac, _bar_key):
                             async with _rc_sem:
                                 try:
-                                    _r = await self._vec_driven_send(account_key, _ss, _act, _act, f"RECONCILE_{_reason or ''}", _frac, "reconcile", caps=caps, modes=modes)
+                                    _r = await self._vec_driven_send(account_key, _ss, _act, _act, f"RECONCILE_{_reason or ''}", _frac, "reconcile", caps=caps, modes=modes, vector_bar_ts=_bar_key or 0.0)
                                 except Exception as _rc_e:
                                     _r = f"ERROR_{type(_rc_e).__name__}"
                                     logger.error(f"[VEC_DRIVEN_RECONCILE] {_pk}: dispatch error: {_rc_e}", exc_info=True)
@@ -28826,7 +28831,7 @@ class MultiAccountTradeManager:
                     pass
                 try:
                     _tm_accts2 = getattr(config, "ANG_TIMING_ACCOUNTS", ["ang"]) or ["ang"]
-                    if bool(getattr(config, "ANG_TIMING_GATE_ENABLED", True)) and account_key in _tm_accts2:
+                    if bool(getattr(_ezm_base_config, "ANG_TIMING_ACCOUNT_VECTOR_READY", False)) and bool(_psym_get(symbol, position_side, "ANG_TIMING_GATE_ENABLED", getattr(config, "ANG_TIMING_GATE_ENABLED", True))) and account_key in _tm_accts2:
                         _tm_state2 = ang_timing_state_for(symbol, position_side)
                         if _tm_state2 == "REBOUND_GO":
                             quantity = float(quantity) * float(getattr(config, "ANG_TIMING_REBOUND_MULT", 1.5) or 1.5)
@@ -33298,7 +33303,8 @@ class MultiAccountTradeManager:
         except Exception:
             _mandatory_loss_stop = False
             _net_exit_ok = lambda gross, fee: False
-        if _is_exit and not _mandatory_loss_stop and _exit_action not in ("PLACE_STOP", "CANCEL_STOP"):
+        from live_twins.vector_exit_authority import current_vector_exit as _verified_vector_exit
+        if _is_exit and not _mandatory_loss_stop and not _verified_vector_exit(position_key) and _exit_action not in ("PLACE_STOP", "CANCEL_STOP"):
             _exit_pos = None
             _account_books = getattr(self, "positions_by_account", None)
             if isinstance(_account_books, dict):
@@ -34028,7 +34034,8 @@ class MultiAccountTradeManager:
             _tm_accts = getattr(config, "ANG_TIMING_ACCOUNTS", ["ang"]) or ["ang"]
             _tm_acct = account_key or (position_key.split(":", 1)[0] if position_key and ":" in position_key else None)
             if (
-                bool(getattr(config, "ANG_TIMING_GATE_ENABLED", True))
+                bool(getattr(_ezm_base_config, "ANG_TIMING_ACCOUNT_VECTOR_READY", False))
+                and bool(_psym_get(symbol, position_side, "ANG_TIMING_GATE_ENABLED", getattr(config, "ANG_TIMING_GATE_ENABLED", True)))
                 and _tm_acct in _tm_accts
                 and not bool(is_hedge)
                 and ("OPEN" in _kill_act or "AUGMENT" in _kill_act or "ENTRY" in _kill_act or "REENTRY" in _kill_act or _kill_act == "BUY")
@@ -36491,7 +36498,7 @@ class MultiAccountTradeManager:
                 _lo_snap = await _ptruth.ez_broker(self, _lo_acct, config, logger).snapshot(reason=f"open_on_leftover {position_key}")
                 if _lo_snap is None:
                     logger.critical(f"⚠️ [OPEN_ON_LEFTOVER_UNVERIFIED_PROCEED] {position_key}: broker position unknown — OPEN proceeds unverified (no sleep-retry, no refusal)")
-                _lo_amt = _lo_snap.amount(_lo_sym, _lo_ps)
+                _lo_amt = _lo_snap.amount(_lo_sym, _lo_ps) if _lo_snap is not None else 0.0
                 if _lo_amt > 0:
                     import live_entry_gates as _leg_lo
                     _lo_min = max(2.5, float(_leg_lo.effective_min_gain(lambda _k, _d: getattr(config, _k, _d))))
@@ -53193,7 +53200,7 @@ async def _pp_ang_timing_exits(trade_manager, account_key, position_key) -> bool
     ROLLBACK: ANG_TIMING_TOP_TRIM_ENABLED=False.
     """
     try:
-        if not bool(getattr(config, "ANG_TIMING_TOP_TRIM_ENABLED", True)):
+        if not bool(getattr(_ezm_base_config, "ANG_TIMING_ACCOUNT_VECTOR_READY", False)) or not bool(getattr(config, "ANG_TIMING_TOP_TRIM_ENABLED", True)):
             return False
         accts = getattr(config, "ANG_TIMING_ACCOUNTS", ["ang"]) or ["ang"]
         try:
