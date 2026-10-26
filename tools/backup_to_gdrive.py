@@ -5,7 +5,7 @@ Daily job: uploads 50 files (~2GB) to avoid API throttling.
 If Google Drive >70% capacity, offloads to connected external drives.
 """
 
-import hashlib, os, sys, subprocess, shutil
+import hashlib, json, os, sys, subprocess, shutil
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -173,17 +173,41 @@ def copy_to_ext_drive(fpath, ext_drive_path):
         log(f"⚠ Copy to {ext_drive_path.name} failed for {fpath.name}: {e}", "WARN")
         return False
 
+def archive_to_gcs(fpath):
+    try:
+        before = fpath.stat()
+        digest = sha256_file(fpath)
+        relative = fpath.relative_to(Path(BACKUP_DIR)).as_posix()
+        object_name = f"mac/backups_from_drive_job/{relative}_{digest[:16]}.tar.zst"
+        python = Path("/opt/anaconda3/envs/binance_env/bin/python")
+        if not python.is_file():
+            python = Path(sys.executable)
+        result = subprocess.run([str(python), str(Path(__file__).resolve().with_name("gcs_cold_store.py")), "push", "--local", str(fpath), "--name", object_name],
+                                capture_output=True, text=True, timeout=86400)
+        if result.returncode:
+            log(f"GCS archive failed for {fpath.name}: {result.stderr[-300:]}", "WARN")
+            return False
+        rows = [line for line in result.stdout.splitlines() if line.startswith("{")]
+        receipt = json.loads(rows[-1]) if rows else {}
+        after = fpath.stat()
+        if receipt.get("verified") is not True or (before.st_size, before.st_mtime_ns, before.st_ctime_ns) != (after.st_size, after.st_mtime_ns, after.st_ctime_ns):
+            log(f"GCS verification/source-stability failed for {fpath.name}; keeping local", "WARN")
+            return False
+        log(f"Verified GCS archive for {fpath.name}: gs://{receipt.get('bucket')}/{object_name}")
+        return True
+    except Exception as e:
+        log(f"GCS archive failed for {fpath.name}: {e}", "WARN")
+        return False
+
 def main():
     log("=" * 60)
     log("Starting Google Drive backup archival")
 
-    if not setup_rclone():
-        return 1
-
-    # Check Google Drive capacity
-    gdrive_status = get_gdrive_capacity()
+    drive_ready = setup_rclone()
+    gdrive_status = get_gdrive_capacity() if drive_ready else None
     use_ext_drive_fallback = False
     ext_drive_path = None
+    use_gcs_fallback = not drive_ready
 
     if gdrive_status:
         used_gb, total_gb, percent = gdrive_status
@@ -196,24 +220,32 @@ def main():
                 log(f"✓ Using fallback: {ext_drive_path.name}")
                 use_ext_drive_fallback = True
             else:
-                log(f"⚠ No external drive available. Proceeding with Google Drive.", "WARN")
+                use_gcs_fallback = True
+                log("No external drive available; using the verified GCS cold store", "WARN")
     else:
-        log(f"⚠ Could not check Google Drive capacity. Checking external drives as fallback...", "WARN")
+        log("Google Drive unavailable; checking external drives, then GCS", "WARN")
         ext_drive_path = find_available_ext_drive()
         if ext_drive_path:
             log(f"✓ Using external drive: {ext_drive_path.name}")
             use_ext_drive_fallback = True
+            use_gcs_fallback = False
+        else:
+            use_gcs_fallback = True
 
     # Probe Google Drive only if not using fallback
-    if not use_ext_drive_fallback:
+    if drive_ready and not use_ext_drive_fallback and not use_gcs_fallback:
         try:
             probe = subprocess.run(["rclone", "lsd", "binance-gdrive:", "--config", RCLONE_CONFIG], capture_output=True, timeout=60)
             if probe.returncode:
-                log(f"Google Drive destination is not accessible: {probe.stderr.decode(errors='replace')[-300:]}", "ERROR")
-                return 1
+                log(f"Google Drive destination is not accessible: {probe.stderr.decode(errors='replace')[-300:]}", "WARN")
+                ext_drive_path = find_available_ext_drive()
+                use_ext_drive_fallback = bool(ext_drive_path)
+                use_gcs_fallback = not use_ext_drive_fallback
         except Exception as e:
-            log(f"Google Drive destination probe failed: {e}", "ERROR")
-            return 1
+            log(f"Google Drive destination probe failed: {e}", "WARN")
+            ext_drive_path = find_available_ext_drive()
+            use_ext_drive_fallback = bool(ext_drive_path)
+            use_gcs_fallback = not use_ext_drive_fallback
 
     old_files = get_old_files()
     if not old_files:
@@ -230,9 +262,11 @@ def main():
         if use_ext_drive_fallback and ext_drive_path:
             if copy_to_ext_drive(fpath, ext_drive_path):
                 success = True
-        else:
+        elif drive_ready and not use_gcs_fallback:
             if upload_file(fpath):
                 success = True
+        if not success:
+            success = archive_to_gcs(fpath)
 
         if success:
             try:

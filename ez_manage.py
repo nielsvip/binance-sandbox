@@ -1003,6 +1003,7 @@ _ls_ratio_1h_adj: Dict[str, Any] = {
 _tiered_tp_hit: Dict[
     str, Set[int]
 ] = {}  # BACKTEST_CHANGE_12: tracks which tiered TP levels have been hit per position_key
+_tiered_tp_last_vector_bar: Dict[str, int] = {}
 # ═══ CRITICAL FIX: DUPLICATE OPEN GUARD — NEVER open same symbol+side twice ═══
 _recent_opens: Dict[
     str, float
@@ -14981,6 +14982,24 @@ def _parity_forward_holds(position_key) -> bool:
         return _vdf.normalize_target((st or {}).get("target_state")) is True
     except Exception:
         return False
+
+
+def _cycle_tp_closed_vector_event(base_path, position_key, indicators, now=None):
+    now = time.time() if now is None else float(now)
+    closed_ts = math.floor((now - 900.0) / 900.0) * 900
+    indicator_dt = safe_datetime((indicators or {}).get("timestamp_15m"))
+    indicator_ts = int(indicator_dt.timestamp()) if indicator_dt else 0
+    if indicator_ts != closed_ts:
+        return False, closed_ts, f"indicator15={indicator_ts} required={closed_ts}"
+    from live_twins import vec_driven
+    sym_side = position_key.split(":", 1)[-1]
+    state = vec_driven.load_state(vec_driven.vec_live_dir(base_path) / "state", sym_side) or {}
+    if state.get("status") != "OK" or not state.get("actionable") or not state.get("engine_valid") or int(float(state.get("bar_ts") or 0)) != closed_ts:
+        return False, closed_ts, f"state_bar={state.get('bar_ts')} status={state.get('status')}"
+    for event in state.get("events_this_bar") or []:
+        if isinstance(event, dict) and event.get("type") == "REDUCE" and str(event.get("reason") or "").startswith("CYCLE_TP_TIERED_T"):
+            return True, closed_ts, str(event["reason"])
+    return False, closed_ts, "no current-bar CYCLE_TP REDUCE event"
 
 
 def _cb_path_tag(reason):
@@ -59856,46 +59875,50 @@ async def process_position(
             _noloss_min_tpt = getattr(config, "NOLOSS_MIN_PROFIT_PCT", 0.50)
             if (
                 not _sat_skip_standard_exits
-                and getattr(config, "CYCLE_TP_TIERED_ENABLED", False)
+                and bool(_psym_get(symbol, position_side, "CYCLE_TP_TIERED_ENABLED", getattr(config, "CYCLE_TP_TIERED_ENABLED", False)))
                 and _pp_gain > max(0.05, _noloss_min_tpt)
             ):
-                _tpt_levels = getattr(
-                    config,
-                    "CYCLE_TP_TIERED_LEVELS",
-                    [0.0015, 0.003, 0.005, 0.007, 0.010, 0.015, 0.020, 0.030],
-                )
-                _tpt_frac = getattr(config, "CYCLE_TP_TIERED_FRAC", 0.25)
-                _tpt_hit = _tiered_tp_hit.get(position_key, set())
-                _tpt_gain_frac = _pp_gain / 100.0
-                _tpt_fired = False
-                for _tpt_idx, _tpt_level in enumerate(_tpt_levels):
-                    if _tpt_idx in _tpt_hit:
-                        continue
-                    if _tpt_gain_frac >= _tpt_level:
-                        _tpt_amt = abs(
-                            safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0)
-                        )
-                        _tpt_reduce_qty = _tpt_amt * _tpt_frac
-                        if _tpt_reduce_qty > pos_min_qty:
-                            _tpt_hit.add(_tpt_idx)
-                            _tiered_tp_hit[position_key] = _tpt_hit
-                            logger.warning(
-                                f"[TIERED_TP] {position_key}: Tier {_tpt_idx} hit (gain={_pp_gain:.2f}% >= {_tpt_level * 100:.2f}%) reducing {_tpt_frac * 100:.0f}% = {_tpt_reduce_qty:.6f}"
+                try:
+                    _tpt_vec_ready, _tpt_vec_bar, _tpt_vec_why = _cycle_tp_closed_vector_event(config.BASE_PATH, position_key, i)
+                except Exception as _tpt_vec_err:
+                    _tpt_vec_ready, _tpt_vec_bar, _tpt_vec_why = False, 0, str(_tpt_vec_err)
+                if not _tpt_vec_ready or _tiered_tp_last_vector_bar.get(position_key) == _tpt_vec_bar:
+                    logger.info(f"[CYCLE_TP_DEFER_VECTOR_BAR] {position_key}: {_tpt_vec_why} already_sent={_tiered_tp_last_vector_bar.get(position_key) == _tpt_vec_bar}")
+                else:
+                    _tpt_levels = _psym_get(symbol, position_side, "CYCLE_TP_TIERED_LEVELS", getattr(config, "CYCLE_TP_TIERED_LEVELS", [0.0015, 0.003, 0.005, 0.007, 0.010, 0.015, 0.020, 0.030]))
+                    _tpt_frac = _psym_get(symbol, position_side, "CYCLE_TP_TIERED_FRAC", getattr(config, "CYCLE_TP_TIERED_FRAC", 0.25))
+                    _tpt_hit = _tiered_tp_hit.get(position_key, set())
+                    _tpt_gain_frac = _pp_gain / 100.0
+                    _tpt_fired = False
+                    for _tpt_idx, _tpt_level in enumerate(_tpt_levels):
+                        if _tpt_idx in _tpt_hit:
+                            continue
+                        if _tpt_gain_frac >= _tpt_level:
+                            _tpt_amt = abs(
+                                safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0)
                             )
-                            result = await queue_trade_action(
-                                order_queue,
-                                trade_manager,
-                                position_key,
-                                "REDUCE",
-                                f"CYCLE_TP_TIERED_T{_tpt_idx}_{_tpt_level * 100:.2f}pct_gain{_pp_gain:.2f}",
-                                0.80,
-                                override_qty=_tpt_reduce_qty,
-                            )
-                            if result:
-                                _tpt_fired = True
-                                break
-                if _tpt_fired:
-                    return f"{EvalStatus.ACTION_TAKEN}:TIERED_TP"
+                            _tpt_reduce_qty = _tpt_amt * _tpt_frac
+                            if _tpt_reduce_qty > pos_min_qty:
+                                logger.warning(
+                                    f"[TIERED_TP] {position_key}: Tier {_tpt_idx} hit (gain={_pp_gain:.2f}% >= {_tpt_level * 100:.2f}%) reducing {_tpt_frac * 100:.0f}% = {_tpt_reduce_qty:.6f}"
+                                )
+                                result = await queue_trade_action(
+                                    order_queue,
+                                    trade_manager,
+                                    position_key,
+                                    "REDUCE",
+                                    f"CYCLE_TP_TIERED_T{_tpt_idx}_{_tpt_level * 100:.2f}pct_gain{_pp_gain:.2f}",
+                                    0.80,
+                                    override_qty=_tpt_reduce_qty,
+                                )
+                                if result:
+                                    _tpt_hit.add(_tpt_idx)
+                                    _tiered_tp_hit[position_key] = _tpt_hit
+                                    _tiered_tp_last_vector_bar[position_key] = _tpt_vec_bar
+                                    _tpt_fired = True
+                                    break
+                    if _tpt_fired:
+                        return f"{EvalStatus.ACTION_TAKEN}:TIERED_TP"
         triggered_stop = None
         stop_levels = (
             trade_manager.stop_levels.get(position_key, [])

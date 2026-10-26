@@ -28,14 +28,18 @@ import argparse
 import collections
 import datetime as dt
 import glob
+import hashlib
 import json
 import os
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "data" / "reports" / "backup_retention"
 STAMP_RE = re.compile(r"(\d{8}T?\d{4,6}Z?)")
+GCS_PYTHON = Path("/opt/anaconda3/envs/binance_env/bin/python")
 
 
 def group_of(name: str) -> str:
@@ -98,6 +102,36 @@ def human(n):
         n /= 1024.0
 
 
+def archive_before_delete(path):
+    before = path.stat()
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    sha = digest.hexdigest()
+    relative = path.relative_to(ROOT).as_posix()
+    object_name = f"mac/backup_retention/{relative}_{sha[:16]}.tar.zst"
+    python = GCS_PYTHON if GCS_PYTHON.is_file() else Path(sys.executable)
+    result = subprocess.run([str(python), str(ROOT / "tools" / "gcs_cold_store.py"), "push", "--local", str(path), "--name", object_name],
+                            cwd=ROOT, capture_output=True, text=True, timeout=840)
+    if result.returncode:
+        raise RuntimeError(result.stderr[-300:] or f"GCS push returned {result.returncode}")
+    rows = [line for line in result.stdout.splitlines() if line.startswith("{")]
+    receipt = json.loads(rows[-1]) if rows else {}
+    if receipt.get("verified") is not True:
+        raise RuntimeError("GCS did not return a verified checksum receipt")
+    after = path.stat()
+    if (before.st_size, before.st_mtime_ns, before.st_ctime_ns) != (after.st_size, after.st_mtime_ns, after.st_ctime_ns):
+        raise RuntimeError("source changed during archival; source retained")
+    return {"object": f"gs://{receipt.get('bucket')}/{object_name}", "sha256": sha, "archive_sha256": receipt.get("sha256"), "bytes": receipt.get("bytes")}
+
+
+def write_report(path, record):
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(record, indent=1))
+    os.replace(tmp, path)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true")
@@ -118,21 +152,33 @@ def main():
         print(f"  {human(p.stat().st_size):>9s}  {p.name[:64]:64s} {why}")
     rec = {"generated_utc": dt.datetime.now(dt.timezone.utc).isoformat(), "applied": bool(a.apply),
            "keep_recent": a.keep_recent, "keep_tars": a.keep_tars, "min_age_h": a.min_age_h, "keep_days": a.keep_days,
-           "reclaim_bytes": d_sz, "kept": [{"f": str(p), "why": w, "bytes": p.stat().st_size} for p, w in keep],
-           "deleted": [{"f": str(p), "why": w, "bytes": p.stat().st_size,
-                        "mtime_utc": dt.datetime.fromtimestamp(p.stat().st_mtime, dt.timezone.utc).isoformat()} for p, w in drop]}
+           "reclaim_bytes": 0, "planned_reclaim_bytes": d_sz,
+           "kept": [{"f": str(p), "why": w, "bytes": p.stat().st_size} for p, w in keep],
+           "planned_deletions": [{"f": str(p), "why": w, "bytes": p.stat().st_size} for p, w in drop],
+           "archived": [], "deleted": [], "archive_failed": [], "delete_failed": []}
     OUT.mkdir(parents=True, exist_ok=True)
     rp = OUT / f"retention_{dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%MZ')}{'_applied' if a.apply else '_dryrun'}.json"
-    rp.write_text(json.dumps(rec, indent=1))
+    write_report(rp, rec)
     if a.apply:
         freed = 0
-        for p, _w in drop:
+        for p, why in drop:
+            proof = None
             try:
                 sz = p.stat().st_size
+                mtime = dt.datetime.fromtimestamp(p.stat().st_mtime, dt.timezone.utc).isoformat()
+                proof = archive_before_delete(p)
+                rec["archived"].append({"f": str(p), "why": why, "bytes": sz, **proof})
+                write_report(rp, rec)
                 p.unlink()
                 freed += sz
+                rec["deleted"].append({"f": str(p), "why": why, "bytes": sz, "mtime_utc": mtime, **proof})
+                rec["reclaim_bytes"] = freed
             except Exception as exc:
-                print(f"  could not delete {p.name}: {exc}")
+                target = "archive_failed" if proof is None else "delete_failed"
+                rec[target].append({"f": str(p), "error": str(exc)[:300]})
+                print(f"  retained {p.name}: archive-before-delete failed: {exc}")
+            finally:
+                write_report(rp, rec)
         print(f"\nfreed {human(freed)}")
     print(f"wrote {rp}")
 
