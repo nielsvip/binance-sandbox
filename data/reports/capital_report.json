@@ -1,44 +1,105 @@
 {
- "generated_at": "2026-10-26 01:50 UTC",
- "total_capital_usd": 72.83,
+ "generated_at": "2026-10-26 01:58 UTC",
+ "total_capital_usd": 109.69,
  "tier_capital": {
-  "A": 0.0,
+  "A": 6.86,
   "B": 0.0,
-  "C": 72.83
+  "C": 102.84
  },
  "tier_count": {
-  "A": 0,
+  "A": 1,
   "B": 0,
-  "C": 2
+  "C": 6
  },
- "winners": [],
+ "winners": [
+  "ang:UNIUSDC_LONG"
+ ],
  "losers": [
-  "inf:GRAMUSDT_SHORT",
-  "inf:COTIUSDT_SHORT"
+  "ang:COTIUSDT_SHORT",
+  "ang:MAGICUSDT_SHORT",
+  "ang:LTCUSDC_SHORT",
+  "ang:MINAUSDT_SHORT",
+  "ang:SNXUSDT_SHORT",
+  "ang:NMRUSDT_SHORT"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "inf:COTIUSDT_SHORT",
+   "pk": "ang:COTIUSDT_SHORT",
    "symbol": "COTIUSDT",
-   "account": "inf",
-   "value_usd": 44.88,
-   "gain_pct": 0.174,
+   "account": "ang",
+   "value_usd": 36.93,
+   "gain_pct": 0.029,
    "tier": "C",
-   "perf_mult": 0.45,
-   "amt": 4366.0,
-   "mark": 0.01028003
+   "perf_mult": 0.44,
+   "amt": 3585.0,
+   "mark": 0.010301
   },
   {
-   "pk": "inf:GRAMUSDT_SHORT",
-   "symbol": "GRAMUSDT",
-   "account": "inf",
-   "value_usd": 27.95,
-   "gain_pct": -0.206,
+   "pk": "ang:MAGICUSDT_SHORT",
+   "symbol": "MAGICUSDT",
+   "account": "ang",
+   "value_usd": 24.87,
+   "gain_pct": 0.558,
    "tier": "C",
-   "perf_mult": 0.4,
-   "amt": 22.6,
-   "mark": 1.236551
+   "perf_mult": 0.15,
+   "amt": 303.2,
+   "mark": 0.08202
+  },
+  {
+   "pk": "ang:LTCUSDC_SHORT",
+   "symbol": "LTCUSDC",
+   "account": "ang",
+   "value_usd": 17.65,
+   "gain_pct": 0.722,
+   "tier": "C",
+   "perf_mult": 0.5,
+   "amt": 0.313,
+   "mark": 56.39
+  },
+  {
+   "pk": "ang:NMRUSDT_SHORT",
+   "symbol": "NMRUSDT",
+   "account": "ang",
+   "value_usd": 10.67,
+   "gain_pct": 1.693,
+   "tier": "C",
+   "perf_mult": 0.3,
+   "amt": 1.1,
+   "mark": 9.69997743
+  },
+  {
+   "pk": "ang:UNIUSDC_LONG",
+   "symbol": "UNIUSDC",
+   "account": "ang",
+   "value_usd": 6.86,
+   "gain_pct": 2.145,
+   "tier": "A",
+   "perf_mult": 10.0,
+   "amt": 1.0,
+   "mark": 6.856
+  },
+  {
+   "pk": "ang:SNXUSDT_SHORT",
+   "symbol": "SNXUSDT",
+   "account": "ang",
+   "value_usd": 6.57,
+   "gain_pct": 1.22,
+   "tier": "C",
+   "perf_mult": 0.14,
+   "amt": 33.8,
+   "mark": 0.1944
+  },
+  {
+   "pk": "ang:MINAUSDT_SHORT",
+   "symbol": "MINAUSDT",
+   "account": "ang",
+   "value_usd": 6.15,
+   "gain_pct": 0.963,
+   "tier": "C",
+   "perf_mult": 0.39,
+   "amt": 98.0,
+   "mark": 0.06275
   }
  ]
 }

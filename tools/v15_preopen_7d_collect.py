@@ -78,8 +78,34 @@ def collect(day: str, hosts_path: Path, root: Path = ROOT) -> dict:
                    root / "data/vec_live/vec_driven_sets.json", stock_path,
                    folder / "stage", dt.datetime.now(dt.timezone.utc).date().isoformat(),
                    root / "data/published_selection.json")
+    # The 7D vector executor is sharded onto backtest workers; S1 remains free
+    # of live executor processes. Publish only the validated settings/registry.
+    lane_files = ("validation.json", "vec_driven_sets.json", "vec_driven.json")
+    distributed = []
+    for name in ("s2", "s5", "s6"):
+        if name not in hosts:
+            continue
+        host = hosts[name]
+        target = host.get("_via") or host["ssh"][0]
+        mkdir = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5", target,
+                                "mkdir -p ~/binance-sandbox/data/vec_live_7d"],
+                               capture_output=True, text=True, timeout=15)
+        if mkdir.returncode:
+            if name == "s2":
+                raise RuntimeError(f"{name}: cannot create 7D vector lane: {mkdir.stderr[-180:]}")
+            continue
+        push = subprocess.run(["rsync", "-az", "--timeout=60",
+                               *[str(folder / "stage" / f) for f in lane_files],
+                               f"{target}:~/binance-sandbox/data/vec_live_7d/"],
+                              capture_output=True, text=True, timeout=75)
+        if push.returncode:
+            if name == "s2":
+                raise RuntimeError(f"{name}: 7D vector lane sync failed: {push.stderr[-180:]}")
+            continue
+        distributed.append(name)
     outcome = {"day": day, "stage_only": True, "accepted": len(accepted),
-               "excluded": subset["_meta"]["excluded_terminal"], "stage": report}
+               "excluded": subset["_meta"]["excluded_terminal"], "distributed": distributed,
+               "stage": report}
     _atomic(folder / "collection.json", outcome)
     return outcome
 

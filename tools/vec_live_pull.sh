@@ -52,7 +52,9 @@ pull_once() {
   for spec in ${VEC_LIVE_PULL_HOSTS:-$HOST:$REMOTE s2:binance-sandbox/data/$LIVE_DIR niels@10.0.0.5:binance-sandbox/data/$LIVE_DIR niels@10.0.0.6:binance-sandbox/data/$LIVE_DIR}; do
     if pull_one "${spec%%:*}" "${spec#*:}"; then ok=$((ok + 1)); else fail=$((fail + 1)); fi
   done
-  if [ $fail -eq 0 ]; then date -u +%s >"$DEST/.last_pull_ok"; fi
+  # In the isolated 7D lane, removed stock boxes must not make a healthy S2
+  # crypto pull look globally stale. Each intent/state still has its own age.
+  if [ "$SCOPE" = "7d" ] && [ "$ok" -gt 0 ] || [ "$fail" -eq 0 ]; then date -u +%s >"$DEST/.last_pull_ok"; fi
 }
 if [ "${1:-}" = "--loop" ]; then
   every="${2:-20}"

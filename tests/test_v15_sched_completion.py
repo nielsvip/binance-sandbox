@@ -136,7 +136,7 @@ def test_round_roll_decision_refuses_only_launchable_pending():
     assert S.round_roll_decision({**base, "n_launchable_pending": 5, "generated_at": _iso(NOW - 7200)}, False, NOW)[0] is False  # stale cannot prove exhausted
     assert S.round_roll_decision({**base, "n_launchable_pending": 0, "running_pending": ["A_LONG"]}, False, NOW)[0] is False
     assert S.round_roll_decision({**base, "n_launchable_pending": 5, "launchable_known": False}, False, NOW)[0] is False
-    assert S.round_roll_decision(None, False, NOW)[0] is True
+    assert S.round_roll_decision(None, False, NOW)[0] is False
 
 
 def test_round_roll_check_cli_freezes_on_roll(tmp_path, monkeypatch):

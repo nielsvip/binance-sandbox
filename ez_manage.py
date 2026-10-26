@@ -35640,6 +35640,14 @@ class MultiAccountTradeManager:
             if not crypto_entry_allowed(Path(getattr(self.config, "BASE_PATH", Path.home() / "binance")), account_key, symbol, position_side):
                 logger.warning("[%s] %s %s refused: outside current side-specific book", account_key, symbol, position_side)
                 return "BLOCKED_NOT_TRADEABLE_SIDE"
+        if _is_open_action and account_key == "fin" and datetime.now(timezone.utc) >= datetime(2026, 10, 26, 13, 30, tzinfo=timezone.utc):
+            if os.environ.get("VEC_LIVE_SCOPE", "30d").lower() != "7d":
+                return "BLOCKED_FIN_7D_NOT_ACTIVE"
+            try:
+                from tools.v15_preopen_7d_runtime import assert_vector_stage_ready
+                assert_vector_stage_ready(Path(getattr(self.config, "BASE_PATH", Path.home() / "binance")) / "data/vec_live_7d")
+            except Exception:
+                return "BLOCKED_FIN_7D_NOT_READY"
         # 2026-04-27 USER ABSOLUTE: NO MULTIPLE OPENS. EVER.
         # If a position is already alive for this key (positionAmt > 0), block any open of any kind.
         # AUGMENT is the ONLY legitimate add path (its own MIN_GAIN gates apply upstream).

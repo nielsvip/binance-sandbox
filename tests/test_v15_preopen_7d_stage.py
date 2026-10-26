@@ -117,6 +117,26 @@ def test_stage_requires_fresh_premarket_replay_when_requested(tmp_path):
     assert report["replay_count"] == 1
 
 
+def test_stage_accepts_0900_fallback_only_when_queue_selected_it(tmp_path):
+    today, queue, results, db, sets, stocks, published = _fixture(tmp_path)
+    doc = json.loads(queue.read_text())
+    doc["_meta"].update(require_replay=True, bar_minute=0)
+    queue.write_text(json.dumps(doc))
+    cutoff = dt.datetime.fromisoformat(today).replace(hour=9, minute=0, tzinfo=ZoneInfo("America/New_York"))
+    replay = {"sym_side": "AAAUSDT_SHORT", "valid": True,
+              "optimized_full_sha256": digest({"X": 2, "Y": True}),
+              "source_30d_sha256": digest({"X": 1}),
+              "bar_cutoff_et": cutoff.isoformat(),
+              "npz_last_bar_utc": cutoff.astimezone(dt.timezone.utc).isoformat()}
+    (results / "AAAUSDT_SHORT/replay.json").write_text(json.dumps(replay))
+    report = stage(queue, results, db, sets, stocks, tmp_path / "stage", today, published)
+    assert report["replay_count"] == 1
+    doc["_meta"]["bar_minute"] = 15
+    queue.write_text(json.dumps(doc))
+    with pytest.raises(ValueError, match="replay"):
+        stage(queue, results, db, sets, stocks, tmp_path / "stage_other", today, published)
+
+
 def test_stage_does_not_mark_mismatched_30d_fallback_verified(tmp_path):
     today, queue, results, db, sets, stocks, published = _fixture(tmp_path)
     selection = json.loads(published.read_text())

@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-26T01:52:43Z",
+ "generated_utc": "2026-10-26T01:56:41Z",
  "secs": 39.9,
  "universe": {
   "crypto": 201,
@@ -44,43 +44,43 @@
   {
    "host": "mac",
    "file": "crypto prices",
-   "age_s": 7.6,
+   "age_s": 5.1,
    "max_s": 60,
    "ok": true,
    "files": {
-    "price_cache_1.json": 14.5,
-    "price_cache_2.json": 163.1,
-    "price_cache_3.json": 7.6
+    "price_cache_1.json": 5.1,
+    "price_cache_2.json": 401.0,
+    "price_cache_3.json": 5.1
    }
   },
   {
    "host": "mac",
    "file": "crypto snapshot (market_data_*)",
-   "age_s": 46.8,
+   "age_s": 284.7,
    "max_s": 90,
-   "ok": true,
+   "ok": false,
    "files": {
-    "data/market_data_NEWEST": 46.8
+    "data/market_data_NEWEST": 284.7
    }
   },
   {
    "host": "mac",
    "file": "crypto latest_market_data",
-   "age_s": 163.2,
+   "age_s": 401.1,
    "max_s": 90,
    "ok": false,
    "files": {
-    "data/latest_market_data.json": 163.2
+    "data/latest_market_data.json": 401.1
    }
   },
   {
    "host": "gw",
    "file": "crypto market_data",
-   "age_s": 962.5,
+   "age_s": 404.8,
    "max_s": 300,
    "ok": false,
    "files": {
-    "data/latest_market_data.json": 962.5
+    "data/latest_market_data.json": 404.8
    }
   },
   {

@@ -441,6 +441,22 @@ run_script() {
         log "[FENCED] S1 holds the lease for $SCRIPT — not starting on this host; re-checking in 15s"
         sleep 15
     done
+    if [[ "$SCRIPT" == "ez_manage.py" && "${ACCT_SUFFIX#_}" == "fin" ]]; then
+        local _stage_db
+        _stage_db=$(/usr/bin/python3 - "$WORKDIR/data/preopen_7d/active/current.json" <<'PYEOF'
+import json,sys
+try:
+    print(json.load(open(sys.argv[1]))['db'])
+except Exception:
+    pass
+PYEOF
+)
+        if [[ -n "$_stage_db" && -s "$_stage_db" ]]; then
+            export VEC_LIVE_SCOPE=7d PER_SYM_STORE_DB="$_stage_db"
+        else
+            unset VEC_LIVE_SCOPE PER_SYM_STORE_DB
+        fi
+    fi
     log "Starting $SCRIPT ${ARGS[*]}"
 
     # Scripts using Python logging write to their own log file — stdout to /dev/null

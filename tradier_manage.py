@@ -49638,6 +49638,14 @@ class TradierTradeManager:
             if not side_allowed(Path(self.config.BASE_PATH), account_key, symbol, position_side):
                 return "BLOCKED_NOT_TRADEABLE_SIDE"
         if account_key == "trc" and not _xg_exit and not _xg_full:
+            if datetime.now(timezone.utc) >= datetime(2026, 10, 26, 13, 30, tzinfo=timezone.utc):
+                if os.environ.get("VEC_LIVE_SCOPE", "30d").lower() != "7d":
+                    return "BLOCKED_TRC_7D_NOT_ACTIVE"
+                try:
+                    from tools.v15_preopen_7d_runtime import assert_vector_stage_ready
+                    assert_vector_stage_ready(Path(self.config.BASE_PATH) / "data/vec_live_7d")
+                except Exception:
+                    return "BLOCKED_TRC_7D_NOT_READY"
             if not _tr_parity_vec_order(reason):
                 return "BLOCKED_TRC_NONVECTOR_ENTRY"
             if not self.is_symbol_tradeable(symbol, "trc", position_side):
