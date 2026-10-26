@@ -1,13 +1,13 @@
 {
- "at": "2026-10-26T11:45:12Z",
+ "at": "2026-10-26T12:00:22Z",
  "s1": {
   "host": "niels",
-  "now": 1793015105.7417703,
+  "now": 1793016018.5647964,
   "merge_crypto": {
    "n": 12,
-   "max_lag_min": 30.0,
-   "median_lag_min": 0.0,
-   "worst": "1000CHEEMSUSDT",
+   "max_lag_min": 60.0,
+   "median_lag_min": 15.0,
+   "worst": "1000000MOGUSDT",
    "dead": []
   },
   "merge_stocks": {
@@ -18,24 +18,25 @@
    "dead": []
   },
   "npz_legacy_crypto": [],
-  "append_log_age_min": 5.7,
+  "append_log_age_min": 1.0,
   "append_last_secs": 573.5,
   "append_last_stats": "'appended': 0, 'created': 0, 'up_to_date': 5990, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0, 'guard-blocked': 401",
   "npz_loop_pids": 0,
   "npz_loop_has_settle": false,
-  "sched_tick_age_min": 29.1,
+  "sched_tick_age_min": 44.3,
   "sched_launched": 0,
   "archive_n": 202,
   "archive_mb": 2461.8,
-  "archive_newest_min": 262.7,
+  "archive_newest_min": 277.9,
   "_via": "s1-int"
  },
  "red": [
+  "L2 merge crypto: s1's long store is 60 min behind the freshest copy on the box (worst 1000000MOGUSDT) \u2014 klines_append is not merging",
   "L3 npz append loop is not running (the */15 watchdog should relaunch it)",
-  "L4 scheduler last ticked 29.1 min ago (cron */2)"
+  "L4 scheduler last ticked 44.3 min ago (cron */2)"
  ],
  "warn": [
-  "L5 newest archived board NPZ is 263 min old \u2014 publishes may not be recording"
+  "L5 newest archived board NPZ is 278 min old \u2014 publishes may not be recording"
  ],
  "ok": false
 }
