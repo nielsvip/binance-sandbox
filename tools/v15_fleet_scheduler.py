@@ -3829,6 +3829,17 @@ def tick(args, cfg, now):
         pass
     stats = {h["name"]: (sim["hosts"].get(h["name"]) if sim else probe(h)) for h in hosts}
     _ph("probe_hosts")
+    # The pre-open 7D pass is owned by this scheduler so its queue, host,
+    # result and terminal reason live in one dated fleet ledger. Four-category
+    # daily defaults must be DONE before it can take a 30D dispatch slot.
+    try:
+        import v15_preopen_7d_fleet as _pre7
+        _seven = _pre7.tick(ROOT, now, hosts, stats, dry_run=bool(args.dry_run or sim))
+        if _seven and _seven.get("suppress_30d"):
+            return {"preopen_7d": _seven, "phase_s": _PH["s"]}
+    except Exception as _seven_exc:
+        print(f"[sched] PREOPEN_7D_GATE_ERROR {type(_seven_exc).__name__}: {_seven_exc}", flush=True)
+        # A gate error cannot authorize an untracked 7D or pause ordinary work.
     reaped = {}
     if not (args.dry_run or sim or args.no_reap):
         for h_ in hosts:
