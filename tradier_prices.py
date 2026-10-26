@@ -274,50 +274,55 @@ class TradierPriceFetcher:
             logger.error(f"[{self.fetcher_id}] Disk Save Failed: {e}")
 
     async def _write_provisional_15m(self, prices):
+        from closed_bar_feed import aggregate_closed_15m, publish_closed_15m
         now = time.time()
         writes = []
-        for symbol, quote in prices.items():
+        closed_sent = self.__dict__.setdefault('_closed_15m_sent', {})
+        for symbol, quote in list(prices.items()):
             try:
+                path = self.config.KLINES_CACHE_DIR / f"{symbol}_15m.json"
+                state = self._provisional_15m.get(symbol)
+                previous_bucket = state['bucket_ts'] if state else None
+                completed = aggregate_closed_15m(state['minute_bars'], previous_bucket, now) if state and closed_sent.get(symbol) != previous_bucket else None
+                bar = None
+                signature = None
                 price = float(quote.get('price') or quote.get('last') or 0.0)
                 quote_ts = _timestamp_epoch(quote.get('timestamp'))
-                if price <= 0 or quote_ts <= 0 or now - quote_ts > 5.0:
-                    continue
                 bucket_ts = _tradier_15m_bucket(now)
-                if bucket_ts is None:
+                if bucket_ts is not None and price > 0 and quote_ts > 0 and 0 <= now - quote_ts <= 5.0:
+                    if state is None or state['bucket_ts'] != bucket_ts:
+                        minute_bars = {}
+                        if state is None:
+                            minute_bars = await asyncio.to_thread(_load_cached_subbars, self.config.KLINES_CACHE_DIR / f"{symbol}_1m.json", bucket_ts, 60)
+                            if not minute_bars:
+                                minute_bars = await asyncio.to_thread(_load_cached_subbars, self.config.KLINES_CACHE_DIR / f"{symbol}_5m.json", bucket_ts, 300)
+                        state = {'bucket_ts': bucket_ts, 'minute_bars': minute_bars}
+                        self._provisional_15m[symbol] = state
+                    minute_ts = int(now - (now % 60))
+                    minute_bar = state['minute_bars'].get(minute_ts)
+                    if minute_bar is None:
+                        state['minute_bars'][minute_ts] = {'open': price, 'high': price, 'low': price, 'close': price}
+                    else:
+                        minute_bar['high'] = max(minute_bar['high'], price)
+                        minute_bar['low'] = min(minute_bar['low'], price)
+                        minute_bar['close'] = price
+                    values = [item for _, item in sorted(state['minute_bars'].items())]
+                    opening = float(values[0]['open'])
+                    high = max(float(item['high']) for item in values)
+                    low = min(float(item['low']) for item in values)
+                    close = float(values[-1]['close'])
+                    stamp = datetime.fromtimestamp(bucket_ts, timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+                    signature = (stamp, opening, high, low, close)
+                    if self._provisional_15m_sig.get(symbol) != signature:
+                        bar = {'timestamp': stamp, 'open': opening, 'high': high, 'low': low, 'close': close, '_provisional': True}
+                if completed is None and bar is None:
                     continue
-                state = self._provisional_15m.get(symbol)
-                if state is None or state['bucket_ts'] != bucket_ts:
-                    minute_bars = await asyncio.to_thread(_load_cached_subbars, self.config.KLINES_CACHE_DIR / f"{symbol}_1m.json", bucket_ts, 60)
-                    if not minute_bars:
-                        minute_bars = await asyncio.to_thread(_load_cached_subbars, self.config.KLINES_CACHE_DIR / f"{symbol}_5m.json", bucket_ts, 300)
-                    state = {'bucket_ts': bucket_ts, 'minute_bars': minute_bars}
-                    self._provisional_15m[symbol] = state
-                minute_ts = int(now - (now % 60))
-                minute_bar = state['minute_bars'].get(minute_ts)
-                if minute_bar is None:
-                    state['minute_bars'][minute_ts] = {'open': price, 'high': price, 'low': price, 'close': price}
-                else:
-                    minute_bar['high'] = max(minute_bar['high'], price)
-                    minute_bar['low'] = min(minute_bar['low'], price)
-                    minute_bar['close'] = price
-                bars = sorted(state['minute_bars'].items())
-                values = [bar for _, bar in bars]
-                opening = float(values[0]['open'])
-                high = max(float(bar['high']) for bar in values)
-                low = min(float(bar['low']) for bar in values)
-                close = float(values[-1]['close'])
-                stamp = datetime.fromtimestamp(bucket_ts, timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
-                signature = (stamp, opening, high, low, close)
-                if self._provisional_15m_sig.get(symbol) == signature:
-                    continue
-                self._provisional_15m_sig[symbol] = signature
-                bar = {'timestamp': stamp, 'open': opening, 'high': high, 'low': low, 'close': close, '_provisional': True}
-                path = self.config.KLINES_CACHE_DIR / f"{symbol}_15m.json"
-
-                async def _write(target=path, row=bar):
+                async def _write(target=path, row=bar, final=completed, ticker=symbol, sig=signature, previous=previous_bucket):
                     async with self._provisional_write_sem:
-                        return await asyncio.to_thread(_write_provisional_stock_15m, target, row)
-
+                        if final is not None and await asyncio.to_thread(publish_closed_15m, target, final, _write_provisional_stock_15m, self.config.BASE_PATH, "tradier", ticker):
+                            closed_sent[ticker] = previous
+                        if row is not None and await asyncio.to_thread(_write_provisional_stock_15m, target, row):
+                            self._provisional_15m_sig[ticker] = sig
                 writes.append(_write())
             except Exception as exc:
                 logger.debug(f"[{self.fetcher_id}] provisional 15m skipped {symbol}: {exc}")

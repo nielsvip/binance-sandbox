@@ -1351,8 +1351,10 @@ class MarketDataEngine:
 
     async def provisional_15m_writeback(self):
         """Publish mark-built OHLC rows at 15m boundaries until Binance OHLCV arrives."""
+        from closed_bar_feed import aggregate_closed_15m, publish_closed_15m
         cache_dir = BASE_PATH / "klines_cache"
         sem = asyncio.Semaphore(16)
+        closed_sent = {}
         while self.running:
             now = time.time()
             bucket_ts = int(now - (now % 900))
@@ -1372,7 +1374,8 @@ class MarketDataEngine:
                     store = self.market.data.get(symbol)
                 if not store:
                     continue
-                bars = store.get('ohlc_1m') or {}
+                bars = store.setdefault('ohlc_1m', OrderedDict())
+                completed = aggregate_closed_15m(bars, bucket_ts - 900, now) if closed_sent.get(symbol) != bucket_ts - 900 else None
                 minute_ts = int(now - (now % 60))
                 minute_bar = bars.get(minute_ts)
                 if minute_bar is None:
@@ -1392,15 +1395,18 @@ class MarketDataEngine:
                 close = float(values[-1]['close'])
                 stamp = datetime.fromtimestamp(bucket_ts, tz=timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
                 signature = (stamp, opening, high, low, close)
-                if self._provisional_15m_sig.get(symbol) == signature:
+                write_current = self._provisional_15m_sig.get(symbol) != signature
+                if not write_current and completed is None:
                     continue
-                self._provisional_15m_sig[symbol] = signature
                 bar = {'timestamp': stamp, 'open': opening, 'high': high, 'low': low, 'close': close, '_provisional': True}
                 path = cache_dir / f"{symbol}_15m.json"
 
-                async def _write(target=path, row=bar):
+                async def _write(target=path, row=bar, final=completed, ticker=symbol, sig=signature, current_changed=write_current, previous_bucket=bucket_ts - 900):
                     async with sem:
-                        return await asyncio.to_thread(_write_provisional_15m, target, row)
+                        if final is not None and await asyncio.to_thread(publish_closed_15m, target, final, _write_provisional_15m, BASE_PATH, "crypto", ticker):
+                            closed_sent[ticker] = previous_bucket
+                        if current_changed and await asyncio.to_thread(_write_provisional_15m, target, row):
+                            self._provisional_15m_sig[ticker] = sig
 
                 writes.append(_write())
             if writes:

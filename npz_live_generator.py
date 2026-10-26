@@ -382,11 +382,11 @@ def _drop_forming_bar(df, tf_label: str):
     """Closed bars only: drop the still-forming trailing bar(s). The kline files carry the forming bar; without
     this the live loop appends provisional values that later block the closed-bar append ("already up to") and
     leak next-bar data into the indicators (measured 2026-10-25: provisional 01:30 row written 01:40, closed 01:15
-    skipped). A bar is closed once its full span + 30 s settle have passed. Unknown TF -> unchanged (fail-open)."""
+    skipped). A bar is closed once its full span has passed. Unknown TF -> unchanged (fail-open)."""
     try:
         tf_s = _TF_SECONDS.get(str(tf_label))
         if tf_s and df is not None and not df.empty:
-            return df[df.index <= (datetime.now(timezone.utc) - timedelta(seconds=tf_s + 30))]
+            return df[df.index <= (datetime.now(timezone.utc) - timedelta(seconds=tf_s))]
     except Exception:
         pass
     return df

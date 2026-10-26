@@ -232,7 +232,7 @@ def kline_last_close(base, symbol, mode):
         if matches:
             import pandas as pd
 
-            cutoff = pd.Timestamp.now(tz="UTC") - pd.Timedelta(seconds=930)
+            cutoff = pd.Timestamp.now(tz="UTC") - pd.Timedelta(seconds=900)
             for value in reversed(matches):
                 ts = pd.to_datetime(value, utc=True, errors="coerce")
                 if not pd.isna(ts) and ts <= cutoff:

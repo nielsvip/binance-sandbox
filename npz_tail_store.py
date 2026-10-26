@@ -20,7 +20,7 @@ A torn final line is skipped by the reader, so a crash can lose at most the
 in-flight bar, never corrupt the store.
 
 Forming-bar guard: a row whose ts is not yet a closed 15m bar (ts >
-last 15m close incl. 30 s kline settle, same rule as _last_15m_close_utc) is
+last completed 15m interval, labelled by its opening timestamp) is
 REFUSED and nothing is persisted — provisional values must never land in the
 store (npz_live_generator._drop_forming_bar doctrine). Duplicate/stale rows
 (ts <= store tip) are refused idempotently.
@@ -35,7 +35,7 @@ from pathlib import Path
 
 logger = logging.getLogger("npz_tail_store")
 TAIL_DIRNAME = ".tail"
-FORMING_SETTLE_S = 30
+FORMING_SETTLE_S = 0
 GRID_S = 900
 
 
@@ -46,11 +46,8 @@ def last_closed_15m_epoch(now=None):
         now = datetime.fromtimestamp(float(now), tz=timezone.utc)
     if now.tzinfo is None:
         now = now.replace(tzinfo=timezone.utc)
-    effective = now - timedelta(seconds=FORMING_SETTLE_S)
-    floored_minute = (effective.minute // 15) * 15
-    return int(
-        effective.replace(minute=floored_minute, second=0, microsecond=0).timestamp()
-    )
+    effective = now.timestamp() - FORMING_SETTLE_S
+    return int(effective // GRID_S) * GRID_S - GRID_S
 
 
 def is_closed_bar(ts_epoch, now=None):
