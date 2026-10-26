@@ -118,20 +118,6 @@
     "symbol": "ZECUSDC",
     "side": "LONG"
   },
-  "ang:MASKUSDT_SHORT": {
-    "orderId": "4000001997325447",
-    "stopPrice": 0.3966,
-    "entry_sig": "2026-10-26 10:44:18.316000+00:00",
-    "symbol": "MASKUSDT",
-    "side": "SHORT"
-  },
-  "ang:WUSDT_SHORT": {
-    "orderId": "4000001997330941",
-    "stopPrice": 0.012042,
-    "entry_sig": "2026-10-26 10:42:36.732000+00:00",
-    "symbol": "WUSDT",
-    "side": "SHORT"
-  },
   "ang:SPXUSDT_LONG": {
     "orderId": "4000001997106027",
     "stopPrice": 0.3487,
@@ -145,5 +131,12 @@
     "entry_sig": "2026-10-26 10:51:04.652000+00:00",
     "symbol": "AVAXUSDC",
     "side": "LONG"
+  },
+  "ang:WUSDT_SHORT": {
+    "orderId": "4000001997338228",
+    "stopPrice": 0.012042,
+    "entry_sig": "2026-10-26 10:42:36.732000+00:00",
+    "symbol": "WUSDT",
+    "side": "SHORT"
   }
 }
