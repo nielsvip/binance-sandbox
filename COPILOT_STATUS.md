@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-26 12:47:39 UTC
+# Copilot Status — 2026-10-26 12:52:31 UTC
 
 **Market Hours:** NO | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-26T12:44:33
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-26T12:44:33
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-26T12:45:17
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-26T12:45:17
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-26T12:46:22
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-26T12:46:22
-- **STALE_INDICATORS** [tradier]  — 2026-10-26T12:46:44
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-26T12:46:44
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-26T12:47:27
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-26T12:47:27
+- **STALE_INDICATORS** [tradier]  — 2026-10-26T12:48:53
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-26T12:48:53
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-26T12:49:36
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-26T12:49:36
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-26T12:50:42
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-26T12:50:42
+- **STALE_INDICATORS** [tradier]  — 2026-10-26T12:51:04
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-26T12:51:04
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-26T12:51:48
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-26T12:51:48
 
 ## Missed Trades (trader comparison)
 
@@ -29,11 +29,11 @@ _None_
 
 **Held:** 5 | **Watching for reentry:** 7 | **Reentered:** 0
 
-- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +0.3%
+- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +-0.1%
 - HELD: **ARM** SHORT (tradier) peak +8.3%, now +-0.5%
 - HELD: **CDE** SHORT (tradier) peak +5.0%, now +2.1%
 - HELD: **NXE** SHORT (tradier) peak +3.3%, now +-0.4%
-- HELD: **BNBUSDC** SHORT (crypto) peak +3.0%, now +0.2%
+- HELD: **BNBUSDC** SHORT (crypto) peak +3.0%, now +0.1%
 
 - WATCHING: **MASKUSDT** SHORT (crypto) peaked +10.0%, exited 0m ago
 - WATCHING: **GALAUSDT** SHORT (crypto) peaked +9.7%, exited 0m ago
@@ -48,8 +48,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [MEDIUM] tradier_prices.py running but log stale (138min)
+- [MEDIUM] tradier_prices.py running but log stale (143min)
 - [HIGH] ez_klines.py is NOT running
 - [LOW] tradier_positions.py is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] tradier_prices.py running but log stale (139min)
+- [MEDIUM] tradier_prices.py running but log stale (144min)
