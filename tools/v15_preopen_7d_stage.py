@@ -147,7 +147,7 @@ def stage(queue_path: Path, result_dir: Path, source_db: Path, source_sets_path:
                     or replay.get("optimized_full_sha256") != digest(result["full_config"])
                     or replay.get("source_30d_sha256") != digest(sources[ss]["overrides"])
                     or cutoff.tzinfo is None or cutoff.date().isoformat() != today
-                    or cutoff.hour != 9 or cutoff.minute != 15
+                    or cutoff.hour != 9 or cutoff.minute != int(queue.get("_meta", {}).get("bar_minute", 15))
                     or npz_bar.tzinfo is None or npz_bar < cutoff.astimezone(dt.timezone.utc)):
                 raise ValueError(f"{ss}: missing or invalid 09:15 ET replay")
             replays[ss] = replay

@@ -133,8 +133,9 @@ def test_round_roll_decision_refuses_only_launchable_pending():
     ok2, msg2 = S.round_roll_decision({**base, "n_launchable_pending": 0}, False, NOW)
     assert ok2 is True and "exhausted" in msg2  # incomplete but nothing launchable -> roll
     assert S.round_roll_decision({**base, "complete": True, "n_launchable_pending": 0}, False, NOW)[0] is True
-    assert S.round_roll_decision({**base, "n_launchable_pending": 5, "generated_at": _iso(NOW - 7200)}, False, NOW)[0] is True  # stale -> never blocks
-    assert S.round_roll_decision({**base, "n_launchable_pending": 5, "launchable_known": False}, False, NOW)[0] is True
+    assert S.round_roll_decision({**base, "n_launchable_pending": 5, "generated_at": _iso(NOW - 7200)}, False, NOW)[0] is False  # stale cannot prove exhausted
+    assert S.round_roll_decision({**base, "n_launchable_pending": 0, "running_pending": ["A_LONG"]}, False, NOW)[0] is False
+    assert S.round_roll_decision({**base, "n_launchable_pending": 5, "launchable_known": False}, False, NOW)[0] is False
     assert S.round_roll_decision(None, False, NOW)[0] is True
 
 

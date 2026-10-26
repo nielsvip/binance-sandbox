@@ -24,10 +24,12 @@ NY = ZoneInfo("America/New_York")
 
 
 def replay_one(queue_path: Path, result_dir: Path, ss: str,
-               now: dt.datetime | None = None) -> dict:
+               now: dt.datetime | None = None, bar_minute: int = 15) -> dict:
     now = now or dt.datetime.now(dt.timezone.utc)
     local = now.astimezone(NY)
-    cutoff = local.replace(hour=9, minute=15, second=0, microsecond=0)
+    if bar_minute not in (0, 15):
+        raise ValueError("premarket replay bar must be 09:00 or 09:15 ET")
+    cutoff = local.replace(hour=9, minute=bar_minute, second=0, microsecond=0)
     if local.weekday() >= 5 or local < cutoff:
         raise ValueError("09:15 ET premarket snapshot has not arrived")
     queue = json.loads(queue_path.read_text())
@@ -67,10 +69,11 @@ def main() -> int:
     ap.add_argument("--queue", type=Path, required=True)
     ap.add_argument("--result-dir", type=Path, required=True)
     ap.add_argument("--sym-side", required=True)
+    ap.add_argument("--bar-minute", type=int, choices=(0, 15), default=15)
     args = ap.parse_args()
     path = args.result_dir / args.sym_side / "replay.json"
     try:
-        rec = replay_one(args.queue, args.result_dir, args.sym_side)
+        rec = replay_one(args.queue, args.result_dir, args.sym_side, bar_minute=args.bar_minute)
     except (OSError, ValueError, KeyError, TypeError) as exc:
         rec = {"sym_side": args.sym_side, "valid": False, "why": str(exc),
                "evaluated_at_utc": dt.datetime.now(dt.timezone.utc).isoformat()}

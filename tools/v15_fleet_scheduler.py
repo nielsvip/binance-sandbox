@@ -2850,7 +2850,7 @@ def round_roll_decision(record, force=False, now_ts=None, max_age_s=1800.0):
     (V15_ROUND_ROLL_FORCE=1). Complete, exhausted (nothing launchable), missing or stale record -> allowed (the latter two say UNVERIFIED).
     The message carries the per-cat_side counts. Pure (tested)."""
     if not isinstance(record, dict):
-        return True, ("FORCED: " if force else "ALLOWED (UNVERIFIED: no completion record): ") + "nothing proves launchable work is pending"
+        return (True, "FORCED: no completion record") if force else (False, "REFUSED: no completion record")
     pcs = {k: {x: v.get(x) for x in ("pending", "refused_only", "complete", "excluded", "n")} for k, v in sorted((record.get("per_cat_side") or {}).items())}
     age = None
     try:
@@ -2866,7 +2866,9 @@ def round_roll_decision(record, force=False, now_ts=None, max_age_s=1800.0):
     if record.get("complete"):
         return True, "ALLOWED (complete): " + msg
     if stale or not record.get("launchable_known", False):
-        return True, "ALLOWED (UNVERIFIED: record stale or launchability unknown): " + msg
+        return False, "REFUSED (record stale or launchability unknown): " + msg
+    if record.get("running_pending"):
+        return False, "REFUSED (running sides have not finished): " + msg
     if nl > 0:
         return False, "REFUSED (launchable pending work exists): " + msg
     return True, "ALLOWED (exhausted: nothing launchable, record frozen incomplete): " + msg
@@ -5454,7 +5456,7 @@ def tick(args, cfg, now):
     try:  # 2026-10-22 spec 22 §6.1 / brief 20 §4: the full-course round-completion record, every tick
         if not (args.dry_run or sim):
             _rid, _rsrc, _renv = _completion_round_id(cur_pdir)
-            _uni1 = tradeable_universe(uni.get("allowed_sym_sides") or [])
+            _uni1 = tradeable_universe(sorted(_BEST.tradeable(ROOT)))
             _mbh = {_hn: (_sx.get("must") or {}) for _hn, _sx in stats.items() if isinstance(_sx, dict)}
             _blind = [_hn for _hn, _sx in stats.items() if not isinstance(_sx, dict) or "must" not in _sx]
             _lsyms = set().union(*[set(_v) for _v in _ORDER_BY_HOST.values()]) - set(_npz_dead) if _ORDER_BY_HOST else set()

@@ -19,6 +19,7 @@ from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools.v15_preopen_7d_select import select
+from tools.v15_best_first import tradeable
 
 NY = ZoneInfo("America/New_York")
 CATS = ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT")
@@ -122,8 +123,8 @@ def _remote(host: dict, command: str, timeout: int = 20) -> subprocess.Completed
 
 def _sync_queue(host: dict, queue_path: Path, remote_root: str) -> None:
     target = host.get("_via") or host["ssh"][0]
-    dest = f"{remote_root}/data/preopen_7d/fleet/{queue_path.name}"
-    _remote(host, f"mkdir -p {shlex.quote(remote_root)}/data/preopen_7d/fleet")
+    dest = f"{remote_root}/data/preopen_7d/fleet/{queue_path.parent.name}/{queue_path.name}"
+    _remote(host, f"mkdir -p {shlex.quote(remote_root + '/data/preopen_7d/fleet/' + queue_path.parent.name)}")
     result = subprocess.run(["rsync", "-az", "--timeout=25", "-e",
                              "ssh -o BatchMode=yes -o ConnectTimeout=5 -o ControlMaster=no -o ControlPath=none",
                              str(queue_path), f"{target}:{dest}"], capture_output=True, text=True, timeout=35)
@@ -132,7 +133,7 @@ def _sync_queue(host: dict, queue_path: Path, remote_root: str) -> None:
 
 
 def _launch(host: dict, ss: str, queue_path: Path, day: str, root: str) -> None:
-    remote_queue = f"{root}/data/preopen_7d/fleet/{queue_path.name}"
+    remote_queue = f"{root}/data/preopen_7d/fleet/{day}/{queue_path.name}"
     result_dir = f"{root}/data/preopen_7d/fleet/{day}/results"
     result_path = f"{result_dir}/{ss}/launcher.json"
     stderr_path = f"{result_dir}/{ss}/launcher.stderr"
@@ -156,13 +157,13 @@ def _result(host: dict, ss: str, day: str, root: str) -> dict | None:
         return None
 
 
-def _launch_replay(host: dict, ss: str, day: str, root: str) -> None:
+def _launch_replay(host: dict, ss: str, day: str, root: str, minute: int = 15) -> None:
     result_dir = f"{root}/data/preopen_7d/fleet/{day}/results"
-    queue = f"{root}/data/preopen_7d/fleet/queue.json"
+    queue = f"{root}/data/preopen_7d/fleet/{day}/queue.json"
     log = f"{result_dir}/{ss}/replay.log"
-    cmd = (f"cd {shlex.quote(root)} && nohup {PILOT_PYTHON} -u "
+    cmd = (f"cd {shlex.quote(root)} && rm -f {shlex.quote(result_dir + '/' + ss + '/replay.json')} && nohup {PILOT_PYTHON} -u "
            f"tools/v15_preopen_7d_replay.py --queue {shlex.quote(queue)} "
-           f"--result-dir {shlex.quote(result_dir)} --sym-side {shlex.quote(ss)} "
+           f"--result-dir {shlex.quote(result_dir)} --sym-side {shlex.quote(ss)} --bar-minute {minute} "
            f"> {shlex.quote(log)} 2>&1 < /dev/null &")
     _remote(host, cmd, timeout=15)
 
@@ -213,11 +214,13 @@ def tick(root: Path, now: dt.datetime, hosts: list[dict], stats: dict,
             state_path = folder / "state.json"
             if state_path.exists() and not dry_run:
                 state = json.loads(state_path.read_text())
-                if state.get("phase") == "running":
+                if state.get("phase") in ("running", "await_replay"):
                     for row in state.get("placements", {}).values():
                         if row.get("status") in ("pending", "running"):
                             row.update({"status": "failed", "why": "market-open deadline"})
-                    state["phase"] = "deadline"
+                        if row.get("status") == "valid" and row.get("replay_status") not in ("valid", "failed"):
+                            row.update({"replay_status": "failed", "why": "market-open replay deadline"})
+                    state["phase"] = "complete"
                     state["updated_utc"] = now.isoformat()
                     _atomic(state_path, state)
                 for host in hosts:
@@ -227,6 +230,8 @@ def tick(root: Path, now: dt.datetime, hosts: list[dict], stats: dict,
                             _remote(host, "rm -f /tmp/v15_preopen_7d.pause")
                         except RuntimeError:
                             pass
+                if state.get("phase") == "complete":
+                    _ensure_collect(root, folder, local.strftime("%Y%m%d"), state)
         return None
     proof = _defaults_proof(root, now)
     if proof is None:
@@ -239,12 +244,14 @@ def tick(root: Path, now: dt.datetime, hosts: list[dict], stats: dict,
         published = json.loads((root / "data/published_selection.json").read_text())
         queue = select(root, now.timestamp(), published)
         queue["_meta"].update(proof)
+        queue["_meta"]["bar_minute"] = 15
         reachable = {h["name"] for h in hosts if stats.get(h["name"])}
         available = reachable - set(drained or ())
         placements = allocate(queue, hosts, available)
         state = {"day": day, "created_utc": now.isoformat(), "phase": "running",
                  "defaults": proof, "placements": placements, "queue_n": len(placements),
-                 "bar_policy": "optimize after defaults; final 09:15 ET bar replay required before activation"}
+                 "bar_policy": "09:15 ET if optimization completes by 09:00; otherwise 09:00 ET for completed sides",
+                 "bar_minute": 15}
         if not dry_run:
             _atomic(queue_path, queue)
             _atomic(folder / "hosts.json", {"hosts": hosts})
@@ -281,10 +288,23 @@ def tick(root: Path, now: dt.datetime, hosts: list[dict], stats: dict,
         state["placements"] = allocate(queue, hosts, available, state.get("placements"))
         if not dry_run:
             _atomic(folder / "hosts.json", {"hosts": hosts})
+    eligible_now = tradeable(root)
+    for ss, row in state["placements"].items():
+        if ss in eligible_now or row.get("status") == "failed":
+            continue
+        was_running = row.get("status") == "running"
+        row.update({"status": "failed", "replay_status": "failed", "why": "side left current tradeable book"})
+        if was_running and not dry_run and row.get("host") in reachable:
+            try:
+                _remote(next(h for h in hosts if h["name"] == row["host"]),
+                        "pkill -TERM -f " + shlex.quote("v15_pilot_7d.py --sym-side " + ss) + " || true")
+            except (RuntimeError, StopIteration):
+                pass
     if dry_run:
         return {"phase": "dry_run", "queue_n": state["queue_n"],
                 "by_host": {h["name"]: sum(x.get("host") == h["name"] for x in state["placements"].values()) for h in hosts},
                 "suppress_30d": False}
+    local_time = now.astimezone(NY).time()
     if state.get("phase") == "complete":
         _ensure_collect(root, folder, day, state)
         return {"phase": "complete", "queue_n": state["queue_n"], "suppress_30d": False}
@@ -315,6 +335,23 @@ def tick(root: Path, now: dt.datetime, hosts: list[dict], stats: dict,
             if age > 180:
                 row.update({"status": "pending" if row.get("attempts", 0) < 2 else "failed",
                             "why": "launcher vanished without a result"})
+    if state.get("phase") == "running" and local_time >= dt.time(9, 0):
+        unfinished = [ss for ss, row in state["placements"].items()
+                      if row.get("status") in ("pending", "running")]
+        if unfinished:
+            state["bar_minute"] = 0
+            queue["_meta"]["bar_minute"] = 0
+            _atomic(queue_path, queue)
+            for ss in unfinished:
+                state["placements"][ss].update({"status": "failed", "why": "09:00 fallback cutoff"})
+            state["phase"] = "await_replay"
+            state["fallback_failed"] = unfinished
+            for host in hosts:
+                if host["name"] in reachable:
+                    try:
+                        _remote(host, "pkill -TERM -f '^/home/niels/.conda/envs/binance_env_mac/bin/python( -u)? .*/v15_pilot_7d[.]py --sym-side' || true")
+                    except RuntimeError:
+                        pass
     for host in hosts:
         name = host["name"]
         if name not in available:
@@ -347,7 +384,7 @@ def tick(root: Path, now: dt.datetime, hosts: list[dict], stats: dict,
                 break
     if all(row.get("status") in ("valid", "failed") for row in state["placements"].values()):
         state["phase"] = "await_replay" if any(row.get("status") == "valid" for row in state["placements"].values()) else "complete"
-    if state["phase"] == "await_replay" and now.astimezone(NY).time() >= dt.time(9, 15):
+    if state["phase"] == "await_replay" and local_time >= dt.time(9, state.get("bar_minute", 15)):
         replay_slots = {h["name"]: sum(x.get("host") == h["name"] and x.get("replay_status") == "running"
                                         for x in state["placements"].values()) for h in hosts}
         for ss, row in state["placements"].items():
@@ -357,13 +394,15 @@ def tick(root: Path, now: dt.datetime, hosts: list[dict], stats: dict,
             if row.get("replay_status") == "running":
                 replay = _replay_result(host, ss, day, "/home/niels/binance-sandbox")
                 if replay is not None:
-                    row.update({"replay_status": "valid" if replay.get("valid") else "failed",
+                    attempts = row.get("replay_attempts", 0)
+                    row.update({"replay_status": "valid" if replay.get("valid") else ("failed" if attempts >= 3 else None),
                                 "replay": replay})
                     replay_slots[row["host"]] -= 1
             if row.get("replay_status") is None and replay_slots[row["host"]] < 4:
                 try:
-                    _launch_replay(host, ss, day, "/home/niels/binance-sandbox")
+                    _launch_replay(host, ss, day, "/home/niels/binance-sandbox", state.get("bar_minute", 15))
                     row["replay_status"] = "running"
+                    row["replay_attempts"] = row.get("replay_attempts", 0) + 1
                     replay_slots[row["host"]] += 1
                 except RuntimeError as exc:
                     state.setdefault("host_errors", {})[row["host"]] = str(exc)

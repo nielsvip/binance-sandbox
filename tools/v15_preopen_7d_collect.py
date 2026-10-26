@@ -18,6 +18,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from tools.v15_preopen_7d_stage import stage  # noqa: E402
+from tools.v15_best_first import tradeable  # noqa: E402
 
 
 def _atomic(path: Path, doc: dict):
@@ -32,8 +33,10 @@ def collect(day: str, hosts_path: Path, root: Path = ROOT) -> dict:
     state = json.loads((folder / "state.json").read_text())
     source = json.loads((folder / "queue.json").read_text())
     hosts = {h["name"]: h for h in json.loads(hosts_path.read_text())["hosts"]}
+    eligible = tradeable(root)
     accepted = {ss: row for ss, row in state["placements"].items()
-                if row.get("status") == "valid" and row.get("replay_status") == "valid"}
+                if row.get("status") == "valid" and row.get("replay_status") == "valid"
+                and ss in eligible}
     if not accepted:
         raise ValueError("no side has both optimized and 09:15 replay proof")
     gathered = folder / "gathered"

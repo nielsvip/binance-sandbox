@@ -115,6 +115,11 @@ def disk_guard(st, dry):
 def ensure_venues(dry):
     """both venues on every host (the scheduler orders them by the US market clock); self-heal if an agent paused one."""
     cfg = json.load(open(HOSTS))
+    # The four cat_side owners are intentional. The round watchdog invokes
+    # --force-stage restart even while the normal autopilot cron is disabled;
+    # rewriting their venues here silently destroys best-first host ownership.
+    if any(h.get("sides") for h in cfg.get("hosts", [])):
+        return
     ch = False
     for h in cfg["hosts"]:
         if sorted(h.get("venues", [])) != ["crypto", "stocks"]:
