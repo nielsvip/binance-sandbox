@@ -1784,11 +1784,13 @@ def _swap_admit_ok(stats, pct_max=40.0):
         return True
 
 
-def _disk_admit_ok(stats, min_mb=5000.0):
+def _disk_admit_ok(stats, min_mb=None):
     """Refuse launches while the host disk is nearly full (USER 2026-10-10: s5+s6 hit
     100% and pilots died on Errno 28 mid-save, burning attempts in a relaunch loop).
     Missing disk fields fail open (old probe)."""
     try:
+        if min_mb is None:
+            min_mb = float(os.environ.get("V15_SCHED_DISK_MIN_MB", "4500"))
         avail = (stats or {}).get("disk_avail_mb")
         if avail is None:
             return True

@@ -18308,6 +18308,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _mvf_on = (not is_tradier) and __import__("os").environ.get("V12_MIN_VIABLE_FLOOR", "1") != "0"  # 2026-10-17 live VEC_EXACT_SIZE_FLOOR_FINAL twin
 
     def _open(qty0, px, i, entry_reason="VECTOR_ENTRY"):
+        from vec_decisions.no_double_open import blocks_open as _blocks_duplicate_open
+        if pos is not None and _blocks_duplicate_open(pos.get("qty", 0.0)):
+            events.append({"type": "BLOCKED_OPEN", "ts": float(ts[i]) if i < len(ts) else 0.0, "price": float(px), "qty": float(qty0), "bar": int(i), "reason": "NO_DOUBLE_OPEN"})
+            return pos
         if _mvf_on and qty0 > 0 and entry_reason != "SEED_BH":
             qty0 = max(float(qty0), _qq.min_viable_qty(sym, px, cfg))  # live floors every vec OPEN to the smallest placeable size
         # Store original entry price/bar for ledger — avg_price may drift after augments

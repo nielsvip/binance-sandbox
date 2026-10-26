@@ -95,9 +95,9 @@ def ensure_lane(host, pilot_sides):
     if lane and len(pilot_sides) < 4:
         sides, template = lane
         template_path = ROOT / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM" / template
-        cmdline = f"self_dispatch.sh {sides}"
-        running = sh("ps -eo args=", timeout=5)
-        if cmdline not in running:
+        lane_lock = f"/tmp/self_dispatch_{pathlib.Path(sides).stem}.lock"
+        lock_probe = subprocess.run(["flock", "-n", lane_lock, "-c", "true"], check=False)
+        if lock_probe.returncode == 0:
             out = pathlib.Path(f"/tmp/v15_lane_watchdog_{host}.log").open("a")
             subprocess.Popen(["bash", str(ROOT / "tools" / "worker_lanes" / host / "self_dispatch.sh"), sides, str(template_path), "7", "4"], cwd=str(ROOT), stdout=out, stderr=subprocess.STDOUT, start_new_session=True)
             log(f"LANE-REFILL host={host} sides={len(pilot_sides)}/4 queue={sides}")
@@ -107,7 +107,7 @@ def ensure_lane(host, pilot_sides):
         last_tick_age = time.time() - log_path.stat().st_mtime if log_path.exists() else 1e9
         running = sh("pgrep -af '[v]15_fleet_scheduler.py'", timeout=5)
         disk = shutil.disk_usage("/").free // (1024 * 1024)
-        if not running.strip() and last_tick_age >= 20 and disk >= 5000:
+        if not running.strip() and last_tick_age >= 20 and disk >= 4500:
             env = os.environ.copy()
             env.update({"V15_SCHED_FLOOR_SKIP_S":"3600", "V15_SCHED_RUN_STALE":"0", "V15_SCHED_PEAK_Q":"0.5", "V15_SCHED_WORKERS_PER_SIDE":"7", "V15_CONT_NPZ_MAX_AGE_H":"4", "V15_SCHED_WORKERS_PER_SIDE_CRYPTO":"7", "V15_SCHED_CATCHUP_ANY_D":"inf", "V15_SCHED_CATCHUP_TRADING_D":"inf", "V15_SCHED_MEM_CAP":"0", "V15_SCHED_PAIR_FLOOR_MB":"6000", "V15_SCHED_PAIR_FLOOR_MB_STOCKS":"4000", "V15_SCHED_30D_ONLY":"1", "V15_SCHED_REQUIRE_BASE":"1", "V15_TIER_DEFER_M_D":"0", "V15_TIER_DEFER_L_D":"0", "V15_NONW_QUOTA_DIV":"1", "V15_FRESH_SKIP_DAYS":"0.33", "V15_REFRESH_W_STALE_H":"8", "V15_DIAG_REPAIR_S":"300", "V15_ENDGAME_S":"240", "V15_FOCUS_S_WINNER":"300", "V15_FOCUS_S_MEDIOCRE":"150", "V15_GS_BUDGET":"1200", "V15_SCHED_AUTOKILL_DEAD":"0", "V15_SCHED_HARD_RECENT":"0", "V15_SCHED_PHASE_FALLTHROUGH":"0", "V15_SCHED_NPZ_PREFETCH":"1"})
             priority = pathlib.Path.home() / "v15_priority_syms.txt"

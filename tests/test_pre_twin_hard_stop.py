@@ -38,8 +38,8 @@ def test_bar_stop_long_no_breach_none():
     assert VX.bar_hard_stop_action(_prep(4.40, 4.36, 5.0), 2, 1790000000.0, "LONG") is None
 
 
-def test_bar_stop_veto_holds():
-    assert VX.bar_hard_stop_action(_prep(4.27, 4.36, 5.0, wt_against=False), 2, 1790000000.0, "LONG") is None
+def test_bar_stop_ignores_favorable_wt():
+    assert VX.bar_hard_stop_action(_prep(4.27, 4.36, 5.0, wt_against=False), 2, 1790000000.0, "LONG") is not None
 
 
 def test_bar_stop_short_mirror():
@@ -57,11 +57,11 @@ def test_bar_stop_missing_arrays_fail_open():
     assert VX.bar_hard_stop_action({"close": np.array([1.0])}, 5, 1790000000.0, "LONG") is None
 
 
-def test_bar_stop_kill_switch():
+def test_bar_stop_cannot_be_disabled():
     import live_twins.vec_exact as V
     V.set_cfg(NS(VEC_EXACT_BAR_HARD_STOP_ENABLED=False))
     try:
-        assert V.bar_hard_stop_action(_prep(4.27, 4.36, 5.0), 2, 1790000000.0, "LONG") is None
+        assert V.bar_hard_stop_action(_prep(4.27, 4.36, 5.0), 2, 1790000000.0, "LONG") is not None
     finally:
         V.set_cfg(None)
 
@@ -96,14 +96,14 @@ def test_pre_twin_probe_fires_on_dc_breach():
     assert calls[0]["is_full_close"] is True and calls[0]["side"] == "SELL"
 
 
-def test_pre_twin_probe_veto_and_flat():
+def test_pre_twin_probe_ignores_favorable_wt_and_skips_flat():
     import ez_manage as E
     E._PRE_TWIN_STOP_FIRED_TS.clear()
     pos = NS(positionAmt=16.4, gain=-7.0, mark_price=4.27)
     calls = []
     ind = {"dc_low_4h": 4.36, "dc_high_4h": 5.0, "wt1_1h": 5.0, "wt2_1h": -5.0, "wt1_15m": 5.0, "wt2_15m": -5.0, "wt1_4h": 5.0, "wt2_4h": -5.0, "dc_low4_15m": 4.20}
-    assert asyncio.run(E._pp_unconditional_hard_stops(_stub_tm(pos, calls), "inf", "inf:ARUSDT_LONG", _ind_override=ind, _px_override=4.27)) is False
-    assert calls == []
+    assert asyncio.run(E._pp_unconditional_hard_stops(_stub_tm(pos, calls), "inf", "inf:ARUSDT_LONG", _ind_override=ind, _px_override=4.27)) is True
+    assert len(calls) == 1
     flat = NS(positionAmt=0.0, gain=0.0, mark_price=4.27)
     assert asyncio.run(E._pp_unconditional_hard_stops(_stub_tm(flat, calls), "inf", "inf:ARUSDT_LONG", _ind_override=ind, _px_override=4.27)) is False
 

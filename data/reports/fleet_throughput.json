@@ -1,72 +1,75 @@
 {
-  "ts": "2026-10-26T20:30:06.009921+00:00",
-  "tick": "2026-10-26T20:14:02.310400+00:00",
-  "tick_age_s": 964,
+  "ts": "2026-10-26T20:35:13.016544+00:00",
+  "tick": "2026-10-26T20:34:02.337868+00:00",
+  "tick_age_s": 71,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run37.json",
     "round": "run37",
     "complete": false,
-    "universe_n": 205,
-    "n_complete": 129,
-    "n_pending": 76,
-    "n_refused_only": 0,
+    "universe_n": 208,
+    "n_complete": 132,
+    "n_pending": 75,
+    "n_refused_only": 1,
     "n_excluded": 0,
-    "n_launchable_pending": 56,
+    "n_launchable_pending": 57,
     "hosts_not_visible": []
   },
   "hosts": {
     "s1": {
-      "cpu_pct": 66,
-      "slots": "0/4",
-      "observed_running": [],
-      "published_last_hour": 0,
-      "idle_reason": "disk guard",
-      "mem_avail_mb": 20301
-    },
-    "s5": {
-      "cpu_pct": 36,
-      "slots": "1/4",
+      "cpu_pct": 97,
+      "slots": "2/4",
       "observed_running": [
-        "DVN"
-      ],
-      "published_last_hour": 0,
-      "idle_reason": "no eligible ready symbol for this host",
-      "mem_avail_mb": 22235
-    },
-    "s2": {
-      "cpu_pct": 62,
-      "slots": "3/4",
-      "observed_running": [
-        "CHRUSDT",
-        "GRASSUSDT"
+        "IOTAUSDT"
       ],
       "published_last_hour": 0,
       "idle_reason": null,
-      "mem_avail_mb": 11360
+      "mem_avail_mb": 14452
     },
-    "s6": {
-      "cpu_pct": 38,
+    "s2": {
+      "cpu_pct": 100,
       "slots": "2/4",
       "observed_running": [
-        "BKR",
-        "FCX"
+        "ARKMUSDT",
+        "SKYUSDT"
       ],
       "published_last_hour": 0,
-      "idle_reason": "no eligible ready symbol for this host",
-      "mem_avail_mb": 26462
+      "idle_reason": null,
+      "mem_avail_mb": 4056
+    },
+    "s5": {
+      "cpu_pct": 57,
+      "slots": "4/4",
+      "observed_running": [
+        "AR",
+        "ASML",
+        "BNO",
+        "CRWD"
+      ],
+      "published_last_hour": 0,
+      "idle_reason": "slots full",
+      "mem_avail_mb": 21490
+    },
+    "s6": {
+      "cpu_pct": 64,
+      "slots": "4/4",
+      "observed_running": [
+        "QBTS",
+        "UEC",
+        "UUUU",
+        "VZ"
+      ],
+      "published_last_hour": 1,
+      "idle_reason": "disk guard",
+      "mem_avail_mb": 24291
     }
   },
-  "one_hour_total": 0,
+  "one_hour_total": 1,
   "alerts": [
-    "SCHEDULER_STALE:964s",
     "LOW_THROUGHPUT:s1:0/h",
-    "LOW_CPU:s1:66%",
-    "IDLE:s1:disk guard",
-    "LOW_THROUGHPUT:s5:0/h",
-    "LOW_CPU:s5:36%",
     "LOW_THROUGHPUT:s2:0/h",
-    "LOW_CPU:s2:62%",
-    "LOW_THROUGHPUT:s6:0/h",
-    "LOW_CPU:s6:38%"
+    "LOW_THROUGHPUT:s5:0/h",
+    "LOW_CPU:s5:57%",
+    "LOW_THROUGHPUT:s6:1/h",
+    "LOW_CPU:s6:64%"
   ]
 }

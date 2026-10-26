@@ -343,7 +343,7 @@ def _load_klines_df(path: Path) -> Optional[pd.DataFrame]:
         if not data:
             return None
         if path.stem.endswith('_15m'):
-            from closed_bar_feed import timestamp_epoch
+            from closed_bar_feed import is_verified_closed_native, preferred_closed_row, timestamp_epoch
             mode = 'tradier' if path.parent.name == 'tradier' else 'crypto'
             symbol = path.stem[:-4]
             for root in path.parents:
@@ -354,8 +354,9 @@ def _load_klines_df(path: Path) -> Optional[pd.DataFrame]:
                 for item in json.loads(overlay.read_text()):
                     stamp = timestamp_epoch(item['timestamp'])
                     previous = index.get(stamp)
-                    if previous is None or previous.get('volume') is None or previous.get('_provisional'):
-                        index[stamp] = item
+                    if previous is not None and is_verified_closed_native(previous, stamp + 900, path):
+                        previous = dict(previous, _closed_verified_at=max(stamp + 900, float(previous.get('_closed_verified_at') or 0)))
+                    index[stamp] = item if previous is None else preferred_closed_row(previous, item, stamp + 900)
                 data = [item for _, item in sorted(index.items())]
                 break
         df = pd.DataFrame(data)

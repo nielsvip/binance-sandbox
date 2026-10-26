@@ -26587,7 +26587,7 @@ async def queue_trade_action(
             _is_recovery_aug_qta = "RECOVERY_AUG" in (reason or "").upper()
             if (
                 action in ("OPEN", "REENTER", "REENTRY", "REENTRY_OPEN", "HEDGE")
-                and positionAmt > 0
+                and __import__("vec_decisions.no_double_open", fromlist=["blocks_open"]).blocks_open(positionAmt)
                 and not _is_recovery_aug_qta
             ):
                 logger.critical(

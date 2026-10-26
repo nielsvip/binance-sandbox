@@ -36107,9 +36107,7 @@ class MultiAccountTradeManager:
             if not crypto_entry_allowed(Path(getattr(self.config, "BASE_PATH", Path.home() / "binance")), account_key, symbol, position_side):
                 logger.warning("[%s] %s %s refused: outside current side-specific book", account_key, symbol, position_side)
                 return "BLOCKED_NOT_TRADEABLE_SIDE"
-        if _is_open_action and account_key == "fin" and datetime.now(timezone.utc) >= datetime(2026, 10, 26, 13, 30, tzinfo=timezone.utc):
-            if os.environ.get("VEC_LIVE_SCOPE", "30d").lower() != "7d":
-                return "BLOCKED_FIN_7D_NOT_ACTIVE"
+        if _is_open_action and account_key == "fin" and os.environ.get("VEC_LIVE_SCOPE", "30d").lower() == "7d":
             try:
                 from tools.v15_preopen_7d_runtime import assert_vector_stage_ready
                 assert_vector_stage_ready(Path(getattr(self.config, "BASE_PATH", Path.home() / "binance")) / "data/vec_live_7d")
@@ -36151,7 +36149,8 @@ class MultiAccountTradeManager:
                 _ndo_min_q = safe_fetch_float(
                     getattr(config, "MIN_POSITION_SIZE", 45.0), 45.0
                 ) / max(_ndo_px, 1e-9)
-                if _ndo_amt > _ndo_min_q:
+                from vec_decisions.no_double_open import blocks_open as _blocks_duplicate_open
+                if _blocks_duplicate_open(_ndo_amt, _ndo_min_q):
                     # USER 2026-10-22 parity restore: local positionAmt can be
                     # stale-nonzero while the broker is flat (or holding). For a
                     # vector-dictated OPEN the broker truth arbitrates: flat ->
@@ -59280,6 +59279,7 @@ async def process_position(
             except Exception:
                 pass
             # 2026-05-18 per-sym overlay
+            _ppl_fired = False
             if (
                 _psym_get(symbol, position_side, "PARTIAL_PROFIT_LOCK_ENABLED", False)
                 and account_key in getattr(config, "PARTIAL_PROFIT_LOCK_ACCOUNTS", [])

@@ -1,5 +1,5 @@
 {
-  "checked_at": 1793046631.0282612,
+  "checked_at": 1793046835.53866,
   "capture_started_at": 1793046617.6837099,
   "bar_start_ts": 1793045700,
   "bar_close_ts": 1793046600,
@@ -165,133 +165,2105 @@
   "modes": {
     "crypto": {
       "universe": 116,
-      "available_at_probe": 0,
-      "within_1s": 0,
-      "within_5s": 0,
-      "within_30s": 0,
-      "first_latency_s": null,
-      "last_latency_s": null,
-      "missing_by_30s": [
-        "1000BONKUSDC",
-        "1000FLOKIUSDT",
-        "1000LUNCUSDT",
-        "1000PEPEUSDC",
-        "AAVEUSDC",
-        "ACEUSDT",
-        "ACTUSDT",
-        "ADAUSDC",
-        "ALGOUSDT",
-        "ARBUSDC",
-        "ARKMUSDT",
-        "ARUSDT",
-        "ASTERUSDT",
-        "ATOMUSDT",
-        "AVAXUSDC",
-        "AXSUSDT",
-        "BATUSDT",
-        "BBUSDT",
-        "BCHUSDC",
-        "BEAMXUSDT",
-        "BEATUSDT",
-        "BIGTIMEUSDT",
-        "BIOUSDC",
-        "BLURUSDT",
-        "BNBUSDC",
-        "BTCDOMUSDT",
-        "BTCUSDC",
-        "COMPUSDT",
-        "COTIUSDT",
-        "CRVUSDC",
-        "DASHUSDT",
-        "DOGEUSDC",
-        "DOTUSDT",
-        "DUSKUSDT",
-        "EDUUSDT",
-        "EGLDUSDT",
-        "ENAUSDC",
-        "ENJUSDT",
-        "ENSUSDT",
-        "ETCUSDT",
-        "ETHFIUSDC",
-        "ETHUSDC",
-        "FARTCOINUSDT",
-        "FILUSDC",
-        "GALAUSDT",
-        "GRAMUSDT",
-        "GRASSUSDT",
-        "GRTUSDT",
-        "HYPEUSDT",
-        "ICXUSDT",
-        "INJUSDT",
-        "INXUSDT",
-        "IOSTUSDT",
-        "IOTAUSDT",
-        "IOTXUSDT",
-        "JASMYUSDT",
-        "JUPUSDT",
-        "KAITOUSDT",
-        "KASUSDT",
-        "KAVAUSDT",
-        "KMNOUSDT",
-        "LTCUSDC",
-        "MAGICUSDT",
-        "MANAUSDT",
-        "MASKUSDT",
-        "MINAUSDT",
-        "MOVEUSDT",
-        "MOVRUSDT",
-        "NEARUSDC",
-        "NMRUSDT",
-        "ONDOUSDT",
-        "ONEUSDT",
-        "PARTIUSDT",
-        "PENGUUSDC",
-        "PTBUSDT",
-        "PUMPUSDT",
-        "QNTUSDT",
-        "RAYSOLUSDT",
-        "RENDERUSDT",
-        "RLCUSDT",
-        "RSRUSDT",
-        "RUNEUSDT",
-        "RVNUSDT",
-        "SANDUSDT",
-        "SCRUSDT",
-        "SKLUSDT",
-        "SKYAIUSDT",
-        "SKYUSDT",
-        "SOLUSDC",
-        "SPELLUSDT",
-        "SPXUSDT",
-        "STORJUSDT",
-        "STRKUSDT",
-        "STXUSDT",
-        "SUSHIUSDT",
-        "THETAUSDT",
-        "TIAUSDC",
-        "TLMUSDT",
-        "TRBUSDT",
-        "TRUMPUSDC",
-        "TRXUSDT",
-        "UNIUSDC",
-        "VETUSDT",
-        "WIFUSDC",
-        "WLDUSDC",
-        "WOOUSDT",
-        "WUSDT",
-        "XLMUSDT",
-        "XMRUSDT",
-        "XPLUSDT",
-        "XRPUSDC",
-        "ZECUSDC",
-        "ZENUSDT",
-        "ZILUSDT",
-        "ZKUSDT",
-        "ZROUSDT"
-      ]
+      "available_at_probe": 116,
+      "within_1s": 116,
+      "within_5s": 116,
+      "within_30s": 116,
+      "first_latency_s": 0.08169198036193848,
+      "last_latency_s": 0.24689507484436035,
+      "missing_by_30s": []
     }
   },
-  "events": [],
+  "events": [
+    {
+      "symbol": "1000FLOKIUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.076734,
+      "received_at": 1793046600.081692,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/1000FLOKIUSDT.json"
+    },
+    {
+      "symbol": "1000PEPEUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.0780742,
+      "received_at": 1793046600.081831,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/1000PEPEUSDC.json"
+    },
+    {
+      "symbol": "1000LUNCUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.077545,
+      "received_at": 1793046600.081801,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/1000LUNCUSDT.json"
+    },
+    {
+      "symbol": "AAVEUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.077107,
+      "received_at": 1793046600.081766,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/AAVEUSDC.json"
+    },
+    {
+      "symbol": "1000BONKUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.076417,
+      "received_at": 1793046600.082417,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/1000BONKUSDC.json"
+    },
+    {
+      "symbol": "ACTUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.07866,
+      "received_at": 1793046600.082437,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ACTUSDT.json"
+    },
+    {
+      "symbol": "ACEUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.079479,
+      "received_at": 1793046600.0830998,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ACEUSDT.json"
+    },
+    {
+      "symbol": "ADAUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.080471,
+      "received_at": 1793046600.084088,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ADAUSDC.json"
+    },
+    {
+      "symbol": "ARBUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.087699,
+      "received_at": 1793046600.093185,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ARBUSDC.json"
+    },
+    {
+      "symbol": "ALGOUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.086484,
+      "received_at": 1793046600.093744,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ALGOUSDT.json"
+    },
+    {
+      "symbol": "ARKMUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.08947,
+      "received_at": 1793046600.0939362,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ARKMUSDT.json"
+    },
+    {
+      "symbol": "ATOMUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.0908532,
+      "received_at": 1793046600.095176,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ATOMUSDT.json"
+    },
+    {
+      "symbol": "AVAXUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.0929668,
+      "received_at": 1793046600.0951612,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/AVAXUSDC.json"
+    },
+    {
+      "symbol": "ARUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.090208,
+      "received_at": 1793046600.095307,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ARUSDT.json"
+    },
+    {
+      "symbol": "AXSUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.093536,
+      "received_at": 1793046600.0955882,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/AXSUSDT.json"
+    },
+    {
+      "symbol": "ASTERUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.088968,
+      "received_at": 1793046600.095547,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ASTERUSDT.json"
+    },
+    {
+      "symbol": "BATUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.099437,
+      "received_at": 1793046600.103286,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/BATUSDT.json"
+    },
+    {
+      "symbol": "BBUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.100495,
+      "received_at": 1793046600.104862,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/BBUSDT.json"
+    },
+    {
+      "symbol": "BCHUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.0985138,
+      "received_at": 1793046600.105302,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/BCHUSDC.json"
+    },
+    {
+      "symbol": "BEAMXUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.102119,
+      "received_at": 1793046600.105598,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/BEAMXUSDT.json"
+    },
+    {
+      "symbol": "BIGTIMEUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.1028202,
+      "received_at": 1793046600.1059752,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/BIGTIMEUSDT.json"
+    },
+    {
+      "symbol": "BEATUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.103116,
+      "received_at": 1793046600.106081,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/BEATUSDT.json"
+    },
+    {
+      "symbol": "BIOUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.104148,
+      "received_at": 1793046600.106184,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/BIOUSDC.json"
+    },
+    {
+      "symbol": "BLURUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.1051688,
+      "received_at": 1793046600.111619,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/BLURUSDT.json"
+    },
+    {
+      "symbol": "BTCUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.109566,
+      "received_at": 1793046600.11484,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/BTCUSDC.json"
+    },
+    {
+      "symbol": "BNBUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.1092632,
+      "received_at": 1793046600.1145148,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/BNBUSDC.json"
+    },
+    {
+      "symbol": "DASHUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.1128361,
+      "received_at": 1793046600.1159291,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/DASHUSDT.json"
+    },
+    {
+      "symbol": "BTCDOMUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.11243,
+      "received_at": 1793046600.115784,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/BTCDOMUSDT.json"
+    },
+    {
+      "symbol": "CRVUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.113162,
+      "received_at": 1793046600.115832,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/CRVUSDC.json"
+    },
+    {
+      "symbol": "COTIUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.112011,
+      "received_at": 1793046600.1164002,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/COTIUSDT.json"
+    },
+    {
+      "symbol": "COMPUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.114398,
+      "received_at": 1793046600.11728,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/COMPUSDT.json"
+    },
+    {
+      "symbol": "DOGEUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.1168451,
+      "received_at": 1793046600.120241,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/DOGEUSDC.json"
+    },
+    {
+      "symbol": "EDUUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.119908,
+      "received_at": 1793046600.124636,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/EDUUSDT.json"
+    },
+    {
+      "symbol": "DOTUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.121263,
+      "received_at": 1793046600.125768,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/DOTUSDT.json"
+    },
+    {
+      "symbol": "ENJUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.121557,
+      "received_at": 1793046600.1260312,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ENJUSDT.json"
+    },
+    {
+      "symbol": "ENAUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.123656,
+      "received_at": 1793046600.126604,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ENAUSDC.json"
+    },
+    {
+      "symbol": "DUSKUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.1195872,
+      "received_at": 1793046600.126564,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/DUSKUSDT.json"
+    },
+    {
+      "symbol": "ENSUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.1245608,
+      "received_at": 1793046600.127797,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ENSUSDT.json"
+    },
+    {
+      "symbol": "EGLDUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.123253,
+      "received_at": 1793046600.127828,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/EGLDUSDT.json"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.126529,
+      "received_at": 1793046600.129271,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ETCUSDT.json"
+    },
+    {
+      "symbol": "ETHFIUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.129189,
+      "received_at": 1793046600.136559,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ETHFIUSDC.json"
+    },
+    {
+      "symbol": "ETHUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.132709,
+      "received_at": 1793046600.1373508,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ETHUSDC.json"
+    },
+    {
+      "symbol": "FARTCOINUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.131493,
+      "received_at": 1793046600.137743,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/FARTCOINUSDT.json"
+    },
+    {
+      "symbol": "FILUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.1338408,
+      "received_at": 1793046600.138481,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/FILUSDC.json"
+    },
+    {
+      "symbol": "GALAUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.135376,
+      "received_at": 1793046600.138283,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/GALAUSDT.json"
+    },
+    {
+      "symbol": "GRAMUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.134662,
+      "received_at": 1793046600.1385758,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/GRAMUSDT.json"
+    },
+    {
+      "symbol": "GRTUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.136447,
+      "received_at": 1793046600.1389241,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/GRTUSDT.json"
+    },
+    {
+      "symbol": "GRASSUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.135923,
+      "received_at": 1793046600.138625,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/GRASSUSDT.json"
+    },
+    {
+      "symbol": "HYPEUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.140125,
+      "received_at": 1793046600.149088,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/HYPEUSDT.json"
+    },
+    {
+      "symbol": "ICXUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.145911,
+      "received_at": 1793046600.152853,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ICXUSDT.json"
+    },
+    {
+      "symbol": "INJUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.146493,
+      "received_at": 1793046600.152895,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/INJUSDT.json"
+    },
+    {
+      "symbol": "IOTAUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.149039,
+      "received_at": 1793046600.154709,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/IOTAUSDT.json"
+    },
+    {
+      "symbol": "IOSTUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.1504169,
+      "received_at": 1793046600.1552892,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/IOSTUSDT.json"
+    },
+    {
+      "symbol": "INXUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.1498072,
+      "received_at": 1793046600.156708,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/INXUSDT.json"
+    },
+    {
+      "symbol": "IOTXUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.1516511,
+      "received_at": 1793046600.156388,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/IOTXUSDT.json"
+    },
+    {
+      "symbol": "JASMYUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.1523058,
+      "received_at": 1793046600.1572511,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/JASMYUSDT.json"
+    },
+    {
+      "symbol": "JUPUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.154598,
+      "received_at": 1793046600.158203,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/JUPUSDT.json"
+    },
+    {
+      "symbol": "KAITOUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.155859,
+      "received_at": 1793046600.160754,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/KAITOUSDT.json"
+    },
+    {
+      "symbol": "KASUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.158634,
+      "received_at": 1793046600.163024,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/KASUSDT.json"
+    },
+    {
+      "symbol": "KAVAUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.1606028,
+      "received_at": 1793046600.167119,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/KAVAUSDT.json"
+    },
+    {
+      "symbol": "LTCUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.1641989,
+      "received_at": 1793046600.1697862,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/LTCUSDC.json"
+    },
+    {
+      "symbol": "KMNOUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.1619232,
+      "received_at": 1793046600.169462,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/KMNOUSDT.json"
+    },
+    {
+      "symbol": "MAGICUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.165911,
+      "received_at": 1793046600.1715431,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/MAGICUSDT.json"
+    },
+    {
+      "symbol": "MANAUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.166664,
+      "received_at": 1793046600.170586,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/MANAUSDT.json"
+    },
+    {
+      "symbol": "MASKUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.165418,
+      "received_at": 1793046600.1715531,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/MASKUSDT.json"
+    },
+    {
+      "symbol": "MINAUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.170878,
+      "received_at": 1793046600.178657,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/MINAUSDT.json"
+    },
+    {
+      "symbol": "MOVEUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.171194,
+      "received_at": 1793046600.178674,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/MOVEUSDT.json"
+    },
+    {
+      "symbol": "MOVRUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.1757991,
+      "received_at": 1793046600.1802838,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/MOVRUSDT.json"
+    },
+    {
+      "symbol": "NEARUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.174626,
+      "received_at": 1793046600.180303,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/NEARUSDC.json"
+    },
+    {
+      "symbol": "PARTIUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.177577,
+      "received_at": 1793046600.180856,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/PARTIUSDT.json"
+    },
+    {
+      "symbol": "NMRUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.175474,
+      "received_at": 1793046600.180371,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/NMRUSDT.json"
+    },
+    {
+      "symbol": "ONDOUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.178563,
+      "received_at": 1793046600.181589,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ONDOUSDT.json"
+    },
+    {
+      "symbol": "ONEUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.1780028,
+      "received_at": 1793046600.1815,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ONEUSDT.json"
+    },
+    {
+      "symbol": "PENGUUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.181943,
+      "received_at": 1793046600.190217,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/PENGUUSDC.json"
+    },
+    {
+      "symbol": "PTBUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.184374,
+      "received_at": 1793046600.1910012,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/PTBUSDT.json"
+    },
+    {
+      "symbol": "RENDERUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.188145,
+      "received_at": 1793046600.191883,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/RENDERUSDT.json"
+    },
+    {
+      "symbol": "PUMPUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.1854331,
+      "received_at": 1793046600.191735,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/PUMPUSDT.json"
+    },
+    {
+      "symbol": "RLCUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.189284,
+      "received_at": 1793046600.192076,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/RLCUSDT.json"
+    },
+    {
+      "symbol": "RSRUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.189939,
+      "received_at": 1793046600.1930408,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/RSRUSDT.json"
+    },
+    {
+      "symbol": "QNTUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.190548,
+      "received_at": 1793046600.193612,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/QNTUSDT.json"
+    },
+    {
+      "symbol": "RAYSOLUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.189614,
+      "received_at": 1793046600.194051,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/RAYSOLUSDT.json"
+    },
+    {
+      "symbol": "RUNEUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.194428,
+      "received_at": 1793046600.201014,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/RUNEUSDT.json"
+    },
+    {
+      "symbol": "RVNUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.196314,
+      "received_at": 1793046600.203376,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/RVNUSDT.json"
+    },
+    {
+      "symbol": "SANDUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.1986308,
+      "received_at": 1793046600.203269,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/SANDUSDT.json"
+    },
+    {
+      "symbol": "SKLUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.20012,
+      "received_at": 1793046600.20434,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/SKLUSDT.json"
+    },
+    {
+      "symbol": "SKYUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.201683,
+      "received_at": 1793046600.204604,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/SKYUSDT.json"
+    },
+    {
+      "symbol": "SCRUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.198082,
+      "received_at": 1793046600.2045388,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/SCRUSDT.json"
+    },
+    {
+      "symbol": "SOLUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.202506,
+      "received_at": 1793046600.205069,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/SOLUSDC.json"
+    },
+    {
+      "symbol": "SKYAIUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.199302,
+      "received_at": 1793046600.204941,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/SKYAIUSDT.json"
+    },
+    {
+      "symbol": "SPELLUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.204278,
+      "received_at": 1793046600.206469,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/SPELLUSDT.json"
+    },
+    {
+      "symbol": "STXUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.21047,
+      "received_at": 1793046600.214001,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/STXUSDT.json"
+    },
+    {
+      "symbol": "SPXUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.210091,
+      "received_at": 1793046600.213981,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/SPXUSDT.json"
+    },
+    {
+      "symbol": "STRKUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.208617,
+      "received_at": 1793046600.214987,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/STRKUSDT.json"
+    },
+    {
+      "symbol": "SUSHIUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.2119129,
+      "received_at": 1793046600.215144,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/SUSHIUSDT.json"
+    },
+    {
+      "symbol": "STORJUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.2111309,
+      "received_at": 1793046600.2146811,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/STORJUSDT.json"
+    },
+    {
+      "symbol": "TIAUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.2126222,
+      "received_at": 1793046600.215242,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/TIAUSDC.json"
+    },
+    {
+      "symbol": "THETAUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.213349,
+      "received_at": 1793046600.215998,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/THETAUSDT.json"
+    },
+    {
+      "symbol": "TLMUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.214412,
+      "received_at": 1793046600.216316,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/TLMUSDT.json"
+    },
+    {
+      "symbol": "TRBUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.21825,
+      "received_at": 1793046600.225487,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/TRBUSDT.json"
+    },
+    {
+      "symbol": "TRUMPUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.2190468,
+      "received_at": 1793046600.2251751,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/TRUMPUSDC.json"
+    },
+    {
+      "symbol": "VETUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.221482,
+      "received_at": 1793046600.226393,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/VETUSDT.json"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.223766,
+      "received_at": 1793046600.226485,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/TRXUSDT.json"
+    },
+    {
+      "symbol": "UNIUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.2229052,
+      "received_at": 1793046600.226996,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/UNIUSDC.json"
+    },
+    {
+      "symbol": "WOOUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.224092,
+      "received_at": 1793046600.226953,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/WOOUSDT.json"
+    },
+    {
+      "symbol": "WLDUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.224725,
+      "received_at": 1793046600.227742,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/WLDUSDC.json"
+    },
+    {
+      "symbol": "WIFUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.225069,
+      "received_at": 1793046600.2281349,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/WIFUSDC.json"
+    },
+    {
+      "symbol": "WUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.2303748,
+      "received_at": 1793046600.235123,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/WUSDT.json"
+    },
+    {
+      "symbol": "XMRUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.231516,
+      "received_at": 1793046600.237857,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/XMRUSDT.json"
+    },
+    {
+      "symbol": "XLMUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.232169,
+      "received_at": 1793046600.238206,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/XLMUSDT.json"
+    },
+    {
+      "symbol": "XPLUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.2318552,
+      "received_at": 1793046600.238167,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/XPLUSDT.json"
+    },
+    {
+      "symbol": "XRPUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.2343738,
+      "received_at": 1793046600.242696,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/XRPUSDC.json"
+    },
+    {
+      "symbol": "ZECUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.23544,
+      "received_at": 1793046600.243165,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ZECUSDC.json"
+    },
+    {
+      "symbol": "ZILUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.236147,
+      "received_at": 1793046600.243982,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ZILUSDT.json"
+    },
+    {
+      "symbol": "ZENUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.237311,
+      "received_at": 1793046600.2443469,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ZENUSDT.json"
+    },
+    {
+      "symbol": "ZKUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.243583,
+      "received_at": 1793046600.2456372,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ZKUSDT.json"
+    },
+    {
+      "symbol": "ZROUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.246349,
+      "received_at": 1793046600.246895,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ZROUSDT.json"
+    },
+    {
+      "symbol": "1000FLOKIUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.255369,
+      "received_at": 1793046600.2590878,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/1000FLOKIUSDT.json"
+    },
+    {
+      "symbol": "1000BONKUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.27583,
+      "received_at": 1793046600.2779672,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/1000BONKUSDC.json"
+    },
+    {
+      "symbol": "1000LUNCUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.2677178,
+      "received_at": 1793046600.27807,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/1000LUNCUSDT.json"
+    },
+    {
+      "symbol": "AAVEUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.274111,
+      "received_at": 1793046600.300417,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/AAVEUSDC.json"
+    },
+    {
+      "symbol": "1000PEPEUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.257927,
+      "received_at": 1793046600.295177,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/1000PEPEUSDC.json"
+    },
+    {
+      "symbol": "ACEUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.280024,
+      "received_at": 1793046600.316968,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ACEUSDT.json"
+    },
+    {
+      "symbol": "ACTUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.2695081,
+      "received_at": 1793046600.306491,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ACTUSDT.json"
+    },
+    {
+      "symbol": "ADAUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.308685,
+      "received_at": 1793046600.335843,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ADAUSDC.json"
+    },
+    {
+      "symbol": "ARBUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.3284612,
+      "received_at": 1793046600.3693,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ARBUSDC.json"
+    },
+    {
+      "symbol": "ALGOUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.3168561,
+      "received_at": 1793046600.386461,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ALGOUSDT.json"
+    },
+    {
+      "symbol": "ARKMUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.3388128,
+      "received_at": 1793046600.388733,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ARKMUSDT.json"
+    },
+    {
+      "symbol": "ARUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.3690372,
+      "received_at": 1793046600.390133,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ARUSDT.json"
+    },
+    {
+      "symbol": "ASTERUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.384068,
+      "received_at": 1793046600.392693,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ASTERUSDT.json"
+    },
+    {
+      "symbol": "BBUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.41996,
+      "received_at": 1793046600.4456902,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/BBUSDT.json"
+    },
+    {
+      "symbol": "ATOMUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.436455,
+      "received_at": 1793046600.473349,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ATOMUSDT.json"
+    },
+    {
+      "symbol": "BEATUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.470304,
+      "received_at": 1793046600.4742122,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/BEATUSDT.json"
+    },
+    {
+      "symbol": "BCHUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.4274309,
+      "received_at": 1793046600.4736052,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/BCHUSDC.json"
+    },
+    {
+      "symbol": "BEAMXUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.441569,
+      "received_at": 1793046600.4907,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/BEAMXUSDT.json"
+    },
+    {
+      "symbol": "AVAXUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.430277,
+      "received_at": 1793046600.5024,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/AVAXUSDC.json"
+    },
+    {
+      "symbol": "AXSUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.443695,
+      "received_at": 1793046600.505693,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/AXSUSDT.json"
+    },
+    {
+      "symbol": "BATUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.457954,
+      "received_at": 1793046600.54589,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/BATUSDT.json"
+    },
+    {
+      "symbol": "BIGTIMEUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.540427,
+      "received_at": 1793046600.579983,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/BIGTIMEUSDT.json"
+    },
+    {
+      "symbol": "BNBUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.5280588,
+      "received_at": 1793046600.585469,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/BNBUSDC.json"
+    },
+    {
+      "symbol": "BLURUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.524541,
+      "received_at": 1793046600.585549,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/BLURUSDT.json"
+    },
+    {
+      "symbol": "BIOUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.511868,
+      "received_at": 1793046600.5883882,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/BIOUSDC.json"
+    },
+    {
+      "symbol": "BTCDOMUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.544853,
+      "received_at": 1793046600.5891159,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/BTCDOMUSDT.json"
+    },
+    {
+      "symbol": "BTCUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.579596,
+      "received_at": 1793046600.599605,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/BTCUSDC.json"
+    },
+    {
+      "symbol": "COTIUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.614753,
+      "received_at": 1793046600.627296,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/COTIUSDT.json"
+    },
+    {
+      "symbol": "COMPUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.6161048,
+      "received_at": 1793046600.642271,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/COMPUSDT.json"
+    },
+    {
+      "symbol": "EDUUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.6793091,
+      "received_at": 1793046600.698821,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/EDUUSDT.json"
+    },
+    {
+      "symbol": "EGLDUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.6973262,
+      "received_at": 1793046600.7076569,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/EGLDUSDT.json"
+    },
+    {
+      "symbol": "CRVUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.619046,
+      "received_at": 1793046600.715283,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/CRVUSDC.json"
+    },
+    {
+      "symbol": "DASHUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.641644,
+      "received_at": 1793046600.716139,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/DASHUSDT.json"
+    },
+    {
+      "symbol": "DOTUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.677016,
+      "received_at": 1793046600.709611,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/DOTUSDT.json"
+    },
+    {
+      "symbol": "DUSKUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.6918411,
+      "received_at": 1793046600.736385,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/DUSKUSDT.json"
+    },
+    {
+      "symbol": "DOGEUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.625503,
+      "received_at": 1793046600.729276,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/DOGEUSDC.json"
+    },
+    {
+      "symbol": "ENAUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.721761,
+      "received_at": 1793046600.75071,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ENAUSDC.json"
+    },
+    {
+      "symbol": "ENSUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.752962,
+      "received_at": 1793046600.7905989,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ENSUSDT.json"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.747521,
+      "received_at": 1793046600.818781,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ETCUSDT.json"
+    },
+    {
+      "symbol": "ENJUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.74156,
+      "received_at": 1793046600.793729,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ENJUSDT.json"
+    },
+    {
+      "symbol": "FARTCOINUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.867944,
+      "received_at": 1793046600.874767,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/FARTCOINUSDT.json"
+    },
+    {
+      "symbol": "FILUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.862499,
+      "received_at": 1793046600.8748548,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/FILUSDC.json"
+    },
+    {
+      "symbol": "GALAUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.8498619,
+      "received_at": 1793046600.900932,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/GALAUSDT.json"
+    },
+    {
+      "symbol": "ETHUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.822274,
+      "received_at": 1793046600.935623,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ETHUSDC.json"
+    },
+    {
+      "symbol": "ETHFIUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046600.7766778,
+      "received_at": 1793046600.974935,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ETHFIUSDC.json"
+    },
+    {
+      "symbol": "GRTUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046601.0190048,
+      "received_at": 1793046601.04895,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/GRTUSDT.json"
+    },
+    {
+      "symbol": "HYPEUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046601.043492,
+      "received_at": 1793046601.052115,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/HYPEUSDT.json"
+    },
+    {
+      "symbol": "GRASSUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046601.0164638,
+      "received_at": 1793046601.079212,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/GRASSUSDT.json"
+    },
+    {
+      "symbol": "ICXUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046601.053896,
+      "received_at": 1793046601.081484,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ICXUSDT.json"
+    },
+    {
+      "symbol": "GRAMUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046601.044161,
+      "received_at": 1793046601.090697,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/GRAMUSDT.json"
+    },
+    {
+      "symbol": "INXUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046601.077933,
+      "received_at": 1793046601.093227,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/INXUSDT.json"
+    },
+    {
+      "symbol": "INJUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046601.06949,
+      "received_at": 1793046601.115757,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/INJUSDT.json"
+    },
+    {
+      "symbol": "IOTAUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046601.0930629,
+      "received_at": 1793046601.1202738,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/IOTAUSDT.json"
+    },
+    {
+      "symbol": "JUPUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046601.131742,
+      "received_at": 1793046601.180938,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/JUPUSDT.json"
+    },
+    {
+      "symbol": "IOTXUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046601.129201,
+      "received_at": 1793046601.2269151,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/IOTXUSDT.json"
+    },
+    {
+      "symbol": "IOSTUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046601.119957,
+      "received_at": 1793046601.267013,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/IOSTUSDT.json"
+    },
+    {
+      "symbol": "JASMYUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046601.1268191,
+      "received_at": 1793046601.2410061,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/JASMYUSDT.json"
+    },
+    {
+      "symbol": "KASUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046601.2999308,
+      "received_at": 1793046601.5023239,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/KASUSDT.json"
+    },
+    {
+      "symbol": "KAVAUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046601.33265,
+      "received_at": 1793046601.507881,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/KAVAUSDT.json"
+    },
+    {
+      "symbol": "KMNOUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046601.501258,
+      "received_at": 1793046601.538508,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/KMNOUSDT.json"
+    },
+    {
+      "symbol": "KAITOUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046601.245074,
+      "received_at": 1793046601.539055,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/KAITOUSDT.json"
+    },
+    {
+      "symbol": "MASKUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046601.524101,
+      "received_at": 1793046601.5684428,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/MASKUSDT.json"
+    },
+    {
+      "symbol": "MANAUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046601.514449,
+      "received_at": 1793046601.5695622,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/MANAUSDT.json"
+    },
+    {
+      "symbol": "MAGICUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046601.506856,
+      "received_at": 1793046601.572146,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/MAGICUSDT.json"
+    },
+    {
+      "symbol": "MINAUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046601.5472,
+      "received_at": 1793046601.7665238,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/MINAUSDT.json"
+    },
+    {
+      "symbol": "MOVEUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046601.720486,
+      "received_at": 1793046601.78254,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/MOVEUSDT.json"
+    },
+    {
+      "symbol": "LTCUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046601.741429,
+      "received_at": 1793046601.7971241,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/LTCUSDC.json"
+    },
+    {
+      "symbol": "NMRUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046601.8501298,
+      "received_at": 1793046601.932541,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/NMRUSDT.json"
+    },
+    {
+      "symbol": "MOVRUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046601.798455,
+      "received_at": 1793046601.995017,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/MOVRUSDT.json"
+    },
+    {
+      "symbol": "NEARUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046601.835259,
+      "received_at": 1793046602.022902,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/NEARUSDC.json"
+    },
+    {
+      "symbol": "ONDOUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046601.914706,
+      "received_at": 1793046602.201869,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ONDOUSDT.json"
+    },
+    {
+      "symbol": "ONEUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.1974132,
+      "received_at": 1793046602.213186,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ONEUSDT.json"
+    },
+    {
+      "symbol": "PTBUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.237731,
+      "received_at": 1793046602.386307,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/PTBUSDT.json"
+    },
+    {
+      "symbol": "RAYSOLUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.395896,
+      "received_at": 1793046602.397026,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/RAYSOLUSDT.json"
+    },
+    {
+      "symbol": "PARTIUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.2012732,
+      "received_at": 1793046602.487896,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/PARTIUSDT.json"
+    },
+    {
+      "symbol": "PENGUUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.385835,
+      "received_at": 1793046602.556711,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/PENGUUSDC.json"
+    },
+    {
+      "symbol": "RSRUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.53087,
+      "received_at": 1793046602.572356,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/RSRUSDT.json"
+    },
+    {
+      "symbol": "RUNEUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.571118,
+      "received_at": 1793046602.583518,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/RUNEUSDT.json"
+    },
+    {
+      "symbol": "RENDERUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.4954398,
+      "received_at": 1793046602.584264,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/RENDERUSDT.json"
+    },
+    {
+      "symbol": "RLCUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.579447,
+      "received_at": 1793046602.585526,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/RLCUSDT.json"
+    },
+    {
+      "symbol": "PUMPUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.505727,
+      "received_at": 1793046602.605088,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/PUMPUSDT.json"
+    },
+    {
+      "symbol": "QNTUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.2883048,
+      "received_at": 1793046602.586012,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/QNTUSDT.json"
+    },
+    {
+      "symbol": "SANDUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.615861,
+      "received_at": 1793046602.617001,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/SANDUSDT.json"
+    },
+    {
+      "symbol": "RVNUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.604762,
+      "received_at": 1793046602.623911,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/RVNUSDT.json"
+    },
+    {
+      "symbol": "SKYUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.6490822,
+      "received_at": 1793046602.692209,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/SKYUSDT.json"
+    },
+    {
+      "symbol": "SCRUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.6665401,
+      "received_at": 1793046602.698792,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/SCRUSDT.json"
+    },
+    {
+      "symbol": "SOLUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.6895921,
+      "received_at": 1793046602.7134762,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/SOLUSDC.json"
+    },
+    {
+      "symbol": "STXUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.7183611,
+      "received_at": 1793046602.718848,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/STXUSDT.json"
+    },
+    {
+      "symbol": "STRKUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.715117,
+      "received_at": 1793046602.719137,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/STRKUSDT.json"
+    },
+    {
+      "symbol": "SUSHIUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.7219799,
+      "received_at": 1793046602.743101,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/SUSHIUSDT.json"
+    },
+    {
+      "symbol": "SKLUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.631115,
+      "received_at": 1793046602.743691,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/SKLUSDT.json"
+    },
+    {
+      "symbol": "SPXUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.704915,
+      "received_at": 1793046602.728657,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/SPXUSDT.json"
+    },
+    {
+      "symbol": "THETAUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.731283,
+      "received_at": 1793046602.7501929,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/THETAUSDT.json"
+    },
+    {
+      "symbol": "SKYAIUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.66896,
+      "received_at": 1793046602.762447,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/SKYAIUSDT.json"
+    },
+    {
+      "symbol": "SPELLUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.698595,
+      "received_at": 1793046602.765321,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/SPELLUSDT.json"
+    },
+    {
+      "symbol": "TIAUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.748673,
+      "received_at": 1793046602.7680771,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/TIAUSDC.json"
+    },
+    {
+      "symbol": "STORJUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.723236,
+      "received_at": 1793046602.7920692,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/STORJUSDT.json"
+    },
+    {
+      "symbol": "TLMUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.764467,
+      "received_at": 1793046602.793532,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/TLMUSDT.json"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.788374,
+      "received_at": 1793046602.844055,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/TRXUSDT.json"
+    },
+    {
+      "symbol": "TRUMPUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.786313,
+      "received_at": 1793046602.845293,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/TRUMPUSDC.json"
+    },
+    {
+      "symbol": "TRBUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.8004968,
+      "received_at": 1793046602.854634,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/TRBUSDT.json"
+    },
+    {
+      "symbol": "VETUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.843055,
+      "received_at": 1793046602.874013,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/VETUSDT.json"
+    },
+    {
+      "symbol": "WLDUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.872865,
+      "received_at": 1793046602.892637,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/WLDUSDC.json"
+    },
+    {
+      "symbol": "WIFUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.8545148,
+      "received_at": 1793046602.900662,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/WIFUSDC.json"
+    },
+    {
+      "symbol": "UNIUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.838503,
+      "received_at": 1793046602.902913,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/UNIUSDC.json"
+    },
+    {
+      "symbol": "WUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.898467,
+      "received_at": 1793046603.033385,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/WUSDT.json"
+    },
+    {
+      "symbol": "XMRUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.959753,
+      "received_at": 1793046603.197954,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/XMRUSDT.json"
+    },
+    {
+      "symbol": "XLMUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.9195678,
+      "received_at": 1793046603.198905,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/XLMUSDT.json"
+    },
+    {
+      "symbol": "ZILUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046603.1912498,
+      "received_at": 1793046603.199601,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ZILUSDT.json"
+    },
+    {
+      "symbol": "XPLUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046603.195127,
+      "received_at": 1793046603.199881,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/XPLUSDT.json"
+    },
+    {
+      "symbol": "WOOUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046602.891708,
+      "received_at": 1793046603.198839,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/WOOUSDT.json"
+    },
+    {
+      "symbol": "ZENUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046603.196945,
+      "received_at": 1793046603.200471,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ZENUSDT.json"
+    },
+    {
+      "symbol": "XRPUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046603.205508,
+      "received_at": 1793046603.207236,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/XRPUSDC.json"
+    },
+    {
+      "symbol": "ZECUSDC",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046603.2194781,
+      "received_at": 1793046603.222267,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ZECUSDC.json"
+    },
+    {
+      "symbol": "ZKUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046603.2406662,
+      "received_at": 1793046603.420732,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ZKUSDT.json"
+    },
+    {
+      "symbol": "ZROUSDT",
+      "mode": "crypto",
+      "bar_start_ts": 1793045700,
+      "bar_close_ts": 1793046600,
+      "published_at": 1793046603.234676,
+      "received_at": 1793046603.4423811,
+      "path": "/Users/niels/Documents/binance/data/closed_15m_bars/crypto/ZROUSDT.json"
+    }
+  ],
   "producer_log_lines": [
     {
       "path": "/Users/niels/logs/crypto_15m_bar_clock.log",
@@ -307,6 +2279,823 @@
       "path": "/Users/niels/logs/crypto_15m_bar_clock.log",
       "line": "{\"at\": 1793046628.64854, \"pid\": 57342, \"event\": \"crypto_clock_status\", \"redis_keys\": 974, \"fresh_marks\": 623, \"symbols_observed\": 974, \"book\": \"tradeable_keys\", \"universe\": 116, \"bar_start_ts\": 1793045700, \"published\": 116, \"pending\": 0, \"missing_reasons\": {}, \"loop_s\": 0.008440017700195312}",
       "observed_at": 1793046628.670049
+    }
+  ],
+  "audit_method": "retrospective_persisted_receipts_and_independent_clock_log",
+  "original_probe_invalid": true,
+  "original_probe_reason": "The probe started17.684s after the boundary and sought toEOF, excluding already-published bar receipts.",
+  "independent_clock_publish_events": [
+    {
+      "event": "crypto_clock_published",
+      "symbol": "1000BONKUSDC",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.144027,
+      "latency_s": 0.1440269947052002
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "1000FLOKIUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.145389,
+      "latency_s": 0.14538908004760742
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "1000LUNCUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.1465878,
+      "latency_s": 0.14658784866333008
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "1000PEPEUSDC",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.14748,
+      "latency_s": 0.14748001098632812
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "AAVEUSDC",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.148649,
+      "latency_s": 0.14864897727966309
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "ACEUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.148718,
+      "latency_s": 0.14871811866760254
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "ACTUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.150557,
+      "latency_s": 0.1505570411682129
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "ADAUSDC",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.150916,
+      "latency_s": 0.15091609954833984
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "ALGOUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.151812,
+      "latency_s": 0.15181207656860352
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "ARBUSDC",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.152659,
+      "latency_s": 0.15265893936157227
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "ARKMUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.153096,
+      "latency_s": 0.15309596061706543
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "ARUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.153121,
+      "latency_s": 0.1531209945678711
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "ASTERUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.153621,
+      "latency_s": 0.15362095832824707
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "ATOMUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.154046,
+      "latency_s": 0.15404605865478516
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "AVAXUSDC",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.154201,
+      "latency_s": 0.15420103073120117
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "AXSUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.154231,
+      "latency_s": 0.15423107147216797
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "BATUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.154887,
+      "latency_s": 0.15488696098327637
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "BBUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.156331,
+      "latency_s": 0.15633106231689453
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "BCHUSDC",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.156626,
+      "latency_s": 0.15662598609924316
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "BEAMXUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.157755,
+      "latency_s": 0.15775489807128906
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "BEATUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.157984,
+      "latency_s": 0.15798401832580566
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "BIGTIMEUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.1581619,
+      "latency_s": 0.15816187858581543
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "BIOUSDC",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.159598,
+      "latency_s": 0.15959811210632324
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "BLURUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.16007,
+      "latency_s": 0.16006994247436523
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "BNBUSDC",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.1601129,
+      "latency_s": 0.16011285781860352
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "BTCDOMUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.1602108,
+      "latency_s": 0.16021084785461426
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "BTCUSDC",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.1609118,
+      "latency_s": 0.16091179847717285
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "COMPUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.160931,
+      "latency_s": 0.16093111038208008
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "COTIUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.1615932,
+      "latency_s": 0.16159319877624512
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "CRVUSDC",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.1622121,
+      "latency_s": 0.16221213340759277
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "DASHUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.162252,
+      "latency_s": 0.16225194931030273
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "DOGEUSDC",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.162268,
+      "latency_s": 0.16226792335510254
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "DOTUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.1645288,
+      "latency_s": 0.16452884674072266
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "DUSKUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.164873,
+      "latency_s": 0.1648728847503662
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "EDUUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.165983,
+      "latency_s": 0.16598296165466309
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "EGLDUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.166207,
+      "latency_s": 0.16620707511901855
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "ENAUSDC",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.166369,
+      "latency_s": 0.16636896133422852
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "ENJUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.1667929,
+      "latency_s": 0.1667928695678711
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "ENSUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.1670232,
+      "latency_s": 0.1670231819152832
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "ETCUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.167536,
+      "latency_s": 0.16753602027893066
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "ETHFIUSDC",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.1678112,
+      "latency_s": 0.16781115531921387
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "ETHUSDC",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.168007,
+      "latency_s": 0.16800689697265625
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "FARTCOINUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.168161,
+      "latency_s": 0.16816091537475586
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "FILUSDC",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.168383,
+      "latency_s": 0.16838288307189941
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "GALAUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.1698291,
+      "latency_s": 0.1698291301727295
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "GRAMUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.170232,
+      "latency_s": 0.17023205757141113
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "GRASSUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.17051,
+      "latency_s": 0.17051005363464355
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "GRTUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.171231,
+      "latency_s": 0.17123103141784668
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "HYPEUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.171676,
+      "latency_s": 0.1716759204864502
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "ICXUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.1722848,
+      "latency_s": 0.17228484153747559
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "INJUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.17404,
+      "latency_s": 0.1740400791168213
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "INXUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.1740642,
+      "latency_s": 0.17406415939331055
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "IOSTUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.1742542,
+      "latency_s": 0.1742541790008545
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "IOTAUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.1758752,
+      "latency_s": 0.17587518692016602
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "IOTXUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.1770408,
+      "latency_s": 0.17704081535339355
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "JASMYUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.177122,
+      "latency_s": 0.1771221160888672
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "JUPUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.17807,
+      "latency_s": 0.178070068359375
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "KAITOUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.178611,
+      "latency_s": 0.17861104011535645
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "KASUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.178758,
+      "latency_s": 0.178757905960083
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "KAVAUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.1789818,
+      "latency_s": 0.17898178100585938
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "KMNOUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.1798542,
+      "latency_s": 0.179854154586792
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "LTCUSDC",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.179978,
+      "latency_s": 0.1799778938293457
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "MAGICUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.1800919,
+      "latency_s": 0.18009185791015625
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "MANAUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.180202,
+      "latency_s": 0.18020200729370117
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "MASKUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.180322,
+      "latency_s": 0.18032193183898926
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "MINAUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.180437,
+      "latency_s": 0.1804370880126953
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "MOVEUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.242656,
+      "latency_s": 0.24265599250793457
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "MOVRUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.243101,
+      "latency_s": 0.24310088157653809
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "NEARUSDC",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.243629,
+      "latency_s": 0.24362897872924805
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "NMRUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.243656,
+      "latency_s": 0.24365592002868652
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "ONDOUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.243917,
+      "latency_s": 0.24391698837280273
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "ONEUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.24441,
+      "latency_s": 0.24441003799438477
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "PARTIUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.2446249,
+      "latency_s": 0.24462485313415527
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "PENGUUSDC",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.244857,
+      "latency_s": 0.2448570728302002
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "PTBUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.244936,
+      "latency_s": 0.2449359893798828
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "PUMPUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.245496,
+      "latency_s": 0.24549603462219238
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "QNTUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.245655,
+      "latency_s": 0.24565505981445312
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "RAYSOLUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.24568,
+      "latency_s": 0.2456800937652588
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "RENDERUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.245728,
+      "latency_s": 0.2457280158996582
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "RLCUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.2457411,
+      "latency_s": 0.2457411289215088
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "RSRUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.245854,
+      "latency_s": 0.24585390090942383
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "RUNEUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.245888,
+      "latency_s": 0.24588799476623535
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "RVNUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.245897,
+      "latency_s": 0.2458970546722412
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "SANDUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.2459168,
+      "latency_s": 0.24591684341430664
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "SCRUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.245944,
+      "latency_s": 0.24594402313232422
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "SKLUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.245955,
+      "latency_s": 0.2459549903869629
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "SKYAIUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.245963,
+      "latency_s": 0.24596309661865234
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "SKYUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.245972,
+      "latency_s": 0.2459719181060791
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "SOLUSDC",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.2459872,
+      "latency_s": 0.2459871768951416
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "SPELLUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.246057,
+      "latency_s": 0.24605703353881836
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "SPXUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.2463958,
+      "latency_s": 0.24639582633972168
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "STORJUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.246423,
+      "latency_s": 0.24642300605773926
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "STRKUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.24646,
+      "latency_s": 0.2464599609375
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "STXUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.246471,
+      "latency_s": 0.24647092819213867
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "SUSHIUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.2465038,
+      "latency_s": 0.2465038299560547
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "THETAUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.2465181,
+      "latency_s": 0.24651813507080078
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "TIAUSDC",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.246527,
+      "latency_s": 0.24652695655822754
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "TLMUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.246536,
+      "latency_s": 0.2465360164642334
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "TRBUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.246544,
+      "latency_s": 0.24654388427734375
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "TRUMPUSDC",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.2465532,
+      "latency_s": 0.2465531826019287
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "TRXUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.246561,
+      "latency_s": 0.24656105041503906
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "UNIUSDC",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.2465699,
+      "latency_s": 0.24656987190246582
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "VETUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.246578,
+      "latency_s": 0.24657797813415527
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "WIFUSDC",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.246586,
+      "latency_s": 0.24658608436584473
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "WLDUSDC",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.246594,
+      "latency_s": 0.24659395217895508
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "WOOUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.246658,
+      "latency_s": 0.2466580867767334
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "WUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.246672,
+      "latency_s": 0.2466719150543213
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "XLMUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.246681,
+      "latency_s": 0.24668097496032715
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "XMRUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.246739,
+      "latency_s": 0.24673891067504883
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "XPLUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.246748,
+      "latency_s": 0.2467479705810547
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "XRPUSDC",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.246757,
+      "latency_s": 0.24675703048706055
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "ZECUSDC",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.2467651,
+      "latency_s": 0.24676513671875
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "ZENUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.246773,
+      "latency_s": 0.24677300453186035
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "ZILUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.2467809,
+      "latency_s": 0.2467808723449707
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "ZKUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.246798,
+      "latency_s": 0.24679803848266602
+    },
+    {
+      "event": "crypto_clock_published",
+      "symbol": "ZROUSDT",
+      "bar_start_ts": 1793045700,
+      "available_at": 1793046600.336427,
+      "latency_s": 0.3364269733428955
     }
   ]
 }

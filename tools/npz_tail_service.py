@@ -222,15 +222,17 @@ def kline_last_close(base, symbol, mode, now_s=None):
         return None
     try:
         from closed_bar_feed import timestamp_epoch
+        overlay_tip = None
         overlay = Path(base) / 'data' / 'closed_15m_bars' / mode / f'{symbol}.json'
         if overlay.is_file():
             now = time.time() if now_s is None else float(now_s)
             eligible = [timestamp_epoch(row['timestamp']) for row in json.loads(overlay.read_text()) if timestamp_epoch(row['timestamp']) + 900 <= now]
-            if eligible and max(eligible) >= int(now // 900) * 900 - 900:
-                return max(eligible)
+            overlay_tip = max(eligible) if eligible else None
+            if overlay_tip is not None and overlay_tip >= int(now // 900) * 900 - 900:
+                return overlay_tip
         f = _resolve_kline_path(symbol, "15m", mode, Path(base))
         if f is None:
-            return None
+            return overlay_tip
         # These cache files contain long histories; the 1s watcher needs only
         # their final timestamps, not a full pandas parse on every pass.
         with open(f, "rb") as stream:
@@ -245,15 +247,15 @@ def kline_last_close(base, symbol, mode, now_s=None):
             for value in reversed(matches):
                 ts = pd.to_datetime(value, utc=True, errors="coerce")
                 if not pd.isna(ts) and ts <= cutoff:
-                    return int(ts.timestamp())
-            return None
+                    return max(int(ts.timestamp()), overlay_tip or 0)
+            return overlay_tip
         df = _load_klines_df(f)
         if df is None or df.empty:
-            return None
+            return overlay_tip
         df = _drop_forming_bar(df, f.stem.rsplit("_", 1)[-1])
         if df is None or df.empty:
-            return None
-        return int(df.index[-1].to_pydatetime().timestamp())
+            return overlay_tip
+        return max(int(df.index[-1].to_pydatetime().timestamp()), overlay_tip or 0)
     except Exception:
         return None
 

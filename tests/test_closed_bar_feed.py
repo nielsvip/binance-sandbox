@@ -141,3 +141,27 @@ def test_unverified_overlay_native_cannot_block_a_verified_correction(tmp_path):
     atomic_json(path, [unverified])
     receive_closed_15m(tmp_path, dict(event(), row=native), now_s=START + 905, require_history=False)
     assert json.loads(path.read_text())[-1]['close'] == 120
+
+
+def test_npz_loader_uses_completed_marks_over_unverified_cached_volume(tmp_path):
+    from npz_live_generator import _load_klines_df
+    path = tmp_path / 'klines_cache/TESTUSDT_15m.json'
+    atomic_json(path, [dict(event()['row'], close=999, volume=100, _provisional=False)])
+    atomic_json(tmp_path / 'data/closed_15m_bars/crypto/TESTUSDT.json', [event()['row']])
+    assert _load_klines_df(path).iloc[-1]['close'] == event()['row']['close']
+
+
+def test_npz_loader_preserves_verified_canonical_closed_candle(tmp_path):
+    from npz_live_generator import _load_klines_df
+    path = tmp_path / 'klines_canonical/TESTUSDT_15m.json'
+    atomic_json(path, [dict(event()['row'], close=120, volume=7, _provisional=False)])
+    atomic_json(tmp_path / 'data/closed_15m_bars/crypto/TESTUSDT.json', [event()['row']])
+    assert _load_klines_df(path).iloc[-1]['close'] == 120
+
+
+def test_overlay_newer_than_cache_is_visible_after_a_missing_next_bar(tmp_path):
+    from tools.npz_tail_service import kline_last_close
+    path = tmp_path / 'klines_cache/TESTUSDT_15m.json'
+    atomic_json(path, [dict(event()['row'], timestamp='2026-10-26T17:45:00.000000Z')])
+    atomic_json(tmp_path / 'data/closed_15m_bars/crypto/TESTUSDT.json', [event()['row']])
+    assert kline_last_close(tmp_path, 'TESTUSDT', 'crypto', now_s=START + 1800) == START
