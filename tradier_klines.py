@@ -13,6 +13,7 @@ from utils import load_environment_from_gpg
 load_environment_from_gpg(None)
 from config_tradier import TradierConfig
 from tradier_api import TradierAPIClient
+from tools.npz_cutoffs import stock_session_bounds
 
 logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(levelname)s %(message)s")
 logger = logging.getLogger("tradier_klines")
@@ -27,8 +28,18 @@ def market_hours(df, fast=False):
     if not isinstance(df.index, pd.DatetimeIndex): df.index = pd.to_datetime(df.index, utc=True)
     elif df.index.tz is None: df.index = df.index.tz_localize("UTC")
     local = df.index.tz_convert(ET)
-    start = dt_time(8, 30) if fast else dt_time(9, 30)
-    return df.loc[(local.time >= start) & (local.time <= dt_time(16, 0))]
+    if not fast:
+        return df.loc[(local.time >= dt_time(9, 30)) & (local.time <= dt_time(16, 0))]
+    keep = []
+    for stamp in local:
+        bounds = stock_session_bounds(stamp.date())
+        if bounds is None:
+            keep.append(False)
+            continue
+        epoch = stamp.tz_convert(UTC).timestamp()
+        premarket_open = ET.localize(datetime.combine(stamp.date(), dt_time(4, 0))).timestamp()
+        keep.append(premarket_open <= epoch < bounds[1])
+    return df.loc[keep]
 
 def parse_intraday(raw):
     # STKT 2026-10-01: Tradier 'time' is a NAIVE America/New_York string; the epoch 'timestamp' is true UTC.
@@ -298,22 +309,23 @@ async def process_symbol(symbol, repair=False):
     return written >= 4  # STKT: 1m/5m of thin names may legitimately be empty; 15m+1h+4h+D are the backtest-critical frames
 
 async def main():
-    # Stock kline creation is strictly RTH in UTC: Mon-Fri 13:30-20:00Z.
-    # STKT 2026-10-01: outside RTH (after the close) run ONE repair pass per day that re-fetches the trailing 7 days and replaces
+    # Collect native OHLCV from 04:00 ET premarket through the exchange close.
+    # The 15m forward clock and NPZ decision rows remain RTH-only.
+    # Outside the data session, run ONE repair pass per day that re-fetches the trailing 7 days and replaces
     # provisional / mislabeled rows with the authoritative Time&Sales bars.
     now_utc = datetime.now(timezone.utc)
-    market_open = now_utc.weekday() < 5 and (
-        (now_utc.hour > 13 or (now_utc.hour == 13 and now_utc.minute >= 30))
-        and now_utc.hour < 20
-    )
+    now_et = now_utc.astimezone(ET)
+    session = stock_session_bounds(now_et.date())
+    premarket_open = ET.localize(datetime.combine(now_et.date(), dt_time(4, 0))).timestamp()
+    market_open = session is not None and premarket_open <= now_utc.timestamp() < session[1]
     repair = False
     if not market_open:
         marker = config.KLINES_CACHE_DIR / f".stkt_repair_{now_utc.strftime('%Y%m%d')}"
-        after_close = now_utc.hour >= 20 or now_utc.weekday() >= 5 or now_utc.hour < 13
+        after_close = now_et.weekday() >= 5 or (session is not None and now_utc.timestamp() >= session[1]) or (session is None and now_et.time() >= dt_time(16, 0))
         if after_close and not marker.exists():
             repair = True
         else:
-            logger.info("Outside stock market hours (%sZ); no klines added", now_utc.strftime("%H:%M"))
+            logger.info("Outside stock data hours (%s ET); no klines added", now_et.strftime("%H:%M"))
             return
     await api_client.connect()
     try:
@@ -324,7 +336,7 @@ async def main():
                 try: return await process_symbol(symbol, repair=repair)
                 except Exception as exc: logger.error("%s failed: %s", symbol, exc); return False
         results = await asyncio.gather(*(run(s) for s in symbols))
-        logger.info("Tradier stock kline %s cycle complete: %d/%d symbols with all 6 timeframes", "REPAIR" if repair else "RTH", sum(results), len(results))
+        logger.info("Tradier stock kline %s cycle complete: %d/%d symbols with all 6 timeframes", "REPAIR" if repair else "PREMARKET+RTH", sum(results), len(results))
         if repair and sum(results) >= 0.9 * len(results):
             try: marker.write_text(now_utc.isoformat())
             except OSError: pass

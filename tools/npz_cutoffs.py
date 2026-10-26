@@ -70,6 +70,46 @@ def is_rth_bar_start(timestamp):
         return False
 
 
+def is_premarket_bar_start(timestamp):
+    """A stock 15m bar wholly within the 04:00 ET premarket and before RTH."""
+    try:
+        stamp = int(timestamp)
+        if stamp % BAR:
+            return False
+        local = dt.datetime.fromtimestamp(stamp, dt.timezone.utc).astimezone(ET)
+        bounds = stock_session_bounds(local.date())
+        if bounds is None:
+            return False
+        premarket_open = int(dt.datetime.combine(local.date(), dt.time(4, 0), tzinfo=ET).timestamp())
+        return premarket_open <= stamp and stamp + BAR <= bounds[0]
+    except (TypeError, ValueError, OverflowError):
+        return False
+
+
+def last_premarket_bar(now=None):
+    """Latest completed premarket 15m bar, with the same 30s propagation grace as RTH."""
+    now_ts, now_dt = _now_split(now)
+    local = now_dt.astimezone(ET)
+    bounds = stock_session_bounds(local.date())
+    if bounds is None:
+        return 0
+    premarket_open = int(dt.datetime.combine(local.date(), dt.time(4, 0), tzinfo=ET).timestamp())
+    if now_ts < premarket_open or now_ts > bounds[0] + BAR + STOCK_CLOSE_GRACE:
+        return 0
+    latest = min(((now_ts - STOCK_CLOSE_GRACE) // BAR) * BAR - BAR, bounds[0] - BAR)
+    return int(latest) if latest >= premarket_open else 0
+
+
+def last_stock_data_bar(now=None):
+    """Latest completed stock 15m input bar; RTH execution remains separately gated."""
+    now_dt = now if isinstance(now, dt.datetime) else dt.datetime.fromtimestamp(float(now), dt.timezone.utc) if now is not None else dt.datetime.now(dt.timezone.utc)
+    if now_dt.tzinfo is None:
+        now_dt = now_dt.replace(tzinfo=dt.timezone.utc)
+    rth = last_rth_close_bar(now_dt)
+    premarket = last_premarket_bar(now_dt)
+    return max(rth, premarket)
+
+
 def last_session_final_bar(now=None):
     """Most recent fully closed NYSE session's final 15m bar OPEN."""
     now = now if now is not None else dt.datetime.now(dt.timezone.utc)
@@ -106,7 +146,7 @@ TAIL_GRACE_BARS_STOCKS = int(MAX_NPZ_AGE_MIN * 60 // BAR)  # 20 min -> 1 bar
 def npz_age_min(last_ts, venue, now=None):
     """minutes the NPZ's last bar (epoch s) is behind the latest closed bar (crypto) / last RTH close (stocks); None when no cutoff."""
     now_ts, now_dt = _now_split(now)
-    cut = last_closed_bar(now_ts) if str(venue).lower() == "crypto" else last_rth_close_bar(now_dt)
+    cut = last_closed_bar(now_ts) if str(venue).lower() == "crypto" else last_stock_data_bar(now_dt)
     if not cut:
         return None
     return round(max(0.0, (float(cut) - float(last_ts)) / 60.0), 1)
@@ -142,11 +182,11 @@ def tail_currency(tail_ts, venue, now=None):
         if lag <= TAIL_GRACE_BARS_CRYPTO:
             return (True, f"lag{lag:.1f}bars")
         return (False, f"tail {lag:.1f} bars behind latest closed 15m")
-    cutoff = last_rth_close_bar(now_dt)
+    cutoff = last_stock_data_bar(now_dt)
     if not cutoff:
         return (False, "no-cutoff")
-    if not is_rth_bar_start(tail):
-        return (False, "last stock NPZ bar starts outside NYSE session")
+    if not (is_rth_bar_start(tail) or is_premarket_bar_start(tail)):
+        return (False, "last stock NPZ bar starts outside premarket/RTH input session")
     if tail > cutoff:
         return (False, "stock NPZ bar is newer than the latest completed NYSE bar")
     if tail >= cutoff - TAIL_GRACE_BARS_STOCKS * BAR:

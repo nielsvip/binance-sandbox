@@ -42,6 +42,19 @@ pick_host() {
 }
 HOST=$(pick_host) || { echo "$(date -u +%FT%TZ) S1 unreachable (s1-pub and s1-int)"; exit 0; }
 
+# Keep S1's live SQL history complete without replacing any active setting row.
+# External-drive pruning stays disabled until two archives are verified.
+HISTORY_STAMP="$SCRATCH/.persym_history_s1_pushed_at"
+history_last=0
+[ -f "$HISTORY_STAMP" ] && history_last=$(cat "$HISTORY_STAMP" 2>/dev/null || echo 0)
+if [ "$(( $(date +%s) - history_last ))" -ge 600 ] && ! pgrep -f '[p]er_sym_history_sync.py --host' >/dev/null; then
+  if /opt/anaconda3/envs/binance_env/bin/python "$BASE/tools/per_sym_history_sync.py" --host "$HOST"; then
+    date +%s > "$HISTORY_STAMP"
+  else
+    echo "$(date -u +%FT%TZ) S1 append-only history sync failed"
+  fi
+fi
+
 # ── small files every run ──────────────────────────────────────────────────────
 SMALL=""
 for f in data/per_sym_settings.json data/persym_size_tiers.json data/cat_side_defaults_4.json \

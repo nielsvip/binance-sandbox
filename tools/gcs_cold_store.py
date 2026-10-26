@@ -41,7 +41,7 @@ BUCKET = os.environ.get("V15_GCS_BUCKET", "v15-cold-329002141504")
 KEY = Path(os.environ.get("V15_ARCHIVE_GOOGLE_KEY", Path.home() / "Downloads/civil-ripple-439101-j3-d50fb6537cdb.json"))
 RECEIPTS = Path(os.environ.get("V15_GCS_RECEIPTS", ROOT / "data/reports/gcs_cold_store.jsonl"))
 SCOPE = "https://www.googleapis.com/auth/devstorage.read_write"
-HOSTS = {"s1": "s1-int", "s1-pub": "s1-pub", "s2": "s2", "s5": "s5", "s6": "s6", "gateway": "gateway"}
+HOSTS = {"s1": "s1-pub", "s1-int": "s1-int", "s2": "s2", "s5": "s5", "s6": "s6", "gateway": "gateway"}
 REMOTE_UPLOADER = ".cache/gcs_cold_upload.py"
 CHUNK = 64 * 1024 * 1024
 API = "https://storage.googleapis.com/storage/v1/b"
@@ -214,13 +214,13 @@ def verify(name: str, token: str, bucket: str = BUCKET) -> dict:
 def _remote_push(host: str, source: str, name: str, token: str, bucket: str, level: int, threads: int) -> dict:
     target = HOSTS.get(host, host)
     local_copy = Path(__file__).resolve()
-    subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", target, f"mkdir -p ~/{Path(REMOTE_UPLOADER).parent}"], check=True, capture_output=True, timeout=60)
+    subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=20", "-o", "ControlPath=none", target, f"mkdir -p ~/{Path(REMOTE_UPLOADER).parent}"], check=True, capture_output=True, timeout=60)
     sync = subprocess.run(["rsync", "-a", str(local_copy), f"{target}:{REMOTE_UPLOADER}"], capture_output=True, text=True, timeout=300)
     if sync.returncode:
         raise RuntimeError(f"could not install the uploader on {host}: {sync.stderr[-200:]}")
     session = open_session(name, token, bucket)
     command = 'cd "$HOME" && python3 %s remote-stream --source %s --level %d --threads %d' % (shlex.quote(REMOTE_UPLOADER), shlex.quote(source), level, threads)
-    proc = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", target, "bash", "-lc", shlex.quote(command)], input=session + "\n", capture_output=True, text=True, timeout=86400)
+    proc = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=20", "-o", "ControlPath=none", target, "bash", "-lc", shlex.quote(command)], input=session + "\n", capture_output=True, text=True, timeout=86400)
     if proc.returncode:
         raise RuntimeError(f"remote upload failed on {host}: rc={proc.returncode} {proc.stderr[-400:]}")
     result = json.loads([line for line in proc.stdout.splitlines() if line.startswith("{")][-1])

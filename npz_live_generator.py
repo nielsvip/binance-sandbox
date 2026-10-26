@@ -81,17 +81,17 @@ def _last_15m_close_utc(now: datetime) -> datetime:
     return datetime.fromtimestamp(int(now.timestamp() // 900) * 900 - 900, timezone.utc)
 
 def _is_tradier_market_hours(now: datetime) -> bool:
-    """True if now (UTC) is within RTH or 30s after close where final bar should be written."""
+    """True during the NYSE premarket/RTH data window or final-bar grace."""
     if now.tzinfo is None:
         now = now.replace(tzinfo=timezone.utc)
     et = now.astimezone(ET)
-    # Weekend
-    if et.weekday() >= 5:
+    from tools.npz_cutoffs import stock_session_bounds
+    bounds = stock_session_bounds(et.date())
+    if bounds is None:
         return False
-    # RTH 09:30-16:00 ET, plus 5 min grace after close for final bar
-    market_open = et.replace(hour=9, minute=30, second=0, microsecond=0)
-    market_close = et.replace(hour=16, minute=5, second=0, microsecond=0)
-    return market_open <= et <= market_close
+    premarket_open = et.replace(hour=4, minute=0, second=0, microsecond=0)
+    market_close = datetime.fromtimestamp(bounds[1] + 300, timezone.utc).astimezone(ET)
+    return premarket_open <= et <= market_close
 
 def _npz_path(base_path: Path, symbol: str) -> Path:
     # Mirrors backtest_v8_precompute.OUT_DIR

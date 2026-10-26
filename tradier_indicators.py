@@ -131,9 +131,23 @@ def filter_strict_market_hours(df: pd.DataFrame, is_fast_tf: bool) -> pd.DataFra
     source_col = "timestamp" if "timestamp" in df.columns else "time"
     dt_series = _to_utc(df[source_col]).dt.tz_convert(ET)
     time_series = dt_series.dt.time
-    start_time = dt_time(8, 30) if is_fast_tf else dt_time(9, 30)
-    end_time = dt_time(16, 0)
-    mask = (time_series >= start_time) & (time_series <= end_time)
+    if not is_fast_tf:
+        mask = (time_series >= dt_time(9, 30)) & (time_series <= dt_time(16, 0))
+        return df.loc[mask].reset_index(drop=True)
+    from tools.npz_cutoffs import stock_session_bounds
+    mask = []
+    for stamp in dt_series:
+        if pd.isna(stamp):
+            mask.append(False)
+            continue
+        bounds = stock_session_bounds(stamp.date())
+        if bounds is None:
+            mask.append(False)
+            continue
+        premarket_open = ET.localize(datetime.combine(stamp.date(), dt_time(4, 0))).timestamp()
+        epoch = stamp.tz_convert(pytz.UTC).timestamp()
+        mask.append(premarket_open <= epoch < bounds[1])
+    mask = pd.Series(mask, index=df.index)
     return df.loc[mask].reset_index(drop=True)
 def filter_regular_session(df):
     if df.empty: return df

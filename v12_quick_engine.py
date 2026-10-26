@@ -19136,6 +19136,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _htf_churn_bypass = bool(
                     pos is None
                     and has_closed_before
+                    and not bool(getattr(cfg, "CRYPTO_REENTRY_PATHWAYS_ENABLED", False))
                     and _htf_churn_last.get("type") == "CLOSE"
                     and float(_htf_churn_last.get("exit_price", 0) or 0) > 0
                     and not bool(entry_sig[i])
@@ -19259,7 +19260,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _fire_src = None  # 2026-10-06 ENTRY_SOURCE_LABEL: provenance of the in-loop fire below (first-writer-wins; label-only)
             if _lr_flat_open_target is not None and _lr_flat_open_target.add_notional_usd > 0:
                 _fire_src = "LR_BAND_LADDER_PARITY_TARGET"
-            # TWIN_VEC_SPECIAL H2a: HTF_WT_CHURN_REENTRY (live ez_manage.py:42701). Flat here (pos None); notional 0 < cap passes; age from last close bar. NOTE: live bypasses cooldown; vec honors cd above (checked before this block) — known gap, see COOLDOWN_BARS NEEDS-OPERATOR-DECISION.
+            # TWIN_VEC_SPECIAL H2a: HTF_WT_CHURN_REENTRY. Flat here (pos None); notional 0 < cap passes; age from last close bar. CRYPTO_REENTRY_PATHWAYS honors the live parity-flat COOLDOWN_BARS check above.
             try:
                 if (
                     not fire
@@ -20073,6 +20074,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             and trades
                             and not entry_sig[i]
                             and _sr_fired[0] != i
+                            and not str(_fire_src or "").startswith("HTF_WT_CHURN_REENTRY")
                             and bool(
                                 getattr(cfg, "HARDCODED_RALLY_REENTRY_ENABLED", True)
                             )
@@ -20144,6 +20146,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                 and has_closed_before
                                 and getattr(cfg, "REENTRY_MANDATORY", False)
                                 and not entry_sig[i]
+                                and not str(_fire_src or "").startswith("HTF_WT_CHURN_REENTRY")
                             ):
                                 entry_reason = "REENTRY_MANDATORY"
                             if entry_reason == "VECTOR_ENTRY":
@@ -20271,6 +20274,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         _fx_G["_bt_veto"] is not None
                         and bool(_fx_G["_bt_veto"][i])
                         and not (_bt_reentry_exempt and has_closed_before and not bool(entry_sig[i]) and _xb_true)
+                        and not (has_closed_before and not bool(entry_sig[i]) and not bool(getattr(cfg, "REENTRY_APPLY_ENTRY_GATES_ENABLED", False)) and str(_fire_src or "").startswith("HTF_WT_CHURN_REENTRY"))
                     ):
                         continue  # BOTTOM/TOP entry REQUIRE gates (all families ORed); 2026-10-20 stock REENTRY fires exempt unless REENTRY_APPLY_ENTRY_GATES_ENABLED
                     if _lp_on and _lpm.fn_family(entry_reason) in _lp_flags and not _belm.entry_filters_pass(cfg, is_long, float(px), float(_lp_w11[i]), float(_lp_w21[i]), float(_lp_w14[i]), float(_lp_w24[i]), float(_lp_e50[i])):
