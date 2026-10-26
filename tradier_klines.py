@@ -125,12 +125,14 @@ def export_atomic(df, path, replace_from=None):
                 for row in existing:
                     if isinstance(row, dict) and row.get("timestamp"):
                         # STKT repair pass: rows inside the re-fetched window are replaced wholesale by the authoritative bars
-                        if replace_from and str(row["timestamp"]) >= replace_from:
+                        if replace_from and str(row["timestamp"]) >= replace_from and not row.get("_closed"):
                             continue
                         merged[str(row["timestamp"])] = row
                 for row in records:
                     key = str(row["timestamp"])
                     prev = merged.get(key)
+                    if prev is not None and prev.get("_closed") and not row.get("_closed"):
+                        continue
                     # Never overwrite better OHLCV (volume>0) with provisional OHLC (volume 0)
                     if prev is not None and float(prev.get("volume",0) or 0) > 0 and float(row.get("volume",0) or 0) == 0:
                         continue

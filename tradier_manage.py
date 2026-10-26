@@ -49307,6 +49307,22 @@ class TradierTradeManager:
             if not _net_exit_ok(_gross_gain, _fee_floor):
                 logger.warning(f"[EXECUTE_NOW_NET_GAIN_BLOCK_TR] {position_key}: {action} blocked; gross_gain={_gross_gain!r}% estimated_fee={_fee_floor:.4f}% reason={str(reason or '')[:100]}")
                 return "BLOCKED_NET_GAIN"
+        _trb_increase = not (is_full_close or "CLOSE" in _exit_action or "REDUCE" in _exit_action or "STOP" in _exit_action) and ((str(position_side or "").upper() == "LONG" and str(side or "").upper() == "BUY") or (str(position_side or "").upper() == "SHORT" and str(side or "").upper() == "SELL"))
+        if str(account_key).lower() == "trb" and _trb_increase:
+            try:
+                _v20_path = Path(_cfg_auto("BASE_PATH", "/users/niels/documents/binance")) / "data" / "vec_live" / "state" / f"{symbol}_{position_side}.json"
+                with open(_v20_path) as _v20_file:
+                    _v20_state = json.load(_v20_file)
+                _v20_age = time.time() - (float(_v20_state.get("bar_ts") or 0) + 900.0)
+                _v20_target = str((_v20_state.get("target_state") or {}).get("side") or "").upper()
+                _v20_hash = {"LONG": "c26111b7c992c18a46c3d71a6a0d073e", "SHORT": "447b10b703b4501be70f6ac98e21d55e"}.get(str(position_side or "").upper())
+                _v20_ok = _v20_hash is not None and _v20_state.get("engine_md5") == _v20_hash and _v20_state.get("status") == "OK" and _v20_state.get("actionable") is True and 0.0 <= _v20_age <= 1200.0 and _v20_target == str(position_side or "").upper()
+            except Exception as _v20_e:
+                _v20_ok = False
+                logger.warning(f"[TRB_V20_STATE] {position_key}: state read failed: {_v20_e}")
+            if not _v20_ok:
+                logger.warning(f"[TRB_V20_STATE_BLOCK] {position_key}: {action} requires fresh actionable V20 state targeting {position_side}")
+                return "BLOCKED_TRB_V20_STATE"
         _res = await self._execute_now_inner(
             position_key=position_key, account_key=account_key, symbol=symbol,
             original_position_amt=original_position_amt, side=side, position_side=position_side,

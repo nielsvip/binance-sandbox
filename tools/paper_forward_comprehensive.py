@@ -50,15 +50,19 @@ import bisect
 import collections
 import glob
 import json
+import os
 import re
+import shutil
 import sqlite3
 import sys
+import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tools"))
+TEMPLATE_DIR = ROOT / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM"
 
 OUT = (
     ROOT / "data" / "paper_forward_comprehensive"
@@ -645,6 +649,311 @@ def persist(inv, per_sym_rows, path_rows, args, n_events):
     return scores
 
 
+def _template_backlog_rows(inventory, scores, parity, family):
+    records = []
+    registry = {}
+    for row in _families_registry():
+        registry.setdefault(canon_family(row["family"] or row["token"]), row)
+    template_venue = "crypto" if family == "CRYPTO" else "stocks"
+    score_paths = scores.get("paths", [])
+    inventory_rows = [(path, row) for path, row in inventory.items() if not path.startswith("_")]
+    for path, row in inventory_rows:
+        sources = set(row.get("sources") or [])
+        info = registry.get(path, {})
+        gate_kind = info.get("kind")
+        vector_kill = "vector_kills" in sources
+        global_block = any(source.startswith(("_NON_VEC_KNOBS_EZ", "SUB15M:")) for source in sources)
+        no_twin = row.get("vec_twin") is False
+        missing_gate = not row.get("gate_knob") and gate_kind == "unknown"
+        observed = "observed:paper_nonvec" in sources
+        safety = gate_kind == "safety"
+        if not (vector_kill or global_block or no_twin or missing_gate or observed or safety):
+            continue
+        venue = row.get("venue") or "both"
+        if venue not in ("both", template_venue):
+            continue
+        if safety:
+            state = "SAFETY_ALWAYS_ON"
+            next_step = "Mandatory safety path. Keep it enabled and retain its scalar/vector parity proof."
+        elif vector_kill:
+            state = "ACTIVE_VECTOR_KILL"
+            next_step = "Keep refused by the VEC backstop. Restore only after the shared vector twin, switch, and proof are complete."
+        elif global_block:
+            state = "GLOBALLY_DISABLED"
+            next_step = "Keep disabled. Add a shared vector predicate and matching live switch before any activation."
+        elif no_twin:
+            state = "NO_VECTOR_TWIN"
+            next_step = "Keep blocked by the VEC backstop; vectorize through a shared decision core or retain paper-only."
+        elif missing_gate:
+            state = "MISSING_LIVE_SWITCH"
+            next_step = "Trace the emitter, add a matching live/config/QuickConfig switch and vector predicate, or classify as safety."
+        else:
+            state = "PAPER_REFUSAL_OBSERVED"
+            next_step = "Historical paper refusal only. Verify the current block and parity path before considering activation."
+        matches = [
+            score
+            for score in score_paths
+            if score.get("path") == path and score.get("venue") in (template_venue, "both")
+        ]
+        if not matches:
+            matches = [None]
+        for comparison in matches:
+            records.append(
+                {
+                    "record": f"PATH — {path}",
+                    "venue": template_venue if venue == "both" else venue,
+                    "type": comparison.get("kind") if comparison else row.get("kind"),
+                    "twin": row.get("vec_twin"),
+                    "gate": row.get("gate_knob"),
+                    "tf": row.get("tf"),
+                    "state": state,
+                    "queue": 0,
+                    "events": comparison.get("events") if comparison else None,
+                    "scored": comparison.get("scored") if comparison else None,
+                    "pending": sum(
+                        int(item.get("pending") or 0)
+                        for item in scores.get("per_sym", [])
+                        if item.get("path") == path
+                        and item.get("venue") == template_venue
+                        and (not comparison or item.get("kind") == comparison.get("kind"))
+                    ),
+                    "delta": (
+                        100.0 * comparison.get("pooled_delta")
+                        if comparison and comparison.get("pooled_delta") is not None
+                        else None
+                    ),
+                    "positive": comparison.get("pos_syms") if comparison else None,
+                    "sides": comparison.get("sym_sides") if comparison else None,
+                    "days": comparison.get("days") if comparison else None,
+                    "verdict": comparison.get("verdict") if comparison else "NO SCORED COMPARISON",
+                    "next": next_step,
+                }
+            )
+    for venue_name, report in (parity.get("families") or {}).items():
+        if venue_name != family:
+            continue
+        for switch, detail in sorted((report.get("missing") or {}).items()):
+            wrong = detail.get("class") == "WRONG_TEMPLATE_LEAK"
+            records.append(
+                {
+                    "record": f"SWITCH — {switch}",
+                    "venue": template_venue,
+                    "type": "template/config parity",
+                    "twin": "unverified",
+                    "gate": switch,
+                    "tf": "",
+                    "state": "WRONG_VENUE_TEMPLATE_ROW" if wrong else "MISSING_CONFIG_SWITCH",
+                    "queue": 0,
+                    "events": None,
+                    "scored": None,
+                    "pending": None,
+                    "delta": None,
+                    "positive": None,
+                    "sides": None,
+                    "days": None,
+                    "verdict": "NOT ELIGIBLE",
+                    "next": "Trace the live read and add a real config/QuickConfig/vector counterpart, or keep this row out of tuning if it is not a strategy switch.",
+                }
+            )
+    resolved_after = {}
+    for line in (ROOT / "data" / "vector_retrace_resolutions.jsonl").read_text(errors="replace").splitlines() if (ROOT / "data" / "vector_retrace_resolutions.jsonl").exists() else []:
+        try:
+            resolution = json.loads(line)
+            name = resolution.get("family")
+            if name:
+                resolved_after[name] = max(resolved_after.get(name, 0.0), float(resolution.get("ts", 0.0)))
+        except Exception:
+            continue
+    queue_groups = {}
+    queue_path = ROOT / "data" / "vector_retrace_queue.jsonl"
+    if queue_path.exists():
+        for line in queue_path.read_text(errors="replace").splitlines():
+            try:
+                item = json.loads(line)
+                if item.get("status") != "TODO" or resolved_after.get(item.get("family"), 0.0) >= float(item.get("ts", 0.0)):
+                    continue
+                position_key = str(item.get("example_position_key") or "")
+                sym_side = position_key.partition(":")[2]
+                symbol = sym_side.rsplit("_", 1)[0] if "_" in sym_side else ""
+                venue = "crypto" if symbol.endswith(CRYPTO_SUFFIX) else "stocks" if symbol else "both"
+                if venue not in (template_venue, "both"):
+                    continue
+                tag = str(item.get("family") or "UNKNOWN").split(":", 1)[0]
+                key = (tag, venue)
+                bucket = queue_groups.setdefault(key, {"count": 0, "latest": item})
+                bucket["count"] += 1
+                if float(item.get("ts", 0.0)) > float(bucket["latest"].get("ts", 0.0)):
+                    bucket["latest"] = item
+            except Exception:
+                continue
+    for (tag, venue), bucket in sorted(queue_groups.items()):
+        latest = bucket["latest"]
+        records.append(
+            {
+                "record": f"VEC QUEUE — {tag}",
+                "venue": venue,
+                "type": "retrace/backstop",
+                "twin": "audit pending",
+                "gate": str(latest.get("example_reason") or "")[:240],
+                "tf": "",
+                "state": "BACKSTOP_QUEUE_OPEN",
+                "queue": bucket["count"],
+                "events": None,
+                "scored": None,
+                "pending": None,
+                "delta": None,
+                "positive": None,
+                "sides": None,
+                "days": None,
+                "verdict": "NOT ELIGIBLE",
+                "next": "Trace the emitting path. Keep the backstop until the queue is resolved and fresh logs remain clear throughout the watch period.",
+            }
+        )
+    records.sort(key=lambda item: (item["state"], item["record"], str(item["type"])))
+    return records
+
+
+def update_template_status_tabs(inventory, scores):
+    from openpyxl import load_workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+    from tools.verify_switch_parity import check_template_parity
+
+    parity, _ = check_template_parity()
+    headers = [
+        "Path / switch",
+        "",
+        "Venue",
+        "Type",
+        "Vector twin",
+        "Live gate / example",
+        "Input TF",
+        "Current block status",
+        "Queue TODO",
+        "Paper events",
+        "Scored",
+        "Pending",
+        "Pooled delta %",
+        "Positive sides",
+        "Sides",
+        "Days observed",
+        "Paper verdict (not approval)",
+        "Required next step",
+    ]
+    updated = []
+    for family, filenames in (
+        ("CRYPTO", ("TEMPLATE_CRYPTO_LONG.xlsx", "TEMPLATE_CRYPTO_SHORT.xlsx")),
+        ("STOCKS", ("TEMPLATE_STOCKS_LONG.xlsx", "TEMPLATE_STOCKS_SHORT.xlsx")),
+    ):
+        records = _template_backlog_rows(inventory, scores, parity, family)
+        for filename in filenames:
+            path = TEMPLATE_DIR / filename
+            if not path.exists():
+                raise FileNotFoundError(path)
+            workbook = load_workbook(path)
+            old_index = workbook.sheetnames.index("VEC_PARITY_STATUS") if "VEC_PARITY_STATUS" in workbook.sheetnames else len(workbook.sheetnames)
+            old = workbook["VEC_PARITY_STATUS"] if "VEC_PARITY_STATUS" in workbook.sheetnames else None
+            old_values = list(old.values) if old else []
+            row_values = [
+                [
+                    record["record"],
+                    None,
+                    record["venue"],
+                    record["type"],
+                    record["twin"],
+                    record["gate"],
+                    record["tf"],
+                    record["state"],
+                    record["queue"],
+                    record["events"],
+                    record["scored"],
+                    record["pending"],
+                    record["delta"],
+                    record["positive"],
+                    record["sides"],
+                    record["days"],
+                    record["verdict"],
+                    record["next"],
+                ]
+                for record in records
+            ]
+            expected = [
+                ["VEC parity backlog — refreshes with paper-forward scores"]
+                + [None] * (len(headers) - 1),
+                [value or None for value in headers],
+            ] + row_values
+            if old_values == expected:
+                workbook.close()
+                continue
+            if old:
+                workbook.remove(old)
+            worksheet = workbook.create_sheet("VEC_PARITY_STATUS", old_index)
+            worksheet.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(headers))
+            worksheet.cell(1, 1, expected[0][0])
+            for column, value in enumerate(headers, start=1):
+                if value:
+                    worksheet.cell(2, column, value)
+            for row_number, values in enumerate(row_values, start=3):
+                for column, value in enumerate(values, start=1):
+                    if value is not None:
+                        worksheet.cell(row_number, column, value)
+            for row in worksheet.iter_rows():
+                for cell in row:
+                    if cell.value is not None:
+                        cell.font = Font(name="Calibri", size=11, bold=cell.row == 2)
+                        cell.alignment = Alignment(vertical="top", wrap_text=cell.column in (6, 18))
+            for cell in worksheet[2]:
+                if cell.value is not None:
+                    cell.fill = PatternFill("solid", fgColor="1F4E78")
+                    cell.font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+            worksheet.freeze_panes = "A3"
+            worksheet.auto_filter.ref = f"A2:R{max(2, worksheet.max_row)}"
+            for column, width in {
+                "A": 48,
+                "B": 2.5,
+                "C": 12,
+                "D": 24,
+                "E": 18,
+                "F": 54,
+                "G": 15,
+                "H": 32,
+                "I": 12,
+                "J": 13,
+                "K": 12,
+                "L": 12,
+                "M": 15,
+                "N": 14,
+                "O": 10,
+                "P": 14,
+                "Q": 26,
+                "R": 88,
+            }.items():
+                worksheet.column_dimensions[column].width = width
+            worksheet.sheet_view.showGridLines = False
+            worksheet.row_dimensions[1].height = 22
+            backup_stamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+            backup = ROOT / "backups" / f"before_vec_status_tab_{backup_stamp}_{path.stem}.xlsx"
+            backup.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(path, backup)
+            temporary = path.with_name(path.stem + ".vec_status.tmp.xlsx")
+            workbook.save(temporary)
+            workbook.close()
+            with zipfile.ZipFile(temporary) as archive:
+                if len(archive.namelist()) < 10 or archive.testzip() is not None:
+                    temporary.unlink(missing_ok=True)
+                    raise ValueError(f"invalid generated workbook: {temporary}")
+            os.replace(temporary, path)
+            verify = load_workbook(path, read_only=True, data_only=True)
+            try:
+                if "VEC_PARITY_STATUS" not in verify.sheetnames:
+                    raise ValueError(f"status tab missing after save: {path}")
+                if verify["VEC_PARITY_STATUS"].max_row != len(expected):
+                    raise ValueError(f"status tab row count changed after save: {path}")
+            finally:
+                verify.close()
+            updated.append(filename)
+    return updated
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--days", type=int, default=14)
@@ -683,6 +992,11 @@ def main():
         per, first_seen, now, a.min_days, a.min_syms, a.min_events
     )
     scores = persist(inv, per_sym_rows, path_rows, a, len(events))
+    try:
+        templates_updated = update_template_status_tabs(inv, scores)
+        print(f"[paper_forward] template status tab updated={templates_updated or 'already current'}")
+    except Exception as exc:
+        print(f"[paper_forward] template status tab update failed: {type(exc).__name__}: {exc}")
     n_prom = sum(1 for r in path_rows if r["verdict"] == "PROMOTE_CANDIDATE")
     n_pos_sym = sum(
         1 for r in per_sym_rows if r["mean_delta"] is not None and r["mean_delta"] > 0
