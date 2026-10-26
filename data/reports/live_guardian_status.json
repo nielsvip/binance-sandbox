@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-26T15:18:43Z",
+ "ts": "2026-10-26T15:23:36Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -33,15 +33,15 @@
    "pos_mismatch": 0
   },
   "trc": {
-   "fills_6h": 3,
+   "fills_6h": 4,
    "open_positions": 3,
-   "unrealised_usd": 13.87,
+   "unrealised_usd": 9.74,
    "pos_mismatch": 0
   },
   "fin": {
-   "fills_6h": 279,
-   "open_positions": 8,
-   "unrealised_usd": 1.17,
+   "fills_6h": 268,
+   "open_positions": 7,
+   "unrealised_usd": 0.8,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -55,9 +55,9 @@
    }
   },
   "men": {
-   "fills_6h": 183,
+   "fills_6h": 176,
    "open_positions": 12,
-   "unrealised_usd": 1.21,
+   "unrealised_usd": 1.25,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -71,9 +71,9 @@
    }
   },
   "ang": {
-   "fills_6h": 472,
-   "open_positions": 14,
-   "unrealised_usd": 1.57,
+   "fills_6h": 468,
+   "open_positions": 11,
+   "unrealised_usd": 0.58,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -103,9 +103,9 @@
    }
   },
   "flz": {
-   "fills_6h": 37,
+   "fills_6h": 35,
    "open_positions": 5,
-   "unrealised_usd": -0.25,
+   "unrealised_usd": -0.28,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -122,9 +122,9 @@
  "tradeable_guard": {
   "poison": false,
   "restored": false,
-  "total": 222,
+  "total": 234,
   "per_acct": {
-   "ang": 80,
+   "ang": 92,
    "fin": 50,
    "men": 50,
    "flz": 26,
@@ -137,101 +137,95 @@
    "pids": [
     "69538"
    ],
-   "starts_30m": 0,
-   "log_age_s": -1.0
+   "starts_30m": 1,
+   "log_age_s": -0.0
   },
   "men": {
    "pids": [
     "11529"
    ],
    "starts_30m": 1,
-   "log_age_s": 639.0
+   "log_age_s": 928.0
   },
   "ang": {
    "pids": [
     "37824"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 3.0
   },
   "inf": {
    "pids": [
     "69983"
    ],
-   "starts_30m": 0,
-   "log_age_s": 8.0
+   "starts_30m": 1,
+   "log_age_s": 0.0
   },
   "flz": {
    "pids": [
     "69233"
    ],
-   "starts_30m": 0,
-   "log_age_s": 9.0
+   "starts_30m": 1,
+   "log_age_s": 1.0
   },
   "trb": {
    "pids": [
-    "43758",
-    "95849"
+    "95389",
+    "94743"
    ],
-   "starts_30m": 2,
-   "log_age_s": 810.0
+   "starts_30m": 4,
+   "log_age_s": 1.0
   },
   "trc": {
    "pids": [
-    "33820"
+    "94968"
    ],
-   "starts_30m": 1,
-   "log_age_s": 28.0
+   "starts_30m": 2,
+   "log_age_s": 0.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-26T15:18:43Z",
+   "ts": "2026-10-26T15:23:36Z",
    "severity": "CRITICAL",
    "kind": "ACCOUNT_EQUITY_DROP",
    "key": "trc",
-   "evidence": "unrealised PnL of the same open positions fell $52.91 since 2026-10-26T14:18:53Z (now $+13.87)"
+   "evidence": "unrealised PnL of the same open positions fell $53.22 since 2026-10-26T14:34:48Z (now $+9.74)"
   },
   {
-   "ts": "2026-10-26T15:18:48Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "flz:ZECUSDC_LONG",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 0.09616->0.288479 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 0.09616)"
-  },
-  {
-   "ts": "2026-10-26T15:18:48Z",
+   "ts": "2026-10-26T15:23:37Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "flz:ZECUSDC_LONG",
    "evidence": "BREAKOUT_SIZE_LADDER resized qty 0.095503->0.286508 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 0.095503)"
   },
   {
-   "ts": "2026-10-26T15:18:48Z",
+   "ts": "2026-10-26T15:23:37Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "flz:ZECUSDC_LONG",
    "evidence": "BREAKOUT_SIZE_LADDER resized qty 0.095727->0.28718 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 0.095727)"
   },
   {
-   "ts": "2026-10-26T15:18:51Z",
+   "ts": "2026-10-26T15:23:38Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "men",
-   "evidence": "ez_manage_men.log not written for 639s"
+   "evidence": "ez_manage_men.log not written for 928s"
   },
   {
-   "ts": "2026-10-26T15:18:51Z",
+   "ts": "2026-10-26T15:23:38Z",
    "severity": "CRITICAL",
-   "kind": "STALE_LOG",
+   "kind": "RESTART_LOOP",
    "key": "trb",
-   "evidence": "tradier_manage_trb.log not written for 810s"
+   "evidence": "4 new process ids in 30 min (['95849', '43758', '95389', '94743'])"
   }
  ],
  "alert_counts": {
   "ACCOUNT_EQUITY_DROP": 1,
-  "SIZE_ANOMALY": 3,
-  "STALE_LOG": 2
+  "SIZE_ANOMALY": 2,
+  "STALE_LOG": 1,
+  "RESTART_LOOP": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -347,5 +341,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 8.06
+ "sweep_s": 2.21
 }
