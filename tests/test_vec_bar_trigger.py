@@ -29,3 +29,11 @@ def test_should_probe_on_mtime_change():
 
 def test_should_probe_new_symbol():
     assert should_probe("NEW_SHORT", 50.0, 60.0, {}) is True
+def test_settings_or_engine_revision_triggers_without_new_npz_mtime():
+    from tools.vec_bar_trigger import should_probe
+    seen = {}
+    assert should_probe('TESTUSDT_LONG', 10, 20, seen, revision=('first', 'engine'))
+    assert not should_probe('TESTUSDT_LONG', 10, 20, seen, revision=('first', 'engine'))
+    assert should_probe('TESTUSDT_LONG', 10, 20, seen, revision=('new_set', 'engine'))
+    assert should_probe('TESTUSDT_LONG', 10, 20, seen, revision=('new_set', 'new_engine'))
+

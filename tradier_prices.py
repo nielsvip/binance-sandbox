@@ -157,6 +157,56 @@ def _write_provisional_stock_15m_unlocked(path, bar):
         logger.warning(f"Provisional Tradier 15m write failed {path.name}: {exc}")
         return False
 
+def _load_closed_15m_prefix(symbol, bucket_ts, cache_dirs, secondary_tf):
+    import json
+    import re
+    from closed_bar_feed import timestamp_epoch
+    records = {}
+    for tf, span in [('1m', 60), (secondary_tf, 180 if secondary_tf == '3m' else 300)]:
+        for directory in cache_dirs:
+            path = Path(directory) / f'{symbol}_{tf}.json'
+            try:
+                with path.open('rb') as stream:
+                    stream.seek(max(0, path.stat().st_size - 131072))
+                    recent = stream.read().decode('utf-8')
+                for match in re.finditer(r'\{[^{}]*\}', recent):
+                    row = json.loads(match.group())
+                    stamp = timestamp_epoch(row.get('timestamp') or row.get('time'))
+                    if stamp < bucket_ts or stamp + span > bucket_ts + 780:
+                        continue
+                    bar = {field: float(row[field]) for field in ('open', 'high', 'low', 'close')}
+                    if not all(value > 0 and value < float('inf') for value in bar.values()):
+                        continue
+                    bar['_span_s'] = span
+                    bar['_source'] = f'kline_{tf}'
+                    records.setdefault((stamp, span), bar)
+            except (OSError, ValueError, TypeError, KeyError):
+                continue
+    return records
+
+
+def _closed_15m_tradeable_symbols(base_path, fallback, stocks=False):
+    import json
+    symbols = set()
+    try:
+        if stocks:
+            for account in ('tra', 'trb', 'trc'):
+                for side in ('long', 'short'):
+                    path = Path(base_path) / f'symbols_{account}_{side}.json'
+                    if path.exists():
+                        symbols.update(json.loads(path.read_text()))
+        else:
+            active = Path(base_path) / 'symbols_active.json'
+            if active.exists():
+                symbols.update(json.loads(active.read_text()))
+            keys = Path(base_path) / 'tradeable_keys.json'
+            if keys.exists():
+                symbols.update(item.split(':')[-1].rsplit('_', 1)[0] for item in json.loads(keys.read_text()))
+    except (OSError, ValueError, TypeError):
+        return list(fallback)
+    return sorted(symbols) if symbols else list(fallback)
+
+
 class TradierPriceFetcher:
     def __init__(self):
         self.config = config
@@ -375,6 +425,42 @@ class TradierPriceFetcher:
                 logger.error(f"Loop error: {e}")
                 await asyncio.sleep(10)
 
+    async def prepare_closed_15m_loop(self):
+        loop = asyncio.get_running_loop()
+        executor = ThreadPoolExecutor(max_workers=8, thread_name_prefix='stockprefix15m')
+        prepared = self.__dict__.setdefault('_closed_15m_prepared', {})
+        cache_dirs = [self.config.KLINES_CACHE_DIR, self.config.BASE_PATH / 'klines_cache_gateway' / 'tradier', self.config.BASE_PATH / 'klines_canonical' / 'tradier']
+        try:
+            while self.running:
+                now = time.time()
+                bucket_ts = int(now // 900) * 900
+                elapsed = now - bucket_ts
+                universe = await loop.run_in_executor(executor, _closed_15m_tradeable_symbols, self.config.BASE_PATH, self.symbols, True)
+                self._closed_15m_universe = universe
+                if elapsed < 780:
+                    await asyncio.sleep(min(1.0, max(0.05, 780 - elapsed)))
+                    continue
+                jobs = []
+                for symbol in universe:
+                    cached = prepared.get((symbol, bucket_ts), {})
+                    covered = {minute for (stamp, span), _ in cached.items() for minute in range(stamp, stamp + span, 60)}
+                    if len(covered) >= 13:
+                        continue
+                    async def _prepare(ticker=symbol, bucket=bucket_ts):
+                        rows = await loop.run_in_executor(executor, _load_closed_15m_prefix, ticker, bucket, cache_dirs, '5m')
+                        prepared[(ticker, bucket)] = rows
+                    jobs.append(_prepare())
+                if jobs:
+                    await asyncio.gather(*jobs)
+                    ready = sum(len({minute for (stamp, span), _ in prepared.get((symbol, bucket_ts), {}).items() for minute in range(stamp, stamp + span, 60)}) >= 13 for symbol in universe)
+                    logger.info(f'[CLOSED_15M_PREP] stock bucket={bucket_ts} minute={int(elapsed // 60)} ready={ready}/{len(universe)} at={time.time():.6f}')
+                for key in list(prepared):
+                    if key[1] < bucket_ts - 900:
+                        prepared.pop(key, None)
+                await asyncio.sleep(1)
+        finally:
+            executor.shutdown(wait=False)
+
     async def closed_15m_clock_loop(self):
         from closed_bar_feed import aggregate_closed_15m, publish_closed_15m
         loop = asyncio.get_running_loop()
@@ -389,10 +475,14 @@ class TradierPriceFetcher:
                 candidates.update({(symbol, state['bucket_ts']): state for symbol, state in list(self._provisional_15m.items()) if now >= state['bucket_ts'] + 900})
                 jobs = []
                 for (symbol, bucket_ts), state in candidates.items():
+                    if symbol not in self.__dict__.get("_closed_15m_universe", self.symbols):
+                        continue
                     if sent.get(symbol, 0) >= bucket_ts:
                         pending.pop((symbol, bucket_ts), None)
                         continue
-                    completed = aggregate_closed_15m(state['minute_bars'], bucket_ts, now)
+                    bars = dict(self.__dict__.get('_closed_15m_prepared', {}).get((symbol, bucket_ts), {}))
+                    bars.update({stamp: bar for stamp, bar in state['minute_bars'].items() if bucket_ts + 780 <= stamp < bucket_ts + 900})
+                    completed = aggregate_closed_15m(bars, bucket_ts, now)
                     if completed is None:
                         if (symbol, bucket_ts) not in reported:
                             logger.warning(f'[CLOSED_15M_MISSING] stock {symbol} bar_start={bucket_ts} incomplete_1m={len(state["minute_bars"])}')
@@ -445,13 +535,15 @@ class TradierPriceFetcher:
         provisional_task = asyncio.create_task(self.provisional_15m_clock_loop())
         closed_task = asyncio.create_task(self.closed_15m_clock_loop())
         quote_task = asyncio.create_task(self.update_prices_loop())
+        prepare_task = asyncio.create_task(self.prepare_closed_15m_loop())
         try:
-            await asyncio.gather(quote_task, provisional_task, closed_task)
+            await asyncio.gather(quote_task, provisional_task, closed_task, prepare_task)
         finally:
+            prepare_task.cancel()
             quote_task.cancel()
             provisional_task.cancel()
             closed_task.cancel()
-            await asyncio.gather(quote_task, provisional_task, closed_task, return_exceptions=True)
+            await asyncio.gather(quote_task, provisional_task, closed_task, prepare_task, return_exceptions=True)
             tasks = list(self.__dict__.get("_provisional_io_tasks", {}).values())
             for task in tasks:
                 task.cancel()

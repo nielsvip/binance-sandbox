@@ -36467,7 +36467,7 @@ class MultiAccountTradeManager:
         )
         # UNBREAKABLE REDUCE LOCK - checked FIRST for reduces, no bypass, no Redis
         _act_check = (action or "").upper()
-        _is_reduce = _act_check in ("CLOSE", "REDUCE", "SELL", "QUICK_CLOSE", "FULL_CLOSE", "PROFIT_TAKE", "STOP_MAJOR_LOSS_REDUCE", "STOP_FUNCTIONS_KILL", "HEDGE_CLOSE", "NO_PROFIT") or "CLOSE" in (reason or "").upper() or "REDUCE" in (reason or "").upper() or "NO_PROFIT" in (reason or "").upper()
+        _is_reduce = _act_check in ("CLOSE", "REDUCE", "SELL", "QUICK_CLOSE", "QUICK_QUICK_CLOSE", "FULL_CLOSE", "PROFIT_TAKE", "STOP_MAJOR_LOSS_REDUCE", "STOP_FUNCTIONS_KILL", "HEDGE_CLOSE", "NO_PROFIT") or "CLOSE" in (reason or "").upper() or "REDUCE" in (reason or "").upper() or "NO_PROFIT" in (reason or "").upper()
         _force_webhook_reduces = False
         # POSITIONS REVAMP 2026-10-06: OPEN on a leftover BROKER position (local may be stale/flat) becomes a gain-gated
         # AUGMENT here, before the UAG gate below. Broker read = positions_truth snapshot (<=1 s cache, single-flight).

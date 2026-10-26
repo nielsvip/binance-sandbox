@@ -892,9 +892,8 @@ def heikin_ashi(df: pd.DataFrame) -> Tuple[str, Optional[str]]:
     return current_color, prev_color
 
 def wma(series: pd.Series, length: int) -> pd.Series:
-    if len(series) < length or length <= 0: return pd.Series(index=series.index, dtype=float)
-    weights = np.arange(1, length + 1)
-    return series.rolling(length).apply(lambda x: np.sum(weights * x) / np.sum(weights), raw=True)
+    from indicator_array_fast import weighted_moving_average
+    return weighted_moving_average(series, length)
 
 def hma(series: pd.Series, length: int) -> pd.Series:
     if len(series) < length: return pd.Series(index=series.index, dtype=float)

@@ -285,6 +285,56 @@ def cpu_bound_calculation(closes_1m, closes_3m, last_price, last_tick_ts):
         return None
 
 # --- FAST CANDLE BUILDER ---
+def _load_closed_15m_prefix(symbol, bucket_ts, cache_dirs, secondary_tf):
+    import json
+    import re
+    from closed_bar_feed import timestamp_epoch
+    records = {}
+    for tf, span in [('1m', 60), (secondary_tf, 180 if secondary_tf == '3m' else 300)]:
+        for directory in cache_dirs:
+            path = Path(directory) / f'{symbol}_{tf}.json'
+            try:
+                with path.open('rb') as stream:
+                    stream.seek(max(0, path.stat().st_size - 131072))
+                    recent = stream.read().decode('utf-8')
+                for match in re.finditer(r'\{[^{}]*\}', recent):
+                    row = json.loads(match.group())
+                    stamp = timestamp_epoch(row.get('timestamp') or row.get('time'))
+                    if stamp < bucket_ts or stamp + span > bucket_ts + 780:
+                        continue
+                    bar = {field: float(row[field]) for field in ('open', 'high', 'low', 'close')}
+                    if not all(value > 0 and value < float('inf') for value in bar.values()):
+                        continue
+                    bar['_span_s'] = span
+                    bar['_source'] = f'kline_{tf}'
+                    records.setdefault((stamp, span), bar)
+            except (OSError, ValueError, TypeError, KeyError):
+                continue
+    return records
+
+
+def _closed_15m_tradeable_symbols(base_path, fallback, stocks=False):
+    import json
+    symbols = set()
+    try:
+        if stocks:
+            for account in ('tra', 'trb', 'trc'):
+                for side in ('long', 'short'):
+                    path = Path(base_path) / f'symbols_{account}_{side}.json'
+                    if path.exists():
+                        symbols.update(json.loads(path.read_text()))
+        else:
+            active = Path(base_path) / 'symbols_active.json'
+            if active.exists():
+                symbols.update(json.loads(active.read_text()))
+            keys = Path(base_path) / 'tradeable_keys.json'
+            if keys.exists():
+                symbols.update(item.split(':')[-1].rsplit('_', 1)[0] for item in json.loads(keys.read_text()))
+    except (OSError, ValueError, TypeError):
+        return list(fallback)
+    return sorted(symbols) if symbols else list(fallback)
+
+
 class KlineLoader:
     @staticmethod
     def load_history(symbol: str, interval: str) -> dict:
@@ -1437,6 +1487,42 @@ class MarketDataEngine:
                 await asyncio.gather(*writes, return_exceptions=True)
             await asyncio.sleep(0.1)
 
+    async def prepare_closed_15m_loop(self):
+        loop = asyncio.get_running_loop()
+        executor = ThreadPoolExecutor(max_workers=8, thread_name_prefix='prefix15m')
+        prepared = self.__dict__.setdefault('_closed_15m_prepared', {})
+        cache_dirs = [BASE_PATH / 'klines_cache', BASE_PATH / 'klines_cache_gateway', BASE_PATH / 'klines_canonical']
+        try:
+            while self.running:
+                now = time.time()
+                bucket_ts = int(now // 900) * 900
+                elapsed = now - bucket_ts
+                universe = await loop.run_in_executor(executor, _closed_15m_tradeable_symbols, BASE_PATH, self.symbols)
+                self._closed_15m_universe = universe
+                if elapsed < 780:
+                    await asyncio.sleep(min(1.0, max(0.05, 780 - elapsed)))
+                    continue
+                jobs = []
+                for symbol in universe:
+                    cached = prepared.get((symbol, bucket_ts), {})
+                    covered = {minute for (stamp, span), _ in cached.items() for minute in range(stamp, stamp + span, 60)}
+                    if len(covered) >= 13:
+                        continue
+                    async def _prepare(ticker=symbol, bucket=bucket_ts):
+                        rows = await loop.run_in_executor(executor, _load_closed_15m_prefix, ticker, bucket, cache_dirs, '3m')
+                        prepared[(ticker, bucket)] = rows
+                    jobs.append(_prepare())
+                if jobs:
+                    await asyncio.gather(*jobs)
+                    ready = sum(len({minute for (stamp, span), _ in prepared.get((symbol, bucket_ts), {}).items() for minute in range(stamp, stamp + span, 60)}) >= 13 for symbol in universe)
+                    logger.info(f'[CLOSED_15M_PREP] crypto bucket={bucket_ts} minute={int(elapsed // 60)} ready={ready}/{len(universe)} at={time.time():.6f}')
+                for key in list(prepared):
+                    if key[1] < bucket_ts - 900:
+                        prepared.pop(key, None)
+                await asyncio.sleep(1)
+        finally:
+            executor.shutdown(wait=False)
+
     async def closed_15m_writeback(self):
         from closed_bar_feed import aggregate_closed_15m, publish_closed_15m
         loop = asyncio.get_running_loop()
@@ -1449,11 +1535,13 @@ class MarketDataEngine:
                 bucket_ts = int(now // 900) * 900 - 900
                 jobs = []
                 missing = []
-                for symbol in list(self.symbols):
+                for symbol in list(self.__dict__.get("_closed_15m_universe", self.symbols)):
                     if sent.get(symbol) == bucket_ts:
                         continue
                     store = self.market.data.get(symbol) or {}
-                    bars = store.get('ohlc_1m') or {}
+                    minute_bars = store.get('ohlc_1m') or {}
+                    bars = dict(self.__dict__.get('_closed_15m_prepared', {}).get((symbol, bucket_ts), {}))
+                    bars.update({stamp: bar for stamp, bar in minute_bars.items() if bucket_ts + 780 <= stamp < bucket_ts + 900})
                     completed = aggregate_closed_15m(bars, bucket_ts, now)
                     if completed is None:
                         missing.append(symbol)
@@ -1610,6 +1698,7 @@ class MarketDataEngine:
                 self.klines_cache_writeback(),
                 self.provisional_15m_writeback(),
                 self.closed_15m_writeback(),
+                self.prepare_closed_15m_loop(),
                 self.rest_klines_repair_loop(),
                 self.funding_rate_loop(),  # 2026-04-27: live funding-rate refresh into market.data[sym]['funding_rate']
                 self.open_interest_loop(),  # 2026-04-27: live OI refresh into market.data[sym]['oi_value','oi_change_1h_pct']

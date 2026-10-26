@@ -26055,14 +26055,7 @@ async def check_exit_candidates_for_account(
                 # No position may be held through dc_low_4h (LONG) / dc_high_4h (SHORT). Close NOW regardless of gain/min_hold/NOLOSS/hedge-protect.
                 try:
                     _ult_is_long_q = position_side == "LONG"
-                    _hs_tf_q = (
-                        str(getattr(config, "DC_HARD_STOP_TF", "4h") or "4h")
-                        .strip()
-                        .upper()
-                        if "config" in dir()
-                        else "4h"
-                    )
-                    _hs_tf_q = "D" if _hs_tf_q in ("D", "1D", "DAILY") else "4h"
+                    _hs_tf_q = "4h"  # mandatory DC4 stop always uses the 4h channel
                     _hs_k_low_q = "dc_low_D" if _hs_tf_q == "D" else "dc_low_4h"
                     _hs_k_high_q = "dc_high_D" if _hs_tf_q == "D" else "dc_high_4h"
                     _ult_dc_low_q = (
@@ -26088,11 +26081,11 @@ async def check_exit_candidates_for_account(
                     _ult_breach_q = (
                         _ult_is_long_q
                         and _ult_dc_low_q > 0
-                        and current_price <= _ult_dc_low_q
+                        and current_price <= _ult_dc_low_q * 0.9975
                     ) or (
                         (not _ult_is_long_q)
                         and _ult_dc_high_q > 0
-                        and current_price >= _ult_dc_high_q
+                        and current_price >= _ult_dc_high_q * 1.0025
                     )
                     if (
                         _ult_breach_q

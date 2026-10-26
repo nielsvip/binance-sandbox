@@ -705,8 +705,10 @@ def process(
             "staleness_sec": round(t0 - base_last, 1),
         }
     )
+    fingerprint = [list(part) for part in _store_fingerprint(sym)]
     if (
         not force
+        and prev.get("npz_store_fingerprint") == fingerprint
         and prev.get("npz_parent_last") == par_ts
         and prev.get("set_md5") == set_md5(overrides)
         and prev.get("engine_md5") == emd5
@@ -816,6 +818,7 @@ def process(
     reanchor_note = "rolling window refreshed from latest NPZ row"
     t3 = _now()
     state = {
+        "npz_store_fingerprint": fingerprint,
         "ss": ss,
         "mode": mode_flag,
         "account": entry.get("account"),

@@ -1423,13 +1423,8 @@ def squeeze_features(close_series: pd.Series, high_series: pd.Series, low_series
 
 
 def find_pivots_arr(arr: np.ndarray, lookback: int = 5) -> Tuple[np.ndarray, np.ndarray]:
-    # Confirmed pivots only (lagged by `lookback` bars after — no repaint).
-    n = len(arr); ph = np.zeros(n, dtype=bool); pl = np.zeros(n, dtype=bool)
-    for i in range(lookback, n - lookback):
-        a = arr[i]; lwin = arr[i - lookback:i]; rwin = arr[i + 1:i + 1 + lookback]
-        if a > lwin.max() and a > rwin.max(): ph[i] = True
-        if a < lwin.min() and a < rwin.min(): pl[i] = True
-    return ph, pl
+    from indicator_array_fast import confirmed_pivots
+    return confirmed_pivots(arr, lookback)
 
 
 def detect_divergence(price_arr: np.ndarray, ind_arr: np.ndarray, lookback: int = 5, decay: int = 10, match_window: int = 3) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -1851,10 +1846,8 @@ def heikin_ashi(df: pd.DataFrame) -> Tuple[str, Optional[str]]:
     return current_color, prev_color
 
 def wma(series: pd.Series, length: int) -> pd.Series:
-    """Weighted Moving Average"""
-    if len(series) < length or length <= 0: return pd.Series(index=series.index, dtype=float)
-    weights = np.arange(1, length + 1)
-    return series.rolling(length).apply(lambda x: np.sum(weights * x) / np.sum(weights), raw=True)
+    from indicator_array_fast import weighted_moving_average
+    return weighted_moving_average(series, length)
 
 def hma(series: pd.Series, length: int) -> pd.Series:
     """Hull Moving Average"""

@@ -266,8 +266,10 @@ def make_compute(base, mode):
     except Exception:
         return None
     try:
-        from ez_indicators import IndicatorCalculator as _Calc
-
+        if mode == "tradier":
+            from tradier_indicators import IndicatorCalculator as _Calc
+        else:
+            from ez_indicators import IndicatorCalculator as _Calc
         _calc_cls = _Calc
     except Exception:
         _calc_cls = None

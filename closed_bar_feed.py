@@ -21,17 +21,36 @@ def aggregate_closed_15m(bars, bucket_ts, now_s):
     bucket_ts = int(bucket_ts)
     if float(now_s) < bucket_ts + 900:
         return None
-    selected = {int(ts): bar for ts, bar in bars.items() if bucket_ts <= int(ts) < bucket_ts + 900}
-    if any(bucket_ts + offset not in selected for offset in range(0, 900, 60)):
+    options = {}
+    for key, bar in bars.items():
+        try:
+            start = int(key[0] if isinstance(key, tuple) else key)
+            span = int(bar.get('_span_s', 60))
+            if span not in (60, 180, 300) or start < bucket_ts or start + span > bucket_ts + 900:
+                continue
+            prices = [float(bar[field]) for field in ('open', 'high', 'low', 'close')]
+            if not all(math.isfinite(price) and price > 0 for price in prices):
+                continue
+            options.setdefault(start, []).append((span, bar))
+        except (TypeError, ValueError, KeyError):
+            continue
+    memo = {}
+    def tile(start):
+        if start == bucket_ts + 900:
+            return []
+        if start in memo:
+            return memo[start]
+        for span, bar in sorted(options.get(start, []), key=lambda item: item[0]):
+            rest = tile(start + span)
+            if rest is not None:
+                memo[start] = [bar] + rest
+                return memo[start]
+        memo[start] = None
         return None
-    values = [selected[bucket_ts + offset] for offset in range(0, 900, 60)]
-    try:
-        prices = [float(bar[key]) for bar in values for key in ('open', 'high', 'low', 'close')]
-        if not all(math.isfinite(price) and price > 0 for price in prices):
-            return None
-        return {'timestamp': datetime.fromtimestamp(bucket_ts, timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ'), 'open': float(values[0]['open']), 'high': max(float(bar['high']) for bar in values), 'low': min(float(bar['low']) for bar in values), 'close': float(values[-1]['close']), '_provisional': True, '_closed': True, '_source': 'mark_resample', '_bar_close_ts': bucket_ts + 900}
-    except (KeyError, TypeError, ValueError):
+    values = tile(bucket_ts)
+    if not values:
         return None
+    return {'timestamp': datetime.fromtimestamp(bucket_ts, timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ'), 'open': float(values[0]['open']), 'high': max(float(bar['high']) for bar in values), 'low': min(float(bar['low']) for bar in values), 'close': float(values[-1]['close']), '_provisional': True, '_closed': True, '_source': 'mark_resample', '_bar_close_ts': bucket_ts + 900}
 
 
 def atomic_json(path, payload):

@@ -43,12 +43,12 @@ pull_one() {
   esac
   if [ "$SCOPE" = "7d" ]; then shard=all; fi
   mkdir -p "$stage/intents" "$stage/state"
-  rsync -az --timeout=15 -e "$SSH" --partial-dir=.rsync-partial --delay-updates --include='*.json' --exclude='*' "$host:$remote/intents/" "$stage/intents/" >>"$LOG" 2>&1
+  rsync -az --timeout=60 -e "$SSH" --partial-dir=.rsync-partial --delay-updates --include='*.json' --exclude='*' "$host:$remote/intents/" "$stage/intents/" >>"$LOG" 2>&1
   rc=$?
-  rsync -az --timeout=15 -e "$SSH" --partial-dir=.rsync-partial --delay-updates --include='*.json' --exclude='*' "$host:$remote/state/" "$stage/state/" >>"$LOG" 2>&1
+  rsync -az --timeout=60 -e "$SSH" --partial-dir=.rsync-partial --delay-updates --include='*.json' --exclude='*' "$host:$remote/state/" "$stage/state/" >>"$LOG" 2>&1
   rc=$((rc + $?))
   if [ "${VEC_LIVE_PULL_REGISTRY:-0}" = "1" ]; then
-    rsync -az --timeout=15 -e "$SSH" "$host:$remote/vec_driven.json" "$stage/vec_driven.json" >>"$LOG" 2>&1
+    rsync -az --timeout=60 -e "$SSH" "$host:$remote/vec_driven.json" "$stage/vec_driven.json" >>"$LOG" 2>&1
     rc=$((rc + $?))
   fi
   if [ $rc -ne 0 ]; then

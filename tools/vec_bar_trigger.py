@@ -30,8 +30,10 @@ def shard_sides(sets, serves, shard):
     return sorted(ss for ss in sets if serves(ss, shard))
 
 
-def should_probe(ss, zip_mtime, tail_mtime, seen):
+def should_probe(ss, zip_mtime, tail_mtime, seen, revision=None):
     cur = (float(zip_mtime or 0.0), float(tail_mtime or 0.0))
+    if revision is not None:
+        cur += (revision,)
     if seen.get(ss) != cur:
         seen[ss] = cur
         return True
@@ -78,7 +80,7 @@ def run_once(base, shard, workers=WORKERS, verbose=False):
             continue
         sym, _ = split_ss(ss)
         z, t = store_mtimes(base, sym)
-        if should_probe(ss, z, t, seen):
+        if should_probe(ss, z, t, seen, revision=(E.set_md5(ov), em["combined"])):
             jobs.append((ss, entry, ov, em["combined"], False))
     run_once._seen = seen
     rec = {

@@ -4243,6 +4243,14 @@ class QuickConfig:
     # data/per_sym_settings.json (built from the TEMPLATE bold defaults). Lookup order everywhere: per-sym override >
     # cat_side default (cat_side_defaults.get_for) > the single value in this class. False = old single-default behaviour.
     CAT_SIDE_DEFAULTS_ENABLED: bool = True
+    ANG_TIMING_GATE_ENABLED: bool = True
+    ANG_TIMING_VECTOR_ACCOUNT_KEY: str = "ang"  # sweep measures ANG; live twin overrides with its real account
+    ANG_TIMING_ACCOUNTS: tuple = ("ang",)
+    ANG_TIMING_LOOKBACK: int = 20
+    ANG_TIMING_FRESH_BARS: int = 3
+    ANG_TIMING_TIGHT_ATR: float = 0.5
+    ANG_TIMING_HOLD_BARS: int = 12
+    ANG_TIMING_HOLD_TOL_ATR: float = 0.25
     MODE: str = (
         "crypto"  # Fixed: was tradier, caused BTCUSDC 7d 0 vs 15m 1081 (int truncation) — crypto must be fractional
     )
@@ -18895,6 +18903,15 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _hsc = vec_decisions.htf_signal_consume.build_ctx(cfg, npz, n, is_long, ts, entry_sig, _hsc_core, _entry_or_srcs, _safe)  # 2026-10-13 V17 TF law: HTF-only fires need a fresh LTF confirmation, attempts tighten (None = inert)
     if _hsc is not None:
         entry_sig = np.array(entry_sig, dtype=bool, copy=True)  # a gated bar's entry_sig[i] is cleared in-loop (reentry pathways stay evaluable)
+    _ang_timing_failed = None
+    _ang_account = str(getattr(cfg, "ANG_TIMING_VECTOR_ACCOUNT_KEY", "ang") or "").strip().lower()
+    _ang_accounts = {str(a).strip().lower() for a in (getattr(cfg, "ANG_TIMING_ACCOUNTS", ("ang",)) or ())}
+    if not is_tradier and _ang_account in _ang_accounts and bool(getattr(cfg, "ANG_TIMING_GATE_ENABLED", True)):
+        try:
+            from vec_decisions.ang_timing import failed_mask_from_npz
+            _ang_timing_failed = _setup_memo("ang_timing_failed", None, cfg, npz, n, is_long, lambda: failed_mask_from_npz(npz, is_long, cfg))
+        except (KeyError, ValueError):
+            pass  # live timing gate also allows entry when its 15m source is unavailable
     _ws_on = bool(is_tradier)  # STOCK WHOLE-SHARE twin: every live stock order is whole shares (tradier execute_now max(1, int(round(q))))
     _ws_ne = 0
     _cs_snap = None
@@ -19903,6 +19920,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 )
             ):  # 2026-10-20 USER LAW: the GAP morning rebuy is a reentry pathway too (cross-back required)
                 fire = True  # WIRING LANE E: morning rebuy bypasses signal vetoes above (live: queued OPEN, not a signal; order guards below still apply)
+            if fire and _ang_timing_failed is not None and bool(_ang_timing_failed[i]):
+                fire = False  # live execute_now ANG timing HOLD applies to every OPEN and REENTRY
             if fire:
                 mult = (
                     getattr(cfg, "REENTRY_TIER1_SIZE_MULT_TRADIER", 1.0)
@@ -21982,6 +22001,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     add_qty = 0.0  # the cap left less than the exchange minimum — the order could not be placed
                 if add_qty > 0 and not _sd_ok("AUGMENT"):
                     add_qty = 0.0  # SCALE_DIRECTION: price is moving against the position — this is reduce territory
+                if add_qty > 0 and _ang_timing_failed is not None and bool(_ang_timing_failed[i]):
+                    add_qty = 0.0  # live execute_now ANG timing HOLD also applies to AUGMENT
                 if add_qty > 0:
                     new_qty = pos["qty"] + add_qty
                     pos["avg_price"] = (
@@ -22251,6 +22272,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _reaug_qty = max(float(_reaug_qty), _qq.min_viable_qty(sym, px, cfg))
             _reaug_qty = _qq.cap_add_qty(cfg, pos["qty"], _reaug_qty, px, is_tradier)
             if _mvf_on and 0 < _reaug_qty < _qq.min_viable_qty(sym, px, cfg):
+                _reaug_qty = 0.0
+            if _reaug_qty > 0 and _ang_timing_failed is not None and bool(_ang_timing_failed[i]):
                 _reaug_qty = 0.0
             if _reaug_qty > 0:
                 _reaug_new = pos["qty"] + _reaug_qty
