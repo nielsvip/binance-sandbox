@@ -1,32 +1,22 @@
 {
-  "ts": "2026-10-26T05:00:10.364544+00:00",
-  "tick": "2026-10-26T04:58:01.632261+00:00",
-  "tick_age_s": 129,
+  "ts": "2026-10-26T05:05:05.895707+00:00",
+  "tick": "2026-10-26T05:04:01.474431+00:00",
+  "tick_age_s": 64,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run37.json",
     "round": "run37",
     "complete": false,
     "universe_n": 212,
-    "n_complete": 32,
-    "n_pending": 180,
+    "n_complete": 35,
+    "n_pending": 177,
     "n_refused_only": 0,
     "n_excluded": 0,
-    "n_launchable_pending": 165,
+    "n_launchable_pending": 162,
     "hosts_not_visible": []
   },
   "hosts": {
-    "s2": {
-      "cpu_pct": 31,
-      "slots": "2/4",
-      "observed_running": [
-        "MOVRUSDT"
-      ],
-      "published_last_hour": 0,
-      "idle_reason": null,
-      "mem_avail_mb": 13238
-    },
     "s1": {
-      "cpu_pct": 97,
+      "cpu_pct": 98,
       "slots": "2/4",
       "observed_running": [
         "FARTCOINUSDT",
@@ -34,41 +24,51 @@
       ],
       "published_last_hour": 0,
       "idle_reason": "mem guard",
-      "mem_avail_mb": 9000
+      "mem_avail_mb": 2177
     },
-    "s5": {
-      "cpu_pct": 97,
-      "slots": "4/4",
+    "s2": {
+      "cpu_pct": 100,
+      "slots": "2/4",
       "observed_running": [
-        "COP",
-        "CRWD",
-        "GOOGL",
-        "HD"
+        "MOVRUSDT",
+        "RLCUSDT"
       ],
-      "published_last_hour": 1,
-      "idle_reason": "slots full",
-      "mem_avail_mb": 9549
+      "published_last_hour": 0,
+      "idle_reason": "mem guard",
+      "mem_avail_mb": 2232
     },
     "s6": {
-      "cpu_pct": 100,
+      "cpu_pct": 49,
       "slots": "4/4",
       "observed_running": [
         "CDE",
-        "CRWV",
-        "MNTS",
-        "SCCO"
+        "COHR",
+        "MNTS"
       ],
       "published_last_hour": 3,
+      "idle_reason": null,
+      "mem_avail_mb": 21728
+    },
+    "s5": {
+      "cpu_pct": 94,
+      "slots": "4/4",
+      "observed_running": [
+        "ASML",
+        "COP",
+        "CRWD",
+        "GOOGL"
+      ],
+      "published_last_hour": 1,
       "idle_reason": "slots full",
-      "mem_avail_mb": 18805
+      "mem_avail_mb": 9888
     }
   },
   "one_hour_total": 4,
   "alerts": [
-    "LOW_THROUGHPUT:s2:0/h",
-    "LOW_CPU:s2:31%",
     "LOW_THROUGHPUT:s1:0/h",
-    "LOW_THROUGHPUT:s5:1/h",
-    "LOW_THROUGHPUT:s6:3/h"
+    "LOW_THROUGHPUT:s2:0/h",
+    "LOW_THROUGHPUT:s6:3/h",
+    "LOW_CPU:s6:49%",
+    "LOW_THROUGHPUT:s5:1/h"
   ]
 }
