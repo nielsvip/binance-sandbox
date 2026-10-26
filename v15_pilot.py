@@ -6308,7 +6308,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     # AUTOPSY-INERT (USER 2026-10-08, approved): switches the autopsy found to touch no trade on this sym_side's base keep their
     # NAKED eval (real G every row) but skip the ~231 yellow evals unless (a) rotating sample 1/V15_INERT_SAMPLE_EVERY rounds or
     # (b) the naked eval moves the ledger (then the full yellow pass runs immediately: AUTOPSY-INERT-REVIVED). Never a fake 0.
-    _inert_effective = inert_switches_from_start(os.environ.get("V15_START_OVERRIDES", "")) if os.environ.get("V15_INERT_PRUNE", "1") == "1" else set()
+    _inert_effective = inert_switches_from_start(os.environ.get("V15_START_OVERRIDES", "")) if os.environ.get("V15_INERT_PRUNE", "1") == "1" and getattr(args, "window_days", 30) != 30 else set()
     _inert_every = int(os.environ.get("V15_INERT_SAMPLE_EVERY", "25") or 25)
     _revive_min = float(os.environ.get("V15_REVIVE_MIN_DELTA", "-0.5"))
     try:
@@ -12880,7 +12880,7 @@ def _main_single():
         # (USER 2026-09-30: V15_INGEST_BEST=1 keeps the prior-best overrides FIRST, then the baseline)
         print(f"[FRESH-RUN] {new_symside}: prior-best/previous-sheet ingest ignored ({len(overrides)} -> live recipe {len(_recipe_only_overrides)} overrides)", flush=True)
         overrides = dict(_recipe_only_overrides)
-    if os.environ.get("V15_START_OVERRIDES"):
+    if os.environ.get("V15_START_OVERRIDES") and args.window_days != 30:
         # USER 2026-09-29 (BIBLE §58): re-run the 30D sheet from the 365D-repaired set (tools/v15_365_repair.py output
         # or a plain {switch: value} json) — it becomes the sheet's live-recipe baseline
         _so = json.load(open(os.environ["V15_START_OVERRIDES"]))
@@ -12889,6 +12889,8 @@ def _main_single():
         print(f"[START-OVERRIDES] {new_symside}: {len(_so)} overrides from {os.environ['V15_START_OVERRIDES']} (365D-repaired set)", flush=True)
         overrides = {**_tpl_defaults, **_so}
         _recipe_only_overrides = dict(overrides)
+    elif os.environ.get("V15_START_OVERRIDES") and args.window_days == 30:
+        print(f"[START-OVERRIDES-IGNORED] {new_symside}: 30D baseline is selected only from validated Mac live snapshot and cat_side template", flush=True)
     # USER 2026-10-02 (finish qualification REDO): a DONE stage that scheduled a re-fill left needs_redo
     # in progress — the repaired set becomes this fill's baseline (§58 step 5), same as V15_START_OVERRIDES.
     # 2026-10-09 (USER revision audit, AGLDUSDT_SHORT proof): the fresh repaired set ALWAYS wins — it used to
@@ -12900,12 +12902,14 @@ def _main_single():
         if _nr_pp.exists():
             _nr_pj = json.loads(_nr_pp.read_text())
             _nr = _nr_pj.get("needs_redo") or {}
-            if _nr.get("overrides") and _nr_pj.get("verdict") != "IMPOSSIBLE":
+            if _nr.get("overrides") and _nr_pj.get("verdict") != "IMPOSSIBLE" and args.window_days != 30:
                 _so2 = strip_global_only(dict(_nr["overrides"]))
                 print(f"[REDO-START] {new_symside}: {len(_so2)} overrides from needs_redo depth {_nr.get('depth')} ({(_nr.get('reason') or '')[:100]})", flush=True)
                 overrides = {**_tpl_defaults, **_so2}
                 _recipe_only_overrides = dict(overrides)
                 _nr_applied = True
+            elif _nr.get("overrides") and args.window_days == 30:
+                print(f"[REDO-START-IGNORED] {new_symside}: 30D baseline is selected only from validated Mac live snapshot and cat_side template", flush=True)
     except Exception as _nr_e:
         print(f"[redo-start-warn] {_nr_e}", flush=True)
     if os.environ.get("V15_TEMPLATE_DEFAULTS", "0") == "1" and not os.environ.get("V15_START_OVERRIDES") and not _nr_applied:
@@ -13073,7 +13077,7 @@ def _main_single():
         # Bias-free baseline (backtest-expert: 80% breaking, no look-ahead): evaluate cat_side defaults first, then per_sym
         # full snapshot from last promotion, pick best credible as E3. Winning baseline's full set is diffed against
         # latest bold template defaults — every non-current default becomes an override in column C.
-        _cat_persym_contract = bool(prepared is not None and not os.environ.get("V15_START_OVERRIDES") and not locals().get("_nr_applied") and os.environ.get("V15_SKIP_CAT_PERSYM_BASELINE", "0") != "1")
+        _cat_persym_contract = bool(prepared is not None and args.window_days == 30)
         _cat_persym_selected = False
         if _cat_persym_contract:
             try:

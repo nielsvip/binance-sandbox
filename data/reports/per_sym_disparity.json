@@ -1,27 +1,32 @@
 {
- "ts": "2026-10-26T16:33:06Z",
+ "ts": "2026-10-26T16:42:41Z",
  "n": 104,
  "classes": {
-  "OK": 98,
+  "OK": 97,
   "DRIFT": 5,
+  "BOARD_TOO_OLD": 1,
   "NO_LATEST_BOARD": 1
  },
  "n_drift": 5,
- "n_entry_blocked": 6,
+ "n_entry_blocked": 7,
  "drift_keys": {
+  "EMA_DIST_SIZING_MULT": 4,
+  "FIXED_STOP_BUFFER_PCT": 4,
   "DAYTRADE_DC_TARGET_TF": 3,
-  "EMA_DIST_SIZING_MULT": 3,
-  "FIXED_STOP_BUFFER_PCT": 3,
+  "ENTRY_VET_COMBINED_STOCH_GATE_ENABLED": 3,
   "FIXED_STOP_REF_FIELD": 3,
+  "FIXED_STOP_REF_TF": 3,
   "CIRCUIT_SHARPE_GATES_FILTER_TF": 2,
   "DC_EDGE_SIZING_MAX_MULT": 2,
   "DC_HARD_STOP_15M_ENABLED": 2,
-  "ENTRY_VET_COMBINED_STOCH_GATE_ENABLED": 2,
   "EXIT_R1_R2_FILTER_TF": 2,
-  "FIXED_STOP_REF_TF": 2,
+  "EXIT_TOP_FADE_FILTER_TF": 2,
   "FIXED_STOP_TIGHTEN_MODE": 2,
   "FIXED_STOP_TIGHTEN_TRIGGER_PCT": 2,
   "GAP_MOC_FORCE_MOC_AT_CLOSE": 2,
+  "GOLDEN_RULE_BASE_USD": 2,
+  "ADX_REGIME_FILTER_ENABLED": 2,
+  "EMA_DIST_SIZING_ENABLED": 2,
   "ATR_ADAPTIVE_STOP_MULT": 2,
   "AUGMENT_INTO_REENTRY_ENABLED": 2,
   "DC_EDGE_SIZING_MIN_MULT": 2,
@@ -29,16 +34,12 @@
   "DC_MOMENTUM_BOTA_SCORER_FILTER_TF": 1,
   "DELTA_ENGINE_FILTER_TF": 1,
   "EMA50_15M_ENTRY_FILTER_ENABLED": 1,
-  "EXIT_TOP_FADE_FILTER_TF": 1,
   "EXIT_VELOCITY_WT_MIN_TFS": 1,
-  "GOLDEN_RULE_BASE_USD": 1,
   "GAP_MOC_EXIT_ENABLED": 1,
   "GOLDEN_RULE_HTF_MIN_TFS": 1,
   "MOM3_FILTER_TF": 1,
   "MTF_DC_REJECT_FILTER_TF": 1,
-  "WT_DC_EXIT_THRESHOLD": 1,
-  "PARTIAL_PROFIT_LOCK_FRAC": 1,
-  "REENTRY_WT15M_SIZE_MULT": 1
+  "WT_DC_EXIT_THRESHOLD": 1
  },
  "rows": [
   {
@@ -51,6 +52,17 @@
    "n_diff": 0,
    "board_md5": "bdadbb1d",
    "n_board_overrides": 938
+  },
+  {
+   "sym_side": "1000PEPEUSDC_LONG",
+   "venue": "crypto",
+   "entry_allowed": false,
+   "class": "BOARD_TOO_OLD",
+   "why": "BOARD_TOO_OLD_233h>216h",
+   "diff_keys": [],
+   "n_diff": 0,
+   "board_md5": "2547153c",
+   "n_board_overrides": 850
   },
   {
    "sym_side": "ACEUSDT_SHORT",
@@ -112,7 +124,7 @@
    "venue": "stocks",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_c9eb6bf4_age10h_vintage_from_published_at",
+   "why": "OK_BOARD_c9eb6bf4_age11h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "c9eb6bf4",
@@ -206,17 +218,6 @@
    "n_board_overrides": 913
   },
   {
-   "sym_side": "ATOMUSDT_SHORT",
-   "venue": "crypto",
-   "entry_allowed": true,
-   "class": "OK",
-   "why": "OK_BOARD_762cd185_age97h_vintage_from_published_at",
-   "diff_keys": [],
-   "n_diff": 0,
-   "board_md5": "762cd185",
-   "n_board_overrides": 918
-  },
-  {
    "sym_side": "AU_SHORT",
    "venue": "stocks",
    "entry_allowed": true,
@@ -243,7 +244,7 @@
    "venue": "crypto",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_652c8b1a_age75h_vintage_from_published_at",
+   "why": "OK_BOARD_652c8b1a_age76h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "652c8b1a",
@@ -254,7 +255,7 @@
    "venue": "stocks",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_5bbb7d38_age108h_vintage_from_published_at",
+   "why": "OK_BOARD_5bbb7d38_age109h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "5bbb7d38",
@@ -270,17 +271,6 @@
    "n_diff": 0,
    "board_md5": "0d934cb4",
    "n_board_overrides": 919
-  },
-  {
-   "sym_side": "BCHUSDC_SHORT",
-   "venue": "crypto",
-   "entry_allowed": true,
-   "class": "OK",
-   "why": "OK_BOARD_57cf8a19_age106h_vintage_from_published_at",
-   "diff_keys": [],
-   "n_diff": 0,
-   "board_md5": "57cf8a19",
-   "n_board_overrides": 900
   },
   {
    "sym_side": "BEAMXUSDT_LONG",
@@ -331,7 +321,7 @@
    "venue": "crypto",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_4909727b_age6h_vintage_from_published_at",
+   "why": "OK_BOARD_4909727b_age7h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "4909727b",
@@ -354,6 +344,17 @@
    "n_diff": 6,
    "board_md5": "019ab858",
    "n_board_overrides": 877
+  },
+  {
+   "sym_side": "BNBUSDC_LONG",
+   "venue": "crypto",
+   "entry_allowed": true,
+   "class": "OK",
+   "why": "OK_BOARD_155ebbd2_age83h_vintage_from_published_at",
+   "diff_keys": [],
+   "n_diff": 0,
+   "board_md5": "155ebbd2",
+   "n_board_overrides": 905
   },
   {
    "sym_side": "BWXT_SHORT",
@@ -393,7 +394,7 @@
    "venue": "stocks",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_78e3901e_age10h_vintage_from_published_at",
+   "why": "OK_BOARD_78e3901e_age11h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "78e3901e",
@@ -433,6 +434,17 @@
    "n_board_overrides": 903
   },
   {
+   "sym_side": "COTIUSDT_SHORT",
+   "venue": "crypto",
+   "entry_allowed": true,
+   "class": "OK",
+   "why": "OK_BOARD_97c16354_age197h_vintage_from_published_at",
+   "diff_keys": [],
+   "n_diff": 0,
+   "board_md5": "97c16354",
+   "n_board_overrides": 887
+  },
+  {
    "sym_side": "CRWV_SHORT",
    "venue": "stocks",
    "entry_allowed": true,
@@ -448,7 +460,7 @@
    "venue": "stocks",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_edeeb32b_age62h_vintage_from_published_at",
+   "why": "OK_BOARD_edeeb32b_age63h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "edeeb32b",
@@ -468,24 +480,45 @@
   {
    "sym_side": "DUSKUSDT_LONG",
    "venue": "crypto",
-   "entry_allowed": true,
-   "class": "OK",
-   "why": "OK_BOARD_7484f981_age108h_vintage_from_published_at",
-   "diff_keys": [],
-   "n_diff": 0,
+   "entry_allowed": false,
+   "class": "DRIFT",
+   "why": "LIVE_SET_NE_BOARD_44keys:ADX_RANGING_THRESHOLD,ADX_REGIME_FILTER_ENABLED,BAR_PATTERNS_FILTER_TF,BB_RECOVERY_FILTER_TF",
+   "diff_keys": [
+    "ADX_RANGING_THRESHOLD",
+    "ADX_REGIME_FILTER_ENABLED",
+    "BAR_PATTERNS_FILTER_TF",
+    "BB_RECOVERY_FILTER_TF",
+    "EMA_BLANKET_FILTER_FILTER_TF",
+    "EMA_DIST_SIZING_ENABLED",
+    "EMA_DIST_SIZING_MULT",
+    "ENTRY_VET_COMBINED_STOCH_GATE_ENABLED",
+    "EXIT_TOP_FADE_FILTER_TF",
+    "FIXED_STOP_BUFFER_PCT",
+    "FIXED_STOP_REF_TF",
+    "FROZEN_STOP_FILTER_TF",
+    "GOLDEN_RULE_BASE_USD",
+    "HARDCODED_RALLY_MIN_AGE_MIN",
+    "HTF_AGAINST_FORCE_CLOSE_ENABLED",
+    "KINDERGARTEN_EMA_GATE_ENABLED",
+    "KINDERGARTEN_FILTER_TF",
+    "LEGACY_REENTRY_PSR_FULL_DC",
+    "LH_LL_TOP_EXIT_BOTH_TOL_PCT",
+    "LH_LL_TOP_EXIT_DC1H_BUFFER_PCT"
+   ],
+   "n_diff": 44,
    "board_md5": "7484f981",
    "n_board_overrides": 899
   },
   {
-   "sym_side": "EGLDUSDT_SHORT",
+   "sym_side": "ENSUSDT_SHORT",
    "venue": "crypto",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_28642269_age63h_vintage_from_published_at",
+   "why": "OK_BOARD_7220dbff_age88h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
-   "board_md5": "28642269",
-   "n_board_overrides": 915
+   "board_md5": "7220dbff",
+   "n_board_overrides": 924
   },
   {
    "sym_side": "ETN_SHORT",
@@ -503,11 +536,22 @@
    "venue": "crypto",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_6231cd83_age96h_vintage_from_published_at",
+   "why": "OK_BOARD_6231cd83_age97h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "6231cd83",
    "n_board_overrides": 908
+  },
+  {
+   "sym_side": "GALAUSDT_SHORT",
+   "venue": "crypto",
+   "entry_allowed": true,
+   "class": "OK",
+   "why": "OK_BOARD_e7f4685e_age7h_vintage_from_published_at",
+   "diff_keys": [],
+   "n_diff": 0,
+   "board_md5": "e7f4685e",
+   "n_board_overrides": 914
   },
   {
    "sym_side": "GDX_SHORT",
@@ -576,17 +620,6 @@
    "n_board_overrides": 902
   },
   {
-   "sym_side": "IOTAUSDT_SHORT",
-   "venue": "crypto",
-   "entry_allowed": true,
-   "class": "OK",
-   "why": "OK_BOARD_48c9fa9c_age50h_vintage_from_published_at",
-   "diff_keys": [],
-   "n_diff": 0,
-   "board_md5": "48c9fa9c",
-   "n_board_overrides": 928
-  },
-  {
    "sym_side": "IOTXUSDT_LONG",
    "venue": "crypto",
    "entry_allowed": true,
@@ -598,20 +631,15 @@
    "n_board_overrides": 874
   },
   {
-   "sym_side": "KAVAUSDT_LONG",
+   "sym_side": "JASMYUSDT_SHORT",
    "venue": "crypto",
-   "entry_allowed": false,
-   "class": "DRIFT",
-   "why": "LIVE_SET_NE_BOARD_4keys:PARTIAL_PROFIT_LOCK_FRAC,REENTRY_WT15M_SIZE_MULT,REGIME_RANGING_POSITION_SIZE_MULT,STDEV_LADDER_MAX_MULT",
-   "diff_keys": [
-    "PARTIAL_PROFIT_LOCK_FRAC",
-    "REENTRY_WT15M_SIZE_MULT",
-    "REGIME_RANGING_POSITION_SIZE_MULT",
-    "STDEV_LADDER_MAX_MULT"
-   ],
-   "n_diff": 4,
-   "board_md5": "e6cab908",
-   "n_board_overrides": 940
+   "entry_allowed": true,
+   "class": "OK",
+   "why": "OK_BOARD_1845640c_age41h_vintage_from_published_at",
+   "diff_keys": [],
+   "n_diff": 0,
+   "board_md5": "1845640c",
+   "n_board_overrides": 920
   },
   {
    "sym_side": "KGC_SHORT",
@@ -625,22 +653,11 @@
    "n_board_overrides": 908
   },
   {
-   "sym_side": "KMNOUSDT_LONG",
-   "venue": "crypto",
-   "entry_allowed": true,
-   "class": "OK",
-   "why": "OK_BOARD_44e472e5_age137h_vintage_from_published_at",
-   "diff_keys": [],
-   "n_diff": 0,
-   "board_md5": "44e472e5",
-   "n_board_overrides": 899
-  },
-  {
    "sym_side": "LRCX_SHORT",
    "venue": "stocks",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_a1ac1f41_age78h_vintage_from_published_at",
+   "why": "OK_BOARD_a1ac1f41_age79h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "a1ac1f41",
@@ -669,15 +686,26 @@
    "n_board_overrides": 947
   },
   {
-   "sym_side": "MASKUSDT_SHORT",
+   "sym_side": "MANAUSDT_LONG",
    "venue": "crypto",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_f358950d_age5h_vintage_from_published_at",
+   "why": "OK_BOARD_dcdf5836_age72h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
-   "board_md5": "f358950d",
-   "n_board_overrides": 973
+   "board_md5": "dcdf5836",
+   "n_board_overrides": 917
+  },
+  {
+   "sym_side": "MINAUSDT_SHORT",
+   "venue": "crypto",
+   "entry_allowed": true,
+   "class": "OK",
+   "why": "OK_BOARD_1528fd5a_age9h_vintage_from_published_at",
+   "diff_keys": [],
+   "n_diff": 0,
+   "board_md5": "1528fd5a",
+   "n_board_overrides": 101
   },
   {
    "sym_side": "MNTS_SHORT",
@@ -706,7 +734,7 @@
    "venue": "stocks",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_3a324612_age62h_vintage_from_published_at",
+   "why": "OK_BOARD_3a324612_age63h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "3a324612",
@@ -822,17 +850,6 @@
    "n_board_overrides": 906
   },
   {
-   "sym_side": "PUMPUSDT_LONG",
-   "venue": "crypto",
-   "entry_allowed": true,
-   "class": "OK",
-   "why": "OK_BOARD_c20ff47d_age42h_vintage_from_published_at",
-   "diff_keys": [],
-   "n_diff": 0,
-   "board_md5": "c20ff47d",
-   "n_board_overrides": 920
-  },
-  {
    "sym_side": "PWR_SHORT",
    "venue": "stocks",
    "entry_allowed": false,
@@ -880,7 +897,7 @@
    "venue": "crypto",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_3f923e94_age32h_vintage_from_published_at",
+   "why": "OK_BOARD_3f923e94_age33h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "3f923e94",
@@ -896,17 +913,6 @@
    "n_diff": 0,
    "board_md5": "5bc1b811",
    "n_board_overrides": 920
-  },
-  {
-   "sym_side": "RENDERUSDT_LONG",
-   "venue": "crypto",
-   "entry_allowed": true,
-   "class": "OK",
-   "why": "OK_BOARD_84dcfa2e_age26h_vintage_from_published_at",
-   "diff_keys": [],
-   "n_diff": 0,
-   "board_md5": "84dcfa2e",
-   "n_board_overrides": 929
   },
   {
    "sym_side": "RIO_SHORT",
@@ -935,7 +941,7 @@
    "venue": "crypto",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_bc143614_age96h_vintage_from_published_at",
+   "why": "OK_BOARD_bc143614_age97h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "bc143614",
@@ -951,17 +957,6 @@
    "n_diff": 0,
    "board_md5": "",
    "n_board_overrides": null
-  },
-  {
-   "sym_side": "SANDUSDT_SHORT",
-   "venue": "crypto",
-   "entry_allowed": true,
-   "class": "OK",
-   "why": "OK_BOARD_67271ba9_age69h_vintage_from_published_at",
-   "diff_keys": [],
-   "n_diff": 0,
-   "board_md5": "67271ba9",
-   "n_board_overrides": 900
   },
   {
    "sym_side": "SCCO_SHORT",
@@ -997,11 +992,22 @@
    "n_board_overrides": 886
   },
   {
+   "sym_side": "SKYAIUSDT_SHORT",
+   "venue": "crypto",
+   "entry_allowed": true,
+   "class": "OK",
+   "why": "OK_BOARD_3ae5779a_age28h_vintage_from_published_at",
+   "diff_keys": [],
+   "n_diff": 0,
+   "board_md5": "3ae5779a",
+   "n_board_overrides": 927
+  },
+  {
    "sym_side": "SLV_SHORT",
    "venue": "stocks",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_4bcc2b61_age15h_vintage_from_published_at",
+   "why": "OK_BOARD_4bcc2b61_age16h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "4bcc2b61",
@@ -1023,11 +1029,22 @@
    "venue": "crypto",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_fe363eb4_age4h_vintage_from_published_at",
+   "why": "OK_BOARD_fe363eb4_age5h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "fe363eb4",
    "n_board_overrides": 965
+  },
+  {
+   "sym_side": "SUSHIUSDT_SHORT",
+   "venue": "crypto",
+   "entry_allowed": true,
+   "class": "OK",
+   "why": "OK_BOARD_fd64e433_age43h_vintage_from_published_at",
+   "diff_keys": [],
+   "n_diff": 0,
+   "board_md5": "fd64e433",
+   "n_board_overrides": 932
   },
   {
    "sym_side": "TIAUSDC_LONG",
@@ -1063,22 +1080,11 @@
    "n_board_overrides": 1054
   },
   {
-   "sym_side": "TRXUSDT_SHORT",
-   "venue": "crypto",
-   "entry_allowed": true,
-   "class": "OK",
-   "why": "OK_BOARD_712577bf_age98h_vintage_from_published_at",
-   "diff_keys": [],
-   "n_diff": 0,
-   "board_md5": "712577bf",
-   "n_board_overrides": 904
-  },
-  {
    "sym_side": "T_SHORT",
    "venue": "stocks",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_33d01063_age7h_vintage_from_published_at",
+   "why": "OK_BOARD_33d01063_age8h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "33d01063",
@@ -1089,7 +1095,7 @@
    "venue": "stocks",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_7650c08a_age12h_vintage_from_published_at",
+   "why": "OK_BOARD_7650c08a_age13h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "7650c08a",
@@ -1140,11 +1146,22 @@
    "n_board_overrides": 908
   },
   {
+   "sym_side": "VETUSDT_LONG",
+   "venue": "crypto",
+   "entry_allowed": true,
+   "class": "OK",
+   "why": "OK_BOARD_00d8220f_age87h_vintage_from_published_at",
+   "diff_keys": [],
+   "n_diff": 0,
+   "board_md5": "00d8220f",
+   "n_board_overrides": 926
+  },
+  {
    "sym_side": "VICR_SHORT",
    "venue": "stocks",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_a37ccde6_age14h_vintage_from_published_at",
+   "why": "OK_BOARD_a37ccde6_age15h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "a37ccde6",
@@ -1166,7 +1183,7 @@
    "venue": "crypto",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_3918e59f_age32h_vintage_from_published_at",
+   "why": "OK_BOARD_3918e59f_age33h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "3918e59f",
@@ -1182,17 +1199,6 @@
    "n_diff": 0,
    "board_md5": "dd89c90d",
    "n_board_overrides": 873
-  },
-  {
-   "sym_side": "XLMUSDT_SHORT",
-   "venue": "crypto",
-   "entry_allowed": true,
-   "class": "OK",
-   "why": "OK_BOARD_439c9831_age80h_vintage_from_published_at",
-   "diff_keys": [],
-   "n_diff": 0,
-   "board_md5": "439c9831",
-   "n_board_overrides": 919
   },
   {
    "sym_side": "XMRUSDT_LONG",
@@ -1215,6 +1221,17 @@
    "n_diff": 0,
    "board_md5": "ef94f3bc",
    "n_board_overrides": 954
+  },
+  {
+   "sym_side": "XRPUSDC_SHORT",
+   "venue": "crypto",
+   "entry_allowed": true,
+   "class": "OK",
+   "why": "OK_BOARD_16983f5c_age35h_vintage_from_published_at",
+   "diff_keys": [],
+   "n_diff": 0,
+   "board_md5": "16983f5c",
+   "n_board_overrides": 933
   },
   {
    "sym_side": "ZECUSDC_LONG",
