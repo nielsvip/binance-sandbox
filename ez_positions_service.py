@@ -1057,8 +1057,8 @@ POSITION AFTER (attempted write):
         except Exception: pass
         if ("long_positions.json" in name_lower or "short_positions.json" in name_lower):  # 2026-10-06 USER POSITIONS_TRUTH freshness contract: .<file>.meta.json written_at AFTER the data replace
             try:
-                import positions_truth as _ptruth
-                _ptruth.write_meta(file_path_obj, writer=f"ez_positions_service:{__import__('position_writer_guard').process_role()}:{os.getpid()}", config=config)
+                import position_writer_guard as _pwg_meta
+                _pwg_meta.write_meta(file_path_obj, writer=f"ez_positions_service:{_pwg_meta.process_role()}:{os.getpid()}", config=config)
             except Exception: pass
         return True
     except Exception as e:
@@ -1591,6 +1591,116 @@ def memory_positions_newest(positions):
         except Exception:
             continue
     return newest
+
+
+# ─────────── USER 2026-10-26: moved in from the deleted positions_truth.py ───────────
+# Order-reason / provenance rings for fill attribution, and the service's OWN hang recovery.
+# These were never about broker truth; they are in-process bookkeeping, and the process that places the
+# order (ez_manage, which runs an in-process PositionService) is the same one that records the fill.
+_RECENT_ORDER_REASONS = {}
+_RECENT_ORDER_PROV = {}
+
+
+def note_order_reason(position_key, qty, reason, now=None, window_s=600.0):
+    """Record an order placement for fill attribution. Module-level (wiring-independent): the fill recorder reads it back by qty match, immune to Redis wedge/staleness that produced false NON_VEC_ENTRY_FILL."""
+    try:
+        _l = _RECENT_ORDER_REASONS.setdefault(position_key, [])
+        _t = time.time() if now is None else now
+        _l[:] = [_r for _r in _l if _t - _r[0] <= window_s]
+        _l.append((_t, float(qty), str(reason or "")))
+    except Exception:
+        pass
+    try:  # HISTORY_PROV (E1 2026-10-20): metadata only — pairs the vec provenance block with this order for the fill recorder
+        from live_twins import vec_provenance as _vp
+        _pv = _vp.history_prov_for(reason, position_key)
+        if _pv is not None:
+            _pl = _RECENT_ORDER_PROV.setdefault(position_key, [])
+            _pt = time.time() if now is None else now
+            _pl[:] = [_r for _r in _pl if _pt - _r[0] <= window_s]
+            _pl.append((_pt, float(qty), str(reason or ""), _pv))
+    except Exception:
+        pass
+
+
+def match_recent_order_reason(position_key, qty, now=None, window_s=300.0):
+    """Qty-matched (±1%) in-memory order reason within window_s; prunes expired entries. Maker fills land 60-150s after placement, so the window must cover the chase."""
+    try:
+        _l = _RECENT_ORDER_REASONS.get(position_key, [])
+        _t = time.time() if now is None else now
+        _l[:] = [_r for _r in _l if _t - _r[0] <= window_s]
+        _q = float(qty or 0.0)
+        for _ts, _amt, _rs in reversed(_l):
+            if _t - _ts > window_s:
+                break
+            if _amt > 0 and _q > 0 and abs(_amt - _q) / max(_amt, 1e-9) < 0.01:
+                return _rs
+    except Exception:
+        pass
+    return None
+
+
+def match_recent_order_prov(position_key, qty, now=None, window_s=300.0, reason=None):
+    """Same qty match (+-1%) and window as match_recent_order_reason, returning the vec provenance block noted with that order (None if none)."""
+    try:
+        _l = _RECENT_ORDER_PROV.get(position_key, [])
+        _t = time.time() if now is None else now
+        _l[:] = [_r for _r in _l if _t - _r[0] <= window_s]
+        _q = float(qty or 0.0)
+        for _ts, _amt, _rs, _pv in reversed(_l):
+            if _amt > 0 and _q > 0 and abs(_amt - _q) / max(_amt, 1e-9) < 0.01 and (reason is None or _rs == reason):
+                return _pv
+    except Exception:
+        pass
+    return None
+
+
+def is_context_fresh(ctx, now=None, max_age_s=600.0):
+    """True when a decision-context payload timestamp is within max_age_s. Rejects 3-week-old Redis contexts that mis-tagged fills (proven 2026-10-10: Sep-21/Oct-8 contexts served for live fills). Unparseable/missing ts -> False."""
+    try:
+        if not isinstance(ctx, dict):
+            return False
+        _ts = ctx.get("timestamp")
+        if not _ts:
+            return False
+        _t = time.time() if now is None else now
+        _s = str(_ts)
+        try:
+            _dt = datetime.fromisoformat(_s.replace("Z", "+00:00"))
+        except Exception:
+            return False
+        if _dt.tzinfo is None:
+            _dt = _dt.replace(tzinfo=timezone.utc)
+        return 0 <= _t - _dt.timestamp() <= max_age_s
+    except Exception:
+        return False
+
+
+def hang_ok(service, account_key):
+    """A pass completed: clear the consecutive-hang counter."""
+    try:
+        service.__dict__.setdefault("_pos_hangs", {})[account_key] = 0
+    except Exception:
+        pass
+
+
+def hang_reconcile(service, account_key, rows, where, config=None, log=None):
+    """A position update hung or raised. Returns True when the caller should exit for a watchdog respawn.
+
+    USER 2026-10-26 (positions_truth.py deleted): a hang must NOT lose state and must NOT os._exit on the
+    first occurrence — a load-starvation stall then became a worker death plus a bootstrap storm, which
+    added the load that caused the next stall. The old version also seeded a separate broker-truth snapshot
+    cache and aged positions_last_sync so that every order-bound read would poll Binance directly; that
+    poll storm is what earned the -1003 / 418 IP bans. There is no second cache any more: THIS service's
+    store (WS-fed, REST-reconciled) is the truth, so recovery is simply to let the next REST pass reconcile
+    and to count consecutive failures. positions_last_sync is deliberately NOT faked forward — it keeps the
+    real age of the last confirmed sync so readers see the truth.
+    """
+    _log = log or logger
+    cnt = service.__dict__.setdefault("_pos_hangs", {})
+    cnt[account_key] = cnt.get(account_key, 0) + 1
+    limit = int(getattr(config, "POSITIONS_HANG_EXIT_AFTER", 3) if config is not None else 3)
+    _log.critical(f"🩹 [POSITIONS_HANG_RECONCILE] {account_key}: {where} — next REST pass reconciles from the broker; consecutive={cnt[account_key]}/{limit}")
+    return cnt[account_key] >= limit
 
 
 async def save_positions_guarded(service, account_key, force=False):
@@ -2791,8 +2901,7 @@ class WebSocketManager:
                                             await asyncio.wait_for(self.handle_account_update(data, account_key), timeout=60.0)
                                         except asyncio.TimeoutError:
                                             # POSITIONS REVAMP 2026-10-06: reconcile, reconnect WS; exit only after N consecutive hangs
-                                            import positions_truth as _ptruth
-                                            if _ptruth.hang_reconcile(self.service if getattr(self, "service", None) is not None else self, account_key, None, "WS handle_account_update HUNG > 60s", config, logger):
+                                            if hang_reconcile(self.service if getattr(self, "service", None) is not None else self, account_key, None, "WS handle_account_update HUNG > 60s", config, logger):
                                                 try: sys.stdout.flush(); sys.stderr.flush()
                                                 except Exception: pass
                                                 os._exit(44)
@@ -4892,8 +5001,8 @@ class PositionService:
             try :
                 os.replace(tmp_path, path)
                 if is_positions_file:  # 2026-10-06 USER POSITIONS_TRUTH freshness contract: .<file>.meta.json written_at AFTER the data replace
-                    import positions_truth as _ptruth
-                    _ptruth.write_meta(path, writer=f"ez_positions_service._atomic_write:{os.getpid()}", config=config)
+                    import position_writer_guard as _pwg_meta
+                    _pwg_meta.write_meta(path, writer=f"ez_positions_service._atomic_write:{os.getpid()}", config=config)
             except FileNotFoundError:
                 pass
         except ValueError as ve:
@@ -6900,16 +7009,14 @@ class PositionService:
                 except asyncio.TimeoutError:
                     # POSITIONS REVAMP 2026-10-06: reconcile instead of os._exit(42) (lost state + restart loops). Orders use the
                     # broker snapshot just fetched; local is marked stale; exit only after N consecutive hangs.
-                    import positions_truth as _ptruth
-                    if _ptruth.hang_reconcile(self, account_key, positions_data, f"process_account_update HUNG > {_pau_timeout}s", config, logger):
+                    if hang_reconcile(self, account_key, positions_data, f"process_account_update HUNG > {_pau_timeout}s", config, logger):
                         logger.critical(f"[fetch_positions][{account_key}] 🚨 process_account_update hung repeatedly — exiting for watchdog respawn (last resort)")
                         try: sys.stdout.flush(); sys.stderr.flush()
                         except Exception: pass
                         os._exit(42)
                     return {}
                 try:
-                    import positions_truth as _ptruth
-                    _ptruth.hang_ok(self, account_key)
+                    hang_ok(self, account_key)
                 except Exception:
                     pass
                 if config.VERBOSE_FETCH_LOGGING: logger.info(f"[fetch_positions][{account_key}] 🚨 process_account_update RETURNED: {len(updated_keys)} updated keys")
@@ -6922,8 +7029,7 @@ class PositionService:
                 result = positions_data
             except Exception as e:
                 logger.critical(f"[fetch_positions][{account_key}] 🚨🚨🚨 process_account_update RAISED: {e}", exc_info=True)
-                import positions_truth as _ptruth
-                if _ptruth.hang_reconcile(self, account_key, positions_data, f"process_account_update RAISED {e!r}"[:200], config, logger):
+                if hang_reconcile(self, account_key, positions_data, f"process_account_update RAISED {e!r}"[:200], config, logger):
                     try: sys.stdout.flush(); sys.stderr.flush()
                     except Exception: pass
                     os._exit(43)
@@ -8153,8 +8259,7 @@ class PositionService:
                                 _ctx = None
                             if _ctx is not None:
                                 try:
-                                    import positions_truth as _ptruth
-                                    _fresh = _ptruth.is_context_fresh(_ctx)
+                                    _fresh = is_context_fresh(_ctx)
                                 except Exception:
                                     _fresh = True
                                 if _fresh:
@@ -8227,8 +8332,7 @@ class PositionService:
             # ring, missed every maker fill at 60-150s -> Redis fallback -> stale/MSD reasons).
             explicit_reason = None
             try:
-                import positions_truth as _ptruth
-                explicit_reason = _ptruth.match_recent_order_reason(position_key, qty, time.time())
+                explicit_reason = match_recent_order_reason(position_key, qty, time.time())
             except Exception:
                 pass
             redis_key = f"decision:{position_key}"
@@ -8248,9 +8352,8 @@ class PositionService:
             try:  # HISTORY_PROV (E1 2026-10-20): metadata only — structured provenance beside the free-text reason; kill switch HISTORY_PROV_ENABLED (default False)
                 from vec_decisions import history_prov as _hp
                 if _hp.enabled(self.config):
-                    import positions_truth as _ptruth_hp
                     if explicit_reason is not None:
-                        _hp_block = _ptruth_hp.match_recent_order_prov(position_key, qty, time.time(), reason=explicit_reason)
+                        _hp_block = match_recent_order_prov(position_key, qty, time.time(), reason=explicit_reason)
                     if _hp_block is None and explicit_reason is None and trade_type in ("REDUCE", "CLOSE") and _hp.is_entry_label(reason):
                         from live_twins import vec_provenance as _vp_hp  # E1 r2: an exit carrying an ENTRY label inherited it from the previous history line (no matched order)
                         _hp_block = _hp.external_exit_block(reason, trade_type, source, _vp_hp.recent_vec_exit(position_key))

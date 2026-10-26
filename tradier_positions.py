@@ -31,7 +31,7 @@ from dateutil.parser import isoparse
 from config_tradier import TradierConfig
 from position_time_contract import parse_position_timestamp
 from tradier_api import TradierAPIClient
-import positions_truth as _ptruth  # 2026-10-06 USER POSITIONS_TRUTH
+import position_writer_guard as _pwg_meta  # USER 2026-10-26: file provenance stamp (positions_truth.py deleted)
 from utils import (
     clean_position_key,
     construct_position_key,
@@ -200,8 +200,8 @@ async def atomic_write_json(file_path: Path, data: Dict):
             f.flush()
             os.fsync(f.fileno())
         shutil.move(str(temp_file), str(file_path))
-        if _ptruth.is_positions_file(file_path):  # 2026-10-06 USER POSITIONS_TRUTH freshness contract: .<file>.meta.json AFTER the data replace
-            _ptruth.write_meta(file_path, writer=f"tradier_positions:{os.getpid()}")
+        if _pwg_meta.is_positions_file(file_path):  # USER 2026-10-26: provenance stamp AFTER the data replace (position_writer_guard owns it)
+            _pwg_meta.write_meta(file_path, writer=f"tradier_positions:{os.getpid()}")
     except Exception as e:
         if temp_file.exists():
             try: temp_file.unlink()
@@ -1754,10 +1754,11 @@ class TradierPositionManager:
                 except Exception as _upd_err:
                     logger.error(f"[POSITION_UPDATE_ERR] {position_key}: handle_* raised: {_upd_err}")
                 finally:
-                    # 2026-10-14 PARITY LAW (keeps 2026-10-06 USER POSITIONS_TRUTH): file = broker qty
-                    # always. No veto carve-outs remain — every branch above already adopts exact.
-                    if bool(_ptruth.cfg(self.config, "POSITIONS_FILE_BROKER_TRUTH_ONLY")):
-                        existing_position.positionAmt = amt_abs
+                    # 2026-10-14 PARITY LAW: file = broker qty always. No veto carve-outs remain — every
+                    # branch above already adopts exact. USER 2026-10-26: was gated on
+                    # POSITIONS_FILE_BROKER_TRUTH_ONLY, a positions_truth.py default that was always True
+                    # and in neither config — now unconditional, which is what the law says.
+                    existing_position.positionAmt = amt_abs
                     existing_position.last_updated = now
 
         # Handle Missing

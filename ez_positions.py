@@ -136,8 +136,7 @@ def _atomic_save_blocking(account_key: str, all_positions_by_side: Dict[str, Dic
             results[side] = "OK" if main_file.exists() else "MISSING_AFTER_MOVE"
             if results[side] == "OK":  # POSITIONS REVAMP 2026-10-06: written_at sidecar AFTER the data replace (this is the real crypto writer)
                 try:
-                    import positions_truth as _ptruth
-                    _ptruth.write_meta(main_file, writer=f"ez_positions.atomic_save:{_pwg.process_role()}:{_os.getpid()}")
+                    _pwg.write_meta(main_file, writer=f"ez_positions.atomic_save:{_pwg.process_role()}:{_os.getpid()}")
                 except Exception:
                     pass
         except Exception as e:

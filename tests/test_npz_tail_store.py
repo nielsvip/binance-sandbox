@@ -66,6 +66,17 @@ def test_latest_closed_correction_replaces_values_without_duplicate_timestamp(tm
     assert not tail.append_tail_row(path, _row(stamp - 900, 999), replace_latest=True)
 
 
+def test_large_tail_row_keeps_tip_and_correction(tmp_path):
+    path = _make_base_npz(tmp_path, n=20)
+    stamp = int(np.load(path)["timestamps"][-1]) + 900
+    first = dict(_row(stamp, 120), padding="x" * 30000)
+    assert tail.append_tail_row(path, first)
+    assert tail._tail_tip_ts(tail.tail_path_for_npz(path)) == stamp
+    assert not tail.append_tail_row(path, dict(_row(stamp, 999), padding="x" * 30000))
+    assert tail.append_tail_row(path, dict(_row(stamp, 121), padding="x" * 30000), replace_latest=True)
+    assert tail.load_merged(path)["close"][-1] == 121
+
+
 def test_append_one_bar_p95_under_50ms(tmp_path):
     npz_path = _make_base_npz(tmp_path, end_lag_bars=65)
     tip = int(np.load(str(npz_path))["timestamps"][-1])

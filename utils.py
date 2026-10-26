@@ -4929,3 +4929,39 @@ def get_tier_multiplier(symbol: str) -> float:
 def get_full_stats(symbol: str) -> Optional[dict]:
     cache = _ensure_cache()
     return cache.get(symbol)
+
+
+class AbandonTimeout(asyncio.TimeoutError):
+    """await_abandonable timed out. Subclasses TimeoutError so existing handlers catch it unchanged."""
+
+
+async def await_abandonable(coro, timeout):
+    """Never-hang timeout: asyncio.wait + abandon the loser WITHOUT awaiting it.
+    asyncio.wait_for awaits inner-task cancellation, which hangs forever when the inner op swallows CancelledError during cleanup (proven 2026-10-10: Redis SET NX + wait_for(15s) parked 28.9s with zero TimeoutError). Returns the coro result; raises AbandonTimeout on timeout. The abandoned task is cancelled best-effort and left to die on its own.
+    USER 2026-10-26: moved here from the deleted positions_truth.py — a generic asyncio helper, never broker truth."""
+    _t = asyncio.ensure_future(coro)
+    try:
+        _done, _pend = await asyncio.wait({_t}, timeout=timeout)
+    except BaseException:
+        try:
+            _t.cancel()
+        except Exception:
+            pass
+        raise
+    if _t in _done:
+        return _t.result()
+    try:
+        _t.cancel()
+    except Exception:
+        pass
+    def _swallow(_fut):
+        try:
+            if not _fut.cancelled():
+                _fut.exception()
+        except Exception:
+            pass
+    try:
+        _t.add_done_callback(_swallow)
+    except Exception:
+        pass
+    raise AbandonTimeout(f"abandoned after {timeout}s")

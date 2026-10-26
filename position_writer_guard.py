@@ -61,6 +61,43 @@ def is_position_file(path):
         return False
 
 
+def meta_path(path):
+    p = Path(path)
+    return p.with_name(f".{p.name}.meta.json")
+
+
+def is_positions_file(path):
+    """Wider spelling set than is_position_file() (kept for the callers moved off positions_truth.py)."""
+    try:
+        return Path(path).name.lower() in ("long_positions.json", "short_positions.json", "positions_long.json", "positions_short.json")
+    except Exception:
+        return False
+
+
+def write_meta(path, writer, broker_synced_at=None, config=None, now=None):
+    """Called by a writer right AFTER the positions file was atomically replaced. Never raises.
+    Order (data first, meta second) is fail-safe: a crash between the two leaves meta OLDER than data.
+    USER 2026-10-26: moved here from the deleted positions_truth.py. This is a human-readable provenance
+    stamp for the file the writer just wrote — it is NOT a freshness gate and nothing trades off it."""
+    try:
+        mp = meta_path(path)
+        t = time.time() if now is None else float(now)
+        body = {"written_at": t, "written_at_iso": datetime.fromtimestamp(t, timezone.utc).isoformat(), "writer": writer, "pid": os.getpid(), "file": Path(path).name}
+        bs = to_epoch(broker_synced_at)
+        if bs is not None:
+            body["broker_synced_at"] = bs
+        tmp = mp.with_name(f"{mp.name}.{os.getpid()}.tmp")
+        with open(tmp, "w") as fh:
+            json.dump(body, fh)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp, mp)
+        return True
+    except Exception as e:
+        logger.warning(f"[POSITIONS_META] write failed for {path}: {e!r}")
+        return False
+
+
 def _rate_limited(key, every_s=60.0):
     now = time.time()
     if now - _last_log.get(key, 0.0) < every_s:
@@ -760,8 +797,7 @@ def merge_file(live_path, incoming_path, log=None):
     if merged != live:
         _atomic_json(live_path, merged)
         try:
-            import positions_truth as _pt
-            _pt.write_meta(live_path, writer=f"pull_merge:{process_role()}:{os.getpid()}")
+            write_meta(live_path, writer=f"pull_merge:{process_role()}:{os.getpid()}")
         except Exception:
             pass
     return events

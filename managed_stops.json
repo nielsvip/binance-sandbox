@@ -251,13 +251,6 @@
     "symbol": "TRXUSDT",
     "side": "SHORT"
   },
-  "ang:STXUSDT_SHORT": {
-    "orderId": "4000001999217496",
-    "stopPrice": 0.3088,
-    "entry_sig": "2026-10-26 23:08:20.659000+00:00",
-    "symbol": "STXUSDT",
-    "side": "SHORT"
-  },
   "ang:MOVRUSDT_LONG": {
     "orderId": "4000001999177191",
     "stopPrice": 1.0798,
@@ -278,13 +271,6 @@
     "entry_sig": "2026-10-26 22:25:28.771000+00:00",
     "symbol": "DASHUSDT",
     "side": "LONG"
-  },
-  "ang:NMRUSDT_SHORT": {
-    "orderId": "4000001999214941",
-    "stopPrice": 9.819,
-    "entry_sig": "2026-10-26 23:17:36.132000+00:00",
-    "symbol": "NMRUSDT",
-    "side": "SHORT"
   },
   "ang:COTIUSDT_SHORT": {
     "orderId": "4000001999219258",
@@ -307,8 +293,22 @@
     "symbol": "GRAMUSDT",
     "side": "SHORT"
   },
+  "ang:1000FLOKIUSDT_SHORT": {
+    "orderId": "4000001999228584",
+    "stopPrice": 0.02315,
+    "entry_sig": "2026-10-26 23:23:12.490000+00:00",
+    "symbol": "1000FLOKIUSDT",
+    "side": "SHORT"
+  },
+  "ang:STXUSDT_SHORT": {
+    "orderId": "4000001999229449",
+    "stopPrice": 0.3088,
+    "entry_sig": "2026-10-26 23:08:20.659000+00:00",
+    "symbol": "STXUSDT",
+    "side": "SHORT"
+  },
   "ang:VETUSDT_SHORT": {
-    "orderId": "4000001999224440",
+    "orderId": "4000001999236461",
     "stopPrice": 0.006632,
     "entry_sig": "2026-10-26 22:40:56.860000+00:00",
     "symbol": "VETUSDT",

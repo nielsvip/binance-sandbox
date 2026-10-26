@@ -124,7 +124,7 @@ def upload_file(fpath):
                 log(f"Drive directory creation failed for {fpath.name}: {made.stderr.decode(errors='replace')[-300:]}", "WARN")
                 return False
             with fpath.open("rb") as stream:
-                result = rclone_on_server(["rcat", remote], timeout=1800, stdin=stream)
+                result = rclone_on_server(["rcat", remote, "--drive-upload-cutoff=64M", "--drive-chunk-size=64M"], timeout=1800, stdin=stream)
             if result.returncode:
                 detail = (result.stderr + result.stdout).decode(errors="replace")
                 log(f"Server-side Drive upload failed rc={result.returncode} for {fpath.name}: {detail[-400:]}", "WARN")

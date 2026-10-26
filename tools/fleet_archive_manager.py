@@ -15,7 +15,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -347,6 +347,13 @@ def _rclone_on_server(args: list[str], timeout: int = 600, stdin=None) -> subpro
     return subprocess.run(["ssh", "-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", DRIVE_SSH_HOST, command], stdin=stdin, capture_output=True, timeout=timeout)
 
 
+def _record_google_failure(state: dict, key: str, exc: Exception) -> None:
+    message = str(exc).lower()
+    seconds = 3600 if "rate_limit_exceeded" in message or "ratelimit" in message else 900
+    state[f"{key}->retry_after"] = (datetime.now(timezone.utc) + timedelta(seconds=seconds)).isoformat()
+    _state_save(state)
+
+
 def _archive_to_google_via_server(host: str, source: str, signature: str, state: dict) -> None:
     if not DRIVE_REMOTE or not DRIVE_SSH_HOST:
         raise RuntimeError("server-side Drive remote and SSH host must both be configured")
@@ -356,9 +363,6 @@ def _archive_to_google_via_server(host: str, source: str, signature: str, state:
         local, expected = _make_local_archive(host, source, Path(stage_name))
         remote_dir = f"{DRIVE_REMOTE}:{DRIVE_PREFIX}/{host}"
         remote = f"{remote_dir}/{local.stem}.{expected[:12]}{local.suffix}"
-        probe = _rclone_on_server(["lsd", f"{DRIVE_REMOTE}:"])
-        if probe.returncode:
-            raise RuntimeError("server-side Google Drive folder access failed; source retained")
         made = _rclone_on_server(["mkdir", remote_dir])
         if made.returncode:
             raise RuntimeError(f"server-side Drive directory creation failed: {made.stderr.decode(errors='replace')[-300:]}")
@@ -367,7 +371,7 @@ def _archive_to_google_via_server(host: str, source: str, signature: str, state:
             for block in iter(lambda: stream.read(1024 * 1024), b""):
                 md5.update(block)
         with local.open("rb") as stream:
-            put = _rclone_on_server(["rcat", remote], timeout=1800, stdin=stream)
+            put = _rclone_on_server(["rcat", remote, "--drive-upload-cutoff=64M", "--drive-chunk-size=64M"], timeout=1800, stdin=stream)
         if put.returncode:
             detail = (put.stderr + put.stdout).decode(errors="replace")
             raise RuntimeError(f"server-side Google Drive upload failed rc={put.returncode}; source retained: {detail[-400:]}")
@@ -391,6 +395,15 @@ def _archive_to_google(host: str, source: str, folder_id: str, apply: bool) -> N
     state = _state_load()
     target_id = f"oauth:{DRIVE_SSH_HOST}:{DRIVE_REMOTE}" if DRIVE_REMOTE and DRIVE_SSH_HOST else f"oauth:{DRIVE_REMOTE}" if DRIVE_REMOTE else folder_id
     key = f"{host}:{source}->google:{target_id}"
+    retry_key = f"{key}->retry_after"
+    retry_until = state.get(retry_key)
+    if retry_until:
+        try:
+            if datetime.fromisoformat(retry_until) > datetime.now(timezone.utc):
+                _log("google_archive_backoff", host=host, retry_after=retry_until)
+                return
+        except (TypeError, ValueError):
+            state.pop(retry_key, None)
     signature = _source_signature(host, source)
     if state.get(key) == signature:
         _log("google_archive_current", host=host, source=source)
@@ -400,7 +413,13 @@ def _archive_to_google(host: str, source: str, folder_id: str, apply: bool) -> N
     if not apply:
         return
     if DRIVE_SSH_HOST:
-        _archive_to_google_via_server(host, source, signature, state)
+        try:
+            _archive_to_google_via_server(host, source, signature, state)
+            state.pop(retry_key, None)
+            _state_save(state)
+        except Exception as exc:
+            _record_google_failure(state, key, exc)
+            raise
         return
     if shutil.disk_usage(Path(tempfile.gettempdir())).free < 8 * 1024**3:
         raise RuntimeError("Mac staging disk has less than 8 GB free")
