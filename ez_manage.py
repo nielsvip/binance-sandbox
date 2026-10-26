@@ -37811,7 +37811,16 @@ class MultiAccountTradeManager:
                     except Exception:
                         _age_last = -1.0
                     _au_last = str(action or "").upper()
-                    _dis_last = _tgt_last is not None and 0.0 <= _age_last <= 1800.0 and ((_tgt_last is False and _au_last in ("OPEN", "AUGMENT")) or (_tgt_last is True and _au_last == "CLOSE"))
+                    from vec_decisions import vec_parity_gates as _vpg_nvd
+                    _dis_raw = _tgt_last is not None and 0.0 <= _age_last <= 1800.0 and ((_tgt_last is False and _au_last in ("OPEN", "AUGMENT")) or (_tgt_last is True and _au_last == "CLOSE"))
+                    _dis_nv_reason = _vpg_nvd.nonvectorizable_state_disagreement(action, reason) if _dis_raw else ""
+                    _dis_last = _dis_raw and not _dis_nv_reason
+                    if _dis_nv_reason:
+                        logger.warning(f"🧭 [NONVECTORIZABLE_NATIVE_DC4_3M] {position_key} {action} reason={(reason or '')[:80]} exemption={_dis_nv_reason}")
+                        _nv_path = Path(getattr(config, "BASE_PATH", ".")) / "data" / "vector_disparity_queue.jsonl"
+                        _nv_path.parent.mkdir(parents=True, exist_ok=True)
+                        with open(str(_nv_path), "a") as _nv_file:
+                            _nv_file.write(json.dumps({"ts": time.time(), "venue": "crypto", "kind": "NONVECTORIZABLE_NATIVE_DC4_3M", "position_key": position_key, "action": action, "reason": str(reason)[:160], "exemption": _dis_nv_reason, "fix": "native 3m DC4 path has no matching 3m input in the 15m vector set; preserve native execution"}) + "\n")
                     if _dis_last:
                         logger.warning(f"🧭 [VEC_STATE_DISAGREE] {position_key} {action} reason={(reason or '')[:80]} — vector target={(_st_last or {}).get('target_state')} (USER 2026-10-24: vector defines open/flat; fix live to this path)")
                         _vlp = Path(getattr(config, "BASE_PATH", ".")) / "data" / "vector_disparity_queue.jsonl"

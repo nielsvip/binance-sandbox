@@ -1,74 +1,74 @@
 {
-  "ts": "2026-10-26T05:10:03.844901+00:00",
-  "tick": "2026-10-26T05:08:01.460421+00:00",
-  "tick_age_s": 122,
+  "ts": "2026-10-26T05:15:04.382429+00:00",
+  "tick": "2026-10-26T05:14:02.070921+00:00",
+  "tick_age_s": 62,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run37.json",
     "round": "run37",
     "complete": false,
     "universe_n": 212,
-    "n_complete": 37,
-    "n_pending": 175,
+    "n_complete": 40,
+    "n_pending": 172,
     "n_refused_only": 0,
     "n_excluded": 0,
-    "n_launchable_pending": 159,
+    "n_launchable_pending": 155,
     "hosts_not_visible": []
   },
   "hosts": {
     "s1": {
-      "cpu_pct": 100,
-      "slots": "1/4",
-      "observed_running": [
-        "STRKUSDT"
-      ],
-      "published_last_hour": 0,
-      "idle_reason": "mem guard",
-      "mem_avail_mb": 1630
-    },
-    "s2": {
-      "cpu_pct": 100,
+      "cpu_pct": 97,
       "slots": "2/4",
       "observed_running": [
-        "MOVRUSDT",
+        "FARTCOINUSDT"
+      ],
+      "published_last_hour": 1,
+      "idle_reason": null,
+      "mem_avail_mb": 17152
+    },
+    "s2": {
+      "cpu_pct": 74,
+      "slots": "2/4",
+      "observed_running": [
+        "QNTUSDT",
         "RLCUSDT"
       ],
       "published_last_hour": 0,
       "idle_reason": "mem guard",
-      "mem_avail_mb": 5340
+      "mem_avail_mb": 10251
     },
     "s5": {
-      "cpu_pct": 40,
+      "cpu_pct": 96,
       "slots": "4/4",
       "observed_running": [
         "AAPL",
-        "ABBV",
         "ADP",
-        "GOOGL"
+        "CVX",
+        "GLD"
       ],
-      "published_last_hour": 3,
+      "published_last_hour": 2,
       "idle_reason": "slots full",
-      "mem_avail_mb": 20309
+      "mem_avail_mb": 14266
     },
     "s6": {
-      "cpu_pct": 94,
+      "cpu_pct": 100,
       "slots": "4/4",
       "observed_running": [
+        "AG",
         "CDE",
         "COHR",
-        "MNTS",
         "RKLB"
       ],
       "published_last_hour": 2,
       "idle_reason": "slots full",
-      "mem_avail_mb": 15755
+      "mem_avail_mb": 15006
     }
   },
   "one_hour_total": 5,
   "alerts": [
-    "LOW_THROUGHPUT:s1:0/h",
+    "LOW_THROUGHPUT:s1:1/h",
     "LOW_THROUGHPUT:s2:0/h",
-    "LOW_THROUGHPUT:s5:3/h",
-    "LOW_CPU:s5:40%",
+    "LOW_CPU:s2:74%",
+    "LOW_THROUGHPUT:s5:2/h",
     "LOW_THROUGHPUT:s6:2/h"
   ]
 }

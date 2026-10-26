@@ -89,6 +89,15 @@ def disagree_refuse(disagree, kill_on):
     return bool(disagree and kill_on)
 
 
+def nonvectorizable_state_disagreement(action, reason):
+    """Return an auditable reason for exact native paths the vector cannot model."""
+    if str(action or "").upper() not in ("CLOSE", "QUICK_CLOSE"):
+        return ""
+    if re.match(r"^QUICK_DC4_(?:HIGH|LOW)_3M_GAIN_EROSION_STOP(?:_|$)", str(reason or "").upper()):
+        return "NATIVE_DC4_3M_INPUT_UNAVAILABLE_IN_15M_VECTOR"
+    return ""
+
+
 def pending_defer_on(value):
     return bool(value)
 

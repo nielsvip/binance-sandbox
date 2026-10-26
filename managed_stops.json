@@ -1,16 +1,72 @@
 {
-  "ang:STRKUSDT_SHORT": {
-    "orderId": "4000001996451055",
-    "stopPrice": 0.04517,
-    "entry_sig": "2026-10-26 03:00:28.639000+00:00",
-    "symbol": "STRKUSDT",
+  "fin:1000LUNCUSDT_SHORT": {
+    "orderId": "3000002274807778",
+    "stopPrice": 0.04691,
+    "entry_sig": "2026-10-26 03:33:07.034000+00:00",
+    "symbol": "1000LUNCUSDT",
     "side": "SHORT"
   },
-  "ang:UNIUSDC_LONG": {
-    "orderId": "4000001996451063",
-    "stopPrice": 6.765,
-    "entry_sig": "2026-10-25 13:14:11.526000+00:00",
-    "symbol": "UNIUSDC",
+  "fin:ZILUSDT_SHORT": {
+    "orderId": "3000002274849907",
+    "stopPrice": 0.001928,
+    "entry_sig": "2026-10-26 03:51:13.383000+00:00",
+    "symbol": "ZILUSDT",
+    "side": "SHORT"
+  },
+  "fin:FARTCOINUSDT_SHORT": {
+    "orderId": "3000002274850452",
+    "stopPrice": 0.126,
+    "entry_sig": "2026-10-26 03:51:15.582000+00:00",
+    "symbol": "FARTCOINUSDT",
+    "side": "SHORT"
+  },
+  "fin:ENJUSDT_SHORT": {
+    "orderId": "3000002274863688",
+    "stopPrice": 0.02485,
+    "entry_sig": "2026-10-26 04:04:42.362000+00:00",
+    "symbol": "ENJUSDT",
+    "side": "SHORT"
+  },
+  "fin:RVNUSDT_SHORT": {
+    "orderId": "3000002274874538",
+    "stopPrice": 0.001331,
+    "entry_sig": "2026-10-26 03:40:53.459000+00:00",
+    "symbol": "RVNUSDT",
+    "side": "SHORT"
+  },
+  "fin:TIAUSDC_LONG": {
+    "orderId": "3000002274914185",
+    "stopPrice": 0.5212,
+    "entry_sig": "2026-10-26 04:36:17.617000+00:00",
+    "symbol": "TIAUSDC",
+    "side": "LONG"
+  },
+  "fin:GRASSUSDT_LONG": {
+    "orderId": "3000002274943715",
+    "stopPrice": 0.6896,
+    "entry_sig": "2026-10-26 04:54:42.289000+00:00",
+    "symbol": "GRASSUSDT",
+    "side": "LONG"
+  },
+  "fin:KMNOUSDT_LONG": {
+    "orderId": "3000002274945472",
+    "stopPrice": 0.04091,
+    "entry_sig": "2026-10-26 04:56:13.791000+00:00",
+    "symbol": "KMNOUSDT",
+    "side": "LONG"
+  },
+  "fin:ETHFIUSDC_LONG": {
+    "orderId": "3000002274980466",
+    "stopPrice": 0.6043,
+    "entry_sig": "2026-10-26 05:17:17.959000+00:00",
+    "symbol": "ETHFIUSDC",
+    "side": "LONG"
+  },
+  "fin:ARUSDT_LONG": {
+    "orderId": "3000002274981625",
+    "stopPrice": 3.31,
+    "entry_sig": "2026-10-26 05:18:05.224000+00:00",
+    "symbol": "ARUSDT",
     "side": "LONG"
   }
 }
