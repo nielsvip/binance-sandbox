@@ -455,6 +455,11 @@ def evaluate(ss: str, row: Optional[dict], published: Optional[dict], history: O
             pub_after = float(anc["recalc_epoch"]) > h_at
         elif anc.get("source") == "board_tag_date":
             pub_after = float(anc["recalc_epoch"]) >= h_at - (h_at % 86400) + 86400  # tag day strictly after the halt day
+        elif anc.get("source") == "measured_h2h":
+            # A full head-to-head measurement is equivalent to a fresh board publication for release.
+            # The special same-fingerprint case above covers unchanged sets; changed active sets still
+            # require both a post-halt measurement and an apply after the halt.
+            pub_after = float(anc["recalc_epoch"]) > h_at
         if row and apply_ep > h_at and fp_changed and pub_after:
             return {"action": "RELEASE", "sym_side": ss, "age_days": round(age_days, 2), "anchor": anc, "why": f"new board ({anc.get('source')} {_iso(anc.get('recalc_epoch'))}) applied {_iso(apply_ep)} after halt {halt.get('halted_at')}"}
         return {"action": "KEEP", "sym_side": ss, "age_days": round(age_days, 2), "anchor": anc, "why": halt.get("reason", "STALE_SET_HALT")}
