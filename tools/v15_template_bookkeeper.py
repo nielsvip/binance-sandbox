@@ -278,6 +278,19 @@ def single_home(wb, switch, home):
     return rep
 
 
+def remove_switch(wb, switch):
+    rep = {}
+    for ws in wb.worksheets:
+        if ws.title not in SWITCH_TABS:
+            continue
+        rows = [r for r in range(3, ws.max_row + 1) if str(ws.cell(r, 1).value or "").strip() == switch]
+        for row in sorted(rows, reverse=True):
+            ws.delete_rows(row, 1)
+        if rows:
+            rep[ws.title] = rows
+    return rep
+
+
 def pull_fleet(ledger_root, hosts, timeout_s):
     pulled = 0
     for h in hosts:
@@ -309,6 +322,7 @@ def main():
     ap.add_argument("--cat-side", help="with --align-default: CRYPTO_LONG|CRYPTO_SHORT|STOCKS_LONG|STOCKS_SHORT")
     ap.add_argument("--single-home", metavar="SWITCH=TAB", help="keep SWITCH's white rows only in TAB of every template that has them there (filter-block rows untouched)")
     ap.add_argument("--dedupe-rows", action="store_true", help="remove repeated (switch, value) rows inside each switch tab of every template (yellow cells merged, bold kept)")
+    ap.add_argument("--remove-switch", help="remove one retired switch from all switch tabs of the four canonical templates")
     a = ap.parse_args()
     try:
         import fcntl
@@ -316,6 +330,23 @@ def main():
         fcntl.flock(_lk, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except Exception:
         print("[bookkeeper] lock held — another run active, exiting", flush=True)
+        return 0
+    if a.remove_switch:
+        if a.remove_switch.strip().upper() != "ENABLE_TR_SWING_ENTRIES":
+            print("[bookkeeper] this removal was authorized only for ENABLE_TR_SWING_ENTRIES", flush=True)
+            return 2
+        import datetime as _dt, shutil as _sh, openpyxl as _ox
+        for cat, fname in TEMPLATES.items():
+            tpath = os.path.join(a.templates, fname)
+            wb = _ox.load_workbook(tpath)
+            try:
+                rep = remove_switch(wb, a.remove_switch.strip().upper())
+                print(f"[bookkeeper] remove-switch {cat}: {rep}", flush=True)
+                if rep and not a.dry_run:
+                    _sh.copy2(tpath, ROOT / "backups" / f"before_remove_swing_switch_{_dt.datetime.utcnow().strftime('%Y%m%d%H%M')}_{fname}")
+                    atomic_save_xlsx(wb, tpath)
+            finally:
+                wb.close()
         return 0
     if a.align_default:
         import datetime as _dt, shutil as _sh, openpyxl as _ox

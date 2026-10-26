@@ -13390,14 +13390,6 @@ def _main_single():
         except Exception as _e_pb:
             print(f"[BEST-START-warn] {new_symside} {_e_pb}", flush=True)
 
-    _zero_stock_option = None
-    if prepared is not None and int(baseline_vec.get("trades") or 0) == 0:
-        from zero_baseline_options import evaluate_stock_zero_baseline_option
-        _zero_stock_option = evaluate_stock_zero_baseline_option(new_symside, prepared, overrides, baseline_vec, _adapt_template_rows(args.template, ["GLOBAL_RISK_GATES"]), lambda prep, opts: evaluate_prepared_sanitized(prep, opts, args.window_days))
-        if _zero_stock_option is not None:
-            _zero_trades_early = False
-            _genuine_zero_baseline = True
-            print(f"[ZERO-BASELINE-OPTION] {new_symside} valid positive ENABLE_TR_SWING_ENTRIES=True row measured; original baseline retained, measured option queued for immediate promotion", flush=True)
     if args.vector_only:
         baseline_live = baseline_vec
         reason = "vector-only"
@@ -13432,7 +13424,7 @@ def _main_single():
     # shifting every first-row delta by 2x|baseline| and blocking promotion on negative-baseline syms.
     # Engine sign is authoritative — never flip baseline_gain or bh by side here.
     # FIX 2026-09-23: baseline 0.00 is a lie — must be calculated from previous test OR defaults for cat_side, never 0.00
-    if abs(baseline_gain) < 1e-9 and _zero_stock_option is None:
+    if abs(baseline_gain) < 1e-9:
         _fixed = False
         try:
             _prev_path = PROGRESS_DIR / f"{new_symside}_v14_progress.json"
@@ -14382,22 +14374,6 @@ def _main_single():
         cumulative_gain = baseline_gain
         print(f"[BASELINE-CHAIN-START-FALLBACK] cumulative_gain set to baseline_gain {cumulative_gain:.4f}% after exception", flush=True)
 
-    if _zero_stock_option is not None:
-        from zero_baseline_options import promote_measured_option
-        _option_workbook = openpyxl.load_workbook(str(wb_path))
-        _option_promoted = promote_measured_option(_option_workbook, progress, cumulative_overrides, cumulative_gain, _zero_stock_option)
-        if _option_promoted is not None:
-            cumulative_overrides, cumulative_gain = _option_promoted
-            remember_chain_base(_zero_stock_option["result"])
-            _atomic_save(_option_workbook, wb_path)
-            _atomic_write_json(progress_path, progress)
-            baseline_trades = int(_zero_stock_option["result"]["trades"])
-            below_floor = baseline_trades < min_trades
-            print(f"[ZERO-BASELINE-PROMOTED] {new_symside} cumulative gain advanced; original baseline retained; done row persisted", flush=True)
-        _option_workbook.close()
-        if _option_promoted is not None and os.environ.get("V20_OPTION_PROMOTION_SMOKE") == "1":
-            print("[ZERO-BASELINE-SMOKE-DONE] stopping before sweep or publication", flush=True)
-            return
     if locals().get("_adapt_report") is not None:
         progress["adaptive_baseline"] = _adapt_report
         _atomic_write_json(progress_path, progress)
@@ -14466,7 +14442,7 @@ def _main_single():
                 _atomic_write_json(progress_path, progress)
                 print(f"[NO-TRADES-SKIP] {new_symside} baseline 0 trades + no unblock flip — XLS kept, sweep skipped, no REDO; reruns only on newer NPZ", flush=True)
                 return
-        if os.environ.get("V15_SKIP_BELOW_FLOOR", "0") == "1" and _zero_stock_option is None:
+        if os.environ.get("V15_SKIP_BELOW_FLOOR", "0") == "1":
             progress["diagnostic_only"] = progress["baseline_below_floor"]
             _atomic_write_json(progress_path, progress)
             print(f"[SAMPLE-FLOOR-VIOLATION] {new_symside} XLS {wb_path.name} written, sweep skipped (V15_SKIP_BELOW_FLOOR=1)", flush=True)

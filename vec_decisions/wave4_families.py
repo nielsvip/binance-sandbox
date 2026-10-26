@@ -112,7 +112,7 @@ def ema_blanket_entry_gate(npz, n, is_long, config, close, safe):
         a = safe(npz, key, n, 0)
         above = a.astype(bool) if a.dtype == bool else (a > 0.5)
         agree += (above if is_long else ~above).astype(np.int8)
-    if found == 0:
+    if found < min_tfs:
         return None
     return agree >= min_tfs
 
@@ -131,8 +131,8 @@ def ema_blanket_live_pass(indicators, is_long, config):
         found += 1
         above = bool(raw) if isinstance(raw, bool) else float(raw) > 0.5
         agree += int(above if is_long else not above)
-    if found == 0:
-        return True, 0, 0
+    if found < min_tfs:
+        return True, agree, found
     return agree >= min_tfs, agree, found
 
 

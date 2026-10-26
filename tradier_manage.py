@@ -44603,30 +44603,6 @@ class TradierTradeManager:
         ratio=0.7 → long cap ×140%, short cap ×60%. Clamped to ±50% of base.
         Returns (allowed: bool, reason: str).
         """
-        # USER 2026-10-23 doctrine: the 3600 switch json/sql decides per
-        # sym_side — read the SINGLE SOURCE (_cfg: forward promotions >
-        # per-sym sqlite > template > global default False), never a forced
-        # global. (The 2026-10-22 global-True bypass is reverted: it carried
-        # no LOCKED_FILES entry and standing decisions belong to backtests.)
-        _sw_side = position_side or side
-        # USER 2026-10-23 doctrine intact: per-sym set decides; venue default
-        # False (config_tradier) vetoes unless a board carries True. NOTE
-        # 2026-10-24 parity: templates carry NO swing row, so no board CAN carry
-        # it — every native swing OPEN currently dies here while the vector
-        # models entries (QuickConfig default True). See parity register.
-        try:
-            _sw_on = _cfg(
-                "ENABLE_TR_SWING_ENTRIES", False, account_key, symbol, _sw_side
-            )
-        except Exception:
-            _sw_on = False
-        # Temporary trb live recovery while the V20 swing row is repaired.
-        # The V19 interim backtest permits these ordinary entries; keep the
-        # existing exposure budget and all subsequent entry checks active.
-        if str(account_key).lower() == "trb":
-            _sw_on = False  # Emergency pause: broker holds positions without mandatory dc15 stops.
-        if _sw_on is not True:
-            return False, "SWING_ENTRIES_OFF_PARITY"
         ratio = self.calculate_unified_market_ratio()
         if side == "LONG":
             base = _cfg_auto("SWING_LONG_BUDGET", 20000.0)
@@ -51738,13 +51714,9 @@ class TradierTradeManager:
                 return _vl_detail_tr
             try:
                 from vec_decisions import vec_parity_gates as _vpg_do_tr
-                # trb pilot recovery: native switched entries must be allowed
-                # while the missing vector paths are being wired and tested.
-                _vpg_do_on_tr = (
-                    str(account_key).lower() != "trb"
-                    and bool(_cfg_auto("VEC_DICTATE_ONLY_ENABLED", True))
-                )
-                if _vpg_do_on_tr and not bool(_vl_dictated_tr) and not _vpg_do_tr.dictate_only_exempt(action, reason, sym_side=f"{symbol}_{position_side}", ultimate_buffer_pct=_cfg("UNCOND_DC_HARD_STOP_BUFFER_PCT", 0.25, account_key, symbol, position_side)):
+                _vpg_do_on_tr = bool(_cfg_auto("VEC_DICTATE_ONLY_ENABLED", True))
+                _vpg_do_exempt_tr = (str(action or "").upper() in ("PLACE_STOP", "CANCEL_STOP") or _vpg_do_tr.mandatory_stop_exempt(action, reason, _cfg("UNCOND_DC_HARD_STOP_BUFFER_PCT", 0.25, account_key, symbol, position_side))) if str(account_key).lower() == "trb" else _vpg_do_tr.dictate_only_exempt(action, reason, sym_side=f"{symbol}_{position_side}", ultimate_buffer_pct=_cfg("UNCOND_DC_HARD_STOP_BUFFER_PCT", 0.25, account_key, symbol, position_side))
+                if _vpg_do_on_tr and not bool(_vl_dictated_tr) and not _vpg_do_exempt_tr:
                     try:
                         from live_twins import vec_pending as _vp_pre_tr
                         _vp_defer_on_tr = bool(_cfg_auto("VEC_PENDING_DEFER_NATIVE_ENABLED", True))
@@ -51798,10 +51770,7 @@ class TradierTradeManager:
                                 _vlf_dis_tr.write(json.dumps({"ts": time.time(), "venue": "stocks", "kind": "VEC_STATE_DISAGREE", "position_key": position_key, "action": action, "reason": str(reason)[:160], "vec_target": str(((_st_dis_tr or {}).get("target_state"))), "vec_bar_ts": (_st_dis_tr or {}).get("bar_ts"), "fix": "wire live to emit this vec path through its own producer"}) + "\n")
                         except Exception:
                             pass
-                    _vpg_blk_tr = (
-                        str(account_key).lower() != "trb"
-                        and bool(_cfg_auto("VEC_DISAGREE_FLAT_OPEN_BLOCK", True))
-                    )
+                    _vpg_blk_tr = bool(_cfg_auto("VEC_DISAGREE_FLAT_OPEN_BLOCK", True))
                     if _vpg_dis_tr.flat_open_blocked(action, reason, bool(_fresh_dis_tr and _tgt_dis_tr is False), _vpg_blk_tr):
                         if lock_acquired and self.redis_manager:
                             await self.redis_manager.delete(exec_lock_key)

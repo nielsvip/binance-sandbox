@@ -601,7 +601,7 @@ def ema_blanket_pass_vec(npz, n, is_long, cfg, safe=None):
     have = ab >= 0
     agree = (ab > 0.5) if is_long else (ab < 0.5)
     n_agree = np.where(have & agree, 1, 0)
-    return np.where(have, n_agree >= min_tfs, True)
+    return np.where(have & (min_tfs <= 1), n_agree >= min_tfs, True)
 
 
 def ema_blanket_blocks_live(indicators_get, is_long, tf_raw, min_tfs):
@@ -619,7 +619,7 @@ def ema_blanket_blocks_live(indicators_get, is_long, tf_raw, min_tfs):
         aligned = bool(ab) if is_long else (not bool(ab))
     except Exception:
         return False
-    return not (int(aligned) >= int(min_tfs or 3))
+    return not (int(aligned) >= int(min_tfs or 3)) if int(min_tfs or 3) <= 1 else False
 
 
 # ── GR_FILTER_ALL_ENTRIES ────────────────────────────────────────────────────

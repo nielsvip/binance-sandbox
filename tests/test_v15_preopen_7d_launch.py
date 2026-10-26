@@ -22,7 +22,7 @@ def test_launcher_isolates_paths_and_preserves_30d_start(tmp_path):
     assert env["V15_7D_SOURCE_SHA256"] == digest(source)
     assert json.loads((folder / "start_30d.json").read_text()) == source
     assert env["V15_PREV_BEST_START"] == "0"
-    assert env["V15_SKIP_CAT_PERSYM_BASELINE"] == "0"
+    assert env["V15_SKIP_CAT_PERSYM_BASELINE"] == "1"
     assert env["V15_DIAG_REPAIR_S"] == "150"
     assert "V15_SKIP_LIVE_AT_DONE" not in env
     assert str(folder / "out") == env["V15_OUT_DIR"]

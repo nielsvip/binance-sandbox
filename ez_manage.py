@@ -23676,6 +23676,9 @@ class MultiAccountTradeManager:
                         if auto_action in ("OPEN", "AUGMENT") and (not bool(getattr(config, "RANKING_WEBHOOK_DIRECT_ENTRY_ENABLED", False)) or (_vec_exact_mode_on() and "ENTRY" in _vec_exact_families())):
                             logger.info(f"[DIRECT_QUEUE_OFF] {position_key}: {signal_type.upper()} {auto_action} not queued (RANKING_WEBHOOK_DIRECT_ENTRY_ENABLED={bool(getattr(config, 'RANKING_WEBHOOK_DIRECT_ENTRY_ENABLED', False))}, vec_exact={_vec_exact_mode_on()})")
                             continue
+                        if auto_action == "CLOSE" and not bool(getattr(_ezm_base_config, "LTF_SUB15M_TRADING_ENABLED", False)):
+                            logger.info(f"[DIRECT_QUEUE_OFF] {position_key}: {signal_type.upper()} CLOSE not queued (3m ranking source; LTF_SUB15M_TRADING_ENABLED=False)")
+                            continue
                         if auto_action == "CLOSE" and _vec_exact_mode_on() and "EXIT" in _vec_exact_families():
                             logger.info(f"[DIRECT_QUEUE_OFF] {position_key}: {signal_type.upper()} CLOSE not queued (PARITY_VEC_EXACT_MODE with EXIT twinned: exits come from the vec twin)")
                             continue
