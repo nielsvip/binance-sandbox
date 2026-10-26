@@ -2621,7 +2621,9 @@ def tradeable_universe(allowed=None, full_sets=None, symbol_level=None):
     The other universes in circulation are COUNTED in `alternatives`, never merged: per_sym_full_sets.json side-suffixed keys and the
     symbol-level expansion (both sides of every _tradeable_universe() symbol). full_sets / symbol_level may be injected (tests); None = read.
     -> {"sym_sides": sorted list, "source": str, "n": int, "alternatives": {...}}"""
-    if allowed:
+    if allowed is not None:
+        # An explicitly empty exact book is a fail-closed universe. Falling
+        # back to the older reachable set could resurrect removed sides.
         ss, src = sorted({str(x).upper() for x in allowed}), "scheduler allowed_sym_sides (v15_universe)"
     else:
         sides, ssrc = _reachable_sym_sides()
@@ -2683,12 +2685,14 @@ def _rget(r, i):
 
 
 def build_round_completion(round_id, universe, rows, must_by_host, exclusions, now_ts, npz_min=20.0, hosts_not_visible=(), round_meta=None, launchable_syms=None,
+                           launchable_sides=None,
                            running=(), carried_from_previous=None, catchup_launches=None, previous_record=None, evidence_window_s=1800.0):
     """The full-course round record (brief 20 §4, spec 22 §6.1). Pure (tested).
     universe = tradeable_universe() dict; rows = _manifest_rows (merged hosts, fields 0-10); must_by_host = {host: {SS: _progress_must dict}} from
     each host's CURRENT progress dir (the probe channel); exclusions = {SS: reason}; hosts_not_visible = hosts whose probe failed this tick.
-    launchable_syms = symbols the scheduler would launch NOW (its new-launch order, NPZ-dead removed); running = sym_sides running now. A PENDING
-    sym_side whose symbol is launchable and that is not running is `launchable_pending` (the roll guard waits only for those).
+    launchable_sides = exact sym_sides with a real 30D action on a reachable host. The older launchable_syms
+    argument remains for callers that do not supply side actions. A PENDING side with an action that is not
+    running is `launchable_pending` (the roll guard waits only for those).
     carried_from_previous = (prev_round, {SS: prev_verdict}) of the previous round's unfinished sym_sides (tracked across the roll).
     FULL rule (coordinator 2026-10-22 20:4xZ): manifest mode slow/full = full; catchup / budget:<n> / any other string = not full; mode None
     (pilots older than the 10-20 `mode` field) = FULL unless that board has catch-up evidence: this round's progress for the sym_side shows
@@ -2812,7 +2816,10 @@ def build_round_completion(round_id, universe, rows, must_by_host, exclusions, n
     n_ok = sum(c["complete"] + c["excluded"] for c in per_cat.values())
     run_set = set(running or ())
     lsy = set(launchable_syms or ())
-    launchable = sorted(ss for ss, e in per_ss.items() if str(e.get("verdict", "")).startswith("PENDING") and ss.rsplit("_", 1)[0] in lsy and ss not in run_set)
+    lss = set(launchable_sides or ())
+    launchable = sorted(ss for ss, e in per_ss.items() if str(e.get("verdict", "")).startswith("PENDING")
+                        and (ss in lss if launchable_sides is not None else ss.rsplit("_", 1)[0] in lsy)
+                        and ss not in run_set)
     running_pending = sorted(ss for ss, e in per_ss.items() if str(e.get("verdict", "")).startswith("PENDING") and ss in run_set)
     carried = []
     if carried_from_previous and carried_from_previous[1]:
@@ -2824,7 +2831,7 @@ def build_round_completion(round_id, universe, rows, must_by_host, exclusions, n
             "n_pending": sum(c["pending"] for c in per_cat.values()), "n_refused_only": sum(c["refused_only"] for c in per_cat.values()),
             "refusal_reasons_outside_allowlist": dict(sorted(outside.items(), key=lambda kv: -kv[1])), "structural_allowlist": sorted(_STRUCTURAL_REFUSALS),
             "structural_prefixes": list(_STRUCTURAL_PREFIXES), "launchable_pending": launchable, "n_launchable_pending": len(launchable),
-            "running_pending": running_pending, "launchable_known": launchable_syms is not None,
+            "running_pending": running_pending, "launchable_known": launchable_sides is not None or launchable_syms is not None,
             "carried_from_previous_round": carried, "n_carried_from_previous_round": len(carried),
             "n_carried_resolved": sum(1 for c in carried if c["now"] in ("COMPLETE", "EXCLUDED")),
             "per_cat_side": per_cat, "sym_sides": per_ss}
@@ -3791,7 +3798,7 @@ def tick(args, cfg, now):
         uni = U.build(ROOT, now); how = "rebuilt-tradeable-changed"
         print(f"[sched] universe rebuilt: {_tk_src or 'a tradeable source'} newer than universe build", flush=True)
     _best = _BEST.publish(ROOT) if not (args.dry_run or sim) else (_jload(ROOT / "data" / "v15_best_first.json", {}) or {})
-    _tradeable = _BEST.tradeable(ROOT)
+    _tradeable = set(_best.get("allowed") or ()) if not (args.dry_run or sim) else _BEST.tradeable(ROOT)
     stocks, crypto = list(uni["stocks"]), list(uni["crypto"])
     for _pss in sorted(_load_pinned()[0]):
         if _pss not in _tradeable:
@@ -5239,7 +5246,7 @@ def tick(args, cfg, now):
         if not _slow_pin:
             log["steal30_floor_open"] = _steal_floor_hosts  # USER 2026-10-24: below-floor hosts pull 30D work off long queues even outside a slow-pinned round
         _run_syms = {k.rsplit("_", 1)[0] for k in running}
-        _uni_ss = _BEST.tradeable(ROOT)
+        _uni_ss = _tradeable
         _need = sorted(sy for sy, sd in chain_state.items() if any((v or ("",))[0] == "need30" and f"{sy}_{k}" not in running and f"{sy}_{k}".upper() in _uni_ss
                                                                   and (not _launch_exhausted(f"{sy}_{k}|30D", "30D", f"{sy}_{k}", st, started, redo, _pin_sides) or _floor_left(st, f"{sy}_{k}|30D") > 0) for k, v in (sd or {}).items()))
         _steal_rank = {sy: max((float(_gains_prev[f"{sy}_{sd}"]) for sd in _SIDES_ALL if f"{sy}_{sd}" in _gains_prev and f"{sy}_{sd}" in _uni_ss), default=float("-inf")) for sy in _need}
@@ -5482,13 +5489,24 @@ def tick(args, cfg, now):
     try:  # 2026-10-22 spec 22 §6.1 / brief 20 §4: the full-course round-completion record, every tick
         if not (args.dry_run or sim):
             _rid, _rsrc, _renv = _completion_round_id(cur_pdir)
-            _uni1 = tradeable_universe(sorted(_BEST.tradeable(ROOT)))
+            _uni1 = tradeable_universe(sorted(_tradeable))
             _mbh = {_hn: (_sx.get("must") or {}) for _hn, _sx in stats.items() if isinstance(_sx, dict)}
             _blind = [_hn for _hn, _sx in stats.items() if not isinstance(_sx, dict) or "must" not in _sx]
             _lsyms = set().union(*[set(_v) for _v in _ORDER_BY_HOST.values()]) - set(_npz_dead) if _ORDER_BY_HOST else set()
+            _lsides = set()
+            for _hn, _ordered in _ORDER_BY_HOST.items():
+                if not stats.get(_hn) or _hn in _drained:
+                    continue
+                for _sy in set(_ordered) | set(held.get(_hn, {})):
+                    if _sy in _npz_dead:
+                        continue
+                    for _act in pending_actions(_sy, _hn):
+                        _ss = f"{_sy}_{_act['side']}"
+                        if _act["window"] == "30D" and _ss in _tradeable and _ss not in running:
+                            _lsides.add(_ss)
             _rec = build_round_completion(_rid, _uni1, _mrows, _mbh, _load_round_exclusions(_rid), _now_ts, npz_min=float(os.environ.get("V15_SCHED_COVERAGE_NPZ_MIN", "20")),
                                           hosts_not_visible=_blind, round_meta={"round_source": _rsrc, "round_env_round": _renv, "current_progress_dir": cur_pdir},
-                                          launchable_syms=_lsyms, running=set(running), carried_from_previous=_previous_round_carry(_rid),
+                                          launchable_syms=_lsyms, launchable_sides=_lsides, running=set(running), carried_from_previous=_previous_round_carry(_rid),
                                           catchup_launches=_catchup_launches(os.environ.get("V15_SCHED_DECISION_LOG", str(ROOT / "logs" / "v15_fleet_sched_decisions.jsonl")), _now_ts),
                                           previous_record=_jload(ROOT / "data" / "reports" / f"full_course_round_{_rid}.json", None))
             _wp = write_round_completion(_rec)

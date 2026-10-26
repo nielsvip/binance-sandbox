@@ -4,6 +4,11 @@
 # and stages it in data/npz_bar_outbox/. S1's tools/npz_bar_ingest.py appends it, so S1 never recomputes the bar.
 # Files are removed locally only after they are on S1 (rsync --remove-source-files), so nothing is lost on failure.
 set -u
+# Cron can overlap a slow SSH/rsync attempt. Serialize the sole remover of
+# outbox files so one run cannot delete another run's glob before rsync stats it.
+if [ "${NPZ_BAR_PUSH_LOCKED:-0}" != "1" ]; then
+  exec /usr/bin/lockf -t 0 /tmp/npz_bar_push_s1.lock /usr/bin/env NPZ_BAR_PUSH_LOCKED=1 "$0" "$@"
+fi
 REPO=/Users/niels/Documents/binance
 OUT="$REPO/data/npz_bar_outbox"
 LOG=/Users/niels/logs/npz_bar_push_s1.log

@@ -1,69 +1,32 @@
 {
- "generated_at": "2026-10-26 02:10 UTC",
- "total_capital_usd": 210.1,
+ "generated_at": "2026-10-26 02:19 UTC",
+ "total_capital_usd": 27.88,
  "tier_capital": {
   "A": 0.0,
-  "B": 22.68,
-  "C": 187.42
+  "B": 0.0,
+  "C": 27.88
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
-  "C": 2
+  "B": 0,
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "inf:BTCUSDC_SHORT",
   "inf:GRAMUSDT_SHORT"
  ],
- "mediocre": [
-  "inf:BNBUSDC_SHORT",
-  "inf:ZENUSDT_SHORT"
- ],
+ "mediocre": [],
  "positions": [
-  {
-   "pk": "inf:BTCUSDC_SHORT",
-   "symbol": "BTCUSDC",
-   "account": "inf",
-   "value_usd": 159.5,
-   "gain_pct": -0.017,
-   "tier": "C",
-   "perf_mult": 0.36,
-   "amt": 0.002,
-   "mark": 79752.00623042
-  },
   {
    "pk": "inf:GRAMUSDT_SHORT",
    "symbol": "GRAMUSDT",
    "account": "inf",
-   "value_usd": 27.92,
-   "gain_pct": 0.175,
+   "value_usd": 27.88,
+   "gain_pct": 0.301,
    "tier": "C",
    "perf_mult": 0.4,
    "amt": 22.5,
-   "mark": 1.24082172
-  },
-  {
-   "pk": "inf:BNBUSDC_SHORT",
-   "symbol": "BNBUSDC",
-   "account": "inf",
-   "value_usd": 14.78,
-   "gain_pct": 0.073,
-   "tier": "B",
-   "perf_mult": 0.67,
-   "amt": 0.02,
-   "mark": 738.79
-  },
-  {
-   "pk": "inf:ZENUSDT_SHORT",
-   "symbol": "ZENUSDT",
-   "account": "inf",
-   "value_usd": 7.9,
-   "gain_pct": 0.111,
-   "tier": "B",
-   "perf_mult": 0.84,
-   "amt": 1.4,
-   "mark": 5.64108082
+   "mark": 1.239253
   }
  ]
 }

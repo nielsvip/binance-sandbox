@@ -122,6 +122,7 @@ def test_tradeable_universe_one_source_alternatives_counted():
     assert u["alternatives"]["symbol_level_both_sides"]["n"] == 4 and u["alternatives"]["symbol_level_both_sides"]["in_chosen"] == 1
     u2 = S.tradeable_universe(["AAA_LONG"], full_sets=False, symbol_level=set())
     assert u2["alternatives"]["per_sym_full_sets_keys"]["n"] is None
+    assert S.tradeable_universe([], full_sets=False, symbol_level=set())["sym_sides"] == []
 
 
 def test_round_roll_decision_refuses_only_launchable_pending():
@@ -174,6 +175,11 @@ def test_launchable_pending_and_outside_histogram():
     must = {"s2": {"DDDUSDT_LONG": _must(codes=("PARSE", "LIVE_DEAD_KEY", "MAXAUG_NEVER_ZERO", "UNWIRED_X", "TYPE_MISMATCH"))}}
     rec = S.build_round_completion("run35", uni, [_row("DDDUSDT_LONG", 1)], must, {}, NOW, launchable_syms={"AAAUSDT", "BBBUSDT"}, running={"BBBUSDT_LONG"})
     assert rec["launchable_pending"] == ["AAAUSDT_LONG"] and rec["running_pending"] == ["BBBUSDT_LONG"] and rec["launchable_known"] is True
+    exact = S.build_round_completion("run35", uni, [], {}, {}, NOW, launchable_syms={"AAAUSDT", "BBBUSDT"},
+                                     launchable_sides={"BBBUSDT_LONG"})
+    assert exact["launchable_pending"] == ["BBBUSDT_LONG"]
+    exhausted = S.build_round_completion("run35", uni, [], {}, {}, NOW, launchable_syms={"AAAUSDT"}, launchable_sides=set())
+    assert exhausted["launchable_pending"] == [] and exhausted["launchable_known"] is True
     assert rec["refusal_reasons_outside_allowlist"] == {"PARSE": 1} and rec["sym_sides"]["DDDUSDT_LONG"]["verdict"] == "REFUSED_ONLY: non-structural refusal codes PARSE"
     assert S.build_round_completion("run35", uni, [], {}, {}, NOW)["launchable_known"] is False
     for c in ("LIVE_DEAD_KEY", "DEAD_VEC_PATH", "SELF_PAIR", "MAXAUG_NEVER_ZERO", "ABLATION_IS_A_LEVER", "PROTECTED_STOP_OFF", "HARD_SET", "NOT_WIRED_VEC"):

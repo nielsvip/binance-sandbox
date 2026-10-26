@@ -30156,6 +30156,7 @@ async def check_entry_candidates_for_account(
                             "trade_manager": trade_manager,
                             "current_price": current_price,
                             "indicators": indicators,
+                            "allow_flat_open": True,
                             "data_manager": data_manager,
                             "last_exit_timestamp": entry_meta.get(
                                 "last_exit_timestamp"
@@ -32368,6 +32369,9 @@ async def evaluate_reentry_epq(ctx: dict):
             position = await trade_manager.get_position(position_key)
         except Exception:
             position = None
+    if not position and ctx.get("allow_flat_open"):
+        from types import SimpleNamespace as _EPQPosition
+        position = _EPQPosition(positionAmt=0.0, mark_price=ctx.get("current_price") or ctx.get("mark_price") or 0.0)
     if not position:
         return None
     is_long = ctx.get("position_side", "LONG") == "LONG"
@@ -32472,7 +32476,7 @@ async def evaluate_reentry_epq(ctx: dict):
         return _exp_cnt >= _min_exp
 
     # B15: STRONG TREND CONTINUATION
-    if getattr(cfg, "REENTRY_B15_STRONG_TREND_ENABLED", True) and _re6_wave_phase_ok():
+    if bool(_sw_get(symbol, ctx.get("position_side", "LONG"), "REENTRY_B15_STRONG_TREND_ENABLED", getattr(cfg, "REENTRY_B15_STRONG_TREND_ENABLED", True))) and _re6_wave_phase_ok():
         if (
             is_long
             and dc_high_4h > 0
@@ -32529,7 +32533,7 @@ async def evaluate_reentry_epq(ctx: dict):
                 quantity=_dcbr_qty,
             )
     # B11: DC CHANNEL BREAKOUT
-    if getattr(cfg, "REENTRY_B11_DC_BREAK_ENABLED", True) and _re6_wave_phase_ok():
+    if bool(_sw_get(symbol, ctx.get("position_side", "LONG"), "REENTRY_B11_DC_BREAK_ENABLED", getattr(cfg, "REENTRY_B11_DC_BREAK_ENABLED", True))) and _re6_wave_phase_ok():
         if (
             is_long
             and dc_high_1h > 0
@@ -32612,49 +32616,21 @@ async def evaluate_reentry_epq(ctx: dict):
                 conviction=85.0,
                 quantity=re_qty * 1.5,
             )
-    # B12: WT MOMENTUM — RE-3 adds conviction bonus when wt_rising_cross_count ≥ THR
-    if getattr(cfg, "REENTRY_B12_WT_MOM_ENABLED", True):
+    # B12: shared native producer with per-sym switch and 15m BASE_TF parity.
+    if bool(_sw_get(symbol, ctx.get("position_side", "LONG"), "REENTRY_B12_WT_MOM_ENABLED", getattr(cfg, "REENTRY_B12_WT_MOM_ENABLED", True))):
+        from vec_decisions import check_entry_b12_wt_mom as _b12_core
         _b12_conv = 75.0
-        if bool(getattr(cfg, "RE_3_B12_RISING_BONUS_ENABLED", False)):
-            _rc_thr = int(getattr(cfg, "RE_3_RISING_COUNT_THR", 3))
+        if bool(_sw_get(symbol, ctx.get("position_side", "LONG"), "RE_3_B12_RISING_BONUS_ENABLED", getattr(cfg, "RE_3_B12_RISING_BONUS_ENABLED", False))):
+            _rc_thr = int(_sw_get(symbol, ctx.get("position_side", "LONG"), "RE_3_RISING_COUNT_THR", getattr(cfg, "RE_3_RISING_COUNT_THR", 3)))
             _rc_field = "wt_rising_cross_count" if is_long else "wt_falling_cross_count"
-            _rc = _sf(i.get(_rc_field), 0.0)
-            if _rc >= _rc_thr:
-                _b12_conv += float(getattr(cfg, "RE_3_CONVICTION_BONUS", 10.0))
-        if (
-            is_long
-            and wt1_3m > wt2_3m
-            and wt1_15m > wt2_15m
-            and wt1_1h > wt2_1h
-            and wt_vel_3m > 1.0
-        ):
-            log_.info(
-                f"[REENTRY_B12_EPQ] {position_key}: WT_MOM_LONG vel3m={wt_vel_3m:.1f} conv={_b12_conv:.0f}"
-            )
-            return _EM_Signal(
-                action="REENTRY",
-                reason=f"B12_WT_MOM_LONG_vel3m={wt_vel_3m:.1f}",
-                conviction=_b12_conv,
-                quantity=re_qty,
-            )
-        if (
-            not is_long
-            and wt1_3m < wt2_3m
-            and wt1_15m < wt2_15m
-            and wt1_1h < wt2_1h
-            and wt_vel_3m < -1.0
-        ):
-            log_.info(
-                f"[REENTRY_B12_EPQ] {position_key}: WT_MOM_SHORT vel3m={wt_vel_3m:.1f} conv={_b12_conv:.0f}"
-            )
-            return _EM_Signal(
-                action="REENTRY",
-                reason=f"B12_WT_MOM_SHORT_vel3m={wt_vel_3m:.1f}",
-                conviction=_b12_conv,
-                quantity=re_qty,
-            )
+            if _sf(i.get(_rc_field), 0.0) >= _rc_thr:
+                _b12_conv += float(_sw_get(symbol, ctx.get("position_side", "LONG"), "RE_3_CONVICTION_BONUS", getattr(cfg, "RE_3_CONVICTION_BONUS", 10.0)))
+        _b12_fire = _b12_core.b12_fires_scalar(wt1_15m, wt2_15m, wt1_15m, wt2_15m, wt1_1h, wt2_1h, wt_vel_15m, is_long)
+        if _b12_fire:
+            log_.info(f"[REENTRY_B12_EPQ] {position_key}: WT_MOM_{'LONG' if is_long else 'SHORT'} vel15m={wt_vel_15m:.1f} conv={_b12_conv:.0f}")
+            return _EM_Signal(action="REENTRY", reason=f"B12_WT_MOM_{'LONG' if is_long else 'SHORT'}_vel15m={wt_vel_15m:.1f}", conviction=_b12_conv, quantity=re_qty)
     # B14: HA TREND CONFIRMATION — RE-4 scales conviction by min(ha_streak_1h, CAP)
-    if getattr(cfg, "REENTRY_B14_HA_TREND_ENABLED", True):
+    if bool(_sw_get(symbol, ctx.get("position_side", "LONG"), "REENTRY_B14_HA_TREND_ENABLED", getattr(cfg, "REENTRY_B14_HA_TREND_ENABLED", True))):
         _ha_val = lambda h: (
             1 if h == "green" or h == 1 else (-1 if h == "red" or h == -1 else 0)
         )
@@ -32697,7 +32673,7 @@ async def evaluate_reentry_epq(ctx: dict):
                 quantity=re_qty,
             )
     # B10: STOCHASTIC REVERSAL
-    if getattr(cfg, "REENTRY_B10_STOCH_REV_ENABLED", True):
+    if bool(_sw_get(symbol, ctx.get("position_side", "LONG"), "REENTRY_B10_STOCH_REV_ENABLED", getattr(cfg, "REENTRY_B10_STOCH_REV_ENABLED", True))):
         if is_long and k_3m_prev <= d_3m and k_3m > d_3m and k_3m < 25 and k_15m < 40:
             log_.info(
                 f"[REENTRY_B10_EPQ] {position_key}: STOCH_REV_LONG k3m={k_3m:.0f}"
