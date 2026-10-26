@@ -14,6 +14,7 @@ import os
 import fcntl
 from pathlib import Path
 from contextvars import ContextVar
+import ez_positions_service
 from ez_positions_service import bootstrap_position_service, WebSocketManager, save_positions_guarded
 from utils import load_environment_from_gpg, orjson_default
 import position_writer_guard as pwg
@@ -181,15 +182,15 @@ class RealtimePositionUpdater:
                                 _pau_timeout = 120.0
                             updated_keys = await asyncio.wait_for(self.position_service.process_account_update(self.account_key, positions_data, single=False, skip_broadcast_save=False), timeout=_pau_timeout)
                             try:
-                                                                ez_positions_service.hang_ok(self.position_service, self.account_key)
+                                ez_positions_service.hang_ok(self.position_service, self.account_key)
                             except Exception:
                                 pass
                         except asyncio.TimeoutError:
-                            # 2026-10-22: mirror the service (fetch_positions): reconcile from the broker
-                            # snapshot and exit only after POSITIONS_HANG_EXIT_AFTER consecutive hangs. The old
+                            # 2026-10-22: let the next REST pass reconcile and exit only after
+                            # POSITIONS_HANG_EXIT_AFTER consecutive hangs. The old
                             # first-hang os._exit(42) turned every load-starvation stall (Mac load 200+) into a
                             # worker death + bootstrap storm, which added the load causing the next stall.
-                                                        _where = f"process_account_update HUNG > {_pau_timeout}s"
+                            _where = f"process_account_update HUNG > {_pau_timeout}s"
                             if ez_positions_service.hang_reconcile(self.position_service, self.account_key, positions_data, _where, _svc_cfg, logger):
                                 logger.critical(f"[FETCH_LOOP][{self.account_key}] 🚨 process_account_update hung repeatedly — exiting for watchdog respawn (last resort)")
                                 try: sys.stdout.flush(); sys.stderr.flush()
@@ -198,7 +199,7 @@ class RealtimePositionUpdater:
                         except Exception as _pau_err:
                             logger.critical(f"[FETCH_LOOP][{self.account_key}] 🚨🚨🚨 process_account_update RAISED: {_pau_err}", exc_info=True)
                             try:
-                                                                _where2 = f"process_account_update RAISED {_pau_err!r}"[:200]
+                                _where2 = f"process_account_update RAISED {_pau_err!r}"[:200]
                                 if ez_positions_service.hang_reconcile(self.position_service, self.account_key, positions_data, _where2, _svc_cfg, logger):
                                     try: sys.stdout.flush(); sys.stderr.flush()
                                     except Exception: pass

@@ -1675,6 +1675,105 @@ def is_context_fresh(ctx, now=None, max_age_s=600.0):
         return False
 
 
+class StoreSnapshot:
+    """Read-only view of THE source of truth (USER 2026-10-26): this service's position store, which the
+    WebSocket updates the instant anything changes and the REST pass re-confirms every few seconds.
+    Drop-in for the deleted positions_truth broker-snapshot object: same .amount(symbol, side) contract,
+    but it costs ZERO Binance request weight, so it can never be rate-limited, time out, or return None
+    because the IP is banned — the three ways the old per-order broker poll turned a real fill into
+    UNCONFIRMED_BY_BROKER and then into a duplicate order."""
+
+    __slots__ = ("amounts", "entries", "fetched_at", "account_key")
+
+    def __init__(self, amounts, entries, fetched_at, account_key=""):
+        self.amounts = amounts
+        self.entries = entries
+        self.fetched_at = fetched_at
+        self.account_key = account_key
+
+    def amount(self, symbol, position_side):
+        return abs(_safe_float(self.amounts.get((str(symbol).upper(), str(position_side or "LONG").upper()), 0.0)))
+
+    def entry(self, symbol, position_side):
+        return _safe_float(self.entries.get((str(symbol).upper(), str(position_side or "LONG").upper()), 0.0))
+
+    def __repr__(self):
+        return f"StoreSnapshot({self.account_key}, rows={len(self.amounts)}, fetched_at={self.fetched_at})"
+
+
+async def store_snapshot(service, account_key, force=False, reason=""):
+    """Positions for account_key straight out of the store. Returns None ONLY when the store genuinely
+    holds nothing for the account (cold start before the first load) — callers treat None as "unknown" and
+    stay conservative, which is still correct. `force`/`reason` are accepted and ignored: there is nothing
+    to force, the store is already as current as the WebSocket."""
+    try:
+        rows = (getattr(service, "positions_by_account", None) or {}).get(account_key) or {}
+        if not rows:
+            return None
+        amounts, entries = {}, {}
+        for _pk, _pos in list(rows.items()):
+            try:
+                _sym = str(getattr(_pos, "symbol", "") or "").upper()
+                _ps = str(getattr(_pos, "position_side", "") or "").upper()
+                if not _sym or _ps not in ("LONG", "SHORT"):
+                    continue
+                amounts[(_sym, _ps)] = abs(_safe_float(getattr(_pos, "positionAmt", 0.0)))
+                entries[(_sym, _ps)] = _safe_float(getattr(_pos, "entry_price", 0.0))
+            except Exception:
+                continue
+        if not amounts:
+            return None
+        _ts = getattr(service, "positions_last_sync", None)
+        try:
+            _fetched = _ts.timestamp() if hasattr(_ts, "timestamp") else float(_ts or 0.0)
+        except Exception:
+            _fetched = 0.0
+        return StoreSnapshot(amounts, entries, _fetched, account_key)
+    except Exception:
+        return None
+
+
+async def store_moved(service, account_key, symbol, position_side, baseline, kind, config=None, log=None):
+    """Did the position move away from `baseline` in the `kind` ("increase"/"reduce") direction?
+    Reads the store (WS-fed), never the broker. Unknown store -> False (same as the old unreachable broker)."""
+    snap = await store_snapshot(service, account_key)
+    if snap is None:
+        return False
+    amt = snap.amount(symbol, position_side)
+    base = abs(_safe_float(baseline))
+    tol = max(1e-9, max(abs(amt), base) * 1e-6)
+    return (amt < base - tol) if kind == "reduce" else (amt > base + tol)
+
+
+def store_amount(service, account_key, symbol, position_side):
+    """Synchronous peek at one sym_side's amount in the store. None when the account has no rows yet."""
+    try:
+        rows = (getattr(service, "positions_by_account", None) or {}).get(account_key) or {}
+        if not rows:
+            return None
+        _pk = f"{account_key}:{str(symbol).upper()}_{str(position_side or 'LONG').upper()}"
+        _pos = rows.get(_pk)
+        if _pos is None:
+            return 0.0
+        return abs(_safe_float(getattr(_pos, "positionAmt", 0.0)))
+    except Exception:
+        return None
+
+
+def store_age_s(service, now=None):
+    """True age of the last broker-confirmed REST reconcile, inf when never. NEVER fabricated from wall
+    clock: the deleted positions_truth._ez_local reported age 0 whenever the WS socket was merely connected,
+    which is why 3 of 5 accounts never verified against the broker for a whole day."""
+    try:
+        _ts = getattr(service, "positions_last_sync", None)
+        e = _ts.timestamp() if hasattr(_ts, "timestamp") else float(_ts or 0.0)
+        if not e or e <= 0:
+            return float("inf")
+        return max(0.0, (time.time() if now is None else now) - e)
+    except Exception:
+        return float("inf")
+
+
 def hang_ok(service, account_key):
     """A pass completed: clear the consecutive-hang counter."""
     try:

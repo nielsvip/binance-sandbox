@@ -529,7 +529,7 @@ def file_gate_decision(guard: "_GuardBase", venue: str, symbol: str, position_si
     the last fill. Follow-up legs of the SAME execute_now call are exempt (their fills are tracked by the in-call intent gate).
     The service gets POSITIONS_FILE_SYNC_WAIT_S; beyond that it is stalled -> BROKEN POSITIONS MANAGEMENT alarm + the row is
     rewritten from the broker; the order proceeds only if the rewritten file now reflects the broker."""
-    import positions_truth as _pt  # noqa: WPS433
+    import position_writer_guard as _pt  # noqa: WPS433
 
     if not bool(_cfg(guard.cfg, "WIRE_FILE_REFLECTION_ENABLED")):
         return Decision(True, "FILE_GATE_DISABLED")
@@ -552,29 +552,25 @@ def file_gate_decision(guard: "_GuardBase", venue: str, symbol: str, position_si
 
 
 def _file_gate_heal(guard, venue, symbol, position_side, broker, last_fill, ev) -> Decision:
-    import positions_truth as _pt  # noqa: WPS433
+    import position_writer_guard as _pt  # noqa: WPS433
 
-    _pt.broken_positions_alarm(venue, guard.account, ev.get("key", symbol), {**ev, "stall_s": float(_cfg(guard.cfg, "POSITIONS_FILE_SYNC_WAIT_S"))}, logger=guard.log)
-    if _pt.rewrite_row_from_broker(venue, guard.account, symbol, position_side, broker, logger=guard.log):
-        ok2, ev2 = _pt.file_reflects(venue, guard.account, symbol, position_side, _f(broker.get("amt")), last_fill)
-        ev2["token_key"] = ev.get("token_key")
-        if ok2:
-            _file_ok(ev2.get("token_key") or "")
-            return Decision(True, "FILE_REWRITTEN_FROM_BROKER", ev2)
-        try:  # USER 2026-10-14 SINGLE POSITION WRITER: a manager may not rewrite the file; the order proceeds on the SAME fresh
-            # broker read the rewrite would have used (identical to the pre-law outcome) — never block on the writer's lag.
-            import position_writer_guard as _pwg  # noqa: WPS433
-            if _pwg.process_role() == "manage":
-                _file_ok(ev2.get("token_key") or "")
-                return Decision(True, "BROKER_FRESH_FILE_DEFERRED_TO_SERVICE", ev2)
-        except Exception:
-            pass
-        ev = ev2
+    _pt.broken_positions_alarm(venue, guard.account, ev.get("key", symbol), {**ev, "stall_s": float(_cfg(guard.cfg, "POSITIONS_FILE_SYNC_WAIT_S"))}, log=guard.log)
+    # USER 2026-10-14 SINGLE POSITION WRITER + USER 2026-10-26 (positions_truth.py deleted): a manager may NOT
+    # write position files, so the old rewrite_row_from_broker path is gone — it was a second writer racing the
+    # service for the file that is itself the source of truth. ez_manage/tradier_manage run as role "manage",
+    # which already took the deferred branch below in live, so live behaviour is unchanged: alarm, then proceed
+    # and let the single writer catch up. Any other role still blocks.
+    try:
+        if _pt.process_role() == "manage":
+            _file_ok(ev.get("token_key") or "")
+            return Decision(True, "BROKER_FRESH_FILE_DEFERRED_TO_SERVICE", ev)
+    except Exception:
+        pass
     return Decision(False, "POSITIONS_FILE_NOT_REFLECTED", ev)
 
 
 async def file_gate_decision_async(guard: "_GuardBase", venue: str, symbol: str, position_side: str, broker: Dict[str, Any], token_key: str) -> Decision:
-    import positions_truth as _pt  # noqa: WPS433
+    import position_writer_guard as _pt  # noqa: WPS433
 
     if not bool(_cfg(guard.cfg, "WIRE_FILE_REFLECTION_ENABLED")):
         return Decision(True, "FILE_GATE_DISABLED")

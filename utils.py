@@ -4965,3 +4965,39 @@ async def await_abandonable(coro, timeout):
     except Exception:
         pass
     raise AbandonTimeout(f"abandoned after {timeout}s")
+
+
+# USER 2026-10-26: moved here from the deleted positions_truth.py — generic off-loop serialization,
+# nothing to do with broker truth. Callers: ez_positions_quick.py (vec twin eval), tradier_manage.py.
+_OFFLOOP_LOCK = threading.Lock()
+_OFFLOOP_ALOCK = None  # asyncio.Lock, created lazily inside the running loop (one loop per process)
+_OFFLOOP_LOG = logging.getLogger("offloop")
+
+
+async def offloop_serialized(fn, *args, **kwargs):
+    """Run a blocking CPU call (vec twin: backtest_v8_precompute.compute_symbol ~20 s/symbol) in a worker thread,
+    one at a time, so the asyncio loop keeps servicing broker position sync. A blocked loop made
+    process_account_update exceed PAU_TIMEOUT_SEC -> os._exit(42) (men restart loop 2026-10-06 19:00:39Z)."""
+
+    def _run():
+        with _OFFLOOP_LOCK:
+            return fn(*args, **kwargs)
+
+    global _OFFLOOP_ALOCK
+    if _OFFLOOP_ALOCK is None:
+        _OFFLOOP_ALOCK = asyncio.Lock()
+    _t0 = time.time()
+    try:
+        # 2026-10-14: queue on an asyncio lock FIRST — waiters cost no thread. Before, every queued twin eval parked a default-executor
+        # thread on _OFFLOOP_LOCK (convoy) and starved broker reads of threads.
+        async with _OFFLOOP_ALOCK:
+            return await asyncio.to_thread(_run)
+    finally:
+        _dt = time.time() - _t0
+        if _dt > 5.0:
+            try:
+                _fn = getattr(fn, "__name__", repr(fn))[:40]
+                _aa = ",".join([str(a)[:24] for a in list(args)[:3]])
+                _OFFLOOP_LOG.warning(f"[OFFLOOP_SLOW] {_fn}({_aa}) took {_dt:.1f}s (threadpool queue + _OFFLOOP_LOCK convoy + compute)")
+            except Exception:
+                pass

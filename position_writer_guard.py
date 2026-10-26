@@ -605,6 +605,144 @@ def _alert(kind, detail, base_dir=None):
         pass
 
 
+ALARM_TEXT = "🚨 BROKEN POSITIONS MANAGEMENT"
+_ALARM_LAST = {}
+
+
+def read_written_at(path):
+    """written_at of a positions file from its .meta.json sidecar. None = unknown.
+    Never fresher than the data file itself, so a writer that skipped the stamp cannot look current.
+    USER 2026-10-26: moved off the deleted positions_truth.py; used to pick the fresher of
+    Redis vs JSON for the Tradier reader, which is a real source choice, not an order gate."""
+    try:
+        mp = meta_path(path)
+        if not mp.exists() or not Path(path).exists():
+            return None
+        with open(mp) as fh:
+            body = json.load(fh)
+        wa = float(body.get("written_at") or 0.0)
+        if wa <= 0:
+            return None
+        return min(wa, Path(path).stat().st_mtime + 0.5)
+    except Exception:
+        return None
+
+
+def tradier_reader_written_at(wrapper):
+    """Redis wrapper {'timestamp': epoch, ...} written by tradier_positions.broadcast_to_redis (after a successful API sync)."""
+    if isinstance(wrapper, dict):
+        return to_epoch(wrapper.get("timestamp"))
+    return None
+
+
+def canonical_account(venue, account):
+    """Resolve raw Binance API-key fingerprints to the account that owns its position files."""
+    account = str(account or "")
+    if venue != "binance" or not account.startswith("key_"):
+        return account
+    import hashlib
+    matches = []
+    for env_name, api_key in os.environ.items():
+        if not env_name.endswith("_API_KEY") or not api_key:
+            continue
+        candidate = env_name[:-8].lower()
+        if not candidate or candidate.startswith("key_"):
+            continue
+        if "key_" + hashlib.sha1(api_key.encode()).hexdigest()[:10] != account:
+            continue
+        account_dir = Path(__file__).resolve().parent / candidate
+        if any((account_dir / f"{side}_positions.json").is_file() for side in ("long", "short")):
+            matches.append(candidate)
+    return matches[0] if len(set(matches)) == 1 else account
+
+
+def positions_file_for(venue, account, position_side):
+    """{acct}/long_positions.json | short_positions.json (crypto: BASE/acct; tradier: account_dir from config_tradier)."""
+    account = canonical_account(venue, account)
+    name = "short_positions.json" if str(position_side).upper() == "SHORT" else "long_positions.json"
+    base = os.environ.get("POSITIONS_BASE_DIR")
+    if base:
+        return Path(base) / account / name
+    if venue == "tradier":
+        try:
+            from config_tradier import TradierConfig
+            ac = TradierConfig().get_account_config(account) or {}
+            if ac.get("account_dir"):
+                return Path(ac["account_dir"]) / name
+        except Exception:
+            pass
+    return Path(__file__).resolve().parent / account / name
+
+
+def file_reflects(venue, account, symbol, position_side, broker_amt, last_fill_ts, tol_s=2.0):
+    """USER 2026-10-26 (moved off the deleted positions_truth.py): does {acct}/{long,short}_positions.json —
+    THE source of truth — already show the broker-confirmed quantity, written after the last fill?
+    Returns (ok, evidence). An unreadable file is NOT ok (the caller waits, then alarms)."""
+    account = canonical_account(venue, account)
+    ps = str(position_side).upper()
+    key = f"{account}:{str(symbol).upper()}_{ps}"
+    path = positions_file_for(venue, account, ps)
+    rows = read_json(path)
+    row = rows.get(key) if isinstance(rows, dict) else None
+    amt = _amt(row) if isinstance(row, dict) else (0.0 if path.exists() else None)
+    try:
+        written_at = path.stat().st_mtime if path.exists() else None
+    except Exception:
+        written_at = None
+    want = abs(float(broker_amt or 0.0))
+    tol = max(1e-9, want * 1e-6)
+    ok_amt = amt is not None and abs(amt - want) <= tol
+    recent = last_fill_ts is not None and (time.time() - float(last_fill_ts)) <= float(os.environ.get("POSITIONS_FILE_FILL_RECENT_S", "600"))
+    ok_time = (not recent) or (written_at is not None and written_at >= float(last_fill_ts) - tol_s)
+    return ok_amt and ok_time, {"file": str(path), "key": key, "file_amt": amt, "broker_amt": broker_amt, "written_at": written_at, "last_fill_ts": last_fill_ts}
+
+
+def broken_positions_alarm(venue, account, key, detail, log=None):
+    """CRITICAL log with the exact text, flag file, live-guardian dashboard row, macOS notification (rate-limited 60 s/account)."""
+    _log = log or logger
+    raw_account = str(account or "")
+    account = canonical_account(venue, raw_account)
+    if account != raw_account and str(key).startswith(f"{raw_account}:"):
+        key = f"{account}:{str(key).split(':', 1)[1]}"
+    now = time.time()
+    iso = datetime.fromtimestamp(now, timezone.utc).isoformat()
+    msg = f"{ALARM_TEXT} {venue}:{account} {key} {json.dumps(detail, default=str)[:600]}"
+    _log.critical(msg)
+    if os.environ.get("PYTEST_CURRENT_TEST") and not os.environ.get("POSITIONS_BASE_DIR"):
+        return
+    rec = {"ts": iso, "severity": "CRITICAL", "kind": "BROKEN_POSITIONS_MANAGEMENT", "key": key, "account": account, "venue": venue, "evidence": f"{ALARM_TEXT}: {json.dumps(detail, default=str)[:900]}"}
+    base = Path(os.environ.get("POSITIONS_BASE_DIR") or Path(__file__).resolve().parent)
+    try:
+        d = base / "data" / "alerts"
+        d.mkdir(parents=True, exist_ok=True)
+        flag = d / f"BROKEN_POSITIONS_MANAGEMENT_{account}.flag"
+        try:
+            prev = json.loads(flag.read_text()).get("events", [])[-49:]
+        except Exception:
+            prev = []
+        tmp = flag.with_name(flag.name + f".{os.getpid()}.tmp")
+        tmp.write_text(json.dumps({"alarm": ALARM_TEXT, "account": account, "last": rec, "events": prev + [rec]}, indent=1, default=str))
+        os.replace(tmp, flag)
+    except Exception as e:
+        logger.error(f"[ALARM] flag write failed: {e!r}")
+    try:
+        g = base / "data" / "reports" / "live_guardian_events.jsonl"
+        g.parent.mkdir(parents=True, exist_ok=True)
+        with open(g, "a") as fh:
+            fh.write(json.dumps(rec, default=str) + "\n")
+    except Exception as e:
+        logger.error(f"[ALARM] guardian write failed: {e!r}")
+    if os.environ.get("POSITIONS_ALARM_NOTIFY", "1") == "1" and now - _ALARM_LAST.get(account, 0.0) >= 60.0:
+        _ALARM_LAST[account] = now
+        try:
+            import subprocess
+            if sys.platform == "darwin":
+                text = f"{venue}:{account} {key} — positions file did not reflect the broker".replace('"', "'")
+                subprocess.Popen(["osascript", "-e", f'display notification "{text}" with title "{ALARM_TEXT}" sound name "Sosumi"'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception as e:
+            logger.error(f"[ALARM] notification failed: {e!r}")
+
+
 def before_write(path, rows, role=None, log=None, overlay=True):
     """THE hook every positions-file writer calls right before replacing the file. Returns True to proceed.
     overlay=True only where rows are the caller's in-memory positions (ez_positions.atomic_save)."""

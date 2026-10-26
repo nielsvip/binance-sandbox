@@ -28947,7 +28947,7 @@ async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> 
                 # parity monitor counts a divergent hold, not a ghost. The OPEN stays unconsumed; the EXIT-side
                 # converge-close flattens live and the entry fires on a later sweep once flat. ROLLBACK: delete block.
                 try:
-                    _st = await __import__("positions_truth").offloop_serialized(_vx.actions_at, _sym, _side, time.time())  # 2026-10-14: was ON the event loop -> live_klines rebuild ~20 s/symbol froze process_account_update > 120 s (BROKEN_POSITIONS_MANAGEMENT ang/inf/fin 20:58-21:11Z)
+                    _st = await __import__("utils").offloop_serialized(_vx.actions_at, _sym, _side, time.time())  # 2026-10-14: was ON the event loop -> live_klines rebuild ~20 s/symbol froze process_account_update > 120 s (BROKEN_POSITIONS_MANAGEMENT ang/inf/fin 20:58-21:11Z)
                     _bts = float(_st.get("bar_ts") or 0.0)
                     _has_open = any((a.get("type") or "").upper() == "OPEN" for a in _st.get("actions") or [])
                     if _has_open and _bts > 0:
@@ -28962,7 +28962,7 @@ async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> 
                     pass
                 return f"SKIP_LIVE_HOLDS_{_pk}"
             _vx_sent = False
-            _taken, _snap = await __import__("positions_truth").offloop_serialized(
+            _taken, _snap = await __import__("utils").offloop_serialized(
                 _vx.take_plus, _sym, _side, time.time(), ("OPEN",)
             )  # 2026-10-06 director: off the event loop (men PAU_TIMEOUT); 2026-10-19: single acquisition — _snap reuses the same bar snapshot for converge below instead of a second serialized eval
             for _a in _taken:

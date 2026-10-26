@@ -7,8 +7,54 @@ import stale_set_halt as _stale_set_halt  # 2026-10-14 USER STALE-SET 2-LOSS HAL
 import exit_guarantee as _xg  # 2026-10-14 USER EXITS NEVER COMPROMISED: full close never refused (FORCE leg), reduce retry, ledger once per confirmed fill
 import vec_decisions.qty_quantizers as _qq  # 2026-10-16 USER STDEV 1-5x ladder + streak quantizer: same code as v12_quick_engine/tradier_manage
 import paper_nonvec as _paper_nv  # 2026-10-17 USER: live-only decisions refused + paper-traded next to the vector trades
-import positions_truth as _ptruth  # 2026-10-06 USER POSITIONS_TRUTH: stale->broker fallback, zero-qty refusal, broker-confirmed SUCCESS
+import ez_positions_service as _eps  # USER 2026-10-26: the position store IS the source of truth (positions_truth.py deleted)
+from utils import await_abandonable  # USER 2026-10-26: generic never-hang timeout (moved out of positions_truth.py)
 from live_rally_filters import rally_ok as _rally_ok, age_minutes as _rally_age
+
+
+def _execute_now_qty_guard(fn):
+    """Decorator on MultiAccountTradeManager.execute_now — THE only order gate.
+
+    USER 2026-10-26, replacing positions_truth.ez_confirmed. It keeps the ONE protection that guard had and
+    drops the one that cost real money:
+
+    KEPT — a zero / non-finite quantity is never sent and never reported as SUCCESS. (A qty=0 order is the
+    "closing 0 amt positions" failure, so this stays fail-closed.)
+
+    DROPPED — per-order broker confirmation. ez_confirmed polled Binance positionRisk BEFORE the order and
+    again AFTER it, and if the post-order read disagreed or could not be read it rewrote a real SUCCESS into
+    UNCONFIRMED_BY_BROKER_<code> and locked the key. Measured 2026-10-26: 1,495 IP bans / 407 APIError(-1003)
+    in 31 h, 162 UNCONFIRMED_BY_BROKER_* results, and 308 of 368 FORCE_CLOSE_MARKET attempts arriving at an
+    already-flat position (FORCE_NOTHING_OPEN) because the caller had been told its completed exit failed and
+    escalated. The order HAD executed; only the confirming read failed. Under the standing design the
+    WebSocket reports every position change immediately and the service's REST pass re-confirms seconds
+    later, so execute_now's result is now the broker's own placement answer and the store owns the record.
+
+    Stop/force actions were already exempt in the old guard and stay exempt here.
+    """
+    @functools.wraps(fn)
+    async def _wrapped(self, *args, **kwargs):
+        try:
+            bound = inspect.signature(fn).bind_partial(self, *args, **kwargs).arguments
+        except Exception:
+            bound = kwargs
+        action = str(bound.get("action") or "").upper()
+        if action in ("PLACE_STOP", "CANCEL_STOP", "FORCE_CLOSE_MARKET"):
+            return await fn(self, *args, **kwargs)
+        if not bool(bound.get("is_full_close")):
+            qty = bound.get("quantity", 0.0)
+            try:
+                q = float(qty)
+                bad = (not math.isfinite(q)) or q <= 0.0
+            except (TypeError, ValueError):
+                bad = True
+            if bad:
+                pk = bound.get("position_key") or f"{bound.get('account_key')}:{bound.get('symbol')}_{bound.get('position_side')}"
+                logger.critical(f"🛑 [POSITIONS_ZERO_QTY_REFUSED] {pk}: action={action} qty={qty!r} reason={str(bound.get('reason'))[:80]} — zero/invalid quantity is never sent and never SUCCESS")
+                return "BLOCKED_ZERO_QTY"
+        return await fn(self, *args, **kwargs)
+
+    return _wrapped
 import fnmatch
 import functools
 import glob
@@ -3759,7 +3805,7 @@ async def _xg_ez_force(mgr, a, c, why):
 
 async def _xg_ez_broker(mgr, account_key, symbol, position_side):
     try:
-        _snap = await _ptruth.ez_broker(mgr, account_key, config, logger).snapshot(force=True, reason=f"exit_guarantee {symbol}_{position_side}")
+        _snap = await _eps.store_snapshot(mgr, account_key, force=True, reason=f"exit_guarantee {symbol}_{position_side}")
     except Exception:
         _snap = None
     if _snap is None:
@@ -22841,7 +22887,7 @@ class MultiAccountTradeManager:
             if amt <= 0:
                 if have and have.get("orderId"):
                     try:  # 2026-10-13 GUARANTEED STOP: local flat never cancels — forced broker read must confirm flat
-                        _fx_bs = await _ptruth.ez_broker(self, account_key, config, logger).snapshot(force=True, reason=f"fixed_stop_flat {position_key}")
+                        _fx_bs = await _eps.store_snapshot(self, account_key, force=True, reason=f"fixed_stop_flat {position_key}")
                     except Exception:
                         _fx_bs = None
                     if _fx_bs is None or abs(float(_fx_bs.amount(symbol, _side_u))) > 0:
@@ -23050,7 +23096,7 @@ class MultiAccountTradeManager:
         """2026-10-13: the taker backstop for FIXED_STOP (~-0.3% class: acts ONLY after maker-first failed AND the webhook failed). Broker-moved re-check first (the maker may have filled without local confirmation) — never double-close. Single reduceOnly MARKET through the wire sanction (refuses while a broker order is unconfirmed). Never raises."""
         try:
             try:
-                if await _ptruth.ez_broker_moved(self, account_key, symbol, position_side, abs(float(baseline_amt or 0.0)), "reduce", config=config, logger=logger):
+                if await _eps.store_moved(self, account_key, symbol, position_side, abs(float(baseline_amt or 0.0)), "reduce", config=config, logger=logger):
                     logger.critical(f"🛡️ [FIXED_STOP_TAKER_SUPPRESSED] {position_key}: broker shows the reduce already moved — NO taker backstop (no-double rule)")
                     return "SUPPRESSED_TAKER_ALREADY_MOVED"
             except Exception:
@@ -23140,7 +23186,7 @@ class MultiAccountTradeManager:
                         continue
                     if _sw_snap is False:
                         try:
-                            _sw_snap = await _ptruth.ez_broker(self, account_key, config, logger).snapshot(force=True, reason="fixed_stop_sweep")
+                            _sw_snap = await _eps.store_snapshot(self, account_key, force=True, reason="fixed_stop_sweep")
                         except Exception:
                             _sw_snap = None
                     if _sw_snap is None:
@@ -23183,7 +23229,7 @@ class MultiAccountTradeManager:
             except Exception as _e:
                 return f"SKIPPED_LIST_{_e}"
             try:  # 2026-10-13 GUARANTEED STOP: orphan = broker flat (forced read), never local flat; unknown -> cancel nothing
-                _rc_snap = await _ptruth.ez_broker(self, account_key, config, logger).snapshot(force=True, reason="fixed_stop_reconcile")
+                _rc_snap = await _eps.store_snapshot(self, account_key, force=True, reason="fixed_stop_reconcile")
             except Exception:
                 _rc_snap = None
             if _rc_snap is None:
@@ -26727,14 +26773,14 @@ class MultiAccountTradeManager:
         # the vector's decision, which is the direction that loses money. So the amount is now the LARGEST of every
         # source we have: the broker-backed read, this process's dict, and the position writer's own snapshot. A
         # position we might hold is never read as flat; a genuinely flat key costs one refused reduceOnly order, and
-        # @_ptruth.ez_confirmed already guarantees a zero qty is never sent. The price stays cache-only — it is not
+        # @_execute_now_qty_guard already guarantees a zero qty is never sent. The price stays cache-only — it is not
         # allowed to block (USER: a wss timeout can never cost the trading path a wait).
         position = None
         try:
             # USER 2026-10-24 unreachable-real-fix: this await used to hang past the outer guard, aborting the
             # whole read BEFORE the local-dict + writer-file fallbacks below ran — one stuck broker read skipped
             # the key for the cycle. Bound it tight so the fallbacks always run; the outer guard stays backstop.
-            position = await _ptruth.await_abandonable(self.get_position(position_key, max_age_s=5.0), timeout=2.0)
+            position = await await_abandonable(self.get_position(position_key, max_age_s=5.0), timeout=2.0)
         except Exception:
             position = None
         amt = abs(safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0)) if position else 0.0
@@ -32150,7 +32196,7 @@ class MultiAccountTradeManager:
         lp = current_price
         while time.time() - lock_start_time < 3.0:
             try:
-                _mkr_locked = await _ptruth.await_abandonable(self.try_add_order_redis(maker_lock_key, expiry_seconds=90), timeout=2.0)
+                _mkr_locked = await await_abandonable(self.try_add_order_redis(maker_lock_key, expiry_seconds=90), timeout=2.0)
             except asyncio.TimeoutError:
                 try:
                     _mkr_locked = await self._try_local_lock(maker_lock_key, 90)
@@ -32176,7 +32222,7 @@ class MultiAccountTradeManager:
             )
             return False, -2.0 if ta == "REDUCE" else -1.0
         try:
-            await _ptruth.await_abandonable(self.try_add_order_redis(active_lock_key, expiry_seconds=60), timeout=2.0)
+            await await_abandonable(self.try_add_order_redis(active_lock_key, expiry_seconds=60), timeout=2.0)
         except asyncio.TimeoutError:
             pass
         tracked_order_ids = []
@@ -32185,13 +32231,13 @@ class MultiAccountTradeManager:
             try:
                 logger.info(f"[EXEC_TRACE] {position_key}: MKR_RELEASE_ENTER success_fill={bool(success_fill)}")
                 try:
-                    await _ptruth.await_abandonable(self.clear_active_lock(active_lock_key), timeout=3.0)
+                    await await_abandonable(self.clear_active_lock(active_lock_key), timeout=3.0)
                 except asyncio.TimeoutError:
                     pass
                 if success_fill:
                     if self.redis_manager:
                         try:
-                            await _ptruth.await_abandonable(self.redis_manager.set(
+                            await await_abandonable(self.redis_manager.set(
                                 maker_lock_key, f"post_fill_{side}", ex=90
                             ), timeout=3.0)
                         except asyncio.TimeoutError:
@@ -32199,7 +32245,7 @@ class MultiAccountTradeManager:
                     asyncio.create_task(self._delayed_lock_cleanup(maker_lock_key, 90))
                 else:
                     try:
-                        await _ptruth.await_abandonable(self.clear_active_lock(maker_lock_key), timeout=3.0)
+                        await await_abandonable(self.clear_active_lock(maker_lock_key), timeout=3.0)
                     except asyncio.TimeoutError:
                         pass
                 async with self.dedupe_lock:
@@ -32322,7 +32368,7 @@ class MultiAccountTradeManager:
                                 await release_locks()
                                 return False, -1.0
                             _confirm_wire_result("futures_create_order:dust_close_market", position_key, _dresp, _dseq, ta, reason)
-                            _ptruth.note_order_reason(position_key, float(qty_dec), reason)
+                            _eps.note_order_reason(position_key, float(qty_dec), reason)
                             logger.critical(f"[DUST_CLOSE_MARKET] {position_key} dust ${_mkr_notional:.2f} → MARKET {side} {qty_dec} wired")
                             await release_locks(success_fill=True)
                             return True, float(qty_dec)
@@ -32338,7 +32384,7 @@ class MultiAccountTradeManager:
             logger.critical(
                 f"📊 [MAKER_QTY] {position_key}: qty_abs={qty_abs:.6f} step={step} → qty_str={qty_str} side={side} reason={reason[:50]}"
             )
-            _ptruth.note_order_reason(position_key, float(qty_dec), reason)
+            _eps.note_order_reason(position_key, float(qty_dec), reason)
             placement_start_time = time.time()
             active_order_id = None
             active_price = None
@@ -33468,12 +33514,8 @@ class MultiAccountTradeManager:
             b = await _read()
             if b is None:
                 _fb_amt, _fb_src = 0.0, "none"
-                try:
-                    _bp = getattr(_ptruth, "_CACHES", {}).get(("binance", acct))
-                    if _bp is not None and getattr(_bp, "last", None) is not None:
-                        _fb_amt, _fb_src = abs(float(_bp.last.amount(symbol, ps))), "last_broker_snapshot"
-                except Exception:
-                    pass
+                # USER 2026-10-26: the separate broker-snapshot cache died with positions_truth.py. The store
+                # (WS-fed, REST-reconciled) is the truth and is what get_position reads, so go straight there.
                 if _fb_amt <= 0:
                     try:
                         _lp = await self.get_position(position_key)
@@ -33564,7 +33606,7 @@ class MultiAccountTradeManager:
 
     @_odg.execute_now_gate("binance")  # POSITIONS REVAMP 2026-10-06: execute_now token — the wire refuses exposure-increasing orders without it
     @_xg.wrap_execute_now("ez", lambda: _XG_EZ_HOOKS)  # 2026-10-14 EXITS NEVER COMPROMISED (exit_guarantee.py)
-    @_ptruth.ez_confirmed  # 2026-10-06 USER POSITIONS_TRUTH: zero qty never sent; SUCCESS only when the broker-confirmed position matches
+    @_execute_now_qty_guard  # USER 2026-10-26: zero/invalid qty is never sent. Broker-confirmation of the RESULT is gone with positions_truth.py: the WS store confirms (see _execute_now_qty_guard).
     async def execute_now(
         self,
         position_key: Optional[str] = None,
@@ -34228,7 +34270,7 @@ class MultiAccountTradeManager:
                 try:
                     _bs_acct2 = (str(position_key).split(":", 1)[0] if position_key and ":" in str(position_key) else account_key) or ""
                     _truth_age_bs = (
-                        min(_ptruth.truth_slot_age_s(_bb, _bs_acct2) for _bb in ("binance", "tradier")) if _bs_acct2 else float("inf")
+                        _eps.store_age_s(getattr(self, "positions_service", None) or self) if _bs_acct2 else float("inf")
                     )
                     if _truth_age_bs < _age:
                         _age = _truth_age_bs
@@ -36418,7 +36460,7 @@ class MultiAccountTradeManager:
                     if _ndo_vec:
                         try:
                             _ndo_acct, _ndo_sym, _ndo_ps = parse_position_key(position_key)
-                            _ndo_broker = _ptruth.ez_leftover_position(
+                            _ndo_broker = _eps.store_amount(
                                 self, _ndo_acct, _ndo_sym, _ndo_ps
                             )
                         except Exception:
@@ -36836,7 +36878,7 @@ class MultiAccountTradeManager:
                 # a persistently stale slot). Unknown truth proceeds as OPEN — post-trade broker confirmation
                 # reconciles a real leftover, and a truly dead broker fails the placement itself with a
                 # broker-attested error. Leftover-to-AUGMENT conversion below is unchanged.
-                _lo_snap = await _ptruth.ez_broker(self, _lo_acct, config, logger).snapshot(reason=f"open_on_leftover {position_key}")
+                _lo_snap = await _eps.store_snapshot(self, _lo_acct, reason=f"open_on_leftover {position_key}")
                 if _lo_snap is None:
                     logger.critical(f"⚠️ [OPEN_ON_LEFTOVER_UNVERIFIED_PROCEED] {position_key}: broker position unknown — OPEN proceeds unverified (no sleep-retry, no refusal)")
                 _lo_amt = _lo_snap.amount(_lo_sym, _lo_ps) if _lo_snap is not None else 0.0
@@ -38351,7 +38393,7 @@ class MultiAccountTradeManager:
             await self.cleanup_old_dedupe_keys()
             logger.info(f"[EXEC_TRACE] {position_key}: STEP1a_CLEANUP {_xs_who} elapsed={time.time() - _xs_t0:.1f}s")
             try:
-                lock_acquired = await _ptruth.await_abandonable(self.try_add_order_redis(exec_lock_key, expiry_seconds=MAX_EXECUTION_TIME), timeout=15.0)
+                lock_acquired = await await_abandonable(self.try_add_order_redis(exec_lock_key, expiry_seconds=MAX_EXECUTION_TIME), timeout=15.0)
             except asyncio.TimeoutError:
                 logger.warning(f"[LOCK_TIMEOUT] {position_key}: exec lock redis op >15s — abandoning wedged op, local-lock fallback (trades NOW, never defers) {_xs_who}")
                 try:
@@ -38363,7 +38405,7 @@ class MultiAccountTradeManager:
                 try:
                     if self.redis_manager:
                         try:
-                            lock_val = await _ptruth.await_abandonable(self.redis_manager.get(exec_lock_key), timeout=3.0)
+                            lock_val = await await_abandonable(self.redis_manager.get(exec_lock_key), timeout=3.0)
                         except asyncio.TimeoutError:
                             lock_val = None
                     else:
@@ -38380,11 +38422,11 @@ class MultiAccountTradeManager:
                             return "BLOCK_SKIPPED_POST_FILL_COOLDOWN"
                         else:
                             try:
-                                await _ptruth.await_abandonable(self.force_clear_execution_lock(position_key), timeout=5.0)
+                                await await_abandonable(self.force_clear_execution_lock(position_key), timeout=5.0)
                             except asyncio.TimeoutError:
                                 pass
                             try:
-                                lock_acquired = await _ptruth.await_abandonable(self.try_add_order_redis(exec_lock_key, expiry_seconds=MAX_EXECUTION_TIME), timeout=15.0)
+                                lock_acquired = await await_abandonable(self.try_add_order_redis(exec_lock_key, expiry_seconds=MAX_EXECUTION_TIME), timeout=15.0)
                             except asyncio.TimeoutError:
                                 logger.warning(f"[LOCK_TIMEOUT] {position_key}: exec lock retry redis op >15s — abandoning wedged op, local-lock fallback {_xs_who}")
                                 try:
@@ -38394,15 +38436,15 @@ class MultiAccountTradeManager:
                     elif is_reduce:
                         if self.redis_manager:
                             try:
-                                await _ptruth.await_abandonable(self.redis_manager.delete(exec_lock_key), timeout=3.0)
+                                await await_abandonable(self.redis_manager.delete(exec_lock_key), timeout=3.0)
                             except asyncio.TimeoutError:
                                 pass
                         try:
-                            await _ptruth.await_abandonable(self.force_clear_execution_lock(position_key), timeout=5.0)
+                            await await_abandonable(self.force_clear_execution_lock(position_key), timeout=5.0)
                         except asyncio.TimeoutError:
                             pass
                         try:
-                            lock_acquired = await _ptruth.await_abandonable(self.try_add_order_redis(exec_lock_key, expiry_seconds=MAX_EXECUTION_TIME), timeout=15.0)
+                            lock_acquired = await await_abandonable(self.try_add_order_redis(exec_lock_key, expiry_seconds=MAX_EXECUTION_TIME), timeout=15.0)
                         except asyncio.TimeoutError:
                             logger.warning(f"[LOCK_TIMEOUT] {position_key}: exec lock reduce-retry redis op >15s — abandoning wedged op, local-lock fallback (exits never blocked) {_xs_who}")
                             try:
@@ -38477,10 +38519,12 @@ class MultiAccountTradeManager:
                         logger.debug(f"CD err: {e}")
             logger.info(f"[EXEC_TRACE] {position_key}: STEP1d_AUGCD {_xs_who} elapsed={time.time() - _xs_t0:.1f}s")
             logger.info(f"[EXEC_TRACE] {position_key}: STEP2_POS_FETCH action={action} span1_elapsed={time.time() - _xs_t0:.1f}s {_xs_who}")
-            if not is_sandbox_account(config, account_key):  # 2026-10-06 USER POSITIONS_TRUTH: local older than POSITIONS_MAX_AGE_S -> broker positionRisk; mismatch refuses entries
-                _pt_blk = await _ptruth.ez_pre_order_check(self, account_key, symbol, position_key, position_side, action, reason, config=config, logger=logger)
-                if _pt_blk:
-                    return _pt_blk
+            # USER 2026-10-26: the per-order broker poll is GONE with positions_truth.py. It demanded local
+            # data younger than POSITIONS_MAX_AGE_S (1.0 s) while the reconcile loop runs every
+            # POSITION_REFRESH_MIN_INTERVAL (5 s), so it declared good data stale and polled Binance on
+            # order-bound reads; that weight earned the -1003 / 418 bans, and a failed poll then refused
+            # real orders as BLOCKED_POSITIONS_BROKER_MISMATCH / BLOCKED_POSITIONS_BROKER_UNREACHABLE.
+            # The store below (get_position) is WS-fed and REST-reconciled: it IS the broker truth.
             logger.info(f"[EXEC_TRACE] {position_key}: STEP2a_SNAPSHOT {_xs_who} elapsed={time.time() - _xs_t0:.1f}s")
             position = await self.get_position(position_key)
             baseline_amt = (safe_fetch_float(position.positionAmt, 0.0))
@@ -38494,7 +38538,7 @@ class MultiAccountTradeManager:
             )
             real_notional = abs(current_real_amt) * old_price if old_price > 0 else 0.0
             try:
-                current_price = await _ptruth.await_abandonable(quick_price(symbol), timeout=20.0)
+                current_price = await await_abandonable(quick_price(symbol), timeout=20.0)
             except asyncio.TimeoutError:
                 logger.warning(f"[PRICE_TIMEOUT] {position_key}: quick_price >20s — falling back to position/file price chain {_xs_who}")
                 current_price = 0.0
@@ -38574,7 +38618,7 @@ class MultiAccountTradeManager:
 
             if not current_price or current_price <= 0:
                 try:
-                    current_price, _ = await _ptruth.await_abandonable(get_current_price(symbol), timeout=20.0)
+                    current_price, _ = await await_abandonable(get_current_price(symbol), timeout=20.0)
                 except asyncio.TimeoutError:
                     logger.warning(f"[PRICE_TIMEOUT] {position_key}: method get_current_price >20s — falling back to pos_mark {_xs_who}")
                     current_price = 0.0
@@ -38888,7 +38932,7 @@ class MultiAccountTradeManager:
                 if quantity <= 0.0:
                     return f"NO QUANTITY LEFT TO REDUCE (Protected by retention_qty {retention_qty:.6f})"
             try:
-                await _ptruth.await_abandonable(record_decision_context_crypto(
+                await await_abandonable(record_decision_context_crypto(
                     self.redis_manager,
                     account_key,
                     position_key,
@@ -39092,7 +39136,7 @@ class MultiAccountTradeManager:
                             action=action,
                         )
                         if not reduce_verified:  # POSITIONS REVAMP 2026-10-06 (E2): local/WS verify lags — ask the broker before anything else
-                            reduce_verified = await _ptruth.ez_broker_moved(self, account_key, symbol, position_side, abs(baseline_amt), "reduce", config=config, logger=logger)
+                            reduce_verified = await _eps.store_moved(self, account_key, symbol, position_side, abs(baseline_amt), "reduce", config=config, logger=logger)
                         if reduce_verified:
                             await self.handle_filled_maker(
                                 account_key,
@@ -39635,7 +39679,7 @@ class MultiAccountTradeManager:
                             > 0.0001
                         ):
                             return "SUCCESS"
-                        if await _ptruth.ez_broker_moved(self, account_key, symbol, position_side, abs(original_positionAmt), "increase", config=config, logger=logger):  # POSITIONS REVAMP (E3): fresh broker read, not WS
+                        if await _eps.store_moved(self, account_key, symbol, position_side, abs(original_positionAmt), "increase", config=config, logger=logger):  # POSITIONS REVAMP (E3): fresh broker read, not WS
                             logger.warning(f"[EXECUTE_UNVERIFIED_BROKER_FILLED] {position_key}: broker shows the maker filled — no fallback")
                             return "SUCCESS"
                         if True:  # POSITIONS REVAMP 2026-10-06 (E3): OPEN as well as AUGMENT — confirm the maker is CANCELED before any fallback
@@ -53195,7 +53239,7 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager, 
         if _amt <= 0 and "EXIT" in fams and bool(getattr(config, "VEC_EXIT_OWED_ENABLED", True)) and _vx.exit_owed_has(position_key):
             # 2026-10-13 NEAR ang post-mortem: local flat is NOT proof — a stale snapshot said 0 while the broker held 25h after the vec
             # CLOSE. An owed vec exit is cleared ONLY by a forced broker read showing flat; broker holds -> the close is re-sent now.
-            _ob_snap = await _ptruth.ez_broker(trade_manager, _acct or account_key, config, logger).snapshot(force=True, reason=f"exit_owed {position_key}")
+            _ob_snap = await _eps.store_snapshot(trade_manager, _acct or account_key, force=True, reason=f"exit_owed {position_key}")
             if _ob_snap is None:
                 logger.critical(f"[VEC_EXACT_EXIT_OWED] {position_key}: local flat but broker UNREACHABLE — owed exit kept, retry next sweep")
                 return True
@@ -53403,7 +53447,7 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager, 
             try:
                 _amt_owed = abs(safe_fetch_float(getattr(trade_manager.positions.get(position_key), "positionAmt", 0), 0))
                 if not _vx_exit_attempted and _vx.exit_owed_due(position_key, _amt_owed, _vx_lc_of(trade_manager.positions.get(position_key))):
-                    _ow_snap = await _ptruth.ez_broker(trade_manager, _acct or account_key, config, logger).snapshot(force=True, reason=f"exit_owed_retry {position_key}")
+                    _ow_snap = await _eps.store_snapshot(trade_manager, _acct or account_key, force=True, reason=f"exit_owed_retry {position_key}")
                     if _ow_snap is not None and abs(float(_ow_snap.amount(_sym, _side))) <= 0:
                         _vx.exit_owed_drop(position_key)  # broker confirms FLAT (inf WUSDT 22:03: filled while local stayed stale 150s+)
                         logger.info(f"[VEC_EXACT_EXIT_OWED] {position_key}: broker confirms FLAT (local stale {_amt_owed:.6f}) — owed exit cleared")
