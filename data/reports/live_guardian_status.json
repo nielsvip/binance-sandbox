@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-26T08:52:56Z",
+ "ts": "2026-10-26T08:57:47Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 435,
-   "open_positions": 12,
-   "unrealised_usd": -2.08,
+   "fills_6h": 419,
+   "open_positions": 17,
+   "unrealised_usd": -2.26,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 434,
-   "open_positions": 18,
-   "unrealised_usd": 1.99,
+   "fills_6h": 423,
+   "open_positions": 17,
+   "unrealised_usd": 1.97,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 444,
-   "open_positions": 13,
-   "unrealised_usd": 0.29,
+   "fills_6h": 429,
+   "open_positions": 12,
+   "unrealised_usd": 0.24,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -91,14 +91,14 @@
    }
   },
   "flz": {
-   "fills_6h": 178,
-   "open_positions": 2,
-   "unrealised_usd": -0.06,
+   "fills_6h": 172,
+   "open_positions": 1,
+   "unrealised_usd": -0.03,
    "pos_mismatch": 0,
    "vec_parity": {
-    "live_vec_decisions": 3,
+    "live_vec_decisions": 2,
     "state_divergent": 1,
-    "filled": 2,
+    "filled": 1,
     "refused_non_safety": 0,
     "safety_refusals": 0,
     "not_filled_no_log": 0,
@@ -127,35 +127,35 @@
     "78591"
    ],
    "starts_30m": 1,
-   "log_age_s": 459.0
+   "log_age_s": 50.0
   },
   "men": {
    "pids": [
     "78579"
    ],
    "starts_30m": 1,
-   "log_age_s": 166.0
+   "log_age_s": 1.0
   },
   "ang": {
    "pids": [
     "78578"
    ],
    "starts_30m": 1,
-   "log_age_s": 6.0
+   "log_age_s": 0.0
   },
   "inf": {
    "pids": [
     "78569"
    ],
    "starts_30m": 1,
-   "log_age_s": 7.0
+   "log_age_s": 16.0
   },
   "flz": {
    "pids": [
     "78576"
    ],
    "starts_30m": 1,
-   "log_age_s": 31.0
+   "log_age_s": 3.0
   },
   "trb": {
    "pids": [
@@ -167,43 +167,28 @@
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 177720.0
+   "log_age_s": 178011.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-26T08:52:56Z",
+   "ts": "2026-10-26T08:57:47Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
-   "key": "fin:NEARUSDC_LONG",
-   "evidence": "entry notional $27.17 (median $7.33, MAX_ORDER_VALUE $300) @ 2026-10-26T08:40:38Z VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_3"
+   "key": "fin:INXUSDT_SHORT",
+   "evidence": "entry notional $23.24 (median $6.91, MAX_ORDER_VALUE $300) @ 2026-10-26T08:56:53Z VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_1"
   },
   {
-   "ts": "2026-10-26T08:52:56Z",
+   "ts": "2026-10-26T08:57:48Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "flz:BNBUSDC_SHORT",
    "evidence": "CLOSE WT_LOWER_CROSS_EXIT wt_1h higher wt+pric bar=2026-10-26T05:00:00Z: live already flat (state divergence, no order needed)"
-  },
-  {
-   "ts": "2026-10-26T08:52:56Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 459s"
-  },
-  {
-   "ts": "2026-10-26T08:52:56Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "men",
-   "evidence": "ez_manage_men.log not written for 166s"
   }
  ],
  "alert_counts": {
   "SIZE_ANOMALY": 1,
-  "VEC_EXIT_WHILE_LIVE_FLAT": 1,
-  "STALE_LOG": 2
+  "VEC_EXIT_WHILE_LIVE_FLAT": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -345,7 +330,14 @@
    "why": "SIZE_ANOMALY entry notional $120.00 (median $24.67, MAX_ORDER_VALUE $300) @ 2026-10-26T08:19:27Z VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_2",
    "undo": "redis-cli -p 6379 DEL open_blocked:ang:ZENUSDT_SHORT",
    "dry_run": false
+  },
+  "key:fin:INXUSDT_SHORT": {
+   "ts": 1793005026.419455,
+   "until": 1793012226.419455,
+   "why": "SIZE_ANOMALY entry notional $23.24 (median $6.91, MAX_ORDER_VALUE $300) @ 2026-10-26T08:56:53Z VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_1",
+   "undo": "redis-cli -p 6379 DEL open_blocked:fin:INXUSDT_SHORT",
+   "dry_run": false
   }
  },
- "sweep_s": 0.59
+ "sweep_s": 0.56
 }

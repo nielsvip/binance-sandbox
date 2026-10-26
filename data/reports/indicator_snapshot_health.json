@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-26T08:52:47Z",
+ "generated_utc": "2026-10-26T08:57:43Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 1104.3,
+  "age_s": 1400.1,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 4524,
-  "proc_age_s": 104893.0,
-  "log_age_s": 25.2,
+  "proc_age_s": 105188.0,
+  "log_age_s": 109.1,
   "warmup_done": true,
   "timeframes_since_restart": [
    "D",
@@ -148,21 +148,21 @@
   "mode": "ACTIVE",
   "since_epoch": 1792602182.2042153,
   "activations": 163,
-  "hb_mtime": 1793004446.8187957,
-  "mac_snapshot_age_s": 65.17626905441284,
+  "hb_mtime": 1793004804.2072046,
+  "mac_snapshot_age_s": 72.91126728057861,
   "mac_stale": false,
   "lease_holder": "mac",
   "lease_venues": null,
   "lease_since": "2026-10-25T23:35:46Z",
   "lease_reason": "manual force-mac",
-  "now": 1793004468.3212056,
-  "from_cache_age_s": 299.3,
-  "heartbeat_age_s": 21.5,
-  "active_s": 402286.1,
+  "now": 1793004825.7763572,
+  "from_cache_age_s": 237.7,
+  "heartbeat_age_s": 21.6,
+  "active_s": 402643.6,
   "note": "ACTIVE is CORRECT while the Mac snapshot is stale \u2014 fix the Mac, S1 returns to NORMAL on its own"
  },
  "alerts": [
-  "SNAPSHOT STALE: latest_market_data.json is 1104s old (> 600s). ez_indicators pid=4524 warmup_done=True tfs_since_restart=['D', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', 'D', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '1h', '15m', '3m', 'D', '4h', '1h', '15m', '3m', 'D', '4h', '1h', '15m', '3m', 'D', '4h', '1h', '15m', '3m', 'D', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '1h', '15m', '3m'] restarts_last_hour=0. Live crypto decisions are reading a stale indicator snapshot."
+  "SNAPSHOT STALE: latest_market_data.json is 1400s old (> 600s). ez_indicators pid=4524 warmup_done=True tfs_since_restart=['D', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', 'D', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '1h', '15m', '3m', 'D', '4h', '1h', '15m', '3m', 'D', '4h', '1h', '15m', '3m', 'D', '4h', '1h', '15m', '3m', 'D', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '1h', '15m', '3m'] restarts_last_hour=0. Live crypto decisions are reading a stale indicator snapshot."
  ],
  "verdict": "ALERT"
 }
