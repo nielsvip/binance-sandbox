@@ -173,18 +173,20 @@ def mandatory_stop_exempt(action, reason, ultimate_buffer_pct=None):
         return True
     if not r.startswith("FIXED_STOP_"):
         return False
+    # Tradier appends the requested full-close quantity before dictate-only.
+    # Accept that final execution suffix while still checking the complete
+    # producer reason and its DC reference.
+    base = r"FIXED_STOP_(?:LONG|SHORT)_PX\d+(?:\.\d+)?_LVL\d+(?:\.\d+)?_G[-+]?\d+(?:\.\d+)?"
+    qty = r"(?:_QTY_\d+(?:\.\d+)?)?"
     # The live producer omits the reference suffix for the canonical frozen
     # entry dc_15m ±0.25% law. Any explicit REF tag must match a non-tightened
     # dc_15m or dc_4h ±0.25% spec below.
     if "_REF" not in r:
-        return re.fullmatch(
-            r"FIXED_STOP_(?:LONG|SHORT)_PX\d+(?:\.\d+)?_LVL\d+(?:\.\d+)?_G[-+]?\d+(?:\.\d+)?",
-            r,
-        ) is not None
+        return re.fullmatch(base + qty, r) is not None
     # DC15 is the required entry-time stop at exactly ±0.25%; DC4 is accepted
     # only at the mandated 0.25% buffer. Stale configurable stops (for example
     # ``_REFdc_low.15m.b0.5``) must not be mistaken for either hard-stop law.
-    return re.search(r"_REFDC_(?:LOW|HIGH)\.(?:15M|4H)\.B0\.25$", r) is not None
+    return re.fullmatch(base + r"_REFDC_(?:LOW|HIGH)\.(?:15M|4H)\.B0\.25" + qty, r) is not None
 
 
 def nonvectorizable_portfolio_action(action, reason):

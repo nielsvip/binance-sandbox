@@ -6,6 +6,23 @@ import asyncio
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_tradier_fixed_stop_quantity_suffix_preserves_mandatory_exemption():
+    from vec_decisions.vec_parity_gates import mandatory_stop_exempt
+
+    live_reason = "FIXED_STOP_SHORT_px13.775000_lvl13.769337_g0.54_qty_999999"
+    assert mandatory_stop_exempt("CLOSE", live_reason)
+    assert mandatory_stop_exempt(
+        "CLOSE", "FIXED_STOP_SHORT_px13.775000_lvl13.769337_g0.54_REFdc_high.15m.b0.25_qty_999999"
+    )
+    assert mandatory_stop_exempt("CLOSE", live_reason + "_REFdc_high.15m.b0.25") is False
+    assert not mandatory_stop_exempt(
+        "CLOSE", "FIXED_STOP_SHORT_px13.775000_lvl13.769337_g0.54_REFbb_high.1h.b0.25_qty_999999"
+    )
+    assert not mandatory_stop_exempt(
+        "CLOSE", "FIXED_STOP_SHORT_px13.775000_lvl13.769337_g0.54_REFdc_high.15m.b0.35_qty_999999"
+    )
+
+
 def test_tradier_rolling_1h_15m_stops_are_retired_but_dc15_order_stays_pinned():
     src = (ROOT / "tradier_manage.py").read_text()
     start = src.index("async def process_position(")
