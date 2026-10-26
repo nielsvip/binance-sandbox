@@ -285,6 +285,19 @@ def cpu_bound_calculation(closes_1m, closes_3m, last_price, last_tick_ts):
         return None
 
 # --- FAST CANDLE BUILDER ---
+def _forming_15m_allowed(now_s):
+    elapsed = float(now_s) % 900
+    return 30 <= elapsed < 720
+
+
+def _write_forming_15m(path, bar):
+    from closed_bar_feed import timestamp_epoch
+    now = time.time()
+    if not _forming_15m_allowed(now) or timestamp_epoch(bar['timestamp']) != int(now // 900) * 900:
+        return False
+    return _write_provisional_15m(path, bar)
+
+
 def _load_closed_15m_prefix(symbol, bucket_ts, cache_dirs, secondary_tf):
     import json
     import re
@@ -295,7 +308,7 @@ def _load_closed_15m_prefix(symbol, bucket_ts, cache_dirs, secondary_tf):
             path = Path(directory) / f'{symbol}_{tf}.json'
             try:
                 with path.open('rb') as stream:
-                    stream.seek(max(0, path.stat().st_size - 131072))
+                    stream.seek(max(0, path.stat().st_size - 16384))
                     recent = stream.read().decode('utf-8')
                 for match in re.finditer(r'\{[^{}]*\}', recent):
                     row = json.loads(match.group())
@@ -308,6 +321,9 @@ def _load_closed_15m_prefix(symbol, bucket_ts, cache_dirs, secondary_tf):
                     bar['_span_s'] = span
                     bar['_source'] = f'kline_{tf}'
                     records.setdefault((stamp, span), bar)
+                covered = {minute for start, duration in records for minute in range(start, start + duration, 60)}
+                if len(covered) >= 13:
+                    return records
             except (OSError, ValueError, TypeError, KeyError):
                 continue
     return records
@@ -1431,12 +1447,18 @@ class MarketDataEngine:
     async def provisional_15m_writeback(self):
         """Publish mark-built OHLC rows at 15m boundaries until Binance OHLCV arrives."""
         cache_dir = BASE_PATH / "klines_cache"
-        sem = asyncio.Semaphore(16)
+        sem = asyncio.Semaphore(2)
+        attempted = {}
         while self.running:
             now = time.time()
+            if not _forming_15m_allowed(now):
+                await asyncio.sleep(0.1)
+                continue
             bucket_ts = int(now - (now % 900))
             writes = []
-            for symbol in list(self.symbols):
+            for symbol in list(self.__dict__.get("_closed_15m_universe", self.symbols)):
+                if now - attempted.get(symbol, 0) < 60:
+                    continue
                 buf = self.price_buffer.get(symbol) or {}
                 price = float(buf.get('p') or 0.0)
                 mark_ts = float(buf.get('t') or 0.0)
@@ -1479,12 +1501,42 @@ class MarketDataEngine:
 
                 async def _write(target=path, row=bar, ticker=symbol, sig=signature):
                     async with sem:
-                        if await asyncio.to_thread(_write_provisional_15m, target, row):
+                        if await asyncio.to_thread(_write_forming_15m, target, row):
                             self._provisional_15m_sig[ticker] = sig
 
+                attempted[symbol] = now
                 writes.append(_write())
             if writes:
                 await asyncio.gather(*writes, return_exceptions=True)
+            await asyncio.sleep(0.1)
+
+    async def closed_15m_mark_capture_loop(self):
+        import math
+        buffers = self.__dict__.setdefault('_closed_15m_mark_minutes', {})
+        self._closed_15m_sampler_ready = True
+        while self.running:
+            now = time.time()
+            minute = int(now // 60) * 60
+            for symbol in list(self.__dict__.get('_closed_15m_universe', self.symbols)):
+                quote = self.price_buffer.get(symbol) or {}
+                try:
+                    price = float(quote.get('p') or 0)
+                    source_ts = float(quote.get('t') or 0)
+                    if not math.isfinite(price) or price <= 0 or not 0 <= now - source_ts <= 5:
+                        continue
+                    bars = buffers.setdefault(symbol, OrderedDict())
+                    bar = bars.get(minute)
+                    if bar is None:
+                        bars[minute] = {'open': price, 'high': price, 'low': price, 'close': price, '_mark_source_ts': source_ts}
+                    else:
+                        bar['high'] = max(bar['high'], price)
+                        bar['low'] = min(bar['low'], price)
+                        bar['close'] = price
+                        bar['_mark_source_ts'] = source_ts
+                    while len(bars) > 60:
+                        bars.popitem(last=False)
+                except (TypeError, ValueError):
+                    continue
             await asyncio.sleep(0.1)
 
     async def prepare_closed_15m_loop(self):
@@ -1539,7 +1591,9 @@ class MarketDataEngine:
                     if sent.get(symbol) == bucket_ts:
                         continue
                     store = self.market.data.get(symbol) or {}
-                    minute_bars = store.get('ohlc_1m') or {}
+                    minute_bars = self.__dict__.get('_closed_15m_mark_minutes', {}).get(symbol) or {}
+                    if not self.__dict__.get('_closed_15m_sampler_ready'):
+                        minute_bars = store.get('ohlc_1m') or {}
                     bars = dict(self.__dict__.get('_closed_15m_prepared', {}).get((symbol, bucket_ts), {}))
                     bars.update({stamp: bar for stamp, bar in minute_bars.items() if bucket_ts + 780 <= stamp < bucket_ts + 900})
                     completed = aggregate_closed_15m(bars, bucket_ts, now)
@@ -1699,6 +1753,7 @@ class MarketDataEngine:
                 self.provisional_15m_writeback(),
                 self.closed_15m_writeback(),
                 self.prepare_closed_15m_loop(),
+                self.closed_15m_mark_capture_loop(),
                 self.rest_klines_repair_loop(),
                 self.funding_rate_loop(),  # 2026-04-27: live funding-rate refresh into market.data[sym]['funding_rate']
                 self.open_interest_loop(),  # 2026-04-27: live OI refresh into market.data[sym]['oi_value','oi_change_1h_pct']

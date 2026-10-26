@@ -18212,9 +18212,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     # dominated by MI_EXIT / MULTI_TF_EXIT / PROFIT_TARGET sites. Same predicate as vec_decisions/ported_exit.py (data: wt_*_structure_15m, low/high_15m(_prev)).
     _qta_eb_block = None
     try:
-        if str(getattr(cfg, "MODE", "crypto")) == "tradier" and bool(
-            getattr(cfg, "EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED", False)
-        ):
+        if bool(getattr(cfg, "EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED", False)):
             _eb_pk = _safe(npz, "wt_peak_structure_15m", n, 0.0)
             _eb_tr = _safe(npz, "wt_trough_structure_15m", n, 0.0)
             _eb_lo, _eb_lop = _safe(npz, "low_15m", n, 0.0), _safe(
@@ -22075,7 +22073,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     _ctp_valid_qty = _ctp_qty > 0.0 and _ctp_qty < float(pos["qty"])
                     if is_tradier:
                         _ctp_valid_qty = _ctp_qty >= 1.0 and float(pos["qty"]) - _ctp_qty >= 1.0
-                    if _ctp_valid_qty:
+                    if _ctp_valid_qty and not (_qta_eb_block is not None and bool(_qta_eb_block[i])):
                         _ctp_reason = f"CYCLE_TP_TIERED_T{_ctp_idx}_{_ctp_level * 100:.2f}pct_gain{live_pnl_pct:.2f}"
                         _ctp_ts = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
                         _ctp_event = {"type": "REDUCE", "ts": _ctp_ts, "price": float(px), "qty": float(_ctp_qty), "pos_deployed": float(pos["deployed"]), "bar": int(i), "reason": _ctp_reason}

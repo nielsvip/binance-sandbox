@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from tools.v15_preopen_7d_stage import digest, file_md5, file_sha256, stage
+from tools.v15_preopen_7d_stage import digest, file_md5, file_sha256, stage, validate_one
 from tools.v15_preopen_7d_runtime import assert_ready
 
 
@@ -109,6 +109,16 @@ def test_stage_binds_sql_baseline_to_exact_database_row(tmp_path):
     queue.write_text(json.dumps(doc))
     with pytest.raises(ValueError, match="row changed"):
         stage(queue, results, db, sets, stocks, tmp_path / "tampered_stage", today, published)
+
+
+def test_stage_refuses_sql_baseline_replaced_by_category_defaults(tmp_path):
+    today, queue, results, *_ = _fixture(tmp_path)
+    progress = results / "AAAUSDT_SHORT/progress/AAAUSDT_SHORT_7d_progress.json"
+    data = json.loads(progress.read_text())
+    data["defaults_challenger"] = {"choose_mode": True, "chosen": "cat_side_defaults"}
+    progress.write_text(json.dumps(data))
+    with pytest.raises(ValueError, match="SQL baseline was replaced"):
+        validate_one("AAAUSDT_SHORT", {"source_kind": "per_sym_sql", "overrides": {"X": 1}}, results, today)
 
 
 def test_stage_refuses_missing_or_unverified_result(tmp_path):

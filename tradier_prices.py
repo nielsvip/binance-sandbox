@@ -157,6 +157,19 @@ def _write_provisional_stock_15m_unlocked(path, bar):
         logger.warning(f"Provisional Tradier 15m write failed {path.name}: {exc}")
         return False
 
+def _forming_15m_allowed(now_s):
+    elapsed = float(now_s) % 900
+    return 30 <= elapsed < 720
+
+
+def _write_forming_15m(path, bar):
+    from closed_bar_feed import timestamp_epoch
+    now = time.time()
+    if not _forming_15m_allowed(now) or timestamp_epoch(bar['timestamp']) != int(now // 900) * 900:
+        return False
+    return _write_provisional_stock_15m(path, bar)
+
+
 def _load_closed_15m_prefix(symbol, bucket_ts, cache_dirs, secondary_tf):
     import json
     import re
@@ -167,7 +180,7 @@ def _load_closed_15m_prefix(symbol, bucket_ts, cache_dirs, secondary_tf):
             path = Path(directory) / f'{symbol}_{tf}.json'
             try:
                 with path.open('rb') as stream:
-                    stream.seek(max(0, path.stat().st_size - 131072))
+                    stream.seek(max(0, path.stat().st_size - 16384))
                     recent = stream.read().decode('utf-8')
                 for match in re.finditer(r'\{[^{}]*\}', recent):
                     row = json.loads(match.group())
@@ -180,6 +193,9 @@ def _load_closed_15m_prefix(symbol, bucket_ts, cache_dirs, secondary_tf):
                     bar['_span_s'] = span
                     bar['_source'] = f'kline_{tf}'
                     records.setdefault((stamp, span), bar)
+                covered = {minute for start, duration in records for minute in range(start, start + duration, 60)}
+                if len(covered) >= 13:
+                    return records
             except (OSError, ValueError, TypeError, KeyError):
                 continue
     return records
@@ -217,7 +233,7 @@ class TradierPriceFetcher:
         self.redis_manager = None
         self._provisional_15m = {}
         self._provisional_15m_sig = {}
-        self._provisional_write_sem = asyncio.Semaphore(16)
+        self._provisional_write_sem = asyncio.Semaphore(2)
         # --- FIX: Define fetcher_id ---
         self.fetcher_id = uuid.uuid4().hex[:6]
         logger.info(f"Initialized PriceFetcher [{self.fetcher_id}]")
@@ -358,6 +374,7 @@ class TradierPriceFetcher:
         writes = []
         pending = self.__dict__.setdefault('_pending_closed_15m', {})
         io_tasks = self.__dict__.setdefault('_provisional_io_tasks', {})
+        attempted = self.__dict__.setdefault('_provisional_write_attempted', {})
         for symbol, quote in list(prices.items()):
             try:
                 path = self.config.KLINES_CACHE_DIR / f"{symbol}_15m.json"
@@ -372,10 +389,6 @@ class TradierPriceFetcher:
                         if state is not None:
                             pending[(symbol, state['bucket_ts'])] = state
                         minute_bars = {}
-                        if state is None:
-                            minute_bars = await asyncio.to_thread(_load_cached_subbars, self.config.KLINES_CACHE_DIR / f"{symbol}_1m.json", bucket_ts, 60)
-                            if not minute_bars:
-                                minute_bars = await asyncio.to_thread(_load_cached_subbars, self.config.KLINES_CACHE_DIR / f"{symbol}_5m.json", bucket_ts, 300)
                         state = {'bucket_ts': bucket_ts, 'minute_bars': minute_bars}
                         self._provisional_15m[symbol] = state
                     minute_ts = int(now - (now % 60))
@@ -386,6 +399,8 @@ class TradierPriceFetcher:
                         minute_bar['high'] = max(minute_bar['high'], price)
                         minute_bar['low'] = min(minute_bar['low'], price)
                         minute_bar['close'] = price
+                    if not _forming_15m_allowed(now) or symbol not in self.__dict__.get('_closed_15m_universe', self.symbols) or now - attempted.get(symbol, 0) < 60:
+                        continue
                     values = [item for _, item in sorted(state['minute_bars'].items())]
                     opening = float(values[0]['open'])
                     high = max(float(item['high']) for item in values)
@@ -399,8 +414,9 @@ class TradierPriceFetcher:
                     continue
                 async def _write(target=path, row=bar, ticker=symbol, sig=signature):
                     async with self._provisional_write_sem:
-                        if await asyncio.to_thread(_write_provisional_stock_15m, target, row):
+                        if await asyncio.to_thread(_write_forming_15m, target, row):
                             self._provisional_15m_sig[ticker] = sig
+                attempted[symbol] = now
                 io_tasks[symbol] = asyncio.create_task(_write())
             except Exception as exc:
                 logger.debug(f"[{self.fetcher_id}] provisional 15m skipped {symbol}: {exc}")

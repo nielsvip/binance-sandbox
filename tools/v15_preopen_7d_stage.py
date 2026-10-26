@@ -46,6 +46,10 @@ def validate_one(ss: str, source: dict, result_dir: Path, today: str) -> dict:
     expected_source = digest(source["overrides"])
     if progress.get("source_30d_sha256") != expected_source:
         raise ValueError(f"{ss}: 30D source hash mismatch")
+    if source.get("source_kind") == "per_sym_sql":
+        challenger = progress.get("defaults_challenger") or {}
+        if challenger.get("choose_mode") is True and challenger.get("chosen") != "start":
+            raise ValueError(f"{ss}: SQL baseline was replaced by {challenger.get('chosen')}")
     overrides = progress.get("cumulative_overrides")
     defaults = progress.get("defaults_snapshot_7d")
     full = progress.get("full_config_7d")

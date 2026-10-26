@@ -86,12 +86,16 @@ async def prepare_cycle(base, api, bucket, universe, helpers, now_fn=time.time, 
     deadline = bucket + 895
     outcomes = []
     async def one(symbol):
-        missing = await asyncio.to_thread(missing_prefix, base, symbol, bucket, helpers)
-        result = {'symbol': symbol, 'bucket': bucket, 'missing_before': len(missing), 'requested': False, 'filled': 0}
-        if not missing:
-            result.update(status='READY', at=now_fn())
-            return result
         async with semaphore:
+            result = {'symbol': symbol, 'bucket': bucket, 'missing_before': None, 'requested': False, 'filled': 0}
+            if deadline - now_fn() <= 0:
+                result.update(status='DEADLINE', at=now_fn())
+                return result
+            missing = await asyncio.to_thread(missing_prefix, base, symbol, bucket, helpers)
+            result['missing_before'] = len(missing)
+            if not missing:
+                result.update(status='READY', at=now_fn())
+                return result
             remaining = deadline - now_fn()
             if remaining <= 0:
                 result.update(status='DEADLINE', at=now_fn())
@@ -107,7 +111,7 @@ async def prepare_cycle(base, api, bucket, universe, helpers, now_fn=time.time, 
                 result.update(status='READY' if not left else 'MISSING', missing_after=len(left), request_s=round(now_fn() - began, 3), at=now_fn())
             except Exception as exc:
                 result.update(status='ERROR', error=f'{type(exc).__name__}: {exc}', at=now_fn())
-        return result
+            return result
     tasks = [asyncio.create_task(one(symbol)) for symbol in universe]
     try:
         for task in asyncio.as_completed(tasks):
