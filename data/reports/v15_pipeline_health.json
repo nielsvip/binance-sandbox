@@ -1,8 +1,8 @@
 {
- "at": "2026-10-26T09:00:11Z",
+ "at": "2026-10-26T09:16:01Z",
  "s1": {
   "host": "niels",
-  "now": 1793005205.9549072,
+  "now": 1793006157.554001,
   "merge_crypto": {
    "n": 12,
    "max_lag_min": 0.0,
@@ -18,16 +18,16 @@
    "dead": []
   },
   "npz_legacy_crypto": [],
-  "append_log_age_min": 0.3,
-  "append_last_secs": 584.0,
-  "append_last_stats": "'appended': 817, 'created': 0, 'up_to_date': 5574, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
+  "append_log_age_min": 5.5,
+  "append_last_secs": 621.5,
+  "append_last_stats": "'appended': 995, 'created': 0, 'up_to_date': 5396, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
   "npz_loop_pids": 0,
   "npz_loop_has_settle": false,
-  "sched_tick_age_min": 2.1,
+  "sched_tick_age_min": 1.9,
   "sched_launched": 0,
   "archive_n": 202,
   "archive_mb": 2461.8,
-  "archive_newest_min": 97.7,
+  "archive_newest_min": 113.5,
   "_via": "s1-int"
  },
  "red": [
