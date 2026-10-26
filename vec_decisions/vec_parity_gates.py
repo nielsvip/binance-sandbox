@@ -281,6 +281,7 @@ def dictate_only_exempt(action, reason, sym_side=None, ultimate_buffer_pct=None)
                 ("QUICK_BREAKEVEN_", "BREAKEVEN_GAIN_EROSION_ENABLED"),
                 ("BREAKEVEN_GAIN_EROSION", "BREAKEVEN_GAIN_EROSION_ENABLED"),
                 ("CYCLE_TP_TIERED_", "CYCLE_TP_TIERED_ENABLED"),
+                ("WT_PERCENTILE_", "WT_PERCENTILE_EXIT_ENABLED"),
                 ("WT_EXHAUST_", "WT_EXHAUST_EXIT_ENABLED"),
             ):
                 if _r.startswith(_pfx) or _ru.startswith(_pfx):

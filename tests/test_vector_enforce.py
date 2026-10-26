@@ -455,6 +455,31 @@ def test_wt_percentile_restore(tmp_path, monkeypatch):
     assert not (tmp_path / "vector_kills.json").exists()
 
 
+def test_wt_percentile_dictate_only_uses_sym_side_switch(tmp_path, monkeypatch):
+    """A switch-enabled WT percentile live twin is a vector-dictated exit."""
+    from vec_decisions import vec_parity_gates as gates
+
+    _iso(tmp_path, monkeypatch)
+    import per_sym_store
+
+    monkeypatch.setattr(
+        per_sym_store,
+        "get_overrides",
+        lambda sym_side: {"WT_PERCENTILE_EXIT_ENABLED": True},
+    )
+    assert gates.dictate_only_exempt(
+        "CLOSE", "WT_PERCENTILE_pctD=0_4h=1_g0.90_qty_999999", "AAPL_SHORT"
+    )
+    monkeypatch.setattr(
+        per_sym_store,
+        "get_overrides",
+        lambda sym_side: {"WT_PERCENTILE_EXIT_ENABLED": False},
+    )
+    assert not gates.dictate_only_exempt(
+        "CLOSE", "WT_PERCENTILE_pctD=0_4h=1_g0.90_qty_999999", "AAPL_SHORT"
+    )
+
+
 def _ksm_npz():
     import numpy as np
     raw = np.load(ROOT / "backtest_v8/indicators/KSMUSDT.npz", allow_pickle=True)
