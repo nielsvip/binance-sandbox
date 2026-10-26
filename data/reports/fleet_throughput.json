@@ -1,7 +1,7 @@
 {
-  "ts": "2026-10-26T04:10:07.672005+00:00",
-  "tick": "2026-10-26T04:06:01.684572+00:00",
-  "tick_age_s": 246,
+  "ts": "2026-10-26T04:15:04.487052+00:00",
+  "tick": "2026-10-26T04:12:01.833936+00:00",
+  "tick_age_s": 183,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run37.json",
     "round": "run37",
@@ -16,59 +16,61 @@
   },
   "hosts": {
     "s1": {
-      "cpu_pct": 92,
-      "slots": "1/4",
-      "observed_running": [
-        "DOTUSDT"
-      ],
+      "cpu_pct": 77,
+      "slots": "0/4",
+      "observed_running": [],
       "published_last_hour": 0,
       "idle_reason": "mem guard",
-      "mem_avail_mb": 4270
+      "mem_avail_mb": 6787
     },
     "s2": {
       "cpu_pct": 100,
-      "slots": "3/4",
+      "slots": "4/4",
       "observed_running": [
         "GRASSUSDT",
+        "MAGICUSDT",
         "MOVRUSDT",
         "QNTUSDT"
       ],
       "published_last_hour": 0,
-      "idle_reason": "mem guard",
-      "mem_avail_mb": 8470
+      "idle_reason": "slots full",
+      "mem_avail_mb": 7480
     },
     "s5": {
-      "cpu_pct": 94,
+      "cpu_pct": 75,
       "slots": "4/4",
       "observed_running": [
         "A",
+        "ADBE",
         "CDW",
-        "CLF",
-        "RUNEUSDT"
+        "CLF"
       ],
       "published_last_hour": 1,
       "idle_reason": "slots full",
-      "mem_avail_mb": 16577
+      "mem_avail_mb": 17007
     },
     "s6": {
-      "cpu_pct": 82,
+      "cpu_pct": 92,
       "slots": "4/4",
       "observed_running": [
         "INTC",
+        "LRCX",
         "MOS",
-        "UEC",
         "VICR"
       ],
       "published_last_hour": 2,
       "idle_reason": "slots full",
-      "mem_avail_mb": 19106
+      "mem_avail_mb": 16426
     }
   },
   "one_hour_total": 3,
   "alerts": [
     "LOW_THROUGHPUT:s1:0/h",
+    "LOW_CPU:s1:77%",
+    "IDLE:s1:mem guard",
     "LOW_THROUGHPUT:s2:0/h",
     "LOW_THROUGHPUT:s5:1/h",
+    "LOW_CPU:s5:75%",
     "LOW_THROUGHPUT:s6:2/h"
   ]
 }

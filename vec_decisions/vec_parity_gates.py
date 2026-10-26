@@ -53,10 +53,19 @@ def is_quick_reduce_reason(reason):
     return any(t in r for t in QUICK_REDUCE_TOKENS)
 
 
-def non_vector_exit_refused(reason, master_on, quick_gate_on):
+def non_vector_exit_refused(
+    reason,
+    master_on,
+    quick_gate_on,
+    sym_side=None,
+    action="CLOSE",
+    ultimate_buffer_pct=None,
+):
     if not master_on:
         return False
     if is_quick_reduce_reason(reason) and not quick_gate_on:
+        return False
+    if dictate_only_exempt(action, reason, sym_side, ultimate_buffer_pct):
         return False
     return True
 
@@ -125,7 +134,7 @@ def _per_sym_knob_true(sym_side, knob):
 
 def mandatory_stop_exempt(action, reason, ultimate_buffer_pct=None):
     """Allow only the two frozen DC stop laws through dictate-only parity."""
-    if str(action or "").upper() != "CLOSE":
+    if str(action or "").upper() not in ("CLOSE", "QUICK_CLOSE"):
         return False
     r = str(reason or "").upper()
     if r.startswith(("ULTIMATE_DC_4H_HARD_STOP_", "QUICK_ULTIMATE_DC_4H_HARD_STOP_")):

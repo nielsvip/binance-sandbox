@@ -33466,7 +33466,7 @@ class MultiAccountTradeManager:
                 from vec_decisions import vec_parity_gates as _vpg_ref
                 _vpg_master = bool(getattr(_ezm_base_config, "VEC_REFUSE_NON_VECTOR_EXIT_ENABLED", getattr(config, "VEC_REFUSE_NON_VECTOR_EXIT_ENABLED", True)))
                 _vpg_quick = bool(getattr(_ezm_base_config, "VEC_REFUSE_QUICK_REDUCE_ENABLED", getattr(config, "VEC_REFUSE_QUICK_REDUCE_ENABLED", True)))
-                _voe_vec = _voe_vec or not _vpg_ref.non_vector_exit_refused(reason, _vpg_master, _vpg_quick)
+                _voe_vec = _voe_vec or not _vpg_ref.non_vector_exit_refused(reason, _vpg_master, _vpg_quick, sym_side=f"{symbol}_{position_side}", action=action, ultimate_buffer_pct=_psym_get(symbol, position_side, "UNCOND_DC_HARD_STOP_BUFFER_PCT", getattr(config, "UNCOND_DC_HARD_STOP_BUFFER_PCT", None)))
             except Exception:
                 pass
             if not _voe_vec:
