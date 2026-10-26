@@ -97,13 +97,6 @@
     "symbol": "COTIUSDT",
     "side": "SHORT"
   },
-  "ang:MAGICUSDT_LONG": {
-    "orderId": "4000001998278908",
-    "stopPrice": 0.08103,
-    "entry_sig": "2026-10-26 16:13:23.249000+00:00",
-    "symbol": "MAGICUSDT",
-    "side": "LONG"
-  },
   "ang:KAVAUSDT_LONG": {
     "orderId": "4000001998286154",
     "stopPrice": 0.06896,
@@ -111,18 +104,18 @@
     "symbol": "KAVAUSDT",
     "side": "LONG"
   },
-  "ang:GRAMUSDT_SHORT": {
-    "orderId": "4000001998289435",
-    "stopPrice": 1.239,
-    "entry_sig": "2026-10-26 16:17:01.656000+00:00",
-    "symbol": "GRAMUSDT",
-    "side": "SHORT"
-  },
   "ang:BCHUSDC_SHORT": {
     "orderId": "4000001998290554",
     "stopPrice": 281.63,
     "entry_sig": "2026-10-26 16:17:45.333000+00:00",
     "symbol": "BCHUSDC",
+    "side": "SHORT"
+  },
+  "ang:IOTAUSDT_SHORT": {
+    "orderId": "4000001998296155",
+    "stopPrice": 0.04337,
+    "entry_sig": "2026-10-26 16:20:00.642000+00:00",
+    "symbol": "IOTAUSDT",
     "side": "SHORT"
   },
   "ang:COMPUSDT_LONG": {
@@ -132,11 +125,25 @@
     "symbol": "COMPUSDT",
     "side": "LONG"
   },
-  "ang:IOTAUSDT_SHORT": {
-    "orderId": "4000001998296155",
-    "stopPrice": 0.04337,
-    "entry_sig": "2026-10-26 16:20:00.642000+00:00",
-    "symbol": "IOTAUSDT",
+  "ang:SANDUSDT_SHORT": {
+    "orderId": "4000001998302684",
+    "stopPrice": 0.04921,
+    "entry_sig": "2026-10-26 16:22:05.496000+00:00",
+    "symbol": "SANDUSDT",
+    "side": "SHORT"
+  },
+  "ang:ACEUSDT_SHORT": {
+    "orderId": "4000001998304428",
+    "stopPrice": 0.14335,
+    "entry_sig": "2026-10-26 16:22:39.090000+00:00",
+    "symbol": "ACEUSDT",
+    "side": "SHORT"
+  },
+  "ang:GRAMUSDT_SHORT": {
+    "orderId": "4000001998302698",
+    "stopPrice": 1.239,
+    "entry_sig": "2026-10-26 16:17:01.656000+00:00",
+    "symbol": "GRAMUSDT",
     "side": "SHORT"
   }
 }

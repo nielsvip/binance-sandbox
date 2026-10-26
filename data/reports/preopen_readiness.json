@@ -1,11 +1,12 @@
 {
- "generated_utc": "2026-10-26T16:00:05Z",
+ "generated_utc": "2026-10-26T16:20:05Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-26T13:30:00Z",
  "market_open": true,
  "verdict": "FAIL",
  "failed_critical": [
   "defaults_chain_completed",
+  "apply_report_written",
   "live_set_matches_selection"
  ],
  "checks": [
@@ -14,10 +15,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 302,
+    "filled_today": 304,
     "filled_before_open": 288
    },
-   "detail": "288 boards filled before the open (302 today)"
+   "detail": "288 boards filled before the open (304 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -45,15 +46,15 @@
   },
   {
    "name": "apply_report_written",
-   "ok": true,
+   "ok": false,
    "critical": true,
    "measured": {
-    "reports_today": 11,
-    "newest_report": "persym_golive_20261026_refresh_1053.json",
-    "newest_report_at": "2026-10-26T11:03:18Z",
+    "reports_today": 12,
+    "newest_report": "persym_golive_20261026_refresh_1556.json",
+    "newest_report_at": "2026-10-26T16:19:55Z",
     "tiers_at": "2026-10-26T14:32:00Z"
    },
-   "detail": "persym_golive_20261026_refresh_1053.json at 2026-10-26T11:03:18Z, tiers 2026-10-26T14:32:00Z"
+   "detail": "persym_golive_20261026_refresh_1556.json at 2026-10-26T16:19:55Z, tiers 2026-10-26T14:32:00Z \u2014 the apply never finished (no report / stale tiers): the live set is PARTIAL"
   },
   {
    "name": "live_set_matches_selection",
@@ -105,19 +106,6 @@
        "AUGMENT_INTO_REENTRY_ENABLED",
        "BB_BOUNCE_ENTRY_FILTER_ENABLED",
        "CIRCUIT_SHARPE_GATES_FILTER_TF"
-      ]
-     },
-     {
-      "sym_side": "STXUSDT_SHORT",
-      "published_at": "2026-10-26T12:06:35Z",
-      "material": 79,
-      "sample": [
-       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
-       "ATR_ADAPTIVE_STOP_MULT",
-       "ATR_ADAPTIVE_STOP_TF",
-       "AUGMENT_INTO_REENTRY_ENABLED",
-       "BB_FROZEN_STOP_ENABLED",
-       "BULL_HOLD_EXIT_DELAY_BARS"
       ]
      },
      {
@@ -196,6 +184,19 @@
        "DC_EDGE_SIZING_MAX_MULT",
        "DC_HARD_STOP_15M_ENABLED",
        "DC_MOMENTUM_BOTA_SCORER_FILTER_TF"
+      ]
+     },
+     {
+      "sym_side": "ACN_LONG",
+      "published_at": "2026-10-23T06:02:03Z",
+      "material": 50,
+      "sample": [
+       "ATR_ADAPTIVE_STOP_MULT",
+       "ATR_ADAPTIVE_STOP_TF",
+       "AUGMENT_FALLBACK_REDUCE_PCT",
+       "BB_PULLBACK_GATE_ENABLED",
+       "BB_SQUEEZE_ENTRY_ENABLED",
+       "COUNTER_TREND_ADD_BLOCK_ENABLED"
       ]
      }
     ]
