@@ -41,7 +41,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-VL = ROOT / "data" / "vec_live"
+SCOPE = os.environ.get("VEC_LIVE_SCOPE", "30d").lower()
+if SCOPE not in ("30d", "7d"):
+    raise ValueError(f"Invalid VEC_LIVE_SCOPE={SCOPE!r}")
+LIVE_DIR_NAME = "vec_live_7d" if SCOPE == "7d" else "vec_live"
+VL = ROOT / "data" / LIVE_DIR_NAME
 INTENTS = VL / "intents"
 STATE = VL / "state"
 ANCHORS = VL / "anchors"
@@ -52,7 +56,7 @@ CYCLE_LOG = VL / "cycle_log.jsonl"
 VEC_DRIVEN = VL / "vec_driven.json"
 SETS = VL / "vec_driven_sets.json"
 CANDIDATES = VL / "candidates.json"
-PUBLISH_DIR = Path(os.path.expanduser("~/binance/data/vec_live"))
+PUBLISH_DIR = Path(os.path.expanduser(f"~/binance/data/{LIVE_DIR_NAME}"))
 STALE_SEC = 20 * 60
 BAR_SEC = int(float(os.environ.get("VEC_LANE_BAR_SECONDS") or 900))
 
@@ -744,6 +748,23 @@ def load_sets():
         )
     except Exception:
         _sets = {}
+    if SCOPE == "7d":
+        # The 7D lane has no fallback to 30D candidates, progress, or the
+        # ordinary registry. Every set must carry its own verified provenance.
+        return {
+            ss: ({"mode": "live", "account": se["account"]}, se["overrides"])
+            for ss, se in _sets.items()
+            if not ss.startswith("_")
+            and se.get("mode") == "live"
+            and se.get("verified") is True
+            and ((se.get("window_days") == 7 and se.get("source") == "7d_optimized")
+                 or (se.get("window_days") == 30 and se.get("source") == "verified_30d_fallback"))
+            and se.get("account") in ("fin", "trc")
+            and isinstance(se.get("overrides"), dict)
+            and isinstance(vd.get(ss), dict)
+            and vd[ss].get("mode") == "live"
+            and vd[ss].get("account") == se["account"]
+        }
     out = {}
     for ss, entry in vd.items():
         if ss.startswith("_") or not isinstance(entry, dict):
@@ -1228,6 +1249,8 @@ def main() -> int:
         init_example()
         return 0
     if a.build_driven:
+        if SCOPE == "7d":
+            raise SystemExit("7D sets require verified 7D pilot results; --build-driven reads 30D boards")
         d = build_driven()
         keys = [k for k in d if not k.startswith("_")]
         tiers = {}

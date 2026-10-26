@@ -9,8 +9,14 @@
 set -u
 BASE="${BASE_PATH:-/Users/niels/Documents/binance}"
 HOST="${VEC_LIVE_S1_HOST:-s1-int}"
-REMOTE="${VEC_LIVE_S1_DIR:-binance-sandbox/data/vec_live}"  # X1 tools/vec_live_executor.py writes ~/binance-sandbox/data/vec_live on S1 (verified 2026-10-06)
-DEST="$BASE/data/vec_live"
+SCOPE="${VEC_LIVE_SCOPE:-30d}"
+case "$SCOPE" in
+  30d) LIVE_DIR=vec_live ;;
+  7d) LIVE_DIR=vec_live_7d ;;
+  *) echo "Invalid VEC_LIVE_SCOPE=$SCOPE" >&2; exit 2 ;;
+esac
+REMOTE="${VEC_LIVE_S1_DIR:-binance-sandbox/data/$LIVE_DIR}"
+DEST="$BASE/data/$LIVE_DIR"
 LOG="$BASE/logs/vec_live_pull.log"
 LOCK="$DEST/.pull.lock"
 mkdir -p "$DEST/intents" "$DEST/state" "$BASE/logs"
@@ -43,7 +49,7 @@ pull_one() {
 pull_once() {
   local spec ok=0 fail=0
   # 2026-10-25 cutover: S1 crypto_short + S2 crypto_long + S5 stock_long + S6 stock_short.
-  for spec in ${VEC_LIVE_PULL_HOSTS:-$HOST:$REMOTE s2:binance-sandbox/data/vec_live niels@10.0.0.5:binance-sandbox/data/vec_live niels@10.0.0.6:binance-sandbox/data/vec_live}; do
+  for spec in ${VEC_LIVE_PULL_HOSTS:-$HOST:$REMOTE s2:binance-sandbox/data/$LIVE_DIR niels@10.0.0.5:binance-sandbox/data/$LIVE_DIR niels@10.0.0.6:binance-sandbox/data/$LIVE_DIR}; do
     if pull_one "${spec%%:*}" "${spec#*:}"; then ok=$((ok + 1)); else fail=$((fail + 1)); fi
   done
   if [ $fail -eq 0 ]; then date -u +%s >"$DEST/.last_pull_ok"; fi

@@ -15,6 +15,15 @@
 > adapted to the vectorized functions. There is NO "vec-only trading", NO vec-only switch, NO gate that
 > "makes" live match. Defaults/per-sym settings change ONLY through the daily pre-market chain (§68.3).
 
+> **CURRENT VERSION-GATE SCOPE — USER 2026-10-26.** The S2 champion-versus-candidate
+> `v15_version_gate submit` requirement applies to the V20 → V21 upgrade. It does
+> not delay ordinary `TEMPLATE_*.xlsx` option updates or a pilot reporting fix.
+> Proven isolated templates may be installed mid-run36, without waiting for a
+> run boundary, after they open, produce a valid baseline, fill the intended
+> rows correctly, and pass relevant parity checks. Back up and hash-verify the
+> installed copy; running backtests must not be overwritten mid-write. Older
+> blanket gate statements below are historical and superseded on this point.
+
 > **RULE 0 — NEVER REVERT.** Find better version in `backups/` on S1+Mac before git.
 > Diff and patch current — never overwrite newer with older. Git is unreliable — check dates.
 

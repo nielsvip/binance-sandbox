@@ -1112,12 +1112,14 @@ def write_zoomable_chart(symside: str, sheet: str | None, overrides: dict, windo
     """Produce zoomable chart with all trades metrics and reasons for each trade at end of every sheet. Single-file offline file:// HTML."""
     try:
         from tools.opt.hires_chart import generate_hires
+        if int(window_days) == 7:
+            suffix = suffix.replace("30D", "7D")
         # sheet-specific
         if sheet:
             out_name = f"{symside}_{sheet}_{suffix}.html"
             p = generate_hires(symside, overrides, window_days, out_name=out_name)
             # also ensure SPREADSHEETS copy
-            for dst in [ROOT / "SPREADSHEETS" / out_name, CHARTS_1M_DIR / out_name]:
+            for dst in ([OUT_DIR / out_name] if int(window_days) == 7 else [ROOT / "SPREADSHEETS" / out_name, CHARTS_1M_DIR / out_name]):
                 try:
                     dst.parent.mkdir(parents=True, exist_ok=True)
                     import shutil
@@ -1129,7 +1131,7 @@ def write_zoomable_chart(symside: str, sheet: str | None, overrides: dict, windo
         else:
             out_name = f"{symside}_{suffix}.html"
             p = generate_hires(symside, overrides, window_days, out_name=out_name)
-            for dst in [ROOT / "SPREADSHEETS" / out_name, CHARTS_1M_DIR / out_name, Path(f"/tmp/{out_name}")]:
+            for dst in ([OUT_DIR / out_name] if int(window_days) == 7 else [ROOT / "SPREADSHEETS" / out_name, CHARTS_1M_DIR / out_name, Path(f"/tmp/{out_name}")]):
                 try:
                     dst.parent.mkdir(parents=True, exist_ok=True)
                     import shutil
@@ -10795,6 +10797,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 progress["provenance"] = board_provenance(new_symside, cumulative_overrides, final_gain, getattr(args, "template", None), progress.get("npz_id"))
             except Exception as _prove:
                 print(f"[provenance-warn] {new_symside} {_prove}", flush=True)
+            if args.window_days == 7:
+                progress["source_30d_sha256"] = os.environ["V15_7D_SOURCE_SHA256"]
+                progress["defaults_snapshot_7d"] = dict(defaults)
+                progress["full_config_7d"] = {**defaults, **cumulative_overrides}
             _maybe_write_json(force=True)
             if not _won:
                 print(f"[MANIFEST] {new_symside} kept best {_active_name} — no manifest for history-filed {_final_name}", flush=True)
@@ -10821,6 +10827,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     _man["start_chosen"], _man["start_gain"] = (progress.get("best_start") or {}).get("chosen"), (progress.get("best_start") or {}).get("gain")
                     _man["best_start_floor"] = progress.get("best_start_floor")
                     _man["npz_last_bar_ts"], _man["npz_age_min"] = _NPZ_STAMP.get("npz_last_bar_ts"), _NPZ_STAMP.get("npz_age_min")  # USER LAW 2026-10-20: what the numbers are computed up to
+                    _man["window_days"] = args.window_days
+                    if args.window_days == 7:
+                        _man["source_30d_sha256"] = os.environ["V15_7D_SOURCE_SHA256"]
+                        _man["full_config_sha256"] = _hl_m.sha256(json.dumps(progress["full_config_7d"], sort_keys=True, default=str).encode()).hexdigest()
                     _man["cells_vintage"] = _v18_vint.get("last_eval_ts")  # CLAUDE.md board date = newest eval ts of its cells
                     _man["publish_reason"] = f"{_cand_class}:{'new_best' if locals().get('_won') else 'publish'}"
                     try:  # TASK 07.1: the same provenance record ships in the manifest sidecar (drift watch source)
@@ -10856,7 +10866,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 print(f"[BEST-EFFORT] {new_symside} published flagged -> {_active_name} (reruns only on newer NPZ)", flush=True)
             if not _won:
                 print(f"[PUBLISH-CHART] {new_symside} kept best — no new chart (loser history-filed)", flush=True)
-            else:
+            elif args.window_days == 30:
                 try:
                     from tools.opt.hires_chart import generate_hires as _gh_pub
                     _pub_chart_name = _chart_name_for(_final_name)
@@ -12325,14 +12335,28 @@ def _main_single():
     if args.window_days not in (30, 20, 7, 1, 365):
         print(f"BLOCKED: only 30/20/7/1/365 allowed, got {args.window_days}", file=sys.stderr)
         sys.exit(2)
-    if args.window_days == 7 and (not os.environ.get("V15_OUT_DIR") or not os.environ.get("V15_PROGRESS_DIR") or not os.environ.get("V15_START_OVERRIDES")):
-        print("BLOCKED: 7D optimization requires isolated V15_OUT_DIR, V15_PROGRESS_DIR, and verified V15_START_OVERRIDES", file=sys.stderr)
+    if args.window_days == 7 and (not os.environ.get("V15_OUT_DIR") or not os.environ.get("V15_PROGRESS_DIR") or not os.environ.get("V15_START_OVERRIDES") or not os.environ.get("V15_7D_SOURCE_SHA256")):
+        print("BLOCKED: 7D optimization requires isolated paths and a verified 30D start set hash", file=sys.stderr)
         sys.exit(2)
+    if args.window_days == 7:
+        try:
+            import hashlib as _hl_7d
+            _start_7d = json.loads(Path(os.environ["V15_START_OVERRIDES"]).read_text())
+            _start_7d_sha = _hl_7d.sha256(json.dumps(_start_7d, sort_keys=True, default=str).encode()).hexdigest()
+        except (OSError, ValueError, TypeError) as _start_exc:
+            print(f"BLOCKED: invalid 7D start set: {_start_exc}", file=sys.stderr)
+            sys.exit(2)
+        if _start_7d_sha != os.environ["V15_7D_SOURCE_SHA256"]:
+            print("BLOCKED: 7D start set differs from verified 30D source hash", file=sys.stderr)
+            sys.exit(2)
     if args.window_days == 7 and (
         Path(os.environ["V15_OUT_DIR"]).resolve() == (ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL").resolve()
         or Path(os.environ["V15_PROGRESS_DIR"]).resolve() == (ROOT / "data" / "reports" / "lifecycle_pilot").resolve()
     ):
         print("BLOCKED: 7D optimization cannot use canonical 30D output or progress directories", file=sys.stderr)
+        sys.exit(2)
+    if args.window_days == 7 and args.out and Path(args.out).resolve().parent != Path(os.environ["V15_OUT_DIR"]).resolve():
+        print("BLOCKED: 7D --out must be inside V15_OUT_DIR", file=sys.stderr)
         sys.exit(2)
     if args.window_days == 7 and (
         os.environ.get("V15_SKIP_CAT_PERSYM_BASELINE") != "1"
@@ -16802,6 +16826,9 @@ def _main_single():
     except Exception as _ce2:
         print(f"[chart-final-warn] {_ce2}", flush=True)
     print(f"[final] {final_path} bh={bh_raw:.2f} gain={cumulative_gain:.2f} positives={total_pos} hot={list(ALL_NPZ_ARRAYS.keys())[:2]}", flush=True)
+    if args.window_days == 7:
+        print(f"[7D-ISOLATED-DONE] {new_symside}: workbook and progress isolated in {OUT_DIR} / {PROGRESS_DIR}; no 30D live promotion", flush=True)
+        return
     # === BIGGEST 30D DELTA CHART + 365D RERUN + LIVE PROMOTION (2026-09-13) ===
     # Chart of biggest 30D delta already created as COMPLETE 30D_REAL_ZOOMABLE above (cumulative_overrides is the hustler/greedy best).
     # Now rerun those settings on 365D with xlsx and delta, compare vs currently running per_sym config, backup and go live if beats.
