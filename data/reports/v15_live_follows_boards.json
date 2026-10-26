@@ -1,9 +1,9 @@
 {
- "at": "2026-10-26T07:38:00Z",
+ "at": "2026-10-26T08:38:01Z",
  "reports": [
   {
-   "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261026_refresh_0652.json",
-   "age_min": 26.4,
+   "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261026_refresh_0752.json",
+   "age_min": 29.1,
    "applied": true,
    "n": null,
    "results": {
@@ -19,15 +19,15 @@
    "changed_symsides": []
   },
   {
-   "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261026_refresh_0551.json",
-   "age_min": 100.0,
+   "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261026_refresh_0652.json",
+   "age_min": 86.4,
    "applied": true,
    "n": null,
    "results": {
-    "PASS": 5,
+    "PASS": 11,
     "REFUSED": 8
    },
-   "registered": 4,
+   "registered": 10,
    "already_live_skipped": 0,
    "refused_by_class": {
     "type-gate refused ALL (1 bad)": 7,
@@ -37,7 +37,7 @@
   }
  ],
  "fails": [
-  "two consecutive runs still had pending sets (4 then 10) \u2014 live is not converging on the boards"
+  "two consecutive runs still had pending sets (10 then 10) \u2014 live is not converging on the boards"
  ],
  "refused_total": 8
 }
