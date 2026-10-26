@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-26T09:33:27Z",
+ "ts": "2026-10-26T09:38:41Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,7 +29,7 @@
   "fin": {
    "fills_6h": 425,
    "open_positions": 15,
-   "unrealised_usd": -0.11,
+   "unrealised_usd": -0.19,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 412,
+   "fills_6h": 413,
    "open_positions": 19,
-   "unrealised_usd": 0.77,
+   "unrealised_usd": 1.09,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 433,
+   "fills_6h": 429,
    "open_positions": 19,
-   "unrealised_usd": 0.42,
+   "unrealised_usd": 0.76,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -92,7 +92,7 @@
   },
   "flz": {
    "fills_6h": 153,
-   "open_positions": 2,
+   "open_positions": 3,
    "unrealised_usd": -0.07,
    "pos_mismatch": 0,
    "vec_parity": {
@@ -127,97 +127,104 @@
     "78591"
    ],
    "starts_30m": 1,
-   "log_age_s": 725.0
+   "log_age_s": 1039.0
   },
   "men": {
    "pids": [
     "78579"
    ],
    "starts_30m": 1,
-   "log_age_s": 49.0
+   "log_age_s": 363.0
   },
   "ang": {
    "pids": [
     "78578"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 1.0
   },
   "inf": {
    "pids": [
     "78569"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 9.0
   },
   "flz": {
    "pids": [
     "78576"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 31.0
   },
   "trb": {
    "pids": [
     "14103"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 7.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 180151.0
+   "log_age_s": 180465.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-26T09:33:27Z",
+   "ts": "2026-10-26T09:38:41Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "ang:MINAUSDT_SHORT",
    "evidence": "entry notional $68.39 (median $6.20, MAX_ORDER_VALUE $300) @ 2026-10-26T09:24:53Z BROKER_RECONCILED_GAP order=4476442742"
   },
   {
-   "ts": "2026-10-26T09:33:27Z",
+   "ts": "2026-10-26T09:38:41Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "ang:MINAUSDT_SHORT",
    "evidence": "entry notional $24.85 (median $6.20, MAX_ORDER_VALUE $300) @ 2026-10-26T09:24:53Z BROKER_RECONCILED_GAP order=4476442742"
   },
   {
-   "ts": "2026-10-26T09:33:27Z",
+   "ts": "2026-10-26T09:38:41Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "ang:MINAUSDT_SHORT",
    "evidence": "entry notional $120.38 (median $6.20, MAX_ORDER_VALUE $300) @ 2026-10-26T09:25:02Z VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_2"
   },
   {
-   "ts": "2026-10-26T09:33:27Z",
+   "ts": "2026-10-26T09:38:41Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "ang:MINAUSDT_SHORT",
    "evidence": "entry notional $120.00 (median $6.20, MAX_ORDER_VALUE $300) @ 2026-10-26T09:26:19Z VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_2"
   },
   {
-   "ts": "2026-10-26T09:33:27Z",
+   "ts": "2026-10-26T09:38:42Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "flz:BNBUSDC_SHORT",
    "evidence": "CLOSE WT_LOWER_CROSS_EXIT wt_1h higher wt+pric bar=2026-10-26T05:00:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-26T09:33:27Z",
+   "ts": "2026-10-26T09:38:42Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 725s"
+   "evidence": "ez_manage_fin.log not written for 1039s"
+  },
+  {
+   "ts": "2026-10-26T09:38:42Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "men",
+   "evidence": "ez_manage_men.log not written for 363s"
   }
  ],
  "alert_counts": {
   "SIZE_ANOMALY": 4,
   "VEC_EXIT_WHILE_LIVE_FLAT": 1,
-  "STALE_LOG": 1
+  "STALE_LOG": 2
  },
  "active_interventions": {
   "acct:trc": {
@@ -249,13 +256,6 @@
    "until": 1793009903.081861,
    "why": "SIZE_ANOMALY entry notional $120.00 (median $14.25, MAX_ORDER_VALUE $300) @ 2026-10-26T08:18:09Z VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_5",
    "undo": "redis-cli -p 6379 DEL open_blocked:ang:BBUSDT_SHORT",
-   "dry_run": false
-  },
-  "key:men:RVNUSDT_SHORT": {
-   "ts": 1793000112.196774,
-   "until": 1793007312.19679,
-   "why": "SIZE_ANOMALY entry notional $119.48 (median $24.98, MAX_ORDER_VALUE $300) @ 2026-10-26T07:35:05Z VEC_DRIVEN_OPEN_PURE_BOARD_BOARD_HOLDS_LIVE_FLAT_BOARD_QTY_4",
-   "undo": "redis-cli -p 6379 DEL open_blocked:men:RVNUSDT_SHORT",
    "dry_run": false
   },
   "acct:inf": {
@@ -354,5 +354,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.58
+ "sweep_s": 0.72
 }
