@@ -62,6 +62,17 @@ last=0
 now=$(date +%s)
 [ "$(( now - last ))" -lt "$DB_EVERY" ] && exit 0
 [ -f "$DB_SRC" ] || { echo "$(date -u +%FT%TZ) no $DB_SRC"; exit 0; }
+REMOTE_DB=/home/niels/binance/data/hourly_reconfig/per_sym_store.db
+remote_rows=$($SSH "$HOST" "python3 -c 'import sqlite3; d=sqlite3.connect(\"file:$REMOTE_DB?mode=ro\", uri=True, timeout=5); print(d.execute(\"SELECT COUNT(*) FROM per_sym_active\").fetchone()[0])'" 2>/dev/null)
+if [[ "$remote_rows" =~ ^[0-9]+$ ]] && [ "$remote_rows" -ge 100 ]; then
+  echo "$now" > "$STAMP"
+  echo "$(date -u +%FT%TZ) S1 active DB has $remote_rows rows; minute row broadcaster owns updates"
+  exit 0
+fi
+if ! $SSH "$HOST" "test ! -e '$REMOTE_DB'" 2>/dev/null; then
+  echo "$(date -u +%FT%TZ) S1 DB present or unreachable; refusing whole-file replacement"
+  exit 0
+fi
 
 /opt/anaconda3/envs/binance_env/bin/python - "$DB_SRC" "$DB_EXPORT" <<'PY' || exit 0
 import os, sqlite3, sys

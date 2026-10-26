@@ -246,8 +246,7 @@ REGISTRY: dict[str, dict[str, list[tuple]]] = {
     # Cold zstd copies (+ manifest sha256) of the S5 experience-store shards (run34 + run35 delta-log ingest, 2026-10-22).
     "experience_cold": {
         "ext": [("{ext}/binance_archive/experience_cold/run34_35_20261022", "archive", "UNVERIFIED copy (sha256 check stalled 2026-10-22 23:3xZ; experience_CRYPTO_LONG_202610.db.zst reported FAILED, re-copy with rsync -c needed) - S6 is the verified canonical until re-checked; run35 final pass will make them stale -> re-cold", None)],
-        "s6": [("/home/niels/rebuild_scratch_s6/experience_cold/run34_35_20261022", "canonical", "verified (sha256 -c + zstd -t on S6); preserve for the next neural-learning update until a replacement copy is checksum-verified on a mounted external drive or another host", None)],
-        "s5": [("/home/niels/rebuild_scratch_s5/experience_cold", "mirror", "origin of the zsts; same sha256", None)],
+        "s5": [("/home/niels/rebuild_scratch_s5/experience_cold", "canonical", "four compressed learning shards retained for the next neural-learning update; exact S6 file set and SHA256 values matched on 2026-10-26; extra .cold.out diagnostics are retained here", None)],
     },
     "priors_causal": {
         "s1": [("{sandbox}/data/causal/v17_priors.json", "canonical", "read by tools/v17_priors.load() inside v15_pilot", "V17_PRIORS_PATH")],
@@ -286,7 +285,10 @@ REGISTRY: dict[str, dict[str, list[tuple]]] = {
         "s6": [("{base}/rebuild_scratch_s6", "staging", "S1 backups dated 2026-10-04..07 were tar-compare verified and compressed to s1_backups_archive_20261026.tar.zst (230 files, original bytes 1540580202, archive SHA256 95d23bff372926f17a63f3f79b00cbaf017a766a7ee5fcdd04228af2353be58e); other scratch remains until externally copied or proven duplicate", None)],
     },
     "s1_pre_purge_backups_archive": {
-        "s6": [("/home/niels/rebuild_scratch_s6/s1_backups_archive_20261026.tar.zst", "archive", "verified zstd and tar compare; 230 older S1 progress/config backups preserved compressed; expanded copy removed", None)],
+        "s6": [("/home/niels/rebuild_scratch_s6/s1_backups_archive_20261026.tar.zst", "archive", "verified zstd and tar compare; 230 older S1 progress/config backups preserved compressed; expanded copy removed; fleet_archive_manager copies to verified ext/Google targets when available", None)],
+    },
+    "s1_staged_runs_archive": {
+        "s5": [("/home/niels/rebuild_scratch_s5/fleet_archives_from_s1", "archive", "compressed tar.zst copies of finished S1 staging batches; source staging is removed only after SHA256, zstd, and tar content comparison pass", None)],
     },
 }
 

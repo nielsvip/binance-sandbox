@@ -1,17 +1,17 @@
 {
- "generated_utc": "2026-10-26T21:26:34Z",
- "secs": 147.0,
+ "generated_utc": "2026-10-26T21:47:54Z",
+ "secs": 109.5,
  "universe": {
   "crypto": 201,
   "stocks": 223
  },
  "unreachable": {
-  "s1": "JSONDecodeError: Expecting value: line 1 column 1 (char 0) Connection timed out during banner exchange\nConnection to 127.0.0.1 port 2201 timed out\n"
+  "s1": "JSONDecodeError: Expecting value: line 1 column 1 (char 0) ssh: connect to host 127.0.0.1 port 2201: Connection refused\n"
  },
  "healed": {
   "mac:/Users/niels/Documents/binance": {
-   "files": 9,
-   "rows": 6,
+   "files": 17,
+   "rows": 10,
    "skipped": {}
   }
  },
@@ -1690,57 +1690,57 @@
   {
    "host": "mac",
    "file": "crypto prices",
-   "age_s": -28.0,
+   "age_s": -7.5,
    "max_s": 60,
    "ok": true,
    "files": {
-    "price_cache_1.json": -28.0,
-    "price_cache_2.json": 5.3,
-    "price_cache_3.json": -28.0
+    "price_cache_1.json": -7.5,
+    "price_cache_2.json": -1.9,
+    "price_cache_3.json": -7.5
    }
   },
   {
    "host": "mac",
    "file": "crypto snapshot (market_data_*)",
-   "age_s": -26.0,
+   "age_s": 25.5,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/market_data_NEWEST": -26.0
+    "data/market_data_NEWEST": 25.5
    }
   },
   {
    "host": "mac",
    "file": "crypto latest_market_data",
-   "age_s": -19.3,
+   "age_s": 34.0,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/latest_market_data.json": -19.3
+    "data/latest_market_data.json": 34.0
    }
   },
   {
    "host": "gw",
    "file": "crypto market_data",
-   "age_s": 286.0,
+   "age_s": 291.9,
    "max_s": 300,
    "ok": true,
    "files": {
-    "data/latest_market_data.json": 286.0
+    "data/latest_market_data.json": 291.9
    }
   },
   {
    "host": "mac",
    "file": "disk free /Users/niels/Documents/binance",
    "age_s": null,
-   "free_gb": 0.3,
-   "ok": false
+   "free_gb": 41.2,
+   "ok": true
   },
   {
    "host": "gw",
    "file": "disk free binance",
    "age_s": null,
-   "free_gb": 4.3,
+   "free_gb": 4.4,
    "ok": true
   }
  ]
