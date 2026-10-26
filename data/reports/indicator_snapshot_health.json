@@ -1,18 +1,16 @@
 {
- "generated_utc": "2026-10-26T12:56:03Z",
+ "generated_utc": "2026-10-26T13:01:08Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 3.6,
+  "age_s": 7.8,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 63376,
-  "proc_age_s": 11780.0,
-  "log_age_s": 0.2,
+  "proc_age_s": 12083.0,
+  "log_age_s": 26.9,
   "warmup_done": true,
   "timeframes_since_restart": [
-   "3m",
-   "3m",
    "3m",
    "15m",
    "3m",
@@ -188,10 +186,17 @@
    "1h",
    "15m",
    "3m",
+   "15m",
+   "3m",
+   "1h",
+   "15m",
+   "3m",
+   "4h",
+   "1h",
    "15m"
   ],
   "last_timeframe": "15m",
-  "last_timeframe_utc": "2026-10-26T12:55:13Z",
+  "last_timeframe_utc": "2026-10-26T12:59:17Z",
   "last_restart_utc": "2026-10-26T09:39:42Z",
   "restarts_last_hour": 0
  },
@@ -199,7 +204,6 @@
   "written": 0,
   "lines": [],
   "decisions": [
-   "warm-up already complete (steady state is self-sustaining)",
    "warm-up already complete (steady state is self-sustaining)",
    "warm-up already complete (steady state is self-sustaining)",
    "warm-up already complete (steady state is self-sustaining)",
@@ -224,10 +228,10 @@
   "lease_venues": null,
   "lease_since": "2026-10-25T23:35:46Z",
   "lease_reason": "manual force-mac",
-  "now": 1793019078.4123304,
-  "from_cache_age_s": 285.1,
-  "heartbeat_age_s": 525.7,
-  "active_s": 416896.2,
+  "now": 1793019471.938251,
+  "from_cache_age_s": 197.0,
+  "heartbeat_age_s": 919.2,
+  "active_s": 417289.7,
   "note": "ACTIVE is CORRECT while the Mac snapshot is stale \u2014 fix the Mac, S1 returns to NORMAL on its own"
  },
  "alerts": [],
