@@ -59,6 +59,7 @@ from pathlib import Path
 from typing import ClassVar, Dict, List, Optional
 
 import datetime
+import copy
 from datetime import timedelta
 import numpy as np
 
@@ -15894,6 +15895,31 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     events = (
         []
     )  # AUGMENT / partial-REDUCE ledger events — merged into 'ledger' only, never into trade metrics
+    def _exit_event_accept(event, source):
+        nonlocal pos, _pending_exit_restore
+        try:
+            from vec_decisions.net_exit_gate import vector_exit_event_allowed as _exit_allowed
+            _accepted = _exit_allowed(event, pos, _bar_pos_snapshot, 0.25)
+        except Exception:
+            _accepted = False
+        if not _accepted:
+            _pending_exit_restore = copy.deepcopy(_bar_pos_snapshot)
+            pos = copy.deepcopy(_bar_pos_snapshot)
+            return False
+        if str(event.get("type") or "").upper() in ("CLOSE", "REDUCE"):
+            _pending_exit_restore = None
+        return True
+    class _ExitGateLedger(list):
+        def __init__(self, source):
+            super().__init__()
+            self.source = source
+        def append(self, event):
+            if _exit_event_accept(event, self.source):
+                super().append(event)
+        def extend(self, values):
+            for event in values:
+                self.append(event)
+    events = _ExitGateLedger("events")
     # NOLOSS_BYPASS_WT_5OF5 (tradier_manage.py:19067-19086): per-bar count of WT TFs against
     _nlb_against = None
     try:
@@ -17698,8 +17724,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         commission_pct / 200.0
     )  # commission_pct is ROUND-TRIP; each leg (open/augment/reduce/close) pays half
 
-    trades = []
+    trades = _ExitGateLedger("trades")
     pos = None
+    _bar_pos_snapshot = None
+    _pending_exit_restore = None
     cd = 0
     has_closed_before = False
     _gap_pending = None  # WIRING LANE E: gap-exit pending morning rebuy {amt, exit_price, exit_gain, day}
@@ -18869,6 +18897,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _ppl_wt2_15 = _safe(npz, "wt2_15m", n)
     _ppl_wt_15 = _ppl_wt1_15 + _ppl_wt2_15
     for i in range(n):
+        if _pending_exit_restore is not None:
+            pos = _pending_exit_restore
+            _pending_exit_restore = None
+        _bar_pos_snapshot = copy.deepcopy(pos) if pos is not None else None
         if _qs_on and pos is not None:
             _qs_avg_by_entry[int(pos["entry_bar"])] = float(pos["avg_price"])  # live streak scores vs the AVERAGE entry
         if _ws_on and len(events) > _ws_ne:  # STOCK WHOLE-SHARE twin (2026-10-14): live tradier execute_now sends max(1, int(round(q))) shares
@@ -20848,6 +20880,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"),
                         "exit_reason": _fx_fire,
                         "fixed_stop_level": float(_fx_lvl),
+                        "mandatory_stop_kind": "DC15_FROZEN_DEFAULT" if _fx_ref_default else "",
                         "bars_held": int(i - pos["entry_bar"]),
                     }
                 )
@@ -23520,6 +23553,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             cd = cooldown_bars
             has_closed_before = True
 
+    if _pending_exit_restore is not None:
+        pos = _pending_exit_restore
+        _pending_exit_restore = None
+    _bar_pos_snapshot = copy.deepcopy(pos) if pos is not None else None
     if _ws_on and len(events) > _ws_ne:  # STOCK WHOLE-SHARE twin (2026-10-14): live tradier execute_now sends max(1, int(round(q))) shares
         for _ws_e in list(events[_ws_ne:]):
             if pos is None or _ws_e.get("type") != "REDUCE":
@@ -23532,6 +23569,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _ws_before = float(pos["qty"]) + _ws_q
             _ws_sgn = 1.0 if is_long else -1.0
             if _ws_ql >= _ws_before - 1e-9:  # live sells every share -> flat at the reduce bar
+                _ws_pos_before = copy.deepcopy(pos)
+                _ws_event_index = events.index(_ws_e)
                 _ws_dq = _ws_before - _ws_q
                 pos["realized"] += (_ws_px - pos["avg_price"]) * _ws_sgn * _ws_dq
                 pos["fees"] += abs(_ws_dq * _ws_px) * half_fee
@@ -23539,7 +23578,13 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _ws_pnl = pos["realized"] - pos["fees"]
                 _ws_rs = f"WHOLE_SHARE_REDUCE_TO_FLAT[{str(_ws_e.get('reason') or '')[:80]}]"
                 _ws_bar = int(_ws_e.get("bar", n - 1))
+                _ws_trade_count = len(trades)
                 trades.append({"pnl_dollars": _ws_pnl, "pnl_pct": float(_ws_pnl / pos["deployed"] * 100 if pos["deployed"] else 0.0), "deployed": pos["deployed"], "reason": _ws_rs, "type": "CLOSE", "ts": float(_ws_e.get("ts") or 0.0), "price": _ws_px, "bar_entry": int(pos["entry_bar"]), "bar_exit": _ws_bar, "entry_price": float(pos.get("entry_price", pos["avg_price"])), "exit_price": _ws_px, "qty": _ws_before, "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"), "exit_reason": _ws_rs, "bars_held": int(_ws_bar - pos["entry_bar"])})
+                if len(trades) == _ws_trade_count:
+                    pos = _ws_pos_before
+                    events.insert(_ws_event_index, _ws_e)
+                    _pending_exit_restore = None
+                    continue
                 pos = None
                 cd = cooldown_bars
                 has_closed_before = True
@@ -23562,6 +23607,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _ot_cnt.update(_cs_snap["extra"]["otc"])
             _cs_book.owed = _cash_settle.merge_owed(_cs_book.owed, _cs_dec["owed"])
         _cs_snap = None
+    if _pending_exit_restore is not None:
+        pos = _pending_exit_restore
+        _pending_exit_restore = None
     if pos is not None:
         px = close[-1]
         # MTM: only fees actually paid so far (open/augment/reduce) — no synthetic exit fee, position not actually closed

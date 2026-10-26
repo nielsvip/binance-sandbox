@@ -72,6 +72,10 @@ def test_final_exit_law_fee_floor_and_mandatory_reason_allowlist():
     assert mandatory_loss_stop_reason("UNCOND_DC_HIGH_4H_UNCOND_px101_lvl100", 0.25)
     assert not mandatory_loss_stop_reason("UNCOND_DC_LOW_4H_UNCOND_px99_lvl100", 0.5)
     assert not mandatory_loss_stop_reason("VIGILANCE_DC4_15M_HARD_STOP")
+    assert not mandatory_loss_stop_reason("ARBITRARY_FIXED_STOP_BYPASS")
+    assert not mandatory_loss_stop_reason("PREFIX_ULTIMATE_DC_4H_HARD_STOP_LONG_fake")
+    assert not mandatory_loss_stop_reason("FIXED_STOP_LONG_px1_lvl1_g-1_REFdc_low.1h.")
+    assert not mandatory_loss_stop_reason("FIXED_STOP_SHORT_px1_lvl1_g-1_REFdc_high.15m.b0.35")
     assert not mandatory_loss_stop_reason("DC_HARD_STOP_1H")
     assert not mandatory_loss_stop_reason("VEC_LAST_CLOSE")
 
