@@ -35635,11 +35635,11 @@ class MultiAccountTradeManager:
             and "REDUCE" not in _act_upper_early
             and "KILL" not in _act_upper_early
         )
-        if _is_open_action and account_key in ("fin", "men"):
-            from tools.account_comparison_books import side_allowed
-            if not side_allowed(Path(getattr(self.config, "BASE_PATH", Path.home() / "binance")), account_key, symbol, position_side):
+        if _is_open_action and account_key in ("ang", "flz", "inf", "fin", "men"):
+            from tools.account_comparison_books import crypto_entry_allowed
+            if not crypto_entry_allowed(Path(getattr(self.config, "BASE_PATH", Path.home() / "binance")), account_key, symbol, position_side):
                 logger.warning("[%s] %s %s refused: outside current side-specific book", account_key, symbol, position_side)
-                return "BLOCKED_COMPARISON_BOOK"
+                return "BLOCKED_NOT_TRADEABLE_SIDE"
         # 2026-04-27 USER ABSOLUTE: NO MULTIPLE OPENS. EVER.
         # If a position is already alive for this key (positionAmt > 0), block any open of any kind.
         # AUGMENT is the ONLY legitimate add path (its own MIN_GAIN gates apply upstream).

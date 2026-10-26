@@ -5216,10 +5216,12 @@ def tick(args, cfg, now):
         if not _slow_pin:
             log["steal30_floor_open"] = _steal_floor_hosts  # USER 2026-10-24: below-floor hosts pull 30D work off long queues even outside a slow-pinned round
         _run_syms = {k.rsplit("_", 1)[0] for k in running}
-        _uni_ss = _reachable_sym_sides()[0] if _SIDE_UNI_ON else None
-        _need = sorted(sy for sy, sd in chain_state.items() if any((v or ("",))[0] == "need30" and f"{sy}_{k}" not in running and (not _uni_ss or f"{sy}_{k}".upper() in _uni_ss)
+        _uni_ss = _BEST.tradeable(ROOT)
+        _need = sorted(sy for sy, sd in chain_state.items() if any((v or ("",))[0] == "need30" and f"{sy}_{k}" not in running and f"{sy}_{k}".upper() in _uni_ss
                                                                   and (not _launch_exhausted(f"{sy}_{k}|30D", "30D", f"{sy}_{k}", st, started, redo, _pin_sides) or _floor_left(st, f"{sy}_{k}|30D") > 0) for k, v in (sd or {}).items()))
-        _order_all = [sy for sy, _ in _place_order([], [], list(_need), _gtiers, redo, st["attempts"], st.get("launched_at"), pri, cont=_cont_all, pinned=_pin_sides, recent=_recent_syms, age_key=_AGE_KEY[0])] if _need else []
+        _steal_rank = {sy: max((float(_gains_prev[f"{sy}_{sd}"]) for sd in _SIDES_ALL if f"{sy}_{sd}" in _gains_prev and f"{sy}_{sd}" in _uni_ss), default=float("-inf")) for sy in _need}
+        _steal_rank = {sy: g for sy, g in _steal_rank.items() if g != float("-inf")}
+        _order_all = [sy for sy, _ in _place_order([], [], list(_need), _gtiers, redo, st["attempts"], st.get("launched_at"), pri, cont=_cont_all, pinned=_pin_sides, recent=_recent_syms, age_key=_AGE_KEY[0], best_rank=_steal_rank)] if _need else []
         _tried = set()
         for h in hosts:
             s = stats[h["name"]]

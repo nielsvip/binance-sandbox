@@ -15,6 +15,7 @@ def test_only_traded_and_tradeable_published_sides_enter_7d_queue(tmp_path):
     (tmp_path / "symbols_fin_short.json").write_text(json.dumps(["OTHERUSDT"]))
     (tmp_path / "symbols_trb_long.json").write_text(json.dumps(["XYZ"]))
     (tmp_path / "symbols_trb_short.json").write_text("[]")
+    (tmp_path / "tradeable_keys.json").write_text(json.dumps(["fin:AAAUSDT_SHORT", "fin:BBBUSD_SHORT", "fin:CCCUSDT_SHORT"]))
     for account, ss, age in (("fin", "AAAUSDT_SHORT", 1), ("fin", "BBBUSD_SHORT", 8),
                              ("fin", "CCCUSDT_SHORT", 1),
                              ("trc", "XYZ_LONG", 2)):

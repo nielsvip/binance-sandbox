@@ -169,7 +169,7 @@ def backfill_one(symbol: str, token: str, days_back: int, verbose: bool) -> tupl
     exists, so
     --days-back is silently ignored for anything already cached: the file can
     only ever grow forward. Twelve stocks in the live universe (CDW, EXEL, COE,
-    LSCC, QRVO ...) therefore sat on ~87 days of 15m bars while AAPL had 2.4
+    LSCC, and other stocks) therefore sat on ~87 days of 15m bars while AAPL had 2.4
     years, and their NPZs were being scored over a 365-day window they did not
     cover. Nothing was wrong with the data source — nobody ever asked it for the
     older bars.

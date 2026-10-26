@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-26T01:42:42Z",
+ "generated_utc": "2026-10-26T01:47:48Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 397.8,
+  "age_s": 704.1,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 4524,
-  "proc_age_s": 79087.0,
-  "log_age_s": 79.4,
+  "proc_age_s": 79394.0,
+  "log_age_s": 150.2,
   "warmup_done": true,
   "timeframes_since_restart": [
    "D",
@@ -118,20 +118,21 @@
   "mode": "ACTIVE",
   "since_epoch": 1792602182.2042153,
   "activations": 163,
-  "hb_mtime": 1792978713.0332022,
-  "mac_snapshot_age_s": 32.113786935806274,
+  "hb_mtime": 1792979079.6923316,
+  "mac_snapshot_age_s": 22.48018741607666,
   "mac_stale": false,
   "lease_holder": "mac",
   "lease_venues": null,
   "lease_since": "2026-10-25T23:35:46Z",
   "lease_reason": "manual force-mac",
-  "now": 1792978730.5941522,
-  "from_cache_age_s": 227.0,
-  "heartbeat_age_s": 17.6,
-  "active_s": 376548.4
+  "now": 1792979092.0344923,
+  "from_cache_age_s": 174.4,
+  "heartbeat_age_s": 12.3,
+  "active_s": 376909.8,
+  "note": "ACTIVE is CORRECT while the Mac snapshot is stale \u2014 fix the Mac, S1 returns to NORMAL on its own"
  },
  "alerts": [
-  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 376548s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (17s) AND the Mac snapshot is fresh (397s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
+  "SNAPSHOT STALE: latest_market_data.json is 704s old (> 600s). ez_indicators pid=4524 warmup_done=True tfs_since_restart=['D', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', 'D', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '1h', '15m', '3m', 'D', '4h', '1h', '15m'] restarts_last_hour=0. Live crypto decisions are reading a stale indicator snapshot."
  ],
  "verdict": "ALERT"
 }

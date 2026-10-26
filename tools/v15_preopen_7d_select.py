@@ -12,6 +12,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from tools.account_comparison_books import FIN_MIRROR_END, side_symbols, source_account  # noqa: E402
+from tools.v15_best_first import tradeable  # noqa: E402
 ACCOUNTS = {"fin": ("fin", "men"), "trc": ("trc", "trb")}
 
 
@@ -53,6 +54,9 @@ def select(root, now, selection):
     for side in ("LONG", "SHORT"):
         fin_ok |= {f"{sym}_{side}" for sym in side_symbols(root, "fin", side, at)}
         stock_ok |= {f"{sym}_{side}" for sym in side_symbols(root, "trc", side, at)}
+    allowed_now = tradeable(root)
+    fin_ok &= allowed_now
+    stock_ok &= allowed_now
     source = selection.get("sym_sides") or {}
     out = {"_meta": {"created_at": dt.datetime.fromtimestamp(now, dt.timezone.utc).isoformat(),
                       "cutoff": dt.datetime.fromtimestamp(cutoff, dt.timezone.utc).isoformat(),

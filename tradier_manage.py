@@ -49633,6 +49633,10 @@ class TradierTradeManager:
             logger.debug(f"[SCALP_FLOOR] check err (fail-open): {_sc_e}")
         _xg_full = _xg.is_full_close(action, is_full_close)  # full close: mechanical refusals below never apply (FORCE backstop behind them)
         _xg_exit = _xg.is_exit_action(action, is_full_close) or (str(side).upper() == "SELL" and str(position_side).upper() == "LONG") or (str(side).upper() == "BUY" and str(position_side).upper() == "SHORT")
+        if not _xg_exit and not _xg_full and account_key in ("tra", "trb", "trc"):
+            from tools.account_comparison_books import side_allowed
+            if not side_allowed(Path(self.config.BASE_PATH), account_key, symbol, position_side):
+                return "BLOCKED_NOT_TRADEABLE_SIDE"
         if account_key == "trc" and not _xg_exit and not _xg_full:
             if not _tr_parity_vec_order(reason):
                 return "BLOCKED_TRC_NONVECTOR_ENTRY"

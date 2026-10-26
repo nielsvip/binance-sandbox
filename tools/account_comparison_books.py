@@ -44,3 +44,16 @@ def side_allowed(root: Path, account: str, symbol: str, side: str,
         return str(symbol).strip().upper() in side_symbols(root, account, side, now)
     except (OSError, ValueError, TypeError):
         return False
+
+
+def crypto_entry_allowed(root: Path, account: str, symbol: str, side: str) -> bool:
+    """A crypto entry needs both today's account side book and its live key."""
+    if not side_allowed(root, account, symbol, side):
+        return False
+    try:
+        keys = json.loads((Path(root) / "tradeable_keys.json").read_text())
+        if isinstance(keys, dict):
+            keys = keys.get("keys")
+        return isinstance(keys, list) and f"{account}:{str(symbol).strip().upper()}_{side.upper()}" in keys
+    except (OSError, ValueError, TypeError):
+        return False
