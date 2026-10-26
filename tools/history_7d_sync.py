@@ -339,18 +339,29 @@ def sync(root, host, days, dry_run=False):
                     ]
                 )
                 packs.append(_load(dest))
-            alerts_path = temp / "s1_failover_alerts.jsonl"
-            _run(
-                [
-                    "rsync",
-                    "-az",
-                    "--timeout=45",
-                    "-e",
-                    RSYNC_SSH,
-                    f"{host}:binance/data/live_failover/ALERTS.jsonl",
-                    str(alerts_path),
-                ]
-            )
+            cache = root / "data/history_sync_7d/lease_alerts_s1.jsonl"
+            alerts_path = temp / "s1_failover_alerts.jsonl" if dry_run else cache
+            alerts_path.parent.mkdir(parents=True, exist_ok=True)
+            backup_dir = root / "backups" / f"before_history_7d_lease_alerts_{stamp}"
+            command = ["rsync", "-az", "--timeout=45", "-e", RSYNC_SSH]
+            if not dry_run:
+                backup_dir.mkdir(parents=True, exist_ok=True)
+                command += ["--backup", f"--backup-dir={backup_dir}"]
+            try:
+                _run(
+                    command
+                    + [
+                        f"{host}:binance/data/live_failover/ALERTS.jsonl",
+                        str(alerts_path),
+                    ]
+                )
+            except (RuntimeError, subprocess.TimeoutExpired):
+                if not cache.is_file():
+                    raise
+                if dry_run:
+                    shutil.copy2(cache, alerts_path)
+                else:
+                    alerts_path = cache
             s1_live, lease_audit = lease_authorized(
                 packs[2], alerts_path.read_text(), local
             )

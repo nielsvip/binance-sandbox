@@ -60,7 +60,7 @@ async def test_crypto_publishes_previous_bucket_at_boundary_without_new_quote(tm
     names = {'_write_provisional_15m', '_write_provisional_15m_unlocked', 'closed_15m_writeback'}
     ns = load_functions('ez_market_data.py', names, tmp_path)
     start = int(datetime(2026, 10, 26, 18, 15, tzinfo=timezone.utc).timestamp())
-    obj = SimpleNamespace(running=True, symbols=['TESTUSDT'], market=SimpleNamespace(data={'TESTUSDT': {'ohlc_1m': minute_bars(start)}}))
+    obj = SimpleNamespace(running=True, symbols=['TESTUSDT'], market=SimpleNamespace(data={'TESTUSDT': {'ohlc_1m': minute_bars(start)}}), _closed_15m_prepared={('TESTUSDT', start): {(stamp, 60): bar for stamp, bar in minute_bars(start).items() if stamp < start + 780}})
     await run_clock_once(ns, 'closed_15m_writeback', obj, start + 900)
     event = json.loads(next((tmp_path / 'data/closed_15m_outbox/crypto').glob('*.json')).read_text())
     assert event['bar_start_ts'] == start and event['bar_close_ts'] == start + 900
@@ -74,7 +74,7 @@ async def test_stock_final_bucket_publishes_at_1600_even_without_new_quote(tmp_p
     names = {'_write_provisional_stock_15m', '_write_provisional_stock_15m_unlocked', 'closed_15m_clock_loop'}
     ns = load_functions('tradier_prices.py', names, tmp_path)
     start = int(datetime(2026, 10, 26, 19, 45, tzinfo=timezone.utc).timestamp())
-    obj = SimpleNamespace(running=True, config=SimpleNamespace(BASE_PATH=tmp_path, KLINES_CACHE_DIR=tmp_path / 'klines_cache/tradier'), _provisional_15m={'TEST': {'bucket_ts': start, 'minute_bars': minute_bars(start)}})
+    obj = SimpleNamespace(running=True, symbols=['TEST'], config=SimpleNamespace(BASE_PATH=tmp_path, KLINES_CACHE_DIR=tmp_path / 'klines_cache/tradier'), _provisional_15m={'TEST': {'bucket_ts': start, 'minute_bars': minute_bars(start)}}, _closed_15m_prepared={('TEST', start): {(stamp, 60): bar for stamp, bar in minute_bars(start).items() if stamp < start + 780}})
     await run_clock_once(ns, 'closed_15m_clock_loop', obj, start + 900)
     event = json.loads(next((tmp_path / 'data/closed_15m_outbox/tradier').glob('*.json')).read_text())
     assert event['bar_close_ts'] == start + 900
@@ -174,3 +174,53 @@ def test_synthetic_price_cannot_overwrite_previous_closed_minute(tmp_path):
     ns['update_synthetic'](obj, 'TEST', 110, now)
     assert store['closes_1m'][now] == 110 and store['closes_1m'][prior] == 100
     assert store['ohlc_1m'][prior]['close'] == 100
+
+
+@pytest.mark.parametrize('span,prefix_count,minute_start', [(180, 4, 12), (300, 2, 10)])
+def test_exact_coarse_klines_plus_final_mark_minutes_preserve_ohlc(span, prefix_count, minute_start):
+    from closed_bar_feed import aggregate_closed_15m
+    start = 1793040300
+    bars = {(start + index * span, span): {'open': 100 + index, 'high': 180 + index, 'low': 80 - index, 'close': 100.5 + index, '_span_s': span} for index in range(prefix_count)}
+    bars.update({start + minute * 60: {'open': 100 + minute, 'high': 101 + minute, 'low': 99 + minute, 'close': 100.5 + minute} for minute in range(minute_start, 15)})
+    row = aggregate_closed_15m(bars, start, start + 900)
+    assert row['open'] == 100 and row['close'] == 114.5
+    assert row['high'] == 180 + prefix_count - 1
+    assert row['low'] == 80 - prefix_count + 1
+    assert 'volume' not in row
+    assert aggregate_closed_15m(bars, start, start + 899.999) is None
+    bars.pop(start + 14 * 60)
+    assert aggregate_closed_15m(bars, start, start + 900) is None
+
+
+@pytest.mark.parametrize('filename,secondary,span', [('ez_market_data.py', '3m', 180), ('tradier_prices.py', '5m', 300)])
+def test_min13_prefix_loader_uses_only_completed_genuine_ohlc(tmp_path, filename, secondary, span):
+    ns = load_functions(filename, {'_load_closed_15m_prefix'}, tmp_path)
+    start = 1793040300
+    rows = []
+    for offset in range(0, 900, span):
+        rows.append({'timestamp': datetime.fromtimestamp(start + offset, timezone.utc).isoformat(), 'open': 100, 'high': 190, 'low': 80, 'close': 110})
+    (tmp_path / f'TEST_{secondary}.json').write_text(json.dumps(rows))
+    (tmp_path / 'TEST_1m.json').write_text(json.dumps([{'timestamp': datetime.fromtimestamp(start + 720, timezone.utc).isoformat(), 'open': 100, 'high': 120, 'low': 90, 'close': 110}]))
+    result = ns['_load_closed_15m_prefix']('TEST', start, [tmp_path], secondary)
+    assert result[(start, span)]['high'] == 190
+    assert all(stamp + duration <= start + 780 for stamp, duration in result)
+    assert (start + 720, 60) in result
+    assert (start + 720, span) not in result
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('filename,stock', [('ez_market_data.py', False), ('tradier_prices.py', True)])
+async def test_preparation_runs_at_minute13_and_loads_prefix_before_boundary(tmp_path, filename, stock):
+    names = {'prepare_closed_15m_loop', '_load_closed_15m_prefix', '_closed_15m_tradeable_symbols'}
+    ns = load_functions(filename, names, tmp_path)
+    start = 1793040300
+    cache = tmp_path / 'klines_cache'
+    if stock:
+        cache = cache / 'tradier'
+    cache.mkdir(parents=True)
+    rows = [dict(bar, timestamp=datetime.fromtimestamp(stamp, timezone.utc).isoformat()) for stamp, bar in minute_bars(start).items() if stamp < start + 780]
+    (cache / 'TEST_1m.json').write_text(json.dumps(rows))
+    obj = SimpleNamespace(running=True, symbols=['TEST'], config=SimpleNamespace(BASE_PATH=tmp_path, KLINES_CACHE_DIR=cache))
+    await run_clock_once(ns, 'prepare_closed_15m_loop', obj, start + 780)
+    assert len(obj._closed_15m_prepared[('TEST', start)]) == 13
+    assert obj._closed_15m_universe == ['TEST']
