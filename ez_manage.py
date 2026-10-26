@@ -14680,6 +14680,20 @@ _AUGMENT_LOCK = {}  # {position_key: timestamp_of_last_augment}
 _AUGMENT_LOCK_MIN_SECONDS = 900  # 15 minutes minimum between augments
 
 
+def _mirror_positions_service_value(manager, position_key, account_key, service_position):
+    if service_position is None:
+        return 0.0
+    positions = getattr(manager, "positions", None)
+    if isinstance(positions, dict):
+        positions[position_key] = service_position
+    account_books = getattr(manager, "positions_by_account", None)
+    if isinstance(account_books, dict):
+        account_positions = account_books.get(account_key)
+        if isinstance(account_positions, dict) and position_key in account_positions:
+            account_positions[position_key] = service_position
+    return abs(safe_fetch_float(getattr(service_position, "positionAmt", 0.0), 0.0))
+
+
 def _parity_vec_order(reason) -> bool:
     """USER 2026-10-22 TOTAL PARITY: True when the order IS the vector's own decision (board intent, reconcile,
     VEC_EXACT twin, owed/obligatory exit). Such an order may never be refused by a live opinion gate and may never
@@ -37676,9 +37690,7 @@ class MultiAccountTradeManager:
                     account_key, {}
                 ).get(position_key)
             if _live_pos is not None:
-                _fresh_amt = abs(
-                    safe_fetch_float(getattr(_live_pos, "positionAmt", 0.0), 0.0)
-                )
+                _fresh_amt = _mirror_positions_service_value(self, position_key, account_key, _live_pos)
                 if original_positionAmt != _fresh_amt:
                     logger.debug(
                         f"[REFRESH_POS] {position_key}: positionAmt {original_positionAmt:.6f} -> {_fresh_amt:.6f} (from service)"

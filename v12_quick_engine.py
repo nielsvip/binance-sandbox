@@ -10692,11 +10692,14 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
         else:
             aligned = (wt1_3m < wt2_3m) & (wt1_15m < wt2_15m) & (wt1_1h < wt2_1h)
             blocks["B12"] = aligned & (wt_vel_3m < -1.0)
+    # EPQ's B14 producer uses the live 15m/1h HA and 15m stoch inputs. Keep
+    # this vector block on that same timeframe even when BASE_TF selects a
+    # lower-resolution lane for unrelated entry families.
     if cfg.REENTRY_B14_HA_TREND_ENABLED:
         if is_long:
-            blocks["B14"] = (ha_3m == 1) & (ha_15m == 1) & (ha_1h == 1) & (k_3m < 60)
+            blocks["B14"] = (ha_15m == 1) & (ha_1h == 1) & (k_15m < 60)
         else:
-            blocks["B14"] = (ha_3m == -1) & (ha_15m == -1) & (ha_1h == -1) & (k_3m > 40)
+            blocks["B14"] = (ha_15m == -1) & (ha_1h == -1) & (k_15m > 40)
     if cfg.REENTRY_B15_STRONG_TREND_ENABLED:
         if is_long:
             blocks["B15"] = (
