@@ -1,6 +1,6 @@
 {
- "generated_utc": "2026-10-26T17:32:25Z",
- "secs": 139.1,
+ "generated_utc": "2026-10-26T17:48:57Z",
+ "secs": 47.2,
  "universe": {
   "crypto": 201,
   "stocks": 223
@@ -8,79 +8,173 @@
  "unreachable": {
   "s1": "JSONDecodeError: Expecting value: line 1 column 1 (char 0) ssh: connect to host 127.0.0.1 port 2201: Connection refused\n"
  },
- "healed": {},
- "kline_breaches": [],
+ "healed": {
+  "mac:/Users/niels/Documents/binance": {
+   "files": 1,
+   "rows": 1,
+   "skipped": {}
+  }
+ },
+ "kline_breaches": [
+  {
+   "host": "mac",
+   "venue": "stocks",
+   "symbol": "QBTS",
+   "tf": "15m",
+   "last": "2026-10-26T17:00",
+   "expect": "2026-10-26T17:30",
+   "bars_behind": 2.0
+  },
+  {
+   "host": "mac",
+   "venue": "stocks",
+   "symbol": "DUOL",
+   "tf": "15m",
+   "last": "2026-10-26T14:15",
+   "expect": "2026-10-26T17:30",
+   "bars_behind": 13.0
+  },
+  {
+   "host": "mac",
+   "venue": "stocks",
+   "symbol": "INOD",
+   "tf": "15m",
+   "last": "2026-10-26T14:15",
+   "expect": "2026-10-26T17:30",
+   "bars_behind": 13.0
+  },
+  {
+   "host": "mac",
+   "venue": "stocks",
+   "symbol": "BNO",
+   "tf": "15m",
+   "last": "2026-10-26T14:15",
+   "expect": "2026-10-26T17:30",
+   "bars_behind": 13.0
+  },
+  {
+   "host": "mac",
+   "venue": "stocks",
+   "symbol": "HOOD",
+   "tf": "15m",
+   "last": "2026-10-26T16:30",
+   "expect": "2026-10-26T17:30",
+   "bars_behind": 4.0
+  },
+  {
+   "host": "mac",
+   "venue": "stocks",
+   "symbol": "BA",
+   "tf": "15m",
+   "last": "2026-10-26T16:30",
+   "expect": "2026-10-26T17:30",
+   "bars_behind": 4.0
+  }
+ ],
  "unhealable": [
   {
    "venue": "stocks",
-   "symbol": "USO",
-   "tf": "1h",
-   "best": "2026-10-26T12:30",
-   "expect": "2026-10-26T16:30"
+   "symbol": "QBTS",
+   "tf": "15m",
+   "best": "2026-10-26T17:00",
+   "expect": "2026-10-26T17:30"
+  },
+  {
+   "venue": "stocks",
+   "symbol": "DUOL",
+   "tf": "15m",
+   "best": "2026-10-26T14:15",
+   "expect": "2026-10-26T17:30"
+  },
+  {
+   "venue": "stocks",
+   "symbol": "INOD",
+   "tf": "15m",
+   "best": "2026-10-26T14:15",
+   "expect": "2026-10-26T17:30"
+  },
+  {
+   "venue": "stocks",
+   "symbol": "BNO",
+   "tf": "15m",
+   "best": "2026-10-26T14:15",
+   "expect": "2026-10-26T17:30"
+  },
+  {
+   "venue": "stocks",
+   "symbol": "HOOD",
+   "tf": "15m",
+   "best": "2026-10-26T16:30",
+   "expect": "2026-10-26T17:30"
+  },
+  {
+   "venue": "stocks",
+   "symbol": "BA",
+   "tf": "15m",
+   "best": "2026-10-26T16:30",
+   "expect": "2026-10-26T17:30"
   }
  ],
  "unparsed_live_files": [],
- "mixed_label_files": [
-  "mac:klines_cache/tradier/USO_1h.json"
- ],
+ "mixed_label_files": [],
  "market": [
   {
    "host": "mac",
    "file": "crypto prices",
-   "age_s": -74.4,
+   "age_s": -0.6,
    "max_s": 60,
    "ok": true,
    "files": {
-    "price_cache_1.json": -74.4,
-    "price_cache_2.json": -69.2,
-    "price_cache_3.json": -74.4
+    "price_cache_1.json": 284.2,
+    "price_cache_2.json": 12.5,
+    "price_cache_3.json": -0.6
    }
   },
   {
    "host": "mac",
    "file": "crypto snapshot (market_data_*)",
-   "age_s": -50.3,
+   "age_s": 3.6,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/market_data_NEWEST": -50.3
+    "data/market_data_NEWEST": 3.6
    }
   },
   {
    "host": "mac",
    "file": "crypto latest_market_data",
-   "age_s": -48.4,
+   "age_s": 3.7,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/latest_market_data.json": -48.4
+    "data/latest_market_data.json": 3.7
    }
   },
   {
    "host": "mac",
    "file": "stock indicators",
-   "age_s": -24.7,
+   "age_s": 12.1,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/tradier/tradier_indicators_latest.json": -24.7
+    "data/tradier/tradier_indicators_latest.json": 12.1
    }
   },
   {
    "host": "gw",
    "file": "crypto market_data",
-   "age_s": 872.5,
+   "age_s": 1086.8,
    "max_s": 300,
    "ok": false,
    "files": {
-    "data/latest_market_data.json": 872.5
+    "data/latest_market_data.json": 1086.8
    }
   },
   {
    "host": "mac",
    "file": "disk free /Users/niels/Documents/binance",
    "age_s": null,
-   "free_gb": 7.7,
+   "free_gb": 32.9,
    "ok": true
   },
   {

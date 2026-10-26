@@ -9,7 +9,8 @@ Run on the Mac every 60 s. Per account listed in data/vec_live/vec_driven.json:
   open       vec-driven positions from {acct}/{long,short}_positions.json with unrealised gain %
   last_intent_age_s, mode state (ARMED / EXPIRED / KILL_FILE / disabled)
 Writes data/vec_live/monitor.jsonl, prints one status line per account, logs ERROR (also to logs/vec_live_monitor.log) when
-  filled < received in each of the last 2 complete 15m bars that had intents, or any open vec-driven position gain < -2 %.
+  filled < successful or queued executions in each of the last 2 complete 15m bars that had such executions,
+  or any open vec-driven position gain < -2 %.
 """
 from __future__ import annotations
 
@@ -108,7 +109,8 @@ def run_once(base: Path, log_dir: Path, now: float, log: logging.Logger) -> list
         rec_rows = [r for r in _jsonl(vl / f"live_exec_{acct}.jsonl", now - 3600) if r.get("reconcile")]
         received = [r for r in ex if not str(r.get("result", "")).startswith(("SKIPPED_ALREADY", "SKIPPED_FLAT"))]
         queued = [r for r in received if str(r.get("result", "")).startswith("QUEUED")]
-        refused = Counter(str(r.get("result", "")).split("_0")[0][:40] for r in received if not str(r.get("result", "")).startswith("QUEUED"))
+        expected_fills = [r for r in received if str(r.get("result", "")).startswith(("SUCCESS", "QUEUED"))]
+        refused = Counter(str(r.get("result", "")).split("_0")[0][:40] for r in received if not str(r.get("result", "")).startswith(("SUCCESS", "QUEUED")))
         fills = []
         for ss in sss:
             for h in _jsonl(base / "data" / "history" / acct / f"{ss}.jsonl", now - 3600):
@@ -117,11 +119,11 @@ def run_once(base: Path, log_dir: Path, now: float, log: logging.Logger) -> list
         gates = gate_refusals(log_dir, acct)
         opens = open_positions(base, acct, sss)
         alerts = []
-        bars = sorted({int(r["_t"] // BAR) for r in received if r["_t"] < (now // BAR) * BAR})[-2:]
+        bars = sorted({int(r["_t"] // BAR) for r in expected_fills if r["_t"] < (now // BAR) * BAR})[-2:]
         if len(bars) == 2 and bars[1] - bars[0] == 1:
             short = 0
             for b in bars:
-                n_rcv = sum(1 for r in received if int(r["_t"] // BAR) == b)
+                n_rcv = sum(1 for r in expected_fills if int(r["_t"] // BAR) == b)
                 n_fill = sum(1 for h in fills if b * BAR <= h["_t"] < (b + 1) * BAR + 300)
                 if n_fill < n_rcv:
                     short += 1
@@ -130,10 +132,10 @@ def run_once(base: Path, log_dir: Path, now: float, log: logging.Logger) -> list
         for ss, p in opens.items():
             if p["gain_pct"] < -2.0:
                 alerts.append(f"LOSS_GT_2PCT_{ss}_{p['gain_pct']:.2f}")
-        row = {"ts": now, "account": acct, "state": state, "expires_utc": reg.expires_at(), "live_sym_sides": [s for s, m in modes.items() if m == "live"], "shadow_sym_sides": [s for s, m in modes.items() if m == "shadow"], "received_1h": len(received), "queued_1h": len(queued), "filled_1h": len(fills), "reconcile_1h": len(rec_rows), "refused_consumer": dict(refused), "refused_gate_log": dict(gates), "open": opens, "unrealised_avg_gain_pct": (sum(p["gain_pct"] for p in opens.values()) / len(opens)) if opens else 0.0, "last_intent_age_s": (now - last_intent) if last_intent else None, "alerts": alerts}
+        row = {"ts": now, "account": acct, "state": state, "expires_utc": reg.expires_at(), "live_sym_sides": [s for s, m in modes.items() if m == "live"], "shadow_sym_sides": [s for s, m in modes.items() if m == "shadow"], "received_1h": len(received), "expected_fills_1h": len(expected_fills), "queued_1h": len(queued), "filled_1h": len(fills), "reconcile_1h": len(rec_rows), "refused_consumer": dict(refused), "refused_gate_log": dict(gates), "open": opens, "unrealised_avg_gain_pct": (sum(p["gain_pct"] for p in opens.values()) / len(opens)) if opens else 0.0, "last_intent_age_s": (now - last_intent) if last_intent else None, "alerts": alerts}
         rows.append(row)
         VD.append_jsonl(vl / "monitor.jsonl", row)
-        print(f"[VEC_LIVE] {time.strftime('%H:%M:%S')} {acct} {state} rcv={len(received)} q={len(queued)} fill={len(fills)} rec={len(rec_rows)} refused={sum(refused.values())}+gate{sum(gates.values())} open={len(opens)} uPnL={row['unrealised_avg_gain_pct']:+.2f}% last_intent={int(row['last_intent_age_s']) if row['last_intent_age_s'] is not None else 'n/a'}s alerts={','.join(alerts) or '-'}")
+        print(f"[VEC_LIVE] {time.strftime('%H:%M:%S')} {acct} {state} rcv={len(received)} expected={len(expected_fills)} q={len(queued)} fill={len(fills)} rec={len(rec_rows)} refused={sum(refused.values())}+gate{sum(gates.values())} open={len(opens)} uPnL={row['unrealised_avg_gain_pct']:+.2f}% last_intent={int(row['last_intent_age_s']) if row['last_intent_age_s'] is not None else 'n/a'}s alerts={','.join(alerts) or '-'}")
         for a in alerts:
             log.error(f"[VEC_LIVE_ALERT] {acct} {a}")
     if not accounts:

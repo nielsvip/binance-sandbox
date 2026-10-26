@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-26 17:38:45 UTC
+# Copilot Status — 2026-10-26 17:49:40 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,11 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-26T17:37:43
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-26T17:37:43
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-26T17:38:14
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-26T17:38:14
-- **STALE_INDICATORS** [tradier]  — 2026-10-26T17:38:44
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-26T17:38:44
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-26T17:38:44
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-26T17:38:44
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-26T17:38:44
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-26T17:38:44
+- **STALE_INDICATORS** [tradier]  — 2026-10-26T17:48:57
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-26T17:48:57
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-26T17:48:57
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-26T17:48:58
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-26T17:48:58
 
 ## Missed Trades (trader comparison)
 
@@ -29,7 +24,7 @@ _None_
 
 **Held:** 1 | **Watching for reentry:** 9 | **Reentered:** 0
 
-- HELD: **MINAUSDT** SHORT (crypto) peak +4.2%, now +-2.3%
+- HELD: **MINAUSDT** SHORT (crypto) peak +4.2%, now +-1.5%
 
 - WATCHING: **QNTUSDT** LONG (crypto) peaked +8.7%, exited 1m ago
 - WATCHING: **STXUSDT** SHORT (crypto) peaked +5.5%, exited 1m ago
@@ -45,9 +40,8 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 30
-- [MEDIUM] tradier_positions.py running but log stale (25min)
-- [MEDIUM] tradier_positions.py running but log stale (26min)
-- [MEDIUM] tradier_positions.py running but log stale (27min)
-- [MEDIUM] tradier_positions.py running but log stale (28min)
-- [MEDIUM] tradier_positions.py running but log stale (29min)
+**Issues (last 1h):** 4
+- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
+- [HIGH] tradier_positions.py is NOT running (MARKET OPEN!)
+- [CRITICAL] tradier_manage.py for trb is NOT running (MARKET OPEN!)
+- [CRITICAL] tradier_manage.py for trc is NOT running (MARKET OPEN!)
