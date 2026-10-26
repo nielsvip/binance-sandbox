@@ -141,7 +141,7 @@ def _mode_live(monkeypatch, on=True, mode="live"):
     monkeypatch.setattr(EZ, "_vec_driven_mode", lambda s, side, a: mode if on else "off")
 
 
-def _run_exec(**kw):
+def _run_exec(_position_gain=None, **kw):
     """execute_now became a thin wrapper around _execute_now_inner (the 2026-10-17 entry-stop requirement), so the
     stub self must carry the inner method for the wrapper to call — otherwise every gate assertion below dies on
     AttributeError before reaching a gate."""
@@ -170,6 +170,12 @@ def _run_exec(**kw):
     _sym = f"T{_run_exec.n}USDT"
     args = dict(position_key=f"men:{_sym}_LONG", account_key="men", symbol=_sym, position_side="LONG", action="OPEN", reason="X", quantity=1.0)
     args.update(kw)
+    if _position_gain is not None:
+        _position = SimpleNamespace(gain=float(_position_gain), positionAmt=1.0)
+        self.positions_service.positions[args["position_key"]] = _position
+        self.positions_service.positions_by_account[args["account_key"]] = {
+            args["position_key"]: _position
+        }
     # USER 2026-10-24 vector-authority: the key under test is tradeable (live converge keys always are) so gate
     # assertions exercise decision vetoes, not the sacred-list hard block.
     self.tradeable_keys = {args["position_key"]}
@@ -197,11 +203,13 @@ def test_native_emergency_exit_allowed(monkeypatch):
         raise _Stop()
     _orig_bsts = EZ._broker_sync_freshest_ts
     monkeypatch.setattr(EZ, "_broker_sync_freshest_ts", _stop)
-    # The account has no finite positive net gain in this fixture. The explicit final exit law therefore blocks even
-    # emergency-labelled discretionary closes, and exit_guarantee must not bypass that refusal with a FORCE leg.
+    # The account position fixture has a negative gain. The final exit law blocks even a vector-dictated close,
+    # and exit_guarantee must not bypass that refusal with a FORCE leg.
     # Canonical frozen DC15/DC4h stop reasons are the only loss exceptions.
-    res = _run_exec(action="CLOSE", reason="LIQUIDATION_PROTECT", is_full_close=True)
+    res = _run_exec(action="CLOSE", reason="VEC_DRIVEN_CLOSE_RECONCILE_", is_full_close=True, _position_gain=-0.25)
     assert res == "BLOCKED_NET_GAIN"
+    with pytest.raises(_Stop):
+        _run_exec(action="CLOSE", reason="VEC_DRIVEN_CLOSE_RECONCILE_", is_full_close=True, _position_gain=0.25)
     # USER 2026-10-24 VEC-LAST: the OPEN now traverses native gates (incl. broker sync)
     # before the late VEC suppress, so the probe is scoped to the CLOSE it instruments.
     monkeypatch.setattr(EZ, "_broker_sync_freshest_ts", _orig_bsts)

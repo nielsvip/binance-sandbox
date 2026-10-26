@@ -1,72 +1,74 @@
 {
-  "ts": "2026-10-26T06:10:04.165251+00:00",
-  "tick": "2026-10-26T06:08:01.509099+00:00",
-  "tick_age_s": 123,
+  "ts": "2026-10-26T06:15:04.554105+00:00",
+  "tick": "2026-10-26T06:14:01.761672+00:00",
+  "tick_age_s": 63,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run37.json",
     "round": "run37",
     "complete": false,
     "universe_n": 212,
-    "n_complete": 61,
-    "n_pending": 151,
+    "n_complete": 64,
+    "n_pending": 148,
     "n_refused_only": 0,
     "n_excluded": 0,
-    "n_launchable_pending": 128,
+    "n_launchable_pending": 126,
     "hosts_not_visible": []
   },
   "hosts": {
     "s1": {
-      "cpu_pct": 99,
-      "slots": "1/4",
+      "cpu_pct": 69,
+      "slots": "2/4",
       "observed_running": [
         "RVNUSDT"
       ],
-      "published_last_hour": 1,
-      "idle_reason": "mem guard",
-      "mem_avail_mb": 11727
+      "published_last_hour": 0,
+      "idle_reason": null,
+      "mem_avail_mb": 14334
     },
     "s2": {
-      "cpu_pct": 91,
-      "slots": "1/4",
+      "cpu_pct": 100,
+      "slots": "2/4",
       "observed_running": [
+        "QNTUSDT",
         "RLCUSDT"
       ],
       "published_last_hour": 0,
       "idle_reason": "mem guard",
-      "mem_avail_mb": 9537
+      "mem_avail_mb": 7938
     },
     "s5": {
       "cpu_pct": 100,
       "slots": "4/4",
       "observed_running": [
+        "COST",
         "META",
-        "ULTA",
         "UNH",
         "WMT"
       ],
       "published_last_hour": 3,
       "idle_reason": "slots full",
-      "mem_avail_mb": 12313
+      "mem_avail_mb": 12035
     },
     "s6": {
-      "cpu_pct": 100,
+      "cpu_pct": 58,
       "slots": "4/4",
       "observed_running": [
+        "ALKT",
         "ASTS",
         "BMNR",
-        "CLS",
         "NXE"
       ],
-      "published_last_hour": 4,
+      "published_last_hour": 5,
       "idle_reason": "slots full",
-      "mem_avail_mb": 17450
+      "mem_avail_mb": 16093
     }
   },
   "one_hour_total": 8,
   "alerts": [
-    "LOW_THROUGHPUT:s1:1/h",
+    "LOW_THROUGHPUT:s1:0/h",
+    "LOW_CPU:s1:69%",
     "LOW_THROUGHPUT:s2:0/h",
     "LOW_THROUGHPUT:s5:3/h",
-    "LOW_THROUGHPUT:s6:4/h"
+    "LOW_CPU:s6:58%"
   ]
 }

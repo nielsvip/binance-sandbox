@@ -89,3 +89,49 @@ def test_loss_close_wrapper_and_vigilance_paths_are_strictly_pinned():
     assert "if False and bool(getattr(_cfg, \"VIGILANCE_GUARD_ENABLED\", True))" in ez
     assert "False\n                and bool(_cfg_auto(\"VIGILANCE_GUARD_ENABLED\", True))" in tr
     assert "_vig_enabled = False" in vec
+
+
+def test_vector_close_and_reduce_gate_uses_net_dollars_and_state_delta():
+    from vec_decisions.net_exit_gate import vector_exit_event_allowed
+
+    before = {"realized": 0.0, "fees": 0.04, "qty": 2.0}
+    close_loss = {"type": "CLOSE", "reason": "ALL_TF_AGAINST_CLOSE", "pnl_dollars": -0.01}
+    close_gain = {"type": "CLOSE", "reason": "TAKE_PROFIT", "pnl_dollars": 0.01}
+    assert not vector_exit_event_allowed(close_loss, before, before)
+    assert not vector_exit_event_allowed({"type": "CLOSE", "reason": "TAKE_PROFIT", "pnl_dollars": 0.05, "qty": 1.0, "price": 100.0}, before, before, additional_fee_pct=0.08)
+    assert vector_exit_event_allowed({"type": "CLOSE", "reason": "TAKE_PROFIT", "pnl_dollars": 0.09, "qty": 1.0, "price": 100.0}, before, before, additional_fee_pct=0.08)
+    assert vector_exit_event_allowed(close_gain, before, before)
+    reduce = {"type": "REDUCE", "reason": "REDUCE_SIGNAL", "qty": 1.0, "price": 101.0}
+    assert not vector_exit_event_allowed({**reduce, "price": 100.05}, {"avg_price": 100.0}, before, is_long=True, half_fee=0.0004, additional_fee_pct=0.04)
+    assert vector_exit_event_allowed(reduce, {"avg_price": 100.0}, before, is_long=True, half_fee=0.0004, additional_fee_pct=0.04)
+    short_reduce = {**reduce, "price": 99.0}
+    assert vector_exit_event_allowed(short_reduce, {"avg_price": 100.0}, before, is_long=False, half_fee=0.0004, additional_fee_pct=0.04)
+    assert vector_exit_event_allowed({"type": "CLOSE", "reason": "ULTIMATE_DC_4h_HARD_STOP at dc_4h_low 0.25pct channel", "pnl_dollars": -1.0}, before, before)
+    assert vector_exit_event_allowed({"type": "CLOSE", "reason": "FIXED_STOP", "mandatory_stop_kind": "DC15_FROZEN_DEFAULT", "pnl_dollars": -1.0}, before, before)
+
+
+def test_v12_loss_signal_holds_position_until_positive_net_or_mandatory_stop():
+    import numpy as np
+    import v12_quick_engine as vq
+
+    n = 100
+    close = np.linspace(100.0, 99.5, n)
+    timestamps = np.arange(1700000000, 1700000000 + n * 180, 180)
+    npz = {"close": close, "close_3m": close, "close_15m": close, "close_5m": close, "timestamps": timestamps, "timestamp_3m": timestamps, "timestamp_15m": timestamps, "low_3m": close, "high_3m": close, "open_3m": close, "dc_low_4h": np.full(n, 80.0), "dc_high_4h": np.full(n, 120.0), "dc_low_15m": np.full(n, 90.0), "dc_high_15m": np.full(n, 130.0)}
+    for tf in ("15m", "1h", "4h", "D"):
+        npz[f"wt1_{tf}"] = np.full(n, -1.0)
+        npz[f"wt2_{tf}"] = np.zeros(n)
+    cfg = vq.QuickConfig()
+    cfg.MODE = "crypto"
+    cfg.BASE_TF = "3m"
+    cfg.START_POSITION_SIZE = 500
+    cfg.COOLDOWN_BARS = 0
+    cfg.ALL_TF_AGAINST_FORCE_CLOSE_ENABLED = True
+    cfg.ALL_TF_AGAINST_FORCE_CLOSE_MIN_TFS = 3
+    cfg.PROFIT_TARGET_ENABLED = False
+    cfg.STOP_LOSS_ENABLED = False
+    cfg.CRYPTO_ROUND_TRIP_COMMISSION_PCT = 0.08
+    result = vq.simulate_one(npz, "GATE_LONG", True, cfg, force_initial_seed=True)
+    closes = [t for t in result["ledger"] if t.get("type") == "CLOSE" and not t.get("unrealised")]
+    assert not closes
+    assert any(t.get("reason") == "FINAL_MTM" and t.get("unrealised") for t in result["ledger"])

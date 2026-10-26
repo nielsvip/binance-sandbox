@@ -14720,6 +14720,14 @@ def _parity_vec_order(reason) -> bool:
     return "|VEC_EXACT" in r or u.startswith(("VEC_DRIVEN_", "BOARD_CONVERGE_", "VEC_FWD_")) or "PURE_BOARD" in u
 
 
+def _vec_maker_lock_busy_is_defer(executed_qty, reason) -> bool:
+    """A lock-busy maker sentinel proves another same-position order owns the slot; defer vec exits without fallback."""
+    try:
+        return float(executed_qty) == -2.0 and _parity_vec_order(reason)
+    except (TypeError, ValueError):
+        return False
+
+
 def _parity_breach_record(position_key, action, reason, result) -> None:
     """USER 2026-10-22 BACKSTOP AUDIT: a vector decision that live REFUSED is a parity breach — the position sets
     diverge on that bar. Logged CRITICAL, appended to data/vector_parity_breaches.jsonl, and the refusing gate is
@@ -31818,9 +31826,9 @@ class MultiAccountTradeManager:
             # 2026-04-15: lock busy = another concurrent call holds the maker slot.
             # That call will fire its own webhook on failure. Don't double-send from here.
             logger.warning(
-                f"[MAKER_BLOCK] {position_key}: Lock busy — suppressing webhook fallback (sentinel -1.0) to avoid double-order race"
+                f"[MAKER_BLOCK] {position_key}: Lock busy — suppressing fallback (sentinel {'-2.0' if ta == 'REDUCE' else '-1.0'}) to avoid duplicate-order race"
             )
-            return False, -1.0
+            return False, -2.0 if ta == "REDUCE" else -1.0
         try:
             await _ptruth.await_abandonable(self.try_add_order_redis(active_lock_key, expiry_seconds=60), timeout=2.0)
         except asyncio.TimeoutError:
@@ -33265,7 +33273,15 @@ class MultiAccountTradeManager:
             _mandatory_loss_stop = False
             _net_exit_ok = lambda gross, fee: False
         if _is_exit and not _mandatory_loss_stop and _exit_action not in ("PLACE_STOP", "CANCEL_STOP"):
-            _exit_pos = (getattr(self, "position_manager", None).positions or {}).get(position_key) if getattr(self, "position_manager", None) else None
+            _exit_pos = None
+            _account_books = getattr(self, "positions_by_account", None)
+            if isinstance(_account_books, dict):
+                _exit_pos = (_account_books.get(account_key) or {}).get(position_key)
+            if _exit_pos is None:
+                _positions_service = getattr(self, "positions_service", None)
+                _service_positions = getattr(_positions_service, "positions", None)
+                if isinstance(_service_positions, dict):
+                    _exit_pos = _service_positions.get(position_key)
             _gross_gain = safe_fetch_float(getattr(_exit_pos, "gain", None), float("nan")) if _exit_pos is not None else float("nan")
             _fee_floor = safe_fetch_float(_psym_get(symbol, position_side, "COMMISSION_BUFFER_PCT", getattr(config, "COMMISSION_BUFFER_PCT", 0.08)), 0.08)
             if not _net_exit_ok(_gross_gain, _fee_floor):
@@ -38770,6 +38786,10 @@ class MultiAccountTradeManager:
                         return "UNCONFIRMED_BY_BROKER_MAKER_REDUCE"
                     # Maker failed — fall through to webhook UNLESS sentinel says suppress
                     if executed_qty < 0:
+                        if _vec_maker_lock_busy_is_defer(executed_qty, reason):
+                            logger.warning(f"[VEC_MAKER_LOCK_BUSY_DEFER] {position_key}: another same-position order owns maker lock; no fallback sent, vector exit remains retryable")
+                            await self.clear_all_cooldowns_for_position(position_key, side)
+                            return "DEFERRED_MAKER_LOCK_BUSY_RETRY"
                         logger.warning(
                             f"[MAKER_EXIT_SUPPRESS_WEBHOOK] {position_key}: Maker returned suppress-sentinel — NOT firing webhook fallback"
                         )

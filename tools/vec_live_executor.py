@@ -14,12 +14,10 @@ just-closed bar's ts (FINAL_MTM dropped: end-of-run artefact) and the engine's
 position state at that bar, and writes intents + target state. It places NO
 orders — the live consumer (ez_manage execute_now) reconciles target state.
 
-Window: FIXED anchor per sym_side (never a sliding 30D window). The run always
-starts at the same bar so position state builds from the anchor exactly like
-one continuous simulate_one run; re-anchor only once per day at a flat moment
-(both old- and new-anchor runs flat, no event on the bar) and it is recorded.
-The NPZ is loaded from a fixed load_start_ts (same as evaluate_v12.prepare
-would at anchor time) and HTF-aligned exactly like v12_quick_engine.load_npz.
+Window: rolling 30D per sym_side, recalculated from the newest completed NPZ
+row every cycle (30 calendar days crypto, 30 latest trading sessions stocks).
+The merged NPZ plus hot sidecar is loaded, causally aligned, and compacted to
+completed 15m rows before the current settings are replayed.
 
 Usage:
   .venv/bin/python tools/vec_live_executor.py --once            # cron (polls ~50 s)
@@ -75,7 +73,6 @@ def is_bar_stale(bar_ts, now_s):
         return True
 
 
-REANCHOR_AGE_SEC = 86400
 MIN_BARS = 100
 ENGINE_FILES = [
     "tools/vec_live_executor.py",
@@ -213,7 +210,7 @@ def truncate_raw(raw: dict, end_ts: float) -> dict:
 
 
 def build_npz(raw: dict, sym: str, mode: str, anchor_ts: float):
-    """Align (causal HTF) -> slice from FIXED anchor -> compact to completed 15m (evaluate_v12 path)."""
+    """Align (causal HTF) -> slice from rolling anchor -> compact to completed 15m."""
     import numpy as np
     from vec_decisions.htf_causal_align import align_store
     from tools.opt import evaluate_v12 as E
@@ -258,7 +255,7 @@ def base_prepared(ss: str):
 
 
 def canonical_anchor(ss: str) -> dict:
-    """Anchor = the window start evaluate_v12.prepare(ss, 30) would use on the current NPZ."""
+    """Return the rolling 30D window start from the latest merged NPZ row."""
     import numpy as np
     from tools.opt import evaluate_v12 as E
 
@@ -269,7 +266,7 @@ def canonical_anchor(ss: str) -> dict:
     fin = ts[np.isfinite(ts) & (ts > 0)]
     sec = fin / (1000.0 if float(fin[-1]) > 1e11 else 1.0)
     end_s = float(sec[-1])
-    load_days = 30 if mode == "crypto" else 60
+    load_days = 30 if mode == "crypto" else 90
     ls = end_s - load_days * 86400.0
     load_start = (
         dt.datetime.fromtimestamp(ls, tz=dt.timezone.utc)
@@ -291,13 +288,14 @@ def canonical_anchor(ss: str) -> dict:
         "load_start_ts": float(min(load_start, anchor)),
         "mode": mode,
         "npz_end_ts": end_s,
+        "window_policy": "30_calendar_days" if mode == "crypto" else "30_trading_sessions",
     }
 
 
 def run_engine(
     ss: str, overrides: dict, anchor: dict, end_ts: float = None, raw: dict = None
 ):
-    """One simulate_one run from the FIXED anchor through end_ts (None = whole NPZ). Returns (result, npz)."""
+    """Replay the rolling window through end_ts (None = latest merged row)."""
     from tools.opt import v12_pilot as P
     from tools.opt import evaluate_v12 as E
 
@@ -569,7 +567,7 @@ def process(
     ):
         rec["status"] = "NO_NEW_BAR"
         return rec
-    anchor = get_anchor(ss)
+    anchor = canonical_anchor(ss)
     t1 = _now()
     res, npz = run_engine(ss, overrides, anchor)
     t2 = _now()
@@ -671,11 +669,7 @@ def process(
                     _append_jsonl(SHADOW_LEDGER, it)
             emitted = [it["intent_id"] for it in intents]
             rec["intent_file"] = str(fp)
-    reanchor_note = None
-    if actionable:
-        anchor2, reanchor_note = maybe_reanchor(
-            ss, overrides, anchor, tgt, len(raw_events), bar_ts
-        )
+    reanchor_note = "rolling window refreshed from latest NPZ row"
     t3 = _now()
     state = {
         "ss": ss,
@@ -895,7 +889,7 @@ def publish() -> None:
         print(f"[vec_live] publish failed: {exc}", file=sys.stderr)
 
 
-def cycle(workers: int, force: bool = False) -> list:
+def cycle(workers: int, force: bool = False, only_sss=None) -> list:
     t0 = _now()
     for d in (INTENTS, STATE, ANCHORS):
         d.mkdir(parents=True, exist_ok=True)
@@ -911,6 +905,8 @@ def cycle(workers: int, force: bool = False) -> list:
     jobs, recs = [], []
     _skipped = 0
     for ss, (entry, ov) in sorted(sets.items()):
+        if only_sss is not None and ss not in only_sss:
+            continue
         if _shard is not None and not _shard.serves(ss, _shard_name):
             _skipped += 1
             continue
@@ -945,6 +941,73 @@ def cycle(workers: int, force: bool = False) -> list:
         )
         publish()
     return recs
+
+
+def _watch_stamp(path: Path):
+    try:
+        st = path.stat()
+        return st.st_mtime_ns, st.st_size
+    except OSError:
+        return 0, 0
+
+
+def watch(workers: int, poll_sec: float = 1.0) -> int:
+    """Recompute changed symbols as soon as merged NPZ tails or settings change."""
+    import signal
+    from npz_tail_store import tail_path_for_npz
+
+    stopped = False
+
+    def stop(*_):
+        nonlocal stopped
+        stopped = True
+
+    signal.signal(signal.SIGTERM, stop)
+    signal.signal(signal.SIGINT, stop)
+    stamps = {}
+    all_pending = True
+    code = engine_md5()["combined"]
+    settings_paths = [VEC_DRIVEN, SETS, CANDIDATES, ROOT / "tradeable_keys.json"]
+    while not stopped:
+        if engine_md5()["combined"] != code:
+            os.execv(sys.executable, [sys.executable, *sys.argv])
+        sets = load_sets()
+        changed_settings = False
+        for path in settings_paths:
+            key = ("settings", str(path))
+            now = _watch_stamp(path)
+            if stamps.get(key) != now:
+                changed_settings = key in stamps or changed_settings
+                stamps[key] = now
+        db = Path(os.environ.get("PER_SYM_STORE_DB") or "/home/niels/binance/data/hourly_reconfig/per_sym_store.db")
+        for path in (db, Path(str(db) + "-wal")):
+            key = ("settings", str(path))
+            now = _watch_stamp(path)
+            if stamps.get(key) != now:
+                changed_settings = key in stamps or changed_settings
+                stamps[key] = now
+        changed = set(sets) if all_pending or changed_settings else set()
+        all_pending = False
+        symbol_sides = {}
+        for ss in sets:
+            sym, _ = split_ss(ss)
+            symbol_sides.setdefault(sym, []).append(ss)
+        for sym, sides in symbol_sides.items():
+            npz = npz_path(sym)
+            tail = tail_path_for_npz(str(npz))
+            stamp = (_watch_stamp(npz), _watch_stamp(Path(tail)))
+            key = ("npz", sym)
+            if stamps.get(key) != stamp:
+                if key in stamps:
+                    changed.update(sides)
+                stamps[key] = stamp
+        if changed:
+            recs = cycle(workers, only_sss=changed)
+            for rec in recs:
+                if rec.get("status") != "NO_NEW_BAR":
+                    print(json.dumps({k: rec.get(k) for k in ("ss", "status", "bar_iso", "events", "emitted", "target", "timings_sec", "error")}, default=str), flush=True)
+        time.sleep(max(0.2, float(poll_sec)))
+    return 0
 
 
 REPAIR_DUAL_DIR = Path(os.path.expanduser("~/v15_repair_dual_20261006"))
@@ -1282,6 +1345,8 @@ def main() -> int:
         "--no-poll", action="store_true", help="single pass instead of polling ~50 s"
     )
     ap.add_argument("--poll-sec", type=float, default=50.0)
+    ap.add_argument("--watch", action="store_true", help="continuously watch NPZ tails and settings")
+    ap.add_argument("--watch-sec", type=float, default=1.0)
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument(
         "--force",
@@ -1322,6 +1387,8 @@ def main() -> int:
             )
         )
         return 0
+    if a.watch:
+        return watch(a.workers, a.watch_sec)
     import v12_quick_engine  # noqa: F401  (import once before fork)
     from tools.opt import v12_pilot  # noqa: F401
 

@@ -126,7 +126,7 @@ def test_process_stale_prepare_engine_error(tmp_path, monkeypatch):
     import numpy as np
     monkeypatch.setattr(X, "base_prepared", lambda ss: _stale_base(ss))
     monkeypatch.setattr(X, "npz_last_parent", lambda sym: (1700000000.0, 1700000000.0))
-    monkeypatch.setattr(X, "get_anchor", lambda ss: {"mode": "crypto", "anchor_ts": 1699900000.0, "load_start_ts": 1699900000.0})
+    monkeypatch.setattr(X, "canonical_anchor", lambda ss: {"mode": "crypto", "anchor_ts": 1699900000.0, "load_start_ts": 1699900000.0})
     monkeypatch.setattr(X, "run_engine", lambda ss, ov, anchor, end_ts=None, raw=None: ({"valid": False, "invalid_reason": _STALE_REASON}, None))
     monkeypatch.setattr(X, "decide", lambda *a, **k: (_ for _ in ()).throw(AssertionError("decide must not run without bars")))
     monkeypatch.setattr(X, "STATE", tmp_path / "state")
@@ -134,6 +134,30 @@ def test_process_stale_prepare_engine_error(tmp_path, monkeypatch):
     assert rec["status"] == "ENGINE_ERROR" and _STALE_REASON in rec["why"]
     st = json.loads((tmp_path / "state" / "PROBEUSDT_LONG.json").read_text())
     assert st["status"] == "ENGINE_ERROR" and st["actionable"] is False
+
+
+def test_canonical_anchor_tracks_latest_30_sessions_and_crypto_days(monkeypatch):
+    import numpy as np
+    from tools.opt import evaluate_v12 as E
+
+    day = 86400.0
+    stock_ts = 1_700_000_000.0 + np.arange(45) * day
+    monkeypatch.setattr(X, "_load_store", lambda sym: {"timestamps": stock_ts})
+    monkeypatch.setattr(E, "is_crypto", lambda sym: False)
+    first = X.canonical_anchor("TEST_LONG")
+    expected_stock_anchor = (stock_ts[-30] // day) * day
+    assert first["anchor_ts"] == expected_stock_anchor
+    assert first["window_policy"] == "30_trading_sessions"
+    monkeypatch.setattr(X, "_load_store", lambda sym: {"timestamps": stock_ts + day})
+    second = X.canonical_anchor("TEST_LONG")
+    assert second["anchor_ts"] == first["anchor_ts"] + day
+
+    crypto_ts = 1_700_000_000.0 + np.arange(45) * day
+    monkeypatch.setattr(X, "_load_store", lambda sym: {"timestamps": crypto_ts})
+    monkeypatch.setattr(E, "is_crypto", lambda sym: True)
+    anchor = X.canonical_anchor("TESTUSDT_LONG")
+    assert anchor["anchor_ts"] == crypto_ts[-1] - 30 * day
+    assert anchor["window_policy"] == "30_calendar_days"
 
 
 def test_equivalence():

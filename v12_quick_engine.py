@@ -15896,18 +15896,22 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         []
     )  # AUGMENT / partial-REDUCE ledger events — merged into 'ledger' only, never into trade metrics
     def _exit_event_accept(event, source):
-        nonlocal pos, _pending_exit_restore
+        nonlocal pos, _pending_exit_restore, cd, has_closed_before, bars_in_pos, _pending_exit_control_restore
         try:
             from vec_decisions.net_exit_gate import vector_exit_event_allowed as _exit_allowed
-            _accepted = _exit_allowed(event, pos, _bar_pos_snapshot, 0.25)
+            _configured_fee_pct = max(0.0, float(getattr(cfg, "COMMISSION_BUFFER_PCT", 0.08) or 0.0))
+            _additional_fee_pct = max(0.0, _configured_fee_pct - float(commission_pct or 0.0))
+            _accepted = _exit_allowed(event, pos, _bar_pos_snapshot, 0.25, is_long, half_fee, _additional_fee_pct)
         except Exception:
             _accepted = False
         if not _accepted:
             _pending_exit_restore = copy.deepcopy(_bar_pos_snapshot)
+            _pending_exit_control_restore = _bar_control_snapshot
             pos = copy.deepcopy(_bar_pos_snapshot)
             return False
         if str(event.get("type") or "").upper() in ("CLOSE", "REDUCE"):
             _pending_exit_restore = None
+            _pending_exit_control_restore = None
         return True
     class _ExitGateLedger(list):
         def __init__(self, source):
@@ -17727,7 +17731,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     trades = _ExitGateLedger("trades")
     pos = None
     _bar_pos_snapshot = None
+    _bar_control_snapshot = None
     _pending_exit_restore = None
+    _pending_exit_control_restore = None
     cd = 0
     has_closed_before = False
     _gap_pending = None  # WIRING LANE E: gap-exit pending morning rebuy {amt, exit_price, exit_gain, day}
@@ -18899,8 +18905,12 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     for i in range(n):
         if _pending_exit_restore is not None:
             pos = _pending_exit_restore
+            if _pending_exit_control_restore is not None:
+                cd, has_closed_before, bars_in_pos = _pending_exit_control_restore
             _pending_exit_restore = None
+            _pending_exit_control_restore = None
         _bar_pos_snapshot = copy.deepcopy(pos) if pos is not None else None
+        _bar_control_snapshot = (cd, has_closed_before, bars_in_pos)
         if _qs_on and pos is not None:
             _qs_avg_by_entry[int(pos["entry_bar"])] = float(pos["avg_price"])  # live streak scores vs the AVERAGE entry
         if _ws_on and len(events) > _ws_ne:  # STOCK WHOLE-SHARE twin (2026-10-14): live tradier execute_now sends max(1, int(round(q))) shares
@@ -18971,7 +18981,14 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     pos["fees"] += abs(pos["qty"] * px) * half_fee
                     _cs_pnl = pos["realized"] + ((px - pos["avg_price"]) * pos["qty"] if is_long else (pos["avg_price"] - px) * pos["qty"]) - pos["fees"]
                     _cs_pct = _cs_pnl / pos["deployed"] * 100 if pos["deployed"] else 0.0
+                    _cs_trade_count = len(trades)
                     trades.append({"pnl_dollars": _cs_pnl, "pnl_pct": float(_cs_pct), "deployed": pos["deployed"], "reason": _cs_rs, "type": "CLOSE", "ts": _cs_ts, "price": float(px), "bar_entry": int(pos["entry_bar"]), "bar_exit": int(i), "entry_price": float(pos.get("entry_price", pos["avg_price"])), "exit_price": float(px), "qty": float(pos["qty"]), "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"), "exit_reason": _cs_rs, "bars_held": int(i - pos["entry_bar"])})
+                    if len(trades) == _cs_trade_count:
+                        _cs_book.owed = _cs_ow
+                        _cs_book.stats["owed_executed"] = max(0, int(_cs_book.stats.get("owed_executed", 0)) - 1)
+                        if _pending_exit_control_restore is not None:
+                            _pending_exit_control_restore = (_pending_exit_control_restore[0], _pending_exit_control_restore[1], bars_in_pos)
+                        continue
                     pos = None
                     cd = cooldown_bars
                     has_closed_before = True
@@ -18980,7 +18997,14 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     pos["realized"] += (px - pos["avg_price"]) * _cs_q if is_long else (pos["avg_price"] - px) * _cs_q
                     pos["fees"] += abs(_cs_q * px) * half_fee
                     pos["qty"] -= _cs_q
+                    _cs_event_count = len(events)
                     events.append({"type": "REDUCE", "ts": _cs_ts, "price": float(px), "qty": float(_cs_q), "pos_deployed": float(pos["deployed"]), "bar": int(i), "reason": _cs_rs})
+                    if len(events) == _cs_event_count:
+                        _cs_book.owed = _cs_ow
+                        _cs_book.stats["owed_executed"] = max(0, int(_cs_book.stats.get("owed_executed", 0)) - 1)
+                        if _pending_exit_control_restore is not None:
+                            _pending_exit_control_restore = (_pending_exit_control_restore[0], _pending_exit_control_restore[1], bars_in_pos)
+                        continue
                     pos["last_reduce_bar"] = int(i)
                     _cs_book.on_sell(_cs_ts, flat=False)
                 continue
@@ -23555,7 +23579,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
 
     if _pending_exit_restore is not None:
         pos = _pending_exit_restore
+        if _pending_exit_control_restore is not None:
+            cd, has_closed_before, bars_in_pos = _pending_exit_control_restore
         _pending_exit_restore = None
+        _pending_exit_control_restore = None
     _bar_pos_snapshot = copy.deepcopy(pos) if pos is not None else None
     if _ws_on and len(events) > _ws_ne:  # STOCK WHOLE-SHARE twin (2026-10-14): live tradier execute_now sends max(1, int(round(q))) shares
         for _ws_e in list(events[_ws_ne:]):
@@ -23584,6 +23611,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     pos = _ws_pos_before
                     events.insert(_ws_event_index, _ws_e)
                     _pending_exit_restore = None
+                    _pending_exit_control_restore = None
                     continue
                 pos = None
                 cd = cooldown_bars
@@ -23609,7 +23637,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _cs_snap = None
     if _pending_exit_restore is not None:
         pos = _pending_exit_restore
+        if _pending_exit_control_restore is not None:
+            cd, has_closed_before, bars_in_pos = _pending_exit_control_restore
         _pending_exit_restore = None
+        _pending_exit_control_restore = None
     if pos is not None:
         px = close[-1]
         # MTM: only fees actually paid so far (open/augment/reduce) — no synthetic exit fee, position not actually closed

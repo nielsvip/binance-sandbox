@@ -69,3 +69,18 @@ def test_vec_dictated_predicate_matches_parity_order():
     ]
     for reason in corpus:
         assert _vd(reason) == bool(_ez._parity_vec_order(reason)), reason
+
+
+def test_vec_maker_lock_busy_is_deferred_without_market_fallback():
+    import ez_manage as _ez
+
+    assert _ez._vec_maker_lock_busy_is_defer(-2.0, "VEC_EXIT_OWED |VEC_EXACT")
+    assert _ez._vec_maker_lock_busy_is_defer(
+        -2.0, "VEC_DRIVEN_CLOSE_RECONCILE_"
+    )
+    assert not _ez._vec_maker_lock_busy_is_defer(-1.0, "VEC_EXIT_OWED |VEC_EXACT")
+    assert not _ez._vec_maker_lock_busy_is_defer(-2.0, "NATIVE_EXIT")
+    src = pathlib.Path("ez_manage.py").read_text()
+    assert 'return "DEFERRED_MAKER_LOCK_BUSY_RETRY"' in src
+    assert "VEC_MAKER_LOCK_BUSY_DEFER" in src
+    assert "BLOCKED_MAKER_SUPPRESS_WEBHOOK" in src  # ambiguous sentinels remain fail-closed

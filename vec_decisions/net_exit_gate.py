@@ -13,7 +13,7 @@ def mandatory_loss_stop_reason(reason, dc4_buffer_pct=0.25):
         return bool(re.search(r"_REFDC_(?:LOW|HIGH)\.15M(?:\.B0\.25)?$", value))
     if value.startswith(("ULTIMATE_DC_4H_HARD_STOP_LONG_", "ULTIMATE_DC_4H_HARD_STOP_SHORT_")):
         return True
-    if value.startswith("ULTIMATE_DC_4H_HARD_STOP AT DC_LOW_4H 0.25PCT CHANNEL") or value.startswith("ULTIMATE_DC_4H_HARD_STOP AT DC_HIGH_4H 0.25PCT CHANNEL"):
+    if value.startswith("ULTIMATE_DC_4H_HARD_STOP AT DC_4H_LOW 0.25PCT CHANNEL") or value.startswith("ULTIMATE_DC_4H_HARD_STOP AT DC_4H_HIGH 0.25PCT CHANNEL"):
         return True
     if ("UNCOND_DC_LOW_4H_UNCOND" in value or "UNCOND_DC_HIGH_4H_UNCOND" in value) and math.isclose(float(dc4_buffer_pct), 0.25, abs_tol=1e-9):
         return True
@@ -29,8 +29,8 @@ def estimated_net_gain_positive(gross_gain_pct, estimated_fee_pct):
     return math.isfinite(gross) and gross - fee > 0.0
 
 
-def vector_exit_event_allowed(event, position, before_position, mandatory_dc4_buffer_pct=0.25):
-    """Accept a simulated close/reduce only when its current-leg net is positive or it is a mandatory stop."""
+def vector_exit_event_allowed(event, position, before_position, mandatory_dc4_buffer_pct=0.25, is_long=True, half_fee=0.0, additional_fee_pct=0.0):
+    """Accept ordinary simulated exits only when modeled net plus fee buffer stays positive."""
     if not isinstance(event, dict):
         return False
     kind = str(event.get("type") or "").upper()
@@ -41,16 +41,24 @@ def vector_exit_event_allowed(event, position, before_position, mandatory_dc4_bu
         return True
     if mandatory_loss_stop_reason(reason, mandatory_dc4_buffer_pct):
         return True
-    if "pnl_dollars" in event:
-        try:
-            return math.isfinite(float(event["pnl_dollars"])) and float(event["pnl_dollars"]) > 0.0
-        except (TypeError, ValueError):
-            return False
-    if kind == "REDUCE" and isinstance(position, dict) and isinstance(before_position, dict):
-        try:
-            realized_delta = float(position.get("realized", 0.0)) - float(before_position.get("realized", 0.0))
-            fee_delta = float(position.get("fees", 0.0)) - float(before_position.get("fees", 0.0))
-            return math.isfinite(realized_delta - fee_delta) and realized_delta - fee_delta > 0.0
-        except (TypeError, ValueError):
-            return False
+    try:
+        extra_fee = max(0.0, float(additional_fee_pct)) / 100.0
+        if "pnl_dollars" in event:
+            pnl = float(event["pnl_dollars"])
+            qty = abs(float(event.get("qty") or 0.0))
+            price = abs(float(event.get("exit_price") or event.get("price") or 0.0))
+            return math.isfinite(pnl) and pnl - qty * price * extra_fee > 0.0
+        if kind == "REDUCE" and isinstance(position, dict):
+            qty = abs(float(event.get("qty") or 0.0))
+            price = abs(float(event.get("price") or 0.0))
+            avg_price = abs(float(position.get("avg_price") or 0.0))
+            if qty <= 0.0 or price <= 0.0 or avg_price <= 0.0:
+                return False
+            gross = (price - avg_price) * qty if is_long else (avg_price - price) * qty
+            modeled_round_trip_fees = (avg_price + price) * qty * max(0.0, float(half_fee))
+            estimated_extra_fees = price * qty * extra_fee
+            net = gross - modeled_round_trip_fees - estimated_extra_fees
+            return math.isfinite(net) and net > 0.0
+    except (TypeError, ValueError):
+        return False
     return False
