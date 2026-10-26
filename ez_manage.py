@@ -41704,7 +41704,7 @@ class MultiAccountTradeManager:
                     _hc_current_price = 0
                     _hc_exit_price = 0
                     _hc_bypass = False
-                    if getattr(config, "HARDCODED_RALLY_REENTRY_ENABLED", True):
+                    if bool(_psym_get(symbol, pos_side, "HARDCODED_RALLY_REENTRY_ENABLED", getattr(config, "HARDCODED_RALLY_REENTRY_ENABLED", True))):
                         try:
                             _hc_indicators = await ii(self, symbol)
                             if _hc_indicators:
@@ -41713,10 +41713,10 @@ class MultiAccountTradeManager:
                                 if _hc_exit_price > 0 and _hc_current_price > 0:
                                     _hc_wt1 = safe_fetch_float(_hc_indicators.get("wt1_15m", 0), 0.0)
                                     _hc_wt1_prev = safe_fetch_float(_hc_indicators.get("wt1_15m_prev", _hc_wt1), _hc_wt1)
-                                    _hc_req_wt = bool(getattr(config, "HARDCODED_RALLY_REENTRY_REQUIRE_WT", False))
-                                    if _rally_ok(config, _hc_indicators, is_long, _hc_current_price, _hc_exit_price, _rally_age(data.get("exit_time"))) and ((is_long and _hc_current_price > _hc_exit_price and (not _hc_req_wt or _hc_wt1 > _hc_wt1_prev)) or (not is_long and _hc_current_price < _hc_exit_price and (not _hc_req_wt or _hc_wt1 < _hc_wt1_prev))):
+                                    _hc_req_wt = bool(_psym_get(symbol, pos_side, "HARDCODED_RALLY_REENTRY_REQUIRE_WT", getattr(config, "HARDCODED_RALLY_REENTRY_REQUIRE_WT", False)))
+                                    if _rally_ok(_QQCfg(symbol, pos_side), _hc_indicators, is_long, _hc_current_price, _hc_exit_price, _rally_age(data.get("exit_time"))) and ((is_long and _hc_current_price > _hc_exit_price and (not _hc_req_wt or _hc_wt1 > _hc_wt1_prev)) or (not is_long and _hc_current_price < _hc_exit_price and (not _hc_req_wt or _hc_wt1 < _hc_wt1_prev))):
                                         _hc_bypass = True
-                                        if not bool(getattr(config, 'HARDCODED_RALLY_REENTRY_BYPASS_COOLDOWN', True)):
+                                        if not bool(_psym_get(symbol, pos_side, "HARDCODED_RALLY_REENTRY_BYPASS_COOLDOWN", getattr(config, "HARDCODED_RALLY_REENTRY_BYPASS_COOLDOWN", True))):
                                             _hc_bypass = False
                                         _qty_mult_hc = 1.0
                                         _reason_hc = f"HARDCODED_RALLY_close{_hc_current_price:.4f}>{_hc_exit_price:.4f}_wt{_hc_wt1:.1f}>{_hc_wt1_prev:.1f}" if is_long else f"HARDCODED_RALLY_close{_hc_current_price:.4f}<{_hc_exit_price:.4f}_wt{_hc_wt1:.1f}<{_hc_wt1_prev:.1f}"
@@ -41775,13 +41775,13 @@ class MultiAccountTradeManager:
                     )
                     # 2026-09-18 HARDCODED RALLY REENTRY (user mandate): close > exit and wt1_15m rising
                     # Switch-gated so sweep can test on/off in all templates
-                    if getattr(config, "HARDCODED_RALLY_REENTRY_ENABLED", True):
+                    if bool(_psym_get(symbol, pos_side, "HARDCODED_RALLY_REENTRY_ENABLED", getattr(config, "HARDCODED_RALLY_REENTRY_ENABLED", True))):
                         try:
                             _hc_wt1 = safe_fetch_float(indicators.get("wt1_15m", 0), 0.0)
                             _hc_wt1_prev = safe_fetch_float(indicators.get("wt1_15m_prev", _hc_wt1), _hc_wt1)
-                            _hc_req_wt2 = bool(getattr(config, "HARDCODED_RALLY_REENTRY_REQUIRE_WT", False))
-                            _hc_is_long_rally = is_long and current_price > exit_price and (not _hc_req_wt2 or _hc_wt1 > _hc_wt1_prev) and _rally_ok(config, indicators, True, current_price, exit_price, _rally_age(data.get("exit_time")))
-                            _hc_is_short_rally = (not is_long) and current_price < exit_price and (not _hc_req_wt2 or _hc_wt1 < _hc_wt1_prev) and _rally_ok(config, indicators, False, current_price, exit_price, _rally_age(data.get("exit_time")))
+                            _hc_req_wt2 = bool(_psym_get(symbol, pos_side, "HARDCODED_RALLY_REENTRY_REQUIRE_WT", getattr(config, "HARDCODED_RALLY_REENTRY_REQUIRE_WT", False)))
+                            _hc_is_long_rally = is_long and current_price > exit_price and (not _hc_req_wt2 or _hc_wt1 > _hc_wt1_prev) and _rally_ok(_QQCfg(symbol, pos_side), indicators, True, current_price, exit_price, _rally_age(data.get("exit_time")))
+                            _hc_is_short_rally = (not is_long) and current_price < exit_price and (not _hc_req_wt2 or _hc_wt1 < _hc_wt1_prev) and _rally_ok(_QQCfg(symbol, pos_side), indicators, False, current_price, exit_price, _rally_age(data.get("exit_time")))
                             if _hc_is_long_rally or _hc_is_short_rally:
                                 _qty_mult_hc = 1.0
                                 _reason_hc = f"HARDCODED_RALLY_close{current_price:.4f}>{exit_price:.4f}_wt{_hc_wt1:.1f}>{_hc_wt1_prev:.1f}" if is_long else f"HARDCODED_RALLY_close{current_price:.4f}<{exit_price:.4f}_wt{_hc_wt1:.1f}<{_hc_wt1_prev:.1f}"
@@ -44088,15 +44088,15 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
                     return Signal(action="REENTRY", reason=_mr_reason, conviction=90.0, quantity=re_qty)
     except Exception as _mr_e:
         logger.debug(f"[MU_CORRECTION_REENTRY] {position_key}: check skipped {_mr_e}")
-    if getattr(config, "HARDCODED_RALLY_REENTRY_ENABLED", True):
+    if bool(_psym_get(symbol, "LONG" if is_long else "SHORT", "HARDCODED_RALLY_REENTRY_ENABLED", getattr(config, "HARDCODED_RALLY_REENTRY_ENABLED", True))):
         try:
             _hc_exit_px = float(getattr(position, "last_reduction_price", 0.0) or 0.0)
             if _hc_exit_px > 0:
                 _hc_wt1 = float(i.get("wt1_15m", 0) or 0)
                 _hc_wt1_prev = float(i.get("wt1_15m_prev", _hc_wt1) or _hc_wt1)
-                _hc_req_wt3 = bool(getattr(config, "HARDCODED_RALLY_REENTRY_REQUIRE_WT", False))
-                _hc_is_long_rally = is_long and current_price > _hc_exit_px and (not _hc_req_wt3 or _hc_wt1 > _hc_wt1_prev) and _rally_ok(config, i, True, current_price, _hc_exit_px, _rally_age(getattr(position, "last_reduction_time", None)))
-                _hc_is_short_rally = (not is_long) and current_price < _hc_exit_px and (not _hc_req_wt3 or _hc_wt1 < _hc_wt1_prev) and _rally_ok(config, i, False, current_price, _hc_exit_px, _rally_age(getattr(position, "last_reduction_time", None)))
+                _hc_req_wt3 = bool(_psym_get(symbol, "LONG" if is_long else "SHORT", "HARDCODED_RALLY_REENTRY_REQUIRE_WT", getattr(config, "HARDCODED_RALLY_REENTRY_REQUIRE_WT", False)))
+                _hc_is_long_rally = is_long and current_price > _hc_exit_px and (not _hc_req_wt3 or _hc_wt1 > _hc_wt1_prev) and _rally_ok(_QQCfg(symbol, "LONG" if is_long else "SHORT"), i, True, current_price, _hc_exit_px, _rally_age(getattr(position, "last_reduction_time", None)))
+                _hc_is_short_rally = (not is_long) and current_price < _hc_exit_px and (not _hc_req_wt3 or _hc_wt1 < _hc_wt1_prev) and _rally_ok(_QQCfg(symbol, "LONG" if is_long else "SHORT"), i, False, current_price, _hc_exit_px, _rally_age(getattr(position, "last_reduction_time", None)))
                 if _hc_is_long_rally or _hc_is_short_rally:
                     _side = "LONG" if is_long else "SHORT"
                     re_qty = _psym_sps(symbol, _side) / max(current_price, 1e-9)

@@ -14703,6 +14703,13 @@ async def check_position_reductions(service, position_key: str, account_key: str
 
 async def bootstrap_position_service(logger=None, accounts: Optional[Dict[str, Any]] = None, enable_auto_fetch: bool = True, trade_manager: Optional[Any] = None, start_maintenance: bool = True, load_priority: str = 'disk') -> PositionService:
     _t0 = time.time()
+    try:
+        import position_writer_guard as _pwg
+        if enable_auto_fetch and _pwg.process_role() == "manage":
+            enable_auto_fetch = False
+            if logger: logger.warning("[bootstrap] Disabled duplicate manager-side position monitors; ez_positions_service_main owns continuous polling.")
+    except Exception as _role_err:
+        if logger: logger.error(f"[bootstrap] Could not verify position writer role: {_role_err}; retaining requested monitor setting.")
     if logger: logger.info(f"[bootstrap] START | Mode: {load_priority.upper()}")
     if accounts is not None:
         resolved_accounts = accounts

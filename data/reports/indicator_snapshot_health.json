@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-26T04:16:44Z",
+ "generated_utc": "2026-10-26T04:21:43Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 607.3,
+  "age_s": 906.6,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 4524,
-  "proc_age_s": 88329.0,
-  "log_age_s": 25.5,
+  "proc_age_s": 88629.0,
+  "log_age_s": 42.4,
   "warmup_done": true,
   "timeframes_since_restart": [
    "D",
@@ -130,21 +130,20 @@
   "mode": "ACTIVE",
   "since_epoch": 1792602182.2042153,
   "activations": 163,
-  "hb_mtime": 1792988117.567632,
-  "mac_snapshot_age_s": 4.88814902305603,
+  "hb_mtime": 1792988440.064248,
+  "mac_snapshot_age_s": 5.125994920730591,
   "mac_stale": false,
   "lease_holder": "mac",
   "lease_venues": null,
   "lease_since": "2026-10-25T23:35:46Z",
   "lease_reason": "manual force-mac",
-  "now": 1792988145.9452193,
-  "from_cache_age_s": 58.5,
-  "heartbeat_age_s": 28.4,
-  "active_s": 385963.7,
+  "now": 1792988504.3199332,
+  "heartbeat_age_s": 64.3,
+  "active_s": 386322.1,
   "note": "ACTIVE is CORRECT while the Mac snapshot is stale \u2014 fix the Mac, S1 returns to NORMAL on its own"
  },
  "alerts": [
-  "SNAPSHOT STALE: latest_market_data.json is 607s old (> 600s). ez_indicators pid=4524 warmup_done=True tfs_since_restart=['D', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', 'D', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '1h', '15m', '3m', 'D', '4h', '1h', '15m', '3m', 'D', '4h', '1h', '15m', '3m', 'D', '4h', '1h', '15m', '3m', 'D'] restarts_last_hour=0. Live crypto decisions are reading a stale indicator snapshot."
+  "SNAPSHOT STALE: latest_market_data.json is 906s old (> 600s). ez_indicators pid=4524 warmup_done=True tfs_since_restart=['D', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', 'D', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '1h', '15m', '3m', 'D', '4h', '1h', '15m', '3m', 'D', '4h', '1h', '15m', '3m', 'D', '4h', '1h', '15m', '3m', 'D'] restarts_last_hour=0. Live crypto decisions are reading a stale indicator snapshot."
  ],
  "verdict": "ALERT"
 }

@@ -19009,8 +19009,28 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 bars_in_pos += 1
             continue
         if cd > 0:
-            cd -= 1
-            continue
+            _htf_churn_bypass = False
+            try:
+                _htf_churn_last = trades[-1] if trades else {}
+                _htf_churn_age = (i - int(_htf_churn_last.get("bar_exit", i))) * bmin
+                _htf_churn_bypass = bool(
+                    pos is None
+                    and has_closed_before
+                    and _htf_churn_last.get("type") == "CLOSE"
+                    and float(_htf_churn_last.get("exit_price", 0) or 0) > 0
+                    and not bool(entry_sig[i])
+                    and _tvs_churn_ok is not None
+                    and i < len(_tvs_churn_ok)
+                    and bool(_tvs_churn_ok[i])
+                    and _htf_churn_age <= float(getattr(cfg, "HTF_WT_CHURN_REENTRY_MAX_AGE_MIN", 120.0))
+                )
+            except Exception:
+                _htf_churn_bypass = False
+            if _htf_churn_bypass:
+                cd = 0
+            else:
+                cd -= 1
+                continue
         if pos is None:
             # ABLATION reentry block: if flagged, no reentry after first close
             if has_closed_before and (
