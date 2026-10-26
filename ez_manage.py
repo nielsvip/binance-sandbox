@@ -21762,14 +21762,16 @@ class MultiAccountTradeManager:
         sym_men_short_task = _get_symbols(
             getattr(self.config, "SYMBOLS_MEN_SHORT", "symbols_men_short.json")
         )
+        from tools.account_comparison_books import source_account
+        _fin_source = source_account("fin")
         sym_fin_task = _get_symbols(
-            getattr(self.config, "SYMBOLS_FIN", "symbols_fin.json")
+            getattr(self.config, "SYMBOLS_MEN" if _fin_source == "men" else "SYMBOLS_FIN", f"symbols_{_fin_source}.json")
         )
         sym_fin_long_task = _get_symbols(
-            getattr(self.config, "SYMBOLS_FIN_LONG", "symbols_fin_long.json")
+            getattr(self.config, "SYMBOLS_MEN_LONG" if _fin_source == "men" else "SYMBOLS_FIN_LONG", f"symbols_{_fin_source}_long.json")
         )
         sym_fin_short_task = _get_symbols(
-            getattr(self.config, "SYMBOLS_FIN_SHORT", "symbols_fin_short.json")
+            getattr(self.config, "SYMBOLS_MEN_SHORT" if _fin_source == "men" else "SYMBOLS_FIN_SHORT", f"symbols_{_fin_source}_short.json")
         )
         sym_active_task = _get_symbols(
             getattr(self.config, "SYMBOLS_ACTIVE", "symbols_active.json")
@@ -23683,10 +23685,7 @@ class MultiAccountTradeManager:
                         elif account_key == "fin":
                             fin_long = getattr(self, "symbols_fin_long", set())
                             fin_short = getattr(self, "symbols_fin_short", set())
-                            if fin_long or fin_short:
-                                account_symbols = fin_long if target_side == "LONG" else fin_short
-                            else:
-                                account_symbols = getattr(self, "symbols_fin", set())
+                            account_symbols = fin_long if target_side == "LONG" else fin_short
                         for sym in account_symbols:
                             symbol = (
                                 sym.strip().upper()
@@ -25874,17 +25873,29 @@ class MultiAccountTradeManager:
             else:
                 is_in_static_list = symbol_to_check in get_sym_set("symbols_inf_long") or symbol_to_check in get_sym_set("symbols_inf_short")
         elif account_key == "fin":
-            if not self.symbols_fin:
+            from tools.account_comparison_books import side_allowed
+            _fin_root = Path(getattr(self.config, "BASE_PATH", Path.home() / "binance"))
+            if position_key:
                 try:
-                    with open(self.config.SYMBOLS_FIN, "rb") as fin_file:
-                        self.symbols_fin = set(
-                            self.clean_symbols(orjson.loads(fin_file.read()))
-                        )
+                    _, _, _fin_side = parse_position_key(position_key)
+                    is_in_static_list = side_allowed(_fin_root, "fin", symbol_to_check, _fin_side)
                 except Exception:
-                    pass
-            is_in_static_list = symbol_to_check in self.symbols_fin
-        elif account_key in ["men", "flz"]:
-            is_in_static_list = symbol_to_check in get_sym_set(f"symbols_{account_key}")
+                    is_in_static_list = False
+            else:
+                is_in_static_list = any(side_allowed(_fin_root, "fin", symbol_to_check, s) for s in ("LONG", "SHORT"))
+        elif account_key == "men":
+            from tools.account_comparison_books import side_allowed
+            _men_root = Path(getattr(self.config, "BASE_PATH", Path.home() / "binance"))
+            if position_key:
+                try:
+                    _, _, _men_side = parse_position_key(position_key)
+                    is_in_static_list = side_allowed(_men_root, "men", symbol_to_check, _men_side)
+                except Exception:
+                    is_in_static_list = False
+            else:
+                is_in_static_list = any(side_allowed(_men_root, "men", symbol_to_check, s) for s in ("LONG", "SHORT"))
+        elif account_key == "flz":
+            is_in_static_list = symbol_to_check in get_sym_set("symbols_flz")
         else:
             is_in_static_list = False
         has_existing_position = False
@@ -35624,6 +35635,11 @@ class MultiAccountTradeManager:
             and "REDUCE" not in _act_upper_early
             and "KILL" not in _act_upper_early
         )
+        if _is_open_action and account_key in ("fin", "men"):
+            from tools.account_comparison_books import side_allowed
+            if not side_allowed(Path(getattr(self.config, "BASE_PATH", Path.home() / "binance")), account_key, symbol, position_side):
+                logger.warning("[%s] %s %s refused: outside current side-specific book", account_key, symbol, position_side)
+                return "BLOCKED_COMPARISON_BOOK"
         # 2026-04-27 USER ABSOLUTE: NO MULTIPLE OPENS. EVER.
         # If a position is already alive for this key (positionAmt > 0), block any open of any kind.
         # AUGMENT is the ONLY legitimate add path (its own MIN_GAIN gates apply upstream).

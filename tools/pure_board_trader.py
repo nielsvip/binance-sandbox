@@ -102,6 +102,14 @@ def tradeable_pair(acct: str, ss: str) -> bool:
     key persists for years and may only close its outstanding amount, never open further.
     Fail-open True on a read error (an unreadable file must never sideline an open)."""
     global _TRADEABLE_MTIME, _TRADEABLE_KEYS
+    if acct == "fin":
+        from tools.account_comparison_books import side_allowed
+        try:
+            sym, side = ss.rsplit("_", 1)
+        except ValueError:
+            return False
+        if not side_allowed(ROOT, "fin", sym, side):
+            return False
     try:
         mt = (ROOT / "tradeable_keys.json").stat().st_mtime
         if mt != _TRADEABLE_MTIME:

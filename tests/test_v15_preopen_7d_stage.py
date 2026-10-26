@@ -73,7 +73,7 @@ def test_stage_creates_isolated_db_and_7d_vector_set(tmp_path):
     report = stage(queue, results, db, sets, stocks, tmp_path / "stage", today, published)
     assert report["stage_only"] is True
     assert report["selected_7d"] == 1
-    assert report["fallback_30d"] == 1
+    assert report["fallback_30d"] == 0
     con = sqlite3.connect(tmp_path / "stage/per_sym_store_7d.db")
     row = con.execute("SELECT full_config_json FROM per_sym_active WHERE sym_side='AAAUSDT_SHORT'").fetchone()
     con.close()
@@ -83,7 +83,7 @@ def test_stage_creates_isolated_db_and_7d_vector_set(tmp_path):
     original.close()
     produced = json.loads((tmp_path / "stage/vec_driven_sets.json").read_text())
     assert produced["AAAUSDT_SHORT"]["source"] == "7d_optimized"
-    assert produced["BBBUSDT_LONG"]["source"] == "verified_30d_fallback"
+    assert "BBBUSDT_LONG" not in produced
 
 
 def test_stage_refuses_missing_or_unverified_result(tmp_path):

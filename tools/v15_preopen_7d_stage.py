@@ -141,7 +141,8 @@ def stage(queue_path: Path, result_dir: Path, source_db: Path, source_sets_path:
         published_selection_path = Path(__file__).resolve().parents[1] / "data/published_selection.json"
     published = json.loads(published_selection_path.read_text())
     stock_symbols = set(json.loads(stock_symbols_path.read_text()))
-    sets = _fallback_sets(source_sets, published, stock_symbols)
+    # Only sides with a complete, verified 7D result may enter the 7D lane.
+    sets = {}
     for ss, result in results.items():
         account = _account(ss, queue)
         sets[ss] = {"mode": "live", "account": account, "window_days": 7,

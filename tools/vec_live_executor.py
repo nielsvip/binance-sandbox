@@ -752,6 +752,7 @@ def load_sets():
         # An expired or partially copied premarket stage must stop producing
         # actionable 7D state, even if a supervisor keeps this process alive.
         from tools.v15_preopen_7d_runtime import assert_vector_stage_ready
+        from tools.account_comparison_books import side_allowed
         assert_vector_stage_ready(VL)
         # The 7D lane has no fallback to 30D candidates, progress, or the
         # ordinary registry. Every set must carry its own verified provenance.
@@ -761,9 +762,10 @@ def load_sets():
             if not ss.startswith("_")
             and se.get("mode") == "live"
             and se.get("verified") is True
-            and ((se.get("window_days") == 7 and se.get("source") == "7d_optimized")
-                 or (se.get("window_days") == 30 and se.get("source") == "verified_30d_fallback"))
+            and se.get("window_days") == 7 and se.get("source") == "7d_optimized"
             and se.get("account") in ("fin", "trc")
+            and "_" in ss
+            and side_allowed(ROOT, se["account"], *ss.rsplit("_", 1))
             and isinstance(se.get("overrides"), dict)
             and isinstance(vd.get(ss), dict)
             and vd[ss].get("mode") == "live"

@@ -435,6 +435,17 @@ def _get_trade_manager_class():
 config = Config()
 HedgeEngine = None 
 logger = logging.getLogger("ez_positions_service")
+
+def _failover_writer_is_standby(account_key: str) -> bool:
+    try:
+        import position_writer_guard as _pwg
+        if _pwg.process_role() != "failover":
+            return False
+        account_dir = Path(getattr(Config, "BASE_PATH", Path.home() / "binance")) / account_key.lower()
+        return _pwg.service_alive(account_dir)
+    except Exception as exc:
+        logger.error(f"[POSITION_WRITER_AUTHORITY][{account_key}] Could not verify failover authority: {exc}; refusing standby update.")
+        return True
 logger.propagate = False
 logger.setLevel(logging.INFO)
 for h in list(logger.handlers): logger.removeHandler(h)
@@ -2803,6 +2814,9 @@ class WebSocketManager:
             if not self._running: return
 
     async def handle_account_update(self, data: dict, account_key: str):
+        if _failover_writer_is_standby(account_key):
+            logger.debug(f"[WS][{account_key}] Standby failover ignored account update while service heartbeat is fresh.")
+            return
         logger.warning(f"[WS_ARRIVAL][{account_key}] 🚨🚨🚨 WebSocket message ARRIVED - data keys: {list(data.keys()) if data else 'None'}")
         try :
             update = data.get("a", {})
@@ -4749,6 +4763,15 @@ class PositionService:
             pos = self.positions.get(position_key)
             if pos and abs(float(getattr(pos, 'positionAmt', 0.0))) > 0:
                 return True
+        if account_key == 'fin':
+            from tools.account_comparison_books import side_allowed
+            if position_key:
+                try:
+                    _side = position_key.rsplit('_', 1)[1]
+                except (IndexError, ValueError):
+                    return False
+                return side_allowed(self.base_path, 'fin', symbol, _side)
+            return any(side_allowed(self.base_path, 'fin', symbol, s) for s in ('LONG', 'SHORT'))
         long_key = construct_position_key(account_key, symbol, "LONG")
         short_key = construct_position_key(account_key, symbol, "SHORT")
         if position_key and position_key in self.positions_to_gracefully_exit: return True
@@ -5868,6 +5891,9 @@ class PositionService:
     async def _broadcast_positions_to_redis(self, account_key: str, arg2: Any = None, arg3: Any = None, allow_incomplete: bool = True):
         """ Handles both signatures: 1. (account_key, updates_dict) 2. (account_key, side_string, updates_dict)
         2026-04-30: All redis ops wrapped in asyncio.wait_for(timeout=5.0) to prevent process_account_update HUNG > 120s when Redis is slow on multi-MB snapshot SET. Broadcast is best-effort — a failed broadcast must NOT block PAU; the next cycle re-sends the full snapshot."""
+        if _failover_writer_is_standby(account_key):
+            self.logger.debug(f"[REDIS_SYNC_SKIP][{account_key}] Standby failover cannot publish positions while service heartbeat is fresh.")
+            return
         if isinstance(arg2, str) and isinstance(arg3, dict):
             actual_updates = arg3
         elif isinstance(arg2, dict):
@@ -6375,6 +6401,12 @@ class PositionService:
         return result
 
     async def get_symbols_for_account(self, account_key: str) -> set:
+        if account_key == 'fin':
+            from tools.account_comparison_books import side_symbols
+            try:
+                return side_symbols(self.base_path, 'fin', 'LONG') | side_symbols(self.base_path, 'fin', 'SHORT')
+            except (OSError, ValueError, TypeError):
+                return set()
         allowed_symbols = set()
         account_attr_map = { 'ang': ['symbols_ang_long', 'symbols_ang_short'], 'inf': ['symbols_inf_long', 'symbols_inf_short'], 'men': ['symbols_men_long', 'symbols_men_short'], 'flz': ['symbols_flz'], 'fin': ['symbols_fin_long', 'symbols_fin_short'] }
         target_attrs = account_attr_map.get(account_key, [])
@@ -10251,7 +10283,12 @@ class PositionService:
         ang_l, ang_s = await asyncio.gather(load_set('SYMBOLS_ANG_LONG'), load_set('SYMBOLS_ANG_SHORT'))
         inf_l, inf_s = await asyncio.gather(load_set('SYMBOLS_INF_LONG'), load_set('SYMBOLS_INF_SHORT'))
         men_l, men_s = await asyncio.gather(load_set('SYMBOLS_MEN_LONG'), load_set('SYMBOLS_MEN_SHORT'))
-        fin_l, fin_s = await asyncio.gather(load_set('SYMBOLS_FIN_LONG'), load_set('SYMBOLS_FIN_SHORT'))
+        from tools.account_comparison_books import source_account
+        _fin_source = source_account('fin')
+        if _fin_source == 'men':
+            fin_l, fin_s = set(men_l), set(men_s)
+        else:
+            fin_l, fin_s = await asyncio.gather(load_set('SYMBOLS_FIN_LONG'), load_set('SYMBOLS_FIN_SHORT'))
         flz = await load_set('SYMBOLS_FLZ')
         w20, l20 = await asyncio.gather(load_set('WINNERS_20_FILE'), load_set('LOSERS_20_FILE'))
         w15, l15 = await asyncio.gather(load_set('WINNERS_15M_FILE'), load_set('LOSERS_15M_FILE'))

@@ -43259,9 +43259,9 @@ class TradierTradeManager:
     def __init__(self, account_list: List[str] = None):
         self.config = config
         self.target_accounts = account_list or ["trc", "trb"]
-        if self.target_accounts == ["trc"] or (
+        if os.environ.get("VEC_LIVE_SCOPE", "30d").lower() != "7d" and (self.target_accounts == ["trc"] or (
             len(self.target_accounts) == 1 and self.target_accounts[0] == "trc"
-        ):
+        )):
             _apply_trc_overrides(config)
         self.last_symbol_refresh = 0
         self.refresh_interval = 60
@@ -43648,10 +43648,8 @@ class TradierTradeManager:
 
         # --- TRC (Strict Leaderboards) ---
         elif account_key == "trc":
-            if position_side == "LONG":
-                return symbol in [s.upper() for s in self.symbols_long_trc]
-            elif position_side == "SHORT":
-                return symbol in [s.upper() for s in self.symbols_short_trc]
+            from tools.account_comparison_books import side_allowed
+            return side_allowed(Path(self.config.BASE_PATH), "trc", symbol, position_side)
         return False
 
     def allows_side(
@@ -47321,6 +47319,8 @@ class TradierTradeManager:
         if cache is None:
             cache = {}
             self._json_symbols_cache = cache
+        if account_key == "trc":
+            account_key = "trb"
         key = (account_key, side)
         now = time.time()
         cached = cache.get(key)
@@ -47391,7 +47391,7 @@ class TradierTradeManager:
         mem_syms = {
             s.upper() for s in getattr(self, f"symbols_{side_lower}_{account_key}", [])
         }
-        same_side_syms = json_syms | mem_syms
+        same_side_syms = json_syms if account_key == "trc" else json_syms | mem_syms
 
         if symbol not in same_side_syms:
             return False
@@ -47455,22 +47455,23 @@ class TradierTradeManager:
                 )
                 return False
 
-        # 3c. USER 2026-10-09: 7D overlay is OBSOLETE — trc paper mirrors the trb
-        #     universe directly (no hourly_reconfig 7D approval) and runs the 5m +
-        #     non-vectorizable legs live (LIVE_5m_trading_ENABLED + forming-bar feeds
-        #     via _apply_trc_overrides) as the parallel paper arm. Gate NEW entries
-        #     only; exits/reduces bypass is_symbol_tradeable so existing positions
-        #     can still be closed.
+        # TRC entries require a validated 7D overlay and the exact TRB side book.
         if account_key == "trc":
-            _trb_symbols = self._get_json_symbols(
-                "trb", "long" if side == "LONG" else "short"
-            )
-            if str(symbol or "").upper().strip() not in {
-                str(v).upper().strip() for v in (_trb_symbols or ())
-            }:
+            if os.environ.get("VEC_LIVE_SCOPE", "30d").lower() != "7d":
+                return False
+            from tools.account_comparison_books import side_allowed
+            if not side_allowed(Path(self.config.BASE_PATH), "trc", symbol, side):
                 logger.info(
-                    f"[trc] ⛔ {symbol} {side}: not in TRB universe — no new entry/reentry (TRC mirrors TRB universe, 5m/non-vec paper arm)"
+                    f"[trc] ⛔ {symbol} {side}: not in exact TRB side book — no new entry/reentry"
                 )
+                return False
+            try:
+                _stage_sets = json.loads((Path(self.config.BASE_PATH) / "data/vec_live_7d/vec_driven_sets.json").read_text())
+                _stage_entry = _stage_sets.get(f"{symbol}_{side}") or {}
+                if (_stage_entry.get("account") != "trc" or _stage_entry.get("window_days") != 7
+                        or _stage_entry.get("source") != "7d_optimized" or _stage_entry.get("verified") is not True):
+                    return False
+            except (OSError, ValueError, TypeError):
                 return False
 
         # 4. ALWAYS_TRADEABLE/EXCEPTIONS are now only an enabler ON TOP of same_side_syms —
@@ -49632,6 +49633,11 @@ class TradierTradeManager:
             logger.debug(f"[SCALP_FLOOR] check err (fail-open): {_sc_e}")
         _xg_full = _xg.is_full_close(action, is_full_close)  # full close: mechanical refusals below never apply (FORCE backstop behind them)
         _xg_exit = _xg.is_exit_action(action, is_full_close) or (str(side).upper() == "SELL" and str(position_side).upper() == "LONG") or (str(side).upper() == "BUY" and str(position_side).upper() == "SHORT")
+        if account_key == "trc" and not _xg_exit and not _xg_full:
+            if not _tr_parity_vec_order(reason):
+                return "BLOCKED_TRC_NONVECTOR_ENTRY"
+            if not self.is_symbol_tradeable(symbol, "trc", position_side):
+                return "BLOCKED_TRC_7D_OR_TRB_BOOK"
         # ─── LATEST-BOARD ENTRY GATE — STOCKS (2026-10-16 USER "live trading executes the trades dictated by the latest
         # per_sym best settings") ─── twin of the crypto gate at ez_positions_quick.py ~28512, which refuses an entry when
         # the sym_side has no published board (live_twins.vec_exact.latest_board_ok -> NO_LATEST_BOARD). Stocks had no
@@ -56430,6 +56436,8 @@ class TradierTradeManager:
 
     async def _get_symbol_set(self, filename: str, is_context: bool = False) -> set:
         try:
+            if filename.startswith("symbols_trc_"):
+                filename = "symbols_trb_" + filename[len("symbols_trc_"):]
             # Context files (winners/losers) are in DATA_DIR. Targets are in BASE_PATH.
             dir_path = (
                 config.BASE_PATH if filename.startswith("symbols") else config.DATA_DIR
@@ -56476,8 +56484,9 @@ class TradierTradeManager:
                     if not s_path.exists():
                         s_path = config.BASE_PATH / f"symbols_{acc}_short.json"
                 else:
-                    l_path = config.BASE_PATH / f"symbols_{acc}_long.json"
-                    s_path = config.BASE_PATH / f"symbols_{acc}_short.json"
+                    _book = "trb" if acc == "trc" else acc
+                    l_path = config.BASE_PATH / f"symbols_{_book}_long.json"
+                    s_path = config.BASE_PATH / f"symbols_{_book}_short.json"
 
                 l_list, s_list = [], []
                 if l_path.exists():
