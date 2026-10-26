@@ -1,7 +1,7 @@
 {
-  "ts": "2026-10-26T16:25:14.911918+00:00",
-  "tick": "2026-10-26T16:24:01.450970+00:00",
-  "tick_age_s": 73,
+  "ts": "2026-10-26T16:30:11.449380+00:00",
+  "tick": "2026-10-26T16:28:01.443172+00:00",
+  "tick_age_s": 130,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run37.json",
     "round": "run37",
@@ -11,45 +11,44 @@
     "n_pending": 64,
     "n_refused_only": 0,
     "n_excluded": 0,
-    "n_launchable_pending": 62,
+    "n_launchable_pending": 61,
     "hosts_not_visible": []
   },
   "hosts": {
     "s1": {
-      "cpu_pct": 96,
+      "cpu_pct": 92,
       "slots": "0/4",
       "observed_running": [],
       "published_last_hour": 0,
       "idle_reason": "mem guard",
-      "mem_avail_mb": 10632
+      "mem_avail_mb": 12160
     },
     "s5": {
-      "cpu_pct": 15,
+      "cpu_pct": 30,
       "slots": "0/4",
       "observed_running": [],
       "published_last_hour": 1,
       "idle_reason": "no eligible ready symbol for this host",
-      "mem_avail_mb": 20692
+      "mem_avail_mb": 20767
+    },
+    "s6": {
+      "cpu_pct": 18,
+      "slots": "0/4",
+      "observed_running": [],
+      "published_last_hour": 0,
+      "idle_reason": "no eligible ready symbol for this host",
+      "mem_avail_mb": 17702
     },
     "s2": {
-      "cpu_pct": 48,
+      "cpu_pct": 97,
       "slots": "2/4",
       "observed_running": [
+        "EDUUSDT",
         "TIAUSDC"
       ],
       "published_last_hour": 1,
-      "idle_reason": null,
-      "mem_avail_mb": 13181
-    },
-    "s6": {
-      "cpu_pct": 38,
-      "slots": "1/4",
-      "observed_running": [
-        "1000FLOKIUSDT"
-      ],
-      "published_last_hour": 0,
       "idle_reason": "mem guard",
-      "mem_avail_mb": 11766
+      "mem_avail_mb": 10282
     }
   },
   "one_hour_total": 2,
@@ -57,11 +56,11 @@
     "LOW_THROUGHPUT:s1:0/h",
     "IDLE:s1:mem guard",
     "LOW_THROUGHPUT:s5:1/h",
-    "LOW_CPU:s5:15%",
+    "LOW_CPU:s5:30%",
     "IDLE:s5:no eligible ready symbol for this host",
-    "LOW_THROUGHPUT:s2:1/h",
-    "LOW_CPU:s2:48%",
     "LOW_THROUGHPUT:s6:0/h",
-    "LOW_CPU:s6:38%"
+    "LOW_CPU:s6:18%",
+    "IDLE:s6:no eligible ready symbol for this host",
+    "LOW_THROUGHPUT:s2:1/h"
   ]
 }
