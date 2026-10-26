@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-26T03:41:14Z",
+ "ts": "2026-10-26T03:46:26Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 97,
+   "fills_6h": 98,
    "open_positions": 7,
-   "unrealised_usd": 0.09,
+   "unrealised_usd": 0.14,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 2,
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 225,
    "open_positions": 10,
-   "unrealised_usd": -0.0,
+   "unrealised_usd": -0.07,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 3,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 193,
    "open_positions": 9,
-   "unrealised_usd": 0.04,
+   "unrealised_usd": 0.28,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 3,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 197,
    "open_positions": 4,
-   "unrealised_usd": -0.28,
+   "unrealised_usd": -0.19,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 4,
@@ -127,34 +127,34 @@
     "16701"
    ],
    "starts_30m": 2,
-   "log_age_s": 9.0
+   "log_age_s": 1.0
   },
   "men": {
    "pids": [
-    "6987"
+    "20865"
    ],
-   "starts_30m": 1,
-   "log_age_s": 11.0
+   "starts_30m": 2,
+   "log_age_s": 7.0
   },
   "ang": {
    "pids": [
     "16664"
    ],
    "starts_30m": 2,
-   "log_age_s": 63.0
+   "log_age_s": 0.0
   },
   "inf": {
    "pids": [
     "15944"
    ],
    "starts_30m": 2,
-   "log_age_s": 66.0
+   "log_age_s": 24.0
   },
   "flz": {
    "pids": [
-    "16684"
+    "27605"
    ],
-   "starts_30m": 2,
+   "starts_30m": 3,
    "log_age_s": 34.0
   },
   "trb": {
@@ -162,133 +162,76 @@
     "42630"
    ],
    "starts_30m": 1,
-   "log_age_s": 5.0
+   "log_age_s": 1.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 159019.0
+   "log_age_s": 159331.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-26T03:41:15Z",
+   "ts": "2026-10-26T03:46:27Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "fin:MAGICUSDT_SHORT",
    "evidence": "OPEN REENTRY_MANDATORY bar=2026-10-25T22:30:00Z: live already holds 575.167 (state divergence)"
   },
   {
-   "ts": "2026-10-26T03:41:15Z",
+   "ts": "2026-10-26T03:46:27Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "fin:ENAUSDC_LONG",
    "evidence": "OPEN TIER1_PRICE_CROSS_REENTRY_exit0.2089_cur bar=2026-10-25T22:30:00Z: live already holds 175.691 (state divergence)"
   },
   {
-   "ts": "2026-10-26T03:41:15Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "men:BIGTIMEUSDT_SHORT",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 18407.7->55223.2 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 18407.7)"
-  },
-  {
-   "ts": "2026-10-26T03:41:15Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "men:BIOUSDC_SHORT",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 5461.9->16385.7 = $359.99 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 5461.9)"
-  },
-  {
-   "ts": "2026-10-26T03:41:15Z",
+   "ts": "2026-10-26T03:46:27Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "men:PARTIUSDT_SHORT",
    "evidence": "CLOSE FIXED_STOP decided 2026-10-25T22:43:38Z bar=2026-10-25T22:15:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-26T03:41:15Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "ang:1000BONKUSDC_SHORT",
-   "evidence": "26 03:28:17 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:1000BONKUSDC_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $859 on bounce (prior max 9274.0000)"
-  },
-  {
-   "ts": "2026-10-26T03:41:15Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "ang:1000BONKUSDC_SHORT",
-   "evidence": "order notional $859.08 > MAX_ORDER_VALUE $300: 26 03:28:17 - INFO - [ang] [execute_trade_action][ang] \u2705 \u2705 \u2705 \u2705 OPEN ang:1000BONKUSDC_SHORT @ 0.002974 qty=288862.189695 ($859.08) side=SELL | CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_SHORT_px0.002975_ex"
-  },
-  {
-   "ts": "2026-10-26T03:41:15Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "ang:SKLUSDT_SHORT",
-   "evidence": "26 03:28:27 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:SKLUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $4568 on bounce (prior max 6951.0000)"
-  },
-  {
-   "ts": "2026-10-26T03:41:15Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "ang:SKLUSDT_SHORT",
-   "evidence": "order notional $4567.80 > MAX_ORDER_VALUE $300: 26 03:28:27 - INFO - [ang] [execute_trade_action][ang] \u2705 \u2705 \u2705 \u2705 OPEN ang:SKLUSDT_SHORT @ 0.003914 qty=1166980.902743 ($4567.80) side=SELL | CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_SHORT_px0.003913_exit0"
-  },
-  {
-   "ts": "2026-10-26T03:41:15Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "ang:1000BONKUSDC_SHORT",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 288862->577724 = $1718.15 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 288862)"
-  },
-  {
-   "ts": "2026-10-26T03:41:15Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "ang:SKLUSDT_SHORT",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 1.16698e+06->2.33396e+06 = $9135.13 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 1.16698e+06)"
-  },
-  {
-   "ts": "2026-10-26T03:41:15Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "ang:ACEUSDT_SHORT",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 875.593->2626.78 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 875.593)"
-  },
-  {
-   "ts": "2026-10-26T03:41:15Z",
+   "ts": "2026-10-26T03:46:27Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "ang:SNXUSDT_SHORT",
    "evidence": "OPEN REENTRY_EXIT_PRICE_BREAK bar=2026-10-26T02:30:00Z: live already holds 54.8803 (state divergence)"
   },
   {
-   "ts": "2026-10-26T03:41:15Z",
+   "ts": "2026-10-26T03:46:27Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:PENGUUSDC_LONG",
    "evidence": "CLOSE WT_CROSS_EXIT_1h_bear decided 2026-10-25T23:34:20Z bar=2026-10-25T23:15:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-26T03:41:15Z",
+   "ts": "2026-10-26T03:46:27Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:BNBUSDC_SHORT",
    "evidence": "AUGMENT AUGMENT_AT_LOSS_LH decided 2026-10-26T02:09:49Z bar=2026-10-26T01:45:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-26T03:41:15Z",
+   "ts": "2026-10-26T03:46:27Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "flz:ZECUSDC_SHORT",
    "evidence": "REDUCE PPL_TP_g1.61%>=1.50%_stopBE1217.4362 decided 2026-10-26T00:07:33Z bar=2026-10-25T23:30:00Z: no fill in 1800s and no refusal logged"
+  },
+  {
+   "ts": "2026-10-26T03:46:27Z",
+   "severity": "CRITICAL",
+   "kind": "RESTART_LOOP",
+   "key": "flz",
+   "evidence": "3 new process ids in 30 min (['84999', '16684', '27605'])"
   }
  ],
  "alert_counts": {
   "VEC_OPEN_WHILE_LIVE_IN": 3,
-  "SIZE_ANOMALY": 7,
   "VEC_DECISION_NOT_FILLED": 4,
-  "CAP_BYPASS": 2
+  "RESTART_LOOP": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -439,5 +382,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.22
+ "sweep_s": 0.79
 }
