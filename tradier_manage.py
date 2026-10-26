@@ -62721,6 +62721,11 @@ async def main():
     if not valid_accounts:
         print(f"!! No valid accounts found in config. Looking for: {args.accounts}")
         return
+    if os.environ.get("VEC_LIVE_SCOPE", "30d").lower() == "7d":
+        if valid_accounts != ["trc"]:
+            raise RuntimeError("7D vector/settings route requires a TRC-only process")
+        from tools.v15_preopen_7d_runtime import assert_ready as _assert_7d_ready
+        _assert_7d_ready("trc", Path(__file__).resolve().parent)
     setup_logger_per_account("tradier_manage", config.LOG_DIR, valid_accounts)
     logger.info(f"🚀 INSTANCE STARTED for: {valid_accounts}")
     logger.info(

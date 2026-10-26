@@ -1,7 +1,7 @@
 {
-  "ts": "2026-10-26T00:30:04.968838+00:00",
-  "tick": "2026-10-26T00:28:01.425073+00:00",
-  "tick_age_s": 124,
+  "ts": "2026-10-26T00:35:13.842933+00:00",
+  "tick": "2026-10-26T00:34:01.656745+00:00",
+  "tick_age_s": 72,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run36.json",
     "round": "run36",
@@ -11,7 +11,7 @@
     "n_pending": 52,
     "n_refused_only": 0,
     "n_excluded": 0,
-    "n_launchable_pending": 28,
+    "n_launchable_pending": 29,
     "hosts_not_visible": []
   },
   "hosts": {
@@ -25,53 +25,53 @@
       ],
       "published_last_hour": 1,
       "idle_reason": "mem guard",
-      "mem_avail_mb": 5345
+      "mem_avail_mb": 5309
     },
     "s2": {
-      "cpu_pct": 100,
-      "slots": "4/4",
+      "cpu_pct": 94,
+      "slots": "3/4",
       "observed_running": [
         "GRAMUSDT",
         "STRKUSDT",
         "WLDUSDC"
       ],
       "published_last_hour": 2,
-      "idle_reason": null,
-      "mem_avail_mb": 15590
+      "idle_reason": "mem guard",
+      "mem_avail_mb": 9424
     },
     "s5": {
-      "cpu_pct": 64,
+      "cpu_pct": 37,
       "slots": "4/4",
       "observed_running": [
-        "AAPL_WF",
-        "BWXT",
-        "CAT",
-        "ETN"
+        "CME",
+        "COHR",
+        "COIN"
       ],
       "published_last_hour": 2,
-      "idle_reason": "slots full",
-      "mem_avail_mb": 23476
+      "idle_reason": null,
+      "mem_avail_mb": 27891
     },
     "s6": {
-      "cpu_pct": 97,
-      "slots": "4/4",
+      "cpu_pct": 55,
+      "slots": "5/4",
       "observed_running": [
+        "MCD",
+        "MPC",
         "QBTS",
-        "RRC",
         "RS",
         "SAP"
       ],
-      "published_last_hour": 4,
+      "published_last_hour": 5,
       "idle_reason": "slots full",
-      "mem_avail_mb": 16716
+      "mem_avail_mb": 19401
     }
   },
-  "one_hour_total": 9,
+  "one_hour_total": 10,
   "alerts": [
     "LOW_THROUGHPUT:s1:1/h",
     "LOW_THROUGHPUT:s2:2/h",
     "LOW_THROUGHPUT:s5:2/h",
-    "LOW_CPU:s5:64%",
-    "LOW_THROUGHPUT:s6:4/h"
+    "LOW_CPU:s5:37%",
+    "LOW_CPU:s6:55%"
   ]
 }

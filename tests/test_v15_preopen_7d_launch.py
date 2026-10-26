@@ -1,0 +1,34 @@
+import json
+
+import pytest
+
+from tools.v15_preopen_7d_launch import build_launch
+from tools.v15_preopen_7d_stage import digest
+
+
+def test_launcher_isolates_paths_and_preserves_30d_start(tmp_path):
+    from tools import v15_preopen_7d_launch as launch
+
+    ss = "AAAUSDT_SHORT"
+    template = launch.ROOT / "SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx"
+    if not template.exists():
+        pytest.skip("template unavailable")
+    source = {"X": 1}
+    queue = {"accounts": {"fin": [ss], "trc": []},
+             "sym_sides": {ss: {"manifest_ok": True, "cat_side": "CRYPTO_SHORT", "overrides": source}}}
+    cmd, env, folder = build_launch(queue, ss, tmp_path, 7, "python3")
+    assert cmd[cmd.index("--window-days") + 1] == "7"
+    assert cmd[cmd.index("--workers") + 1] == "7"
+    assert env["V15_7D_SOURCE_SHA256"] == digest(source)
+    assert json.loads((folder / "start_30d.json").read_text()) == source
+    assert env["V15_PREV_BEST_START"] == "0"
+    assert "V15_SKIP_LIVE_AT_DONE" not in env
+    assert str(folder / "out") == env["V15_OUT_DIR"]
+
+
+def test_launcher_rejects_unverified_source(tmp_path):
+    ss = "AAAUSDT_SHORT"
+    queue = {"accounts": {"fin": [ss], "trc": []},
+             "sym_sides": {ss: {"manifest_ok": False, "cat_side": "CRYPTO_SHORT", "overrides": {"X": 1}}}}
+    with pytest.raises(ValueError, match="verified"):
+        build_launch(queue, ss, tmp_path, 7, "python3")

@@ -27,6 +27,14 @@ def file_md5(path: Path) -> str:
     return h.hexdigest()
 
 
+def file_sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
 def validate_one(ss: str, source: dict, result_dir: Path, today: str) -> dict:
     progress_path = result_dir / ss / "progress" / f"{ss}_7d_progress.json"
     out_dir = result_dir / ss / "out"
@@ -43,6 +51,9 @@ def validate_one(ss: str, source: dict, result_dir: Path, today: str) -> dict:
         raise ValueError(f"{ss}: missing 7D overrides/defaults/full set")
     if full != {**defaults, **overrides}:
         raise ValueError(f"{ss}: full set does not match defaults plus overrides")
+    live_verify = progress.get("live_verified") or {}
+    if live_verify.get("reason") or (live_verify.get("parity") or [False])[0] is not True:
+        raise ValueError(f"{ss}: live/vector parity is unverified or failed")
     manifests = list(out_dir.glob(f"{ss}*_manifest.json"))
     if len(manifests) != 1:
         raise ValueError(f"{ss}: expected exactly one 7D manifest, found {len(manifests)}")
@@ -166,7 +177,9 @@ def stage(queue_path: Path, result_dir: Path, source_db: Path, source_sets_path:
     (out_dir / "vec_driven.json").write_text(json.dumps(registry, sort_keys=True) + "\n")
     report = {"day": today, "queue_n": len(sources), "selected_7d": len(results),
               "fallback_30d": len(sets) - len(results), "stage_only": True,
-              "db": str(db_final), "sets": str(out_dir / "vec_driven_sets.json")}
+              "db": str(db_final), "sets": str(out_dir / "vec_driven_sets.json"),
+              "db_sha256": file_sha256(db_final),
+              "sets_sha256": file_sha256(out_dir / "vec_driven_sets.json")}
     (out_dir / "validation.json").write_text(json.dumps(report, indent=2) + "\n")
     return report
 

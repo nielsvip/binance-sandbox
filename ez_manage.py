@@ -65587,6 +65587,11 @@ async def main():
         pass
     args = parse_arguments()
     selected_account = args.account
+    if os.environ.get("VEC_LIVE_SCOPE", "30d").lower() == "7d":
+        if selected_account != "fin":
+            raise RuntimeError("7D vector/settings route requires a FIN-only process")
+        from tools.v15_preopen_7d_runtime import assert_ready as _assert_7d_ready
+        _assert_7d_ready("fin", Path(__file__).resolve().parent)
     all_possible_accounts = ["ang", "inf", "flz", "men", "fin"]
     if selected_account:
         current_account.set(selected_account)
