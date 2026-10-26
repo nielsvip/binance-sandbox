@@ -78,6 +78,7 @@ def is_bar_stale(bar_ts, now_s):
 REANCHOR_AGE_SEC = 86400
 MIN_BARS = 100
 ENGINE_FILES = [
+    "tools/vec_live_executor.py",
     "v12_quick_engine.py",
     "tools/opt/evaluate_v12.py",
     "tools/opt/v12_pilot.py",
@@ -596,6 +597,8 @@ def process(
     why = ""
     if pre_err:
         status, why = "ENGINE_ERROR", pre_err
+    elif res.get("valid") is not True:
+        status, why = "INVALID_30D_REPLAY", str(res.get("invalid_reason") or "unverified 30D replay")
     elif n_bars < MIN_BARS:
         status, why = "INSUFFICIENT_BARS", f"{n_bars} < {MIN_BARS} bars from anchor"
     elif res.get("execution_ledger") is None and "v12 prepared" in str(

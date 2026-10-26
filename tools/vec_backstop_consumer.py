@@ -45,6 +45,8 @@ def load_states(state_dir=STATE_DIR):
     if not db.is_file():
         return out
     from per_sym_live_set import _apply_caps
+    from tools.vec_live_executor import engine_md5
+    engine = engine_md5()["combined"]
     connection = sqlite3.connect(f"file:{db.resolve()}?mode=ro", uri=True, timeout=5)
     try:
         for f in glob.glob(str(Path(state_dir) / "*.json")):
@@ -60,6 +62,8 @@ def load_states(state_dir=STATE_DIR):
                 effective = _apply_caps(ss, full)
                 digest = hashlib.md5(json.dumps(effective, sort_keys=True, default=str).encode()).hexdigest()
                 if d.get("set_md5") != digest:
+                    continue
+                if d.get("engine_md5") != engine or d.get("engine_valid") is not True:
                     continue
                 out[ss] = d
             except Exception:

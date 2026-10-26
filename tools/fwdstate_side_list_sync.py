@@ -21,7 +21,13 @@ def main():
     stock_sides = set()
     for direction in ("LONG", "SHORT"):
         source = ROOT / f"symbols_trb_{direction.lower()}.json"
-        stock_sides.update(f"{str(symbol).upper()}_{direction}" for symbol in json.loads(source.read_text()))
+        if source.is_file():
+            stock_sides.update(f"{str(symbol).upper()}_{direction}" for symbol in json.loads(source.read_text()))
+        else:
+            cached = CACHE / "s5"
+            if cached.is_file():
+                stock_sides.update(cached.read_text().split())
+            print(f"missing {source}; retaining last synced S5 stock sides", file=sys.stderr)
     for host, direction, remote_path in SOURCES:
         selected = sorted(stock_sides if direction == "STOCK" else (side for side in sides if direction == "ALL" or side.endswith("_" + direction)))
         if not selected:

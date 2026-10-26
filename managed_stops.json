@@ -1,16 +1,65 @@
 {
-  "flz:BTCDOMUSDT_LONG": {
-    "orderId": "1000002643714536",
-    "stopPrice": 5547.3,
-    "entry_sig": "2026-10-26 03:17:00.997000+00:00",
-    "symbol": "BTCDOMUSDT",
+  "fin:1000LUNCUSDT_SHORT": {
+    "orderId": "3000002274807778",
+    "stopPrice": 0.04691,
+    "entry_sig": "2026-10-26 03:33:07.034000+00:00",
+    "symbol": "1000LUNCUSDT",
+    "side": "SHORT"
+  },
+  "fin:ZILUSDT_SHORT": {
+    "orderId": "3000002274849907",
+    "stopPrice": 0.001928,
+    "entry_sig": "2026-10-26 03:51:13.383000+00:00",
+    "symbol": "ZILUSDT",
+    "side": "SHORT"
+  },
+  "fin:FARTCOINUSDT_SHORT": {
+    "orderId": "3000002274850452",
+    "stopPrice": 0.126,
+    "entry_sig": "2026-10-26 03:51:15.582000+00:00",
+    "symbol": "FARTCOINUSDT",
+    "side": "SHORT"
+  },
+  "fin:ENJUSDT_SHORT": {
+    "orderId": "3000002274863688",
+    "stopPrice": 0.02485,
+    "entry_sig": "2026-10-26 04:04:42.362000+00:00",
+    "symbol": "ENJUSDT",
+    "side": "SHORT"
+  },
+  "fin:GRASSUSDT_LONG": {
+    "orderId": "3000002274864133",
+    "stopPrice": 0.6896,
+    "entry_sig": "2026-10-26 04:05:01.566000+00:00",
+    "symbol": "GRASSUSDT",
     "side": "LONG"
   },
-  "flz:DASHUSDT_SHORT": {
-    "orderId": "1000002643819973",
-    "stopPrice": 52.17,
-    "entry_sig": "2026-10-26 04:31:21.168000+00:00",
-    "symbol": "DASHUSDT",
+  "fin:RVNUSDT_SHORT": {
+    "orderId": "3000002274874538",
+    "stopPrice": 0.001331,
+    "entry_sig": "2026-10-26 03:40:53.459000+00:00",
+    "symbol": "RVNUSDT",
+    "side": "SHORT"
+  },
+  "fin:BEAMXUSDT_LONG": {
+    "orderId": "3000002274907037",
+    "stopPrice": 0.002938,
+    "entry_sig": "2026-10-26 04:32:23.764000+00:00",
+    "symbol": "BEAMXUSDT",
+    "side": "LONG"
+  },
+  "fin:TIAUSDC_LONG": {
+    "orderId": "3000002274914185",
+    "stopPrice": 0.5212,
+    "entry_sig": "2026-10-26 04:36:17.617000+00:00",
+    "symbol": "TIAUSDC",
+    "side": "LONG"
+  },
+  "fin:BBUSDT_SHORT": {
+    "orderId": "3000002274911784",
+    "stopPrice": 0.00773,
+    "entry_sig": "2026-10-26 04:34:59.055000+00:00",
+    "symbol": "BBUSDT",
     "side": "SHORT"
   }
 }
