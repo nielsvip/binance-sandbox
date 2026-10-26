@@ -1381,6 +1381,7 @@ _REPO = Path(__file__).resolve().parent
 
 def positions_file_for(venue: str, account: str, position_side: str) -> Path:
     """{acct}/long_positions.json | short_positions.json (crypto: BASE/acct; tradier: account_dir from config_tradier)."""
+    account = canonical_account(venue, account)
     name = "short_positions.json" if str(position_side).upper() == "SHORT" else "long_positions.json"
     base = os.environ.get("POSITIONS_BASE_DIR")
     if base:
@@ -1419,9 +1420,34 @@ def guardian_jsonl() -> Path:
     return Path(os.environ.get("POSITIONS_GUARDIAN_JSONL") or (_REPO / "data" / "reports" / "live_guardian.jsonl"))
 
 
+def canonical_account(venue: str, account: str) -> str:
+    """Resolve raw Binance API-key fingerprints to the account that owns its position files."""
+    account = str(account or "")
+    if venue != "binance" or not account.startswith("key_"):
+        return account
+    import hashlib
+    matches = []
+    for env_name, api_key in os.environ.items():
+        if not env_name.endswith("_API_KEY") or not api_key:
+            continue
+        candidate = env_name[:-8].lower()
+        if not candidate or candidate.startswith("key_"):
+            continue
+        if "key_" + hashlib.sha1(api_key.encode()).hexdigest()[:10] != account:
+            continue
+        account_dir = _REPO / candidate
+        if any((account_dir / f"{side}_positions.json").is_file() for side in ("long", "short")):
+            matches.append(candidate)
+    return matches[0] if len(set(matches)) == 1 else account
+
+
 def broken_positions_alarm(venue: str, account: str, key: str, detail: Dict[str, Any], logger: Optional[logging.Logger] = None) -> None:
     """CRITICAL log with the exact text, flag file, live-guardian dashboard row, macOS notification (rate-limited 60 s/account)."""
     log = logger or _LOG
+    raw_account = str(account or "")
+    account = canonical_account(venue, raw_account)
+    if account != raw_account and str(key).startswith(f"{raw_account}:"):
+        key = f"{account}:{str(key).split(':', 1)[1]}"
     now = time.time()
     iso = datetime.fromtimestamp(now, timezone.utc).isoformat()
     msg = f"{ALARM_TEXT} {venue}:{account} {key} {json.dumps(detail, default=str)[:600]}"
@@ -1489,6 +1515,7 @@ def rewrite_row_from_broker(venue: str, account: str, symbol: str, position_side
     unrealized pnl, broker_synced_at, last_updated). Local bookkeeping (opened_at, max_gain, ...) is kept; entry_price /
     opened_at / max_gain are never zeroed; rows are never deleted. Atomic replace + written_at meta."""
     log = logger or _LOG
+    account = canonical_account(venue, account)
     ps = str(position_side).upper()
     key = f"{account}:{str(symbol).upper()}_{ps}"
     if not _live_side_effects_allowed():
@@ -1547,6 +1574,7 @@ def rewrite_row_from_broker(venue: str, account: str, symbol: str, position_side
 
 
 def file_reflects(venue: str, account: str, symbol: str, position_side: str, broker_amt: float, last_fill_ts: Optional[float], tol_s: float = 2.0) -> Tuple[bool, Dict[str, Any]]:
+    account = canonical_account(venue, account)
     ps = str(position_side).upper()
     key = f"{account}:{str(symbol).upper()}_{ps}"
     path = positions_file_for(venue, account, ps)
