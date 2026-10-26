@@ -11,14 +11,6 @@
       "TEMPLATE_CRYPTO_SHORT.xlsx!GLOBAL_RISK_GATES"
      ]
     },
-    "AUGMENT_TYPED_MIN_GAIN_ENABLED": {
-     "class": "UNDEFINED_SWITCH",
-     "other_config_has_it": false,
-     "sheets": [
-      "TEMPLATE_CRYPTO_LONG.xlsx!AUGMENT_RISK_SIZING",
-      "TEMPLATE_CRYPTO_SHORT.xlsx!AUGMENT_RISK_SIZING"
-     ]
-    },
     "BALANCE_FLOOR_USD": {
      "class": "UNDEFINED_SWITCH",
      "other_config_has_it": false,
@@ -41,14 +33,6 @@
      "sheets": [
       "TEMPLATE_CRYPTO_LONG.xlsx!ENTRY_BREAKOUT_CHANNEL",
       "TEMPLATE_CRYPTO_SHORT.xlsx!ENTRY_BREAKOUT_CHANNEL"
-     ]
-    },
-    "DELTA_MAX_HOLD_BARS": {
-     "class": "UNDEFINED_SWITCH",
-     "other_config_has_it": false,
-     "sheets": [
-      "TEMPLATE_CRYPTO_LONG.xlsx!GLOBAL_RISK_GATES",
-      "TEMPLATE_CRYPTO_SHORT.xlsx!GLOBAL_RISK_GATES"
      ]
     },
     "GAP_PER_SYMBOL_AVG_THRESH_PCT": {
@@ -151,7 +135,6 @@
      "class": "UNDEFINED_SWITCH",
      "other_config_has_it": false,
      "sheets": [
-      "TEMPLATE_CRYPTO_LONG.xlsx!EXIT_STRUCTURAL",
       "TEMPLATE_CRYPTO_SHORT.xlsx!EXIT_STRUCTURAL"
      ]
     },
@@ -164,8 +147,8 @@
      ]
     }
    },
-   "missing_count": 20,
-   "switch_keys_checked": 1109,
+   "missing_count": 18,
+   "switch_keys_checked": 1137,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx"
@@ -182,14 +165,6 @@
       "TEMPLATE_STOCKS_SHORT.xlsx!GLOBAL_RISK_GATES"
      ]
     },
-    "AUGMENT_TYPED_MIN_GAIN_ENABLED": {
-     "class": "UNDEFINED_SWITCH",
-     "other_config_has_it": false,
-     "sheets": [
-      "TEMPLATE_STOCKS_LONG.xlsx!AUGMENT_RISK_SIZING",
-      "TEMPLATE_STOCKS_SHORT.xlsx!AUGMENT_RISK_SIZING"
-     ]
-    },
     "BALANCE_FLOOR_USD": {
      "class": "UNDEFINED_SWITCH",
      "other_config_has_it": false,
@@ -204,14 +179,6 @@
      "sheets": [
       "TEMPLATE_STOCKS_LONG.xlsx!ENTRY_BREAKOUT_CHANNEL",
       "TEMPLATE_STOCKS_SHORT.xlsx!ENTRY_BREAKOUT_CHANNEL"
-     ]
-    },
-    "DELTA_MAX_HOLD_BARS": {
-     "class": "UNDEFINED_SWITCH",
-     "other_config_has_it": false,
-     "sheets": [
-      "TEMPLATE_STOCKS_LONG.xlsx!GLOBAL_RISK_GATES",
-      "TEMPLATE_STOCKS_SHORT.xlsx!GLOBAL_RISK_GATES"
      ]
     },
     "FUNDING_GATE_LONG_MAX": {
@@ -294,8 +261,7 @@
      "class": "UNDEFINED_SWITCH",
      "other_config_has_it": false,
      "sheets": [
-      "TEMPLATE_STOCKS_LONG.xlsx!REENTRY_ADAPTIVE",
-      "TEMPLATE_STOCKS_SHORT.xlsx!REENTRY_ADAPTIVE"
+      "TEMPLATE_STOCKS_LONG.xlsx!REENTRY_ADAPTIVE"
      ]
     },
     "REENTRY_TIER_MODEL_ENABLED": {
@@ -322,14 +288,6 @@
       "TEMPLATE_STOCKS_SHORT.xlsx!ENTRY_REVERSAL_BOUNCE"
      ]
     },
-    "WIN_TRAIL_EROSION_PCT": {
-     "class": "UNDEFINED_SWITCH",
-     "other_config_has_it": false,
-     "sheets": [
-      "TEMPLATE_STOCKS_LONG.xlsx!EXIT_STRUCTURAL",
-      "TEMPLATE_STOCKS_SHORT.xlsx!EXIT_STRUCTURAL"
-     ]
-    },
     "WT_DC_DETAILED_TF": {
      "class": "UNDEFINED_SWITCH",
      "other_config_has_it": false,
@@ -339,13 +297,13 @@
      ]
     }
    },
-   "missing_count": 20,
-   "switch_keys_checked": 1223,
+   "missing_count": 17,
+   "switch_keys_checked": 1258,
    "templates": [
     "TEMPLATE_STOCKS_LONG.xlsx",
     "TEMPLATE_STOCKS_SHORT.xlsx"
    ]
   }
  },
- "generated": "2026-10-26T19:20:50.155463+00:00"
+ "generated": "2026-10-26T19:54:08.666509+00:00"
 }

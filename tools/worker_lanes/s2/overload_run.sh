@@ -13,9 +13,9 @@ _nrun=$(pgrep -af "^[^ ]*python[^ ]* -u ([^ ]*/)?v15_pilot(_7d)?[.]py --sym-side
 [ "$_nrun" -ge "$MAX" ] && { echo FULL-"${SS}"; exit 0; }
 _avail_mb=$(awk '/^MemAvailable:/ {print int($2/1024)}' /proc/meminfo)
 if [ "$_avail_mb" -lt 14000 ]; then
-  [ "$_avail_mb" -ge 7500 ] || { echo MEM_WAIT-"${SS}"-"${_avail_mb}MB; exit 0; }
+  [ "$_avail_mb" -ge 7500 ] || { echo "MEM_WAIT-${SS}-${_avail_mb}MB"; exit 0; }
   W=1
-  echo MEM_THROTTLE-"${SS}"-1-worker-"${_avail_mb}MB
+  echo "MEM_THROTTLE-${SS}-1-worker-${_avail_mb}MB"
 fi
 PDIR=$(head -n 1 "$HOME/v15_current_progress_dir.txt" 2>/dev/null)
 [[ "$PDIR" == /home/niels/v15_run*/progress ]] || exit 2

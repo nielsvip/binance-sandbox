@@ -41,6 +41,15 @@ def test_canon_family_collapses_param_singletons():
     )
     assert pfc.canon_family("VEC_EXACT_OPEN_B12_ENTRY") == "B12_ENTRY"
     assert pfc.canon_family("") == "UNKNOWN"
+    assert pfc.canon_family(
+        "QUICK_WT_CROSS_EXIT_1h_bear_wt1=70.1_wt2=72.7_15m-4.1/-2.6"
+    ) == "QUICK_WT_CROSS_EXIT_1H_BEAR"
+    assert pfc.canon_family(
+        "QUICK_WT_CROSS_EXIT_1h_bear_wt1=-82.3_wt2=-75.1_15m-10.4/-7.1"
+    ) == "QUICK_WT_CROSS_EXIT_1H_BEAR"
+    assert pfc.canon_family(
+        "QUICK_WT_CROSS_EXIT_1h_bull_wt1=69.0_wt2=45.0"
+    ) == "QUICK_WT_CROSS_EXIT_1H_BULL"
 
 
 def test_canon_family_keeps_structural_names():

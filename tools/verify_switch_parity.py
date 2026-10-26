@@ -7,7 +7,7 @@ and ANY FUCKING LINE IN TEMPLATE_STOCKS_* HAS TO EXIST IN config_tradier.py".
 Section 1 -- TEMPLATE key parity (default, always runs, decides the exit code).
 This is the check PARITY_TESTING.md documents for this file ("PARITY GUARD OK: N TEMPLATE keys ...",
 "PARITY GUARD FAILED: Missing from configs: [...]"). It reads column A of every sheet of
-SPREADSHEETS/TEMPLATE_CRYPTO_{LONG,SHORT}.xlsx and TEMPLATE_STOCKS_{LONG,SHORT}.xlsx, keeps only
+SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_{CRYPTO,STOCKS}_{LONG,SHORT}.xlsx, keeps only
 real UPPER_SNAKE_CASE switch identifiers (the 13 SWITCH_SHEETS tab names, legend/colour rows and
 inventory banners are labels, not switches), and proves presence by IMPORTING the config and calling
 hasattr on the real surfaces live reads: the instance (config.Config() / config_tradier.TradierConfig()),
@@ -30,6 +30,7 @@ and still fails closed when unavailable -- it is simply no longer allowed to sil
 import sys, os, json, pathlib, copy, re, datetime, argparse
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+TEMPLATE_DIR = ROOT / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM"
 sys.path.insert(0, str(ROOT))
 
 SWITCH_SHEETS = (
@@ -95,7 +96,7 @@ def check_template_parity():
     for family, (config_file, template_files) in TEMPLATES.items():
         switches = {}
         for template_file in template_files:
-            path = ROOT / "SPREADSHEETS" / template_file
+            path = TEMPLATE_DIR / template_file
             if not path.exists():
                 breaches.append(f"{family}: missing template {path}")
                 continue

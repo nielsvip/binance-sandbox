@@ -350,7 +350,7 @@ def resolve_host(host):
     if host != "auto":
         return host
     failures = []
-    for candidate in ("s1-int", "s1-pub"):
+    for candidate in ("s1-pub", "s1-int"):
         try:
             _run(SSH + [candidate, "hostname"], timeout=12)
             return candidate

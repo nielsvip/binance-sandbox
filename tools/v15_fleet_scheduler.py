@@ -1692,7 +1692,7 @@ def _memory_worker_plan(requested_workers, projected_mb, full_estimate_mb, one_j
         floor = max(1.0, float(one_job_mb))
     except (TypeError, ValueError):
         return (None, 0.0, True)
-    if projected >= estimate:
+    if projected >= max(estimate, floor):
         return (requested, estimate, False)
     if projected >= floor:
         return (1, floor, True)
@@ -5119,7 +5119,7 @@ def tick(args, cfg, now):
                     break
             if _pf:
                 npz_prefetch.append((h, _pf))
-        if launched == 0 and used < cap and proj_mem >= est_gate and cpu < cfg.get("cpu_target_pct", 90) and swap_ok and disk_ok and win_ok and new_launched < args.max_launch:  # USER 2026-10-10: backfill must respect the disk guard — it fires exactly when the guarded main loop correctly launches 0
+        if launched == 0 and used < cap and proj_mem >= cfg.get("default_job_rss_mb", 3500) and cpu < cfg.get("cpu_target_pct", 90) and swap_ok and disk_ok and win_ok and new_launched < args.max_launch and h["name"] not in oom_paused_hosts:  # USER 2026-10-10: backfill must respect the disk guard — it fires exactly when the guarded main loop correctly launches 0
             _bf_ts = st.setdefault("backfill_ts", {})
             blo = []
             for ss in _deferred_sides:
@@ -5154,7 +5154,7 @@ def tick(args, cfg, now):
                 blo.append((0 if t2 == "M" else 1, -g2, ss, sym2, sd2, key2))
             blo.sort()
             for _, _, ss, sym2, sd2, key2 in blo:
-                if used >= cap or proj_mem < est_gate or new_launched >= args.max_launch:
+                if used >= cap or new_launched >= args.max_launch:
                     break
                 rd = is_ready(h["name"], sym2)
                 if not rd.get("ok"):
@@ -5167,17 +5167,22 @@ def tick(args, cfg, now):
                     log.setdefault("skipped_no_pdir", []).append(f"{h['name']}:{sym}")
                     continue
                 tag = f"BACKFILL {h['name']}:{sym2}:{sd2[0]}30D"
+                _backfill_plan = _memory_worker_plan(_workers_for(sym2, workers), proj_mem, est_gate, cfg.get("default_job_rss_mb", 3500))
+                if _backfill_plan[0] is None:
+                    continue
+                if _backfill_plan[2]:
+                    log.setdefault("memory_throttle", []).append(f"{h['name']}:{sym2}:{_workers_for(sym2, workers)}->{_backfill_plan[0]} workers (backfill)")
                 if args.dry_run or sim:
                     log["launched"].append(tag + " (dry)")
                     launched_keys.add(key2)
                 else:
                     if _ALL_LAUNCH_NPZ:
-                        if not _dispatch_async(h, sym2, acts, pd, _workers_for(sym2, workers), f"{h['name']}:{sym2}:{sd2[0]}30D"):
+                        if not _dispatch_async(h, sym2, acts, pd, _backfill_plan[0], f"{h['name']}:{sym2}:{sd2[0]}30D"):
                             continue
                         _dispatch_q_mark(st, [key2], _now_ts)
                     else:
                         try:
-                            subprocess.run(["ssh", "-o", "BatchMode=yes", h.get("_via", h["ssh"][0]), pair_launch_cmd(h, acts, pd, _workers_for(sym2, workers))], timeout=40)
+                            subprocess.run(["ssh", "-o", "BatchMode=yes", h.get("_via", h["ssh"][0]), pair_launch_cmd(h, acts, pd, _backfill_plan[0])], timeout=40)
                         except subprocess.TimeoutExpired:
                             print(f"[sched] backfill launch ssh timeout {h['name']} {sym2} (job may still have started; pgrep dedups)", flush=True)
                     _burn_launch(key2, "30D", ss, st, started)
@@ -5186,7 +5191,7 @@ def tick(args, cfg, now):
                     launched_keys.add(key2)
                     log["launched"].append(tag)
                 used += 1
-                proj_mem -= est_gate + float(rd.get("size_mb") or 0)
+                proj_mem -= _backfill_plan[1] + float(rd.get("size_mb") or 0)
                 held[h["name"]][sym2] = "new"
                 st["held"].setdefault(h["name"], {})[sym2] = now.isoformat()
                 owner[sym2] = h["name"]
@@ -5220,7 +5225,7 @@ def tick(args, cfg, now):
     pdirs = {n: (s.get("pdir") if s else None) for n, s in stats.items()}
     for h in hosts:
         s = stats[h["name"]]
-        if not s or h["name"] not in HB:
+        if not s or h["name"] not in HB or h["name"] in oom_paused_hosts:
             continue
         B = HB[h["name"]]
         for sym in adopted:
@@ -5234,7 +5239,7 @@ def tick(args, cfg, now):
             acts = [a for a in pending_actions(sym, h["name"]) if a["key"] not in launched_keys and not _launched_recently(a["key"], st.get("launched_at"), _now_ts) and (a["window"] == "365D" or (a["window"] == "REPAIR" and a["attempt"] == 1)) and f"{sym}_{a['side']}" not in running]
             if not acts:
                 continue
-            if B["new_launched"] >= args.max_launch or _occupied_n(held[h["name"]], observed_by_host[h["name"]]) >= B["cap"] or B["proj_mem"] < B["est_pair"] or B["cpu"] >= cfg.get("cpu_target_pct", 90) or not _disk_admit_ok(s):  # USER 2026-10-10: pass-2 steal must respect the disk guard
+            if B["new_launched"] >= args.max_launch or _occupied_n(held[h["name"]], observed_by_host[h["name"]]) >= B["cap"] or B["cpu"] >= cfg.get("cpu_target_pct", 90) or not _disk_admit_ok(s):  # USER 2026-10-10: pass-2 steal must respect the disk guard
                 break
             if venue_of(sym) not in h["venues"]:
                 continue
@@ -5242,6 +5247,9 @@ def tick(args, cfg, now):
             if not rd.get("ok"):
                 continue
             if not _pair_gate_ok(sym, acts, owner, chain_state, st["attempts"], pend_sides={a["side"] for a in pending_actions(sym, h["name"]) if f"{a['sym']}_{a['side']}" not in running}):
+                continue
+            _steal_plan = _memory_worker_plan(_workers_for(sym, B["workers"]), B["proj_mem"], B["est_pair"], cfg.get("default_job_rss_mb", 3500))
+            if _steal_plan[0] is None:
                 continue
             pd = s.get("pdir") or cfg.get("fallback_pdir")
             if not pd:
@@ -5258,12 +5266,12 @@ def tick(args, cfg, now):
                 if specs and not _steal_fetch(hosts, h, sym, specs, log):
                     continue
                 if _ALL_LAUNCH_NPZ:
-                    if not _dispatch_async(h, sym, acts, pd, _workers_for(sym, B["workers"]), tag.replace("[steal]", "")):
+                    if not _dispatch_async(h, sym, acts, pd, _steal_plan[0], tag.replace("[steal]", "")):
                         continue
                     _dispatch_q_mark(st, [a["key"] for a in acts], _now_ts)
                 else:
                     try:
-                        subprocess.run(["ssh", "-o", "BatchMode=yes", h.get("_via", h["ssh"][0]), pair_launch_cmd(h, acts, pd, _workers_for(sym, B["workers"]))], timeout=40)
+                        subprocess.run(["ssh", "-o", "BatchMode=yes", h.get("_via", h["ssh"][0]), pair_launch_cmd(h, acts, pd, _steal_plan[0])], timeout=40)
                     except subprocess.TimeoutExpired:
                         print(f"[sched] steal launch ssh timeout {h['name']} {sym} (job may still have started; pgrep dedups)", flush=True)
                 for a in acts:
@@ -5272,7 +5280,7 @@ def tick(args, cfg, now):
                     st["launched_at"][a["key"]] = _now_ts
                     launched_keys.add(a["key"])
                 log["launched"].append(tag)
-            B["proj_mem"] -= B["est_pair"] + float(rd.get("size_mb") or 0)
+            B["proj_mem"] -= _steal_plan[1] + float(rd.get("size_mb") or 0)
             held[h["name"]][sym] = "new"
             st["held"].setdefault(h["name"], {})[sym] = now.isoformat()
             owner[sym] = h["name"]
@@ -5302,7 +5310,7 @@ def tick(args, cfg, now):
         _tried = set()
         for h in hosts:
             s = stats[h["name"]]
-            if not s or h["name"] not in HB or h["name"] in _drained:
+            if not s or h["name"] not in HB or h["name"] in _drained or h["name"] in oom_paused_hosts:
                 continue
             B = HB[h["name"]]
             # Only pending, non-running sides can be borrowed. An idle box may
@@ -5318,7 +5326,7 @@ def tick(args, cfg, now):
             if _raid_closed:
                 log.setdefault("steal30_raid_closed", []).append(f"{h['name']}-sees-closed:{sorted(_raid_closed)}")
             for _try in range(12):
-                if B.get("new_launched", 0) >= args.max_launch or B.get("proj_mem", 0) < B["est_pair"] or B["cpu"] >= cfg.get("cpu_target_pct", 90) or not _disk_admit_ok(s):
+                if B.get("new_launched", 0) >= args.max_launch or B["cpu"] >= cfg.get("cpu_target_pct", 90) or not _disk_admit_ok(s):
                     break
                 _free = B["cap"] - _occupied_n(held[h["name"]], observed_by_host[h["name"]])
                 # A host one slot below its floor must be able to borrow from a full host.
@@ -5337,6 +5345,9 @@ def tick(args, cfg, now):
                 acts, _unr = _deny_unreachable_sides(acts, sym, h["name"])
                 if not acts:
                     log.setdefault("steal30_skipped", []).append(f"{h['name']}:{sym}:no launchable 30D action")
+                    continue
+                _steal30_plan = _memory_worker_plan(_workers_for(sym, B["workers"]), B.get("proj_mem", 0), B["est_pair"], cfg.get("default_job_rss_mb", 3500))
+                if _steal30_plan[0] is None:
                     continue
                 pd = s.get("pdir") or cfg.get("fallback_pdir")
                 specs = []
@@ -5358,7 +5369,7 @@ def tick(args, cfg, now):
                     log.setdefault("steal30_skipped", []).append(f"{h['name']}:{sym}:source archive failed (thief copy kept, not launched)")
                     continue
                 tag = f"{h['name']}:{sym}:" + "+".join(f"{a['side'][0]}{a['window']}" for a in acts) + f"[steal30<-{_victim}]"
-                if not _dispatch_async(h, sym, acts, pd, _workers_for(sym, B["workers"]), tag.split("[")[0]):
+                if not _dispatch_async(h, sym, acts, pd, _steal30_plan[0], tag.split("[")[0]):
                     continue
                 _dispatch_q_mark(st, [a["key"] for a in acts], _now_ts)
                 for a in acts:
@@ -5367,7 +5378,7 @@ def tick(args, cfg, now):
                     launched_keys.add(a["key"])
                 log["launched"].append(tag)
                 print(f"[sched] STEAL30 {h['name']} takes {sym} {[a['side'] for a in acts]} from {_victim} (free {_free}, owner queue longest; progress moved {len(specs)})", flush=True)
-                B["proj_mem"] = B.get("proj_mem", 0) - B["est_pair"]
+                B["proj_mem"] = B.get("proj_mem", 0) - _steal30_plan[1]
                 held[h["name"]][sym] = "new"
                 st["held"].setdefault(h["name"], {})[sym] = now.isoformat()
                 owner[sym] = h["name"]

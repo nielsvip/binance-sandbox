@@ -34,7 +34,7 @@ def missing_prefix(base, symbol, bucket, helpers):
     return {bucket + offset for offset in range(0, 780, 60)} - covered
 
 
-def normalize_minutes(raw, missing, now_s):
+def normalize_minutes(raw, missing, now_s, span_s=60):
     rows = []
     for item in raw or []:
         try:
@@ -45,24 +45,24 @@ def normalize_minutes(raw, missing, now_s):
                 if parsed.tzinfo is None:
                     parsed = parsed.replace(tzinfo=ZoneInfo('America/New_York'))
                 stamp = int(parsed.timestamp())
-            if stamp not in missing or stamp % 60 or stamp + 60 > now_s:
+            if stamp not in missing or stamp % span_s or stamp + span_s > now_s:
                 continue
             values = {field: float(item[field]) for field in ('open', 'high', 'low', 'close', 'volume')}
             if not all(math.isfinite(value) for value in values.values()) or min(values[field] for field in ('open', 'high', 'low', 'close')) <= 0 or values['volume'] < 0:
                 continue
-            rows.append(dict(values, timestamp=datetime.fromtimestamp(stamp, timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ'), _source='tradier_native_1min_prefix'))
+            rows.append(dict(values, timestamp=datetime.fromtimestamp(stamp, timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ'), _source=f'tradier_native_{span_s // 60}min_prefix'))
         except (TypeError, ValueError, KeyError):
             continue
     return rows
 
 
-def merge_native_minutes(base, symbol, incoming):
+def merge_native_minutes(base, symbol, incoming, timeframe='1m'):
     base = Path(base)
     if not incoming:
         return 0
-    lock_path = base / 'data' / 'stock_prefix_locks' / f'{symbol}.lock'
+    lock_path = base / 'data' / 'stock_prefix_locks' / f'{symbol}_{timeframe}.lock'
     lock_path.parent.mkdir(parents=True, exist_ok=True)
-    path = base / 'klines_cache' / 'tradier' / f'{symbol}_1m.json'
+    path = base / 'klines_cache' / 'tradier' / f'{symbol}_{timeframe}.json'
     with lock_path.open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         existing = json.loads(path.read_text()) if path.exists() else []
@@ -87,7 +87,7 @@ async def prepare_cycle(base, api, bucket, universe, helpers, now_fn=time.time, 
     outcomes = []
     async def one(symbol):
         async with semaphore:
-            result = {'symbol': symbol, 'bucket': bucket, 'missing_before': None, 'requested': False, 'filled': 0}
+            result = {'symbol': symbol, 'bucket': bucket, 'missing_before': None, 'requested': False, 'request_count': 0, 'filled': 0}
             if deadline - now_fn() <= 0:
                 result.update(status='DEADLINE', at=now_fn())
                 return result
@@ -101,6 +101,7 @@ async def prepare_cycle(base, api, bucket, universe, helpers, now_fn=time.time, 
                 result.update(status='DEADLINE', at=now_fn())
                 return result
             result['requested'] = True
+            result['request_count'] += 1
             began = now_fn()
             try:
                 date = datetime.fromtimestamp(bucket, timezone.utc).strftime('%Y-%m-%d')
@@ -108,6 +109,14 @@ async def prepare_cycle(base, api, bucket, universe, helpers, now_fn=time.time, 
                 rows = normalize_minutes(raw, missing, now_fn())
                 result['filled'] = await asyncio.to_thread(merge_native_minutes, base, symbol, rows)
                 left = await asyncio.to_thread(missing_prefix, base, symbol, bucket, helpers)
+                coarse_starts = {bucket + ((stamp - bucket) // 300) * 300 for stamp in left if bucket + ((stamp - bucket) // 300) * 300 + 300 <= bucket + 780}
+                remaining = deadline - now_fn()
+                if left and coarse_starts and remaining > 0:
+                    result['request_count'] += 1
+                    raw_coarse = await asyncio.wait_for(api.get_timesales(symbol, interval='5min', start=date), timeout=min(20, remaining))
+                    coarse = normalize_minutes(raw_coarse, coarse_starts, now_fn(), span_s=300)
+                    result['coarse_filled'] = await asyncio.to_thread(merge_native_minutes, base, symbol, coarse, '5m')
+                    left = await asyncio.to_thread(missing_prefix, base, symbol, bucket, helpers)
                 result.update(status='READY' if not left else 'MISSING', missing_after=len(left), request_s=round(now_fn() - began, 3), at=now_fn())
             except Exception as exc:
                 result.update(status='ERROR', error=f'{type(exc).__name__}: {exc}', at=now_fn())
@@ -123,7 +132,7 @@ async def prepare_cycle(base, api, bucket, universe, helpers, now_fn=time.time, 
             if not task.done():
                 task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
-    summary = {'bucket': bucket, 'at': now_fn(), 'universe': len(universe), 'ready': sum(result['status'] == 'READY' for result in outcomes), 'requested': sum(result['requested'] for result in outcomes), 'results': outcomes}
+    summary = {'bucket': bucket, 'at': now_fn(), 'universe': len(universe), 'ready': sum(result['status'] == 'READY' for result in outcomes), 'requested': sum(result['requested'] for result in outcomes), 'requests': sum(result['request_count'] for result in outcomes), 'results': outcomes}
     atomic_json(Path(base) / 'data' / 'reports' / 'stock_closed_15m_prepare_latest.json', summary)
     print(json.dumps({key: value for key, value in summary.items() if key != 'results'}), flush=True)
     return summary

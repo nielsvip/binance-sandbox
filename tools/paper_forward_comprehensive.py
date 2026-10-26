@@ -93,23 +93,30 @@ def canon_family(fn: str) -> str:
     Trailing bare _g is a gain-param stub (g=<num> value-stripped): E_1 ..._thr_g
     and ..._thr are the same path (USER 2026-10-22 backstop hunt).
     """
-    try:
-        from loss_prone import fn_family as _ff
+    raw = str(fn or "").strip()
+    _wt_cross = re.match(
+        r"^(QUICK_WT_CROSS_EXIT_[^_]+_[^_]+)", raw, flags=re.I
+    )
+    if _wt_cross:
+        r = _wt_cross.group(1).upper()
+    else:
+        try:
+            from loss_prone import fn_family as _ff
 
-        r = _ff(fn)
-    except Exception:
-        r = re.sub(
-            r"^VEC_EXACT_(OPEN|AUGMENT|REDUCE|CLOSE)_", "", str(fn or "").strip()
-        )
-        r = re.split(r"[ |:(]", r)[0] if r else ""
-        r = re.sub(
-            r"_(px|lvl|g|cur|k3m|k15m|qty|mult|arm|leg|tgt|act|dev|pct|gain|age|m)[-+]?[\d.].*$",
-            "",
-            r,
-            flags=re.I,
-        )
-        r = re.sub(r"_(LONG|SHORT)$", "", r)
-        r = re.sub(r"_[-+]?\d+(\.\d+)?%?$", "", r).rstrip("_")
+            r = _ff(fn)
+        except Exception:
+            r = re.sub(
+                r"^VEC_EXACT_(OPEN|AUGMENT|REDUCE|CLOSE)_", "", raw
+            )
+            r = re.split(r"[ |:(]", r)[0] if r else ""
+            r = re.sub(
+                r"_(px|lvl|g|cur|k3m|k15m|qty|mult|arm|leg|tgt|act|dev|pct|gain|age|m)[-+]?[\d.].*$",
+                "",
+                r,
+                flags=re.I,
+            )
+            r = re.sub(r"_(LONG|SHORT)$", "", r)
+            r = re.sub(r"_[-+]?\d+(\.\d+)?%?$", "", r).rstrip("_")
     r = re.sub(r"[-=][-+]?\d+(\.\d+)?%?[a-z]?", "", str(r or ""))
     r = re.sub(r"(?<!\d)([a-z]{2,})\d+(\.\d+)?(?![a-z])", r"\1", r)
     r = re.sub(r"_\d{2,}(?=_|$)", "", r)

@@ -97,3 +97,27 @@ async def test_entire_disk_probe_network_merge_chain_has_bounded_concurrency(tmp
     result = await P.prepare_cycle(tmp_path, API(), bucket, [f'TEST{i}' for i in range(12)], {}, now_fn=lambda: bucket + 790)
     assert count['maximum'] <= 4
     assert result['requested'] == 12
+
+
+@pytest.mark.asyncio
+async def test_genuine_closed5m_fills_sparse_native1m_prefix_without_expanding_or_forming(tmp_path):
+    bucket = 1793042100
+    class API:
+        def __init__(self):
+            self.calls = []
+        async def get_timesales(self, symbol, interval, start):
+            self.calls.append(interval)
+            if interval == '1min':
+                return [row for minute, row in enumerate(raw_minutes(bucket)) if minute != 8]
+            return [{'timestamp': bucket + offset, 'open': 100, 'high': 190, 'low': 80, 'close': 115, 'volume': 500} for offset in (0, 300, 600)]
+    api = API()
+    helpers = P.producer_helpers(P.ROOT)
+    result = await P.prepare_cycle(tmp_path, api, bucket, ['SPARSE'], helpers, now_fn=lambda: bucket + 790)
+    assert result['ready'] == 1 and result['requests'] == 2
+    assert api.calls == ['1min', '5min']
+    coarse = json.loads((tmp_path / 'klines_cache/tradier/SPARSE_5m.json').read_text())
+    assert len(coarse) == 1 and coarse[0]['high'] == 190
+    assert coarse[0]['timestamp'] == datetime.fromtimestamp(bucket + 300, timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+    fine = json.loads((tmp_path / 'klines_cache/tradier/SPARSE_1m.json').read_text())
+    assert len(fine) == 12
+    assert not P.missing_prefix(tmp_path, 'SPARSE', bucket, helpers)
