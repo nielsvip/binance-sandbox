@@ -17,8 +17,8 @@ Levels:
   exchange (STOP_MARKET taker backstop): beyond software, so the regular exit
     is tried first and taker fees are the last resort. Binance sits at
     CRYPTO_EXCHANGE_TOTAL_PCT (0.40%) from the frozen channel (USER
-    2026-10-18, was 0.2999%); Tradier keeps EXCHANGE_EXTRA_PCT (0.05%) past
-    software, i.e. 0.2999% from the channel.
+    2026-10-18, was 0.2999%); Tradier uses the same frozen-channel 0.40%
+    exchange distance from 2026-10-26 onward.
 Fallback when the entry-bar channel is missing/zero: entry price based.
 Pure math only — no config/env imports (import-cycle safe).
 """
@@ -48,13 +48,7 @@ def freeze_software_level(is_long: bool, dc_low_15m: float, dc_high_15m: float, 
 
 
 def exchange_level(is_long: bool, soft_level: float) -> float:
-    try:
-        s = float(soft_level or 0.0)
-    except (TypeError, ValueError):
-        return 0.0
-    if s <= 0:
-        return 0.0
-    return s * 0.9995 if is_long else s * 1.0005
+    return crypto_exchange_level(is_long, soft_level)
 
 
 def crypto_exchange_level(is_long: bool, soft_level: float) -> float:

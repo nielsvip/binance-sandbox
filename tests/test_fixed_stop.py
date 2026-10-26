@@ -1,7 +1,7 @@
 """FIXED_STOP — non-negotiable frozen-at-entry stop (USER 2026-10-12).
 
 LONG:  software level frozen at entry bar dc_low_15m * 0.9975  (SHORT: vv).
-Exchange STOP_MARKET backstop sits 0.05% beyond the software level so the
+Exchange STOP_MARKET backstop sits 0.40% beyond the entry channel so the
 regular (maker) exit is tried first and taker fees are the last resort.
 Never switched off — runs in EVERY vec calc, every live-trading bar, and the
 live backtest (same code paths). Legacy E7 reference options are superseded by
@@ -23,17 +23,17 @@ def test_freeze_fallback_entry_based():
     assert fx.freeze_software_level(True, -1.0, 0.0, 0.0) == 0.0
 
 
-def test_exchange_level_extra_distance():
-    assert abs(fx.exchange_level(True, 99.75) - 99.75 * 0.9995) < 1e-12
-    assert abs(fx.exchange_level(False, 100.25) - 100.25 * 1.0005) < 1e-12
+def test_exchange_level_total_channel_distance():
+    assert abs(fx.exchange_level(True, 99.75) - 99.60) < 1e-12
+    assert abs(fx.exchange_level(False, 100.25) - 100.40) < 1e-12
 
 
 def test_crypto_exchange_level_is_channel_minus_40_bps():
     """USER 2026-10-18: the Binance STOP_MARKET sits 0.40% beyond the frozen entry-bar dc_15m, not 0.2999%."""
     assert abs(fx.crypto_exchange_level(True, fx.freeze_software_level(True, 100.0, 0.0, 100.0)) - 99.60) < 1e-9
     assert abs(fx.crypto_exchange_level(False, fx.freeze_software_level(False, 0.0, 100.0, 100.0)) - 100.40) < 1e-9
-    assert fx.crypto_exchange_level(True, 99.75) < fx.exchange_level(True, 99.75)
-    assert fx.crypto_exchange_level(False, 100.25) > fx.exchange_level(False, 100.25)
+    assert fx.crypto_exchange_level(True, 99.75) == fx.exchange_level(True, 99.75)
+    assert fx.crypto_exchange_level(False, 100.25) == fx.exchange_level(False, 100.25)
     assert fx.crypto_exchange_level(True, 0.0) == 0.0
 
 

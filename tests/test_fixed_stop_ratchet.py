@@ -54,7 +54,7 @@ def test_exchange_level_stays_below_software_level():
     soft = fx.freeze_software_level(True, 0.02793, 0.0, 0.02951)
     assert soft == pytest.approx(0.027860175)
     assert fx.exchange_level(True, soft) < soft
-    assert fx.round_to_tick(True, fx.exchange_level(True, soft), 0.00001) == pytest.approx(0.02784)
+    assert fx.round_to_tick(True, fx.exchange_level(True, soft), 0.00001) == pytest.approx(0.02781)
 
 
 def test_service_keeps_frozen_level_instead_of_live_channel():

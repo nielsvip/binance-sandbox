@@ -46092,6 +46092,23 @@ class TradierTradeManager:
                 _lv_want = _fixed_stop_core.round_to_tick(_lv_long, _fixed_stop_core.exchange_level(_lv_long, float(soft_level or 0.0)), 0.01) if float(soft_level or 0.0) > 0 else 0.0
             except Exception:
                 _lv_want = 0.0
+            # The 2026-10-26 Tradier exchange buffer changes to 0.40% from the
+            # frozen entry channel. Existing positions keep their resting stop
+            # price; only positions opened from 17:34 UTC onward use the new
+            # distance. A changed quantity still follows the resize rules below.
+            try:
+                _opened_for_stop = getattr(position, "opened_at", None)
+                if not isinstance(_opened_for_stop, datetime):
+                    _opened_for_stop = safe_datetime(_opened_for_stop)
+                if isinstance(_opened_for_stop, datetime) and _opened_for_stop.tzinfo is None:
+                    _opened_for_stop = _opened_for_stop.replace(tzinfo=timezone.utc)
+                _is_old_stop = _opened_for_stop is None or _opened_for_stop < datetime(2026, 10, 26, 17, 34, tzinfo=timezone.utc)
+                if _is_old_stop and have and _fixed_stop_sig_matches(have.get("entry_sig", ""), _sig) and not _augmented:
+                    _old_stop_price = float(have.get("stopPrice", 0) or 0)
+                    if _old_stop_price > 0:
+                        _lv_want = _old_stop_price
+            except Exception:
+                pass
             _lv_pin = 0.0  # when >0 the replacement stop MUST be placed at exactly this exchange price
             if _prev_qty > 0 and _qty < _prev_qty:
                 # REDUCE: the price must not move. Reuse the resting stop's own price (or the recorded one) verbatim,
