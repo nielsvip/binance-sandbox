@@ -63,6 +63,12 @@ class OverflowReadinessTest(unittest.TestCase):
         self.assertEqual(_SCHED._readiness_cand_venues(_S2), ["crypto"])
         self.assertEqual(_SCHED._readiness_cand_venues({}), [])
 
+    def test_one_free_slot_can_borrow_crypto_from_busy_owner(self):
+        need = ["BTCUSDC"]
+        eligible = [s for s in need if _SCHED.venue_of(s) in _SCHED._readiness_cand_venues(_S5)]
+        self.assertEqual(_SCHED._steal30_pick("s5", 1, False, {"BTCUSDC": "s2"}, eligible,
+                                               need, min_free=1), ("BTCUSDC", "s2"))
+
 
 class OverflowOrderTest(unittest.TestCase):
     def test_legacy_order_untouched_without_venue_first(self):

@@ -49,6 +49,8 @@ Lying Sharpe/gain/DD wiped out half the user's net worth in 4 months. Every metr
 
 **Pre-open defect found at 23:50 UTC.** The 2026-10-25 S1 daily chain stamped `DONE`, but Mac application reached per-sym go-live at 13:33 UTC, after the 13:30 UTC stock open; that step timed out after 2400 seconds (`rc=124`), and the old script still wrote a Mac `DONE` stamp at 14:17 UTC. The Mac apply script now fails and writes `FAILED` when go-live exits nonzero or its report is absent. This is a fail-closed stamp correction, not proof that the chain can finish before Monday's open; the pre-open runtime still needs measurement and a working 7D pass.
 
+**Pre-open mitigation for 2026-10-26.** The S1 chain starts at 11:30 UTC (12:20 catch-up) and Mac begins waiting at 11:45 UTC (12:30 retry). The Mac chain now uses the same published-board delta selector as the existing pre-open go-live path: on the 2026-10-25 selection it identified 14 material rows of 529, held 134 newer measured live rows, and avoids re-evaluating all 529. It fails the stamp if published selection, the delta calculation, or its go-live report fails. Its code sync and parity gates now include S5/S6 while rented. Timing and output still require Monday's end-to-end observation.
+
 ---
 
 ## 0A. HISTORICAL STATE — 2026-10-13 (superseded by current contract above)

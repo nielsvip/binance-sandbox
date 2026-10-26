@@ -5242,7 +5242,10 @@ def tick(args, cfg, now):
                 if B.get("new_launched", 0) >= args.max_launch or B.get("proj_mem", 0) < B["est_pair"] or B["cpu"] >= cfg.get("cpu_target_pct", 90) or not _disk_admit_ok(s):
                     break
                 _free = B["cap"] - _occupied_n(held[h["name"]], observed_by_host[h["name"]])
-                sym, _victim = _steal30_pick(h["name"], _free, B.get("new_launched", 0) > 0 and _try == 0, _pick_owner, [x for x in _need if venue_of(x) in h["venues"]], _order_all, _run_syms, _tried)
+                # A host one slot below its floor must be able to borrow from a full host.
+                # Include its configured overflow venue once own-venue work is exhausted.
+                _borrow_venues = set(_readiness_cand_venues(h))
+                sym, _victim = _steal30_pick(h["name"], _free, B.get("new_launched", 0) > 0 and _try == 0, _pick_owner, [x for x in _need if venue_of(x) in _borrow_venues], _order_all, _run_syms, _tried, min_free=1)
                 if not sym:
                     break
                 _tried.add(sym)
