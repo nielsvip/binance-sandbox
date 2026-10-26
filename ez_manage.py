@@ -8870,7 +8870,7 @@ def _fixed_stop_freeze_level(is_long: bool, dc_low_15m: float, dc_high_15m: floa
 
 def _fixed_stop_spec_for(symbol, side):
     """The mandatory entry-time dc15 software stop is fixed at 0.25%."""
-    return _fixed_stop_core.DEFAULT_SPEC
+    return _fixed_stop_core.spec_from(lambda knob, default: _psym_get(symbol, side, knob, default))
 
 
 def _fixed_stop_freeze_level_spec(symbol, side, is_long: bool, ind, entry_price: float):
