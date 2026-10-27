@@ -14,12 +14,12 @@
     "SHORT"
    ],
    "mem_reserve_mb": 6000,
-   "max_pairs": 2,
+   "max_pairs": 4,
    "workers_per_side": 7,
    "oom_mb": 2000,
    "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM",
    "_note": "2026-10-10: 1 pair (live stack ~8GB + chain + refresh share 31GB; 2 pairs OOM-murdered refills)",
-   "_note_20261027": "max_pairs 4->2 and crypto workers 7->3: s1 has 30GB/no swap and also carries live trading. At 4 boards x 7 workers the OOM killer (pilots run oom_score_adj 800) killed board PARENTS continuously - measured 6 kills in 15 min at 17:0x - orphaning 7 fork-workers each and completing ZERO boards for ~14h. 2 boards x 3 workers ~= 15GB fits the measured 5-10GB PSS per crypto side."
+   "_note_20261027": "OPERATOR 2026-10-27: every server runs 28 workers for 4 symbols x 2 sides -> 4 concurrent sym_sides x 7 workers. Do NOT cut this to buy memory; make 28 fit instead. The 2026-10-27 OOM storm was caused by vec_bar_trigger leaking 25GB on s6 / 10GB on s5 (now capped by BAR_TRIGGER_RSS_CAP) plus orphaned fork-workers from OOM-killed parents (now reaped by V15_PILOT_ORPHAN_REAPER), not by the worker count itself."
   },
   {
    "name": "s2",

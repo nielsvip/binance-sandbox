@@ -51,7 +51,9 @@ def send_lane(base, mode, host, remote):
             if connection is None or connection.poll() is not None:
                 command = f'cd {shlex.quote(remote)} && python3 -u tools/closed_15m_feed.py receive --base {shlex.quote(remote)}'
                 connection = subprocess.Popen(['ssh', '-T', '-S', 'none', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=8', '-o', 'ServerAliveInterval=5', '-o', 'ServerAliveCountMax=2', host, command], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1)
-            paths = sorted(outbox.glob('*.json'))
+            # 2026-10-27: newest bar first, capped batch. One batch of the whole 2,890-file backlog could not be acknowledged inside
+            # the 15 s timeout, so the lane killed and resent it forever and every NEW close queued behind it.
+            paths = sorted(outbox.glob('*.json'), key=lambda path: (-int(path.stem.rsplit('_', 1)[-1]) if path.stem.rsplit('_', 1)[-1].isdigit() else 0, path.name))[:int(os.environ.get('CLOSED_15M_BATCH', '250'))]
             if not paths:
                 time.sleep(0.1)
                 continue
@@ -70,7 +72,12 @@ def send_lane(base, mode, host, remote):
             if response['errors']:
                 time.sleep(1)
         except Exception as exc:
-            print(json.dumps({'mode': mode, 'host': host, 'error': str(exc), 'at': time.time()}), flush=True)
+            # 2026-10-27: an ENOSPC raised by THIS print killed the crypto lane thread at 14:37Z while the tradier thread kept the
+            # process (and launchd KeepAlive) satisfied — S1 got no Mac bars for 3.5 h. Logging must never end a lane.
+            try:
+                print(json.dumps({'mode': mode, 'host': host, 'error': str(exc), 'at': time.time()}), flush=True)
+            except Exception:
+                pass
             if connection is not None:
                 try:
                     connection.kill()
@@ -101,8 +108,10 @@ def main():
             worker = threading.Thread(target=send_lane, args=(args.base, mode, host, '/home/niels/binance-sandbox'))
             worker.start()
             threads.append(worker)
-        for worker in threads:
-            worker.join()
+        # a lane that dies for ANY reason ends the process, so launchd (KeepAlive, ThrottleInterval 5) restarts every lane
+        while all(worker.is_alive() for worker in threads):
+            time.sleep(1)
+        os._exit(1)
 
 
 if __name__ == '__main__':
