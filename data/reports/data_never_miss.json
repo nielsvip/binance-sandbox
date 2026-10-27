@@ -1,12 +1,12 @@
 {
- "generated_utc": "2026-10-27T17:23:39Z",
- "secs": 202.7,
+ "generated_utc": "2026-10-27T17:27:05Z",
+ "secs": 176.0,
  "universe": {
   "crypto": 201,
   "stocks": 223
  },
  "unreachable": {
-  "s1": "JSONDecodeError: Expecting value: line 1 column 1 (char 0) ssh: connect to host 127.0.0.1 port 2201: Connection refused\n"
+  "s1": "JSONDecodeError: Expecting value: line 1 column 1 (char 0) Connection closed by 127.0.0.1 port 2201\n"
  },
  "healed": {},
  "kline_breaches": [],
@@ -35,60 +35,60 @@
   {
    "host": "mac",
    "file": "crypto prices",
-   "age_s": -90.5,
+   "age_s": -83.9,
    "max_s": 60,
    "ok": true,
    "files": {
-    "price_cache_1.json": -89.1,
-    "price_cache_2.json": -88.4,
-    "price_cache_3.json": -90.5
+    "price_cache_1.json": -83.8,
+    "price_cache_2.json": -74.9,
+    "price_cache_3.json": -83.9
    }
   },
   {
    "host": "mac",
    "file": "crypto snapshot (market_data_*)",
-   "age_s": -62.0,
+   "age_s": -62.4,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/market_data_NEWEST": -62.0
+    "data/market_data_NEWEST": -62.4
    }
   },
   {
    "host": "mac",
    "file": "crypto latest_market_data",
-   "age_s": -62.0,
+   "age_s": -62.4,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/latest_market_data.json": -62.0
+    "data/latest_market_data.json": -62.4
    }
   },
   {
    "host": "mac",
    "file": "stock indicators",
-   "age_s": 57.4,
+   "age_s": 291.0,
    "max_s": 90,
-   "ok": true,
+   "ok": false,
    "files": {
-    "data/tradier/tradier_indicators_latest.json": 57.4
+    "data/tradier/tradier_indicators_latest.json": 291.0
    }
   },
   {
    "host": "gw",
    "file": "crypto market_data",
-   "age_s": 603.0,
+   "age_s": 216.3,
    "max_s": 300,
-   "ok": false,
+   "ok": true,
    "files": {
-    "data/latest_market_data.json": 603.0
+    "data/latest_market_data.json": 216.3
    }
   },
   {
    "host": "mac",
    "file": "disk free /Users/niels/Documents/binance",
    "age_s": null,
-   "free_gb": 20.9,
+   "free_gb": 19.7,
    "ok": true
   },
   {
