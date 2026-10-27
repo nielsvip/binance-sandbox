@@ -53,3 +53,21 @@ def test_ratio_rebalancer_never_opens():
     assert 'action="REDUCE"' in region
     assert "INTRADAY_RATIO_OPEN_" not in region
     assert "no balancer opens" in region
+
+
+def test_portfolio_ratio_controls_do_not_emit_open_or_close_actions():
+    src = (ROOT / "tradier_manage.py").read_text()
+    i_now = src.index("async def execute_now(")
+    now_guard = src[i_now:i_now + 1400]
+    assert 'startswith("INTRADAY_RATIO_")' in now_guard
+    assert '_ratio_action == "AUGMENT"' in now_guard
+    assert '_ratio_action == "REDUCE"' in now_guard
+    assert "math.floor(_ratio_position_qty) - 1" in now_guard
+    i_sector = src.index("# 2026-04-26 Per-sector L/S ratio check")
+    sector = src[i_sector:i_sector + 900]
+    assert 'action == "AUGMENT"' in sector
+    assert "is_entry_action" not in sector
+    i_qta = src.index("async def queue_trade_action(")
+    qta = src[i_qta:src.index("async def continuous_queue_processor(", i_qta)]
+    assert 'action == "AUGMENT"' in qta
+    assert "ls_ratio_scale, ls_ratio_reason = 1.0, \"\"" in qta

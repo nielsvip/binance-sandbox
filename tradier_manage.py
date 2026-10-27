@@ -47593,9 +47593,20 @@ class TradierTradeManager:
                 f"[{account_key}] ⛔ EXECUTE BLOCK {symbol} {position_side}: Not in approved list."
             )
             return "BLOCKED_NOT_TRADEABLE"
+        _sector_augment_active = False
+        if action == "AUGMENT" and self.position_manager:
+            try:
+                _sector_pos = self.position_manager.get_position(position_key)
+                _sector_augment_active = bool(
+                    _sector_pos
+                    and abs(float(getattr(_sector_pos, "positionAmt", 0) or 0)) > 0
+                )
+            except Exception:
+                _sector_augment_active = False
         # 2026-04-26 Per-sector L/S ratio check — block augments that worsen sector imbalance
         if (
             action == "AUGMENT"
+            and _sector_augment_active
             and not _is_mandatory_reclaim
             and not _is_ladder_parity_route
             and not is_hedge
