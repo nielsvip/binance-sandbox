@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-27T18:00:18Z",
+ "generated_utc": "2026-10-27T18:20:11Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-27T13:30:00Z",
  "market_open": true,
@@ -14,10 +14,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 82,
-    "filled_before_open": 59
+    "filled_today": 86,
+    "filled_before_open": 46
    },
-   "detail": "59 boards filled before the open (82 today)"
+   "detail": "46 boards filled before the open (86 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -27,10 +27,10 @@
     "mac_done_stamp": true,
     "s1_stamp": "{\n \"date\": \"20261027\",\n \"status\": \"DONE\",\n \"started\": \"2026-10-27T11:00:01Z\",\n \"ended\": \"2026-10-27T11:37:16.960631Z\",\n \"steps_ok\": \"1,2,2a,2b,3,4,4c,4b,4d,4e,4e,5,6,6b\",\n \"agg\": \"SPREADSHEETS/v15_avg_delta/v15_avg_delta_20261027.xlsx\",\n \"promoted_keys\": [\n  \"ADX_REGIME_FILTER_ENABLED\",\n  \"ATR_LONG_WINDOW\",\n  \"BB_SQUEEZE_ENTRY_ENABLED\",\n  \"COUNTER_TREND_ADD_BLOCK_ENABLED\",\n  \"COUNTER_TREND_SMA200_",
     "cat_side_defaults_4_at": "2026-10-21T04:54:49Z",
-    "cat_side_age_days": 6.5,
+    "cat_side_age_days": 6.6,
     "cat_side_note": "rebuilt only by v15_daily_template_update --sync-defaults, a deliberate manual step \u2014 reported, never fails this gate"
    },
-   "detail": "mac stamp 20261027=True, s1 stamp {\n \"date\": \"20261027\",\n \"status\": \"DONE\",\n \"started\": \"2026-10-27T11:00:01Z\",\n \"ended\": \"2026-10-27T11:37:16.960631Z\",\n \"steps_ok\": \"1,2,2a,2b,3,4,4c,, cat_side layer 6.5d old"
+   "detail": "mac stamp 20261027=True, s1 stamp {\n \"date\": \"20261027\",\n \"status\": \"DONE\",\n \"started\": \"2026-10-27T11:00:01Z\",\n \"ended\": \"2026-10-27T11:37:16.960631Z\",\n \"steps_ok\": \"1,2,2a,2b,3,4,4c,, cat_side layer 6.6d old"
   },
   {
    "name": "selection_fresh",
@@ -48,12 +48,12 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "reports_today": 15,
-    "newest_report": "persym_golive_20261027_refresh_1708.json",
-    "newest_report_at": "2026-10-27T17:11:48Z",
-    "tiers_at": "2026-10-27T17:14:55Z"
+    "reports_today": 16,
+    "newest_report": "persym_golive_20261027_refresh_1805.json",
+    "newest_report_at": "2026-10-27T18:10:07Z",
+    "tiers_at": "2026-10-27T18:13:45Z"
    },
-   "detail": "persym_golive_20261027_refresh_1708.json at 2026-10-27T17:11:48Z, tiers 2026-10-27T17:14:55Z \u2014 the apply never finished (no report / stale tiers): the live set is PARTIAL"
+   "detail": "persym_golive_20261027_refresh_1805.json at 2026-10-27T18:10:07Z, tiers 2026-10-27T18:13:45Z \u2014 the apply never finished (no report / stale tiers): the live set is PARTIAL"
   },
   {
    "name": "live_set_matches_selection",

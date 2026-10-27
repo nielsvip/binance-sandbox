@@ -114,8 +114,18 @@ def _cached(acct: str) -> dict:
     return out
 
 
-def plan(max_age_h: float, max_requests: int, recent_hours: float = 36.0) -> list:
-    """(account, symbol) pairs to refresh, most-needed first."""
+def plan(max_age_h: float, max_requests: int, recent_hours: float = 36.0,
+         backlog_share: float = 0.25) -> list:
+    """(account, symbol) pairs to refresh, most-needed first.
+
+    `backlog_share` RESERVES part of the budget for the oldest caches. Without
+    it the held + recently-filled buckets (~100 symbols) fill the whole cap on
+    every run and a long-stale symbol is never reached: the first full backfill
+    left exactly 20 caches behind at 12-66h, clustered by symbol across
+    accounts (ETCUSDT, PUMPUSDT, IOTXUSDT, MANAUSDT, AIAUSDT) because they sat
+    past the cap, not because they failed. Those are symbols that stopped
+    trading, so nothing else will ever pull them in.
+    """
     now_ms = time.time() * 1000.0
     held = _held_symbols()
     recent = _recently_filled(recent_hours)
@@ -135,7 +145,23 @@ def plan(max_age_h: float, max_requests: int, recent_hours: float = 36.0) -> lis
                 prio = 2
             rows.append((prio, -age_h, acct, sym))
     rows.sort()
-    return [(a, s) for _p, _a, a, s in rows][: max(0, int(max_requests))]
+    cap = max(0, int(max_requests))
+    if not rows or cap <= 0:
+        return []
+    backlog = [r for r in rows if r[0] == 2]
+    if not backlog:
+        return [(a, s) for _p, _a, a, s in rows][:cap]
+    reserve = min(len(backlog), max(1, int(cap * max(0.0, min(1.0, backlog_share)))))
+    picked = backlog[:reserve]
+    seen = {(r[2], r[3]) for r in picked}
+    for r in rows:
+        if len(picked) >= cap:
+            break
+        if (r[2], r[3]) not in seen:
+            picked.append(r)
+            seen.add((r[2], r[3]))
+    picked.sort()
+    return [(a, s) for _p, _a, a, s in picked][:cap]
 
 
 def run(max_age_h: float = 1.0, max_requests: int = 120, pause_s: float = 0.15,
