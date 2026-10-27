@@ -50,7 +50,7 @@ LOG = LOGDIR / "live_failover_agent.log"
 REMOTE_LIVE = os.environ.get("LF_REMOTE_LIVE", "/home/niels/binance")
 REMOTE_LF = f"{REMOTE_LIVE}/data/live_failover"
 HOSTS = tuple(os.environ.get("LF_HOSTS", "s1-pub s1-int").split())
-SSH_OPTS = ["-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=6", "-o", "ServerAliveInterval=5", "-o", "ServerAliveCountMax=2"]
+SSH_OPTS = ["-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "StrictHostKeyChecking=accept-new"]
 TICK_S = float(os.environ.get("LF_TICK_S", "15"))
 STATE_PUSH_S = float(os.environ.get("LF_STATE_PUSH_S", "30"))
 SNAP_PUSH_S = float(os.environ.get("LF_SNAP_PUSH_S", "120"))

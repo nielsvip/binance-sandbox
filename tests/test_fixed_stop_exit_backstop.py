@@ -98,7 +98,12 @@ def test_taker_backstop_leg_exists_and_guarded():
     # USER 2026-10-27: helper renamed ez_broker_moved -> _eps.broker_moved_forced when positions_truth.py
     # was deleted. Pinned invariant unchanged: the taker backstop re-checks the BROKER (never the local
     # store, which lags a fill) before sending, so it can never double-send.
-    assert "broker_moved_forced" in src
+    # USER 2026-10-27: ez_manage no longer polls Binance at all (one source of truth: redis -> json).
+    # The taker backstop re-check is now _writer_truth_moved, which reads the single writer's published
+    # truth and only trusts it when PROVEN fresh (heartbeat alive + rows younger than max_age_s);
+    # unknown/stale -> False, the same conservative answer the old broker read gave when unreachable.
+    # Pinned invariant unchanged: the backstop re-checks position truth before sending, never blind.
+    assert "_writer_truth_moved" in src
     assert "reduceOnly" in src
     assert "_sanction_execution" in src
     assert "PYTEST_CURRENT_TEST" in src

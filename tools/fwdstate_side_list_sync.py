@@ -54,7 +54,7 @@ def main():
         marker = CACHE / ("stocks" if direction == "STOCK" else host)
         # Always compare the remote file; a local cache cannot prove that a worker still has the same list.
         try:
-            check = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=6", host,
+            check = subprocess.run(["ssh", "-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "StrictHostKeyChecking=accept-new", host,
                                     f"cat {remote_path}"], capture_output=True, text=True, timeout=15)
         except subprocess.TimeoutExpired:
             check = subprocess.CompletedProcess([], 124, "", "remote list read timed out")
@@ -62,7 +62,7 @@ def main():
             CACHE.mkdir(parents=True, exist_ok=True)
             marker.write_text(payload)
             continue
-        command = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=6", host,
+        command = ["ssh", "-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "StrictHostKeyChecking=accept-new", host,
                    f"python3 -c 'import pathlib,sys; p=pathlib.Path(\"{remote_path}\"); data=sys.stdin.read(); old=p.read_text() if p.exists() else \"\"; p.write_text(data) if data != old else None'"]
         try:
             result = subprocess.run(command, input=payload, text=True, capture_output=True, timeout=15)

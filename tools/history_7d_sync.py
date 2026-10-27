@@ -32,9 +32,11 @@ SSH = [
     "BatchMode=yes",
     "-o",
     "ConnectTimeout=8",
+    "-o",
+    "StrictHostKeyChecking=accept-new",
 ]
 RSYNC_SSH = (
-    "ssh -S none -o BatchMode=yes -o ConnectTimeout=8"
+    "ssh -S none -o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new"
 )
 REMOTE_ROOTS = ("/home/niels/binance-sandbox", "/home/niels/binance")
 CRYPTO_ACCOUNTS = {"ang", "fin", "flz", "inf", "men"}
