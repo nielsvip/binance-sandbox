@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-27T23:28:02Z",
+ "generated_utc": "2026-10-27T23:34:05Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 5.9,
+  "age_s": 13.5,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 88283,
-  "proc_age_s": 3453.0,
-  "log_age_s": 5.5,
+  "proc_age_s": 3814.0,
+  "log_age_s": 12.4,
   "warmup_done": true,
   "timeframes_since_restart": [
    "15m",
@@ -121,12 +121,24 @@
    "3m",
    "3m",
    "3m",
+   "3m",
+   "3m",
+   "3m",
+   "1h",
+   "3m",
+   "15m",
+   "3m",
+   "15m",
+   "3m",
+   "15m",
+   "3m",
+   "3m",
    "3m"
   ],
   "last_timeframe": "3m",
-  "last_timeframe_utc": "2026-10-27T23:27:55Z",
-  "last_restart_utc": "2026-10-27T22:30:28Z",
-  "restarts_last_hour": 1
+  "last_timeframe_utc": "2026-10-27T23:33:48Z",
+  "last_restart_utc": "2026-10-27T22:30:27Z",
+  "restarts_last_hour": 0
  },
  "heartbeat": {
   "written": 0,
@@ -149,19 +161,19 @@
   "mode": "ACTIVE",
   "since_epoch": 1793127215.692805,
   "activations": 164,
-  "hb_mtime": 1793143675.9808116,
-  "mac_snapshot_age_s": 41.09087109565735,
+  "hb_mtime": 1793144028.6675653,
+  "mac_snapshot_age_s": 36.330605030059814,
   "mac_stale": false,
   "lease_holder": "mac",
   "lease_venues": null,
   "lease_since": "2026-10-27T18:56:44Z",
   "lease_reason": "manual force-mac",
-  "now": 1793143682.6388693,
-  "heartbeat_age_s": 6.7,
-  "active_s": 16466.9
+  "now": 1793144045.6608155,
+  "heartbeat_age_s": 17.0,
+  "active_s": 16830.0
  },
  "alerts": [
-  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 16466s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (6s) AND the Mac snapshot is fresh (5s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
+  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 16829s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (16s) AND the Mac snapshot is fresh (13s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
  ],
  "verdict": "ALERT"
 }

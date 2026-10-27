@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-27T23:00:14Z",
+ "generated_utc": "2026-10-27T23:20:12Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-27T13:30:00Z",
  "market_open": true,
@@ -14,10 +14,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 137,
+    "filled_today": 142,
     "filled_before_open": 28
    },
-   "detail": "28 boards filled before the open (137 today)"
+   "detail": "28 boards filled before the open (142 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -48,12 +48,12 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "reports_today": 18,
-    "newest_report": "persym_golive_20261027_refresh_2157.json",
-    "newest_report_at": "2026-10-27T22:04:41Z",
-    "tiers_at": "2026-10-27T22:56:39Z"
+    "reports_today": 19,
+    "newest_report": "persym_golive_20261027_refresh_2303.json",
+    "newest_report_at": "2026-10-27T23:07:00Z",
+    "tiers_at": "2026-10-27T23:16:04Z"
    },
-   "detail": "persym_golive_20261027_refresh_2157.json at 2026-10-27T22:04:41Z, tiers 2026-10-27T22:56:39Z \u2014 the apply never finished (no report / stale tiers): the live set is PARTIAL"
+   "detail": "persym_golive_20261027_refresh_2303.json at 2026-10-27T23:07:00Z, tiers 2026-10-27T23:16:04Z \u2014 the apply never finished (no report / stale tiers): the live set is PARTIAL"
   },
   {
    "name": "live_set_matches_selection",
@@ -62,8 +62,8 @@
    "measured": {
     "selection_n": 532,
     "exact": 68,
-    "benign_divergence_only": 275,
-    "material_divergence": 188,
+    "benign_divergence_only": 273,
+    "material_divergence": 190,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -200,7 +200,7 @@
      }
     ]
    },
-   "detail": "68 exact, 275 benign-only, 188 with material divergence, 1 with no live row"
+   "detail": "68 exact, 273 benign-only, 190 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
