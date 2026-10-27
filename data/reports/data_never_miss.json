@@ -1,6 +1,6 @@
 {
- "generated_utc": "2026-10-27T11:16:14Z",
- "secs": 247.2,
+ "generated_utc": "2026-10-27T11:22:34Z",
+ "secs": 264.0,
  "universe": {
   "crypto": 201,
   "stocks": 223
@@ -8,25 +8,25 @@
  "unreachable": {},
  "healed": {
   "s1:binance": {
-   "files": 366,
-   "rows": 522,
+   "files": 357,
+   "rows": 369,
    "skipped": {}
   },
   "mac:/Users/niels/Documents/binance": {
-   "files": 5,
-   "rows": 0,
+   "files": 11,
+   "rows": 3,
    "skipped": {}
   }
  },
  "kline_breaches": [
   {
    "host": "s1",
-   "venue": "stocks",
-   "symbol": "DUOL",
+   "venue": "crypto",
+   "symbol": "MAGICUSDT",
    "tf": "15m",
-   "last": "2026-10-26T15:45",
-   "expect": "2026-10-26T19:45",
-   "bars_behind": 16.0
+   "last": "2026-10-27T10:45",
+   "expect": "2026-10-27T11:00",
+   "bars_behind": 1.0
   },
   {
    "host": "mac",
@@ -40,11 +40,11 @@
   {
    "host": "s1",
    "venue": "stocks",
-   "symbol": "INOD",
+   "symbol": "DUOL",
    "tf": "15m",
-   "last": "2026-10-26T15:15",
+   "last": "2026-10-26T15:45",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 18.0
+   "bars_behind": 16.0
   },
   {
    "host": "mac",
@@ -54,6 +54,24 @@
    "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
    "bars_behind": 18.0
+  },
+  {
+   "host": "s1",
+   "venue": "stocks",
+   "symbol": "INOD",
+   "tf": "15m",
+   "last": "2026-10-26T15:15",
+   "expect": "2026-10-26T19:45",
+   "bars_behind": 18.0
+  },
+  {
+   "host": "mac",
+   "venue": "stocks",
+   "symbol": "CMC",
+   "tf": "15m",
+   "last": "2026-10-26T15:45",
+   "expect": "2026-10-26T19:45",
+   "bars_behind": 16.0
   },
   {
    "host": "s1",
@@ -67,11 +85,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "CMC",
+   "symbol": "MPC",
    "tf": "15m",
-   "last": "2026-10-26T15:45",
+   "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 16.0
+   "bars_behind": 18.0
   },
   {
    "host": "s1",
@@ -85,11 +103,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "MPC",
+   "symbol": "APA",
    "tf": "15m",
-   "last": "2026-10-26T15:15",
+   "last": "2026-10-26T15:30",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 18.0
+   "bars_behind": 17.0
   },
   {
    "host": "s1",
@@ -103,11 +121,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "APA",
+   "symbol": "LAC",
    "tf": "15m",
-   "last": "2026-10-26T15:30",
+   "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 17.0
+   "bars_behind": 18.0
   },
   {
    "host": "s1",
@@ -121,11 +139,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "LAC",
+   "symbol": "UAN",
    "tf": "15m",
-   "last": "2026-10-26T15:15",
+   "last": "2026-10-26T16:00",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 18.0
+   "bars_behind": 15.0
   },
   {
    "host": "s1",
@@ -139,11 +157,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "UAN",
+   "symbol": "PYPL",
    "tf": "15m",
-   "last": "2026-10-26T16:00",
+   "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 15.0
+   "bars_behind": 18.0
   },
   {
    "host": "s1",
@@ -157,11 +175,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "PYPL",
+   "symbol": "BA",
    "tf": "15m",
-   "last": "2026-10-26T15:15",
+   "last": "2026-10-26T16:30",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 18.0
+   "bars_behind": 13.0
   },
   {
    "host": "s1",
@@ -175,11 +193,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "BA",
+   "symbol": "ROBO",
    "tf": "15m",
-   "last": "2026-10-26T16:30",
+   "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 13.0
+   "bars_behind": 18.0
   },
   {
    "host": "s1",
@@ -193,11 +211,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "ROBO",
+   "symbol": "HON",
    "tf": "15m",
-   "last": "2026-10-26T15:15",
+   "last": "2026-10-26T15:45",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 18.0
+   "bars_behind": 16.0
   },
   {
    "host": "s1",
@@ -211,7 +229,7 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "HON",
+   "symbol": "AXTI",
    "tf": "15m",
    "last": "2026-10-26T15:45",
    "expect": "2026-10-26T19:45",
@@ -229,24 +247,6 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "AXTI",
-   "tf": "15m",
-   "last": "2026-10-26T15:45",
-   "expect": "2026-10-26T19:45",
-   "bars_behind": 16.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "QUBT",
-   "tf": "15m",
-   "last": "2026-10-26T15:15",
-   "expect": "2026-10-26T19:45",
-   "bars_behind": 18.0
-  },
-  {
-   "host": "mac",
-   "venue": "stocks",
    "symbol": "QUBT",
    "tf": "15m",
    "last": "2026-10-26T15:15",
@@ -256,7 +256,7 @@
   {
    "host": "s1",
    "venue": "stocks",
-   "symbol": "RDDT",
+   "symbol": "QUBT",
    "tf": "15m",
    "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
@@ -274,7 +274,7 @@
   {
    "host": "s1",
    "venue": "stocks",
-   "symbol": "DIS",
+   "symbol": "RDDT",
    "tf": "15m",
    "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
@@ -292,11 +292,11 @@
   {
    "host": "s1",
    "venue": "stocks",
-   "symbol": "NEM",
+   "symbol": "DIS",
    "tf": "15m",
-   "last": "2026-10-26T15:45",
+   "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 16.0
+   "bars_behind": 18.0
   },
   {
    "host": "mac",
@@ -306,6 +306,24 @@
    "last": "2026-10-26T15:45",
    "expect": "2026-10-26T19:45",
    "bars_behind": 16.0
+  },
+  {
+   "host": "s1",
+   "venue": "stocks",
+   "symbol": "NEM",
+   "tf": "15m",
+   "last": "2026-10-26T15:45",
+   "expect": "2026-10-26T19:45",
+   "bars_behind": 16.0
+  },
+  {
+   "host": "mac",
+   "venue": "stocks",
+   "symbol": "SMG",
+   "tf": "15m",
+   "last": "2026-10-26T15:15",
+   "expect": "2026-10-26T19:45",
+   "bars_behind": 18.0
   },
   {
    "host": "s1",
@@ -319,11 +337,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "SMG",
+   "symbol": "AMD",
    "tf": "15m",
-   "last": "2026-10-26T15:15",
+   "last": "2026-10-26T15:00",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 18.0
+   "bars_behind": 19.0
   },
   {
    "host": "s1",
@@ -337,11 +355,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "AMD",
+   "symbol": "CVS",
    "tf": "15m",
-   "last": "2026-10-26T15:00",
+   "last": "2026-10-26T15:45",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 19.0
+   "bars_behind": 16.0
   },
   {
    "host": "s1",
@@ -355,7 +373,7 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "CVS",
+   "symbol": "CF",
    "tf": "15m",
    "last": "2026-10-26T15:45",
    "expect": "2026-10-26T19:45",
@@ -373,24 +391,6 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "CF",
-   "tf": "15m",
-   "last": "2026-10-26T15:45",
-   "expect": "2026-10-26T19:45",
-   "bars_behind": 16.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "MRK",
-   "tf": "15m",
-   "last": "2026-10-26T15:15",
-   "expect": "2026-10-26T19:45",
-   "bars_behind": 18.0
-  },
-  {
-   "host": "mac",
-   "venue": "stocks",
    "symbol": "MRK",
    "tf": "15m",
    "last": "2026-10-26T15:15",
@@ -400,7 +400,7 @@
   {
    "host": "s1",
    "venue": "stocks",
-   "symbol": "UPS",
+   "symbol": "MRK",
    "tf": "15m",
    "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
@@ -418,11 +418,11 @@
   {
    "host": "s1",
    "venue": "stocks",
-   "symbol": "DELL",
+   "symbol": "UPS",
    "tf": "15m",
-   "last": "2026-10-26T15:45",
+   "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 16.0
+   "bars_behind": 18.0
   },
   {
    "host": "mac",
@@ -432,6 +432,24 @@
    "last": "2026-10-26T15:45",
    "expect": "2026-10-26T19:45",
    "bars_behind": 16.0
+  },
+  {
+   "host": "s1",
+   "venue": "stocks",
+   "symbol": "DELL",
+   "tf": "15m",
+   "last": "2026-10-26T15:45",
+   "expect": "2026-10-26T19:45",
+   "bars_behind": 16.0
+  },
+  {
+   "host": "mac",
+   "venue": "stocks",
+   "symbol": "OXY",
+   "tf": "15m",
+   "last": "2026-10-26T15:15",
+   "expect": "2026-10-26T19:45",
+   "bars_behind": 18.0
   },
   {
    "host": "s1",
@@ -445,11 +463,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "OXY",
+   "symbol": "BHVN",
    "tf": "15m",
-   "last": "2026-10-26T15:15",
+   "last": "2026-10-26T15:45",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 18.0
+   "bars_behind": 16.0
   },
   {
    "host": "s1",
@@ -463,11 +481,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "BHVN",
+   "symbol": "PBF",
    "tf": "15m",
-   "last": "2026-10-26T15:45",
+   "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 16.0
+   "bars_behind": 18.0
   },
   {
    "host": "s1",
@@ -481,7 +499,7 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "PBF",
+   "symbol": "MO",
    "tf": "15m",
    "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
@@ -499,7 +517,7 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "MO",
+   "symbol": "JOBY",
    "tf": "15m",
    "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
@@ -517,24 +535,6 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "JOBY",
-   "tf": "15m",
-   "last": "2026-10-26T15:15",
-   "expect": "2026-10-26T19:45",
-   "bars_behind": 18.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "NKE",
-   "tf": "15m",
-   "last": "2026-10-26T15:30",
-   "expect": "2026-10-26T19:45",
-   "bars_behind": 17.0
-  },
-  {
-   "host": "mac",
-   "venue": "stocks",
    "symbol": "NKE",
    "tf": "15m",
    "last": "2026-10-26T15:30",
@@ -544,7 +544,7 @@
   {
    "host": "s1",
    "venue": "stocks",
-   "symbol": "WPM",
+   "symbol": "NKE",
    "tf": "15m",
    "last": "2026-10-26T15:30",
    "expect": "2026-10-26T19:45",
@@ -562,11 +562,11 @@
   {
    "host": "s1",
    "venue": "stocks",
-   "symbol": "CHRD",
+   "symbol": "WPM",
    "tf": "15m",
-   "last": "2026-10-26T15:45",
+   "last": "2026-10-26T15:30",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 16.0
+   "bars_behind": 17.0
   },
   {
    "host": "mac",
@@ -580,6 +580,24 @@
   {
    "host": "s1",
    "venue": "stocks",
+   "symbol": "CHRD",
+   "tf": "15m",
+   "last": "2026-10-26T15:45",
+   "expect": "2026-10-26T19:45",
+   "bars_behind": 16.0
+  },
+  {
+   "host": "mac",
+   "venue": "stocks",
+   "symbol": "QCOM",
+   "tf": "15m",
+   "last": "2026-10-26T15:15",
+   "expect": "2026-10-26T19:45",
+   "bars_behind": 18.0
+  },
+  {
+   "host": "s1",
+   "venue": "stocks",
    "symbol": "QCOM",
    "tf": "15m",
    "last": "2026-10-26T15:15",
@@ -589,7 +607,7 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "QCOM",
+   "symbol": "PFE",
    "tf": "15m",
    "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
@@ -607,11 +625,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "PFE",
+   "symbol": "NUKZ",
    "tf": "15m",
-   "last": "2026-10-26T15:15",
+   "last": "2026-10-26T15:00",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 18.0
+   "bars_behind": 19.0
   },
   {
    "host": "s1",
@@ -625,11 +643,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "NUKZ",
+   "symbol": "GILD",
    "tf": "15m",
-   "last": "2026-10-26T15:00",
+   "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 19.0
+   "bars_behind": 18.0
   },
   {
    "host": "s1",
@@ -643,11 +661,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "GILD",
+   "symbol": "TRGP",
    "tf": "15m",
-   "last": "2026-10-26T15:15",
+   "last": "2026-10-26T16:00",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 18.0
+   "bars_behind": 15.0
   },
   {
    "host": "s1",
@@ -661,24 +679,6 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "TRGP",
-   "tf": "15m",
-   "last": "2026-10-26T16:00",
-   "expect": "2026-10-26T19:45",
-   "bars_behind": 15.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "EPD",
-   "tf": "15m",
-   "last": "2026-10-26T15:15",
-   "expect": "2026-10-26T19:45",
-   "bars_behind": 18.0
-  },
-  {
-   "host": "mac",
-   "venue": "stocks",
    "symbol": "EPD",
    "tf": "15m",
    "last": "2026-10-26T15:15",
@@ -688,7 +688,7 @@
   {
    "host": "s1",
    "venue": "stocks",
-   "symbol": "MCD",
+   "symbol": "EPD",
    "tf": "15m",
    "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
@@ -706,7 +706,7 @@
   {
    "host": "s1",
    "venue": "stocks",
-   "symbol": "PDBC",
+   "symbol": "MCD",
    "tf": "15m",
    "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
@@ -724,11 +724,11 @@
   {
    "host": "s1",
    "venue": "stocks",
-   "symbol": "ABT",
+   "symbol": "PDBC",
    "tf": "15m",
-   "last": "2026-10-26T15:00",
+   "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 19.0
+   "bars_behind": 18.0
   },
   {
    "host": "mac",
@@ -742,11 +742,11 @@
   {
    "host": "s1",
    "venue": "stocks",
-   "symbol": "STLD",
+   "symbol": "ABT",
    "tf": "15m",
-   "last": "2026-10-26T15:45",
+   "last": "2026-10-26T15:00",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 16.0
+   "bars_behind": 19.0
   },
   {
    "host": "mac",
@@ -760,11 +760,11 @@
   {
    "host": "s1",
    "venue": "stocks",
-   "symbol": "AEM",
+   "symbol": "STLD",
    "tf": "15m",
-   "last": "2026-10-26T15:00",
+   "last": "2026-10-26T15:45",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 19.0
+   "bars_behind": 16.0
   },
   {
    "host": "mac",
@@ -774,6 +774,24 @@
    "last": "2026-10-26T15:00",
    "expect": "2026-10-26T19:45",
    "bars_behind": 19.0
+  },
+  {
+   "host": "s1",
+   "venue": "stocks",
+   "symbol": "AEM",
+   "tf": "15m",
+   "last": "2026-10-26T15:00",
+   "expect": "2026-10-26T19:45",
+   "bars_behind": 19.0
+  },
+  {
+   "host": "mac",
+   "venue": "stocks",
+   "symbol": "HII",
+   "tf": "15m",
+   "last": "2026-10-26T15:15",
+   "expect": "2026-10-26T19:45",
+   "bars_behind": 18.0
   },
   {
    "host": "s1",
@@ -787,7 +805,7 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "HII",
+   "symbol": "KO",
    "tf": "15m",
    "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
@@ -805,7 +823,7 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "KO",
+   "symbol": "FIVN",
    "tf": "15m",
    "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
@@ -823,11 +841,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "FIVN",
+   "symbol": "PRI",
    "tf": "15m",
-   "last": "2026-10-26T15:15",
+   "last": "2026-10-26T15:45",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 18.0
+   "bars_behind": 16.0
   },
   {
    "host": "s1",
@@ -841,11 +859,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "PRI",
+   "symbol": "AGCO",
    "tf": "15m",
-   "last": "2026-10-26T15:45",
+   "last": "2026-10-26T15:00",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 16.0
+   "bars_behind": 19.0
   },
   {
    "host": "s1",
@@ -859,11 +877,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "AGCO",
+   "symbol": "TSM",
    "tf": "15m",
-   "last": "2026-10-26T15:00",
+   "last": "2026-10-26T15:45",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 19.0
+   "bars_behind": 16.0
   },
   {
    "host": "s1",
@@ -877,11 +895,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "TSM",
+   "symbol": "FIX",
    "tf": "15m",
-   "last": "2026-10-26T15:45",
+   "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 16.0
+   "bars_behind": 18.0
   },
   {
    "host": "s1",
@@ -895,11 +913,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "FIX",
+   "symbol": "SNOW",
    "tf": "15m",
-   "last": "2026-10-26T15:15",
+   "last": "2026-10-26T15:45",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 18.0
+   "bars_behind": 16.0
   },
   {
    "host": "s1",
@@ -913,11 +931,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "SNOW",
+   "symbol": "WMB",
    "tf": "15m",
-   "last": "2026-10-26T15:45",
+   "last": "2026-10-26T15:30",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 16.0
+   "bars_behind": 17.0
   },
   {
    "host": "s1",
@@ -931,11 +949,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "WMB",
+   "symbol": "USO",
    "tf": "15m",
-   "last": "2026-10-26T15:30",
+   "last": "2026-10-26T16:00",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 17.0
+   "bars_behind": 15.0
   },
   {
    "host": "s1",
@@ -949,11 +967,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "USO",
+   "symbol": "TGT",
    "tf": "15m",
-   "last": "2026-10-26T16:00",
+   "last": "2026-10-26T15:30",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 15.0
+   "bars_behind": 17.0
   },
   {
    "host": "s1",
@@ -967,11 +985,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "TGT",
+   "symbol": "ROKU",
    "tf": "15m",
-   "last": "2026-10-26T15:30",
+   "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 17.0
+   "bars_behind": 18.0
   },
   {
    "host": "s1",
@@ -985,24 +1003,6 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "ROKU",
-   "tf": "15m",
-   "last": "2026-10-26T15:15",
-   "expect": "2026-10-26T19:45",
-   "bars_behind": 18.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "CIEN",
-   "tf": "15m",
-   "last": "2026-10-26T15:45",
-   "expect": "2026-10-26T19:45",
-   "bars_behind": 16.0
-  },
-  {
-   "host": "mac",
-   "venue": "stocks",
    "symbol": "CIEN",
    "tf": "15m",
    "last": "2026-10-26T15:45",
@@ -1012,7 +1012,7 @@
   {
    "host": "s1",
    "venue": "stocks",
-   "symbol": "BG",
+   "symbol": "CIEN",
    "tf": "15m",
    "last": "2026-10-26T15:45",
    "expect": "2026-10-26T19:45",
@@ -1030,6 +1030,24 @@
   {
    "host": "s1",
    "venue": "stocks",
+   "symbol": "BG",
+   "tf": "15m",
+   "last": "2026-10-26T15:45",
+   "expect": "2026-10-26T19:45",
+   "bars_behind": 16.0
+  },
+  {
+   "host": "mac",
+   "venue": "stocks",
+   "symbol": "FDX",
+   "tf": "15m",
+   "last": "2026-10-26T15:15",
+   "expect": "2026-10-26T19:45",
+   "bars_behind": 18.0
+  },
+  {
+   "host": "s1",
+   "venue": "stocks",
    "symbol": "FDX",
    "tf": "15m",
    "last": "2026-10-26T15:15",
@@ -1039,7 +1057,7 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "FDX",
+   "symbol": "GM",
    "tf": "15m",
    "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
@@ -1057,7 +1075,7 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "GM",
+   "symbol": "NOC",
    "tf": "15m",
    "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
@@ -1075,11 +1093,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "NOC",
+   "symbol": "GOLD",
    "tf": "15m",
-   "last": "2026-10-26T15:15",
+   "last": "2026-10-26T15:45",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 18.0
+   "bars_behind": 16.0
   },
   {
    "host": "s1",
@@ -1093,11 +1111,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "GOLD",
+   "symbol": "SBUX",
    "tf": "15m",
-   "last": "2026-10-26T15:45",
+   "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 16.0
+   "bars_behind": 18.0
   },
   {
    "host": "s1",
@@ -1111,11 +1129,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "SBUX",
+   "symbol": "NFLX",
    "tf": "15m",
-   "last": "2026-10-26T15:15",
+   "last": "2026-10-26T15:45",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 18.0
+   "bars_behind": 16.0
   },
   {
    "host": "s1",
@@ -1129,11 +1147,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "NFLX",
+   "symbol": "ALMU",
    "tf": "15m",
-   "last": "2026-10-26T15:45",
+   "last": "2026-10-26T15:00",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 16.0
+   "bars_behind": 19.0
   },
   {
    "host": "s1",
@@ -1147,11 +1165,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "ALMU",
+   "symbol": "AXON",
    "tf": "15m",
-   "last": "2026-10-26T15:00",
+   "last": "2026-10-26T18:00",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 19.0
+   "bars_behind": 7.0
   },
   {
    "host": "s1",
@@ -1165,24 +1183,6 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "AXON",
-   "tf": "15m",
-   "last": "2026-10-26T18:00",
-   "expect": "2026-10-26T19:45",
-   "bars_behind": 7.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "TECK",
-   "tf": "15m",
-   "last": "2026-10-26T15:45",
-   "expect": "2026-10-26T19:45",
-   "bars_behind": 16.0
-  },
-  {
-   "host": "mac",
-   "venue": "stocks",
    "symbol": "TECK",
    "tf": "15m",
    "last": "2026-10-26T15:45",
@@ -1192,7 +1192,7 @@
   {
    "host": "s1",
    "venue": "stocks",
-   "symbol": "BOTZ",
+   "symbol": "TECK",
    "tf": "15m",
    "last": "2026-10-26T15:45",
    "expect": "2026-10-26T19:45",
@@ -1210,11 +1210,11 @@
   {
    "host": "s1",
    "venue": "stocks",
-   "symbol": "AVGO",
+   "symbol": "BOTZ",
    "tf": "15m",
-   "last": "2026-10-26T15:30",
+   "last": "2026-10-26T15:45",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 17.0
+   "bars_behind": 16.0
   },
   {
    "host": "mac",
@@ -1228,11 +1228,11 @@
   {
    "host": "s1",
    "venue": "stocks",
-   "symbol": "HP",
+   "symbol": "AVGO",
    "tf": "15m",
-   "last": "2026-10-26T16:00",
+   "last": "2026-10-26T15:30",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 15.0
+   "bars_behind": 17.0
   },
   {
    "host": "mac",
@@ -1242,6 +1242,24 @@
    "last": "2026-10-26T16:00",
    "expect": "2026-10-26T19:45",
    "bars_behind": 15.0
+  },
+  {
+   "host": "s1",
+   "venue": "stocks",
+   "symbol": "HP",
+   "tf": "15m",
+   "last": "2026-10-26T16:00",
+   "expect": "2026-10-26T19:45",
+   "bars_behind": 15.0
+  },
+  {
+   "host": "mac",
+   "venue": "stocks",
+   "symbol": "SLB",
+   "tf": "15m",
+   "last": "2026-10-26T15:15",
+   "expect": "2026-10-26T19:45",
+   "bars_behind": 18.0
   },
   {
    "host": "s1",
@@ -1255,11 +1273,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "SLB",
+   "symbol": "TTD",
    "tf": "15m",
-   "last": "2026-10-26T15:15",
+   "last": "2026-10-26T15:30",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 18.0
+   "bars_behind": 17.0
   },
   {
    "host": "s1",
@@ -1273,11 +1291,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "TTD",
+   "symbol": "JPM",
    "tf": "15m",
-   "last": "2026-10-26T15:30",
+   "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 17.0
+   "bars_behind": 18.0
   },
   {
    "host": "s1",
@@ -1291,7 +1309,7 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "JPM",
+   "symbol": "PEP",
    "tf": "15m",
    "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
@@ -1309,11 +1327,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "PEP",
+   "symbol": "HD",
    "tf": "15m",
-   "last": "2026-10-26T15:15",
+   "last": "2026-10-26T18:30",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 18.0
+   "bars_behind": 5.0
   },
   {
    "host": "s1",
@@ -1327,11 +1345,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "HD",
+   "symbol": "DINO",
    "tf": "15m",
-   "last": "2026-10-26T18:30",
+   "last": "2026-10-26T15:45",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 5.0
+   "bars_behind": 16.0
   },
   {
    "host": "s1",
@@ -1345,11 +1363,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "DINO",
+   "symbol": "PATH",
    "tf": "15m",
-   "last": "2026-10-26T15:45",
+   "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 16.0
+   "bars_behind": 18.0
   },
   {
    "host": "s1",
@@ -1363,24 +1381,6 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "PATH",
-   "tf": "15m",
-   "last": "2026-10-26T15:15",
-   "expect": "2026-10-26T19:45",
-   "bars_behind": 18.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "CLX",
-   "tf": "15m",
-   "last": "2026-10-26T15:45",
-   "expect": "2026-10-26T19:45",
-   "bars_behind": 16.0
-  },
-  {
-   "host": "mac",
-   "venue": "stocks",
    "symbol": "CLX",
    "tf": "15m",
    "last": "2026-10-26T15:45",
@@ -1390,7 +1390,7 @@
   {
    "host": "s1",
    "venue": "stocks",
-   "symbol": "CRK",
+   "symbol": "CLX",
    "tf": "15m",
    "last": "2026-10-26T15:45",
    "expect": "2026-10-26T19:45",
@@ -1408,7 +1408,7 @@
   {
    "host": "s1",
    "venue": "stocks",
-   "symbol": "FNV",
+   "symbol": "CRK",
    "tf": "15m",
    "last": "2026-10-26T15:45",
    "expect": "2026-10-26T19:45",
@@ -1426,6 +1426,24 @@
   {
    "host": "s1",
    "venue": "stocks",
+   "symbol": "FNV",
+   "tf": "15m",
+   "last": "2026-10-26T15:45",
+   "expect": "2026-10-26T19:45",
+   "bars_behind": 16.0
+  },
+  {
+   "host": "mac",
+   "venue": "stocks",
+   "symbol": "MDT",
+   "tf": "15m",
+   "last": "2026-10-26T15:15",
+   "expect": "2026-10-26T19:45",
+   "bars_behind": 18.0
+  },
+  {
+   "host": "s1",
+   "venue": "stocks",
    "symbol": "MDT",
    "tf": "15m",
    "last": "2026-10-26T15:15",
@@ -1435,7 +1453,7 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "MDT",
+   "symbol": "GDXJ",
    "tf": "15m",
    "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
@@ -1453,7 +1471,7 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "GDXJ",
+   "symbol": "RGLD",
    "tf": "15m",
    "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
@@ -1471,7 +1489,7 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "RGLD",
+   "symbol": "SHOP",
    "tf": "15m",
    "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
@@ -1489,11 +1507,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "SHOP",
+   "symbol": "TCEHY",
    "tf": "15m",
-   "last": "2026-10-26T15:15",
+   "last": "2026-10-26T15:30",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 18.0
+   "bars_behind": 17.0
   },
   {
    "host": "s1",
@@ -1507,11 +1525,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "TCEHY",
+   "symbol": "USAR",
    "tf": "15m",
-   "last": "2026-10-26T15:30",
+   "last": "2026-10-26T16:00",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 17.0
+   "bars_behind": 15.0
   },
   {
    "host": "s1",
@@ -1525,11 +1543,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "USAR",
+   "symbol": "STZ",
    "tf": "15m",
-   "last": "2026-10-26T16:00",
+   "last": "2026-10-26T15:30",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 15.0
+   "bars_behind": 17.0
   },
   {
    "host": "s1",
@@ -1543,11 +1561,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "STZ",
+   "symbol": "DE",
    "tf": "15m",
-   "last": "2026-10-26T15:30",
+   "last": "2026-10-26T15:45",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 17.0
+   "bars_behind": 16.0
   },
   {
    "host": "s1",
@@ -1561,11 +1579,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "DE",
+   "symbol": "TXN",
    "tf": "15m",
-   "last": "2026-10-26T15:45",
+   "last": "2026-10-26T15:30",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 16.0
+   "bars_behind": 17.0
   },
   {
    "host": "s1",
@@ -1579,24 +1597,6 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "TXN",
-   "tf": "15m",
-   "last": "2026-10-26T15:30",
-   "expect": "2026-10-26T19:45",
-   "bars_behind": 17.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "OKE",
-   "tf": "15m",
-   "last": "2026-10-26T15:15",
-   "expect": "2026-10-26T19:45",
-   "bars_behind": 18.0
-  },
-  {
-   "host": "mac",
-   "venue": "stocks",
    "symbol": "OKE",
    "tf": "15m",
    "last": "2026-10-26T15:15",
@@ -1606,7 +1606,7 @@
   {
    "host": "s1",
    "venue": "stocks",
-   "symbol": "SHY",
+   "symbol": "OKE",
    "tf": "15m",
    "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
@@ -1624,7 +1624,7 @@
   {
    "host": "s1",
    "venue": "stocks",
-   "symbol": "LOW",
+   "symbol": "SHY",
    "tf": "15m",
    "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
@@ -1642,7 +1642,7 @@
   {
    "host": "s1",
    "venue": "stocks",
-   "symbol": "EQT",
+   "symbol": "LOW",
    "tf": "15m",
    "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
@@ -1660,6 +1660,24 @@
   {
    "host": "s1",
    "venue": "stocks",
+   "symbol": "EQT",
+   "tf": "15m",
+   "last": "2026-10-26T15:15",
+   "expect": "2026-10-26T19:45",
+   "bars_behind": 18.0
+  },
+  {
+   "host": "mac",
+   "venue": "stocks",
+   "symbol": "ELD",
+   "tf": "15m",
+   "last": "2026-10-26T15:30",
+   "expect": "2026-10-26T19:45",
+   "bars_behind": 17.0
+  },
+  {
+   "host": "s1",
+   "venue": "stocks",
    "symbol": "ELD",
    "tf": "15m",
    "last": "2026-10-26T15:30",
@@ -1669,7 +1687,7 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "ELD",
+   "symbol": "XOP",
    "tf": "15m",
    "last": "2026-10-26T15:30",
    "expect": "2026-10-26T19:45",
@@ -1687,11 +1705,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "XOP",
+   "symbol": "FANG",
    "tf": "15m",
-   "last": "2026-10-26T15:30",
+   "last": "2026-10-26T15:45",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 17.0
+   "bars_behind": 16.0
   },
   {
    "host": "s1",
@@ -1705,11 +1723,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "FANG",
+   "symbol": "LYFT",
    "tf": "15m",
-   "last": "2026-10-26T15:45",
+   "last": "2026-10-26T17:30",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 16.0
+   "bars_behind": 9.0
   },
   {
    "host": "s1",
@@ -1723,11 +1741,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "LYFT",
+   "symbol": "LEXX",
    "tf": "15m",
-   "last": "2026-10-26T17:30",
+   "last": "2026-10-26T14:30",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 9.0
+   "bars_behind": 21.0
   },
   {
    "host": "s1",
@@ -1741,11 +1759,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "LEXX",
+   "symbol": "RTX",
    "tf": "15m",
-   "last": "2026-10-26T14:30",
+   "last": "2026-10-26T15:15",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 21.0
+   "bars_behind": 18.0
   },
   {
    "host": "s1",
@@ -1759,24 +1777,6 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "RTX",
-   "tf": "15m",
-   "last": "2026-10-26T15:15",
-   "expect": "2026-10-26T19:45",
-   "bars_behind": 18.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "TDG",
-   "tf": "15m",
-   "last": "2026-10-26T15:45",
-   "expect": "2026-10-26T19:45",
-   "bars_behind": 16.0
-  },
-  {
-   "host": "mac",
-   "venue": "stocks",
    "symbol": "TDG",
    "tf": "15m",
    "last": "2026-10-26T15:45",
@@ -1786,7 +1786,7 @@
   {
    "host": "s1",
    "venue": "stocks",
-   "symbol": "COE",
+   "symbol": "TDG",
    "tf": "15m",
    "last": "2026-10-26T15:45",
    "expect": "2026-10-26T19:45",
@@ -1804,11 +1804,11 @@
   {
    "host": "s1",
    "venue": "stocks",
-   "symbol": "HAO",
+   "symbol": "COE",
    "tf": "15m",
-   "last": "2026-10-26T14:15",
+   "last": "2026-10-26T15:45",
    "expect": "2026-10-26T19:45",
-   "bars_behind": 22.0
+   "bars_behind": 16.0
   },
   {
    "host": "mac",
@@ -1821,6 +1821,15 @@
   },
   {
    "host": "s1",
+   "venue": "stocks",
+   "symbol": "HAO",
+   "tf": "15m",
+   "last": "2026-10-26T14:15",
+   "expect": "2026-10-26T19:45",
+   "bars_behind": 22.0
+  },
+  {
+   "host": "mac",
    "venue": "stocks",
    "symbol": "JNJ",
    "tf": "15m",
@@ -1829,7 +1838,7 @@
    "bars_behind": 18.0
   },
   {
-   "host": "mac",
+   "host": "s1",
    "venue": "stocks",
    "symbol": "JNJ",
    "tf": "15m",
@@ -2588,90 +2597,90 @@
   {
    "host": "mac",
    "file": "crypto prices",
-   "age_s": -11.4,
+   "age_s": -11.8,
    "max_s": 60,
    "ok": true,
    "files": {
-    "price_cache_1.json": -11.4,
-    "price_cache_2.json": -7.6,
-    "price_cache_3.json": -11.4
+    "price_cache_1.json": -11.8,
+    "price_cache_2.json": -8.1,
+    "price_cache_3.json": -11.8
    }
   },
   {
    "host": "mac",
    "file": "crypto snapshot (market_data_*)",
-   "age_s": -12.0,
+   "age_s": -6.6,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/market_data_NEWEST": -12.0
+    "data/market_data_NEWEST": -6.6
    }
   },
   {
    "host": "mac",
    "file": "crypto latest_market_data",
-   "age_s": -11.9,
+   "age_s": -6.6,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/latest_market_data.json": -11.9
+    "data/latest_market_data.json": -6.6
    }
   },
   {
    "host": "s1",
    "file": "crypto snapshot on S1 (Mac push or own stack)",
-   "age_s": 72.0,
+   "age_s": 96.4,
    "max_s": 180,
    "ok": true,
    "files": {
-    "data/market_data_NEWEST": 72.0,
-    "ez_s1_stack/data/latest_market_data.json": 128184.8
+    "data/market_data_NEWEST": 96.4,
+    "ez_s1_stack/data/latest_market_data.json": 128522.2
    }
   },
   {
    "host": "s1",
    "file": "crypto prices on S1 (Mac push or own stack)",
-   "age_s": 134.0,
+   "age_s": 471.4,
    "max_s": 300,
-   "ok": true,
+   "ok": false,
    "files": {
-    "price_cache_1.json": 134.0,
-    "price_cache_2.json": 137.0,
-    "price_cache_3.json": 134.0,
-    "ez_s1_stack/price_cache_1.json": 1842297.5,
-    "ez_s1_stack/price_cache_2.json": 128120.7,
-    "ez_s1_stack/price_cache_3.json": 128100.0
+    "price_cache_1.json": 471.4,
+    "price_cache_2.json": 474.4,
+    "price_cache_3.json": 471.4,
+    "ez_s1_stack/price_cache_1.json": 1842634.9,
+    "ez_s1_stack/price_cache_2.json": 128458.1,
+    "ez_s1_stack/price_cache_3.json": 128437.4
    }
   },
   {
    "host": "gw",
    "file": "crypto market_data",
-   "age_s": 125.1,
+   "age_s": 95.3,
    "max_s": 300,
    "ok": true,
    "files": {
-    "data/latest_market_data.json": 125.1
+    "data/latest_market_data.json": 95.3
    }
   },
   {
    "host": "mac",
    "file": "disk free /Users/niels/Documents/binance",
    "age_s": null,
-   "free_gb": 1.5,
+   "free_gb": 0.3,
    "ok": false
   },
   {
    "host": "s1",
    "file": "disk free binance",
    "age_s": null,
-   "free_gb": 2.3,
+   "free_gb": 3.0,
    "ok": false
   },
   {
    "host": "s1",
    "file": "disk free binance-sandbox",
    "age_s": null,
-   "free_gb": 2.3,
+   "free_gb": 3.0,
    "ok": false
   },
   {
