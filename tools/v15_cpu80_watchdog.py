@@ -92,7 +92,8 @@ def ensure_lane(host, pilot_sides):
         "s5": ("/tmp/npz_sides_s5.txt", "TEMPLATE_STOCKS_LONG.xlsx", "LONG", False),
         "s6": ("/tmp/npz_sides_s6.txt", "TEMPLATE_STOCKS_SHORT.xlsx", "SHORT", False),
     }.get(host)
-    if lane and len(pilot_sides) < 4:
+    dispatch_max = 2 if host == "s2" else 4
+    if lane and len(pilot_sides) < dispatch_max:
         sides, template, side, is_crypto = lane
         snapshot = pathlib.Path("/tmp/v15_best_first.json")
         if host == "niels":
@@ -124,8 +125,8 @@ def ensure_lane(host, pilot_sides):
         lock_probe = subprocess.run(["flock", "-n", lane_lock, "-c", "true"], check=False)
         if lock_probe.returncode == 0:
             out = pathlib.Path(f"/tmp/v15_lane_watchdog_{host}.log").open("a")
-            subprocess.Popen(["bash", str(ROOT / "tools" / "worker_lanes" / host / "self_dispatch.sh"), sides, str(template_path), "7", "4"], cwd=str(ROOT), stdout=out, stderr=subprocess.STDOUT, start_new_session=True)
-            log(f"LANE-REFILL host={host} sides={len(pilot_sides)}/4 queue={sides}")
+            subprocess.Popen(["bash", str(ROOT / "tools" / "worker_lanes" / host / "self_dispatch.sh"), sides, str(template_path), "1", str(dispatch_max)], cwd=str(ROOT), stdout=out, stderr=subprocess.STDOUT, start_new_session=True)
+            log(f"LANE-REFILL host={host} sides={len(pilot_sides)}/{dispatch_max} queue={sides}")
     if host == "niels" and len(pilot_sides) < 4:
         sched = ROOT / "tools" / "v15_fleet_scheduler.py"
         log_path = pathlib.Path("/tmp/v15_fleet_sched.log")
