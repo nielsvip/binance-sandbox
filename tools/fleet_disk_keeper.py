@@ -195,7 +195,7 @@ def gate_keep_names() -> set:
 # ------------------------------------------------------------------ candidate classes (oldest first inside each)
 def c_tmp_scratch():
     out = []
-    for p in Path("/tmp").iterdir():
+    for p in Path(os.environ.get("FDK_TMP_DIR", "/tmp")).iterdir():
         try:
             st = p.lstat()
         except OSError:
@@ -429,6 +429,10 @@ def main(argv=None):
                         done = True
                     except Exception as e:
                         log("offload_failed", tier=tier, items=len(batch), error=f"{type(e).__name__}: {e}"[:300])
+                        if free_mb() >= floor:  # transient failure above the hard floor: keep it, the next cycle (3 min) retries
+                            log("retained_retry", tier=tier, items=len(batch), mb=mb, free_mb=free_mb(), floor_mb=floor)
+                            batch, batch_bytes = [], 0
+                            continue
                 else:
                     log("no_destination", tier=tier, items=len(batch), mb=mb, reserve_mb=DEST_RESERVE_MB)
                 if not done:
