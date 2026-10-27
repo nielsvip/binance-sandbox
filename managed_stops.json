@@ -27,13 +27,6 @@
     "symbol": "KMNOUSDT",
     "side": "LONG"
   },
-  "fin:ENAUSDC_LONG": {
-    "orderId": "3000002276905320",
-    "stopPrice": 0.20345,
-    "entry_sig": "2026-10-26 23:08:49.666000+00:00",
-    "symbol": "ENAUSDC",
-    "side": "LONG"
-  },
   "fin:BIGTIMEUSDT_SHORT": {
     "orderId": "3000002277414805",
     "stopPrice": 0.006918,
@@ -68,13 +61,6 @@
     "entry_sig": "2026-10-27 06:05:20.887000+00:00",
     "symbol": "GALAUSDT",
     "side": "SHORT"
-  },
-  "fin:MAGICUSDT_LONG": {
-    "orderId": "3000002277831719",
-    "stopPrice": 0.08031,
-    "entry_sig": "2026-10-27 08:03:32.072000+00:00",
-    "symbol": "MAGICUSDT",
-    "side": "LONG"
   },
   "fin:UNIUSDC_LONG": {
     "orderId": "3000002277832481",
@@ -125,11 +111,18 @@
     "symbol": "RLCUSDT",
     "side": "LONG"
   },
-  "fin:TLMUSDT_SHORT": {
-    "orderId": "3000002277916122",
-    "stopPrice": 0.001166,
-    "entry_sig": "2026-10-27 08:46:31.217000+00:00",
-    "symbol": "TLMUSDT",
+  "fin:FARTCOINUSDT_SHORT": {
+    "orderId": "3000002277921071",
+    "stopPrice": 0.1319,
+    "entry_sig": "2026-10-27 08:49:39.099000+00:00",
+    "symbol": "FARTCOINUSDT",
+    "side": "SHORT"
+  },
+  "fin:1000LUNCUSDT_SHORT": {
+    "orderId": "3000002277924316",
+    "stopPrice": 0.04501,
+    "entry_sig": "2026-10-27 08:51:07.803000+00:00",
+    "symbol": "1000LUNCUSDT",
     "side": "SHORT"
   }
 }
