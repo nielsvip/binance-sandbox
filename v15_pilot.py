@@ -1006,6 +1006,71 @@ def promotion_noise_floor_pp() -> float:
     return max(BOARD_NONDETERMINISM_PP, fee_pp)
 
 
+def honest_headline(progress: dict, sym_side: str = "") -> dict:
+    """What this board actually proved, with the in-sample part labelled.
+
+    `final_gain` / `cumulative_gain` is the greedy IN-SAMPLE envelope: it is
+    `baseline + sum(positive promoted deltas)` on ONE 30-day window, so by
+    construction it can only climb (Bible 14.2) and it is not a forecast.
+    Measured across 370 boards on 2026-10-27: baseline mean +2.84% against
+    cumulative mean +14.18% -- 80% of the published number was accumulated
+    lift, and only 24 of 370 lifts were negative. Across rounds the SAME
+    sym_side was published with gains spanning a median 49pp (max 252pp), and
+    the mean of each held sym_side's MAX published gain was +75.9% against a
+    median of +51.9%: a +24pp winner's curse on top of the in-sample lift. The
+    published number's forward Spearman against realized net was -0.15.
+
+    So this block publishes, side by side: the baseline, the in-sample
+    envelope, how much of it is lift, how many promotions survived the noise
+    floor, and -- when the forward scorer ran -- the only out-of-sample number
+    the system has. `promotable_estimate` is the honest one to rank on: the
+    forward score when present, else the baseline, never the envelope.
+    """
+    def _f(x):
+        try:
+            return float(x)
+        except (TypeError, ValueError):
+            return None
+    base = _f(progress.get("baseline_gain"))
+    cum = _f(progress.get("final_gain"))
+    if cum is None:
+        cum = _f(progress.get("cumulative_gain"))
+    done = progress.get("done") if isinstance(progress.get("done"), dict) else {}
+    promos = [v for v in done.values() if isinstance(v, dict) and v.get("promoted")]
+    floor = promotion_noise_floor_pp()
+    above = [v for v in promos if (_f(v.get("delta")) or 0.0) > floor]
+    fwd = progress.get("forward") if isinstance(progress.get("forward"), dict) else {}
+    fwd_gain = _f(fwd.get("gain_pct")) if fwd else None
+    if fwd_gain is None and fwd:
+        fwd_gain = _f((fwd.get("published_set") or {}).get("gain_pct")) if isinstance(fwd.get("published_set"), dict) else None
+    lift = (cum - base) if (cum is not None and base is not None) else None
+    try:
+        import fee_model as _fm
+
+        fee = _fm.round_trip_pct("crypto")
+    except Exception:
+        fee = None
+    return {
+        "sym_side": sym_side or progress.get("symside"),
+        "baseline_gain_pct": base,
+        "in_sample_greedy_gain_pct": cum,
+        "in_sample_lift_pp": lift,
+        "in_sample_lift_share": (lift / cum) if (lift is not None and cum not in (None, 0)) else None,
+        "promotions": len(promos),
+        "promotions_above_noise_floor": len(above),
+        "noise_floor_pp": floor,
+        "forward_gain_pct": fwd_gain,
+        "forward_is_out_of_sample": fwd_gain is not None,
+        "promotable_estimate_pct": fwd_gain if fwd_gain is not None else base,
+        "promotable_estimate_basis": "forward_out_of_sample" if fwd_gain is not None else "baseline_only",
+        "round_trip_commission_pct_charged": fee,
+        "label": (
+            "in_sample_greedy_gain_pct is an IN-SAMPLE ENVELOPE on one window, not a forecast; "
+            "rank and promote on promotable_estimate_pct"
+        ),
+    }
+
+
 def noise_floor_veto(delta) -> str:
     """Reason string when a positive delta is inside the measured noise floor."""
     try:
@@ -16653,6 +16718,10 @@ def _main_single():
     progress["final_trades"] = _leg_trades
     progress["bh"] = bh_raw
     progress["final_path"] = str(final_path)
+    try:
+        progress["headline"] = honest_headline(progress, new_symside)
+    except Exception as _he:
+        progress["headline"] = {"error": repr(_he)}
     try:
         _atomic_write_json(progress_path, progress)
     except Exception:

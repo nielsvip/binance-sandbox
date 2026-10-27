@@ -34,6 +34,7 @@ TARGET = REPO / "klines_cache_backtest"
 CANONICAL = REPO / "klines_canonical"
 SYMBOLS_JSON = REPO / "symbols.json"
 VALID_TFS = ("1m", "3m", "15m", "1h", "4h", "D", "W", "M")
+TF_SECONDS = {"1m": 60, "3m": 180, "15m": 900, "1h": 3600, "4h": 14400, "D": 86400, "W": 604800}
 try:  # USER 2026-10-13: TradFi perps (AAPLUSDT etc.) are not tradeable — never append/create their klines
     sys.path.insert(0, str(REPO / "tools"))
     from excluded_tokenized_stocks import is_denied as _excl_denied
@@ -89,7 +90,7 @@ def canonical_rows(name: str) -> list[dict]:
     return load_json_list(CANONICAL / name)
 
 
-def _final_rows(rows: list[dict]) -> list[dict]:
+def _final_rows(rows: list[dict], tf: str | None = None) -> list[dict]:
     """Drop provisional bars. The Mac/gateway tick builders publish a temp OHLC for the forming bar (key
     `provisional`) and overwrite it with the official OHLCV when the exchange bar lands. merge_klines only CORRECTS
     rows for canonical sources, so a provisional row appended into s1's long store would never be replaced — it would
@@ -97,7 +98,25 @@ def _final_rows(rows: list[dict]) -> list[dict]:
     (tools/npz_bar_refresh.cache_bar_final_stocks likewise requires a NEWER row before trusting a bar.)"""
     # 2026-10-27: the Mac writer flags the forming bar `_provisional` (underscore) and omits `volume`; the old `provisional`-only
     # check let it through and merge_klines crashed on c["volume"] (KeyError), aborting the WHOLE append run every 5 min.
-    return [b for b in rows if not (b.get("provisional") or b.get("_provisional")) and all(k in b for k in ("open", "high", "low", "close", "volume"))]
+    rows = [b for b in rows if not (b.get("provisional") or b.get("_provisional")) and all(k in b for k in ("open", "high", "low", "close", "volume"))]
+    # 2026-10-27: the gateway writes the FORMING bar with no provisional flag at all; measured ETHUSDC 15m 16:45 in the big store at
+    # 16:57Z and BTCUSDC 1h 16:00 vol 365 vs 985 closed. A bar whose close time has not passed is never final, whatever its flags say.
+    return [b for b in rows if _bar_closed(b.get("timestamp"), tf)] if tf else rows
+
+
+def _bar_closed(ts, tf: str, now: float | None = None) -> bool:
+    import datetime as dt
+    try:
+        start = dt.datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    if start.tzinfo is None:
+        start = start.replace(tzinfo=dt.timezone.utc)
+    if tf == "M":
+        end = start.replace(year=start.year + start.month // 12, month=start.month % 12 + 1, day=1)
+    else:
+        end = start + dt.timedelta(seconds=TF_SECONDS[tf])
+    return end.timestamp() <= (time.time() if now is None else now)
 
 
 def gather_fresh(name: str) -> list[dict]:
@@ -113,8 +132,10 @@ def gather_fresh(name: str) -> list[dict]:
     / 3m right-label rule protects. KLINES_APPEND_CANONICAL=0 still disables canonical entirely (legacy append-only).
     """
     canon = canonical_rows(name)
-    primary = _final_rows(load_json_list(PRIMARY / name))
-    backup = _final_rows(load_json_list(BACKUP / name) + load_json_list(MACBOOK / name) + load_json_list(S1SELF / name))
+    tf = Path(name).name[:-5].rsplit("_", 1)[-1]
+    tf = tf if tf in TF_SECONDS or tf == "M" else None
+    primary = _final_rows(load_json_list(PRIMARY / name), tf)
+    backup = _final_rows(load_json_list(BACKUP / name) + load_json_list(MACBOOK / name) + load_json_list(S1SELF / name), tf)
     if not primary:
         live = backup
     elif not backup:

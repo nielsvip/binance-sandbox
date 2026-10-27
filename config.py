@@ -7549,10 +7549,10 @@ class Config:
         _MEASURED_CRYPTO_ROUND_TRIP_PCT  # 2026-10-27: was 0.0 — a stale TradierConfig port that told the LIVE crypto engine trades are free while the boards charged 0.04 and the broker charged 0.0529 (measured, fee_model.py). Fee-free live gain math is why sub-fee reopens were allowed.
     )
     MIN_EDGE_OVER_FEE_ENABLED: bool = (
-        True  # 2026-10-27: refuse an OPEN whose own technical target cannot pay its round-trip commission. Arithmetic, not a strategy opinion. Kill switch: set False.
+        False  # 2026-10-27: refuse an OPEN whose own nearest DC target cannot pay its round-trip commission (vec_decisions/min_edge_over_fee.py, wired at the _strict_open_block join). WIRED AND MEASURED, SHIPPED OFF: at mult 1.0 on 8 frozen 30d boards it bound 9.2% of bars but moved trades only -0.2% and summed gain -20.2pp, because blocking a marginal entry re-routes the whole subsequent sequence (BLURUSDT_SHORT -17.5pp, RLCUSDT_LONG -15.8pp). "Improve before skip" law: it stays OFF until a fleet sweep proves a serious per-sym_side improvement. It is a sweepable switch so the boards now measure it.
     )
     MIN_EDGE_OVER_FEE_MULT: float = (
-        1.0  # required target distance as a multiple of CRYPTO_ROUND_TRIP_COMMISSION_PCT. 1.0 = must merely break even on fees; the sweep tunes it upward per sym_side.
+        1.0  # required target distance as a multiple of CRYPTO_ROUND_TRIP_COMMISSION_PCT. 1.0 = must merely break even on fees; the sweep tunes it per sym_side.
     )
     DC_BREAK_GR_MULT_BREAKOUT: float = (
         0.1  # Phase 1: tiny entry on DC break  # PORTED from TradierConfig 2026-08-17

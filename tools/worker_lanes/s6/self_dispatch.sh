@@ -9,9 +9,34 @@
 # Pending = not running locally AND not done (S1 progress pull or local).
 SB=$HOME/binance-sandbox
 SIDES=${1:?sides}; T=${2:?template}; W=${3:-6}; MAX=${4:-6}
-[[ -e /tmp/v15_preopen_7d.pause ]] && exit 0
-[[ -e /tmp/v15_stock_canary_hold ]] && exit 0
-rsync -az --timeout=15 niels@10.0.0.3:binance-sandbox/data/v15_best_first.json /tmp/v15_best_first.json >/dev/null 2>&1 || exit 2
+# 2026-10-27: both hold files below are READ here and written/cleared by NOTHING else in the repo, so a
+# forgotten one latches a paid host idle forever and logs nothing. /tmp/v15_stock_canary_hold, created by
+# hand at 02:43:31Z, silently exit-0'd this dispatcher on s5+s6 for ~14h (0 boards published, 4 hosts
+# billed by the minute). Keep both switches, but make them LOUD and self-releasing.
+_HOLD_TTL_S=${V15_HOLD_TTL_S:-3600}
+for _hf in /tmp/v15_preopen_7d.pause /tmp/v15_stock_canary_hold; do
+  [[ -e "$_hf" ]] || continue
+  _hage=$(( $(date +%s) - $(stat -c %Y "$_hf" 2>/dev/null || echo 0) ))
+  if [ "$_hage" -gt "$_HOLD_TTL_S" ]; then
+    echo "$(date -u +%FT%TZ) HOLD EXPIRED $_hf age=${_hage}s ttl=${_HOLD_TTL_S}s -> releasing" >> /tmp/self_dispatch.log
+    rm -f "$_hf"
+  else
+    echo "$(date -u +%FT%TZ) HOLD ACTIVE $_hf age=${_hage}s ttl=${_HOLD_TTL_S}s -> no dispatch" >> /tmp/self_dispatch.log
+    exit 0
+  fi
+done
+# 2026-10-27: this rsync used to `|| exit 2` silently, which made the S1-FAILOVER dispatcher depend on S1
+# being up -- the exact condition it exists to survive. Now: log it, and fall back to the last snapshot
+# while it is fresh enough, so a dead S1 degrades the ordering instead of stopping all dispatch.
+if ! rsync -az --timeout=15 niels@10.0.0.3:binance-sandbox/data/v15_best_first.json /tmp/v15_best_first.json >/dev/null 2>&1; then
+  _snage=$(( $(date +%s) - $(stat -c %Y /tmp/v15_best_first.json 2>/dev/null || echo 0) ))
+  if [ -s /tmp/v15_best_first.json ] && [ "$_snage" -lt "${V15_BEST_FIRST_MAX_AGE_S:-21600}" ]; then
+    echo "$(date -u +%FT%TZ) WARN best_first rsync from S1 failed; using local snapshot age=${_snage}s" >> /tmp/self_dispatch.log
+  else
+    echo "$(date -u +%FT%TZ) ERROR best_first rsync failed and snapshot stale/missing (age=${_snage}s) -> exit 2" >> /tmp/self_dispatch.log
+    exit 2
+  fi
+fi
 PDIR=$(head -n 1 "$HOME/v15_current_progress_dir.txt" 2>/dev/null)
 [[ "$PDIR" == /home/niels/v15_run*/progress ]] || { echo "INVALID ROUND POINTER: $PDIR" >&2; exit 2; }
 SP=/tmp/sched_progress_$(basename "$(dirname "$PDIR")")

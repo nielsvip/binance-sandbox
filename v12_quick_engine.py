@@ -4276,6 +4276,10 @@ class QuickConfig:
     CRYPTO_ROUND_TRIP_COMMISSION_PCT: float = (
         _MEASURED_CRYPTO_ROUND_TRIP_PCT  # 2026-10-27: was 0.04, hand-set. Now the SAME measured value config.Config reads (fee_model.py, broker fills) so board and live charge identically by construction. Tradier stays commission-free via the is_tradier branches.
     )
+    MIN_EDGE_OVER_FEE_ENABLED: bool = (
+        False  # parity with config.Config: OFF live, sweepable here so boards measure it per sym_side
+    )
+    MIN_EDGE_OVER_FEE_MULT: float = 1.0
     MIN_POSITION_SIZE: float = (
         1.0  # parity 2026-09-26: live Config 1.0 vs vec 55 caused 55x mismatch — align to config.Config crypto. Bold in TEMPLATE_CRYPTO.
     )
@@ -16728,6 +16732,17 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _fb = np.asarray(_fgx.funding_block_mask(npz, n, is_long, cfg), dtype=bool)
             _strict_open_block = (
                 _fb if _strict_open_block is None else (_strict_open_block | _fb)
+            )
+    except Exception:
+        pass
+    try:  # 2026-10-27 MIN_EDGE_OVER_FEE: refuse an open whose own DC target cannot pay the round-trip commission (arithmetic, not strategy). Kill switch cfg.MIN_EDGE_OVER_FEE_ENABLED.
+        import vec_decisions.min_edge_over_fee as _meof
+
+        _mb = _meof.block_mask(npz, n, is_long, cfg, close)
+        if _mb is not None:
+            _mb = np.asarray(_mb, dtype=bool)
+            _strict_open_block = (
+                _mb if _strict_open_block is None else (_strict_open_block | _mb)
             )
     except Exception:
         pass

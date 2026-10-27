@@ -32,8 +32,9 @@ def load(tmp, monkeypatch):
     m.PRIMARY = tmp / "klines_cache" / "gateway"
     m.BACKUP = tmp / "klines_cache_gateway"
     m.MACBOOK = tmp / "klines_cache_macbook"
+    m.S1SELF = tmp / "klines_cache_s1self"
     m.TARGET = tmp / "klines_cache_backtest"
-    for d in (m.CANONICAL, m.PRIMARY, m.BACKUP, m.MACBOOK, m.TARGET):
+    for d in (m.CANONICAL, m.PRIMARY, m.BACKUP, m.MACBOOK, m.S1SELF, m.TARGET):
         d.mkdir(parents=True, exist_ok=True)
     return m
 
@@ -129,3 +130,23 @@ def test_tokenized_stock_denial_still_applies_under_tradier(ka, monkeypatch):
     write(ka.MACBOOK / "tradier/AAPLUSDT_15m.json", [bar("18:00")])
     monkeypatch.setattr(ka, "_excl_denied", lambda sym: sym == "AAPLUSDT")
     assert ka.filenames_to_process(None) == [], "denial is keyed on the bare symbol, so it must still fire in tradier/"
+
+
+def test_unclosed_bar_is_never_appended_whatever_its_flags(ka):
+    """2026-10-27: the gateway writes the FORMING bar with no provisional flag; ETHUSDC 15m 16:45 sat in the big store at 16:57Z."""
+    import time
+    now = time.time()
+    start = int(now // 900 * 900)
+    stamp = lambda t: time.strftime("%Y-%m-%dT%H:%M:%S.000000Z", time.gmtime(t))
+    row = lambda t: {"timestamp": stamp(t), "open": 1.0, "high": 1.0, "low": 1.0, "close": 1.0, "volume": 1.0}
+    write(ka.PRIMARY / "XUSDT_15m.json", [row(start - 900), row(start)])
+    assert [b["timestamp"] for b in ka.gather_fresh("XUSDT_15m.json")] == [stamp(start - 900)], "the forming bar must be dropped"
+
+
+def test_bar_closed_handles_hour_and_month_ends(ka):
+    import datetime as dt
+    t = lambda s: dt.datetime.fromisoformat(s).replace(tzinfo=dt.timezone.utc).timestamp()
+    assert not ka._bar_closed("2026-10-27T16:00:00.000000Z", "1h", now=t("2026-10-27T16:59:59"))
+    assert ka._bar_closed("2026-10-27T16:00:00.000000Z", "1h", now=t("2026-10-27T17:00:00"))
+    assert not ka._bar_closed("2026-10-01T00:00:00.000000Z", "M", now=t("2026-10-31T23:59:59"))
+    assert ka._bar_closed("2026-12-01T00:00:00.000000Z", "M", now=t("2027-01-01T00:00:00"))
