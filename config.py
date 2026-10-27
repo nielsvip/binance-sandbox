@@ -64,7 +64,7 @@ class Config:
     FORCE_MIN_ONE_TRADE: bool = (
         False  # lane L1 2026-10-04 LIVE_MIRROR honest-0: vec-only synthetic (v12 forces first-bar entry when no signals); live NEVER forces trades — no live hook by design (§17 parity default only, = QuickConfig False).
     )
-    MIN_HOLD_BEFORE_EXIT_PROTECTION_EXEMPT: bool = (
+    MIN_HOLD_PROTECTION_EXEMPT: bool = (
         True  # USER 2026-10-27: "MIN_HOLD_BARS_BEFORE_EXIT need to be independent and only overridden by fixed_stop". Implemented exactly: FIXED_STOP is the only STRATEGY-side override. This flag keeps ACCOUNT protection (LIQUIDAT/MARGIN/EMERGENCY/BALANCE_FLOOR) exempt as well, because holding a position through a margin kill to honour a bar count would lose the account and CLAUDE.md's "exits never blocked" exists for that case. Set False for a literally fixed_stop-only hold — an operator decision with eyes open.
     )
     MIN_HOLD_SOLE_SWITCH_ENABLED: bool = (

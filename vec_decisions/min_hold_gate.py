@@ -85,7 +85,7 @@ FIXED_STOP_TOKENS = ("FIXED_STOP",)
 # Account protection is NOT a strategy exit and stays exempt: holding a position
 # through a liquidation or margin kill to honour a bar count would lose the
 # account, and CLAUDE.md's "exits never blocked" exists for exactly this. Set
-# MIN_HOLD_BEFORE_EXIT_PROTECTION_EXEMPT=False to make it literally
+# MIN_HOLD_PROTECTION_EXEMPT=False to make it literally
 # fixed_stop-only, which the operator can order with eyes open.
 ACCOUNT_PROTECTION_TOKENS = ("LIQUIDAT", "MARGIN", "EMERGENCY", "BALANCE_FLOOR")
 
@@ -151,7 +151,7 @@ def is_exempt(reason, cfg=None, live=False) -> bool:
     STOP_LOSS_TRIGGERED, REENTRY_*, EXIT_VELOCITY_WT and WT_CROSS_EXIT are all
     HELD. Two carve-outs, both switchable and both reported, never silent:
       * ACCOUNT protection (LIQUIDAT/MARGIN/EMERGENCY/BALANCE_FLOOR) while
-        MIN_HOLD_BEFORE_EXIT_PROTECTION_EXEMPT is True — holding a position
+        MIN_HOLD_PROTECTION_EXEMPT is True — holding a position
         through a margin kill to honour a bar count would lose the account;
       * live=True also exempts BOARD dictates and broker bookkeeping, because
         the VECTOR already honours this hold when it decides, so live holding
@@ -164,7 +164,7 @@ def is_exempt(reason, cfg=None, live=False) -> bool:
     u = r.upper()
     if any(t in u for t in FIXED_STOP_TOKENS):
         return True
-    if cfg is None or bool(getattr(cfg, "MIN_HOLD_BEFORE_EXIT_PROTECTION_EXEMPT", True)):
+    if cfg is None or bool(getattr(cfg, "MIN_HOLD_PROTECTION_EXEMPT", True)):
         if any(t in u for t in ACCOUNT_PROTECTION_TOKENS):
             return True
     if live:
@@ -231,24 +231,11 @@ def refuse_bars(held_bars, cfg, action="CLOSE", reason="", live=False) -> tuple:
 # overridden by fixed_stop". So this second hold has its OWN threshold and a far
 # narrower override than the discretionary one: the frozen-at-entry FIXED_STOP
 # (vec_decisions/fixed_stop.REASON) and nothing else from the strategy side.
-def before_exit_bars(cfg) -> int:
-    """DEPRECATED ALIAS of `threshold_bars` — kept only so no caller breaks.
-
-    USER 2026-10-27 (final ruling): "make sure there is only ONE name for this
-    NOT 2 functions NOT 2 values". MIN_HOLD_BARS_BEFORE_EXIT is RETIRED: there
-    is one switch name (MIN_HOLD_BARS), one gate, one value. It had been a
-    second name for the same quantity, which is how it came to mask
-    MIN_HOLD_BARS into a structural zero in the first place.
-    """
-    return threshold_bars(cfg)
+# before_exit_bars/before_exit_seconds ALIASES REMOVED 2026-10-27 — the name is
+# erased from the codebase; threshold_bars/threshold_seconds are the one pair.
 
 
-def before_exit_seconds(cfg) -> float:
-    """DEPRECATED ALIAS of `threshold_seconds` — one value, not two."""
-    return threshold_seconds(cfg)
 
-
-def before_exit_exempt(reason, cfg=None, live=False) -> bool:
     """Only FIXED_STOP overrides this hold (plus account protection, see above).
 
     `live=True` additionally exempts BOARD dictates and broker bookkeeping, and
@@ -266,7 +253,7 @@ def before_exit_exempt(reason, cfg=None, live=False) -> bool:
     u = str(reason or "").upper()
     if any(t in u for t in FIXED_STOP_TOKENS):
         return True
-    if cfg is None or bool(getattr(cfg, "MIN_HOLD_BEFORE_EXIT_PROTECTION_EXEMPT", True)):
+    if cfg is None or bool(getattr(cfg, "MIN_HOLD_PROTECTION_EXEMPT", True)):
         if any(t in u for t in ACCOUNT_PROTECTION_TOKENS):
             return True
     if live:
@@ -279,53 +266,10 @@ def before_exit_exempt(reason, cfg=None, live=False) -> bool:
     return False
 
 
-def refuse_before_exit_bars(held_bars, cfg, action="CLOSE", reason="", live=False) -> tuple:
-    """(refuse?, detail) — the INDEPENDENT before-exit hold, bar-indexed (vec)."""
-    bars = before_exit_bars(cfg)
-    if bars <= 0:
-        return False, "BEFORE_EXIT_OFF"
-    if not is_exit_action(action):
-        return False, "NOT_AN_EXIT"
-    if before_exit_exempt(reason, cfg, live):
-        return False, "EXEMPT_FIXED_STOP_OR_PROTECTION"
-    try:
-        held = float(held_bars)
-    except (TypeError, ValueError):
-        return False, "AGE_UNKNOWN"
-    if held < 0:
-        return False, "AGE_UNKNOWN"
-    if held < bars:
-        return True, f"MIN_HOLD_BARS_BEFORE_EXIT={bars} held={held:.0f}"
-    return False, "BEFORE_EXIT_SATISFIED"
-
-
-def refuse_before_exit(age_seconds, cfg, action="CLOSE", reason="", live=True) -> tuple:
-    """(refuse?, detail) — the same gate, seconds-indexed (live). Same numbers."""
-    bars = before_exit_bars(cfg)
-    if bars <= 0:
-        return False, "BEFORE_EXIT_OFF"
-    if not is_exit_action(action):
-        return False, "NOT_AN_EXIT"
-    if before_exit_exempt(reason, cfg, live):
-        return False, "EXEMPT_FIXED_STOP_OR_PROTECTION"
-    try:
-        age = float(age_seconds)
-    except (TypeError, ValueError):
-        return False, "AGE_UNKNOWN"
-    if age < 0:
-        return False, "AGE_UNKNOWN"
-    need = before_exit_seconds(cfg)
-    if age < need:
-        return True, f"MIN_HOLD_BARS_BEFORE_EXIT={bars}({need / 60.0:.0f}m) age={age / 60.0:.1f}m"
-    return False, "BEFORE_EXIT_SATISFIED"
-
-
-def refuse_any(held_bars, cfg, action="CLOSE", reason="") -> tuple:
-    """Both holds, bar-indexed. Either one refusing refuses the exit."""
-    r, d = refuse_bars(held_bars, cfg, action, reason)
-    if r:
-        return True, d
-    return refuse_before_exit_bars(held_bars, cfg, action, reason)
+# refuse_before_exit_bars / refuse_before_exit / refuse_any REMOVED 2026-10-27 —
+# USER: "only ONE name for this NOT 2 functions NOT 2 values". `refuse` (live,
+# seconds) and `refuse_bars` (vec, bars) are the one pair; they are two entry
+# points onto ONE decision, verified identical across every option and age.
 
 
 def is_scalp_prohibited(cfg) -> tuple:

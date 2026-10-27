@@ -16,6 +16,7 @@ written after a 418/429) and writes it on a 418/429 itself (the IP was banned be
 Consumer: tools/vector_direct_history_import.py on the Mac (one ssh per host per cycle) appends the rows to data/history.
 Does NOT import or modify tools/vector_direct_trader.py (owned by another agent).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -29,7 +30,17 @@ import time
 import urllib.parse
 from pathlib import Path
 
-FINAL_STATES = {"FILLED", "CANCELED", "EXPIRED", "REJECTED", "EXPIRED_IN_MATCH", "filled", "canceled", "expired", "rejected"}
+FINAL_STATES = {
+    "FILLED",
+    "CANCELED",
+    "EXPIRED",
+    "REJECTED",
+    "EXPIRED_IN_MATCH",
+    "filled",
+    "canceled",
+    "expired",
+    "rejected",
+}
 
 
 def read_json(path, default=None):
@@ -49,7 +60,12 @@ def atomic_write_json(path: Path, payload) -> None:
 
 def load_env(root: Path) -> dict:
     env = {}
-    for p in (root / ".env", Path.home() / ".env", Path.home() / "binance-sandbox" / ".env", Path.home() / "binance" / ".env"):
+    for p in (
+        root / ".env",
+        Path.home() / ".env",
+        Path.home() / "binance-sandbox" / ".env",
+        Path.home() / "binance" / ".env",
+    ):
         try:
             for line in Path(p).expanduser().read_text().splitlines():
                 line = line.strip()
@@ -75,7 +91,10 @@ def trader_local_ip() -> str | None:
                 argv = (d / "cmdline").read_bytes().split(b"\0")
             except OSError:
                 continue
-            if any(a.endswith(b"vector_direct_trader.py") for a in argv) and b"--local-ip" in argv:
+            if (
+                any(a.endswith(b"vector_direct_trader.py") for a in argv)
+                and b"--local-ip" in argv
+            ):
                 i = argv.index(b"--local-ip")
                 if i + 1 < len(argv) and argv[i + 1]:
                     return argv[i + 1].decode()
@@ -97,7 +116,12 @@ def ledger_rows(out: Path, venue: str, since: float, now: float) -> list:
                         r = json.loads(line)
                     except Exception:
                         continue
-                    if isinstance(r, dict) and r.get("event") == "ORDER" and not r.get("dry_run") and float(r.get("ts") or 0) >= since:
+                    if (
+                        isinstance(r, dict)
+                        and r.get("event") == "ORDER"
+                        and not r.get("dry_run")
+                        and float(r.get("ts") or 0) >= since
+                    ):
                         rows.append(r)
         except OSError:
             pass
@@ -140,10 +164,12 @@ class BinanceRO:
         self.block_path = out / "rest_block_crypto.json"
         self.s = requests.Session()
         if local_ip:
+
             class _Bound(HTTPAdapter):
                 def init_poolmanager(self, *a, **k):
                     k["source_address"] = (local_ip, 0)
                     return super().init_poolmanager(*a, **k)
+
             self.s.mount("https://", _Bound())
 
     def _get(self, acct, path, params):
@@ -156,10 +182,25 @@ class BinanceRO:
         params = dict(params, timestamp=int(time.time() * 1000), recvWindow=10000)
         q = urllib.parse.urlencode(params)
         sig = hmac.new(sec.encode(), q.encode(), hashlib.sha256).hexdigest()
-        r = self.s.get(f"{self.BASE}{path}?{q}&signature={sig}", headers={"X-MBX-APIKEY": key}, timeout=15)
+        r = self.s.get(
+            f"{self.BASE}{path}?{q}&signature={sig}",
+            headers={"X-MBX-APIKEY": key},
+            timeout=15,
+        )
         if r.status_code in (418, 429):
-            ra = float(r.headers.get("Retry-After") or (900 if r.status_code == 418 else 120))
-            atomic_write_json(self.block_path, {"until": time.time() + ra, "status": r.status_code, "at": time.time(), "path": path, "by": "vector_direct_fill_export"})
+            ra = float(
+                r.headers.get("Retry-After") or (900 if r.status_code == 418 else 120)
+            )
+            atomic_write_json(
+                self.block_path,
+                {
+                    "until": time.time() + ra,
+                    "status": r.status_code,
+                    "at": time.time(),
+                    "path": path,
+                    "by": "vector_direct_fill_export",
+                },
+            )
             raise Blocked(f"HTTP {r.status_code}")
         if r.status_code == 400 and '"code":-2013' in r.text:
             return None
@@ -180,9 +221,19 @@ class BinanceRO:
         q = float(o.get("executedQty") or 0)
         px = float(o.get("avgPrice") or 0)
         cq = float(o.get("cumQuote") or 0) or q * px
-        return {"found": True, "order_id": str(o.get("orderId")), "client_order_id": o.get("clientOrderId"), "status": o.get("status"),
-                "exec_qty": q, "avg_price": px, "quote": cq, "fill_ms": int(o.get("updateTime") or o.get("time") or 0),
-                "side": o.get("side"), "position_side": o.get("positionSide"), "src": "binance GET /fapi/v1/order"}
+        return {
+            "found": True,
+            "order_id": str(o.get("orderId")),
+            "client_order_id": o.get("clientOrderId"),
+            "status": o.get("status"),
+            "exec_qty": q,
+            "avg_price": px,
+            "quote": cq,
+            "fill_ms": int(o.get("updateTime") or o.get("time") or 0),
+            "side": o.get("side"),
+            "position_side": o.get("positionSide"),
+            "src": "binance GET /fapi/v1/order",
+        }
 
 
 class TradierRO:
@@ -195,16 +246,32 @@ class TradierRO:
     def account(self, acct):
         a = acct.upper()
         if acct == "trc":
-            aid = self.env.get("TRADIER_ACCOUNT_ID_TRC") or self.env.get("TRADIER_SANDBOX_ID")
-            key = self.env.get("TRADIER_API_KEY_TRC") or self.env.get("TRADIER_SANDBOX_ACCESS_TOKEN") or self.env.get("TRADIER_SANDBOX_KEY")
+            aid = self.env.get("TRADIER_ACCOUNT_ID_TRC") or self.env.get(
+                "TRADIER_SANDBOX_ID"
+            )
+            key = (
+                self.env.get("TRADIER_API_KEY_TRC")
+                or self.env.get("TRADIER_SANDBOX_ACCESS_TOKEN")
+                or self.env.get("TRADIER_SANDBOX_KEY")
+            )
             return aid, key, "https://sandbox.tradier.com/v1"
-        aid = self.env.get(f"TRADIER_ACCOUNT_ID_{a}") or (self.env.get("TRADIER_ACCOUNT_ID") if acct == "tra" else None)
-        key = self.env.get(f"TRADIER_API_KEY_{a}") or self.env.get("TRADIER_API_KEY_TRA") or self.env.get("TRADIER_API_KEY")
+        aid = self.env.get(f"TRADIER_ACCOUNT_ID_{a}") or (
+            self.env.get("TRADIER_ACCOUNT_ID") if acct == "tra" else None
+        )
+        key = (
+            self.env.get(f"TRADIER_API_KEY_{a}")
+            or self.env.get("TRADIER_API_KEY_TRA")
+            or self.env.get("TRADIER_API_KEY")
+        )
         return aid, key, "https://api.tradier.com/v1"
 
     def _get(self, acct, path):
         _aid, key, base = self.account(acct)
-        r = self.s.get(base + path, headers={"Authorization": f"Bearer {key}", "Accept": "application/json"}, timeout=15)
+        r = self.s.get(
+            base + path,
+            headers={"Authorization": f"Bearer {key}", "Accept": "application/json"},
+            timeout=15,
+        )
         if r.status_code == 429:
             raise Blocked("HTTP 429")
         if r.status_code == 404:
@@ -219,11 +286,24 @@ class TradierRO:
         px = float(o.get("avg_fill_price") or 0)
         ts = o.get("transaction_date") or o.get("create_date")
         try:
-            ms = int(dt.datetime.fromisoformat(str(ts).replace("Z", "+00:00")).timestamp() * 1000)
+            ms = int(
+                dt.datetime.fromisoformat(str(ts).replace("Z", "+00:00")).timestamp()
+                * 1000
+            )
         except Exception:
             ms = 0
-        return {"found": True, "order_id": str(o.get("id")), "client_order_id": o.get("tag"), "status": o.get("status"), "exec_qty": q,
-                "avg_price": px, "quote": q * px, "fill_ms": ms, "side": o.get("side"), "src": "tradier GET /accounts/{id}/orders/{id}"}
+        return {
+            "found": True,
+            "order_id": str(o.get("id")),
+            "client_order_id": o.get("tag"),
+            "status": o.get("status"),
+            "exec_qty": q,
+            "avg_price": px,
+            "quote": q * px,
+            "fill_ms": ms,
+            "side": o.get("side"),
+            "src": "tradier GET /accounts/{id}/orders/{id}",
+        }
 
     def resolve(self, acct, ss, order_id=None, client=None):
         aid, _k, _b = self.account(acct)
@@ -233,7 +313,9 @@ class TradierRO:
             return self._fill(o) if isinstance(o, dict) else {"found": False}
         if acct not in self._lists:
             doc = self._get(acct, f"/accounts/{aid}/orders") or {}
-            rows = (doc.get("orders") or {}) if isinstance(doc.get("orders"), dict) else {}
+            rows = (
+                (doc.get("orders") or {}) if isinstance(doc.get("orders"), dict) else {}
+            )
             rows = rows.get("order") or []
             self._lists[acct] = [rows] if isinstance(rows, dict) else rows
         for o in self._lists[acct]:
@@ -247,22 +329,48 @@ def needs_resolve(cached) -> bool:
         return True
     if cached.get("found") is False:
         return False
-    return str(cached.get("status") or "") not in FINAL_STATES or (float(cached.get("exec_qty") or 0) > 0 and float(cached.get("avg_price") or 0) <= 0)
+    return str(cached.get("status") or "") not in FINAL_STATES or (
+        float(cached.get("exec_qty") or 0) > 0
+        and float(cached.get("avg_price") or 0) <= 0
+    )
 
 
-def export(venue: str, root: Path, since: float, max_resolve: int, broker=None, now=None, emit=print) -> dict:
+def export(
+    venue: str,
+    root: Path,
+    since: float,
+    max_resolve: int,
+    broker=None,
+    now=None,
+    emit=print,
+) -> dict:
     now = now or time.time()
     out = root / "data" / "vector_direct"
     cache_p = out / f"fills_{venue}.json"
     cache = read_json(cache_p, {}) or {}
     rows = ledger_rows(out, venue, since, now)
-    calls, changed, stats = 0, False, {"ledger_orders": len(rows), "sent": 0, "ambiguous_errors": 0, "resolved_now": 0, "pending": 0, "blocked": None}
+    calls, changed, stats = (
+        0,
+        False,
+        {
+            "ledger_orders": len(rows),
+            "sent": 0,
+            "ambiguous_errors": 0,
+            "resolved_now": 0,
+            "pending": 0,
+            "blocked": None,
+        },
+    )
     for r in rows:
         status = r.get("status")
         if status == "SENT":
             stats["sent"] += 1
             oid = str((r.get("resp") or {}).get("orderId") or "")
-            ck = f"oid:{r.get('acct')}:{oid}" if oid else f"cid:{r.get('acct')}:{client_id(venue, r.get('key'))}"
+            ck = (
+                f"oid:{r.get('acct')}:{oid}"
+                if oid
+                else f"cid:{r.get('acct')}:{client_id(venue, r.get('key'))}"
+            )
         elif ambiguous_error(r):
             stats["ambiguous_errors"] += 1
             oid = ""
@@ -273,10 +381,19 @@ def export(venue: str, root: Path, since: float, max_resolve: int, broker=None, 
         if needs_resolve(cached) and calls < max_resolve and stats["blocked"] is None:
             if broker is None:
                 env = load_env(root)
-                broker = BinanceRO(env, out, trader_local_ip()) if venue == "crypto" else TradierRO(env)
+                broker = (
+                    BinanceRO(env, out, trader_local_ip())
+                    if venue == "crypto"
+                    else TradierRO(env)
+                )
             try:
                 calls += 1
-                got = broker.resolve(r["acct"], r["ss"], order_id=oid or None, client=None if oid else client_id(venue, r.get("key")))
+                got = broker.resolve(
+                    r["acct"],
+                    r["ss"],
+                    order_id=oid or None,
+                    client=None if oid else client_id(venue, r.get("key")),
+                )
                 got["resolved_at"] = time.time()
                 cache[ck] = got
                 cached, changed = got, True
@@ -285,15 +402,35 @@ def export(venue: str, root: Path, since: float, max_resolve: int, broker=None, 
             except Blocked as exc:
                 stats["blocked"] = str(exc)
             except Exception as exc:
-                stats.setdefault("errors", []).append(f"{r.get('acct')} {r.get('ss')}: {str(exc)[:120]}")
+                stats.setdefault("errors", []).append(
+                    f"{r.get('acct')} {r.get('ss')}: {str(exc)[:120]}"
+                )
         if status != "SENT" and not (cached or {}).get("found"):
             continue
         fill = cached if (cached or {}).get("found") else None
         if fill is None or needs_resolve(cached):
             stats["pending"] += 1
-        emit(json.dumps({"venue": venue, "acct": r.get("acct"), "ss": r.get("ss"), "act": r.get("act"), "why": r.get("why"), "key": r.get("key"),
-                         "ledger_ts": r.get("ts"), "ledger_iso": r.get("iso"), "ledger_status": status, "sent_mark": r.get("price"),
-                         "sent_qty": r.get("qty"), "resp": r.get("resp"), "fill": fill, "final": bool(fill) and not needs_resolve(cached)}, default=str))
+        emit(
+            json.dumps(
+                {
+                    "venue": venue,
+                    "acct": r.get("acct"),
+                    "ss": r.get("ss"),
+                    "act": r.get("act"),
+                    "why": r.get("why"),
+                    "key": r.get("key"),
+                    "ledger_ts": r.get("ts"),
+                    "ledger_iso": r.get("iso"),
+                    "ledger_status": status,
+                    "sent_mark": r.get("price"),
+                    "sent_qty": r.get("qty"),
+                    "resp": r.get("resp"),
+                    "fill": fill,
+                    "final": bool(fill) and not needs_resolve(cached),
+                },
+                default=str,
+            )
+        )
     if changed:
         atomic_write_json(cache_p, cache)
     stats["broker_calls"] = calls
@@ -309,7 +446,13 @@ def main(argv=None):
     ap.add_argument("--max-resolve", type=int, default=12)
     a = ap.parse_args(argv)
     now = time.time()
-    export(a.venue, Path(a.root).expanduser(), a.since or now - 2 * 86400, a.max_resolve, now=now)
+    export(
+        a.venue,
+        Path(a.root).expanduser(),
+        a.since or now - 2 * 86400,
+        a.max_resolve,
+        now=now,
+    )
     return 0
 
 

@@ -30,7 +30,7 @@ def cfg(min_hold_bars=2, before_exit=0, base_tf="15m", sole=False, scalp=False, 
     return type("C", (), {
         "BASE_TF": base_tf,
         "MIN_HOLD_BARS": min_hold_bars,
-        "MIN_HOLD_BEFORE_EXIT_PROTECTION_EXEMPT": protection,
+        "MIN_HOLD_PROTECTION_EXEMPT": protection,
         "SCALP_MODE": scalp,
         "SCALP_REDUCE_ENABLED": scalp,
     })
@@ -74,10 +74,23 @@ class OneNameOneValueTest(unittest.TestCase):
         self.assertNotIn("MIN_HOLD_BARS_BEFORE_EXIT",
                          getattr(V.QuickConfig, "__dataclass_fields__", {}) or {})
 
-    def test_the_alias_returns_the_same_one_value(self):
-        c = cfg(8)
-        self.assertEqual(g.before_exit_bars(c), g.threshold_bars(c))
-        self.assertEqual(g.before_exit_seconds(c), g.threshold_seconds(c))
+    def test_no_alias_survives_only_one_pair_of_functions(self):
+        """USER 2026-10-27: NOT 2 functions. The aliases are gone, not kept."""
+        self.assertFalse(hasattr(g, "before_exit_bars"))
+        self.assertFalse(hasattr(g, "before_exit_seconds"))
+        self.assertFalse(hasattr(g, "refuse_before_exit"))
+        self.assertFalse(hasattr(g, "refuse_before_exit_bars"))
+        self.assertTrue(callable(g.threshold_bars))
+        self.assertTrue(callable(g.threshold_seconds))
+
+    def test_the_name_is_erased_from_the_active_codebase(self):
+        """No SWITCH NAME may contain the retired name (comments may, as history)."""
+        import re as _re
+        for fn in ("config.py", "config_tradier.py", "v12_quick_engine.py"):
+            src = (ROOT / fn).read_text()
+            decls = _re.findall(r"^\s+(MIN_HOLD[A-Z_]*BEFORE_EXIT[A-Z_]*)\s*:", src, _re.M)
+            self.assertEqual(decls, [], f"{fn} still declares {decls}")
+
 
     def test_engine_has_exactly_one_min_hold_source(self):
         """No second function may set min_hold from a retired field."""

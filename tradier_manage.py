@@ -5082,7 +5082,6 @@ _FULL_COVERAGE_PARAMS = [
     "MINERVINI_GATE_ENABLED",
     "MIN_EXIT_TF_AGAINST_TRADIER",
     "MIN_HOLD_BARS",
-    "MIN_HOLD_BARS_BEFORE_EXIT",
     "MIN_PERC_FROM_SMA_1",
     "MIN_PERC_FROM_SMA_15",
     "MIN_QTY_FILE",
@@ -10022,7 +10021,6 @@ def _wire_625_live_reads(account_key, symbol, side):
         "MINERVINI_TARGET_PCT",
         "MIN_GAIN",
         "MIN_GAIN_TO_BUY_AGGRESSIVELY",
-        "MIN_HOLD_BARS_BEFORE_EXIT",
         "MIN_HOLD_BARS_TRADIER",
         "MIN_HOLD_MINUTES_TRADIER",
         "MIN_PERC_FROM_SMA_1",
@@ -29584,19 +29582,7 @@ def _apply_research_only_live_gates(
             return True, "MINERVINI_GATE_ENABLED_BLOCK"
     except Exception:
         pass
-    _v_min_hold_bars_before_exit = _cfg(
-        "MIN_HOLD_BARS_BEFORE_EXIT", 0, account_key, symbol, side
-    )
-    try:
-        if (
-            is_entry
-            and float(_v_min_hold_bars_before_exit or 0) != 0
-            and False
-            and os.environ.get("V8_FORCE_REAL", "0") != "1"
-        ):
-            return True, "MIN_HOLD_BARS_BEFORE_EXIT_BLOCK"
-    except Exception:
-        pass
+    # MIN_HOLD_BARS_BEFORE_EXIT_BLOCK ERASED 2026-10-27 (USER: one permitted name). It was `and False` — permanently dead, so no stocks behaviour changes.
     _v_min_perc_from_sma_1 = _cfg("MIN_PERC_FROM_SMA_1", 0, account_key, symbol, side)
     try:
         if (
@@ -32236,7 +32222,7 @@ def _v12_lifecycle_context(resolver):
     mode = str(_r("MODE", "tradier") or "tradier")
     base_tf = str(_r("BASE_TF", "5m") or "5m")
     cooldown_bars = int(_r("COOLDOWN_BARS_TRADIER", _r("COOLDOWN_BARS", 0)) or 0)
-    min_hold_bars = int(_r("MIN_HOLD_BARS_BEFORE_EXIT", _r("MIN_HOLD_BARS", 0)) or 0)
+    min_hold_bars = int(_r("MIN_HOLD_BARS", 0) or 0)  # MIN_HOLD_BARS_BEFORE_EXIT ERASED 2026-10-27 — USER: "MIN_HOLD_BARS is the ONLY permitted one MIN_HOLD_BARS_BEFORE_EXIT is to be erased from the entire codebase". This already resolved to MIN_HOLD_BARS via its fallback, so the value is unchanged.
     # tradier needs at least 6?
     if mode == "tradier" and min_hold_bars < 6:
         # per test: 4 -> 6
@@ -37643,10 +37629,6 @@ class StockStrategy:
                             "MIN_HOLD_BARS": _cfg_auto(
                                 "MIN_HOLD_BARS",
                                 getattr(self.config, "MIN_HOLD_BARS", 10),
-                            ),
-                            "MIN_HOLD_BARS_BEFORE_EXIT": _cfg_auto(
-                                "MIN_HOLD_BARS_BEFORE_EXIT",
-                                getattr(self.config, "MIN_HOLD_BARS_BEFORE_EXIT", 0),
                             ),
                         }
                     )

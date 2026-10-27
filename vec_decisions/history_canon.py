@@ -14,6 +14,7 @@ Writers of a history file since 2026-10-27:
 Rows are never deleted or rewritten (history is audit). Readers call canonical() instead, which drops exactly those shadows.
 A file without order rows is returned unchanged (only order rows can claim shadows), so legacy behaviour is untouched.
 """
+
 from __future__ import annotations
 
 import datetime as _dt
@@ -118,7 +119,9 @@ def classify(rows: list) -> dict:
             if n in claimed or _cls(rows[n]) != oc or not _same_qty(_qty(rows[n]), oq):
                 continue
             d = t[n] - t[o]
-            if -ECHO_BEFORE_S <= d <= ECHO_AFTER_S and (best is None or abs(d) < best[1]):
+            if -ECHO_BEFORE_S <= d <= ECHO_AFTER_S and (
+                best is None or abs(d) < best[1]
+            ):
                 best = (n, abs(d))
         if best:
             claimed.add(best[0])
@@ -136,7 +139,7 @@ def classify(rows: list) -> dict:
             for b in range(a, min(len(win), a + 4)):
                 s += _cls(rows[win[b]]) * _qty(rows[win[b]])
                 if b > a and _same_qty(s, signed_n) and (s > 0) == (signed_n > 0):
-                    hit = win[a:b + 1]
+                    hit = win[a : b + 1]
                     break
             if hit:
                 break
@@ -153,8 +156,13 @@ def classify(rows: list) -> dict:
             g = rows[e]
             if shadows.get(e, ("",))[0] not in ("FILL_ECHO", "NET_ECHO"):
                 continue
-            if 0 < t[n] - t[e] <= RELOG_WINDOW_S and str(g.get("type")) == str(h.get("type")) and _qty(g) == _qty(h) \
-                    and g.get("reason") == h.get("reason") and g.get("indicators") == h.get("indicators"):
+            if (
+                0 < t[n] - t[e] <= RELOG_WINDOW_S
+                and str(g.get("type")) == str(h.get("type"))
+                and _qty(g) == _qty(h)
+                and g.get("reason") == h.get("reason")
+                and g.get("indicators") == h.get("indicators")
+            ):
                 shadows[n] = ("RESTART_RELOG", shadows[e][1])
                 break
     return shadows

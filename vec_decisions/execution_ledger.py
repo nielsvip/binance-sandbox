@@ -112,7 +112,8 @@ def external_echo(path, trade_type, qty, now_ts=None):
     same broker change and would log it again (echo, 13-857 s late) or re-log it after a restart (no broker trade then).
     True = this position-change row is that echo: an external order row of the same side-class and qty (0.5 %) is on disk
     and not yet echoed (window 1800 s). In Mac PAPER mode (data/MAC_PAPER_TRADING: the Mac cannot fill) any matching external
-    order row within 6 h suffices, which also stops restart re-logs. Kill switch env HISTORY_EXTERNAL_ECHO_GUARD=0."""
+    order row within 6 h suffices, which also stops restart re-logs. Kill switch env HISTORY_EXTERNAL_ECHO_GUARD=0.
+    """
     try:
         if os.environ.get("HISTORY_EXTERNAL_ECHO_GUARD") == "0":
             return False
@@ -123,7 +124,9 @@ def external_echo(path, trade_type, qty, now_ts=None):
         q = abs(float(qty))
         now_ts = time.time() if now_ts is None else now_ts
         d, paper = os.path.dirname(os.path.abspath(str(path))), False
-        for _ in range(6):  # <BASE>/data/history/<acct>/x.jsonl and <BASE>/data/tradier/history/<acct>/x.jsonl
+        for _ in range(
+            6
+        ):  # <BASE>/data/history/<acct>/x.jsonl and <BASE>/data/tradier/history/<acct>/x.jsonl
             d = os.path.dirname(d)
             if os.path.exists(os.path.join(d, "data", "MAC_PAPER_TRADING")):
                 paper = True
@@ -132,12 +135,18 @@ def external_echo(path, trade_type, qty, now_ts=None):
         ext, native = [], []
         for rec in _history_rows_back(path):
             rt = str(rec.get("type", "") or "").upper()
-            rcls = 1 if rt in _OPEN_TYPES or rt in ("QUICK_OPEN", "QUICK_AUGMENT") else (-1 if rt in _CLOSE_TYPES else 0)
+            rcls = (
+                1
+                if rt in _OPEN_TYPES or rt in ("QUICK_OPEN", "QUICK_AUGMENT")
+                else (-1 if rt in _CLOSE_TYPES else 0)
+            )
             if rcls != cls:
                 continue
             try:
                 rq = abs(float(rec.get("qty") or 0))
-                rts = datetime.fromisoformat(str(rec.get("ts", "")).replace("Z", "+00:00")).timestamp()
+                rts = datetime.fromisoformat(
+                    str(rec.get("ts", "")).replace("Z", "+00:00")
+                ).timestamp()
             except Exception:
                 continue
             if now_ts - rts > horizon + 120:
@@ -145,10 +154,15 @@ def external_echo(path, trade_type, qty, now_ts=None):
             if abs(rq - q) > max(1e-9, max(rq, q) * 0.005):
                 continue
             prov = rec.get("prov") if isinstance(rec.get("prov"), dict) else {}
-            if rec.get("order_id") not in (None, "") and str(prov.get("src") or "") in _EXTERNAL_SRCS:
+            if (
+                rec.get("order_id") not in (None, "")
+                and str(prov.get("src") or "") in _EXTERNAL_SRCS
+            ):
                 if now_ts - rts <= horizon:
                     ext.append(rts)
-            elif rec.get("order_id") in (None, "") and not str(rec.get("reason") or "").startswith("BROKER_RECONCILED"):
+            elif rec.get("order_id") in (None, "") and not str(
+                rec.get("reason") or ""
+            ).startswith("BROKER_RECONCILED"):
                 native.append(rts)
         if not ext:
             return False

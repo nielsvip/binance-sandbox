@@ -149,7 +149,6 @@ TRADIER_NO_DATA_FLIPS = {
 # extreme cherry-picking from forcing all losers to be held until recovery.
 HOLD_BAR_CAPS = {
     "MIN_HOLD_BARS":              {"tradier": 78, "crypto": 240},
-    "MIN_HOLD_BARS_BEFORE_EXIT":  {"tradier": 78, "crypto": 240},
     "REGIME_TRENDING_MIN_HOLD_BARS": {"tradier": 78, "crypto": 240},
     "REGIME_RANGING_MIN_HOLD_BARS":  {"tradier": 78, "crypto": 240},
 }

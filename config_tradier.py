@@ -87,7 +87,7 @@ class TradierConfig:
     VEC_CROSS_CONFIRM_REQUIRES_BOARD: bool = (
         True  # USER 2026-10-27 "NO trade can take place that is not in the html chart rolled forward to this moment. Ever." vector_enforce.CROSS_PATTERNS granted authority by SUBSTRING on the reason label ("BREAK" let BREAK_EVEN_GUARD_EXIT through, "LH_LL" let LH_LL_TOP_EXIT through) — the reason-string bypass CLAUDE.md forbids. True = the rolled-forward board (data/forward_state) must sanction the action; UNKNOWN/stale board refuses. Stops/emergencies/bookkeeping are classified earlier and never reach it. Measured: 94 native stock closes / $154,440 in 7d on accounts only 1.1% board-confirmed. False restores label authority.
     )
-    MIN_HOLD_BEFORE_EXIT_PROTECTION_EXEMPT: bool = (
+    MIN_HOLD_PROTECTION_EXEMPT: bool = (
         True  # USER 2026-10-27: "MIN_HOLD_BARS_BEFORE_EXIT need to be independent and only overridden by fixed_stop". Implemented exactly: FIXED_STOP is the only STRATEGY-side override. This flag keeps ACCOUNT protection (LIQUIDAT/MARGIN/EMERGENCY/BALANCE_FLOOR) exempt as well, because holding a position through a margin kill to honour a bar count would lose the account and CLAUDE.md's "exits never blocked" exists for that case. Set False for a literally fixed_stop-only hold — an operator decision with eyes open.
     )
     MIN_HOLD_SOLE_SWITCH_ENABLED: bool = (

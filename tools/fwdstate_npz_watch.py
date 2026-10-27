@@ -211,6 +211,8 @@ def main():
                     cls = 1
                 elif not last[3] and now - last[4] >= RETRY_S and last[5] < 1 and not (_is_crypto(symbol_side) and (tail or 0) < expected_tail):
                     cls = 2
+                elif mtime and last[2] and mtime[1] != last[2][1]:
+                    cls = 0 if symbol_side in held else 1  # same-bar correction appended to the sidecar (replace_latest)
                 elif mtime != last[2] and now - last[4] >= REWRITE_MIN_S:
                     cls = 3
                 else:

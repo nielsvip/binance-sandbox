@@ -20,6 +20,7 @@ An order whose fill price is not yet known is NOT written with a guessed price: 
 launchd: ~/Library/LaunchAgents/com.binance.vector-direct-history-import.plist (StartInterval 30, Nice 10). Kill switch:
 data/vector_direct_history/DISABLED. Audit: `--audit` prints the shadow classification of every history file with order rows.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -36,7 +37,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "data" / "vector_direct_history"
 HOSTS = {"crypto": ("s1", "S1_VECTOR_DIRECT"), "stocks": ("s5", "S5_VECTOR_DIRECT")}
-SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "-o", "ServerAliveInterval=10", "-o", "ServerAliveCountMax=2"]
+SSH = [
+    "ssh",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "ConnectTimeout=10",
+    "-o",
+    "ServerAliveInterval=10",
+    "-o",
+    "ServerAliveCountMax=2",
+]
 ACCT_RE = re.compile(r"^[a-z]{2,8}$")
 SS_RE = re.compile(r"^[A-Z0-9]{1,30}_(LONG|SHORT)$")
 ACTS = ("OPEN", "CLOSE", "AUGMENT", "REDUCE")
@@ -63,15 +74,24 @@ def atomic_write_json(p: Path, payload) -> None:
 
 
 def remote_cmd(venue: str, since: float, max_resolve: int) -> str:
-    return ("cd ~/binance && P=python3; [ -x ~/.conda/envs/binance_env_mac/bin/python ] && P=~/.conda/envs/binance_env_mac/bin/python; "
-            f"$P tools/vector_direct_fill_export.py --venue {venue} --since {since:.0f} --max-resolve {int(max_resolve)}")
+    return (
+        "cd ~/binance && P=python3; [ -x ~/.conda/envs/binance_env_mac/bin/python ] && P=~/.conda/envs/binance_env_mac/bin/python; "
+        f"$P tools/vector_direct_fill_export.py --venue {venue} --since {since:.0f} --max-resolve {int(max_resolve)}"
+    )
 
 
 def fetch(venue: str, since: float, max_resolve: int, timeout: float = 90.0) -> tuple:
     host = HOSTS[venue][0]
-    p = subprocess.run(SSH + [host, remote_cmd(venue, since, max_resolve)], capture_output=True, text=True, timeout=timeout)
+    p = subprocess.run(
+        SSH + [host, remote_cmd(venue, since, max_resolve)],
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+    )
     if p.returncode != 0:
-        raise RuntimeError(f"ssh {host} rc={p.returncode}: {(p.stderr or p.stdout)[-300:]}")
+        raise RuntimeError(
+            f"ssh {host} rc={p.returncode}: {(p.stderr or p.stdout)[-300:]}"
+        )
     recs, stats = [], None
     for line in p.stdout.splitlines():
         try:
@@ -90,7 +110,11 @@ def fetch(venue: str, since: float, max_resolve: int, timeout: float = 90.0) -> 
 def build_row(rec: dict, src: str) -> dict | None:
     """History row for one exported order, or None when it did not fill (or is not a valid order record). Pure."""
     f = rec.get("fill") or {}
-    acct, ss, act = str(rec.get("acct") or ""), str(rec.get("ss") or ""), str(rec.get("act") or "").upper()
+    acct, ss, act = (
+        str(rec.get("acct") or ""),
+        str(rec.get("ss") or ""),
+        str(rec.get("act") or "").upper(),
+    )
     if not (ACCT_RE.match(acct) and SS_RE.match(ss) and act in ACTS and f.get("found")):
         return None
     q = float(f.get("exec_qty") or 0.0)
@@ -103,11 +127,34 @@ def build_row(rec: dict, src: str) -> dict | None:
     t = float(f.get("fill_ms") or 0) / 1000.0 or float(rec.get("ledger_ts") or 0)
     quote = float(f.get("quote") or 0.0) or q * px
     why = str(rec.get("why") or "")
-    return {"ts": iso(t), "type": act, "qty": round(q, 8), "price": round(px, 10), "value": round(quote, 2), "reason": why,
-            "order_id": oid, "indicators": {"price": round(px, 10)},
-            "prov": {"v": 1, "src": src, "label": why[:160], "switch": "VECTOR_DIRECT", "cand": None, "filters": [], "tf": "15m", "set_id": None, "ev": act},
-            "venue": rec.get("venue"), "client_order_id": f.get("client_order_id"), "broker_status": f.get("status"), "ledger_key": rec.get("key"),
-            "sent_ts": rec.get("ledger_iso"), "sent_mark": rec.get("sent_mark"), "fill_src": f.get("src")}
+    return {
+        "ts": iso(t),
+        "type": act,
+        "qty": round(q, 8),
+        "price": round(px, 10),
+        "value": round(quote, 2),
+        "reason": why,
+        "order_id": oid,
+        "indicators": {"price": round(px, 10)},
+        "prov": {
+            "v": 1,
+            "src": src,
+            "label": why[:160],
+            "switch": "VECTOR_DIRECT",
+            "cand": None,
+            "filters": [],
+            "tf": "15m",
+            "set_id": None,
+            "ev": act,
+        },
+        "venue": rec.get("venue"),
+        "client_order_id": f.get("client_order_id"),
+        "broker_status": f.get("status"),
+        "ledger_key": rec.get("key"),
+        "sent_ts": rec.get("ledger_iso"),
+        "sent_mark": rec.get("sent_mark"),
+        "fill_src": f.get("src"),
+    }
 
 
 def file_has_order(p: Path, oid: str) -> bool:
@@ -138,7 +185,9 @@ def append_row(hist: Path, row: dict) -> Path:
     return p
 
 
-def ingest(venue: str, recs: list, state: dict, hist: Path, now: float, audit_log=None) -> dict:
+def ingest(
+    venue: str, recs: list, state: dict, hist: Path, now: float, audit_log=None
+) -> dict:
     """Append every filled, not yet imported order. Returns counts. Mutates state['imported'] / state['pending']."""
     src = HOSTS[venue][1]
     imported = state.setdefault("imported", {})
@@ -149,7 +198,17 @@ def ingest(venue: str, recs: list, state: dict, hist: Path, now: float, audit_lo
         lk = f"{venue}:{rec.get('key')}"
         if not f.get("found") or not rec.get("final"):
             if rec.get("ledger_status") == "SENT":
-                pend.setdefault(lk, {"first_seen": now, "acct": rec.get("acct"), "ss": rec.get("ss"), "act": rec.get("act"), "ledger_iso": rec.get("ledger_iso"), "order_id": (rec.get("resp") or {}).get("orderId")})
+                pend.setdefault(
+                    lk,
+                    {
+                        "first_seen": now,
+                        "acct": rec.get("acct"),
+                        "ss": rec.get("ss"),
+                        "act": rec.get("act"),
+                        "ledger_iso": rec.get("ledger_iso"),
+                        "order_id": (rec.get("resp") or {}).get("orderId"),
+                    },
+                )
                 out["pending"] += 1
             continue
         pend.pop(lk, None)
@@ -171,7 +230,10 @@ def ingest(venue: str, recs: list, state: dict, hist: Path, now: float, audit_lo
         imported[ik] = {"ts": now, "fill_ts": row["ts"], "ss": rec["ss"]}
         out["appended"] += 1
         if audit_log is not None:
-            audit_log({k: v for k, v in row.items() if not k.startswith("_")} | {"acct": rec["acct"], "ss": rec["ss"], "imported_at": iso(now)})
+            audit_log(
+                {k: v for k, v in row.items() if not k.startswith("_")}
+                | {"acct": rec["acct"], "ss": rec["ss"], "imported_at": iso(now)}
+            )
     cut = now - 8 * 86400
     for k in [k for k, v in imported.items() if float(v.get("ts") or 0) < cut]:
         imported.pop(k, None)
@@ -185,7 +247,9 @@ def run_once(venues, max_resolve: int, now=None, fetcher=fetch, hist=None) -> di
     state_p = OUT / "import_state.json"
     state = read_json(state_p, {}) or {}
     status = read_json(OUT / "status.json", {}) or {}
-    log_p = OUT / f"import_{dt.datetime.fromtimestamp(now, dt.timezone.utc):%Y-%m-%d}.jsonl"
+    log_p = (
+        OUT / f"import_{dt.datetime.fromtimestamp(now, dt.timezone.utc):%Y-%m-%d}.jsonl"
+    )
 
     def audit_log(r):
         with open(log_p, "a") as fh:
@@ -201,9 +265,15 @@ def run_once(venues, max_resolve: int, now=None, fetcher=fetch, hist=None) -> di
             vs["last_ok"] = now
         except Exception as exc:
             st.update(ok=False, error=f"{type(exc).__name__}: {str(exc)[:300]}")
-        old = [dict(v, key=k) for k, v in (vs.get("pending") or {}).items() if now - float(v.get("first_seen") or now) > PENDING_ALERT_S]
+        old = [
+            dict(v, key=k)
+            for k, v in (vs.get("pending") or {}).items()
+            if now - float(v.get("first_seen") or now) > PENDING_ALERT_S
+        ]
         st["pending_over_15min"] = old[:20]
-        st["last_ok_age_s"] = round(now - float(vs.get("last_ok") or 0)) if vs.get("last_ok") else None
+        st["last_ok_age_s"] = (
+            round(now - float(vs.get("last_ok") or 0)) if vs.get("last_ok") else None
+        )
         status[venue] = st
     atomic_write_json(state_p, state)
     atomic_write_json(OUT / "status.json", status)
@@ -238,7 +308,18 @@ def audit(hist=None) -> dict:
         for i, (cause, oid) in sorted(sh.items()):
             rep["shadows"][cause] = rep["shadows"].get(cause, 0) + 1
             h = rows[i]
-            rep["detail"].append({"file": f"{p.parent.name}/{p.name}", "ts": h.get("ts"), "type": h.get("type"), "qty": h.get("qty"), "price": h.get("price"), "reason": str(h.get("reason") or "")[:60], "cause": cause, "order_id": oid})
+            rep["detail"].append(
+                {
+                    "file": f"{p.parent.name}/{p.name}",
+                    "ts": h.get("ts"),
+                    "type": h.get("type"),
+                    "qty": h.get("qty"),
+                    "price": h.get("price"),
+                    "reason": str(h.get("reason") or "")[:60],
+                    "cause": cause,
+                    "order_id": oid,
+                }
+            )
     return rep
 
 
@@ -246,7 +327,11 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--venues", default="crypto,stocks")
     ap.add_argument("--max-resolve", type=int, default=12)
-    ap.add_argument("--audit", action="store_true", help="print the shadow classification of history files with order rows, then exit")
+    ap.add_argument(
+        "--audit",
+        action="store_true",
+        help="print the shadow classification of history files with order rows, then exit",
+    )
     a = ap.parse_args(argv)
     if a.audit:
         rep = audit()
@@ -263,7 +348,20 @@ def main(argv=None) -> int:
         return 0
     venues = [v for v in a.venues.split(",") if v in HOSTS]
     st = run_once(venues, a.max_resolve)
-    print(f"[{iso(time.time())}] " + " | ".join(f"{v}: ok={s.get('ok')} app={s.get('appended')} already={s.get('already')} pend={s.get('pending')} {s.get('error') or ''}" for v, s in st.items() if v in venues), flush=True)
+    if any(
+        s.get("appended") or s.get("pending") or not s.get("ok")
+        for v, s in st.items()
+        if v in venues
+    ):
+        print(
+            f"[{iso(time.time())}] "
+            + " | ".join(
+                f"{v}: ok={s.get('ok')} app={s.get('appended')} already={s.get('already')} pend={s.get('pending')} {s.get('error') or ''}"
+                for v, s in st.items()
+                if v in venues
+            ),
+            flush=True,
+        )
     return 0
 
 
