@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-27 09:12:46 UTC
+# Copilot Status — 2026-10-27 09:18:01 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] flz — 2026-10-27T09:10:44
-- **STALE_INDICATORS** [tradier]  — 2026-10-27T09:11:45
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T09:11:45
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T09:11:45
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-27T09:11:45
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-27T09:11:45
-- **RATIO_IMBALANCE** [crypto] flz — 2026-10-27T09:11:45
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-27T09:12:46
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-27T09:12:46
-- **RATIO_IMBALANCE** [crypto] flz — 2026-10-27T09:12:46
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-27T09:15:48
+- **RATIO_IMBALANCE** [crypto] flz — 2026-10-27T09:15:48
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-27T09:16:49
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-27T09:16:49
+- **RATIO_IMBALANCE** [crypto] flz — 2026-10-27T09:16:49
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T09:17:50
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T09:17:50
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-27T09:17:50
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-27T09:17:50
+- **RATIO_IMBALANCE** [crypto] flz — 2026-10-27T09:17:50
 
 ## Missed Trades (trader comparison)
 
@@ -30,9 +30,9 @@ _None_
 **Held:** 4 | **Watching for reentry:** 11 | **Reentered:** 0
 
 - HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +-0.2%
-- HELD: **MINAUSDT** SHORT (crypto) peak +4.2%, now +-0.1%
-- HELD: **UNIUSDC** LONG (crypto) peak +4.1%, now +-0.3%
-- HELD: **BNBUSDC** SHORT (crypto) peak +3.0%, now +0.2%
+- HELD: **MINAUSDT** SHORT (crypto) peak +4.2%, now +0.2%
+- HELD: **UNIUSDC** LONG (crypto) peak +4.1%, now +-0.6%
+- HELD: **BNBUSDC** SHORT (crypto) peak +3.0%, now +0.3%
 
 - WATCHING: **KMNOUSDT** LONG (crypto) peaked +11.7%, exited 0m ago
 - WATCHING: **BBUSDT** SHORT (crypto) peaked +8.8%, exited 0m ago
@@ -50,7 +50,7 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [MEDIUM] tradier_manage.py for trc is NOT running
+- [HIGH] ez_indicators.py is NOT running
 - [LOW] tradier_prices.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
