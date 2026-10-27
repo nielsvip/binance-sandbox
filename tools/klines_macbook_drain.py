@@ -13,7 +13,11 @@ an emptied buffer falls through to the big store.
 Since 2026-10-27 the Mac pushes only a rolling TAIL per file (tools/klines_tail_stage.py), so the buffer is small; deleting
 a tail just makes the Mac resend it, so --min-mb (default 3) keeps tails and drains the legacy full copies.
 
-usage: klines_macbook_drain.py [--apply] [--min-mb 3] [--min-age-s 300]
+The Mac's tails land in klines_cache_macbook_inbox/ (rsync delta, never deleted there) and --merge-inbox folds each changed
+tail into klines_cache_macbook/<same path> (union by timestamp, the newer Mac row wins on the same timestamp), so a file that
+still holds un-appended history keeps it and every reader sees exactly what it saw before.
+
+usage: klines_macbook_drain.py [--merge-inbox] [--drain] [--apply] [--min-mb 3] [--min-age-s 300]
 """
 import argparse
 import json
@@ -26,6 +30,8 @@ REPO = Path(__file__).resolve().parent.parent
 MACBOOK = REPO / "klines_cache_macbook"
 TARGET = REPO / "klines_cache_backtest"
 CANONICAL = REPO / "klines_canonical"
+INBOX = REPO / "klines_cache_macbook_inbox"
+MERGED_STAMP = INBOX / ".merged_mtimes.json"
 LOG = Path.home() / "logs" / "klines_macbook_drain.jsonl"
 
 
@@ -48,12 +54,60 @@ def log(rec: dict):
         pass
 
 
+def merge_inbox(apply: bool) -> dict:
+    """Fold every inbox tail changed since its last merge into the macbook buffer (atomic write)."""
+    try:
+        done = json.loads(MERGED_STAMP.read_text())
+    except Exception:
+        done = {}
+    c = {"inbox": 0, "merged": 0, "created": 0, "unchanged": 0, "bad": 0, "bars_added": 0}
+    for p in list(INBOX.glob("*_*.json")) + list(INBOX.glob("tradier/*_*.json")) if INBOX.exists() else []:
+        c["inbox"] += 1
+        rel = str(p.relative_to(INBOX))
+        m = p.stat().st_mtime
+        if done.get(rel) == m:
+            c["unchanged"] += 1
+            continue
+        tail = load(p)
+        if not tail:
+            c["bad"] += 1
+            continue
+        out = MACBOOK / rel
+        cur = load(out) if out.exists() else []
+        if cur is None:
+            cur = []
+        by = {b.get("timestamp"): b for b in cur if isinstance(b, dict) and b.get("timestamp")}
+        n0 = len(by)
+        for b in tail:
+            if isinstance(b, dict) and b.get("timestamp"):
+                by[b["timestamp"]] = b
+        c["bars_added"] += len(by) - n0
+        if apply:
+            out.parent.mkdir(parents=True, exist_ok=True)
+            tmp = out.with_name(out.name + ".tmp")
+            tmp.write_text(json.dumps([by[k] for k in sorted(by)], separators=(",", ":")))
+            os.replace(tmp, out)
+            done[rel] = m
+        c["created" if not cur else "merged"] += 1
+    if apply:
+        tmp = MERGED_STAMP.with_name(MERGED_STAMP.name + ".tmp")
+        tmp.write_text(json.dumps(done))
+        os.replace(tmp, MERGED_STAMP)
+    return c
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
+    ap.add_argument("--merge-inbox", action="store_true")
+    ap.add_argument("--drain", action="store_true", help="(default when --merge-inbox is not given)")
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--min-mb", type=float, default=3.0)
     ap.add_argument("--min-age-s", type=float, default=300.0)
     a = ap.parse_args(argv)
+    if a.merge_inbox:
+        log({"event": "merge_inbox" if a.apply else "merge_inbox_dry_run", **merge_inbox(a.apply)})
+        if not a.drain:
+            return 0
     if not MACBOOK.exists():
         return 0
     files = sorted(list(MACBOOK.glob("*_*.json")) + list(MACBOOK.glob("tradier/*_*.json")))
