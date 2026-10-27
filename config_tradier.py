@@ -87,6 +87,9 @@ class TradierConfig:
     VEC_CROSS_CONFIRM_REQUIRES_BOARD: bool = (
         True  # USER 2026-10-27 "NO trade can take place that is not in the html chart rolled forward to this moment. Ever." vector_enforce.CROSS_PATTERNS granted authority by SUBSTRING on the reason label ("BREAK" let BREAK_EVEN_GUARD_EXIT through, "LH_LL" let LH_LL_TOP_EXIT through) — the reason-string bypass CLAUDE.md forbids. True = the rolled-forward board (data/forward_state) must sanction the action; UNKNOWN/stale board refuses. Stops/emergencies/bookkeeping are classified earlier and never reach it. Measured: 94 native stock closes / $154,440 in 7d on accounts only 1.1% board-confirmed. False restores label authority.
     )
+    MIN_HOLD_SOLE_SWITCH_ENABLED: bool = (
+        False  # USER 2026-10-27 ordered MIN_HOLD_BARS swept at 0/1/2/4/8 on every crypto. MEASURED BLOCKER: the effective hold is max(MIN_HOLD_BARS, MIN_HOLD_BARS_BEFORE_EXIT) and BEFORE_EXIT defaults to 10, so every option <=8 is masked and the sweep reports structural zeros (Bible 14.3) — MIN_HOLD_BARS is already a dead switch in vec today (3 always masked by 10). True makes MIN_HOLD_BARS the SOLE driver so the five options bind. Shipped False: flipping it re-bases a hold that live positions are currently held on, and it neutralises MIN_HOLD_BARS_BEFORE_EXIT (swept 10..48, promoted on many boards), which needs the operator's call. Both arms are measured and reported.
+    )
     MIN_HOLD_BARS: int = 10  # parity 2026-08-17: vector->live (was vector-only)
     MODE: str = "tradier"
     # ═══ VIGILANCE GUARD — USER EXTREME VIGILANCE MANDATE 2026-09-28 (stocks) ═══

@@ -64,6 +64,9 @@ class Config:
     FORCE_MIN_ONE_TRADE: bool = (
         False  # lane L1 2026-10-04 LIVE_MIRROR honest-0: vec-only synthetic (v12 forces first-bar entry when no signals); live NEVER forces trades — no live hook by design (§17 parity default only, = QuickConfig False).
     )
+    MIN_HOLD_SOLE_SWITCH_ENABLED: bool = (
+        False  # USER 2026-10-27 ordered MIN_HOLD_BARS swept at 0/1/2/4/8 on every crypto. MEASURED BLOCKER: the effective hold is max(MIN_HOLD_BARS, MIN_HOLD_BARS_BEFORE_EXIT) and BEFORE_EXIT defaults to 10, so every option <=8 is masked and the sweep reports structural zeros (Bible 14.3) — MIN_HOLD_BARS is already a dead switch in vec today (3 always masked by 10). True makes MIN_HOLD_BARS the SOLE driver so the five options bind. Shipped False: flipping it re-bases a hold that live positions are currently held on, and it neutralises MIN_HOLD_BARS_BEFORE_EXIT (swept 10..48, promoted on many boards), which needs the operator's call. Both arms are measured and reported.
+    )
     MIN_HOLD_BARS: int = (
         3  # 2026-09-07 UNLOCK lower hold per user — was 10 (30min at 3m). Lowered to 3 (9min) to let exits fire faster; FLZ per_sym still overrides to 48 where proven — this lowers the default floor for all non-per_sym and new symbols. ROLLBACK: 10.
     )

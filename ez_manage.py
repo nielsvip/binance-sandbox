@@ -6,6 +6,7 @@ import parity_exact_gate as _peg  # 2026-10-10 USER TOTAL PARITY: exact-mode nat
 import stale_set_halt as _stale_set_halt  # 2026-10-14 USER STALE-SET 2-LOSS HALT (BIBLE §102): vector >10d old + 2 losing closes -> sym_side entries halted until a fresh board is applied
 import exit_guarantee as _xg  # 2026-10-14 USER EXITS NEVER COMPROMISED: full close never refused (FORCE leg), reduce retry, ledger once per confirmed fill
 import vec_decisions.qty_quantizers as _qq  # 2026-10-16 USER STDEV 1-5x ladder + streak quantizer: same code as v12_quick_engine/tradier_manage
+import vec_decisions.min_hold_gate as _mhg  # 2026-10-27 the ONE min-hold definition, shared with v12_quick_engine (identity by construction)
 import paper_nonvec as _paper_nv  # 2026-10-17 USER: live-only decisions refused + paper-traded next to the vector trades
 import ez_positions_service as _eps  # USER 2026-10-26: the position store IS the source of truth (positions_truth.py deleted)
 from utils import await_abandonable, AbandonTimeout  # USER 2026-10-26: generic never-hang timeout (moved out of positions_truth.py)
@@ -54351,8 +54352,22 @@ async def process_position(
         _pp_age_min_for_hold = _pp_age_sec_for_hold / 60.0
     except Exception:
         pass
-    _min_hold_bars_for_exit = int(_psym_get(symbol, position_side, "MIN_HOLD_BARS_BEFORE_EXIT", getattr(config, "MIN_HOLD_BARS_BEFORE_EXIT", 10)) if position else getattr(config, "MIN_HOLD_BARS_BEFORE_EXIT", 10))
-    _min_hold_sec_for_exit = _min_hold_bars_for_exit * 180.0
+    # 2026-10-27 USER "this has to be IDENTICAL in vec and live". MEASURED BUG:
+    # this multiplied the bar count by 180.0 — a 3-minute-bar assumption — while
+    # BASE_TF is 15m on both sides and v12_quick_engine holds the same 10 bars
+    # for 150 min. Live therefore held 30 min and could exit FIVE TIMES sooner
+    # than the board that authorized the position ever simulated, which is churn
+    # the board never priced (measured 825 closes/day, fees 44% of the bleed).
+    # The threshold now comes from vec_decisions/min_hold_gate — the ONE
+    # definition the vector calls — so the two cannot drift again. Per-sym
+    # overrides still apply: they are read into a shim the shared reader sees.
+    class _MinHoldCfgShim:
+        BASE_TF = str(_psym_get(symbol, position_side, "BASE_TF", getattr(config, "BASE_TF", "15m")) or "15m")
+        MIN_HOLD_BARS = int(_psym_get(symbol, position_side, "MIN_HOLD_BARS", getattr(config, "MIN_HOLD_BARS", 3)) or 0)
+        MIN_HOLD_BARS_BEFORE_EXIT = int(_psym_get(symbol, position_side, "MIN_HOLD_BARS_BEFORE_EXIT", getattr(config, "MIN_HOLD_BARS_BEFORE_EXIT", 10)) or 0)
+        MIN_HOLD_SOLE_SWITCH_ENABLED = bool(_psym_get(symbol, position_side, "MIN_HOLD_SOLE_SWITCH_ENABLED", getattr(config, "MIN_HOLD_SOLE_SWITCH_ENABLED", False)))
+    _min_hold_bars_for_exit = _mhg.threshold_bars(_MinHoldCfgShim)
+    _min_hold_sec_for_exit = _mhg.threshold_seconds(_MinHoldCfgShim)
     _min_hold_ok_for_exit = _pp_age_sec_for_hold >= _min_hold_sec_for_exit
     # 2026-09-07 DC_15m OVERRIDE per user unlock — dc_15m_low/high break bypasses min_hold (structural breakdown). Evaluated lazily via _dc_15m_hold_override().
     _dc_15m_override_cache = {}

@@ -74,6 +74,7 @@ except Exception:
 # Every switch predicate must live in vec_decisions and be called by v12_quick,
 # not re-implemented inline. This block is verified by tools/hooks/persistent_v12_hooks.py.
 import vec_decisions.breakout_opener
+import vec_decisions.min_hold_gate as _min_hold_gate  # 2026-10-27 the ONE min-hold definition, shared with ez_manage (identity by construction)
 import vec_decisions.htf_signal_consume  # 2026-10-13 V17 TF law: HTF signal instance + LTF-confirmed retry with monotone tightening
 import vec_decisions.fixed_stop  # 2026-10-12 FIXED_STOP non-negotiable frozen stop core
 import vec_decisions.reentry_crossback  # 2026-10-20 USER LAW: reentry only after the exit price is crossed back
@@ -17568,7 +17569,14 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         else cfg.COOLDOWN_BARS
     )
     bmin = _bar_minutes(cfg)
-    min_hold = max(cfg.MIN_HOLD_BARS, getattr(cfg, "MIN_HOLD_BARS_BEFORE_EXIT", 0))
+    # 2026-10-27 USER "this has to be IDENTICAL in vec and live": the min hold is
+    # no longer composed here. vec_decisions/min_hold_gate.threshold_bars() is the
+    # ONE definition both this engine and ez_manage call, so the two cannot drift.
+    # Value is unchanged at defaults (max(3, 10) = 10 bars) — this is a
+    # single-sourcing change here and a 5x CORRECTION on the live side, which was
+    # turning the same bar count into seconds at *180 (a 3-minute-bar assumption)
+    # and holding 30 min against this engine's 150 min.
+    min_hold = _min_hold_gate.threshold_bars(cfg)
     # SIMPLE_PRICE_GT0 — ridiculously simple price>0 test (never fails) — bypass all holds/cooldown, entry every bar, exit next bar
     if bool(getattr(cfg, "SIMPLE_PRICE_GT0_ENABLED", False)):
         cooldown_bars = 0
