@@ -48,13 +48,6 @@
     "symbol": "UNIUSDC",
     "side": "LONG"
   },
-  "fin:TIAUSDC_LONG": {
-    "orderId": "3000002276991424",
-    "stopPrice": 0.5341,
-    "entry_sig": "2026-10-27 00:17:03.744368+00:00",
-    "symbol": "TIAUSDC",
-    "side": "LONG"
-  },
   "fin:ARBUSDC_LONG": {
     "orderId": "3000002276887420",
     "stopPrice": 0.16475,
@@ -67,13 +60,6 @@
     "stopPrice": 0.20345,
     "entry_sig": "2026-10-26 23:08:49.666000+00:00",
     "symbol": "ENAUSDC",
-    "side": "LONG"
-  },
-  "fin:BEAMXUSDT_LONG": {
-    "orderId": "3000002276861950",
-    "stopPrice": 0.003243,
-    "entry_sig": "2026-10-26 22:30:52.249000+00:00",
-    "symbol": "BEAMXUSDT",
     "side": "LONG"
   },
   "fin:1000LUNCUSDT_SHORT": {
@@ -103,5 +89,54 @@
     "entry_sig": "2026-10-27 01:52:14.045000+00:00",
     "symbol": "BEATUSDT",
     "side": "SHORT"
+  },
+  "fin:ACTUSDT_SHORT": {
+    "orderId": "3000002277165192",
+    "stopPrice": 0.008653,
+    "entry_sig": "2026-10-27 01:52:29.857000+00:00",
+    "symbol": "ACTUSDT",
+    "side": "SHORT"
+  },
+  "fin:CRVUSDC_LONG": {
+    "orderId": "3000002277167925",
+    "stopPrice": 0.334,
+    "entry_sig": "2026-10-27 01:53:45.714000+00:00",
+    "symbol": "CRVUSDC",
+    "side": "LONG"
+  },
+  "fin:TLMUSDT_SHORT": {
+    "orderId": "3000002277168450",
+    "stopPrice": 0.001173,
+    "entry_sig": "2026-10-27 01:53:14.443000+00:00",
+    "symbol": "TLMUSDT",
+    "side": "SHORT"
+  },
+  "fin:ETHFIUSDC_LONG": {
+    "orderId": "3000002277168697",
+    "stopPrice": 0.6314,
+    "entry_sig": "2026-10-27 01:54:24.755000+00:00",
+    "symbol": "ETHFIUSDC",
+    "side": "LONG"
+  },
+  "fin:ARUSDT_LONG": {
+    "orderId": "3000002277168696",
+    "stopPrice": 3.337,
+    "entry_sig": "2026-10-27 01:53:16.332000+00:00",
+    "symbol": "ARUSDT",
+    "side": "LONG"
+  },
+  "fin:BATUSDT_LONG": {
+    "orderId": "3000002277172146",
+    "stopPrice": 0.14089,
+    "entry_sig": "2026-10-27 01:56:04.520000+00:00",
+    "symbol": "BATUSDT",
+    "side": "LONG"
+  },
+  "fin:ZECUSDC_LONG": {
+    "orderId": "3000002277172160",
+    "stopPrice": 1203.55,
+    "entry_sig": "2026-10-27 01:56:04.764000+00:00",
+    "symbol": "ZECUSDC",
+    "side": "LONG"
   }
 }

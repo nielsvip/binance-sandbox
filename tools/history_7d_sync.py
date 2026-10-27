@@ -446,12 +446,13 @@ def sync(root, host, days, dry_run=False, authority="merge"):
                 [
                     "rsync",
                     "-az",
-                    "--timeout=45",
+                    "--timeout=300",
                     "-e",
                     RSYNC_SSH,
                     str(union_path),
                     f"{host}:{remote_path}",
-                ]
+                ],
+                timeout=600,
             )
             for remote_root in REMOTE_ROOTS:
                 command = SSH + [
