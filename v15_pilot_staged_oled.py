@@ -4947,6 +4947,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         cols = _resolve_cols(ws)
         rows = []
         for rr in range(3, ws.max_row + 1):
+            _a_font = ws.cell(row=rr, column=1).font
+            if _a_font is not None and _a_font.color is not None and str(getattr(_a_font.color, "rgb", "") or "").upper() in GREY_SKIP_RGB:
+                continue
             sw = ws.cell(row=rr, column=1).value
             if sw is None or (isinstance(sw, str) and sw.strip() == ""):
                 continue
@@ -10799,7 +10802,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 import hashlib as _reg_hash
                 _ledger = _registration_eval.get("execution_ledger") or _registration_eval.get("ledger") or []
                 _ledger_sha = _reg_hash.sha256(json.dumps(_ledger, sort_keys=True, default=str).encode()).hexdigest() if _ledger else None
-                progress["registration_candidate"] = {"key_count": len(_registration_candidate), "candidate_sha256": _reg_hash.sha256(json.dumps(_registration_candidate, sort_keys=True, default=str).encode()).hexdigest(), "prior_source": progress.get("baseline_normalization", {}).get("source", "row_chain"), "metrics": {k: _registration_eval.get(k) for k in ("gain_pct", "trades", "tim_pct", "max_dd_pct", "pool_sharpe", "valid")}, "ledger_sha256": _ledger_sha}
+                progress["registration_candidate"] = {"key_count": len(_registration_candidate), "candidate_sha256": _reg_hash.sha256(json.dumps(_registration_candidate, sort_keys=True, default=str).encode()).hexdigest(), "prior_source": _norm_meta.get("source", "row_chain"), "metrics": {k: _registration_eval.get(k) for k in ("gain_pct", "trades", "tim_pct", "max_dd_pct", "pool_sharpe", "valid")}, "ledger_sha256": _ledger_sha}
                 print(f"[FINAL-ROW-CHAIN-PROOF] {new_symside} exact {len(_registration_candidate)}-key replay agrees with E chain at {float(cumulative_gain):.8f}; ledger_sha={_ledger_sha or 'missing'}", flush=True)
             except Exception as _reg_finalize_error:
                 progress["registration_candidate_refused"] = str(_reg_finalize_error)[:500]
@@ -14190,8 +14193,6 @@ def _main_single():
             pass
     except Exception:
         progress = {"symside": new_symside, "baseline_gain": baseline_gain, "bh": bh, "done": {}, "window_days": args.window_days, "npz_id": _run_npz_id}
-        if locals().get("_baseline_normalization"):
-            progress["baseline_normalization"] = dict(_baseline_normalization)
     # A changed NPZ or fresh board invalidates the old baseline metadata as well as its rows.
     # Keep progress and the workbook's baseline sheet tied to this actual vector evaluation.
     if not progress.get("done") and progress.get("final_gain") is None:

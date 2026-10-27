@@ -261,32 +261,29 @@ def main():
 
     drive_ready = setup_rclone()
     gdrive_status = get_gdrive_capacity() if drive_ready else None
-    use_ext_drive_fallback = False
-    ext_drive_path = None
+    ext_drive_path = find_available_ext_drive()
+    use_ext_drive_fallback = bool(ext_drive_path)
     use_gcs_fallback = not drive_ready
+
+    if ext_drive_path:
+        log(f"External drive available; preferring {ext_drive_path.name}")
 
     if gdrive_status:
         used_gb, total_gb, percent = gdrive_status
         log(f"Google Drive: {used_gb:.1f}GB / {total_gb:.1f}GB ({percent*100:.1f}%)")
 
         if percent > GDRIVE_CAPACITY_THRESHOLD:
-            log(f"⚠ Google Drive >70% capacity. Checking external drives...", "WARN")
-            ext_drive_path = find_available_ext_drive()
-            if ext_drive_path:
-                log(f"✓ Using fallback: {ext_drive_path.name}")
-                use_ext_drive_fallback = True
-            else:
-                use_gcs_fallback = True
-                log("No external drive available; using the verified GCS cold store", "WARN")
-    else:
-        log("Google Drive unavailable; checking external drives, then GCS", "WARN")
-        ext_drive_path = find_available_ext_drive()
-        if ext_drive_path:
-            log(f"✓ Using external drive: {ext_drive_path.name}")
-            use_ext_drive_fallback = True
-            use_gcs_fallback = False
-        else:
             use_gcs_fallback = True
+            if ext_drive_path:
+                log("Google Drive is above 70%; use the mounted external drive first and verified GCS if that copy fails", "WARN")
+            else:
+                log("Google Drive is above 70% and no qualifying external drive is mounted; using verified GCS", "WARN")
+    else:
+        use_gcs_fallback = True
+        if not ext_drive_path:
+            log("Google Drive unavailable and no qualifying external drive is mounted; using GCS", "WARN")
+        else:
+            log("Google Drive capacity is unavailable; prefer the external drive and use GCS if it fails", "WARN")
 
     # Probe Google Drive only if not using fallback
     if drive_ready and not use_ext_drive_fallback and not use_gcs_fallback:
@@ -321,6 +318,8 @@ def main():
         if use_ext_drive_fallback and ext_drive_path:
             if copy_to_ext_drive(fpath, ext_drive_path):
                 success = True
+            elif drive_ready and not use_gcs_fallback:
+                success = upload_file(fpath)
         elif drive_ready and not use_gcs_fallback:
             if upload_file(fpath):
                 success = True
@@ -337,8 +336,8 @@ def main():
             log(f"⚠ {fpath.name} (keeping local)", "WARN")
 
     log("=" * 60)
-    dest = f"{ext_drive_path.name}" if use_ext_drive_fallback else "Google Drive"
-    log(f"✓ Archival complete: {uploaded}/{len(old_files)} files to {dest}")
+    preferred_dest = ext_drive_path.name if use_ext_drive_fallback else "Google Drive" if drive_ready and not use_gcs_fallback else "GCS"
+    log(f"✓ Archival complete: {uploaded}/{len(old_files)} files verified; preferred destination {preferred_dest}; see per-file logs for actual destinations")
     log("=" * 60)
     return 0
 

@@ -1,5 +1,5 @@
 {
- "applied": false,
+ "applied": true,
  "contract": "v20_disk_floor_v1",
  "floor_gb": 40,
  "hosts": {
@@ -7,8 +7,8 @@
    "candidates": [
     {
      "eligible": false,
-     "files": 163678,
-     "gb": 150.3,
+     "files": 163723,
+     "gb": 150.4,
      "name": "binance-sandbox",
      "reason": "never_list"
     },
@@ -42,7 +42,7 @@
     },
     {
      "eligible": false,
-     "files": 12874,
+     "files": 12880,
      "gb": 4.1,
      "name": "binance",
      "reason": "never_list"
@@ -56,7 +56,7 @@
     },
     {
      "eligible": false,
-     "files": 148,
+     "files": 149,
      "gb": 1.7,
      "name": "v15_run37_20261026",
      "reason": "round_directory"
@@ -97,90 +97,55 @@
      "reason": "stale_13.5d"
     }
    ],
-   "free_gb_end": 23,
-   "free_gb_start": 23,
-   "rungs": [],
-   "shortfall_gb": 17
-  },
-  "s5": {
-   "candidates": [
+   "free_gb_end": 25,
+   "free_gb_start": 22,
+   "rungs": [
     {
-     "eligible": false,
-     "files": 166335,
-     "gb": 120.1,
-     "name": "binance-sandbox",
-     "reason": "never_list"
+     "detached": true,
+     "error": "",
+     "log": "~/logs/v20_disk_floor_shelve.log",
+     "root": "/home/niels/v15_import_s6_run32_20261011",
+     "rung": "shelve"
     },
     {
-     "eligible": true,
-     "files": 7570,
-     "gb": 111.6,
-     "name": "rebuild_scratch_s5",
-     "reason": "stale_4.1d"
+     "detached": true,
+     "error": "",
+     "log": "~/logs/v20_disk_floor_shelve.log",
+     "root": "/home/niels/v15_import_s5_run32_20261011",
+     "rung": "shelve"
     },
     {
-     "eligible": false,
-     "files": 701,
-     "gb": 12.3,
-     "name": "v15_run36_20261024",
-     "reason": "round_directory"
+     "detached": true,
+     "error": "",
+     "log": "~/logs/v20_disk_floor_shelve.log",
+     "root": "/home/niels/binance-sandbox/backups",
+     "rung": "shelve"
     },
     {
-     "eligible": false,
-     "files": 676,
-     "gb": 9.3,
-     "name": "v15_run35_20261022",
-     "reason": "round_directory"
-    },
-    {
-     "eligible": false,
-     "files": 345,
-     "gb": 5.1,
-     "name": "v15_run37_20261026",
-     "reason": "round_directory"
-    },
-    {
-     "eligible": false,
-     "files": 412,
-     "gb": 1.9,
-     "name": "v15_run34_20261021",
-     "reason": "round_directory"
-    },
-    {
-     "eligible": false,
-     "files": 181,
-     "gb": 1.5,
-     "name": "v15_run33_20261019",
-     "reason": "round_directory"
-    },
-    {
-     "eligible": false,
-     "files": 45345,
-     "gb": 1.2,
-     "name": ".conda",
-     "reason": "never_list"
+     "detached": true,
+     "error": "",
+     "log": "~/logs/v20_disk_floor_shelve.log",
+     "root": "/home/niels/binance/backups",
+     "rung": "shelve"
     }
    ],
-   "free_gb_end": 14,
-   "free_gb_start": 14,
-   "rungs": [],
-   "shortfall_gb": 26
+   "shortfall_gb": 15
   },
   "s6": {
    "candidates": [
     {
      "eligible": false,
-     "files": 176418,
+     "files": 176430,
      "gb": 159.2,
      "name": "binance-sandbox",
      "reason": "never_list"
     },
     {
      "eligible": false,
-     "files": 150415,
-     "gb": 38.4,
+     "files": 150417,
+     "gb": 31.1,
      "name": "s2_archive",
-     "reason": "touched_1.2d_ago"
+     "reason": "touched_0.0d_ago"
     },
     {
      "eligible": false,
@@ -206,7 +171,7 @@
     {
      "eligible": false,
      "files": 427,
-     "gb": 5.0,
+     "gb": 5.1,
      "name": "v15_run37_20261026",
      "reason": "round_directory"
     },
@@ -246,11 +211,26 @@
      "reason": "never_list"
     }
    ],
-   "free_gb_end": 26,
-   "free_gb_start": 26,
-   "rungs": [],
-   "shortfall_gb": 14
+   "free_gb_end": 35,
+   "free_gb_start": 32,
+   "rungs": [
+    {
+     "detached": true,
+     "error": "",
+     "log": "~/logs/v20_disk_floor_shelve.log",
+     "root": "/home/niels/binance-sandbox/backups",
+     "rung": "shelve"
+    },
+    {
+     "detached": true,
+     "error": "",
+     "log": "~/logs/v20_disk_floor_shelve.log",
+     "root": "/home/niels/binance/backups",
+     "rung": "shelve"
+    }
+   ],
+   "shortfall_gb": 5
   }
  },
- "ts": "2026-10-27T02:06:22.465945+00:00"
+ "ts": "2026-10-27T02:20:35.537442+00:00"
 }

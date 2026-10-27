@@ -10391,7 +10391,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             return
         try:
             from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eps_par
-            _par_vec = _eps_par(prepared, dict(cumulative_overrides), args.window_days) if prepared is not None else {}
+            _par_vec = dict(_registration_eval) if _registration_eval is not None else (_eps_par(prepared, dict(cumulative_overrides), args.window_days) if prepared is not None else {})
         except Exception as _par_e:
             print(f"[PARITY-REGISTER] {new_symside} skipped ({_why}; fresh eval failed: {_par_e})", flush=True)
             return
@@ -10408,7 +10408,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _par_ev["npz_id"] = _run_npz_short
             except NameError:
                 _par_ev["npz_id"] = ""
-            _par_rep = _sp.register_workbook_result(new_symside, dict(cumulative_overrides), _par_ev)
+            if _registration_candidate is None:
+                raise RuntimeError("no prepublication candidate replay; registration refused")
+            _par_rep = _sp.register_workbook_result(new_symside, dict(_registration_candidate), _par_ev)
             print(f"[PARITY-REGISTER] {new_symside} {_why} registered={_par_rep.get('registered')} tag={_par_rep.get('tag')} n={_par_rep.get('n_keys')} reason={str(_par_rep.get('reason', ''))[:160]}", flush=True)
         except Exception as _par_e2:
             print(f"[PARITY-REGISTER] {new_symside} skipped ({_why}; registrar error: {_par_e2})", flush=True)
@@ -10769,6 +10771,43 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     _pool.shutdown(wait=False, cancel_futures=True)
                 if _prio_pool is not None: _prio_pool.shutdown(wait=False, cancel_futures=True)  # TASK 05.2
                 return cumulative_gain, cumulative_overrides, progress
+        _registration_candidate = None
+        _registration_eval = None
+        if args.window_days == 30 and prepared is not None and (fast_switches is None or _compliant):
+            try:
+                _norm_meta = progress.get("baseline_normalization") or {}
+                if _norm_meta.get("source") == "per_sym":
+                    _source_snapshot_path = ROOT / "data" / "live_baseline_snapshots" / f"{new_symside}.json"
+                    _source_manifest = json.loads((ROOT / "data" / "live_baseline_snapshots" / "manifest.json").read_text())
+                    _source_bytes = _source_snapshot_path.read_bytes()
+                    _source_payload_sha = __import__("hashlib").sha256(_source_bytes).hexdigest()
+                    if _source_manifest.get("sets", {}).get(new_symside) != _source_payload_sha or _source_payload_sha != _norm_meta.get("source_snapshot_sha256"):
+                        raise RuntimeError("Mac per-symbol snapshot changed after baseline selection; refusing finalization")
+                    _source_full_now = json.loads(_source_bytes)
+                    _source_full_sha = __import__("hashlib").sha256(json.dumps(_source_full_now, sort_keys=True, default=str).encode()).hexdigest()
+                    if _source_full_sha != _norm_meta.get("source_full_config_sha256"):
+                        raise RuntimeError("per-symbol full_config differs from dispatch-time snapshot; refusing finalization")
+                from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_reg_candidate
+                _registration_candidate = dict(cumulative_overrides)
+                _registration_eval = _eval_reg_candidate(prepared, dict(_registration_candidate), args.window_days, True)
+                if not _registration_eval or not _registration_eval.get("valid") or _registration_eval.get("trades") is None:
+                    raise RuntimeError(f"final row-chain replay invalid/incomplete: {(_registration_eval or {}).get('invalid_reason')}")
+                _rr_gain = float(_registration_eval["gain_pct"])
+                _chain_gain = float(cumulative_gain)
+                if abs(_rr_gain - _chain_gain) > 1e-6:
+                    raise RuntimeError(f"final row-chain gain {_chain_gain:.10f} differs from exact set replay {_rr_gain:.10f}")
+                _reg_ok, _reg_why = _qualifies_30d(_registration_eval, bh)
+                if not _reg_ok:
+                    raise RuntimeError("final row-chain replay fails qualification: " + "; ".join(_reg_why))
+                import hashlib as _reg_hash
+                _ledger = _registration_eval.get("execution_ledger") or _registration_eval.get("ledger") or []
+                _ledger_sha = _reg_hash.sha256(json.dumps(_ledger, sort_keys=True, default=str).encode()).hexdigest() if _ledger else None
+                progress["registration_candidate"] = {"key_count": len(_registration_candidate), "candidate_sha256": _reg_hash.sha256(json.dumps(_registration_candidate, sort_keys=True, default=str).encode()).hexdigest(), "prior_source": _norm_meta.get("source", "row_chain"), "metrics": {k: _registration_eval.get(k) for k in ("gain_pct", "trades", "tim_pct", "max_dd_pct", "pool_sharpe", "valid")}, "ledger_sha256": _ledger_sha}
+                print(f"[FINAL-ROW-CHAIN-PROOF] {new_symside} exact {len(_registration_candidate)}-key replay agrees with E chain at {float(cumulative_gain):.8f}; ledger_sha={_ledger_sha or 'missing'}", flush=True)
+            except Exception as _reg_finalize_error:
+                progress["registration_candidate_refused"] = str(_reg_finalize_error)[:500]
+                _maybe_write_json(force=True)
+                raise RuntimeError(f"final row-chain proof refused: {_reg_finalize_error}")
         if not _compliant:
             print(f"[NOT-FINISHED] {new_symside} REDO scheduled — no publish this run, herd relaunches into a fresh fill", flush=True)
             try:
@@ -13409,6 +13448,67 @@ def _main_single():
         except Exception as _e_pb:
             print(f"[BEST-START-warn] {new_symside} {_e_pb}", flush=True)
 
+    _baseline_normalization = None
+    if prepared is not None and args.window_days == 30 and os.environ.get("V15_NORMALIZE_BOARD_BASELINE", "1") == "1":
+        _norm_target = Path(args.out) if args.out else (OUT_DIR / f"{new_symside}_30d_matrix.xlsx")
+        _resume_same_npz = False
+        try:
+            _norm_progress_path = PROGRESS_DIR / f"{new_symside}_v14_progress.json"
+            _norm_progress = json.loads(_norm_progress_path.read_text()) if _norm_progress_path.exists() else {}
+            if _norm_progress.get("done"):
+                from tools.v15_row_guards import npz_changed as _norm_npz_changed, npz_identity_for_symside as _norm_npz_id
+                _old_norm_npz = _norm_progress.get("npz_id")
+                _new_norm_npz = _norm_npz_id(new_symside, root=ROOT)
+                _resume_same_npz = isinstance(_old_norm_npz, dict) and isinstance(_new_norm_npz, dict) and not _norm_npz_changed(_old_norm_npz, _new_norm_npz)
+                if _old_norm_npz.get("md5") and _new_norm_npz.get("md5"):
+                    _resume_same_npz = _resume_same_npz and _old_norm_npz["md5"] == _new_norm_npz["md5"]
+        except Exception as _norm_resume_e:
+            print(f"[BASELINE-NORMALIZE] {new_symside} resume identity unavailable ({_norm_resume_e}) — refusing normalization", flush=True)
+            _resume_same_npz = True
+        if _norm_target.exists() and args.out:
+            _resume_same_npz = True
+        if not _resume_same_npz:
+            try:
+                from tools.v15_registration_candidate import SWITCH_SHEETS as _norm_tabs
+                _norm_template = get_template_for_symside(new_symside)
+                _norm_wb = openpyxl.load_workbook(str(_norm_template), read_only=False, data_only=False)
+                _norm_keys = set()
+                for _norm_tab in _norm_tabs:
+                    if _norm_tab not in _norm_wb.sheetnames:
+                        continue
+                    _norm_ws = _norm_wb[_norm_tab]
+                    for _norm_row in range(3, _norm_ws.max_row + 1):
+                        _norm_switch = _norm_ws.cell(_norm_row, 1).value
+                        if isinstance(_norm_switch, str) and _norm_switch.strip():
+                            _norm_keys.add(_norm_switch.strip())
+                    for _norm_col in range(12, _norm_ws.max_column + 1):
+                        _norm_header = _norm_ws.cell(2, _norm_col).value
+                        if isinstance(_norm_header, str) and "=" in _norm_header:
+                            _norm_keys.add(_norm_header.split("=", 1)[0].strip())
+                _norm_wb.close()
+                _before_norm = dict(overrides)
+                _source_full_norm = dict(locals().get("_baseline_winner_full") or {})
+                _source_snapshot_sha = None
+                _source_full_sha = None
+                if locals().get("_baseline_winner_kind") == "per_sym":
+                    import hashlib as _norm_hl
+                    _source_snapshot_path = ROOT / "data" / "live_baseline_snapshots" / f"{new_symside}.json"
+                    _source_snapshot_bytes = _source_snapshot_path.read_bytes()
+                    _source_snapshot_sha = _norm_hl.sha256(_source_snapshot_bytes).hexdigest()
+                    _source_full_sha = _norm_hl.sha256(json.dumps(_source_full_norm, sort_keys=True, default=str).encode()).hexdigest()
+                overrides = {k: v for k, v in _before_norm.items() if k in _norm_keys}
+                overrides, _norm_bad = sanitize_overrides(overrides, defaults)
+                if locals().get("_baseline_winner_full") is not None:
+                    _baseline_winner_full = {k: v for k, v in _baseline_winner_full.items() if k in _norm_keys}
+                baseline_vec = evaluate_prepared_sanitized(prepared, dict(overrides), window_days=args.window_days)
+                if not baseline_vec or baseline_vec.get("gain_pct") is None:
+                    raise RuntimeError("normalized baseline replay returned no measured gain")
+                _baseline_normalization = {"mode": "board_key_universe", "source": locals().get("_baseline_winner_kind") or "selected_start", "source_keys": len(_before_norm), "kept_keys": len(overrides), "dropped_keys": len(_before_norm) - len(overrides), "gain_pct": baseline_vec.get("gain_pct"), "trades": baseline_vec.get("trades"), "keys_sha256": __import__("hashlib").sha256(json.dumps(overrides, sort_keys=True, default=str).encode()).hexdigest(), "source_snapshot_sha256": _source_snapshot_sha, "source_full_config_sha256": _source_full_sha}
+                print(f"[BASELINE-NORMALIZED] {new_symside} kept {len(overrides)}/{len(_before_norm)} applicable board keys; gain={baseline_vec.get('gain_pct')} trades={baseline_vec.get('trades')}", flush=True)
+            except Exception as _norm_e:
+                raise RuntimeError(f"board-key baseline normalization failed closed: {_norm_e}")
+        else:
+            print(f"[BASELINE-NORMALIZE] {new_symside} existing same-NPZ board — preserving its original row-chain baseline", flush=True)
     if args.vector_only:
         baseline_live = baseline_vec
         reason = "vector-only"
@@ -14102,6 +14202,14 @@ def _main_single():
         progress["window_days"] = args.window_days
         if _run_npz_id is not None:
             progress["npz_id"] = _run_npz_id
+    if locals().get("_baseline_normalization") and not progress.get("done"):
+        progress["baseline_normalization"] = dict(_baseline_normalization)
+        progress["initial_baseline_gain"] = float(baseline_gain)
+        progress["initial_overrides"] = dict(overrides)
+        progress["cumulative_gain"] = float(baseline_gain)
+        progress["cumulative_overrides"] = dict(overrides)
+        for _stale_key in ("final_gain", "final_path", "final_trades", "run_gain", "run_trades", "registration_candidate", "registration_candidate_refused"):
+            progress.pop(_stale_key, None)
     try:
         if locals().get("_defaults_challenger_record") and isinstance(progress, dict):
             progress["defaults_challenger"] = _defaults_challenger_record

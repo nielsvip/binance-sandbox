@@ -357,9 +357,14 @@ def train(orchestrator: str, hosts: list) -> dict:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     run_dir = f"{UNION_DIR}/auto_{stamp}"
     spills = " ".join(f"--spill-dir {UNION_DIR}/spills/{host}" for host in hosts) + f" --spill-dir {SPILL_REMOTE}"
+    # --cut is REQUIRED by v18_brain.py train (prequential capture and the forward holdout are scored at and after
+    # it). The first version of this phase omitted it, so every train died with "the following arguments are
+    # required: --cut" -- absorbed rows piled up in the spills and the published heads never moved. Same horizon as
+    # the proven tools/v18_brain_export.sh: now - V18_CUT_DAYS (default 3).
+    cut = (datetime.now(timezone.utc) - timedelta(days=int(os.environ.get("V18_CUT_DAYS", "3")))).strftime("%Y-%m-%dT%H:%M:%SZ")
     steps = [
         ("train", f"cd {SANDBOX} && mkdir -p {run_dir}/brain_state {run_dir}/brain_union && nice -n 19 ionice -c3 {PYTHON} tools/v18_brain.py train "
-                  f"{spills} --state {run_dir}/brain_state/v18_brain_state.pkl --out-dir {run_dir}/brain_union "
+                  f"{spills} --cut {cut} --state {run_dir}/brain_state/v18_brain_state.pkl --out-dir {run_dir}/brain_union "
                   f"--report {run_dir}/brain_state/v18_brain_report.json --binding-map-dir {SANDBOX}/data/learn"),
         ("export", f"cd {SANDBOX} && nice -n 19 ionice -c3 {PYTHON} tools/v18_brain.py export "
                    f"--state {run_dir}/brain_state/v18_brain_state.pkl --out-dir {run_dir}/brain_union"),
