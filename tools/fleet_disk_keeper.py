@@ -308,10 +308,10 @@ def remote_free(ip: str):
         return None
 
 
-def pick_dest(nbytes: int):
+def pick_dest(nbytes: int, exclude=()):
     best = None
     for name, ip in FLEET.items():
-        if name == HOST or ip == FLEET.get(HOST):
+        if name == HOST or ip == FLEET.get(HOST) or name in exclude:
             continue
         f = remote_free(ip)
         if f is None:
@@ -418,22 +418,31 @@ def main(argv=None):
                 log("plan", tier=tier, action="offload", items=len(batch), mb=mb, first=str(batch[0]), last=str(batch[-1]))
                 freed_plan += batch_bytes
             else:
-                dest = pick_dest(batch_bytes)
-                done = False
-                if dest is not None:
+                done, tried, last_err = False, set(), None
+                for attempt in (1, 2):  # USER 2026-10-27: a failed transfer gets a SECOND attempt (next-best host after a pause) before any deletion
+                    dest = pick_dest(batch_bytes, exclude=tried)
+                    if dest is None and tried:
+                        dest = pick_dest(batch_bytes)  # only one host can take it: retry that same host
+                    if dest is None:
+                        break
+                    tried.add(dest[0])
                     try:
                         rec = offload(batch, dest)
                         for q in batch:
                             remove(q)
-                        log("offloaded", tier=tier, mb=mb, first=str(batch[0]), **rec)
+                        log("offloaded", tier=tier, mb=mb, first=str(batch[0]), attempt=attempt, **rec)
                         done = True
+                        break
                     except Exception as e:
-                        log("offload_failed", tier=tier, items=len(batch), error=f"{type(e).__name__}: {e}"[:300])
-                        if free_mb() >= floor:  # transient failure above the hard floor: keep it, the next cycle (3 min) retries
-                            log("retained_retry", tier=tier, items=len(batch), mb=mb, free_mb=free_mb(), floor_mb=floor)
-                            batch, batch_bytes = [], 0
-                            continue
-                else:
+                        last_err = f"{type(e).__name__}: {e}"[:300]
+                        log("offload_failed", tier=tier, items=len(batch), attempt=attempt, dest=dest[0], error=last_err)
+                        if attempt == 1:
+                            time.sleep(30)
+                if not done and last_err is not None and free_mb() >= floor:  # both attempts failed above the hard floor: keep it, next cycle retries
+                    log("retained_retry", tier=tier, items=len(batch), mb=mb, free_mb=free_mb(), floor_mb=floor)
+                    batch, batch_bytes = [], 0
+                    continue
+                if not done and last_err is None:
                     log("no_destination", tier=tier, items=len(batch), mb=mb, reserve_mb=DEST_RESERVE_MB)
                 if not done:
                     for q in batch:

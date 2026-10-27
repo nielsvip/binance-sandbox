@@ -1115,7 +1115,7 @@ class Config:
     CIRCUIT_BREAKER_ACCOUNT_HALT_MIN: int = 60  # halt duration (min)
     # --- TIER D #9: PYRAMID INTO STRENGTH ---
     PYRAMID_ENABLED: bool = False  # TIER_D: Sharpe +0.2. Amplifies winners.
-    AUGMENT_CORE_LIVE_ENABLED: bool = True  # USER 2026-10-27: re-enabled — whatever vec does live does. ez_manage.evaluate_augmentation runs the vector's LADDER/PYRAMID/BOUNCE augment sources live via vec_decisions.augment_core. Kill: False.
+    AUGMENT_CORE_LIVE_ENABLED: bool = False  # USER 2026-10-27 clarified: augment/reduce/sizing stay native live-script decisions; only OPEN/CLOSE state comes from the vectorized forward-rolling 15m recompute (VEC_BACKSTOP_ENABLED). Reverted same-session flip.
     PYRAMID_MIN_GAIN_PCT: float = 1.5  # Fires once gain >= this.
     PYRAMID_MIN_WT_VEL_1H: float = 2.0  # 1h velocity must trend.
     PYRAMID_MIN_DC_POS_15M: float = 0.7  # LONG: DC pos > 0.7 = upper third.
