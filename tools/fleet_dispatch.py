@@ -46,6 +46,8 @@ CAT_PRIORITY = ("CRYPTO_SHORT", "CRYPTO_LONG", "STOCKS_SHORT", "STOCKS_LONG")
 HOMES = {"s1": "CRYPTO_SHORT", "s2": "CRYPTO_LONG", "s5": "STOCKS_LONG", "s6": "STOCKS_SHORT"}
 NPZ_OWNER = {"crypto": "s1", "stocks": "s5"}
 LEADERS = {"s1": "10.0.0.3", "s2": "10.0.0.4"}
+# Fleet names come from the private IP, not hostname(): S1's hostname is "niels". New servers keep their hostname.
+IP_NAMES = {"10.0.0.3": "s1", "10.0.0.4": "s2", "10.0.0.5": "s5", "10.0.0.6": "s6"}
 BAR_S = 900
 SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5", "-o", "StrictHostKeyChecking=accept-new",
        "-o", "ServerAliveInterval=10", "-o", "ServerAliveCountMax=3"]
@@ -71,8 +73,9 @@ HB_STALE_S = env_int("FLEET_HB_STALE_S", 180)
 ORPHAN_AFTER_S = env_int("FLEET_ORPHAN_AFTER_S", 600)
 NPZ_TIMEOUT_S = env_int("FLEET_NPZ_TIMEOUT_S", 240)
 # "final" (default): a board with final_gain is done. "complete": also require v15_progress_board.is_complete().
-# 2026-10-27 measured: finished+published boards read 2775/3965 under is_complete() (C-SUPERSEDE row loss under
-# diagnosis), so "complete" would relaunch every finished board in a resume loop and produce no new results.
+# 2026-10-27 measured: finished+published boards read 2775/3965 under is_complete() because V15_FILL_SLICE_S
+# truncated every board (now 0 in fleet_launch.sh). Until boards launched without the slice dominate, "complete"
+# would relaunch every truncated board; flip to "complete" (the harvester's rule) once they do.
 DONE_RULE = os.environ.get("FLEET_DONE_RULE", "final")
 
 
@@ -146,7 +149,7 @@ def discover(scan, syms):
         for fut in cf.as_completed(futs):
             data = fut.result()
             if data:
-                name = data["host"]
+                name = IP_NAMES.get(futs[fut], data["host"])
                 if name in hosts:
                     continue
                 hosts[name] = (Host(futs[fut], futs[fut] in mine), data)
@@ -332,8 +335,11 @@ def plan(pend, partial, fleet_data, now, orphan_since):
 
     def take(host, cat):
         sides = [s for s in pend.get(cat, []) if s not in claimed]
+        # resume-first: finish boards this host already started, then untouched ones; a board started elsewhere
+        # comes last (its progress lives on that host, so here it would be a fresh re-run)
         mine = [s for s in sides if partial.get(s) == host]
-        pick = (mine or sides or [None])[0]
+        fresh = [s for s in sides if s not in partial]
+        pick = (mine or fresh or sides or [None])[0]
         if pick:
             claimed.add(pick)
         return pick
@@ -428,9 +434,16 @@ def settings_history(fleet, state):
     return fresh
 
 
+def my_name():
+    for ip in self_ips():
+        if ip in IP_NAMES:
+            return IP_NAMES[ip]
+    return socket.gethostname().split(".")[0]
+
+
 def tick(args):
     now = time.time()
-    me = socket.gethostname().split(".")[0]
+    me = my_name()
     rec = {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now)), "me": me, "dry_run": args.dry_run}
     act, why = (True, "forced") if args.force_act else should_act(me, now)
     rec["leader"] = why

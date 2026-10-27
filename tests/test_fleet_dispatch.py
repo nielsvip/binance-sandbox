@@ -88,3 +88,17 @@ def test_full_or_low_disk_hosts_get_nothing():
     picks, why_not, _ = F.plan(pend, partial, data, NOW, {})
     assert {h for h, _, _ in picks} == {"s1", "s2"}
     assert why_not["s5"].startswith("full") and why_not["s6"].startswith("disk")
+
+
+def test_resume_first_then_fresh_then_foreign_partial():
+    part = {"rows": 900, "fg": False, "ts": TAIL}
+    uni = dict(UNI, STOCKS_LONG=["AAPL_LONG", "MSFT_LONG", "NVDA_LONG"])
+    data = fleet4(s5=host(progress={"NVDA_LONG": part}), s6=host(progress={"AAPL_LONG": part}))
+    pend, partial, _ = F.pending_by_cat(uni, data, NOW)
+    picks, _, _ = F.plan(pend, partial, data, NOW, {})
+    got = {h: s for h, s, _ in picks}
+    assert got["s5"] == "NVDA_LONG"
+    data = fleet4(s6=host(progress={"AAPL_LONG": part}))
+    pend, partial, _ = F.pending_by_cat(uni, data, NOW)
+    picks, _, _ = F.plan(pend, partial, data, NOW, {})
+    assert {h: s for h, s, _ in picks}["s5"] == "MSFT_LONG"

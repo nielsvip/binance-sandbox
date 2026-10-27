@@ -77,7 +77,7 @@ def main():
             if _stamp(WATCH_CODE) != code_stamp:
                 print("forward code changed; restarting process pool on current files", flush=True)
                 pool.shutdown(wait=True, cancel_futures=True)
-                os.execv(sys.executable, [sys.executable, *sys.argv])
+                os.execv(sys.executable, [sys.executable, "-u", *sys.argv])  # keep -u: S2/S6 cron guards match "python -u"; a bare re-exec escaped them and stacked one ~4 GB pool per code change
             current_side_stamp = sides_path.stat().st_mtime_ns
             if current_side_stamp != side_stamp:
                 sides = _sides(sides_path)
