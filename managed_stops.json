@@ -118,20 +118,6 @@
     "symbol": "TRBUSDT",
     "side": "LONG"
   },
-  "ang:VETUSDT_SHORT": {
-    "orderId": "4000002001771902",
-    "stopPrice": 0.006494,
-    "entry_sig": "2026-10-27 17:18:04.268462+00:00",
-    "symbol": "VETUSDT",
-    "side": "SHORT"
-  },
-  "ang:1000LUNCUSDT_SHORT": {
-    "orderId": "4000002001764255",
-    "stopPrice": 0.04521,
-    "entry_sig": "2026-10-27 19:03:18.824000+00:00",
-    "symbol": "1000LUNCUSDT",
-    "side": "SHORT"
-  },
   "ang:ZKUSDT_SHORT": {
     "orderId": "4000001999882144",
     "stopPrice": 0.012328,
@@ -160,32 +146,11 @@
     "symbol": "TIAUSDC",
     "side": "LONG"
   },
-  "ang:SOLUSDC_SHORT": {
-    "orderId": "EZMSTOP_FX_2AA201068DBF",
-    "stopPrice": 101.55,
-    "entry_sig": "2026-10-27 16:48:51.894000+00:00",
-    "symbol": "SOLUSDC",
-    "side": "SHORT"
-  },
   "ang:BEATUSDT_SHORT": {
     "orderId": "EZMSTOP_FX_51A074FCEE61",
     "stopPrice": 0.09392,
     "entry_sig": "2026-10-27 18:48:02.039000+00:00",
     "symbol": "BEATUSDT",
-    "side": "SHORT"
-  },
-  "ang:STRKUSDT_SHORT": {
-    "orderId": "EZMSTOP_FX_425155DCDF88",
-    "stopPrice": 0.04783,
-    "entry_sig": "2026-10-27 20:08:42.561000+00:00",
-    "symbol": "STRKUSDT",
-    "side": "SHORT"
-  },
-  "ang:IOTAUSDT_SHORT": {
-    "orderId": "EZMSTOP_FX_6FAB5D42601E",
-    "stopPrice": 0.04272,
-    "entry_sig": "2026-10-27 19:06:18.626252+00:00",
-    "symbol": "IOTAUSDT",
     "side": "SHORT"
   },
   "ang:EGLDUSDT_SHORT": {
