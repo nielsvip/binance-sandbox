@@ -184,13 +184,25 @@ def shelve(host, root, min_size, apply_it, detach=False):
     if detach:
         tag = os.path.basename(root.rstrip("/")) or "shelf"
         stage = f"/tmp/v20_shelve_{tag}"
-        setup = (f"cat > {stage}.py <<'V20EOF'\n{SHELVE}\nV20EOF\n"
-                 f"printf '%s' {shlex.quote(payload)} > {stage}.json && "
-                 f"nohup /bin/bash -lc 'nice -n 19 ionice -c3 {PYTHON} {stage}.py < {stage}.json "
-                 f">> ~/logs/v20_disk_floor_shelve.log 2>&1' > /dev/null 2>&1 & echo DETACHED")
-        result = sh(host, setup, timeout=120)
-        return {"root": root, "detached": "DETACHED" in (result.stdout or ""), "log": "~/logs/v20_disk_floor_shelve.log",
-                "error": ("" if result.returncode == 0 else (result.stderr or "")[-200:].strip())}
+        # base64 instead of a heredoc, and setsid + </dev/null so the ssh channel closes immediately: with a
+        # heredoc plus a trailing `&`, ssh kept the session open and the call timed out even though the shelve had
+        # started, which reads like a failure when the work is in fact running.
+        b64_py = __import__("base64").b64encode(SHELVE.encode()).decode()
+        b64_js = __import__("base64").b64encode(payload.encode()).decode()
+        setup = (f"mkdir -p ~/logs && echo {b64_py} | base64 -d > {stage}.py && echo {b64_js} | base64 -d > {stage}.json && "
+                 f"( setsid nice -n 19 ionice -c3 {PYTHON} {stage}.py < {stage}.json >> ~/logs/v20_disk_floor_shelve.log 2>&1 & ) "
+                 f"< /dev/null > /dev/null 2>&1; echo DETACHED")
+        try:
+            result = sh(host, setup, timeout=120)
+            launched = "DETACHED" in (result.stdout or "")
+            error = "" if result.returncode == 0 else (result.stderr or "")[-200:].strip()
+        except subprocess.TimeoutExpired:
+            # ssh can hold the channel open even after the shelve is running, so a timeout here is not a failure:
+            # confirm by looking for the staged script in the process table rather than reporting a false negative.
+            check = sh(host, f"pgrep -fa {stage}.py | head -2", timeout=60)
+            launched = f"{stage}.py" in (check.stdout or "")
+            error = "" if launched else "ssh timed out and no shelve process found"
+        return {"root": root, "detached": launched, "log": "~/logs/v20_disk_floor_shelve.log", "error": error}
     result = subprocess.run(SSH + [f"niels@{HOSTS[host]}", "%s -c %s" % (PYTHON, shlex.quote(SHELVE))],
                             input=payload, capture_output=True, text=True, timeout=21600)
     try:

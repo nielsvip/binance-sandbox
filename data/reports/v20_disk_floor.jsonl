@@ -14,3 +14,9 @@
 {"applied": false, "event": "floor_summary", "floor_gb": 40, "free_gb": {"s2": 23, "s5": 14, "s6": 26}, "shortfall_gb": {"s2": 17, "s5": 26, "s6": 14}, "ts": "2026-10-27T02:08:39.831852+00:00"}
 {"event": "floor_check", "floor_gb": 40, "free_gb": 14, "host": "s5", "ts": "2026-10-27T02:09:28.661217+00:00", "under": true}
 {"event": "floor_check", "floor_gb": 40, "free_gb": 16, "host": "s5", "ts": "2026-10-27T02:11:57.719875+00:00", "under": true}
+{"event": "floor_check", "floor_gb": 40, "free_gb": 26, "host": "s6", "ts": "2026-10-27T02:15:26.623965+00:00", "under": true}
+{"event": "floor_check", "floor_gb": 40, "free_gb": 28, "host": "s6", "ts": "2026-10-27T02:17:56.782915+00:00", "under": true}
+{"event": "floor_check", "floor_gb": 40, "free_gb": 32, "host": "s6", "ts": "2026-10-27T02:20:47.628230+00:00", "under": true}
+{"detached": true, "error": "", "event": "rung_shelve", "host": "s6", "log": "~/logs/v20_disk_floor_shelve.log", "root": "/home/niels/binance-sandbox/backups", "ts": "2026-10-27T02:21:12.882410+00:00"}
+{"detached": true, "error": "", "event": "rung_shelve", "host": "s6", "log": "~/logs/v20_disk_floor_shelve.log", "root": "/home/niels/binance/backups", "ts": "2026-10-27T02:21:24.270717+00:00"}
+{"event": "floor_not_met", "floor_gb": 40, "free_gb": 35, "host": "s6", "shortfall_gb": 5, "top_blockers": [{"gb": 159.2, "name": "binance-sandbox", "reason": "never_list"}, {"gb": 31.1, "name": "s2_archive", "reason": "touched_0.0d_ago"}, {"gb": 19.7, "name": "s5_scratch_archive_20261026", "reason": "touched_0.4d_ago"}, {"gb": 12.7, "name": "v15_run35_20261022", "reason": "round_directory"}, {"gb": 7.9, "name": "v15_run36_20261024", "reason": "round_directory"}, {"gb": 5.1, "name": "v15_run37_20261026", "reason": "round_directory"}], "ts": "2026-10-27T02:21:35.650397+00:00"}

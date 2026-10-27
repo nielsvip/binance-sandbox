@@ -4947,6 +4947,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         cols = _resolve_cols(ws)
         rows = []
         for rr in range(3, ws.max_row + 1):
+            _a_font = ws.cell(row=rr, column=1).font
+            if _a_font is not None and _a_font.color is not None and str(getattr(_a_font.color, "rgb", "") or "").upper() in GREY_SKIP_RGB:
+                continue
             sw = ws.cell(row=rr, column=1).value
             if sw is None or (isinstance(sw, str) and sw.strip() == ""):
                 continue
