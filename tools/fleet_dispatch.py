@@ -530,7 +530,20 @@ def tick(args):
         rec["hosts_added"] = sorted(set(data) - known)
         rec["hosts_gone"] = sorted(known - set(data))
         state["known_hosts"] = sorted(data)
-        pend, partial, skipped = pending_by_cat(universe, data, now)
+        # a host that misses one probe (S1 under load) must not make its finished boards look pending:
+        # its last-seen finished boards + launch records stay in the done/retry view for 6 h (never in the slot plan)
+        seen = state.setdefault("seen", {})
+        for n, d in data.items():
+            seen[n] = {"ts": now, "progress": {k: v for k, v in (d.get("progress") or {}).items() if v.get("fg") or v.get("zero")},
+                       "launches": d.get("launches") or {}}
+        view = dict(data)
+        for n, c in list(seen.items()):
+            if n not in data and now - float(c.get("ts") or 0) < 21600:
+                view[n] = {"running": {}, "progress": c.get("progress") or {}, "launches": c.get("launches") or {}}
+            elif n not in data:
+                seen.pop(n)
+        rec["ghost_hosts"] = sorted(set(view) - set(data))
+        pend, partial, skipped = pending_by_cat(universe, view, now)
         # host quarantine: a board launched here that vanished unfinished (OOM-killed: S1 runs tests at
         # oom_score_adj +800 under its live stack) counts as a death; QUARANTINE_DEATHS within 2 h -> no launches
         # on that host for QUARANTINE_S (its home cat_side is then orphaned to the other servers)

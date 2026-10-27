@@ -1,6 +1,6 @@
 {
- "generated_utc": "2026-10-27T20:05:59Z",
- "secs": 231.3,
+ "generated_utc": "2026-10-27T20:10:12Z",
+ "secs": 128.5,
  "universe": {
   "crypto": 201,
   "stocks": 223
@@ -10,8 +10,8 @@
  },
  "healed": {
   "mac:/Users/niels/Documents/binance": {
-   "files": 110,
-   "rows": 1295,
+   "files": 32,
+   "rows": 104,
    "skipped": {}
   }
  },
@@ -30,9 +30,9 @@
    "venue": "stocks",
    "symbol": "INOD",
    "tf": "15m",
-   "last": "2026-10-27T15:00",
+   "last": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30",
-   "bars_behind": 18.0
+   "bars_behind": 14.0
   },
   {
    "host": "mac",
@@ -66,9 +66,9 @@
    "venue": "stocks",
    "symbol": "LAC",
    "tf": "15m",
-   "last": "2026-10-27T15:00",
+   "last": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30",
-   "bars_behind": 18.0
+   "bars_behind": 14.0
   },
   {
    "host": "mac",
@@ -111,9 +111,9 @@
    "venue": "stocks",
    "symbol": "HON",
    "tf": "15m",
-   "last": "2026-10-27T15:00",
+   "last": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30",
-   "bars_behind": 18.0
+   "bars_behind": 14.0
   },
   {
    "host": "mac",
@@ -201,9 +201,9 @@
    "venue": "stocks",
    "symbol": "MRK",
    "tf": "15m",
-   "last": "2026-10-27T15:00",
+   "last": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30",
-   "bars_behind": 18.0
+   "bars_behind": 14.0
   },
   {
    "host": "mac",
@@ -255,27 +255,27 @@
    "venue": "stocks",
    "symbol": "MO",
    "tf": "15m",
-   "last": "2026-10-27T15:00",
+   "last": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30",
-   "bars_behind": 18.0
+   "bars_behind": 14.0
   },
   {
    "host": "mac",
    "venue": "stocks",
    "symbol": "JOBY",
    "tf": "15m",
-   "last": "2026-10-27T15:00",
+   "last": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30",
-   "bars_behind": 18.0
+   "bars_behind": 14.0
   },
   {
    "host": "mac",
    "venue": "stocks",
    "symbol": "NKE",
    "tf": "15m",
-   "last": "2026-10-27T15:15",
+   "last": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30",
-   "bars_behind": 17.0
+   "bars_behind": 14.0
   },
   {
    "host": "mac",
@@ -327,9 +327,9 @@
    "venue": "stocks",
    "symbol": "GILD",
    "tf": "15m",
-   "last": "2026-10-27T15:00",
+   "last": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30",
-   "bars_behind": 18.0
+   "bars_behind": 14.0
   },
   {
    "host": "mac",
@@ -354,9 +354,9 @@
    "venue": "stocks",
    "symbol": "MCD",
    "tf": "15m",
-   "last": "2026-10-27T15:00",
+   "last": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30",
-   "bars_behind": 18.0
+   "bars_behind": 14.0
   },
   {
    "host": "mac",
@@ -408,27 +408,27 @@
    "venue": "stocks",
    "symbol": "HII",
    "tf": "15m",
-   "last": "2026-10-27T15:00",
+   "last": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30",
-   "bars_behind": 18.0
+   "bars_behind": 14.0
   },
   {
    "host": "mac",
    "venue": "stocks",
    "symbol": "KO",
    "tf": "15m",
-   "last": "2026-10-27T15:00",
+   "last": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30",
-   "bars_behind": 18.0
+   "bars_behind": 14.0
   },
   {
    "host": "mac",
    "venue": "stocks",
    "symbol": "FIVN",
    "tf": "15m",
-   "last": "2026-10-27T15:00",
+   "last": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30",
-   "bars_behind": 18.0
+   "bars_behind": 14.0
   },
   {
    "host": "mac",
@@ -534,18 +534,18 @@
    "venue": "stocks",
    "symbol": "FDX",
    "tf": "15m",
-   "last": "2026-10-27T15:00",
+   "last": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30",
-   "bars_behind": 18.0
+   "bars_behind": 14.0
   },
   {
    "host": "mac",
    "venue": "stocks",
    "symbol": "GM",
    "tf": "15m",
-   "last": "2026-10-27T15:00",
+   "last": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30",
-   "bars_behind": 18.0
+   "bars_behind": 14.0
   },
   {
    "host": "mac",
@@ -606,9 +606,9 @@
    "venue": "stocks",
    "symbol": "TECK",
    "tf": "15m",
-   "last": "2026-10-27T14:00",
+   "last": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30",
-   "bars_behind": 22.0
+   "bars_behind": 14.0
   },
   {
    "host": "mac",
@@ -660,9 +660,9 @@
    "venue": "stocks",
    "symbol": "JPM",
    "tf": "15m",
-   "last": "2026-10-27T15:00",
+   "last": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30",
-   "bars_behind": 18.0
+   "bars_behind": 14.0
   },
   {
    "host": "mac",
@@ -687,9 +687,9 @@
    "venue": "stocks",
    "symbol": "HD",
    "tf": "15m",
-   "last": "2026-10-27T15:00",
+   "last": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30",
-   "bars_behind": 18.0
+   "bars_behind": 14.0
   },
   {
    "host": "mac",
@@ -741,18 +741,18 @@
    "venue": "stocks",
    "symbol": "MDT",
    "tf": "15m",
-   "last": "2026-10-27T15:00",
+   "last": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30",
-   "bars_behind": 18.0
+   "bars_behind": 14.0
   },
   {
    "host": "mac",
    "venue": "stocks",
    "symbol": "GDXJ",
    "tf": "15m",
-   "last": "2026-10-27T15:00",
+   "last": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30",
-   "bars_behind": 18.0
+   "bars_behind": 14.0
   },
   {
    "host": "mac",
@@ -822,9 +822,9 @@
    "venue": "stocks",
    "symbol": "OKE",
    "tf": "15m",
-   "last": "2026-10-27T15:15",
+   "last": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30",
-   "bars_behind": 17.0
+   "bars_behind": 14.0
   },
   {
    "host": "mac",
@@ -885,9 +885,9 @@
    "venue": "stocks",
    "symbol": "FANG",
    "tf": "15m",
-   "last": "2026-10-27T15:00",
+   "last": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30",
-   "bars_behind": 18.0
+   "bars_behind": 14.0
   },
   {
    "host": "mac",
@@ -939,18 +939,18 @@
    "venue": "stocks",
    "symbol": "HAO",
    "tf": "15m",
-   "last": "2026-10-27T13:30",
+   "last": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30",
-   "bars_behind": 24.0
+   "bars_behind": 14.0
   },
   {
    "host": "mac",
    "venue": "stocks",
    "symbol": "JNJ",
    "tf": "15m",
-   "last": "2026-10-27T15:00",
+   "last": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30",
-   "bars_behind": 18.0
+   "bars_behind": 14.0
   }
  ],
  "unhealable": [
@@ -965,7 +965,7 @@
    "venue": "stocks",
    "symbol": "INOD",
    "tf": "15m",
-   "best": "2026-10-27T15:00",
+   "best": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30"
   },
   {
@@ -993,7 +993,7 @@
    "venue": "stocks",
    "symbol": "LAC",
    "tf": "15m",
-   "best": "2026-10-27T15:00",
+   "best": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30"
   },
   {
@@ -1028,7 +1028,7 @@
    "venue": "stocks",
    "symbol": "HON",
    "tf": "15m",
-   "best": "2026-10-27T15:00",
+   "best": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30"
   },
   {
@@ -1098,7 +1098,7 @@
    "venue": "stocks",
    "symbol": "MRK",
    "tf": "15m",
-   "best": "2026-10-27T15:00",
+   "best": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30"
   },
   {
@@ -1140,21 +1140,21 @@
    "venue": "stocks",
    "symbol": "MO",
    "tf": "15m",
-   "best": "2026-10-27T15:00",
+   "best": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30"
   },
   {
    "venue": "stocks",
    "symbol": "JOBY",
    "tf": "15m",
-   "best": "2026-10-27T15:00",
+   "best": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30"
   },
   {
    "venue": "stocks",
    "symbol": "NKE",
    "tf": "15m",
-   "best": "2026-10-27T15:15",
+   "best": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30"
   },
   {
@@ -1196,7 +1196,7 @@
    "venue": "stocks",
    "symbol": "GILD",
    "tf": "15m",
-   "best": "2026-10-27T15:00",
+   "best": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30"
   },
   {
@@ -1217,7 +1217,7 @@
    "venue": "stocks",
    "symbol": "MCD",
    "tf": "15m",
-   "best": "2026-10-27T15:00",
+   "best": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30"
   },
   {
@@ -1259,21 +1259,21 @@
    "venue": "stocks",
    "symbol": "HII",
    "tf": "15m",
-   "best": "2026-10-27T15:00",
+   "best": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30"
   },
   {
    "venue": "stocks",
    "symbol": "KO",
    "tf": "15m",
-   "best": "2026-10-27T15:00",
+   "best": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30"
   },
   {
    "venue": "stocks",
    "symbol": "FIVN",
    "tf": "15m",
-   "best": "2026-10-27T15:00",
+   "best": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30"
   },
   {
@@ -1357,14 +1357,14 @@
    "venue": "stocks",
    "symbol": "FDX",
    "tf": "15m",
-   "best": "2026-10-27T15:00",
+   "best": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30"
   },
   {
    "venue": "stocks",
    "symbol": "GM",
    "tf": "15m",
-   "best": "2026-10-27T15:00",
+   "best": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30"
   },
   {
@@ -1413,7 +1413,7 @@
    "venue": "stocks",
    "symbol": "TECK",
    "tf": "15m",
-   "best": "2026-10-27T14:00",
+   "best": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30"
   },
   {
@@ -1455,7 +1455,7 @@
    "venue": "stocks",
    "symbol": "JPM",
    "tf": "15m",
-   "best": "2026-10-27T15:00",
+   "best": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30"
   },
   {
@@ -1476,7 +1476,7 @@
    "venue": "stocks",
    "symbol": "HD",
    "tf": "15m",
-   "best": "2026-10-27T15:00",
+   "best": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30"
   },
   {
@@ -1518,14 +1518,14 @@
    "venue": "stocks",
    "symbol": "MDT",
    "tf": "15m",
-   "best": "2026-10-27T15:00",
+   "best": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30"
   },
   {
    "venue": "stocks",
    "symbol": "GDXJ",
    "tf": "15m",
-   "best": "2026-10-27T15:00",
+   "best": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30"
   },
   {
@@ -1581,7 +1581,7 @@
    "venue": "stocks",
    "symbol": "OKE",
    "tf": "15m",
-   "best": "2026-10-27T15:15",
+   "best": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30"
   },
   {
@@ -1630,7 +1630,7 @@
    "venue": "stocks",
    "symbol": "FANG",
    "tf": "15m",
-   "best": "2026-10-27T15:00",
+   "best": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30"
   },
   {
@@ -1672,14 +1672,14 @@
    "venue": "stocks",
    "symbol": "HAO",
    "tf": "15m",
-   "best": "2026-10-27T13:30",
+   "best": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30"
   },
   {
    "venue": "stocks",
    "symbol": "JNJ",
    "tf": "15m",
-   "best": "2026-10-27T15:00",
+   "best": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30"
   },
   {
@@ -1706,50 +1706,50 @@
   {
    "host": "mac",
    "file": "crypto prices",
-   "age_s": -11.4,
+   "age_s": -8.2,
    "max_s": 60,
    "ok": true,
    "files": {
-    "price_cache_1.json": -11.4,
-    "price_cache_2.json": -10.5,
-    "price_cache_3.json": -11.4
+    "price_cache_1.json": -8.2,
+    "price_cache_2.json": -7.1,
+    "price_cache_3.json": -8.2
    }
   },
   {
    "host": "mac",
    "file": "crypto snapshot (market_data_*)",
-   "age_s": -5.4,
+   "age_s": 2.8,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/market_data_NEWEST": -5.4
+    "data/market_data_NEWEST": 2.8
    }
   },
   {
    "host": "mac",
    "file": "crypto latest_market_data",
-   "age_s": -5.4,
+   "age_s": 2.8,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/latest_market_data.json": -5.4
+    "data/latest_market_data.json": 2.8
    }
   },
   {
    "host": "gw",
    "file": "crypto market_data",
-   "age_s": 668.7,
+   "age_s": 296.1,
    "max_s": 300,
-   "ok": false,
+   "ok": true,
    "files": {
-    "data/latest_market_data.json": 668.7
+    "data/latest_market_data.json": 296.1
    }
   },
   {
    "host": "mac",
    "file": "disk free /Users/niels/Documents/binance",
    "age_s": null,
-   "free_gb": 12.7,
+   "free_gb": 12.3,
    "ok": true
   },
   {
