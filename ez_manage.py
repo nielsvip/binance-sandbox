@@ -23192,7 +23192,7 @@ class MultiAccountTradeManager:
         """2026-10-13: the taker backstop for FIXED_STOP (~-0.3% class: acts ONLY after maker-first failed AND the webhook failed). Broker-moved re-check first (the maker may have filled without local confirmation) — never double-close. Single reduceOnly MARKET through the wire sanction (refuses while a broker order is unconfirmed). Never raises."""
         try:
             try:
-                if await self._writer_truth_moved(account_key, symbol, position_side, abs(float(baseline_amt or 0.0)), "reduce", config=config, logger=logger):
+                if await self._writer_truth_moved(account_key, symbol, position_side, abs(float(baseline_amt or 0.0)), "reduce"):
                     logger.critical(f"🛡️ [FIXED_STOP_TAKER_SUPPRESSED] {position_key}: broker shows the reduce already moved — NO taker backstop (no-double rule)")
                     return "SUPPRESSED_TAKER_ALREADY_MOVED"
             except Exception:
@@ -39285,7 +39285,7 @@ class MultiAccountTradeManager:
                             action=action,
                         )
                         if not reduce_verified:  # POSITIONS REVAMP 2026-10-06 (E2): local/WS verify lags — ask the broker before anything else
-                            reduce_verified = await self._writer_truth_moved(account_key, symbol, position_side, abs(baseline_amt), "reduce", config=config, logger=logger)
+                            reduce_verified = await self._writer_truth_moved(account_key, symbol, position_side, abs(baseline_amt), "reduce")
                         if reduce_verified:
                             await self.handle_filled_maker(
                                 account_key,
@@ -39828,7 +39828,7 @@ class MultiAccountTradeManager:
                             > 0.0001
                         ):
                             return "SUCCESS"
-                        if await self._writer_truth_moved(account_key, symbol, position_side, abs(original_positionAmt), "increase", config=config, logger=logger):  # POSITIONS REVAMP (E3): fresh broker read, not WS
+                        if await self._writer_truth_moved(account_key, symbol, position_side, abs(original_positionAmt), "increase"):  # POSITIONS REVAMP (E3): fresh broker read, not WS
                             logger.warning(f"[EXECUTE_UNVERIFIED_BROKER_FILLED] {position_key}: broker shows the maker filled — no fallback")
                             return "SUCCESS"
                         if True:  # POSITIONS REVAMP 2026-10-06 (E3): OPEN as well as AUGMENT — confirm the maker is CANCELED before any fallback
