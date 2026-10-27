@@ -1,11 +1,4 @@
 {
-  "ang:GRTUSDT_LONG": {
-    "orderId": "4000002001375026",
-    "stopPrice": 0.02163,
-    "entry_sig": "2026-10-27 15:46:16.487000+00:00",
-    "symbol": "GRTUSDT",
-    "side": "LONG"
-  },
   "ang:RAYSOLUSDT_LONG": {
     "orderId": "4000002001341698",
     "stopPrice": 1.743,
@@ -176,18 +169,25 @@
     "symbol": "UNIUSDC",
     "side": "LONG"
   },
-  "ang:XRPUSDC_LONG": {
-    "orderId": "4000002001415587",
-    "stopPrice": 1.2837,
-    "entry_sig": "2026-10-27 15:46:47.683000+00:00",
-    "symbol": "XRPUSDC",
-    "side": "LONG"
-  },
   "ang:TRBUSDT_LONG": {
     "orderId": "4000002001415590",
     "stopPrice": 17.008,
     "entry_sig": "2026-10-27 15:48:05.700000+00:00",
     "symbol": "TRBUSDT",
+    "side": "LONG"
+  },
+  "ang:ARUSDT_LONG": {
+    "orderId": "4000002000755348",
+    "stopPrice": 3.313,
+    "entry_sig": "2026-10-27 11:16:53.121000+00:00",
+    "symbol": "ARUSDT",
+    "side": "LONG"
+  },
+  "ang:ZROUSDT_LONG": {
+    "orderId": "4000002001415592",
+    "stopPrice": 1.5986,
+    "entry_sig": "2026-10-27 15:52:23.575000+00:00",
+    "symbol": "ZROUSDT",
     "side": "LONG"
   },
   "ang:ZECUSDC_LONG": {
@@ -197,11 +197,32 @@
     "symbol": "ZECUSDC",
     "side": "LONG"
   },
-  "ang:STXUSDT_SHORT": {
-    "orderId": "4000002001415750",
-    "stopPrice": 0.3053,
-    "entry_sig": "2026-10-27 15:51:07.372000+00:00",
-    "symbol": "STXUSDT",
+  "ang:WIFUSDC_SHORT": {
+    "orderId": "4000002001419508",
+    "stopPrice": 0.182,
+    "entry_sig": "2026-10-27 16:07:09.085000+00:00",
+    "symbol": "WIFUSDC",
     "side": "SHORT"
+  },
+  "ang:XRPUSDC_LONG": {
+    "orderId": "4000002001419554",
+    "stopPrice": 1.2837,
+    "entry_sig": "2026-10-27 15:46:47.683000+00:00",
+    "symbol": "XRPUSDC",
+    "side": "LONG"
+  },
+  "ang:VETUSDT_LONG": {
+    "orderId": "4000002001423296",
+    "stopPrice": 0.006299,
+    "entry_sig": "2026-10-27 16:07:57.060000+00:00",
+    "symbol": "VETUSDT",
+    "side": "LONG"
+  },
+  "ang:ZENUSDT_LONG": {
+    "orderId": "4000002001423273",
+    "stopPrice": 5.631,
+    "entry_sig": "2026-10-27 16:09:44.527000+00:00",
+    "symbol": "ZENUSDT",
+    "side": "LONG"
   }
 }
