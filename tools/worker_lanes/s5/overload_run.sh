@@ -49,6 +49,17 @@ PDIR=$(head -n 1 "$HOME/v15_current_progress_dir.txt" 2>/dev/null)
 # same ceiling. 43 of 44 boards on s6 and 51 of 55 on s5 were short, ALB_SHORT and NLR_SHORT both
 # stuck at exactly 2681/3804 with 1123 template rows never visited once. The harvester needs 100% of
 # the template rows, so a sliced board can never be published: that is why there was never a result.
+# CORRECTION 2026-10-27 (same session, measured): the paragraph above is wrong about WHY no board was
+# ever published. Slicing is off because the OPERATOR requires it ("a server is not allowed to take a
+# symbol out of ram until both sides (or whatever is tradeable) is COMPLETELY FINISHED AND PUBLISHED"),
+# and that reason stands. But the slice was NOT the publication blocker: with V15_FILL_SLICE_S=0 the
+# board still stopped at the same point (ALB_SHORT 289 -> 1951 -> 2681 filled, then exited), and its own
+# log says "[spec-fill] rows=2702 pending=2702 ... workbook complete, 2702 rows filled, returning early"
+# -- the pilot was finishing correctly all along. The real blockers were (a) tools/v15_progress_board.py
+# counting template rows the pilot deliberately skips (grey column-A font, GREY_SKIP_RGB), and (b) the
+# ESSENTIAL-ROWS gate (v15_pilot.py:1596) demanding a non-zero number from protection filters whose rows
+# today's template work had GREYED, so the template forbade measuring exactly what the gate required.
+# Do not "restore" the slice looking for a throughput win; it fixes nothing and breaks the operator law.
 GATE="V15_FILL_SLICE_S=0 V15_ADAPT_BASELINE=0 V15_BOARD_BUDGET=0 V15_DIAG_REPAIR_S=150 V15_ENDGAME_S=120 V15_EVAL_CACHE=0 V15_FOCUS_S_BHCHASE=600 V15_FOCUS_S_LOSER=60 V15_FOCUS_S_MEDIOCRE=150 V15_FOCUS_S_WINNER=600 V15_INERT_SAMPLE_EVERY=100 V15_POOL_BATCH_N=8 V15_POSSYM_MIN_N=1 V15_POSSYM_SAMPLING=0 V15_TEMPLATE_DEFAULTS=1 V15_TIER_BIG_MOVER=8 V15_UNWIRED_SKIP=0 V15_V17_COMBO_SHARE=0.35 V15_V17_COMBO_SHARE_WINNER=0.4 V15_V17_P3_MAX_S_LOSER=300.0 V15_V17_P3_MAX_S_LOST_CAUSE=120.0 V15_V17_P3_MAX_S_MEDIOCRE=648.0 V15_V17_P3_MAX_S_WINNER=1500.0 V15_V17_P_MIN=0.006 V15_V17_ROUNDS=1 V15_V17_SHARE_ABLATION=0.48 V15_V17_SHARE_FOCUS=0.6 V15_V17_SHARE_RETEST=0.84 V15_V17_SHARE_SURGEON=0.6 V15_V17_SHARE_SURGEON_WINNER=0.9"
 flock -n /tmp/v15_launch_${SS}_30D.lock bash -c '
 pgrep -f "^[^ ]*python[^ ]* -u ([^ ]*/)?v15_pilot(_7d|_no_publish_resume)?[.]py --sym-side '"${SS}"' " >/dev/null && { echo ALREADY-'"${SS}"'; exit 0; }
