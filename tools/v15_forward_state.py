@@ -23,11 +23,27 @@ sys.path.insert(0, str(ROOT))
 OUT = ROOT / "data" / "forward_state"
 
 
-def _load_overrides(symside):
-    """Read the published full set from the explicitly selected active SQL store."""
-    import per_sym_live_set
+DEFAULT_STORE_DBS = (Path.home() / "binance" / "data" / "hourly_reconfig" / "per_sym_store.db", ROOT / "data" / "hourly_reconfig" / "per_sym_store.db")
+
+
+def store_db():
+    """PER_SYM_STORE_DB when set and present, else the canonical store. 2026-10-27: S2's quarter lane ran this tool with
+    no PER_SYM_STORE_DB and rsynced 64 "missing live settings" states over S1's good ones (22:09:50Z); a missing store
+    now resolves to the canonical one, and when none exists main() refuses to publish anything."""
     db = os.environ.get("PER_SYM_STORE_DB")
-    if not db or not Path(db).is_file():
+    if db and Path(db).is_file():
+        return str(db)
+    for cand in DEFAULT_STORE_DBS:
+        if cand.is_file():
+            return str(cand)
+    return None
+
+
+def _load_overrides(symside):
+    """Read the published full set from the active SQL store."""
+    import per_sym_live_set
+    db = store_db()
+    if not db:
         return {}, "missing_explicit_per_sym_store", {}
     con = sqlite3.connect(f"file:{Path(db).resolve()}?mode=ro", uri=True, timeout=5)
     try:
@@ -152,7 +168,23 @@ def state_for(symside, window_days=30):
     if not ov:
         return {"ts": time.strftime("%FT%TZ", time.gmtime()), "sym_side": symside,
                 "ok": False, "reason": "missing live settings", "src": src}
-    prep = prepare_batch(symside, window_days)
+    # 2026-10-27: read the zip PLUS its .tail sidecar (npz_tail_service appends the closed bar there within seconds; the
+    # zip only absorbs it at 4 rows) and never reuse a store cached by an earlier job in a long-lived pool worker.
+    try:
+        from tools.opt import evaluate_v12 as _ev
+        _ev._STORES.clear()
+        _sym = symside.rsplit("_", 1)[0]
+        _names = {_sym}
+        try:
+            _names.add(_ev.resolve_tokenised(_sym)[0])
+        except Exception:
+            pass
+        _paths = [ROOT / _pfx / "indicators" / f"{_n}.npz" for _pfx in ("backtest_v8", "backtest_v7") for _n in _names]
+        from tools.npz_merged_view import merged_npz_reads
+        with merged_npz_reads(_paths):
+            prep = prepare_batch(symside, window_days)
+    except ImportError:
+        prep = prepare_batch(symside, window_days)
     if prep is None or (isinstance(prep, dict) and prep.get("_stale")):
         return {"ts": time.strftime("%FT%TZ", time.gmtime()), "sym_side": symside,
                 "ok": False, "reason": "prepare failed/stale", "src": src}
@@ -213,6 +245,9 @@ def _one(ss):
 
 
 def main(argv):
+    if not store_db():
+        print(f"REFUSED: no per_sym store (PER_SYM_STORE_DB unset/missing and none of {[str(p) for p in DEFAULT_STORE_DBS]} exists); publishing nothing", file=sys.stderr, flush=True)
+        return 3
     OUT.mkdir(parents=True, exist_ok=True)
     syms = [ss.strip().upper() for ss in argv[1:]]
     n = 0

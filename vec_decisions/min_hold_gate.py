@@ -135,22 +135,37 @@ def is_scalp_reason(reason) -> bool:
     return any(t in str(reason or "").upper() for t in SCALP_TOKENS)
 
 
-def is_exempt(reason) -> bool:
-    """True for price protection, emergencies, bookkeeping and board dictates.
+def is_exempt(reason, cfg=None, live=False) -> bool:
+    """What may override THE min hold.
 
+    USER 2026-10-27: "only overridden by fixed_stop". So on the strategy side
+    the single override is the frozen-at-entry FIXED_STOP — HARD_STOP_LOSS,
+    STOP_LOSS_TRIGGERED, REENTRY_*, EXIT_VELOCITY_WT and WT_CROSS_EXIT are all
+    HELD. Two carve-outs, both switchable and both reported, never silent:
+      * ACCOUNT protection (LIQUIDAT/MARGIN/EMERGENCY/BALANCE_FLOOR) while
+        MIN_HOLD_BEFORE_EXIT_PROTECTION_EXEMPT is True — holding a position
+        through a margin kill to honour a bar count would lose the account;
+      * live=True also exempts BOARD dictates and broker bookkeeping, because
+        the VECTOR already honours this hold when it decides, so live holding
+        the board's own close would keep a position the chart has exited and a
+        held BROKER_SYNC would manufacture a ghost position.
     A SCALP reason is deliberately NOT exempt: scalping is the thing being
     prohibited, so it must fall through to the hold check.
     """
     r = str(reason or "")
     u = r.upper()
-    if any(t in u for t in STOP_TOKENS):
+    if any(t in u for t in FIXED_STOP_TOKENS):
         return True
-    if any(t in u for t in BOOKKEEPING_TOKENS):
-        return True
-    if "|VEC_EXACT" in r:
-        return True
-    if any(t in u for t in BOARD_TOKENS if t != "|VEC_EXACT"):
-        return True
+    if cfg is None or bool(getattr(cfg, "MIN_HOLD_BEFORE_EXIT_PROTECTION_EXEMPT", True)):
+        if any(t in u for t in ACCOUNT_PROTECTION_TOKENS):
+            return True
+    if live:
+        if "|VEC_EXACT" in r:
+            return True
+        if any(t in u for t in BOARD_TOKENS if t != "|VEC_EXACT"):
+            return True
+        if any(t in u for t in BOOKKEEPING_TOKENS):
+            return True
     return False
 
 
@@ -218,12 +233,20 @@ ACCOUNT_PROTECTION_TOKENS = ("LIQUIDAT", "MARGIN", "EMERGENCY", "BALANCE_FLOOR")
 
 
 def before_exit_bars(cfg) -> int:
-    """MIN_HOLD_BARS_BEFORE_EXIT in BASE-TF bars — independent, never composed."""
-    return _int(cfg, "MIN_HOLD_BARS_BEFORE_EXIT")
+    """DEPRECATED ALIAS of `threshold_bars` — kept only so no caller breaks.
+
+    USER 2026-10-27 (final ruling): "make sure there is only ONE name for this
+    NOT 2 functions NOT 2 values". MIN_HOLD_BARS_BEFORE_EXIT is RETIRED: there
+    is one switch name (MIN_HOLD_BARS), one gate, one value. It had been a
+    second name for the same quantity, which is how it came to mask
+    MIN_HOLD_BARS into a structural zero in the first place.
+    """
+    return threshold_bars(cfg)
 
 
 def before_exit_seconds(cfg) -> float:
-    return float(before_exit_bars(cfg)) * float(bar_minutes(cfg)) * 60.0
+    """DEPRECATED ALIAS of `threshold_seconds` — one value, not two."""
+    return threshold_seconds(cfg)
 
 
 def before_exit_exempt(reason, cfg=None, live=False) -> bool:

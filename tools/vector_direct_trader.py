@@ -174,15 +174,44 @@ def state_fresh(st: dict, bar: int) -> bool:
         return False
 
 
-def plan_account(acct, venue, keys, states, positions, bar, done, allowed, prev_qty=None):
+def wt15_against(ss, wt):
+    """(against, detail) for a held side from the latest closed 15m WaveTrend {bar_ts, wt1_15m, wt2_15m}.
+    LONG: wt1_15m < wt2_15m (bearish); SHORT: wt1_15m > wt2_15m (bullish). None when the reading is missing."""
+    try:
+        w1, w2 = float(wt["wt1_15m"]), float(wt["wt2_15m"])
+    except Exception:
+        return None, "no wt15 reading"
+    if not (math.isfinite(w1) and math.isfinite(w2)):
+        return None, "wt15 not finite"
+    _sym, side = split_ss(ss)
+    against = w1 < w2 if side == "LONG" else w1 > w2
+    return against, f"wt1_15m={w1:.3f} wt2_15m={w2:.3f} bar={wt.get('bar_ts')}"
+
+
+def plan_account(acct, venue, keys, states, positions, bar, done, allowed, prev_qty=None, wt15=None):
     """Orders that converge one account to the board. positions: {ss: {"qty": abs qty, "price": px}} read just now.
     prev_qty: {ss: broker qty observed BEFORE this bar closed} — an AUGMENT/REDUCE the broker already shows was done by
-    someone else (the Mac) and is not repeated. Returns (orders, notes)."""
+    someone else (the Mac) and is not repeated. wt15: callable ss -> {bar_ts, wt1_15m, wt2_15m} of the latest closed 15m
+    bar. USER 2026-10-27 "non tradeable keys get closes as soon as wt_15m goes against it": a held side that is NOT one of
+    this account's tradeable keys is CLOSED (NON_TRADEABLE_WT15_AGAINST) on a fresh wt15 reading against it, whatever its
+    board state says. Returns (orders, notes)."""
     orders, notes = [], []
     prev_qty = prev_qty or {}
-    for ss in sorted(set(keys) | {s for s, p in positions.items() if float(p.get("qty") or 0) > 0}):
+    keyset = set(keys)
+    for ss in sorted(keyset | {s for s, p in positions.items() if float(p.get("qty") or 0) > 0}):
         st = states.get(ss)
         held = float((positions.get(ss) or {}).get("qty") or 0.0)
+        if held > 0 and ss not in keyset and wt15 is not None:
+            wt = wt15(ss) or {}
+            if int(wt.get("bar_ts") or 0) >= bar - STATE_MAX_LAG_S:
+                against, detail = wt15_against(ss, wt)
+                if against:
+                    orders.append({"acct": acct, "ss": ss, "act": "CLOSE", "qty": held, "key": f"{acct}|{ss}|{int(wt['bar_ts'])}|NON_TRADEABLE_WT15_AGAINST",
+                                   "why": f"NON_TRADEABLE_WT15_AGAINST {detail}", "reason": "NON_TRADEABLE_WT15_AGAINST"})
+                    continue
+                notes.append((ss, f"NON_TRADEABLE_WT15_WITH {detail}" if against is False else f"NON_TRADEABLE_WT15_UNKNOWN {detail}"))
+            else:
+                notes.append((ss, "NON_TRADEABLE_WT15_STALE"))
         if not state_fresh(st, bar):
             if held > 0:
                 notes.append((ss, "HOLD_NO_FRESH_STATE"))
@@ -678,6 +707,39 @@ class Trader:
                 log(f"held file write failed: {exc}")
         return pos
 
+    def wt15(self, ss):
+        """Latest closed 15m wt1/wt2 for ss's symbol from S1's own store: the .tail sidecar row (npz_tail_service appends
+        the closed bar there within seconds) when newer than the zip, else the zip's last row. Cached per file stamps."""
+        symbol, _side = split_ss(ss)
+        d = Path(getattr(self.a, "npz_dir", "") or "").expanduser() if getattr(self, "a", None) is not None and getattr(self.a, "npz_dir", "") else Path(self.state_dir).expanduser().parents[1] / "backtest_v8" / "indicators"
+        zp, tp = d / f"{symbol}.npz", d / ".tail" / f"{symbol}.jsonl"
+        stamp = tuple(p.stat().st_mtime_ns if p.exists() else 0 for p in (zp, tp))
+        cache = self.__dict__.setdefault("wt15_cache", {})
+        hit = cache.get(symbol)
+        if hit and hit[0] == stamp:
+            return hit[1]
+        out = {}
+        try:
+            if stamp[1]:
+                for line in reversed(tp.read_text().splitlines()):
+                    try:
+                        row = json.loads(line)
+                    except ValueError:
+                        continue
+                    if "wt1_15m" in row and "wt2_15m" in row:
+                        out = {"bar_ts": int(row["timestamps"]), "wt1_15m": row["wt1_15m"], "wt2_15m": row["wt2_15m"], "src": "tail"}
+                    break
+            if stamp[0]:
+                import numpy as np
+                with np.load(str(zp), allow_pickle=False) as z:
+                    ts = int(z["timestamps"][-1])
+                    if ts > int(out.get("bar_ts") or 0):
+                        out = {"bar_ts": ts, "wt1_15m": float(z["wt1_15m"][-1]), "wt2_15m": float(z["wt2_15m"][-1]), "src": "zip"}
+        except Exception as exc:
+            log(f"wt15 {symbol}: {str(exc)[:120]}")
+        cache[symbol] = (stamp, out)
+        return out
+
     def with_held_states(self, states, pos):
         """A held side outside the universe still needs its state (board flat -> close; board open -> manage)."""
         for ss, p in pos.items():
@@ -712,7 +774,7 @@ class Trader:
                 log(f"paper {acct}: positions failed {str(exc)[:120]}")
                 continue
             self.with_held_states(states, pos)
-            orders, _ = plan_account(acct, self.venue, keys.get(acct, ()), states, pos, bar, self.paper_done, allowed)
+            orders, _ = plan_account(acct, self.venue, keys.get(acct, ()), states, pos, bar, self.paper_done, allowed, wt15=self.wt15)
             path = self.out / f"paper_{self.venue}_{dt.datetime.fromtimestamp(now, dt.timezone.utc):%Y-%m-%d}.jsonl"
             with open(path, "a") as fh:
                 for o in orders:
@@ -849,7 +911,7 @@ class Trader:
             self.with_held_states(states, pos)
             t_obs, prev = self.obs.get(acct, (0, {}))
             prev_qty = prev if t_obs and bar - BAR_S <= t_obs < bar + BAR_S else {}
-            orders, notes = plan_account(acct, self.venue, keys.get(acct, ()), states, pos, bar, self.done, allowed, prev_qty)
+            orders, notes = plan_account(acct, self.venue, keys.get(acct, ()), states, pos, bar, self.done, allowed, prev_qty, wt15=self.wt15)
             self.obs[acct] = (now, {ss: p["qty"] for ss, p in pos.items()})
             for ss, n in notes:
                 if n != "HOLD_NO_FRESH_STATE":
@@ -940,6 +1002,7 @@ def main(argv=None):
     ap.add_argument("--venue", choices=("crypto", "stocks"), required=True)
     ap.add_argument("--root", default="~/binance", help="tree with books, tradeable_keys.json, .env, data/live_failover")
     ap.add_argument("--state-dir", default="~/binance-sandbox/data/forward_state")
+    ap.add_argument("--npz-dir", default="", help="15m NPZ store for the non-tradeable wt15 exit (default: <state-dir>/../../backtest_v8/indicators)")
     ap.add_argument("--accounts", default="")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--once", action="store_true")

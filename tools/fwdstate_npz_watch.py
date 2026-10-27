@@ -4,9 +4,12 @@
 2026-10-27 (USER: every sym_side S1 trades or holds must have a correct, fresh state within SECONDS of each 15m bar
 close, every bar). Measured before this rewrite: first state of a bar 100 s after the close, p50 240-360 s, only
 43-119 of 135 sides current per bar, 153-666 jobs per bar for 135 sides. Causes fixed here:
-  * every NPZ mtime change (tail append, barrefresh, mirror, compaction) re-queued the side, so most jobs recomputed an
-    unchanged tail and starved the sides whose bar had just landed -> a side is computed once per NEW TAIL (gated on
-    the NPZ timestamps, not mtime); a same-tail content rewrite is recomputed at the lowest priority.
+  * the closed bar lands in the .tail sidecar (npz_tail_service), not the zip, so watching the zip's mtime missed it for
+    up to an hour -> the sidecar is watched too and the tail is max(zip tip, sidecar tip); the compute reads zip+sidecar
+    through tools/npz_merged_view.py.
+  * every zip mtime change (barrefresh, mirror, compaction) re-queued the side, so most jobs recomputed an unchanged
+    tail and starved the sides whose bar had just landed -> a side is computed once per NEW TAIL; a same-tail content
+    rewrite is recomputed at the lowest priority.
   * the queue ran alphabetically -> held sides (data/vector_direct/held_<venue>.json, written by
     tools/vector_direct_trader.py from the real broker read) go first, then the rest of the universe, then rewrites.
   * a held side outside the sides file never got a state -> held crypto sides are watched too.
@@ -29,13 +32,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from tools.v15_forward_state import _one, OUT
+from tools.v15_forward_state import _one, OUT, store_db
+from npz_tail_store import _tail_tip_ts
 
-WATCH_CODE = (ROOT / "v12_quick_engine.py", ROOT / "tools" / "opt" / "v12_pilot.py", ROOT / "tools" / "v15_forward_state.py", ROOT / "per_sym_live_set.py", Path(__file__).resolve())
+WATCH_CODE = (ROOT / "v12_quick_engine.py", ROOT / "tools" / "opt" / "v12_pilot.py", ROOT / "tools" / "v15_forward_state.py", ROOT / "per_sym_live_set.py", ROOT / "tools" / "npz_merged_view.py", Path(__file__).resolve())
 CRYPTO_SUFFIXES = ("USDT", "USDC", "USD1", "USDS", "BUSD", "FDUSD", "TUSD", "DAI")
 BAR_S = 900
 RETRY_S = 30.0
 REWRITE_MIN_S = 120.0
+NICE = int(os.environ.get("FWDSTATE_NICE", "-5"))
 STOP = False
 
 
@@ -123,16 +128,21 @@ def main():
     workers = max(1, min(4, args.workers))
     sides_path = Path(args.sides_file).expanduser()
     held_path = Path(args.held_file).expanduser()
-    db = Path(os.environ.get("PER_SYM_STORE_DB") or "")
+    db = Path(store_db() or "")
     if not db.is_file():
         raise SystemExit("PER_SYM_STORE_DB must point to the current published store")
+    os.environ["PER_SYM_STORE_DB"] = str(db)
     signal.signal(signal.SIGTERM, _stop)
     signal.signal(signal.SIGINT, _stop)
+    if os.nice(0) > NICE:
+        # live states outrank backtests (pilots run at nice 15) and the klines/ingest helpers at 0; pool workers inherit
+        import subprocess
+        subprocess.run(["sudo", "-n", "renice", "-n", str(NICE), "-p", str(os.getpid())], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
     code_stamp = _stamp(WATCH_CODE)
     side_stamp = held_stamp = None
     db_stamp = ()
     base_sides, held, sides = set(), set(), set()
-    npz_mtime, npz_tail = {}, {}
+    npz_mtime, npz_tail, zip_tail, side_tail = {}, {}, {}, {}
     sql_versions = {}
     computed = {}  # side -> (tail, settings_version, npz_mtime, ok, finished_at)
     published = {}  # side -> (state, mtime_ns)
@@ -159,15 +169,26 @@ def main():
             expected_tail = (int(now) // BAR_S - 1) * BAR_S
             for symbol in {s.rsplit("_", 1)[0] for s in sides}:
                 path = ROOT / "backtest_v8" / "indicators" / f"{symbol}.npz"
+                side_path = path.parent / ".tail" / f"{symbol}.jsonl"
                 try:
-                    mtime = path.stat().st_mtime_ns
+                    zip_mtime = path.stat().st_mtime_ns
                 except OSError:
-                    mtime = 0
-                if npz_mtime.get(symbol) != mtime:
+                    zip_mtime = 0
+                try:
+                    tail_mtime = side_path.stat().st_mtime_ns
+                except OSError:
+                    tail_mtime = 0
+                mtime = (zip_mtime, tail_mtime)
+                previous = npz_mtime.get(symbol)
+                if previous != mtime:
                     npz_mtime[symbol] = mtime
-                    tail = _npz_tail(path) if mtime else None
-                    if tail is not None:
-                        npz_tail[symbol] = tail
+                    if previous is None or previous[0] != zip_mtime:
+                        zip_tail[symbol] = _npz_tail(path) if zip_mtime else None
+                    if previous is None or previous[1] != tail_mtime:
+                        side_tail[symbol] = _tail_tip_ts(side_path) if tail_mtime else None
+                    tips = [v for v in (zip_tail.get(symbol), side_tail.get(symbol)) if v]
+                    if tips:
+                        npz_tail[symbol] = max(tips)
             current_db_stamp = _stamp((db, Path(str(db) + "-wal")))
             if current_db_stamp != db_stamp:
                 try:

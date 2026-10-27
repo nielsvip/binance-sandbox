@@ -238,3 +238,37 @@ def test_held_side_outside_universe_gets_its_state_and_is_published(tmp_path):
     assert len(rows) == 1 and '"CLOSE"' in rows[0] and '"ZUSDT_LONG"' in rows[0]
     held = json.loads((t.out / "held_crypto.json").read_text())
     assert held["sides"] == ["ZUSDT_LONG"] and held["by_account"] == {"ang": ["ZUSDT_LONG"]}
+
+
+def test_non_tradeable_held_closes_when_wt15_goes_against():
+    """USER 2026-10-27 "non tradeable keys get closes as soon as wt_15m goes against it"."""
+    pos = {"NTUSDT_LONG": {"qty": 4.0, "price": 1.0}, "NSUSDT_SHORT": {"qty": 2.0, "price": 1.0}, "OKUSDT_LONG": {"qty": 1.0, "price": 1.0}}
+    states = {"NTUSDT_LONG": st(True), "NSUSDT_SHORT": st(True), "OKUSDT_LONG": st(True)}
+    wt = {"NTUSDT_LONG": {"bar_ts": BAR, "wt1_15m": -5.0, "wt2_15m": -3.0},   # LONG, bearish -> close
+          "NSUSDT_SHORT": {"bar_ts": BAR, "wt1_15m": 1.0, "wt2_15m": 4.0},    # SHORT, bearish -> with it, keep
+          "OKUSDT_LONG": {"bar_ts": BAR, "wt1_15m": -5.0, "wt2_15m": -3.0}}   # tradeable key: board rules, wt ignored
+    orders, notes = V.plan_account("ang", "crypto", {"OKUSDT_LONG"}, states, pos, BAR, set(), ALLOW, wt15=wt.get)
+    assert [(o["ss"], o["act"], o["qty"]) for o in orders] == [("NTUSDT_LONG", "CLOSE", 4.0)]
+    assert orders[0]["key"] == f"ang|NTUSDT_LONG|{BAR}|NON_TRADEABLE_WT15_AGAINST" and "NON_TRADEABLE_WT15_AGAINST" in orders[0]["why"]
+    assert any(ss == "NSUSDT_SHORT" and n.startswith("NON_TRADEABLE_WT15_WITH") for ss, n in notes)
+    # SHORT mirror: bullish wt closes the short, even with no fresh board state
+    wt["NSUSDT_SHORT"] = {"bar_ts": BAR, "wt1_15m": 6.0, "wt2_15m": 2.0}
+    orders, _ = V.plan_account("ang", "crypto", {"OKUSDT_LONG"}, {}, pos, BAR, set(), ALLOW, wt15=wt.get)
+    assert {o["ss"] for o in orders} == {"NTUSDT_LONG", "NSUSDT_SHORT"}
+    # stale wt reading never acts
+    stale = {k: dict(v, bar_ts=BAR - 7200) for k, v in wt.items()}
+    orders, notes = V.plan_account("ang", "crypto", {"OKUSDT_LONG"}, {}, pos, BAR, set(), ALLOW, wt15=stale.get)
+    assert orders == [] and ("NTUSDT_LONG", "NON_TRADEABLE_WT15_STALE") in notes
+
+
+def test_wt15_reader_prefers_newer_tail_row(tmp_path):
+    import json, types
+    import numpy as np
+    d = tmp_path / "ind"
+    (d / ".tail").mkdir(parents=True)
+    np.savez(d / "QUSDT.npz", timestamps=np.array([BAR - 900, BAR]), wt1_15m=np.array([1.0, 2.0]), wt2_15m=np.array([0.0, 3.0]))
+    t = V.Trader.__new__(V.Trader)
+    t.a = types.SimpleNamespace(npz_dir=str(d))
+    assert t.wt15("QUSDT_LONG") == {"bar_ts": BAR, "wt1_15m": 2.0, "wt2_15m": 3.0, "src": "zip"}
+    (d / ".tail" / "QUSDT.jsonl").write_text(json.dumps({"timestamps": BAR + 900, "wt1_15m": 5.0, "wt2_15m": 1.0}) + "\n")
+    assert t.wt15("QUSDT_LONG")["bar_ts"] == BAR + 900 and t.wt15("QUSDT_LONG")["src"] == "tail"

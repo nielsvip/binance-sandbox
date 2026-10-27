@@ -66,7 +66,12 @@ def in_gain_trend_exit(c, g, st, is_long) -> Tuple[bool, str]:
 def dc15m_force_exit(c, g, st, is_long) -> Tuple[bool, str]:
     if not bool(c("DELTA_EXIT_ENABLED", True)):
         return False, ""
-    fire = _dc15._dc15m_force_exit_fires(_f(st.get("px")), _f(st.get("gain")), _f(g("dc_low_15m", 0.0)), _f(g("dc_high_15m", 0.0)), is_long)
+    # NPZ dc_low_15m/dc_high_15m include the bar itself (measured 2026-10-27 on GRASS/DOGE/XMR/NMR: 0 of
+    # 200,430 closes outside them), so the closed-bar twin reads the *_prev channel = the channel the live
+    # price is compared with while the bar forms. A live snapshot without *_prev falls back to the plain key.
+    lo = _f(g("dc_low_15m_prev", g("dc_low_15m", 0.0)))
+    hi = _f(g("dc_high_15m_prev", g("dc_high_15m", 0.0)))
+    fire = _dc15._dc15m_force_exit_fires(_f(st.get("px")), _f(st.get("gain")), lo, hi, is_long)
     return (True, "DELTA_EXIT_DC15M_FLOOR_BREAK") if fire else (False, "")
 
 

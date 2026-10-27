@@ -139,6 +139,135 @@ def remove_values(path, sw, plan, ts):
     return n
 
 
+def _registry_home(sw):
+    try:
+        import json
+        reg = json.loads((ROOT / "data" / "wiring" / "vec_function_registry.json").read_text()).get("registry") or {}
+        return (reg.get(sw) or {}).get("suggested_home_tab")
+    except Exception:
+        return None
+
+
+def plan_dedupe(path):
+    """One switch, ONE tab. Returns {switch: (keeper_tab, {tab: [rows]})}.
+
+    USER 2026-10-27: "the same switch name can not appear twice in the workbook
+    as it wastes compute and is a risk for conflicts. Not greyed out either
+    because it raises unnecessary alarms to see important switches greyed out."
+    So the duplicates are DELETED, not greyed, and exactly one tab survives.
+
+    Keeper, in the SWITCH_ADD_GUIDE step-3 authority order: the registry's
+    `suggested_home_tab` when the switch actually has rows there, else the tab
+    holding the bold/is_default row. Measured 2026-10-27 across all 4 workbooks:
+    the keeper held the bold for 48 of 48 duplicated switches, so no default is
+    ever deleted — and this function REFUSES rather than guess if that is ever
+    untrue.
+    """
+    wb = openpyxl.load_workbook(str(path))
+    try:
+        per = {}
+        for tab in SWITCH_SHEETS:
+            if tab not in wb.sheetnames:
+                continue
+            ws = wb[tab]
+            for r in range(3, ws.max_row + 1):
+                a = str(ws.cell(r, 1).value or "").strip()
+                if not a:
+                    continue
+                bold = bool(ws.cell(r, 2).font and ws.cell(r, 2).font.bold)
+                per.setdefault(a, []).append((tab, r, bold))
+        plan = {}
+        for sw, hits in per.items():
+            tabs = {t for t, _, _ in hits}
+            if len(tabs) < 2:
+                continue
+            boldtabs = {t for t, _, b in hits if b}
+            home = _registry_home(sw)
+            keeper = home if home in tabs else (sorted(boldtabs)[0] if boldtabs else sorted(tabs)[0])
+            if boldtabs and keeper not in boldtabs:
+                die(f"{path.name}: {sw} bold lives in {sorted(boldtabs)} but the keeper would be {keeper} — refusing to delete the default; re-bold into {keeper} first via the bookkeeper's align_default")
+            keep_rows = [r for t, r, _ in hits if t == keeper]
+            if len(keep_rows) < 2:
+                die(f"{path.name}: {sw} keeper {keeper} would retain {len(keep_rows)} row(s) — a switch must keep at least two testable options")
+            doomed = {}
+            for t, r, _b in hits:
+                if t != keeper:
+                    doomed.setdefault(t, []).append(r)
+            if doomed:
+                plan[sw] = (keeper, doomed)
+        return plan
+    finally:
+        wb.close()
+
+
+def apply_dedupe(path, plan, ts):
+    """Delete every non-keeper row; row-guard proves only those rows went."""
+    shutil.copy2(path, ROOT / "backups" / f"before_switch_dedupe_{ts}_{path.name}")
+    wb = openpyxl.load_workbook(str(path))
+    n = 0
+    try:
+        bytab = {}
+        for sw, (keeper, doomed) in plan.items():
+            for t, rows in doomed.items():
+                bytab.setdefault(t, []).extend(rows)
+        before = {t: fingerprints(wb[t]) for t in bytab}
+        for t, rows in bytab.items():
+            ws = wb[t]
+            for r in sorted(set(rows), reverse=True):  # bottom-up keeps indices valid
+                ws.delete_rows(r)
+                n += 1
+        for t, rows in bytab.items():
+            after = fingerprints(wb[t])
+            want = len(set(rows))
+            lost = sum((before[t] - after).values())
+            gained = sum((after - before[t]).values())
+            if gained:
+                die(f"{path.name}!{t}: row-guard gained {gained} rows — nothing saved, backup kept")
+            if lost != want:
+                die(f"{path.name}!{t}: row-guard lost {lost} but {want} planned — nothing saved, backup kept")
+        tmp = str(path) + ".dedupetmp"
+        wb.save(tmp)
+        with zipfile.ZipFile(tmp) as z:
+            if len(z.namelist()) < 10:
+                os.remove(tmp)
+                die(f"refusing truncated save {path.name}")
+        os.replace(tmp, str(path))
+    finally:
+        wb.close()
+    return n
+
+
+def main_dedupe(a):
+    """USER 2026-10-27: one switch name, one tab per workbook."""
+    if os.environ.get("V15_ROW_REMOVAL_LIFTED") != "1":
+        die("dedupe deletes rows — needs an explicit operator lift: re-run with V15_ROW_REMOVAL_LIFTED=1")
+    if len(str(a.reason).strip()) < 8:
+        die("--dedupe needs a real --reason (8+ chars)")
+    total = 0
+    plans = []
+    for cs, fn in FILES.items():
+        p = Path(a.templates_dir) / fn
+        if not p.exists():
+            die(f"missing {p}")
+        pl = plan_dedupe(p)
+        rows = sum(len(set(r)) for _k, (_t, d) in pl.items() for r in d.values())
+        total += rows
+        plans.append((cs, p, pl))
+        print(f"[{cs}] {fn}: {len(pl)} duplicated switches, {rows} rows to delete", flush=True)
+        for sw, (keeper, doomed) in sorted(pl.items()):
+            print(f"    {sw:40s} keep {keeper:26s} drop {','.join(sorted(doomed))}", flush=True)
+    print(f"TOTAL rows to delete: {total}", flush=True)
+    if not a.apply:
+        print("dry-run OK — re-run with --apply (per-file backup, row-guard verified before save)", flush=True)
+        return 0
+    ts = datetime.datetime.now().strftime("%Y%m%d%H%M")
+    for cs, p, pl in plans:
+        if pl:
+            print(f"[{cs}] deleted {apply_dedupe(p, pl, ts)} rows -> {p.name}  ({a.reason})", flush=True)
+    print("fleet NOT synced — push from the source host and md5-verify, Mac included", flush=True)
+    return 0
+
+
 def main_values(a, sw):
     """USER 2026-10-27: take the unnecessary option rows out completely.
 
@@ -191,13 +320,16 @@ def main_values(a, sw):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--switch", required=True)
+    ap.add_argument("--switch", default="", help="not needed with --dedupe")
     ap.add_argument("--templates-dir", default=str(ROOT / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM"))
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--fleet", action="store_true")
     ap.add_argument("--values", default=None, help="USER 2026-10-27 exception: delete ONLY these option rows (comma list) of a switch that STAYS. Never the bold/is_default row; always leaves >=2 rows.")
-    ap.add_argument("--reason", default="", help="required with --values (8+ chars) — the audit trail for a deletion")
+    ap.add_argument("--reason", default="", help="required with --values/--dedupe (8+ chars) — the audit trail for a deletion")
+    ap.add_argument("--dedupe", action="store_true", help="USER 2026-10-27: enforce one switch name = one tab per workbook; delete the non-keeper rows (never greyed, never the bold)")
     a = ap.parse_args()
+    if a.dedupe:
+        return main_dedupe(a)
     sw = a.switch.strip().upper()
     if a.values:
         return main_values(a, sw)
