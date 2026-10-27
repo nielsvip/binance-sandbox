@@ -25996,8 +25996,7 @@ class MultiAccountTradeManager:
     async def refresh_from_files_loop(self, interval: Optional[float] = None):
         """USER 2026-10-27: RESTORED, and it is now THE way ez_manage learns positions: redis first under a
         0.01 s budget, else the json — both written by the single writer. No Binance call.
-        Was KILLED on the claim that "positions_service with enable_auto_fetch=True is the sole source of
-        truth via WS+API"; that in-process service had NO WebSocket (the writer owns it), so it was really
+        The in-process positions_service it replaced had NO WebSocket (the writer owns it), so it was really
         a second REST poller whose process_account_update hung 329x > 120 s, freezing ez_manage's view
         while the writer's files stayed correct.
         This task is already scheduled at startup, so no new task is created."""
