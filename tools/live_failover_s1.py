@@ -777,7 +777,8 @@ class Watchdog:
             for a in list(accts):
                 key = f"{venue}:{a}"
                 holds.setdefault(key, now)
-                held_for[key] = now - float(holds.get(key, now))
+                # 2026-10-27: timers persist in state.json; one left from an older lease (10-25) read 155,866 s and yielded instantly.
+                held_for[key] = now - max(float(holds.get(key, now)), float(lease.get("since_epoch") or 0))
         for key, secs in held_for.items():
             if secs >= ACCT_YIELD_S:
                 venue, a = key.split(":", 1)
@@ -946,7 +947,7 @@ class Watchdog:
                     if self.actions.traders_alive_venue(_v) > 0:
                         self.state.pop(f"unrun_{_v}", None)
                         continue
-                    _since = self.state.get(f"unrun_{_v}") or now
+                    _since = max(float(self.state.get(f"unrun_{_v}") or now), float(lease.get("since_epoch") or 0))
                     self.state[f"unrun_{_v}"] = _since
                     if now - _since >= VENUE_UNRUN_S:
                         _keep = [x for x in scope if x != _v]
@@ -973,7 +974,8 @@ class Watchdog:
             # "so it is not fenced on both hosts") — it was simply missing from the one branch where neither host
             # can trade. Bounded by the same VENUE_UNRUN_S: if the handshake has not completed by then, hand the
             # lease back, because a degraded Mac managing the account always beats nobody managing it.
-            _unf = self.state.get("unfenced_wait") or now
+            # 2026-10-27: clamp to this lease's start — a wait left in state.json from the 10-25 lease made S1 yield 11 s after taking over.
+            _unf = max(float(self.state.get("unfenced_wait") or now), float(lease.get("since_epoch") or 0))
             self.state["unfenced_wait"] = _unf
             _waited = int(now - _unf)
             if _waited >= VENUE_UNRUN_S:

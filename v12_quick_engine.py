@@ -4276,9 +4276,6 @@ class QuickConfig:
     CRYPTO_ROUND_TRIP_COMMISSION_PCT: float = (
         _MEASURED_CRYPTO_ROUND_TRIP_PCT  # 2026-10-27: was 0.04, hand-set. Now the SAME measured value config.Config reads (fee_model.py, broker fills) so board and live charge identically by construction. Tradier stays commission-free via the is_tradier branches.
     )
-    VEC_CROSS_CONFIRM_REQUIRES_BOARD: bool = (
-        True  # parity with config.Config / config_tradier: live-only gate (the board IS the vector here), field present so QuickConfig<->config parity audits stay green
-    )
     MIN_EDGE_OVER_FEE_ENABLED: bool = (
         False  # parity with config.Config: OFF live, sweepable here so boards measure it per sym_side
     )
