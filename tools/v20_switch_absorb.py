@@ -111,7 +111,7 @@ def load_gap():
         d = json.loads(p.read_text())
         if d.get("meta", {}).get("contract") != "v20_domain_gap_v1":
             sys.exit(f"REFUSED: {p} is not contract v20_domain_gap_v1")
-        gap[cs] = {g["switch"]: g for g in d["gap"]}
+        gap[cs] = {g["switch"]: g for g in d["gap"]}  # name -> record; membership means "this cat_side has NO row"
     if missing:
         sys.exit(f"REFUSED: run tools/v20_domain_census.py first (missing {missing})")
     return gap
@@ -141,7 +141,35 @@ def already_queued():
     return seen
 
 
-def propose(name, entry):
+def missing_cat_sides(name, gap, dflts):
+    """The cat_sides whose TEMPLATE actually lacks a row for this switch, intersected with the venues whose config
+    declares it.
+
+    The first version unioned the four gaps and then queued every switch with --venues both --sides both. A switch
+    missing only from STOCKS_SHORT was therefore queued for all four workbooks, where three already held it: the
+    2026-10-27 dry run came back `already_present: 293` of 328. A row must be installed exactly where it is absent.
+    """
+    out = []
+    for cat_side, rows in gap.items():
+        if name not in rows:
+            continue
+        venue = "CRYPTO" if cat_side.startswith("CRYPTO") else "STOCKS"
+        if venue in dflts:
+            out.append(cat_side)
+    return out
+
+
+def venue_side_calls(cat_sides):
+    """Group cat_sides into the fewest --venues/--sides calls the adder can express."""
+    venues = {c.split("_")[0] for c in cat_sides}
+    sides = {c.split("_", 1)[1] for c in cat_sides}
+    if len(venues) * len(sides) == len(cat_sides):
+        return [("both" if len(venues) == 2 else next(iter(venues)).lower(),
+                 "both" if len(sides) == 2 else next(iter(sides)).lower())]
+    return [(c.split("_")[0].lower(), c.split("_", 1)[1].lower()) for c in cat_sides]
+
+
+def propose(name, entry, gap):
     """-> (tier, proposal|None, reason). The strict local gates; v15_switch_add has the last word."""
     if str(entry.get("status") or "").upper().startswith("DEAD"):
         return "NOT_A_CANDIDATE", None, f"bible status {entry.get('status')}"
@@ -182,8 +210,12 @@ def propose(name, entry):
         tier = "READY_BOOL_DERIVED"
     if default not in opts:
         opts = [default] + [o for o in opts if o != default]
-    venues = [v for v in ("CRYPTO", "STOCKS") if v in dflts]
-    return tier, {"switch": name, "tab": tab, "candidates": opts, "default": default, "venues": venues, "vec_sites": sites[:3], "live_reads": live_read_total(entry)}, ""
+    cat_sides = missing_cat_sides(name, gap, dflts)
+    if not cat_sides:
+        return "ALREADY_HAS_ROWS", None, "every cat_side whose config declares it already has a row"
+    return tier, {"switch": name, "tab": tab, "candidates": opts, "default": default,
+                  "cat_sides": cat_sides, "calls": venue_side_calls(cat_sides),
+                  "vec_sites": sites[:3], "live_reads": live_read_total(entry)}, ""
 
 
 _BAD_CAND = re.compile(r"candidate '([^']+)' is not")
@@ -197,24 +229,34 @@ def run_adder(p, inbox, push=None):
     is not the same as inventing one, and the remaining options still measure a real delta. The default is never dropped,
     and a switch that falls below two surviving options is reported, not installed."""
     cands = list(p["candidates"])
-    out = ""
-    for _ in range(4):
-        cmd = [sys.executable, str(ROOT / "tools" / "v15_switch_add.py"), "--enqueue", "--switch", p["switch"], "--tab", p["tab"], "--candidates", ",".join(cands), "--default", p["default"], "--inbox", str(inbox), "--venues", "both" if len(p["venues"]) == 2 else p["venues"][0].lower()]
-        if push:
-            cmd += ["--push", push]
-        r = subprocess.run(cmd, capture_output=True, text=True, cwd=str(ROOT))
-        out = ((r.stdout or "") + (r.stderr or "")).strip()
-        if r.returncode == 0:
-            p["candidates"] = cands
-            return True, out[-400:]
-        m = _BAD_CAND.search(out)
-        if not m or m.group(1) == p["default"]:
-            break
-        nxt = [c for c in cands if c != m.group(1)]
-        if len(nxt) < 2 or p["default"] not in nxt or nxt == cands:
-            break
-        cands = nxt
-    return False, out[-400:]
+    failed, done = [], []
+    for venue, side in p.get("calls") or [("both", "both")]:
+        out, pair_ok = "", False
+        for _ in range(4):
+            cmd = [sys.executable, str(ROOT / "tools" / "v15_switch_add.py"), "--enqueue", "--switch", p["switch"], "--tab", p["tab"], "--candidates", ",".join(cands), "--default", p["default"], "--inbox", str(inbox), "--venues", venue, "--sides", side]
+            if push:
+                cmd += ["--push", push]
+            r = subprocess.run(cmd, capture_output=True, text=True, cwd=str(ROOT))
+            out = ((r.stdout or "") + (r.stderr or "")).strip()
+            if r.returncode == 0:
+                pair_ok = True
+                break
+            m = _BAD_CAND.search(out)
+            if not m or m.group(1) == p["default"]:
+                break
+            nxt = [c for c in cands if c != m.group(1)]
+            if len(nxt) < 2 or p["default"] not in nxt or nxt == cands:
+                break
+            cands = nxt
+        if pair_ok:
+            done.append(f"{venue}/{side}")
+        else:
+            failed.append(f"{venue}/{side}: {out[-300:]}")
+    if done:
+        p["candidates"] = cands
+    if failed:
+        return False, f"FAILED pairs {'; '.join(failed)} | ok pairs {done or 'none'}"
+    return True, f"ok pairs {done}"
 
 
 def quickconfig_patch(names, entries):
@@ -272,12 +314,12 @@ def main():
         if not entry:
             tiers.setdefault("NOT_A_CANDIDATE", []).append({"switch": name, "reason": "no SWITCH_BIBLE entry — rebuild the bible first"})
             continue
-        tier, prop, reason = propose(name, entry)
+        tier, prop, reason = propose(name, entry, gap)
         if prop and name in skip:
             tier, prop, reason = "ALREADY_QUEUED", None, "already in the row queue or inbox"
         rec = {"switch": name, "reason": reason}
         if prop:
-            rec.update({"tab": prop["tab"], "candidates": prop["candidates"], "default": prop["default"], "venues": prop["venues"], "vec_sites": prop["vec_sites"]})
+            rec.update({"tab": prop["tab"], "candidates": prop["candidates"], "default": prop["default"], "cat_sides": prop["cat_sides"], "calls": prop["calls"], "vec_sites": prop["vec_sites"]})
             proposals.append((tier, prop))
         tiers.setdefault(tier, []).append(rec)
 
@@ -290,7 +332,7 @@ def main():
             continue
         ok, out = run_adder(p, inbox_real if a.apply else tmp, a.push if a.apply else None)
         if ok:
-            enqueued.append({"switch": p["switch"], "tier": tier, "tab": p["tab"], "candidates": p["candidates"], "default": p["default"], "venues": p["venues"]})
+            enqueued.append({"switch": p["switch"], "tier": tier, "tab": p["tab"], "candidates": p["candidates"], "default": p["default"], "cat_sides": p["cat_sides"], "calls": p["calls"]})
             n += 1
         else:
             refused.append({"switch": p["switch"], "tier": tier, "tab": p["tab"], "why": out})
