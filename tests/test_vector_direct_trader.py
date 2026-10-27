@@ -95,6 +95,21 @@ def test_activation_triggers_and_hysteresis(tmp_path):
     assert b.active() == ["inf"]
 
 
+def test_named_kinds_scope_and_engine_down_persistence(tmp_path):
+    a = V.Activation(tmp_path / "k.json", V.CRYPTO_ACCOUNTS)
+    now = 3_000_000.0
+    h = hb(now, kinds=["positions_stale", "not_trading_account"], positions_stale_accounts=["men"], not_trading_account_accounts=["flz", "inf"])
+    assert set(a.triggers(now, h, "crypto", {})[0]) == {"men", "flz", "inf"}
+    assert set(a.triggers(now, hb(now, kinds=["indicators_unproducible"]), "crypto", {})[0]) == set(V.CRYPTO_ACCOUNTS)
+    down = hb(now, accounts={"flz": {"trader_alive": 0, "engine_dead_s": 0}})
+    assert a.triggers(now, down, "crypto", {})[0] == {}
+    down["epoch"] = now + V.ENGINE_DOWN_S
+    assert set(a.triggers(now + V.ENGINE_DOWN_S + 1, down, "crypto", {})[0]) == {"flz"}
+    up = hb(now, accounts={"flz": {"trader_alive": 1, "engine_dead_s": 0}})
+    up["epoch"] = now + 200
+    assert a.triggers(now + 201, up, "crypto", {})[0] == {}
+
+
 def test_stock_market_closed_section_never_triggers(tmp_path):
     a = V.Activation(tmp_path / "s.json", V.STOCK_ACCOUNTS)
     now = 2_000_000.0
@@ -126,8 +141,9 @@ def test_binance_sizing(tmp_path):
 def test_tradier_sizing_whole_shares(tmp_path):
     t = V.Tradier({}, tmp_path)
     assert t.size({"ss": "F_LONG", "act": "OPEN", "notional": 15.0}, 0, 11.0) == (1.0, "")
-    q, why = t.size({"ss": "AAPL_LONG", "act": "OPEN", "notional": 15.0}, 0, 230.0)
-    assert q == 0 and "whole shares" in why
+    assert t.size({"ss": "AAPL_LONG", "act": "OPEN", "notional": 15.0}, 0, 230.0) == (1.0, "")
+    q, why = t.size({"ss": "SNDK_LONG", "act": "OPEN", "notional": 15.0}, 0, 1304.0)
+    assert q == 0 and "one-share cap" in why
     assert t.size({"ss": "F_LONG", "act": "REDUCE", "qty": 0.4}, 3, 11.0)[0] == 0
     assert t.size({"ss": "F_LONG", "act": "CLOSE"}, 3, 11.0)[0] == 3.0
 
@@ -139,7 +155,8 @@ def test_dry_run_rows_never_count_as_done(tmp_path):
     p = tmp_path / "data" / "vector_direct"
     p.mkdir(parents=True)
     day = time.strftime("%Y-%m-%d", time.gmtime())
-    (p / f"ledger_crypto_{day}.jsonl").write_text(json.dumps({"key": "k1", "final": True, "status": "DRY_RUN"}) + "\n" + json.dumps({"key": "k2", "final": True, "status": "SENT"}) + "\n")
+    (p / f"ledger_crypto_{day}.jsonl").write_text(json.dumps({"key": "k1", "final": True, "status": "DRY_RUN"}) + "\n" + json.dumps({"key": "k2", "final": True, "status": "SENT"}) + "\n"
+                                                  + json.dumps({"key": "k3", "final": True, "status": "SKIP_SIZE", "dry_run": True}) + "\n")
     t = V.Trader.__new__(V.Trader)
     t.out, t.venue = p, "crypto"
     assert t._load_done() == {"k2"}

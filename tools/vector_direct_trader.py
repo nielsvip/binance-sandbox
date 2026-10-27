@@ -48,8 +48,10 @@ STOCK_ACCOUNTS = ("tra", "trb", "trc")
 CRYPTO_SUFFIXES = ("USDT", "USDC", "USD1", "USDS", "BUSD", "FDUSD", "TUSD", "DAI")
 START_POSITION_SIZE = float(os.environ.get("VD_START_POSITION_SIZE", "15"))
 MAX_OPEN_NOTIONAL = float(os.environ.get("VD_MAX_OPEN_NOTIONAL", "110"))
+STOCK_ONE_SHARE_MAX = float(os.environ.get("VD_STOCK_ONE_SHARE_MAX", "500"))
 HB_STALE_S = float(os.environ.get("VD_HB_STALE_S", "90"))
 ACCT_DEAD_S = float(os.environ.get("VD_ACCT_DEAD_S", "180"))
+ENGINE_DOWN_S = float(os.environ.get("VD_ENGINE_DOWN_S", "90"))  # trader_alive=0 this long (a routine restart is shorter)
 MISS_GRACE_S = float(os.environ.get("VD_MISS_GRACE_S", "90"))
 MISS_MIN_AFTER_CLOSE_S = float(os.environ.get("VD_MISS_MIN_AFTER_CLOSE_S", "180"))
 HOLD_MIN_S = float(os.environ.get("VD_HOLD_MIN_S", "1800"))
@@ -236,6 +238,7 @@ class Activation:
         self.path = path
         self.accounts = tuple(accounts)
         self.st = read_json(path, {}) or {}
+        self.down_since = {}
         for a in self.accounts:
             self.st.setdefault(a, {"active": False, "since": None, "reason": "", "healthy_since": None, "takeovers": 0, "hold_s": HOLD_MIN_S, "released_at": None})
 
@@ -249,10 +252,14 @@ class Activation:
         else:
             sec = ((hb or {}).get("trading_health") or {}).get(venue) or {}
             if sec.get("applicable") is not False:
-                kinds = [k for k in (sec.get("kinds") or []) if k not in VENUE_WIDE_KINDS_IGNORED]
-                if kinds:
-                    for a in self.accounts:
-                        trig[a] = "mac_kinds:" + ",".join(kinds)
+                # a kind that names its accounts (<kind>_accounts) takes over only those; a kind without a list is venue-wide
+                for kind in sec.get("kinds") or []:
+                    named = sec.get(f"{kind}_accounts")
+                    if kind in VENUE_WIDE_KINDS_IGNORED and named is None:
+                        continue
+                    for a in (named if isinstance(named, list) else self.accounts):
+                        if a in self.accounts:
+                            trig.setdefault(a, f"mac_kind:{kind}")
                 for lk in ("account_dead_accounts", "broker_dead_accounts", "broker_unreachable_accounts"):
                     for a in sec.get(lk) or []:
                         if a in self.accounts:
@@ -260,12 +267,17 @@ class Activation:
                 for a, v in (sec.get("accounts") or {}).items():
                     if a not in self.accounts or not isinstance(v, dict):
                         continue
-                    if venue == "crypto":
-                        if not v.get("trader_alive") or float(v.get("engine_dead_s") or 0) >= ACCT_DEAD_S:
-                            trig.setdefault(a, f"mac_engine_dead_{int(float(v.get('engine_dead_s') or 0))}s_alive={v.get('trader_alive')}")
+                    if not v.get("trader_alive"):
+                        self.down_since.setdefault(a, now)
                     else:
-                        if not v.get("trader_alive") or v.get("order_path_dead") or v.get("broker_unreachable"):
-                            trig.setdefault(a, f"mac_stock_engine alive={v.get('trader_alive')} order_path_dead={v.get('order_path_dead')} broker_unreachable={v.get('broker_unreachable')}")
+                        self.down_since.pop(a, None)
+                    down_s = now - self.down_since[a] if a in self.down_since else 0.0
+                    if venue == "crypto":
+                        if down_s >= ENGINE_DOWN_S or float(v.get("engine_dead_s") or 0) >= ACCT_DEAD_S:
+                            trig.setdefault(a, f"mac_engine_dead_{int(float(v.get('engine_dead_s') or 0))}s_down={int(down_s)}s")
+                    else:
+                        if down_s >= ENGINE_DOWN_S or v.get("order_path_dead") or v.get("broker_unreachable"):
+                            trig.setdefault(a, f"mac_stock_engine down={int(down_s)}s order_path_dead={v.get('order_path_dead')} broker_unreachable={v.get('broker_unreachable')}")
         for a, why in (missed or {}).items():
             if a in self.accounts:
                 trig.setdefault(a, why)
@@ -511,7 +523,13 @@ class Tradier:
             return float(int(held)), ""
         if o["act"] == "OPEN":
             n = math.floor(float(o["notional"]) / price) if price > 0 else 0
-            return (float(n), "") if n >= 1 else (0.0, f"one share ${price:.2f} > START_POSITION_SIZE ${o['notional']:.2f} (skip, whole shares)")
+            if n >= 1:
+                return float(n), ""
+            # stock convention (tradier_manage max(1, int(qty)); config_tradier START_POSITION_SIZE $500 "$150 can't buy 1
+            # share of $300+ stocks"): one whole share when the $15 slice is less than a share, up to STOCK_ONE_SHARE_MAX
+            if 0 < price <= STOCK_ONE_SHARE_MAX:
+                return 1.0, ""
+            return 0.0, f"one share ${price:.2f} > ${STOCK_ONE_SHARE_MAX:.0f} one-share cap (skip)"
         if o["act"] == "AUGMENT":
             n = math.floor(float(o["qty"]))
             return (float(n), "") if n >= 1 else (0.0, f"augment {o['qty']:.3f} shares < 1")
@@ -572,14 +590,15 @@ class Trader:
             try:
                 for line in p.read_text().splitlines():
                     r = json.loads(line)
-                    if r.get("final") and r.get("key") and r.get("status") not in ("DRY_RUN", "KILLED"):
+                    if r.get("final") and r.get("key") and not r.get("dry_run") and r.get("status") not in ("DRY_RUN", "KILLED"):
                         done.add(r["key"])
             except Exception:
                 continue
         return done
 
     def _ledger(self, row):
-        row = {"ts": time.time(), "iso": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "venue": self.venue, **row}
+        row = {"ts": time.time(), "iso": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "venue": self.venue,
+               "dry_run": bool(self.a.dry_run or self.a.force_active), **row}
         with open(self._ledger_path(), "a") as fh:
             fh.write(json.dumps(row, default=str) + "\n")
 
@@ -649,7 +668,7 @@ class Trader:
         states = self.load_states(all_sides)
         market_ok = True
         if self.venue == "stocks":
-            market_ok = self.broker.market_open()
+            market_ok = self.broker.market_open() or bool(self.a.assume_open and self.a.dry_run)
         allowed = lambda acct, ss: entry_allowed(self.root, self.venue, acct, ss)
         hb = self.heartbeat()
         missed = self.check_expectations(now, set(self.act.active())) if market_ok else {}
@@ -782,6 +801,7 @@ def main(argv=None):
     ap.add_argument("--hb-extra", action="append", help="additional heartbeat file(s); the freshest wins")
     ap.add_argument("--hb-ssh", default="", help="also read the heartbeat from this ssh host (e.g. S1 for S5)")
     ap.add_argument("--probe", action="store_true", help="read-only: broker positions per account, then exit")
+    ap.add_argument("--assume-open", action="store_true", help="stocks + --dry-run only: plan as if the market were open")
     a = ap.parse_args(argv)
     t = Trader(a)
     if a.probe:
