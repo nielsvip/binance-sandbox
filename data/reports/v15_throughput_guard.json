@@ -1,5 +1,5 @@
 {
- "at": "2026-10-27T20:11:11Z",
+ "at": "2026-10-27T21:11:07Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
@@ -9,9 +9,14 @@
    "published_n": 0,
    "flat_or_worse": 0,
    "unknown": 0,
-   "boards_running": [],
-   "mem_avail_mb": 1261,
-   "load1": 32.63,
+   "boards_running": [
+    "ETCUSDT_SHORT",
+    "IOTAUSDT_SHORT",
+    "MOVRUSDT_SHORT",
+    "SKYUSDT_SHORT"
+   ],
+   "mem_avail_mb": 5614,
+   "load1": 25.14,
    "nproc": 16,
    "slots": null,
    "binding_reason": "concurrency 0 boards: 12/h needs <= 0 min per sym_side \u2014 raise concurrent sides or cut evals per board",
@@ -26,17 +31,17 @@
    "improved_finishes_24h": 0,
    "board_cpu_s_median_24h": null,
    "board_wall_s_median_24h": null,
-   "board_cores": 0.0,
-   "nonboard_cores_competing": 6.21,
-   "nonboard_cores_niced": 4.91,
+   "board_cores": 7.15,
+   "nonboard_cores_competing": 2.34,
+   "nonboard_cores_niced": 4.71,
    "cores_by_bucket": {
-    "other": 2.44,
-    "live_helpers": 2.83,
-    "klines_append": 0.94
+    "other": 1.45,
+    "boards": 7.15,
+    "klines_append": 0.89
    },
    "cores_by_bucket_niced": {
-    "klines_vault": 1.93,
-    "other": 2.98
+    "klines_vault": 1.35,
+    "other": 3.36
    }
   },
   "s2": {
@@ -46,38 +51,36 @@
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "BTCUSDC_LONG",
+    "BATUSDT_LONG",
     "GRTUSDT_LONG",
-    "NEARUSDC_LONG",
-    "QNTUSDT_LONG"
+    "QNTUSDT_LONG",
+    "STRKUSDT_SHORT"
    ],
-   "mem_avail_mb": 3312,
-   "load1": 25.17,
+   "mem_avail_mb": 8402,
+   "load1": 17.56,
    "nproc": 16,
    "slots": null,
-   "binding_reason": "CPU budget: median board 4546 core-s, 16 cores minus 4.3 competing non-board cores ({'other': 3.1, 'boards': 9.67, 'live_helpers': 1.2}) = 11.7 usable -> host ceiling 9.3 boards/h. Move nice-0 non-board work off the host and/or cut core-s per board.",
+   "binding_reason": "CPU budget: median board 4546 core-s, 16 cores minus 2.1 competing non-board cores ({'other': 0.99, 'boards': 10.2, 'live_helpers': 1.14}) = 13.9 usable -> host ceiling 11.0 boards/h. Move nice-0 non-board work off the host and/or cut core-s per board.",
    "error": null,
    "published": [],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 538.6,
+   "minutes_since_last_improved": 598.6,
    "last_improved_symside": "SKYAIUSDT_LONG",
    "cadence_ok": false,
-   "improved_gap_min_median_24h": 177.8,
+   "improved_gap_min_median_24h": 808.8,
    "improved_gap_min_max_24h": 808.8,
-   "improved_finishes_24h": 3,
+   "improved_finishes_24h": 2,
    "board_cpu_s_median_24h": 4545.5,
-   "board_wall_s_median_24h": 3938.259119987488,
-   "board_cores": 9.67,
-   "nonboard_cores_competing": 4.3,
-   "nonboard_cores_niced": 1.93,
+   "board_wall_s_median_24h": 4798.007516860962,
+   "board_cores": 10.2,
+   "nonboard_cores_competing": 2.13,
+   "nonboard_cores_niced": 0,
    "cores_by_bucket": {
-    "other": 3.1,
-    "boards": 9.67,
-    "live_helpers": 1.2
+    "other": 0.99,
+    "boards": 10.2,
+    "live_helpers": 1.14
    },
-   "cores_by_bucket_niced": {
-    "other": 1.93
-   }
+   "cores_by_bucket_niced": {}
   }
  },
  "under_target": [
