@@ -4643,7 +4643,7 @@ class QuickConfig:
     STRENGTH_MIN_SCORE: float = 5.0
     # Holding period enforcement (avoid rapid exit noise) — WINNER: 10
     MIN_HOLD_BARS: int = 8
-    MIN_HOLD_SOLE_SWITCH_ENABLED: bool = True  # MIRROR of config/config_tradier (USER 2026-10-27: the engines follow the sheet, they never set defaults). Required or max(MIN_HOLD_BARS, MIN_HOLD_BARS_BEFORE_EXIT=10) pins 2/4/8 to 10 and the per-symbol sweep cannot bind.
+    # MIN_HOLD_SOLE_SWITCH_ENABLED ERASED 2026-10-27 — USER: "get rid of it too". It only existed to bypass the max(MIN_HOLD_BARS, MIN_HOLD_BARS_BEFORE_EXIT) composition, and that composition is gone with the second name, so it was a second knob on one quantity.
   # MIRROR of the TEMPLATE bold (GLOBAL_RISK_GATES), never an authority — USER 2026-10-27. Swept 2/4/8/12 per sym_side.
     # STRUCTURAL ONLY — profit/stop percentage exits disabled per user 2026-08-14: exits only on DC high reject (5m/15m/1h/4h/D), re-entry on WT 15m cross or HH/HL
     PROFIT_TARGET_ENABLED: bool = (

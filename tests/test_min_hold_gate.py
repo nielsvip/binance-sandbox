@@ -26,7 +26,7 @@ OPTIONS = (2, 4, 8, 12)  # operator's set, revised 2026-10-27 after the first sw
 
 
 def cfg(min_hold_bars=2, before_exit=0, base_tf="15m", sole=False, scalp=False, protection=True):
-    """ONE switch now: `before_exit`/`sole` are accepted and ignored (retired)."""
+    """ONE switch now: `before_exit`/`sole` are accepted and ignored (both erased)."""
     return type("C", (), {
         "BASE_TF": base_tf,
         "MIN_HOLD_BARS": min_hold_bars,
@@ -247,7 +247,9 @@ class VecLiveWiringTest(unittest.TestCase):
         import config_tradier
         import v12_quick_engine as V
         for mod in (config.Config, config_tradier.TradierConfig, V.QuickConfig()):
-            self.assertTrue(getattr(mod, "MIN_HOLD_SOLE_SWITCH_ENABLED", False))
+            self.assertNotIn("MIN_HOLD_SOLE_SWITCH_ENABLED",
+                             getattr(type(mod) if not isinstance(mod, type) else mod,
+                                     "__dataclass_fields__", {}) or {})
         # and the effective hold must then equal the bold, not max(.,BEFORE_EXIT)
         self.assertEqual(g.threshold_bars(config.Config), 8)
 

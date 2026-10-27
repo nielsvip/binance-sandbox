@@ -21,7 +21,9 @@ WHAT WAS MEASURED 2026-10-27 (why this module exists)
    would have reported a structural 0 for all five options (Bible 14.3). The two
    switches live in different template tabs (GLOBAL_RISK_GATES vs
    REDUCE_PROFIT_LOCK) and were never one quantity; `threshold_bars` therefore
-   reads MIN_HOLD_BARS alone and MIN_HOLD_BARS_BEFORE_EXIT keeps its own leg.
+   reads MIN_HOLD_BARS alone. The second name was RETIRED AND ERASED on
+   2026-10-27 (operator: "MIN_HOLD_BARS is the ONLY permitted one"), and so was
+   MIN_HOLD_SOLE_SWITCH_ENABLED, which only existed to bypass that composition.
 
 SCALP IS PROHIBITED (operator, repeated 2026-10-27)
 ---------------------------------------------------
@@ -115,9 +117,7 @@ def threshold_bars(cfg) -> int:
     composition is GONE — it was what made MIN_HOLD_BARS a structural zero (a
     0/1/2/4/8 sweep bound on 0 of 316 crypto sym_sides) and what made
     MIN_HOLD_BARS_BEFORE_EXIT vec-inert once that was fixed. Two switches, two
-    gates, neither masking the other. `MIN_HOLD_SOLE_SWITCH_ENABLED` is now
-    redundant and is ignored here; it is kept as a config field only so older
-    per_sym sets that carry it still load.
+    gates, neither masking the other. MIN_HOLD_BARS is the one and only switch.
     """
     return min_hold_bars_only(cfg)
 

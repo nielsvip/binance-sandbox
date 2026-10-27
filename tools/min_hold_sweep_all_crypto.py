@@ -70,7 +70,7 @@ def run_arm(V, sliced, sym, is_long, option, sole):
     cfg.MODE = "crypto"
     cfg.MIN_HOLD_BARS = int(option)
     if sole:
-        cfg.MIN_HOLD_SOLE_SWITCH_ENABLED = True
+        pass  # --sole is a no-op since 2026-10-27: MIN_HOLD_BARS is always the sole driver
     r = V.simulate_one(sliced, sym, is_long, cfg)
     from vec_decisions import min_hold_gate as g
 

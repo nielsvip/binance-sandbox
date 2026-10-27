@@ -90,9 +90,7 @@ class TradierConfig:
     MIN_HOLD_PROTECTION_EXEMPT: bool = (
         True  # USER 2026-10-27: "MIN_HOLD_BARS_BEFORE_EXIT need to be independent and only overridden by fixed_stop". Implemented exactly: FIXED_STOP is the only STRATEGY-side override. This flag keeps ACCOUNT protection (LIQUIDAT/MARGIN/EMERGENCY/BALANCE_FLOOR) exempt as well, because holding a position through a margin kill to honour a bar count would lose the account and CLAUDE.md's "exits never blocked" exists for that case. Set False for a literally fixed_stop-only hold — an operator decision with eyes open.
     )
-    MIN_HOLD_SOLE_SWITCH_ENABLED: bool = (
-        True  # USER 2026-10-27 ordered MIN_HOLD_BARS swept at 0/1/2/4/8 on every crypto. MEASURED BLOCKER: the effective hold is max(MIN_HOLD_BARS, MIN_HOLD_BARS_BEFORE_EXIT) and BEFORE_EXIT defaults to 10, so every option <=8 is masked and the sweep reports structural zeros (Bible 14.3) — MIN_HOLD_BARS is already a dead switch in vec today (3 always masked by 10). True makes MIN_HOLD_BARS the SOLE driver so the five options bind. Shipped False: flipping it re-bases a hold that live positions are currently held on, and it neutralises MIN_HOLD_BARS_BEFORE_EXIT (swept 10..48, promoted on many boards), which needs the operator's call. Both arms are measured and reported.
-    )
+    # MIN_HOLD_SOLE_SWITCH_ENABLED ERASED 2026-10-27 — USER: "get rid of it too". It only existed to bypass the max(MIN_HOLD_BARS, MIN_HOLD_BARS_BEFORE_EXIT) composition, and that composition is gone with the second name, so it was a second knob on one quantity.
     MIN_HOLD_BARS: int = 10  # parity 2026-08-17: vector->live (was vector-only)
     MODE: str = "tradier"
     # ═══ VIGILANCE GUARD — USER EXTREME VIGILANCE MANDATE 2026-09-28 (stocks) ═══

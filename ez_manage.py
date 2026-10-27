@@ -54364,7 +54364,6 @@ async def process_position(
     class _MinHoldCfgShim:
         BASE_TF = str(_psym_get(symbol, position_side, "BASE_TF", getattr(config, "BASE_TF", "15m")) or "15m")
         MIN_HOLD_BARS = int(_psym_get(symbol, position_side, "MIN_HOLD_BARS", getattr(config, "MIN_HOLD_BARS", 3)) or 0)
-        MIN_HOLD_SOLE_SWITCH_ENABLED = bool(_psym_get(symbol, position_side, "MIN_HOLD_SOLE_SWITCH_ENABLED", getattr(config, "MIN_HOLD_SOLE_SWITCH_ENABLED", False)))
     # USER 2026-10-27: MIN_HOLD_BARS_BEFORE_EXIT is INDEPENDENT of MIN_HOLD_BARS
     # and "only overridden by fixed_stop". Live enforces the stricter of the two
     # for a NATIVE exit; a board-dictated close is exempt here because the vector
