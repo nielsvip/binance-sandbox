@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-27 07:56:35 UTC
+# Copilot Status — 2026-10-27 08:01:40 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T07:54:31
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-27T07:54:32
-- **RATIO_IMBALANCE** [crypto] flz — 2026-10-27T07:54:32
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-27T07:55:33
-- **RATIO_IMBALANCE** [crypto] flz — 2026-10-27T07:55:33
-- **STALE_INDICATORS** [tradier]  — 2026-10-27T07:56:34
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T07:56:34
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T07:56:34
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-27T07:56:34
-- **RATIO_IMBALANCE** [crypto] flz — 2026-10-27T07:56:34
+- **RATIO_IMBALANCE** [crypto] flz — 2026-10-27T07:58:36
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-27T07:59:37
+- **RATIO_IMBALANCE** [crypto] flz — 2026-10-27T07:59:37
+- **STALE_INDICATORS** [tradier]  — 2026-10-27T08:00:38
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T08:00:38
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T08:00:38
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-27T08:00:38
+- **RATIO_IMBALANCE** [crypto] flz — 2026-10-27T08:00:38
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-27T08:01:39
+- **RATIO_IMBALANCE** [crypto] flz — 2026-10-27T08:01:39
 
 ## Missed Trades (trader comparison)
 
@@ -29,7 +29,7 @@ _None_
 
 **Held:** 2 | **Watching for reentry:** 10 | **Reentered:** 0
 
-- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +0.3%
+- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +-0.3%
 - HELD: **BNBUSDC** SHORT (crypto) peak +3.0%, now +0.3%
 
 - WATCHING: **KMNOUSDT** LONG (crypto) peaked +11.7%, exited 0m ago
@@ -52,4 +52,4 @@ _None_
 - [LOW] tradier_rankings.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] tradier_positions.py running but log stale (53min)
+- [MEDIUM] tradier_positions.py running but log stale (58min)
