@@ -188,7 +188,21 @@ def wt15_against(ss, wt):
     return against, f"wt1_15m={w1:.3f} wt2_15m={w2:.3f} bar={wt.get('bar_ts')}"
 
 
-def plan_account(acct, venue, keys, states, positions, bar, done, allowed, prev_qty=None, wt15=None):
+NOINFO_GRACE_S = float(os.environ.get("VD_NOINFO_GRACE_S", str(BAR_S + 180)))
+NOINFO_CLOSE = os.environ.get("VD_NOINFO_CLOSE", "1") != "0"
+
+
+def no_information(st) -> bool:
+    """USER 2026-10-27 "any sym_side with no information is considered non tradeable and closed". Coordinator scope:
+    ONLY a side the per-sym store truly has no settings for (no state at all, or `missing live settings` from
+    missing_published_per_sym_row after the best-existing-settings fallback also found nothing). Pipeline failures
+    (override/validation/prepare/stale-NPZ/env) are NOT "no information" and never close anything."""
+    if not isinstance(st, dict):
+        return True
+    return (not st.get("ok")) and st.get("reason") == "missing live settings" and st.get("src") == "missing_published_per_sym_row"
+
+
+def plan_account(acct, venue, keys, states, positions, bar, done, allowed, prev_qty=None, wt15=None, noinfo_age=None):
     """Orders that converge one account to the board. positions: {ss: {"qty": abs qty, "price": px}} read just now.
     prev_qty: {ss: broker qty observed BEFORE this bar closed} — an AUGMENT/REDUCE the broker already shows was done by
     someone else (the Mac) and is not repeated. wt15: callable ss -> {bar_ts, wt1_15m, wt2_15m} of the latest closed 15m
@@ -198,9 +212,33 @@ def plan_account(acct, venue, keys, states, positions, bar, done, allowed, prev_
     orders, notes = [], []
     prev_qty = prev_qty or {}
     keyset = set(keys)
-    for ss in sorted(keyset | {s for s, p in positions.items() if float(p.get("qty") or 0) > 0}):
+    held_sides = [s for s, p in positions.items() if float(p.get("qty") or 0) > 0]
+    # no-information sides past the grace (one full bar past the state deadline) are treated as non-tradeable; a breaker
+    # stops it when many sides lose information at once (that is a pipeline outage, not missing settings)
+    noinfo = set()
+    if NOINFO_CLOSE and noinfo_age is not None:
+        aged = {s for s in held_sides if (noinfo_age(s, states.get(s)) or 0) >= NOINFO_GRACE_S}
+        if len(aged) > max(3, 0.25 * len(held_sides)):
+            notes.extend((s, f"NOINFO_BREAKER {len(aged)}/{len(held_sides)} held sides without information — no closes") for s in sorted(aged))
+        else:
+            noinfo = aged
+    for ss in sorted(keyset | set(held_sides)):
         st = states.get(ss)
         held = float((positions.get(ss) or {}).get("qty") or 0.0)
+        if held > 0 and ss in noinfo:
+            why_state = "no state file" if not isinstance(st, dict) else f"state ok={st.get('ok')} reason={st.get('reason')} src={st.get('src')}"
+            wt = (wt15(ss) or {}) if wt15 is not None else {}
+            fresh_wt = int(wt.get("bar_ts") or 0) >= bar - STATE_MAX_LAG_S
+            against, detail = wt15_against(ss, wt) if fresh_wt else (None, "wt15 stale/unavailable")
+            if against:
+                orders.append({"acct": acct, "ss": ss, "act": "CLOSE", "qty": held, "key": f"{acct}|{ss}|{int(wt['bar_ts'])}|NON_TRADEABLE_WT15_AGAINST",
+                               "why": f"NON_TRADEABLE_WT15_AGAINST (no information: {why_state}) {detail}", "reason": "NON_TRADEABLE_WT15_AGAINST"})
+            elif against is None:
+                orders.append({"acct": acct, "ss": ss, "act": "CLOSE", "qty": held, "key": f"{acct}|{ss}|{bar}|NO_INFORMATION_CLOSE",
+                               "why": f"NO_INFORMATION_CLOSE ({why_state}; {detail})", "reason": "NO_INFORMATION_CLOSE"})
+            else:
+                notes.append((ss, f"NO_INFORMATION_WT15_WITH {why_state} {detail}"))
+            continue
         if held > 0 and ss not in keyset and wt15 is not None:
             wt = wt15(ss) or {}
             if int(wt.get("bar_ts") or 0) >= bar - STATE_MAX_LAG_S:
@@ -740,6 +778,15 @@ class Trader:
         cache[symbol] = (stamp, out)
         return out
 
+    def noinfo_age(self, ss, st, now=None):
+        """Seconds this side has continuously had no information (see no_information), else None."""
+        now = time.time() if now is None else now
+        since = self.__dict__.setdefault("noinfo_since", {})
+        if no_information(st):
+            return now - since.setdefault(ss, now)
+        since.pop(ss, None)
+        return None
+
     def with_held_states(self, states, pos):
         """A held side outside the universe still needs its state (board flat -> close; board open -> manage)."""
         for ss, p in pos.items():
@@ -774,7 +821,7 @@ class Trader:
                 log(f"paper {acct}: positions failed {str(exc)[:120]}")
                 continue
             self.with_held_states(states, pos)
-            orders, _ = plan_account(acct, self.venue, keys.get(acct, ()), states, pos, bar, self.paper_done, allowed, wt15=self.wt15)
+            orders, _ = plan_account(acct, self.venue, keys.get(acct, ()), states, pos, bar, self.paper_done, allowed, wt15=self.wt15, noinfo_age=self.noinfo_age)
             path = self.out / f"paper_{self.venue}_{dt.datetime.fromtimestamp(now, dt.timezone.utc):%Y-%m-%d}.jsonl"
             with open(path, "a") as fh:
                 for o in orders:
@@ -911,7 +958,7 @@ class Trader:
             self.with_held_states(states, pos)
             t_obs, prev = self.obs.get(acct, (0, {}))
             prev_qty = prev if t_obs and bar - BAR_S <= t_obs < bar + BAR_S else {}
-            orders, notes = plan_account(acct, self.venue, keys.get(acct, ()), states, pos, bar, self.done, allowed, prev_qty, wt15=self.wt15)
+            orders, notes = plan_account(acct, self.venue, keys.get(acct, ()), states, pos, bar, self.done, allowed, prev_qty, wt15=self.wt15, noinfo_age=self.noinfo_age)
             self.obs[acct] = (now, {ss: p["qty"] for ss, p in pos.items()})
             for ss, n in notes:
                 if n != "HOLD_NO_FRESH_STATE":

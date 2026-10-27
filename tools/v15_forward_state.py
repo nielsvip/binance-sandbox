@@ -101,6 +101,28 @@ def _best_existing_settings(symside, db):
     return {}, "missing_published_per_sym_row", {}
 
 
+RETIRED_KEYS = tuple(k for k in ("MIN_HOLD_BARS_BEFORE_EXIT," + os.environ.get("FWDSTATE_RETIRED_KEYS", "")).split(",") if k)
+
+
+def _drop_retired(ov):
+    """2026-10-27 22:32Z v12_quick_engine retired MIN_HOLD_BARS_BEFORE_EXIT (QuickConfig now exposes it as bool False)
+    while every published set still carries it as an int, so evaluate_v12 rejected EVERY state ("override
+    MIN_HOLD_BARS_BEFORE_EXIT=10 incompatible with bool field"). A retired key the engine no longer accepts with that
+    value is dropped before eval and named in the state (`dropped_retired_keys`); any other incompatible key still
+    fails loudly in evaluate_v12."""
+    dropped = {}
+    try:
+        import v12_quick_engine as V
+        from tools.opt.evaluate_v12 import _coerce_override
+        cfg = V.QuickConfig()
+        for k in RETIRED_KEYS:
+            if k in ov and hasattr(cfg, k) and not _coerce_override(k, ov[k], getattr(cfg, k))[0]:
+                dropped[k] = ov.pop(k)
+    except Exception:
+        pass
+    return dropped
+
+
 @lru_cache(maxsize=1)
 def _engine_ast_sha256():
     source = (ROOT / "v12_quick_engine.py").read_text()
@@ -165,6 +187,9 @@ def _vector_acts(ledger, last_index, tails):
 def state_for(symside, window_days=30):
     from tools.opt.v12_pilot import prepare_batch, evaluate_prepared_sanitized
     ov, src, setting_meta = _load_overrides(symside)
+    _dropped = _drop_retired(ov) if ov else {}
+    if _dropped:
+        setting_meta = {**setting_meta, "dropped_retired_keys": _dropped}
     if not ov:
         return {"ts": time.strftime("%FT%TZ", time.gmtime()), "sym_side": symside,
                 "ok": False, "reason": "missing live settings", "src": src}

@@ -22,6 +22,7 @@ covering every action with its outcome, on both venues.
 
 import json
 import os
+import time
 from datetime import datetime, timezone
 
 _CLOSE_TYPES = frozenset({"REDUCE", "CLOSE", "GHOST_CLOSE"})
@@ -100,9 +101,70 @@ def conservation_allows(path, trade_type, qty):
         return True
 
 
-def history_write_allowed(path, trade_type, qty, price):
+_EXTERNAL_SRCS = ("S1_VECTOR_DIRECT", "S5_VECTOR_DIRECT")
+_ECHO_AFTER_S = 1800.0
+_PAPER_RELOG_S = 21600.0
+
+
+def external_echo(path, trade_type, qty, now_ts=None):
+    """USER 2026-10-27 "Every REAL trade has to be added to the /history/ folder ... ": an S1/S5 vector_direct fill is written
+    once, as an order row (tools/vector_direct_history_import.py, prov.src *_VECTOR_DIRECT). The Mac positions writers see the
+    same broker change and would log it again (echo, 13-857 s late) or re-log it after a restart (no broker trade then).
+    True = this position-change row is that echo: an external order row of the same side-class and qty (0.5 %) is on disk
+    and not yet echoed (window 1800 s). In Mac PAPER mode (data/MAC_PAPER_TRADING: the Mac cannot fill) any matching external
+    order row within 6 h suffices, which also stops restart re-logs. Kill switch env HISTORY_EXTERNAL_ECHO_GUARD=0."""
+    try:
+        if os.environ.get("HISTORY_EXTERNAL_ECHO_GUARD") == "0":
+            return False
+        t = str(trade_type or "").upper()
+        cls = 1 if t in _OPEN_TYPES else (-1 if t in _CLOSE_TYPES else 0)
+        if cls == 0:
+            return False
+        q = abs(float(qty))
+        now_ts = time.time() if now_ts is None else now_ts
+        d, paper = os.path.dirname(os.path.abspath(str(path))), False
+        for _ in range(6):  # <BASE>/data/history/<acct>/x.jsonl and <BASE>/data/tradier/history/<acct>/x.jsonl
+            d = os.path.dirname(d)
+            if os.path.exists(os.path.join(d, "data", "MAC_PAPER_TRADING")):
+                paper = True
+                break
+        horizon = _PAPER_RELOG_S if paper else _ECHO_AFTER_S
+        ext, native = [], []
+        for rec in _history_rows_back(path):
+            rt = str(rec.get("type", "") or "").upper()
+            rcls = 1 if rt in _OPEN_TYPES or rt in ("QUICK_OPEN", "QUICK_AUGMENT") else (-1 if rt in _CLOSE_TYPES else 0)
+            if rcls != cls:
+                continue
+            try:
+                rq = abs(float(rec.get("qty") or 0))
+                rts = datetime.fromisoformat(str(rec.get("ts", "")).replace("Z", "+00:00")).timestamp()
+            except Exception:
+                continue
+            if now_ts - rts > horizon + 120:
+                continue
+            if abs(rq - q) > max(1e-9, max(rq, q) * 0.005):
+                continue
+            prov = rec.get("prov") if isinstance(rec.get("prov"), dict) else {}
+            if rec.get("order_id") not in (None, "") and str(prov.get("src") or "") in _EXTERNAL_SRCS:
+                if now_ts - rts <= horizon:
+                    ext.append(rts)
+            elif rec.get("order_id") in (None, "") and not str(rec.get("reason") or "").startswith("BROKER_RECONCILED"):
+                native.append(rts)
+        if not ext:
+            return False
+        if paper:
+            return True
+        first = min(ext)
+        return len(ext) > len([x for x in native if x >= first - 120])
+    except Exception:
+        return False
+
+
+def history_write_allowed(path, trade_type, qty, price, echo_guard=True):
     try:
         t = str(trade_type or "").upper()
+        if echo_guard and external_echo(path, t, qty):
+            return False
         if t in _CLOSE_TYPES or t in _OPEN_TYPES:
             q = round(float(qty), 6)
             try:
@@ -260,7 +322,7 @@ def append_history_fill(
                     return False
         except FileNotFoundError:
             pass
-        if not history_write_allowed(path, hist_type, q, p):
+        if not history_write_allowed(path, hist_type, q, p, echo_guard=False):
             return False
         rec = {
             "ts": now.isoformat(),

@@ -272,3 +272,32 @@ def test_wt15_reader_prefers_newer_tail_row(tmp_path):
     assert t.wt15("QUSDT_LONG") == {"bar_ts": BAR, "wt1_15m": 2.0, "wt2_15m": 3.0, "src": "zip"}
     (d / ".tail" / "QUSDT.jsonl").write_text(json.dumps({"timestamps": BAR + 900, "wt1_15m": 5.0, "wt2_15m": 1.0}) + "\n")
     assert t.wt15("QUSDT_LONG")["bar_ts"] == BAR + 900 and t.wt15("QUSDT_LONG")["src"] == "tail"
+
+
+def test_no_information_close_only_for_true_missing_settings_after_grace():
+    """USER 2026-10-27 "any sym_side with no information is considered non tradeable and closed" — scoped to a side the
+    store has no settings for, after one bar past the deadline; pipeline failures never close; a breaker stops mass closes."""
+    pos = {f"S{i}USDT_LONG": {"qty": 1.0, "price": 1.0} for i in range(8)}
+    missing = {"ok": False, "reason": "missing live settings", "src": "missing_published_per_sym_row"}
+    pipeline = {"ok": False, "reason": "override MIN_HOLD_BARS_BEFORE_EXIT=10 incompatible with bool field (rejected before eval)", "src": "per_sym_store.active"}
+    keys = set(pos)
+    states = {ss: st(True) for ss in pos}
+    states["S0USDT_LONG"] = dict(missing)
+    states["S1USDT_LONG"] = dict(missing)
+    states["S2USDT_LONG"] = dict(pipeline)
+    wt = {"S0USDT_LONG": {"bar_ts": BAR, "wt1_15m": 1.0, "wt2_15m": 2.0}}  # S0: wt against LONG; S1: no wt reading
+    since = {}
+    age = lambda ss, s, now=0.0: (now - since.setdefault(ss, now)) if V.no_information(s) else None
+    orders, _ = V.plan_account("ang", "crypto", keys, states, pos, BAR, set(), ALLOW, wt15=wt.get, noinfo_age=lambda ss, s: age(ss, s, 0.0))
+    assert not [o for o in orders if o["act"] == "CLOSE"]  # inside the grace: nothing
+    orders, _ = V.plan_account("ang", "crypto", keys, states, pos, BAR, set(), ALLOW, wt15=wt.get, noinfo_age=lambda ss, s: age(ss, s, V.NOINFO_GRACE_S))
+    closes = {o["ss"]: o for o in orders if o["act"] == "CLOSE"}
+    assert set(closes) == {"S0USDT_LONG", "S1USDT_LONG"}  # the pipeline failure S2 is never closed
+    assert closes["S0USDT_LONG"]["reason"] == "NON_TRADEABLE_WT15_AGAINST" and closes["S1USDT_LONG"]["reason"] == "NO_INFORMATION_CLOSE"
+    assert "missing_published_per_sym_row" in closes["S1USDT_LONG"]["why"]
+    # breaker: most held sides lose information at once -> no closes at all
+    for i in range(2, 8):
+        states[f"S{i}USDT_LONG"] = dict(missing)
+        since[f"S{i}USDT_LONG"] = 0.0
+    orders, notes = V.plan_account("ang", "crypto", keys, states, pos, BAR, set(), ALLOW, wt15=wt.get, noinfo_age=lambda ss, s: age(ss, s, V.NOINFO_GRACE_S))
+    assert not [o for o in orders if o["act"] == "CLOSE"] and any(n.startswith("NOINFO_BREAKER") for _, n in notes)
