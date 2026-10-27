@@ -1,73 +1,31 @@
 {
- "generated_utc": "2026-10-26T23:12:06.607499+00:00",
+ "generated_utc": "2026-10-27T00:12:07.277821+00:00",
  "days": 1.0,
  "totals": {
-  "entry_promises": 13,
-  "entry_broken_no_delivery": 13,
-  "exit_promises": 20,
-  "exit_kept_late": 1,
-  "exit_broken_no_delivery": 17,
-  "exit_kept_in_bar": 2
+  "exit_promises": 13,
+  "exit_broken_no_delivery": 12,
+  "entry_promises": 8,
+  "entry_broken_no_delivery": 8,
+  "exit_kept_in_bar": 1
  },
  "per_key": {
-  "inf:RAYSOLUSDT_LONG": {
-   "entry_promises": 1,
-   "entry_broken_no_delivery": 1,
-   "exit_promises": 4,
-   "exit_kept_late": 1,
-   "exit_broken_no_delivery": 3
-  },
-  "inf:PENGUUSDC_LONG": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
-  },
-  "inf:COTIUSDT_SHORT": {
-   "entry_promises": 1,
-   "entry_broken_no_delivery": 1,
-   "exit_promises": 1,
-   "exit_kept_in_bar": 1
-  },
-  "inf:LTCUSDC_SHORT": {
-   "entry_promises": 1,
-   "entry_broken_no_delivery": 1
-  },
-  "men:RVNUSDT_SHORT": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
-  },
-  "flz:ZECUSDC_LONG": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
-  },
-  "inf:VETUSDT_LONG": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
-  },
-  "inf:BTCUSDC_SHORT": {
-   "entry_promises": 1,
-   "entry_broken_no_delivery": 1
-  },
-  "inf:ZENUSDT_SHORT": {
-   "exit_promises": 1,
-   "exit_kept_in_bar": 1
-  },
-  "inf:GRASSUSDT_LONG": {
-   "entry_promises": 1,
-   "entry_broken_no_delivery": 1
-  },
-  "flz:ZECUSDC_SHORT": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
-  },
   "flz:DASHUSDT_SHORT": {
    "exit_promises": 1,
    "exit_broken_no_delivery": 1,
    "entry_promises": 1,
    "entry_broken_no_delivery": 1
   },
+  "inf:RAYSOLUSDT_LONG": {
+   "exit_promises": 3,
+   "exit_broken_no_delivery": 3
+  },
   "inf:ATOMUSDT_SHORT": {
    "exit_promises": 1,
    "exit_broken_no_delivery": 1
+  },
+  "inf:COTIUSDT_SHORT": {
+   "exit_promises": 1,
+   "exit_kept_in_bar": 1
   },
   "inf:BNBUSDC_SHORT": {
    "entry_promises": 1,
@@ -123,116 +81,6 @@
   }
  },
  "detail": [
-  {
-   "acct": "inf",
-   "sym_side": "RAYSOLUSDT_LONG",
-   "kind": "entry",
-   "bar": "10-25 23:00",
-   "late_min": null,
-   "action": "OPEN",
-   "reason": "TIER1_PRICE_CROSS_REENTRY_exit1.8202_cur1.8264_k3m45",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "inf",
-   "sym_side": "PENGUUSDC_LONG",
-   "kind": "exit",
-   "bar": "10-25 23:15",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "WT_CROSS_EXIT_1h_bear",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "inf",
-   "sym_side": "RAYSOLUSDT_LONG",
-   "kind": "exit",
-   "bar": "10-25 23:15",
-   "late_min": 17.8,
-   "action": "CLOSE",
-   "reason": "FIXED_STOP",
-   "outcome": "SUCCESS"
-  },
-  {
-   "acct": "inf",
-   "sym_side": "COTIUSDT_SHORT",
-   "kind": "entry",
-   "bar": "10-25 23:15",
-   "late_min": null,
-   "action": "OPEN",
-   "reason": "REENTRY_EXIT_PRICE_BREAK",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "inf",
-   "sym_side": "LTCUSDC_SHORT",
-   "kind": "entry",
-   "bar": "10-25 23:15",
-   "late_min": null,
-   "action": "OPEN",
-   "reason": "HARDCODED_RALLY_REENTRY",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "men",
-   "sym_side": "RVNUSDT_SHORT",
-   "kind": "exit",
-   "bar": "10-25 23:15",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "STATEFUL_PORTED_EXIT g1.13% age45m",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "flz",
-   "sym_side": "ZECUSDC_LONG",
-   "kind": "exit",
-   "bar": "10-25 23:15",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "FIXED_STOP",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "inf",
-   "sym_side": "VETUSDT_LONG",
-   "kind": "exit",
-   "bar": "10-25 23:30",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "FIXED_STOP",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "inf",
-   "sym_side": "BTCUSDC_SHORT",
-   "kind": "entry",
-   "bar": "10-25 23:30",
-   "late_min": null,
-   "action": "OPEN",
-   "reason": "REENTRY_LOWER_HIGH",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "inf",
-   "sym_side": "GRASSUSDT_LONG",
-   "kind": "entry",
-   "bar": "10-25 23:30",
-   "late_min": null,
-   "action": "OPEN",
-   "reason": "REENTRY_MANDATORY",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "flz",
-   "sym_side": "ZECUSDC_SHORT",
-   "kind": "exit",
-   "bar": "10-25 23:30",
-   "late_min": null,
-   "action": "REDUCE",
-   "reason": "PPL_TP_g1.61%>=1.50%_stopBE1217.4362",
-   "outcome": "NO_DELIVERY"
-  },
   {
    "acct": "flz",
    "sym_side": "DASHUSDT_SHORT",
