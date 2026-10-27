@@ -19,6 +19,9 @@ while true; do
     check_local_size "$MACBOOK_SOURCE"
     if ! check_remote_size "$SERVER_HOST" "$SERVER_TARGET"; then sleep 60; continue; fi
     echo "$(date '+%Y-%m-%d %H:%M:%S') - 📤 Syncing market_data to server..." >> "$LOG_FILE"
+    # 2026-10-27: klines leg FIRST — the data/ leg below walks all of data/ (eval_cache_incoming etc.) and measured 6+ min,
+    # holding every kline behind it. The same klines rsync still runs again in its old place below (a near no-op then).
+    _deny_refresh; rsync -auz --timeout=30 --exclude-from="$_DENYX" --exclude="*.tmp" --exclude="*.lock" --max-size=100M "/Users/niels/Documents/binance/klines_cache/" "${SERVER_HOST}:/home/niels/binance-sandbox/klines_cache_macbook/" >> "$LOG_FILE" 2>&1
     # Sync latest_market_data + price_cache + market_data + klines (bidirectional fallback so lagging host gets filled in)
     rsync -auvz --timeout=30 --include="*/" --include="latest_market_data.json" --include="price_cache*.json" --include="market_data_*.json" --exclude="*" --exclude="*.tmp" --exclude="*.lock" --exclude="backups*" --max-size=100M "$MACBOOK_SOURCE" "${SERVER_HOST}:${SERVER_TARGET}" >> "$LOG_FILE" 2>&1
     # Also sync klines_cache separately (different root)
