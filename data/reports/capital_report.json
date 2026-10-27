@@ -1,32 +1,103 @@
 {
- "generated_at": "2026-10-27 09:39 UTC",
- "total_capital_usd": 22.62,
+ "generated_at": "2026-10-27 09:49 UTC",
+ "total_capital_usd": 173.71,
  "tier_capital": {
   "A": 0.0,
-  "B": 22.62,
-  "C": 0.0
+  "B": 76.43,
+  "C": 97.3
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 0
+  "B": 4,
+  "C": 3
  },
  "winners": [],
  "losers": [
-  "inf:ARUSDT_LONG"
+  "flz:HYPEUSDT_LONG",
+  "flz:XRPUSDC_LONG",
+  "flz:BTCUSDC_LONG"
  ],
- "mediocre": [],
+ "mediocre": [
+  "flz:BTCDOMUSDT_LONG",
+  "flz:BNBUSDC_LONG"
+ ],
  "positions": [
   {
-   "pk": "inf:ARUSDT_LONG",
-   "symbol": "ARUSDT",
-   "account": "inf",
-   "value_usd": 22.62,
-   "gain_pct": -1.043,
+   "pk": "flz:BTCUSDC_LONG",
+   "symbol": "BTCUSDC",
+   "account": "flz",
+   "value_usd": 79.57,
+   "gain_pct": -0.98,
+   "tier": "C",
+   "perf_mult": 0.43,
+   "amt": 0.001,
+   "mark": 79569.09829773
+  },
+  {
+   "pk": "flz:BTCDOMUSDT_LONG",
+   "symbol": "BTCDOMUSDT",
+   "account": "flz",
+   "value_usd": 44.7,
+   "gain_pct": -0.193,
    "tier": "B",
-   "perf_mult": 0.27,
-   "amt": 6.7,
-   "mark": 3.37616
+   "perf_mult": 0.52,
+   "amt": 0.008,
+   "mark": 5587.36982993
+  },
+  {
+   "pk": "flz:BNBUSDC_LONG",
+   "symbol": "BNBUSDC",
+   "account": "flz",
+   "value_usd": 14.71,
+   "gain_pct": 0.048,
+   "tier": "B",
+   "perf_mult": 0.77,
+   "amt": 0.02,
+   "mark": 735.4
+  },
+  {
+   "pk": "flz:BNBUSDC_SHORT",
+   "symbol": "BNBUSDC",
+   "account": "flz",
+   "value_usd": 14.71,
+   "gain_pct": 0.374,
+   "tier": "B",
+   "perf_mult": 0.77,
+   "amt": 0.02,
+   "mark": 735.4
+  },
+  {
+   "pk": "flz:HYPEUSDT_LONG",
+   "symbol": "HYPEUSDT",
+   "account": "flz",
+   "value_usd": 10.87,
+   "gain_pct": -2.047,
+   "tier": "C",
+   "perf_mult": 0.46,
+   "amt": 0.14,
+   "mark": 77.63572639
+  },
+  {
+   "pk": "flz:XRPUSDC_LONG",
+   "symbol": "XRPUSDC",
+   "account": "flz",
+   "value_usd": 6.86,
+   "gain_pct": -0.984,
+   "tier": "C",
+   "perf_mult": 0.28,
+   "amt": 5.3,
+   "mark": 1.29345204
+  },
+  {
+   "pk": "flz:ETHUSDC_LONG",
+   "symbol": "ETHUSDC",
+   "account": "flz",
+   "value_usd": 2.31,
+   "gain_pct": -0.228,
+   "tier": "B",
+   "perf_mult": 1.18,
+   "amt": 0.001,
+   "mark": 2305.96
   }
  ]
 }
