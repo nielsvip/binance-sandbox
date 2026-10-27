@@ -23,10 +23,17 @@ LOG_DIR = os.path.join(os.path.expanduser("~"), "logs")
 # 2201 is a BRIDGE, not a fixed route — it follows whichever S1 route is healthy.
 # s1-plan-b/c stay fixed spares on 2202/2203. s1-sftp hand masters are retired:
 # this manager is the sole owner of 2201 (see _kill_stale_port_holders).
+# USER 2026-10-27 "immediately switch to any of the 3 ip's for s1": "race" = ~/.ssh/config s1-race ->
+# tools/ssh_s1_connect.py (3 public IPv4s + gateway + s2 + IPv6, first banner wins); fixed routes stay as fallback.
 S1_BRIDGE_CANDIDATES = [
+    ("race", "s1-race"),
     ("direct", "niels@157.180.125.52"),
     ("gateway", "s1-via-gateway"),
 ]
+HAND_MASTER_ALIASES = ("s1-sftp", "s1-sftp-direct")  # config LocalForward 2201 — no port on their command line
+PLAN_A_MAX_BACKOFF = 10  # the 2201 front door never waits minutes
+SPARE_E2E_EVERY = 60  # plan-b/c real-login check cadence (plan-a every loop)
+_last_e2e = {}
 # s1_s2_autosync takes this lock for verified transactions — never recycle 2201
 # under it (the keeper yields the same way).
 TRANSPORT_LOCK = "/Users/niels/Documents/binance/data/sync/.s1_transport.lock"
@@ -48,7 +55,7 @@ HOSTS = {
         ],
     },
     "s1-plan-c": {
-        "host": "niels@157.180.125.52",
+        "host": "s1-fip-nbg",  # 2026-10-27: floating IP 49.13.39.233 (was 157.180.125.52 = same IP as plan-a direct)
         "forwards": [
             {"name": "S1 Direct Backup (Plan C)", "local_port": 2203, "remote_port": 22},
         ],
@@ -61,7 +68,7 @@ HOSTS = {
     },
 }
 
-CHECK_INTERVAL = 30
+CHECK_INTERVAL = 10
 MAX_BACKOFF = 300  # 5 min max between retries
 processes = {}  # host_key -> subprocess
 backoff = {}  # host_key -> seconds
@@ -138,6 +145,8 @@ def is_forward_owner(cmdline, port):
     c = str(cmdline)
     if "ssh" not in os.path.basename(c.split()[0]) and " ssh " not in f" {c} " and not c.lstrip().startswith("ssh "):
         return False
+    if port == 2201 and any(f" {alias} " in f" {c} " for alias in HAND_MASTER_ALIASES) and ("-fN" in c or " -N" in c):
+        return True
     if f":{port}" not in c and f" {port}" not in c and f"={port}" not in c:
         return False
     if "tunnel_controls" in c:
@@ -220,7 +229,7 @@ def _start_forward(host_key, host):
     for fwd in cfg["forwards"]:
         forward_args.extend(["-L", f"localhost:{fwd['local_port']}:localhost:{fwd['remote_port']}"])
     cmd = ["ssh", "-N"] + forward_args + [
-        "-o", "ServerAliveInterval=10",
+        "-o", "ServerAliveInterval=5",
         "-o", "ServerAliveCountMax=3",
         "-o", "ExitOnForwardFailure=yes",
         "-o", "StrictHostKeyChecking=no",
@@ -247,7 +256,9 @@ def start_host(host_key):
         for route_name, host in S1_BRIDGE_CANDIDATES:
             proc = _start_forward(host_key, host)
             print(f"  [{host_key}] trying route {route_name} -> {host} (pid {proc.pid})")
-            time.sleep(3)
+            bind_deadline = time.time() + 15
+            while time.time() < bind_deadline and proc.poll() is None and not is_port_open(cfg["forwards"][0]["local_port"]):
+                time.sleep(0.25)
             if proc.poll() is not None:
                 print(f"  [{host_key}] route {route_name} exited immediately (rc={proc.returncode})")
                 continue
@@ -288,6 +299,9 @@ def check_host_health(host_key):
     # (USER 2026-10-24: s1-int flapped while the port stayed open).
     if host_key in ("s1-plan-a", "s1-plan-b", "s1-plan-c"):
         port = cfg["forwards"][0]["local_port"]
+        if host_key != "s1-plan-a" and time.time() - _last_e2e.get(host_key, 0) < SPARE_E2E_EVERY:
+            return True
+        _last_e2e[host_key] = time.time()
         if not s1_end_to_end(port):
             print(f"  [{host_key}] Port {port} open but S1 login FAILED — treating as down")
             try:
@@ -321,7 +335,7 @@ def get_backoff(host_key):
     if current == 0:
         backoff[host_key] = 5
         return 0  # First attempt: no wait
-    next_val = min(current * 2, MAX_BACKOFF)
+    next_val = min(current * 2, PLAN_A_MAX_BACKOFF if host_key == "s1-plan-a" else MAX_BACKOFF)
     backoff[host_key] = next_val
     return current
 
