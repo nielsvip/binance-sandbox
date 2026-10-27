@@ -53439,7 +53439,7 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager, 
                 logger.warning(f"[VEC_EXACT_LEGACY_ADOPTED] {position_key}: open position not opened by the vec twin -> twin manages exits to flat (native refused in exact mode)")
         _vx.pin_activate(position_key)  # 2026-10-14 twin drift: a held position's exits follow the set it is held under until flat (go-live set changes flipped 28% of paper states)
         # SAFETY: no twin decision available for this sym_side (no store / warm-up / error) -> native exits run (never strand a position)
-        _vx_st = await __import__("positions_truth").offloop_serialized(_vx.actions_at, _sym, _side, time.time())  # 2026-10-06 director: off the event loop (men os._exit(42) PAU_TIMEOUT: ~20s compute blocked the loop)
+        _vx_st = await __import__("utils").offloop_serialized(_vx.actions_at, _sym, _side, time.time())  # 2026-10-06 director: off the event loop (men os._exit(42) PAU_TIMEOUT: ~20s compute blocked the loop)
         if _vx_st.get("status") != "OK":
             _fb_key = (position_key, _vx_st.get("status"), _vx_st.get("bar_ts"))
             if _fb_key not in _VEC_EXACT_FALLBACK_LOGGED:
@@ -53462,7 +53462,7 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager, 
             return False
         want = ("CLOSE", "REDUCE") + (("AUGMENT",) if "AUGMENT" in fams else ())
         _now_vx = time.time()
-        _acts_now, _acts_catch = await __import__("positions_truth").offloop_serialized(_vx.take_all, _sym, _side, _now_vx, want)  # 2026-10-11 USER own-it: one acquisition for take+catchup+expire (was 3; convoy -> PAU_TIMEOUT exit-42). Same order/thread/lock.
+        _acts_now, _acts_catch = await __import__("utils").offloop_serialized(_vx.take_all, _sym, _side, _now_vx, want)  # 2026-10-11 USER own-it: one acquisition for take+catchup+expire (was 3; convoy -> PAU_TIMEOUT exit-42). Same order/thread/lock.
         if _backstop_only:
             _acts_now, _acts_catch = [], []
         def _vx_lc_of(_p):
@@ -60472,7 +60472,7 @@ async def process_position(
             _delta_exit_on = bool(_psym_get(symbol, position_side, "DELTA_EXIT_ENABLED", True))
         except Exception:
             _delta_exit_on = True
-        if fell_through_floor and current_gain < 0.0 and _delta_exit_on:
+        if fell_through_floor and current_gain < 0.0 and _delta_exit_on and bool(_psym_get(symbol, position_side, "DC15M_FORCE_EXIT_ENABLED", getattr(config, "DC15M_FORCE_EXIT_ENABLED", False))):  # vec_log_fixes 2026-10-27: own switch, twin vec_decisions/live_native_exit_twins.dc15m_force_exit
             if is_strict_no_loss_account(config, account_key) and not getattr(
                 config, "DELTA_ENGINE_ENABLED", False
             ):
@@ -60548,7 +60548,7 @@ async def process_position(
         _is_trend_acct_m = account_key in getattr(
             trade_manager.config, "TREND_ACCOUNTS", []
         )
-        if current_gain > 2.0 and not _is_trend_acct_m and not _recently_reduced:
+        if current_gain > 2.0 and not _is_trend_acct_m and not _recently_reduced and bool(_psym_get(symbol, position_side, "IN_GAIN_TREND_EXIT_ENABLED", getattr(config, "IN_GAIN_TREND_EXIT_ENABLED", False))):  # vec_log_fixes 2026-10-27: own switch, twin vec_decisions/live_native_exit_twins.in_gain_trend_exit
             _k_1h = safe_fetch_float(i.get("k_1h", i.get("k_1h")), 50.0)
             _d_1h = safe_fetch_float(i.get("d_1h", i.get("d_1h")), 50.0)
             _ha_1h = i.get("ha_1h", i.get("ha_color_1h", ""))

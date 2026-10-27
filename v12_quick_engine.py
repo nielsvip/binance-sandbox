@@ -7319,6 +7319,8 @@ class QuickConfig:
     E_1_EXIT_DELTA_THR: float = 50.0  # auto-added TEMPLATE generic
     E_1_WT_EXIT_USE_DELTA_ENABLED: bool = False  # auto-added TEMPLATE
     E_3_USE_WT_STRUCTURE_EXIT_MODE: int = 0  # auto-added TEMPLATE generic
+    DC15M_FORCE_EXIT_ENABLED: bool = False  # vec_log_fixes 2026-10-27 twin: vec_decisions/live_native_exit_twins (MIRROR of config.py; template bold False)
+    IN_GAIN_TREND_EXIT_ENABLED: bool = False  # vec_log_fixes 2026-10-27 twin: vec_decisions/live_native_exit_twins (MIRROR of config.py; template bold False)
     FAST_RISER_FILTER_TF: str = (
         "OFF"  # 2026-09-28 WAVE1: real gate (vec_decisions/filter_tf_gates); OFF default is behavior-neutral (field was never read before)
     )
@@ -18307,6 +18309,12 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     # defaults OFF -> empty list -> the loop hook below never runs at the defaults.
     _gw_c = lambda _k, _d: getattr(cfg, _k, _d)
     _gw_exits = vec_decisions.grey_wire_exits.active_exits(_gw_c)
+    try:  # vec_log_fixes 2026-10-27: DC15M_FORCE_EXIT / IN_GAIN_TREND_EXIT twins, same walk + booking, OFF by default
+        import vec_decisions.live_native_exit_twins as _lnx
+
+        _gw_exits = list(_gw_exits) + _lnx.active_exits(_gw_c)
+    except Exception:
+        pass
     _gw_bar = vec_decisions.grey_wire_exits.NpzBar(npz, n) if _gw_exits else None
 
     _ot_cnt = {}  # [C2 b5b] executed OPEN/AUGMENT fills per UTC day

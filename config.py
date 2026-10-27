@@ -5932,6 +5932,8 @@ class Config:
     # (log only, no action), 2=on (live exits). Expected: single source of truth for
     # structure break; eliminates reimplementation bugs in high/low lookups.
     E_3_USE_WT_STRUCTURE_EXIT_MODE: int = 0
+    DC15M_FORCE_EXIT_ENABLED: bool = False  # vec_log_fixes 2026-10-27 (USER unlock 'unlock and fix all other edits'): DELTA_EXIT_DC15M_FLOOR_BREAK live exit (was refused POLICY_NON_VECTOR_EXIT_DISABLED); twin vec_decisions/live_native_exit_twins. Template bold False.
+    IN_GAIN_TREND_EXIT_ENABLED: bool = False  # vec_log_fixes 2026-10-27 (USER unlock 'unlock and fix all other edits'): IN_GAIN_TREND_EXIT gain-tiered harvest (was refused POLICY_NON_VECTOR_EXIT_DISABLED); twin vec_decisions/live_native_exit_twins. Template bold False.
     # ═══════════════════════════════════════════════════════════════════════
     # END INDICATOR-AUDIT SWITCHES
     # ═══════════════════════════════════════════════════════════════════════
