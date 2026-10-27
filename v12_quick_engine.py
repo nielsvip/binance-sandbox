@@ -15927,6 +15927,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     )  # AUGMENT / partial-REDUCE ledger events — merged into 'ledger' only, never into trade metrics
     def _exit_event_accept(event, source):
         nonlocal pos, _pending_exit_restore, cd, has_closed_before, bars_in_pos, _pending_exit_control_restore
+        # Tradier has no fee-positive exit veto; its own close decision and mandatory stops are authoritative.
+        if is_tradier:
+            return True
         try:
             from vec_decisions.net_exit_gate import vector_exit_event_allowed as _exit_allowed
             _configured_fee_pct = 0.0 if is_tradier else max(0.0, float(getattr(cfg, "COMMISSION_BUFFER_PCT", 0.08) or 0.0))

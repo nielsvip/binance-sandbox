@@ -89,7 +89,7 @@ def _standby_env() -> dict:
     fails over: it self-exits after POSITIONS_HANG_EXIT_AFTER consecutive PAU hangs, and a dead pid is instant.
     """
     env = dict(os.environ)
-    env.setdefault("EZ_POSITION_WRITER_STALE_S", "180")
+    env.setdefault("EZ_SERVICE_HEARTBEAT_STALE_S", "180")  # position_writer_guard.STALE_ENV
     return env
 
 
