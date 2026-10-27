@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-27T21:33:39Z",
+ "ts": "2026-10-27T21:38:41Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 192,
+   "fills_6h": 197,
    "open_positions": 19,
-   "unrealised_usd": -0.31,
+   "unrealised_usd": -0.32,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 241,
-   "open_positions": 25,
-   "unrealised_usd": -5.21,
+   "fills_6h": 248,
+   "open_positions": 23,
+   "unrealised_usd": -4.71,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 399,
+   "fills_6h": 393,
    "open_positions": 41,
-   "unrealised_usd": -3.72,
+   "unrealised_usd": -3.38,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -75,9 +75,9 @@
    }
   },
   "inf": {
-   "fills_6h": 27,
+   "fills_6h": 26,
    "open_positions": 4,
-   "unrealised_usd": 0.04,
+   "unrealised_usd": 0.03,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -91,9 +91,9 @@
    }
   },
   "flz": {
-   "fills_6h": 68,
-   "open_positions": 8,
-   "unrealised_usd": -0.4,
+   "fills_6h": 67,
+   "open_positions": 7,
+   "unrealised_usd": 0.34,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -125,123 +125,123 @@
   "fin": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 1067.0
+   "log_age_s": 4.0
   },
   "men": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 1051.0
+   "log_age_s": 1354.0
   },
   "ang": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 42.0
+   "log_age_s": 344.0
   },
   "inf": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 1700.0
+   "log_age_s": 2002.0
   },
   "flz": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 1067.0
+   "log_age_s": 1369.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 5586.0
+   "log_age_s": 5888.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 5661.0
+   "log_age_s": 5964.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-27T21:33:40Z",
+   "ts": "2026-10-27T21:38:42Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:GRAMUSDT_SHORT",
    "evidence": "REDUCE 15.6 @ 2026-10-27T18:56:27Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-27T21:33:40Z",
+   "ts": "2026-10-27T21:38:42Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:ZECUSDC_SHORT",
    "evidence": "REDUCE 0.001 @ 2026-10-27T18:56:27Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-27T21:33:40Z",
+   "ts": "2026-10-27T21:38:42Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:WLDUSDC_SHORT",
    "evidence": "REDUCE 35.4 @ 2026-10-27T18:56:28Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-27T21:33:40Z",
+   "ts": "2026-10-27T21:38:42Z",
    "severity": "CRITICAL",
    "kind": "PROCESS_DOWN",
    "key": "fin",
    "evidence": "no ez_manage.py --account fin process"
   },
   {
-   "ts": "2026-10-27T21:33:40Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 1067s"
-  },
-  {
-   "ts": "2026-10-27T21:33:40Z",
+   "ts": "2026-10-27T21:38:42Z",
    "severity": "CRITICAL",
    "kind": "PROCESS_DOWN",
    "key": "men",
    "evidence": "no ez_manage.py --account men process"
   },
   {
-   "ts": "2026-10-27T21:33:40Z",
+   "ts": "2026-10-27T21:38:42Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "men",
-   "evidence": "ez_manage_men.log not written for 1051s"
+   "evidence": "ez_manage_men.log not written for 1354s"
   },
   {
-   "ts": "2026-10-27T21:33:40Z",
+   "ts": "2026-10-27T21:38:42Z",
    "severity": "CRITICAL",
    "kind": "PROCESS_DOWN",
    "key": "ang",
    "evidence": "no ez_manage.py --account ang process"
   },
   {
-   "ts": "2026-10-27T21:33:40Z",
+   "ts": "2026-10-27T21:38:42Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "ang",
+   "evidence": "ez_manage_ang.log not written for 344s"
+  },
+  {
+   "ts": "2026-10-27T21:38:42Z",
    "severity": "CRITICAL",
    "kind": "PROCESS_DOWN",
    "key": "inf",
    "evidence": "no ez_manage.py --account inf process"
   },
   {
-   "ts": "2026-10-27T21:33:40Z",
+   "ts": "2026-10-27T21:38:42Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "inf",
-   "evidence": "ez_manage_inf.log not written for 1700s"
+   "evidence": "ez_manage_inf.log not written for 2002s"
   },
   {
-   "ts": "2026-10-27T21:33:40Z",
+   "ts": "2026-10-27T21:38:42Z",
    "severity": "CRITICAL",
    "kind": "PROCESS_DOWN",
    "key": "flz",
    "evidence": "no ez_manage.py --account flz process"
   },
   {
-   "ts": "2026-10-27T21:33:40Z",
+   "ts": "2026-10-27T21:38:42Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 1067s"
+   "evidence": "ez_manage_flz.log not written for 1369s"
   }
  ],
  "alert_counts": {
@@ -281,13 +281,6 @@
    "undo": "rm /Users/niels/Documents/binance/data/HALT_TRADING_men",
    "dry_run": false
   },
-  "key:ang:DASHUSDT_LONG": {
-   "ts": 1793129806.329034,
-   "until": 1793137006.3290749,
-   "why": "SIZE_ANOMALY BREAKOUT_SIZE_LADDER qty 3.26786->9.80358 ($540) past 1.5x MAX_ORDER_VALUE",
-   "undo": "redis-cli -p 6379 DEL open_blocked:ang:DASHUSDT_LONG",
-   "dry_run": false
-  },
   "acct:inf": {
    "ts": 1791791577.100162,
    "why": "ACCOUNT_EQUITY_DROP unrealised PnL of the same open positions fell $25.47 since 2026-10-12T07:51:49Z (now $+1.07)",
@@ -311,13 +304,6 @@
    "until": 1793139561.869759,
    "why": "SIZE_ANOMALY order $4479.24 > 1.5x MAX_ORDER_VALUE",
    "undo": "redis-cli -p 6379 DEL open_blocked:ang:GRASSUSDT_LONG",
-   "dry_run": false
-  },
-  "key:ang:RLCUSDT_SHORT": {
-   "ts": 1793129693.1908412,
-   "until": 1793136893.190878,
-   "why": "SIZE_ANOMALY BREAKOUT_SIZE_LADDER qty 356.365->1069.1 ($540) past 1.5x MAX_ORDER_VALUE",
-   "undo": "redis-cli -p 6379 DEL open_blocked:ang:RLCUSDT_SHORT",
    "dry_run": false
   },
   "key:fin:GRASSUSDT_LONG": {
@@ -349,5 +335,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.24
+ "sweep_s": 1.65
 }

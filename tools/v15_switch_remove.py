@@ -140,7 +140,22 @@ def remove_values(path, sw, plan, ts):
 
 
 def main_values(a, sw):
-    """USER 2026-10-27: take the unnecessary option rows out completely."""
+    """USER 2026-10-27: take the unnecessary option rows out completely.
+
+    THE LIFT IS SPENT. The operator lifted the no-row-removal order
+    "temporarily to delete the rows we just talked about and any duplicate
+    switches across tabs - then the rule stands again". That work is done
+    (MIN_HOLD_BARS 3/3/6 deleted from both crypto templates 2026-10-27 21:4xZ;
+    the cross-tab duplicates were MEASURED as benign — 0 conflicting bolds, 0
+    tabs with >1 bold — so nothing was deleted for them). The rule therefore
+    stands again: this mode now refuses unless the caller sets
+    V15_ROW_REMOVAL_LIFTED=1, which is the audit trail for the NEXT explicit
+    operator lift. Do not remove that gate; ask for a new lift.
+    """
+    if os.environ.get("V15_ROW_REMOVAL_LIFTED") != "1":
+        die("row removal is impossible again (USER 2026-10-27: the temporary lift was spent on MIN_HOLD_BARS 3/3/6). "
+            "A NEW explicit operator lift is required: re-run with V15_ROW_REMOVAL_LIFTED=1 only when you have one, "
+            f"otherwise grey instead: python3 tools/v15_switch_grey.py --switch {sw} --values ... --reason TEXT [--apply]")
     values = {v.strip() for v in a.values.split(",") if v.strip()}
     if not values:
         die("--values given but empty")

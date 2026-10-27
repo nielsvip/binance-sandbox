@@ -238,6 +238,7 @@ def _start_forward(host_key, host):
         "-o", "ConnectionAttempts=5",
         "-o", "IPQoS=lowdelay",
         "-o", f"ControlPath={ctrl}",
+        "-o", "ControlMaster=no",  # 2026-10-27: s1-via-gateway's config ControlMaster=auto turned plan-b into a mux client of an orphaned master (exit 0 loop)
         host,
     ]
     proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)

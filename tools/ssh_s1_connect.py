@@ -177,6 +177,10 @@ def race(paths):
             if not peek:
                 failed.append((entry, "closed-before-banner"))
                 continue
+            if not (peek.startswith(b"SSH-") or b"SSH-".startswith(peek)):
+                # e.g. "Exceeded MaxStartups" — sshd answered but will not serve us
+                failed.append((entry, "refused:" + peek.decode("ascii", "replace").strip()[:20]))
+                continue
             sel.unregister(sock)
             active.pop(sock.fileno(), None)
             for other in list(active.values()):

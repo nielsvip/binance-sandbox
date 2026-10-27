@@ -1,0 +1,238 @@
+{
+ "ts": "2026-10-27T21:35:19Z",
+ "n_gate_switches": 40,
+ "templates": {
+  "TEMPLATE_CRYPTO_LONG.xlsx": {
+   "n_gate_switches_present": 40
+  },
+  "TEMPLATE_CRYPTO_SHORT.xlsx": {
+   "n_gate_switches_present": 40
+  },
+  "TEMPLATE_STOCKS_LONG.xlsx": {
+   "n_gate_switches_present": 40
+  },
+  "TEMPLATE_STOCKS_SHORT.xlsx": {
+   "n_gate_switches_present": 40
+  }
+ },
+ "n_breaches": 13,
+ "breaches": [
+  {
+   "template": "TEMPLATE_CRYPTO_LONG.xlsx",
+   "switch": "KINDERGARTEN_CUMULATIVE_MIN_TFS",
+   "rows": 4,
+   "grey_rows": 1,
+   "grey_at": [
+    "GLOBAL_RISK_GATES!211"
+   ],
+   "why": "gate switch has grey (never-evaluated) rows"
+  },
+  {
+   "template": "TEMPLATE_CRYPTO_LONG.xlsx",
+   "switch": "WT_15M_BOUNCE_FILTER_MODE",
+   "rows": 1,
+   "grey_rows": 0,
+   "grey_at": [],
+   "why": "gate switch has <2 candidates: delta is 0 by construction"
+  },
+  {
+   "template": "TEMPLATE_CRYPTO_LONG.xlsx",
+   "switch": "WT_15M_BOUNCE_VOLUME_MODE",
+   "rows": 1,
+   "grey_rows": 0,
+   "grey_at": [],
+   "why": "gate switch has <2 candidates: delta is 0 by construction"
+  },
+  {
+   "template": "TEMPLATE_CRYPTO_SHORT.xlsx",
+   "switch": "KINDERGARTEN_CUMULATIVE_MIN_TFS",
+   "rows": 4,
+   "grey_rows": 1,
+   "grey_at": [
+    "GLOBAL_RISK_GATES!425"
+   ],
+   "why": "gate switch has grey (never-evaluated) rows"
+  },
+  {
+   "template": "TEMPLATE_CRYPTO_SHORT.xlsx",
+   "switch": "WT_15M_BOUNCE_FILTER_MODE",
+   "rows": 1,
+   "grey_rows": 0,
+   "grey_at": [],
+   "why": "gate switch has <2 candidates: delta is 0 by construction"
+  },
+  {
+   "template": "TEMPLATE_CRYPTO_SHORT.xlsx",
+   "switch": "WT_15M_BOUNCE_VOLUME_MODE",
+   "rows": 1,
+   "grey_rows": 0,
+   "grey_at": [],
+   "why": "gate switch has <2 candidates: delta is 0 by construction"
+  },
+  {
+   "template": "TEMPLATE_STOCKS_LONG.xlsx",
+   "switch": "GR_FILTER_ALL_ENTRIES",
+   "rows": 5,
+   "grey_rows": 1,
+   "grey_at": [
+    "ENTRY_REVERSAL_BOUNCE!208"
+   ],
+   "why": "gate switch has grey (never-evaluated) rows"
+  },
+  {
+   "template": "TEMPLATE_STOCKS_LONG.xlsx",
+   "switch": "WT_15M_BOUNCE_FILTER_MODE",
+   "rows": 1,
+   "grey_rows": 0,
+   "grey_at": [],
+   "why": "gate switch has <2 candidates: delta is 0 by construction"
+  },
+  {
+   "template": "TEMPLATE_STOCKS_LONG.xlsx",
+   "switch": "WT_15M_BOUNCE_VOLUME_MODE",
+   "rows": 1,
+   "grey_rows": 0,
+   "grey_at": [],
+   "why": "gate switch has <2 candidates: delta is 0 by construction"
+  },
+  {
+   "template": "TEMPLATE_STOCKS_SHORT.xlsx",
+   "switch": "WT_15M_BOUNCE_FILTER_MODE",
+   "rows": 1,
+   "grey_rows": 0,
+   "grey_at": [],
+   "why": "gate switch has <2 candidates: delta is 0 by construction"
+  },
+  {
+   "template": "TEMPLATE_STOCKS_SHORT.xlsx",
+   "switch": "WT_15M_BOUNCE_HIGH_1H_GT_PREV",
+   "rows": 18,
+   "grey_rows": 2,
+   "grey_at": [
+    "REENTRY_ADAPTIVE!89",
+    "REDUCE_SIGNAL_RATER!195"
+   ],
+   "why": "gate switch has grey (never-evaluated) rows"
+  },
+  {
+   "template": "TEMPLATE_STOCKS_SHORT.xlsx",
+   "switch": "WT_15M_BOUNCE_LOW_1H_GT_PREV",
+   "rows": 18,
+   "grey_rows": 2,
+   "grey_at": [
+    "REENTRY_ADAPTIVE!97",
+    "REDUCE_SIGNAL_RATER!189"
+   ],
+   "why": "gate switch has grey (never-evaluated) rows"
+  },
+  {
+   "template": "TEMPLATE_STOCKS_SHORT.xlsx",
+   "switch": "WT_15M_BOUNCE_VOLUME_MODE",
+   "rows": 1,
+   "grey_rows": 0,
+   "grey_at": [],
+   "why": "gate switch has <2 candidates: delta is 0 by construction"
+  }
+ ],
+ "n_pending_removal": 8,
+ "pending_removal": [
+  {
+   "template": "TEMPLATE_CRYPTO_LONG.xlsx",
+   "switch": "DAYTRADE_DC_TARGET_TF",
+   "rows": 4,
+   "grey_rows": 4,
+   "grey_at": [
+    "EXIT_STRUCTURAL!66",
+    "EXIT_STRUCTURAL!67",
+    "EXIT_STRUCTURAL!68",
+    "EXIT_STRUCTURAL!69"
+   ]
+  },
+  {
+   "template": "TEMPLATE_CRYPTO_LONG.xlsx",
+   "switch": "TECHNICAL_DC_TARGET_TF",
+   "rows": 4,
+   "grey_rows": 4,
+   "grey_at": [
+    "EXIT_STRUCTURAL!60",
+    "EXIT_STRUCTURAL!61",
+    "EXIT_STRUCTURAL!62",
+    "EXIT_STRUCTURAL!63"
+   ]
+  },
+  {
+   "template": "TEMPLATE_CRYPTO_SHORT.xlsx",
+   "switch": "DAYTRADE_DC_TARGET_TF",
+   "rows": 4,
+   "grey_rows": 4,
+   "grey_at": [
+    "EXIT_STRUCTURAL!220",
+    "EXIT_STRUCTURAL!221",
+    "EXIT_STRUCTURAL!222",
+    "EXIT_STRUCTURAL!223"
+   ]
+  },
+  {
+   "template": "TEMPLATE_CRYPTO_SHORT.xlsx",
+   "switch": "TECHNICAL_DC_TARGET_TF",
+   "rows": 4,
+   "grey_rows": 4,
+   "grey_at": [
+    "EXIT_STRUCTURAL!148",
+    "EXIT_STRUCTURAL!149",
+    "EXIT_STRUCTURAL!150",
+    "EXIT_STRUCTURAL!151"
+   ]
+  },
+  {
+   "template": "TEMPLATE_STOCKS_LONG.xlsx",
+   "switch": "DAYTRADE_DC_TARGET_TF",
+   "rows": 4,
+   "grey_rows": 4,
+   "grey_at": [
+    "EXIT_STRUCTURAL!102",
+    "EXIT_STRUCTURAL!103",
+    "EXIT_STRUCTURAL!104",
+    "EXIT_STRUCTURAL!105"
+   ]
+  },
+  {
+   "template": "TEMPLATE_STOCKS_LONG.xlsx",
+   "switch": "TECHNICAL_DC_TARGET_TF",
+   "rows": 4,
+   "grey_rows": 4,
+   "grey_at": [
+    "EXIT_STRUCTURAL!71",
+    "EXIT_STRUCTURAL!72",
+    "EXIT_STRUCTURAL!73",
+    "EXIT_STRUCTURAL!74"
+   ]
+  },
+  {
+   "template": "TEMPLATE_STOCKS_SHORT.xlsx",
+   "switch": "DAYTRADE_DC_TARGET_TF",
+   "rows": 4,
+   "grey_rows": 4,
+   "grey_at": [
+    "EXIT_STRUCTURAL!67",
+    "EXIT_STRUCTURAL!68",
+    "EXIT_STRUCTURAL!69",
+    "EXIT_STRUCTURAL!70"
+   ]
+  },
+  {
+   "template": "TEMPLATE_STOCKS_SHORT.xlsx",
+   "switch": "TECHNICAL_DC_TARGET_TF",
+   "rows": 4,
+   "grey_rows": 4,
+   "grey_at": [
+    "EXIT_STRUCTURAL!87",
+    "EXIT_STRUCTURAL!88",
+    "EXIT_STRUCTURAL!89",
+    "EXIT_STRUCTURAL!90"
+   ]
+  }
+ ],
+ "n_absent": 0,
+ "absent": []
+}
