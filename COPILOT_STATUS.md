@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-27 02:56:26 UTC
+# Copilot Status — 2026-10-27 03:01:32 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T02:49:16
-- **STALE_INDICATORS** [tradier]  — 2026-10-27T02:51:19
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T02:51:19
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T02:51:19
-- **STALE_INDICATORS** [tradier]  — 2026-10-27T02:53:22
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T02:53:22
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T02:53:22
-- **STALE_INDICATORS** [tradier]  — 2026-10-27T02:55:24
 - **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T02:55:24
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T02:55:24
+- **STALE_INDICATORS** [tradier]  — 2026-10-27T02:57:26
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T02:57:26
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T02:57:26
+- **STALE_INDICATORS** [tradier]  — 2026-10-27T02:59:28
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T02:59:28
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T02:59:28
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T03:01:31
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T03:01:31
 
 ## Missed Trades (trader comparison)
 
@@ -29,8 +29,8 @@ _None_
 
 **Held:** 4 | **Watching for reentry:** 17 | **Reentered:** 0
 
-- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +0.3%
-- HELD: **MINAUSDT** SHORT (crypto) peak +4.2%, now +2.5%
+- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +0.5%
+- HELD: **MINAUSDT** SHORT (crypto) peak +4.2%, now +2.3%
 - HELD: **UNIUSDC** LONG (crypto) peak +4.1%, now +-1.1%
 - HELD: **ETHUSDC** SHORT (crypto) peak +3.7%, now +-0.3%
 
