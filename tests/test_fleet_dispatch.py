@@ -115,3 +115,11 @@ def test_election_never_both_standby():
     assert F.decide("s2", hb_stale, NOW, 1.0, 16)[0] is True
     assert F.decide("s2", None, NOW, 1.0, 16)[0] is True
     assert F.decide("s7", None, NOW, 1.0, 16)[0] is True
+
+
+def test_quarantined_host_gets_nothing_and_home_orphans():
+    data = fleet4(s1=dict(host(), _quarantine="quarantine: 2 boards died"))
+    pend, partial, _ = F.pending_by_cat(UNI, data, NOW)
+    picks, why_not, orphans = F.plan(pend, partial, data, NOW, {"CRYPTO_SHORT": NOW - 3600})
+    assert "s1" not in {h for h, _, _ in picks} and why_not["s1"].startswith("quarantine")
+    assert "CRYPTO_SHORT" in orphans

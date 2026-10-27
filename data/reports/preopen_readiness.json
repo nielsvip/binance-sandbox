@@ -1,11 +1,10 @@
 {
- "generated_utc": "2026-10-27T19:40:10Z",
+ "generated_utc": "2026-10-27T20:00:22Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-27T13:30:00Z",
  "market_open": true,
  "verdict": "FAIL",
  "failed_critical": [
-  "defaults_chain_completed",
   "apply_report_written",
   "live_set_matches_selection"
  ],
@@ -15,23 +14,23 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 90,
-    "filled_before_open": 35
+    "filled_today": 93,
+    "filled_before_open": 29
    },
-   "detail": "35 boards filled before the open (90 today)"
+   "detail": "29 boards filled before the open (93 today)"
   },
   {
    "name": "defaults_chain_completed",
-   "ok": false,
+   "ok": true,
    "critical": true,
    "measured": {
     "mac_done_stamp": true,
-    "s1_stamp": "unreachable: Command '['ssh', '-S', 'none', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', '-o', 'ControlPath=none', 's1-pub', 'd=~/binance-sandbox/data/daily_chain; if [ -s $d/20261027.json ]; then head -c 400 $d/20261027.json; elif [ -s $d/20261027.FAILED.json ]; then head -c 400 $d/20261027.FAILED.json; else echo NO_STAMP; fi']' timed out after 60 seconds",
+    "s1_stamp": "{\n \"date\": \"20261027\",\n \"status\": \"DONE\",\n \"started\": \"2026-10-27T11:00:01Z\",\n \"ended\": \"2026-10-27T11:37:16.960631Z\",\n \"steps_ok\": \"1,2,2a,2b,3,4,4c,4b,4d,4e,4e,5,6,6b\",\n \"agg\": \"SPREADSHEETS/v15_avg_delta/v15_avg_delta_20261027.xlsx\",\n \"promoted_keys\": [\n  \"ADX_REGIME_FILTER_ENABLED\",\n  \"ATR_LONG_WINDOW\",\n  \"BB_SQUEEZE_ENTRY_ENABLED\",\n  \"COUNTER_TREND_ADD_BLOCK_ENABLED\",\n  \"COUNTER_TREND_SMA200_",
     "cat_side_defaults_4_at": "2026-10-21T04:54:49Z",
     "cat_side_age_days": 6.6,
     "cat_side_note": "rebuilt only by v15_daily_template_update --sync-defaults, a deliberate manual step \u2014 reported, never fails this gate"
    },
-   "detail": "mac stamp 20261027=True, s1 stamp unreachable: Command '['ssh', '-S', 'none', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', '-o', 'ControlPath=none', 's1-pub', 'd=~/binance-sandbox, cat_side layer 6.6d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
+   "detail": "mac stamp 20261027=True, s1 stamp {\n \"date\": \"20261027\",\n \"status\": \"DONE\",\n \"started\": \"2026-10-27T11:00:01Z\",\n \"ended\": \"2026-10-27T11:37:16.960631Z\",\n \"steps_ok\": \"1,2,2a,2b,3,4,4c,, cat_side layer 6.6d old"
   },
   {
    "name": "selection_fresh",

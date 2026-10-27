@@ -72,6 +72,8 @@ RETRY_S = env_int("FLEET_RETRY_S", 1800)
 HB_STALE_S = env_int("FLEET_HB_STALE_S", 180)
 ORPHAN_AFTER_S = env_int("FLEET_ORPHAN_AFTER_S", 600)
 NPZ_TIMEOUT_S = env_int("FLEET_NPZ_TIMEOUT_S", 240)
+QUARANTINE_DEATHS = env_int("FLEET_QUARANTINE_DEATHS", 2)
+QUARANTINE_S = env_int("FLEET_QUARANTINE_S", 3600)
 # "final" (default): a board with final_gain is done. "complete": also require v15_progress_board.is_complete().
 # 2026-10-27 measured: finished+published boards read 2775/3965 under is_complete() because V15_FILL_SLICE_S
 # truncated every board (now 0 in fleet_launch.sh). Until boards launched without the slice dominate, "complete"
@@ -314,6 +316,8 @@ def pending_by_cat(universe, fleet_data, now):
 def admission(d, now):
     """-> (free_slots, reason). One launch per host per tick; memory/disk/spacing gates."""
     nrun = len(d.get("running") or {})
+    if d.get("_quarantine"):
+        return 0, d["_quarantine"]
     if nrun >= SLOTS:
         return 0, f"full {nrun}/{SLOTS}"
     if int(d.get("disk_free_mb") or 0) < DISK_MIN_MB:
@@ -527,6 +531,21 @@ def tick(args):
         rec["hosts_gone"] = sorted(known - set(data))
         state["known_hosts"] = sorted(data)
         pend, partial, skipped = pending_by_cat(universe, data, now)
+        # host quarantine: a board launched here that vanished unfinished (OOM-killed: S1 runs tests at
+        # oom_score_adj +800 under its live stack) counts as a death; QUARANTINE_DEATHS within 2 h -> no launches
+        # on that host for QUARANTINE_S (its home cat_side is then orphaned to the other servers)
+        running_all = {ss for d in data.values() for ss in (d.get("running") or {})}
+        for h, d in data.items():
+            died = []
+            for ss, r in (d.get("launches") or {}).items():
+                age = now - float(r.get("ts") or 0)
+                p = (d.get("progress") or {}).get(ss) or {}
+                if 180 < age < 7200 and ss not in running_all and not (p.get("fg") or p.get("zero")):
+                    died.append((float(r["ts"]), ss))
+            if len(died) >= QUARANTINE_DEATHS:
+                last = max(t for t, _ in died)
+                if now - last < QUARANTINE_S:
+                    d["_quarantine"] = f"quarantine: {len(died)} boards died unfinished <2h {sorted(s for _, s in died)[:4]}"
         holds = {k: v for k, v in (state.get("npz_hold") or {}).items() if now - v < 900}
         state["npz_hold"] = holds
         for cat in pend:
