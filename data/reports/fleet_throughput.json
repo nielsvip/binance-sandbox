@@ -1,22 +1,33 @@
 {
-  "ts": "2026-10-27T17:40:13.460141+00:00",
-  "tick": "2026-10-27T17:38:02.056122+00:00",
-  "tick_age_s": 131,
+  "ts": "2026-10-27T17:45:16.681893+00:00",
+  "tick": "2026-10-27T17:44:02.214506+00:00",
+  "tick_age_s": 74,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run37.json",
     "round": "run37",
     "complete": false,
     "universe_n": 204,
-    "n_complete": 78,
-    "n_pending": 125,
+    "n_complete": 77,
+    "n_pending": 126,
     "n_refused_only": 1,
     "n_excluded": 0,
-    "n_launchable_pending": 107,
+    "n_launchable_pending": 109,
     "hosts_not_visible": []
   },
   "hosts": {
+    "s2": {
+      "cpu_pct": 36,
+      "slots": "4/4",
+      "observed_running": [
+        "QNTUSDT",
+        "RLCUSDT"
+      ],
+      "published_last_hour": 0,
+      "idle_reason": null,
+      "mem_avail_mb": 13960
+    },
     "s1": {
-      "cpu_pct": 99,
+      "cpu_pct": 61,
       "slots": "2/2",
       "observed_running": [
         "STRKUSDT",
@@ -24,23 +35,10 @@
       ],
       "published_last_hour": 0,
       "idle_reason": "slots full",
-      "mem_avail_mb": 8602
-    },
-    "s2": {
-      "cpu_pct": 84,
-      "slots": "4/4",
-      "observed_running": [
-        "MAGICUSDT",
-        "QNTUSDT",
-        "RAYSOLUSDT",
-        "RLCUSDT"
-      ],
-      "published_last_hour": 0,
-      "idle_reason": "slots full",
-      "mem_avail_mb": 4096
+      "mem_avail_mb": 12138
     },
     "s5": {
-      "cpu_pct": 46,
+      "cpu_pct": 40,
       "slots": "4/4",
       "observed_running": [
         "ACN",
@@ -50,10 +48,10 @@
       ],
       "published_last_hour": 0,
       "idle_reason": "slots full",
-      "mem_avail_mb": 13573
+      "mem_avail_mb": 13165
     },
     "s6": {
-      "cpu_pct": 53,
+      "cpu_pct": 54,
       "slots": "4/4",
       "observed_running": [
         "CRWV",
@@ -63,16 +61,18 @@
       ],
       "published_last_hour": 0,
       "idle_reason": "disk guard",
-      "mem_avail_mb": 17676
+      "mem_avail_mb": 15187
     }
   },
   "one_hour_total": 0,
   "alerts": [
-    "LOW_THROUGHPUT:s1:0/h",
     "LOW_THROUGHPUT:s2:0/h",
+    "LOW_CPU:s2:36%",
+    "LOW_THROUGHPUT:s1:0/h",
+    "LOW_CPU:s1:61%",
     "LOW_THROUGHPUT:s5:0/h",
-    "LOW_CPU:s5:46%",
+    "LOW_CPU:s5:40%",
     "LOW_THROUGHPUT:s6:0/h",
-    "LOW_CPU:s6:53%"
+    "LOW_CPU:s6:54%"
   ]
 }
