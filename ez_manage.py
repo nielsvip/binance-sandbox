@@ -62879,7 +62879,13 @@ async def performance_report_loop(trade_manager: MultiAccountTradeManager):
             # surface that made every traded sym_side look like a huge gainer.
             # The headline is now broker-verified net DOLLARS. Percentages are
             # only ever shown per unit of capital deployed, never summed.
-            ver = [s for s in stats.values() if s.get("verified")]
+            # `is_blend` rows restate their own sym_side rows, so they are shown
+            # but never summed — including them double-counted the money.
+            ver = [
+                s
+                for s in stats.values()
+                if s.get("verified") and not s.get("is_blend")
+            ]
             net_usd = sum(float(s.get("net_usd") or 0.0) for s in ver)
             fees_usd = sum(float(s.get("fees_usd") or 0.0) for s in ver)
             dep_usd = sum(float(s.get("deployed_usd") or 0.0) for s in ver)

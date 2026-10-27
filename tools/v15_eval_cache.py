@@ -58,7 +58,8 @@ def engine_versions() -> str:
     deploy changes mtimes -> new version string -> old rows orphaned, never mis-hit)."""
     try:
         files = [ROOT / "v12_quick_engine.py", ROOT / "tools" / "opt" / "evaluate_v12.py",
-                 ROOT / "tools" / "opt" / "v12_pilot.py", ROOT / "tools" / "opt" / "lifecycle_pilot.py"]
+                 ROOT / "tools" / "opt" / "v12_pilot.py", ROOT / "tools" / "opt" / "lifecycle_pilot.py",
+                 ROOT / "fee_model.py", ROOT / "fee_model_measured.py"]
         vd = ROOT / "vec_decisions"
         if vd.is_dir():
             files += sorted(vd.glob("*.py"))
@@ -68,6 +69,18 @@ def engine_versions() -> str:
                 sig.append(f"{f.name}:{f.stat().st_mtime_ns}")
             except Exception:
                 sig.append(f"{f.name}:?")
+        # 2026-10-27: the commission is MEASURED from broker fills, so the number
+        # it contributes to every gain can change while no engine file's bytes
+        # change (fee_model re-measures into data/fee_model.json on a 6h TTL).
+        # The resolved rate must therefore be part of the key, or a re-measure
+        # would silently serve evals priced at the previous fee.
+        try:
+            import fee_model as _fm
+
+            _fee_sig = f"{_fm.round_trip_pct('crypto'):.6f}"
+        except Exception:
+            _fee_sig = "fee?"
+        sig.append(f"fee_rt:{_fee_sig}")
         memo_key = "|".join(sig)
         if _ver_cache.get("memo") == memo_key:
             return _ver_cache["ver"]
@@ -78,6 +91,7 @@ def engine_versions() -> str:
                 h.update(f.read_bytes())
             except Exception:
                 h.update(b"?")
+        h.update(f"|fee_rt={_fee_sig}".encode())
         ver = h.hexdigest()[:24]
         _ver_cache["memo"] = memo_key
         _ver_cache["ver"] = ver

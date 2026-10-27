@@ -4974,7 +4974,11 @@ def compute_all_stats(window_days: int = None) -> Dict[str, dict]:
         blended_wr = sum(float(e['win_rate']) * int(e['trade_count']) for e in entries) / max(1, n)
         mult = _perf_compute_multiplier(blended_wr, blended_gain, n)
         base = dict(max(entries, key=lambda e: int(e.get('trade_count') or 0)))
-        base.update({'symbol': symbol, 'sym_side': f'{symbol}_BOTH', 'side': 'BOTH', 'trade_count': n, 'win_rate': round(blended_wr, 4), 'avg_gain_pct': round(blended_gain, 4), 'total_pnl_pct': round(blended_gain, 4), 'net_usd': round(net, 4), 'deployed_usd': round(dep, 2), 'raw_multiplier': round(mult, 4), 'order_multiplier': round(mult, 3), 'tier': _perf_compute_tier(blended_wr, blended_gain, n), 'sides_blended': [e['sym_side'] for e in entries]})
+        # `is_blend` marks this as a DERIVED row that restates the sym_side rows
+        # it was built from. Any total must skip it or the same money is counted
+        # twice (it made the first corrected report read -$281.70 against the
+        # broker's -$142.87).
+        base.update({'symbol': symbol, 'sym_side': f'{symbol}_BOTH', 'side': 'BOTH', 'is_blend': True, 'verified': all(bool(e.get('verified')) for e in entries), 'trade_count': n, 'win_rate': round(blended_wr, 4), 'avg_gain_pct': round(blended_gain, 4), 'total_pnl_pct': round(blended_gain, 4), 'net_usd': round(net, 4), 'deployed_usd': round(dep, 2), 'raw_multiplier': round(mult, 4), 'order_multiplier': round(mult, 3), 'tier': _perf_compute_tier(blended_wr, blended_gain, n), 'sides_blended': [e['sym_side'] for e in entries]})
         result[symbol] = base
     return result
 
