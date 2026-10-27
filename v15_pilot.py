@@ -14657,6 +14657,32 @@ def _main_single():
             return
         print(f"[SAMPLE-FLOOR-VIOLATION] {new_symside} below floor — sweeping anyway, only valid >={min_trades}-trade candidates can promote", flush=True)
     progress["baseline_winner_kind"] = locals().get("_baseline_winner_kind")
+    # OPERATOR 2026-10-27 (verbatim): "We need to ungrey EMA_BLANKET as it is True in most per_sym
+    # settings, and make sure it is taken over 'naturally' by KINDERGARTEN by doing this: We need to add
+    # a step after baseline calculation where we switch it off, test every KINDERGARTEN option until we
+    # find the best option (hopefully not EMA BLANKET), then start testing all switches as usual. This
+    # way in one run we will get it to turn False everywhere and then we can take it out without any
+    # risk. NONE of the kindergarten rows can be greyed or skipped in any other way."
+    # The phase lives in tools/v15_kindergarten_first.py (standalone, evaluator injected, self-tested):
+    # it forces EMA_BLANKET_FILTER_ENABLED=False, sweeps the kindergarten grid (per-switch then bounded
+    # pairwise), and promotes the winner ONLY if it beats this board's own baseline, so the greedy law
+    # (bible 14) holds and a losing kindergarten set changes nothing. It logs [KG-FIRST-DEFECT] for any
+    # grey kindergarten row instead of skipping it silently, which is the operator's "none of the
+    # kindergarten rows can be greyed or skipped" made enforceable. The blanket is NOT inert when
+    # EMA_BLANKET_FILTER_FILTER_TF=="OFF" (v12_quick_engine:10473 routes OFF to
+    # vec_decisions.wave4_families.ema_blanket_entry_gate, which is enable-gated and has a live twin
+    # ema_blanket_live_pass wired at ez_manage:34703 + tradier_manage:26191), so the phase switches the
+    # ENABLE flag, never merely the TF. Kill switch: V15_KG_FIRST=0. Budget: V15_KG_FIRST_S / _MAX.
+    if prepared is not None and os.environ.get("V15_KG_FIRST", "1") == "1":
+        try:
+            from tools.v15_kindergarten_first import run as _kg_first
+            _kg = _kg_first(symside=new_symside, overrides=cumulative_overrides, defaults=defaults, template=wb_path, evaluate=lambda _ov: evaluate_prepared_sanitized(prepared, _ov, args.window_days), baseline_gain=baseline_gain, progress=progress)
+            if _kg.get("promoted"):
+                cumulative_overrides.update(_kg.get("overrides") or {})
+                cumulative_gain = float(_kg["best"]["gain"])
+                _atomic_write_json(progress_path, progress)
+        except Exception as _kg_e:
+            print(f"[KG-FIRST-ERROR] {new_symside} {type(_kg_e).__name__}: {_kg_e} — board continues without the phase", flush=True)
     # Baseline now correct with previous best overrides; now fill entire workbook per spec:
     #   VECTOR_DELTA = sum pos yellows; POS-> stay same tab next row + baseline, NEG/None/0-> move to first pending row in next tab
     #   STDEV_SLOPE_SIZING skipped (12 tabs), every row gets pos/neg delta, LIVE columns BLANK until complete, 10s RED stall guard
