@@ -17402,8 +17402,17 @@ def _main_single():
                         try:
                             from tools.v15_persym_size_tiers import upsert_workbook_tier as _wbt
                             _ff = locals().get("_fresh_final") or {}
-                            _wt = _wbt(new_symside, cumulative_gain, g365=_365_gain, trades_30d=_ff.get("trades"), tim_30d=_ff.get("tim_pct"))
-                            print(f"[TIER-WRITE] {new_symside} -> {(_wt or {}).get('tier')} x{(_wt or {}).get('mult')} (30D {cumulative_gain:.2f})", flush=True)
+                            # 2026-10-27: hand the sizer the honest headline. `cumulative_gain` is the greedy
+                            # IN-SAMPLE envelope and this write-through turns it into up to 8x START_POSITION_SIZE
+                            # within ~30 s. Without the headline the sizer cannot tell an out-of-sample-corroborated
+                            # gain from an overfit one, and caps the multiplier (RANKED_IN_SAMPLE_ONLY) rather than
+                            # granting leverage on a number whose forward Spearman was -0.15.
+                            try:
+                                _hl = progress.get("headline") or honest_headline(progress, new_symside)
+                            except Exception:
+                                _hl = None
+                            _wt = _wbt(new_symside, cumulative_gain, g365=_365_gain, trades_30d=_ff.get("trades"), tim_30d=_ff.get("tim_pct"), headline=_hl)
+                            print(f"[TIER-WRITE] {new_symside} -> {(_wt or {}).get('tier')} x{(_wt or {}).get('mult')} (30D in-sample {cumulative_gain:.2f}, forward {(_hl or {}).get('forward_gain_pct')})", flush=True)
                         except Exception as _wte:
                             print(f"[TIER-WRITE-warn] {new_symside} {str(_wte)[:200]}", flush=True)
                         # Also sync to tradier_manage in-memory cache clear hint

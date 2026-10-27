@@ -28,9 +28,45 @@ ROOT = Path(__file__).resolve().parents[1]
 CRYPTO_SUFFIX = ("USDT", "USDC", "USD1", "BUSD", "FDUSD")
 
 
-def _ranked_mult(g30, g365, max_mult=3.0, gain_cap=20.0):
+def _env_flag(name, default=True):
+    v = os.environ.get(name)
+    if v is None:
+        return bool(default)
+    return str(v).strip().lower() not in ("0", "false", "no", "off")
+
+
+def _env_float(name, default):
+    try:
+        return float(os.environ.get(name, default))
+    except (TypeError, ValueError):
+        return float(default)
+
+
+# 2026-10-27 HONEST SIZING. `g30` is the board's greedy IN-SAMPLE envelope, and
+# this function turns it into up to 8x START_POSITION_SIZE -- the pipe that
+# converts an overfit number into real money at risk. Measured 2026-10-27: 80%
+# of every published gain is accumulated greedy lift (baseline mean +2.84% vs
+# cumulative +14.18% across 370 boards, only 24 of 370 lifts negative because
+# the chain can only accept positives), the mean of each held sym_side's MAX
+# published gain was +75.9% against a median of +51.9% (a +24pp winner's curse),
+# and the published gain's forward Spearman against realized net was -0.15. A
+# number with no forward information must not earn leverage.
+# So: a gain the pilot could NOT corroborate out of sample is capped at
+# UNCORROBORATED_MAX_MULT instead of max_mult. Ranking order is preserved, only
+# the extreme leverage is removed; corroborated boards (the forward scorer is
+# now ON by default) still earn full size. Kill: V15_HONEST_SIZING=0.
+HONEST_SIZING_DEFAULT = True
+UNCORROBORATED_MAX_MULT_DEFAULT = 2.0
+
+
+def _ranked_mult(g30, g365, max_mult=3.0, gain_cap=20.0, corroborated=None):
     """USER 2026-10-09: magnitude-proportional size — bigger gain = bigger START_POSITION_SIZE.
-    scale = min(g30, cap)/cap; 365D <= 0 caps at 1.0 (a 30D gainer that loses on 365D is overfit, not a winner)."""
+    scale = min(g30, cap)/cap; 365D <= 0 caps at 1.0 (a 30D gainer that loses on 365D is overfit, not a winner).
+
+    `corroborated` (2026-10-27): True when the gain is backed by an
+    out-of-sample forward score, False when it is in-sample only, None when
+    unknown (treated as not corroborated). See the HONEST SIZING note above.
+    """
     try:
         scale = min(float(g30), float(gain_cap)) / float(gain_cap)
     except (TypeError, ValueError, ZeroDivisionError):
@@ -42,7 +78,33 @@ def _ranked_mult(g30, g365, max_mult=3.0, gain_cap=20.0):
             m = min(m, 1.0)
     except (TypeError, ValueError):
         pass
+    if _env_flag("V15_HONEST_SIZING", HONEST_SIZING_DEFAULT) and not corroborated:
+        m = min(m, _env_float("V15_UNCORROBORATED_MAX_MULT", UNCORROBORATED_MAX_MULT_DEFAULT))
     return round(m, 3)
+
+
+def corroboration_of(row):
+    """True when a row's 30D gain is backed by an out-of-sample forward score.
+
+    Reads the pilot's `headline` block (v15_pilot.honest_headline): a board is
+    corroborated only when `forward_is_out_of_sample` is true AND the forward
+    gain is itself positive. An in-sample envelope alone is never corroboration.
+    Pure; tolerant of every shape the chain passes (dict row, nested progress).
+    """
+    if not isinstance(row, dict):
+        return False
+    h = row.get("headline")
+    if not isinstance(h, dict):
+        prog = row.get("progress") if isinstance(row.get("progress"), dict) else None
+        h = prog.get("headline") if isinstance(prog, dict) else None
+    if not isinstance(h, dict):
+        return False
+    if not h.get("forward_is_out_of_sample"):
+        return False
+    try:
+        return float(h.get("forward_gain_pct")) > 0.0
+    except (TypeError, ValueError):
+        return False
 
 
 def _venue_of(ss):
@@ -68,7 +130,8 @@ def _size_ranked(x, max_mult, gain_cap, unconfirmed_mult):
     alone (top gainers up to max_mult = 8x START_POSITION_SIZE). g365 is carried for reporting only and NEVER
     gates size. unconfirmed_mult is kept for signature compat (daily-chain callers pass it positionally).
     Pure: unit-tested."""
-    return _ranked_mult(x.get("g30"), None, max_mult, gain_cap), "RANKED"
+    corr = corroboration_of(x)
+    return _ranked_mult(x.get("g30"), None, max_mult, gain_cap, corr), ("RANKED" if corr else "RANKED_IN_SAMPLE_ONLY")
 
 
 # argparse defaults mirrored here so the per-workbook write-through sizes with the SAME numbers as the daily chain.
@@ -91,7 +154,9 @@ def upsert_workbook_tier(sym_side, g30, g365=None, trades_30d=None, tim_30d=None
         except (TypeError, ValueError):
             g = None
         if g is not None and g > 0:
-            m, tier = _ranked_mult(g, None, cfg["max_mult"], cfg["gain_cap"]), "RANKED"
+            _corr = corroboration_of({"headline": kw.get("headline")})
+            m = _ranked_mult(g, None, cfg["max_mult"], cfg["gain_cap"], _corr)
+            tier = "RANKED" if _corr else "RANKED_IN_SAMPLE_ONLY"
         else:
             m, tier = _min_mult_for_venue(venue, cfg["min_mult"], cfg["min_mult_stocks"]), "MIN"
         import datetime as _dt

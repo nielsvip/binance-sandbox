@@ -1,6 +1,14 @@
-"""Gain-proportional size tiers (USER 2026-10-09): bigger gain = bigger size."""
+"""Gain-proportional size tiers (USER 2026-10-09): bigger gain = bigger size.
+
+2026-10-27 HONEST SIZING: a 30D gain the pilot could not corroborate out of
+sample is capped at UNCORROBORATED_MAX_MULT (2.0) instead of max_mult (8.0),
+because the published envelope's forward Spearman against realized net was
+-0.15. These tests pin BOTH arms: the capped default and, under the
+V15_HONEST_SIZING=0 kill switch, the original uncapped numbers.
+"""
 
 import json
+import os
 import subprocess
 import sys
 import unittest
@@ -9,21 +17,57 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
-from v15_persym_size_tiers import _min_mult_for_venue, _ranked_mult, _size_ranked, _venue_of, upsert_workbook_tier
+from v15_persym_size_tiers import (
+    UNCORROBORATED_MAX_MULT_DEFAULT,
+    _min_mult_for_venue,
+    _ranked_mult,
+    _size_ranked,
+    _venue_of,
+    corroboration_of,
+    upsert_workbook_tier,
+)
+
+CORROBORATED = {"headline": {"forward_is_out_of_sample": True, "forward_gain_pct": 3.0}}
 
 
 class RankedMultTest(unittest.TestCase):
     def test_magnitude_proportional(self):
-        self.assertEqual(_ranked_mult(20.0, 5.0), 3.0)
-        self.assertEqual(_ranked_mult(40.0, 5.0), 3.0)
-        self.assertEqual(_ranked_mult(10.0, 5.0), 2.0)
-        self.assertEqual(_ranked_mult(2.0, 5.0), 1.2)
-        self.assertEqual(_ranked_mult(0.5, 5.0), 1.05)
+        # corroborated: the original gain-proportional curve is unchanged
+        self.assertEqual(_ranked_mult(20.0, 5.0, corroborated=True), 3.0)
+        self.assertEqual(_ranked_mult(40.0, 5.0, corroborated=True), 3.0)
+        self.assertEqual(_ranked_mult(10.0, 5.0, corroborated=True), 2.0)
+        self.assertEqual(_ranked_mult(2.0, 5.0, corroborated=True), 1.2)
+        self.assertEqual(_ranked_mult(0.5, 5.0, corroborated=True), 1.05)
+
+    def test_uncorroborated_gain_is_capped(self):
+        # in-sample-only gains keep their ORDER but lose the leverage
+        self.assertEqual(_ranked_mult(20.0, 5.0, 8.0, 20.0, False), UNCORROBORATED_MAX_MULT_DEFAULT)
+        self.assertEqual(_ranked_mult(85.0, None, 8.0, 20.0, False), UNCORROBORATED_MAX_MULT_DEFAULT)
+        # small gains never reached the cap, so they are untouched
+        self.assertEqual(_ranked_mult(2.0, None, 8.0, 20.0, False), 1.7)
+        # missing corroboration is treated as absent, never as present
+        self.assertEqual(_ranked_mult(85.0, None, 8.0, 20.0, None), UNCORROBORATED_MAX_MULT_DEFAULT)
+
+    def test_kill_switch_restores_uncapped(self):
+        os.environ["V15_HONEST_SIZING"] = "0"
+        try:
+            self.assertEqual(_ranked_mult(85.0, None, 8.0, 20.0, False), 8.0)
+            self.assertEqual(_ranked_mult(20.0, 5.0), 3.0)
+        finally:
+            os.environ.pop("V15_HONEST_SIZING", None)
+
+    def test_corroboration_requires_positive_forward(self):
+        self.assertFalse(corroboration_of({"g30": 30.0}))
+        self.assertFalse(corroboration_of({"headline": {"forward_is_out_of_sample": False, "forward_gain_pct": 9.0}}))
+        self.assertFalse(corroboration_of({"headline": {"forward_is_out_of_sample": True, "forward_gain_pct": -2.0}}))
+        self.assertFalse(corroboration_of(None))
+        self.assertTrue(corroboration_of(CORROBORATED))
+        self.assertTrue(corroboration_of({"progress": CORROBORATED}))
 
     def test_neg365_capped_at_one(self):
-        self.assertEqual(_ranked_mult(50.0, -3.0), 1.0)
-        self.assertEqual(_ranked_mult(50.0, 0.0), 1.0)
-        self.assertEqual(_ranked_mult(50.0, None), 3.0)
+        self.assertEqual(_ranked_mult(50.0, -3.0, corroborated=True), 1.0)
+        self.assertEqual(_ranked_mult(50.0, 0.0, corroborated=True), 1.0)
+        self.assertEqual(_ranked_mult(50.0, None, corroborated=True), 3.0)
 
     def test_bad_inputs_fail_neutral(self):
         self.assertEqual(_ranked_mult("bogus", 5.0), 1.0)
@@ -54,14 +98,17 @@ class TiersEndToEndTest(unittest.TestCase):
         # 2026-10-09 NOSTORE_MIN demotes every above-min row to the venue minimum and keeps the rule outcome in
         # was_tier - the rule tier is read from there.
         rule = {s: d[s].get("was_tier", d[s]["tier"]) for s in d}
-        self.assertEqual(rule["AAA_LONG"], "RANKED")
-        self.assertEqual(rule["BBB_SHORT"], "RANKED")
-        self.assertEqual(rule["CCC_LONG"], "RANKED")
+        # these synthetic rows carry no forward score, so they are in-sample only
+        self.assertEqual(rule["AAA_LONG"], "RANKED_IN_SAMPLE_ONLY")
+        self.assertEqual(rule["BBB_SHORT"], "RANKED_IN_SAMPLE_ONLY")
+        self.assertEqual(rule["CCC_LONG"], "RANKED_IN_SAMPLE_ONLY")
         self.assertEqual(rule["DDD_SHORT"], "MIN")
-        self.assertEqual(_size_ranked({"g30": 30.0, "g365": 12.0}, 8.0, 20.0, 0.5), (8.0, "RANKED"))
-        self.assertEqual(_size_ranked({"g30": 2.0, "g365": 1.0}, 8.0, 20.0, 0.5), (1.7, "RANKED"))
-        self.assertEqual(_size_ranked({"g30": 25.0, "g365": -4.0}, 8.0, 20.0, 0.5), (8.0, "RANKED"))
-        self.assertEqual(_size_ranked({"g30": 25.0, "g365": None}, 8.0, 20.0, 0.5), (8.0, "RANKED"))
+        cap = UNCORROBORATED_MAX_MULT_DEFAULT
+        self.assertEqual(_size_ranked({"g30": 30.0, "g365": 12.0}, 8.0, 20.0, 0.5), (cap, "RANKED_IN_SAMPLE_ONLY"))
+        self.assertEqual(_size_ranked({"g30": 2.0, "g365": 1.0}, 8.0, 20.0, 0.5), (1.7, "RANKED_IN_SAMPLE_ONLY"))
+        self.assertEqual(_size_ranked({"g30": 25.0, "g365": -4.0}, 8.0, 20.0, 0.5), (cap, "RANKED_IN_SAMPLE_ONLY"))
+        # a corroborated row still earns the full 8x
+        self.assertEqual(_size_ranked(dict({"g30": 25.0, "g365": None}, **CORROBORATED), 8.0, 20.0, 0.5), (8.0, "RANKED"))
         stocks_min = _min_mult_for_venue("stocks", 0.25, 0.05)
         self.assertEqual(stocks_min, 0.05)
         for s in ("AAA_LONG", "BBB_SHORT", "CCC_LONG"):
@@ -78,14 +125,19 @@ class WorkbookWriteThroughTest(unittest.TestCase):
             out.unlink()
         win = upsert_workbook_tier("ZZZUSDC_LONG", 25.0, g365=-4.0, trades_30d=60, out=str(out))
         self.assertIsNotNone(win)
-        self.assertEqual(win["tier"], "RANKED")  # 365D-negative no longer demotes (overruled)
-        self.assertEqual(win["mult"], 8.0)
+        # no headline passed -> in-sample only -> capped (365D-negative no longer demotes)
+        self.assertEqual(win["tier"], "RANKED_IN_SAMPLE_ONLY")
+        self.assertEqual(win["mult"], UNCORROBORATED_MAX_MULT_DEFAULT)
+        corr = upsert_workbook_tier("WWWUSDC_LONG", 25.0, trades_30d=60, out=str(out), headline=CORROBORATED["headline"])
+        self.assertIsNotNone(corr)
+        self.assertEqual(corr["tier"], "RANKED")
+        self.assertEqual(corr["mult"], 8.0)
         lose = upsert_workbook_tier("YYYUSDC_SHORT", -5.0, out=str(out))
         self.assertIsNotNone(lose)
         self.assertEqual(lose["tier"], "MIN")
         self.assertEqual(lose["mult"], 0.25)
         cur = json.loads(out.read_text())
-        self.assertEqual(cur["tiers"]["ZZZUSDC_LONG"]["tier"], "RANKED")
+        self.assertEqual(cur["tiers"]["ZZZUSDC_LONG"]["tier"], "RANKED_IN_SAMPLE_ONLY")
         self.assertEqual(cur["tiers"]["YYYUSDC_SHORT"]["tier"], "MIN")
         self.assertEqual(cur["_meta"]["last_workbook_write"]["sym_side"], "YYYUSDC_SHORT")
         out.unlink()
