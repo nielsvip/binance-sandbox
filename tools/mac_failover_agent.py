@@ -74,7 +74,7 @@ CONTROL_FILES = ("tradeable_keys.json", "config_tradier.py", "symbols_trb_long.j
                  "symbols_tra_long.json", "symbols_tra_short.json", "symbols_trc_long.json", "symbols_trc_short.json",
                  "symbols_ang_long.json", "symbols_ang_short.json", "symbols_flz_long.json", "symbols_flz_short.json",
                  "symbols_fin_long.json", "symbols_fin_short.json", "symbols_inf_long.json", "symbols_inf_short.json",
-                 "symbols_men_long.json", "symbols_men_short.json", "symbols_trb_long.json", "symbols_trb_short.json")
+                 "symbols_men_long.json", "symbols_men_short.json")
 STOCK_WORKERS = ("s5", "s6")
 STOCK_CONTROL_FILES = ("tradeable_keys.json", "config_tradier.py", "symbols_trb_long.json", "symbols_trb_short.json",
                        "symbols_tra_long.json", "symbols_tra_short.json", "symbols_trc_long.json", "symbols_trc_short.json")
@@ -390,7 +390,7 @@ class Agent:
                 seeded[account] = C.write_identity_seed(BASE / account, files, f"S1 lease writer via {host}")
         return seeded
 
-    def sync_shared_inputs(self, host, lease, direction):
+    def sync_shared_inputs(self, host, lease, direction, prior_lease=None):
         """Replicate universe/config files in the direction authorized by the current lease."""
         if os.environ.get("LF_NO_SSH") == "1":
             return True
@@ -409,6 +409,11 @@ class Agent:
                     ok = False
                     log(f"CONTROL_SYNC {direction} {remote_root} rc={result.returncode} {result.stderr[-180:]}")
         else:
+            authority = prior_lease or lease
+            venues = C.lease_venues(authority) if isinstance(authority, dict) else []
+            accounts = authority.get("accounts") or {} if isinstance(authority, dict) else {}
+            crypto_accounts = set(accounts.get("crypto") or (C.CRYPTO_ACCOUNTS if "crypto" in venues else ()))
+            stock_accounts = set(accounts.get("stocks") or (C.STOCK_ACCOUNTS if "stocks" in venues else ()))
             with tempfile.TemporaryDirectory(prefix="lf_s1_control_") as temp:
                 filters = [arg for rel in rels for arg in ("--include", f"/{rel}")]
                 result = rsync(["--delay-updates", *filters, "--exclude", "*", f"{host}:/home/niels/binance-sandbox/", temp + "/"], timeout=60)
@@ -417,6 +422,28 @@ class Agent:
                     log(f"CONTROL_SYNC {direction} binance-sandbox rc={result.returncode} {result.stderr[-180:]}")
                 else:
                     for rel in rels:
+                        if rel == "config_tradier.py":
+                            continue
+                        if rel.startswith("symbols_"):
+                            match = re.match(r"symbols_([a-z0-9]+)_(?:long|short)\.json$", rel)
+                            if match and match.group(1) in C.CRYPTO_ACCOUNTS and match.group(1) not in crypto_accounts:
+                                continue
+                            if rel.startswith("symbols_tr") and ("stocks" not in venues or (accounts.get("stocks") and not stock_accounts)):
+                                continue
+                        if rel == "tradeable_keys.json":
+                            staged_keys = C.read_json(Path(temp) / rel, None)
+                            local_keys = C.read_json(BASE / rel, None)
+                            if not isinstance(staged_keys, list) or not isinstance(local_keys, list):
+                                ok = False
+                                log("CONTROL_SYNC from_s1 tradeable_keys.json invalid; Mac copy preserved")
+                                continue
+                            if crypto_accounts:
+                                keep = [key for key in local_keys if str(key).split(":", 1)[0] not in crypto_accounts]
+                                staged_keys = keep + [key for key in staged_keys if str(key).split(":", 1)[0] in crypto_accounts]
+                            elif "crypto" not in venues:
+                                continue
+                            C.atomic_write_json(BASE / rel, sorted(set(staged_keys)))
+                            continue
                         staged = Path(temp) / Path(rel).name
                         if not staged.is_file():
                             continue
@@ -426,12 +453,24 @@ class Agent:
                         os.replace(tmp, destination)
         return ok
 
+    def sync_mac_config_to_s1(self, host):
+        src = BASE / "config_tradier.py"
+        if not src.is_file():
+            return False
+        ok = True
+        for root in ("binance", "binance-sandbox"):
+            result = rsync(["--delay-updates", str(src), f"{host}:/home/niels/{root}/"], timeout=45)
+            if result.returncode not in (0, 23, 24):
+                ok = False
+                log(f"CONFIG_SYNC Mac->S1 {root} rc={result.returncode} {result.stderr[-180:]}")
+        return ok
+
     def sync_worker_inputs_from_s1(self, host, lease):
         """On S1 lease, copy its exact stock universe/config to both stock workers."""
-        if os.environ.get("LF_NO_SSH") == "1" or lease.get("holder") != "s1":
+        if os.environ.get("LF_NO_SSH") == "1" or lease.get("holder") != "s1" or "stocks" not in C.lease_venues(lease):
             return lease.get("holder") == "s1"
         ok = True
-        files = [rel for rel in STOCK_CONTROL_FILES if (BASE / rel).is_file()]
+        files = [rel for rel in STOCK_CONTROL_FILES if rel != "config_tradier.py" and (BASE / rel).is_file()]
         with tempfile.TemporaryDirectory(prefix="lf_stock_worker_") as temp:
             filters = [arg for rel in files for arg in ("--include", f"/{rel}")]
             result = rsync([*filters, "--exclude", "*", f"{host}:/home/niels/binance-sandbox/", temp + "/"], timeout=60)
@@ -439,6 +478,8 @@ class Agent:
                 log(f"STOCK_WORKER_PULL S1 rc={result.returncode} {result.stderr[-180:]}")
                 return False
             staged = [str(Path(temp) / Path(rel).name) for rel in files if (Path(temp) / Path(rel).name).is_file()]
+            if (BASE / "config_tradier.py").is_file():
+                staged.append(str(BASE / "config_tradier.py"))
             stock_sides = set()
             for direction in ("long", "short"):
                 book = Path(temp) / f"symbols_trb_{direction}.json"
@@ -579,7 +620,7 @@ class Agent:
         local = C.read_json(LF / "lease_local.json", {}) or {}
         if local.get("holder") == "s1":
             ok = self.pull_state_back(host, fenced_venues(local))
-            shared_ok = self.sync_shared_inputs(host, lease, "from_s1")
+            shared_ok = self.sync_shared_inputs(host, lease, "from_s1", prior_lease=local)
             # 2026-10-14: S1's files carried takeover-time opened_at + phantom March crypto rows; the Mac writers re-read the broker
             # themselves, so failback never seeds from S1 (LF_UNFENCE_SEED=1 re-enables).
             seeded = self.seed_from_s1(host) if os.environ.get("LF_UNFENCE_SEED", "0") == "1" else {}
@@ -637,6 +678,7 @@ class Agent:
                     direction = "to_s1"
                 else:
                     self.sync_shared_inputs(host, lease, "from_s1")
+                    self.sync_mac_config_to_s1(host)
                     self.sync_worker_inputs_from_s1(host, lease)
                     direction = "from_s1"
                 self.start_history_sync(host, lease, direction)

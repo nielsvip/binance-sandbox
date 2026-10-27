@@ -8,7 +8,12 @@ import exit_guarantee as _xg  # 2026-10-14 USER EXITS NEVER COMPROMISED: full cl
 import vec_decisions.qty_quantizers as _qq  # 2026-10-16 USER STDEV 1-5x ladder + streak quantizer: same code as v12_quick_engine/tradier_manage
 import paper_nonvec as _paper_nv  # 2026-10-17 USER: live-only decisions refused + paper-traded next to the vector trades
 import ez_positions_service as _eps  # USER 2026-10-26: the position store IS the source of truth (positions_truth.py deleted)
-from utils import await_abandonable  # USER 2026-10-26: generic never-hang timeout (moved out of positions_truth.py)
+from utils import await_abandonable, AbandonTimeout  # USER 2026-10-26: generic never-hang timeout (moved out of positions_truth.py)
+# USER 2026-10-27 VERBATIM LAW: "ez_manage gets positions in ONE SINGLE EASY FUCKING WAY which is reading
+# redis and if redis takes >0.01s it read the json END OF STORY". ez_manage NEVER polls Binance for
+# positions — the single writer (ez_positions_service) owns the broker connection (WebSocket for every
+# change, REST verify every few seconds) and publishes to Redis + {acct}/{long,short}_positions.json.
+EZ_POSITIONS_REDIS_BUDGET_S = 0.01
 from live_rally_filters import rally_ok as _rally_ok, age_minutes as _rally_age
 
 
@@ -16614,8 +16619,9 @@ class MultiAccountTradeManager:
     async def _load_positions_quick_from_files(
         self, account_key: Optional[str] = None
     ) -> Dict[str, Position]:
-        """KILLED — never read positions from disk after startup. Dict is sole source."""
-        return {}
+        """USER 2026-10-27: RESTORED. {acct}/{long,short}_positions.json, written by the single writer.
+        This is the fallback the law names for when Redis is slower than EZ_POSITIONS_REDIS_BUDGET_S."""
+        return await self._load_positions_from_files(account_key)
 
     def _normalize_redis_payload(self, payload: Any) -> Any:
         if isinstance(payload, (bytes, bytearray, memoryview, str)):
@@ -16682,8 +16688,16 @@ class MultiAccountTradeManager:
     async def _load_positions_from_redis(
         self, account_key: Optional[str] = None
     ) -> Dict[str, Position]:
-        """KILLED — never read positions from Redis after startup. Dict is sole source."""
-        return {}
+        """USER 2026-10-27: RESTORED. The `positions:{acct}` snapshot published by the single writer.
+        Was KILLED ("never read positions from Redis after startup. Dict is sole source."), and that
+        doctrine is what forced ez_manage to run its OWN Binance fetch loop — a second source of truth
+        AND a second poller on the same IP, which is what earns the -1003 / 418 bans."""
+        if not account_key:
+            return {}
+        payload = await self._redis_get_dict(f"positions:{account_key}")
+        if not payload:
+            return {}
+        return self._positions_from_snapshot_payload(account_key, payload)
 
     def _positions_from_snapshot_payload(
         self, account_key: str, snapshot_payload: Dict[str, Any]

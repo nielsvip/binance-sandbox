@@ -1,23 +1,17 @@
 {
- "generated_utc": "2026-10-27T00:12:07.277821+00:00",
+ "generated_utc": "2026-10-27T01:12:06.412435+00:00",
  "days": 1.0,
  "totals": {
-  "exit_promises": 13,
-  "exit_broken_no_delivery": 12,
+  "exit_promises": 10,
+  "exit_broken_no_delivery": 9,
+  "exit_kept_in_bar": 1,
   "entry_promises": 8,
-  "entry_broken_no_delivery": 8,
-  "exit_kept_in_bar": 1
+  "entry_broken_no_delivery": 8
  },
  "per_key": {
-  "flz:DASHUSDT_SHORT": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1,
-   "entry_promises": 1,
-   "entry_broken_no_delivery": 1
-  },
   "inf:RAYSOLUSDT_LONG": {
-   "exit_promises": 3,
-   "exit_broken_no_delivery": 3
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1
   },
   "inf:ATOMUSDT_SHORT": {
    "exit_promises": 1,
@@ -71,6 +65,10 @@
    "exit_promises": 1,
    "exit_broken_no_delivery": 1
   },
+  "flz:DASHUSDT_SHORT": {
+   "entry_promises": 1,
+   "entry_broken_no_delivery": 1
+  },
   "fin:ETHFIUSDC_LONG": {
    "exit_promises": 1,
    "exit_broken_no_delivery": 1
@@ -81,36 +79,6 @@
   }
  },
  "detail": [
-  {
-   "acct": "flz",
-   "sym_side": "DASHUSDT_SHORT",
-   "kind": "exit",
-   "bar": "10-25 23:45",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "STATEFUL_PORTED_EXIT g-0.53% age30m",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "inf",
-   "sym_side": "RAYSOLUSDT_LONG",
-   "kind": "exit",
-   "bar": "10-26 00:00",
-   "late_min": null,
-   "action": "REDUCE",
-   "reason": "STDEV_REJECT_EXIT",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "inf",
-   "sym_side": "RAYSOLUSDT_LONG",
-   "kind": "exit",
-   "bar": "10-26 00:30",
-   "late_min": null,
-   "action": "REDUCE",
-   "reason": "STDEV_REJECT_EXIT",
-   "outcome": "NO_DELIVERY"
-  },
   {
    "acct": "inf",
    "sym_side": "RAYSOLUSDT_LONG",
