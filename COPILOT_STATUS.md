@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-27 14:46:03 UTC
+# Copilot Status — 2026-10-27 14:51:08 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T14:44:30
-- **STALE_INDICATORS** [tradier]  — 2026-10-27T14:45:00
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T14:45:00
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T14:45:00
-- **STALE_INDICATORS** [tradier]  — 2026-10-27T14:45:32
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T14:45:32
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T14:45:32
-- **STALE_INDICATORS** [tradier]  — 2026-10-27T14:46:02
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T14:46:02
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T14:46:02
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T14:49:37
+- **STALE_INDICATORS** [tradier]  — 2026-10-27T14:50:07
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T14:50:07
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T14:50:07
+- **STALE_INDICATORS** [tradier]  — 2026-10-27T14:50:37
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T14:50:37
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T14:50:37
+- **STALE_INDICATORS** [tradier]  — 2026-10-27T14:51:07
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T14:51:07
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T14:51:07
 
 ## Missed Trades (trader comparison)
 
@@ -32,18 +32,18 @@ _None_
 - HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +-0.8%
 - HELD: **MINAUSDT** SHORT (crypto) peak +4.2%, now +-0.8%
 - HELD: **UNIUSDC** LONG (crypto) peak +4.1%, now +0.7%
-- HELD: **BNBUSDC** SHORT (crypto) peak +3.0%, now +-0.6%
+- HELD: **BNBUSDC** SHORT (crypto) peak +3.0%, now +-0.7%
 
-- WATCHING: **MASKUSDT** SHORT (crypto) peaked +10.0%, exited 1m ago
-- WATCHING: **BBUSDT** SHORT (crypto) peaked +8.8%, exited 1m ago
-- WATCHING: **QNTUSDT** LONG (crypto) peaked +8.7%, exited 1m ago
-- WATCHING: **BEAMXUSDT** LONG (crypto) peaked +8.6%, exited 1m ago
-- WATCHING: **BLURUSDT** SHORT (crypto) peaked +6.3%, exited 1m ago
-- WATCHING: **GRASSUSDT** LONG (crypto) peaked +5.6%, exited 1m ago
-- WATCHING: **A** LONG (tradier) peaked +5.0%, exited 1m ago
-- WATCHING: **PENGUUSDC** LONG (crypto) peaked +4.9%, exited 1m ago
-- WATCHING: **STXUSDT** LONG (crypto) peaked +4.2%, exited 1m ago
-- WATCHING: **ZROUSDT** LONG (crypto) peaked +4.2%, exited 1m ago
+- WATCHING: **MASKUSDT** SHORT (crypto) peaked +10.0%, exited 0m ago
+- WATCHING: **BBUSDT** SHORT (crypto) peaked +8.8%, exited 0m ago
+- WATCHING: **QNTUSDT** LONG (crypto) peaked +8.7%, exited 0m ago
+- WATCHING: **BEAMXUSDT** LONG (crypto) peaked +8.6%, exited 0m ago
+- WATCHING: **BLURUSDT** SHORT (crypto) peaked +6.3%, exited 0m ago
+- WATCHING: **GRASSUSDT** LONG (crypto) peaked +5.6%, exited 0m ago
+- WATCHING: **A** LONG (tradier) peaked +5.0%, exited 0m ago
+- WATCHING: **PENGUUSDC** LONG (crypto) peaked +4.9%, exited 0m ago
+- WATCHING: **STXUSDT** LONG (crypto) peaked +4.2%, exited 0m ago
+- WATCHING: **ZROUSDT** LONG (crypto) peaked +4.2%, exited 0m ago
 
 ## Supervisor
 

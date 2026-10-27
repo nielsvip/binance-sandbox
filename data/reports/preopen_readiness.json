@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-27T14:20:03Z",
+ "generated_utc": "2026-10-27T14:40:10Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-27T13:30:00Z",
  "market_open": true,
@@ -13,10 +13,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 80,
-    "filled_before_open": 77
+    "filled_today": 77,
+    "filled_before_open": 75
    },
-   "detail": "77 boards filled before the open (80 today)"
+   "detail": "75 boards filled before the open (77 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -50,9 +50,9 @@
     "reports_today": 13,
     "newest_report": "persym_golive_20261027_preopen_1242.json",
     "newest_report_at": "2026-10-27T12:42:43Z",
-    "tiers_at": "2026-10-27T12:43:11Z"
+    "tiers_at": "2026-10-27T14:30:53Z"
    },
-   "detail": "persym_golive_20261027_preopen_1242.json at 2026-10-27T12:42:43Z, tiers 2026-10-27T12:43:11Z"
+   "detail": "persym_golive_20261027_preopen_1242.json at 2026-10-27T12:42:43Z, tiers 2026-10-27T14:30:53Z"
   },
   {
    "name": "live_set_matches_selection",
@@ -209,7 +209,7 @@
     "symbols": 202,
     "stale_over_90min": 0,
     "stale_pct": 0.0,
-    "median_age_min": 5.1,
+    "median_age_min": 0.0,
     "sample": []
    },
    "detail": "0/202 symbols past the live 90-min entry gate (0.0%)"

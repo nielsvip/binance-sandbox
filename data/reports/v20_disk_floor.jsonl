@@ -32,3 +32,6 @@
 {"error": "\", line 419, in _walk\n  [Previous line repeated 994 more times]\n  File \"<frozen os>\", line 413, in _walk\n  File \"<frozen posixpath>\", line 77, in join\nRecursionError: maximum recursion depth exceeded", "event": "inventory_failed", "host": "s1", "ts": "2026-10-27T14:48:02.788708+00:00"}
 {"event": "floor_not_met", "floor_gb": 40, "free_gb": 0, "host": "s1", "shortfall_gb": 40, "top_blockers": [], "ts": "2026-10-27T14:48:07.881418+00:00"}
 {"applied": false, "event": "floor_summary", "floor_gb": 40, "free_gb": {"s1": 0}, "shortfall_gb": {"s1": 40}, "ts": "2026-10-27T14:48:07.885280+00:00"}
+{"event": "floor_check", "floor_gb": 40, "free_gb": 1, "host": "s1", "ts": "2026-10-27T14:52:54.941338+00:00", "under": true}
+{"event": "rung_corpus", "freed_mb": 0, "host": "s1", "rc": 2, "ts": "2026-10-27T14:52:59.814624+00:00"}
+{"dry_run": true, "event": "rung_shelve", "host": "s1", "root": "/home/niels/binance-sandbox/backups", "ts": "2026-10-27T14:55:16.916899+00:00"}
