@@ -313,6 +313,21 @@ def pending_by_cat(universe, fleet_data, now):
     return pend, partial, skipped
 
 
+def unfinished_deaths(d, now):
+    """-> [(launch_ts, ss)] of boards that RAN and vanished unfinished. A start refusal (the pilot exited at start on a
+    guard such as BASELINE-PERSYM-SNAPSHOT-INVALID, reported by the probe as start_refused >= the launch ts) is not a death."""
+    died = []
+    refused = d.get("start_refused") or {}
+    for ss, r in (d.get("launches") or {}).items():
+        age = now - float(r.get("ts") or 0)
+        p = (d.get("progress") or {}).get(ss) or {}
+        if 180 < age < 7200 and ss not in (d.get("running") or {}) and not (p.get("fg") or p.get("zero")):
+            if float(refused.get(ss) or 0) >= float(r.get("ts") or 0):
+                continue
+            died.append((float(r["ts"]), ss))
+    return died
+
+
 def admission(d, now):
     """-> (free_slots, reason). One launch per host per tick; memory/disk/spacing gates."""
     nrun = len(d.get("running") or {})
@@ -549,12 +564,7 @@ def tick(args):
         # on that host for QUARANTINE_S (its home cat_side is then orphaned to the other servers)
         running_all = {ss for d in data.values() for ss in (d.get("running") or {})}
         for h, d in data.items():
-            died = []
-            for ss, r in (d.get("launches") or {}).items():
-                age = now - float(r.get("ts") or 0)
-                p = (d.get("progress") or {}).get(ss) or {}
-                if 180 < age < 7200 and ss not in (d.get("running") or {}) and not (p.get("fg") or p.get("zero")):
-                    died.append((float(r["ts"]), ss))
+            died = unfinished_deaths(d, now)
             if len(died) >= QUARANTINE_DEATHS:
                 last = max(t for t, _ in died)
                 if now - last < QUARANTINE_S:

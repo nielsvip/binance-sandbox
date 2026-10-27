@@ -45,6 +45,64 @@ def _progress_dir():
     return None
 
 
+GREY_RGB = {"FFBFBFBF", "00BFBFBF"}
+ESSENTIAL_PREFIX = "ESSENTIAL-ROWS"
+UNTESTED_PREFIX = "untested (0 rows"
+
+
+def _best_first_allowed(root):
+    for path in ("/tmp/v15_best_first.json", str(root / "data" / "v15_best_first.json")):
+        try:
+            allowed = json.loads(pathlib.Path(path).read_text()).get("allowed")
+            if allowed:
+                return set(allowed)
+        except Exception:
+            continue
+    return None
+
+
+def _tradeable(symside, allowed):
+    return allowed is None or symside.upper() in allowed
+
+
+def _template_path(root, symside):
+    is_stock = "USDC" not in symside and "USDT" not in symside
+    side = "LONG" if symside.endswith("_LONG") else "SHORT"
+    return root / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM" / f"TEMPLATE_{'STOCKS' if is_stock else 'CRYPTO'}_{side}.xlsx"
+
+
+def _measurable_switches(template):
+    """-> set of switch names with at least one non-grey row in the template (None if it cannot be read)."""
+    try:
+        import openpyxl
+        wb = openpyxl.load_workbook(template, read_only=False, data_only=False)
+    except Exception:
+        return None
+    live = set()
+    for ws in wb.worksheets:
+        for row in range(3, ws.max_row + 1):
+            cell = ws.cell(row=row, column=1)
+            name = cell.value
+            if not isinstance(name, str) or not name or name.startswith(("=", "#")):
+                continue
+            rgb = getattr(getattr(cell.font, "color", None), "rgb", None)
+            if rgb not in GREY_RGB:
+                live.add(name)
+    return live
+
+
+def holes_only_refusal(prog, measurable):
+    """True when the board was refused ONLY at the ESSENTIAL-ROWS gate, solely because the essential rows were
+    untested (0 rows), and every one of those switches now has a non-grey row in the current template."""
+    reason = str(prog.get("not_compliant") or "")
+    unprotected = prog.get("unprotected")
+    if not reason.startswith(ESSENTIAL_PREFIX) or not isinstance(unprotected, dict) or not unprotected:
+        return False
+    if any(not str(why).startswith(UNTESTED_PREFIX) for why in unprotected.values()):
+        return False
+    return measurable is not None and all(name in measurable for name in unprotected)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true")
@@ -65,13 +123,27 @@ def main():
     root = pathlib.Path(__file__).resolve().parent.parent
     runner = root / "tools" / "worker_lanes" / lane / "overload_run.sh"
     stranded = []
+    allowed = _best_first_allowed(root)
+    measurable_cache = {}
+    skipped_untradeable = []
+    requeue_refused = []
     for path in sorted(glob.glob(str(pdir / "*_v14_progress.json"))):
         symside = os.path.basename(path)[: -len("_v14_progress.json")]
         try:
             prog = json.loads(pathlib.Path(path).read_text())
         except Exception:
             continue
-        if prog.get("final_gain") is None or prog.get("bh") is None or prog.get("not_compliant") or not prog.get("final_path"):
+        if prog.get("final_gain") is None or prog.get("bh") is None or not prog.get("final_path"):
+            continue
+        if prog.get("not_compliant"):
+            tpl = _template_path(root, symside)
+            if tpl not in measurable_cache:
+                measurable_cache[tpl] = _measurable_switches(tpl)
+            if not holes_only_refusal(prog, measurable_cache[tpl]):
+                continue
+            requeue_refused.append(symside)
+        if not _tradeable(symside, allowed):
+            skipped_untradeable.append(symside)
             continue
         try:
             if board.is_complete(symside):
@@ -85,6 +157,8 @@ def main():
         stranded.append({"symside": symside, "short_rows": short, "rows": status["rows"], "final_path": prog.get("final_path")})
     stranded.sort(key=lambda r: r["short_rows"])
     out = {"event": "stranded", "n": len(stranded), "progress_dir": str(pdir), "apply": a.apply,
+           "essential_refusal_requeued": sorted(set(requeue_refused) & {r["symside"] for r in stranded}),
+           "skipped_not_tradeable": sorted(skipped_untradeable),
            "boards": [{k: r[k] for k in ("symside", "short_rows", "rows")} for r in stranded[:20]]}
     if not stranded:
         if not a.quiet:

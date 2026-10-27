@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-27T21:35:19Z",
+ "ts": "2026-10-27T21:56:41Z",
  "n_gate_switches": 40,
  "templates": {
   "TEMPLATE_CRYPTO_LONG.xlsx": {
@@ -15,125 +15,8 @@
    "n_gate_switches_present": 40
   }
  },
- "n_breaches": 13,
- "breaches": [
-  {
-   "template": "TEMPLATE_CRYPTO_LONG.xlsx",
-   "switch": "KINDERGARTEN_CUMULATIVE_MIN_TFS",
-   "rows": 4,
-   "grey_rows": 1,
-   "grey_at": [
-    "GLOBAL_RISK_GATES!211"
-   ],
-   "why": "gate switch has grey (never-evaluated) rows"
-  },
-  {
-   "template": "TEMPLATE_CRYPTO_LONG.xlsx",
-   "switch": "WT_15M_BOUNCE_FILTER_MODE",
-   "rows": 1,
-   "grey_rows": 0,
-   "grey_at": [],
-   "why": "gate switch has <2 candidates: delta is 0 by construction"
-  },
-  {
-   "template": "TEMPLATE_CRYPTO_LONG.xlsx",
-   "switch": "WT_15M_BOUNCE_VOLUME_MODE",
-   "rows": 1,
-   "grey_rows": 0,
-   "grey_at": [],
-   "why": "gate switch has <2 candidates: delta is 0 by construction"
-  },
-  {
-   "template": "TEMPLATE_CRYPTO_SHORT.xlsx",
-   "switch": "KINDERGARTEN_CUMULATIVE_MIN_TFS",
-   "rows": 4,
-   "grey_rows": 1,
-   "grey_at": [
-    "GLOBAL_RISK_GATES!425"
-   ],
-   "why": "gate switch has grey (never-evaluated) rows"
-  },
-  {
-   "template": "TEMPLATE_CRYPTO_SHORT.xlsx",
-   "switch": "WT_15M_BOUNCE_FILTER_MODE",
-   "rows": 1,
-   "grey_rows": 0,
-   "grey_at": [],
-   "why": "gate switch has <2 candidates: delta is 0 by construction"
-  },
-  {
-   "template": "TEMPLATE_CRYPTO_SHORT.xlsx",
-   "switch": "WT_15M_BOUNCE_VOLUME_MODE",
-   "rows": 1,
-   "grey_rows": 0,
-   "grey_at": [],
-   "why": "gate switch has <2 candidates: delta is 0 by construction"
-  },
-  {
-   "template": "TEMPLATE_STOCKS_LONG.xlsx",
-   "switch": "GR_FILTER_ALL_ENTRIES",
-   "rows": 5,
-   "grey_rows": 1,
-   "grey_at": [
-    "ENTRY_REVERSAL_BOUNCE!208"
-   ],
-   "why": "gate switch has grey (never-evaluated) rows"
-  },
-  {
-   "template": "TEMPLATE_STOCKS_LONG.xlsx",
-   "switch": "WT_15M_BOUNCE_FILTER_MODE",
-   "rows": 1,
-   "grey_rows": 0,
-   "grey_at": [],
-   "why": "gate switch has <2 candidates: delta is 0 by construction"
-  },
-  {
-   "template": "TEMPLATE_STOCKS_LONG.xlsx",
-   "switch": "WT_15M_BOUNCE_VOLUME_MODE",
-   "rows": 1,
-   "grey_rows": 0,
-   "grey_at": [],
-   "why": "gate switch has <2 candidates: delta is 0 by construction"
-  },
-  {
-   "template": "TEMPLATE_STOCKS_SHORT.xlsx",
-   "switch": "WT_15M_BOUNCE_FILTER_MODE",
-   "rows": 1,
-   "grey_rows": 0,
-   "grey_at": [],
-   "why": "gate switch has <2 candidates: delta is 0 by construction"
-  },
-  {
-   "template": "TEMPLATE_STOCKS_SHORT.xlsx",
-   "switch": "WT_15M_BOUNCE_HIGH_1H_GT_PREV",
-   "rows": 18,
-   "grey_rows": 2,
-   "grey_at": [
-    "REENTRY_ADAPTIVE!89",
-    "REDUCE_SIGNAL_RATER!195"
-   ],
-   "why": "gate switch has grey (never-evaluated) rows"
-  },
-  {
-   "template": "TEMPLATE_STOCKS_SHORT.xlsx",
-   "switch": "WT_15M_BOUNCE_LOW_1H_GT_PREV",
-   "rows": 18,
-   "grey_rows": 2,
-   "grey_at": [
-    "REENTRY_ADAPTIVE!97",
-    "REDUCE_SIGNAL_RATER!189"
-   ],
-   "why": "gate switch has grey (never-evaluated) rows"
-  },
-  {
-   "template": "TEMPLATE_STOCKS_SHORT.xlsx",
-   "switch": "WT_15M_BOUNCE_VOLUME_MODE",
-   "rows": 1,
-   "grey_rows": 0,
-   "grey_at": [],
-   "why": "gate switch has <2 candidates: delta is 0 by construction"
-  }
- ],
+ "n_breaches": 0,
+ "breaches": [],
  "n_pending_removal": 8,
  "pending_removal": [
   {

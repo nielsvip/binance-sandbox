@@ -2203,7 +2203,10 @@ def sorted_events(spill_dirs, tmp_dir, out_path):
             made.append(u)
         else:
             plain.append(f)
-    cmd = ["sort", "-s", "-t", "\t", "-k1,1", "-S", os.environ.get("V18_SORT_MEM", "1G"), "-T", str(tmp_dir), "-o", str(out_path)] + plain
+    cmd = ["sort", "-s", "-t", "\t", "-k1,1", "-S", os.environ.get("V18_SORT_MEM", "1G"), "-T", str(tmp_dir), "-o", str(out_path)]
+    if os.environ.get("V18_SORT_COMPRESS"):  # e.g. zstd: sort's own temp runs compressed (disk peak ~ inputs + output instead of 3x)
+        cmd.append("--compress-program=" + os.environ["V18_SORT_COMPRESS"])
+    cmd += plain
     subprocess.run(cmd, check=True, env=env)
     for u in made:
         Path(u).unlink(missing_ok=True)

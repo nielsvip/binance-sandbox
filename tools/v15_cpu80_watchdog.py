@@ -84,8 +84,34 @@ def sys_stats():
         prog_recent_n=0
     return {"nproc":nproc,"load1":load1,"cpu_pct":cpu_pct,"mem_total_m":total,"mem_avail_m":avail,"mem_used_pct":used_pct,"pilots":pilots,"pilot_sides":sorted(pilot_sides),"herd_ok":herd_ok,"herd_cnt":herd_cnt,"oom":oom,"hb_recent":hb_recent,"hb_total":hb_total,"prog_recent":prog_recent_n,"raw_ps":ps[:500]}
 
+def lane_workers():
+    try:
+        return max(1, int(os.environ.get("FLEET_WORKERS", 7)))
+    except ValueError:
+        return 7
+
+def dispatcher_alive(max_age_s=None):
+    limit = max_age_s if max_age_s is not None else int(os.environ.get("FLEET_HB_STALE_S", 180))
+    def fresh(text):
+        try:
+            return time.time() - float(json.loads(text).get("ts") or 0) < limit
+        except Exception:
+            return False
+    try:
+        if fresh((pathlib.Path.home() / "fleet_dispatch" / "heartbeat.json").read_text()):
+            return True
+    except Exception:
+        pass
+    for ip in ("10.0.0.3", "10.0.0.4"):
+        text = sh(f"ssh -o BatchMode=yes -o ConnectTimeout=5 niels@{ip} 'cat ~/fleet_dispatch/heartbeat.json' 2>/dev/null", timeout=15)
+        if not text.startswith("ERR:") and fresh(text):
+            return True
+    return False
+
 def ensure_lane(host, pilot_sides):
     if pathlib.Path("/tmp/v15_preopen_7d.pause").exists():
+        return
+    if dispatcher_alive():
         return
     lane = {
         "s2": ("/tmp/npz_sides_s2.txt", "TEMPLATE_CRYPTO_LONG.xlsx", "LONG", True),
@@ -125,7 +151,7 @@ def ensure_lane(host, pilot_sides):
         lock_probe = subprocess.run(["flock", "-n", lane_lock, "-c", "true"], check=False)
         if lock_probe.returncode == 0:
             out = pathlib.Path(f"/tmp/v15_lane_watchdog_{host}.log").open("a")
-            subprocess.Popen(["bash", str(ROOT / "tools" / "worker_lanes" / host / "self_dispatch.sh"), sides, str(template_path), "1", str(dispatch_max)], cwd=str(ROOT), stdout=out, stderr=subprocess.STDOUT, start_new_session=True)
+            subprocess.Popen(["bash", str(ROOT / "tools" / "worker_lanes" / host / "self_dispatch.sh"), sides, str(template_path), str(lane_workers()), str(dispatch_max)], cwd=str(ROOT), stdout=out, stderr=subprocess.STDOUT, start_new_session=True)
             log(f"LANE-REFILL host={host} sides={len(pilot_sides)}/{dispatch_max} queue={sides}")
     if host == "niels" and len(pilot_sides) < 4:
         sched = ROOT / "tools" / "v15_fleet_scheduler.py"

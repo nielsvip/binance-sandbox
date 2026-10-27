@@ -5,7 +5,7 @@ Runs ON a worker, fed over ssh stdin (`ssh host PY - <json-args> < fleet_probe.p
 cloned or newly added server needs no deploy step to be seen. Prints ONE JSON object:
   host, ips, mem_avail_mb, disk_free_mb, ncpu, load1, pdir, repo,
   running {SS: etime_s}, progress {SS: {fg, complete, ts, rows, mtime}},
-  tails {SYM: last_bar_ts}, launches {SS: record}, impossible {SS: mtime}.
+  tails {SYM: last_bar_ts}, launches {SS: record}, impossible {SS: mtime}, start_refused {SS: log mtime} (pilot exited at start on BASELINE-PERSYM-SNAPSHOT-INVALID; not a death).
 `complete` uses tools/v15_progress_board.is_complete — the SAME rule the harvester uses, so the
 dispatcher never skips a board the harvester refuses (the 2026-10-27 publish deadlock). Never raises.
 """
@@ -95,7 +95,7 @@ def main():
            "swap_free_mb": mem.get("SwapFree", 0), "disk_free_mb": disk, "ncpu": os.cpu_count() or 0,
            "load1": os.getloadavg()[0], "pdir": pdir,
            "repo": os.path.isfile(os.path.join(SB, "v15_pilot.py")),
-           "running": _running(), "progress": {}, "tails": {}, "launches": {}, "impossible": {}}
+           "running": _running(), "progress": {}, "tails": {}, "launches": {}, "impossible": {}, "start_refused": {}}
     try:
         cache = json.load(open(CACHE))
     except (OSError, ValueError):
@@ -159,6 +159,19 @@ def main():
         try:
             out["launches"][os.path.basename(path)[:-5]] = json.load(open(path))
         except (OSError, ValueError):
+            pass
+    for symside, rec in out["launches"].items():
+        log = "/tmp/sweep_%s_30D.log" % symside
+        try:
+            if now - float(rec.get("ts") or 0) > 7200 or os.path.getmtime(log) < float(rec.get("ts") or 0):
+                continue
+            with open(log, "rb") as handle:
+                handle.seek(0, 2)
+                handle.seek(max(0, handle.tell() - 8192))
+                tail = handle.read().decode("utf-8", "replace")
+            if "BASELINE-PERSYM-SNAPSHOT-INVALID" in tail and not any(m in tail.rsplit("BASELINE-PERSYM-SNAPSHOT-INVALID", 1)[1] for m in ("[spec-row]", "[PUBLISH]", "[slow-cell]")):
+                out["start_refused"][symside] = int(os.path.getmtime(log))
+        except (OSError, ValueError, TypeError):
             pass
     for path in glob.glob(os.path.join(SB, "SPREADSHEETS", "V15_V16_IMPOSSIBLE", "*_*")):
         name = os.path.basename(path)
