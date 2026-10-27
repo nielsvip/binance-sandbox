@@ -60,7 +60,7 @@ def _log(event: str, **fields) -> None:
 
 
 def _ssh(host: str, command: str, timeout: int = 90, check: bool = True) -> subprocess.CompletedProcess:
-    result = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", HOSTS[host], command], capture_output=True, text=True, timeout=timeout)
+    result = subprocess.run(["ssh", "-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "ServerAliveInterval=30", "-o", "ServerAliveCountMax=10", HOSTS[host], command], capture_output=True, text=True, timeout=timeout)
     if check and result.returncode:
         raise RuntimeError(f"{host}: remote command failed rc={result.returncode}: {result.stderr[-300:]}")
     return result
@@ -344,7 +344,45 @@ def _drive_config(folder_id: str):
 
 def _rclone_on_server(args: list[str], timeout: int = 600, stdin=None) -> subprocess.CompletedProcess:
     command = '"$HOME/.local/bin/rclone" ' + " ".join(shlex.quote(str(arg)) for arg in args)
-    return subprocess.run(["ssh", "-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", DRIVE_SSH_HOST, command], stdin=stdin, capture_output=True, timeout=timeout)
+    return subprocess.run(["ssh", "-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "ServerAliveInterval=30", "-o", "ServerAliveCountMax=10", DRIVE_SSH_HOST, command], stdin=stdin, capture_output=True, timeout=timeout)
+
+
+def _stream_archive_to_drive(host: str, source: str, source_kind: str, remote: str) -> str:
+    path = Path(source.rstrip("/"))
+    quoted = shlex.quote(str(path))
+    if source_kind == "dir":
+        parent, leaf = os.path.split(str(path))
+        source_command = "set -o pipefail; nice -n 19 ionice -c2 -n7 tar -C %s -cf - -- %s | nice -n 19 ionice -c2 -n7 zstd -T1 -3 -c" % (shlex.quote(parent), shlex.quote(leaf))
+    elif path.suffix == ".zst":
+        source_command = "set -o pipefail; zstd -t -- %s >/dev/null && cat -- %s" % (quoted, quoted)
+    else:
+        source_command = "cat -- %s" % quoted
+    source_proc = subprocess.Popen(["ssh", "-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "ServerAliveInterval=30", "-o", "ServerAliveCountMax=10", HOSTS[host], "bash", "-lc", source_command], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    args = ["rcat", remote, "--drive-upload-cutoff=64M", "--drive-chunk-size=64M"]
+    command = '"$HOME/.local/bin/rclone" ' + " ".join(shlex.quote(str(arg)) for arg in args)
+    upload_proc = subprocess.Popen(["ssh", "-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "ServerAliveInterval=30", "-o", "ServerAliveCountMax=10", DRIVE_SSH_HOST, command], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    digest = hashlib.md5()
+    try:
+        for block in iter(lambda: source_proc.stdout.read(1024 * 1024), b""):
+            digest.update(block)
+            upload_proc.stdin.write(block)
+        upload_proc.stdin.close()
+        source_proc.stdout.close()
+        upload_rc = upload_proc.wait(timeout=86400)
+        source_rc = source_proc.wait(timeout=86400)
+        upload_stdout = upload_proc.stdout.read()
+        upload_stderr = upload_proc.stderr.read()
+        source_stderr = source_proc.stderr.read()
+    except Exception:
+        upload_proc.kill()
+        source_proc.kill()
+        upload_proc.wait()
+        source_proc.wait()
+        raise
+    if source_rc or upload_rc:
+        detail = (source_stderr + upload_stderr + upload_stdout).decode(errors="replace")
+        raise RuntimeError(f"streaming archive transfer failed source_rc={source_rc} upload_rc={upload_rc}: {detail[-500:]}")
+    return digest.hexdigest()
 
 
 def _record_google_failure(state: dict, key: str, exc: Exception) -> None:
@@ -357,35 +395,27 @@ def _record_google_failure(state: dict, key: str, exc: Exception) -> None:
 def _archive_to_google_via_server(host: str, source: str, signature: str, state: dict) -> None:
     if not DRIVE_REMOTE or not DRIVE_SSH_HOST:
         raise RuntimeError("server-side Drive remote and SSH host must both be configured")
-    if shutil.disk_usage(Path(tempfile.gettempdir())).free < 8 * 1024**3:
-        raise RuntimeError("Mac staging disk has less than 8 GB free")
-    with tempfile.TemporaryDirectory(prefix="fleet-archive-stage-") as stage_name:
-        local, expected = _make_local_archive(host, source, Path(stage_name))
-        remote_dir = f"{DRIVE_REMOTE}:{DRIVE_PREFIX}/{host}"
-        remote = f"{remote_dir}/{local.stem}.{expected[:12]}{local.suffix}"
-        made = _rclone_on_server(["mkdir", remote_dir])
-        if made.returncode:
-            raise RuntimeError(f"server-side Drive directory creation failed: {made.stderr.decode(errors='replace')[-300:]}")
-        md5 = hashlib.md5()
-        with local.open("rb") as stream:
-            for block in iter(lambda: stream.read(1024 * 1024), b""):
-                md5.update(block)
-        with local.open("rb") as stream:
-            put = _rclone_on_server(["rcat", remote, "--drive-upload-cutoff=64M", "--drive-chunk-size=64M"], timeout=1800, stdin=stream)
-        if put.returncode:
-            detail = (put.stderr + put.stdout).decode(errors="replace")
-            raise RuntimeError(f"server-side Google Drive upload failed rc={put.returncode}; source retained: {detail[-400:]}")
-        checked = _rclone_on_server(["md5sum", remote], timeout=600)
-        if checked.returncode:
-            raise RuntimeError("server-side Drive checksum query failed; source retained")
-        fields = checked.stdout.decode(errors="replace").split()
-        if not fields or fields[0].lower() != md5.hexdigest():
-            raise RuntimeError("server-side Drive MD5 mismatch; source retained")
-        if _source_signature(host, source) != signature:
-            raise RuntimeError("archive source changed during Drive upload; source retained")
-        state[f"{host}:{source}->google:oauth:{DRIVE_SSH_HOST}:{DRIVE_REMOTE}"] = signature
-        _state_save(state)
-        _log("google_archive_verified", source=f"{host}:{source}", destination=remote, sha256=expected, remote_md5=fields[0])
+    kind = _ssh(host, "if [ -d %s ]; then echo dir; elif [ -f %s ]; then echo file; else exit 4; fi" % (shlex.quote(source), shlex.quote(source)), timeout=30).stdout.strip()
+    name = Path(source.rstrip("/")).name
+    remote_dir = f"{DRIVE_REMOTE}:{DRIVE_PREFIX}/{host}"
+    archive_leaf = f"{name}.tar.{signature[:12]}.zst" if kind == "dir" else f"{Path(name).stem}.{signature[:12]}{Path(name).suffix}"
+    remote = f"{remote_dir}/{archive_leaf}"
+    made = _rclone_on_server(["mkdir", remote_dir])
+    if made.returncode:
+        raise RuntimeError(f"server-side Drive directory creation failed: {made.stderr.decode(errors='replace')[-300:]}")
+    _log("google_archive_stream_started", source=f"{host}:{source}", destination=remote, chunk_size="64M")
+    stream_md5 = _stream_archive_to_drive(host, source, kind, remote)
+    checked = _rclone_on_server(["md5sum", remote], timeout=600)
+    if checked.returncode:
+        raise RuntimeError("server-side Drive checksum query failed; source retained")
+    fields = checked.stdout.decode(errors="replace").split()
+    if not fields or fields[0].lower() != stream_md5:
+        raise RuntimeError("server-side Drive MD5 mismatch; source retained")
+    if _source_signature(host, source) != signature:
+        raise RuntimeError("archive source changed during Drive upload; source retained")
+    state[f"{host}:{source}->google:oauth:{DRIVE_SSH_HOST}:{DRIVE_REMOTE}"] = signature
+    _state_save(state)
+    _log("google_archive_verified", source=f"{host}:{source}", destination=remote, source_signature=signature, remote_md5=fields[0])
 
 
 def _archive_to_google(host: str, source: str, folder_id: str, apply: bool) -> None:

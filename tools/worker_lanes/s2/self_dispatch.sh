@@ -16,7 +16,7 @@ rsync -az --timeout=15 niels@10.0.0.3:binance-sandbox/data/v15_best_first.json /
 SP=/tmp/sched_progress
 mkdir -p "$SP"
 if [ $(( $(date +%s) - $(stat -c %Y "$SP" 2>/dev/null || stat -f %m "$SP" 2>/dev/null || echo 0) )) -gt 240 ]; then
-  rsync -az --timeout=60 niels@10.0.0.3:v15_run36_20261024/progress/ "$SP/" >/dev/null 2>&1
+  rsync -az --timeout=60 "niels@10.0.0.3:${PDIR}/" "$SP/" >/dev/null 2>&1
   touch "$SP"
 fi
 nrun=$(pgrep -af "^[^ ]*python[^ ]* -u ([^ ]*/)?v15_pilot(_7d)?[.]py --sym-side " 2>/dev/null | grep -oE -- '--sym-side [A-Z0-9_]+' | sort -u | wc -l)
