@@ -1,11 +1,46 @@
 {
-  "ts": 1793078337.3449202,
-  "checked": 42,
-  "match": 29,
-  "mismatch": 13,
-  "unknown_or_stale_forward": 190,
-  "parity_pct": 69.04761904761905,
+  "ts": 1793079769.6135411,
+  "checked": 197,
+  "match": 121,
+  "mismatch": 76,
+  "unknown_or_stale_forward": 34,
+  "parity_pct": 61.421319796954315,
   "mismatches": [
+    {
+      "acct": "ang",
+      "sym_side": "1000BONKUSDC_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "1000PEPEUSDC_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "ALGOUSDT_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "ALTUSDT_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "APEUSDT_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
     {
       "acct": "ang",
       "sym_side": "ARUSDT_LONG",
@@ -15,14 +50,133 @@
     },
     {
       "acct": "ang",
-      "sym_side": "EGLDUSDT_SHORT",
+      "sym_side": "BATUSDT_LONG",
       "forward_open": false,
       "live_open": true,
-      "live_qty": 0.3
+      "live_qty": 0.2
+    },
+    {
+      "acct": "ang",
+      "sym_side": "BCHUSDC_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "BEAMXUSDT_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "BIGTIMEUSDT_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "DASHUSDT_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "DOTUSDT_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "DUSKUSDT_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "EDUUSDT_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "FARTCOINUSDT_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "GALAUSDT_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "GRASSUSDT_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "IOTAUSDT_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "JASMYUSDT_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "NEARUSDC_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "NMRUSDT_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "PARTIUSDT_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
     },
     {
       "acct": "ang",
       "sym_side": "PENGUUSDC_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "QNTUSDT_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "RENDERUSDT_SHORT",
       "forward_open": true,
       "live_open": false,
       "live_qty": 0.0
@@ -36,14 +190,77 @@
     },
     {
       "acct": "ang",
-      "sym_side": "SANDUSDT_SHORT",
+      "sym_side": "SUSHIUSDT_SHORT",
       "forward_open": true,
       "live_open": false,
       "live_qty": 0.0
     },
     {
       "acct": "ang",
-      "sym_side": "THETAUSDT_SHORT",
+      "sym_side": "TRBUSDT_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "UNIUSDC_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "VETUSDT_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "WOOUSDT_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "WUSDT_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "XLMUSDT_LONG",
+      "forward_open": false,
+      "live_open": true,
+      "live_qty": 117.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "XPLUSDT_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "ZENUSDT_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "ZILUSDT_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "fin",
+      "sym_side": "1000BONKUSDC_SHORT",
       "forward_open": true,
       "live_open": false,
       "live_qty": 0.0
@@ -51,6 +268,97 @@
     {
       "acct": "fin",
       "sym_side": "ARUSDT_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "fin",
+      "sym_side": "EDUUSDT_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "fin",
+      "sym_side": "GALAUSDT_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "fin",
+      "sym_side": "GRASSUSDT_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "fin",
+      "sym_side": "QNTUSDT_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "fin",
+      "sym_side": "TLMUSDT_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "fin",
+      "sym_side": "UNIUSDC_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "fin",
+      "sym_side": "WOOUSDT_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "fin",
+      "sym_side": "ZILUSDT_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "flz",
+      "sym_side": "BNBUSDC_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "flz",
+      "sym_side": "BTCDOMUSDT_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "flz",
+      "sym_side": "DASHUSDT_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "flz",
+      "sym_side": "DOGEUSDC_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "flz",
+      "sym_side": "DOGEUSDC_SHORT",
       "forward_open": true,
       "live_open": false,
       "live_qty": 0.0
@@ -70,6 +378,48 @@
       "live_qty": 0.0
     },
     {
+      "acct": "flz",
+      "sym_side": "HYPEUSDT_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "flz",
+      "sym_side": "WLDUSDC_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "flz",
+      "sym_side": "XMRUSDT_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "flz",
+      "sym_side": "ZECUSDC_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "men",
+      "sym_side": "1000BONKUSDC_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "men",
+      "sym_side": "1000LUNCUSDT_SHORT",
+      "forward_open": false,
+      "live_open": true,
+      "live_qty": 155.0
+    },
+    {
       "acct": "men",
       "sym_side": "ACTUSDT_SHORT",
       "forward_open": false,
@@ -85,6 +435,62 @@
     },
     {
       "acct": "men",
+      "sym_side": "BIGTIMEUSDT_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "men",
+      "sym_side": "CRVUSDC_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "men",
+      "sym_side": "EDUUSDT_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "men",
+      "sym_side": "ENJUSDT_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "men",
+      "sym_side": "ETHFIUSDC_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "men",
+      "sym_side": "FARTCOINUSDT_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "men",
+      "sym_side": "GALAUSDT_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "men",
+      "sym_side": "GRASSUSDT_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "men",
       "sym_side": "INXUSDT_SHORT",
       "forward_open": false,
       "live_open": true,
@@ -92,7 +498,42 @@
     },
     {
       "acct": "men",
-      "sym_side": "MOVEUSDT_SHORT",
+      "sym_side": "NEARUSDC_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "men",
+      "sym_side": "RVNUSDT_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "men",
+      "sym_side": "STXUSDT_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "men",
+      "sym_side": "WOOUSDT_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "men",
+      "sym_side": "ZECUSDC_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "men",
+      "sym_side": "ZILUSDT_SHORT",
       "forward_open": true,
       "live_open": false,
       "live_qty": 0.0

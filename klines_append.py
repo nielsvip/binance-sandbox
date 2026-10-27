@@ -92,7 +92,9 @@ def _final_rows(rows: list[dict]) -> list[dict]:
     rows for canonical sources, so a provisional row appended into s1's long store would never be replaced — it would
     freeze a half-formed bar into the backtest truth. s1 keeps final bars only; the next cycle brings the official one.
     (tools/npz_bar_refresh.cache_bar_final_stocks likewise requires a NEWER row before trusting a bar.)"""
-    return [b for b in rows if not b.get("provisional")]
+    # 2026-10-27: the Mac writer flags the forming bar `_provisional` (underscore) and omits `volume`; the old `provisional`-only
+    # check let it through and merge_klines crashed on c["volume"] (KeyError), aborting the WHOLE append run every 5 min.
+    return [b for b in rows if not (b.get("provisional") or b.get("_provisional")) and all(k in b for k in ("open", "high", "low", "close", "volume"))]
 
 
 def gather_fresh(name: str) -> list[dict]:
