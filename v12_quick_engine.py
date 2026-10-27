@@ -15942,6 +15942,29 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         # Tradier has no fee-positive exit veto; its own close decision and mandatory stops are authoritative.
         if is_tradier:
             return True
+        # 2026-10-27 USER "refuse a discretionary CLOSE/REDUCE when age < MIN_HOLD_BARS".
+        # THE single exit choke point (every event reaches here via _ExitGateLedger),
+        # so the hold is enforced once, not scattered per leg. MEASURED why it had to
+        # move here: the old per-leg `held_bars >= min_hold` guards sat on the MTF /
+        # trail / BB / velocity legs, while the exits that actually fire are the
+        # REENTRY family — on COTIUSDT_LONG 88 of 131 trades (67%) were held under 8
+        # bars with a MEDIAN HOLD OF 3, and sweeping MIN_HOLD_BARS 0->8 changed the
+        # ledger by exactly nothing (0 of 316 crypto sym_sides bound). Stops and the
+        # board are exempt inside the shared predicate, so FIXED_STOP still fires.
+        try:
+            _mh_type = str(event.get("type") or "").upper()
+            if _mh_type in ("CLOSE", "REDUCE"):
+                _mh_refuse, _mh_why = _min_hold_gate.refuse_bars(
+                    bars_in_pos, cfg, _mh_type,
+                    str(event.get("exit_reason") or event.get("reason") or ""),
+                )
+                if _mh_refuse:
+                    _pending_exit_restore = copy.deepcopy(_bar_pos_snapshot)
+                    _pending_exit_control_restore = _bar_control_snapshot
+                    pos = copy.deepcopy(_bar_pos_snapshot)
+                    return False
+        except Exception:
+            pass
         try:
             from vec_decisions.net_exit_gate import vector_exit_event_allowed as _exit_allowed
             _configured_fee_pct = 0.0 if is_tradier else max(0.0, float(getattr(cfg, "COMMISSION_BUFFER_PCT", 0.08) or 0.0))

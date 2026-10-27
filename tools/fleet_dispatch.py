@@ -125,7 +125,7 @@ class Host:
 
 def probe(host, syms):
     arg = shlex.quote(json.dumps({"syms": sorted(syms)}))
-    rc, out, err = host.feed(f"{PY} - {arg} 2>/dev/null || python3 - {arg}", TOOLS / "fleet_probe.py", 60)
+    rc, out, err = host.feed(f"{PY} - {arg} 2>/dev/null || python3 - {arg}", TOOLS / "fleet_probe.py", 120)
     if rc != 0 or not out.strip():
         return None
     try:
@@ -174,22 +174,26 @@ def write_hb(me, acting, note=""):
     os.replace(tmp, HB)
 
 
-def should_act(me, now):
+def decide(me, peer_hb, now, load1, ncpu):
+    """Pure election. s1 acts unless overloaded; s2 acts iff s1's heartbeat is stale/missing or s1 says it is not
+    acting. s1's choice never depends on s2, so the pair cannot deadlock or oscillate; a one-tick overlap during a
+    handover is harmless because fleet_launch.sh recounts slots under the worker's launch lock."""
     if me not in LEADERS:
         return True, "not-a-leader-host-acting-alone"
-    peer = "s2" if me == "s1" else "s1"
-    hb = read_peer_hb(LEADERS[peer])
-    fresh = bool(hb) and now - float(hb.get("ts") or 0) < HB_STALE_S
-    if fresh and hb.get("acting"):
-        return False, f"peer {peer} acting (hb {now - float(hb['ts']):.0f}s)"
-    load1, ncpu = os.getloadavg()[0], os.cpu_count() or 1
-    if fresh and load1 > 3 * ncpu:
-        return False, f"self overloaded (load1 {load1:.0f} > 3x{ncpu} cpus) and peer {peer} healthy -> standby"
     if me == "s1":
-        return True, "s1 primary" + ("" if fresh else " (peer hb stale)")
-    if fresh:
-        return False, "s1 healthy primary"
-    return True, "s1 hb stale/unreachable -> s2 takes over"
+        if load1 > 3 * ncpu:
+            return False, f"s1 overloaded (load1 {load1:.0f} > 3x{ncpu}) -> standby, s2 acts"
+        return True, "s1 primary"
+    if not peer_hb or now - float(peer_hb.get("ts") or 0) >= HB_STALE_S:
+        return True, "s1 hb stale/unreachable -> s2 acts"
+    if not peer_hb.get("acting"):
+        return True, f"s1 standing by ({str(peer_hb.get('note'))[:60]}) -> s2 acts"
+    return False, f"s1 acting (hb {now - float(peer_hb['ts']):.0f}s) -> s2 standby"
+
+
+def should_act(me, now):
+    peer_hb = read_peer_hb(LEADERS["s1"]) if me == "s2" else None
+    return decide(me, peer_hb, now, os.getloadavg()[0], os.cpu_count() or 1)
 
 
 class Beat(threading.Thread):
@@ -375,22 +379,51 @@ def plan(pend, partial, fleet_data, now, orphan_since):
 
 
 # ------------------------------------------------------------------ execution
+def crypto_fresh_floor(now):
+    """Oldest acceptable crypto NPZ tail (bar-open stamp): one bar behind the latest closed 15m bar."""
+    return int(now // BAR_S) * BAR_S - 2 * BAR_S
+
+
+def npz_refresh_on(host, sym, venue):
+    """-> (md5, tail) after appending the latest bar on `host`; ('', 0) on failure."""
+    rel = f"backtest_v8/indicators/{sym}.npz"
+    script = (f"cd ~/binance-sandbox && timeout {NPZ_TIMEOUT_S - 10} {PY} -u tools/npz_bar_refresh.py "
+              f"--symbols {sym} --mode {venue} --workers 1 >> /tmp/fleet_npz_refresh.log 2>&1; "
+              f"{PY} -c \"import numpy as np,sys,hashlib;t=np.load(sys.argv[1],mmap_mode='r')['timestamps'];"
+              f"v=float(t[-1]);print(hashlib.md5(open(sys.argv[1],'rb').read()).hexdigest(),int(v/1000 if v>1e11 else v))\" {rel}")
+    rc, out, _ = host.sh(script, NPZ_TIMEOUT_S)
+    parts = out.strip().splitlines()[-1].split() if out.strip() else []
+    if len(parts) == 2 and len(parts[0]) == 32:
+        return parts[0], int(parts[1])
+    return "", 0
+
+
 def npz_ship(fleet, target, ss):
-    """Refresh the symbol's NPZ to the latest bar on its owner and relay it md5-verified to the target."""
+    """Refresh the symbol's NPZ to the latest bar and relay it md5-verified to the target. Sources in order:
+    the venue's owners (crypto s1,s2; stocks s5,s6), skipping overloaded ones, then the target itself; the first
+    crypto source whose tail is fresh wins, otherwise the freshest result is used."""
     sym = ss.rsplit("_", 1)[0]
     venue = "crypto" if sym.endswith(("USDT", "USDC")) else "stocks"
-    owner = NPZ_OWNER[venue] if NPZ_OWNER[venue] in fleet else target
+    prefs = ("s1", "s2") if venue == "crypto" else ("s5", "s6")
+    sources = [n for n in prefs if n in fleet and float(fleet[n][1].get("load1") or 0) <= 3 * max(1, int(fleet[n][1].get("ncpu") or 1))]
+    sources = list(dict.fromkeys(sources + [target]))
+    floor = crypto_fresh_floor(time.time())
+    tried, best = [], ("", "", 0)
+    for name in sources:
+        md5, tail = npz_refresh_on(fleet[name][0], sym, venue)
+        tried.append(f"{name}:{tail}")
+        if md5 and tail > best[2]:
+            best = (name, md5, tail)
+        if md5 and (venue == "stocks" or tail >= floor):
+            break
+    owner, md5, tail = best
+    fresh = venue == "stocks" or tail >= floor
+    if not md5:
+        return {"owner": None, "ok": False, "fresh": False, "tried": tried, "why": "no source could refresh"}
     oh, th = fleet[owner][0], fleet[target][0]
     rel = f"backtest_v8/indicators/{sym}.npz"
-    refresh = (f"cd ~/binance-sandbox && timeout {NPZ_TIMEOUT_S - 10} {PY} -u tools/npz_bar_refresh.py "
-               f"--symbols {sym} --mode {venue} --workers 1 >> /tmp/fleet_npz_refresh.log 2>&1; "
-               f"md5sum {rel} | cut -c1-32")
-    rc, out, err = oh.sh(refresh, NPZ_TIMEOUT_S)
-    md5 = out.strip().splitlines()[-1] if out.strip() else ""
-    if len(md5) != 32:
-        return {"owner": owner, "ok": False, "why": f"refresh rc={rc} {err[-120:]}"}
     if owner == target:
-        return {"owner": owner, "ok": True, "md5": md5, "pushed": False}
+        return {"owner": owner, "ok": True, "fresh": fresh, "tail": tail, "md5": md5, "pushed": False, "tried": tried}
     try:
         if oh.local:
             blob, rc = (pathlib.Path.home() / "binance-sandbox" / rel).read_bytes(), 0
@@ -400,7 +433,7 @@ def npz_ship(fleet, target, ss):
     except (OSError, subprocess.TimeoutExpired):
         blob, rc = b"", 1
     if rc != 0 or hashlib.md5(blob).hexdigest() != md5:
-        return {"owner": owner, "ok": False, "why": "relay read/md5 mismatch"}
+        return {"owner": owner, "ok": False, "fresh": False, "tried": tried, "why": "relay read/md5 mismatch"}
     install = (f"cd ~/binance-sandbox && T={rel}.fleet_tmp && cat > $T && [ \"$(md5sum $T | cut -c1-32)\" = {md5} ] && "
                f"{PY} -c \"import numpy as np,sys,os;a=np.load(sys.argv[1],mmap_mode='r')['timestamps'];"
                f"b=np.load(sys.argv[2],mmap_mode='r')['timestamps'] if os.path.exists(sys.argv[2]) else [0];"
@@ -408,13 +441,18 @@ def npz_ship(fleet, target, ss):
                f"|| {{ rc=$?; rm -f $T; echo REFUSED-$rc; }}")
     rc, out, err = th.sh(install, 120, inp=blob)
     # REFUSED-3 = the target's own NPZ already has a newer tail than the owner's: keep it (never regress)
-    return {"owner": owner, "ok": "INSTALLED" in out or "REFUSED-3" in out, "md5": md5, "pushed": True,
+    ok = "INSTALLED" in out or "REFUSED-3" in out
+    return {"owner": owner, "ok": ok, "fresh": fresh and ok, "tail": tail, "md5": md5, "pushed": True, "tried": tried,
             "install": "TARGET_NEWER_KEPT" if "REFUSED-3" in out else out.strip()[-60:]}
 
 
 def launch(fleet, target, ss, tail, me):
     t0 = time.time()
     npz = npz_ship(fleet, target, ss)
+    if not npz.get("fresh") and cat_of(ss).startswith("CRYPTO"):
+        # the pilot refuses a crypto NPZ >20 min behind (STALE_NPZ_SKIPPED) and would burn an attempt; hold instead
+        return {"host": target, "ss": ss, "npz": npz, "result": "NPZ_STALE_HOLD", "s": round(time.time() - t0, 1)}
+    tail = max(int(tail or 0), int(npz.get("tail") or 0))
     args = " ".join(shlex.quote(str(a)) for a in (ss, WORKERS, SLOTS, tail, me))
     rc, out, err = fleet[target][0].feed(f"bash -s -- {args}", TOOLS / "fleet_launch.sh", 60)
     result = (out.strip().splitlines() or [f"ERROR-rc{rc}-{err[-120:]}"])[-1]
@@ -489,6 +527,12 @@ def tick(args):
         rec["hosts_gone"] = sorted(known - set(data))
         state["known_hosts"] = sorted(data)
         pend, partial, skipped = pending_by_cat(universe, data, now)
+        holds = {k: v for k, v in (state.get("npz_hold") or {}).items() if now - v < 900}
+        state["npz_hold"] = holds
+        for cat in pend:
+            for ss in [s for s in pend[cat] if s in holds]:
+                pend[cat].remove(ss)
+                skipped[ss] = f"NPZ stale hold {int(now - holds[ss])}s/900s"
         orphan_since = state.setdefault("orphan_since", {})
         homes_present = {HOMES[n]: n for n in data if n in HOMES}
         for cat in CAT_PRIORITY:
@@ -514,6 +558,9 @@ def tick(args):
             with cf.ThreadPoolExecutor(max_workers=len(picks)) as pool:
                 futs = [pool.submit(launch, fleet, h, s, tails.get(s.rsplit("_", 1)[0], 0), me) for h, s, _ in picks]
                 rec["launches"] = [f.result() for f in futs]
+            for x in rec["launches"]:
+                if x["result"] == "NPZ_STALE_HOLD":
+                    state.setdefault("npz_hold", {})[x["ss"]] = now
             if any(str(x["result"]).startswith("LAUNCHED") for x in rec["launches"]):
                 state["last_launch"] = now
         if not args.dry_run:

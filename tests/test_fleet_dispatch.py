@@ -102,3 +102,16 @@ def test_resume_first_then_fresh_then_foreign_partial():
     pend, partial, _ = F.pending_by_cat(uni, data, NOW)
     picks, _, _ = F.plan(pend, partial, data, NOW, {})
     assert {h: s for h, s, _ in picks}["s5"] == "MSFT_LONG"
+
+
+def test_election_never_both_standby():
+    hb_act = {"ts": NOW - 10, "acting": True}
+    hb_idle = {"ts": NOW - 10, "acting": False, "note": "s1 overloaded"}
+    hb_stale = {"ts": NOW - 999, "acting": True}
+    assert F.decide("s1", None, NOW, 1.0, 16)[0] is True
+    assert F.decide("s1", None, NOW, 100.0, 16)[0] is False
+    assert F.decide("s2", hb_act, NOW, 1.0, 16)[0] is False
+    assert F.decide("s2", hb_idle, NOW, 1.0, 16)[0] is True
+    assert F.decide("s2", hb_stale, NOW, 1.0, 16)[0] is True
+    assert F.decide("s2", None, NOW, 1.0, 16)[0] is True
+    assert F.decide("s7", None, NOW, 1.0, 16)[0] is True
