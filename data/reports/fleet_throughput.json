@@ -1,33 +1,6 @@
 {
-  "ts": "2026-10-27T11:45:17.460571+00:00",
-  "tick": "2026-10-27T11:36:01.801188+00:00",
-  "tick_age_s": 556,
-  "round": {
-    "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run37.json",
-    "round": "run37",
-    "complete": false,
-    "universe_n": 205,
-    "n_complete": 81,
-    "n_pending": 123,
-    "n_refused_only": 1,
-    "n_excluded": 0,
-    "n_launchable_pending": 42,
-    "hosts_not_visible": []
-  },
-  "hosts": {
-    "s1": {
-      "cpu_pct": 99,
-      "slots": "0/4",
-      "observed_running": [],
-      "published_last_hour": 0,
-      "idle_reason": "disk guard",
-      "mem_avail_mb": 10087
-    }
-  },
-  "one_hour_total": 0,
+  "ts": "2026-10-27T11:50:15.092506+00:00",
   "alerts": [
-    "SCHEDULER_STALE:556s",
-    "LOW_THROUGHPUT:s1:0/h",
-    "IDLE:s1:disk guard"
+    "S1_SCHEDULER_UNREACHABLE"
   ]
 }
