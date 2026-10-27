@@ -1,16 +1,23 @@
 {
-  "inf:ARUSDT_LONG": {
-    "orderId": "2000001544963792",
-    "stopPrice": 3.313,
-    "entry_sig": "2026-10-27 11:17:44.059000+00:00",
-    "symbol": "ARUSDT",
-    "side": "LONG"
-  },
   "inf:BNBUSDC_LONG": {
     "orderId": "2000001546025678",
     "stopPrice": 735.73,
     "entry_sig": "2026-10-27 16:33:05.865216+00:00",
     "symbol": "BNBUSDC",
+    "side": "LONG"
+  },
+  "inf:XRPUSDC_LONG": {
+    "orderId": "2000001546374008",
+    "stopPrice": 1.3104,
+    "entry_sig": "2026-10-27 23:15:22.191000+00:00",
+    "symbol": "XRPUSDC",
+    "side": "LONG"
+  },
+  "inf:PENGUUSDC_LONG": {
+    "orderId": "2000001546375483",
+    "stopPrice": 0.007627,
+    "entry_sig": "2026-10-27 23:16:30.181000+00:00",
+    "symbol": "PENGUUSDC",
     "side": "LONG"
   }
 }
