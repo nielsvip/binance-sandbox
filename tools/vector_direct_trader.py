@@ -1,0 +1,811 @@
+#!/usr/bin/env python3
+"""vector_direct_trader — S1 (crypto) / S5 (stocks) trade the forward vector state directly. No ez_/tradier_ scripts.
+
+USER 2026-10-27 (verbatim): "S1 waits, gives up, and nobody trades. <- that is EXACTLY the behavior that can NEVER happen.
+s1 starts trading immediately if it sees macbook is not trading or is missing any piece of information ... JUST TRADE THE
+STATE IT CALCULATES EVERY 15min FOR EVERY CRYPTO SYM_SIDE ... Also s5 has to do the same for stocks as soon as macbook
+misses a beat." and "a tiny trading script that immediately executes both entry/exit/augment/reduce bar AND quantity with
+START_POSITION_SIZE 15 until proven reliable." and "unreliable ssh is another reason s1 needs to fall back to its own direct
+vector trading script immediately when it misses a trade".
+
+OPERATOR EXCEPTION (recorded in LOCKED_FILES.md change log 2026-10-27): orders leave from THIS script over the venue REST API
+(Binance USD-M futures / Tradier), not through ez_manage.execute_now — the user ordered that no ez_/tradier_ script runs or is
+imported on S1/S5.
+
+DECISION SOURCE  data/forward_state/<SYM_SIDE>.json (tools/v15_forward_state.py, recomputed per closed 15m bar from the
+                 published per-sym set through tools/opt/v12_pilot + v12_quick_engine). `open` is the board state;
+                 `acts_last_bar` (+ engine_qty / engine_open_qty) are the engine's OPEN/AUGMENT/REDUCE/CLOSE at that bar.
+CONVERGENCE      per (account, sym_side), against the REAL broker position read right before sending:
+                   board flat, broker holds       -> CLOSE the whole broker qty (reduce-only semantics)
+                   board holds, broker flat       -> OPEN START_POSITION_SIZE x (engine_qty / engine_open_qty), entry books only
+                   board holds, broker holds      -> the engine's AUGMENT/REDUCE at that bar, scaled to the broker qty
+                 Idempotent by key (account|sym_side|bar|act); ledger data/vector_direct/ledger_<venue>_<day>.jsonl.
+ACTIVATION       per account, immediate: Mac heartbeat absent/stale (ssh push failed) -> ALL accounts; the Mac's own health
+                 names an account dead/unreachable/order-path-dead -> that account; the board acted (OPEN/CLOSE) at a bar and
+                 the broker does not reflect it within the grace -> that account. Hand back only after a minimum hold AND a
+                 continuous healthy stretch; repeated takeovers double the hold (no ping-pong).
+SAFETY           data/vector_direct/KILL stops every order instantly; --dry-run logs the orders it would send; a 418/429 from
+                 Binance blocks all REST until Retry-After (the IP was banned before — positionRisk at most once per pass).
+"""
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import hashlib
+import hmac
+import json
+import math
+import os
+import socket
+import sys
+import time
+import urllib.parse
+from pathlib import Path
+
+BAR_S = 900
+CRYPTO_ACCOUNTS = ("ang", "fin", "flz", "inf", "men")
+STOCK_ACCOUNTS = ("tra", "trb", "trc")
+CRYPTO_SUFFIXES = ("USDT", "USDC", "USD1", "USDS", "BUSD", "FDUSD", "TUSD", "DAI")
+START_POSITION_SIZE = float(os.environ.get("VD_START_POSITION_SIZE", "15"))
+MAX_OPEN_NOTIONAL = float(os.environ.get("VD_MAX_OPEN_NOTIONAL", "110"))
+HB_STALE_S = float(os.environ.get("VD_HB_STALE_S", "90"))
+ACCT_DEAD_S = float(os.environ.get("VD_ACCT_DEAD_S", "180"))
+MISS_GRACE_S = float(os.environ.get("VD_MISS_GRACE_S", "90"))
+MISS_MIN_AFTER_CLOSE_S = float(os.environ.get("VD_MISS_MIN_AFTER_CLOSE_S", "180"))
+HOLD_MIN_S = float(os.environ.get("VD_HOLD_MIN_S", "1800"))
+HOLD_MAX_S = float(os.environ.get("VD_HOLD_MAX_S", "14400"))
+RELEASE_HEALTHY_S = float(os.environ.get("VD_RELEASE_HEALTHY_S", "600"))
+REPEAT_WINDOW_S = float(os.environ.get("VD_REPEAT_WINDOW_S", "7200"))
+STATE_MAX_LAG_S = float(os.environ.get("VD_STATE_MAX_LAG_S", "1800"))
+REPLAN_S = float(os.environ.get("VD_REPLAN_S", "60"))
+MAX_ATTEMPTS = 3
+VENUE_WIDE_KINDS_IGNORED = ("account_dead", "broker_unreachable_account")
+
+
+def log(msg: str) -> None:
+    print(f"[{dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}] {msg}", flush=True)
+
+
+def last_closed_bar(now: float) -> int:
+    return int(now // BAR_S) * BAR_S - BAR_S
+
+
+def is_crypto_symbol(symbol: str) -> bool:
+    return symbol.upper().endswith(CRYPTO_SUFFIXES)
+
+
+def split_ss(ss: str):
+    symbol, side = ss.rsplit("_", 1)
+    return symbol.upper(), side.upper()
+
+
+def read_json(path, default=None):
+    try:
+        with open(path) as fh:
+            return json.load(fh)
+    except Exception:
+        return default
+
+
+def atomic_write_json(path: Path, payload) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    tmp.write_text(json.dumps(payload, indent=1, default=str))
+    os.replace(tmp, path)
+
+
+def load_env_files(paths) -> dict:
+    """KEY = VALUE lines (spaces and quotes tolerated). Values never printed."""
+    env = {}
+    for p in paths:
+        try:
+            for line in Path(p).expanduser().read_text().splitlines():
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                k = k.strip().replace("export ", "").strip()
+                v = v.strip().strip('"').strip("'")
+                if k and v and k not in env:
+                    env[k] = v
+        except OSError:
+            continue
+    return env
+
+
+# ───────────────────────────── books ─────────────────────────────
+def entry_allowed(root: Path, venue: str, acct: str, ss: str) -> bool:
+    """Same books live uses: tools/account_comparison_books (crypto: side book + tradeable key; stocks: side book)."""
+    symbol, side = split_ss(ss)
+    try:
+        if str(root) not in sys.path:
+            sys.path.insert(0, str(root))
+        from tools.account_comparison_books import crypto_entry_allowed, side_allowed
+        if venue == "crypto":
+            return bool(crypto_entry_allowed(root, acct, symbol, side))
+        return bool(side_allowed(root, acct, symbol, side))
+    except Exception:
+        src = {"trc": "trb"}.get(acct, acct)
+        book = read_json(root / f"symbols_{src}_{side.lower()}.json", []) or []
+        if symbol not in {str(x).upper() for x in book}:
+            return False
+        if venue == "crypto":
+            keys = read_json(root / "tradeable_keys.json", []) or []
+            return f"{acct}:{symbol}_{side}" in keys
+        return True
+
+
+def universe(root: Path, venue: str, accounts) -> dict:
+    out = {a: set() for a in accounts}
+    if venue == "crypto":
+        for k in read_json(root / "tradeable_keys.json", []) or []:
+            if ":" not in str(k):
+                continue
+            acct, ss = str(k).split(":", 1)
+            if acct in out and is_crypto_symbol(ss.rsplit("_", 1)[0]):
+                out[acct].add(ss.upper())
+    else:
+        for acct in accounts:
+            src = {"trc": "trb"}.get(acct, acct)
+            for side in ("long", "short"):
+                for s in read_json(root / f"symbols_{src}_{side}.json", []) or []:
+                    out[acct].add(f"{str(s).upper()}_{side.upper()}")
+    return out
+
+
+# ───────────────────────────── decisions (pure) ─────────────────────────────
+def state_fresh(st: dict, bar: int) -> bool:
+    try:
+        return bool(st and st.get("ok")) and int(st.get("npz_tail") or 0) >= bar - STATE_MAX_LAG_S
+    except Exception:
+        return False
+
+
+def plan_account(acct, venue, keys, states, positions, bar, done, allowed, prev_qty=None):
+    """Orders that converge one account to the board. positions: {ss: {"qty": abs qty, "price": px}} read just now.
+    prev_qty: {ss: broker qty observed BEFORE this bar closed} — an AUGMENT/REDUCE the broker already shows was done by
+    someone else (the Mac) and is not repeated. Returns (orders, notes)."""
+    orders, notes = [], []
+    prev_qty = prev_qty or {}
+    for ss in sorted(set(keys) | {s for s, p in positions.items() if float(p.get("qty") or 0) > 0}):
+        st = states.get(ss)
+        held = float((positions.get(ss) or {}).get("qty") or 0.0)
+        if not state_fresh(st, bar):
+            if held > 0:
+                notes.append((ss, "HOLD_NO_FRESH_STATE"))
+            continue
+        tail = int(st.get("npz_tail"))
+        board_open = bool(st.get("open"))
+        if not board_open and held > 0:
+            orders.append({"acct": acct, "ss": ss, "act": "CLOSE", "qty": held, "key": f"{acct}|{ss}|{tail}|CLOSE",
+                           "why": f"board flat, broker holds {held}"})
+        elif board_open and held <= 0:
+            if not allowed(acct, ss):
+                notes.append((ss, "SKIP_OPEN_NOT_IN_BOOKS"))
+                continue
+            eq, oq = float(st.get("engine_qty") or 0.0), float(st.get("engine_open_qty") or 0.0)
+            ratio = min(4.0, max(0.25, eq / oq)) if eq > 0 and oq > 0 else 1.0
+            anchor = st.get("engine_open_bar_ts") or st.get("entry_bar") or tail
+            orders.append({"acct": acct, "ss": ss, "act": "OPEN", "notional": START_POSITION_SIZE * ratio,
+                           "key": f"{acct}|{ss}|{anchor}|OPEN", "why": f"board holds since {anchor}, broker flat (engine qty ratio {ratio:.3f})"})
+        elif board_open and held > 0:
+            if int(st.get("acts_bar_ts") or -1) != tail:
+                continue
+            base = float(prev_qty.get(ss) or held)
+            for i, a in enumerate(st.get("acts_last_bar") or []):
+                typ = str(a.get("type") or "").upper()
+                q, before = float(a.get("qty") or 0.0), float(a.get("qty_before") or 0.0)
+                if typ == "AUGMENT" and q > 0 and before > 0:
+                    want = base * q / before
+                    if prev_qty.get(ss) and held >= base + 0.5 * want:
+                        notes.append((ss, f"AUGMENT_ALREADY_ON_BROKER {base}->{held}"))
+                        continue
+                    orders.append({"acct": acct, "ss": ss, "act": "AUGMENT", "qty": want, "key": f"{acct}|{ss}|{tail}|AUGMENT|{i}",
+                                   "why": f"engine AUGMENT {q:.6g} on {before:.6g} ({a.get('reason')})"})
+                elif typ == "REDUCE" and a.get("qty_frac"):
+                    frac = float(a["qty_frac"])
+                    want = base * frac
+                    if prev_qty.get(ss) and held <= base - 0.5 * want:
+                        notes.append((ss, f"REDUCE_ALREADY_ON_BROKER {base}->{held}"))
+                        continue
+                    orders.append({"acct": acct, "ss": ss, "act": "REDUCE", "qty": min(held, want), "key": f"{acct}|{ss}|{tail}|REDUCE|{i}",
+                                   "why": f"engine REDUCE frac {frac:.4f} ({a.get('reason')})"})
+    return [o for o in orders if o["key"] not in done], notes
+
+
+def expectations_from_states(accounts, keys_by_acct, states, bar, allowed):
+    """Board transitions at `bar` that a trading Mac must show on the broker: (acct, ss, 'HOLD'|'FLAT')."""
+    out = []
+    for acct in accounts:
+        for ss in keys_by_acct.get(acct, ()):
+            st = states.get(ss)
+            if not st or not st.get("ok") or int(st.get("npz_tail") or 0) != bar or int(st.get("acts_bar_ts") or -1) != bar:
+                continue
+            types = [str(a.get("type") or "").upper() for a in st.get("acts_last_bar") or []]
+            if st.get("open") and "OPEN" in types and allowed(acct, ss):
+                out.append((acct, ss, "HOLD"))
+            elif not st.get("open") and "CLOSE" in types:
+                out.append((acct, ss, "FLAT"))
+    return out
+
+
+class Activation:
+    """Per-account takeover state with hysteresis. Persisted so a restart keeps ownership."""
+
+    def __init__(self, path: Path, accounts):
+        self.path = path
+        self.accounts = tuple(accounts)
+        self.st = read_json(path, {}) or {}
+        for a in self.accounts:
+            self.st.setdefault(a, {"active": False, "since": None, "reason": "", "healthy_since": None, "takeovers": 0, "hold_s": HOLD_MIN_S, "released_at": None})
+
+    def triggers(self, now, hb, venue, missed):
+        trig = {}
+        hb_epoch = float((hb or {}).get("epoch") or 0.0)
+        age = now - hb_epoch if hb_epoch else None
+        if age is None or age > HB_STALE_S:
+            for a in self.accounts:
+                trig[a] = f"mac_heartbeat_{'absent' if age is None else f'stale_{int(age)}s'}"
+        else:
+            sec = ((hb or {}).get("trading_health") or {}).get(venue) or {}
+            if sec.get("applicable") is not False:
+                kinds = [k for k in (sec.get("kinds") or []) if k not in VENUE_WIDE_KINDS_IGNORED]
+                if kinds:
+                    for a in self.accounts:
+                        trig[a] = "mac_kinds:" + ",".join(kinds)
+                for lk in ("account_dead_accounts", "broker_dead_accounts", "broker_unreachable_accounts"):
+                    for a in sec.get(lk) or []:
+                        if a in self.accounts:
+                            trig.setdefault(a, f"mac_{lk[:-9]}")
+                for a, v in (sec.get("accounts") or {}).items():
+                    if a not in self.accounts or not isinstance(v, dict):
+                        continue
+                    if venue == "crypto":
+                        if not v.get("trader_alive") or float(v.get("engine_dead_s") or 0) >= ACCT_DEAD_S:
+                            trig.setdefault(a, f"mac_engine_dead_{int(float(v.get('engine_dead_s') or 0))}s_alive={v.get('trader_alive')}")
+                    else:
+                        if not v.get("trader_alive") or v.get("order_path_dead") or v.get("broker_unreachable"):
+                            trig.setdefault(a, f"mac_stock_engine alive={v.get('trader_alive')} order_path_dead={v.get('order_path_dead')} broker_unreachable={v.get('broker_unreachable')}")
+        for a, why in (missed or {}).items():
+            if a in self.accounts:
+                trig.setdefault(a, why)
+        return trig, age
+
+    def update(self, now, trig):
+        changes = []
+        for a in self.accounts:
+            s = self.st[a]
+            if a in trig:
+                s["healthy_since"] = None
+                s["reason"] = trig[a]
+                if not s["active"]:
+                    recent = s.get("released_at") and now - float(s["released_at"]) < REPEAT_WINDOW_S
+                    s["takeovers"] = int(s.get("takeovers") or 0) + 1 if recent else 1
+                    s["hold_s"] = min(HOLD_MAX_S, HOLD_MIN_S * (2 ** (s["takeovers"] - 1)))
+                    s["active"], s["since"] = True, now
+                    changes.append((a, "TAKEOVER", trig[a]))
+            elif s["active"]:
+                s["healthy_since"] = s["healthy_since"] or now
+                if now - float(s["since"]) >= float(s["hold_s"]) and now - float(s["healthy_since"]) >= RELEASE_HEALTHY_S:
+                    s["active"], s["released_at"] = False, now
+                    changes.append((a, "HANDBACK", f"Mac healthy {int(now - s['healthy_since'])}s, held {int(now - s['since'])}s"))
+        return changes
+
+    def active(self):
+        return [a for a in self.accounts if self.st[a]["active"]]
+
+    def save(self):
+        atomic_write_json(self.path, self.st)
+
+
+# ───────────────────────────── brokers ─────────────────────────────
+class RestBlocked(Exception):
+    pass
+
+
+def _session(local_ip=None):
+    import requests
+    from requests.adapters import HTTPAdapter
+
+    class _Bound(HTTPAdapter):
+        def init_poolmanager(self, *a, **k):
+            k["source_address"] = (local_ip, 0)
+            return super().init_poolmanager(*a, **k)
+
+    s = requests.Session()
+    if local_ip:
+        s.mount("https://", _Bound())
+    return s
+
+
+class Binance:
+    BASE = "https://fapi.binance.com"
+
+    def __init__(self, env, out: Path, local_ip=None):
+        self.env, self.out, self.s = env, out, _session(local_ip)
+        self.block_path = out / "rest_block_crypto.json"
+        self.dual = {}
+        self._xi = None
+
+    def _blocked(self):
+        until = float((read_json(self.block_path, {}) or {}).get("until") or 0)
+        if time.time() < until:
+            raise RestBlocked(f"REST blocked until {dt.datetime.fromtimestamp(until, dt.timezone.utc):%H:%M:%SZ}")
+
+    def _req(self, method, path, acct=None, params=None, weight_note=""):
+        self._blocked()
+        params = dict(params or {})
+        headers = {}
+        if acct:
+            key, sec = self.env.get(f"{acct}_API_KEY"), self.env.get(f"{acct}_API_SECRET")
+            if not key or not sec:
+                raise RuntimeError(f"missing {acct}_API_KEY/_API_SECRET")
+            params["timestamp"] = int(time.time() * 1000)
+            params["recvWindow"] = 10000
+            q = urllib.parse.urlencode(params)
+            params_q = q + "&signature=" + hmac.new(sec.encode(), q.encode(), hashlib.sha256).hexdigest()
+            headers["X-MBX-APIKEY"] = key
+        else:
+            params_q = urllib.parse.urlencode(params)
+        url = f"{self.BASE}{path}?{params_q}" if params_q else f"{self.BASE}{path}"
+        r = self.s.request(method, url, headers=headers, timeout=15)
+        if r.status_code in (418, 429):
+            ra = float(r.headers.get("Retry-After") or (900 if r.status_code == 418 else 120))
+            atomic_write_json(self.block_path, {"until": time.time() + ra, "status": r.status_code, "at": time.time(), "path": path})
+            raise RestBlocked(f"HTTP {r.status_code} on {path}; blocking REST {ra:.0f}s")
+        if r.status_code >= 400:
+            raise RuntimeError(f"HTTP {r.status_code} {path}: {r.text[:200]}")
+        return r.json()
+
+    def exchange_info(self):
+        cache = self.out / "exchange_info_crypto.json"
+        doc = read_json(cache, {}) or {}
+        if self._xi is None or time.time() - float(doc.get("_fetched") or 0) > 6 * 3600:
+            if time.time() - float(doc.get("_fetched") or 0) > 6 * 3600:
+                raw = self._req("GET", "/fapi/v1/exchangeInfo")
+                doc = {"_fetched": time.time(), "symbols": {}}
+                for s in raw.get("symbols") or []:
+                    f = {x["filterType"]: x for x in s.get("filters") or []}
+                    doc["symbols"][s["symbol"]] = {
+                        "step": float((f.get("MARKET_LOT_SIZE") or f.get("LOT_SIZE") or {}).get("stepSize") or 0),
+                        "min_qty": float((f.get("MARKET_LOT_SIZE") or f.get("LOT_SIZE") or {}).get("minQty") or 0),
+                        "max_qty": float((f.get("MARKET_LOT_SIZE") or {}).get("maxQty") or 0),
+                        "min_notional": float((f.get("MIN_NOTIONAL") or {}).get("notional") or 5.0),
+                        "status": s.get("status")}
+                atomic_write_json(cache, doc)
+            self._xi = doc.get("symbols") or {}
+        return self._xi
+
+    def is_dual(self, acct):
+        if acct not in self.dual:
+            self.dual[acct] = bool(self._req("GET", "/fapi/v1/positionSide/dual", acct).get("dualSidePosition"))
+        return self.dual[acct]
+
+    def positions(self, acct):
+        rows = self._req("GET", "/fapi/v2/positionRisk", acct)
+        out = {}
+        for r in rows or []:
+            amt = float(r.get("positionAmt") or 0.0)
+            if amt == 0:
+                continue
+            ps = str(r.get("positionSide") or "BOTH").upper()
+            side = ps if ps in ("LONG", "SHORT") else ("LONG" if amt > 0 else "SHORT")
+            out[f"{r['symbol']}_{side}"] = {"qty": abs(amt), "price": float(r.get("markPrice") or 0.0), "entry": float(r.get("entryPrice") or 0.0)}
+        return out
+
+    def price(self, symbol):
+        return float(self._req("GET", "/fapi/v1/ticker/price", params={"symbol": symbol})["price"])
+
+    @staticmethod
+    def _floor(q, step):
+        if step <= 0:
+            return q
+        n = math.floor(q / step + 1e-9)
+        dec = max(0, -int(math.floor(math.log10(step)))) if step < 1 else 0
+        return round(n * step, dec)
+
+    def size(self, o, held, price):
+        """Exchange-legal quantity for an order, or (0, why)."""
+        symbol, _side = split_ss(o["ss"])
+        xi = self.exchange_info().get(symbol)
+        if not xi or xi.get("status") not in (None, "TRADING"):
+            return 0.0, f"symbol not TRADING ({(xi or {}).get('status')})"
+        step, mq, mn = xi["step"], xi["min_qty"], xi["min_notional"]
+        if o["act"] == "CLOSE":
+            return held, ""
+        if o["act"] == "OPEN":
+            notional = max(float(o["notional"]), mn * 1.02)
+            if notional > MAX_OPEN_NOTIONAL:
+                return 0.0, f"min notional {mn} needs ${notional:.0f} > cap ${MAX_OPEN_NOTIONAL:.0f}"
+            q = self._floor(notional / price, step)
+            if q * price < mn:
+                q = self._floor(notional / price + step, step)
+            return (q, "") if q >= mq else (0.0, f"qty {q} < minQty {mq}")
+        if o["act"] == "AUGMENT":
+            q = self._floor(max(float(o["qty"]), mn * 1.02 / price), step)
+            return (q, "") if q >= mq else (0.0, f"qty {q} < minQty {mq}")
+        q = self._floor(min(float(o["qty"]), held), step)
+        if q < mq or q <= 0:
+            return 0.0, f"reduce qty {o['qty']:.6g} rounds below minQty {mq}"
+        if held - q < mq:
+            q = held
+        return q, ""
+
+    def send(self, acct, o, qty):
+        symbol, side = split_ss(o["ss"])
+        opening = o["act"] in ("OPEN", "AUGMENT")
+        params = {"symbol": symbol, "type": "MARKET", "quantity": f"{qty:.10f}".rstrip("0").rstrip("."),
+                  "side": ("BUY" if side == "LONG" else "SELL") if opening else ("SELL" if side == "LONG" else "BUY"),
+                  "newClientOrderId": "vd" + hashlib.sha1(o["key"].encode()).hexdigest()[:24], "newOrderRespType": "RESULT"}
+        if self.is_dual(acct):
+            params["positionSide"] = side
+        elif not opening:
+            params["reduceOnly"] = "true"
+        r = self._req("POST", "/fapi/v1/order", acct, params)
+        return {"orderId": r.get("orderId"), "status": r.get("status"), "executedQty": r.get("executedQty"), "avgPrice": r.get("avgPrice")}
+
+
+class Tradier:
+    def __init__(self, env, out: Path):
+        self.env, self.out, self.s = env, out, _session(None)
+        self._clock = (0.0, False)
+
+    def account(self, acct):
+        a = acct.upper()
+        if acct == "trc":
+            aid = self.env.get("TRADIER_ACCOUNT_ID_TRC") or self.env.get("TRADIER_SANDBOX_ID")
+            key = self.env.get("TRADIER_API_KEY_TRC") or self.env.get("TRADIER_SANDBOX_ACCESS_TOKEN") or self.env.get("TRADIER_SANDBOX_KEY")
+            return aid, key, "https://sandbox.tradier.com/v1"
+        aid = self.env.get(f"TRADIER_ACCOUNT_ID_{a}") or (self.env.get("TRADIER_ACCOUNT_ID") if acct == "tra" else None)
+        key = self.env.get(f"TRADIER_API_KEY_{a}") or self.env.get("TRADIER_API_KEY_TRA") or self.env.get("TRADIER_API_KEY")
+        return aid, key, "https://api.tradier.com/v1"
+
+    def _req(self, method, acct, path, params=None, data=None):
+        _aid, key, base = self.account(acct)
+        if not key:
+            raise RuntimeError(f"missing Tradier key for {acct}")
+        r = self.s.request(method, base + path, params=params, data=data, timeout=15,
+                           headers={"Authorization": f"Bearer {key}", "Accept": "application/json"})
+        if r.status_code >= 400:
+            raise RuntimeError(f"HTTP {r.status_code} {path}: {r.text[:200]}")
+        return r.json()
+
+    def market_open(self):
+        t, val = self._clock
+        if time.time() - t > 60:
+            try:
+                st = (self._req("GET", "tra", "/markets/clock").get("clock") or {}).get("state")
+                val = st == "open"
+            except Exception as exc:
+                log(f"tradier clock failed ({exc}); using weekday 13:30-20:00Z fallback")
+                now = dt.datetime.now(dt.timezone.utc)
+                try:
+                    from zoneinfo import ZoneInfo
+                    et = now.astimezone(ZoneInfo("America/New_York"))
+                    val = et.weekday() < 5 and dt.time(9, 30) <= et.time() < dt.time(16, 0)
+                except Exception:
+                    val = False
+            self._clock = (time.time(), val)
+        return val
+
+    def positions(self, acct):
+        aid, _k, _b = self.account(acct)
+        doc = self._req("GET", acct, f"/accounts/{aid}/positions")
+        rows = (doc.get("positions") or {}) if isinstance(doc.get("positions"), dict) else {}
+        rows = rows.get("position") or []
+        rows = [rows] if isinstance(rows, dict) else rows
+        out = {}
+        for r in rows:
+            q = float(r.get("quantity") or 0.0)
+            if q:
+                out[f"{str(r['symbol']).upper()}_{'LONG' if q > 0 else 'SHORT'}"] = {"qty": abs(q), "price": 0.0}
+        return out
+
+    def price(self, symbol):
+        q = (self._req("GET", "tra", "/markets/quotes", params={"symbols": symbol}).get("quotes") or {}).get("quote") or {}
+        q = q[0] if isinstance(q, list) else q
+        return float(q.get("last") or q.get("ask") or 0.0)
+
+    def size(self, o, held, price):
+        if o["act"] == "CLOSE":
+            return float(int(held)), ""
+        if o["act"] == "OPEN":
+            n = math.floor(float(o["notional"]) / price) if price > 0 else 0
+            return (float(n), "") if n >= 1 else (0.0, f"one share ${price:.2f} > START_POSITION_SIZE ${o['notional']:.2f} (skip, whole shares)")
+        if o["act"] == "AUGMENT":
+            n = math.floor(float(o["qty"]))
+            return (float(n), "") if n >= 1 else (0.0, f"augment {o['qty']:.3f} shares < 1")
+        n = min(int(held), int(round(float(o["qty"]))))
+        return (float(n), "") if n >= 1 else (0.0, f"reduce {o['qty']:.3f} shares < 1")
+
+    def send(self, acct, o, qty):
+        aid, _k, _b = self.account(acct)
+        symbol, side = split_ss(o["ss"])
+        opening = o["act"] in ("OPEN", "AUGMENT")
+        tside = ("buy" if side == "LONG" else "sell_short") if opening else ("sell" if side == "LONG" else "buy_to_cover")
+        data = {"class": "equity", "symbol": symbol, "side": tside, "quantity": str(int(qty)), "type": "market", "duration": "day",
+                "tag": "vd-" + hashlib.sha1(o["key"].encode()).hexdigest()[:20]}
+        r = self._req("POST", acct, f"/accounts/{aid}/orders", data=data)
+        return r.get("order") or r
+
+
+# ───────────────────────────── the loop ─────────────────────────────
+class Trader:
+    def __init__(self, a):
+        self.a = a
+        self.venue = a.venue
+        self.root = Path(a.root).expanduser()
+        self.state_dir = Path(a.state_dir).expanduser()
+        self.out = self.root / "data" / "vector_direct"
+        self.out.mkdir(parents=True, exist_ok=True)
+        self.accounts = [x for x in (a.accounts.split(",") if a.accounts else (CRYPTO_ACCOUNTS if self.venue == "crypto" else STOCK_ACCOUNTS)) if x]
+        env = load_env_files([self.root / ".env", Path.home() / ".env", Path.home() / "binance-sandbox" / ".env", Path.home() / "binance" / ".env"])
+        local_ip = a.local_ip or os.environ.get("VD_LOCAL_IP") or None
+        if local_ip:
+            try:
+                probe = socket.socket()
+                probe.bind((local_ip, 0))
+                probe.close()
+            except OSError:
+                log(f"local ip {local_ip} not bindable here; default routing")
+                local_ip = None
+        self.broker = Binance(env, self.out, local_ip) if self.venue == "crypto" else Tradier(env, self.out)
+        # dry runs / forced tests keep their own ownership file: they must never hand accounts to the armed trader
+        _sfx = "_dryrun" if (a.dry_run or a.force_active) else ""
+        self.act = Activation(self.out / f"activation_{self.venue}{_sfx}.json", self.accounts)
+        self.done = self._load_done()
+        self.quiet = set()
+        self.attempts = {}
+        self.expect = []
+        self.obs = {}
+        self.last_plan = {}
+        self.state_sig = {}
+        self.hb_remote = (0.0, None)
+
+    def _ledger_path(self, ts=None):
+        return self.out / f"ledger_{self.venue}_{dt.datetime.fromtimestamp(ts or time.time(), dt.timezone.utc):%Y-%m-%d}.jsonl"
+
+    def _load_done(self):
+        done = set()
+        for back in (0, 1):
+            p = self._ledger_path(time.time() - back * 86400)
+            try:
+                for line in p.read_text().splitlines():
+                    r = json.loads(line)
+                    if r.get("final") and r.get("key") and r.get("status") not in ("DRY_RUN", "KILLED"):
+                        done.add(r["key"])
+            except Exception:
+                continue
+        return done
+
+    def _ledger(self, row):
+        row = {"ts": time.time(), "iso": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "venue": self.venue, **row}
+        with open(self._ledger_path(), "a") as fh:
+            fh.write(json.dumps(row, default=str) + "\n")
+
+    def heartbeat(self):
+        hb = read_json(self.root / "data" / "live_failover" / "mac_data_heartbeat.json")
+        for extra in (self.a.hb_extra or []):
+            d = read_json(Path(extra).expanduser())
+            if d and float(d.get("epoch") or 0) > float((hb or {}).get("epoch") or 0):
+                hb = d
+        if self.a.hb_ssh:
+            t, d = self.hb_remote
+            if time.time() - t > 30:
+                try:
+                    import subprocess
+                    r = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5", self.a.hb_ssh,
+                                        "cat binance/data/live_failover/mac_data_heartbeat.json"], capture_output=True, text=True, timeout=12)
+                    d = json.loads(r.stdout) if r.returncode == 0 and r.stdout.strip() else None
+                except Exception:
+                    d = None
+                self.hb_remote = (time.time(), d)
+            if d and float(d.get("epoch") or 0) > float((hb or {}).get("epoch") or 0):
+                hb = d
+        return hb
+
+    def load_states(self, sides):
+        out = {}
+        for ss in sides:
+            d = read_json(self.state_dir / f"{ss}.json")
+            if isinstance(d, dict):
+                out[ss] = d
+        return out
+
+    def check_expectations(self, now, active):
+        """Board OPEN/CLOSE at a bar the Mac had to execute: broker must show it after the grace."""
+        missed, due, keep = {}, {}, []
+        for e in self.expect:
+            if e["acct"] in active:
+                continue
+            if now >= e["deadline"]:
+                due.setdefault(e["acct"], []).append(e)
+            else:
+                keep.append(e)
+        self.expect = keep
+        for acct, rows in due.items():
+            try:
+                pos = self.broker.positions(acct)
+            except RestBlocked as exc:
+                log(f"expectation check {acct}: {exc}")
+                continue
+            except Exception as exc:
+                missed[acct] = f"broker_read_failed_from_S1 ({str(exc)[:80]})"
+                continue
+            self.obs[acct] = (now, {ss: p["qty"] for ss, p in pos.items()})
+            for e in rows:
+                held = float((pos.get(e["ss"]) or {}).get("qty") or 0.0)
+                if (e["want"] == "HOLD" and held <= 0) or (e["want"] == "FLAT" and held > 0):
+                    missed[acct] = f"mac_missed_trade {e['ss']} board={e['want']} bar={e['bar']} broker_qty={held}"
+                    self._ledger({"event": "MISSED_TRADE", "acct": acct, "ss": e["ss"], "want": e["want"], "bar": e["bar"], "broker_qty": held})
+                    break
+        return missed
+
+    def run_once(self):
+        now = time.time()
+        bar = last_closed_bar(now)
+        keys = universe(self.root, self.venue, self.accounts)
+        all_sides = set().union(*keys.values()) if keys else set()
+        states = self.load_states(all_sides)
+        market_ok = True
+        if self.venue == "stocks":
+            market_ok = self.broker.market_open()
+        allowed = lambda acct, ss: entry_allowed(self.root, self.venue, acct, ss)
+        hb = self.heartbeat()
+        missed = self.check_expectations(now, set(self.act.active())) if market_ok else {}
+        trig, hb_age = self.act.triggers(now, hb, self.venue, missed)
+        if self.a.force_active:
+            for x in self.a.force_active.split(","):
+                trig.setdefault(x, "forced_by_operator")
+        if not market_ok:
+            trig = {}
+        for acct, kind, why in self.act.update(now, trig):
+            log(f"{kind} {self.venue}:{acct} — {why}")
+            self._ledger({"event": kind, "acct": acct, "why": why, "hb_age": hb_age, "dry_run": self.a.dry_run})
+        self.act.save()
+        active = self.act.active()
+        # new board transitions -> expectations for accounts the Mac still trades
+        sig = {ss: (st.get("npz_tail"), st.get("ts")) for ss, st in states.items()}
+        changed = {ss for ss, s in sig.items() if self.state_sig.get(ss) != s}
+        self.state_sig = sig
+        if changed and market_ok:
+            fresh = {ss: states[ss] for ss in changed}
+            for acct, ss, want in expectations_from_states([a for a in self.accounts if a not in active], keys, fresh, bar, allowed):
+                st = states[ss]
+                try:
+                    st_epoch = dt.datetime.strptime(str(st.get("ts")), "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=dt.timezone.utc).timestamp()
+                except Exception:
+                    st_epoch = now
+                self.expect.append({"acct": acct, "ss": ss, "want": want, "bar": bar, "deadline": max(st_epoch + MISS_GRACE_S, bar + BAR_S + MISS_MIN_AFTER_CLOSE_S)})
+        killed = (self.out / "KILL").exists()
+        orders_n = 0
+        for acct in active if market_ok else []:
+            acct_changed = any(ss in changed for ss in keys.get(acct, ()))
+            if not acct_changed and now - self.last_plan.get(acct, 0) < REPLAN_S:
+                continue
+            self.last_plan[acct] = now
+            try:
+                pos = self.broker.positions(acct)
+            except RestBlocked as exc:
+                log(f"{acct}: {exc}")
+                continue
+            except Exception as exc:
+                log(f"{acct}: broker positions FAILED {str(exc)[:160]}")
+                continue
+            t_obs, prev = self.obs.get(acct, (0, {}))
+            prev_qty = prev if t_obs and bar - BAR_S <= t_obs < bar + BAR_S else {}
+            orders, notes = plan_account(acct, self.venue, keys.get(acct, ()), states, pos, bar, self.done, allowed, prev_qty)
+            self.obs[acct] = (now, {ss: p["qty"] for ss, p in pos.items()})
+            for ss, n in notes:
+                if n != "HOLD_NO_FRESH_STATE":
+                    k = f"{acct}|{ss}|{bar}|NOTE|{n[:24]}"
+                    if k not in self.done:
+                        self.done.add(k)
+                        self._ledger({"event": "NOTE", "acct": acct, "ss": ss, "note": n, "key": k, "final": True})
+            if self.venue == "stocks":
+                held_syms = {}
+                for ss in pos:
+                    held_syms.setdefault(split_ss(ss)[0], set()).add(split_ss(ss)[1])
+            for o in orders:
+                orders_n += 1
+                symbol, side = split_ss(o["ss"])
+                held = float((pos.get(o["ss"]) or {}).get("qty") or 0.0)
+                row = {"event": "ORDER", "acct": acct, "ss": o["ss"], "act": o["act"], "key": o["key"], "why": o["why"], "held": held}
+                if self.venue == "stocks" and o["act"] == "OPEN" and held_syms.get(symbol, set()) - {side}:
+                    row.update({"status": "SKIP_OPPOSITE_SIDE_HELD", "final": True})
+                    self.done.add(o["key"])
+                    self._ledger(row)
+                    log(f"{acct} {o['ss']} OPEN skipped: opposite side held on Tradier")
+                    continue
+                try:
+                    price = float((pos.get(o["ss"]) or {}).get("price") or 0.0) or self.broker.price(symbol)
+                    qty, why = self.broker.size(o, held, price)
+                except RestBlocked as exc:
+                    log(f"{acct} {o['ss']}: {exc}")
+                    break
+                except Exception as exc:
+                    qty, why, price = 0.0, f"sizing failed: {str(exc)[:120]}", 0.0
+                row.update({"price": price, "qty": qty, "notional": round(qty * price, 4) if price else None})
+                if qty <= 0:
+                    row.update({"status": "SKIP_SIZE", "detail": why, "final": True})
+                    self.done.add(o["key"])
+                    self._ledger(row)
+                    log(f"{acct} {o['ss']} {o['act']} SKIP: {why}")
+                    continue
+                if self.a.dry_run or killed:
+                    # never final on disk: arming (or removing KILL) must still send what the board dictates
+                    if o["key"] not in self.quiet:
+                        self.quiet.add(o["key"])
+                        row.update({"status": "DRY_RUN" if self.a.dry_run else "KILLED"})
+                        self._ledger(row)
+                        log(f"{'DRY' if self.a.dry_run else 'KILL'} {acct} {o['ss']} {o['act']} qty={qty} px={price} (${qty * price:.2f}) — {o['why']}")
+                    continue
+                try:
+                    resp = self.broker.send(acct, o, qty)
+                    row.update({"status": "SENT", "resp": resp, "final": True})
+                    self.done.add(o["key"])
+                    log(f"SENT {acct} {o['ss']} {o['act']} qty={qty} px~{price} -> {resp}")
+                except RestBlocked as exc:
+                    row.update({"status": "BLOCKED", "detail": str(exc)})
+                    log(f"{acct} {o['ss']} {o['act']}: {exc}")
+                    self._ledger(row)
+                    break
+                except Exception as exc:
+                    n = self.attempts.get(o["key"], 0) + 1
+                    self.attempts[o["key"]] = n
+                    row.update({"status": "ERROR", "detail": str(exc)[:300], "attempt": n, "final": n >= MAX_ATTEMPTS})
+                    if n >= MAX_ATTEMPTS:
+                        self.done.add(o["key"])
+                    log(f"ERROR {acct} {o['ss']} {o['act']} attempt {n}: {str(exc)[:200]}")
+                self._ledger(row)
+        fresh_n = sum(1 for st in states.values() if state_fresh(st, bar))
+        status = {"epoch": now, "iso": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "host": socket.gethostname(),
+                  "venue": self.venue, "armed": not self.a.dry_run and not killed, "dry_run": self.a.dry_run, "killed": killed,
+                  "market_open": market_ok, "active_accounts": active, "triggers": trig, "hb_age_s": None if hb_age is None else round(hb_age, 1),
+                  "bar": bar, "states_fresh": fresh_n, "states_total": len(all_sides), "pending_expectations": len(self.expect),
+                  "orders_this_pass": orders_n, "start_position_size": START_POSITION_SIZE}
+        atomic_write_json(self.out / f"status_{self.venue}.json", status)
+        return status
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("--venue", choices=("crypto", "stocks"), required=True)
+    ap.add_argument("--root", default="~/binance", help="tree with books, tradeable_keys.json, .env, data/live_failover")
+    ap.add_argument("--state-dir", default="~/binance-sandbox/data/forward_state")
+    ap.add_argument("--accounts", default="")
+    ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--once", action="store_true")
+    ap.add_argument("--loop-s", type=float, default=10.0)
+    ap.add_argument("--local-ip", default="")
+    ap.add_argument("--force-active", default="", help="testing: treat these accounts as taken over")
+    ap.add_argument("--hb-extra", action="append", help="additional heartbeat file(s); the freshest wins")
+    ap.add_argument("--hb-ssh", default="", help="also read the heartbeat from this ssh host (e.g. S1 for S5)")
+    ap.add_argument("--probe", action="store_true", help="read-only: broker positions per account, then exit")
+    a = ap.parse_args(argv)
+    t = Trader(a)
+    if a.probe:
+        for acct in t.accounts:
+            try:
+                p = t.broker.positions(acct)
+                extra = f" dual={t.broker.is_dual(acct)}" if a.venue == "crypto" else ""
+                log(f"PROBE {acct}: {len(p)} open positions{extra}: " + ", ".join(f"{k}={v['qty']}" for k, v in sorted(p.items())[:12]))
+            except Exception as exc:
+                log(f"PROBE {acct}: FAILED {str(exc)[:200]}")
+        return 0
+    log(f"vector_direct_trader {a.venue} start: accounts={t.accounts} dry_run={a.dry_run} START_POSITION_SIZE=${START_POSITION_SIZE} root={t.root} states={t.state_dir}")
+    while True:
+        t0 = time.time()
+        try:
+            st = t.run_once()
+            if a.once or int(t0) % 300 < a.loop_s:
+                log(f"pass: active={st['active_accounts']} hb_age={st['hb_age_s']} market_open={st['market_open']} fresh={st['states_fresh']}/{st['states_total']} orders={st['orders_this_pass']} armed={st['armed']}")
+        except Exception as exc:
+            log(f"PASS FAILED {type(exc).__name__}: {str(exc)[:300]}")
+        if a.once:
+            return 0
+        time.sleep(max(1.0, a.loop_s - (time.time() - t0)))
+
+
+if __name__ == "__main__":
+    sys.exit(main())

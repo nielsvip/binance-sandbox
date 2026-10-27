@@ -103,6 +103,11 @@ from tools import v18_features as FX  # noqa: E402  binding features (V20 v3): s
 
 SCHEMA = "v18_brain/1"
 EPS = 1e-9
+# Realistic positivity (2026-10-27): a gain delta counts as POSITIVE for p_pos / heads R,F,F0,M / forward / ema / observe only when it
+# beats the promotion noise floor (v15_pilot.promotion_noise_floor_pp: board nondeterminism 0.48 pp vs one fee round trip). Default 0.0
+# keeps the historic `> 1e-9` judgement exactly. Identity/noop/rescue/kill/promoted/synergy/metric-head judgements stay on EPS.
+POS_FLOOR = max(0.0, float(os.environ.get("V18_POS_FLOOR_PP", "0") or 0.0))
+POS_THR = max(EPS, POS_FLOOR)
 CAT_SIDES = ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT")
 CRYPTO_QUOTES = ("USDT", "USDC", "FDUSD", "BUSD", "TUSD")
 SWITCH_SHEETS = ("STDEV_SLOPE_SIZING", "ENTRY_REVERSAL_BOUNCE", "ENTRY_BREAKOUT_CHANNEL", "ENTRY_CONFIRMATION_GATES", "EXIT_STRUCTURAL",
@@ -1496,7 +1501,7 @@ class Graph:
         if d is None:
             return
         E[4] += w
-        if d > EPS:
+        if d > POS_THR:
             E[2] += 1
             E[5] += w
             E[6] += d
@@ -1788,7 +1793,7 @@ class CatBrain:
         k = str(key)
         a = k if k.startswith(("R:", "F:")) else ("R:" + k if "=" in k else "N:" + k)
         sid = self.g.scope(ev["s"])
-        y = 1.0 if d > EPS else 0.0
+        y = 1.0 if d > POS_THR else 0.0
         for s in (0, sid):
             i = self.g.idx(s, a)
             self.g.E[i, C["fwd_n"]] += 1
@@ -1799,7 +1804,7 @@ class CatBrain:
         a = "R:" + ev["k"]
         i = self.g.idx(0, a)
         self.g.E[i, C["ph_n"]] += 1
-        if ev.get("v") and (ev.get("d") or 0) > EPS:
+        if ev.get("v") and (ev.get("d") or 0) > POS_THR:
             self.g.E[i, C["ph_pos"]] += 1
         j = self.g.idx(0, "PH:" + str(ev.get("ph")))
         self.g.add_eval(j, ev.get("d"), ev.get("v"), ev.get("sec"), ev.get("m") or [], ev.get("w") or 1.0, epoch_of(ev["t"]))
@@ -1891,7 +1896,7 @@ class CatBrain:
             p = H.p("R", x_r)
             p_fit = p
             d = naked[0] if naked[1] else None
-            y = 1.0 if (d is not None and d > EPS) else 0.0
+            y = 1.0 if (d is not None and d > POS_THR) else 0.0
             if test:
                 self._record("R", p, naked[2], y, d if y else 0.0, cn, a, None)
             H.learn("R", x_r, y, p, W_FIT * naked[8])
@@ -1916,11 +1921,11 @@ class CatBrain:
             self._mb(x0, sheet, sw, cand, hdr, md, valid, rs, rc, nvalid, bknown, str(hdr).strip() in nzset, test, w, H.p("F0", x0))
             pf = H.p("F", x_f)
             p0 = H.p("F0", x0)
-            y = 1.0 if (valid and md is not None and md > EPS) else 0.0
+            y = 1.0 if (valid and md is not None and md > POS_THR) else 0.0
             if test:
                 f_node = "F:" + str(hdr).strip()
                 self._record("F", pf, secs, y, md if y else 0.0, cn, f_node, a)
-                self._record("F0R", 1.0 if (nd is not None and nd > EPS) else p0, secs, y, md if y else 0.0, cn, f_node, a)
+                self._record("F0R", 1.0 if (nd is not None and nd > POS_THR) else p0, secs, y, md if y else 0.0, cn, f_node, a)
             H.learn("F", x_f, y, pf, W_FIT * w)
             H.learn("F0", x0, y, p0, W_FIT * w)
             if valid:
@@ -1978,7 +1983,7 @@ class CatBrain:
             g.E[ip, C["syn_neg"]] += int(syn < -EPS)
             self.c["synergy_quartets"] += 1
         if naked is not None and naked[-1]:
-            yb = 1.0 if (nd is not None and nd > EPS) else 0.0
+            yb = 1.0 if (nd is not None and nd > POS_THR) else 0.0
             for k in (sym, (sym, sheet)):
                 self.ema[k] = min(0.98, max(0.002, 0.98 * self.ema[k] + 0.02 * yb))
         # forward bookkeeping
@@ -2006,7 +2011,7 @@ class CatBrain:
         noop = noop_listed or bool(valid and nvalid and md is not None and abs(md) <= EPS)
         nflag = (1.0 if noop else 0.0) if bknown else -1.0
         if nvalid and md is not None:
-            y = 1.0 if (valid and md > EPS) else 0.0
+            y = 1.0 if (valid and md > POS_THR) else 0.0
             p = H.p("M", xm)
             self.mb_cap["M"].extend((p, y, t, nflag))
             self.mb_f0.append(p_f0)
@@ -2244,7 +2249,7 @@ def cmd_train(a):
         b.finish()
     del seen
     meta = {"schema": SCHEMA, "at": utc_now(), "cut": a.cut, "spills": files, "events_read": n, "dedupe": dict(cnt), "sort_secs": round(t_sort, 1),
-            "train_secs": round(time.time() - t0 - t_sort, 1), "m_shrink": M_SHRINK, "w_fit": W_FIT, "w_fwd": W_FWD, "nf": NF,
+            "train_secs": round(time.time() - t0 - t_sort, 1), "m_shrink": M_SHRINK, "w_fit": W_FIT, "w_fwd": W_FWD, "nf": NF, "pos_floor_pp": POS_FLOOR,
             "regime_source": "board bh bucket (FLAT/UP/DOWN/STRONG_*); classify_regime needs NPZ bars the corpus does not hold",
             "extract_reports": [json.loads(Path(p).read_text()) for d in a.spill_dir for p in sorted(glob.glob(os.path.join(os.path.expanduser(d), "extract_*.json")))]}
     st = _state_dump({"meta": meta, "brains": brains, "tidx": tidx})
@@ -2406,7 +2411,7 @@ def export_one(sb, tidx, floor, p_ref_r, p_ref_f, max_bytes=MAX_EXPORT_BYTES, mi
         sym_rows[ss] = [[nidx(a), round(float(E[C["wpos"]]), 3), round(float(E[C["wn"]]), 3)] for _p, _n, a, E in lst]
     coverage = coverage_of(sb, tidx, floor, p_ref_r, p_ref_f)
     blob = {"_meta": {"schema": SCHEMA, "cat_side": sb["cs"], "at": utc_now(), "first_ts": sb["first_ts"], "last_ts": sb["last_ts"], "counters": sb["c"],
-                      "heads_trained": sb["hn"], "nf": NF, "floor_per_1000": max(HARD_MIN_FLOOR, floor), "p_ref": {"R": p_ref_r, "F": p_ref_f},
+                      "heads_trained": sb["hn"], "nf": NF, "pos_floor_pp": POS_FLOOR, "floor_per_1000": max(HARD_MIN_FLOOR, floor), "p_ref": {"R": p_ref_r, "F": p_ref_f},
                       "m_shrink": M_SHRINK, "cs_cols": ["node", "wpos", "wn", "n", "pos", "neg", "inv", "sum_pos", "d_tim", "d_trades", "d_dd", "d_sharpe", "d_wr",
                                                         "n_sym", "fwd_n", "fwd_pos", "live_n", "live_pos", "n_ident", "mean_secs", "live_pnl_pp"],
                       "pair_cols": ["filter", "row", "wpos", "wn", "n", "pos", "n_rescue", "n_kill", "n_syn", "syn_sum", "n_sym", "abl_n", "abl_kill"],
@@ -2822,6 +2827,7 @@ class PilotBrainV18:
         self.floor = max(HARD_MIN_FLOOR, float(floor_per_1000 if floor_per_1000 is not None else os.environ.get("V18_FLOOR_PER_1000", self.meta.get("floor_per_1000", DEFAULT_FLOOR))))
         self.p_ref = {"R": float(p_ref_r if p_ref_r is not None else os.environ.get("V18_BRAIN_PREF_R", self.meta.get("p_ref", {}).get("R", DEFAULT_PREF_R))),
                       "F": float(p_ref_f if p_ref_f is not None else os.environ.get("V18_BRAIN_PREF_F", self.meta.get("p_ref", {}).get("F", DEFAULT_PREF_F)))}
+        self.pos_thr = max(EPS, float(self.meta.get("pos_floor_pp", POS_FLOOR) or 0.0))
         self.ema = collections.defaultdict(lambda: 0.02)
         e0 = (blob.get("ema") or {}).get(sym_side)
         if e0:
@@ -2878,7 +2884,7 @@ class PilotBrainV18:
                 "bind_verdict": bv}
 
     def observe(self, sheet, row_key, delta, alpha=0.02):
-        y = 1.0 if (delta is not None and delta > EPS) else 0.0
+        y = 1.0 if (delta is not None and delta > getattr(self, "pos_thr", POS_THR)) else 0.0
         for k in (self.sym_side, (self.sym_side, sheet)):
             self.ema[k] = min(0.98, max(0.002, (1 - alpha) * self.ema[k] + alpha * y))
         if delta is not None:
