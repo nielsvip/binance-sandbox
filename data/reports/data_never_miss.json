@@ -1,6 +1,6 @@
 {
- "generated_utc": "2026-10-27T04:51:53Z",
- "secs": 101.9,
+ "generated_utc": "2026-10-27T05:02:28Z",
+ "secs": 133.8,
  "universe": {
   "crypto": 201,
   "stocks": 223
@@ -10,8 +10,8 @@
  },
  "healed": {
   "mac:/Users/niels/Documents/binance": {
-   "files": 3,
-   "rows": 1,
+   "files": 2,
+   "rows": 2,
    "skipped": {}
   }
  },
@@ -838,15 +838,6 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "TMO",
-   "tf": "15m",
-   "last": "2026-10-26T19:00",
-   "expect": "2026-10-26T19:45",
-   "bars_behind": 3.0
-  },
-  {
-   "host": "mac",
-   "venue": "stocks",
    "symbol": "ELD",
    "tf": "15m",
    "last": "2026-10-26T15:30",
@@ -1575,13 +1566,6 @@
   },
   {
    "venue": "stocks",
-   "symbol": "TMO",
-   "tf": "15m",
-   "best": "2026-10-26T19:00",
-   "expect": "2026-10-26T19:45"
-  },
-  {
-   "venue": "stocks",
    "symbol": "ELD",
    "tf": "15m",
    "best": "2026-10-26T15:30",
@@ -1674,57 +1658,57 @@
   {
    "host": "mac",
    "file": "crypto prices",
-   "age_s": -8.4,
+   "age_s": -20.8,
    "max_s": 60,
    "ok": true,
    "files": {
-    "price_cache_1.json": -8.4,
-    "price_cache_2.json": 10.2,
-    "price_cache_3.json": -8.4
+    "price_cache_1.json": -20.8,
+    "price_cache_2.json": -0.3,
+    "price_cache_3.json": -20.8
    }
   },
   {
    "host": "mac",
    "file": "crypto snapshot (market_data_*)",
-   "age_s": 13.9,
+   "age_s": -10.9,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/market_data_NEWEST": 13.9
+    "data/market_data_NEWEST": -10.9
    }
   },
   {
    "host": "mac",
    "file": "crypto latest_market_data",
-   "age_s": 13.9,
+   "age_s": -10.9,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/latest_market_data.json": 13.9
+    "data/latest_market_data.json": -10.9
    }
   },
   {
    "host": "gw",
    "file": "crypto market_data",
-   "age_s": 244.8,
+   "age_s": 73.2,
    "max_s": 300,
    "ok": true,
    "files": {
-    "data/latest_market_data.json": 244.8
+    "data/latest_market_data.json": 73.2
    }
   },
   {
    "host": "mac",
    "file": "disk free /Users/niels/Documents/binance",
    "age_s": null,
-   "free_gb": 20.5,
+   "free_gb": 21.0,
    "ok": true
   },
   {
    "host": "gw",
    "file": "disk free binance",
    "age_s": null,
-   "free_gb": 4.8,
+   "free_gb": 4.9,
    "ok": true
   }
  ]
