@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-27 05:24:00 UTC
+# Copilot Status — 2026-10-27 05:29:05 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T05:17:53
-- **STALE_INDICATORS** [tradier]  — 2026-10-27T05:19:55
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T05:19:55
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T05:19:55
-- **STALE_INDICATORS** [tradier]  — 2026-10-27T05:21:57
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T05:21:57
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T05:21:57
 - **STALE_INDICATORS** [tradier]  — 2026-10-27T05:23:59
 - **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T05:23:59
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T05:23:59
+- **STALE_INDICATORS** [tradier]  — 2026-10-27T05:26:01
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T05:26:01
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T05:26:01
+- **STALE_INDICATORS** [tradier]  — 2026-10-27T05:28:03
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T05:28:03
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T05:28:03
 
 ## Missed Trades (trader comparison)
 
@@ -31,14 +31,14 @@ _None_
 
 - HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +1.7%
 - HELD: **MINAUSDT** SHORT (crypto) peak +4.2%, now +2.1%
-- HELD: **BNBUSDC** SHORT (crypto) peak +3.0%, now +0.1%
+- HELD: **BNBUSDC** SHORT (crypto) peak +3.0%, now +0.2%
 
 - WATCHING: **KMNOUSDT** LONG (crypto) peaked +11.7%, exited 0m ago
 - WATCHING: **BBUSDT** SHORT (crypto) peaked +8.8%, exited 0m ago
 - WATCHING: **QNTUSDT** LONG (crypto) peaked +8.7%, exited 0m ago
 - WATCHING: **BEAMXUSDT** LONG (crypto) peaked +8.6%, exited 0m ago
 - WATCHING: **AXSUSDT** SHORT (crypto) peaked +5.7%, exited 0m ago
-- WATCHING: **IOSTUSDT** LONG (crypto) peaked +5.2%, exited 112m ago
+- WATCHING: **IOSTUSDT** LONG (crypto) peaked +5.2%, exited 117m ago
 - WATCHING: **A** LONG (tradier) peaked +5.0%, exited 0m ago
 - WATCHING: **SKLUSDT** SHORT (crypto) peaked +3.6%, exited 0m ago
 - WATCHING: **SKYAIUSDT** SHORT (crypto) peaked +3.2%, exited 0m ago
@@ -49,8 +49,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [MEDIUM] tradier_manage.py for trc is NOT running
 - [LOW] tradier_prices.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
+- [MEDIUM] tradier_positions.py running but log stale (11min)
