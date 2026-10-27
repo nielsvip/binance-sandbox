@@ -593,6 +593,7 @@ class Trader:
         # dry runs / forced tests keep their own ownership file: they must never hand accounts to the armed trader
         _sfx = "_dryrun" if (a.dry_run or a.force_active) else ""
         self.act = Activation(self.out / f"activation_{self.venue}{_sfx}.json", self.accounts)
+        self.done_ts = {}
         self.done = self._load_done()
         self.quiet = set()
         self.attempts = {}
@@ -617,6 +618,8 @@ class Trader:
                     r = json.loads(line)
                     if r.get("final") and r.get("key") and not r.get("dry_run") and r.get("status") not in ("DRY_RUN", "KILLED"):
                         done.add(r["key"])
+                        if r.get("status") in ("SENT", "ERROR") and "|OPEN" in r["key"] and hasattr(self, "done_ts"):
+                            self.done_ts[r["key"]] = float(r.get("ts") or 0)
             except Exception:
                 continue
         return done
@@ -784,6 +787,12 @@ class Trader:
                     st_epoch = now
                 self.expect.append({"acct": acct, "ss": ss, "want": want, "bar": bar, "deadline": max(st_epoch + MISS_GRACE_S, bar + BAR_S + MISS_MIN_AFTER_CLOSE_S)})
         killed = (self.out / "KILL").exists()
+        # 2026-10-27: an OPEN that failed (margin / max position) or that someone else closed afterwards (the Mac closed S1's
+        # flz ETHUSDC_SHORT 96 s after it filled) was done forever; the board still holds it, so retry once per bar.
+        for k, t_done in list(self.done_ts.items()):
+            if now - t_done > BAR_S:
+                self.done.discard(k)
+                self.done_ts.pop(k, None)
         orders_n = 0
         for acct in active if market_ok else []:
             acct_changed = any(ss in changed for ss in keys.get(acct, ()))
@@ -823,71 +832,66 @@ class Trader:
 
     def send_orders(self, acct, orders, pos, killed):
         orders_n = 0
-        if True:
-            if self.venue == "stocks":
-                held_syms = {}
-                for ss in pos:
-                    held_syms.setdefault(split_ss(ss)[0], set()).add(split_ss(ss)[1])
-            for o in orders:
-                orders_n += 1
-                symbol, side = split_ss(o["ss"])
-                held = float((pos.get(o["ss"]) or {}).get("qty") or 0.0)
-                row = {"event": "ORDER", "acct": acct, "ss": o["ss"], "act": o["act"], "key": o["key"], "why": o["why"], "held": held}
-                if self.venue == "stocks" and o["act"] == "OPEN" and held_syms.get(symbol, set()) - {side}:
-                    row.update({"status": "SKIP_OPPOSITE_SIDE_HELD", "final": True})
-                    self.done.add(o["key"])
-                    self._ledger(row)
-                    log(f"{acct} {o['ss']} OPEN skipped: opposite side held on Tradier")
-                    continue
-                try:
-                    price = float((pos.get(o["ss"]) or {}).get("price") or 0.0) or self.broker.price(symbol)
-                    qty, why = self.broker.size(o, held, price)
-                except RestBlocked as exc:
-                    log(f"{acct} {o['ss']}: {exc}")
-                    break
-                except Exception as exc:
-                    qty, why, price = 0.0, f"sizing failed: {str(exc)[:120]}", 0.0
-                row.update({"price": price, "qty": qty, "notional": round(qty * price, 4) if price else None})
-                if qty <= 0:
-                    row.update({"status": "SKIP_SIZE", "detail": why, "final": True})
-                    self.done.add(o["key"])
-                    self._ledger(row)
-                    log(f"{acct} {o['ss']} {o['act']} SKIP: {why}")
-                    continue
-                if self.a.dry_run or killed:
-                    # never final on disk: arming (or removing KILL) must still send what the board dictates
-                    if o["key"] not in self.quiet:
-                        self.quiet.add(o["key"])
-                        row.update({"status": "DRY_RUN" if self.a.dry_run else "KILLED"})
-                        self._ledger(row)
-                        log(f"{'DRY' if self.a.dry_run else 'KILL'} {acct} {o['ss']} {o['act']} qty={qty} px={price} (${qty * price:.2f}) — {o['why']}")
-                    continue
-                try:
-                    resp = self.broker.send(acct, o, qty)
-                    row.update({"status": "SENT", "resp": resp, "final": True})
-                    self.done.add(o["key"])
-                    log(f"SENT {acct} {o['ss']} {o['act']} qty={qty} px~{price} -> {resp}")
-                except RestBlocked as exc:
-                    row.update({"status": "BLOCKED", "detail": str(exc)})
-                    log(f"{acct} {o['ss']} {o['act']}: {exc}")
-                    self._ledger(row)
-                    break
-                except Exception as exc:
-                    n = self.attempts.get(o["key"], 0) + 1
-                    self.attempts[o["key"]] = n
-                    row.update({"status": "ERROR", "detail": str(exc)[:300], "attempt": n, "final": n >= MAX_ATTEMPTS})
-                    if n >= MAX_ATTEMPTS:
-                        self.done.add(o["key"])
-                    log(f"ERROR {acct} {o['ss']} {o['act']} attempt {n}: {str(exc)[:200]}")
+        if self.venue == "stocks":
+            held_syms = {}
+            for ss in pos:
+                held_syms.setdefault(split_ss(ss)[0], set()).add(split_ss(ss)[1])
+        for o in orders:
+            orders_n += 1
+            symbol, side = split_ss(o["ss"])
+            held = float((pos.get(o["ss"]) or {}).get("qty") or 0.0)
+            row = {"event": "ORDER", "acct": acct, "ss": o["ss"], "act": o["act"], "key": o["key"], "why": o["why"], "held": held}
+            if self.venue == "stocks" and o["act"] == "OPEN" and held_syms.get(symbol, set()) - {side}:
+                row.update({"status": "SKIP_OPPOSITE_SIDE_HELD", "final": True})
+                self.done.add(o["key"])
                 self._ledger(row)
-        fresh_n = sum(1 for st in states.values() if state_fresh(st, bar))
-        status = {"epoch": now, "iso": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "host": socket.gethostname(),
-                  "venue": self.venue, "armed": not self.a.dry_run and not killed, "dry_run": self.a.dry_run, "killed": killed,
-                  "market_open": market_ok, "active_accounts": active, "triggers": trig, "hb_age_s": None if hb_age is None else round(hb_age, 1),
-                  "bar": bar, "states_fresh": fresh_n, "states_total": len(all_sides), "pending_expectations": len(self.expect),
-                  "orders_this_pass": orders_n, "start_position_size": START_POSITION_SIZE}
-        atomic_write_json(self.out / f"status_{self.venue}.json", status)
-        return status
+                log(f"{acct} {o['ss']} OPEN skipped: opposite side held on Tradier")
+                continue
+            try:
+                price = float((pos.get(o["ss"]) or {}).get("price") or 0.0) or self.broker.price(symbol)
+                qty, why = self.broker.size(o, held, price)
+            except RestBlocked as exc:
+                log(f"{acct} {o['ss']}: {exc}")
+                break
+            except Exception as exc:
+                qty, why, price = 0.0, f"sizing failed: {str(exc)[:120]}", 0.0
+            row.update({"price": price, "qty": qty, "notional": round(qty * price, 4) if price else None})
+            if qty <= 0:
+                row.update({"status": "SKIP_SIZE", "detail": why, "final": True})
+                self.done.add(o["key"])
+                self._ledger(row)
+                log(f"{acct} {o['ss']} {o['act']} SKIP: {why}")
+                continue
+            if self.a.dry_run or killed:
+                # never final on disk: arming (or removing KILL) must still send what the board dictates
+                if o["key"] not in self.quiet:
+                    self.quiet.add(o["key"])
+                    row.update({"status": "DRY_RUN" if self.a.dry_run else "KILLED"})
+                    self._ledger(row)
+                    log(f"{'DRY' if self.a.dry_run else 'KILL'} {acct} {o['ss']} {o['act']} qty={qty} px={price} (${qty * price:.2f}) — {o['why']}")
+                continue
+            try:
+                resp = self.broker.send(acct, o, qty)
+                row.update({"status": "SENT", "resp": resp, "final": True})
+                self.done.add(o["key"])
+                self.done_ts[o["key"]] = time.time()
+                log(f"SENT {acct} {o['ss']} {o['act']} qty={qty} px~{price} -> {resp}")
+            except RestBlocked as exc:
+                row.update({"status": "BLOCKED", "detail": str(exc)})
+                log(f"{acct} {o['ss']} {o['act']}: {exc}")
+                self._ledger(row)
+                break
+            except Exception as exc:
+                n = self.attempts.get(o["key"], 0) + 1
+                self.attempts[o["key"]] = n
+                row.update({"status": "ERROR", "detail": str(exc)[:300], "attempt": n, "final": n >= MAX_ATTEMPTS})
+                if n >= MAX_ATTEMPTS:
+                    self.done.add(o["key"])
+                    self.done_ts[o["key"]] = time.time()
+                    self.attempts.pop(o["key"], None)
+                log(f"ERROR {acct} {o['ss']} {o['act']} attempt {n}: {str(exc)[:200]}")
+            self._ledger(row)
+        return orders_n
 
 
 def main(argv=None):

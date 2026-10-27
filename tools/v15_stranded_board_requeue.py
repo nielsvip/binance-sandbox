@@ -109,6 +109,7 @@ def main():
     ap.add_argument("--max", type=int, default=2, help="relaunches per run (the lane cap still applies)")
     ap.add_argument("--workers", type=int, default=7)
     ap.add_argument("--max-short", type=int, default=250, help="skip a board missing more rows than this; it needs a full sweep, not a hole fill")
+    ap.add_argument("--max-short-essential", type=int, default=2000, help="same cap for a board refused only at the ESSENTIAL-ROWS gate; its resume is the pilot's normal holes-only fill")
     ap.add_argument("--host-lane", default=None, help="worker_lanes dir name; default = hostname")
     ap.add_argument("--quiet", action="store_true")
     a = ap.parse_args()
@@ -142,6 +143,9 @@ def main():
             if not holes_only_refusal(prog, measurable_cache[tpl]):
                 continue
             requeue_refused.append(symside)
+            cap = a.max_short_essential
+        else:
+            cap = a.max_short
         if not _tradeable(symside, allowed):
             skipped_untradeable.append(symside)
             continue
@@ -152,7 +156,7 @@ def main():
         except Exception:
             continue
         short = int(status.get("rows") or 0) - int(status.get("filled") or 0)
-        if short <= 0 or short > a.max_short:
+        if short <= 0 or short > cap:
             continue
         stranded.append({"symside": symside, "short_rows": short, "rows": status["rows"], "final_path": prog.get("final_path")})
     stranded.sort(key=lambda r: r["short_rows"])

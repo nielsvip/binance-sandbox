@@ -171,3 +171,53 @@ def test_dry_run_rows_never_count_as_done(tmp_path):
     t = V.Trader.__new__(V.Trader)
     t.out, t.venue = p, "crypto"
     assert t._load_done() == {"k2"}
+
+
+def _bare_trader(tmp_path, positions):
+    import types
+    p = tmp_path / "data" / "vector_direct"
+    p.mkdir(parents=True, exist_ok=True)
+    t = V.Trader.__new__(V.Trader)
+    t.out, t.venue, t.accounts = p, "crypto", ["ang", "fin"]
+    t.done, t.missed_rows, t.paper_plan, t.paper_done = set(), {}, {}, set()
+    sent = []
+    t.broker = types.SimpleNamespace(positions=lambda acct: dict(positions.get(acct, {})))
+    t.send_orders = lambda acct, orders, pos, killed: (sent.extend((acct, o) for o in orders), len(orders))[1]
+    return t, sent
+
+
+def test_pin_keeps_accounts_until_expiry(tmp_path):
+    import json, time
+    t, _ = _bare_trader(tmp_path, {})
+    now = time.time()
+    (t.out / "pin_crypto.json").write_text(json.dumps({"until_epoch": now + 60, "accounts": ["ang"]}))
+    assert list(t.pinned(now)) == ["ang"]
+    assert t.pinned(now + 61) == {}
+
+
+def test_missed_board_close_is_alerted_and_backstopped_without_takeover(tmp_path):
+    t, sent = _bare_trader(tmp_path, {"ang": {"XUSDT_SHORT": {"qty": 5.0, "price": 1.0}}, "fin": {}})
+    states = {"XUSDT_SHORT": st(False, acts=[{"type": "CLOSE"}]), "YUSDT_LONG": st(True, acts=[{"type": "OPEN"}], eq=2, oq=1)}
+    t.missed_rows = {"ang": [{"acct": "ang", "ss": "XUSDT_SHORT", "want": "FLAT", "bar": BAR}],
+                     "fin": [{"acct": "fin", "ss": "YUSDT_LONG", "want": "HOLD", "bar": BAR}]}
+    n = t.backstop(0, False, {}, states, ALLOW)
+    assert n == 2 and t.missed_rows == {}
+    acts = {(a, o["ss"]): o for a, o in sent}
+    assert acts[("ang", "XUSDT_SHORT")]["act"] == "CLOSE" and acts[("ang", "XUSDT_SHORT")]["qty"] == 5.0
+    assert acts[("fin", "YUSDT_LONG")]["act"] == "OPEN" and acts[("fin", "YUSDT_LONG")]["notional"] == V.START_POSITION_SIZE * 2
+    assert (t.out / "ALERTS.jsonl").read_text().count("BACKSTOP_FAILURE_MAC_MISSED_ORDER") == 2
+
+
+def test_backstop_skips_when_board_moved_on_or_mac_caught_up(tmp_path):
+    t, sent = _bare_trader(tmp_path, {"ang": {}})
+    t.missed_rows = {"ang": [{"acct": "ang", "ss": "XUSDT_SHORT", "want": "FLAT", "bar": BAR}]}
+    assert t.backstop(0, False, {}, {"XUSDT_SHORT": st(False)}, ALLOW) == 0 and not sent
+
+
+def test_paper_logs_plan_for_mac_accounts_once(tmp_path):
+    t, sent = _bare_trader(tmp_path, {"ang": {"XUSDT_SHORT": {"qty": 5.0, "price": 1.0}}})
+    states = {"XUSDT_SHORT": st(False)}
+    t.paper(1000.0, ["ang"], {"ang": {"XUSDT_SHORT"}}, states, BAR, ALLOW)
+    t.paper(1000.0 + V.REPLAN_S + 1, ["ang"], {"ang": {"XUSDT_SHORT"}}, states, BAR, ALLOW)
+    rows = [l for p in t.out.glob("paper_crypto_*.jsonl") for l in p.read_text().splitlines()]
+    assert len(rows) == 1 and '"CLOSE"' in rows[0] and not sent
