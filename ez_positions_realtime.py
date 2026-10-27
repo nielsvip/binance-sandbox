@@ -156,6 +156,25 @@ class RealtimePositionUpdater:
                         logger.warning(f"[FETCH_LOOP][{self.account_key}] ⏸️ standby (ez_positions_service heartbeat fresh) — no fetch, no writes, staying warm")
                     await asyncio.sleep(6.0)
                     continue
+                _ban_rem = 0.0
+                try:
+                    _ban_rem = float(ez_positions_service._ban_remaining_seconds())
+                except Exception:
+                    _ban_rem = 0.0
+                if _ban_rem > 0:
+                    # USER 2026-10-27: the service's fetch_positions has honoured the -1003 tracker since
+                    # 2026-09-28, but THIS loop never did — it called futures_position_information every 6 s
+                    # per account straight through a ban. With 5 accounts that is ~50 requests/min pumped into
+                    # an already-banned bucket, and a weighted request while banned is what RENEWS the ban, so
+                    # the 418 could never drain. Binance's own message says it: "Please use the websocket for
+                    # live updates to avoid bans." The WebSocket is unaffected by an IP ban on REST and keeps
+                    # feeding ACCOUNT_UPDATE, and the REST reconcile resumes by itself the moment the ban
+                    # expires — so skipping here loses nothing and is the only way out.
+                    self._ban_skips = getattr(self, "_ban_skips", 0) + 1
+                    if self._ban_skips % 25 == 1:
+                        logger.warning(f"[FETCH_LOOP][{self.account_key}] ⏸️ IP banned {_ban_rem:.0f}s — NO REST fetch (WS keeps feeding; polling a banned bucket renews the ban)")
+                    await asyncio.sleep(min(30.0, max(2.0, _ban_rem)))
+                    continue
                 try:
                     client_obj = getattr(account, "client", None)
                     if not client_obj:
@@ -231,6 +250,13 @@ class RealtimePositionUpdater:
                 except asyncio.TimeoutError:
                     logger.error(f"[FETCH_LOOP][{self.account_key}] ❌ API TIMEOUT after 30s")
                 except Exception as e:
+                    # USER 2026-10-27: this loop logged a 418 / -1003 and carried on polling every 6 s, because
+                    # it never fed the ban tracker that the gate above reads — so the ban was renewed by the
+                    # very loop that was supposed to be idle, forever. Record it here and the backoff engages.
+                    try:
+                        ez_positions_service._record_ip_ban_from_exc(e)
+                    except Exception:
+                        pass
                     logger.error(f"[FETCH_LOOP][{self.account_key}] ❌ Fetch error: {e}", exc_info=True)
             except Exception as e:
                 logger.error(f"[FETCH_LOOP][{self.account_key}] ❌ Loop error: {e}", exc_info=True)

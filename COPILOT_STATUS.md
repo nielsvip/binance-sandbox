@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-27 03:26:57 UTC
+# Copilot Status — 2026-10-27 03:32:02 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T03:19:50
-- **STALE_INDICATORS** [tradier]  — 2026-10-27T03:21:52
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T03:21:52
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T03:21:52
-- **STALE_INDICATORS** [tradier]  — 2026-10-27T03:23:53
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T03:23:53
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T03:23:53
-- **STALE_INDICATORS** [tradier]  — 2026-10-27T03:25:55
 - **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T03:25:55
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T03:25:55
+- **STALE_INDICATORS** [tradier]  — 2026-10-27T03:27:57
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T03:27:57
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T03:27:57
+- **STALE_INDICATORS** [tradier]  — 2026-10-27T03:29:59
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T03:29:59
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T03:29:59
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T03:32:01
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T03:32:01
 
 ## Missed Trades (trader comparison)
 
@@ -29,11 +29,11 @@ _None_
 
 **Held:** 5 | **Watching for reentry:** 17 | **Reentered:** 0
 
-- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +-0.1%
-- HELD: **QNTUSDT** LONG (crypto) peak +8.7%, now +-7.6%
-- HELD: **MINAUSDT** SHORT (crypto) peak +4.2%, now +3.0%
-- HELD: **UNIUSDC** LONG (crypto) peak +4.1%, now +-1.8%
-- HELD: **ETHUSDC** SHORT (crypto) peak +3.7%, now +-0.1%
+- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +-0.0%
+- HELD: **QNTUSDT** LONG (crypto) peak +8.7%, now +-7.0%
+- HELD: **MINAUSDT** SHORT (crypto) peak +4.2%, now +2.8%
+- HELD: **UNIUSDC** LONG (crypto) peak +4.1%, now +-1.6%
+- HELD: **ETHUSDC** SHORT (crypto) peak +3.7%, now +-0.3%
 
 - WATCHING: **KMNOUSDT** LONG (crypto) peaked +11.7%, exited 0m ago
 - WATCHING: **MASKUSDT** SHORT (crypto) peaked +10.0%, exited 0m ago
@@ -55,4 +55,4 @@ _None_
 - [LOW] tradier_rankings.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] tradier_positions.py running but log stale (14min)
+- [MEDIUM] tradier_positions.py running but log stale (19min)
