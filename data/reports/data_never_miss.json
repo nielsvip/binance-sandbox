@@ -1,20 +1,14 @@
 {
- "generated_utc": "2026-10-27T01:41:36Z",
- "secs": 88.3,
+ "generated_utc": "2026-10-27T01:44:36Z",
+ "secs": 33.3,
  "universe": {
   "crypto": 201,
   "stocks": 223
  },
  "unreachable": {
-  "s1": "JSONDecodeError: Expecting value: line 1 column 1 (char 0) Connection timed out during banner exchange\nConnection to 127.0.0.1 port 2201 timed out\n"
+  "s1": "JSONDecodeError: Expecting value: line 1 column 1 (char 0) ssh: connect to host 127.0.0.1 port 2201: Connection refused\n"
  },
- "healed": {
-  "mac:/Users/niels/Documents/binance": {
-   "files": 3,
-   "rows": 3,
-   "skipped": {}
-  }
- },
+ "healed": {},
  "kline_breaches": [
   {
    "host": "mac",
@@ -1674,50 +1668,50 @@
   {
    "host": "mac",
    "file": "crypto prices",
-   "age_s": -4.9,
+   "age_s": -1.5,
    "max_s": 60,
    "ok": true,
    "files": {
-    "price_cache_1.json": -4.9,
-    "price_cache_2.json": -4.1,
-    "price_cache_3.json": -4.9
+    "price_cache_1.json": -1.5,
+    "price_cache_2.json": 23.0,
+    "price_cache_3.json": -1.5
    }
   },
   {
    "host": "mac",
    "file": "crypto snapshot (market_data_*)",
-   "age_s": 13.0,
+   "age_s": 0.1,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/market_data_NEWEST": 13.0
+    "data/market_data_NEWEST": 0.1
    }
   },
   {
    "host": "mac",
    "file": "crypto latest_market_data",
-   "age_s": 13.0,
+   "age_s": 0.1,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/latest_market_data.json": 13.0
+    "data/latest_market_data.json": 0.1
    }
   },
   {
    "host": "gw",
    "file": "crypto market_data",
-   "age_s": 299.2,
+   "age_s": 532.6,
    "max_s": 300,
-   "ok": true,
+   "ok": false,
    "files": {
-    "data/latest_market_data.json": 299.2
+    "data/latest_market_data.json": 532.6
    }
   },
   {
    "host": "mac",
    "file": "disk free /Users/niels/Documents/binance",
    "age_s": null,
-   "free_gb": 21.9,
+   "free_gb": 22.1,
    "ok": true
   },
   {

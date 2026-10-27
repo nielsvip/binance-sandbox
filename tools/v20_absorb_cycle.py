@@ -228,7 +228,33 @@ def absorb(hosts: list, orchestrator: str, full: bool = False) -> dict:
 
 
 # --------------------------------------------------------------------------- compress
-def compressible(host: str, run: str, state: str, entry: dict, cutoff: datetime, absorbed_through: float = 0.0) -> tuple:
+ZST_PROBE = (
+    "test -f tools/zreader.py "
+    "&& grep -q 'zreader.expand_globs' tools/v18_brain.py "
+    "&& grep -q 'zreader.open_binary' tools/v18_brain.py "
+    "&& grep -q 'zreader.expand_globs' tools/v15_brain.py "
+    "&& grep -q 'zreader.open_text' tools/v15_brain.py "
+    "&& command -v zstd >/dev/null "
+    "&& %s -c \"import sys; sys.path.insert(0, 'tools'); import zreader; print(zreader.plain_name('x.jsonl.zst'))\""
+)
+
+
+def zst_readable(host: str) -> bool:
+    """True only when THIS host's brains read .zst, so compressing a log cannot blind the next training run.
+
+    Measured 2026-10-27 on S2: extracting a plain delta log and the same log as .zst produced spill content with the
+    identical sha256 (c02ae2b7..., 2,126 events / 810 rows / 11,434 lines) and the same watermark key, at 45.8x on
+    that file. Until that holds on a host, the 21-day age margin below stays its only release -- a compressed log in
+    front of a reader that globs `*.jsonl` is a corpus silently dropped from training, which is the one thing worse
+    than a full disk.
+    """
+    result = sh(host, f"cd {SANDBOX} && " + (ZST_PROBE % PYTHON), timeout=120)
+    ok = result.returncode == 0 and "x.jsonl" in (result.stdout or "")
+    log("zst_readable", host=host, ok=ok, error=("" if ok else (result.stderr or result.stdout or "")[-200:].strip()))
+    return ok
+
+
+def compressible(host: str, run: str, state: str, entry: dict, cutoff: datetime, absorbed_through: float = 0.0, zst_ok: bool = False) -> tuple:
     """-> (delta_log_paths, progress_json_paths, skipped reasons). Conditions 1-3 of the docstring; 4 and 5 are
     enforced at compression time on the host itself."""
     if state != "FINISHED":
@@ -254,7 +280,7 @@ def compressible(host: str, run: str, state: str, entry: dict, cutoff: datetime,
             continue
         if newest.tzinfo is None:
             newest = newest.replace(tzinfo=timezone.utc)
-        if newest >= cutoff:
+        if newest >= cutoff and not zst_ok:
             skipped["inside_brain_window"] = skipped.get("inside_brain_window", 0) + 1
             continue
         logs.append(item["path"])
@@ -391,9 +417,10 @@ def main() -> int:
     log("rounds_protected", round_numbers=sorted(protected))
     for host, block in report.items():
         absorbed_through = progress_absorbed_through(host)
+        zst_ok = zst_readable(host) if {"compress", "report"} & set(phases) else False
         for run, entry in sorted(block.get("runs", {}).items()):
             state = "PROTECTED" if run_number(run) in protected else "FINISHED"
-            logs, jsons, skipped = compressible(host, run, state, entry, cutoff, absorbed_through)
+            logs, jsons, skipped = compressible(host, run, state, entry, cutoff, absorbed_through, zst_ok)
             mb = entry.get("bytes_total", 0) / 1048576
             log("run_state", host=host, run=run, state=state, total_mb=round(mb, 1),
                 delta_logs=len(entry.get("delta_logs", [])), progress_json=len(entry.get("progress_json", [])),
