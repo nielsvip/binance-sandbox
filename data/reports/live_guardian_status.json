@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-27T21:43:46Z",
+ "ts": "2026-10-27T21:49:15Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 198,
+   "fills_6h": 197,
    "open_positions": 19,
-   "unrealised_usd": 0.18,
+   "unrealised_usd": 0.14,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 246,
-   "open_positions": 23,
-   "unrealised_usd": -5.48,
+   "fills_6h": 244,
+   "open_positions": 24,
+   "unrealised_usd": -5.67,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 389,
-   "open_positions": 39,
-   "unrealised_usd": -3.31,
+   "fills_6h": 375,
+   "open_positions": 41,
+   "unrealised_usd": -1.97,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 64,
    "open_positions": 7,
-   "unrealised_usd": 0.5,
+   "unrealised_usd": 0.4,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -125,130 +125,130 @@
   "fin": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 280.0
+   "log_age_s": 609.0
   },
   "men": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 1659.0
+   "log_age_s": 1988.0
   },
   "ang": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 649.0
+   "log_age_s": 979.0
   },
   "inf": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 2308.0
+   "log_age_s": 2637.0
   },
   "flz": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 1674.0
+   "log_age_s": 2004.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 6194.0
+   "log_age_s": 6523.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 6269.0
+   "log_age_s": 6598.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-27T21:43:48Z",
+   "ts": "2026-10-27T21:49:17Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:GRAMUSDT_SHORT",
    "evidence": "REDUCE 15.6 @ 2026-10-27T18:56:27Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-27T21:43:48Z",
+   "ts": "2026-10-27T21:49:17Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:ZECUSDC_SHORT",
    "evidence": "REDUCE 0.001 @ 2026-10-27T18:56:27Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-27T21:43:48Z",
+   "ts": "2026-10-27T21:49:17Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:WLDUSDC_SHORT",
    "evidence": "REDUCE 35.4 @ 2026-10-27T18:56:28Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-27T21:43:48Z",
+   "ts": "2026-10-27T21:49:17Z",
    "severity": "CRITICAL",
    "kind": "PROCESS_DOWN",
    "key": "fin",
    "evidence": "no ez_manage.py --account fin process"
   },
   {
-   "ts": "2026-10-27T21:43:48Z",
+   "ts": "2026-10-27T21:49:17Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 280s"
+   "evidence": "ez_manage_fin.log not written for 609s"
   },
   {
-   "ts": "2026-10-27T21:43:48Z",
+   "ts": "2026-10-27T21:49:17Z",
    "severity": "CRITICAL",
    "kind": "PROCESS_DOWN",
    "key": "men",
    "evidence": "no ez_manage.py --account men process"
   },
   {
-   "ts": "2026-10-27T21:43:48Z",
+   "ts": "2026-10-27T21:49:17Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "men",
-   "evidence": "ez_manage_men.log not written for 1659s"
+   "evidence": "ez_manage_men.log not written for 1988s"
   },
   {
-   "ts": "2026-10-27T21:43:48Z",
+   "ts": "2026-10-27T21:49:17Z",
    "severity": "CRITICAL",
    "kind": "PROCESS_DOWN",
    "key": "ang",
    "evidence": "no ez_manage.py --account ang process"
   },
   {
-   "ts": "2026-10-27T21:43:48Z",
+   "ts": "2026-10-27T21:49:17Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 649s"
+   "evidence": "ez_manage_ang.log not written for 979s"
   },
   {
-   "ts": "2026-10-27T21:43:48Z",
+   "ts": "2026-10-27T21:49:17Z",
    "severity": "CRITICAL",
    "kind": "PROCESS_DOWN",
    "key": "inf",
    "evidence": "no ez_manage.py --account inf process"
   },
   {
-   "ts": "2026-10-27T21:43:48Z",
+   "ts": "2026-10-27T21:49:17Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "inf",
-   "evidence": "ez_manage_inf.log not written for 2308s"
+   "evidence": "ez_manage_inf.log not written for 2637s"
   },
   {
-   "ts": "2026-10-27T21:43:48Z",
+   "ts": "2026-10-27T21:49:17Z",
    "severity": "CRITICAL",
    "kind": "PROCESS_DOWN",
    "key": "flz",
    "evidence": "no ez_manage.py --account flz process"
   },
   {
-   "ts": "2026-10-27T21:43:48Z",
+   "ts": "2026-10-27T21:49:17Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 1674s"
+   "evidence": "ez_manage_flz.log not written for 2004s"
   }
  ],
  "alert_counts": {
@@ -267,13 +267,6 @@
    "ts": 1791314663.497563,
    "why": "ACCOUNT_EQUITY_DROP unrealised PnL of the same open positions fell $30.53 since 2026-10-06T19:19:51Z (now $+405.99)",
    "undo": "rm /Users/niels/Documents/binance/data/HALT_TRADING_trb",
-   "dry_run": false
-  },
-  "key:flz:ZECUSDC_LONG": {
-   "ts": 1793130390.571116,
-   "until": 1793137590.571118,
-   "why": "SIZE_ANOMALY order $2765.00 > 1.5x MAX_ORDER_VALUE",
-   "undo": "redis-cli -p 6379 DEL open_blocked:flz:ZECUSDC_LONG",
    "dry_run": false
   },
   "acct:ang": {
@@ -342,5 +335,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.6
+ "sweep_s": 1.69
 }
