@@ -50,6 +50,8 @@ LOG = LOGDIR / "live_failover_agent.log"
 REMOTE_LIVE = os.environ.get("LF_REMOTE_LIVE", "/home/niels/binance")
 REMOTE_LF = f"{REMOTE_LIVE}/data/live_failover"
 HOSTS = tuple(os.environ.get("LF_HOSTS", "s1-pub s1-int").split())
+S5_HOSTS = tuple(os.environ.get("LF_S5_HOSTS", "s5-pub s5").split())  # USER 2026-10-27: S5 vector_direct stocks trader reads this heartbeat
+VD_STATUS_MAX_AGE_S = float(os.environ.get("LF_VD_STATUS_MAX_AGE_S", "180"))
 SSH_OPTS = ["-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "StrictHostKeyChecking=accept-new"]
 TICK_S = float(os.environ.get("LF_TICK_S", "15"))
 STATE_PUSH_S = float(os.environ.get("LF_STATE_PUSH_S", "30"))
@@ -320,6 +322,69 @@ class Agent:
         self.pull = C.read_json(LF / "pull_state.json", {}) or {}
         self.health = C.TradingHealth(LOGDIR)
         self._npz_bar = {}
+        self.vd_status = {}
+        self._s5_busy = False
+
+    def s5_exchange(self, heartbeat):
+        """USER 2026-10-27: S5 trades stocks directly (tools/vector_direct_trader.py) when the Mac misses a beat, so S5 needs
+        the same heartbeat S1 gets. Single-flight background push; also reads S5's stocks status for the fence below."""
+        if self._s5_busy or os.environ.get("LF_NO_SSH") == "1":
+            return
+        self._s5_busy = True
+        payload = json.dumps(heartbeat, default=str)
+        command = (f"D={REMOTE_LF}; mkdir -p $D && cat > $D/.mac_hb.tmp && mv -f $D/.mac_hb.tmp $D/mac_data_heartbeat.json;"
+                   f" echo ===VD; cat {REMOTE_LIVE}/data/vector_direct/status_stocks.json 2>/dev/null; true")
+
+        def run():
+            try:
+                for host in S5_HOSTS:
+                    try:
+                        result = ssh(host, command, stdin=payload, timeout=20)
+                    except subprocess.TimeoutExpired:
+                        continue
+                    if result.returncode == 0 and "===VD" in result.stdout:
+                        txt = result.stdout.partition("===VD")[2]
+                        try:
+                            vd = json.loads(txt) if txt.strip() else None
+                            if isinstance(vd, dict):
+                                self.vd_status["stocks"] = (C.now_s(), vd)
+                        except ValueError:
+                            pass
+                        return
+            finally:
+                self._s5_busy = False
+
+        threading.Thread(target=run, daemon=True).start()
+
+    def vd_fence(self, now):
+        """While S1/S5 vector_direct is ARMED and owns an account, the Mac engine for that account may not OPEN/AUGMENT:
+        data/HALT_TRADING_<acct> (honoured by ez_manage and tradier_manage) is created with a `.vector_direct` marker, and
+        only files carrying that marker are ever removed here. Exits stay with both — S1 re-reads the broker before every
+        order. Ownership must be confirmed by a status younger than VD_STATUS_MAX_AGE_S; unknown = no fence (the Mac trades)."""
+        if os.environ.get("LF_VD_HALT_FENCE", "1") != "1":
+            return
+        owned = set()
+        for venue, accts in (("crypto", C.CRYPTO_ACCOUNTS), ("stocks", C.STOCK_ACCOUNTS)):
+            seen, st = self.vd_status.get(venue, (0.0, None))
+            if not isinstance(st, dict) or not st.get("armed") or now - float(st.get("epoch") or 0) > VD_STATUS_MAX_AGE_S or now - seen > VD_STATUS_MAX_AGE_S:
+                continue
+            owned |= {a for a in st.get("active_accounts") or [] if a in accts}
+        for acct in tuple(C.CRYPTO_ACCOUNTS) + tuple(C.STOCK_ACCOUNTS):
+            halt = BASE / "data" / f"HALT_TRADING_{acct}"
+            marker = halt.with_name(halt.name + ".vector_direct")
+            try:
+                if acct in owned and not halt.exists():
+                    halt.write_text(f"vector_direct owns {acct} since {C.iso(now)} (S1/S5 trade the forward state; Mac opens/augments stand down)\n")
+                    marker.write_text(C.iso(now) + "\n")
+                    log(f"VD_FENCE {acct}: S1/S5 vector_direct owns the account -> HALT_TRADING_{acct} (Mac opens/augments stand down)")
+                    alert("VD_FENCE_ON", account=acct)
+                elif acct not in owned and marker.exists():
+                    halt.unlink(missing_ok=True)
+                    marker.unlink(missing_ok=True)
+                    log(f"VD_FENCE {acct}: released -> HALT_TRADING_{acct} removed (Mac trades it again)")
+                    alert("VD_FENCE_OFF", account=acct)
+            except OSError as exc:
+                log(f"VD_FENCE {acct} error: {exc!r}")
 
     def delivered_set(self):
         live = set()
@@ -347,7 +412,8 @@ class Agent:
             return C.read_json(remote / "lease.json"), C.read_json(remote / "state.json"), "fixture"
         payload = json.dumps(heartbeat, default=str)
         command = (f"D={REMOTE_LF}; mkdir -p $D && cat > $D/.mac_hb.tmp && mv -f $D/.mac_hb.tmp $D/mac_data_heartbeat.json"
-                   f" && echo \"$SSH_CONNECTION\" > $D/mac_peer.txt; echo ===LEASE; cat $D/lease.json 2>/dev/null; echo; echo ===STATE; cat $D/state.json 2>/dev/null; true")
+                   f" && echo \"$SSH_CONNECTION\" > $D/mac_peer.txt; echo ===LEASE; cat $D/lease.json 2>/dev/null; echo; echo ===STATE; cat $D/state.json 2>/dev/null;"
+                   f" echo; echo ===VD; cat {REMOTE_LIVE}/data/vector_direct/status_crypto.json 2>/dev/null; true")
         for attempt in range(len(HOSTS)):
             host = HOSTS[(self.host_idx + attempt) % len(HOSTS)]
             try:
@@ -357,6 +423,13 @@ class Agent:
             if result.returncode == 0 and "===LEASE" in result.stdout:
                 self.host_idx = (self.host_idx + attempt) % len(HOSTS)
                 lease_txt, _, state_txt = result.stdout.partition("===LEASE")[2].partition("===STATE")
+                state_txt, _, vd_txt = state_txt.partition("===VD")
+                try:
+                    vd = json.loads(vd_txt) if vd_txt.strip() else None
+                    if isinstance(vd, dict):
+                        self.vd_status["crypto"] = (C.now_s(), vd)
+                except ValueError:
+                    pass
                 try:
                     lease = json.loads(lease_txt) if lease_txt.strip() else None
                 except ValueError:
@@ -750,7 +823,7 @@ class Agent:
         if venue == "stocks" and snap:
             target = BASE / "data" / "tradier" / "tradier_indicators_latest.json"
             staged = stage / "snapshot" / snap["name"]
-            age = C.file_age(target, now)
+            age = C.snapshot_age(target, now)  # USER 2026-10-27: value age, not file age (a wedged writer keeps the file "fresh")
             if staged.exists() and (age is None or age > C.SNAPSHOT_STALE_S) and float(snap.get("written_epoch", 0)) > (now - age if age is not None else 0):
                 self._replace(staged, target)
                 self.delivered[str(target)] = target.stat().st_mtime
@@ -936,10 +1009,11 @@ class Agent:
                 _sec = health.get(_v) if isinstance(health, dict) else None
                 if not isinstance(_sec, dict) or _v in (fenced or ()) or _sec.get("applicable") is False:
                     continue
-                try:
-                    _age = now - (BASE / "data" / _rel).stat().st_mtime
-                except OSError:
-                    _age = None
+                # USER 2026-10-27 "check on each symbol's own timestamp is the fix": the age is the OLDER of the file write
+                # and the median per-symbol value timestamp — a wedged writer rewriting 3-7 h old values is stale.
+                _age = C.snapshot_age(BASE / "data" / _rel, now)
+                _va = C.snapshot_value_age(BASE / "data" / _rel, now)
+                _sec["live_indicator_value_age_s"] = None if _va is None else round(_va["median_age_s"], 1)
                 _sec["live_indicator_age_s"] = None if _age is None else round(_age, 1)
                 if _age is None or _age > IND_UNPRODUCIBLE_S:
                     _sec["kinds"] = list(_sec.get("kinds") or []) + ["indicators_unproducible"]
@@ -1091,6 +1165,11 @@ class Agent:
         self.note_health(health)
         C.atomic_write_json(LF / "mac_data_heartbeat.json", heartbeat)
         lease, state, host = self.exchange(heartbeat)
+        try:
+            self.s5_exchange(heartbeat)
+            self.vd_fence(now)
+        except Exception as exc:
+            log(f"vector_direct fence/push error: {exc!r}")
         self.alarm_if_gagged(lease, state, now)
         if host is None:
             log(f"S1 unreachable via {HOSTS} — keeping local lease {local.get('holder')} gen={local.get('gen')}")

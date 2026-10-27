@@ -293,6 +293,55 @@ def file_age(path, now):
         return None
 
 
+_VALUE_AGE_CACHE = {}
+VALUE_TS_KEYS = ("1m_updated_at", "_tick_ts", "timestamp", "ts")  # update time first; `timestamp` is the 1m bar OPEN on crypto
+
+
+def snapshot_value_age(path, now):
+    """USER 2026-10-27 "check on each symbol's own timestamp is the fix": age of the VALUES inside an indicator snapshot
+    ({symbol: {"timestamp": ...}}), not of the file write. A wedged tradier_indicators kept rewriting the file with values
+    2.9-6.8 h old on 10-27 and every file-age probe called it fresh, so Tradier placed 0 orders for 5 h. Returns the MEDIAN
+    per-symbol value age (s) with the count behind it, or None when no symbol carries a timestamp. Parsed once per file
+    version (mtime+size), aged against `now` on every call."""
+    path = Path(path)
+    try:
+        st = path.stat()
+    except OSError:
+        return None
+    sig = (st.st_mtime_ns, st.st_size)
+    hit = _VALUE_AGE_CACHE.get(str(path))
+    if not hit or hit[0] != sig:
+        stamps = []
+        try:
+            doc = json.loads(path.read_text())
+        except Exception:
+            doc = None
+        for row in (doc.values() if isinstance(doc, dict) else ()):
+            if not isinstance(row, dict):
+                continue
+            for key in VALUE_TS_KEYS:
+                raw = row.get(key)
+                ts = float(raw) if isinstance(raw, (int, float)) and not isinstance(raw, bool) else parse_ts(raw) if raw is not None else None
+                if ts:
+                    stamps.append(ts)
+                    break
+        stamps.sort()
+        hit = (sig, stamps[len(stamps) // 2] if stamps else None, len(stamps), stamps[0] if stamps else None)
+        _VALUE_AGE_CACHE[str(path)] = hit
+    if hit[1] is None:
+        return None
+    return {"median_age_s": now - hit[1], "oldest_age_s": now - hit[3], "n": hit[2]}
+
+
+def snapshot_age(path, now):
+    """max(file write age, median per-symbol value age): a file rewritten with old values is stale."""
+    fa = file_age(path, now)
+    va = snapshot_value_age(path, now)
+    if va is None:
+        return fa
+    return va["median_age_s"] if fa is None else max(fa, va["median_age_s"])
+
+
 def measure_crypto(base, now=None, ez_klines_log=None, delivered=None):
     now = now_s() if now is None else now
     base = Path(base)
@@ -301,6 +350,9 @@ def measure_crypto(base, now=None, ez_klines_log=None, delivered=None):
     k15 = kline_lag(base / "klines_cache", symbols, "15m", now, exclude=exclude)
     k3 = kline_lag(base / "klines_cache", symbols, "3m", now, exclude=exclude)
     snap_age = newest_own_snapshot_age(base / "data", now)
+    _va = snapshot_value_age(base / "data" / "latest_market_data.json", now)
+    if _va is not None and snap_age is not None:
+        snap_age = max(snap_age, _va["median_age_s"])
     bans = log_hits(ez_klines_log, BAN_RX, now) if ez_klines_log else 0
     reasons = []
     trading_reasons = []
@@ -334,7 +386,7 @@ def measure_stocks(base, now=None, tradier_klines_log=None, delivered=None):
     k5 = kline_lag(kdir, symbols, "5m", now, session, exclude)
     k15 = kline_lag(kdir, symbols, "15m", now, session, exclude)
     ind_path = base / "data" / "tradier" / "tradier_indicators_latest.json"
-    ind_age = None if (delivered and str(ind_path) in delivered) else file_age(ind_path, now)
+    ind_age = None if (delivered and str(ind_path) in delivered) else snapshot_age(ind_path, now)
     errors = log_hits(tradier_klines_log, TRADIER_ERR_RX, now) if tradier_klines_log else 0
     reasons = []
     if k5["n"] and k5["median_behind_s"] > KLINE_STALE_S:

@@ -13,6 +13,13 @@ STACK=/home/niels/binance/ez_s1_stack
 LOG=/home/niels/logs/s1_crypto_producers_ensure.log
 [ -f "$STACK/DISABLED" ] && exit 0
 systemctl is-active --quiet "$UNIT" && exit 0
+# 2026-10-27 USER (supersedes the 10-22 always-on order above): "s1 should NEVER have to run any live script as long as
+# macbook is doing its job". This cron started the stack unconditionally every minute (log: 18:52:01, 18:53:01, 19:20,
+# 19:43, 19:47:01 right after the reboot, 20:28:01 after the next one) while the Mac heartbeat said crypto fresh. It may
+# now only RE-start the unit while tools/live_failover_s1.py has crypto in failover (mode ACTIVE) or S1 holds the lease.
+STATE=/home/niels/binance/data/live_failover/state.json
+want=$(python3 -c "import json;s=json.load(open('$STATE'));print(int((s.get('venues') or {}).get('crypto',{}).get('mode')=='ACTIVE' or (s.get('lease') or {}).get('holder')=='s1'))" 2>/dev/null || echo 0)
+[ "$want" = "1" ] || exit 0
 rc=$(sudo -n systemctl start "$UNIT" >/dev/null 2>&1; echo $?)
 echo "[$(date -u +%FT%TZ)] $UNIT was NOT active -> systemctl start rc=$rc" >> "$LOG"
 exit 0

@@ -33,7 +33,13 @@ sys.path.insert(0, str(ROOT))
 
 import numpy as np  # noqa: E402
 
-OPTIONS = (0, 1, 2, 4, 8)
+# NEVER hardcode the option set here: that would be a second source of truth for
+# a number the sheet owns, which is precisely what BACKTEST_BIBLE's "THE SHEET IS
+# THE AUTHORITY" forbids. (Caught 2026-10-27: this file DID hardcode (0,1,2,4,8)
+# and silently swept the old set after the operator changed it to 2/4/8/12.)
+from vec_decisions import min_hold_gate as _mhg_opts  # noqa: E402
+
+OPTIONS = tuple(_mhg_opts.SWEEP_OPTIONS)
 CRYPTO_SUFFIX = ("USDT", "USDC", "USD1", "BUSD", "FDUSD")
 
 

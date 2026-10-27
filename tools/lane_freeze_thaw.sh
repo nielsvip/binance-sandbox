@@ -3,6 +3,15 @@
 # passes burn CPU for 100% EVAL_TIMEOUTs. Freeze them (SIGSTOP, procs persist so
 # supervisors never respawn dupes); auto-thaw (SIGCONT) once >=10 H2 symbols.
 cd /Users/niels/Documents/binance || exit 0
+# 2026-10-27 Mac offload: the 06:00Z 2026-10-23 fallback below has passed, so the branch is ALWAYS taken and the H2
+# pickle scan (every step_cache/*.pkl unpickled each 10 min) only decided the log text. Under Mac load 200-350 that scan
+# ran for 2+ h and piled up 6 concurrent copies. Past the fallback, skip the scan; thaw behaviour is unchanged.
+if [ "$(date -u +%s)" -ge "$(date -u -j -f "%Y-%m-%d %H:%M:%S" "2026-10-23 06:00:00" +%s 2>/dev/null || echo 0)" ] && [ "$(date -u -j -f "%Y-%m-%d %H:%M:%S" "2026-10-23 06:00:00" +%s 2>/dev/null || echo 0)" -gt 0 ]; then
+  for p in $(pgrep -f "pure_board_trader.py --loop"); do kill -CONT $p 2>/dev/null; done
+  for p in $(pgrep -f "spawn_main"); do kill -CONT $p 2>/dev/null; done
+  echo "$(date -u +%FT%TZ) THAW H2=skipped(fallback-passed)"
+  exit 0
+fi
 H2=$(/Users/niels/.local/bin/python3 -c "
 import sys,pickle,glob
 sys.path.insert(0,'.')
