@@ -5178,6 +5178,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             print(f"[V18-LEDGER] {new_symside} {len(_plan)} ledger evals ({sum(len(k) for _, _, k in _plan)} records, capped {_capped}) -> {_out} in {_t.time() - _t0w:.2f}s", flush=True)
         except Exception as _we:
             print(f"[V18-LEDGER-WARN] {new_symside} write-back failed: {_we} — board unaffected", flush=True)
+    if not progress.get("done"):
+        progress["initial_baseline_gain"] = float(baseline_gain)
+        progress["initial_overrides"] = dict(cumulative_overrides)
     initial_baseline = float(progress.setdefault("initial_baseline_gain", float(baseline_gain)))
     # HUSTLE_DELTA (F) = the row measured on its own against the ORIGINAL set (independent eval), never the chain position
     initial_overrides = dict(progress.setdefault("initial_overrides", dict(cumulative_overrides)))
