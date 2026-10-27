@@ -76,6 +76,23 @@ def _is_realtime_running(account_key: str) -> bool:
         return True
 
 
+def _standby_env() -> dict:
+    """Takeover threshold for the warm standby. position_writer_guard.heartbeat_age() already returns inf the
+    moment the service pid is gone, so a real crash still fails over immediately and this value governs only the
+    alive-but-not-beating case. The service heartbeat is written from INSIDE the REST pass, so at the 60 s default
+    any pass slower than 60 s looked like a dead process: measured 2026-10-27 over 35 h, 111 false takeovers
+    (inf 63, flz 24, fin 11, men 7, ang 6) — men flapped TAKEOVER/RELEASE 4x in 11 min, each RELEASE reporting a
+    0-8 s heartbeat, proving the service was alive the whole time. Every false takeover runs a SECOND
+    futures_position_information poller against the same IP beside the live service, which is what re-earns the
+    -1003 / 418 bans; while banned the writer cannot verify against the exchange, so the JSON and Redis snapshots
+    drift from the broker. That drift IS the ghost rows and the 0-amount closes. A genuinely wedged service still
+    fails over: it self-exits after POSITIONS_HANG_EXIT_AFTER consecutive PAU hangs, and a dead pid is instant.
+    """
+    env = dict(os.environ)
+    env.setdefault("EZ_POSITION_WRITER_STALE_S", "180")
+    return env
+
+
 def _start_realtime(account_key: str) -> bool:
     script = BASE_PATH / "ez_positions_realtime.py"
     if not script.exists():
@@ -84,7 +101,7 @@ def _start_realtime(account_key: str) -> bool:
     log_path = logs_dir / f"ez_positions_realtime_{account_key}.log"
     try:
         log_file = open(log_path, 'a')
-        subprocess.Popen([PYTHON, "-u", str(script), account_key], stdout=log_file, stderr=subprocess.STDOUT, start_new_session=True)
+        subprocess.Popen([PYTHON, "-u", str(script), account_key], stdout=log_file, stderr=subprocess.STDOUT, start_new_session=True, env=_standby_env())
         logger.info(f"[{account_key}] Started ez_positions_realtime.py {account_key}")
         return True
     except Exception as e:

@@ -10,6 +10,7 @@
 SB=$HOME/binance-sandbox
 SIDES=${1:?sides}; T=${2:?template}; W=${3:-6}; MAX=${4:-6}
 [[ -e /tmp/v15_preopen_7d.pause ]] && exit 0
+[[ -e /tmp/v15_stock_canary_hold ]] && exit 0
 rsync -az --timeout=15 niels@10.0.0.3:binance-sandbox/data/v15_best_first.json /tmp/v15_best_first.json >/dev/null 2>&1 || exit 2
 PDIR=$(head -n 1 "$HOME/v15_current_progress_dir.txt" 2>/dev/null)
 [[ "$PDIR" == /home/niels/v15_run*/progress ]] || { echo "INVALID ROUND POINTER: $PDIR" >&2; exit 2; }

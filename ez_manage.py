@@ -15824,8 +15824,6 @@ class MultiAccountTradeManager:
         asyncio.create_task(self._check_and_reload_stale_positions())
 
     async def _check_and_reload_stale_positions(self):
-        if self.positions_service:
-            return
         try:
             now = datetime.now(timezone.utc)
             stale_positions = []
@@ -16772,10 +16770,10 @@ class MultiAccountTradeManager:
     async def _load_positions_from_redis(
         self, account_key: Optional[str] = None
     ) -> Dict[str, Position]:
-        """USER 2026-10-27: RESTORED. The `positions:{acct}` snapshot published by the single writer.
-        Was KILLED ("never read positions from Redis after startup. Dict is sole source."), and that
-        doctrine is what forced ez_manage to run its OWN Binance fetch loop — a second source of truth
-        AND a second poller on the same IP, which is what earns the -1003 / 418 bans."""
+        """USER LAW: the `positions:{acct}` snapshot published by the single writer is the source of truth.
+        ez_positions is the ONLY process that may call Binance; ez_manage reads what it publishes. A second
+        fetch loop here is a second source of truth AND a second poller on the same IP, which is what earns
+        the -1003 / 418 bans."""
         if not account_key:
             return {}
         payload = await self._redis_get_dict(f"positions:{account_key}")
@@ -25907,9 +25905,8 @@ class MultiAccountTradeManager:
     async def refresh_from_files_once(
         self, account_keys: Optional[Iterable[str]] = None
     ):
-        """USER 2026-10-27: RESTORED. Apply {acct}/{long,short}_positions.json — the writer's output — into
-        memory. Was KILLED ("Disk/Redis are write-only backups. Never read back."), the exact inverse of
-        the standing law that Redis and the positions JSON are the source of truth everywhere.
+        """Apply {acct}/{long,short}_positions.json — the writer's output — into memory. USER LAW: Redis and
+        the positions JSON are the source of truth everywhere; they are read back, always.
         Merge is newest-wins via _apply_positions_payload; it never deletes a row (positions are only ever
         zeroed) and never rewrites identity fields."""
         keys = list(account_keys) if account_keys else list(self.accounts.keys())
@@ -25935,8 +25932,7 @@ class MultiAccountTradeManager:
         budget, unreachable, or empty -> the JSON written by the same single writer. No Binance call on
         either path: ez_manage does not own the broker connection.
 
-        Was KILLED ("never read positions from Redis. API/WS is sole source."), which is what made
-        ez_manage start its own position fetch loop per account."""
+        ez_positions owns the broker connection; ez_manage never polls Binance for positions."""
         for account_key in list(account_keys or []):
             if account_key not in self._allowed_accounts:
                 continue
@@ -26193,9 +26189,6 @@ class MultiAccountTradeManager:
                 )
 
     async def _sync_positions_account(self, account_key: str) -> bool:
-        if self.positions_service:
-            logger.info("[_load_positions_loop] Disabled (Shared Memory Active)")
-            return False
         long_path = self._ensure_account_file(account_key, "long_positions.json")
         short_path = self._ensure_account_file(account_key, "short_positions.json")
         file_payload, file_ts = await self._load_position_files_payload(
@@ -26219,8 +26212,6 @@ class MultiAccountTradeManager:
         return False
 
     async def _load_positions_for_account(self, account_key: str) -> None:
-        if self.positions_service:
-            return
         if account_key not in self._allowed_accounts:
             logger.warning(
                 f"[_load_positions_for_account] BLOCKED: Account '{account_key}' not in allowed accounts {self._allowed_accounts}"
@@ -26356,9 +26347,6 @@ class MultiAccountTradeManager:
             logger.error(f"[LOAD_POSITIONS] Unexpected error: {exc}")
 
     async def _load_positions_loop(self, interval: float = 30.0) -> None:
-        if self.positions_service:
-            logger.info("[_load_positions_loop] Disabled (Shared Memory Active)")
-            return
         await asyncio.sleep(5.0)
         while True:
             try:
