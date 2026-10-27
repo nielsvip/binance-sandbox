@@ -77,7 +77,8 @@ DEFAULTS = {
     "WIRE_REQUIRE_EXECUTE_NOW_ALL": True,  # EVERY order (exits too) must come from execute_now — no other path can reach the broker
     "WIRE_ENTRY_BANNED_ACCOUNTS": (),  # extra accounts with a hard entry ban (HARD_ENTRY_BANNED_ACCOUNTS always applies)
     "WIRE_FILE_REFLECTION_ENABLED": True,  # next order on a key only once {acct}/{long|short}_positions.json shows the broker qty (written after the fill)
-    "POSITIONS_FILE_SYNC_WAIT_S": 1.0,  # the positions service gets this long; beyond = BROKEN POSITIONS MANAGEMENT alarm + rewrite from broker  # after an UNCONFIRMED_BY_BROKER result, exposure-increasing orders on that symbol are refused this long (exits pass)
+    "POSITIONS_FILE_SYNC_WAIT_S": 1.0,  # the positions service gets this long; beyond = BROKEN POSITIONS MANAGEMENT alarm  # after an UNCONFIRMED_BY_BROKER result, exposure-increasing orders on that symbol are refused this long (exits pass)
+    "WRITER_TRUTH_MAX_AGE_S": 20.0,  # how old the single writer's published snapshot may be and still authorize an exposure-INCREASING order; the writer's REST cycle is 6 s, so this is >3 cycles. Exits are never gated on it.
 }
 
 
@@ -926,7 +927,7 @@ class BinanceDedupeGuard(_GuardBase):
         if not bool(_cfg(self.cfg, "WIRE_FILE_REFLECTION_ENABLED")) and (hedge or not banned):
             return Decision(True, "PHASE3_OK")
         try:
-            bp = self.broker_position(inner_client, symbol, ps)
+            bp = self.broker_position(inner_client, symbol, ps, allow_stale=(reduce_only or close_pos))
         except Exception as e:
             return Decision(False, "BROKER_POSITION_UNKNOWN", {"error": repr(e)[:300]})
         key_ps = ps
@@ -938,27 +939,51 @@ class BinanceDedupeGuard(_GuardBase):
                 return Decision(False, "ACCOUNT_ENTRY_BANNED", {"account": self.account, "side": side, "position_side": ps})
         return file_gate_decision(self, "binance", symbol, key_ps, bp, f"{symbol.upper()}|{ps}")
 
-    def broker_position(self, inner_client, symbol: str, position_side: str) -> Dict[str, Any]:
-        """FRESH broker read (positionRisk for the symbol). Raises on failure — callers fail closed. Reused for 0.3 s inside one submit."""
-        ck = (symbol.upper(), str(position_side or "").upper())
+    def broker_position(self, inner_client, symbol: str, position_side: str, allow_stale: bool = False) -> Dict[str, Any]:
+        """The single writer's published position for this key (no Binance call). Raises when the snapshot is
+        not provably fresh and the caller is exposure-increasing — callers fail closed. Reused for 0.3 s
+        inside one submit."""
+        ck = (symbol.upper(), str(position_side or "").upper(), bool(allow_stale))
         hit = self.__dict__.setdefault("_bp_cache", {}).get(ck)
         if hit and time.time() - hit[0] < 0.3:
             return dict(hit[1])
-        out = self._broker_position_uncached(inner_client, symbol, position_side)
+        out = self._broker_position_uncached(inner_client, symbol, position_side, allow_stale=allow_stale)
         self._bp_cache[ck] = (time.time(), dict(out))
         return out
 
-    def _broker_position_uncached(self, inner_client, symbol: str, position_side: str) -> Dict[str, Any]:
-        rows = inner_client.futures_position_information(symbol=symbol.upper())
-        if not isinstance(rows, list):
-            raise RuntimeError(f"positionRisk unparseable: {str(rows)[:200]}")
+    def _broker_position_uncached(self, inner_client, symbol: str, position_side: str, allow_stale: bool = False) -> Dict[str, Any]:
+        """USER LAW: ONLY ez_positions may call Binance; every trading script reads what that one writer
+        publishes. This used to be a FRESH per-order positionRisk call — one extra weighted request on every
+        single order across 5 accounts, on the same IP as the writer's own 6 s REST cycle, which is a direct
+        contributor to the -1003 / 418 bans. It was also fail-closed on the exception, so while banned it
+        answered BROKER_POSITION_UNKNOWN and refused orders outright.
+        Truth now comes from {acct}/{long,short}_positions.json — written by the single writer, the same
+        snapshot it publishes to Redis — and the guarantee that used to come from "I just asked the broker"
+        now comes from PROVEN FRESHNESS: the writer's heartbeat must be alive and its snapshot younger than
+        WRITER_TRUTH_MAX_AGE_S. Stale truth still fails closed for an exposure-increasing order; an exit is
+        never blocked on it (allow_stale), because a stranded exit is the worse failure."""
         ps = str(position_side or "").upper() or "BOTH"
-        for r in rows:
-            if str(r.get("symbol", "")).upper() != symbol.upper():
+        sides = ("LONG", "SHORT") if ps == "BOTH" else (ps,)
+        max_age = float(_cfg(self.cfg, "WRITER_TRUTH_MAX_AGE_S") or 20.0)
+        out = {"signed": 0.0, "amt": 0.0, "entry": 0.0, "mark": 0.0}
+        worst = None
+        for side in sides:
+            row, age, hb_age, path = _writer_truth_row("binance", self.account, symbol, side)
+            fresh = age <= max_age and hb_age <= _heartbeat_stale_after()
+            if worst is None or not fresh:
+                worst = (age, hb_age, path, fresh)
+            if not isinstance(row, dict):
                 continue
-            if str(r.get("positionSide", "BOTH")).upper() == ps:
-                return {"signed": _f(r.get("positionAmt")), "amt": abs(_f(r.get("positionAmt"))), "entry": _f(r.get("entryPrice")), "mark": _f(r.get("markPrice"))}
-        return {"signed": 0.0, "amt": 0.0, "entry": 0.0, "mark": 0.0}
+            amt = abs(_f(row.get("positionAmt")))
+            if amt <= 0 and out["amt"] > 0:
+                continue
+            out = {"signed": amt if side == "LONG" else -amt, "amt": amt,
+                   "entry": _f(row.get("entry_price")), "mark": _f(row.get("mark_price"))}
+            if amt > 0:
+                break
+        if worst is not None and not worst[3] and not allow_stale:
+            raise RuntimeError(f"single-writer snapshot stale: {worst[2]} data_age={worst[0]:.1f}s heartbeat_age={worst[1]:.1f}s (cap {max_age:.0f}s) — no exposure-increasing order on unproven positions")
+        return out
 
     def exposure_gate(self, inner_client, symbol: str, side: str, ps: str, qty: float, params: Dict[str, Any], origin: str = "") -> Decision:
         reduce_only = str(params.get("reduceOnly", "")).lower() == "true" or params.get("reduceOnly") is True

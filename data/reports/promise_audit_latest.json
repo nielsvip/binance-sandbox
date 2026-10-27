@@ -1,29 +1,13 @@
 {
- "generated_utc": "2026-10-27T02:12:08.607038+00:00",
+ "generated_utc": "2026-10-27T03:12:08.308871+00:00",
  "days": 1.0,
  "totals": {
-  "entry_promises": 7,
-  "entry_broken_no_delivery": 7,
-  "exit_promises": 7,
-  "exit_broken_no_delivery": 7
+  "exit_promises": 6,
+  "exit_broken_no_delivery": 6,
+  "entry_promises": 4,
+  "entry_broken_no_delivery": 4
  },
  "per_key": {
-  "men:ENJUSDT_SHORT": {
-   "entry_promises": 1,
-   "entry_broken_no_delivery": 1
-  },
-  "flz:HYPEUSDT_SHORT": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
-  },
-  "ang:COTIUSDT_SHORT": {
-   "entry_promises": 1,
-   "entry_broken_no_delivery": 1
-  },
-  "ang:SNXUSDT_SHORT": {
-   "entry_promises": 1,
-   "entry_broken_no_delivery": 1
-  },
   "ang:ACEUSDT_SHORT": {
    "exit_promises": 1,
    "exit_broken_no_delivery": 1
@@ -62,46 +46,6 @@
   }
  },
  "detail": [
-  {
-   "acct": "men",
-   "sym_side": "ENJUSDT_SHORT",
-   "kind": "entry",
-   "bar": "10-26 02:30",
-   "late_min": null,
-   "action": "OPEN",
-   "reason": "B12",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "flz",
-   "sym_side": "HYPEUSDT_SHORT",
-   "kind": "exit",
-   "bar": "10-26 02:30",
-   "late_min": null,
-   "action": "REDUCE",
-   "reason": "PPL_TP_g1.65%>=1.50%_stopBE77.0219",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "ang",
-   "sym_side": "COTIUSDT_SHORT",
-   "kind": "entry",
-   "bar": "10-26 02:30",
-   "late_min": null,
-   "action": "OPEN",
-   "reason": "REENTRY_EXIT_PRICE_BREAK",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "ang",
-   "sym_side": "SNXUSDT_SHORT",
-   "kind": "entry",
-   "bar": "10-26 02:30",
-   "late_min": null,
-   "action": "OPEN",
-   "reason": "REENTRY_EXIT_PRICE_BREAK",
-   "outcome": "NO_DELIVERY"
-  },
   {
    "acct": "ang",
    "sym_side": "ACEUSDT_SHORT",
