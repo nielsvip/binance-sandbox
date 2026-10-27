@@ -12,3 +12,5 @@
 {"event": "floor_check", "floor_gb": 40, "free_gb": 23, "host": "s2", "ts": "2026-10-27T02:07:48.518209+00:00", "under": true}
 {"event": "floor_not_met", "floor_gb": 40, "free_gb": 23, "host": "s2", "shortfall_gb": 17, "top_blockers": [{"gb": 150.3, "name": "binance-sandbox", "reason": "never_list"}, {"gb": 46.7, "name": "v15_bench", "reason": "never_list"}, {"gb": 9.6, "name": "bars_stocks", "reason": "never_list"}, {"gb": 7.6, "name": "v15_run36_20261024", "reason": "round_directory"}, {"gb": 4.7, "name": ".conda", "reason": "never_list"}, {"gb": 4.1, "name": "binance", "reason": "never_list"}], "ts": "2026-10-27T02:08:39.829640+00:00"}
 {"applied": false, "event": "floor_summary", "floor_gb": 40, "free_gb": {"s2": 23, "s5": 14, "s6": 26}, "shortfall_gb": {"s2": 17, "s5": 26, "s6": 14}, "ts": "2026-10-27T02:08:39.831852+00:00"}
+{"event": "floor_check", "floor_gb": 40, "free_gb": 14, "host": "s5", "ts": "2026-10-27T02:09:28.661217+00:00", "under": true}
+{"event": "floor_check", "floor_gb": 40, "free_gb": 16, "host": "s5", "ts": "2026-10-27T02:11:57.719875+00:00", "under": true}

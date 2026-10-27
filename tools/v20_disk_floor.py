@@ -175,10 +175,22 @@ print(json.dumps({"root": root, "compressed": done, "failed": failed[:20], "n_fa
 '''
 
 
-def shelve(host, root, min_size, apply_it):
+def shelve(host, root, min_size, apply_it, detach=False):
+    """Compress a dead work directory in place. 114 GB of scratch is hours of zstd, so --detach nohups it on the
+    host and returns: an ssh held open that long dies to the first network blip and leaves the shelf half done."""
     if not apply_it:
         return {"root": root, "dry_run": True}
     payload = json.dumps({"root": root, "min_size": min_size})
+    if detach:
+        tag = os.path.basename(root.rstrip("/")) or "shelf"
+        stage = f"/tmp/v20_shelve_{tag}"
+        setup = (f"cat > {stage}.py <<'V20EOF'\n{SHELVE}\nV20EOF\n"
+                 f"printf '%s' {shlex.quote(payload)} > {stage}.json && "
+                 f"nohup /bin/bash -lc 'nice -n 19 ionice -c3 {PYTHON} {stage}.py < {stage}.json "
+                 f">> ~/logs/v20_disk_floor_shelve.log 2>&1' > /dev/null 2>&1 & echo DETACHED")
+        result = sh(host, setup, timeout=120)
+        return {"root": root, "detached": "DETACHED" in (result.stdout or ""), "log": "~/logs/v20_disk_floor_shelve.log",
+                "error": ("" if result.returncode == 0 else (result.stderr or "")[-200:].strip())}
     result = subprocess.run(SSH + [f"niels@{HOSTS[host]}", "%s -c %s" % (PYTHON, shlex.quote(SHELVE))],
                             input=payload, capture_output=True, text=True, timeout=21600)
     try:
@@ -211,6 +223,7 @@ def main():
     parser.add_argument("--min-file-mb", type=int, default=1, help="shelve: skip files below this size (zstd overhead dominates)")
     parser.add_argument("--rungs", default="corpus,shelve", help="comma list of corpus,shelve (offload is launched separately: it is hours of upload)")
     parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--detach", action="store_true", help="shelve: nohup each directory on the host instead of waiting (a 114 GB shelf is hours)")
     parser.add_argument("--report", default=os.path.join(ROOT, "data", "reports", "v20_disk_floor_latest.json"))
     args = parser.parse_args()
 
@@ -252,9 +265,9 @@ def main():
             targets = [os.path.join(inv["home"], c["name"]) for c in block["candidates"] if c["eligible"]] if inv else []
             targets += [os.path.join(inv["home"], s) for s in SHELVES] if inv else []
             for root in targets:
-                if free_gb(host) >= args.floor_gb:
+                if not args.detach and free_gb(host) >= args.floor_gb:
                     break
-                out = shelve(host, root, args.min_file_mb * 1048576, args.apply)
+                out = shelve(host, root, args.min_file_mb * 1048576, args.apply, args.detach)
                 block["rungs"].append({"rung": "shelve", **out})
                 log("rung_shelve", host=host, **out)
 
