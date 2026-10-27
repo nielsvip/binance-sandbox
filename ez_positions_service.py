@@ -1601,6 +1601,82 @@ _RECENT_ORDER_REASONS = {}
 _RECENT_ORDER_PROV = {}
 
 
+_RECENT_ORDER_FILLS = {}
+_EXTERNAL_COID_PREFIXES = ("vd",)
+
+
+def note_order_fill(position_key, order_id, cum_qty, client_order_id="", status="", increases=None, now=None, window_s=1800.0):
+    """USER 2026-10-27 order_id in history: record a broker order's cumulative fill (WS ORDER_TRADE_UPDATE x=TRADE, or the placing process) so the history row for the resulting position change carries that order_id. increases: True = order adds exposure (BUY LONG / SELL SHORT)."""
+    try:
+        oid = str(order_id or "")
+        q = abs(float(cum_qty or 0.0))
+        if not oid or q <= 0:
+            return
+        t = time.time() if now is None else now
+        d = _RECENT_ORDER_FILLS.setdefault(position_key, {})
+        for k in [k for k, v in d.items() if t - v["t"] > window_s]:
+            d.pop(k, None)
+        r = d.setdefault(oid, {"t": t, "coid": "", "filled": 0.0, "claimed": 0.0, "status": "", "inc": None})
+        r["t"] = t
+        r["filled"] = max(r["filled"], q)
+        if status:
+            r["status"] = str(status)
+        if client_order_id:
+            r["coid"] = str(client_order_id)
+        if increases is not None:
+            r["inc"] = bool(increases)
+    except Exception:
+        pass
+
+
+def claim_order_fill(position_key, qty, trade_type, now=None, window_s=1800.0):
+    """Additive history fields for a position change of qty: {"order_id"} when one order's unclaimed fill equals qty (on the piece that completes the order; earlier partial pieces get "order_id_partial"), {"order_ids"} when 2-4 orders netted into one change, {"echo_of_order_id"} instead when the order is an S1/S5 vector_direct order (clientOrderId "vd…", imported as its own order row by tools/vector_direct_history_import.py). {} when nothing matches. Each order is claimed once, so an order_id lands on exactly one row."""
+    try:
+        q = abs(float(qty or 0.0))
+        d = _RECENT_ORDER_FILLS.get(position_key) or {}
+        if q <= 0 or not d:
+            return {}
+        t = time.time() if now is None else now
+        tt = str(trade_type or "").upper()
+        inc = True if tt in ("OPEN", "AUGMENT", "REENTRY") else (False if tt in ("REDUCE", "CLOSE", "GHOST_CLOSE") else None)
+        tol = max(1e-9, q * 0.005)
+        cands = sorted([(oid, r) for oid, r in d.items() if t - r["t"] <= window_s and r["filled"] - r["claimed"] > 1e-12 and (inc is None or r["inc"] is None or r["inc"] == inc)], key=lambda x: x[1]["t"])
+
+        def _fields(oid, r, prior):
+            if str(r.get("coid") or "").startswith(_EXTERNAL_COID_PREFIXES):
+                return {"echo_of_order_id": oid}
+            out = {"order_id": oid} if str(r.get("status") or "").upper() == "FILLED" else {"order_id_partial": oid}
+            if prior > 0:
+                out["order_fill_prior_qty"] = round(prior, 8)
+            return out
+
+        for oid, r in reversed(cands):
+            rem = r["filled"] - r["claimed"]
+            if abs(rem - q) <= tol:
+                prior = r["claimed"]
+                r["claimed"] = r["filled"]
+                return _fields(oid, r, prior)
+        for a in range(len(cands)):
+            s = 0.0
+            for b in range(a, min(len(cands), a + 4)):
+                s += cands[b][1]["filled"] - cands[b][1]["claimed"]
+                if b > a and abs(s - q) <= tol:
+                    hit = cands[a : b + 1]
+                    for _, r in hit:
+                        r["claimed"] = r["filled"]
+                    ext = [oid for oid, r in hit if str(r.get("coid") or "").startswith(_EXTERNAL_COID_PREFIXES)]
+                    own = [oid for oid, r in hit if oid not in ext]
+                    out = {}
+                    if own:
+                        out["order_ids"] = own
+                    if ext:
+                        out["echo_of_order_ids"] = ext
+                    return out
+    except Exception:
+        pass
+    return {}
+
+
 def note_order_reason(position_key, qty, reason, now=None, window_s=600.0):
     """Record an order placement for fill attribution. Module-level (wiring-independent): the fill recorder reads it back by qty match, immune to Redis wedge/staleness that produced false NON_VEC_ENTRY_FILL."""
     try:
@@ -3066,6 +3142,15 @@ class WebSocketManager:
                                                 except Exception: pass
                                                 os._exit(44)
                                             break
+                                    elif event_type == "ORDER_TRADE_UPDATE":
+                                        try:  # USER 2026-10-27: history rows carry the broker order_id (metadata only, never blocks)
+                                            _o = data.get("o") or {}
+                                            _ps = str(_o.get("ps") or "").upper()
+                                            if str(_o.get("x") or "").upper() == "TRADE" and _ps in ("LONG", "SHORT"):
+                                                _opk = construct_position_key(account_key, str(_o.get("s") or ""), _ps)
+                                                note_order_fill(_opk, _o.get("i"), _o.get("z"), client_order_id=_o.get("c") or "", status=_o.get("X") or "", increases=((str(_o.get("S") or "").upper() == "BUY") == (_ps == "LONG")))
+                                        except Exception as _ote:
+                                            logger.debug(f"[{account_key}] ORDER_TRADE_UPDATE note skipped: {_ote}")
                                     elif event_type == "listenKeyExpired":
                                         logger.warning(f"[{account_key}] Listen key expired. Triggering full restart.")
                                         return

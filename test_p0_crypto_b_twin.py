@@ -435,7 +435,7 @@ def test_tf_focus_dead_always_passes():
 # ─── Min hold / reentry filter / simple / tier1 / mtf ───
 def test_min_hold_math():
     assert T.min_hold_bars(G()) == 3
-    assert T.min_hold_bars(G(MIN_HOLD_BARS=10, MIN_HOLD_BARS_BEFORE_EXIT=4)) == 10
+    assert T.min_hold_bars(G(MIN_HOLD_BARS=10)) == 10
     assert T.min_hold_bars(G(MODE="tradier", BASE_TF="5m", MIN_HOLD_MINUTES_TRADIER=30)) == 6
     assert T.min_hold_bars(G(MODE="crypto", MIN_HOLD_MINUTES_TRADIER=999)) == 3  # tradier-only
     assert T.min_hold_ok(G(), 3) is True

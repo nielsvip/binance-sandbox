@@ -28000,7 +28000,7 @@ async def check_exit_candidates_for_account(
                         logger.info(
                             f"[QUICK_REDUCE_TRAP_SUPPRESSED] {position_key}: rate()-composite stochastic reduce (rec={rec_exit}) blocked — the vec/Tier-2 backtest does NOT model these, so they are the live↔backtest divergence + the 0%-gain commission-burn. Only clean named technical exits (RULE_B/WT_*/GR/DC_HOPELESS/MTF_ATR_TRAIL/HTF_AGAINST/R1/R2 + hard exits) may close. USER MANDATE 2026-06-02. Rollback: config.QUICK_REDUCE_TECHNICAL_ONLY=False"
                         )
-                # 2026-10-02 SELL_TOP MIN_HOLD twin (MOVR §63, vec parity): a sanctioned HLR_TOP_EXIT still honors MIN_HOLD_BARS_BEFORE_EXIT (3m bars, ez_manage.py:46660 idiom) — mirrors v12 _qr_hold_ok.
+                # 2026-10-02 SELL_TOP MIN_HOLD twin (MOVR §63, vec parity): a sanctioned HLR_TOP_EXIT still honors the min hold — 2026-10-27 now MIN_HOLD_BARS via vec_decisions/min_hold_gate.refuse (was the erased second hold name x 180 s) — mirrors v12 _qr_hold_ok.
                 if should_close and "HLR_TOP_EXIT" in str(reason_exit).upper():
                     try:
                         from datetime import datetime as _hdt, timezone as _htz
@@ -28014,25 +28014,17 @@ async def check_exit_candidates_for_account(
                             if _h_dt.tzinfo is None:
                                 _h_dt = _h_dt.replace(tzinfo=_htz.utc)
                             _h_age_s = (_hdt.now(_htz.utc) - _h_dt).total_seconds()
-                            _h_min_s = (
-                                float(
-                                    _psym_get(
-                                        symbol,
-                                        position_side,
-                                        "MIN_HOLD_BARS_BEFORE_EXIT",
-                                        getattr(
-                                            config, "MIN_HOLD_BARS_BEFORE_EXIT", 10
-                                        ),
-                                    )
-                                )
-                                * 180.0
-                            )
-                            if _h_age_s < _h_min_s:
+                            import vec_decisions.min_hold_gate as _h_mhg  # 2026-10-27 USER "MIN_HOLD_BARS is the ONLY permitted one": ONE gate, same threshold_bars as the vector
+
+                            class _HMinHoldCfg:
+                                BASE_TF = str(_psym_get(symbol, position_side, "BASE_TF", getattr(config, "BASE_TF", "15m")) or "15m")
+                                MIN_HOLD_BARS = int(_psym_get(symbol, position_side, "MIN_HOLD_BARS", getattr(config, "MIN_HOLD_BARS", 0)) or 0)
+
+                            _h_refuse, _h_why = _h_mhg.refuse(_h_age_s, _HMinHoldCfg, action="CLOSE", reason=str(reason_exit), live=True)
+                            if _h_refuse:
                                 should_close = False
                                 reason_exit = str(reason_exit) + "_MINHOLD_SUPPRESSED"
-                                logger.info(
-                                    f"[SELLTOP_MINHOLD_SUPPRESSED] {position_key}: age={_h_age_s:.0f}s < hold={_h_min_s:.0f}s — SELL_TOP blocked"
-                                )
+                                logger.info(f"[SELLTOP_MINHOLD_SUPPRESSED] {position_key}: {_h_why} — SELL_TOP blocked")
                     except Exception:
                         pass
                 # 2026-09-04 FIX: MAKER_PROFIT_EXIT_QUICK_REDUCE_STRONG_REDUCE_k_1m at 0.04-0.07% is commission bleed (0.04% wt=deep_tp). Need 0.08% after fees + 60m hold unless under dc

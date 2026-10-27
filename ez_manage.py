@@ -6229,7 +6229,6 @@ _FULL_COVERAGE_PARAMS_EZ = ['ABLATION_DISABLE_AGGRESSIVE_HEDGE',
     'MINERVINI_GATE_ENABLED',
     'MIN_EXIT_TF_AGAINST_TRADIER',
     'MIN_HOLD_BARS',
-    'MIN_HOLD_BARS_BEFORE_EXIT',
     'MIN_PERC_FROM_SMA_1',
     'MIN_PERC_FROM_SMA_15',
     'MIN_QTY_FILE',
@@ -35805,6 +35804,8 @@ class MultiAccountTradeManager:
                         _ot_n = 0
                         if _ot_hist_path.exists():
                             import json as _ot_json
+                            import vec_decisions.history_canon as _ot_canon  # 2026-10-27: count REAL trades only — an S1/S5 fill + its Mac positions-service echo/re-log is ONE trade, not two
+                            _ot_rows = []
                             with open(_ot_hist_path, errors="replace") as _ot_f:
                                 for _ot_line in _ot_f:
                                     _ot_line = _ot_line.strip()
@@ -35814,12 +35815,23 @@ class MultiAccountTradeManager:
                                         _ot_rec = _ot_json.loads(_ot_line)
                                     except Exception:
                                         continue
-                                    _ot_ts = str(_ot_rec.get("ts", "") or _ot_rec.get("timestamp", ""))
-                                    if not _ot_ts.startswith(_ot_today_str):
+                                    if isinstance(_ot_rec, dict):
+                                        _ot_rows.append(_ot_rec)
+                            _ot_seen_oid = set()
+                            for _ot_rec in _ot_canon.canonical(_ot_rows, sort=False):
+                                _ot_oid = _ot_canon.order_id(_ot_rec)
+                                if _ot_oid is not None:
+                                    if _ot_oid in _ot_seen_oid:
                                         continue
-                                    _ot_typ = str(_ot_rec.get("type", "")).upper()
-                                    if _ot_typ in ("OPEN", "AUGMENT", "REENTRY", "QUICK_OPEN", "QUICK_AUGMENT"):
-                                        _ot_n += 1
+                                    _ot_seen_oid.add(_ot_oid)
+                                _ot_ts = str(_ot_rec.get("ts", "") or _ot_rec.get("timestamp", ""))
+                                if not _ot_ts.startswith(_ot_today_str):
+                                    _ot_tsf = _ot_canon.ts_of(_ot_rec)
+                                    if _ot_tsf <= 0 or datetime.fromtimestamp(_ot_tsf, timezone.utc).strftime("%Y-%m-%d") != _ot_today_str:
+                                        continue
+                                _ot_typ = str(_ot_rec.get("type", "")).upper()
+                                if _ot_typ in ("OPEN", "AUGMENT", "REENTRY", "QUICK_OPEN", "QUICK_AUGMENT"):
+                                    _ot_n += 1
                     except Exception as _ot_cnt_e:
                         logger.warning(f"[OVERTRADE_GUARD] history count error (fail-open): {_ot_cnt_e}")
                         _ot_n = 0
@@ -54364,9 +54376,9 @@ async def process_position(
     class _MinHoldCfgShim:
         BASE_TF = str(_psym_get(symbol, position_side, "BASE_TF", getattr(config, "BASE_TF", "15m")) or "15m")
         MIN_HOLD_BARS = int(_psym_get(symbol, position_side, "MIN_HOLD_BARS", getattr(config, "MIN_HOLD_BARS", 3)) or 0)
-    # USER 2026-10-27: MIN_HOLD_BARS_BEFORE_EXIT is INDEPENDENT of MIN_HOLD_BARS
-    # and "only overridden by fixed_stop". Live enforces the stricter of the two
-    # for a NATIVE exit; a board-dictated close is exempt here because the vector
+    # USER 2026-10-27: "MIN_HOLD_BARS is the ONLY permitted one" (the second hold
+    # name is erased) and "only overridden by fixed_stop". Live enforces it for a
+    # NATIVE exit; a board-dictated close is exempt here because the vector
     # already honours the switch when it decides, and holding the board's own
     # exit would leave live holding a position the chart has already closed.
     _min_hold_bars_for_exit = _mhg.threshold_bars(_MinHoldCfgShim)
@@ -54634,12 +54646,13 @@ async def process_position(
                     # USER 2026-10-21 TECHNICAL parity: the vector books tech closes
                     # only on a FRESH cross (loop 22579-22696, mirror above) AND
                     # held_bars >= min_hold on the 15m grid (loop 22307 + 17311-32:
-                    # ceil(MIN_HOLD_BARS_BEFORE_EXIT*180/900)). Live fired every bar
+                    # ceil(<retired second hold name>*180/900)). Live fired every bar
                     # price sat at target with no hold (DOGE/XMR kills sat AT target).
+                    # 2026-10-27 USER "MIN_HOLD_BARS is the ONLY permitted one": the hold is
+                    # MIN_HOLD_BARS through the ONE gate vec_decisions/min_hold_gate.refuse
+                    # (same threshold_bars the vector's refuse_bars uses), never a second name.
                     if _gx_fire:
                         try:
-                            _tx_bbe = float(_psym_get(symbol, position_side, "MIN_HOLD_BARS_BEFORE_EXIT", 10) or 0)
-                            _tx_req = max(0, int(math.ceil(_tx_bbe * 180.0 / 900.0)))
                             _tx_oa = _pp_opened_raw_for_hold
                             _tx_oa_s = 0.0
                             if isinstance(_tx_oa, datetime):
@@ -54652,9 +54665,10 @@ async def process_position(
                                     _tx_oa_s = 0.0
                             elif isinstance(_tx_oa, (int, float)) and float(_tx_oa) > 0:
                                 _tx_oa_s = float(_tx_oa)
-                            _tx_held = max(0, int(time.time() // 900) - int(_tx_oa_s // 900)) if _tx_oa_s > 0 else 0
-                            if _tx_held < _tx_req:
-                                logger.info(f"[TECHNICAL_HOLD] {position_key}: hold {_gx_reason} — held {_tx_held}b < {_tx_req}b")
+                            _tx_age_s = (time.time() - _tx_oa_s) if _tx_oa_s > 0 else -1.0
+                            _tx_refuse, _tx_why = _mhg.refuse(_tx_age_s, _MinHoldCfgShim, action="CLOSE", reason=_gx_reason, live=True)
+                            if _tx_refuse:
+                                logger.info(f"[TECHNICAL_HOLD] {position_key}: hold {_gx_reason} — {_tx_why}")
                                 _gx_fire, _gx_reason = False, ""
                         except Exception:
                             logger.info(f"[TECHNICAL_HOLD] {position_key}: hold {_gx_reason} — age unknown")
@@ -68019,7 +68033,6 @@ def _ensure_ez_all(config):
         _=_wt  # MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO
     if bool(getattr(config, "MARKET_QUALITY_SCORE_ENABLED", False)):
         _=getattr(config, "MARKET_QUALITY_SCORE_ENABLED", False)  # MARKET_QUALITY_SCORE_ENABLED
-    if getattr(config, "MIN_HOLD_BARS_BEFORE_EXIT", None) is not None: _ = 1  # MIN_HOLD_BARS_BEFORE_EXIT — BATCH 5
     if bool(getattr(config, "MI_DIV_EXIT_ENABLED", False)):
         try: _mi=float(locals().get("klines_15m", [{}])[-1].get("mfi_15m",50) if locals().get("klines_15m") else 50) if 'klines_15m' in locals() else 50
         except: _mi=50

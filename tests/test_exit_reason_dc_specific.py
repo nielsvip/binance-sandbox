@@ -40,7 +40,6 @@ def test_daytrade_stop_exit_reason_includes_dc():
     cfg.WT_15M_BOUNCE_OPEN_ENABLED = True
     cfg.COOLDOWN_BARS = 0
     cfg.MIN_HOLD_BARS = 0
-    cfg.MIN_HOLD_BARS_BEFORE_EXIT = 0
     cfg.STRUCTURAL_EXIT_GATE_ENABLED = False
     cfg.NOLOSS_ENABLED = False
     r = v12.simulate_one(npz, "TEST", True, cfg)
@@ -64,7 +63,6 @@ def test_technical_exit_reason_includes_dc():
     cfg.WT_15M_BOUNCE_OPEN_ENABLED = True
     cfg.COOLDOWN_BARS = 0
     cfg.MIN_HOLD_BARS = 0
-    cfg.MIN_HOLD_BARS_BEFORE_EXIT = 0
     cfg.STRUCTURAL_EXIT_GATE_ENABLED = False
     cfg.NOLOSS_ENABLED = False
     r = v12.simulate_one(npz, "TEST2", True, cfg)
@@ -88,7 +86,6 @@ def test_daytrade_target_exit_reason_includes_dc_high():
     cfg.WT_15M_BOUNCE_OPEN_ENABLED = True
     cfg.COOLDOWN_BARS = 0
     cfg.MIN_HOLD_BARS = 0
-    cfg.MIN_HOLD_BARS_BEFORE_EXIT = 0
     cfg.STRUCTURAL_EXIT_GATE_ENABLED = False
     cfg.NOLOSS_ENABLED = False
     r = v12.simulate_one(npz, "TEST3", True, cfg)

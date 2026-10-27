@@ -706,7 +706,6 @@ def choose_context(
         # as fills without inventing signals. Apply them equally to reference
         # and candidate and let the tested field overwrite itself last.
         set_if_declared("COOLDOWN_BARS_TRADIER", 0)
-        set_if_declared("MIN_HOLD_BARS_BEFORE_EXIT", 0)
         set_if_declared("MIN_HOLD_MINUTES_TRADIER", 0.0)
         set_if_declared("DELTA_ENGINE_ENABLED", True)
         set_if_declared("DELTA_MAX_HOLD_BARS", 1)
@@ -786,7 +785,6 @@ def choose_context(
         # later candidate signals. A one-bar DELTA max hold is an existing,
         # causal lifecycle setting applied equally to every comparison arm.
         set_if_declared("COOLDOWN_BARS_TRADIER", 0)
-        set_if_declared("MIN_HOLD_BARS_BEFORE_EXIT", 0)
         set_if_declared("MIN_HOLD_MINUTES_TRADIER", 0.0)
         set_if_declared("DELTA_ENGINE_ENABLED", True)
         set_if_declared("DELTA_MAX_HOLD_BARS", 1)

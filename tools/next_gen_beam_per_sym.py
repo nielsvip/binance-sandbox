@@ -196,8 +196,8 @@ GROUP_DEFS: List[Dict[str, Any]] = [
     {
         "group": "OLD_BTC_BASELINE_EXIT_REENTRY",
         "desc": "Old BTC EXIT/REENTRY — core winners missing",
-        "param": "MIN_HOLD_BARS_BEFORE_EXIT",
-        "values": [24, 48, 96],
+        "param": "MIN_HOLD_BARS",
+        "values": [2, 4, 8, 12],  # 2026-10-27: was the erased second hold name [24,48,96]; MIN_HOLD_BARS is the one switch, swept on min_hold_gate.SWEEP_OPTIONS
         "paired": {"EXIT_STDEV_BREAKOUT_FAIL_ENABLED": [True, False], "REENTRY_CROSS_MAX_BARS_AGO": [2, 3, 5]},
     },
     {
@@ -219,7 +219,7 @@ GROUP_DEFS: List[Dict[str, Any]] = [
         "desc": "Old BTC misc — remaining core winners",
         "param": "DC_WIDTH_CAP_MULT",
         "values": [3.0, 5.0, 7.0],
-        "paired": {"MIN_HOLD_BARS_BEFORE_EXIT": [24, 48, 96], "HPL_TRIGGER_LOSS_PCT": [-8, -6, -4]},
+        "paired": {"HPL_TRIGGER_LOSS_PCT": [-8, -6, -4]},
     },
 
     {'group': 'CRYPTO_PAST_HEDGE', 'desc': 'CRYPTO PAST HEDGE — historic winners (crypto past + TRB recent)', 'param': 'HEDGE_ENABLED', 'values': [True, False], 'paired': {'HEDGE_CLOSE_REMOVE_FROM_TRADEABLE': [True, False], 'HEDGE_DC_SHORT_REJECT_DCP': [0.1125, 0.225, 0.3375], 'HEDGE_DETERIORATING_GAIN_DELTA_PP': [0.075, 0.15, 0.225], 'HEDGE_DETERIORATING_GAIN_ENABLED': [True, False], 'HEDGE_SIZE_FRAC': [0.5, 0.970290777971968, 1.4717466195579618], 'HEDGE_WT_TF': ['15m', '1h', '3m'], 'HEDGE_HTF_VETO_ENABLED': [True, False], 'HEDGE_TRIGGER_LOSS_PCT': [-0.0125, -0.025, -0.0375], 'HEDGE_TRIGGER_LOSS_TRADIER': [-0.5, -1.0, -1.5]}},

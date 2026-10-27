@@ -162,7 +162,17 @@ def is_exempt(reason, cfg=None, live=False) -> bool:
     """
     r = str(reason or "")
     u = r.upper()
-    if any(t in u for t in FIXED_STOP_TOKENS):
+    # 2026-10-27 OPERATOR CORRECTION: "STOP_LOSS_TRIGGERED is not a config item
+    # nor is HARD_STOP_LOSS so erase if they get in the way ... vigilance is
+    # supposed to stop losing streaks". They are REASON STRINGS, not switches,
+    # and holding them was the money risk flagged earlier: a HARD_STOP_LOSS or
+    # STOP_LOSS_TRIGGERED refused for 120 minutes turns a small loss into a
+    # large one, and a held VIGILANCE leg defeats the loss-streak brake it
+    # exists to be. The whole STOP/protection family is exempt again, which is
+    # also what CLAUDE.md "exits never blocked" has always required. FIXED_STOP
+    # remains exempt as the operator originally specified -- it is simply no
+    # longer the ONLY exemption.
+    if any(t in u for t in STOP_TOKENS):
         return True
     if cfg is None or bool(getattr(cfg, "MIN_HOLD_PROTECTION_EXEMPT", True)):
         if any(t in u for t in ACCOUNT_PROTECTION_TOKENS):

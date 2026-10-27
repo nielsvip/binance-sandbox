@@ -11,7 +11,7 @@ Reference key (v12 = v12_quick_engine.py, fv2 = v12_quick_engine_fast_v2.py):
   GR_TIGHT_STOP          ez_manage.py:50528-50565 position-level tight stop (v12:8620 read
                          is tuple-inert; fv2:17203 adx>15 is a NEW_AUDIT delta-proxy)
   RALLY_BYPASS_CD        v12:12960-12970 rally cooldown bypass
-  MIN_HOLD_BARS          v12:12507 max(MIN_HOLD_BARS, MIN_HOLD_BARS_BEFORE_EXIT); gate 14055
+  MIN_HOLD_BARS          MIN_HOLD_BARS alone (2026-10-27: the second hold name is erased; one gate vec_decisions/min_hold_gate)
   MTF_DC_USE_DC4         v12:12666-12669 dc_high4/dc_low4 band-key select
   STOCH_CROSS            v12:9248-9256 K/D cross gate (k_prev vs CURRENT d)
   DAYTRADE_1H_EXP        v12:8677-8679 dc_width_1h > prev + dc_pos entry band
@@ -146,14 +146,13 @@ def rally_bypass_fire(enabled=True, bypass=True, pos_none=True, closed_before=Tr
 
 # ── 7. MIN_HOLD_BARS (v12:12507 + gate v12:14055) ────────────────────
 def min_hold_bars(cfg, dflt_main=3, dflt_before=0):
-    """max(MIN_HOLD_BARS, MIN_HOLD_BARS_BEFORE_EXIT) — vector getattr defaults."""
+    """MIN_HOLD_BARS alone — 2026-10-27 USER "MIN_HOLD_BARS is the ONLY permitted one" (second name erased; the only live caller, tradier_manage, never passed it)."""
     try:
         main = cfg.MIN_HOLD_BARS if not isinstance(cfg, dict) else cfg.get("MIN_HOLD_BARS", dflt_main)
     except AttributeError:
         main = getattr(cfg, "MIN_HOLD_BARS", dflt_main)
-    before = cfg.get("MIN_HOLD_BARS_BEFORE_EXIT", dflt_before) if isinstance(cfg, dict) else getattr(cfg, "MIN_HOLD_BARS_BEFORE_EXIT", dflt_before)
     try:
-        return max(int(main or 0), int(before or 0))
+        return max(int(main or 0), 0)
     except (TypeError, ValueError):
         return 0
 

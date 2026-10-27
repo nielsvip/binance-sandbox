@@ -99,23 +99,25 @@ class OneNameOneValueTest(unittest.TestCase):
         self.assertNotIn('getattr(cfg, "MIN_HOLD_BARS_BEFORE_EXIT", 10)', src)
         self.assertNotIn("* 180.0", src.split("min_hold = _min_hold_gate")[1][:4000])
 
-    def test_override_is_fixed_stop_only_in_vec(self):
-        c = cfg(8)
-        for reason in ("FIXED_STOP", "FIXED_STOP_HIT"):
-            self.assertFalse(g.refuse_bars(0, c, "CLOSE", reason)[0])
-        for reason in ("HARD_STOP_LOSS", "STOP_LOSS_TRIGGERED", "REENTRY_HIGHER_LOW",
-                       "WT_CROSS_EXIT_1h", "VEC_DRIVEN_CLOSE_RECONCILE_"):
-            self.assertTrue(g.refuse_bars(0, c, "CLOSE", reason)[0], reason)
 
-    def test_live_executes_the_board_and_protection_never_held(self):
+
+    def test_override_set_after_the_operator_correction(self):
+        """FIXED_STOP is exempt but no longer the ONLY exemption.
+
+        The operator's "only overridden by fixed_stop" was superseded once it
+        became clear it was holding real stop legs: STOP_LOSS_TRIGGERED and
+        HARD_STOP_LOSS are reason strings, not switches, and vigilance has to
+        fire to stop a losing streak. The whole stop/protection family is
+        exempt; discretionary strategy exits are not.
+        """
         c = cfg(8)
-        for reason in ("VEC_DRIVEN_CLOSE_RECONCILE_", "BROKER_SYNC_FLAT", "FIXED_STOP"):
-            self.assertFalse(g.refuse(0, c, "CLOSE", reason)[0], reason)
-        self.assertTrue(g.refuse(0, c, "CLOSE", "WT_CROSS_EXIT_1h")[0])
-        for reason in ("LIQUIDATION_PROTECT", "EMERGENCY_MARGIN_KILL"):
+        for reason in ("FIXED_STOP", "HARD_STOP_LOSS", "VIGILANCE_GUARD_CLOSE"):
             self.assertFalse(g.refuse_bars(0, c, "CLOSE", reason)[0], reason)
-        strict = cfg(8, protection=False)
-        self.assertTrue(g.refuse_bars(0, strict, "CLOSE", "LIQUIDATION_PROTECT")[0])
+        for reason in ("REENTRY_HIGHER_LOW", "WT_CROSS_EXIT_1h", "EXIT_VELOCITY_WT"):
+            self.assertTrue(g.refuse_bars(0, c, "CLOSE", reason)[0], reason)
+        # live additionally executes the board, so its own closes are never held
+        for reason in ("VEC_DRIVEN_CLOSE_RECONCILE_", "BROKER_SYNC_FLAT"):
+            self.assertFalse(g.refuse(0, c, "CLOSE", reason)[0], reason)
 
 
 class CompositionTest(unittest.TestCase):
@@ -132,27 +134,40 @@ class CompositionTest(unittest.TestCase):
 
 
 class ExemptionTest(unittest.TestCase):
-    def test_only_fixed_stop_and_account_protection_are_never_held(self):
-        """USER 2026-10-27: "only overridden by fixed_stop".
-
-        🔴 CONSEQUENCE THE OPERATOR MUST CONFIRM: taken literally this HOLDS the
-        OTHER stop legs — HARD_STOP_LOSS, STOP_LOSS_TRIGGERED, VIGILANCE_DC4 —
-        for the full min hold (120 min at MIN_HOLD_BARS=8). That conflicts with
-        CLAUDE.md "exits never blocked" and with the 2026-10-22 finding that
-        refusing stop-class closes was itself the bug. It is implemented as
-        ordered and pinned here so the behaviour is explicit, not accidental.
-        To exempt the whole stop family instead, add STOP_TOKENS back to
-        `is_exempt` — one line, and it reverses this test.
+    def test_no_stop_or_protection_leg_is_ever_held(self):
+        """OPERATOR 2026-10-27: STOP_LOSS_TRIGGERED / HARD_STOP_LOSS are REASON
+        STRINGS, not config items — "erase if they get in the way" — and
+        "vigilance is supposed to stop losing streaks". Holding any of these
+        turns a small loss into a large one or defeats the loss-streak brake,
+        and CLAUDE.md "exits never blocked" has always required it.
         """
         c = cfg(8)
-        for reason in ("FIXED_STOP", "FIXED_STOP_HIT", "FIXED_STOP_ADOPTED"):
-            self.assertFalse(g.refuse(0, c, "CLOSE", reason)[0], f"{reason} overrides")
-        for reason in ("LIQUIDATION_PROTECT", "EMERGENCY_MARGIN_KILL",
+        for reason in ("FIXED_STOP", "FIXED_STOP_HIT", "HARD_STOP_LOSS",
+                       "STOP_LOSS_TRIGGERED", "STOPLOSS_MARKET",
+                       "VIGILANCE_DC4_EXIT", "VIGILANCE_GUARD_CLOSE",
+                       "UNCOND_DC_HARD_STOP", "TRAIL_STOP_HIT", "NEGBOOK_WT_TURN",
+                       "LIQUIDATION_PROTECT", "EMERGENCY_MARGIN_KILL",
                        "BALANCE_FLOOR_FORCE_REDUCE"):
-            self.assertFalse(g.refuse(0, c, "CLOSE", reason)[0], f"{reason} is account protection")
-        for reason in ("HARD_STOP_LOSS", "STOP_LOSS_TRIGGERED", "VIGILANCE_DC4_EXIT"):
-            self.assertTrue(g.refuse(0, c, "CLOSE", reason)[0],
-                            f"{reason} is HELD under fixed_stop-only — see the docstring")
+            for fn in (g.refuse, g.refuse_bars):
+                refused, _ = fn(0, c, "CLOSE", reason)
+                self.assertFalse(refused, f"{reason} must fire through {fn.__name__}")
+
+    def test_the_hold_is_an_exit_hold_not_a_reentry_block(self):
+        """OPERATOR asked directly: it blocks CLOSE/REDUCE, never an entry."""
+        c = cfg(8)
+        for action in ("OPEN", "AUGMENT", "REENTRY", "ENTRY"):
+            refused, detail = g.refuse(0, c, action, "ANY_REASON")
+            self.assertFalse(refused, f"{action} must never be blocked")
+            self.assertEqual(detail, "NOT_AN_EXIT")
+        for action in ("CLOSE", "REDUCE"):
+            self.assertTrue(g.refuse(0, c, action, "WT_CROSS_EXIT_1h")[0])
+
+    def test_discretionary_churn_is_still_held(self):
+        """The switch must still do its job after the exemptions widened."""
+        c = cfg(8)
+        for reason in ("WT_CROSS_EXIT_1h", "REENTRY_HIGHER_LOW",
+                       "EXIT_VELOCITY_WT", "SCALP_REDUCE_NOW"):
+            self.assertTrue(g.refuse(0, c, "CLOSE", reason)[0], reason)
 
     def test_board_dictates_and_bookkeeping_pass(self):
         c = cfg(8)

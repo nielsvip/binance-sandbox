@@ -87,7 +87,7 @@ CURATED = [
 ]
 LEARNED_FIELDS = ("n_syms_measured", "n_syms_loss_reduced", "n_syms_loss_reduced_gain_ok", "sum_family_loss_delta_pp", "sum_d_gain",
                   "n_d_gain_pos", "syms")
-NOT_WIRED = {"MIN_HOLD_BARS_BEFORE_EXIT": "dead on the churn paths (measured 2026-10-16); listed only once wired (doc 17 §9 open item 2)"}
+NOT_WIRED = {}  # 2026-10-27: the one former entry (the second hold name) is erased from the codebase; MIN_HOLD_BARS is the one switch
 
 
 # ------------------------------------------------------------------------------------------------------------ inputs

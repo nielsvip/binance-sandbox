@@ -103,11 +103,12 @@ def test_rally_bypass():
 
 # ── MIN_HOLD_BARS (v12:12507) ──
 def test_min_hold():
-    assert T.min_hold_bars(_cfg(MIN_HOLD_BARS=3, MIN_HOLD_BARS_BEFORE_EXIT=10)) == 10
-    assert T.min_hold_bars(_cfg(MIN_HOLD_BARS=12, MIN_HOLD_BARS_BEFORE_EXIT=10)) == 12
-    assert T.min_hold_bars(_cfg(MIN_HOLD_BARS=3)) == 3  # getattr default 0
-    assert T.min_hold_bars({"MIN_HOLD_BARS": 3, "MIN_HOLD_BARS_BEFORE_EXIT": 0}) == 3
-    cfg = _cfg(MIN_HOLD_BARS=3, MIN_HOLD_BARS_BEFORE_EXIT=10)
+    # 2026-10-27 USER "MIN_HOLD_BARS is the ONLY permitted one": the second hold name is erased, MIN_HOLD_BARS alone
+    assert T.min_hold_bars(_cfg(MIN_HOLD_BARS=10)) == 10
+    assert T.min_hold_bars(_cfg(MIN_HOLD_BARS=12)) == 12
+    assert T.min_hold_bars(_cfg(MIN_HOLD_BARS=3)) == 3
+    assert T.min_hold_bars({"MIN_HOLD_BARS": 3}) == 3
+    cfg = _cfg(MIN_HOLD_BARS=10)
     assert T.min_hold_ok(10.0, cfg) is True  # held >= min
     assert T.min_hold_ok(9.99, cfg) is False
 

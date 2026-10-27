@@ -15436,8 +15436,6 @@ def _ensure_eng_all_params(tm_mod):
         _ = 1  # MIN_EXIT_TF_AGAINST_TRADIER
     if bool(getattr(tm_mod.config, "MIN_HOLD_BARS", False)) if "MIN_HOLD_BARS".endswith("_ENABLED") else getattr(tm_mod.config, "MIN_HOLD_BARS", None) is not None:
         _ = 1  # MIN_HOLD_BARS
-    if bool(getattr(tm_mod.config, "MIN_HOLD_BARS_BEFORE_EXIT", False)) if "MIN_HOLD_BARS_BEFORE_EXIT".endswith("_ENABLED") else getattr(tm_mod.config, "MIN_HOLD_BARS_BEFORE_EXIT", None) is not None:
-        _ = 1  # MIN_HOLD_BARS_BEFORE_EXIT
     if bool(getattr(tm_mod.config, "MIN_HOLD_BARS_TRADIER", False)) if "MIN_HOLD_BARS_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "MIN_HOLD_BARS_TRADIER", None) is not None:
         _ = 1  # MIN_HOLD_BARS_TRADIER
     if bool(getattr(tm_mod.config, "MIN_HOLD_MINUTES_TRADIER", False)) if "MIN_HOLD_MINUTES_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "MIN_HOLD_MINUTES_TRADIER", None) is not None:

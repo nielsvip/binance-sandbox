@@ -819,7 +819,7 @@ def tf_focus_ok(get: Get, is_long: bool, ind: Mapping[str, Any] | None) -> bool:
 
 # ─── 14. MIN_HOLD (v12:12507,12518-12519 + held>=min_hold loop gates) ─────
 def min_hold_bars(get: Get) -> int:
-    m = max(int(get("MIN_HOLD_BARS", 3) or 0), int(get("MIN_HOLD_BARS_BEFORE_EXIT", 0) or 0))
+    m = max(int(get("MIN_HOLD_BARS", 3) or 0), 0)  # 2026-10-27 USER "MIN_HOLD_BARS is the ONLY permitted one" (second name erased)
     if str(get("MODE", "crypto")) == "tradier" and float(get("MIN_HOLD_MINUTES_TRADIER", 0.0) or 0.0) > 0:
         tf = str(get("BASE_TF", "15m") or "15m")
         try:

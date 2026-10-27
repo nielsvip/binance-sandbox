@@ -368,7 +368,6 @@ def test_vector_lifecycle_context_and_completed_bar_cooldown():
         "COOLDOWN_BARS": 99,
         "COOLDOWN_BARS_TRADIER": 2,
         "MIN_HOLD_BARS": 3,
-        "MIN_HOLD_BARS_BEFORE_EXIT": 4,
         "MIN_HOLD_MINUTES_TRADIER": 30.0,
     }
     resolver = _resolver(cfg)
