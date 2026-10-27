@@ -83,11 +83,18 @@
     "symbol": "MAGICUSDT",
     "side": "LONG"
   },
-  "fin:RLCUSDT_LONG": {
-    "orderId": "3000002278126879",
-    "stopPrice": 0.5104,
-    "entry_sig": "2026-10-27 10:29:20.546000+00:00",
-    "symbol": "RLCUSDT",
+  "fin:BLURUSDT_SHORT": {
+    "orderId": "3000002278132582",
+    "stopPrice": 0.00759,
+    "entry_sig": "2026-10-27 10:31:52.082000+00:00",
+    "symbol": "BLURUSDT",
+    "side": "SHORT"
+  },
+  "fin:KMNOUSDT_LONG": {
+    "orderId": "3000002278137099",
+    "stopPrice": 0.04021,
+    "entry_sig": "2026-10-27 10:33:33.884000+00:00",
+    "symbol": "KMNOUSDT",
     "side": "LONG"
   },
   "fin:SKYAIUSDT_SHORT": {
