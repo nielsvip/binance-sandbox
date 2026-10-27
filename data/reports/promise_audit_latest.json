@@ -1,21 +1,13 @@
 {
- "generated_utc": "2026-10-27T03:12:08.308871+00:00",
+ "generated_utc": "2026-10-27T04:12:07.148432+00:00",
  "days": 1.0,
  "totals": {
-  "exit_promises": 6,
-  "exit_broken_no_delivery": 6,
   "entry_promises": 4,
-  "entry_broken_no_delivery": 4
+  "entry_broken_no_delivery": 4,
+  "exit_promises": 4,
+  "exit_broken_no_delivery": 4
  },
  "per_key": {
-  "ang:ACEUSDT_SHORT": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
-  },
-  "ang:SKYUSDT_SHORT": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
-  },
   "fin:GRASSUSDT_LONG": {
    "entry_promises": 2,
    "entry_broken_no_delivery": 2
@@ -46,26 +38,6 @@
   }
  },
  "detail": [
-  {
-   "acct": "ang",
-   "sym_side": "ACEUSDT_SHORT",
-   "kind": "exit",
-   "bar": "10-26 03:00",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "MTF_DC_REJECT_D_px0.1370",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "ang",
-   "sym_side": "SKYUSDT_SHORT",
-   "kind": "exit",
-   "bar": "10-26 03:30",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "TECHNICAL_EXIT dc_4h_low",
-   "outcome": "NO_DELIVERY"
-  },
   {
    "acct": "fin",
    "sym_side": "GRASSUSDT_LONG",

@@ -93,7 +93,23 @@ def _standby_env() -> dict:
     return env
 
 
+def _keepalive_owns_realtime() -> bool:
+    """USER 2026-10-27: tools/mac_pos_writer_keepalive.sh (cron, every minute) is the SINGLE owner of the
+    failover worker. It starts exactly one per account and reap_extras() kills any other, so this watchdog
+    spawning one too is a second spawner racing it inside the same minute: measured 2 live
+    ez_positions_realtime.py for inf and 2 for ang, with ZERO "PID file locked" refusals. The keepalive reaps
+    the loser within a minute, but every spawned loser first runs a full bootstrap position fetch — API load
+    on the very IP whose -1003 ban this work exists to clear. The keepalive is also heartbeat-aware (it
+    replaces a WEDGED writer, which this watchdog cannot) and its ACCOUNTS default already covers all five.
+    So: monitor and alert here, never spawn. Set EZ_WATCHDOG_SPAWN_REALTIME=1 to restore the old behaviour if
+    the keepalive cron is ever removed."""
+    return os.environ.get("EZ_WATCHDOG_SPAWN_REALTIME", "").strip() not in ("1", "true", "yes")
+
+
 def _start_realtime(account_key: str) -> bool:
+    if _keepalive_owns_realtime():
+        logger.warning(f"[{account_key}] Position data stale and no failover worker — NOT spawning: mac_pos_writer_keepalive.sh owns it (one per account + reap_extras) and runs every minute. Set EZ_WATCHDOG_SPAWN_REALTIME=1 to override.")
+        return False
     script = BASE_PATH / "ez_positions_realtime.py"
     if not script.exists():
         logger.error(f"[{account_key}] Script not found: {script}")

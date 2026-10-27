@@ -510,7 +510,13 @@ for A in $ACCOUNTS_ROTATED; do
   fi
   if [ -z "$(procs_for "$RT")" ]; then
     klog "$A: no failover worker -> start"
-    ( cd "$BASE" && env PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin nohup "$PY" -u ez_positions_realtime.py "$A" < /dev/null >> "/tmp/mac_rt_$A.log" 2>&1 & )
+    # EZ_SERVICE_HEARTBEAT_STALE_S (USER 2026-10-27): the service writes its heartbeat from INSIDE the REST
+    # pass, so at the 60 s default any pass slower than 60 s looked like a dead writer and this standby took
+    # over AND POLLED beside the live service — measured 111 false takeovers in 35 h (men flapped 4x in 11 min,
+    # every RELEASE reporting a 0-8 s heartbeat). A second poller on the same IP is what re-earns the -1003/418
+    # ban. Safe: position_writer_guard.heartbeat_age() returns inf the instant the service pid is gone, so a
+    # real crash still fails over immediately; this governs only alive-but-not-beating.
+    ( cd "$BASE" && env PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin EZ_SERVICE_HEARTBEAT_STALE_S="${EZ_SERVICE_HEARTBEAT_STALE_S:-180}" nohup "$PY" -u ez_positions_realtime.py "$A" < /dev/null >> "/tmp/mac_rt_$A.log" 2>&1 & )
   fi
 
 done
