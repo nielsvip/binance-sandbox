@@ -54,15 +54,23 @@ def _shift(a):
 def prepare(npz, n, is_long, cfg, close, safe):
     P = {"n": n, "is_long": is_long, "floors": []}
     has = lambda k: (k in npz) and getattr(npz.get(k), "__len__", None) is not None and len(npz.get(k)) == n
-    # --- 3m structures: IGNORED (b2c2). Arrays kept all-zero so every 3m-dependent exit is inert. ---
+    # --- 3m channels: use frozen NPZ values when present; live age-veto remains a state gate. ---
     z = np.zeros(n)
     P["dc4_lvl"] = z
     P["dc20_lvl"] = z
     P["crack"] = np.zeros(n, dtype=bool)
-    P["wt3_1"], P["wt3_2"] = z, z
+    # Master 1 is the existing 1m/3m/5m vector-forward lane. Keep sub-15m
+    # inputs inert unless that lane is explicitly enabled; live WT veto stays live-owned.
+    if bool(getattr(cfg, "LIVE_5m_trading_ENABLED", False)):
+        P["wt3_1"], P["wt3_2"] = safe(npz, "wt1_3m", n, 0.0), safe(npz, "wt2_3m", n, 0.0)
+    else:
+        P["wt3_1"], P["wt3_2"] = z, z
     P["wt3_is_floor"] = False
     w = {tf: (safe(npz, f"wt1_{tf}", n, 0.0), safe(npz, f"wt2_{tf}", n, 0.0)) for tf in ("15m", "1h", "4h", "D")}
     P["w"] = w
+    from vec_decisions.check_exit_candidates_crypto__wt_cross_exit import check_wt_cross_exit_indicator_vec
+
+    P["wt_cross_mask"] = check_wt_cross_exit_indicator_vec(cfg, *w["1h"], *w["15m"], is_long)
     P["k15"], P["k15p"] = safe(npz, "k_15m", n, 50.0), safe(npz, "k_15m_prev", n, 50.0)
     P["k1h"], P["k1hp"] = safe(npz, "k_1h", n, 50.0), safe(npz, "k_1h_prev", n, 50.0)
     # --- HTF veto (live 14520/14545): >= MIN_ALIGNED of {1h,4h,D} WT with the position and |gain| <= MAX_LOSS ---
@@ -158,18 +166,13 @@ def step(P, cfg, i, px, st):
     if reason is None and not in_grace and _b(cfg, "WT_CROSS_EXIT_ENABLED", True) and gain > 0.015:
         losers, winners = _b(cfg, "WT_CROSS_EXIT_APPLIES_TO_LOSERS", True), _b(cfg, "WT_CROSS_EXIT_APPLIES_TO_WINNERS", True)
         if age >= _f(cfg, "WT_CROSS_EXIT_MIN_AGE_MINUTES", 2.0) and ((losers and gain < 0) or (winners and gain >= 0)):
-            a1, b1 = P["w"]["1h"][0][i], P["w"]["1h"][1][i]
-            a15, b15 = P["w"]["15m"][0][i], P["w"]["15m"][1][i]
-            if a1 != 0 or b1 != 0:
-                have15 = (a15 != 0 or b15 != 0)
-                flipped = (a1 < b1) if is_long else (a1 > b1)
-                conf = ((a15 < b15) if is_long else (a15 > b15)) if have15 else True
-                if flipped and (not _b(cfg, "WT_CROSS_EXIT_REQUIRE_15M_CONFIRM", True) or conf):
-                    a3, b3 = P["wt3_1"][i], P["wt3_2"][i]
-                    have3 = (a3 != 0 or b3 != 0)
-                    with3 = have3 and ((a3 > b3) if is_long else (a3 < b3))
-                    if not (with3 and age < _f(cfg, "WT_CROSS_EXIT_3M_VETO_MAX_AGE", 30.0)):
-                        reason = f"WT_CROSS_EXIT_1h_{'bear' if is_long else 'bull'}"
+            _wtx_w1_1h, _wtx_w2_1h = P["w"]["1h"][0][i], P["w"]["1h"][1][i]
+            _wtx_fire = bool(P["wt_cross_mask"][i])
+            _wtx_have_3m = P["wt3_1"][i] != 0 or P["wt3_2"][i] != 0
+            _wtx_3m_with = _wtx_have_3m and ((P["wt3_1"][i] > P["wt3_2"][i]) if is_long else (P["wt3_1"][i] < P["wt3_2"][i]))
+            _wtx_3m_veto = bool(getattr(cfg, "LIVE_5m_trading_ENABLED", False)) and _wtx_3m_with and age < _f(cfg, "WT_CROSS_EXIT_3M_VETO_MAX_AGE", 30.0)
+            if _wtx_fire and not _wtx_3m_veto:
+                reason = f"WT_CROSS_EXIT_1h_{'bear' if is_long else 'bull'}_wt1={_wtx_w1_1h:.1f}_wt2={_wtx_w2_1h:.1f}"
     # 7. STDEV_REJECT_EXIT (config OFF)
     if reason is None and not in_grace and _b(cfg, "STDEV_REJECT_EXIT_ENABLED", False):
         zone, ret = _f(cfg, "STDEV_REJECT_EXIT_ZONE", 0.80), _f(cfg, "STDEV_REJECT_EXIT_RETURN", 0.65)

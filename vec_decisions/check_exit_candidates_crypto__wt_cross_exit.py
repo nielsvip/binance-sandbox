@@ -90,24 +90,37 @@ def check_wt_cross_exit_vec(config, w1_1h_a, w2_1h_a, w1_15m_a, w2_15m_a, w1_3m_
     a15 = np.asarray(w1_15m_a, dtype=float); b15 = np.asarray(w2_15m_a, dtype=float)
     a3 = np.asarray(w1_3m_a, dtype=float); b3 = np.asarray(w2_3m_a, dtype=float)
     n = len(a1)
+    fire = check_wt_cross_exit_indicator_vec(config, a1, b1, a15, b15, is_long)
     if not bool(getattr(config, "WT_CROSS_EXIT_ENABLED", True)):
-        return np.zeros(n, dtype=bool)
-    require_15m = bool(getattr(config, "WT_CROSS_EXIT_REQUIRE_15M_CONFIRM", True))
+        return fire
     veto_age = float(getattr(config, "WT_CROSS_EXIT_3M_VETO_MAX_AGE", 30.0))
     age = np.asarray(pos_age_min_arr, dtype=float)
-    have_1h = (a1 != 0) | (b1 != 0)
-    have_15m = (a15 != 0) | (b15 != 0)
     have_3m = (a3 != 0) | (b3 != 0)
     if is_long:
-        flipped = a1 < b1
-        confirm = np.where(have_15m, a15 < b15, True)
         m3_with = have_3m & (a3 > b3)
     else:
-        flipped = a1 > b1
-        confirm = np.where(have_15m, a15 > b15, True)
         m3_with = have_3m & (a3 < b3)
-    fire = have_1h & flipped
-    if require_15m:
-        fire &= confirm
     veto = m3_with & (age < veto_age)
     return fire & ~veto
+
+
+def check_wt_cross_exit_indicator_vec(config, w1_1h_a, w2_1h_a, w1_15m_a, w2_15m_a,
+                                      is_long) -> np.ndarray:
+    """Causal NumPy mask for the 1h cross and optional 15m confirmation.
+    Position age and the 3m veto remain state gates in the bar-by-bar caller."""
+    a1 = np.asarray(w1_1h_a, dtype=float); b1 = np.asarray(w2_1h_a, dtype=float)
+    a15 = np.asarray(w1_15m_a, dtype=float); b15 = np.asarray(w2_15m_a, dtype=float)
+    n = len(a1)
+    if not bool(getattr(config, "WT_CROSS_EXIT_ENABLED", True)):
+        return np.zeros(n, dtype=bool)
+    have_1h = (a1 != 0) | (b1 != 0)
+    have_15m = (a15 != 0) | (b15 != 0)
+    if is_long:
+        fire = have_1h & (a1 < b1)
+        confirm = np.where(have_15m, a15 < b15, True)
+    else:
+        fire = have_1h & (a1 > b1)
+        confirm = np.where(have_15m, a15 > b15, True)
+    if bool(getattr(config, "WT_CROSS_EXIT_REQUIRE_15M_CONFIRM", True)):
+        fire &= confirm
+    return fire

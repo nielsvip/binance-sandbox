@@ -34,6 +34,7 @@ import re
 import signal
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -396,32 +397,33 @@ class Agent:
         holder = lease.get("holder") if isinstance(lease, dict) else None
         if direction == "to_s1" and holder != "mac":
             return False
-        if direction == "from_s1" and holder != "s1":
+        if direction == "from_s1" and holder not in ("s1", "mac"):
             return False
-        remote_base = REMOTE_LIVE
         ok = True
-        for rel in dict.fromkeys(CONTROL_FILES):
-            src = BASE / rel
-            if direction == "to_s1":
-                if not src.is_file():
-                    continue
-                result = rsync(["--delay-updates", "--chmod=F644", str(src), f"{host}:{remote_base}/{rel}"], timeout=45)
-            else:
-                if not src.is_file():
-                    continue
-                destination = BASE / rel
-                destination.parent.mkdir(parents=True, exist_ok=True)
-                # S1's lease is the authority: copy its current file to a temp location, then replace atomically.
-                with tempfile.TemporaryDirectory(prefix="lf_s1_control_") as temp:
-                    staged = Path(temp) / Path(rel).name
-                    result = rsync([f"{host}:{remote_base}/{rel}", str(staged)], timeout=45)
-                    if result.returncode in (0, 23, 24) and staged.is_file():
+        rels = [rel for rel in dict.fromkeys(CONTROL_FILES) if (BASE / rel).is_file()]
+        if direction == "to_s1":
+            files = [str(BASE / rel) for rel in rels]
+            for remote_root in ("binance", "binance-sandbox"):
+                result = rsync(["--delay-updates", "--chmod=F644", *files, f"{host}:/home/niels/{remote_root}/"], timeout=60)
+                if result.returncode not in (0, 23, 24):
+                    ok = False
+                    log(f"CONTROL_SYNC {direction} {remote_root} rc={result.returncode} {result.stderr[-180:]}")
+        else:
+            with tempfile.TemporaryDirectory(prefix="lf_s1_control_") as temp:
+                filters = [arg for rel in rels for arg in ("--include", f"/{rel}")]
+                result = rsync(["--delay-updates", *filters, "--exclude", "*", f"{host}:/home/niels/binance-sandbox/", temp + "/"], timeout=60)
+                if result.returncode not in (0, 23, 24):
+                    ok = False
+                    log(f"CONTROL_SYNC {direction} binance-sandbox rc={result.returncode} {result.stderr[-180:]}")
+                else:
+                    for rel in rels:
+                        staged = Path(temp) / Path(rel).name
+                        if not staged.is_file():
+                            continue
+                        destination = BASE / rel
                         tmp = destination.with_name(f".{destination.name}.s1sync.tmp")
                         shutil.copy2(staged, tmp)
                         os.replace(tmp, destination)
-            if result.returncode not in (0, 23, 24):
-                ok = False
-                log(f"CONTROL_SYNC {direction} {rel} rc={result.returncode} {result.stderr[-180:]}")
         return ok
 
     def sync_worker_inputs_from_s1(self, host, lease):
@@ -429,26 +431,23 @@ class Agent:
         if os.environ.get("LF_NO_SSH") == "1" or lease.get("holder") != "s1":
             return lease.get("holder") == "s1"
         ok = True
-        for worker in STOCK_WORKERS:
-            for rel in STOCK_CONTROL_FILES:
+        files = [rel for rel in STOCK_CONTROL_FILES if (BASE / rel).is_file()]
+        with tempfile.TemporaryDirectory(prefix="lf_stock_worker_") as temp:
+            filters = [arg for rel in files for arg in ("--include", f"/{rel}")]
+            result = rsync([*filters, "--exclude", "*", f"{host}:/home/niels/binance-sandbox/", temp + "/"], timeout=60)
+            if result.returncode not in (0, 23, 24):
+                log(f"STOCK_WORKER_PULL S1 rc={result.returncode} {result.stderr[-180:]}")
+                return False
+            staged = [str(Path(temp) / Path(rel).name) for rel in files if (Path(temp) / Path(rel).name).is_file()]
+            for worker in STOCK_WORKERS:
                 for root in ("binance-sandbox", "binance"):
-                    remote = f"{host}:~/binance/{rel}"
-                    local_target = f"{worker}:~/" + root + f"/{rel}"
-                    # Route via this Mac's SSH config; only the S1 lease owner publishes the worker files.
-                    with tempfile.TemporaryDirectory(prefix="lf_stock_worker_") as temp:
-                        staged = Path(temp) / Path(rel).name
-                        result = rsync([remote, str(staged)], timeout=45)
-                        if result.returncode not in (0, 23, 24) or not staged.is_file():
-                            ok = False
-                            log(f"STOCK_WORKER_PULL S1 {rel} rc={result.returncode} {result.stderr[-180:]}")
-                            continue
-                        result = rsync(["--delay-updates", str(staged), local_target], timeout=45)
+                    result = rsync(["--delay-updates", *staged, f"{worker}:~/{root}/"], timeout=60)
                     if result.returncode not in (0, 23, 24):
                         ok = False
-                        log(f"STOCK_WORKER_PULL {worker}/{root}/{rel} rc={result.returncode} {result.stderr[-180:]}")
+                        log(f"STOCK_WORKER_PULL {worker}/{root} rc={result.returncode} {result.stderr[-180:]}")
         return ok
 
-    def sync_live_history(self, host, lease, direction):
+    def sync_live_history(self, host, lease, direction, days):
         """Append-only, deduplicated live trade-history merge, constrained to the lease owner."""
         holder = lease.get("holder") if isinstance(lease, dict) else None
         if direction == "to_s1" and holder != "mac":
@@ -458,8 +457,7 @@ class Agent:
         if os.environ.get("LF_NO_SSH") == "1":
             return True
         helper = BASE / "tools" / "history_7d_sync.py"
-        authority = "mac" if direction == "to_s1" else "s1"
-        result = subprocess.run([sys.executable, str(helper), "sync", "--host", host, "--days", "3650", "--authority", authority],
+        result = subprocess.run([sys.executable, str(helper), "sync", "--host", host, "--days", str(days), "--authority", "merge"],
                                 cwd=str(BASE), capture_output=True, text=True, timeout=240)
         if result.returncode:
             log(f"HISTORY_SYNC {direction} rc={result.returncode} {result.stderr[-300:]}")
@@ -467,29 +465,32 @@ class Agent:
         log(f"HISTORY_SYNC {direction} {result.stdout[-300:].strip()}")
         return True
 
+    def start_history_sync(self, host, lease, direction):
+        if getattr(self, "history_sync_running", False):
+            return
+        self.history_sync_running = True
+        marker = LF / "history_sync_bootstrap.json"
+        days = 36500 if not marker.is_file() else 7
+        def run_history_sync():
+            try:
+                if self.sync_live_history(host, lease, direction, days) and days > 7:
+                    C.atomic_write_json(marker, {"completed_at": C.iso(), "window_days": days})
+            finally:
+                self.history_sync_running = False
+        threading.Thread(target=run_history_sync, name="lf-history-sync", daemon=True).start()
+
     def sync_stock_workers(self, host, lease):
         """Keep S5/S6 stock eligibility/config current and their priority list side-exact."""
         if os.environ.get("LF_NO_SSH") == "1" or lease.get("holder") != "mac":
             return lease.get("holder") == "mac"
         ok = True
+        files = [str(BASE / rel) for rel in STOCK_CONTROL_FILES if (BASE / rel).is_file()]
         for worker in STOCK_WORKERS:
-            for rel in STOCK_CONTROL_FILES:
-                src = BASE / rel
-                if not src.is_file():
-                    continue
-                result = rsync(["--delay-updates", "--chmod=F644", str(src), f"{worker}:~/binance-sandbox/{rel}"], timeout=45)
+            for root in ("binance-sandbox", "binance"):
+                result = rsync(["--delay-updates", "--chmod=F644", *files, f"{worker}:~/{root}/"], timeout=60)
                 if result.returncode not in (0, 23, 24):
                     ok = False
-                    log(f"STOCK_WORKER_SYNC {worker} {rel} rc={result.returncode} {result.stderr[-180:]}")
-            # Keep legacy active root aligned as well; these workers execute from binance-sandbox.
-            for rel in STOCK_CONTROL_FILES:
-                src = BASE / rel
-                if not src.is_file():
-                    continue
-                result = rsync(["--delay-updates", "--chmod=F644", str(src), f"{worker}:~/binance/{rel}"], timeout=45)
-                if result.returncode not in (0, 23, 24):
-                    ok = False
-                    log(f"STOCK_WORKER_SYNC {worker} binance/{rel} rc={result.returncode} {result.stderr[-180:]}")
+                    log(f"STOCK_WORKER_SYNC {worker}/{root} rc={result.returncode} {result.stderr[-180:]}")
         return ok
 
     def fence(self, lease, host=None):
@@ -560,14 +561,14 @@ class Agent:
         if local.get("holder") == "s1":
             ok = self.pull_state_back(host, fenced_venues(local))
             shared_ok = self.sync_shared_inputs(host, lease, "from_s1")
-            history_ok = self.sync_live_history(host, lease, "from_s1")
             # 2026-10-14: S1's files carried takeover-time opened_at + phantom March crypto rows; the Mac writers re-read the broker
             # themselves, so failback never seeds from S1 (LF_UNFENCE_SEED=1 re-enables).
             seeded = self.seed_from_s1(host) if os.environ.get("LF_UNFENCE_SEED", "0") == "1" else {}
             log(f"UNFENCE identity seeds from S1 writer (opened_at carried, positions files untouched): {seeded}")
-            if not ok or not shared_ok or not history_ok:
-                log(f"UNFENCE deferred: state={ok} shared_inputs={shared_ok} history={history_ok} — staying fenced")
+            if not ok or not shared_ok:
+                log(f"UNFENCE deferred: state={ok} shared_inputs={shared_ok} — staying fenced")
                 return False
+            self.start_history_sync(host, lease, "from_s1")
             alert("MAC_UNFENCED", gen=lease.get("gen"), reason=lease.get("reason"))
         if local.get("holder") != "mac" or local.get("gen") != lease.get("gen"):
             C.atomic_write_json(LF / "lease_local.json", {"holder": "mac", "gen": lease.get("gen"), "fetched_epoch": C.now_s(), "fetched_at": C.iso(), "reason": lease.get("reason")})
@@ -608,12 +609,12 @@ class Agent:
         self.last_control_sync = now
         if lease.get("holder") == "mac":
             self.sync_shared_inputs(host, lease, "to_s1")
-            self.sync_live_history(host, lease, "to_s1")
             self.sync_stock_workers(host, lease)
         elif lease.get("holder") == "s1":
             self.sync_shared_inputs(host, lease, "from_s1")
-            self.sync_live_history(host, lease, "from_s1")
             self.sync_worker_inputs_from_s1(host, lease)
+        direction = "to_s1" if lease.get("holder") == "mac" else "from_s1"
+        self.start_history_sync(host, lease, direction)
 
     def push_snapshots(self, host, now):
         """Stage the Mac's live indicator snapshots on S1 for merge_mac_state (see SNAP_PUSH_S)."""

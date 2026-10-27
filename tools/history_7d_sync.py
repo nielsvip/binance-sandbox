@@ -429,7 +429,7 @@ def sync(root, host, days, dry_run=False, authority="merge"):
                     alerts_path = cache
             s1_live, lease_audit = lease_authorized(packs[2], alerts_path.read_text(), local)
             if authority == "mac":
-                packs = [packs[1], packs[2]]
+                packs = [local]
                 lease_audit = {**lease_audit, "authority": "mac", "s1_rows_imported": 0}
             elif authority == "s1":
                 packs = [local, s1_live]

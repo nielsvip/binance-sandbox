@@ -29,6 +29,10 @@ RC_KEEP_MUST = "KEEP_MUST"
 RC_KEEP_ESSENTIAL = "KEEP_ESSENTIAL"
 RC_KEEP_FLOOR = "KEEP_FLOOR"
 RC_KEEP_MODEL = "KEEP_MODEL"
+RC_EXHAUSTED = "EXHAUSTED"
+RC_KEEP_RECHECK = "KEEP_RECHECK"
+EXHAUSTED_CONTRACT = "exhausted_cells_v1"
+_EXHAUSTED_CACHE: dict = {}
 
 
 class CatSideMismatch(ValueError):
@@ -73,6 +77,40 @@ def load_binding_map(cat_side: str, root=None, path=None):
     if meta.get("contract") != CONTRACT:
         return None
     return bm
+
+
+def exhausted_on(env=None) -> bool:
+    return str((env or os.environ).get("V20_EXHAUSTED", "0")).strip() == "1"
+
+
+def load_exhausted(cat_side: str, root=None, path=None):
+    """-> (rows, p_recheck): rows = {'TAB!SW=c': {hdr: {n, s, pos, ub, pos_syms}}} from exhausted_cells_<CS>.json
+    (tools/v20_exhausted_cells.py), cached per (cat_side, path). Fail-open: absent / unreadable / foreign contract -> ({}, 1.0)."""
+    p = Path(path) if path else learn_path(f"exhausted_cells_{cat_side}.json", root or Path(__file__).resolve().parent.parent)
+    ck = (str(cat_side), str(p))
+    if ck in _EXHAUSTED_CACHE:
+        return _EXHAUSTED_CACHE[ck]
+    out = ({}, 1.0)
+    try:
+        d = json.loads(p.read_text())
+        meta = d.get("meta") or {}
+        if str(meta.get("cat_side")) != str(cat_side):
+            raise CatSideMismatch(f"CAT_SIDE_MISMATCH: {p} is {meta.get('cat_side')}, board is {cat_side}")
+        if meta.get("contract") == EXHAUSTED_CONTRACT:
+            out = (d.get("rows") or {}, float((meta.get("rule") or {}).get("p_recheck", 0.04)))
+    except CatSideMismatch:
+        raise
+    except Exception:
+        pass
+    _EXHAUSTED_CACHE[ck] = out
+    return out
+
+
+def exhausted_for_row(cat_side: str, tab: str, switch: str, cand, symside: str, root=None) -> dict:
+    """-> {hdr: p_recheck} for this row's exhausted cells; a cell already positive on this very sym_side is never throttled."""
+    rows, p_re = load_exhausted(cat_side, root)
+    cells = rows.get(row_key(tab, switch, cand)) or {}
+    return {h: p_re for h, c in cells.items() if str(symside) not in (c.get("pos_syms") or ())}
 
 
 def row_key(tab: str, switch: str, cand) -> str:
@@ -130,7 +168,7 @@ def floor_draw(cat_side, symside, tab, key, rid) -> float:
     return int(h[:12], 16) / float(16**12)
 
 
-def decide_cells(hdrs: list, bm, tab: str, switch: str, cand, running_set: dict, *, cat_side: str, symside: str, rid: str, essential: bool = False, must_cells=(), evidence_cells=(), model_p=None, floor_p: float = 0.005, untried_p: float = 0.05, untried_cells=(), indirect_seen=None, dead_end_row: bool = False, predicted_noop_cells=()) -> dict:
+def decide_cells(hdrs: list, bm, tab: str, switch: str, cand, running_set: dict, *, cat_side: str, symside: str, rid: str, essential: bool = False, must_cells=(), evidence_cells=(), model_p=None, floor_p: float = 0.005, untried_p: float = 0.05, untried_cells=(), indirect_seen=None, dead_end_row: bool = False, predicted_noop_cells=(), exhausted_cells=None) -> dict:
     """ONE decision per cell. Returns {'keep': [hdr...], 'settled': {hdr: {'reason_code', 'verdict', 'why', 'p'}}, 'counts': {...}}.
     Order: ESSENTIAL rows keep everything evaluable; MUST and evidence-backed cells are always kept (CDE_SHORT guard); NEVER ->
     STRUCTURAL_IDENTITY (no engine call, floor draw may still rescue 1/1000 to re-verify wiring); MASTER_OFF -> settled unless the
@@ -143,7 +181,9 @@ def decide_cells(hdrs: list, bm, tab: str, switch: str, cand, running_set: dict,
     evidence_cells = set(evidence_cells or ())
     untried_cells = set(untried_cells or ())
     predicted_noop_cells = set(predicted_noop_cells or ())  # V20_BINDS_P: cells the B head says will not change the ledger (p_binds < max)
-    keep, settled, counts = [], {}, {"never": 0, "master_off": 0, "indirect": 0, "model_out": 0, "floor_rescued": 0, "kept": 0, "dead_end": 0, "predicted_noop": 0}
+    if exhausted_cells is None:  # V20_EXHAUSTED: cells measured often, on many sym_sides, ~never positive -> re-checked at p_recheck
+        exhausted_cells = exhausted_for_row(cat_side, tab, switch, cand, symside) if exhausted_on() else {}
+    keep, settled, counts = [], {}, {"never": 0, "master_off": 0, "indirect": 0, "model_out": 0, "floor_rescued": 0, "kept": 0, "dead_end": 0, "predicted_noop": 0, "exhausted": 0, "exhausted_rechecked": 0}
     rk = row_key(tab, switch, cand)
     for h in list(hdrs or []):
         h = str(h).strip()
@@ -195,6 +235,16 @@ def decide_cells(hdrs: list, bm, tab: str, switch: str, cand, running_set: dict,
             keep.append(h)
             settled[h] = {"reason_code": RC_KEEP_MODEL, "verdict": verdict, "why": "INDIRECT_FIRST_OF_TAB", "p": 1.0}
             counts["kept"] += 1
+            continue
+        if h in exhausted_cells:  # measured, not predicted: re-checked at p_recheck (never below the floor), a positive re-opens it nightly
+            p_re = max(min(float(exhausted_cells[h]), 1.0), floor_p)
+            if draw < p_re:
+                keep.append(h)
+                settled[h] = {"reason_code": RC_KEEP_RECHECK, "verdict": verdict, "why": "EXHAUSTED_RECHECK", "p": p_re}
+                counts["exhausted_rechecked"] += 1
+            else:
+                settled[h] = {"reason_code": RC_EXHAUSTED, "verdict": verdict, "why": why, "p": p_re}
+                counts["exhausted"] += 1
             continue
         if h in predicted_noop_cells:  # learned, not structural: settled at the floor, reason-coded, audited nightly against measured noop
             if draw < floor_p:

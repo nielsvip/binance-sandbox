@@ -36,7 +36,8 @@ def main():
         stock_sides.update(f"{str(symbol).upper()}_{direction}" for symbol in values if str(symbol).strip())
     if not stock_sides:
         raise ValueError("empty stock side books; refusing to replace worker subscriptions")
-    for host, direction, remote_path in SOURCES:
+    failed = []
+    for host, direction, remote_path in (SOURCES[2:] + SOURCES[:2]):
         selected = sorted(stock_sides if direction == "STOCK" else (side for side in sides if direction == "ALL" or side.endswith("_" + direction)))
         if not selected:
             raise ValueError("empty forward side list")
@@ -58,14 +59,16 @@ def main():
             result = subprocess.run(command, input=payload, text=True, capture_output=True, timeout=15)
         except subprocess.TimeoutExpired:
             print(f"{host}: timed out", file=sys.stderr)
-            return 1
+            failed.append(host)
+            continue
         if result.returncode:
             print(f"{host}: {result.stderr.strip()}", file=sys.stderr)
-            return 1
+            failed.append(host)
+            continue
         CACHE.mkdir(parents=True, exist_ok=True)
         marker.write_text(payload)
         print(f"{host}: {len(selected)} sides", flush=True)
-    return 0
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":

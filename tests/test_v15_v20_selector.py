@@ -197,3 +197,57 @@ def test_predicted_noop_cells_settle_at_floor_but_never_protected(tmp_path):
     assert d["settled"]["DC_BREAK_FILTER_TF=1h"]["reason_code"] == S.RC_KEEP_MUST
     d = _decide(bm, hdrs, predicted_noop_cells={"DC_BREAK_FILTER_TF=1h"}, essential=True)
     assert d["settled"]["DC_BREAK_FILTER_TF=1h"]["reason_code"] == S.RC_KEEP_ESSENTIAL
+
+
+def _exh(tmp_path, cat_side="CRYPTO_LONG", rows=None, p_recheck=0.04, contract=S.EXHAUSTED_CONTRACT):
+    d = {"meta": {"contract": contract, "cat_side": cat_side, "rule": {"p_recheck": p_recheck}}, "rows": rows or {}}
+    (tmp_path / "data" / "learn").mkdir(parents=True, exist_ok=True)
+    p = tmp_path / "data" / "learn" / f"exhausted_cells_{cat_side}.json"
+    p.write_text(json.dumps(d))
+    S._EXHAUSTED_CACHE.clear()
+    return p
+
+
+EXH_ROW = {"ENTRY_REVERSAL_BOUNCE!BB_BOUNCE_ENTRY_TF=4h": {"DC_BREAK_FILTER_TF=1h": {"n": 200, "s": 40, "pos": 0, "ub": 0.013, "pos_syms": []},
+                                                          "ADX_REGIME_FILTER_ENABLED=True": {"n": 200, "s": 40, "pos": 1, "ub": 0.03, "pos_syms": ["BTCUSDT_LONG"]}}}
+
+
+def test_exhausted_map_load_and_cat_side(tmp_path):
+    _exh(tmp_path, rows=EXH_ROW)
+    rows, p_re = S.load_exhausted("CRYPTO_LONG", root=tmp_path)
+    assert p_re == 0.04 and "ENTRY_REVERSAL_BOUNCE!BB_BOUNCE_ENTRY_TF=4h" in rows
+    _exh(tmp_path, cat_side="CRYPTO_SHORT")
+    with pytest.raises(S.CatSideMismatch):
+        S.load_exhausted("CRYPTO_LONG", path=tmp_path / "data" / "learn" / "exhausted_cells_CRYPTO_SHORT.json")
+    S._EXHAUSTED_CACHE.clear()
+    assert S.load_exhausted("STOCKS_LONG", root=tmp_path) == ({}, 1.0)  # absent = fail-open
+
+
+def test_exhausted_own_positive_sym_side_never_throttled(tmp_path):
+    _exh(tmp_path, rows=EXH_ROW)
+    a = S.exhausted_for_row("CRYPTO_LONG", "ENTRY_REVERSAL_BOUNCE", "BB_BOUNCE_ENTRY_TF", "4h", "ETHUSDT_LONG", root=tmp_path)
+    b = S.exhausted_for_row("CRYPTO_LONG", "ENTRY_REVERSAL_BOUNCE", "BB_BOUNCE_ENTRY_TF", "4h", "BTCUSDT_LONG", root=tmp_path)
+    assert set(a) == {"DC_BREAK_FILTER_TF=1h", "ADX_REGIME_FILTER_ENABLED=True"} and set(b) == {"DC_BREAK_FILTER_TF=1h"}
+
+
+def test_exhausted_cells_rechecked_at_rate_must_evidence_essential_kept():
+    hdrs = [f"DC_BREAK_FILTER_TF={i}" for i in range(400)]
+    exh = {h: 0.04 for h in hdrs}
+    d = S.decide_cells(hdrs, None, "T", "SW", "1", {}, cat_side="CRYPTO_LONG", symside="X_LONG", rid="r1", exhausted_cells=exh)
+    kept = d["counts"]["exhausted_rechecked"]
+    assert d["counts"]["exhausted"] + kept == 400 and 4 <= kept <= 35  # ~1/25 re-checked, deterministic
+    assert all(d["settled"][h]["reason_code"] in (S.RC_EXHAUSTED, S.RC_KEEP_RECHECK) for h in hdrs)
+    d2 = S.decide_cells(hdrs[:3], None, "T", "SW", "1", {}, cat_side="CRYPTO_LONG", symside="X_LONG", rid="r1", exhausted_cells=exh, must_cells={hdrs[0]}, evidence_cells={hdrs[1]})
+    assert hdrs[0] in d2["keep"] and hdrs[1] in d2["keep"]
+    d3 = S.decide_cells(hdrs[:50], None, "T", "SW", "1", {}, cat_side="CRYPTO_LONG", symside="X_LONG", rid="r1", exhausted_cells=exh, essential=True)
+    assert len(d3["keep"]) == 50
+    d4 = S.decide_cells(hdrs[:50], None, "T", "SW", "1", {}, cat_side="CRYPTO_LONG", symside="X_LONG", rid="r1", exhausted_cells={h: 0.0 for h in hdrs}, floor_p=0.005)
+    assert all(st["p"] >= 0.005 for st in d4["settled"].values())  # never below the floor
+
+
+def test_exhausted_flag_off_changes_nothing(tmp_path, monkeypatch):
+    _exh(tmp_path, rows=EXH_ROW)
+    monkeypatch.delenv("V20_EXHAUSTED", raising=False)
+    hdrs = list(EXH_ROW["ENTRY_REVERSAL_BOUNCE!BB_BOUNCE_ENTRY_TF=4h"])
+    d = S.decide_cells(hdrs, None, "ENTRY_REVERSAL_BOUNCE", "BB_BOUNCE_ENTRY_TF", "4h", {}, cat_side="CRYPTO_LONG", symside="ETHUSDT_LONG", rid="r1")
+    assert d["keep"] == hdrs and d["counts"]["exhausted"] == 0
