@@ -100,18 +100,24 @@ for name in sorted(os.listdir(home)):
         continue
     total = newest = 0
     files = 0
-    for dp, dn, fn in os.walk(path):
-        for f in fn:
-            p = os.path.join(dp, f)
-            try:
-                st = os.lstat(p)
-            except OSError:
-                continue
-            total += st.st_size
-            files += 1
-            newest = max(newest, st.st_mtime)
-    out.append({"name": name, "bytes": total, "files": files, "newest": newest,
-                "plain_bytes": 0})
+    too_deep = False
+    try:
+        for dp, dn, fn in os.walk(path):
+            for f in fn:
+                p = os.path.join(dp, f)
+                try:
+                    st = os.lstat(p)
+                except OSError:
+                    continue
+                total += st.st_size
+                files += 1
+                newest = max(newest, st.st_mtime)
+    except RecursionError:
+        # 2026-10-27: a 1000-deep ~/v15_pusher/done/s1/s1/... nest crashed this walk on every S1 pass (25x), so S1
+        # sat at 0 GB free while the floor cron reported only a traceback. Report the dir, never abort the host.
+        too_deep = True
+    out.append({"name": name, "bytes": total, "files": files, "newest": time.time() if too_deep else newest,
+                "plain_bytes": 0, "walk_too_deep": too_deep})
 print(json.dumps({"home": home, "dirs": out, "now": time.time()}))
 '''
 
@@ -151,26 +157,29 @@ root, min_size = spec["root"], spec["min_size"]
 if subprocess.run(["lsof", "+D", root], capture_output=True).returncode == 0:
     print(json.dumps({"refused": "open_handle", "root": root})); raise SystemExit(0)
 done, failed, freed = 0, [], 0
-for dp, dn, fn in os.walk(root):
-    for f in fn:
-        p = os.path.join(dp, f)
-        if f.endswith((".zst", ".gz", ".xz", ".bz2", ".zip", ".npz", ".7z")):
-            continue
-        try:
-            before = os.path.getsize(p)
-        except OSError:
-            continue
-        if before < min_size:
-            continue
-        if subprocess.run(["lsof", "--", p], capture_output=True).returncode == 0:
-            failed.append([p, "open_handle"]); continue
-        comp = subprocess.run(["nice", "-n", "19", "ionice", "-c3", "zstd", "-q", "-12", "-T1", "--rm", "--", p], capture_output=True, text=True)
-        if comp.returncode or not os.path.isfile(p + ".zst"):
-            failed.append([p, "zstd_rc_%d" % comp.returncode]); continue
-        if subprocess.run(["zstd", "-t", "--", p + ".zst"], capture_output=True).returncode:
-            failed.append([p, "zstd_t_failed"]); continue
-        freed += before - os.path.getsize(p + ".zst")
-        done += 1
+try:
+    for dp, dn, fn in os.walk(root):
+        for f in fn:
+            p = os.path.join(dp, f)
+            if f.endswith((".zst", ".gz", ".xz", ".bz2", ".zip", ".npz", ".7z")):
+                continue
+            try:
+                before = os.path.getsize(p)
+            except OSError:
+                continue
+            if before < min_size:
+                continue
+            if subprocess.run(["lsof", "--", p], capture_output=True).returncode == 0:
+                failed.append([p, "open_handle"]); continue
+            comp = subprocess.run(["nice", "-n", "19", "ionice", "-c3", "zstd", "-q", "-12", "-T1", "--rm", "--", p], capture_output=True, text=True)
+            if comp.returncode or not os.path.isfile(p + ".zst"):
+                failed.append([p, "zstd_rc_%d" % comp.returncode]); continue
+            if subprocess.run(["zstd", "-t", "--", p + ".zst"], capture_output=True).returncode:
+                failed.append([p, "zstd_t_failed"]); continue
+            freed += before - os.path.getsize(p + ".zst")
+            done += 1
+except RecursionError:
+    failed.append([root, "walk_too_deep"])
 print(json.dumps({"root": root, "compressed": done, "failed": failed[:20], "n_failed": len(failed), "freed_bytes": freed}))
 '''
 

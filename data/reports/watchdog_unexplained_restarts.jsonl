@@ -591,3 +591,4 @@
 {"ts":1793098534,"script":"ez_rankings","acct":"","exit":137,"run_s":18822,"wd_pid":5519,"live_suspects":"1072:trb_size_guardian.py 1103:memory_guardian.py 29735:mac_pos_writer_keepalive.sh 29820:mac_pos_writer_keepalive.sh 32712:mac_pos_writer_keepalive.sh 70196:live_guardian.py "}
 {"ts":1793103734,"script":"ez_indicators_merger","acct":"","exit":143,"run_s":66414,"wd_pid":23671,"live_suspects":""}
 {"ts":1793109650,"script":"tradier_prices","acct":"","exit":137,"run_s":3606,"wd_pid":75362,"live_suspects":""}
+{"ts":1793113263,"script":"tradier_prices","acct":"","exit":137,"run_s":3604,"wd_pid":75362,"live_suspects":"33990:crypto_watchdog_cron.log 34079:crypto_watchdog_cron.sh 38152:mac_pos_writer_keepalive.sh 38228:mac_pos_writer_keepalive.sh 91878:live_guardian.py 91896:trb_size_guardian.py 91933:memory_guardian.py "}
