@@ -43,6 +43,7 @@ import ast
 import datetime
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -185,14 +186,35 @@ def propose(name, entry):
     return tier, {"switch": name, "tab": tab, "candidates": opts, "default": default, "venues": venues, "vec_sites": sites[:3], "live_reads": live_read_total(entry)}, ""
 
 
+_BAD_CAND = re.compile(r"candidate '([^']+)' is not")
+
+
 def run_adder(p, inbox, push=None):
-    """Validate + enqueue through the ONE sanctioned adder. Dry runs use a scratch inbox, so validation is identical."""
-    cmd = [sys.executable, str(ROOT / "tools" / "v15_switch_add.py"), "--enqueue", "--switch", p["switch"], "--tab", p["tab"], "--candidates", ",".join(p["candidates"]), "--default", p["default"], "--inbox", str(inbox), "--venues", "both" if len(p["venues"]) == 2 else p["venues"][0].lower()]
-    if push:
-        cmd += ["--push", push]
-    r = subprocess.run(cmd, capture_output=True, text=True, cwd=str(ROOT))
-    out = ((r.stdout or "") + (r.stderr or "")).strip()
-    return r.returncode == 0, out[-400:]
+    """Validate + enqueue through the ONE sanctioned adder. Dry runs use a scratch inbox, so validation is identical.
+
+    The registry proposes a handful of values its own field type refuses (17.5 on an int K_ZONE threshold). When the
+    validator names such a candidate, drop THAT candidate and retry: discarding an option the one validator refuses
+    is not the same as inventing one, and the remaining options still measure a real delta. The default is never dropped,
+    and a switch that falls below two surviving options is reported, not installed."""
+    cands = list(p["candidates"])
+    out = ""
+    for _ in range(4):
+        cmd = [sys.executable, str(ROOT / "tools" / "v15_switch_add.py"), "--enqueue", "--switch", p["switch"], "--tab", p["tab"], "--candidates", ",".join(cands), "--default", p["default"], "--inbox", str(inbox), "--venues", "both" if len(p["venues"]) == 2 else p["venues"][0].lower()]
+        if push:
+            cmd += ["--push", push]
+        r = subprocess.run(cmd, capture_output=True, text=True, cwd=str(ROOT))
+        out = ((r.stdout or "") + (r.stderr or "")).strip()
+        if r.returncode == 0:
+            p["candidates"] = cands
+            return True, out[-400:]
+        m = _BAD_CAND.search(out)
+        if not m or m.group(1) == p["default"]:
+            break
+        nxt = [c for c in cands if c != m.group(1)]
+        if len(nxt) < 2 or p["default"] not in nxt or nxt == cands:
+            break
+        cands = nxt
+    return False, out[-400:]
 
 
 def quickconfig_patch(names, entries):

@@ -10,14 +10,17 @@ Only evaluations whose row naked was NOT positive count: on a positive naked the
 (PRIOR-REVIVED), so there the throttle can neither save nor lose anything, and the cell's positive delta is inherited from the
 naked rather than earned by the filter. A "positive" is therefore a RESCUE: cell delta > 1e-9 while the naked was <= 1e-9.
 A cell is EXHAUSTED when, over those fresh (non-cached) evaluations:
-  n >= --n-min  AND  distinct sym_sides >= --s-min  AND  Wilson upper bound (z=1.645) of P(rescue) < --u-max.
-One positive on a cell with n ~ 100 already lifts the bound above 0.02, so a single real positive re-opens it on the next build.
-The selector (`tools/v15_v20_selector.py`, flag V20_EXHAUSTED) keeps an exhausted cell with probability `p_recheck` (default
-1/25, the §77 "revise them 1 in 25" rate) instead of always, never below the 1/1000 floor; MUST / ESSENTIAL / evidence cells and
-cells positive on the board's own sym_side are never throttled, and a positive naked revives the whole row as before.
+  n >= --n-min  AND  distinct sym_sides >= --s-min  AND  rescues <= --max-pos  (default 20 / 5 / 0: one rescue re-opens it).
+The map alone is NOT a skip list. The selector (`tools/v15_v20_selector.py`, flag V20_EXHAUSTED) throttles a mapped cell only
+while its filter has also been silent on the running board itself (>= V20_EXH_BOARD_K = 20 non-positive-naked evals, no rescue,
+read from the board's own delta log), and then keeps it with probability `p_recheck` (default 0.25), never below the floor.
+MUST / ESSENTIAL / evidence cells and cells positive on the board's own sym_side are never throttled, and a positive naked
+revives the whole row as before. Chronological replay 2026-10-27 (2.88M fresh cells, run30-37): cell eval-seconds saved
+CL 5.0% / CS 5.7% / SL 0.6% / SS 1.6%, rescue delta lost 0.12% / 0.03% / 0.01% / 0.11%. A cat_side count without the board
+condition lost 4-15% of rescue delta at any useful cut, because a filter's value is board-specific and bursty.
 
 Usage:
-  v20_exhausted_cells.py build --spill-glob '~/v20_spills/spill_*.tsv.gz' [--spill-glob ...] --out-dir DIR [--n-min 50 --s-min 10 --u-max 0.01 --p-recheck 0.04]
+  v20_exhausted_cells.py build --spill-glob '~/v20_spills/spill_*.tsv.gz' [--spill-glob ...] --out-dir DIR [--n-min 20 --s-min 5 --max-pos 0 --p-recheck 0.25]
 """
 import argparse
 import datetime as dt
@@ -110,7 +113,7 @@ def build(a):
     out_dir = Path(os.path.expanduser(a.out_dir))
     out_dir.mkdir(parents=True, exist_ok=True)
     built = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    rule = {"n_min": a.n_min, "s_min": a.s_min, "u_max": a.u_max, "z": Z, "p_recheck": a.p_recheck}
+    rule = {"n_min": a.n_min, "s_min": a.s_min, "max_pos": a.max_pos, "z": Z, "p_recheck": a.p_recheck, "board_k_default": 20}
     summary = {}
     for cs in CAT_SIDES:
         rows, n_seen, n_exh, secs_all, secs_exh = {}, 0, 0, 0.0, 0.0
@@ -120,7 +123,7 @@ def build(a):
             n_seen += 1
             secs_all += v[2]
             ub = wilson_ub(v[1], v[0])
-            if v[0] >= a.n_min and len(v[3]) >= a.s_min and ub < a.u_max:
+            if v[0] >= a.n_min and len(v[3]) >= a.s_min and v[1] <= a.max_pos:
                 n_exh += 1
                 secs_exh += v[2]
                 rows.setdefault(f"{tab}!{rk}", {})[hdr] = {"n": v[0], "s": len(v[3]), "pos": v[1], "ub": round(ub, 5), "pos_syms": sorted(v[4])}
@@ -140,10 +143,10 @@ def main(argv=None):
     b = sub.add_parser("build")
     b.add_argument("--spill-glob", action="append", required=True)
     b.add_argument("--out-dir", required=True)
-    b.add_argument("--n-min", type=int, default=50)
-    b.add_argument("--s-min", type=int, default=10)
-    b.add_argument("--u-max", type=float, default=0.01)
-    b.add_argument("--p-recheck", type=float, default=0.04)
+    b.add_argument("--n-min", type=int, default=20)
+    b.add_argument("--s-min", type=int, default=5)
+    b.add_argument("--max-pos", type=int, default=0)
+    b.add_argument("--p-recheck", type=float, default=0.25)
     a = ap.parse_args(argv)
     return build(a)
 

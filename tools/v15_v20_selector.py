@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import time
 from pathlib import Path
 
 CONTRACT = "binding_map_v1"
@@ -106,11 +107,113 @@ def load_exhausted(cat_side: str, root=None, path=None):
     return out
 
 
-def exhausted_for_row(cat_side: str, tab: str, switch: str, cand, symside: str, root=None) -> dict:
-    """-> {hdr: p_recheck} for this row's exhausted cells; a cell already positive on this very sym_side is never throttled."""
+class BoardEvidence:
+    """THIS board's own filter evidence, read incrementally from its delta log (the ground truth, BIBLE §20) — the pilot is not
+    touched. Per filter NAME (all options, rows and tabs): n0 = fresh cell evals whose row naked was <= EPS, rescued = one of them
+    was > EPS. Measured 2026-10-27 over 2.88M fresh cells: a filter's value is board-specific and bursty (one board rescued 510
+    rows with a filter dead everywhere else), so a cat_side-wide count alone loses deltas; requiring the board's own silence too
+    kept the replayed rescue-delta loss <= 0.12%. Unreadable log -> n0 = 0 for every filter = nothing throttled (fail-open)."""
+
+    EPS = 1e-9
+
+    def __init__(self, symside: str, log_dir=None):
+        self.symside = str(symside)
+        base = Path(os.environ["V15_PROGRESS_DIR"]) if os.environ.get("V15_PROGRESS_DIR") else Path(__file__).resolve().parent.parent / "data" / "reports" / "lifecycle_pilot"
+        self.log_dir = Path(log_dir) if log_dir else base / "v15_delta_log"
+        self.pos: dict = {}
+        self.n0: dict = {}
+        self.rescued: set = set()
+        self.naked: dict = {}
+        self.pending: dict = {}
+
+    def _files(self):
+        try:
+            return sorted(p for p in self.log_dir.glob(f"{self.symside}_*.jsonl") if "_" not in p.name[len(self.symside) + 1:-6])
+        except Exception:
+            return []
+
+    def _cell(self, fname: str, nd, d) -> None:
+        if nd is None or nd > self.EPS:
+            return
+        self.n0[fname] = self.n0.get(fname, 0) + 1
+        if d is not None and d > self.EPS:
+            self.rescued.add(fname)
+
+    def refresh(self) -> None:
+        for p in self._files():
+            try:
+                size = p.stat().st_size
+                off = self.pos.get(p, 0)
+                if size <= off:
+                    continue
+                with open(p, "rb") as fh:
+                    fh.seek(off)
+                    chunk = fh.read(size - off)
+            except Exception:
+                continue
+            end = chunk.rfind(b"\n")
+            if end < 0:
+                continue
+            self.pos[p] = off + end + 1
+            for raw in chunk[:end].split(b"\n"):
+                if b'"delta"' not in raw or b'"cached": true' in raw:
+                    continue
+                try:
+                    r = json.loads(raw)
+                except Exception:
+                    continue
+                lab = str(r.get("label") or "")
+                if r.get("cached") or not r.get("sheet") or ":" in lab or "+" in lab:
+                    continue
+                key = (r.get("sheet"), r.get("row"), r.get("switch"), r.get("cand"))
+                try:
+                    d = None if r.get("delta") is None else float(r.get("delta"))
+                except Exception:
+                    d = None
+                if lab == "naked":
+                    self.naked[key] = d
+                    for fname, dd in self.pending.pop(key, []):
+                        self._cell(fname, d, dd)
+                    continue
+                if "=" not in lab:
+                    continue
+                fname = lab.split("=", 1)[0]
+                if key in self.naked:
+                    self._cell(fname, self.naked[key], d)
+                else:
+                    self.pending.setdefault(key, []).append((fname, d))
+            if len(self.pending) > 20000:
+                self.pending.clear()
+
+    def silent(self, fname: str, k: int) -> bool:
+        return fname not in self.rescued and self.n0.get(fname, 0) >= k
+
+
+_BOARD_EVIDENCE: dict = {}
+
+
+def board_evidence(symside: str) -> BoardEvidence:
+    be = _BOARD_EVIDENCE.get(str(symside))
+    if be is None:
+        be = _BOARD_EVIDENCE[str(symside)] = BoardEvidence(symside)
+        be.t_read = 0.0
+    if time.monotonic() - be.t_read >= 2.0:  # rows are discovered in bursts (a whole tab); one read per burst is enough
+        be.refresh()
+        be.t_read = time.monotonic()
+    return be
+
+
+def exhausted_for_row(cat_side: str, tab: str, switch: str, cand, symside: str, root=None, board=None, k=None) -> dict:
+    """-> {hdr: p_recheck} for this row's cells that are BOTH cat_side-exhausted (exhausted_cells_<CS>.json) AND whose filter has
+    been silent on THIS board for >= k (V20_EXH_BOARD_K, 20) non-positive-naked evals with no rescue. A cell positive on this
+    sym_side in the corpus is never throttled; a filter that rescues once on this board is never throttled again on it."""
     rows, p_re = load_exhausted(cat_side, root)
     cells = rows.get(row_key(tab, switch, cand)) or {}
-    return {h: p_re for h, c in cells.items() if str(symside) not in (c.get("pos_syms") or ())}
+    if not cells:
+        return {}
+    k = int(k if k is not None else os.environ.get("V20_EXH_BOARD_K", "20") or 20)
+    be = board if board is not None else board_evidence(symside)
+    return {h: p_re for h, c in cells.items() if str(symside) not in (c.get("pos_syms") or ()) and be.silent(str(h).split("=", 1)[0].strip(), k)}
 
 
 def row_key(tab: str, switch: str, cand) -> str:
@@ -181,7 +284,7 @@ def decide_cells(hdrs: list, bm, tab: str, switch: str, cand, running_set: dict,
     evidence_cells = set(evidence_cells or ())
     untried_cells = set(untried_cells or ())
     predicted_noop_cells = set(predicted_noop_cells or ())  # V20_BINDS_P: cells the B head says will not change the ledger (p_binds < max)
-    if exhausted_cells is None:  # V20_EXHAUSTED: cells measured often, on many sym_sides, ~never positive -> re-checked at p_recheck
+    if exhausted_cells is None:  # V20_EXHAUSTED: cat_side-exhausted AND silent on this board -> re-checked at p_recheck
         exhausted_cells = exhausted_for_row(cat_side, tab, switch, cand, symside) if exhausted_on() else {}
     keep, settled, counts = [], {}, {"never": 0, "master_off": 0, "indirect": 0, "model_out": 0, "floor_rescued": 0, "kept": 0, "dead_end": 0, "predicted_noop": 0, "exhausted": 0, "exhausted_rechecked": 0}
     rk = row_key(tab, switch, cand)

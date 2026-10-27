@@ -26,8 +26,8 @@ if ! mkdir "$LOCK" 2>/dev/null; then
 fi
 trap 'rm -rf "$LOCK"' EXIT INT TERM
 /usr/bin/python3 -c "import json,time; json.dump({'epoch':time.time(),'host':'macbook'}, open('$REPO/data/livecode_sync.json','w'))"
-LOCALHOST_SHELL="ssh -p 2201 -i /Users/niels/.ssh/id_ed25519 -o BatchMode=yes -o ConnectTimeout=6 -o ControlMaster=no -o ControlPath=none"
-PUBLIC_SHELL="ssh -i /Users/niels/.ssh/id_ed25519 -o BatchMode=yes -o ConnectTimeout=6 -o ControlMaster=no -o ControlPath=none"
+LOCALHOST_SHELL="ssh -S none -p 2201 -i /Users/niels/.ssh/id_ed25519 -o BatchMode=yes -o ConnectTimeout=6"
+PUBLIC_SHELL="ssh -S none -i /Users/niels/.ssh/id_ed25519 -o BatchMode=yes -o ConnectTimeout=6"
 # USER 2026-10-20 (coordinator): the four FINAL_NORM templates are not trading code but S1 ~/binance carried a stale set (57e67ff0...) because SPREADSHEETS/ and *.xlsx were excluded wholesale. Only those four files are let through (first match wins, so the includes sit before the excludes); everything else under SPREADSHEETS/ stays excluded.
 EXCLUDES=(--include 'SPREADSHEETS/' --include 'SPREADSHEETS/TEMPLATE_FINAL_NORM/' --include 'SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx' --include 'SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx' --include 'SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_LONG.xlsx' --include 'SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_SHORT.xlsx' --exclude 'SPREADSHEETS/TEMPLATE_FINAL_NORM/*' --exclude 'SPREADSHEETS/*'
   --include 'data/' --include 'data/livecode_sync.json' --exclude 'data/*' --exclude 'logs/' --exclude '*.log'

@@ -26,17 +26,15 @@ ACCOUNT = re.compile(r"^[a-z][a-z0-9_]*$")
 LEDGER = re.compile(r"^([A-Za-z0-9_.-]+_(?:LONG|SHORT))\.jsonl(?:\..+\.bak)?$")
 SSH = [
     "ssh",
-    "-o",
-    "ControlMaster=no",
-    "-o",
-    "ControlPath=none",
+    "-S",
+    "none",
     "-o",
     "BatchMode=yes",
     "-o",
     "ConnectTimeout=8",
 ]
 RSYNC_SSH = (
-    "ssh -o ControlMaster=no -o ControlPath=none -o BatchMode=yes -o ConnectTimeout=8"
+    "ssh -S none -o BatchMode=yes -o ConnectTimeout=8"
 )
 REMOTE_ROOTS = ("/home/niels/binance-sandbox", "/home/niels/binance")
 CRYPTO_ACCOUNTS = {"ang", "fin", "flz", "inf", "men"}

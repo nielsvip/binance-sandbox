@@ -15,7 +15,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -30,6 +29,7 @@ DRIVE_SSH_HOST = os.environ.get("V15_ARCHIVE_RCLONE_HOST", "").strip()
 DRIVE_PREFIX = os.environ.get("V15_ARCHIVE_RCLONE_PREFIX", "binance_backups/fleet_archive").strip("/")
 GCS_FALLBACK = os.environ.get("V15_ARCHIVE_GCS_FALLBACK", "1") == "1"
 HOSTS = {"s1": "s1-pub", "s2": "s2", "s5": "s5", "s6": "s6"}
+INTERNAL_HOSTS = {"s2": "niels@10.0.0.2", "s1": "niels@10.0.0.3", "s5": "niels@10.0.0.5", "s6": "niels@10.0.0.6"}
 DISK_WARN_MB = {"s1": 7000, "s2": 6000, "s5": 8000, "s6": 8000}
 S6_SOURCE = "/home/niels/rebuild_scratch_s6/experience_cold/run34_35_20261022"
 S5_MIRROR = "/home/niels/rebuild_scratch_s5/experience_cold"
@@ -243,7 +243,12 @@ def _source_signature(host: str, source: str) -> str:
 p=pathlib.Path(sys.argv[1])
 xs=[p] if p.is_file() else sorted(x for x in p.rglob('*') if x.is_file())
 print(json.dumps([(str(x.relative_to(p.parent)),x.stat().st_size,x.stat().st_mtime_ns,x.stat().st_ctime_ns) for x in xs],separators=(',',':')))"""
-    out = _ssh(host, "python3 -c %s %s" % (shlex.quote(py), shlex.quote(source)), timeout=120).stdout
+    source_command = "python3 -c %s %s" % (shlex.quote(py), shlex.quote(source))
+    if DRIVE_REMOTE and DRIVE_SSH_HOST and host in INTERNAL_HOSTS and host != "s1":
+        remote = "ssh -S none -o BatchMode=yes -o ConnectTimeout=8 -o ServerAliveInterval=10 -o ServerAliveCountMax=2 %s %s" % (INTERNAL_HOSTS[host], shlex.quote(source_command))
+        out = _command_on_server(remote, timeout=120).stdout.decode(errors="replace")
+    else:
+        out = _ssh(host, source_command, timeout=120).stdout
     return hashlib.sha256(out.encode()).hexdigest()
 
 
@@ -348,6 +353,10 @@ def _rclone_on_server(args: list[str], timeout: int = 600, stdin=None) -> subpro
     return subprocess.run(["ssh", "-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "ServerAliveInterval=30", "-o", "ServerAliveCountMax=10", DRIVE_SSH_HOST, command], stdin=stdin, capture_output=True, timeout=timeout)
 
 
+def _command_on_server(command: str, timeout: int = 600, input_data: bytes | None = None) -> subprocess.CompletedProcess:
+    return subprocess.run(["ssh", "-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "ServerAliveInterval=30", "-o", "ServerAliveCountMax=10", DRIVE_SSH_HOST, command], input=input_data, capture_output=True, text=False, timeout=timeout)
+
+
 def _stream_archive_to_drive(host: str, source: str, source_kind: str, remote: str) -> str:
     path = Path(source.rstrip("/"))
     quoted = shlex.quote(str(path))
@@ -358,54 +367,53 @@ def _stream_archive_to_drive(host: str, source: str, source_kind: str, remote: s
         source_command = "set -o pipefail; zstd -t -- %s >/dev/null && cat -- %s" % (quoted, quoted)
     else:
         source_command = "cat -- %s" % quoted
-    source_proc = subprocess.Popen(["ssh", "-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "ServerAliveInterval=30", "-o", "ServerAliveCountMax=10", HOSTS[host], "bash", "-lc", source_command], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    args = ["rcat", remote, "--drive-upload-cutoff=64M", "--drive-chunk-size=64M"]
-    command = '"$HOME/.local/bin/rclone" ' + " ".join(shlex.quote(str(arg)) for arg in args)
-    upload_proc = subprocess.Popen(["ssh", "-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "ServerAliveInterval=30", "-o", "ServerAliveCountMax=10", DRIVE_SSH_HOST, command], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    digest = hashlib.md5()
-    sent = 0
-    started = time.monotonic()
-    last_progress = started
-    try:
-        for block in iter(lambda: source_proc.stdout.read(1024 * 1024), b""):
-            digest.update(block)
-            upload_proc.stdin.write(block)
-            sent += len(block)
-            now = time.monotonic()
-            if now - last_progress >= 60:
-                _log("google_archive_stream_progress", source=f"{host}:{source}", bytes=sent, elapsed_s=int(now - started))
-                last_progress = now
-        upload_proc.stdin.close()
-        source_proc.stdout.close()
-        upload_rc = upload_proc.wait(timeout=86400)
-        source_rc = source_proc.wait(timeout=86400)
-        upload_stdout = upload_proc.stdout.read()
-        upload_stderr = upload_proc.stderr.read()
-        source_stderr = source_proc.stderr.read()
-    except BrokenPipeError as exc:
-        try:
-            upload_proc.stdin.close()
-        except OSError:
-            pass
-        source_proc.kill()
-        source_proc.wait()
-        try:
-            upload_proc.wait(timeout=60)
-        except subprocess.TimeoutExpired:
-            upload_proc.kill()
-            upload_proc.wait()
-        detail = (upload_proc.stderr.read() + upload_proc.stdout.read() + source_proc.stderr.read()).decode(errors="replace")
-        raise RuntimeError(f"streaming archive upload pipe closed after {sent} bytes: {detail[-500:]}") from exc
-    except Exception:
-        upload_proc.kill()
-        source_proc.kill()
-        upload_proc.wait()
-        source_proc.wait()
-        raise
-    if source_rc or upload_rc:
-        detail = (source_stderr + upload_stderr + upload_stdout).decode(errors="replace")
-        raise RuntimeError(f"streaming archive transfer failed source_rc={source_rc} upload_rc={upload_rc}: {detail[-500:]}")
-    return digest.hexdigest()
+    remote_script = '''import hashlib,json,os,shlex,subprocess,sys,time
+d=json.loads(sys.stdin.buffer.readline())
+source=subprocess.Popen(["ssh","-S","none","-o","BatchMode=yes","-o","ConnectTimeout=8","-o","ServerAliveInterval=10","-o","ServerAliveCountMax=2",d["source_host"],"bash -lc "+shlex.quote(d["source_command"])],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+upload=subprocess.Popen([os.path.expanduser("~/.local/bin/rclone"),"rcat",d["remote"],"--drive-upload-cutoff=64M","--drive-chunk-size=64M"],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+digest=hashlib.md5(); sent=0; started=time.monotonic(); last=started
+try:
+ while True:
+  block=source.stdout.read(1048576)
+  if not block: break
+  digest.update(block); upload.stdin.write(block); sent+=len(block)
+  now=time.monotonic()
+  if now-last>=60: print("PROGRESS",sent,int(now-started),flush=True); last=now
+ upload.stdin.close(); source.stdout.close()
+ upload_rc=upload.wait(timeout=86400); source_rc=source.wait(timeout=86400)
+ upload_out=upload.stdout.read(); upload_err=upload.stderr.read(); source_err=source.stderr.read()
+except BrokenPipeError as exc:
+ try: upload.stdin.close()
+ except OSError: pass
+ source.terminate()
+ try: source.wait(timeout=30)
+ except subprocess.TimeoutExpired: source.kill(); source.wait()
+ try: upload.wait(timeout=60)
+ except subprocess.TimeoutExpired: upload.kill(); upload.wait()
+ detail=(upload.stderr.read()+upload.stdout.read()+source.stderr.read()).decode(errors="replace")
+ print("RESULT",json.dumps({"ok":False,"bytes":sent,"error":str(exc),"detail":detail[-500:]}),flush=True); sys.exit(1)
+if source_rc or upload_rc:
+ detail=(source_err+upload_err+upload_out).decode(errors="replace")
+ print("RESULT",json.dumps({"ok":False,"bytes":sent,"source_rc":source_rc,"upload_rc":upload_rc,"detail":detail[-500:]}),flush=True); sys.exit(1)
+print("RESULT",json.dumps({"ok":True,"bytes":sent,"md5":digest.hexdigest()}),flush=True)'''
+    payload = {"source_host": INTERNAL_HOSTS[host], "source_command": source_command, "remote": remote}
+    remote_command = "python3 -u -c %s" % shlex.quote(remote_script)
+    completed = _command_on_server(remote_command, timeout=86400, input_data=(json.dumps(payload) + "\n").encode())
+    stdout = completed.stdout.decode(errors="replace")
+    result_line = next((line[7:] for line in reversed(stdout.splitlines()) if line.startswith("RESULT ")), None)
+    for line in stdout.splitlines():
+        if line.startswith("PROGRESS "):
+            _, byte_count, elapsed = line.split()
+            _log("google_archive_stream_progress", source=f"{host}:{source}", bytes=int(byte_count), elapsed_s=int(elapsed), path="internal_10.0.0.x")
+    if completed.returncode or result_line is None:
+        detail = completed.stderr[-500:]
+        if result_line:
+            detail = json.loads(result_line).get("detail", detail)
+        raise RuntimeError(f"internal source-to-S1 Drive stream failed rc={completed.returncode}: {detail}")
+    result = json.loads(result_line)
+    if not result.get("ok"):
+        raise RuntimeError(f"internal source-to-S1 Drive stream failed after {result.get('bytes', 0)} bytes: {result.get('detail', result.get('error', 'unknown error'))}")
+    return result["md5"]
 
 
 def _record_google_failure(state: dict, key: str, exc: Exception) -> None:
@@ -418,7 +426,8 @@ def _record_google_failure(state: dict, key: str, exc: Exception) -> None:
 def _archive_to_google_via_server(host: str, source: str, signature: str, state: dict) -> None:
     if not DRIVE_REMOTE or not DRIVE_SSH_HOST:
         raise RuntimeError("server-side Drive remote and SSH host must both be configured")
-    kind = _ssh(host, "if [ -d %s ]; then echo dir; elif [ -f %s ]; then echo file; else exit 4; fi" % (shlex.quote(source), shlex.quote(source)), timeout=30).stdout.strip()
+    kind_command = "if [ -d %s ]; then echo dir; elif [ -f %s ]; then echo file; else exit 4; fi" % (shlex.quote(source), shlex.quote(source))
+    kind = _command_on_server("ssh -S none -o BatchMode=yes -o ConnectTimeout=8 -o ServerAliveInterval=10 -o ServerAliveCountMax=2 %s %s" % (INTERNAL_HOSTS[host], shlex.quote(kind_command)), timeout=30).stdout.decode(errors="replace").strip()
     name = Path(source.rstrip("/")).name
     remote_dir = f"{DRIVE_REMOTE}:{DRIVE_PREFIX}/{host}"
     archive_leaf = f"{name}.tar.{signature[:12]}.zst" if kind == "dir" else f"{Path(name).stem}.{signature[:12]}{Path(name).suffix}"

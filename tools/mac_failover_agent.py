@@ -50,7 +50,7 @@ LOG = LOGDIR / "live_failover_agent.log"
 REMOTE_LIVE = os.environ.get("LF_REMOTE_LIVE", "/home/niels/binance")
 REMOTE_LF = f"{REMOTE_LIVE}/data/live_failover"
 HOSTS = tuple(os.environ.get("LF_HOSTS", "s1-pub s1-int").split())
-SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=6", "-o", "ServerAliveInterval=5", "-o", "ServerAliveCountMax=2", "-o", "ControlMaster=no", "-o", "ControlPath=none"]
+SSH_OPTS = ["-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=6", "-o", "ServerAliveInterval=5", "-o", "ServerAliveCountMax=2"]
 TICK_S = float(os.environ.get("LF_TICK_S", "15"))
 STATE_PUSH_S = float(os.environ.get("LF_STATE_PUSH_S", "30"))
 SNAP_PUSH_S = float(os.environ.get("LF_SNAP_PUSH_S", "120"))
@@ -528,7 +528,10 @@ class Agent:
     def start_history_sync(self, host, lease, direction):
         if getattr(self, "history_sync_running", False):
             return
+        if C.now_s() - float(getattr(self, "last_history_sync_attempt", 0.0) or 0.0) < 300:
+            return
         self.history_sync_running = True
+        self.last_history_sync_attempt = C.now_s()
         marker = LF / "history_sync_bootstrap.json"
         days = 36500 if not marker.is_file() else 7
         def run_history_sync():

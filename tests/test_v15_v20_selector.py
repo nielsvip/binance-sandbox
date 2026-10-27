@@ -223,11 +223,55 @@ def test_exhausted_map_load_and_cat_side(tmp_path):
     assert S.load_exhausted("STOCKS_LONG", root=tmp_path) == ({}, 1.0)  # absent = fail-open
 
 
-def test_exhausted_own_positive_sym_side_never_throttled(tmp_path):
+def _log(tmp_path, symside, lines):
+    d = tmp_path / "v15_delta_log"
+    d.mkdir(exist_ok=True)
+    with open(d / f"{symside}_jump.jsonl", "a") as fh:
+        for r in lines:
+            fh.write(json.dumps(r) + "\n")
+    return d
+
+
+def _row(sheet, row, naked, cells, cached=False):
+    out = [{"sheet": sheet, "row": row, "switch": "SW", "cand": "1", "label": "naked", "delta": naked, "cached": cached}]
+    out += [{"sheet": sheet, "row": row, "switch": "SW", "cand": "1", "label": h, "delta": dv, "cached": cached} for h, dv in cells]
+    return out
+
+
+def test_board_evidence_counts_only_nonpositive_naked_fresh_cells(tmp_path):
+    lines = []
+    for r in range(25):
+        lines += _row("T", r, -0.1, [("DC_BREAK_FILTER_TF=1h", -0.1), ("ADX_REGIME_FILTER_ENABLED=True", 0.0)])
+    lines += _row("T", 99, 0.5, [("DC_BREAK_FILTER_TF=1h", 0.6)])  # positive naked: inherited, not evidence
+    lines += _row("T", 98, -0.1, [("MOM3_FILTER_TF=4h", 0.3)], cached=True)  # cached: ignored
+    lines += [{"sheet": "T", "row": 97, "switch": "SW", "cand": "1", "label": "ADX_REGIME_FILTER_ENABLED=True", "delta": 0.2, "cached": False}]
+    d = _log(tmp_path, "ETHUSDT_LONG", lines)
+    be = S.BoardEvidence("ETHUSDT_LONG", log_dir=d)
+    be.refresh()
+    assert be.n0["DC_BREAK_FILTER_TF"] == 25 and be.silent("DC_BREAK_FILTER_TF", 20)
+    assert "MOM3_FILTER_TF" not in be.n0
+    _log(tmp_path, "ETHUSDT_LONG", [{"sheet": "T", "row": 97, "switch": "SW", "cand": "1", "label": "naked", "delta": -0.2, "cached": False}])  # naked after its cell
+    be.refresh()
+    assert "ADX_REGIME_FILTER_ENABLED" in be.rescued and not be.silent("ADX_REGIME_FILTER_ENABLED", 20)
+    assert S.BoardEvidence("NOPE_LONG", log_dir=tmp_path / "absent").silent("DC_BREAK_FILTER_TF", 20) is False  # fail-open
+
+
+def test_exhausted_needs_board_silence_and_spares_own_positive(tmp_path):
     _exh(tmp_path, rows=EXH_ROW)
-    a = S.exhausted_for_row("CRYPTO_LONG", "ENTRY_REVERSAL_BOUNCE", "BB_BOUNCE_ENTRY_TF", "4h", "ETHUSDT_LONG", root=tmp_path)
-    b = S.exhausted_for_row("CRYPTO_LONG", "ENTRY_REVERSAL_BOUNCE", "BB_BOUNCE_ENTRY_TF", "4h", "BTCUSDT_LONG", root=tmp_path)
+    lines = []
+    for r in range(25):
+        lines += _row("T", r, -0.1, [("DC_BREAK_FILTER_TF=1h", 0.0), ("ADX_REGIME_FILTER_ENABLED=True", 0.0)])
+    for ss in ("ETHUSDT_LONG", "BTCUSDT_LONG"):
+        _log(tmp_path, ss, lines)
+    be_eth = S.BoardEvidence("ETHUSDT_LONG", log_dir=tmp_path / "v15_delta_log")
+    be_eth.refresh()
+    be_btc = S.BoardEvidence("BTCUSDT_LONG", log_dir=tmp_path / "v15_delta_log")
+    be_btc.refresh()
+    a = S.exhausted_for_row("CRYPTO_LONG", "ENTRY_REVERSAL_BOUNCE", "BB_BOUNCE_ENTRY_TF", "4h", "ETHUSDT_LONG", root=tmp_path, board=be_eth)
+    b = S.exhausted_for_row("CRYPTO_LONG", "ENTRY_REVERSAL_BOUNCE", "BB_BOUNCE_ENTRY_TF", "4h", "BTCUSDT_LONG", root=tmp_path, board=be_btc)
     assert set(a) == {"DC_BREAK_FILTER_TF=1h", "ADX_REGIME_FILTER_ENABLED=True"} and set(b) == {"DC_BREAK_FILTER_TF=1h"}
+    quiet = S.BoardEvidence("SOLUSDT_LONG", log_dir=tmp_path / "v15_delta_log")  # no board evidence yet -> nothing throttled
+    assert S.exhausted_for_row("CRYPTO_LONG", "ENTRY_REVERSAL_BOUNCE", "BB_BOUNCE_ENTRY_TF", "4h", "SOLUSDT_LONG", root=tmp_path, board=quiet) == {}
 
 
 def test_exhausted_cells_rechecked_at_rate_must_evidence_essential_kept():

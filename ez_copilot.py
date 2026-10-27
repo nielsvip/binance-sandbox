@@ -1975,6 +1975,8 @@ async def check_system_health() -> List[dict]:
             issues.append({"type": "PROCESS_DOWN", "script": script, "system": "tradier", "severity": sev, "message": f"{script} is NOT running" + (" (MARKET OPEN!)" if market_open else "")})
     # Per-account manage scripts
     for acct in CRYPTO_ACCOUNTS:
+        if (BASE_PATH / "data" / f"no_autostart_{acct}.flag").exists():
+            continue
         if not _check_process_running_with_account("ez_manage.py", acct):
             issues.append({"type": "PROCESS_DOWN", "script": f"ez_manage.py --account {acct}", "system": "crypto", "severity": "HIGH", "message": f"ez_manage.py for {acct} is NOT running"})
     for acct in TRADIER_ACCOUNTS:

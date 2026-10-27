@@ -79,7 +79,7 @@ root_folder_id = {GOOGLE_FOLDER_ID}
 
 def rclone_on_server(args, timeout=300, stdin=None):
     command = '"$HOME/.local/bin/rclone" ' + " ".join(shlex.quote(str(arg)) for arg in args)
-    return subprocess.run(["ssh", "-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", DRIVE_SSH_HOST, command], stdin=stdin, capture_output=True, timeout=timeout)
+    return subprocess.run(["ssh", "-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "ServerAliveInterval=30", "-o", "ServerAliveCountMax=10", DRIVE_SSH_HOST, command], stdin=stdin, capture_output=True, timeout=timeout)
 
 def sha256_file(fpath):
     digest = hashlib.sha256()
@@ -124,7 +124,7 @@ def upload_file(fpath):
                 log(f"Drive directory creation failed for {fpath.name}: {made.stderr.decode(errors='replace')[-300:]}", "WARN")
                 return False
             with fpath.open("rb") as stream:
-                result = rclone_on_server(["rcat", remote, "--drive-upload-cutoff=64M", "--drive-chunk-size=64M"], timeout=1800, stdin=stream)
+                result = rclone_on_server(["rcat", remote, "--drive-upload-cutoff=64M", "--drive-chunk-size=64M"], timeout=86400, stdin=stream)
             if result.returncode:
                 detail = (result.stderr + result.stdout).decode(errors="replace")
                 log(f"Server-side Drive upload failed rc={result.returncode} for {fpath.name}: {detail[-400:]}", "WARN")

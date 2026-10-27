@@ -11642,7 +11642,7 @@ class TradeVerifier:
                 await asyncio.sleep(0.5)
         try:
             if self.positions_service:
-                await self.positions_service.fetch_positions(account_key)
+                await self.sync_positions_from_redis_once([account_key])  # USER 2026-10-27: writer truth, not a Binance poll
             api_positions = self.positions_by_account.get(account_key, {})
             current_pos = api_positions.get(position_key)
             final_amt = (
@@ -16684,6 +16684,42 @@ class MultiAccountTradeManager:
             return pos_obj
         except Exception:
             return None
+
+    async def _writer_truth_snapshot(self, account_key, max_age_s: float = 20.0):
+        """Positions as published by the SINGLE WRITER (redis -> json), or None when that truth is not
+        demonstrably fresh.
+
+        USER 2026-10-27: ez_manage never polls Binance — one source of truth. But two standing laws say a
+        protective stop may not be cancelled, and an owed exit may not be dropped, on evidence that could
+        be stale ("GUARANTEED STOP: local flat never cancels"; the NEAR ang post-mortem where a stale
+        snapshot read 0 while the broker held for 25 h). Both are honoured here by PROVING freshness
+        instead of by issuing our own broker read: the writer's heartbeat must be alive AND its published
+        rows must be younger than max_age_s. Otherwise -> None, and every caller treats None as
+        "keep the stop / keep the owed exit".
+        Returns an object exposing .amount(symbol, side) / .entries, like the retired broker snapshot."""
+        try:
+            await self.sync_positions_from_redis_once([account_key])
+        except Exception:
+            pass
+        try:
+            import position_writer_guard as _pwg_fresh
+            base = Path(getattr(config, "BASE_PATH", Path(__file__).resolve().parent))
+            if _pwg_fresh.heartbeat_age(base / account_key) > _pwg_fresh.stale_after_s():
+                logger.warning(f"[WRITER_TRUTH][{account_key}] writer heartbeat stale — truth UNKNOWN (caller keeps the stop / owed exit)")
+                return None
+            newest = 0.0
+            for _side in ("long", "short"):
+                _p = base / account_key / f"{_side}_positions.json"
+                if _p.exists():
+                    newest = max(newest, _p.stat().st_mtime)
+            age = time.time() - newest if newest > 0 else float("inf")
+            if age > float(max_age_s):
+                logger.warning(f"[WRITER_TRUTH][{account_key}] published positions {age:.0f}s old (> {max_age_s:.0f}s) — truth UNKNOWN (caller keeps the stop / owed exit)")
+                return None
+        except Exception as exc:
+            logger.warning(f"[WRITER_TRUTH][{account_key}] freshness check failed ({exc!r}) — truth UNKNOWN")
+            return None
+        return await _eps.store_snapshot(self, account_key)
 
     async def _load_positions_from_redis(
         self, account_key: Optional[str] = None
@@ -25823,19 +25859,70 @@ class MultiAccountTradeManager:
     async def refresh_from_files_once(
         self, account_keys: Optional[Iterable[str]] = None
     ):
-        """KILLED — positions come from API/WS only. Disk/Redis are write-only backups. Never read back."""
-        return
+        """USER 2026-10-27: RESTORED. Apply {acct}/{long,short}_positions.json — the writer's output — into
+        memory. Was KILLED ("Disk/Redis are write-only backups. Never read back."), the exact inverse of
+        the standing law that Redis and the positions JSON are the source of truth everywhere.
+        Merge is newest-wins via _apply_positions_payload; it never deletes a row (positions are only ever
+        zeroed) and never rewrites identity fields."""
+        keys = list(account_keys) if account_keys else list(self.accounts.keys())
+        for account_key in keys:
+            if account_key not in self._allowed_accounts:
+                continue
+            try:
+                long_path = self._ensure_account_file(account_key, "long_positions.json")
+                short_path = self._ensure_account_file(account_key, "short_positions.json")
+                payload, snapshot_ts = await self._load_position_files_payload(account_key, long_path, short_path)
+                if payload:
+                    await self._apply_positions_payload(account_key, payload, snapshot_ts)
+            except Exception as exc:
+                logger.error(f"[refresh_from_files_once][{account_key}] {exc!r}", exc_info=True)
 
     async def sync_positions_from_redis_once(self, account_keys: List[str]) -> None:
-        """KILLED — never read positions from Redis. API/WS is sole source."""
-        return
+        """USER 2026-10-27 VERBATIM: "ez_manage gets positions in ONE SINGLE EASY FUCKING WAY which is
+        reading redis and if redis takes >0.01s it read the json END OF STORY".
+
+        Redis first, under a hard EZ_POSITIONS_REDIS_BUDGET_S (0.01 s) budget enforced by
+        await_abandonable — which abandons the slow read WITHOUT awaiting its cancellation, so a wedged
+        Redis can never park this loop (a plain wait_for once parked 28.9 s with no TimeoutError). Over
+        budget, unreachable, or empty -> the JSON written by the same single writer. No Binance call on
+        either path: ez_manage does not own the broker connection.
+
+        Was KILLED ("never read positions from Redis. API/WS is sole source."), which is what made
+        ez_manage start its own position fetch loop per account."""
+        for account_key in list(account_keys or []):
+            if account_key not in self._allowed_accounts:
+                continue
+            src = "none"
+            t0 = time.perf_counter()
+            try:
+                payload = await await_abandonable(
+                    self._redis_get_dict(f"positions:{account_key}"),
+                    EZ_POSITIONS_REDIS_BUDGET_S,
+                )
+                rows = (payload.get("positions_by_account") or {}).get(account_key) if isinstance(payload, dict) else None
+                if not isinstance(rows, dict) or not rows:
+                    rows = payload if (isinstance(payload, dict) and payload and "positions_by_account" not in payload) else None
+                if isinstance(rows, dict) and rows:
+                    snapshot_ts = safe_datetime(payload.get("timestamp"), None) if isinstance(payload, dict) else None
+                    await self._apply_positions_payload(account_key, rows, snapshot_ts)
+                    src = "redis"
+            except AbandonTimeout:
+                logger.debug(f"[positions_truth][{account_key}] redis over {EZ_POSITIONS_REDIS_BUDGET_S * 1000:.0f}ms budget — reading the json")
+            except Exception as exc:
+                logger.debug(f"[positions_truth][{account_key}] redis read failed ({exc!r}) — reading the json")
+            if src != "redis":
+                await self.refresh_from_files_once([account_key])
+                src = "json"
+            _ms = (time.perf_counter() - t0) * 1000.0
+            if _ms > 250.0:
+                logger.warning(f"[positions_truth][{account_key}] source={src} took {_ms:.0f}ms")
 
     async def sync_positions_from_redis_loop(self) -> None:
-        if self.positions_service:
-            logger.info(
-                "[sync_positions_from_redis_loop] Disabled (Shared Memory Active)"
-            )
-            return
+        # USER 2026-10-27: the `if self.positions_service: return` disable is REMOVED. This loop IS how
+        # ez_manage learns positions (redis -> json, 0.01 s budget). It was switched off because an
+        # in-process positions_service existed, and that service then fetched from Binance itself — two
+        # sources of truth and two pollers on one IP. The service object stays (the rest of the code reads
+        # its dicts) but no longer fetches: see bootstrap_position_service(enable_auto_fetch=False).
         await asyncio.sleep(2.0)  # Initial delay
         while True:
             try:
@@ -25865,8 +25952,21 @@ class MultiAccountTradeManager:
             await asyncio.sleep(self._positions_sync_interval)
 
     async def refresh_from_files_loop(self, interval: Optional[float] = None):
-        """KILLED — positions_service with enable_auto_fetch=True is the sole source of truth via WS+API. Reading from files would overwrite live data with stale disk data."""
-        return
+        """USER 2026-10-27: RESTORED, and it is now THE way ez_manage learns positions: redis first under a
+        0.01 s budget, else the json — both written by the single writer. No Binance call.
+        Was KILLED on the claim that "positions_service with enable_auto_fetch=True is the sole source of
+        truth via WS+API"; that in-process service had NO WebSocket (the writer owns it), so it was really
+        a second REST poller whose process_account_update hung 329x > 120 s, freezing ez_manage's view
+        while the writer's files stayed correct.
+        This task is already scheduled at startup, so no new task is created."""
+        _iv = float(interval or 4.0)
+        await asyncio.sleep(2.0)
+        while True:
+            try:
+                await self.sync_positions_from_redis_once(list(self.accounts.keys()))
+            except Exception as exc:
+                logger.error(f"[refresh_from_files_loop] {exc!r}", exc_info=True)
+            await asyncio.sleep(_iv)
 
     async def enforce_data_sync_loop(self, interval: float = 4.0):
         await asyncio.sleep(max(2, interval))
@@ -40487,7 +40587,7 @@ class MultiAccountTradeManager:
             except Exception as _ehp:
                 logger.error(f"[UNIVERSAL_HEDGE_PERSIST_ERR] {position_key}: {_ehp}")
             if hasattr(self, "positions_service") and self.positions_service:
-                __import__("asyncio").create_task(self.positions_service.fetch_positions(account_key))
+                __import__("asyncio").create_task(self.sync_positions_from_redis_once([account_key]))  # USER 2026-10-27: the writer's WS already saw this fill; read redis/json, never poll Binance
             return True
         except __import__("binance.exceptions", fromlist=["BinanceAPIException"]).BinanceAPIException as e:
             logger.error(f"[{position_key}] MARKET_API_ERROR code={e.code} msg={e.message}")
@@ -57339,7 +57439,7 @@ async def process_position(
                                 _ps = getattr(trade_manager, "positions_service", None)
                                 if _ps and hasattr(_ps, "fetch_positions"):
                                     await asyncio.wait_for(
-                                        _ps.fetch_positions(account_key), timeout=8.0
+                                        self.sync_positions_from_redis_once([account_key]), timeout=8.0  # USER 2026-10-27: writer truth, not a Binance poll
                                     )
                                 _hg_pos = (
                                     await trade_manager.get_position(position_key)
@@ -66659,7 +66759,13 @@ async def main():
                     bootstrap_position_service(
                         logger=service_silencer,
                         accounts=_bootstrap_accounts,
-                        enable_auto_fetch=True,
+                        # USER 2026-10-27: was True — ez_manage ran its OWN Binance position fetch loop per
+                        # account on top of the dedicated writer's: 10 pollers for 5 accounts, double the
+                        # request weight, and ez_manage's copy hung 329x (process_account_update > 120 s,
+                        # all tagged MANAGER_POSITION_CACHE_STALE) so it traded on frozen positions while
+                        # the writer's files were correct. ez_manage now learns positions ONLY from
+                        # redis -> json via sync_positions_from_redis_loop.
+                        enable_auto_fetch=False,
                         load_priority="disk",
                     ),
                     timeout=float(getattr(config, "POSITIONS_BOOTSTRAP_TIMEOUT_S", 75.0)),  # POSITIONS REVAMP 2026-10-06: was 30 = inner positionRisk 30 s -> outer always won (men restart loop)

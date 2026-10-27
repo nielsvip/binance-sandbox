@@ -350,6 +350,9 @@ done
 for wlog in "$LOGDIR"/ez_manage_*_watchdog.log; do
     [ ! -f "$wlog" ] && continue
     acct=$(basename "$wlog" | sed 's/ez_manage_//;s/_watchdog.log//')
+    if [ -f "$WORKDIR/data/no_autostart_${acct}.flag" ]; then
+        continue
+    fi
     if tail -5 "$wlog" 2>/dev/null | grep -q "Too many rapid restarts"; then
         # Watchdog gave up. Check if the python process is alive anyway (cron may have restarted it).
         if ! _pgrep -f "ez_manage.py --account $acct" >/dev/null 2>&1; then
