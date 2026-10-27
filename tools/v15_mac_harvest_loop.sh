@@ -20,6 +20,10 @@ while true; do
   timeout 150 rsync -az -e "$SSH" s2:~/v15_mac_done/     "$DEST/" >>"$LOG" 2>&1
   timeout 200 $SSH s5 'cd ~/binance-sandbox && BASE_PATH=$HOME/binance-sandbox nice -n 19 /home/niels/.conda/envs/binance_env_mac/bin/python -u tools/v15_harvest_done.py >/tmp/v15_harvest.log 2>&1; tail -1 /tmp/v15_harvest.log' >>"$LOG" 2>&1
   timeout 150 rsync -az -e "$SSH" s5:~/v15_mac_done/     "$DEST/" >>"$LOG" 2>&1
+  # 2026-10-27: s6 was absent from this loop entirely, so nothing it published could ever reach the
+  # Mac -- and s6 held 10 of the 13 boards that were finished-but-unpublishable. Same shape as s5.
+  timeout 200 $SSH s6 'cd ~/binance-sandbox && BASE_PATH=$HOME/binance-sandbox nice -n 19 /home/niels/.conda/envs/binance_env_mac/bin/python -u tools/v15_harvest_done.py >/tmp/v15_harvest.log 2>&1; tail -1 /tmp/v15_harvest.log' >>"$LOG" 2>&1
+  timeout 150 rsync -az -e "$SSH" s6:~/v15_mac_done/     "$DEST/" >>"$LOG" 2>&1
   N=$(ls "$DEST"/*_30d_matrix.xlsx 2>/dev/null | wc -l | tr -d ' ')
   C=$(ls "$DEST"/*_30d_zoom.html 2>/dev/null | wc -l | tr -d ' ')
   echo "[$TS] harvested xlsx=$N/354 charts=$C" >>"$LOG"
