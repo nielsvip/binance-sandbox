@@ -107,7 +107,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--max", type=int, default=2, help="relaunches per run (the lane cap still applies)")
-    ap.add_argument("--workers", type=int, default=3)
+    ap.add_argument("--workers", type=int, default=7)
     ap.add_argument("--max-short", type=int, default=250, help="skip a board missing more rows than this; it needs a full sweep, not a hole fill")
     ap.add_argument("--host-lane", default=None, help="worker_lanes dir name; default = hostname")
     ap.add_argument("--quiet", action="store_true")

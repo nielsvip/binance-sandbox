@@ -26,6 +26,17 @@ ACTIVATION       per account, immediate: Mac heartbeat absent/stale (ssh push fa
                  continuous healthy stretch; repeated takeovers double the hold (no ping-pong).
 SAFETY           data/vector_direct/KILL stops every order instantly; --dry-run logs the orders it would send; a 418/429 from
                  Binance blocks all REST until Retry-After (the IP was banned before — positionRisk at most once per pass).
+
+USER 2026-10-27 (verbatim): "keep going for 4 hours make sure it trades correctly then switch back to macbook complete scripts
+so we can keep discovering VEC_ logs that mean template rows and vec functions are still missing in the real scripts, and
+switch back immediately as soon as macbook has any data or trading issue until it comes back online. Have it paper tade the
+rest of the time and alert and execute any order that was not executed by macbook indicating a backstop failure."
+PIN              data/vector_direct/pin_<venue>.json {"until_epoch", "accounts"} keeps those accounts owned until it expires.
+PAPER            accounts the Mac trades are planned every bar against the real broker position and written (never sent) to
+                 paper_<venue>_<day>.jsonl — what S1 would do.
+BACKSTOP         a board OPEN/CLOSE the broker still does not show after the grace is NOT an account takeover (that would stand
+                 the Mac engine down and hide its VEC_ logs): S1 alerts (ALERTS.jsonl) and sends exactly that one order.
+                 Mac data/trading faults (heartbeat, health kinds, engine dead) still take the account over until healthy.
 """
 from __future__ import annotations
 
@@ -590,6 +601,9 @@ class Trader:
         self.last_plan = {}
         self.state_sig = {}
         self.hb_remote = (0.0, None)
+        self.missed_rows = {}
+        self.paper_plan = {}
+        self.paper_done = set()
 
     def _ledger_path(self, ts=None):
         return self.out / f"ledger_{self.venue}_{dt.datetime.fromtimestamp(ts or time.time(), dt.timezone.utc):%Y-%m-%d}.jsonl"
@@ -642,6 +656,66 @@ class Trader:
                 out[ss] = d
         return out
 
+    def alert(self, kind, **fields):
+        row = {"iso": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "epoch": time.time(), "host": socket.gethostname(), "venue": self.venue, "kind": kind, **fields}
+        with open(self.out / "ALERTS.jsonl", "a") as fh:
+            fh.write(json.dumps(row, default=str) + "\n")
+        atomic_write_json(self.out / f"ALERT_LATEST_{self.venue}.json", row)
+        log(f"ALERT {kind} {json.dumps(fields, default=str)}")
+
+    def pinned(self, now):
+        pin = read_json(self.out / f"pin_{self.venue}.json", {}) or {}
+        if float(pin.get("until_epoch") or 0) <= now:
+            return {}
+        return {a: f"operator_pin_until_{pin.get('until_iso') or int(pin['until_epoch'])}" for a in (pin.get("accounts") or self.accounts) if a in self.accounts}
+
+    def paper(self, now, inactive, keys, states, bar, allowed):
+        """What S1 would send for the accounts the Mac trades. Logged once per key, never sent."""
+        for acct in inactive:
+            if now - self.paper_plan.get(acct, 0) < REPLAN_S:
+                continue
+            self.paper_plan[acct] = now
+            try:
+                pos = self.broker.positions(acct)
+            except Exception as exc:
+                log(f"paper {acct}: positions failed {str(exc)[:120]}")
+                continue
+            orders, _ = plan_account(acct, self.venue, keys.get(acct, ()), states, pos, bar, self.paper_done, allowed)
+            path = self.out / f"paper_{self.venue}_{dt.datetime.fromtimestamp(now, dt.timezone.utc):%Y-%m-%d}.jsonl"
+            with open(path, "a") as fh:
+                for o in orders:
+                    self.paper_done.add(o["key"])
+                    held = float((pos.get(o["ss"]) or {}).get("qty") or 0.0)
+                    fh.write(json.dumps({"iso": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "bar": bar, "held": held, **o}, default=str) + "\n")
+
+    def backstop(self, now, killed, keys, states, allowed):
+        """Mac did not execute a board OPEN/CLOSE within the grace -> alert + send exactly that order (no takeover)."""
+        n = 0
+        for acct, rows in self.missed_rows.items():
+            try:
+                pos = self.broker.positions(acct)
+            except Exception as exc:
+                log(f"backstop {acct}: positions failed {str(exc)[:120]}")
+                continue
+            orders = []
+            for e in rows:
+                held = float((pos.get(e["ss"]) or {}).get("qty") or 0.0)
+                st = states.get(e["ss"]) or {}
+                if e["want"] == "FLAT" and held > 0 and not st.get("open"):
+                    orders.append({"acct": acct, "ss": e["ss"], "act": "CLOSE", "qty": held, "key": f"{acct}|{e['ss']}|{e['bar']}|BACKSTOP_CLOSE", "why": f"BACKSTOP Mac missed board CLOSE at bar {e['bar']}"})
+                elif e["want"] == "HOLD" and held <= 0 and st.get("open"):
+                    eq, oq = float(st.get("engine_qty") or 0.0), float(st.get("engine_open_qty") or 0.0)
+                    ratio = min(4.0, max(0.25, eq / oq)) if eq > 0 and oq > 0 else 1.0
+                    orders.append({"acct": acct, "ss": e["ss"], "act": "OPEN", "notional": START_POSITION_SIZE * ratio, "key": f"{acct}|{e['ss']}|{e['bar']}|BACKSTOP_OPEN", "why": f"BACKSTOP Mac missed board OPEN at bar {e['bar']}"})
+                else:
+                    continue
+                self.alert("BACKSTOP_FAILURE_MAC_MISSED_ORDER", account=acct, sym_side=e["ss"], board=e["want"], bar=e["bar"], broker_qty=held, action=orders[-1]["act"])
+            orders = [o for o in orders if o["key"] not in self.done]
+            if orders:
+                n += self.send_orders(acct, orders, pos, killed)
+        self.missed_rows = {}
+        return n
+
     def check_expectations(self, now, active):
         """Board OPEN/CLOSE at a bar the Mac had to execute: broker must show it after the grace."""
         missed, due, keep = {}, {}, []
@@ -666,9 +740,9 @@ class Trader:
             for e in rows:
                 held = float((pos.get(e["ss"]) or {}).get("qty") or 0.0)
                 if (e["want"] == "HOLD" and held <= 0) or (e["want"] == "FLAT" and held > 0):
-                    missed[acct] = f"mac_missed_trade {e['ss']} board={e['want']} bar={e['bar']} broker_qty={held}"
+                    # USER 2026-10-27: a missed order is a BACKSTOP (alert + send that order), not an account takeover
+                    self.missed_rows.setdefault(acct, []).append(e)
                     self._ledger({"event": "MISSED_TRADE", "acct": acct, "ss": e["ss"], "want": e["want"], "bar": e["bar"], "broker_qty": held})
-                    break
         return missed
 
     def run_once(self):
@@ -687,6 +761,8 @@ class Trader:
         if self.a.force_active:
             for x in self.a.force_active.split(","):
                 trig.setdefault(x, "forced_by_operator")
+        for x, why in self.pinned(now).items():
+            trig.setdefault(x, why)
         if not market_ok:
             trig = {}
         for acct, kind, why in self.act.update(now, trig):
@@ -732,6 +808,22 @@ class Trader:
                     if k not in self.done:
                         self.done.add(k)
                         self._ledger({"event": "NOTE", "acct": acct, "ss": ss, "note": n, "key": k, "final": True})
+            orders_n += self.send_orders(acct, orders, pos, killed)
+        if market_ok:
+            self.paper(now, [a for a in self.accounts if a not in active], keys, states, bar, allowed)
+            orders_n += self.backstop(now, killed, keys, states, allowed)
+        fresh_n = sum(1 for st in states.values() if state_fresh(st, bar))
+        status = {"epoch": now, "iso": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "host": socket.gethostname(),
+                  "venue": self.venue, "armed": not self.a.dry_run and not killed, "dry_run": self.a.dry_run, "killed": killed,
+                  "market_open": market_ok, "active_accounts": active, "triggers": trig, "hb_age_s": None if hb_age is None else round(hb_age, 1),
+                  "bar": bar, "states_fresh": fresh_n, "states_total": len(all_sides), "pending_expectations": len(self.expect),
+                  "orders_this_pass": orders_n, "start_position_size": START_POSITION_SIZE, "pin": self.pinned(now)}
+        atomic_write_json(self.out / f"status_{self.venue}.json", status)
+        return status
+
+    def send_orders(self, acct, orders, pos, killed):
+        orders_n = 0
+        if True:
             if self.venue == "stocks":
                 held_syms = {}
                 for ss in pos:
