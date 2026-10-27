@@ -445,6 +445,17 @@ def sweep_once(base, cat_side, workers=WORKERS, sibling=None, sibling_base=None)
             rec["error"] += 1
             rec["error_syms"].append(sym)
     tasks = [(sym, int(lc), str(base), mode) for _, sym, lc, _ in ready]
+    # 2026-10-27: import the compute modules in the PARENT so every forked worker inherits them. Measured on S1: each worker
+    # paid 2.5 s (npz_live_generator 1.0 s + ez_indicators 1.5 s) before its first row, on every sweep.
+    if tasks:
+        try:
+            import npz_live_generator  # noqa: F401
+            if mode == "tradier":
+                import tradier_indicators  # noqa: F401
+            else:
+                import ez_indicators  # noqa: F401
+        except Exception:
+            pass
     with ProcessPoolExecutor(max_workers=min(max(1, workers), 12), mp_context=get_context("fork")) as pool:
         futures = {pool.submit(_compute_row_process, task): job for task, job in zip(tasks, ready)}
         for future in as_completed(futures):
