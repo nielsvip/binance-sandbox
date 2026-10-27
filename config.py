@@ -276,7 +276,7 @@ class Config:
         1  # Single WS positionAmt=0 is authoritative — was 2, caused 81 phantom positions
     )
     ZERO_CONFIRMATION_THRESHOLD_API: int = (
-        2  # 2026-04-27 owner: tightened 5→2 ("twice in a row triggers zero"). Stricter phantom detection. Trade-off: higher false-positive rate (~22% restoration historically), but stale ghosts cost augment cycles + HAIKU_STALE block storms.
+        3  # USER 2026-10-27: raised 2->3 — measured on ang (34 open positions, the highest of any account): the API response is intermittently incomplete for high-position-count accounts, and 2 consecutive misses was zeroing real, still-open positions (QNTUSDT_LONG, RSRUSDT_LONG, FARTCOINUSDT_SHORT, JASMYUSDT_SHORT, NEARUSDC_LONG). Was 2 (2026-04-27, tightened 5->2).
     )
     MIN_PERC_FROM_SMA_1: float = 1.0 / 100  # SMA_1
     MIN_PERC_FROM_SMA_15: float = 3.0 / 100  # SMA_15

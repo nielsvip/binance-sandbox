@@ -24,7 +24,7 @@ if [ -n "$SYMS" ]; then
   $PY -u "$SB/tools/npz_bar_refresh.py" --symbols "$SYMS" --mode "$MODE" >> $LOG 2>&1
   for s in $(cat "$ASSIGN" 2>/dev/null); do echo "${s}_${SIDE}"; done | tr '\n' ' ' > /tmp/npz_q_sides.txt
   tr ' ' '\n' < /tmp/npz_q_sides.txt | grep -v '^$' > /tmp/npz_q_sides.list
-  bash /tmp/qstate_all.sh /tmp/npz_q_sides.list 8 >> $LOG 2>&1
+  PER_SYM_STORE_DB="$SB/data/hourly_reconfig/per_sym_forward_master.db" bash /tmp/qstate_all.sh /tmp/npz_q_sides.list 8 >> $LOG 2>&1
   for s in $(cat "$ASSIGN" 2>/dev/null); do
     [ -f "$SB/backtest_v8/indicators/$s.npz" ] && echo "backtest_v8/indicators/$s.npz"
   done | tee /tmp/npz_q_push.list | rsync -az --timeout=120 --files-from=- "$SB/" "niels@10.0.0.3:npz_inbox_q/" >> $LOG 2>&1
