@@ -167,6 +167,76 @@ def realized(window_days: float = 30.0, accounts=None, base_path: Path = None) -
     }
 
 
+def realized_by_sym_side(window_days: float = 14.0, accounts=None, base_path: Path = None) -> dict:
+    """Exchange-reported net per `SYMBOL_SIDE`, keyed off each fill's positionSide.
+
+    This is the authority for tiering and position sizing. Every fill carries
+    `positionSide` (verified 2026-10-27: 10,086 LONG / 7,886 SHORT, no blanks),
+    so LONG and SHORT never have to be blended or guessed at. `win_rate` counts
+    only closing fills (those with a non-zero `realizedPnl`), and `net_usd` is
+    net of commission, converted from BNB at the live mark.
+    """
+    root = Path(base_path) if base_path else _base_path()
+    accts = tuple(accounts) if accounts else CRYPTO_ACCOUNTS
+    bnb, _src = _bnb_usd()
+    cutoff_ms = (time.time() - float(window_days) * 86400.0) * 1000.0
+    agg = defaultdict(lambda: {"realized_usd": 0.0, "fees_usd": 0.0, "turnover_usd": 0.0, "fills": 0, "closes": 0, "wins": 0, "accounts": set()})
+    for acct in accts:
+        for p in glob.glob(str(root / "data" / "exchange_fills" / acct / "*.json")):
+            try:
+                rows = json.loads(Path(p).read_text()).get("rows") or []
+            except Exception:
+                continue
+            for r in rows:
+                try:
+                    if float(r.get("time") or 0) < cutoff_ms:
+                        continue
+                    pnl = float(r.get("realizedPnl") or 0.0)
+                    fee = abs(float(r.get("commission") or 0.0))
+                    if str(r.get("commissionAsset") or "") == "BNB":
+                        fee *= bnb
+                    q = abs(float(r.get("quoteQty") or 0.0))
+                except (TypeError, ValueError):
+                    continue
+                side = str(r.get("positionSide") or "").upper()
+                sym = str(r.get("symbol") or "")
+                if side not in ("LONG", "SHORT") or not sym:
+                    continue
+                v = agg[f"{sym}_{side}"]
+                v["realized_usd"] += pnl
+                v["fees_usd"] += fee
+                v["turnover_usd"] += q
+                v["fills"] += 1
+                v["accounts"].add(acct)
+                if pnl != 0.0:
+                    v["closes"] += 1
+                    if pnl - 0.0 > 0:
+                        v["wins"] += 1
+    out = {}
+    for k, v in agg.items():
+        net = v["realized_usd"] - v["fees_usd"]
+        closes = v["closes"]
+        turn = v["turnover_usd"]
+        sym, side = k.rsplit("_", 1)
+        out[k] = {
+            "sym_side": k,
+            "symbol": sym,
+            "side": side,
+            "realized_usd": round(v["realized_usd"], 4),
+            "fees_usd": round(v["fees_usd"], 4),
+            "net_usd": round(net, 4),
+            "turnover_usd": round(turn, 2),
+            "fills": v["fills"],
+            "closes": closes,
+            "win_rate": round(v["wins"] / closes, 4) if closes else 0.0,
+            # Net return per unit of capital actually put at risk. Turnover
+            # counts both legs, so halve it to approximate deployed capital.
+            "net_pct_of_deployed": round(200.0 * net / turn, 5) if turn else 0.0,
+            "accounts": sorted(v["accounts"]),
+        }
+    return out
+
+
 def reconcile(history_stats: dict, window_days: float = 14.0, base_path: Path = None) -> dict:
     """Compare in-house per-symbol net against the exchange. Divergence is a bug.
 

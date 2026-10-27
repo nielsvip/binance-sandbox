@@ -968,6 +968,58 @@ def promotion_block_reason(switch: str, sheet: str | None = None) -> str:
     return ""
 
 
+def promotion_noise_floor_pp() -> float:
+    """Minimum delta (percentage points of gain) worth promoting.
+
+    Two measured quantities, whichever is larger:
+
+    1. BOARD NONDETERMINISM, +/-0.48 gain on an identical tree and NPZ (the
+       figure already documented against DEAD_VEC_SWITCHES above). A delta
+       smaller than the run-to-run spread is not a finding, it is the dice.
+    2. ONE ROUND TRIP OF COMMISSION (fee_model, measured from broker fills). A
+       switch that "improves" the board by less than the fee of the trade it
+       adds has not improved anything.
+
+    Why this gate exists (measured 2026-10-27): promotion ran at `delta > 1e-9`,
+    so 80% of every published gain was accumulated greedy lift -- baseline mean
+    +2.84% against cumulative mean +14.18% across 370 boards, with only 24 of
+    370 lifts negative because the chain can only ever accept positives. Those
+    micro-promotions are what turned the live book over 165x a month: each one
+    adds entries whose edge is inside the fee. Forward Spearman of the
+    published gain against realized net was -0.15.
+
+    V15_PROMOTION_FLOOR_PP overrides (0 restores the old 1e-9 behaviour).
+    """
+    env = os.environ.get("V15_PROMOTION_FLOOR_PP")
+    if env is not None:
+        try:
+            return max(0.0, float(env))
+        except (TypeError, ValueError):
+            pass
+    fee_pp = 0.0529
+    try:
+        import fee_model as _fm
+
+        fee_pp = float(_fm.round_trip_pct("crypto"))
+    except Exception:
+        pass
+    return max(BOARD_NONDETERMINISM_PP, fee_pp)
+
+
+def noise_floor_veto(delta) -> str:
+    """Reason string when a positive delta is inside the measured noise floor."""
+    try:
+        d = float(delta)
+    except (TypeError, ValueError):
+        return ""
+    floor = promotion_noise_floor_pp()
+    if floor <= 0.0:
+        return ""
+    if d <= floor:
+        return f"NOISE_FLOOR: delta {d:+.4f}pp <= floor {floor:.4f}pp (board nondeterminism {BOARD_NONDETERMINISM_PP} / round-trip fee)"
+    return ""
+
+
 def tim_guard_veto(candidate_tim, chain_tim=None) -> str:
     """USER 2026-10-03 (TIM-guard): a G>0 promotion whose candidate set has TIM outside [20,80] is vetoed — the greedy fill must never filter the chain to death (FLOKI_SHORT desert: TIM 3.58 base -> C=0, E flat, 2794 evals wasted). G/F/Y are still recorded; only the promotion is blocked. A chain that starts out-of-band may still RECOVER: moves toward the band are allowed. Returns reason or ''. V15_TIM_GUARD=0 disables (default ON)."""
     if os.environ.get("V15_TIM_GUARD", "1") != "1":
@@ -2510,6 +2562,10 @@ def _pool_eval_ledger(overrides: dict, window_days: int):
     return keep, _tp.time() - t0
 
 ADAPT_FLOOR_TRADES = 10
+# Measured run-to-run spread of a board's gain on an identical tree and NPZ
+# (documented against DEAD_VEC_SWITCHES above): +/-0.48 gain. A promoted delta
+# smaller than this is indistinguishable from the dice.
+BOARD_NONDETERMINISM_PP = float(os.environ.get("V15_BOARD_NONDETERMINISM_PP", "0.48"))
 ADAPT_ULTRA_NEG_PCT = float(os.environ.get("V15_ULTRA_NEG_PCT", "-5.0"))
 ADAPT_MAX_STEPS = int(os.environ.get("V15_ADAPT_MAX_STEPS", "12"))
 _ADAPT_SOFTEN_TOKENS = ("FILTER", "GATE", "BLOCK", "REQUIRE", "CONFIRM", "VETO", "GUARD")
@@ -2963,8 +3019,19 @@ def board_provenance(symside, overrides, final_gain, template_path=None, npz_id=
 
 
 def forward_score_on() -> bool:
-    """Task 04.1 kill switch: V15_FORWARD_SCORE=1 enables, default 0 = fully inert (no file reads, no evals)."""
-    return os.environ.get("V15_FORWARD_SCORE", "0") == "1"
+    """Task 04.1 kill switch. DEFAULT FLIPPED TO ON 2026-10-27.
+
+    This is the only OUT-OF-SAMPLE number the pilot produces: it scores the
+    previously published set on the bars that appeared AFTER that board's NPZ
+    ended, at zero extra fitting cost. It had been inert since it was written
+    (2026-10-15), which is why nothing ever contradicted the in-sample
+    headline. Measured 2026-10-27: the published 30d gain had Spearman -0.15
+    against forward net on the 32 held sym_sides that had a board, and 80% of
+    every published gain was the greedy in-sample lift (baseline mean +2.84%,
+    cumulative mean +14.18%, only 24 of 370 lifts negative because the chain
+    only ever accepts positive deltas). V15_FORWARD_SCORE=0 restores inert.
+    """
+    return os.environ.get("V15_FORWARD_SCORE", "1") == "1"
 
 
 def forward_unseen_window(prev_ts_last, cur_ts_last):
@@ -5347,7 +5414,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             ok = d is not None and bool((res or {}).get("valid"))
             recs.append([sw2, c2, g, (res or {}).get("trades"), (res or {}).get("valid"), d, False, cum0, ", ".join(seen[(sw2, c2)][:6]), err or (res or {}).get("invalid_reason") or ""])
             _delta_log({"ts": utcnow(), "sym_side": new_symside, "nav": nav_mode, "sheet": "FINAL_FILTER_RECHECK", "row": None, "switch": sw2, "cand": str(c2), "label": "FINAL_RECHECK", "fn": "tools.opt.v12_pilot.evaluate_prepared_sanitized", "window_days": args.window_days, "gain_pct": g, "trades": (res or {}).get("trades"), "valid": (res or {}).get("valid"), "invalid_reason": (res or {}).get("invalid_reason"), "cum_before": cum0, "delta": d, "secs": None, "cached": cached, "err": err})
-            if ok and d > 1e-9 and not promotion_block_reason(sw2) and (best is None or d > best[0]) and not (_v17_on and (tim_guard_veto((res or {}).get("tim_pct"), chain_tim) or trades_guard_veto((res or {}).get("trades"), chain_trades))):
+            if ok and d > 1e-9 and not noise_floor_veto(d) and not promotion_block_reason(sw2) and (best is None or d > best[0]) and not (_v17_on and (tim_guard_veto((res or {}).get("tim_pct"), chain_tim) or trades_guard_veto((res or {}).get("trades"), chain_trades))):
                 best = (d, sw2, c2, g)  # V17: FFR obeys the same TIM/trades chain-health guards (canary RLC D: FFR pushed TIM 20+ -> 9.3 -> compliance REDO)
         if best is not None:
             d, sw2, c2, g = best
@@ -7743,6 +7810,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         return ""
     def _v17_ok(res, err, d, delta_ov=None) -> bool:
         if err or d is None or float(d) <= 1e-9:
+            return False
+        if noise_floor_veto(d):
+            # 2026-10-27: a positive delta inside the measured noise floor is
+            # recorded in F/G and the delta log as always, but never promoted.
             return False
         if not bool((res or {}).get("valid")) or int((res or {}).get("trades") or 0) < ADAPT_FLOOR_TRADES:
             return False

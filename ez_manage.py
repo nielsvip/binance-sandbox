@@ -62866,17 +62866,42 @@ async def performance_report_loop(trade_manager: MultiAccountTradeManager):
                 lines.append(f"--- TIER {tier_name} ({len(items)} symbols) ---")
                 for s in items:
                     marker = " ** OPEN **" if s["symbol"] in open_symbols else ""
+                    vmark = "" if s.get("verified") else " [UNVERIFIED]"
                     lines.append(
-                        f"  {s['symbol']:>15s}  WR={s['win_rate']:.0%}  avg={s['avg_gain_pct']:+.2f}%  total={s['total_pnl_pct']:+.1f}%  trades={s['trade_count']:3d}  mult={s['order_multiplier']:.2f}{marker}"
+                        f"  {s.get('sym_side', s['symbol']):>20s}  WR={s['win_rate']:.0%}  net/dep={s['avg_gain_pct']:+.3f}%  net=${float(s.get('net_usd') or 0.0):+.2f}  fees=${float(s.get('fees_usd') or 0.0):.2f}  trades={s['trade_count']:3d}  mult={s['order_multiplier']:.2f}{marker}{vmark}"
                     )
                 lines.append("")
-            total_pnl = sum(s["total_pnl_pct"] for s in stats.values())
-            avg_wr = sum(s["win_rate"] for s in stats.values()) / max(1, len(stats))
+            # 2026-10-27 NO-LIES: this block used to print
+            #   "Total PnL (all symbols): +526481.3%"
+            # by summing per-symbol figures that were themselves a COMPOUNDED
+            # PRODUCT of unweighted per-trade percentages. It read +526,481%
+            # while the broker showed the book losing money, and it is the
+            # surface that made every traded sym_side look like a huge gainer.
+            # The headline is now broker-verified net DOLLARS. Percentages are
+            # only ever shown per unit of capital deployed, never summed.
+            ver = [s for s in stats.values() if s.get("verified")]
+            net_usd = sum(float(s.get("net_usd") or 0.0) for s in ver)
+            fees_usd = sum(float(s.get("fees_usd") or 0.0) for s in ver)
+            dep_usd = sum(float(s.get("deployed_usd") or 0.0) for s in ver)
+            gross_usd = net_usd + fees_usd
+            avg_wr = (
+                sum(s["win_rate"] * s["trade_count"] for s in ver)
+                / max(1, sum(s["trade_count"] for s in ver))
+            )
+            try:
+                import fee_model as _fm
+
+                fee_rt = _fm.round_trip_pct("crypto")
+            except Exception:
+                fee_rt = float(getattr(config, "CRYPTO_ROUND_TRIP_COMMISSION_PCT", 0.0529))
             lines.extend(
                 [
-                    "SUMMARY:",
-                    f"  Total PnL (all symbols): {total_pnl:+.1f}%",
-                    f"  Avg win rate: {avg_wr:.0%}",
+                    "SUMMARY — broker-verified realized, net of commission:",
+                    f"  Broker-verified sym_sides: {len(ver)} of {len(stats)} (the rest are [UNVERIFIED] and size-damped)",
+                    f"  NET: ${net_usd:+.2f}   gross ${gross_usd:+.2f}   commission ${fees_usd:.2f}"
+                    + (f"   (fees are {100.0 * fees_usd / abs(net_usd):.0f}% of the loss)" if net_usd < 0 and fees_usd else ""),
+                    f"  Net on capital deployed: {(100.0 * net_usd / dep_usd) if dep_usd else 0.0:+.4f}%  (deployed ${dep_usd:,.0f})",
+                    f"  Trade-weighted win rate: {avg_wr:.0%}   round-trip commission charged: {fee_rt:.4f}%",
                     f"  A-tier avg mult: {sum(s['order_multiplier'] for s in tiers['A']) / max(1, len(tiers['A'])):.2f}",
                     f"  C-tier avg mult: {sum(s['order_multiplier'] for s in tiers['C']) / max(1, len(tiers['C'])):.2f}",
                     "",
@@ -62894,14 +62919,20 @@ async def performance_report_loop(trade_manager: MultiAccountTradeManager):
                         "tiers": {
                             k: [s["symbol"] for s in v] for k, v in tiers.items()
                         },
-                        "total_pnl_pct": round(total_pnl, 2),
+                        "verified_sym_sides": len(ver),
+                        "net_usd": round(net_usd, 4),
+                        "gross_usd": round(gross_usd, 4),
+                        "fees_usd": round(fees_usd, 4),
+                        "deployed_usd": round(dep_usd, 2),
+                        "net_pct_of_deployed": round((100.0 * net_usd / dep_usd) if dep_usd else 0.0, 5),
+                        "fee_round_trip_pct": round(fee_rt, 5),
                         "avg_win_rate": round(avg_wr, 4),
                     },
                     f,
                     indent=1,
                 )
             logger.info(
-                f"[PERF_REPORT] Written: {len(stats)} symbols (A={len(tiers['A'])} B={len(tiers['B'])} C={len(tiers['C'])}) total_pnl={total_pnl:+.1f}%"
+                f"[PERF_REPORT] Written: {len(stats)} entries ({len(ver)} broker-verified; A={len(tiers['A'])} B={len(tiers['B'])} C={len(tiers['C'])}) net=${net_usd:+.2f} fees=${fees_usd:.2f}"
             )
         except Exception as e:
             logger.error(f"[PERF_REPORT] Error: {e}", exc_info=True)

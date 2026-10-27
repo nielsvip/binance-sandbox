@@ -4718,6 +4718,10 @@ def _perf_parse_history_file(filepath: Path, cutoff: datetime) -> list:
     return records
 
 _PERF_TRADIER_ACCOUNTS = frozenset({'tra', 'trb', 'trc'})
+# How much of an UNVERIFIED multiplier's deviation from neutral survives. 0.0
+# would force every unconfirmed sym_side to 1.0x; 0.25 keeps a quarter of the
+# signal so stock accounts (no exchange_fills cache) are damped, not blinded.
+_PERF_UNVERIFIED_MULT_WEIGHT = 0.25
 
 
 def _perf_account_mode(account: str) -> str:
@@ -4908,6 +4912,53 @@ def compute_all_stats(window_days: int = None) -> Dict[str, dict]:
         # whichever side had more trades silently setting the other's size.
         result[key] = entry
         per_symbol.setdefault(symbol, []).append(entry)
+    # 2026-10-27 BROKER OVERLAY. The history reconstruction above cannot be
+    # trusted for money: reconciled against the exchange it diverged by +$339.71
+    # over 107 symbols in 14 days (BEAMXUSDT in-house +$101.69 vs broker
+    # -$0.75), because history logs inflate closed notional. Tier and
+    # order_multiplier therefore come from the EXCHANGE's own realizedPnl per
+    # sym_side wherever it is available. An entry the broker cannot confirm is
+    # marked verified=False and its multiplier is pulled toward 1.0 -- sizing on
+    # an unverifiable number is the original sin this whole fix exists to undo.
+    _verified = {}
+    try:
+        import broker_truth as _bt
+
+        _verified = _bt.realized_by_sym_side(window_days)
+    except Exception as e:
+        _perf_logger.warning(f"[PERF] broker truth unavailable, stats stay UNVERIFIED: {e}")
+    for key, entry in list(result.items()):
+        bv = _verified.get(key)
+        if not bv or int(bv.get("closes") or 0) < _perf_config.SYMBOL_PERF_MIN_TRADES:
+            entry["verified"] = False
+            entry["verified_reason"] = "no broker fills for this sym_side in window" if not bv else f"only {bv.get('closes')} broker closes"
+            raw = float(entry.get("raw_multiplier") or 1.0)
+            entry["raw_multiplier"] = round(1.0 + (raw - 1.0) * _PERF_UNVERIFIED_MULT_WEIGHT, 4)
+            entry["order_multiplier"] = round(entry["raw_multiplier"], 3)
+            continue
+        b_wr = float(bv.get("win_rate") or 0.0)
+        b_gain = float(bv.get("net_pct_of_deployed") or 0.0)
+        b_n = int(bv.get("closes") or 0)
+        entry.update({
+            "verified": True,
+            "inhouse_win_rate_diagnostic": entry.get("win_rate"),
+            "inhouse_avg_gain_pct_diagnostic": entry.get("avg_gain_pct"),
+            "inhouse_net_usd_diagnostic": entry.get("net_usd"),
+            "win_rate": round(b_wr, 4),
+            "avg_gain_pct": round(b_gain, 4),
+            "total_pnl_pct": round(b_gain, 4),
+            "net_usd": bv.get("net_usd"),
+            "gross_usd": bv.get("realized_usd"),
+            "fees_usd": bv.get("fees_usd"),
+            "turnover_usd": bv.get("turnover_usd"),
+            "inhouse_deployed_usd_diagnostic": entry.get("deployed_usd"),
+            # turnover counts both legs; half of it approximates capital at risk
+            "deployed_usd": round(float(bv.get("turnover_usd") or 0.0) / 2.0, 2),
+            "trade_count": b_n,
+            "raw_multiplier": round(_perf_compute_multiplier(b_wr, b_gain, b_n), 4),
+            "order_multiplier": round(_perf_compute_multiplier(b_wr, b_gain, b_n), 3),
+            "tier": _perf_compute_tier(b_wr, b_gain, b_n),
+        })
     # Symbol-level entries (legacy API: get_performance_multiplier(symbol)) are
     # rebuilt from BOTH sides, weighted by capital deployed, not by trade count.
     for symbol, entries in per_symbol.items():
