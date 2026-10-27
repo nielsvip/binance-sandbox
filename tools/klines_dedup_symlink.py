@@ -2,8 +2,10 @@
 """klines_dedup_symlink — replace byte-identical DUPLICATE kline files by a symlink to the one real copy (USER 2026-10-27:
 "any duplicate one can be replaced by a symlink" — klines are sacred, but not four times over while the fleet is short of disk).
 
-The real copy is the big store: ~/binance-sandbox/klines_cache (klines_cache_backtest is a symlink to it on S1), then
-~/binance-sandbox/klines_canonical. A file in a duplicate root is replaced only when the file at the SAME relative path in a
+Real copies, in order of preference as the link target: ~/binance/klines_cache (USER 2026-10-27: "the one that is constantly
+updated, the rest needs to append off that"), then the big store ~/binance-sandbox/klines_cache (klines_cache_backtest is a
+symlink to it), then ~/binance-sandbox/klines_canonical. Neither the live cache nor the big store is ever replaced by a link:
+the big store holds years of history and must never take on a rolling window's shorter content. A file in a duplicate root is replaced only when the file at the SAME relative path in a
 real root has the same size AND the same sha256, and the duplicate was not modified in the last --min-age-s seconds. The
 symlink is created beside it and swapped in with os.replace, so a reader sees either the old file or the identical link.
 
@@ -22,8 +24,8 @@ import time
 from pathlib import Path
 
 H = Path.home()
-REAL = [H / "binance-sandbox" / "klines_cache", H / "binance-sandbox" / "klines_canonical"]
-DUPS = [H / "binance-sandbox" / "klines_cache" / "gateway", H / "binance-sandbox" / "klines_cache_macbook", H / "binance" / "klines_cache",
+REAL = [H / "binance" / "klines_cache", H / "binance-sandbox" / "klines_cache", H / "binance-sandbox" / "klines_canonical"]  # USER 2026-10-27: ~/binance/klines_cache is the constantly updated source; never linked itself
+DUPS = [H / "binance-sandbox" / "klines_cache" / "gateway", H / "binance-sandbox" / "klines_cache_macbook",
         H / "binance" / "klines_cache_gateway", H / "binance" / "klines_canonical", H / "binance" / "ez_s1_stack" / "klines_cache",
         H / "klines_master", H / "bars_crypto"]
 SKIP_PARTS = (".guard_snap", "klines_vault", ".~tmp~")
