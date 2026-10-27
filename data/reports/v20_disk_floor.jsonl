@@ -35,3 +35,11 @@
 {"event": "floor_check", "floor_gb": 40, "free_gb": 1, "host": "s1", "ts": "2026-10-27T14:52:54.941338+00:00", "under": true}
 {"event": "rung_corpus", "freed_mb": 0, "host": "s1", "rc": 2, "ts": "2026-10-27T14:52:59.814624+00:00"}
 {"dry_run": true, "event": "rung_shelve", "host": "s1", "root": "/home/niels/binance-sandbox/backups", "ts": "2026-10-27T14:55:16.916899+00:00"}
+{"dry_run": true, "event": "rung_shelve", "host": "s1", "root": "/home/niels/binance/backups", "ts": "2026-10-27T14:55:21.893960+00:00"}
+{"event": "floor_not_met", "floor_gb": 40, "free_gb": 0, "host": "s1", "shortfall_gb": 40, "top_blockers": [{"gb": 139.9, "name": "binance-sandbox", "reason": "never_list"}, {"gb": 72.7, "name": "binance", "reason": "never_list"}, {"gb": 6.0, "name": "bars_crypto", "reason": "never_list"}, {"gb": 4.6, "name": ".conda", "reason": "never_list"}, {"gb": 2.6, "name": "npz_inbox_q", "reason": "never_list"}, {"gb": 2.3, "name": "klines_master", "reason": "never_list"}], "ts": "2026-10-27T14:55:26.421232+00:00"}
+{"applied": false, "event": "floor_summary", "floor_gb": 40, "free_gb": {"s1": 0}, "shortfall_gb": {"s1": 40}, "ts": "2026-10-27T14:55:26.437419+00:00"}
+{"event": "floor_check", "floor_gb": 40, "free_gb": 0, "host": "s1", "ts": "2026-10-27T14:55:35.785097+00:00", "under": true}
+{"detached": true, "error": "", "event": "rung_shelve", "host": "s1", "log": "~/logs/v20_disk_floor_shelve.log", "root": "/home/niels/binance-sandbox/backups", "ts": "2026-10-27T14:57:14.457529+00:00"}
+{"detached": true, "error": "", "event": "rung_shelve", "host": "s1", "log": "~/logs/v20_disk_floor_shelve.log", "root": "/home/niels/binance/backups", "ts": "2026-10-27T14:57:19.764187+00:00"}
+{"event": "floor_not_met", "floor_gb": 40, "free_gb": 0, "host": "s1", "shortfall_gb": 40, "top_blockers": [{"gb": 139.9, "name": "binance-sandbox", "reason": "never_list"}, {"gb": 72.7, "name": "binance", "reason": "never_list"}, {"gb": 6.0, "name": "bars_crypto", "reason": "never_list"}, {"gb": 4.6, "name": ".conda", "reason": "never_list"}, {"gb": 2.6, "name": "npz_inbox_q", "reason": "never_list"}, {"gb": 2.3, "name": "klines_master", "reason": "never_list"}], "ts": "2026-10-27T14:57:24.699129+00:00"}
+{"applied": true, "event": "floor_summary", "floor_gb": 40, "free_gb": {"s1": 0}, "shortfall_gb": {"s1": 40}, "ts": "2026-10-27T14:57:24.700720+00:00"}

@@ -1,21 +1,115 @@
 {
- "applied": false,
+ "applied": true,
  "contract": "v20_disk_floor_v1",
  "floor_gb": 40,
  "hosts": {
   "s1": {
-   "candidates": [],
+   "candidates": [
+    {
+     "eligible": false,
+     "files": 306836,
+     "gb": 139.9,
+     "name": "binance-sandbox",
+     "reason": "never_list"
+    },
+    {
+     "eligible": false,
+     "files": 109980,
+     "gb": 72.7,
+     "name": "binance",
+     "reason": "never_list"
+    },
+    {
+     "eligible": false,
+     "files": 607,
+     "gb": 6.0,
+     "name": "bars_crypto",
+     "reason": "never_list"
+    },
+    {
+     "eligible": false,
+     "files": 179584,
+     "gb": 4.6,
+     "name": ".conda",
+     "reason": "never_list"
+    },
+    {
+     "eligible": false,
+     "files": 131,
+     "gb": 2.6,
+     "name": "npz_inbox_q",
+     "reason": "never_list"
+    },
+    {
+     "eligible": false,
+     "files": 1113,
+     "gb": 2.3,
+     "name": "klines_master",
+     "reason": "never_list"
+    },
+    {
+     "eligible": false,
+     "files": 116,
+     "gb": 2.1,
+     "name": "npzprep",
+     "reason": "touched_0.4d_ago"
+    },
+    {
+     "eligible": false,
+     "files": 28812,
+     "gb": 1.8,
+     "name": ".local",
+     "reason": "name_does_not_say_finished_work"
+    },
+    {
+     "eligible": false,
+     "files": 122,
+     "gb": 1.8,
+     "name": "ext_staging",
+     "reason": "touched_1.4d_ago"
+    },
+    {
+     "eligible": false,
+     "files": 69,
+     "gb": 1.4,
+     "name": "npz_inbox_s2",
+     "reason": "never_list"
+    },
+    {
+     "eligible": false,
+     "files": 321,
+     "gb": 1.4,
+     "name": "logs",
+     "reason": "never_list"
+    },
+    {
+     "eligible": false,
+     "files": 154,
+     "gb": 1.4,
+     "name": "v15_run37_20261026",
+     "reason": "round_directory"
+    }
+   ],
    "free_gb_end": 0,
    "free_gb_start": 0,
    "rungs": [
     {
-     "freed_mb": 0,
-     "rc": 2,
-     "rung": "corpus"
+     "detached": true,
+     "error": "",
+     "log": "~/logs/v20_disk_floor_shelve.log",
+     "root": "/home/niels/binance-sandbox/backups",
+     "rung": "shelve"
+    },
+    {
+     "detached": true,
+     "error": "",
+     "log": "~/logs/v20_disk_floor_shelve.log",
+     "root": "/home/niels/binance/backups",
+     "rung": "shelve"
     }
    ],
    "shortfall_gb": 40
   }
  },
- "ts": "2026-10-27T14:45:56.471134+00:00"
+ "ts": "2026-10-27T14:55:31.160562+00:00"
 }
