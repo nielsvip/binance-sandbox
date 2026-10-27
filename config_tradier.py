@@ -84,6 +84,9 @@ class TradierConfig:
     FORCE_MIN_ONE_TRADE: bool = (
         False  # lane L1 2026-10-04 LIVE_MIRROR honest-0: vec-only synthetic (v12 forces first-bar entry when no signals); live NEVER forces trades — no live hook by design (§17 parity default only, = QuickConfig False).
     )
+    VEC_CROSS_CONFIRM_REQUIRES_BOARD: bool = (
+        True  # USER 2026-10-27 "NO trade can take place that is not in the html chart rolled forward to this moment. Ever." vector_enforce.CROSS_PATTERNS granted authority by SUBSTRING on the reason label ("BREAK" let BREAK_EVEN_GUARD_EXIT through, "LH_LL" let LH_LL_TOP_EXIT through) — the reason-string bypass CLAUDE.md forbids. True = the rolled-forward board (data/forward_state) must sanction the action; UNKNOWN/stale board refuses. Stops/emergencies/bookkeeping are classified earlier and never reach it. Measured: 94 native stock closes / $154,440 in 7d on accounts only 1.1% board-confirmed. False restores label authority.
+    )
     MIN_HOLD_BARS: int = 10  # parity 2026-08-17: vector->live (was vector-only)
     MODE: str = "tradier"
     # ═══ VIGILANCE GUARD — USER EXTREME VIGILANCE MANDATE 2026-09-28 (stocks) ═══

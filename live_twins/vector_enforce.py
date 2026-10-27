@@ -635,6 +635,34 @@ def _check_inner(action, position_key, reason, cfg_mod=None):
             if any(p in up for p in CROSS_PATTERNS):
                 if not (_is_scaling_act(act) or in_bar_window()):
                     return False, "OFF_BAR_WINDOW"
+                # USER 2026-10-27 "NO trade can take place that is not in the html
+                # chart rolled forward to this moment. Ever." CROSS_PATTERNS is a
+                # SUBSTRING match on this reason's own label, so it granted
+                # authority by naming: BREAK_EVEN_GUARD_EXIT passed on "BREAK",
+                # LH_LL_TOP_EXIT on "LH_LL", board never consulted — the exact
+                # reason-string bypass CLAUDE.md forbids at the only gate. The
+                # label may still select the family; the AUTHORITY now has to come
+                # from the rolled-forward board. Stops/emergencies/bookkeeping were
+                # classified and returned above, so protection cannot be stranded.
+                try:
+                    from live_twins import board_authority as _ba
+
+                    if _ba.enabled(cfg_mod):
+                        _ok_b, _why_b = _ba.corroborates(action, position_key, cfg_mod)
+                        if _ok_b is None:
+                            # Producer outage: refuse ENTRIES (doing nothing is
+                            # safe), let exits through on the legacy label so a
+                            # dead producer cannot trap a live position.
+                            _flag(action, position_key, reason, f"BOARD_{_why_b}")
+                            if _ba.is_entry(action):
+                                return False, f"CROSS_UNCORROBORATED_{_why_b}"
+                            return True, f"CROSS_CONFIRMED_DEGRADED_{_why_b}"
+                        if not _ok_b:
+                            _flag(action, position_key, reason, f"CROSS_UNCORROBORATED_{_why_b}")
+                            return False, f"CROSS_UNCORROBORATED_{_why_b}"
+                        return True, f"CROSS_CONFIRMED_{_why_b}"
+                except ImportError:
+                    pass
                 return True, "CROSS_CONFIRMED"
             if fam in NEVER_KILL_FAMILIES:
                 _flag(action, position_key, reason, "UNATTRIBUTED_REFUSED_NO_KILL")

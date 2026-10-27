@@ -7545,6 +7545,9 @@ class Config:
     COOLDOWN_BARS_TRADIER: int = (
         0  # USER 2026-10-10: immediate DC-break reentry. Was 8 per 2026-04-08 sweep; sheet rows re-promote if 0 measures worse.  # PORTED from TradierConfig 2026-08-17
     )
+    VEC_CROSS_CONFIRM_REQUIRES_BOARD: bool = (
+        True  # USER 2026-10-27 "NO trade can take place that is not in the html chart rolled forward to this moment. Ever." vector_enforce.CROSS_PATTERNS granted authority by SUBSTRING on the reason label ("BREAK" let BREAK_EVEN_GUARD_EXIT through, "LH_LL" let LH_LL_TOP_EXIT through) — the reason-string bypass CLAUDE.md forbids. True = the rolled-forward board (data/forward_state) must sanction the action; UNKNOWN/stale board refuses. Stops/emergencies/bookkeeping are classified earlier and never reach it. Measured: 94 native stock closes / $154,440 in 7d on accounts only 1.1% board-confirmed. False restores label authority.
+    )
     CRYPTO_ROUND_TRIP_COMMISSION_PCT: float = (
         _MEASURED_CRYPTO_ROUND_TRIP_PCT  # 2026-10-27: was 0.0 — a stale TradierConfig port that told the LIVE crypto engine trades are free while the boards charged 0.04 and the broker charged 0.0529 (measured, fee_model.py). Fee-free live gain math is why sub-fee reopens were allowed.
     )
