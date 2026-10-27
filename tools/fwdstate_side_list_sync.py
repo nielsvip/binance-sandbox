@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Keep forward workers subscribed to current tradeable crypto sides."""
+"""Keep S1/S2 crypto and S5/S6 stock workers on current exact side books."""
 import json
 import subprocess
 import sys
@@ -8,7 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 KEYS = ROOT / "tradeable_keys.json"
 CACHE = ROOT / "data" / "fwdstate_side_list_synced"
-SOURCES = (("s1-pub", "ALL", "/home/niels/fwdstate_syms.txt"), ("s2", "LONG", "/home/niels/fwdstate_syms.txt"), ("s5", "STOCK", "/home/niels/fwd_stocks_syms.txt"))
+SOURCES = (("s1-pub", "ALL", "/home/niels/fwdstate_syms.txt"), ("s2", "LONG", "/home/niels/fwdstate_syms.txt"), ("s5", "STOCK", "/home/niels/fwd_stocks_syms.txt"), ("s6", "STOCK", "/home/niels/fwd_stocks_syms.txt"))
 
 
 def main():
@@ -21,20 +21,36 @@ def main():
     stock_sides = set()
     for direction in ("LONG", "SHORT"):
         source = ROOT / f"symbols_trb_{direction.lower()}.json"
-        if source.is_file():
-            stock_sides.update(f"{str(symbol).upper()}_{direction}" for symbol in json.loads(source.read_text()))
-        else:
-            cached = CACHE / "s5"
-            if cached.is_file():
-                stock_sides.update(cached.read_text().split())
-            print(f"missing {source}; retaining last synced S5 stock sides", file=sys.stderr)
+        if not source.is_file():
+            cached = CACHE / "stocks"
+            if not cached.is_file():
+                raise FileNotFoundError(f"required stock side book missing: {source}")
+            stock_sides.update(cached.read_text().split())
+            print(f"missing {source}; retaining last synced stock sides", file=sys.stderr)
+            continue
+        values = json.loads(source.read_text())
+        if isinstance(values, dict):
+            values = values.get("symbols") or values.get("pairs")
+        if not isinstance(values, list):
+            raise ValueError(f"invalid stock side book: {source}")
+        stock_sides.update(f"{str(symbol).upper()}_{direction}" for symbol in values if str(symbol).strip())
+    if not stock_sides:
+        raise ValueError("empty stock side books; refusing to replace worker subscriptions")
     for host, direction, remote_path in SOURCES:
         selected = sorted(stock_sides if direction == "STOCK" else (side for side in sides if direction == "ALL" or side.endswith("_" + direction)))
         if not selected:
             raise ValueError("empty forward side list")
         payload = "\n".join(selected) + "\n"
-        marker = CACHE / host
-        if marker.exists() and marker.read_text() == payload:
+        marker = CACHE / ("stocks" if direction == "STOCK" else host)
+        # Always compare the remote file; a local cache cannot prove that a worker still has the same list.
+        try:
+            check = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=6", host,
+                                    f"cat {remote_path}"], capture_output=True, text=True, timeout=15)
+        except subprocess.TimeoutExpired:
+            check = subprocess.CompletedProcess([], 124, "", "remote list read timed out")
+        if check.returncode == 0 and check.stdout == payload:
+            CACHE.mkdir(parents=True, exist_ok=True)
+            marker.write_text(payload)
             continue
         command = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=6", host,
                    f"python3 -c 'import pathlib,sys; p=pathlib.Path(\"{remote_path}\"); data=sys.stdin.read(); old=p.read_text() if p.exists() else \"\"; p.write_text(data) if data != old else None'"]

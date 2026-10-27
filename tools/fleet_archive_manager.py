@@ -15,6 +15,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -362,10 +363,18 @@ def _stream_archive_to_drive(host: str, source: str, source_kind: str, remote: s
     command = '"$HOME/.local/bin/rclone" ' + " ".join(shlex.quote(str(arg)) for arg in args)
     upload_proc = subprocess.Popen(["ssh", "-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "ServerAliveInterval=30", "-o", "ServerAliveCountMax=10", DRIVE_SSH_HOST, command], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     digest = hashlib.md5()
+    sent = 0
+    started = time.monotonic()
+    last_progress = started
     try:
         for block in iter(lambda: source_proc.stdout.read(1024 * 1024), b""):
             digest.update(block)
             upload_proc.stdin.write(block)
+            sent += len(block)
+            now = time.monotonic()
+            if now - last_progress >= 60:
+                _log("google_archive_stream_progress", source=f"{host}:{source}", bytes=sent, elapsed_s=int(now - started))
+                last_progress = now
         upload_proc.stdin.close()
         source_proc.stdout.close()
         upload_rc = upload_proc.wait(timeout=86400)
@@ -373,6 +382,20 @@ def _stream_archive_to_drive(host: str, source: str, source_kind: str, remote: s
         upload_stdout = upload_proc.stdout.read()
         upload_stderr = upload_proc.stderr.read()
         source_stderr = source_proc.stderr.read()
+    except BrokenPipeError as exc:
+        try:
+            upload_proc.stdin.close()
+        except OSError:
+            pass
+        source_proc.kill()
+        source_proc.wait()
+        try:
+            upload_proc.wait(timeout=60)
+        except subprocess.TimeoutExpired:
+            upload_proc.kill()
+            upload_proc.wait()
+        detail = (upload_proc.stderr.read() + upload_proc.stdout.read() + source_proc.stderr.read()).decode(errors="replace")
+        raise RuntimeError(f"streaming archive upload pipe closed after {sent} bytes: {detail[-500:]}") from exc
     except Exception:
         upload_proc.kill()
         source_proc.kill()

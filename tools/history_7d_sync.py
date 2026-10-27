@@ -359,7 +359,7 @@ def resolve_host(host):
     raise RuntimeError("S1 history sync hosts unavailable: " + "; ".join(failures))
 
 
-def sync(root, host, days, dry_run=False):
+def sync(root, host, days, dry_run=False, authority="merge"):
     host = resolve_host(host)
     lock_path = root / "data/history/.history_7d_sync.lock"
     lock_path.parent.mkdir(parents=True, exist_ok=True)
@@ -427,10 +427,16 @@ def sync(root, host, days, dry_run=False):
                     shutil.copy2(cache, alerts_path)
                 else:
                     alerts_path = cache
-            s1_live, lease_audit = lease_authorized(
-                packs[2], alerts_path.read_text(), local
-            )
-            packs = [local, s1_live]
+            s1_live, lease_audit = lease_authorized(packs[2], alerts_path.read_text(), local)
+            if authority == "mac":
+                packs = [packs[1], packs[2]]
+                lease_audit = {**lease_audit, "authority": "mac", "s1_rows_imported": 0}
+            elif authority == "s1":
+                packs = [local, s1_live]
+                lease_audit = {**lease_audit, "authority": "s1"}
+            else:
+                packs = [local, s1_live]
+                lease_audit = {**lease_audit, "authority": "merge"}
             union = merge(packs)
             union_path = temp / "union.json"
             union_path.write_text(json.dumps(union, separators=(",", ":")) + "\n")
@@ -485,6 +491,7 @@ def main():
     parser.add_argument("--days", type=float, default=7)
     parser.add_argument("--backup-stamp", default="manual")
     parser.add_argument("--host", default="s1-pub")
+    parser.add_argument("--authority", choices=("merge", "mac", "s1"), default="merge")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     os.umask(0o077)
@@ -513,7 +520,7 @@ def main():
             json.dumps(apply(root, _load(args.pack), args.backup_stamp, args.dry_run))
         )
     else:
-        print(json.dumps(sync(root, args.host, args.days, args.dry_run)))
+        print(json.dumps(sync(root, args.host, args.days, args.dry_run, args.authority)))
 
 
 if __name__ == "__main__":
