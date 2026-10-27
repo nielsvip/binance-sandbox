@@ -4752,9 +4752,7 @@ class QuickConfig:
     HOLD_BARS_OPEN: int = 200
     LUNCH_DEADZONE_SIZE_MULT: float = 0.5
     MIN_EXIT_TF_AGAINST_TRADIER: int = 3
-    MIN_HOLD_BARS_BEFORE_EXIT: int = (
-        10  # 2026-09-28 live parity: config.py=10 (was 32; vec bars are 15m vs live 3m — TF semantics flagged in 06_V12_PARITY_MATRIX)
-    )
+    # MIN_HOLD_BARS_BEFORE_EXIT RETIRED 2026-10-27 — USER: "make sure there is only ONE name for this NOT 2 functions NOT 2 values". It was a SECOND name for the same quantity and is exactly how MIN_HOLD_BARS came to be masked into a structural zero. The one switch is MIN_HOLD_BARS (GLOBAL_RISK_GATES, bold 8, swept 2/4/8/12); the one gate is vec_decisions/min_hold_gate.
     MIN_HOLD_MINUTES_TRADIER: float = 30.0
     MIN_PERC_FROM_SMA_1: float = 0.01
     MIN_PERC_FROM_SMA_15: float = 0.03
@@ -15960,17 +15958,14 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _mh_type = str(event.get("type") or "").upper()
             if _mh_type in ("CLOSE", "REDUCE"):
                 _mh_reason = str(event.get("exit_reason") or event.get("reason") or "")
+                # USER 2026-10-27: ONE name, ONE function, ONE value. The old
+                # second call to a MIN_HOLD_BARS_BEFORE_EXIT gate is gone; this
+                # single hold is overridden only by FIXED_STOP (live=False here
+                # because the vector IS the board, so the hold shapes what the
+                # board can ever dictate).
                 _mh_refuse, _mh_why = _min_hold_gate.refuse_bars(
-                    bars_in_pos, cfg, _mh_type, _mh_reason,
+                    bars_in_pos, cfg, _mh_type, _mh_reason, live=False,
                 )
-                if not _mh_refuse:
-                    # USER 2026-10-27: MIN_HOLD_BARS_BEFORE_EXIT is INDEPENDENT and
-                    # "only overridden by fixed_stop". In the vector the board IS the
-                    # authority, so live=False keeps the override at fixed_stop only
-                    # and this hold SHAPES what the board will ever dictate.
-                    _mh_refuse, _mh_why = _min_hold_gate.refuse_before_exit_bars(
-                        bars_in_pos, cfg, _mh_type, _mh_reason, live=False,
-                    )
                 if _mh_refuse:
                     _pending_exit_restore = copy.deepcopy(_bar_pos_snapshot)
                     _pending_exit_control_restore = _bar_control_snapshot
@@ -17629,32 +17624,16 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         min_hold = max(
             min_hold, int(round(cfg.MIN_HOLD_MINUTES_TRADIER / max(bmin, 1)))
         )
-    # lane-D 2026-10-06 (director/lane-B audit): crypto live MIN_HOLD = MIN_HOLD_BARS_BEFORE_EXIT x 180 s (ez_manage:48143-48144);
-    # MIN_HOLD_BARS has no crypto live reader. On the 15m grid: min_hold = ceil(bars*180 / bar_s).
-    if (
-        (not is_tradier)
-        and bool(getattr(cfg, "MIN_HOLD_LIVE_SECONDS_ENABLED", True))
-        and not bool(getattr(cfg, "SIMPLE_PRICE_GT0_ENABLED", False))
-        and not (
-            bool(getattr(cfg, "WT_15M_BOUNCE_OPEN_ENABLED", False))
-            and bool(getattr(cfg, "WT15_ZEROES_COOLDOWN_ENABLED", False))
-        )
-    ):
-        try:
-            import math as _lane_math2
-
-            min_hold = max(
-                0,
-                int(
-                    _lane_math2.ceil(
-                        float(getattr(cfg, "MIN_HOLD_BARS_BEFORE_EXIT", 10) or 0)
-                        * 180.0
-                        / (max(bmin, 1) * 60.0)
-                    )
-                ),
-            )
-        except Exception:
-            pass
+    # lane-D 2026-10-06 min_hold RECOMPUTE REMOVED 2026-10-27 — USER: "make sure
+    # there is only ONE name for this NOT 2 functions NOT 2 values". This block
+    # was a SECOND function setting min_hold, from the retired
+    # MIN_HOLD_BARS_BEFORE_EXIT at a hardcoded *180 s (the 3-minute-bar
+    # assumption that put live 30 min against the board's 150 min). Its premise
+    # — "MIN_HOLD_BARS has no crypto live reader" — stopped being true when
+    # ez_manage was pointed at vec_decisions/min_hold_gate. With the field gone
+    # its getattr default would have silently reset min_hold to 2 bars and
+    # overwritten the one gate. The single source is
+    # min_hold_gate.threshold_bars(cfg), set above.
     # lane-D 2026-10-06 (director): cooldown follows LIVE wall-clock. Live may re-open S seconds after the exit; on the
     # 15m grid the first eligible bar is i+ceil(S/bar_s), i.e. ceil(S/bar_s)-1 bars are skipped (vec cd = bars skipped).
     if bool(getattr(cfg, "COOLDOWN_FROM_LIVE_SECONDS_ENABLED", False)) and not bool(

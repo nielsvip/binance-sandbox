@@ -979,6 +979,16 @@ class Trader:
                 self.done.add(o["key"])
                 self.done_ts[o["key"]] = time.time()
                 log(f"SENT {acct} {o['ss']} {o['act']} qty={qty} px~{price} -> {resp}")
+                # USER 2026-10-27: a STOP MARKET at dc_low_15m -0.4% (dc_high_15m +0.4% shorts) for every non-exit order
+                if os.environ.get("VD_STOPS", "1") == "1":
+                    try:
+                        if not hasattr(self, "stops"):
+                            sys.path.insert(0, str(Path(__file__).resolve().parent))
+                            from vector_direct_stops import Stops
+                            self.stops = Stops(self)
+                        log(f"STOP {acct} {o['ss']} {o['act']}: {self.stops.after_fill(acct, o, qty, held, price)}")
+                    except Exception as exc:
+                        log(f"STOP {acct} {o['ss']} {o['act']}: hook failed {str(exc)[:160]}")
             except RestBlocked as exc:
                 row.update({"status": "BLOCKED", "detail": str(exc)})
                 log(f"{acct} {o['ss']} {o['act']}: {exc}")

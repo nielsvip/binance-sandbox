@@ -2654,9 +2654,7 @@ class Config:
         0.25  # V4: was 0.50. At gains 0.5-1.0%, only reduce 25% (was 50%).
     )
     WT_REDUCE_FRAC_HIGH: float = 0.50  # V4: at gains 1-3%, reduce 50% (was 70%).
-    MIN_HOLD_BARS_BEFORE_EXIT: int = (
-        10  # 2026-09-07 UNLOCK per user — was 32 (96min at 3m). Lowered to 10 (30min) to let MTF/WT exits fire sooner; was blocking profitable exits on FLZ. Per_sym 48 still overrides FLZ winners where proven. ROLLBACK: 32.
-    )
+    # MIN_HOLD_BARS_BEFORE_EXIT RETIRED 2026-10-27 — USER: "make sure there is only ONE name for this NOT 2 functions NOT 2 values". It was a SECOND name for the same quantity and is exactly how MIN_HOLD_BARS came to be masked into a structural zero. The one switch is MIN_HOLD_BARS (GLOBAL_RISK_GATES, bold 8, swept 2/4/8/12); the one gate is vec_decisions/min_hold_gate.
     SCALP_MIN_HOLD_SEC: float = (
         180.0  # 2026-10-25 USER scalp kill-switch — no CLOSE/REDUCE may execute on a position younger than this, any venue, any reason except the stop/protection family (HARD_STOP/VIGILANCE_DC4/NEGBOOK_WT_TURN/BROKER_SYNC/LIQUIDAT/FIXED_STOP/STOP_LOSS/EMERGENCY). Measured 317 true sub-120s flat-to-flat broker scalps crypto + 526 stock ledger pairs. Enforced at execute_now (the ONLY gate). 0 disables.
     )

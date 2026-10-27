@@ -54364,15 +54364,14 @@ async def process_position(
     class _MinHoldCfgShim:
         BASE_TF = str(_psym_get(symbol, position_side, "BASE_TF", getattr(config, "BASE_TF", "15m")) or "15m")
         MIN_HOLD_BARS = int(_psym_get(symbol, position_side, "MIN_HOLD_BARS", getattr(config, "MIN_HOLD_BARS", 3)) or 0)
-        MIN_HOLD_BARS_BEFORE_EXIT = int(_psym_get(symbol, position_side, "MIN_HOLD_BARS_BEFORE_EXIT", getattr(config, "MIN_HOLD_BARS_BEFORE_EXIT", 10)) or 0)
         MIN_HOLD_SOLE_SWITCH_ENABLED = bool(_psym_get(symbol, position_side, "MIN_HOLD_SOLE_SWITCH_ENABLED", getattr(config, "MIN_HOLD_SOLE_SWITCH_ENABLED", False)))
     # USER 2026-10-27: MIN_HOLD_BARS_BEFORE_EXIT is INDEPENDENT of MIN_HOLD_BARS
     # and "only overridden by fixed_stop". Live enforces the stricter of the two
     # for a NATIVE exit; a board-dictated close is exempt here because the vector
     # already honours the switch when it decides, and holding the board's own
     # exit would leave live holding a position the chart has already closed.
-    _min_hold_bars_for_exit = max(_mhg.threshold_bars(_MinHoldCfgShim), _mhg.before_exit_bars(_MinHoldCfgShim))
-    _min_hold_sec_for_exit = max(_mhg.threshold_seconds(_MinHoldCfgShim), _mhg.before_exit_seconds(_MinHoldCfgShim))
+    _min_hold_bars_for_exit = _mhg.threshold_bars(_MinHoldCfgShim)
+    _min_hold_sec_for_exit = _mhg.threshold_seconds(_MinHoldCfgShim)
     _min_hold_ok_for_exit = _pp_age_sec_for_hold >= _min_hold_sec_for_exit
     # 2026-09-07 DC_15m OVERRIDE per user unlock — dc_15m_low/high break bypasses min_hold (structural breakdown). Evaluated lazily via _dc_15m_hold_override().
     _dc_15m_override_cache = {}

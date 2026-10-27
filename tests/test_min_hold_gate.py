@@ -25,12 +25,12 @@ from vec_decisions import min_hold_gate as g  # noqa: E402
 OPTIONS = (2, 4, 8, 12)  # operator's set, revised 2026-10-27 after the first sweep located the signal
 
 
-def cfg(min_hold_bars=2, before_exit=0, base_tf="15m", sole=False, scalp=False):
+def cfg(min_hold_bars=2, before_exit=0, base_tf="15m", sole=False, scalp=False, protection=True):
+    """ONE switch now: `before_exit`/`sole` are accepted and ignored (retired)."""
     return type("C", (), {
         "BASE_TF": base_tf,
         "MIN_HOLD_BARS": min_hold_bars,
-        "MIN_HOLD_BARS_BEFORE_EXIT": before_exit,
-        "MIN_HOLD_SOLE_SWITCH_ENABLED": sole,
+        "MIN_HOLD_BEFORE_EXIT_PROTECTION_EXEMPT": protection,
         "SCALP_MODE": scalp,
         "SCALP_REDUCE_ENABLED": scalp,
     })
@@ -60,64 +60,56 @@ class IdentityTest(unittest.TestCase):
         self.assertEqual(g.bar_minutes(cfg(base_tf="nonsense")), g.DEFAULT_BAR_MINUTES)
 
 
-class CompositionTest(unittest.TestCase):
-    def test_the_two_holds_are_independent(self):
-        """USER 2026-10-27: "MIN_HOLD_BARS_BEFORE_EXIT need to be independent".
+class OneNameOneValueTest(unittest.TestCase):
+    """USER 2026-10-27: "only ONE name for this NOT 2 functions NOT 2 values"."""
 
-        The old max(MIN_HOLD_BARS, MIN_HOLD_BARS_BEFORE_EXIT) composition is
-        gone: it made MIN_HOLD_BARS a structural zero (0 of 316 crypto sym_sides
-        bound) and then made BEFORE_EXIT vec-inert when that was fixed. Neither
-        may mask the other now.
-        """
-        for opt in OPTIONS:
-            c = cfg(opt, before_exit=10)
-            self.assertEqual(g.threshold_bars(c), opt, "discretionary hold is MIN_HOLD_BARS alone")
-            self.assertEqual(g.before_exit_bars(c), 10, "before-exit hold is its own number")
-        # and BEFORE_EXIT moves without touching the discretionary hold
-        for be in (0, 2, 10, 48):
-            c = cfg(8, before_exit=be)
-            self.assertEqual(g.threshold_bars(c), 8)
-            self.assertEqual(g.before_exit_bars(c), be)
+    def test_min_hold_bars_before_exit_is_retired_everywhere(self):
+        import config
+        import config_tradier
+        import v12_quick_engine as V
+        for mod, label in ((config.Config, "config.Config"),
+                           (config_tradier.TradierConfig, "TradierConfig")):
+            self.assertNotIn("MIN_HOLD_BARS_BEFORE_EXIT",
+                             getattr(mod, "__dataclass_fields__", {}) or {}, label)
+        self.assertNotIn("MIN_HOLD_BARS_BEFORE_EXIT",
+                         getattr(V.QuickConfig, "__dataclass_fields__", {}) or {})
 
-    def test_before_exit_override_is_fixed_stop_only(self):
-        """"only overridden by fixed_stop" — in the vector, nothing else."""
-        c = cfg(8, before_exit=10)
-        for reason in ("FIXED_STOP", "FIXED_STOP_HIT", "FIXED_STOP_ADOPTED"):
-            refused, _ = g.refuse_before_exit_bars(0, c, "CLOSE", reason, live=False)
-            self.assertFalse(refused, f"{reason} must override the before-exit hold")
-        # every other strategy exit is held, including the wider stop family that
-        # the DISCRETIONARY gate exempts — that is the point of the narrower set
+    def test_the_alias_returns_the_same_one_value(self):
+        c = cfg(8)
+        self.assertEqual(g.before_exit_bars(c), g.threshold_bars(c))
+        self.assertEqual(g.before_exit_seconds(c), g.threshold_seconds(c))
+
+    def test_engine_has_exactly_one_min_hold_source(self):
+        """No second function may set min_hold from a retired field."""
+        src = (ROOT / "v12_quick_engine.py").read_text()
+        self.assertIn("min_hold = _min_hold_gate.threshold_bars(cfg)", src)
+        self.assertNotIn('getattr(cfg, "MIN_HOLD_BARS_BEFORE_EXIT", 10)', src)
+        self.assertNotIn("* 180.0", src.split("min_hold = _min_hold_gate")[1][:4000])
+
+    def test_override_is_fixed_stop_only_in_vec(self):
+        c = cfg(8)
+        for reason in ("FIXED_STOP", "FIXED_STOP_HIT"):
+            self.assertFalse(g.refuse_bars(0, c, "CLOSE", reason)[0])
         for reason in ("HARD_STOP_LOSS", "STOP_LOSS_TRIGGERED", "REENTRY_HIGHER_LOW",
-                       "EXIT_VELOCITY_WT", "WT_CROSS_EXIT_1h", "VEC_DRIVEN_CLOSE_RECONCILE_"):
-            refused, _ = g.refuse_before_exit_bars(0, c, "CLOSE", reason, live=False)
-            self.assertTrue(refused, f"{reason} must NOT override the before-exit hold in vec")
+                       "WT_CROSS_EXIT_1h", "VEC_DRIVEN_CLOSE_RECONCILE_"):
+            self.assertTrue(g.refuse_bars(0, c, "CLOSE", reason)[0], reason)
 
-    def test_live_still_executes_the_board(self):
-        """Live exempts board dictates: holding one would strand the chart's exit."""
-        c = cfg(8, before_exit=10)
-        for reason in ("VEC_DRIVEN_CLOSE_RECONCILE_", "BOARD_CONVERGE_CLOSE",
-                       "VEC_FWD_MISSING_FLAT fwd=x", "BROKER_SYNC_FLAT"):
-            refused, _ = g.refuse_before_exit(0, c, "CLOSE", reason)
-            self.assertFalse(refused, f"{reason} must execute live")
-        # a NATIVE exit is still held live
-        refused, _ = g.refuse_before_exit(0, c, "CLOSE", "WT_CROSS_EXIT_1h")
-        self.assertTrue(refused)
+    def test_live_executes_the_board_and_protection_never_held(self):
+        c = cfg(8)
+        for reason in ("VEC_DRIVEN_CLOSE_RECONCILE_", "BROKER_SYNC_FLAT", "FIXED_STOP"):
+            self.assertFalse(g.refuse(0, c, "CLOSE", reason)[0], reason)
+        self.assertTrue(g.refuse(0, c, "CLOSE", "WT_CROSS_EXIT_1h")[0])
+        for reason in ("LIQUIDATION_PROTECT", "EMERGENCY_MARGIN_KILL"):
+            self.assertFalse(g.refuse_bars(0, c, "CLOSE", reason)[0], reason)
+        strict = cfg(8, protection=False)
+        self.assertTrue(g.refuse_bars(0, strict, "CLOSE", "LIQUIDATION_PROTECT")[0])
 
-    def test_account_protection_carveout_and_its_switch(self):
-        c = cfg(8, before_exit=10)
-        for reason in ("LIQUIDATION_PROTECT", "EMERGENCY_MARGIN_KILL", "BALANCE_FLOOR_FORCE_REDUCE"):
-            refused, _ = g.refuse_before_exit_bars(0, c, "CLOSE", reason, live=False)
-            self.assertFalse(refused, "a margin kill may never be held")
-        strict = cfg(8, before_exit=10)
-        strict.MIN_HOLD_BEFORE_EXIT_PROTECTION_EXEMPT = False
-        refused, _ = g.refuse_before_exit_bars(0, strict, "CLOSE", "LIQUIDATION_PROTECT", live=False)
-        self.assertTrue(refused, "the switch makes it literally fixed_stop-only")
 
-    def test_sole_switch_is_now_redundant(self):
-        """Composition is gone, so the sole switch changes nothing either way."""
-        for opt in OPTIONS:
-            self.assertEqual(g.threshold_bars(cfg(opt, before_exit=10, sole=True)), opt)
-            self.assertEqual(g.threshold_bars(cfg(opt, before_exit=10, sole=False)), opt)
+class CompositionTest(unittest.TestCase):
+
+
+
+
 
     def test_zero_disables_the_gate(self):
         c = cfg(0, before_exit=0)
@@ -127,13 +119,27 @@ class CompositionTest(unittest.TestCase):
 
 
 class ExemptionTest(unittest.TestCase):
-    def test_price_protection_is_never_held(self):
+    def test_only_fixed_stop_and_account_protection_are_never_held(self):
+        """USER 2026-10-27: "only overridden by fixed_stop".
+
+        🔴 CONSEQUENCE THE OPERATOR MUST CONFIRM: taken literally this HOLDS the
+        OTHER stop legs — HARD_STOP_LOSS, STOP_LOSS_TRIGGERED, VIGILANCE_DC4 —
+        for the full min hold (120 min at MIN_HOLD_BARS=8). That conflicts with
+        CLAUDE.md "exits never blocked" and with the 2026-10-22 finding that
+        refusing stop-class closes was itself the bug. It is implemented as
+        ordered and pinned here so the behaviour is explicit, not accidental.
+        To exempt the whole stop family instead, add STOP_TOKENS back to
+        `is_exempt` — one line, and it reverses this test.
+        """
         c = cfg(8)
-        for reason in ("FIXED_STOP_HIT", "HARD_STOP_LOSS", "STOP_LOSS_TRIGGERED",
-                       "LIQUIDATION_PROTECT", "EMERGENCY_MARGIN_KILL",
-                       "VIGILANCE_DC4_EXIT", "BALANCE_FLOOR_FORCE_REDUCE"):
-            refused, _ = g.refuse(0, c, "CLOSE", reason)
-            self.assertFalse(refused, f"{reason} must never be held")
+        for reason in ("FIXED_STOP", "FIXED_STOP_HIT", "FIXED_STOP_ADOPTED"):
+            self.assertFalse(g.refuse(0, c, "CLOSE", reason)[0], f"{reason} overrides")
+        for reason in ("LIQUIDATION_PROTECT", "EMERGENCY_MARGIN_KILL",
+                       "BALANCE_FLOOR_FORCE_REDUCE"):
+            self.assertFalse(g.refuse(0, c, "CLOSE", reason)[0], f"{reason} is account protection")
+        for reason in ("HARD_STOP_LOSS", "STOP_LOSS_TRIGGERED", "VIGILANCE_DC4_EXIT"):
+            self.assertTrue(g.refuse(0, c, "CLOSE", reason)[0],
+                            f"{reason} is HELD under fixed_stop-only — see the docstring")
 
     def test_board_dictates_and_bookkeeping_pass(self):
         c = cfg(8)

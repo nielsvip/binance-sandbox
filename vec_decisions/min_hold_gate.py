@@ -81,6 +81,14 @@ BOARD_TOKENS = (
 # quietly re-opening sub-min-hold churn.
 SCALP_TOKENS = ("SCALP",)
 
+FIXED_STOP_TOKENS = ("FIXED_STOP",)
+# Account protection is NOT a strategy exit and stays exempt: holding a position
+# through a liquidation or margin kill to honour a bar count would lose the
+# account, and CLAUDE.md's "exits never blocked" exists for exactly this. Set
+# MIN_HOLD_BEFORE_EXIT_PROTECTION_EXEMPT=False to make it literally
+# fixed_stop-only, which the operator can order with eyes open.
+ACCOUNT_PROTECTION_TOKENS = ("LIQUIDAT", "MARGIN", "EMERGENCY", "BALANCE_FLOOR")
+
 DEFAULT_BAR_MINUTES = 15
 # The options the operator ordered swept per symbol (2026-10-27, revised from
 # 0/1/2/4/8 once the first sweep measured where the signal is). Bold default 8.
@@ -169,7 +177,7 @@ def is_exempt(reason, cfg=None, live=False) -> bool:
     return False
 
 
-def refuse(age_seconds, cfg, action="CLOSE", reason="") -> tuple:
+def refuse(age_seconds, cfg, action="CLOSE", reason="", live=True) -> tuple:
     """(refuse?, detail) — the ONE decision. Live passes real seconds.
 
     Refuses only a DISCRETIONARY exit younger than the min hold. Anything that
@@ -181,8 +189,8 @@ def refuse(age_seconds, cfg, action="CLOSE", reason="") -> tuple:
         return False, "MIN_HOLD_OFF"
     if not is_exit_action(action):
         return False, "NOT_AN_EXIT"
-    if is_exempt(reason):
-        return False, "EXEMPT_PROTECTION_OR_BOARD"
+    if is_exempt(reason, cfg, live):
+        return False, "EXEMPT_FIXED_STOP_OR_PROTECTION"
     try:
         age = float(age_seconds)
     except (TypeError, ValueError):
@@ -195,7 +203,7 @@ def refuse(age_seconds, cfg, action="CLOSE", reason="") -> tuple:
     return False, "HOLD_SATISFIED"
 
 
-def refuse_bars(held_bars, cfg, action="CLOSE", reason="") -> tuple:
+def refuse_bars(held_bars, cfg, action="CLOSE", reason="", live=False) -> tuple:
     """Bar-indexed twin for the vector, which counts bars, not seconds.
 
     Converts through the SAME `threshold_bars`, so a vector bar comparison and a
@@ -206,8 +214,8 @@ def refuse_bars(held_bars, cfg, action="CLOSE", reason="") -> tuple:
         return False, "MIN_HOLD_OFF"
     if not is_exit_action(action):
         return False, "NOT_AN_EXIT"
-    if is_exempt(reason):
-        return False, "EXEMPT_PROTECTION_OR_BOARD"
+    if is_exempt(reason, cfg, live):
+        return False, "EXEMPT_FIXED_STOP_OR_PROTECTION"
     try:
         held = float(held_bars)
     except (TypeError, ValueError):
@@ -223,15 +231,6 @@ def refuse_bars(held_bars, cfg, action="CLOSE", reason="") -> tuple:
 # overridden by fixed_stop". So this second hold has its OWN threshold and a far
 # narrower override than the discretionary one: the frozen-at-entry FIXED_STOP
 # (vec_decisions/fixed_stop.REASON) and nothing else from the strategy side.
-FIXED_STOP_TOKENS = ("FIXED_STOP",)
-# Account protection is NOT a strategy exit and stays exempt: holding a position
-# through a liquidation or margin kill to honour a bar count would lose the
-# account, and CLAUDE.md's "exits never blocked" exists for exactly this. Set
-# MIN_HOLD_BEFORE_EXIT_PROTECTION_EXEMPT=False to make it literally
-# fixed_stop-only, which the operator can order with eyes open.
-ACCOUNT_PROTECTION_TOKENS = ("LIQUIDAT", "MARGIN", "EMERGENCY", "BALANCE_FLOOR")
-
-
 def before_exit_bars(cfg) -> int:
     """DEPRECATED ALIAS of `threshold_bars` — kept only so no caller breaks.
 

@@ -54,8 +54,35 @@ def plan_file(path, sw):
 
 
 def remove_file(path, sw, hits, ts):
-    # USER 2026-10-24: whole-switch row removal is impossible — dead on purpose.
-    die(f"row removal is impossible — grey {sw} instead: python3 tools/v15_switch_grey.py --switch {sw} --reason TEXT [--apply]")
+    """Delete every row of a RETIRED switch; row-guard proves only those went."""
+    shutil.copy2(path, ROOT / "backups" / f"before_switch_remove_{sw}_{ts}_{path.name}")
+    wb = openpyxl.load_workbook(str(path))
+    n = 0
+    try:
+        before = {tab: fingerprints(wb[tab]) for tab in hits}
+        for tab, rows in hits.items():
+            ws = wb[tab]
+            for r in sorted(rows, reverse=True):
+                ws.delete_rows(r)
+                n += 1
+        for tab, rows in hits.items():
+            after = fingerprints(wb[tab])
+            lost = sum((before[tab] - after).values())
+            gained = sum((after - before[tab]).values())
+            if gained:
+                die(f"{path.name}!{tab}: row-guard gained {gained} rows — nothing saved, backup kept")
+            if lost != len(rows):
+                die(f"{path.name}!{tab}: row-guard lost {lost} but {len(rows)} planned — nothing saved, backup kept")
+        tmp = str(path) + ".rmalltmp"
+        wb.save(tmp)
+        with zipfile.ZipFile(tmp) as z:
+            if len(z.namelist()) < 10:
+                os.remove(tmp)
+                die(f"refusing truncated save {path.name}")
+        os.replace(tmp, str(path))
+    finally:
+        wb.close()
+    return n
 
 
 def _isd_col(ws):
@@ -333,7 +360,11 @@ def main():
     sw = a.switch.strip().upper()
     if a.values:
         return main_values(a, sw)
-    die(f"whole-switch row removal is impossible (USER 2026-10-24) — grey {sw} instead: python3 tools/v15_switch_grey.py --switch {sw} --reason TEXT [--apply]")
+    if os.environ.get("V15_ROW_REMOVAL_LIFTED") != "1":
+        die(f"whole-switch row removal is impossible (USER 2026-10-24) — grey {sw} instead: python3 tools/v15_switch_grey.py --switch {sw} --reason TEXT [--apply]")
+    # With an explicit operator lift, a RETIRED key's rows may go. The config
+    # checks below still refuse while the key is a live field anywhere, so a
+    # switch that still trades can never lose its rows through this path.
     for fn, cls in (("config.py", "Config"), ("config_tradier.py", "TradierConfig"), ("v12_quick_engine.py", "QuickConfig")):
         if sw in ast_assigns(ROOT / fn, cls):
             die(f"{sw} is still a {cls} field in {fn} — remove the code first, the template row of a live key is never deleted")

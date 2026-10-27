@@ -5641,9 +5641,7 @@ class TradierConfig:
     WT_PERCENTILE_EXIT_OS_4H: float = 25.0
     E_1_EXIT_DELTA_THR: float = 50.0
     WT_CROSS_EXIT_REQUIRE_15M_CONFIRM: bool = True
-    MIN_HOLD_BARS_BEFORE_EXIT: int = (
-        10  # read live ONLY by the GREY_WIRE HTF_AGAINST_FORCE_CLOSE min-hold (x 3m) — other tradier reads are dead code
-    )
+    # MIN_HOLD_BARS_BEFORE_EXIT RETIRED 2026-10-27 — USER: "only ONE name for this NOT 2 functions NOT 2 values". The one switch is MIN_HOLD_BARS; the one gate is vec_decisions/min_hold_gate.
     # 2026-09-30 GREY-SWITCH WIRING batch 2 (fresh-OPEN gates, vec_decisions/grey_wire_entries.py; tradier_manage.queue_trade_action
     # next to EMA_BLANKET_FILTER). OFF = today's stock live. Params = QuickConfig(apply_tradier_defaults) values (live == vec).
     WT_PERCENTILE_ENTRY_GATE_ENABLED: bool = False
