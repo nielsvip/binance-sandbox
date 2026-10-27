@@ -226,8 +226,8 @@ def test_ban_fallback_london_first():
     cands = [{"name": n} for n in ["OVPN:sg-sng", "OVPN:uk-lon", "Surfshark. Dausos"]]
     assert [c["name"] for c in vpn.order_candidates(cands)] == [
         "OVPN:uk-lon",
-        "OVPN:sg-sng",
         "Surfshark. Dausos",
+        "OVPN:sg-sng",
     ]
     cands = [{"name": n} for n in ["OVPN:de-fra-static", "Surfshark. WireGuard®"]]
     assert [c["name"] for c in vpn.order_candidates(cands)][

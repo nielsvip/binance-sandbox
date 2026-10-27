@@ -93,7 +93,10 @@ def order_candidates(cands):
     try:
         first = [c for n in BAN_FALLBACK_ORDER for c in cands if c["name"] == n]
         rest = [c for c in cands if c["name"] not in BAN_FALLBACK_ORDER]
-        return first + rest
+        # No OVPN leg has connected since 2026-10-24 (manual-OVPN handshake silent);
+        # each dead leg costs ~80 s of dark link during a ban. Proven WireGuard
+        # statics and Dausos go before any OVPN leg, which is tried last.
+        return first + [c for c in rest if not _is_ovpn(c["name"])] + [c for c in rest if _is_ovpn(c["name"])]
     except Exception:
         return cands
 
