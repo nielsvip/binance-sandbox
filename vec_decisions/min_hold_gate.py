@@ -82,8 +82,9 @@ BOARD_TOKENS = (
 SCALP_TOKENS = ("SCALP",)
 
 DEFAULT_BAR_MINUTES = 15
-# The five options the operator ordered swept on every crypto sym_side.
-SWEEP_OPTIONS = (0, 1, 2, 4, 8)
+# The options the operator ordered swept per symbol (2026-10-27, revised from
+# 0/1/2/4/8 once the first sweep measured where the signal is). Bold default 8.
+SWEEP_OPTIONS = (2, 4, 8, 12)
 
 
 def _int(cfg, key) -> int:

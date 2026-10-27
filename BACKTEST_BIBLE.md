@@ -96,6 +96,21 @@ paraphrase in this file becomes enforced law and blocks every other agent.
 
 ---
 
+## 🔴 THE SHEET IS THE AUTHORITY — CONFIG AND THE ENGINES ARE FOLLOWERS THAT MUST MERELY MATCH
+
+**USER 2026-10-27, VERBATIM:** *"config and trading scripts and v12_quick do not get to set any defaults they just trade what is dictated by the sheet"* and *"config and the engines are followers that must merely match"*.
+
+1. **The default of every switch is the BOLD cell in `SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_*.xlsx`, and nothing else.** The bold default per cat_side is what `data/per_sym_settings.json` (the 4 cat_side default layers) is built FROM — never the other way round.
+2. **`config.py` / `config_tradier.py` / `v12_quick_engine.QuickConfig` are MIRRORS.** They carry the same value only so the template-bold == config-default contract stays green (`tools/v15_switch_add.py` refuses a mismatch with "align config first"). They decide nothing. **A value changed in config without the bold changing is a BUG, not a decision.**
+3. **`ez_manage.py` / `tradier_manage.py` / `v12_quick_engine.py` TRADE what the sheet dictates.** They may not introduce, raise, lower or "safety-cap" a default. A hardcoded fallback inside a trading script or an engine — `getattr(cfg, "X", <value>)` with a value the sheet never chose — is a **silent second authority**: remove it or point it at the shared reader.
+4. **To change a default:** change the BOLD in all 4 templates (§71 / SWITCH_ADD_GUIDE.md), rebuild the cat_side defaults, then align the config/QuickConfig mirrors to the same number. **Never the reverse order, and never the mirror alone.**
+5. **Two switches must never compose into one effective value** unless the sheet says so. `max(SWITCH_A, SWITCH_B)` silently makes the smaller one a structural zero — measured 2026-10-27: `max(MIN_HOLD_BARS, MIN_HOLD_BARS_BEFORE_EXIT)` made MIN_HOLD_BARS dead, and a 0/1/2/4/8 sweep bound on **0 of 316** crypto sym_sides.
+6. **Measured consequences of violating this (2026-10-27):** `CRYPTO_ROUND_TRIP_COMMISSION_PCT` was 0.0 in config, 0.04 in QuickConfig and 0.053 at the broker — three authorities, and live believed trades were free; `ez_manage` turned MIN_HOLD bars into seconds at a hardcoded `*180` while the engine used the 15m grid, so live held 30 min against the board's 150 min — a 5× split on a number the sheet alone was supposed to set.
+
+The same text is stipulated inside every template on the `PROTOCOL` tab as **A0** (source: `data/TEMPLATE_PROTOCOL.md`, written by `tools/v15_template_bookkeeper.py`).
+
+---
+
 ## 🔴 NO-LIES MANDATE — EVERY METRIC REAL
 
 Lying Sharpe/gain/DD wiped out half the user's net worth in 4 months. Every metric on a human-facing surface MUST be real — forward and backward.

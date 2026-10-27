@@ -64,6 +64,17 @@ DRY = os.environ.get("LF_DRY_RUN", "0") == "1"
 TICK_S = float(os.environ.get("LF_TICK_S", "15"))
 HB_FRESH_S = float(os.environ.get("LF_HB_FRESH_S", "90"))
 RECOVER_S = float(os.environ.get("LF_RECOVER_S", "600"))
+HB_LATE_S = float(os.environ.get("LF_HB_LATE_S", "240"))  # 2026-10-27 USER ("s1 should NEVER have to run any live
+# script as long as macbook is doing its job"): a heartbeat older than HB_FRESH_S is NOT proof the Mac stopped. It
+# reaches S1 over ssh, and when S1 itself is starved (measured 2026-10-27 20:2xZ: 127 MB available, load 105, its own
+# ez_indicators at 12.8 GB) sshd stalls and the Mac's heartbeat lands 90-344 s late while the Mac's latest_market_data
+# was 13 s old. One such late read (age=91s at 18:53:35Z) started the S1 stack, the stack starved S1 further, and
+# every later late read reset fresh_since, so S1 never failed back. While the Mac's LAST report said its data was
+# fresh and some Mac evidence on S1 (heartbeat, live heartbeat, order pulse, market-data or klines push) is younger
+# than HB_LATE_S, the Mac is producing and S1 starts nothing. A Mac that is really off goes silent on every channel
+# and is inferred stale after HB_LATE_S; the trading takeover (witness >= WITNESS_S=300 s) is unchanged.
+STACK_SCRIPTS = ("run_with_watchdog.sh", "ez_klines.py", "ez_prices.py", "ez_mark_prices.py", "ez_prices_ws.py", "ez_indicators.py", "ez_indicators_merger.py")
+STACK_REAP_EVERY_S = float(os.environ.get("LF_STACK_REAP_EVERY_S", "60"))
 TAKEOVER_HB_S = float(os.environ.get("LF_TAKEOVER_HB_S", "60"))  # USER 2026-10-15 "ARM s1 SO IT CAN ALWAYS ENTER
 # INTO ACTION AT ANY INSTANT": 300 -> 60. The Mac agent writes mac_data_heartbeat.json every LF_TICK_S (15 s), so
 # 60 s absent = 4 missed writes = unambiguous. With TAKEOVER_CONFIRM=4 at a 15 s tick a dead Mac is taken over in
@@ -273,6 +284,55 @@ class Actions:
             rc = self._systemctl("stop", unit)
             log(f"systemctl stop {unit} rc={rc}")
 
+    def reap_stack(self, why):
+        """2026-10-27: stopping live-failover-crypto-producers.service does NOT stop the stack. The unit is
+        KillMode=process, so `systemctl stop` kills only the s1_producers_crypto.sh loop and systemd logs "Unit process
+        N (python) remains running after unit stopped" for every ez_* feed (journal 2026-10-27 19:44:27Z). The stack
+        then ran on with the Mac fresh. Remove every ez_s1_stack process (cwd = STACK, or still in the unit's cgroup):
+        watchdog wrappers first so none relaunches its child, then the feeds; SIGKILL whatever survives 10 s."""
+        self.calls.append(("reap", why))
+        if self.dry or (STACK / "KEEP_ALWAYS_ON").exists():
+            return []
+        wrappers, feeds = [], []
+        for proc in Path("/proc").glob("[0-9]*"):
+            pid = int(proc.name)
+            if pid == os.getpid():
+                continue
+            try:
+                cmd = (proc / "cmdline").read_bytes().replace(b"\0", b" ").decode(errors="replace")
+                cwd = os.readlink(proc / "cwd")
+                cgroup = (proc / "cgroup").read_text()
+            except OSError:
+                continue
+            if cwd != str(STACK) and UNITS["crypto"] not in cgroup:
+                continue
+            if "run_with_watchdog.sh" in cmd:
+                wrappers.append(pid)
+            elif any(script in cmd for script in STACK_SCRIPTS):
+                feeds.append(pid)
+        if not wrappers and not feeds:
+            return []
+        log(f"STACK_REAP ({why}): SIGTERM wrappers={wrappers} feeds={feeds}")
+        for group in (wrappers, feeds):
+            for pid in group:
+                try:
+                    os.kill(pid, 15)
+                except OSError:
+                    pass
+            time.sleep(1)
+        deadline = time.time() + 10
+        while time.time() < deadline and any(Path(f"/proc/{pid}").exists() for pid in wrappers + feeds):
+            time.sleep(0.5)
+        left = [pid for pid in wrappers + feeds if Path(f"/proc/{pid}").exists()]
+        for pid in left:
+            try:
+                os.kill(pid, 9)
+            except OSError:
+                pass
+        if left:
+            log(f"STACK_REAP ({why}): SIGKILL survivors {left}")
+        return wrappers + feeds
+
     def probe(self, venue):
         """S1's OWN broker access for a venue (read-only positions call per account). Fixture: LF_FAKE_PROBE[_<VENUE>]=ok|fail."""
         if self.dry:
@@ -384,9 +444,21 @@ def mac_view(now):
         # 2026-10-22: the PER-ACCOUNT map, not just the count. The fence decision needs to know whether the Mac has
         # an engine for the accounts in scope — see NOTHING TO FENCE below.
         mac_engines = dict(accounts)
+    evidence = [a for a in [hb_age, md_age, kl_age] + witnesses if a is not None]
     return {"hb": hb if isinstance(hb, dict) else None, "hb_age": hb_age, "live_hb_age": live_hb_age, "witness_min_age": min(witnesses) if witnesses else None,
             "mac_market_data_push_age": md_age, "mac_klines_push_age": kl_age, "crypto_accounts_alive": crypto_accounts_alive,
-            "mac_engines": mac_engines}
+            "mac_engines": mac_engines, "mac_evidence_min_age": min(evidence) if evidence else None}
+
+
+def mac_late_but_producing(view, venue):
+    """True when the heartbeat is late (> HB_FRESH_S) but the Mac's last report for `venue` said fresh and some Mac
+    evidence on S1 is younger than HB_LATE_S — delivery lag, not a Mac outage (see HB_LATE_S)."""
+    hb = view.get("hb")
+    evidence = view.get("mac_evidence_min_age")
+    if hb is None or evidence is None or evidence > HB_LATE_S:
+        return False
+    last = (hb.get("venues") or {}).get(venue)
+    return isinstance(last, dict) and not last.get("stale") and not last.get("trading_stale")
 
 
 def venue_reading(view, venue, now):
@@ -405,7 +477,10 @@ def venue_reading(view, venue, now):
                 "source": "mac_heartbeat"}
     applicable = True if venue == "crypto" else C.stocks_applicable(now)
     age = view["hb_age"]
-    absent = [f"heartbeat_absent age={None if age is None else int(age)}s"] if applicable else ["market_closed"]
+    if applicable and mac_late_but_producing(view, venue):
+        late = [f"heartbeat_late age={None if age is None else int(age)}s mac_evidence_age={int(view['mac_evidence_min_age'])}s (last Mac report fresh)"]
+        return {"applicable": True, "stale": False, "trading_stale": False, "reasons": late, "trading_reasons": late, "source": "mac_heartbeat_late"}
+    absent =[f"heartbeat_absent age={None if age is None else int(age)}s"] if applicable else ["market_closed"]
     return {"applicable": applicable, "stale": applicable, "trading_stale": applicable, "reasons": absent, "trading_reasons": absent, "source": "s1_inference"}
 
 
@@ -573,6 +648,12 @@ class Watchdog:
                 manifest = build_outbox(venue, now)
                 vstate["first_outbox_epoch"] = C.now_s()
                 log(f"DATA_FAILOVER {venue}: producers started, outbox {len(manifest['files'])} files snapshot={bool(manifest['snapshot'])} in {C.now_s() - now:.2f}s")
+            elif venue == "crypto" and now - float(self.state.get("stack_reap_epoch") or 0) >= STACK_REAP_EVERY_S and not self.actions.unit_active(unit):
+                # 2026-10-27: crypto NORMAL = the Mac is producing. Any ez_s1_stack process alive now is a leftover of a
+                # KillMode=process stop or a manual start; the EZ_S1_STACK_REAP cron that used to remove them has
+                # been commented out since 2026-10-25, so the watchdog does it itself.
+                self.state["stack_reap_epoch"] = now
+                self.actions.reap_stack("crypto NORMAL, Mac producing")
             return
         if not reading["applicable"] and not hold:
             self._data_off(venue, vstate, "venue not applicable (market closed)", now)
@@ -584,11 +665,22 @@ class Watchdog:
             if now - vstate["fresh_since"] >= RECOVER_S:
                 self._data_off(venue, vstate, f"Mac fresh for {int(now - vstate['fresh_since'])}s", now)
                 return
+            # 2026-10-27: the Mac is producing, so NEVER (re)start S1 producers here. Before this the ACTIVE branch
+            # called start() on every tick until RECOVER_S passed, so a persisted mode=ACTIVE relaunched the whole
+            # stack after S1's 19:46Z reboot with the Mac fresh. Producers still running stay as hysteresis until
+            # RECOVER_S; producers not running (reboot, crash, manual stop) have nothing to keep warm -> NORMAL now.
+            if not self.actions.unit_active(unit):
+                self._data_off(venue, vstate, "Mac fresh and S1 producers not running", now)
+                return
+            build_outbox(venue, now)
+            return
         self.actions.start(unit)
         build_outbox(venue, now)
 
     def _data_off(self, venue, vstate, why, now):
         self.actions.stop(UNITS[venue])
+        if venue == "crypto":
+            self.actions.reap_stack(f"DATA_FAILOVER_OFF crypto: {why}")
         clear_outbox(venue)
         vstate.update(mode="NORMAL", outbox=False, since=C.iso(now), since_epoch=now, fresh_since=None)
         alert("DATA_FAILOVER_OFF", venue=venue, reason=why)

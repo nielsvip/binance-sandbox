@@ -560,3 +560,35 @@ def test_opened_at_byte_identical_through_takeover_and_handback(world):
         assert mac_after[key]["opened_at"] == oa, (key, mac_after[key]["opened_at"])
     # the seed lapses after the writer's first save: a later genuine re-open is not overridden
     assert pwg.seeded_disk_rows(mac_file) == mac_after
+
+
+def test_late_heartbeat_with_mac_producing_starts_nothing_and_absent_mac_still_fails_over(world):
+    """2026-10-27 USER: "s1 should NEVER have to run any live script as long as macbook is doing its job".
+    A heartbeat that lands late (S1 starved, sshd slow) while the Mac's last report was fresh is not an outage."""
+    agent, watchdog = world.MA.Agent(), world.S1.Watchdog()
+    t0 = T_SATURDAY
+    world.mac_produce(t0)
+    world.s1_produce(t0)
+    run_pair(world, agent, watchdog, t0)
+    for k in range(1, 11):  # heartbeat 15..150 s late, Mac last report fresh
+        state = run_pair(world, agent, watchdog, t0 + 15 * k, mac_alive=False)
+        assert state["venues"]["crypto"]["mode"] == "NORMAL", state["readings"]["crypto"]
+    assert state["readings"]["crypto"]["source"] == "mac_heartbeat_late"
+    assert ("start", "live-failover-crypto-producers.service") not in watchdog.actions.calls
+    state = run_pair(world, agent, watchdog, t0 + world.S1.HB_LATE_S + 15, mac_alive=False)  # every Mac channel silent
+    assert state["venues"]["crypto"]["mode"] == "ACTIVE"
+    assert ("start", "live-failover-crypto-producers.service") in watchdog.actions.calls
+
+
+def test_persisted_active_after_reboot_does_not_restart_producers_when_mac_fresh(world):
+    agent, watchdog = world.MA.Agent(), world.S1.Watchdog()
+    t0 = T_SATURDAY
+    world.mac_produce(t0)
+    run_pair(world, agent, watchdog, t0)
+    watchdog.state["venues"]["crypto"] = {"mode": "ACTIVE", "outbox": True, "fresh_since": None}  # persisted pre-reboot
+    watchdog.actions.calls.clear()
+    world.mac_produce(t0 + 15)
+    state = run_pair(world, agent, watchdog, t0 + 15)
+    assert state["venues"]["crypto"]["mode"] == "NORMAL"
+    assert ("start", "live-failover-crypto-producers.service") not in watchdog.actions.calls
+    assert any(c[0] == "reap" for c in watchdog.actions.calls)
