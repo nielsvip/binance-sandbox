@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-27T09:20:09Z",
+ "generated_utc": "2026-10-27T09:40:03Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-27T13:30:00Z",
  "market_open": false,
@@ -15,10 +15,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 73,
-    "filled_before_open": 73
+    "filled_today": 76,
+    "filled_before_open": 76
    },
-   "detail": "73 boards filled before the open (73 today)"
+   "detail": "76 boards filled before the open (76 today)"
   },
   {
    "name": "defaults_chain_completed",
