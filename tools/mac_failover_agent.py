@@ -33,7 +33,9 @@ import os
 import re
 import signal
 import subprocess
+import shutil  # 2026-10-27: used at ~line 526 (control sync), never imported
 import sys
+import tempfile  # 2026-10-27: used by the control sync (lines ~490/547) but never imported -> every tick raised NameError from 18:58Z
 import threading
 import time
 from pathlib import Path
@@ -521,6 +523,9 @@ class Agent:
                         if not staged.is_file():
                             continue
                         destination = BASE / rel
+                        # 2026-10-27: identical bytes = nothing to sync (an immutable `uchg` book raised EPERM every tick)
+                        if destination.is_file() and destination.read_bytes() == staged.read_bytes():
+                            continue
                         tmp = destination.with_name(f".{destination.name}.s1sync.tmp")
                         shutil.copy2(staged, tmp)
                         os.replace(tmp, destination)

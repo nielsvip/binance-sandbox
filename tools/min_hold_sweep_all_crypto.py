@@ -40,6 +40,9 @@ import numpy as np  # noqa: E402
 from vec_decisions import min_hold_gate as _mhg_opts  # noqa: E402
 
 OPTIONS = tuple(_mhg_opts.SWEEP_OPTIONS)
+# A no-hold REFERENCE arm, always measured, never a swept option: "what does the
+# hold buy" needs a gate-off comparison, and the operator's set starts at 2.
+REFERENCE = 0
 CRYPTO_SUFFIX = ("USDT", "USDC", "USD1", "BUSD", "FDUSD")
 
 
@@ -114,26 +117,26 @@ def main() -> int:
             ss = f"{sym}_{'LONG' if is_long else 'SHORT'}"
             arms = {}
             try:
-                for opt in OPTIONS:
+                for opt in (REFERENCE,) + OPTIONS:
                     arms[opt] = run_arm(V, sliced, sym, is_long, opt, a.sole)
             except Exception as e:
                 print(f"  {ss} ERROR {type(e).__name__}: {str(e)[:70]}", flush=True)
                 continue
-            gains = [arms[o]["gain_pct"] for o in OPTIONS]
-            trades = [arms[o]["trades"] for o in OPTIONS]
+            gains = [arms[o]["gain_pct"] for o in (REFERENCE,) + OPTIONS]
+            trades = [arms[o]["trades"] for o in (REFERENCE,) + OPTIONS]
             if any(gv is None for gv in gains):
                 continue
             bound = (len(set(round(float(gv), 9) for gv in gains)) > 1) or (len(set(trades)) > 1)
-            base = float(arms[0]["gain_pct"])
+            base = float(arms[REFERENCE]["gain_pct"])
             best_opt = max(OPTIONS, key=lambda o: float(arms[o]["gain_pct"]))
             rows.append({
                 "sym_side": ss, "bound": bool(bound),
-                "gain": {str(o): round(float(arms[o]["gain_pct"]), 4) for o in OPTIONS},
-                "trades": {str(o): int(arms[o]["trades"] or 0) for o in OPTIONS},
-                "effective_bars": {str(o): arms[o]["effective_bars"] for o in OPTIONS},
+                "gain": {str(o): round(float(arms[o]["gain_pct"]), 4) for o in (REFERENCE,) + OPTIONS},
+                "trades": {str(o): int(arms[o]["trades"] or 0) for o in (REFERENCE,) + OPTIONS},
+                "effective_bars": {str(o): arms[o]["effective_bars"] for o in (REFERENCE,) + OPTIONS},
                 "best_option": best_opt,
                 "best_delta_vs_0": round(float(arms[best_opt]["gain_pct"]) - base, 4),
-                "trades_at_0": int(arms[0]["trades"] or 0),
+                "trades_at_0": int(arms[REFERENCE]["trades"] or 0),
                 "trades_at_best": int(arms[best_opt]["trades"] or 0),
             })
         if i % 10 == 0:

@@ -5636,6 +5636,9 @@ class QuickConfig:
         self.REENTRY_AUGMENT_REQUIRE_NO_PRIOR_AUGMENT = True
         self.MANDATORY_REENTRY_WT_FILTER_TF_MODE = '5m_or_15m'
         self.UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED = False
+        # parity-sync 20261027: stocks-uniform bold differs from the raw (crypto) value — §67 overlay
+        self.GAP_MORNING_REENTRY_MINUTES_AFTER_OPEN = 180
+        self.REGIME_TRENDING_WT_REDUCE_FRAC_LOW = 0.05
 
     ABLATION_DISABLE_AGGRESSIVE_HEDGE: bool = False  # auto-wired 625
     ABLATION_DISABLE_AUGMENTATION: bool = False  # auto-wired 625
