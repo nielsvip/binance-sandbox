@@ -43,6 +43,7 @@ verdict dict; promotion happens only on strict improvement and is never wired he
 import argparse
 import collections
 import glob
+import zreader
 import hashlib
 import json
 import math
@@ -173,7 +174,7 @@ def iter_rows(path):
     sym_side = sym_side_of_path(path)
     base = {"tim": None, "trades": None, "dd": None, "sh": None}
     buf = {}
-    with open(path, "r", errors="replace") as fh:
+    with zreader.open_text(path) as fh:
         for line in fh:
             try:
                 r = json.loads(line)
@@ -236,7 +237,7 @@ def iter_forward(path):
     """Yield (sym_side, ts, node, rec, ctx) per FORWARD delta-log record. rec uses the same internal keys as
     iter_rows (d/dtim/dtr/ddd/dsh/valid/secs); ctx carries unseen_bars/prev_npz_end. Missing key -> skip."""
     default_sym = sym_side_of_path(path)
-    with open(path, "r", errors="replace") as fh:
+    with zreader.open_text(path) as fh:
         for line in fh:
             try:
                 r = json.loads(line)
@@ -260,7 +261,7 @@ def iter_forward(path):
 def iter_ctx(path):
     """Yield (sym_side, ts, ctx) per BOARD_CTX line. Missing tier/bh/baseline -> None (never crash)."""
     default_sym = sym_side_of_path(path)
-    with open(path, "r", errors="replace") as fh:
+    with zreader.open_text(path) as fh:
         for line in fh:
             try:
                 r = json.loads(line)
@@ -279,7 +280,7 @@ def iter_holdout(path):
     """Yield (sym_side, ts, won, info) per HOLDOUT line. won = final set beat start OOS (final_minus_start > 0).
     Lines without a computable verdict are still yielded with won=None (board context, never a label)."""
     default_sym = sym_side_of_path(path)
-    with open(path, "r", errors="replace") as fh:
+    with zreader.open_text(path) as fh:
         for line in fh:
             try:
                 r = json.loads(line)
@@ -479,10 +480,9 @@ def decide(brain, sym_side, tab, row_key, filter_key, round_id, floor_per_1000, 
 
 
 def collect_files(globs):
-    files = set()
-    for g in globs:
-        files.update(glob.glob(os.path.expanduser(g)))
-    return sorted(files, key=os.path.getmtime)
+    """Every match plus its .zst/.gz form (tools/zreader): a compressed delta log is still a training input, which is
+    what lets tools/v20_absorb_cycle.py compress a finished round the day it finishes instead of 21 days later."""
+    return zreader.expand_globs(globs)
 
 
 DEFAULT_GLOBS = ["~/v15_run*/progress/v15_delta_log/*.jsonl", "~/v15_run*/v15_delta_log/*.jsonl"]

@@ -14090,6 +14090,15 @@ def _main_single():
             pass
     except Exception:
         progress = {"symside": new_symside, "baseline_gain": baseline_gain, "bh": bh, "done": {}, "window_days": args.window_days, "npz_id": _run_npz_id}
+    # A changed NPZ or fresh board invalidates the old baseline metadata as well as its rows.
+    # Keep progress and the workbook's baseline sheet tied to this actual vector evaluation.
+    if not progress.get("done") and progress.get("final_gain") is None:
+        progress["baseline_gain"] = float(baseline_gain)
+        progress["initial_baseline_gain"] = float(baseline_gain)
+        progress["bh"] = bh
+        progress["window_days"] = args.window_days
+        if _run_npz_id is not None:
+            progress["npz_id"] = _run_npz_id
     try:
         if locals().get("_defaults_challenger_record") and isinstance(progress, dict):
             progress["defaults_challenger"] = _defaults_challenger_record

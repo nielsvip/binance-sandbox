@@ -74,6 +74,7 @@ import array
 import collections
 import glob
 import gzip
+import zreader
 import hashlib
 import json
 import math
@@ -594,10 +595,8 @@ class CtxMap:
 
 
 def extract_logs(a, emit, counters):
-    files = []
-    for g in a.source_from:
-        files.extend(glob.glob(os.path.expanduser(g)))
-    files = sorted(set(files))
+    # tools/zreader: a .zst log is still a training input, so a finished round can be compressed the day it finishes
+    files = zreader.expand_globs(a.source_from)
     wm_path = Path(a.spill_dir) / f"watermarks_{a.host}.json"
     wm = _load_wm(wm_path)
     ctx = CtxMap(a.ctx_map)
@@ -606,7 +605,10 @@ def extract_logs(a, emit, counters):
             st = os.stat(f)
         except OSError:
             continue
-        key = f"{a.host}:{os.path.abspath(f)}"
+        # The watermark key and the event src are the PLAIN name, so compressing a log that was already extracted
+        # changes neither: the key still matches, every line is at or below the watermark, nothing is emitted twice,
+        # and the next run sees the new size and skips the file outright.
+        key = f"{a.host}:{zreader.plain_name(os.path.abspath(f))}"
         prev = wm.get(key) or {}
         if prev.get("size") == st.st_size and not a.full:
             counters["files_unchanged"] += 1
@@ -626,11 +628,11 @@ def extract_logs(a, emit, counters):
             else:
                 counters["events_below_watermark"] += 1
 
-        asm = Assembler(sym, os.path.abspath(f), lambda ev: gated(dict(ev, _line=asm_line[0])), counters, ctx_lookup=ctx)
+        asm = Assembler(sym, zreader.plain_name(os.path.abspath(f)), lambda ev: gated(dict(ev, _line=asm_line[0])), counters, ctx_lookup=ctx)
         asm_line = [0]
         n = 0
         last_ts = ""
-        with open(f, "rb") as fh:
+        with zreader.open_binary(f) as fh:
             for raw in fh:
                 n += 1
                 if not raw.endswith(b"\n"):
@@ -651,7 +653,7 @@ def extract_logs(a, emit, counters):
                     if sym2 != asm.sym:
                         counters["sym_side_switch_in_file"] += 1
                         asm.finish()
-                        asm = Assembler(sym2, os.path.abspath(f), lambda ev: gated(dict(ev, _line=asm_line[0])), counters, ctx_lookup=ctx)
+                        asm = Assembler(sym2, zreader.plain_name(os.path.abspath(f)), lambda ev: gated(dict(ev, _line=asm_line[0])), counters, ctx_lookup=ctx)
                 asm.feed(r, n)
                 last_ts = r.get("ts") or last_ts
             asm.finish()
@@ -909,12 +911,11 @@ def load_coverage(globs, ctx_json=None):
     board events -> sym_side + board ts, no npz). --covered-by-ctx: JSON list of [sym_side, npz_ts_or_ISO] or
     {sym_side|s, npz|npz_last_bar_ts, ts|t}."""
     cov = Coverage()
-    files = sorted({f for g in (globs or []) for f in glob.glob(os.path.expanduser(g))})
+    files = zreader.expand_globs(globs)
     for f in files:
         cov.c["covered_by_files"] += 1
-        if f.endswith((".tsv", ".tsv.gz")):
-            op = gzip.open if f.endswith(".gz") else open
-            with op(f, "rt", errors="replace") as fh:
+        if zreader.plain_name(f).endswith(".tsv"):
+            with zreader.open_text(f) as fh:
                 for line in fh:
                     if '"e":"board"' not in line:
                         continue
@@ -1060,13 +1061,13 @@ def extract_progress(a, emit, counters):
     cov = load_coverage(a.covered_by, a.covered_by_ctx)
     for k, v in cov.c.items():
         counters["coverage_" + k] = v
-    files = sorted({f for g in a.source_from for f in glob.glob(os.path.expanduser(g))})
+    files = zreader.expand_globs(a.source_from)
     index = []
     for f in files:
         counters["files"] += 1
         try:
             st = os.stat(f)
-            with open(f, "rb") as fh:
+            with zreader.open_binary(f) as fh:
                 d = json.load(fh)
         except Exception:
             counters["files_unreadable"] += 1

@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-27 01:34:22 UTC
+# Copilot Status — 2026-10-27 01:39:28 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T01:27:12
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T01:27:12
-- **STALE_INDICATORS** [tradier]  — 2026-10-27T01:29:14
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T01:29:14
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T01:29:14
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T01:31:17
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T01:31:17
-- **STALE_INDICATORS** [tradier]  — 2026-10-27T01:33:19
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T01:33:19
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T01:33:19
+- **STALE_INDICATORS** [tradier]  — 2026-10-27T01:35:22
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T01:35:22
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T01:35:22
+- **STALE_INDICATORS** [tradier]  — 2026-10-27T01:37:24
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T01:37:24
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T01:37:24
+- **STALE_INDICATORS** [tradier]  — 2026-10-27T01:39:26
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T01:39:26
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T01:39:26
 
 ## Missed Trades (trader comparison)
 
@@ -29,10 +29,10 @@ _None_
 
 **Held:** 4 | **Watching for reentry:** 26 | **Reentered:** 0
 
-- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +0.9%
-- HELD: **MINAUSDT** SHORT (crypto) peak +4.2%, now +1.5%
-- HELD: **UNIUSDC** LONG (crypto) peak +4.1%, now +0.2%
-- HELD: **ETHUSDC** SHORT (crypto) peak +3.7%, now +-0.5%
+- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +1.2%
+- HELD: **MINAUSDT** SHORT (crypto) peak +4.2%, now +1.4%
+- HELD: **UNIUSDC** LONG (crypto) peak +4.1%, now +0.6%
+- HELD: **ETHUSDC** SHORT (crypto) peak +3.7%, now +-0.8%
 
 - WATCHING: **KMNOUSDT** LONG (crypto) peaked +11.7%, exited 0m ago
 - WATCHING: **MASKUSDT** SHORT (crypto) peaked +10.0%, exited 0m ago
@@ -54,4 +54,4 @@ _None_
 - [LOW] tradier_rankings.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] tradier_positions.py running but log stale (228min)
+- [MEDIUM] tradier_positions.py running but log stale (233min)
