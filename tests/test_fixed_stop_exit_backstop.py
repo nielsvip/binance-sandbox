@@ -95,7 +95,10 @@ def test_taker_backstop_leg_exists_and_guarded():
     import ez_manage as E
     fn = E.MultiAccountTradeManager._fixed_stop_taker_backstop
     src = inspect.getsource(fn)
-    assert "ez_broker_moved" in src
+    # USER 2026-10-27: helper renamed ez_broker_moved -> _eps.broker_moved_forced when positions_truth.py
+    # was deleted. Pinned invariant unchanged: the taker backstop re-checks the BROKER (never the local
+    # store, which lags a fill) before sending, so it can never double-send.
+    assert "broker_moved_forced" in src
     assert "reduceOnly" in src
     assert "_sanction_execution" in src
     assert "PYTEST_CURRENT_TEST" in src

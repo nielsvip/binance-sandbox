@@ -1785,10 +1785,19 @@ async def broker_snapshot_forced(obj, account_key, reason="", timeout=20.0):
     return StoreSnapshot(amounts, entries, time.time(), account_key)
 
 
-async def store_moved(service, account_key, symbol, position_side, baseline, kind, config=None, log=None):
-    """Did the position move away from `baseline` in the `kind` ("increase"/"reduce") direction?
-    Reads the store (WS-fed), never the broker. Unknown store -> False (same as the old unreachable broker)."""
-    snap = await store_snapshot(service, account_key)
+async def broker_moved_forced(obj, account_key, symbol, position_side, baseline, kind, config=None, log=None):
+    """Did the position move away from `baseline` in the `kind` ("increase"/"reduce") direction, per a REAL
+    broker read?
+
+    USER 2026-10-27: this answers "did my order already fill?" immediately before a fallback/taker order is
+    sent, i.e. it is the no-double-order check. It must NOT read this service's store: the store is fed by
+    the WS and lags a fill by design ("local/WS verify lags — ask the broker before anything else"), so a
+    store read would answer "not filled" and the caller would send a SECOND order. That is precisely the
+    duplicate-trading failure. Unknown/unreachable -> False, which keeps the caller's existing
+    conservative path (it proceeds to its fallback) exactly as before.
+
+    Bounded cost: only reached after maker-first already failed, never on the normal order path."""
+    snap = await broker_snapshot_forced(obj, account_key, reason=f"moved? {symbol}_{position_side} {kind}")
     if snap is None:
         return False
     amt = snap.amount(symbol, position_side)
