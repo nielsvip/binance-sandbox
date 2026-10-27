@@ -44,6 +44,14 @@ FALLBACK_TRADIER_ROUND_TRIP_PCT = 0.0  # Tradier equities are commission-free
 # published tier. Guards against a window that caught only rebated fills.
 HARD_FLOOR_CRYPTO_ROUND_TRIP_PCT = 0.02
 
+# The pin is PUBLISHED rounded, and only re-published when it moves by at least
+# this much. `engine_versions()` hashes fee_model_measured.py, so every rewrite
+# orphans the entire eval cache -- a raw measurement that jitters in the 5th
+# decimal must not cost the fleet its compute. 0.001pp is ~2% of the current
+# 0.053 rate: far below anything that changes a board, far above the jitter.
+PIN_DECIMALS = 3
+PIN_MIN_MOVE_PCT = 0.001
+
 _BNB_USD_FALLBACK = 1100.0
 
 
@@ -161,20 +169,23 @@ def _write_pin(root: Path, crypto: float, source: str, long_m: dict, short_m: di
         f'MEASURED_AT = "{time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}"\n'
         'MEASURED_BY = "fee_model.rebuild"\n'
         f'SOURCE = "{source}"\n'
-        f"CRYPTO_ROUND_TRIP_PCT = {round(float(crypto), 5)}\n"
+        f"CRYPTO_ROUND_TRIP_PCT = {round(float(crypto), PIN_DECIMALS)}\n"
         f"TRADIER_ROUND_TRIP_PCT = {FALLBACK_TRADIER_ROUND_TRIP_PCT}\n"
         f'WINDOWS = {{"long_days": {LONG_WINDOW_DAYS}, "short_days": {SHORT_WINDOW_DAYS}}}\n'
     )
     try:
         p = root / "fee_model_measured.py"
         old = p.read_text() if p.exists() else ""
-        # Only rewrite when the RATE moves. Rewriting on every run would change
-        # the file's bytes, and the eval-cache hash with it, orphaning the whole
-        # corpus twice an hour for nothing.
+        # Only rewrite when the PUBLISHED rate moves. The raw measurement drifts
+        # by a few 1e-5 every window (0.05291 -> 0.05287 within one cron tick),
+        # and because engine_versions() hashes this file, a rewrite orphans the
+        # whole eval corpus. Publishing at PIN_DECIMALS and requiring a move of
+        # at least PIN_MIN_MOVE_PCT keeps the number honest without burning
+        # every cached board twice an hour.
         import re as _re
 
         m = _re.search(r"CRYPTO_ROUND_TRIP_PCT\s*=\s*([0-9.]+)", old)
-        if m and abs(float(m.group(1)) - round(float(crypto), 5)) < 1e-9:
+        if m and abs(float(m.group(1)) - float(crypto)) < PIN_MIN_MOVE_PCT:
             return
         tmp = p.with_suffix(".py.tmp")
         tmp.write_text(body)
@@ -247,21 +258,30 @@ def load(max_age_s: float = CACHE_MAX_AGE_S) -> dict:
 
 
 def round_trip_pct(mode: str = "crypto") -> float:
-    """Conservative measured round-trip commission in percent of notional.
+    """The round-trip commission every host charges, in percent of notional.
 
     Charge this on a full open+close. Each leg pays half (see the engines'
     `half_fee = round_trip_pct / 200`).
+
+    THE PIN IS THE AUTHORITY, not the local measurement. Only the Mac has
+    `data/exchange_fills/**` (the livecode mirror excludes `data/*`), so reading
+    the local measurement here would hand the Mac 0.05285 and every worker the
+    pinned 0.053 -- re-opening in a new place exactly the board-vs-live fee
+    split this module exists to close. `rebuild()` measures and re-publishes the
+    pin; everyone, measuring host included, then charges that one number.
+    `load()` still carries the full measurement for reporting and audit.
     """
     if str(mode or "crypto").lower() in ("tradier", "stocks", "stock"):
         return float(FALLBACK_TRADIER_ROUND_TRIP_PCT)
-    doc = load()
-    try:
-        v = float(doc.get("crypto_round_trip_pct") or 0.0)
-    except (TypeError, ValueError):
-        v = 0.0
-    if v <= 0.0:
+    v, _src = _pinned()
+    if v is None:
+        try:
+            v = float(load().get("crypto_round_trip_pct") or 0.0)
+        except (TypeError, ValueError):
+            v = 0.0
+    if not v or v <= 0.0:
         v = FALLBACK_CRYPTO_ROUND_TRIP_PCT
-    return max(v, HARD_FLOOR_CRYPTO_ROUND_TRIP_PCT)
+    return max(float(v), HARD_FLOOR_CRYPTO_ROUND_TRIP_PCT)
 
 
 def half_leg_fraction(mode: str = "crypto") -> float:
