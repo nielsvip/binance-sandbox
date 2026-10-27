@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-27 01:19:03 UTC
+# Copilot Status — 2026-10-27 01:24:09 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -9,6 +9,12 @@
 - **STALE_INDICATORS** [tradier]  — 2026-10-27T01:19:02
 - **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T01:19:02
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T01:19:02
+- **STALE_INDICATORS** [tradier]  — 2026-10-27T01:21:05
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T01:21:05
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T01:21:05
+- **STALE_INDICATORS** [tradier]  — 2026-10-27T01:23:07
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T01:23:07
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T01:23:07
 
 ## Missed Trades (trader comparison)
 
@@ -22,10 +28,10 @@ _None_
 
 **Held:** 4 | **Watching for reentry:** 26 | **Reentered:** 0
 
-- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +1.6%
-- HELD: **MINAUSDT** SHORT (crypto) peak +4.2%, now +1.1%
-- HELD: **UNIUSDC** LONG (crypto) peak +4.1%, now +0.4%
-- HELD: **ETHUSDC** SHORT (crypto) peak +3.7%, now +-0.9%
+- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +0.9%
+- HELD: **MINAUSDT** SHORT (crypto) peak +4.2%, now +1.6%
+- HELD: **UNIUSDC** LONG (crypto) peak +4.1%, now +-0.1%
+- HELD: **ETHUSDC** SHORT (crypto) peak +3.7%, now +-0.5%
 
 - WATCHING: **KMNOUSDT** LONG (crypto) peaked +11.7%, exited 0m ago
 - WATCHING: **MASKUSDT** SHORT (crypto) peaked +10.0%, exited 0m ago
@@ -42,9 +48,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 5
+**Issues (last 1h):** 30
 - [LOW] tradier_prices.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] tradier_positions.py running but log stale (213min)
+- [MEDIUM] tradier_positions.py running but log stale (218min)

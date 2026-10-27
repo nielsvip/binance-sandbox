@@ -3810,7 +3810,7 @@ async def _xg_ez_force(mgr, a, c, why):
 
 async def _xg_ez_broker(mgr, account_key, symbol, position_side):
     try:
-        _snap = await _eps.broker_snapshot_forced(mgr, account_key, reason=f"exit_guarantee {symbol}_{position_side}")
+        _snap = await mgr._writer_truth_snapshot(account_key)
     except Exception:
         _snap = None
     if _snap is None:
@@ -16721,6 +16721,54 @@ class MultiAccountTradeManager:
             return None
         return await _eps.store_snapshot(self, account_key)
 
+    @staticmethod
+    def _redis_positions_rows(payload, account_key):
+        """(rows, snapshot_ts) out of a `positions:{acct}` Redis payload.
+
+        USER 2026-10-27: the writer publishes {"positions": {pk: row}, "meta": {"timestamp": epoch,
+        "account": acct}} — VERIFIED against live Redis (402 rows / 64 non-zero on ang). The older
+        {"positions_by_account": {acct: {...}}} and bare {pk: row} shapes are still accepted so a mixed
+        fleet cannot silently read nothing: the previous parser only knew positions_by_account, so it
+        returned {} for every live payload and the Redis path could never win."""
+        if not isinstance(payload, dict):
+            return None, None
+        ts = None
+        meta = payload.get("meta")
+        if isinstance(meta, dict):
+            ts = meta.get("timestamp")
+        if ts is None:
+            ts = payload.get("timestamp")
+        rows = payload.get("positions")
+        if not isinstance(rows, dict) or not rows:
+            pba = payload.get("positions_by_account")
+            rows = pba.get(account_key) if isinstance(pba, dict) else None
+        if not isinstance(rows, dict) or not rows:
+            if payload and not any(k in payload for k in ("positions", "positions_by_account", "meta")):
+                rows = payload  # bare {position_key: row}
+            else:
+                rows = None
+        if isinstance(rows, dict) and rows:
+            return rows, ts
+        return None, ts
+
+    async def _writer_truth_moved(self, account_key, symbol, position_side, baseline, kind) -> bool:
+        """Did the position move away from `baseline` in the `kind` ("increase"/"reduce") direction,
+        according to the single writer's freshness-proven truth?
+
+        USER 2026-10-27: this is the no-double-order check run immediately before a fallback/taker order.
+        It must never be answered from a stale copy: a "not moved" answer on stale data makes the caller
+        send a SECOND order, which is the duplicate-trading failure. The writer's WebSocket sees a fill
+        the moment it happens, so its published truth is the correct witness once proven fresh.
+        Unknown/stale -> False, which keeps the caller's pre-existing conservative path (it proceeds to
+        its fallback) exactly as the retired broker read did when it was unreachable."""
+        snap = await self._writer_truth_snapshot(account_key)
+        if snap is None:
+            return False
+        amt = snap.amount(symbol, position_side)
+        base = abs(safe_fetch_float(baseline, 0.0))
+        tol = max(1e-9, max(abs(amt), base) * 1e-6)
+        return (amt < base - tol) if kind == "reduce" else (amt > base + tol)
+
     async def _load_positions_from_redis(
         self, account_key: Optional[str] = None
     ) -> Dict[str, Position]:
@@ -16740,9 +16788,9 @@ class MultiAccountTradeManager:
     ) -> Dict[str, Position]:
         if not isinstance(snapshot_payload, dict):
             return {}
-        positions_payload = (snapshot_payload.get("positions_by_account") or {}).get(
-            account_key
-        ) or {}
+        # USER 2026-10-27: accept the shape the writer actually publishes ({"positions": {...}}) as well
+        # as the legacy positions_by_account one — see _redis_positions_rows.
+        positions_payload = self._redis_positions_rows(snapshot_payload, account_key)[0] or {}
         bucket = {}
         if isinstance(positions_payload, dict):
             for position_key, payload in positions_payload.items():
@@ -22937,7 +22985,7 @@ class MultiAccountTradeManager:
             if amt <= 0:
                 if have and have.get("orderId"):
                     try:  # 2026-10-13 GUARANTEED STOP: local flat never cancels — forced broker read must confirm flat
-                        _fx_bs = await _eps.broker_snapshot_forced(self, account_key, reason=f"fixed_stop_flat {position_key}")
+                        _fx_bs = await self._writer_truth_snapshot(account_key)
                     except Exception:
                         _fx_bs = None
                     if _fx_bs is None or abs(float(_fx_bs.amount(symbol, _side_u))) > 0:
@@ -23146,7 +23194,7 @@ class MultiAccountTradeManager:
         """2026-10-13: the taker backstop for FIXED_STOP (~-0.3% class: acts ONLY after maker-first failed AND the webhook failed). Broker-moved re-check first (the maker may have filled without local confirmation) — never double-close. Single reduceOnly MARKET through the wire sanction (refuses while a broker order is unconfirmed). Never raises."""
         try:
             try:
-                if await _eps.broker_moved_forced(self, account_key, symbol, position_side, abs(float(baseline_amt or 0.0)), "reduce", config=config, logger=logger):
+                if await self._writer_truth_moved(account_key, symbol, position_side, abs(float(baseline_amt or 0.0)), "reduce", config=config, logger=logger):
                     logger.critical(f"🛡️ [FIXED_STOP_TAKER_SUPPRESSED] {position_key}: broker shows the reduce already moved — NO taker backstop (no-double rule)")
                     return "SUPPRESSED_TAKER_ALREADY_MOVED"
             except Exception:
@@ -23236,7 +23284,7 @@ class MultiAccountTradeManager:
                         continue
                     if _sw_snap is False:
                         try:
-                            _sw_snap = await _eps.broker_snapshot_forced(self, account_key, reason="fixed_stop_sweep")
+                            _sw_snap = await self._writer_truth_snapshot(account_key)
                         except Exception:
                             _sw_snap = None
                     if _sw_snap is None:
@@ -23279,7 +23327,7 @@ class MultiAccountTradeManager:
             except Exception as _e:
                 return f"SKIPPED_LIST_{_e}"
             try:  # 2026-10-13 GUARANTEED STOP: orphan = broker flat (forced read), never local flat; unknown -> cancel nothing
-                _rc_snap = await _eps.broker_snapshot_forced(self, account_key, reason="fixed_stop_reconcile")
+                _rc_snap = await self._writer_truth_snapshot(account_key)
             except Exception:
                 _rc_snap = None
             if _rc_snap is None:
@@ -25899,11 +25947,9 @@ class MultiAccountTradeManager:
                     self._redis_get_dict(f"positions:{account_key}"),
                     EZ_POSITIONS_REDIS_BUDGET_S,
                 )
-                rows = (payload.get("positions_by_account") or {}).get(account_key) if isinstance(payload, dict) else None
-                if not isinstance(rows, dict) or not rows:
-                    rows = payload if (isinstance(payload, dict) and payload and "positions_by_account" not in payload) else None
-                if isinstance(rows, dict) and rows:
-                    snapshot_ts = safe_datetime(payload.get("timestamp"), None) if isinstance(payload, dict) else None
+                rows, _ts = self._redis_positions_rows(payload, account_key)
+                if rows:
+                    snapshot_ts = safe_datetime(_ts, None) if _ts is not None else None
                     await self._apply_positions_payload(account_key, rows, snapshot_ts)
                     src = "redis"
             except AbandonTimeout:
@@ -39252,7 +39298,7 @@ class MultiAccountTradeManager:
                             action=action,
                         )
                         if not reduce_verified:  # POSITIONS REVAMP 2026-10-06 (E2): local/WS verify lags — ask the broker before anything else
-                            reduce_verified = await _eps.broker_moved_forced(self, account_key, symbol, position_side, abs(baseline_amt), "reduce", config=config, logger=logger)
+                            reduce_verified = await self._writer_truth_moved(account_key, symbol, position_side, abs(baseline_amt), "reduce", config=config, logger=logger)
                         if reduce_verified:
                             await self.handle_filled_maker(
                                 account_key,
@@ -39795,7 +39841,7 @@ class MultiAccountTradeManager:
                             > 0.0001
                         ):
                             return "SUCCESS"
-                        if await _eps.broker_moved_forced(self, account_key, symbol, position_side, abs(original_positionAmt), "increase", config=config, logger=logger):  # POSITIONS REVAMP (E3): fresh broker read, not WS
+                        if await self._writer_truth_moved(account_key, symbol, position_side, abs(original_positionAmt), "increase", config=config, logger=logger):  # POSITIONS REVAMP (E3): fresh broker read, not WS
                             logger.warning(f"[EXECUTE_UNVERIFIED_BROKER_FILLED] {position_key}: broker shows the maker filled — no fallback")
                             return "SUCCESS"
                         if True:  # POSITIONS REVAMP 2026-10-06 (E3): OPEN as well as AUGMENT — confirm the maker is CANCELED before any fallback
@@ -53355,7 +53401,7 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager, 
         if _amt <= 0 and "EXIT" in fams and bool(getattr(config, "VEC_EXIT_OWED_ENABLED", True)) and _vx.exit_owed_has(position_key):
             # 2026-10-13 NEAR ang post-mortem: local flat is NOT proof — a stale snapshot said 0 while the broker held 25h after the vec
             # CLOSE. An owed vec exit is cleared ONLY by a forced broker read showing flat; broker holds -> the close is re-sent now.
-            _ob_snap = await _eps.broker_snapshot_forced(trade_manager, _acct or account_key, reason=f"exit_owed {position_key}")
+            _ob_snap = await trade_manager._writer_truth_snapshot(_acct or account_key)
             if _ob_snap is None:
                 logger.critical(f"[VEC_EXACT_EXIT_OWED] {position_key}: local flat but broker UNREACHABLE — owed exit kept, retry next sweep")
                 return True
@@ -53563,7 +53609,7 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager, 
             try:
                 _amt_owed = abs(safe_fetch_float(getattr(trade_manager.positions.get(position_key), "positionAmt", 0), 0))
                 if not _vx_exit_attempted and _vx.exit_owed_due(position_key, _amt_owed, _vx_lc_of(trade_manager.positions.get(position_key))):
-                    _ow_snap = await _eps.broker_snapshot_forced(trade_manager, _acct or account_key, reason=f"exit_owed_retry {position_key}")
+                    _ow_snap = await trade_manager._writer_truth_snapshot(_acct or account_key)
                     if _ow_snap is not None and abs(float(_ow_snap.amount(_sym, _side))) <= 0:
                         _vx.exit_owed_drop(position_key)  # broker confirms FLAT (inf WUSDT 22:03: filled while local stayed stale 150s+)
                         logger.info(f"[VEC_EXACT_EXIT_OWED] {position_key}: broker confirms FLAT (local stale {_amt_owed:.6f}) — owed exit cleared")
