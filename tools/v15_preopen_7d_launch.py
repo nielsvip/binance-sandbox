@@ -89,7 +89,8 @@ def build_launch(queue: dict, ss: str, result_dir: Path, workers: int, python: s
     env.update({"V15_OUT_DIR": str(out), "V15_PROGRESS_DIR": str(progress),
                 "V15_START_OVERRIDES": str(start), "V15_7D_SOURCE_SHA256": digest(overrides),
                 "V15_FRESH_RUN": "1", "V15_INGEST_BEST": "1", "V15_PAIR_MODE": "0",
-                "V15_ISOLATED_PROOF": "1", "V15_SKIP_CAT_PERSYM_BASELINE": "1",
+                "V15_ISOLATED_PROOF": "1", "V15_7D_SOURCE_KIND": "per_sym_sql",
+                "V15_SKIP_CAT_PERSYM_BASELINE": "1", "V15_UNWIRED_SKIP": "0",
                 "V15_PREV_BEST_START": "0", "V15_ADAPT_BASELINE": "0",
                 "V15_OTHER_SIDE_PROBE_RATE": "0", "V15_SKIP_LIVE_VERIFY": "1"})
     # The regular pilot's diagnostic repair can consume a further 600 seconds

@@ -12476,13 +12476,15 @@ def _main_single():
     if args.window_days == 7 and args.out and Path(args.out).resolve().parent != Path(os.environ["V15_OUT_DIR"]).resolve():
         print("BLOCKED: 7D --out must be inside V15_OUT_DIR", file=sys.stderr)
         sys.exit(2)
+    _sql_baseline_7d = bool(args.window_days == 7 and os.environ.get("V15_7D_SOURCE_KIND") == "per_sym_sql")
+    _skip_cat_baseline_expected = "1" if _sql_baseline_7d else "0"
     if args.window_days == 7 and (
-        os.environ.get("V15_SKIP_CAT_PERSYM_BASELINE") != "0"
+        os.environ.get("V15_SKIP_CAT_PERSYM_BASELINE") != _skip_cat_baseline_expected
         or os.environ.get("V15_PREV_BEST_START") != "0"
         or os.environ.get("V15_ADAPT_BASELINE") != "0"
         or os.environ.get("V15_FRESH_RUN") != "1"
     ):
-        print("BLOCKED: 7D must compare the new cat_side defaults with its verified 30D per_sym start", file=sys.stderr)
+        print("BLOCKED: 7D baseline mode does not match its verified start source", file=sys.stderr)
         sys.exit(2)
 
     # BATCH 4 NPZs LONG+SHORT in one process — keep all hot, never erase, work until finished
@@ -13108,7 +13110,7 @@ def _main_single():
         # (BTCUSDC_LONG: 84 hustler_best overrides -> 0 trades vs recipe 286). A prior best that cannot trade is not a
         # baseline: fall back to the live recipe when it trades and the ingested set does not.
         _bt = baseline_vec.get("trades_rows", baseline_vec.get("trades"))  # PAR/001: floor on all-rows count
-        if isinstance(_bt, (int, float)) and _bt < 10:
+        if not _sql_baseline_7d and isinstance(_bt, (int, float)) and _bt < 10:
             try:
                 _rec_ov, _ = sanitize_overrides(dict(_recipe_only_overrides), defaults)
                 if _rec_ov != overrides:
@@ -13377,7 +13379,7 @@ def _main_single():
                     print(f"[BASELINE-TIM-WARN] {new_symside} ADAPT could not reach TIM [{QUAL_TIM_MIN:.0f},{QUAL_TIM_MAX:.0f}] (TIM {_bt:.1f}) — filling anyway under TIM-guard; DONE-stage repair is the backstop", flush=True)
             except Exception:
                 pass
-        if int(baseline_vec.get("trades") or 0) < 10 and overrides and _adapt_report is None:
+        if not _sql_baseline_7d and int(baseline_vec.get("trades") or 0) < 10 and overrides and _adapt_report is None:
             _defaults_vec = evaluate_prepared_sanitized(prepared, dict(_tpl_defaults), window_days=args.window_days)
             print(f"[BASELINE-FALLBACK] {new_symside} previous-best {len(overrides)} overrides -> {baseline_vec.get('trades')} trades gain {baseline_vec.get('gain_pct')}; defaults -> {_defaults_vec.get('trades')} trades gain {_defaults_vec.get('gain_pct')}", flush=True)
             if int(_defaults_vec.get("trades") or 0) >= 10:
