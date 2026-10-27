@@ -25079,7 +25079,7 @@ async def _record_submit_decision(
 
 
 def _qta_ls_ratio_scale(trade_manager, position_key, position_side, absolute_target):
-    """queue_trade_action L/S ratio entry scale (extracted verbatim 2026-10-06 so VEC_EXACT orders get the identical live sizing — USER: sizing is live's job)."""
+    """Scale augment quantity from portfolio L/S ratio; never changes OPEN or exit decisions."""
     ls_ratio_scale = 1.0
     ls_ratio_reason = ""
     # 2026-09-30 FIX: LS ratio must NOT be bypassed by WT_3M_FORCE_OPEN — 37k long imbalance built via WT_3M longs gap-down while LS ratio was bypassed (LS_RATIO_ENFORCE True but WF bypass skipped scaling). WT_3M now scales like any entry; only mandatory reentry / ladder parity skip.
@@ -25455,7 +25455,7 @@ async def _queue_vec_exact_order(
         # USER 2026-10-06 (binding): parity = decisions; live sizes. The vec decision gets the SAME live sizing a native order gets.
         _vx_scale, _vx_sreason = (
             _qta_ls_ratio_scale(trade_manager, position_key, position_side, False)
-            if action == "OPEN"
+            if action == "AUGMENT"
             else (1.0, "")
         )
         quantity = _qta_entry_sizing(
@@ -26876,27 +26876,23 @@ async def queue_trade_action(
                         f"[MAX_POS_BLOCK] Blocking OPEN {position_key}: {_oc} >= {_max_conc} max concurrent"
                     )
                     return False
-            # L/S ratio enforcement — BY DOLLAR VALUE (not count)
-            # 2026-04-09 FIX: count ratio was blind to size (6L tiny vs 2S huge = count 3.0 but value 0.3)
-            _wf_bypass_order = bool(
-                _cfg(
-                    "WT_3M_FORCE_OPEN_BYPASS_GATES",
-                    True,
-                    account_key,
-                    symbol,
-                    position_side,
-                )
-            )
-            ls_ratio_scale, ls_ratio_reason = _qta_ls_ratio_scale(
-                trade_manager,
-                position_key,
-                position_side,
-                _mandatory_reentry_qta or _ordinary_parity_qta,
-            )
+            ls_ratio_scale, ls_ratio_reason = 1.0, ""
             side = "BUY" if position_side == "LONG" else "SELL"
         elif action in ["CLOSE", "REDUCE", "SELL"]:
             side = "SELL" if position_side == "LONG" else "BUY"
         elif action in ["AUGMENT", "REENTER", "REENTRY"]:
+            ls_ratio_scale, ls_ratio_reason = 1.0, ""
+            if (
+                action == "AUGMENT"
+                and position is not None
+                and abs(float(getattr(position, "positionAmt", 0) or 0)) > 0
+            ):
+                ls_ratio_scale, ls_ratio_reason = _qta_ls_ratio_scale(
+                    trade_manager,
+                    position_key,
+                    position_side,
+                    _mandatory_reentry_qta or _ordinary_parity_qta,
+                )
             side = "BUY" if position_side == "LONG" else "SELL"
         else:
             logger.critical(
@@ -45314,8 +45310,16 @@ class TradierTradeManager:
                         )
                         continue
                 qty = abs(float(getattr(pos, "positionAmt", 0)))
+                if qty <= 1.0:
+                    logger.info(
+                        f"[INTRADAY_RATIO] {pk} qty={qty:g} — skip trim to preserve an open share"
+                    )
+                    continue
                 frac = float(_cfg_auto("INTRADAY_RATIO_TRIM_FRAC", 0.30))
-                trim_qty = max(1, int(qty * frac))
+                max_partial_trim = max(0, math.floor(qty) - 1)
+                trim_qty = min(max(1, int(qty * frac)), max_partial_trim)
+                if trim_qty <= 0 or trim_qty >= qty:
+                    continue
                 price = float(ind.get("current_price", 0) or 0)
                 if price <= 0:
                     price, _ = await self.get_current_price(sym)
@@ -47589,9 +47593,9 @@ class TradierTradeManager:
                 f"[{account_key}] ⛔ EXECUTE BLOCK {symbol} {position_side}: Not in approved list."
             )
             return "BLOCKED_NOT_TRADEABLE"
-        # 2026-04-26 Per-sector L/S ratio check — block opens that worsen sector imbalance
+        # 2026-04-26 Per-sector L/S ratio check — block augments that worsen sector imbalance
         if (
-            is_entry_action
+            action == "AUGMENT"
             and not _is_mandatory_reclaim
             and not _is_ladder_parity_route
             and not is_hedge
@@ -49292,6 +49296,26 @@ class TradierTradeManager:
         action: str = None,
         decision_recorded: bool = False,
     ) -> str:
+        _ratio_reason = str(reason or "").upper()
+        if _ratio_reason.startswith("INTRADAY_RATIO_"):
+            _ratio_action = str(action or "").upper()
+            try:
+                _ratio_position_qty = abs(float(original_position_amt or 0.0))
+            except (TypeError, ValueError):
+                _ratio_position_qty = 0.0
+            if _ratio_action == "AUGMENT":
+                if _ratio_position_qty <= 0:
+                    return "BLOCKED_RATIO_AUGMENT_FLAT"
+            elif _ratio_action == "REDUCE":
+                _ratio_max_partial_qty = max(
+                    0, math.floor(_ratio_position_qty) - 1
+                )
+                quantity = min(float(quantity or 0.0), _ratio_max_partial_qty)
+                if quantity <= 0:
+                    return "BLOCKED_RATIO_REDUCE_WOULD_CLOSE"
+                is_full_close = False
+            else:
+                return "BLOCKED_RATIO_ACTION_NOT_AUGMENT_OR_REDUCE"
         # ─── AN EXCHANGE stop_market IS PART OF EVERY ENTRY/AUGMENT (2026-10-17 USER: "stop_market order on
         # exchange for any entry/augment as a requirement") ─── twin of the crypto wrapper at ez_manage.py:32080.
         # execute_now REMAINS the one and only gate; the body below is untouched and keeps every verdict string.
