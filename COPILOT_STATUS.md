@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-27 02:00:15 UTC
+# Copilot Status — 2026-10-27 02:05:21 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T01:54:06
-- **STALE_INDICATORS** [tradier]  — 2026-10-27T01:56:09
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T01:56:09
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T01:56:09
-- **STALE_INDICATORS** [tradier]  — 2026-10-27T01:58:12
 - **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T01:58:12
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T01:58:12
 - **STALE_INDICATORS** [tradier]  — 2026-10-27T02:00:14
 - **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T02:00:14
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T02:00:14
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T02:02:17
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T02:02:17
+- **STALE_INDICATORS** [tradier]  — 2026-10-27T02:04:19
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T02:04:19
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T02:04:19
 
 ## Missed Trades (trader comparison)
 
@@ -29,10 +29,10 @@ _None_
 
 **Held:** 4 | **Watching for reentry:** 13 | **Reentered:** 0
 
-- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +0.7%
-- HELD: **MINAUSDT** SHORT (crypto) peak +4.2%, now +1.6%
+- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +0.6%
+- HELD: **MINAUSDT** SHORT (crypto) peak +4.2%, now +1.9%
 - HELD: **UNIUSDC** LONG (crypto) peak +4.1%, now +-0.1%
-- HELD: **ETHUSDC** SHORT (crypto) peak +3.7%, now +-0.7%
+- HELD: **ETHUSDC** SHORT (crypto) peak +3.7%, now +-0.5%
 
 - WATCHING: **KMNOUSDT** LONG (crypto) peaked +11.7%, exited 0m ago
 - WATCHING: **BBUSDT** SHORT (crypto) peaked +8.8%, exited 0m ago
@@ -43,7 +43,7 @@ _None_
 - WATCHING: **STXUSDT** SHORT (crypto) peaked +5.5%, exited 0m ago
 - WATCHING: **A** LONG (tradier) peaked +5.0%, exited 0m ago
 - WATCHING: **RSRUSDT** LONG (crypto) peaked +3.6%, exited 0m ago
-- WATCHING: **SKLUSDT** SHORT (crypto) peaked +3.6%, exited 0m ago
+- WATCHING: **SKYAIUSDT** SHORT (crypto) peaked +3.2%, exited 0m ago
 
 ## Supervisor
 
@@ -54,4 +54,4 @@ _None_
 - [LOW] tradier_rankings.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] tradier_positions.py running but log stale (254min)
+- [MEDIUM] tradier_positions.py running but log stale (259min)

@@ -43,7 +43,10 @@ from datetime import datetime, timezone
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 
-HOSTS = {"s1": "10.0.0.3", "s2": "10.0.0.6", "s5": "10.0.0.5", "s6": "10.0.0.4"}
+# Verified 2026-10-27 by `hostname -I` plus a marker directory on each box (s2 holds v15_bench, s5 holds
+# rebuild_scratch_s5, s6 holds s2_archive). The first draft had s2 and s6 swapped, which made the plan attribute
+# every candidate to the wrong host -- same map as tools/v20_absorb_cycle.py.
+HOSTS = {"s1": "10.0.0.3", "s2": "10.0.0.4", "s5": "10.0.0.5", "s6": "10.0.0.6"}
 SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ControlPath=none", "-o", "ConnectTimeout=20", "-o", "ServerAliveInterval=15", "-o", "StrictHostKeyChecking=no"]
 PYTHON = "/home/niels/.conda/envs/binance_env_mac/bin/python"
 SANDBOX = "~/binance-sandbox"

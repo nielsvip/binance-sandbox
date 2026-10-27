@@ -9966,8 +9966,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         if "hustle" in results:
             _hd, _hok, _hwhy = _delta_vs(results["hustle"][0], initial_baseline)
             hustle_delta = _hd if _hok else None
-        elif _v17_on and not is_running and row_delta is not None and (choice is not None or naked_ok):
-            hustle_delta = (float(cumulative_before) + float(row_delta)) - float(initial_baseline)  # V17 §56: same row result vs the ORIGINAL baseline
+        elif row_gain is not None and (choice is not None or naked_ok):
+            hustle_delta = float(row_gain) - float(initial_baseline)  # This vector-evaluated row has a measured gain against the original baseline
         _identity_zero = bool(is_running) and choice is None
         if row_delta is not None and not _identity_zero:
             if _is_red_cell(ws.cell(row=rr, column=cols["G"])):
