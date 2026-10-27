@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-27 03:37:10 UTC
+# Copilot Status — 2026-10-27 03:42:17 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-27T03:34:04
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T03:34:04
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T03:34:04
-- **STALE_INDICATORS** [tradier]  — 2026-10-27T03:36:06
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T03:36:06
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T03:36:06
-- **RATIO_IMBALANCE** [crypto] ang — 2026-10-27T03:36:07
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-27T03:36:07
-- **RATIO_IMBALANCE** [crypto] ang — 2026-10-27T03:37:09
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-27T03:37:09
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T03:40:13
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-27T03:40:13
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-27T03:40:13
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-27T03:41:14
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-27T03:41:14
+- **STALE_INDICATORS** [tradier]  — 2026-10-27T03:42:16
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T03:42:16
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T03:42:16
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-27T03:42:16
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-27T03:42:16
 
 ## Missed Trades (trader comparison)
 
@@ -29,15 +29,15 @@ _None_
 
 **Held:** 4 | **Watching for reentry:** 8 | **Reentered:** 0
 
-- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +-0.2%
-- HELD: **QNTUSDT** LONG (crypto) peak +8.7%, now +-6.7%
-- HELD: **MINAUSDT** SHORT (crypto) peak +4.2%, now +2.2%
-- HELD: **ETHUSDC** SHORT (crypto) peak +3.7%, now +-0.5%
+- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +-0.3%
+- HELD: **QNTUSDT** LONG (crypto) peak +8.7%, now +-7.0%
+- HELD: **MINAUSDT** SHORT (crypto) peak +4.2%, now +2.3%
+- HELD: **ETHUSDC** SHORT (crypto) peak +3.7%, now +-0.4%
 
 - WATCHING: **KMNOUSDT** LONG (crypto) peaked +11.7%, exited 0m ago
 - WATCHING: **BBUSDT** SHORT (crypto) peaked +8.8%, exited 0m ago
 - WATCHING: **STXUSDT** SHORT (crypto) peaked +5.5%, exited 0m ago
-- WATCHING: **IOSTUSDT** LONG (crypto) peaked +5.2%, exited 5m ago
+- WATCHING: **IOSTUSDT** LONG (crypto) peaked +5.2%, exited 10m ago
 - WATCHING: **A** LONG (tradier) peaked +5.0%, exited 0m ago
 - WATCHING: **SKYAIUSDT** SHORT (crypto) peaked +3.2%, exited 0m ago
 - WATCHING: **ENAUSDC** LONG (crypto) peaked +3.2%, exited 0m ago
@@ -52,4 +52,4 @@ _None_
 - [LOW] tradier_rankings.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] tradier_positions.py running but log stale (24min)
+- [MEDIUM] tradier_positions.py running but log stale (29min)
