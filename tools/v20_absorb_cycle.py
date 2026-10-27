@@ -55,6 +55,9 @@ BRAIN_WINDOW_D = int(os.environ.get("V15_BRAIN_SINCE_D", "14"))
 MARGIN_D = int(os.environ.get("V20_COMPRESS_MARGIN_D", "7"))
 SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=15", "-o", "ControlPath=none", "-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=40", "-o", "StrictHostKeyChecking=no"]
 PROTECTED_ROUNDS = 2
+# A union train needs room for the sort temporaries. Measured 2026-10-27: a train over 931 MB of spills took S2 from
+# 15.1 GB to 5.2 GB free before sort died with exit 2, so the margin is real and the refusal is cheap.
+TRAIN_MIN_FREE_MB = int(os.environ.get("V20_TRAIN_MIN_FREE_MB", "20480"))
 
 
 def log(event: str, **fields) -> None:
@@ -220,7 +223,9 @@ def absorb(hosts: list, orchestrator: str, full: bool = False) -> dict:
                 # mkdir "~/v20_union/spills/<host>" failed: No such file or directory (2), so from install until
                 # 2026-10-27 the union train saw ONLY the orchestrator's own spill and nothing from s1/s5/s6.
                 os.makedirs(dest, exist_ok=True)
-            pull = subprocess.run(["rsync", "-az", "-e", " ".join(SSH), f"niels@{HOSTS[host]}:{SPILL_REMOTE}/", f"{dest}/"], capture_output=True, text=True, timeout=7200) if orchestrator == here() else sh(orchestrator, f"mkdir -p {dest} && rsync -az -e 'ssh -o BatchMode=yes -o StrictHostKeyChecking=no' niels@{HOSTS[host]}:{SPILL_REMOTE}/ {dest}/", timeout=7200)
+            # --exclude tmp/: the extractor's own scratch holds decompressed spill_*.tsv.u files. Pulling them made
+            # the union train feed multi-GB temporaries to sort, which ran S2 from 15.1 GB to 5.2 GB free and died.
+            pull = subprocess.run(["rsync", "-az", "--exclude", "tmp/", "-e", " ".join(SSH), f"niels@{HOSTS[host]}:{SPILL_REMOTE}/", f"{dest}/"], capture_output=True, text=True, timeout=7200) if orchestrator == here() else sh(orchestrator, f"mkdir -p {dest} && rsync -az --exclude 'tmp/' -e 'ssh -o BatchMode=yes -o StrictHostKeyChecking=no' niels@{HOSTS[host]}:{SPILL_REMOTE}/ {dest}/", timeout=7200)
             log("absorb_spill_pull", host=host, rc=pull.returncode, error=(pull.stderr or "")[-200:].strip())
             ok["pull"] = pull.returncode == 0
         results[host] = ok
@@ -354,6 +359,14 @@ def train(orchestrator: str, hosts: list) -> dict:
     times, matching the published contract, so the held-out slice stays chronological and the AUCs stay comparable
     with the v3u3 run. The MANIFEST is what the PURGE GATE reads for test 1, so it is written only on a clean train.
     """
+    # A union train sorts every spill through a temp dir. Starting one on a host that is nearly full does not fail
+    # cleanly: sort dies with exit 2 part-way, the run dir is left behind, and the host is now even fuller. Refuse
+    # instead, and say so -- tools/v20_disk_floor.py is what makes the room.
+    free = free_mb(orchestrator)
+    if free < TRAIN_MIN_FREE_MB:
+        log("train_refused", orchestrator=orchestrator, free_mb=free, need_mb=TRAIN_MIN_FREE_MB,
+            why="not enough free disk for the sort temporaries; run tools/v20_disk_floor.py --apply first")
+        return {"refused": "insufficient_free_disk", "free_mb": free, "need_mb": TRAIN_MIN_FREE_MB}
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     run_dir = f"{UNION_DIR}/auto_{stamp}"
     spills = " ".join(f"--spill-dir {UNION_DIR}/spills/{host}" for host in hosts) + f" --spill-dir {SPILL_REMOTE}"
@@ -363,8 +376,8 @@ def train(orchestrator: str, hosts: list) -> dict:
     # the proven tools/v18_brain_export.sh: now - V18_CUT_DAYS (default 3).
     cut = (datetime.now(timezone.utc) - timedelta(days=int(os.environ.get("V18_CUT_DAYS", "3")))).strftime("%Y-%m-%dT%H:%M:%SZ")
     steps = [
-        ("train", f"cd {SANDBOX} && mkdir -p {run_dir}/brain_state {run_dir}/brain_union && nice -n 19 ionice -c3 {PYTHON} tools/v18_brain.py train "
-                  f"{spills} --cut {cut} --state {run_dir}/brain_state/v18_brain_state.pkl --out-dir {run_dir}/brain_union "
+        ("train", f"cd {SANDBOX} && mkdir -p {run_dir}/brain_state {run_dir}/brain_union {run_dir}/tmp && nice -n 19 ionice -c3 {PYTHON} tools/v18_brain.py train "
+                  f"{spills} --cut {cut} --tmp-dir {run_dir}/tmp --state {run_dir}/brain_state/v18_brain_state.pkl --out-dir {run_dir}/brain_union "
                   f"--report {run_dir}/brain_state/v18_brain_report.json --binding-map-dir {SANDBOX}/data/learn"),
         ("export", f"cd {SANDBOX} && nice -n 19 ionice -c3 {PYTHON} tools/v18_brain.py export "
                    f"--state {run_dir}/brain_state/v18_brain_state.pkl --out-dir {run_dir}/brain_union"),

@@ -304,8 +304,12 @@ def _archive_to_external(host: str, source: str, drive: Path, apply: bool) -> bo
     key = f"{host}:{source}->{drive}"
     signature = _source_signature(host, source)
     if state.get(key) == signature:
-        _log("external_archive_current", host=host, source=source, drive=str(drive))
-        return True
+        destination = Path(state.get(f"{key}->destination", ""))
+        expected_size = state.get(f"{key}->size")
+        if destination.is_relative_to(drive) and destination.is_file() and not destination.is_symlink() and expected_size is not None and destination.stat().st_size == int(expected_size):
+            _log("external_archive_current", host=host, source=source, drive=str(drive), destination=str(destination))
+            return True
+        _log("external_archive_reverify", host=host, source=source, drive=str(drive), reason="receipt missing or destination file absent/changed")
     _log("external_archive_plan", host=host, source=source, destination=str(drive), apply=apply)
     if not apply:
         return False
@@ -326,9 +330,70 @@ def _archive_to_external(host: str, source: str, drive: Path, apply: bool) -> bo
         if check.returncode:
             raise RuntimeError("external archive checksum verification failed")
         state[key] = signature
+        state[f"{key}->destination"] = str(dest)
+        state[f"{key}->sha256"] = digest
+        state[f"{key}->size"] = local.stat().st_size
         _state_save(state)
-        _log("external_archive_verified", source=f"{host}:{source}", destination=str(dest), sha256=digest)
+        _log("external_archive_verified", source=f"{host}:{source}", destination=str(dest), sha256=digest, source_signature=signature)
         return True
+
+
+def _offload_verified_google_buffer(host: str, source: str, signature: str) -> None:
+    state = _state_load()
+    google_key = f"{host}:{source}->google:oauth:{DRIVE_SSH_HOST}:{DRIVE_REMOTE}"
+    if state.get(google_key) != signature:
+        return
+    events = []
+    try:
+        events = [json.loads(line) for line in REPORT.read_text().splitlines() if line.strip()]
+    except Exception:
+        _log("google_buffer_offload_deferred", host=host, source=source, reason="archive receipts unavailable")
+        return
+    source_name = f"{host}:{source}"
+    external_receipt = next((row for row in reversed(events) if row.get("event") == "external_archive_verified" and row.get("source") == source_name), None)
+    google_receipt = next((row for row in reversed(events) if row.get("event") == "google_archive_verified" and row.get("source") == source_name), None)
+    if not external_receipt or not google_receipt:
+        _log("google_buffer_offload_deferred", host=host, source=source, reason="verified external and Drive receipts are both required")
+        return
+    if external_receipt.get("source_signature", signature) != signature or google_receipt.get("source_signature", signature) != signature:
+        _log("google_buffer_offload_deferred", host=host, source=source, reason="archive receipt signatures do not match current source")
+        return
+    external = Path(external_receipt.get("destination", ""))
+    mount = next((drive for drive in EXTS if external.is_relative_to(drive) and os.path.ismount(drive)), None)
+    if not mount or not external.is_file() or external.is_symlink():
+        _log("google_buffer_offload_deferred", host=host, source=source, reason="verified external archive is not present on a mounted drive")
+        return
+    if state.get(f"{host}:{source}->{mount}") != signature:
+        _log("google_buffer_offload_deferred", host=host, source=source, reason="external archive state does not match current source")
+        return
+    digest = hashlib.sha256()
+    with external.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    if digest.hexdigest() != external_receipt.get("sha256"):
+        _log("google_buffer_offload_deferred", host=host, source=source, reason="external archive SHA256 no longer matches receipt")
+        return
+    remote = google_receipt.get("destination", "")
+    allowed_prefix = f"{DRIVE_REMOTE}:{DRIVE_PREFIX}/{host}/"
+    expected_md5 = google_receipt.get("remote_md5", "").lower()
+    if not remote.startswith(allowed_prefix) or not expected_md5:
+        _log("google_buffer_offload_deferred", host=host, source=source, reason="Drive receipt is outside the managed prefix or lacks MD5")
+        return
+    if _source_signature(host, source) != signature:
+        _log("google_buffer_offload_deferred", host=host, source=source, reason="source changed after external archival")
+        return
+    actual = _rclone_on_server(["md5sum", remote], timeout=600)
+    fields = actual.stdout.decode(errors="replace").split()
+    if actual.returncode or not fields or fields[0].lower() != expected_md5:
+        _log("google_buffer_offload_deferred", host=host, source=source, reason="Drive object MD5 no longer matches receipt")
+        return
+    removed = _rclone_on_server(["deletefile", remote], timeout=600)
+    if removed.returncode:
+        _log("google_buffer_offload_deferred", host=host, source=source, reason="Drive deletefile failed after external verification")
+        return
+    state.pop(google_key, None)
+    _state_save(state)
+    _log("google_buffer_offloaded_to_external", source=source_name, destination=remote, external=str(external), sha256=digest.hexdigest(), remote_md5=fields[0])
 
 
 def _drive_config(folder_id: str):
@@ -572,6 +637,11 @@ def main() -> int:
             if external_verified:
                 break
         if external_verified:
+            if args.apply:
+                try:
+                    _offload_google_buffer(host, source, _source_signature(host, source))
+                except Exception as exc:
+                    _log("google_buffer_offload_deferred", host=host, source=source, error=str(exc))
             _log("archive_external_preferred", host=host, source=source)
             continue
         drive_copy_ok = False
