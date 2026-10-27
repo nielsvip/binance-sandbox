@@ -1,32 +1,35 @@
 {
-  "ts": "2026-10-27T15:05:18.319273+00:00",
-  "tick": "2026-10-27T15:02:02.278449+00:00",
-  "tick_age_s": 196,
+  "ts": "2026-10-27T15:10:14.186632+00:00",
+  "tick": "2026-10-27T15:08:02.313736+00:00",
+  "tick_age_s": 132,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run37.json",
     "round": "run37",
     "complete": false,
     "universe_n": 211,
-    "n_complete": 81,
-    "n_pending": 129,
+    "n_complete": 80,
+    "n_pending": 130,
     "n_refused_only": 1,
     "n_excluded": 0,
-    "n_launchable_pending": 46,
+    "n_launchable_pending": 44,
     "hosts_not_visible": []
   },
   "hosts": {
     "s1": {
-      "cpu_pct": 62,
-      "slots": "2/4",
-      "observed_running": [],
+      "cpu_pct": 99,
+      "slots": "3/4",
+      "observed_running": [
+        "FARTCOINUSDT",
+        "RVNUSDT",
+        "XPLUSDT"
+      ],
       "published_last_hour": 0,
-      "idle_reason": null,
-      "mem_avail_mb": 19436
+      "idle_reason": "mem guard",
+      "mem_avail_mb": 8014
     }
   },
   "one_hour_total": 0,
   "alerts": [
-    "LOW_THROUGHPUT:s1:0/h",
-    "LOW_CPU:s1:62%"
+    "LOW_THROUGHPUT:s1:0/h"
   ]
 }
