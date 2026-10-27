@@ -35,6 +35,7 @@ EXCLUDES=(--include 'SPREADSHEETS/' --include 'SPREADSHEETS/TEMPLATE_FINAL_NORM/
   --exclude '*.pem' --exclude '*.key' --exclude 'backups/' --exclude 'tests/' --exclude 'projects/' --exclude 'SPREADSHEETS/'
   --exclude '*.xlsx' --exclude '*.npz' --exclude '.agents/' --exclude '.muse/' --exclude '.codex/'
   --exclude 'node_modules/' --exclude '.nova/' --exclude '*.pyc' --exclude '.DS_Store'
+  --exclude '/tradeable_keys.json' --exclude '/symbols_*.json' --exclude '/managed_stops.json'
   --exclude 'ang/' --exclude 'inf/' --exclude 'flz/' --exclude 'men/' --exclude 'fin/'
   --exclude 'tra/' --exclude 'trb/' --exclude 'trc/' --exclude 'klines_cache/' --exclude '*.tmp'
   --exclude 'klines_cache_gateway/' --exclude 'klines_canonical/' --exclude 'klines_cache_backtest/' --exclude 'klines_cache_macbook/'

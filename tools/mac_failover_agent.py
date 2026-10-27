@@ -439,12 +439,31 @@ class Agent:
                 log(f"STOCK_WORKER_PULL S1 rc={result.returncode} {result.stderr[-180:]}")
                 return False
             staged = [str(Path(temp) / Path(rel).name) for rel in files if (Path(temp) / Path(rel).name).is_file()]
+            stock_sides = set()
+            for direction in ("long", "short"):
+                book = Path(temp) / f"symbols_trb_{direction}.json"
+                if book.is_file():
+                    values = json.loads(book.read_text())
+                    if isinstance(values, dict):
+                        values = values.get("symbols") or values.get("pairs")
+                    if isinstance(values, list):
+                        stock_sides.update(f"{str(symbol).upper()}_{direction.upper()}" for symbol in values)
+            if stock_sides:
+                side_list = Path(temp) / "fwd_stocks_syms.txt"
+                side_list.write_text("\n".join(sorted(stock_sides)) + "\n")
+                staged.append(str(side_list))
             for worker in STOCK_WORKERS:
                 for root in ("binance-sandbox", "binance"):
-                    result = rsync(["--delay-updates", *staged, f"{worker}:~/{root}/"], timeout=60)
+                    destination = f"{worker}:~/{root}/"
+                    result = rsync(["--delay-updates", *[path for path in staged if not path.endswith("fwd_stocks_syms.txt")], destination], timeout=60)
                     if result.returncode not in (0, 23, 24):
                         ok = False
                         log(f"STOCK_WORKER_PULL {worker}/{root} rc={result.returncode} {result.stderr[-180:]}")
+                if stock_sides:
+                    result = rsync([str(Path(temp) / "fwd_stocks_syms.txt"), f"{worker}:~/fwd_stocks_syms.txt"], timeout=45)
+                    if result.returncode not in (0, 23, 24):
+                        ok = False
+                        log(f"STOCK_WORKER_SIDE_LIST {worker} rc={result.returncode} {result.stderr[-180:]}")
         return ok
 
     def sync_live_history(self, host, lease, direction, days):
@@ -452,7 +471,7 @@ class Agent:
         holder = lease.get("holder") if isinstance(lease, dict) else None
         if direction == "to_s1" and holder != "mac":
             return False
-        if direction == "from_s1" and holder != "s1":
+        if direction == "from_s1" and holder not in ("s1", "mac"):
             return False
         if os.environ.get("LF_NO_SSH") == "1":
             return True
@@ -607,14 +626,25 @@ class Agent:
         if os.environ.get("LF_NO_SSH") == "1" or now - getattr(self, "last_control_sync", 0.0) < 30:
             return
         self.last_control_sync = now
-        if lease.get("holder") == "mac":
-            self.sync_shared_inputs(host, lease, "to_s1")
-            self.sync_stock_workers(host, lease)
-        elif lease.get("holder") == "s1":
-            self.sync_shared_inputs(host, lease, "from_s1")
-            self.sync_worker_inputs_from_s1(host, lease)
-        direction = "to_s1" if lease.get("holder") == "mac" else "from_s1"
-        self.start_history_sync(host, lease, direction)
+        if getattr(self, "control_sync_running", False):
+            return
+        self.control_sync_running = True
+        def run_control_sync():
+            try:
+                if lease.get("holder") == "mac":
+                    self.sync_shared_inputs(host, lease, "to_s1")
+                    self.sync_stock_workers(host, lease)
+                    direction = "to_s1"
+                else:
+                    self.sync_shared_inputs(host, lease, "from_s1")
+                    self.sync_worker_inputs_from_s1(host, lease)
+                    direction = "from_s1"
+                self.start_history_sync(host, lease, direction)
+            except Exception as exc:
+                log(f"CONTROL_SYNC error: {exc!r}")
+            finally:
+                self.control_sync_running = False
+        threading.Thread(target=run_control_sync, name="lf-control-sync", daemon=True).start()
 
     def push_snapshots(self, host, now):
         """Stage the Mac's live indicator snapshots on S1 for merge_mac_state (see SNAP_PUSH_S)."""

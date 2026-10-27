@@ -7165,7 +7165,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             print(f"[BEST-SEEN-warn] {new_symside} start note: {_ste}", flush=True)
     # USER 2026-09-30: the FIRST row is the DEFAULT row. If the override set changes that switch, E3 = the baseline WITHOUT
     # that override (switch at its bold default); the overridden value is re-earned by its own row's delta further down.
-    if not progress.get("done") and pending_queue:
+    if not progress.get("done") and pending_queue and progress.get("baseline_winner_kind") not in ("per_sym", "cat_side"):
         _s0, _r0, _sw0, _c0 = pending_queue[0]
         _ov0 = _switch_overrides(_sw0, _parse_opt_value(_c0, defaults.get(_sw0)))
         if _ov0 and not all(_same_val(cumulative_overrides.get(_k, defaults.get(_k)), _v) for _k, _v in _ov0.items()):
@@ -14388,6 +14388,7 @@ def _main_single():
             print(f"[SAMPLE-FLOOR-VIOLATION] {new_symside} XLS {wb_path.name} written, sweep skipped (V15_SKIP_BELOW_FLOOR=1)", flush=True)
             return
         print(f"[SAMPLE-FLOOR-VIOLATION] {new_symside} below floor — sweeping anyway, only valid >={min_trades}-trade candidates can promote", flush=True)
+    progress["baseline_winner_kind"] = locals().get("_baseline_winner_kind")
     # Baseline now correct with previous best overrides; now fill entire workbook per spec:
     #   VECTOR_DELTA = sum pos yellows; POS-> stay same tab next row + baseline, NEG/None/0-> move to first pending row in next tab
     #   STDEV_SLOPE_SIZING skipped (12 tabs), every row gets pos/neg delta, LIVE columns BLANK until complete, 10s RED stall guard

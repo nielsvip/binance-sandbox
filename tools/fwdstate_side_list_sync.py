@@ -8,6 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 KEYS = ROOT / "tradeable_keys.json"
 CACHE = ROOT / "data" / "fwdstate_side_list_synced"
+LOCAL_LEASE = ROOT / "data" / "live_failover" / "lease_local.json"
 SOURCES = (("s1-pub", "ALL", "/home/niels/fwdstate_syms.txt"), ("s2", "LONG", "/home/niels/fwdstate_syms.txt"), ("s5", "STOCK", "/home/niels/fwd_stocks_syms.txt"), ("s6", "STOCK", "/home/niels/fwd_stocks_syms.txt"))
 
 
@@ -36,8 +37,16 @@ def main():
         stock_sides.update(f"{str(symbol).upper()}_{direction}" for symbol in values if str(symbol).strip())
     if not stock_sides:
         raise ValueError("empty stock side books; refusing to replace worker subscriptions")
+    try:
+        lease = json.loads(LOCAL_LEASE.read_text())
+    except (OSError, ValueError):
+        lease = {}
+    leased = set(str(lease.get("venues") or "").split(","))
+    skip_stock = lease.get("holder") == "s1" and (not leased or "stocks" in leased)
     failed = []
     for host, direction, remote_path in (SOURCES[2:] + SOURCES[:2]):
+        if direction == "STOCK" and skip_stock:
+            continue
         selected = sorted(stock_sides if direction == "STOCK" else (side for side in sides if direction == "ALL" or side.endswith("_" + direction)))
         if not selected:
             raise ValueError("empty forward side list")

@@ -13,9 +13,14 @@ if [ -z "$HOST" ]; then
   echo "$(date -u +%FT%TZ) S1 unreachable for small settings push"
   exit 1
 fi
+LEASE=$($SSH "$HOST" "python3 -c 'import json; print(json.load(open(\"/home/niels/binance/data/live_failover/lease.json\")).get(\"holder\", \"unknown\"))'" 2>/dev/null || true)
+if [ "$LEASE" != "mac" ]; then
+  echo "$(date -u +%FT%TZ) small settings push skipped: S1 lease holder is '$LEASE'"
+  exit 0
+fi
 files=()
 for file in data/per_sym_settings.json data/persym_size_tiers.json data/cat_side_defaults_4.json \
-            tradeable_keys.json managed_stops.json data/confirmed_365d.json data/excluded_tokenized_stocks.json; do
+            data/confirmed_365d.json data/excluded_tokenized_stocks.json; do
   [ -f "$BASE/$file" ] && files+=("$BASE/./$file")
 done
 if [ "${#files[@]}" -gt 0 ]; then

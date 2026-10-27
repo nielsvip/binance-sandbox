@@ -6,8 +6,11 @@ a lot ... without losing reliability or deltas").
 Reads the brain spills (`v18_brain.py extract` output, `spill_*.tsv.gz`, the same corpus V20 trains on) and writes one file per
 cat_side: `exhausted_cells_<CS>.json` (contract `exhausted_cells_v1`). Read-only on the corpus; never deletes anything.
 
-A cell is EXHAUSTED when, over its fresh (non-cached) evaluations:
-  n >= --n-min  AND  distinct sym_sides >= --s-min  AND  Wilson upper bound (z=1.645) of P(delta > 1e-9) < --u-max.
+Only evaluations whose row naked was NOT positive count: on a positive naked the pilot re-runs every skipped cell on the spot
+(PRIOR-REVIVED), so there the throttle can neither save nor lose anything, and the cell's positive delta is inherited from the
+naked rather than earned by the filter. A "positive" is therefore a RESCUE: cell delta > 1e-9 while the naked was <= 1e-9.
+A cell is EXHAUSTED when, over those fresh (non-cached) evaluations:
+  n >= --n-min  AND  distinct sym_sides >= --s-min  AND  Wilson upper bound (z=1.645) of P(rescue) < --u-max.
 One positive on a cell with n ~ 100 already lifts the bound above 0.02, so a single real positive re-opens it on the next build.
 The selector (`tools/v15_v20_selector.py`, flag V20_EXHAUSTED) keeps an exhausted cell with probability `p_recheck` (default
 1/25, the §77 "revise them 1 in 25" rate) instead of always, never below the 1/1000 floor; MUST / ESSENTIAL / evidence cells and
@@ -75,9 +78,14 @@ def aggregate(paths):
                 seen.add(ev.get("rk"))
                 stats["rows"] += 1
                 stats["last_ts"] = max(stats["last_ts"], str(ev.get("t") or ts))
+                nk = ev.get("n")
+                nd = nk[0] if (nk is not None and nk[0] is not None) else None
                 for c in ev.get("y") or []:
                     d = c[-1]
                     if d is None:
+                        continue
+                    if nd is not None and nd > EPS:  # positive naked: the pilot re-runs skipped cells anyway (PRIOR-REVIVED) — no evidence about the filter
+                        stats["cells_revived_ctx"] = stats.get("cells_revived_ctx", 0) + 1
                         continue
                     key = (cs, ev.get("sh"), ev.get("k"), c[0])
                     v = cells.get(key)
