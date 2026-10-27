@@ -1,6 +1,6 @@
 {
- "generated_utc": "2026-10-27T07:25:39Z",
- "secs": 210.2,
+ "generated_utc": "2026-10-27T07:30:16Z",
+ "secs": 247.7,
  "universe": {
   "crypto": 201,
   "stocks": 223
@@ -8,14 +8,11 @@
  "unreachable": {},
  "healed": {
   "s1:binance": {
-   "files": 219,
-   "rows": 252,
-   "skipped": {}
-  },
-  "mac:/Users/niels/Documents/binance": {
-   "files": 1,
+   "files": 198,
    "rows": 0,
-   "skipped": {}
+   "skipped": {
+    "_error": "TimeoutExpired: Command '['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', '-o', 'ServerAliveInterval=10', '-o', 'ControlPath=none', 's1-int', 'cat > /tmp/nevermiss_patch_95298.json']' timed o"
+   }
   }
  },
  "kline_breaches": [
@@ -2588,69 +2585,69 @@
   {
    "host": "mac",
    "file": "crypto prices",
-   "age_s": -11.6,
+   "age_s": -14.4,
    "max_s": 60,
    "ok": true,
    "files": {
-    "price_cache_1.json": -11.6,
-    "price_cache_2.json": 0.3,
-    "price_cache_3.json": -11.6
+    "price_cache_1.json": -14.4,
+    "price_cache_2.json": 8.3,
+    "price_cache_3.json": -14.4
    }
   },
   {
    "host": "mac",
    "file": "crypto snapshot (market_data_*)",
-   "age_s": -7.3,
+   "age_s": -0.7,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/market_data_NEWEST": -7.3
+    "data/market_data_NEWEST": -0.7
    }
   },
   {
    "host": "mac",
    "file": "crypto latest_market_data",
-   "age_s": -6.8,
+   "age_s": -0.6,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/latest_market_data.json": -6.8
+    "data/latest_market_data.json": -0.6
    }
   },
   {
    "host": "s1",
    "file": "crypto snapshot on S1 (Mac push or own stack)",
-   "age_s": 131.8,
+   "age_s": 170.1,
    "max_s": 180,
    "ok": true,
    "files": {
-    "data/market_data_NEWEST": 131.8,
-    "ez_s1_stack/data/latest_market_data.json": 114361.6
+    "data/market_data_NEWEST": 170.1,
+    "ez_s1_stack/data/latest_market_data.json": 114603.9
    }
   },
   {
    "host": "s1",
    "file": "crypto prices on S1 (Mac push or own stack)",
-   "age_s": 393.8,
+   "age_s": 141.1,
    "max_s": 300,
-   "ok": false,
+   "ok": true,
    "files": {
-    "price_cache_1.json": 393.8,
-    "price_cache_2.json": 404.8,
-    "price_cache_3.json": 393.8,
-    "ez_s1_stack/price_cache_1.json": 1828474.3,
-    "ez_s1_stack/price_cache_2.json": 114297.5,
-    "ez_s1_stack/price_cache_3.json": 114276.8
+    "price_cache_1.json": 141.1,
+    "price_cache_2.json": 143.1,
+    "price_cache_3.json": 141.1,
+    "ez_s1_stack/price_cache_1.json": 1828716.6,
+    "ez_s1_stack/price_cache_2.json": 114539.8,
+    "ez_s1_stack/price_cache_3.json": 114519.1
    }
   },
   {
    "host": "gw",
    "file": "crypto market_data",
-   "age_s": 443.5,
+   "age_s": 682.8,
    "max_s": 300,
    "ok": false,
    "files": {
-    "data/latest_market_data.json": 443.5
+    "data/latest_market_data.json": 682.8
    }
   },
   {
