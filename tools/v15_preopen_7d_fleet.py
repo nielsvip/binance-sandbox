@@ -23,7 +23,6 @@ from tools.v15_best_first import tradeable
 
 NY = ZoneInfo("America/New_York")
 CATS = ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT")
-REQUIRED_STEPS = {"1", "2", "3", "4", "6"}
 PILOT_PYTHON = "/home/niels/.conda/envs/binance_env_mac/bin/python"
 
 
@@ -40,25 +39,28 @@ def _sha(path: Path) -> str:
 
 def _market_window(now: dt.datetime) -> bool:
     local = now.astimezone(NY)
-    return local.weekday() < 5 and dt.time(6, 0) <= local.time() < dt.time(9, 30)
+    return local.weekday() < 5 and local.time() < dt.time(9, 30)
 
 
 def _defaults_proof(root: Path, now: dt.datetime) -> dict | None:
     day = now.astimezone(NY).strftime("%Y%m%d")
-    path = root / "data/daily_chain" / f"{day}.json"
     try:
-        stamp = json.loads(path.read_text())
-        steps = set(str(stamp.get("steps_ok") or "").replace("!TYPE_ALERT", "").split(","))
-        if stamp.get("status") != "DONE" or stamp.get("date") != day or not REQUIRED_STEPS <= steps:
+        published = json.loads((root / "data/published_selection.json").read_text())
+        queue = select(root, now.timestamp(), published)
+        meta = queue.get("_meta") or {}
+        sources = queue.get("sym_sides") or {}
+        if (not sources or meta.get("scope") != "fin_men_crypto"
+                or meta.get("fin_book_source") != "men"
+                or len(sources) != int(meta.get("n") or 0)
+                or any(row.get("source_kind") != "per_sym_sql" or row.get("sql_baseline_ok") is not True
+                       for row in sources.values())):
             return None
-        templates = {}
-        for cat in CATS:
-            target = root / "SPREADSHEETS/TEMPLATE_FINAL_NORM" / f"TEMPLATE_{cat}.xlsx"
-            templates[cat] = _sha(target)
-        return {"chain_stamp": str(path), "chain_sha256": _sha(path),
-                "defaults_round": day, "template_sha256": templates,
-                "chain_ended_utc": stamp.get("ended")}
-    except (OSError, ValueError, TypeError):
+        fingerprint = hashlib.sha256(json.dumps(sorted(
+            (ss, row.get("source_row_sha256")) for ss, row in sources.items()
+        ), separators=(",", ":")).encode()).hexdigest()
+        return {"source": "per_sym_active_sql", "source_db_sha256": meta.get("source_db_sha256"),
+                "chain_sha256": fingerprint, "defaults_round": day}
+    except (OSError, ValueError, TypeError, KeyError):
         return None
 
 
@@ -139,7 +141,7 @@ def _launch(host: dict, ss: str, queue_path: Path, day: str, root: str) -> None:
     stderr_path = f"{result_dir}/{ss}/launcher.stderr"
     cmd = (f"cd {shlex.quote(root)} && mkdir -p {shlex.quote(result_dir + '/' + ss)} && "
            f"test ! -s {shlex.quote(result_path)} && "
-           f"V15_7D_PILOT_FILE=v15_pilot_7d.py V15_7D_ALREADY_PAUSED=1 "
+           f"V15_7D_PILOT_FILE=v15_pilot.py V15_7D_ALREADY_PAUSED=1 "
            f"nohup {PILOT_PYTHON} -u tools/v15_preopen_7d_launch.py "
            f"--queue {shlex.quote(remote_queue)} --sym-side {shlex.quote(ss)} "
            f"--result-dir {shlex.quote(result_dir)} --workers 7 --timeout-sec 2400 "
@@ -206,7 +208,7 @@ def _ensure_collect(root: Path, folder: Path, day: str, state: dict) -> None:
 
 def tick(root: Path, now: dt.datetime, hosts: list[dict], stats: dict,
          dry_run: bool = False, drained: set[str] | None = None) -> dict | None:
-    """Own the 7D queue after new four-category defaults; return None outside it."""
+    """Run the FIN/MEN SQL-based 7D queue during the morning optimization window."""
     if not _market_window(now):
         local = now.astimezone(NY)
         if local.weekday() < 5 and local.time() >= dt.time(9, 30):
@@ -235,7 +237,7 @@ def tick(root: Path, now: dt.datetime, hosts: list[dict], stats: dict,
         return None
     proof = _defaults_proof(root, now)
     if proof is None:
-        return {"phase": "waiting_for_four_cat_side_defaults", "suppress_30d": False}
+        return {"phase": "waiting_for_verified_per_sym_sql", "suppress_30d": False}
     day = proof["defaults_round"]
     folder = root / "data/preopen_7d/fleet" / day
     queue_path = folder / "queue.json"
@@ -244,6 +246,7 @@ def tick(root: Path, now: dt.datetime, hosts: list[dict], stats: dict,
         published = json.loads((root / "data/published_selection.json").read_text())
         queue = select(root, now.timestamp(), published)
         queue["_meta"].update(proof)
+        queue["_meta"]["require_replay"] = True
         queue["_meta"]["bar_minute"] = 15
         reachable = {h["name"] for h in hosts if stats.get(h["name"])}
         available = reachable - set(drained or ())

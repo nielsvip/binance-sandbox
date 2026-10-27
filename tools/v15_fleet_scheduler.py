@@ -3870,9 +3870,8 @@ def tick(args, cfg, now):
         h["_runtime_overflow"] = underfilled
         h["_effective_sides"] = ["LONG", "SHORT"] if underfilled else list(h.get("sides") or [])
     _ph("probe_hosts")
-    # The pre-open 7D pass is owned by this scheduler so its queue, host,
-    # result and terminal reason live in one dated fleet ledger. Four-category
-    # daily defaults must be DONE before it can take a 30D dispatch slot.
+    # The FIN/MEN 7D pass uses each side's verified SQL settings as its start;
+    # its queue, host, result and terminal reason live in one dated fleet ledger.
     try:
         import v15_preopen_7d_fleet as _pre7
         _seven = _pre7.tick(ROOT, now, hosts, stats, dry_run=bool(args.dry_run or sim), drained=_load_drain())
