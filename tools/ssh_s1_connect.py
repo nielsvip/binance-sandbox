@@ -82,8 +82,20 @@ def start_tcp(addr):
     return sock, None
 
 
+def tcp_pair():
+    """Loopback TCP pair (not socketpair): ssh calls TCP_NODELAY on the passed fd and warns on a unix socket."""
+    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(1)
+    ours = socket.create_connection(listener.getsockname())
+    theirs, _ = listener.accept()
+    listener.close()
+    ours.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+    return ours, theirs
+
+
 def start_hop(addr, alias):
-    ours, theirs = socket.socketpair()
+    ours, theirs = tcp_pair()
     cmd = ["/usr/bin/ssh", "-F", "/dev/null", "-i", KEY, "-o", "IdentitiesOnly=yes", "-o", "BatchMode=yes",
            "-o", "ConnectTimeout=5", "-o", "ServerAliveInterval=5", "-o", "ServerAliveCountMax=3",
            "-o", "TCPKeepAlive=yes", "-o", "ControlMaster=no", "-o", "ControlPath=none", "-o", "LogLevel=QUIET",

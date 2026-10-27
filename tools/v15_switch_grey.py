@@ -25,6 +25,7 @@ def main():
     ap.add_argument("--ungrey", action="store_true")
     ap.add_argument("--restore-from", default=None, help="backup xlsx to copy the row back from (restore mode)")
     ap.add_argument("--row", type=int, default=None, help="original row number in --restore-from/--tab")
+    ap.add_argument("--values", default=None, help="grey/un-grey ONLY the rows whose col-B value is in this comma list (2026-10-27: grey/un-grey used to be all-or-nothing per switch, so a caller who wanted one option silently hit every row INCLUDING the bold default; --row is restore-only and does not filter here)")
     ap.add_argument("--tab", default=None, help="tab for --restore-from")
     ap.add_argument("--templates-dir", default=str(ROOT / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM"))
     ap.add_argument("--apply", action="store_true")
@@ -32,6 +33,7 @@ def main():
     sw = a.switch.strip().upper()
     if len(a.reason.strip()) < 8:
         die("a real --reason is required (8+ chars) — grey rows must cite their destroy/audit")
+    _vals = {v.strip() for v in str(a.values).split(",") if v.strip()} if a.values else None
     grey = not a.ungrey
     tdir = Path(a.templates_dir)
     if a.restore_from:
@@ -46,13 +48,13 @@ def main():
         p = tdir / fn
         if not p.exists():
             die(f"missing {p}")
-        hits = plan_file(p, sw)
+        hits = plan_file(p, sw, _vals)
         if not hits:
             print(f"[{cs}] {fn}: no rows", flush=True)
             continue
         print(f"[{cs}] {fn}: " + "; ".join(f"{t} rows {[x[0] for x in v]} (grey={sum(1 for x in v if x[2])}/{len(v)})" for t, v in hits.items()), flush=True)
         if a.apply:
-            total += apply_file(p, sw, grey, datetime.datetime.now().strftime("%Y%m%d%H%M"))
+            total += apply_file(p, sw, grey, datetime.datetime.now().strftime("%Y%m%d%H%M"), _vals)
     print(("greyed " if grey else "un-greyed ") + f"{total} rows of {sw} — {a.reason}", flush=True)
     return 0
 
@@ -88,7 +90,14 @@ def _set_grey(cell, grey):
     cell.font = Font(color=GREY if grey else None, **base)
 
 
-def plan_file(path, sw):
+def _wanted(cell_value, values):
+    """True when this row's col-B value is in the --values filter (or no filter)."""
+    if not values:
+        return True
+    return str(cell_value).strip() in values
+
+
+def plan_file(path, sw, values=None):
     wb = openpyxl.load_workbook(str(path))
     try:
         hits = {}
@@ -98,13 +107,15 @@ def plan_file(path, sw):
             ws = wb[tab]
             rows = [r for r in range(3, ws.max_row + 1) if ws.cell(r, 1).value == sw]
             if rows:
+                rows = [r for r in rows if _wanted(ws.cell(r, 2).value, values)]
+            if rows:
                 hits[tab] = [(r, ws.cell(r, 2).value, _grey_state(ws.cell(r, 1))) for r in rows]
         return hits
     finally:
         wb.close()
 
 
-def apply_file(path, sw, grey, ts):
+def apply_file(path, sw, grey, ts, values=None):
     shutil.copy2(path, ROOT / "backups" / f"before_switch_grey_{sw}_{ts}_{path.name}")
     wb = openpyxl.load_workbook(str(path))
     try:
@@ -114,7 +125,7 @@ def apply_file(path, sw, grey, ts):
                 continue
             ws = wb[tab]
             for r in range(3, ws.max_row + 1):
-                if ws.cell(r, 1).value == sw and _grey_state(ws.cell(r, 1)) != grey:
+                if ws.cell(r, 1).value == sw and _wanted(ws.cell(r, 2).value, values) and _grey_state(ws.cell(r, 1)) != grey:
                     _set_grey(ws.cell(r, 1), grey)
                     n += 1
         tmp = str(path) + ".greytmp"
