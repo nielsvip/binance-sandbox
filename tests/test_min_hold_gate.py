@@ -22,7 +22,7 @@ sys.path.insert(0, str(ROOT))
 
 from vec_decisions import min_hold_gate as g  # noqa: E402
 
-OPTIONS = (0, 1, 2, 4, 8)
+OPTIONS = (2, 4, 8, 12)  # operator's set, revised 2026-10-27 after the first sweep located the signal
 
 
 def cfg(min_hold_bars=2, before_exit=0, base_tf="15m", sole=False, scalp=False):
@@ -61,10 +61,20 @@ class IdentityTest(unittest.TestCase):
 
 
 class CompositionTest(unittest.TestCase):
-    def test_before_exit_masks_every_swept_option(self):
-        """Why the ordered sweep reports structural zeros as shipped."""
+    def test_before_exit_masks_every_option_below_it(self):
+        """Why the sweep reported structural zeros under the max composition.
+
+        Only options ABOVE MIN_HOLD_BARS_BEFORE_EXIT survive the max, so 2/4/8
+        all collapse to 10 and only 12 passes through — which is exactly why
+        0/1/2/4/8 bound on 0 of 316 crypto sym_sides and why the sole switch
+        had to be enabled for a per-symbol test to mean anything.
+        """
         for opt in OPTIONS:
-            self.assertEqual(g.threshold_bars(cfg(opt, before_exit=10)), 10)
+            expected = max(opt, 10)
+            self.assertEqual(g.threshold_bars(cfg(opt, before_exit=10)), expected)
+        for opt in (2, 4, 8):
+            self.assertEqual(g.threshold_bars(cfg(opt, before_exit=10)), 10, "masked")
+        self.assertEqual(g.threshold_bars(cfg(12, before_exit=10)), 12, "12 clears the mask")
 
     def test_sole_switch_makes_each_option_bind(self):
         for opt in OPTIONS:
@@ -159,8 +169,29 @@ class VecLiveWiringTest(unittest.TestCase):
         self.assertIn("_mhg.threshold_seconds(", src)
         self.assertNotIn("_min_hold_sec_for_exit = _min_hold_bars_for_exit * 180.0", src)
 
-    def test_sweep_options_are_the_ordered_five(self):
+    def test_sweep_options_are_the_ordered_set(self):
         self.assertEqual(tuple(g.SWEEP_OPTIONS), OPTIONS)
+
+    def test_default_is_the_template_bold_not_a_config_decision(self):
+        """USER 2026-10-27: the sheet dictates; config/QuickConfig merely match.
+
+        Bold in GLOBAL_RISK_GATES is 8, so both mirrors must read 8 — a mirror
+        that drifts from the bold is a bug, and tools/v15_switch_add.py refuses
+        the template write with "align config first" when it does.
+        """
+        import config
+        import v12_quick_engine as V
+        self.assertEqual(config.Config.MIN_HOLD_BARS, 8)
+        self.assertEqual(V.QuickConfig().MIN_HOLD_BARS, 8)
+
+    def test_sole_switch_on_so_each_option_can_bind(self):
+        import config
+        import config_tradier
+        import v12_quick_engine as V
+        for mod in (config.Config, config_tradier.TradierConfig, V.QuickConfig()):
+            self.assertTrue(getattr(mod, "MIN_HOLD_SOLE_SWITCH_ENABLED", False))
+        # and the effective hold must then equal the bold, not max(.,BEFORE_EXIT)
+        self.assertEqual(g.threshold_bars(config.Config), 8)
 
 
 if __name__ == "__main__":
