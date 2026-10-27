@@ -215,6 +215,11 @@ def absorb(hosts: list, orchestrator: str, full: bool = False) -> dict:
             log("absorb_extract", host=host, source=source, rc=result.returncode, counters=counters, error=(result.stderr[-200:].strip() if result.returncode else ""))
         if host != orchestrator:
             dest = os.path.expanduser(f"{UNION_DIR}/spills/{host}") if orchestrator == here() else f"{UNION_DIR}/spills/{host}"
+            if orchestrator == here():
+                # rsync creates only the LAST path component: without this, every pull died on
+                # mkdir "~/v20_union/spills/<host>" failed: No such file or directory (2), so from install until
+                # 2026-10-27 the union train saw ONLY the orchestrator's own spill and nothing from s1/s5/s6.
+                os.makedirs(dest, exist_ok=True)
             pull = subprocess.run(["rsync", "-az", "-e", " ".join(SSH), f"niels@{HOSTS[host]}:{SPILL_REMOTE}/", f"{dest}/"], capture_output=True, text=True, timeout=7200) if orchestrator == here() else sh(orchestrator, f"mkdir -p {dest} && rsync -az -e 'ssh -o BatchMode=yes -o StrictHostKeyChecking=no' niels@{HOSTS[host]}:{SPILL_REMOTE}/ {dest}/", timeout=7200)
             log("absorb_spill_pull", host=host, rc=pull.returncode, error=(pull.stderr or "")[-200:].strip())
             ok["pull"] = pull.returncode == 0

@@ -11967,15 +11967,25 @@ def clone_template(template: Path, new_symside: str) -> Path:
     # and the current template is cloned fresh. (Round 3 filled new values into old sheets — "all sheets broken".)
     if target.exists():
         _resume = False
+        _resume_reason = "no done rows"
         try:
             _pj = PROGRESS_DIR / f"{new_symside}_v14_progress.json"
-            _resume = _pj.exists() and bool(json.loads(_pj.read_text()).get("done"))
+            _prior = json.loads(_pj.read_text()) if _pj.exists() else {}
+            if _prior.get("done"):
+                from tools.v15_row_guards import npz_changed as _npz_changed, npz_identity_for_symside as _npz_identity
+                _old_npz = _prior.get("npz_id")
+                _new_npz = _npz_identity(new_symside, root=ROOT)
+                _resume = isinstance(_old_npz, dict) and isinstance(_new_npz, dict) and not _npz_changed(_old_npz, _new_npz)
+                if _resume and _old_npz.get("md5") and _new_npz.get("md5"):
+                    _resume = _old_npz["md5"] == _new_npz["md5"]
+                _resume_reason = "same NPZ" if _resume else "NPZ changed or unverified"
         except Exception:
             _resume = False
+            _resume_reason = "progress or NPZ identity unreadable"
         if not _resume:
             _stale = target.with_name(target.name + f".stale_{datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S')}")
             target.rename(_stale)
-            print(f"[clone] {target.name}: no resumable progress in {PROGRESS_DIR} — old sheet moved to {_stale.name}, fresh clone from {template.name}", flush=True)
+            print(f"[clone] {target.name}: {_resume_reason} in {PROGRESS_DIR} — old sheet moved to {_stale.name}, fresh clone from {template.name}", flush=True)
     # FIX 2026-09-24: never overwrite a valid filled workbook with empty template — reuse if exists and has F filled and is valid zip
     if target.exists():
         try:

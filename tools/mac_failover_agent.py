@@ -666,6 +666,20 @@ class Agent:
         if result.returncode not in (0, 23, 24):
             log(f"STATE_PUSH rc={result.returncode} {result.stderr[-200:]}")
 
+    def start_data_sync(self, host, now):
+        if getattr(self, "data_sync_running", False):
+            return
+        self.data_sync_running = True
+        def run_data_sync():
+            try:
+                self.push_state(host, now)
+                self.push_snapshots(host, now)
+            except Exception as exc:
+                log(f"STATE_SYNC error: {exc!r}")
+            finally:
+                self.data_sync_running = False
+        threading.Thread(target=run_data_sync, name="lf-state-sync", daemon=True).start()
+
     def push_history_and_inputs(self, host, lease, now):
         if os.environ.get("LF_NO_SSH") == "1" or now - getattr(self, "last_control_sync", 0.0) < 30:
             return
@@ -1087,12 +1101,9 @@ class Agent:
             heartbeat["trading_procs"] = left
         elif lease and lease.get("holder") == "mac":
             if self.unfence(lease, host):
-                self.push_state(host, now)
+                self.start_data_sync(host, now)
                 self.push_history_and_inputs(host, lease, now)
-                self.sync_stock_workers(host, lease)
-            # Every tick while the Mac holds the lease, not only on an unfence transition: the point is that S1 is
-            # ALREADY warm when it has to take over, and a takeover happens without any unfence first.
-            self.push_snapshots(host, now)
+            # State and snapshot transfers run in a single-flight worker so a slow S1 connection cannot stall heartbeats.
         if isinstance(state, dict):
             C.atomic_write_json(LF / "s1_state.json", state)
             vstates = state.get("venues") or {}
