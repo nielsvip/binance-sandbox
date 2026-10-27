@@ -1,6 +1,6 @@
 {
- "generated_utc": "2026-10-27T19:08:13Z",
- "secs": 242.2,
+ "generated_utc": "2026-10-27T19:18:14Z",
+ "secs": 126.2,
  "universe": {
   "crypto": 201,
   "stocks": 223
@@ -10,8 +10,8 @@
  },
  "healed": {
   "mac:/Users/niels/Documents/binance": {
-   "files": 2,
-   "rows": 1,
+   "files": 4,
+   "rows": 2,
    "skipped": {}
   }
  },
@@ -41,67 +41,67 @@
   {
    "host": "mac",
    "file": "crypto prices",
-   "age_s": -14.4,
+   "age_s": -13.3,
    "max_s": 60,
    "ok": true,
    "files": {
-    "price_cache_1.json": -14.4,
-    "price_cache_2.json": -12.9,
-    "price_cache_3.json": -14.4
+    "price_cache_1.json": -11.0,
+    "price_cache_2.json": -13.3,
+    "price_cache_3.json": -11.0
    }
   },
   {
    "host": "mac",
    "file": "crypto snapshot (market_data_*)",
-   "age_s": 18.2,
+   "age_s": -13.0,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/market_data_NEWEST": 18.2
+    "data/market_data_NEWEST": -13.0
    }
   },
   {
    "host": "mac",
    "file": "crypto latest_market_data",
-   "age_s": 18.2,
+   "age_s": -13.0,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/latest_market_data.json": 18.2
+    "data/latest_market_data.json": -13.0
    }
   },
   {
    "host": "mac",
    "file": "stock indicators",
-   "age_s": -2.3,
+   "age_s": 26.2,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/tradier/tradier_indicators_latest.json": -2.3
+    "data/tradier/tradier_indicators_latest.json": 26.2
    }
   },
   {
    "host": "gw",
    "file": "crypto market_data",
-   "age_s": 238.4,
+   "age_s": 951.7,
    "max_s": 300,
-   "ok": true,
+   "ok": false,
    "files": {
-    "data/latest_market_data.json": 238.4
+    "data/latest_market_data.json": 951.7
    }
   },
   {
    "host": "mac",
    "file": "disk free /Users/niels/Documents/binance",
    "age_s": null,
-   "free_gb": 16.5,
+   "free_gb": 12.5,
    "ok": true
   },
   {
    "host": "gw",
    "file": "disk free binance",
    "age_s": null,
-   "free_gb": 4.7,
+   "free_gb": 4.6,
    "ok": true
   }
  ]

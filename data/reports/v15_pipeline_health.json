@@ -1,54 +1,11 @@
 {
- "at": "2026-10-27T19:00:40Z",
+ "at": "2026-10-27T19:19:33Z",
  "s1": {
-  "host": "niels",
-  "now": 1793127636.4018643,
-  "merge_crypto": {
-   "n": 12,
-   "max_lag_min": 0.0,
-   "median_lag_min": 0.0,
-   "worst": "1000000MOGUSDT",
-   "dead": []
-  },
-  "merge_stocks": {
-   "n": 0,
-   "max_lag_min": null,
-   "median_lag_min": null,
-   "worst": null,
-   "dead": [
-    "A",
-    "AAPL",
-    "ABBV",
-    "ABT",
-    "ACN",
-    "ADBE",
-    "ADP",
-    "AEM",
-    "AG",
-    "AGCO",
-    "AGI"
-   ]
-  },
-  "npz_legacy_crypto": [],
-  "append_log_age_min": 8.7,
-  "append_last_secs": 712.1,
-  "append_last_stats": "'appended': 497, 'created': 0, 'up_to_date': 4398, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
-  "npz_loop_pids": 1,
-  "npz_cycle_last_utc": "18:52:52",
-  "npz_cycle_installed": 46,
-  "npz_cycle_not_ready": 0,
-  "npz_cycle_no_new": 0,
-  "npz_loop_has_settle": true,
-  "sched_tick_age_min": 2.6,
-  "sched_launched": 1,
-  "archive_n": 202,
-  "archive_mb": 2461.8,
-  "archive_newest_min": 2138.2,
-  "_via": "s1-pub"
+  "error": "s1-int: Connection timed out during banner exchange\nConnection to 127.0.0.1 port 2201 timed out | s1-pub: TimeoutExpired"
  },
- "red": [],
- "warn": [
-  "L5 newest archived board NPZ is 2138 min old \u2014 publishes may not be recording"
+ "red": [
+  "s1 unreachable: s1-int: Connection timed out during banner exchange\nConnection to 127.0.0.1 port 2201 timed out | s1-pub: TimeoutExpired"
  ],
- "ok": true
+ "warn": [],
+ "ok": false
 }
