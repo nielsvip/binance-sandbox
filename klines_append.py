@@ -13,7 +13,7 @@ Target: klines_cache_backtest/{name}.json — appends fresh bars; creates file i
 Both stores use the same JSON-list-of-dicts format with ISO 8601 timestamps.
 """
 from __future__ import annotations
-import argparse, json, sys, time
+import argparse, json, os, sys, time
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent
@@ -22,6 +22,9 @@ REPO = Path(__file__).resolve().parent
 PRIMARY = REPO / "klines_cache" / "gateway"
 BACKUP = REPO / "klines_cache_gateway"
 MACBOOK = REPO / "klines_cache_macbook"
+# USER 2026-10-27 "make sure s1 starts producing its own klines as soon as it does not get one": tools/s1_klines_self_produce.py
+# fetches closed bars the Mac/gateway copies did not deliver; its copies here fill gaps like the Mac/gateway feeds.
+S1SELF = REPO / "klines_cache_s1self"
 TARGET = REPO / "klines_cache_backtest"
 # CANONICAL REPAIR PATH — klines truth lane, USER 2026-10-14 "REAL prices" (re-applied 02:3xZ after a parallel overwrite; DO NOT DROP,
 # see backups/proposed_patches/klines_canonical_LOCKED_FILES_history_entry_20261014.md). klines_canonical/ = exchange-native closed bars
@@ -111,7 +114,7 @@ def gather_fresh(name: str) -> list[dict]:
     """
     canon = canonical_rows(name)
     primary = _final_rows(load_json_list(PRIMARY / name))
-    backup = _final_rows(load_json_list(BACKUP / name) + load_json_list(MACBOOK / name))
+    backup = _final_rows(load_json_list(BACKUP / name) + load_json_list(MACBOOK / name) + load_json_list(S1SELF / name))
     if not primary:
         live = backup
     elif not backup:
@@ -167,6 +170,15 @@ def append_one(name: str, dry_run: bool = False) -> dict:
         return {"file": name, "status": "no_fresh", "n_added": 0}
     target = TARGET / name
     target.parent.mkdir(parents=True, exist_ok=True)  # tradier/ subdir on a first stock append
+    # 2026-10-27: same per-file lock as tools/s1_klines_self_produce.py, so a bar it appends between our read and our write is never dropped.
+    import fcntl
+    os.makedirs("/tmp/klines_file_locks", exist_ok=True)
+    with open("/tmp/klines_file_locks/" + name.replace("/", "__") + ".lock", "a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        return _append_locked(name, target, fresh, dry_run)
+
+
+def _append_locked(name: str, target: Path, fresh: list[dict], dry_run: bool) -> dict:
     existed = target.exists()
     existing = load_json_list(target)
     merged, n_added = merge_klines(existing, fresh, correct=bool(canonical_rows(name)))
