@@ -1,8 +1,8 @@
 {
- "at": "2026-10-27T18:30:43Z",
+ "at": "2026-10-27T18:45:53Z",
  "s1": {
   "host": "niels",
-  "now": 1793125839.5008123,
+  "now": 1793126740.6055338,
   "merge_crypto": {
    "n": 12,
    "max_lag_min": 0.0,
@@ -22,27 +22,27 @@
    ]
   },
   "npz_legacy_crypto": [],
-  "append_log_age_min": 7.8,
-  "append_last_secs": 770.4,
-  "append_last_stats": "'appended': 812, 'created': 0, 'up_to_date': 4070, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
+  "append_log_age_min": 7.5,
+  "append_last_secs": 787.0,
+  "append_last_stats": "'appended': 725, 'created': 0, 'up_to_date': 4162, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
   "npz_loop_pids": 1,
-  "npz_cycle_last_utc": "18:22:58",
-  "npz_cycle_installed": 39,
+  "npz_cycle_last_utc": "18:38:50",
+  "npz_cycle_installed": 41,
   "npz_cycle_not_ready": 0,
   "npz_cycle_no_new": 0,
   "npz_loop_has_settle": true,
-  "sched_tick_age_min": 2.6,
+  "sched_tick_age_min": 1.6,
   "sched_launched": 0,
   "archive_n": 202,
   "archive_mb": 2461.8,
-  "archive_newest_min": 2108.2,
+  "archive_newest_min": 2123.2,
   "_via": "s1-pub"
  },
  "red": [
   "L2 merge stocks: 1350 min behind (worst A) \u2014 check the tradier/ subdir path"
  ],
  "warn": [
-  "L5 newest archived board NPZ is 2108 min old \u2014 publishes may not be recording"
+  "L5 newest archived board NPZ is 2123 min old \u2014 publishes may not be recording"
  ],
  "ok": false
 }

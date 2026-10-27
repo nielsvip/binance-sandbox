@@ -21,7 +21,28 @@ import sys
 import time
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-PROGRESS_DIR = ROOT / "data" / "reports" / "lifecycle_pilot"
+
+
+def _resolve_progress_dir() -> pathlib.Path:
+    # 2026-10-27: the pilots write progress into the ROUND dir (V15_PROGRESS_DIR, e.g.
+    # ~/v15_run37_20261026/progress), and tools/v15_harvest_done.py already honours that env var --
+    # but this module did not, so the harvester listed the round's boards while is_complete() scored
+    # them against the stale default dir (all 12 tabs filled=0, last touched 2026-09-29). Every
+    # finished board therefore read as incomplete and nothing was ever harvested. Resolution order
+    # matches the harvester, then the round pointer the worker lanes write, then the legacy default.
+    env = os.environ.get("V15_PROGRESS_DIR")
+    if env and pathlib.Path(env).is_dir():
+        return pathlib.Path(env)
+    try:
+        pointed = pathlib.Path((pathlib.Path.home() / "v15_current_progress_dir.txt").read_text().strip())
+        if pointed.is_dir():
+            return pointed
+    except Exception:
+        pass
+    return ROOT / "data" / "reports" / "lifecycle_pilot"
+
+
+PROGRESS_DIR = _resolve_progress_dir()
 SHEETS_DIR = ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL"
 CACHE_PATH = ROOT / "data" / "reports" / "v15_template_rowcounts.json"
 SWITCH_SHEETS = [
@@ -42,11 +63,18 @@ def template_for(symside: str) -> pathlib.Path:
     side = "LONG" if symside.endswith("_LONG") else "SHORT"
     venue = "STOCKS" if is_stock else "CRYPTO"
     # USER 2026-09-28: TEMPLATE.xlsx is legacy (replaced by the 4 cat_side templates) — never fall back to it
-    for name in (f"TEMPLATE_V15_{venue}_{side}.xlsx", f"TEMPLATE_{venue}_{side}.xlsx"):
+    # USER 2026-10-27: "SPREADSHEETS/TEMPLATE_STOCKS_SHORT.xlsx is LEGACY". The live set is
+    # SPREADSHEETS/TEMPLATE_FINAL_NORM/, which is what every pilot is launched with (--template
+    # .../TEMPLATE_FINAL_NORM/TEMPLATE_{VENUE}_{SIDE}.xlsx, verified in the process args on s1/s2/s5/s6).
+    # This function resolved the legacy top-level copy instead, so completeness was scored against a
+    # DIFFERENT row set than the board actually swept: 3707 legacy rows vs 3804 live rows for
+    # STOCKS_SHORT, which alone dropped NLR_SHORT's filled count from 3300 to 2451. The progress JSON
+    # records no template, so resolve by convention and keep the legacy path only as a last resort.
+    for name in (f"TEMPLATE_FINAL_NORM/TEMPLATE_V15_{venue}_{side}.xlsx", f"TEMPLATE_FINAL_NORM/TEMPLATE_{venue}_{side}.xlsx", f"TEMPLATE_V15_{venue}_{side}.xlsx", f"TEMPLATE_{venue}_{side}.xlsx"):
         path = ROOT / "SPREADSHEETS" / name
         if path.exists():
             return path
-    return ROOT / "SPREADSHEETS" / f"TEMPLATE_{venue}_{side}.xlsx"
+    return ROOT / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM" / f"TEMPLATE_{venue}_{side}.xlsx"
 
 
 def template_rows(template: pathlib.Path) -> dict:
@@ -143,7 +171,19 @@ def symside_status(symside: str, window_days: int = 30) -> dict:
         # INVENTED_ALT, NO_CANDIDATE, RUNNING_IDENTITY, red rows) still count.
         _vv = value if isinstance(value, dict) else {}
         _vr = str(_vv.get("reason") or "")
-        if bool(_vv.get("is_running")) or (not isinstance(_vv.get("delta"), (int, float)) and (_vr == "" or _vr.startswith("NOT_WIRED_VEC") or "SKIPPED_SAMPLING" in _vr)):
+        # 2026-10-27: `is_running` here is NOT a corpse flag. v15_pilot.py:7095 sets it when the row's
+        # candidate ALREADY EQUALS the running configuration -- the RUNNING_IDENTITY case, whose delta is
+        # 0 by definition and which the comment above already lists as a terminal settle that "still
+        # counts". Excluding it made `complete` unreachable: NLR_SHORT carried 1296 identity rows of 3750,
+        # so filled topped out at 2454/3707 and is_complete() returned False for EVERY finished board.
+        # tools/v15_harvest_done.py therefore harvested 0 "honest-complete" sheets for days while
+        # SPREADSHEETS/V15_V16_CELL_BY_CELL held published bh/gain/trades workbooks (e.g.
+        # NLR_SHORT_bh23_gain40_t54_30d_matrix.xlsx) and the progress JSONs carried final_gain +
+        # final_path + not_compliant=False. Measured on s6: 0/11 complete before, 6/11 after.
+        # An identity row needs no evaluation, so counting it settled does not weaken the NO-LIES rule;
+        # genuinely hollow rows (undecided blanks, NOT_WIRED_VEC, SKIPPED_SAMPLING) are still excluded.
+        _identity = bool(_vv.get("is_running"))
+        if not _identity and not isinstance(_vv.get("delta"), (int, float)) and (_vr == "" or _vr.startswith("NOT_WIRED_VEC") or "SKIPPED_SAMPLING" in _vr):
             continue
         if ident:
             done_ids.add((sheet, ident))

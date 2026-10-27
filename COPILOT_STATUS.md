@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-27 18:40:32 UTC
+# Copilot Status — 2026-10-27 18:50:46 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-27T18:39:10
-- **RATIO_IMBALANCE** [crypto] flz — 2026-10-27T18:39:10
-- **STALE_INDICATORS** [tradier]  — 2026-10-27T18:39:41
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T18:39:41
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T18:39:41
-- **STALE_INDICATORS** [tradier]  — 2026-10-27T18:40:11
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T18:40:11
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T18:40:11
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-27T18:40:12
-- **RATIO_IMBALANCE** [crypto] flz — 2026-10-27T18:40:12
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-27T18:49:24
+- **RATIO_IMBALANCE** [crypto] flz — 2026-10-27T18:49:24
+- **STALE_INDICATORS** [tradier]  — 2026-10-27T18:49:55
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T18:49:55
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T18:49:55
+- **STALE_INDICATORS** [tradier]  — 2026-10-27T18:50:25
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-27T18:50:25
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-27T18:50:25
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-27T18:50:25
+- **RATIO_IMBALANCE** [crypto] flz — 2026-10-27T18:50:25
 
 ## Missed Trades (trader comparison)
 
@@ -29,9 +29,9 @@ _None_
 
 **Held:** 3 | **Watching for reentry:** 16 | **Reentered:** 0
 
-- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +1.4%
-- HELD: **DASHUSDT** SHORT (crypto) peak +5.8%, now +-1.0%
-- HELD: **MINAUSDT** SHORT (crypto) peak +4.2%, now +-0.5%
+- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +1.3%
+- HELD: **DASHUSDT** SHORT (crypto) peak +5.8%, now +-0.7%
+- HELD: **MINAUSDT** SHORT (crypto) peak +4.2%, now +-0.8%
 
 - WATCHING: **QNTUSDT** LONG (crypto) peaked +8.7%, exited 1m ago
 - WATCHING: **BEAMXUSDT** LONG (crypto) peaked +8.6%, exited 1m ago
@@ -49,8 +49,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [MEDIUM] tradier_positions.py running but log stale (50min)
-- [MEDIUM] tradier_rankings.py running but log stale (15min)
-- [MEDIUM] tradier_rankings.py running but log stale (16min)
-- [MEDIUM] tradier_rankings.py running but log stale (17min)
 - [MEDIUM] tradier_rankings.py running but log stale (19min)
+- [MEDIUM] tradier_rankings.py running but log stale (10min)
+- [MEDIUM] tradier_rankings.py running but log stale (11min)
+- [MEDIUM] tradier_rankings.py running but log stale (12min)
+- [MEDIUM] tradier_rankings.py running but log stale (13min)
