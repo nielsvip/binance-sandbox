@@ -6006,14 +6006,14 @@ class Config:
             #   AUGMENTATION_COOLDOWN_SECONDS    light held 660.0 -> base 90.0  (was 7.3x slower than measured)
             # A cooldown decides WHICH BAR a trade lands on, so a mode table moving it changes the trade the
             # vector chose. Exposure is cut by the size knobs alone; timing stays the board's.
-            "START_POSITION_SIZE": 25.0,  # RESTORED 2026-10-17; minimum mode held 6.0
-            "MAX_POSITION_SIZE": 140.0,  # RESTORED 2026-10-17; minimum mode held 12.0
-            "MAX_ORDER_VALUE": 120.0,  # RESTORED 2026-10-17; minimum mode held 6.0
-            "MAX_ORDER_VALUE_MEN": 120.0,  # USER 2026-10-17 "280 is more than enough with the error prone system we are running now" (light table had 440, above normal's 280); QuickConfig-exact
-            "MAX_ORDER_VALUE_FIN": 120.0,  # RESTORED 2026-10-17; minimum mode held 6.0
+            "START_POSITION_SIZE": 12.0,  # RESTORED 2026-10-17; minimum mode held 6.0
+            "MAX_POSITION_SIZE": 40.0,  # RESTORED 2026-10-17; minimum mode held 12.0
+            "MAX_ORDER_VALUE": 20.0,  # RESTORED 2026-10-17; minimum mode held 6.0
+            "MAX_ORDER_VALUE_MEN": 20.0,  # USER 2026-10-17 "280 is more than enough with the error prone system we are running now" (light table had 440, above normal's 280); QuickConfig-exact
+            "MAX_ORDER_VALUE_FIN": 20.0,  # RESTORED 2026-10-17; minimum mode held 6.0
             "MIN_GAIN": 3.0,  # was 5.0. 3.0% survives 1.5% reversal after 50% aug
-            "MAX_POSITION_SIZE_MEN": 120.0,  # 2026-10-17 aligned to QuickConfig 280 (light/base tables held 360) — vector-exact and lower
-            "MAX_POSITION_SIZE_FIN": 120.0,  # 2026-10-17 aligned to QuickConfig 280 (light/base tables held 360) — vector-exact and lower
+            "MAX_POSITION_SIZE_MEN": 20.0,  # 2026-10-17 aligned to QuickConfig 280 (light/base tables held 360) — vector-exact and lower
+            "MAX_POSITION_SIZE_FIN": 20.0,  # 2026-10-17 aligned to QuickConfig 280 (light/base tables held 360) — vector-exact and lower
         }
         base = {
             # "START_POSITION_SIZE": 6.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 15.0
@@ -6026,17 +6026,17 @@ class Config:
             # "MIN_GAIN": 0.8,#emergency mode
             # "MAX_POSITION_SIZE_MEN": 12.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 160.0
             # "MAX_POSITION_SIZE_FIN": 300.0#emergency mode
-            "START_POSITION_SIZE": 45.0,  # RESTORED 2026-10-17; minimum mode held 6.0
-            "MAX_POSITION_SIZE": 280.0,  # RESTORED 2026-10-17; minimum mode held 62.0
-            "MAX_ORDER_VALUE": 140.0,  # RESTORED 2026-10-17; minimum mode held 26.0
-            "MAX_ORDER_VALUE_MEN": 120.0,  # RESTORED 2026-10-17; minimum mode held 26.0
-            "MAX_ORDER_VALUE_FIN": 140.0,  # RESTORED 2026-10-17; minimum mode held 62.0
-            "HIGH_GAIN_AUGMENTATION_MIN_SIZE": 50,  # BACKTEST_CHANGE_25: was 100
+            "START_POSITION_SIZE": 25.0,  # RESTORED 2026-10-17; minimum mode held 6.0
+            "MAX_POSITION_SIZE": 80.0,  # RESTORED 2026-10-17; minimum mode held 62.0
+            "MAX_ORDER_VALUE": 40.0,  # RESTORED 2026-10-17; minimum mode held 26.0
+            "MAX_ORDER_VALUE_MEN": 20.0,  # RESTORED 2026-10-17; minimum mode held 26.0
+            "MAX_ORDER_VALUE_FIN": 40.0,  # RESTORED 2026-10-17; minimum mode held 62.0
+            "HIGH_GAIN_AUGMENTATION_MIN_SIZE": 20,  # BACKTEST_CHANGE_25: was 100
             "REDUCTION_COOLDOWN_SECONDS": 15.0,  # BACKTEST_CHANGE_42: was 30. Faster gain-taking on 3m
             "AUGMENTATION_COOLDOWN_SECONDS": 90.0,  # BACKTEST_CHANGE_41: was 160. 3m TF needs faster aug
             "MIN_GAIN": 3.0,  # was 5.0. 3.0% survives 1.5% reversal after 50% aug
-            "MAX_POSITION_SIZE_MEN": 240.0,  # RESTORED 2026-10-17; minimum mode held 42.0
-            "MAX_POSITION_SIZE_FIN": 240.0,  # RESTORED 2026-10-17; minimum mode held 42.0
+            "MAX_POSITION_SIZE_MEN": 40.0,  # RESTORED 2026-10-17; minimum mode held 42.0
+            "MAX_POSITION_SIZE_FIN": 40.0,  # RESTORED 2026-10-17; minimum mode held 42.0
         }
         extreme = {
             "START_POSITION_SIZE": 50.0,  # RESTORED 2026-10-17; minimum mode held 6.0
