@@ -1,6 +1,6 @@
 {
- "generated_utc": "2026-10-27T15:48:45Z",
- "secs": 161.1,
+ "generated_utc": "2026-10-27T16:16:01Z",
+ "secs": 113.3,
  "universe": {
   "crypto": 201,
   "stocks": 223
@@ -8,13 +8,7 @@
  "unreachable": {
   "s1": "JSONDecodeError: Expecting value: line 1 column 1 (char 0) Connection timed out during banner exchange\nConnection to 127.0.0.1 port 2201 timed out\n"
  },
- "healed": {
-  "mac:/Users/niels/Documents/binance": {
-   "files": 1,
-   "rows": 0,
-   "skipped": {}
-  }
- },
+ "healed": {},
  "kline_breaches": [],
  "unhealable": [
   {
@@ -41,60 +35,60 @@
   {
    "host": "mac",
    "file": "crypto prices",
-   "age_s": -19.5,
+   "age_s": -27.8,
    "max_s": 60,
    "ok": true,
    "files": {
-    "price_cache_1.json": -19.5,
-    "price_cache_2.json": -11.4,
-    "price_cache_3.json": -19.5
+    "price_cache_1.json": -27.8,
+    "price_cache_2.json": 2.2,
+    "price_cache_3.json": -27.8
    }
   },
   {
    "host": "mac",
    "file": "crypto snapshot (market_data_*)",
-   "age_s": -16.4,
+   "age_s": -15.6,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/market_data_NEWEST": -16.4
+    "data/market_data_NEWEST": -15.6
    }
   },
   {
    "host": "mac",
    "file": "crypto latest_market_data",
-   "age_s": -16.4,
+   "age_s": -15.6,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/latest_market_data.json": -16.4
+    "data/latest_market_data.json": -15.6
    }
   },
   {
    "host": "mac",
    "file": "stock indicators",
-   "age_s": 577.4,
+   "age_s": 313.4,
    "max_s": 90,
    "ok": false,
    "files": {
-    "data/tradier/tradier_indicators_latest.json": 577.4
+    "data/tradier/tradier_indicators_latest.json": 313.4
    }
   },
   {
    "host": "gw",
    "file": "crypto market_data",
-   "age_s": 12139.6,
+   "age_s": 13823.9,
    "max_s": 300,
    "ok": false,
    "files": {
-    "data/latest_market_data.json": 12139.6
+    "data/latest_market_data.json": 13823.9
    }
   },
   {
    "host": "mac",
    "file": "disk free /Users/niels/Documents/binance",
    "age_s": null,
-   "free_gb": 31.1,
+   "free_gb": 32.4,
    "ok": true
   },
   {
