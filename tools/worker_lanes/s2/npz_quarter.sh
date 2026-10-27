@@ -29,6 +29,9 @@ if [ -n "$SYMS" ]; then
   done | tee /tmp/npz_q_push.list | rsync -az --timeout=120 --files-from=- "$SB/" "niels@10.0.0.3:npz_inbox_q/" >> $LOG 2>&1
   if [ "$?" != "0" ]; then sleep 15; [ -s /tmp/npz_q_push.list ] && rsync -az --timeout=120 --files-from=/tmp/npz_q_push.list "$SB/" "niels@10.0.0.3:npz_inbox_q/" >> $LOG 2>&1; fi
   [ -s /tmp/npz_q_push.list ] && rsync -az --timeout=120 --files-from=/tmp/npz_q_push.list "$SB/" "niels@10.0.0.6:npz_inbox_q/" >> $LOG 2>&1
-  rsync -az --timeout=60 "$SB/data/forward_state/"*.json "niels@10.0.0.3:binance-sandbox/data/forward_state/" >> $LOG 2>&1
+  # 2026-10-27: S1 is the ONLY crypto state producer (vector_direct_trader reads these). This push used no -u and
+  # carried env-less "missing live settings" and 2-day-old crypto states over S1's fresh ones (64 + 6 held sides at
+  # 22:10:51Z / 21:54:49Z). Crypto states are never pushed to S1; anything else only when newer (-u).
+  rsync -az -u --timeout=60 --exclude '*USDT_*.json' --exclude '*USDC_*.json' --exclude '*USD1_*.json' --exclude '*USDS_*.json' --exclude '*BUSD_*.json' --exclude '*FDUSD_*.json' --exclude '*TUSD_*.json' --exclude '*DAI_*.json' "$SB/data/forward_state/"*.json "niels@10.0.0.3:binance-sandbox/data/forward_state/" >> $LOG 2>&1
 fi
 echo "$(date -u +%FT%TZ) quarter done $MODE $SIDE" >> $LOG

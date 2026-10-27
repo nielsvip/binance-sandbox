@@ -605,6 +605,8 @@ class Trader:
         self.missed_rows = {}
         self.paper_plan = {}
         self.paper_done = set()
+        self.held = {}
+        self.held_written = (0.0, None)
 
     def _ledger_path(self, ts=None):
         return self.out / f"ledger_{self.venue}_{dt.datetime.fromtimestamp(ts or time.time(), dt.timezone.utc):%Y-%m-%d}.jsonl"
@@ -659,6 +661,32 @@ class Trader:
                 out[ss] = d
         return out
 
+    def positions(self, acct):
+        """Broker positions + bookkeeping of what is held. 2026-10-27: held sides are published to held_<venue>.json so the
+        state producer (tools/fwdstate_npz_watch.py on S1) computes them FIRST after every bar close and covers a held side
+        that is outside the tradeable universe."""
+        pos = self.broker.positions(acct)
+        held = self.__dict__.setdefault("held", {})
+        held[acct] = sorted(ss for ss, p in pos.items() if float(p.get("qty") or 0) > 0)
+        sides = sorted(set().union(*held.values()))
+        t, last = self.__dict__.get("held_written", (0.0, None))
+        if sides != last or time.time() - t > 60:
+            try:
+                atomic_write_json(self.out / f"held_{self.venue}.json", {"epoch": time.time(), "sides": sides, "by_account": held})
+                self.held_written = (time.time(), sides)
+            except OSError as exc:
+                log(f"held file write failed: {exc}")
+        return pos
+
+    def with_held_states(self, states, pos):
+        """A held side outside the universe still needs its state (board flat -> close; board open -> manage)."""
+        for ss, p in pos.items():
+            if ss not in states and float(p.get("qty") or 0) > 0 and getattr(self, "state_dir", None):
+                d = read_json(self.state_dir / f"{ss}.json")
+                if isinstance(d, dict):
+                    states[ss] = d
+        return states
+
     def alert(self, kind, **fields):
         row = {"iso": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "epoch": time.time(), "host": socket.gethostname(), "venue": self.venue, "kind": kind, **fields}
         with open(self.out / "ALERTS.jsonl", "a") as fh:
@@ -679,10 +707,11 @@ class Trader:
                 continue
             self.paper_plan[acct] = now
             try:
-                pos = self.broker.positions(acct)
+                pos = self.positions(acct)
             except Exception as exc:
                 log(f"paper {acct}: positions failed {str(exc)[:120]}")
                 continue
+            self.with_held_states(states, pos)
             orders, _ = plan_account(acct, self.venue, keys.get(acct, ()), states, pos, bar, self.paper_done, allowed)
             path = self.out / f"paper_{self.venue}_{dt.datetime.fromtimestamp(now, dt.timezone.utc):%Y-%m-%d}.jsonl"
             with open(path, "a") as fh:
@@ -696,7 +725,7 @@ class Trader:
         n = 0
         for acct, rows in self.missed_rows.items():
             try:
-                pos = self.broker.positions(acct)
+                pos = self.positions(acct)
             except Exception as exc:
                 log(f"backstop {acct}: positions failed {str(exc)[:120]}")
                 continue
@@ -732,7 +761,7 @@ class Trader:
         self.expect = keep
         for acct, rows in due.items():
             try:
-                pos = self.broker.positions(acct)
+                pos = self.positions(acct)
             except RestBlocked as exc:
                 log(f"expectation check {acct}: {exc}")
                 continue
@@ -753,7 +782,7 @@ class Trader:
         bar = last_closed_bar(now)
         keys = universe(self.root, self.venue, self.accounts)
         all_sides = set().union(*keys.values()) if keys else set()
-        states = self.load_states(all_sides)
+        states = self.load_states(all_sides | set().union(*self.held.values()) if self.held else all_sides)
         market_ok = True
         if self.venue == "stocks":
             market_ok = self.broker.market_open() or bool(self.a.assume_open and self.a.dry_run)
@@ -810,13 +839,14 @@ class Trader:
                 continue
             self.last_plan[acct] = now
             try:
-                pos = self.broker.positions(acct)
+                pos = self.positions(acct)
             except RestBlocked as exc:
                 log(f"{acct}: {exc}")
                 continue
             except Exception as exc:
                 log(f"{acct}: broker positions FAILED {str(exc)[:160]}")
                 continue
+            self.with_held_states(states, pos)
             t_obs, prev = self.obs.get(acct, (0, {}))
             prev_qty = prev if t_obs and bar - BAR_S <= t_obs < bar + BAR_S else {}
             orders, notes = plan_account(acct, self.venue, keys.get(acct, ()), states, pos, bar, self.done, allowed, prev_qty)
@@ -832,10 +862,11 @@ class Trader:
             self.paper(now, [a for a in self.accounts if a not in active], keys, states, bar, allowed)
             orders_n += self.backstop(now, killed, keys, states, allowed)
         fresh_n = sum(1 for st in states.values() if state_fresh(st, bar))
+        unmanaged = sorted(f"{a}:{ss}" for a, sides in self.held.items() for ss in sides if not state_fresh(states.get(ss), bar))
         status = {"epoch": now, "iso": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "host": socket.gethostname(),
                   "venue": self.venue, "armed": not self.a.dry_run and not killed, "dry_run": self.a.dry_run, "killed": killed,
                   "market_open": market_ok, "active_accounts": active, "triggers": trig, "hb_age_s": None if hb_age is None else round(hb_age, 1),
-                  "bar": bar, "states_fresh": fresh_n, "states_total": len(all_sides), "pending_expectations": len(self.expect),
+                  "bar": bar, "states_fresh": fresh_n, "states_total": len(all_sides), "held_without_fresh_state": unmanaged, "pending_expectations": len(self.expect),
                   "orders_this_pass": orders_n, "start_position_size": START_POSITION_SIZE, "pin": self.pinned(now)}
         atomic_write_json(self.out / f"status_{self.venue}.json", status)
         return status

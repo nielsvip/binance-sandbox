@@ -129,6 +129,57 @@ def confirm_release_ok(dictated, vec_order, require_board):
     return False
 
 
+def _per_sym_knob_value(sym_side, knob):
+    """Raw switch value resolved like live (sym_side full set, then cat_side default); None when unresolved."""
+    try:
+        if not sym_side or not knob:
+            return None
+        import per_sym_store as _pss
+
+        full = _pss.get_overrides(str(sym_side))
+        if isinstance(full, dict) and knob in full:
+            return full[knob]
+    except Exception:
+        pass
+    try:
+        raw = str(sym_side).rsplit("_", 1)
+        if len(raw) == 2:
+            import cat_side_defaults as _csd
+
+            return _csd.get_for(knob, raw[0], raw[1], None)
+    except Exception:
+        pass
+    return None
+
+
+def _per_sym_mode_is(sym_side, knob, mode):
+    """True only when the resolved integer mode switch equals `mode` (E_3 mode 2 = live exit; 1 = shadow)."""
+    value = _per_sym_knob_value(sym_side, knob)
+    try:
+        return value is not None and int(float(value)) == int(mode)
+    except (TypeError, ValueError):
+        return False
+
+
+def no_board_universe_exit(action, reason, sym_side):
+    """NON_TRADEABLE_WT15M_EXIT on a sym_side the board cannot speak for (no / stale forward state).
+
+    USER 2026-10-27 (board authority): a held sym_side with no board keeps its exit, never trapped.
+    A symbol dropped from the tradeable universe gets no board by construction, so without this
+    its only exit is refused forever (trc:BABA_SHORT: 175 refusals on 2026-10-26).
+    """
+    if str(action or "").upper() not in ("CLOSE", "QUICK_CLOSE", "QUICK_QUICK_CLOSE"):
+        return False
+    if not str(reason or "").upper().startswith("NON_TRADEABLE_WT15M_EXIT_"):
+        return False
+    try:
+        from live_twins import board_authority as _ba
+
+        return _ba.board_state(str(sym_side or "")) == _ba.UNKNOWN
+    except Exception:
+        return False
+
+
 def _per_sym_knob_true(sym_side, knob):
     """Resolve the switch exactly like live: sym_side full set, then cat_side default."""
     try:
@@ -232,7 +283,13 @@ def dictate_only_exempt(action, reason, sym_side=None, ultimate_buffer_pct=None)
             return True
         if _ve._is_board_confirmed(reason):
             return True
+        if sym_side and no_board_universe_exit(action, reason, sym_side):
+            return True
         if sym_side:
+            # E_3 is an integer mode switch (0 off / 1 shadow, never trades / 2 live exit);
+            # v12 grey_wire_exits books E_3_STRUCTURE_EXIT only at mode == 2, so only mode 2 passes.
+            if _ru.startswith("E_3_STRUCTURE_EXIT_"):
+                return _per_sym_mode_is(sym_side, "E_3_USE_WT_STRUCTURE_EXIT_MODE", 2)
             # The live flat-key crypto reentry twin and v12 both use the same
             # group master. A reason emitted by that producer is valid only
             # for the encoded side and only when the selected per_sym/cat-side
@@ -283,6 +340,7 @@ def dictate_only_exempt(action, reason, sym_side=None, ultimate_buffer_pct=None)
                 ("CYCLE_TP_TIERED_", "CYCLE_TP_TIERED_ENABLED"),
                 ("WT_PERCENTILE_", "WT_PERCENTILE_EXIT_ENABLED"),
                 ("WT_EXHAUST_", "WT_EXHAUST_EXIT_ENABLED"),
+                ("E_1_WT_DELTA_EXIT_", "E_1_WT_EXIT_USE_DELTA_ENABLED"),
             ):
                 if _r.startswith(_pfx) or _ru.startswith(_pfx):
                     if _per_sym_knob_true(sym_side, _kb) is True:

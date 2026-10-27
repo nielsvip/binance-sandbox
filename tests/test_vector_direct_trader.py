@@ -221,3 +221,20 @@ def test_paper_logs_plan_for_mac_accounts_once(tmp_path):
     t.paper(1000.0 + V.REPLAN_S + 1, ["ang"], {"ang": {"XUSDT_SHORT"}}, states, BAR, ALLOW)
     rows = [l for p in t.out.glob("paper_crypto_*.jsonl") for l in p.read_text().splitlines()]
     assert len(rows) == 1 and '"CLOSE"' in rows[0] and not sent
+
+
+def test_held_side_outside_universe_gets_its_state_and_is_published(tmp_path):
+    """2026-10-27: a held side outside tradeable_keys must still be managed (board flat -> CLOSE) and be published to
+    held_<venue>.json so the S1 state producer computes it first."""
+    import json
+    t, sent = _bare_trader(tmp_path, {"ang": {"ZUSDT_LONG": {"qty": 3.0, "price": 1.0}}})
+    t.state_dir = tmp_path / "fs"
+    t.state_dir.mkdir()
+    (t.state_dir / "ZUSDT_LONG.json").write_text(json.dumps(st(False)))
+    states = {}
+    t.paper(1000.0, ["ang"], {"ang": set()}, states, BAR, ALLOW)
+    assert "ZUSDT_LONG" in states
+    rows = [l for p in t.out.glob("paper_crypto_*.jsonl") for l in p.read_text().splitlines()]
+    assert len(rows) == 1 and '"CLOSE"' in rows[0] and '"ZUSDT_LONG"' in rows[0]
+    held = json.loads((t.out / "held_crypto.json").read_text())
+    assert held["sides"] == ["ZUSDT_LONG"] and held["by_account"] == {"ang": ["ZUSDT_LONG"]}

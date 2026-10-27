@@ -35,13 +35,54 @@ def _load_overrides(symside):
     finally:
         con.close()
     if not row or not row[1]:
-        return {}, "missing_published_per_sym_row", {}
+        return _best_existing_settings(symside, db)
     full = json.loads(row[1])
     if not isinstance(full, dict) or not full:
-        return {}, "invalid_published_per_sym_row", {}
+        return _best_existing_settings(symside, db)
     raw = json.dumps(full, sort_keys=True, separators=(",", ":"), default=str).encode()
     effective = per_sym_live_set._apply_caps(symside, full)
     return dict(effective), "per_sym_store.active", {"settings_updated_at": row[0], "settings_sha256": hashlib.sha256(raw).hexdigest(), "template_md5": row[2], "defaults_round": row[3]}
+
+
+def _best_existing_settings(symside, db):
+    """USER LAW "SKIP_NO_PUBLISHED_BOARD destroyed — all still traded on their best existing settings" and "a held
+    sym_side with no board keeps its legacy exit, never trapped": a side without a published per_sym_active row still
+    gets a state, from (in order) its latest per_sym_history full set, its data/per_sym_full_sets.json full set, or its
+    cat_side defaults (the same last resort tools/pure_board_trader.best_settings uses). `src` names which one, with a
+    `fallback:` prefix and settings_fallback=True, so it is never mistaken for a published board (fwdstate_verified_publish
+    only accepts src == per_sym_store.active). Only reached when the explicit store is present."""
+    import per_sym_live_set
+    meta = {"settings_fallback": True}
+    try:
+        con = sqlite3.connect(f"file:{Path(db).resolve()}?mode=ro", uri=True, timeout=5)
+        try:
+            row = con.execute("SELECT updated_at,full_config_json,template_md5,defaults_round FROM per_sym_history WHERE sym_side=? AND full_config_json IS NOT NULL ORDER BY epoch DESC, id DESC LIMIT 1", (symside,)).fetchone()
+        finally:
+            con.close()
+        full = json.loads(row[1]) if row and row[1] else None
+        if isinstance(full, dict) and full:
+            raw = json.dumps(full, sort_keys=True, separators=(",", ":"), default=str).encode()
+            return dict(per_sym_live_set._apply_caps(symside, full)), "fallback:per_sym_store.history_latest", {**meta, "settings_updated_at": row[0], "settings_sha256": hashlib.sha256(raw).hexdigest(), "template_md5": row[2], "defaults_round": row[3]}
+    except Exception:
+        pass
+    try:
+        full = per_sym_live_set._json_full_sets().get(symside)
+        if isinstance(full, dict) and full:
+            raw = json.dumps(full, sort_keys=True, separators=(",", ":"), default=str).encode()
+            return dict(per_sym_live_set._apply_caps(symside, full)), "fallback:per_sym_full_sets.json", {**meta, "settings_sha256": hashlib.sha256(raw).hexdigest()}
+    except Exception:
+        pass
+    try:
+        import per_sym_settings
+        symbol, side = symside.rsplit("_", 1)
+        cat_side = per_sym_settings.cat_side_of(symbol, side)
+        full = per_sym_settings.defaults(cat_side)
+        if isinstance(full, dict) and full:
+            raw = json.dumps(full, sort_keys=True, separators=(",", ":"), default=str).encode()
+            return dict(per_sym_live_set._apply_caps(symside, full)), f"fallback:cat_side_defaults:{cat_side}", {**meta, "settings_sha256": hashlib.sha256(raw).hexdigest()}
+    except Exception:
+        pass
+    return {}, "missing_published_per_sym_row", {}
 
 
 @lru_cache(maxsize=1)
