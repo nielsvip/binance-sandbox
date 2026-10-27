@@ -57,6 +57,36 @@ SHORT_NAMES = ["ENT_REV", "ENT_BRK", "ENT_CNF", "EXT_STR", "EXT_VEL", "RE_WIN", 
 _ROWCOUNT_MEMO: dict = {}
 
 
+# 2026-10-27: v15_pilot.py:110/5082 SKIPS any switch row whose column-A FONT is grey -- the template
+# marks a row disabled that way (tools/v15_template_fix.py sets it). This module counted every non-empty
+# column-A row instead, so it demanded rows the pilot is designed never to sweep. Measured on the live
+# TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_SHORT.xlsx: 3804 rows total, 1129 grey, so the pilot sweeps 2675 and
+# logs "[spec-fill] rows=2702 pending=2702 ... workbook complete, returning early" -- correctly finished.
+# The board then scored it 2681/3804 and is_complete() was False, so tools/v15_harvest_done.py published
+# NOTHING, for days, on every host. The per-tab grey counts match the per-tab shortfall exactly
+# (ENTRY_CONFIRMATION_GATES 79/79, EXIT_STRUCTURAL 101/101, EXIT_VELOCITY 56/56, REENTRY_WINDOWED 215/215).
+# Mirroring the pilot's filter is not a NO-LIES loosening: a grey row is a template-disabled row that must
+# not be tested, and counting it as required made "complete" unreachable by construction.
+GREY_SKIP_RGB = {"FFBFBFBF", "00BFBFBF"}
+_ROW_SENTINELS = ("switch", "general", "blanket", "filter", "option value")
+
+
+def _skip_switch_row(cell, value) -> bool:
+    """True when the pilot would not sweep this row (grey font, empty, or a header/sentinel)."""
+    if value is None or (isinstance(value, str) and value.strip() == ""):
+        return True
+    text = str(value).strip()
+    if text.lower() in _ROW_SENTINELS or text.startswith("\u2014"):
+        return True
+    try:
+        font = cell.font
+        if font is not None and font.color is not None and str(getattr(font.color, "rgb", "") or "").upper() in GREY_SKIP_RGB:
+            return True
+    except Exception:
+        pass
+    return False
+
+
 def template_for(symside: str) -> pathlib.Path:
     # same selection order as v15_local_herd.launch()
     is_stock = "USDC" not in symside and "USDT" not in symside
@@ -79,7 +109,7 @@ def template_for(symside: str) -> pathlib.Path:
 
 def template_rows(template: pathlib.Path) -> dict:
     # {sheet: [row numbers with a switch in col A]} — cached on disk by path+mtime (loading a template takes seconds)
-    key = f"{template}|{int(template.stat().st_mtime)}"
+    key = f"{template}|{int(template.stat().st_mtime)}|greyskip2"  # key bumped: the row SET changed (grey rows excluded)
     if key in _ROWCOUNT_MEMO:
         return _ROWCOUNT_MEMO[key]
     cache = {}
@@ -94,7 +124,7 @@ def template_rows(template: pathlib.Path) -> dict:
         for sheet in SWITCH_SHEETS:
             if sheet not in wb.sheetnames:
                 continue
-            rows[sheet] = [index for index, row in enumerate(wb[sheet].iter_rows(min_row=3, max_col=1, values_only=True), start=3) if row and row[0] not in (None, "")]
+            rows[sheet] = [c[0].row for c in wb[sheet].iter_rows(min_row=3, max_col=1) if c and not _skip_switch_row(c[0], c[0].value)]
         wb.close()
         cache = {k: v for k, v in cache.items() if not k.startswith(f"{template}|")}
         cache[key] = rows
@@ -109,7 +139,7 @@ def template_row_ids(template: pathlib.Path) -> dict:
     # {sheet: [[row, "SWITCH=CAND"], ...]} — identity matching survives row renumbering when the
     # template is edited (USER 2026-09-28: template row changes must add calculations for those
     # rows ONLY, never restart a sheet). Cached like template_rows under an "ids|" key.
-    key = f"ids|{template}|{int(template.stat().st_mtime)}"
+    key = f"ids|{template}|{int(template.stat().st_mtime)}|greyskip2"  # key bumped with template_rows
     if key in _ROWCOUNT_MEMO:
         return _ROWCOUNT_MEMO[key]
     cache = {}
