@@ -23,7 +23,7 @@ echo "   Press Ctrl+C to stop"
 echo ""
 
 # Run the resilient tunnel manager
-python3 setup_ssh_tunnels.py
+python3 -u setup_ssh_tunnels.py
 
 echo ""
 echo "🛑 Tunnel manager stopped"
