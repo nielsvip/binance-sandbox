@@ -768,6 +768,16 @@ class Trader:
             trig.setdefault(x, why)
         if not market_ok:
             trig = {}
+        # tools/live_mode.sh real: release_<venue>.json hands every account taken before its epoch back NOW (no hold, no
+        # healthy stretch) so the Mac's real execution and this one never overlap; a heartbeat loss still keeps it.
+        rel_epoch = float((read_json(self.out / f"release_{self.venue}.json", {}) or {}).get("epoch") or 0)
+        for x in [a for a in self.accounts if rel_epoch and self.act.st[a]["active"] and float(self.act.st[a].get("since") or 0) < rel_epoch]:
+            if str(trig.get(x, "")).startswith("mac_heartbeat_"):
+                continue
+            self.act.st[x].update(active=False, released_at=now, healthy_since=None, takeovers=0)
+            trig.pop(x, None)
+            log(f"HANDBACK {self.venue}:{x} — operator release (tools/live_mode.sh real)")
+            self._ledger({"event": "HANDBACK", "acct": x, "why": "operator_release", "dry_run": self.a.dry_run})
         for acct, kind, why in self.act.update(now, trig):
             log(f"{kind} {self.venue}:{acct} — {why}")
             self._ledger({"event": kind, "acct": acct, "why": why, "hb_age": hb_age, "dry_run": self.a.dry_run})

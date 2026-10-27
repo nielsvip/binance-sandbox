@@ -1863,6 +1863,11 @@ class GuardedTradierClient:
 
 
 def get_tradier_guard(account: str, cfg: Any = None, logger: Optional[logging.Logger] = None, ledger_dir: Optional[Path] = None) -> TradierDedupeGuard:
+    try:  # MAC PAPER GATE: tradier_api is imported by now (see mac_paper_gate.install)
+        import mac_paper_gate as _mpg
+        _mpg.install()
+    except Exception:
+        pass
     g = _TRADIER_GUARDS.get(account)
     if g is None:
         g = _TRADIER_GUARDS[account] = TradierDedupeGuard(account, cfg=cfg, logger=logger, ledger_dir=ledger_dir)
@@ -1910,6 +1915,14 @@ if os.environ.get("ODG_CLASS_GUARD", "1") != "0":  # every importing process: ra
         install_binance_class_guard()
     except Exception as _e:  # pragma: no cover
         _LOG.critical(f"[ORDER_DEDUPE] class guard install failed: {_e!r}")
+
+# USER 2026-10-27 "keep it traidng without execution power ... reverted to real trading with one switch": the Mac paper gate
+# (mac_paper_gate.py) refuses every order-mutating broker call while data/MAC_PAPER_TRADING exists. Switch: tools/live_mode.sh.
+try:
+    import mac_paper_gate as _mpg
+    _mpg.install()
+except Exception as _e:  # pragma: no cover
+    _LOG.critical(f"[MAC_PAPER_GATE] install failed: {_e!r}")
 
 
 if __name__ == "__main__":  # local, read-only ledger dump (no broker calls)

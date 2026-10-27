@@ -372,6 +372,11 @@ class Agent:
             if not isinstance(st, dict) or not st.get("armed") or now - float(st.get("epoch") or 0) > VD_STATUS_MAX_AGE_S or now - seen > VD_STATUS_MAX_AGE_S:
                 continue
             owned |= {a for a in st.get("active_accounts") or [] if a in accts}
+        # USER 2026-10-27 "keep it traidng without execution power": in PAPER mode (data/MAC_PAPER_TRADING, tools/live_mode.sh)
+        # the Mac engines RUN — mac_paper_gate refuses every order at the broker layer — so their decisions and VEC_ logs
+        # continue. No stand-down, no HALT fence, no respawn gate.
+        if (BASE / "data" / "MAC_PAPER_TRADING").exists():
+            owned = set()
         # Stand-down: the respawn gate (tools/live_failover_lease_gate.sh, Darwin) reads this file; it must be rewritten
         # every tick or it goes stale and fences nothing.
         C.atomic_write_json(LF / "vector_direct_owned.json", {"epoch": now, "iso": C.iso(now), "accounts": sorted(owned),

@@ -1,5 +1,5 @@
 {
- "at": "2026-10-27T21:11:07Z",
+ "at": "2026-10-27T22:11:07Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
@@ -10,13 +10,11 @@
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "ETCUSDT_SHORT",
     "IOTAUSDT_SHORT",
-    "MOVRUSDT_SHORT",
-    "SKYUSDT_SHORT"
+    "MOVRUSDT_SHORT"
    ],
-   "mem_avail_mb": 5614,
-   "load1": 25.14,
+   "mem_avail_mb": 12617,
+   "load1": 17.04,
    "nproc": 16,
    "slots": null,
    "binding_reason": "concurrency 0 boards: 12/h needs <= 0 min per sym_side \u2014 raise concurrent sides or cut evals per board",
@@ -31,17 +29,16 @@
    "improved_finishes_24h": 0,
    "board_cpu_s_median_24h": null,
    "board_wall_s_median_24h": null,
-   "board_cores": 7.15,
-   "nonboard_cores_competing": 2.34,
-   "nonboard_cores_niced": 4.71,
+   "board_cores": 8.08,
+   "nonboard_cores_competing": 3.09,
+   "nonboard_cores_niced": 1.95,
    "cores_by_bucket": {
-    "other": 1.45,
-    "boards": 7.15,
-    "klines_append": 0.89
+    "other": 2.13,
+    "klines_append": 0.96,
+    "boards": 8.08
    },
    "cores_by_bucket_niced": {
-    "klines_vault": 1.35,
-    "other": 3.36
+    "klines_vault": 1.95
    }
   },
   "s2": {
@@ -52,19 +49,19 @@
    "unknown": 0,
    "boards_running": [
     "BATUSDT_LONG",
-    "GRTUSDT_LONG",
+    "MAGICUSDT_LONG",
     "QNTUSDT_LONG",
     "STRKUSDT_SHORT"
    ],
-   "mem_avail_mb": 8402,
-   "load1": 17.56,
+   "mem_avail_mb": 10206,
+   "load1": 14.87,
    "nproc": 16,
    "slots": null,
-   "binding_reason": "CPU budget: median board 4546 core-s, 16 cores minus 2.1 competing non-board cores ({'other': 0.99, 'boards': 10.2, 'live_helpers': 1.14}) = 13.9 usable -> host ceiling 11.0 boards/h. Move nice-0 non-board work off the host and/or cut core-s per board.",
+   "binding_reason": "CPU budget: median board 4546 core-s, 16 cores minus 2.3 competing non-board cores ({'other': 1.04, 'boards': 10.21, 'live_helpers': 1.25}) = 13.7 usable -> host ceiling 10.9 boards/h. Move nice-0 non-board work off the host and/or cut core-s per board.",
    "error": null,
    "published": [],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 598.6,
+   "minutes_since_last_improved": 658.7,
    "last_improved_symside": "SKYAIUSDT_LONG",
    "cadence_ok": false,
    "improved_gap_min_median_24h": 808.8,
@@ -72,13 +69,13 @@
    "improved_finishes_24h": 2,
    "board_cpu_s_median_24h": 4545.5,
    "board_wall_s_median_24h": 4798.007516860962,
-   "board_cores": 10.2,
-   "nonboard_cores_competing": 2.13,
+   "board_cores": 10.21,
+   "nonboard_cores_competing": 2.29,
    "nonboard_cores_niced": 0,
    "cores_by_bucket": {
-    "other": 0.99,
-    "boards": 10.2,
-    "live_helpers": 1.14
+    "other": 1.04,
+    "boards": 10.21,
+    "live_helpers": 1.25
    },
    "cores_by_bucket_niced": {}
   }
