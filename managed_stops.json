@@ -111,13 +111,6 @@
     "symbol": "ENJUSDT",
     "side": "SHORT"
   },
-  "fin:CRVUSDC_LONG": {
-    "orderId": "3000002277750053",
-    "stopPrice": 0.329,
-    "entry_sig": "2026-10-27 07:19:17.222000+00:00",
-    "symbol": "CRVUSDC",
-    "side": "LONG"
-  },
   "fin:1000BONKUSDC_SHORT": {
     "orderId": "3000002277608344",
     "stopPrice": 0.003066,
@@ -131,5 +124,12 @@
     "entry_sig": "2026-10-27 07:33:30.707000+00:00",
     "symbol": "MOVEUSDT",
     "side": "SHORT"
+  },
+  "fin:ZROUSDT_LONG": {
+    "orderId": "3000002277780584",
+    "stopPrice": 1.5904,
+    "entry_sig": "2026-10-27 07:35:21.407000+00:00",
+    "symbol": "ZROUSDT",
+    "side": "LONG"
   }
 }
