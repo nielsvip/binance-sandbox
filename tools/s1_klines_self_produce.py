@@ -11,11 +11,13 @@ after the close, so a closed bar reached the big store minutes after it existed 
 
 WHAT. A loop that wakes GRACE_S after every 15m boundary and, for every live crypto symbol and every TF that closed at
 that boundary (15m always, 1h/4h/D on their own boundaries):
-  1. bar already in the big store            -> nothing to do
-  2. final bar present in a copy already on S1 (klines_cache_macbook, klines_cache/gateway, klines_canonical) -> append it
-  3. otherwise                                 -> fetch it from Binance fapi (weight 1, limit <= 99) and append it
-Appends are pure tail appends of bars NEWER than the file's last bar (gaps up to 98 bars are filled in the same call;
-anything older or out of order is left to klines_append). The file is rewritten atomically (tmp + os.replace) under the
+  1. fetch the exchange's CLOSED bars (Binance fapi, weight 1, limit <= 99): the just-closed bar, the two before it, and
+     any gap back to the file's last bar (up to 98 bars)
+  2. append the ones the big store lacks; CORRECT the ones it holds with different OHLCV (a copy on S1 can carry a
+     forming bar written as final — measured on the gateway's 1h files 2026-10-27)
+  3. only if REST fails: append missing bars from a final copy already on S1 (klines_cache_macbook, klines_cache/gateway,
+     klines_canonical); never a correction from a copy
+Anything older or out of order is left to klines_append. The file is rewritten atomically (tmp + os.replace) under the
 per-file flock `<file>.lock` that klines_append.append_one also takes, so neither writer can drop the other's bar. Every
 fetched bar is also kept in klines_cache_s1self/ (a source klines_append reads), so a bar that could not be appended now
 is appended by the next klines_append run. 1m/3m are left to klines_append.
@@ -169,30 +171,55 @@ def locked(path, timeout=30.0):
             time.sleep(0.05)
 
 
-def append_tail(path, rows):
-    """atomically append rows newer than the file's last bar; returns the number appended (never rewrites older bars)."""
+def differs(old, new):
+    return any(abs(float(old.get(k, "nan")) - float(new[k])) > 1e-9 * max(1.0, abs(float(new[k]))) for k in ("open", "high", "low", "close", "volume"))
+
+
+def write_tail(path, rows, window=1 << 16):
+    """under the shared per-file lock, atomically: append exchange rows newer than the file's last bar, and correct rows
+    already in the file's tail whose OHLCV differs from the exchange's CLOSED values (row count unchanged). Measured
+    2026-10-27: the gateway writes the forming 1h bar with no provisional flag and klines_append froze it as final
+    (BTCUSDC 1h 16:00 volume 365.185 vs 985.307 closed), so a timestamp being present is not proof the bar is right.
+    Returns (appended, corrected), or (-1, 0) when the lock was not obtained, (-2, 0) when the file is not a JSON list."""
     lock = locked(path)
     if lock is None:
-        return -1
+        return -1, 0
     try:
+        data = path.read_bytes().rstrip()
+        if not data.endswith(b"]") or len(data) < 2:
+            return -2, 0
         last = tail_last_epoch(path)
-        fresh = [r for r in rows if last is None or epoch_of(r["timestamp"]) > last]
-        if not fresh or last is None:
-            return 0
-        data = path.read_bytes()
-        end = data.rstrip()
-        if not end.endswith(b"]") or len(end) < 2:
-            return -2
-        body = end[:-1].rstrip()
-        sep = b"," if not body.endswith(b"[") else b""
-        payload = b",".join(json.dumps(r, separators=(",", ":")).encode() for r in sorted(fresh, key=lambda r: r["timestamp"]))
+        cut = max(0, len(data) - window)
+        head, tail = data[:cut], data[cut:]
+        corrected = 0
+        for row in rows:
+            if last is None or epoch_of(row["timestamp"]) > last:
+                continue
+            m = re.search(rb'\{[^{}]*"timestamp":\s*"' + re.escape(row["timestamp"].encode()) + rb'"[^{}]*\}', tail)
+            if not m:
+                continue
+            try:
+                old = json.loads(m.group(0))
+            except ValueError:
+                continue
+            if not differs(old, row):
+                continue
+            new = dict(old, **{k: row[k] for k in ("open", "high", "low", "close", "volume")}, _source="s1_self_rest", _corrected_at=time.time())
+            tail = tail[:m.start()] + json.dumps(new, separators=(",", ":")).encode() + tail[m.end():]
+            corrected += 1
+        fresh = sorted((r for r in rows if last is not None and epoch_of(r["timestamp"]) > last), key=lambda r: r["timestamp"])
+        if not fresh and not corrected:
+            return 0, 0
+        body = (head + tail)[:-1].rstrip()
+        sep = b"," if fresh and not body.endswith(b"[") else b""
+        payload = b",".join(json.dumps(r, separators=(",", ":")).encode() for r in fresh)
         tmp = path.with_name(f".{path.name}.s1self.tmp")
         tmp.write_bytes(body + sep + payload + b"]")
-        if tmp.stat().st_size <= len(data.rstrip()):
+        if tmp.stat().st_size < len(data) - 64 * max(1, corrected):
             tmp.unlink()
-            return -2
+            return -2, 0
         os.replace(tmp, path)
-        return len(fresh)
+        return len(fresh), corrected
     finally:
         fcntl.flock(lock, fcntl.LOCK_UN)
         lock.close()
@@ -216,38 +243,44 @@ def handle(session, symbol, tf, boundary, banned):
     if not target.exists():
         return {"status": "no_target"}
     last = tail_last_epoch(target)
+    # the exchange is the truth for the just-closed bar AND the two before it (a copy on S1 may hold a forming bar written as final)
+    first_open = bar_open - 2 * step if last is None else min(last + step, bar_open - 2 * step)
+    error = "rest_paused"
+    if not banned[0]:
+        for attempt in range(6):
+            try:
+                rows = fetch(session, symbol, tf, first_open, bar_open, int(time.time() * 1000))
+            except PermissionError as exc:
+                banned[0] = True
+                error = f"rest_banned {exc}"
+                break
+            except Exception as exc:
+                error = f"rest_error {type(exc).__name__}: {exc}"[:200]
+                time.sleep(0.5)
+                continue
+            if rows and epoch_of(rows[-1]["timestamp"]) == bar_open:
+                try:
+                    keep_self(name, rows)
+                except Exception:
+                    pass
+                n, fixed = write_tail(target, rows)
+                if n < 0:
+                    return {"status": "write_failed", "code": n}
+                status = "rest" if n else ("corrected" if fixed else "verified")
+                return {"status": status, "n": n, "corrected": fixed, **({"at": time.time()} if n or fixed else {})}
+            error = "rest_not_closed"
+            time.sleep(0.5)
+    # REST failed: fall back to a final copy already on S1 (missing bars only — never a correction from a copy)
     if last is not None and last >= bar_open:
-        return {"status": "present"}
-    first_open = bar_open if last is None else last + step
-    want = set(range(first_open, bar_open + 1, step))
+        return {"status": "present_unverified", "error": error}
+    want = set(range(last + step if last is not None else bar_open, bar_open + 1, step))
     for src in LOCAL_SOURCES:
         rows = [r for r in tail_rows(src / name) if sane(r) and epoch_of(r["timestamp"]) in want]
         if rows and max(epoch_of(r["timestamp"]) for r in rows) == bar_open:
-            n = append_tail(target, rows)
+            n, _ = write_tail(target, [r for r in rows if last is None or epoch_of(r["timestamp"]) > last])
             if n > 0:
-                return {"status": "local", "src": src.name, "n": n, "at": time.time()}
-    if banned[0]:
-        return {"status": "rest_paused"}
-    for attempt in range(6):
-        try:
-            rows = fetch(session, symbol, tf, first_open, bar_open, int(time.time() * 1000))
-        except PermissionError as exc:
-            banned[0] = True
-            return {"status": "rest_banned", "error": str(exc)}
-        except Exception as exc:
-            if attempt == 5:
-                return {"status": "rest_error", "error": f"{type(exc).__name__}: {exc}"[:200]}
-            time.sleep(0.5)
-            continue
-        if rows and epoch_of(rows[-1]["timestamp"]) == bar_open:
-            try:
-                keep_self(name, rows)
-            except Exception:
-                pass
-            n = append_tail(target, rows)
-            return {"status": "rest" if n > 0 else "append_failed", "n": n, "at": time.time()}
-        time.sleep(0.5)
-    return {"status": "rest_not_closed"}
+                return {"status": "local", "src": src.name, "n": n, "error": error, "at": time.time()}
+    return {"status": "missing", "error": error}
 
 
 def run_boundary(boundary, symbols):
@@ -273,7 +306,7 @@ def run_boundary(boundary, symbols):
         counts[r["status"]] = counts.get(r["status"], 0) + 1
         if "at" in r:
             lat.append(r["at"] - boundary)
-        if r["status"] not in ("present", "local", "rest", "no_target"):
+        if r["status"] not in ("verified", "corrected", "rest", "no_target"):
             problems.append({"symbol": symbol, "tf": tf, **r})
     lat.sort()
     rec = {"generated_utc": iso(time.time()), "boundary_utc": iso(boundary), "tfs": tfs, "symbols": len(symbols), "counts": counts,

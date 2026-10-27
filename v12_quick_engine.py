@@ -63,6 +63,13 @@ import copy
 from datetime import timedelta
 import numpy as np
 
+try:
+    import fee_model as _fee_model
+
+    _MEASURED_CRYPTO_ROUND_TRIP_PCT = _fee_model.round_trip_pct("crypto")
+except Exception:
+    _MEASURED_CRYPTO_ROUND_TRIP_PCT = 0.0529
+
 # --- VEC_IDENTICAL HOOK: top-level import all vec_decisions (LOCKED) ---
 # Every switch predicate must live in vec_decisions and be called by v12_quick,
 # not re-implemented inline. This block is verified by tools/hooks/persistent_v12_hooks.py.
@@ -4267,7 +4274,7 @@ class QuickConfig:
         45.0  # USER 2026-10-11: tandem with config.py 28 -> 45 (parity 2026-09-26 alignment kept). Bold in TEMPLATE_CRYPTO_LONG.
     )
     CRYPTO_ROUND_TRIP_COMMISSION_PCT: float = (
-        0.04  # w2-hygiene fee harmony (USER ordered 0.08->0.04; was USER 2026-08-08 binance futures 0.08% round trip); tradier is commission-free
+        _MEASURED_CRYPTO_ROUND_TRIP_PCT  # 2026-10-27: was 0.04, hand-set. Now the SAME measured value config.Config reads (fee_model.py, broker fills) so board and live charge identically by construction. Tradier stays commission-free via the is_tradier branches.
     )
     MIN_POSITION_SIZE: float = (
         1.0  # parity 2026-09-26: live Config 1.0 vs vec 55 caused 55x mismatch — align to config.Config crypto. Bold in TEMPLATE_CRYPTO.
@@ -17756,7 +17763,11 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     )
 
     commission_pct = (
-        getattr(cfg, "CRYPTO_ROUND_TRIP_COMMISSION_PCT", 0.04)
+        getattr(
+            cfg,
+            "CRYPTO_ROUND_TRIP_COMMISSION_PCT",
+            _MEASURED_CRYPTO_ROUND_TRIP_PCT,
+        )
         if not is_tradier
         else 0.0
     )
@@ -24084,7 +24095,10 @@ def true_bh_reference(npz, is_long, cfg):
     half_fee = (
         0.0
         if is_tradier
-        else getattr(cfg, "CRYPTO_ROUND_TRIP_COMMISSION_PCT", 0.04) / 200.0
+        else getattr(
+            cfg, "CRYPTO_ROUND_TRIP_COMMISSION_PCT", _MEASURED_CRYPTO_ROUND_TRIP_PCT
+        )
+        / 200.0
     )
     base_tf = _base_tf(npz, cfg)
     ts = npz.get("timestamps", npz.get(f"timestamp_{base_tf}", np.array([])))

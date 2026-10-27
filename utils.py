@@ -4717,9 +4717,50 @@ def _perf_parse_history_file(filepath: Path, cutoff: datetime) -> list:
         _perf_logger.debug(f"Error parsing {filepath.name}: {e}")
     return records
 
-def _perf_reconstruct_trades(records: list) -> list:
+_PERF_TRADIER_ACCOUNTS = frozenset({'tra', 'trb', 'trc'})
+
+
+def _perf_account_mode(account: str) -> str:
+    """Tradier equity accounts are commission-free; crypto accounts are not."""
+    return 'tradier' if str(account or '').lower() in _PERF_TRADIER_ACCOUNTS else 'crypto'
+
+
+def _perf_fee_round_trip_pct(mode: str = 'crypto') -> float:
+    """Measured round-trip commission to charge every reconstructed trade."""
+    if str(mode or 'crypto').lower() in ('tradier', 'stocks', 'stock'):
+        return 0.0
+    try:
+        import fee_model as _fm
+
+        return float(_fm.round_trip_pct('crypto'))
+    except Exception:
+        try:
+            return float(getattr(_perf_config, 'CRYPTO_ROUND_TRIP_COMMISSION_PCT', 0.0529) or 0.0529)
+        except Exception:
+            return 0.0529
+
+
+def _perf_reconstruct_trades(records: list, side: str = 'LONG', fee_round_trip_pct: float = 0.0) -> list:
+    """Reconstruct closed trades from a history file.
+
+    2026-10-27 FIX — two defects made every number here wrong:
+      (1) SIDE WAS IGNORED. pnl was always (exit-entry)/entry, so every SHORT's
+          gain was reported as a loss and vice versa. Measured on real data:
+          flz/WLDUSDC_SHORT read WR=30% avg=-3.448% when the truth is WR=70%
+          avg=+3.448%. Because these stats drive `order_multiplier` and the
+          A/B/C tier, every profitable SHORT was sized DOWN to tier C and every
+          losing one sized UP — which is why losers averaged $106.80 of notional
+          against winners' $77.08.
+      (2) FEES WERE NEVER CHARGED. pnl_pct was gross, so a symbol earning
+          +0.05%/trade over 274 trades looked positive while the broker's
+          0.0529% round trip made it negative.
+    `notional_usd` is carried so callers can size-weight instead of averaging
+    percentages across positions of wildly different size.
+    """
     if not records:
         return []
+    is_long = str(side or 'LONG').upper() != 'SHORT'
+    fee = abs(float(fee_round_trip_pct or 0.0))
     records.sort(key=lambda r: r[0])
     trades = []
     entry_cost = 0.0
@@ -4735,8 +4776,12 @@ def _perf_reconstruct_trades(records: list) -> list:
             exit_price = price
             entry_avg = entry_cost / entry_qty if entry_qty > 0 else price
             hold_sec = (ts - entry_time).total_seconds() if entry_time else 0
-            pnl_pct = (exit_price - entry_avg) / entry_avg * 100 if entry_avg > 0 else 0.0
-            trades.append({'entry_avg': entry_avg, 'exit_avg': exit_price, 'qty': min(qty, entry_qty), 'pnl_pct': pnl_pct, 'hold_seconds': hold_sec})
+            gross_pct = (exit_price - entry_avg) / entry_avg * 100 if entry_avg > 0 else 0.0
+            if not is_long:
+                gross_pct = -gross_pct
+            pnl_pct = gross_pct - fee
+            closed = min(qty, entry_qty)
+            trades.append({'entry_avg': entry_avg, 'exit_avg': exit_price, 'qty': closed, 'side': 'LONG' if is_long else 'SHORT', 'gross_pnl_pct': gross_pct, 'fee_pct': fee, 'pnl_pct': pnl_pct, 'notional_usd': abs(closed * entry_avg), 'hold_seconds': hold_sec})
             closed_qty = min(qty, entry_qty)
             entry_qty -= closed_qty
             if entry_qty > 0:
@@ -4808,7 +4853,7 @@ def compute_all_stats(window_days: int = None) -> Dict[str, dict]:
             records = _perf_parse_history_file(jfile, cutoff)
             if not records:
                 continue
-            trades = _perf_reconstruct_trades(records)
+            trades = _perf_reconstruct_trades(records, side, _perf_fee_round_trip_pct(_perf_account_mode(acct_dir.name)))
             if not trades:
                 continue
             key = f"{symbol}_{side}"
@@ -4817,6 +4862,7 @@ def compute_all_stats(window_days: int = None) -> Dict[str, dict]:
             stats[key]['trades'].extend(trades)
             stats[key]['accounts'].add(acct_dir.name)
     result = {}
+    per_symbol: Dict[str, list] = {}
     for key, data in stats.items():
         symbol = data['symbol']
         all_trades = data['trades']
@@ -4825,28 +4871,60 @@ def compute_all_stats(window_days: int = None) -> Dict[str, dict]:
             continue
         wins = sum(1 for t in all_trades if t['pnl_pct'] > 0)
         win_rate = wins / n_trades
-        avg_gain = sum(t['pnl_pct'] for t in all_trades) / n_trades
         avg_hold_sec = sum(t['hold_seconds'] for t in all_trades) / n_trades
-        # FIX 2026-08-18 COPX_LONG -143%: sum(pnl_pct) can exceed -100% for LONG
-        # (additive) while equity cannot. Use compounded gain and dollar gain;
-        # keep sum as diagnostic only. See BACKTEST_BIBLE §2 avg-trade-deployed-2000-v1.
-        total_pnl_pct_sum = sum(t['pnl_pct'] for t in all_trades)
-        # compounded: product(1+p/100)-1, capped for LONG at -100%
+        # 2026-10-27 ACCOUNTING FIX. The old code multiplied (1+p/100) across
+        # every trade and called it `total_pnl_pct`. Those percentages come from
+        # positions of wildly different size and are not a reinvested equity
+        # curve, so compounding them is meaningless: it printed BEAMXUSDT
+        # +6116% and MOVEUSDT +521319% while the broker showed the account
+        # LOSING. The headline is now the size-weighted NET return on the
+        # capital actually deployed -- net $ over summed cost basis -- which is
+        # the only figure that matches the broker. Unweighted/compounded forms
+        # are kept, explicitly labelled, as diagnostics only.
+        weight_total = sum(float(t.get('notional_usd') or 0.0) for t in all_trades)
+        net_usd = sum(float(t['pnl_pct']) / 100.0 * float(t.get('notional_usd') or 0.0) for t in all_trades)
+        gross_usd = sum(float(t.get('gross_pnl_pct', t['pnl_pct'])) / 100.0 * float(t.get('notional_usd') or 0.0) for t in all_trades)
+        fees_usd = gross_usd - net_usd
+        if weight_total > 0:
+            total_pnl_pct = 100.0 * net_usd / weight_total
+            avg_gain = total_pnl_pct  # size-weighted mean net return per unit deployed
+        else:
+            total_pnl_pct = sum(t['pnl_pct'] for t in all_trades) / n_trades
+            avg_gain = total_pnl_pct
+        avg_gain_unweighted = sum(t['pnl_pct'] for t in all_trades) / n_trades
+        total_pnl_pct_diagnostic_sum = sum(t['pnl_pct'] for t in all_trades)
         compounded = 1.0
         for t in all_trades:
             compounded *= (1.0 + float(t['pnl_pct']) / 100.0)
-        total_pnl_pct_compounded = (compounded - 1.0) * 100.0
-        # for LONG, floor at -100% equity; SHORT can exceed -100% not modelled here
-        total_pnl_pct = max(-100.0, total_pnl_pct_compounded) if any(k.endswith('_LONG') for k in [key]) else total_pnl_pct_compounded
-        # preserve diagnostic sum for audit
-        total_pnl_pct_diagnostic_sum = total_pnl_pct_sum
+        total_pnl_pct_compounded_diagnostic = (compounded - 1.0) * 100.0
         best_trade = max(t['pnl_pct'] for t in all_trades)
         worst_trade = min(t['pnl_pct'] for t in all_trades)
-        if symbol not in result or result[symbol].get('trade_count', 0) < n_trades:
-            multiplier = _perf_compute_multiplier(win_rate, avg_gain, n_trades)
-            tier = _perf_compute_tier(win_rate, avg_gain, n_trades)
-            now_iso = datetime.now(timezone.utc).isoformat()
-            result[symbol] = {'symbol': symbol, 'trade_count': n_trades, 'win_rate': round(win_rate, 4), 'avg_gain_pct': round(avg_gain, 4), 'total_pnl_pct': round(total_pnl_pct, 2), 'total_pnl_pct_compounded': round(total_pnl_pct, 2), 'total_pnl_pct_sum_diagnostic': round(total_pnl_pct_diagnostic_sum, 2), 'best_trade_pct': round(best_trade, 2), 'worst_trade_pct': round(worst_trade, 2), 'avg_hold_hours': round(avg_hold_sec / 3600, 2), 'accounts': list(data['accounts']), 'raw_multiplier': round(multiplier, 4), 'order_multiplier': round(multiplier, 3), 'tier': tier, 'set_at': now_iso, 'updated_at': now_iso}
+        now_iso = datetime.now(timezone.utc).isoformat()
+        multiplier = _perf_compute_multiplier(win_rate, avg_gain, n_trades)
+        tier = _perf_compute_tier(win_rate, avg_gain, n_trades)
+        entry = {'symbol': symbol, 'side': data.get('side') or key.rsplit('_', 1)[-1], 'sym_side': key, 'trade_count': n_trades, 'win_rate': round(win_rate, 4), 'avg_gain_pct': round(avg_gain, 4), 'avg_gain_pct_unweighted_diagnostic': round(avg_gain_unweighted, 4), 'total_pnl_pct': round(total_pnl_pct, 4), 'net_usd': round(net_usd, 4), 'gross_usd': round(gross_usd, 4), 'fees_usd': round(fees_usd, 4), 'deployed_usd': round(weight_total, 2), 'fee_round_trip_pct': round(_perf_fee_round_trip_pct(), 5), 'total_pnl_pct_compounded_diagnostic': round(total_pnl_pct_compounded_diagnostic, 2), 'total_pnl_pct_sum_diagnostic': round(total_pnl_pct_diagnostic_sum, 2), 'best_trade_pct': round(best_trade, 2), 'worst_trade_pct': round(worst_trade, 2), 'avg_hold_hours': round(avg_hold_sec / 3600, 2), 'accounts': list(data['accounts']), 'raw_multiplier': round(multiplier, 4), 'order_multiplier': round(multiplier, 3), 'tier': tier, 'set_at': now_iso, 'updated_at': now_iso}
+        # Per-sym_side is the honest unit: LONG and SHORT of one symbol are
+        # different strategies and used to collide under the bare symbol key,
+        # whichever side had more trades silently setting the other's size.
+        result[key] = entry
+        per_symbol.setdefault(symbol, []).append(entry)
+    # Symbol-level entries (legacy API: get_performance_multiplier(symbol)) are
+    # rebuilt from BOTH sides, weighted by capital deployed, not by trade count.
+    for symbol, entries in per_symbol.items():
+        if symbol in result:
+            continue
+        dep = sum(float(e.get('deployed_usd') or 0.0) for e in entries)
+        net = sum(float(e.get('net_usd') or 0.0) for e in entries)
+        n = sum(int(e.get('trade_count') or 0) for e in entries)
+        if dep > 0:
+            blended_gain = 100.0 * net / dep
+        else:
+            blended_gain = sum(float(e['avg_gain_pct']) for e in entries) / max(1, len(entries))
+        blended_wr = sum(float(e['win_rate']) * int(e['trade_count']) for e in entries) / max(1, n)
+        mult = _perf_compute_multiplier(blended_wr, blended_gain, n)
+        base = dict(max(entries, key=lambda e: int(e.get('trade_count') or 0)))
+        base.update({'symbol': symbol, 'sym_side': f'{symbol}_BOTH', 'side': 'BOTH', 'trade_count': n, 'win_rate': round(blended_wr, 4), 'avg_gain_pct': round(blended_gain, 4), 'total_pnl_pct': round(blended_gain, 4), 'net_usd': round(net, 4), 'deployed_usd': round(dep, 2), 'raw_multiplier': round(mult, 4), 'order_multiplier': round(mult, 3), 'tier': _perf_compute_tier(blended_wr, blended_gain, n), 'sides_blended': [e['sym_side'] for e in entries]})
+        result[symbol] = base
     return result
 
 def refresh_cache() -> Dict[str, dict]:

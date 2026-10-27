@@ -1,8 +1,8 @@
 {
- "at": "2026-10-27T16:46:00Z",
+ "at": "2026-10-27T17:00:47Z",
  "s1": {
   "host": "niels",
-  "now": 1793119551.731317,
+  "now": 1793120442.1949556,
   "merge_crypto": {
    "n": 12,
    "max_lag_min": 0.0,
@@ -11,32 +11,46 @@
    "dead": []
   },
   "merge_stocks": {
-   "n": 11,
-   "max_lag_min": 0.0,
-   "median_lag_min": 0.0,
-   "worst": "A",
-   "dead": []
+   "n": 0,
+   "max_lag_min": null,
+   "median_lag_min": null,
+   "worst": null,
+   "dead": [
+    "A",
+    "AAPL",
+    "ABBV",
+    "ABT",
+    "ACN",
+    "ADBE",
+    "ADP",
+    "AEM",
+    "AG",
+    "AGCO",
+    "AGI"
+   ]
   },
   "npz_legacy_crypto": [],
-  "append_log_age_min": 4.4,
-  "append_last_secs": 385.4,
-  "append_last_stats": "'appended': 251, 'created': 0, 'up_to_date': 4520, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
-  "npz_loop_pids": 1,
+  "append_log_age_min": 8.1,
+  "append_last_secs": 453.6,
+  "append_last_stats": "'appended': 241, 'created': 0, 'up_to_date': 4530, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
+  "npz_loop_pids": 0,
   "npz_cycle_last_utc": "16:36:50",
   "npz_cycle_installed": 41,
   "npz_cycle_not_ready": 0,
   "npz_cycle_no_new": 1,
-  "npz_loop_has_settle": true,
-  "sched_tick_age_min": 1.8,
-  "sched_launched": 0,
+  "npz_loop_has_settle": false,
+  "sched_tick_age_min": 2.7,
+  "sched_launched": 2,
   "archive_n": 202,
   "archive_mb": 2461.8,
-  "archive_newest_min": 2003.4,
+  "archive_newest_min": 2018.3,
   "_via": "s1-pub"
  },
- "red": [],
- "warn": [
-  "L5 newest archived board NPZ is 2003 min old \u2014 publishes may not be recording"
+ "red": [
+  "L3 npz append loop is not running (the */15 watchdog should relaunch it)"
  ],
- "ok": true
+ "warn": [
+  "L5 newest archived board NPZ is 2018 min old \u2014 publishes may not be recording"
+ ],
+ "ok": false
 }

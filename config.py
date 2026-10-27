@@ -23,6 +23,13 @@ from weakref import WeakSet
 import aiofiles
 import certifi
 
+try:
+    import fee_model as _fee_model
+
+    _MEASURED_CRYPTO_ROUND_TRIP_PCT = _fee_model.round_trip_pct("crypto")
+except Exception:
+    _MEASURED_CRYPTO_ROUND_TRIP_PCT = 0.0529
+
 
 @dataclass(eq=False)
 class Config:
@@ -7539,7 +7546,13 @@ class Config:
         0  # USER 2026-10-10: immediate DC-break reentry. Was 8 per 2026-04-08 sweep; sheet rows re-promote if 0 measures worse.  # PORTED from TradierConfig 2026-08-17
     )
     CRYPTO_ROUND_TRIP_COMMISSION_PCT: float = (
-        0.0  # tradier commission-free; crypto 0.08% only  # PORTED from TradierConfig 2026-08-17
+        _MEASURED_CRYPTO_ROUND_TRIP_PCT  # 2026-10-27: was 0.0 — a stale TradierConfig port that told the LIVE crypto engine trades are free while the boards charged 0.04 and the broker charged 0.0529 (measured, fee_model.py). Fee-free live gain math is why sub-fee reopens were allowed.
+    )
+    MIN_EDGE_OVER_FEE_ENABLED: bool = (
+        True  # 2026-10-27: refuse an OPEN whose own technical target cannot pay its round-trip commission. Arithmetic, not a strategy opinion. Kill switch: set False.
+    )
+    MIN_EDGE_OVER_FEE_MULT: float = (
+        1.0  # required target distance as a multiple of CRYPTO_ROUND_TRIP_COMMISSION_PCT. 1.0 = must merely break even on fees; the sweep tunes it upward per sym_side.
     )
     DC_BREAK_GR_MULT_BREAKOUT: float = (
         0.1  # Phase 1: tiny entry on DC break  # PORTED from TradierConfig 2026-08-17
