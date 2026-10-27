@@ -1,0 +1,539 @@
+#!/usr/bin/env python3
+"""fleet_dispatch — the ONE launcher of 30D boards across the fleet (USER 2026-10-27 rewrite of the launch path
+of tools/v15_fleet_scheduler.py: "it can not dispatch 4 symbols to 4 servers reliably").
+
+Design (every rule below is the user's 2026-10-27 order):
+  * Runs on BOTH s1 and s2 (cron every minute, flock). Sticky failover by heartbeat: s1 acts unless s2 is
+    acting with a fresh heartbeat; s2 acts only when s1's heartbeat is stale/unreachable or s1 stands by.
+    Correctness never depends on the election: the worker-side launch (tools/fleet_launch.sh) recounts
+    slots and refuses duplicates inside /tmp/v15_fleet_launch_v2.lock.
+  * Servers are DISCOVERED every tick by probing the private net (FLEET_SCAN, default 10.0.0.3-10.0.0.20).
+    A deleted server simply stops answering (its sym_sides fall back to pending); a new one that answers
+    with ~/binance-sandbox/v15_pilot.py starts receiving work on the same tick. Nothing to register.
+  * Home cat_sides: s1 CRYPTO_SHORT, s2 CRYPTO_LONG, s5 STOCKS_LONG, s6 STOCKS_SHORT. Priority when a server
+    must take foreign work: CRYPTO_SHORT, CRYPTO_LONG, STOCKS_SHORT, STOCKS_LONG. A server whose home cat_side
+    has no pending sym_side takes the highest-priority cat_side that still has work. A cat_side whose home
+    server is gone or cannot admit is ORPHANED and gets FLEET_ORPHAN_SLOTS slot(s) on every other server.
+  * NPZ goes WITH the launch: right before each start the NPZ owner (s1 crypto, s5 stocks; the target itself
+    when the owner is unreachable) appends the latest bar, and the file is relayed md5-verified to the target
+    (never regressing its tail). A failed refresh launches with what the target has (USER 2026-10-13).
+  * Done = final_gain (FLEET_DONE_RULE=complete also requires v15_progress_board.is_complete(), the harvester's
+    rule) AND the board's NPZ is within 48 bars of the current tail. Everything else tradeable is pending.
+Outputs: data/fleet_dispatch/status.json (last tick) + one JSON line per tick in logs/fleet_dispatch.jsonl.
+"""
+import argparse
+import concurrent.futures as cf
+import fcntl
+import hashlib
+import ipaddress
+import json
+import os
+import pathlib
+import shlex
+import socket
+import subprocess
+import sys
+import threading
+import time
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+TOOLS = ROOT / "tools"
+STATE_DIR = ROOT / "data" / "fleet_dispatch"
+LOG = ROOT / "logs" / "fleet_dispatch.jsonl"
+HB = pathlib.Path.home() / "fleet_dispatch" / "heartbeat.json"
+PY = "/home/niels/.conda/envs/binance_env_mac/bin/python"
+CAT_PRIORITY = ("CRYPTO_SHORT", "CRYPTO_LONG", "STOCKS_SHORT", "STOCKS_LONG")
+HOMES = {"s1": "CRYPTO_SHORT", "s2": "CRYPTO_LONG", "s5": "STOCKS_LONG", "s6": "STOCKS_SHORT"}
+NPZ_OWNER = {"crypto": "s1", "stocks": "s5"}
+LEADERS = {"s1": "10.0.0.3", "s2": "10.0.0.4"}
+BAR_S = 900
+SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5", "-o", "StrictHostKeyChecking=accept-new",
+       "-o", "ServerAliveInterval=10", "-o", "ServerAliveCountMax=3"]
+
+
+def env_int(name, default):
+    try:
+        return int(os.environ.get(name, default))
+    except ValueError:
+        return default
+
+
+SLOTS = env_int("FLEET_SLOTS", 4)
+WORKERS = env_int("FLEET_WORKERS", 7)
+ORPHAN_SLOTS = env_int("FLEET_ORPHAN_SLOTS", 1)
+MEM_MIN_MB = env_int("FLEET_MEM_MIN_MB", 6500)
+DISK_MIN_MB = env_int("FLEET_DISK_MIN_MB", 3000)
+LAUNCH_GAP_S = env_int("FLEET_LAUNCH_GAP_S", 120)
+FRESH_BARS = env_int("FLEET_FRESH_BARS", 48)
+MAX_ATTEMPTS = env_int("FLEET_MAX_ATTEMPTS", 2)
+RETRY_S = env_int("FLEET_RETRY_S", 1800)
+HB_STALE_S = env_int("FLEET_HB_STALE_S", 180)
+ORPHAN_AFTER_S = env_int("FLEET_ORPHAN_AFTER_S", 600)
+NPZ_TIMEOUT_S = env_int("FLEET_NPZ_TIMEOUT_S", 240)
+# "final" (default): a board with final_gain is done. "complete": also require v15_progress_board.is_complete().
+# 2026-10-27 measured: finished+published boards read 2775/3965 under is_complete() (C-SUPERSEDE row loss under
+# diagnosis), so "complete" would relaunch every finished board in a resume loop and produce no new results.
+DONE_RULE = os.environ.get("FLEET_DONE_RULE", "final")
+
+
+def cat_of(symside):
+    sym, _, side = symside.rpartition("_")
+    venue = "CRYPTO" if sym.endswith(("USDT", "USDC")) else "STOCKS"
+    return f"{venue}_{side}"
+
+
+def log_line(rec):
+    LOG.parent.mkdir(parents=True, exist_ok=True)
+    with open(LOG, "a") as f:
+        f.write(json.dumps(rec, default=str) + "\n")
+
+
+def run(cmd, timeout, stdin=None, inp=None):
+    try:
+        r = subprocess.run(cmd, stdin=stdin, input=inp, capture_output=True, timeout=timeout)
+        return r.returncode, r.stdout.decode("utf8", "replace"), r.stderr.decode("utf8", "replace")
+    except subprocess.TimeoutExpired:
+        return 124, "", "timeout"
+    except OSError as error:
+        return 127, "", str(error)
+
+
+def self_ips():
+    rc, out, _ = run(["hostname", "-I"], 5)
+    return set(out.split()) if rc == 0 else set()
+
+
+class Host:
+    def __init__(self, ip, local):
+        self.ip, self.local = ip, local
+
+    def sh(self, script, timeout, inp=None):
+        """Run a bash script on the host (locally when it is this machine)."""
+        if self.local:
+            return run(["bash", "-c", script], timeout, inp=inp)
+        return run(SSH + [f"niels@{self.ip}", script], timeout, inp=inp)
+
+    def feed(self, interpreter_cmd, path, timeout):
+        with open(path, "rb") as fh:
+            if self.local:
+                return run(["bash", "-c", interpreter_cmd], timeout, stdin=fh)
+            return run(SSH + [f"niels@{self.ip}", interpreter_cmd], timeout, stdin=fh)
+
+
+def probe(host, syms):
+    arg = shlex.quote(json.dumps({"syms": sorted(syms)}))
+    rc, out, err = host.feed(f"{PY} - {arg} 2>/dev/null || python3 - {arg}", TOOLS / "fleet_probe.py", 60)
+    if rc != 0 or not out.strip():
+        return None
+    try:
+        data = json.loads(out.strip().splitlines()[-1])
+    except ValueError:
+        return None
+    if data.get("error") or not data.get("repo"):
+        return None
+    data["ip"] = host.ip
+    return data
+
+
+def discover(scan, syms):
+    lo, _, hi = scan.partition("-")
+    lo_ip, hi_ip = ipaddress.ip_address(lo), ipaddress.ip_address(hi or lo)
+    mine = self_ips()
+    ips = [str(ipaddress.ip_address(i)) for i in range(int(lo_ip), int(hi_ip) + 1)]
+    hosts = {}
+    with cf.ThreadPoolExecutor(max_workers=len(ips)) as pool:
+        futs = {pool.submit(probe, Host(ip, ip in mine), syms): ip for ip in ips}
+        for fut in cf.as_completed(futs):
+            data = fut.result()
+            if data:
+                name = data["host"]
+                if name in hosts:
+                    continue
+                hosts[name] = (Host(futs[fut], futs[fut] in mine), data)
+    return hosts
+
+
+# ------------------------------------------------------------------ leader election (sticky failover)
+def read_peer_hb(peer_ip):
+    rc, out, _ = Host(peer_ip, False).sh(f"cat {shlex.quote(str(HB))} 2>/dev/null", 15)
+    if rc != 0:
+        return None
+    try:
+        return json.loads(out)
+    except ValueError:
+        return None
+
+
+def write_hb(me, acting, note=""):
+    HB.parent.mkdir(parents=True, exist_ok=True)
+    tmp = HB.with_suffix(".tmp")
+    tmp.write_text(json.dumps({"host": me, "ts": time.time(), "acting": acting, "note": note}))
+    os.replace(tmp, HB)
+
+
+def should_act(me, now):
+    if me not in LEADERS:
+        return True, "not-a-leader-host-acting-alone"
+    peer = "s2" if me == "s1" else "s1"
+    hb = read_peer_hb(LEADERS[peer])
+    fresh = bool(hb) and now - float(hb.get("ts") or 0) < HB_STALE_S
+    if fresh and hb.get("acting"):
+        return False, f"peer {peer} acting (hb {now - float(hb['ts']):.0f}s)"
+    if me == "s1":
+        return True, "s1 primary" + ("" if fresh else " (peer hb stale)")
+    if fresh:
+        return False, "s1 healthy primary"
+    return True, "s1 hb stale/unreachable -> s2 takes over"
+
+
+class Beat(threading.Thread):
+    def __init__(self, me):
+        super().__init__(daemon=True)
+        self.me, self.stop = me, threading.Event()
+
+    def run(self):
+        while not self.stop.wait(30):
+            write_hb(self.me, True, "mid-tick")
+
+
+# ------------------------------------------------------------------ universe + order
+def load_snapshot(fleet, me):
+    """data/v15_best_first.json from S1 (publisher), else the local copy while < 6 h old."""
+    local = ROOT / "data" / "v15_best_first.json"
+    cache = STATE_DIR / "best_first_cache.json"
+    candidates = []
+    if me != "s1":
+        s1 = fleet["s1"][0] if "s1" in fleet else Host(LEADERS["s1"], False)
+        rc, out, _ = s1.sh("cat ~/binance-sandbox/data/v15_best_first.json", 25)
+        if rc == 0:
+            candidates.append(out)
+    for path in (local, pathlib.Path("/tmp/v15_best_first.json")):
+        try:
+            candidates.append(path.read_text())
+        except OSError:
+            pass
+    src = None
+    for text in candidates:
+        try:
+            cand = json.loads(text)
+        except ValueError:
+            continue
+        if isinstance(cand, dict) and (src is None or float(cand.get("generated_at") or 0) > float(src.get("generated_at") or 0)):
+            src = cand
+    if isinstance(src, dict) and time.time() - float(src.get("generated_at") or 0) < 21600:
+        STATE_DIR.mkdir(parents=True, exist_ok=True)
+        cache.write_text(json.dumps(src))
+        return src
+    try:
+        src = json.loads(cache.read_text())
+        if time.time() - float(src.get("generated_at") or 0) < 21600:
+            return src
+    except (OSError, ValueError):
+        pass
+    return None
+
+
+def ordered_universe(snap):
+    gains = snap.get("gains") or {}
+
+    def key(ss):
+        g = gains.get(ss)
+        return (0, -float(g), ss) if g is not None else (1, 0.0, ss)
+    out = {c: [] for c in CAT_PRIORITY}
+    for ss in sorted({str(s).upper() for s in snap.get("allowed") or []}, key=key):
+        if ss.endswith(("_LONG", "_SHORT")):
+            out[cat_of(ss)].append(ss)
+    return out
+
+
+# ------------------------------------------------------------------ pure planning (unit-tested)
+def pending_by_cat(universe, fleet_data, now):
+    """-> ({cat: [ss...]}, {ss: host_with_partial}, {ss: reason_skipped}) — pure function of the probes."""
+    running = {ss for d in fleet_data.values() for ss in d.get("running", {})}
+    tails = {}
+    for d in fleet_data.values():
+        for sym, t in (d.get("tails") or {}).items():
+            tails[sym] = max(tails.get(sym, 0), int(t or 0))
+    pend, partial, skipped = {}, {}, {}
+    for cat, sides in universe.items():
+        pend[cat] = []
+        for ss in sides:
+            if ss in running:
+                continue
+            sym = ss.rsplit("_", 1)[0]
+            tail = tails.get(sym, 0)
+            done, part_host, part_rows = False, None, 0
+            for name, d in fleet_data.items():
+                p = (d.get("progress") or {}).get(ss)
+                if not p:
+                    continue
+                finished = (p.get("fg") or p.get("zero")) and (DONE_RULE != "complete" or p.get("complete") is not False)
+                fresh = tail == 0 or p.get("ts", 0) == 0 or (tail - int(p.get("ts") or 0)) / BAR_S < FRESH_BARS
+                if finished and fresh:
+                    done = True
+                    break
+                if not finished and int(p.get("rows") or 0) > part_rows:
+                    part_host, part_rows = name, int(p.get("rows") or 0)
+            if done:
+                continue
+            last = None
+            for d in fleet_data.values():
+                rec = (d.get("launches") or {}).get(ss)
+                if rec and (last is None or rec.get("ts", 0) > last.get("ts", 0)):
+                    last = rec
+            if last:
+                age = now - float(last.get("ts") or 0)
+                rtail = int(last.get("tail") or 0)
+                advanced = tail and rtail and (tail - rtail) / BAR_S >= FRESH_BARS
+                if age < RETRY_S and not advanced:
+                    skipped[ss] = f"cooldown {int(age)}s after launch"
+                    continue
+                if int(last.get("n") or 0) >= MAX_ATTEMPTS and not advanced:
+                    skipped[ss] = f"{last.get('n')} attempts on tail {rtail}; waits {FRESH_BARS} new bars"
+                    continue
+            imp = max((int((d.get("impossible") or {}).get(ss) or 0) for d in fleet_data.values()), default=0)
+            if imp and now - imp < 86400 and (tail == 0 or tail <= imp):
+                skipped[ss] = "IMPOSSIBLE <24h, no new bar"
+                continue
+            pend[cat].append(ss)
+            if part_host:
+                partial[ss] = part_host
+    return pend, partial, skipped
+
+
+def admission(d, now):
+    """-> (free_slots, reason). One launch per host per tick; memory/disk/spacing gates."""
+    nrun = len(d.get("running") or {})
+    if nrun >= SLOTS:
+        return 0, f"full {nrun}/{SLOTS}"
+    if int(d.get("disk_free_mb") or 0) < DISK_MIN_MB:
+        return 0, f"disk {d.get('disk_free_mb')}MB < {DISK_MIN_MB}"
+    if int(d.get("mem_avail_mb") or 0) < MEM_MIN_MB:
+        return 0, f"mem {d.get('mem_avail_mb')}MB < {MEM_MIN_MB}"
+    last = max((float(r.get("ts") or 0) for r in (d.get("launches") or {}).values()), default=0)
+    if now - last < LAUNCH_GAP_S:
+        return 0, f"spacing {int(now - last)}s < {LAUNCH_GAP_S}"
+    if not str(d.get("pdir") or "").startswith("/home/niels/v15_run"):
+        return 0, "no round pointer"
+    return 1, "ok"
+
+
+def plan(pend, partial, fleet_data, now, orphan_since):
+    """-> ([(host, ss, why)], {host: reason}, orphans). Pure."""
+    homes_present = {HOMES[n]: n for n in fleet_data if n in HOMES}
+    adm = {n: admission(d, now) for n, d in fleet_data.items()}
+    orphans = set()
+    for cat in CAT_PRIORITY:
+        home = homes_present.get(cat)
+        blocked = home is None or adm[home][0] == 0 and not adm[home][1].startswith(("full", "spacing"))
+        if blocked and now - orphan_since.get(cat, now) >= ORPHAN_AFTER_S:
+            orphans.add(cat)
+    claimed, out, why_not = set(), [], {}
+
+    def take(host, cat):
+        sides = [s for s in pend.get(cat, []) if s not in claimed]
+        mine = [s for s in sides if partial.get(s) == host]
+        pick = (mine or sides or [None])[0]
+        if pick:
+            claimed.add(pick)
+        return pick
+
+    order = sorted(fleet_data, key=lambda n: (CAT_PRIORITY.index(HOMES[n]) if n in HOMES else 9, n))
+    for name in order:
+        free, reason = adm[name]
+        if not free:
+            why_not[name] = reason
+            continue
+        home = HOMES.get(name)
+        running = list((fleet_data[name].get("running") or {}).keys())
+        foreign = sum(1 for s in running if cat_of(s) != home)
+        pick, why = None, ""
+        live_orphans = [c for c in CAT_PRIORITY if c in orphans and c != home and any(s not in claimed for s in pend.get(c, []))]
+        if live_orphans and foreign < ORPHAN_SLOTS:
+            pick, why = take(name, live_orphans[0]), f"orphan {live_orphans[0]}"
+        if not pick and home and any(s not in claimed for s in pend.get(home, [])):
+            pick, why = take(name, home), f"home {home}"
+        if not pick:
+            for cat in CAT_PRIORITY:
+                if cat != home and any(s not in claimed for s in pend.get(cat, [])):
+                    pick, why = take(name, cat), f"overflow {cat} (home {home or 'none'} exhausted)"
+                    break
+        if pick:
+            out.append((name, pick, why))
+        else:
+            why_not[name] = "no pending work anywhere"
+    return out, why_not, orphans
+
+
+# ------------------------------------------------------------------ execution
+def npz_ship(fleet, target, ss):
+    """Refresh the symbol's NPZ to the latest bar on its owner and relay it md5-verified to the target."""
+    sym = ss.rsplit("_", 1)[0]
+    venue = "crypto" if sym.endswith(("USDT", "USDC")) else "stocks"
+    owner = NPZ_OWNER[venue] if NPZ_OWNER[venue] in fleet else target
+    oh, th = fleet[owner][0], fleet[target][0]
+    rel = f"backtest_v8/indicators/{sym}.npz"
+    refresh = (f"cd ~/binance-sandbox && timeout {NPZ_TIMEOUT_S - 10} {PY} -u tools/npz_bar_refresh.py "
+               f"--symbols {sym} --mode {venue} --workers 1 >> /tmp/fleet_npz_refresh.log 2>&1; "
+               f"md5sum {rel} | cut -c1-32")
+    rc, out, err = oh.sh(refresh, NPZ_TIMEOUT_S)
+    md5 = out.strip().splitlines()[-1] if out.strip() else ""
+    if len(md5) != 32:
+        return {"owner": owner, "ok": False, "why": f"refresh rc={rc} {err[-120:]}"}
+    if owner == target:
+        return {"owner": owner, "ok": True, "md5": md5, "pushed": False}
+    try:
+        if oh.local:
+            blob, rc = (pathlib.Path.home() / "binance-sandbox" / rel).read_bytes(), 0
+        else:
+            r = subprocess.run(SSH + [f"niels@{oh.ip}", f"cat ~/binance-sandbox/{rel}"], capture_output=True, timeout=120)
+            blob, rc = r.stdout, r.returncode
+    except (OSError, subprocess.TimeoutExpired):
+        blob, rc = b"", 1
+    if rc != 0 or hashlib.md5(blob).hexdigest() != md5:
+        return {"owner": owner, "ok": False, "why": "relay read/md5 mismatch"}
+    install = (f"cd ~/binance-sandbox && T={rel}.fleet_tmp && cat > $T && [ \"$(md5sum $T | cut -c1-32)\" = {md5} ] && "
+               f"{PY} -c \"import numpy as np,sys,os;a=np.load(sys.argv[1],mmap_mode='r')['timestamps'];"
+               f"b=np.load(sys.argv[2],mmap_mode='r')['timestamps'] if os.path.exists(sys.argv[2]) else [0];"
+               f"sys.exit(0 if float(a[-1])>=float(b[-1]) else 3)\" $T {rel} && mv -f $T {rel} && echo INSTALLED "
+               f"|| {{ rc=$?; rm -f $T; echo REFUSED-$rc; }}")
+    rc, out, err = th.sh(install, 120, inp=blob)
+    return {"owner": owner, "ok": "INSTALLED" in out, "md5": md5, "pushed": True, "install": out.strip()[-60:]}
+
+
+def launch(fleet, target, ss, tail, me):
+    t0 = time.time()
+    npz = npz_ship(fleet, target, ss)
+    args = " ".join(shlex.quote(str(a)) for a in (ss, WORKERS, SLOTS, tail, me))
+    rc, out, err = fleet[target][0].feed(f"bash -s -- {args}", TOOLS / "fleet_launch.sh", 60)
+    result = (out.strip().splitlines() or [f"ERROR-rc{rc}-{err[-120:]}"])[-1]
+    return {"host": target, "ss": ss, "npz": npz, "result": result, "s": round(time.time() - t0, 1)}
+
+
+def settings_history(fleet, state):
+    """USER 2026-10-13: record every freshly published board's settings to per_sym_history (detached, flocked)."""
+    seen = state.setdefault("hist_seen", {})
+    fresh = []
+    for name, (_, d) in fleet.items():
+        for ss, p in (d.get("progress") or {}).items():
+            if p.get("fg") and p.get("complete") and p.get("mtime", 0) > seen.get(ss, 0):
+                seen[ss] = p["mtime"]
+                fresh.append(ss)
+    tool = TOOLS / "v15_settings_history.py"
+    if fresh and tool.exists():
+        hosts = ",".join("127.0.0.1" if h.local else h.ip for h, _ in fleet.values())
+        subprocess.Popen(["setsid", "flock", "-n", "/tmp/v15_settings_history.lock", sys.executable, str(tool),
+                          "--window-h", "6", "--hosts", hosts], cwd=str(ROOT), stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL, start_new_session=True)
+    return fresh
+
+
+def tick(args):
+    now = time.time()
+    me = socket.gethostname().split(".")[0]
+    rec = {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now)), "me": me, "dry_run": args.dry_run}
+    act, why = (True, "forced") if args.force_act else should_act(me, now)
+    rec["leader"] = why
+    if not act:
+        write_hb(me, False, why)
+        rec["acting"] = False
+        log_line(rec)
+        return rec
+    write_hb(me, True, why)
+    beat = Beat(me)
+    beat.start()
+    try:
+        STATE_DIR.mkdir(parents=True, exist_ok=True)
+        state_path = STATE_DIR / f"state_{me}.json"
+        try:
+            state = json.loads(state_path.read_text())
+        except (OSError, ValueError):
+            state = {}
+        prev_snap = state.get("universe_syms") or []
+        fleet = discover(args.scan, set(prev_snap))
+        snap = load_snapshot(fleet, me)
+        if not snap:
+            rec["error"] = "no tradeable snapshot (S1 publisher dead and local cache > 6 h)"
+            log_line(rec)
+            return rec
+        universe = ordered_universe(snap)
+        syms = sorted({ss.rsplit("_", 1)[0] for v in universe.values() for ss in v})
+        if set(syms) - set(prev_snap):
+            state["universe_syms"] = syms
+            fleet = discover(args.scan, set(syms))
+        state["universe_syms"] = syms
+        data = {n: d for n, (_, d) in fleet.items()}
+        rec["hosts"] = {n: {"ip": d["ip"], "home": HOMES.get(n), "running": sorted(d.get("running") or {}),
+                            "mem_avail_mb": d.get("mem_avail_mb"), "disk_free_mb": d.get("disk_free_mb"),
+                            "load1": round(float(d.get("load1") or 0), 1)} for n, d in sorted(data.items())}
+        known = set(state.get("known_hosts") or [])
+        rec["hosts_added"] = sorted(set(data) - known)
+        rec["hosts_gone"] = sorted(known - set(data))
+        state["known_hosts"] = sorted(data)
+        pend, partial, skipped = pending_by_cat(universe, data, now)
+        orphan_since = state.setdefault("orphan_since", {})
+        homes_present = {HOMES[n]: n for n in data if n in HOMES}
+        for cat in CAT_PRIORITY:
+            home = homes_present.get(cat)
+            ok = home is not None and (admission(data[home], now)[0] or admission(data[home], now)[1].startswith(("full", "spacing")))
+            if ok:
+                orphan_since.pop(cat, None)
+            else:
+                orphan_since.setdefault(cat, now)
+        picks, why_not, orphans = plan(pend, partial, data, now, orphan_since)
+        rec["pending"] = {c: len(v) for c, v in pend.items()}
+        rec["universe"] = {c: len(v) for c, v in universe.items()}
+        rec["running"] = sum(len(d.get("running") or {}) for d in data.values())
+        rec["orphans"] = sorted(orphans)
+        rec["idle_why"] = why_not
+        rec["skipped_n"] = len(skipped)
+        rec["plan"] = [{"host": h, "ss": s, "why": w} for h, s, w in picks]
+        tails = {}
+        for d in data.values():
+            for sym, t in (d.get("tails") or {}).items():
+                tails[sym] = max(tails.get(sym, 0), int(t or 0))
+        if picks and not args.dry_run:
+            with cf.ThreadPoolExecutor(max_workers=len(picks)) as pool:
+                futs = [pool.submit(launch, fleet, h, s, tails.get(s.rsplit("_", 1)[0], 0), me) for h, s, _ in picks]
+                rec["launches"] = [f.result() for f in futs]
+            if any(str(x["result"]).startswith("LAUNCHED") for x in rec["launches"]):
+                state["last_launch"] = now
+        if not args.dry_run:
+            rec["settings_history"] = settings_history(fleet, state)[:12]
+        free_cap = sum(1 for n in data if admission(data[n], now)[0])
+        work = sum(rec["pending"].values())
+        idle_s = now - float(state.get("last_launch") or now)
+        if free_cap and work and idle_s > 900:
+            rec["ALARM"] = f"{free_cap} host(s) admit and {work} sym_sides pending but no launch for {int(idle_s)}s"
+        if not work and not rec["running"]:
+            rec["round_state"] = "COMPLETE: no pending, nothing running"
+        state.setdefault("last_launch", now)
+        tmp = state_path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(state))
+        os.replace(tmp, state_path)
+        (STATE_DIR / "status.json").write_text(json.dumps(dict(rec, skipped=skipped, pending_list=pend), indent=1, default=str))
+        log_line(rec)
+        return rec
+    finally:
+        beat.stop.set()
+        write_hb(me, True, "tick done")
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--dry-run", action="store_true", help="probe + plan, launch nothing")
+    ap.add_argument("--force-act", action="store_true", help="skip the leader election (manual runs)")
+    ap.add_argument("--scan", default=os.environ.get("FLEET_SCAN", "10.0.0.3-10.0.0.20"))
+    args = ap.parse_args()
+    lock = open("/tmp/fleet_dispatch.lock", "w")
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        print("another tick running")
+        return
+    rec = tick(args)
+    print(json.dumps({k: rec.get(k) for k in ("ts", "me", "leader", "pending", "running", "plan", "launches", "idle_why", "orphans", "hosts_added", "hosts_gone", "ALARM", "error")}, default=str))
+
+
+if __name__ == "__main__":
+    main()

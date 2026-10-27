@@ -1,0 +1,180 @@
+#!/usr/bin/env python3
+"""fleet_probe — one-shot host census for tools/fleet_dispatch.py (USER 2026-10-27 rewrite).
+
+Runs ON a worker, fed over ssh stdin (`ssh host PY - <json-args> < fleet_probe.py`), so a freshly
+cloned or newly added server needs no deploy step to be seen. Prints ONE JSON object:
+  host, ips, mem_avail_mb, disk_free_mb, ncpu, load1, pdir, repo,
+  running {SS: etime_s}, progress {SS: {fg, complete, ts, rows, mtime}},
+  tails {SYM: last_bar_ts}, launches {SS: record}, impossible {SS: mtime}.
+`complete` uses tools/v15_progress_board.is_complete — the SAME rule the harvester uses, so the
+dispatcher never skips a board the harvester refuses (the 2026-10-27 publish deadlock). Never raises.
+"""
+import glob
+import json
+import os
+import socket
+import subprocess
+import sys
+import time
+
+HOME = os.path.expanduser("~")
+SB = os.path.join(HOME, "binance-sandbox")
+CACHE = "/tmp/fleet_probe_cache.json"
+LAUNCH_DIR = os.path.join(HOME, "fleet_dispatch", "launches")
+PILOT_RE = "^[^ ]*python[^ ]* -u ([^ ]*/)?v15_pilot(_7d|_no_publish_resume)?[.]py --sym-side "
+
+
+def _meminfo():
+    out = {}
+    try:
+        for line in open("/proc/meminfo"):
+            key, _, rest = line.partition(":")
+            out[key] = int(rest.split()[0]) // 1024
+    except (OSError, ValueError, IndexError):
+        pass
+    return out
+
+
+def _running():
+    res = {}
+    try:
+        txt = subprocess.run(["pgrep", "-af", PILOT_RE], capture_output=True, text=True, timeout=10).stdout
+    except Exception:
+        return res
+    for line in txt.splitlines():
+        parts = line.split()
+        if "--sym-side" not in parts or parts.index("--sym-side") + 1 >= len(parts):
+            continue
+        symside = parts[parts.index("--sym-side") + 1]
+        try:
+            etime = int(open("/proc/%s/stat" % parts[0]).read().rsplit(")", 1)[1].split()[19])
+            etime = int(time.time() - (_boot() + etime / os.sysconf("SC_CLK_TCK")))
+        except Exception:
+            etime = 0
+        res[symside] = max(etime, res.get(symside, 0))
+    return res
+
+
+def _boot():
+    for line in open("/proc/stat"):
+        if line.startswith("btime"):
+            return int(line.split()[1])
+    return 0
+
+
+def _complete_fn(pdir):
+    try:
+        os.environ["V15_PROGRESS_DIR"] = pdir
+        sys.path.insert(0, os.path.join(SB, "tools"))
+        import v15_progress_board as board
+        return board.is_complete
+    except Exception:
+        return None
+
+
+def main():
+    args = json.loads(sys.argv[1]) if len(sys.argv) > 1 else {}
+    syms = set(args.get("syms") or [])
+    now = time.time()
+    mem = _meminfo()
+    try:
+        st = os.statvfs(HOME)
+        disk = st.f_bavail * st.f_frsize // (1 << 20)
+    except OSError:
+        disk = 0
+    try:
+        ips = subprocess.run(["hostname", "-I"], capture_output=True, text=True, timeout=5).stdout.split()
+    except Exception:
+        ips = []
+    try:
+        pdir = open(os.path.join(HOME, "v15_current_progress_dir.txt")).readline().strip()
+    except OSError:
+        pdir = ""
+    out = {"host": socket.gethostname().split(".")[0], "ips": ips, "ts": now,
+           "mem_avail_mb": mem.get("MemAvailable", 0), "mem_total_mb": mem.get("MemTotal", 0),
+           "swap_free_mb": mem.get("SwapFree", 0), "disk_free_mb": disk, "ncpu": os.cpu_count() or 0,
+           "load1": os.getloadavg()[0], "pdir": pdir,
+           "repo": os.path.isfile(os.path.join(SB, "v15_pilot.py")),
+           "running": _running(), "progress": {}, "tails": {}, "launches": {}, "impossible": {}}
+    try:
+        cache = json.load(open(CACHE))
+    except (OSError, ValueError):
+        cache = {}
+    new_cache = {}
+    is_complete = None
+    if pdir.startswith(os.path.join(HOME, "v15_run")) and os.path.isdir(pdir):
+        for path in glob.glob(os.path.join(pdir, "*_v14_progress.json")):
+            symside = os.path.basename(path)[:-len("_v14_progress.json")]
+            try:
+                st = os.stat(path)
+            except OSError:
+                continue
+            key = "%s|%d|%d" % (path, st.st_mtime_ns, st.st_size)
+            rec = cache.get(key)
+            if not isinstance(rec, dict):
+                try:
+                    data = json.load(open(path))
+                except (OSError, ValueError):
+                    continue
+                npz_id = data.get("npz_id") if isinstance(data.get("npz_id"), dict) else {}
+                rec = {"fg": data.get("final_gain") is not None,
+                       "ts": int(float(data.get("npz_last_bar_ts") or npz_id.get("ts_last") or 0)),
+                       "rows": len(data.get("done") or {}), "mtime": int(st.st_mtime),
+                       "zero": bool(data.get("zero_trades_diagnostic")), "complete": None}
+                if rec["fg"] or rec["zero"]:
+                    if is_complete is None:
+                        is_complete = _complete_fn(pdir) or False
+                    if is_complete:
+                        try:
+                            rec["complete"] = bool(is_complete(symside))
+                        except Exception:
+                            rec["complete"] = None
+            new_cache[key] = rec
+            out["progress"][symside] = rec
+    ind = os.path.join(SB, "backtest_v8", "indicators")
+    for sym in syms:
+        path = os.path.join(ind, sym + ".npz")
+        try:
+            st = os.stat(path)
+        except OSError:
+            continue
+        key = "%s|%d|%d" % (path, st.st_mtime_ns, st.st_size)
+        tail = cache.get(key)
+        if not isinstance(tail, int):
+            try:
+                import numpy as np
+                ts = np.load(path, mmap_mode="r")["timestamps"]
+                tail = int(float(ts[-1]) / (1000.0 if float(ts[-1]) > 1e11 else 1.0))
+            except Exception:
+                tail = 0
+        new_cache[key] = tail
+        out["tails"][sym] = tail
+    try:
+        tmp = "%s.%d" % (CACHE, os.getpid())
+        json.dump(new_cache, open(tmp, "w"))
+        os.replace(tmp, CACHE)
+    except OSError:
+        pass
+    for path in glob.glob(os.path.join(LAUNCH_DIR, "*.json")):
+        try:
+            out["launches"][os.path.basename(path)[:-5]] = json.load(open(path))
+        except (OSError, ValueError):
+            pass
+    for path in glob.glob(os.path.join(SB, "SPREADSHEETS", "V15_V16_IMPOSSIBLE", "*_*")):
+        name = os.path.basename(path)
+        for side in ("_LONG_", "_SHORT_"):
+            if side in name:
+                symside = name.split(side)[0] + side[:-1]
+                try:
+                    out["impossible"][symside] = max(out["impossible"].get(symside, 0), int(os.path.getmtime(path)))
+                except OSError:
+                    pass
+                break
+    print(json.dumps(out))
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as error:
+        print(json.dumps({"error": "%s: %s" % (type(error).__name__, error)}))

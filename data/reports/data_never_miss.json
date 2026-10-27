@@ -1,14 +1,20 @@
 {
- "generated_utc": "2026-10-27T19:26:48Z",
- "secs": 157.9,
+ "generated_utc": "2026-10-27T19:30:50Z",
+ "secs": 165.7,
  "universe": {
   "crypto": 201,
   "stocks": 223
  },
  "unreachable": {
-  "s1": "JSONDecodeError: Expecting value: line 1 column 1 (char 0) ssh: connect to host 127.0.0.1 port 2201: Connection refused\n"
+  "s1": "JSONDecodeError: Expecting value: line 1 column 1 (char 0) Connection timed out during banner exchange\nConnection to 127.0.0.1 port 2201 timed out\n"
  },
- "healed": {},
+ "healed": {
+  "mac:/Users/niels/Documents/binance": {
+   "files": 3,
+   "rows": 0,
+   "skipped": {}
+  }
+ },
  "kline_breaches": [],
  "unhealable": [
   {
@@ -35,60 +41,60 @@
   {
    "host": "mac",
    "file": "crypto prices",
-   "age_s": -81.3,
+   "age_s": -22.4,
    "max_s": 60,
    "ok": true,
    "files": {
-    "price_cache_1.json": -81.2,
-    "price_cache_2.json": -79.8,
-    "price_cache_3.json": -81.3
+    "price_cache_1.json": -17.7,
+    "price_cache_2.json": 0.1,
+    "price_cache_3.json": -22.4
    }
   },
   {
    "host": "mac",
    "file": "crypto snapshot (market_data_*)",
-   "age_s": -82.8,
+   "age_s": -18.5,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/market_data_NEWEST": -82.8
+    "data/market_data_NEWEST": -18.5
    }
   },
   {
    "host": "mac",
    "file": "crypto latest_market_data",
-   "age_s": -82.8,
+   "age_s": -18.4,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/latest_market_data.json": -82.8
+    "data/latest_market_data.json": -18.4
    }
   },
   {
    "host": "mac",
    "file": "stock indicators",
-   "age_s": -65.8,
+   "age_s": -12.8,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/tradier/tradier_indicators_latest.json": -65.8
+    "data/tradier/tradier_indicators_latest.json": -12.8
    }
   },
   {
    "host": "gw",
    "file": "crypto market_data",
-   "age_s": 1433.6,
+   "age_s": 1668.1,
    "max_s": 300,
    "ok": false,
    "files": {
-    "data/latest_market_data.json": 1433.6
+    "data/latest_market_data.json": 1668.1
    }
   },
   {
    "host": "mac",
    "file": "disk free /Users/niels/Documents/binance",
    "age_s": null,
-   "free_gb": 10.4,
+   "free_gb": 16.7,
    "ok": true
   },
   {

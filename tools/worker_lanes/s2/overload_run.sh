@@ -2,7 +2,17 @@
 # usage: overload_run.sh SS TEMPLATE WORKERS [MAXSIDES]  (runs on worker, cwd anywhere)
 SS=$1; T=$2; W=$3; MAX=${4:-4}
 [[ -e /tmp/v15_preopen_7d.pause ]] && { echo PAUSED-"${SS}"; exit 0; }
-rsync -az --timeout=15 niels@10.0.0.3:binance-sandbox/data/v15_best_first.json /tmp/v15_best_first.json >/dev/null 2>&1 || { echo NO-SNAPSHOT-"${SS}"; exit 0; }
+# 2026-10-27: this used to exit on ANY rsync failure, so a slow or OOM-ing S1 blocked every launch on
+# every worker -- observed live as NO-SNAPSHOT-<SYM> while S1 sat at load 28. Fall back to the local
+# snapshot while it is fresh enough; only refuse when there is no usable ordering at all.
+if ! rsync -az --timeout=15 niels@10.0.0.3:binance-sandbox/data/v15_best_first.json /tmp/v15_best_first.json >/dev/null 2>&1; then
+  _snage=$(( $(date +%s) - $(stat -c %Y /tmp/v15_best_first.json 2>/dev/null || echo 0) ))
+  if [ -s /tmp/v15_best_first.json ] && [ "$_snage" -lt "${V15_BEST_FIRST_MAX_AGE_S:-21600}" ]; then
+    echo "SNAPSHOT-STALE-OK-${SS}-${_snage}s"
+  else
+    echo NO-SNAPSHOT-"${SS}"; exit 0
+  fi
+fi
 /home/niels/.conda/envs/binance_env_mac/bin/python "$HOME/binance-sandbox/tools/v15_best_first.py" --snapshot /tmp/v15_best_first.json --allowed "$SS" || { echo NOT-TRADEABLE-"${SS}"; exit 0; }
 # USER 2026-10-25 global launch lock: scheduler ssh-launches and self-dispatch share
 # /tmp/v15_fleet_launch_v2.lock so the box never exceeds MAXSIDES even when both fire the
