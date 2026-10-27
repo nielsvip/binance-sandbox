@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-27T20:00:00Z",
+ "ts": "2026-10-27T20:11:25Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,10 +27,10 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 226,
-   "open_positions": 19,
-   "unrealised_usd": 0.15,
-   "pos_mismatch": 26,
+   "fills_6h": 230,
+   "open_positions": 20,
+   "unrealised_usd": -0.5,
+   "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -43,10 +43,10 @@
    }
   },
   "men": {
-   "fills_6h": 257,
-   "open_positions": 23,
-   "unrealised_usd": -5.05,
-   "pos_mismatch": 24,
+   "fills_6h": 263,
+   "open_positions": 22,
+   "unrealised_usd": -5.44,
+   "pos_mismatch": 26,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 454,
-   "open_positions": 34,
-   "unrealised_usd": -3.04,
+   "fills_6h": 450,
+   "open_positions": 38,
+   "unrealised_usd": -3.35,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -77,8 +77,8 @@
   "inf": {
    "fills_6h": 35,
    "open_positions": 4,
-   "unrealised_usd": -0.03,
-   "pos_mismatch": 4,
+   "unrealised_usd": -0.04,
+   "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -126,557 +126,376 @@
    "pids": [
     "4314"
    ],
-   "starts_30m": 0,
-   "log_age_s": -40.0
+   "starts_30m": 1,
+   "log_age_s": -38.0
   },
   "men": {
    "pids": [
     "3625"
    ],
-   "starts_30m": 0,
-   "log_age_s": -44.0
+   "starts_30m": 1,
+   "log_age_s": -39.0
   },
   "ang": {
    "pids": [
     "2788"
    ],
-   "starts_30m": 0,
-   "log_age_s": -45.0
+   "starts_30m": 1,
+   "log_age_s": -40.0
   },
   "inf": {
    "pids": [
     "2785"
    ],
-   "starts_30m": 0,
-   "log_age_s": 1373.0
+   "starts_30m": 1,
+   "log_age_s": 2185.0
   },
   "flz": {
    "pids": [
     "2792"
    ],
-   "starts_30m": 0,
-   "log_age_s": -41.0
+   "starts_30m": 1,
+   "log_age_s": -40.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 522.0
+   "log_age_s": 1333.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 597.0
+   "log_age_s": 1409.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-27T20:01:07Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:KAVAUSDT_LONG",
-   "evidence": "positions file amt 400.6 vs fill-ledger amt 847.055"
-  },
-  {
-   "ts": "2026-10-27T20:01:08Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:RAYSOLUSDT_LONG",
-   "evidence": "positions file amt 10.8 vs fill-ledger amt 21.6"
-  },
-  {
-   "ts": "2026-10-27T20:01:08Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:ZROUSDT_LONG",
-   "evidence": "positions file amt 6.6 vs fill-ledger amt 13.5053"
-  },
-  {
-   "ts": "2026-10-27T20:01:08Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:ARUSDT_LONG",
-   "evidence": "positions file amt 2.4 vs fill-ledger amt 21.1083"
-  },
-  {
-   "ts": "2026-10-27T20:01:08Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:ZECUSDC_LONG",
-   "evidence": "positions file amt 0.005 vs fill-ledger amt 0.008269"
-  },
-  {
-   "ts": "2026-10-27T20:01:08Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:INJUSDT_LONG",
-   "evidence": "positions file amt 0.8 vs fill-ledger amt 1.43882"
-  },
-  {
-   "ts": "2026-10-27T20:01:08Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:STXUSDT_LONG",
-   "evidence": "positions file amt 20 vs fill-ledger amt 101.316"
-  },
-  {
-   "ts": "2026-10-27T20:01:08Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:ENAUSDC_LONG",
-   "evidence": "positions file amt 14 vs fill-ledger amt 92.1614"
-  },
-  {
-   "ts": "2026-10-27T20:01:08Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:ARBUSDC_LONG",
-   "evidence": "positions file amt 6 vs fill-ledger amt 54.2103"
-  },
-  {
-   "ts": "2026-10-27T20:01:08Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:BEAMXUSDT_LONG",
-   "evidence": "positions file amt 295 vs fill-ledger amt 122741"
-  },
-  {
-   "ts": "2026-10-27T20:01:08Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:BATUSDT_LONG",
-   "evidence": "positions file amt 0 vs fill-ledger amt 200.8"
-  },
-  {
-   "ts": "2026-10-27T20:01:08Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:EDUUSDT_LONG",
-   "evidence": "positions file amt 0 vs fill-ledger amt 1868.73"
-  },
-  {
-   "ts": "2026-10-27T20:01:08Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:GRASSUSDT_LONG",
-   "evidence": "positions file amt 0 vs fill-ledger amt 20.5833"
-  },
-  {
-   "ts": "2026-10-27T20:01:08Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:KMNOUSDT_LONG",
-   "evidence": "positions file amt 0 vs fill-ledger amt 985.736"
-  },
-  {
-   "ts": "2026-10-27T20:01:08Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:MAGICUSDT_LONG",
-   "evidence": "positions file amt 0 vs fill-ledger amt 1731.79"
-  },
-  {
-   "ts": "2026-10-27T20:01:08Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:RLCUSDT_LONG",
-   "evidence": "positions file amt 0 vs fill-ledger amt 20.2464"
-  },
-  {
-   "ts": "2026-10-27T20:01:08Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:TIAUSDC_LONG",
-   "evidence": "positions file amt 0 vs fill-ledger amt 205.782"
-  },
-  {
-   "ts": "2026-10-27T20:01:08Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:BEATUSDT_SHORT",
-   "evidence": "positions file amt 274 vs fill-ledger amt 583.094"
-  },
-  {
-   "ts": "2026-10-27T20:01:08Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:1000LUNCUSDT_SHORT",
-   "evidence": "positions file amt 155 vs fill-ledger amt 917.727"
-  },
-  {
-   "ts": "2026-10-27T20:01:08Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:TLMUSDT_SHORT",
-   "evidence": "positions file amt 5271 vs fill-ledger amt 13361.7"
-  },
-  {
-   "ts": "2026-10-27T20:01:08Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:SKYAIUSDT_SHORT",
-   "evidence": "positions file amt 183 vs fill-ledger amt 447.62"
-  },
-  {
-   "ts": "2026-10-27T20:01:08Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:BBUSDT_SHORT",
-   "evidence": "positions file amt 0 vs fill-ledger amt 35823.2"
-  },
-  {
-   "ts": "2026-10-27T20:01:08Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:ENJUSDT_SHORT",
-   "evidence": "positions file amt 0 vs fill-ledger amt 1136.4"
-  },
-  {
-   "ts": "2026-10-27T20:01:08Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:GALAUSDT_SHORT",
-   "evidence": "positions file amt 0 vs fill-ledger amt 146282"
-  },
-  {
-   "ts": "2026-10-27T20:01:08Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:MOVEUSDT_SHORT",
-   "evidence": "positions file amt 0 vs fill-ledger amt 3448.78"
-  },
-  {
-   "ts": "2026-10-27T20:01:08Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:RVNUSDT_SHORT",
-   "evidence": "positions file amt 0 vs fill-ledger amt 160812"
-  },
-  {
-   "ts": "2026-10-27T20:01:21Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "fin:PTBUSDT_SHORT",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 772499->2.3175e+06 = $359.21 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 772499)"
-  },
-  {
-   "ts": "2026-10-27T20:01:21Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "fin:PTBUSDT_SHORT",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 768147->2.30444e+06 = $359.49 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 768147)"
-  },
-  {
-   "ts": "2026-10-27T20:01:22Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "fin:PTBUSDT_SHORT",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 763942->2.29183e+06 = $359.82 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 763942)"
-  },
-  {
-   "ts": "2026-10-27T20:01:22Z",
+   "ts": "2026-10-27T20:12:10Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "fin:PTBUSDT_SHORT",
    "evidence": "BREAKOUT_SIZE_LADDER resized qty 890627->2.67188e+06 = $422.16 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 890627)"
   },
   {
-   "ts": "2026-10-27T20:02:43Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "men:PUMPUSDT_LONG",
-   "evidence": "positions file amt 10445 vs fill-ledger amt 38477.1"
+   "ts": "2026-10-27T20:12:12Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "fin:PTBUSDT_SHORT",
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 1.13016e+06->3.39047e+06 = $539.08 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 1.13016e+06)"
   },
   {
-   "ts": "2026-10-27T20:02:43Z",
+   "ts": "2026-10-27T20:12:23Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "fin:CRVUSDC_LONG",
+   "evidence": "27 20:01:52 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:CRVUSDC_LONG: bypass MAX_ORDER_VALUE $180 / MAX_POSITION_SIZE $400 \u2014 restoring $11 on bounce (prior max 262.0000)"
+  },
+  {
+   "ts": "2026-10-27T20:12:23Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "fin:PTBUSDT_SHORT",
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 1.12317e+06->3.36952e+06 = $539.12 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 1.12317e+06)"
+  },
+  {
+   "ts": "2026-10-27T20:12:24Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "fin:PTBUSDT_SHORT",
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 744048->2.23214e+06 = $359.38 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 744048)"
+  },
+  {
+   "ts": "2026-10-27T20:12:25Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "fin:PTBUSDT_SHORT",
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 740512->2.22154e+06 = $359.89 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 740512)"
+  },
+  {
+   "ts": "2026-10-27T20:15:13Z",
    "severity": "WARN",
    "kind": "POSITION_STATE_MISMATCH",
    "key": "men:BATUSDT_LONG",
    "evidence": "positions file amt 300.6 vs fill-ledger amt 764.442"
   },
   {
-   "ts": "2026-10-27T20:02:43Z",
+   "ts": "2026-10-27T20:15:13Z",
    "severity": "WARN",
    "kind": "POSITION_STATE_MISMATCH",
    "key": "men:BEAMXUSDT_LONG",
    "evidence": "positions file amt 13200 vs fill-ledger amt 66668.6"
   },
   {
-   "ts": "2026-10-27T20:02:43Z",
+   "ts": "2026-10-27T20:15:13Z",
    "severity": "WARN",
    "kind": "POSITION_STATE_MISMATCH",
    "key": "men:MAGICUSDT_LONG",
    "evidence": "positions file amt 330.1 vs fill-ledger amt 1889.57"
   },
   {
-   "ts": "2026-10-27T20:02:43Z",
+   "ts": "2026-10-27T20:15:14Z",
    "severity": "WARN",
    "kind": "POSITION_STATE_MISMATCH",
    "key": "men:KAVAUSDT_LONG",
    "evidence": "positions file amt 367.8 vs fill-ledger amt 1132.45"
   },
   {
-   "ts": "2026-10-27T20:02:43Z",
+   "ts": "2026-10-27T20:15:14Z",
    "severity": "WARN",
    "kind": "POSITION_STATE_MISMATCH",
    "key": "men:RAYSOLUSDT_LONG",
    "evidence": "positions file amt 9.6 vs fill-ledger amt 30.9"
   },
   {
-   "ts": "2026-10-27T20:02:43Z",
+   "ts": "2026-10-27T20:15:14Z",
    "severity": "WARN",
    "kind": "POSITION_STATE_MISMATCH",
    "key": "men:ZROUSDT_LONG",
    "evidence": "positions file amt 5 vs fill-ledger amt 16.6"
   },
   {
-   "ts": "2026-10-27T20:02:43Z",
+   "ts": "2026-10-27T20:15:14Z",
    "severity": "WARN",
    "kind": "POSITION_STATE_MISMATCH",
    "key": "men:UNIUSDC_LONG",
    "evidence": "positions file amt 1 vs fill-ledger amt 5.26748"
   },
   {
-   "ts": "2026-10-27T20:02:43Z",
+   "ts": "2026-10-27T20:15:14Z",
    "severity": "WARN",
    "kind": "POSITION_STATE_MISMATCH",
    "key": "men:ENAUSDC_LONG",
    "evidence": "positions file amt 33 vs fill-ledger amt 258.166"
   },
   {
-   "ts": "2026-10-27T20:02:43Z",
+   "ts": "2026-10-27T20:15:14Z",
    "severity": "WARN",
    "kind": "POSITION_STATE_MISMATCH",
    "key": "men:ZECUSDC_LONG",
    "evidence": "positions file amt 0.005 vs fill-ledger amt 0.012738"
   },
   {
-   "ts": "2026-10-27T20:02:43Z",
+   "ts": "2026-10-27T20:15:14Z",
    "severity": "WARN",
    "kind": "POSITION_STATE_MISMATCH",
    "key": "men:RLCUSDT_LONG",
    "evidence": "positions file amt 11.6 vs fill-ledger amt 56.0919"
   },
   {
-   "ts": "2026-10-27T20:02:43Z",
+   "ts": "2026-10-27T20:15:14Z",
    "severity": "WARN",
    "kind": "POSITION_STATE_MISMATCH",
    "key": "men:ARUSDT_LONG",
    "evidence": "positions file amt 1.2 vs fill-ledger amt 1.7"
   },
   {
-   "ts": "2026-10-27T20:02:43Z",
+   "ts": "2026-10-27T20:15:14Z",
    "severity": "WARN",
    "kind": "POSITION_STATE_MISMATCH",
    "key": "men:TIAUSDC_LONG",
    "evidence": "positions file amt 4 vs fill-ledger amt 7"
   },
   {
-   "ts": "2026-10-27T20:02:43Z",
+   "ts": "2026-10-27T20:15:15Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "men:CRVUSDC_LONG",
+   "evidence": "positions file amt 0 vs fill-ledger amt 7.10543e-15"
+  },
+  {
+   "ts": "2026-10-27T20:15:15Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "men:EDUUSDT_LONG",
+   "evidence": "positions file amt 0 vs fill-ledger amt 233"
+  },
+  {
+   "ts": "2026-10-27T20:15:15Z",
    "severity": "WARN",
    "kind": "POSITION_STATE_MISMATCH",
    "key": "men:GRASSUSDT_LONG",
    "evidence": "positions file amt 0 vs fill-ledger amt 67.8472"
   },
   {
-   "ts": "2026-10-27T20:02:43Z",
+   "ts": "2026-10-27T20:15:15Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "men:PUMPUSDT_LONG",
+   "evidence": "positions file amt 0 vs fill-ledger amt 28032.1"
+  },
+  {
+   "ts": "2026-10-27T20:15:15Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "men:BIGTIMEUSDT_SHORT",
+   "evidence": "positions file amt 7429 vs fill-ledger amt 18469.1"
+  },
+  {
+   "ts": "2026-10-27T20:15:15Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "men:SPELLUSDT_SHORT",
+   "evidence": "positions file amt 626566 vs fill-ledger amt 1.70993e+06"
+  },
+  {
+   "ts": "2026-10-27T20:15:15Z",
    "severity": "WARN",
    "kind": "POSITION_STATE_MISMATCH",
    "key": "men:BLURUSDT_SHORT",
    "evidence": "positions file amt 3404 vs fill-ledger amt 6808"
   },
   {
-   "ts": "2026-10-27T20:02:43Z",
+   "ts": "2026-10-27T20:15:15Z",
    "severity": "WARN",
    "kind": "POSITION_STATE_MISMATCH",
    "key": "men:1000LUNCUSDT_SHORT",
    "evidence": "positions file amt 156 vs fill-ledger amt 312"
   },
   {
-   "ts": "2026-10-27T20:02:43Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "men:FARTCOINUSDT_SHORT",
-   "evidence": "positions file amt 48.2 vs fill-ledger amt 266.133"
-  },
-  {
-   "ts": "2026-10-27T20:02:43Z",
+   "ts": "2026-10-27T20:15:15Z",
    "severity": "WARN",
    "kind": "POSITION_STATE_MISMATCH",
    "key": "men:SKYAIUSDT_SHORT",
    "evidence": "positions file amt 182 vs fill-ledger amt 299.854"
   },
   {
-   "ts": "2026-10-27T20:02:43Z",
+   "ts": "2026-10-27T20:15:15Z",
    "severity": "WARN",
    "kind": "POSITION_STATE_MISMATCH",
-   "key": "men:TLMUSDT_SHORT",
-   "evidence": "positions file amt 5178 vs fill-ledger amt 16547.6"
+   "key": "men:FARTCOINUSDT_SHORT",
+   "evidence": "positions file amt 48.2 vs fill-ledger amt 266.133"
   },
   {
-   "ts": "2026-10-27T20:02:43Z",
+   "ts": "2026-10-27T20:15:15Z",
    "severity": "WARN",
    "kind": "POSITION_STATE_MISMATCH",
    "key": "men:BBUSDT_SHORT",
    "evidence": "positions file amt 0 vs fill-ledger amt 20056.4"
   },
   {
-   "ts": "2026-10-27T20:02:43Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "men:BIGTIMEUSDT_SHORT",
-   "evidence": "positions file amt 0 vs fill-ledger amt 11040.1"
-  },
-  {
-   "ts": "2026-10-27T20:02:43Z",
+   "ts": "2026-10-27T20:15:15Z",
    "severity": "WARN",
    "kind": "POSITION_STATE_MISMATCH",
    "key": "men:GALAUSDT_SHORT",
    "evidence": "positions file amt 0 vs fill-ledger amt 7096.07"
   },
   {
-   "ts": "2026-10-27T20:02:43Z",
+   "ts": "2026-10-27T20:15:15Z",
    "severity": "WARN",
    "kind": "POSITION_STATE_MISMATCH",
    "key": "men:RVNUSDT_SHORT",
    "evidence": "positions file amt 0 vs fill-ledger amt 17768"
   },
   {
-   "ts": "2026-10-27T20:02:43Z",
+   "ts": "2026-10-27T20:15:15Z",
    "severity": "WARN",
    "kind": "POSITION_STATE_MISMATCH",
-   "key": "men:SPELLUSDT_SHORT",
-   "evidence": "positions file amt 0 vs fill-ledger amt 1.70993e+06"
+   "key": "men:TLMUSDT_SHORT",
+   "evidence": "positions file amt 0 vs fill-ledger amt 21725.6"
   },
   {
-   "ts": "2026-10-27T20:02:50Z",
+   "ts": "2026-10-27T20:15:55Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "men:PTBUSDT_SHORT",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 768787->2.30636e+06 = $359.79 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 768787)"
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 1.12648e+06->3.37944e+06 = $540.71 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 1.12648e+06)"
   },
   {
-   "ts": "2026-10-27T20:02:51Z",
+   "ts": "2026-10-27T20:16:06Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "men:PTBUSDT_SHORT",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 765062->2.29519e+06 = $360.34 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 765062)"
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 745990->2.23797e+06 = $360.31 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 745990)"
   },
   {
-   "ts": "2026-10-27T20:02:52Z",
+   "ts": "2026-10-27T20:16:08Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "men:PTBUSDT_SHORT",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 1.13493e+06->3.40479e+06 = $541.36 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 1.13493e+06)"
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 741977->2.22593e+06 = $360.60 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 741977)"
   },
   {
-   "ts": "2026-10-27T20:03:48Z",
+   "ts": "2026-10-27T20:16:09Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "men:GRASSUSDT_LONG",
+   "evidence": "27 20:12:58 - WARNING - [men] [REENTRY_GRANDFATHERED] men:GRASSUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $1323 on bounce (prior max 21.0000)"
+  },
+  {
+   "ts": "2026-10-27T20:16:09Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "men:GRASSUSDT_LONG",
+   "evidence": "order notional $1323.13 > MAX_ORDER_VALUE $300: 27 20:12:58 - INFO - [men] [execute_trade_action][men] \u2705 \u2705 \u2705 \u2705 OPEN men:GRASSUSDT_LONG @ 0.741889 qty=1783.463880 ($1323.13) side=BUY | CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_LONG_px0.741889_exit0.690"
+  },
+  {
+   "ts": "2026-10-27T20:16:20Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "men:STXUSDT_LONG",
+   "evidence": "27 20:12:58 - WARNING - [men] [REENTRY_GRANDFATHERED] men:STXUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $12 on bounce (prior max 138.0000)"
+  },
+  {
+   "ts": "2026-10-27T20:19:05Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "ang:RLCUSDT_SHORT",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 236.668->710.004 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 236.668)"
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 237.295->711.885 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 237.295)"
   },
   {
-   "ts": "2026-10-27T20:03:49Z",
+   "ts": "2026-10-27T20:19:07Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "ang:RLCUSDT_SHORT",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 354.82->1064.46 = $540.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 354.82)"
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 235.77->707.31 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 235.77)"
   },
   {
-   "ts": "2026-10-27T20:03:50Z",
+   "ts": "2026-10-27T20:19:09Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "ang:GRASSUSDT_LONG",
+   "evidence": "27 20:18:53 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:GRASSUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $4479 on bounce (prior max 514.6000)"
+  },
+  {
+   "ts": "2026-10-27T20:19:09Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
-   "key": "ang:DASHUSDT_LONG",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 3.25792->9.77376 = $540.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 3.25792)"
+   "key": "ang:GRASSUSDT_LONG",
+   "evidence": "order notional $4479.24 > MAX_ORDER_VALUE $300: 27 20:18:53 - INFO - [ang] [execute_trade_action][ang] \u2705 \u2705 \u2705 \u2705 OPEN ang:GRASSUSDT_LONG @ 0.744300 qty=6018.050536 ($4479.24) side=BUY | CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_LONG_px0.744300_exit0.701"
   },
   {
-   "ts": "2026-10-27T20:03:50Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "ang:RLCUSDT_SHORT",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 239.742->719.225 = $364.50 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 239.742)"
-  },
-  {
-   "ts": "2026-10-27T20:03:51Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "ang:DASHUSDT_LONG",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 3.2491->9.74729 = $540.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 3.2491)"
-  },
-  {
-   "ts": "2026-10-27T20:03:51Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "ang:RLCUSDT_SHORT",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 355.09->1065.27 = $540.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 355.09)"
-  },
-  {
-   "ts": "2026-10-27T20:04:50Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "inf:BNBUSDC_LONG",
-   "evidence": "positions file amt 0.02 vs fill-ledger amt 0.084001"
-  },
-  {
-   "ts": "2026-10-27T20:04:50Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "inf:XRPUSDC_LONG",
-   "evidence": "positions file amt 5.2 vs fill-ledger amt 10.5"
-  },
-  {
-   "ts": "2026-10-27T20:04:50Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "inf:ARUSDT_LONG",
-   "evidence": "positions file amt 0.3 vs fill-ledger amt 49.8667"
-  },
-  {
-   "ts": "2026-10-27T20:04:50Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "inf:PENGUUSDC_LONG",
-   "evidence": "positions file amt 114 vs fill-ledger amt 228"
-  },
-  {
-   "ts": "2026-10-27T20:07:45Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "flz:DASHUSDT_LONG",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 2.16791->6.50372 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 2.16791)"
-  },
-  {
-   "ts": "2026-10-27T20:08:41Z",
+   "ts": "2026-10-27T20:22:18Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:GRAMUSDT_SHORT",
    "evidence": "REDUCE 15.6 @ 2026-10-27T18:56:27Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-27T20:08:42Z",
+   "ts": "2026-10-27T20:22:18Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:ZECUSDC_SHORT",
    "evidence": "REDUCE 0.001 @ 2026-10-27T18:56:27Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-27T20:08:42Z",
+   "ts": "2026-10-27T20:22:19Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:WLDUSDC_SHORT",
    "evidence": "REDUCE 35.4 @ 2026-10-27T18:56:28Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-27T20:10:00Z",
+   "ts": "2026-10-27T20:23:27Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "inf",
-   "evidence": "ez_manage_inf.log not written for 1373s"
+   "evidence": "ez_manage_inf.log not written for 2185s"
   }
  ],
  "alert_counts": {
-  "POSITION_STATE_MISMATCH": 54,
-  "SIZE_ANOMALY": 14,
+  "SIZE_ANOMALY": 12,
+  "CAP_BYPASS": 4,
+  "POSITION_STATE_MISMATCH": 26,
   "FILL_WITHOUT_VEC_DECISION": 3,
   "STALE_LOG": 1
  },
@@ -751,6 +570,13 @@
    "undo": "alert-only (never-halt policy 2026-10-10)",
    "dry_run": false
   },
+  "key:ang:GRASSUSDT_LONG": {
+   "ts": 1793132361.8697548,
+   "until": 1793139561.869759,
+   "why": "SIZE_ANOMALY order $4479.24 > 1.5x MAX_ORDER_VALUE",
+   "undo": "redis-cli -p 6379 DEL open_blocked:ang:GRASSUSDT_LONG",
+   "dry_run": false
+  },
   "key:ang:RLCUSDT_SHORT": {
    "ts": 1793129693.1908412,
    "until": 1793136893.190878,
@@ -765,17 +591,24 @@
    "undo": "redis-cli -p 6379 DEL open_blocked:fin:GRASSUSDT_LONG",
    "dry_run": false
   },
+  "key:men:GRASSUSDT_LONG": {
+   "ts": 1793132179.561524,
+   "until": 1793139379.561532,
+   "why": "SIZE_ANOMALY order $1323.13 > 1.5x MAX_ORDER_VALUE",
+   "undo": "redis-cli -p 6379 DEL open_blocked:men:GRASSUSDT_LONG",
+   "dry_run": false
+  },
   "key:fin:PTBUSDT_SHORT": {
-   "ts": 1793124468.148641,
-   "until": 1793131668.148643,
-   "why": "SIZE_ANOMALY BREAKOUT_SIZE_LADDER qty 1.15001e+06->3.45004e+06 ($542) past 1.5x MAX_ORDER_VALUE",
+   "ts": 1793131942.2208729,
+   "until": 1793139142.220955,
+   "why": "SIZE_ANOMALY BREAKOUT_SIZE_LADDER qty 1.13016e+06->3.39047e+06 ($539) past 1.5x MAX_ORDER_VALUE",
    "undo": "redis-cli -p 6379 DEL open_blocked:fin:PTBUSDT_SHORT",
    "dry_run": false
   },
   "key:men:PTBUSDT_SHORT": {
-   "ts": 1793124314.270399,
-   "until": 1793131514.270402,
-   "why": "SIZE_ANOMALY BREAKOUT_SIZE_LADDER qty 1.15067e+06->3.45202e+06 ($539) past 1.5x MAX_ORDER_VALUE",
+   "ts": 1793132164.843222,
+   "until": 1793139364.84323,
+   "why": "SIZE_ANOMALY BREAKOUT_SIZE_LADDER qty 1.12648e+06->3.37944e+06 ($541) past 1.5x MAX_ORDER_VALUE",
    "undo": "redis-cli -p 6379 DEL open_blocked:men:PTBUSDT_SHORT",
    "dry_run": false
   },
@@ -787,5 +620,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 600.92
+ "sweep_s": 723.93
 }

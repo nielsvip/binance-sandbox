@@ -1,6 +1,6 @@
 {
- "generated_utc": "2026-10-27T20:10:12Z",
- "secs": 128.5,
+ "generated_utc": "2026-10-27T20:24:53Z",
+ "secs": 167.8,
  "universe": {
   "crypto": 201,
   "stocks": 223
@@ -8,13 +8,7 @@
  "unreachable": {
   "s1": "JSONDecodeError: Expecting value: line 1 column 1 (char 0) Connection timed out during banner exchange\nConnection to 127.0.0.1 port 2201 timed out\n"
  },
- "healed": {
-  "mac:/Users/niels/Documents/binance": {
-   "files": 32,
-   "rows": 104,
-   "skipped": {}
-  }
- },
+ "healed": {},
  "kline_breaches": [
   {
    "host": "mac",
@@ -390,9 +384,9 @@
    "venue": "stocks",
    "symbol": "STLD",
    "tf": "15m",
-   "last": "2026-10-27T15:45",
+   "last": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30",
-   "bars_behind": 15.0
+   "bars_behind": 14.0
   },
   {
    "host": "mac",
@@ -453,9 +447,9 @@
    "venue": "stocks",
    "symbol": "TSM",
    "tf": "15m",
-   "last": "2026-10-27T15:15",
+   "last": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30",
-   "bars_behind": 17.0
+   "bars_behind": 14.0
   },
   {
    "host": "mac",
@@ -489,9 +483,9 @@
    "venue": "stocks",
    "symbol": "USO",
    "tf": "15m",
-   "last": "2026-10-27T15:15",
+   "last": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30",
-   "bars_behind": 17.0
+   "bars_behind": 14.0
   },
   {
    "host": "mac",
@@ -786,9 +780,9 @@
    "venue": "stocks",
    "symbol": "USAR",
    "tf": "15m",
-   "last": "2026-10-27T15:15",
+   "last": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30",
-   "bars_behind": 17.0
+   "bars_behind": 14.0
   },
   {
    "host": "mac",
@@ -921,9 +915,9 @@
    "venue": "stocks",
    "symbol": "TDG",
    "tf": "15m",
-   "last": "2026-10-27T15:00",
+   "last": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30",
-   "bars_behind": 18.0
+   "bars_behind": 14.0
   },
   {
    "host": "mac",
@@ -1245,7 +1239,7 @@
    "venue": "stocks",
    "symbol": "STLD",
    "tf": "15m",
-   "best": "2026-10-27T15:45",
+   "best": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30"
   },
   {
@@ -1294,7 +1288,7 @@
    "venue": "stocks",
    "symbol": "TSM",
    "tf": "15m",
-   "best": "2026-10-27T15:15",
+   "best": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30"
   },
   {
@@ -1322,7 +1316,7 @@
    "venue": "stocks",
    "symbol": "USO",
    "tf": "15m",
-   "best": "2026-10-27T15:15",
+   "best": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30"
   },
   {
@@ -1553,7 +1547,7 @@
    "venue": "stocks",
    "symbol": "USAR",
    "tf": "15m",
-   "best": "2026-10-27T15:15",
+   "best": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30"
   },
   {
@@ -1658,7 +1652,7 @@
    "venue": "stocks",
    "symbol": "TDG",
    "tf": "15m",
-   "best": "2026-10-27T15:00",
+   "best": "2026-10-27T16:00",
    "expect": "2026-10-27T19:30"
   },
   {
@@ -1693,7 +1687,7 @@
    "venue": "stocks",
    "symbol": "USO",
    "tf": "1h",
-   "best": "2026-10-27T14:30",
+   "best": "2026-10-27T15:30",
    "expect": "2026-10-27T18:30"
   }
  ],
@@ -1706,50 +1700,50 @@
   {
    "host": "mac",
    "file": "crypto prices",
-   "age_s": -8.2,
+   "age_s": -10.1,
    "max_s": 60,
    "ok": true,
    "files": {
-    "price_cache_1.json": -8.2,
-    "price_cache_2.json": -7.1,
-    "price_cache_3.json": -8.2
+    "price_cache_1.json": -5.9,
+    "price_cache_2.json": 0.7,
+    "price_cache_3.json": -10.1
    }
   },
   {
    "host": "mac",
    "file": "crypto snapshot (market_data_*)",
-   "age_s": 2.8,
+   "age_s": -0.5,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/market_data_NEWEST": 2.8
+    "data/market_data_NEWEST": -0.5
    }
   },
   {
    "host": "mac",
    "file": "crypto latest_market_data",
-   "age_s": 2.8,
+   "age_s": -0.5,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/latest_market_data.json": 2.8
+    "data/latest_market_data.json": -0.5
    }
   },
   {
    "host": "gw",
    "file": "crypto market_data",
-   "age_s": 296.1,
+   "age_s": 402.5,
    "max_s": 300,
-   "ok": true,
+   "ok": false,
    "files": {
-    "data/latest_market_data.json": 296.1
+    "data/latest_market_data.json": 402.5
    }
   },
   {
    "host": "mac",
    "file": "disk free /Users/niels/Documents/binance",
    "age_s": null,
-   "free_gb": 12.3,
+   "free_gb": 17.4,
    "ok": true
   },
   {
