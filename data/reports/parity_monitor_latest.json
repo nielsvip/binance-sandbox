@@ -1,10 +1,102 @@
 {
-  "ts": 1793077076.96332,
-  "checked": 0,
-  "match": 0,
-  "mismatch": 0,
-  "unknown_or_stale_forward": 232,
-  "parity_pct": 0.0,
-  "mismatches": [],
+  "ts": 1793078337.3449202,
+  "checked": 42,
+  "match": 29,
+  "mismatch": 13,
+  "unknown_or_stale_forward": 190,
+  "parity_pct": 69.04761904761905,
+  "mismatches": [
+    {
+      "acct": "ang",
+      "sym_side": "ARUSDT_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "EGLDUSDT_SHORT",
+      "forward_open": false,
+      "live_open": true,
+      "live_qty": 0.3
+    },
+    {
+      "acct": "ang",
+      "sym_side": "PENGUUSDC_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "RSRUSDT_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "SANDUSDT_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "ang",
+      "sym_side": "THETAUSDT_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "fin",
+      "sym_side": "ARUSDT_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "flz",
+      "sym_side": "ETHUSDC_LONG",
+      "forward_open": false,
+      "live_open": true,
+      "live_qty": 0.001
+    },
+    {
+      "acct": "flz",
+      "sym_side": "ETHUSDC_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "men",
+      "sym_side": "ACTUSDT_SHORT",
+      "forward_open": false,
+      "live_open": true,
+      "live_qty": 2926.0
+    },
+    {
+      "acct": "men",
+      "sym_side": "ARUSDT_LONG",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    },
+    {
+      "acct": "men",
+      "sym_side": "INXUSDT_SHORT",
+      "forward_open": false,
+      "live_open": true,
+      "live_qty": 10859.0
+    },
+    {
+      "acct": "men",
+      "sym_side": "MOVEUSDT_SHORT",
+      "forward_open": true,
+      "live_open": false,
+      "live_qty": 0.0
+    }
+  ],
   "skipped_accounts": []
 }
