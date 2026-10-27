@@ -1733,6 +1733,58 @@ async def store_snapshot(service, account_key, force=False, reason=""):
         return None
 
 
+async def broker_snapshot_forced(obj, account_key, reason="", timeout=20.0):
+    """A REAL broker read (futures_position_information) for the ONLY decisions where this service's own
+    store is not an acceptable witness: cancelling, sweeping or reconciling a broker-resident protective
+    stop.
+
+    USER 2026-10-13 + 2026-10-27 law: "local flat never cancels — forced broker read must confirm flat",
+    and the exchange STOP_MARKET is a NON-NEGOTIABLE fallback that must fire even if the vector
+    disapproves. So a stop may never be cancelled on local or store evidence alone — the store is fed by
+    the same WS that may have missed an event across a reconnect, which would leave a live position with
+    no protection. If this returns None the caller MUST KEEP THE STOP.
+
+    This is deliberately NOT on the order path. It runs only on stop cancel / sweep / reconcile — a
+    handful of calls — so it adds no meaningful request weight and cannot recreate the -1003 ban cascade
+    that the deleted positions_truth.py caused by polling before and after every single order.
+    """
+    client = None
+    for holder in (obj, getattr(obj, "positions_service", None)):
+        if holder is None:
+            continue
+        try:
+            client = getattr((getattr(holder, "accounts", None) or {}).get(account_key), "client", None)
+        except Exception:
+            client = None
+        if client is not None:
+            break
+    if client is None:
+        logger.warning(f"[STOP_BROKER_READ][{account_key}] no client for the forced read ({reason}) — caller must keep the stop")
+        return None
+    inner = getattr(client, "odg_inner", client)
+    try:
+        raw = await asyncio.wait_for(asyncio.to_thread(inner.futures_position_information), timeout=float(timeout))
+    except Exception as e:
+        logger.warning(f"[STOP_BROKER_READ][{account_key}] forced broker read FAILED ({reason}): {e!r} — caller must keep the stop")
+        return None
+    if not isinstance(raw, list) or not raw:
+        return None
+    amounts, entries = {}, {}
+    for r in raw:
+        try:
+            sym = str(r.get("symbol") or "").upper()
+            ps = str(r.get("positionSide") or "").upper()
+            if not sym or ps not in ("LONG", "SHORT"):
+                continue
+            amounts[(sym, ps)] = abs(_safe_float(r.get("positionAmt")))
+            entries[(sym, ps)] = _safe_float(r.get("entryPrice"))
+        except Exception:
+            continue
+    if not amounts:
+        return None
+    return StoreSnapshot(amounts, entries, time.time(), account_key)
+
+
 async def store_moved(service, account_key, symbol, position_side, baseline, kind, config=None, log=None):
     """Did the position move away from `baseline` in the `kind` ("increase"/"reduce") direction?
     Reads the store (WS-fed), never the broker. Unknown store -> False (same as the old unreachable broker)."""

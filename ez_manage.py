@@ -3805,7 +3805,7 @@ async def _xg_ez_force(mgr, a, c, why):
 
 async def _xg_ez_broker(mgr, account_key, symbol, position_side):
     try:
-        _snap = await _eps.store_snapshot(mgr, account_key, force=True, reason=f"exit_guarantee {symbol}_{position_side}")
+        _snap = await _eps.broker_snapshot_forced(mgr, account_key, reason=f"exit_guarantee {symbol}_{position_side}")
     except Exception:
         _snap = None
     if _snap is None:
@@ -22887,7 +22887,7 @@ class MultiAccountTradeManager:
             if amt <= 0:
                 if have and have.get("orderId"):
                     try:  # 2026-10-13 GUARANTEED STOP: local flat never cancels — forced broker read must confirm flat
-                        _fx_bs = await _eps.store_snapshot(self, account_key, force=True, reason=f"fixed_stop_flat {position_key}")
+                        _fx_bs = await _eps.broker_snapshot_forced(self, account_key, reason=f"fixed_stop_flat {position_key}")
                     except Exception:
                         _fx_bs = None
                     if _fx_bs is None or abs(float(_fx_bs.amount(symbol, _side_u))) > 0:
@@ -23186,7 +23186,7 @@ class MultiAccountTradeManager:
                         continue
                     if _sw_snap is False:
                         try:
-                            _sw_snap = await _eps.store_snapshot(self, account_key, force=True, reason="fixed_stop_sweep")
+                            _sw_snap = await _eps.broker_snapshot_forced(self, account_key, reason="fixed_stop_sweep")
                         except Exception:
                             _sw_snap = None
                     if _sw_snap is None:
@@ -23229,7 +23229,7 @@ class MultiAccountTradeManager:
             except Exception as _e:
                 return f"SKIPPED_LIST_{_e}"
             try:  # 2026-10-13 GUARANTEED STOP: orphan = broker flat (forced read), never local flat; unknown -> cancel nothing
-                _rc_snap = await _eps.store_snapshot(self, account_key, force=True, reason="fixed_stop_reconcile")
+                _rc_snap = await _eps.broker_snapshot_forced(self, account_key, reason="fixed_stop_reconcile")
             except Exception:
                 _rc_snap = None
             if _rc_snap is None:
@@ -53241,7 +53241,7 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager, 
         if _amt <= 0 and "EXIT" in fams and bool(getattr(config, "VEC_EXIT_OWED_ENABLED", True)) and _vx.exit_owed_has(position_key):
             # 2026-10-13 NEAR ang post-mortem: local flat is NOT proof — a stale snapshot said 0 while the broker held 25h after the vec
             # CLOSE. An owed vec exit is cleared ONLY by a forced broker read showing flat; broker holds -> the close is re-sent now.
-            _ob_snap = await _eps.store_snapshot(trade_manager, _acct or account_key, force=True, reason=f"exit_owed {position_key}")
+            _ob_snap = await _eps.broker_snapshot_forced(trade_manager, _acct or account_key, reason=f"exit_owed {position_key}")
             if _ob_snap is None:
                 logger.critical(f"[VEC_EXACT_EXIT_OWED] {position_key}: local flat but broker UNREACHABLE — owed exit kept, retry next sweep")
                 return True
@@ -53449,7 +53449,7 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager, 
             try:
                 _amt_owed = abs(safe_fetch_float(getattr(trade_manager.positions.get(position_key), "positionAmt", 0), 0))
                 if not _vx_exit_attempted and _vx.exit_owed_due(position_key, _amt_owed, _vx_lc_of(trade_manager.positions.get(position_key))):
-                    _ow_snap = await _eps.store_snapshot(trade_manager, _acct or account_key, force=True, reason=f"exit_owed_retry {position_key}")
+                    _ow_snap = await _eps.broker_snapshot_forced(trade_manager, _acct or account_key, reason=f"exit_owed_retry {position_key}")
                     if _ow_snap is not None and abs(float(_ow_snap.amount(_sym, _side))) <= 0:
                         _vx.exit_owed_drop(position_key)  # broker confirms FLAT (inf WUSDT 22:03: filled while local stayed stale 150s+)
                         logger.info(f"[VEC_EXACT_EXIT_OWED] {position_key}: broker confirms FLAT (local stale {_amt_owed:.6f}) — owed exit cleared")
