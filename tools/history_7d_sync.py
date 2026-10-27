@@ -24,6 +24,9 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 ACCOUNT = re.compile(r"^[a-z][a-z0-9_]*$")
 LEDGER = re.compile(r"^([A-Za-z0-9_.-]+_(?:LONG|SHORT))\.jsonl(?:\..+\.bak)?$")
+# USER 2026-10-27: a full live ledger rolls (never deleted) into <acct>/archive/<SYM_SIDE>.<stamp>.jsonl
+# (vec_decisions/history_archive.py); uncompressed segments are part of the ledger for the 7-day window.
+ARCHIVED = re.compile(r"^([A-Za-z0-9_.-]+?_(?:LONG|SHORT))\.\d{8}T\d{6}\d*Z(?:\.[A-Za-z0-9_-]+)?\.jsonl$")
 SSH = [
     "ssh",
     "-S",
@@ -68,6 +71,13 @@ def _identity(line):
 
 
 def _rel(path, history):
+    if (
+        path.parent.name == "archive"
+        and path.parent.parent.parent == history
+        and ACCOUNT.fullmatch(path.parent.parent.name)
+    ):
+        match = ARCHIVED.fullmatch(path.name)
+        return f"{path.parent.parent.name}/{match.group(1)}.jsonl" if match else None
     if path.parent.parent != history or not ACCOUNT.fullmatch(path.parent.name):
         return None
     match = LEDGER.fullmatch(path.name)
@@ -80,7 +90,7 @@ def export(root, now, days=7):
     rows = {}
     seen = {}
     invalid = 0
-    for path in sorted(history.glob("*/*")):
+    for path in sorted(history.glob("*/*")) + sorted(history.glob("*/archive/*.jsonl")):
         rel = _rel(path, history)
         if rel is None or not path.is_file():
             continue
@@ -256,7 +266,10 @@ def apply(root, pack, backup_stamp, dry_run=False):
             continue
         current = set()
         signatures = {}
-        for path in sorted(target.parent.glob(target.name + "*")):
+        stem = target.name[: -len(".jsonl")]
+        for path in sorted(target.parent.glob(target.name + "*")) + sorted(
+            (target.parent / "archive").glob(stem + ".*.jsonl")
+        ):
             if _rel(path, history) != rel or not path.is_file():
                 continue
             if path.stat().st_mtime < cutoff - 300:

@@ -1044,6 +1044,7 @@ def honest_headline(progress: dict, sym_side: str = "") -> dict:
     if fwd_gain is None and fwd:
         fwd_gain = _f((fwd.get("published_set") or {}).get("gain_pct")) if isinstance(fwd.get("published_set"), dict) else None
     lift = (cum - base) if (cum is not None and base is not None) else None
+    hc_gain = _f((progress.get("holdout_confirm") or {}).get("g_pruned")) if isinstance(progress.get("holdout_confirm"), dict) else None
     try:
         import fee_model as _fm
 
@@ -1061,8 +1062,9 @@ def honest_headline(progress: dict, sym_side: str = "") -> dict:
         "noise_floor_pp": floor,
         "forward_gain_pct": fwd_gain,
         "forward_is_out_of_sample": fwd_gain is not None,
-        "promotable_estimate_pct": fwd_gain if fwd_gain is not None else base,
-        "promotable_estimate_basis": "forward_out_of_sample" if fwd_gain is not None else "baseline_only",
+        "promotable_estimate_pct": fwd_gain if fwd_gain is not None else (hc_gain if hc_gain is not None else base),
+        "promotable_estimate_basis": "forward_out_of_sample" if fwd_gain is not None else ("holdout_confirm" if hc_gain is not None else "baseline_only"),
+        "holdout_confirmed_gain_pct": hc_gain,
         "round_trip_commission_pct_charged": fee,
         "label": (
             "in_sample_greedy_gain_pct is an IN-SAMPLE ENVELOPE on one window, not a forecast; "
@@ -2891,6 +2893,11 @@ def _npz_path(symside):
 # Default 0 = unchanged production. Bible §108.7.
 _HOLDOUT = {"days": float(os.environ.get("V15_HOLDOUT_DAYS", "0") or 0), "cut": None, "on": False, "installed": False}
 _MIN_PROMOTE_DELTA = float(os.environ.get("V15_MIN_PROMOTE_DELTA", "0") or 0)
+# D (USER 2026-10-27 23:0xZ "stop calculating greedily"): V15_HOLDOUT_PROMOTE=1 (needs V15_HOLDOUT_DAYS > 0) fits on bars ending
+# CONFIRM days before the holdout, then at publication keeps only the switches that hold leave-one-out on that unseen confirm window
+# (tools/v15_holdout_promotion.py); the holdout (gate OOS) days stay untouched. Default OFF = unchanged production.
+_HOLDOUT_PROMOTE = os.environ.get("V15_HOLDOUT_PROMOTE", "0") == "1" and _HOLDOUT["days"] > 0
+_HOLDOUT["confirm_days"] = float(os.environ.get("V15_HOLDOUT_CONFIRM_DAYS", "7") or 7) if _HOLDOUT_PROMOTE else 0.0
 
 
 _NPZ_STAMP: dict = {}
@@ -2948,7 +2955,8 @@ def _install_holdout(symside: str):
         t = _np_h.asarray(z["timestamps"], dtype="float64")
     t = t[_np_h.isfinite(t) & (t > 0)]
     last = float(t[-1]) / (1000.0 if t[-1] > 1e11 else 1.0)
-    _HOLDOUT["cut"] = holdout_cut(last, _HOLDOUT["days"])
+    _HOLDOUT["cut"] = holdout_cut(last, _HOLDOUT["days"] + _HOLDOUT.get("confirm_days", 0.0))
+    _HOLDOUT["confirm_end"] = holdout_cut(last, _HOLDOUT["days"]) if _HOLDOUT.get("confirm_days") else None
     _orig = _E_h._store
     def _store_h(sym, mode, start):
         d = _orig(sym, mode, start)
@@ -2967,6 +2975,28 @@ def _install_holdout(symside: str):
     _HOLDOUT.update(on=True, installed=True, orig=_orig)
     print(f"[HOLDOUT] {symside} FIT window ends {datetime.datetime.utcfromtimestamp(_HOLDOUT['cut']).isoformat()}Z ({_HOLDOUT['days']:.0f} d before the last bar); the last {_HOLDOUT['days']:.0f} d are scored only at the end", flush=True)
     return _HOLDOUT["cut"]
+
+
+def holdout_confirm_score(symside: str, sets: dict, defaults: dict) -> dict:
+    """D: score named override sets on the CONFIRM window (the confirm_days right after the fit window, before the holdout). Real engine."""
+    from tools.opt import evaluate_v12 as _E_c
+    from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eps_c
+    out, cut0, on0 = {}, _HOLDOUT["cut"], _HOLDOUT["on"]
+    _HOLDOUT.update(cut=_HOLDOUT["confirm_end"], on=True)
+    try:
+        _E_c._STORES.clear()
+        prep = _E_c.prepare(symside, int(_HOLDOUT["confirm_days"]))
+        if prep is None:
+            return out
+        for name, ov in sets.items():
+            out[name] = _eps_c(prep, sanitize_overrides(dict(ov), defaults)[0], int(_HOLDOUT["confirm_days"]))
+    finally:
+        _HOLDOUT.update(cut=cut0, on=on0)
+        try:
+            _E_c._STORES.clear()
+        except Exception:
+            pass
+    return out
 
 
 def holdout_score(symside: str, sets: dict, defaults: dict) -> dict:
@@ -10563,6 +10593,24 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     # LIVE verification for winning set — H/I only from a REAL backtest_v12_engine run; vector-only/timeout/failure -> BLANK + reason
     live_res = None
     live_reason = ""
+    if _HOLDOUT_PROMOTE and _HOLDOUT.get("installed") and _HOLDOUT.get("confirm_end") and prepared is not None:
+        try:  # D: a promotion is published only if it holds on the unseen confirm window; the envelope stays a labelled diagnostic
+            from tools import v15_holdout_promotion as _HP
+            _hc = _HP.confirm_promotions(dict(cumulative_overrides), dict(initial_overrides), lambda _sets: holdout_confirm_score(new_symside, _sets, defaults), promotion_noise_floor_pp(), int(os.environ.get("V15_HOLDOUT_CONFIRM_MAX", "200")))
+            _hc.update(confirm_days=_HOLDOUT["confirm_days"], in_sample_greedy_gain_pct=float(cumulative_gain), unpruned_overrides=dict(cumulative_overrides))
+            if _hc["dropped"]:
+                from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eps_hc
+                cumulative_overrides = dict(_hc["pruned"])
+                _hc_fit = _eps_hc(prepared, dict(cumulative_overrides), args.window_days)
+                if (_hc_fit or {}).get("gain_pct") is not None:
+                    cumulative_gain = float(_hc_fit["gain_pct"])
+                progress["cumulative_overrides"] = dict(cumulative_overrides)
+                progress["cumulative_gain"] = float(cumulative_gain)
+            progress["holdout_confirm"] = {k: v for k, v in _hc.items() if k != "pruned"}
+            print(f"[HOLDOUT-CONFIRM] {new_symside} {len(_hc['kept'])}/{_hc['n_changed']} switches hold on the {_HOLDOUT['confirm_days']:.0f} d confirm window (dropped {len(_hc['dropped'])}, unscored {len(_hc['unscored'])}): expected {_hc['g_pruned']} vs envelope {_hc['in_sample_greedy_gain_pct']:.4f} (fit after pruning {float(cumulative_gain):.4f})", flush=True)
+            _maybe_write_json(force=True)
+        except Exception as _hce:
+            print(f"[HOLDOUT-CONFIRM-WARN] {new_symside} {_hce} — published set unchanged", flush=True)
     try:
         final_gain = float(cumulative_gain)
         # 2026-09-28 NO-LIES FIX (engine-mixed chains): resume takes max(stored cum, fresh baseline)
@@ -11383,7 +11431,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     print(f"[spec-fill] DONE {new_symside} final_gain={cumulative_gain:.4f} baseline={baseline_gain:.4f} rows={processed} pos_tabs curated", flush=True)
     if _HOLDOUT.get("installed"):
         try:
-            _ho = holdout_score(new_symside, {"final": dict(cumulative_overrides), "start": dict(initial_overrides), "template": {}}, defaults)
+            _ho = holdout_score(new_symside, {"final": dict(cumulative_overrides), "start": dict(initial_overrides), "template": {}, **({"final_unpruned": dict(progress["holdout_confirm"]["unpruned_overrides"])} if (progress.get("holdout_confirm") or {}).get("dropped") else {})}, defaults)
             _ho["fit_final_gain"] = float(cumulative_gain)
             progress["holdout"] = _ho
             _delta_log({"ts": utcnow(), "sym_side": new_symside, "label": "HOLDOUT", **{k: v for k, v in _ho.items() if not isinstance(v, dict)}, "final": _ho.get("final"), "start": _ho.get("start"), "template": _ho.get("template")})

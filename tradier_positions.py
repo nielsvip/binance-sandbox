@@ -1985,14 +1985,11 @@ class TradierPositionManager:
             hist_dir = Path(self.config.DATA_DIR) / "history" / account_key
             hist_dir.mkdir(parents=True, exist_ok=True)
             filename = hist_dir / f"{symbol_side}.jsonl"
-            MAX_SIZE_BYTES = 200 * 1024
-            if filename.exists() and filename.stat().st_size > MAX_SIZE_BYTES:
-                # Keep every generation.  Deleting the previous .bak made the
-                # canonical TRC ledger lose older fills whenever it rotated.
-                backup = filename.with_name(
-                    f"{filename.name}.{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S%f')}.bak"
-                )
-                filename.rename(backup)
+            try:  # USER 2026-10-27: roll at ~10 MB into archive/<SYM_SIDE>.<stamp>.jsonl, rename only — never deleted
+                from vec_decisions import history_archive as _harch
+                _harch.rotate_if_needed(filename)
+            except Exception:
+                pass
             reason = (rich_context or {}).get('reason') or (rich_context or {}).get('reason_text') or "Manual/System Detection"
             snapshot = (rich_context or {}).get('snapshot') or (rich_context or {}).get('indicators', {})
             entry = { "ts": datetime.now(timezone.utc).isoformat(), "type": trade_type, "qty": round(float(qty), 6), "price": round(float(price), 8), "value": round(float(qty * price), 2), "reason": reason, "indicators": snapshot }
@@ -3662,15 +3659,12 @@ class TradierPositionManager:
             hist_dir.mkdir(parents=True, exist_ok=True)
             filename = hist_dir / f"{symbol_side}.jsonl"
             
-            # 3. ROTATION LOGIC (Max 200KB)
-            MAX_SIZE_BYTES = 200 * 1024 
-            if filename.exists():
-                try:
-                    stat = filename.stat()
-                    if stat.st_size > MAX_SIZE_BYTES:
-                        backup = filename.with_name(f"{filename.name}.bak")
-                        os.replace(filename, backup)
-                except Exception: pass
+            # 3. ROTATION (USER 2026-10-27): ~10 MB into archive/, rename only — was os.replace onto .bak, which destroyed the previous generation
+            try:
+                from vec_decisions import history_archive as _harch
+                _harch.rotate_if_needed(filename)
+            except Exception:
+                pass
 
             # 4. Reason Fallback Logic
             # Priority: Context > Position Object > Default

@@ -1630,7 +1630,7 @@ def note_order_fill(position_key, order_id, cum_qty, client_order_id="", status=
 
 
 def claim_order_fill(position_key, qty, trade_type, now=None, window_s=1800.0):
-    """Additive history fields for a position change of qty: {"order_id"} when one order's unclaimed fill equals qty (on the piece that completes the order; earlier partial pieces get "order_id_partial"), {"order_ids"} when 2-4 orders netted into one change, {"echo_of_order_id"} instead when the order is an S1/S5 vector_direct order (clientOrderId "vd…", imported as its own order row by tools/vector_direct_history_import.py). {} when nothing matches. Each order is claimed once, so an order_id lands on exactly one row."""
+    """Additive history fields for a position change of qty: {"order_id"} when one FILLED order's unclaimed fill equals qty (earlier partial pieces get "order_id_partial"), {"order_ids"} when 2-4 orders netted into one change, {"echo_of_order_id"} instead when the order is an S1/S5 vector_direct order (clientOrderId "vd...", imported as its own order row by tools/vector_direct_history_import.py). {} when nothing matches. Each order is claimed once, so an order_id lands on exactly one row."""
     try:
         q = abs(float(qty or 0.0))
         d = _RECENT_ORDER_FILLS.get(position_key) or {}
@@ -1651,8 +1651,7 @@ def claim_order_fill(position_key, qty, trade_type, now=None, window_s=1800.0):
             return out
 
         for oid, r in reversed(cands):
-            rem = r["filled"] - r["claimed"]
-            if abs(rem - q) <= tol:
+            if abs((r["filled"] - r["claimed"]) - q) <= tol:
                 prior = r["claimed"]
                 r["claimed"] = r["filled"]
                 return _fields(oid, r, prior)
@@ -8559,15 +8558,13 @@ class PositionService:
                             return
             except Exception:
                 pass
-            MAX_SIZE_BYTES = 200 * 1024
-            if filename.exists():
-                try :
-                    stat = filename.stat()
-                    if stat.st_size > MAX_SIZE_BYTES:
-                        backup = filename.with_name(f"{filename.name}.bak")
-                        if backup.exists(): backup.unlink()
-                        filename.rename(backup)
-                except Exception: pass
+            try:  # USER 2026-10-27: live ledger rolls at ~10 MB into archive/<SYM_SIDE>.<stamp>.jsonl — rename only, history is never deleted (was: 200 KB, previous .bak unlinked)
+                from vec_decisions import history_archive as _harch
+                _rolled = _harch.rotate_if_needed(filename)
+                if _rolled is not None:
+                    logger.warning(f"[HISTORY_ROTATE] {position_key}: {filename.name} -> {_rolled} (kept; offloaded by tools/history_archive_offload.py)")
+            except Exception as _hre:
+                logger.debug(f"[HISTORY_ROTATE] {position_key}: no rotation ({_hre}); file keeps growing")
             context = decision_context or {}
             # 2026-05-08 CURSE FIX: prefer qty-matched recent-order reason.
             # The Redis `decision:<pkey>` key is overwritten by competing concurrent strategies
@@ -8617,6 +8614,12 @@ class PositionService:
             except Exception:
                 pass
             entry = { "ts": datetime.now(timezone.utc).isoformat(), "type": trade_type, "qty": round(float(qty), 6), "price": round(float(price), 8), "value": round(float(qty * price), 2), "reason": reason, "indicators": snapshot }
+            try:  # USER 2026-10-27: additive broker order id(s) for this fill (see claim_order_fill); absent when no order matched
+                _oid_fields = claim_order_fill(position_key, qty, trade_type)
+                if _oid_fields:
+                    entry.update(_oid_fields)
+            except Exception:
+                pass
             _hp_line = None
             if _hp_block is not None:
                 entry["prov"] = _hp_block

@@ -47,6 +47,22 @@ def _history_rows_back(path, max_lines=_CONSERVATION_MAX_LINES):
             yield rec
 
 
+def _rotated_pieces(path, max_age_s):
+    """Newest-first rolled-over pieces of this ledger touched within max_age_s (legacy <f>.bak + archive/ segments,
+    vec_decisions.history_archive) so a rotation never hides a recent row from a windowed guard."""
+    out = []
+    bak = str(path) + ".bak"
+    if os.path.exists(bak):
+        out.append(bak)
+    try:
+        from vec_decisions import history_archive as _ha
+
+        out += [str(p) for p in reversed(_ha.recent_segments(path, max_age_s)) if str(p) != bak]
+    except Exception:
+        pass
+    return out
+
+
 def conservation_allows(path, trade_type, qty):
     try:
         t = str(trade_type or "").upper()
@@ -61,10 +77,7 @@ def conservation_allows(path, trade_type, qty):
         closed = 0.0
         same_repeat = False
         newest_seen = False
-        paths = [str(path)]
-        bak = str(path) + ".bak"
-        if os.path.exists(bak):
-            paths.append(bak)
+        paths = [str(path)] + _rotated_pieces(path, _CONSERVATION_WINDOW_S)
         for p in paths:
             for rec in _history_rows_back(p):
                 try:
@@ -133,7 +146,10 @@ def external_echo(path, trade_type, qty, now_ts=None):
                 break
         horizon = _PAPER_RELOG_S if paper else _ECHO_AFTER_S
         ext, native = [], []
-        for rec in _history_rows_back(path):
+        rows = list(_history_rows_back(path))
+        for piece in _rotated_pieces(path, horizon + 120):
+            rows += list(_history_rows_back(piece))
+        for rec in rows:
             rt = str(rec.get("type", "") or "").upper()
             rcls = (
                 1

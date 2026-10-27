@@ -159,7 +159,15 @@ def build_row(rec: dict, src: str) -> dict | None:
 
 def file_has_order(p: Path, oid: str) -> bool:
     needle = f'"order_id": "{oid}"'
-    for f in (p, p.with_name(p.name + ".bak")):
+    pieces = [p, p.with_name(p.name + ".bak")]
+    try:  # rows rolled into archive/ (vec_decisions.history_archive) within the import's 8-day memory
+        sys.path.insert(0, str(ROOT))
+        from vec_decisions import history_archive as _ha
+
+        pieces += _ha.recent_segments(p, 9 * 86400)
+    except Exception:
+        pass
+    for f in pieces:
         try:
             with open(f, "rb") as fh:
                 fh.seek(0, os.SEEK_END)

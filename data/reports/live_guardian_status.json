@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-27T23:49:25Z",
+ "ts": "2026-10-27T23:54:46Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 140,
+   "fills_6h": 135,
    "open_positions": 18,
-   "unrealised_usd": 0.13,
+   "unrealised_usd": 0.07,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 188,
-   "open_positions": 27,
-   "unrealised_usd": -4.68,
+   "fills_6h": 183,
+   "open_positions": 26,
+   "unrealised_usd": -4.57,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 277,
-   "open_positions": 46,
-   "unrealised_usd": -2.44,
+   "fills_6h": 269,
+   "open_positions": 45,
+   "unrealised_usd": -2.33,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -77,7 +77,7 @@
   "inf": {
    "fills_6h": 18,
    "open_positions": 4,
-   "unrealised_usd": 0.02,
+   "unrealised_usd": -0.05,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 58,
    "open_positions": 9,
-   "unrealised_usd": 0.09,
+   "unrealised_usd": 0.05,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,102 +127,95 @@
     "98970"
    ],
    "starts_30m": 1,
-   "log_age_s": 381.0
+   "log_age_s": 27.0
   },
   "men": {
    "pids": [
     "72712"
    ],
    "starts_30m": 1,
-   "log_age_s": 456.0
+   "log_age_s": 777.0
   },
   "ang": {
    "pids": [
     "25176"
    ],
-   "starts_30m": 2,
-   "log_age_s": 3.0
+   "starts_30m": 1,
+   "log_age_s": 39.0
   },
   "inf": {
    "pids": [
     "12881"
    ],
    "starts_30m": 1,
-   "log_age_s": 17.0
+   "log_age_s": 0.0
   },
   "flz": {
    "pids": [
     "72196"
    ],
    "starts_30m": 1,
-   "log_age_s": 850.0
+   "log_age_s": 1170.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 13733.0
+   "log_age_s": 14053.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 13809.0
+   "log_age_s": 14129.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-27T23:49:26Z",
+   "ts": "2026-10-27T23:54:46Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "men:SKYAIUSDT_SHORT",
    "evidence": "entry notional $28.02 (median $6.87, MAX_ORDER_VALUE $300) @ 2026-10-27T23:40:23Z VEC_DRIVEN_CLOSE_RECONCILE_"
   },
   {
-   "ts": "2026-10-27T23:49:27Z",
+   "ts": "2026-10-27T23:54:47Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:GRAMUSDT_SHORT",
    "evidence": "REDUCE 15.6 @ 2026-10-27T18:56:27Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-27T23:49:27Z",
+   "ts": "2026-10-27T23:54:47Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:ZECUSDC_SHORT",
    "evidence": "REDUCE 0.001 @ 2026-10-27T18:56:27Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-27T23:49:27Z",
+   "ts": "2026-10-27T23:54:47Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:WLDUSDC_SHORT",
    "evidence": "REDUCE 35.4 @ 2026-10-27T18:56:28Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-27T23:49:28Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 381s"
-  },
-  {
-   "ts": "2026-10-27T23:49:28Z",
+   "ts": "2026-10-27T23:54:48Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "men",
-   "evidence": "ez_manage_men.log not written for 456s"
+   "evidence": "ez_manage_men.log not written for 777s"
   },
   {
-   "ts": "2026-10-27T23:49:28Z",
+   "ts": "2026-10-27T23:54:48Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 850s"
+   "evidence": "ez_manage_flz.log not written for 1170s"
   }
  ],
  "alert_counts": {
   "SIZE_ANOMALY": 1,
   "FILL_WITHOUT_VEC_DECISION": 3,
-  "STALE_LOG": 3
+  "STALE_LOG": 2
  },
  "active_interventions": {
   "acct:trc": {
@@ -267,20 +260,13 @@
    "undo": "alert-only (never-halt policy 2026-10-10)",
    "dry_run": false
   },
-  "key:fin:SKYAIUSDT_SHORT": {
-   "ts": 1793137865.612215,
-   "until": 1793145065.6122282,
-   "why": "SIZE_ANOMALY entry notional $23.74 (median $6.25, MAX_ORDER_VALUE $300) @ 2026-10-27T21:51:05Z VEC_DRIVEN_OPEN_RECONCILE_",
-   "undo": "redis-cli -p 6379 DEL open_blocked:fin:SKYAIUSDT_SHORT",
-   "dry_run": false
-  },
   "key:men:SKYAIUSDT_SHORT": {
-   "ts": 1793137954.18349,
-   "until": 1793145154.18349,
-   "why": "SIZE_ANOMALY entry notional $23.73 (median $6.87, MAX_ORDER_VALUE $300) @ 2026-10-27T21:52:21Z VEC_DRIVEN_CLOSE_RECONCILE_",
+   "ts": 1793145173.662019,
+   "until": 1793152373.6620219,
+   "why": "SIZE_ANOMALY entry notional $28.02 (median $6.87, MAX_ORDER_VALUE $300) @ 2026-10-27T23:40:23Z VEC_DRIVEN_CLOSE_RECONCILE_",
    "undo": "redis-cli -p 6379 DEL open_blocked:men:SKYAIUSDT_SHORT",
    "dry_run": false
   }
  },
- "sweep_s": 2.08
+ "sweep_s": 1.51
 }

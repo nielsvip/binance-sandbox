@@ -54,9 +54,15 @@ SHEET_NAMES = frozenset({
     "AUGMENT_RISK_SIZING", "REDUCE_PROFIT_LOCK", "REDUCE_SIGNAL_RATER", "GLOBAL_RISK_GATES",
 })
 SWITCH_RX = re.compile(r"^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+$")  # UPPER_SNAKE_CASE, at least one underscore
+# 2026-10-27: these pointed at SPREADSHEETS/TEMPLATE_*.xlsx, which the operator calls LEGACY and which no board has
+# swept since the fleet moved to TEMPLATE_FINAL_NORM. v15_pilot clones TEMPLATE_FINAL_NORM (v15_progress_board.
+# template_for had the identical bug), so the watchdog was auditing files nothing runs: its breaches were legacy noise
+# while a real FINAL_NORM breach stayed invisible. Measured at the switch-over: legacy 57 breaches, FINAL_NORM 0.
+TEMPLATE_DIR = "SPREADSHEETS/TEMPLATE_FINAL_NORM"
+LEGACY_TEMPLATE_DIR = "SPREADSHEETS"
 VENUES = {
-    "crypto": (("SPREADSHEETS/TEMPLATE_CRYPTO_LONG.xlsx", "SPREADSHEETS/TEMPLATE_CRYPTO_SHORT.xlsx"), "config", "Config"),
-    "stocks": (("SPREADSHEETS/TEMPLATE_STOCKS_LONG.xlsx", "SPREADSHEETS/TEMPLATE_STOCKS_SHORT.xlsx"), "config_tradier", "TradierConfig"),
+    "crypto": (("TEMPLATE_CRYPTO_LONG.xlsx", "TEMPLATE_CRYPTO_SHORT.xlsx"), "config", "Config"),
+    "stocks": (("TEMPLATE_STOCKS_LONG.xlsx", "TEMPLATE_STOCKS_SHORT.xlsx"), "config_tradier", "TradierConfig"),
 }
 
 
@@ -70,12 +76,13 @@ def is_switch(name) -> bool:
     return bool(SWITCH_RX.match(s))
 
 
-def template_switches(paths):
+def template_switches(paths, tdir=TEMPLATE_DIR):
     """Union of real switch names in column A of every non-BASELINE sheet. Missing workbook -> reported, not fatal."""
     import openpyxl
 
     found, missing = set(), []
-    for rel in paths:
+    for name in paths:
+        rel = f"{tdir}/{name}"
         p = ROOT / rel
         if not p.exists():
             missing.append(rel)
@@ -108,14 +115,18 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--quiet", action="store_true", help="cron: print only when a breach exists")
+    ap.add_argument("--template-dir", default=TEMPLATE_DIR, help="repo-relative dir holding the four TEMPLATE workbooks the boards sweep")
+    ap.add_argument("--legacy", action="store_true", help="audit the LEGACY SPREADSHEETS/TEMPLATE_*.xlsx instead; reports only, never a gate")
     args = ap.parse_args()
+    tdir = LEGACY_TEMPLATE_DIR if args.legacy else args.template_dir
     now = dt.datetime.now(dt.timezone.utc)
-    rep = {"generated_utc": now.strftime("%Y-%m-%dT%H:%M:%SZ"), "venues": {}, "breaches": 0, "surface_errors": []}
+    rep = {"generated_utc": now.strftime("%Y-%m-%dT%H:%M:%SZ"), "template_dir": tdir, "legacy_scope": bool(args.legacy),
+           "venues": {}, "breaches": 0, "surface_errors": []}
     vec, vec_err = surface("v12_quick_engine", "QuickConfig")
     if vec_err:
         rep["surface_errors"].append(f"QuickConfig unloadable — {vec_err}")
     for venue, (paths, mod_name, cls_name) in VENUES.items():
-        sw, absent_books = template_switches(paths)
+        sw, absent_books = template_switches(paths, tdir)
         cfg, cfg_err = surface(mod_name, cls_name)
         if cfg_err:
             rep["surface_errors"].append(f"{mod_name}.{cls_name} unloadable — {cfg_err}")
