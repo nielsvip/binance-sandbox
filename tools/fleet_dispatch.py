@@ -182,6 +182,9 @@ def should_act(me, now):
     fresh = bool(hb) and now - float(hb.get("ts") or 0) < HB_STALE_S
     if fresh and hb.get("acting"):
         return False, f"peer {peer} acting (hb {now - float(hb['ts']):.0f}s)"
+    load1, ncpu = os.getloadavg()[0], os.cpu_count() or 1
+    if fresh and load1 > 3 * ncpu:
+        return False, f"self overloaded (load1 {load1:.0f} > 3x{ncpu} cpus) and peer {peer} healthy -> standby"
     if me == "s1":
         return True, "s1 primary" + ("" if fresh else " (peer hb stale)")
     if fresh:
@@ -404,7 +407,9 @@ def npz_ship(fleet, target, ss):
                f"sys.exit(0 if float(a[-1])>=float(b[-1]) else 3)\" $T {rel} && mv -f $T {rel} && echo INSTALLED "
                f"|| {{ rc=$?; rm -f $T; echo REFUSED-$rc; }}")
     rc, out, err = th.sh(install, 120, inp=blob)
-    return {"owner": owner, "ok": "INSTALLED" in out, "md5": md5, "pushed": True, "install": out.strip()[-60:]}
+    # REFUSED-3 = the target's own NPZ already has a newer tail than the owner's: keep it (never regress)
+    return {"owner": owner, "ok": "INSTALLED" in out or "REFUSED-3" in out, "md5": md5, "pushed": True,
+            "install": "TARGET_NEWER_KEPT" if "REFUSED-3" in out else out.strip()[-60:]}
 
 
 def launch(fleet, target, ss, tail, me):
