@@ -20,10 +20,9 @@ while true; do
     rsync -auvz --timeout=30 --include="*/" --include="latest_market_data.json" --include="price_cache*.json" --include="market_data_*.json" --exclude="*" --exclude="*.tmp" --exclude="*.lock" --exclude="backups*" --max-size=100M "$MACBOOK_SOURCE" "${SERVER_HOST}:${SERVER_TARGET}" >> "$LOG_FILE" 2>&1
     # Also sync klines_cache separately (different root)
     # USER 2026-10-13: Mac klines go to S1's STAGING dir only; S1's klines_append appends them onto its own big files (never overwritten).
-    # USER 2026-10-27 "keep only one copy of klines": send only each file's recent TAIL (tools/klines_tail_stage.py, ~300 MB) to S1's
-    # inbox; S1 folds it into klines_cache_macbook/ (tools/klines_macbook_drain.py --merge-inbox) and drains what klines_append appended.
-    _deny_refresh; nice -n 10 python3 /Users/niels/Documents/binance/tools/klines_tail_stage.py >> "$LOG_FILE" 2>&1
-    rsync -az --timeout=30 --exclude-from="$_DENYX" --exclude="*.tmp" --exclude="*.lock" --max-size=100M "$HOME/klines_tail_stage/" "${SERVER_HOST}:/home/niels/binance-sandbox/klines_cache_macbook_inbox/" >> "$LOG_FILE" 2>&1
+    # USER 2026-10-27 "if you need the macbook klines folder on s1 in order to append keep it there ... NO kline can ever be even one
+    # second behind on s1": direct push into klines_cache_macbook/ (a live freshness source for npz_bar_refresh), no tail/inbox layer.
+    _deny_refresh; rsync -auz --timeout=30 --exclude-from="$_DENYX" --exclude="*.tmp" --exclude="*.lock" --max-size=100M "/Users/niels/Documents/binance/klines_cache/" "${SERVER_HOST}:/home/niels/binance-sandbox/klines_cache_macbook/" >> "$LOG_FILE" 2>&1
     rsync -auvz --timeout=30 --exclude="*.tmp" --exclude="*.lock" --max-size=100M "/Users/niels/Documents/binance/price_cache*.json" "${SERVER_HOST}:/home/niels/binance/" >> "$LOG_FILE" 2>&1
     # Push to gateway as well (gateway has no latest_market_data, so Mac fills it)
     rsync -auvz --timeout=30 --exclude="*.tmp" --exclude="*.lock" --max-size=100M "/Users/niels/Documents/binance/data/latest_market_data.json" "gateway-internal:/home/niels/binance/data/latest_market_data.json" >> "$LOG_FILE" 2>&1
