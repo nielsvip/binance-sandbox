@@ -1,7 +1,7 @@
 {
-  "ts": "2026-10-27T16:30:14.998852+00:00",
-  "tick": "2026-10-27T16:28:01.417266+00:00",
-  "tick_age_s": 134,
+  "ts": "2026-10-27T16:35:11.856250+00:00",
+  "tick": "2026-10-27T16:34:01.824880+00:00",
+  "tick_age_s": 70,
   "round": {
     "path": "/home/niels/binance-sandbox/data/reports/full_course_round_run37.json",
     "round": "run37",
@@ -16,7 +16,7 @@
   },
   "hosts": {
     "s1": {
-      "cpu_pct": 75,
+      "cpu_pct": 100,
       "slots": "4/4",
       "observed_running": [
         "FARTCOINUSDT",
@@ -26,12 +26,11 @@
       ],
       "published_last_hour": 0,
       "idle_reason": "slots full",
-      "mem_avail_mb": 10498
+      "mem_avail_mb": 1138
     }
   },
   "one_hour_total": 0,
   "alerts": [
-    "LOW_THROUGHPUT:s1:0/h",
-    "LOW_CPU:s1:75%"
+    "LOW_THROUGHPUT:s1:0/h"
   ]
 }

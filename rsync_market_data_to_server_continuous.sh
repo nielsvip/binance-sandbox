@@ -13,6 +13,9 @@ _deny_refresh() { : > "$_DENYX"; python3 -c 'import json,sys;[print(f"{s}_*\n{s}
 _deny_refresh
 echo "$(date '+%Y-%m-%d %H:%M:%S') - 🔄 Starting continuous rsync market_data to server..." | tee -a "$LOG_FILE"
 while true; do
+    # USER 2026-10-27 "NO kline can ever be even one second behind on s1": the s1-int tunnel (127.0.0.1:2201) drops often and
+    # every leg then failed for the whole cycle; fall back to s1-pub for this cycle when the tunnel does not answer.
+    SERVER_HOST="s1-int"; ssh -o BatchMode=yes -o ConnectTimeout=5 s1-int true 2>/dev/null || SERVER_HOST="s1-pub"
     check_local_size "$MACBOOK_SOURCE"
     if ! check_remote_size "$SERVER_HOST" "$SERVER_TARGET"; then sleep 60; continue; fi
     echo "$(date '+%Y-%m-%d %H:%M:%S') - 📤 Syncing market_data to server..." >> "$LOG_FILE"
