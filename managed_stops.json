@@ -139,13 +139,6 @@
     "symbol": "MASKUSDT",
     "side": "SHORT"
   },
-  "ang:SKYUSDT_SHORT": {
-    "orderId": "4000002000451965",
-    "stopPrice": 0.06562,
-    "entry_sig": "2026-10-27 09:18:05.850000+00:00",
-    "symbol": "SKYUSDT",
-    "side": "SHORT"
-  },
   "ang:BTCUSDC_LONG": {
     "orderId": "4000002000575560",
     "stopPrice": 79041.6,
@@ -166,5 +159,12 @@
     "entry_sig": "2026-10-27 08:38:07.325000+00:00",
     "symbol": "TRUMPUSDC",
     "side": "SHORT"
+  },
+  "ang:BEAMXUSDT_LONG": {
+    "orderId": "4000002000579398",
+    "stopPrice": 0.003192,
+    "entry_sig": "2026-10-27 10:22:43.865000+00:00",
+    "symbol": "BEAMXUSDT",
+    "side": "LONG"
   }
 }
