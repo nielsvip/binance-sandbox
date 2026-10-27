@@ -553,7 +553,7 @@ def tick(args):
             for ss, r in (d.get("launches") or {}).items():
                 age = now - float(r.get("ts") or 0)
                 p = (d.get("progress") or {}).get(ss) or {}
-                if 180 < age < 7200 and ss not in running_all and not (p.get("fg") or p.get("zero")):
+                if 180 < age < 7200 and ss not in (d.get("running") or {}) and not (p.get("fg") or p.get("zero")):
                     died.append((float(r["ts"]), ss))
             if len(died) >= QUARANTINE_DEATHS:
                 last = max(t for t, _ in died)

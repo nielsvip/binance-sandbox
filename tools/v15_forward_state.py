@@ -68,6 +68,43 @@ def _open_ledger_position(ledger, tail):
     return current
 
 
+def _vector_acts(ledger, last_index, tails):
+    """USER 2026-10-27 vector_direct: the engine's own acts AT the last closed bar, with quantity, plus the
+    position it holds after them. Read out of the same ledger as `open`; FINAL_MTM marks are never acts."""
+    rows = []
+    for n, row in enumerate(ledger):
+        typ = str(row.get("type", "")).upper()
+        if typ not in ("OPEN", "AUGMENT", "REDUCE", "CLOSE") or row.get("unrealised") or str(row.get("reason") or "").startswith("FINAL_MTM"):
+            continue
+        bar = row.get("bar_exit") if typ == "CLOSE" else row.get("bar", row.get("bar_entry"))
+        if bar is not None:
+            rows.append((int(bar), n, typ, row))
+    rows.sort(key=lambda item: (item[0], item[1]))
+    qty = open_qty = open_px = 0.0
+    open_bar = None
+    acts = []
+    for bar, _n, typ, row in rows:
+        q = abs(float(row.get("qty") or 0.0))
+        px = float(row.get("price") or row.get("exit_price") or 0.0)
+        before = qty
+        if typ == "OPEN" or (typ == "AUGMENT" and qty <= 1e-12):
+            qty, open_qty, open_px, open_bar = q, q, px, bar
+        elif typ == "AUGMENT":
+            qty += q
+        elif typ == "REDUCE":
+            qty = max(0.0, qty - q)
+        else:
+            qty = 0.0
+        if qty <= 1e-12:
+            qty, open_qty, open_px, open_bar = 0.0, 0.0, 0.0, None
+        if bar == last_index:
+            acts.append({"type": typ, "qty": q, "price": px, "reason": str(row.get("reason") or row.get("exit_reason") or "")[:80],
+                         "qty_before": before, "qty_after": qty, "qty_frac": (1.0 if typ == "CLOSE" else round(min(1.0, q / before), 6) if typ == "REDUCE" and before > 0 else None)})
+    pos = {"engine_qty": qty, "engine_open_qty": open_qty, "engine_open_px": open_px,
+           "engine_open_bar_ts": int(tails[open_bar]) if open_bar is not None and 0 <= open_bar < len(tails) else None}
+    return pos, acts
+
+
 def state_for(symside, window_days=30):
     from tools.opt.v12_pilot import prepare_batch, evaluate_prepared_sanitized
     ov, src, setting_meta = _load_overrides(symside)
@@ -116,6 +153,13 @@ def state_for(symside, window_days=30):
            "entry_bar": int(tails[int(cur.get("bar", cur.get("bar_entry")))]) if cur is not None and cur.get("bar", cur.get("bar_entry")) is not None else None,
            "entry_px": cur.get("price", cur.get("entry_price")) if cur is not None else None,
            "audit_only": False}
+    try:
+        _pos, _acts = _vector_acts(led, len(tails) - 1, tails)
+        out.update(_pos)
+        out["acts_bar_ts"] = tail
+        out["acts_last_bar"] = _acts
+    except Exception as exc:
+        out["acts_error"] = f"{type(exc).__name__}: {exc}"[:160]
     return out
 
 
