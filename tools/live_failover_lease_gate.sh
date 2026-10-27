@@ -47,6 +47,24 @@ lf_lease_fenced() {
     lf_is_gated_script "$script" || return 1
     venue="$(lf_script_venue "$script")"
     if [[ "${LF_UNAME:-$(uname)}" == "Darwin" ]]; then
+        # USER 2026-10-27 vector_direct STAND-DOWN ("when it HAS TO kick in it HAS TO TRADE NO MATTER WHAT"): while S1/S5
+        # tools/vector_direct_trader.py is ARMED and owns THIS account, the Mac's engine for that account is not respawned
+        # (its exits closed S1's fresh positions as VEC_EXACT_LEGACY_ADOPTED within 96 s, measured flz ETHUSDC_SHORT
+        # 21:08:43->21:10:19Z). mac_failover_agent.vd_fence rewrites vector_direct_owned.json every tick from S1/S5's own
+        # status; a stale file (agent dead, S1 status unknown, S1 trader dead) fences NOTHING — the 10-22 failure (Mac
+        # fenced while S1 ran nothing) cannot recur. Account-scoped engines only; venue daemons are never fenced here.
+        if [[ -n "$account" && -f "$workdir/data/live_failover/vector_direct_owned.json" ]]; then
+            if python3 - "$workdir/data/live_failover/vector_direct_owned.json" "$account" <<'VDPY' 2>/dev/null
+import json, sys, time
+d = json.load(open(sys.argv[1]))
+fresh = time.time() - float(d.get("epoch") or 0) < float(d.get("max_age_s") or 180)
+sys.exit(0 if fresh and sys.argv[2] in (d.get("accounts") or []) else 1)
+VDPY
+            then
+                echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] [VD_FENCED] S1/S5 vector_direct owns account ${account} — NOT spawning $script on the Mac" >&2
+                return 0
+            fi
+        fi
         # THE MAC IS NEVER FENCED (USER 2026-10-22: "s1 is an EMERGENCY system that runs as long as macbook is DEAD
         # but it can NEVER block any mac action it needs to STAND DOWN as soon as mac trades").
         #

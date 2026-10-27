@@ -244,6 +244,7 @@ class Activation:
 
     def triggers(self, now, hb, venue, missed):
         trig = {}
+        self._named_kinds = set()
         hb_epoch = float((hb or {}).get("epoch") or 0.0)
         age = now - hb_epoch if hb_epoch else None
         if age is None or age > HB_STALE_S:
@@ -257,6 +258,8 @@ class Activation:
                     named = sec.get(f"{kind}_accounts")
                     if kind in VENUE_WIDE_KINDS_IGNORED and named is None:
                         continue
+                    if isinstance(named, list):
+                        self._named_kinds.add(kind)
                     for a in (named if isinstance(named, list) else self.accounts):
                         if a in self.accounts:
                             trig.setdefault(a, f"mac_kind:{kind}")
@@ -281,6 +284,14 @@ class Activation:
         for a, why in (missed or {}).items():
             if a in self.accounts:
                 trig.setdefault(a, why)
+        # An account S1 owns has its Mac engine stood down (mac_failover_agent VD_STANDDOWN), so the Mac's per-account
+        # signals for it (engine dead, not trading, positions stale) are caused by the stand-down itself and cannot
+        # extend ownership; only heartbeat loss and venue-wide kinds keep it. Handback = hold elapsed + healthy stretch;
+        # a relapse after handback doubles the next hold.
+        venue_wide = {a: w for a, w in trig.items() if w.startswith("mac_heartbeat_") or w.startswith("mac_kind:") and w[9:] not in self._named_kinds}
+        for a in list(trig):
+            if self.st.get(a, {}).get("active") and a not in venue_wide:
+                trig.pop(a)
         return trig, age
 
     def update(self, now, trig):

@@ -325,6 +325,7 @@ class Agent:
         self.health = C.TradingHealth(LOGDIR)
         self._npz_bar = {}
         self.vd_status = {}
+        self.vd_killed = {}
         self._s5_busy = False
 
     def s5_exchange(self, heartbeat):
@@ -371,6 +372,41 @@ class Agent:
             if not isinstance(st, dict) or not st.get("armed") or now - float(st.get("epoch") or 0) > VD_STATUS_MAX_AGE_S or now - seen > VD_STATUS_MAX_AGE_S:
                 continue
             owned |= {a for a in st.get("active_accounts") or [] if a in accts}
+        # Stand-down: the respawn gate (tools/live_failover_lease_gate.sh, Darwin) reads this file; it must be rewritten
+        # every tick or it goes stale and fences nothing.
+        C.atomic_write_json(LF / "vector_direct_owned.json", {"epoch": now, "iso": C.iso(now), "accounts": sorted(owned),
+                                                               "max_age_s": VD_STATUS_MAX_AGE_S})
+        if os.environ.get("LF_VD_STANDDOWN", "1") == "1":
+            for acct in sorted(owned):
+                script = "tradier_manage.py" if acct in C.STOCK_ACCOUNTS else "ez_manage.py"
+                pids = []
+                try:
+                    out = subprocess.run(["ps", "-eo", "pid=,args="], capture_output=True, text=True, timeout=10).stdout
+                    for line in out.splitlines():
+                        pid, _, args = line.strip().partition(" ")
+                        if re.search(rf"python[^ ]* -u {re.escape(script)} --account {acct}(\s|$)", args):
+                            pids.append(int(pid))
+                except Exception as exc:
+                    log(f"VD_STANDDOWN ps failed: {exc!r}")
+                    continue
+                first = self.vd_killed.get(acct)
+                if not pids:
+                    self.vd_killed.pop(acct, None)
+                    continue
+                sig = signal.SIGKILL if first and now - first > 45 else signal.SIGTERM
+                if first and sig == signal.SIGTERM:
+                    continue
+                for pid in pids:
+                    try:
+                        os.kill(pid, sig)
+                    except OSError:
+                        pass
+                self.vd_killed.setdefault(acct, now)
+                log(f"VD_STANDDOWN {acct}: {sig.name} Mac {script} pids {pids} — S1/S5 vector_direct owns the account (respawn gated by vector_direct_owned.json)")
+                alert("VD_STANDDOWN", account=acct, pids=pids, signal=sig.name)
+        for acct in list(self.vd_killed):
+            if acct not in owned:
+                self.vd_killed.pop(acct, None)
         for acct in tuple(C.CRYPTO_ACCOUNTS) + tuple(C.STOCK_ACCOUNTS):
             halt = BASE / "data" / f"HALT_TRADING_{acct}"
             marker = halt.with_name(halt.name + ".vector_direct")

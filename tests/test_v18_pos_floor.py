@@ -101,3 +101,16 @@ def test_floor_048_lowers_trained_positives(tmp_path, monkeypatch):
     assert c1["M_labels"] == c0["M_labels"] and c1["M_pos"] < c0["M_pos"]
     assert c1["B_binds"] == c0["B_binds"]  # binding (noop) semantics stay on EPS
     assert blob1["_meta"]["pos_floor_pp"] == 0.48 and st1["meta"]["pos_floor_pp"] == 0.48
+
+
+def test_sorted_events_equal_basenames_in_two_dirs(tmp_path):
+    import gzip
+    for d, ts in (("a", "2026-10-01T00:00:00Z"), ("b", "2026-10-02T00:00:00Z")):
+        (tmp_path / d).mkdir()
+        with gzip.open(tmp_path / d / "spill_history_mac_x.tsv.gz", "wt") as fh:
+            fh.write(f"{ts}\t{{}}\n")
+    (tmp_path / "c").symlink_to(tmp_path / "a", target_is_directory=True)
+    out = tmp_path / "tmp" / "sorted.tsv"
+    files = B.sorted_events([str(tmp_path / "a"), str(tmp_path / "b"), str(tmp_path / "c")], tmp_path / "tmp", out)
+    assert len(files) == 2 and out.read_text().count("\n") == 2
+    assert not list((tmp_path / "tmp").glob("*.u"))

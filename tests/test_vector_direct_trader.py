@@ -110,6 +110,17 @@ def test_named_kinds_scope_and_engine_down_persistence(tmp_path):
     assert a.triggers(now + 201, up, "crypto", {})[0] == {}
 
 
+def test_owned_account_ignores_per_account_signals_caused_by_standdown(tmp_path):
+    a = V.Activation(tmp_path / "o.json", V.CRYPTO_ACCOUNTS)
+    now = 4_000_000.0
+    a.update(now, {"flz": "x"})
+    h = hb(now, kinds=["not_trading_account"], not_trading_account_accounts=["flz", "inf"], account_dead_accounts=["flz"],
+           accounts={"flz": {"trader_alive": 0, "engine_dead_s": 9999}})
+    assert set(a.triggers(now, h, "crypto", {})[0]) == {"inf"}
+    assert set(a.triggers(now, hb(now, kinds=["indicators_unproducible"]), "crypto", {})[0]) == set(V.CRYPTO_ACCOUNTS)
+    assert "flz" in a.triggers(now, None, "crypto", {})[0]
+
+
 def test_stock_market_closed_section_never_triggers(tmp_path):
     a = V.Activation(tmp_path / "s.json", V.STOCK_ACCOUNTS)
     now = 2_000_000.0

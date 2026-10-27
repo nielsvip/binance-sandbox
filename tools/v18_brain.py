@@ -2186,14 +2186,16 @@ def sorted_events(spill_dirs, tmp_dir, out_path):
     for d in spill_dirs:
         dd = os.path.expanduser(d)
         files.extend(sorted(glob.glob(os.path.join(dd, "spill_*.tsv")) + glob.glob(os.path.join(dd, "spill_*.tsv.gz"))))
+    seen_real = set()
+    files = [f for f in files if not (os.path.realpath(f) in seen_real or seen_real.add(os.path.realpath(f)))]  # same file via two dirs/symlinks: once
     if not files:
         raise SystemExit("no spill_*.tsv[.gz] in " + ", ".join(spill_dirs))
     Path(tmp_dir).mkdir(parents=True, exist_ok=True)
     env = dict(os.environ, LC_ALL="C")
     plain, made = [], []
-    for f in files:
+    for j, f in enumerate(files):
         if f.endswith(".gz"):
-            u = Path(tmp_dir) / (Path(f).name[:-3] + ".u")
+            u = Path(tmp_dir) / (f"{j:04d}_" + Path(f).name[:-3] + ".u")  # unique per source: equal basenames in two spill dirs never collide
             with gzip.open(f, "rb") as src, open(u, "wb") as dst:
                 for chunk in iter(lambda: src.read(1 << 22), b""):
                     dst.write(chunk)
@@ -2204,7 +2206,7 @@ def sorted_events(spill_dirs, tmp_dir, out_path):
     cmd = ["sort", "-s", "-t", "\t", "-k1,1", "-S", os.environ.get("V18_SORT_MEM", "1G"), "-T", str(tmp_dir), "-o", str(out_path)] + plain
     subprocess.run(cmd, check=True, env=env)
     for u in made:
-        os.remove(u)
+        Path(u).unlink(missing_ok=True)
     return files
 
 
