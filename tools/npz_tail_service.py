@@ -264,8 +264,9 @@ def kline_last_close(base, symbol, mode, now_s=None):
         def eligible_start(stamp):
             if stamp + 900 > now_epoch:
                 return False
-            if mode == 'crypto' and stamp == current_start and now_epoch < current_start + 930 and not verified_current:
-                return False
+            # 2026-10-27 USER design: the mark-price bar is published at the close and S1 calculates the NPZ bar AS SOON AS IT
+            # RECEIVES it; the OHLCV kline that replaces it later is applied as a correction (source_changed -> replace_latest).
+            # The 30 s hold for a verified native row here delayed every crypto NPZ bar by 30 s.
             if mode == 'tradier':
                 from tools.npz_cutoffs import is_rth_bar_start
                 return is_rth_bar_start(stamp)

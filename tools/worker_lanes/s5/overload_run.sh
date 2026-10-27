@@ -12,10 +12,21 @@ if [ "${OVL_LOCKED}" != 1 ]; then exec env OVL_LOCKED=1 flock -n "/tmp/v15_fleet
 _nrun=$(pgrep -af "^[^ ]*python[^ ]* -u ([^ ]*/)?v15_pilot(_7d|_no_publish_resume)?[.]py --sym-side " 2>/dev/null | grep -oE -- '--sym-side [A-Z0-9_]+' | sort -u | wc -l)
 [ "$_nrun" -ge "$MAX" ] && { echo FULL-"${SS}"; exit 0; }
 _avail_mb=$(awk '/^MemAvailable:/ {print int($2/1024)}' /proc/meminfo)
-if [ "$_avail_mb" -lt 14000 ]; then
-  [ "$_avail_mb" -ge 7500 ] || { echo "MEM_WAIT-${SS}-${_avail_mb}MB"; exit 0; }
-  W=1
-  echo "MEM_THROTTLE-${SS}-1-worker-${_avail_mb}MB"
+# OPERATOR 2026-10-27: every server runs 28 workers for 4 symbols x 2 sides (4 sym_sides x 7 workers).
+# The old gate was a cliff -- below 14000MB it forced W=1 -- which meant only the FIRST of four boards
+# ever got 7 workers: every later launch sees memory already held by the boards before it, so boards 2-4
+# ran SINGLE-THREADED and each host delivered about a third of its design throughput. Measured 2026-10-27:
+# s2 ran 4 boards all at --workers 1, parent at 0% CPU with one child at 100%, 0.73 boards/h/host.
+# Marginal cost of a 7-worker board is ~5.75GB (S1 held 28 workers in ~23GB of 31GB), so admit a full
+# 7-worker board while >=9000MB remains, degrade to 3 between 6500 and 9000, refuse below 6500.
+# The 2026-10-27 OOM storm was vec_bar_trigger leaking 25GB on s6 / 10GB on s5 (now capped by
+# BAR_TRIGGER_RSS_CAP) plus orphaned fork-workers from OOM-killed parents (now reaped by
+# V15_PILOT_ORPHAN_REAPER) -- not the worker count. Both guards run every 5 min.
+if [ "$_avail_mb" -lt 6500 ]; then
+  echo "MEM_WAIT-${SS}-${_avail_mb}MB"; exit 0
+elif [ "$_avail_mb" -lt 9000 ]; then
+  W=3
+  echo "MEM_THROTTLE-${SS}-3-workers-${_avail_mb}MB"
 fi
 PDIR=$(head -n 1 "$HOME/v15_current_progress_dir.txt" 2>/dev/null)
 [[ "$PDIR" == /home/niels/v15_run*/progress ]] || { echo "INVALID ROUND POINTER: $PDIR" >&2; exit 2; }
