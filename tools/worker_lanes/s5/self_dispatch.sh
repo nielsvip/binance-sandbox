@@ -19,7 +19,7 @@ if [ $(( $(date +%s) - $(stat -c %Y "$SP" 2>/dev/null || stat -f %m "$SP" 2>/dev
   rsync -az --timeout=60 "niels@10.0.0.3:$PDIR/" "$SP/" >/dev/null 2>&1
   touch "$SP"
 fi
-nrun=$(pgrep -af "^[^ ]*python[^ ]* -u ([^ ]*/)?v15_pilot(_7d)?[.]py --sym-side " 2>/dev/null | grep -oE -- '--sym-side [A-Z0-9_]+' | sort -u | wc -l)
+nrun=$(pgrep -af "^[^ ]*python[^ ]* -u ([^ ]*/)?v15_pilot(_7d|_no_publish_resume)?[.]py --sym-side " 2>/dev/null | grep -oE -- '--sym-side [A-Z0-9_]+' | sort -u | wc -l)
 _TB=/tmp/tails_$(basename $SIDES .txt).cache
 _PB=/tmp/prog_$(basename $SIDES .txt).cache
 /home/niels/.conda/envs/binance_env_mac/bin/python - "$SIDES" "$SB" "$SP" "$PDIR" "$_TB" "$_PB" <<'PYEOF' 2>/dev/null
@@ -67,7 +67,7 @@ PYEOF
 for ss in $(/home/niels/.conda/envs/binance_env_mac/bin/python "$SB/tools/v15_best_first.py" --snapshot /tmp/v15_best_first.json --ordered "$SIDES"); do
   case "$ss" in *_LONG) ;; *) continue ;; esac
   [ "$nrun" -ge "$MAX" ] && break
-  pgrep -f "^[^ ]*python[^ ]* -u ([^ ]*/)?v15_pilot(_7d)?[.]py --sym-side ${ss} " >/dev/null 2>&1 && continue
+  pgrep -f "^[^ ]*python[^ ]* -u ([^ ]*/)?v15_pilot(_7d|_no_publish_resume)?[.]py --sym-side ${ss} " >/dev/null 2>&1 && continue
   _rec="/tmp/dispatched_${ss}"
   if [ -f "$_rec" ]; then
     _rage=$(( $(date +%s) - $(stat -c %Y "$_rec" 2>/dev/null || stat -f %m "$_rec" 2>/dev/null || echo 0) ))
