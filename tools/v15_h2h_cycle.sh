@@ -91,7 +91,10 @@ $SSH "$HOST" "cd ~/binance-sandbox && /home/niels/.conda/envs/binance_env_mac/bi
 rsync -az --timeout=300 -e "$SSH" "$HOST:$OUT" "$OUT" >> "$LOG" 2>&1 || { say "decision pull failed"; exit 1; }
 
 if [ "${V15_H2H_APPLY:-0}" = "1" ]; then
-  cp -p data/hourly_reconfig/per_sym_store.db "backups/before_h2h_${VENUE}_${TS}.db" 2>/dev/null
+  # 2026-10-27: written zstd-compressed (1.46 GB -> ~0.35 GB, lossless). Raw hourly copies filled the Mac to 249 MB free
+  # faster than backup_retention_prune could archive them. Raw cp stays the fallback if zstd is missing.
+  _ZSTD="$(command -v zstd || echo /opt/homebrew/bin/zstd)"
+  "$_ZSTD" -q -3 -T4 data/hourly_reconfig/per_sym_store.db -o "backups/before_h2h_${VENUE}_${TS}.db.zst" 2>/dev/null || cp -p data/hourly_reconfig/per_sym_store.db "backups/before_h2h_${VENUE}_${TS}.db" 2>/dev/null
   "$PY" tools/v15_golive_headtohead.py apply --in "$OUT" --apply 2>&1 | tail -30 | tee -a "$LOG"
 else
   "$PY" tools/v15_golive_headtohead.py apply --in "$OUT" 2>&1 | tail -30 | tee -a "$LOG"

@@ -60,7 +60,7 @@ def plan(keep_recent: int, keep_tars: int, min_age_h: float, keep_days: int = 0)
     now = dt.datetime.now(dt.timezone.utc).timestamp()
     keep, drop = [], []
     groups = collections.defaultdict(list)
-    for f in glob.glob(str(ROOT / "backups" / "*.db")) + glob.glob(str(ROOT / "backups" / "*.db-wal")):
+    for f in glob.glob(str(ROOT / "backups" / "*.db")) + glob.glob(str(ROOT / "backups" / "*.db.zst")) + glob.glob(str(ROOT / "backups" / "*.db-wal")):
         p = Path(f)
         if protected_file(p):
             keep.append((p, "explicitly protected backup"))
