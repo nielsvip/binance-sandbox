@@ -69,7 +69,14 @@ def send_lane(base, mode, host, remote):
                 if (event['symbol'], int(event['bar_start_ts'])) in accepted:
                     acknowledge_unchanged(path, snapshot)
             print(json.dumps({'mode': mode, 'host': host, 'sent_at': time.time(), **response}), flush=True)
-            if response['errors']:
+            # 2026-10-27: 16 LOW bars refused on S5 ("missing history") rode in EVERY batch, and this sleep then held every other
+            # stock bar ~2 s. Sleep only when nothing was accepted; a bar refused for > 6 h is parked in rejected/ (kept, never deleted).
+            refused = {symbol for symbol, _ in response['errors']}
+            for path, event in zip(paths, events):
+                if event['symbol'] in refused and (event['symbol'], int(event['bar_start_ts'])) not in accepted and time.time() - int(event['bar_close_ts']) > 6 * 3600:
+                    (outbox / 'rejected').mkdir(exist_ok=True)
+                    os.replace(path, outbox / 'rejected' / path.name)
+            if response['errors'] and not response['ok']:
                 time.sleep(1)
         except Exception as exc:
             # 2026-10-27: an ENOSPC raised by THIS print killed the crypto lane thread at 14:37Z while the tradier thread kept the
