@@ -78,7 +78,7 @@ DEFAULTS = {
     "WIRE_ENTRY_BANNED_ACCOUNTS": (),  # extra accounts with a hard entry ban (HARD_ENTRY_BANNED_ACCOUNTS always applies)
     "WIRE_FILE_REFLECTION_ENABLED": True,  # next order on a key only once {acct}/{long|short}_positions.json shows the broker qty (written after the fill)
     "POSITIONS_FILE_SYNC_WAIT_S": 1.0,  # the positions service gets this long; beyond = BROKEN POSITIONS MANAGEMENT alarm  # after an UNCONFIRMED_BY_BROKER result, exposure-increasing orders on that symbol are refused this long (exits pass)
-    "WRITER_TRUTH_MAX_AGE_S": 20.0,  # how old the single writer's published snapshot may be and still authorize an exposure-INCREASING order; the writer's REST cycle is 6 s, so this is >3 cycles. Exits are never gated on it.
+    "WRITER_TRUTH_MAX_AGE_S": 60.0,  # how old the single writer's published snapshot may be and still authorize an exposure-INCREASING order. The REST cycle is 6 s, but measured healthy file ages span 2.9-41.8 s under Mac load, so a tighter cap (20 s was tried) refuses legitimate entries on normal jitter. 60 s matches the heartbeat staleness window. Exits are NEVER gated on it.
 }
 
 
@@ -525,6 +525,44 @@ def _last_fill_ts(guard: "_GuardBase", symbol: str, position_side: Optional[str]
     return best
 
 
+_WRITER_TRUTH_CACHE: Dict[str, Any] = {}
+
+
+def _heartbeat_stale_after() -> float:
+    try:
+        import position_writer_guard as _pt  # noqa: WPS433
+        return float(_pt.stale_after_s())
+    except Exception:
+        return 60.0
+
+
+def _writer_truth_row(venue: str, account: str, symbol: str, position_side: str):
+    """One key's row from the single writer's published positions JSON — the same snapshot it publishes to
+    Redis. Parsed copy is cached per file and invalidated by (mtime, size), so repeated reads inside one order
+    cost nothing. Returns (row|None, data_age_s, heartbeat_age_s, path)."""
+    import position_writer_guard as _pt  # noqa: WPS433
+
+    ps = str(position_side).upper()
+    try:
+        path = _pt.positions_file_for(venue, account, ps)
+        key = f"{_pt.canonical_account(venue, account)}:{str(symbol).upper()}_{ps}"
+        st = path.stat()
+    except Exception:
+        return None, float("inf"), float("inf"), None
+    stamp = (st.st_mtime, st.st_size)
+    hit = _WRITER_TRUTH_CACHE.get(str(path))
+    if not hit or hit[0] != stamp:
+        rows = _pt.read_json(path)
+        hit = (stamp, rows if isinstance(rows, dict) else {})
+        _WRITER_TRUTH_CACHE[str(path)] = hit
+    row = hit[1].get(key)
+    try:
+        hb_age = float(_pt.heartbeat_age(path.parent))
+    except Exception:
+        hb_age = float("inf")
+    return (row if isinstance(row, dict) else None), time.time() - st.st_mtime, hb_age, str(path)
+
+
 def file_gate_decision(guard: "_GuardBase", venue: str, symbol: str, position_side: str, broker: Dict[str, Any], token_key: str, sleep: Callable[[float], Any] = time.sleep) -> Decision:
     """PHASE 3 #2: no order on a key until {acct}/{long|short}_positions.json shows the broker-confirmed quantity, written after
     the last fill. Follow-up legs of the SAME execute_now call are exempt (their fills are tracked by the in-call intent gate).
@@ -969,6 +1007,12 @@ class BinanceDedupeGuard(_GuardBase):
         worst = None
         for side in sides:
             row, age, hb_age, path = _writer_truth_row("binance", self.account, symbol, side)
+            if path is None:
+                # No positions file for this account AT ALL — no writer has ever published here (fresh
+                # bootstrap, a test fixture, a venue with no file layout). That is NOT the banned-writer case,
+                # so read the broker once rather than refuse every order forever. A writer that EXISTS but is
+                # behind falls through to the stale branch below and never polls.
+                return self._broker_position_from_broker(inner_client, symbol, ps)
             fresh = age <= max_age and hb_age <= _heartbeat_stale_after()
             if worst is None or not fresh:
                 worst = (age, hb_age, path, fresh)
@@ -984,6 +1028,18 @@ class BinanceDedupeGuard(_GuardBase):
         if worst is not None and not worst[3] and not allow_stale:
             raise RuntimeError(f"single-writer snapshot stale: {worst[2]} data_age={worst[0]:.1f}s heartbeat_age={worst[1]:.1f}s (cap {max_age:.0f}s) — no exposure-increasing order on unproven positions")
         return out
+
+    def _broker_position_from_broker(self, inner_client, symbol: str, ps: str) -> Dict[str, Any]:
+        """Only for an account that has no positions file at all (see _broker_position_uncached)."""
+        rows = inner_client.futures_position_information(symbol=symbol.upper())
+        if not isinstance(rows, list):
+            raise RuntimeError(f"positionRisk unparseable: {str(rows)[:200]}")
+        for r in rows:
+            if str(r.get("symbol", "")).upper() != symbol.upper():
+                continue
+            if str(r.get("positionSide", "BOTH")).upper() == ps:
+                return {"signed": _f(r.get("positionAmt")), "amt": abs(_f(r.get("positionAmt"))), "entry": _f(r.get("entryPrice")), "mark": _f(r.get("markPrice"))}
+        return {"signed": 0.0, "amt": 0.0, "entry": 0.0, "mark": 0.0}
 
     def exposure_gate(self, inner_client, symbol: str, side: str, ps: str, qty: float, params: Dict[str, Any], origin: str = "") -> Decision:
         reduce_only = str(params.get("reduceOnly", "")).lower() == "true" or params.get("reduceOnly") is True
