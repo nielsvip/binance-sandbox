@@ -116,8 +116,18 @@ def refresh_symbol(acct, sym, lookback_days=40):
             seen = {(r.get("id"), r.get("orderId")) for r in rows}
             rows = rows + [r for r in new_rows if (r.get("id"), r.get("orderId")) not in seen]
             rows.sort(key=lambda r: (int(r.get("time") or 0), int(r.get("id") or 0)))
-            _save_cache(acct, sym, rows, now_ms)
+        # 2026-10-27: ALWAYS checkpoint after a clean walk to now_ms, even when
+        # the exchange returned nothing. `cached_to_ms` means "verified complete
+        # up to here", which is what every consumer assumes, but the save used
+        # to be inside `if new_rows:` — so a symbol that simply had not traded
+        # never recorded that it was checked and looked permanently stale. That
+        # is why 235 of 337 caches read stale (median 16.8h) while the rows
+        # themselves were current, and why broker_truth refused to self-certify.
+        # A re-check costs one request because start_ms advances with it.
+        _save_cache(acct, sym, rows, now_ms)
     except Exception:
+        # A FAILED walk must NOT advance the checkpoint: leaving cached_to_ms
+        # behind is what makes the next run retry the same span.
         pass
     return rows
 
