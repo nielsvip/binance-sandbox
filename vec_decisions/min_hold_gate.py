@@ -100,27 +100,18 @@ def min_hold_bars_only(cfg) -> int:
 
 
 def threshold_bars(cfg) -> int:
-    """THE effective discretionary min hold, in BASE-TF bars, for BOTH sides.
+    """THE discretionary min hold, in BASE-TF bars, for BOTH sides.
 
-    `max(MIN_HOLD_BARS, MIN_HOLD_BARS_BEFORE_EXIT)` — the same composition
-    `v12_quick_engine.simulate_one` already used, so adopting it live changes
-    live to match the board rather than changing what the board does, and
-    neither promoted switch is neutralised (MIN_HOLD_BARS_BEFORE_EXIT is swept
-    10/16/24/32/40/48 in REDUCE_PROFIT_LOCK on many boards; dropping it from
-    here would silently make those promotions inert, which CLAUDE.md forbids).
-
-    CONSEQUENCE THE OPERATOR MUST KNOW: with MIN_HOLD_BARS_BEFORE_EXIT = 10,
-    sweeping MIN_HOLD_BARS at 0/1/2/4/8 cannot move this number — the max pins
-    it at 10 and every option reports a structural 0 (Bible 14.3). MIN_HOLD_BARS
-    is therefore ALREADY a dead switch in the vector today (3 is always masked
-    by 10), which is what its registry `options_need_review: true` was pointing
-    at. `MIN_HOLD_SOLE_SWITCH_ENABLED=True` makes MIN_HOLD_BARS the sole driver
-    so the five options bind; it is reported both ways rather than flipped
-    unilaterally, because it would re-base a switch live positions are held on.
+    MIN_HOLD_BARS ALONE. USER 2026-10-27: "MIN_HOLD_BARS_BEFORE_EXIT need to be
+    independent", so the old `max(MIN_HOLD_BARS, MIN_HOLD_BARS_BEFORE_EXIT)`
+    composition is GONE — it was what made MIN_HOLD_BARS a structural zero (a
+    0/1/2/4/8 sweep bound on 0 of 316 crypto sym_sides) and what made
+    MIN_HOLD_BARS_BEFORE_EXIT vec-inert once that was fixed. Two switches, two
+    gates, neither masking the other. `MIN_HOLD_SOLE_SWITCH_ENABLED` is now
+    redundant and is ignored here; it is kept as a config field only so older
+    per_sym sets that carry it still load.
     """
-    if bool(getattr(cfg, "MIN_HOLD_SOLE_SWITCH_ENABLED", False)):
-        return min_hold_bars_only(cfg)
-    return max(_int(cfg, "MIN_HOLD_BARS"), _int(cfg, "MIN_HOLD_BARS_BEFORE_EXIT"))
+    return min_hold_bars_only(cfg)
 
 
 def bar_minutes(cfg) -> int:
@@ -211,6 +202,108 @@ def refuse_bars(held_bars, cfg, action="CLOSE", reason="") -> tuple:
     if held < bars:
         return True, f"MIN_HOLD_BARS={bars} held={held:.0f}"
     return False, "HOLD_SATISFIED"
+
+
+# USER 2026-10-27: "MIN_HOLD_BARS_BEFORE_EXIT need to be independent and only
+# overridden by fixed_stop". So this second hold has its OWN threshold and a far
+# narrower override than the discretionary one: the frozen-at-entry FIXED_STOP
+# (vec_decisions/fixed_stop.REASON) and nothing else from the strategy side.
+FIXED_STOP_TOKENS = ("FIXED_STOP",)
+# Account protection is NOT a strategy exit and stays exempt: holding a position
+# through a liquidation or margin kill to honour a bar count would lose the
+# account, and CLAUDE.md's "exits never blocked" exists for exactly this. Set
+# MIN_HOLD_BEFORE_EXIT_PROTECTION_EXEMPT=False to make it literally
+# fixed_stop-only, which the operator can order with eyes open.
+ACCOUNT_PROTECTION_TOKENS = ("LIQUIDAT", "MARGIN", "EMERGENCY", "BALANCE_FLOOR")
+
+
+def before_exit_bars(cfg) -> int:
+    """MIN_HOLD_BARS_BEFORE_EXIT in BASE-TF bars — independent, never composed."""
+    return _int(cfg, "MIN_HOLD_BARS_BEFORE_EXIT")
+
+
+def before_exit_seconds(cfg) -> float:
+    return float(before_exit_bars(cfg)) * float(bar_minutes(cfg)) * 60.0
+
+
+def before_exit_exempt(reason, cfg=None, live=False) -> bool:
+    """Only FIXED_STOP overrides this hold (plus account protection, see above).
+
+    `live=True` additionally exempts BOARD dictates and broker bookkeeping, and
+    that is not a weakening of the operator's rule — it is where the rule is
+    enforced. The VECTOR is the board: inside `simulate_one` every exit is the
+    strategy's own, so fixed-stop-only is exactly right and the hold SHAPES what
+    the board will ever dictate. Live then executes that board. If live ALSO
+    second-guessed a board-dictated close it would hold a position the chart has
+    already exited, which breaks the operator's own "no trade that is not in the
+    html chart rolled forward to this moment" law from the same day, and holding
+    a BROKER_SYNC reconcile would manufacture a ghost position. So: the board
+    honours the switch because the vector honours it; live only applies it to
+    exits the board did not ask for.
+    """
+    u = str(reason or "").upper()
+    if any(t in u for t in FIXED_STOP_TOKENS):
+        return True
+    if cfg is None or bool(getattr(cfg, "MIN_HOLD_BEFORE_EXIT_PROTECTION_EXEMPT", True)):
+        if any(t in u for t in ACCOUNT_PROTECTION_TOKENS):
+            return True
+    if live:
+        if "|VEC_EXACT" in str(reason or ""):
+            return True
+        if any(t in u for t in BOARD_TOKENS if t != "|VEC_EXACT"):
+            return True
+        if any(t in u for t in BOOKKEEPING_TOKENS):
+            return True
+    return False
+
+
+def refuse_before_exit_bars(held_bars, cfg, action="CLOSE", reason="", live=False) -> tuple:
+    """(refuse?, detail) — the INDEPENDENT before-exit hold, bar-indexed (vec)."""
+    bars = before_exit_bars(cfg)
+    if bars <= 0:
+        return False, "BEFORE_EXIT_OFF"
+    if not is_exit_action(action):
+        return False, "NOT_AN_EXIT"
+    if before_exit_exempt(reason, cfg, live):
+        return False, "EXEMPT_FIXED_STOP_OR_PROTECTION"
+    try:
+        held = float(held_bars)
+    except (TypeError, ValueError):
+        return False, "AGE_UNKNOWN"
+    if held < 0:
+        return False, "AGE_UNKNOWN"
+    if held < bars:
+        return True, f"MIN_HOLD_BARS_BEFORE_EXIT={bars} held={held:.0f}"
+    return False, "BEFORE_EXIT_SATISFIED"
+
+
+def refuse_before_exit(age_seconds, cfg, action="CLOSE", reason="", live=True) -> tuple:
+    """(refuse?, detail) — the same gate, seconds-indexed (live). Same numbers."""
+    bars = before_exit_bars(cfg)
+    if bars <= 0:
+        return False, "BEFORE_EXIT_OFF"
+    if not is_exit_action(action):
+        return False, "NOT_AN_EXIT"
+    if before_exit_exempt(reason, cfg, live):
+        return False, "EXEMPT_FIXED_STOP_OR_PROTECTION"
+    try:
+        age = float(age_seconds)
+    except (TypeError, ValueError):
+        return False, "AGE_UNKNOWN"
+    if age < 0:
+        return False, "AGE_UNKNOWN"
+    need = before_exit_seconds(cfg)
+    if age < need:
+        return True, f"MIN_HOLD_BARS_BEFORE_EXIT={bars}({need / 60.0:.0f}m) age={age / 60.0:.1f}m"
+    return False, "BEFORE_EXIT_SATISFIED"
+
+
+def refuse_any(held_bars, cfg, action="CLOSE", reason="") -> tuple:
+    """Both holds, bar-indexed. Either one refusing refuses the exit."""
+    r, d = refuse_bars(held_bars, cfg, action, reason)
+    if r:
+        return True, d
+    return refuse_before_exit_bars(held_bars, cfg, action, reason)
 
 
 def is_scalp_prohibited(cfg) -> tuple:

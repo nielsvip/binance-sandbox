@@ -15959,10 +15959,18 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         try:
             _mh_type = str(event.get("type") or "").upper()
             if _mh_type in ("CLOSE", "REDUCE"):
+                _mh_reason = str(event.get("exit_reason") or event.get("reason") or "")
                 _mh_refuse, _mh_why = _min_hold_gate.refuse_bars(
-                    bars_in_pos, cfg, _mh_type,
-                    str(event.get("exit_reason") or event.get("reason") or ""),
+                    bars_in_pos, cfg, _mh_type, _mh_reason,
                 )
+                if not _mh_refuse:
+                    # USER 2026-10-27: MIN_HOLD_BARS_BEFORE_EXIT is INDEPENDENT and
+                    # "only overridden by fixed_stop". In the vector the board IS the
+                    # authority, so live=False keeps the override at fixed_stop only
+                    # and this hold SHAPES what the board will ever dictate.
+                    _mh_refuse, _mh_why = _min_hold_gate.refuse_before_exit_bars(
+                        bars_in_pos, cfg, _mh_type, _mh_reason, live=False,
+                    )
                 if _mh_refuse:
                     _pending_exit_restore = copy.deepcopy(_bar_pos_snapshot)
                     _pending_exit_control_restore = _bar_control_snapshot

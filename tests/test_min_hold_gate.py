@@ -61,24 +61,63 @@ class IdentityTest(unittest.TestCase):
 
 
 class CompositionTest(unittest.TestCase):
-    def test_before_exit_masks_every_option_below_it(self):
-        """Why the sweep reported structural zeros under the max composition.
+    def test_the_two_holds_are_independent(self):
+        """USER 2026-10-27: "MIN_HOLD_BARS_BEFORE_EXIT need to be independent".
 
-        Only options ABOVE MIN_HOLD_BARS_BEFORE_EXIT survive the max, so 2/4/8
-        all collapse to 10 and only 12 passes through — which is exactly why
-        0/1/2/4/8 bound on 0 of 316 crypto sym_sides and why the sole switch
-        had to be enabled for a per-symbol test to mean anything.
+        The old max(MIN_HOLD_BARS, MIN_HOLD_BARS_BEFORE_EXIT) composition is
+        gone: it made MIN_HOLD_BARS a structural zero (0 of 316 crypto sym_sides
+        bound) and then made BEFORE_EXIT vec-inert when that was fixed. Neither
+        may mask the other now.
         """
         for opt in OPTIONS:
-            expected = max(opt, 10)
-            self.assertEqual(g.threshold_bars(cfg(opt, before_exit=10)), expected)
-        for opt in (2, 4, 8):
-            self.assertEqual(g.threshold_bars(cfg(opt, before_exit=10)), 10, "masked")
-        self.assertEqual(g.threshold_bars(cfg(12, before_exit=10)), 12, "12 clears the mask")
+            c = cfg(opt, before_exit=10)
+            self.assertEqual(g.threshold_bars(c), opt, "discretionary hold is MIN_HOLD_BARS alone")
+            self.assertEqual(g.before_exit_bars(c), 10, "before-exit hold is its own number")
+        # and BEFORE_EXIT moves without touching the discretionary hold
+        for be in (0, 2, 10, 48):
+            c = cfg(8, before_exit=be)
+            self.assertEqual(g.threshold_bars(c), 8)
+            self.assertEqual(g.before_exit_bars(c), be)
 
-    def test_sole_switch_makes_each_option_bind(self):
+    def test_before_exit_override_is_fixed_stop_only(self):
+        """"only overridden by fixed_stop" — in the vector, nothing else."""
+        c = cfg(8, before_exit=10)
+        for reason in ("FIXED_STOP", "FIXED_STOP_HIT", "FIXED_STOP_ADOPTED"):
+            refused, _ = g.refuse_before_exit_bars(0, c, "CLOSE", reason, live=False)
+            self.assertFalse(refused, f"{reason} must override the before-exit hold")
+        # every other strategy exit is held, including the wider stop family that
+        # the DISCRETIONARY gate exempts — that is the point of the narrower set
+        for reason in ("HARD_STOP_LOSS", "STOP_LOSS_TRIGGERED", "REENTRY_HIGHER_LOW",
+                       "EXIT_VELOCITY_WT", "WT_CROSS_EXIT_1h", "VEC_DRIVEN_CLOSE_RECONCILE_"):
+            refused, _ = g.refuse_before_exit_bars(0, c, "CLOSE", reason, live=False)
+            self.assertTrue(refused, f"{reason} must NOT override the before-exit hold in vec")
+
+    def test_live_still_executes_the_board(self):
+        """Live exempts board dictates: holding one would strand the chart's exit."""
+        c = cfg(8, before_exit=10)
+        for reason in ("VEC_DRIVEN_CLOSE_RECONCILE_", "BOARD_CONVERGE_CLOSE",
+                       "VEC_FWD_MISSING_FLAT fwd=x", "BROKER_SYNC_FLAT"):
+            refused, _ = g.refuse_before_exit(0, c, "CLOSE", reason)
+            self.assertFalse(refused, f"{reason} must execute live")
+        # a NATIVE exit is still held live
+        refused, _ = g.refuse_before_exit(0, c, "CLOSE", "WT_CROSS_EXIT_1h")
+        self.assertTrue(refused)
+
+    def test_account_protection_carveout_and_its_switch(self):
+        c = cfg(8, before_exit=10)
+        for reason in ("LIQUIDATION_PROTECT", "EMERGENCY_MARGIN_KILL", "BALANCE_FLOOR_FORCE_REDUCE"):
+            refused, _ = g.refuse_before_exit_bars(0, c, "CLOSE", reason, live=False)
+            self.assertFalse(refused, "a margin kill may never be held")
+        strict = cfg(8, before_exit=10)
+        strict.MIN_HOLD_BEFORE_EXIT_PROTECTION_EXEMPT = False
+        refused, _ = g.refuse_before_exit_bars(0, strict, "CLOSE", "LIQUIDATION_PROTECT", live=False)
+        self.assertTrue(refused, "the switch makes it literally fixed_stop-only")
+
+    def test_sole_switch_is_now_redundant(self):
+        """Composition is gone, so the sole switch changes nothing either way."""
         for opt in OPTIONS:
             self.assertEqual(g.threshold_bars(cfg(opt, before_exit=10, sole=True)), opt)
+            self.assertEqual(g.threshold_bars(cfg(opt, before_exit=10, sole=False)), opt)
 
     def test_zero_disables_the_gate(self):
         c = cfg(0, before_exit=0)
