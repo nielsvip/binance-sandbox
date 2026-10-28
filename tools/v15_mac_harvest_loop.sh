@@ -1,4 +1,5 @@
 #!/bin/bash
+export PATH=/opt/homebrew/bin:/usr/local/bin:$PATH  # 2026-10-28: cron PATH lacks homebrew, so bare `timeout` failed and the s5/s6 harvest+rsync lines never ran (memory: mac_cron_gnu_coreutils_gap)
 # v15_mac_harvest_loop — every INTERVAL sec: run the server-side harvester on
 # s1 (crypto) + s2 (stocks), pull their ~/v15_mac_done into the Mac's permanent
 # SPREADSHEETS/V15_MAC_DONE (no cron deletes this dir), and print a running count

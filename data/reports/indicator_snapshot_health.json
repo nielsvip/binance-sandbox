@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-28T15:16:23Z",
+ "generated_utc": "2026-10-28T15:21:41Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 490.9,
+  "age_s": 810.0,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 38323,
-  "proc_age_s": 25233.0,
-  "log_age_s": 89.8,
+  "proc_age_s": 25552.0,
+  "log_age_s": 39.0,
   "warmup_done": true,
   "timeframes_since_restart": [
    "D",
@@ -35,6 +35,7 @@
   "decisions": [
    "warm-up already complete (steady state is self-sustaining)",
    "warm-up already complete (steady state is self-sustaining)",
+   "warm-up already complete (steady state is self-sustaining)",
    "warm-up already complete (steady state is self-sustaining)"
   ],
   "policy": {
@@ -48,20 +49,21 @@
   "mode": "ACTIVE",
   "since_epoch": 1793127215.692805,
   "activations": 164,
-  "hb_mtime": 1793200297.7302449,
-  "mac_snapshot_age_s": 3591.125205039978,
+  "hb_mtime": 1793200702.1815093,
+  "mac_snapshot_age_s": 3992.2327370643616,
   "mac_stale": true,
   "lease_holder": "mac",
   "lease_venues": null,
   "lease_since": "2026-10-27T18:56:44Z",
   "lease_reason": "manual force-mac",
-  "now": 1793200304.0151222,
-  "from_cache_age_s": 278.3,
-  "heartbeat_age_s": 6.3,
-  "active_s": 73088.3
+  "now": 1793200713.949629,
+  "from_cache_age_s": 187.5,
+  "heartbeat_age_s": 11.8,
+  "active_s": 73498.3,
+  "note": "ACTIVE is CORRECT while the Mac snapshot is stale \u2014 fix the Mac, S1 returns to NORMAL on its own"
  },
  "alerts": [
-  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 73088s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (6s) AND the Mac snapshot is fresh (490s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
+  "SNAPSHOT STALE: latest_market_data.json is 809s old (> 600s). ez_indicators pid=38323 warmup_done=True tfs_since_restart=['D', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', 'D', '4h', '1h'] restarts_last_hour=0. Live crypto decisions are reading a stale indicator snapshot."
  ],
  "verdict": "ALERT"
 }
