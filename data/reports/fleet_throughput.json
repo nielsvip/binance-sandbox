@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-28T16:55:11.796583+00:00",
+  "ts": "2026-10-28T17:00:14.763380+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 13,
-  "pending_sym_sides": 143,
+  "fleet_published_last_60m": 10,
+  "pending_sym_sides": null,
   "hosts": {
     "s1": {
       "published_last_60m": 0,
@@ -16,9 +16,9 @@
       "boards_running": 3,
       "workers": 21,
       "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 4045,
+      "mem_avail_mb": 3744,
       "disk_free_gb": 35,
-      "load1": 39.3,
+      "load1": 102.9,
       "dispatch_idle_why": null,
       "published_ss": []
     },
@@ -26,41 +26,24 @@
       "unreachable": true
     },
     "s5": {
-      "published_last_60m": 3,
-      "published_last_3h": 4,
-      "boards": {
-        "ACTUSDT_SHORT": 7,
-        "GRAMUSDT_SHORT": 7,
-        "MOVRUSDT_SHORT": 7
-      },
-      "boards_running": 3,
-      "workers": 21,
-      "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 8211,
-      "disk_free_gb": 57,
-      "load1": 20.2,
-      "dispatch_idle_why": "mem 8541MB < 11000",
-      "published_ss": [
-        "OLED_LONG",
-        "QCOM_LONG",
-        "SNDK_LONG"
-      ]
+      "unreachable": true
     },
     "s6": {
       "published_last_60m": 10,
       "published_last_3h": 10,
       "boards": {
+        "AAVEUSDC_SHORT": 7,
         "ENSUSDT_SHORT": 7,
-        "STXUSDT_SHORT": 7,
-        "VALE_SHORT": 7
+        "NLR_SHORT": 0,
+        "STXUSDT_SHORT": 7
       },
-      "boards_running": 3,
+      "boards_running": 4,
       "workers": 21,
       "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 20797,
+      "mem_avail_mb": 17523,
       "disk_free_gb": 55,
-      "load1": 19.1,
-      "dispatch_idle_why": "full 4/4",
+      "load1": 15.5,
+      "dispatch_idle_why": null,
       "published_ss": [
         "AGI_SHORT",
         "COHR_SHORT",
@@ -79,7 +62,7 @@
     "LOW_THROUGHPUT:s1:0/h<10 (idle_why=None)",
     "DISK_FLOOR:s1:35GB<40",
     "UNREACHABLE:s2",
-    "LOW_THROUGHPUT:s5:3/h<10 (idle_why=mem 8541MB < 11000)"
+    "UNREACHABLE:s5"
   ],
   "repair": null
 }
