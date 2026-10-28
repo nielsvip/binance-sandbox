@@ -1,20 +1,23 @@
 {
- "generated_utc": "2026-10-28T20:12:28.782962+00:00",
+ "generated_utc": "2026-10-28T21:12:26.255400+00:00",
  "days": 1.0,
  "totals": {
   "entry_promises": 87,
   "entry_broken_no_delivery": 87,
-  "exit_promises": 113,
+  "exit_promises": 114,
   "exit_broken_no_delivery": 112,
-  "exit_skipped_inflight": 1395,
+  "exit_skipped_inflight": 1431,
+  "exit_pending": 1,
   "exit_kept_late": 1
  },
  "per_key": {
   "inf:PENGUUSDC_LONG": {
    "entry_promises": 2,
    "entry_broken_no_delivery": 2,
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
+   "exit_promises": 2,
+   "exit_broken_no_delivery": 1,
+   "exit_skipped_inflight": 36,
+   "exit_pending": 1
   },
   "men:UNIUSDC_LONG": {
    "exit_promises": 2,

@@ -92,12 +92,15 @@ def main():
     ap.add_argument("--json")
     ap.add_argument("--quiet", action="store_true")
     ap.add_argument("--no-npz", action="store_true")
+    ap.add_argument("--since-minutes", type=float, default=0, help="only files modified in the last N minutes (the 30-min cron); 0 = every file")
     a = ap.parse_args()
     base = a.base
     t0 = time.time()
     report = {"host": os.uname()[1], "base": base, "at": time.strftime("%FT%TZ", time.gmtime()), "dirs": {}, "offenders": []}
     for rel in ("klines_cache", "klines_cache/tradier", "klines_canonical"):
         files = sorted(glob.glob(os.path.join(base, rel, "*.json")))
+        if a.since_minutes:
+            files = [f for f in files if time.time() - os.path.getmtime(f) <= a.since_minutes * 60]
         agg, bad_files = {}, 0
         for f in files:
             k = scan_json(f)
@@ -109,6 +112,8 @@ def main():
         report["dirs"][rel] = {"files": len(files), "files_with_noncanonical": bad_files, "stamps": agg}
     if not a.no_npz:
         files = sorted(glob.glob(os.path.join(base, "backtest_v8", "indicators", "*.npz")))
+        if a.since_minutes:
+            files = [f for f in files if time.time() - os.path.getmtime(f) <= a.since_minutes * 60]
         agg, bad_files = {}, 0
         for f in files:
             k = scan_npz(f)

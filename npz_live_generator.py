@@ -695,6 +695,34 @@ class _OverlayBeforeWindow(Exception):
     """An overlay bar lies before the parsed tail window: the window cannot reproduce the full merge -> full path."""
 
 
+_DAY_ONLY_STAMP = re.compile(r"^(\d{4}-\d\d-\d\d)(?:\.0+Z)?$")
+
+
+def _dedupe_day_only_rows(data):
+    """2026-10-28 (operator): daily kline files carry date-only stamps ("YYYY-MM-DD" and the malformed "YYYY-MM-DD.000000Z") next to the normal ISO
+    rows, e.g. IBIT_D / GLD_D with one extra row per day since 2024-10-16. A date-only row is that day's bar; when the day also has normal ISO rows the
+    date-only row is a duplicate and is dropped, otherwise it is kept as the day's bar at 00:00Z (what pandas already made of it). Loader only, the
+    kline store is never rewritten. Files without a date-only stamp return the SAME list object (no behaviour change)."""
+    def stamp(row):
+        value = (row.get("timestamp") or row.get("timestamp_dt")) if isinstance(row, dict) else None
+        return value if isinstance(value, str) else None
+    day_only = [i for i, row in enumerate(data) if (st := stamp(row)) is not None and len(st) <= 18 and _DAY_ONLY_STAMP.match(st)]
+    if not day_only:
+        return data
+    full_days = {st[:10] for row in data if (st := stamp(row)) is not None and len(st) > 18}
+    skip = set(day_only)
+    out = []
+    for i, row in enumerate(data):
+        if i in skip:
+            day = stamp(row)[:10]
+            if day in full_days:
+                continue
+            key = "timestamp" if row.get("timestamp") else "timestamp_dt"
+            row = dict(row, **{key: day + "T00:00:00.000000Z"})
+        out.append(row)
+    return out
+
+
 def _klines_df_from_rows(path: Path, data, min_stamp: Optional[int] = None) -> Optional[pd.DataFrame]:
     """Body of _load_klines_df on an already-parsed row list. min_stamp (incremental tail mode only): the epoch of
     the first parsed row; an overlay bar older than it raises _OverlayBeforeWindow instead of being merged."""
@@ -718,6 +746,7 @@ def _klines_df_from_rows(path: Path, data, min_stamp: Optional[int] = None) -> O
                     index[stamp] = item if previous is None else preferred_closed_row(previous, item, stamp + 900)
                 data = [item for _, item in sorted(index.items())]
                 break
+        data = _dedupe_day_only_rows(data)
         df = pd.DataFrame(data)
         for col in ["open", "high", "low", "close", "volume"]:
             if col in df.columns:
