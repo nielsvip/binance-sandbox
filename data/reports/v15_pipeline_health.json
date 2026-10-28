@@ -1,44 +1,11 @@
 {
- "at": "2026-10-28T18:01:53Z",
+ "at": "2026-10-28T18:17:14Z",
  "s1": {
-  "host": "niels",
-  "now": 1793210507.7107391,
-  "merge_crypto": {
-   "n": 12,
-   "max_lag_min": 0.0,
-   "median_lag_min": 0.0,
-   "worst": "1000000MOGUSDT",
-   "dead": []
-  },
-  "merge_stocks": {
-   "n": 11,
-   "max_lag_min": 0.0,
-   "median_lag_min": 0.0,
-   "worst": "A",
-   "dead": []
-  },
-  "npz_legacy_crypto": [],
-  "append_log_age_min": 10.5,
-  "append_last_secs": 671.7,
-  "append_last_stats": "'appended': 291, 'created': 0, 'up_to_date': 6106, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
-  "npz_loop_pids": 0,
-  "npz_cycle_last_utc": "03:53:32",
-  "npz_cycle_installed": 48,
-  "npz_cycle_not_ready": 0,
-  "npz_cycle_no_new": 0,
-  "npz_loop_has_settle": false,
-  "sched_err": "FileNotFoundError",
-  "archive_n": 202,
-  "archive_mb": 2461.8,
-  "archive_newest_min": 3519.4,
-  "_via": "s1-int"
+  "error": "s1-int: mm_receive_fd: recvmsg: expected received 1 got 0\nproxy dialer did not pass back a connection | s1-pub: mm_receive_fd: recvmsg: expected received 1 got 0\nproxy dialer did not pass back a connection"
  },
  "red": [
-  "L3 npz append loop is not running (the */15 watchdog should relaunch it)",
-  "L4 scheduler last ticked None min ago (cron */2)"
+  "s1 unreachable: s1-int: mm_receive_fd: recvmsg: expected received 1 got 0\nproxy dialer did not pass back a connection | s1-pub: mm_receive_fd: recvmsg: expected received 1 got 0\nproxy dialer did not pass back a connection"
  ],
- "warn": [
-  "L5 newest archived board NPZ is 3519 min old \u2014 publishes may not be recording"
- ],
+ "warn": [],
  "ok": false
 }

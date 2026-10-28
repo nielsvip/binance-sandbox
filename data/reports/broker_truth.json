@@ -1251,29 +1251,29 @@
   }
  },
  "freshness": {
-  "age_h_max": 16.0,
-  "age_h_median": 5.44,
-  "age_h_p90": 13.96,
+  "age_h_max": 16.25,
+  "age_h_median": 5.69,
+  "age_h_p90": 14.2,
   "bnb_source": "price_cache_2.json",
   "bnb_usd": 749.28,
   "caches": 594,
-  "fresh": 361,
-  "fresh_share": 0.6077,
+  "fresh": 351,
+  "fresh_share": 0.5909,
   "note": "figures are a FLOOR on activity; a lagging cache shows fewer fills, never more",
-  "ok": true,
-  "stale": 233
+  "ok": false,
+  "stale": 243
  },
- "generated_at": "2026-10-28T18:01:57Z",
- "label": "VERIFIED",
+ "generated_at": "2026-10-28T18:16:50Z",
+ "label": "[UNVERIFIED] fill cache coverage below threshold",
  "reconcile_14d": {
   "broker_net_usd": -127.7507,
   "divergence_usd": -0.9474,
-  "generated_at": "2026-10-28T18:07:21Z",
+  "generated_at": "2026-10-28T18:19:37Z",
   "inhouse_net_usd": -128.6981,
-  "label": "VERIFIED",
+  "label": "[UNVERIFIED] fill cache coverage below threshold",
   "symbols_compared": 119,
   "verdict": "OK",
-  "verified": true,
+  "verified": false,
   "window_days": 14.0,
   "worst": [
    {
@@ -1529,6 +1529,6 @@
   "realized_usd": -99.3315,
   "turnover_usd": 284243.4391
  },
- "verified": true,
+ "verified": false,
  "window_days": 30.0
 }
