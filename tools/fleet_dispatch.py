@@ -87,6 +87,8 @@ WORKERS = env_int("FLEET_WORKERS", 7)
 ORPHAN_SLOTS = env_int("FLEET_ORPHAN_SLOTS", 1)
 MEM_MIN_MB = env_int("FLEET_MEM_MIN_MB", 11000)  # 2026-10-28 operator: NO OOM — a 7-worker board peaks 8-9 GB, so a launch needs that much headroom beyond the 2-3 GB reserve
 DISK_MIN_MB = env_int("FLEET_DISK_MIN_MB", 3000)
+RAMP_S = env_int("FLEET_RAMP_S", 600)
+RAMP_MB = env_int("FLEET_RAMP_MB", 4000)
 LAUNCH_GAP_S = env_int("FLEET_LAUNCH_GAP_S", 120)
 FRESH_BARS = env_int("FLEET_FRESH_BARS", 48)
 MAX_ATTEMPTS = env_int("FLEET_MAX_ATTEMPTS", 2)
@@ -369,6 +371,12 @@ def admission(d, now, name=""):
         return 0, f"disk {d.get('disk_free_mb')}MB < {DISK_MIN_MB}"
     if int(d.get("mem_avail_mb") or 0) < MEM_MIN_MB:
         return 0, f"mem {d.get('mem_avail_mb')}MB < {MEM_MIN_MB}"
+    # 2026-10-28 fleet throughput order: a board reaches its peak minutes after launch, so MemAvailable still looks free
+    # when the next launch is admitted; 73 of 125 launches (19:30-04:40Z) died silently, mostly global OOM kills.
+    # Every board launched here < RAMP_S ago and still running reserves RAMP_MB on top of MEM_MIN_MB.
+    ramping = sum(1 for ss, r in (d.get("launches") or {}).items() if now - float(r.get("ts") or 0) < RAMP_S and ss in (d.get("running") or {}))
+    if ramping and int(d.get("mem_avail_mb") or 0) < MEM_MIN_MB + ramping * RAMP_MB:
+        return 0, f"mem {d.get('mem_avail_mb')}MB < {MEM_MIN_MB}+{ramping}x{RAMP_MB} ramping"
     last = max((float(r.get("ts") or 0) for r in (d.get("launches") or {}).values()), default=0)
     if now - last < LAUNCH_GAP_S:
         return 0, f"spacing {int(now - last)}s < {LAUNCH_GAP_S}"

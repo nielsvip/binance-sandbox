@@ -5027,6 +5027,38 @@ def delta_vs_result(res, cum_before: float):
     return d, True, ""
 
 
+_HEAP_TRIM = {"started": False}
+
+
+def _start_heap_trimmer():
+    """OPERATOR ORDER 2026-10-28 (throughput, NO OOM): measured on s6 ACTUSDT_SHORT (tracemalloc + smaps) the board parent held 3,045 MB
+    Private_Dirty while Python had only 692 MB live (peak 715; ~515 MB of it the openpyxl object model, 3.1M style objects): ~2.35 GB
+    was memory Python had freed (repeated load_workbook copies) that glibc kept in its arenas. A daemon thread returns it with
+    malloc_trim(0) every V15_HEAP_TRIM_S (60 s; 0 = off). Linux only; no-op elsewhere; never raises. Workers forked later do not get it."""
+    if _HEAP_TRIM["started"]:
+        return
+    try:
+        _iv = float(os.environ.get("V15_HEAP_TRIM_S", "60") or 0)
+        if _iv <= 0:
+            return
+        import ctypes as _ct_ht
+        import threading as _th_ht
+        _libc = _ct_ht.CDLL("libc.so.6")
+        _HEAP_TRIM["started"] = True
+
+        def _loop():
+            while True:
+                time.sleep(_iv)
+                try:
+                    _libc.malloc_trim(0)
+                except Exception:
+                    return
+        _th_ht.Thread(target=_loop, name="heap_trim", daemon=True).start()
+        _libc.malloc_trim(0)
+    except Exception:
+        pass
+
+
 def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progress_path: Path, flags_md: Path, cumulative_gain: float, cumulative_overrides: dict, defaults: dict, baseline_gain: float, bh: float, prepared, args, baseline_vec: dict, baseline_live: dict):
     """Sequential spec filler (USER 2026-09-29 late, BACKTEST_BIBLE §56 rev b): 13 tabs in order, every row in order
     (white switch rows, then orange filter rows), no row skipped, no tab jumping.
@@ -5040,6 +5072,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     - LIVE_DELTA/H and LIVE_SHARPE/I stay BLANK until workbook DONE, then filled via backtest_v12_engine on the winning set.
     Returns updated cumulative_gain, cumulative_overrides, progress.
     """
+    _start_heap_trimmer()
     import time as _t
     # USER 2026-10-12 TIERS: where this sym_side sits (vs B&H, vs its own best, sample) decides how much time it gets (symside_tier).
     try:

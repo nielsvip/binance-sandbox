@@ -134,3 +134,11 @@ def test_snapshot_guard_warn_contract():
     assert 'if _snap_changed and _snap_refuse:' in seg and 'if _full_changed and _snap_refuse:' in seg
     assert 'progress["snapshot_mismatch"] = {"start_sha"' in seg and "[SNAPSHOT-WARN]" in seg
     assert '_set_metric("BASELINE_SNAPSHOT", progress["snapshot_mismatch"].get("label"))' in src
+
+
+def test_heap_trimmer_contract():
+    src = (ROOT / "v15_pilot.py").read_text()
+    i = src.index("def _spec_fill_workbook(")
+    body = src[i:i + 3000]
+    assert "_start_heap_trimmer()" in body
+    assert 'os.environ.get("V15_HEAP_TRIM_S", "60")' in src and "malloc_trim(0)" in src
