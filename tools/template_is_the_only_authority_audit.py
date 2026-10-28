@@ -48,6 +48,7 @@ CAT_CONFIG = {
     "STOCKS_SHORT": "config_tradier.py",
 }
 CLASS_OF = {"config.py": "Config", "config_tradier.py": "TradierConfig", "v12_quick_engine.py": "QuickConfig"}
+GREY_RGB = {"00BFBFBF", "FFBFBFBF"}  # v15_pilot.GREY_SKIP_RGB — a grey switch group is retired, not an authority
 
 
 def class_defaults(fname: str, clsname: str) -> dict:
@@ -104,9 +105,12 @@ def audit_workbook(path: Path):
                 name = str(ws.cell(r, 1).value or "").strip()
                 if not name:
                     continue
-                e = per.setdefault(name, {"bolds": [], "rows": 0, "tabs": set()})
+                e = per.setdefault(name, {"bolds": [], "rows": 0, "tabs": set(), "grey": False})
                 e["rows"] += 1
                 e["tabs"].add(tab)
+                fa = ws.cell(r, 1).font
+                if fa is not None and fa.color is not None and str(getattr(fa.color, "rgb", "") or "").upper() in GREY_RGB:
+                    e["grey"] = True  # retired row group: the pilot skips it, so it is not an authority at all
                 f = ws.cell(r, 2).font
                 if f and f.bold:
                     e["bolds"].append(ws.cell(r, 2).value)
@@ -136,8 +140,11 @@ def main() -> int:
         per = audit_workbook(p)
         cfg_file = CAT_CONFIG[cs]
         cfg = class_defaults(cfg_file, CLASS_OF[cfg_file])
-        mismatch, no_bold, multi_bold = [], [], []
+        mismatch, no_bold, multi_bold, grey_n = [], [], [], 0
         for name, e in per.items():
+            if e.get("grey"):
+                grey_n += 1
+                continue  # retired group: config legitimately keeps the value
             if len(e["bolds"]) > 1 and len(set(norm(b) for b in e["bolds"])) > 1:
                 multi_bold.append({"switch": name, "bolds": [str(b) for b in e["bolds"]], "tabs": e["tabs"]})
                 continue
@@ -164,6 +171,7 @@ def main() -> int:
             "no_bold": no_bold[:50],
             "multi_bold": multi_bold[:50],
             "no_row_sample": no_row[:50],
+            "grey_retired_excluded": grey_n,
         }
         total_mismatch += len(mismatch)
         print(f"[{cs}] template switches {len(per):5d} | MISMATCH {len(mismatch):4d} | "

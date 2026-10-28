@@ -147,3 +147,31 @@ See also: [`BACKTEST_BIBLE.md`](BACKTEST_BIBLE.md), [`INFRASTRUCTURE.md`](INFRAS
 - 2026-10-22 Hetzner snapshots (v20-absorb): s5 s6 — ids in data/reports/hetzner_snapshots.jsonl (USER 2026-10-22: snapshot before condensing; keep until a later upgrade no longer needs the raw corpus)
 - 2026-10-26 S6 disk recovery: 230 old S1 progress/config backups dated 2026-10-04..07 were archived as `/home/niels/rebuild_scratch_s6/s1_backups_archive_20261026.tar.zst` (zstd integrity and tar content comparison passed; SHA256 `95d23bff372926f17a63f3f79b00cbaf017a766a7ee5fcdd04228af2353be58e`). The four compressed `experience_cold` shards on S5 and S6 had matching per-file SHA256 values; S5 is now the registered canonical learning copy. The Mac LaunchAgent `com.binance.fleet-archive-manager` invokes `tools/fleet_archive_manager.py` every five minutes with overlap protection. It removes the S6 duplicate only below 8 GB free after exact SHA256 agreement and an open-handle check; S1 staged batches are removed only after verified compressed transfer to S5 and source stability checks. Active run delta logs, NPZ stores, and the S5 learning corpus are excluded from deletion. External drives were not mounted at the last check. Google Drive has no accessible Shared Drive and the service account has no storage quota; when no external drive is mounted and no usable Drive destination is configured, the manager archives the registered cold sets to the verified GCS bucket through `tools/gcs_cold_store.py`, retaining every source copy. The key is owner-only (`0600`) and never copied to workers.
 - 2026-10-28 Hetzner snapshots (v20u4-absorb-20261027T233815Z): s5 s6 — ids in data/reports/hetzner_snapshots.jsonl (USER 2026-10-22: snapshot before condensing; keep until a later upgrade no longer needs the raw corpus)
+
+## 5. Executed-trade history (`data/history`, `data/tradier/history`) — never deleted (USER 2026-10-27)
+
+USER 2026-10-27 (verbatim): *"Once a history file passes 200 KB, the oldest history is deleted <- this makes no sense it
+should at least keep ~10mb then offload to ext drvie when availble but we need full history stored somewhere pls make
+sure thiswill happen."*
+
+* **Live ledger** `<root>/<acct>/<SYM_SIDE>.jsonl` rolls at **~10 MB** (was 200 KB) — `vec_decisions/history_archive.py`
+  `rotate_if_needed()`, a same-filesystem `rename` into `<acct>/archive/<SYM_SIDE>.<UTC stamp>.jsonl`. Nothing unlinks.
+  Writers: `ez_positions_service.py` (crypto; before 2026-10-28 it renamed to `.bak` and **unlinked the previous `.bak`**),
+  `tradier_positions.py` (both writers; the dead `_append_to_history` used `os.replace` onto `.bak`). `tradier_manage.py`
+  still keeps timestamped `.jsonl.<ts>.bak` generations beside the ledger; they are folded in below.
+* **Archive cycle** `tools/history_archive_offload.py cycle` (Mac cron `HISTORY_ARCHIVE_OFFLOAD`, :17/:47):
+  `fold` legacy `.bak` generations into `archive/*.legacy.jsonl` (mtime kept) → `compress` segments quiet ≥ 8 d to
+  `.jsonl.zst` (original removed only after `zstd -t` + decompressed sha256 match) → `offload` to the first healthy ext
+  drive (`/Volumes/WD25` first; TOSHIBA_EXT refused, see its 2026-10-22 sha256 failure) **and** GCS
+  `gs://v15-cold-329002141504/history/<host>/<root>/<acct>/…` (md5 verified by GCS). The local `.zst` is removed only
+  with **2 verified off-Mac copies** and a fresh ext re-verify; otherwise it stays. Every step is in
+  `<acct>/archive/offload_manifest.jsonl` and `data/reports/history_archive/log_<day>.jsonl`.
+* **Reading the FULL history**: `vec_decisions.history_archive.iter_rows(<live path>)` (offsite segments on a mounted
+  drive, local segments, live — oldest first; dedupe with `vec_decisions.history_canon.canonical`). Windowed guards
+  (`execution_ledger` conservation/echo, `tools/history_7d_sync.py`, `tools/vector_direct_history_import.py`) read
+  uncompressed recent segments too, so a rotation can never make a recent row look absent. Other readers that glob
+  `<acct>/*.jsonl` see the live file only — at 10 MB that is months to years of rows per ledger.
+* **Order ids**: crypto rows now carry an additive `order_id` (a Mac order, on the piece that completes it),
+  `order_id_partial`, `order_ids` (netted), or `echo_of_order_id(s)` (an S1/S5 `vd…` vector_direct order, or any fill
+  while `data/MAC_PAPER_TRADING` exists and the order could not be read) — `history_canon` counts an `order_id` once.
+* `tools/data_locations.py --where trade_history --host mac` registers all of the above.

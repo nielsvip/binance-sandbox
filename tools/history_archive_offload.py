@@ -314,6 +314,19 @@ def _read_lines(f: Path):
         return []
 
 
+def _src_label(src: str) -> str:
+    """Provenance tag for a recovered segment name: which copy of history the rows came from."""
+    if "/s1x/" in src or "/history_recovery_" in src:
+        return "s1"
+    if "/Volumes/E3T" in src:
+        return "e3t"
+    if "TOSHIBA" in src:
+        return "toshiba"
+    if "/backups/" in src or src.startswith("backups/"):
+        return "macbak"
+    return "other"
+
+
 def recover(target_root: Path, sources: list, dry=False, now=None) -> dict:
     """Fold rows found in source history roots but absent from target_root's ledger (live + every local piece +
     offloaded pieces reachable on a mounted drive) into one archive/<SS>.<now>.recovered.jsonl per ledger."""
@@ -374,17 +387,22 @@ def recover(target_root: Path, sources: list, dry=False, now=None) -> dict:
         rep["rows_added"] += len(add)
         for _, _, s in add:
             rep["by_source"][s] = rep["by_source"].get(s, 0) + 1
-        seg = HA.segment_path(live, tag="recovered")
-        rep["files"].append({"ledger": f"{acct}/{ss}", "segment": str(seg), "rows": len(add), "first": datetime.fromtimestamp(add[0][0], timezone.utc).isoformat(), "last": datetime.fromtimestamp(add[-1][0], timezone.utc).isoformat()})
-        if dry:
-            continue
-        seg.parent.mkdir(parents=True, exist_ok=True)
-        tmp = seg.with_name(seg.name + ".tmp")
-        with open(tmp, "w") as fh:
-            for _, line, _ in add:
-                fh.write(line + "\n")
-        os.rename(tmp, seg)
-        _manifest(seg.parent, {"event": "recovered", "ledger": ss, "segment": seg.name, "rows": len(add), "sha256": sha256_file(seg), "sources": sorted({s for _, _, s in add})})
+        groups = {}
+        for t, line, src in add:
+            groups.setdefault(_src_label(src), []).append((t, line, src))
+        for label, rows in sorted(groups.items()):
+            seg = HA.segment_path(live, tag=f"recovered-{label}")
+            rep["files"].append({"ledger": f"{acct}/{ss}", "segment": str(seg), "rows": len(rows), "first": datetime.fromtimestamp(rows[0][0], timezone.utc).isoformat(), "last": datetime.fromtimestamp(rows[-1][0], timezone.utc).isoformat()})
+            if dry:
+                continue
+            seg.parent.mkdir(parents=True, exist_ok=True)
+            tmp = seg.with_name(seg.name + ".tmp")
+            with open(tmp, "w") as fh:
+                for _, line, _ in rows:
+                    fh.write(line + "\n")
+            os.rename(tmp, seg)
+            os.utime(seg, (rows[-1][0], rows[-1][0]))  # the segment is dated by its newest row, never by today
+            _manifest(seg.parent, {"event": "recovered", "ledger": ss, "segment": seg.name, "rows": len(rows), "sha256": sha256_file(seg), "sources": sorted({x for _, _, x in rows})})
     _log("recover", target=str(target_root), dry=dry, ledgers=rep["ledgers"], rows_added=rep["rows_added"], by_source=rep["by_source"])
     return rep
 

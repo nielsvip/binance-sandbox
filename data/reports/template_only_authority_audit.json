@@ -1,6 +1,7 @@
 {
  "cat_sides": {
   "CRYPTO_LONG": {
+   "grey_retired_excluded": 318,
    "mismatch": [
     {
      "config_default": "10.0",
@@ -39,24 +40,6 @@
      "template_bold": "2"
     },
     {
-     "config_default": "100",
-     "source": "config.py",
-     "switch": "ATR_LONG_WINDOW",
-     "tabs": [
-      "ENTRY_BREAKOUT_CHANNEL"
-     ],
-     "template_bold": "50"
-    },
-    {
-     "config_default": "100",
-     "source": "QuickConfig",
-     "switch": "ATR_LONG_WINDOW",
-     "tabs": [
-      "ENTRY_BREAKOUT_CHANNEL"
-     ],
-     "template_bold": "50"
-    },
-    {
      "config_default": "300.0",
      "source": "config.py",
      "switch": "AUGMENTATION_COOLDOWN_SECONDS",
@@ -66,15 +49,6 @@
      "template_bold": "90"
     },
     {
-     "config_default": "0.0",
-     "source": "QuickConfig",
-     "switch": "AUGMENT_MIN_GAIN_PCT",
-     "tabs": [
-      "AUGMENT_TREND"
-     ],
-     "template_bold": "3"
-    },
-    {
      "config_default": "OFF",
      "source": "config.py",
      "switch": "BB_EXIT_AT_LOSS_TF",
@@ -145,64 +119,6 @@
       "ENTRY_REVERSAL_BOUNCE"
      ],
      "template_bold": "False"
-    },
-    {
-     "config_default": "1h",
-     "source": "config.py",
-     "switch": "BREAKEVEN_GAIN_EROSION_FILTER_TF",
-     "tabs": [
-      "REDUCE_PROFIT_LOCK"
-     ],
-     "template_bold": "4h"
-    },
-    {
-     "config_default": "1h",
-     "source": "QuickConfig",
-     "switch": "BREAKEVEN_GAIN_EROSION_FILTER_TF",
-     "tabs": [
-      "REDUCE_PROFIT_LOCK"
-     ],
-     "template_bold": "4h"
-    },
-    {
-     "config_default": "1h",
-     "source": "config.py",
-     "switch": "BREAKOUT_RETEST_FILTER_TF",
-     "tabs": [
-      "AUGMENT_RISK_SIZING",
-      "AUGMENT_TREND",
-      "ENTRY_BREAKOUT_CHANNEL",
-      "ENTRY_CONFIRMATION_GATES",
-      "ENTRY_REVERSAL_BOUNCE",
-      "EXIT_STRUCTURAL",
-      "EXIT_VELOCITY",
-      "GLOBAL_RISK_GATES",
-      "REDUCE_PROFIT_LOCK",
-      "REDUCE_SIGNAL_RATER",
-      "REENTRY_ADAPTIVE",
-      "REENTRY_WINDOWED"
-     ],
-     "template_bold": "OFF"
-    },
-    {
-     "config_default": "1h",
-     "source": "QuickConfig",
-     "switch": "BREAKOUT_RETEST_FILTER_TF",
-     "tabs": [
-      "AUGMENT_RISK_SIZING",
-      "AUGMENT_TREND",
-      "ENTRY_BREAKOUT_CHANNEL",
-      "ENTRY_CONFIRMATION_GATES",
-      "ENTRY_REVERSAL_BOUNCE",
-      "EXIT_STRUCTURAL",
-      "EXIT_VELOCITY",
-      "GLOBAL_RISK_GATES",
-      "REDUCE_PROFIT_LOCK",
-      "REDUCE_SIGNAL_RATER",
-      "REENTRY_ADAPTIVE",
-      "REENTRY_WINDOWED"
-     ],
-     "template_bold": "OFF"
     },
     {
      "config_default": "OFF",
@@ -284,15 +200,6 @@
       "ENTRY_REVERSAL_BOUNCE"
      ],
      "template_bold": "1"
-    },
-    {
-     "config_default": "10",
-     "source": "QuickConfig",
-     "switch": "EMERGENCY_BRAKE_MAX_TRADES_PER_MIN",
-     "tabs": [
-      "ENTRY_CONFIRMATION_GATES"
-     ],
-     "template_bold": "30"
     },
     {
      "config_default": "5m",
@@ -387,15 +294,6 @@
      "template_bold": "35"
     },
     {
-     "config_default": "200.0",
-     "source": "config.py",
-     "switch": "HIGH_GAIN_AUGMENTATION_MIN_SIZE",
-     "tabs": [
-      "AUGMENT_RISK_SIZING"
-     ],
-     "template_bold": "50"
-    },
-    {
      "config_default": "True",
      "source": "config.py",
      "switch": "HTF_SIGNAL_CONSUME_ENABLED",
@@ -484,42 +382,6 @@
       "EXIT_VELOCITY"
      ],
      "template_bold": "4h"
-    },
-    {
-     "config_default": "15m_only",
-     "source": "config.py",
-     "switch": "MANDATORY_REENTRY_WT_FILTER_TF_MODE",
-     "tabs": [
-      "ENTRY_REVERSAL_BOUNCE"
-     ],
-     "template_bold": "5m_or_15m"
-    },
-    {
-     "config_default": "15m_only",
-     "source": "QuickConfig",
-     "switch": "MANDATORY_REENTRY_WT_FILTER_TF_MODE",
-     "tabs": [
-      "ENTRY_REVERSAL_BOUNCE"
-     ],
-     "template_bold": "5m_or_15m"
-    },
-    {
-     "config_default": "90.0",
-     "source": "config.py",
-     "switch": "MAX_ORDER_VALUE",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "360"
-    },
-    {
-     "config_default": "2500.0",
-     "source": "QuickConfig",
-     "switch": "MAX_ORDER_VALUE",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "360"
     },
     {
      "config_default": "True",
@@ -1187,7 +1049,7 @@
      "template_bold": "False"
     }
    ],
-   "mismatch_n": 127,
+   "mismatch_n": 114,
    "multi_bold": [],
    "multi_bold_n": 0,
    "no_bold": [],
@@ -1248,6 +1110,7 @@
    "template_switches": 1179
   },
   "CRYPTO_SHORT": {
+   "grey_retired_excluded": 324,
    "mismatch": [
     {
      "config_default": "False",
@@ -1295,24 +1158,6 @@
      "template_bold": "90"
     },
     {
-     "config_default": "3.0",
-     "source": "config.py",
-     "switch": "AUGMENT_MIN_GAIN_PCT",
-     "tabs": [
-      "AUGMENT_TREND"
-     ],
-     "template_bold": "0.75"
-    },
-    {
-     "config_default": "0.0",
-     "source": "QuickConfig",
-     "switch": "AUGMENT_MIN_GAIN_PCT",
-     "tabs": [
-      "AUGMENT_TREND"
-     ],
-     "template_bold": "0.75"
-    },
-    {
      "config_default": "0.25",
      "source": "config.py",
      "switch": "BB_SQUEEZE_WIDTH_PERCENTILE",
@@ -1331,64 +1176,6 @@
      "template_bold": "0.3"
     },
     {
-     "config_default": "1h",
-     "source": "config.py",
-     "switch": "BREAKEVEN_GAIN_EROSION_FILTER_TF",
-     "tabs": [
-      "REDUCE_PROFIT_LOCK"
-     ],
-     "template_bold": "15m"
-    },
-    {
-     "config_default": "1h",
-     "source": "QuickConfig",
-     "switch": "BREAKEVEN_GAIN_EROSION_FILTER_TF",
-     "tabs": [
-      "REDUCE_PROFIT_LOCK"
-     ],
-     "template_bold": "15m"
-    },
-    {
-     "config_default": "1h",
-     "source": "config.py",
-     "switch": "BREAKOUT_RETEST_FILTER_TF",
-     "tabs": [
-      "AUGMENT_RISK_SIZING",
-      "AUGMENT_TREND",
-      "ENTRY_BREAKOUT_CHANNEL",
-      "ENTRY_CONFIRMATION_GATES",
-      "ENTRY_REVERSAL_BOUNCE",
-      "EXIT_STRUCTURAL",
-      "EXIT_VELOCITY",
-      "GLOBAL_RISK_GATES",
-      "REDUCE_PROFIT_LOCK",
-      "REDUCE_SIGNAL_RATER",
-      "REENTRY_ADAPTIVE",
-      "REENTRY_WINDOWED"
-     ],
-     "template_bold": "OFF"
-    },
-    {
-     "config_default": "1h",
-     "source": "QuickConfig",
-     "switch": "BREAKOUT_RETEST_FILTER_TF",
-     "tabs": [
-      "AUGMENT_RISK_SIZING",
-      "AUGMENT_TREND",
-      "ENTRY_BREAKOUT_CHANNEL",
-      "ENTRY_CONFIRMATION_GATES",
-      "ENTRY_REVERSAL_BOUNCE",
-      "EXIT_STRUCTURAL",
-      "EXIT_VELOCITY",
-      "GLOBAL_RISK_GATES",
-      "REDUCE_PROFIT_LOCK",
-      "REDUCE_SIGNAL_RATER",
-      "REENTRY_ADAPTIVE",
-      "REENTRY_WINDOWED"
-     ],
-     "template_bold": "OFF"
-    },
-    {
      "config_default": "0",
      "source": "config.py",
      "switch": "COOLDOWN_BARS",
@@ -1405,24 +1192,6 @@
       "GLOBAL_RISK_GATES"
      ],
      "template_bold": "3"
-    },
-    {
-     "config_default": "15m,1h,4h",
-     "source": "config.py",
-     "switch": "DAYTRADE_DC_TARGET_TF",
-     "tabs": [
-      "EXIT_STRUCTURAL"
-     ],
-     "template_bold": "15m"
-    },
-    {
-     "config_default": "15m,1h,4h",
-     "source": "QuickConfig",
-     "switch": "DAYTRADE_DC_TARGET_TF",
-     "tabs": [
-      "EXIT_STRUCTURAL"
-     ],
-     "template_bold": "15m"
     },
     {
      "config_default": "1h",
@@ -1454,42 +1223,6 @@
     {
      "config_default": "15m",
      "source": "config.py",
-     "switch": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "OFF"
-    },
-    {
-     "config_default": "15m",
-     "source": "QuickConfig",
-     "switch": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "OFF"
-    },
-    {
-     "config_default": "15m",
-     "source": "config.py",
-     "switch": "DELTA_ENGINE_FILTER_TF",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "OFF"
-    },
-    {
-     "config_default": "15m",
-     "source": "QuickConfig",
-     "switch": "DELTA_ENGINE_FILTER_TF",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "OFF"
-    },
-    {
-     "config_default": "15m",
-     "source": "config.py",
      "switch": "EMA_9_21_FILTER_FILTER_TF",
      "tabs": [
       "ENTRY_REVERSAL_BOUNCE"
@@ -1612,15 +1345,6 @@
       "AUGMENT_RISK_SIZING"
      ],
      "template_bold": "True"
-    },
-    {
-     "config_default": "10",
-     "source": "QuickConfig",
-     "switch": "EMERGENCY_BRAKE_MAX_TRADES_PER_MIN",
-     "tabs": [
-      "ENTRY_CONFIRMATION_GATES"
-     ],
-     "template_bold": "30"
     },
     {
      "config_default": "1.5",
@@ -1751,24 +1475,6 @@
      "template_bold": "True"
     },
     {
-     "config_default": "15m",
-     "source": "config.py",
-     "switch": "GR_FILTER_VEC_FILTER_TF",
-     "tabs": [
-      "ENTRY_CONFIRMATION_GATES"
-     ],
-     "template_bold": "OFF"
-    },
-    {
-     "config_default": "15m",
-     "source": "QuickConfig",
-     "switch": "GR_FILTER_VEC_FILTER_TF",
-     "tabs": [
-      "ENTRY_CONFIRMATION_GATES"
-     ],
-     "template_bold": "OFF"
-    },
-    {
      "config_default": "False",
      "source": "config.py",
      "switch": "HAIKU_WINNER_AUGMENT_ENABLED",
@@ -1821,15 +1527,6 @@
       "REENTRY_WINDOWED"
      ],
      "template_bold": "15"
-    },
-    {
-     "config_default": "200.0",
-     "source": "config.py",
-     "switch": "HIGH_GAIN_AUGMENTATION_MIN_SIZE",
-     "tabs": [
-      "AUGMENT_RISK_SIZING"
-     ],
-     "template_bold": "50"
     },
     {
      "config_default": "3.0",
@@ -1920,24 +1617,6 @@
       "EXIT_VELOCITY"
      ],
      "template_bold": "False"
-    },
-    {
-     "config_default": "90.0",
-     "source": "config.py",
-     "switch": "MAX_ORDER_VALUE",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "120"
-    },
-    {
-     "config_default": "2500.0",
-     "source": "QuickConfig",
-     "switch": "MAX_ORDER_VALUE",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "120"
     },
     {
      "config_default": "4.5",
@@ -2118,24 +1797,6 @@
      "template_bold": "OFF"
     },
     {
-     "config_default": "1",
-     "source": "config.py",
-     "switch": "REENTRY_FILTER_MIN_PASS",
-     "tabs": [
-      "REENTRY_WINDOWED"
-     ],
-     "template_bold": "3"
-    },
-    {
-     "config_default": "1",
-     "source": "QuickConfig",
-     "switch": "REENTRY_FILTER_MIN_PASS",
-     "tabs": [
-      "REENTRY_WINDOWED"
-     ],
-     "template_bold": "3"
-    },
-    {
      "config_default": "False",
      "source": "config.py",
      "switch": "RZ_BREAKOUT_ENTRY_ENABLED",
@@ -2170,24 +1831,6 @@
       "GLOBAL_RISK_GATES"
      ],
      "template_bold": "25"
-    },
-    {
-     "config_default": "OFF",
-     "source": "config.py",
-     "switch": "TECHNICAL_DC_TARGET_TF",
-     "tabs": [
-      "EXIT_STRUCTURAL"
-     ],
-     "template_bold": "4h"
-    },
-    {
-     "config_default": "OFF",
-     "source": "QuickConfig",
-     "switch": "TECHNICAL_DC_TARGET_TF",
-     "tabs": [
-      "EXIT_STRUCTURAL"
-     ],
-     "template_bold": "4h"
     },
     {
      "config_default": "2",
@@ -2325,7 +1968,7 @@
      "template_bold": "True"
     }
    ],
-   "mismatch_n": 113,
+   "mismatch_n": 91,
    "multi_bold": [],
    "multi_bold_n": 0,
    "no_bold": [],
@@ -2386,6 +2029,7 @@
    "template_switches": 1186
   },
   "STOCKS_LONG": {
+   "grey_retired_excluded": 426,
    "mismatch": [
     {
      "config_default": "10.0",
@@ -2422,51 +2066,6 @@
       "AUGMENT_TREND"
      ],
      "template_bold": "300"
-    },
-    {
-     "config_default": "0.0",
-     "source": "QuickConfig",
-     "switch": "AUGMENT_MIN_GAIN_PCT",
-     "tabs": [
-      "AUGMENT_TREND"
-     ],
-     "template_bold": "3"
-    },
-    {
-     "config_default": "1.8",
-     "source": "QuickConfig",
-     "switch": "BAND_SLOPE_SIZING_V2_MAX",
-     "tabs": [
-      "STDEV_SLOPE_SIZING"
-     ],
-     "template_bold": "2.5"
-    },
-    {
-     "config_default": "0.7",
-     "source": "QuickConfig",
-     "switch": "BAND_SLOPE_SIZING_V2_MIN",
-     "tabs": [
-      "STDEV_SLOPE_SIZING"
-     ],
-     "template_bold": "0.5"
-    },
-    {
-     "config_default": "4h",
-     "source": "QuickConfig",
-     "switch": "BAND_SLOPE_SIZING_V2_TF",
-     "tabs": [
-      "STDEV_SLOPE_SIZING"
-     ],
-     "template_bold": "D"
-    },
-    {
-     "config_default": "15m",
-     "source": "QuickConfig",
-     "switch": "BAR_PATTERNS_FILTER_TF",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "OFF"
     },
     {
      "config_default": "OFF",
@@ -2541,15 +2140,6 @@
      "template_bold": "-0.375"
     },
     {
-     "config_default": "1h",
-     "source": "QuickConfig",
-     "switch": "BREAKEVEN_GAIN_EROSION_FILTER_TF",
-     "tabs": [
-      "REDUCE_PROFIT_LOCK"
-     ],
-     "template_bold": "OFF"
-    },
-    {
      "config_default": "1.5",
      "source": "QuickConfig",
      "switch": "BREAKOUT_LEASH_REENTRY_MULT",
@@ -2557,34 +2147,6 @@
       "REENTRY_ADAPTIVE"
      ],
      "template_bold": "0"
-    },
-    {
-     "config_default": "1h",
-     "source": "QuickConfig",
-     "switch": "BREAKOUT_RETEST_FILTER_TF",
-     "tabs": [
-      "AUGMENT_RISK_SIZING",
-      "AUGMENT_TREND",
-      "ENTRY_BREAKOUT_CHANNEL",
-      "ENTRY_REVERSAL_BOUNCE",
-      "EXIT_STRUCTURAL",
-      "EXIT_VELOCITY",
-      "GLOBAL_RISK_GATES",
-      "REDUCE_PROFIT_LOCK",
-      "REDUCE_SIGNAL_RATER",
-      "REENTRY_ADAPTIVE",
-      "REENTRY_WINDOWED"
-     ],
-     "template_bold": "OFF"
-    },
-    {
-     "config_default": "15m",
-     "source": "QuickConfig",
-     "switch": "CIRCUIT_SHARPE_GATES_FILTER_TF",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "4h"
     },
     {
      "config_default": "0",
@@ -2603,15 +2165,6 @@
       "EXIT_STRUCTURAL"
      ],
      "template_bold": "15m"
-    },
-    {
-     "config_default": "OFF",
-     "source": "QuickConfig",
-     "switch": "DC_BREAKOUT_TF",
-     "tabs": [
-      "ENTRY_BREAKOUT_CHANNEL"
-     ],
-     "template_bold": "1h"
     },
     {
      "config_default": "False",
@@ -2677,15 +2230,6 @@
      "template_bold": "0"
     },
     {
-     "config_default": "15m",
-     "source": "QuickConfig",
-     "switch": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "1h"
-    },
-    {
      "config_default": "False",
      "source": "QuickConfig",
      "switch": "DELTA_ATR_ENTRY_FILTER",
@@ -2693,24 +2237,6 @@
       "ENTRY_CONFIRMATION_GATES"
      ],
      "template_bold": "True"
-    },
-    {
-     "config_default": "15m",
-     "source": "config_tradier.py",
-     "switch": "DELTA_ENGINE_FILTER_TF",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "OFF"
-    },
-    {
-     "config_default": "15m",
-     "source": "QuickConfig",
-     "switch": "DELTA_ENGINE_FILTER_TF",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "OFF"
     },
     {
      "config_default": "0.0",
@@ -2756,15 +2282,6 @@
       "EXIT_STRUCTURAL"
      ],
      "template_bold": "2"
-    },
-    {
-     "config_default": "hh_hl_4h",
-     "source": "QuickConfig",
-     "switch": "DELTA_HTF_GATE",
-     "tabs": [
-      "ENTRY_REVERSAL_BOUNCE"
-     ],
-     "template_bold": "4h"
     },
     {
      "config_default": "True",
@@ -2839,15 +2356,6 @@
      "template_bold": "2"
     },
     {
-     "config_default": "10",
-     "source": "QuickConfig",
-     "switch": "EMERGENCY_BRAKE_MAX_TRADES_PER_MIN",
-     "tabs": [
-      "ENTRY_CONFIRMATION_GATES"
-     ],
-     "template_bold": "30"
-    },
-    {
      "config_default": "True",
      "source": "QuickConfig",
      "switch": "ENABLE_FAST_RISER_REDUCE",
@@ -2920,24 +2428,6 @@
      "template_bold": "27"
     },
     {
-     "config_default": "15m",
-     "source": "config_tradier.py",
-     "switch": "EXIT_R1_R2_FILTER_TF",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "1h"
-    },
-    {
-     "config_default": "15m",
-     "source": "QuickConfig",
-     "switch": "EXIT_R1_R2_FILTER_TF",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "1h"
-    },
-    {
      "config_default": "75.0",
      "source": "QuickConfig",
      "switch": "EXIT_SCORER_K_EXTREME",
@@ -2945,42 +2435,6 @@
       "EXIT_STRUCTURAL"
      ],
      "template_bold": "85"
-    },
-    {
-     "config_default": "OFF",
-     "source": "QuickConfig",
-     "switch": "EXIT_TOP_FADE_FILTER_TF",
-     "tabs": [
-      "AUGMENT_TREND",
-      "ENTRY_BREAKOUT_CHANNEL",
-      "ENTRY_REVERSAL_BOUNCE",
-      "EXIT_STRUCTURAL",
-      "EXIT_VELOCITY",
-      "GLOBAL_RISK_GATES",
-      "REDUCE_PROFIT_LOCK",
-      "REDUCE_SIGNAL_RATER",
-      "REENTRY_ADAPTIVE",
-      "REENTRY_WINDOWED"
-     ],
-     "template_bold": "15m"
-    },
-    {
-     "config_default": "15m",
-     "source": "config_tradier.py",
-     "switch": "EXIT_TO_REDUCE_ADAPTER_FILTER_TF",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "4h"
-    },
-    {
-     "config_default": "15m",
-     "source": "QuickConfig",
-     "switch": "EXIT_TO_REDUCE_ADAPTER_FILTER_TF",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "4h"
     },
     {
      "config_default": "True",
@@ -3017,78 +2471,6 @@
       "ENTRY_CONFIRMATION_GATES"
      ],
      "template_bold": "False"
-    },
-    {
-     "config_default": "OFF",
-     "source": "config_tradier.py",
-     "switch": "FAST_RISER_FILTER_TF",
-     "tabs": [
-      "AUGMENT_RISK_SIZING",
-      "AUGMENT_TREND",
-      "ENTRY_BREAKOUT_CHANNEL",
-      "ENTRY_REVERSAL_BOUNCE",
-      "EXIT_STRUCTURAL",
-      "EXIT_VELOCITY",
-      "REDUCE_PROFIT_LOCK",
-      "REDUCE_SIGNAL_RATER",
-      "REENTRY_ADAPTIVE",
-      "REENTRY_WINDOWED"
-     ],
-     "template_bold": "4h"
-    },
-    {
-     "config_default": "OFF",
-     "source": "QuickConfig",
-     "switch": "FAST_RISER_FILTER_TF",
-     "tabs": [
-      "AUGMENT_RISK_SIZING",
-      "AUGMENT_TREND",
-      "ENTRY_BREAKOUT_CHANNEL",
-      "ENTRY_REVERSAL_BOUNCE",
-      "EXIT_STRUCTURAL",
-      "EXIT_VELOCITY",
-      "REDUCE_PROFIT_LOCK",
-      "REDUCE_SIGNAL_RATER",
-      "REENTRY_ADAPTIVE",
-      "REENTRY_WINDOWED"
-     ],
-     "template_bold": "4h"
-    },
-    {
-     "config_default": "4h",
-     "source": "config_tradier.py",
-     "switch": "FH_MOMENTUM_FILTER_TF",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "1h"
-    },
-    {
-     "config_default": "15m",
-     "source": "QuickConfig",
-     "switch": "FH_MOMENTUM_FILTER_TF",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "1h"
-    },
-    {
-     "config_default": "D",
-     "source": "config_tradier.py",
-     "switch": "FIRST_OPEN_THROTTLE_FILTER_TF",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "OFF"
-    },
-    {
-     "config_default": "15m",
-     "source": "QuickConfig",
-     "switch": "FIRST_OPEN_THROTTLE_FILTER_TF",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "OFF"
     },
     {
      "config_default": "False",
@@ -3235,24 +2617,6 @@
      "template_bold": "True"
     },
     {
-     "config_default": "15m",
-     "source": "config_tradier.py",
-     "switch": "GR_FILTER_VEC_FILTER_TF",
-     "tabs": [
-      "ENTRY_CONFIRMATION_GATES"
-     ],
-     "template_bold": "OFF"
-    },
-    {
-     "config_default": "15m",
-     "source": "QuickConfig",
-     "switch": "GR_FILTER_VEC_FILTER_TF",
-     "tabs": [
-      "ENTRY_CONFIRMATION_GATES"
-     ],
-     "template_bold": "OFF"
-    },
-    {
      "config_default": "False",
      "source": "QuickConfig",
      "switch": "GR_HTF_GATE_ENABLED",
@@ -3260,33 +2624,6 @@
       "ENTRY_CONFIRMATION_GATES"
      ],
      "template_bold": "True"
-    },
-    {
-     "config_default": "True",
-     "source": "QuickConfig",
-     "switch": "GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN",
-     "tabs": [
-      "REENTRY_WINDOWED"
-     ],
-     "template_bold": "False"
-    },
-    {
-     "config_default": "15m",
-     "source": "config_tradier.py",
-     "switch": "HAIKU_WINNER_FILTER_TF",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "OFF"
-    },
-    {
-     "config_default": "15m",
-     "source": "QuickConfig",
-     "switch": "HAIKU_WINNER_FILTER_TF",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "OFF"
     },
     {
      "config_default": "0.0",
@@ -3298,29 +2635,11 @@
      "template_bold": "15"
     },
     {
-     "config_default": "50",
-     "source": "QuickConfig",
-     "switch": "HIGH_GAIN_AUGMENTATION_MIN_SIZE",
-     "tabs": [
-      "AUGMENT_RISK_SIZING"
-     ],
-     "template_bold": "200"
-    },
-    {
      "config_default": "True",
      "source": "QuickConfig",
      "switch": "HLR_TOP_EXIT_ENABLED",
      "tabs": [
       "REDUCE_SIGNAL_RATER"
-     ],
-     "template_bold": "False"
-    },
-    {
-     "config_default": "True",
-     "source": "QuickConfig",
-     "switch": "HTF4_CONF",
-     "tabs": [
-      "ENTRY_REVERSAL_BOUNCE"
      ],
      "template_bold": "False"
     },
@@ -3350,15 +2669,6 @@
       "ENTRY_CONFIRMATION_GATES"
      ],
      "template_bold": "26"
-    },
-    {
-     "config_default": "True",
-     "source": "QuickConfig",
-     "switch": "INTRADAY_RATIO_REBALANCE_ENABLED",
-     "tabs": [
-      "REDUCE_SIGNAL_RATER"
-     ],
-     "template_bold": "False"
     },
     {
      "config_default": "1",
@@ -3397,15 +2707,6 @@
      "template_bold": "OFF"
     },
     {
-     "config_default": "True",
-     "source": "QuickConfig",
-     "switch": "LEADERBOARD_FILTER",
-     "tabs": [
-      "ENTRY_REVERSAL_BOUNCE"
-     ],
-     "template_bold": "False"
-    },
-    {
      "config_default": "1.0",
      "source": "config_tradier.py",
      "switch": "LH_HL_FILTER_DC_THRESHOLD_PCT",
@@ -3424,15 +2725,6 @@
      "template_bold": "True"
     },
     {
-     "config_default": "0.1",
-     "source": "QuickConfig",
-     "switch": "LR_BAND_ENTRY_LO",
-     "tabs": [
-      "ENTRY_CONFIRMATION_GATES"
-     ],
-     "template_bold": "0.3"
-    },
-    {
      "config_default": "4h",
      "source": "QuickConfig",
      "switch": "LR_BAND_ENTRY_TF",
@@ -3440,24 +2732,6 @@
       "ENTRY_CONFIRMATION_GATES"
      ],
      "template_bold": "D"
-    },
-    {
-     "config_default": "15m_only",
-     "source": "QuickConfig",
-     "switch": "MANDATORY_REENTRY_WT_FILTER_TF_MODE",
-     "tabs": [
-      "ENTRY_REVERSAL_BOUNCE"
-     ],
-     "template_bold": "5m_or_15m"
-    },
-    {
-     "config_default": "2500.0",
-     "source": "QuickConfig",
-     "switch": "MAX_ORDER_VALUE",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "7000"
     },
     {
      "config_default": "True",
@@ -3487,15 +2761,6 @@
      "template_bold": "4.5"
     },
     {
-     "config_default": "8",
-     "source": "QuickConfig",
-     "switch": "MIN_HOLD_BARS",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "10"
-    },
-    {
      "config_default": "30.0",
      "source": "config_tradier.py",
      "switch": "MIN_HOLD_MINUTES_TRADIER",
@@ -3514,15 +2779,6 @@
      "template_bold": "45"
     },
     {
-     "config_default": "1.0",
-     "source": "QuickConfig",
-     "switch": "MIN_POSITION_SIZE",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "100"
-    },
-    {
      "config_default": "crypto",
      "source": "QuickConfig",
      "switch": "MODE",
@@ -3530,25 +2786,6 @@
       "GLOBAL_RISK_GATES"
      ],
      "template_bold": "tradier"
-    },
-    {
-     "config_default": "D",
-     "source": "QuickConfig",
-     "switch": "MOMENTUM_BREAKOUT_FILTER_TF",
-     "tabs": [
-      "AUGMENT_RISK_SIZING",
-      "AUGMENT_TREND",
-      "ENTRY_BREAKOUT_CHANNEL",
-      "ENTRY_REVERSAL_BOUNCE",
-      "EXIT_STRUCTURAL",
-      "EXIT_VELOCITY",
-      "GLOBAL_RISK_GATES",
-      "REDUCE_PROFIT_LOCK",
-      "REDUCE_SIGNAL_RATER",
-      "REENTRY_ADAPTIVE",
-      "REENTRY_WINDOWED"
-     ],
-     "template_bold": "OFF"
     },
     {
      "config_default": "2.0",
@@ -3668,24 +2905,6 @@
      "template_bold": "3"
     },
     {
-     "config_default": "0.0",
-     "source": "QuickConfig",
-     "switch": "NOLOSS_MIN_PROFIT_PCT_TRADIER",
-     "tabs": [
-      "ENTRY_CONFIRMATION_GATES"
-     ],
-     "template_bold": "0.01"
-    },
-    {
-     "config_default": "0.7",
-     "source": "QuickConfig",
-     "switch": "PARABOLIC_BB_PCT_B_4H_MIN",
-     "tabs": [
-      "ENTRY_CONFIRMATION_GATES"
-     ],
-     "template_bold": "0.9"
-    },
-    {
      "config_default": "0.875",
      "source": "QuickConfig",
      "switch": "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER",
@@ -3731,24 +2950,6 @@
      "template_bold": "0.5"
     },
     {
-     "config_default": "300.0",
-     "source": "QuickConfig",
-     "switch": "RECENT_REDUCTION_GUARD_WINDOW_S",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "450"
-    },
-    {
-     "config_default": "3m",
-     "source": "config_tradier.py",
-     "switch": "REENTRY2_DC_BREAK_FILTER_TF",
-     "tabs": [
-      "REENTRY_WINDOWED"
-     ],
-     "template_bold": "OFF"
-    },
-    {
      "config_default": "5m",
      "source": "config_tradier.py",
      "switch": "REENTRY_BAR_TURN_TF",
@@ -3792,15 +2993,6 @@
       "REENTRY_WINDOWED"
      ],
      "template_bold": "3"
-    },
-    {
-     "config_default": "5.0",
-     "source": "QuickConfig",
-     "switch": "REENTRY_TIER2_MIN_MINUTES_TRADIER",
-     "tabs": [
-      "REENTRY_ADAPTIVE"
-     ],
-     "template_bold": "10"
     },
     {
      "config_default": "0.25",
@@ -3902,15 +3094,6 @@
      "template_bold": "False"
     },
     {
-     "config_default": "45.0",
-     "source": "QuickConfig",
-     "switch": "START_POSITION_SIZE",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "500"
-    },
-    {
      "config_default": "True",
      "source": "QuickConfig",
      "switch": "STDEV_BREAKOUT_EXIT_WT_ENABLED",
@@ -3965,24 +3148,6 @@
      "template_bold": "bb_1h"
     },
     {
-     "config_default": "OFF",
-     "source": "config_tradier.py",
-     "switch": "TECHNICAL_DC_TARGET_TF",
-     "tabs": [
-      "EXIT_STRUCTURAL"
-     ],
-     "template_bold": "15m"
-    },
-    {
-     "config_default": "OFF",
-     "source": "QuickConfig",
-     "switch": "TECHNICAL_DC_TARGET_TF",
-     "tabs": [
-      "EXIT_STRUCTURAL"
-     ],
-     "template_bold": "15m"
-    },
-    {
      "config_default": "15m",
      "source": "QuickConfig",
      "switch": "TF_HTF1",
@@ -4028,15 +3193,6 @@
      "template_bold": "240"
     },
     {
-     "config_default": "30.0",
-     "source": "QuickConfig",
-     "switch": "TRADIER_REENTRY_HARDCOOL_MIN",
-     "tabs": [
-      "REENTRY_ADAPTIVE"
-     ],
-     "template_bold": "15"
-    },
-    {
      "config_default": "90.0",
      "source": "config_tradier.py",
      "switch": "TRADIER_RSI2_EXIT_THRESHOLD_LONG",
@@ -4060,15 +3216,6 @@
      "switch": "TREND_REGIME_VETO_ENABLED",
      "tabs": [
       "ENTRY_CONFIRMATION_GATES"
-     ],
-     "template_bold": "False"
-    },
-    {
-     "config_default": "True",
-     "source": "QuickConfig",
-     "switch": "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED",
-     "tabs": [
-      "AUGMENT_RISK_SIZING"
      ],
      "template_bold": "False"
     },
@@ -4213,15 +3360,6 @@
      "template_bold": "True"
     },
     {
-     "config_default": "2.0",
-     "source": "QuickConfig",
-     "switch": "WT_4H_VEL_EXIT_K_EXTREME_HIGH",
-     "tabs": [
-      "EXIT_VELOCITY"
-     ],
-     "template_bold": "80"
-    },
-    {
      "config_default": "True",
      "source": "QuickConfig",
      "switch": "WT_CROSSUNDER_FINAL_ENABLED",
@@ -4229,24 +3367,6 @@
       "ENTRY_CONFIRMATION_GATES"
      ],
      "template_bold": "False"
-    },
-    {
-     "config_default": "1h",
-     "source": "config_tradier.py",
-     "switch": "WT_DC_DIRECT_TF_ENTRY",
-     "tabs": [
-      "ENTRY_BREAKOUT_CHANNEL"
-     ],
-     "template_bold": "15m"
-    },
-    {
-     "config_default": "1h",
-     "source": "QuickConfig",
-     "switch": "WT_DC_DIRECT_TF_ENTRY",
-     "tabs": [
-      "ENTRY_BREAKOUT_CHANNEL"
-     ],
-     "template_bold": "15m"
     },
     {
      "config_default": "45",
@@ -4303,15 +3423,6 @@
      "template_bold": "OFF"
     },
     {
-     "config_default": "2.0",
-     "source": "QuickConfig",
-     "switch": "WT_PERCENTILE_EXIT_OS_D",
-     "tabs": [
-      "REDUCE_SIGNAL_RATER"
-     ],
-     "template_bold": "10"
-    },
-    {
      "config_default": "False",
      "source": "QuickConfig",
      "switch": "WT_VEL_DECAY_EXIT_ENABLED",
@@ -4321,7 +3432,7 @@
      "template_bold": "True"
     }
    ],
-   "mismatch_n": 209,
+   "mismatch_n": 155,
    "multi_bold": [],
    "multi_bold_n": 0,
    "no_bold": [],
@@ -4382,6 +3493,7 @@
    "template_switches": 1264
   },
   "STOCKS_SHORT": {
+   "grey_retired_excluded": 391,
    "mismatch": [
     {
      "config_default": "10.0",
@@ -4436,51 +3548,6 @@
       "AUGMENT_TREND"
      ],
      "template_bold": "300"
-    },
-    {
-     "config_default": "0.0",
-     "source": "QuickConfig",
-     "switch": "AUGMENT_MIN_GAIN_PCT",
-     "tabs": [
-      "AUGMENT_TREND"
-     ],
-     "template_bold": "3"
-    },
-    {
-     "config_default": "1.8",
-     "source": "QuickConfig",
-     "switch": "BAND_SLOPE_SIZING_V2_MAX",
-     "tabs": [
-      "STDEV_SLOPE_SIZING"
-     ],
-     "template_bold": "2.5"
-    },
-    {
-     "config_default": "0.7",
-     "source": "QuickConfig",
-     "switch": "BAND_SLOPE_SIZING_V2_MIN",
-     "tabs": [
-      "STDEV_SLOPE_SIZING"
-     ],
-     "template_bold": "0.5"
-    },
-    {
-     "config_default": "4h",
-     "source": "QuickConfig",
-     "switch": "BAND_SLOPE_SIZING_V2_TF",
-     "tabs": [
-      "STDEV_SLOPE_SIZING"
-     ],
-     "template_bold": "D"
-    },
-    {
-     "config_default": "15m",
-     "source": "QuickConfig",
-     "switch": "BAR_PATTERNS_FILTER_TF",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "OFF"
     },
     {
      "config_default": "1h",
@@ -4546,24 +3613,6 @@
      "template_bold": "-0.375"
     },
     {
-     "config_default": "OFF",
-     "source": "config_tradier.py",
-     "switch": "BREAKEVEN_GAIN_EROSION_FILTER_TF",
-     "tabs": [
-      "REDUCE_PROFIT_LOCK"
-     ],
-     "template_bold": "D"
-    },
-    {
-     "config_default": "1h",
-     "source": "QuickConfig",
-     "switch": "BREAKEVEN_GAIN_EROSION_FILTER_TF",
-     "tabs": [
-      "REDUCE_PROFIT_LOCK"
-     ],
-     "template_bold": "D"
-    },
-    {
      "config_default": "1.5",
      "source": "QuickConfig",
      "switch": "BREAKOUT_LEASH_REENTRY_MULT",
@@ -4571,24 +3620,6 @@
       "REENTRY_ADAPTIVE"
      ],
      "template_bold": "0"
-    },
-    {
-     "config_default": "1h",
-     "source": "QuickConfig",
-     "switch": "BREAKOUT_RETEST_FILTER_TF",
-     "tabs": [
-      "ENTRY_BREAKOUT_CHANNEL"
-     ],
-     "template_bold": "OFF"
-    },
-    {
-     "config_default": "4h",
-     "source": "config_tradier.py",
-     "switch": "CIRCUIT_SHARPE_GATES_FILTER_TF",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "15m"
     },
     {
      "config_default": "0",
@@ -4607,15 +3638,6 @@
       "EXIT_STRUCTURAL"
      ],
      "template_bold": "15m"
-    },
-    {
-     "config_default": "OFF",
-     "source": "QuickConfig",
-     "switch": "DC_BREAKOUT_TF",
-     "tabs": [
-      "ENTRY_BREAKOUT_CHANNEL"
-     ],
-     "template_bold": "1h"
     },
     {
      "config_default": "False",
@@ -4681,24 +3703,6 @@
      "template_bold": "0"
     },
     {
-     "config_default": "1h",
-     "source": "config_tradier.py",
-     "switch": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "OFF"
-    },
-    {
-     "config_default": "15m",
-     "source": "QuickConfig",
-     "switch": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "OFF"
-    },
-    {
      "config_default": "False",
      "source": "QuickConfig",
      "switch": "DELTA_ATR_ENTRY_FILTER",
@@ -4751,15 +3755,6 @@
       "EXIT_STRUCTURAL"
      ],
      "template_bold": "2"
-    },
-    {
-     "config_default": "hh_hl_4h",
-     "source": "QuickConfig",
-     "switch": "DELTA_HTF_GATE",
-     "tabs": [
-      "ENTRY_REVERSAL_BOUNCE"
-     ],
-     "template_bold": "4h"
     },
     {
      "config_default": "True",
@@ -4850,15 +3845,6 @@
      "template_bold": "4"
     },
     {
-     "config_default": "10",
-     "source": "QuickConfig",
-     "switch": "EMERGENCY_BRAKE_MAX_TRADES_PER_MIN",
-     "tabs": [
-      "ENTRY_CONFIRMATION_GATES"
-     ],
-     "template_bold": "30"
-    },
-    {
      "config_default": "True",
      "source": "QuickConfig",
      "switch": "ENABLE_FAST_RISER_REDUCE",
@@ -4940,23 +3926,6 @@
      "template_bold": "85"
     },
     {
-     "config_default": "OFF",
-     "source": "QuickConfig",
-     "switch": "EXIT_TOP_FADE_FILTER_TF",
-     "tabs": [
-      "AUGMENT_RISK_SIZING",
-      "ENTRY_REVERSAL_BOUNCE",
-      "EXIT_STRUCTURAL",
-      "EXIT_VELOCITY",
-      "GLOBAL_RISK_GATES",
-      "REDUCE_PROFIT_LOCK",
-      "REDUCE_SIGNAL_RATER",
-      "REENTRY_ADAPTIVE",
-      "REENTRY_WINDOWED"
-     ],
-     "template_bold": "15m"
-    },
-    {
      "config_default": "True",
      "source": "QuickConfig",
      "switch": "EXIT_VELOCITY_WT_ENABLED",
@@ -4991,40 +3960,6 @@
       "ENTRY_CONFIRMATION_GATES"
      ],
      "template_bold": "False"
-    },
-    {
-     "config_default": "OFF",
-     "source": "config_tradier.py",
-     "switch": "FAST_RISER_FILTER_TF",
-     "tabs": [
-      "AUGMENT_RISK_SIZING",
-      "ENTRY_BREAKOUT_CHANNEL",
-      "ENTRY_REVERSAL_BOUNCE",
-      "EXIT_STRUCTURAL",
-      "EXIT_VELOCITY",
-      "REDUCE_PROFIT_LOCK",
-      "REDUCE_SIGNAL_RATER",
-      "REENTRY_ADAPTIVE",
-      "REENTRY_WINDOWED"
-     ],
-     "template_bold": "1h"
-    },
-    {
-     "config_default": "OFF",
-     "source": "QuickConfig",
-     "switch": "FAST_RISER_FILTER_TF",
-     "tabs": [
-      "AUGMENT_RISK_SIZING",
-      "ENTRY_BREAKOUT_CHANNEL",
-      "ENTRY_REVERSAL_BOUNCE",
-      "EXIT_STRUCTURAL",
-      "EXIT_VELOCITY",
-      "REDUCE_PROFIT_LOCK",
-      "REDUCE_SIGNAL_RATER",
-      "REENTRY_ADAPTIVE",
-      "REENTRY_WINDOWED"
-     ],
-     "template_bold": "1h"
     },
     {
      "config_default": "False",
@@ -5153,24 +4088,6 @@
      "template_bold": "False"
     },
     {
-     "config_default": "15m",
-     "source": "config_tradier.py",
-     "switch": "GR_FILTER_VEC_FILTER_TF",
-     "tabs": [
-      "ENTRY_CONFIRMATION_GATES"
-     ],
-     "template_bold": "OFF"
-    },
-    {
-     "config_default": "15m",
-     "source": "QuickConfig",
-     "switch": "GR_FILTER_VEC_FILTER_TF",
-     "tabs": [
-      "ENTRY_CONFIRMATION_GATES"
-     ],
-     "template_bold": "OFF"
-    },
-    {
      "config_default": "False",
      "source": "QuickConfig",
      "switch": "GR_HTF_GATE_ENABLED",
@@ -5178,15 +4095,6 @@
       "ENTRY_CONFIRMATION_GATES"
      ],
      "template_bold": "True"
-    },
-    {
-     "config_default": "True",
-     "source": "QuickConfig",
-     "switch": "GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN",
-     "tabs": [
-      "REENTRY_WINDOWED"
-     ],
-     "template_bold": "False"
     },
     {
      "config_default": "OFF",
@@ -5216,29 +4124,11 @@
      "template_bold": "15"
     },
     {
-     "config_default": "50",
-     "source": "QuickConfig",
-     "switch": "HIGH_GAIN_AUGMENTATION_MIN_SIZE",
-     "tabs": [
-      "AUGMENT_RISK_SIZING"
-     ],
-     "template_bold": "200"
-    },
-    {
      "config_default": "True",
      "source": "QuickConfig",
      "switch": "HLR_TOP_EXIT_ENABLED",
      "tabs": [
       "REDUCE_SIGNAL_RATER"
-     ],
-     "template_bold": "False"
-    },
-    {
-     "config_default": "True",
-     "source": "QuickConfig",
-     "switch": "HTF4_CONF",
-     "tabs": [
-      "ENTRY_REVERSAL_BOUNCE"
      ],
      "template_bold": "False"
     },
@@ -5288,15 +4178,6 @@
      "template_bold": "False"
     },
     {
-     "config_default": "True",
-     "source": "QuickConfig",
-     "switch": "INTRADAY_RATIO_REBALANCE_ENABLED",
-     "tabs": [
-      "REDUCE_SIGNAL_RATER"
-     ],
-     "template_bold": "False"
-    },
-    {
      "config_default": "1",
      "source": "QuickConfig",
      "switch": "KINDERGARTEN_CUMULATIVE_MIN_TFS",
@@ -5331,15 +4212,6 @@
       "GLOBAL_RISK_GATES"
      ],
      "template_bold": "OFF"
-    },
-    {
-     "config_default": "True",
-     "source": "QuickConfig",
-     "switch": "LEADERBOARD_FILTER",
-     "tabs": [
-      "ENTRY_REVERSAL_BOUNCE"
-     ],
-     "template_bold": "False"
     },
     {
      "config_default": "1.0",
@@ -5387,15 +4259,6 @@
      "template_bold": "True"
     },
     {
-     "config_default": "0.1",
-     "source": "QuickConfig",
-     "switch": "LR_BAND_ENTRY_LO",
-     "tabs": [
-      "ENTRY_CONFIRMATION_GATES"
-     ],
-     "template_bold": "0.3"
-    },
-    {
      "config_default": "4h",
      "source": "QuickConfig",
      "switch": "LR_BAND_ENTRY_TF",
@@ -5403,24 +4266,6 @@
       "ENTRY_CONFIRMATION_GATES"
      ],
      "template_bold": "D"
-    },
-    {
-     "config_default": "15m_only",
-     "source": "QuickConfig",
-     "switch": "MANDATORY_REENTRY_WT_FILTER_TF_MODE",
-     "tabs": [
-      "ENTRY_REVERSAL_BOUNCE"
-     ],
-     "template_bold": "5m_or_15m"
-    },
-    {
-     "config_default": "2500.0",
-     "source": "QuickConfig",
-     "switch": "MAX_ORDER_VALUE",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "7000"
     },
     {
      "config_default": "True",
@@ -5450,15 +4295,6 @@
      "template_bold": "6"
     },
     {
-     "config_default": "8",
-     "source": "QuickConfig",
-     "switch": "MIN_HOLD_BARS",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "10"
-    },
-    {
      "config_default": "30.0",
      "source": "config_tradier.py",
      "switch": "MIN_HOLD_MINUTES_TRADIER",
@@ -5475,15 +4311,6 @@
       "GLOBAL_RISK_GATES"
      ],
      "template_bold": "15"
-    },
-    {
-     "config_default": "1.0",
-     "source": "QuickConfig",
-     "switch": "MIN_POSITION_SIZE",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "100"
     },
     {
      "config_default": "False",
@@ -5511,23 +4338,6 @@
       "GLOBAL_RISK_GATES"
      ],
      "template_bold": "tradier"
-    },
-    {
-     "config_default": "D",
-     "source": "QuickConfig",
-     "switch": "MOMENTUM_BREAKOUT_FILTER_TF",
-     "tabs": [
-      "AUGMENT_RISK_SIZING",
-      "ENTRY_BREAKOUT_CHANNEL",
-      "ENTRY_REVERSAL_BOUNCE",
-      "EXIT_STRUCTURAL",
-      "EXIT_VELOCITY",
-      "REDUCE_PROFIT_LOCK",
-      "REDUCE_SIGNAL_RATER",
-      "REENTRY_ADAPTIVE",
-      "REENTRY_WINDOWED"
-     ],
-     "template_bold": "OFF"
     },
     {
      "config_default": "2.0",
@@ -5602,38 +4412,6 @@
      "template_bold": "False"
     },
     {
-     "config_default": "15m",
-     "source": "config_tradier.py",
-     "switch": "NEWBORN_LOSS_KILL_FILTER_TF",
-     "tabs": [
-      "AUGMENT_RISK_SIZING",
-      "ENTRY_REVERSAL_BOUNCE",
-      "EXIT_STRUCTURAL",
-      "EXIT_VELOCITY",
-      "REDUCE_PROFIT_LOCK",
-      "REDUCE_SIGNAL_RATER",
-      "REENTRY_ADAPTIVE",
-      "REENTRY_WINDOWED"
-     ],
-     "template_bold": "4h"
-    },
-    {
-     "config_default": "15m",
-     "source": "QuickConfig",
-     "switch": "NEWBORN_LOSS_KILL_FILTER_TF",
-     "tabs": [
-      "AUGMENT_RISK_SIZING",
-      "ENTRY_REVERSAL_BOUNCE",
-      "EXIT_STRUCTURAL",
-      "EXIT_VELOCITY",
-      "REDUCE_PROFIT_LOCK",
-      "REDUCE_SIGNAL_RATER",
-      "REENTRY_ADAPTIVE",
-      "REENTRY_WINDOWED"
-     ],
-     "template_bold": "4h"
-    },
-    {
      "config_default": "False",
      "source": "QuickConfig",
      "switch": "NOLOSS_BYPASS_WT_5OF5_ENABLED",
@@ -5650,24 +4428,6 @@
       "REDUCE_PROFIT_LOCK"
      ],
      "template_bold": "3"
-    },
-    {
-     "config_default": "0.0",
-     "source": "QuickConfig",
-     "switch": "NOLOSS_MIN_PROFIT_PCT_TRADIER",
-     "tabs": [
-      "ENTRY_CONFIRMATION_GATES"
-     ],
-     "template_bold": "0.01"
-    },
-    {
-     "config_default": "0.7",
-     "source": "QuickConfig",
-     "switch": "PARABOLIC_BB_PCT_B_4H_MIN",
-     "tabs": [
-      "ENTRY_CONFIRMATION_GATES"
-     ],
-     "template_bold": "0.9"
     },
     {
      "config_default": "True",
@@ -5769,24 +4529,6 @@
      "template_bold": "False"
     },
     {
-     "config_default": "300.0",
-     "source": "QuickConfig",
-     "switch": "RECENT_REDUCTION_GUARD_WINDOW_S",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "450"
-    },
-    {
-     "config_default": "3m",
-     "source": "config_tradier.py",
-     "switch": "REENTRY2_DC_BREAK_FILTER_TF",
-     "tabs": [
-      "REENTRY_WINDOWED"
-     ],
-     "template_bold": "OFF"
-    },
-    {
      "config_default": "5m",
      "source": "config_tradier.py",
      "switch": "REENTRY_BAR_TURN_TF",
@@ -5848,15 +4590,6 @@
       "REENTRY_WINDOWED"
      ],
      "template_bold": "3"
-    },
-    {
-     "config_default": "5.0",
-     "source": "QuickConfig",
-     "switch": "REENTRY_TIER2_MIN_MINUTES_TRADIER",
-     "tabs": [
-      "REENTRY_ADAPTIVE"
-     ],
-     "template_bold": "10"
     },
     {
      "config_default": "0.25",
@@ -5958,15 +4691,6 @@
      "template_bold": "False"
     },
     {
-     "config_default": "45.0",
-     "source": "QuickConfig",
-     "switch": "START_POSITION_SIZE",
-     "tabs": [
-      "GLOBAL_RISK_GATES"
-     ],
-     "template_bold": "500"
-    },
-    {
      "config_default": "True",
      "source": "QuickConfig",
      "switch": "STDEV_BREAKOUT_EXIT_WT_ENABLED",
@@ -6039,24 +4763,6 @@
      "template_bold": "bb_1h"
     },
     {
-     "config_default": "OFF",
-     "source": "config_tradier.py",
-     "switch": "TECHNICAL_DC_TARGET_TF",
-     "tabs": [
-      "EXIT_STRUCTURAL"
-     ],
-     "template_bold": "4h"
-    },
-    {
-     "config_default": "OFF",
-     "source": "QuickConfig",
-     "switch": "TECHNICAL_DC_TARGET_TF",
-     "tabs": [
-      "EXIT_STRUCTURAL"
-     ],
-     "template_bold": "4h"
-    },
-    {
      "config_default": "15m",
      "source": "QuickConfig",
      "switch": "TF_HTF1",
@@ -6102,15 +4808,6 @@
      "template_bold": "240"
     },
     {
-     "config_default": "30.0",
-     "source": "QuickConfig",
-     "switch": "TRADIER_REENTRY_HARDCOOL_MIN",
-     "tabs": [
-      "REENTRY_ADAPTIVE"
-     ],
-     "template_bold": "15"
-    },
-    {
      "config_default": "True",
      "source": "config_tradier.py",
      "switch": "TRADIER_RSI2_ENABLED",
@@ -6143,15 +4840,6 @@
      "switch": "TREND_REGIME_VETO_ENABLED",
      "tabs": [
       "ENTRY_CONFIRMATION_GATES"
-     ],
-     "template_bold": "False"
-    },
-    {
-     "config_default": "True",
-     "source": "QuickConfig",
-     "switch": "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED",
-     "tabs": [
-      "AUGMENT_RISK_SIZING"
      ],
      "template_bold": "False"
     },
@@ -6244,15 +4932,6 @@
       "ENTRY_CONFIRMATION_GATES"
      ],
      "template_bold": "True"
-    },
-    {
-     "config_default": "2.0",
-     "source": "QuickConfig",
-     "switch": "WT_4H_VEL_EXIT_K_EXTREME_HIGH",
-     "tabs": [
-      "EXIT_VELOCITY"
-     ],
-     "template_bold": "80"
     },
     {
      "config_default": "True",
@@ -6372,15 +5051,6 @@
      "template_bold": "OFF"
     },
     {
-     "config_default": "2.0",
-     "source": "QuickConfig",
-     "switch": "WT_PERCENTILE_EXIT_OS_D",
-     "tabs": [
-      "REDUCE_SIGNAL_RATER"
-     ],
-     "template_bold": "10"
-    },
-    {
      "config_default": "False",
      "source": "QuickConfig",
      "switch": "WT_VEL_DECAY_EXIT_ENABLED",
@@ -6390,7 +5060,7 @@
      "template_bold": "True"
     }
    ],
-   "mismatch_n": 216,
+   "mismatch_n": 172,
    "multi_bold": [],
    "multi_bold_n": 0,
    "no_bold": [],
@@ -6452,5 +5122,5 @@
   }
  },
  "generated_by": "tools/template_is_the_only_authority_audit.py",
- "total_mismatch": 665
+ "total_mismatch": 532
 }
