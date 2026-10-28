@@ -1,24 +1,24 @@
 {
-  "ts": "2026-10-28T23:15:12.112269+00:00",
+  "ts": "2026-10-28T23:25:08.728174+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 16,
-  "pending_sym_sides": 140,
+  "fleet_published_last_60m": 17,
+  "pending_sym_sides": 136,
   "hosts": {
     "s1": {
       "published_last_60m": 1,
       "published_last_3h": 2,
       "boards": {
         "1000BONKUSDC_SHORT": 6,
-        "STRKUSDT_SHORT": 0
+        "STRKUSDT_SHORT": 7
       },
       "boards_running": 2,
-      "workers": 6,
-      "workers_vs_law_28": "6/28",
-      "mem_avail_mb": 14700,
+      "workers": 13,
+      "workers_vs_law_28": "13/28",
+      "mem_avail_mb": 12248,
       "disk_free_gb": 27,
-      "load1": 9.1,
-      "dispatch_idle_why": null,
+      "load1": 8.8,
+      "dispatch_idle_why": "full 2/2",
       "published_ss": [
         "ENJUSDT_SHORT"
       ]
@@ -34,9 +34,9 @@
       "boards_running": 3,
       "workers": 21,
       "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 7322,
+      "mem_avail_mb": 4287,
       "disk_free_gb": 45,
-      "load1": 22.0,
+      "load1": 21.1,
       "dispatch_idle_why": "full 3/3",
       "published_ss": [
         "MAGICUSDT_LONG",
@@ -45,61 +45,62 @@
     },
     "s5": {
       "published_last_60m": 7,
-      "published_last_3h": 28,
+      "published_last_3h": 30,
       "boards": {
         "CIBR_LONG": 0,
-        "EQT_LONG": 7,
-        "HD_LONG": 7,
-        "V_LONG": 7
+        "GOOGL_LONG": 7,
+        "LNG_LONG": 0
+      },
+      "boards_running": 3,
+      "workers": 7,
+      "workers_vs_law_28": "7/28",
+      "mem_avail_mb": 22518,
+      "disk_free_gb": 40,
+      "load1": 6.6,
+      "dispatch_idle_why": "full 4/4",
+      "published_ss": [
+        "CME_LONG",
+        "EOG_LONG",
+        "EQT_LONG",
+        "MU_LONG",
+        "ORCL_LONG",
+        "RS_LONG",
+        "V_LONG"
+      ]
+    },
+    "s6": {
+      "published_last_60m": 7,
+      "published_last_3h": 29,
+      "boards": {
+        "BA_SHORT": 7,
+        "BHP_SHORT": 7,
+        "BWXT_SHORT": 0,
+        "U_SHORT": 7
       },
       "boards_running": 4,
       "workers": 21,
       "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 16923,
-      "disk_free_gb": 40,
-      "load1": 16.7,
-      "dispatch_idle_why": "full 4/4",
-      "published_ss": [
-        "CME_LONG",
-        "COP_LONG",
-        "EOG_LONG",
-        "LMT_LONG",
-        "MU_LONG",
-        "ORCL_LONG",
-        "RS_LONG"
-      ]
-    },
-    "s6": {
-      "published_last_60m": 6,
-      "published_last_3h": 28,
-      "boards": {
-        "BHP_SHORT": 0,
-        "BIDU_SHORT": 7,
-        "BKR_SHORT": 7
-      },
-      "boards_running": 3,
-      "workers": 14,
-      "workers_vs_law_28": "14/28",
-      "mem_avail_mb": 23054,
+      "mem_avail_mb": 17362,
       "disk_free_gb": 27,
-      "load1": 7.6,
-      "dispatch_idle_why": null,
+      "load1": 13.1,
+      "dispatch_idle_why": "full 4/4",
       "published_ss": [
         "AMAT_SHORT",
         "ASTS_SHORT",
         "AU_SHORT",
         "BABA_SHORT",
-        "MP_SHORT",
+        "BIDU_SHORT",
+        "BKR_SHORT",
         "SCCO_SHORT"
       ]
     }
   },
   "alerts": [
-    "LOW_THROUGHPUT:s1:1/h<10 (idle_why=None)",
+    "LOW_THROUGHPUT:s1:1/h<10 (idle_why=full 2/2)",
     "DISK_FLOOR:s1:27GB<40",
     "LOW_THROUGHPUT:s2:2/h<10 (idle_why=full 3/3)",
     "LOW_THROUGHPUT:s5:7/h<10 (idle_why=full 4/4)",
-    "LOW_THROUGHPUT:s6:6/h<10 (idle_why=None)",
+    "LOW_THROUGHPUT:s6:7/h<10 (idle_why=full 4/4)",
     "DISK_FLOOR:s6:27GB<40"
   ],
   "repair": null
