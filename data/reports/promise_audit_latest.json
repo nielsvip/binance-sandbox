@@ -1,13 +1,14 @@
 {
- "generated_utc": "2026-10-28T08:12:13.468383+00:00",
+ "generated_utc": "2026-10-28T09:12:11.546691+00:00",
  "days": 1.0,
  "totals": {
-  "entry_promises": 31,
-  "entry_broken_no_delivery": 31,
-  "exit_promises": 42,
-  "exit_broken_no_delivery": 39,
-  "exit_skipped_inflight": 240,
-  "exit_pending": 3
+  "entry_promises": 44,
+  "entry_broken_no_delivery": 41,
+  "exit_promises": 68,
+  "exit_broken_no_delivery": 61,
+  "exit_pending": 7,
+  "exit_skipped_inflight": 1237,
+  "entry_pending": 3
  },
  "per_key": {
   "inf:PENGUUSDC_LONG": {
@@ -27,8 +28,8 @@
    "exit_broken_no_delivery": 2
   },
   "ang:ZKUSDT_SHORT": {
-   "exit_promises": 4,
-   "exit_broken_no_delivery": 4
+   "exit_promises": 5,
+   "exit_broken_no_delivery": 5
   },
   "ang:IOTAUSDT_SHORT": {
    "exit_promises": 4,
@@ -37,8 +38,11 @@
    "entry_broken_no_delivery": 2
   },
   "men:MOVRUSDT_SHORT": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
+   "exit_promises": 2,
+   "exit_broken_no_delivery": 1,
+   "entry_promises": 1,
+   "entry_broken_no_delivery": 1,
+   "exit_pending": 1
   },
   "ang:STXUSDT_SHORT": {
    "exit_promises": 2,
@@ -51,11 +55,16 @@
   },
   "ang:EGLDUSDT_SHORT": {
    "entry_promises": 1,
-   "entry_broken_no_delivery": 1
+   "entry_broken_no_delivery": 1,
+   "exit_promises": 1,
+   "exit_pending": 1
   },
   "ang:MOVRUSDT_SHORT": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
+   "exit_promises": 2,
+   "exit_broken_no_delivery": 1,
+   "entry_promises": 1,
+   "entry_broken_no_delivery": 1,
+   "exit_pending": 1
   },
   "ang:COTIUSDT_SHORT": {
    "entry_promises": 1,
@@ -79,20 +88,24 @@
   },
   "flz:BNBUSDC_SHORT": {
    "entry_promises": 1,
-   "entry_broken_no_delivery": 1
+   "entry_broken_no_delivery": 1,
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1
   },
   "men:TIAUSDC_LONG": {
-   "entry_promises": 3,
-   "entry_broken_no_delivery": 3,
+   "entry_promises": 5,
+   "entry_broken_no_delivery": 4,
    "exit_promises": 1,
    "exit_skipped_inflight": 12,
-   "exit_broken_no_delivery": 1
+   "exit_broken_no_delivery": 1,
+   "entry_pending": 1
   },
   "ang:TIAUSDC_LONG": {
-   "entry_promises": 2,
-   "entry_broken_no_delivery": 2,
+   "entry_promises": 4,
+   "entry_broken_no_delivery": 3,
    "exit_promises": 1,
-   "exit_broken_no_delivery": 1
+   "exit_broken_no_delivery": 1,
+   "entry_pending": 1
   },
   "men:SPELLUSDT_SHORT": {
    "entry_promises": 1,
@@ -121,8 +134,8 @@
   "men:FARTCOINUSDT_SHORT": {
    "entry_promises": 1,
    "entry_broken_no_delivery": 1,
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
+   "exit_promises": 2,
+   "exit_broken_no_delivery": 2
   },
   "ang:1000LUNCUSDT_SHORT": {
    "entry_promises": 1,
@@ -173,21 +186,61 @@
    "entry_broken_no_delivery": 1
   },
   "flz:SOLUSDC_LONG": {
-   "exit_promises": 2,
-   "exit_skipped_inflight": 68,
-   "exit_broken_no_delivery": 1,
+   "exit_promises": 9,
+   "exit_skipped_inflight": 852,
+   "exit_broken_no_delivery": 8,
    "exit_pending": 1
   },
   "men:EDUUSDT_LONG": {
    "entry_promises": 1,
    "entry_broken_no_delivery": 1,
-   "exit_promises": 1,
+   "exit_promises": 3,
+   "exit_broken_no_delivery": 2,
    "exit_pending": 1
   },
   "ang:SOLUSDC_LONG": {
-   "exit_promises": 2,
-   "exit_skipped_inflight": 144,
+   "exit_promises": 8,
+   "exit_skipped_inflight": 208,
+   "exit_broken_no_delivery": 7,
+   "exit_pending": 1
+  },
+  "flz:GRAMUSDT_LONG": {
+   "exit_promises": 1,
+   "exit_skipped_inflight": 149,
    "exit_broken_no_delivery": 1,
+   "entry_promises": 3,
+   "entry_broken_no_delivery": 3
+  },
+  "men:INJUSDT_LONG": {
+   "entry_promises": 1,
+   "entry_broken_no_delivery": 1
+  },
+  "ang:INJUSDT_LONG": {
+   "entry_promises": 1,
+   "entry_broken_no_delivery": 1
+  },
+  "ang:AAVEUSDC_SHORT": {
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1
+  },
+  "ang:TRXUSDT_LONG": {
+   "entry_promises": 1,
+   "entry_broken_no_delivery": 1
+  },
+  "inf:GRASSUSDT_LONG": {
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1
+  },
+  "men:GRASSUSDT_LONG": {
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1
+  },
+  "ang:AXSUSDT_SHORT": {
+   "entry_promises": 1,
+   "entry_pending": 1
+  },
+  "ang:EDUUSDT_SHORT": {
+   "exit_promises": 1,
    "exit_pending": 1
   }
  },
@@ -890,6 +943,326 @@
    "late_min": null,
    "action": "CLOSE",
    "reason": "FIXED_STOP",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "flz",
+   "sym_side": "SOLUSDC_LONG",
+   "kind": "exit",
+   "bar": "10-28 07:45",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "REGIME_REDUCE",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "men",
+   "sym_side": "EDUUSDT_LONG",
+   "kind": "exit",
+   "bar": "10-28 07:45",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "REGIME_REDUCE",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "SOLUSDC_LONG",
+   "kind": "exit",
+   "bar": "10-28 07:45",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "REGIME_REDUCE",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "SOLUSDC_LONG",
+   "kind": "exit",
+   "bar": "10-28 08:00",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "REGIME_REDUCE",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "flz",
+   "sym_side": "GRAMUSDT_LONG",
+   "kind": "exit",
+   "bar": "10-28 08:00",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "LH_LL_TOP_EXIT arm=D_LH+LL leg=DC1H",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "flz",
+   "sym_side": "SOLUSDC_LONG",
+   "kind": "exit",
+   "bar": "10-28 08:00",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "REGIME_REDUCE",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "SOLUSDC_LONG",
+   "kind": "exit",
+   "bar": "10-28 08:00",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "REGIME_REDUCE",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "ZKUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-28 08:00",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "BB_RECOVERY_EXIT_TRADIER_SHORT",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "MOVRUSDT_SHORT",
+   "kind": "entry",
+   "bar": "10-28 08:00",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "REENTRY_DC4_15M_BREAK",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "men",
+   "sym_side": "INJUSDT_LONG",
+   "kind": "entry",
+   "bar": "10-28 08:00",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "TIER1_PRICE_CROSS_REENTRY_exit7.8912_cur7.9450_k3m24",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "men",
+   "sym_side": "MOVRUSDT_SHORT",
+   "kind": "entry",
+   "bar": "10-28 08:00",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "REENTRY_DC4_15M_BREAK",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "INJUSDT_LONG",
+   "kind": "entry",
+   "bar": "10-28 08:00",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "TIER1_PRICE_CROSS_REENTRY_exit7.8912_cur7.9450_k3m24",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "flz",
+   "sym_side": "SOLUSDC_LONG",
+   "kind": "exit",
+   "bar": "10-28 08:15",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "REGIME_REDUCE",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "flz",
+   "sym_side": "BNBUSDC_SHORT",
+   "kind": "exit",
+   "bar": "10-28 08:15",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "FIXED_STOP",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "AAVEUSDC_SHORT",
+   "kind": "exit",
+   "bar": "10-28 08:15",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "FIXED_STOP",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "TIAUSDC_LONG",
+   "kind": "entry",
+   "bar": "10-28 08:15",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "TIER1_PRICE_CROSS_REENTRY_exit0.5288_cur0.5337_k3m42",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "men",
+   "sym_side": "TIAUSDC_LONG",
+   "kind": "entry",
+   "bar": "10-28 08:15",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "TIER1_PRICE_CROSS_REENTRY_exit0.5288_cur0.5337_k3m42",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "TRXUSDT_LONG",
+   "kind": "entry",
+   "bar": "10-28 08:15",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "REENTRY_HIGHER_LOW",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "SOLUSDC_LONG",
+   "kind": "exit",
+   "bar": "10-28 08:15",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "REGIME_REDUCE",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "GRASSUSDT_LONG",
+   "kind": "exit",
+   "bar": "10-28 08:30",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "FIXED_STOP",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "flz",
+   "sym_side": "SOLUSDC_LONG",
+   "kind": "exit",
+   "bar": "10-28 08:30",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "REGIME_REDUCE",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "men",
+   "sym_side": "GRASSUSDT_LONG",
+   "kind": "exit",
+   "bar": "10-28 08:30",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "FIXED_STOP",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "flz",
+   "sym_side": "GRAMUSDT_LONG",
+   "kind": "entry",
+   "bar": "10-28 08:30",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "REENTRY_HIGHER_LOW",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "flz",
+   "sym_side": "SOLUSDC_LONG",
+   "kind": "exit",
+   "bar": "10-28 08:30",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "REGIME_REDUCE",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "men",
+   "sym_side": "FARTCOINUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-28 08:30",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "FIXED_STOP",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "men",
+   "sym_side": "EDUUSDT_LONG",
+   "kind": "exit",
+   "bar": "10-28 08:30",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "REGIME_REDUCE",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "flz",
+   "sym_side": "GRAMUSDT_LONG",
+   "kind": "entry",
+   "bar": "10-28 08:30",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "REENTRY_HIGHER_LOW",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "flz",
+   "sym_side": "SOLUSDC_LONG",
+   "kind": "exit",
+   "bar": "10-28 08:30",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "REGIME_REDUCE",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "flz",
+   "sym_side": "SOLUSDC_LONG",
+   "kind": "exit",
+   "bar": "10-28 08:30",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "REGIME_REDUCE",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "flz",
+   "sym_side": "GRAMUSDT_LONG",
+   "kind": "entry",
+   "bar": "10-28 08:30",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "REENTRY_HIGHER_LOW",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "SOLUSDC_LONG",
+   "kind": "exit",
+   "bar": "10-28 08:30",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "REGIME_REDUCE",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "SOLUSDC_LONG",
+   "kind": "exit",
+   "bar": "10-28 08:30",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "REGIME_REDUCE",
    "outcome": "NO_DELIVERY"
   }
  ],
