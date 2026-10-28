@@ -219,11 +219,32 @@ def repair_one(path, args, backup_dir):
                 rec["skip"] = f"cannot rewrite const {name}"
                 return rec
             out = pat.sub(lambda _m, a=arr, n=name: "const %s = %s;\n" % (n, json.dumps(a, separators=(",", ":"), default=str)), out, count=1)
+    if hidden:
+        tb, te = out.rfind("<tbody>"), out.find("</tbody>", out.rfind("<tbody>"))
+        if tb < 0 or te < 0:
+            rec["skip"] = "moved closes into TRADES but the file has no <tbody> to rebuild — skipped, not written"
+            return rec
+        from tools.opt.hires_chart import build_table_rows
+
+        labels = parse_js_const(out, "LABELS") or []
+        bar_time = lambda b: labels[int(b)] if b is not None and str(b).lstrip("-").isdigit() and 0 <= int(b) < len(labels) else ""
+        rows = build_table_rows(trades, float(h["peak_capital"] or 0), is_long, bar_time)
+        out = out[: tb + len("<tbody>")] + "\n" + rows + out[te:]
+        out = re.sub(r"<th>entry_bar</th><th>exit_bar</th>", "<th>entry_time</th><th>exit_time</th>", out, count=1)
+        rec["table_rebuilt_rows"] = len(trades)
     verified = "const HEADER_VERIFIED = " + json.dumps(h, separators=(",", ":"), default=str) + ";\n"
     if "const HEADER_VERIFIED" in out:
         out = re.sub(r"const HEADER_VERIFIED = .*?;\n", verified, out, count=1, flags=re.S)
     else:
         out = out.replace("const c=document.getElementById('c')", verified + "const c=document.getElementById('c')", 1)
+    try:
+        from tools.opt.chart_truth import check_table
+
+        check_table(out, symside, trades, close, False)
+    except AssertionError as exc:
+        rec["skip"] = f"trade table does not match the chart's closes after repair — skipped, not written: {str(exc)[:200]}"
+        log(f"[repair] SKIP {path.name}: {rec['skip']}")
+        return rec
     rec["changed"] = True
     if args.apply:
         backup_dir.mkdir(parents=True, exist_ok=True)

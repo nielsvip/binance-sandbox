@@ -581,9 +581,9 @@ def hold_remaining():
     return max(0.0, until - time.time())
 
 
-def do_rotate(target=None, force_tunnel=False):
-    if hold_remaining() > 0 and not target:
-        log(f"hold active ({hold_remaining():.0f}s left) — not rotating")
+def do_rotate(target=None, force_tunnel=False, ignore_hold=False):
+    if hold_remaining() > 0 and not ignore_hold:
+        log(f"hold active ({hold_remaining():.0f}s left) — not rotating (use rotate ... --force to override)")
         return False
     wl, state = whitelist(), load_state()
     if not target and not force_tunnel:
@@ -833,7 +833,7 @@ if __name__ == "__main__":
             if len(sys.argv) > 2 and not sys.argv[2].startswith("-")
             else None
         )
-        sys.exit(0 if do_rotate(tgt) else 1)
+        sys.exit(0 if do_rotate(tgt, ignore_hold="--force" in sys.argv) else 1)
     elif c == "hold":
         mins = float(sys.argv[2]) if len(sys.argv) > 2 else 10.0
         json.dump({"until": time.time() + mins * 60}, open(HOLD_PATH, "w"))

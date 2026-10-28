@@ -356,3 +356,13 @@ def test_non_whitelisted_egress_is_replaced_and_app_killed(monkeypatch, tmp_path
     assert status["Surfshark. WireGuard®"] == "Connected"
     assert status["Surfshark. Dausos"] == "Disconnected"
     assert vpn.egress_ip() == "185.134.22.81"
+
+
+def test_hold_blocks_explicit_rotate_unless_forced(monkeypatch, tmp_path):
+    monkeypatch.setattr(vpn, "HOLD_PATH", str(tmp_path / "hold.json"))
+    import json, time
+    json.dump({"until": time.time() + 600}, open(vpn.HOLD_PATH, "w"))
+    stopped = []
+    monkeypatch.setattr(vpn, "quit_app", lambda: stopped.append("quit"))
+    assert vpn.do_rotate(target="Surfshark. WireGuard®") is False
+    assert stopped == []
