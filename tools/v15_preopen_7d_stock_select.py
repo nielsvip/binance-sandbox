@@ -2,8 +2,7 @@
 """Stock 7D queue: every tradeable stock sym_side, best-first by the latest 30D backtest.
 
 Source: per_sym_active rows (overrides + delta_30d + gain_30d + updated_at). Tradeable means:
-  - symbol is in symbols_tradier.json (the Tradier stock universe),
-  - symbol is NOT a Binance TradFi perpetual (data/excluded_tokenized_stocks.json 'symbols'),
+  - the side is tradeable: symbols_trb_long/short plus config_tradier TRADIER_MANDATORY_LONG/SHORT_TRB,
   - the row has a 30D delta.
 Ranked by delta_30d descending (ties by gain_30d). The start set is the stored overrides, exactly like the crypto
 queue. Config drift (full_config != defaults + overrides) is counted and listed per side, never hidden.
@@ -22,27 +21,35 @@ ROOT = Path(__file__).resolve().parents[1]
 SIDE_RE = re.compile(r"([A-Z]{1,6})_(LONG|SHORT)")
 
 
+def tradeable_stock_sides(root: Path) -> set:
+    """Stock sides that trade: symbols_trb_long/short plus config_tradier TRADIER_MANDATORY_LONG/SHORT_TRB."""
+    import ast
+    src = (root / "config_tradier.py").read_text()
+
+    def mandatory(name):
+        i = src.index(name + " = [")
+        j = src.index("]", i)
+        return set(ast.literal_eval(src[i:j + 1].split("=", 1)[1].strip()))
+
+    longs = set(json.loads((root / "symbols_trb_long.json").read_text())) | mandatory("TRADIER_MANDATORY_LONG_TRB")
+    shorts = set(json.loads((root / "symbols_trb_short.json").read_text())) | mandatory("TRADIER_MANDATORY_SHORT_TRB")
+    return {f"{s}_LONG" for s in longs} | {f"{s}_SHORT" for s in shorts}
+
+
 def build(root: Path, now: dt.datetime, db: Path):
-    universe = set(json.loads((root / "symbols_tradier.json").read_text()))
-    excl = json.loads((root / "data/excluded_tokenized_stocks.json").read_text())
-    tokenized = set(excl["symbols"]) | set(excl["tradfi_non_equity_symbols"])
+    allowed = tradeable_stock_sides(root)
     db_sha = hashlib.sha256(db.read_bytes()).hexdigest()
     con = sqlite3.connect(f"file:{db.resolve()}?mode=ro", uri=True)
     rows = con.execute("SELECT sym_side, updated_at, delta_30d, gain_30d, overrides_json, defaults_snapshot_json, "
                        "full_config_json FROM per_sym_active").fetchall()
     con.close()
-    accepted, excluded = [], {"not_in_tradier_universe": [], "tradfi_perpetual": [], "no_delta_30d": [],
-                              "bad_json": []}
+    accepted, excluded = [], {"not_tradeable_book": [], "no_delta_30d": [], "bad_json": []}
     for ss, upd, d30, g30, ov, df, fc in rows:
         m = SIDE_RE.fullmatch(ss or "")
         if not m:
             continue
-        sym = m.group(1)
-        if sym not in universe:
-            excluded["not_in_tradier_universe"].append(ss)
-            continue
-        if sym in tokenized:
-            excluded["tradfi_perpetual"].append(ss)
+        if ss not in allowed:
+            excluded["not_tradeable_book"].append(ss)
             continue
         if d30 is None:
             excluded["no_delta_30d"].append(ss)
@@ -61,10 +68,14 @@ def build(root: Path, now: dt.datetime, db: Path):
                          "overrides": overrides, "drift": drift})
     accepted.sort(key=lambda x: (-x["delta_30d"], -(x["gain_30d"] or 0), x["ss"]))
     out = {"_meta": {"created_at": now.isoformat(), "scope": "trc_stocks", "rank": "delta_30d desc",
+                     "tradeable_sides": len(allowed),
                      "source_db": str(db), "source_db_sha256": db_sha, "n": len(accepted),
                      "excluded_counts": {k: len(v) for k, v in excluded.items()},
                      "drift_sides": sum(1 for a in accepted if a["drift"]), "require_replay": True,
-                     "window_days": 7},
+                     "window_days": 7,
+                     "window_end_et": "09:15 ET on the run date",
+                     "window_start_et": "09:15 ET 7 days before the run date",
+                     "window_source": "NPZ tip at 09:15 ET (must equal the 09:15 bar before launch)"},
            "accounts": {"trc": [], "fin": []}, "sym_sides": {}, "ranking": []}
     for rank, a in enumerate(accepted, 1):
         ss = a["ss"]
