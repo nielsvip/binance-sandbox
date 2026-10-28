@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-28T19:58:53Z",
+ "ts": "2026-10-28T20:04:31Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -24,24 +24,12 @@
   "KEY_BLOCK_TTL_S": 7200,
   "POS_MISMATCH_PCT": 5.0
  },
- "rth": true,
+ "rth": false,
  "accounts": {
-  "trb": {
-   "fills_6h": 0,
-   "open_positions": 20,
-   "unrealised_usd": -3.84,
-   "pos_mismatch": 0
-  },
-  "trc": {
-   "fills_6h": 0,
-   "open_positions": 39,
-   "unrealised_usd": -33.22,
-   "pos_mismatch": 0
-  },
   "fin": {
-   "fills_6h": 94,
-   "open_positions": 19,
-   "unrealised_usd": 4.17,
+   "fills_6h": 89,
+   "open_positions": 20,
+   "unrealised_usd": 5.45,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -55,7 +43,7 @@
    }
   },
   "men": {
-   "fills_6h": 118,
+   "fills_6h": 115,
    "open_positions": 22,
    "unrealised_usd": 1.55,
    "pos_mismatch": 0,
@@ -71,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 111,
-   "open_positions": 19,
-   "unrealised_usd": 0.34,
+   "fills_6h": 100,
+   "open_positions": 20,
+   "unrealised_usd": 6.54,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -87,9 +75,9 @@
    }
   },
   "inf": {
-   "fills_6h": 20,
+   "fills_6h": 18,
    "open_positions": 4,
-   "unrealised_usd": 0.67,
+   "unrealised_usd": 1.1,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 4,
@@ -103,9 +91,9 @@
    }
   },
   "flz": {
-   "fills_6h": 23,
-   "open_positions": 8,
-   "unrealised_usd": -0.66,
+   "fills_6h": 25,
+   "open_positions": 6,
+   "unrealised_usd": 1.02,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -119,6 +107,7 @@
    }
   }
  },
+ "stocks": "market closed: stock checks idle",
  "tradeable_guard": {
   "poison": false,
   "restored": false,
@@ -138,21 +127,21 @@
     "86867"
    ],
    "starts_30m": 1,
-   "log_age_s": 34.0
+   "log_age_s": 27.0
   },
   "men": {
    "pids": [
     "68542"
    ],
    "starts_30m": 1,
-   "log_age_s": 34.0
+   "log_age_s": 25.0
   },
   "ang": {
    "pids": [
     "67092"
    ],
    "starts_30m": 1,
-   "log_age_s": 19.0
+   "log_age_s": 11.0
   },
   "inf": {
    "pids": [
@@ -166,50 +155,30 @@
     "31005"
    ],
    "starts_30m": 1,
-   "log_age_s": 34.0
+   "log_age_s": 13.0
   },
   "trb": {
-   "pids": [
-    "57586"
-   ],
+   "pids": [],
    "starts_30m": 1,
-   "log_age_s": 403.0
+   "log_age_s": 739.0
   },
   "trc": {
-   "pids": [
-    "57924"
-   ],
+   "pids": [],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 208.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-28T19:58:53Z",
-   "severity": "CRITICAL",
-   "kind": "ACCOUNT_EQUITY_DROP",
-   "key": "trc",
-   "evidence": "unrealised PnL of the same open positions fell $58.22 since 2026-10-28T19:37:31Z (now $-33.22)"
-  },
-  {
-   "ts": "2026-10-28T19:58:55Z",
+   "ts": "2026-10-28T20:04:32Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:BTCDOMUSDT_LONG",
    "evidence": "CLOSE 0 @ 2026-10-28T16:45:24Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
-  },
-  {
-   "ts": "2026-10-28T19:58:56Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "trb",
-   "evidence": "tradier_manage_trb.log not written for 403s"
   }
  ],
  "alert_counts": {
-  "ACCOUNT_EQUITY_DROP": 1,
-  "FILL_WITHOUT_VEC_DECISION": 1,
-  "STALE_LOG": 1
+  "FILL_WITHOUT_VEC_DECISION": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -253,14 +222,7 @@
    "why": "ORDER_STORM_ACCOUNT 27 fills/10min",
    "undo": "alert-only (never-halt policy 2026-10-10)",
    "dry_run": false
-  },
-  "key:fin:BEATUSDT_SHORT": {
-   "ts": 1793210618.937335,
-   "until": 1793217818.9373372,
-   "why": "RAPID_LOSS_KEY unrealised -7.99% (60-min high -3.95%), amt 188 (opens/augments blocked; exits untouched)",
-   "undo": "redis-cli -p 6379 DEL open_blocked:fin:BEATUSDT_SHORT",
-   "dry_run": false
   }
  },
- "sweep_s": 2.28
+ "sweep_s": 1.89
 }
