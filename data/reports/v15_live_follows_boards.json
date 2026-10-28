@@ -1,9 +1,27 @@
 {
- "at": "2026-10-28T07:38:02Z",
+ "at": "2026-10-28T08:38:05Z",
  "reports": [
   {
+   "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261028_refresh_0756.json",
+   "age_min": 39.4,
+   "applied": true,
+   "n": null,
+   "results": {
+    "REFUSED": 13
+   },
+   "registered": 0,
+   "already_live_skipped": 0,
+   "refused_by_class": {
+    "switch_types validator unavailable \u2014 refusing (fail-closed)": 5,
+    "type-gate refused ALL (1 bad)": 5,
+    "type-gate refused ALL (7 bad)": 2,
+    "golive-blocklisted": 1
+   },
+   "changed_symsides": []
+  },
+  {
    "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261028_refresh_0655.json",
-   "age_min": 41.3,
+   "age_min": 101.3,
    "applied": true,
    "n": null,
    "results": {
@@ -18,26 +36,8 @@
     "golive-blocklisted": 1
    },
    "changed_symsides": []
-  },
-  {
-   "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261028_refresh_0555.json",
-   "age_min": 101.4,
-   "applied": true,
-   "n": null,
-   "results": {
-    "REFUSED": 12
-   },
-   "registered": 0,
-   "already_live_skipped": 0,
-   "refused_by_class": {
-    "switch_types validator unavailable \u2014 refusing (fail-closed)": 6,
-    "type-gate refused ALL (1 bad)": 3,
-    "type-gate refused ALL (7 bad)": 2,
-    "golive-blocklisted": 1
-   },
-   "changed_symsides": []
   }
  ],
  "fails": [],
- "refused_total": 11
+ "refused_total": 13
 }
