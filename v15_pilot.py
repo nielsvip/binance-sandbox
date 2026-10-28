@@ -1159,6 +1159,11 @@ def content_ok(f_filled, done_n) -> str:
         return f"content-gate: F_filled {f}<25% of done board {n} — refusing publish"
     return ""
 
+# 2026-10-28 F_FILLED (USER "absolutely find out why cells are being skipped"): rows settled WITHOUT an eval by a sampling /
+# carry policy still get their naked switch value measured (1 eval) so G is a real number; their yellows stay settled.
+_SETTLED_NAKED_ON = os.environ.get("V15_SETTLED_NAKED_MEASURE", "1") == "1"
+_SETTLED_NAKED_PREFIXES = ("CARRIED_DEAD", "BRAIN_SAMPLED_OUT", "ZERO_FORMULA_ROW")
+
 ALL_PREPARED: dict[str, dict] = {}
 ALL_NPZ_ARRAYS: dict[str, dict] = {}
 _RUN_RAMFP: dict[str, tuple] = {}
@@ -7210,6 +7215,18 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         # eval items for this row against the CURRENT running set (cumulative_overrides)
         st = _row_static(sname, rr, switch, cand)
         if st["kind"] != "eval":
+            if _SETTLED_NAKED_ON and str(st.get("reason") or "").startswith(_SETTLED_NAKED_PREFIXES):
+                # 2026-10-28 F_FILLED: a carried / brain-sampled / zero-formula row keeps its yellows settled, but its naked switch
+                # value is ONE real eval vs the current chain (the yellows are the 99% the carry saves) -> G holds a real number.
+                try:
+                    _sk_ov = _switch_overrides(switch, _parse_opt_value(cand, defaults.get(switch)))
+                    _sk_run = all(_same_val(cumulative_overrides.get(k2, defaults.get(k2)), v2) for k2, v2 in _sk_ov.items())
+                    _sk_sv = dict(cumulative_overrides)
+                    _sk_sv.update(_sk_ov)
+                    _sk_sv = sanitize_overrides(_sk_sv, defaults)[0]
+                    return {"static": st, "settled_naked": True, "is_running": _sk_run, "switch_variant": _sk_sv, "items": [] if _sk_run else [("naked", _sk_sv)]}
+                except Exception as _ske:
+                    print(f"[SETTLED-NAKED-WARN] {sname}!{rr} {switch}={cand} plan {type(_ske).__name__}: {_ske} — row stays settled blank", flush=True)
             return {"static": st}
         cand_parsed = _parse_opt_value(cand, defaults.get(switch))
         sw_ov = _switch_overrides(switch, cand_parsed)
@@ -9929,11 +9946,41 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         st = plan["static"]
         if st["kind"] == "skip":
             g = ws.cell(row=rr, column=cols["G"])
-            g.value = st.get("g")
-            g.font = Font(name="Arial", size=10, bold=False, italic=st.get("g") is None, color="808080")
+            _sk_g, _sk_vg, _sk_tr, _sk_why, _sk_n = st.get("g"), None, None, "", 0
+            if plan.get("settled_naked"):
+                # 2026-10-28 F_FILLED: one real naked eval (or the REF_BASELINE eval when the candidate IS the running set) vs E.
+                # Measured, never promoted from here (yellows were not run); a live naked un-carries the row for the next board.
+                try:
+                    if plan["is_running"]:
+                        _sk_rck = _ck(sanitize_overrides(dict(cumulative_overrides), defaults)[0])
+                        if _sk_rck not in _ref_cache:
+                            _ref_cache[_sk_rck] = _peek(sname, rr, switch, cand, "REF_BASELINE", sanitize_overrides(dict(cumulative_overrides), defaults)[0], cumulative_before)
+                        _sk_res, _sk_err = _ref_cache[_sk_rck], ""
+                    else:
+                        _sk_n = 1
+                        _sk_res, _sk_err = _get(sname, rr, switch, cand, "naked", plan["items"][0][1], _t.time() + YELLOW_TIMEOUT * 3, cumulative_before)
+                    _sk_d, _sk_ok, _sk_why = _delta_vs(_sk_res, cumulative_before)
+                    _sk_why = _sk_err or _sk_why
+                    if _sk_d is not None and not _sk_err:
+                        _sk_g, _sk_vg, _sk_tr = float(_sk_d), float(_sk_res.get("gain_pct")), _sk_res.get("trades")
+                        if str(st["reason"]).startswith("CARRIED_DEAD") and abs(_sk_g) >= float(os.environ.get("V15_V17_CARRY_EPS", "1e-6")):
+                            _carry_rows[carry_key(sname, switch, cand)] = ("eval", _sk_g)
+                except Exception as _ske2:
+                    _sk_why = f"ERR {type(_ske2).__name__}: {_ske2}"[:120]
+                    print(f"[SETTLED-NAKED-WARN] {sname}!{rr} {switch}={cand} {_sk_why} — row stays settled blank", flush=True)
+            g.value = _sk_g
+            g.font = Font(name="Arial", size=10, bold=False, italic=_sk_g is None, color="808080")
             g.alignment = VISUAL_ALIGN
+            if _sk_vg is not None:
+                _num_cell(ws, rr, cols["F"], float(_sk_vg) - float(initial_baseline), False, bold=False)
+                ws.cell(row=rr, column=cols["F"]).font = Font(name="Arial", size=10, bold=False, color="808080")
             _skip_is_policy = str(st["reason"]).startswith("SKIPPED")
-            progress.setdefault("done", {})[key] = {"delta": st.get("g"), "promoted": False, "reason": st["reason"], "vec_gain": None, "trades": None, "yellows": {}, "cumulative_before": cumulative_before, "cumulative_after": cumulative_before, "npz": _run_npz_short, "policy": _policy_stamp(sname), "complete": (not _skip_is_policy)}
+            _sk_reason = st["reason"] if _sk_vg is None else f"{st['reason']} | NAKED_MEASURED: G = 1 real naked eval vs E, yellows settled, not promoted here"
+            if plan.get("settled_naked") and _sk_vg is None and _sk_why:
+                _sk_reason = f"{st['reason']} | NAKED_UNMEASURED: {_sk_why}"
+            progress.setdefault("done", {})[key] = {"delta": _sk_g, "promoted": False, "reason": _sk_reason, "vec_gain": _sk_vg, "trades": _sk_tr, "yellows": {}, "cumulative_before": cumulative_before, "cumulative_after": cumulative_before, "npz": _run_npz_short, "policy": _policy_stamp(sname), "complete": (not _skip_is_policy)}
+            if _sk_vg is not None and not plan.get("is_running"):
+                progress["done"][key]["naked_delta"] = _sk_g
             if st.get("v18_floor"):
                 progress["done"][key]["v18_floor"] = dict(st["v18_floor"])
             if _skip_is_policy:
@@ -9942,7 +9989,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _flag_to_md(flags_md, sname, rr, switch, cand, st["reason"], 0.0, 0.0, cumulative_before)
             progress["cumulative_gain"] = float(cumulative_gain)
             _maybe_write_json()
-            _row_done(sname, rr, switch, cand, 0, st.get("g"), False)
+            _row_done(sname, rr, switch, cand, _sk_n, _sk_g, False)
             _touch(f"cell {sname}!{rr} skip {st['reason'][:20]}")
             _maybe_save()
             processed += 1
@@ -10225,11 +10272,17 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         if choice is not None:
             row_delta = choice[0]
         elif is_running:
-            # The running reference was not vector-evaluated as a row. A numeric zero
-            # belongs only to a completed vector evaluation.
+            # 2026-10-28 F_FILLED (USER "find out why cells are being skipped"): the candidate set IS the running set, so its
+            # row eval is the REF_BASELINE vector eval of that exact set (same cache key, same NPZ). G = that eval's measured
+            # delta vs E (a completed vector evaluation, never a definitional 0). 32.7% of fleet rows were blank here.
             row_delta = None
-            if not reasons.get("naked"):
-                reasons["naked"] = "RUNNING_IDENTITY_UNMEASURED: candidate equals running set; no row evaluation"
+            _idr, _ido, _idw = _delta_vs(_ref_cache.get(_ref_ck), cumulative_before) if os.environ.get("V15_IDENTITY_MEASURED", "1") == "1" else (None, False, "")
+            if _idr is not None and _ido:
+                row_delta = float(_idr)
+                if not reasons.get("naked"):
+                    reasons["naked"] = "RUNNING_IDENTITY_MEASURED: candidate equals running set; G = REF_BASELINE vector eval of the identical set"
+            elif not reasons.get("naked"):
+                reasons["naked"] = "RUNNING_IDENTITY_UNMEASURED: candidate equals running set; no row evaluation" + (f" ({_idw})" if _idw else "")
         else:
             row_delta = naked_delta
         promote = choice is not None
@@ -10314,7 +10367,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             hustle_delta = _hd if _hok else None
         elif row_gain is not None and (choice is not None or naked_ok):
             hustle_delta = float(row_gain) - float(initial_baseline)  # This vector-evaluated row has a measured gain against the original baseline
-        _identity_zero = bool(is_running) and choice is None
+        _identity_zero = bool(is_running) and choice is None and row_delta is None
         if row_delta is not None and not _identity_zero:
             if _is_red_cell(ws.cell(row=rr, column=cols["G"])):
                 _clear_red_fill(ws, rr, cols["G"])
@@ -10444,7 +10497,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _ck2 = carry_key(_sh, _sw, _cd)
                 if _ck2 in _carry_rows:
                     continue
-                if str(_dv.get("reason") or "").startswith("CARRIED_DEAD"):
+                if str(_dv.get("reason") or "").startswith("CARRIED_DEAD") and isinstance(_dv.get("naked_delta"), (int, float)) and abs(float(_dv["naked_delta"])) >= float(os.environ.get("V15_V17_CARRY_EPS", "1e-6")):
+                    _carry_rows[_ck2] = ("eval", _dv.get("naked_delta"))  # 2026-10-28 F_FILLED: carried row whose measured naked is live -> un-carry
+                elif str(_dv.get("reason") or "").startswith("CARRIED_DEAD"):
                     _carry_rows[_ck2] = ("carried", None)  # carried in an earlier slice of this board (resume)
                 elif _dv.get("naked_delta") is not None:
                     _carry_rows[_ck2] = ("eval", _dv.get("naked_delta"))

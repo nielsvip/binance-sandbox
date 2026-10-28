@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-28T20:29:58Z",
+ "ts": "2026-10-28T20:35:14Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,7 +27,7 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 82,
+   "fills_6h": 80,
    "open_positions": 20,
    "unrealised_usd": 5.76,
    "pos_mismatch": 0,
@@ -43,7 +43,7 @@
    }
   },
   "men": {
-   "fills_6h": 106,
+   "fills_6h": 103,
    "open_positions": 22,
    "unrealised_usd": 1.55,
    "pos_mismatch": 0,
@@ -59,7 +59,7 @@
    }
   },
   "ang": {
-   "fills_6h": 100,
+   "fills_6h": 99,
    "open_positions": 20,
    "unrealised_usd": 5.93,
    "pos_mismatch": 0,
@@ -75,7 +75,7 @@
    }
   },
   "inf": {
-   "fills_6h": 23,
+   "fills_6h": 20,
    "open_positions": 4,
    "unrealised_usd": 0.97,
    "pos_mismatch": 0,
@@ -91,10 +91,10 @@
    }
   },
   "flz": {
-   "fills_6h": 31,
+   "fills_6h": 30,
    "open_positions": 6,
    "unrealised_usd": 0.95,
-   "pos_mismatch": 1,
+   "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -124,24 +124,24 @@
  "process": {
   "fin": {
    "pids": [
-    "86867"
+    "75524"
    ],
-   "starts_30m": 1,
-   "log_age_s": 1116.0
+   "starts_30m": 2,
+   "log_age_s": 1432.0
   },
   "men": {
    "pids": [
     "68542"
    ],
    "starts_30m": 1,
-   "log_age_s": 19.0
+   "log_age_s": 334.0
   },
   "ang": {
    "pids": [
     "67092"
    ],
    "starts_30m": 1,
-   "log_age_s": 421.0
+   "log_age_s": 93.0
   },
   "inf": {
    "pids": [
@@ -155,60 +155,45 @@
     "31005"
    ],
    "starts_30m": 1,
-   "log_age_s": 173.0
+   "log_age_s": 63.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 2268.0
+   "log_age_s": 2583.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 1736.0
+   "log_age_s": 2052.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-28T20:30:00Z",
+   "ts": "2026-10-28T20:35:15Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:BTCDOMUSDT_LONG",
    "evidence": "CLOSE 0 @ 2026-10-28T16:45:24Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-28T20:30:00Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "flz:BTCDOMUSDT_LONG",
-   "evidence": "positions file amt 0.002 vs fill-ledger amt 0"
-  },
-  {
-   "ts": "2026-10-28T20:30:01Z",
+   "ts": "2026-10-28T20:35:16Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 1116s"
+   "evidence": "ez_manage_fin.log not written for 1432s"
   },
   {
-   "ts": "2026-10-28T20:30:01Z",
+   "ts": "2026-10-28T20:35:16Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
-   "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 421s"
-  },
-  {
-   "ts": "2026-10-28T20:30:01Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 173s"
+   "key": "men",
+   "evidence": "ez_manage_men.log not written for 334s"
   }
  ],
  "alert_counts": {
   "FILL_WITHOUT_VEC_DECISION": 1,
-  "POSITION_STATE_MISMATCH": 1,
-  "STALE_LOG": 3
+  "STALE_LOG": 2
  },
  "active_interventions": {
   "acct:trc": {
@@ -254,5 +239,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 2.18
+ "sweep_s": 2.16
 }
