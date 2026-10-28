@@ -245,7 +245,7 @@ REGISTRY: dict[str, dict[str, list[tuple]]] = {
     # tools/v18_experience.py: append-only shards per cat_side per month (experience_<CAT_SIDE>_<YYYYMM>.db) + experience_index.db.
     # Location rule in the tool: sticky existing store, else first real ext mount with >= 50 GB free, else the Mac boot disk.
     "experience_store": {
-        "mac": [("{base}/data/experience", "canonical", "experience_<CAT_SIDE>_<YYYYMM>.db x4 cat_sides + experience_index.db (watermarks, proofs, colds); read via tools/v18_experience.py", "V18_EXPERIENCE_ROOT")],
+        "mac": [("{base}/data/experience", "canonical", "experience_<CAT_SIDE>_<YYYYMM>.db x4 cat_sides + experience_index.db (watermarks, proofs, colds); read via tools/v18_experience.py. 2026-10-28: every .db >1 MB SHELVED in place as <name>.db.zst (41.4 GB -> 4.4 GB, decompressed sha256 == original); restore: zstd -d --long=27 <f>.db.zst -o <f>.db before any read - see data/OFFLOAD_MANIFEST.md", "V18_EXPERIENCE_ROOT")],
         "s2": [("/home/niels/v18_scratch/shards", "mirror", "shards built ON S2 from rebuilt_v1.db (and S2 delta logs), rsynced to the Mac store; staging only", None)],
         "ext": [("{ext}/binance_archive/experience", "archive", "the tool's preferred home once an ext mount has >= 50 GB free; not created while TOSHIBA_EXT has 7.5 GB", "V18_EXPERIENCE_ROOT")],
     },
@@ -297,6 +297,15 @@ REGISTRY: dict[str, dict[str, list[tuple]]] = {
     },
     "s1_pre_purge_backups_archive": {
         "s6": [("/home/niels/rebuild_scratch_s6/s1_backups_archive_20261026.tar.zst", "archive", "verified zstd and tar compare; 230 older S1 progress/config backups preserved compressed; expanded copy removed; fleet_archive_manager copies to verified ext/Google targets when available", None)],
+    },
+    # Mac disk offload 2026-10-28 (USER: ">40 GB free", "document clearly so all can be easily recovered").
+    # Per-file record (sha256, every copy, restore command): data/offload_manifest.json + data/OFFLOAD_MANIFEST.md.
+    # Off-Mac copies are built by tools/mac_offload_20261028_trickle.py (status data/reports/mac_offload_20261028/trickle.jsonl).
+    "mac_offload_20261028": {
+        "mac": [("{base}/data/experience", "canonical", "experience shards shelved as .db.zst in place", None),
+                ("{base}/backups", "canonical", "large db/tar backups shelved as .zst in place; precompressed ones unchanged", None)],
+        "s2": [("/home/niels/cold_offload/mac_20261028", "mirror", "server copy (sha256-verified) of data/experience + the newest per_sym_store backups; other backups only staged here on their way to GCS", None)],
+        "ext": [("{ext}/binance_archive/mac_offload_20261028", "archive", "WD25 copy written 2026-10-28 01:4x-01:5xZ (sha256 verified at write), drive went OFFLINE ~01:55Z before the cache-bypassing re-read: treat as UNVERIFIED until re-read; gs://v15-cold-329002141504/mac/offload_20261028/ is the cold copy", None)],
     },
     "s1_staged_runs_archive": {
         "s5": [("/home/niels/rebuild_scratch_s5/fleet_archives_from_s1", "archive", "compressed tar.zst copies of finished S1 staging batches; source staging is removed only after SHA256, zstd, and tar content comparison pass", None)],

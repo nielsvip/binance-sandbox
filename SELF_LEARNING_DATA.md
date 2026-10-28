@@ -175,3 +175,23 @@ sure thiswill happen."*
   `order_id_partial`, `order_ids` (netted), or `echo_of_order_id(s)` (an S1/S5 `vd…` vector_direct order, or any fill
   while `data/MAC_PAPER_TRADING` exists and the order could not be read) — `history_canon` counts an `order_id` once.
 * `tools/data_locations.py --where trade_history --host mac` registers all of the above.
+
+## 6. Mac disk offload 2026-10-28 — the Mac experience store is SHELVED (zstd in place)
+
+USER 2026-10-28 (verbatim): *"go but docunent clearly so all can be easily recovered and make sure any information that
+might be needed more frequently lives on servers as ext drives can go offline for a long time"*.
+
+* `data/experience/experience_*_<YYYYMM>.db` (every shard > 1 MB) is now `<same name>.db.zst` **in the same directory**:
+  41.4 GB -> 4.4 GB, lossless, the decompressed sha256 equals the original's (per file in `data/offload_manifest.json`).
+  `experience_index.db` was restored raw so `tools/v18_experience.py` still finds the sticky store and does not fork a new one.
+* **Before running any `tools/v18_*` against the Mac store** (`v18_brain_export.sh` native extract, `v18_precision_extract.py
+  --store data/experience`, `v18_experience.py prove/ingest`) decompress the shards it needs:
+  `cd data/experience && for f in *.db.zst; do zstd -d --long=27 "$f" -o "${f%.zst}" && rm "$f"; done` (needs ~37 GB free).
+  No cron or LaunchAgent reads this store (checked 2026-10-28; last brain export 2026-10-20).
+* It is **not** the S5 store: `s5:~/rebuild_scratch_s5/experience` holds the run34/35 ingest (different rows, 10.0 GB
+  CRYPTO_LONG vs the Mac's 6.4 GB). Off-Mac copies of the Mac store: `s2:/home/niels/cold_offload/mac_20261028/experience/`
+  (server copy) and `gs://v15-cold-329002141504/mac/offload_20261028/experience/` — built by
+  `tools/mac_offload_20261028_trickle.py` at the Mac's ~100 KB/s uplink; check `data/reports/mac_offload_20261028/trickle.jsonl`
+  (`"done": true` per file) before counting them. WD25 got a verified-at-write copy at 01:4xZ but went offline ~01:55Z.
+* Full per-file record, every location and the restore commands: `data/OFFLOAD_MANIFEST.md`, `tools/data_locations.py
+  --where mac_offload_20261028 --host <mac|s2|ext>`.
