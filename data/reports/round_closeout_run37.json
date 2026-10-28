@@ -1,0 +1,1973 @@
+{
+ "round": "run37",
+ "generated_at": "2026-10-28T19:52:10Z",
+ "criterion": "per tradeable sym_side (S1 data/v15_best_first.json allowed): the newest finished board of this round across s1/s2/s5/s6; published = compliant final_path present on disk. Written by tools/fleet_round_roll.py closeout (the scheduler-built full_course_round_<run>.json stopped updating when fleet_dispatch replaced the scheduler on 2026-10-27).",
+ "universe_n": 198,
+ "sym_sides": {
+  "1000BONKUSDC_SHORT": {
+   "done_utc": "2026-10-28T19:05:11.268367+00:00",
+   "final_gain": 10.469298063964166,
+   "final_path": "1000BONKUSDC_SHORT_bh4_gain10_t63_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2937,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "1000LUNCUSDT_SHORT": {
+   "done_utc": "2026-10-28T17:59:37.722340+00:00",
+   "final_gain": 14.242237832380175,
+   "final_path": "1000LUNCUSDT_SHORT_bh14_gain14_t17_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2939,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "1000PEPEUSDC_LONG": {
+   "done_utc": null,
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 1659,
+   "holdout_confirmed": false,
+   "host": "s2"
+  },
+  "AAPL_LONG": {
+   "done_utc": "2026-10-28T05:18:06.845664+00:00",
+   "final_gain": 14.51182864153531,
+   "final_path": "AAPL_LONG_bh7_gain15_t48_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2865,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "AAVEUSDC_SHORT": {
+   "done_utc": "2026-10-28T17:49:18.333236+00:00",
+   "final_gain": 16.401708073672104,
+   "final_path": "AAVEUSDC_SHORT_bhm11_gain16_t62_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2937,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "ABBV_LONG": {
+   "done_utc": "2026-10-28T06:02:58.574914+00:00",
+   "final_gain": 11.818837223444925,
+   "final_path": "ABBV_LONG_bh11_gain12_t10_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2867,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "ACEUSDT_SHORT": {
+   "done_utc": "2026-10-28T17:05:28.598337+00:00",
+   "final_gain": 33.07619475327215,
+   "final_path": "ACEUSDT_SHORT_bh10_gain33_t51_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2936,
+   "holdout_confirmed": true,
+   "host": "s2"
+  },
+  "ACN_LONG": {
+   "done_utc": "2026-10-28T15:05:25.975631+00:00",
+   "final_gain": 99.59385837370071,
+   "final_path": "ACN_LONG_bh45_gain100_t47_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2875,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "ACTUSDT_SHORT": {
+   "done_utc": "2026-10-28T18:10:22.147966+00:00",
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2929,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "ADAUSDC_SHORT": {
+   "verdict": "NEVER_RUN"
+  },
+  "AGI_SHORT": {
+   "done_utc": "2026-10-28T16:25:19.053639+00:00",
+   "final_gain": 7.8686286149025,
+   "final_path": "AGI_SHORT_bh13_gain8_t36_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2798,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "AG_SHORT": {
+   "done_utc": "2026-10-28T14:05:11.327252+00:00",
+   "final_gain": 53.16151569144589,
+   "final_path": "AG_SHORT_bh26_gain53_t78_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "ALB_SHORT": {
+   "done_utc": "2026-10-28T18:49:48.745549+00:00",
+   "final_gain": 32.51497867521956,
+   "final_path": "ALB_SHORT_bh25_gain33_t56_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "ALGOUSDT_SHORT": {
+   "verdict": "NEVER_RUN"
+  },
+  "ALKT_SHORT": {
+   "done_utc": "2026-10-28T19:15:19.556013+00:00",
+   "final_gain": 35.654196376984316,
+   "final_path": "ALKT_SHORT_bh31_gain36_t88_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "AMAT_SHORT": {
+   "done_utc": "2026-10-28T14:09:24.951604+00:00",
+   "final_gain": 42.81724883592132,
+   "final_path": "AMAT_SHORT_bh13_gain43_t59_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2798,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "AMZN_LONG": {
+   "verdict": "NEVER_RUN"
+  },
+  "APO_SHORT": {
+   "done_utc": "2026-10-28T04:40:05.495487+00:00",
+   "final_gain": 29.37070222555397,
+   "final_path": "APO_SHORT_bh16_gain29_t27_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2799,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "ARBUSDC_LONG": {
+   "done_utc": null,
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 1543,
+   "holdout_confirmed": false,
+   "host": "s2"
+  },
+  "ARUSDT_LONG": {
+   "done_utc": null,
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 1686,
+   "holdout_confirmed": false,
+   "host": "s2"
+  },
+  "AR_LONG": {
+   "done_utc": "2026-10-28T03:52:26.810997+00:00",
+   "final_gain": 21.05450981338961,
+   "final_path": "AR_LONG_bh3_gain21_t22_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2868,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "ASML_LONG": {
+   "done_utc": "2026-10-28T05:19:17.928112+00:00",
+   "final_gain": 22.540167928056878,
+   "final_path": "ASML_LONG_bhm2_gain23_t58_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2868,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "ASTS_SHORT": {
+   "done_utc": "2026-10-28T14:35:18.918970+00:00",
+   "final_gain": 31.834039362882717,
+   "final_path": "ASTS_SHORT_bh29_gain32_t10_30d_matrix.xlsx",
+   "published": false,
+   "not_compliant": "content-gate: F_filled 682<25% of done board 2797 \u2014 refusing publish",
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "AU_SHORT": {
+   "done_utc": "2026-10-28T14:36:56.393460+00:00",
+   "final_gain": 28.28089210253711,
+   "final_path": "AU_SHORT_bh15_gain28_t38_30d_matrix.xlsx",
+   "published": false,
+   "not_compliant": "content-gate: F_filled 671<25% of done board 2797 \u2014 refusing publish",
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "AXON_SHORT": {
+   "done_utc": "2026-10-28T19:16:04.490277+00:00",
+   "final_gain": 38.60844546970086,
+   "final_path": "AXON_SHORT_bh27_gain39_t19_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2805,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "A_LONG": {
+   "done_utc": "2026-10-27T23:14:27.291180+00:00",
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2466,
+   "holdout_confirmed": false,
+   "host": "s5"
+  },
+  "BABA_SHORT": {
+   "done_utc": "2026-10-28T19:25:38.547602+00:00",
+   "final_gain": 14.311838003188083,
+   "final_path": "BABA_SHORT_bh3_gain14_t24_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2801,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "BATUSDT_LONG": {
+   "done_utc": null,
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 0,
+   "holdout_confirmed": false,
+   "host": "s2"
+  },
+  "BA_SHORT": {
+   "done_utc": "2026-10-28T19:45:40.517916+00:00",
+   "final_gain": 16.988222277549493,
+   "final_path": "BA_SHORT_bh9_gain17_t44_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "BBUSDT_SHORT": {
+   "done_utc": "2026-10-28T18:23:22.966684+00:00",
+   "final_gain": 49.55417484980739,
+   "final_path": "BBUSDT_SHORT_bh1_gain50_t51_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2929,
+   "holdout_confirmed": true,
+   "host": "s2"
+  },
+  "BEAMXUSDT_LONG": {
+   "done_utc": "2026-10-28T19:26:26.176076+00:00",
+   "final_gain": 47.71520385038539,
+   "final_path": "BEAMXUSDT_LONG_bh64_gain48_t121_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2938,
+   "holdout_confirmed": true,
+   "host": "s2"
+  },
+  "BEATUSDT_SHORT": {
+   "done_utc": "2026-10-28T19:34:08.016697+00:00",
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2942,
+   "holdout_confirmed": true,
+   "host": "s2"
+  },
+  "BHP_SHORT": {
+   "done_utc": "2026-10-28T19:34:46.283694+00:00",
+   "final_gain": 12.125562185173555,
+   "final_path": "BHP_SHORT_bh9_gain12_t42_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "BIDU_SHORT": {
+   "done_utc": "2026-10-28T19:27:24.763407+00:00",
+   "final_gain": 24.018512493175233,
+   "final_path": "BIDU_SHORT_bh13_gain24_t45_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "BIGTIMEUSDT_SHORT": {
+   "done_utc": null,
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2319,
+   "holdout_confirmed": false,
+   "host": "s2"
+  },
+  "BIOUSDC_SHORT": {
+   "verdict": "NEVER_RUN"
+  },
+  "BKR_SHORT": {
+   "done_utc": "2026-10-28T04:52:53.615065+00:00",
+   "final_gain": 24.87620924603277,
+   "final_path": "BKR_SHORT_bh12_gain25_t27_30d_matrix.xlsx",
+   "published": false,
+   "not_compliant": "content-gate: F_filled 668<25% of done board 2798 \u2014 refusing publish",
+   "verdict": null,
+   "rows": 2798,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "BLURUSDT_SHORT": {
+   "done_utc": "2026-10-28T18:15:36.082888+00:00",
+   "final_gain": 68.13380555161956,
+   "final_path": "BLURUSDT_SHORT_bh53_gain68_t103_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2929,
+   "holdout_confirmed": true,
+   "host": "s2"
+  },
+  "BMNR_SHORT": {
+   "done_utc": "2026-10-28T19:02:48.486229+00:00",
+   "final_gain": 43.21170011335629,
+   "final_path": "BMNR_SHORT_bh17_gain43_t24_30d_matrix.xlsx",
+   "published": false,
+   "not_compliant": "content-gate: F_filled 592<25% of done board 2798 \u2014 refusing publish",
+   "verdict": null,
+   "rows": 2798,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "BNBUSDC_LONG": {
+   "verdict": "NEVER_RUN"
+  },
+  "BNBUSDC_SHORT": {
+   "done_utc": null,
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 716,
+   "holdout_confirmed": false,
+   "host": "s5"
+  },
+  "BNO_LONG": {
+   "done_utc": "2026-10-28T16:00:15.327066+00:00",
+   "final_gain": 39.80467406015862,
+   "final_path": "BNO_LONG_bh19_gain40_t25_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2865,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "BTCDOMUSDT_LONG": {
+   "verdict": "NEVER_RUN"
+  },
+  "BTCUSDC_LONG": {
+   "done_utc": null,
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 1760,
+   "holdout_confirmed": false,
+   "host": "s2"
+  },
+  "BTCUSDC_SHORT": {
+   "done_utc": "2026-10-28T18:58:37.191739+00:00",
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2935,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "BWXT_SHORT": {
+   "done_utc": "2026-10-28T19:37:25.272147+00:00",
+   "final_gain": 26.243515051510037,
+   "final_path": "BWXT_SHORT_bh14_gain26_t75_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2798,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "CAT_SHORT": {
+   "done_utc": "2026-10-28T02:27:41.984005+00:00",
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 1887,
+   "holdout_confirmed": false,
+   "host": "s6"
+  },
+  "CDE_SHORT": {
+   "done_utc": "2026-10-28T16:04:48.798383+00:00",
+   "final_gain": 61.988823809122195,
+   "final_path": "CDE_SHORT_bh27_gain62_t93_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2799,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "CDW_LONG": {
+   "done_utc": "2026-10-28T19:10:06.853058+00:00",
+   "final_gain": 19.00667123060633,
+   "final_path": "CDW_LONG_bh3_gain19_t50_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2865,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "CIBR_LONG": {
+   "done_utc": "2026-10-27T22:43:57.094192+00:00",
+   "final_gain": 23.549928054055865,
+   "final_path": "CIBR_LONG_bh11_gain24_t23_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2856,
+   "holdout_confirmed": false,
+   "host": "s5"
+  },
+  "CME_LONG": {
+   "done_utc": "2026-10-28T04:51:35.549890+00:00",
+   "final_gain": 10.861098482996399,
+   "final_path": "CME_LONG_bh4_gain11_t25_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2867,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "COHR_SHORT": {
+   "done_utc": "2026-10-28T16:23:19.319940+00:00",
+   "final_gain": 23.728874745031458,
+   "final_path": "COHR_SHORT_bh16_gain24_t42_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "COIN_SHORT": {
+   "done_utc": "2026-10-28T15:23:47.511950+00:00",
+   "final_gain": 51.25879831819413,
+   "final_path": "COIN_SHORT_bh13_gain51_t61_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "COPX_LONG": {
+   "done_utc": "2026-10-28T08:02:40.435487+00:00",
+   "final_gain": 2.97952479694382,
+   "final_path": "COPX_LONG_bhm15_gain3_t24_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2865,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "COP_LONG": {
+   "done_utc": "2026-10-28T04:01:26.344477+00:00",
+   "final_gain": 20.675730611386918,
+   "final_path": "COP_LONG_bh9_gain21_t70_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2869,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "COST_LONG": {
+   "done_utc": "2026-10-28T06:29:31.654193+00:00",
+   "final_gain": 11.930708104717047,
+   "final_path": "COST_LONG_bh13_gain12_t17_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2865,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "CRK_LONG": {
+   "done_utc": "2026-10-28T19:48:19.270619+00:00",
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2873,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "CRM_LONG": {
+   "done_utc": "2026-10-28T03:44:13.078105+00:00",
+   "final_gain": 15.187152589140974,
+   "final_path": "CRM_LONG_bhm9_gain15_t27_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2865,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "CRWD_LONG": {
+   "done_utc": "2026-10-28T19:21:26.353562+00:00",
+   "final_gain": 31.61205663531591,
+   "final_path": "CRWD_LONG_bh8_gain32_t77_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2865,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "CRWV_SHORT": {
+   "done_utc": "2026-10-28T15:26:45.387242+00:00",
+   "final_gain": 64.9255581033881,
+   "final_path": "CRWV_SHORT_bh34_gain65_t30_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2799,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "DAR_SHORT": {
+   "done_utc": "2026-10-28T04:53:26.716084+00:00",
+   "final_gain": 42.56977044378954,
+   "final_path": "DAR_SHORT_bh16_gain43_t59_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "DASHUSDT_LONG": {
+   "verdict": "NEVER_RUN"
+  },
+  "DASHUSDT_SHORT": {
+   "done_utc": "2026-10-28T18:40:49.961187+00:00",
+   "final_gain": 25.940428936757787,
+   "final_path": "DASHUSDT_SHORT_bh10_gain26_t106_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2946,
+   "holdout_confirmed": true,
+   "host": "s2"
+  },
+  "DOGEUSDC_LONG": {
+   "done_utc": null,
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2938,
+   "holdout_confirmed": true,
+   "host": "s2"
+  },
+  "DUSKUSDT_LONG": {
+   "done_utc": "2026-10-28T19:42:21.282635+00:00",
+   "final_gain": 62.23974526853855,
+   "final_path": "DUSKUSDT_LONG_bh32_gain62_t62_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2938,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "DVN_LONG": {
+   "done_utc": "2026-10-28T01:24:13.156711+00:00",
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 316,
+   "holdout_confirmed": false,
+   "host": "s5"
+  },
+  "EDUUSDT_LONG": {
+   "done_utc": "2026-10-26T16:51:51.685663+00:00",
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 173,
+   "holdout_confirmed": false,
+   "host": "s2"
+  },
+  "ELD_SHORT": {
+   "verdict": "NEVER_RUN"
+  },
+  "ENAUSDC_LONG": {
+   "done_utc": null,
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 8,
+   "holdout_confirmed": false,
+   "host": "s2"
+  },
+  "ENJUSDT_SHORT": {
+   "done_utc": "2026-10-28T18:41:03.732301+00:00",
+   "final_gain": 27.97706588350404,
+   "final_path": "ENJUSDT_SHORT_bhm2_gain28_t127_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2938,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "EOG_LONG": {
+   "done_utc": "2026-10-28T04:46:58.512427+00:00",
+   "final_gain": 24.137432943387257,
+   "final_path": "EOG_LONG_bh8_gain24_t34_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2868,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "EQT_LONG": {
+   "done_utc": null,
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": "NO_TRADES",
+   "rows": 0,
+   "holdout_confirmed": false,
+   "host": "s5"
+  },
+  "ETHFIUSDC_LONG": {
+   "verdict": "NEVER_RUN"
+  },
+  "ETHUSDC_LONG": {
+   "verdict": "NEVER_RUN"
+  },
+  "ETHUSDC_SHORT": {
+   "done_utc": "2026-10-28T18:46:22.041492+00:00",
+   "final_gain": 23.340004982590152,
+   "final_path": "ETHUSDC_SHORT_bh9_gain23_t22_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2934,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "EXEL_LONG": {
+   "done_utc": "2026-10-28T00:46:02.852213+00:00",
+   "final_gain": 24.171161479590026,
+   "final_path": "EXEL_LONG_bh5_gain24_t47_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2826,
+   "holdout_confirmed": false,
+   "host": "s5"
+  },
+  "FARTCOINUSDT_SHORT": {
+   "done_utc": null,
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2934,
+   "holdout_confirmed": false,
+   "host": "s1"
+  },
+  "FCN_LONG": {
+   "done_utc": "2026-10-28T08:38:49.659691+00:00",
+   "final_gain": 9.580442814764286,
+   "final_path": "FCN_LONG_bhm3_gain10_t33_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2866,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "GALAUSDT_SHORT": {
+   "done_utc": "2026-10-28T16:11:29.102114+00:00",
+   "final_gain": 61.91086966602337,
+   "final_path": "GALAUSDT_SHORT_bh5_gain62_t80_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2929,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "GDX_SHORT": {
+   "done_utc": "2026-10-28T07:13:13.349886+00:00",
+   "final_gain": 28.30518223940311,
+   "final_path": "GDX_SHORT_bh12_gain28_t60_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "GE_SHORT": {
+   "done_utc": "2026-10-28T06:08:45.177593+00:00",
+   "final_gain": 17.04758428089688,
+   "final_path": "GE_SHORT_bh4_gain17_t43_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "GLD_LONG": {
+   "done_utc": "2026-10-28T07:27:09.543604+00:00",
+   "final_gain": 8.462935621433488,
+   "final_path": "GLD_LONG_bhm6_gain8_t34_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2865,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "GME_LONG": {
+   "done_utc": "2026-10-28T15:54:36.825683+00:00",
+   "final_gain": 56.85957251728229,
+   "final_path": "GME_LONG_bh38_gain57_t34_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2866,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "GOOGL_LONG": {
+   "done_utc": "2026-10-28T04:57:16.932954+00:00",
+   "final_gain": 22.84777199114157,
+   "final_path": "GOOGL_LONG_bh2_gain23_t51_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2865,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "GRAMUSDT_LONG": {
+   "done_utc": null,
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 1343,
+   "holdout_confirmed": false,
+   "host": "s2"
+  },
+  "GRAMUSDT_SHORT": {
+   "done_utc": "2026-10-28T17:54:11.098531+00:00",
+   "final_gain": 26.072356864395747,
+   "final_path": "GRAMUSDT_SHORT_bh5_gain26_t91_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2939,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "GRASSUSDT_LONG": {
+   "done_utc": null,
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 0,
+   "holdout_confirmed": false,
+   "host": "s2"
+  },
+  "HD_LONG": {
+   "done_utc": "2026-10-28T19:10:07.185911+00:00",
+   "final_gain": 13.58372374890687,
+   "final_path": "HD_LONG_bhm3_gain14_t90_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2866,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "HOOD_SHORT": {
+   "done_utc": "2026-10-28T15:29:37.619773+00:00",
+   "final_gain": 44.22732191385165,
+   "final_path": "HOOD_SHORT_bh15_gain44_t77_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "HYPEUSDT_LONG": {
+   "verdict": "NEVER_RUN"
+  },
+  "IBM_LONG": {
+   "done_utc": "2026-10-27T22:06:34.987994+00:00",
+   "final_gain": 26.048828389772062,
+   "final_path": "IBM_LONG_bh6_gain26_t60_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2813,
+   "holdout_confirmed": false,
+   "host": "s5"
+  },
+  "ICXUSDT_SHORT": {
+   "done_utc": "2026-10-28T11:27:27.511238+00:00",
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": "invalid:trades 0 < 10 (wd=30); trades 0<10; TIM 0.0 outside [20,80]; gain 0.0 <= floor 0.0",
+   "verdict": "IMPOSSIBLE",
+   "rows": 2929,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "INJUSDT_LONG": {
+   "verdict": "NEVER_RUN"
+  },
+  "INXUSDT_SHORT": {
+   "done_utc": "2026-10-28T18:57:00.766130+00:00",
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2929,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "IOTXUSDT_SHORT": {
+   "done_utc": "2026-10-28T13:24:03.329999+00:00",
+   "final_gain": 32.3571490628513,
+   "final_path": "IOTXUSDT_SHORT_bhm33_gain32_t248_30d_matrix.xlsx",
+   "published": false,
+   "not_compliant": "invalid:trades 0 < 10 (wd=30); trades 0<10; TIM 0.0 outside [20,80]; gain 0.0 <= floor 0.0",
+   "verdict": null,
+   "rows": 2929,
+   "holdout_confirmed": true,
+   "host": "s1"
+  },
+  "JASMYUSDT_SHORT": {
+   "done_utc": "2026-10-28T18:19:44.121897+00:00",
+   "final_gain": 14.382698718013593,
+   "final_path": "JASMYUSDT_SHORT_bhm13_gain14_t50_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2943,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "KAVAUSDT_LONG": {
+   "verdict": "NEVER_RUN"
+  },
+  "KGC_SHORT": {
+   "done_utc": "2026-10-28T16:26:32.679185+00:00",
+   "final_gain": 33.82876810023137,
+   "final_path": "KGC_SHORT_bh22_gain34_t47_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "KMNOUSDT_LONG": {
+   "done_utc": null,
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 0,
+   "holdout_confirmed": false,
+   "host": "s2"
+  },
+  "LDOS_LONG": {
+   "done_utc": "2026-10-28T04:12:04.649684+00:00",
+   "final_gain": 22.879369638800572,
+   "final_path": "LDOS_LONG_bh3_gain23_t19_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2872,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "LMT_LONG": {
+   "done_utc": "2026-10-28T03:42:03.378952+00:00",
+   "final_gain": 21.445421696081866,
+   "final_path": "LMT_LONG_bh15_gain21_t12_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2862,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "LNG_LONG": {
+   "done_utc": "2026-10-28T04:51:03.969518+00:00",
+   "final_gain": 24.58948919926907,
+   "final_path": "LNG_LONG_bh6_gain25_t42_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2866,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "LOW_SHORT": {
+   "done_utc": "2026-10-28T07:24:17.447305+00:00",
+   "final_gain": 18.56701588343173,
+   "final_path": "LOW_SHORT_bh3_gain19_t30_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "LRCX_SHORT": {
+   "done_utc": "2026-10-28T15:37:59.958482+00:00",
+   "final_gain": 52.508808553082254,
+   "final_path": "LRCX_SHORT_bh22_gain53_t23_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "MAGICUSDT_LONG": {
+   "done_utc": null,
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 81,
+   "holdout_confirmed": false,
+   "host": "s2"
+  },
+  "MA_LONG": {
+   "done_utc": "2026-10-28T05:30:52.612487+00:00",
+   "final_gain": 14.085408454488707,
+   "final_path": "MA_LONG_bh9_gain14_t33_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2867,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "MCD_LONG": {
+   "verdict": "NEVER_RUN"
+  },
+  "META_LONG": {
+   "done_utc": "2026-10-27T23:27:57.265861+00:00",
+   "final_gain": 24.007629566484084,
+   "final_path": "META_LONG_bh16_gain24_t42_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2854,
+   "holdout_confirmed": false,
+   "host": "s5"
+  },
+  "MNTS_SHORT": {
+   "done_utc": "2026-10-28T14:45:28.925666+00:00",
+   "final_gain": 67.9924631023281,
+   "final_path": "MNTS_SHORT_bh45_gain68_t29_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "MOS_SHORT": {
+   "done_utc": "2026-10-28T15:59:41.586795+00:00",
+   "final_gain": 53.98221548644806,
+   "final_path": "MOS_SHORT_bh32_gain54_t35_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "MOVEUSDT_SHORT": {
+   "done_utc": "2026-10-28T15:57:38.015485+00:00",
+   "final_gain": 67.63389355318668,
+   "final_path": "MOVEUSDT_SHORT_bh26_gain68_t188_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2929,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "MOVRUSDT_SHORT": {
+   "done_utc": "2026-10-28T17:40:42.796537+00:00",
+   "final_gain": 21.02280284168238,
+   "final_path": "MOVRUSDT_SHORT_bhm47_gain21_t63_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2944,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "MP_SHORT": {
+   "done_utc": "2026-10-28T16:02:03.036198+00:00",
+   "final_gain": 49.67534622702253,
+   "final_path": "MP_SHORT_bh28_gain50_t30_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "MRVL_LONG": {
+   "done_utc": "2026-10-28T15:41:31.137015+00:00",
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2876,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "MSFT_LONG": {
+   "done_utc": "2026-10-28T01:30:55.176574+00:00",
+   "final_gain": 14.641375289856917,
+   "final_path": "MSFT_LONG_bh8_gain15_t22_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2850,
+   "holdout_confirmed": false,
+   "host": "s5"
+  },
+  "MSTR_SHORT": {
+   "done_utc": "2026-10-28T16:23:54.887067+00:00",
+   "final_gain": 28.607654030679758,
+   "final_path": "MSTR_SHORT_bh1_gain29_t53_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "MU_LONG": {
+   "verdict": "NEVER_RUN"
+  },
+  "NEARUSDC_LONG": {
+   "done_utc": null,
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 0,
+   "holdout_confirmed": false,
+   "host": "s2"
+  },
+  "NEM_SHORT": {
+   "verdict": "NEVER_RUN"
+  },
+  "NFLX_SHORT": {
+   "done_utc": null,
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 253,
+   "holdout_confirmed": false,
+   "host": "s6"
+  },
+  "NLR_SHORT": {
+   "done_utc": "2026-10-28T17:11:45.454374+00:00",
+   "final_gain": 40.63192825225572,
+   "final_path": "NLR_SHORT_bh22_gain41_t84_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2802,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "NUE_LONG": {
+   "done_utc": "2026-10-28T07:48:29.134866+00:00",
+   "final_gain": 13.2444634159963,
+   "final_path": "NUE_LONG_bhm2_gain13_t18_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2871,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "NVDA_LONG": {
+   "done_utc": "2026-10-28T08:18:46.607445+00:00",
+   "final_gain": 12.835961185783232,
+   "final_path": "NVDA_LONG_bh0_gain13_t20_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2869,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "NXE_SHORT": {
+   "done_utc": "2026-10-28T16:43:02.576399+00:00",
+   "final_gain": 47.303296330630786,
+   "final_path": "NXE_SHORT_bh21_gain47_t97_30d_matrix.xlsx",
+   "published": false,
+   "not_compliant": "content-gate: F_filled 641<25% of done board 2797 \u2014 refusing publish",
+   "verdict": "NO_TRADES",
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "OLED_LONG": {
+   "done_utc": "2026-10-28T16:26:15.777779+00:00",
+   "final_gain": 16.06836129584917,
+   "final_path": "OLED_LONG_bhm2_gain16_t47_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2865,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "ORCL_LONG": {
+   "verdict": "NEVER_RUN"
+  },
+  "PAAS_SHORT": {
+   "done_utc": "2026-10-28T16:55:31.413746+00:00",
+   "final_gain": 38.045166744421955,
+   "final_path": "PAAS_SHORT_bh13_gain38_t139_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "PENGUUSDC_LONG": {
+   "verdict": "NEVER_RUN"
+  },
+  "PLTR_LONG": {
+   "done_utc": "2026-10-28T19:18:51.184236+00:00",
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2880,
+   "holdout_confirmed": true,
+   "host": "s1"
+  },
+  "PR_LONG": {
+   "done_utc": "2026-10-28T00:46:10.593336+00:00",
+   "final_gain": 20.781500480833465,
+   "final_path": "PR_LONG_bh7_gain21_t21_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2848,
+   "holdout_confirmed": false,
+   "host": "s5"
+  },
+  "PSX_LONG": {
+   "done_utc": "2026-10-28T08:22:17.040021+00:00",
+   "final_gain": 22.19891730332801,
+   "final_path": "PSX_LONG_bh10_gain22_t48_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2868,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "PTBUSDT_SHORT": {
+   "done_utc": "2026-10-28T18:24:34.349832+00:00",
+   "final_gain": 69.03132724633159,
+   "final_path": "PTBUSDT_SHORT_bh53_gain69_t149_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2940,
+   "holdout_confirmed": true,
+   "host": "s1"
+  },
+  "PUMPUSDT_LONG": {
+   "done_utc": "2026-10-26T16:21:25.778020+00:00",
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 0,
+   "holdout_confirmed": false,
+   "host": "s2"
+  },
+  "PWR_SHORT": {
+   "done_utc": "2026-10-28T08:12:02.728965+00:00",
+   "final_gain": 24.297281084605665,
+   "final_path": "PWR_SHORT_bh12_gain24_t57_30d_matrix.xlsx",
+   "published": false,
+   "not_compliant": "TIM 16.4 outside [20,80]",
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "PYPL_SHORT": {
+   "verdict": "NEVER_RUN"
+  },
+  "QBTS_SHORT": {
+   "done_utc": "2026-10-28T16:10:24.651024+00:00",
+   "final_gain": 62.4426074536516,
+   "final_path": "QBTS_SHORT_bh28_gain62_t158_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "QLYS_LONG": {
+   "done_utc": "2026-10-28T15:44:44.647942+00:00",
+   "final_gain": 41.122847530167405,
+   "final_path": "QLYS_LONG_bh23_gain41_t34_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2865,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "QNTUSDT_LONG": {
+   "done_utc": null,
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 0,
+   "holdout_confirmed": false,
+   "host": "s2"
+  },
+  "QQQ_LONG": {
+   "done_utc": "2026-10-28T07:43:32.790732+00:00",
+   "final_gain": 7.814852091437675,
+   "final_path": "QQQ_LONG_bh1_gain8_t16_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2868,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "RAYSOLUSDT_LONG": {
+   "done_utc": null,
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 0,
+   "holdout_confirmed": false,
+   "host": "s2"
+  },
+  "RBLX_LONG": {
+   "done_utc": "2026-10-28T15:40:02.140896+00:00",
+   "final_gain": 54.30310999791713,
+   "final_path": "RBLX_LONG_bh21_gain54_t30_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2866,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "RIO_SHORT": {
+   "done_utc": "2026-10-28T14:06:34.070820+00:00",
+   "final_gain": 27.2108840656209,
+   "final_path": "RIO_SHORT_bh16_gain27_t75_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "RKLB_SHORT": {
+   "done_utc": "2026-10-28T15:50:38.587442+00:00",
+   "final_gain": 53.79021722547035,
+   "final_path": "RKLB_SHORT_bh14_gain54_t41_30d_matrix.xlsx",
+   "published": false,
+   "not_compliant": "content-gate: F_filled 699<25% of done board 2801 \u2014 refusing publish",
+   "verdict": null,
+   "rows": 2801,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "RLCUSDT_LONG": {
+   "done_utc": null,
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 178,
+   "holdout_confirmed": false,
+   "host": "s2"
+  },
+  "RRC_LONG": {
+   "done_utc": "2026-10-28T15:31:30.005252+00:00",
+   "final_gain": 18.483118742987546,
+   "final_path": "RRC_LONG_bh6_gain18_t11_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2868,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "RS_LONG": {
+   "done_utc": "2026-10-28T04:30:21.255046+00:00",
+   "final_gain": 22.164007029493227,
+   "final_path": "RS_LONG_bh6_gain22_t44_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2865,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "RVNUSDT_SHORT": {
+   "done_utc": "2026-10-28T16:48:11.944614+00:00",
+   "final_gain": 57.95979413544465,
+   "final_path": "RVNUSDT_SHORT_bh34_gain58_t56_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2934,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "SAP_LONG": {
+   "done_utc": "2026-10-28T00:47:09.464540+00:00",
+   "final_gain": 21.07257994290945,
+   "final_path": "SAP_LONG_bh11_gain21_t48_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2859,
+   "holdout_confirmed": false,
+   "host": "s5"
+  },
+  "SCCO_SHORT": {
+   "done_utc": "2026-10-28T05:24:26.686481+00:00",
+   "final_gain": 19.504969220499056,
+   "final_path": "SCCO_SHORT_bhm1_gain20_t74_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "SCHW_SHORT": {
+   "done_utc": "2026-10-28T15:37:39.756204+00:00",
+   "final_gain": 23.06444018133066,
+   "final_path": "SCHW_SHORT_bh18_gain23_t76_30d_matrix.xlsx",
+   "published": false,
+   "not_compliant": "content-gate: F_filled 597<25% of done board 2797 \u2014 refusing publish",
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "SCRUSDT_SHORT": {
+   "verdict": "NEVER_RUN"
+  },
+  "SHOP_LONG": {
+   "done_utc": "2026-10-28T19:48:51.295973+00:00",
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 0,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "SKYAIUSDT_SHORT": {
+   "done_utc": null,
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 0,
+   "holdout_confirmed": false,
+   "host": "s1"
+  },
+  "SLV_LONG": {
+   "done_utc": "2026-10-28T07:15:14.005684+00:00",
+   "final_gain": 5.0777960742329995,
+   "final_path": "SLV_LONG_bhm13_gain5_t33_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2871,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "SLV_SHORT": {
+   "done_utc": "2026-10-28T19:21:40.019712+00:00",
+   "final_gain": 27.352346522988658,
+   "final_path": "SLV_SHORT_bh15_gain27_t37_30d_matrix.xlsx",
+   "published": false,
+   "not_compliant": "content-gate: F_filled 665<25% of done board 2797 \u2014 refusing publish",
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "SMCI_SHORT": {
+   "done_utc": "2026-10-28T15:45:28.421444+00:00",
+   "final_gain": 59.739050089699994,
+   "final_path": "SMCI_SHORT_bh10_gain60_t50_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2798,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "SNDK_LONG": {
+   "done_utc": "2026-10-28T16:15:33.886878+00:00",
+   "final_gain": 28.351906332778388,
+   "final_path": "SNDK_LONG_bhm14_gain28_t68_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2866,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "SOLUSDC_LONG": {
+   "verdict": "NEVER_RUN"
+  },
+  "SPELLUSDT_SHORT": {
+   "done_utc": "2026-10-28T18:56:22.293375+00:00",
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2944,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "SPY_LONG": {
+   "done_utc": "2026-10-28T07:59:28.351276+00:00",
+   "final_gain": 3.4144262438508086,
+   "final_path": "SPY_LONG_bh0_gain3_t96_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2867,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "STORJUSDT_SHORT": {
+   "done_utc": "2026-10-28T11:03:30.949785+00:00",
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": "invalid:trades 0 < 10 (wd=30); trades 0<10; TIM 0.0 outside [20,80]; gain 0.0 <= floor 0.0",
+   "verdict": "IMPOSSIBLE",
+   "rows": 2929,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "STRKUSDT_SHORT": {
+   "done_utc": null,
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 0,
+   "holdout_confirmed": false,
+   "host": "s1"
+  },
+  "STXUSDT_LONG": {
+   "done_utc": "2026-10-26T18:36:50.884607+00:00",
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 178,
+   "holdout_confirmed": false,
+   "host": "s2"
+  },
+  "STXUSDT_SHORT": {
+   "done_utc": "2026-10-28T17:11:33.524381+00:00",
+   "final_gain": 36.570022334326765,
+   "final_path": "STXUSDT_SHORT_bhm14_gain37_t53_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2936,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "TECK_SHORT": {
+   "verdict": "NEVER_RUN"
+  },
+  "TIAUSDC_LONG": {
+   "done_utc": "2026-10-26T16:28:50.411398+00:00",
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 62,
+   "holdout_confirmed": false,
+   "host": "s2"
+  },
+  "TLMUSDT_SHORT": {
+   "verdict": "NEVER_RUN"
+  },
+  "TMO_LONG": {
+   "done_utc": "2026-10-28T19:35:59.959934+00:00",
+   "final_gain": 11.303248004673147,
+   "final_path": "TMO_LONG_bh12_gain11_t15_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2865,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "TRGP_LONG": {
+   "verdict": "NEVER_RUN"
+  },
+  "TRUMPUSDC_SHORT": {
+   "done_utc": "2026-10-28T17:35:48.171152+00:00",
+   "final_gain": 18.02453250336518,
+   "final_path": "TRUMPUSDC_SHORT_bh13_gain18_t42_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2938,
+   "holdout_confirmed": true,
+   "host": "s2"
+  },
+  "TSLA_LONG": {
+   "done_utc": "2026-10-28T06:32:38.494121+00:00",
+   "final_gain": 13.885625491943879,
+   "final_path": "TSLA_LONG_bh2_gain14_t29_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2872,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "T_SHORT": {
+   "done_utc": "2026-10-28T19:47:10.765117+00:00",
+   "final_gain": 23.582065097056947,
+   "final_path": "T_SHORT_bh21_gain24_t38_30d_matrix.xlsx",
+   "published": false,
+   "not_compliant": "content-gate: F_filled 637<25% of done board 2799 \u2014 refusing publish",
+   "verdict": null,
+   "rows": 2799,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "UEC_SHORT": {
+   "done_utc": "2026-10-28T14:59:14.371003+00:00",
+   "final_gain": 54.509743305167845,
+   "final_path": "UEC_SHORT_bh28_gain55_t39_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2798,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "ULTA_LONG": {
+   "done_utc": "2026-10-28T14:12:55.390040+00:00",
+   "final_gain": 12.999826507659948,
+   "final_path": "ULTA_LONG_bh6_gain13_t56_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2865,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "UNH_LONG": {
+   "done_utc": "2026-10-28T03:31:44.784752+00:00",
+   "final_gain": 24.68545575250006,
+   "final_path": "UNH_LONG_bh8_gain25_t51_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2863,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "UNIUSDC_LONG": {
+   "done_utc": "2026-10-26T17:34:26.539009+00:00",
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 0,
+   "holdout_confirmed": false,
+   "host": "s2"
+  },
+  "UUUU_SHORT": {
+   "done_utc": "2026-10-28T15:01:56.373334+00:00",
+   "final_gain": 72.94251042518724,
+   "final_path": "UUUU_SHORT_bh44_gain73_t41_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2799,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "U_SHORT": {
+   "done_utc": "2026-10-28T15:52:38.837752+00:00",
+   "final_gain": 38.19207457011402,
+   "final_path": "U_SHORT_bh7_gain38_t49_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "VALE_SHORT": {
+   "done_utc": "2026-10-28T16:57:15.114896+00:00",
+   "final_gain": 30.461315982271902,
+   "final_path": "VALE_SHORT_bh19_gain30_t22_30d_matrix.xlsx",
+   "published": false,
+   "not_compliant": "content-gate: F_filled 694<25% of done board 2798 \u2014 refusing publish",
+   "verdict": null,
+   "rows": 2798,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "VANRYUSDT_SHORT": {
+   "done_utc": "2026-10-28T12:00:18.434835+00:00",
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": "invalid:trades 1 < 10 (wd=30); trades 1<10; TIM 100.0 outside [20,80]; gain -0.0265 <= floor 0.0",
+   "verdict": "IMPOSSIBLE",
+   "rows": 2929,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "VLO_SHORT": {
+   "done_utc": "2026-10-28T19:33:53.640284+00:00",
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "VT_LONG": {
+   "done_utc": "2026-10-28T07:46:11.746617+00:00",
+   "final_gain": 5.091604550789628,
+   "final_path": "VT_LONG_bhm3_gain5_t33_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2867,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "VZ_SHORT": {
+   "done_utc": "2026-10-28T15:35:32.167297+00:00",
+   "final_gain": 16.04420065440119,
+   "final_path": "VZ_SHORT_bh14_gain16_t20_30d_matrix.xlsx",
+   "published": false,
+   "not_compliant": "content-gate: F_filled 661<25% of done board 2797 \u2014 refusing publish",
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "V_LONG": {
+   "done_utc": "2026-10-28T04:53:11.126023+00:00",
+   "final_gain": 13.786253508662643,
+   "final_path": "V_LONG_bh11_gain14_t99_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2866,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "WDAY_SHORT": {
+   "done_utc": "2026-10-28T19:41:22.123679+00:00",
+   "final_gain": 8.989708635677951,
+   "final_path": "WDAY_SHORT_bhm1_gain9_t62_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2797,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "WMT_LONG": {
+   "done_utc": "2026-10-27T23:23:28.582275+00:00",
+   "final_gain": 22.477264322870504,
+   "final_path": "WMT_LONG_bh10_gain22_t39_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2855,
+   "holdout_confirmed": false,
+   "host": "s5"
+  },
+  "WOOUSDT_SHORT": {
+   "done_utc": "2026-10-28T19:07:54.813090+00:00",
+   "final_gain": 16.731463027063132,
+   "final_path": "WOOUSDT_SHORT_bh12_gain17_t30_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2937,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "WPM_SHORT": {
+   "done_utc": null,
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 3,
+   "holdout_confirmed": false,
+   "host": "s6"
+  },
+  "XLE_LONG": {
+   "done_utc": "2026-10-28T05:58:46.531205+00:00",
+   "final_gain": 18.827200114840785,
+   "final_path": "XLE_LONG_bh5_gain19_t111_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2872,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "XMRUSDT_LONG": {
+   "done_utc": null,
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 701,
+   "holdout_confirmed": false,
+   "host": "s2"
+  },
+  "XOM_LONG": {
+   "done_utc": "2026-10-28T07:42:06.376137+00:00",
+   "final_gain": 17.353135051613144,
+   "final_path": "XOM_LONG_bh9_gain17_t54_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2867,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "XPLUSDT_SHORT": {
+   "done_utc": "2026-10-28T19:26:29.068148+00:00",
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2483,
+   "holdout_confirmed": true,
+   "host": "s1"
+  },
+  "XRPUSDC_LONG": {
+   "verdict": "NEVER_RUN"
+  },
+  "ZCSH_SHORT": {
+   "verdict": "NEVER_RUN"
+  },
+  "ZECUSDC_LONG": {
+   "done_utc": null,
+   "final_gain": null,
+   "final_path": "",
+   "published": false,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 660,
+   "holdout_confirmed": false,
+   "host": "s2"
+  },
+  "ZETA_LONG": {
+   "done_utc": "2026-10-28T15:47:44.510684+00:00",
+   "final_gain": 33.63250941165544,
+   "final_path": "ZETA_LONG_bh11_gain34_t25_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2865,
+   "holdout_confirmed": true,
+   "host": "s5"
+  },
+  "ZILUSDT_SHORT": {
+   "done_utc": "2026-10-28T16:17:23.873245+00:00",
+   "final_gain": 43.3573226187496,
+   "final_path": "ZILUSDT_SHORT_bh40_gain43_t78_30d_matrix.xlsx",
+   "published": true,
+   "not_compliant": null,
+   "verdict": null,
+   "rows": 2929,
+   "holdout_confirmed": true,
+   "host": "s6"
+  },
+  "ZROUSDT_LONG": {
+   "verdict": "NEVER_RUN"
+  }
+ },
+ "n_published": 111,
+ "n_finished_unpublished": 35,
+ "n_unfinished": 52
+}

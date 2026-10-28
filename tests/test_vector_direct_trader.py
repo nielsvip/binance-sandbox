@@ -31,6 +31,24 @@ def test_board_holds_broker_flat_opens_scaled_and_respects_books():
     assert orders == [] and notes == [("XUSDT_LONG", "SKIP_OPEN_NOT_IN_BOOKS")]
 
 
+def test_open_retries_on_new_bar_after_earlier_final_size_skip():
+    first = st(True, eq=75.0, oq=100.0)
+    prior_key = f"ang|XUSDT_LONG|{first['engine_open_bar_ts']}|OPEN"
+    orders, _ = V.plan_account('ang', 'crypto', ['XUSDT_LONG'], {'XUSDT_LONG': first}, {}, BAR, {prior_key}, ALLOW)
+    assert len(orders) == 1 and orders[0]['key'] == f'ang|XUSDT_LONG|{BAR}|OPEN'
+    next_bar = st(True, eq=75.0, oq=100.0, tail=BAR + 900)
+    orders, _ = V.plan_account('ang', 'crypto', ['XUSDT_LONG'], {'XUSDT_LONG': next_bar}, {}, BAR + 900, {prior_key, orders[0]['key']}, ALLOW)
+    assert len(orders) == 1 and orders[0]['key'] == f'ang|XUSDT_LONG|{BAR + 900}|OPEN'
+
+
+def test_unpublished_fallback_settings_never_open_and_close_held():
+    fallback = dict(st(True), src='fallback:cat_side_defaults:STOCKS_SHORT', settings_fallback=True)
+    orders, notes = V.plan_account('trb', 'stocks', ['ELD_SHORT'], {'ELD_SHORT': fallback}, {}, BAR, set(), ALLOW)
+    assert orders == [] and notes == [('ELD_SHORT', 'UNPUBLISHED_SETTINGS_NO_OPEN')]
+    orders, _ = V.plan_account('trb', 'stocks', ['ELD_SHORT'], {'ELD_SHORT': fallback}, {'ELD_SHORT': {'qty': 2.0}}, BAR, set(), ALLOW)
+    assert len(orders) == 1 and orders[0]['act'] == 'CLOSE' and orders[0]['qty'] == 2.0
+
+
 def test_close_allowed_even_when_not_in_books_and_adopts_unlisted_position():
     orders, _ = V.plan_account("ang", "crypto", [], {"YUSDT_SHORT": st(False)}, {"YUSDT_SHORT": {"qty": 3.0}}, BAR, set(), DENY)
     assert [o["act"] for o in orders] == ["CLOSE"]

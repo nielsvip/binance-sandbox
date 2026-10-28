@@ -315,6 +315,14 @@ def plan_account(acct, venue, keys, states, positions, bar, done, allowed, prev_
             else:
                 notes.append((ss, f"UNTRADEABLE_NO_OPEN{'_CLOSE_DISABLED' if held > 0 else ''} bar {u.get('bar')}"))
             continue
+        if isinstance(st, dict) and (st.get('settings_fallback') or str(st.get('src') or '').startswith('fallback:')):
+            if held > 0:
+                orders.append({'acct': acct, 'ss': ss, 'act': 'CLOSE', 'qty': held,
+                               'key': f'{acct}|{ss}|{bar}|UNPUBLISHED_SETTINGS_CLOSE',
+                               'why': 'no active per_sym_store.db settings for this side'})
+            else:
+                notes.append((ss, 'UNPUBLISHED_SETTINGS_NO_OPEN'))
+            continue
         if held > 0 and ss in noinfo:
             why_state = "no state file" if not isinstance(st, dict) else f"state ok={st.get('ok')} reason={st.get('reason')} src={st.get('src')}"
             wt = (wt15(ss) or {}) if wt15 is not None else {}
@@ -357,7 +365,7 @@ def plan_account(acct, venue, keys, states, positions, bar, done, allowed, prev_
             ratio = min(4.0, max(0.25, eq / oq)) if eq > 0 and oq > 0 else 1.0
             anchor = st.get("engine_open_bar_ts") or st.get("entry_bar") or tail
             orders.append({"acct": acct, "ss": ss, "act": "OPEN", "notional": START_POSITION_SIZE * ratio,
-                           "key": f"{acct}|{ss}|{anchor}|OPEN", "why": f"board holds since {anchor}, broker flat (engine qty ratio {ratio:.3f})"})
+                           "key": f"{acct}|{ss}|{tail}|OPEN", "why": f"board holds since {anchor}, broker flat (engine qty ratio {ratio:.3f})"})
         elif board_open and held > 0:
             if int(st.get("acts_bar_ts") or -1) != tail:
                 continue
