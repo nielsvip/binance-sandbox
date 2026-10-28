@@ -76,7 +76,7 @@ def _log(event, **kw):
 def ledgers(root: Path):
     for acct in ACCOUNTS:
         d = root / acct
-        if d.is_dir():
+        if d.is_dir() and not d.is_symlink():  # data/history/tr* are symlinks to data/tradier/history/tr*
             yield acct, d
 
 
@@ -328,7 +328,7 @@ def recover(target_root: Path, sources: list, dry=False, now=None) -> dict:
     for s in sources:
         for acct in ACCOUNTS:
             d = Path(s) / acct
-            if not d.is_dir():
+            if not d.is_dir() or d.is_symlink():
                 continue
             for f in list(d.glob("*.jsonl*")) + list((d / "archive").glob("*.jsonl*")):
                 ss = HA.ledger_name(f)

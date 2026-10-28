@@ -152,6 +152,17 @@ REGISTRY: dict[str, dict[str, list[tuple]]] = {
         "mac": [("{base}/{stocks_acct}", "canonical", "<acct>/{long,short,options}_positions.json — tradier_positions is the truth vs the broker", None)],
         "s1": [("{base}/{stocks_acct}", "canonical", "", None)],
     },
+    # ---------------------------------------------------------------- executed-trade history (USER 2026-10-27: never deleted)
+    "trade_history": {
+        "mac": [("{base}/data/history/{crypto_acct}", "canonical", "<acct>/<SYM_SIDE>.jsonl live ledger, rolls at ~10 MB (vec_decisions/history_archive.py); FULL history = history_archive.iter_rows()", None),
+                ("{base}/data/tradier/history/{stocks_acct}", "canonical", "stocks ledgers (data/history/tr* are symlinks to these)", None),
+                ("{base}/data/history/{crypto_acct}/archive", "archive", "rolled-over + legacy .bak + recovered segments, .jsonl then .jsonl.zst after 8 d; offload_manifest.jsonl lists every offsite copy", None),
+                ("{base}/data/tradier/history/{stocks_acct}/archive", "archive", "same for stocks", None)],
+        "s1": [("{base}/data/history/{crypto_acct}", "mirror", "S1 lease-era rows; Mac<->S1 merge of the last 7 d by tools/history_7d_sync.py", None),
+               ("{sandbox}/data/history/{crypto_acct}", "mirror", "", None)],
+        "ext": [("{ext}/binance_archive/history", "archive", "tools/history_archive_offload.py: <host>/<root>/<acct>/<segment>.jsonl.zst, sha256-verified; second copy gs://v15-cold-329002141504/history/...", None),
+                ("{ext}/binance_archive/history_recovery_20261027", "archive", "raw pre-recovery copies of every S1 history file (2026-10-28 pull), kept as found", None)],
+    },
     "positions_failover_mirror": {
         "mac": [("{base}/data/live_failover", "canonical", "the Mac SENDS state (it has no mac_state dir of its own); S1 holds the received copy", None)],
         "s1": [("{base}/data/live_failover/mac_state", "canonical", "received copy of the Mac's state", None)],
