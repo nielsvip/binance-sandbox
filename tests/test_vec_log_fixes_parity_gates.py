@@ -37,10 +37,10 @@ def test_e1_follows_its_board_switch(per_sym, on, expected):
     assert g.dictate_only_exempt("QUICK_CLOSE", E1, sym_side="STXUSDT_SHORT") is expected
 
 
-def test_ratio_close_side_reduce_stays_under_law():
-    # Left as-is on purpose: tests/test_vec_parity_switches.py pins USER 2026-10-25
-    # "RATIO trims lost their exemption" for RATIO_CLOSE_<SIDE>; operator ruling pending.
-    assert g.dictate_only_exempt("REDUCE", "RATIO_CLOSE_LONG_L52_S48_tgt30/70_gain0.1%") is False
+def test_ratio_close_side_reduce_passes_by_operator_ruling():
+    # USER 2026-10-27 (verbatim): "RATIO_CLOSE trims KEEP HAPPENING NO DISCUSSION they do not change vector decisions"
+    assert g.dictate_only_exempt("REDUCE", "RATIO_CLOSE_LONG_L52_S48_tgt30/70_gain0.1%") is True
+    assert g.dictate_only_exempt("CLOSE", "RATIO_CLOSE_LONG_L52_S48_tgt30/70_gain0.1%") is False
 
 
 NT = "NON_TRADEABLE_WT15M_EXIT_SHORT_wt6.9_g1.96_qty_999999"

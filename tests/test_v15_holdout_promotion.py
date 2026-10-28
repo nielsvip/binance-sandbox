@@ -89,3 +89,10 @@ def test_honest_headline_reads_holdout_confirm(monkeypatch):
     assert h["promotable_estimate_pct"] == 1.25 and h["promotable_estimate_basis"] == "holdout_confirm"
     h2 = P.honest_headline({"baseline_gain": 2.0, "final_gain": 14.0, "done": {}})
     assert h2["promotable_estimate_pct"] == 2.0 and h2["promotable_estimate_basis"] == "baseline_only"
+
+
+def test_tier_and_metrics_contract():
+    src = (ROOT / "v15_pilot.py").read_text()
+    assert 'if _HOLDOUT_PROMOTE and _hl and _hl.get("promotable_estimate_pct") is not None:' in src
+    assert "_wt = _wbt(new_symside, _g_tier," in src
+    assert '_set_metric("HOLDOUT_DROPPED", ", ".join(progress["holdout_confirm"].get("dropped") or []) or "none")' in src

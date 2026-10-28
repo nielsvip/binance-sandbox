@@ -11271,6 +11271,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _set_metric("final_live_trades", (live_res or {}).get("trades"))
                 _set_metric("final_live_parity", (parity[1] if parity else live_reason) or "")
                 _set_metric("final_refreshed_at", utcnow())
+                if isinstance(progress.get("holdout_confirm"), dict):  # D: what the confirm window pruned (the C/E chain above stays unpruned)
+                    _set_metric("HOLDOUT_DROPPED", ", ".join(progress["holdout_confirm"].get("dropped") or []) or "none")
+                    _set_metric("HOLDOUT_EXPECTED_GAIN", progress["holdout_confirm"].get("g_pruned"))
                 _lt = int((live_res or {}).get("trades") or 0)
                 _set_metric("final_sample_status", "[DIAGNOSTIC ONLY]" if (_lt < 30 or float(args.window_days) < 365) else "publishable-floor met")
                 with RED_FIXER_LOCK:
@@ -17485,7 +17488,10 @@ def _main_single():
                                 _hl = progress.get("headline") or honest_headline(progress, new_symside)
                             except Exception:
                                 _hl = None
-                            _wt = _wbt(new_symside, cumulative_gain, g365=_365_gain, trades_30d=_ff.get("trades"), tim_30d=_ff.get("tim_pct"), headline=_hl)
+                            _g_tier = cumulative_gain
+                            if _HOLDOUT_PROMOTE and _hl and _hl.get("promotable_estimate_pct") is not None:  # D: size on the honest figure, never the fit envelope
+                                _g_tier = float(_hl["promotable_estimate_pct"])
+                            _wt = _wbt(new_symside, _g_tier, g365=_365_gain, trades_30d=_ff.get("trades"), tim_30d=_ff.get("tim_pct"), headline=_hl)
                             print(f"[TIER-WRITE] {new_symside} -> {(_wt or {}).get('tier')} x{(_wt or {}).get('mult')} (30D in-sample {cumulative_gain:.2f}, forward {(_hl or {}).get('forward_gain_pct')})", flush=True)
                         except Exception as _wte:
                             print(f"[TIER-WRITE-warn] {new_symside} {str(_wte)[:200]}", flush=True)

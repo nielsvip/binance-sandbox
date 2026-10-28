@@ -190,9 +190,12 @@ def test_pending_confirm_and_ttl():
 
 
 def test_dictate_only_exemptions():
-    # USER 2026-10-25 vec-parity-only: RATIO trims lost their exemption — only
-    # board-confirmed speech and per_sym dictate survive.
-    assert G.dictate_only_exempt("REDUCE", "RATIO_CLOSE_SHORT_X") is False
+    # USER 2026-10-25 vec-parity-only: RATIO trims lost their exemption — SUPERSEDED for RATIO_CLOSE_<SIDE>
+    # trims by USER 2026-10-27 (verbatim): "RATIO_CLOSE trims KEEP HAPPENING NO DISCUSSION they do not change
+    # vector decisions". The REDUCE trim passes; a CLOSE under the same family still does not.
+    assert G.dictate_only_exempt("REDUCE", "RATIO_CLOSE_SHORT_X") is True
+    assert G.dictate_only_exempt("REDUCE", "RATIO_CLOSE_LONG_L70_S30_tgt50/50_gain1.2%") is True
+    assert G.dictate_only_exempt("CLOSE", "RATIO_CLOSE_SHORT_X") is False
     assert G.dictate_only_exempt("REDUCE", "RATIO_CLOSE_OW_LONG_L60_S40") is True
     assert G.dictate_only_exempt("CLOSE", "RATIO_CLOSE_OW_LONG_L60_S40") is False
     assert G.dictate_only_exempt("AUGMENT", "RATIO_AUGMENT_X") is False

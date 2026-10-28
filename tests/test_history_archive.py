@@ -214,3 +214,93 @@ def test_7d_sync_treats_archive_segment_as_same_ledger(tmp_path):
     out = _sync.apply(tmp_path, pack, "t", dry_run=True)
     assert not live.exists() or live.read_text() == ""
     assert (out.get("added") or 0) == 0
+
+
+# ───────────────────────── tools/history_archive_offload.py ─────────────────────────
+from tools import history_archive_offload as _off  # noqa: E402
+
+
+def _rows(n, start_days_ago=40, ss_tag=""):
+    t0 = datetime.now(timezone.utc) - timedelta(days=start_days_ago)
+    return [{"ts": (t0 + timedelta(minutes=i)).isoformat(), "type": "REDUCE", "qty": 1.0 + i, "price": 2.0, "reason": f"r{i}{ss_tag}"} for i in range(n)]
+
+
+def test_fold_legacy_bak_into_archive_keeps_bytes(tmp_path, monkeypatch):
+    monkeypatch.setattr(_off, "REPORT", tmp_path / "rep")
+    d = tmp_path / "flz"
+    d.mkdir()
+    b1 = d / "BTCUSDC_LONG.jsonl.bak"
+    b2 = d / "MU_LONG.jsonl.20260924150010868039.bak"
+    for b in (b1, b2):
+        b.write_text("".join(json.dumps(r) + "\n" for r in _rows(3)))
+        os.utime(b, (time.time() - 7200, time.time() - 7200))
+    h = {b.name: _sha(b) for b in (b1, b2)}
+    assert _off.fold_legacy(tmp_path) == 2
+    segs = sorted((d / "archive").glob("*.legacy.jsonl"))
+    assert len(segs) == 2 and not b1.exists() and not b2.exists()
+    assert sorted(_sha(s) for s in segs) == sorted(h.values())
+    assert [len(list(_ha.iter_rows(d / "BTCUSDC_LONG.jsonl")))] == [3]
+
+
+def test_compress_then_offload_needs_verified_copies_before_local_removal(tmp_path, monkeypatch):
+    monkeypatch.setattr(_off, "REPORT", tmp_path / "rep")
+    root = tmp_path / "hist"
+    live = root / "men" / "ETHUSDC_LONG.jsonl"
+    seg = _ha.segment_path(live)
+    seg.parent.mkdir(parents=True)
+    seg.write_text("".join(json.dumps(r) + "\n" for r in _rows(50)))
+    raw = _sha(seg)
+    old = time.time() - 9 * 86400
+    os.utime(seg, (old, old))
+    assert _off.compress_all(root) == 1
+    zst = Path(str(seg) + ".zst")
+    assert zst.exists() and not seg.exists()
+    assert len(list(_ha.iter_rows(live))) == 50
+    ext = tmp_path / "EXT"
+    ext.mkdir()
+    st = _off.offload_root("history", root, "mac", drives=[str(ext)], use_gcs=False, min_copies=2)
+    assert st["ext_copies"] == 1 and st["local_removed"] == 0 and zst.exists()
+    st = _off.offload_root("history", root, "mac", drives=[str(ext)], use_gcs=False, min_copies=1)
+    assert st["local_removed"] == 1 and not zst.exists()
+    copy = ext / "binance_archive" / "history" / "mac" / "history" / "men" / zst.name
+    assert copy.exists()
+    assert len(list(_ha.iter_rows(live))) == 50
+    dec = __import__("subprocess").run(["zstd", "-dc", str(copy)], capture_output=True, env=_off.ZENV).stdout
+    assert hashlib.sha256(dec).hexdigest() == raw
+
+
+def test_offload_without_any_drive_keeps_local(tmp_path, monkeypatch):
+    monkeypatch.setattr(_off, "REPORT", tmp_path / "rep")
+    root = tmp_path / "hist"
+    live = root / "men" / "X_LONG.jsonl"
+    seg = _ha.segment_path(live)
+    seg.parent.mkdir(parents=True)
+    z = Path(str(seg) + ".zst")
+    z.write_bytes(b"not really zstd")
+    st = _off.offload_root("history", root, "mac", drives=[], use_gcs=False, min_copies=1)
+    assert st["kept_local"] == 1 and z.exists()
+
+
+def test_recover_adds_only_missing_old_rows_and_is_idempotent(tmp_path, monkeypatch):
+    monkeypatch.setattr(_off, "REPORT", tmp_path / "rep")
+    tgt = tmp_path / "mac"
+    src = tmp_path / "s1"
+    rows = _rows(10)
+    (tgt / "fin").mkdir(parents=True)
+    (src / "fin").mkdir(parents=True)
+    (tgt / "fin" / "X_SHORT.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows[5:]))
+    (src / "fin" / "X_SHORT.jsonl.bak").write_text("".join(json.dumps(r) + "\n" for r in rows[:7]))
+    recent = {"ts": datetime.now(timezone.utc).isoformat(), "type": "REDUCE", "qty": 99.0, "price": 1.0}
+    with open(src / "fin" / "X_SHORT.jsonl", "w") as fh:
+        fh.write(json.dumps(recent) + "\n")
+    rep = _off.recover(tgt, [str(src)])
+    assert rep["rows_added"] == 5
+    got = list(_ha.iter_rows(tgt / "fin" / "X_SHORT.jsonl"))
+    assert [r["reason"] for r in got] == [r["reason"] for r in rows]
+    assert _off.recover(tgt, [str(src)])["rows_added"] == 0
+    assert (tgt / "fin" / "X_SHORT.jsonl").read_text().count("\n") == 5
+
+
+def test_ext_health_refuses_toshiba_and_unmounted(tmp_path):
+    assert _off.ext_health("/Volumes/TOSHIBA_EXT")["ok"] is False
+    assert _off.ext_health(str(tmp_path))["ok"] is False

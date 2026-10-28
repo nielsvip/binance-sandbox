@@ -83,6 +83,27 @@ BOARD_TOKENS = (
 # quietly re-opening sub-min-hold churn.
 SCALP_TOKENS = ("SCALP",)
 
+# OPERATOR 2026-10-27 corrections to this gate's classification:
+#  * "REENTRY_HIGHER_LOW is not an exit" — the REENTRY family is the reentry
+#    machinery, not a discretionary exit, so the hold must never touch it even
+#    when the engine labels it as an exit_reason.
+#  * "the other ones are gain exits that do not apply at loss ... exiting every
+#    time wt turns against a trade as long as it is not losing yet needs to keep
+#    happening with absolute reentry guarantee" — a WT-turn exit taken IN GAIN
+#    must keep firing inside the hold. That is the exemption below, and it is a
+#    TESTED SWITCH (MIN_HOLD_EXEMPT_WT_TURN_IN_GAIN_ENABLED) as ordered.
+#  * "fixed_stop ... is a LOSS exit not a gain exit" — the stop family and the
+#    gain-exit family are different things; both now pass, for different reasons.
+REENTRY_TOKENS = ("REENTRY", "RE_ENTRY", "RECROSS", "RE-CROSS")
+WT_TURN_GAIN_TOKENS = (
+    "WT_CROSS_EXIT",
+    "WT_LOWER_CROSS",
+    "WT_CROSSUNDER",
+    "EXIT_VELOCITY_WT",
+    "VEL_EXIT",
+    "WT_TURN",
+)
+
 FIXED_STOP_TOKENS = ("FIXED_STOP",)
 # Account protection is NOT a strategy exit and stays exempt: holding a position
 # through a liquidation or margin kill to honour a bar count would lose the
@@ -143,7 +164,35 @@ def is_scalp_reason(reason) -> bool:
     return any(t in str(reason or "").upper() for t in SCALP_TOKENS)
 
 
-def is_exempt(reason, cfg=None, live=False) -> bool:
+def is_reentry_reason(reason) -> bool:
+    """The REENTRY family is not an exit (operator 2026-10-27)."""
+    return any(t in str(reason or "").upper() for t in REENTRY_TOKENS)
+
+
+def is_wt_turn_gain_exit(reason) -> bool:
+    """A WT-turn / velocity exit — a GAIN exit, never a loss exit."""
+    return any(t in str(reason or "").upper() for t in WT_TURN_GAIN_TOKENS)
+
+
+def wt_turn_in_gain_exempt(reason, cfg, gain_pct) -> bool:
+    """True when a WT-turn exit is taken in gain and the switch allows it.
+
+    OPERATOR: this must keep happening "as long as it is not losing yet", with
+    an absolute reentry guarantee downstream. Gated by the tested switch
+    MIN_HOLD_EXEMPT_WT_TURN_IN_GAIN_ENABLED. An UNKNOWN gain does NOT exempt:
+    guessing would let a losing WT exit skip the hold.
+    """
+    if not bool(getattr(cfg, "MIN_HOLD_EXEMPT_WT_TURN_IN_GAIN_ENABLED", True)):
+        return False
+    if not is_wt_turn_gain_exit(reason):
+        return False
+    try:
+        return float(gain_pct) >= 0.0
+    except (TypeError, ValueError):
+        return False
+
+
+def is_exempt(reason, cfg=None, live=False, gain_pct=None) -> bool:
     """What may override THE min hold.
 
     USER 2026-10-27: "only overridden by fixed_stop". So on the strategy side
@@ -174,6 +223,10 @@ def is_exempt(reason, cfg=None, live=False) -> bool:
     # longer the ONLY exemption.
     if any(t in u for t in STOP_TOKENS):
         return True
+    if is_reentry_reason(r):
+        return True
+    if wt_turn_in_gain_exempt(r, cfg, gain_pct):
+        return True
     if cfg is None or bool(getattr(cfg, "MIN_HOLD_PROTECTION_EXEMPT", True)):
         if any(t in u for t in ACCOUNT_PROTECTION_TOKENS):
             return True
@@ -187,7 +240,7 @@ def is_exempt(reason, cfg=None, live=False) -> bool:
     return False
 
 
-def refuse(age_seconds, cfg, action="CLOSE", reason="", live=True) -> tuple:
+def refuse(age_seconds, cfg, action="CLOSE", reason="", live=True, gain_pct=None) -> tuple:
     """(refuse?, detail) — the ONE decision. Live passes real seconds.
 
     Refuses only a DISCRETIONARY exit younger than the min hold. Anything that
@@ -199,8 +252,8 @@ def refuse(age_seconds, cfg, action="CLOSE", reason="", live=True) -> tuple:
         return False, "MIN_HOLD_OFF"
     if not is_exit_action(action):
         return False, "NOT_AN_EXIT"
-    if is_exempt(reason, cfg, live):
-        return False, "EXEMPT_FIXED_STOP_OR_PROTECTION"
+    if is_exempt(reason, cfg, live, gain_pct):
+        return False, "EXEMPT_STOP_REENTRY_OR_GAIN_EXIT"
     try:
         age = float(age_seconds)
     except (TypeError, ValueError):
@@ -213,7 +266,7 @@ def refuse(age_seconds, cfg, action="CLOSE", reason="", live=True) -> tuple:
     return False, "HOLD_SATISFIED"
 
 
-def refuse_bars(held_bars, cfg, action="CLOSE", reason="", live=False) -> tuple:
+def refuse_bars(held_bars, cfg, action="CLOSE", reason="", live=False, gain_pct=None) -> tuple:
     """Bar-indexed twin for the vector, which counts bars, not seconds.
 
     Converts through the SAME `threshold_bars`, so a vector bar comparison and a
@@ -224,8 +277,8 @@ def refuse_bars(held_bars, cfg, action="CLOSE", reason="", live=False) -> tuple:
         return False, "MIN_HOLD_OFF"
     if not is_exit_action(action):
         return False, "NOT_AN_EXIT"
-    if is_exempt(reason, cfg, live):
-        return False, "EXEMPT_FIXED_STOP_OR_PROTECTION"
+    if is_exempt(reason, cfg, live, gain_pct):
+        return False, "EXEMPT_STOP_REENTRY_OR_GAIN_EXIT"
     try:
         held = float(held_bars)
     except (TypeError, ValueError):

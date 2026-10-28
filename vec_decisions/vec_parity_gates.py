@@ -248,9 +248,13 @@ def nonvectorizable_portfolio_action(action, reason):
     """
     act = str(action or "").upper()
     r = str(reason or "").upper()
+    # USER 2026-10-27 (operator ruling, verbatim): "RATIO_CLOSE trims KEEP HAPPENING NO DISCUSSION they do
+    # not change vector decisions" -> the RATIO_REBALANCE 50% REDUCE of an overweight side
+    # (RATIO_CLOSE_LONG_* / RATIO_CLOSE_SHORT_*) is an account-level trim like RATIO_CLOSE_OW_*. REDUCE only:
+    # a full CLOSE under a RATIO_CLOSE_ reason is still not exempt.
     return (
         act == "REDUCE"
-        and r.startswith(("RATIO_CLOSE_OW_", "RATIO_REDUCE_"))
+        and r.startswith(("RATIO_CLOSE_OW_", "RATIO_REDUCE_", "RATIO_CLOSE_LONG_", "RATIO_CLOSE_SHORT_"))
     ) or (act == "AUGMENT" and r.startswith("RATIO_REBALANCE_AUGMENT_"))
 
 
