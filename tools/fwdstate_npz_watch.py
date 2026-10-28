@@ -70,6 +70,19 @@ def _held(path):
         return set()
 
 
+def _held_notional(path):
+    try:
+        return {str(k).upper(): float(v) for k, v in (json.loads(path.read_text()).get("notional") or {}).items()}
+    except Exception:
+        return {}
+
+
+def queue_order(pending, notional):
+    """USER 2026-10-28: "calculate open positions first from biggest to smallest then the rest of tradeable keys" — within each
+    class (-1 guarantee priority, 0 held new tail/correction, 1 the rest, 2 retry, 3 rewrite) biggest open notional first."""
+    return sorted(pending, key=lambda s: (pending[s], -notional.get(s, 0.0), s))
+
+
 def _sql_versions(db, sides):
     if not sides:
         return {}
@@ -147,6 +160,7 @@ def main():
     side_stamp = held_stamp = None
     db_stamp = ()
     base_sides, held, sides = set(), set(), set()
+    notional = {}
     npz_mtime, npz_tail, zip_tail, side_tail = {}, {}, {}, {}
     sql_versions = {}
     computed = {}  # side -> (tail, settings_version, npz_mtime, ok, finished_at)
@@ -167,6 +181,7 @@ def main():
             current = held_path.stat().st_mtime_ns if held_path.exists() else 0
             if current != held_stamp:
                 held, held_stamp = {s for s in _held(held_path) if _is_crypto(s) == want_crypto}, current
+                notional = _held_notional(held_path)
             new_sides = base_sides | held
             if new_sides != sides:
                 print(f"watching {len(new_sides)} exact sides ({len(held)} held, {len(held - base_sides)} held outside the sides file)", flush=True)
@@ -274,7 +289,7 @@ def main():
                         published[symbol_side] = (state, _publish(symbol_side, state, why))
                     else:
                         published[symbol_side] = (disk, disk_mt)
-            for symbol_side in sorted(pending, key=lambda s: (pending[s], s)):
+            for symbol_side in queue_order(pending, notional):
                 if len(running) >= workers:
                     break
                 cls = pending.pop(symbol_side)

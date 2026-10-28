@@ -496,6 +496,30 @@ def _vd_held_symbols(cat_side):
         return set()
 
 
+def _vd_held_notional(cat_side):
+    """{SYMBOL: open notional summed over sides and accounts} from held_<venue>.json (trader writes per-side notional)."""
+    venue = "crypto" if cat_side.startswith("crypto") else "stocks"
+    try:
+        doc = json.loads((Path.home() / "binance" / "data" / "vector_direct" / f"held_{venue}.json").read_text())
+    except (OSError, ValueError, TypeError):
+        return {}
+    out = {}
+    for ss in doc.get("sides") or []:
+        out.setdefault(str(ss).rsplit("_", 1)[0].upper(), 0.0)
+    for ss, v in (doc.get("notional") or {}).items():
+        try:
+            out[str(ss).rsplit("_", 1)[0].upper()] = out.get(str(ss).rsplit("_", 1)[0].upper(), 0.0) + float(v)
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
+def priority_key(symbol, held_notional):
+    """USER 2026-10-28: "calculate open positions first from biggest to smallest then the rest of tradeable keys"."""
+    n = held_notional.get(symbol)
+    return (0, -n, symbol) if n is not None else (1, 0.0, symbol)
+
+
 def stream_loop(base, cat_side, workers=WORKERS, sibling=None, sibling_base=None, poll_s=1.0, once=False):
     """2026-10-28 (USER "within seconds of 15m bar completion and kline arrival"): the same per-symbol append as sweep_once,
     without its batch barrier. sweep_once computed every ready symbol of a pass and waited for ALL of them before looking
@@ -530,11 +554,11 @@ def stream_loop(base, cat_side, workers=WORKERS, sibling=None, sibling_base=None
         rec = {"t": now, "cat_side": cat_side, "stream": True, "symbols": 0, "submitted": 0, "inflight": 0, "appended": 0, "current": 0,
                "refused": 0, "error": 0, "resubmit_source_changed": 0, "compacted": 0, "mirrored": 0, "error_syms": [], "appended_syms": []}
         owned = owned_symbols(load_universe(base), cat_side)
-        held = _vd_held_symbols(cat_side)
+        held_n = _vd_held_notional(cat_side)
 
         def symbol_of(entry):
             return entry.rsplit("_", 1)[0] if entry.endswith(("_LONG", "_SHORT")) else entry
-        owned = sorted({symbol_of(e) for e in owned}, key=lambda s: (s not in held, s))
+        owned = sorted({symbol_of(e) for e in owned} | set(held_n), key=lambda s: priority_key(s, held_n))
 
         def probe(sym):
             npz = npz_for(base, sym)
@@ -548,19 +572,29 @@ def stream_loop(base, cat_side, workers=WORKERS, sibling=None, sibling_base=None
         with ThreadPoolExecutor(max_workers=8) as tp:
             jobs = [j for j in tp.map(probe, [s for s in owned if s not in inflight]) if j is not None]
         rec["symbols"] = len(jobs) + len(inflight)
+        # 2026-10-28 USER priority: only `workers` rows are ever handed to the pool; the rest wait HERE, re-probed every loop, so
+        # (a) a held symbol whose bar/correction arrives later still goes ahead of queued non-held work (biggest notional first) and
+        # (b) a mark->native correction that lands before the first compute started is computed once, on the latest version.
+        ready = []
         for npz, sym, lc, revision in jobs:
             try:
                 tip = tip_of(npz)
                 changed = tip is not None and int(lc) == int(tip) and source_changed(npz, lc, revision)
                 if (tip is None or int(lc) > int(tip) or changed) and is_closed_bar(int(lc), now):
-                    fut = pool.submit(_compute_row_process, (sym, int(lc), str(base), mode))
-                    inflight[sym] = (fut, npz, lc, revision)
-                    rec["submitted"] += 1
+                    ready.append((priority_key(sym, held_n), npz, sym, lc, revision))
                 else:
                     rec["current"] += 1
             except Exception:
                 rec["error"] += 1
                 rec["error_syms"].append(sym)
+        ready.sort(key=lambda x: x[0])
+        for _key, npz, sym, lc, revision in ready:
+            if len(inflight) >= max(1, workers):
+                break
+            fut = pool.submit(_compute_row_process, (sym, int(lc), str(base), mode))
+            inflight[sym] = (fut, npz, lc, revision)
+            rec["submitted"] += 1
+        rec["queued"] = len(ready) - rec["submitted"]
         done = [s for s, v in inflight.items() if v[0].done()]
         if not done and inflight:
             wait([v[0] for v in inflight.values()], timeout=poll_s, return_when=FIRST_COMPLETED)
@@ -599,7 +633,7 @@ def stream_loop(base, cat_side, workers=WORKERS, sibling=None, sibling_base=None
         if rec["appended"] or rec["error"] or rec["submitted"] or rec["resubmit_source_changed"] or now - last_print >= 30:
             last_print = now
             print(json.dumps(rec, sort_keys=True), flush=True)
-        if once and not inflight:
+        if once and not inflight and not rec.get("queued"):
             return rec
         if not inflight:
             time.sleep(min(poll_s, 0.5))

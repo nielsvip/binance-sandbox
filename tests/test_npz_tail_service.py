@@ -267,3 +267,55 @@ def test_stream_loop_appends_each_ready_symbol_without_batch_barrier(tmp_path, m
     rec = T.stream_loop(str(tmp_path), "crypto", workers=2, once=True)
     assert sorted(appended) == [("AUSDT", "AUSDT"), ("BUSDT", "BUSDT")]
     assert rec["inflight"] == 0
+
+
+def test_stream_priority_biggest_open_position_first_then_tradeable(tmp_path, monkeypatch):
+    """USER 2026-10-28: "calculate open positions first from biggest to smallest then the rest of tradeable keys"."""
+    import sys
+    import types
+    import tools.npz_tail_service as T
+    for name in ("npz_live_generator", "ez_indicators", "tradier_indicators"):
+        monkeypatch.setitem(sys.modules, name, types.ModuleType(name))
+    bar = (int(time.time()) // 900 - 2) * 900
+    monkeypatch.setattr(T, "load_universe", lambda base: ["AUSDT_LONG", "BUSDT_SHORT", "CUSDT_LONG", "DUSDT_LONG"])
+    monkeypatch.setattr(T, "npz_for", lambda base, s: str(tmp_path / f"{s}.npz"))
+    monkeypatch.setattr(T, "kline_last_close", lambda base, s, mode: bar)
+    monkeypatch.setattr(T, "source_revision", lambda base, s, mode, lc: "rev")
+    monkeypatch.setattr(T, "source_changed", lambda npz, lc, rev: False)
+    order = []
+    monkeypatch.setattr(T, "tip_of", lambda npz: bar if any(npz.endswith(f"{s}.npz") for s in order) else bar - 900)
+    monkeypatch.setattr(T, "_compute_row_process", _row_for_stream)
+    monkeypatch.setattr(T, "sweep_symbol", lambda npz, sym, lc, fn, **kw: (order.append(sym), "appended")[1])
+    monkeypatch.setattr(T, "_vd_held_notional", lambda cat: {"CUSDT": 20.0, "DUSDT": 90.0})
+    T.stream_loop(str(tmp_path), "crypto", workers=1, once=True)
+    assert order == ["DUSDT", "CUSDT", "AUSDT", "BUSDT"]
+    assert T.priority_key("DUSDT", {"DUSDT": 90.0}) < T.priority_key("CUSDT", {"CUSDT": 20.0}) < T.priority_key("AUSDT", {})
+
+
+def test_stream_coalesces_correction_that_lands_before_the_first_compute(tmp_path, monkeypatch):
+    """A mark->native correction for a symbol still waiting in the queue is computed ONCE, on the latest bar version."""
+    import sys
+    import types
+    import tools.npz_tail_service as T
+    for name in ("npz_live_generator", "ez_indicators", "tradier_indicators"):
+        monkeypatch.setitem(sys.modules, name, types.ModuleType(name))
+    bar = (int(time.time()) // 900 - 2) * 900
+    rev = {"BUSDT": "mark"}
+    monkeypatch.setattr(T, "load_universe", lambda base: ["AUSDT_LONG", "BUSDT_LONG"])
+    monkeypatch.setattr(T, "npz_for", lambda base, s: str(tmp_path / f"{s}.npz"))
+    monkeypatch.setattr(T, "kline_last_close", lambda base, s, mode: bar)
+    monkeypatch.setattr(T, "source_revision", lambda base, s, mode, lc: rev.get(s, "r"))
+    monkeypatch.setattr(T, "source_changed", lambda npz, lc, r: False)
+    done = []
+    monkeypatch.setattr(T, "tip_of", lambda npz: bar if any(npz.endswith(f"{s}.npz") for s, _ in done) else bar - 900)
+    monkeypatch.setattr(T, "_compute_row_process", _row_for_stream)
+
+    def sweep(npz, sym, lc, fn, **kw):
+        done.append((sym, kw.get("revision")))
+        if sym == "AUSDT":
+            rev["BUSDT"] = "native"  # correction lands while BUSDT is still queued behind AUSDT
+        return "appended"
+    monkeypatch.setattr(T, "sweep_symbol", sweep)
+    monkeypatch.setattr(T, "_vd_held_notional", lambda cat: {"AUSDT": 50.0})
+    T.stream_loop(str(tmp_path), "crypto", workers=1, once=True)
+    assert done == [("AUSDT", "r"), ("BUSDT", "native")]

@@ -97,3 +97,10 @@ def test_partial_recovery_releases_recovered_and_closes_the_rest(tmp_path):
     assert set(_modes(g)) == set(names[2:])
     g.declare({ss: "still not ok" for ss in names[2:]}, "state")  # 2/4 = 50% but held over -> close
     assert _modes(g) == {names[2]: "close", names[3]: "close"}
+
+
+def test_repairs_ordered_biggest_open_position_first(tmp_path):
+    g, bar = _g(tmp_path)
+    (g.vd / "held_crypto.json").write_text(json.dumps({"sides": ["CUSDT_LONG", "DUSDT_SHORT"], "notional": {"CUSDT_LONG": 20.0, "DUSDT_SHORT": 90.0}}))
+    assert g.by_priority(["AUSDT", "CUSDT", "DUSDT", "BUSDT"]) == ["DUSDT", "CUSDT", "AUSDT", "BUSDT"]
+    assert g.by_priority(["AUSDT_LONG", "CUSDT_LONG", "DUSDT_SHORT"]) == ["DUSDT_SHORT", "CUSDT_LONG", "AUSDT_LONG"]

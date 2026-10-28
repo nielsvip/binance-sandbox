@@ -704,7 +704,7 @@ class Tradier:
         for r in rows:
             q = float(r.get("quantity") or 0.0)
             if q:
-                out[f"{str(r['symbol']).upper()}_{'LONG' if q > 0 else 'SHORT'}"] = {"qty": abs(q), "price": 0.0}
+                out[f"{str(r['symbol']).upper()}_{'LONG' if q > 0 else 'SHORT'}"] = {"qty": abs(q), "price": 0.0, "cost": abs(float(r.get("cost_basis") or 0.0))}
         return out
 
     def price(self, symbol):
@@ -853,10 +853,20 @@ class Trader:
         held = self.__dict__.setdefault("held", {})
         held[acct] = sorted(ss for ss, p in pos.items() if float(p.get("qty") or 0) > 0)
         sides = sorted(set().union(*held.values()))
+        # USER 2026-10-28 "calculate open positions first from biggest to smallest then the rest of tradeable keys": per-side open
+        # notional (|qty| x mark; Tradier has no mark here -> |cost_basis|) summed over accounts, read by the NPZ appender, the
+        # state producer and the bar guarantee to order their queues
+        hn = self.__dict__.setdefault("held_notional", {})
+        hn[acct] = {ss: round(float(p.get("qty") or 0) * float(p.get("price") or 0) or float(p.get("cost") or 0), 2) for ss, p in pos.items() if float(p.get("qty") or 0) > 0}
+        notional = {}
+        for per in hn.values():
+            for ss, v in per.items():
+                notional[ss] = round(notional.get(ss, 0.0) + v, 2)
         t, last = self.__dict__.get("held_written", (0.0, None))
-        if sides != last or time.time() - t > 60:
+        if sides != last or time.time() - t > 15:
             try:
-                atomic_write_json(self.out / f"held_{self.venue}.json", {"epoch": time.time(), "sides": sides, "by_account": held})
+                atomic_write_json(self.out / f"held_{self.venue}.json", {"epoch": time.time(), "sides": sides, "by_account": held,
+                                                                          "notional": notional, "total_notional": round(sum(notional.values()), 2)})
                 self.held_written = (time.time(), sides)
             except OSError as exc:
                 log(f"held file write failed: {exc}")
@@ -1065,7 +1075,8 @@ class Trader:
             self.last_plan = {}
         consumed = self.__dict__.setdefault("consumed", {})
         consumed_dirty = False
-        for acct in active if market_ok else []:
+        acct_notional = {a: sum((self.__dict__.get("held_notional") or {}).get(a, {}).values()) for a in active}
+        for acct in sorted(active, key=lambda a: -acct_notional.get(a, 0.0)) if market_ok else []:
             acct_sides = set(keys.get(acct, ())) | set(self.held.get(acct, ()))
             acct_changed = any(ss in changed for ss in acct_sides)
             if not acct_changed and now - self.last_plan.get(acct, 0) < REPLAN_S:
@@ -1108,6 +1119,8 @@ class Trader:
                     if k not in self.done:
                         self.done.add(k)
                         self._ledger({"event": "NOTE", "acct": acct, "ss": ss, "note": n, "key": k, "final": True})
+            # biggest open position first, then the rest of the tradeable keys
+            orders.sort(key=lambda o: (0 if (pos.get(o["ss"]) or {}).get("qty") else 1, -float((pos.get(o["ss"]) or {}).get("qty") or 0) * float((pos.get(o["ss"]) or {}).get("price") or 0) or -float((pos.get(o["ss"]) or {}).get("cost") or 0), o["ss"]))
             orders_n += self.send_orders(acct, orders, pos, killed)
         if consumed_dirty:
             try:

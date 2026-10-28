@@ -515,7 +515,7 @@ class Guarantee:
             tag = f"recv@{at:.0f}"
             if age >= at and tag not in b["done_stage"]:
                 b["done_stage"].add(tag)
-                missing = [s for s, r in b["syms"].items() if r["recv_at"] is None]
+                missing = self.by_priority([s for s, r in b["syms"].items() if r["recv_at"] is None])
                 if missing:
                     res = self.fetch_bars(missing, b["bar"])
                     for s in missing:
@@ -531,7 +531,7 @@ class Guarantee:
             tag = f"append@{at:.0f}"
             if age >= at and tag not in b["done_stage"]:
                 b["done_stage"].add(tag)
-                missing = [s for s, r in b["syms"].items() if r["append_at"] is None and r["recv_at"] is not None]
+                missing = self.by_priority([s for s, r in b["syms"].items() if r["append_at"] is None and r["recv_at"] is not None])
                 if missing:
                     self.spawn_append(missing, b["bar"], final=(i == len(APPEND_REPAIR_AT) - 1))
                     for s in missing:
@@ -590,6 +590,15 @@ class Guarantee:
                 except OSError:
                     pass
             self.alert("STATE_SETTINGS_OR_ENGINE_MISMATCH", [f"{ss}(settings_ok={b['sides'][ss]['verify']['settings_ok']},engine_ok={b['sides'][ss]['verify']['engine_ok']})" for ss in bad], "priority recompute")
+
+    def by_priority(self, items):
+        """USER 2026-10-28: open positions first, biggest notional first, then the rest of the tradeable keys (symbols or sides)."""
+        notional = (read_json(self.vd / f"held_{self.venue}.json", {}) or {}).get("notional") or {}
+        per_sym = {}
+        for ss, v in notional.items():
+            per_sym[ss.rsplit("_", 1)[0]] = per_sym.get(ss.rsplit("_", 1)[0], 0.0) + float(v or 0)
+        n = lambda x: notional.get(x) if x in notional else per_sym.get(x)
+        return sorted(items, key=lambda x: (0, -n(x), x) if n(x) is not None else (1, 0.0, x))
 
     def poke(self, why):
         try:
@@ -904,6 +913,9 @@ class Guarantee:
              "latency_s": {"recv": lat_stats([rel(r["recv_at"]) for r in sy]), "append": lat_stats([rel(r["append_at"]) for r in sy]),
                            "state_ok": lat_stats([rel(r["state_ok_at"]) for r in sd]), "exec": lat_stats([rel(r["exec_at"]) for r in sd]),
                            "exec_after_state": lat_stats([None if r["exec_at"] in (None, "n/a") or not r["state_ok_at"] else round(r["exec_at"] - r["state_ok_at"], 2) for r in sd])},
+             "latency_held_vs_rest_s": {grp: {"state_ok": lat_stats([rel(r["state_ok_at"]) for r in sd if bool(r["held"]) == (grp == "held")]),
+                                              "exec": lat_stats([rel(r["exec_at"]) for r in sd if bool(r["held"]) == (grp == "held")])}
+                                        for grp in ("held", "rest")},
              "missing": {"recv": sorted(s for s, r in b["syms"].items() if not r["recv_at"]), "append": sorted(s for s, r in b["syms"].items() if not r["append_at"]),
                          "state_ok": sorted(s for s, r in b["sides"].items() if not r["state_ok_at"]),
                          "exec": sorted(s for s, r in b["sides"].items() if r["state_ok_at"] and not r["exec_at"]),
@@ -923,6 +935,8 @@ class Guarantee:
             s["audit"] = {"pairs": len(audit), "verdicts": counts, "exact_match_rate": round(len(exact) / len(audit), 4) if audit else None,
                           "dictated_actions": len(acted), "dictated_matched": sum(1 for a in acted if a["verdict"] == "match"),
                           "order_sent_s": lat_stats([a["order_sent_s"] for a in audit]),
+                          "order_sent_held_s": lat_stats([a["order_sent_s"] for a in audit if a["held_at_plan"] > 0]),
+                          "order_sent_rest_s": lat_stats([a["order_sent_s"] for a in audit if not a["held_at_plan"] > 0]),
                           "not_exact": [f"{a['acct']}:{a['ss']}:{a['verdict']}:want={a['want']}:sent={a['sent']}" for a in audit if a["verdict"] not in ("match", "noop", "not_in_books")][:60]}
         return s
 

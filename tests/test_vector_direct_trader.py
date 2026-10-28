@@ -391,3 +391,14 @@ def test_untradeable_mass_hold_blocks_opens_without_closing():
     un = {s: {"bar": BAR, "mode": "hold"} for s in ("XUSDT_LONG", "ZUSDT_LONG")}
     orders, notes = V.plan_account("ang", "crypto", {"XUSDT_LONG", "ZUSDT_LONG"}, states, pos, BAR, set(), ALLOW, untradeable=un)
     assert not orders and sum(1 for _, n in notes if n.startswith("UNTRADEABLE_MASS_HOLD_NO_OPEN")) == 2
+
+
+def test_held_file_carries_per_side_notional_summed_over_accounts(tmp_path):
+    import json
+    t, _ = _bare_trader(tmp_path, {"ang": {"XUSDT_LONG": {"qty": 2.0, "price": 10.0}, "YUSDT_SHORT": {"qty": 1.0, "price": 5.0}},
+                                   "fin": {"XUSDT_LONG": {"qty": 1.0, "price": 10.0}}})
+    t.positions("ang")
+    t.held_written = (0.0, None)
+    t.positions("fin")
+    doc = json.loads((t.out / "held_crypto.json").read_text())
+    assert doc["notional"] == {"XUSDT_LONG": 30.0, "YUSDT_SHORT": 5.0} and doc["total_notional"] == 35.0

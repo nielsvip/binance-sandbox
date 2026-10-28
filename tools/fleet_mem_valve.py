@@ -47,11 +47,14 @@ def headroom_mb():
         if line.startswith("MemAvailable:"):
             avail = int(line.split()[1]) // 1024
     try:
-        raw = open(CG + "/memory.max").read().strip()
-        if raw != "max":
+        # memory.high is where the cgroup starts reclaim-throttling every task (S1 16:5xZ: cron.service anon 21.5 GB > high 20 GB,
+        # load 52, the dispatcher probe timed out and S1 dropped out of the fleet) -> the lower of high and max is the ceiling
+        lims = [open(CG + f).read().strip() for f in ("/memory.high", "/memory.max")]
+        lims = [int(x) for x in lims if x != "max"]
+        if lims:
             stat = dict(l.split() for l in open(CG + "/memory.stat"))
             used = int(stat.get("anon", 0)) + int(stat.get("kernel", 0)) + int(stat.get("shmem", 0))
-            avail = min(avail, (int(raw) - used) // (1 << 20))
+            avail = min(avail, (min(lims) - used) // (1 << 20))
     except (OSError, ValueError):
         pass
     return avail
