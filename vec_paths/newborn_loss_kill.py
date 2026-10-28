@@ -35,7 +35,7 @@ CONFIG KEYS:
     NEWBORN_LOSS_KILL_WINDOW_MIN: float = 30.0
     NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT: float = 0.0
     NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST: bool = True
-    NEWBORN_LOSS_KILL_VEL_TF: str = ""             # auto: "3m" crypto / "5m" tradier
+    NEWBORN_LOSS_KILL_VEL_TF: str = ""             # empty -> 15m on both venues (USER 2026-10-28: no 3m/5m)
     NEWBORN_LOSS_KILL_SURGICAL_ONLY: bool = True   # V4 — only fire on breakout_entry positions
 
 RETURN TYPE:
@@ -105,7 +105,10 @@ def check_newborn_loss_kill_exit(
     if bool(getattr(cfg, "NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST", True)):
         tf = getattr(cfg, "NEWBORN_LOSS_KILL_VEL_TF", "")
         if not tf:
-            tf = "5m" if mode == "tradier" else "3m"
+            # USER 2026-10-28: 3m (5m for stocks) deleted from every vector and live path for this switch -- neither
+            # wt_velocity_3m nor wt_velocity_5m exists in any indicator set, so this auto-pick read a missing array and
+            # the velocity veto could never be satisfied. 15m is the decision grid and the sibling filter's default.
+            tf = "15m"
         vel_used = float(store.f(f"wt_velocity_{tf}", bar_idx, 0.0))
         is_long = (pos_state.side == "LONG")
         vel_against = (is_long and vel_used < 0) or ((not is_long) and vel_used > 0)

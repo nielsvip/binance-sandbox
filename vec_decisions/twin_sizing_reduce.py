@@ -193,17 +193,19 @@ def newborn_kill_fires(get: Get, ind: Mapping[str, Any] | None, is_long: bool, a
         vel_ok = True
         vel_used = 0.0
         if bool(get("NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST", True)):
-            vel_tf = str(get("NEWBORN_LOSS_KILL_VEL_TF", "") or "3m").strip().lower()
-            if vel_tf in ("5m", "5"):
-                vel_key = "wt_velocity_5m"
-            elif vel_tf in ("15m", "15"):
-                vel_key = "wt_velocity_15m"
-            elif vel_tf in ("1h", "1"):
+            # USER 2026-10-28: "3m (5m for stocks) need to be deleted from all vector and live paths for this switch".
+            # Measured cause: wt_velocity_3m and wt_velocity_5m exist in NO indicator set (checked AAPL stocks, BTCUSDC
+            # and NMRUSDT crypto; _15m/_1h/_4h all exist). "3m" also matched no branch, so "", None and "3m" all fell
+            # into else -> wt_velocity_5m -> vel_used 0.0 -> vel_ok False, which made the whole NEWBORN_LOSS_KILL exit
+            # unfireable whenever REQUIRE_VEL_AGAINST was True (its default on both venues). 15m is the fallback: it is
+            # the repo's decision grid and already the filter_default for the sibling NEWBORN_LOSS_KILL_FILTER_TF.
+            vel_tf = str(get("NEWBORN_LOSS_KILL_VEL_TF", "") or "15m").strip().lower()
+            if vel_tf in ("1h", "1"):
                 vel_key = "wt_velocity_1h"
             elif vel_tf in ("4h", "4"):
                 vel_key = "wt_velocity_4h"
             else:
-                vel_key = "wt_velocity_5m"
+                vel_key = "wt_velocity_15m"
             vel_used = _f((ind or {}).get(vel_key), 0.0)
             vel_ok = (is_long and vel_used < 0.0) or ((not is_long) and vel_used > 0.0)
         if not vel_ok:

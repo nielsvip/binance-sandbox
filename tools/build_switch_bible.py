@@ -33,7 +33,13 @@ SWITCH_SHEETS = ["STDEV_SLOPE_SIZING", "ENTRY_REVERSAL_BOUNCE", "ENTRY_BREAKOUT_
 CONFIG_CLASSES = {"config.py": "Config", "config_tradier.py": "TradierConfig", "v12_quick_engine.py": "QuickConfig"}
 LIVE_ROOTS = {"crypto": "ez_manage.py", "stocks": "tradier_manage.py"}
 VEC_FILES_FIXED = ["v12_quick_engine.py", "tools/opt/evaluate_v12.py"]
-CALL_READ_FUNCS = {"getattr", "hasattr", "_cfg", "_psym_get", "_ezm_default", "get", "_get", "getenv", "_cfg_get", "cfg_get", "_tcfg", "_tradier_cfg", "_live_cfg", "_b", "_f", "_i", "_s", "_cfg_auto", "_cget", "_c", "_g", "_gv", "_val", "_flag", "_opt", "_knob", "_cfgv", "_cfg_bool", "_cfg_float", "_cfg_str", "_cfg_int", "_et_cfg", "_gx_c", "_mu_enabled_for", "_cf", "_la_get", "_sw_get", "_thr_cfg", "_tf", "_ftf_tf", "_cfg_ps", "_psym_cs_get", "_ftf_ps", "get_cfg", "_on", "_get_p"}
+CALL_READ_FUNCS = {"getattr", "hasattr", "_cfg", "_psym_get", "_ezm_default", "get", "_get", "getenv", "_cfg_get", "cfg_get", "_tcfg", "_tradier_cfg", "_live_cfg", "_b", "_f", "_i", "_s", "_cfg_auto", "_cget", "_c", "_g", "_gv", "_val", "_flag", "_opt", "_knob", "_cfgv", "_cfg_bool", "_cfg_float", "_cfg_str", "_cfg_int", "_et_cfg", "_gx_c", "_mu_enabled_for", "_cf", "_la_get", "_sw_get", "_thr_cfg", "_tf", "_ftf_tf", "_cfg_ps", "_psym_cs_get", "_ftf_ps", "get_cfg", "_on", "_get_p", "c"}
+# 2026-10-28: `c` is the one-argument config getter the shared live/vec exit twins take (vec_decisions/
+# live_native_exit_twins.py: `lambda c: bool(c("DC15M_FORCE_EXIT_ENABLED", False))`, and both managers pass their own
+# lambda into dc15m_armed/dc15m_evaluate). Without it the scanner reported DC15M_FORCE_EXIT_ENABLED as live=0 on BOTH
+# venues although ez_manage:60556 and tradier_manage:16804 both read it, and tools/v15_switch_add.py then REFUSED the
+# operator's row with "no live reads". Same failure class the note at LOCKED_FILES.md:180 records for `_num`. It only
+# ever matches a call whose direct argument is an UPPERCASE string literal, so a one-letter getter cannot add noise.
 # 2026-10-20 wire-vectoronly: `_cfg_ps` (tradier_manage:7918 -> _cfg with _promotions_only) and `_psym_cs_get` (ez_manage:8552 -> _psym_get)
 # are thin aliases of getters ALREADY whitelisted above, and `_ftf_ps` (tradier_manage:22243) wraps _cfg_ps; `get_cfg` is the injected
 # per-sym getter parameter of tradier_filter_tf_twins.kg_stocks_block. Omitting them made every lane-C read a weak `ref`, which published
