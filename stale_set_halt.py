@@ -428,7 +428,9 @@ def trailing_losses(closes: Iterable[dict], since_epoch: Optional[float], n: int
     """Pure: the last n closes newer than since_epoch are ALL net losses? -> (hit, those closes)."""
     rows = sorted([c for c in closes if (iso_epoch(c.get("ts")) or 0) > (since_epoch or 0) and not c.get("dust")], key=lambda c: iso_epoch(c.get("ts")))
     last = rows[-n:] if n > 0 else []
-    hit = n > 0 and len(last) == n and all(float(c.get("net_pct", c.get("gain_pct", 0.0)) or 0.0) < 0 for c in last)
+    from vec_decisions import stale_set_halt_twin as _ssh_twin  # 2026-10-27 ONE predicate, shared with the vector (v12_quick_engine)
+
+    hit = _ssh_twin.last_n_all_losses([float(c.get("net_pct", c.get("gain_pct", 0.0)) or 0.0) for c in rows], n)
     return hit, last
 
 
@@ -464,7 +466,9 @@ def evaluate(ss: str, row: Optional[dict], published: Optional[dict], history: O
             return {"action": "RELEASE", "sym_side": ss, "age_days": round(age_days, 2), "anchor": anc, "why": f"new board ({anc.get('source')} {_iso(anc.get('recalc_epoch'))}) applied {_iso(apply_ep)} after halt {halt.get('halted_at')}"}
         return {"action": "KEEP", "sym_side": ss, "age_days": round(age_days, 2), "anchor": anc, "why": halt.get("reason", "STALE_SET_HALT")}
     hit, last = trailing_losses(closes, since, losses)
-    if age_days > days and hit:
+    from vec_decisions import stale_set_halt_twin as _ssh_twin  # 2026-10-27 ONE predicate, shared with the vector
+
+    if _ssh_twin.halt_decision(age_days, days, hit):
         why = f"STALE_SET_HALT vector_age={age_days:.1f}d>{days:g}d ({anc.get('source')} {_iso(anc.get('recalc_epoch'))}) AND last {losses} closes net " + ",".join(f"{float(c.get('net_pct', 0)):+.2f}%" for c in last)
         return {"action": "HALT", "sym_side": ss, "age_days": round(age_days, 2), "anchor": anc, "losers": last, "why": why}
     return {"action": "NONE", "sym_side": ss, "age_days": round(age_days, 2), "anchor": anc, "trailing_loss_hit": hit, "n_closes_since_apply": len([c for c in closes if (iso_epoch(c.get("ts")) or 0) > (since or 0)])}

@@ -48,11 +48,18 @@
     "symbol": "XRPUSDC",
     "side": "LONG"
   },
-  "flz:GRAMUSDT_LONG": {
-    "orderId": "1000002647716371",
-    "stopPrice": 1.201,
-    "entry_sig": "2026-10-27 23:31:20.440000+00:00",
-    "symbol": "GRAMUSDT",
+  "flz:DASHUSDT_SHORT": {
+    "orderId": "1000002647654953",
+    "stopPrice": 55.94,
+    "entry_sig": "2026-10-27 22:24:36.163000+00:00",
+    "symbol": "DASHUSDT",
+    "side": "SHORT"
+  },
+  "flz:XMRUSDT_LONG": {
+    "orderId": "1000002647757397",
+    "stopPrice": 598.73,
+    "entry_sig": "2026-10-28 00:01:28.930000+00:00",
+    "symbol": "XMRUSDT",
     "side": "LONG"
   }
 }

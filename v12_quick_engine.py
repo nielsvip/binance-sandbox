@@ -4643,6 +4643,7 @@ class QuickConfig:
     STRENGTH_MIN_SCORE: float = 5.0
     # Holding period enforcement (avoid rapid exit noise) — WINNER: 10
     MIN_HOLD_BARS: int = 8
+    MIN_HOLD_EXEMPT_WT_TURN_IN_GAIN_ENABLED: bool = True  # MIRROR of the template bold (GLOBAL_RISK_GATES). A WT-turn/velocity GAIN exit fires inside MIN_HOLD_BARS while the position is not losing; swept per sym_side.
     # MIN_HOLD_SOLE_SWITCH_ENABLED ERASED 2026-10-27 — USER: "get rid of it too". It only existed to bypass the max(MIN_HOLD_BARS, MIN_HOLD_BARS_BEFORE_EXIT) composition, and that composition is gone with the second name, so it was a second knob on one quantity.
   # MIRROR of the TEMPLATE bold (GLOBAL_RISK_GATES), never an authority — USER 2026-10-27. Swept 2/4/8/12 per sym_side.
     # STRUCTURAL ONLY — profit/stop percentage exits disabled per user 2026-08-14: exits only on DC high reject (5m/15m/1h/4h/D), re-entry on WT 15m cross or HH/HL
@@ -5798,6 +5799,15 @@ class QuickConfig:
     CATALYST_VOLUME_RATIO: float = 1.5  # auto-wired 625
     CIRCUIT_BREAKER_ENABLED: bool = False  # auto-wired 625
     SYMBOL_LOSS_STREAK_BREAKER_ENABLED: bool = False
+    # USER 2026-10-27 operator ruling: "board opens : vectorized should have CIRCUIT_BREAKER/STALE_SET_HALT and trade on
+    # it". STALE-SET 2-LOSS HALT twin (vec_decisions/stale_set_halt_twin, same predicate as live stale_set_halt.evaluate).
+    # MIRROR of config.py (True/10/2). The two epochs are set ONLY by the forward-state builder from the active set's
+    # recalc/apply anchor; 0.0 = no anchor = inert, so every 30D board run is unchanged.
+    STALE_SET_HALT_ENABLED: bool = True
+    STALE_SET_HALT_DAYS: float = 10.0
+    STALE_SET_HALT_LOSSES: int = 2
+    STALE_SET_RECALC_EPOCH: float = 0.0
+    STALE_SET_APPLY_EPOCH: float = 0.0
     CLENOW_ENABLED: bool = False  # auto-wired 625
     CLENOW_GATE_ENABLED: bool = False  # auto-wired 625
     CLENOW_GATE_MIN_SCORE: float = 30.0  # auto-wired 625
@@ -6639,6 +6649,7 @@ class QuickConfig:
         "15m"  # losing position + px breach dc_low4_{TF}/dc_high4_{TF} → close+block; OFF disables
     )
     VIGILANCE_CONSEC_LOSSES: int = 2  # losing closes in a row that block the sym_side
+    VIGILANCE_DC4_STOP_ARMED: bool = False  # USER 2026-10-27 "VIGILANCE_DC4_EXIT needs to be in switches and vectorized functions": the DC4 stop switch (MIRROR of config.py False); predicate vec_decisions/vigilance_dc4, same as live
     VIGILANCE_RECOVERY_REENTRY_ENABLED: bool = (
         False  # USER 2026-09-28 2nd mandate: auto-unblock on recovery, KEEP TRADING
     )
@@ -15963,8 +15974,16 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 # single hold is overridden only by FIXED_STOP (live=False here
                 # because the vector IS the board, so the hold shapes what the
                 # board can ever dictate).
+                # gain MUST be passed: an unknown gain never exempts, so without
+                # it every WT-turn gain exit would be held — the opposite of the
+                # operator's "exiting every time wt turns against a trade as long
+                # as it is not losing yet needs to keep happening".
+                _mh_gain = event.get("pnl_pct")
+                if _mh_gain is None:
+                    _mh_gain = event.get("gain")
                 _mh_refuse, _mh_why = _min_hold_gate.refuse_bars(
                     bars_in_pos, cfg, _mh_type, _mh_reason, live=False,
+                    gain_pct=_mh_gain,
                 )
                 if _mh_refuse:
                     _pending_exit_restore = copy.deepcopy(_bar_pos_snapshot)
@@ -17828,6 +17847,12 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     # (short) forces an immediate close, and that stop OR VIGILANCE_CONSEC_LOSSES consecutive losing
     # closes blocks the sym_side until recovery. Default ON = live parity. NO fixed-% stop.
     _vig_enabled = False  # User stop law: no Vigilance loss-close lane; only frozen DC15 and fixed DC4h stops may close red.
+    # USER 2026-10-27 "VIGILANCE_DC4_EXIT needs to be in switches and vectorized functions": the DC4 stop (and the
+    # entry block it sets until recovery) is now the switch VIGILANCE_DC4_STOP_ARMED (default False = unchanged).
+    # The consecutive-loss lane stays on _vig_enabled (off). Same predicate as live: vec_decisions/vigilance_dc4.
+    import vec_decisions.vigilance_dc4 as _vig_dc4_mod
+
+    _vig_dc4_on = _vig_dc4_mod.armed(lambda _k, _d: getattr(cfg, _k, _d))
     _vig_tol = (
         float(getattr(cfg, "VIGILANCE_DC4_BREACH_TOLERANCE_PCT", 0.25) or 0.0) / 100.0
     )  # dc_low_15m - 0.25% convention
@@ -19025,6 +19050,17 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _symbol_cb_trade_index = 0
     if _symbol_cb_enabled:
         import vec_decisions.symbol_loss_streak as _symbol_cb
+    # USER 2026-10-27 STALE_SET_HALT twin: inert unless the forward-state builder supplied the recalc anchor.
+    _ssh_recalc = float(getattr(cfg, "STALE_SET_RECALC_EPOCH", 0.0) or 0.0)
+    _ssh_on = bool(getattr(cfg, "STALE_SET_HALT_ENABLED", True)) and _ssh_recalc > 0
+    if _ssh_on:
+        import vec_decisions.stale_set_halt_twin as _ssh_twin
+
+        _ssh_apply = float(getattr(cfg, "STALE_SET_APPLY_EPOCH", 0.0) or 0.0)
+        _ssh_days = float(getattr(cfg, "STALE_SET_HALT_DAYS", 10.0))
+        _ssh_losses = int(getattr(cfg, "STALE_SET_HALT_LOSSES", 2))
+        _ssh_closes = []
+        _ssh_idx = 0
     for i in range(n):
         if _pending_exit_restore is not None:
             pos = _pending_exit_restore
@@ -19235,6 +19271,14 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 cd -= 1
                 continue
         if pos is None:
+            if _ssh_on:
+                _ssh_now = float(ts[i]) if i < len(ts) else 0.0
+                for _ssh_t in trades[_ssh_idx:]:
+                    if str(_ssh_t.get("type", "")) == "CLOSE":
+                        _ssh_closes.append((float(_ssh_t.get("ts") or _ssh_now), float(_ssh_t.get("pnl_pct", 0.0) or 0.0)))
+                _ssh_idx = len(trades)
+                if _ssh_twin.halt_fires(_ssh_now, _ssh_recalc, _ssh_apply, _ssh_closes, _ssh_days, _ssh_losses)[0]:
+                    continue
             if _symbol_cb_enabled:
                 for _cb_trade in trades[_symbol_cb_trade_index:]:
                     if str(_cb_trade.get("type", "")) != "CLOSE":
@@ -19277,7 +19321,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 if _vig_streak >= _vig_need:
                     _vig_blocked = True
                     _vig_block_px = _vig_last_close_px
-            if _vig_enabled and _vig_blocked:
+            if (_vig_enabled or _vig_dc4_on) and _vig_blocked:
                 # Recovery auto-unblock (USER 2026-09-28 2nd mandate): price past block-exit, or bounce.
                 _vig_rec = False
                 if _vig_rec_enabled:
@@ -20939,7 +20983,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             has_closed_before = True
             continue
         _vig_dc_hit = False
-        if _vig_enabled and _vig_dc_lvl is not None and live_pnl_pct < 0:
+        if (_vig_enabled or _vig_dc4_on) and _vig_dc_lvl is not None and live_pnl_pct < 0:
             _vg_lvl = (
                 float(
                     _vig_dc_lvl[
@@ -20958,10 +21002,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             )
             # breach must clear the channel level by the tolerance (same shape as DAYTRADE/TECHNICAL
             # dc stops: level*(1∓tol)) — tolerance on the LEVEL, never a loss floor
-            _vig_dc_hit = _vg_lvl > 0 and (
-                (is_long and px <= _vg_lvl * (1 - _vig_tol))
-                or ((not is_long) and px >= _vg_lvl * (1 + _vig_tol))
-            )
+            _vig_dc_hit = _vig_dc4_mod.breach(is_long, px, _vg_lvl, _vig_tol * 100.0)  # 2026-10-27 shared with live
         if _vig_dc_hit:
             pos["fees"] += abs(pos["qty"] * px) * half_fee
             _pnl = (

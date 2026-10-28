@@ -21,7 +21,9 @@ FSEvents (fswatch) and captures each file the moment it settles, into two indepe
 Content-addressed in both stores: a version already captured for that path costs nothing, so a file saved
 repeatedly with no change never grows the vault.
 
-Scope is scripts and templates, never data: *.py, *.sh, *.command, *.md plus SPREADSHEETS/TEMPLATE*.xlsx.
+Scope is scripts and templates, never data: *.py, *.sh, *.command, *.md plus any SPREADSHEETS/**/TEMPLATE*.xlsx — the
+matcher at is_template() keys on the SPREADSHEETS/ prefix and a TEMPLATE basename, so it already covers both the live
+SPREADSHEETS/TEMPLATE_FINAL_NORM/ set and the legacy top-level workbooks (verified 2026-10-27).
 Generated boards (V15_V16_CELL_BY_CELL, V15_MEGA), data/, logs/, backups/ and .git/ are excluded — those are
 churny multi-MB artefacts, and including them is what turned backups/autosave into 14 GB.
 

@@ -123,6 +123,34 @@ def _drop_retired(ov):
     return dropped
 
 
+def _stale_anchor(symside):
+    """USER 2026-10-27 operator ruling ("board opens : vectorized should have CIRCUIT_BREAKER/STALE_SET_HALT and trade on
+    it"): the active set's recalc/apply anchor, computed by stale_set_halt.recalc_anchor - the SAME anchor the live halt
+    uses - so the engine's STALE_SET_HALT twin (vec_decisions/stale_set_halt_twin) can halt board opens. Returns
+    {} when there is no active row or anything fails (fail-open = twin inert, exactly the pre-2026-10-27 behaviour)."""
+    try:
+        import stale_set_halt as _ssh
+        db = store_db()
+        if not db:
+            return {}
+        con = sqlite3.connect(f"file:{Path(db).resolve()}?mode=ro", uri=True, timeout=5)
+        try:
+            r = con.execute("SELECT updated_at, campaign_ts, winning_tag, meta_json, overrides_json FROM per_sym_active WHERE sym_side=?", (symside,)).fetchone()
+            if not r:
+                return {}
+            row = {"updated_at": r[0], "campaign_ts": r[1], "winning_tag": r[2], "meta_json": r[3], "overrides_md5": _ssh._overrides_md5(r[4])}
+            hist = None
+            if _ssh.tag_epoch(row.get("winning_tag")) is None:
+                hist = [{"epoch": e, "updated_at": u, "winning_tag": t} for e, u, t in con.execute("SELECT epoch, updated_at, winning_tag FROM per_sym_history WHERE sym_side=? ORDER BY id DESC LIMIT 200", (symside,))]
+        finally:
+            con.close()
+        anc = _ssh.recalc_anchor(row, _ssh.load_published().get(symside), hist)
+        # live treats an anchor-less row as infinitely old (age from epoch 0); 1.0 keeps that while staying "anchored"
+        return {"STALE_SET_RECALC_EPOCH": max(1.0, float(anc.get("recalc_epoch") or 0.0)), "STALE_SET_APPLY_EPOCH": float(anc.get("apply_epoch") or 0.0), "_source": str(anc.get("source") or "")}
+    except Exception:
+        return {}
+
+
 @lru_cache(maxsize=1)
 def _engine_ast_sha256():
     source = (ROOT / "v12_quick_engine.py").read_text()
@@ -225,6 +253,10 @@ def state_for(symside, window_days=30):
         return {"ts": time.strftime("%FT%TZ", time.gmtime()), "sym_side": symside, "ok": False,
                 "reason": "npz_tail_behind_last_closed_bar", "src": src, "npz_tail": tail,
                 "expected_npz_tail": expected_tail, **setting_meta}
+    _anc = _stale_anchor(symside) if src == "per_sym_store.active" else {}
+    if _anc:
+        ov = {**ov, "STALE_SET_RECALC_EPOCH": _anc["STALE_SET_RECALC_EPOCH"], "STALE_SET_APPLY_EPOCH": _anc["STALE_SET_APPLY_EPOCH"]}
+        setting_meta = {**setting_meta, "stale_anchor": _anc}
     res = evaluate_prepared_sanitized(prep, ov, window_days, include_ledger=True) or {}
     perf_valid = res.get("valid") is True
     perf_reason = res.get("invalid_reason")

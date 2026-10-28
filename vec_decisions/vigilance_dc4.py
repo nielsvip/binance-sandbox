@@ -6,17 +6,17 @@ USER 2026-09-28 (4th mandate): the DC4 stop is "one of many exit switches to be 
 Fires when the position is at a LOSS and price breaches dc_low4_{TF} (LONG) / dc_high4_{TF} (SHORT) by at least the
 tolerance on the CHANNEL LEVEL (VIGILANCE_DC4_BREACH_TOLERANCE_PCT, a touch is not a breach). The switch is
 VIGILANCE_DC4_STOP_ARMED (default False = what both engines did before: the lane was hard-disabled on both sides),
-with VIGILANCE_GUARD_ENABLED as the master and VIGILANCE_DC4_STOP_TF ('OFF' disables). Pure.
+and VIGILANCE_DC4_STOP_TF ('OFF' disables). VIGILANCE_GUARD_ENABLED is deliberately NOT a master here: its default
+differs between QuickConfig (False) and config.py (True), so using it would make the same per-sym set arm the stop
+live but not on the board. Pure.
 """
 
 from __future__ import annotations
 
 
 def armed(get) -> bool:
-    """get(key, default) -> value. All three must allow the stop."""
+    """get(key, default) -> value. Both must allow the stop."""
     try:
-        if not bool(get("VIGILANCE_GUARD_ENABLED", True)):
-            return False
         if not bool(get("VIGILANCE_DC4_STOP_ARMED", False)):
             return False
         return str(get("VIGILANCE_DC4_STOP_TF", "15m") or "OFF").strip().upper() != "OFF"

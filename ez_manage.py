@@ -34621,14 +34621,30 @@ class MultiAccountTradeManager:
             if symbol and ("OPEN" in _kill_act or "ENTRY" in _kill_act or "REENTRY" in _kill_act or "AUGMENT" in _kill_act or "REVERSE" in _kill_act or _kill_act == "BUY") and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act:
                 _ssh_blk, _ssh_why = _stale_set_halt.entry_gate("ez", symbol, position_side, _kill_act, cfg=config, logger=logger)
                 if _ssh_blk:
-                    if _vd_exempt or _vo_armed:
-                        logger.warning(f"[STALE_SET_PARITY_EXEMPT] {position_key}: {_ssh_why} — vec-dictated {action} proceeds (USER 2026-10-22: no vector decision is refused; native stays halted)")
-                        _vec_last_bypassed.append("STALE_SET_HALT")
-                    else:
-                        logger.critical(f"🛑 [STALE_SET_HALT_ENTRY_BLOCK] {position_key}: {_ssh_why} — action={action} reason={(reason or '')[:60]}")
-                        return "BLOCKED_STALE_SET_HALT"
+                    # USER 2026-10-27 operator ruling: "board opens : vectorized should have CIRCUIT_BREAKER/STALE_SET_HALT and
+                    # trade on it". The board now applies the SAME halt (vec_decisions/stale_set_halt_twin via the forward-state
+                    # anchor), so the 2026-10-22 vec-order bypass is removed: board opens no longer bypass the halt.
+                    logger.critical(f"🛑 [STALE_SET_HALT_ENTRY_BLOCK] {position_key}: {_ssh_why} — action={action} reason={(reason or '')[:60]} (vec-dictated={bool(_vd_exempt or _vo_armed)})")
+                    return "BLOCKED_STALE_SET_HALT"
         except Exception as _ssh_be:
             logger.warning(f"[STALE_SET_HALT] entry check err (fail-open): {_ssh_be}")
+        # USER 2026-10-27 CIRCUIT_BREAKER, vectorized form: SYMBOL_LOSS_STREAK_BREAKER (per sym_side switch, default False).
+        # The board applies it in v12_quick_engine with vec_decisions/symbol_loss_streak; live replays the SAME
+        # record_close/is_blocked over the real closes stale_set_halt records for this sym_side. No vec-order bypass.
+        try:
+            if symbol and ("OPEN" in _kill_act or "ENTRY" in _kill_act or "REENTRY" in _kill_act or "AUGMENT" in _kill_act or "REVERSE" in _kill_act or _kill_act == "BUY") and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act and bool(_psym_get(symbol, position_side, "SYMBOL_LOSS_STREAK_BREAKER_ENABLED", getattr(config, "SYMBOL_LOSS_STREAK_BREAKER_ENABLED", False))):
+                import vec_decisions.symbol_loss_streak as _sls
+                _sls_lim = int(_psym_get(symbol, position_side, "CIRCUIT_BREAKER_SYMBOL_LOSSES", getattr(config, "CIRCUIT_BREAKER_SYMBOL_LOSSES", 3)))
+                _sls_halt_s = float(_psym_get(symbol, position_side, "CIRCUIT_BREAKER_SYMBOL_HALT_MIN", getattr(config, "CIRCUIT_BREAKER_SYMBOL_HALT_MIN", 30))) * 60.0
+                _sls_n, _sls_until = 0, 0.0
+                _sls_rows = sorted(_stale_set_halt.closes_for("ez", f"{symbol}_{position_side}", config), key=lambda _c: _stale_set_halt.iso_epoch(_c.get("ts")) or 0.0)
+                for _sls_c in _sls_rows:
+                    _sls_n, _sls_until = _sls.record_close(_sls_n, _sls_until, _sls_c.get("net_pct", _sls_c.get("gain_pct", 0.0)), _stale_set_halt.iso_epoch(_sls_c.get("ts")) or 0.0, _sls_lim, _sls_halt_s)
+                if _sls.is_blocked(time.time(), _sls_until):
+                    logger.critical(f"🛑 [SYMBOL_LOSS_STREAK_BLOCK] {position_key}: {_sls_lim} consecutive losing closes -> entries halted until {datetime.fromtimestamp(_sls_until, timezone.utc).isoformat()} — action={action} reason={(reason or '')[:60]}")
+                    return "BLOCKED_SYMBOL_LOSS_STREAK"
+        except Exception as _sls_e:
+            logger.warning(f"[SYMBOL_LOSS_STREAK] entry check err (fail-open): {_sls_e}")
         # ═══════════════════════════════════════════════════════════════════════════
         # 🚫 COUNTER_TREND_ADD_BLOCK (USER 2026-05-30 ABSOLUTE): NO open/augment/reentry against wt1_1h.
         # Reads LIVE wt1_1h (NOT averaged gain — a martingaled-to-breakeven loser can't dodge it). This single
@@ -54384,6 +54400,28 @@ async def process_position(
     _min_hold_bars_for_exit = _mhg.threshold_bars(_MinHoldCfgShim)
     _min_hold_sec_for_exit = _mhg.threshold_seconds(_MinHoldCfgShim)
     _min_hold_ok_for_exit = _pp_age_sec_for_hold >= _min_hold_sec_for_exit
+    # OPERATOR 2026-10-27: a WT-turn exit taken IN GAIN must keep firing inside
+    # the hold ("as long as it is not losing yet"), and the REENTRY family is not
+    # an exit at all. Both are exemptions in the shared gate, which needs the
+    # position's live gain to tell gain from loss — an unknown gain never exempts.
+    def _mh_gain_exit_ok():
+        """True when a WT/velocity-class GAIN exit may fire inside the hold.
+
+        OPERATOR 2026-10-27: "exiting every time wt turns against a trade as long
+        as it is not losing yet needs to keep happening with absolute reentry
+        guarantee". These four sites are exactly the timed WT/velocity/HTF legs
+        the MIN_HOLD block used to defer, so they are released while the position
+        is NOT losing. A loss, or an unknown gain, does NOT release them — the
+        hold still applies there, and the stop family is exempt elsewhere.
+        Switch: MIN_HOLD_EXEMPT_WT_TURN_IN_GAIN_ENABLED (swept per sym_side).
+        """
+        try:
+            if not bool(_psym_get(symbol, position_side, "MIN_HOLD_EXEMPT_WT_TURN_IN_GAIN_ENABLED", getattr(config, "MIN_HOLD_EXEMPT_WT_TURN_IN_GAIN_ENABLED", True))):
+                return False
+            _g = safe_fetch_float(getattr(position, "gain", None), float("nan")) if position else float("nan")
+            return float(_g) >= 0.0
+        except Exception:
+            return False
     # 2026-09-07 DC_15m OVERRIDE per user unlock — dc_15m_low/high break bypasses min_hold (structural breakdown). Evaluated lazily via _dc_15m_hold_override().
     _dc_15m_override_cache = {}
     async def _dc_15m_hold_override():
@@ -54436,20 +54474,30 @@ async def process_position(
     # VIGILANCE_DC4_STOP_TF (user granted 15m) → IMMEDIATE CLOSE + sym_side entry-block until
     # recovery. Reason carries VIGILANCE_DC4 (UNIVERSAL_NOLOSS_GATE bypass) + HARD_STOP/USER (HPO bypass).
     # ═══════════════════════════════════════════════════════════════════════════
-    if False and position and abs(safe_float(getattr(position, "positionAmt", 0))) > 0 and bool(getattr(config, "VIGILANCE_GUARD_ENABLED", True)):
+    # USER 2026-10-27 "VIGILANCE_DC4_EXIT needs to be in switches and vectorized functions": was `if False and ...`
+    # (hard-disabled); now the per-sym switch VIGILANCE_DC4_STOP_ARMED (default False = unchanged) through the SAME
+    # predicate the vector uses (vec_decisions/vigilance_dc4.armed / .fires).
+    import vec_decisions.vigilance_dc4 as _vig_dc4_mod
+    _vg_get = lambda _k, _d: _psym_get(symbol, position_side, _k, getattr(config, _k, _d))
+    if position and abs(safe_float(getattr(position, "positionAmt", 0))) > 0 and _vig_dc4_mod.armed(_vg_get):
         try:
-            _vg_tf = str(getattr(config, "VIGILANCE_DC4_STOP_TF", "15m") or "OFF").strip()
+            _vg_tf = str(_vg_get("VIGILANCE_DC4_STOP_TF", "15m") or "OFF").strip()
             if _vg_tf.upper() != "OFF":
                 _vg_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
                 _vg_is_long = position_side == "LONG"
                 if _vg_gain < 0:
                     if _pp_shared_ind is None:
                         _pp_shared_ind = await ii(trade_manager, symbol) or {}
-                    _vg_lvl = safe_fetch_float(_pp_shared_ind.get(f"dc_low4_{_vg_tf}" if _vg_is_long else f"dc_high4_{_vg_tf}", 0), 0.0)
+                    _vg_fld = f"dc_low4_{_vg_tf}" if _vg_is_long else f"dc_high4_{_vg_tf}"
+                    _vg_lvl = safe_fetch_float(_pp_shared_ind.get(_vg_fld, 0), 0.0)
+                    if bool(_vg_get("DC_PRIOR_BAR_CHANNEL", True)):  # 2026-10-27 parity: the vector reads the PRIOR closed bar's channel
+                        _vg_lvl_p = safe_fetch_float(_pp_shared_ind.get(f"{_vg_fld}_prev", 0), 0.0)
+                        if _vg_lvl_p > 0:
+                            _vg_lvl = _vg_lvl_p
                     # 2026-09-28 USER: dc4 needs >=0.25% breach tolerance on the CHANNEL LEVEL
                     # (same convention as dc_low_15m - 0.25% exits) — a touch is not a breach.
-                    _vg_tol = safe_fetch_float(getattr(config, "VIGILANCE_DC4_BREACH_TOLERANCE_PCT", 0.25), 0.25)
-                    _vg_breach = _vg_lvl > 0 and current_price > 0 and ((_vg_is_long and current_price <= _vg_lvl * (1 - _vg_tol / 100.0)) or ((not _vg_is_long) and current_price >= _vg_lvl * (1 + _vg_tol / 100.0)))
+                    _vg_tol = safe_fetch_float(_vg_get("VIGILANCE_DC4_BREACH_TOLERANCE_PCT", 0.25), 0.25)
+                    _vg_breach = _vig_dc4_mod.fires(_vg_is_long, current_price, _vg_lvl, _vg_tol, _vg_gain)
                     if _vg_breach:
                         _vg_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                         _vg_side = "SELL" if _vg_is_long else "BUY"
@@ -55079,7 +55127,7 @@ async def process_position(
         position
         and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
         and bool(getattr(config, "HTF_AGAINST_FORCE_CLOSE_ENABLED", True))
-        and (_min_hold_ok_for_exit or await _dc_15m_hold_override())
+        and (_min_hold_ok_for_exit or _mh_gain_exit_ok() or await _dc_15m_hold_override())
     ):
         try:
             if _pp_shared_ind is None:
@@ -55131,7 +55179,7 @@ async def process_position(
     if (
         position
         and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
-        and (_min_hold_ok_for_exit or await _dc_15m_hold_override())
+        and (_min_hold_ok_for_exit or _mh_gain_exit_ok() or await _dc_15m_hold_override())
         and (
             bool(_psym_get(symbol, position_side, "R1_DC_LOW4_3M_EMERGENCY_ENABLED", False))
             or any(
@@ -56171,7 +56219,7 @@ async def process_position(
     if (
         position
         and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
-        and (_min_hold_ok_for_exit or await _dc_15m_hold_override())
+        and (_min_hold_ok_for_exit or _mh_gain_exit_ok() or await _dc_15m_hold_override())
         and bool(_psym_get(symbol, position_side, "MTF_EXIT_USE_COMPOUND", False))
         and _mtfce_pos_open_ts_gate >= _mtfce_min_ts_gate
     ):
@@ -56393,7 +56441,7 @@ async def process_position(
     if (
         position
         and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
-        and (_min_hold_ok_for_exit or await _dc_15m_hold_override())
+        and (_min_hold_ok_for_exit or _mh_gain_exit_ok() or await _dc_15m_hold_override())
         and bool(getattr(config, "GR_HTF_DIRECT_EXIT_ENABLED", True))
         and not _voe_native_exits_disabled()
     ):

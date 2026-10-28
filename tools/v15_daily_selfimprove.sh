@@ -19,7 +19,8 @@ cp "$AGG" SPREADSHEETS/v15_avg_delta_latest.xlsx
 cp "$AGG" SPREADSHEETS/v15_vector_delta_latest.xlsx
 timeout 500 $VENV -u tools/v15_zero_delta_watchdog.py --agg "$AGG" --apply || true
 for H in s1-pub niels@10.0.0.4; do
-  rsync -az -e "ssh -o StrictHostKeyChecking=accept-new" SPREADSHEETS/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_STOCKS_SHORT.xlsx "$H:~/binance-sandbox/SPREADSHEETS/" || exit 1
+  # 2026-10-27: the legacy top-level TEMPLATE_*.xlsx push was ERASED here. It shipped workbooks no board sweeps, and the
+  # FINAL_NORM push on the next line already carries the set the pilot clones.
   rsync -az -e "ssh -o StrictHostKeyChecking=accept-new" SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_SHORT.xlsx "$H:~/binance-sandbox/SPREADSHEETS/TEMPLATE_FINAL_NORM/" || exit 1
   rsync -az -e "ssh -o StrictHostKeyChecking=accept-new" data/per_sym_settings.json "$H:~/binance-sandbox/data/per_sym_settings.json" || exit 1
   rsync -az -e "ssh -o StrictHostKeyChecking=accept-new" data/sweep_defaults/per_sym_settings.json "$H:~/binance-sandbox/data/sweep_defaults/per_sym_settings.json" || exit 1

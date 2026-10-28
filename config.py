@@ -64,6 +64,9 @@ class Config:
     FORCE_MIN_ONE_TRADE: bool = (
         False  # lane L1 2026-10-04 LIVE_MIRROR honest-0: vec-only synthetic (v12 forces first-bar entry when no signals); live NEVER forces trades — no live hook by design (§17 parity default only, = QuickConfig False).
     )
+    MIN_HOLD_EXEMPT_WT_TURN_IN_GAIN_ENABLED: bool = (
+        True  # OPERATOR 2026-10-27: "exiting every time wt turns against a trade as long as it is not losing yet needs to keep happening with absolute reentry guarantee so 8 bars DOES need another exemption that needs to be tested as a switch as well". True = a WT-turn / velocity GAIN exit fires inside MIN_HOLD_BARS while the position is NOT losing; a loss or an unknown gain stays held. Swept per sym_side (GLOBAL_RISK_GATES). MIRROR of the template bold — config sets no defaults.
+    )
     MIN_HOLD_PROTECTION_EXEMPT: bool = (
         True  # USER 2026-10-27: "MIN_HOLD_BARS_BEFORE_EXIT need to be independent and only overridden by fixed_stop". Implemented exactly: FIXED_STOP is the only STRATEGY-side override. This flag keeps ACCOUNT protection (LIQUIDAT/MARGIN/EMERGENCY/BALANCE_FLOOR) exempt as well, because holding a position through a margin kill to honour a bar count would lose the account and CLAUDE.md's "exits never blocked" exists for that case. Set False for a literally fixed_stop-only hold — an operator decision with eyes open.
     )
@@ -2858,6 +2861,8 @@ class Config:
     STALE_SET_HALT_ENABLED: bool = True
     STALE_SET_HALT_DAYS: float = 10.0
     STALE_SET_HALT_LOSSES: int = 2
+    STALE_SET_RECALC_EPOCH: float = 0.0  # 2026-10-27 NOT a switch: QuickConfig parity mirror. Set only by tools/v15_forward_state.py so the board's STALE_SET_HALT twin knows the active set's recalc anchor (0.0 = inert). Live computes its own anchor in stale_set_halt.
+    STALE_SET_APPLY_EPOCH: float = 0.0  # 2026-10-27 NOT a switch: see STALE_SET_RECALC_EPOCH.
     # USER 2026-09-28: a NEG-blocked sym_side (per_sym book acc_gain_pct<=0 / _NEG_BLOCK tag) with an
     # OPEN position holds while WT is with the position and closes at the next WT turn against it.
     NEGBOOK_WT_TURN_EXIT_ENABLED: bool = True

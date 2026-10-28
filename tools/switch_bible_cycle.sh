@@ -21,7 +21,12 @@ trap 'rm -f "$LOCK/pid" 2>/dev/null; rmdir "$LOCK" 2>/dev/null' EXIT
 PY=$(bash "$(dirname "$0")/pyinterp.sh")
 STATE=data/switch_bible_cycle.state
 M5=$(command -v md5 2>/dev/null); [ -x "$M5" ] || M5=/sbin/md5; [ -x "$M5" ] || { echo "FATAL: no md5 binary" >&2; exit 3; }
-SIG=$( ("$M5" -q SPREADSHEETS/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_STOCKS_SHORT.xlsx; \
+# 2026-10-27: this signature was computed over the LEGACY SPREADSHEETS/TEMPLATE_*.xlsx, which no board has swept since
+# the fleet moved to TEMPLATE_FINAL_NORM. So the bible only rebuilt when a dead file changed, and a real FINAL_NORM row
+# change never triggered it. Measured consequence: DC15M_FORCE_EXIT_ENABLED / IN_GAIN_TREND_EXIT_ENABLED were wired in
+# config.py + QuickConfig + ez_manage, yet v15_switch_add refused their rows with "no SWITCH_BIBLE entry" because this
+# cycle had never noticed the templates move. Keyed on FINAL_NORM, the set the pilot actually clones.
+SIG=$( ("$M5" -q SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_SHORT.xlsx; \
       [ -f data/engine_deploy/CURRENT.json ] && "$M5" -q data/engine_deploy/CURRENT.json; ls data/engine_deploy 2>/dev/null; "$M5" -q v12_quick_engine.py) | "$M5" -q )
 OLD=$(cut -d' ' -f1 "$STATE" 2>/dev/null); AGE=$(( $(date +%s) - $(stat -f %m "$STATE" 2>/dev/null || echo 0) ))
 [ "$SIG" = "$OLD" ] && [ "$AGE" -lt 21600 ] && exit 0

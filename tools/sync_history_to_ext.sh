@@ -5,7 +5,12 @@ for vol in /Volumes/SSD2T /Volumes/TOSHIBA_EXT; do
   [ -d "$vol" ] || continue
   ts=$(date +%Y%m%d_%H%M%S)
   mkdir -p "$vol/binance/history" "$vol/binance/backups"
-  rsync -a --checksum /Users/niels/Documents/binance/SPREADSHEETS/TEMPLATE.xlsx "$vol/binance/history/TEMPLATE_${ts}.xlsx"
+  # 2026-10-27: SPREADSHEETS/TEMPLATE.xlsx is a DIRECTORY, not a workbook, so this line archived a directory onto an
+  # .xlsx filename for an unknown period. Archive the four TEMPLATE_FINAL_NORM workbooks the boards actually sweep.
+  for t in CRYPTO_LONG CRYPTO_SHORT STOCKS_LONG STOCKS_SHORT; do
+    src="/Users/niels/Documents/binance/SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_${t}.xlsx"
+    [ -f "$src" ] && rsync -a --checksum "$src" "$vol/binance/history/TEMPLATE_${t}_${ts}.xlsx"
+  done
   rsync -a /Users/niels/Documents/binance/config.py "$vol/binance/history/config_${ts}.py"
   rsync -a /Users/niels/Documents/binance/config_tradier.py "$vol/binance/history/config_tradier_${ts}.py"
   rsync -a /Users/niels/Documents/binance/v12_quick_engine.py "$vol/binance/history/v12_quick_engine_${ts}.py"
