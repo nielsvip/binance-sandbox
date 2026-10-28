@@ -131,7 +131,10 @@ def test_wiring_sources():
     assert "_vig_dc4_mod.loss_close_allowed(reason," in tr and "_lnx_twins.dc15m_loss_close_allowed(reason," in tr
     eng = (ROOT / "v12_quick_engine.py").read_text()
     assert '"exit_reason": _dc15_reason, "bars_held": int(i - pos["entry_bar"]), "mandatory_stop_kind": "DC15M_FORCE_EXIT_ARMED"}' in eng
-    assert "_dc15_fire, _dc15_reason = _lnx.dc15m_force_exit(_gw_c, _dc15_bar," in eng
+    assert "if _lnx.dc15m_force_exit(_gw_c, _dc15_bar," in eng and "_dc15_pre_bar = i" in eng
+    # a refused discretionary CLOSE on a bar where the armed floor break fires becomes that DC15M close (live parity)
+    assert 'event["dc15m_converted_from"] = str(event.get("exit_reason") or event.get("reason") or "")' in eng
+    assert "if (not _acc) and _dc15_pre_bar >= 0 and _dc15_pre_bar == i and source == \"trades\"" in eng
     assert "if _f is not _lnx.dc15m_force_exit]" in eng  # booked once, in its own slot right after the frozen stops
     assert eng.index("if _lnx_dc15_on and pos is not None:") < eng.index("if _bge_on and pos is not None:")
     vpg = (ROOT / "vec_decisions" / "vec_parity_gates.py").read_text()

@@ -15952,7 +15952,26 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     events = (
         []
     )  # AUGMENT / partial-REDUCE ledger events — merged into 'ledger' only, never into trade metrics
+    _dc15_pre_bar = -1  # USER 2026-10-28 DC15M_FORCE_EXIT: bar index on which the armed floor break fires (-1 = none)
+
     def _exit_event_accept(event, source):
+        nonlocal _pending_exit_restore, _pending_exit_control_restore
+        _acc = _exit_event_accept_core(event, source)
+        # USER 2026-10-28 "move the needle in both vec and live identically": a REFUSED discretionary CLOSE consumes its
+        # bar here (position restored next bar), while live -- whose native legs are refused without returning -- still
+        # reaches DC15M_FORCE_EXIT on that bar. So on a bar where the armed floor break fires (it already passed its own
+        # MIN_HOLD), a refused full CLOSE becomes that DC15M close at the same px/qty/fees. Inert while the switch is
+        # False (_dc15_pre_bar stays -1). Measured need: 1INCHUSDT_LONG bar 1850 (MULTI_TF_EXIT refused, DC15M 16 bars late).
+        if (not _acc) and _dc15_pre_bar >= 0 and _dc15_pre_bar == i and source == "trades" and str(event.get("type") or "").upper() == "CLOSE":
+            event["dc15m_converted_from"] = str(event.get("exit_reason") or event.get("reason") or "")
+            event["reason"] = event["exit_reason"] = "DELTA_EXIT_DC15M_FLOOR_BREAK"
+            event["mandatory_stop_kind"] = "DC15M_FORCE_EXIT_ARMED"
+            _pending_exit_restore = None
+            _pending_exit_control_restore = None
+            return True
+        return _acc
+
+    def _exit_event_accept_core(event, source):
         nonlocal pos, _pending_exit_restore, cd, has_closed_before, bars_in_pos, _pending_exit_control_restore
         # Tradier has no fee-positive exit veto; its own close decision and mandatory stops are authoritative.
         if is_tradier:
@@ -20443,6 +20462,15 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         except Exception:
             pass
         held_bars = i - pos["entry_bar"]
+        if _lnx_dc15_on:  # USER 2026-10-28 DC15M_FORCE_EXIT decision for this bar (shared with ez_manage/tradier_manage)
+            _dc15_pre_bar = -1
+            try:
+                _dc15_bar.i = i
+                _dc15_eb = int(pos["entry_bar"])
+                if _lnx.dc15m_force_exit(_gw_c, _dc15_bar, {"px": float(px), "gain": float(live_pnl_pct), "hold_age_s": (float(ts[i]) - float(ts[_dc15_eb])) if (i < len(ts) and _dc15_eb < len(ts)) else float(held_bars * bmin * 60.0)}, is_long)[0]:
+                    _dc15_pre_bar = i
+            except Exception:
+                _dc15_pre_bar = -1
         # SCALE_DIRECTION law (USER 2026-10-22 "reducing when it should be augmenting (price rising) but not
         # reducing when the price is falling"): a PARTIAL scaling act must point the way price is moving —
         # favourable -> AUGMENT, adverse -> REDUCE. Exits (to_flat) are never touched. Default OFF: the engine
@@ -21152,12 +21180,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         # since the OPEN bar = live's now - opened_at). Booked with mandatory_stop_kind=DC15M_FORCE_EXIT_ARMED so the exit
         # gate books it red (net_exit_gate). Switch False (every set today) -> _lnx_dc15_on False -> block never runs.
         if _lnx_dc15_on and pos is not None:
-            try:
-                _dc15_bar.i = i
-                _dc15_eb = int(pos["entry_bar"])
-                _dc15_fire, _dc15_reason = _lnx.dc15m_force_exit(_gw_c, _dc15_bar, {"px": float(px), "gain": float(live_pnl_pct), "hold_age_s": (float(ts[i]) - float(ts[_dc15_eb])) if (i < len(ts) and _dc15_eb < len(ts)) else float(held_bars * bmin * 60.0)}, is_long)
-            except Exception:
-                _dc15_fire, _dc15_reason = False, ""
+            _dc15_fire, _dc15_reason = (_dc15_pre_bar == i), "DELTA_EXIT_DC15M_FLOOR_BREAK"  # decided at the top of this bar
             if _dc15_fire:
                 pos["fees"] += abs(pos["qty"] * px) * half_fee
                 _dc15_pnl = pos["realized"] + ((px - pos["avg_price"]) * pos["qty"] if is_long else (pos["avg_price"] - px) * pos["qty"]) - pos["fees"]
