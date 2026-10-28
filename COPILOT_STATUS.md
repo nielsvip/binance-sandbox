@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-28 07:49:10 UTC
+# Copilot Status — 2026-10-28 07:54:14 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-28T07:43:03
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-28T07:43:03
-- **STALE_INDICATORS** [tradier]  — 2026-10-28T07:45:05
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-28T07:45:05
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-28T07:45:05
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-28T07:47:07
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-28T07:47:07
 - **STALE_INDICATORS** [tradier]  — 2026-10-28T07:49:09
 - **RATIO_IMBALANCE** [tradier] trb — 2026-10-28T07:49:09
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-28T07:49:09
+- **STALE_INDICATORS** [tradier]  — 2026-10-28T07:51:11
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-28T07:51:11
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-28T07:51:11
+- **STALE_INDICATORS** [tradier]  — 2026-10-28T07:53:12
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-28T07:53:12
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-28T07:53:12
 
 ## Missed Trades (trader comparison)
 
@@ -29,12 +29,12 @@ _None_
 
 **Held:** 6 | **Watching for reentry:** 22 | **Reentered:** 0
 
-- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +0.3%
-- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +-0.1%
-- HELD: **DASHUSDT** SHORT (crypto) peak +5.8%, now +-0.9%
+- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +0.1%
+- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +0.1%
+- HELD: **DASHUSDT** SHORT (crypto) peak +5.8%, now +-1.0%
 - HELD: **MINAUSDT** SHORT (crypto) peak +4.2%, now +0.2%
-- HELD: **ETHUSDC** SHORT (crypto) peak +3.7%, now +-0.2%
-- HELD: **BNBUSDC** SHORT (crypto) peak +3.0%, now +0.4%
+- HELD: **ETHUSDC** SHORT (crypto) peak +3.7%, now +-0.3%
+- HELD: **BNBUSDC** SHORT (crypto) peak +3.0%, now +0.3%
 
 - WATCHING: **1000PEPEUSDC** LONG (crypto) peaked +11.4%, exited 0m ago
 - WATCHING: **PR** LONG (tradier) peaked +11.2%, exited 0m ago
@@ -52,8 +52,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [LOW] tradier_prices.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] ez_share_ind.py running but log stale (25min)
+- [MEDIUM] ez_rankings.py running but log stale (14min)
+- [MEDIUM] ez_share_ind.py running but log stale (30min)
