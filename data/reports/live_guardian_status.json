@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-28T05:29:45Z",
+ "ts": "2026-10-28T05:35:10Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,7 +29,7 @@
   "fin": {
    "fills_6h": 58,
    "open_positions": 25,
-   "unrealised_usd": -0.3,
+   "unrealised_usd": -0.21,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 115,
+   "fills_6h": 112,
    "open_positions": 29,
-   "unrealised_usd": -4.22,
+   "unrealised_usd": -4.12,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 1,
@@ -59,14 +59,14 @@
    }
   },
   "ang": {
-   "fills_6h": 149,
-   "open_positions": 45,
-   "unrealised_usd": 0.53,
+   "fills_6h": 146,
+   "open_positions": 46,
+   "unrealised_usd": 0.26,
    "pos_mismatch": 0,
    "vec_parity": {
-    "live_vec_decisions": 3,
+    "live_vec_decisions": 4,
     "state_divergent": 0,
-    "filled": 0,
+    "filled": 1,
     "refused_non_safety": 0,
     "safety_refusals": 0,
     "not_filled_no_log": 0,
@@ -75,9 +75,9 @@
    }
   },
   "inf": {
-   "fills_6h": 14,
+   "fills_6h": 13,
    "open_positions": 9,
-   "unrealised_usd": -0.08,
+   "unrealised_usd": -0.16,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 1,
@@ -92,8 +92,8 @@
   },
   "flz": {
    "fills_6h": 26,
-   "open_positions": 10,
-   "unrealised_usd": -0.1,
+   "open_positions": 9,
+   "unrealised_usd": -0.2,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,80 +127,65 @@
     "26167"
    ],
    "starts_30m": 2,
-   "log_age_s": 1.0
+   "log_age_s": 0.0
   },
   "men": {
    "pids": [
     "25489"
    ],
    "starts_30m": 2,
-   "log_age_s": 0.0
+   "log_age_s": -0.0
   },
   "ang": {
    "pids": [
     "24356"
    ],
    "starts_30m": 3,
-   "log_age_s": 3.0
+   "log_age_s": 0.0
   },
   "inf": {
    "pids": [
     "25206"
    ],
-   "starts_30m": 3,
-   "log_age_s": 0.0
+   "starts_30m": 2,
+   "log_age_s": 4.0
   },
   "flz": {
    "pids": [
-    "25369"
+    "86718"
    ],
    "starts_30m": 3,
-   "log_age_s": 695.0
+   "log_age_s": 4.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 34152.0
+   "log_age_s": 34476.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 34227.0
+   "log_age_s": 34552.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-28T05:29:46Z",
+   "ts": "2026-10-28T05:35:11Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "ang",
    "evidence": "3 new process ids in 30 min (['5758', '20522', '24356'])"
   },
   {
-   "ts": "2026-10-28T05:29:46Z",
-   "severity": "CRITICAL",
-   "kind": "RESTART_LOOP",
-   "key": "inf",
-   "evidence": "3 new process ids in 30 min (['96621', '5857', '25206'])"
-  },
-  {
-   "ts": "2026-10-28T05:29:46Z",
+   "ts": "2026-10-28T05:35:11Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "flz",
-   "evidence": "3 new process ids in 30 min (['56782', '6002', '25369'])"
-  },
-  {
-   "ts": "2026-10-28T05:29:46Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 695s"
+   "evidence": "3 new process ids in 30 min (['6002', '25369', '86718'])"
   }
  ],
  "alert_counts": {
-  "RESTART_LOOP": 3,
-  "STALE_LOG": 1
+  "RESTART_LOOP": 2
  },
  "active_interventions": {
   "acct:trc": {
@@ -253,5 +238,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.98
+ "sweep_s": 1.04
 }
