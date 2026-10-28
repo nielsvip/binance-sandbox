@@ -99,7 +99,9 @@ def main():
     base = a.base
     t0 = time.time()
     report = {"host": os.uname()[1], "base": base, "at": time.strftime("%FT%TZ", time.gmtime()), "dirs": {}, "offenders": []}
-    for rel in ("klines_cache", "klines_cache/tradier", "klines_canonical"):
+    for rel in ("klines_cache", "klines_cache/tradier", "klines_canonical", "klines_cache/gateway", "klines_cache_gateway", "klines_cache_macbook", "klines_cache_s1self", "klines_cache_backtest"):
+        if os.path.islink(os.path.join(base, rel)) or not os.path.isdir(os.path.join(base, rel)):
+            continue
         files = sorted(glob.glob(os.path.join(base, rel, "*.json")))
         if a.since_minutes:
             files = [f for f in files if time.time() - os.path.getmtime(f) <= a.since_minutes * 60]

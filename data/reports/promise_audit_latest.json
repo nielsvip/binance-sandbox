@@ -1,23 +1,21 @@
 {
- "generated_utc": "2026-10-28T21:12:26.255400+00:00",
+ "generated_utc": "2026-10-28T22:12:33.403255+00:00",
  "days": 1.0,
  "totals": {
-  "entry_promises": 87,
-  "entry_broken_no_delivery": 87,
+  "entry_promises": 88,
+  "entry_broken_no_delivery": 88,
   "exit_promises": 114,
-  "exit_broken_no_delivery": 112,
-  "exit_skipped_inflight": 1431,
-  "exit_pending": 1,
+  "exit_broken_no_delivery": 113,
+  "exit_skipped_inflight": 1489,
   "exit_kept_late": 1
  },
  "per_key": {
   "inf:PENGUUSDC_LONG": {
-   "entry_promises": 2,
-   "entry_broken_no_delivery": 2,
+   "entry_promises": 3,
+   "entry_broken_no_delivery": 3,
    "exit_promises": 2,
-   "exit_broken_no_delivery": 1,
-   "exit_skipped_inflight": 36,
-   "exit_pending": 1
+   "exit_broken_no_delivery": 2,
+   "exit_skipped_inflight": 94
   },
   "men:UNIUSDC_LONG": {
    "exit_promises": 2,
@@ -2325,6 +2323,26 @@
    "late_min": null,
    "action": "OPEN",
    "reason": "TIER1_PRICE_CROSS_REENTRY_exit0.0077_cur0.0078_k3m54",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "PENGUUSDC_LONG",
+   "kind": "exit",
+   "bar": "10-28 20:45",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "PPL_TP_g3.03%>=3.00%_stopBE0.0077",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "PENGUUSDC_LONG",
+   "kind": "entry",
+   "bar": "10-28 21:00",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "TIER1_PRICE_CROSS_REENTRY_exit0.0079_cur0.0080_k3m92",
    "outcome": "NO_DELIVERY"
   }
  ],
