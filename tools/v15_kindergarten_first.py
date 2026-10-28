@@ -90,8 +90,16 @@ def template_options(template, switches=KG_SWITCHES):
 
 
 def _grid(opts, max_combos):
-    """Per-switch sweep first (cheap, always), then bounded pairwise over the switches that have >1
-    option. Never a full cartesian product: 9 switches x 5 options would be 1.9M evaluations."""
+    """Per-switch sweep first (cheap, ALWAYS COMPLETE), then bounded pairwise over the switches that
+    have >1 option. Never a full cartesian product: 9 switches x 5 options would be 1.9M evaluations.
+
+    USER 2026-10-28: "are ALL Kindergarten rows now tested on both crypto and stocks AS SOON AS the
+    baseline is defined and before any switch gets tested". The cap used to be applied to
+    `singles + pairs` as one list, so a `V15_KG_FIRST_MAX` below the number of single options (35 per
+    cat_side today) would silently drop whole kindergarten ROWS -- the exact thing the operator forbids.
+    The cap now bounds the PAIRWISE part only; every single-option candidate is always returned.
+    Returns (candidates, n_singles) so the caller can refuse to let the time budget cut singles short.
+    """
     singles = []
     for sw in KG_SWITCHES:
         for val in opts.get(sw, []):
@@ -103,15 +111,22 @@ def _grid(opts, max_combos):
             for vb in opts[b]:
                 pairs.append({a: va, b: vb})
     out, seen = [], set()
-    for cand in singles + pairs:
+    for cand in singles:
         key = tuple(sorted((k, str(v)) for k, v in cand.items()))
         if key in seen:
             continue
         seen.add(key)
         out.append(cand)
-        if len(out) >= max_combos:
+    n_singles = len(out)
+    for cand in pairs:
+        if len(out) - n_singles >= max(0, max_combos - n_singles):
             break
-    return out
+        key = tuple(sorted((k, str(v)) for k, v in cand.items()))
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(cand)
+    return out, n_singles
 
 
 def run(symside, overrides, defaults, template, evaluate, baseline_gain,
@@ -164,10 +179,18 @@ def run(symside, overrides, defaults, template, evaluate, baseline_gain,
 
     # step 2 -- sweep the kindergarten grid on top of blanket-off
     best = {"gain": off_gain, "ov": {}, "label": "blanket_off_only"}
-    for cand in _grid(opts, max_combos):
-        if time.time() - t0 > budget_s:
+    grid, n_singles = _grid(opts, max_combos)
+    out["n_singles"] = n_singles
+    out["n_candidates"] = len(grid)
+    for i, cand in enumerate(grid):
+        # USER 2026-10-28: EVERY kindergarten row must be tested. The time budget may bound the
+        # pairwise tail, never the per-row singles — so the budget check does not apply while
+        # i < n_singles. A single that still cannot be measured is reported as a DEFECT, not skipped
+        # silently, exactly like a grey row.
+        if i >= n_singles and time.time() - t0 > budget_s:
             out["budget_hit"] = True
-            log("[KG-FIRST] %s budget %.0fs hit after %d evals" % (symside, budget_s, len(out["measured"])))
+            log("[KG-FIRST] %s budget %.0fs hit after %d evals (all %d per-row singles measured first)"
+                % (symside, budget_s, len(out["measured"]), n_singles))
             break
         gain = _gain(evaluate({**off_ov, **cand}))
         label = "+".join("%s=%s" % (k, v) for k, v in sorted(cand.items()))
@@ -177,6 +200,13 @@ def run(symside, overrides, defaults, template, evaluate, baseline_gain,
             best = {"gain": gain, "ov": dict(cand), "label": label}
     out["best"] = {"label": best["label"], "gain": best["gain"],
                    "delta_vs_baseline": round(best["gain"] - float(baseline_gain), 6)}
+    _unmeasured = [m["label"] for m in out["measured"][:n_singles] if m.get("gain") is None]
+    _missing_rows = n_singles - len([m for m in out["measured"][:n_singles]])
+    if _unmeasured or _missing_rows > 0:
+        log("[KG-FIRST-DEFECT] %s %d of %d per-row kindergarten singles produced NO gain (%d never ran): %s"
+            % (symside, len(_unmeasured), n_singles, max(0, _missing_rows), ", ".join(_unmeasured[:6])))
+        out["singles_unmeasured"] = _unmeasured
+        out["singles_never_ran"] = max(0, _missing_rows)
 
     # step 3 -- greedy law: promote ONLY a real improvement over the board's own baseline
     if best["gain"] > float(baseline_gain) + 1e-9:
