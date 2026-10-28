@@ -124,3 +124,13 @@ def test_invalid_but_traded_counts_zero_trades_unconfirmable():
         return {k: {"gain_pct": 0.0, "valid": False, "trades": 0} for k in sets}
     r0 = HP.confirm_promotions(final, start, score0, floor=0.48)
     assert r0["unconfirmable"] and r0["unscored"] == ["A"] and r0["dropped"] == []
+
+
+def test_snapshot_guard_warn_contract():
+    src = (ROOT / "v15_pilot.py").read_text()
+    assert '_snap_refuse = os.environ.get("V15_SNAPSHOT_GUARD_MODE", "warn") == "refuse"' in src
+    i = src.index('_snap_changed = _source_manifest.get("sets", {}).get(new_symside) != _source_payload_sha')
+    seg = src[i:i + 2500]
+    assert 'if _snap_changed and _snap_refuse:' in seg and 'if _full_changed and _snap_refuse:' in seg
+    assert 'progress["snapshot_mismatch"] = {"start_sha"' in seg and "[SNAPSHOT-WARN]" in seg
+    assert '_set_metric("BASELINE_SNAPSHOT", progress["snapshot_mismatch"].get("label"))' in src

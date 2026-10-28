@@ -11006,12 +11006,20 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     _source_manifest = json.loads((ROOT / "data" / "live_baseline_snapshots" / "manifest.json").read_text())
                     _source_bytes = _source_snapshot_path.read_bytes()
                     _source_payload_sha = __import__("hashlib").sha256(_source_bytes).hexdigest()
-                    if _source_manifest.get("sets", {}).get(new_symside) != _source_payload_sha or _source_payload_sha != _norm_meta.get("source_snapshot_sha256"):
+                    _snap_refuse = os.environ.get("V15_SNAPSHOT_GUARD_MODE", "warn") == "refuse"  # LEAD RULING 2026-10-28: default warn = publish against the start snapshot, mismatch recorded
+                    _snap_changed = _source_manifest.get("sets", {}).get(new_symside) != _source_payload_sha or _source_payload_sha != _norm_meta.get("source_snapshot_sha256")
+                    if _snap_changed and _snap_refuse:
                         raise RuntimeError("Mac per-symbol snapshot changed after baseline selection; refusing finalization")
                     _source_full_now = json.loads(_source_bytes)
                     _source_full_sha = __import__("hashlib").sha256(json.dumps(_source_full_now, sort_keys=True, default=str).encode()).hexdigest()
-                    if _source_full_sha != _norm_meta.get("source_full_config_sha256"):
+                    _full_changed = _source_full_sha != _norm_meta.get("source_full_config_sha256")
+                    if _full_changed and _snap_refuse:
                         raise RuntimeError("per-symbol full_config differs from dispatch-time snapshot; refusing finalization")
+                    if _snap_changed or _full_changed:
+                        progress["snapshot_mismatch"] = {"start_sha": _norm_meta.get("source_snapshot_sha256"), "now_sha": _source_payload_sha, "manifest_sha": _source_manifest.get("sets", {}).get(new_symside),
+                                                         "manifest_ts": _source_manifest.get("generated_at"), "full_config_changed": bool(_full_changed),
+                                                         "label": f"baseline snapshot {str(_norm_meta.get('source_snapshot_sha256') or '')[:8]}, live set changed during board"}
+                        print(f"[SNAPSHOT-WARN] {new_symside} live set changed during the board (start {str(_norm_meta.get('source_snapshot_sha256') or '')[:8]} now {_source_payload_sha[:8]} full_config_changed={bool(_full_changed)}) — publishing against the start snapshot, mismatch recorded", flush=True)
                 from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_reg_candidate
                 _registration_candidate = dict(cumulative_overrides)
                 _registration_eval = _eval_reg_candidate(prepared, dict(_registration_candidate), args.window_days, True)
@@ -11312,6 +11320,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _set_metric("final_live_trades", (live_res or {}).get("trades"))
                 _set_metric("final_live_parity", (parity[1] if parity else live_reason) or "")
                 _set_metric("final_refreshed_at", utcnow())
+                if isinstance(progress.get("snapshot_mismatch"), dict):  # provenance: the board finished against its start snapshot
+                    _set_metric("BASELINE_SNAPSHOT", progress["snapshot_mismatch"].get("label"))
                 if isinstance(progress.get("holdout_confirm"), dict):  # D: what the confirm window pruned (the C/E chain above stays unpruned)
                     _set_metric("HOLDOUT_DROPPED", ", ".join(progress["holdout_confirm"].get("dropped") or []) or "none")
                     _set_metric("HOLDOUT_EXPECTED_GAIN", progress["holdout_confirm"].get("g_pruned"))

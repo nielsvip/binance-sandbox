@@ -6022,8 +6022,8 @@ class Config:
             #   AUGMENTATION_COOLDOWN_SECONDS    light held 660.0 -> base 90.0  (was 7.3x slower than measured)
             # A cooldown decides WHICH BAR a trade lands on, so a mode table moving it changes the trade the
             # vector chose. Exposure is cut by the size knobs alone; timing stays the board's.
-            "START_POSITION_SIZE": 12.0,  # RESTORED 2026-10-17; minimum mode held 6.0
-            "MAX_POSITION_SIZE": 40.0,  # RESTORED 2026-10-17; minimum mode held 12.0
+            "START_POSITION_SIZE": 15.0,  # USER 2026-10-28 "stocks 900 crypto 15 NO EXCEPTION" — the mandate lives INSIDE market mode (its owner), never bypassed; was 12.0 RESTORED 2026-10-17 (LIGHT overlay held the crypto start below the mandate).
+            "MAX_POSITION_SIZE": 80.0,  # USER 2026-10-28 "stocks 900 crypto 15 NO EXCEPTION" — the mandate lives INSIDE market mode (its owner), never bypassed; was 40.0 RESTORED 2026-10-17; now equals the base-mode 80.0 so LIGHT no longer halves the crypto position cap.
             "MAX_ORDER_VALUE": 20.0,  # RESTORED 2026-10-17; minimum mode held 6.0
             "MAX_ORDER_VALUE_MEN": 20.0,  # USER 2026-10-17 "280 is more than enough with the error prone system we are running now" (light table had 440, above normal's 280); QuickConfig-exact
             "MAX_ORDER_VALUE_FIN": 20.0,  # RESTORED 2026-10-17; minimum mode held 6.0
@@ -6042,7 +6042,7 @@ class Config:
             # "MIN_GAIN": 0.8,#emergency mode
             # "MAX_POSITION_SIZE_MEN": 12.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 160.0
             # "MAX_POSITION_SIZE_FIN": 300.0#emergency mode
-            "START_POSITION_SIZE": 25.0,  # RESTORED 2026-10-17; minimum mode held 6.0
+            "START_POSITION_SIZE": 15.0,  # USER 2026-10-28 "stocks 900 crypto 15 NO EXCEPTION" — the mandate lives INSIDE market mode (its owner), never bypassed; was 25.0 RESTORED 2026-10-17, so NORMAL_MODE also honours the crypto mandate.
             "MAX_POSITION_SIZE": 80.0,  # RESTORED 2026-10-17; minimum mode held 62.0
             "MAX_ORDER_VALUE": 40.0,  # RESTORED 2026-10-17; minimum mode held 26.0
             "MAX_ORDER_VALUE_MEN": 20.0,  # RESTORED 2026-10-17; minimum mode held 26.0

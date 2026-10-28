@@ -101,8 +101,15 @@ def apply_venue_sizing(venue: str) -> dict:
     got_mod = str(getattr(cls, "__module__", ""))
     if got_mod != want_mod:
         raise SystemExit(f"REFUSED: {v} sizing resolved from module {got_mod!r}, expected {want_mod!r} — a {v} trader may never read the other venue's config")
-    start = float(getattr(cls, "START_POSITION_SIZE"))
-    maxpos = float(getattr(cls, "MAX_POSITION_SIZE"))
+    # INSTANTIATE, never read the class: operator 2026-10-28 "MAX_POSITION_SIZE that is exclusively
+    # managed by MARKET MODE". config.Config.__init__ runs _apply_mode(), which overlays the active
+    # market mode onto the class defaults — LIGHT_MODE was holding crypto START at 12 and MAX at 40
+    # while the class said 15/80, so reading the CLASS would have bypassed market mode and reading the
+    # instance is the only way the trader trades what actually governs.
+    _inst = cls()
+    start = float(getattr(_inst, "START_POSITION_SIZE"))
+    maxpos = float(getattr(_inst, "MAX_POSITION_SIZE"))
+    src += f" [{getattr(_inst, 'MARKET_MODE', 'n/a')}]"
     if not (start > 0 and maxpos > 0):
         raise SystemExit(f"REFUSED: {src} gives START_POSITION_SIZE={start} MAX_POSITION_SIZE={maxpos} — refusing to trade on a non-positive size")
     START_POSITION_SIZE = start
