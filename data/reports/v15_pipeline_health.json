@@ -1,13 +1,13 @@
 {
- "at": "2026-10-28T23:30:13Z",
+ "at": "2026-10-28T23:47:20Z",
  "s1": {
   "host": "niels",
-  "now": 1793230209.5836575,
+  "now": 1793231228.413767,
   "merge_crypto": {
    "n": 12,
    "max_lag_min": 0.0,
-   "median_lag_min": 0.0,
-   "worst": "1000000MOGUSDT",
+   "median_lag_min": -15.0,
+   "worst": "AAVEUSDC",
    "dead": []
   },
   "merge_stocks": {
@@ -18,9 +18,9 @@
    "dead": []
   },
   "npz_legacy_crypto": [],
-  "append_log_age_min": 64.5,
-  "append_last_secs": 938.5,
-  "append_last_stats": "'appended': 862, 'created': 2, 'up_to_date': 5535, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
+  "append_log_age_min": 3.1,
+  "append_last_secs": 836.1,
+  "append_last_stats": "'appended': 565, 'created': 0, 'up_to_date': 5834, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
   "npz_loop_pids": 0,
   "npz_cycle_last_utc": "03:53:32",
   "npz_cycle_installed": 48,
@@ -30,11 +30,10 @@
   "sched_err": "FileNotFoundError",
   "archive_n": 203,
   "archive_mb": 2476.9,
-  "archive_newest_min": 25.4,
+  "archive_newest_min": 42.4,
   "_via": "s1-int"
  },
  "red": [
-  "L2 appender silent for 64.5 min (cron */5) ",
   "L3 npz append loop is not running (the */15 watchdog should relaunch it)",
   "L4 scheduler last ticked None min ago (cron */2)"
  ],
