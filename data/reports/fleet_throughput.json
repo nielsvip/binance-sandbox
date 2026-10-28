@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-28T10:10:04.180670+00:00",
+  "ts": "2026-10-28T10:15:16.893282+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 0,
-  "pending_sym_sides": 50,
+  "pending_sym_sides": 47,
   "hosts": {
     "s1": {
       "published_last_60m": 0,
@@ -14,10 +14,10 @@
       "boards_running": 1,
       "workers": 7,
       "workers_vs_law_28": "7/28",
-      "mem_avail_mb": 15294,
+      "mem_avail_mb": 14523,
       "disk_free_gb": 39,
-      "load1": 11.1,
-      "dispatch_idle_why": "quarantine: 5 boards died unfinished <2h ['AXSUSDT_SHORT', 'BLURUSDT_SHORT', 'ENSUSDT_SHORT', 'IOTAUSDT_SHORT']",
+      "load1": 23.3,
+      "dispatch_idle_why": "spacing 110s < 120",
       "published_ss": []
     },
     "s2": {
@@ -29,54 +29,25 @@
       "boards_running": 1,
       "workers": 7,
       "workers_vs_law_28": "7/28",
-      "mem_avail_mb": 19645,
+      "mem_avail_mb": 18424,
       "disk_free_gb": 52,
-      "load1": 9.3,
+      "load1": 12.4,
       "dispatch_idle_why": "quarantine: 3 boards died unfinished <2h ['DUSKUSDT_LONG', 'GRASSUSDT_LONG', 'PUMPUSDT_LONG']",
       "published_ss": []
     },
     "s5": {
-      "published_last_60m": 0,
-      "published_last_3h": 5,
-      "boards": {
-        "THETAUSDT_SHORT": 0,
-        "WOOUSDT_SHORT": 0
-      },
-      "boards_running": 2,
-      "workers": 0,
-      "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 26491,
-      "disk_free_gb": 37,
-      "load1": 2.8,
-      "dispatch_idle_why": "spacing 99s < 120",
-      "published_ss": []
+      "unreachable": true
     },
     "s6": {
-      "published_last_60m": 0,
-      "published_last_3h": 2,
-      "boards": {
-        "BEATUSDT_SHORT": 0,
-        "BIGTIMEUSDT_SHORT": 7,
-        "BTCUSDC_SHORT": 0,
-        "ENJUSDT_SHORT": 0
-      },
-      "boards_running": 4,
-      "workers": 7,
-      "workers_vs_law_28": "7/28",
-      "mem_avail_mb": 19493,
-      "disk_free_gb": 59,
-      "load1": 8.4,
-      "dispatch_idle_why": "full 5/4",
-      "published_ss": []
+      "unreachable": true
     }
   },
   "alerts": [
-    "LOW_THROUGHPUT:s1:0/h<10 (idle_why=quarantine: 5 boards died unfinished <2h ['AXSUSDT_SHORT', 'BLURUSDT_SHORT', 'ENSUSDT_SHORT', 'IOTAUSDT_SHORT'])",
+    "LOW_THROUGHPUT:s1:0/h<10 (idle_why=spacing 110s < 120)",
     "DISK_FLOOR:s1:39GB<40",
     "LOW_THROUGHPUT:s2:0/h<10 (idle_why=quarantine: 3 boards died unfinished <2h ['DUSKUSDT_LONG', 'GRASSUSDT_LONG', 'PUMPUSDT_LONG'])",
-    "LOW_THROUGHPUT:s5:0/h<10 (idle_why=spacing 99s < 120)",
-    "DISK_FLOOR:s5:37GB<40",
-    "LOW_THROUGHPUT:s6:0/h<10 (idle_why=full 5/4)"
+    "UNREACHABLE:s5",
+    "UNREACHABLE:s6"
   ],
   "repair": null
 }
