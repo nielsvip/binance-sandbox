@@ -7,15 +7,18 @@
 # Usage: fleet_code_sync.sh [--check-only]
 #   --check-only: report diffs, change nothing. Default: push S1 -> workers + re-verify.
 set -u
+# 2026-10-27: the four template paths were the LEGACY top-level workbooks, so this guard proved the fleet
+# agreed on files no board sweeps while the TEMPLATE_FINAL_NORM set the pilot clones went unchecked -- the exact
+# skew class behind the 2026-10-27 stall. This syncs S1 -> workers (S1 canonical), so FINAL_NORM is correct here.
 MANIFEST_REL="/tmp/fleet_manifest.sh"
 HOSTS="s2 s5 s6"
-FILES="v15_pilot.py v12_quick_engine.py backtest_v12_engine.py config.py config_tradier.py min_decision_tf_guard.py positions_truth.py cat_side_defaults.py tools/v15_365_cycle.py tools/v15_graph_search.py tools/v15_dispatch_job.py tools/opt/v12_pilot_sheet_runner.py tools/opt/lifecycle_pilot_v2_fixed.py tools/opt/evaluate_v12.py ez_manage.py ez_positions_quick.py tradier_manage.py SPREADSHEETS/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_STOCKS_SHORT.xlsx"
+FILES="v15_pilot.py v12_quick_engine.py backtest_v12_engine.py config.py config_tradier.py min_decision_tf_guard.py positions_truth.py cat_side_defaults.py tools/v15_365_cycle.py tools/v15_graph_search.py tools/v15_dispatch_job.py tools/opt/v12_pilot_sheet_runner.py tools/opt/lifecycle_pilot_v2_fixed.py tools/opt/evaluate_v12.py ez_manage.py ez_positions_quick.py tradier_manage.py SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_SHORT.xlsx"
 CHECK_ONLY="${1:-}"
 EVEN_S6_VIA_MAC=1  # s6 unresolvable from s1; stage via Mac (scp fallback for big files)
 
 cat > /tmp/fleet_manifest_gen.sh <<'EOF'
 cd ~/binance-sandbox || exit 1
-for f in v15_pilot.py v12_quick_engine.py backtest_v12_engine.py config.py config_tradier.py min_decision_tf_guard.py positions_truth.py cat_side_defaults.py tools/v15_365_cycle.py tools/v15_graph_search.py tools/v15_dispatch_job.py tools/opt/v12_pilot_sheet_runner.py tools/opt/lifecycle_pilot_v2_fixed.py tools/opt/evaluate_v12.py ez_manage.py ez_positions_quick.py tradier_manage.py SPREADSHEETS/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_STOCKS_SHORT.xlsx vec_decisions/*.py live_twins/*.py; do
+for f in v15_pilot.py v12_quick_engine.py backtest_v12_engine.py config.py config_tradier.py min_decision_tf_guard.py positions_truth.py cat_side_defaults.py tools/v15_365_cycle.py tools/v15_graph_search.py tools/v15_dispatch_job.py tools/opt/v12_pilot_sheet_runner.py tools/opt/lifecycle_pilot_v2_fixed.py tools/opt/evaluate_v12.py ez_manage.py ez_positions_quick.py tradier_manage.py SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_SHORT.xlsx vec_decisions/*.py live_twins/*.py; do
   if [ -f "$f" ]; then md5sum "$f"; else echo "MISSING $f"; fi
 done
 EOF

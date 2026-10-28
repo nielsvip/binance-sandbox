@@ -65,7 +65,9 @@ test -f "$BASE/tools/npz_sync.sh"; check "npz_sync.sh exists (Mac->S1 matrix_npz
 crontab -l 2>&1 | grep -q "npz_sync"; check "npz_sync cron */5 * * * * active" $?
 crontab -l 2>&1 | grep -q "template_push"; check "template_push cron * * * * * active (TEMPLATE Mac->all servers every minute)" $?
 # Verify S1 has latest TEMPLATE
-timeout 8 ssh s1 "test -f ~/binance-sandbox/SPREADSHEETS/TEMPLATE.xlsx" 2>/dev/null; check "S1 has TEMPLATE.xlsx" $?
+# 2026-10-27: this tested SPREADSHEETS/TEMPLATE.xlsx, which is a DIRECTORY on the Mac tree and not a workbook the boards
+# sweep, so "S1 has TEMPLATE.xlsx" was false assurance. Verify the four TEMPLATE_FINAL_NORM workbooks v15_pilot clones.
+timeout 12 ssh s1 'for t in CRYPTO_LONG CRYPTO_SHORT STOCKS_LONG STOCKS_SHORT; do test -s ~/binance-sandbox/SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_$t.xlsx || exit 1; done' 2>/dev/null; check "S1 has all 4 TEMPLATE_FINAL_NORM workbooks" $?
 # Verify S1 has matrix_npz
 timeout 8 ssh s1 "test -d ~/binance-sandbox/data/matrix_npz" 2>/dev/null; check "S1 has data/matrix_npz" $?
 

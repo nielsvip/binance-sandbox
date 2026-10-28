@@ -23,7 +23,12 @@ LOGMD = AP / "LOG.md"
 SNAP = AP / "sched_snapshot.json"
 HOSTS = ROOT / "tools" / "fleet_hosts_final.json"
 SWEEP_DEF = ROOT / "data" / "sweep_defaults" / "per_sym_settings.json"
-TEMPLATES = [f"SPREADSHEETS/TEMPLATE_{v}_{s}.xlsx" for v in ("CRYPTO", "STOCKS") for s in ("LONG", "SHORT")]
+# 2026-10-27: TEMPLATES was the LEGACY top-level set, which no board has swept since the fleet moved to
+# TEMPLATE_FINAL_NORM. Two live consequences: stage_template() backed up only the dead workbooks before letting
+# v15_daily_template_update rewrite a round's templates, and the round fingerprint (rdef, "tpl<md5>") was computed from
+# a dead file, so a real FINAL_NORM row change did not produce a new round id.
+TEMPLATES = [f"SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_{v}_{s}.xlsx" for v in ("CRYPTO", "STOCKS") for s in ("LONG", "SHORT")]
+LEGACY_TEMPLATES = [f"SPREADSHEETS/TEMPLATE_{v}_{s}.xlsx" for v in ("CRYPTO", "STOCKS") for s in ("LONG", "SHORT")]
 PY = str(ROOT / ".venv" / "bin" / "python")
 if not os.path.exists(PY):
     PY = sys.executable
@@ -315,8 +320,10 @@ def stage_template(st, dry):
     rid = st["round"]
     bk = ROOT / "backups" / f"autopilot_{rid}_{now_utc().strftime('%Y%m%d%H%M')}"
     bk.mkdir(parents=True, exist_ok=True)
-    for t in TEMPLATES:
-        shutil.copy2(ROOT / t, bk / Path(t).name)
+    for t in TEMPLATES + LEGACY_TEMPLATES:
+        src = ROOT / t
+        if src.exists():
+            shutil.copy2(src, bk / f"{'final_norm' if 'FINAL_NORM' in t else 'legacy'}_{Path(t).name}")
     st["template_backup"] = str(bk)
     if dry:
         return True
@@ -365,7 +372,7 @@ def stage_defaults(st, dry):
 def stage_sync(st, dry):
     if dry:
         return True
-    files = TEMPLATES + [f"SPREADSHEETS/TEMPLATE_FINAL_NORM/{Path(t).name}" for t in TEMPLATES] + ["data/sweep_defaults/per_sym_settings.json", "data/cat_side_promotions.json"]
+    files = TEMPLATES + LEGACY_TEMPLATES + ["data/sweep_defaults/per_sym_settings.json", "data/cat_side_promotions.json"]
     ok = True
     for h in hosts():
         if h["name"] == "s1":

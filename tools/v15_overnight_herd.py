@@ -105,12 +105,17 @@ def server_stats(host: str, nproc: int) -> dict:
 def ensure_code_synced(host: str) -> bool:
     # push v15_pilot.py + TEMPLATE + deps to host so all servers run identical code
     # use rsync over ssh (faster than scp per file). Fallback to scp if rsync missing.
-    src_files = [str(ROOT / "v15_pilot.py"), str(ROOT / "SPREADSHEETS/TEMPLATE.xlsx")]
+    # 2026-10-27: the template was REMOVED from this push. SPREADSHEETS/TEMPLATE.xlsx is a DIRECTORY, so `rsync -az` of
+    # it onto a file path named TEMPLATE.xlsx never delivered the workbook it claims to. And a Mac->host template push
+    # is forbidden anyway: CLAUDE.md makes the four TEMPLATE_FINAL_NORM workbooks S1-source artifacts ("Do not rsync a
+    # Mac-only template over S1's current defaults"), and tools/template_push.sh was retired 2026-10-07 for this reason.
+    # Code still syncs; templates flow S1 -> Mac via tools/v15_daily_chain_mac_apply.sh.
+    src_files = [str(ROOT / "v15_pilot.py")]
     # also sync v12_quick_engine / config / tools/opt etc. via one rsync of binance-sandbox subset
     # minimal: rsync whole v15_pilot + backtest_v8/indicators not needed (NPZ stays on S1)
     ok = True
     for src in src_files:
-        dst = "~/binance-sandbox/" + os.path.basename(src) if src.endswith(".py") else "~/binance-sandbox/SPREADSHEETS/TEMPLATE.xlsx"
+        dst = "~/binance-sandbox/" + os.path.basename(src)
         # use rsync if available
         try:
             r = subprocess.run(["rsync", "-az", "-e", "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=8", src, f"{host}:{dst}"],

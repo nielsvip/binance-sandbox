@@ -113,8 +113,12 @@ class OneNameOneValueTest(unittest.TestCase):
         c = cfg(8)
         for reason in ("FIXED_STOP", "HARD_STOP_LOSS", "VIGILANCE_GUARD_CLOSE"):
             self.assertFalse(g.refuse_bars(0, c, "CLOSE", reason)[0], reason)
-        for reason in ("REENTRY_HIGHER_LOW", "WT_CROSS_EXIT_1h", "EXIT_VELOCITY_WT"):
-            self.assertTrue(g.refuse_bars(0, c, "CLOSE", reason)[0], reason)
+        # REENTRY is not an exit; the WT/velocity gain exits are held only when
+        # the gain is a loss or unknown, and fire when in gain.
+        self.assertFalse(g.refuse_bars(0, c, "CLOSE", "REENTRY_HIGHER_LOW")[0])
+        for reason in ("WT_CROSS_EXIT_1h", "EXIT_VELOCITY_WT"):
+            self.assertTrue(g.refuse_bars(0, c, "CLOSE", reason)[0], f"{reason} unknown gain")
+            self.assertFalse(g.refuse_bars(0, c, "CLOSE", reason, gain_pct=0.3)[0], f"{reason} in gain")
         # live additionally executes the board, so its own closes are never held
         for reason in ("VEC_DRIVEN_CLOSE_RECONCILE_", "BROKER_SYNC_FLAT"):
             self.assertFalse(g.refuse(0, c, "CLOSE", reason)[0], reason)
@@ -165,9 +169,17 @@ class ExemptionTest(unittest.TestCase):
     def test_discretionary_churn_is_still_held(self):
         """The switch must still do its job after the exemptions widened."""
         c = cfg(8)
-        for reason in ("WT_CROSS_EXIT_1h", "REENTRY_HIGHER_LOW",
-                       "EXIT_VELOCITY_WT", "SCALP_REDUCE_NOW"):
+        # OPERATOR 2026-10-27: REENTRY_HIGHER_LOW "is not an exit" and the WT /
+        # velocity ones "are gain exits that do not apply at loss", so what the
+        # hold still catches is a gain exit with NO gain (or a loss) and the
+        # disabled scalp family. Gain exits IN GAIN are exempt by design.
+        for reason in ("WT_CROSS_EXIT_1h", "EXIT_VELOCITY_WT", "SCALP_REDUCE_NOW"):
             self.assertTrue(g.refuse(0, c, "CLOSE", reason)[0], reason)
+        self.assertFalse(g.refuse(0, c, "CLOSE", "REENTRY_HIGHER_LOW")[0],
+                         "REENTRY is not an exit and is never held")
+        for reason in ("WT_CROSS_EXIT_1h", "EXIT_VELOCITY_WT"):
+            self.assertFalse(g.refuse(0, c, "CLOSE", reason, gain_pct=0.3)[0],
+                             f"{reason} in gain must keep firing")
 
     def test_board_dictates_and_bookkeeping_pass(self):
         c = cfg(8)
