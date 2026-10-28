@@ -28,6 +28,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CAT_SIDES = ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT")
 CONTRACT = "binding_map_v1"
 FAMILY_MAP = ROOT / "data" / "learn" / "switch_family_map_20261022.json"
+FAMILY_EXT = ROOT / "data" / "learn" / "switch_family_map_ext_20261028.json"  # 2026-10-28: families of switches the 10-22 map never saw
 SWITCH_BIBLE = ROOT / "data" / "SWITCH_BIBLE.json"
 ABLATION_GROUPS = ROOT / "vec_decisions" / "filter_ablation_groups.py"
 EXEMPTIONS = ROOT / "vec_decisions" / "filter_exemptions.py"
@@ -267,14 +268,29 @@ def rules_table() -> list:
     return r
 
 
-def load_sources(cs: str, family_map_path=FAMILY_MAP, bible_path=SWITCH_BIBLE, template_dir=TEMPLATE_DIR):
-    fm = json.loads(Path(family_map_path).read_text())
+def merge_family_ext(fm: dict, ext_path=FAMILY_EXT) -> dict:
+    """add the 10-28 extension's switches to their family ONLY when the 10-22 map has no family for them (never overrides)."""
+    try:
+        ext = json.loads(Path(ext_path).read_text()).get("switches") or {}
+    except Exception:
+        return fm
+    have = {s for v in (fm.get("families") or {}).values() for s in v.get("switches") or []}
+    for s, v in ext.items():
+        fam = (v or {}).get("family")
+        if s in have or fam not in (fm.get("families") or {}):
+            continue
+        fm["families"][fam].setdefault("switches", []).append(s)
+    return fm
+
+
+def load_sources(cs: str, family_map_path=FAMILY_MAP, bible_path=SWITCH_BIBLE, template_dir=TEMPLATE_DIR, family_ext_path=FAMILY_EXT):
+    fm = merge_family_ext(json.loads(Path(family_map_path).read_text()), family_ext_path)
     bible = json.loads(Path(bible_path).read_text()).get("switches") or {}
     groups = literal_assign(ABLATION_GROUPS, "GROUPS")
     agk = literal_assign(EXEMPTIONS, "AUGMENT_GATE_KEYS")
     tpath = Path(template_dir) / f"TEMPLATE_{cs}.xlsx"
     tpl = read_template(tpath)
-    srcs = {str(p.relative_to(ROOT)) if str(p).startswith(str(ROOT)) else str(p): md5_of(p) for p in (Path(family_map_path), Path(bible_path), ABLATION_GROUPS, EXEMPTIONS, tpath)}
+    srcs = {str(p.relative_to(ROOT)) if str(p).startswith(str(ROOT)) else str(p): md5_of(p) for p in (Path(family_map_path), Path(bible_path), ABLATION_GROUPS, EXEMPTIONS, tpath) + ((Path(family_ext_path),) if Path(family_ext_path).exists() else ())}
     return fm, bible, groups, agk, tpl, srcs
 
 
