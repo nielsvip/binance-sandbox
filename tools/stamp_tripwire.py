@@ -99,7 +99,7 @@ def main():
     base = a.base
     t0 = time.time()
     report = {"host": os.uname()[1], "base": base, "at": time.strftime("%FT%TZ", time.gmtime()), "dirs": {}, "offenders": []}
-    for rel in ("klines_cache", "klines_cache/tradier", "klines_canonical", "klines_cache/gateway", "klines_cache_gateway", "klines_cache_macbook", "klines_cache_s1self", "klines_cache_backtest"):
+    for rel in ("klines_cache", "klines_cache/tradier", "klines_canonical", "klines_cache/gateway", "klines_cache_gateway", "klines_cache_macbook", "klines_cache_s1self", "klines_cache_backtest", "klines_cache_macbook/tradier", "klines_cache_gateway/tradier", "klines_cache/gateway/tradier", "klines_cache_s1self/tradier"):
         if os.path.islink(os.path.join(base, rel)) or not os.path.isdir(os.path.join(base, rel)):
             continue
         files = sorted(glob.glob(os.path.join(base, rel, "*.json")))
