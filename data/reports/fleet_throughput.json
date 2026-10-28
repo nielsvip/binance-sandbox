@@ -1,12 +1,25 @@
 {
-  "ts": "2026-10-28T14:15:04.704942+00:00",
+  "ts": "2026-10-28T14:20:14.879838+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 0,
-  "pending_sym_sides": null,
+  "pending_sym_sides": 145,
   "hosts": {
     "s1": {
-      "unreachable": true
+      "published_last_60m": 0,
+      "published_last_3h": 0,
+      "boards": {
+        "MOVEUSDT_SHORT": 7,
+        "ZILUSDT_SHORT": 0
+      },
+      "boards_running": 2,
+      "workers": 7,
+      "workers_vs_law_28": "7/28",
+      "mem_avail_mb": 8477,
+      "disk_free_gb": 36,
+      "load1": 17.2,
+      "dispatch_idle_why": "mem 9560MB < 11000",
+      "published_ss": []
     },
     "s2": {
       "unreachable": true
@@ -15,14 +28,25 @@
       "unreachable": true
     },
     "s6": {
-      "unreachable": true
+      "published_last_60m": 0,
+      "published_last_3h": 1,
+      "boards": {},
+      "boards_running": 0,
+      "workers": 0,
+      "workers_vs_law_28": "0/28",
+      "mem_avail_mb": 27335,
+      "disk_free_gb": 57,
+      "load1": 2.2,
+      "dispatch_idle_why": null,
+      "published_ss": []
     }
   },
   "alerts": [
-    "UNREACHABLE:s1",
+    "LOW_THROUGHPUT:s1:0/h<10 (idle_why=mem 9560MB < 11000)",
+    "DISK_FLOOR:s1:36GB<40",
     "UNREACHABLE:s2",
     "UNREACHABLE:s5",
-    "UNREACHABLE:s6"
+    "LOW_THROUGHPUT:s6:0/h<10 (idle_why=None)"
   ],
   "repair": null
 }
