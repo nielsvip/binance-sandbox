@@ -18337,13 +18337,19 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     # defaults OFF -> empty list -> the loop hook below never runs at the defaults.
     _gw_c = lambda _k, _d: getattr(cfg, _k, _d)
     _gw_exits = vec_decisions.grey_wire_exits.active_exits(_gw_c)
+    _lnx_dc15_on = False
     try:  # vec_log_fixes 2026-10-27: DC15M_FORCE_EXIT / IN_GAIN_TREND_EXIT twins, same walk + booking, OFF by default
         import vec_decisions.live_native_exit_twins as _lnx
 
-        _gw_exits = list(_gw_exits) + _lnx.active_exits(_gw_c)
+        # USER 2026-10-28: DC15M_FORCE_EXIT gets its own slot right after the frozen stops (below), so a later leg's
+        # REFUSED no-loss close (which consumes the bar via _pending_exit_restore) cannot pre-empt it -- measured on
+        # NMRUSDT_SHORT bar 1830 (WT_LOWER_CROSS refused -> DC15M one bar late vs the live decision).
+        _lnx_dc15_on = _lnx.dc15m_armed(_gw_c)
+        _gw_exits = list(_gw_exits) + [_f for _f in _lnx.active_exits(_gw_c) if _f is not _lnx.dc15m_force_exit]
     except Exception:
-        pass
+        _lnx_dc15_on = False
     _gw_bar = vec_decisions.grey_wire_exits.NpzBar(npz, n) if _gw_exits else None
+    _dc15_bar = vec_decisions.grey_wire_exits.NpzBar(npz, n) if _lnx_dc15_on else None
 
     _ot_cnt = {}  # [C2 b5b] executed OPEN/AUGMENT fills per UTC day
 
@@ -21139,6 +21145,28 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 continue
         except Exception:
             pass
+        # USER 2026-10-28 (verbatim): "DELTA_EXIT_DC15M_FLOOR_BREAK should be tested as a switch ... wired correctly so it does
+        # move the needle in both vec and live identically.; DC15M_FORCE_EXIT_ENABLED ... same name in stocks and crypto - it
+        # should always be skipped if min_hold is not yet reached". ONE decision with ez_manage/tradier_manage
+        # (vec_decisions/live_native_exit_twins.dc15m_force_exit: prior-bar 15m channel, red, MIN_HOLD_BARS on wall-clock age
+        # since the OPEN bar = live's now - opened_at). Booked with mandatory_stop_kind=DC15M_FORCE_EXIT_ARMED so the exit
+        # gate books it red (net_exit_gate). Switch False (every set today) -> _lnx_dc15_on False -> block never runs.
+        if _lnx_dc15_on and pos is not None:
+            try:
+                _dc15_bar.i = i
+                _dc15_eb = int(pos["entry_bar"])
+                _dc15_fire, _dc15_reason = _lnx.dc15m_force_exit(_gw_c, _dc15_bar, {"px": float(px), "gain": float(live_pnl_pct), "hold_age_s": (float(ts[i]) - float(ts[_dc15_eb])) if (i < len(ts) and _dc15_eb < len(ts)) else float(held_bars * bmin * 60.0)}, is_long)
+            except Exception:
+                _dc15_fire, _dc15_reason = False, ""
+            if _dc15_fire:
+                pos["fees"] += abs(pos["qty"] * px) * half_fee
+                _dc15_pnl = pos["realized"] + ((px - pos["avg_price"]) * pos["qty"] if is_long else (pos["avg_price"] - px) * pos["qty"]) - pos["fees"]
+                _dc15_ts = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+                trades.append({"pnl_dollars": _dc15_pnl, "pnl_pct": float(_dc15_pnl / pos["deployed"] * 100 if pos["deployed"] else 0.0), "deployed": pos["deployed"], "reason": _dc15_reason, "type": "CLOSE", "ts": _dc15_ts, "price": float(px), "bar_entry": int(pos["entry_bar"]), "bar_exit": int(i), "entry_price": float(pos.get("entry_price", pos["avg_price"])), "exit_price": float(px), "qty": float(pos["qty"]), "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"), "exit_reason": _dc15_reason, "bars_held": int(i - pos["entry_bar"]), "mandatory_stop_kind": "DC15M_FORCE_EXIT_ARMED"})
+                pos = None
+                cd = cooldown_bars
+                has_closed_before = True
+                continue
         if _bge_on and pos is not None:  # 2026-10-17 BREAKEVEN_GAIN_EROSION twin — same core as live (vec_decisions/breakeven_gain_erosion.py)
             try:
                 _bge_avg = float(pos.get("avg_price") or 0.0)
@@ -21608,8 +21636,6 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 {
                     "gain": float(live_pnl_pct),
                     "age_s": float(held_bars * bmin * 60.0),
-                    # USER 2026-10-28 DC15M min-hold: wall-clock age since the OPEN bar = what live measures from opened_at
-                    "hold_age_s": (float(ts[i]) - float(ts[int(pos["entry_bar"])])) if (i < len(ts) and int(pos["entry_bar"]) < len(ts)) else float(held_bars * bmin * 60.0),
                     "entry_px": float(pos["avg_price"]),
                     "px": float(px),
                     "max_gain": float(pos.get("peak_pnl_pct", 0.0)),
@@ -21650,7 +21676,6 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"),
                         "exit_reason": _gw_reason,
                         "bars_held": int(i - pos["entry_bar"]),
-                        **({"mandatory_stop_kind": "DC15M_FORCE_EXIT_ARMED"} if str(_gw_reason) == "DELTA_EXIT_DC15M_FLOOR_BREAK" else {}),  # USER 2026-10-28: armed floor break books red (net_exit_gate)
                     }
                 )
                 pos = None

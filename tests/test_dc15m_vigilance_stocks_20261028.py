@@ -130,8 +130,10 @@ def test_wiring_sources():
     assert "_vig_dc4_mod.block_expired(_age_h, _hrs)" in tr
     assert "_vig_dc4_mod.loss_close_allowed(reason," in tr and "_lnx_twins.dc15m_loss_close_allowed(reason," in tr
     eng = (ROOT / "v12_quick_engine.py").read_text()
-    assert '{"mandatory_stop_kind": "DC15M_FORCE_EXIT_ARMED"} if str(_gw_reason) == "DELTA_EXIT_DC15M_FLOOR_BREAK"' in eng
-    assert '"hold_age_s": (float(ts[i]) - float(ts[int(pos["entry_bar"])]))' in eng
+    assert '"exit_reason": _dc15_reason, "bars_held": int(i - pos["entry_bar"]), "mandatory_stop_kind": "DC15M_FORCE_EXIT_ARMED"}' in eng
+    assert "_dc15_fire, _dc15_reason = _lnx.dc15m_force_exit(_gw_c, _dc15_bar," in eng
+    assert "if _f is not _lnx.dc15m_force_exit]" in eng  # booked once, in its own slot right after the frozen stops
+    assert eng.index("if _lnx_dc15_on and pos is not None:") < eng.index("if _bge_on and pos is not None:")
     vpg = (ROOT / "vec_decisions" / "vec_parity_gates.py").read_text()
     assert '("DELTA_EXIT_DC15M_FLOOR_BREAK", "DC15M_FORCE_EXIT_ENABLED")' in vpg
     assert '("VIGILANCE_DC4_", "VIGILANCE_DC4_STOP_ARMED")' in vpg
