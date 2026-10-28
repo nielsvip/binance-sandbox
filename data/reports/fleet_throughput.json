@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-28T19:35:20.036282+00:00",
+  "ts": "2026-10-28T19:40:15.264920+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 0,
-  "pending_sym_sides": 115,
+  "fleet_published_last_60m": 8,
+  "pending_sym_sides": 109,
   "hosts": {
     "s1": {
       "published_last_60m": 0,
@@ -15,17 +15,58 @@
       "boards_running": 2,
       "workers": 14,
       "workers_vs_law_28": "14/28",
-      "mem_avail_mb": 12864,
+      "mem_avail_mb": 11876,
       "disk_free_gb": 34,
-      "load1": 24.3,
+      "load1": 15.7,
       "dispatch_idle_why": "full 2/2",
       "published_ss": []
     },
     "s2": {
-      "unreachable": true
+      "published_last_60m": 2,
+      "published_last_3h": 7,
+      "boards": {
+        "BIGTIMEUSDT_SHORT": 7,
+        "EDUUSDT_LONG": 7,
+        "RSRUSDT_LONG": 7,
+        "SKYAIUSDT_LONG": 3,
+        "STXUSDT_LONG": 7,
+        "TIAUSDC_LONG": 7
+      },
+      "boards_running": 6,
+      "workers": 38,
+      "workers_vs_law_28": "38/28",
+      "mem_avail_mb": 4221,
+      "disk_free_gb": 48,
+      "load1": 22.3,
+      "dispatch_idle_why": "full 6/4",
+      "published_ss": [
+        "BEAMXUSDT_LONG",
+        "COMPUSDT_LONG"
+      ]
     },
     "s5": {
-      "unreachable": true
+      "published_last_60m": 6,
+      "published_last_3h": 8,
+      "boards": {
+        "CRK_LONG": 7,
+        "DUSKUSDT_LONG": 7,
+        "SHOP_LONG": 7
+      },
+      "boards_running": 3,
+      "workers": 21,
+      "workers_vs_law_28": "21/28",
+      "mem_avail_mb": 5730,
+      "disk_free_gb": 52,
+      "load1": 24.9,
+      "dispatch_idle_why": "full 4/4",
+      "published_ss": [
+        "1000BONKUSDC_SHORT",
+        "CDW_LONG",
+        "CRWD_LONG",
+        "HD_LONG",
+        "TMO_LONG",
+        "ZCSH_LONG"
+      ]
     },
     "s6": {
       "unreachable": true
@@ -34,8 +75,8 @@
   "alerts": [
     "LOW_THROUGHPUT:s1:0/h<10 (idle_why=full 2/2)",
     "DISK_FLOOR:s1:34GB<40",
-    "UNREACHABLE:s2",
-    "UNREACHABLE:s5",
+    "LOW_THROUGHPUT:s2:2/h<10 (idle_why=full 6/4)",
+    "LOW_THROUGHPUT:s5:6/h<10 (idle_why=full 4/4)",
     "UNREACHABLE:s6"
   ],
   "repair": null

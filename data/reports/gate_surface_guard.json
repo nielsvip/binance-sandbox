@@ -1,121 +1,24 @@
 {
- "ts": "2026-10-28T18:48:09Z",
- "n_gate_switches": 40,
+ "ts": "2026-10-28T19:38:17Z",
+ "n_gate_switches": 38,
  "templates": {
   "TEMPLATE_CRYPTO_LONG.xlsx": {
-   "n_gate_switches_present": 40
+   "n_gate_switches_present": 38
   },
   "TEMPLATE_CRYPTO_SHORT.xlsx": {
-   "n_gate_switches_present": 40
+   "n_gate_switches_present": 38
   },
   "TEMPLATE_STOCKS_LONG.xlsx": {
-   "n_gate_switches_present": 40
+   "n_gate_switches_present": 38
   },
   "TEMPLATE_STOCKS_SHORT.xlsx": {
-   "n_gate_switches_present": 40
+   "n_gate_switches_present": 38
   }
  },
  "n_breaches": 0,
  "breaches": [],
- "n_pending_removal": 8,
- "pending_removal": [
-  {
-   "template": "TEMPLATE_CRYPTO_LONG.xlsx",
-   "switch": "DAYTRADE_DC_TARGET_TF",
-   "rows": 4,
-   "grey_rows": 4,
-   "grey_at": [
-    "EXIT_STRUCTURAL!68",
-    "EXIT_STRUCTURAL!69",
-    "EXIT_STRUCTURAL!70",
-    "EXIT_STRUCTURAL!71"
-   ]
-  },
-  {
-   "template": "TEMPLATE_CRYPTO_LONG.xlsx",
-   "switch": "TECHNICAL_DC_TARGET_TF",
-   "rows": 4,
-   "grey_rows": 4,
-   "grey_at": [
-    "EXIT_STRUCTURAL!62",
-    "EXIT_STRUCTURAL!63",
-    "EXIT_STRUCTURAL!64",
-    "EXIT_STRUCTURAL!65"
-   ]
-  },
-  {
-   "template": "TEMPLATE_CRYPTO_SHORT.xlsx",
-   "switch": "DAYTRADE_DC_TARGET_TF",
-   "rows": 4,
-   "grey_rows": 4,
-   "grey_at": [
-    "EXIT_STRUCTURAL!197",
-    "EXIT_STRUCTURAL!198",
-    "EXIT_STRUCTURAL!199",
-    "EXIT_STRUCTURAL!200"
-   ]
-  },
-  {
-   "template": "TEMPLATE_CRYPTO_SHORT.xlsx",
-   "switch": "TECHNICAL_DC_TARGET_TF",
-   "rows": 4,
-   "grey_rows": 4,
-   "grey_at": [
-    "EXIT_STRUCTURAL!173",
-    "EXIT_STRUCTURAL!174",
-    "EXIT_STRUCTURAL!175",
-    "EXIT_STRUCTURAL!176"
-   ]
-  },
-  {
-   "template": "TEMPLATE_STOCKS_LONG.xlsx",
-   "switch": "DAYTRADE_DC_TARGET_TF",
-   "rows": 4,
-   "grey_rows": 4,
-   "grey_at": [
-    "EXIT_STRUCTURAL!71",
-    "EXIT_STRUCTURAL!72",
-    "EXIT_STRUCTURAL!73",
-    "EXIT_STRUCTURAL!74"
-   ]
-  },
-  {
-   "template": "TEMPLATE_STOCKS_LONG.xlsx",
-   "switch": "TECHNICAL_DC_TARGET_TF",
-   "rows": 4,
-   "grey_rows": 4,
-   "grey_at": [
-    "EXIT_STRUCTURAL!122",
-    "EXIT_STRUCTURAL!123",
-    "EXIT_STRUCTURAL!124",
-    "EXIT_STRUCTURAL!125"
-   ]
-  },
-  {
-   "template": "TEMPLATE_STOCKS_SHORT.xlsx",
-   "switch": "DAYTRADE_DC_TARGET_TF",
-   "rows": 4,
-   "grey_rows": 4,
-   "grey_at": [
-    "EXIT_STRUCTURAL!62",
-    "EXIT_STRUCTURAL!63",
-    "EXIT_STRUCTURAL!64",
-    "EXIT_STRUCTURAL!65"
-   ]
-  },
-  {
-   "template": "TEMPLATE_STOCKS_SHORT.xlsx",
-   "switch": "TECHNICAL_DC_TARGET_TF",
-   "rows": 4,
-   "grey_rows": 4,
-   "grey_at": [
-    "EXIT_STRUCTURAL!86",
-    "EXIT_STRUCTURAL!87",
-    "EXIT_STRUCTURAL!88",
-    "EXIT_STRUCTURAL!89"
-   ]
-  }
- ],
+ "n_pending_removal": 0,
+ "pending_removal": [],
  "n_absent": 0,
  "absent": []
 }

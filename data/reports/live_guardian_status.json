@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-28T19:37:31Z",
+ "ts": "2026-10-28T19:43:11Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,19 +29,19 @@
   "trb": {
    "fills_6h": 0,
    "open_positions": 41,
-   "unrealised_usd": -33.56,
+   "unrealised_usd": -23.81,
    "pos_mismatch": 0
   },
   "trc": {
    "fills_6h": 0,
    "open_positions": 40,
-   "unrealised_usd": 0.0,
+   "unrealised_usd": -40.3,
    "pos_mismatch": 0
   },
   "fin": {
-   "fills_6h": 99,
-   "open_positions": 18,
-   "unrealised_usd": 2.78,
+   "fills_6h": 101,
+   "open_positions": 19,
+   "unrealised_usd": 2.5,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -55,7 +55,7 @@
    }
   },
   "men": {
-   "fills_6h": 122,
+   "fills_6h": 125,
    "open_positions": 22,
    "unrealised_usd": 1.55,
    "pos_mismatch": 0,
@@ -71,7 +71,7 @@
    }
   },
   "ang": {
-   "fills_6h": 106,
+   "fills_6h": 110,
    "open_positions": 19,
    "unrealised_usd": 0.34,
    "pos_mismatch": 0,
@@ -89,7 +89,7 @@
   "inf": {
    "fills_6h": 20,
    "open_positions": 4,
-   "unrealised_usd": 0.26,
+   "unrealised_usd": 0.28,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 4,
@@ -105,7 +105,7 @@
   "flz": {
    "fills_6h": 24,
    "open_positions": 8,
-   "unrealised_usd": -0.59,
+   "unrealised_usd": -0.66,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -138,85 +138,85 @@
     "86867"
    ],
    "starts_30m": 1,
-   "log_age_s": 37.0
+   "log_age_s": 100.0
   },
   "men": {
    "pids": [
     "68542"
    ],
    "starts_30m": 1,
-   "log_age_s": 10.0
+   "log_age_s": 18.0
   },
   "ang": {
    "pids": [
     "67092"
    ],
    "starts_30m": 1,
-   "log_age_s": 62.0
+   "log_age_s": 402.0
   },
   "inf": {
    "pids": [
     "89250"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 2.0
   },
   "flz": {
    "pids": [
     "31005"
    ],
    "starts_30m": 1,
-   "log_age_s": 226.0
+   "log_age_s": 116.0
   },
   "trb": {
    "pids": [
     "57586"
    ],
    "starts_30m": 1,
-   "log_age_s": 321.0
+   "log_age_s": 61.0
   },
   "trc": {
    "pids": [
     "57924"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 1.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-28T19:37:31Z",
+   "ts": "2026-10-28T19:43:12Z",
    "severity": "CRITICAL",
    "kind": "ACCOUNT_EQUITY_DROP",
    "key": "trb",
-   "evidence": "unrealised PnL of the same open positions fell $32.66 since 2026-10-28T19:31:47Z (now $-33.56)"
+   "evidence": "unrealised PnL of the same open positions fell $26.76 since 2026-10-28T19:01:49Z (now $-23.81)"
   },
   {
-   "ts": "2026-10-28T19:37:33Z",
+   "ts": "2026-10-28T19:43:12Z",
+   "severity": "CRITICAL",
+   "kind": "ACCOUNT_EQUITY_DROP",
+   "key": "trc",
+   "evidence": "unrealised PnL of the same open positions fell $40.30 since 2026-10-28T19:37:31Z (now $-40.30)"
+  },
+  {
+   "ts": "2026-10-28T19:43:13Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:BTCDOMUSDT_LONG",
    "evidence": "CLOSE 0 @ 2026-10-28T16:45:24Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-28T19:37:33Z",
+   "ts": "2026-10-28T19:43:14Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
-   "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 226s"
-  },
-  {
-   "ts": "2026-10-28T19:37:33Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "trb",
-   "evidence": "tradier_manage_trb.log not written for 321s"
+   "key": "ang",
+   "evidence": "ez_manage_ang.log not written for 402s"
   }
  ],
  "alert_counts": {
-  "ACCOUNT_EQUITY_DROP": 1,
+  "ACCOUNT_EQUITY_DROP": 2,
   "FILL_WITHOUT_VEC_DECISION": 1,
-  "STALE_LOG": 2
+  "STALE_LOG": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -269,5 +269,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 2.46
+ "sweep_s": 2.4
 }

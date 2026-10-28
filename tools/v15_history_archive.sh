@@ -15,17 +15,20 @@ mkdir -p "$DEST/per_sym_history" "$DEST/db_snapshots" "$DEST/manifests" || exit 
 LAST=$(cat "$DEST/per_sym_history/LAST_ID" 2>/dev/null || echo 0)
 D=$(date -u +%Y%m%d)
 TMP="$DEST/per_sym_history/.incoming_$D.jsonl.gz"
-# 1. incremental rows (id > LAST)
+# 0. fix the upper bound BEFORE the export: the live DB keeps growing, so an unbounded export and a later COUNT disagree
+MAXID=$($SSH "$S1" "cd ~/binance-sandbox && python3 -c \"import sqlite3; c=sqlite3.connect('file:data/hourly_reconfig/per_sym_store.db?mode=ro', uri=True); print(c.execute('SELECT COALESCE(MAX(id),0) FROM per_sym_history').fetchone()[0])\"") || { log "FAILED: max id from $S1"; exit 3; }
+MAXID=$(echo "$MAXID" | tr -d '[:space:]')
+# 1. incremental rows (LAST < id <= MAXID)
 $SSH "$S1" "cd ~/binance-sandbox && python3 -c \"
 import sqlite3, json, sys
 c = sqlite3.connect('file:data/hourly_reconfig/per_sym_store.db?mode=ro', uri=True)
 c.row_factory = sqlite3.Row
-for r in c.execute('SELECT * FROM per_sym_history WHERE id > ? ORDER BY id', ($LAST,)):
+for r in c.execute('SELECT * FROM per_sym_history WHERE id > ? AND id <= ? ORDER BY id', ($LAST, $MAXID)):
     sys.stdout.write(json.dumps(dict(r), default=str) + chr(10))
 \" | gzip -c" > "$TMP" || { rm -f "$TMP"; log "FAILED: export from $S1"; exit 3; }
 gzip -t "$TMP" || { rm -f "$TMP"; log "FAILED: gzip test"; exit 3; }
 N=$(gzip -dc "$TMP" | wc -l | tr -d ' ')
-EXP=$($SSH "$S1" "cd ~/binance-sandbox && python3 -c \"import sqlite3; c=sqlite3.connect('file:data/hourly_reconfig/per_sym_store.db?mode=ro', uri=True); print(c.execute('SELECT COUNT(*) FROM per_sym_history WHERE id > $LAST').fetchone()[0])\"")
+EXP=$($SSH "$S1" "cd ~/binance-sandbox && python3 -c \"import sqlite3; c=sqlite3.connect('file:data/hourly_reconfig/per_sym_store.db?mode=ro', uri=True); print(c.execute('SELECT COUNT(*) FROM per_sym_history WHERE id > $LAST AND id <= $MAXID').fetchone()[0])\"")
 if [ "$N" -gt 0 ]; then
   [ "$N" -ge "$EXP" ] || { rm -f "$TMP"; log "FAILED: exported $N rows < expected $EXP"; exit 3; }
   TO=$(gzip -dc "$TMP" | tail -1 | python3 -c "import json,sys; print(json.loads(sys.stdin.read())['id'])")
