@@ -1,8 +1,8 @@
 {
-  "ts": "2026-10-28T17:00:14.763380+00:00",
+  "ts": "2026-10-28T17:05:15.459860+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 10,
+  "fleet_published_last_60m": 0,
   "pending_sym_sides": null,
   "hosts": {
     "s1": {
@@ -16,9 +16,9 @@
       "boards_running": 3,
       "workers": 21,
       "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 3744,
+      "mem_avail_mb": 5018,
       "disk_free_gb": 35,
-      "load1": 102.9,
+      "load1": 95.8,
       "dispatch_idle_why": null,
       "published_ss": []
     },
@@ -29,40 +29,15 @@
       "unreachable": true
     },
     "s6": {
-      "published_last_60m": 10,
-      "published_last_3h": 10,
-      "boards": {
-        "AAVEUSDC_SHORT": 7,
-        "ENSUSDT_SHORT": 7,
-        "NLR_SHORT": 0,
-        "STXUSDT_SHORT": 7
-      },
-      "boards_running": 4,
-      "workers": 21,
-      "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 17523,
-      "disk_free_gb": 55,
-      "load1": 15.5,
-      "dispatch_idle_why": null,
-      "published_ss": [
-        "AGI_SHORT",
-        "COHR_SHORT",
-        "GALAUSDT_SHORT",
-        "KGC_SHORT",
-        "LSCC_SHORT",
-        "MSTR_SHORT",
-        "ORCL_SHORT",
-        "PAAS_SHORT",
-        "RVNUSDT_SHORT",
-        "ZILUSDT_SHORT"
-      ]
+      "unreachable": true
     }
   },
   "alerts": [
     "LOW_THROUGHPUT:s1:0/h<10 (idle_why=None)",
     "DISK_FLOOR:s1:35GB<40",
     "UNREACHABLE:s2",
-    "UNREACHABLE:s5"
+    "UNREACHABLE:s5",
+    "UNREACHABLE:s6"
   ],
   "repair": null
 }
