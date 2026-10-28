@@ -1,69 +1,187 @@
 {
- "generated_utc": "2026-10-27T05:12:09.320153+00:00",
+ "generated_utc": "2026-10-28T06:12:04.308295+00:00",
  "days": 1.0,
  "totals": {
-  "exit_promises": 3,
-  "exit_broken_no_delivery": 3,
-  "entry_promises": 1,
-  "entry_broken_no_delivery": 1
+  "entry_promises": 3,
+  "entry_broken_no_delivery": 2,
+  "exit_promises": 12,
+  "exit_broken_no_delivery": 10,
+  "exit_pending": 2,
+  "exit_skipped_inflight": 16,
+  "entry_pending": 1
  },
  "per_key": {
-  "flz:BNBUSDC_SHORT": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
-  },
-  "flz:DASHUSDT_SHORT": {
+  "inf:PENGUUSDC_LONG": {
    "entry_promises": 1,
    "entry_broken_no_delivery": 1
   },
-  "fin:ETHFIUSDC_LONG": {
+  "men:UNIUSDC_LONG": {
    "exit_promises": 1,
    "exit_broken_no_delivery": 1
   },
-  "men:BEAMXUSDT_LONG": {
+  "ang:AVAXUSDC_LONG": {
    "exit_promises": 1,
    "exit_broken_no_delivery": 1
+  },
+  "ang:UNIUSDC_LONG": {
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1
+  },
+  "ang:ZKUSDT_SHORT": {
+   "exit_promises": 2,
+   "exit_broken_no_delivery": 1,
+   "exit_pending": 1
+  },
+  "ang:IOTAUSDT_SHORT": {
+   "exit_promises": 2,
+   "exit_broken_no_delivery": 1,
+   "exit_pending": 1
+  },
+  "men:MOVRUSDT_SHORT": {
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1
+  },
+  "ang:STXUSDT_SHORT": {
+   "exit_promises": 2,
+   "exit_broken_no_delivery": 2
+  },
+  "ang:API3USDT_SHORT": {
+   "exit_promises": 1,
+   "exit_skipped_inflight": 16,
+   "exit_broken_no_delivery": 1
+  },
+  "ang:EGLDUSDT_SHORT": {
+   "entry_promises": 1,
+   "entry_broken_no_delivery": 1
+  },
+  "ang:MOVRUSDT_SHORT": {
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1
+  },
+  "ang:COTIUSDT_SHORT": {
+   "entry_promises": 1,
+   "entry_pending": 1
   }
  },
  "detail": [
   {
-   "acct": "flz",
-   "sym_side": "BNBUSDC_SHORT",
-   "kind": "exit",
-   "bar": "10-26 05:00",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "WT_LOWER_CROSS_EXIT wt_1h higher wt+price",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "flz",
-   "sym_side": "DASHUSDT_SHORT",
+   "acct": "inf",
+   "sym_side": "PENGUUSDC_LONG",
    "kind": "entry",
-   "bar": "10-26 05:15",
+   "bar": "10-28 05:00",
    "late_min": null,
    "action": "OPEN",
-   "reason": "LEGACY_PSR_REENTRY",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "fin",
-   "sym_side": "ETHFIUSDC_LONG",
-   "kind": "exit",
-   "bar": "10-26 05:30",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "EXIT_VELOCITY_WT against-long g0.15%",
+   "reason": "B_KZONE",
    "outcome": "NO_DELIVERY"
   },
   {
    "acct": "men",
-   "sym_side": "BEAMXUSDT_LONG",
+   "sym_side": "UNIUSDC_LONG",
    "kind": "exit",
-   "bar": "10-26 05:15",
+   "bar": "10-28 05:00",
    "late_min": null,
    "action": "REDUCE",
-   "reason": "PPL_TP_g4.78%>=3.00%_stopBE0.0031",
+   "reason": "SATOSHIT_EXIT_PARTIAL 0.35",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "AVAXUSDC_LONG",
+   "kind": "exit",
+   "bar": "10-28 05:00",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "WT_CROSS_EXIT_1h_bear_wt1=50.2_wt2=75.0",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "UNIUSDC_LONG",
+   "kind": "exit",
+   "bar": "10-28 05:00",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "SATOSHIT_EXIT_PARTIAL 0.35",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "ZKUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-28 05:00",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain0.19",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "IOTAUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-28 05:15",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "CYCLE_TP_TIERED_T1_0.30pct_gain0.38",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "men",
+   "sym_side": "MOVRUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-28 05:30",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "FIXED_STOP",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "STXUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-28 05:30",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "STATEFUL_PORTED_EXIT g0.26% age330m",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "STXUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-28 05:30",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "STATEFUL_PORTED_EXIT g0.26% age330m",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "API3USDT_SHORT",
+   "kind": "exit",
+   "bar": "10-28 05:30",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "EXIT_VELOCITY_WT against-short g0.15%",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "EGLDUSDT_SHORT",
+   "kind": "entry",
+   "bar": "10-28 05:30",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "REENTRY_DC4_15M_BREAK",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "MOVRUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-28 05:30",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "FIXED_STOP",
    "outcome": "NO_DELIVERY"
   }
  ],
