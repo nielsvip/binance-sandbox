@@ -1145,6 +1145,18 @@ class Trader:
             time.sleep(0.2)
         self.dir_seen = dir_stamp()
 
+    def _entry_banned(self, acct):
+        """Hard entry ban from order_dedupe_guard.entry_banned (tra: exits only). Unreadable guard fails closed for stocks."""
+        try:
+            for base in (Path.home() / "binance-sandbox", Path(__file__).resolve().parents[1], self.root):
+                if (base / "order_dedupe_guard.py").exists() and str(base) not in sys.path:
+                    sys.path.insert(0, str(base))
+            from order_dedupe_guard import entry_banned
+            return bool(entry_banned(acct))
+        except Exception as exc:
+            log(f"entry_banned unavailable ({type(exc).__name__}): {'refusing' if self.venue == 'stocks' else 'allowing'} {acct} entries")
+            return self.venue == "stocks"
+
     def send_orders(self, acct, orders, pos, killed):
         orders_n = 0
         if self.venue == "stocks":
@@ -1161,6 +1173,12 @@ class Trader:
                 self.done.add(o["key"])
                 self._ledger(row)
                 log(f"{acct} {o['ss']} OPEN skipped: opposite side held on Tradier")
+                continue
+            if o["act"] in ("OPEN", "AUGMENT") and self._entry_banned(acct):
+                row.update({"status": "REFUSED_TRA_EXITS_ONLY", "final": True})
+                self.done.add(o["key"])
+                self._ledger(row)
+                log(f"{acct} {o['ss']} {o['act']} REFUSED_TRA_EXITS_ONLY (order_dedupe_guard.entry_banned)")
                 continue
             try:
                 price = float((pos.get(o["ss"]) or {}).get("price") or 0.0) or self.broker.price(symbol)

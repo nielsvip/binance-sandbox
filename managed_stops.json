@@ -1,9 +1,72 @@
 {
-  "inf:BTCDOMUSDT_LONG": {
-    "orderId": "2000001547032864",
-    "stopPrice": 5515.3,
-    "entry_sig": "2026-10-28 05:19:01.893000+00:00",
-    "symbol": "BTCDOMUSDT",
+  "fin:STXUSDT_LONG": {
+    "orderId": "3000002281027970",
+    "stopPrice": 0.2949,
+    "entry_sig": "2026-10-28 14:04:29.427000+00:00",
+    "symbol": "STXUSDT",
+    "side": "LONG"
+  },
+  "fin:NEARUSDC_LONG": {
+    "orderId": "3000002277450882",
+    "stopPrice": 4.358,
+    "entry_sig": "2026-10-27 04:37:46.017000+00:00",
+    "symbol": "NEARUSDC",
+    "side": "LONG"
+  },
+  "fin:TIAUSDC_LONG": {
+    "orderId": "3000002279405751",
+    "stopPrice": 0.5275,
+    "entry_sig": "2026-10-27 21:51:29.130000+00:00",
+    "symbol": "TIAUSDC",
+    "side": "LONG"
+  },
+  "fin:ENJUSDT_SHORT": {
+    "orderId": "3000002281119868",
+    "stopPrice": 0.02585,
+    "entry_sig": "2026-10-28 14:16:24.154000+00:00",
+    "symbol": "ENJUSDT",
+    "side": "SHORT"
+  },
+  "fin:GRASSUSDT_LONG": {
+    "orderId": "3000002281120019",
+    "stopPrice": 0.6935,
+    "entry_sig": "2026-10-28 14:46:36.921000+00:00",
+    "symbol": "GRASSUSDT",
+    "side": "LONG"
+  },
+  "fin:TLMUSDT_SHORT": {
+    "orderId": "3000002279101632",
+    "stopPrice": 0.001242,
+    "entry_sig": "2026-10-27 17:55:42.959000+00:00",
+    "symbol": "TLMUSDT",
+    "side": "SHORT"
+  },
+  "fin:BEAMXUSDT_LONG": {
+    "orderId": "3000002279459117",
+    "stopPrice": 0.003294,
+    "entry_sig": "2026-10-27 22:56:06.010000+00:00",
+    "symbol": "BEAMXUSDT",
+    "side": "LONG"
+  },
+  "fin:ZECUSDC_LONG": {
+    "orderId": "3000002281150972",
+    "stopPrice": 1261.23,
+    "entry_sig": "2026-10-28 15:02:02.509000+00:00",
+    "symbol": "ZECUSDC",
+    "side": "LONG"
+  },
+  "fin:ARUSDT_LONG": {
+    "orderId": "3000002281179969",
+    "stopPrice": 3.422,
+    "entry_sig": "2026-10-28 15:15:29.768000+00:00",
+    "symbol": "ARUSDT",
+    "side": "LONG"
+  },
+  "fin:ZROUSDT_LONG": {
+    "orderId": "3000002281182573",
+    "stopPrice": 1.6686,
+    "entry_sig": "2026-10-28 15:16:52.891000+00:00",
+    "symbol": "ZROUSDT",
     "side": "LONG"
   }
 }

@@ -296,6 +296,10 @@ def state_for(symside, window_days=30):
         out.update(_pos)
         out["acts_bar_ts"] = tail
         out["acts_last_bar"] = _acts
+        if out.get("open") and float(_pos.get("engine_qty") or 0.0) <= 1e-12 and any(
+                str(x.get("type")) in ("CLOSE", "REDUCE") and float(x.get("qty_after") or 0.0) <= 1e-12 for x in _acts):
+            out["open"], out["entry_bar"], out["entry_px"] = False, None, None
+            out["flat_reason"] = "zero_qty_after_same_bar_close"
     except Exception as exc:
         out["acts_error"] = f"{type(exc).__name__}: {exc}"[:160]
     return out

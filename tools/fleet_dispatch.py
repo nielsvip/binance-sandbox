@@ -103,6 +103,7 @@ QUARANTINE_S = env_int("FLEET_QUARANTINE_S", 900)  # 2026-10-28 operator through
 # truncated every board (now 0 in fleet_launch.sh). Until boards launched without the slice dominate, "complete"
 # would relaunch every truncated board; flip to "complete" (the harvester's rule) once they do.
 DONE_RULE = os.environ.get("FLEET_DONE_RULE", "final")
+TOMBSTONE_SKIP = os.environ.get("FLEET_TOMBSTONE_SKIP", "1") == "1"
 
 
 def cat_of(symside):
@@ -327,6 +328,12 @@ def pending_by_cat(universe, fleet_data, now):
                 if int(last.get("n") or 0) >= MAX_ATTEMPTS and not advanced:
                     skipped[ss] = f"{last.get('n')} attempts on tail {rtail}; waits {FRESH_BARS} new bars"
                     continue
+            # 2026-10-28: v15_pilot refuses a progress verdict IMPOSSIBLE forever unless FORCE_DC_RERUN=1 (stocks only, fleet_launch.sh):
+            # 69 of 149 launches in 5 h were crypto tombstones exiting at start, re-picked every RETRY_S because the tail check below
+            # never holds for crypto (a new bar lands every 15 min)
+            if TOMBSTONE_SKIP and cat.startswith("CRYPTO") and any(((d.get("progress") or {}).get(ss) or {}).get("verdict") == "IMPOSSIBLE" for d in fleet_data.values()):
+                skipped[ss] = "IMPOSSIBLE tombstone (pilot refuses; manual revision)"
+                continue
             imp = max((int((d.get("impossible") or {}).get(ss) or 0) for d in fleet_data.values()), default=0)
             if imp and now - imp < 86400 and (tail == 0 or tail <= imp):
                 skipped[ss] = "IMPOSSIBLE <24h, no new bar"
@@ -347,6 +354,10 @@ def unfinished_deaths(d, now):
         p = (d.get("progress") or {}).get(ss) or {}
         if 180 < age < 7200 and ss not in (d.get("running") or {}) and not (p.get("fg") or p.get("zero")):
             if float(refused.get(ss) or 0) >= float(r.get("ts") or 0):
+                continue
+            # 2026-10-28: a board that ended with a verdict (IMPOSSIBLE quarantine, NO_TRADES, BEST_EFFORT) finished; it is not a
+            # death (S1 sat in quarantine 10:15-15:2xZ on such boards with 16 GB free)
+            if p.get("verdict"):
                 continue
             # A deliberate operator restart (SIGTERM for a code deploy) is booked in the launch record as
             # "restarted": <epoch> by whoever restarts it; it is not a death and must not quarantine the host.

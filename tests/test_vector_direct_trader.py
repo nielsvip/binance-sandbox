@@ -333,3 +333,36 @@ def test_untradeable_no_verdict_closes_held_and_blocks_opens():
     assert acts["XUSDT_LONG"]["qty"] == 3.0 and any(s == "ZUSDT_LONG" and n.startswith("UNTRADEABLE_NO_OPEN") for s, n in notes)
     orders, notes = V.plan_account("ang", "crypto", {"XUSDT_LONG"}, states, pos, BAR, set(), ALLOW, untradeable=un, untradeable_close=False)
     assert not orders and any("CLOSE_DISABLED" in n for _, n in notes)
+
+
+def test_tra_entries_refused_but_exits_pass(tmp_path):
+    import types
+    t = types.SimpleNamespace(root=ROOT, venue="stocks", done=set(), rows=[])
+    t._ledger = t.rows.append
+    t._entry_banned = lambda acct: V.Trader._entry_banned(t, acct) if hasattr(V, "Trader") else None
+    cls = [c for c in vars(V).values() if isinstance(c, type) and hasattr(c, "send_orders")][0]
+    t._entry_banned = lambda acct: cls._entry_banned(t, acct)
+    assert t._entry_banned("tra") is True and t._entry_banned("trb") is False
+    t.a = types.SimpleNamespace(dry_run=True)
+    t.quiet, t.attempts, t.done_ts = set(), {}, {}
+    t.broker = types.SimpleNamespace(price=lambda s: 10.0, size=lambda o, h, p: (5.0, ""))
+    orders = [{"ss": "AAPL_LONG", "act": a, "key": f"k{a}", "why": "x"} for a in ("OPEN", "AUGMENT", "REDUCE", "CLOSE")]
+    cls.send_orders(t, "tra", orders, {"AAPL_LONG": {"qty": 5.0}}, False)
+    refused = [r["act"] for r in t.rows if r.get("status") == "REFUSED_TRA_EXITS_ONLY"]
+    assert refused == ["OPEN", "AUGMENT"]
+    assert sorted(r["act"] for r in t.rows if r.get("status") == "DRY_RUN") == ["CLOSE", "REDUCE"]
+
+
+def test_same_bar_augment_and_close_state_is_flat_and_trader_closes():
+    sys.path.insert(0, str(ROOT))
+    from tools import v15_forward_state as F
+    led = [{"type": "OPEN", "bar": 1, "qty": 40.0, "price": 10.0},
+           {"type": "AUGMENT", "bar": 3, "qty": 14.0, "price": 10.0},
+           {"type": "CLOSE", "bar_exit": 3, "qty": 54.0, "exit_price": 10.0, "reason": "GAP_MOC_EXIT"}]
+    tails = [100, 1000, 1900, 2800]
+    assert F._open_ledger_position(led, 3) is not None
+    pos, acts = F._vector_acts(led, 3, tails)
+    assert pos["engine_qty"] == 0.0
+    assert any(a["type"] == "CLOSE" and a["qty_after"] == 0.0 for a in acts)
+    orders, _ = V.plan_account("trb", "stocks", ["NUE_LONG"], {"NUE_LONG": st(False, acts)}, {"NUE_LONG": {"qty": 54.0}}, BAR, set(), ALLOW)
+    assert [(o["act"], o["qty"]) for o in orders] == [("CLOSE", 54.0)]

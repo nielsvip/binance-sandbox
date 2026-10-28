@@ -5,7 +5,7 @@ Runs ON a worker, fed over ssh stdin (`ssh host PY - <json-args> < fleet_probe.p
 cloned or newly added server needs no deploy step to be seen. Prints ONE JSON object:
   host, ips, mem_avail_mb, disk_free_mb, ncpu, load1, pdir, repo,
   running {SS: etime_s}, progress {SS: {fg, complete, ts, rows, mtime}},
-  tails {SYM: last_bar_ts}, launches {SS: record}, impossible {SS: mtime}, start_refused {SS: log mtime} (pilot exited at start on BASELINE-PERSYM-SNAPSHOT-INVALID; not a death).
+  tails {SYM: last_bar_ts}, launches {SS: record}, impossible {SS: mtime}, start_refused {SS: log mtime} (pilot exited at start on BASELINE-PERSYM-SNAPSHOT-INVALID / IMPOSSIBLE-SKIP / SOFT-SKIP / PROHIBITED; not a death).
 `complete` uses tools/v15_progress_board.is_complete — the SAME rule the harvester uses, so the
 dispatcher never skips a board the harvester refuses (the 2026-10-27 publish deadlock). Never raises.
 """
@@ -120,7 +120,8 @@ def main():
                 rec = {"fg": data.get("final_gain") is not None,
                        "ts": int(float(data.get("npz_last_bar_ts") or npz_id.get("ts_last") or 0)),
                        "rows": len(data.get("done") or {}), "mtime": int(st.st_mtime),
-                       "zero": bool(data.get("zero_trades_diagnostic")), "complete": None}
+                       "zero": bool(data.get("zero_trades_diagnostic")), "complete": None,
+                       "verdict": str(data.get("verdict") or "")}
                 if rec["fg"] or rec["zero"]:
                     if is_complete is None:
                         is_complete = _complete_fn(pdir) or False
@@ -169,8 +170,12 @@ def main():
                 handle.seek(0, 2)
                 handle.seek(max(0, handle.tell() - 8192))
                 tail = handle.read().decode("utf-8", "replace")
-            if "BASELINE-PERSYM-SNAPSHOT-INVALID" in tail and not any(m in tail.rsplit("BASELINE-PERSYM-SNAPSHOT-INVALID", 1)[1] for m in ("[spec-row]", "[PUBLISH]", "[slow-cell]")):
-                out["start_refused"][symside] = int(os.path.getmtime(log))
+            # 2026-10-28: a tombstoned/finished board exits at start on [IMPOSSIBLE-SKIP]/[SOFT-SKIP]/[PROHIBITED]; S1 was
+            # quarantined for hours by six such exits counted as deaths
+            for marker in ("BASELINE-PERSYM-SNAPSHOT-INVALID", "[IMPOSSIBLE-SKIP]", "[SOFT-SKIP]", "[PROHIBITED]"):
+                if marker in tail and not any(m in tail.rsplit(marker, 1)[1] for m in ("[spec-row]", "[PUBLISH]", "[slow-cell]")):
+                    out["start_refused"][symside] = int(os.path.getmtime(log))
+                    break
         except (OSError, ValueError, TypeError):
             pass
     for path in glob.glob(os.path.join(SB, "SPREADSHEETS", "V15_V16_IMPOSSIBLE", "*_*")):
