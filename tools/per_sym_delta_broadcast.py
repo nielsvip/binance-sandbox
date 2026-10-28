@@ -16,9 +16,9 @@ WATERMARK = ROOT / "data" / "per_sym_delta_broadcast_watermark.json"
 COLS = "sym_side,cat_side,updated_at,winning_tag,wsharpe,pool_sharpe,trades,max_dd_pct,acc_gain_pct,gain_vs_bh,bh_pct,delta_365,delta_30d,gain_30d,baseline_30d,campaign_ts,overrides_json,defaults_snapshot_json,full_config_json,template_md5,defaults_round,meta_json"
 HOSTS = {
     "s1-pub": ("/home/niels/binance/data/hourly_reconfig/per_sym_store.db", "/home/niels/binance-sandbox/data/hourly_reconfig/per_sym_store.db"),
-    "s2": ("/home/niels/binance-sandbox/data/hourly_reconfig/per_sym_forward_master.db", "/home/niels/binance-sandbox/data/hourly_reconfig/per_sym_store.db"),
-    "s5": ("/home/niels/binance-sandbox/data/hourly_reconfig/per_sym_forward_master.db", "/home/niels/binance-sandbox/data/hourly_reconfig/per_sym_store.db"),
-    "s6": ("/home/niels/binance-sandbox/data/hourly_reconfig/per_sym_forward_master.db", "/home/niels/binance-sandbox/data/hourly_reconfig/per_sym_store.db"),
+    "s2": ("/home/niels/binance-sandbox/data/hourly_reconfig/per_sym_store.db",),
+    "s5": ("/home/niels/binance-sandbox/data/hourly_reconfig/per_sym_store.db",),
+    "s6": ("/home/niels/binance-sandbox/data/hourly_reconfig/per_sym_store.db",),
 }
 SSH_OPTS = ["-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10"]
 

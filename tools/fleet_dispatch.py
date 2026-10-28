@@ -95,7 +95,7 @@ HB_STALE_S = env_int("FLEET_HB_STALE_S", 180)
 ORPHAN_AFTER_S = env_int("FLEET_ORPHAN_AFTER_S", 600)
 NPZ_TIMEOUT_S = env_int("FLEET_NPZ_TIMEOUT_S", 240)
 QUARANTINE_DEATHS = env_int("FLEET_QUARANTINE_DEATHS", 2)
-QUARANTINE_S = env_int("FLEET_QUARANTINE_S", 3600)
+QUARANTINE_S = env_int("FLEET_QUARANTINE_S", 900)  # 2026-10-28 operator throughput order: with the 11 GB launch floor an OOM cascade cannot repeat, so a death costs 15 min of launches, not an hour
 # "final" (default): a board with final_gain is done. "complete": also require v15_progress_board.is_complete().
 # 2026-10-27 measured: finished+published boards read 2775/3965 under is_complete() because V15_FILL_SLICE_S
 # truncated every board (now 0 in fleet_launch.sh). Until boards launched without the slice dominate, "complete"

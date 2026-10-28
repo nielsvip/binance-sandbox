@@ -27,13 +27,6 @@
     "symbol": "QNTUSDT",
     "side": "LONG"
   },
-  "ang:PENGUUSDC_LONG": {
-    "orderId": "4000002002154450",
-    "stopPrice": 0.007627,
-    "entry_sig": "2026-10-27 23:16:27.977000+00:00",
-    "symbol": "PENGUUSDC",
-    "side": "LONG"
-  },
   "ang:1000PEPEUSDC_LONG": {
     "orderId": "4000002002083263",
     "stopPrice": 0.004369,
@@ -67,13 +60,6 @@
     "stopPrice": 0.02215,
     "entry_sig": "2026-10-27 21:48:38.496000+00:00",
     "symbol": "GRTUSDT",
-    "side": "LONG"
-  },
-  "ang:FILUSDC_LONG": {
-    "orderId": "4000002002083237",
-    "stopPrice": 0.8874,
-    "entry_sig": "2026-10-27 22:00:08.450000+00:00",
-    "symbol": "FILUSDC",
     "side": "LONG"
   },
   "ang:ZECUSDC_LONG": {
@@ -167,13 +153,6 @@
     "symbol": "ONDOUSDT",
     "side": "LONG"
   },
-  "ang:LINKUSDC_LONG": {
-    "orderId": "4000002002425262",
-    "stopPrice": 11.376,
-    "entry_sig": "2026-10-28 01:32:21.514000+00:00",
-    "symbol": "LINKUSDC",
-    "side": "LONG"
-  },
   "ang:UNIUSDC_LONG": {
     "orderId": "4000002002451509",
     "stopPrice": 6.992,
@@ -193,13 +172,6 @@
     "stopPrice": 0.003709,
     "entry_sig": "2026-10-28 02:26:12.956000+00:00",
     "symbol": "IOTXUSDT",
-    "side": "SHORT"
-  },
-  "ang:EDUUSDT_SHORT": {
-    "orderId": "4000002002588952",
-    "stopPrice": 0.06053,
-    "entry_sig": "2026-10-28 02:46:02.992000+00:00",
-    "symbol": "EDUUSDT",
     "side": "SHORT"
   },
   "ang:ZROUSDT_LONG": {
@@ -230,11 +202,32 @@
     "symbol": "RUNEUSDT",
     "side": "LONG"
   },
+  "ang:PENGUUSDC_LONG": {
+    "orderId": "4000002002154450",
+    "stopPrice": 0.007627,
+    "entry_sig": "2026-10-27 23:16:27.977000+00:00",
+    "symbol": "PENGUUSDC",
+    "side": "LONG"
+  },
   "ang:AVAXUSDC_LONG": {
     "orderId": "4000002002469598",
     "stopPrice": 8.802,
     "entry_sig": "2026-10-28 01:50:21.540000+00:00",
     "symbol": "AVAXUSDC",
     "side": "LONG"
+  },
+  "ang:MINAUSDT_SHORT": {
+    "orderId": "4000002002763896",
+    "stopPrice": 0.06559,
+    "entry_sig": "2026-10-28 04:15:37.464000+00:00",
+    "symbol": "MINAUSDT",
+    "side": "SHORT"
+  },
+  "ang:EDUUSDT_SHORT": {
+    "orderId": "4000002002588952",
+    "stopPrice": 0.06053,
+    "entry_sig": "2026-10-28 02:46:02.992000+00:00",
+    "symbol": "EDUUSDT",
+    "side": "SHORT"
   }
 }

@@ -63,6 +63,49 @@ REMOTE_PY = (
     "print(json.dumps([list(r) for r in rows],default=str))"
 )
 MAX_ROWS_PER_HOST = 25
+# LEAD ORDER 2026-10-28 (live-money rule): a board that finished against a STALE start snapshot (pilot progress.snapshot_mismatch,
+# V15_SNAPSHOT_GUARD_MODE=warn) is adopted only while the Mac's CURRENT live snapshot of that sym_side still equals its start snapshot.
+CONFLICTS_PATH = ROOT / "data" / "reports" / "per_sym_absorb_conflicts.jsonl"
+REMOTE_SNAP_PY = (
+    "import json,os,sys;"
+    "pd=open(os.path.expanduser('~/v15_current_progress_dir.txt')).readline().strip();"
+    "out={}\n"
+    "for ss in sys.argv[1:]:\n"
+    "    try:\n"
+    "        d=json.load(open(os.path.join(pd,ss+'_v14_progress.json')))\n"
+    "        out[ss]={'snapshot_mismatch':d.get('snapshot_mismatch'),'result_done_utc':d.get('result_done_utc'),'final_path':d.get('final_path')}\n"
+    "    except Exception as e:\n"
+    "        out[ss]={'error':repr(e)[:120]}\n"
+    "print(json.dumps(out,default=str))"
+)
+
+
+def remote_snapshot_state(host, sym_sides):
+    """{ss: {snapshot_mismatch, result_done_utc, final_path}} from the host's current-round progress JSONs; {} on any failure."""
+    if not sym_sides:
+        return {}
+    try:
+        r = subprocess.run((*SSH, host, "python3", "-", *sym_sides), input=REMOTE_SNAP_PY, capture_output=True, text=True, timeout=35)
+        return json.loads(r.stdout or "{}") if r.returncode == 0 else {}
+    except Exception:
+        return {}
+
+
+def snapshot_conflict(ss, state, root=None):
+    """None when the row may be adopted; else the conflict record. Only rows whose board recorded snapshot_mismatch are checked."""
+    sm = (state or {}).get("snapshot_mismatch")
+    if not isinstance(sm, dict):
+        return None
+    import hashlib
+    p = Path(root or ROOT) / "data" / "live_baseline_snapshots" / f"{ss}.json"
+    try:
+        now_sha = hashlib.sha256(p.read_bytes()).hexdigest()
+    except Exception:
+        now_sha = None
+    if now_sha is not None and now_sha == sm.get("start_sha"):
+        return None
+    return {"sym_side": ss, "board": (state or {}).get("final_path"), "board_done_utc": (state or {}).get("result_done_utc"),
+            "start_sha": sm.get("start_sha"), "board_now_sha": sm.get("now_sha"), "mac_live_sha": now_sha}
 ACTIVE_COLS = (
     "sym_side,cat_side,updated_at,winning_tag,wsharpe,pool_sharpe,trades,max_dd_pct,"
     "acc_gain_pct,gain_vs_bh,bh_pct,delta_365,delta_30d,gain_30d,baseline_30d,campaign_ts,"
@@ -238,11 +281,21 @@ def absorb():
         if rows is None:
             errors += 1
             continue
+        snaps = remote_snapshot_state(host, [r[0] for r in rows if not (mac_all.get(r[0]) and (r[1] or "") <= mac_all.get(r[0]))])
         for ss, ts, _tag, _cts, ov_j, snap_j, full_j, tmd5, dround, meta_j in rows:
             wm[host] = max(wm.get(host, ""), ts or "")
             try:
                 mac_ts = mac_all.get(ss)
                 if mac_ts and (ts or "") <= mac_ts:
+                    skipped += 1
+                    continue
+                cf = snapshot_conflict(ss, snaps.get(ss))
+                if cf is not None:
+                    cf.update(host=host, remote_updated_at=ts, mac_updated_at=mac_ts, at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
+                    CONFLICTS_PATH.parent.mkdir(parents=True, exist_ok=True)
+                    with open(CONFLICTS_PATH, "a") as fh:
+                        fh.write(json.dumps(cf) + "\n")
+                    log(f"[ABSORB-CONFLICT] {ss} from {host}: board start snapshot {str(cf['start_sha'])[:8]} != Mac live {str(cf['mac_live_sha'])[:8]} - live set kept")
                     skipped += 1
                     continue
                 ov = json.loads(ov_j or "{}")

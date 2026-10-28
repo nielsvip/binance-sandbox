@@ -1009,9 +1009,8 @@ def load_sets():
                 if symbol_side.endswith(("_LONG", "_SHORT")):
                     vd.setdefault(symbol_side, {"mode": "live", "account": "trb"})
         canonical = Path("/home/niels/binance/data/hourly_reconfig/per_sym_store.db")
-        replica = ROOT / "data" / "hourly_reconfig" / "per_sym_forward_master.db"
         local = ROOT / "data" / "hourly_reconfig" / "per_sym_store.db"
-        db = Path(os.environ["PER_SYM_STORE_DB"]) if os.environ.get("PER_SYM_STORE_DB") else (canonical if canonical.is_file() else replica if replica.is_file() else local)
+        db = Path(os.environ["PER_SYM_STORE_DB"]) if os.environ.get("PER_SYM_STORE_DB") else (canonical if canonical.is_file() else local)
         if not db.is_file():
             raise RuntimeError(f"current per-sym SQL store missing: {db}")
         from per_sym_live_set import _apply_caps
