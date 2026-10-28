@@ -40,12 +40,16 @@ def main():
     ap.add_argument("--dir", required=True)
     ap.add_argument("--since-minutes", type=float, default=0)
     ap.add_argument("--apply", action="store_true")
+    ap.add_argument("--shard", default="0/1", help="i/n: only files whose name hash %% n == i")
     ap.add_argument("--backup-dir", default=None)
     a = ap.parse_args()
     bdir = a.backup_dir or os.path.expanduser("~/stamp_norm_backup/dedupe")
     tot = {"files": 0, "with_dups": 0, "dropped": 0, "ohlcv_differs": 0, "skipped": 0}
     for f in sorted(glob.glob(os.path.join(a.dir, "*.json"))):
         if a.since_minutes and time.time() - os.path.getmtime(f) > a.since_minutes * 60:
+            continue
+        i_, n_ = (int(x) for x in a.shard.split("/"))
+        if n_ > 1 and (sum(os.path.basename(f).encode()) % n_) != i_:
             continue
         tot["files"] += 1
         st0 = os.stat(f)
