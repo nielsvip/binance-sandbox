@@ -8946,7 +8946,7 @@ class QuickConfig:
     NEWBORN_LOSS_KILL_ENABLED: bool = True
     NEWBORN_LOSS_KILL_MIN_AGE_MIN: float = 15.0
     NEWBORN_LOSS_KILL_SURGICAL_ONLY: bool = True
-    NEWBORN_LOSS_KILL_VEL_TF: str = ""
+    NEWBORN_LOSS_KILL_VEL_TF: str = "15m"  # USER 2026-10-28: declared = effective. Template bold is the authority (15m); "" resolved to 15m anyway.
     NEWBORN_LOSS_KILL_WINDOW_MIN: float = 30.0
     NEWS_POLL_INTERVAL_CRYPTO: int = 300
     NEWS_POLL_INTERVAL_SOCIAL: int = 900

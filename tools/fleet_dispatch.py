@@ -78,7 +78,7 @@ def env_int(name, default):
 SLOTS = env_int("FLEET_SLOTS", 4)
 WORKERS = env_int("FLEET_WORKERS", 7)
 ORPHAN_SLOTS = env_int("FLEET_ORPHAN_SLOTS", 1)
-MEM_MIN_MB = env_int("FLEET_MEM_MIN_MB", 6500)
+MEM_MIN_MB = env_int("FLEET_MEM_MIN_MB", 11000)  # 2026-10-28 operator: NO OOM — a 7-worker board peaks 8-9 GB, so a launch needs that much headroom beyond the 2-3 GB reserve
 DISK_MIN_MB = env_int("FLEET_DISK_MIN_MB", 3000)
 LAUNCH_GAP_S = env_int("FLEET_LAUNCH_GAP_S", 120)
 FRESH_BARS = env_int("FLEET_FRESH_BARS", 48)

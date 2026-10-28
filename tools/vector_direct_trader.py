@@ -614,7 +614,17 @@ class Tradier:
         if o["act"] == "CLOSE":
             return float(int(held)), ""
         if o["act"] == "OPEN":
-            n = math.floor(float(o["notional"]) / price) if price > 0 else 0
+            # USER 2026-10-28: "s5 needs START_POS 900 and MAX_POS 4000 for stocks". MAX_OPEN_NOTIONAL was
+            # applied on the CRYPTO path only, so stocks had NO max-position ceiling at all. It CLAMPS here
+            # and never refuses, because a ceiling must not obstruct a trade: the requested notional is
+            # START_POSITION_SIZE x ratio (ratio 0.25-4.0), so 900 x 4 = 3600 stays under 4000 in normal
+            # operation and this binds only if START_POS is raised. MAX_POSITION_SIZE itself stays
+            # exclusively MARKET MODE's business (operator, same message) — this is the trader's own ceiling.
+            _want = float(o["notional"])
+            if _want > MAX_OPEN_NOTIONAL:
+                log(f"[VD-CAP] {o.get('ss')} open notional ${_want:.0f} clamped to MAX_OPEN_NOTIONAL ${MAX_OPEN_NOTIONAL:.0f}")
+                _want = MAX_OPEN_NOTIONAL
+            n = math.floor(_want / price) if price > 0 else 0
             if n >= 1:
                 return float(n), ""
             # stock convention (tradier_manage max(1, int(qty)); config_tradier START_POSITION_SIZE $500 "$150 can't buy 1

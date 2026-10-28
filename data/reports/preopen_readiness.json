@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-28T03:00:10Z",
+ "generated_utc": "2026-10-28T03:20:10Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-27T13:30:00Z",
  "market_open": true,
@@ -14,10 +14,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 171,
+    "filled_today": 174,
     "filled_before_open": 26
    },
-   "detail": "26 boards filled before the open (171 today)"
+   "detail": "26 boards filled before the open (174 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -51,9 +51,9 @@
     "reports_today": 21,
     "newest_report": "persym_golive_20261027_refresh_2359.json",
     "newest_report_at": "2026-10-28T00:09:34Z",
-    "tiers_at": "2026-10-28T02:33:53Z"
+    "tiers_at": "2026-10-28T03:07:20Z"
    },
-   "detail": "persym_golive_20261027_refresh_2359.json at 2026-10-28T00:09:34Z, tiers 2026-10-28T02:33:53Z \u2014 the apply never finished (no report / stale tiers): the live set is PARTIAL"
+   "detail": "persym_golive_20261027_refresh_2359.json at 2026-10-28T00:09:34Z, tiers 2026-10-28T03:07:20Z \u2014 the apply never finished (no report / stale tiers): the live set is PARTIAL"
   },
   {
    "name": "live_set_matches_selection",

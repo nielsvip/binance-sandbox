@@ -2186,7 +2186,7 @@ class Config:
     NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST: bool = (
         True  # 2026-05-22 V2: only close if wt_velocity_TF also against position (not a wick)
     )
-    NEWBORN_LOSS_KILL_VEL_TF: str = ""  # empty -> 15m both venues (USER 2026-10-28: 3m/5m deleted; neither array exists)
+    NEWBORN_LOSS_KILL_VEL_TF: str = "15m"  # USER 2026-10-28: declared = effective. Template bold is the authority (15m); "" resolved to 15m anyway.
     NEWBORN_LOSS_KILL_MIN_AGE_MIN: float = (
         15.0  # 2026-05-22 V4 user: "they need time to breathe so do not let it kick in until 12-25 min after open"
     )
