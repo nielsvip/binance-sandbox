@@ -367,11 +367,15 @@ def _row_window() -> int:
 
 
 def _parse_kline_bytes(raw: bytes):
-    if os.environ.get("NPZ_ROW_JSON", "orjson") == "orjson":
+    """json.loads semantics (what _load_klines_df uses). orjson is used only for plain-JSON bytes it parses: it rejects
+    the NaN/Infinity tokens Python's json accepts (stock files carry "open": NaN rows), so those go to json.loads."""
+    if os.environ.get("NPZ_ROW_JSON", "orjson") == "orjson" and b"NaN" not in raw and b"Infinity" not in raw:
         try:
             import orjson
             return orjson.loads(raw)
         except ImportError:
+            pass
+        except ValueError:
             pass
     return json.loads(raw)
 
