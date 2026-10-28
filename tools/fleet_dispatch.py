@@ -72,6 +72,24 @@ def manual_hold(name, now):
 PY = "/home/niels/.conda/envs/binance_env_mac/bin/python"
 CAT_PRIORITY = ("CRYPTO_SHORT", "CRYPTO_LONG", "STOCKS_SHORT", "STOCKS_LONG")
 HOMES = {"s1": "CRYPTO_SHORT", "s2": "CRYPTO_LONG", "s5": "STOCKS_LONG", "s6": "STOCKS_SHORT"}
+# USER 2026-10-28 allocation rule (verbatim): "stocks 24hr at least 2 servers s5 and s6 as long as available crypto 24 s1 and s2
+# if any set runs out it starts on the backlog of another serverr". A host's HOME is its VENUE (both sides); its HOMES cat_side
+# only decides which side of that venue goes first. Own venue (pending, then re-run) before the other venue's backlog; a running
+# board is never killed to switch back.
+VENUE_CATS = {"CRYPTO": ("CRYPTO_SHORT", "CRYPTO_LONG"), "STOCKS": ("STOCKS_SHORT", "STOCKS_LONG")}
+
+
+def venue_of_cat(cat):
+    return cat.split("_", 1)[0]
+
+
+def host_cat_order(name):
+    """-> own-venue cats (home side first), then the other venue's cats (CAT_PRIORITY order). Unknown hosts: CAT_PRIORITY."""
+    home = HOMES.get(name)
+    if not home:
+        return list(CAT_PRIORITY), set()
+    own = [home] + [c for c in VENUE_CATS[venue_of_cat(home)] if c != home]
+    return own + [c for c in CAT_PRIORITY if c not in own], set(own)
 NPZ_OWNER = {"crypto": "s1", "stocks": "s5"}
 LEADERS = {"s1": "10.0.0.3", "s2": "10.0.0.4"}
 # Fleet names come from the private IP, not hostname(): S1's hostname is "niels". New servers keep their hostname.
@@ -108,6 +126,20 @@ RAMP_MB = env_int("FLEET_RAMP_MB", 3000)  # 10-28 16Z: MEM_MIN_MB already holds 
 RAMP_MB_CRYPTO = env_int("FLEET_RAMP_MB_CRYPTO", 7000)
 LAUNCH_GAP_S = env_int("FLEET_LAUNCH_GAP_S", 120)
 FRESH_BARS = env_int("FLEET_FRESH_BARS", 48)
+# 2026-10-28 maxsets ("stocks ... can backtest all night"; "idle compute is waste"): a FINISHED board whose NPZ has advanced by at
+# least this many 15m bars is a RE-RUN candidate, launched only after every normal pending board of the host's own venue (a fresh
+# computation on a changed NPZ: the pilot archives the old board and refills every row, NPZ-CHANGED-REFILL; an unchanged NPZ is
+# never re-run, so no old cell is ever re-stamped). Stocks: 1 bar = the boards that ran on intraday data rerun on the session's
+# full bars overnight. Crypto: 4 bars (1 h). 0 disables.
+REFRESH_BARS_STOCKS = env_int("FLEET_REFRESH_BARS_STOCKS", 1)
+REFRESH_BARS_CRYPTO = env_int("FLEET_REFRESH_BARS_CRYPTO", 4)
+# Mac live per_sym snapshot freshness: the pilot refuses a manifest older than V15_LIVE_SNAPSHOT_MAX_AGE_S
+# (fleet_launch.sh); launches are withheld when the host's copy is within SNAPSHOT_MARGIN_S of that limit.
+SNAPSHOT_MAX_S = env_int("FLEET_SNAPSHOT_MAX_S", 3600)
+SNAPSHOT_MARGIN_S = env_int("FLEET_SNAPSHOT_MARGIN_S", 300)
+# start refusals that a later launch can pass (no attempt burned, short cooldown)
+RETRYABLE_REFUSALS = ("BASELINE-PERSYM-SNAPSHOT-INVALID", "[STALE_NPZ_SKIPPED]")
+RETRYABLE_COOLDOWN_S = env_int("FLEET_RETRYABLE_COOLDOWN_S", 300)
 MAX_ATTEMPTS = env_int("FLEET_MAX_ATTEMPTS", 2)
 RETRY_S = env_int("FLEET_RETRY_S", 1800)
 HB_STALE_S = env_int("FLEET_HB_STALE_S", 180)
@@ -330,19 +362,24 @@ def pending_by_cat(universe, fleet_data, now):
                     part_host, part_rows = name, int(p.get("rows") or 0)
             if done:
                 continue
-            last = None
+            last, last_d = None, None
             for d in fleet_data.values():
                 rec = (d.get("launches") or {}).get(ss)
                 if rec and (last is None or rec.get("ts", 0) > last.get("ts", 0)):
-                    last = rec
+                    last, last_d = rec, d
             if last:
                 age = now - float(last.get("ts") or 0)
                 rtail = int(last.get("tail") or 0)
                 advanced = tail and rtail and (tail - rtail) / BAR_S >= FRESH_BARS
-                if age < RETRY_S and not advanced:
+                why_ref = str(((last_d or {}).get("start_refused_why") or {}).get(ss) or "")
+                retryable = why_ref in RETRYABLE_REFUSALS and float(((last_d or {}).get("start_refused") or {}).get(ss) or 0) >= float(last.get("ts") or 0)
+                if retryable and age < RETRYABLE_COOLDOWN_S:
+                    skipped[ss] = f"cooldown {int(age)}s after retryable start refusal {why_ref}"
+                    continue
+                if not retryable and age < RETRY_S and not advanced:
                     skipped[ss] = f"cooldown {int(age)}s after launch"
                     continue
-                if int(last.get("n") or 0) >= MAX_ATTEMPTS and not advanced:
+                if not retryable and int(last.get("n") or 0) >= MAX_ATTEMPTS and not advanced:
                     skipped[ss] = f"{last.get('n')} attempts on tail {rtail}; waits {FRESH_BARS} new bars"
                     continue
             # 2026-10-28: v15_pilot refuses a progress verdict IMPOSSIBLE forever unless FORCE_DC_RERUN=1 (stocks only, fleet_launch.sh):
@@ -359,6 +396,46 @@ def pending_by_cat(universe, fleet_data, now):
             if part_host:
                 partial[ss] = part_host
     return pend, partial, skipped
+
+
+def refresh_by_cat(universe, fleet_data, now, pend):
+    """-> {cat: [ss...]} FINISHED boards whose NPZ advanced >= REFRESH_BARS_* (but < FRESH_BARS, else they are already pending),
+    in universe (best-first) order. Same cooldown / attempt / tombstone guards as pending_by_cat. Pure."""
+    running = {ss for d in fleet_data.values() for ss in d.get("running", {})}
+    pending = {ss for v in pend.values() for ss in v}
+    tails = {}
+    for d in fleet_data.values():
+        for sym, t in (d.get("tails") or {}).items():
+            tails[sym] = max(tails.get(sym, 0), int(t or 0))
+    out = {}
+    for cat, sides in universe.items():
+        need = REFRESH_BARS_CRYPTO if cat.startswith("CRYPTO") else REFRESH_BARS_STOCKS
+        out[cat] = []
+        if need <= 0:
+            continue
+        for ss in sides:
+            if ss in running or ss in pending:
+                continue
+            tail = tails.get(ss.rsplit("_", 1)[0], 0)
+            ts = 0
+            for d in fleet_data.values():
+                p = (d.get("progress") or {}).get(ss)
+                if p and (p.get("fg") or p.get("zero")) and int(p.get("ts") or 0) > ts:
+                    ts = int(p.get("ts") or 0)
+            if not tail or not ts or (tail - ts) / BAR_S < need:
+                continue
+            if any(((d.get("progress") or {}).get(ss) or {}).get("verdict") == "IMPOSSIBLE" for d in fleet_data.values()):
+                continue
+            last = max(((d.get("launches") or {}).get(ss) or {} for d in fleet_data.values()), key=lambda r: float(r.get("ts") or 0), default={})
+            if last:
+                rtail = int(last.get("tail") or 0)
+                moved = rtail and (tail - rtail) / BAR_S >= need
+                if now - float(last.get("ts") or 0) < RETRY_S and not moved:
+                    continue
+                if int(last.get("n") or 0) >= MAX_ATTEMPTS and not moved:
+                    continue
+            out[cat].append(ss)
+    return out
 
 
 def unfinished_deaths(d, now):
@@ -413,23 +490,32 @@ def admission(d, now, name=""):
         return 0, f"spacing {int(now - last)}s < {LAUNCH_GAP_S}"
     if not str(d.get("pdir") or "").startswith("/home/niels/v15_run"):
         return 0, "no round pointer"
+    snap_age = d.get("snapshot_age_s")
+    if snap_age is not None and int(snap_age) > SNAPSHOT_MAX_S - SNAPSHOT_MARGIN_S:
+        return 0, f"baseline snapshot stale {int(snap_age)}s > {SNAPSHOT_MAX_S}-{SNAPSHOT_MARGIN_S}s (pilot would refuse at start)"
     return 1, "ok"
 
 
-def plan(pend, partial, fleet_data, now, orphan_since, prio=frozenset()):
-    """-> ([(host, ss, why)], {host: reason}, orphans). Pure."""
-    homes_present = {HOMES[n]: n for n in fleet_data if n in HOMES}
+def plan(pend, partial, fleet_data, now, orphan_since, prio=frozenset(), refresh=None):
+    """-> ([(host, ss, why)], {host: reason}, orphans). Pure.
+    Per host (USER 2026-10-28 venue rule): data/fleet_priority.json sides; then own-venue pending (home side first); then own-venue
+    re-runs; then, when its own venue is out of work, the other venue's backlog (pending, then re-runs). A venue with no admitting
+    host for ORPHAN_AFTER_S is ORPHANED: every other host gives it up to ORPHAN_SLOTS foreign slot(s) before its own work."""
+    refresh = refresh or {}
     adm = {n: admission(d, now, n) for n, d in fleet_data.items()}
     orphans = set()
     for cat in CAT_PRIORITY:
-        home = homes_present.get(cat)
-        blocked = home is None or adm[home][0] == 0 and not adm[home][1].startswith(("full", "spacing"))
+        hosts = [n for n in fleet_data if venue_of_cat(HOMES.get(n, "")) == venue_of_cat(cat)]
+        blocked = not hosts or all(adm[h][0] == 0 and not adm[h][1].startswith(("full", "spacing")) for h in hosts)
         if blocked and now - orphan_since.get(cat, now) >= ORPHAN_AFTER_S:
             orphans.add(cat)
     claimed, out, why_not = set(), [], {}
 
-    def take(host, cat):
-        sides = [s for s in pend.get(cat, []) if s not in claimed]
+    def avail(queue, cat):
+        return [s for s in queue.get(cat, []) if s not in claimed]
+
+    def take(host, cat, queue):
+        sides = avail(queue, cat)
         # resume-first: finish boards this host already started, then untouched ones; a board started elsewhere
         # comes last (its progress lives on that host, so here it would be a fresh re-run)
         mine = [s for s in sides if partial.get(s) == host]
@@ -441,29 +527,45 @@ def plan(pend, partial, fleet_data, now, orphan_since, prio=frozenset()):
         return pick
 
     order = sorted(fleet_data, key=lambda n: (CAT_PRIORITY.index(HOMES[n]) if n in HOMES else 9, n))
+    # pass 1: every admitting host takes its own venue's work; pass 2: hosts still empty-handed take another venue's backlog,
+    # so a stock host's own re-runs are never stolen by an idle crypto host in the same tick (and vice versa)
+    pending_hosts = []
     for name in order:
         free, reason = adm[name]
         if not free:
             why_not[name] = reason
             continue
-        home = HOMES.get(name)
+        cats, own = host_cat_order(name)
         running = list((fleet_data[name].get("running") or {}).keys())
-        foreign = sum(1 for s in running if cat_of(s) != home)
+        foreign = sum(1 for s in running if cat_of(s) not in own) if own else 0
         pick, why = None, ""
-        live_orphans = [c for c in CAT_PRIORITY if c in orphans and c != home and any(s not in claimed for s in pend.get(c, []))]
-        # data/fleet_priority.json sides go first on ANY host with a free slot, across home boundaries (2026-10-28 ruling: the 46
-        # crypto "23-day tests" were capped at S1's 2 slots while s5/s6 kept launching their home stocks)
         live_prio = [c for c in CAT_PRIORITY if any(s in prio and s not in claimed and partial.get(s) in (None, name) for s in pend.get(c, []))]
         if live_prio:
-            pick, why = take(name, live_prio[0]), f"priority {live_prio[0]}"
-        if not pick and live_orphans and foreign < ORPHAN_SLOTS:
-            pick, why = take(name, live_orphans[0]), f"orphan {live_orphans[0]}"
-        if not pick and home and any(s not in claimed for s in pend.get(home, [])):
-            pick, why = take(name, home), f"home {home}"
-        if not pick:
-            for cat in CAT_PRIORITY:
-                if cat != home and any(s not in claimed for s in pend.get(cat, [])):
-                    pick, why = take(name, cat), f"overflow {cat} (home {home or 'none'} exhausted)"
+            pick, why = take(name, live_prio[0], pend), f"priority {live_prio[0]}"
+        live_orphans = [c for c in CAT_PRIORITY if c in orphans and c not in own and avail(pend, c)]
+        if not pick and own and live_orphans and foreign < ORPHAN_SLOTS:
+            pick, why = take(name, live_orphans[0], pend), f"orphan {live_orphans[0]}"
+        own_cats = [c for c in cats if c in own] if own else cats
+        for label, queue in (("home", pend), ("rerun", refresh)):
+            if pick:
+                break
+            for cat in own_cats:
+                if avail(queue, cat):
+                    pick, why = take(name, cat, queue), f"{label} {cat}"
+                    break
+        if pick:
+            out.append((name, pick, why))
+        else:
+            pending_hosts.append((name, [c for c in cats if c not in own] if own else []))
+    for name, other_cats in pending_hosts:
+        pick, why = None, ""
+        for label, queue in (("overflow", pend), ("overflow-rerun", refresh)):
+            if pick:
+                break
+            for cat in other_cats:
+                if avail(queue, cat):
+                    pick = take(name, cat, queue)
+                    why = f"{label} {cat} (own venue {venue_of_cat(HOMES[name])} has no work)"
                     break
         if pick:
             out.append((name, pick, why))
@@ -656,16 +758,17 @@ def tick(args):
                 pend[cat].remove(ss)
                 skipped[ss] = f"NPZ stale hold {int(now - holds[ss])}s/900s"
         orphan_since = state.setdefault("orphan_since", {})
-        homes_present = {HOMES[n]: n for n in data if n in HOMES}
         for cat in CAT_PRIORITY:
-            home = homes_present.get(cat)
-            ok = home is not None and (admission(data[home], now, home)[0] or admission(data[home], now, home)[1].startswith(("full", "spacing")))
+            hosts = [n for n in data if venue_of_cat(HOMES.get(n, "")) == venue_of_cat(cat)]
+            ok = any(admission(data[h], now, h)[0] or admission(data[h], now, h)[1].startswith(("full", "spacing")) for h in hosts)
             if ok:
                 orphan_since.pop(cat, None)
             else:
                 orphan_since.setdefault(cat, now)
-        picks, why_not, orphans = plan(pend, partial, data, now, orphan_since, frozenset(prio))
+        refresh = refresh_by_cat(universe, view, now, pend)
+        picks, why_not, orphans = plan(pend, partial, data, now, orphan_since, frozenset(prio), refresh)
         rec["pending"] = {c: len(v) for c, v in pend.items()}
+        rec["rerun"] = {c: len(v) for c, v in refresh.items()}
         rec["universe"] = {c: len(v) for c, v in universe.items()}
         rec["running"] = sum(len(d.get("running") or {}) for d in data.values())
         rec["orphans"] = sorted(orphans)
@@ -688,7 +791,7 @@ def tick(args):
         if not args.dry_run:
             rec["settings_history"] = settings_history(fleet, state)[:12]
         free_cap = sum(1 for n in data if admission(data[n], now, n)[0])
-        work = sum(rec["pending"].values())
+        work = sum(rec["pending"].values()) + sum(rec["rerun"].values())
         idle_s = now - float(state.get("last_launch") or now)
         if free_cap and work and idle_s > 900:
             rec["ALARM"] = f"{free_cap} host(s) admit and {work} sym_sides pending but no launch for {int(idle_s)}s"
@@ -698,7 +801,7 @@ def tick(args):
         tmp = state_path.with_suffix(".tmp")
         tmp.write_text(json.dumps(state))
         os.replace(tmp, state_path)
-        (STATE_DIR / "status.json").write_text(json.dumps(dict(rec, skipped=skipped, pending_list=pend), indent=1, default=str))
+        (STATE_DIR / "status.json").write_text(json.dumps(dict(rec, skipped=skipped, pending_list=pend, rerun_list=refresh), indent=1, default=str))
         log_line(rec)
         return rec
     finally:
@@ -719,7 +822,7 @@ def main():
         print("another tick running")
         return
     rec = tick(args)
-    print(json.dumps({k: rec.get(k) for k in ("ts", "me", "leader", "pending", "running", "plan", "launches", "idle_why", "orphans", "hosts_added", "hosts_gone", "ALARM", "error")}, default=str))
+    print(json.dumps({k: rec.get(k) for k in ("ts", "me", "leader", "pending", "rerun", "running", "plan", "launches", "idle_why", "orphans", "hosts_added", "hosts_gone", "ALARM", "error")}, default=str))
 
 
 if __name__ == "__main__":

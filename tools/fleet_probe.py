@@ -95,7 +95,14 @@ def main():
            "swap_free_mb": mem.get("SwapFree", 0), "disk_free_mb": disk, "ncpu": os.cpu_count() or 0,
            "load1": os.getloadavg()[0], "pdir": pdir,
            "repo": os.path.isfile(os.path.join(SB, "v15_pilot.py")),
-           "running": _running(), "progress": {}, "tails": {}, "launches": {}, "impossible": {}, "start_refused": {}}
+           "running": _running(), "progress": {}, "tails": {}, "launches": {}, "impossible": {}, "start_refused": {},
+           "start_refused_why": {}, "snapshot_age_s": None}
+    # 2026-10-28 maxsets: age of the Mac live per_sym snapshot the pilot validates at start (BASELINE-PERSYM-SNAPSHOT-INVALID
+    # when older than V15_LIVE_SNAPSHOT_MAX_AGE_S); the dispatcher withholds launches it would refuse instead of burning attempts
+    try:
+        out["snapshot_age_s"] = int(now - float(json.load(open(os.path.join(SB, "data", "live_baseline_snapshots", "manifest.json")))["generated_at"]))
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
     try:
         cache = json.load(open(CACHE))
     except (OSError, ValueError):
@@ -177,6 +184,7 @@ def main():
             for marker in ("BASELINE-PERSYM-SNAPSHOT-INVALID", "[IMPOSSIBLE-SKIP]", "[SOFT-SKIP]", "[PROHIBITED]", "[STALE_NPZ_SKIPPED]", "[spec-fill] workbook complete", "[REDO] "):
                 if marker in tail and not any(m in tail.rsplit(marker, 1)[1] for m in ("[spec-row]", "[PUBLISH]", "[slow-cell]")):
                     out["start_refused"][symside] = int(os.path.getmtime(log))
+                    out["start_refused_why"][symside] = marker
                     break
         except (OSError, ValueError, TypeError):
             pass

@@ -38,7 +38,8 @@ def test_overflow_when_home_exhausted_follows_priority():
     pend, partial, _ = F.pending_by_cat(uni, data, NOW)
     picks, _, _ = F.plan(pend, partial, data, NOW, {})
     got = {h: (s, w) for h, s, w in picks}
-    assert got["s2"][0] == "ETHUSDT_SHORT" and got["s2"][1].startswith("overflow CRYPTO_SHORT")
+    # USER 2026-10-28 venue rule: s2's home is the CRYPTO venue, so CRYPTO_SHORT is its own work, not overflow
+    assert got["s2"][0] == "ETHUSDT_SHORT" and got["s2"][1].startswith("home CRYPTO_SHORT")
 
 
 def test_done_requires_complete_and_fresh_npz():
@@ -64,14 +65,75 @@ def test_running_anywhere_is_not_pending_and_retry_cap():
     assert pend["CRYPTO_SHORT"] == [] and "attempts" in skipped["ETHUSDT_SHORT"]
 
 
-def test_orphaned_home_gets_a_slot_elsewhere():
+def test_venue_peer_covers_a_down_host_no_orphan():
     data = fleet4(s1=host(mem=500))
     pend, partial, _ = F.pending_by_cat(UNI, data, NOW)
     picks, why_not, orphans = F.plan(pend, partial, data, NOW, {"CRYPTO_SHORT": NOW - 3600})
     got = {h: s for h, s, _ in picks}
-    assert "CRYPTO_SHORT" in orphans and "s1" in why_not
-    assert got["s2"] == "BTCUSDT_SHORT"
-    assert got["s6"] == "ETHUSDT_SHORT" and got["s5"] == "AAPL_LONG"
+    assert not orphans and "s1" in why_not
+    assert got["s2"] == "BTCUSDT_LONG" and got["s5"] == "AAPL_LONG" and got["s6"] == "AAPL_SHORT"
+
+
+def test_orphaned_venue_gets_a_slot_elsewhere():
+    data = fleet4(s1=host(mem=500), s2=host(mem=500))
+    pend, partial, _ = F.pending_by_cat(UNI, data, NOW)
+    picks, why_not, orphans = F.plan(pend, partial, data, NOW, {"CRYPTO_SHORT": NOW - 3600, "CRYPTO_LONG": NOW - 3600})
+    got = {h: s for h, s, _ in picks}
+    assert {"CRYPTO_SHORT", "CRYPTO_LONG"} <= orphans
+    assert {got["s5"], got["s6"]} == {"BTCUSDT_SHORT", "ETHUSDT_SHORT"}
+
+
+def test_stock_host_steals_crypto_backlog_only_when_stocks_empty():
+    uni = dict(UNI, STOCKS_SHORT=[], STOCKS_LONG=["AAPL_LONG"])
+    data = fleet4()
+    pend, partial, _ = F.pending_by_cat(uni, data, NOW)
+    picks, _, _ = F.plan(pend, partial, data, NOW, {})
+    got = {h: (s, w) for h, s, w in picks}
+    assert got["s6"][0] == "AAPL_LONG" and got["s6"][1] == "home STOCKS_LONG"
+    assert got["s5"][0] == "ETHUSDT_SHORT" and got["s5"][1].startswith("overflow CRYPTO_SHORT")
+
+
+def test_rerun_tier_after_own_pending_before_other_venue():
+    done = {"fg": True, "complete": True, "ts": TAIL - 2 * F.BAR_S, "rows": 3800}
+    uni = {"CRYPTO_SHORT": ["BTCUSDT_SHORT"], "CRYPTO_LONG": [], "STOCKS_SHORT": ["AAPL_SHORT"], "STOCKS_LONG": []}
+    data = fleet4(s6=host(progress={"AAPL_SHORT": done}, tails={"AAPL": TAIL, "BTCUSDT": TAIL}))
+    pend, partial, _ = F.pending_by_cat(uni, data, NOW)
+    assert pend["STOCKS_SHORT"] == []
+    rer = F.refresh_by_cat(uni, data, NOW, pend)
+    assert rer["STOCKS_SHORT"] == ["AAPL_SHORT"]
+    picks, _, _ = F.plan(pend, partial, data, NOW, {}, refresh=rer)
+    got = {h: (s, w) for h, s, w in picks}
+    assert got["s1"][0] == "BTCUSDT_SHORT"
+    assert got["s6"][0] == "AAPL_SHORT" and got["s6"][1] == "rerun STOCKS_SHORT"
+    same = dict(done, ts=TAIL)
+    data = fleet4(s6=host(progress={"AAPL_SHORT": same}, tails={"AAPL": TAIL}))
+    assert F.refresh_by_cat(uni, data, NOW, F.pending_by_cat(uni, data, NOW)[0])["STOCKS_SHORT"] == []
+
+
+def test_crypto_rerun_needs_four_bars():
+    near = {"fg": True, "complete": True, "ts": TAIL - 3 * F.BAR_S, "rows": 3800}
+    uni = {"CRYPTO_SHORT": ["BTCUSDT_SHORT"], "CRYPTO_LONG": [], "STOCKS_SHORT": [], "STOCKS_LONG": []}
+    data = fleet4(s1=host(progress={"BTCUSDT_SHORT": near}, tails={"BTCUSDT": TAIL}))
+    pend, _, _ = F.pending_by_cat(uni, data, NOW)
+    assert F.refresh_by_cat(uni, data, NOW, pend)["CRYPTO_SHORT"] == []
+    data = fleet4(s1=host(progress={"BTCUSDT_SHORT": dict(near, ts=TAIL - 4 * F.BAR_S)}, tails={"BTCUSDT": TAIL}))
+    assert F.refresh_by_cat(uni, data, NOW, pend)["CRYPTO_SHORT"] == ["BTCUSDT_SHORT"]
+
+
+def test_stale_snapshot_withholds_launch():
+    d = dict(host(), snapshot_age_s=F.SNAPSHOT_MAX_S)
+    free, why = F.admission(d, NOW, "s2")
+    assert free == 0 and "snapshot" in why
+    assert F.admission(dict(host(), snapshot_age_s=60), NOW, "s2")[0] == 1
+
+
+def test_retryable_start_refusal_burns_no_attempt():
+    launches = {"ETHUSDT_SHORT": {"ts": NOW - 400, "tail": TAIL, "n": 2}}
+    h = host(launches=launches)
+    h["start_refused"] = {"ETHUSDT_SHORT": NOW - 380}
+    h["start_refused_why"] = {"ETHUSDT_SHORT": "BASELINE-PERSYM-SNAPSHOT-INVALID"}
+    pend, _, skipped = F.pending_by_cat(UNI, fleet4(s2=h), NOW)
+    assert "ETHUSDT_SHORT" in pend["CRYPTO_SHORT"]
 
 
 def test_new_server_without_home_takes_top_priority_work():
@@ -122,7 +184,7 @@ def test_quarantined_host_gets_nothing_and_home_orphans():
     pend, partial, _ = F.pending_by_cat(UNI, data, NOW)
     picks, why_not, orphans = F.plan(pend, partial, data, NOW, {"CRYPTO_SHORT": NOW - 3600})
     assert "s1" not in {h for h, _, _ in picks} and why_not["s1"].startswith("quarantine")
-    assert "CRYPTO_SHORT" in orphans
+    assert "CRYPTO_SHORT" not in orphans  # s2 (same venue) still admits
 
 
 def test_quarantine_counts_deaths_even_if_relaunched_elsewhere():

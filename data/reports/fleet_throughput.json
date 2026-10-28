@@ -1,5 +1,5 @@
 {
-  "ts": "2026-10-28T18:35:15.101688+00:00",
+  "ts": "2026-10-28T18:40:11.635312+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 1,
@@ -9,14 +9,15 @@
       "published_last_60m": 1,
       "published_last_3h": 1,
       "boards": {
+        "PLTR_LONG": 7,
         "XPLUSDT_SHORT": 7
       },
-      "boards_running": 1,
-      "workers": 7,
-      "workers_vs_law_28": "7/28",
-      "mem_avail_mb": 15187,
+      "boards_running": 2,
+      "workers": 14,
+      "workers_vs_law_28": "14/28",
+      "mem_avail_mb": 13291,
       "disk_free_gb": 34,
-      "load1": 17.8,
+      "load1": 10.3,
       "dispatch_idle_why": "full 2/2",
       "published_ss": [
         "PTBUSDT_SHORT"

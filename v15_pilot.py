@@ -13470,7 +13470,7 @@ def _main_single():
                 _persym_ov_raw = None
                 try:
                     from tools.live_baseline_snapshot import load_live_entry as _load_live_entry
-                    _persym_entry = _load_live_entry(ROOT, new_symside, max_age_seconds=900)
+                    _persym_entry = _load_live_entry(ROOT, new_symside, max_age_seconds=int(os.environ.get("V15_LIVE_SNAPSHOT_MAX_AGE_S", "900")))
                     if _persym_entry and _persym_entry.get("full_config"):
                         _persym_full, _persym_ov_san = build_persym_baseline_candidate(_persym_entry, defaults)
                         _persym_label = "mac_live_full_set_snapshot"

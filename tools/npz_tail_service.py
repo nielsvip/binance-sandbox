@@ -230,6 +230,16 @@ def load_universe(base):
                     uni.append(str(ss).upper())
     except Exception:
         pass
+    try:
+        # data/append_universe_extra.txt: symbols (or sym_sides) that boards/parity jobs launch on outside the daily universe; one per line or space separated
+        for item in (base / "data" / "append_universe_extra.txt").read_text().split():
+            item = item.strip().upper()
+            if item.endswith(("_LONG", "_SHORT")):
+                uni.append(item)
+            elif item:
+                uni.extend([item + "_LONG", item + "_SHORT"])
+    except Exception:
+        pass
     if not any(not is_crypto_symbol(s.rsplit("_", 1)[0]) for s in uni if "_" in s):
         # symbols_trb_* erased/empty (tradier_rankings incident): fall back to stock NPZs on disk.
         # Skip dotfiles and orphan *.TMP/BARREFRESH debris (never real symbols).
