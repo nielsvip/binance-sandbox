@@ -193,12 +193,9 @@ def newborn_kill_fires(get: Get, ind: Mapping[str, Any] | None, is_long: bool, a
         vel_ok = True
         vel_used = 0.0
         if bool(get("NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST", True)):
-            # USER 2026-10-28: "3m (5m for stocks) need to be deleted from all vector and live paths for this switch".
-            # Measured cause: wt_velocity_3m and wt_velocity_5m exist in NO indicator set (checked AAPL stocks, BTCUSDC
-            # and NMRUSDT crypto; _15m/_1h/_4h all exist). "3m" also matched no branch, so "", None and "3m" all fell
-            # into else -> wt_velocity_5m -> vel_used 0.0 -> vel_ok False, which made the whole NEWBORN_LOSS_KILL exit
-            # unfireable whenever REQUIRE_VEL_AGAINST was True (its default on both venues). 15m is the fallback: it is
-            # the repo's decision grid and already the filter_default for the sibling NEWBORN_LOSS_KILL_FILTER_TF.
+            # USER 2026-10-28: "3m (5m for stocks) need to be deleted from all vector and live paths for this
+            # switch". wt_velocity_3m/_5m exist in no indicator set, and "3m" matched no branch, so "", None and "3m"
+            # all fell into else -> wt_velocity_5m -> vel_used 0.0 -> vel_ok False, which made the exit unfireable.
             vel_tf = str(get("NEWBORN_LOSS_KILL_VEL_TF", "") or "15m").strip().lower()
             if vel_tf in ("1h", "1"):
                 vel_key = "wt_velocity_1h"

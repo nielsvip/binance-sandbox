@@ -232,8 +232,6 @@ def test_htf_d_confirm_skipped_when_no_data():
 # ---------- NEWBORN ----------
 
 def _nlk_ind(**kw):
-    # USER 2026-10-28: 3m (5m for stocks) deleted from this switch's paths. wt_velocity_5m exists in NO real
-    # indicator set, so a fixture built on it pinned the very defect that made the exit unfireable; 15m is real.
     ind = {"wt_velocity_15m": -1.5, "wt1_1h": -5.0, "wt2_1h": 3.0,
            "wt1_15m": -4.0, "wt2_15m": 2.0, "wt1_4h": -3.0, "wt2_4h": 1.0}
     ind.update(kw)

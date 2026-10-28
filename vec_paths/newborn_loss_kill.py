@@ -105,9 +105,7 @@ def check_newborn_loss_kill_exit(
     if bool(getattr(cfg, "NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST", True)):
         tf = getattr(cfg, "NEWBORN_LOSS_KILL_VEL_TF", "")
         if not tf:
-            # USER 2026-10-28: 3m (5m for stocks) deleted from every vector and live path for this switch -- neither
-            # wt_velocity_3m nor wt_velocity_5m exists in any indicator set, so this auto-pick read a missing array and
-            # the velocity veto could never be satisfied. 15m is the decision grid and the sibling filter's default.
+            # USER 2026-10-28: no 3m/5m for this switch; neither array exists in any indicator set.
             tf = "15m"
         vel_used = float(store.f(f"wt_velocity_{tf}", bar_idx, 0.0))
         is_long = (pos_state.side == "LONG")

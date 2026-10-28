@@ -48,7 +48,8 @@ EXPERIENCE_SHA256 = {
     "experience_STOCKS_SHORT_202610.db.zst": "5533d2c01320ef038d06edafe852e8da8b516b801693ecd9cd76643e8832872d",
     "experience_STOCKS_SHORT_202610.db.zst.manifest.json": "7ec2d16589f74a11a5da439fcc2708247356812046bd833b29767ec128f96d46",
 }
-EXTS = (Path("/Volumes/TOSHIBA_EXT"), Path("/Volumes/SSD2T"), Path("/Volumes/E3T"), Path("/Volumes/WD25"))
+# 2026-10-28: TOSHIBA_EXT removed from write targets (faulting drive on the shared USB3.1 hub 02200000 that also carries WD25)
+EXTS = (Path("/Volumes/SSD2T"), Path("/Volumes/E3T"), Path("/Volumes/WD25"))
 
 
 def _log(event: str, **fields) -> None:
@@ -228,6 +229,10 @@ def _archive_s1_staging(apply: bool) -> None:
         _log("s1_stage_archived_and_removed", source=source, destination=f"s5:{dest}", sha256=sha, free_mb=_free_mb("s1"))
 
 
+def _source_exists(host: str, source: str) -> bool:
+    return _ssh(host, f"test -e {shlex.quote(source)}", check=False).returncode == 0
+
+
 def _mounts() -> list[Path]:
     out = []
     for path in EXTS:
@@ -271,7 +276,7 @@ def _make_local_archive(host: str, source: str, stage: Path) -> tuple[Path, str]
     name = Path(source).name
     if not source.endswith("/") and Path(source).suffix == ".zst":
         dest = stage / name
-        result = subprocess.run(["rsync", "-a", f"{HOSTS[host]}:{source}", str(dest)], capture_output=True, text=True, timeout=1800)
+        result = subprocess.run(["rsync", "-a", "--partial-dir=.rsync-partial", "--timeout=120", f"{HOSTS[host]}:{source}", str(dest)], capture_output=True, text=True, timeout=7200)
         if result.returncode:
             raise RuntimeError(f"rsync failed for {host}:{source}: {result.stderr[-300:]}")
     else:
@@ -628,6 +633,9 @@ def main() -> int:
         _log("s6_reclaim_skipped", error=str(exc))
     drives = _mounts()
     for host, source in (("s6", S6_ARCHIVE), ("s5", S5_MIRROR)):
+        if not _source_exists(host, source):
+            _log("source_missing_skipped", host=host, source=source)
+            continue
         external_verified = False
         for drive in drives:
             try:

@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-28T02:42:44Z",
+ "ts": "2026-10-28T02:47:33Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 74,
+   "fills_6h": 75,
    "open_positions": 21,
-   "unrealised_usd": -0.16,
+   "unrealised_usd": -0.13,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 148,
-   "open_positions": 27,
-   "unrealised_usd": -4.78,
+   "fills_6h": 150,
+   "open_positions": 28,
+   "unrealised_usd": -4.89,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 205,
-   "open_positions": 39,
-   "unrealised_usd": 1.86,
+   "fills_6h": 204,
+   "open_positions": 41,
+   "unrealised_usd": 1.79,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -77,7 +77,7 @@
   "inf": {
    "fills_6h": 11,
    "open_positions": 4,
-   "unrealised_usd": 0.14,
+   "unrealised_usd": 0.17,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -91,9 +91,9 @@
    }
   },
   "flz": {
-   "fills_6h": 47,
-   "open_positions": 9,
-   "unrealised_usd": -0.1,
+   "fills_6h": 49,
+   "open_positions": 8,
+   "unrealised_usd": -0.09,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,80 +127,66 @@
     "14821"
    ],
    "starts_30m": 1,
-   "log_age_s": 689.0
+   "log_age_s": 105.0
   },
   "men": {
    "pids": [
     "46160"
    ],
    "starts_30m": 1,
-   "log_age_s": -0.0
+   "log_age_s": 17.0
   },
   "ang": {
    "pids": [
     "10667"
    ],
    "starts_30m": 1,
-   "log_age_s": 732.0
+   "log_age_s": 30.0
   },
   "inf": {
    "pids": [
     "13688"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 8.0
   },
   "flz": {
    "pids": [
     "39174"
    ],
    "starts_30m": 1,
-   "log_age_s": 1372.0
+   "log_age_s": 1663.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 24132.0
+   "log_age_s": 24422.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 24207.0
+   "log_age_s": 24497.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-28T02:42:45Z",
+   "ts": "2026-10-28T02:47:35Z",
    "severity": "WARN",
    "kind": "ATTEMPT_STORM_KEY",
    "key": "fin:BLURUSDT_SHORT",
-   "evidence": "45 execute_now attempts in 5 min (pre-gate)"
+   "evidence": "44 execute_now attempts in 5 min (pre-gate)"
   },
   {
-   "ts": "2026-10-28T02:42:46Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 689s"
-  },
-  {
-   "ts": "2026-10-28T02:42:46Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 732s"
-  },
-  {
-   "ts": "2026-10-28T02:42:46Z",
+   "ts": "2026-10-28T02:47:39Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 1372s"
+   "evidence": "ez_manage_flz.log not written for 1663s"
   }
  ],
  "alert_counts": {
   "ATTEMPT_STORM_KEY": 1,
-  "STALE_LOG": 3
+  "STALE_LOG": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -267,5 +253,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 2.2
+ "sweep_s": 5.27
 }

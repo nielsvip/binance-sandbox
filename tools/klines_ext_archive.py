@@ -41,7 +41,8 @@ from pathlib import Path
 
 REPO = Path("/Users/niels/Documents/binance")
 SOURCES = ("klines_cache", "klines_cache_gateway", "klines_canonical", "klines_cache_backtest", "data/klines_wm_staging")
-EXT_ROOTS = (Path("/Volumes/SSD2T"), Path("/Volumes/E3T"), Path("/Volumes/WD25"), Path("/Volumes/TOSHIBA_EXT"))
+# 2026-10-28: TOSHIBA_EXT removed (faulting, shares USB3.1 hub 02200000 with WD25)
+EXT_ROOTS = (Path("/Volumes/SSD2T"), Path("/Volumes/E3T"), Path("/Volumes/WD25"))
 ARCH_SUBDIR = Path("binance_archive") / "klines_archive"
 MIN_FREE_GB = 3.0
 CRYPTO_SUFFIX = ("USDT", "USDC", "USD1", "USDS", "BUSD", "FDUSD", "TUSD", "DAI")

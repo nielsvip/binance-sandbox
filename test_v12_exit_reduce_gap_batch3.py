@@ -91,7 +91,6 @@ def test_newborn_window_threshold_velocity_and_missing_are_exact():
     )
     assert r.masks["newborn_loss_kill"].tolist() == [True, True, False, True]
     data = _data()
-    # USER 2026-10-28: 3m/5m deleted from this switch's paths; the velocity array it reads is now 15m.
     data["wt_velocity_15m"][-1] = 1.0
     assert _run(cfg, data=data, gain_pct=-0.1).masks["newborn_loss_kill"].tolist() == [True, True, True, False]
     del data["wt_velocity_15m"]

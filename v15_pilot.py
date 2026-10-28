@@ -2906,7 +2906,7 @@ _MIN_PROMOTE_DELTA = float(os.environ.get("V15_MIN_PROMOTE_DELTA", "0") or 0)
 # D (USER 2026-10-27 23:0xZ "stop calculating greedily"): V15_HOLDOUT_PROMOTE=1 (needs V15_HOLDOUT_DAYS > 0) fits on bars ending
 # CONFIRM days before the holdout, then at publication keeps only the switches that hold leave-one-out on that unseen confirm window
 # (tools/v15_holdout_promotion.py); the holdout (gate OOS) days stay untouched. Default OFF = unchanged production.
-_HOLDOUT_PROMOTE = os.environ.get("V15_HOLDOUT_PROMOTE", "0") == "1" and _HOLDOUT["days"] > 0
+_HOLDOUT_PROMOTE = os.environ.get("V15_HOLDOUT_PROMOTE", "1") == "1"  # OPERATOR ORDER 2026-10-28 02:4xZ: default ON in production (env 0 = off), independent of the gate's V15_HOLDOUT_DAYS
 _HOLDOUT["confirm_days"] = float(os.environ.get("V15_HOLDOUT_CONFIRM_DAYS", "7") or 7) if _HOLDOUT_PROMOTE else 0.0
 
 
@@ -2953,7 +2953,7 @@ def holdout_cut(last_s: float, days: float) -> float:
 
 
 def _install_holdout(symside: str):
-    if _HOLDOUT["days"] <= 0 or _HOLDOUT["installed"]:
+    if (_HOLDOUT["days"] <= 0 and not _HOLDOUT.get("confirm_days")) or _HOLDOUT["installed"]:
         return None
     import numpy as _np_h
     from tools.opt import evaluate_v12 as _E_h
@@ -2966,6 +2966,13 @@ def _install_holdout(symside: str):
     t = t[_np_h.isfinite(t) & (t > 0)]
     last = float(t[-1]) / (1000.0 if t[-1] > 1e11 else 1.0)
     _HOLDOUT["cut"] = holdout_cut(last, _HOLDOUT["days"] + _HOLDOUT.get("confirm_days", 0.0))
+    if _HOLDOUT.get("confirm_days") and _HOLDOUT["days"] <= 0 and not str(symside).upper().rsplit("_", 1)[0].endswith(("USDT", "USDC")):
+        # stocks: the confirm window is N SESSIONS (prepare(symside, N) counts sessions), so the fit cut is the open of the N-th last session
+        _sec = t / (1000.0 if t[-1] > 1e11 else 1.0)
+        _days = _np_h.unique((_sec // 86400).astype("int64"))
+        _nconf = int(_HOLDOUT["confirm_days"])
+        if len(_days) > _nconf:
+            _HOLDOUT["cut"] = float(_days[-_nconf]) * 86400.0 - 1.0
     _HOLDOUT["confirm_end"] = holdout_cut(last, _HOLDOUT["days"]) if _HOLDOUT.get("confirm_days") else None
     _orig = _E_h._store
     def _store_h(sym, mode, start):
@@ -11442,7 +11449,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     print(f"[mandatory-yellows] {_mandatory_summary()}", flush=True)
     _touch(f"spec-done cum={cumulative_gain:.4f} rows={processed}")
     print(f"[spec-fill] DONE {new_symside} final_gain={cumulative_gain:.4f} baseline={baseline_gain:.4f} rows={processed} pos_tabs curated", flush=True)
-    if _HOLDOUT.get("installed"):
+    if _HOLDOUT.get("installed") and _HOLDOUT["days"] > 0:  # the gate's unseen-days OOS score; production (days 0) has only the confirm window
         try:
             _ho = holdout_score(new_symside, {"final": dict(cumulative_overrides), "start": dict(initial_overrides), "template": {}, **({"final_unpruned": dict(progress["holdout_confirm"]["unpruned_overrides"])} if (progress.get("holdout_confirm") or {}).get("dropped") else {})}, defaults)
             _ho["fit_final_gain"] = float(cumulative_gain)
@@ -13212,6 +13219,8 @@ def _main_single():
             return
     except Exception as _nae:
         print(f"[NPZ-AGE-WARN] {new_symside} {_nae} — age check skipped", flush=True)
+    if int(getattr(args, "window_days", 30) or 30) != 30:  # D confirm window is defined for 30D boards only (7D/365D lanes keep their own windows)
+        _HOLDOUT["confirm_days"] = 0.0
     try:
         _install_holdout(new_symside)
     except Exception as _hoe:

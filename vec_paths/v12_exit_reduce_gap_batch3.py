@@ -129,8 +129,7 @@ def evaluate_gap_batch3(
         return (w1 < w2) if long else (w1 > w2)
 
     # ez_manage.py:40217-40258.
-    # USER 2026-10-28: 3m (5m for stocks) deleted from every vector and live path for this switch; wt_velocity_3m/_5m
-    # exist in no indicator set, so this requested an absent array and the veto could never be satisfied.
+    # USER 2026-10-28: no 3m/5m for this switch (feeds backtest_v12_engine, the live-faithful verifier).
     vel_tf = str(_cfg(config, "NEWBORN_LOSS_KILL_VEL_TF", "") or "15m")
     vel_required = bool(_cfg(config, "NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST", True))
     a = load("newborn_loss_kill", (f"wt_velocity_{vel_tf}",) if vel_required else ())

@@ -55055,7 +55055,7 @@ async def process_position(
             _nlk_vel_used = 0.0
             if bool(getattr(config, "NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST", True)):
                 from vec_decisions.twin_yellow_filters import resolve_filter_tf as _tyf_resolve
-                _nlk_vel_tf = _tyf_resolve(_psym_get(symbol, position_side, "NEWBORN_LOSS_KILL_FILTER_TF", getattr(config, "NEWBORN_LOSS_KILL_FILTER_TF", "15m")), family_raw=(getattr(config, "NEWBORN_LOSS_KILL_VEL_TF", "") or "3m"), filter_default="15m") or (getattr(config, "NEWBORN_LOSS_KILL_VEL_TF", "") or "3m")
+                _nlk_vel_tf = _tyf_resolve(_psym_get(symbol, position_side, "NEWBORN_LOSS_KILL_FILTER_TF", getattr(config, "NEWBORN_LOSS_KILL_FILTER_TF", "15m")), family_raw=(getattr(config, "NEWBORN_LOSS_KILL_VEL_TF", "") or "15m"), filter_default="15m") or (getattr(config, "NEWBORN_LOSS_KILL_VEL_TF", "") or "15m")
                 if _pp_shared_ind is None:
                     _pp_shared_ind = await ii(trade_manager, symbol) or {}
                 _nlk_vel_used = safe_fetch_float(_pp_shared_ind.get(f"wt_velocity_{_nlk_vel_tf}", 0.0), 0.0)

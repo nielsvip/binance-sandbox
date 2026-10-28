@@ -435,8 +435,7 @@ def fast_riser_fires(get_ind, price, is_long, tf, gain_pct):
 
 def newborn_vel_key(filter_raw, vel_tf_raw):
     """vec simulate_one NEWBORN_LOSS_KILL velocity key (resolve_filter_tf family fallback, filter default 15m)."""
-    # USER 2026-10-28: 3m (5m for stocks) deleted from every vector and live path for this switch -- wt_velocity_3m and
-    # wt_velocity_5m exist in no indicator set, so this family fallback named an array that is never present.
+    # USER 2026-10-28: no 3m/5m for this switch; this family fallback named an array that never exists.
     fam = str(vel_tf_raw or "").strip() or "15m"
     r = str(filter_raw if filter_raw is not None else "").strip()
     if r == "" or r.upper() == "OFF":

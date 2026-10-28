@@ -16735,9 +16735,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
 
         _nlk_tf = _tyf_nlk.resolve_filter_tf(
             getattr(cfg, "NEWBORN_LOSS_KILL_FILTER_TF", "15m"),
-            family_raw=(getattr(cfg, "NEWBORN_LOSS_KILL_VEL_TF", "") or "3m"),
+            family_raw=(getattr(cfg, "NEWBORN_LOSS_KILL_VEL_TF", "") or "15m"),
             filter_default="15m",
-        ) or (getattr(cfg, "NEWBORN_LOSS_KILL_VEL_TF", "") or "3m")
+        ) or (getattr(cfg, "NEWBORN_LOSS_KILL_VEL_TF", "") or "15m")
         _nlk_key = (
             f"wt_velocity_{_nlk_tf}" if _nlk_tf.upper() != "OFF" else "wt_velocity_15m"
         )

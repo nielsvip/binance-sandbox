@@ -68,7 +68,10 @@ def test_expectation_order():
 
 def test_pilot_wiring_contract():
     src = (ROOT / "v15_pilot.py").read_text()
-    assert '_HOLDOUT_PROMOTE = os.environ.get("V15_HOLDOUT_PROMOTE", "0") == "1" and _HOLDOUT["days"] > 0' in src
+    assert '_HOLDOUT_PROMOTE = os.environ.get("V15_HOLDOUT_PROMOTE", "1") == "1"' in src  # operator order 2026-10-28: default ON
+    assert 'if (_HOLDOUT["days"] <= 0 and not _HOLDOUT.get("confirm_days")) or _HOLDOUT["installed"]:' in src
+    assert 'if _HOLDOUT.get("installed") and _HOLDOUT["days"] > 0:' in src  # gate OOS scoring only with the gate holdout
+    assert 'if int(getattr(args, "window_days", 30) or 30) != 30:' in src
     assert '_HOLDOUT["cut"] = holdout_cut(last, _HOLDOUT["days"] + _HOLDOUT.get("confirm_days", 0.0))' in src
     assert "def holdout_confirm_score(" in src
     # the confirm step runs BEFORE the fresh-final / gain-truth / publish block, so the published set and name are the pruned set's

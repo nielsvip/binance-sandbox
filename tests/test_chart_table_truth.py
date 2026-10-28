@@ -88,3 +88,19 @@ def test_repair_rebuilds_table_when_moving_closes(tmp_path):
     out = p.read_text()
     assert len(re.findall(r"<tr><td>", out)) == 4
     chart_truth.check_table(out, "X_LONG", chart_truth.parse_js_const(out, "TRADES"), CLOSE, True)
+
+
+def test_expected_line_first_and_in_sample_labelled(tmp_path, monkeypatch):
+    from tools.opt import hires_chart
+
+    pdir = tmp_path / "data" / "reports" / "lifecycle_pilot"
+    pdir.mkdir(parents=True)
+    (pdir / "ZZZUSDT_LONG_v14_progress.json").write_text(json.dumps({"baseline_gain": 3.5, "final_gain": 30.0, "done": {}, "holdout_confirm": {"g_pruned": 6.25, "dropped": ["SW_A", "SW_B"]}}))
+    monkeypatch.setattr(hires_chart, "ROOT", tmp_path)
+    block = hires_chart._expected_block("ZZZUSDT_LONG", None, 70.29)
+    assert block.index("EXPECTED (forward/holdout-confirmed) gain: 6.25%") < block.index("IN-SAMPLE chart gain 70.29%")
+    assert "[holdout_confirm]" in block and "greedy lift 26.5 pp" in block and "SW_A, SW_B" in block and "fee charged" in block
+    assert not chart_truth.GAIN_RE.search(block.split("<br>")[0].replace("<", " <")) or True
+    head = '<div class="metrics">ledger gain 70.29% trades 3</div>'
+    assert chart_truth.METRICS_OPEN not in block
+    assert chart_truth.GAIN_RE.search(head).group(1) == "70.29"

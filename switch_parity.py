@@ -131,6 +131,29 @@ STRUCTURED_KEYS = frozenset({"FILTER_EXEMPTIONS"})
 GLOBAL_ONLY_KEYS = frozenset({"AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED", "PARITY_VEC_EXACT_MODE", "PARITY_VEC_EXACT_FAMILIES", "PARITY_VEC_EXACT_SET_DIR", "PARITY_VEC_EXACT_SOURCE"})
 
 
+def _load_switch_types(root):
+    """The BIBLE §96 typed-value validator, found by CODE location and not by data root.
+
+    2026-10-28: this used to be `sys.path.insert(0, root/"tools"); import switch_types`, where `root` is
+    the DATA root (SWITCH_PARITY_ROOT). An isolated run — a sweep, or the test fixture, which points the
+    root at a bare tmp dir — therefore lost the validator entirely and every register/pin/verify call
+    refused with "switch_types validator unavailable", which looks like a type violation but is a missing
+    import. The validator is code: prefer a copy under the given root (so an isolated run CAN pin its own),
+    then fall back to the one shipped beside this module. Still fail-closed when neither imports, which is
+    what §96 actually requires.
+    """
+    import importlib
+
+    for cand in (Path(root) / "tools" / "switch_types.py", Path(__file__).resolve().parent / "tools" / "switch_types.py"):
+        if not cand.is_file():
+            continue
+        spec = importlib.util.spec_from_file_location("switch_types", cand)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+    raise ImportError("switch_types.py not found under the data root or beside switch_parity.py")
+
+
 def coerce_structured(key: str, value):
     """(ok, normalized_or_reason) for STRUCTURED_KEYS. FILTER_EXEMPTIONS: {path: [filter_key, ...]} (a JSON-string form is
     parsed; a comma string per path is split); normalized = str keys, de-duplicated str lists, empty paths dropped."""
@@ -450,8 +473,7 @@ def register_workbook_result(
         same, noop, floatkept = [], [], []
     global_only = []
     try:  # BIBLE §96: the ONE typed-value validator gates every key before any surface is written (fail-closed)
-        sys.path.insert(0, str(root / "tools"))
-        import switch_types as _ST
+        _ST = _load_switch_types(root)
     except Exception as _ste:
         rep["reason"] = f"switch_types validator unavailable — refusing (fail-closed): {_ste}"
         return rep

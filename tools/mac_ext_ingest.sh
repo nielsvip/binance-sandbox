@@ -29,7 +29,8 @@ BATCHES=$(ssh -S none -o ConnectTimeout=20 -o BatchMode=yes s1-int "ls ~/ext_sta
 for b in $BATCHES; do
   [ "$b" = "manifest.json" ] && continue
   say "pull batch $b -> $TARGET"
-  rsync -az -e "ssh -S none -o StrictHostKeyChecking=accept-new" "s1-int:ext_staging/$b/" "$DEST/$b/" >> "$LOG" 2>&1 || { say "rsync failed $b"; continue; }
+  # --partial-dir keeps an interrupted copy so the next 15-min run resumes it instead of restarting from 0 (2026-10-28)
+  rsync -az --partial-dir=.rsync-partial --timeout=120 -e "ssh -S none -o StrictHostKeyChecking=accept-new" "s1-int:ext_staging/$b/" "$DEST/$b/" >> "$LOG" 2>&1 || { say "rsync failed $b (partial kept, resumes next run)"; continue; }
   MANIFEST_BYTES=$(ssh -S none -o ConnectTimeout=20 -o BatchMode=yes s1-int "python3 -c \"import json;print(json.load(open('/home/niels/ext_staging/$b/manifest.json'))['total_bytes'])\"" 2>/dev/null || echo 0)
   GOT_BYTES=$(find "$DEST/$b" -type f -exec stat -f%z {} + 2>/dev/null | awk '{s+=$1} END {print s+0}')
   [ -z "$GOT_BYTES" ] && GOT_BYTES=0
