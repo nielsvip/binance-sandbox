@@ -1,212 +1,128 @@
 {
-  "men:QNTUSDT_LONG": {
-    "orderId": "2000001542283784",
-    "stopPrice": 192.48,
-    "entry_sig": "2026-10-26 13:07:56.195000+00:00",
-    "symbol": "QNTUSDT",
-    "side": "LONG"
-  },
-  "men:RAYSOLUSDT_LONG": {
-    "orderId": "2000001545626765",
-    "stopPrice": 1.743,
-    "entry_sig": "2026-10-27 15:31:34.419000+00:00",
-    "symbol": "RAYSOLUSDT",
-    "side": "LONG"
-  },
-  "men:BEAMXUSDT_LONG": {
-    "orderId": "2000001546336154",
-    "stopPrice": 0.003294,
-    "entry_sig": "2026-10-27 22:39:58.937000+00:00",
-    "symbol": "BEAMXUSDT",
-    "side": "LONG"
-  },
-  "men:ETHFIUSDC_LONG": {
-    "orderId": "2000001546337902",
-    "stopPrice": 0.6552,
-    "entry_sig": "2026-10-27 22:40:12.185000+00:00",
-    "symbol": "ETHFIUSDC",
-    "side": "LONG"
-  },
-  "men:MAGICUSDT_LONG": {
-    "orderId": "2000001546464918",
-    "stopPrice": 0.08239,
-    "entry_sig": "2026-10-28 00:07:34.235242+00:00",
-    "symbol": "MAGICUSDT",
-    "side": "LONG"
-  },
-  "men:RUNEUSDT_LONG": {
-    "orderId": "2000001546432380",
-    "stopPrice": 0.6228,
-    "entry_sig": "2026-10-27 22:40:32.728000+00:00",
-    "symbol": "RUNEUSDT",
-    "side": "LONG"
-  },
-  "men:ZROUSDT_LONG": {
-    "orderId": "2000001545781474",
-    "stopPrice": 1.6319,
-    "entry_sig": "2026-10-27 16:32:46.656000+00:00",
-    "symbol": "ZROUSDT",
-    "side": "LONG"
-  },
-  "men:ARUSDT_LONG": {
-    "orderId": "2000001546407236",
-    "stopPrice": 3.453,
-    "entry_sig": "2026-10-27 23:31:13.668000+00:00",
-    "symbol": "ARUSDT",
-    "side": "LONG"
-  },
-  "men:BIGTIMEUSDT_SHORT": {
-    "orderId": "2000001546142031",
-    "stopPrice": 0.006866,
-    "entry_sig": "2026-10-27 20:02:31.827000+00:00",
-    "symbol": "BIGTIMEUSDT",
-    "side": "SHORT"
-  },
-  "men:ZECUSDC_LONG": {
-    "orderId": "2000001545974155",
-    "stopPrice": 1250.18,
-    "entry_sig": "2026-10-27 17:46:58.498000+00:00",
-    "symbol": "ZECUSDC",
-    "side": "LONG"
-  },
-  "men:XMRUSDT_LONG": {
-    "orderId": "2000001546457229",
-    "stopPrice": 598.73,
-    "entry_sig": "2026-10-28 00:02:41.056123+00:00",
-    "symbol": "XMRUSDT",
-    "side": "LONG"
-  },
-  "men:RLCUSDT_LONG": {
-    "orderId": "2000001546137627",
-    "stopPrice": 0.504,
-    "entry_sig": "2026-10-27 19:53:42.767000+00:00",
-    "symbol": "RLCUSDT",
-    "side": "LONG"
-  },
-  "men:ENAUSDC_LONG": {
-    "orderId": "2000001546072415",
-    "stopPrice": 0.20345,
-    "entry_sig": "2026-10-27 19:12:11.197000+00:00",
-    "symbol": "ENAUSDC",
-    "side": "LONG"
-  },
-  "men:ARBUSDC_LONG": {
-    "orderId": "2000001545094904",
+  "fin:ARBUSDC_LONG": {
+    "orderId": "3000002278271582",
     "stopPrice": 0.16365,
-    "entry_sig": "2026-10-27 12:30:35.511000+00:00",
+    "entry_sig": "2026-10-27 09:44:58.536000+00:00",
     "symbol": "ARBUSDC",
     "side": "LONG"
   },
-  "men:UNIUSDC_LONG": {
-    "orderId": "2000001545978439",
-    "stopPrice": 6.992,
-    "entry_sig": "2026-10-27 18:12:32.235121+00:00",
-    "symbol": "UNIUSDC",
+  "fin:RLCUSDT_LONG": {
+    "orderId": "3000002279269282",
+    "stopPrice": 0.5005,
+    "entry_sig": "2026-10-27 20:03:13.734000+00:00",
+    "symbol": "RLCUSDT",
     "side": "LONG"
   },
-  "men:STXUSDT_LONG": {
-    "orderId": "2000001546273291",
-    "stopPrice": 0.2993,
-    "entry_sig": "2026-10-27 21:51:30.383000+00:00",
-    "symbol": "STXUSDT",
-    "side": "LONG"
-  },
-  "men:NEARUSDC_LONG": {
-    "orderId": "2000001544615120",
+  "fin:NEARUSDC_LONG": {
+    "orderId": "3000002277450882",
     "stopPrice": 4.358,
-    "entry_sig": "2026-10-27 08:10:09.368000+00:00",
+    "entry_sig": "2026-10-27 04:37:46.017000+00:00",
     "symbol": "NEARUSDC",
     "side": "LONG"
   },
-  "men:TIAUSDC_LONG": {
-    "orderId": "2000001545751464",
-    "stopPrice": 0.5165,
-    "entry_sig": "2026-10-27 15:05:59.284000+00:00",
-    "symbol": "TIAUSDC",
+  "fin:UNIUSDC_LONG": {
+    "orderId": "3000002279025101",
+    "stopPrice": 6.972,
+    "entry_sig": "2026-10-27 17:14:54.260000+00:00",
+    "symbol": "UNIUSDC",
     "side": "LONG"
   },
-  "men:BBUSDT_SHORT": {
-    "orderId": "2000001546210596",
-    "stopPrice": 0.007622,
-    "entry_sig": "2026-10-27 21:08:15.022000+00:00",
-    "symbol": "BBUSDT",
-    "side": "SHORT"
+  "fin:ZROUSDT_LONG": {
+    "orderId": "3000002278957269",
+    "stopPrice": 1.5986,
+    "entry_sig": "2026-10-27 16:31:23.162000+00:00",
+    "symbol": "ZROUSDT",
+    "side": "LONG"
   },
-  "men:FARTCOINUSDT_SHORT": {
-    "orderId": "2000001546508945",
-    "stopPrice": 0.1329,
-    "entry_sig": "2026-10-28 00:31:23.979000+00:00",
-    "symbol": "FARTCOINUSDT",
-    "side": "SHORT"
+  "fin:ZECUSDC_LONG": {
+    "orderId": "3000002279295262",
+    "stopPrice": 1250.18,
+    "entry_sig": "2026-10-27 17:46:57.921000+00:00",
+    "symbol": "ZECUSDC",
+    "side": "LONG"
   },
-  "men:1000BONKUSDC_SHORT": {
-    "orderId": "2000001546486919",
-    "stopPrice": 0.003089,
-    "entry_sig": "2026-10-28 00:18:23.002000+00:00",
-    "symbol": "1000BONKUSDC",
-    "side": "SHORT"
+  "fin:STXUSDT_LONG": {
+    "orderId": "3000002279293814",
+    "stopPrice": 0.2991,
+    "entry_sig": "2026-10-27 19:11:21.036000+00:00",
+    "symbol": "STXUSDT",
+    "side": "LONG"
   },
-  "men:RVNUSDT_SHORT": {
-    "orderId": "2000001546436685",
-    "stopPrice": 0.001489,
-    "entry_sig": "2026-10-27 23:43:07.073311+00:00",
-    "symbol": "RVNUSDT",
-    "side": "SHORT"
+  "fin:ENAUSDC_LONG": {
+    "orderId": "3000002279294151",
+    "stopPrice": 0.20205,
+    "entry_sig": "2026-10-27 18:21:59.876473+00:00",
+    "symbol": "ENAUSDC",
+    "side": "LONG"
   },
-  "men:BLURUSDT_SHORT": {
-    "orderId": "2000001546483061",
-    "stopPrice": 0.00742,
-    "entry_sig": "2026-10-28 00:17:41.875529+00:00",
-    "symbol": "BLURUSDT",
-    "side": "SHORT"
+  "fin:RAYSOLUSDT_LONG": {
+    "orderId": "3000002278863784",
+    "stopPrice": 1.743,
+    "entry_sig": "2026-10-27 16:03:18.339000+00:00",
+    "symbol": "RAYSOLUSDT",
+    "side": "LONG"
   },
-  "men:TLMUSDT_SHORT": {
-    "orderId": "2000001546107923",
+  "fin:TLMUSDT_SHORT": {
+    "orderId": "3000002279101632",
     "stopPrice": 0.001242,
-    "entry_sig": "2026-10-27 19:51:43.011000+00:00",
+    "entry_sig": "2026-10-27 17:55:42.959000+00:00",
     "symbol": "TLMUSDT",
     "side": "SHORT"
   },
-  "men:1000LUNCUSDT_SHORT": {
-    "orderId": "2000001546338209",
-    "stopPrice": 0.0454,
-    "entry_sig": "2026-10-27 22:46:10.351000+00:00",
-    "symbol": "1000LUNCUSDT",
+  "fin:BEATUSDT_SHORT": {
+    "orderId": "3000002279230988",
+    "stopPrice": 0.09392,
+    "entry_sig": "2026-10-27 19:32:52.821000+00:00",
+    "symbol": "BEATUSDT",
     "side": "SHORT"
   },
-  "men:EDUUSDT_LONG": {
-    "orderId": "2000001546593221",
-    "stopPrice": 0.05879,
-    "entry_sig": "2026-10-28 01:16:24.423000+00:00",
-    "symbol": "EDUUSDT",
+  "fin:TIAUSDC_LONG": {
+    "orderId": "3000002279405751",
+    "stopPrice": 0.5275,
+    "entry_sig": "2026-10-27 21:51:29.130000+00:00",
+    "symbol": "TIAUSDC",
     "side": "LONG"
   },
-  "men:MOVEUSDT_SHORT": {
-    "orderId": "2000001546593532",
-    "stopPrice": 0.006857,
-    "entry_sig": "2026-10-28 01:16:35.004000+00:00",
-    "symbol": "MOVEUSDT",
+  "fin:ETHFIUSDC_LONG": {
+    "orderId": "3000002279459222",
+    "stopPrice": 0.6552,
+    "entry_sig": "2026-10-27 22:56:09.398000+00:00",
+    "symbol": "ETHFIUSDC",
+    "side": "LONG"
+  },
+  "fin:BEAMXUSDT_LONG": {
+    "orderId": "3000002279459117",
+    "stopPrice": 0.003294,
+    "entry_sig": "2026-10-27 22:56:06.010000+00:00",
+    "symbol": "BEAMXUSDT",
+    "side": "LONG"
+  },
+  "fin:BBUSDT_SHORT": {
+    "orderId": "3000002279412658",
+    "stopPrice": 0.007622,
+    "entry_sig": "2026-10-27 22:07:03.320000+00:00",
+    "symbol": "BBUSDT",
     "side": "SHORT"
   },
-  "men:GRASSUSDT_LONG": {
-    "orderId": "2000001546620410",
-    "stopPrice": 0.7255,
-    "entry_sig": "2026-10-28 01:30:28.932000+00:00",
-    "symbol": "GRASSUSDT",
-    "side": "LONG"
+  "fin:BIGTIMEUSDT_SHORT": {
+    "orderId": "3000002279589033",
+    "stopPrice": 0.006918,
+    "entry_sig": "2026-10-27 22:56:07.212000+00:00",
+    "symbol": "BIGTIMEUSDT",
+    "side": "SHORT"
   },
-  "men:BATUSDT_LONG": {
-    "orderId": "2000001546592988",
-    "stopPrice": 0.14187,
-    "entry_sig": "2026-10-28 01:16:14.303000+00:00",
-    "symbol": "BATUSDT",
-    "side": "LONG"
+  "fin:WOOUSDT_SHORT": {
+    "orderId": "3000002279589035",
+    "stopPrice": 0.01032,
+    "entry_sig": "2026-10-27 22:41:16.832947+00:00",
+    "symbol": "WOOUSDT",
+    "side": "SHORT"
   },
-  "men:INXUSDT_SHORT": {
-    "orderId": "2000001546622739",
-    "stopPrice": 0.005019,
-    "entry_sig": "2026-10-28 01:31:25.188000+00:00",
-    "symbol": "INXUSDT",
+  "fin:BLURUSDT_SHORT": {
+    "orderId": "3000002279589034",
+    "stopPrice": 0.00759,
+    "entry_sig": "2026-10-28 00:16:21.852000+00:00",
+    "symbol": "BLURUSDT",
     "side": "SHORT"
   }
 }
