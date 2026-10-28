@@ -7,5 +7,5 @@ ARGS="--quiet"; [ -z "$FULL" ] && ARGS="$ARGS --since-minutes 45"
 echo "$(date -u +%FT%TZ) fleet scan start full=${FULL:-0}" >> $LOG
 /usr/bin/python3 tools/stamp_tripwire.py --base . --no-npz $ARGS --json data/reports/stamp_tripwire_mac.json >> $LOG 2>&1
 for h in s1-pub s2 s5 s6; do
-  timeout ${TMO:-280} ssh -o BatchMode=yes -o ConnectTimeout=20 -o ControlPath=none $h "cd ~/binance-sandbox && nice -n 15 /home/niels/.conda/envs/binance_env_mac/bin/python tools/stamp_tripwire.py --base ~/binance-sandbox --quiet $ARGS --json data/reports/stamp_tripwire.json" >> $LOG 2>&1 || echo "ALERT stamp_tripwire host=$h unreachable-or-timeout" >> $LOG
+  timeout ${TMO:-280} ssh -o BatchMode=yes -o ConnectTimeout=20 -o ControlPath=none $h "cd ~/binance-sandbox && nice -n 15 /home/niels/.conda/envs/binance_env_mac/bin/python tools/stamp_tripwire.py --base ~/binance-sandbox --quiet $ARGS --json data/reports/stamp_tripwire.json" >> $LOG 2>&1; rc=$?; [ $rc -gt 1 ] && echo "ALERT stamp_tripwire host=$h unreachable-or-timeout rc=$rc" >> $LOG
 done

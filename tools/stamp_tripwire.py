@@ -48,6 +48,8 @@ def scan_json(path):
     for m in FIND.finditer(text):
         k = classify(m.group(2))
         if k:
+            if m.group(1) == "timestamp_dt" and k == "null-or-nan":
+                continue  # a secondary field that is simply empty carries no wrong stamp; "NaT" strings and offset forms are still reported
             k = ("" if m.group(1) == "timestamp" else "timestamp_dt:") + k
             kinds[k] = kinds.get(k, 0) + 1
     return kinds
