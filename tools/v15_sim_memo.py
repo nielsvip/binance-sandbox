@@ -26,7 +26,7 @@ _INDEX = {}
 _LINEAR = {}
 _CLASSES = {}
 _PLAIN = (bool, int, float, str, type(None))
-_CAP = int(os.environ.get("V12_SIM_MEMO_CAP", "256"))
+_CAP = int(os.environ.get("V12_SIM_MEMO_CAP", "128"))
 
 
 def enabled() -> bool:
@@ -198,3 +198,46 @@ def install(V=None) -> bool:
     V.simulate_one = simulate_one
     _STATE.update(installed=True, orig=orig)
     return True
+
+
+def _stats_dir(parent_pid: int) -> str:
+    return os.path.join(os.environ.get("TMPDIR", "/tmp"), f"v15_sim_memo_{int(parent_pid)}")
+
+
+def dump_stats() -> None:
+    """forked pool worker: publish this worker's cumulative hits/runs for the parent (one small file per worker, overwritten)."""
+    if not _STATE["installed"]:
+        return
+    try:
+        import json as _json
+
+        d = _stats_dir(os.getppid())
+        os.makedirs(d, exist_ok=True)
+        tmp = os.path.join(d, f".{os.getpid()}.tmp")
+        with open(tmp, "w") as fh:
+            _json.dump(stats(), fh)
+        os.replace(tmp, os.path.join(d, f"{os.getpid()}.json"))
+    except Exception:
+        pass
+
+
+def collect_stats() -> dict:
+    """parent: own counters + every forked worker's last published counters."""
+    tot = dict(stats())
+    tot["workers"] = 0
+    try:
+        import json as _json
+
+        d = _stats_dir(os.getpid())
+        for f in os.listdir(d):
+            if f.endswith(".json"):
+                with open(os.path.join(d, f)) as fh:
+                    s = _json.load(fh)
+                tot["hits"] += int(s.get("hits", 0))
+                tot["runs"] += int(s.get("runs", 0))
+                tot["workers"] += 1
+    except Exception:
+        pass
+    n = tot["hits"] + tot["runs"]
+    tot["hit_rate"] = round(tot["hits"] / n, 4) if n else 0.0
+    return tot

@@ -2632,6 +2632,12 @@ def _pool_eval_batch(items: list, window_days: int):
             out[_ckey] = (_eps(_POOL_PREPARED, _ov, window_days), _tp.time() - _t0, "")
         except Exception as _be:
             out[_ckey] = (None, _tp.time() - _t0, f"ERR {_be}"[:120])
+    if os.environ.get("V12_SIM_MEMO", "0") == "2":  # gate candidate E: hit/run counters for the parent's [SIM-MEMO] line
+        try:
+            from tools import v15_sim_memo as _SMW
+            _SMW.dump_stats()
+        except Exception:
+            pass
     return out
 
 def _pool_eval_ledger(overrides: dict, window_days: int):
@@ -7227,6 +7233,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     _slow_secs: dict = {}
     _SLOW_RED_S = float(os.environ.get("V15_SLOW_CELL_S", "2.0"))  # USER 2026-10-10 throughput hotfix (0.1 -> 2.0: 0.2s cells are normal, were all going RED + 120s retry); re-applied 2026-10-12 after it was lost
     _BATCH_N = max(1, int(os.environ.get("V15_POOL_BATCH_N", "1")))
+    _ROW_AFFINITY = os.environ.get("V15_ROW_AFFINITY", "0") == "1"  # gate candidate E: one pool task per row (prefetch flushes per row)
     _pend_batch: list = []
     def _harvest():
         for ck in [c for c, (f, _) in inflight.items() if f.done()]:
@@ -7263,7 +7270,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         if _pool is not None and ck not in _EVAL_CACHE and ck not in inflight and all(c != ck for c, _ in _pend_batch):
             _v17_evals[0] += 1  # V17 per-phase eval count (real engine evals submitted to the pool)
             _pend_batch.append((ck, ov))
-            if len(_pend_batch) >= _BATCH_N:
+            if len(_pend_batch) >= _BATCH_N and not _ROW_AFFINITY:
                 _flush_batch()
         return ck
     _spec_state = {"ptr": 0, "ver": 0, "ptr_ver": 0}
@@ -7303,6 +7310,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             plan = _row_plan(*pending_queue[_spec_state["ptr"]])
             for _lab, _ov in plan.get("items", []):
                 _submit(_ov)
+            if _ROW_AFFINITY:
+                _flush_batch()
             _spec_state["ptr"] += 1
         if _taskcap:
             _flush_batch()
@@ -10705,6 +10714,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             if _prio_pool is not None: _prio_pool.shutdown(wait=False, cancel_futures=True)  # TASK 05.2: release the priority worker with the main pool
             _pool = None
             print("[spec-fill] fork pool released before DONE stage (RAM headroom for save+live-verify)", flush=True)
+            if os.environ.get("V12_SIM_MEMO", "0") == "2":
+                from tools import v15_sim_memo as _SMC
+                _smc = _SMC.collect_stats()
+                progress.setdefault("v18", {})["sim_memo"] = _smc
+                print(f"[SIM-MEMO] {new_symside} hits={_smc['hits']} runs={_smc['runs']} hit_rate={_smc['hit_rate']} workers={_smc['workers']} affinity={os.environ.get('V15_ROW_AFFINITY', '0')}", flush=True)
     except Exception as _ps_e:
         print(f"[pool-release-warn] {_ps_e}", flush=True)
     # 2026-09-28 DONE-stage RAM trim part 2: a parent still hit 4.5GB (OOM-killed 19:53Z) — the
@@ -12790,6 +12804,12 @@ def _run_pair_partner(new_symside):
 
 def _main_single():
     _capture_start_stamp()
+    if os.environ.get("V12_SIM_MEMO", "0") == "2":  # gate candidate E (2026-10-28): exact whole-simulation memo, engine file untouched
+        try:
+            from tools import v15_sim_memo as _SMI
+            print(f"[SIM-MEMO] exact whole-simulation memo installed={_SMI.install()} affinity={os.environ.get('V15_ROW_AFFINITY', '0')}", flush=True)
+        except Exception as _smie:
+            print(f"[SIM-MEMO-WARN] {_smie} — memo off, board unchanged", flush=True)
     _cycle_deque = None
     _cycle_indices = None
     # Ensure _cycle_deque defined for sequential mode to avoid NameError

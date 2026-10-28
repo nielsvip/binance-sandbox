@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-28T20:10:16.360851+00:00",
+  "ts": "2026-10-28T20:15:11.357723+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 4,
-  "pending_sym_sides": 173,
+  "fleet_published_last_60m": 23,
+  "pending_sym_sides": 174,
   "hosts": {
     "s1": {
       "published_last_60m": 1,
@@ -15,9 +15,9 @@
       "boards_running": 2,
       "workers": 14,
       "workers_vs_law_28": "14/28",
-      "mem_avail_mb": 13213,
+      "mem_avail_mb": 12240,
       "disk_free_gb": 33,
-      "load1": 14.9,
+      "load1": 24.8,
       "dispatch_idle_why": "full 2/2",
       "published_ss": [
         "XPLUSDT_SHORT"
@@ -35,9 +35,9 @@
       "boards_running": 4,
       "workers": 24,
       "workers_vs_law_28": "24/28",
-      "mem_avail_mb": 6455,
+      "mem_avail_mb": 5798,
       "disk_free_gb": 48,
-      "load1": 27.2,
+      "load1": 25.6,
       "dispatch_idle_why": "full 4/4",
       "published_ss": [
         "BEAMXUSDT_LONG",
@@ -46,18 +46,66 @@
       ]
     },
     "s5": {
-      "unreachable": true
+      "published_last_60m": 8,
+      "published_last_3h": 14,
+      "boards": {
+        "ACN_LONG": 7,
+        "GME_LONG": 7,
+        "RBLX_LONG": 0
+      },
+      "boards_running": 3,
+      "workers": 14,
+      "workers_vs_law_28": "14/28",
+      "mem_avail_mb": 14662,
+      "disk_free_gb": 52,
+      "load1": 12.7,
+      "dispatch_idle_why": null,
+      "published_ss": [
+        "A_LONG",
+        "CLF_LONG",
+        "CRK_LONG",
+        "CRWD_LONG",
+        "DUSKUSDT_LONG",
+        "IBM_LONG",
+        "TMO_LONG",
+        "WMT_LONG"
+      ]
     },
     "s6": {
-      "unreachable": true
+      "published_last_60m": 11,
+      "published_last_3h": 24,
+      "boards": {
+        "CRWV_SHORT": 0,
+        "MNTS_SHORT": 7,
+        "UUUU_SHORT": 7
+      },
+      "boards_running": 3,
+      "workers": 14,
+      "workers_vs_law_28": "14/28",
+      "mem_avail_mb": 23194,
+      "disk_free_gb": 51,
+      "load1": 13.7,
+      "dispatch_idle_why": null,
+      "published_ss": [
+        "BABA_SHORT",
+        "BA_SHORT",
+        "BHP_SHORT",
+        "BIDU_SHORT",
+        "BWXT_SHORT",
+        "INTC_SHORT",
+        "NEM_SHORT",
+        "NFLX_SHORT",
+        "NVDA_SHORT",
+        "WDAY_SHORT",
+        "WPM_SHORT"
+      ]
     }
   },
   "alerts": [
     "LOW_THROUGHPUT:s1:1/h<10 (idle_why=full 2/2)",
     "DISK_FLOOR:s1:33GB<40",
     "LOW_THROUGHPUT:s2:3/h<10 (idle_why=full 4/4)",
-    "UNREACHABLE:s5",
-    "UNREACHABLE:s6"
+    "LOW_THROUGHPUT:s5:8/h<10 (idle_why=None)"
   ],
   "repair": null
 }
