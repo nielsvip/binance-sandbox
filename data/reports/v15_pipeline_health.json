@@ -1,13 +1,13 @@
 {
- "at": "2026-10-28T20:45:18Z",
+ "at": "2026-10-28T21:00:46Z",
  "s1": {
   "host": "niels",
-  "now": 1793220314.0045383,
+  "now": 1793221241.7652411,
   "merge_crypto": {
    "n": 12,
-   "max_lag_min": 15.0,
+   "max_lag_min": 0.0,
    "median_lag_min": 0.0,
-   "worst": "1000CHEEMSUSDT",
+   "worst": "1000000MOGUSDT",
    "dead": []
   },
   "merge_stocks": {
@@ -18,9 +18,9 @@
    "dead": []
   },
   "npz_legacy_crypto": [],
-  "append_log_age_min": 7.3,
-  "append_last_secs": 770.9,
-  "append_last_stats": "'appended': 244, 'created': 0, 'up_to_date': 6153, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
+  "append_log_age_min": 9.2,
+  "append_last_secs": 684.8,
+  "append_last_stats": "'appended': 293, 'created': 0, 'up_to_date': 6104, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
   "npz_loop_pids": 0,
   "npz_cycle_last_utc": "03:53:32",
   "npz_cycle_installed": 48,
@@ -30,7 +30,7 @@
   "sched_err": "FileNotFoundError",
   "archive_n": 203,
   "archive_mb": 2477.7,
-  "archive_newest_min": 52.6,
+  "archive_newest_min": 68.0,
   "_via": "s1-int"
  },
  "red": [
