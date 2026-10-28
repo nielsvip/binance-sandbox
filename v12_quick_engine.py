@@ -5593,7 +5593,7 @@ class QuickConfig:
         self.MFI_FLIP_EXIT_ENABLED = False
         self.STOCH_CROSS_1H_EXIT_ENABLED = False
         self.DC_HARD_STOP_REENTRY_COOLDOWN_HOURS = 0.0
-        self.GAP_CLOSE_MOC_EXIT_ENABLED = False
+        self.GAP_CLOSE_MOC_EXIT_ENABLED = True
         # parity-sync 20261009: stocks-uniform bold differs from the raw (crypto) value — §67 overlay
         self.DISASTER_GUARD_ENABLED = False
         self.GAP_MOC_FORCE_MOC_AT_CLOSE = False
@@ -8363,10 +8363,10 @@ class QuickConfig:
         "data/gap_close_inventory_tradier_per_symbol.json"
     )
     GAP_CLOSE_PER_SYMBOL_HISTORY_FILE: str = "data/gap_close_history_1yr_tradier.json"
-    GAP_CLOSE_PER_SYMBOL_AVG_THRESH_PCT: float = 0.10
+    GAP_CLOSE_PER_SYMBOL_AVG_THRESH_PCT: float = 0.3
     GAP_CLOSE_PER_SYMBOL_LOOKBACK_DAYS: int = 30
     GAP_CLOSE_MOC_EXIT_ENABLED: bool = True  # defaults to SHORTS >0.10 before EOD
-    GAP_CLOSE_MOC_ONLY_FOR_SHORTS: bool = True
+    GAP_CLOSE_MOC_ONLY_FOR_SHORTS: bool = False
     GAP_CLOSE_MOC_ONLY_STOCKS: bool = True
     GAP_CLOSE_MOC_ALWAYS_TEST: bool = True
     GAP_CLOSE_MOC_WINDOW_MINUTES: int = 90
@@ -16467,7 +16467,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             )
                             _avg_cg[_i] = _sum30 / _cnt
                         _thr_cg = float(
-                            getattr(cfg, "GAP_CLOSE_PER_SYMBOL_AVG_THRESH_PCT", 0.10)
+                            getattr(cfg, "GAP_CLOSE_PER_SYMBOL_AVG_THRESH_PCT", 0.3)
                         )
                         # shorts close when avg intraday up > thr; longs (if enabled) opposite
                         if not is_long:

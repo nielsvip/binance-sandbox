@@ -1,0 +1,200 @@
+"""Exact whole-simulation memo for v12_quick_engine.simulate_one (gate candidate E, 2026-10-28).
+
+A simulation's result is a deterministic function of the frozen NPZ, (sym, side, seed) and the VALUES of the cfg attributes the
+run actually reads. A board evaluates thousands of cells that differ from an earlier cell only in switches the run never reads
+(or reads with the same value), so their result is already known. This module records the read set of every run through a lazy
+proxy (one Python call per DISTINCT attribute, then plain C lookups) and returns the stored result when a later cfg agrees with
+an entry on every recorded read. Nothing is approximated: a hit is the same computation the engine would repeat.
+
+Exactness rules:
+- key = engine NPZ fingerprint (_npz_memo_fp) + sym + side + seed + value of every attribute read (same type and ==, the
+  engine's own _memo_same semantics; the hash index only admits plain immutable scalars, tuples/lists/dicts of them, MISSING);
+- writes the run makes on the caller's cfg are side-channel outputs (BB_RECOVERY_EXIT_INFO, WT_FINAL_EXIT_INFO,
+  GR_HTF_DIRECT_DOUBLE_BARS): written through during the run, never recorded as inputs, replayed (deep-copied) on a hit;
+- NPZ keys the run adds or replaces are replayed on a hit; results are deep-copied on store and on hit;
+- a copy of the cfg made inside the run (crypto lane copy) keeps its own writes local, its reads still record.
+
+V12_SIM_MEMO=2 enables (install() is a no-op otherwise). The engine file is not modified, so its md5 and the eval cache stay valid.
+"""
+
+import copy as _cp
+import dataclasses as _dcs
+import os
+
+_STATE = {"installed": False, "orig": None, "hits": 0, "runs": 0}
+_INDEX = {}
+_LINEAR = {}
+_CLASSES = {}
+_PLAIN = (bool, int, float, str, type(None))
+_CAP = int(os.environ.get("V12_SIM_MEMO_CAP", "256"))
+
+
+def enabled() -> bool:
+    return os.environ.get("V12_SIM_MEMO", "0") == "2"
+
+
+def stats() -> dict:
+    return {"hits": _STATE["hits"], "runs": _STATE["runs"]}
+
+
+def _hkey(v, missing):
+    if v is missing:
+        return (None, "<MISSING>")
+    t = type(v)
+    if t in _PLAIN:
+        return (t, v)
+    if (t is tuple or t is list) and all(type(x) in _PLAIN for x in v):
+        return (t, tuple(v))
+    if t is dict and all(type(x) in _PLAIN for x in v) and all(type(x) in _PLAIN for x in v.values()):
+        return (t, tuple(sorted(v.items())))
+    raise TypeError
+
+
+class _Lazy:
+    __slots__ = ("name",)
+
+    def __init__(self, name):
+        self.name = name
+
+    def __get__(self, inst, owner):
+        name = self.name
+        if inst is None:
+            return getattr(owner.__mro__[1], name)
+        d = inst.__dict__
+        st = d.get("_trk_state")
+        if st is None:
+            v = getattr(type(inst).__mro__[1], name)
+            d[name] = v
+            return v
+        try:
+            v = object.__getattribute__(st["src"], name)
+        except AttributeError:
+            st["reads"].setdefault(name, st["missing"])
+            raise
+        st["reads"].setdefault(name, v)
+        d[name] = v
+        return v
+
+
+def _proxy_class(base, names):
+    key = (base, names)
+    c = _CLASSES.get(key)
+    if c is not None:
+        return c
+
+    def __getattr__(self, name):
+        st = self.__dict__.get("_trk_state")
+        if st is None or name.startswith("__"):
+            raise AttributeError(name)
+        try:
+            v = object.__getattribute__(st["src"], name)
+        except AttributeError:
+            st["reads"].setdefault(name, st["missing"])
+            raise
+        st["reads"].setdefault(name, v)
+        self.__dict__[name] = v
+        return v
+
+    def __setattr__(self, name, value):
+        st = self.__dict__.get("_trk_state")
+        if st is not None and self is st["root"]:
+            st["writes"][name] = value
+            setattr(st["src"], name, value)
+        object.__setattr__(self, name, value)
+
+    ns = {n: _Lazy(n) for n in names}
+    ns.update(__getattr__=__getattr__, __setattr__=__setattr__, __module__=base.__module__, __qualname__=base.__qualname__)
+    c = type(base.__name__, (base,), ns)
+    _CLASSES[key] = c
+    return c
+
+
+def _replay(ent, npz, cfg):
+    for k, v in ent[2].items():
+        npz[k] = v
+    for k, v in ent[4].items():
+        setattr(cfg, k, _cp.deepcopy(v))
+    return _cp.deepcopy(ent[3])
+
+
+def _memo_simulate(V, orig, npz, sym, is_long, cfg, force_initial_seed=False):
+    missing = V._MISSING
+    fp = V._npz_memo_fp(npz, 0, is_long)
+    if fp is None:
+        return orig(npz, sym, is_long, cfg, force_initial_seed)
+    tag = (sym, bool(is_long), bool(force_initial_seed))
+    idx = _INDEX.setdefault(tag, {})
+    for (ifp, ikeys), imap in idx.items():
+        if ifp != fp:
+            continue
+        try:
+            vals = []
+            for k in ikeys:
+                try:
+                    vals.append(_hkey(object.__getattribute__(cfg, k), missing))
+                except AttributeError:
+                    vals.append(_hkey(missing, missing))
+            ent = imap.get(tuple(vals))
+        except TypeError:
+            ent = None
+        if ent is not None:
+            _STATE["hits"] += 1
+            return _replay(ent, npz, cfg)
+    lin = _LINEAR.setdefault(tag, [])
+    for ent in lin:
+        if ent[0] != fp:
+            continue
+        ok = True
+        for k, v in ent[1].items():
+            try:
+                cur = object.__getattribute__(cfg, k)
+            except AttributeError:
+                cur = missing
+            if not V._memo_same(cur, v):
+                ok = False
+                break
+        if ok:
+            _STATE["hits"] += 1
+            return _replay(ent, npz, cfg)
+    try:
+        names = tuple(sorted(set(f.name for f in _dcs.fields(cfg)) | set(k for k in cfg.__dict__ if not k.startswith("__"))))
+    except Exception:
+        return orig(npz, sym, is_long, cfg, force_initial_seed)
+    proxy = object.__new__(_proxy_class(type(cfg), names))
+    st = {"src": cfg, "reads": {}, "writes": {}, "root": proxy, "missing": missing}
+    object.__setattr__(proxy, "_trk_state", st)
+    before = {k: id(v) for k, v in npz.items()}
+    _STATE["runs"] += 1
+    res = orig(npz, sym, is_long, proxy, force_initial_seed)
+    ent = (fp, dict(st["reads"]), {k: v for k, v in npz.items() if before.get(k) != id(v)}, _cp.deepcopy(res), _cp.deepcopy(st["writes"]))
+    try:
+        ikeys = tuple(sorted(ent[1]))
+        ival = tuple(_hkey(ent[1][k], missing) for k in ikeys)
+        imap = idx.setdefault((fp, ikeys), {})
+        imap[ival] = ent
+        while len(imap) > _CAP:
+            imap.pop(next(iter(imap)))
+    except TypeError:
+        lin.insert(0, ent)
+        del lin[48:]
+    return res
+
+
+def install(V=None) -> bool:
+    """Wrap V.simulate_one (module attribute, so evaluate_v12 and the engine's own nested calls both route through it)."""
+    if not enabled() or _STATE["installed"]:
+        return _STATE["installed"]
+    if V is None:
+        import v12_quick_engine as V
+    for need in ("_npz_memo_fp", "_memo_same", "_MISSING", "simulate_one"):
+        if not hasattr(V, need):
+            return False
+    orig = V.simulate_one
+
+    def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
+        return _memo_simulate(V, orig, npz, sym, is_long, cfg, force_initial_seed)
+
+    simulate_one.__wrapped__ = orig
+    V.simulate_one = simulate_one
+    _STATE.update(installed=True, orig=orig)
+    return True

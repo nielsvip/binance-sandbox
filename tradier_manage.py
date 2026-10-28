@@ -12384,8 +12384,8 @@ def _gap_close_per_symbol_should_close(is_long: bool, avg_gap: Optional[float]) 
     if avg_gap is None:
         return False
     # stocks-only guard is in caller (MODE==tradier); thr here is close-gap thr
-    thr = float(_cfg_auto("GAP_CLOSE_PER_SYMBOL_AVG_THRESH_PCT", 0.10))
-    only_shorts = bool(_cfg_auto("GAP_CLOSE_MOC_ONLY_FOR_SHORTS", True))
+    thr = float(_cfg_auto("GAP_CLOSE_PER_SYMBOL_AVG_THRESH_PCT", 0.3))
+    only_shorts = bool(_cfg_auto("GAP_CLOSE_MOC_ONLY_FOR_SHORTS", False))
     if only_shorts and is_long:
         return False
     # For shorts: avg intraday close > open (+drift) → close short before EOD
@@ -13543,7 +13543,7 @@ async def gap_moc_and_morning_loop(trade_manager):
                     # Close-gap decides (stocks-only, shorts-default)
                     avg_close_gap = _gap_close_per_symbol_avg_gap(sym)
                     thr_close = float(
-                        _cfg_auto("GAP_CLOSE_PER_SYMBOL_AVG_THRESH_PCT", 0.10)
+                        _cfg_auto("GAP_CLOSE_PER_SYMBOL_AVG_THRESH_PCT", 0.3)
                     )
                     is_stock = True  # trb is stocks; also check MODE if available
                     try:

@@ -1,12 +1,12 @@
 {
- "generated_utc": "2026-10-28T19:12:28.617863+00:00",
+ "generated_utc": "2026-10-28T20:12:28.782962+00:00",
  "days": 1.0,
  "totals": {
   "entry_promises": 87,
   "entry_broken_no_delivery": 87,
   "exit_promises": 113,
   "exit_broken_no_delivery": 112,
-  "exit_skipped_inflight": 1378,
+  "exit_skipped_inflight": 1395,
   "exit_kept_late": 1
  },
  "per_key": {
@@ -279,7 +279,7 @@
    "exit_broken_no_delivery": 4,
    "entry_promises": 2,
    "entry_broken_no_delivery": 2,
-   "exit_skipped_inflight": 20
+   "exit_skipped_inflight": 23
   },
   "flz:BNBUSDC_LONG": {
    "exit_promises": 2,
@@ -316,7 +316,7 @@
    "exit_broken_no_delivery": 3,
    "entry_promises": 2,
    "entry_broken_no_delivery": 2,
-   "exit_skipped_inflight": 30
+   "exit_skipped_inflight": 44
   },
   "inf:XRPUSDC_LONG": {
    "entry_promises": 1,
@@ -2546,6 +2546,32 @@
    "bar_ts": null,
    "lag_s": null,
    "detail": "inflight_age_s=100"
+  },
+  {
+   "ts": 1793215924.270825,
+   "kind": "BROKEN",
+   "acct": "inf",
+   "key": "inf:PENGUUSDC_LONG",
+   "sym_side": "PENGUUSDC_LONG",
+   "label": "CLOSE VEC_EXIT_OWED",
+   "why": "EXIT_WEDGED_FORCED",
+   "is_exit": true,
+   "bar_ts": null,
+   "lag_s": null,
+   "detail": "inflight_age_s=93"
+  },
+  {
+   "ts": 1793215924.2981691,
+   "kind": "BROKEN",
+   "acct": "inf",
+   "key": "inf:BNBUSDC_LONG",
+   "sym_side": "BNBUSDC_LONG",
+   "label": "CLOSE VEC_EXIT_OWED",
+   "why": "EXIT_WEDGED_FORCED",
+   "is_exit": true,
+   "bar_ts": null,
+   "lag_s": null,
+   "detail": "inflight_age_s=93"
   }
  ]
 }

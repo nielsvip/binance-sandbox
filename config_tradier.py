@@ -4911,14 +4911,14 @@ class TradierConfig:
     )
     GAP_CLOSE_PER_SYMBOL_HISTORY_FILE: str = "data/gap_close_history_1yr_tradier.json"
     GAP_CLOSE_PER_SYMBOL_AVG_THRESH_PCT: float = (
-        0.10  # |avg_close_gap| <= this → don't close on close-gap (only VV). Shorts exit when avg > +0.10
+        0.3  # USER 2026-10-28: 0.3 for longs AND shorts (identical in vec v12 and live). |avg_close_gap| <= this → don't close on close-gap
     )
     GAP_CLOSE_PER_SYMBOL_LOOKBACK_DAYS: int = 30
     GAP_CLOSE_MOC_EXIT_ENABLED: bool = (
-        False  # DEFAULTS to getting out of SHORTS before EOD when avg_close_gap > 0.10% (stocks only)
+        True  # USER 2026-10-28: close-gap sentinel ON, longs and shorts (stocks only), threshold 0.3
     )
     GAP_CLOSE_MOC_ONLY_FOR_SHORTS: bool = (
-        True  # live rule: only shorts use close-gap sentinel (longs use open-gap)
+        False  # USER 2026-10-28: close-gap sentinel applies to longs AND shorts
     )
     GAP_CLOSE_MOC_ONLY_STOCKS: bool = (
         True  # only applies to stocks (tradier MODE); crypto auto-skipped
