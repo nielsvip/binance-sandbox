@@ -487,8 +487,128 @@ def sweep_once(base, cat_side, workers=WORKERS, sibling=None, sibling_base=None)
     return rec
 
 
+def _vd_held_symbols(cat_side):
+    """Held symbols from the server trader's broker read (~/binance/data/vector_direct/held_<venue>.json)."""
+    venue = "crypto" if cat_side.startswith("crypto") else "stocks"
+    try:
+        doc = json.loads((Path.home() / "binance" / "data" / "vector_direct" / f"held_{venue}.json").read_text())
+        return {str(ss).rsplit("_", 1)[0].upper() for ss in doc.get("sides") or []}
+    except (OSError, ValueError, TypeError):
+        return set()
+
+
+def stream_loop(base, cat_side, workers=WORKERS, sibling=None, sibling_base=None, poll_s=1.0, once=False):
+    """2026-10-28 (USER "within seconds of 15m bar completion and kline arrival"): the same per-symbol append as sweep_once,
+    without its batch barrier. sweep_once computed every ready symbol of a pass and waited for ALL of them before looking
+    again, so a bar arriving at +3 s waited for the +1 s pass to finish (+17 s) and the next pass (+43 s); measured on S1
+    10-28 03:45Z: passes at +2.0 (36 rows) and +17.5 (67 rows), last append +42.8 s. Here one persistent fork pool takes
+    each symbol the moment its closed bar is visible (held symbols first); a row whose source changed while it computed
+    (Mac mark bar -> native kline) is resubmitted at once instead of waiting a whole pass."""
+    from concurrent.futures import FIRST_COMPLETED, wait
+    mode = "crypto" if cat_side.startswith("crypto") else "tradier"
+    import npz_live_generator  # noqa: F401  (imported before the fork so every worker inherits it)
+    if mode == "tradier":
+        import tradier_indicators  # noqa: F401
+    else:
+        import ez_indicators  # noqa: F401
+    ctx = get_context("fork")
+    pool = ProcessPoolExecutor(max_workers=max(1, workers), mp_context=ctx)
+    inflight = {}
+    tasks_done = 0
+    last_print = 0.0
+    rec = None
+
+    def on_append(tail_abspath):
+        if sibling:
+            try:
+                if push_to_sibling(base, tail_abspath, sibling, sibling_base or base):
+                    rec["mirrored"] += 1
+            except Exception:
+                pass
+
+    while True:
+        now = time.time()
+        rec = {"t": now, "cat_side": cat_side, "stream": True, "symbols": 0, "submitted": 0, "inflight": 0, "appended": 0, "current": 0,
+               "refused": 0, "error": 0, "resubmit_source_changed": 0, "compacted": 0, "mirrored": 0, "error_syms": [], "appended_syms": []}
+        owned = owned_symbols(load_universe(base), cat_side)
+        held = _vd_held_symbols(cat_side)
+
+        def symbol_of(entry):
+            return entry.rsplit("_", 1)[0] if entry.endswith(("_LONG", "_SHORT")) else entry
+        owned = sorted({symbol_of(e) for e in owned}, key=lambda s: (s not in held, s))
+
+        def probe(sym):
+            npz = npz_for(base, sym)
+            if npz is None:
+                return None
+            lc = kline_last_close(base, sym, mode)
+            if lc is None:
+                return None
+            return npz, sym, lc, source_revision(base, sym, mode, lc)
+
+        with ThreadPoolExecutor(max_workers=8) as tp:
+            jobs = [j for j in tp.map(probe, [s for s in owned if s not in inflight]) if j is not None]
+        rec["symbols"] = len(jobs) + len(inflight)
+        for npz, sym, lc, revision in jobs:
+            try:
+                tip = tip_of(npz)
+                changed = tip is not None and int(lc) == int(tip) and source_changed(npz, lc, revision)
+                if (tip is None or int(lc) > int(tip) or changed) and is_closed_bar(int(lc), now):
+                    fut = pool.submit(_compute_row_process, (sym, int(lc), str(base), mode))
+                    inflight[sym] = (fut, npz, lc, revision)
+                    rec["submitted"] += 1
+                else:
+                    rec["current"] += 1
+            except Exception:
+                rec["error"] += 1
+                rec["error_syms"].append(sym)
+        done = [s for s, v in inflight.items() if v[0].done()]
+        if not done and inflight:
+            wait([v[0] for v in inflight.values()], timeout=poll_s, return_when=FIRST_COMPLETED)
+            done = [s for s, v in inflight.items() if v[0].done()]
+        broken = False
+        for sym in done:
+            fut, npz, lc, revision = inflight.pop(sym)
+            tasks_done += 1
+            try:
+                row = fut.result()
+            except Exception:
+                row, broken = None, True
+            if not row:
+                rec["error"] += 1
+                rec["error_syms"].append(sym)
+                continue
+            if source_revision(base, sym, mode, lc) != revision:
+                rec["resubmit_source_changed"] += 1  # next loop sees the new revision and computes it again at once
+                continue
+            try:
+                r = sweep_symbol(npz, sym, lc, lambda _s, _c, result=row: result, now_s=time.time(), on_append=on_append if sibling else None, revision=revision)
+            except Exception:
+                r = "error"
+            if r == "error":
+                rec["error_syms"].append(sym)
+            if r == "appended":
+                rec["appended_syms"].append(sym)
+            rec[r if r in rec else "error"] += 1
+        rec["inflight"] = len(inflight)
+        if broken or (not inflight and tasks_done >= 5000):
+            # a worker died (OOM) or the pool served many rows: start clean workers
+            pool.shutdown(wait=False, cancel_futures=True)
+            inflight.clear()
+            pool = ProcessPoolExecutor(max_workers=max(1, workers), mp_context=ctx)
+            tasks_done = 0
+        if rec["appended"] or rec["error"] or rec["submitted"] or rec["resubmit_source_changed"] or now - last_print >= 30:
+            last_print = now
+            print(json.dumps(rec, sort_keys=True), flush=True)
+        if once and not inflight:
+            return rec
+        if not inflight:
+            time.sleep(min(poll_s, 0.5))
+
+
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument("--stream", action="store_true", help="no batch barrier: compute each symbol as soon as its bar is visible")
     ap.add_argument("--cat-side", default=os.environ.get("CAT_SIDE", ""))
     ap.add_argument("--base", default=None)
     ap.add_argument("--once", action="store_true")
@@ -523,6 +643,8 @@ def main():
         log_path.parent.mkdir(parents=True, exist_ok=True)
         with log_path.open('a') as stream:
             subprocess.Popen([sys.executable, str(Path(__file__).with_name('npz_tail_compactor.py')), '--base', str(base), '--cat-side', a.cat_side, '--loop'], cwd=base, stdout=stream, stderr=subprocess.STDOUT, start_new_session=True)
+    if a.stream:
+        return 0 if stream_loop(base, a.cat_side, workers=a.workers, sibling=a.sibling or None, sibling_base=a.sibling_base or None, once=a.once) is not None else 0
     while True:
         try:
             rec = sweep_once(

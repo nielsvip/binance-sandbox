@@ -1,0 +1,75 @@
+{
+ "ts": "2026-10-28T03:56:42Z",
+ "scope": "SPREADSHEETS/TEMPLATE_FINAL_NORM",
+ "real_breaches": 19,
+ "grey_only_undeclared_not_counted": 36,
+ "note": "A breach now means: a NON-GREY template row (so boards DO sweep it) for a switch the venue's live config or QuickConfig does not declare. Grey-only rows are reported separately and are NOT breaches - v15_pilot never evaluates a grey row.",
+ "switches": [
+  {
+   "switch": "DC_BREAKOUT_OVERBOUGHT_K15M_CAP",
+   "breach_on": "crypto:live,crypto:vec,stocks:live,stocks:vec",
+   "declared": "cfg=- trad=- quick=-",
+   "declared_nowhere": true
+  },
+  {
+   "switch": "FIXED_QUANTITY_ENABLED",
+   "breach_on": "crypto:vec,stocks:vec",
+   "declared": "cfg=Y trad=Y quick=-",
+   "declared_nowhere": false
+  },
+  {
+   "switch": "FUNDING_GATE_LONG_MAX",
+   "breach_on": "stocks:live",
+   "declared": "cfg=Y trad=- quick=Y",
+   "declared_nowhere": false
+  },
+  {
+   "switch": "FUNDING_GATE_SHORT_MIN",
+   "breach_on": "stocks:live",
+   "declared": "cfg=Y trad=- quick=Y",
+   "declared_nowhere": false
+  },
+  {
+   "switch": "GOLDEN_RULE_COOLDOWN_S",
+   "breach_on": "crypto:live,stocks:live",
+   "declared": "cfg=- trad=- quick=Y",
+   "declared_nowhere": false
+  },
+  {
+   "switch": "GOLDEN_RULE_MAX_FIRES_PER_TICK",
+   "breach_on": "crypto:live,stocks:live",
+   "declared": "cfg=- trad=- quick=Y",
+   "declared_nowhere": false
+  },
+  {
+   "switch": "GOLDEN_RULE_MULT_BREAKOUT",
+   "breach_on": "stocks:live",
+   "declared": "cfg=Y trad=- quick=Y",
+   "declared_nowhere": false
+  },
+  {
+   "switch": "GOLDEN_RULE_RETEST_WINDOW_S",
+   "breach_on": "stocks:live",
+   "declared": "cfg=Y trad=- quick=Y",
+   "declared_nowhere": false
+  },
+  {
+   "switch": "REENTRY_TIER2_MAX_MINUTES",
+   "breach_on": "crypto:live,crypto:vec",
+   "declared": "cfg=- trad=- quick=-",
+   "declared_nowhere": true
+  },
+  {
+   "switch": "REENTRY_TIER_MODEL_ENABLED",
+   "breach_on": "stocks:live",
+   "declared": "cfg=Y trad=- quick=Y",
+   "declared_nowhere": false
+  },
+  {
+   "switch": "WT_MOMENTUM_EXIT_ENABLED",
+   "breach_on": "crypto:vec,stocks:vec",
+   "declared": "cfg=Y trad=Y quick=-",
+   "declared_nowhere": false
+  }
+ ]
+}

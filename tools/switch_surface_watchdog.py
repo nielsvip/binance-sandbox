@@ -76,28 +76,44 @@ def is_switch(name) -> bool:
     return bool(SWITCH_RX.match(s))
 
 
+GREY_SKIP_RGB = {"FFBFBFBF", "00BFBFBF"}
+
+
 def template_switches(paths, tdir=TEMPLATE_DIR):
-    """Union of real switch names in column A of every non-BASELINE sheet. Missing workbook -> reported, not fatal."""
+    """-> (swept, grey_only, missing_workbooks).
+
+    2026-10-28: this used to return ONE set and every name in it was a potential breach, so a switch whose only rows
+    are GREY counted exactly like a switch the boards actually sweep. v15_pilot never evaluates a grey row, so an
+    undeclared switch behind grey rows cannot produce a delta live must honour -- it is not a surface risk. Counting
+    them inflated the number and buried the real ones: of 29 distinct switches behind the reported breaches, 19 were
+    grey-only. Same false-positive class already fixed in v15_progress_board (GREY_SKIP_RGB) and in the gate guard.
+    `swept` = at least one NON-grey row somewhere in this venue's two workbooks; `grey_only` = rows exist but all grey.
+    """
     import openpyxl
 
-    found, missing = set(), []
+    live, grey, missing = set(), set(), []
     for name in paths:
         rel = f"{tdir}/{name}"
         p = ROOT / rel
         if not p.exists():
             missing.append(rel)
             continue
-        wb = openpyxl.load_workbook(str(p), read_only=True, data_only=True)
+        wb = openpyxl.load_workbook(str(p))
         try:
             for ws in wb.worksheets:
                 if "BASELINE" in ws.title.upper():
                     continue
-                for row in ws.iter_rows(min_row=3, max_col=1, values_only=True):
-                    if is_switch(row[0]):
-                        found.add(row[0].strip())
+                for row in range(3, ws.max_row + 1):
+                    cell = ws.cell(row=row, column=1)
+                    if not is_switch(cell.value):
+                        continue
+                    sw = cell.value.strip()
+                    font = cell.font
+                    rgb = str(getattr(font.color, "rgb", "") or "").upper() if (font is not None and font.color is not None) else ""
+                    (grey if rgb in GREY_SKIP_RGB else live).add(sw)
         finally:
             wb.close()
-    return found, missing
+    return live, grey - live, missing
 
 
 def surface(mod_name, cls_name):
@@ -126,19 +142,25 @@ def main() -> int:
     if vec_err:
         rep["surface_errors"].append(f"QuickConfig unloadable — {vec_err}")
     for venue, (paths, mod_name, cls_name) in VENUES.items():
-        sw, absent_books = template_switches(paths, tdir)
+        sw, grey_only, absent_books = template_switches(paths, tdir)
         cfg, cfg_err = surface(mod_name, cls_name)
         if cfg_err:
             rep["surface_errors"].append(f"{mod_name}.{cls_name} unloadable — {cfg_err}")
         miss_cfg = sorted(k for k in sw if cfg is not None and not hasattr(cfg, k))
         miss_vec = sorted(k for k in sw if vec is not None and not hasattr(vec, k))
+        # grey-only names are reported for cleanup, never counted as breaches: no board evaluates a grey row.
+        grey_cfg = sorted(k for k in grey_only if cfg is not None and not hasattr(cfg, k))
+        grey_vec = sorted(k for k in grey_only if vec is not None and not hasattr(vec, k))
         rep["venues"][venue] = {
             "templates": list(paths), "templates_absent": absent_books, "switches": len(sw),
+            "grey_only_switches": len(grey_only),
             "live_config": f"{mod_name}.{cls_name}",
             "missing_from_live_config": miss_cfg, "n_missing_from_live_config": len(miss_cfg),
             "missing_from_quickconfig": miss_vec, "n_missing_from_quickconfig": len(miss_vec),
+            "grey_only_undeclared_live": grey_cfg, "grey_only_undeclared_vec": grey_vec,
         }
         rep["breaches"] += len(miss_cfg) + len(miss_vec)
+        rep["grey_only_undeclared"] = rep.get("grey_only_undeclared", 0) + len(grey_cfg) + len(grey_vec)
     rep["verdict"] = "OK" if (rep["breaches"] == 0 and not rep["surface_errors"]) else "BREACH"
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / f"surface_{now.strftime('%Y%m%dT%H%MZ')}.json").write_text(json.dumps(rep, indent=1))

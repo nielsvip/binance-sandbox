@@ -21,7 +21,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 
-def _pending_rows(npz_path, base_last):
+def _pending_rows(npz_path, base_last, base_parent=None):
     from npz_tail_store import tail_rows
     out, last = [], base_last
     for row in tail_rows(npz_path):
@@ -29,8 +29,12 @@ def _pending_rows(npz_path, base_last):
             ts = int(row["timestamps"])
         except Exception:
             continue
-        if ts < last or (ts == last and not row.get("_replace_latest")):
+        if ts < last:
             continue
+        if ts == last and not row.get("_replace_latest"):
+            if ts != base_last or int(row.get("timestamp_15m", 0)) != ts or base_parent == ts:
+                continue
+            row = dict(row, _replace_latest=True)
         out.append(row)
         last = ts
     return out
@@ -123,7 +127,8 @@ def merged_npz_reads(paths):
         z = real_load(file, allow_pickle=kwargs.pop("allow_pickle", True), **kwargs)
         try:
             ts = z["timestamps"]
-            rows = _pending_rows(key, int(ts[-1])) if len(ts) else []
+            parent = z["timestamp_15m"] if "timestamp_15m" in z else []
+            rows = _pending_rows(key, int(ts[-1]), int(parent[-1]) if len(parent) else None) if len(ts) else []
         except Exception:
             rows = []
         return _MergedNpz(z, rows) if rows else z

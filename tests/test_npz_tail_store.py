@@ -66,6 +66,33 @@ def test_latest_closed_correction_replaces_values_without_duplicate_timestamp(tm
     assert not tail.append_tail_row(path, _row(stamp - 900, 999), replace_latest=True)
 
 
+def test_equal_tail_repairs_zip_with_stale_15m_parent(tmp_path):
+    from tools.npz_merged_view import merged_npz_reads
+    path = _make_base_npz(tmp_path, n=20)
+    with np.load(path) as z:
+        data = {key: z[key] for key in z.files}
+    stamp = int(data['timestamps'][-1]) + 900
+    assert tail.append_tail_row(path, dict(_row(stamp, 121), timestamp_15m=stamp))
+    data['timestamp_15m'] = data['timestamps'].copy()
+    for key, values in data.items():
+        value = stamp - 900 if key == 'timestamp_15m' else (100 if key == 'close' else stamp if key == 'timestamps' else values[-1])
+        data[key] = np.append(values, np.asarray([value], dtype=values.dtype))
+    np.savez_compressed(path, **data)
+    with merged_npz_reads([path]):
+        with np.load(path) as z:
+            assert len(z['timestamps']) == 21
+            assert int(z['timestamp_15m'][-1]) == stamp
+            assert z['close'][-1] == 121
+    merged = tail.load_merged(path)
+    assert len(merged['timestamps']) == 21
+    assert int(merged['timestamp_15m'][-1]) == stamp
+    assert merged['close'][-1] == 121
+    assert tail.compact_tail(path) == 1
+    with np.load(path) as z:
+        assert int(z['timestamp_15m'][-1]) == stamp
+        assert z['close'][-1] == 121
+
+
 def test_large_tail_row_keeps_tip_and_correction(tmp_path):
     path = _make_base_npz(tmp_path, n=20)
     stamp = int(np.load(path)["timestamps"][-1]) + 900

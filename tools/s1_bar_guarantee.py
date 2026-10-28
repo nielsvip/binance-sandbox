@@ -160,7 +160,7 @@ class Guarantee:
         self.VDT = VDT
         self.accounts = list(VDT.CRYPTO_ACCOUNTS if self.venue == "crypto" else VDT.STOCK_ACCOUNTS)
         env = VDT.load_env_files([self.live / ".env", Path.home() / ".env", Path.home() / "binance-sandbox" / ".env", self.vd / f"{self.venue}.env"])
-        self.start_size = float(env.get("VD_START_POSITION_SIZE") or VDT.START_POSITION_SIZE)
+        self.start_size = float((getattr(VDT, "MANDATED_START", {}) or {}).get(self.venue) or VDT.START_POSITION_SIZE or env.get("VD_START_POSITION_SIZE") or 0)
         self.env = env
         self.rc_pos = None
         self.recv = {}
@@ -532,8 +532,8 @@ class Guarantee:
     # ── exactness audit ──
     def ledger_rows(self, b):
         rows = []
-        for day_ts in {b["close"], b["close"] + FINAL_S}:
-            p = self.vd / f"ledger_{self.venue}_{dt.datetime.fromtimestamp(day_ts, dt.timezone.utc):%Y-%m-%d}.jsonl"
+        for day in sorted({dt.datetime.fromtimestamp(t, dt.timezone.utc).strftime("%Y-%m-%d") for t in (b["close"], b["close"] + FINAL_S)}):
+            p = self.vd / f"ledger_{self.venue}_{day}.jsonl"
             try:
                 with open(p, "rb") as fh:
                     fh.seek(max(0, p.stat().st_size - 3_000_000))
@@ -591,7 +591,7 @@ class Guarantee:
                     verdict = "extra" if sent else "noop"
                 elif any(w in sent_acts for w in want):
                     r = next(r for r in sent if r.get("act") in want)
-                    ok, detail = expected_size_ok(r.get("act"), r, cons, st, self.start_size)
+                    ok, detail = expected_size_ok(r.get("act"), r, dict(cons, held=held), st, self.start_size)
                     lag = float(r.get("ts") or 0) - b["close"]
                     verdict = ("match" if lag <= LATE_S else "match_late") if ok else "wrong_size"
                 elif sent:

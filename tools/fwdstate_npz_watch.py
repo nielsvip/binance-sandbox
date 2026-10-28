@@ -124,8 +124,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--sides-file", required=True)
     parser.add_argument("--workers", type=int, default=4)
-    parser.add_argument("--held-file", default=str(Path.home() / "binance" / "data" / "vector_direct" / "held_crypto.json"))
+    parser.add_argument("--venue", choices=("crypto", "stocks"), default="crypto")
+    parser.add_argument("--held-file", default="")
     args = parser.parse_args()
+    # 2026-10-28: S5 (stocks) runs this watcher too; its held sides come from held_stocks.json and are NOT crypto
+    args.held_file = args.held_file or str(Path.home() / "binance" / "data" / "vector_direct" / f"held_{args.venue}.json")
+    want_crypto = args.venue == "crypto"
     workers = max(1, min(4, args.workers))
     sides_path = Path(args.sides_file).expanduser()
     held_path = Path(args.held_file).expanduser()
@@ -162,7 +166,7 @@ def main():
                 base_sides, side_stamp = _sides(sides_path), current
             current = held_path.stat().st_mtime_ns if held_path.exists() else 0
             if current != held_stamp:
-                held, held_stamp = {s for s in _held(held_path) if _is_crypto(s)}, current
+                held, held_stamp = {s for s in _held(held_path) if _is_crypto(s) == want_crypto}, current
             new_sides = base_sides | held
             if new_sides != sides:
                 print(f"watching {len(new_sides)} exact sides ({len(held)} held, {len(held - base_sides)} held outside the sides file)", flush=True)

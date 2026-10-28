@@ -238,3 +238,32 @@ def test_resolve_kline_prefers_live_over_backtest(tmp_path):
     canonical.write_text(json.dumps([{"timestamp": "2026-10-26T07:00:00.000000Z"}]))
     backtest.write_text(json.dumps([{"timestamp": "2026-10-26T06:30:00.000000Z"}]))
     assert _resolve_kline_path("TSTUSDT", "15m", "binance", tmp_path) == canonical
+
+
+def _row_for_stream(task):
+    symbol, close_ts, _base, _mode = task
+    return {"close": 1.0, "symbol_marker": symbol}
+
+
+def test_stream_loop_appends_each_ready_symbol_without_batch_barrier(tmp_path, monkeypatch):
+    """2026-10-28: --stream computes each symbol as soon as its closed bar is visible; held symbols go first and
+    a source revision that changed during the compute is resubmitted, never appended."""
+    import sys
+    import types
+    import tools.npz_tail_service as T
+    for name in ("npz_live_generator", "ez_indicators"):
+        monkeypatch.setitem(sys.modules, name, types.ModuleType(name))
+    bar = (int(time.time()) // 900 - 2) * 900
+    monkeypatch.setattr(T, "load_universe", lambda base: ["AUSDT_LONG", "BUSDT_SHORT"])
+    monkeypatch.setattr(T, "npz_for", lambda base, s: str(tmp_path / f"{s}.npz"))
+    monkeypatch.setattr(T, "kline_last_close", lambda base, s, mode: bar)
+    monkeypatch.setattr(T, "source_revision", lambda base, s, mode, lc: "rev")
+    appended = []
+    monkeypatch.setattr(T, "tip_of", lambda npz: bar if any(npz.endswith(f"{s}.npz") for s, _ in appended) else bar - 900)
+    monkeypatch.setattr(T, "_compute_row_process", _row_for_stream)
+    monkeypatch.setattr(T, "source_changed", lambda npz, lc, rev: False)
+    monkeypatch.setattr(T, "sweep_symbol", lambda npz, sym, lc, fn, **kw: (appended.append((sym, fn(sym, lc)["symbol_marker"])), "appended")[1])
+    monkeypatch.setattr(T, "_vd_held_symbols", lambda cat: {"BUSDT"})
+    rec = T.stream_loop(str(tmp_path), "crypto", workers=2, once=True)
+    assert sorted(appended) == [("AUSDT", "AUSDT"), ("BUSDT", "BUSDT")]
+    assert rec["inflight"] == 0

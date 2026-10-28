@@ -304,8 +304,15 @@ def _load_merged_unlocked(npz_path):
         return data
     for row in tail_rows(npz_path):
         try:
-            if int(row["timestamps"]) < int(data["timestamps"][-1]) or (int(row["timestamps"]) == int(data["timestamps"][-1]) and not row.get('_replace_latest')):
+            row_ts = int(row["timestamps"])
+            last_ts = int(data["timestamps"][-1])
+            if row_ts < last_ts:
                 continue
+            if row_ts == last_ts and not row.get('_replace_latest'):
+                parent = data.get('timestamp_15m')
+                if parent is None or int(row.get('timestamp_15m', 0)) != row_ts or int(parent[-1]) == row_ts:
+                    continue
+                row = dict(row, _replace_latest=True)
         except Exception:
             continue
         merged = _apply_row_in_memory(data, row)
@@ -343,9 +350,17 @@ def _compact_tail_unlocked(npz_path):
     applied = 0
     for row in rows:
         try:
-            if int(row["timestamps"]) < int(data["timestamps"][-1]) or (int(row["timestamps"]) == int(data["timestamps"][-1]) and not row.get('_replace_latest')):
+            row_ts = int(row["timestamps"])
+            last_ts = int(data["timestamps"][-1])
+            if row_ts < last_ts:
                 applied += 1
                 continue
+            if row_ts == last_ts and not row.get('_replace_latest'):
+                parent = data.get('timestamp_15m')
+                if parent is None or int(row.get('timestamp_15m', 0)) != row_ts or int(parent[-1]) == row_ts:
+                    applied += 1
+                    continue
+                row = dict(row, _replace_latest=True)
         except Exception:
             continue
         merged = _apply_row_in_memory(data, row)
