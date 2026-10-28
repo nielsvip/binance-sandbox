@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-28T16:40:12.594871+00:00",
+  "ts": "2026-10-28T16:45:16.687111+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 3,
-  "pending_sym_sides": 144,
+  "fleet_published_last_60m": 0,
+  "pending_sym_sides": 142,
   "hosts": {
     "s1": {
       "published_last_60m": 0,
@@ -16,48 +16,17 @@
       "boards_running": 3,
       "workers": 21,
       "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 6872,
+      "mem_avail_mb": 5864,
       "disk_free_gb": 35,
-      "load1": 31.1,
+      "load1": 30.1,
       "dispatch_idle_why": "full 3/2",
       "published_ss": []
     },
     "s2": {
-      "published_last_60m": 0,
-      "published_last_3h": 0,
-      "boards": {
-        "ACEUSDT_SHORT": 7,
-        "BLURUSDT_SHORT": 0
-      },
-      "boards_running": 2,
-      "workers": 7,
-      "workers_vs_law_28": "7/28",
-      "mem_avail_mb": 20492,
-      "disk_free_gb": 49,
-      "load1": 12.1,
-      "dispatch_idle_why": "mem 20460MB < 11000+14000 owed by 2 ramping",
-      "published_ss": []
+      "unreachable": true
     },
     "s5": {
-      "published_last_60m": 3,
-      "published_last_3h": 4,
-      "boards": {
-        "ACTUSDT_SHORT": 7,
-        "GRAMUSDT_SHORT": 0,
-        "MOVRUSDT_SHORT": 7
-      },
-      "boards_running": 3,
-      "workers": 14,
-      "workers_vs_law_28": "14/28",
-      "mem_avail_mb": 14302,
-      "disk_free_gb": 57,
-      "load1": 12.7,
-      "dispatch_idle_why": null,
-      "published_ss": [
-        "OLED_LONG",
-        "QCOM_LONG",
-        "SNDK_LONG"
-      ]
+      "unreachable": true
     },
     "s6": {
       "unreachable": true
@@ -66,8 +35,8 @@
   "alerts": [
     "LOW_THROUGHPUT:s1:0/h<10 (idle_why=full 3/2)",
     "DISK_FLOOR:s1:35GB<40",
-    "LOW_THROUGHPUT:s2:0/h<10 (idle_why=mem 20460MB < 11000+14000 owed by 2 ramping)",
-    "LOW_THROUGHPUT:s5:3/h<10 (idle_why=None)",
+    "UNREACHABLE:s2",
+    "UNREACHABLE:s5",
     "UNREACHABLE:s6"
   ],
   "repair": null

@@ -181,6 +181,7 @@ SHOW_TOP_LEGEND = False  # top legend removed to regain vertical space
 SHOW_STOCK_MISMATCH = True  # USER 2026-10-24: faint reddish/greenish vlines for signal/fill discrepancies
 SHOW_STOCK_SIGNAL_ARROWS = False  # USER 2026-10-24: WT/winners lime-red triangles hidden (signal markers, not trades); code kept
 SHOW_TRADE_LOG_VLINES = False  # USER 2026-10-28: old full-height blue/red trade vlines from tradier_actions.log hidden; code kept
+SHOW_STOCH_HEATMAP = False  # USER 2026-10-28: red/green stoch_rsi background gradient off on stocks (paints every bar), code kept
 SHOW_STOCK_OUTCOME_LINES = True  # USER 2026-10-28: stock green/red live exit bars ON (wanted); code kept
 STOCK_MISMATCH_TOL_MIN = 30.0
 import live_trade_history as _lth
@@ -1197,7 +1198,7 @@ async def plot_dfs_subplots(
                         ax_plot.fill_between(x_indices, band_df_local["upperb"], ymax_data + margin_abs_val, color="grey", alpha=0.25, where=(band_df_local["upperb"] < (ymax_data + margin_abs_val)), zorder=-5, linewidth=0.0)
                         ax_plot.fill_between(x_indices, ymin_data - margin_abs_val, band_df_local["lowerb"], color="grey", alpha=0.25, where=(band_df_local["lowerb"] > (ymin_data - margin_abs_val)), zorder=-5, linewidth=0.0)
             except Exception: pass
-        if "stoch_rsi" in df_tf.columns and not df_tf["stoch_rsi"].isnull().all():
+        if SHOW_STOCH_HEATMAP and "stoch_rsi" in df_tf.columns and not df_tf["stoch_rsi"].isnull().all():
             try:
                 stoch_norm = df_tf["stoch_rsi"].fillna(50) / 100.0
                 stoch_norm = np.clip(stoch_norm, 0, 1)
