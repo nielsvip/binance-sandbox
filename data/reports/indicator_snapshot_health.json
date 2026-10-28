@@ -1,20 +1,21 @@
 {
- "generated_utc": "2026-10-28T08:26:49Z",
+ "generated_utc": "2026-10-28T08:32:00Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 48.7,
+  "age_s": 132.3,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 38323,
-  "proc_age_s": 661.0,
-  "log_age_s": 0.5,
+  "proc_age_s": 971.0,
+  "log_age_s": 17.8,
   "warmup_done": true,
   "timeframes_since_restart": [
-   "D"
+   "D",
+   "4h"
   ],
-  "last_timeframe": "D",
-  "last_timeframe_utc": "2026-10-28T08:21:02Z",
+  "last_timeframe": "4h",
+  "last_timeframe_utc": "2026-10-28T08:29:45Z",
   "last_restart_utc": "2026-10-28T08:15:48Z",
   "restarts_last_hour": 1
  },
@@ -40,20 +41,20 @@
   "mode": "ACTIVE",
   "since_epoch": 1793127215.692805,
   "activations": 164,
-  "hb_mtime": 1793175889.3123991,
-  "mac_snapshot_age_s": 577.7863788604736,
+  "hb_mtime": 1793176249.428665,
+  "mac_snapshot_age_s": 937.9390571117401,
   "mac_stale": true,
   "lease_holder": "mac",
   "lease_venues": null,
   "lease_since": "2026-10-27T18:56:44Z",
   "lease_reason": "manual force-mac",
-  "now": 1793175900.0837529,
-  "from_cache_age_s": 109.7,
-  "heartbeat_age_s": 10.8,
-  "active_s": 48684.4
+  "now": 1793176261.3353512,
+  "from_cache_age_s": 58.9,
+  "heartbeat_age_s": 11.9,
+  "active_s": 49045.6
  },
  "alerts": [
-  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 48684s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (10s) AND the Mac snapshot is fresh (48s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
+  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 49045s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (11s) AND the Mac snapshot is fresh (132s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
  ],
  "verdict": "ALERT"
 }
