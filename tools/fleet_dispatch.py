@@ -121,6 +121,10 @@ WORKERS = env_int("FLEET_WORKERS", 7)
 ORPHAN_SLOTS = env_int("FLEET_ORPHAN_SLOTS", 1)
 MEM_MIN_MB = env_int("FLEET_MEM_MIN_MB", 11000)  # 2026-10-28 operator: NO OOM — a 7-worker board peaks 8-9 GB, so a launch needs that much headroom beyond the 2-3 GB reserve
 DISK_MIN_MB = env_int("FLEET_DISK_MIN_MB", 3000)
+# 2026-10-28 maxsets, measured peak board PSS (1-min smaps samplers ~/fleet_tp_boardmem_20261028.jsonl, s1/s2/s5/s6, 15:45-18:35Z):
+# crypto 3.0-7.0 GB (max PTBUSDT_SHORT 7,038 MB at 162 min), stocks 2.2-6.2 GB (31 boards, median ~2.9 GB, max OLED_LONG 6,248 MB).
+# A stock launch needs its own peak + ~2 GB, not the crypto floor: MEM_MIN_MB applies to crypto picks, MEM_MIN_MB_STOCKS to stocks.
+MEM_MIN_MB_STOCKS = env_int("FLEET_MEM_MIN_MB_STOCKS", 8500)
 RAMP_S = env_int("FLEET_RAMP_S", 600)
 RAMP_MB = env_int("FLEET_RAMP_MB", 3000)  # 10-28 16Z: MEM_MIN_MB already holds the new board's full ramp; each ramping board still owes ~2-3.5 GB (board PSS 3.5-5.5 GB measured); 0 OOM kills s5/s6 04-16Z
 RAMP_MB_CRYPTO = env_int("FLEET_RAMP_MB_CRYPTO", 7000)
@@ -461,6 +465,17 @@ def unfinished_deaths(d, now):
     return died
 
 
+def owed_mb(d, now):
+    ramp = [ss for ss, r in (d.get("launches") or {}).items() if now - float(r.get("ts") or 0) < RAMP_S and ss in (d.get("running") or {})]
+    return sum(RAMP_MB_CRYPTO if cat_of(ss).startswith("CRYPTO") else RAMP_MB for ss in ramp), ramp
+
+
+def mem_fits(d, now, cat):
+    """A crypto pick needs MEM_MIN_MB, a stock pick MEM_MIN_MB_STOCKS, each plus what ramping boards still owe."""
+    need = (MEM_MIN_MB if cat.startswith("CRYPTO") else MEM_MIN_MB_STOCKS) + owed_mb(d, now)[0]
+    return int(d.get("mem_avail_mb") or 0) >= need
+
+
 def admission(d, now, name=""):
     """-> (free_slots, reason). One launch per host per tick; memory/disk/spacing gates."""
     nrun = len(d.get("running") or {})
@@ -474,17 +489,17 @@ def admission(d, now, name=""):
         return 0, f"full {nrun}/{cap}"
     if int(d.get("disk_free_mb") or 0) < DISK_MIN_MB:
         return 0, f"disk {d.get('disk_free_mb')}MB < {DISK_MIN_MB}"
-    if int(d.get("mem_avail_mb") or 0) < MEM_MIN_MB:
-        return 0, f"mem {d.get('mem_avail_mb')}MB < {MEM_MIN_MB}"
+    floor = min(MEM_MIN_MB, MEM_MIN_MB_STOCKS)
+    if int(d.get("mem_avail_mb") or 0) < floor:
+        return 0, f"mem {d.get('mem_avail_mb')}MB < {floor}"
     # 2026-10-28 fleet throughput order: a board reaches its peak minutes after launch, so MemAvailable still looks free
     # when the next launch is admitted; 73 of 125 launches (19:30-04:40Z) died silently, mostly global OOM kills.
     # Every board launched here < RAMP_S ago and still running reserves RAMP_MB on top of MEM_MIN_MB.
     # 16:1xZ s2: two CRYPTO boards admitted at 14-19 GB each peaked ~12 GB (OOM victims: parents 2.4-3.2 GB anon, workers
     # 1.7 GB anon) -> 39 kernel kills in 3 h; stock boards on s5/s6 (3.5-5.5 GB PSS) had 0. A ramping crypto board owes more.
-    ramp = [ss for ss, r in (d.get("launches") or {}).items() if now - float(r.get("ts") or 0) < RAMP_S and ss in (d.get("running") or {})]
-    owed = sum(RAMP_MB_CRYPTO if cat_of(ss).startswith("CRYPTO") else RAMP_MB for ss in ramp)
-    if ramp and int(d.get("mem_avail_mb") or 0) < MEM_MIN_MB + owed:
-        return 0, f"mem {d.get('mem_avail_mb')}MB < {MEM_MIN_MB}+{owed} owed by {len(ramp)} ramping"
+    owed, ramp = owed_mb(d, now)
+    if ramp and int(d.get("mem_avail_mb") or 0) < floor + owed:
+        return 0, f"mem {d.get('mem_avail_mb')}MB < {floor}+{owed} owed by {len(ramp)} ramping"
     last = max((float(r.get("ts") or 0) for r in (d.get("launches") or {}).values()), default=0)
     if now - last < LAUNCH_GAP_S:
         return 0, f"spacing {int(now - last)}s < {LAUNCH_GAP_S}"
@@ -511,7 +526,9 @@ def plan(pend, partial, fleet_data, now, orphan_since, prio=frozenset(), refresh
             orphans.add(cat)
     claimed, out, why_not = set(), [], {}
 
-    def avail(queue, cat):
+    def avail(queue, cat, host=None):
+        if host is not None and not mem_fits(fleet_data[host], now, cat):
+            return []
         return [s for s in queue.get(cat, []) if s not in claimed]
 
     def take(host, cat, queue):
@@ -539,10 +556,10 @@ def plan(pend, partial, fleet_data, now, orphan_since, prio=frozenset(), refresh
         running = list((fleet_data[name].get("running") or {}).keys())
         foreign = sum(1 for s in running if cat_of(s) not in own) if own else 0
         pick, why = None, ""
-        live_prio = [c for c in CAT_PRIORITY if any(s in prio and s not in claimed and partial.get(s) in (None, name) for s in pend.get(c, []))]
+        live_prio = [c for c in CAT_PRIORITY if mem_fits(fleet_data[name], now, c) and any(s in prio and s not in claimed and partial.get(s) in (None, name) for s in pend.get(c, []))]
         if live_prio:
             pick, why = take(name, live_prio[0], pend), f"priority {live_prio[0]}"
-        live_orphans = [c for c in CAT_PRIORITY if c in orphans and c not in own and avail(pend, c)]
+        live_orphans = [c for c in CAT_PRIORITY if c in orphans and c not in own and avail(pend, c, name)]
         if not pick and own and live_orphans and foreign < ORPHAN_SLOTS:
             pick, why = take(name, live_orphans[0], pend), f"orphan {live_orphans[0]}"
         own_cats = [c for c in cats if c in own] if own else cats
@@ -550,11 +567,13 @@ def plan(pend, partial, fleet_data, now, orphan_since, prio=frozenset(), refresh
             if pick:
                 break
             for cat in own_cats:
-                if avail(queue, cat):
+                if avail(queue, cat, name):
                     pick, why = take(name, cat, queue), f"{label} {cat}"
                     break
         if pick:
             out.append((name, pick, why))
+        elif own and any(avail(q, c) for q in (pend, refresh) for c in own_cats):
+            why_not[name] = f"own venue work waits for memory ({fleet_data[name].get('mem_avail_mb')}MB)"
         else:
             pending_hosts.append((name, [c for c in cats if c not in own] if own else []))
     for name, other_cats in pending_hosts:
@@ -563,14 +582,14 @@ def plan(pend, partial, fleet_data, now, orphan_since, prio=frozenset(), refresh
             if pick:
                 break
             for cat in other_cats:
-                if avail(queue, cat):
+                if avail(queue, cat, name):
                     pick = take(name, cat, queue)
                     why = f"{label} {cat} (own venue {venue_of_cat(HOMES[name])} has no work)"
                     break
         if pick:
             out.append((name, pick, why))
         else:
-            why_not[name] = "no pending work anywhere"
+            why_not[name] = "no pending work anywhere (or none that fits memory)"
     return out, why_not, orphans
 
 

@@ -1667,7 +1667,9 @@ ESSENTIAL_GATE_SWITCHES = frozenset({
     "HARDCODED_RALLY_MIN_MOVE_PCT", "HARDCODED_RALLY_MIN_AGE_MIN",
     "HARDCODED_RALLY_HTF_TREND_TF", "HARDCODED_RALLY_DC_POS_MAX",
     "HARDCODED_RALLY_SMA200_SIDE_ENABLED",
-    "DAYTRADE_DC_TARGET_TF", "TECHNICAL_DC_TARGET_TF",
+    # DAYTRADE_DC_TARGET_TF + TECHNICAL_DC_TARGET_TF REMOVED 2026-10-28 (OPERATOR 2026-10-27: "should be greyed out we do not
+    # daytrade with fixed % targets"): all their rows are grey in all 4 TEMPLATE_FINAL_NORM workbooks, so the gate demanded a
+    # number the sheet forbids measuring and refused TMO_LONG / CDW_LONG / ZCSH_LONG forever (v15_gate_surface_guard PENDING_REMOVAL).
     "COUNTER_TREND_ADD_BLOCK_ENABLED", "COUNTER_TREND_SMA200_BYPASS_ENABLED",
     "HTF_DIRECTION_GATE_ENABLED", "GR_FILTER_ALL_ENTRIES", "ADX_REGIME_FILTER_ENABLED",
 })
@@ -1751,7 +1753,11 @@ def essential_gate_check(done: dict, final_overrides: dict | None = None, is_lon
             out[sw] = {"status": "SKIP", "reason": f"vacuous-honest (parents {parents} all OFF in final set)"}
             continue
         recs = per.get(sw, [])
+        _kill = next((r for r in recs if r.get("essential_zero_trades_on_chain")), None)
         tested = [r for r in recs if not r.get("is_running") and r.get("delta") is not None]
+        if not tested and _kill is not None:  # 2026-10-28: a candidate measured to remove EVERY trade from a trading chain is a measured effect
+            out[sw] = {"status": "PASS", "reason": f"measured: {_kill.get('switch')}={_kill.get('cand')} removes all trades (chain {_kill.get('cumulative_before')})"}
+            continue
         # 2026-10-17 MEASURED-ZERO: a real engine number of exactly 0.0 (naked flip evaluated, or yellow cells evaluated on
         # the switch's rows incl. the running-identity row) is a measurement — the protection is inert on this window, not
         # unproven. Measured 2026-10-16T12Z..10-17T06Z: 145/161 gate failures (S1 74/80, S2 71/81) were such measured zeros

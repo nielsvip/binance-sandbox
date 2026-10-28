@@ -189,3 +189,12 @@ def test_quarantined_host_gets_nothing_and_home_orphans():
 
 def test_quarantine_counts_deaths_even_if_relaunched_elsewhere():
     assert "ss not in (d.get(\"running\") or {})" in open(F.__file__).read()
+
+
+def test_stock_floor_lower_than_crypto_floor():
+    data = fleet4(s5=host(mem=9000), s1=host(mem=9000))
+    pend, partial, _ = F.pending_by_cat(UNI, data, NOW)
+    picks, why_not, _ = F.plan(pend, partial, data, NOW, {})
+    got = {h: s for h, s, _ in picks}
+    assert got["s5"] == "AAPL_LONG"
+    assert "s1" not in got and why_not["s1"].startswith("own venue work waits for memory")

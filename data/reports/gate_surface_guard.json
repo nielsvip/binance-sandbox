@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-28T03:52:07Z",
+ "ts": "2026-10-28T18:48:09Z",
  "n_gate_switches": 40,
  "templates": {
   "TEMPLATE_CRYPTO_LONG.xlsx": {
@@ -25,10 +25,10 @@
    "rows": 4,
    "grey_rows": 4,
    "grey_at": [
-    "EXIT_STRUCTURAL!66",
-    "EXIT_STRUCTURAL!67",
     "EXIT_STRUCTURAL!68",
-    "EXIT_STRUCTURAL!69"
+    "EXIT_STRUCTURAL!69",
+    "EXIT_STRUCTURAL!70",
+    "EXIT_STRUCTURAL!71"
    ]
   },
   {
@@ -37,10 +37,10 @@
    "rows": 4,
    "grey_rows": 4,
    "grey_at": [
-    "EXIT_STRUCTURAL!60",
-    "EXIT_STRUCTURAL!61",
     "EXIT_STRUCTURAL!62",
-    "EXIT_STRUCTURAL!63"
+    "EXIT_STRUCTURAL!63",
+    "EXIT_STRUCTURAL!64",
+    "EXIT_STRUCTURAL!65"
    ]
   },
   {
@@ -49,10 +49,10 @@
    "rows": 4,
    "grey_rows": 4,
    "grey_at": [
-    "EXIT_STRUCTURAL!220",
-    "EXIT_STRUCTURAL!221",
-    "EXIT_STRUCTURAL!222",
-    "EXIT_STRUCTURAL!223"
+    "EXIT_STRUCTURAL!197",
+    "EXIT_STRUCTURAL!198",
+    "EXIT_STRUCTURAL!199",
+    "EXIT_STRUCTURAL!200"
    ]
   },
   {
@@ -61,27 +61,15 @@
    "rows": 4,
    "grey_rows": 4,
    "grey_at": [
-    "EXIT_STRUCTURAL!148",
-    "EXIT_STRUCTURAL!149",
-    "EXIT_STRUCTURAL!150",
-    "EXIT_STRUCTURAL!151"
+    "EXIT_STRUCTURAL!173",
+    "EXIT_STRUCTURAL!174",
+    "EXIT_STRUCTURAL!175",
+    "EXIT_STRUCTURAL!176"
    ]
   },
   {
    "template": "TEMPLATE_STOCKS_LONG.xlsx",
    "switch": "DAYTRADE_DC_TARGET_TF",
-   "rows": 4,
-   "grey_rows": 4,
-   "grey_at": [
-    "EXIT_STRUCTURAL!102",
-    "EXIT_STRUCTURAL!103",
-    "EXIT_STRUCTURAL!104",
-    "EXIT_STRUCTURAL!105"
-   ]
-  },
-  {
-   "template": "TEMPLATE_STOCKS_LONG.xlsx",
-   "switch": "TECHNICAL_DC_TARGET_TF",
    "rows": 4,
    "grey_rows": 4,
    "grey_at": [
@@ -92,15 +80,27 @@
    ]
   },
   {
+   "template": "TEMPLATE_STOCKS_LONG.xlsx",
+   "switch": "TECHNICAL_DC_TARGET_TF",
+   "rows": 4,
+   "grey_rows": 4,
+   "grey_at": [
+    "EXIT_STRUCTURAL!122",
+    "EXIT_STRUCTURAL!123",
+    "EXIT_STRUCTURAL!124",
+    "EXIT_STRUCTURAL!125"
+   ]
+  },
+  {
    "template": "TEMPLATE_STOCKS_SHORT.xlsx",
    "switch": "DAYTRADE_DC_TARGET_TF",
    "rows": 4,
    "grey_rows": 4,
    "grey_at": [
-    "EXIT_STRUCTURAL!67",
-    "EXIT_STRUCTURAL!68",
-    "EXIT_STRUCTURAL!69",
-    "EXIT_STRUCTURAL!70"
+    "EXIT_STRUCTURAL!62",
+    "EXIT_STRUCTURAL!63",
+    "EXIT_STRUCTURAL!64",
+    "EXIT_STRUCTURAL!65"
    ]
   },
   {
@@ -109,10 +109,10 @@
    "rows": 4,
    "grey_rows": 4,
    "grey_at": [
+    "EXIT_STRUCTURAL!86",
     "EXIT_STRUCTURAL!87",
     "EXIT_STRUCTURAL!88",
-    "EXIT_STRUCTURAL!89",
-    "EXIT_STRUCTURAL!90"
+    "EXIT_STRUCTURAL!89"
    ]
   }
  ],
