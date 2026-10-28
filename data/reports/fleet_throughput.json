@@ -1,5 +1,5 @@
 {
-  "ts": "2026-10-28T14:35:09.048732+00:00",
+  "ts": "2026-10-28T14:40:06.611151+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 0,
@@ -14,9 +14,9 @@
       "boards_running": 1,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 16902,
+      "mem_avail_mb": 16454,
       "disk_free_gb": 36,
-      "load1": 10.0,
+      "load1": 7.6,
       "dispatch_idle_why": null,
       "published_ss": []
     },
