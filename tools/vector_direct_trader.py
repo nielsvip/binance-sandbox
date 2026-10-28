@@ -71,6 +71,9 @@ RELEASE_HEALTHY_S = float(os.environ.get("VD_RELEASE_HEALTHY_S", "600"))
 REPEAT_WINDOW_S = float(os.environ.get("VD_REPEAT_WINDOW_S", "7200"))
 STATE_MAX_LAG_S = float(os.environ.get("VD_STATE_MAX_LAG_S", "1800"))
 REPLAN_S = float(os.environ.get("VD_REPLAN_S", "60"))
+# 2026-10-28 USER "s1 never misses a beat ... executes it immediately": the loop wakes as soon as a state lands in the state
+# dir (dir mtime) or tools/s1_bar_guarantee.py writes data/vector_direct/PLAN_NOW_<venue>; MIN_PASS_GAP_S bounds REST weight.
+MIN_PASS_GAP_S = float(os.environ.get("VD_MIN_PASS_GAP_S", "2.0"))
 MAX_ATTEMPTS = 3
 VENUE_WIDE_KINDS_IGNORED = ("account_dead", "broker_unreachable_account")
 
@@ -942,8 +945,13 @@ class Trader:
                 self.done.discard(k)
                 self.done_ts.pop(k, None)
         orders_n = 0
+        if self.__dict__.pop("plan_now", False):
+            self.last_plan = {}
+        consumed = self.__dict__.setdefault("consumed", {})
+        consumed_dirty = False
         for acct in active if market_ok else []:
-            acct_changed = any(ss in changed for ss in keys.get(acct, ()))
+            acct_sides = set(keys.get(acct, ())) | set(self.held.get(acct, ()))
+            acct_changed = any(ss in changed for ss in acct_sides)
             if not acct_changed and now - self.last_plan.get(acct, 0) < REPLAN_S:
                 continue
             self.last_plan[acct] = now
@@ -959,6 +967,17 @@ class Trader:
             t_obs, prev = self.obs.get(acct, (0, {}))
             prev_qty = prev if t_obs and bar - BAR_S <= t_obs < bar + BAR_S else {}
             orders, notes = plan_account(acct, self.venue, keys.get(acct, ()), states, pos, bar, self.done, allowed, prev_qty, wt15=self.wt15, noinfo_age=self.noinfo_age)
+            planned_at = time.time()
+            # consumed_<venue>.json: which state (npz_tail, ts) this account was planned against, first time per state —
+            # read by tools/s1_bar_guarantee.py as the per-bar "executed" stage
+            for ss in set(keys.get(acct, ())) | set(pos):
+                st = states.get(ss) or {}
+                sig = [st.get("npz_tail"), st.get("ts")]
+                row = consumed.setdefault(ss, {}).get(acct)
+                if not row or row.get("sig") != sig:
+                    consumed[ss][acct] = {"sig": sig, "npz_tail": st.get("npz_tail"), "ok": bool(st.get("ok")), "at": planned_at,
+                                          "orders": [o["act"] for o in orders if o["ss"] == ss]}
+                    consumed_dirty = True
             self.obs[acct] = (now, {ss: p["qty"] for ss, p in pos.items()})
             for ss, n in notes:
                 if n != "HOLD_NO_FRESH_STATE":
@@ -967,6 +986,11 @@ class Trader:
                         self.done.add(k)
                         self._ledger({"event": "NOTE", "acct": acct, "ss": ss, "note": n, "key": k, "final": True})
             orders_n += self.send_orders(acct, orders, pos, killed)
+        if consumed_dirty:
+            try:
+                atomic_write_json(self.out / f"consumed_{self.venue}.json", {"epoch": time.time(), "pid": os.getpid(), "sides": consumed})
+            except OSError as exc:
+                log(f"consumed file write failed: {exc}")
         if market_ok:
             self.paper(now, [a for a in self.accounts if a not in active], keys, states, bar, allowed)
             orders_n += self.backstop(now, killed, keys, states, allowed)
@@ -976,9 +1000,44 @@ class Trader:
                   "venue": self.venue, "armed": not self.a.dry_run and not killed, "dry_run": self.a.dry_run, "killed": killed,
                   "market_open": market_ok, "active_accounts": active, "triggers": trig, "hb_age_s": None if hb_age is None else round(hb_age, 1),
                   "bar": bar, "states_fresh": fresh_n, "states_total": len(all_sides), "held_without_fresh_state": unmanaged, "pending_expectations": len(self.expect),
-                  "orders_this_pass": orders_n, "start_position_size": START_POSITION_SIZE, "pin": self.pinned(now)}
+                  "orders_this_pass": orders_n, "start_position_size": START_POSITION_SIZE, "pin": self.pinned(now),
+                  "pass_s": round(time.time() - now, 3), "wake": self.__dict__.get("last_wake")}
         atomic_write_json(self.out / f"status_{self.venue}.json", status)
         return status
+
+    def wait_next(self, t0, loop_s):
+        """Sleep until the next pass: loop_s at most, but wake (no earlier than MIN_PASS_GAP_S after t0) when a state file
+        lands in the state dir or data/vector_direct/PLAN_NOW_<venue> appears (tools/s1_bar_guarantee.py poke)."""
+        trigger = self.out / f"PLAN_NOW_{self.venue}"
+        def dir_stamp():
+            try:
+                return self.state_dir.stat().st_mtime_ns
+            except OSError:
+                return None
+        start = self.__dict__.get("dir_seen")
+        if start is None:
+            start = dir_stamp()
+        while True:
+            now = time.time()
+            if now - t0 >= loop_s:
+                self.last_wake = "timer"
+                break
+            if now - t0 >= MIN_PASS_GAP_S:
+                if trigger.exists():
+                    try:
+                        why = trigger.read_text()[:200]
+                        trigger.unlink()
+                    except OSError:
+                        why = ""
+                    self.plan_now = True
+                    self.last_wake = f"plan_now {why}".strip()
+                    log(f"WAKE PLAN_NOW {why}")
+                    break
+                if dir_stamp() != start:
+                    self.last_wake = "state_dir"
+                    break
+            time.sleep(0.2)
+        self.dir_seen = dir_stamp()
 
     def send_orders(self, acct, orders, pos, killed):
         orders_n = 0
@@ -1092,7 +1151,7 @@ def main(argv=None):
             log(f"PASS FAILED {type(exc).__name__}: {str(exc)[:300]}")
         if a.once:
             return 0
-        time.sleep(max(1.0, a.loop_s - (time.time() - t0)))
+        t.wait_next(t0, a.loop_s)
 
 
 if __name__ == "__main__":

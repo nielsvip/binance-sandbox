@@ -1,5 +1,5 @@
 {
- "at": "2026-10-28T02:11:23Z",
+ "at": "2026-10-28T03:11:11Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
@@ -9,13 +9,9 @@
    "published_n": 0,
    "flat_or_worse": 0,
    "unknown": 0,
-   "boards_running": [
-    "AXSUSDT_SHORT",
-    "MOVRUSDT_SHORT",
-    "STXUSDT_LONG"
-   ],
-   "mem_avail_mb": 5262,
-   "load1": 23.15,
+   "boards_running": [],
+   "mem_avail_mb": 16302,
+   "load1": 7.3,
    "nproc": 16,
    "slots": null,
    "binding_reason": "concurrency 0 boards: 12/h needs <= 0 min per sym_side \u2014 raise concurrent sides or cut evals per board",
@@ -30,16 +26,14 @@
    "improved_finishes_24h": 0,
    "board_cpu_s_median_24h": null,
    "board_wall_s_median_24h": null,
-   "board_cores": 10.35,
-   "nonboard_cores_competing": 1.01,
-   "nonboard_cores_niced": 3.43,
+   "board_cores": 0.0,
+   "nonboard_cores_competing": 1.62,
+   "nonboard_cores_niced": 1.99,
    "cores_by_bucket": {
-    "other": 1.01,
-    "boards": 10.35
+    "other": 1.62
    },
    "cores_by_bucket_niced": {
-    "other": 2.77,
-    "klines_vault": 0.66
+    "klines_vault": 1.99
    }
   },
   "s2": {
@@ -51,15 +45,15 @@
    "boards_running": [
     "CHRUSDT_LONG"
    ],
-   "mem_avail_mb": 16464,
-   "load1": 6.23,
+   "mem_avail_mb": 16339,
+   "load1": 7.16,
    "nproc": 16,
    "slots": null,
-   "binding_reason": "CPU budget: median board 4546 core-s, 16 cores minus 4.3 competing non-board cores ({'other': 1.11, 'boards': 3.79, 'live_helpers': 3.15}) = 11.7 usable -> host ceiling 9.3 boards/h. Move nice-0 non-board work off the host and/or cut core-s per board.",
+   "binding_reason": "CPU budget: median board 4546 core-s, 16 cores minus 2.2 competing non-board cores ({'other': 0.89, 'boards': 3.61, 'live_helpers': 1.29}) = 13.8 usable -> host ceiling 10.9 boards/h. Move nice-0 non-board work off the host and/or cut core-s per board.",
    "error": null,
    "published": [],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 898.9,
+   "minutes_since_last_improved": 958.7,
    "last_improved_symside": "SKYAIUSDT_LONG",
    "cadence_ok": false,
    "improved_gap_min_median_24h": 808.8,
@@ -67,13 +61,13 @@
    "improved_finishes_24h": 2,
    "board_cpu_s_median_24h": 4545.5,
    "board_wall_s_median_24h": 4798.007516860962,
-   "board_cores": 3.79,
-   "nonboard_cores_competing": 4.26,
+   "board_cores": 3.61,
+   "nonboard_cores_competing": 2.18,
    "nonboard_cores_niced": 0,
    "cores_by_bucket": {
-    "other": 1.11,
-    "boards": 3.79,
-    "live_helpers": 3.15
+    "other": 0.89,
+    "boards": 3.61,
+    "live_helpers": 1.29
    },
    "cores_by_bucket_niced": {}
   }

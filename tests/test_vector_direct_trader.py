@@ -301,3 +301,21 @@ def test_no_information_close_only_for_true_missing_settings_after_grace():
         since[f"S{i}USDT_LONG"] = 0.0
     orders, notes = V.plan_account("ang", "crypto", keys, states, pos, BAR, set(), ALLOW, wt15=wt.get, noinfo_age=lambda ss, s: age(ss, s, V.NOINFO_GRACE_S))
     assert not [o for o in orders if o["act"] == "CLOSE"] and any(n.startswith("NOINFO_BREAKER") for _, n in notes)
+
+
+def test_wait_next_wakes_on_new_state_and_on_plan_now(tmp_path):
+    """2026-10-28 USER "executes it immediately": a state landing in the state dir (or a PLAN_NOW poke from
+    tools/s1_bar_guarantee.py) ends the sleep after MIN_PASS_GAP_S instead of the 10 s loop."""
+    import os, threading, time
+    t, _ = _bare_trader(tmp_path, {})
+    t.state_dir = tmp_path / "fs"
+    t.state_dir.mkdir()
+    t.dir_seen = t.state_dir.stat().st_mtime_ns
+    threading.Timer(0.3, lambda: (t.state_dir / "XUSDT_LONG.json").write_text("{}")).start()
+    t0 = time.time()
+    t.wait_next(t0 - V.MIN_PASS_GAP_S, 30.0)
+    assert time.time() - t0 < 3.0 and t.last_wake == "state_dir"
+    (t.out / "PLAN_NOW_crypto").write_text("guarantee XUSDT_LONG")
+    t0 = time.time()
+    t.wait_next(t0 - V.MIN_PASS_GAP_S, 30.0)
+    assert time.time() - t0 < 1.0 and t.plan_now and t.last_wake.startswith("plan_now") and not (t.out / "PLAN_NOW_crypto").exists()

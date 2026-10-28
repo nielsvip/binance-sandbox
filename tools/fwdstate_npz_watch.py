@@ -41,6 +41,7 @@ BAR_S = 900
 RETRY_S = 30.0
 REWRITE_MIN_S = 120.0
 NICE = int(os.environ.get("FWDSTATE_NICE", "-5"))
+PRIORITY_DIR = ROOT / "data" / "forward_state_priority"
 STOP = False
 
 
@@ -219,6 +220,22 @@ def main():
                     continue
                 if cls < pending.get(symbol_side, 9):
                     pending[symbol_side] = cls
+            # 2026-10-28 tools/s1_bar_guarantee.py: a side with no ok state 90 s after the close is dropped as an empty file
+            # into data/forward_state_priority/ -> recomputed now, ahead of every other class (cls -1), even on an unchanged tail
+            try:
+                prio = [p for p in PRIORITY_DIR.iterdir() if p.name.endswith(("_LONG", "_SHORT"))]
+            except OSError:
+                prio = []
+            for p in prio:
+                try:
+                    p.unlink()
+                except OSError:
+                    pass
+                symbol_side = p.name.upper()
+                if symbol_side in active:
+                    continue
+                pending[symbol_side] = -1
+                print(f"[{time.strftime('%FT%TZ', time.gmtime())}] PRIORITY {symbol_side} (s1_bar_guarantee)", flush=True)
             for future in [future for future in running if future.done()]:
                 symbol_side, started = running.pop(future)
                 try:
