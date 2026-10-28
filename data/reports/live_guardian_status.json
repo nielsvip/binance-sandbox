@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-28T07:39:11Z",
+ "ts": "2026-10-28T07:45:28Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 73,
+   "fills_6h": 75,
    "open_positions": 23,
-   "unrealised_usd": -0.08,
+   "unrealised_usd": 0.1,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -43,15 +43,15 @@
    }
   },
   "men": {
-   "fills_6h": 114,
+   "fills_6h": 113,
    "open_positions": 25,
-   "unrealised_usd": -3.33,
+   "unrealised_usd": -3.39,
    "pos_mismatch": 0,
    "vec_parity": {
-    "live_vec_decisions": 16,
+    "live_vec_decisions": 12,
     "state_divergent": 2,
-    "filled": 3,
-    "refused_non_safety": 3,
+    "filled": 2,
+    "refused_non_safety": 0,
     "safety_refusals": 0,
     "not_filled_no_log": 0,
     "vec_exact_fills_without_decision": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 178,
+   "fills_6h": 179,
    "open_positions": 42,
-   "unrealised_usd": -0.5,
+   "unrealised_usd": -0.71,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 11,
@@ -77,7 +77,7 @@
   "inf": {
    "fills_6h": 20,
    "open_positions": 10,
-   "unrealised_usd": -0.34,
+   "unrealised_usd": -0.36,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 1,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 22,
    "open_positions": 11,
-   "unrealised_usd": -0.31,
+   "unrealised_usd": -0.36,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,14 +127,14 @@
     "26167"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 39.0
   },
   "men": {
    "pids": [
     "52393"
    ],
    "starts_30m": 1,
-   "log_age_s": -0.0
+   "log_age_s": 0.0
   },
   "ang": {
    "pids": [
@@ -148,64 +148,57 @@
     "25206"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": -0.0
   },
   "flz": {
    "pids": [
     "86718"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 4.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 41917.0
+   "log_age_s": 42296.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 41993.0
+   "log_age_s": 42372.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-28T07:39:11Z",
+   "ts": "2026-10-28T07:45:28Z",
    "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "men:TIAUSDC_LONG",
-   "evidence": "OPEN REENTRY_DC4_15M_BREAK bar=2026-10-28T06:15:00Z refused by non-safety gate: 28 06:36:00 - INFO - [men] [VEC_EXACT] men:TIAUSDC_LONG CLOSE VEC_EXIT_OWED qty=4.000000 -> SKIPPED_VX_INFLIGHT"
+   "kind": "CAP_BYPASS",
+   "key": "fin:MOVEUSDT_SHORT",
+   "evidence": "28 07:42:42 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:MOVEUSDT_SHORT: bypass MAX_ORDER_VALUE $20 / MAX_POSITION_SIZE $20 \u2014 restoring $11 on bounce (prior max 2229.0000)"
   },
   {
-   "ts": "2026-10-28T07:39:11Z",
+   "ts": "2026-10-28T07:45:28Z",
    "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "men:TIAUSDC_LONG",
-   "evidence": "OPEN REENTRY_DC4_15M_BREAK bar=2026-10-28T06:15:00Z refused by non-safety gate: 28 06:36:00 - INFO - [men] [VEC_EXACT] men:TIAUSDC_LONG CLOSE VEC_EXIT_OWED qty=4.000000 -> SKIPPED_VX_INFLIGHT"
+   "kind": "CAP_BYPASS",
+   "key": "fin:UNIUSDC_LONG",
+   "evidence": "28 07:44:17 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:UNIUSDC_LONG: bypass MAX_ORDER_VALUE $20 / MAX_POSITION_SIZE $20 \u2014 restoring $289 on bounce (prior max 2.0000)"
   },
   {
-   "ts": "2026-10-28T07:39:11Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "men:TIAUSDC_LONG",
-   "evidence": "AUGMENT AUGMENT_AT_LOSS_HL bar=2026-10-28T06:30:00Z refused by non-safety gate: 28 06:49:01 - INFO - [men] [VEC_EXACT] men:TIAUSDC_LONG CLOSE VEC_EXIT_OWED qty=4.000000 -> SKIPPED_VX_INFLIGHT"
-  },
-  {
-   "ts": "2026-10-28T07:39:11Z",
+   "ts": "2026-10-28T07:45:29Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "men:1000LUNCUSDT_SHORT",
    "evidence": "OPEN REENTRY_DC4_15M_BREAK bar=2026-10-28T06:45:00Z: live already holds 332 (state divergence)"
   },
   {
-   "ts": "2026-10-28T07:39:11Z",
+   "ts": "2026-10-28T07:45:29Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "men:FARTCOINUSDT_SHORT",
    "evidence": "OPEN REENTRY_EXIT_PRICE_BREAK bar=2026-10-28T06:45:00Z: live already holds 113.2 (state divergence)"
   },
   {
-   "ts": "2026-10-28T07:39:11Z",
+   "ts": "2026-10-28T07:45:30Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "inf:PENGUUSDC_LONG",
@@ -213,7 +206,7 @@
   }
  ],
  "alert_counts": {
-  "VEC_DECISION_REFUSED": 3,
+  "CAP_BYPASS": 2,
   "VEC_OPEN_WHILE_LIVE_IN": 3
  },
  "active_interventions": {
@@ -274,5 +267,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.94
+ "sweep_s": 2.38
 }
