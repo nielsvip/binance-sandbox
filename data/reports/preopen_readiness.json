@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-28T06:00:03Z",
+ "generated_utc": "2026-10-28T06:20:05Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-28T13:30:00Z",
  "market_open": false,
@@ -7,8 +7,7 @@
  "failed_critical": [
   "defaults_chain_completed",
   "selection_fresh",
-  "live_set_matches_selection",
-  "indicators_fresh"
+  "live_set_matches_selection"
  ],
  "checks": [
   {
@@ -16,10 +15,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 96,
-    "filled_before_open": 96
+    "filled_today": 99,
+    "filled_before_open": 99
    },
-   "detail": "96 boards filled before the open (96 today)"
+   "detail": "99 boards filled before the open (99 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -29,10 +28,10 @@
     "mac_done_stamp": false,
     "s1_stamp": "NO_STAMP",
     "cat_side_defaults_4_at": "2026-10-21T04:54:49Z",
-    "cat_side_age_days": 7.0,
+    "cat_side_age_days": 7.1,
     "cat_side_note": "rebuilt only by v15_daily_template_update --sync-defaults, a deliberate manual step \u2014 reported, never fails this gate"
    },
-   "detail": "mac stamp 20261028=False, s1 stamp NO_STAMP, cat_side layer 7.0d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
+   "detail": "mac stamp 20261028=False, s1 stamp NO_STAMP, cat_side layer 7.1d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
   },
   {
    "name": "selection_fresh",
@@ -206,25 +205,18 @@
   },
   {
    "name": "indicators_fresh",
-   "ok": false,
+   "ok": true,
    "critical": true,
    "measured": {
     "symbols": 329,
-    "stale_over_90min": 86,
-    "stale_pct": 26.1,
-    "median_age_min": 45.1,
+    "stale_over_90min": 1,
+    "stale_pct": 0.3,
+    "median_age_min": 65.1,
     "sample": [
-     "ARKMUSDT",
-     "ASTERUSDT",
-     "AVAXUSDC",
-     "AWEUSDT",
-     "BABAUSDT",
-     "BANDUSDT",
-     "BATUSDT",
-     "BBUSDT"
+     "ONEUSDT"
     ]
    },
-   "detail": "86/329 symbols past the live 90-min entry gate (26.1%)"
+   "detail": "1/329 symbols past the live 90-min entry gate (0.3%)"
   },
   {
    "name": "s1_sets_synced",
