@@ -548,6 +548,10 @@ def _kline_window(path: Path, close_ts: datetime, window: int, cache_dir: Option
     return df.iloc[-window:], {"frame": pd.DataFrame(arrays), "smfi_running": running}
 
 
+def _dict_same(a: Dict[str, Any], b: Dict[str, Any]) -> bool:
+    return set(a) == set(b) and all(_same(a[k], b[k]) for k in a)
+
+
 def _same(a, b) -> bool:
     if a is None or b is None:
         return a is None and b is None
@@ -575,9 +579,9 @@ def _patch_long_memory(module, res: Dict[str, Any], tf: str, window_df: pd.DataF
         o, h, l, c = (series(window_df, col) for col in ("open", "high", "low", "close"))
         reference = module.compute_smfi(o.tolist(), h.tolist(), l.tolist(), c.tolist(), 20)
         replica = _smfi_fields(_smfi_running(np.array(o.tolist()), np.array(h.tolist()), np.array(l.tolist()), np.array(c.tolist()), 1, 0.0), np.array(c.tolist()))
-        if reference != replica:
+        if not _dict_same(reference, replica):
             raise _IncrementalRefused(f"smfi continuation {tf}: {replica} != compute_smfi {reference}")
-        if as_keys(reference) != {k: res[k] for k in smfi_keys} or not all(type(as_keys(reference)[k]) is type(res[k]) for k in smfi_keys):
+        if not _dict_same(as_keys(reference), {k: res[k] for k in smfi_keys}):
             raise _IncrementalRefused(f"smfi wiring {tf}")
         res.update(as_keys(_smfi_fields(full["smfi_running"], full_df["close"].to_numpy(dtype=np.float64))))
     elif any(k in res for k in smfi_keys):
@@ -628,27 +632,43 @@ def _compute_row_incremental(symbol: str, close_ts: datetime, kline_manager, mod
     cache_dir = None if os.environ.get("NPZ_ROW_PREFIX_CACHE", "1") == "0" else base / "data" / "npz_row_prefix_cache"
     calculator = module.IndicatorCalculator()
     row: Dict[str, Any] = {"timestamps": int(close_ts.timestamp())}
-    try:
-        for tf in tfs:
-            fname = _resolve_kline_path(symbol, tf, mode, base)
-            if fname is None:
-                continue
+    def run(frame):
+        if mode == "tradier":
+            return calculator.compute(frame, symbol, tf, None, close_ts, False)
+        return calculator.compute(frame, tf, None, False, close_ts)
+    for tf in tfs:
+        fname = _resolve_kline_path(symbol, tf, mode, base)
+        if fname is None:
+            continue
+        try:
             window_df, full = _kline_window(fname, close_ts, window, cache_dir)
             if window_df is None or window_df.empty:
                 continue
-            if mode == "tradier":
-                res = calculator.compute(window_df, symbol, tf, None, close_ts, False)
-            else:
-                res = calculator.compute(window_df, tf, None, False, close_ts)
+            res = run(window_df)
             if not res:
                 continue
             if full is not None:
                 _patch_long_memory(module, res, tf, window_df, full, window)
-            _merge_tf_result(row, res, tf, "15m")
-    except _IncrementalRefused as e:
-        INCREMENTAL_STATS["refused"] += 1
-        logger.warning(f"[NPZ-ROW-INC] {symbol} {close_ts.isoformat()} refused: {e} -> full compute")
-        return None
+        except _IncrementalRefused as e:
+            # this TF only: the full computation's own steps (whole file, same loader, same compute, same skip rules)
+            INCREMENTAL_STATS["refused"] += 1
+            logger.warning(f"[NPZ-ROW-INC] {symbol} {tf} {close_ts.isoformat()} refused: {e} -> full compute for this TF")
+            try:
+                frame = _load_klines_df(fname)
+                if frame is None or frame.empty:
+                    continue
+                if frame.index.tz is None:
+                    frame.index = frame.index.tz_localize(timezone.utc)
+                frame = frame.loc[:close_ts]
+                if len(frame) < 5:
+                    continue
+                res = run(frame)
+                if not res:
+                    continue
+            except Exception as e2:
+                logger.warning(f"compute row failed {symbol} {tf} at {close_ts}: {e2}")
+                continue
+        _merge_tf_result(row, res, tf, "15m")
     if "close" not in row:
         return None
     INCREMENTAL_STATS["rows"] += 1

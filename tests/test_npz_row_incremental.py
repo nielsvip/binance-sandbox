@@ -96,4 +96,13 @@ def test_unordered_file_refuses_to_full(tmp_path):
     rows.append(dict(rows[5]))  # an old bar re-appended at the end
     path.write_text(json.dumps(rows))
     manager = types.SimpleNamespace(base_path=tmp_path)
-    assert gen._compute_row_incremental("TESTUSDC", end - timedelta(minutes=15), manager, "crypto") is None
+    close_ts = end - timedelta(minutes=15)
+    before = gen.INCREMENTAL_STATS["refused"]
+    inc = gen._compute_row_incremental("TESTUSDC", close_ts, manager, "crypto")
+    assert gen.INCREMENTAL_STATS["refused"] == before + 1, "the unordered 1h file must take the full path for that TF"
+    os.environ["NPZ_ROW_MODE"] = "full"
+    try:
+        full = gen._compute_row_for_15m_close("TESTUSDC", close_ts, manager, None, "crypto")
+    finally:
+        os.environ.pop("NPZ_ROW_MODE")
+    assert _diffs(full, inc) == []

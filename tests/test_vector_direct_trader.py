@@ -366,3 +366,20 @@ def test_same_bar_augment_and_close_state_is_flat_and_trader_closes():
     assert any(a["type"] == "CLOSE" and a["qty_after"] == 0.0 for a in acts)
     orders, _ = V.plan_account("trb", "stocks", ["NUE_LONG"], {"NUE_LONG": st(False, acts)}, {"NUE_LONG": {"qty": 54.0}}, BAR, set(), ALLOW)
     assert [(o["act"], o["qty"]) for o in orders] == [("CLOSE", 54.0)]
+
+
+def test_tradier_send_gate_refuses_tra_entries_but_not_exits():
+    import pytest
+    posted = []
+    b = V.Tradier.__new__(V.Tradier)
+    b.account = lambda acct: ("ID", "K", "B")
+    b._req = lambda method, acct, path, params=None, data=None: posted.append(data) or {"order": {"id": 1}}
+    o = {"ss": "AAPL_LONG", "act": "OPEN", "key": "k1"}
+    with pytest.raises(RuntimeError, match="REFUSED_TRA_EXITS_ONLY"):
+        b.send("tra", o, 1.0)
+    with pytest.raises(RuntimeError, match="REFUSED_TRA_EXITS_ONLY"):
+        b.send("tra", dict(o, act="AUGMENT"), 1.0)
+    assert not posted
+    b.send("tra", dict(o, act="CLOSE", key="k2"), 1.0)
+    b.send("trb", o, 1.0)
+    assert [d["side"] for d in posted] == ["sell", "buy"]

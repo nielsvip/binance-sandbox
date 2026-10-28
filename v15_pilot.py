@@ -2837,15 +2837,28 @@ def _standing_best(out_dir, symside):
     return None if _best is None else (_best[1], _best[2], _best[3])
 
 
-def _rank_final_gain(out_dir, symside, cand_name, cand_gain, cand_class="QUALIFIED"):
+def _best_is_confirmed(out_dir, name) -> bool:
+    """True when the active final's manifest says it was published through D's holdout confirm (pre-D greedy finals have no such key)."""
+    try:
+        return bool(json.loads((Path(out_dir) / str(name).replace(".xlsx", "_manifest.json")).read_text()).get("holdout_confirmed"))
+    except Exception:
+        return False
+
+
+def _rank_final_gain(out_dir, symside, cand_name, cand_gain, cand_class="QUALIFIED", cand_confirmed=False):
     """(win, best_name, best_gain, note) — USER 2026-10-03 (best-not-newest): the candidate activates
-    only if it strictly beats the standing best (class first, then gain by >1e-9). Ties and same-name reaffirms keep the incumbent file."""
+    only if it strictly beats the standing best (class first, then gain by >1e-9). Ties and same-name reaffirms keep the incumbent file.
+    2026-10-28 (USER "no more fake and lying greedy numbers ever again" + "I need at least 12 results per hour"): a holdout-confirmed (D)
+    candidate is never compared with an UNCONFIRMED pre-D greedy in-sample best: that envelope wins by construction, so the confirmed
+    board replaces it. Two confirmed boards keep the class-then-gain rule (like with like)."""
     _st = _standing_best(out_dir, symside)
     if _st is None:
         return (True, None, None, "no active — publishing")
     _bn, _bg, _bc = _st
     if _bn == cand_name:
         return (True, None, None, "same metrics already active — reaffirming")
+    if cand_confirmed and not _best_is_confirmed(out_dir, _bn):
+        return (True, None, None, f"candidate {float(cand_gain):.2f}/{cand_class} HOLDOUT-CONFIRMED replaces UNCONFIRMED greedy {_bn} {_bg:.2f}/{_bc}")
     _ck = (1 if str(cand_class).upper() == "QUALIFIED" else 0, float(cand_gain))
     _bk = (1 if _bc == "QUALIFIED" else 0, float(_bg))
     if _ck[0] > _bk[0] or (_ck[0] == _bk[0] and _ck[1] > _bk[1] + 1e-9):
@@ -2853,23 +2866,28 @@ def _rank_final_gain(out_dir, symside, cand_name, cand_gain, cand_class="QUALIFI
     return (False, _bn, _bg, f"keeping {_bn} {_bg:.2f}/{_bc} over candidate {float(cand_gain):.2f}/{cand_class}")
 
 
-def _apply_best_publish(out_dir, symside, final_name, final_gain, cand_class, wb_path):
-    """Collapse the symside to ONE active = max(candidate, standing best). Winner activates (losers -> .superseded history, html/manifest companions follow). Returns (active_name, won)."""
+def _apply_best_publish(out_dir, symside, final_name, final_gain, cand_class, wb_path, cand_confirmed=False):
+    """Collapse the symside to ONE active = max(candidate, standing best). Winner activates (losers -> .superseded history, html/manifest companions follow). Returns (active_name, won).
+    A greedy (unconfirmed) loser replaced by a confirmed board is archived whole under <out_dir>/_superseded_greedy/, never deleted."""
     _od = Path(out_dir)
-    _win, _bn, _bg, _note = _rank_final_gain(_od, symside, final_name, float(final_gain), cand_class)
+    _win, _bn, _bg, _note = _rank_final_gain(_od, symside, final_name, float(final_gain), cand_class, cand_confirmed)
     print(f"[BEST-PUBLISH] {symside} {_note}", flush=True)
     _keep = final_name if _win else _bn
     for _old in _od.glob(f"{symside}_bh*_30d_matrix.xlsx"):
         if _old.name == _keep:
             continue
+        _greedy = bool(_win and cand_confirmed and not _best_is_confirmed(_od, _old.name))
+        _dest_dir = _od / "_superseded_greedy" if _greedy else _od
+        _sfx = "" if _greedy else ".superseded"
         try:
-            _old.rename(_od / (_old.name + ".superseded"))
+            _dest_dir.mkdir(parents=True, exist_ok=True)
+            _old.rename(_dest_dir / (_old.name + _sfx))
         except Exception as _e:
             print(f"[best-publish-warn] supersede {_old.name}: {_e}", flush=True)
         for _comp in (_od / _old.name.replace(".xlsx", ".html"), _od / _old.name.replace(".xlsx", "_manifest.json")):
             try:
                 if _comp.exists():
-                    _comp.rename(_od / (_comp.name + ".superseded"))
+                    _comp.rename(_dest_dir / (_comp.name + _sfx))
             except Exception:
                 pass
     if _win:
@@ -11143,7 +11161,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             import shutil as _sh_pub
             _cand_class = "BEST_EFFORT" if _best_effort is not None else "QUALIFIED"
             _zero_flush_book()
-            _active_name, _won = _apply_best_publish(OUT_DIR, new_symside, _final_name, float(final_gain), _cand_class, wb_path)
+            _active_name, _won = _apply_best_publish(OUT_DIR, new_symside, _final_name, float(final_gain), _cand_class, wb_path, cand_confirmed=bool(progress.get("holdout_confirm")))
             _final_path = OUT_DIR / _active_name
             for _vk in ("verdict", "verdict_reasons", "verdict_npz_mtime_ns"):
                 progress.pop(_vk, None)
@@ -11207,6 +11225,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     _npp = _npz_path(new_symside)
                     _man = _build_publish_manifest(new_symside, _final_name, {**(_fresh_final or {}), "bh": _bh_raw}, (_mf, _mc, _me, len(progress.get("done", {}))), _ovm, _md5_file(_final_path), _npp.name if _npp else None, _md5_file(_npp) if _npp else None, _npz_span_days(new_symside), _md5_file(Path(__file__)), Path(args.template).name if args.template else None, _sock_m.gethostname())
                     _man["publish_class"] = _cand_class
+                    _man["holdout_confirmed"] = bool(progress.get("holdout_confirm"))  # 2026-10-28: D-era final; _rank_final_gain compares like with like
+                    _man["holdout_confirm_expected_gain"] = (progress.get("holdout_confirm") or {}).get("g_pruned")
                     _man["mode"] = "catchup" if _V18_CATCHUP else (f"budget:{_v20_budget}" if (_v20_on and _v20_budget > 0) else "slow")
                     _man["start_source"] = v18_start_source((progress.get("best_start") or {}).get("chosen"))  # floor law audit
                     _man["start_chosen"], _man["start_gain"] = (progress.get("best_start") or {}).get("chosen"), (progress.get("best_start") or {}).get("gain")

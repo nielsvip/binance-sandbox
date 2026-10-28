@@ -634,6 +634,18 @@ class Binance:
         return {"orderId": r.get("orderId"), "status": r.get("status"), "executedQty": r.get("executedQty"), "avgPrice": r.get("avgPrice")}
 
 
+def _send_gate_entry_banned(acct):
+    """Fail-closed hard entry ban at the Tradier send gate (order_dedupe_guard.entry_banned; tra: exits only)."""
+    try:
+        for base in (Path.home() / "binance-sandbox", Path(__file__).resolve().parents[1]):
+            if (base / "order_dedupe_guard.py").exists() and str(base) not in sys.path:
+                sys.path.insert(0, str(base))
+        from order_dedupe_guard import entry_banned
+        return bool(entry_banned(acct))
+    except Exception:
+        return True
+
+
 class Tradier:
     def __init__(self, env, out: Path):
         self.env, self.out, self.s = env, out, _session(None)
@@ -727,6 +739,8 @@ class Tradier:
         aid, _k, _b = self.account(acct)
         symbol, side = split_ss(o["ss"])
         opening = o["act"] in ("OPEN", "AUGMENT")
+        if opening and _send_gate_entry_banned(acct):
+            raise RuntimeError(f"REFUSED_TRA_EXITS_ONLY {acct} {o['ss']} {o['act']} (order_dedupe_guard.entry_banned at the send gate)")
         tside = ("buy" if side == "LONG" else "sell_short") if opening else ("sell" if side == "LONG" else "buy_to_cover")
         data = {"class": "equity", "symbol": symbol, "side": tside, "quantity": str(int(qty)), "type": "market", "duration": "day",
                 "tag": "vd-" + hashlib.sha1(o["key"].encode()).hexdigest()[:20]}

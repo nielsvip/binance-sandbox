@@ -1,23 +1,24 @@
 {
-  "ts": "2026-10-28T15:45:14.782377+00:00",
+  "ts": "2026-10-28T15:55:09.671789+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 0,
-  "pending_sym_sides": 159,
+  "pending_sym_sides": 153,
   "hosts": {
     "s1": {
       "published_last_60m": 0,
       "published_last_3h": 0,
       "boards": {
-        "PTBUSDT_SHORT": 7
+        "PTBUSDT_SHORT": 7,
+        "XPLUSDT_SHORT": 7
       },
-      "boards_running": 1,
-      "workers": 7,
-      "workers_vs_law_28": "7/28",
-      "mem_avail_mb": 16467,
-      "disk_free_gb": 36,
-      "load1": 14.4,
-      "dispatch_idle_why": "spacing 111s < 120",
+      "boards_running": 2,
+      "workers": 14,
+      "workers_vs_law_28": "14/28",
+      "mem_avail_mb": 12574,
+      "disk_free_gb": 35,
+      "load1": 11.3,
+      "dispatch_idle_why": "mem 12597MB < 11000+1x3000 ramping",
       "published_ss": []
     },
     "s2": {
@@ -27,25 +28,52 @@
       "boards_running": 0,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 20386,
+      "mem_avail_mb": 20862,
       "disk_free_gb": 50,
-      "load1": 4.7,
-      "dispatch_idle_why": "quarantine: 3 boards died unfinished <2h ['ARBUSDC_LONG', 'BEAMXUSDT_LONG', 'GME_LONG']",
+      "load1": 29.3,
+      "dispatch_idle_why": "mem 12054MB < 11000+2x3000 ramping",
       "published_ss": []
     },
     "s5": {
-      "unreachable": true
+      "published_last_60m": 0,
+      "published_last_3h": 1,
+      "boards": {
+        "AMD_LONG": 7,
+        "BNO_LONG": 7
+      },
+      "boards_running": 2,
+      "workers": 14,
+      "workers_vs_law_28": "14/28",
+      "mem_avail_mb": 16968,
+      "disk_free_gb": 58,
+      "load1": 10.8,
+      "dispatch_idle_why": "mem 14310MB < 11000+3x3000 ramping",
+      "published_ss": []
     },
     "s6": {
-      "unreachable": true
+      "published_last_60m": 0,
+      "published_last_3h": 0,
+      "boards": {
+        "MOS_SHORT": 7,
+        "MOVEUSDT_SHORT": 7,
+        "MP_SHORT": 7
+      },
+      "boards_running": 3,
+      "workers": 21,
+      "workers_vs_law_28": "21/28",
+      "mem_avail_mb": 19965,
+      "disk_free_gb": 56,
+      "load1": 16.3,
+      "dispatch_idle_why": "mem 14070MB < 11000+2x3000 ramping",
+      "published_ss": []
     }
   },
   "alerts": [
-    "LOW_THROUGHPUT:s1:0/h<10 (idle_why=spacing 111s < 120)",
-    "DISK_FLOOR:s1:36GB<40",
-    "LOW_THROUGHPUT:s2:0/h<10 (idle_why=quarantine: 3 boards died unfinished <2h ['ARBUSDC_LONG', 'BEAMXUSDT_LONG', 'GME_LONG'])",
-    "UNREACHABLE:s5",
-    "UNREACHABLE:s6"
+    "LOW_THROUGHPUT:s1:0/h<10 (idle_why=mem 12597MB < 11000+1x3000 ramping)",
+    "DISK_FLOOR:s1:35GB<40",
+    "LOW_THROUGHPUT:s2:0/h<10 (idle_why=mem 12054MB < 11000+2x3000 ramping)",
+    "LOW_THROUGHPUT:s5:0/h<10 (idle_why=mem 14310MB < 11000+3x3000 ramping)",
+    "LOW_THROUGHPUT:s6:0/h<10 (idle_why=mem 14070MB < 11000+2x3000 ramping)"
   ],
   "repair": null
 }
