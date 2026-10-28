@@ -1,14 +1,14 @@
 {
- "generated_at": "2026-10-28 09:33 UTC",
- "total_capital_usd": 70.74,
+ "generated_at": "2026-10-28 09:50 UTC",
+ "total_capital_usd": 85.3,
  "tier_capital": {
   "A": 0.0,
-  "B": 55.75,
-  "C": 15.0
+  "B": 70.22,
+  "C": 15.07
  },
  "tier_count": {
   "A": 0,
-  "B": 4,
+  "B": 5,
   "C": 1
  },
  "winners": [],
@@ -16,63 +16,74 @@
   "flz:BNBUSDC_LONG"
  ],
  "mediocre": [
-  "flz:BTCDOMUSDT_LONG"
+  "flz:SOLUSDC_LONG"
  ],
  "positions": [
   {
    "pk": "flz:BNBUSDC_LONG",
    "symbol": "BNBUSDC",
    "account": "flz",
-   "value_usd": 15.0,
-   "gain_pct": -0.188,
+   "value_usd": 15.07,
+   "gain_pct": 0.265,
    "tier": "C",
    "perf_mult": 0.63,
    "amt": 0.02,
-   "mark": 750.11
+   "mark": 753.56235131
   },
   {
    "pk": "flz:DOGEUSDC_LONG",
    "symbol": "DOGEUSDC",
    "account": "flz",
-   "value_usd": 14.99,
-   "gain_pct": 0.351,
+   "value_usd": 15.05,
+   "gain_pct": 0.764,
    "tier": "B",
    "perf_mult": 1.84,
    "amt": 187.0,
-   "mark": 0.08015
+   "mark": 0.08048003
   },
   {
    "pk": "flz:XRPUSDC_LONG",
    "symbol": "XRPUSDC",
    "account": "flz",
-   "value_usd": 14.88,
-   "gain_pct": 0.053,
+   "value_usd": 14.89,
+   "gain_pct": 0.147,
    "tier": "B",
    "perf_mult": 3.73,
    "amt": 11.2,
-   "mark": 1.32812802
+   "mark": 1.32974523
   },
   {
    "pk": "flz:HYPEUSDT_LONG",
    "symbol": "HYPEUSDT",
    "account": "flz",
-   "value_usd": 14.77,
-   "gain_pct": 1.124,
+   "value_usd": 14.8,
+   "gain_pct": 1.305,
    "tier": "B",
    "perf_mult": 2.31,
    "amt": 0.18,
-   "mark": 82.05
+   "mark": 82.208
+  },
+  {
+   "pk": "flz:SOLUSDC_LONG",
+   "symbol": "SOLUSDC",
+   "account": "flz",
+   "value_usd": 14.39,
+   "gain_pct": 0.117,
+   "tier": "B",
+   "perf_mult": 0.89,
+   "amt": 0.14,
+   "mark": 102.81
   },
   {
    "pk": "flz:BTCDOMUSDT_LONG",
    "symbol": "BTCDOMUSDT",
    "account": "flz",
-   "value_usd": 11.11,
-   "gain_pct": -0.164,
+   "value_usd": 11.09,
+   "gain_pct": -0.304,
    "tier": "B",
    "perf_mult": 0.67,
    "amt": 0.002,
-   "mark": 5554.91650252
+   "mark": 5547.17646085
   }
  ]
 }
