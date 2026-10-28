@@ -57,8 +57,9 @@ def _host_slot_guard():
 
 
 def build_launch(queue: dict, ss: str, result_dir: Path, workers: int, python: str):
-    if (queue.get("_meta") or {}).get("scope") != "fin_men_crypto":
-        raise ValueError("7D launch requires the FIN/MEN crypto-only queue")
+    scope = (queue.get("_meta") or {}).get("scope")
+    if scope not in ("fin_men_crypto", "trc_stocks"):
+        raise ValueError(f"7D launch requires the crypto or stock queue, got scope {scope!r}")
     source = (queue.get("sym_sides") or {}).get(ss)
     if not isinstance(source, dict) or not (source.get("source_kind") == "per_sym_sql" and
                                             source.get("sql_baseline_ok") is True and
@@ -68,10 +69,16 @@ def build_launch(queue: dict, ss: str, result_dir: Path, workers: int, python: s
     if not isinstance(overrides, dict) or not overrides:
         raise ValueError(f"{ss}: empty 30D start set")
     cat = source.get("cat_side")
-    if cat not in ("CRYPTO_LONG", "CRYPTO_SHORT"):
-        raise ValueError(f"{ss}: 7D permits crypto sides only, got {cat!r}")
-    if ss not in queue.get("accounts", {}).get("fin", []) or ss in queue.get("accounts", {}).get("trc", []):
-        raise ValueError(f"{ss}: not in the FIN/MEN 7D queue")
+    if scope == "trc_stocks":
+        if cat not in ("STOCKS_LONG", "STOCKS_SHORT"):
+            raise ValueError(f"{ss}: stock queue permits stock sides only, got {cat!r}")
+        if ss not in queue.get("accounts", {}).get("trc", []):
+            raise ValueError(f"{ss}: not in the TRC stock 7D queue")
+    else:
+        if cat not in ("CRYPTO_LONG", "CRYPTO_SHORT"):
+            raise ValueError(f"{ss}: 7D permits crypto sides only, got {cat!r}")
+        if ss not in queue.get("accounts", {}).get("fin", []) or ss in queue.get("accounts", {}).get("trc", []):
+            raise ValueError(f"{ss}: not in the FIN/MEN 7D queue")
     folder = result_dir / ss
     out = folder / "out"
     progress = folder / "progress"
