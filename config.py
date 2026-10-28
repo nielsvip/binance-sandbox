@@ -245,7 +245,7 @@ class Config:
     MIN_POSITION_SIZE: float = 1.0
     # 1/50 RULE: No single position > 2% of total capital ($1k crypto = $20/pos max)
     MAX_POSITION_SIZE: float = (
-        200.0  # RESTORED 2026-10-17 (USER "make sure the light-normal-extreme modes get their sizes back"); minimum mode held 12.0  # 2026-03-30: 1/50 of $1k. Was $800 (80% of capital = suicide).
+        80.0  # USER 2026-10-28 vector-trader sizing mandate ("stocks 900 crypto 15 NO EXCEPTION"; the venue's OWN config file is the only authority the tiny S1/S5 vector traders read); was 200.0 RESTORED 2026-10-17; minimum mode held 12.0. MARKET MODE still owns this value at runtime.
     )
     MAX_POSITION_SIZE_BTC: float = 2000.0  # RESTORED 2026-10-17; minimum mode held 60.0 (BTC minNotional 50)  # 2026-03-30: Same rule for BTC. Was $6000.
     MAX_POSITION_SIZE_MEN: float = 200.0  # RESTORED 2026-10-17; minimum mode held 12.0  # 2026-03-30: Same. Was $1200.
@@ -263,7 +263,7 @@ class Config:
         False  # 2026-09-03 KILLED per user: MAKER_PROFIT_EXIT_FORCE_REDUCE_OVERSIZE_81 firing on FLZ (maker wrapper at 81>$20). Finandy TP ladder bug guard causes commission churn, default OFF.
     )
     START_POSITION_SIZE: float = (
-        45.0  # RESTORED 2026-10-17; minimum mode held 6.0  # USER 2026-10-11: 28 -> 45 base; gainers to 4x ($180 OPEN_CEIL), losers/unconfirmed small via tiers. Was parity 2026-09-26 28.0.
+        15.0  # USER 2026-10-28 vector-trader sizing mandate ("stocks 900 crypto 15 NO EXCEPTION"; the venue's OWN config file is the only authority the tiny S1/S5 vector traders read); was 45.0 RESTORED 2026-10-17 (USER 2026-10-11 28 -> 45 base).
     )
     # 2026-10-17 LIVE WIRING of the vector order/position caps. These were declared ONLY in
     # v12_quick_engine.QuickConfig (8.0/10.0), so vec_decisions.qty_quantizers.cap_dollar/cap_add_qty read 0.0

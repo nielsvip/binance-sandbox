@@ -1,0 +1,4350 @@
+{
+  "date": "2026-10-27",
+  "mode": "current_live_sets_on_yesterday_bars",
+  "computed_at": "2026-10-28T03:43:42.807508+00:00",
+  "db_path": "/home/niels/binance-sandbox/data/hourly_reconfig/per_sym_forward_master.db",
+  "n": 119,
+  "elapsed_s": 107.4,
+  "summary": {
+    "REPLAYED": 119,
+    "PUBLISHED_MATCH": 109,
+    "ACT_CLOSE": 160,
+    "ACT_OPEN": 153,
+    "PUBLISHED_MISMATCH": 10,
+    "ACT_REDUCE": 51,
+    "ACT_AUGMENT": 5
+  },
+  "records": [
+    {
+      "ss": "AAPL_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-24T02:58:23Z",
+      "events": [
+        {
+          "ts": 1793116800,
+          "type": "CLOSE",
+          "qty": 11.0,
+          "price": 346.1449890136719,
+          "reason": "LH_LL_TOP_EXIT arm=D_LH+LL leg=WT15M"
+        },
+        {
+          "ts": 1793117700,
+          "type": "OPEN",
+          "qty": 11.0,
+          "price": 346.239990234375,
+          "reason": "HARDCODED_RALLY_REENTRY"
+        }
+      ],
+      "end_qty_engine": 11.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "ABBV_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-24T03:03:59Z",
+      "events": [
+        {
+          "ts": 1793130300,
+          "type": "OPEN",
+          "qty": 13.0,
+          "price": 286.3900146484375,
+          "reason": "B_SRS_ENTRY"
+        }
+      ],
+      "end_qty_engine": 13.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "ACN_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-27T16:02:06Z",
+      "events": [
+        {
+          "ts": 1793107800,
+          "type": "CLOSE",
+          "qty": 6.0,
+          "price": 241.7541006088257,
+          "reason": "FIXED_STOP"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793127600,
+      "published_open": false,
+      "end_open_match": false,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "ADBE_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-25T19:58:29Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793129400,
+      "published_open": false,
+      "end_open_match": false,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "ADP_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-26T22:59:37Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "AGI_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-26T07:54:26Z",
+      "events": [
+        {
+          "ts": 1793111400,
+          "type": "CLOSE",
+          "qty": 133.0,
+          "price": 30.4950008392334,
+          "reason": "FIXED_STOP"
+        },
+        {
+          "ts": 1793124900,
+          "type": "OPEN",
+          "qty": 129.0,
+          "price": 30.905000686645508,
+          "reason": "B_SRS_ENTRY"
+        }
+      ],
+      "end_qty_engine": 129.0,
+      "published_ok": true,
+      "published_tail": 1793128500,
+      "published_open": true,
+      "end_open_match": false,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "AG_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-25T13:40:55Z",
+      "events": [
+        {
+          "ts": 1793110500,
+          "type": "CLOSE",
+          "qty": 268.0,
+          "price": 15.145000457763672,
+          "reason": "WT_PERCENTILE_pctD=1_4h=2"
+        },
+        {
+          "ts": 1793111400,
+          "type": "OPEN",
+          "qty": 263.0,
+          "price": 15.164999961853027,
+          "reason": "B_SRS_ENTRY"
+        },
+        {
+          "ts": 1793112300,
+          "type": "CLOSE",
+          "qty": 263.0,
+          "price": 15.25303765296936,
+          "reason": "FIXED_STOP"
+        },
+        {
+          "ts": 1793113200,
+          "type": "OPEN",
+          "qty": 261.0,
+          "price": 15.324999809265137,
+          "reason": "B_SRS_ENTRY"
+        },
+        {
+          "ts": 1793114100,
+          "type": "CLOSE",
+          "qty": 261.0,
+          "price": 15.363312308788299,
+          "reason": "FIXED_STOP"
+        },
+        {
+          "ts": 1793115000,
+          "type": "OPEN",
+          "qty": 259.0,
+          "price": 15.404999732971191,
+          "reason": "B_SRS_ENTRY"
+        },
+        {
+          "ts": 1793115900,
+          "type": "CLOSE",
+          "qty": 259.0,
+          "price": 15.453537461757659,
+          "reason": "FIXED_STOP"
+        },
+        {
+          "ts": 1793116800,
+          "type": "OPEN",
+          "qty": 260.0,
+          "price": 15.345000267028809,
+          "reason": "WR_PULLBACK"
+        },
+        {
+          "ts": 1793121300,
+          "type": "CLOSE",
+          "qty": 260.0,
+          "price": 15.4350004196167,
+          "reason": "WT_PERCENTILE_pctD=1_4h=2"
+        },
+        {
+          "ts": 1793122200,
+          "type": "OPEN",
+          "qty": 259.0,
+          "price": 15.4350004196167,
+          "reason": "B_SRS_ENTRY"
+        },
+        {
+          "ts": 1793127600,
+          "type": "CLOSE",
+          "qty": 259.0,
+          "price": 15.515000343322754,
+          "reason": "FIXED_STOP"
+        },
+        {
+          "ts": 1793128500,
+          "type": "OPEN",
+          "qty": 257.0,
+          "price": 15.545000076293945,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793129400,
+          "type": "CLOSE",
+          "qty": 257.0,
+          "price": 15.555000305175781,
+          "reason": "WT_PERCENTILE_pctD=1_4h=2"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "ALB_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-25T13:43:29Z",
+      "events": [
+        {
+          "ts": 1793110500,
+          "type": "CLOSE",
+          "qty": 32.0,
+          "price": 98.55999755859375,
+          "reason": "HTF_AGAINST_FORCE_CLOSE_wt1h8.3vs-0.4_g-5.14pct"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793129400,
+      "published_open": false,
+      "end_open_match": false,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "ALKT_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-25T18:54:23Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "AMAT_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-26T06:53:54Z",
+      "events": [
+        {
+          "ts": 1793107800,
+          "type": "REDUCE",
+          "qty": 7.0,
+          "price": 389.32000732421875,
+          "reason": "SATOSHIT_EXIT_PARTIAL 0.70"
+        },
+        {
+          "ts": 1793112300,
+          "type": "REDUCE",
+          "qty": 2.0,
+          "price": 390.0799865722656,
+          "reason": "SATOSHIT_EXIT_PARTIAL 0.70"
+        },
+        {
+          "ts": 1793113200,
+          "type": "CLOSE",
+          "qty": 1.0,
+          "price": 391.9949951171875,
+          "reason": "WHOLE_SHARE_REDUCE_TO_FLAT[SATOSHIT_EXIT_PARTIAL 0.70]"
+        },
+        {
+          "ts": 1793125800,
+          "type": "OPEN",
+          "qty": 10.0,
+          "price": 395.19000244140625,
+          "reason": "REENTRY_LOWER_HIGH"
+        }
+      ],
+      "end_qty_engine": 10.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "AMZN_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-27T23:43:18Z",
+      "events": [
+        {
+          "ts": 1793107800,
+          "type": "CLOSE",
+          "qty": 15.0,
+          "price": 251.02599388122556,
+          "reason": "FIXED_STOP"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "APO_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-26T23:03:53Z",
+      "events": [
+        {
+          "ts": 1793112300,
+          "type": "OPEN",
+          "qty": 34.0,
+          "price": 114.97000122070312,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793113200,
+          "type": "CLOSE",
+          "qty": 34.0,
+          "price": 114.3550033569336,
+          "reason": "EXIT_VELOCITY_WT against-short g0.53%"
+        },
+        {
+          "ts": 1793127600,
+          "type": "OPEN",
+          "qty": 29.0,
+          "price": 114.33000183105469,
+          "reason": "REENTRY_EXIT_PRICE_BREAK"
+        },
+        {
+          "ts": 1793128500,
+          "type": "CLOSE",
+          "qty": 29.0,
+          "price": 114.52999877929688,
+          "reason": "EXIT_VELOCITY_WT against-short g-0.17%"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "AR_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-25T23:55:13Z",
+      "events": [
+        {
+          "ts": 1793107800,
+          "type": "OPEN",
+          "qty": 96.0,
+          "price": 41.584999084472656,
+          "reason": "B15"
+        },
+        {
+          "ts": 1793112300,
+          "type": "CLOSE",
+          "qty": 96.0,
+          "price": 41.45500183105469,
+          "reason": "WT_PERCENTILE_pctD=76_4h=95"
+        },
+        {
+          "ts": 1793113200,
+          "type": "OPEN",
+          "qty": 96.0,
+          "price": 41.58000183105469,
+          "reason": "B_SRS_ENTRY"
+        },
+        {
+          "ts": 1793114100,
+          "type": "CLOSE",
+          "qty": 96.0,
+          "price": 41.540000915527344,
+          "reason": "WT_PERCENTILE_pctD=85_4h=96"
+        },
+        {
+          "ts": 1793115000,
+          "type": "OPEN",
+          "qty": 96.0,
+          "price": 41.54999923706055,
+          "reason": "B_SRS_ENTRY"
+        },
+        {
+          "ts": 1793115900,
+          "type": "CLOSE",
+          "qty": 96.0,
+          "price": 41.494998931884766,
+          "reason": "WT_PERCENTILE_pctD=85_4h=96"
+        },
+        {
+          "ts": 1793116800,
+          "type": "OPEN",
+          "qty": 96.0,
+          "price": 41.60499954223633,
+          "reason": "B_SRS_ENTRY"
+        },
+        {
+          "ts": 1793117700,
+          "type": "CLOSE",
+          "qty": 96.0,
+          "price": 41.369998931884766,
+          "reason": "WT_PERCENTILE_pctD=85_4h=96"
+        },
+        {
+          "ts": 1793124000,
+          "type": "OPEN",
+          "qty": 60.0,
+          "price": 41.6349983215332,
+          "reason": "DC_BREAKOUT_ENTRY"
+        }
+      ],
+      "end_qty_engine": 60.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "ASML_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-25T14:11:57Z",
+      "events": [
+        {
+          "ts": 1793112300,
+          "type": "OPEN",
+          "qty": 2.0,
+          "price": 1622.280029296875,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793113200,
+          "type": "CLOSE",
+          "qty": 2.0,
+          "price": 1628.114990234375,
+          "reason": "STATEFUL_PORTED_EXIT g0.36% age15m"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "ASTS_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-23T08:11:18Z",
+      "events": [
+        {
+          "ts": 1793107800,
+          "type": "CLOSE",
+          "qty": 4.0,
+          "price": 41.400001525878906,
+          "reason": "DAYTRADE_STOP dc_15m_high +0.25% STOP_BUF"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "AU_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-27T22:00:18Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "A_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-27T16:06:25Z",
+      "events": [
+        {
+          "ts": 1793110500,
+          "type": "CLOSE",
+          "qty": 13.0,
+          "price": 176.0449981689453,
+          "reason": "STATEFUL_PORTED_EXIT g0.47% age120m"
+        },
+        {
+          "ts": 1793112300,
+          "type": "OPEN",
+          "qty": 22.0,
+          "price": 177.75,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793122200,
+          "type": "CLOSE",
+          "qty": 22.0,
+          "price": 178.0050048828125,
+          "reason": "STATEFUL_PORTED_EXIT g0.14% age165m"
+        },
+        {
+          "ts": 1793127600,
+          "type": "OPEN",
+          "qty": 22.0,
+          "price": 178.15499877929688,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793128500,
+          "type": "CLOSE",
+          "qty": 22.0,
+          "price": 178.4550018310547,
+          "reason": "STATEFUL_PORTED_EXIT g0.17% age15m"
+        },
+        {
+          "ts": 1793129400,
+          "type": "OPEN",
+          "qty": 22.0,
+          "price": 178.7050018310547,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        }
+      ],
+      "end_qty_engine": 22.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "BABA_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-24T04:03:39Z",
+      "events": [
+        {
+          "ts": 1793107800,
+          "type": "REDUCE",
+          "qty": 9.0,
+          "price": 99.70999908447266,
+          "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain0.34"
+        },
+        {
+          "ts": 1793112300,
+          "type": "CLOSE",
+          "qty": 30.0,
+          "price": 99.8949966430664,
+          "reason": "WT_DC_EXIT_100_g=0.15%_MANDATORY_REENTRY"
+        },
+        {
+          "ts": 1793113200,
+          "type": "OPEN",
+          "qty": 37.0,
+          "price": 99.72000122070312,
+          "reason": "B14"
+        },
+        {
+          "ts": 1793115900,
+          "type": "REDUCE",
+          "qty": 9.0,
+          "price": 99.53500366210938,
+          "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain0.19"
+        },
+        {
+          "ts": 1793118600,
+          "type": "CLOSE",
+          "qty": 28.0,
+          "price": 99.4749984741211,
+          "reason": "WT_DC_EXIT_100_g=0.25%_MANDATORY_REENTRY"
+        },
+        {
+          "ts": 1793119500,
+          "type": "OPEN",
+          "qty": 22.0,
+          "price": 99.4749984741211,
+          "reason": "B_SRS_ENTRY"
+        },
+        {
+          "ts": 1793124000,
+          "type": "CLOSE",
+          "qty": 22.0,
+          "price": 99.77999877929688,
+          "reason": "GAP_MOC_EXIT"
+        },
+        {
+          "ts": 1793124900,
+          "type": "OPEN",
+          "qty": 40.0,
+          "price": 99.69499969482422,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793125800,
+          "type": "CLOSE",
+          "qty": 40.0,
+          "price": 99.81500244140625,
+          "reason": "GAP_MOC_EXIT"
+        },
+        {
+          "ts": 1793127600,
+          "type": "OPEN",
+          "qty": 39.0,
+          "price": 100.25499725341797,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        }
+      ],
+      "end_qty_engine": 39.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "BHP_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-27T23:04:27Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "BIDU_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-27T22:03:36Z",
+      "events": [
+        {
+          "ts": 1793112300,
+          "type": "OPEN",
+          "qty": 6.0,
+          "price": 77.61499786376953,
+          "reason": "HARDCODED_RALLY_REENTRY"
+        }
+      ],
+      "end_qty_engine": 6.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "BKR_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-18T00:45:48Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "BMNR_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-26T23:06:24Z",
+      "events": [
+        {
+          "ts": 1793107800,
+          "type": "CLOSE",
+          "qty": 20.0,
+          "price": 21.325000762939453,
+          "reason": "MTF_DC_REJECT_4h_px21.3250"
+        },
+        {
+          "ts": 1793112300,
+          "type": "OPEN",
+          "qty": 189.0,
+          "price": 21.104999542236328,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793113200,
+          "type": "REDUCE",
+          "qty": 47.0,
+          "price": 20.954999923706055,
+          "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain0.71"
+        },
+        {
+          "ts": 1793121300,
+          "type": "CLOSE",
+          "qty": 142.0,
+          "price": 21.655000686645508,
+          "reason": "STOP_LOSS"
+        },
+        {
+          "ts": 1793122200,
+          "type": "OPEN",
+          "qty": 184.0,
+          "price": 21.665000915527344,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793123100,
+          "type": "REDUCE",
+          "qty": 46.0,
+          "price": 21.584999084472656,
+          "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain0.37"
+        },
+        {
+          "ts": 1793124000,
+          "type": "REDUCE",
+          "qty": 34.0,
+          "price": 21.594999313354492,
+          "reason": "CYCLE_TP_TIERED_T1_0.30pct_gain0.32"
+        },
+        {
+          "ts": 1793128500,
+          "type": "REDUCE",
+          "qty": 26.0,
+          "price": 21.545000076293945,
+          "reason": "CYCLE_TP_TIERED_T2_0.50pct_gain0.55"
+        }
+      ],
+      "end_qty_engine": 78.0,
+      "published_ok": false,
+      "published_tail": 1793130300,
+      "published_open": null,
+      "end_open_match": false,
+      "performance_valid": false,
+      "performance_reason": "trades 5 < 10 (wd=30)"
+    },
+    {
+      "ss": "BNO_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-27T23:26:50Z",
+      "events": [
+        {
+          "ts": 1793107800,
+          "type": "OPEN",
+          "qty": 57.0,
+          "price": 69.84500122070312,
+          "reason": "B_SRS_ENTRY"
+        },
+        {
+          "ts": 1793112300,
+          "type": "CLOSE",
+          "qty": 57.0,
+          "price": 69.50580030441284,
+          "reason": "FIXED_STOP"
+        },
+        {
+          "ts": 1793120400,
+          "type": "OPEN",
+          "qty": 57.0,
+          "price": 69.48500061035156,
+          "reason": "B_SRS_ENTRY"
+        }
+      ],
+      "end_qty_engine": 57.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "BWXT_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-21T09:47:58Z",
+      "events": [
+        {
+          "ts": 1793127600,
+          "type": "CLOSE",
+          "qty": 5.0,
+          "price": 134.23500061035156,
+          "reason": "DAYTRADE_STOP dc_15m_high +0.25% STOP_BUF"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "CAT_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-27T23:11:13Z",
+      "events": [
+        {
+          "ts": 1793107800,
+          "type": "CLOSE",
+          "qty": 5.0,
+          "price": 704.4199829101562,
+          "reason": "WT_LOWER_CROSS_EXIT wt_15m higher wt+price"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "CDE_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-23T08:17:26Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "CDW_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-26T23:09:30Z",
+      "events": [
+        {
+          "ts": 1793124000,
+          "type": "CLOSE",
+          "qty": 25.0,
+          "price": 160.90499877929688,
+          "reason": "WT_4H_VEL_EXIT_vel=-9.8_g=3.16%_k3m=50_k15m=80"
+        },
+        {
+          "ts": 1793124900,
+          "type": "OPEN",
+          "qty": 24.0,
+          "price": 160.7899932861328,
+          "reason": "B_SRS_ENTRY"
+        },
+        {
+          "ts": 1793125800,
+          "type": "CLOSE",
+          "qty": 24.0,
+          "price": 160.91000366210938,
+          "reason": "NEWBORN_LOSS_KILL age15m g0.07%"
+        },
+        {
+          "ts": 1793127600,
+          "type": "OPEN",
+          "qty": 24.0,
+          "price": 160.72500610351562,
+          "reason": "B_SRS_ENTRY"
+        },
+        {
+          "ts": 1793128500,
+          "type": "CLOSE",
+          "qty": 24.0,
+          "price": 160.80499267578125,
+          "reason": "NEWBORN_LOSS_KILL age15m g0.05%"
+        },
+        {
+          "ts": 1793129400,
+          "type": "OPEN",
+          "qty": 24.0,
+          "price": 161.00999450683594,
+          "reason": "B_SRS_ENTRY"
+        }
+      ],
+      "end_qty_engine": 24.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "CIBR_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-26T08:57:21Z",
+      "events": [
+        {
+          "ts": 1793113200,
+          "type": "OPEN",
+          "qty": 36.0,
+          "price": 109.49500274658203,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793114100,
+          "type": "CLOSE",
+          "qty": 36.0,
+          "price": 109.4800033569336,
+          "reason": "E_3_STRUCTURE_EXIT_3TF_15m_1h_4h"
+        },
+        {
+          "ts": 1793115000,
+          "type": "OPEN",
+          "qty": 34.0,
+          "price": 109.58000183105469,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793115900,
+          "type": "CLOSE",
+          "qty": 34.0,
+          "price": 109.7750015258789,
+          "reason": "E_3_STRUCTURE_EXIT_3TF_15m_1h_4h"
+        },
+        {
+          "ts": 1793116800,
+          "type": "OPEN",
+          "qty": 34.0,
+          "price": 110.03500366210938,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793117700,
+          "type": "CLOSE",
+          "qty": 34.0,
+          "price": 109.94499969482422,
+          "reason": "E_3_STRUCTURE_EXIT_3TF_15m_1h_4h"
+        },
+        {
+          "ts": 1793120400,
+          "type": "OPEN",
+          "qty": 36.0,
+          "price": 109.95999908447266,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793121300,
+          "type": "CLOSE",
+          "qty": 36.0,
+          "price": 109.91500091552734,
+          "reason": "E_3_STRUCTURE_EXIT_3TF_15m_1h_4h"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "CLF_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-17T18:57:10Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "CLS_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-27T21:04:37Z",
+      "events": [
+        {
+          "ts": 1793107800,
+          "type": "CLOSE",
+          "qty": 3.0,
+          "price": 273.82286468505856,
+          "reason": "FIXED_STOP"
+        },
+        {
+          "ts": 1793113200,
+          "type": "OPEN",
+          "qty": 9.0,
+          "price": 272.18499755859375,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        }
+      ],
+      "end_qty_engine": 9.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "CME_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-23T12:53:36Z",
+      "events": [
+        {
+          "ts": 1793110500,
+          "type": "CLOSE",
+          "qty": 12.0,
+          "price": 300.135009765625,
+          "reason": "FIXED_STOP"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "COHR_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-26T23:12:38Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "COIN_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-22T03:57:30Z",
+      "events": [
+        {
+          "ts": 1793114100,
+          "type": "OPEN",
+          "qty": 25.0,
+          "price": 159.8000030517578,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793115000,
+          "type": "CLOSE",
+          "qty": 25.0,
+          "price": 160.125,
+          "reason": "DC_HOPELESS_entry=159.8000_dc=[163.3300,183.4000]"
+        },
+        {
+          "ts": 1793115900,
+          "type": "OPEN",
+          "qty": 9.0,
+          "price": 160.0850067138672,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793116800,
+          "type": "CLOSE",
+          "qty": 9.0,
+          "price": 159.77499389648438,
+          "reason": "DC_HOPELESS_entry=160.0850_dc=[163.3300,183.4000]"
+        },
+        {
+          "ts": 1793117700,
+          "type": "OPEN",
+          "qty": 9.0,
+          "price": 160.26499938964844,
+          "reason": "B15"
+        },
+        {
+          "ts": 1793118600,
+          "type": "CLOSE",
+          "qty": 9.0,
+          "price": 159.71499633789062,
+          "reason": "DC_HOPELESS_entry=160.2650_dc=[163.3300,183.4000]"
+        },
+        {
+          "ts": 1793119500,
+          "type": "OPEN",
+          "qty": 10.0,
+          "price": 160.27999877929688,
+          "reason": "B14"
+        },
+        {
+          "ts": 1793120400,
+          "type": "CLOSE",
+          "qty": 10.0,
+          "price": 160.13999938964844,
+          "reason": "DC_HOPELESS_entry=160.2800_dc=[163.3300,183.4000]"
+        },
+        {
+          "ts": 1793121300,
+          "type": "OPEN",
+          "qty": 10.0,
+          "price": 160.36500549316406,
+          "reason": "B15"
+        },
+        {
+          "ts": 1793122200,
+          "type": "CLOSE",
+          "qty": 10.0,
+          "price": 160.27999877929688,
+          "reason": "DC_HOPELESS_entry=160.3650_dc=[163.3300,183.4000]"
+        },
+        {
+          "ts": 1793123100,
+          "type": "OPEN",
+          "qty": 23.0,
+          "price": 160.1999969482422,
+          "reason": "B14"
+        },
+        {
+          "ts": 1793124000,
+          "type": "CLOSE",
+          "qty": 23.0,
+          "price": 160.41000366210938,
+          "reason": "DC_HOPELESS_entry=160.2000_dc=[163.3300,183.4000]"
+        },
+        {
+          "ts": 1793124900,
+          "type": "OPEN",
+          "qty": 12.0,
+          "price": 160.61500549316406,
+          "reason": "B15"
+        },
+        {
+          "ts": 1793127600,
+          "type": "CLOSE",
+          "qty": 12.0,
+          "price": 161.04159938812256,
+          "reason": "FIXED_STOP"
+        },
+        {
+          "ts": 1793128500,
+          "type": "OPEN",
+          "qty": 24.0,
+          "price": 160.7899932861328,
+          "reason": "REENTRY_MANDATORY"
+        },
+        {
+          "ts": 1793129400,
+          "type": "REDUCE",
+          "qty": 5.0,
+          "price": 161.0399932861328,
+          "reason": "REGIME_REDUCE"
+        },
+        {
+          "ts": 1793130300,
+          "type": "REDUCE",
+          "qty": 4.0,
+          "price": 161.10000610351562,
+          "reason": "REGIME_REDUCE"
+        }
+      ],
+      "end_qty_engine": 15.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "COPX_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-22T07:31:50Z",
+      "events": [
+        {
+          "ts": 1793107800,
+          "type": "OPEN",
+          "qty": 53.0,
+          "price": 75.18499755859375,
+          "reason": "DC_BREAKOUT_ENTRY"
+        },
+        {
+          "ts": 1793110500,
+          "type": "REDUCE",
+          "qty": 13.0,
+          "price": 75.7750015258789,
+          "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain0.78"
+        },
+        {
+          "ts": 1793111400,
+          "type": "REDUCE",
+          "qty": 10.0,
+          "price": 75.8499984741211,
+          "reason": "CYCLE_TP_TIERED_T1_0.30pct_gain0.88"
+        },
+        {
+          "ts": 1793112300,
+          "type": "REDUCE",
+          "qty": 7.0,
+          "price": 76.03500366210938,
+          "reason": "CYCLE_TP_TIERED_T2_0.50pct_gain1.13"
+        },
+        {
+          "ts": 1793113200,
+          "type": "REDUCE",
+          "qty": 5.0,
+          "price": 76.16500091552734,
+          "reason": "CYCLE_TP_TIERED_T3_0.70pct_gain1.30"
+        },
+        {
+          "ts": 1793114100,
+          "type": "REDUCE",
+          "qty": 4.0,
+          "price": 76.37999725341797,
+          "reason": "CYCLE_TP_TIERED_T4_1.00pct_gain1.59"
+        },
+        {
+          "ts": 1793115000,
+          "type": "REDUCE",
+          "qty": 3.0,
+          "price": 76.44999694824219,
+          "reason": "CYCLE_TP_TIERED_T5_1.50pct_gain1.68"
+        },
+        {
+          "ts": 1793118600,
+          "type": "CLOSE",
+          "qty": 11.0,
+          "price": 76.29499816894531,
+          "reason": "PEAK_GIVEBACK_GAIN_EROSION_STOP_peak1.82%_cur1.48%"
+        },
+        {
+          "ts": 1793119500,
+          "type": "OPEN",
+          "qty": 52.0,
+          "price": 76.3499984741211,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793123100,
+          "type": "REDUCE",
+          "qty": 13.0,
+          "price": 76.54499816894531,
+          "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain0.26"
+        },
+        {
+          "ts": 1793124000,
+          "type": "CLOSE",
+          "qty": 39.0,
+          "price": 76.55500030517578,
+          "reason": "GAP_MOC_EXIT"
+        },
+        {
+          "ts": 1793127600,
+          "type": "OPEN",
+          "qty": 42.0,
+          "price": 76.61000061035156,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793130300,
+          "type": "CLOSE",
+          "qty": 42.0,
+          "price": 76.6500015258789,
+          "reason": "MTF_DC_REJECT_1h_px76.6500"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "COP_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-26T08:58:11Z",
+      "events": [
+        {
+          "ts": 1793110500,
+          "type": "CLOSE",
+          "qty": 25.0,
+          "price": 149.57522850036622,
+          "reason": "FIXED_STOP"
+        },
+        {
+          "ts": 1793111400,
+          "type": "OPEN",
+          "qty": 26.0,
+          "price": 149.05999755859375,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793112300,
+          "type": "CLOSE",
+          "qty": 26.0,
+          "price": 148.47788108825685,
+          "reason": "FIXED_STOP"
+        },
+        {
+          "ts": 1793113200,
+          "type": "OPEN",
+          "qty": 26.0,
+          "price": 148.81500244140625,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793114100,
+          "type": "CLOSE",
+          "qty": 26.0,
+          "price": 148.61500549316406,
+          "reason": "E_3_STRUCTURE_EXIT_2TF_1h_4h"
+        },
+        {
+          "ts": 1793115000,
+          "type": "OPEN",
+          "qty": 26.0,
+          "price": 148.65499877929688,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793115900,
+          "type": "CLOSE",
+          "qty": 26.0,
+          "price": 148.53500366210938,
+          "reason": "E_3_STRUCTURE_EXIT_2TF_1h_4h"
+        },
+        {
+          "ts": 1793116800,
+          "type": "OPEN",
+          "qty": 22.0,
+          "price": 148.47999572753906,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793117700,
+          "type": "CLOSE",
+          "qty": 22.0,
+          "price": 148.4499969482422,
+          "reason": "E_3_STRUCTURE_EXIT_2TF_1h_4h"
+        },
+        {
+          "ts": 1793118600,
+          "type": "OPEN",
+          "qty": 23.0,
+          "price": 148.36500549316406,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793119500,
+          "type": "CLOSE",
+          "qty": 23.0,
+          "price": 147.88934452056887,
+          "reason": "FIXED_STOP"
+        },
+        {
+          "ts": 1793120400,
+          "type": "OPEN",
+          "qty": 27.0,
+          "price": 147.98500061035156,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793121300,
+          "type": "CLOSE",
+          "qty": 27.0,
+          "price": 147.96499633789062,
+          "reason": "E_3_STRUCTURE_EXIT_3TF_15m_1h_4h"
+        },
+        {
+          "ts": 1793122200,
+          "type": "OPEN",
+          "qty": 23.0,
+          "price": 147.80999755859375,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793123100,
+          "type": "CLOSE",
+          "qty": 23.0,
+          "price": 148.0749969482422,
+          "reason": "E_3_STRUCTURE_EXIT_3TF_15m_1h_4h"
+        },
+        {
+          "ts": 1793124000,
+          "type": "OPEN",
+          "qty": 21.0,
+          "price": 148.22000122070312,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793124900,
+          "type": "CLOSE",
+          "qty": 21.0,
+          "price": 147.9250030517578,
+          "reason": "E_3_STRUCTURE_EXIT_3TF_15m_1h_4h"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "COST_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-24T02:02:20Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "CRM_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-23T08:24:49Z",
+      "events": [
+        {
+          "ts": 1793110500,
+          "type": "REDUCE",
+          "qty": 11.0,
+          "price": 242.11500549316406,
+          "reason": "SATOSHIT_EXIT_PARTIAL 0.70"
+        },
+        {
+          "ts": 1793111400,
+          "type": "REDUCE",
+          "qty": 4.0,
+          "price": 242.85499572753906,
+          "reason": "SATOSHIT_EXIT_PARTIAL 0.70"
+        },
+        {
+          "ts": 1793112300,
+          "type": "CLOSE",
+          "qty": 1.0,
+          "price": 243.23500061035156,
+          "reason": "WHOLE_SHARE_REDUCE_TO_FLAT[SATOSHIT_EXIT_PARTIAL 0.70]"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "CRWD_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-27T22:56:33Z",
+      "events": [
+        {
+          "ts": 1793107800,
+          "type": "REDUCE",
+          "qty": 3.0,
+          "price": 267.239990234375,
+          "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain2.01"
+        },
+        {
+          "ts": 1793115000,
+          "type": "REDUCE",
+          "qty": 3.0,
+          "price": 266.32501220703125,
+          "reason": "CYCLE_TP_TIERED_T1_0.30pct_gain1.66"
+        },
+        {
+          "ts": 1793115000,
+          "type": "CLOSE",
+          "qty": 9.0,
+          "price": 266.32501220703125,
+          "reason": "WT_DC_EXIT_40_g=1.66%_MANDATORY_REENTRY"
+        },
+        {
+          "ts": 1793119500,
+          "type": "OPEN",
+          "qty": 14.0,
+          "price": 268.19500732421875,
+          "reason": "B_SRS_ENTRY"
+        },
+        {
+          "ts": 1793127600,
+          "type": "CLOSE",
+          "qty": 14.0,
+          "price": 267.5950012207031,
+          "reason": "GAP_MOC_EXIT"
+        },
+        {
+          "ts": 1793128500,
+          "type": "OPEN",
+          "qty": 14.0,
+          "price": 267.6099853515625,
+          "reason": "B_SRS_ENTRY"
+        },
+        {
+          "ts": 1793129400,
+          "type": "CLOSE",
+          "qty": 14.0,
+          "price": 268.75,
+          "reason": "GAP_MOC_EXIT"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "CRWV_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-23T09:53:30Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "CVX_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-27T02:58:45Z",
+      "events": [
+        {
+          "ts": 1793112300,
+          "type": "CLOSE",
+          "qty": 17.0,
+          "price": 229.25999450683594,
+          "reason": "FIXED_STOP"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "DAR_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-28T02:33:47Z",
+      "events": [
+        {
+          "ts": 1793107800,
+          "type": "OPEN",
+          "qty": 70.0,
+          "price": 57.060001373291016,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793113200,
+          "type": "CLOSE",
+          "qty": 70.0,
+          "price": 56.22999954223633,
+          "reason": "PROFIT_TARGET"
+        },
+        {
+          "ts": 1793114100,
+          "type": "OPEN",
+          "qty": 71.0,
+          "price": 56.244998931884766,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793130300,
+          "type": "CLOSE",
+          "qty": 71.0,
+          "price": 55.685001373291016,
+          "reason": "PROFIT_TARGET"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "DHR_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-22T09:13:59Z",
+      "events": [
+        {
+          "ts": 1793127600,
+          "type": "CLOSE",
+          "qty": 17.0,
+          "price": 231.9600067138672,
+          "reason": "WT_DC_EXIT_100_g=-0.25%_MANDATORY_REENTRY"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "DVN_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-28T01:24:35Z",
+      "events": [
+        {
+          "ts": 1793127600,
+          "type": "OPEN",
+          "qty": 26.0,
+          "price": 51.21500015258789,
+          "reason": "B_SRS_ENTRY"
+        },
+        {
+          "ts": 1793128500,
+          "type": "REDUCE",
+          "qty": 20.0,
+          "price": 51.345001220703125,
+          "reason": "REGIME_REDUCE"
+        },
+        {
+          "ts": 1793129400,
+          "type": "REDUCE",
+          "qty": 0.0,
+          "price": 51.314998626708984,
+          "reason": "REDUCE_TO_FLAT"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": false,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "EOG_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-22T22:30:44Z",
+      "events": [
+        {
+          "ts": 1793110500,
+          "type": "CLOSE",
+          "qty": 19.0,
+          "price": 162.10000610351562,
+          "reason": "FIXED_STOP"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "ETN_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-27T22:04:24Z",
+      "events": [
+        {
+          "ts": 1793107800,
+          "type": "CLOSE",
+          "qty": 2.0,
+          "price": 376.6650085449219,
+          "reason": "WT_LOWER_CROSS_EXIT wt_15m higher wt+price"
+        },
+        {
+          "ts": 1793112300,
+          "type": "OPEN",
+          "qty": 5.0,
+          "price": 381.2349853515625,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793113200,
+          "type": "CLOSE",
+          "qty": 5.0,
+          "price": 382.3284375,
+          "reason": "FIXED_STOP"
+        },
+        {
+          "ts": 1793114100,
+          "type": "OPEN",
+          "qty": 5.0,
+          "price": 383.2349853515625,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793116800,
+          "type": "CLOSE",
+          "qty": 5.0,
+          "price": 384.5439539337158,
+          "reason": "FIXED_STOP"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "EXEL_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-28T00:47:11Z",
+      "events": [
+        {
+          "ts": 1793112300,
+          "type": "OPEN",
+          "qty": 61.0,
+          "price": 65.41999816894531,
+          "reason": "B12"
+        }
+      ],
+      "end_qty_engine": 61.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "FCN_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-22T21:12:46Z",
+      "events": [],
+      "end_qty_engine": 24.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "FCX_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-27T05:59:03Z",
+      "events": [
+        {
+          "ts": 1793110500,
+          "type": "OPEN",
+          "qty": 61.0,
+          "price": 64.98999786376953,
+          "reason": "B12"
+        },
+        {
+          "ts": 1793111400,
+          "type": "CLOSE",
+          "qty": 61.0,
+          "price": 65.51499938964844,
+          "reason": "WT_PERCENTILE_pctD=0_4h=2"
+        },
+        {
+          "ts": 1793112300,
+          "type": "OPEN",
+          "qty": 60.0,
+          "price": 65.58000183105469,
+          "reason": "B_SRS_ENTRY"
+        },
+        {
+          "ts": 1793113200,
+          "type": "CLOSE",
+          "qty": 60.0,
+          "price": 65.85422744750976,
+          "reason": "FIXED_STOP"
+        },
+        {
+          "ts": 1793114100,
+          "type": "OPEN",
+          "qty": 60.0,
+          "price": 66.38999938964844,
+          "reason": "B_SRS_ENTRY"
+        },
+        {
+          "ts": 1793115000,
+          "type": "CLOSE",
+          "qty": 60.0,
+          "price": 66.13500213623047,
+          "reason": "WT_PERCENTILE_pctD=0_4h=2"
+        },
+        {
+          "ts": 1793115900,
+          "type": "OPEN",
+          "qty": 60.0,
+          "price": 66.18000030517578,
+          "reason": "B_SRS_ENTRY"
+        },
+        {
+          "ts": 1793116800,
+          "type": "CLOSE",
+          "qty": 60.0,
+          "price": 66.16500091552734,
+          "reason": "WT_PERCENTILE_pctD=0_4h=2"
+        },
+        {
+          "ts": 1793117700,
+          "type": "OPEN",
+          "qty": 60.0,
+          "price": 66.16999816894531,
+          "reason": "B14"
+        },
+        {
+          "ts": 1793118600,
+          "type": "CLOSE",
+          "qty": 60.0,
+          "price": 65.72000122070312,
+          "reason": "E_3_STRUCTURE_EXIT_2TF_15m_1h"
+        },
+        {
+          "ts": 1793119500,
+          "type": "OPEN",
+          "qty": 60.0,
+          "price": 65.875,
+          "reason": "B12"
+        },
+        {
+          "ts": 1793120400,
+          "type": "CLOSE",
+          "qty": 60.0,
+          "price": 66.16500091552734,
+          "reason": "E_3_STRUCTURE_EXIT_2TF_15m_1h"
+        },
+        {
+          "ts": 1793121300,
+          "type": "OPEN",
+          "qty": 60.0,
+          "price": 66.37999725341797,
+          "reason": "B_SRS_ENTRY"
+        },
+        {
+          "ts": 1793122200,
+          "type": "CLOSE",
+          "qty": 60.0,
+          "price": 66.25,
+          "reason": "WT_PERCENTILE_pctD=0_4h=2"
+        },
+        {
+          "ts": 1793123100,
+          "type": "OPEN",
+          "qty": 60.0,
+          "price": 66.25,
+          "reason": "B14"
+        },
+        {
+          "ts": 1793124000,
+          "type": "CLOSE",
+          "qty": 60.0,
+          "price": 66.2249984741211,
+          "reason": "WT_PERCENTILE_pctD=0_4h=2"
+        },
+        {
+          "ts": 1793124900,
+          "type": "OPEN",
+          "qty": 60.0,
+          "price": 65.9800033569336,
+          "reason": "B12"
+        },
+        {
+          "ts": 1793128500,
+          "type": "REDUCE",
+          "qty": 31.0,
+          "price": 66.0,
+          "reason": "SATOSHIT_EXIT_PARTIAL 0.52"
+        }
+      ],
+      "end_qty_engine": 29.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "GDX_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-27T22:09:15Z",
+      "events": [
+        {
+          "ts": 1793107800,
+          "type": "CLOSE",
+          "qty": 7.0,
+          "price": 81.8039984703064,
+          "reason": "FIXED_STOP"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "GE_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-27T23:03:09Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "GLD_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-22T15:14:55Z",
+      "events": [
+        {
+          "ts": 1793107800,
+          "type": "REDUCE",
+          "qty": 2.0,
+          "price": 369.2099914550781,
+          "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain0.38"
+        },
+        {
+          "ts": 1793107800,
+          "type": "REDUCE",
+          "qty": 6.0,
+          "price": 369.2099914550781,
+          "reason": "PPL_TP_g0.38%>=0.38%_stopBE367.7932"
+        },
+        {
+          "ts": 1793116800,
+          "type": "CLOSE",
+          "qty": 2.0,
+          "price": 372.1400146484375,
+          "reason": "PEAK_GIVEBACK_GAIN_EROSION_STOP_peak1.24%_cur1.17%"
+        },
+        {
+          "ts": 1793117700,
+          "type": "OPEN",
+          "qty": 10.0,
+          "price": 371.82000732421875,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793122200,
+          "type": "REDUCE",
+          "qty": 2.0,
+          "price": 372.3900146484375,
+          "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain0.15"
+        }
+      ],
+      "end_qty_engine": 8.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "GME_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-19T15:58:05Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "GOOGL_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-22T10:59:47Z",
+      "events": [
+        {
+          "ts": 1793112300,
+          "type": "OPEN",
+          "qty": 12.0,
+          "price": 320.2200012207031,
+          "reason": "REENTRY_HIGHER_LOW"
+        },
+        {
+          "ts": 1793114100,
+          "type": "CLOSE",
+          "qty": 12.0,
+          "price": 320.1700134277344,
+          "reason": "HTF_AGAINST_FORCE_CLOSE_wt1h-93.9vs-92.2_g-0.02pct"
+        },
+        {
+          "ts": 1793115000,
+          "type": "OPEN",
+          "qty": 12.0,
+          "price": 320.69500732421875,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793116800,
+          "type": "REDUCE",
+          "qty": 3.0,
+          "price": 321.6099853515625,
+          "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain0.29"
+        },
+        {
+          "ts": 1793117700,
+          "type": "REDUCE",
+          "qty": 2.0,
+          "price": 322.0799865722656,
+          "reason": "CYCLE_TP_TIERED_T1_0.30pct_gain0.43"
+        },
+        {
+          "ts": 1793127600,
+          "type": "CLOSE",
+          "qty": 7.0,
+          "price": 323.45001220703125,
+          "reason": "LH_LL_TOP_EXIT arm=D_LH+LL leg=DC1H"
+        },
+        {
+          "ts": 1793128500,
+          "type": "OPEN",
+          "qty": 12.0,
+          "price": 323.3949890136719,
+          "reason": "B12"
+        }
+      ],
+      "end_qty_engine": 12.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "HOOD_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-28T00:00:15Z",
+      "events": [],
+      "end_qty_engine": 43.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "IBM_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-27T22:06:50Z",
+      "events": [
+        {
+          "ts": 1793111400,
+          "type": "OPEN",
+          "qty": 15.0,
+          "price": 250.8000030517578,
+          "reason": "B_SRS_ENTRY"
+        },
+        {
+          "ts": 1793127600,
+          "type": "CLOSE",
+          "qty": 15.0,
+          "price": 250.4600067138672,
+          "reason": "EXIT_VELOCITY_WT against-long g-0.14%"
+        },
+        {
+          "ts": 1793129400,
+          "type": "OPEN",
+          "qty": 15.0,
+          "price": 250.80499267578125,
+          "reason": "B_SRS_ENTRY"
+        },
+        {
+          "ts": 1793130300,
+          "type": "CLOSE",
+          "qty": 15.0,
+          "price": 250.18499755859375,
+          "reason": "MULTI_TF_EXIT s55/55 g-0.25%"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "KGC_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-26T06:57:27Z",
+      "events": [
+        {
+          "ts": 1793110500,
+          "type": "CLOSE",
+          "qty": 100.0,
+          "price": 22.645000457763672,
+          "reason": "DAYTRADE_STOP dc_15m_high +0.25% STOP_BUF"
+        },
+        {
+          "ts": 1793118600,
+          "type": "OPEN",
+          "qty": 175.0,
+          "price": 22.815000534057617,
+          "reason": "WR_PULLBACK"
+        },
+        {
+          "ts": 1793123100,
+          "type": "CLOSE",
+          "qty": 175.0,
+          "price": 22.795000076293945,
+          "reason": "WT_DC_EXIT_100_g=0.09%_MANDATORY_REENTRY"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "LDOS_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-26T03:57:11Z",
+      "events": [],
+      "end_qty_engine": 18.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "LITE_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-22T11:02:56Z",
+      "events": [
+        {
+          "ts": 1793112300,
+          "type": "CLOSE",
+          "qty": 4.0,
+          "price": 848.4959548950195,
+          "reason": "FIXED_STOP"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "LLY_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-28T00:59:50Z",
+      "events": [
+        {
+          "ts": 1793107800,
+          "type": "CLOSE",
+          "qty": 3.0,
+          "price": 1289.7049560546875,
+          "reason": "STATEFUL_PORTED_EXIT g0.77% age255m"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "LMT_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-26T07:02:28Z",
+      "events": [
+        {
+          "ts": 1793107800,
+          "type": "OPEN",
+          "qty": 3.0,
+          "price": 628.7000122070312,
+          "reason": "GAP_MORNING_REENTRY"
+        },
+        {
+          "ts": 1793112300,
+          "type": "CLOSE",
+          "qty": 3.0,
+          "price": 627.6749877929688,
+          "reason": "WT_LOWER_CROSS_EXIT wt_1h lower wt+price"
+        },
+        {
+          "ts": 1793116800,
+          "type": "OPEN",
+          "qty": 3.0,
+          "price": 628.5700073242188,
+          "reason": "REENTRY_MANDATORY"
+        }
+      ],
+      "end_qty_engine": 3.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "LNG_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-26T23:20:36Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "LOW_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-25T20:55:41Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "LRCX_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-24T05:29:35Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "LSCC_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-23T07:05:42Z",
+      "events": [
+        {
+          "ts": 1793110500,
+          "type": "CLOSE",
+          "qty": 40.0,
+          "price": 101.1500015258789,
+          "reason": "FIXED_STOP"
+        },
+        {
+          "ts": 1793119500,
+          "type": "OPEN",
+          "qty": 38.0,
+          "price": 103.83999633789062,
+          "reason": "B_SRS_ENTRY"
+        }
+      ],
+      "end_qty_engine": 38.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "MA_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-26T07:59:24Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "META_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-20T14:17:58Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "MNTS_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-23T08:43:52Z",
+      "events": [],
+      "end_qty_engine": 1801.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "MOS_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-23T10:13:48Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "MP_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-24T05:34:48Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "MRVL_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-27T16:10:55Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": false,
+      "performance_reason": "trades 0 < 10 (wd=30)"
+    },
+    {
+      "ss": "MSFT_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-28T01:31:15Z",
+      "events": [
+        {
+          "ts": 1793108700,
+          "type": "OPEN",
+          "qty": 7.0,
+          "price": 529.0050048828125,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793117700,
+          "type": "CLOSE",
+          "qty": 7.0,
+          "price": 533.3800048828125,
+          "reason": "MTF_DC_REJECT_D_px533.3800"
+        },
+        {
+          "ts": 1793119500,
+          "type": "OPEN",
+          "qty": 6.0,
+          "price": 531.6799926757812,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793130300,
+          "type": "CLOSE",
+          "qty": 6.0,
+          "price": 531.5999755859375,
+          "reason": "MTF_DC_REJECT_D_px531.6000"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": false,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "MSTR_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-21T13:01:24Z",
+      "events": [
+        {
+          "ts": 1793108700,
+          "type": "OPEN",
+          "qty": 28.0,
+          "price": 139.31500244140625,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793114100,
+          "type": "CLOSE",
+          "qty": 28.0,
+          "price": 140.58999633789062,
+          "reason": "MTF_DC_REJECT_1h_px140.5900"
+        },
+        {
+          "ts": 1793115000,
+          "type": "OPEN",
+          "qty": 28.0,
+          "price": 140.85000610351562,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793116800,
+          "type": "REDUCE",
+          "qty": 7.0,
+          "price": 140.4600067138672,
+          "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain0.28"
+        },
+        {
+          "ts": 1793118600,
+          "type": "REDUCE",
+          "qty": 5.0,
+          "price": 140.39999389648438,
+          "reason": "CYCLE_TP_TIERED_T1_0.30pct_gain0.32"
+        },
+        {
+          "ts": 1793123100,
+          "type": "REDUCE",
+          "qty": 4.0,
+          "price": 139.8350067138672,
+          "reason": "CYCLE_TP_TIERED_T2_0.50pct_gain0.72"
+        },
+        {
+          "ts": 1793124000,
+          "type": "CLOSE",
+          "qty": 12.0,
+          "price": 140.1699981689453,
+          "reason": "MTF_DC_REJECT_1h_px140.1700"
+        },
+        {
+          "ts": 1793124900,
+          "type": "OPEN",
+          "qty": 28.0,
+          "price": 140.0749969482422,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793130300,
+          "type": "CLOSE",
+          "qty": 28.0,
+          "price": 141.4250030517578,
+          "reason": "WT_DC_EXIT_40_g=-0.96%_MANDATORY_REENTRY"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "MU_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-23T05:27:21Z",
+      "events": [
+        {
+          "ts": 1793112300,
+          "type": "CLOSE",
+          "qty": 4.0,
+          "price": 927.1521269226074,
+          "reason": "FIXED_STOP"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "NLR_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-23T08:48:23Z",
+      "events": [
+        {
+          "ts": 1793108700,
+          "type": "OPEN",
+          "qty": 42.0,
+          "price": 93.18000030517578,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793112300,
+          "type": "REDUCE",
+          "qty": 17.0,
+          "price": 94.36000061035156,
+          "reason": "REGIME_REDUCE"
+        },
+        {
+          "ts": 1793115000,
+          "type": "CLOSE",
+          "qty": 25.0,
+          "price": 94.51569877624512,
+          "reason": "FIXED_STOP"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "NUE_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-22T11:53:32Z",
+      "events": [
+        {
+          "ts": 1793108700,
+          "type": "CLOSE",
+          "qty": 19.0,
+          "price": 269.3500061035156,
+          "reason": "LH_LL_TOP_EXIT arm=4h_LL leg=DC1H"
+        },
+        {
+          "ts": 1793117700,
+          "type": "OPEN",
+          "qty": 1.0,
+          "price": 274.7799987792969,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793118600,
+          "type": "AUGMENT",
+          "qty": 1.0,
+          "price": 273.9849853515625,
+          "reason": "AUGMENT_AT_LOSS_HL"
+        },
+        {
+          "ts": 1793119500,
+          "type": "AUGMENT",
+          "qty": 2.0,
+          "price": 272.04998779296875,
+          "reason": "AUGMENT_AT_LOSS_HL"
+        },
+        {
+          "ts": 1793122200,
+          "type": "AUGMENT",
+          "qty": 4.0,
+          "price": 272.9100036621094,
+          "reason": "AUGMENT_AT_LOSS_HL"
+        },
+        {
+          "ts": 1793123100,
+          "type": "AUGMENT",
+          "qty": 8.0,
+          "price": 272.8349914550781,
+          "reason": "AUGMENT_AT_LOSS_HL"
+        },
+        {
+          "ts": 1793124900,
+          "type": "AUGMENT",
+          "qty": 2.0,
+          "price": 272.07000732421875,
+          "reason": "AUGMENT_AT_LOSS_HL"
+        },
+        {
+          "ts": 1793124900,
+          "type": "CLOSE",
+          "qty": 18.0,
+          "price": 272.07000732421875,
+          "reason": "GAP_MOC_EXIT"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": false,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "NVDA_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-22T04:24:42Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "NXE_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-26T23:24:31Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "OLED_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-28T00:12:04Z",
+      "events": [
+        {
+          "ts": 1793110500,
+          "type": "OPEN",
+          "qty": 45.0,
+          "price": 87.56500244140625,
+          "reason": "B_SRS_ENTRY"
+        }
+      ],
+      "end_qty_engine": 45.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "ORCL_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-22T07:59:25Z",
+      "events": [
+        {
+          "ts": 1793110500,
+          "type": "CLOSE",
+          "qty": 31.0,
+          "price": 130.08999633789062,
+          "reason": "FIXED_STOP"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "PAAS_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-26T07:03:57Z",
+      "events": [
+        {
+          "ts": 1793111400,
+          "type": "OPEN",
+          "qty": 97.0,
+          "price": 40.97999954223633,
+          "reason": "B_SRS_ENTRY"
+        },
+        {
+          "ts": 1793112300,
+          "type": "CLOSE",
+          "qty": 97.0,
+          "price": 41.19272515296936,
+          "reason": "FIXED_STOP"
+        },
+        {
+          "ts": 1793120400,
+          "type": "OPEN",
+          "qty": 97.0,
+          "price": 41.23500061035156,
+          "reason": "WR_PULLBACK"
+        },
+        {
+          "ts": 1793130300,
+          "type": "CLOSE",
+          "qty": 97.0,
+          "price": 41.61878688812256,
+          "reason": "FIXED_STOP"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "PLTR_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-23T08:58:16Z",
+      "events": [
+        {
+          "ts": 1793116800,
+          "type": "OPEN",
+          "qty": 19.0,
+          "price": 201.21499633789062,
+          "reason": "REENTRY_HIGHER_LOW"
+        },
+        {
+          "ts": 1793125800,
+          "type": "REDUCE",
+          "qty": 13.0,
+          "price": 199.55499267578125,
+          "reason": "SATOSHIT_EXIT_PARTIAL 0.70"
+        },
+        {
+          "ts": 1793127600,
+          "type": "REDUCE",
+          "qty": 4.0,
+          "price": 200.4199981689453,
+          "reason": "SATOSHIT_EXIT_PARTIAL 0.70"
+        },
+        {
+          "ts": 1793128500,
+          "type": "REDUCE",
+          "qty": 1.0,
+          "price": 200.32000732421875,
+          "reason": "SATOSHIT_EXIT_PARTIAL 0.70"
+        },
+        {
+          "ts": 1793129400,
+          "type": "CLOSE",
+          "qty": 1.0,
+          "price": 199.7949981689453,
+          "reason": "WHOLE_SHARE_REDUCE_TO_FLAT[SATOSHIT_EXIT_PARTIAL 0.70]"
+        },
+        {
+          "ts": 1793130300,
+          "type": "OPEN",
+          "qty": 20.0,
+          "price": 198.75,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        }
+      ],
+      "end_qty_engine": 20.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": false,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "PR_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-28T00:47:17Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "PSX_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-22T09:28:26Z",
+      "events": [
+        {
+          "ts": 1793110500,
+          "type": "CLOSE",
+          "qty": 13.0,
+          "price": 277.05999755859375,
+          "reason": "ULTIMATE_DC_4h_HARD_STOP at dc_4h_low 0.25pct channel"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "PWR_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-27T22:27:30Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "QBTS_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-26T00:59:00Z",
+      "events": [
+        {
+          "ts": 1793110500,
+          "type": "CLOSE",
+          "qty": 259.0,
+          "price": 11.719224579334258,
+          "reason": "FIXED_STOP"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "QLYS_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-26T23:27:59Z",
+      "events": [
+        {
+          "ts": 1793116800,
+          "type": "OPEN",
+          "qty": 17.0,
+          "price": 228.5800018310547,
+          "reason": "DC_BREAKOUT_ENTRY"
+        },
+        {
+          "ts": 1793120400,
+          "type": "CLOSE",
+          "qty": 17.0,
+          "price": 229.13999938964844,
+          "reason": "LH_LL_TOP_EXIT arm=4h_LH leg=DC1H"
+        },
+        {
+          "ts": 1793121300,
+          "type": "OPEN",
+          "qty": 17.0,
+          "price": 230.13499450683594,
+          "reason": "DC_BREAKOUT_ENTRY"
+        },
+        {
+          "ts": 1793124000,
+          "type": "CLOSE",
+          "qty": 17.0,
+          "price": 229.72999572753906,
+          "reason": "LH_LL_TOP_EXIT arm=4h_LH leg=DC1H"
+        },
+        {
+          "ts": 1793124900,
+          "type": "OPEN",
+          "qty": 17.0,
+          "price": 229.31500244140625,
+          "reason": "B_SRS_ENTRY"
+        },
+        {
+          "ts": 1793129400,
+          "type": "CLOSE",
+          "qty": 17.0,
+          "price": 228.4499969482422,
+          "reason": "LH_LL_TOP_EXIT arm=4h_LH leg=DC1H"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "QQQ_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-22T03:47:36Z",
+      "events": [
+        {
+          "ts": 1793130300,
+          "type": "OPEN",
+          "qty": 5.0,
+          "price": 721.239990234375,
+          "reason": "B12"
+        }
+      ],
+      "end_qty_engine": 5.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": false,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "RBLX_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-28T00:46:04Z",
+      "events": [
+        {
+          "ts": 1793108700,
+          "type": "OPEN",
+          "qty": 75.0,
+          "price": 52.650001525878906,
+          "reason": "B_MOM3"
+        },
+        {
+          "ts": 1793115000,
+          "type": "CLOSE",
+          "qty": 75.0,
+          "price": 54.43000030517578,
+          "reason": "LH_LL_TOP_EXIT arm=D_LL leg=DC1H"
+        },
+        {
+          "ts": 1793115900,
+          "type": "OPEN",
+          "qty": 73.0,
+          "price": 54.67499923706055,
+          "reason": "DC_BREAKOUT_ENTRY"
+        },
+        {
+          "ts": 1793118600,
+          "type": "CLOSE",
+          "qty": 73.0,
+          "price": 54.5099983215332,
+          "reason": "LH_LL_TOP_EXIT arm=D_LL leg=DC1H"
+        },
+        {
+          "ts": 1793119500,
+          "type": "OPEN",
+          "qty": 73.0,
+          "price": 54.4900016784668,
+          "reason": "B14"
+        },
+        {
+          "ts": 1793122200,
+          "type": "CLOSE",
+          "qty": 73.0,
+          "price": 54.525001525878906,
+          "reason": "LH_LL_TOP_EXIT arm=D_LL leg=DC1H"
+        },
+        {
+          "ts": 1793123100,
+          "type": "OPEN",
+          "qty": 73.0,
+          "price": 54.459999084472656,
+          "reason": "B14"
+        },
+        {
+          "ts": 1793129400,
+          "type": "CLOSE",
+          "qty": 73.0,
+          "price": 54.70000076293945,
+          "reason": "LH_LL_TOP_EXIT arm=D_LL leg=DC1H"
+        },
+        {
+          "ts": 1793130300,
+          "type": "OPEN",
+          "qty": 73.0,
+          "price": 54.45500183105469,
+          "reason": "B_SRS_ENTRY"
+        }
+      ],
+      "end_qty_engine": 73.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "RIO_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-27T23:55:52Z",
+      "events": [
+        {
+          "ts": 1793120400,
+          "type": "CLOSE",
+          "qty": 47.0,
+          "price": 85.57340061187743,
+          "reason": "FIXED_STOP"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "RKLB_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-26T05:57:14Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "RRC_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-26T23:58:35Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "RS_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-26T07:05:21Z",
+      "events": [
+        {
+          "ts": 1793108700,
+          "type": "OPEN",
+          "qty": 9.0,
+          "price": 426.55999755859375,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793114100,
+          "type": "REDUCE",
+          "qty": 2.0,
+          "price": 427.7049865722656,
+          "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain0.27"
+        },
+        {
+          "ts": 1793115900,
+          "type": "REDUCE",
+          "qty": 1.0,
+          "price": 428.2049865722656,
+          "reason": "CYCLE_TP_TIERED_T1_0.30pct_gain0.39"
+        },
+        {
+          "ts": 1793120400,
+          "type": "REDUCE",
+          "qty": 1.0,
+          "price": 429.5400085449219,
+          "reason": "CYCLE_TP_TIERED_T2_0.50pct_gain0.70"
+        },
+        {
+          "ts": 1793120400,
+          "type": "REDUCE",
+          "qty": 4.0,
+          "price": 429.5400085449219,
+          "reason": "PPL_TP_g0.70%>=0.62%_stopBE426.1334"
+        }
+      ],
+      "end_qty_engine": 1.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "SAP_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-28T00:59:53Z",
+      "events": [
+        {
+          "ts": 1793108700,
+          "type": "OPEN",
+          "qty": 16.0,
+          "price": 238.22999572753906,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793112300,
+          "type": "CLOSE",
+          "qty": 16.0,
+          "price": 238.56500244140625,
+          "reason": "WT_4H_VEL_EXIT_vel=-19.3_g=0.14%_k3m=50_k15m=92"
+        },
+        {
+          "ts": 1793113200,
+          "type": "OPEN",
+          "qty": 16.0,
+          "price": 238.5399932861328,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793123100,
+          "type": "REDUCE",
+          "qty": 11.0,
+          "price": 237.5399932861328,
+          "reason": "SATOSHIT_EXIT_PARTIAL 0.70"
+        },
+        {
+          "ts": 1793124000,
+          "type": "CLOSE",
+          "qty": 5.0,
+          "price": 237.34500122070312,
+          "reason": "LH_LL_TOP_EXIT arm=D_LH+LL leg=WT15M"
+        },
+        {
+          "ts": 1793124900,
+          "type": "OPEN",
+          "qty": 16.0,
+          "price": 237.02999877929688,
+          "reason": "REENTRY_MANDATORY"
+        },
+        {
+          "ts": 1793127600,
+          "type": "CLOSE",
+          "qty": 16.0,
+          "price": 236.38499450683594,
+          "reason": "FIXED_STOP"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "SCCO_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-27T23:15:58Z",
+      "events": [
+        {
+          "ts": 1793110500,
+          "type": "CLOSE",
+          "qty": 20.0,
+          "price": 188.80999755859375,
+          "reason": "FIXED_STOP"
+        },
+        {
+          "ts": 1793113200,
+          "type": "OPEN",
+          "qty": 16.0,
+          "price": 193.2449951171875,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793115900,
+          "type": "CLOSE",
+          "qty": 16.0,
+          "price": 193.72810760498047,
+          "reason": "FIXED_STOP"
+        },
+        {
+          "ts": 1793116800,
+          "type": "OPEN",
+          "qty": 20.0,
+          "price": 192.64999389648438,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793124000,
+          "type": "CLOSE",
+          "qty": 20.0,
+          "price": 194.29452255249024,
+          "reason": "FIXED_STOP"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "SCHW_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-28T00:59:58Z",
+      "events": [
+        {
+          "ts": 1793115000,
+          "type": "CLOSE",
+          "qty": 44.0,
+          "price": 89.37000274658203,
+          "reason": "PEAK_GIVEBACK_GAIN_EROSION_STOP_peak0.78%_cur0.72%"
+        },
+        {
+          "ts": 1793115900,
+          "type": "OPEN",
+          "qty": 6.0,
+          "price": 89.43499755859375,
+          "reason": "B_SRS_ENTRY"
+        },
+        {
+          "ts": 1793116800,
+          "type": "CLOSE",
+          "qty": 6.0,
+          "price": 89.44999694824219,
+          "reason": "WT_PERCENTILE_pctD=7_4h=24"
+        },
+        {
+          "ts": 1793117700,
+          "type": "OPEN",
+          "qty": 17.0,
+          "price": 89.56500244140625,
+          "reason": "B_SRS_ENTRY"
+        },
+        {
+          "ts": 1793118600,
+          "type": "CLOSE",
+          "qty": 17.0,
+          "price": 89.56999969482422,
+          "reason": "WT_PERCENTILE_pctD=7_4h=24"
+        },
+        {
+          "ts": 1793119500,
+          "type": "OPEN",
+          "qty": 15.0,
+          "price": 89.51000213623047,
+          "reason": "B_SRS_ENTRY"
+        },
+        {
+          "ts": 1793121300,
+          "type": "CLOSE",
+          "qty": 15.0,
+          "price": 89.49500274658203,
+          "reason": "WT_PERCENTILE_pctD=7_4h=24"
+        },
+        {
+          "ts": 1793122200,
+          "type": "OPEN",
+          "qty": 16.0,
+          "price": 89.48500061035156,
+          "reason": "B_SRS_ENTRY"
+        },
+        {
+          "ts": 1793123100,
+          "type": "CLOSE",
+          "qty": 16.0,
+          "price": 89.56999969482422,
+          "reason": "WT_PERCENTILE_pctD=7_4h=24"
+        },
+        {
+          "ts": 1793127600,
+          "type": "OPEN",
+          "qty": 44.0,
+          "price": 89.76000213623047,
+          "reason": "B_SRS_ENTRY"
+        },
+        {
+          "ts": 1793128500,
+          "type": "CLOSE",
+          "qty": 44.0,
+          "price": 89.7750015258789,
+          "reason": "WT_PERCENTILE_pctD=7_4h=24"
+        },
+        {
+          "ts": 1793129400,
+          "type": "OPEN",
+          "qty": 44.0,
+          "price": 89.625,
+          "reason": "B_SRS_ENTRY"
+        }
+      ],
+      "end_qty_engine": 44.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "SLV_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-22T08:25:26Z",
+      "events": [
+        {
+          "ts": 1793127600,
+          "type": "OPEN",
+          "qty": 55.0,
+          "price": 49.1150016784668,
+          "reason": "REENTRY_MANDATORY"
+        }
+      ],
+      "end_qty_engine": 55.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "SMCI_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-22T04:42:48Z",
+      "events": [
+        {
+          "ts": 1793108700,
+          "type": "OPEN",
+          "qty": 118.0,
+          "price": 33.689998626708984,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793112300,
+          "type": "CLOSE",
+          "qty": 118.0,
+          "price": 34.54499816894531,
+          "reason": "FIXED_STOP"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "SNDK_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-18T16:04:08Z",
+      "events": [
+        {
+          "ts": 1793112300,
+          "type": "OPEN",
+          "qty": 1.0,
+          "price": 1300.5,
+          "reason": "HARDCODED_RALLY_REENTRY"
+        },
+        {
+          "ts": 1793125800,
+          "type": "CLOSE",
+          "qty": 1.0,
+          "price": 1299.5250244140625,
+          "reason": "GAP_MOC_EXIT"
+        },
+        {
+          "ts": 1793130300,
+          "type": "OPEN",
+          "qty": 1.0,
+          "price": 1304.010009765625,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        }
+      ],
+      "end_qty_engine": 1.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "SPOT_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-23T10:51:47Z",
+      "events": [
+        {
+          "ts": 1793120400,
+          "type": "OPEN",
+          "qty": 6.0,
+          "price": 557.8300170898438,
+          "reason": "REENTRY_DC4_15M_BREAK"
+        },
+        {
+          "ts": 1793130300,
+          "type": "CLOSE",
+          "qty": 6.0,
+          "price": 555.5549926757812,
+          "reason": "WT_PERCENTILE_pctD=92_4h=90"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "SPY_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-23T10:54:48Z",
+      "events": [
+        {
+          "ts": 1793111400,
+          "type": "CLOSE",
+          "qty": 5.0,
+          "price": 767.3350219726562,
+          "reason": "E_3_STRUCTURE_EXIT_3TF_15m_1h_4h"
+        },
+        {
+          "ts": 1793112300,
+          "type": "OPEN",
+          "qty": 5.0,
+          "price": 768.6950073242188,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793113200,
+          "type": "CLOSE",
+          "qty": 5.0,
+          "price": 769.2550048828125,
+          "reason": "E_3_STRUCTURE_EXIT_3TF_15m_1h_4h"
+        },
+        {
+          "ts": 1793114100,
+          "type": "OPEN",
+          "qty": 5.0,
+          "price": 769.6400146484375,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793115000,
+          "type": "CLOSE",
+          "qty": 5.0,
+          "price": 770.344970703125,
+          "reason": "E_3_STRUCTURE_EXIT_3TF_15m_1h_4h"
+        },
+        {
+          "ts": 1793115900,
+          "type": "OPEN",
+          "qty": 5.0,
+          "price": 770.5900268554688,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793116800,
+          "type": "CLOSE",
+          "qty": 5.0,
+          "price": 770.2000122070312,
+          "reason": "E_3_STRUCTURE_EXIT_3TF_15m_1h_4h"
+        },
+        {
+          "ts": 1793117700,
+          "type": "OPEN",
+          "qty": 5.0,
+          "price": 770.1500244140625,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793118600,
+          "type": "CLOSE",
+          "qty": 5.0,
+          "price": 769.3150024414062,
+          "reason": "E_3_STRUCTURE_EXIT_2TF_1h_4h"
+        },
+        {
+          "ts": 1793119500,
+          "type": "OPEN",
+          "qty": 5.0,
+          "price": 769.3800048828125,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793120400,
+          "type": "CLOSE",
+          "qty": 5.0,
+          "price": 769.6900024414062,
+          "reason": "E_3_STRUCTURE_EXIT_2TF_1h_4h"
+        },
+        {
+          "ts": 1793121300,
+          "type": "OPEN",
+          "qty": 5.0,
+          "price": 769.489990234375,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793122200,
+          "type": "CLOSE",
+          "qty": 5.0,
+          "price": 769.9000244140625,
+          "reason": "E_3_STRUCTURE_EXIT_2TF_1h_4h"
+        },
+        {
+          "ts": 1793123100,
+          "type": "OPEN",
+          "qty": 5.0,
+          "price": 769.5800170898438,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793124000,
+          "type": "CLOSE",
+          "qty": 5.0,
+          "price": 769.530029296875,
+          "reason": "E_3_STRUCTURE_EXIT_2TF_1h_4h"
+        },
+        {
+          "ts": 1793124900,
+          "type": "OPEN",
+          "qty": 5.0,
+          "price": 769.1749877929688,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793125800,
+          "type": "CLOSE",
+          "qty": 5.0,
+          "price": 769.239990234375,
+          "reason": "E_3_STRUCTURE_EXIT_2TF_1h_4h"
+        },
+        {
+          "ts": 1793127600,
+          "type": "OPEN",
+          "qty": 5.0,
+          "price": 770.14501953125,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793128500,
+          "type": "CLOSE",
+          "qty": 5.0,
+          "price": 770.155029296875,
+          "reason": "E_3_STRUCTURE_EXIT_2TF_1h_4h"
+        },
+        {
+          "ts": 1793129400,
+          "type": "OPEN",
+          "qty": 5.0,
+          "price": 770.719970703125,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793130300,
+          "type": "CLOSE",
+          "qty": 5.0,
+          "price": 769.6699829101562,
+          "reason": "E_3_STRUCTURE_EXIT_3TF_15m_1h_4h"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "TSLA_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-27T00:04:39Z",
+      "events": [
+        {
+          "ts": 1793108700,
+          "type": "OPEN",
+          "qty": 2.0,
+          "price": 403.5199890136719,
+          "reason": "HARDCODED_RALLY_REENTRY"
+        }
+      ],
+      "end_qty_engine": 2.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "T_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-27T22:33:48Z",
+      "events": [
+        {
+          "ts": 1793112300,
+          "type": "OPEN",
+          "qty": 189.0,
+          "price": 21.05500030517578,
+          "reason": "GR_HTF_DIRECT_ENTRY_76"
+        },
+        {
+          "ts": 1793124000,
+          "type": "CLOSE",
+          "qty": 189.0,
+          "price": 21.014999389648438,
+          "reason": "GAP_MOC_EXIT"
+        },
+        {
+          "ts": 1793124900,
+          "type": "OPEN",
+          "qty": 190.0,
+          "price": 20.954999923706055,
+          "reason": "GR_HTF_DIRECT_ENTRY_78"
+        },
+        {
+          "ts": 1793125800,
+          "type": "CLOSE",
+          "qty": 190.0,
+          "price": 20.985000610351562,
+          "reason": "GAP_MOC_EXIT"
+        },
+        {
+          "ts": 1793127600,
+          "type": "OPEN",
+          "qty": 190.0,
+          "price": 21.0049991607666,
+          "reason": "GR_HTF_DIRECT_ENTRY_74"
+        }
+      ],
+      "end_qty_engine": 190.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "UEC_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-27T00:07:11Z",
+      "events": [
+        {
+          "ts": 1793112300,
+          "type": "CLOSE",
+          "qty": 303.0,
+          "price": 7.85458753824234,
+          "reason": "FIXED_STOP"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "ULTA_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-24T05:54:03Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "UNH_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-23T11:05:41Z",
+      "events": [
+        {
+          "ts": 1793111400,
+          "type": "OPEN",
+          "qty": 9.0,
+          "price": 412.2749938964844,
+          "reason": "GAP_MORNING_REENTRY"
+        },
+        {
+          "ts": 1793114100,
+          "type": "REDUCE",
+          "qty": 2.0,
+          "price": 413.0249938964844,
+          "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain0.18"
+        }
+      ],
+      "end_qty_engine": 7.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "UUUU_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-23T11:14:49Z",
+      "events": [
+        {
+          "ts": 1793111400,
+          "type": "CLOSE",
+          "qty": 530.0,
+          "price": 8.03499984741211,
+          "reason": "DAYTRADE_STOP dc_15m_high +0.25% STOP_BUF"
+        },
+        {
+          "ts": 1793112300,
+          "type": "OPEN",
+          "qty": 493.0,
+          "price": 8.104999542236328,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793113200,
+          "type": "CLOSE",
+          "qty": 493.0,
+          "price": 8.125262041091919,
+          "reason": "FIXED_STOP"
+        },
+        {
+          "ts": 1793123100,
+          "type": "OPEN",
+          "qty": 492.0,
+          "price": 8.125,
+          "reason": "HARDCODED_RALLY_REENTRY"
+        }
+      ],
+      "end_qty_engine": 492.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "U_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-27T21:25:29Z",
+      "events": [
+        {
+          "ts": 1793113200,
+          "type": "OPEN",
+          "qty": 97.0,
+          "price": 41.09000015258789,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793114100,
+          "type": "CLOSE",
+          "qty": 97.0,
+          "price": 40.900001525878906,
+          "reason": "HYBRID_STRUCT_EXIT_15m_g0.46%"
+        },
+        {
+          "ts": 1793115000,
+          "type": "OPEN",
+          "qty": 97.0,
+          "price": 41.119998931884766,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793116800,
+          "type": "CLOSE",
+          "qty": 97.0,
+          "price": 40.709999084472656,
+          "reason": "HYBRID_STRUCT_EXIT_15m_g1.00%"
+        },
+        {
+          "ts": 1793117700,
+          "type": "OPEN",
+          "qty": 97.0,
+          "price": 41.06999969482422,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793119500,
+          "type": "CLOSE",
+          "qty": 97.0,
+          "price": 40.935001373291016,
+          "reason": "HYBRID_STRUCT_EXIT_15m_g0.33%"
+        },
+        {
+          "ts": 1793120400,
+          "type": "OPEN",
+          "qty": 97.0,
+          "price": 41.040000915527344,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793130300,
+          "type": "REDUCE",
+          "qty": 24.0,
+          "price": 40.119998931884766,
+          "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain2.24"
+        }
+      ],
+      "end_qty_engine": 73.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "VALE_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-26T07:09:37Z",
+      "events": [
+        {
+          "ts": 1793119500,
+          "type": "OPEN",
+          "qty": 254.0,
+          "price": 11.725000381469727,
+          "reason": "REENTRY_LOWER_HIGH"
+        },
+        {
+          "ts": 1793121300,
+          "type": "CLOSE",
+          "qty": 254.0,
+          "price": 11.795000076293945,
+          "reason": "NEWBORN_LOSS_KILL age30m g-0.60%"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "VICR_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-26T03:57:31Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "VLO_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-28T01:00:41Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "VT_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-22T09:56:15Z",
+      "events": [
+        {
+          "ts": 1793117700,
+          "type": "REDUCE",
+          "qty": 2.0,
+          "price": 157.7550048828125,
+          "reason": "SATOSHIT_EXIT_PARTIAL 0.52"
+        },
+        {
+          "ts": 1793118600,
+          "type": "CLOSE",
+          "qty": 1.0,
+          "price": 157.59500122070312,
+          "reason": "PEAK_GIVEBACK_GAIN_EROSION_STOP_peak0.77%_cur0.58%"
+        },
+        {
+          "ts": 1793119500,
+          "type": "OPEN",
+          "qty": 25.0,
+          "price": 157.59500122070312,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793129400,
+          "type": "REDUCE",
+          "qty": 6.0,
+          "price": 157.8350067138672,
+          "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain0.15"
+        }
+      ],
+      "end_qty_engine": 19.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "VZ_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-27T23:23:52Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "V_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-26T08:05:17Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "WDAY_SHORT",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-27T23:10:28Z",
+      "events": [
+        {
+          "ts": 1793109600,
+          "type": "REDUCE",
+          "qty": 14.0,
+          "price": 206.35499572753906,
+          "reason": "PPL_TP_g0.43%>=0.30%_stopBE207.2914"
+        },
+        {
+          "ts": 1793114100,
+          "type": "CLOSE",
+          "qty": 5.0,
+          "price": 207.51499938964844,
+          "reason": "PPL_SL_CLOSE_BE+buffer_px207.5150_stop207.2914"
+        },
+        {
+          "ts": 1793115000,
+          "type": "OPEN",
+          "qty": 19.0,
+          "price": 207.52000427246094,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793116800,
+          "type": "REDUCE",
+          "qty": 14.0,
+          "price": 206.72000122070312,
+          "reason": "PPL_TP_g0.39%>=0.30%_stopBE207.5615"
+        },
+        {
+          "ts": 1793123100,
+          "type": "REDUCE",
+          "qty": 1.0,
+          "price": 205.21499633789062,
+          "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain1.11"
+        },
+        {
+          "ts": 1793127600,
+          "type": "CLOSE",
+          "qty": 4.0,
+          "price": 205.63499450683594,
+          "reason": "MULTI_TF_EXIT s46/45 g0.91%"
+        },
+        {
+          "ts": 1793128500,
+          "type": "OPEN",
+          "qty": 19.0,
+          "price": 205.09500122070312,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        }
+      ],
+      "end_qty_engine": 19.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "WMT_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-27T23:23:58Z",
+      "events": [
+        {
+          "ts": 1793111400,
+          "type": "CLOSE",
+          "qty": 33.0,
+          "price": 119.31500244140625,
+          "reason": "NEWBORN_LOSS_KILL age60m g-0.30%"
+        },
+        {
+          "ts": 1793124000,
+          "type": "OPEN",
+          "qty": 33.0,
+          "price": 119.06999969482422,
+          "reason": "B14"
+        }
+      ],
+      "end_qty_engine": 33.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "XLE_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-27T00:12:41Z",
+      "events": [
+        {
+          "ts": 1793109600,
+          "type": "CLOSE",
+          "qty": 57.0,
+          "price": 68.875,
+          "reason": "DAYTRADE_STOP dc_15m_low -0.25% STOP_BUF"
+        },
+        {
+          "ts": 1793112300,
+          "type": "OPEN",
+          "qty": 58.0,
+          "price": 68.46499633789062,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793114100,
+          "type": "CLOSE",
+          "qty": 58.0,
+          "price": 68.26391006469727,
+          "reason": "FIXED_STOP"
+        },
+        {
+          "ts": 1793115000,
+          "type": "OPEN",
+          "qty": 58.0,
+          "price": 68.3949966430664,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        },
+        {
+          "ts": 1793124900,
+          "type": "REDUCE",
+          "qty": 41.0,
+          "price": 68.31500244140625,
+          "reason": "SATOSHIT_EXIT_PARTIAL 0.70"
+        },
+        {
+          "ts": 1793125800,
+          "type": "REDUCE",
+          "qty": 12.0,
+          "price": 68.26499938964844,
+          "reason": "SATOSHIT_EXIT_PARTIAL 0.70"
+        },
+        {
+          "ts": 1793127600,
+          "type": "CLOSE",
+          "qty": 5.0,
+          "price": 68.08435976028443,
+          "reason": "FIXED_STOP"
+        },
+        {
+          "ts": 1793128500,
+          "type": "OPEN",
+          "qty": 41.0,
+          "price": 68.29499816894531,
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN"
+        }
+      ],
+      "end_qty_engine": 41.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "XOM_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-26T08:07:59Z",
+      "events": [
+        {
+          "ts": 1793118600,
+          "type": "OPEN",
+          "qty": 22.0,
+          "price": 180.78500366210938,
+          "reason": "B_SRS_ENTRY"
+        },
+        {
+          "ts": 1793119500,
+          "type": "CLOSE",
+          "qty": 22.0,
+          "price": 180.7550048828125,
+          "reason": "E_3_STRUCTURE_EXIT_3TF_15m_1h_4h"
+        },
+        {
+          "ts": 1793129400,
+          "type": "OPEN",
+          "qty": 22.0,
+          "price": 180.0800018310547,
+          "reason": "B_SRS_ENTRY"
+        },
+        {
+          "ts": 1793130300,
+          "type": "CLOSE",
+          "qty": 22.0,
+          "price": 179.9149932861328,
+          "reason": "E_3_STRUCTURE_EXIT_3TF_15m_1h_4h"
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "ZCSH_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-25T06:56:59Z",
+      "events": [
+        {
+          "ts": 1793109600,
+          "type": "REDUCE",
+          "qty": 95.0,
+          "price": 33.73500061035156,
+          "reason": "PPL_TP_g1.84%>=0.50%_stopBE33.1234"
+        }
+      ],
+      "end_qty_engine": 57.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": true,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    },
+    {
+      "ss": "ZETA_LONG",
+      "status": "REPLAYED",
+      "source": "per_sym_store.active",
+      "set_at": "2026-10-28T02:09:44Z",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "published_ok": true,
+      "published_tail": 1793130300,
+      "published_open": false,
+      "end_open_match": true,
+      "performance_valid": true,
+      "performance_reason": ""
+    }
+  ]
+}

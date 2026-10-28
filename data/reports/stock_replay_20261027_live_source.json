@@ -1,0 +1,3125 @@
+{
+  "date": "2026-10-27",
+  "session_utc": [
+    1793107800,
+    1793131200
+  ],
+  "computed_at": "2026-10-28T03:41:26.789781+00:00",
+  "db_path": "/home/niels/binance-sandbox/data/hourly_reconfig/per_sym_forward_master.db",
+  "db_sha256": "1593f5ac5086c509323c4e74cd3be077ec469a85e0a35cf84b4c3b4f9681a324",
+  "n": 119,
+  "elapsed_s": 80.9,
+  "summary": {
+    "REPLAYED": 83,
+    "active_preopen": 83,
+    "ACT_CLOSE": 113,
+    "ACT_OPEN": 107,
+    "NO_ASOF_SET": 36,
+    "history_proxy": 36,
+    "ACT_REDUCE": 42,
+    "ACT_AUGMENT": 5
+  },
+  "records": [
+    {
+      "ss": "AAPL_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-24T02:58:23Z",
+      "set_sha256": "c1812172cd8d5d18b72a4ac23a48b82a261a19d80f63c32c6dd2ae2fb1eb1fd0",
+      "events": [
+        {
+          "ts": 1793116800.0,
+          "type": "CLOSE",
+          "reason": "LH_LL_TOP_EXIT arm=D_LH+LL leg=WT15M",
+          "qty": 11.0,
+          "price": 346.1449890136719
+        },
+        {
+          "ts": 1793117700.0,
+          "type": "OPEN",
+          "reason": "HARDCODED_RALLY_REENTRY",
+          "qty": 11.0,
+          "price": 346.239990234375
+        }
+      ],
+      "end_qty_engine": 11.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "ABBV_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-24T03:03:59Z",
+      "set_sha256": "6f21524259642e3ab8da717f532caf1252f745e58c4d01699bf8c4804826e960",
+      "events": [
+        {
+          "ts": 1793130300.0,
+          "type": "OPEN",
+          "reason": "B_SRS_ENTRY",
+          "qty": 13.0,
+          "price": 286.3900146484375
+        }
+      ],
+      "end_qty_engine": 13.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "ACN_LONG",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "ADBE_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-25T19:58:29Z",
+      "set_sha256": "14ef11eec6b0e710bc2c586f2d5706b1ea59cc61dfba58c1e0695d1e7645aae6",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793129400.0
+    },
+    {
+      "ss": "ADP_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-26T22:59:37Z",
+      "set_sha256": "d476160589ab0f550fc0028a74d9bb5253bcbe6918f48c74b660dc92b019ac00",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "AGI_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-26T07:54:26Z",
+      "set_sha256": "06af3ac53fcdc08948cb4462ab34695309f446cdcbf45c3d86194c0824460592",
+      "events": [
+        {
+          "ts": 1793111400.0,
+          "type": "CLOSE",
+          "reason": "FIXED_STOP",
+          "qty": 133.0,
+          "price": 30.4950008392334
+        },
+        {
+          "ts": 1793124900.0,
+          "type": "OPEN",
+          "reason": "B_SRS_ENTRY",
+          "qty": 129.0,
+          "price": 30.905000686645508
+        }
+      ],
+      "end_qty_engine": 129.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793128500.0
+    },
+    {
+      "ss": "AG_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-25T13:40:55Z",
+      "set_sha256": "c102b3ea6a6b07e27936748728e9128fabf1005c87586e13dceada7a97999068",
+      "events": [
+        {
+          "ts": 1793110500.0,
+          "type": "CLOSE",
+          "reason": "WT_PERCENTILE_pctD=1_4h=2",
+          "qty": 268.0,
+          "price": 15.145000457763672
+        },
+        {
+          "ts": 1793111400.0,
+          "type": "OPEN",
+          "reason": "B_SRS_ENTRY",
+          "qty": 263.0,
+          "price": 15.164999961853027
+        },
+        {
+          "ts": 1793112300.0,
+          "type": "CLOSE",
+          "reason": "FIXED_STOP",
+          "qty": 263.0,
+          "price": 15.25303765296936
+        },
+        {
+          "ts": 1793113200.0,
+          "type": "OPEN",
+          "reason": "B_SRS_ENTRY",
+          "qty": 261.0,
+          "price": 15.324999809265137
+        },
+        {
+          "ts": 1793114100.0,
+          "type": "CLOSE",
+          "reason": "FIXED_STOP",
+          "qty": 261.0,
+          "price": 15.363312308788299
+        },
+        {
+          "ts": 1793115000.0,
+          "type": "OPEN",
+          "reason": "B_SRS_ENTRY",
+          "qty": 259.0,
+          "price": 15.404999732971191
+        },
+        {
+          "ts": 1793115900.0,
+          "type": "CLOSE",
+          "reason": "FIXED_STOP",
+          "qty": 259.0,
+          "price": 15.453537461757659
+        },
+        {
+          "ts": 1793116800.0,
+          "type": "OPEN",
+          "reason": "WR_PULLBACK",
+          "qty": 260.0,
+          "price": 15.345000267028809
+        },
+        {
+          "ts": 1793121300.0,
+          "type": "CLOSE",
+          "reason": "WT_PERCENTILE_pctD=1_4h=2",
+          "qty": 260.0,
+          "price": 15.4350004196167
+        },
+        {
+          "ts": 1793122200.0,
+          "type": "OPEN",
+          "reason": "B_SRS_ENTRY",
+          "qty": 259.0,
+          "price": 15.4350004196167
+        },
+        {
+          "ts": 1793127600.0,
+          "type": "CLOSE",
+          "reason": "FIXED_STOP",
+          "qty": 259.0,
+          "price": 15.515000343322754
+        },
+        {
+          "ts": 1793128500.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 257.0,
+          "price": 15.545000076293945
+        },
+        {
+          "ts": 1793129400.0,
+          "type": "CLOSE",
+          "reason": "WT_PERCENTILE_pctD=1_4h=2",
+          "qty": 257.0,
+          "price": 15.555000305175781
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "ALB_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-25T13:43:29Z",
+      "set_sha256": "139489207662d433c8963bdb60318e0ab8523baed998fc6ff39bb4600edffc64",
+      "events": [
+        {
+          "ts": 1793110500.0,
+          "type": "CLOSE",
+          "reason": "HTF_AGAINST_FORCE_CLOSE_wt1h8.3vs-0.4_g-5.14pct",
+          "qty": 32.0,
+          "price": 98.55999755859375
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793129400.0
+    },
+    {
+      "ss": "ALKT_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-25T18:54:23Z",
+      "set_sha256": "e83f26298520b12f2cc6c9a040c14ecc30e1258dd827483bebf35249661cd93c",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "AMAT_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-26T06:53:54Z",
+      "set_sha256": "3c6d46322b4d56c2f74f17cbfaa7230f9618c26d3be2536d084201a5ed2e2729",
+      "events": [
+        {
+          "ts": 1793107800.0,
+          "type": "REDUCE",
+          "reason": "SATOSHIT_EXIT_PARTIAL 0.70",
+          "qty": 7.0,
+          "price": 389.32000732421875
+        },
+        {
+          "ts": 1793112300.0,
+          "type": "REDUCE",
+          "reason": "SATOSHIT_EXIT_PARTIAL 0.70",
+          "qty": 2.0,
+          "price": 390.0799865722656
+        },
+        {
+          "ts": 1793113200.0,
+          "type": "CLOSE",
+          "reason": "WHOLE_SHARE_REDUCE_TO_FLAT[SATOSHIT_EXIT_PARTIAL 0.70]",
+          "qty": 1.0,
+          "price": 391.9949951171875
+        },
+        {
+          "ts": 1793125800.0,
+          "type": "OPEN",
+          "reason": "REENTRY_LOWER_HIGH",
+          "qty": 10.0,
+          "price": 395.19000244140625
+        }
+      ],
+      "end_qty_engine": 10.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "AMZN_SHORT",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "APO_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-26T23:03:53Z",
+      "set_sha256": "2c407f41528200e38e4ec74cde747101bcc2751a314e0d7cbd34bec18f66e8b6",
+      "events": [
+        {
+          "ts": 1793112300.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 34.0,
+          "price": 114.97000122070312
+        },
+        {
+          "ts": 1793113200.0,
+          "type": "CLOSE",
+          "reason": "EXIT_VELOCITY_WT against-short g0.53%",
+          "qty": 34.0,
+          "price": 114.3550033569336
+        },
+        {
+          "ts": 1793127600.0,
+          "type": "OPEN",
+          "reason": "REENTRY_EXIT_PRICE_BREAK",
+          "qty": 29.0,
+          "price": 114.33000183105469
+        },
+        {
+          "ts": 1793128500.0,
+          "type": "CLOSE",
+          "reason": "EXIT_VELOCITY_WT against-short g-0.17%",
+          "qty": 29.0,
+          "price": 114.52999877929688
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "AR_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-25T23:55:13Z",
+      "set_sha256": "c246b0a9238e9c719d657d2f8dbbd2e52343484bff295088116780d4e089fc81",
+      "events": [
+        {
+          "ts": 1793107800.0,
+          "type": "OPEN",
+          "reason": "B15",
+          "qty": 96.0,
+          "price": 41.584999084472656
+        },
+        {
+          "ts": 1793112300.0,
+          "type": "CLOSE",
+          "reason": "WT_PERCENTILE_pctD=76_4h=95",
+          "qty": 96.0,
+          "price": 41.45500183105469
+        },
+        {
+          "ts": 1793113200.0,
+          "type": "OPEN",
+          "reason": "B_SRS_ENTRY",
+          "qty": 96.0,
+          "price": 41.58000183105469
+        },
+        {
+          "ts": 1793114100.0,
+          "type": "CLOSE",
+          "reason": "WT_PERCENTILE_pctD=85_4h=96",
+          "qty": 96.0,
+          "price": 41.540000915527344
+        },
+        {
+          "ts": 1793115000.0,
+          "type": "OPEN",
+          "reason": "B_SRS_ENTRY",
+          "qty": 96.0,
+          "price": 41.54999923706055
+        },
+        {
+          "ts": 1793115900.0,
+          "type": "CLOSE",
+          "reason": "WT_PERCENTILE_pctD=85_4h=96",
+          "qty": 96.0,
+          "price": 41.494998931884766
+        },
+        {
+          "ts": 1793116800.0,
+          "type": "OPEN",
+          "reason": "B_SRS_ENTRY",
+          "qty": 96.0,
+          "price": 41.60499954223633
+        },
+        {
+          "ts": 1793117700.0,
+          "type": "CLOSE",
+          "reason": "WT_PERCENTILE_pctD=85_4h=96",
+          "qty": 96.0,
+          "price": 41.369998931884766
+        },
+        {
+          "ts": 1793124000.0,
+          "type": "OPEN",
+          "reason": "DC_BREAKOUT_ENTRY",
+          "qty": 60.0,
+          "price": 41.6349983215332
+        }
+      ],
+      "end_qty_engine": 60.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "ASML_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-25T14:11:57Z",
+      "set_sha256": "5250733fbb5dafebc15be4fe70c524baaa4f68bbdf2d86fe66f78245077b57cb",
+      "events": [
+        {
+          "ts": 1793112300.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 2.0,
+          "price": 1622.280029296875
+        },
+        {
+          "ts": 1793113200.0,
+          "type": "CLOSE",
+          "reason": "STATEFUL_PORTED_EXIT g0.36% age15m",
+          "qty": 2.0,
+          "price": 1628.114990234375
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "ASTS_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-23T08:11:18Z",
+      "set_sha256": "e1341e7b16a9dc437ce695abeabdbfc18f210ab9a33c9cacae88cd2f62c596eb",
+      "events": [
+        {
+          "ts": 1793107800.0,
+          "type": "CLOSE",
+          "reason": "DAYTRADE_STOP dc_15m_high +0.25% STOP_BUF",
+          "qty": 4.0,
+          "price": 41.400001525878906
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "AU_SHORT",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "A_LONG",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "BABA_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-24T04:03:39Z",
+      "set_sha256": "3ad56ce01df34bdcd398e961a589efa53a54a9da5071418f998e136eaacb7205",
+      "events": [
+        {
+          "ts": 1793107800.0,
+          "type": "REDUCE",
+          "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain0.34",
+          "qty": 9.0,
+          "price": 99.70999908447266
+        },
+        {
+          "ts": 1793112300.0,
+          "type": "CLOSE",
+          "reason": "WT_DC_EXIT_100_g=0.15%_MANDATORY_REENTRY",
+          "qty": 30.0,
+          "price": 99.8949966430664
+        },
+        {
+          "ts": 1793113200.0,
+          "type": "OPEN",
+          "reason": "B14",
+          "qty": 37.0,
+          "price": 99.72000122070312
+        },
+        {
+          "ts": 1793115900.0,
+          "type": "REDUCE",
+          "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain0.19",
+          "qty": 9.0,
+          "price": 99.53500366210938
+        },
+        {
+          "ts": 1793118600.0,
+          "type": "CLOSE",
+          "reason": "WT_DC_EXIT_100_g=0.25%_MANDATORY_REENTRY",
+          "qty": 28.0,
+          "price": 99.4749984741211
+        },
+        {
+          "ts": 1793119500.0,
+          "type": "OPEN",
+          "reason": "B_SRS_ENTRY",
+          "qty": 22.0,
+          "price": 99.4749984741211
+        },
+        {
+          "ts": 1793124000.0,
+          "type": "CLOSE",
+          "reason": "GAP_MOC_EXIT",
+          "qty": 22.0,
+          "price": 99.77999877929688
+        },
+        {
+          "ts": 1793124900.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 40.0,
+          "price": 99.69499969482422
+        },
+        {
+          "ts": 1793125800.0,
+          "type": "CLOSE",
+          "reason": "GAP_MOC_EXIT",
+          "qty": 40.0,
+          "price": 99.81500244140625
+        },
+        {
+          "ts": 1793127600.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 39.0,
+          "price": 100.25499725341797
+        }
+      ],
+      "end_qty_engine": 39.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "BHP_SHORT",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "BIDU_SHORT",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "BKR_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-18T00:45:48Z",
+      "set_sha256": "698ae4933270d07b39c372f424c55dfbf5d7e0051d2e8f072f5ad77701295505",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "BMNR_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-26T23:06:24Z",
+      "set_sha256": "57d631d239574ff6519f09c4ab4a2796c2cf6a69b3846ff3ecc62e3ddd64cea8",
+      "events": [
+        {
+          "ts": 1793107800.0,
+          "type": "CLOSE",
+          "reason": "MTF_DC_REJECT_4h_px21.3250",
+          "qty": 20.0,
+          "price": 21.325000762939453
+        },
+        {
+          "ts": 1793112300.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 189.0,
+          "price": 21.104999542236328
+        },
+        {
+          "ts": 1793113200.0,
+          "type": "REDUCE",
+          "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain0.71",
+          "qty": 47.0,
+          "price": 20.954999923706055
+        },
+        {
+          "ts": 1793121300.0,
+          "type": "CLOSE",
+          "reason": "STOP_LOSS",
+          "qty": 142.0,
+          "price": 21.655000686645508
+        },
+        {
+          "ts": 1793122200.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 184.0,
+          "price": 21.665000915527344
+        },
+        {
+          "ts": 1793123100.0,
+          "type": "REDUCE",
+          "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain0.37",
+          "qty": 46.0,
+          "price": 21.584999084472656
+        },
+        {
+          "ts": 1793124000.0,
+          "type": "REDUCE",
+          "reason": "CYCLE_TP_TIERED_T1_0.30pct_gain0.32",
+          "qty": 34.0,
+          "price": 21.594999313354492
+        },
+        {
+          "ts": 1793128500.0,
+          "type": "REDUCE",
+          "reason": "CYCLE_TP_TIERED_T2_0.50pct_gain0.55",
+          "qty": 26.0,
+          "price": 21.545000076293945
+        }
+      ],
+      "end_qty_engine": 78.0,
+      "engine_valid": false,
+      "invalid_reason": "trades 5 < 10 (wd=30)",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "BNO_LONG",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "BWXT_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-21T09:47:58Z",
+      "set_sha256": "874e59557758cb0fb458caf90d3745ef0e2179e774e0e1714058cec0abbeec65",
+      "events": [
+        {
+          "ts": 1793127600.0,
+          "type": "CLOSE",
+          "reason": "DAYTRADE_STOP dc_15m_high +0.25% STOP_BUF",
+          "qty": 5.0,
+          "price": 134.23500061035156
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "CAT_SHORT",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "CDE_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-23T08:17:26Z",
+      "set_sha256": "589e25dcc8e4b0eeabd3fcabdc66e87186b8ad7c3b952eb3a735e9c2d030c82a",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "CDW_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-26T23:09:30Z",
+      "set_sha256": "1d02714c027fda1347755e0cd89f3339a70205ca525f8d30337f7fa578d870ac",
+      "events": [
+        {
+          "ts": 1793124000.0,
+          "type": "CLOSE",
+          "reason": "WT_4H_VEL_EXIT_vel=-9.8_g=3.16%_k3m=50_k15m=80",
+          "qty": 25.0,
+          "price": 160.90499877929688
+        },
+        {
+          "ts": 1793124900.0,
+          "type": "OPEN",
+          "reason": "B_SRS_ENTRY",
+          "qty": 24.0,
+          "price": 160.7899932861328
+        },
+        {
+          "ts": 1793125800.0,
+          "type": "CLOSE",
+          "reason": "NEWBORN_LOSS_KILL age15m g0.07%",
+          "qty": 24.0,
+          "price": 160.91000366210938
+        },
+        {
+          "ts": 1793127600.0,
+          "type": "OPEN",
+          "reason": "B_SRS_ENTRY",
+          "qty": 24.0,
+          "price": 160.72500610351562
+        },
+        {
+          "ts": 1793128500.0,
+          "type": "CLOSE",
+          "reason": "NEWBORN_LOSS_KILL age15m g0.05%",
+          "qty": 24.0,
+          "price": 160.80499267578125
+        },
+        {
+          "ts": 1793129400.0,
+          "type": "OPEN",
+          "reason": "B_SRS_ENTRY",
+          "qty": 24.0,
+          "price": 161.00999450683594
+        }
+      ],
+      "end_qty_engine": 24.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "CIBR_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-26T08:57:21Z",
+      "set_sha256": "21ecd291b119b78af245097512763f89389d6323ed059aa38f57bb237b615454",
+      "events": [
+        {
+          "ts": 1793113200.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 36.0,
+          "price": 109.49500274658203
+        },
+        {
+          "ts": 1793114100.0,
+          "type": "CLOSE",
+          "reason": "E_3_STRUCTURE_EXIT_3TF_15m_1h_4h",
+          "qty": 36.0,
+          "price": 109.4800033569336
+        },
+        {
+          "ts": 1793115000.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 34.0,
+          "price": 109.58000183105469
+        },
+        {
+          "ts": 1793115900.0,
+          "type": "CLOSE",
+          "reason": "E_3_STRUCTURE_EXIT_3TF_15m_1h_4h",
+          "qty": 34.0,
+          "price": 109.7750015258789
+        },
+        {
+          "ts": 1793116800.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 34.0,
+          "price": 110.03500366210938
+        },
+        {
+          "ts": 1793117700.0,
+          "type": "CLOSE",
+          "reason": "E_3_STRUCTURE_EXIT_3TF_15m_1h_4h",
+          "qty": 34.0,
+          "price": 109.94499969482422
+        },
+        {
+          "ts": 1793120400.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 36.0,
+          "price": 109.95999908447266
+        },
+        {
+          "ts": 1793121300.0,
+          "type": "CLOSE",
+          "reason": "E_3_STRUCTURE_EXIT_3TF_15m_1h_4h",
+          "qty": 36.0,
+          "price": 109.91500091552734
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "CLF_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-17T18:57:10Z",
+      "set_sha256": "a359fa46d5e07e52bbdb4d9bcfe11ca226364a729f6673dbc9205aefa9c22bfd",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "CLS_SHORT",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "CME_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-23T12:53:36Z",
+      "set_sha256": "228f707be9446bedbe96ee1bbd896f95fbdd9e5a9b89b295d6607c4897b66997",
+      "events": [
+        {
+          "ts": 1793110500.0,
+          "type": "CLOSE",
+          "reason": "FIXED_STOP",
+          "qty": 12.0,
+          "price": 300.135009765625
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "COHR_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-26T23:12:38Z",
+      "set_sha256": "7c062dc4a7dc3b17dcc499feb73bca1b0ad1adbca9958173f7065bbee4abcd86",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "COIN_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-22T03:57:30Z",
+      "set_sha256": "17c3f7eee4d250b13a306df957622f81ce4e7548675ae9e720cbce40620a3888",
+      "events": [
+        {
+          "ts": 1793114100.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 25.0,
+          "price": 159.8000030517578
+        },
+        {
+          "ts": 1793115000.0,
+          "type": "CLOSE",
+          "reason": "DC_HOPELESS_entry=159.8000_dc=[163.3300,183.4000]",
+          "qty": 25.0,
+          "price": 160.125
+        },
+        {
+          "ts": 1793115900.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 9.0,
+          "price": 160.0850067138672
+        },
+        {
+          "ts": 1793116800.0,
+          "type": "CLOSE",
+          "reason": "DC_HOPELESS_entry=160.0850_dc=[163.3300,183.4000]",
+          "qty": 9.0,
+          "price": 159.77499389648438
+        },
+        {
+          "ts": 1793117700.0,
+          "type": "OPEN",
+          "reason": "B15",
+          "qty": 9.0,
+          "price": 160.26499938964844
+        },
+        {
+          "ts": 1793118600.0,
+          "type": "CLOSE",
+          "reason": "DC_HOPELESS_entry=160.2650_dc=[163.3300,183.4000]",
+          "qty": 9.0,
+          "price": 159.71499633789062
+        },
+        {
+          "ts": 1793119500.0,
+          "type": "OPEN",
+          "reason": "B14",
+          "qty": 10.0,
+          "price": 160.27999877929688
+        },
+        {
+          "ts": 1793120400.0,
+          "type": "CLOSE",
+          "reason": "DC_HOPELESS_entry=160.2800_dc=[163.3300,183.4000]",
+          "qty": 10.0,
+          "price": 160.13999938964844
+        },
+        {
+          "ts": 1793121300.0,
+          "type": "OPEN",
+          "reason": "B15",
+          "qty": 10.0,
+          "price": 160.36500549316406
+        },
+        {
+          "ts": 1793122200.0,
+          "type": "CLOSE",
+          "reason": "DC_HOPELESS_entry=160.3650_dc=[163.3300,183.4000]",
+          "qty": 10.0,
+          "price": 160.27999877929688
+        },
+        {
+          "ts": 1793123100.0,
+          "type": "OPEN",
+          "reason": "B14",
+          "qty": 23.0,
+          "price": 160.1999969482422
+        },
+        {
+          "ts": 1793124000.0,
+          "type": "CLOSE",
+          "reason": "DC_HOPELESS_entry=160.2000_dc=[163.3300,183.4000]",
+          "qty": 23.0,
+          "price": 160.41000366210938
+        },
+        {
+          "ts": 1793124900.0,
+          "type": "OPEN",
+          "reason": "B15",
+          "qty": 12.0,
+          "price": 160.61500549316406
+        },
+        {
+          "ts": 1793127600.0,
+          "type": "CLOSE",
+          "reason": "FIXED_STOP",
+          "qty": 12.0,
+          "price": 161.04159938812256
+        },
+        {
+          "ts": 1793128500.0,
+          "type": "OPEN",
+          "reason": "REENTRY_MANDATORY",
+          "qty": 24.0,
+          "price": 160.7899932861328
+        },
+        {
+          "ts": 1793129400.0,
+          "type": "REDUCE",
+          "reason": "REGIME_REDUCE",
+          "qty": 5.0,
+          "price": 161.0399932861328
+        },
+        {
+          "ts": 1793130300.0,
+          "type": "REDUCE",
+          "reason": "REGIME_REDUCE",
+          "qty": 4.0,
+          "price": 161.10000610351562
+        }
+      ],
+      "end_qty_engine": 15.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "COPX_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-22T07:31:50Z",
+      "set_sha256": "be8c7b2c7f79e9c6f24312a6e32b2bed165dc15de2e39a33d7a62790caf82c14",
+      "events": [
+        {
+          "ts": 1793107800.0,
+          "type": "OPEN",
+          "reason": "DC_BREAKOUT_ENTRY",
+          "qty": 53.0,
+          "price": 75.18499755859375
+        },
+        {
+          "ts": 1793110500.0,
+          "type": "REDUCE",
+          "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain0.78",
+          "qty": 13.0,
+          "price": 75.7750015258789
+        },
+        {
+          "ts": 1793111400.0,
+          "type": "REDUCE",
+          "reason": "CYCLE_TP_TIERED_T1_0.30pct_gain0.88",
+          "qty": 10.0,
+          "price": 75.8499984741211
+        },
+        {
+          "ts": 1793112300.0,
+          "type": "REDUCE",
+          "reason": "CYCLE_TP_TIERED_T2_0.50pct_gain1.13",
+          "qty": 7.0,
+          "price": 76.03500366210938
+        },
+        {
+          "ts": 1793113200.0,
+          "type": "REDUCE",
+          "reason": "CYCLE_TP_TIERED_T3_0.70pct_gain1.30",
+          "qty": 5.0,
+          "price": 76.16500091552734
+        },
+        {
+          "ts": 1793114100.0,
+          "type": "REDUCE",
+          "reason": "CYCLE_TP_TIERED_T4_1.00pct_gain1.59",
+          "qty": 4.0,
+          "price": 76.37999725341797
+        },
+        {
+          "ts": 1793115000.0,
+          "type": "REDUCE",
+          "reason": "CYCLE_TP_TIERED_T5_1.50pct_gain1.68",
+          "qty": 3.0,
+          "price": 76.44999694824219
+        },
+        {
+          "ts": 1793118600.0,
+          "type": "CLOSE",
+          "reason": "PEAK_GIVEBACK_GAIN_EROSION_STOP_peak1.82%_cur1.48%",
+          "qty": 11.0,
+          "price": 76.29499816894531
+        },
+        {
+          "ts": 1793119500.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 52.0,
+          "price": 76.3499984741211
+        },
+        {
+          "ts": 1793123100.0,
+          "type": "REDUCE",
+          "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain0.26",
+          "qty": 13.0,
+          "price": 76.54499816894531
+        },
+        {
+          "ts": 1793124000.0,
+          "type": "CLOSE",
+          "reason": "GAP_MOC_EXIT",
+          "qty": 39.0,
+          "price": 76.55500030517578
+        },
+        {
+          "ts": 1793127600.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 42.0,
+          "price": 76.61000061035156
+        },
+        {
+          "ts": 1793130300.0,
+          "type": "CLOSE",
+          "reason": "MTF_DC_REJECT_1h_px76.6500",
+          "qty": 42.0,
+          "price": 76.6500015258789
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "COP_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-26T08:58:11Z",
+      "set_sha256": "658764f915242214f05f552cf502f6e1170629cf4b352ea21fd02953bddabd1f",
+      "events": [
+        {
+          "ts": 1793110500.0,
+          "type": "CLOSE",
+          "reason": "FIXED_STOP",
+          "qty": 25.0,
+          "price": 149.57522850036622
+        },
+        {
+          "ts": 1793111400.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 26.0,
+          "price": 149.05999755859375
+        },
+        {
+          "ts": 1793112300.0,
+          "type": "CLOSE",
+          "reason": "FIXED_STOP",
+          "qty": 26.0,
+          "price": 148.47788108825685
+        },
+        {
+          "ts": 1793113200.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 26.0,
+          "price": 148.81500244140625
+        },
+        {
+          "ts": 1793114100.0,
+          "type": "CLOSE",
+          "reason": "E_3_STRUCTURE_EXIT_2TF_1h_4h",
+          "qty": 26.0,
+          "price": 148.61500549316406
+        },
+        {
+          "ts": 1793115000.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 26.0,
+          "price": 148.65499877929688
+        },
+        {
+          "ts": 1793115900.0,
+          "type": "CLOSE",
+          "reason": "E_3_STRUCTURE_EXIT_2TF_1h_4h",
+          "qty": 26.0,
+          "price": 148.53500366210938
+        },
+        {
+          "ts": 1793116800.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 22.0,
+          "price": 148.47999572753906
+        },
+        {
+          "ts": 1793117700.0,
+          "type": "CLOSE",
+          "reason": "E_3_STRUCTURE_EXIT_2TF_1h_4h",
+          "qty": 22.0,
+          "price": 148.4499969482422
+        },
+        {
+          "ts": 1793118600.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 23.0,
+          "price": 148.36500549316406
+        },
+        {
+          "ts": 1793119500.0,
+          "type": "CLOSE",
+          "reason": "FIXED_STOP",
+          "qty": 23.0,
+          "price": 147.88934452056887
+        },
+        {
+          "ts": 1793120400.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 27.0,
+          "price": 147.98500061035156
+        },
+        {
+          "ts": 1793121300.0,
+          "type": "CLOSE",
+          "reason": "E_3_STRUCTURE_EXIT_3TF_15m_1h_4h",
+          "qty": 27.0,
+          "price": 147.96499633789062
+        },
+        {
+          "ts": 1793122200.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 23.0,
+          "price": 147.80999755859375
+        },
+        {
+          "ts": 1793123100.0,
+          "type": "CLOSE",
+          "reason": "E_3_STRUCTURE_EXIT_3TF_15m_1h_4h",
+          "qty": 23.0,
+          "price": 148.0749969482422
+        },
+        {
+          "ts": 1793124000.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 21.0,
+          "price": 148.22000122070312
+        },
+        {
+          "ts": 1793124900.0,
+          "type": "CLOSE",
+          "reason": "E_3_STRUCTURE_EXIT_3TF_15m_1h_4h",
+          "qty": 21.0,
+          "price": 147.9250030517578
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "COST_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-24T02:02:20Z",
+      "set_sha256": "502a9168df6b6d10cbb27acf91219649de58d6f60fecd44f9988e4e0d5250500",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "CRM_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-23T08:24:49Z",
+      "set_sha256": "7b784918d2744a44aaec153535c9ad396fb1a8298a3fa6d0b338d3f626f3db27",
+      "events": [
+        {
+          "ts": 1793110500.0,
+          "type": "REDUCE",
+          "reason": "SATOSHIT_EXIT_PARTIAL 0.70",
+          "qty": 11.0,
+          "price": 242.11500549316406
+        },
+        {
+          "ts": 1793111400.0,
+          "type": "REDUCE",
+          "reason": "SATOSHIT_EXIT_PARTIAL 0.70",
+          "qty": 4.0,
+          "price": 242.85499572753906
+        },
+        {
+          "ts": 1793112300.0,
+          "type": "CLOSE",
+          "reason": "WHOLE_SHARE_REDUCE_TO_FLAT[SATOSHIT_EXIT_PARTIAL 0.70]",
+          "qty": 1.0,
+          "price": 243.23500061035156
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "CRWD_LONG",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "CRWV_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-23T09:53:30Z",
+      "set_sha256": "794f9f15f70ca4473a4d8a234de6ee4bba31ff264f858f3f72c880075d56efc3",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "CVX_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-27T02:58:45Z",
+      "set_sha256": "733d1b04ce6dbfe48ea86d7fa38252761679f614f372ef25f63c2745ed6bb458",
+      "events": [
+        {
+          "ts": 1793112300.0,
+          "type": "CLOSE",
+          "reason": "FIXED_STOP",
+          "qty": 17.0,
+          "price": 229.25999450683594
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "DAR_SHORT",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "DHR_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-22T09:13:59Z",
+      "set_sha256": "ddcb13d0b6b1722eb490759709c4634fd5ba151b64a6c3f798d26d89293e345b",
+      "events": [
+        {
+          "ts": 1793127600.0,
+          "type": "CLOSE",
+          "reason": "WT_DC_EXIT_100_g=-0.25%_MANDATORY_REENTRY",
+          "qty": 17.0,
+          "price": 231.9600067138672
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "DVN_LONG",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "EOG_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-22T22:30:44Z",
+      "set_sha256": "fe7923f5b025dc09170817fd05d2ef1e4bf6398628bac0cfc41e73acaa70b6cd",
+      "events": [
+        {
+          "ts": 1793110500.0,
+          "type": "CLOSE",
+          "reason": "FIXED_STOP",
+          "qty": 19.0,
+          "price": 162.10000610351562
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "ETN_SHORT",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "EXEL_LONG",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "FCN_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-22T21:12:46Z",
+      "set_sha256": "9ab1460c36b9b8388b51aa71868140ed5538972fa16f6ba0b8499e6d2953c476",
+      "events": [],
+      "end_qty_engine": 24.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "FCX_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-27T05:59:03Z",
+      "set_sha256": "a0e7a1483b750b9c7f58905e0804d64501dbc07081137da3c7fb83c33dfac547",
+      "events": [
+        {
+          "ts": 1793110500.0,
+          "type": "OPEN",
+          "reason": "B12",
+          "qty": 61.0,
+          "price": 64.98999786376953
+        },
+        {
+          "ts": 1793111400.0,
+          "type": "CLOSE",
+          "reason": "WT_PERCENTILE_pctD=0_4h=2",
+          "qty": 61.0,
+          "price": 65.51499938964844
+        },
+        {
+          "ts": 1793112300.0,
+          "type": "OPEN",
+          "reason": "B_SRS_ENTRY",
+          "qty": 60.0,
+          "price": 65.58000183105469
+        },
+        {
+          "ts": 1793113200.0,
+          "type": "CLOSE",
+          "reason": "FIXED_STOP",
+          "qty": 60.0,
+          "price": 65.85422744750976
+        },
+        {
+          "ts": 1793114100.0,
+          "type": "OPEN",
+          "reason": "B_SRS_ENTRY",
+          "qty": 60.0,
+          "price": 66.38999938964844
+        },
+        {
+          "ts": 1793115000.0,
+          "type": "CLOSE",
+          "reason": "WT_PERCENTILE_pctD=0_4h=2",
+          "qty": 60.0,
+          "price": 66.13500213623047
+        },
+        {
+          "ts": 1793115900.0,
+          "type": "OPEN",
+          "reason": "B_SRS_ENTRY",
+          "qty": 60.0,
+          "price": 66.18000030517578
+        },
+        {
+          "ts": 1793116800.0,
+          "type": "CLOSE",
+          "reason": "WT_PERCENTILE_pctD=0_4h=2",
+          "qty": 60.0,
+          "price": 66.16500091552734
+        },
+        {
+          "ts": 1793117700.0,
+          "type": "OPEN",
+          "reason": "B14",
+          "qty": 60.0,
+          "price": 66.16999816894531
+        },
+        {
+          "ts": 1793118600.0,
+          "type": "CLOSE",
+          "reason": "E_3_STRUCTURE_EXIT_2TF_15m_1h",
+          "qty": 60.0,
+          "price": 65.72000122070312
+        },
+        {
+          "ts": 1793119500.0,
+          "type": "OPEN",
+          "reason": "B12",
+          "qty": 60.0,
+          "price": 65.875
+        },
+        {
+          "ts": 1793120400.0,
+          "type": "CLOSE",
+          "reason": "E_3_STRUCTURE_EXIT_2TF_15m_1h",
+          "qty": 60.0,
+          "price": 66.16500091552734
+        },
+        {
+          "ts": 1793121300.0,
+          "type": "OPEN",
+          "reason": "B_SRS_ENTRY",
+          "qty": 60.0,
+          "price": 66.37999725341797
+        },
+        {
+          "ts": 1793122200.0,
+          "type": "CLOSE",
+          "reason": "WT_PERCENTILE_pctD=0_4h=2",
+          "qty": 60.0,
+          "price": 66.25
+        },
+        {
+          "ts": 1793123100.0,
+          "type": "OPEN",
+          "reason": "B14",
+          "qty": 60.0,
+          "price": 66.25
+        },
+        {
+          "ts": 1793124000.0,
+          "type": "CLOSE",
+          "reason": "WT_PERCENTILE_pctD=0_4h=2",
+          "qty": 60.0,
+          "price": 66.2249984741211
+        },
+        {
+          "ts": 1793124900.0,
+          "type": "OPEN",
+          "reason": "B12",
+          "qty": 60.0,
+          "price": 65.9800033569336
+        },
+        {
+          "ts": 1793129400.0,
+          "type": "REDUCE",
+          "reason": "SATOSHIT_EXIT_PARTIAL 0.52",
+          "qty": 31.0,
+          "price": 65.98999786376953
+        }
+      ],
+      "end_qty_engine": 29.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "GDX_SHORT",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "GE_SHORT",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "GLD_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-22T15:14:55Z",
+      "set_sha256": "b175f89c3644224d541f6e2637b6eed60a411cf87119cf182a00fb2196619110",
+      "events": [
+        {
+          "ts": 1793107800.0,
+          "type": "REDUCE",
+          "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain0.38",
+          "qty": 2.0,
+          "price": 369.2099914550781
+        },
+        {
+          "ts": 1793107800.0,
+          "type": "REDUCE",
+          "reason": "PPL_TP_g0.38%>=0.38%_stopBE367.7932",
+          "qty": 6.0,
+          "price": 369.2099914550781
+        },
+        {
+          "ts": 1793116800.0,
+          "type": "CLOSE",
+          "reason": "PEAK_GIVEBACK_GAIN_EROSION_STOP_peak1.24%_cur1.17%",
+          "qty": 2.0,
+          "price": 372.1400146484375
+        },
+        {
+          "ts": 1793117700.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 10.0,
+          "price": 371.82000732421875
+        },
+        {
+          "ts": 1793122200.0,
+          "type": "REDUCE",
+          "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain0.15",
+          "qty": 2.0,
+          "price": 372.3900146484375
+        }
+      ],
+      "end_qty_engine": 8.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "GME_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-19T15:58:05Z",
+      "set_sha256": "e1d75ea04f068c5c26eaa7ca6616e5ca1ca9c85a559ae8831c9e430965aa68c6",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "GOOGL_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-22T10:59:47Z",
+      "set_sha256": "3da96883c48143fadccb4cbe2ccd1b02d9ca17317737c0840e0e4ddc04036b4a",
+      "events": [
+        {
+          "ts": 1793112300.0,
+          "type": "OPEN",
+          "reason": "REENTRY_HIGHER_LOW",
+          "qty": 12.0,
+          "price": 320.2200012207031
+        },
+        {
+          "ts": 1793114100.0,
+          "type": "CLOSE",
+          "reason": "HTF_AGAINST_FORCE_CLOSE_wt1h-93.9vs-92.2_g-0.02pct",
+          "qty": 12.0,
+          "price": 320.1700134277344
+        },
+        {
+          "ts": 1793115000.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 12.0,
+          "price": 320.69500732421875
+        },
+        {
+          "ts": 1793116800.0,
+          "type": "REDUCE",
+          "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain0.29",
+          "qty": 3.0,
+          "price": 321.6099853515625
+        },
+        {
+          "ts": 1793117700.0,
+          "type": "REDUCE",
+          "reason": "CYCLE_TP_TIERED_T1_0.30pct_gain0.43",
+          "qty": 2.0,
+          "price": 322.0799865722656
+        },
+        {
+          "ts": 1793127600.0,
+          "type": "CLOSE",
+          "reason": "LH_LL_TOP_EXIT arm=D_LH+LL leg=DC1H",
+          "qty": 7.0,
+          "price": 323.45001220703125
+        },
+        {
+          "ts": 1793128500.0,
+          "type": "OPEN",
+          "reason": "B12",
+          "qty": 12.0,
+          "price": 323.3949890136719
+        }
+      ],
+      "end_qty_engine": 12.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "HOOD_SHORT",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "IBM_LONG",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "KGC_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-26T06:57:27Z",
+      "set_sha256": "3777145090c5a6e4bfa0653cb2139914a7f7b053e42fd5875ebdb3abacbdfd74",
+      "events": [
+        {
+          "ts": 1793110500.0,
+          "type": "CLOSE",
+          "reason": "DAYTRADE_STOP dc_15m_high +0.25% STOP_BUF",
+          "qty": 100.0,
+          "price": 22.645000457763672
+        },
+        {
+          "ts": 1793118600.0,
+          "type": "OPEN",
+          "reason": "WR_PULLBACK",
+          "qty": 175.0,
+          "price": 22.815000534057617
+        },
+        {
+          "ts": 1793123100.0,
+          "type": "CLOSE",
+          "reason": "WT_DC_EXIT_100_g=0.09%_MANDATORY_REENTRY",
+          "qty": 175.0,
+          "price": 22.795000076293945
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "LDOS_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-26T03:57:11Z",
+      "set_sha256": "a7294e1295a5821c53b7dbcb2e7392a33f12df398e06948468f9c77e7538f9d5",
+      "events": [],
+      "end_qty_engine": 18.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "LITE_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-22T11:02:56Z",
+      "set_sha256": "cf220385f02fbac50c339c01763985fdac68127712de301088205e0dbb52efc7",
+      "events": [
+        {
+          "ts": 1793112300.0,
+          "type": "CLOSE",
+          "reason": "FIXED_STOP",
+          "qty": 4.0,
+          "price": 848.4959548950195
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "LLY_LONG",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "LMT_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-26T07:02:28Z",
+      "set_sha256": "22492b8f9fe9ff62cd167f2e04e4fb46d638bbeae14c9837401c4c27facc191e",
+      "events": [
+        {
+          "ts": 1793107800.0,
+          "type": "OPEN",
+          "reason": "GAP_MORNING_REENTRY",
+          "qty": 3.0,
+          "price": 628.7000122070312
+        },
+        {
+          "ts": 1793112300.0,
+          "type": "CLOSE",
+          "reason": "WT_LOWER_CROSS_EXIT wt_1h lower wt+price",
+          "qty": 3.0,
+          "price": 627.6749877929688
+        },
+        {
+          "ts": 1793116800.0,
+          "type": "OPEN",
+          "reason": "REENTRY_MANDATORY",
+          "qty": 3.0,
+          "price": 628.5700073242188
+        }
+      ],
+      "end_qty_engine": 3.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "LNG_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-26T23:20:36Z",
+      "set_sha256": "e68e34830d71e082478e67d0952a48ba0d4d6f19ee1845410acf69a006553b39",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "LOW_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-25T20:55:41Z",
+      "set_sha256": "53ebc52f094538d38424da2e8e91323894edffd68886bea0304c53ddb9e840b1",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "LRCX_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-24T05:29:35Z",
+      "set_sha256": "08439e96f878681b998071dd4bf7500050574f5d3e6979a590a72a07a3051772",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "LSCC_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-23T07:05:42Z",
+      "set_sha256": "ca5f109a5c7bb6078a5ea107685ba73d4cc600e4ae59f05d294f3eb6f6471025",
+      "events": [
+        {
+          "ts": 1793110500.0,
+          "type": "CLOSE",
+          "reason": "FIXED_STOP",
+          "qty": 40.0,
+          "price": 101.1500015258789
+        },
+        {
+          "ts": 1793119500.0,
+          "type": "OPEN",
+          "reason": "B_SRS_ENTRY",
+          "qty": 38.0,
+          "price": 103.83999633789062
+        }
+      ],
+      "end_qty_engine": 38.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "MA_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-26T07:59:24Z",
+      "set_sha256": "c877306b58cfe6a68da416274b1dabb190b35373bec7d39cd7cd265bd560f8e7",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "META_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-20T14:17:58Z",
+      "set_sha256": "4aaf6a599af28135a71db25ea09e1b07c0697b2515ba8e478f8579367e8292a9",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "MNTS_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-23T08:43:52Z",
+      "set_sha256": "d75f3904c0929a4642d91f7b0d11cb264248355c5e8d1e30d5bec401323996ee",
+      "events": [],
+      "end_qty_engine": 1801.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "MOS_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-23T10:13:48Z",
+      "set_sha256": "bfd33081f4801902ec250d2fd9a04ada06176007ffd1a5c1a7022f20a576a0f5",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "MP_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-24T05:34:48Z",
+      "set_sha256": "d0d84327415b8b1558e295434154f019e2c1115c482b201a3417987288dd116a",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "MRVL_LONG",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "MSFT_LONG",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "MSTR_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-21T13:01:24Z",
+      "set_sha256": "f32a76ee2807175e321a33eb3072c4e8443eb77db494588f7b0f115336c66fc1",
+      "events": [
+        {
+          "ts": 1793108700.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 28.0,
+          "price": 139.31500244140625
+        },
+        {
+          "ts": 1793114100.0,
+          "type": "CLOSE",
+          "reason": "MTF_DC_REJECT_1h_px140.5900",
+          "qty": 28.0,
+          "price": 140.58999633789062
+        },
+        {
+          "ts": 1793115000.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 28.0,
+          "price": 140.85000610351562
+        },
+        {
+          "ts": 1793116800.0,
+          "type": "REDUCE",
+          "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain0.28",
+          "qty": 7.0,
+          "price": 140.4600067138672
+        },
+        {
+          "ts": 1793118600.0,
+          "type": "REDUCE",
+          "reason": "CYCLE_TP_TIERED_T1_0.30pct_gain0.32",
+          "qty": 5.0,
+          "price": 140.39999389648438
+        },
+        {
+          "ts": 1793123100.0,
+          "type": "REDUCE",
+          "reason": "CYCLE_TP_TIERED_T2_0.50pct_gain0.72",
+          "qty": 4.0,
+          "price": 139.8350067138672
+        },
+        {
+          "ts": 1793124000.0,
+          "type": "CLOSE",
+          "reason": "MTF_DC_REJECT_1h_px140.1700",
+          "qty": 12.0,
+          "price": 140.1699981689453
+        },
+        {
+          "ts": 1793124900.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 28.0,
+          "price": 140.0749969482422
+        },
+        {
+          "ts": 1793130300.0,
+          "type": "CLOSE",
+          "reason": "WT_DC_EXIT_40_g=-0.96%_MANDATORY_REENTRY",
+          "qty": 28.0,
+          "price": 141.4250030517578
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "MU_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-23T05:27:21Z",
+      "set_sha256": "c6a2c91d0a564c22ec724933a22872f0a9e46080a6ac994ff25a3f51683836aa",
+      "events": [
+        {
+          "ts": 1793112300.0,
+          "type": "CLOSE",
+          "reason": "FIXED_STOP",
+          "qty": 4.0,
+          "price": 927.1521269226074
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "NLR_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-23T08:48:23Z",
+      "set_sha256": "c2ae9fe247b9ea57abd5d48c120181931bf1608c6604380be9aeba6e816356c2",
+      "events": [
+        {
+          "ts": 1793108700.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 42.0,
+          "price": 93.18000030517578
+        },
+        {
+          "ts": 1793112300.0,
+          "type": "REDUCE",
+          "reason": "REGIME_REDUCE",
+          "qty": 17.0,
+          "price": 94.36000061035156
+        },
+        {
+          "ts": 1793115000.0,
+          "type": "CLOSE",
+          "reason": "FIXED_STOP",
+          "qty": 25.0,
+          "price": 94.51569877624512
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "NUE_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-22T11:53:32Z",
+      "set_sha256": "45562ee93335a00fd113ac1bff1cbf99933cfbb5a9fa9be73c414d696a4fb579",
+      "events": [
+        {
+          "ts": 1793108700.0,
+          "type": "CLOSE",
+          "reason": "LH_LL_TOP_EXIT arm=4h_LL leg=DC1H",
+          "qty": 19.0,
+          "price": 269.3500061035156
+        },
+        {
+          "ts": 1793117700.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 1.0,
+          "price": 274.7799987792969
+        },
+        {
+          "ts": 1793118600.0,
+          "type": "AUGMENT",
+          "reason": "AUGMENT_AT_LOSS_HL",
+          "qty": 1.0,
+          "price": 273.9849853515625
+        },
+        {
+          "ts": 1793119500.0,
+          "type": "AUGMENT",
+          "reason": "AUGMENT_AT_LOSS_HL",
+          "qty": 2.0,
+          "price": 272.04998779296875
+        },
+        {
+          "ts": 1793122200.0,
+          "type": "AUGMENT",
+          "reason": "AUGMENT_AT_LOSS_HL",
+          "qty": 4.0,
+          "price": 272.9100036621094
+        },
+        {
+          "ts": 1793123100.0,
+          "type": "AUGMENT",
+          "reason": "AUGMENT_AT_LOSS_HL",
+          "qty": 8.0,
+          "price": 272.8349914550781
+        },
+        {
+          "ts": 1793124900.0,
+          "type": "AUGMENT",
+          "reason": "AUGMENT_AT_LOSS_HL",
+          "qty": 2.0,
+          "price": 272.07000732421875
+        },
+        {
+          "ts": 1793124900.0,
+          "type": "CLOSE",
+          "reason": "GAP_MOC_EXIT",
+          "qty": 18.0,
+          "price": 272.07000732421875
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "NVDA_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-22T04:24:42Z",
+      "set_sha256": "54baef06e81b182b88ed2112ac54b8719a45283d344cd3730fca71915493a859",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "NXE_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-26T23:24:31Z",
+      "set_sha256": "ec9944cbcc18646e53c70fa1bc464f1c75ad5fd73389bea10fc936d417a31965",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "OLED_LONG",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "ORCL_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-22T07:59:25Z",
+      "set_sha256": "1780c7890f19de0e333a46e232feb29a16e622e4f2f8a2ac5ce9d3f0bcbd94e9",
+      "events": [
+        {
+          "ts": 1793110500.0,
+          "type": "CLOSE",
+          "reason": "FIXED_STOP",
+          "qty": 31.0,
+          "price": 130.08999633789062
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "PAAS_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-26T07:03:57Z",
+      "set_sha256": "78d2a190843f280ed98035e1c4cb918b25ef311013da7b4582a54fc599765b12",
+      "events": [
+        {
+          "ts": 1793111400.0,
+          "type": "OPEN",
+          "reason": "B_SRS_ENTRY",
+          "qty": 97.0,
+          "price": 40.97999954223633
+        },
+        {
+          "ts": 1793112300.0,
+          "type": "CLOSE",
+          "reason": "FIXED_STOP",
+          "qty": 97.0,
+          "price": 41.19272515296936
+        },
+        {
+          "ts": 1793120400.0,
+          "type": "OPEN",
+          "reason": "WR_PULLBACK",
+          "qty": 97.0,
+          "price": 41.23500061035156
+        },
+        {
+          "ts": 1793130300.0,
+          "type": "CLOSE",
+          "reason": "FIXED_STOP",
+          "qty": 97.0,
+          "price": 41.61878688812256
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "PLTR_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-23T08:58:16Z",
+      "set_sha256": "d2bfbd3a7c1934f2e6ad71b1ab713e18cfe8dbd6616c935ccfb853653a448595",
+      "events": [
+        {
+          "ts": 1793116800.0,
+          "type": "OPEN",
+          "reason": "REENTRY_HIGHER_LOW",
+          "qty": 19.0,
+          "price": 201.21499633789062
+        },
+        {
+          "ts": 1793125800.0,
+          "type": "REDUCE",
+          "reason": "SATOSHIT_EXIT_PARTIAL 0.70",
+          "qty": 13.0,
+          "price": 199.55499267578125
+        },
+        {
+          "ts": 1793127600.0,
+          "type": "REDUCE",
+          "reason": "SATOSHIT_EXIT_PARTIAL 0.70",
+          "qty": 4.0,
+          "price": 200.4199981689453
+        },
+        {
+          "ts": 1793128500.0,
+          "type": "REDUCE",
+          "reason": "SATOSHIT_EXIT_PARTIAL 0.70",
+          "qty": 1.0,
+          "price": 200.32000732421875
+        },
+        {
+          "ts": 1793129400.0,
+          "type": "CLOSE",
+          "reason": "WHOLE_SHARE_REDUCE_TO_FLAT[SATOSHIT_EXIT_PARTIAL 0.70]",
+          "qty": 1.0,
+          "price": 199.7949981689453
+        },
+        {
+          "ts": 1793130300.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 20.0,
+          "price": 198.75
+        }
+      ],
+      "end_qty_engine": 20.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "PR_LONG",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "PSX_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-22T09:28:26Z",
+      "set_sha256": "708d7d6b9d69058e9206baf162557bf7e4a0390d0bc600da8e73d82cc950a8f8",
+      "events": [
+        {
+          "ts": 1793110500.0,
+          "type": "CLOSE",
+          "reason": "ULTIMATE_DC_4h_HARD_STOP at dc_4h_low 0.25pct channel",
+          "qty": 13.0,
+          "price": 277.05999755859375
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "PWR_SHORT",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "QBTS_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-26T00:59:00Z",
+      "set_sha256": "c4d7ad77280ef9bda226847f2e3095116a297837b52ff079dd001f52c52aad8c",
+      "events": [
+        {
+          "ts": 1793110500.0,
+          "type": "CLOSE",
+          "reason": "FIXED_STOP",
+          "qty": 259.0,
+          "price": 11.719224579334258
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "QLYS_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-26T23:27:59Z",
+      "set_sha256": "696d35267e2d2126684b5b334553731f715cb4022a8556ab77381042e195b7c8",
+      "events": [
+        {
+          "ts": 1793116800.0,
+          "type": "OPEN",
+          "reason": "DC_BREAKOUT_ENTRY",
+          "qty": 17.0,
+          "price": 228.5800018310547
+        },
+        {
+          "ts": 1793120400.0,
+          "type": "CLOSE",
+          "reason": "LH_LL_TOP_EXIT arm=4h_LH leg=DC1H",
+          "qty": 17.0,
+          "price": 229.13999938964844
+        },
+        {
+          "ts": 1793121300.0,
+          "type": "OPEN",
+          "reason": "DC_BREAKOUT_ENTRY",
+          "qty": 17.0,
+          "price": 230.13499450683594
+        },
+        {
+          "ts": 1793124000.0,
+          "type": "CLOSE",
+          "reason": "LH_LL_TOP_EXIT arm=4h_LH leg=DC1H",
+          "qty": 17.0,
+          "price": 229.72999572753906
+        },
+        {
+          "ts": 1793124900.0,
+          "type": "OPEN",
+          "reason": "B_SRS_ENTRY",
+          "qty": 17.0,
+          "price": 229.31500244140625
+        },
+        {
+          "ts": 1793129400.0,
+          "type": "CLOSE",
+          "reason": "LH_LL_TOP_EXIT arm=4h_LH leg=DC1H",
+          "qty": 17.0,
+          "price": 228.4499969482422
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "QQQ_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-22T03:47:36Z",
+      "set_sha256": "7c0fe78de3d832c165ed67c6bf851ad2a77b143f27ef8247d8136f97fb4b8fa0",
+      "events": [
+        {
+          "ts": 1793130300.0,
+          "type": "OPEN",
+          "reason": "B12",
+          "qty": 5.0,
+          "price": 721.239990234375
+        }
+      ],
+      "end_qty_engine": 5.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "RBLX_LONG",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "RIO_SHORT",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "RKLB_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-26T05:57:14Z",
+      "set_sha256": "8b4a242fe2e98ff383dd46e02a93a3a08d1f9e155f7d58a7ee76ad3096ec9c6f",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "RRC_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-26T23:58:35Z",
+      "set_sha256": "c0877f1d8e11601dbe42f4f54a0f556fb3697304b3890596ce740a60fa657fe6",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "RS_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-26T07:05:21Z",
+      "set_sha256": "b504f555a77ce3a020889325bf9e35609d6c7ba85e74ceba6bcfc9f0deb900c8",
+      "events": [
+        {
+          "ts": 1793108700.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 9.0,
+          "price": 426.55999755859375
+        },
+        {
+          "ts": 1793114100.0,
+          "type": "REDUCE",
+          "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain0.27",
+          "qty": 2.0,
+          "price": 427.7049865722656
+        },
+        {
+          "ts": 1793115900.0,
+          "type": "REDUCE",
+          "reason": "CYCLE_TP_TIERED_T1_0.30pct_gain0.39",
+          "qty": 1.0,
+          "price": 428.2049865722656
+        },
+        {
+          "ts": 1793120400.0,
+          "type": "REDUCE",
+          "reason": "CYCLE_TP_TIERED_T2_0.50pct_gain0.70",
+          "qty": 1.0,
+          "price": 429.5400085449219
+        },
+        {
+          "ts": 1793120400.0,
+          "type": "REDUCE",
+          "reason": "PPL_TP_g0.70%>=0.62%_stopBE426.1334",
+          "qty": 4.0,
+          "price": 429.5400085449219
+        }
+      ],
+      "end_qty_engine": 1.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "SAP_LONG",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "SCCO_SHORT",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "SCHW_SHORT",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "SLV_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-22T08:25:26Z",
+      "set_sha256": "99f4f956f636856d21450fc178566ff2615bb6e98ca9fc362dfacc97f8c1ddca",
+      "events": [
+        {
+          "ts": 1793127600.0,
+          "type": "OPEN",
+          "reason": "REENTRY_MANDATORY",
+          "qty": 55.0,
+          "price": 49.1150016784668
+        }
+      ],
+      "end_qty_engine": 55.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "SMCI_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-22T04:42:48Z",
+      "set_sha256": "68b4e89f27c16b70cf8e9278c952e515ddc136b069a1d34047853fcfcf040686",
+      "events": [
+        {
+          "ts": 1793108700.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 118.0,
+          "price": 33.689998626708984
+        },
+        {
+          "ts": 1793112300.0,
+          "type": "CLOSE",
+          "reason": "FIXED_STOP",
+          "qty": 118.0,
+          "price": 34.54499816894531
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "SNDK_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-18T16:04:08Z",
+      "set_sha256": "a4e140a665af637e7492ba018b76ab0c4063b3490a9a7895e4cb5f01f8977a40",
+      "events": [
+        {
+          "ts": 1793112300.0,
+          "type": "OPEN",
+          "reason": "HARDCODED_RALLY_REENTRY",
+          "qty": 1.0,
+          "price": 1300.5
+        },
+        {
+          "ts": 1793125800.0,
+          "type": "CLOSE",
+          "reason": "GAP_MOC_EXIT",
+          "qty": 1.0,
+          "price": 1299.5250244140625
+        },
+        {
+          "ts": 1793130300.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 1.0,
+          "price": 1304.010009765625
+        }
+      ],
+      "end_qty_engine": 1.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "SPOT_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-23T10:51:47Z",
+      "set_sha256": "260eba9a33c7572b2adb838cc47bbe48825915e5bc3059cda706bc685e9eb525",
+      "events": [
+        {
+          "ts": 1793120400.0,
+          "type": "OPEN",
+          "reason": "REENTRY_DC4_15M_BREAK",
+          "qty": 6.0,
+          "price": 557.8300170898438
+        },
+        {
+          "ts": 1793130300.0,
+          "type": "CLOSE",
+          "reason": "WT_PERCENTILE_pctD=92_4h=90",
+          "qty": 6.0,
+          "price": 555.5549926757812
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "SPY_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-23T10:54:48Z",
+      "set_sha256": "aab5d02e1a795c8c896ed9dd7b272d9504b7af9f1aa550f94e1cadea0d7862e8",
+      "events": [
+        {
+          "ts": 1793111400.0,
+          "type": "CLOSE",
+          "reason": "E_3_STRUCTURE_EXIT_3TF_15m_1h_4h",
+          "qty": 5.0,
+          "price": 767.3350219726562
+        },
+        {
+          "ts": 1793112300.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 5.0,
+          "price": 768.6950073242188
+        },
+        {
+          "ts": 1793113200.0,
+          "type": "CLOSE",
+          "reason": "E_3_STRUCTURE_EXIT_3TF_15m_1h_4h",
+          "qty": 5.0,
+          "price": 769.2550048828125
+        },
+        {
+          "ts": 1793114100.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 5.0,
+          "price": 769.6400146484375
+        },
+        {
+          "ts": 1793115000.0,
+          "type": "CLOSE",
+          "reason": "E_3_STRUCTURE_EXIT_3TF_15m_1h_4h",
+          "qty": 5.0,
+          "price": 770.344970703125
+        },
+        {
+          "ts": 1793115900.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 5.0,
+          "price": 770.5900268554688
+        },
+        {
+          "ts": 1793116800.0,
+          "type": "CLOSE",
+          "reason": "E_3_STRUCTURE_EXIT_3TF_15m_1h_4h",
+          "qty": 5.0,
+          "price": 770.2000122070312
+        },
+        {
+          "ts": 1793117700.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 5.0,
+          "price": 770.1500244140625
+        },
+        {
+          "ts": 1793118600.0,
+          "type": "CLOSE",
+          "reason": "E_3_STRUCTURE_EXIT_2TF_1h_4h",
+          "qty": 5.0,
+          "price": 769.3150024414062
+        },
+        {
+          "ts": 1793119500.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 5.0,
+          "price": 769.3800048828125
+        },
+        {
+          "ts": 1793120400.0,
+          "type": "CLOSE",
+          "reason": "E_3_STRUCTURE_EXIT_2TF_1h_4h",
+          "qty": 5.0,
+          "price": 769.6900024414062
+        },
+        {
+          "ts": 1793121300.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 5.0,
+          "price": 769.489990234375
+        },
+        {
+          "ts": 1793122200.0,
+          "type": "CLOSE",
+          "reason": "E_3_STRUCTURE_EXIT_2TF_1h_4h",
+          "qty": 5.0,
+          "price": 769.9000244140625
+        },
+        {
+          "ts": 1793123100.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 5.0,
+          "price": 769.5800170898438
+        },
+        {
+          "ts": 1793124000.0,
+          "type": "CLOSE",
+          "reason": "E_3_STRUCTURE_EXIT_2TF_1h_4h",
+          "qty": 5.0,
+          "price": 769.530029296875
+        },
+        {
+          "ts": 1793124900.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 5.0,
+          "price": 769.1749877929688
+        },
+        {
+          "ts": 1793125800.0,
+          "type": "CLOSE",
+          "reason": "E_3_STRUCTURE_EXIT_2TF_1h_4h",
+          "qty": 5.0,
+          "price": 769.239990234375
+        },
+        {
+          "ts": 1793127600.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 5.0,
+          "price": 770.14501953125
+        },
+        {
+          "ts": 1793128500.0,
+          "type": "CLOSE",
+          "reason": "E_3_STRUCTURE_EXIT_2TF_1h_4h",
+          "qty": 5.0,
+          "price": 770.155029296875
+        },
+        {
+          "ts": 1793129400.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 5.0,
+          "price": 770.719970703125
+        },
+        {
+          "ts": 1793130300.0,
+          "type": "CLOSE",
+          "reason": "E_3_STRUCTURE_EXIT_3TF_15m_1h_4h",
+          "qty": 5.0,
+          "price": 769.6699829101562
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "TSLA_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-27T00:04:39Z",
+      "set_sha256": "e2f7d7022a3733f700caecafd28a18014362bfec5f30788902d59cb79258e3fc",
+      "events": [
+        {
+          "ts": 1793108700.0,
+          "type": "OPEN",
+          "reason": "HARDCODED_RALLY_REENTRY",
+          "qty": 2.0,
+          "price": 403.5199890136719
+        }
+      ],
+      "end_qty_engine": 2.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "T_SHORT",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "UEC_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-27T00:07:11Z",
+      "set_sha256": "4ab132df07eb2a3846178b880321b409df365132e73872aa2d0cda01b189ce4b",
+      "events": [
+        {
+          "ts": 1793112300.0,
+          "type": "CLOSE",
+          "reason": "FIXED_STOP",
+          "qty": 303.0,
+          "price": 7.85458753824234
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "ULTA_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-24T05:54:03Z",
+      "set_sha256": "cfb4fd2111668f9ed0ffe5d32a7eeae0318b7ebf36c64bd27cb41160a08079bc",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "UNH_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-23T11:05:41Z",
+      "set_sha256": "a1cbff6a44016923691839c49dd26e1c49f0048ab7b343ae6e7b43091f294d0e",
+      "events": [
+        {
+          "ts": 1793111400.0,
+          "type": "OPEN",
+          "reason": "GAP_MORNING_REENTRY",
+          "qty": 9.0,
+          "price": 412.2749938964844
+        },
+        {
+          "ts": 1793114100.0,
+          "type": "REDUCE",
+          "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain0.18",
+          "qty": 2.0,
+          "price": 413.0249938964844
+        }
+      ],
+      "end_qty_engine": 7.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "UUUU_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-23T11:14:49Z",
+      "set_sha256": "2d3db677193f00bda26bd39fb98df969f7fc18dbb2363835405519f007391d56",
+      "events": [
+        {
+          "ts": 1793111400.0,
+          "type": "CLOSE",
+          "reason": "DAYTRADE_STOP dc_15m_high +0.25% STOP_BUF",
+          "qty": 530.0,
+          "price": 8.03499984741211
+        },
+        {
+          "ts": 1793112300.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 493.0,
+          "price": 8.104999542236328
+        },
+        {
+          "ts": 1793113200.0,
+          "type": "CLOSE",
+          "reason": "FIXED_STOP",
+          "qty": 493.0,
+          "price": 8.125262041091919
+        },
+        {
+          "ts": 1793123100.0,
+          "type": "OPEN",
+          "reason": "HARDCODED_RALLY_REENTRY",
+          "qty": 492.0,
+          "price": 8.125
+        }
+      ],
+      "end_qty_engine": 492.0,
+      "engine_valid": false,
+      "invalid_reason": "TIM 90.2% >80% (vomit)",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "U_SHORT",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "VALE_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-26T07:09:37Z",
+      "set_sha256": "557320307a5ec90174a7e7826591b1c5f61b49d8d6221e2992a6b785a43b6033",
+      "events": [
+        {
+          "ts": 1793119500.0,
+          "type": "OPEN",
+          "reason": "REENTRY_LOWER_HIGH",
+          "qty": 254.0,
+          "price": 11.725000381469727
+        },
+        {
+          "ts": 1793121300.0,
+          "type": "CLOSE",
+          "reason": "NEWBORN_LOSS_KILL age30m g-0.60%",
+          "qty": 254.0,
+          "price": 11.795000076293945
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "VICR_SHORT",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-26T03:57:31Z",
+      "set_sha256": "61e660c071f9b7067d61921cb7fc9437a5e23f5f82c8e62eee9e124d6542ef43",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "VLO_LONG",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "VT_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-22T09:56:15Z",
+      "set_sha256": "57d814b5f09c34f8a41a7896a21461cdf6f735e43cbbbc481513c43d95061e2c",
+      "events": [
+        {
+          "ts": 1793117700.0,
+          "type": "REDUCE",
+          "reason": "SATOSHIT_EXIT_PARTIAL 0.52",
+          "qty": 2.0,
+          "price": 157.7550048828125
+        },
+        {
+          "ts": 1793118600.0,
+          "type": "CLOSE",
+          "reason": "PEAK_GIVEBACK_GAIN_EROSION_STOP_peak0.77%_cur0.58%",
+          "qty": 1.0,
+          "price": 157.59500122070312
+        },
+        {
+          "ts": 1793119500.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 25.0,
+          "price": 157.59500122070312
+        },
+        {
+          "ts": 1793129400.0,
+          "type": "REDUCE",
+          "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain0.15",
+          "qty": 6.0,
+          "price": 157.8350067138672
+        }
+      ],
+      "end_qty_engine": 19.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "VZ_SHORT",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "V_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-26T08:05:17Z",
+      "set_sha256": "0459fecfaaa1a7af9ffa4fc7e8a65c89d0f2d237848fba7bdc8e9b722b348cc0",
+      "events": [],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "WDAY_SHORT",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "WMT_LONG",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    },
+    {
+      "ss": "XLE_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-27T00:12:41Z",
+      "set_sha256": "08883f69435ae1a096abe94fd676b2032fce1f05f2c915f98e4ac9282dd6cf82",
+      "events": [
+        {
+          "ts": 1793109600.0,
+          "type": "CLOSE",
+          "reason": "DAYTRADE_STOP dc_15m_low -0.25% STOP_BUF",
+          "qty": 57.0,
+          "price": 68.875
+        },
+        {
+          "ts": 1793112300.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 58.0,
+          "price": 68.46499633789062
+        },
+        {
+          "ts": 1793114100.0,
+          "type": "CLOSE",
+          "reason": "FIXED_STOP",
+          "qty": 58.0,
+          "price": 68.26391006469727
+        },
+        {
+          "ts": 1793115000.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 58.0,
+          "price": 68.3949966430664
+        },
+        {
+          "ts": 1793124900.0,
+          "type": "REDUCE",
+          "reason": "SATOSHIT_EXIT_PARTIAL 0.70",
+          "qty": 41.0,
+          "price": 68.31500244140625
+        },
+        {
+          "ts": 1793125800.0,
+          "type": "REDUCE",
+          "reason": "SATOSHIT_EXIT_PARTIAL 0.70",
+          "qty": 12.0,
+          "price": 68.26499938964844
+        },
+        {
+          "ts": 1793127600.0,
+          "type": "CLOSE",
+          "reason": "FIXED_STOP",
+          "qty": 5.0,
+          "price": 68.08435976028443
+        },
+        {
+          "ts": 1793128500.0,
+          "type": "OPEN",
+          "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+          "qty": 41.0,
+          "price": 68.29499816894531
+        }
+      ],
+      "end_qty_engine": 41.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "XOM_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-26T08:07:59Z",
+      "set_sha256": "1b74fe85ea47b4d94972ac300520b35579e2759f4e946603f11f9156d26af993",
+      "events": [
+        {
+          "ts": 1793118600.0,
+          "type": "OPEN",
+          "reason": "B_SRS_ENTRY",
+          "qty": 22.0,
+          "price": 180.78500366210938
+        },
+        {
+          "ts": 1793119500.0,
+          "type": "CLOSE",
+          "reason": "E_3_STRUCTURE_EXIT_3TF_15m_1h_4h",
+          "qty": 22.0,
+          "price": 180.7550048828125
+        },
+        {
+          "ts": 1793129400.0,
+          "type": "OPEN",
+          "reason": "B_SRS_ENTRY",
+          "qty": 22.0,
+          "price": 180.0800018310547
+        },
+        {
+          "ts": 1793130300.0,
+          "type": "CLOSE",
+          "reason": "E_3_STRUCTURE_EXIT_3TF_15m_1h_4h",
+          "qty": 22.0,
+          "price": 179.9149932861328
+        }
+      ],
+      "end_qty_engine": 0.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "ZCSH_LONG",
+      "status": "REPLAYED",
+      "source": "active_preopen",
+      "set_at": "2026-10-25T06:56:59Z",
+      "set_sha256": "3b46e2086854dc3c1c5ffe4b21cb42795f43b462041b5664b5a79fd08daf4ad3",
+      "events": [
+        {
+          "ts": 1793109600.0,
+          "type": "REDUCE",
+          "reason": "PPL_TP_g1.84%>=0.50%_stopBE33.1234",
+          "qty": 95.0,
+          "price": 33.73500061035156
+        }
+      ],
+      "end_qty_engine": 57.0,
+      "engine_valid": true,
+      "invalid_reason": "",
+      "npz_tail": 1793130300.0
+    },
+    {
+      "ss": "ZETA_LONG",
+      "status": "NO_ASOF_SET",
+      "source": "history_proxy"
+    }
+  ]
+}

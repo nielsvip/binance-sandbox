@@ -193,10 +193,10 @@ class TradierConfig:
     # Original values preserved in inline comment in case we need to revert.
     # 2026-04-27 SECOND CUT — user at -30%/week, headless-chicken MSTR loop. Now 1/4 of original.
     MAX_POSITION_SIZE: float = (
-        5000.0  # STDEV_SLOPE fix 2026-09-14: was 2250 (4.5x START) capped 10x D ladder; now 500*10=5000
+        4000.0  # USER 2026-10-28 vector-trader sizing mandate ("stocks 900 crypto 15 NO EXCEPTION"; the venue's OWN config file is the only authority the tiny S1/S5 vector traders read); was 5000.0 (STDEV_SLOPE fix 2026-09-14).
     )
     START_POSITION_SIZE: float = (
-        500.0  # was 150 (2026-04-27 emergency cut); 2026-06-14 raised: $150 can't buy 1 share of $300+ stocks
+        900.0  # USER 2026-10-28 vector-trader sizing mandate ("stocks 900 crypto 15 NO EXCEPTION"; the venue's OWN config file is the only authority the tiny S1/S5 vector traders read); was 500.0 (2026-06-14: $150 can't buy 1 share of $300+ stocks).
     )
     # 2026-10-17 LIVE WIRING of the vector order/position caps (stocks half). vec_decisions.qty_quantizers
     # cap_dollar/cap_add_qty serve both venues off whichever cfg they are handed and read this venue's own

@@ -57,51 +57,69 @@ BAR_S = 900
 CRYPTO_ACCOUNTS = ("ang", "fin", "flz", "inf", "men")
 STOCK_ACCOUNTS = ("tra", "trb", "trc")
 CRYPTO_SUFFIXES = ("USDT", "USDC", "USD1", "USDS", "BUSD", "FDUSD", "TUSD", "DAI")
-# ═══ OPERATOR SIZING MANDATE 2026-10-28, VERBATIM: "stock and crypto are not the same pls DONT FUCK THIS UP
-# stocks 900 crypto 15 NO EXCEPTION make sure this is ABSOLUTELY HONORED in the new vector trading scripts on
-# s1 and s5". These were ONE venue-blind pair of module constants defaulting to the CRYPTO value (15), so the
-# stocks trader on S5 ran on a $15 slice for days and kept falling through to the one-whole-share path. The
-# default is now chosen BY VENUE and the mandated START size is PINNED: a wrong value is corrected and logged,
-# never silently traded, and never a refusal to trade (a sizing mistake must not stop the book).
-VENUE_SIZING = {
-    "crypto": {"START_POSITION_SIZE": 15.0, "MAX_OPEN_NOTIONAL": 80.0, "STOCK_ONE_SHARE_MAX": 0.0},
-    "stocks": {"START_POSITION_SIZE": 900.0, "MAX_OPEN_NOTIONAL": 4000.0, "STOCK_ONE_SHARE_MAX": 4000.0},
-}
-MANDATED_START = {"crypto": 15.0, "stocks": 900.0}  # NO EXCEPTION without VD_ALLOW_SIZE_OVERRIDE=1
-START_POSITION_SIZE = float(os.environ.get("VD_START_POSITION_SIZE", "15"))
-MAX_OPEN_NOTIONAL = float(os.environ.get("VD_MAX_OPEN_NOTIONAL", "110"))
-STOCK_ONE_SHARE_MAX = float(os.environ.get("VD_STOCK_ONE_SHARE_MAX", "500"))
+# ═══ OPERATOR SIZING MANDATE 2026-10-28 ═══
+# VERBATIM: "stock and crypto are not the same pls DONT FUCK THIS UP stocks 900 crypto 15 NO EXCEPTION" and
+# "a stock can NEVER see config.py and a crypto can never see config_tradier.py JUST MAKE SURE THE NEW TINY
+# SCIPTS THAT ACUALLLY TRADE on s1 crypto and s5 stock DO ACUTLALY READ HTESE VALUES FORM THE RIGHT CONFIG FILES".
+# These three knobs used to be ONE venue-blind triple of env reads defaulting to the CRYPTO value (15), so the
+# stocks trader on S5 ran on a $15 slice and kept falling through to the one-whole-share path.
+# They are now resolved ONLY by apply_venue_sizing(venue) from the venue's own config file — see that function.
+# The placeholders below are 0.0 on purpose: if any path ever sizes an order before the venue is resolved, it
+# sizes to ZERO (no order) instead of silently trading the other venue's slice.
+MANDATED_START = {"crypto": 15.0, "stocks": 900.0}  # a mismatch is reported loudly on every start, never traded silently
+START_POSITION_SIZE = 0.0
+MAX_OPEN_NOTIONAL = 0.0
+STOCK_ONE_SHARE_MAX = 0.0
 
 
 def apply_venue_sizing(venue: str) -> dict:
-    """Resolve the three sizing knobs for THIS venue and pin the operator's mandated START size.
+    """Read the sizing for THIS venue out of THIS venue's OWN config file. Nothing else.
 
-    Precedence: VD_<KNOB>_<VENUE> (venue-specific, cannot cross-contaminate) > VD_<KNOB> (shared) >
-    the per-venue default above. Then the mandate is enforced on START_POSITION_SIZE. Returns a report
-    dict for the startup log so the live value is verifiable at a glance.
+    OPERATOR 2026-10-28, VERBATIM: "a stock can NEVER see config.py and a crypto can never see
+    config_tradier.py JUST MAKE SURE THE NEW TINY SCIPTS THAT ACUALLLY TRADE on s1 crypto and s5 stock
+    DO ACUTLALY READ HTESE VALUES FORM THE RIGHT CONFIG FILES."
+
+      crypto (S1) -> config.py          Config.START_POSITION_SIZE / Config.MAX_POSITION_SIZE
+      stocks (S5) -> config_tradier.py  TradierConfig.START_POSITION_SIZE / .MAX_POSITION_SIZE
+
+    The config file is the ONE authority: there is deliberately no env fallback for these three knobs,
+    because a second source is how the stocks trader ended up running on the crypto $15 slice. Each
+    branch imports exactly one module, so the other venue's config is never even loaded; the guard
+    below also refuses a value that arrived from the wrong class. A read failure is fatal — the trader
+    must not guess a position size.
     """
     global START_POSITION_SIZE, MAX_OPEN_NOTIONAL, STOCK_ONE_SHARE_MAX
     v = "stocks" if str(venue).lower().startswith("stock") else "crypto"
-    rep = {"venue": v, "pinned": [], "source": {}}
-    for knob, dflt in VENUE_SIZING[v].items():
-        spec = os.environ.get(f"VD_{knob}_{v.upper()}")
-        shared = os.environ.get(f"VD_{knob}")
-        if spec not in (None, ""):
-            val, src = float(spec), f"VD_{knob}_{v.upper()}"
-        elif shared not in (None, ""):
-            val, src = float(shared), f"VD_{knob}"
-        else:
-            val, src = float(dflt), "venue_default"
-        if knob == "START_POSITION_SIZE":
-            want = MANDATED_START[v]
-            if abs(val - want) > 1e-9 and os.environ.get("VD_ALLOW_SIZE_OVERRIDE") != "1":
-                rep["pinned"].append(f"START_POSITION_SIZE {val} -> {want} ({v} mandate; {src} ignored)")
-                val, src = want, f"{v}_mandate_pin"
-        rep["source"][knob] = f"{val} via {src}"
-        globals()[knob] = val
-    START_POSITION_SIZE = globals()["START_POSITION_SIZE"]
-    MAX_OPEN_NOTIONAL = globals()["MAX_OPEN_NOTIONAL"]
-    STOCK_ONE_SHARE_MAX = globals()["STOCK_ONE_SHARE_MAX"]
+    if v == "crypto":
+        import config as _m
+        cls, src, want_mod = _m.Config, "config.py:Config", "config"
+    else:
+        import config_tradier as _m
+        cls, src, want_mod = _m.TradierConfig, "config_tradier.py:TradierConfig", "config_tradier"
+    # EXACT module match, never a substring: "config" is a substring of "config_tradier", so a substring
+    # test refuses every stocks start. This asserts the numbers came from THIS venue's module and no other.
+    got_mod = str(getattr(cls, "__module__", ""))
+    if got_mod != want_mod:
+        raise SystemExit(f"REFUSED: {v} sizing resolved from module {got_mod!r}, expected {want_mod!r} — a {v} trader may never read the other venue's config")
+    start = float(getattr(cls, "START_POSITION_SIZE"))
+    maxpos = float(getattr(cls, "MAX_POSITION_SIZE"))
+    if not (start > 0 and maxpos > 0):
+        raise SystemExit(f"REFUSED: {src} gives START_POSITION_SIZE={start} MAX_POSITION_SIZE={maxpos} — refusing to trade on a non-positive size")
+    START_POSITION_SIZE = start
+    MAX_OPEN_NOTIONAL = maxpos
+    # stocks-only: one whole share is allowed up to the venue's own max position, never a third number
+    STOCK_ONE_SHARE_MAX = maxpos if v == "stocks" else 0.0
+    rep = {"venue": v, "config": src, "pinned": [],
+           "source": {"START_POSITION_SIZE": f"{start} via {src}", "MAX_OPEN_NOTIONAL": f"{maxpos} via {src}.MAX_POSITION_SIZE",
+                      "STOCK_ONE_SHARE_MAX": f"{STOCK_ONE_SHARE_MAX} via {src}.MAX_POSITION_SIZE" if v == "stocks" else "n/a (crypto)"}}
+    want = MANDATED_START.get(v)
+    if want is not None and abs(start - want) > 1e-9:
+        # Do NOT silently trade a size the operator did not order, and do NOT silently change the
+        # config either: say it loudly on every start so the wrong number cannot hide.
+        rep["pinned"].append(f"WARNING {src} START_POSITION_SIZE={start} but the {v} mandate is {want} — FIX THE CONFIG FILE")
+    for _k in ("VD_START_POSITION_SIZE", "VD_MAX_OPEN_NOTIONAL", "VD_STOCK_ONE_SHARE_MAX"):
+        if os.environ.get(_k) not in (None, ""):
+            rep["pinned"].append(f"{_k}={os.environ[_k]} IGNORED — {src} is the only sizing authority")
     return rep
 HB_STALE_S = float(os.environ.get("VD_HB_STALE_S", "90"))
 ACCT_DEAD_S = float(os.environ.get("VD_ACCT_DEAD_S", "180"))
@@ -1029,7 +1047,9 @@ class Trader:
                 row = consumed.setdefault(ss, {}).get(acct)
                 if not row or row.get("sig") != sig:
                     consumed[ss][acct] = {"sig": sig, "npz_tail": st.get("npz_tail"), "ok": bool(st.get("ok")), "at": planned_at,
-                                          "orders": [o["act"] for o in orders if o["ss"] == ss]}
+                                          "orders": [o["act"] for o in orders if o["ss"] == ss], "keys": [o["key"] for o in orders if o["ss"] == ss],
+                                          "held": float((pos.get(ss) or {}).get("qty") or 0.0), "allowed": bool(allowed(acct, ss)) if (ss in keys.get(acct, ()) and st.get("open") and not (pos.get(ss) or {}).get("qty")) else None,
+                                          "notes": [n for s, n in notes if s == ss]}
                     consumed_dirty = True
             self.obs[acct] = (now, {ss: p["qty"] for ss, p in pos.items()})
             for ss, n in notes:
