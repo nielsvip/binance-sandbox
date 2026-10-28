@@ -39,11 +39,15 @@ def revert(final: dict, start: dict, switches) -> dict:
 
 
 def _g(r):
+    """Gain of one confirm-window result. The engine's `valid` flag carries the PUBLICATION floor (>= 10 trades); on a 7-day
+    confirm window that floor is rarely met, so any result with >= 1 trade counts (measured 2026-10-28: UNH_LONG final set
+    0 trades on its 7 sessions -> invalid -> every switch unscored). A 0-trade result is no evidence -> None."""
     try:
-        if r is None or not r.get("valid", True):
+        if r is None or r.get("gain_pct") is None:
             return None
-        g = r.get("gain_pct")
-        return None if g is None else float(g)
+        if not r.get("valid", True) and int(r.get("trades") or 0) <= 0:
+            return None
+        return float(r["gain_pct"])
     except Exception:
         return None
 
@@ -74,7 +78,8 @@ def confirm_promotions(final: dict, start: dict, score, floor: float, max_switch
     if dropped:
         g_pruned = _g((score({"pruned": pruned}) or {}).get("pruned"))
     return {"kept": kept, "dropped": dropped, "unscored": unscored, "pruned": pruned, "g_final": g_final, "g_start": g_start, "g_pruned": g_pruned,
-            "loo": loo, "n_changed": len(sw), "capped": capped, "floor_pp": float(floor)}
+            "loo": loo, "n_changed": len(sw), "capped": capped, "floor_pp": float(floor),
+            "unconfirmable": g_final is None, "final_trades_confirm": int(((res.get("final") or {}).get("trades")) or 0)}
 
 
 def expectation(progress: dict):

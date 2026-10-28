@@ -76,6 +76,13 @@ def env_int(name, default):
 
 
 SLOTS = env_int("FLEET_SLOTS", 4)
+# Per-host board cap (operator 2026-10-28 NO-OOM order): S1 also runs the crypto NPZ refresh pool, the bar trigger and the
+# forward-state writers (25-28 GB peak, 3 reboots on 10-27), so it holds ONE board; others keep FLEET_SLOTS. Override with
+# FLEET_HOST_SLOTS='{"s1": 1, "s5": 3}'.
+try:
+    HOST_SLOTS = {str(k): int(v) for k, v in json.loads(os.environ.get("FLEET_HOST_SLOTS", '{"s1": 1}')).items()}
+except (ValueError, TypeError, AttributeError):
+    HOST_SLOTS = {"s1": 1}
 WORKERS = env_int("FLEET_WORKERS", 7)
 ORPHAN_SLOTS = env_int("FLEET_ORPHAN_SLOTS", 1)
 MEM_MIN_MB = env_int("FLEET_MEM_MIN_MB", 11000)  # 2026-10-28 operator: NO OOM — a 7-worker board peaks 8-9 GB, so a launch needs that much headroom beyond the 2-3 GB reserve
@@ -355,8 +362,9 @@ def admission(d, now, name=""):
     hold = manual_hold(name, now) if name else ""
     if hold:
         return 0, hold
-    if nrun >= SLOTS:
-        return 0, f"full {nrun}/{SLOTS}"
+    cap = HOST_SLOTS.get(name, SLOTS) if name else SLOTS
+    if nrun >= cap:
+        return 0, f"full {nrun}/{cap}"
     if int(d.get("disk_free_mb") or 0) < DISK_MIN_MB:
         return 0, f"disk {d.get('disk_free_mb')}MB < {DISK_MIN_MB}"
     if int(d.get("mem_avail_mb") or 0) < MEM_MIN_MB:

@@ -109,3 +109,18 @@ def test_floor_on_confirm_contract():
     assert i_hc < i_fl < i_pub  # the floor runs after the confirm step and before the publish
     assert '_fl_conf = holdout_confirm_score(new_symside, _fl_alt, defaults)' in src  # judged on the unseen confirm window
     assert 'progress["headline"] = honest_headline(progress, new_symside)' in src[i_fl:i_pub]  # spec path writes the headline
+
+
+def test_invalid_but_traded_counts_zero_trades_unconfirmable():
+    final, start = {"A": 1}, {}
+    def score(sets):
+        out = {}
+        for k in sets:
+            out[k] = {"gain_pct": {"final": 1.0, "start": 0.2, "loo:A": 0.1}.get(k, 0.5), "valid": False, "trades": 3}
+        return out
+    r = HP.confirm_promotions(final, start, score, floor=0.48)
+    assert r["kept"] == ["A"] and r["unscored"] == [] and not r["unconfirmable"]
+    def score0(sets):
+        return {k: {"gain_pct": 0.0, "valid": False, "trades": 0} for k in sets}
+    r0 = HP.confirm_promotions(final, start, score0, floor=0.48)
+    assert r0["unconfirmable"] and r0["unscored"] == ["A"] and r0["dropped"] == []
