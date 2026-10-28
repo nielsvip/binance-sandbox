@@ -98,26 +98,12 @@
     "symbol": "IOTXUSDT",
     "side": "SHORT"
   },
-  "ang:SOLUSDC_LONG": {
-    "orderId": "4000002003643401",
-    "stopPrice": 101.35,
-    "entry_sig": "2026-10-28 11:31:45.693000+00:00",
-    "symbol": "SOLUSDC",
-    "side": "LONG"
-  },
   "ang:GRASSUSDT_LONG": {
     "orderId": "4000002003674402",
     "stopPrice": 0.7071,
     "entry_sig": "2026-10-28 11:46:30.437000+00:00",
     "symbol": "GRASSUSDT",
     "side": "LONG"
-  },
-  "ang:AAVEUSDC_SHORT": {
-    "orderId": "4000002003738556",
-    "stopPrice": 137.19,
-    "entry_sig": "2026-10-28 12:15:14.454000+00:00",
-    "symbol": "AAVEUSDC",
-    "side": "SHORT"
   },
   "ang:EGLDUSDT_SHORT": {
     "orderId": "4000002002960922",
@@ -152,6 +138,20 @@
     "stopPrice": 0.004318,
     "entry_sig": "2026-10-28 10:46:37.365000+00:00",
     "symbol": "JASMYUSDT",
+    "side": "SHORT"
+  },
+  "ang:IOTAUSDT_SHORT": {
+    "orderId": "4000002003194349",
+    "stopPrice": 0.04306,
+    "entry_sig": "2026-10-28 07:31:40.835000+00:00",
+    "symbol": "IOTAUSDT",
+    "side": "SHORT"
+  },
+  "ang:STRKUSDT_SHORT": {
+    "orderId": "4000002003704481",
+    "stopPrice": 0.04829,
+    "entry_sig": "2026-10-28 12:01:49.458000+00:00",
+    "symbol": "STRKUSDT",
     "side": "SHORT"
   }
 }
