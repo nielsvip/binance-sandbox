@@ -97,13 +97,6 @@
     "symbol": "BIGTIMEUSDT",
     "side": "SHORT"
   },
-  "ang:JASMYUSDT_SHORT": {
-    "orderId": "4000002002016676",
-    "stopPrice": 0.004344,
-    "entry_sig": "2026-10-27 21:36:59.361000+00:00",
-    "symbol": "JASMYUSDT",
-    "side": "SHORT"
-  },
   "ang:STXUSDT_SHORT": {
     "orderId": "4000002002028315",
     "stopPrice": 0.3074,
@@ -139,13 +132,6 @@
     "symbol": "ARUSDT",
     "side": "LONG"
   },
-  "ang:INXUSDT_SHORT": {
-    "orderId": "4000002002422819",
-    "stopPrice": 0.005019,
-    "entry_sig": "2026-10-28 01:31:21.536000+00:00",
-    "symbol": "INXUSDT",
-    "side": "SHORT"
-  },
   "ang:ONDOUSDT_LONG": {
     "orderId": "4000002002423043",
     "stopPrice": 0.413,
@@ -174,13 +160,6 @@
     "symbol": "IOTXUSDT",
     "side": "SHORT"
   },
-  "ang:ZROUSDT_LONG": {
-    "orderId": "4000002002589451",
-    "stopPrice": 1.6586,
-    "entry_sig": "2026-10-28 02:46:22.995000+00:00",
-    "symbol": "ZROUSDT",
-    "side": "LONG"
-  },
   "ang:GRASSUSDT_LONG": {
     "orderId": "4000002002491497",
     "stopPrice": 0.7255,
@@ -202,20 +181,6 @@
     "symbol": "RUNEUSDT",
     "side": "LONG"
   },
-  "ang:PENGUUSDC_LONG": {
-    "orderId": "4000002002154450",
-    "stopPrice": 0.007627,
-    "entry_sig": "2026-10-27 23:16:27.977000+00:00",
-    "symbol": "PENGUUSDC",
-    "side": "LONG"
-  },
-  "ang:AVAXUSDC_LONG": {
-    "orderId": "4000002002469598",
-    "stopPrice": 8.802,
-    "entry_sig": "2026-10-28 01:50:21.540000+00:00",
-    "symbol": "AVAXUSDC",
-    "side": "LONG"
-  },
   "ang:MINAUSDT_SHORT": {
     "orderId": "4000002002763896",
     "stopPrice": 0.06559,
@@ -229,5 +194,26 @@
     "entry_sig": "2026-10-28 02:46:02.992000+00:00",
     "symbol": "EDUUSDT",
     "side": "SHORT"
+  },
+  "ang:JASMYUSDT_SHORT": {
+    "orderId": "4000002002016676",
+    "stopPrice": 0.004344,
+    "entry_sig": "2026-10-27 21:36:59.361000+00:00",
+    "symbol": "JASMYUSDT",
+    "side": "SHORT"
+  },
+  "ang:AVAXUSDC_LONG": {
+    "orderId": "4000002002469598",
+    "stopPrice": 8.802,
+    "entry_sig": "2026-10-28 01:50:21.540000+00:00",
+    "symbol": "AVAXUSDC",
+    "side": "LONG"
+  },
+  "ang:PENGUUSDC_LONG": {
+    "orderId": "4000002002154450",
+    "stopPrice": 0.007627,
+    "entry_sig": "2026-10-27 23:16:27.977000+00:00",
+    "symbol": "PENGUUSDC",
+    "side": "LONG"
   }
 }

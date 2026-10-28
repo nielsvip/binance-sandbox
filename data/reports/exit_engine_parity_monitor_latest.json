@@ -1,35 +1,35 @@
 {
- "now": "2026-10-28T03:30:21.559392+00:00",
+ "now": "2026-10-28T04:30:26.779534+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 35939,
- "last_exit_ts": "2026-10-28T03:30:23.454645+00:00",
- "n_leaks": 4865,
- "n_gate_on": 15855,
+ "n_exit_rows": 36931,
+ "last_exit_ts": "2026-10-28T04:30:29.193831+00:00",
+ "n_leaks": 4860,
+ "n_gate_on": 15712,
  "n_ungated": 16,
- "n_safety": 5820,
+ "n_safety": 6997,
  "n_unmapped": 2493,
- "n_unverified": 6888,
- "since": "2026-10-26T03:30:21.559392+00:00",
+ "n_unverified": 6851,
+ "since": "2026-10-26T04:30:26.779534+00:00",
  "vec_exact_by_action": {
   "CLOSE": 2
  },
- "native_rows": 35937,
+ "native_rows": 36929,
  "unverified_by_family": {
-  "RATIO_REBALANCE (ABLATION_DISABLE_RATIO_REBALANCE=False)": 2936,
-  "GAIN_EROSION_STOP (None=None)": 66,
+  "RATIO_REBALANCE (ABLATION_DISABLE_RATIO_REBALANCE=False)": 2896,
   "REENTRY_OTHER (ABLATION_DISABLE_REENTRY=False)": 73,
+  "GAIN_EROSION_STOP (None=None)": 64,
   "BT_RSI2_XTREME_EXIT (RSI2_XTREME_EXIT_ENABLED=False)": 857,
   "WT_EXHAUST (None=None)": 586,
   "QUICK_OPEN_GOOD (None=None)": 157,
   "ULTIMATE_DC (None=None)": 782,
-  "HAIKU_WINNER (HAIKU_WINNER_ENABLED=True)": 106,
+  "HAIKU_WINNER (HAIKU_WINNER_ENABLED=True)": 111,
   "STRUCTURE_EXIT (None=None)": 1237,
   "BT_STOCH_XTREME_EXIT (STOCH_XTREME_EXIT_ENABLED=False)": 70,
   "R1_DC_LOW_EMERGENCY (None=None)": 7,
   "IN_GAIN_TREND_EXIT (None=None)": 11
  },
  "leaks_by_family": {
-  "QUICK_OPEN_STRONG": 1649,
+  "QUICK_OPEN_STRONG": 1644,
   "WRONG_SIDE_ABS_KILL": 619,
   "E_1_WT_DELTA_EXIT (E_1_WT_EXIT_USE_DELTA_ENABLED=False)": 1245,
   "WT_4H_VEL": 1349,
@@ -88,8 +88,8 @@
   "QUICK_OPEN_STRONG fin:ZECUSDC_LONG": 20
  },
  "gate_on_by_family": {
-  "VEC_DRIVEN_BRIDGE (VEC_DRIVEN_ENABLED)": 13396,
-  "GOLDEN_RULE": 384,
+  "VEC_DRIVEN_BRIDGE (VEC_DRIVEN_ENABLED)": 13259,
+  "GOLDEN_RULE": 378,
   "HARDCODED_RALLY_REENTRY (HARDCODED_RALLY_REENTRY_ENABLED)": 181,
   "CYCLE_TP (CYCLE_TP_TIERED_ENABLED)": 662,
   "PARTIAL_PROFIT_LOCK (PARTIAL_PROFIT_LOCK_ENABLED)": 722,
@@ -105,7 +105,7 @@
   "RANKING_DIRECT_ALL_GREEN": 3
  },
  "safety_by_family": {
-  "FIXED_STOP": 5820
+  "FIXED_STOP": 6997
  },
  "unmapped": {
   "ANG_TIMING_TRIM_FAILED": 730,
@@ -160,13 +160,13 @@
   "SIMPLE_TP_EXIT(gain=0.64%>=tp=0.5%)_bc": 4
  },
  "actions": {
-  "OPEN": 10008,
-  "REDUCE": 4890,
-  "QUICK_OPEN": 1806,
-  "CLOSE": 7913,
+  "OPEN": 9896,
+  "REDUCE": 4850,
+  "CLOSE": 9057,
   "QUICK_AUGMENT": 1357,
+  "QUICK_OPEN": 1801,
   "QUICK_CLOSE": 6700,
-  "AUGMENT": 1203,
+  "AUGMENT": 1208,
   "QUICK_REDUCE": 1816,
   "QUICK_QUICK_CLOSE": 246
  }
