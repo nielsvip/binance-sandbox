@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-28T17:40:31Z",
+ "ts": "2026-10-28T17:45:36Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -28,20 +28,20 @@
  "accounts": {
   "trb": {
    "fills_6h": 0,
-   "open_positions": 47,
-   "unrealised_usd": 13.28,
+   "open_positions": 48,
+   "unrealised_usd": 3.42,
    "pos_mismatch": 0
   },
   "trc": {
    "fills_6h": 0,
-   "open_positions": 46,
-   "unrealised_usd": 3.09,
+   "open_positions": 47,
+   "unrealised_usd": -6.32,
    "pos_mismatch": 0
   },
   "fin": {
    "fills_6h": 133,
    "open_positions": 18,
-   "unrealised_usd": -0.71,
+   "unrealised_usd": -0.28,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -55,9 +55,9 @@
    }
   },
   "men": {
-   "fills_6h": 168,
+   "fills_6h": 167,
    "open_positions": 22,
-   "unrealised_usd": 0.39,
+   "unrealised_usd": 1.08,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 12,
@@ -71,9 +71,9 @@
    }
   },
   "ang": {
-   "fills_6h": 152,
+   "fills_6h": 153,
    "open_positions": 19,
-   "unrealised_usd": 0.45,
+   "unrealised_usd": 0.54,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -89,7 +89,7 @@
   "inf": {
    "fills_6h": 26,
    "open_positions": 3,
-   "unrealised_usd": -0.11,
+   "unrealised_usd": 0.04,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 3,
@@ -105,7 +105,7 @@
   "flz": {
    "fills_6h": 29,
    "open_positions": 7,
-   "unrealised_usd": -0.23,
+   "unrealised_usd": -0.26,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 3,
@@ -138,21 +138,21 @@
     "1995"
    ],
    "starts_30m": 1,
-   "log_age_s": 45.0
+   "log_age_s": 25.0
   },
   "men": {
    "pids": [
     "75912"
    ],
    "starts_30m": 1,
-   "log_age_s": 176.0
+   "log_age_s": 66.0
   },
   "ang": {
    "pids": [
     "72668"
    ],
    "starts_30m": 1,
-   "log_age_s": 12.0
+   "log_age_s": 62.0
   },
   "inf": {
    "pids": [
@@ -166,128 +166,136 @@
     "76243"
    ],
    "starts_30m": 1,
-   "log_age_s": 387.0
+   "log_age_s": 693.0
   },
   "trb": {
    "pids": [
     "57586"
    ],
    "starts_30m": 1,
-   "log_age_s": 508.0
+   "log_age_s": 213.0
   },
   "trc": {
    "pids": [
     "57924"
    ],
    "starts_30m": 1,
-   "log_age_s": -0.0
+   "log_age_s": 0.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-28T17:40:32Z",
+   "ts": "2026-10-28T17:45:36Z",
+   "severity": "CRITICAL",
+   "kind": "ACCOUNT_EQUITY_DROP",
+   "key": "trb",
+   "evidence": "unrealised PnL of the same open positions fell $28.06 since 2026-10-28T17:21:04Z (now $+3.42)"
+  },
+  {
+   "ts": "2026-10-28T17:45:36Z",
+   "severity": "CRITICAL",
+   "kind": "ACCOUNT_EQUITY_DROP",
+   "key": "trc",
+   "evidence": "unrealised PnL of the same open positions fell $35.80 since 2026-10-28T17:21:04Z (now $-6.32)"
+  },
+  {
+   "ts": "2026-10-28T17:45:37Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "men:GRASSUSDT_LONG",
    "evidence": "OPEN HTF_WT_CHURN_REENTRY_120MIN bar=2026-10-28T11:30:00Z: live already holds 20.9 (state divergence)"
   },
   {
-   "ts": "2026-10-28T17:40:32Z",
+   "ts": "2026-10-28T17:45:37Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "men:GRASSUSDT_LONG",
    "evidence": "OPEN HTF_WT_CHURN_REENTRY_120MIN bar=2026-10-28T11:30:00Z: live already holds 20.9 (state divergence)"
   },
   {
-   "ts": "2026-10-28T17:40:32Z",
+   "ts": "2026-10-28T17:45:37Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "men:RVNUSDT_SHORT",
    "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px0.00149 bar=2026-10-28T11:45:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-28T17:40:32Z",
+   "ts": "2026-10-28T17:45:37Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "men:MOVRUSDT_SHORT",
    "evidence": "OPEN TIER1_PRICE_CROSS_REENTRY_exit1.1253_cur bar=2026-10-28T11:45:00Z: live already holds 13.4 (state divergence)"
   },
   {
-   "ts": "2026-10-28T17:40:32Z",
+   "ts": "2026-10-28T17:45:37Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "men:BATUSDT_LONG",
    "evidence": "CLOSE FIXED_STOP bar=2026-10-28T12:00:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-28T17:40:32Z",
+   "ts": "2026-10-28T17:45:37Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "men:INJUSDT_LONG",
    "evidence": "CLOSE FIXED_STOP bar=2026-10-28T12:00:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-28T17:40:32Z",
+   "ts": "2026-10-28T17:45:37Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:GALAUSDT_SHORT",
    "evidence": "CLOSE 0 @ 2026-10-28T12:15:28Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-28T17:40:33Z",
+   "ts": "2026-10-28T17:45:38Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "inf:ARUSDT_LONG",
    "evidence": "CLOSE FIXED_STOP bar=2026-10-28T13:45:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-28T17:40:33Z",
+   "ts": "2026-10-28T17:45:38Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "inf:ARUSDT_LONG",
    "evidence": "OPEN TIER1_PRICE_CROSS_REENTRY_exit3.4633_cur bar=2026-10-28T15:00:00Z: live already holds 4.3 (state divergence)"
   },
   {
-   "ts": "2026-10-28T17:40:33Z",
+   "ts": "2026-10-28T17:45:38Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:BTCDOMUSDT_LONG",
    "evidence": "CLOSE 0 @ 2026-10-28T16:45:24Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-28T17:40:33Z",
+   "ts": "2026-10-28T17:45:38Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "flz:BNBUSDC_LONG",
    "evidence": "CLOSE LH_LL_TOP_EXIT arm=4h_LH leg=DC1H bar=2026-10-28T11:45:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-28T17:40:33Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "men",
-   "evidence": "ez_manage_men.log not written for 176s"
-  },
-  {
-   "ts": "2026-10-28T17:40:33Z",
+   "ts": "2026-10-28T17:45:39Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 387s"
+   "evidence": "ez_manage_flz.log not written for 693s"
   },
   {
-   "ts": "2026-10-28T17:40:33Z",
+   "ts": "2026-10-28T17:45:39Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "trb",
-   "evidence": "tradier_manage_trb.log not written for 508s"
+   "evidence": "tradier_manage_trb.log not written for 213s"
   }
  ],
  "alert_counts": {
+  "ACCOUNT_EQUITY_DROP": 2,
   "VEC_OPEN_WHILE_LIVE_IN": 4,
   "VEC_EXIT_WHILE_LIVE_FLAT": 5,
   "FILL_WITHOUT_VEC_DECISION": 2,
-  "STALE_LOG": 3
+  "STALE_LOG": 2
  },
  "active_interventions": {
   "acct:trc": {
@@ -361,5 +369,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 2.12
+ "sweep_s": 2.42
 }
