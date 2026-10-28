@@ -1,79 +1,69 @@
 {
- "generated_at": "2026-10-28 13:53 UTC",
- "total_capital_usd": 62.69,
+ "generated_at": "2026-10-28 14:10 UTC",
+ "total_capital_usd": 48.37,
  "tier_capital": {
   "A": 0.0,
-  "B": 47.88,
-  "C": 14.8
+  "B": 33.39,
+  "C": 14.98
  },
  "tier_count": {
   "A": 0,
-  "B": 4,
+  "B": 3,
   "C": 1
  },
  "winners": [],
  "losers": [
-  "inf:COMPUSDT_LONG",
-  "inf:XRPUSDC_LONG",
-  "inf:ARUSDT_LONG",
-  "inf:BNBUSDC_LONG"
+  "flz:XRPUSDC_LONG",
+  "flz:BNBUSDC_LONG",
+  "flz:DASHUSDT_SHORT"
  ],
- "mediocre": [],
+ "mediocre": [
+  "flz:BTCDOMUSDT_LONG"
+ ],
  "positions": [
   {
-   "pk": "inf:COMPUSDT_LONG",
-   "symbol": "COMPUSDT",
-   "account": "inf",
-   "value_usd": 14.8,
-   "gain_pct": -1.342,
+   "pk": "flz:DASHUSDT_SHORT",
+   "symbol": "DASHUSDT",
+   "account": "flz",
+   "value_usd": 14.98,
+   "gain_pct": -0.165,
    "tier": "C",
-   "perf_mult": 0.23,
-   "amt": 0.694,
-   "mark": 21.33
+   "perf_mult": 0.47,
+   "amt": 0.282,
+   "mark": 53.12768532
   },
   {
-   "pk": "inf:XRPUSDC_LONG",
+   "pk": "flz:XRPUSDC_LONG",
    "symbol": "XRPUSDC",
-   "account": "inf",
-   "value_usd": 14.71,
-   "gain_pct": -1.137,
+   "account": "flz",
+   "value_usd": 14.75,
+   "gain_pct": -0.813,
    "tier": "B",
-   "perf_mult": 4.12,
+   "perf_mult": 4.11,
    "amt": 11.2,
-   "mark": 1.3136
+   "mark": 1.31700603
   },
   {
-   "pk": "inf:ARUSDT_LONG",
-   "symbol": "ARUSDT",
-   "account": "inf",
-   "value_usd": 14.54,
-   "gain_pct": -0.869,
-   "tier": "B",
-   "perf_mult": 0.92,
-   "amt": 4.2,
-   "mark": 3.462
-  },
-  {
-   "pk": "inf:BTCDOMUSDT_LONG",
+   "pk": "flz:BTCDOMUSDT_LONG",
    "symbol": "BTCDOMUSDT",
-   "account": "inf",
+   "account": "flz",
    "value_usd": 11.14,
-   "gain_pct": 0.407,
+   "gain_pct": 0.117,
    "tier": "B",
    "perf_mult": 0.67,
    "amt": 0.002,
-   "mark": 5570.0
+   "mark": 5570.60033836
   },
   {
-   "pk": "inf:BNBUSDC_LONG",
+   "pk": "flz:BNBUSDC_LONG",
    "symbol": "BNBUSDC",
-   "account": "inf",
-   "value_usd": 7.49,
-   "gain_pct": -0.787,
+   "account": "flz",
+   "value_usd": 7.5,
+   "gain_pct": -0.678,
    "tier": "B",
    "perf_mult": 0.76,
    "amt": 0.01,
-   "mark": 749.02836625
+   "mark": 749.5
   }
  ]
 }

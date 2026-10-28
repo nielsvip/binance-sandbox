@@ -1,22 +1,21 @@
 {
- "generated_utc": "2026-10-28T13:12:16.722203+00:00",
+ "generated_utc": "2026-10-28T14:12:03.978962+00:00",
  "days": 1.0,
  "totals": {
   "entry_promises": 84,
-  "entry_broken_no_delivery": 83,
-  "exit_promises": 109,
-  "exit_pending": 1,
-  "exit_broken_no_delivery": 107,
+  "entry_broken_no_delivery": 84,
+  "exit_promises": 110,
+  "exit_broken_no_delivery": 108,
   "exit_skipped_inflight": 1328,
   "exit_kept_late": 1,
-  "entry_pending": 1
+  "exit_pending": 1
  },
  "per_key": {
   "inf:PENGUUSDC_LONG": {
    "entry_promises": 1,
    "entry_broken_no_delivery": 1,
    "exit_promises": 1,
-   "exit_pending": 1
+   "exit_broken_no_delivery": 1
   },
   "men:UNIUSDC_LONG": {
    "exit_promises": 2,
@@ -280,8 +279,7 @@
    "exit_promises": 2,
    "exit_broken_no_delivery": 2,
    "entry_promises": 2,
-   "entry_broken_no_delivery": 1,
-   "entry_pending": 1
+   "entry_broken_no_delivery": 2
   },
   "flz:BNBUSDC_LONG": {
    "exit_promises": 2,
@@ -314,10 +312,11 @@
    "exit_broken_no_delivery": 1
   },
   "inf:ARUSDT_LONG": {
-   "exit_promises": 1,
+   "exit_promises": 2,
    "exit_broken_no_delivery": 1,
    "entry_promises": 1,
-   "entry_broken_no_delivery": 1
+   "entry_broken_no_delivery": 1,
+   "exit_pending": 1
   }
  },
  "detail": [
@@ -2230,6 +2229,26 @@
    "action": "OPEN",
    "reason": "TIER1_PRICE_CROSS_REENTRY_exit3.4863_cur3.4940_k3m16",
    "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "BNBUSDC_LONG",
+   "kind": "entry",
+   "bar": "10-28 12:45",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "PENGUUSDC_LONG",
+   "kind": "exit",
+   "bar": "10-28 12:45",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "FIXED_STOP",
+   "outcome": "NO_DELIVERY"
   }
  ],
  "broken": [
@@ -2362,6 +2381,32 @@
    "bar_ts": null,
    "lag_s": null,
    "detail": "inflight_age_s=109"
+  },
+  {
+   "ts": 1793196036.8879318,
+   "kind": "BROKEN",
+   "acct": "inf",
+   "key": "inf:BTCDOMUSDT_LONG",
+   "sym_side": "BTCDOMUSDT_LONG",
+   "label": "CLOSE VEC_EXIT_OWED",
+   "why": "EXIT_WEDGED_FORCED",
+   "is_exit": true,
+   "bar_ts": null,
+   "lag_s": null,
+   "detail": "inflight_age_s=137"
+  },
+  {
+   "ts": 1793196401.6446788,
+   "kind": "BROKEN",
+   "acct": "inf",
+   "key": "inf:BTCDOMUSDT_LONG",
+   "sym_side": "BTCDOMUSDT_LONG",
+   "label": "CLOSE VEC_EXIT_OWED",
+   "why": "EXIT_WEDGED_FORCED",
+   "is_exit": true,
+   "bar_ts": null,
+   "lag_s": null,
+   "detail": "inflight_age_s=100"
   }
  ]
 }
