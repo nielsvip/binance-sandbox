@@ -1,49 +1,40 @@
 {
  "host": "MacBook-Pro.local",
  "base": ".",
- "at": "2026-10-28T22:44:49Z",
+ "at": "2026-10-28T22:37:09Z",
  "dirs": {
   "klines_cache": {
-   "files": 1642,
+   "files": 1004,
    "files_with_noncanonical": 0,
    "stamps": {}
   },
   "klines_cache/tradier": {
-   "files": 4044,
+   "files": 0,
    "files_with_noncanonical": 0,
    "stamps": {}
   },
   "klines_canonical": {
-   "files": 829,
+   "files": 414,
    "files_with_noncanonical": 0,
    "stamps": {}
   },
   "klines_cache_gateway": {
-   "files": 2888,
-   "files_with_noncanonical": 1,
-   "stamps": {
-    "other-string": 1
-   }
+   "files": 701,
+   "files_with_noncanonical": 0,
+   "stamps": {}
   },
   "klines_cache_backtest": {
-   "files": 8,
+   "files": 0,
    "files_with_noncanonical": 0,
    "stamps": {}
   },
   "klines_cache_gateway/tradier": {
-   "files": 1367,
+   "files": 0,
    "files_with_noncanonical": 0,
    "stamps": {}
   }
  },
- "offenders": [
-  {
-   "file": "klines_cache_gateway/PNUTUSDC_3m.json",
-   "kinds": {
-    "other-string": 1
-   }
-  }
- ],
- "noncanonical_files": 1,
- "secs": 66.5
+ "offenders": [],
+ "noncanonical_files": 0,
+ "secs": 1791.5
 }
