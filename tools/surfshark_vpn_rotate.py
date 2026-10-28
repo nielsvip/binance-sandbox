@@ -547,6 +547,18 @@ def wait_state(names, want, old_ip, timeout=75, same_ip_ok=False):
 
 def do_rotate(target=None, force_tunnel=False):
     wl, state = whitelist(), load_state()
+    if not target and not force_tunnel:
+        # USER 2026-10-28: a healthy whitelisted link (London WireGuard 185.134.22.81)
+        # was torn down by a network blip. Keep it while its egress is whitelisted and
+        # Binance answers 200; with no egress at all the link is not the problem.
+        ip0 = egress_ip()
+        cur0 = [s for s in slots() if s["status"] == "Connected"]
+        if not ip0:
+            log("no egress (network down?) — not rotating")
+            return False
+        if cur0 and ip0 in wl and not ban_active()[0] and binance_probe().get("ping") == 200:
+            log(f"keep {cur0[0]['name']}: whitelisted egress {ip0}, Binance 200 — no rotation")
+            return True
     quit_app()
     time.sleep(2)
     if target == "none":

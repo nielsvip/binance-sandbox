@@ -280,3 +280,27 @@ def test_build_active_preserves_hardening(tmp_path, monkeypatch):
 
 def test_restore_try_bounded():
     assert vpn.RESTORE_TRY_S <= 180
+
+
+def test_healthy_whitelisted_link_is_kept(monkeypatch):
+    monkeypatch.setattr(vpn, "whitelist", lambda: {"185.134.22.81"})
+    monkeypatch.setattr(vpn, "egress_ip", lambda: "185.134.22.81")
+    monkeypatch.setattr(vpn, "slots", lambda: [{"name": "Surfshark. WireGuard®", "status": "Connected"}])
+    monkeypatch.setattr(vpn, "binance_probe", lambda: {"ping": 200, "weight": 1})
+    monkeypatch.setattr(vpn, "ban_active", lambda: (False, None, 0.0))
+    stopped = []
+    monkeypatch.setattr(vpn, "quit_app", lambda: stopped.append("quit"))
+    monkeypatch.setattr(vpn, "_slot_stop", lambda n: stopped.append(n))
+    assert vpn.do_rotate() is True
+    assert stopped == []
+
+
+def test_network_down_does_not_rotate(monkeypatch):
+    monkeypatch.setattr(vpn, "whitelist", lambda: {"185.134.22.81"})
+    monkeypatch.setattr(vpn, "egress_ip", lambda: None)
+    monkeypatch.setattr(vpn, "slots", lambda: [{"name": "Surfshark. Dausos", "status": "Connected"}])
+    stopped = []
+    monkeypatch.setattr(vpn, "quit_app", lambda: stopped.append("quit"))
+    monkeypatch.setattr(vpn, "_slot_stop", lambda n: stopped.append(n))
+    assert vpn.do_rotate() is False
+    assert stopped == []
