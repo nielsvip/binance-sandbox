@@ -68,9 +68,8 @@ def parabolic_masks(npz, n, cfg, safe):
 
 
 def min_hold_minutes(cfg, is_long):
-    if is_long:
-        return _f(cfg, 'TRADIER_MIN_HOLD_MINUTES', 240.0)
-    return _f(cfg, 'TRADIER_MIN_HOLD_MINUTES_SHORT', 60.0)
+    # USER 2026-10-28: stocks hold MIN_HOLD_BARS x BASE_TF 15m, same knob for long and short
+    return _f(cfg, 'MIN_HOLD_BARS', 8) * 15.0
 
 
 def min_hold_blocks(held_minutes, px, dc_low_15m, dc_high_15m, is_long, hold_min):

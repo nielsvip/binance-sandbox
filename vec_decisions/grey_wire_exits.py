@@ -120,7 +120,7 @@ def htf_against_force_close(c, g, st, is_long) -> Tuple[bool, str]:
     skipped when the TF has no data). Min-hold = MIN_HOLD_BARS_BEFORE_EXIT x 3m bars unless price breaches
     dc_low_15m (LONG) / dc_high_15m (SHORT) (_dc_15m_hold_override)."""
     age_min = _f(st.get("age_s")) / 60.0
-    if age_min < _f(c("MIN_HOLD_BARS_BEFORE_EXIT", 10), 10) * 3.0:
+    if age_min < _f(c("MIN_HOLD_BARS", 8), 8) * 15.0:  # MIN_HOLD_BARS x BASE_TF 15m
         px, dl, dh = _f(st.get("px")), _f(g("dc_low_15m", 0)), _f(g("dc_high_15m", 0))
         if not ((is_long and dl > 0 and px <= dl) or ((not is_long) and dh > 0 and px >= dh)):
             return False, ""

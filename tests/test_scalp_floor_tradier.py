@@ -39,7 +39,7 @@ def test_tradier_inner_calls_floor():
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "_execute_now_inner":
             body = ast.dump(node)
-            if "scalp_floor_refusal" in body and "SCALP_MIN_HOLD_SEC" in body and "_tr_parity_vec_order" in body:
+            if "scalp_floor_refusal" in body and "MIN_HOLD_BARS" in body and "_tr_parity_vec_order" in body:
                 found = True
     assert found, "TradierTradeManager._execute_now_inner must call scalp_floor_refusal with vec pass-through"
 

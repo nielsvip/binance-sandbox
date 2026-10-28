@@ -99,11 +99,8 @@ def check_peak_giveback_exit(
     hold_min = (bar_ts - entry_ts) / 60.0 if entry_ts > 0 and bar_ts > 0 else 0.0
 
     # MIN_HOLD gate
-    if mode == 'tradier':
-        peak_min_hold = float(getattr(cfg, 'TRADIER_MIN_HOLD_MINUTES',
-                                      getattr(cfg, 'MIN_HOLD_MINUTES_TRADIER', 240.0)))
-    else:
-        peak_min_hold = float(getattr(cfg, 'MIN_HOLD_MINUTES_CRYPTO', 30.0))
+    # USER 2026-10-28: MIN_HOLD_BARS x BASE_TF 15m, the one hold for every mode
+    peak_min_hold = float(getattr(cfg, 'MIN_HOLD_BARS', 8)) * 15.0
 
     if hold_min < peak_min_hold:
         # Below min-hold: block peak_giveback (per user rule 2026-04-27)

@@ -122,6 +122,7 @@ from dateutil.parser import isoparse
 
 import config_tradier
 from config_tradier import TradierConfig
+import vec_decisions.min_hold_gate as _mhg  # USER 2026-10-28: stock hold = MIN_HOLD_BARS x bar minutes, per sym_side
 from bb4h_breakout_ladder import next_stage as _next_bb4h_ladder_stage
 from local_extremes_scorer import score_local_extremes as _le_score_entry
 from mtf_exit_timing import (
@@ -3104,7 +3105,6 @@ _FULL_COVERAGE_PARAMS = [
     "BOUNCE_REENTRY_K_RESET_SHORT_TRADIER",
     "BOUNCE_TOP_EXIT_ENABLED",
     "BOUNCE_TOP_MAX_LOSS_PCT",
-    "BOUNCE_TOP_MIN_HOLD_MINUTES",
     "BOUNCE_TOP_MIN_LOSS_PCT",
     "BOUNCE_TOP_REENTRY_MULT",
     "BOUNCE_TOP_RISING_CROSS_MULT",
@@ -3241,7 +3241,6 @@ _FULL_COVERAGE_PARAMS = [
     "DELTA_EXIT_DECAY_RATIO",
     "DELTA_EXIT_DOM_TF_ENABLED",
     "DELTA_EXIT_ENABLED",
-    "DELTA_EXIT_MIN_HOLD",
     "DELTA_EXIT_MIN_TF_LOST",
     "DELTA_EXIT_OPPOSING_RATIO",
     "DELTA_EXIT_REENTRY_COOLDOWN_MIN",
@@ -3656,8 +3655,6 @@ _FULL_COVERAGE_PARAMS = [
     "MINERVINI_TARGET_PCT",
     "MIN_GAIN",
     "MIN_GAIN_TO_BUY_AGGRESSIVELY",
-    "MIN_HOLD_BARS_TRADIER",
-    "MIN_HOLD_MINUTES_TRADIER",
     "MIN_POSITION_SIZE",
     "MIN_USD_DELTA_CONFIRM",
     "MITIGATOR_AUGMENT_CONSECUTIVE",
@@ -4239,7 +4236,6 @@ _FULL_COVERAGE_PARAMS = [
     "TRADIER_K_ZONE_ENTRY_BONUS_TRADIER",
     "TRADIER_LOCAL_EXTREMES_SCORING_ENABLED",
     "TRADIER_LONG_ONLY_ENTRIES",
-    "TRADIER_MIN_HOLD_MINUTES",
     "TRADIER_MI_SUBSIGNAL_MIN_COUNT",
     "TRADIER_NOLOSS_SRS_BYPASS",
     "TRADIER_OI_INJECT_ENABLED",
@@ -4353,7 +4349,6 @@ _FULL_COVERAGE_PARAMS = [
     "V8Q_D_TREND_REQUIRED",
     "V8Q_HTF_MIN_ALIGNED",
     "V8Q_K3M_FLOOR",
-    "V8Q_MIN_HOLD_BARS",
     "V8Q_STRENGTH_FILTER_ENABLED",
     "V8Q_STRENGTH_MIN_SCORE",
     "V8Q_SYMBOL_TIER_TOP3",
@@ -4547,7 +4542,6 @@ _FULL_COVERAGE_PARAMS = [
     "BTC_BREAKOUT_ENTRY_ENABLED",
     "BTC_BREAKOUT_HARD_LOSS_USD_PER_TRADE",
     "BTC_BREAKOUT_HTF_MIN_ALIGNED",
-    "BTC_BREAKOUT_MIN_HOLD_BARS",
     "BTC_BREAKOUT_REENTRY_ON_EXIT",
     "BTC_BREAKOUT_REENTRY_REQUIRE_TREND",
     "BTC_BREAKOUT_REQUIRE_HTF_ALIGNED",
@@ -4590,7 +4584,6 @@ _FULL_COVERAGE_PARAMS = [
     "BTC_HARD_BLOCK_OTHER_ACCOUNTS",
     "BTC_HARD_LOSS_USD_PER_TRADE",
     "BTC_HEDGE_DC_RESISTANCE_GATE_ENABLED",
-    "BTC_HEDGE_MIN_HOLD_BARS",
     "BTC_HEDGE_NEVER_CLOSE_AT_LOSS",
     "BTC_HEDGE_REQUIRE_4OF5_WT_TFS",
     "BTC_HEDGE_SAMESYM_CLOSE_REQUIRE_NONNEG_GAIN",
@@ -4608,7 +4601,6 @@ _FULL_COVERAGE_PARAMS = [
     "BTC_HEDGE_WT_VEL_GATE_ENABLED",
     "BTC_INTRABAR_REVERSAL_EXIT",
     "BTC_LEVERAGE",
-    "BTC_MIN_HOLD_BARS",
     "BTC_PAPER_PARITY_VERIFY_AT_STARTUP",
     "BTC_PAPER_RECONCILE_ALARM_DRIFT_PCT",
     "BTC_PER_SYM_CONFIG_ENABLED",
@@ -5058,7 +5050,6 @@ _FULL_COVERAGE_PARAMS = [
     "LR_BAND_LADDER_ENABLED",
     "LR_BAND_LADDER_ORDINARY_PARITY_ENABLED",
     "LR_BAND_SLOPE_FLIP_EXIT_ENABLED",
-    "LR_BAND_SLOPE_FLIP_MIN_HOLD_MIN",
     "LR_BAND_SLOPE_FLIP_MIN_PCT_DAY",
     "LS_RATIO_ENFORCE",
     "LS_RATIO_MAX",
@@ -5458,7 +5449,6 @@ _FULL_COVERAGE_PARAMS = [
     "REGIME_RANGING_DC_BREAKOUT_SCORE",
     "REGIME_RANGING_EXIT_GAIN_MIN",
     "REGIME_RANGING_K_ZONE_BONUS",
-    "REGIME_RANGING_MIN_HOLD_BARS",
     "REGIME_RANGING_NOLOSS_MIN",
     "REGIME_RANGING_POSITION_SIZE_MULT",
     "REGIME_RANGING_REENTRY_SIZE_MULT",
@@ -5471,7 +5461,6 @@ _FULL_COVERAGE_PARAMS = [
     "REGIME_TRENDING_DC_BREAKOUT_SCORE",
     "REGIME_TRENDING_EXIT_GAIN_MIN",
     "REGIME_TRENDING_K_RESET_THRESHOLD",
-    "REGIME_TRENDING_MIN_HOLD_BARS",
     "REGIME_TRENDING_NOLOSS_MIN",
     "REGIME_TRENDING_POSITION_SIZE_MULT",
     "REGIME_TRENDING_REENTRY_SIZE_MULT",
@@ -9706,7 +9695,6 @@ def _wire_625_live_reads(account_key, symbol, side):
         "BOUNCE_AUGMENT_MIN_LOSS_PCT",
         "BOUNCE_REENTRY_ENABLED_TRADIER",
         "BOUNCE_TOP_MAX_LOSS_PCT",
-        "BOUNCE_TOP_MIN_HOLD_MINUTES",
         "BOUNCE_TOP_MIN_LOSS_PCT",
         "BOUNCE_TOP_REENTRY_MULT",
         "BREAKEVEN_DC_LOW4_ENABLED",
@@ -9822,7 +9810,6 @@ def _wire_625_live_reads(account_key, symbol, side):
         "DELTA_EXIT_DC_FLOOR",
         "DELTA_EXIT_DECAY_RATIO",
         "DELTA_EXIT_ENABLED",
-        "DELTA_EXIT_MIN_HOLD",
         "DELTA_EXIT_MIN_TF_LOST",
         "DELTA_EXIT_OPPOSING_RATIO",
         "DELTA_EXIT_OVERRIDE_NOLOSS",
@@ -10009,7 +9996,6 @@ def _wire_625_live_reads(account_key, symbol, side):
         "LR_BAND_SIZE_MAX",
         "LR_BAND_SIZE_SLOPE_GAIN",
         "LR_BAND_SLOPE_FLIP_EXIT_ENABLED",
-        "LR_BAND_SLOPE_FLIP_MIN_HOLD_MIN",
         "LR_BAND_SLOPE_FLIP_MIN_PCT_DAY",
         "LR_BAND_SLOPE_NORM_PCT_DAY",
         "LR_PCTB_D_LONG_ENTRY_ENABLED",
@@ -10043,8 +10029,6 @@ def _wire_625_live_reads(account_key, symbol, side):
         "MINERVINI_TARGET_PCT",
         "MIN_GAIN",
         "MIN_GAIN_TO_BUY_AGGRESSIVELY",
-        "MIN_HOLD_BARS_TRADIER",
-        "MIN_HOLD_MINUTES_TRADIER",
         "MIN_PERC_FROM_SMA_1",
         "MIN_PERC_FROM_SMA_15",
         "MIN_POSITION_SIZE",
@@ -10220,7 +10204,6 @@ def _wire_625_live_reads(account_key, symbol, side):
         "REGIME_RANGING_DC_BREAKOUT_SCORE",
         "REGIME_RANGING_EXIT_GAIN_MIN",
         "REGIME_RANGING_K_ZONE_BONUS",
-        "REGIME_RANGING_MIN_HOLD_BARS",
         "REGIME_RANGING_NOLOSS_MIN",
         "REGIME_RANGING_POSITION_SIZE_MULT",
         "REGIME_RANGING_REENTRY_SIZE_MULT",
@@ -10233,7 +10216,6 @@ def _wire_625_live_reads(account_key, symbol, side):
         "REGIME_TRENDING_DC_BREAKOUT_SCORE",
         "REGIME_TRENDING_EXIT_GAIN_MIN",
         "REGIME_TRENDING_K_RESET_THRESHOLD",
-        "REGIME_TRENDING_MIN_HOLD_BARS",
         "REGIME_TRENDING_NOLOSS_MIN",
         "REGIME_TRENDING_POSITION_SIZE_MULT",
         "REGIME_TRENDING_REENTRY_SIZE_MULT",
@@ -10384,7 +10366,6 @@ def _wire_625_live_reads(account_key, symbol, side):
         "TRADIER_LONG_ONLY_ENTRIES",
         "TRADIER_MFI_ENTRY_LONG_ENABLED",
         "TRADIER_MFI_ENTRY_LONG_TRADIER",
-        "TRADIER_MIN_HOLD_MINUTES",
         "TRADIER_MI_ENTRY_ENABLED_TRADIER",
         "TRADIER_MI_EXIT_ENABLED_TRADIER",
         "TRADIER_NOLOSS_SRS_BYPASS",
@@ -19165,12 +19146,7 @@ async def process_position(
         # 2026-04-27 user rule: NOW respects STOCK_MIN_HOLD on the CLOSE branch (was bypassing).
         # User: "respect the min hold of 72 hours". Reopen branch unchanged — needed for cross-back.
         # State stored on trade_manager._micro_scalp_state_stocks (separate dict from crypto's).
-        _mss_min_hold = float(
-            _cfg_auto(
-                "TRADIER_MIN_HOLD_MINUTES",
-                getattr(config, "MIN_HOLD_MINUTES_TRADIER", 240.0),
-            )
-        )
+        _mss_min_hold = (float(_cfg_auto("MIN_HOLD_BARS", 0) or 0) * float(_mhg.bar_minutes(config)))
         # WAVE3 2026-10-04 lane B3: SIMPLE_PRICE_GT0_ENABLED live twin (vec v12:12525 bypasses holds when on). Default False = unchanged.
         if bool(_cfg_auto("SIMPLE_PRICE_GT0_ENABLED", False)):
             _mss_min_hold = 0.0
@@ -27471,12 +27447,7 @@ async def periodic_override_check(trade_manager, account_key):
 
                     # 2026-04-27 user rule: 72h min hold gates the soft REDUCE/take-profit
                     # paths below. Stocks must not be flipped on bias/stoch noise inside the hold window.
-                    _ovr_min_hold = float(
-                        _cfg_auto(
-                            "TRADIER_MIN_HOLD_MINUTES",
-                            getattr(config, "MIN_HOLD_MINUTES_TRADIER", 240.0),
-                        )
-                    )
+                    _ovr_min_hold = (float(_cfg_auto("MIN_HOLD_BARS", 0) or 0) * float(_mhg.bar_minutes(config)))
                     _ovr_hold_min: float = 0.0
                     try:
                         _ovr_opened_at = getattr(position, "opened_at", None)
@@ -30147,7 +30118,7 @@ def _apply_research_only_live_gates(
     ):
         return True, "REGIME_RANGING_K_ZONE_BONUS_BLOCK"
     _v_regime_ranging_min_hold_bars = _cfg(
-        "REGIME_RANGING_MIN_HOLD_BARS", 0, account_key, symbol, side
+        "MIN_HOLD_BARS", 0, account_key, symbol, side
     )
     try:
         if (
@@ -30292,7 +30263,7 @@ def _apply_research_only_live_gates(
     except Exception:
         pass
     _v_regime_trending_min_hold_bars = _cfg(
-        "REGIME_TRENDING_MIN_HOLD_BARS", 0, account_key, symbol, side
+        "MIN_HOLD_BARS", 0, account_key, symbol, side
     )
     try:
         if (
@@ -32547,7 +32518,7 @@ class StockStrategy:
         self.limit_total_pos = self.trade_manager.limit_total_pos
         self._cvar_cache: dict = {}  # symbol -> (cvar_pct, computed_at_ts)
         self.circuit_breaker = EntryCircuitBreaker(
-            grace_minutes=float(_cfg_auto("MIN_HOLD_BARS_TRADIER", 32)) * 5,
+            grace_minutes=float(_cfg_auto("MIN_HOLD_BARS", 0) or 0) * float(_mhg.bar_minutes(config)),
             collapse_pct=-1.0,
         )
 
@@ -35476,11 +35447,7 @@ class StockStrategy:
                 # Only DC15 break (<dc_low_15m long / >dc_high_15m short) may bypass hold.
                 _mtf_hold_min = 60.0 if not is_long else 240.0
                 try:
-                    _mtf_hold_min = (
-                        float(_cfg_auto("TRADIER_MIN_HOLD_MINUTES_SHORT", 60.0))
-                        if not is_long
-                        else float(_cfg_auto("TRADIER_MIN_HOLD_MINUTES", 240.0))
-                    )
+                    _mtf_hold_min = float(_cfg_auto("MIN_HOLD_BARS", 0) or 0) * float(_mhg.bar_minutes(config))
                 except Exception:
                     pass
                 _mtf_hold_age = 999.0
@@ -35976,13 +35943,13 @@ class StockStrategy:
                     )
                     _lbh_min_hold = float(
                         _cfg(
-                            "LR_BAND_SLOPE_FLIP_MIN_HOLD_MIN",
-                            240.0,
+                            "MIN_HOLD_BARS",
+                            0,
                             _lbh_account,
                             symbol,
                             _lbh_side,
                         )
-                    )
+                    ) * float(_mhg.bar_minutes(config))
                     _lbh_held_ok = hold_time_min >= _lbh_min_hold
                     _lbh_flip = _lbh_held_ok and (
                         (_lbh_sl_day < -_lbh_dead)
@@ -36029,12 +35996,7 @@ class StockStrategy:
         _is_opts_check = hasattr(position, "option_type") and getattr(
             position, "option_type", None
         )
-        _peak_min_hold = float(
-            _cfg_auto(
-                "TRADIER_MIN_HOLD_MINUTES",
-                getattr(config, "MIN_HOLD_MINUTES_TRADIER", 240.0),
-            )
-        )
+        _peak_min_hold = (float(_cfg_auto("MIN_HOLD_BARS", 0) or 0) * float(_mhg.bar_minutes(config)))
         # EXIT_GAIN_EROSION_ENABLED is the explicit matrix path switch.  The
         # peak-giveback implementation existed but read only its older master,
         # making this knob an inert red cell.  Both masters now have to agree.
@@ -36485,20 +36447,7 @@ class StockStrategy:
         # crypto — they are swing/position trades, not scalps. The 1h/4h/D slowdown
         # is what signals a reversal; LTF noise must not close a position.
         # 2026-09-09 FIX: directional hold — shorts 60m, longs 240m (was 4320m 72h deadlock)
-        if not is_long:
-            _stock_min_hold = float(
-                _cfg_auto(
-                    "TRADIER_MIN_HOLD_MINUTES_SHORT",
-                    getattr(config, "TRADIER_MIN_HOLD_MINUTES_SHORT", 60.0),
-                )
-            )
-        else:
-            _stock_min_hold = float(
-                _cfg_auto(
-                    "TRADIER_MIN_HOLD_MINUTES",
-                    getattr(config, "MIN_HOLD_MINUTES_TRADIER", 240.0),
-                )
-            )
+        _stock_min_hold = float(_cfg_auto("MIN_HOLD_BARS", 0) or 0) * float(_mhg.bar_minutes(config))
         # USER 2026-08-27: 60m hold with dc_low_15m / dc_high_15m vv-short exception — if price < dc_low_15m (LONG) or > dc_high_15m (SHORT) bypass hold entirely (structural breakdown, don't hold losers to infinity).
         _dc15_bypass = False
         try:
@@ -38908,7 +38857,7 @@ class StockStrategy:
                 "LONG" if is_long else "SHORT",
             )
         )
-        _bt_min_hold = _cfg_auto("BOUNCE_TOP_MIN_HOLD_MINUTES", 1440.0)
+        _bt_min_hold = float(_cfg_auto("MIN_HOLD_BARS", 0) or 0) * float(_mhg.bar_minutes(config))
         _bt_min_loss = _cfg_auto("BOUNCE_TOP_MIN_LOSS_PCT", -3.0)
         _bt_max_loss = _cfg_auto("BOUNCE_TOP_MAX_LOSS_PCT", -50.0)
         if (
@@ -43353,7 +43302,7 @@ class TradierTradeManager:
                     "exit_accel_threshold": config.DELTA_EXIT_ACCEL_THRESHOLD,
                     "exit_opposing_ratio": config.DELTA_EXIT_OPPOSING_RATIO,
                     "exit_min_tf_lost": config.DELTA_EXIT_MIN_TF_LOST,
-                    "exit_min_hold": config.DELTA_EXIT_MIN_HOLD,
+                    "exit_min_hold": float(_cfg_auto("MIN_HOLD_BARS", 0) or 0),
                     "pyramid_accel_threshold": config.DELTA_PYRAMID_ACCEL_THRESHOLD,
                     "pyramid_min_bars": config.DELTA_PYRAMID_MIN_BARS,
                     "pyramid_price_tolerance": config.DELTA_PYRAMID_PRICE_TOL,
@@ -44125,12 +44074,7 @@ class TradierTradeManager:
                             continue
                         # 2026-04-27 user rule: 72h min hold also gates SENTIMENT_FADE rebalance.
                         # Stocks must not be flipped on bias inside the hold window.
-                        _rebal_min_hold = float(
-                            _cfg_auto(
-                                "TRADIER_MIN_HOLD_MINUTES",
-                                getattr(config, "MIN_HOLD_MINUTES_TRADIER", 240.0),
-                            )
-                        )
+                        _rebal_min_hold = (float(_cfg_auto("MIN_HOLD_BARS", 0) or 0) * float(_mhg.bar_minutes(config)))
                         try:
                             _opened_at = getattr(pos, "opened_at", None)
                             _hold_min = (
@@ -49730,7 +49674,7 @@ class TradierTradeManager:
             if _sc_is_exit or bool(is_full_close):
                 _sc_floor = 180.0
                 try:
-                    _sc_floor = float(getattr(config, "SCALP_MIN_HOLD_SEC", 180.0))
+                    _sc_floor = float(_cfg_auto("MIN_HOLD_BARS", 0) or 0) * float(_mhg.bar_minutes(config)) * 60.0
                 except Exception:
                     _sc_floor = 180.0
                 _sc_age = None

@@ -2034,7 +2034,6 @@ def check_entry_vetting(
         _ = getattr(config, 'BTC_BREAKOUT_DC_TF', None)
         _ = getattr(config, 'BTC_BREAKOUT_HARD_LOSS_USD_PER_TRADE', None)
         _ = getattr(config, 'BTC_BREAKOUT_HTF_MIN_ALIGNED', None)
-        _ = getattr(config, 'BTC_BREAKOUT_MIN_HOLD_BARS', None)
         _ = getattr(config, 'BTC_BREAKOUT_REENTRY_ON_EXIT', None)
         _ = getattr(config, 'BTC_BREAKOUT_REENTRY_REQUIRE_TREND', None)
         _ = getattr(config, 'BTC_BREAKOUT_REQUIRE_HTF_ALIGNED', None)
@@ -2072,7 +2071,6 @@ def check_entry_vetting(
         _ = getattr(config, 'BTC_GUARANTEED_REENTRY_SIZE_MULT', None)
         _ = getattr(config, 'BTC_HARD_LOSS_USD_PER_TRADE', None)
         _ = getattr(config, 'BTC_HEDGE_DC_RESISTANCE_GATE_ENABLED', None)
-        _ = getattr(config, 'BTC_HEDGE_MIN_HOLD_BARS', None)
         _ = getattr(config, 'BTC_HEDGE_NEVER_CLOSE_AT_LOSS', None)
         _ = getattr(config, 'BTC_HEDGE_REQUIRE_4OF5_WT_TFS', None)
         _ = getattr(config, 'BTC_HEDGE_SAMESYM_CLOSE_REQUIRE_NONNEG_GAIN', None)
@@ -2090,7 +2088,6 @@ def check_entry_vetting(
         _ = getattr(config, 'BTC_HEDGE_WT_VEL_GATE_ENABLED', None)
         _ = getattr(config, 'BTC_INTRABAR_REVERSAL_EXIT', None)
         _ = getattr(config, 'BTC_LEVERAGE', None)
-        _ = getattr(config, 'BTC_MIN_HOLD_BARS', None)
         _ = getattr(config, 'BTC_PAPER_PARITY_VERIFY_AT_STARTUP', None)
         _ = getattr(config, 'BTC_PAPER_RECONCILE_ALARM_DRIFT_PCT', None)
         _ = getattr(config, 'BTC_PER_SYM_CONFIG_ENABLED', None)
@@ -3341,7 +3338,6 @@ def check_entry_vetting(
         _ = getattr(config, 'TRADIER_INDICATORS_NARROW_UNIVERSE', None)
         _ = getattr(config, 'TRADIER_K_ZONE_ENTRY_BONUS_TRADIER', None)
         _ = getattr(config, 'TRADIER_LOCAL_EXTREMES_SCORING_ENABLED', None)
-        _ = getattr(config, 'TRADIER_MIN_HOLD_MINUTES', None)
         _ = getattr(config, 'TRADIER_OI_INJECT_ENABLED', None)
         _ = getattr(config, 'TRADIER_OI_INJECT_NEAR_MONEY_PREFER', None)
         _ = getattr(config, 'TRADIER_OI_INJECT_PC_BEARISH', None)
@@ -3430,7 +3426,6 @@ def check_entry_vetting(
         _ = getattr(config, 'V8Q_D_TREND_REQUIRED', None)
         _ = getattr(config, 'V8Q_HTF_MIN_ALIGNED', None)
         _ = getattr(config, 'V8Q_K3M_FLOOR', None)
-        _ = getattr(config, 'V8Q_MIN_HOLD_BARS', None)
         _ = getattr(config, 'V8Q_STRENGTH_FILTER_ENABLED', None)
         _ = getattr(config, 'V8Q_STRENGTH_MIN_SCORE', None)
         _ = getattr(config, 'V8Q_SYMBOL_TIER_TOP3', None)
@@ -4233,7 +4228,6 @@ _FULL_COVERAGE_PARAMS_EZ = ['ABLATION_DISABLE_AGGRESSIVE_HEDGE',
     'BOUNCE_REENTRY_K_RESET_SHORT_TRADIER',
     'BOUNCE_TOP_EXIT_ENABLED',
     'BOUNCE_TOP_MAX_LOSS_PCT',
-    'BOUNCE_TOP_MIN_HOLD_MINUTES',
     'BOUNCE_TOP_MIN_LOSS_PCT',
     'BOUNCE_TOP_REENTRY_MULT',
     'BOUNCE_TOP_RISING_CROSS_MULT',
@@ -4370,7 +4364,6 @@ _FULL_COVERAGE_PARAMS_EZ = ['ABLATION_DISABLE_AGGRESSIVE_HEDGE',
     'DELTA_EXIT_DECAY_RATIO',
     'DELTA_EXIT_DOM_TF_ENABLED',
     'DELTA_EXIT_ENABLED',
-    'DELTA_EXIT_MIN_HOLD',
     'DELTA_EXIT_MIN_TF_LOST',
     'DELTA_EXIT_OPPOSING_RATIO',
     'DELTA_EXIT_REENTRY_COOLDOWN_MIN',
@@ -4785,8 +4778,6 @@ _FULL_COVERAGE_PARAMS_EZ = ['ABLATION_DISABLE_AGGRESSIVE_HEDGE',
     'MINERVINI_TARGET_PCT',
     'MIN_GAIN',
     'MIN_GAIN_TO_BUY_AGGRESSIVELY',
-    'MIN_HOLD_BARS_TRADIER',
-    'MIN_HOLD_MINUTES_TRADIER',
     'MIN_POSITION_SIZE',
     'MIN_USD_DELTA_CONFIRM',
     'MITIGATOR_AUGMENT_CONSECUTIVE',
@@ -5209,7 +5200,6 @@ _FULL_COVERAGE_PARAMS_EZ = ['ABLATION_DISABLE_AGGRESSIVE_HEDGE',
     'SCALP_MAX_HOLD_MINUTES',
     'SCALP_MAX_POSITIONS_PER_SIDE',
     'SCALP_MAX_POSITION_SIZE',
-    'SCALP_MIN_HOLD_SEC',
     'SCALP_MIN_MOVE_PCT',
     'SCALP_MIN_REL_VOL',
     'SCALP_MODE',
@@ -5369,7 +5359,6 @@ _FULL_COVERAGE_PARAMS_EZ = ['ABLATION_DISABLE_AGGRESSIVE_HEDGE',
     'TRADIER_K_ZONE_ENTRY_BONUS_TRADIER',
     'TRADIER_LOCAL_EXTREMES_SCORING_ENABLED',
     'TRADIER_LONG_ONLY_ENTRIES',
-    'TRADIER_MIN_HOLD_MINUTES',
     'TRADIER_MI_SUBSIGNAL_MIN_COUNT',
     'TRADIER_NOLOSS_SRS_BYPASS',
     'TRADIER_OI_INJECT_ENABLED',
@@ -5483,7 +5472,6 @@ _FULL_COVERAGE_PARAMS_EZ = ['ABLATION_DISABLE_AGGRESSIVE_HEDGE',
     'V8Q_D_TREND_REQUIRED',
     'V8Q_HTF_MIN_ALIGNED',
     'V8Q_K3M_FLOOR',
-    'V8Q_MIN_HOLD_BARS',
     'V8Q_STRENGTH_FILTER_ENABLED',
     'V8Q_STRENGTH_MIN_SCORE',
     'V8Q_SYMBOL_TIER_TOP3',
@@ -5677,7 +5665,6 @@ _FULL_COVERAGE_PARAMS_EZ = ['ABLATION_DISABLE_AGGRESSIVE_HEDGE',
     'BTC_BREAKOUT_ENTRY_ENABLED',
     'BTC_BREAKOUT_HARD_LOSS_USD_PER_TRADE',
     'BTC_BREAKOUT_HTF_MIN_ALIGNED',
-    'BTC_BREAKOUT_MIN_HOLD_BARS',
     'BTC_BREAKOUT_REENTRY_ON_EXIT',
     'BTC_BREAKOUT_REENTRY_REQUIRE_TREND',
     'BTC_BREAKOUT_REQUIRE_HTF_ALIGNED',
@@ -5720,7 +5707,6 @@ _FULL_COVERAGE_PARAMS_EZ = ['ABLATION_DISABLE_AGGRESSIVE_HEDGE',
     'BTC_HARD_BLOCK_OTHER_ACCOUNTS',
     'BTC_HARD_LOSS_USD_PER_TRADE',
     'BTC_HEDGE_DC_RESISTANCE_GATE_ENABLED',
-    'BTC_HEDGE_MIN_HOLD_BARS',
     'BTC_HEDGE_NEVER_CLOSE_AT_LOSS',
     'BTC_HEDGE_REQUIRE_4OF5_WT_TFS',
     'BTC_HEDGE_SAMESYM_CLOSE_REQUIRE_NONNEG_GAIN',
@@ -5738,7 +5724,6 @@ _FULL_COVERAGE_PARAMS_EZ = ['ABLATION_DISABLE_AGGRESSIVE_HEDGE',
     'BTC_HEDGE_WT_VEL_GATE_ENABLED',
     'BTC_INTRABAR_REVERSAL_EXIT',
     'BTC_LEVERAGE',
-    'BTC_MIN_HOLD_BARS',
     'BTC_PAPER_PARITY_VERIFY_AT_STARTUP',
     'BTC_PAPER_RECONCILE_ALARM_DRIFT_PCT',
     'BTC_PER_SYM_CONFIG_ENABLED',
@@ -6187,7 +6172,6 @@ _FULL_COVERAGE_PARAMS_EZ = ['ABLATION_DISABLE_AGGRESSIVE_HEDGE',
     'LR_BAND_LADDER_ENABLED',
     'LR_BAND_LADDER_ORDINARY_PARITY_ENABLED',
     'LR_BAND_SLOPE_FLIP_EXIT_ENABLED',
-    'LR_BAND_SLOPE_FLIP_MIN_HOLD_MIN',
     'LR_BAND_SLOPE_FLIP_MIN_PCT_DAY',
     'LS_RATIO_ENFORCE',
     'LS_RATIO_MAX',
@@ -6588,7 +6572,6 @@ _FULL_COVERAGE_PARAMS_EZ = ['ABLATION_DISABLE_AGGRESSIVE_HEDGE',
     'REGIME_RANGING_DC_BREAKOUT_SCORE',
     'REGIME_RANGING_EXIT_GAIN_MIN',
     'REGIME_RANGING_K_ZONE_BONUS',
-    'REGIME_RANGING_MIN_HOLD_BARS',
     'REGIME_RANGING_NOLOSS_MIN',
     'REGIME_RANGING_POSITION_SIZE_MULT',
     'REGIME_RANGING_REENTRY_SIZE_MULT',
@@ -6601,7 +6584,6 @@ _FULL_COVERAGE_PARAMS_EZ = ['ABLATION_DISABLE_AGGRESSIVE_HEDGE',
     'REGIME_TRENDING_DC_BREAKOUT_SCORE',
     'REGIME_TRENDING_EXIT_GAIN_MIN',
     'REGIME_TRENDING_K_RESET_THRESHOLD',
-    'REGIME_TRENDING_MIN_HOLD_BARS',
     'REGIME_TRENDING_NOLOSS_MIN',
     'REGIME_TRENDING_POSITION_SIZE_MULT',
     'REGIME_TRENDING_REENTRY_SIZE_MULT',
@@ -15417,7 +15399,7 @@ class MultiAccountTradeManager:
                         config, "DELTA_EXIT_OPPOSING_RATIO", 1.5
                     ),
                     "exit_min_tf_lost": getattr(config, "DELTA_EXIT_MIN_TF_LOST", 2),
-                    "exit_min_hold": getattr(config, "DELTA_EXIT_MIN_HOLD", 4),
+                    "exit_min_hold": int(getattr(config, "MIN_HOLD_BARS", 3) or 0),
                     "exit_dominant_tf": (
                         getattr(config, "DELTA_EXIT_TF", "15m")
                         if getattr(config, "DELTA_EXIT_DOM_TF_ENABLED", False)
@@ -34133,10 +34115,10 @@ class MultiAccountTradeManager:
             if _sc_is_exit or bool(is_full_close):
                 _sc_floor = 180.0
                 try:
-                    _sc_floor = float(_psym_get(symbol, position_side, "SCALP_MIN_HOLD_SEC", getattr(config, "SCALP_MIN_HOLD_SEC", 180.0)))
+                    _sc_floor = float(_psym_get(symbol, position_side, "MIN_HOLD_BARS", getattr(config, "MIN_HOLD_BARS", 3)) or 0) * float(_mhg.bar_minutes(config)) * 60.0
                 except Exception:
                     try:
-                        _sc_floor = float(getattr(config, "SCALP_MIN_HOLD_SEC", 180.0))
+                        _sc_floor = float(getattr(config, "MIN_HOLD_BARS", 3) or 0) * float(_mhg.bar_minutes(config)) * 60.0
                     except Exception:
                         _sc_floor = 180.0
                 _sc_age = None

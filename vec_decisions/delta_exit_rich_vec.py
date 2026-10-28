@@ -71,7 +71,7 @@ def _knobs(cfg, stocks):
         "accel_thr": float(getattr(cfg, "DELTA_EXIT_ACCEL_THRESHOLD", -0.1)),
         "opp_ratio": float(getattr(cfg, "DELTA_EXIT_OPPOSING_RATIO", 1.5)),
         "min_tf_lost": float(getattr(cfg, "DELTA_EXIT_MIN_TF_LOST", 2 if stocks else 1)),
-        "min_hold": float(getattr(cfg, "DELTA_EXIT_MIN_HOLD", 4)),
+        "min_hold": float(getattr(cfg, "MIN_HOLD_BARS", 4)),
         "dom_on": bool(getattr(cfg, "DELTA_EXIT_DOM_TF_ENABLED", True)),
         "dom_tf": str(getattr(cfg, "DELTA_EXIT_TF", "15m" if stocks else "3m")),
         "nonzero": bool(getattr(cfg, "DELTA_EXIT_REQUIRE_NONZERO_SCORE", True)) and stocks,
