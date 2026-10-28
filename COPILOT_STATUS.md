@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-28 07:44:05 UTC
+# Copilot Status — 2026-10-28 07:49:10 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-28T07:36:58
-- **STALE_INDICATORS** [tradier]  — 2026-10-28T07:39:00
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-28T07:39:00
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-28T07:39:00
-- **STALE_INDICATORS** [tradier]  — 2026-10-28T07:41:01
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-28T07:41:01
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-28T07:41:01
-- **STALE_INDICATORS** [tradier]  — 2026-10-28T07:43:03
 - **RATIO_IMBALANCE** [tradier] trb — 2026-10-28T07:43:03
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-28T07:43:03
+- **STALE_INDICATORS** [tradier]  — 2026-10-28T07:45:05
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-28T07:45:05
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-28T07:45:05
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-28T07:47:07
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-28T07:47:07
+- **STALE_INDICATORS** [tradier]  — 2026-10-28T07:49:09
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-28T07:49:09
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-28T07:49:09
 
 ## Missed Trades (trader comparison)
 
@@ -29,21 +29,21 @@ _None_
 
 **Held:** 6 | **Watching for reentry:** 22 | **Reentered:** 0
 
-- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +0.4%
-- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +-0.3%
+- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +0.3%
+- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +-0.1%
 - HELD: **DASHUSDT** SHORT (crypto) peak +5.8%, now +-0.9%
-- HELD: **MINAUSDT** SHORT (crypto) peak +4.2%, now +0.4%
-- HELD: **ETHUSDC** SHORT (crypto) peak +3.7%, now +-0.1%
+- HELD: **MINAUSDT** SHORT (crypto) peak +4.2%, now +0.2%
+- HELD: **ETHUSDC** SHORT (crypto) peak +3.7%, now +-0.2%
 - HELD: **BNBUSDC** SHORT (crypto) peak +3.0%, now +0.4%
 
 - WATCHING: **1000PEPEUSDC** LONG (crypto) peaked +11.4%, exited 0m ago
 - WATCHING: **PR** LONG (tradier) peaked +11.2%, exited 0m ago
 - WATCHING: **QNTUSDT** LONG (crypto) peaked +8.7%, exited 0m ago
 - WATCHING: **BEAMXUSDT** LONG (crypto) peaked +8.6%, exited 0m ago
-- WATCHING: **BATUSDT** LONG (crypto) peaked +7.9%, exited 0m ago
 - WATCHING: **NEARUSDC** LONG (crypto) peaked +7.9%, exited 0m ago
 - WATCHING: **ACEUSDT** SHORT (crypto) peaked +7.7%, exited 0m ago
 - WATCHING: **GRASSUSDT** LONG (crypto) peaked +5.6%, exited 0m ago
+- WATCHING: **STXUSDT** SHORT (crypto) peaked +5.5%, exited 0m ago
 - WATCHING: **ARUSDT** LONG (crypto) peaked +5.0%, exited 0m ago
 - WATCHING: **A** LONG (tradier) peaked +5.0%, exited 0m ago
 
@@ -56,4 +56,4 @@ _None_
 - [LOW] tradier_rankings.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] ez_share_ind.py running but log stale (20min)
+- [MEDIUM] ez_share_ind.py running but log stale (25min)
