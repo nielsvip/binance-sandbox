@@ -39,12 +39,18 @@ def classify(value):
     return "numeric" if value[0] in "-0123456789" else "null-or-nan"
 
 
-def scan_json(path):
+def scan_json(path, strict=False):
     kinds = {}
     try:
         text = open(path, "r", errors="replace").read()
     except OSError as exc:
         return {"unreadable": 1}
+    if strict:
+        # staging dirs (gateway / macbook / s1self) are copied by rsync and were found cut at 4096-byte boundaries or with stale trailing bytes: they must parse
+        try:
+            json.loads(text)
+        except ValueError:
+            kinds["unparseable-json"] = 1
     for m in FIND.finditer(text):
         k = classify(m.group(2))
         if k:
@@ -107,7 +113,7 @@ def main():
             files = [f for f in files if time.time() - os.path.getmtime(f) <= a.since_minutes * 60]
         agg, bad_files = {}, 0
         for f in files:
-            k = scan_json(f)
+            k = scan_json(f, strict=any(x in rel for x in ("gateway", "macbook", "s1self")))
             if k:
                 bad_files += 1
                 for kk, n in k.items():
