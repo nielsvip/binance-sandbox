@@ -1,16 +1,16 @@
 {
-  "inf:ARUSDT_LONG": {
-    "orderId": "2000001546402222",
-    "stopPrice": 3.453,
-    "entry_sig": "2026-10-27 23:31:12.126000+00:00",
-    "symbol": "ARUSDT",
+  "flz:XRPUSDC_LONG": {
+    "orderId": "1000002647823863",
+    "stopPrice": 1.3104,
+    "entry_sig": "2026-10-27 23:15:20.408000+00:00",
+    "symbol": "XRPUSDC",
     "side": "LONG"
   },
-  "inf:XRPUSDC_LONG": {
-    "orderId": "2000001546495502",
-    "stopPrice": 1.3104,
-    "entry_sig": "2026-10-27 23:15:22.191000+00:00",
-    "symbol": "XRPUSDC",
+  "flz:BTCDOMUSDT_LONG": {
+    "orderId": "1000002647575485",
+    "stopPrice": 5522.6,
+    "entry_sig": "2026-10-27 21:08:42.533000+00:00",
+    "symbol": "BTCDOMUSDT",
     "side": "LONG"
   }
 }
