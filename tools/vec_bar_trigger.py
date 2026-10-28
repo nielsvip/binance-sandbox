@@ -20,6 +20,7 @@ import sys
 import threading
 import time
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
+from concurrent.futures.process import BrokenProcessPool
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -93,6 +94,19 @@ def crypto_pools(workers):
     return pools
 
 
+def submit_with_rebuild(pools, index, function, job):
+    # a killed spawn worker (OOM) leaves the pool broken and every later submit raises BrokenProcessPool; S2 logged 5,582 of them and never recovered
+    try:
+        return pools[index].submit(function, job)
+    except BrokenProcessPool:
+        try:
+            pools[index].shutdown(wait=False, cancel_futures=True)
+        except Exception:
+            pass
+        pools[index] = ProcessPoolExecutor(max_workers=1, mp_context=mp.get_context("spawn"))
+        return pools[index].submit(function, job)
+
+
 def publish_producer(base, shard, engine):
     if shard not in ("crypto_long", "crypto_short", "stock_long", "stock_short"):
         return
@@ -155,7 +169,7 @@ def run_once(base, shard, workers=WORKERS, verbose=False):
     rec["worker_processes"] = len(process_pools) if process_pools else 0
     try:
         for tier, tier_jobs in (("held", held_jobs), ("other", other_jobs)):
-            futures = [process_pools[hashlib.md5(job[0].encode()).digest()[0] % len(process_pools)].submit(E._worker, job) if process_pools else thread_pool.submit(E._worker, job) for job in tier_jobs]
+            futures = [submit_with_rebuild(process_pools, hashlib.md5(job[0].encode()).digest()[0] % len(process_pools), E._worker, job) if process_pools else thread_pool.submit(E._worker, job) for job in tier_jobs]
             for future in as_completed(futures):
                 try:
                     r = future.result()

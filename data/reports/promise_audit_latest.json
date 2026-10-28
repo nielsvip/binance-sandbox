@@ -1,9 +1,9 @@
 {
- "generated_utc": "2026-10-28T17:12:45.521241+00:00",
+ "generated_utc": "2026-10-28T18:12:39.688824+00:00",
  "days": 1.0,
  "totals": {
-  "entry_promises": 85,
-  "entry_broken_no_delivery": 85,
+  "entry_promises": 86,
+  "entry_broken_no_delivery": 86,
   "exit_promises": 111,
   "exit_broken_no_delivery": 110,
   "exit_skipped_inflight": 1328,
@@ -315,6 +315,10 @@
    "exit_broken_no_delivery": 2,
    "entry_promises": 2,
    "entry_broken_no_delivery": 2
+  },
+  "inf:XRPUSDC_LONG": {
+   "entry_promises": 1,
+   "entry_broken_no_delivery": 1
   }
  },
  "detail": [
@@ -2276,6 +2280,16 @@
    "late_min": null,
    "action": "OPEN",
    "reason": "TIER1_PRICE_CROSS_REENTRY_exit3.4633_cur3.4860_k3m32",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "XRPUSDC_LONG",
+   "kind": "entry",
+   "bar": "10-28 17:30",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "REENTRY_HIGHER_LOW",
    "outcome": "NO_DELIVERY"
   }
  ],

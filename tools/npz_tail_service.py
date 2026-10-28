@@ -220,6 +220,16 @@ def load_universe(base):
                     uni.append(f"{s}_{side}")
         except Exception:
             pass
+    try:
+        # 2026-10-28 operator: the append universe is the FULL board universe (every sym_side the scheduler can launch a board on), not only the
+        # tradeable set; a board must find a NPZ one bar behind at most and nothing is ever recomputed to make it so.
+        du = sorted((base / "data" / "daily_universe").glob("20??????.json"))
+        if du and time.time() - du[-1].stat().st_mtime < 3 * 86400:
+            for ss in json.loads(du[-1].read_text()).get("allowed_sym_sides") or []:
+                if "_" in str(ss):
+                    uni.append(str(ss).upper())
+    except Exception:
+        pass
     if not any(not is_crypto_symbol(s.rsplit("_", 1)[0]) for s in uni if "_" in s):
         # symbols_trb_* erased/empty (tradier_rankings incident): fall back to stock NPZs on disk.
         # Skip dotfiles and orphan *.TMP/BARREFRESH debris (never real symbols).

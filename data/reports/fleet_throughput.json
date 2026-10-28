@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-28T18:05:13.260580+00:00",
+  "ts": "2026-10-28T18:10:38.869706+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 5,
-  "pending_sym_sides": 137,
+  "fleet_published_last_60m": 0,
+  "pending_sym_sides": 136,
   "hosts": {
     "s1": {
       "published_last_60m": 0,
@@ -15,9 +15,9 @@
       "boards_running": 2,
       "workers": 14,
       "workers_vs_law_28": "14/28",
-      "mem_avail_mb": 9888,
+      "mem_avail_mb": 9790,
       "disk_free_gb": 34,
-      "load1": 19.5,
+      "load1": 17.6,
       "dispatch_idle_why": "full 2/2",
       "published_ss": []
     },
@@ -28,28 +28,7 @@
       "unreachable": true
     },
     "s6": {
-      "published_last_60m": 5,
-      "published_last_3h": 15,
-      "boards": {
-        "ENJUSDT_SHORT": 7,
-        "INXUSDT_SHORT": 7,
-        "JASMYUSDT_SHORT": 7,
-        "SPELLUSDT_SHORT": 7
-      },
-      "boards_running": 4,
-      "workers": 28,
-      "workers_vs_law_28": "28/28",
-      "mem_avail_mb": 9600,
-      "disk_free_gb": 54,
-      "load1": 18.6,
-      "dispatch_idle_why": "full 4/4",
-      "published_ss": [
-        "1000LUNCUSDT_SHORT",
-        "AAVEUSDC_SHORT",
-        "ENSUSDT_SHORT",
-        "NLR_SHORT",
-        "STXUSDT_SHORT"
-      ]
+      "unreachable": true
     }
   },
   "alerts": [
@@ -57,7 +36,7 @@
     "DISK_FLOOR:s1:34GB<40",
     "UNREACHABLE:s2",
     "UNREACHABLE:s5",
-    "LOW_THROUGHPUT:s6:5/h<10 (idle_why=full 4/4)"
+    "UNREACHABLE:s6"
   ],
   "repair": null
 }
