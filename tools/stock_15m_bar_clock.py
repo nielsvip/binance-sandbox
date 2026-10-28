@@ -165,7 +165,7 @@ async def main(base):
     loop = asyncio.get_running_loop()
     quote_tasks, native, preparing, pending, emitted = {}, {}, {}, {}, set()
     symbols, books_at, status_at, direct_at = [], 0, 0, 0
-    local_quote_mtime = 0
+    local_quote_mtime, local_quote_at = 0, 0
     semaphore = asyncio.Semaphore(4)
     stream_task = asyncio.create_task(stream_quote_events(api, observed, lambda: symbols, stream_status)) if os.environ.get('STOCK_CLOCK_STREAM') == '1' else None
     async def fetch_batch(batch):
@@ -199,6 +199,7 @@ async def main(base):
                         local_quote_mtime = local_mtime
                         payload = json.loads(local_path.read_text())
                         quotes = payload.get('data') or {}
+                        local_quote_at = float(payload.get('received_at') or 0)
                         fresh += ingest_quotes(observed, {symbol: quotes[symbol] for symbol in symbols if symbol in quotes}, None, now, 's5_local_quote_collector')
                 except (OSError, ValueError, TypeError):
                     pass
@@ -209,7 +210,7 @@ async def main(base):
                     fresh += ingest_quotes(observed, {symbol: quotes[symbol] for symbol in symbols if symbol in quotes}, None, now, 'tradier_prices_received_at')
                 except (OSError, ValueError, TypeError, redis.RedisError):
                     pass
-                if now - direct_at >= 10:
+                if now - direct_at >= 10 and now - local_quote_at > 8:
                     missing = [symbol for symbol in symbols if now - observed.latest.get(symbol, 0) > 5]
                     for offset in range(0, len(missing), 50):
                         batch = missing[offset:offset + 50]
