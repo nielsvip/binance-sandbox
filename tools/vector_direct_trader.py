@@ -57,9 +57,52 @@ BAR_S = 900
 CRYPTO_ACCOUNTS = ("ang", "fin", "flz", "inf", "men")
 STOCK_ACCOUNTS = ("tra", "trb", "trc")
 CRYPTO_SUFFIXES = ("USDT", "USDC", "USD1", "USDS", "BUSD", "FDUSD", "TUSD", "DAI")
+# ═══ OPERATOR SIZING MANDATE 2026-10-28, VERBATIM: "stock and crypto are not the same pls DONT FUCK THIS UP
+# stocks 900 crypto 15 NO EXCEPTION make sure this is ABSOLUTELY HONORED in the new vector trading scripts on
+# s1 and s5". These were ONE venue-blind pair of module constants defaulting to the CRYPTO value (15), so the
+# stocks trader on S5 ran on a $15 slice for days and kept falling through to the one-whole-share path. The
+# default is now chosen BY VENUE and the mandated START size is PINNED: a wrong value is corrected and logged,
+# never silently traded, and never a refusal to trade (a sizing mistake must not stop the book).
+VENUE_SIZING = {
+    "crypto": {"START_POSITION_SIZE": 15.0, "MAX_OPEN_NOTIONAL": 80.0, "STOCK_ONE_SHARE_MAX": 0.0},
+    "stocks": {"START_POSITION_SIZE": 900.0, "MAX_OPEN_NOTIONAL": 4000.0, "STOCK_ONE_SHARE_MAX": 4000.0},
+}
+MANDATED_START = {"crypto": 15.0, "stocks": 900.0}  # NO EXCEPTION without VD_ALLOW_SIZE_OVERRIDE=1
 START_POSITION_SIZE = float(os.environ.get("VD_START_POSITION_SIZE", "15"))
 MAX_OPEN_NOTIONAL = float(os.environ.get("VD_MAX_OPEN_NOTIONAL", "110"))
 STOCK_ONE_SHARE_MAX = float(os.environ.get("VD_STOCK_ONE_SHARE_MAX", "500"))
+
+
+def apply_venue_sizing(venue: str) -> dict:
+    """Resolve the three sizing knobs for THIS venue and pin the operator's mandated START size.
+
+    Precedence: VD_<KNOB>_<VENUE> (venue-specific, cannot cross-contaminate) > VD_<KNOB> (shared) >
+    the per-venue default above. Then the mandate is enforced on START_POSITION_SIZE. Returns a report
+    dict for the startup log so the live value is verifiable at a glance.
+    """
+    global START_POSITION_SIZE, MAX_OPEN_NOTIONAL, STOCK_ONE_SHARE_MAX
+    v = "stocks" if str(venue).lower().startswith("stock") else "crypto"
+    rep = {"venue": v, "pinned": [], "source": {}}
+    for knob, dflt in VENUE_SIZING[v].items():
+        spec = os.environ.get(f"VD_{knob}_{v.upper()}")
+        shared = os.environ.get(f"VD_{knob}")
+        if spec not in (None, ""):
+            val, src = float(spec), f"VD_{knob}_{v.upper()}"
+        elif shared not in (None, ""):
+            val, src = float(shared), f"VD_{knob}"
+        else:
+            val, src = float(dflt), "venue_default"
+        if knob == "START_POSITION_SIZE":
+            want = MANDATED_START[v]
+            if abs(val - want) > 1e-9 and os.environ.get("VD_ALLOW_SIZE_OVERRIDE") != "1":
+                rep["pinned"].append(f"START_POSITION_SIZE {val} -> {want} ({v} mandate; {src} ignored)")
+                val, src = want, f"{v}_mandate_pin"
+        rep["source"][knob] = f"{val} via {src}"
+        globals()[knob] = val
+    START_POSITION_SIZE = globals()["START_POSITION_SIZE"]
+    MAX_OPEN_NOTIONAL = globals()["MAX_OPEN_NOTIONAL"]
+    STOCK_ONE_SHARE_MAX = globals()["STOCK_ONE_SHARE_MAX"]
+    return rep
 HB_STALE_S = float(os.environ.get("VD_HB_STALE_S", "90"))
 ACCT_DEAD_S = float(os.environ.get("VD_ACCT_DEAD_S", "180"))
 ENGINE_DOWN_S = float(os.environ.get("VD_ENGINE_DOWN_S", "90"))  # trader_alive=0 this long (a routine restart is shorter)
@@ -1140,6 +1183,11 @@ def main(argv=None):
     ap.add_argument("--probe", action="store_true", help="read-only: broker positions per account, then exit")
     ap.add_argument("--assume-open", action="store_true", help="stocks + --dry-run only: plan as if the market were open")
     a = ap.parse_args(argv)
+    # Venue sizing is resolved BEFORE the Trader exists, so no order can ever be planned on the
+    # other venue's slice (operator 2026-10-28: "stocks 900 crypto 15 NO EXCEPTION").
+    _size_rep = apply_venue_sizing(a.venue)
+    for _pin in _size_rep["pinned"]:
+        log(f"[VD-SIZE-PIN] {_pin}")
     t = Trader(a)
     if a.probe:
         for acct in t.accounts:
@@ -1150,7 +1198,7 @@ def main(argv=None):
             except Exception as exc:
                 log(f"PROBE {acct}: FAILED {str(exc)[:200]}")
         return 0
-    log(f"vector_direct_trader {a.venue} start: accounts={t.accounts} dry_run={a.dry_run} START_POSITION_SIZE=${START_POSITION_SIZE} root={t.root} states={t.state_dir}")
+    log(f"vector_direct_trader {a.venue} start: accounts={t.accounts} dry_run={a.dry_run} START_POSITION_SIZE=${START_POSITION_SIZE} MAX_OPEN_NOTIONAL=${MAX_OPEN_NOTIONAL} ONE_SHARE_MAX=${STOCK_ONE_SHARE_MAX} sizing={_size_rep['source']} root={t.root} states={t.state_dir}")
     while True:
         t0 = time.time()
         try:

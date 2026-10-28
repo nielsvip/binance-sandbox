@@ -1,11 +1,4 @@
 {
-  "fin:RAYSOLUSDT_LONG": {
-    "orderId": "3000002278863784",
-    "stopPrice": 1.743,
-    "entry_sig": "2026-10-27 16:03:18.339000+00:00",
-    "symbol": "RAYSOLUSDT",
-    "side": "LONG"
-  },
   "fin:ETHFIUSDC_LONG": {
     "orderId": "3000002279459222",
     "stopPrice": 0.6552,
@@ -102,6 +95,20 @@
     "stopPrice": 3.481,
     "entry_sig": "2026-10-28 03:16:03.259000+00:00",
     "symbol": "ARUSDT",
+    "side": "LONG"
+  },
+  "fin:RAYSOLUSDT_LONG": {
+    "orderId": "3000002278863784",
+    "stopPrice": 1.743,
+    "entry_sig": "2026-10-27 16:03:18.339000+00:00",
+    "symbol": "RAYSOLUSDT",
+    "side": "LONG"
+  },
+  "fin:EDUUSDT_LONG": {
+    "orderId": "3000002279967209",
+    "stopPrice": 0.05922,
+    "entry_sig": "2026-10-28 03:45:45.322000+00:00",
+    "symbol": "EDUUSDT",
     "side": "LONG"
   },
   "fin:BATUSDT_LONG": {

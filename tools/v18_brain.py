@@ -2828,6 +2828,7 @@ class PilotBrainV18:
         self.meta = blob["_meta"]
         self.w = blob["heads"]
         self.T = Tables(blob=blob, sym_side=sym_side)
+        self._ca = _cost_aware_tables(blob) if str(os.environ.get("V20_COST_AWARE", "0")).strip() == "1" else None
         self.bk = Buckets(blob.get("buckets") or {})
         self.floor = max(HARD_MIN_FLOOR, float(floor_per_1000 if floor_per_1000 is not None else os.environ.get("V18_FLOOR_PER_1000", self.meta.get("floor_per_1000", DEFAULT_FLOOR))))
         self.p_ref = {"R": float(p_ref_r if p_ref_r is not None else os.environ.get("V18_BRAIN_PREF_R", self.meta.get("p_ref", {}).get("R", DEFAULT_PREF_R))),
@@ -2883,6 +2884,10 @@ class PilotBrainV18:
                 u = draw(self.sym_side, sheet, row_key + "|" + str(filter_key), round_id)
                 why = "V18_BRAIN cell"
                 pm, pb, bv = self.mb(sheet, row_key, filter_key, running_set, x)
+        if getattr(self, "_ca", None) is not None and cn >= 3 and why in ("V18_BRAIN row", "V18_BRAIN cell") and cost_aware_hit(self._ca, row_key, filter_key):
+            pe = max(floor_frac(self.floor), min(pe, COST_AWARE_P))
+            why += " COST_AWARE"
+            self.booked["cost_aware"] += 1
         keep = u < pe
         self.booked["keep" if keep else "skip"] += 1
         return {"keep": keep, "p": pe, "p_pos": p, "n": cn, "u": u, "why": f"{why} p_pos={p:.4f} n={cn:g} p_eval={pe:.4f}", "p_marginal": pm, "p_binds": pb,
@@ -2896,6 +2901,41 @@ class PilotBrainV18:
             a = "R:" + row_key
             sp, sn = self.T.sym_t.get(a, (0.0, 0.0))
             self.T.sym_t[a] = [sp + y, sn + 1.0]
+
+
+COST_AWARE_P = 0.5
+
+
+def _cost_aware_tables(blob):
+    """{R: {node: (n, pos, n_sym, mean_secs)}, F: {node: mean_secs}, P: {(filter, row): (n, pos, n_sym)}, msR, msF} from an exported model."""
+    nodes = blob["nodes"]
+    R, F = {}, {}
+    sR = nR = sF = nF = 0.0
+    for r in blob.get("cs") or []:
+        a = nodes[r[0]]
+        n, pos, nsym, secs = float(r[3]), float(r[4]), float(r[13]), float(r[19] or 0.0)
+        if a.startswith("R:"):
+            R[a] = (n, pos, nsym, secs)
+            sR += n * secs
+            nR += n
+        elif a.startswith("F:"):
+            F[a] = secs
+            sF += n * secs
+            nF += n
+    P = {(nodes[r[0]], nodes[r[1]]): (float(r[4]), float(r[5]), float(r[10])) for r in blob.get("pair") or []}
+    return {"R": R, "F": F, "P": P, "msR": sR / nR if nR else 0.0, "msF": sF / nF if nF else 0.0,
+            "k": int(os.environ.get("V20_COST_AWARE_K", "10") or 10)}
+
+
+def cost_aware_hit(ca, row_key, filter_key=None):
+    """True when the key was evaluated on >= k sym_sides, never positive, and is slower than the cat_side mean (pure)."""
+    a = "R:" + str(row_key)
+    if filter_key is None:
+        e = ca["R"].get(a)
+        return bool(e and e[2] >= ca["k"] and e[1] <= 0 and e[3] > ca["msR"])
+    f = "F:" + str(filter_key).strip()
+    e = ca["P"].get((f, a))
+    return bool(e and e[2] >= ca["k"] and e[1] <= 0 and ca["F"].get(f, 0.0) > ca["msF"])
 
 
 def load_pilot_brain(sym_side, env=None):
