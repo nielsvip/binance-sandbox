@@ -497,12 +497,26 @@ def test_switch_in_neither_engine_is_hard(monkeypatch, tmp_path):
     assert g["ok"] is False and any("NEITHER engine" in h for h in g["hard"])
 
 
-def test_every_demoted_row_in_the_live_repo_is_a_recorded_promotion():
-    """The demotion rests on template_bold_defaults dropping any untrusted bold unless the key is promoted — so a
-    surviving cat-backed global/quick lag must carry a promotion record. If that ever stops holding, the demotion
-    would start hiding real drift and this test fails first."""
+def test_every_bold_vs_mirror_row_has_the_bold_in_force():
+    """2026-10-28 — this pin's old premise is GONE, exactly as its own docstring predicted it would be.
+
+    It used to require a promotion record for every cat-backed bold-vs-mirror row, because
+    `template_bold_defaults` DROPPED any bold that disagreed with config unless the key was promoted.
+    USER ordered that inversion removed ("TEMPLATE is the ONLY authority"), so a bold now survives a
+    disagreement on its own and needs no promotion record to be the default.
+
+    The invariant that matters under the new law is the opposite one, and it is stronger: live resolves
+    per_sym -> cat_side -> global, so a lagging global/quick mirror is harmless ONLY while the cat_side
+    layer carries the bold. A bold that is NOT cat-backed and NOT promoted is real drift — there the
+    shadowed mirror would be the value that trades. Measured 2026-10-28: 0 such rows in all four
+    cat_sides (45 cat-backed mirror lags, dominated by the structural LONG!=SHORT bold split that a
+    single global field cannot express).
+    """
+    offenders = []
     for cs in ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT"):
         rep = SP.verify_default_surfaces(cs)
         for m in rep["mismatches"]:
-            if m.get("class") in ("bold-vs-global", "bold-vs-quick") and m.get("catside_backed"):
-                assert m.get("promoted"), f"{cs}:{m['key']} demoted without a promotion record: {m}"
+            if m.get("class") in ("bold-vs-global", "bold-vs-quick"):
+                if not m.get("catside_backed") and not m.get("promoted"):
+                    offenders.append(f"{cs}:{m['key']} bold={m.get('bold')!r} cat={m.get('cat')!r} global={m.get('global')!r} quick={m.get('quick')!r}")
+    assert offenders == [], "bold not in force — the shadowed mirror would trade instead: " + "; ".join(offenders[:8])

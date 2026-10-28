@@ -339,6 +339,10 @@ def unfinished_deaths(d, now):
         if 180 < age < 7200 and ss not in (d.get("running") or {}) and not (p.get("fg") or p.get("zero")):
             if float(refused.get(ss) or 0) >= float(r.get("ts") or 0):
                 continue
+            # A deliberate operator restart (SIGTERM for a code deploy) is booked in the launch record as
+            # "restarted": <epoch> by whoever restarts it; it is not a death and must not quarantine the host.
+            if float(r.get("restarted") or 0) >= float(r.get("ts") or 0):
+                continue
             died.append((float(r["ts"]), ss))
     return died
 

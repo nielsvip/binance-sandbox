@@ -1735,8 +1735,12 @@ def verify_live_order_switches(
             continue
         rep["order_switches"] += 1
         ex = _excluded(k) or (
+            # 2026-10-28: STRICT_VEC_PARITY_{MODE,SHADOW,GATE_EXITS} is the live parity HARNESS — the gate
+            # that compares live against the vector. The vector has no such concept, so requiring a
+            # QuickConfig twin for it is a category error; it belongs to the same live-only family as
+            # PARITY_VEC_EXACT_* / VEC_DRIVEN_*, which were already excluded here for this exact reason.
             "parity/bridge infra master (live-only by design)"
-            if k.startswith(("PARITY_VEC_EXACT_", "VEC_DRIVEN_"))
+            if k.startswith(("PARITY_VEC_EXACT_", "VEC_DRIVEN_", "STRICT_VEC_PARITY_"))
             or k == "EXIT_ENGINE_PARITY_LOG_ENABLED"
             else ""
         )

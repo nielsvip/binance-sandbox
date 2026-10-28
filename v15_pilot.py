@@ -11985,7 +11985,14 @@ def ensure_lbI_headers(wb_path: Path):
                 if Path(wb_path).exists():
                     Path(wb_path).unlink()
             except: pass
-            tmpl = next((p for p in [Path("SPREADSHEETS/TEMPLATE_STOCKS_LONG.xlsx"), Path("SPREADSHEETS/TEMPLATE_STOCKS_SHORT.xlsx"), Path("SPREADSHEETS/TEMPLATE_CRYPTO_LONG.xlsx"), Path("SPREADSHEETS/TEMPLATE_CRYPTO_SHORT.xlsx")] if p.exists()), None)
+            # 2026-10-28: this picked the FIRST EXISTING workbook from the LEGACY top-level set, ignoring the board's
+            # cat_side -- so a corrupted crypto SHORT clone was rebuilt from legacy TEMPLATE_STOCKS_LONG.xlsx: wrong
+            # venue, wrong side, and a file no board has swept since the fleet moved to TEMPLATE_FINAL_NORM. It
+            # contradicted get_template_for_symside's own law ("4 independent templates, no cross-side fallback").
+            # The clone name carries the sym_side, so recover the right template from it and never substitute another.
+            import re as _re_rec
+            _rec_m = _re_rec.match(r"^(.+?_(?:LONG|SHORT))(?:_|$)", Path(wb_path).name)
+            tmpl = get_template_for_symside(_rec_m.group(1)) if _rec_m else None
             if tmpl and tmpl.exists():
                 import shutil
                 shutil.copy(str(tmpl), str(wb_path))
@@ -17477,7 +17484,9 @@ def _main_single():
                             _tpl_md5 = ""
                             try:
                                 import hashlib as _hl
-                                _tpl_p = Path(args.template) if 'args' in locals() and getattr(args, 'template', None) else (ROOT / f"SPREADSHEETS/TEMPLATE_{'CRYPTO' if _is_crypto else 'STOCKS'}_{new_symside.rsplit('_',1)[-1]}.xlsx")
+                                # 2026-10-28: the fallback pointed at the LEGACY top-level set, so when args.template
+                                # was unset this audit record claimed the md5 of a workbook the board never used.
+                                _tpl_p = Path(args.template) if 'args' in locals() and getattr(args, 'template', None) else get_template_for_symside(new_symside)
                                 if _tpl_p.exists():
                                     _tpl_md5 = _hl.md5(_tpl_p.read_bytes()).hexdigest()
                             except Exception:
