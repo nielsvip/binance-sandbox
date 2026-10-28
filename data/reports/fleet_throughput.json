@@ -1,55 +1,55 @@
 {
-  "ts": "2026-10-28T05:20:04.887081+00:00",
+  "ts": "2026-10-28T05:25:04.324466+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 3,
-  "pending_sym_sides": 91,
+  "pending_sym_sides": 90,
   "hosts": {
     "s1": {
       "published_last_60m": 0,
       "published_last_3h": 0,
       "boards": {
         "BLURUSDT_SHORT": 7,
-        "MOVRUSDT_SHORT": 7
+        "IOTAUSDT_SHORT": 7,
+        "MOVRUSDT_SHORT": 0
       },
-      "boards_running": 2,
+      "boards_running": 3,
       "workers": 14,
       "workers_vs_law_28": "14/28",
-      "mem_avail_mb": 11171,
+      "mem_avail_mb": 9188,
       "disk_free_gb": 44,
-      "load1": 31.9,
+      "load1": 21.5,
       "dispatch_idle_why": "full 3/3",
       "published_ss": []
     },
     "s2": {
       "published_last_60m": 0,
       "published_last_3h": 0,
-      "boards": {
-        "RIO_SHORT": 7
-      },
-      "boards_running": 1,
-      "workers": 7,
-      "workers_vs_law_28": "7/28",
-      "mem_avail_mb": 12754,
-      "disk_free_gb": 57,
-      "load1": 17.7,
-      "dispatch_idle_why": "mem 12168MB < 11000+1x4000 ramping",
+      "boards": {},
+      "boards_running": 0,
+      "workers": 0,
+      "workers_vs_law_28": "0/28",
+      "mem_avail_mb": 20394,
+      "disk_free_gb": 56,
+      "load1": 41.8,
+      "dispatch_idle_why": null,
       "published_ss": []
     },
     "s5": {
       "published_last_60m": 3,
       "published_last_3h": 4,
       "boards": {
-        "MAGICUSDT_LONG": 7,
+        "ADP_LONG": 7,
+        "MAGICUSDT_LONG": 0,
         "MA_LONG": 7
       },
-      "boards_running": 2,
+      "boards_running": 3,
       "workers": 14,
       "workers_vs_law_28": "14/28",
-      "mem_avail_mb": 19962,
+      "mem_avail_mb": 15955,
       "disk_free_gb": 62,
-      "load1": 13.0,
-      "dispatch_idle_why": "spacing 7s < 120",
+      "load1": 17.3,
+      "dispatch_idle_why": "mem 16681MB < 11000+2x4000 ramping",
       "published_ss": [
         "ASML_LONG",
         "CME_LONG",
@@ -61,23 +61,22 @@
       "published_last_3h": 1,
       "boards": {
         "ACTUSDT_SHORT": 0,
-        "IOTXUSDT_SHORT": 0,
-        "SCCO_SHORT": 7
+        "IOTXUSDT_SHORT": 0
       },
-      "boards_running": 3,
-      "workers": 7,
-      "workers_vs_law_28": "7/28",
-      "mem_avail_mb": 10754,
+      "boards_running": 2,
+      "workers": 0,
+      "workers_vs_law_28": "0/28",
+      "mem_avail_mb": 13064,
       "disk_free_gb": 64,
-      "load1": 8.5,
+      "load1": 4.8,
       "dispatch_idle_why": "HOLD until 2026-10-28T06:52Z: train B export on s6 (RSS 7 GB, 7.5 GB avail): no new boards until it exports; set 05:2xZ by binance-f4, expires automatically",
       "published_ss": []
     }
   },
   "alerts": [
     "LOW_THROUGHPUT:s1:0/h<10 (idle_why=full 3/3)",
-    "LOW_THROUGHPUT:s2:0/h<10 (idle_why=mem 12168MB < 11000+1x4000 ramping)",
-    "LOW_THROUGHPUT:s5:3/h<10 (idle_why=spacing 7s < 120)",
+    "LOW_THROUGHPUT:s2:0/h<10 (idle_why=None)",
+    "LOW_THROUGHPUT:s5:3/h<10 (idle_why=mem 16681MB < 11000+2x4000 ramping)",
     "LOW_THROUGHPUT:s6:0/h<10 (idle_why=HOLD until 2026-10-28T06:52Z: train B export on s6 (RSS 7 GB, 7.5 GB avail): no new boards until it exports; set 05:2xZ by binance-f4, expires automatically)"
   ],
   "repair": null
