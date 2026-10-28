@@ -1189,6 +1189,31 @@ class Agent:
         except Exception as exc:
             log(f"alarm_if_gagged error: {exc!r}")
 
+    def ring_bells(self):
+        """OPERATOR 2026-10-28 "closed and declared untradeable and sounding all bells and whistles": the S1/S5 vector_direct status
+        (pulled every tick) carries bells from tools/s1_bar_guarantee.py; every new CRITICAL one -> desktop notification with
+        sound, data/live_failover/ALERT_LATEST.json and ALERTS.jsonl."""
+        seen_path = LF / "bells_seen.json"
+        seen = set(C.read_json(seen_path, []) or [])
+        new = []
+        for venue, (_t, vd) in list(self.vd_status.items()):
+            for item in ((vd or {}).get("bells") or {}).get("items") or []:
+                if item.get("level", "CRITICAL") == "CRITICAL" and item.get("id") and item["id"] not in seen:
+                    new.append(item)
+        if not new:
+            return
+        for item in new:
+            seen.add(item["id"])
+            alert(f"S_BELL_{item.get('kind')}", **{k: v for k, v in item.items() if k not in ("kind",)})
+            C.atomic_write_json(LF / "ALERT_LATEST.json", {"received_epoch": C.now_s(), **item})
+            msg = f"{item.get('host')} {item.get('venue')}: {str(item.get('msg'))[:180]}".replace('"', "'")
+            title = f"LIVE {item.get('kind')}".replace('"', "'")
+            try:
+                subprocess.run(["osascript", "-e", f'display notification "{msg}" with title "{title}" sound name "Sosumi"'], timeout=5, capture_output=True)
+            except Exception:
+                pass
+        C.atomic_write_json(seen_path, sorted(seen)[-5000:])
+
     def tick(self):
         now = C.now_s()
         venues = self.measure(now)
@@ -1216,6 +1241,10 @@ class Agent:
             self.vd_fence(now)
         except Exception as exc:
             log(f"vector_direct fence/push error: {exc!r}")
+        try:
+            self.ring_bells()
+        except Exception as exc:
+            log(f"ring_bells error: {exc!r}")
         self.alarm_if_gagged(lease, state, now)
         if host is None:
             log(f"S1 unreachable via {HOSTS} — keeping local lease {local.get('holder')} gen={local.get('gen')}")

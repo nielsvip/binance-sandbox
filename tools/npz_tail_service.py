@@ -450,9 +450,8 @@ def sweep_once(base, cat_side, workers=WORKERS, sibling=None, sibling_base=None)
     if tasks:
         try:
             import npz_live_generator  # noqa: F401
-            if mode == "tradier":
-                import tradier_indicators  # noqa: F401
-            else:
+            import tradier_indicators  # noqa: F401
+            if mode != "tradier":
                 import ez_indicators  # noqa: F401
         except Exception:
             pass
@@ -507,9 +506,9 @@ def stream_loop(base, cat_side, workers=WORKERS, sibling=None, sibling_base=None
     from concurrent.futures import FIRST_COMPLETED, wait
     mode = "crypto" if cat_side.startswith("crypto") else "tradier"
     import npz_live_generator  # noqa: F401  (imported before the fork so every worker inherits it)
-    if mode == "tradier":
-        import tradier_indicators  # noqa: F401
-    else:
+    # 2026-10-28: ez_indicators.compute imports tradier_indicators lazily (WaveTrend divergence); 1.2 s per fresh worker.
+    import tradier_indicators  # noqa: F401
+    if mode != "tradier":
         import ez_indicators  # noqa: F401
     ctx = get_context("fork")
     pool = ProcessPoolExecutor(max_workers=max(1, workers), mp_context=ctx)

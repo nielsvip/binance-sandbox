@@ -269,7 +269,7 @@ def draw_vec_outcome_lines(ax_plot, x_left_ts, x_right_ts, vec_outcomes, fill_ex
         if i in matched_v or not (x_left_ts <= t <= x_right_ts):
             continue
         color = lth.VEC_WIN_COLOR if win else lth.VEC_LOSS_COLOR
-        ax_plot.axvline(x=x_of(t), color=color, alpha=lth.OUTCOME_ALPHA, lw=lth.OUTCOME_LW, zorder=6)
+        ax_plot.axvline(x=x_of(t), color=color, alpha=lth.OUTCOME_ALPHA, lw=lth.OUTCOME_LW, linestyle=":", zorder=6)
         if win:
             n_win += 1
         else:

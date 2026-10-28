@@ -144,26 +144,20 @@ def expected_size_ok(act, row, cons, st, start_size):
     return 0.5 * want <= qty <= 1.6 * want or abs(qty - want) * price < 6.0, f"qty {qty} vs {want:.6g}"
 
 
-# ───────────── BAR FREEZE ─────────────
-# OPERATOR 2026-10-28 (verbatim): "LIVE TRADING is ALWAYS the most important thing so from the moment :00/15/30/45 kline arrives
-# until all trades ahve executed according to the rolling forward per_sym vector settings all backtesting is pauesed - this will
-# never take >10s (max 1min) then backtesting 100% again until next [15m] bar approaches" + "THIS IS ABOUT s5 (during market
-# hours) but also applies to s1".
-# Mechanism = SIGSTOP/SIGCONT of the backtest PROCESSES (+ their descendants), not a whole-cgroup freeze: on S5 the backtests live
-# in ssh session scopes next to their own sshd, the Mac->S5 bar receiver (closed_15m_feed receive), closed_15m_cache_bridge and
-# per_sym_settings_feed; on S1 cron.service also holds the cron daemon, live keepalives and closed_15m_cache_bridge. Freezing those
-# cgroups would freeze the bar lane / ssh keepalives (a frozen sshd lets the dispatcher's ServerAlive kill the board). Only
-# processes whose command line is a backtest are stopped; live units, sshd/ssh/rsync and every bar/settings feeder never are.
-FREEZE_INCLUDE = ("v15_pilot.py", "s5_replay_driver.py", "tools/opt/", "backtest_v12_engine", "backtest_v8_precompute", "npz_bar_refresh.py",
-                  "npz_bar_ingest.py", "vec_forward_npz_refresh.py", "v15_stranded_board_requeue", "v15_local_herd", "v15_overnight_herd",
-                  "dc_simple_8_sweep", "v15_mega", "v15_switch_healer")
-FREEZE_NEVER = ("s1_bar_guarantee", "vector_direct", "fwdstate_npz_watch", "npz_tail_service", "npz_tail_compactor", "closed_15m", "closed_bar",
-                "stock_15m_clock", "crypto_15m_clock", "per_sym_settings_feed", "v15_forward_state", "sshd", "rsync", "/ssh ", "ssh -", "scp ",
-                "systemd", "cron", "fleet_watchdog", "fleet_dispatch", "live_mode", "vec_bar_trigger", "klines", "ez_", "tradier_")
-FREEZE_NEVER_CGROUPS = ("/system.slice/s1-", "/system.slice/s5-", "/system.slice/vector-direct", "/system.slice/ssh.service", "/init.scope",
-                        "/system.slice/systemd-")
-FREEZE_CAP_S = float(os.environ.get("BAR_FREEZE_CAP_S", "60"))
-FAILSAFE_S = 75.0
+# ───────────── LIVE PRIORITY (no freeze) ─────────────
+# OPERATOR 2026-10-28 (verbatim): "you can not freeze a backtest while waiting for a mark price to come in that is SOO FKN STUPID
+# you keep compute >95% and >12 sym_sdie results/hr while you PRIORITIZE trading any kline that comes in for a tradeable key".
+# The live units run in live.slice (CPUWeight=IOWeight=10000, MemoryLow); backtests keep running at a low weight: cron.service
+# (CPUWeight=10) and every ssh session scope that holds a backtest (set here, CPUWeight=IOWeight=10, runtime). The Mac->host bar
+# receiver (closed_15m_feed.py receive, spawned by sshd in a session scope) is moved into its own live.slice scope here, so the
+# kernel hands the CPU to the bar lane the instant a kline lands and to the backtests whenever the live chain is idle.
+BACKTEST_PATTERNS = ("v15_pilot.py", "s5_replay_driver.py", "tools/opt/", "backtest_v12_engine", "backtest_v8_precompute", "npz_bar_refresh.py",
+                     "npz_bar_ingest.py", "vec_forward_npz_refresh.py", "v15_stranded_board_requeue", "v15_local_herd", "v15_overnight_herd",
+                     "dc_simple_8_sweep", "v15_mega", "v15_switch_healer")
+LIVE_PATTERNS = ("closed_15m_feed.py receive", "s1_bar_guarantee", "vector_direct", "fwdstate_npz_watch", "npz_tail_service", "s1_closed_bar_fallback",
+                 "stock_15m_clock", "crypto_15m_clock", "per_sym_settings_feed", "closed_15m_cache_bridge")
+RECEIVER_PATTERN = "closed_15m_feed.py receive"
+LOW_WEIGHT = int(os.environ.get("BACKTEST_CPU_WEIGHT", "10"))
 
 
 def _proc_table():
@@ -171,167 +165,64 @@ def _proc_table():
     for d in os.listdir("/proc"):
         if not d.isdigit():
             continue
-        pid = int(d)
         try:
             with open(f"/proc/{d}/cmdline", "rb") as fh:
                 cmd = fh.read().replace(b"\0", b" ").decode("utf-8", "ignore").strip()
-            with open(f"/proc/{d}/stat") as fh:
-                st = fh.read()
-            rest = st[st.rfind(")") + 2:].split()
             with open(f"/proc/{d}/cgroup") as fh:
                 cg = fh.read().strip().split(":")[-1]
-            out[pid] = {"cmd": cmd, "state": rest[0], "ppid": int(rest[1]), "cpu": int(rest[11]) + int(rest[12]), "uid": os.stat(f"/proc/{d}").st_uid, "cg": cg}
-        except (OSError, IndexError, ValueError):
+            out[int(d)] = {"cmd": cmd, "cg": cg}
+        except OSError:
             continue
     return out
 
 
-def freeze_targets(table=None):
-    """PIDs to stop: backtest command lines (FREEZE_INCLUDE) and all their descendants, minus FREEZE_NEVER / live cgroups / self."""
-    table = table if table is not None else _proc_table()
-    me, uid = os.getpid(), os.getuid()
-    bad = lambda p: (p["uid"] != uid or any(x in p["cmd"] for x in FREEZE_NEVER) or any(p["cg"].startswith(c) for c in FREEZE_NEVER_CGROUPS) or not p["cmd"])
-    roots = {pid for pid, p in table.items() if pid != me and not bad(p) and any(x in p["cmd"] for x in FREEZE_INCLUDE)}
-    kids = {}
-    for pid, p in table.items():
-        kids.setdefault(p["ppid"], []).append(pid)
-    out, stack = set(), list(roots)
-    while stack:
-        pid = stack.pop()
-        if pid in out or pid == me:
-            continue
-        p = table.get(pid)
-        if p is None or bad(p):
-            continue
-        out.add(pid)
-        stack.extend(kids.get(pid, []))
-    return out
-
-
-class BarFreeze:
+class PriorityKeeper:
     def __init__(self, out: Path, venue: str):
         self.out, self.venue = out, venue
-        self.state_path = out / f"FROZEN_{venue}.json"
-        self.state = None
-        self.pre = None  # (t, {pid: cpu ticks}) sampled ~10 s before the close
-        self.post = None
-
-    def enabled(self):
-        return os.environ.get("BAR_FREEZE", "1") != "0" and not (self.out / "FREEZE_DISABLED").exists()
+        self.done_scopes = {}
+        self.moved = set()
+        self.last = 0.0
 
     def log(self, row):
-        row = {"iso": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")[:-4] + "Z", "epoch": time.time(), "host": socket.gethostname(), "venue": self.venue, **row}
+        row = {"iso": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "epoch": time.time(), "host": socket.gethostname(), "venue": self.venue, **row}
         try:
-            with open(self.out / f"freeze_{dt.datetime.now(dt.timezone.utc):%Y-%m-%d}.jsonl", "a") as fh:
+            with open(self.out / f"priority_{dt.datetime.now(dt.timezone.utc):%Y-%m-%d}.jsonl", "a") as fh:
                 fh.write(json.dumps(row, default=str) + "\n")
         except OSError:
             pass
-        return row
 
-    @staticmethod
-    def cpu_cores(a, b):
-        (t0, c0), (t1, c1) = a, b
-        common = set(c0) & set(c1)
-        dt_s = max(1e-6, t1 - t0)
-        return round(sum(max(0, c1[p] - c0[p]) for p in common) / os.sysconf("SC_CLK_TCK") / dt_s, 2), len(common)
-
-    def sample(self):
+    def tick(self, now):
+        if now - self.last < 10 or os.environ.get("LIVE_PRIORITY", "1") == "0" or (self.out / "PRIORITY_DISABLED").exists():
+            return
+        self.last = now
         table = _proc_table()
-        return time.time(), {pid: table[pid]["cpu"] for pid in freeze_targets(table)}
-
-    def freeze(self, bar, close):
-        if self.state or not self.enabled():
-            return
-        pids = freeze_targets()
-        stopped = self._signal(pids, "SIGSTOP")
-        self.state = {"bar": bar, "close": close, "since": time.time(), "pids": sorted(stopped), "added": 0}
-        atomic_json(self.state_path, self.state)
-        pre = None
-        if self.pre and close - 15 <= self.pre[0] <= close:
-            pre = self.cpu_cores(self.pre, (time.time(), {p: c for p, c in self.sample()[1].items()}))
-        self.log({"event": "FREEZE", "bar": bar, "after_close_s": round(self.state["since"] - close, 3), "pids": len(stopped),
-                  "cmd_examples": self._examples(stopped), "pre_cpu_cores": pre[0] if pre else None, "pre_cpu_pids": pre[1] if pre else None})
-        log(f"FREEZE {self.venue} bar {bar}: {len(stopped)} backtest pids stopped at +{self.state['since'] - close:.2f}s (pre cpu {pre})")
-
-    def refreeze(self):
-        """New backtests launched during the freeze (fleet dispatch over ssh) are stopped too."""
-        if not self.state:
-            return
-        new = freeze_targets() - set(self.state["pids"])
-        if new:
-            stopped = self._signal(new, "SIGSTOP")
-            self.state["pids"] = sorted(set(self.state["pids"]) | stopped)
-            self.state["added"] += len(stopped)
-            atomic_json(self.state_path, self.state)
-
-    def thaw(self, reason, waiting=None):
-        st = self.state or read_json(self.state_path)
-        if not st:
-            return None
-        resumed = self._signal(set(st.get("pids") or []), "SIGCONT")
-        try:
-            self.state_path.unlink()
-        except OSError:
-            pass
-        self.state = None
-        dur = time.time() - float(st.get("since") or time.time())
-        row = self.log({"event": "THAW", "bar": st.get("bar"), "reason": reason, "frozen_s": round(dur, 3),
-                        "after_close_s": round(time.time() - float(st.get("close") or time.time()), 3), "pids": len(resumed),
-                        "added_during_freeze": st.get("added", 0), "waiting_on": waiting})
-        log(f"THAW {self.venue} bar {st.get('bar')}: {reason} after {dur:.2f}s, {len(resumed)} pids resumed, waiting_on={waiting}")
-        self.post = (time.time(), st.get("bar"))
-        return row
-
-    def after_thaw_sample(self):
-        """CPU of the backtests in the 10 s right after a thaw vs the ~10 s before the close (they must resume at 100%)."""
-        if not self.post:
-            return
-        t, bar = self.post
-        post0 = getattr(self, "post0", None)
-        if post0 is None and time.time() - t >= 0.5:
-            self.post0 = self.sample()
-        elif post0 is not None and time.time() - post0[0] >= 10:
-            post = self.cpu_cores(post0, self.sample())
-            self.log({"event": "RESUMED_CPU", "bar": bar, "post_cpu_cores": post[0], "post_cpu_pids": post[1]})
-            self.post0 = None
-            self.post = None
-
-    def _signal(self, pids, sig):
-        import signal as _s
-        done = set()
-        for pid in pids:
-            try:
-                os.kill(pid, getattr(_s, sig))
-                done.add(pid)
-            except (ProcessLookupError, PermissionError):
+        scopes = {}
+        for pid, p in table.items():
+            cg = p["cg"]
+            if "/user.slice/" in cg and cg.endswith(".scope"):
+                kind = "live" if any(x in p["cmd"] for x in LIVE_PATTERNS) else ("bt" if any(x in p["cmd"] for x in BACKTEST_PATTERNS) else None)
+                if kind:
+                    scopes.setdefault(cg, set()).add(kind)
+            if RECEIVER_PATTERN in p["cmd"] and "/live.slice/" not in cg and pid not in self.moved:
+                self.moved.add(pid)
+                unit = f"live-bar-receiver-{pid}.scope"
+                r = subprocess.run(["sudo", "-n", "busctl", "call", "org.freedesktop.systemd1", "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager",
+                                    "StartTransientUnit", "ssa(sv)a(sa(sv))", unit, "fail", "4", "PIDs", "au", "1", str(pid), "Slice", "s", "live.slice",
+                                    "CPUWeight", "t", "10000", "IOWeight", "t", "10000", "0"], capture_output=True, text=True, timeout=10)
+                self.log({"event": "RECEIVER_TO_LIVE_SLICE", "pid": pid, "from": cg, "unit": unit, "rc": r.returncode, "err": r.stderr[-200:]})
+                log(f"PRIORITY receiver pid {pid} -> live.slice/{unit} rc={r.returncode} {r.stderr[-120:]}")
+        for cg, kinds in scopes.items():
+            unit = cg.rsplit("/", 1)[-1]
+            want = LOW_WEIGHT if kinds == {"bt"} else None
+            if want is None or self.done_scopes.get(unit) == want:
                 continue
-        return done
-
-    @staticmethod
-    def _examples(pids):
-        t = _proc_table()
-        names = {}
-        for p in pids:
-            c = (t.get(p) or {}).get("cmd", "")
-            k = next((x for x in FREEZE_INCLUDE if x in c), c[:40])
-            names[k] = names.get(k, 0) + 1
-        return names
-
-
-def failsafe(out: Path):
-    """Independent timer (bar-freeze-failsafe.timer, every 15 s): anything frozen longer than FAILSAFE_S is resumed."""
-    for path in out.glob("FROZEN_*.json"):
-        st = read_json(path) or {}
-        age = time.time() - float(st.get("since") or 0)
-        if age >= FAILSAFE_S:
-            bf = BarFreeze(out, path.stem.split("_", 1)[1])
-            bf.state = st
-            row = bf.thaw(f"FAILSAFE frozen {age:.0f}s >= {FAILSAFE_S:.0f}s")
-            for p in (out / "ALERTS.jsonl",):
-                with open(p, "a") as fh:
-                    fh.write(json.dumps({"kind": "BAR_FREEZE_FAILSAFE_THAW", **(row or {})}) + "\n")
-            print(json.dumps(row), flush=True)
-    return 0
+            r = subprocess.run(["sudo", "-n", "systemctl", "set-property", "--runtime", unit, f"CPUWeight={want}", f"IOWeight={want}"],
+                               capture_output=True, text=True, timeout=10)
+            self.done_scopes[unit] = want if r.returncode == 0 else None
+            self.log({"event": "BACKTEST_SCOPE_LOW_WEIGHT", "unit": unit, "weight": want, "rc": r.returncode, "err": r.stderr[-200:]})
+        if len(self.done_scopes) > 2000:
+            self.done_scopes.clear()
+        self.moved = {p for p in self.moved if p in table}
 
 
 class Guarantee:
@@ -377,7 +268,9 @@ class Guarantee:
         self.procs = []
         self.last_poke = 0.0
         self.last_status = 0.0
-        self.freezer = BarFreeze(self.out, self.venue)
+        self.keeper = PriorityKeeper(self.out, self.venue)
+        self.bells = []
+        self.trader_log = Path(a.trader_log).expanduser()
 
     # ── inputs ──
     def host_engine(self):
@@ -517,7 +410,8 @@ class Guarantee:
                     "sides": {ss: {"accts": sorted(a for a in active if ss in keys.get(a, ()) or ss in held_by.get(a, ())),
                                    "keyed": sorted(a for a in active if ss in keys.get(a, ())), "held": sorted(a for a, v in held_by.items() if ss in v),
                                    "state_at": None, "state_ok_at": None, "reason": None, "exec_at": None, "orders": [], "repairs": [],
-                                   "state": None, "consumed": {}, "verify": None} for ss in sorted(sides)},
+                                   "state": None, "consumed": {}, "verify": None, "prio_at": None, "state_last_at": None,
+                                   "untr_at": None, "untr_reason": None, "untr_ack_at": None} for ss in sorted(sides)},
                     "done_stage": set(), "alerts": [], "repairs_n": 0}
         log(f"{self.venue} bar {self.iso(bar)} tracking {len(syms)} symbols / {len(sides)} sides, active={active} sim={self.bar['sim']}")
 
@@ -572,12 +466,22 @@ class Guarantee:
                 st, mt = self.read_state(ss)
                 if isinstance(st, dict) and int(st.get("npz_tail") or 0) >= b["bar"]:
                     r["state_at"] = r["state_at"] or mt
+                    r["state_last_at"] = mt
                     r["reason"] = st.get("reason")
                     if st.get("ok"):
                         r["state_ok_at"] = mt
                         r["state"] = {k: st.get(k) for k in ("ts", "npz_tail", "open", "acts_bar_ts", "acts_last_bar", "engine_qty", "engine_open_qty",
                                                              "engine_open_bar_ts", "settings_sha256", "settings_updated_at", "src", "engine_ast_sha256")}
                         r["verify"] = self.verify_state(ss, st)
+            if r["untr_at"] and not r["untr_ack_at"]:
+                rows = consumed.get(ss) or {}
+                acks = [float((rows.get(acct) or {}).get("at") or 0) for acct in r["accts"] if int((rows.get(acct) or {}).get("untradeable_bar") or 0) >= b["bar"]]
+                if len(acks) == len(r["accts"]):
+                    r["untr_ack_at"] = max(acks) if acks else now
+                    for acct in r["accts"]:
+                        c = rows.get(acct) or {}
+                        r["consumed"][acct] = dict(c)
+                        r["orders"] = sorted(set(r["orders"]) | {f"{acct}:{x}" for x in c.get("orders") or []})
             if r["state_ok_at"] is not None and r["exec_at"] is None:
                 if not r["accts"]:
                     r["exec_at"] = "n/a"
@@ -744,9 +648,7 @@ class Guarantee:
         self.write_bells()
 
     def write_bells(self):
-        fz = self.freezer.state
         atomic_json(self.out / f"BELLS_{self.venue}.json", {"epoch": time.time(), "items": self.bells,
-                                                             "frozen": {"bar": fz["bar"], "since": fz["since"], "pids": len(fz["pids"])} if fz else None,
                                                              "untradeable": sorted(((read_json(self.vd / f"untradeable_{self.venue}.json", {}) or {}).get("sides") or {}))})
 
     def collect_appends(self):
@@ -896,6 +798,8 @@ class Guarantee:
                         want = ["?held_unknown"]
                 if cons and "held" not in cons and not rows:
                     pass
+                elif not side["state_ok_at"] and side["untr_at"]:
+                    want = ["CLOSE"] if held > 0 else []  # UNTRADEABLE: close what is held, open nothing
                 elif not side["state_ok_at"]:
                     want = ["?stale"]
                 elif not st.get("open"):
@@ -1020,19 +924,10 @@ class Guarantee:
     def loop(self):
         log(f"s1_bar_guarantee {self.venue} start base={self.base} live={self.live} states={self.state_dir} store={self.store} start_size={self.start_size}")
         self.follow_receipts()
-        self.freezer.thaw("startup")
-        frozen_for = None
         while True:
             now = time.time()
             try:
                 bar = int(now // BAR_S) * BAR_S - BAR_S
-                close = bar + BAR_S
-                next_close = close + BAR_S
-                if frozen_for != bar and 0 <= now - close < 5 and self.tracked_bar(bar):
-                    frozen_for = bar
-                    self.freezer.freeze(bar, close)
-                if 8 <= next_close - now <= 12 and (self.freezer.pre is None or self.freezer.pre[0] < next_close - 15):
-                    self.freezer.pre = self.freezer.sample()
                 if self.bar and (now - self.bar["close"] >= FINAL_S or (self.bar["bar"] != bar and self.complete())):
                     self.finalize(now)
                 if self.bar is None and (not self.history or self.history[-1]["bar"] < bar) and self.tracked_bar(bar) and now - (bar + BAR_S) < FINAL_S:
@@ -1041,33 +936,52 @@ class Guarantee:
                 if self.bar:
                     self.observe(now)
                     self.repair(now)
+                    self.slow_alerts(now)
                     if self.complete() and "complete" not in self.bar["done_stage"]:
                         self.bar["done_stage"].add("complete")
-                        log(f"{self.venue} bar {self.iso(self.bar['bar'])} COMPLETE at +{now - self.bar['close']:.1f}s")
-                if self.freezer.state:
-                    fz = self.freezer.state
-                    if self.bar and self.bar["bar"] == fz["bar"] and self.complete():
-                        self.freezer.thaw("bar_done")
-                    elif now - fz["since"] >= FREEZE_CAP_S or (self.bar is None and now - fz["close"] > 10) or (self.bar and self.bar["bar"] != fz["bar"]):
-                        waiting = self.waiting_on() if self.bar and self.bar["bar"] == fz["bar"] else {"no_bar_record": True}
-                        self.freezer.thaw(f"CAP {FREEZE_CAP_S:.0f}s", waiting)
-                        if self.bar:
-                            self.alert("FREEZE_CAP_THAW", [f"{k}:{len(v)}" for k, v in waiting.items() if v], f"backtests resumed at the {FREEZE_CAP_S:.0f}s cap; late stages {json.dumps(waiting)[:300]}")
-                    else:
-                        self.freezer.refreeze()
-                self.freezer.after_thaw_sample()
-                self.procs = [(p, f) for p, f in self.procs if p.poll() is None or f.close()]
+                        self.bar["complete_at"] = now
+                        log(f"{self.venue} bar {self.iso(self.bar['bar'])} ALL SIDES RESOLVED at +{now - self.bar['close']:.1f}s")
+                self.restore_tradeable()
+                self.collect_appends()
+                self.keeper.tick(now)
                 if now - self.last_status >= 2.0:
                     self.last_status = now
                     self.write_status(now)
+                    self.write_bells()
             except Exception as exc:
                 log(f"loop error {type(exc).__name__}: {str(exc)[:300]}")
-                try:
-                    self.freezer.thaw(f"exception {type(exc).__name__}")
-                except Exception:
-                    pass
+                if now - getattr(self, "_last_exc_bell", 0) > 60:
+                    self._last_exc_bell = now
+                    try:
+                        self.ring("GUARANTEE_SCRIPT_ERROR", f"{type(exc).__name__}: {str(exc)[:300]}")
+                    except Exception:
+                        pass
             nc = (int(time.time() // BAR_S) + 1) * BAR_S
             time.sleep(max(0.02, min(1.0 - (time.time() - now), nc - time.time() + 0.01)))
+
+    def slow_alerts(self, now):
+        """Target: every side resolved < 10 s after the close. Slow -> WARN line per bar with the late stage and the script errors
+        seen (state reasons, repair results); CRITICAL bell when a stage reports an error."""
+        b = self.bar
+        age = now - b["close"]
+        for at in (10.0, 30.0, 60.0, 120.0):
+            tag = f"slow@{at:.0f}"
+            if age >= at and tag not in b["done_stage"] and not self.complete():
+                b["done_stage"].add(tag)
+                w = self.waiting_on()
+                errors = {ss: r["reason"] for ss, r in b["sides"].items() if r["reason"] and not r["state_ok_at"]}
+                errors.update({s: [x for x in r["repairs"] if x.get("stage") == "append_result" and x.get("result") not in ("appended", "current")][-1]["result"]
+                               for s, r in b["syms"].items() if any(x.get("stage") == "append_result" and x.get("result") not in ("appended", "current") for x in r["repairs"])})
+                row = {"kind": "BAR_GUARANTEE_SLOW", "iso": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "epoch": now, "host": socket.gethostname(),
+                       "venue": self.venue, "bar": b["bar"], "after_close_s": round(age, 1), "waiting_counts": {k: len(v) for k, v in w.items()},
+                       "waiting": {k: v[:30] for k, v in w.items() if v}, "script_errors": {k: str(v)[:160] for k, v in list(errors.items())[:30]}}
+                for path in (self.out / "ALERTS.jsonl",):
+                    with open(path, "a") as fh:
+                        fh.write(json.dumps(row, default=str) + "\n")
+                log(f"SLOW {self.venue} bar {self.iso(b['bar'])} +{age:.0f}s unresolved {row['waiting_counts']} errors={len(errors)}")
+                if errors and at >= 30.0:
+                    self.ring("SLOW_STAGE_SCRIPT_ERROR", f"bar {self.iso(b['bar'])} +{age:.0f}s: {len(errors)} sides/symbols with errors e.g. {json.dumps(dict(list(errors.items())[:3]), default=str)[:300]}",
+                              waiting=row["waiting_counts"])
 
 
 def main():
@@ -1081,11 +995,8 @@ def main():
     ap.add_argument("--repair-append", default="")
     ap.add_argument("--result-file", default="")
     ap.add_argument("--trader-log", default=str(Path.home() / "logs" / "vector_direct_trader.log"))
-    ap.add_argument("--failsafe", action="store_true", help="oneshot: resume anything frozen longer than 75 s (systemd timer)")
     ap.add_argument("--bar", type=int, default=0)
     a = ap.parse_args()
-    if a.failsafe:
-        return failsafe(Path(a.live_root).expanduser() / "data" / "bar_guarantee")
     if a.repair_append:
         return repair_append(Path(a.base).expanduser(), [s for s in a.repair_append.split(",") if s], a.bar, "crypto" if a.venue == "crypto" else "tradier", a.result_file)
     import fcntl

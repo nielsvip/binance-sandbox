@@ -1144,7 +1144,7 @@ async def plot_dfs_subplots(
                     reason_event = event.get("reason", etype).lower()
                     action_event = event.get("action", "").upper()
                     marker_style = None; color_style = 'orange'; line_style = 'dotted'; marker_size = 6
-                    is_vline = True
+                    is_vline = False
                     if "stoch_crossover" in reason_event: color_style, marker_style, is_vline, marker_size = "cyan", 'o', False, 4
                     elif "stoch_crossunder" in reason_event: color_style, marker_style, is_vline, marker_size = "magenta", 'o', False, 4
                     elif "wt_crossover" in reason_event or "wt crossover" in reason_event: color_style, marker_style, is_vline, marker_size = "lime", '^', False, 8
