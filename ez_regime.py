@@ -158,7 +158,7 @@ def get_regime_params(regime_mode: str, account_key: str, config) -> Dict[str, A
         return {
             'noloss_min': getattr(config, 'REGIME_RANGING_NOLOSS_MIN', 0.05),
             'exit_gain_min': getattr(config, 'REGIME_RANGING_EXIT_GAIN_MIN', 0.15),
-            'min_hold_bars': getattr(config, 'REGIME_RANGING_MIN_HOLD_BARS', 8),
+            'min_hold_bars': getattr(config, 'MIN_HOLD_BARS', 8),  # USER 2026-10-28: one hold knob for every regime
             'wt_reduce_frac_low': getattr(config, 'REGIME_RANGING_WT_REDUCE_FRAC_LOW', 0.40),
             'wt_reduce_frac_med': getattr(config, 'REGIME_RANGING_WT_REDUCE_FRAC_MED', 0.60),
             'wt_exit_vel': getattr(config, 'REGIME_RANGING_WT_EXIT_VEL', -3.0),
@@ -172,7 +172,7 @@ def get_regime_params(regime_mode: str, account_key: str, config) -> Dict[str, A
         return {
             'noloss_min': getattr(config, 'REGIME_TRENDING_NOLOSS_MIN', 0.50),
             'exit_gain_min': getattr(config, 'REGIME_TRENDING_EXIT_GAIN_MIN', 2.0),
-            'min_hold_bars': getattr(config, 'REGIME_TRENDING_MIN_HOLD_BARS', 48),
+            'min_hold_bars': getattr(config, 'MIN_HOLD_BARS', 8),  # USER 2026-10-28: one hold knob for every regime
             'wt_reduce_frac_low': getattr(config, 'REGIME_TRENDING_WT_REDUCE_FRAC_LOW', 0.10),
             'wt_reduce_frac_med': getattr(config, 'REGIME_TRENDING_WT_REDUCE_FRAC_MED', 0.15),
             'wt_exit_vel': getattr(config, 'REGIME_TRENDING_WT_EXIT_VEL', -12.0),

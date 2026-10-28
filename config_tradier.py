@@ -2236,9 +2236,6 @@ class TradierConfig:
     LR_BAND_SLOPE_FLIP_MIN_PCT_DAY: float = (
         0.05  # deadband: slope must be decisively negative (%/day), not just <=0 — bare zero-cross caused 60/80 MU churn exits at +0.0x%
     )
-    # ERASED 2026-10-28 (min-hold one-knob): LR_BAND_SLOPE_FLIP_MIN_HOLD_MIN: float = (
-    # 240.0  # and the position must have held this long first
-    # )
     TRADIER_LONG_ONLY_ENTRIES: bool = (
         False  # 2026-07-20 USER band mandate: skip SHORT entries entirely (shorts were squatting symbols and blocking LONG band entries via has_opposing_pos)
     )
@@ -2484,7 +2481,6 @@ class TradierConfig:
     BTC_BREAKOUT_ENTRY_ENABLED: bool = True
     BTC_BREAKOUT_HARD_LOSS_USD_PER_TRADE: float = 5.0
     BTC_BREAKOUT_HTF_MIN_ALIGNED: int = 2
-    # ERASED 2026-10-28 (min-hold one-knob): BTC_BREAKOUT_MIN_HOLD_BARS: int = 3
     BTC_BREAKOUT_REENTRY_ON_EXIT: bool = True
     BTC_BREAKOUT_REENTRY_REQUIRE_TREND: bool = True
     BTC_BREAKOUT_REQUIRE_HTF_ALIGNED: bool = True
@@ -2536,7 +2532,6 @@ class TradierConfig:
     BTC_GUARANTEED_REENTRY_SIZE_MULT: float = 1.0
     BTC_HARD_LOSS_USD_PER_TRADE: float = 90.0
     BTC_HEDGE_DC_RESISTANCE_GATE_ENABLED: bool = True
-    # ERASED 2026-10-28 (min-hold one-knob): BTC_HEDGE_MIN_HOLD_BARS: int = 10
     BTC_HEDGE_NEVER_CLOSE_AT_LOSS: bool = True
     BTC_HEDGE_REQUIRE_4OF5_WT_TFS: bool = True
     BTC_HEDGE_SAMESYM_CLOSE_REQUIRE_NONNEG_GAIN: bool = True
@@ -2554,7 +2549,6 @@ class TradierConfig:
     BTC_HEDGE_WT_VEL_GATE_ENABLED: bool = True
     BTC_INTRABAR_REVERSAL_EXIT: bool = True
     BTC_LEVERAGE: float = 20.0
-    # ERASED 2026-10-28 (min-hold one-knob): BTC_MIN_HOLD_BARS: int = 5
     BTC_PAPER_PARITY_VERIFY_AT_STARTUP: bool = True
     BTC_PAPER_RECONCILE_ALARM_DRIFT_PCT: float = 0.1
     BTC_PER_SYM_CONFIG_ENABLED: bool = True
@@ -3318,7 +3312,6 @@ class TradierConfig:
     MICRO_SCALP_USDC_MAKER_ENABLED: bool = False
     MINERVINI_GATE_ENABLED: bool = False
     MINERVINI_MIN_SCORE: int = 5
-    MIN_HOLD_BARS_15m: int = 2
     MIN_PERC_FROM_SMA_1: float = 1.0 / 100
     MIN_PERC_FROM_SMA_15: float = 3.0 / 100
     MIN_USD_DELTA_CONFIRM: float = 1.0
@@ -3796,7 +3789,6 @@ class TradierConfig:
     REGIME_RANGING_DC_BREAKOUT_SCORE: int = 0
     REGIME_RANGING_EXIT_GAIN_MIN: float = 0.15
     REGIME_RANGING_K_ZONE_BONUS: int = 40
-    # ERASED 2026-10-28 (min-hold one-knob): REGIME_RANGING_MIN_HOLD_BARS: int = 8
     REGIME_RANGING_NOLOSS_MIN: float = 0.05
     REGIME_RANGING_POSITION_SIZE_MULT: float = 0.5
     REGIME_RANGING_REENTRY_SIZE_MULT: float = 1.0
@@ -3810,7 +3802,6 @@ class TradierConfig:
     REGIME_TRENDING_EXIT_GAIN_MIN: float = 2.0
     REGIME_TRENDING_K_RESET_THRESHOLD: float = 40.0
     REGIME_TRENDING_K_ZONE_BONUS: int = 15
-    # ERASED 2026-10-28 (min-hold one-knob): REGIME_TRENDING_MIN_HOLD_BARS: int = 48
     REGIME_TRENDING_NOLOSS_MIN: float = 0.50
     REGIME_TRENDING_POSITION_SIZE_MULT: float = 1.5
     REGIME_TRENDING_REENTRY_SIZE_MULT: float = 2.0
@@ -4454,7 +4445,6 @@ class TradierConfig:
     V8Q_D_TREND_REQUIRED: bool = True
     V8Q_HTF_MIN_ALIGNED: int = 1
     V8Q_K3M_FLOOR: int = 30
-    # ERASED 2026-10-28 (min-hold one-knob): V8Q_MIN_HOLD_BARS: int = 250
     V8Q_STRENGTH_FILTER_ENABLED: bool = False
     V8Q_STRENGTH_MIN_SCORE: float = 5.0
     V8Q_SYMBOL_TIER_TOP3: tuple = ("LINKUSDC", "ETHUSDC", "DOTUSDT")
@@ -4911,14 +4901,14 @@ class TradierConfig:
     )
     GAP_CLOSE_PER_SYMBOL_HISTORY_FILE: str = "data/gap_close_history_1yr_tradier.json"
     GAP_CLOSE_PER_SYMBOL_AVG_THRESH_PCT: float = (
-        0.10  # |avg_close_gap| <= this → don't close on close-gap (only VV). Shorts exit when avg > +0.10
+        0.3  # USER 2026-10-28: 0.3 for longs AND shorts (identical in vec v12 and live). |avg_close_gap| <= this → don't close on close-gap
     )
     GAP_CLOSE_PER_SYMBOL_LOOKBACK_DAYS: int = 30
     GAP_CLOSE_MOC_EXIT_ENABLED: bool = (
-        False  # DEFAULTS to getting out of SHORTS before EOD when avg_close_gap > 0.10% (stocks only)
+        True  # USER 2026-10-28: close-gap sentinel ON, longs and shorts (stocks only), threshold 0.3
     )
     GAP_CLOSE_MOC_ONLY_FOR_SHORTS: bool = (
-        True  # live rule: only shorts use close-gap sentinel (longs use open-gap)
+        False  # USER 2026-10-28: close-gap sentinel applies to longs AND shorts
     )
     GAP_CLOSE_MOC_ONLY_STOCKS: bool = (
         True  # only applies to stocks (tradier MODE); crypto auto-skipped
@@ -5210,12 +5200,6 @@ class TradierConfig:
         # vec_decisions/ + vec_paths/ returns nothing) and vec_paths/vec_parity_gate.py lists it as live-only, so it
         # can never appear on a board. False = off. ROLLBACK: True.
     )
-    # ERASED 2026-10-28 (min-hold one-knob): MIN_HOLD_MINUTES_TRADIER: float = (
-    # 30.0  # No exits before 30 min. Bypassed only if loss > -5%. ; WIRED 2026-04-16 (priority 90/100) — tradier_manage.py:3891 stock min hold fallback
-    # )
-    # ERASED 2026-10-28 (min-hold one-knob): SCALP_MIN_HOLD_SEC: float = (
-    # 180.0  # 2026-10-25 USER scalp kill-switch — no CLOSE/REDUCE may execute on a position younger than this, any venue, any reason except the stop/protection family. Measured 317 true sub-120s flat-to-flat broker scalps crypto + 526 stock ledger pairs. Enforced at execute_now (the ONLY gate). 0 disables.
-    # )
     # MULTI-TF EXIT CONFIRMATION — exits must mirror entry strength
     # Entry needs multi-TF WT alignment → exit needs multi-TF WT disalignment
     # Prevents 5m noise from killing positions that 15m/1h/4h still support
@@ -5228,9 +5212,6 @@ class TradierConfig:
     BOUNCE_TOP_EXIT_ENABLED: bool = (
         False  # KILLED 2026-03-30: percentage stop loss in disguise. Exits ONLY on technicals. ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     )
-    # ERASED 2026-10-28 (min-hold one-knob): BOUNCE_TOP_MIN_HOLD_MINUTES: float = (
-    # 1440.0  # 24h min hold before bounce exit eligible
-    # )
     BOUNCE_TOP_MIN_LOSS_PCT: float = (
         -3.0
     )  # Only fires when loss is between -3% and -50%
@@ -6179,7 +6160,6 @@ class TradierConfig:
     DELTA_EXIT_ACCEL_THRESHOLD: float = -0.1
     DELTA_EXIT_OPPOSING_RATIO: float = 1.5
     DELTA_EXIT_MIN_TF_LOST: int = 2
-    DELTA_EXIT_MIN_HOLD: int = 4
     DELTA_PYRAMID_MAX: int = 8
     DELTA_PYRAMID_MIN_BARS: int = 8
     DELTA_PYRAMID_PRICE_TOL: float = 0.02
@@ -6346,12 +6326,6 @@ class TradierConfig:
     # "STOCKS CAN [get into a loss briefly] THEY ARE HELD AT LEAST 4H OR SO".
     # Stocks are swing trades, not scalps. Must wait for HTF (1h/4h/D) delta slowdown
     # before considering any exit. Below this hold time, return HOLD regardless.
-    # ERASED 2026-10-28 (min-hold one-knob): TRADIER_MIN_HOLD_MINUTES: float = (
-    # 240.0  # 2026-09-10 P0 fix: 4320→240 (72h deadlock). 240m = 4h swing hold per test + user 4H HTF gate; 4320 blocked all exits 3 days.
-    # )
-    # ERASED 2026-10-28 (min-hold one-knob): TRADIER_MIN_HOLD_MINUTES_SHORT: float = (
-    # 60.0  # shorts 60m (test expects directional split)
-    # )
     # === PRICE CROSS-BACK REENTRY (2026-04-27 user rule) ===
     # When a stock position is fully closed and price subsequently returns to within
     # a tight band of last_reduction_price, immediately reopen — bypasses ANTI_CHURN,
@@ -6469,9 +6443,6 @@ class TradierConfig:
     WT_EXIT_VELOCITY_TRADIER: bool = (
         False  # SWEEP: velocity makes zero difference. Cross is simpler. ; DEAD_CONFIRMED (priority 55/100) — no plausible wiring site found 20260416
     )
-    # ERASED 2026-10-28 (min-hold one-knob): MIN_HOLD_BARS_TRADIER: int = (
-    # 40  # 2026-04-20 sweep: 40 (200min) consistently wins over 32 (160min)
-    # )
     COOLDOWN_BARS_TRADIER: int = (
         0  # USER 2026-10-10: immediate DC-break reentry (profit-take 0.1% from edge). Was 8 per 2026-04-08 sweep (+1.30 vs 0); GLOBAL_RISK_GATES rows 4/8/12/16 re-promote if 0 measures worse.
     )

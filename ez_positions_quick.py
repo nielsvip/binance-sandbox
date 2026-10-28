@@ -16133,7 +16133,7 @@ class FastDataManager:
                         config, "DELTA_EXIT_SPEED_DECAY_PCT", 50.0
                     ),
                     "exit_min_tf_lost": config.DELTA_EXIT_MIN_TF_LOST,
-                    "exit_min_hold": config.DELTA_EXIT_MIN_HOLD,
+                    "exit_min_hold": getattr(config, "MIN_HOLD_BARS", 3),  # USER 2026-10-28: one knob, MIN_HOLD_BARS (per sym_side at the readers)
                     "pyramid_price_tolerance": config.DELTA_PYRAMID_PRICE_TOL,
                     "pyramid_qty_mult": config.DELTA_PYRAMID_QTY_MULT,
                     "pyramid_max": config.DELTA_PYRAMID_MAX,

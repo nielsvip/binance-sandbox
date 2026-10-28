@@ -3966,7 +3966,6 @@ AUTO_WIRED_PARAMS = [
     "HAIKU_WINNER_AUGMENT_ENABLED",
     "KEY_LEVEL_CRASH_EXIT_ENABLED",
     "COOLDOWN_FROM_LIVE_SECONDS_ENABLED",
-    "MIN_HOLD_LIVE_SECONDS_ENABLED",
     "WT15_ZEROES_COOLDOWN_ENABLED",
     "GAP_MOC_TS_SESSION_WINDOW_ENABLED",
     "STOCKS_OPENING_BUFFER_ENTRY_ENABLED",
@@ -4438,9 +4437,6 @@ class QuickConfig:
     STOCKS_WTDC_SCORER_EXIT_ENABLED: bool = (
         True  # stocks: live evaluate_stop WT_DC scorer exit chain twin (opening buffer + 240/60 min hold + NOLOSS + N-of-5 scorer); vec_decisions/stocks_wtdc_scorer_exit.py
     )
-    TRADIER_MIN_HOLD_MINUTES_SHORT: float = (
-        60.0  # config_tradier.py:4165 (live evaluate_stop short min hold)
-    )
     STOCKS_RTH_ONLY_ENABLED: bool = (
         True  # INERT 2026-10-06: RTH-only is unconditional for stocks (USER: stocks never trade outside market hours); kept only so old overrides parse
     )
@@ -4527,9 +4523,6 @@ class QuickConfig:
     )
     WT15_ZEROES_COOLDOWN_ENABLED: bool = (
         False  # lane-D: live keeps cooldown/min_hold when WT_15M_BOUNCE_OPEN is on; True = old vec (cooldown 0, min_hold 1)
-    )
-    MIN_HOLD_LIVE_SECONDS_ENABLED: bool = (
-        True  # crypto: live hold = MIN_HOLD_BARS_BEFORE_EXIT x 180 s (3m bars), not x 15m; False = old vec max(MIN_HOLD_BARS, MIN_HOLD_BARS_BEFORE_EXIT) 15m bars
     )
     COOLDOWN_FROM_LIVE_SECONDS_ENABLED: bool = (
         False  # lane-D: default False = vec baseline COOLDOWN_BARS (director correction); True = live wall-clock test row.  # director 2026-10-06: vec cooldown follows live wall-clock (crypto REENTRY_COOLDOWN_S, stocks TRADIER_POST_CLOSE_COOLDOWN_MIN); False = COOLDOWN_BARS(_TRADIER)
@@ -4741,7 +4734,6 @@ class QuickConfig:
     LUNCH_DEADZONE_SIZE_MULT: float = 0.5
     MIN_EXIT_TF_AGAINST_TRADIER: int = 3
     # MIN_HOLD_BARS_BEFORE_EXIT RETIRED 2026-10-27 — USER: "make sure there is only ONE name for this NOT 2 functions NOT 2 values". It was a SECOND name for the same quantity and is exactly how MIN_HOLD_BARS came to be masked into a structural zero. The one switch is MIN_HOLD_BARS (GLOBAL_RISK_GATES, bold 8, swept 2/4/8/12); the one gate is vec_decisions/min_hold_gate.
-    MIN_HOLD_MINUTES_TRADIER: float = 30.0
     MIN_PERC_FROM_SMA_1: float = 0.01
     MIN_PERC_FROM_SMA_15: float = 0.03
     MI_ENTRY_ENABLED_TRADIER: bool = False
@@ -4811,7 +4803,6 @@ class QuickConfig:
     REGIME_RANGING_DC_BREAKOUT_SCORE: int = 0
     REGIME_RANGING_EXIT_GAIN_MIN: float = 0.15
     REGIME_RANGING_K_ZONE_BONUS: int = 40
-    REGIME_RANGING_MIN_HOLD_BARS: int = 8
     REGIME_RANGING_NOLOSS_MIN: float = 0.05
     REGIME_RANGING_POSITION_SIZE_MULT: float = (
         0.25  # parity 2026-10-06: crypto truth (stocks pinned in overlay)
@@ -4827,7 +4818,6 @@ class QuickConfig:
     REGIME_TRENDING_EXIT_GAIN_MIN: float = 2.0
     REGIME_TRENDING_K_RESET_THRESHOLD: float = 40.0
     REGIME_TRENDING_K_ZONE_BONUS: int = 15
-    REGIME_TRENDING_MIN_HOLD_BARS: int = 48
     REGIME_TRENDING_NOLOSS_MIN: float = 0.5
     REGIME_TRENDING_POSITION_SIZE_MULT: float = 1.5
     REGIME_TRENDING_REENTRY_SIZE_MULT: float = 2.0
@@ -5394,7 +5384,6 @@ class QuickConfig:
         self.BB_ENTRY_SHORT_THRESHOLD = 0.7
         self.BB_RECOVERY_EXIT_ENABLED_TRADIER = False
         self.BB_RSI_STOCH_SCALP_SCORE = 12
-        self.BOUNCE_TOP_MIN_HOLD_MINUTES = 1440.0
         self.BREAKEVEN_EXIT_AFTER_BARS_ENABLED = False
         self.BREAKOUT_LEASH_TF = "5m"
         self.BREAKOUT_MULTI_LUNG_COMPOSITE_EXHALE = -0.037500000000000006
@@ -5523,7 +5512,6 @@ class QuickConfig:
         self.TRADES_PER_SYM_PER_DAY_MAX = 8
         self.TRADIER_ACCOUNT_ID = "VA11623260"
         self.TRADIER_K_ZONE_ENTRY_BONUS_TRADIER = 25
-        self.TRADIER_MIN_HOLD_MINUTES = 240.0
         self.TRADIER_REENTRY_HARDCOOL_MIN = 15.0
         self.TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED = False
         self.TRC_MAX_ORDER_VALUE = 3300.0
@@ -5750,7 +5738,6 @@ class QuickConfig:
         False  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     )
     BOUNCE_TOP_MAX_LOSS_PCT: float = -50.0  # auto-wired 625
-    BOUNCE_TOP_MIN_HOLD_MINUTES: float = 2880.0  # auto-wired 625
     BOUNCE_TOP_MIN_LOSS_PCT: float = -3.0  # auto-wired 625
     BOUNCE_TOP_REENTRY_MULT: float = 1.5  # auto-wired 625
     BREAKEVEN_DC_LOW4_ENABLED: bool = True  # auto-wired 625
@@ -5861,7 +5848,6 @@ class QuickConfig:
     DELTA_ENTRY_Z_THRESHOLD: float = 2.5  # auto-wired 625
     DELTA_EXIT_ACCEL_THRESHOLD: float = -0.1  # auto-wired 625
     DELTA_EXIT_DECAY_RATIO: float = 0.9  # auto-wired 625
-    DELTA_EXIT_MIN_HOLD: int = 4  # auto-wired 625
     DELTA_EXIT_MIN_TF_LOST: int = 1  # auto-wired 625
     DELTA_EXIT_OPPOSING_RATIO: float = 1.5  # auto-wired 625
     DELTA_EXIT_REENTRY_COOLDOWN_MIN: float = 45.0  # auto-wired 625
@@ -6079,7 +6065,6 @@ class QuickConfig:
     LR_BAND_SIZE_MAX: float = 3.0  # auto-wired 625
     LR_BAND_SIZE_SLOPE_GAIN: float = 1.0  # auto-wired 625
     LR_BAND_SLOPE_FLIP_EXIT_ENABLED: bool = False  # auto-wired 625
-    LR_BAND_SLOPE_FLIP_MIN_HOLD_MIN: float = 240.0  # auto-wired 625
     LR_BAND_SLOPE_FLIP_MIN_PCT_DAY: float = 0.05  # auto-wired 625
     LR_BAND_SLOPE_NORM_PCT_DAY: float = 0.3  # auto-wired 625
     LS_RATIO_ENFORCE_TRADIER: bool = (
@@ -6116,7 +6101,6 @@ class QuickConfig:
     MINERVINI_POSITION_SIZE: float = 800.0  # auto-wired 625
     MINERVINI_TARGET_PCT: float = 25.0  # auto-wired 625
     MIN_GAIN_TO_BUY_AGGRESSIVELY: float = 4.5  # auto-wired 625
-    MIN_HOLD_BARS_TRADIER: int = 40  # auto-wired 625
     MI_DIV_EXIT_ENABLED_TRADIER: bool = (
         False  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     )
@@ -6443,7 +6427,6 @@ class QuickConfig:
         True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     )
     TRADIER_LONG_ONLY_ENTRIES: bool = False  # auto-wired 625
-    TRADIER_MIN_HOLD_MINUTES: float = 4320.0  # auto-wired 625
     TRADIER_NOLOSS_SRS_BYPASS: bool = (
         True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     )
@@ -7955,7 +7938,6 @@ class QuickConfig:
     BTC_BREAKOUT_DC_TF: str = "3m"
     BTC_BREAKOUT_HARD_LOSS_USD_PER_TRADE: float = 5.0
     BTC_BREAKOUT_HTF_MIN_ALIGNED: int = 2
-    BTC_BREAKOUT_MIN_HOLD_BARS: int = 3
     BTC_BREAKOUT_REENTRY_ON_EXIT: bool = True
     BTC_BREAKOUT_REENTRY_REQUIRE_TREND: bool = True
     BTC_BREAKOUT_REQUIRE_HTF_ALIGNED: bool = True
@@ -8005,7 +7987,6 @@ class QuickConfig:
     BTC_GUARANTEED_REENTRY_SIZE_MULT: float = 1.0
     BTC_HARD_LOSS_USD_PER_TRADE: float = 90.0
     BTC_HEDGE_DC_RESISTANCE_GATE_ENABLED: bool = True
-    BTC_HEDGE_MIN_HOLD_BARS: int = 10
     BTC_HEDGE_NEVER_CLOSE_AT_LOSS: bool = True
     BTC_HEDGE_REQUIRE_4OF5_WT_TFS: bool = True
     BTC_HEDGE_SAMESYM_CLOSE_REQUIRE_NONNEG_GAIN: bool = True
@@ -8023,7 +8004,6 @@ class QuickConfig:
     BTC_HEDGE_WT_VEL_GATE_ENABLED: bool = True
     BTC_INTRABAR_REVERSAL_EXIT: bool = True
     BTC_LEVERAGE: float = 20.0
-    BTC_MIN_HOLD_BARS: int = 5
     BTC_PAPER_PARITY_VERIFY_AT_STARTUP: bool = True
     BTC_PAPER_RECONCILE_ALARM_DRIFT_PCT: float = 0.1
     BTC_PER_SYM_CONFIG_ENABLED: bool = True
@@ -8825,7 +8805,6 @@ class QuickConfig:
     MID_ZONE_SHORT_EXTRA_IND: str = "wt_crossunder_15m"
     MINERVINI_MIN_SCORE: int = 5
     MINERVINI_MIN_SEPA_SCORE: int = 5
-    MIN_HOLD_BARS_15m: int = 2
     MIN_QTY_FILE: Path = Path("data")
     MIN_USD_DELTA_CONFIRM: float = 1.0
     MITIGATOR_ACCOUNT: list = field(default_factory=lambda: [])
@@ -10192,7 +10171,6 @@ class QuickConfig:
     V8Q_COOLDOWN_BARS: int = 3
     V8Q_HTF_MIN_ALIGNED: int = 1
     V8Q_K3M_FLOOR: int = 30
-    V8Q_MIN_HOLD_BARS: int = 250
     V8Q_STRENGTH_MIN_SCORE: float = 5.0
     V8Q_SYMBOL_TIER_TOP3: tuple = ("LINKUSDC", "ETHUSDC", "DOTUSDT")
     V8Q_SYMBOL_TIER_TOP4: tuple = ("LINKUSDC", "ETHUSDC", "DOTUSDT", "BTCUSDC")
@@ -14471,7 +14449,6 @@ _DEFAULTS_625 = {
     "BOUNCE_AUGMENT_MIN_LOSS_PCT": -0.5,
     "BOUNCE_REENTRY_ENABLED_TRADIER": True,
     "BOUNCE_TOP_MAX_LOSS_PCT": -75.0,
-    "BOUNCE_TOP_MIN_HOLD_MINUTES": 720.0,
     "BOUNCE_TOP_MIN_LOSS_PCT": -4.5,
     "BOUNCE_TOP_REENTRY_MULT": 0.75,
     "BREAKEVEN_DC_LOW4_ENABLED": False,
@@ -14602,7 +14579,6 @@ _DEFAULTS_625 = {
     "DELTA_EXIT_DC_FLOOR": True,
     "DELTA_EXIT_DECAY_RATIO": 0.15,
     "DELTA_EXIT_ENABLED": True,
-    "DELTA_EXIT_MIN_HOLD": 2,
     "DELTA_EXIT_MIN_TF_LOST": 1,
     "DELTA_EXIT_OPPOSING_RATIO": 0.75,
     "DELTA_EXIT_OVERRIDE_NOLOSS": True,
@@ -14788,7 +14764,6 @@ _DEFAULTS_625 = {
     "LR_BAND_SIZE_MAX": 1.5,
     "LR_BAND_SIZE_SLOPE_GAIN": 0.5,
     "LR_BAND_SLOPE_FLIP_EXIT_ENABLED": False,
-    "LR_BAND_SLOPE_FLIP_MIN_HOLD_MIN": 120.0,
     "LR_BAND_SLOPE_FLIP_MIN_PCT_DAY": 0.025,
     "LR_BAND_SLOPE_NORM_PCT_DAY": 0.15,
     "LONG_STOCH_CHASE_BLOCK": True,
@@ -14823,8 +14798,6 @@ _DEFAULTS_625 = {
     "MINERVINI_TARGET_PCT": 12.5,
     "MIN_GAIN": 3.0,
     "MIN_GAIN_TO_BUY_AGGRESSIVELY": 1.5,
-    "MIN_HOLD_BARS_TRADIER": 20,
-    "MIN_HOLD_MINUTES_TRADIER": 30.0,
     "MIN_PERC_FROM_SMA_1": 0.01,
     "MIN_PERC_FROM_SMA_15": 0.03,
     "MIN_POSITION_SIZE": 55.0,
@@ -15013,7 +14986,6 @@ _DEFAULTS_625 = {
     "REGIME_RANGING_DC_BREAKOUT_SCORE": 0,
     "REGIME_RANGING_EXIT_GAIN_MIN": 0.15,
     "REGIME_RANGING_K_ZONE_BONUS": 40,
-    "REGIME_RANGING_MIN_HOLD_BARS": 8,
     "REGIME_RANGING_NOLOSS_MIN": 0.05,
     "REGIME_RANGING_POSITION_SIZE_MULT": 0.5,
     "REGIME_RANGING_REENTRY_SIZE_MULT": 1.0,
@@ -15026,7 +14998,6 @@ _DEFAULTS_625 = {
     "REGIME_TRENDING_DC_BREAKOUT_SCORE": 30,
     "REGIME_TRENDING_EXIT_GAIN_MIN": 2.0,
     "REGIME_TRENDING_K_RESET_THRESHOLD": 40.0,
-    "REGIME_TRENDING_MIN_HOLD_BARS": 48,
     "REGIME_TRENDING_NOLOSS_MIN": 0.5,
     "REGIME_TRENDING_POSITION_SIZE_MULT": 1.5,
     "REGIME_TRENDING_REENTRY_SIZE_MULT": 2.0,
@@ -15180,7 +15151,6 @@ _DEFAULTS_625 = {
     "TRADIER_LONG_ONLY_ENTRIES": False,
     "TRADIER_MFI_ENTRY_LONG_ENABLED": True,
     "TRADIER_MFI_ENTRY_LONG_TRADIER": 60.0,
-    "TRADIER_MIN_HOLD_MINUTES": 0.0,
     "TRADIER_MI_ENTRY_ENABLED_TRADIER": False,
     "TRADIER_MI_EXIT_ENABLED_TRADIER": True,
     "TRADIER_NOLOSS_SRS_BYPASS": False,

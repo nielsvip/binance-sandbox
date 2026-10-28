@@ -267,7 +267,6 @@ def _slot_start(name):
 
 
 MANUAL_GRACE_S = 600
-BAN418_GRACE_S = 600
 
 
 def detect_manual(prev_conn, now_conn, own_start_ts, now_s):
@@ -732,7 +731,6 @@ def cmd_watch(interval=15):
             return 1
     log(f"watch start interval={interval}s")
     n = 0
-    ban418_since = 0.0
     prev_conn = {s["name"] for s in slots() if s["status"] == "Connected"}
     while True:
         try:
@@ -756,17 +754,6 @@ def cmd_watch(interval=15):
                 log(
                     f"AUDIT egress={egress_ip()} binance={binance_probe()} ban={ban_active()}"
                 )
-            if rc == 3:
-                if not ban418_since:
-                    ban418_since = time.time()
-                    log(
-                        f"watch: Binance 418 — app gets {BAN418_GRACE_S // 60} min, then killed and rotator takes over"
-                    )
-                if time.time() - ban418_since < BAN418_GRACE_S:
-                    time.sleep(interval)
-                    continue
-            elif rc == 0:
-                ban418_since = 0.0
             if (
                 rc != 0
                 and time.time() - load_state().get("last_rotate_ts", 0) >= COOLDOWN_S

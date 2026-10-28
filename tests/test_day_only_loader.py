@@ -14,11 +14,11 @@ import npz_live_generator as g  # noqa: E402
 
 
 def reference_dedup(rows):
-    iso_days = {r["timestamp"][:10] for r in rows if len(r["timestamp"]) > 17}
+    iso_days = {r["timestamp"][:10] for r in rows if len(r["timestamp"]) > 18}
     out = []
     for r in rows:
         t = r["timestamp"]
-        if len(t) <= 17 and re.match(r"^\d{4}-\d\d-\d\d(\.0+Z)?$", t):
+        if len(t) <= 18 and re.match(r"^\d{4}-\d\d-\d\d(\.0+Z)?$", t):
             if t[:10] in iso_days:
                 continue
             r = dict(r, timestamp=t[:10] + "T00:00:00.000000Z")
@@ -40,8 +40,11 @@ def check(path):
     cols = ["open", "high", "low", "close", "volume"]
     same = len(got) == len(want) and (got.index == want.index).all() and all(
         pd.to_numeric(got[c], errors="coerce").fillna(-1).equals(pd.to_numeric(want[c], errors="coerce").fillna(-1)) for c in cols if c in want)
-    old = frame(rows)
-    return same, len(rows), len(got), len(old)
+    try:
+        n_old = len(frame(rows))
+    except Exception:
+        n_old = -1  # old loader: malformed stamp raises, _load_klines_df returns None (daily TF silently missing)
+    return same, len(rows), len(got), n_old
 
 
 if __name__ == "__main__":
