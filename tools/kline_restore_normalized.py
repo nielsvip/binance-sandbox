@@ -16,6 +16,7 @@ import kline_stamp as K
 def rebuild(current, original):
     base, _ = K.normalize_rows(original)
     have = {r.get("timestamp") for r in base if isinstance(r, dict)}
+    current, _ = K.normalize_rows(current)  # a vault restore unions by RAW stamp and brings legacy-form twins back: compare instants, not strings
     extra, seen = [], set()
     for r in current:
         t = r.get("timestamp") if isinstance(r, dict) else None
