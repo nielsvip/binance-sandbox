@@ -1,82 +1,49 @@
 {
  "host": "MacBook-Pro.local",
  "base": ".",
- "at": "2026-10-28T21:37:05Z",
+ "at": "2026-10-28T22:44:49Z",
  "dirs": {
   "klines_cache": {
-   "files": 1034,
+   "files": 1642,
    "files_with_noncanonical": 0,
    "stamps": {}
   },
   "klines_cache/tradier": {
-   "files": 1890,
-   "files_with_noncanonical": 9,
-   "stamps": {
-    "timestamp_dt:null-or-nan": 19537
-   }
+   "files": 4044,
+   "files_with_noncanonical": 0,
+   "stamps": {}
   },
   "klines_canonical": {
-   "files": 207,
+   "files": 829,
+   "files_with_noncanonical": 0,
+   "stamps": {}
+  },
+  "klines_cache_gateway": {
+   "files": 2888,
+   "files_with_noncanonical": 1,
+   "stamps": {
+    "other-string": 1
+   }
+  },
+  "klines_cache_backtest": {
+   "files": 8,
+   "files_with_noncanonical": 0,
+   "stamps": {}
+  },
+  "klines_cache_gateway/tradier": {
+   "files": 1367,
    "files_with_noncanonical": 0,
    "stamps": {}
   }
  },
  "offenders": [
   {
-   "file": "klines_cache/tradier/ALB_5m.json",
+   "file": "klines_cache_gateway/PNUTUSDC_3m.json",
    "kinds": {
-    "timestamp_dt:null-or-nan": 84
-   }
-  },
-  {
-   "file": "klines_cache/tradier/BK_15m.json",
-   "kinds": {
-    "timestamp_dt:null-or-nan": 356
-   }
-  },
-  {
-   "file": "klines_cache/tradier/BK_D.json",
-   "kinds": {
-    "timestamp_dt:null-or-nan": 18369
-   }
-  },
-  {
-   "file": "klines_cache/tradier/DIME_D.json",
-   "kinds": {
-    "timestamp_dt:null-or-nan": 232
-   }
-  },
-  {
-   "file": "klines_cache/tradier/GME_15m.json",
-   "kinds": {
-    "timestamp_dt:null-or-nan": 24
-   }
-  },
-  {
-   "file": "klines_cache/tradier/GME_5m.json",
-   "kinds": {
-    "timestamp_dt:null-or-nan": 75
-   }
-  },
-  {
-   "file": "klines_cache/tradier/LSCC_15m.json",
-   "kinds": {
-    "timestamp_dt:null-or-nan": 23
-   }
-  },
-  {
-   "file": "klines_cache/tradier/LSCC_1m.json",
-   "kinds": {
-    "timestamp_dt:null-or-nan": 307
-   }
-  },
-  {
-   "file": "klines_cache/tradier/LSCC_5m.json",
-   "kinds": {
-    "timestamp_dt:null-or-nan": 67
+    "other-string": 1
    }
   }
  ],
- "noncanonical_files": 9,
- "secs": 2380.0
+ "noncanonical_files": 1,
+ "secs": 66.5
 }
