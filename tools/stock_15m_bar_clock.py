@@ -164,6 +164,7 @@ async def main(base):
     loop = asyncio.get_running_loop()
     quote_tasks, native, preparing, pending, emitted = {}, {}, {}, {}, set()
     symbols, books_at, status_at, direct_at = [], 0, 0, 0
+    local_quote_mtime = 0
     semaphore = asyncio.Semaphore(4)
     stream_task = asyncio.create_task(stream_quote_events(api, observed, lambda: symbols, stream_status)) if os.environ.get('STOCK_CLOCK_STREAM') == '1' else None
     async def fetch_batch(batch):
@@ -191,10 +192,20 @@ async def main(base):
             fresh = 0
             if collecting_quotes:
                 try:
+                    local_path = base / 'data/stock_quotes_latest.json'
+                    local_mtime = local_path.stat().st_mtime_ns
+                    if local_mtime != local_quote_mtime:
+                        local_quote_mtime = local_mtime
+                        payload = json.loads(local_path.read_text())
+                        quotes = payload.get('data') or {}
+                        fresh += ingest_quotes(observed, {symbol: quotes[symbol] for symbol in symbols if symbol in quotes}, None, now, 's5_local_quote_collector')
+                except (OSError, ValueError, TypeError):
+                    pass
+                try:
                     raw = store.get('tradier_prices_latest')
                     payload = json.loads(raw) if raw else {}
                     quotes = payload.get('data', payload)
-                    fresh = ingest_quotes(observed, {symbol: quotes[symbol] for symbol in symbols if symbol in quotes}, None, now, 'tradier_prices_received_at')
+                    fresh += ingest_quotes(observed, {symbol: quotes[symbol] for symbol in symbols if symbol in quotes}, None, now, 'tradier_prices_received_at')
                 except (OSError, ValueError, TypeError, redis.RedisError):
                     pass
                 if now - direct_at >= 10:

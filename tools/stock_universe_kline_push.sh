@@ -14,7 +14,11 @@ for a in ('tra', 'trb', 'trc'):
             feed |= set(json.load(open(f'symbols_{a}_{sd}.json')))
         except Exception:
             pass
-print("\n".join(f"{s}_15m.json" for s in sorted(uni - feed)))
+try:
+    extra = {x.split('_')[0] for x in open('data/append_universe_extra.txt').read().split() if not x.upper().endswith(('USDT', 'USDC'))}
+except OSError:
+    extra = set()
+print("\n".join(f"{s}_15m.json" for s in sorted((uni | extra) - feed)))
 PY
 [ -s "$LIST" ] || exit 0
 /usr/bin/rsync -a --timeout=30 -e "ssh -o BatchMode=yes -o ConnectTimeout=10 -o ControlMaster=no -o ControlPath=none" --files-from="$LIST" klines_cache/tradier/ s5:binance-sandbox/klines_cache/tradier/
