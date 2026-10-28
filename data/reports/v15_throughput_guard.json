@@ -1,5 +1,5 @@
 {
- "at": "2026-10-28T10:11:17Z",
+ "at": "2026-10-28T11:11:25Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
@@ -12,32 +12,32 @@
    "boards_running": [
     "RLCUSDT_LONG"
    ],
-   "mem_avail_mb": 15313,
-   "load1": 13.22,
+   "mem_avail_mb": 15633,
+   "load1": 8.52,
    "nproc": 16,
    "slots": null,
-   "binding_reason": "CPU budget: median board 8540 core-s, 16 cores minus 1.2 competing non-board cores ({'other': 1.21, 'boards': 7.82}) = 14.8 usable -> host ceiling 6.2 boards/h. Move nice-0 non-board work off the host and/or cut core-s per board.",
+   "binding_reason": "CPU budget: median board 8540 core-s, 16 cores minus 2.9 competing non-board cores ({'other': 2.89, 'boards': 1.01}) = 13.1 usable -> host ceiling 5.5 boards/h. Move nice-0 non-board work off the host and/or cut core-s per board.",
    "error": null,
    "published": [],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 51.7,
-   "last_improved_symside": "ENSUSDT_SHORT",
+   "minutes_since_last_improved": 24.9,
+   "last_improved_symside": "RLCUSDT_LONG",
    "cadence_ok": false,
    "improved_gap_min_median_24h": 313.9,
    "improved_gap_min_max_24h": 313.9,
-   "improved_finishes_24h": 2,
+   "improved_finishes_24h": 3,
    "board_cpu_s_median_24h": 8539.6,
    "board_wall_s_median_24h": 2455.605695962906,
-   "board_cores": 7.82,
-   "nonboard_cores_competing": 1.21,
-   "nonboard_cores_niced": 2.93,
+   "board_cores": 1.01,
+   "nonboard_cores_competing": 2.89,
+   "nonboard_cores_niced": 2.97,
    "cores_by_bucket": {
-    "other": 1.21,
-    "boards": 7.82
+    "other": 2.89,
+    "boards": 1.01
    },
    "cores_by_bucket_niced": {
-    "klines_vault": 1.94,
-    "other": 0.99
+    "klines_vault": 1.97,
+    "other": 1.0
    }
   },
   "s2": {
@@ -47,31 +47,32 @@
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "STRKUSDT_SHORT"
+    "RAYSOLUSDT_LONG",
+    "SKYAIUSDT_SHORT"
    ],
-   "mem_avail_mb": 19616,
-   "load1": 5.93,
+   "mem_avail_mb": 19437,
+   "load1": 7.29,
    "nproc": 16,
    "slots": null,
-   "binding_reason": "CPU budget: median board 4546 core-s, 16 cores minus 2.7 competing non-board cores ({'other': 0.55, 'boards': 0.12, 'live_helpers': 2.14}) = 13.3 usable -> host ceiling 10.5 boards/h. Move nice-0 non-board work off the host and/or cut core-s per board.",
+   "binding_reason": "board CPU DEMAND, not host capacity: 2 running sides pull only 1.2 cores (0.61 core/side) of 13.5 usable -> 1.2 boards/h. 12/h needs 12.4 board-cores = 20 sides at this per-side draw (niced filler 0 cores yields). Lever: more concurrent sides (RAM-bound) or deeper eval pipelining per side (V15_PREFETCH_TASKCAP on an idle host).",
    "error": null,
    "published": [],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 1379.0,
+   "minutes_since_last_improved": 1439.4,
    "last_improved_symside": "SKYAIUSDT_LONG",
    "cadence_ok": false,
-   "improved_gap_min_median_24h": 808.8,
-   "improved_gap_min_max_24h": 808.8,
-   "improved_finishes_24h": 2,
-   "board_cpu_s_median_24h": 4545.5,
-   "board_wall_s_median_24h": 4798.007516860962,
-   "board_cores": 0.12,
-   "nonboard_cores_competing": 2.69,
+   "improved_gap_min_median_24h": 57.5,
+   "improved_gap_min_max_24h": 57.5,
+   "improved_finishes_24h": 1,
+   "board_cpu_s_median_24h": 3725.7,
+   "board_wall_s_median_24h": 3938.259119987488,
+   "board_cores": 1.22,
+   "nonboard_cores_competing": 2.47,
    "nonboard_cores_niced": 0,
    "cores_by_bucket": {
-    "other": 0.55,
-    "boards": 0.12,
-    "live_helpers": 2.14
+    "other": 0.45,
+    "boards": 1.22,
+    "live_helpers": 2.02
    },
    "cores_by_bucket_niced": {}
   }
