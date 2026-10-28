@@ -1,80 +1,57 @@
 {
- "generated_at": "2026-10-28 12:53 UTC",
- "total_capital_usd": 70.17,
+ "generated_at": "2026-10-28 12:56 UTC",
+ "total_capital_usd": 106.52,
  "tier_capital": {
   "A": 0.0,
-  "B": 55.37,
-  "C": 14.8
+  "B": 106.53,
+  "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 4,
-  "C": 1
+  "B": 3,
+  "C": 0
  },
  "winners": [],
  "losers": [
-  "inf:COMPUSDT_LONG",
-  "inf:XRPUSDC_LONG",
-  "inf:ARUSDT_LONG"
+  "flz:XRPUSDC_LONG",
+  "flz:BTCUSDC_LONG"
  ],
  "mediocre": [
-  "inf:BTCDOMUSDT_LONG"
+  "flz:BTCDOMUSDT_LONG"
  ],
  "positions": [
   {
-   "pk": "inf:PENGUUSDC_LONG",
-   "symbol": "PENGUUSDC",
-   "account": "inf",
-   "value_usd": 14.96,
-   "gain_pct": -0.259,
+   "pk": "flz:BTCUSDC_LONG",
+   "symbol": "BTCUSDC",
+   "account": "flz",
+   "value_usd": 80.68,
+   "gain_pct": -0.941,
    "tier": "B",
-   "perf_mult": 1.95,
-   "amt": 1941.0,
-   "mark": 0.007706
+   "perf_mult": 0.67,
+   "amt": 0.001,
+   "mark": 80679.9
   },
   {
-   "pk": "inf:COMPUSDT_LONG",
-   "symbol": "COMPUSDT",
-   "account": "inf",
-   "value_usd": 14.8,
-   "gain_pct": -1.336,
-   "tier": "C",
-   "perf_mult": 0.23,
-   "amt": 0.694,
-   "mark": 21.32135364
-  },
-  {
-   "pk": "inf:XRPUSDC_LONG",
+   "pk": "flz:XRPUSDC_LONG",
    "symbol": "XRPUSDC",
-   "account": "inf",
-   "value_usd": 14.71,
-   "gain_pct": -1.061,
+   "account": "flz",
+   "value_usd": 14.72,
+   "gain_pct": -1.047,
    "tier": "B",
    "perf_mult": 4.1,
    "amt": 11.2,
-   "mark": 1.31370644
+   "mark": 1.3139
   },
   {
-   "pk": "inf:ARUSDT_LONG",
-   "symbol": "ARUSDT",
-   "account": "inf",
-   "value_usd": 14.57,
-   "gain_pct": -0.63,
-   "tier": "B",
-   "perf_mult": 1.56,
-   "amt": 4.2,
-   "mark": 3.47
-  },
-  {
-   "pk": "inf:BTCDOMUSDT_LONG",
+   "pk": "flz:BTCDOMUSDT_LONG",
    "symbol": "BTCDOMUSDT",
-   "account": "inf",
+   "account": "flz",
    "value_usd": 11.13,
-   "gain_pct": 0.267,
+   "gain_pct": -0.011,
    "tier": "B",
    "perf_mult": 0.67,
    "amt": 0.002,
-   "mark": 5563.62228388
+   "mark": 5563.5
   }
  ]
 }
