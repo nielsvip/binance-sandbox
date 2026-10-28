@@ -2656,9 +2656,9 @@ class Config:
     )
     WT_REDUCE_FRAC_HIGH: float = 0.50  # V4: at gains 1-3%, reduce 50% (was 70%).
     # MIN_HOLD_BARS_BEFORE_EXIT RETIRED 2026-10-27 — USER: "make sure there is only ONE name for this NOT 2 functions NOT 2 values". It was a SECOND name for the same quantity and is exactly how MIN_HOLD_BARS came to be masked into a structural zero. The one switch is MIN_HOLD_BARS (GLOBAL_RISK_GATES, bold 8, swept 2/4/8/12); the one gate is vec_decisions/min_hold_gate.
-    SCALP_MIN_HOLD_SEC: float = (
-        180.0  # 2026-10-25 USER scalp kill-switch — no CLOSE/REDUCE may execute on a position younger than this, any venue, any reason except the stop/protection family (HARD_STOP/VIGILANCE_DC4/NEGBOOK_WT_TURN/BROKER_SYNC/LIQUIDAT/FIXED_STOP/STOP_LOSS/EMERGENCY). Measured 317 true sub-120s flat-to-flat broker scalps crypto + 526 stock ledger pairs. Enforced at execute_now (the ONLY gate). 0 disables.
-    )
+    # ERASED 2026-10-28 (min-hold one-knob): SCALP_MIN_HOLD_SEC: float = (
+    # 180.0  # 2026-10-25 USER scalp kill-switch — no CLOSE/REDUCE may execute on a position younger than this, any venue, any reason except the stop/protection family (HARD_STOP/VIGILANCE_DC4/NEGBOOK_WT_TURN/BROKER_SYNC/LIQUIDAT/FIXED_STOP/STOP_LOSS/EMERGENCY). Measured 317 true sub-120s flat-to-flat broker scalps crypto + 526 stock ledger pairs. Enforced at execute_now (the ONLY gate). 0 disables.
+    # )
     VEC_BAR_STATE_REMOVED: bool = (
         False  # 2026-10-25 reverted same night per user — bar-state enforcement lives ONLY in the forward-state lane (tools/v15_forward_state.py + live_twins/vec_backstop.py). Never re-add a parallel layer here.
     )
@@ -3287,9 +3287,9 @@ class Config:
     V8Q_STRENGTH_FILTER_ENABLED: bool = False
     V8Q_STRENGTH_MIN_SCORE: float = 5.0
     V8Q_HTF_MIN_ALIGNED: int = 1
-    V8Q_MIN_HOLD_BARS: int = (
-        250  # 2026-04-19: 12.5h minimum hold. Sharpe 1.508→2.554 on 48-sym crypto. Was 10.
-    )
+    # ERASED 2026-10-28 (min-hold one-knob): V8Q_MIN_HOLD_BARS: int = (
+    # 250  # 2026-04-19: 12.5h minimum hold. Sharpe 1.508→2.554 on 48-sym crypto. Was 10.
+    # )
     V8Q_WT_EXIT_MIN_TFS: int = (
         3  # 2026-04-19: EXIT=3 → Sharpe 1.065→1.508. 2026-04-25 rapid-grid: EXIT=2 → +37 trades (+30%) BUT pool_sharpe 1.25 vs 2.66. Extra trades are 2-TF noise exits that reverse. NEVER drop below 3.
     )
@@ -4047,7 +4047,7 @@ class Config:
     BOUNCE_TOP_EXIT_ENABLED: bool = (
         False  # KILLED 2026-03-30: This is a PERCENTAGE stop loss in disguise. Exits ONLY on technicals (WT turn, volume die, DC reversal). NEVER on % thresholds.
     )
-    BOUNCE_TOP_MIN_HOLD_MINUTES: float = 2880.0
+    # ERASED 2026-10-28 (min-hold one-knob): BOUNCE_TOP_MIN_HOLD_MINUTES: float = 2880.0
     BOUNCE_TOP_MIN_LOSS_PCT: float = -3.0
     BOUNCE_TOP_MAX_LOSS_PCT: float = -50.0
     # === L/S RATIO ENFORCEMENT — NON-VECTORIZABLE PORTFOLIO GATE (MARKED 2026-08-18) ===
@@ -5293,7 +5293,7 @@ class Config:
     # Regime: RANGING (mean reversion, fast exits, small positions)
     REGIME_RANGING_NOLOSS_MIN: float = 0.05  # Take ANY profit in ranging
     REGIME_RANGING_EXIT_GAIN_MIN: float = 0.15  # Exit at 0.15% gain
-    REGIME_RANGING_MIN_HOLD_BARS: int = 8  # 2h at 15m — fast turnover
+    # ERASED 2026-10-28 (min-hold one-knob): REGIME_RANGING_MIN_HOLD_BARS: int = 8  # 2h at 15m — fast turnover
     REGIME_RANGING_WT_REDUCE_FRAC_LOW: float = 0.40  # 0.3-0.5% gain → reduce 40%
     REGIME_RANGING_WT_REDUCE_FRAC_MED: float = 0.60  # 0.5-1.0% gain → reduce 60%
     REGIME_RANGING_WT_EXIT_VEL: float = -3.0  # Exit on lighter reversal
@@ -5309,7 +5309,7 @@ class Config:
     # Regime: TRENDING (ride trends, wide exits, large positions)
     REGIME_TRENDING_NOLOSS_MIN: float = 0.50  # Let winners run in trends
     REGIME_TRENDING_EXIT_GAIN_MIN: float = 2.0  # Only exit at 2%+ gain
-    REGIME_TRENDING_MIN_HOLD_BARS: int = 48  # 12h at 15m — hold longer
+    # ERASED 2026-10-28 (min-hold one-knob): REGIME_TRENDING_MIN_HOLD_BARS: int = 48  # 12h at 15m — hold longer
     REGIME_TRENDING_WT_REDUCE_FRAC_LOW: float = 0.05  # Trim gently
     REGIME_TRENDING_WT_REDUCE_FRAC_MED: float = 0.15  # Still gentle
     REGIME_TRENDING_WT_EXIT_VEL: float = -12.0  # Only exit on strong reversal
@@ -6855,7 +6855,7 @@ class Config:
         -0.4
     )  # tight at 20× (target: hedge before -0.55%)
     BTC_HEDGE_SAME_SYMBOL_PCT: float = 1.0
-    BTC_HEDGE_MIN_HOLD_BARS: int = 10
+    # ERASED 2026-10-28 (min-hold one-knob): BTC_HEDGE_MIN_HOLD_BARS: int = 10
     BTC_HEDGE_WT_KILL_CONFIRM_TF: str = "1h"
     BTC_HEDGE_DC_RESISTANCE_GATE_ENABLED: bool = True
     BTC_HEDGE_WT_VEL_GATE_ENABLED: bool = True
@@ -6907,7 +6907,7 @@ class Config:
 
     # --- BTC trade-pacing knobs (separate from generic crypto COOLDOWN/MIN_HOLD) ---
     BTC_COOLDOWN_BARS: int = 5  # min bars between exit and next entry consideration
-    BTC_MIN_HOLD_BARS: int = 5  # min bars after entry before non-panic exit can fire
+    # ERASED 2026-10-28 (min-hold one-knob): BTC_MIN_HOLD_BARS: int = 5  # min bars after entry before non-panic exit can fire
 
     # --- BREAKOUT entry mode (added 2026-04-27 — bounce-only missed big moves) ---
     BTC_BREAKOUT_ENTRY_ENABLED: bool = True  # enable breakout entries alongside bounce
@@ -6919,9 +6919,9 @@ class Config:
     BTC_BREAKOUT_HARD_LOSS_USD_PER_TRADE: float = (
         5.0  # tighter $ stop ($5 vs $10 bounce)
     )
-    BTC_BREAKOUT_MIN_HOLD_BARS: int = (
-        3  # short min-hold — breakouts go fast or fail fast
-    )
+    # ERASED 2026-10-28 (min-hold one-knob): BTC_BREAKOUT_MIN_HOLD_BARS: int = (
+    # 3  # short min-hold — breakouts go fast or fail fast
+    # )
     BTC_BREAKOUT_COOLDOWN_BARS: int = 3  # short cooldown after breakout exit
     BTC_BREAKOUT_REENTRY_ON_EXIT: bool = True  # reenter same side after breakout exit
     BTC_BREAKOUT_REENTRY_REQUIRE_TREND: bool = True  # reentry needs accel still aligned
@@ -8376,9 +8376,9 @@ class Config:
     LR_BAND_SIZE_SLOPE_GAIN: float = (
         1.0  # size law: steeper HTF slope = bigger  # PORTED from TradierConfig 2026-08-17
     )
-    LR_BAND_SLOPE_FLIP_MIN_HOLD_MIN: float = (
-        240.0  # and the position must have held this long first  # PORTED from TradierConfig 2026-08-17
-    )
+    # ERASED 2026-10-28 (min-hold one-knob): LR_BAND_SLOPE_FLIP_MIN_HOLD_MIN: float = (
+    # 240.0  # and the position must have held this long first  # PORTED from TradierConfig 2026-08-17
+    # )
     LR_BAND_SLOPE_FLIP_MIN_PCT_DAY: float = (
         0.05  # deadband: slope must be decisively negative (%/day), not just <=0 — bare zero-cross caused 60/80 MU churn exits at +0.0x%  # PORTED from TradierConfig 2026-08-17
     )
@@ -8490,12 +8490,12 @@ class Config:
     MIN_EXIT_TF_AGAINST_TRADIER: int = (
         3  # 2026-04-26: 3 TFs against (was 2) — fewer false exits  # PORTED from TradierConfig 2026-08-17
     )
-    MIN_HOLD_BARS_TRADIER: int = (
-        40  # 2026-04-20 sweep: 40 (200min) consistently wins over 32 (160min)  # PORTED from TradierConfig 2026-08-17
-    )
-    MIN_HOLD_MINUTES_TRADIER: float = (
-        30.0  # No exits before 30 min. Bypassed only if loss > -5%. ; WIRED 2026-04-16 (priority 90/100) — tradier_manage.py:3891 stock min hold fallback  # PORTED from TradierConfig 2026-08-17
-    )
+    # ERASED 2026-10-28 (min-hold one-knob): MIN_HOLD_BARS_TRADIER: int = (
+    # 40  # 2026-04-20 sweep: 40 (200min) consistently wins over 32 (160min)  # PORTED from TradierConfig 2026-08-17
+    # )
+    # ERASED 2026-10-28 (min-hold one-knob): MIN_HOLD_MINUTES_TRADIER: float = (
+    # 30.0  # No exits before 30 min. Bypassed only if loss > -5%. ; WIRED 2026-04-16 (priority 90/100) — tradier_manage.py:3891 stock min hold fallback  # PORTED from TradierConfig 2026-08-17
+    # )
     MI_EXIT_VETO_ENABLED_TRADIER: bool = (
         False  # SENTINEL_FIX 2026-04-14: when True, MI_EXIT_ENABLED_TRADIER actually gates exits. Default False = live unchanged.  # PORTED from TradierConfig 2026-08-17
     )
@@ -9786,9 +9786,9 @@ class Config:
     TRADIER_MFI_ENTRY_LONG_TRADIER: float = (
         60.0  # MFI > this for long entry  # PORTED from TradierConfig 2026-08-17
     )
-    TRADIER_MIN_HOLD_MINUTES: float = (
-        4320.0  # 2026-07-08 GAINMO triage: 42→4320 restore. 2026-04-27 user rule: 72h minimum hold. Stocks are NOT scalps — peak-giveback / micro-scalp / market-bias closes must wait 72h. Was 100 (le_dynamic winner) → bleeding from premature exits on MU/SNDK/MSFT/INTC/GOOGL.  # PORTED from TradierConfig 2026-08-17
-    )
+    # ERASED 2026-10-28 (min-hold one-knob): TRADIER_MIN_HOLD_MINUTES: float = (
+    # 4320.0  # 2026-07-08 GAINMO triage: 42→4320 restore. 2026-04-27 user rule: 72h minimum hold. Stocks are NOT scalps — peak-giveback / micro-scalp / market-bias closes must wait 72h. Was 100 (le_dynamic winner) → bleeding from premature exits on MU/SNDK/MSFT/INTC/GOOGL.  # PORTED from TradierConfig 2026-08-17
+    # )
     TRADIER_MI_ENTRY_ENABLED_TRADIER: bool = (
         False  # wait for MI reset before entry  # PORTED from TradierConfig 2026-08-17
     )

@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-28T20:19:27Z",
+ "ts": "2026-10-28T20:25:05Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,7 +27,7 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 88,
+   "fills_6h": 85,
    "open_positions": 20,
    "unrealised_usd": 5.76,
    "pos_mismatch": 0,
@@ -43,7 +43,7 @@
    }
   },
   "men": {
-   "fills_6h": 112,
+   "fills_6h": 108,
    "open_positions": 22,
    "unrealised_usd": 1.55,
    "pos_mismatch": 0,
@@ -127,73 +127,80 @@
     "86867"
    ],
    "starts_30m": 1,
-   "log_age_s": 484.0
+   "log_age_s": 822.0
   },
   "men": {
    "pids": [
     "68542"
    ],
    "starts_30m": 1,
-   "log_age_s": 730.0
+   "log_age_s": 1068.0
   },
   "ang": {
    "pids": [
     "67092"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 127.0
   },
   "inf": {
    "pids": [
     "89250"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 2.0
   },
   "flz": {
    "pids": [
     "31005"
    ],
    "starts_30m": 1,
-   "log_age_s": 10.0
+   "log_age_s": 75.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 1635.0
+   "log_age_s": 1974.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 1104.0
+   "log_age_s": 1442.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-28T20:19:28Z",
+   "ts": "2026-10-28T20:25:06Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:BTCDOMUSDT_LONG",
    "evidence": "CLOSE 0 @ 2026-10-28T16:45:24Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-28T20:19:28Z",
+   "ts": "2026-10-28T20:25:07Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 484s"
+   "evidence": "ez_manage_fin.log not written for 822s"
   },
   {
-   "ts": "2026-10-28T20:19:28Z",
+   "ts": "2026-10-28T20:25:07Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "men",
-   "evidence": "ez_manage_men.log not written for 730s"
+   "evidence": "ez_manage_men.log not written for 1068s"
+  },
+  {
+   "ts": "2026-10-28T20:25:07Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "ang",
+   "evidence": "ez_manage_ang.log not written for 127s"
   }
  ],
  "alert_counts": {
   "FILL_WITHOUT_VEC_DECISION": 1,
-  "STALE_LOG": 2
+  "STALE_LOG": 3
  },
  "active_interventions": {
   "acct:trc": {
@@ -239,5 +246,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.63
+ "sweep_s": 1.97
 }
