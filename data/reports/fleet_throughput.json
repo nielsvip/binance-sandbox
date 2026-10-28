@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-28T16:45:16.687111+00:00",
+  "ts": "2026-10-28T16:50:14.496545+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 0,
-  "pending_sym_sides": 142,
+  "fleet_published_last_60m": 3,
+  "pending_sym_sides": 140,
   "hosts": {
     "s1": {
       "published_last_60m": 0,
@@ -16,17 +16,49 @@
       "boards_running": 3,
       "workers": 21,
       "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 5864,
+      "mem_avail_mb": 5127,
       "disk_free_gb": 35,
-      "load1": 30.1,
+      "load1": 24.1,
       "dispatch_idle_why": "full 3/2",
       "published_ss": []
     },
     "s2": {
-      "unreachable": true
+      "published_last_60m": 0,
+      "published_last_3h": 0,
+      "boards": {
+        "ACEUSDT_SHORT": 7,
+        "BLURUSDT_SHORT": 7,
+        "TRUMPUSDC_SHORT": 7
+      },
+      "boards_running": 3,
+      "workers": 21,
+      "workers_vs_law_28": "21/28",
+      "mem_avail_mb": 13878,
+      "disk_free_gb": 49,
+      "load1": 19.6,
+      "dispatch_idle_why": "mem 15140MB < 11000+7000 owed by 1 ramping",
+      "published_ss": []
     },
     "s5": {
-      "unreachable": true
+      "published_last_60m": 3,
+      "published_last_3h": 4,
+      "boards": {
+        "ACTUSDT_SHORT": 7,
+        "GRAMUSDT_SHORT": 7,
+        "MOVRUSDT_SHORT": 7
+      },
+      "boards_running": 3,
+      "workers": 21,
+      "workers_vs_law_28": "21/28",
+      "mem_avail_mb": 9097,
+      "disk_free_gb": 57,
+      "load1": 22.1,
+      "dispatch_idle_why": "mem 9371MB < 11000",
+      "published_ss": [
+        "OLED_LONG",
+        "QCOM_LONG",
+        "SNDK_LONG"
+      ]
     },
     "s6": {
       "unreachable": true
@@ -35,8 +67,8 @@
   "alerts": [
     "LOW_THROUGHPUT:s1:0/h<10 (idle_why=full 3/2)",
     "DISK_FLOOR:s1:35GB<40",
-    "UNREACHABLE:s2",
-    "UNREACHABLE:s5",
+    "LOW_THROUGHPUT:s2:0/h<10 (idle_why=mem 15140MB < 11000+7000 owed by 1 ramping)",
+    "LOW_THROUGHPUT:s5:3/h<10 (idle_why=mem 9371MB < 11000)",
     "UNREACHABLE:s6"
   ],
   "repair": null
