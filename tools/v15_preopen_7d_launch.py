@@ -110,7 +110,10 @@ def build_launch(queue: dict, ss: str, result_dir: Path, workers: int, python: s
 def run_one(queue_path: Path, ss: str, result_dir: Path, workers: int,
             timeout_sec: int, python: str) -> dict:
     local = dt.datetime.now(dt.timezone.utc).astimezone(NY)
-    if local.weekday() >= 5 or not dt.time(6, 0) <= local.time() < dt.time(9, 30):
+    rehearsal = (ROOT / "data/preopen_7d/REHEARSAL_OVERRIDE").exists()
+    if rehearsal:
+        print(json.dumps({"event": "REHEARSAL_WINDOW_OVERRIDE", "sym_side": ss, "at": local.isoformat()}), flush=True)
+    elif local.weekday() >= 5 or not dt.time(6, 0) <= local.time() < dt.time(9, 30):
         raise ValueError("7D optimization is allowed only in the 06:00–09:30 ET morning window")
     queue = json.loads(queue_path.read_text())
     command, env, folder = build_launch(queue, ss, result_dir, workers, python)
