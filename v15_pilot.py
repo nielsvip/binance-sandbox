@@ -2975,7 +2975,17 @@ def _install_holdout(symside: str):
             _HOLDOUT["cut"] = float(_days[-_nconf]) * 86400.0 - 1.0
     _HOLDOUT["confirm_end"] = holdout_cut(last, _HOLDOUT["days"]) if _HOLDOUT.get("confirm_days") else None
     _orig = _E_h._store
+    # 2026-10-28 fleet throughput (USER "I only got 1 result in 5 hours, I need at least 12 results per hour"): crypto loads exactly
+    # 30 d before the last bar, so cutting days+confirm_days (7) left 23-24 d and evaluate_v12._validate refused EVERY crypto board
+    # ("npz covers 24d of the 30d window (78%)") -> IMPOSSIBLE / RUN-FAILED. Load that many days earlier so the fit window is a full
+    # window ending at the cut (walk-forward); the confirm/holdout scorers slice their own window off the end, unchanged.
+    _shift_d = int(-(-(float(_HOLDOUT["days"]) + float(_HOLDOUT.get("confirm_days") or 0.0)) // 1))
     def _store_h(sym, mode, start):
+        if _HOLDOUT["on"] and _HOLDOUT["cut"] is not None and _shift_d > 0 and start and start != "1970-01-01":
+            try:
+                start = (datetime.datetime.strptime(start, "%Y-%m-%d") - datetime.timedelta(days=_shift_d)).strftime("%Y-%m-%d")
+            except (TypeError, ValueError):
+                pass
         d = _orig(sym, mode, start)
         if d is None or not _HOLDOUT["on"] or _HOLDOUT["cut"] is None:
             return d

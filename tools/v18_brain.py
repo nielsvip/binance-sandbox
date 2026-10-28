@@ -74,7 +74,10 @@ import array
 import collections
 import glob
 import gzip
-import zreader
+try:
+    import zreader
+except ImportError:  # imported as tools.<module> (v15_pilot): tools/ is not on sys.path
+    from tools import zreader
 import hashlib
 import json
 import math

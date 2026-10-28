@@ -43,7 +43,10 @@ verdict dict; promotion happens only on strict improvement and is never wired he
 import argparse
 import collections
 import glob
-import zreader
+try:
+    import zreader
+except ImportError:  # imported as tools.<module> (v15_pilot): tools/ is not on sys.path
+    from tools import zreader
 import hashlib
 import json
 import math
