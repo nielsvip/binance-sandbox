@@ -75,6 +75,14 @@
       "TEMPLATE_CRYPTO_SHORT.xlsx!GLOBAL_RISK_GATES"
      ]
     },
+    "MIN_HOLD_MINUTES_TRADIER": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_CRYPTO_LONG.xlsx!GLOBAL_RISK_GATES",
+      "TEMPLATE_CRYPTO_SHORT.xlsx!GLOBAL_RISK_GATES"
+     ]
+    },
     "REENTRY_TIER2_MAX_MINUTES": {
      "class": "UNDEFINED_SWITCH",
      "other_config_has_it": false,
@@ -147,7 +155,7 @@
      ]
     }
    },
-   "missing_count": 18,
+   "missing_count": 19,
    "switch_keys_checked": 1225,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
@@ -249,6 +257,14 @@
       "TEMPLATE_STOCKS_SHORT.xlsx!GLOBAL_RISK_GATES"
      ]
     },
+    "MIN_HOLD_MINUTES_TRADIER": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_STOCKS_LONG.xlsx!GLOBAL_RISK_GATES",
+      "TEMPLATE_STOCKS_SHORT.xlsx!GLOBAL_RISK_GATES"
+     ]
+    },
     "REENTRY_TIER2_MAX_MINUTES": {
      "class": "UNDEFINED_SWITCH",
      "other_config_has_it": false,
@@ -288,6 +304,21 @@
       "TEMPLATE_STOCKS_SHORT.xlsx!ENTRY_REVERSAL_BOUNCE"
      ]
     },
+    "TRADIER_MIN_HOLD_MINUTES": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_STOCKS_LONG.xlsx!EXIT_STRUCTURAL",
+      "TEMPLATE_STOCKS_SHORT.xlsx!EXIT_STRUCTURAL"
+     ]
+    },
+    "TRADIER_MIN_HOLD_MINUTES_SHORT": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_STOCKS_SHORT.xlsx!EXIT_STRUCTURAL"
+     ]
+    },
     "WT_DC_DETAILED_TF": {
      "class": "UNDEFINED_SWITCH",
      "other_config_has_it": false,
@@ -297,7 +328,7 @@
      ]
     }
    },
-   "missing_count": 17,
+   "missing_count": 20,
    "switch_keys_checked": 1318,
    "templates": [
     "TEMPLATE_STOCKS_LONG.xlsx",
@@ -305,5 +336,5 @@
    ]
   }
  },
- "generated": "2026-10-28T18:28:32.447054+00:00"
+ "generated": "2026-10-28T20:28:29.838290+00:00"
 }

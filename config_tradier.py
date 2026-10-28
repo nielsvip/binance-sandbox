@@ -4583,7 +4583,6 @@ class TradierConfig:
     WT_CROSS_EXIT_APPLIES_TO_WINNERS: bool = True
     WT_CROSS_EXIT_ENABLED: bool = True
     WT_CROSS_EXIT_MIN_AGE_MINUTES: float = 1.0
-    WT_CROSS_EXIT_VEC_ENABLED: bool = False  # 2026-10-28 OPERATOR 'wire immediately, default to whatever is (not) working now': arms the WT_CROSS_EXIT twin (vec_decisions/check_exit_candidates_crypto__wt_cross_exit.wt_cross_exit_twin via live_native_exit_twins). False = today's effective behaviour (the vector never booked the exit). Template bold False.
     WT_CROSS_REQUIRE_HTF_AGREE: bool = True
     WT_DC_ENTRY_ENABLED: bool = False
     WT_DIV_ENTRY_GATE_ENABLED: bool = True

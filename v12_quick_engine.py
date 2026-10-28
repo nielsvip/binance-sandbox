@@ -7310,7 +7310,6 @@ class QuickConfig:
     E_3_USE_WT_STRUCTURE_EXIT_MODE: int = 0  # auto-added TEMPLATE generic
     DC15M_FORCE_EXIT_ENABLED: bool = False  # vec_log_fixes 2026-10-27 twin: vec_decisions/live_native_exit_twins (MIRROR of config.py; template bold False)
     IN_GAIN_TREND_EXIT_ENABLED: bool = False  # vec_log_fixes 2026-10-27 twin: vec_decisions/live_native_exit_twins (MIRROR of config.py; template bold False)
-    WT_CROSS_EXIT_VEC_ENABLED: bool = False  # 2026-10-28 OPERATOR 'wire immediately, default to whatever is (not) working now': arms the WT_CROSS_EXIT twin (vec_decisions/check_exit_candidates_crypto__wt_cross_exit.wt_cross_exit_twin via live_native_exit_twins). False = today's effective behaviour (the vector never booked the exit). Template bold False. MIRROR of config.py
     FAST_RISER_FILTER_TF: str = (
         "OFF"  # 2026-09-28 WAVE1: real gate (vec_decisions/filter_tf_gates); OFF default is behavior-neutral (field was never read before)
     )

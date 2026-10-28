@@ -4214,7 +4214,6 @@ class Config:
         True  # fire on losing positions (the whole point)
     )
     WT_CROSS_EXIT_APPLIES_TO_WINNERS: bool = True
-    WT_CROSS_EXIT_VEC_ENABLED: bool = False  # 2026-10-28 OPERATOR 'wire immediately, default to whatever is (not) working now': arms the WT_CROSS_EXIT twin (vec_decisions/check_exit_candidates_crypto__wt_cross_exit.wt_cross_exit_twin via live_native_exit_twins). False = today's effective behaviour (the vector never booked the exit). Template bold False.
     BREAKEVEN_GRACE_MINUTES: float = 5.0  # was 15.0 — cut losers faster on gain erosion
     LOSS_TECHNICAL_EXIT_NO_STALE_BLOCK: bool = (
         True  # stale-price abort skipped for technical (non-%) exits
