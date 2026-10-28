@@ -112,13 +112,6 @@
     "symbol": "ALGOUSDT",
     "side": "SHORT"
   },
-  "ang:STRKUSDT_SHORT": {
-    "orderId": "4000002003704481",
-    "stopPrice": 0.04829,
-    "entry_sig": "2026-10-28 12:01:49.458000+00:00",
-    "symbol": "STRKUSDT",
-    "side": "SHORT"
-  },
   "ang:EGLDUSDT_SHORT": {
     "orderId": "4000002002960922",
     "stopPrice": 3.439,
@@ -132,5 +125,19 @@
     "entry_sig": "2026-10-28 13:33:14.152000+00:00",
     "symbol": "BNBUSDC",
     "side": "LONG"
+  },
+  "ang:RVNUSDT_LONG": {
+    "orderId": "4000002003994389",
+    "stopPrice": 0.001434,
+    "entry_sig": "2026-10-28 13:42:25.514000+00:00",
+    "symbol": "RVNUSDT",
+    "side": "LONG"
+  },
+  "ang:GRAMUSDT_SHORT": {
+    "orderId": "4000002004011188",
+    "stopPrice": 1.253,
+    "entry_sig": "2026-10-28 13:46:36.828000+00:00",
+    "symbol": "GRAMUSDT",
+    "side": "SHORT"
   }
 }
