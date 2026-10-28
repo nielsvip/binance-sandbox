@@ -60549,10 +60549,11 @@ async def process_position(
         # sym_side but it needs to be wired correctly so it does move the needle in both vec and live identically.;
         # DC15M_FORCE_EXIT_ENABLED ... it should always be skipped if min_hold is not yet reached". ONE decision shared with
         # v12_quick_engine and tradier_manage: vec_decisions/live_native_exit_twins.dc15m_evaluate (prior-bar 15m channel,
-        # red, DELTA_EXIT_ENABLED, MIN_HOLD_BARS via vec_decisions/min_hold_gate). The old STRICT_NO_LOSS hold branch is
+        # red, MIN_HOLD_BARS via vec_decisions/min_hold_gate; its own switch, DELTA_EXIT_ENABLED no longer co-gates it).
+        # The old STRICT_NO_LOSS hold branch is
         # gone: the vector never modeled it (STRICT_NO_LOSS_ACCOUNTS=[]), and an armed switch must execute what it books.
         _dc15_c = lambda _k, _d: _psym_get(symbol, position_side, _k, getattr(config, _k, _d))
-        if current_gain < 0.0 and _lnx_twins.dc15m_armed(_dc15_c):  # channel + DELTA_EXIT + min-hold decided inside the shared call (prior-bar channel, as the vector)
+        if current_gain < 0.0 and _lnx_twins.dc15m_armed(_dc15_c):  # channel + min-hold decided inside the shared call (prior-bar channel, as the vector)
             _dc15_age = _pp_age_sec_for_hold if _pp_opened_raw_for_hold else None
             _dc15_fire, _dc15_reason, _dc15_why = _lnx_twins.dc15m_evaluate(_dc15_c, lambda _k, _d=None: i.get(_k, _d), {"px": current_price, "gain": current_gain, "hold_age_s": _dc15_age}, is_long)
             if _dc15_why.startswith("MIN_HOLD"):

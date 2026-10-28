@@ -968,10 +968,13 @@ def verify_default_surfaces(
             row["global_differs"] = gv != "<absent>" and not _same_val(bv, gv)
             row["quick_differs"] = qv != "<absent>" and not _same_val(bv, qv)
             # USER 2026-10-15 ("NO results"): record WHY a bold may legitimately outrank the venue global.
-            # template_bold_defaults already drops any bold that disagrees with live truth UNLESS the key is a
-            # cat_side promotion, so a surviving bold-vs-global row is by construction the learning layer's own
-            # output; live resolves per_sym -> cat_side -> global, so the global is a shadowed fallback, not the
-            # value that trades. `catside_backed` says the two surfaces that actually bind agree.
+            # 2026-10-28: this used to read "template_bold_defaults already drops any bold that disagrees with live
+            # truth" — that is NO LONGER TRUE and was the law inverted. Under BOLD_WINS the bold SURVIVES a
+            # disagreement with config (USER: TEMPLATE is the ONLY authority); only a container-valued config field
+            # or an EMPTY bold cell is dropped. So a bold-vs-global row no longer implies a promotion record: it
+            # means the MIRROR has not been aligned yet, which is exactly what this report should surface. Live
+            # resolves per_sym -> cat_side -> global, so the global is a shadowed fallback, not the value that
+            # trades. `catside_backed` says the two surfaces that actually bind agree.
             row["catside_backed"] = _same_val(bv, cv)
             row["promoted"] = k in promoted
             if not _same_val(bv, cv):
