@@ -254,6 +254,24 @@ def pilot_attach_fn(tab_level_path):
     return f
 
 
+def loop_hook_exits():
+    """switches whose exit runs as its own bar-loop leg in simulate_one (vec_decisions/grey_wire_exits.EXITS,
+    vec_decisions/live_native_exit_twins.TWIN_EXITS) — not exit_sig, so the exit_confirm gate (_xc_ok) never sees them."""
+    out = set()
+    for rel, blocks in (("vec_decisions/grey_wire_exits.py", ("EXITS = (",)), ("vec_decisions/live_native_exit_twins.py", ("TWIN_EXITS = (",))):
+        try:
+            txt = (ROOT / rel).read_text()
+        except Exception:
+            continue
+        for b in blocks:
+            i = txt.find(b)
+            if i < 0:
+                continue
+            j = txt.find("\n)\n", i)
+            out |= set(re.findall(r'^\s+\("([A-Z0-9_]+)"', txt[i:j], re.M))
+    return out
+
+
 def build_cs(cs, tpl_path, fm, ext, bible, groups, agk, never_tried, attach=None):
     tabs, hbold = read_workbook(tpl_path)
     # ---- defaults (bold) exactly as v18_binding_map.build_one
@@ -315,6 +333,7 @@ def build_cs(cs, tpl_path, fm, ext, bible, groups, agk, never_tried, attach=None
         filters[f] = {"class": v.get("class", "UNKNOWN"), "stages": list(v.get("stages") or []), "master": v.get("master")}
     # ---- live investigation per scope switch (+ family resolution from live)
     swinfo = {}
+    hooks = loop_hook_exits()
     rows_in_scope = [(tab, r) for tab, r in cur_rows if r["switch"] in scope_sw or f"{r['switch']}={vstr(r['cand'])}" in r0]
     for _, r in rows_in_scope:
         s = r["switch"]
@@ -356,6 +375,10 @@ def build_cs(cs, tpl_path, fm, ext, bible, groups, agk, never_tried, attach=None
             if g and g != fam_grp and g != "SIZING":
                 resolved = exit_subtype(s) if g == "EXIT" else g
                 why = f"{fam} ({src}) overridden by live read stage {g} ({'fn ' + ','.join(sorted({f for f in fns if fn_stage(f) == g}))[:120] if live_stage else 'bible kind ' + str(kind)})"
+        if s in hooks:
+            loss = any(t in s.upper() for t in ("STOP", "HOPELESS", "AGAINST", "FORCE", "EROSION", "DC15M", "BREAKEVEN"))
+            resolved = "EXIT_STOP" if loss else "EXIT_TARGET"
+            why = f"LOOP_HOOK_EXIT ({'loss' if loss else 'profit'} class): own bar-loop leg (grey_wire_exits / live_native_exit_twins), not exit_sig — exit_confirm cannot gate it; was {why}"
         sw_family[s] = resolved
         cands = [x["cand"] for t, x in cur_rows if x["switch"] == s]
         cfgc = config_comment(s)
@@ -474,24 +497,28 @@ def build_cs(cs, tpl_path, fm, ext, bible, groups, agk, never_tried, attach=None
 
 def write_md(plans, out):
     L = ["# New rows — yellow placement plan (2026-10-28)", "", "Operator order (verbatim): \"make sure the yellow cells for the new rows are in the right places of all the filters that might give a pos delta for that row by investigating what the switch does in live and what filters might help it\"", "", "Built by `tools/v15_new_rows_yellow_plan.py` (read-only). Per cat_side detail in `plan_<CS>.json`.", ""]
-    L += ["## Totals per cat_side", "", "| cat_side | template md5 | scope switches | scope rows | rows diffed | yellows to ADD | yellows to REMOVE | grey/ablation rows skipped |", "|---|---|---|---|---|---|---|---|"]
+    L += ["## Totals per cat_side", "", "| cat_side | template md5 | scope switches | scope rows | rows diffed | yellows to ADD | of which the current pilot already evaluates | yellows to REMOVE | CONDITIONAL left unshaded | grey/ablation/artefact rows skipped |", "|---|---|---|---|---|---|---|---|---|---|"]
     for cs, p in plans.items():
         m = p["meta"]
-        L.append(f"| {cs} | {m['template_md5_12']} | {m['scope']['scope_switches']} | {m['scope']['scope_rows_white']} | {m['totals'].get('rows', 0)} | {m['totals'].get('add', 0)} | {m['totals'].get('remove', 0)} | {sum(m['skipped_rows'].values())} |")
-    L += ["", "Rules: " + next(iter(plans.values()))["meta"]["rules"], ""]
+        L.append(f"| {cs} | {m['template_md5_12']} | {m['scope']['scope_switches']} | {m['scope']['scope_rows_white']} | {m['totals'].get('rows', 0)} | {m['totals'].get('add', 0)} | {m['totals'].get('add_pilot_attaches', '-')} | {m['totals'].get('remove', 0)} | {m['totals'].get('conditional_not_shaded', 0)} | {sum(m['skipped_rows'].values())} |")
+    L += ["", "Rules: " + next(iter(plans.values()))["meta"]["rules"], "",
+          "**Painted is not evaluated.** `v15_pilot.py` does not read template shading: a row's evaluated cells come from the name-token rule "
+          "(>= 2 shared `_` tokens), `mandatory_bases_for_tab`, the WT-core all-columns rule and `data/yellow_ever_nonzero.json` "
+          "(`_header_disc_precompute` / `_header_disc_combine`). The column 'already evaluates' is computed by calling those pilot functions; "
+          "the rest of the ADD set becomes evaluable only through `data/yellow_ever_nonzero.json` `light_yellow_untested` (the pilot's own hook).", ""]
     for cs, p in plans.items():
-        L += [f"## {cs}", "", "### Per tab", "", "| tab | rows | add | remove |", "|---|---|---|---|"]
+        L += [f"## {cs}", "", "### Per tab", "", "| tab | rows | add | add already evaluated | remove | conditional left unshaded |", "|---|---|---|---|---|---|"]
         for t in SWITCH_SHEETS:
             c = p["per_tab"].get(t)
             if c:
-                L.append(f"| {t} | {c.get('rows', 0)} | {c.get('add', 0)} | {c.get('remove', 0)} |")
-        L += ["", "### Per switch", "", "| switch | family (basis) | live read (first verified site) | vec reads | rows | add | remove | scope |", "|---|---|---|---|---|---|---|---|"]
+                L.append(f"| {t} | {c.get('rows', 0)} | {c.get('add', 0)} | {c.get('add_pilot_attaches', 0)} | {c.get('remove', 0)} | {c.get('conditional_not_shaded', 0)} |")
+        L += ["", "### Per switch", "", "| switch | family (basis) | live read (first verified site) | vec reads | rows | add | add already evaluated | remove | scope |", "|---|---|---|---|---|---|---|---|---|"]
         for s, c in p["per_switch"].items():
             i = p["switches"].get(s) or {}
             lr = (i.get("live_reads") or {})
             first = next((x for x in (lr.get("crypto") or []) + (lr.get("stocks") or []) + (lr.get("grep_fallback") or [])), None)
             site = f"`{first['site']}`" if first else "none"
-            L.append(f"| {s} | {i.get('family')} ({(i.get('family_basis') or '')[:60]}) | {site} | {i.get('vec_read_reachable')} | {c.get('rows', 0)} | {c.get('add', 0)} | {c.get('remove', 0)} | {','.join(i.get('scope') or [])} |")
+            L.append(f"| {s} | {i.get('family')} ({(i.get('family_basis') or '')[:60]}) | {site} | {i.get('vec_read_reachable')} | {c.get('rows', 0)} | {c.get('add', 0)} | {c.get('add_pilot_attaches', 0)} | {c.get('remove', 0)} | {','.join(i.get('scope') or [])} |")
         L.append("")
     Path(out / "PLAN.md").write_text("\n".join(L) + "\n")
 

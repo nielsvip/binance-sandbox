@@ -102,6 +102,7 @@ MEM_MIN_MB = env_int("FLEET_MEM_MIN_MB", 11000)  # 2026-10-28 operator: NO OOM â
 DISK_MIN_MB = env_int("FLEET_DISK_MIN_MB", 3000)
 RAMP_S = env_int("FLEET_RAMP_S", 600)
 RAMP_MB = env_int("FLEET_RAMP_MB", 3000)  # 10-28 16Z: MEM_MIN_MB already holds the new board's full ramp; each ramping board still owes ~2-3.5 GB (board PSS 3.5-5.5 GB measured); 0 OOM kills s5/s6 04-16Z
+RAMP_MB_CRYPTO = env_int("FLEET_RAMP_MB_CRYPTO", 7000)
 LAUNCH_GAP_S = env_int("FLEET_LAUNCH_GAP_S", 120)
 FRESH_BARS = env_int("FLEET_FRESH_BARS", 48)
 MAX_ATTEMPTS = env_int("FLEET_MAX_ATTEMPTS", 2)
@@ -398,9 +399,12 @@ def admission(d, now, name=""):
     # 2026-10-28 fleet throughput order: a board reaches its peak minutes after launch, so MemAvailable still looks free
     # when the next launch is admitted; 73 of 125 launches (19:30-04:40Z) died silently, mostly global OOM kills.
     # Every board launched here < RAMP_S ago and still running reserves RAMP_MB on top of MEM_MIN_MB.
-    ramping = sum(1 for ss, r in (d.get("launches") or {}).items() if now - float(r.get("ts") or 0) < RAMP_S and ss in (d.get("running") or {}))
-    if ramping and int(d.get("mem_avail_mb") or 0) < MEM_MIN_MB + ramping * RAMP_MB:
-        return 0, f"mem {d.get('mem_avail_mb')}MB < {MEM_MIN_MB}+{ramping}x{RAMP_MB} ramping"
+    # 16:1xZ s2: two CRYPTO boards admitted at 14-19 GB each peaked ~12 GB (OOM victims: parents 2.4-3.2 GB anon, workers
+    # 1.7 GB anon) -> 39 kernel kills in 3 h; stock boards on s5/s6 (3.5-5.5 GB PSS) had 0. A ramping crypto board owes more.
+    ramp = [ss for ss, r in (d.get("launches") or {}).items() if now - float(r.get("ts") or 0) < RAMP_S and ss in (d.get("running") or {})]
+    owed = sum(RAMP_MB_CRYPTO if cat_of(ss).startswith("CRYPTO") else RAMP_MB for ss in ramp)
+    if ramp and int(d.get("mem_avail_mb") or 0) < MEM_MIN_MB + owed:
+        return 0, f"mem {d.get('mem_avail_mb')}MB < {MEM_MIN_MB}+{owed} owed by {len(ramp)} ramping"
     last = max((float(r.get("ts") or 0) for r in (d.get("launches") or {}).values()), default=0)
     if now - last < LAUNCH_GAP_S:
         return 0, f"spacing {int(now - last)}s < {LAUNCH_GAP_S}"
