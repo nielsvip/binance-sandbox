@@ -48753,7 +48753,7 @@ async def process_single_reentry_evaluation(
         dc_low4_3m = safe_fetch_float(i.get("dc_low4_3m", 0), 0.0)
         _dc_reentry_allow_15m = bool(getattr(config, 'REENTRY2_DC_BREAK_ALLOW_15M', True))
         _dc_req_k = bool(getattr(config, 'REENTRY2_DC_BREAK_REQUIRE_K_FILTER', True))
-        _dc_req_wt = bool(getattr(config, 'REENTRY2_DC_BREAK_REQUIRE_WT_FILTER', False))
+        _dc_req_wt = bool(_psym_get(symbol, position_side, "REENTRY2_DC_BREAK_REQUIRE_WT_FILTER", getattr(config, "REENTRY2_DC_BREAK_REQUIRE_WT_FILTER", False)))  # 2026-10-28 cat_side conversion (USER: a switch that exists in a TEMPLATE_ is not up for discussion) — was getattr(config,...)=global only, so live ignored the sheet's bold
         _dc_ftf = str(_psym_cs_get(symbol, position_side, 'REENTRY2_DC_BREAK_FILTER_TF', getattr(config, 'REENTRY2_DC_BREAK_FILTER_TF', '3m')))  # USER 2026-10-12 tandem: per-sym > cat_side > global (was global-only)
         _dc_fk = safe_fetch_float(i.get(f"k_{_dc_ftf}", 0), 0.0)
         _dc_fd = safe_fetch_float(i.get(f"d_{_dc_ftf}", 0), 0.0)
@@ -48977,7 +48977,7 @@ async def process_single_reentry_evaluation(
                         _veto_bypass = True
                         _veto_bypass_reason = f"HA_RED_15m={_ha15_v}_1h={_ha1_v}"
                 if not _veto_bypass and bool(getattr(config, "PRICE_CROSSED_HTF_AGAINST_VETO_BAR_TURN_BYPASS", True)):
-                    _bar_tf = str(getattr(config, "REENTRY_BAR_TURN_TF", "3m"))
+                    _bar_tf = str(_psym_get(symbol, position_side, "REENTRY_BAR_TURN_TF", getattr(config, "REENTRY_BAR_TURN_TF", "3m")))  # 2026-10-28 cat_side conversion (USER: a switch that exists in a TEMPLATE_ is not up for discussion) — was getattr(config,...)=global only, so live ignored the sheet's bold
                     _bh = safe_fetch_float(i.get(f"high_{_bar_tf}", 0) or i.get("high_3m", 0) or i.get("high_5m", 0), 0)
                     _bh_prev = safe_fetch_float(i.get(f"high_{_bar_tf}_prev", 0) or i.get("high_3m_prev", 0) or i.get("high_5m_prev", 0), 0)
                     _bl = safe_fetch_float(i.get(f"low_{_bar_tf}", 0) or i.get("low_3m", 0) or i.get("low_5m", 0), 0)
@@ -49155,9 +49155,9 @@ async def process_single_reentry_evaluation(
                     logger.info(
                         f"[proces s_single_reentry_evaluation] {position_key}: QUICK_RECOVERY check - minutes_since_reduction={minutes_since_reduction:.1f}m, last_reduction_price={last_reduction_price:.6f}, atr_3m={atr_3m:.6f}, current_price={current_price:.6f}, price_threshold={'above' if is_long else 'below'} {last_reduction_price + atr_3m if is_long else last_reduction_price - atr_3m:.6f}, k_3m={k_3m:.1f}, d_3m={d_3m:.1f}, k_3m>d_3m={k_3m > d_3m if is_long else k_3m < d_3m}, quick_recovery_long={quick_recovery_long}, quick_recovery_short={quick_recovery_short}"
                     )
-                if (quick_recovery_long or quick_recovery_short) and getattr(
-                    config, "LEGACY_REENTRY_PSR_QUICK_RECOVERY", False
-                ):
+                if (quick_recovery_long or quick_recovery_short) and bool(
+                    _psym_get(symbol, position_side, "LEGACY_REENTRY_PSR_QUICK_RECOVERY", getattr(config, "LEGACY_REENTRY_PSR_QUICK_RECOVERY", False))
+                ):  # 2026-10-28 cat_side conversion (USER: a switch that exists in a TEMPLATE_ is not up for discussion) — crypto bolds are False, the global read made live True
                     _qr_grandfathered = float(getattr(position, "max_quantity", 0) or 0) * current_price > 2 * float(_psym_sps(symbol, position_side))
                     recovery_reentry_amount = reentry_amount if _qr_grandfathered else min(
                         reentry_amount, 2 * _psym_sps(symbol, position_side) / current_price
@@ -55037,7 +55037,7 @@ async def process_position(
     if (
         position
         and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
-        and bool(getattr(config, "NEWBORN_LOSS_KILL_ENABLED", False))
+        and bool(_psym_get(symbol, position_side, "NEWBORN_LOSS_KILL_ENABLED", getattr(config, "NEWBORN_LOSS_KILL_ENABLED", False)))  # 2026-10-28 cat_side conversion (USER: a switch that exists in a TEMPLATE_ is not up for discussion) — was getattr(config,...)=global only, so live ignored the sheet's bold
         and not bool(getattr(position, "is_hedge", False))
     ):
         try:

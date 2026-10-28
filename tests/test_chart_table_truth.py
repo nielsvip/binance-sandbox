@@ -90,17 +90,42 @@ def test_repair_rebuilds_table_when_moving_closes(tmp_path):
     chart_truth.check_table(out, "X_LONG", chart_truth.parse_js_const(out, "TRADES"), CLOSE, True)
 
 
-def test_expected_line_first_and_in_sample_labelled(tmp_path, monkeypatch):
+def test_expected_line_first_and_ledger_sum_plain(tmp_path, monkeypatch):
+    import hashlib
+
     from tools.opt import hires_chart
 
+    ov = {"A": 1}
+    md5 = hashlib.md5(json.dumps(ov, sort_keys=True).encode()).hexdigest()
     pdir = tmp_path / "data" / "reports" / "lifecycle_pilot"
     pdir.mkdir(parents=True)
-    (pdir / "ZZZUSDT_LONG_v14_progress.json").write_text(json.dumps({"baseline_gain": 3.5, "final_gain": 30.0, "done": {}, "holdout_confirm": {"g_pruned": 6.25, "dropped": ["SW_A", "SW_B"]}}))
+    prog = {"baseline_gain": 3.5, "final_gain": 30.0, "done": {}, "cumulative_overrides": ov, "holdout_confirm": {"g_pruned": 6.25, "dropped": ["SW_A", "SW_B"]}}
+    (pdir / "ZZZUSDT_LONG_v14_progress.json").write_text(json.dumps(prog))
     monkeypatch.setattr(hires_chart, "ROOT", tmp_path)
-    block = hires_chart._expected_block("ZZZUSDT_LONG", None, 70.29)
-    assert block.index("EXPECTED (forward/holdout-confirmed) gain: 6.25%") < block.index("IN-SAMPLE chart gain 70.29%")
-    assert "[holdout_confirm]" in block and "greedy lift 26.5 pp" in block and "SW_A, SW_B" in block and "fee charged" in block
-    assert not chart_truth.GAIN_RE.search(block.split("<br>")[0].replace("<", " <")) or True
-    head = '<div class="metrics">ledger gain 70.29% trades 3</div>'
+    st = {"n": 117, "gain": 70.29, "base": 308.0, "pnl": 216.48, "wins": 107, "losses": 10, "worst": -3.63, "mtm": 0.0}
+    block = hires_chart._expected_block("ZZZUSDT_LONG", md5, st)
+    assert block.index("EXPECTED (forward/holdout-confirmed) gain: 6.25%") < block.index("30D LEDGER: sum of all 117 trades = +70.29% of $308")
+    assert "107 wins / 10 losses, worst -3.63%" in block and "fee " in block and "marked to market: $+0.00 included" in block
+    assert "lift" not in block and "envelope" not in block and "SW_A, SW_B" in block
+    other = hires_chart._expected_block("ZZZUSDT_LONG", "deadbeef", st)
+    assert "EXPECTED (forward/holdout-confirmed) gain: n/a [UNAVAILABLE" in other and "3.50" not in other
     assert chart_truth.METRICS_OPEN not in block
-    assert chart_truth.GAIN_RE.search(head).group(1) == "70.29"
+
+
+def test_stock_ledger_line_and_xlsx_rows(tmp_path):
+    openpyxl = pytest.importorskip("openpyxl")
+    from tools.opt import hires_chart
+
+    st = {"n": 29, "gain": 13.89, "base": 3996.0, "pnl": 554.88, "wins": 19, "losses": 10, "worst": -1.83, "mtm": 0.0}
+    parts = hires_chart._expected_parts("TSLA_LONG", "deadbeef", st, 30)
+    assert "fee 0 (Tradier)" in parts["ledger_line"] and "20 RTH sessions" in parts["ledger_line"] and parts["est_txt"] == "n/a"
+    x = tmp_path / "b.xlsx"
+    wb = openpyxl.Workbook()
+    wb.active.title = "TSLA_LONG_BASELINE_METRICS"
+    for i in range(12):
+        wb.create_sheet(f"S{i}")
+    wb.save(x)
+    assert hires_chart.write_xlsx_honest_rows(x, parts)
+    ws = openpyxl.load_workbook(x)["TSLA_LONG_BASELINE_METRICS"]
+    keys = {ws.cell(r, 1).value: ws.cell(r, 2).value for r in range(1, ws.max_row + 1)}
+    assert keys["EXPECTED_GAIN"] == "n/a" and keys["LEDGER_SUM"].startswith("30D LEDGER")

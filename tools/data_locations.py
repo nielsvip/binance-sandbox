@@ -307,6 +307,14 @@ REGISTRY: dict[str, dict[str, list[tuple]]] = {
         "s2": [("/home/niels/cold_offload/mac_20261028", "mirror", "server copy (sha256-verified) of data/experience + the newest per_sym_store backups; other backups only staged here on their way to GCS", None)],
         "ext": [("{ext}/binance_archive/mac_offload_20261028", "archive", "WD25 copy written 2026-10-28 01:4x-01:5xZ (sha256 verified at write), drive went OFFLINE ~01:55Z before the cache-bypassing re-read: treat as UNVERIFIED until re-read; gs://v15-cold-329002141504/mac/offload_20261028/ is the cold copy", None)],
     },
+    # Server offload 2026-10-28 (USER: S5 and any server under 40 GB free must be offloaded and documented).
+    # Per-file record: data/SERVER_OFFLOAD_MANIFEST_20261028.md. GCS objects are the verified copy; receipts in data/reports/gcs_cold_store.jsonl.
+    "server_offload_20261028": {
+        "s5": [("/home/niels/backups/s2_gate_partial_20261027", "canonical", "ORIGINAL bytes (sole server copy; S2 holds a placeholder). Upload to gs:// fleet_archives/s5/s2_gate_partial_20261027.tar.zst, md5 verified; server copy removed only after the WD25 copy is also verified", None)],
+        "s6": [("/home/niels/backups/s2_gate_runs_20261027", "canonical", "ORIGINAL bytes (sole server copy; S2 holds a placeholder). Upload to gs:// fleet_archives/s6/s2_gate_runs_20261027.tar.zst, md5 verified; server copy removed only after the WD25 copy is also verified", None),
+                ("/home/niels/backups/s2_gate_partial_20261027", "canonical", "ORIGINAL bytes (sole server copy). Upload to gs:// fleet_archives/s6/s2_gate_partial_20261027.tar.zst, md5 verified", None)],
+        "ext": [("{ext}/binance_archive/server_offload_20261028", "archive", "WD25 second copy (only after GCS md5 verified)", None)],
+    },
     "s1_staged_runs_archive": {
         "s5": [("/home/niels/rebuild_scratch_s5/fleet_archives_from_s1", "archive", "compressed tar.zst copies of finished S1 staging batches; source staging is removed only after SHA256, zstd, and tar content comparison pass", None)],
     },

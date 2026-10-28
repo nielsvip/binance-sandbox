@@ -1648,6 +1648,32 @@ def _order_function_switch_reads(path: Path) -> dict:
                 for a_ in c.args[3:]:
                     for sub in ast.walk(a_):
                         _fallback_ids.add(id(sub))
+        # 2026-10-28: the "BATCH 5" stub farm in ez_manage (`_ = getattr(config, K, False)` and
+        # `if getattr(config, K, None) is not None: _ = 1`) does not READ anything — the value is
+        # discarded. Counting those as global read sites made two switches whose real site had just
+        # been converted to the cat_side resolver report live_inconsistent_read(global+cat_side),
+        # i.e. a stub outvoted the actual wiring. A read bound only to `_`, or an `if` whose whole
+        # body is `_ = <const>`, is registration noise and is skipped.
+        def _is_throwaway(t):
+            return isinstance(t, ast.Name) and t.id == "_"
+
+        for n in ast.walk(fn):
+            stub = None
+            if isinstance(n, ast.Assign) and len(n.targets) == 1 and _is_throwaway(n.targets[0]):
+                stub = n.value
+            elif (
+                isinstance(n, ast.If)
+                and len(n.body) == 1
+                and isinstance(n.body[0], ast.Assign)
+                and len(n.body[0].targets) == 1
+                and _is_throwaway(n.body[0].targets[0])
+                and isinstance(n.body[0].value, ast.Constant)
+                and not n.orelse
+            ):
+                stub = n.test
+            if stub is not None:
+                for sub in ast.walk(stub):
+                    _fallback_ids.add(id(sub))
         for c in calls:
             if id(c) in _fallback_ids:
                 continue
@@ -1672,6 +1698,7 @@ def _order_function_switch_reads(path: Path) -> dict:
                 isinstance(n, ast.Attribute)
                 and _name(n.value) in CFG_NAMES
                 and n.attr.isupper()
+                and id(n) not in _fallback_ids
             ):
                 keys.add((n.attr, "global"))
         for k, kind in keys:

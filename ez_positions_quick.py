@@ -33045,9 +33045,7 @@ async def process_single_reentry_evaluation_epq(
         _dc_req_k_re = bool(
             getattr(config_obj, "REENTRY2_DC_BREAK_REQUIRE_K_FILTER", True)
         )
-        _dc_req_wt_re = bool(
-            getattr(config_obj, "REENTRY2_DC_BREAK_REQUIRE_WT_FILTER", False)
-        )
+        _dc_req_wt_re = bool(_psym_cs_get(symbol, position_side, "REENTRY2_DC_BREAK_REQUIRE_WT_FILTER", getattr(config_obj, "REENTRY2_DC_BREAK_REQUIRE_WT_FILTER", False)))  # 2026-10-28 cat_side conversion (USER: a switch that exists in a TEMPLATE_ is not up for discussion); the global-only read made live disagree with the vector
         _dc_ftf_re = str(_psym_cs_get(symbol, position_side, "REENTRY2_DC_BREAK_FILTER_TF", getattr(config_obj, "REENTRY2_DC_BREAK_FILTER_TF", "3m")))  # USER 2026-10-12 tandem: per-sym > cat_side > global (was global-only)
         _dc_fk_re = _sf(i.get(f"k_{_dc_ftf_re}", 0), 0.0)
         _dc_fd_re = _sf(i.get(f"d_{_dc_ftf_re}", 0), 0.0)
@@ -33364,9 +33362,9 @@ async def process_single_reentry_evaluation_epq(
                     and current_price < (last_reduction_price - atr_3m)
                     and k_3m < d_3m
                 )
-                if (quick_recovery_long or quick_recovery_short) and getattr(
-                    config_obj, "LEGACY_REENTRY_PSR_QUICK_RECOVERY", False
-                ):
+                if (quick_recovery_long or quick_recovery_short) and bool(
+                    _psym_cs_get(symbol, position_side, "LEGACY_REENTRY_PSR_QUICK_RECOVERY", getattr(config_obj, "LEGACY_REENTRY_PSR_QUICK_RECOVERY", False))
+                ):  # 2026-10-28 cat_side conversion (USER: a switch that exists in a TEMPLATE_ is not up for discussion); the global-only read made live disagree with the vector
                     reason = f"[PROC_SINGLE_REENTRY_EPQ]:quick_recovery_{minutes_since_reduction:.1f}m"
                     # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
                     _ee_mult, _ee_tag = _ee_reentry_boost(
