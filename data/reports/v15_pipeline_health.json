@@ -1,12 +1,12 @@
 {
- "at": "2026-10-28T06:15:11Z",
+ "at": "2026-10-28T06:30:45Z",
  "s1": {
   "host": "niels",
-  "now": 1793168108.142099,
+  "now": 1793169020.6183121,
   "merge_crypto": {
    "n": 12,
-   "max_lag_min": 30.0,
-   "median_lag_min": 30.0,
+   "max_lag_min": 45.0,
+   "median_lag_min": 45.0,
    "worst": "1000000MOGUSDT",
    "dead": []
   },
@@ -18,7 +18,7 @@
    "dead": []
   },
   "npz_legacy_crypto": [],
-  "append_log_age_min": 36.4,
+  "append_log_age_min": 51.6,
   "append_last_secs": 818.8,
   "append_last_stats": "'appended': 684, 'created': 0, 'up_to_date': 5703, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
   "npz_loop_pids": 0,
@@ -30,16 +30,16 @@
   "sched_err": "FileNotFoundError",
   "archive_n": 202,
   "archive_mb": 2461.8,
-  "archive_newest_min": 2812.7,
+  "archive_newest_min": 2827.9,
   "_via": "s1-int"
  },
  "red": [
-  "L2 appender silent for 36.4 min (cron */5) ",
+  "L2 appender silent for 51.6 min (cron */5) ",
   "L3 npz append loop is not running (the */15 watchdog should relaunch it)",
   "L4 scheduler last ticked None min ago (cron */2)"
  ],
  "warn": [
-  "L5 newest archived board NPZ is 2813 min old \u2014 publishes may not be recording"
+  "L5 newest archived board NPZ is 2828 min old \u2014 publishes may not be recording"
  ],
  "ok": false
 }
