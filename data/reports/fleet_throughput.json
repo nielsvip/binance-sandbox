@@ -1,72 +1,27 @@
 {
-  "ts": "2026-10-28T17:40:11.789349+00:00",
+  "ts": "2026-10-28T17:45:05.939032+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 3,
-  "pending_sym_sides": 139,
+  "fleet_published_last_60m": 0,
+  "pending_sym_sides": null,
   "hosts": {
     "s1": {
-      "published_last_60m": 0,
-      "published_last_3h": 0,
-      "boards": {
-        "PTBUSDT_SHORT": 7,
-        "XPLUSDT_SHORT": 7
-      },
-      "boards_running": 2,
-      "workers": 14,
-      "workers_vs_law_28": "14/28",
-      "mem_avail_mb": 8351,
-      "disk_free_gb": 34,
-      "load1": 20.8,
-      "dispatch_idle_why": "full 2/2",
-      "published_ss": []
+      "unreachable": true
     },
     "s2": {
-      "published_last_60m": 2,
-      "published_last_3h": 2,
-      "boards": {
-        "BBUSDT_SHORT": 7,
-        "BLURUSDT_SHORT": 7
-      },
-      "boards_running": 2,
-      "workers": 14,
-      "workers_vs_law_28": "14/28",
-      "mem_avail_mb": 10333,
-      "disk_free_gb": 50,
-      "load1": 11.4,
-      "dispatch_idle_why": "mem 10362MB < 11000",
-      "published_ss": [
-        "ACEUSDT_SHORT",
-        "TRUMPUSDC_SHORT"
-      ]
+      "unreachable": true
     },
     "s5": {
-      "published_last_60m": 1,
-      "published_last_3h": 4,
-      "boards": {
-        "GRAMUSDT_SHORT": 7,
-        "MOVRUSDT_SHORT": 0
-      },
-      "boards_running": 2,
-      "workers": 7,
-      "workers_vs_law_28": "7/28",
-      "mem_avail_mb": 10881,
-      "disk_free_gb": 56,
-      "load1": 10.3,
-      "dispatch_idle_why": "mem 9766MB < 11000",
-      "published_ss": [
-        "MOVRUSDT_SHORT"
-      ]
+      "unreachable": true
     },
     "s6": {
       "unreachable": true
     }
   },
   "alerts": [
-    "LOW_THROUGHPUT:s1:0/h<10 (idle_why=full 2/2)",
-    "DISK_FLOOR:s1:34GB<40",
-    "LOW_THROUGHPUT:s2:2/h<10 (idle_why=mem 10362MB < 11000)",
-    "LOW_THROUGHPUT:s5:1/h<10 (idle_why=mem 9766MB < 11000)",
+    "UNREACHABLE:s1",
+    "UNREACHABLE:s2",
+    "UNREACHABLE:s5",
     "UNREACHABLE:s6"
   ],
   "repair": null
