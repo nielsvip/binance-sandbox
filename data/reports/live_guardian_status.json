@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-28T07:19:12Z",
+ "ts": "2026-10-28T07:24:36Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 76,
+   "fills_6h": 77,
    "open_positions": 22,
-   "unrealised_usd": -0.17,
+   "unrealised_usd": -0.07,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 122,
    "open_positions": 24,
-   "unrealised_usd": -3.64,
+   "unrealised_usd": -3.52,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 12,
@@ -59,12 +59,12 @@
    }
   },
   "ang": {
-   "fills_6h": 181,
+   "fills_6h": 180,
    "open_positions": 39,
-   "unrealised_usd": -0.84,
+   "unrealised_usd": -0.57,
    "pos_mismatch": 0,
    "vec_parity": {
-    "live_vec_decisions": 2,
+    "live_vec_decisions": 3,
     "state_divergent": 0,
     "filled": 0,
     "refused_non_safety": 0,
@@ -77,7 +77,7 @@
   "inf": {
    "fills_6h": 20,
    "open_positions": 10,
-   "unrealised_usd": -0.47,
+   "unrealised_usd": -0.41,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 1,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 24,
    "open_positions": 11,
-   "unrealised_usd": -0.19,
+   "unrealised_usd": -0.23,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 3,
@@ -111,12 +111,12 @@
  "tradeable_guard": {
   "poison": false,
   "restored": false,
-  "total": 210,
+  "total": 209,
   "per_acct": {
    "men": 50,
    "inf": 11,
    "fin": 50,
-   "ang": 73,
+   "ang": 72,
    "flz": 26
   }
  },
@@ -134,14 +134,14 @@
     "52393"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 1.0
   },
   "ang": {
    "pids": [
     "46634"
    ],
    "starts_30m": 1,
-   "log_age_s": 10.0
+   "log_age_s": 44.0
   },
   "inf": {
    "pids": [
@@ -155,61 +155,61 @@
     "86718"
    ],
    "starts_30m": 1,
-   "log_age_s": 1928.0
+   "log_age_s": 2252.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 40719.0
+   "log_age_s": 41043.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 40794.0
+   "log_age_s": 41119.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-28T07:19:12Z",
+   "ts": "2026-10-28T07:24:37Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "men:TIAUSDC_LONG",
    "evidence": "OPEN REENTRY_DC4_15M_BREAK bar=2026-10-28T06:15:00Z refused by non-safety gate: 28 06:36:00 - INFO - [men] [VEC_EXACT] men:TIAUSDC_LONG CLOSE VEC_EXIT_OWED qty=4.000000 -> SKIPPED_VX_INFLIGHT"
   },
   {
-   "ts": "2026-10-28T07:19:12Z",
+   "ts": "2026-10-28T07:24:37Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "men:TIAUSDC_LONG",
    "evidence": "OPEN REENTRY_DC4_15M_BREAK bar=2026-10-28T06:15:00Z refused by non-safety gate: 28 06:36:00 - INFO - [men] [VEC_EXACT] men:TIAUSDC_LONG CLOSE VEC_EXIT_OWED qty=4.000000 -> SKIPPED_VX_INFLIGHT"
   },
   {
-   "ts": "2026-10-28T07:19:12Z",
+   "ts": "2026-10-28T07:24:37Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "men:TIAUSDC_LONG",
    "evidence": "AUGMENT AUGMENT_AT_LOSS_HL bar=2026-10-28T06:30:00Z refused by non-safety gate: 28 06:49:01 - INFO - [men] [VEC_EXACT] men:TIAUSDC_LONG CLOSE VEC_EXIT_OWED qty=4.000000 -> SKIPPED_VX_INFLIGHT"
   },
   {
-   "ts": "2026-10-28T07:19:13Z",
+   "ts": "2026-10-28T07:24:37Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "inf:PENGUUSDC_LONG",
    "evidence": "OPEN B_KZONE bar=2026-10-28T05:00:00Z: live already holds 1932 (state divergence)"
   },
   {
-   "ts": "2026-10-28T07:19:13Z",
+   "ts": "2026-10-28T07:24:37Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "flz:BNBUSDC_SHORT",
    "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-28T06:15:00Z refused by non-safety gate: 28 06:32:14 - INFO - [flz] [VEC_EXACT] flz:BNBUSDC_SHORT CLOSE VEC_EXIT_OWED qty=0.010000 -> SKIPPED_VX_INFLIGHT"
   },
   {
-   "ts": "2026-10-28T07:19:13Z",
+   "ts": "2026-10-28T07:24:37Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 1928s"
+   "evidence": "ez_manage_flz.log not written for 2252s"
   }
  ],
  "alert_counts": {
@@ -275,5 +275,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.5
+ "sweep_s": 1.36
 }
