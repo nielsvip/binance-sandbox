@@ -1,23 +1,23 @@
 {
- "now": "2026-10-28T00:30:07.283076+00:00",
+ "now": "2026-10-28T01:30:11.338865+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 35412,
- "last_exit_ts": "2026-10-28T00:28:48.839462+00:00",
- "n_leaks": 4882,
- "n_gate_on": 16483,
+ "n_exit_rows": 34838,
+ "last_exit_ts": "2026-10-28T01:30:17.294366+00:00",
+ "n_leaks": 4881,
+ "n_gate_on": 16326,
  "n_ungated": 16,
- "n_safety": 4359,
- "n_unmapped": 2527,
- "n_unverified": 7140,
- "since": "2026-10-26T00:30:07.283076+00:00",
+ "n_safety": 4093,
+ "n_unmapped": 2510,
+ "n_unverified": 7007,
+ "since": "2026-10-26T01:30:11.338865+00:00",
  "vec_exact_by_action": {
   "CLOSE": 5
  },
- "native_rows": 35407,
+ "native_rows": 34833,
  "unverified_by_family": {
-  "GAIN_EROSION_STOP (None=None)": 163,
-  "RATIO_REBALANCE (ABLATION_DISABLE_RATIO_REBALANCE=False)": 3088,
-  "QUICK_OPEN_GOOD (None=None)": 162,
+  "QUICK_OPEN_GOOD (None=None)": 160,
+  "RATIO_REBALANCE (ABLATION_DISABLE_RATIO_REBALANCE=False)": 3050,
+  "GAIN_EROSION_STOP (None=None)": 70,
   "REENTRY_OTHER (ABLATION_DISABLE_REENTRY=False)": 73,
   "BT_RSI2_XTREME_EXIT (RSI2_XTREME_EXIT_ENABLED=False)": 857,
   "WT_EXHAUST (None=None)": 586,
@@ -29,7 +29,7 @@
   "IN_GAIN_TREND_EXIT (None=None)": 11
  },
  "leaks_by_family": {
-  "QUICK_OPEN_STRONG": 1666,
+  "QUICK_OPEN_STRONG": 1665,
   "WRONG_SIDE_ABS_KILL": 619,
   "E_1_WT_DELTA_EXIT (E_1_WT_EXIT_USE_DELTA_ENABLED=False)": 1245,
   "WT_4H_VEL": 1349,
@@ -52,7 +52,7 @@
   "WT_4H_VEL fin:ACTUSDT_SHORT": 78,
   "E_1_WT_DELTA_EXIT fin:ACTUSDT_SHORT": 76,
   "WT_4H_VEL ang:ATOMUSDT_SHORT": 72,
-  "QUICK_OPEN_STRONG flz:ZECUSDC_LONG": 65,
+  "QUICK_OPEN_STRONG flz:ZECUSDC_LONG": 67,
   "WRONG_SIDE_ABS_KILL ang:ZECUSDC_LONG": 62,
   "WT_4H_VEL inf:ATOMUSDT_SHORT": 62,
   "QUICK_OPEN_STRONG ang:RAYSOLUSDT_LONG": 57,
@@ -88,8 +88,7 @@
   "QUICK_OPEN_STRONG fin:ZECUSDC_LONG": 20
  },
  "gate_on_by_family": {
-  "VEC_DRIVEN_BRIDGE (VEC_DRIVEN_ENABLED)": 14013,
-  "QUICK_REDUCE_OTHER (ABLATION_DISABLE_QUICK_EXIT)": 1,
+  "VEC_DRIVEN_BRIDGE (VEC_DRIVEN_ENABLED)": 13857,
   "GOLDEN_RULE": 392,
   "HARDCODED_RALLY_REENTRY (HARDCODED_RALLY_REENTRY_ENABLED)": 183,
   "CYCLE_TP (CYCLE_TP_TIERED_ENABLED)": 662,
@@ -106,7 +105,7 @@
   "RANKING_DIRECT_ALL_GREEN": 3
  },
  "safety_by_family": {
-  "FIXED_STOP": 4359
+  "FIXED_STOP": 4093
  },
  "unmapped": {
   "ANG_TIMING_TRIM_FAILED": 730,
@@ -155,16 +154,16 @@
   "SIMPLE_TP_EXIT(gain=0.76%>=tp=0.5%)_bc": 6,
   "OVERRIDE_OPEN_qty_0.228313363357855_LO": 6,
   "fin:ZECUSDC_LONG_QUICK_WINNER_WT_AUGME": 5,
-  "VEC_FWD_MISSING_FLAT:COTIUSDT_SHORT_v1": 4,
   "ANG_TIMING_TRIM_FAILED_g1.38_ext-1.15": 4,
   "ang:UNIUSDC_LONG_QUICK_WINNER_WT_AUGME": 4,
-  "ANG_TIMING_TRIM_FAILED_g1.20_ext-1.44": 4
+  "ANG_TIMING_TRIM_FAILED_g1.20_ext-1.44": 4,
+  "OVERSIZE_TRIM_LOSS_cap140": 4
  },
  "actions": {
-  "CLOSE": 6654,
-  "OPEN": 10568,
-  "REDUCE": 5042,
-  "QUICK_OPEN": 1828,
+  "CLOSE": 6258,
+  "QUICK_OPEN": 1825,
+  "OPEN": 10432,
+  "REDUCE": 5003,
   "AUGMENT": 1201,
   "QUICK_AUGMENT": 1357,
   "QUICK_CLOSE": 6700,

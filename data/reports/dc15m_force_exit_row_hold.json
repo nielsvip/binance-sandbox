@@ -1,0 +1,37 @@
+{
+  "switch": "DC15M_FORCE_EXIT_ENABLED",
+  "live_reason_label": "DELTA_EXIT_DC15M_FLOOR_BREAK",
+  "state": "rows INSTALLED in crypto LONG+SHORT, currently GREY (interim hold)",
+  "rows": {
+    "TEMPLATE_CRYPTO_LONG.xlsx": "EXIT_VELOCITY!189=False(bold,grey), !190=True(grey)",
+    "TEMPLATE_CRYPTO_SHORT.xlsx": "EXIT_VELOCITY!191=False(bold,grey), !192=True(grey)",
+    "TEMPLATE_STOCKS_LONG.xlsx": "NOT INSTALLED",
+    "TEMPLATE_STOCKS_SHORT.xlsx": "NOT INSTALLED"
+  },
+  "operator_rulings_in_order": [
+    "2026-10-27 (conditional, SUPERSEDED): \"if this is the DC_low_15m - 0.25% exit (vvv short) that is not an ordinary losing exit it is the absolute bottom line non negotialbe FIXED_STOP stop loss. If it is anything else it should probably be greyed out.\"",
+    "2026-10-27 (CURRENT): \"DELTA_EXIT_DC15M_FLOOR_BREAK should be tested as a switch if it works it works for a sym_side but it needs to be wired correctly so it does move the needle in both vec and live identically.; DC15M_FORCE_EXIT_ENABLED sounds like the same thing - make sure this is tested under the same name in stocks and crypto - it should always be skipped if min_hold is not yet reached\""
+  ],
+  "verified_it_is_NOT_the_fixed_stop": {
+    "dc15m_force_exit": "vec_decisions/process_position_crypto__dc15m_force_exit.py -- price < dc_low_15m (LONG) / price > dc_high_15m (SHORT) on the CURRENT moving channel, NO buffer, fires only while current_gain < 0.0",
+    "fixed_stop": "vec_decisions/fixed_stop.py -- entry-bar dc_low_15m * 0.9975 (FIXED_STOP_BUFFER_PCT 0.25) FROZEN at first entry, exchange leg CRYPTO_EXCHANGE_TOTAL_PCT 0.40"
+  },
+  "why_still_grey": [
+    "STOCKS has no live reader at all: tradier_manage.py 0 occurrences, config_tradier.py 0 occurrences. A stocks row now would be a surface breach (TEMPLATE_STOCKS_* -> config_tradier must declare it) and a board delta live could not honour.",
+    "The operator's min-hold requirement is NOT implemented: the vec hook (v12_quick_engine.py:21548, _gw_exits/first_fire) has no held_bars >= min_hold guard; the nearby min-hold check at :21378 belongs to a different WT15M bounce exit.",
+    "Grey = the board applies the bold default False and never tests it, so live behaviour is unchanged and the hold is one flag to reverse."
+  ],
+  "DISPUTED_peer_claim": {
+    "claim": "binance-c3: 'Today it fires in vec but never reaches the ledger.'",
+    "measured_contradiction": "Toggling the switch OFF vs ON through the real engine (v12_quick_engine.simulate_one) moved gain and/or trade count in 13 of 14 sym_side cases, so it DOES book. NMRUSDT_SHORT -42.9218 -> -42.9668; NMRUSDT_LONG -44.0128 -> -43.5696 with trades 1587 -> 1588; BTCUSDC_SHORT trades 3439 -> 3442; ETHUSDC_LONG 3983 -> 3987. Only SOLUSDC_SHORT was unchanged. These are bare-QuickConfig probes proving responsiveness only -- NOT board numbers and NOT promotion-worthy.",
+    "note": "The booking hook appends a CLOSE trade and clears the position (v12_quick_engine.py:21566-21600), so a fire that is reached does book. What is NOT proven is vec/live IDENTITY, which is what the operator actually requires."
+  },
+  "un_grey_when_ALL_true": [
+    "config_tradier.py declares DC15M_FORCE_EXIT_ENABLED and tradier_manage.py reads it per sym_side (same name, per the operator).",
+    "The min-hold skip is implemented on BOTH sides and is identical in vec and live.",
+    "A vec-vs-live parity check on the same frozen 30d NPZ shows identical ledgers for the switch ON.",
+    "Then: tools/v15_switch_grey.py --switch DC15M_FORCE_EXIT_ENABLED --ungrey --venues both --sides both --apply, plus tools/v15_switch_add.py for the two STOCKS templates."
+  ],
+  "owner": "binance-c3's agent is doing the wiring; this session (binance-3f) owns the template rows.",
+  "recorded_utc": "2026-10-28T00:30:00Z"
+}
