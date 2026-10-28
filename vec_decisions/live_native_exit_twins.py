@@ -8,8 +8,9 @@ POLICY_NON_VECTOR_EXIT_DISABLED) because v12_quick_engine never books them:
   stoch K below/above D with a red/green 1h HA candle, 5 <= gain < 10 needs a red/green 15m HA
   candle with the 15m stoch K below/above D; below 5 % it never fires.
 * DELTA_EXIT_DC15M_FLOOR_BREAK — ez_manage.py (~60468-60500, "DC15M_FORCE_EXIT"): price through
-  the 15m Donchian floor (LONG) / ceiling (SHORT) while the position is under water, gated by
-  DELTA_EXIT_ENABLED. Core: vec_decisions/process_position_crypto__dc15m_force_exit.
+  the 15m Donchian floor (LONG) / ceiling (SHORT) while the position is under water (2026-10-28: own switch
+  only, skipped inside MIN_HOLD_BARS, also stocks; see dc15m_evaluate). Core:
+  vec_decisions/process_position_crypto__dc15m_force_exit.
 
 Contract matches vec_decisions.grey_wire_exits: fn(c, g, st, is_long) -> (fire, reason) where
 c(key, default) is the config getter, g(key, default) the current-bar indicator getter (live dict
@@ -21,6 +22,7 @@ them changes no board and no live order until a board promotes True.
 from typing import Callable, List, Tuple
 
 import vec_decisions.process_position_crypto__dc15m_force_exit as _dc15
+import vec_decisions.min_hold_gate as _mhg
 
 _HA = {-1: "red", 0: "neutral", 1: "green"}
 
@@ -63,16 +65,76 @@ def in_gain_trend_exit(c, g, st, is_long) -> Tuple[bool, str]:
     return (True, f"IN_GAIN_TREND_EXIT_{tier}") if fire else (False, "")
 
 
-def dc15m_force_exit(c, g, st, is_long) -> Tuple[bool, str]:
-    if not bool(c("DELTA_EXIT_ENABLED", True)):
-        return False, ""
+# USER 2026-10-28 (verbatim): "DELTA_EXIT_DC15M_FLOOR_BREAK should be tested as a switch if it works it works for a
+# sym_side but it needs to be wired correctly so it does move the needle in both vec and live identically.;
+# DC15M_FORCE_EXIT_ENABLED sounds like the same thing - make sure this is tested under the same name in stocks and
+# crypto - it should always be skipped if min_hold is not yet reached".
+# ONE decision for crypto live (ez_manage), stocks live (tradier_manage) and the vector (v12_quick_engine, both venues):
+#   switch DC15M_FORCE_EXIT_ENABLED -> price through the 15m Donchian floor/ceiling while red
+#   -> SKIPPED while the position is younger than MIN_HOLD_BARS (vec_decisions/min_hold_gate, the reason is NOT in its
+#   exempt families) -> CLOSE. When armed the close may book/execute red: the vector marks it DC15M_MARKER for
+#   vec_decisions/net_exit_gate, live passes dc15m_loss_close_allowed() to execute_now's net-gain floor.
+# NOT the FIXED_STOP (frozen entry-bar dc_15m -0.25%, always on, min-hold exempt) -- this one reads the CURRENT channel.
+DC15M_SWITCH = "DC15M_FORCE_EXIT_ENABLED"
+DC15M_REASON = "DELTA_EXIT_DC15M_FLOOR_BREAK"
+DC15M_MARKER = "DC15M_FORCE_EXIT_ARMED"
+
+
+class _CfgView:
+    """min_hold_gate reads getattr(cfg, KEY); expose a c(key, default) getter the same way on both sides."""
+
+    def __init__(self, c):
+        self._c = c
+
+    def __getattr__(self, key):
+        if key.startswith("_"):
+            raise AttributeError(key)
+        return self._c(key, None)
+
+
+def dc15m_armed(c) -> bool:
+    """The switch alone. DELTA_EXIT_ENABLED is deliberately NOT a co-master (decoupled 2026-10-28): it is False in
+    config_tradier and the tradier QuickConfig, so coupling would make the stocks row a structural zero (Bible 14.3) and
+    the operator ordered the same switch tested in stocks and crypto. Every set is False today, so nothing changes."""
+    try:
+        return bool(c(DC15M_SWITCH, False))
+    except Exception:
+        return False
+
+
+def dc15m_min_hold_refuses(c, age_s) -> Tuple[bool, str]:
+    """The shared MIN_HOLD gate for this reason. age_s = seconds since the position opened (None/<0 = unknown -> never
+    held, the gate's AGE_UNKNOWN rule). live=False on both sides on purpose: the live-only exemptions are board/bookkeeping
+    tokens this reason never carries, so both sides ask the identical question."""
+    if age_s is None:
+        return False, "AGE_UNKNOWN"
+    return _mhg.refuse(age_s, _CfgView(c), action="CLOSE", reason=DC15M_REASON, live=False)
+
+
+def dc15m_evaluate(c, g, st, is_long) -> Tuple[bool, str, str]:
+    """(fire, reason, detail). detail names a min-hold skip so live can log it; the vector only uses fire/reason."""
     # NPZ dc_low_15m/dc_high_15m include the bar itself (measured 2026-10-27 on GRASS/DOGE/XMR/NMR: 0 of
     # 200,430 closes outside them), so the closed-bar twin reads the *_prev channel = the channel the live
     # price is compared with while the bar forms. A live snapshot without *_prev falls back to the plain key.
     lo = _f(g("dc_low_15m_prev", g("dc_low_15m", 0.0)))
     hi = _f(g("dc_high_15m_prev", g("dc_high_15m", 0.0)))
-    fire = _dc15._dc15m_force_exit_fires(_f(st.get("px")), _f(st.get("gain")), lo, hi, is_long)
-    return (True, "DELTA_EXIT_DC15M_FLOOR_BREAK") if fire else (False, "")
+    if not _dc15._dc15m_force_exit_fires(_f(st.get("px")), _f(st.get("gain")), lo, hi, is_long):
+        return False, "", ""
+    _age = st.get("hold_age_s", st.get("age_s"))
+    held, why = dc15m_min_hold_refuses(c, _age)
+    if held:
+        return False, "", why
+    return True, DC15M_REASON, ""
+
+
+def dc15m_force_exit(c, g, st, is_long) -> Tuple[bool, str]:
+    fire, reason, _why = dc15m_evaluate(c, g, st, is_long)
+    return fire, reason
+
+
+def dc15m_loss_close_allowed(reason, armed_now: bool) -> bool:
+    """Live twin of the vector's mandatory_stop_kind=DC15M_MARKER: an armed DC15M floor-break close may close red."""
+    return bool(armed_now) and str(reason or "").upper().startswith(DC15M_REASON)
 
 
 TWIN_EXITS = (

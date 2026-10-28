@@ -106,6 +106,15 @@ class TradierConfig:
     # tried NOT a hardcoded exit path... it needs to be a switch not a default" — default OFF,
     # promoted per sym_side via sweep proof like any other exit switch.
     VIGILANCE_GUARD_ENABLED: bool = False
+    # USER 2026-10-28 "unlock tradeir_mange for the dc4 vigilance if it is correctly vectorized and tested in the
+    # templates": the stocks DC4 stop switch, same name + predicate as crypto (vec_decisions/vigilance_dc4); False =
+    # unchanged. Its entry block expires after VIGILANCE_BLOCK_HOURS (same block_expired predicate as the vector).
+    VIGILANCE_DC4_STOP_ARMED: bool = False
+    VIGILANCE_BLOCK_HOURS: float = 12.0
+    # USER 2026-10-28 "DC15M_FORCE_EXIT_ENABLED ... make sure this is tested under the same name in stocks and crypto -
+    # it should always be skipped if min_hold is not yet reached": DELTA_EXIT_DC15M_FLOOR_BREAK, one decision
+    # (vec_decisions/live_native_exit_twins.dc15m_evaluate) for tradier_manage, ez_manage and v12_quick_engine.
+    DC15M_FORCE_EXIT_ENABLED: bool = False
     # USER 2026-09-28 (3rd mandate): "we do not use fix %" — NO fixed-percentage stop. The vigilance
     # loss trigger is STRUCTURAL: position at a loss AND price breaches dc_low4_{TF} (LONG) /
     # dc_high4_{TF} (SHORT). TF granted by user: 15m. OFF disables the structural stop.

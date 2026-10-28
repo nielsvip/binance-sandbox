@@ -2050,6 +2050,8 @@ def known_config_fields() -> set:
 
 
 UNTRUSTED_BOLD: list = []  # last template_bold_defaults() call: bold values NOT used as defaults (placeholder options)
+BOLD_REINSTATED: list = []  # last call: bolds that DIFFER from config and win anyway (USER 2026-10-27: TEMPLATE is the ONLY authority)
+BOLD_WINS: bool = os.environ.get("V15_BOLD_WINS", "1") != "0"
 
 
 def _same_default(a, b) -> bool:
@@ -2069,6 +2071,7 @@ def template_bold_defaults(template_path, defaults: dict, truth: dict | None = N
     wb = _opx.load_workbook(str(template_path))
     vals, where, bad = {}, {}, []
     UNTRUSTED_BOLD.clear()
+    BOLD_REINSTATED.clear()
     for tab in SWITCH_SHEETS:
         if tab not in wb.sheetnames:
             continue
@@ -2092,14 +2095,21 @@ def template_bold_defaults(template_path, defaults: dict, truth: dict | None = N
             if len(yes) != 1 or bold != yes:
                 bad.append(f"{tab}!{sw}: is_default YES rows {yes}, bold rows {bold}")
                 continue
-            v = _parse_opt_value(ws.cell(row=yes[0], column=2).value, defaults.get(sw))
+            _raw = ws.cell(row=yes[0], column=2).value
+            v = _parse_opt_value(_raw, defaults.get(sw))
             if truth is not None and sw in truth and sw not in (promoted or set()) and (isinstance(truth[sw], (dict, list, tuple, set)) or not _same_default(v, truth[sw])):
-                # USER 2026-09-30: a placeholder bold (group options do not contain the real default) is never pushed as
-                # the default into the engine / the 4-set layer — the real live value stays the default
-                # USER 2026-10-04: EXCEPT the 2026-10-03 ABLATION ABOLITION shape (template False vs config True):
-                # the abolition outranks this guard — reinstating truth True re-imposes fleet-wide entry death
-                # (PEPE_LONG bolds 150 trades -> 0). The abolition False IS the default.
-                if sw.startswith("ABLATION_DISABLE_") and isinstance(v, bool) and not v and truth[sw] in (True, 1):
+                # USER 2026-10-27, VERBATIM: "NO config or live trading has ANY default that is NOT overridden by TEMPLATE_
+                # switch default or override. TEMPLATE is the ONLY authority any default that exists in any trading or config
+                # script can ONLY exist because NO switch exists for it just yet." The old rule here kept the CONFIG value
+                # whenever the bold differed from it, which discarded the bold in the only case where it decides anything and
+                # made config a second authority. BOLD_WINS (default ON, V15_BOLD_WINS=0 restores the old behaviour) keeps the
+                # config value ONLY where no bold cell can express it: a container-valued config field, or a bold mark sitting
+                # on an EMPTY cell (that is a template defect, not a default). Grey/retired groups never reach here (above).
+                # The 2026-10-04 ABLATION ABOLITION shape needs no special case any more: the bold simply wins.
+                _unusable = _raw is None or (isinstance(_raw, str) and not _raw.strip()) or isinstance(truth[sw], (dict, list, tuple, set))
+                if BOLD_WINS and not _unusable:
+                    BOLD_REINSTATED.append((tab, sw, v, truth[sw]))
+                elif sw.startswith("ABLATION_DISABLE_") and isinstance(v, bool) and not v and truth[sw] in (True, 1):
                     pass
                 else:
                     UNTRUSTED_BOLD.append((tab, sw, v, truth[sw]))
@@ -13101,8 +13111,10 @@ def _main_single():
         print(f"[DEFAULTS-GATE] truth load warn {_tr_e} — all bold values trusted", flush=True)
         _truth, _promoted = None, set()
     _tpl_defaults, _tpl_bad = template_bold_defaults(args.template, defaults, _truth, _promoted)
+    if BOLD_REINSTATED:
+        print(f"[DEFAULTS-GATE] {new_symside}: BOLD-WINS reinstated {len(BOLD_REINSTATED)} template bolds that differ from config (TEMPLATE is the ONLY authority): {[(x[1], x[2], x[3]) for x in BOLD_REINSTATED[:8]]}", flush=True)
     if UNTRUSTED_BOLD:
-        print(f"[DEFAULTS-GATE] {new_symside}: {len(UNTRUSTED_BOLD)} placeholder bold values NOT used as defaults (real value kept): {[x[1] for x in UNTRUSTED_BOLD[:8]]}", flush=True)
+        print(f"[DEFAULTS-GATE] {new_symside}: {len(UNTRUSTED_BOLD)} bold values NOT usable as defaults (container config field or EMPTY bold cell — template defect; real value kept): {[x[1] for x in UNTRUSTED_BOLD[:8]]}", flush=True)
     if _tpl_bad:
         print(f"[DEFAULTS-GATE] {new_symside}: template {args.template} has {len(_tpl_bad)} default violations — NOT running. First: {_tpl_bad[:5]} (fix: tools/v15_template_defaults_fix.py --apply)", flush=True)
         return

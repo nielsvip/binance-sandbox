@@ -57,6 +57,9 @@ ENV_IGNORE = {"V15_PROGRESS_DIR", "V15_OUT_DIR", "V15_START_OVERRIDES", "V15_ISO
 NOISE_FLOOR_PER_SIDE = float(os.environ.get("V15_GATE_NOISE_FLOOR", "0.48"))
 TOL_SUM = float(os.environ.get("V15_GATE_TOL_SUM", "2.5"))
 TOL_SIDE = float(os.environ.get("V15_GATE_TOL_SIDE", "2.0"))
+# USER 2026-10-28: the greedy in-sample fit sum is advisory; only the unseen-days OOS sum (and per-side OOS drops) can FAIL
+# a candidate. V15_GATE_FIT_BINDING=1 restores the old rule.
+FIT_BINDING = os.environ.get("V15_GATE_FIT_BINDING", "0") == "1"
 RUN_TIMEOUT_MIN = float(os.environ.get("V15_GATE_RUN_TIMEOUT_MIN", "720"))  # 8 sides x ~55 min per tree, two trees concurrently
 MIN_FREE_MB = float(os.environ.get("V15_GATE_MIN_FREE_MB", "20000"))
 SRC = HOME / "binance-sandbox"
@@ -311,6 +314,7 @@ def _cov(m, k):
 def decide(ch, ca, sides=None):
     sides = sides or gate_sides() or sorted(set(ch) | set(ca))
     rows, missing, missing_champ, missing_cand, drops, uninformative, scored = [], [], [], [], [], [], []
+    oos_drops, advisories = [], []
     sf_ch = sf_ca = so_ch = so_ca = 0.0
     cov = {"cells_champ": 0, "cells_cand": 0, "naked_champ": 0, "naked_cand": 0, "rows_champ": 0, "rows_cand": 0}
     n_truth = 0
@@ -357,6 +361,8 @@ def decide(ch, ca, sides=None):
         cov["rows_cand"] += _cov(b, "rows")
         if fb < fa - TOL_SIDE:
             drops.append(s)
+        if ob < oa - TOL_SIDE:
+            oos_drops.append(s)
     _n = max(1, len(scored))
     _sum_floor = round(NOISE_FLOOR_PER_SIDE * (_n ** 0.5), 3)
     # Corner-cut detection (USER 2026-10-16): coverage = what the boards actually evaluated. Unknown coverage on the champion
@@ -373,7 +379,10 @@ def decide(ch, ca, sides=None):
     if missing_cand:
         reasons.append(f"CANDIDATE arm lost boards: {missing_cand}")
     if drops:
-        reasons.append(f"side fit drop > {TOL_SIDE}: {drops}")
+        (reasons if FIT_BINDING else advisories).append(f"side fit drop > {TOL_SIDE}: {drops}")
+    if oos_drops and not FIT_BINDING:
+        # with fit advisory, a per-side OOS collapse is the per-side guard instead
+        reasons.append(f"side OOS drop > {TOL_SIDE}: {oos_drops}")
     if scored and n_truth < len(scored) and REQUIRE_TRUTH:
         reasons.append(f"TRUTH_MISSING: chart-truth rescore available on {n_truth}/{len(scored)} scored sides — self-reported gains are never a PASS basis")
     if corner_cut:
@@ -384,13 +393,17 @@ def decide(ch, ca, sides=None):
             reasons.append(f"CORNER_CUT with lower fit gain: {sf_ch:.3f} -> {sf_ca:.3f}")
     else:
         if sf_ca < sf_ch - TOL_SUM:
-            reasons.append(f"fit sum {sf_ch:.3f} -> {sf_ca:.3f} below tolerance {TOL_SUM}")
+            # USER 2026-10-28 01:4xZ: "if v21 does not beat v20 in numbers unless you use the old accounting system that is
+            # now forbidden it should still promote". The fit sum is the greedy in-sample envelope (measured 2026-10-27: 80%
+            # lift, forward Spearman -0.15, 1,540 promotions +1,322 pp fit -> -205 pp forward), so a lower fit sum is
+            # reported but is NOT a FAIL reason unless V15_GATE_FIT_BINDING=1. The unseen-days OOS sum stays binding.
+            (reasons if FIT_BINDING else advisories).append(f"fit sum {sf_ch:.3f} -> {sf_ca:.3f} below tolerance {TOL_SUM}")
         if so_ca < so_ch - TOL_SUM:
             reasons.append(f"OOS sum {so_ch:.3f} -> {so_ca:.3f} below tolerance {TOL_SUM}")
     ok = not reasons
     wc = sum(r["wall_champ"] or 0 for r in rows)
     wn = sum(r["wall_cand"] or 0 for r in rows)
-    return {"PASS": ok, "harness_fail": bool(missing_champ), "missing_champ": missing_champ, "missing_cand": missing_cand, "reasons": reasons, "corner_cut": corner_cut, "truth_sides": n_truth, "scorer": "chart-truth (tools/v15_bench_truth.py, common scorer, window-edge mark counted)" if n_truth else "self-reported final_gain/oos_final", "coverage": {**cov, "cell_ratio": None if cell_ratio is None else round(cell_ratio, 4), "naked_ratio": None if naked_ratio is None else round(naked_ratio, 4), "min": COVERAGE_MIN},
+    return {"PASS": ok, "harness_fail": bool(missing_champ), "missing_champ": missing_champ, "missing_cand": missing_cand, "reasons": reasons, "advisories": advisories, "fit_binding": FIT_BINDING, "oos_side_drops": oos_drops, "corner_cut": corner_cut, "truth_sides": n_truth, "scorer": "chart-truth (tools/v15_bench_truth.py, common scorer, window-edge mark counted)" if n_truth else "self-reported final_gain/oos_final", "coverage": {**cov, "cell_ratio": None if cell_ratio is None else round(cell_ratio, 4), "naked_ratio": None if naked_ratio is None else round(naked_ratio, 4), "min": COVERAGE_MIN},
             "scored": scored, "missing": missing, "uninformative": uninformative, "side_drops": drops,
             "noise_floor_per_side": NOISE_FLOOR_PER_SIDE, "noise_floor_sum": _sum_floor,
             "sum_delta": round(sf_ca - sf_ch, 3), "sum_delta_in_noise": bool(abs(sf_ca - sf_ch) <= _sum_floor),

@@ -345,6 +345,10 @@ def dictate_only_exempt(action, reason, sym_side=None, ultimate_buffer_pct=None)
                 ("WT_PERCENTILE_", "WT_PERCENTILE_EXIT_ENABLED"),
                 ("WT_EXHAUST_", "WT_EXHAUST_EXIT_ENABLED"),
                 ("E_1_WT_DELTA_EXIT_", "E_1_WT_EXIT_USE_DELTA_ENABLED"),
+                # USER 2026-10-28: DC15M_FORCE_EXIT_ENABLED is a board switch booked by v12 (live_native_exit_twins)
+                ("DELTA_EXIT_DC15M_FLOOR_BREAK", "DC15M_FORCE_EXIT_ENABLED"),
+                # USER 2026-10-27/28: the armed DC4 vigilance stop is booked by v12 (vec_decisions/vigilance_dc4)
+                ("VIGILANCE_DC4_", "VIGILANCE_DC4_STOP_ARMED"),
             ):
                 if _r.startswith(_pfx) or _ru.startswith(_pfx):
                     if _per_sym_knob_true(sym_side, _kb) is True:

@@ -95,6 +95,8 @@ except ImportError:
     _teda_entries = None
 import vec_decisions.twin_entries_dead_b as _twin_dead_b  # 2026-10-04 pack-B entries/exits (shared with v12_quick_engine)
 import vec_decisions.grey_wire_exits as _grey_wire_exits  # 2026-09-30 grey-switch wiring (shared with v12_quick_engine)
+import vec_decisions.live_native_exit_twins as _lnx_twins  # 2026-10-28 DC15M_FORCE_EXIT_ENABLED, same name + decision as crypto and the vector
+import vec_decisions.vigilance_dc4 as _vig_dc4_mod  # 2026-10-28 VIGILANCE_DC4_STOP_ARMED, same predicate as ez_manage + v12_quick_engine
 import vec_decisions.twin_sizing_reduce as _twin_sr  # 2026-10-04 sizing/reduce/exit stocks-live twins (shared predicates)
 import live_entry_gates as _live_entry_gates  # batch5 (Agent D): live twin of the vec stock entry gates + effective_min_gain
 import vec_decisions.grey_wire_entries as _grey_wire_entries  # 2026-09-30 grey-switch wiring (shared with v12_quick_engine)
@@ -564,11 +566,33 @@ def vigilance_sym_side(symbol: str, position_side: str) -> str:
 
 
 def vigilance_is_blocked(symbol: str, position_side: str) -> tuple:
-    if not bool(_cfg_auto("VIGILANCE_GUARD_ENABLED", True)):
+    # USER 2026-10-28 stocks DC4 vigilance: an ARMED sym_side (VIGILANCE_DC4_STOP_ARMED) enforces the entry block its
+    # stop sets, and that block expires after VIGILANCE_BLOCK_HOURS through the same predicate v12_quick_engine uses
+    # (vec_decisions/vigilance_dc4.block_expired). Unarmed + VIGILANCE_GUARD_ENABLED False = unchanged (no block).
+    try:
+        _vb_armed = _vig_dc4_mod.armed(lambda _k, _d: _cfg(_k, _d, None, symbol, position_side))
+    except Exception:
+        _vb_armed = False
+    if not bool(_cfg_auto("VIGILANCE_GUARD_ENABLED", True)) and not _vb_armed:
         return False, ""
     _vigilance_load()
-    _b = _VIGILANCE_STATE["blocks"].get(vigilance_sym_side(symbol, position_side))
+    _key = vigilance_sym_side(symbol, position_side)
+    _b = _VIGILANCE_STATE["blocks"].get(_key)
     if _b:
+        if _vb_armed:
+            _hrs = safe_fetch_float(_cfg("VIGILANCE_BLOCK_HOURS", 12.0, None, symbol, position_side), 12.0)
+            try:
+                _at = datetime.fromisoformat(str(_b.get("blocked_at")).replace("Z", "+00:00"))
+                if _at.tzinfo is None:
+                    _at = _at.replace(tzinfo=timezone.utc)
+                _age_h = (datetime.now(timezone.utc) - _at).total_seconds() / 3600.0
+                if _vig_dc4_mod.block_expired(_age_h, _hrs):
+                    _VIGILANCE_STATE["blocks"].pop(_key, None)
+                    _vigilance_save()
+                    logger.critical(f"🟢 [VIGILANCE_UNBLOCK] {_key}: {_hrs:.0f} h window elapsed ({_age_h:.1f} h) — trading allowed again")
+                    return False, ""
+            except (TypeError, ValueError) as _vex:
+                logger.warning(f"[VIGILANCE_BLOCK] {_key}: unreadable blocked_at ({_vex}) — keeping the block (fail-closed)")
         return True, str(_b.get("reason", "VIGILANCE_BLOCK"))
     return False, ""
 
@@ -14378,9 +14402,13 @@ async def _pre_twin_hard_stops(
             return False
         _gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
         _fired = None
-        if False and bool(
-            _cfg("VIGILANCE_GUARD_ENABLED", True, account_key, symbol, position_side)
-        ):
+        # USER 2026-10-28 (verbatim): "unlock tradeir_mange for the dc4 vigilance if it is correctly vectorized and tested
+        # in the templates". Was `if False and VIGILANCE_GUARD_ENABLED` (hard-disabled); now the per-sym switch
+        # VIGILANCE_DC4_STOP_ARMED (config_tradier False = unchanged) through the SAME predicate v12_quick_engine books
+        # for stocks and crypto (vec_decisions/vigilance_dc4.armed/.fires), prior closed bar's channel when the
+        # snapshot carries it (DC_PRIOR_BAR_CHANNEL, as the vector). The in-body site further down stays disabled.
+        _vg_get = lambda _k, _d: _cfg(_k, _d, account_key, symbol, position_side)
+        if _vig_dc4_mod.armed(_vg_get):
             _vg_tf = str(
                 _cfg("VIGILANCE_DC4_STOP_TF", "15m", account_key, symbol, position_side)
                 or "OFF"
@@ -14407,6 +14435,13 @@ async def _pre_twin_hard_stops(
                     i.get(f"dc_low4_{_vg_tf}" if is_long else f"dc_high4_{_vg_tf}", 0),
                     0.0,
                 )
+                if bool(_vg_get("DC_PRIOR_BAR_CHANNEL", True)):  # parity: the vector reads the PRIOR closed bar's channel
+                    _vg_lvl_p = safe_fetch_float(
+                        i.get(f"dc_low4_{_vg_tf}_prev" if is_long else f"dc_high4_{_vg_tf}_prev", 0),
+                        0.0,
+                    )
+                    if _vg_lvl_p > 0:
+                        _vg_lvl = _vg_lvl_p
                 _vg_tol = safe_fetch_float(
                     _cfg(
                         "VIGILANCE_DC4_BREACH_TOLERANCE_PCT",
@@ -14417,10 +14452,7 @@ async def _pre_twin_hard_stops(
                     ),
                     0.25,
                 )
-                if _vg_lvl > 0 and (
-                    (is_long and _px <= _vg_lvl * (1 - _vg_tol / 100.0))
-                    or ((not is_long) and _px >= _vg_lvl * (1 + _vg_tol / 100.0))
-                ):
+                if _vig_dc4_mod.fires(is_long, _px, _vg_lvl, _vg_tol, _gain):
                     _vg_side = "LONG" if is_long else "SHORT"
                     vigilance_block(
                         symbol,
@@ -16768,6 +16800,8 @@ async def process_position(
                     (
                         _grey_wire_exits.active_exits(_gx_c)
                         + _grey_wire_exits.active_live_only_exits(_gx_c)
+                        # USER 2026-10-28: DC15M_FORCE_EXIT_ENABLED under the same name as crypto; v12 books it for stocks
+                        + ([_lnx_twins.dc15m_force_exit] if _lnx_twins.dc15m_armed(_gx_c) else [])
                     )
                     if not _gx_fire
                     else []
@@ -16787,6 +16821,7 @@ async def process_position(
                     _gw_st = {
                         "gain": safe_fetch_float(getattr(position, "gain", 0), 0.0),
                         "age_s": _gw_age_s,
+                        "hold_age_s": _gw_age_s if isinstance(_gw_opened, datetime) else None,  # DC15M min-hold: unknown age never holds (min_hold_gate AGE_UNKNOWN)
                         "entry_px": safe_fetch_float(
                             getattr(position, "entry_price", 0), 0.0
                         ),
@@ -49353,6 +49388,12 @@ class TradierTradeManager:
         try:
             from vec_decisions.net_exit_gate import mandatory_loss_stop_reason as _mandatory_exit, estimated_net_gain_positive as _net_exit_ok
             _mandatory_loss_stop = _mandatory_exit(reason, _mandatory_dc4_cfg)
+            # USER 2026-10-28: an ARMED DC4 vigilance stop / DC15M floor break closes red by definition; the vector books
+            # both red for stocks (no net-gain veto on tradier boards), so live may not refuse them on the gain floor.
+            if not _mandatory_loss_stop and str(reason or "").upper().startswith("VIGILANCE_DC4_"):
+                _mandatory_loss_stop = _vig_dc4_mod.loss_close_allowed(reason, _vig_dc4_mod.armed(lambda _k, _d: _cfg(_k, _d, account_key, symbol, position_side)))
+            if not _mandatory_loss_stop and str(reason or "").upper().startswith(_lnx_twins.DC15M_REASON):
+                _mandatory_loss_stop = _lnx_twins.dc15m_loss_close_allowed(reason, _lnx_twins.dc15m_armed(lambda _k, _d: _cfg(_k, _d, account_key, symbol, position_side)))
         except Exception:
             _mandatory_loss_stop = False
             _net_exit_ok = lambda gross, fee: False

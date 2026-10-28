@@ -21608,6 +21608,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 {
                     "gain": float(live_pnl_pct),
                     "age_s": float(held_bars * bmin * 60.0),
+                    # USER 2026-10-28 DC15M min-hold: wall-clock age since the OPEN bar = what live measures from opened_at
+                    "hold_age_s": (float(ts[i]) - float(ts[int(pos["entry_bar"])])) if (i < len(ts) and int(pos["entry_bar"]) < len(ts)) else float(held_bars * bmin * 60.0),
                     "entry_px": float(pos["avg_price"]),
                     "px": float(px),
                     "max_gain": float(pos.get("peak_pnl_pct", 0.0)),
@@ -21648,6 +21650,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"),
                         "exit_reason": _gw_reason,
                         "bars_held": int(i - pos["entry_bar"]),
+                        **({"mandatory_stop_kind": "DC15M_FORCE_EXIT_ARMED"} if str(_gw_reason) == "DELTA_EXIT_DC15M_FLOOR_BREAK" else {}),  # USER 2026-10-28: armed floor break books red (net_exit_gate)
                     }
                 )
                 pos = None

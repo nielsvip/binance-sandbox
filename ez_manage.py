@@ -7,6 +7,7 @@ import stale_set_halt as _stale_set_halt  # 2026-10-14 USER STALE-SET 2-LOSS HAL
 import exit_guarantee as _xg  # 2026-10-14 USER EXITS NEVER COMPROMISED: full close never refused (FORCE leg), reduce retry, ledger once per confirmed fill
 import vec_decisions.qty_quantizers as _qq  # 2026-10-16 USER STDEV 1-5x ladder + streak quantizer: same code as v12_quick_engine/tradier_manage
 import vec_decisions.min_hold_gate as _mhg  # 2026-10-27 the ONE min-hold definition, shared with v12_quick_engine (identity by construction)
+import vec_decisions.live_native_exit_twins as _lnx_twins  # 2026-10-28 DC15M_FORCE_EXIT: one decision live + vec (USER "move the needle in both vec and live identically")
 import paper_nonvec as _paper_nv  # 2026-10-17 USER: live-only decisions refused + paper-traded next to the vector trades
 import ez_positions_service as _eps  # USER 2026-10-26: the position store IS the source of truth (positions_truth.py deleted)
 from utils import await_abandonable, AbandonTimeout  # USER 2026-10-26: generic never-hang timeout (moved out of positions_truth.py)
@@ -33826,6 +33827,10 @@ class MultiAccountTradeManager:
                 # vigilance close may close red, exactly as the vector's exit gate allows it (mandatory_stop_kind marker).
                 import vec_decisions.vigilance_dc4 as _vig_dc4_gate
                 _mandatory_loss_stop = _vig_dc4_gate.loss_close_allowed(reason, _vig_dc4_gate.armed(lambda _k, _d: _psym_get(symbol, position_side, _k, getattr(config, _k, _d))))
+            if not _mandatory_loss_stop and str(reason or "").upper().startswith(_lnx_twins.DC15M_REASON):
+                # USER 2026-10-28: an armed DC15M floor break may close red, exactly as the vector's exit gate books it
+                # (mandatory_stop_kind=DC15M_FORCE_EXIT_ARMED); unarmed it stays under the net-gain floor.
+                _mandatory_loss_stop = _lnx_twins.dc15m_loss_close_allowed(reason, _lnx_twins.dc15m_armed(lambda _k, _d: _psym_get(symbol, position_side, _k, getattr(config, _k, _d))))
         except Exception:
             _mandatory_loss_stop = False
             _net_exit_ok = lambda gross, fee: False
@@ -60540,16 +60545,21 @@ async def process_position(
             _delta_exit_on = bool(_psym_get(symbol, position_side, "DELTA_EXIT_ENABLED", True))
         except Exception:
             _delta_exit_on = True
-        if fell_through_floor and current_gain < 0.0 and _delta_exit_on and bool(_psym_get(symbol, position_side, "DC15M_FORCE_EXIT_ENABLED", getattr(config, "DC15M_FORCE_EXIT_ENABLED", False))):  # vec_log_fixes 2026-10-27: own switch, twin vec_decisions/live_native_exit_twins.dc15m_force_exit
-            if is_strict_no_loss_account(config, account_key) and not getattr(
-                config, "DELTA_ENGINE_ENABLED", False
-            ):
+        # USER 2026-10-28 (verbatim): "DELTA_EXIT_DC15M_FLOOR_BREAK should be tested as a switch if it works it works for a
+        # sym_side but it needs to be wired correctly so it does move the needle in both vec and live identically.;
+        # DC15M_FORCE_EXIT_ENABLED ... it should always be skipped if min_hold is not yet reached". ONE decision shared with
+        # v12_quick_engine and tradier_manage: vec_decisions/live_native_exit_twins.dc15m_evaluate (prior-bar 15m channel,
+        # red, DELTA_EXIT_ENABLED, MIN_HOLD_BARS via vec_decisions/min_hold_gate). The old STRICT_NO_LOSS hold branch is
+        # gone: the vector never modeled it (STRICT_NO_LOSS_ACCOUNTS=[]), and an armed switch must execute what it books.
+        _dc15_c = lambda _k, _d: _psym_get(symbol, position_side, _k, getattr(config, _k, _d))
+        if current_gain < 0.0 and _lnx_twins.dc15m_armed(_dc15_c):  # channel + DELTA_EXIT + min-hold decided inside the shared call (prior-bar channel, as the vector)
+            _dc15_age = _pp_age_sec_for_hold if _pp_opened_raw_for_hold else None
+            _dc15_fire, _dc15_reason, _dc15_why = _lnx_twins.dc15m_evaluate(_dc15_c, lambda _k, _d=None: i.get(_k, _d), {"px": current_price, "gain": current_gain, "hold_age_s": _dc15_age}, is_long)
+            if _dc15_why.startswith("MIN_HOLD"):
+                logger.info(f"⏳ [DC15M_FORCE_EXIT_MIN_HOLD] {position_key} breaking floor ({current_gain:.2f}%) — skipped, {_dc15_why}")
+            elif _dc15_fire:
                 logger.info(
-                    f"🛑 [DC15M_FORCE_EXIT_BLOCKED] {position_key} breaking floor ({current_gain:.2f}%) but NO_LOSS rule active — holding. L/S ratio will hedge."
-                )
-            else:
-                logger.info(
-                    f"🚨 [DC15M_FORCE_EXIT] {position_key} breaking floor ({current_gain:.2f}%). Delta engine active — technical exit allowed."
+                    f"🚨 [DC15M_FORCE_EXIT] {position_key} breaking floor ({current_gain:.2f}%). DC15M_FORCE_EXIT_ENABLED — technical exit."
                 )
                 return await trade_manager.execute_now(
                     position_key,
@@ -60561,7 +60571,7 @@ async def process_position(
                     position.positionAmt,
                     current_price,
                     f"DC15M_FORCE_EXIT_{int(time.time())}",
-                    "DELTA_EXIT_DC15M_FLOOR_BREAK",
+                    _dc15_reason,
                     True,
                     "CLOSE",
                 )

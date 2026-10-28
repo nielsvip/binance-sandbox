@@ -65,8 +65,11 @@ def test_in_gain_trend_reads_npz_int8_ha():
 
 @pytest.mark.parametrize("is_long", (True, False))
 def test_dc15_force_exit_matches_live(is_long):
+    # 2026-10-28 (USER "DC15M_FORCE_EXIT_ENABLED ... tested under the same name in stocks and crypto"): the switch is its own
+    # authority now, DELTA_EXIT_ENABLED no longer co-gates it (False on stocks -> the row would be a structural zero).
+    # The floor/red part is still the 10-27 live formula; the live branch now calls this same function.
     for px, lo, hi, gain, on in itertools.product((9.0, 10.0, 11.0, 12.0), (0.0, 10.0), (0.0, 11.0), (-0.5, 0.0, 0.5), (True, False)):
-        want = live_dc15(is_long, px, lo, hi, gain, on)
+        want = live_dc15(is_long, px, lo, hi, gain, True)
         ind = {"dc_low_15m": lo, "dc_high_15m": hi}
         got, reason = T.dc15m_force_exit(lambda k, d: on if k == "DELTA_EXIT_ENABLED" else d, lambda k, d: ind.get(k, d), {"px": px, "gain": gain}, is_long)
         assert got == want, (px, lo, hi, gain, on)
