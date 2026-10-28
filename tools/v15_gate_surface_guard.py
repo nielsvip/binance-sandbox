@@ -100,8 +100,21 @@ def main():
     expect = {s.strip() for s in a.expect_ungated.split(",") if s.strip()}
     breaches, pending, absent = [], [], []
     per_template = {}
+    # 2026-10-28: the glob also matched another session's in-flight temp workbook
+    # (TEMPLATE_CRYPTO_LONG.vec_status.tmp.xlsx, 51 KB) and openpyxl raised BadZipFile, which killed the whole guard --
+    # a guard that dies reports nothing, which is worse than a breach it could have printed. The four canonical
+    # workbooks are exactly TEMPLATE_{CRYPTO,STOCKS}_{LONG,SHORT}.xlsx; anything with extra dots in the stem is a temp
+    # or backup file and is skipped. An unreadable canonical workbook is reported as a breach, never swallowed.
+    CANON = {"TEMPLATE_%s_%s.xlsx" % (v, s) for v in ("CRYPTO", "STOCKS") for s in ("LONG", "SHORT")}
     for tf in sorted(pathlib.Path(a.templates).glob("TEMPLATE_*.xlsx")):
-        info = scan(tf, names)
+        if tf.name not in CANON:
+            continue
+        try:
+            info = scan(tf, names)
+        except Exception as exc:
+            breaches.append({"template": tf.name, "switch": "(whole workbook)", "rows": 0, "grey_rows": 0,
+                             "grey_at": [], "why": "canonical workbook unreadable: %s: %s" % (type(exc).__name__, exc)})
+            continue
         per_template[tf.name] = {"n_gate_switches_present": len(info["rows"])}
         for sw in sorted(names):
             n = info["rows"].get(sw, 0)
