@@ -42,7 +42,10 @@ def main():
     syms = sorted({s.rsplit("_", 1)[0] for s in T.owned_symbols(uni, "stocks")})
     todo = {}
     for sym in syms:
-        npz = Path(T.npz_for(BASE, sym))
+        raw = T.npz_for(BASE, sym)
+        if not raw:
+            continue
+        npz = Path(raw)
         try:
             d = np.load(str(npz), allow_pickle=True)
         except Exception:
