@@ -1,4 +1,32 @@
 {
+  "ang:STRKUSDT_SHORT": {
+    "orderId": "4000002004215874",
+    "stopPrice": 0.04829,
+    "entry_sig": "2026-10-28 14:46:50.674000+00:00",
+    "symbol": "STRKUSDT",
+    "side": "SHORT"
+  },
+  "ang:TRUMPUSDC_SHORT": {
+    "orderId": "4000002003902031",
+    "stopPrice": 1.735,
+    "entry_sig": "2026-10-28 13:16:43.110000+00:00",
+    "symbol": "TRUMPUSDC",
+    "side": "SHORT"
+  },
+  "ang:BLURUSDT_SHORT": {
+    "orderId": "4000002004338198",
+    "stopPrice": 0.008681,
+    "entry_sig": "2026-10-28 15:33:40.554000+00:00",
+    "symbol": "BLURUSDT",
+    "side": "SHORT"
+  },
+  "ang:ARUSDT_LONG": {
+    "orderId": "4000002004293825",
+    "stopPrice": 3.422,
+    "entry_sig": "2026-10-28 15:15:28.185000+00:00",
+    "symbol": "ARUSDT",
+    "side": "LONG"
+  },
   "ang:BEAMXUSDT_LONG": {
     "orderId": "4000002002348687",
     "stopPrice": 0.0033,
@@ -6,32 +34,25 @@
     "symbol": "BEAMXUSDT",
     "side": "LONG"
   },
-  "ang:1000PEPEUSDC_LONG": {
-    "orderId": "4000002002083263",
-    "stopPrice": 0.004369,
-    "entry_sig": "2026-10-27 21:09:11.815000+00:00",
-    "symbol": "1000PEPEUSDC",
-    "side": "LONG"
-  },
-  "ang:ONEUSDT_SHORT": {
-    "orderId": "4000002001375206",
-    "stopPrice": 0.001335,
-    "entry_sig": "2026-10-27 15:45:55.900000+00:00",
-    "symbol": "ONEUSDT",
+  "ang:JASMYUSDT_SHORT": {
+    "orderId": "4000002003546742",
+    "stopPrice": 0.004318,
+    "entry_sig": "2026-10-28 10:46:37.365000+00:00",
+    "symbol": "JASMYUSDT",
     "side": "SHORT"
   },
-  "ang:BNBUSDC_LONG": {
-    "orderId": "4000002003954604",
-    "stopPrice": 746.13,
-    "entry_sig": "2026-10-28 13:33:14.152000+00:00",
-    "symbol": "BNBUSDC",
-    "side": "LONG"
+  "ang:AAVEUSDC_SHORT": {
+    "orderId": "4000002004468504",
+    "stopPrice": 135.81,
+    "entry_sig": "2026-10-28 16:30:32.148000+00:00",
+    "symbol": "AAVEUSDC",
+    "side": "SHORT"
   },
-  "ang:TRXUSDT_LONG": {
-    "orderId": "4000002003285833",
-    "stopPrice": 0.32937,
-    "entry_sig": "2026-10-28 08:32:56.094000+00:00",
-    "symbol": "TRXUSDT",
-    "side": "LONG"
+  "ang:GRAMUSDT_SHORT": {
+    "orderId": "4000002004255798",
+    "stopPrice": 1.252,
+    "entry_sig": "2026-10-28 15:01:34.768000+00:00",
+    "symbol": "GRAMUSDT",
+    "side": "SHORT"
   }
 }
