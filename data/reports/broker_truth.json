@@ -8,34 +8,34 @@
  ],
  "by_account": {
   "ang": {
-   "closes": 2729,
+   "closes": 2731,
    "fee_pct_of_turnover": 0.0278,
-   "fees_usd": 22.3678,
-   "fills": 5205,
-   "net_pct_of_turnover": -0.0561,
-   "net_usd": -45.0962,
-   "realized_usd": -22.7284,
-   "turnover_usd": 80446.3166
+   "fees_usd": 22.3402,
+   "fills": 5207,
+   "net_pct_of_turnover": -0.056,
+   "net_usd": -45.084,
+   "realized_usd": -22.7438,
+   "turnover_usd": 80448.4575
   },
   "fin": {
-   "closes": 2130,
+   "closes": 2135,
    "fee_pct_of_turnover": 0.0303,
-   "fees_usd": 16.8269,
-   "fills": 4064,
-   "net_pct_of_turnover": -0.0682,
-   "net_usd": -37.9073,
-   "realized_usd": -21.0804,
-   "turnover_usd": 55606.2604
+   "fees_usd": 16.8501,
+   "fills": 4072,
+   "net_pct_of_turnover": -0.0685,
+   "net_usd": -38.1296,
+   "realized_usd": -21.2795,
+   "turnover_usd": 55652.625
   },
   "flz": {
    "closes": 1146,
    "fee_pct_of_turnover": 0.0217,
-   "fees_usd": 11.4998,
-   "fills": 2267,
+   "fees_usd": 11.4915,
+   "fills": 2268,
    "net_pct_of_turnover": -0.0195,
-   "net_usd": -10.3094,
+   "net_usd": -10.3011,
    "realized_usd": 1.1904,
-   "turnover_usd": 52928.6378
+   "turnover_usd": 52943.6369
   },
   "inf": {
    "closes": 845,
@@ -48,134 +48,134 @@
    "turnover_usd": 28897.1114
   },
   "men": {
-   "closes": 2184,
-   "fee_pct_of_turnover": 0.0266,
-   "fees_usd": 15.426,
-   "fills": 4156,
-   "net_pct_of_turnover": -0.1055,
-   "net_usd": -61.2747,
-   "realized_usd": -45.8487,
-   "turnover_usd": 58097.5567
+   "closes": 2188,
+   "fee_pct_of_turnover": 0.0265,
+   "fees_usd": 15.4173,
+   "fills": 4160,
+   "net_pct_of_turnover": -0.1059,
+   "net_usd": -61.5295,
+   "realized_usd": -46.1122,
+   "turnover_usd": 58122.0459
   }
  },
  "by_symbol": {
   "1000BONKUSDC": {
    "closes": 97,
    "fee_pct_of_turnover": 0.015,
-   "fees_usd": 0.3852,
+   "fees_usd": 0.3848,
    "fills": 170,
-   "net_pct_of_turnover": 0.0436,
-   "net_usd": 1.1172,
+   "net_pct_of_turnover": 0.0437,
+   "net_usd": 1.1177,
    "realized_usd": 1.5024,
    "turnover_usd": 2560.1344
   },
   "1000FLOKIUSDT": {
    "closes": 35,
-   "fee_pct_of_turnover": 0.036,
-   "fees_usd": 0.2085,
+   "fee_pct_of_turnover": 0.0359,
+   "fees_usd": 0.2082,
    "fills": 69,
-   "net_pct_of_turnover": 0.0685,
-   "net_usd": 0.3971,
+   "net_pct_of_turnover": 0.0686,
+   "net_usd": 0.3974,
    "realized_usd": 0.6056,
    "turnover_usd": 579.5154
   },
   "1000LUNCUSDT": {
    "closes": 59,
    "fee_pct_of_turnover": 0.033,
-   "fees_usd": 0.3272,
+   "fees_usd": 0.3268,
    "fills": 117,
-   "net_pct_of_turnover": -0.0449,
-   "net_usd": -0.4449,
+   "net_pct_of_turnover": -0.0448,
+   "net_usd": -0.4445,
    "realized_usd": -0.1177,
    "turnover_usd": 991.7112
   },
   "1000PEPEUSDC": {
    "closes": 44,
    "fee_pct_of_turnover": 0.0141,
-   "fees_usd": 0.2243,
+   "fees_usd": 0.2242,
    "fills": 85,
    "net_pct_of_turnover": 0.0797,
-   "net_usd": 1.2643,
+   "net_usd": 1.2645,
    "realized_usd": 1.4886,
    "turnover_usd": 1587.0575
   },
   "AAVEUSDC": {
    "closes": 19,
    "fee_pct_of_turnover": 0.0159,
-   "fees_usd": 0.1073,
+   "fees_usd": 0.1071,
    "fills": 37,
    "net_pct_of_turnover": -0.1755,
-   "net_usd": -1.1813,
+   "net_usd": -1.1811,
    "realized_usd": -1.074,
    "turnover_usd": 673.01
   },
   "ACEUSDT": {
    "closes": 103,
    "fee_pct_of_turnover": 0.0329,
-   "fees_usd": 0.9919,
+   "fees_usd": 0.9911,
    "fills": 225,
    "net_pct_of_turnover": -0.0656,
-   "net_usd": -1.9773,
+   "net_usd": -1.9765,
    "realized_usd": -0.9854,
    "turnover_usd": 3013.9445
   },
   "ACTUSDT": {
    "closes": 76,
    "fee_pct_of_turnover": 0.0289,
-   "fees_usd": 0.522,
+   "fees_usd": 0.5215,
    "fills": 147,
    "net_pct_of_turnover": -0.0001,
-   "net_usd": -0.0025,
+   "net_usd": -0.002,
    "realized_usd": 0.5195,
    "turnover_usd": 1806.6781
   },
   "ADAUSDC": {
    "closes": 79,
    "fee_pct_of_turnover": 0.0147,
-   "fees_usd": 0.3506,
+   "fees_usd": 0.3503,
    "fills": 151,
    "net_pct_of_turnover": -0.2948,
-   "net_usd": -7.0407,
+   "net_usd": -7.0404,
    "realized_usd": -6.6901,
    "turnover_usd": 2387.9568
   },
   "AIAUSDT": {
    "closes": 32,
-   "fee_pct_of_turnover": 0.0331,
-   "fees_usd": 0.159,
+   "fee_pct_of_turnover": 0.033,
+   "fees_usd": 0.1589,
    "fills": 57,
    "net_pct_of_turnover": -0.9882,
-   "net_usd": -4.7529,
+   "net_usd": -4.7527,
    "realized_usd": -4.5938,
    "turnover_usd": 480.9386
   },
   "ALGOUSDT": {
    "closes": 66,
-   "fee_pct_of_turnover": 0.027,
-   "fees_usd": 0.5175,
+   "fee_pct_of_turnover": 0.0269,
+   "fees_usd": 0.5171,
    "fills": 131,
    "net_pct_of_turnover": -0.371,
-   "net_usd": -7.1247,
+   "net_usd": -7.1243,
    "realized_usd": -6.6072,
    "turnover_usd": 1920.2056
   },
   "ALTUSDT": {
    "closes": 109,
    "fee_pct_of_turnover": 0.0296,
-   "fees_usd": 0.701,
+   "fees_usd": 0.7005,
    "fills": 182,
    "net_pct_of_turnover": -0.1329,
-   "net_usd": -3.1485,
+   "net_usd": -3.148,
    "realized_usd": -2.4475,
    "turnover_usd": 2369.1493
   },
   "APEUSDT": {
    "closes": 36,
-   "fee_pct_of_turnover": 0.0368,
-   "fees_usd": 0.3686,
+   "fee_pct_of_turnover": 0.0367,
+   "fees_usd": 0.3681,
    "fills": 61,
    "net_pct_of_turnover": -0.1564,
-   "net_usd": -1.5683,
+   "net_usd": -1.5678,
    "realized_usd": -1.1997,
    "turnover_usd": 1002.7235
   },
@@ -184,158 +184,158 @@
    "fee_pct_of_turnover": 0.024,
    "fees_usd": 0.0786,
    "fills": 24,
-   "net_pct_of_turnover": 0.3513,
-   "net_usd": 1.1517,
+   "net_pct_of_turnover": 0.3514,
+   "net_usd": 1.1518,
    "realized_usd": 1.2304,
    "turnover_usd": 327.8165
   },
   "ARBUSDC": {
    "closes": 71,
    "fee_pct_of_turnover": 0.0165,
-   "fees_usd": 0.1775,
+   "fees_usd": 0.1773,
    "fills": 136,
-   "net_pct_of_turnover": 0.0256,
-   "net_usd": 0.2756,
+   "net_pct_of_turnover": 0.0257,
+   "net_usd": 0.2757,
    "realized_usd": 0.4531,
    "turnover_usd": 1074.8737
   },
   "ARKMUSDT": {
    "closes": 61,
-   "fee_pct_of_turnover": 0.0387,
-   "fees_usd": 0.5297,
+   "fee_pct_of_turnover": 0.0386,
+   "fees_usd": 0.529,
    "fills": 120,
-   "net_pct_of_turnover": -0.2719,
-   "net_usd": -3.7247,
+   "net_pct_of_turnover": -0.2718,
+   "net_usd": -3.724,
    "realized_usd": -3.195,
    "turnover_usd": 1370.0704
   },
   "ARUSDT": {
    "closes": 140,
    "fee_pct_of_turnover": 0.0329,
-   "fees_usd": 1.6736,
+   "fees_usd": 1.6725,
    "fills": 249,
    "net_pct_of_turnover": -0.3449,
-   "net_usd": -17.5383,
+   "net_usd": -17.5372,
    "realized_usd": -15.8647,
    "turnover_usd": 5084.5571
   },
   "ASTERUSDT": {
    "closes": 6,
-   "fee_pct_of_turnover": 0.0339,
-   "fees_usd": 0.0609,
+   "fee_pct_of_turnover": 0.0338,
+   "fees_usd": 0.0608,
    "fills": 11,
-   "net_pct_of_turnover": -0.098,
-   "net_usd": -0.1761,
+   "net_pct_of_turnover": -0.0979,
+   "net_usd": -0.176,
    "realized_usd": -0.1152,
    "turnover_usd": 179.7886
   },
   "ATOMUSDT": {
    "closes": 66,
-   "fee_pct_of_turnover": 0.0345,
-   "fees_usd": 0.4318,
+   "fee_pct_of_turnover": 0.0344,
+   "fees_usd": 0.4315,
    "fills": 126,
    "net_pct_of_turnover": -0.287,
-   "net_usd": -3.5951,
+   "net_usd": -3.5948,
    "realized_usd": -3.1632,
    "turnover_usd": 1252.7123
   },
   "AVAXUSDC": {
    "closes": 104,
-   "fee_pct_of_turnover": 0.0117,
-   "fees_usd": 0.3046,
+   "fee_pct_of_turnover": 0.0116,
+   "fees_usd": 0.3044,
    "fills": 185,
    "net_pct_of_turnover": -0.2478,
-   "net_usd": -6.4762,
+   "net_usd": -6.476,
    "realized_usd": -6.1716,
    "turnover_usd": 2613.21
   },
   "AXSUSDT": {
    "closes": 84,
    "fee_pct_of_turnover": 0.0301,
-   "fees_usd": 0.6696,
+   "fees_usd": 0.6687,
    "fills": 157,
-   "net_pct_of_turnover": -0.3057,
-   "net_usd": -6.7984,
+   "net_pct_of_turnover": -0.3056,
+   "net_usd": -6.7975,
    "realized_usd": -6.1288,
    "turnover_usd": 2224.0184
   },
   "BATUSDT": {
    "closes": 247,
    "fee_pct_of_turnover": 0.0305,
-   "fees_usd": 2.3666,
+   "fees_usd": 2.3647,
    "fills": 415,
    "net_pct_of_turnover": 0.0121,
-   "net_usd": 0.9387,
+   "net_usd": 0.9406,
    "realized_usd": 3.3053,
    "turnover_usd": 7765.194
   },
   "BBUSDT": {
    "closes": 139,
    "fee_pct_of_turnover": 0.0272,
-   "fees_usd": 1.261,
+   "fees_usd": 1.2597,
    "fills": 294,
    "net_pct_of_turnover": -0.0695,
-   "net_usd": -3.2217,
+   "net_usd": -3.2204,
    "realized_usd": -1.9607,
    "turnover_usd": 4633.2643
   },
   "BCHUSDC": {
    "closes": 25,
    "fee_pct_of_turnover": 0.0141,
-   "fees_usd": 0.1278,
+   "fees_usd": 0.1277,
    "fills": 46,
    "net_pct_of_turnover": -0.2019,
-   "net_usd": -1.83,
+   "net_usd": -1.8299,
    "realized_usd": -1.7022,
    "turnover_usd": 906.2884
   },
   "BEAMXUSDT": {
    "closes": 119,
    "fee_pct_of_turnover": 0.0323,
-   "fees_usd": 1.3403,
+   "fees_usd": 1.3393,
    "fills": 222,
-   "net_pct_of_turnover": -0.0424,
-   "net_usd": -1.7549,
+   "net_pct_of_turnover": -0.0423,
+   "net_usd": -1.7539,
    "realized_usd": -0.4146,
    "turnover_usd": 4143.4187
   },
   "BEATUSDT": {
    "closes": 46,
    "fee_pct_of_turnover": 0.0334,
-   "fees_usd": 0.4728,
+   "fees_usd": 0.4723,
    "fills": 88,
-   "net_pct_of_turnover": -0.3729,
-   "net_usd": -5.2732,
+   "net_pct_of_turnover": -0.3728,
+   "net_usd": -5.2728,
    "realized_usd": -4.8005,
    "turnover_usd": 1414.2744
   },
   "BIGTIMEUSDT": {
    "closes": 19,
    "fee_pct_of_turnover": 0.0281,
-   "fees_usd": 0.2071,
+   "fees_usd": 0.2069,
    "fills": 50,
-   "net_pct_of_turnover": 0.129,
-   "net_usd": 0.9499,
+   "net_pct_of_turnover": 0.1291,
+   "net_usd": 0.9501,
    "realized_usd": 1.157,
    "turnover_usd": 736.1546
   },
   "BLURUSDT": {
    "closes": 124,
    "fee_pct_of_turnover": 0.0368,
-   "fees_usd": 1.2907,
+   "fees_usd": 1.2896,
    "fills": 244,
    "net_pct_of_turnover": -0.0658,
-   "net_usd": -2.3063,
+   "net_usd": -2.3051,
    "realized_usd": -1.0156,
    "turnover_usd": 3505.4949
   },
   "BNBUSDC": {
    "closes": 130,
    "fee_pct_of_turnover": 0.0196,
-   "fees_usd": 0.6826,
+   "fees_usd": 0.6819,
    "fills": 279,
    "net_pct_of_turnover": -0.0439,
-   "net_usd": -1.5319,
+   "net_usd": -1.5312,
    "realized_usd": -0.8493,
    "turnover_usd": 3485.6882
   },
@@ -351,151 +351,151 @@
   },
   "BTCDOMUSDT": {
    "closes": 135,
-   "fee_pct_of_turnover": 0.0292,
-   "fees_usd": 1.4933,
+   "fee_pct_of_turnover": 0.0291,
+   "fees_usd": 1.4919,
    "fills": 281,
    "net_pct_of_turnover": -0.0559,
-   "net_usd": -2.8633,
+   "net_usd": -2.8619,
    "realized_usd": -1.37,
    "turnover_usd": 5118.778
   },
   "BTCUSDC": {
    "closes": 79,
    "fee_pct_of_turnover": 0.0241,
-   "fees_usd": 5.2005,
+   "fees_usd": 5.1949,
    "fills": 156,
    "net_pct_of_turnover": -0.0318,
-   "net_usd": -6.8603,
+   "net_usd": -6.8547,
    "realized_usd": -1.6598,
    "turnover_usd": 21576.8526
   },
   "COMPUSDT": {
    "closes": 115,
    "fee_pct_of_turnover": 0.0389,
-   "fees_usd": 1.2753,
+   "fees_usd": 1.2748,
    "fills": 199,
    "net_pct_of_turnover": -0.2661,
-   "net_usd": -8.7297,
+   "net_usd": -8.7292,
    "realized_usd": -7.4544,
    "turnover_usd": 3280.6159
   },
   "COTIUSDT": {
    "closes": 208,
    "fee_pct_of_turnover": 0.0286,
-   "fees_usd": 2.3992,
+   "fees_usd": 2.3976,
    "fills": 398,
    "net_pct_of_turnover": -0.0491,
-   "net_usd": -4.1178,
+   "net_usd": -4.1162,
    "realized_usd": -1.7186,
    "turnover_usd": 8381.6963
   },
   "CRVUSDC": {
    "closes": 88,
    "fee_pct_of_turnover": 0.0167,
-   "fees_usd": 0.4373,
+   "fees_usd": 0.4369,
    "fills": 154,
    "net_pct_of_turnover": -0.1692,
-   "net_usd": -4.4179,
+   "net_usd": -4.4176,
    "realized_usd": -3.9806,
    "turnover_usd": 2610.7201
   },
   "DASHUSDT": {
    "closes": 209,
-   "fee_pct_of_turnover": 0.0305,
-   "fees_usd": 1.4975,
+   "fee_pct_of_turnover": 0.0304,
+   "fees_usd": 1.4962,
    "fills": 413,
    "net_pct_of_turnover": -0.0881,
-   "net_usd": -4.3307,
+   "net_usd": -4.3293,
    "realized_usd": -2.8331,
    "turnover_usd": 4915.2742
   },
   "DOGEUSDC": {
    "closes": 108,
-   "fee_pct_of_turnover": 0.0159,
-   "fees_usd": 0.6696,
-   "fills": 219,
-   "net_pct_of_turnover": 0.0704,
-   "net_usd": 2.9667,
+   "fee_pct_of_turnover": 0.016,
+   "fees_usd": 0.6748,
+   "fills": 220,
+   "net_pct_of_turnover": 0.07,
+   "net_usd": 2.9615,
    "realized_usd": 3.6363,
-   "turnover_usd": 4213.1077
+   "turnover_usd": 4228.1067
   },
   "DOTUSDT": {
    "closes": 78,
    "fee_pct_of_turnover": 0.0272,
-   "fees_usd": 0.5635,
+   "fees_usd": 0.563,
    "fills": 141,
    "net_pct_of_turnover": -0.1826,
-   "net_usd": -3.7783,
+   "net_usd": -3.7778,
    "realized_usd": -3.2148,
    "turnover_usd": 2069.3884
   },
   "DUSKUSDT": {
    "closes": 25,
    "fee_pct_of_turnover": 0.0308,
-   "fees_usd": 0.1332,
+   "fees_usd": 0.1331,
    "fills": 45,
    "net_pct_of_turnover": 0.0236,
-   "net_usd": 0.1018,
+   "net_usd": 0.1019,
    "realized_usd": 0.235,
    "turnover_usd": 431.981
   },
   "EDUUSDT": {
    "closes": 160,
    "fee_pct_of_turnover": 0.03,
-   "fees_usd": 1.3423,
+   "fees_usd": 1.341,
    "fills": 331,
    "net_pct_of_turnover": -0.3666,
-   "net_usd": -16.4047,
+   "net_usd": -16.4034,
    "realized_usd": -15.0624,
    "turnover_usd": 4474.5236
   },
   "EGLDUSDT": {
    "closes": 106,
    "fee_pct_of_turnover": 0.0304,
-   "fees_usd": 0.9678,
+   "fees_usd": 0.967,
    "fills": 195,
    "net_pct_of_turnover": 0.1208,
-   "net_usd": 3.8492,
+   "net_usd": 3.85,
    "realized_usd": 4.817,
    "turnover_usd": 3185.9092
   },
   "ENAUSDC": {
    "closes": 95,
    "fee_pct_of_turnover": 0.0154,
-   "fees_usd": 0.2397,
+   "fees_usd": 0.2395,
    "fills": 176,
    "net_pct_of_turnover": -0.1384,
-   "net_usd": -2.1535,
+   "net_usd": -2.1534,
    "realized_usd": -1.9138,
    "turnover_usd": 1556.3924
   },
   "ENJUSDT": {
    "closes": 99,
    "fee_pct_of_turnover": 0.0307,
-   "fees_usd": 0.6328,
+   "fees_usd": 0.632,
    "fills": 205,
    "net_pct_of_turnover": -0.3319,
-   "net_usd": -6.8315,
+   "net_usd": -6.8308,
    "realized_usd": -6.1987,
    "turnover_usd": 2058.2942
   },
   "ENSUSDT": {
    "closes": 47,
    "fee_pct_of_turnover": 0.0291,
-   "fees_usd": 0.3711,
+   "fees_usd": 0.3707,
    "fills": 89,
    "net_pct_of_turnover": -0.0519,
-   "net_usd": -0.6619,
+   "net_usd": -0.6615,
    "realized_usd": -0.2908,
    "turnover_usd": 1274.387
   },
   "ETCUSDT": {
    "closes": 13,
    "fee_pct_of_turnover": 0.0302,
-   "fees_usd": 0.2634,
+   "fees_usd": 0.2632,
    "fills": 25,
    "net_pct_of_turnover": 0.1982,
-   "net_usd": 1.7256,
+   "net_usd": 1.7257,
    "realized_usd": 1.989,
    "turnover_usd": 870.5965
   },
@@ -505,107 +505,107 @@
    "fees_usd": 0.192,
    "fills": 166,
    "net_pct_of_turnover": -0.0684,
-   "net_usd": -0.8567,
+   "net_usd": -0.8566,
    "realized_usd": -0.6646,
    "turnover_usd": 1252.5272
   },
   "ETHUSDC": {
    "closes": 75,
    "fee_pct_of_turnover": 0.0121,
-   "fees_usd": 0.5069,
+   "fees_usd": 0.5065,
    "fills": 146,
    "net_pct_of_turnover": -0.0527,
-   "net_usd": -2.2018,
+   "net_usd": -2.2014,
    "realized_usd": -1.695,
    "turnover_usd": 4174.9017
   },
   "FARTCOINUSDT": {
    "closes": 60,
-   "fee_pct_of_turnover": 0.0362,
-   "fees_usd": 0.341,
+   "fee_pct_of_turnover": 0.0361,
+   "fees_usd": 0.3407,
    "fills": 106,
    "net_pct_of_turnover": -0.2055,
-   "net_usd": -1.9384,
+   "net_usd": -1.9381,
    "realized_usd": -1.5974,
    "turnover_usd": 943.223
   },
   "FILUSDC": {
    "closes": 10,
    "fee_pct_of_turnover": 0.0277,
-   "fees_usd": 0.0807,
+   "fees_usd": 0.0806,
    "fills": 15,
    "net_pct_of_turnover": 0.3075,
-   "net_usd": 0.8962,
+   "net_usd": 0.8963,
    "realized_usd": 0.9769,
    "turnover_usd": 291.4835
   },
   "GALAUSDT": {
    "closes": 104,
    "fee_pct_of_turnover": 0.032,
-   "fees_usd": 1.0733,
+   "fees_usd": 1.0723,
    "fills": 207,
    "net_pct_of_turnover": -0.0289,
-   "net_usd": -0.9691,
+   "net_usd": -0.9682,
    "realized_usd": 0.1041,
    "turnover_usd": 3349.8563
   },
   "GRAMUSDT": {
    "closes": 120,
-   "fee_pct_of_turnover": 0.0395,
-   "fees_usd": 2.0172,
+   "fee_pct_of_turnover": 0.0394,
+   "fees_usd": 2.0153,
    "fills": 271,
    "net_pct_of_turnover": -0.0269,
-   "net_usd": -1.3745,
+   "net_usd": -1.3726,
    "realized_usd": 0.6427,
    "turnover_usd": 5108.8383
   },
   "GRASSUSDT": {
-   "closes": 180,
+   "closes": 186,
    "fee_pct_of_turnover": 0.0344,
-   "fees_usd": 0.9365,
-   "fills": 331,
-   "net_pct_of_turnover": 0.0313,
-   "net_usd": 0.8519,
-   "realized_usd": 1.7884,
-   "turnover_usd": 2720.5965
+   "fees_usd": 0.9389,
+   "fills": 337,
+   "net_pct_of_turnover": 0.0304,
+   "net_usd": 0.83,
+   "realized_usd": 1.7689,
+   "turnover_usd": 2727.1715
   },
   "GRTUSDT": {
    "closes": 44,
-   "fee_pct_of_turnover": 0.0349,
-   "fees_usd": 0.3847,
+   "fee_pct_of_turnover": 0.0348,
+   "fees_usd": 0.3843,
    "fills": 89,
    "net_pct_of_turnover": -0.0493,
-   "net_usd": -0.5439,
+   "net_usd": -0.5434,
    "realized_usd": -0.1592,
    "turnover_usd": 1103.3668
   },
   "HYPEUSDT": {
    "closes": 87,
    "fee_pct_of_turnover": 0.0264,
-   "fees_usd": 0.6151,
+   "fees_usd": 0.6143,
    "fills": 164,
-   "net_pct_of_turnover": -0.0002,
-   "net_usd": -0.0038,
+   "net_pct_of_turnover": -0.0001,
+   "net_usd": -0.003,
    "realized_usd": 0.6113,
    "turnover_usd": 2330.9205
   },
   "INJUSDT": {
-   "closes": 58,
-   "fee_pct_of_turnover": 0.0334,
-   "fees_usd": 0.2395,
-   "fills": 105,
-   "net_pct_of_turnover": -0.1998,
-   "net_usd": -1.4349,
-   "realized_usd": -1.1954,
-   "turnover_usd": 718.0088
+   "closes": 63,
+   "fee_pct_of_turnover": 0.034,
+   "fees_usd": 0.2564,
+   "fills": 110,
+   "net_pct_of_turnover": -0.2532,
+   "net_usd": -1.9104,
+   "realized_usd": -1.654,
+   "turnover_usd": 754.473
   },
   "INXUSDT": {
    "closes": 26,
    "fee_pct_of_turnover": 0.0417,
-   "fees_usd": 0.2165,
+   "fees_usd": 0.2163,
    "fills": 48,
-   "net_pct_of_turnover": -0.3527,
-   "net_usd": -1.8315,
+   "net_pct_of_turnover": -0.3526,
+   "net_usd": -1.8313,
    "realized_usd": -1.615,
    "turnover_usd": 519.3347
   },
@@ -621,31 +621,31 @@
   },
   "IOTAUSDT": {
    "closes": 38,
-   "fee_pct_of_turnover": 0.0344,
-   "fees_usd": 0.3856,
+   "fee_pct_of_turnover": 0.0343,
+   "fees_usd": 0.3851,
    "fills": 72,
    "net_pct_of_turnover": 0.0061,
-   "net_usd": 0.0683,
+   "net_usd": 0.0688,
    "realized_usd": 0.4539,
    "turnover_usd": 1121.7869
   },
   "IOTXUSDT": {
    "closes": 93,
    "fee_pct_of_turnover": 0.0304,
-   "fees_usd": 0.5993,
+   "fees_usd": 0.599,
    "fills": 181,
    "net_pct_of_turnover": -0.1847,
-   "net_usd": -3.6464,
+   "net_usd": -3.6461,
    "realized_usd": -3.0471,
    "turnover_usd": 1973.7725
   },
   "JASMYUSDT": {
    "closes": 27,
    "fee_pct_of_turnover": 0.0242,
-   "fees_usd": 0.1322,
+   "fees_usd": 0.132,
    "fills": 57,
    "net_pct_of_turnover": -0.0584,
-   "net_usd": -0.3193,
+   "net_usd": -0.3192,
    "realized_usd": -0.1872,
    "turnover_usd": 546.4307
   },
@@ -662,70 +662,70 @@
   "KAVAUSDT": {
    "closes": 30,
    "fee_pct_of_turnover": 0.0398,
-   "fees_usd": 0.3334,
+   "fees_usd": 0.3331,
    "fills": 62,
    "net_pct_of_turnover": -0.1113,
-   "net_usd": -0.9324,
+   "net_usd": -0.9321,
    "realized_usd": -0.599,
    "turnover_usd": 837.5974
   },
   "KMNOUSDT": {
    "closes": 146,
    "fee_pct_of_turnover": 0.0317,
-   "fees_usd": 0.5927,
+   "fees_usd": 0.5921,
    "fills": 268,
    "net_pct_of_turnover": -0.3983,
-   "net_usd": -7.4491,
+   "net_usd": -7.4485,
    "realized_usd": -6.8564,
    "turnover_usd": 1870.007
   },
   "LINKUSDC": {
    "closes": 55,
    "fee_pct_of_turnover": 0.011,
-   "fees_usd": 0.1642,
+   "fees_usd": 0.1641,
    "fills": 102,
    "net_pct_of_turnover": -0.0238,
-   "net_usd": -0.3543,
+   "net_usd": -0.3542,
    "realized_usd": -0.1901,
    "turnover_usd": 1487.8609
   },
   "LTCUSDC": {
    "closes": 67,
    "fee_pct_of_turnover": 0.0125,
-   "fees_usd": 0.2948,
+   "fees_usd": 0.2945,
    "fills": 148,
    "net_pct_of_turnover": -0.0523,
-   "net_usd": -1.2345,
+   "net_usd": -1.2342,
    "realized_usd": -0.9398,
    "turnover_usd": 2360.206
   },
   "MAGICUSDT": {
    "closes": 124,
    "fee_pct_of_turnover": 0.0336,
-   "fees_usd": 1.182,
-   "fills": 251,
-   "net_pct_of_turnover": 0.0141,
-   "net_usd": 0.4947,
+   "fees_usd": 1.1888,
+   "fills": 252,
+   "net_pct_of_turnover": 0.0138,
+   "net_usd": 0.4879,
    "realized_usd": 1.6767,
-   "turnover_usd": 3520.6056
+   "turnover_usd": 3535.6004
   },
   "MANAUSDT": {
    "closes": 101,
    "fee_pct_of_turnover": 0.0253,
-   "fees_usd": 0.5647,
+   "fees_usd": 0.5642,
    "fills": 183,
    "net_pct_of_turnover": 0.0183,
-   "net_usd": 0.408,
+   "net_usd": 0.4084,
    "realized_usd": 0.9726,
    "turnover_usd": 2228.7703
   },
   "MASKUSDT": {
    "closes": 85,
-   "fee_pct_of_turnover": 0.0326,
-   "fees_usd": 0.7273,
+   "fee_pct_of_turnover": 0.0325,
+   "fees_usd": 0.7268,
    "fills": 148,
-   "net_pct_of_turnover": -0.0865,
-   "net_usd": -1.931,
+   "net_pct_of_turnover": -0.0864,
+   "net_usd": -1.9305,
    "realized_usd": -1.2037,
    "turnover_usd": 2233.2697
   },
@@ -742,80 +742,80 @@
   "MINAUSDT": {
    "closes": 35,
    "fee_pct_of_turnover": 0.0362,
-   "fees_usd": 0.3411,
+   "fees_usd": 0.3407,
    "fills": 64,
    "net_pct_of_turnover": -0.2864,
-   "net_usd": -2.6972,
+   "net_usd": -2.6967,
    "realized_usd": -2.3561,
    "turnover_usd": 941.6717
   },
   "MOVEUSDT": {
    "closes": 71,
    "fee_pct_of_turnover": 0.033,
-   "fees_usd": 0.2638,
+   "fees_usd": 0.2635,
    "fills": 128,
    "net_pct_of_turnover": -0.0125,
-   "net_usd": -0.1,
+   "net_usd": -0.0998,
    "realized_usd": 0.1637,
    "turnover_usd": 798.3524
   },
   "MOVRUSDT": {
    "closes": 73,
-   "fee_pct_of_turnover": 0.0292,
-   "fees_usd": 0.5977,
+   "fee_pct_of_turnover": 0.0291,
+   "fees_usd": 0.5972,
    "fills": 140,
-   "net_pct_of_turnover": 0.031,
-   "net_usd": 0.6362,
+   "net_pct_of_turnover": 0.0311,
+   "net_usd": 0.6367,
    "realized_usd": 1.2339,
    "turnover_usd": 2049.7979
   },
   "NEARUSDC": {
    "closes": 89,
-   "fee_pct_of_turnover": 0.0111,
-   "fees_usd": 0.3875,
+   "fee_pct_of_turnover": 0.011,
+   "fees_usd": 0.3871,
    "fills": 169,
    "net_pct_of_turnover": -0.1709,
-   "net_usd": -5.9935,
+   "net_usd": -5.9931,
    "realized_usd": -5.606,
    "turnover_usd": 3506.561
   },
   "NMRUSDT": {
    "closes": 131,
    "fee_pct_of_turnover": 0.027,
-   "fees_usd": 1.2929,
+   "fees_usd": 1.2921,
    "fills": 246,
    "net_pct_of_turnover": -0.099,
-   "net_usd": -4.7366,
+   "net_usd": -4.7358,
    "realized_usd": -3.4437,
    "turnover_usd": 4782.4781
   },
   "ONDOUSDT": {
    "closes": 35,
-   "fee_pct_of_turnover": 0.0273,
-   "fees_usd": 0.307,
+   "fee_pct_of_turnover": 0.0272,
+   "fees_usd": 0.3066,
    "fills": 57,
    "net_pct_of_turnover": 0.0252,
-   "net_usd": 0.2838,
+   "net_usd": 0.2842,
    "realized_usd": 0.5909,
    "turnover_usd": 1126.5589
   },
   "ONEUSDT": {
    "closes": 38,
    "fee_pct_of_turnover": 0.0277,
-   "fees_usd": 0.2841,
+   "fees_usd": 0.284,
    "fills": 71,
    "net_pct_of_turnover": 0.0564,
-   "net_usd": 0.5788,
+   "net_usd": 0.579,
    "realized_usd": 0.8629,
    "turnover_usd": 1026.915
   },
   "PARTIUSDT": {
    "closes": 10,
    "fee_pct_of_turnover": 0.0328,
-   "fees_usd": 0.0706,
+   "fees_usd": 0.0705,
    "fills": 20,
-   "net_pct_of_turnover": 0.1643,
-   "net_usd": 0.3534,
+   "net_pct_of_turnover": 0.1644,
+   "net_usd": 0.3535,
    "realized_usd": 0.424,
    "turnover_usd": 215.0733
   },
@@ -831,100 +831,100 @@
   },
   "PUMPUSDT": {
    "closes": 89,
-   "fee_pct_of_turnover": 0.0309,
-   "fees_usd": 0.9095,
+   "fee_pct_of_turnover": 0.0308,
+   "fees_usd": 0.9088,
    "fills": 170,
    "net_pct_of_turnover": -0.0086,
-   "net_usd": -0.2543,
+   "net_usd": -0.2536,
    "realized_usd": 0.6552,
    "turnover_usd": 2946.8624
   },
   "QNTUSDT": {
    "closes": 44,
-   "fee_pct_of_turnover": 0.0383,
-   "fees_usd": 0.9334,
+   "fee_pct_of_turnover": 0.0382,
+   "fees_usd": 0.9323,
    "fills": 87,
-   "net_pct_of_turnover": -0.0501,
-   "net_usd": -1.2214,
+   "net_pct_of_turnover": -0.05,
+   "net_usd": -1.2203,
    "realized_usd": -0.288,
    "turnover_usd": 2439.559
   },
   "RAYSOLUSDT": {
    "closes": 133,
    "fee_pct_of_turnover": 0.0309,
-   "fees_usd": 1.5391,
+   "fees_usd": 1.5377,
    "fills": 247,
    "net_pct_of_turnover": -0.1216,
-   "net_usd": -6.0527,
+   "net_usd": -6.0513,
    "realized_usd": -4.5136,
    "turnover_usd": 4975.5539
   },
   "RENDERUSDT": {
    "closes": 32,
    "fee_pct_of_turnover": 0.0304,
-   "fees_usd": 0.2639,
+   "fees_usd": 0.2636,
    "fills": 61,
    "net_pct_of_turnover": -0.3041,
-   "net_usd": -2.639,
+   "net_usd": -2.6387,
    "realized_usd": -2.3751,
    "turnover_usd": 867.7511
   },
   "RLCUSDT": {
    "closes": 217,
    "fee_pct_of_turnover": 0.0312,
-   "fees_usd": 1.6083,
+   "fees_usd": 1.6076,
    "fills": 422,
    "net_pct_of_turnover": -0.0508,
-   "net_usd": -2.6184,
+   "net_usd": -2.6177,
    "realized_usd": -1.0101,
    "turnover_usd": 5152.2979
   },
   "RSRUSDT": {
    "closes": 29,
    "fee_pct_of_turnover": 0.0303,
-   "fees_usd": 0.1935,
+   "fees_usd": 0.1933,
    "fills": 45,
-   "net_pct_of_turnover": -0.3881,
-   "net_usd": -2.475,
+   "net_pct_of_turnover": -0.388,
+   "net_usd": -2.4747,
    "realized_usd": -2.2815,
    "turnover_usd": 637.7369
   },
   "RUNEUSDT": {
    "closes": 14,
    "fee_pct_of_turnover": 0.0333,
-   "fees_usd": 0.1866,
+   "fees_usd": 0.1864,
    "fills": 27,
    "net_pct_of_turnover": -0.3525,
-   "net_usd": -1.9736,
+   "net_usd": -1.9734,
    "realized_usd": -1.787,
    "turnover_usd": 559.8041
   },
   "RVNUSDT": {
    "closes": 95,
    "fee_pct_of_turnover": 0.0376,
-   "fees_usd": 1.243,
+   "fees_usd": 1.2416,
    "fills": 204,
    "net_pct_of_turnover": -0.0799,
-   "net_usd": -2.6417,
+   "net_usd": -2.6403,
    "realized_usd": -1.3987,
    "turnover_usd": 3304.5748
   },
   "SANDUSDT": {
    "closes": 76,
    "fee_pct_of_turnover": 0.0288,
-   "fees_usd": 0.5445,
+   "fees_usd": 0.5441,
    "fills": 154,
    "net_pct_of_turnover": 0.109,
-   "net_usd": 2.058,
+   "net_usd": 2.0584,
    "realized_usd": 2.6025,
    "turnover_usd": 1887.8146
   },
   "SCRUSDT": {
    "closes": 5,
    "fee_pct_of_turnover": 0.0329,
-   "fees_usd": 0.0487,
+   "fees_usd": 0.0486,
    "fills": 14,
-   "net_pct_of_turnover": -0.7789,
+   "net_pct_of_turnover": -0.7788,
    "net_usd": -1.1525,
    "realized_usd": -1.1038,
    "turnover_usd": 147.9711
@@ -932,140 +932,140 @@
   "SKLUSDT": {
    "closes": 50,
    "fee_pct_of_turnover": 0.0286,
-   "fees_usd": 0.431,
+   "fees_usd": 0.4307,
    "fills": 96,
    "net_pct_of_turnover": 0.0727,
-   "net_usd": 1.095,
+   "net_usd": 1.0953,
    "realized_usd": 1.5259,
    "turnover_usd": 1506.8492
   },
   "SKYAIUSDT": {
    "closes": 68,
    "fee_pct_of_turnover": 0.0348,
-   "fees_usd": 0.3687,
+   "fees_usd": 0.3685,
    "fills": 134,
    "net_pct_of_turnover": -0.0877,
-   "net_usd": -0.9293,
+   "net_usd": -0.9292,
    "realized_usd": -0.5606,
    "turnover_usd": 1059.5408
   },
   "SKYUSDT": {
    "closes": 34,
-   "fee_pct_of_turnover": 0.0298,
-   "fees_usd": 0.289,
+   "fee_pct_of_turnover": 0.0297,
+   "fees_usd": 0.2887,
    "fills": 67,
    "net_pct_of_turnover": -0.2499,
-   "net_usd": -2.4275,
+   "net_usd": -2.4272,
    "realized_usd": -2.1385,
    "turnover_usd": 971.4278
   },
   "SNXUSDT": {
    "closes": 89,
    "fee_pct_of_turnover": 0.0276,
-   "fees_usd": 0.4873,
+   "fees_usd": 0.487,
    "fills": 173,
    "net_pct_of_turnover": -0.0414,
-   "net_usd": -0.73,
+   "net_usd": -0.7297,
    "realized_usd": -0.2427,
    "turnover_usd": 1763.9559
   },
   "SOLUSDC": {
    "closes": 177,
    "fee_pct_of_turnover": 0.0102,
-   "fees_usd": 0.5716,
+   "fees_usd": 0.5711,
    "fills": 354,
    "net_pct_of_turnover": 0.0904,
-   "net_usd": 5.0543,
+   "net_usd": 5.0548,
    "realized_usd": 5.6259,
    "turnover_usd": 5594.0911
   },
   "SPELLUSDT": {
    "closes": 8,
    "fee_pct_of_turnover": 0.0372,
-   "fees_usd": 0.1413,
+   "fees_usd": 0.1411,
    "fills": 20,
-   "net_pct_of_turnover": -0.0783,
-   "net_usd": -0.2972,
+   "net_pct_of_turnover": -0.0782,
+   "net_usd": -0.2971,
    "realized_usd": -0.156,
    "turnover_usd": 379.7842
   },
   "SPXUSDT": {
    "closes": 12,
    "fee_pct_of_turnover": 0.0376,
-   "fees_usd": 0.0751,
+   "fees_usd": 0.075,
    "fills": 19,
-   "net_pct_of_turnover": 0.3649,
-   "net_usd": 0.7284,
+   "net_pct_of_turnover": 0.365,
+   "net_usd": 0.7285,
    "realized_usd": 0.8035,
    "turnover_usd": 199.6099
   },
   "STRKUSDT": {
    "closes": 113,
-   "fee_pct_of_turnover": 0.0326,
-   "fees_usd": 1.1865,
+   "fee_pct_of_turnover": 0.0325,
+   "fees_usd": 1.1857,
    "fills": 228,
    "net_pct_of_turnover": 0.1001,
-   "net_usd": 3.647,
+   "net_usd": 3.6478,
    "realized_usd": 4.8335,
    "turnover_usd": 3643.886
   },
   "STXUSDT": {
    "closes": 84,
    "fee_pct_of_turnover": 0.0314,
-   "fees_usd": 0.7615,
+   "fees_usd": 0.7608,
    "fills": 172,
-   "net_pct_of_turnover": 0.0745,
-   "net_usd": 1.807,
+   "net_pct_of_turnover": 0.0746,
+   "net_usd": 1.8077,
    "realized_usd": 2.5685,
    "turnover_usd": 2424.5118
   },
   "SUSHIUSDT": {
    "closes": 14,
    "fee_pct_of_turnover": 0.0354,
-   "fees_usd": 0.1127,
+   "fees_usd": 0.1126,
    "fills": 28,
    "net_pct_of_turnover": 0.3015,
-   "net_usd": 0.959,
+   "net_usd": 0.9591,
    "realized_usd": 1.0717,
    "turnover_usd": 318.0913
   },
   "THETAUSDT": {
    "closes": 57,
    "fee_pct_of_turnover": 0.0317,
-   "fees_usd": 0.431,
+   "fees_usd": 0.4307,
    "fills": 102,
    "net_pct_of_turnover": -0.1798,
-   "net_usd": -2.4463,
+   "net_usd": -2.4461,
    "realized_usd": -2.0153,
    "turnover_usd": 1360.2203
   },
   "TIAUSDC": {
    "closes": 78,
-   "fee_pct_of_turnover": 0.0204,
-   "fees_usd": 0.425,
+   "fee_pct_of_turnover": 0.0203,
+   "fees_usd": 0.4246,
    "fills": 132,
    "net_pct_of_turnover": -0.23,
-   "net_usd": -4.8022,
+   "net_usd": -4.8018,
    "realized_usd": -4.3772,
    "turnover_usd": 2088.1305
   },
   "TLMUSDT": {
    "closes": 28,
    "fee_pct_of_turnover": 0.038,
-   "fees_usd": 0.1404,
+   "fees_usd": 0.1403,
    "fills": 58,
-   "net_pct_of_turnover": -0.0112,
-   "net_usd": -0.0412,
+   "net_pct_of_turnover": -0.0111,
+   "net_usd": -0.0411,
    "realized_usd": 0.0992,
    "turnover_usd": 369.2629
   },
   "TRBUSDT": {
    "closes": 21,
    "fee_pct_of_turnover": 0.0261,
-   "fees_usd": 0.1509,
+   "fees_usd": 0.1507,
    "fills": 40,
    "net_pct_of_turnover": -0.1994,
-   "net_usd": -1.1506,
+   "net_usd": -1.1504,
    "realized_usd": -0.9997,
    "turnover_usd": 577.0277
   },
@@ -1075,147 +1075,147 @@
    "fees_usd": 0.0701,
    "fills": 55,
    "net_pct_of_turnover": -0.0547,
-   "net_usd": -0.1815,
+   "net_usd": -0.1814,
    "realized_usd": -0.1113,
    "turnover_usd": 331.8298
   },
   "TRXUSDT": {
    "closes": 10,
    "fee_pct_of_turnover": 0.0387,
-   "fees_usd": 0.0753,
+   "fees_usd": 0.0752,
    "fills": 19,
    "net_pct_of_turnover": -0.0283,
-   "net_usd": -0.0551,
+   "net_usd": -0.055,
    "realized_usd": 0.0202,
    "turnover_usd": 194.4752
   },
   "UNIUSDC": {
    "closes": 68,
    "fee_pct_of_turnover": 0.0107,
-   "fees_usd": 0.1682,
+   "fees_usd": 0.1681,
    "fills": 137,
-   "net_pct_of_turnover": 0.0021,
-   "net_usd": 0.0338,
+   "net_pct_of_turnover": 0.0022,
+   "net_usd": 0.0339,
    "realized_usd": 0.202,
    "turnover_usd": 1574.82
   },
   "VETUSDT": {
    "closes": 130,
    "fee_pct_of_turnover": 0.0312,
-   "fees_usd": 1.2696,
+   "fees_usd": 1.2691,
    "fills": 245,
    "net_pct_of_turnover": -0.0446,
-   "net_usd": -1.8165,
+   "net_usd": -1.816,
    "realized_usd": -0.5469,
    "turnover_usd": 4068.7709
   },
   "WIFUSDC": {
    "closes": 21,
-   "fee_pct_of_turnover": 0.0184,
-   "fees_usd": 0.1375,
+   "fee_pct_of_turnover": 0.0183,
+   "fees_usd": 0.1373,
    "fills": 46,
    "net_pct_of_turnover": -0.0308,
-   "net_usd": -0.2305,
+   "net_usd": -0.2303,
    "realized_usd": -0.093,
    "turnover_usd": 748.3611
   },
   "WLDUSDC": {
    "closes": 185,
    "fee_pct_of_turnover": 0.0131,
-   "fees_usd": 0.7698,
+   "fees_usd": 0.7691,
    "fills": 338,
    "net_pct_of_turnover": -0.0526,
-   "net_usd": -3.0885,
+   "net_usd": -3.0877,
    "realized_usd": -2.3187,
    "turnover_usd": 5871.3526
   },
   "WOOUSDT": {
    "closes": 18,
    "fee_pct_of_turnover": 0.0346,
-   "fees_usd": 0.1405,
+   "fees_usd": 0.1403,
    "fills": 40,
-   "net_pct_of_turnover": -0.2137,
-   "net_usd": -0.8675,
+   "net_pct_of_turnover": -0.2136,
+   "net_usd": -0.8674,
    "realized_usd": -0.727,
    "turnover_usd": 406.0157
   },
   "WUSDT": {
    "closes": 31,
-   "fee_pct_of_turnover": 0.0312,
-   "fees_usd": 0.2118,
+   "fee_pct_of_turnover": 0.0311,
+   "fees_usd": 0.2116,
    "fills": 66,
    "net_pct_of_turnover": -0.2921,
-   "net_usd": -1.9848,
+   "net_usd": -1.9846,
    "realized_usd": -1.773,
    "turnover_usd": 679.4794
   },
   "XLMUSDT": {
    "closes": 75,
    "fee_pct_of_turnover": 0.0283,
-   "fees_usd": 0.5332,
+   "fees_usd": 0.5328,
    "fills": 141,
    "net_pct_of_turnover": -0.0116,
-   "net_usd": -0.2186,
+   "net_usd": -0.2181,
    "realized_usd": 0.3146,
    "turnover_usd": 1882.2994
   },
   "XMRUSDT": {
    "closes": 207,
    "fee_pct_of_turnover": 0.0306,
-   "fees_usd": 2.9432,
+   "fees_usd": 2.9411,
    "fills": 417,
    "net_pct_of_turnover": -0.0075,
-   "net_usd": -0.7218,
+   "net_usd": -0.7198,
    "realized_usd": 2.2214,
    "turnover_usd": 9625.8253
   },
   "XPLUSDT": {
    "closes": 38,
    "fee_pct_of_turnover": 0.0321,
-   "fees_usd": 0.3746,
+   "fees_usd": 0.3742,
    "fills": 70,
    "net_pct_of_turnover": 0.1079,
-   "net_usd": 1.2588,
+   "net_usd": 1.2592,
    "realized_usd": 1.6334,
    "turnover_usd": 1166.9791
   },
   "XRPUSDC": {
    "closes": 151,
    "fee_pct_of_turnover": 0.0111,
-   "fees_usd": 0.4897,
+   "fees_usd": 0.4894,
    "fills": 296,
    "net_pct_of_turnover": -0.0641,
-   "net_usd": -2.8226,
+   "net_usd": -2.8223,
    "realized_usd": -2.3329,
    "turnover_usd": 4400.5826
   },
   "ZECUSDC": {
    "closes": 260,
    "fee_pct_of_turnover": 0.0132,
-   "fees_usd": 0.8007,
+   "fees_usd": 0.7999,
    "fills": 484,
    "net_pct_of_turnover": 0.0445,
-   "net_usd": 2.703,
+   "net_usd": 2.7039,
    "realized_usd": 3.5037,
    "turnover_usd": 6076.7976
   },
   "ZENUSDT": {
    "closes": 126,
    "fee_pct_of_turnover": 0.034,
-   "fees_usd": 1.0609,
+   "fees_usd": 1.0603,
    "fills": 233,
    "net_pct_of_turnover": -0.0005,
-   "net_usd": -0.0168,
+   "net_usd": -0.0162,
    "realized_usd": 1.0441,
    "turnover_usd": 3115.9321
   },
   "ZILUSDT": {
    "closes": 30,
-   "fee_pct_of_turnover": 0.032,
-   "fees_usd": 0.2809,
+   "fee_pct_of_turnover": 0.0319,
+   "fees_usd": 0.2807,
    "fills": 61,
    "net_pct_of_turnover": -0.3837,
-   "net_usd": -3.3724,
+   "net_usd": -3.3723,
    "realized_usd": -3.0916,
    "turnover_usd": 878.9868
   },
@@ -1225,27 +1225,27 @@
    "fees_usd": 0.1366,
    "fills": 46,
    "net_pct_of_turnover": 0.0884,
-   "net_usd": 0.4054,
+   "net_usd": 0.4055,
    "realized_usd": 0.5421,
    "turnover_usd": 458.6595
   },
   "ZROUSDT": {
    "closes": 144,
    "fee_pct_of_turnover": 0.0304,
-   "fees_usd": 1.3145,
-   "fills": 278,
-   "net_pct_of_turnover": 0.5555,
-   "net_usd": 24.05,
+   "fees_usd": 1.3208,
+   "fills": 280,
+   "net_pct_of_turnover": 0.5534,
+   "net_usd": 24.0438,
    "realized_usd": 25.3646,
-   "turnover_usd": 4329.4249
+   "turnover_usd": 4344.3854
   }
  },
  "freshness": {
-  "age_h_max": 3.14,
-  "age_h_median": 0.6,
-  "age_h_p90": 2.23,
+  "age_h_max": 3.33,
+  "age_h_median": 0.52,
+  "age_h_p90": 2.43,
   "bnb_source": "price_cache_2.json",
-  "bnb_usd": 746.87438507,
+  "bnb_usd": 745.93,
   "caches": 589,
   "fresh": 589,
   "fresh_share": 1.0,
@@ -1253,13 +1253,13 @@
   "ok": true,
   "stale": 0
  },
- "generated_at": "2026-10-28T04:01:05Z",
+ "generated_at": "2026-10-28T04:16:30Z",
  "label": "VERIFIED",
  "reconcile_14d": {
-  "broker_net_usd": -130.2098,
-  "divergence_usd": 0.4583,
-  "generated_at": "2026-10-28T04:02:55Z",
-  "inhouse_net_usd": -129.7515,
+  "broker_net_usd": -130.4059,
+  "divergence_usd": 0.4707,
+  "generated_at": "2026-10-28T04:19:07Z",
+  "inhouse_net_usd": -129.9352,
   "label": "VERIFIED",
   "symbols_compared": 118,
   "verdict": "OK",
@@ -1267,57 +1267,57 @@
   "window_days": 14.0,
   "worst": [
    {
-    "broker_net_usd": -0.5226,
-    "divergence_usd": -1.2538,
-    "inhouse_net_usd": -1.7764,
+    "broker_net_usd": -0.5218,
+    "divergence_usd": -1.254,
+    "inhouse_net_usd": -1.7758,
     "symbol": "GALAUSDT"
    },
    {
-    "broker_net_usd": -0.4692,
+    "broker_net_usd": -0.4691,
     "divergence_usd": 1.0829,
-    "inhouse_net_usd": 0.6137,
+    "inhouse_net_usd": 0.6138,
     "symbol": "AAVEUSDC"
    },
    {
-    "broker_net_usd": 0.0178,
-    "divergence_usd": 0.5928,
+    "broker_net_usd": 0.0179,
+    "divergence_usd": 0.5927,
     "inhouse_net_usd": 0.6106,
     "symbol": "API3USDT"
    },
    {
-    "broker_net_usd": -0.3346,
-    "divergence_usd": 0.508,
-    "inhouse_net_usd": 0.1734,
+    "broker_net_usd": -0.3343,
+    "divergence_usd": 0.5079,
+    "inhouse_net_usd": 0.1736,
     "symbol": "RENDERUSDT"
    },
    {
-    "broker_net_usd": 0.0483,
-    "divergence_usd": -0.2148,
+    "broker_net_usd": 0.0484,
+    "divergence_usd": -0.2149,
     "inhouse_net_usd": -0.1665,
     "symbol": "ASTERUSDT"
    },
    {
-    "broker_net_usd": -0.1222,
+    "broker_net_usd": -0.1221,
     "divergence_usd": 0.1906,
-    "inhouse_net_usd": 0.0684,
+    "inhouse_net_usd": 0.0685,
     "symbol": "TRUMPUSDC"
    },
    {
-    "broker_net_usd": -11.2725,
-    "divergence_usd": -0.1893,
-    "inhouse_net_usd": -11.4618,
+    "broker_net_usd": -11.2708,
+    "divergence_usd": -0.1895,
+    "inhouse_net_usd": -11.4603,
     "symbol": "BATUSDT"
    },
    {
-    "broker_net_usd": 0.959,
+    "broker_net_usd": 0.9591,
     "divergence_usd": -0.1819,
-    "inhouse_net_usd": 0.7771,
+    "inhouse_net_usd": 0.7772,
     "symbol": "SUSHIUSDT"
    },
    {
-    "broker_net_usd": -0.0472,
-    "divergence_usd": -0.0894,
-    "inhouse_net_usd": -0.1366,
+    "broker_net_usd": -0.0468,
+    "divergence_usd": -0.0895,
+    "inhouse_net_usd": -0.1363,
     "symbol": "ONDOUSDT"
    },
    {
@@ -1327,197 +1327,197 @@
     "symbol": "TRXUSDT"
    },
    {
-    "broker_net_usd": 0.8664,
-    "divergence_usd": 0.0208,
-    "inhouse_net_usd": 0.8872,
-    "symbol": "1000PEPEUSDC"
-   },
-   {
-    "broker_net_usd": -3.3014,
-    "divergence_usd": 0.0164,
-    "inhouse_net_usd": -3.285,
+    "broker_net_usd": -3.3005,
+    "divergence_usd": 0.0391,
+    "inhouse_net_usd": -3.2614,
     "symbol": "EDUUSDT"
    },
    {
-    "broker_net_usd": -0.693,
-    "divergence_usd": 0.014,
-    "inhouse_net_usd": -0.679,
+    "broker_net_usd": 0.8666,
+    "divergence_usd": 0.0207,
+    "inhouse_net_usd": 0.8873,
+    "symbol": "1000PEPEUSDC"
+   },
+   {
+    "broker_net_usd": -0.6927,
+    "divergence_usd": 0.0139,
+    "inhouse_net_usd": -0.6788,
     "symbol": "SKLUSDT"
    },
    {
-    "broker_net_usd": -0.4446,
+    "broker_net_usd": -0.4445,
     "divergence_usd": 0.005,
-    "inhouse_net_usd": -0.4396,
+    "inhouse_net_usd": -0.4395,
     "symbol": "ETCUSDT"
    },
    {
-    "broker_net_usd": -4.8022,
+    "broker_net_usd": -4.8018,
     "divergence_usd": -0.0036,
-    "inhouse_net_usd": -4.8058,
+    "inhouse_net_usd": -4.8054,
     "symbol": "TIAUSDC"
    },
    {
-    "broker_net_usd": -0.4292,
-    "divergence_usd": 0.0001,
-    "inhouse_net_usd": -0.4291,
-    "symbol": "BNBUSDC"
+    "broker_net_usd": -6.8107,
+    "divergence_usd": -0.0011,
+    "inhouse_net_usd": -6.8118,
+    "symbol": "BTCUSDC"
    },
    {
-    "broker_net_usd": -0.5297,
-    "divergence_usd": 0.0001,
-    "inhouse_net_usd": -0.5296,
-    "symbol": "ALGOUSDT"
-   },
-   {
-    "broker_net_usd": -2.267,
-    "divergence_usd": 0.0001,
-    "inhouse_net_usd": -2.2669,
-    "symbol": "IOTXUSDT"
-   },
-   {
-    "broker_net_usd": -1.8551,
-    "divergence_usd": -0.0001,
-    "inhouse_net_usd": -1.8552,
-    "symbol": "COTIUSDT"
-   },
-   {
-    "broker_net_usd": -1.5175,
-    "divergence_usd": 0.0001,
-    "inhouse_net_usd": -1.5174,
-    "symbol": "THETAUSDT"
-   },
-   {
-    "broker_net_usd": -1.5447,
-    "divergence_usd": -0.0001,
-    "inhouse_net_usd": -1.5448,
-    "symbol": "SKYUSDT"
-   },
-   {
-    "broker_net_usd": 0.7191,
-    "divergence_usd": 0.0001,
-    "inhouse_net_usd": 0.7192,
-    "symbol": "HYPEUSDT"
-   },
-   {
-    "broker_net_usd": 2.0546,
-    "divergence_usd": 0.0001,
-    "inhouse_net_usd": 2.0547,
-    "symbol": "SOLUSDC"
-   },
-   {
-    "broker_net_usd": -0.4105,
-    "divergence_usd": -0.0001,
-    "inhouse_net_usd": -0.4106,
-    "symbol": "MOVRUSDT"
-   },
-   {
-    "broker_net_usd": -1.4949,
-    "divergence_usd": -0.0001,
-    "inhouse_net_usd": -1.495,
-    "symbol": "VETUSDT"
-   },
-   {
-    "broker_net_usd": -2.669,
-    "divergence_usd": -0.0001,
-    "inhouse_net_usd": -2.6691,
-    "symbol": "ETHUSDC"
-   },
-   {
-    "broker_net_usd": -0.5087,
-    "divergence_usd": -0.0001,
-    "inhouse_net_usd": -0.5088,
-    "symbol": "UNIUSDC"
-   },
-   {
-    "broker_net_usd": -1.9311,
-    "divergence_usd": 0.0001,
-    "inhouse_net_usd": -1.931,
-    "symbol": "MASKUSDT"
-   },
-   {
-    "broker_net_usd": -4.2887,
-    "divergence_usd": 0.0001,
-    "inhouse_net_usd": -4.2886,
-    "symbol": "BBUSDT"
-   },
-   {
-    "broker_net_usd": -2.4464,
-    "divergence_usd": 0.0,
-    "inhouse_net_usd": -2.4464,
-    "symbol": "MINAUSDT"
-   },
-   {
-    "broker_net_usd": -0.4557,
-    "divergence_usd": 0.0,
-    "inhouse_net_usd": -0.4557,
-    "symbol": "LINKUSDC"
-   },
-   {
-    "broker_net_usd": -3.2704,
-    "divergence_usd": 0.0,
-    "inhouse_net_usd": -3.2704,
-    "symbol": "DOTUSDT"
-   },
-   {
-    "broker_net_usd": 2.268,
-    "divergence_usd": 0.0,
-    "inhouse_net_usd": 2.268,
-    "symbol": "SNXUSDT"
-   },
-   {
-    "broker_net_usd": 0.7338,
-    "divergence_usd": 0.0,
-    "inhouse_net_usd": 0.7338,
-    "symbol": "1000FLOKIUSDT"
-   },
-   {
-    "broker_net_usd": -1.8005,
-    "divergence_usd": 0.0,
-    "inhouse_net_usd": -1.8005,
+    "broker_net_usd": -1.7986,
+    "divergence_usd": -0.0003,
+    "inhouse_net_usd": -1.7989,
     "symbol": "GRAMUSDT"
    },
    {
-    "broker_net_usd": -2.1091,
-    "divergence_usd": 0.0,
-    "inhouse_net_usd": -2.1091,
-    "symbol": "ALTUSDT"
+    "broker_net_usd": -6.3509,
+    "divergence_usd": -0.0003,
+    "inhouse_net_usd": -6.3512,
+    "symbol": "RAYSOLUSDT"
    },
    {
-    "broker_net_usd": 1.5673,
-    "divergence_usd": 0.0,
-    "inhouse_net_usd": 1.5673,
-    "symbol": "MANAUSDT"
+    "broker_net_usd": -0.8492,
+    "divergence_usd": -0.0003,
+    "inhouse_net_usd": -0.8495,
+    "symbol": "XMRUSDT"
    },
    {
-    "broker_net_usd": -5.2732,
-    "divergence_usd": 0.0,
-    "inhouse_net_usd": -5.2732,
-    "symbol": "BEATUSDT"
+    "broker_net_usd": -1.8539,
+    "divergence_usd": -0.0002,
+    "inhouse_net_usd": -1.8541,
+    "symbol": "COTIUSDT"
    },
    {
-    "broker_net_usd": -0.4607,
-    "divergence_usd": 0.0,
-    "inhouse_net_usd": -0.4607,
-    "symbol": "1000LUNCUSDT"
+    "broker_net_usd": -4.6298,
+    "divergence_usd": -0.0002,
+    "inhouse_net_usd": -4.63,
+    "symbol": "RVNUSDT"
    },
    {
-    "broker_net_usd": -0.2992,
-    "divergence_usd": 0.0,
-    "inhouse_net_usd": -0.2992,
-    "symbol": "AVAXUSDC"
+    "broker_net_usd": -3.8004,
+    "divergence_usd": -0.0002,
+    "inhouse_net_usd": -3.8006,
+    "symbol": "ARUSDT"
+   },
+   {
+    "broker_net_usd": 2.778,
+    "divergence_usd": -0.0002,
+    "inhouse_net_usd": 2.7778,
+    "symbol": "DOGEUSDC"
+   },
+   {
+    "broker_net_usd": -4.437,
+    "divergence_usd": -0.0002,
+    "inhouse_net_usd": -4.4372,
+    "symbol": "STRKUSDT"
+   },
+   {
+    "broker_net_usd": -2.6686,
+    "divergence_usd": -0.0002,
+    "inhouse_net_usd": -2.6688,
+    "symbol": "ETHUSDC"
+   },
+   {
+    "broker_net_usd": 5.4366,
+    "divergence_usd": -0.0002,
+    "inhouse_net_usd": 5.4364,
+    "symbol": "EGLDUSDT"
+   },
+   {
+    "broker_net_usd": 0.488,
+    "divergence_usd": -0.0002,
+    "inhouse_net_usd": 0.4878,
+    "symbol": "MAGICUSDT"
+   },
+   {
+    "broker_net_usd": -2.7796,
+    "divergence_usd": -0.0002,
+    "inhouse_net_usd": -2.7798,
+    "symbol": "BTCDOMUSDT"
+   },
+   {
+    "broker_net_usd": -1.7538,
+    "divergence_usd": -0.0002,
+    "inhouse_net_usd": -1.754,
+    "symbol": "BEAMXUSDT"
+   },
+   {
+    "broker_net_usd": -2.0647,
+    "divergence_usd": -0.0002,
+    "inhouse_net_usd": -2.0649,
+    "symbol": "BLURUSDT"
+   },
+   {
+    "broker_net_usd": -3.7185,
+    "divergence_usd": -0.0002,
+    "inhouse_net_usd": -3.7187,
+    "symbol": "DASHUSDT"
+   },
+   {
+    "broker_net_usd": -1.8894,
+    "divergence_usd": -0.0002,
+    "inhouse_net_usd": -1.8896,
+    "symbol": "QNTUSDT"
+   },
+   {
+    "broker_net_usd": -4.2875,
+    "divergence_usd": -0.0002,
+    "inhouse_net_usd": -4.2877,
+    "symbol": "BBUSDT"
+   },
+   {
+    "broker_net_usd": -0.4284,
+    "divergence_usd": -0.0001,
+    "inhouse_net_usd": -0.4285,
+    "symbol": "BNBUSDC"
+   },
+   {
+    "broker_net_usd": -0.5294,
+    "divergence_usd": -0.0001,
+    "inhouse_net_usd": -0.5295,
+    "symbol": "ALGOUSDT"
+   },
+   {
+    "broker_net_usd": -2.2667,
+    "divergence_usd": -0.0001,
+    "inhouse_net_usd": -2.2668,
+    "symbol": "IOTXUSDT"
+   },
+   {
+    "broker_net_usd": -2.4527,
+    "divergence_usd": -0.0001,
+    "inhouse_net_usd": -2.4528,
+    "symbol": "MINAUSDT"
+   },
+   {
+    "broker_net_usd": -3.2698,
+    "divergence_usd": -0.0001,
+    "inhouse_net_usd": -3.2699,
+    "symbol": "DOTUSDT"
+   },
+   {
+    "broker_net_usd": 0.7341,
+    "divergence_usd": -0.0001,
+    "inhouse_net_usd": 0.734,
+    "symbol": "1000FLOKIUSDT"
+   },
+   {
+    "broker_net_usd": -1.5172,
+    "divergence_usd": -0.0001,
+    "inhouse_net_usd": -1.5173,
+    "symbol": "THETAUSDT"
    }
   ]
  },
  "totals": {
-  "closes": 9034,
+  "closes": 9045,
   "fee_pct_of_turnover": 0.0268,
-  "fee_share_of_loss_pct": 42.8296,
-  "fees_usd": 74.0403,
-  "fills": 17354,
-  "net_pct_of_turnover": -0.0626,
-  "net_usd": -172.8718,
-  "realized_usd": -98.8314,
-  "turnover_usd": 275975.8829
+  "fee_share_of_loss_pct": 42.7044,
+  "fees_usd": 74.019,
+  "fills": 17369,
+  "net_pct_of_turnover": -0.0628,
+  "net_usd": -173.3285,
+  "realized_usd": -99.3095,
+  "turnover_usd": 276063.8767
  },
  "verified": true,
  "window_days": 30.0

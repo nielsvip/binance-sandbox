@@ -3,9 +3,18 @@ from datetime import datetime, timezone
 
 from closed_bar_feed import atomic_json
 from tools.crypto_15m_bar_clock import ObservedMarks
-from tools.stock_15m_bar_clock import completed_stock_row, ingest_quotes, native_prefix, quote_mark, stock_symbols
+from tools.stock_15m_bar_clock import completed_stock_row, ingest_quotes, native_prefix, quote_collection_window, quote_mark, stock_symbols
 
 START = int(datetime(2026, 10, 26, 19, 45, tzinfo=timezone.utc).timestamp())
+
+
+def test_quotes_start_one_hour_before_regular_session():
+    opening, closing = START - 6 * 3600 - 15 * 60, START + 15 * 60
+    assert not quote_collection_window(opening - 3601, (opening, closing))
+    assert quote_collection_window(opening - 3600, (opening, closing))
+    assert quote_collection_window(opening - 1, (opening, closing))
+    assert quote_collection_window(opening, (opening, closing))
+    assert not quote_collection_window(closing, (opening, closing))
 
 
 def test_fresh_response_uses_current_bid_ask_with_old_last_trade():

@@ -8,13 +8,13 @@ hold ~1.2-2.6 GB each forever, and can never publish anything because the parent
 scheduler's wedge reaper cannot see them: it looks for parents with no workers, these are workers
 with no parent. Measured result: zero boards published for ~14 h while 4 hosts billed by the minute.
 
-Reap criterion (all must hold) -- deliberately narrow so a healthy pilot is never touched:
-  * cmdline matches v15_pilot.py --sym-side
-  * ppid == 1  (reparented to init)
-  * no children  (a live top-level pilot that already forked has children)
-  * its own stdout (fd 1) has not been written for --stale-s  (a top-level pilot is ALSO ppid==1
-    when launched detached, so staleness is the only safe discriminator)
-  * process age > --grace-s  (a pilot still loading NPZ writes nothing for minutes)
+Reap criterion (per sym_side GROUP, all must hold; liveness signal = freshest of stdout mtime,
+data/reports/lifecycle_pilot/<SS>_*progress*.json mtime, /tmp/sweep_<SS>_30D.log mtime):
+  * no member has a child (kernel task children file OR /proc ppid scan)
+  * no member is a session leader (setsid'd top-level pilot has pid == sid) -- a top-level pilot is never a candidate
+  * every member has ppid 1 and age > --grace-s
+  * group has >= 2 members (a lone process is never reaped)
+  * freshest liveness signal older than --stale-s
 
 Dry-run by default. --apply to actually signal (TERM, then KILL after --kill-after-s).
 """
@@ -45,7 +45,7 @@ def _stat_fields(pid):
     if rp < 0:
         return None
     rest = raw[rp + 2:].split()
-    return {"ppid": int(rest[1]), "starttime": int(rest[19])}
+    return {"ppid": int(rest[1]), "sid": int(rest[3]), "starttime": int(rest[19])}
 
 
 def _boot_time():
@@ -62,16 +62,20 @@ def _rss_mb(pid):
         return 0.0
 
 
+def _pids():
+    return [int(e.name) for e in pathlib.Path("/proc").iterdir() if e.name.isdigit()]
+
+
 def _children(pid):
+    out = set()
     try:
-        out = []
         for t in pathlib.Path(f"/proc/{pid}/task").iterdir():
-            ch = (t / "children")
+            ch = t / "children"
             if ch.exists():
-                out += ch.read_text().split()
-        return out
+                out.update(ch.read_text().split())
     except Exception:
-        return []
+        pass
+    return sorted(out)
 
 
 def _fd1_age_s(pid, now):
@@ -95,15 +99,39 @@ def _sym_side(cmd):
     return "?"
 
 
+def _liveness_age_s(pid, symbol_side, now):
+    """Freshest signal that this sym_side is making progress: stdout, progress JSON, sweep log."""
+    ages = []
+    fd1 = _fd1_age_s(pid, now)
+    if fd1 is not None:
+        ages.append(fd1)
+    cands = [f"/tmp/sweep_{symbol_side}_30D.log"]
+    try:
+        cwd = os.readlink(f"/proc/{pid}/cwd")
+        lp = pathlib.Path(cwd) / "data" / "reports" / "lifecycle_pilot"
+        cands += [str(lp / f"{symbol_side}_v14_progress.json")]
+        cands += [str(x) for x in lp.glob(f"{symbol_side}_*progress*.json")]
+    except Exception:
+        pass
+    for c in cands:
+        try:
+            ages.append(now - os.stat(c).st_mtime)
+        except Exception:
+            pass
+    return min(ages) if ages else None
+
+
 def scan(stale_s, grace_s):
+    """Group pilot-cmdline processes by sym_side. A group is an OOM orphan set ONLY if:
+    no member has a child (kernel children file OR ppid scan), no member is a session leader
+    (the setsid'd top-level pilot is pid==sid), every member has ppid 1, every member is older than
+    grace, the group has >=2 members (a lone process is never reaped), and the freshest liveness
+    signal (stdout, progress JSON, sweep log) is older than stale_s."""
     now = time.time()
     btime = _boot_time()
     hz = os.sysconf("SC_CLK_TCK") or 100
-    orphans, healthy = [], []
-    for ent in pathlib.Path("/proc").iterdir():
-        if not ent.name.isdigit():
-            continue
-        pid = int(ent.name)
+    procs = {}
+    for pid in _pids():
         cmd = _cmdline(pid)
         if PILOT_MATCH not in cmd or "--sym-side" not in cmd:
             continue
@@ -112,13 +140,35 @@ def scan(stale_s, grace_s):
         st = _stat_fields(pid)
         if not st:
             continue
-        age = now - (btime + st["starttime"] / hz)
-        kids = _children(pid)
-        fd1 = _fd1_age_s(pid, now)
-        rec = {"pid": pid, "sym_side": _sym_side(cmd), "ppid": st["ppid"], "kids": len(kids),
-               "age_s": round(age), "log_age_s": None if fd1 is None else round(fd1), "rss_mb": round(_rss_mb(pid))}
-        is_orphan = (st["ppid"] == 1 and not kids and age > grace_s and fd1 is not None and fd1 > stale_s)
-        (orphans if is_orphan else healthy).append(rec)
+        procs[pid] = {"cmd": cmd, "st": st}
+    ppid_kids = {}
+    for pid in _pids():
+        st = _stat_fields(pid)
+        if st:
+            ppid_kids.setdefault(st["ppid"], []).append(pid)
+    groups = {}
+    for pid, pr in procs.items():
+        groups.setdefault(_sym_side(pr["cmd"]), []).append(pid)
+    orphans, healthy = [], []
+    for symbol_side, pids in groups.items():
+        recs = []
+        live_tree = False
+        for pid in pids:
+            st = procs[pid]["st"]
+            kids = set(_children(pid)) | {str(k) for k in ppid_kids.get(pid, [])}
+            age = now - (btime + st["starttime"] / hz)
+            live = _liveness_age_s(pid, symbol_side, now)
+            if kids or st.get("sid") == pid or st["ppid"] != 1 or age <= grace_s:
+                live_tree = True
+            recs.append({"pid": pid, "sym_side": symbol_side, "ppid": st["ppid"], "sid": st.get("sid"),
+                         "kids": len(kids), "age_s": round(age), "log_age_s": None if live is None else round(live),
+                         "rss_mb": round(_rss_mb(pid))})
+        ages = [r["log_age_s"] for r in recs if r["log_age_s"] is not None]
+        quiet = bool(ages) and min(ages) > stale_s
+        if not live_tree and len(recs) >= 2 and quiet:
+            orphans += recs
+        else:
+            healthy += recs
     return orphans, healthy
 
 

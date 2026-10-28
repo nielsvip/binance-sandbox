@@ -38,6 +38,10 @@ def quote_mark(quote):
     return price if math.isfinite(price) and price > 0 else None
 
 
+def quote_collection_window(now, session_bounds):
+    return session_bounds is not None and session_bounds[0] - 3600 <= now < session_bounds[1]
+
+
 def ingest_quotes(observed, quotes, received_at, now, source):
     count = 0
     for symbol, quote in quotes.items():
@@ -126,8 +130,9 @@ async def main(base):
             day = datetime.fromtimestamp(now, ZoneInfo('America/New_York')).date()
             bounds = stock_session_bounds(day)
             in_session = bounds is not None and bounds[0] <= now < bounds[1]
+            collecting_quotes = quote_collection_window(now, bounds)
             fresh = 0
-            if in_session:
+            if collecting_quotes:
                 try:
                     raw = store.get('tradier_prices_latest')
                     payload = json.loads(raw) if raw else {}
@@ -179,7 +184,7 @@ async def main(base):
                         continue
                     pending[key] = loop.run_in_executor(publishers, publish_closed_15m, base / 'klines_cache/tradier' / f'{symbol}_15m.json', row, merge_closed_history, base, 'tradier', symbol)
             if now - status_at >= 5:
-                status = {'at': now, 'pid': __import__('os').getpid(), 'event': 'stock_clock_status', 'in_session': in_session, 'session_bounds': bounds, 'universe': len(symbols), 'fresh_redis_quotes': fresh, 'symbols_observed': len(observed.bars), 'bar_start_ts': target, 'published': sum((symbol, target) in emitted for symbol in symbols), 'missing_coverage': missing, 'quote_batches_inflight': len(quote_tasks), 'loop_s': time.time() - began}
+                status = {'at': now, 'pid': __import__('os').getpid(), 'event': 'stock_clock_status', 'in_session': in_session, 'collecting_quotes': collecting_quotes, 'session_bounds': bounds, 'universe': len(symbols), 'fresh_redis_quotes': fresh, 'symbols_observed': len(observed.bars), 'bar_start_ts': target, 'published': sum((symbol, target) in emitted for symbol in symbols), 'missing_coverage': missing, 'quote_batches_inflight': len(quote_tasks), 'loop_s': time.time() - began}
                 try:
                     atomic_json(base / 'data/reports/stock_15m_clock_latest.json', status)
                 except OSError:

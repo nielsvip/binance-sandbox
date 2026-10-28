@@ -58,7 +58,12 @@ for p in pathlib.Path("$BENCH/gate/candidates").glob("*/meta.json"):
         print(p.parent.name)
 PY
 )
-if [ -z "$CHAMP_ID" ]; then log "ABORT category A: cannot read champion id"; fi
+# 2026-10-28: on S1 there is no local version gate, so gate/champion/meta.json never exists and this logged
+# "ABORT category A: cannot read champion id" every 15 min - which reads like a failure to chase. Category A is
+# structurally S2-only anyway: each run must have a LOCAL gate/candidates/<id>/meta.json to be a candidate.
+if [ -z "$CHAMP_ID" ]; then
+  if [ -d "$BENCH/gate/champion" ]; then log "ABORT category A: cannot read champion id"; else log "skip category A: no local version gate on this host (S2-only class), not an error"; fi
+fi
 # --- A decided gate runs
 if [ -n "$CHAMP_ID" ] && [ -d "$BENCH/runs" ]; then
   for run in "$BENCH"/runs/*__gate_*_c*; do
@@ -126,4 +131,9 @@ fi
 rm -f "$OPEN"
 F1=$(free_gb); U1=$(use_pct)
 log "end mode=$MODE candidates=$((TOTAL / 1024))M free ${F0}G->${F1}G use ${U0}%->${U1}% champion=$CHAMP_ID protected=[$(echo $LIVE_IDS)]"
+# 2026-10-28: below the floor with NOTHING to prune was previously indistinguishable from a healthy run in the
+# log, so S1 sat under the operator's >40 GB law for hours looking "guarded". Say it plainly instead.
+if [ "$F1" -lt "$MIN_FREE_GB" ] && [ "$((TOTAL / 1024))" -eq 0 ]; then
+  log "ALERT_LADDER_HAS_NO_APPLICABLE_CLASS free=${F1}G < floor=${MIN_FREE_GB}G and 0M of prunable candidates on this host — needs an operator decision on the next legacy class (cold-store via tools/gcs_cold_store.py keeps it, rather than deleting)"
+fi
 if [ "$DRY" = 0 ] && [ "$F1" -lt 20 ]; then log "ALERT free ${F1}G < 20G after pruning safe categories — gate will HOLD; needs a human look (du -xsh ~/*)"; fi
