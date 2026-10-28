@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-28 11:47:41 UTC
+# Copilot Status — 2026-10-28 11:52:45 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T11:44:38
-- **RATIO_IMBALANCE** [crypto] flz — 2026-10-28T11:44:38
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T11:45:39
-- **RATIO_IMBALANCE** [crypto] flz — 2026-10-28T11:45:39
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-28T11:46:39
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-28T11:46:39
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T11:46:40
-- **RATIO_IMBALANCE** [crypto] flz — 2026-10-28T11:46:40
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T11:47:41
-- **RATIO_IMBALANCE** [crypto] flz — 2026-10-28T11:47:41
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-28T11:50:43
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T11:50:43
+- **RATIO_IMBALANCE** [crypto] flz — 2026-10-28T11:50:43
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T11:51:43
+- **RATIO_IMBALANCE** [crypto] flz — 2026-10-28T11:51:43
+- **STALE_INDICATORS** [tradier]  — 2026-10-28T11:52:44
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-28T11:52:44
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-28T11:52:44
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T11:52:44
+- **RATIO_IMBALANCE** [crypto] flz — 2026-10-28T11:52:44
 
 ## Missed Trades (trader comparison)
 
@@ -29,7 +29,7 @@ _None_
 
 **Held:** 1 | **Watching for reentry:** 24 | **Reentered:** 0
 
-- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +1.9%
+- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +1.7%
 
 - WATCHING: **1000PEPEUSDC** LONG (crypto) peaked +12.1%, exited 0m ago
 - WATCHING: **PR** LONG (tradier) peaked +11.2%, exited 0m ago
@@ -47,8 +47,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
+- [MEDIUM] tradier_manage.py for trc is NOT running
 - [LOW] tradier_prices.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] tradier_positions.py running but log stale (58min)
