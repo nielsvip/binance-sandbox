@@ -306,15 +306,6 @@ def _ts(row: dict) -> float:
     return ts_of(row)
 
 
-def _pieces_in(src_root: Path, acct: str, ss: str):
-    d = src_root / acct
-    out = []
-    for f in [d / f"{ss}.jsonl"] + sorted(d.glob(f"{ss}.jsonl*.bak")) + sorted((d / "archive").glob(f"{ss}.*.jsonl*")):
-        if f.is_file() and HA.ledger_name(f) == ss:
-            out.append(f)
-    return out
-
-
 def _read_lines(f: Path):
     try:
         return HA._open_lines(f)
@@ -329,17 +320,23 @@ def recover(target_root: Path, sources: list, dry=False, now=None) -> dict:
     now = time.time() if now is None else now
     cutoff = now - RECOVER_OLDER_THAN_S
     rep = {"ledgers": 0, "rows_added": 0, "by_source": {}, "files": []}
-    names = set()
+    index = {}  # (acct, ss) -> [(source, file)] in source priority order; each source dir is listed once
     for s in sources:
         for acct in ACCOUNTS:
             d = Path(s) / acct
             if not d.is_dir() or d.is_symlink():
                 continue
-            for f in list(d.glob("*.jsonl*")) + list((d / "archive").glob("*.jsonl*")):
+            files = []
+            for dd in (d, d / "archive"):
+                try:
+                    files += [Path(e.path) for e in os.scandir(dd) if e.is_file() and ".jsonl" in e.name]
+                except OSError:
+                    pass
+            for f in sorted(files, key=lambda x: (0 if x.name.endswith(".jsonl") and x.parent == d else 1, x.name)):
                 ss = HA.ledger_name(f)
                 if ss and re.fullmatch(r"[A-Za-z0-9_.-]+_(?:LONG|SHORT)", ss):
-                    names.add((acct, ss))
-    for acct, ss in sorted(names):
+                    index.setdefault((acct, ss), []).append((str(s), f))
+    for acct, ss in sorted(index):
         live = target_root / acct / f"{ss}.jsonl"
         have, sigs = set(), {}
         for r in HA.iter_rows(live):
@@ -348,29 +345,28 @@ def recover(target_root: Path, sources: list, dry=False, now=None) -> dict:
             if g:
                 sigs.setdefault(g, []).append(_ts(r))
         add = []
-        for s in sources:
-            for f in _pieces_in(Path(s), acct, ss):
-                for line in _read_lines(f):
-                    line = line.strip()
-                    try:
-                        r = json.loads(line)
-                    except ValueError:
-                        continue
-                    if not isinstance(r, dict):
-                        continue
-                    t = _ts(r)
-                    if t <= 0 or t >= cutoff:
-                        continue
-                    k = _identity(r)
-                    if k in have:
-                        continue
-                    g = _sig(r)
-                    if g and any(abs(t - x) < ECHO_WINDOW_S for x in sigs.get(g, [])):
-                        continue
-                    have.add(k)
-                    if g:
-                        sigs.setdefault(g, []).append(t)
-                    add.append((t, line, str(s)))
+        for s, f in index[(acct, ss)]:
+            for line in _read_lines(f):
+                line = line.strip()
+                try:
+                    r = json.loads(line)
+                except ValueError:
+                    continue
+                if not isinstance(r, dict):
+                    continue
+                t = _ts(r)
+                if t <= 0 or t >= cutoff:
+                    continue
+                k = _identity(r)
+                if k in have:
+                    continue
+                g = _sig(r)
+                if g and any(abs(t - x) < ECHO_WINDOW_S for x in sigs.get(g, [])):
+                    continue
+                have.add(k)
+                if g:
+                    sigs.setdefault(g, []).append(t)
+                add.append((t, line, str(s)))
         if not add:
             continue
         add.sort(key=lambda x: x[0])
