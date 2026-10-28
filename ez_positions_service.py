@@ -8584,7 +8584,7 @@ class PositionService:
             parts = position_key.split(':')
             account_key = parts[0] if len(parts) > 0 else "unknown"
             symbol_side = parts[1] if len(parts) > 1 else position_key
-            hist_dir = Path(self.config.DATA_DIR) / "history" / account_key
+            hist_dir = Path(self.config.DATA_DIR) / "decisions" / account_key
             hist_dir.mkdir(parents=True, exist_ok=True)
             filename = hist_dir / f"{symbol_side}.jsonl"
             try:
