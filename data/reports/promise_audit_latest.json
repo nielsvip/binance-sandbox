@@ -1,14 +1,13 @@
 {
- "generated_utc": "2026-10-28T14:12:03.978962+00:00",
+ "generated_utc": "2026-10-28T15:12:35.269648+00:00",
  "days": 1.0,
  "totals": {
   "entry_promises": 84,
   "entry_broken_no_delivery": 84,
-  "exit_promises": 110,
-  "exit_broken_no_delivery": 108,
+  "exit_promises": 111,
+  "exit_broken_no_delivery": 110,
   "exit_skipped_inflight": 1328,
-  "exit_kept_late": 1,
-  "exit_pending": 1
+  "exit_kept_late": 1
  },
  "per_key": {
   "inf:PENGUUSDC_LONG": {
@@ -276,8 +275,8 @@
    "entry_broken_no_delivery": 2
   },
   "inf:BNBUSDC_LONG": {
-   "exit_promises": 2,
-   "exit_broken_no_delivery": 2,
+   "exit_promises": 3,
+   "exit_broken_no_delivery": 3,
    "entry_promises": 2,
    "entry_broken_no_delivery": 2
   },
@@ -313,10 +312,9 @@
   },
   "inf:ARUSDT_LONG": {
    "exit_promises": 2,
-   "exit_broken_no_delivery": 1,
+   "exit_broken_no_delivery": 2,
    "entry_promises": 1,
-   "entry_broken_no_delivery": 1,
-   "exit_pending": 1
+   "entry_broken_no_delivery": 1
   }
  },
  "detail": [
@@ -2249,6 +2247,26 @@
    "action": "CLOSE",
    "reason": "FIXED_STOP",
    "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "ARUSDT_LONG",
+   "kind": "exit",
+   "bar": "10-28 13:45",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "FIXED_STOP",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "BNBUSDC_LONG",
+   "kind": "exit",
+   "bar": "10-28 14:00",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "FIXED_STOP",
+   "outcome": "NO_DELIVERY"
   }
  ],
  "broken": [
@@ -2397,6 +2415,71 @@
   },
   {
    "ts": 1793196401.6446788,
+   "kind": "BROKEN",
+   "acct": "inf",
+   "key": "inf:BTCDOMUSDT_LONG",
+   "sym_side": "BTCDOMUSDT_LONG",
+   "label": "CLOSE VEC_EXIT_OWED",
+   "why": "EXIT_WEDGED_FORCED",
+   "is_exit": true,
+   "bar_ts": null,
+   "lag_s": null,
+   "detail": "inflight_age_s=100"
+  },
+  {
+   "ts": 1793196765.351464,
+   "kind": "BROKEN",
+   "acct": "inf",
+   "key": "inf:BTCDOMUSDT_LONG",
+   "sym_side": "BTCDOMUSDT_LONG",
+   "label": "CLOSE VEC_EXIT_OWED",
+   "why": "EXIT_WEDGED_FORCED",
+   "is_exit": true,
+   "bar_ts": null,
+   "lag_s": null,
+   "detail": "inflight_age_s=101"
+  },
+  {
+   "ts": 1793197073.945615,
+   "kind": "BROKEN",
+   "acct": "inf",
+   "key": "inf:BTCDOMUSDT_LONG",
+   "sym_side": "BTCDOMUSDT_LONG",
+   "label": "CLOSE VEC_EXIT_OWED",
+   "why": "EXIT_WEDGED_FORCED",
+   "is_exit": true,
+   "bar_ts": null,
+   "lag_s": null,
+   "detail": "inflight_age_s=141"
+  },
+  {
+   "ts": 1793197743.421659,
+   "kind": "BROKEN",
+   "acct": "inf",
+   "key": "inf:BTCDOMUSDT_LONG",
+   "sym_side": "BTCDOMUSDT_LONG",
+   "label": "CLOSE VEC_EXIT_OWED",
+   "why": "EXIT_WEDGED_FORCED",
+   "is_exit": true,
+   "bar_ts": null,
+   "lag_s": null,
+   "detail": "inflight_age_s=108"
+  },
+  {
+   "ts": 1793198324.658774,
+   "kind": "BROKEN",
+   "acct": "inf",
+   "key": "inf:BTCDOMUSDT_LONG",
+   "sym_side": "BTCDOMUSDT_LONG",
+   "label": "CLOSE VEC_EXIT_OWED",
+   "why": "EXIT_WEDGED_FORCED",
+   "is_exit": true,
+   "bar_ts": null,
+   "lag_s": null,
+   "detail": "inflight_age_s=106"
+  },
+  {
+   "ts": 1793199339.487635,
    "kind": "BROKEN",
    "acct": "inf",
    "key": "inf:BTCDOMUSDT_LONG",
