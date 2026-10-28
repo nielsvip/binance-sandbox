@@ -376,18 +376,12 @@ def _parse_kline_bytes(raw: bytes):
     return json.loads(raw)
 
 
-def _kline_window(path: Path, close_ts: datetime, window: int):
-    """(window_df, full_df) for one TF file as of close_ts.
+_PREFIX_CACHE_VERSION = 1
+_PREFIX_MIN_TAIL = 1400  # rows kept out of the cached prefix beyond the window (window + 400 loader margin + 1000 slack)
+_PREFIX_MAX_TAIL = 6000  # re-anchor the prefix once the parsed tail grows past this
 
-    window_df is exactly the last `window` rows of what _load_klines_df(path).loc[:close_ts] returns: the same loader
-    body runs on the file's tail rows, and the file is proven strictly time-ordered (every row one fixed ISO-Z format)
-    so the rows before the tail cannot sort into it. full_df holds the whole-history open/high/low/close series (prefix
-    rows + window rows) for the few fields whose value depends on the first bar of the file. full_df is None when
-    the whole file was parsed (window_df then IS the full computation's frame). (None, None) = the TF has no usable
-    data (the full path skips it the same way)."""
-    data = _parse_kline_bytes(path.read_bytes())
-    if not data:
-        return None, None
+
+def _stamps_checked(path: Path, data) -> np.ndarray:
     try:
         stamps = np.array([row["timestamp"] for row in data])
     except (KeyError, TypeError) as e:
@@ -396,36 +390,162 @@ def _kline_window(path: Path, close_ts: datetime, window: int):
         raise _IncrementalRefused(f"{path.name}: timestamps not in one fixed ISO-Z format")
     if len(stamps) > 1 and not bool((stamps[1:] > stamps[:-1]).all()):
         raise _IncrementalRefused(f"{path.name}: rows not strictly time-ordered")
+    return stamps
+
+
+def _prefix_cache_path(cache_dir: Path, path: Path) -> Path:
+    import hashlib
+    tag = hashlib.sha1(str(path.resolve()).encode()).hexdigest()[:10]
+    return cache_dir / f"{path.stem}.{tag}.npz"
+
+
+def _prefix_cache_load(cache_dir: Optional[Path], path: Path, raw: bytes):
+    """The cached prefix of this kline file if its bytes are still byte-identical, else None."""
+    if cache_dir is None:
+        return None
+    import hashlib
+    cpath = _prefix_cache_path(cache_dir, path)
+    try:
+        with np.load(str(cpath), allow_pickle=False) as z:
+            meta = json.loads(str(z["meta"]))
+            if meta.get("v") != _PREFIX_CACHE_VERSION or meta.get("src") != str(path.resolve()):
+                return None
+            off = int(meta["off"])
+            if len(raw) <= off or hashlib.sha1(raw[:off]).hexdigest() != meta["sha1"]:
+                return None
+            return {"off": off, "n": int(meta["n"]), "last_stamp": meta["last_stamp"], "smfi": float(z["smfi"][0]),
+                    "open": z["open"], "high": z["high"], "low": z["low"], "close": z["close"]}
+    except (OSError, KeyError, ValueError):
+        return None
+
+
+def _prefix_cache_save(cache_dir: Optional[Path], path: Path, raw: bytes, base_off: int, base_rows: int, total_rows: int, stamps: np.ndarray, rows: int, arrays: Dict[str, np.ndarray], smfi_at: float) -> None:
+    """Cache rows [0, rows) of the file: their byte prefix digest, o/h/l/c, and the running smfi after row rows-1.
+    `stamps` are the timestamps of the rows parsed from byte offset base_off (= file row base_rows onward)."""
+    if cache_dir is None or rows <= base_rows or rows >= total_rows:
+        return
+    import hashlib
+    stamp = str(stamps[rows - base_rows])
+    pos = raw.find(('"' + stamp + '"').encode(), base_off)
+    brace = raw.rfind(b"{", base_off, pos) if pos > 0 else -1
+    if brace <= 0:
+        return
+    try:
+        check = _parse_kline_bytes(b"[" + raw[brace:])
+    except Exception:
+        return
+    if len(check) != total_rows - rows or str(check[0].get("timestamp")) != stamp:
+        return
+    meta = {"v": _PREFIX_CACHE_VERSION, "src": str(path.resolve()), "off": brace, "sha1": hashlib.sha1(raw[:brace]).hexdigest(),
+            "n": rows, "last_stamp": str(stamps[rows - 1 - base_rows]) if rows - 1 >= base_rows else None}
+    if meta["last_stamp"] is None:
+        return
+    cpath = _prefix_cache_path(cache_dir, path)
+    try:
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        tmp = cpath.with_name(f".{cpath.name}.{os.getpid()}.tmp.npz")
+        np.savez(str(tmp), meta=np.array(json.dumps(meta)), smfi=np.array([smfi_at], dtype=np.float64),
+                 **{col: np.ascontiguousarray(arrays[col][:rows], dtype=np.float64) for col in ("open", "high", "low", "close")})
+        os.replace(str(tmp), str(cpath))
+    except OSError as e:
+        logger.debug(f"[NPZ-ROW-INC] prefix cache save failed {cpath}: {e}")
+
+
+def _smfi_running(o: np.ndarray, h: np.ndarray, l: np.ndarray, c: np.ndarray, first: int, value: float) -> np.ndarray:
+    """compute_smfi's running sum continued from `value` (= its smfi[first-1]) over rows first..n-1, in the same
+    operation order: smfi[i] = smfi[i-1] + (c[i] - mid[i]) - (mid[i] - o[i]), mid = (h + l) / 2.0. Result has n entries,
+    the ones before `first` are 0.0 placeholders (never read: callers use the tail)."""
+    mid = ((h + l) / 2.0).tolist()
+    cl, op = c.tolist(), o.tolist()
+    out = [0.0] * len(cl)
+    out[first - 1] = value
+    for i in range(first, len(cl)):
+        smart = cl[i] - mid[i]
+        retail = mid[i] - op[i]
+        value = value + smart - retail
+        out[i] = value
+    return np.array(out, dtype=np.float64)
+
+
+def _smfi_fields(running: np.ndarray, closes: np.ndarray, period: int = 20) -> Dict[str, Any]:
+    """compute_smfi's return dict from its running series (same np.mean/round/compare as compute_smfi)."""
+    smfi_sma = float(np.mean(np.ascontiguousarray(running[-period:])))
+    price_sma = float(np.mean(np.ascontiguousarray(closes[-period:])))
+    smfi_val = float(running[-1])
+    price_val = float(closes[-1])
+    bull_div = price_val < price_sma and smfi_val > smfi_sma
+    bear_div = price_val > price_sma and smfi_val < smfi_sma
+    return {"smfi": round(smfi_val, 4), "smfi_sma": round(smfi_sma, 4), "smfi_bull_divergence": bull_div,
+            "smfi_bear_divergence": bear_div, "smfi_signal": "LONG" if bull_div else ("SHORT" if bear_div else "NEUTRAL")}
+
+
+def _kline_window(path: Path, close_ts: datetime, window: int, cache_dir: Optional[Path] = None):
+    """(window_df, full) for one TF file as of close_ts.
+
+    window_df is exactly the last `window` rows of what _load_klines_df(path).loc[:close_ts] returns: the same loader
+    body runs on the file's tail rows, and the file is proven strictly time-ordered (every row one fixed ISO-Z format)
+    so no earlier row can sort into it. `full` carries the whole-history open/high/low/close series and the smfi
+    running-sum anchor for the few fields whose value depends on the file's FIRST bar. Rows before the parsed tail come
+    from a byte-validated prefix cache (sha1 of the file's leading bytes == cached digest, else the whole file is
+    parsed and the cache rebuilt). full is None when the whole file was parsed AND fits the window (window_df then IS
+    the full computation's frame). (None, None) = the TF has no usable data (the full path skips it the same way)."""
+    raw = path.read_bytes()
+    cache = _prefix_cache_load(cache_dir, path, raw)
+    base_rows, base_off = (cache["n"], cache["off"]) if cache is not None else (0, 0)
+    data = _parse_kline_bytes(b"[" + raw[base_off:] if cache is not None else raw)
+    if not data:
+        if cache is not None:
+            raise _IncrementalRefused(f"{path.name}: empty tail after cached prefix")
+        return None, None
+    stamps = _stamps_checked(path, data)
+    if cache is not None and not str(stamps[0]) > cache["last_stamp"]:
+        raise _IncrementalRefused(f"{path.name}: tail does not continue the cached prefix")
     close_iso = close_ts.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
     upto = int(np.searchsorted(stamps, close_iso, side="right"))
-    start = max(0, upto - window - 400)
+    start = upto - window - 400
+    if start < 0:
+        if cache is not None:
+            # the bar asked for needs rows inside the cached prefix (an old bar): parse the whole file instead
+            return _kline_window(path, close_ts, window, None)
+        start = 0
     min_stamp = None
-    if start:
+    if start or cache is not None:
         min_stamp = int(datetime.fromisoformat(str(stamps[start]).replace("Z", "+00:00")).timestamp())
     try:
         df = _klines_df_from_rows(path, data[start:], min_stamp)
     except _OverlayBeforeWindow as e:
         raise _IncrementalRefused(str(e))
     if df is None or df.empty:
-        if start:
+        if min_stamp is not None:
             raise _IncrementalRefused(f"{path.name}: tail rows produced no frame")
         return None, None
     if df.index.tz is None:
         df.index = df.index.tz_localize(timezone.utc)
     df = df.loc[:close_ts]
-    if not start:
+    if min_stamp is None:
         INCREMENTAL_STATS["tf_full_history"] += 1
         return (df, None) if len(df) >= 5 else (None, None)
     if len(df) < window:
         raise _IncrementalRefused(f"{path.name}: {len(df)} window rows < {window}")
-    full = {}
+    arrays = {}
     for col in ("open", "high", "low", "close"):
         values = [row.get(col) for row in data[:start]]
         if not set(map(type, values)) <= {float, int}:
             raise _IncrementalRefused(f"{path.name}: non-numeric {col} before the window")
-        full[col] = np.concatenate([np.array(values, dtype=np.float64), df[col].to_numpy(dtype=np.float64)])
+        parts = [np.array(values, dtype=np.float64), df[col].to_numpy(dtype=np.float64)]
+        if cache is not None:
+            parts.insert(0, cache[col])
+        arrays[col] = np.concatenate(parts)
+    first, value = (base_rows, cache["smfi"]) if cache is not None else (1, 0.0)
+    running = _smfi_running(arrays["open"], arrays["high"], arrays["low"], arrays["close"], first, value)
+    total_rows = base_rows + len(data)
+    live_bar = upto >= len(data) - 8
+    if live_bar and (cache is None or len(data) > _PREFIX_MAX_TAIL):
+        rows = total_rows - window - _PREFIX_MIN_TAIL
+        if base_rows < rows <= base_rows + start:
+            _prefix_cache_save(cache_dir, path, raw, base_off, base_rows, total_rows, stamps, rows, arrays, float(running[rows - 1]))
     INCREMENTAL_STATS["tf_windowed"] += 1
-    return df.iloc[-window:], pd.DataFrame(full)
+    return df.iloc[-window:], {"frame": pd.DataFrame(arrays), "smfi_running": running}
 
 
 def _same(a, b) -> bool:
@@ -436,24 +556,31 @@ def _same(a, b) -> bool:
     return type(a) is type(b) and a == b
 
 
-def _patch_long_memory(module, res: Dict[str, Any], tf: str, window_df: pd.DataFrame, full_df: pd.DataFrame, window: int) -> None:
+def _patch_long_memory(module, res: Dict[str, Any], tf: str, window_df: pd.DataFrame, full: Dict[str, Any], window: int) -> None:
     """Replace the window values of the fields that depend on the file's FIRST bar with the exact full-series value.
 
-    smfi_* is a cumulative sum from bar 1, ema_*_std_* a pandas rolling std whose online state carries rounding from
-    bar 1, ema_N_* / atr_long_* recursive filters (span 200 / alpha 1/100 decay too slowly for a window). Each one is
-    recomputed by the SAME module function compute() calls, on the full series. Before that, the same call on the
-    window frame must reproduce compute()'s own window value bit for bit (proves the key wiring); any miss refuses."""
+    smfi_* is a cumulative sum from bar 1 (continued from the cached running value), ema_*_std_* a pandas rolling std
+    whose online state carries rounding from bar 1, ema_N_* / atr_long_* recursive filters (span 200 / alpha 1/100 decay
+    too slowly for a window). ema/std/atr are recomputed by the SAME module function compute() calls, on the full
+    series. Before any replacement the same call on the window frame must reproduce compute()'s own window value bit
+    for bit (proves the key wiring), and the smfi continuation must reproduce module.compute_smfi on the window; any
+    miss refuses the whole row (-> full computation)."""
+    full_df = full["frame"]
     def series(frame, col):
         return frame[col].astype(float)
-    if all(f"{k}_{tf}" in res for k in ("smfi", "smfi_sma", "smfi_bull_div", "smfi_bear_div")):
-        def smfi(frame):
-            sm = module.compute_smfi(series(frame, "open").tolist(), series(frame, "high").tolist(), series(frame, "low").tolist(), series(frame, "close").tolist(), 20)
-            return {f"smfi_{tf}": sm["smfi"], f"smfi_sma_{tf}": sm["smfi_sma"], f"smfi_bull_div_{tf}": 1 if sm["smfi_bull_divergence"] else 0, f"smfi_bear_div_{tf}": 1 if sm["smfi_bear_divergence"] else 0}
-        check = smfi(window_df)
-        if not all(_same(check[k], res[k]) for k in check):
-            raise _IncrementalRefused(f"smfi wiring {tf}: {check} vs window compute")
-        res.update(smfi(full_df))
-    elif any(f"{k}_{tf}" in res for k in ("smfi", "smfi_sma", "smfi_bull_div", "smfi_bear_div")):
+    smfi_keys = [f"{k}_{tf}" for k in ("smfi", "smfi_sma", "smfi_bull_div", "smfi_bear_div")]
+    if all(k in res for k in smfi_keys):
+        def as_keys(sm):
+            return {smfi_keys[0]: sm["smfi"], smfi_keys[1]: sm["smfi_sma"], smfi_keys[2]: 1 if sm["smfi_bull_divergence"] else 0, smfi_keys[3]: 1 if sm["smfi_bear_divergence"] else 0}
+        o, h, l, c = (series(window_df, col) for col in ("open", "high", "low", "close"))
+        reference = module.compute_smfi(o.tolist(), h.tolist(), l.tolist(), c.tolist(), 20)
+        replica = _smfi_fields(_smfi_running(np.array(o.tolist()), np.array(h.tolist()), np.array(l.tolist()), np.array(c.tolist()), 1, 0.0), np.array(c.tolist()))
+        if reference != replica:
+            raise _IncrementalRefused(f"smfi continuation {tf}: {replica} != compute_smfi {reference}")
+        if as_keys(reference) != {k: res[k] for k in smfi_keys} or not all(type(as_keys(reference)[k]) is type(res[k]) for k in smfi_keys):
+            raise _IncrementalRefused(f"smfi wiring {tf}")
+        res.update(as_keys(_smfi_fields(full["smfi_running"], full_df["close"].to_numpy(dtype=np.float64))))
+    elif any(k in res for k in smfi_keys):
         raise _IncrementalRefused(f"partial smfi keys {tf}")
     for key in list(res):
         hit = re.fullmatch(rf"ema_(\d+)_std_{re.escape(tf)}", key)
@@ -498,6 +625,7 @@ def _compute_row_incremental(symbol: str, close_ts: datetime, kline_manager, mod
     window = _row_window()
     base = getattr(kline_manager, "base_path", None) if kline_manager is not None else None
     base = Path.cwd() if base is None else Path(base)
+    cache_dir = None if os.environ.get("NPZ_ROW_PREFIX_CACHE", "1") == "0" else base / "data" / "npz_row_prefix_cache"
     calculator = module.IndicatorCalculator()
     row: Dict[str, Any] = {"timestamps": int(close_ts.timestamp())}
     try:
@@ -505,7 +633,7 @@ def _compute_row_incremental(symbol: str, close_ts: datetime, kline_manager, mod
             fname = _resolve_kline_path(symbol, tf, mode, base)
             if fname is None:
                 continue
-            window_df, full_df = _kline_window(fname, close_ts, window)
+            window_df, full = _kline_window(fname, close_ts, window, cache_dir)
             if window_df is None or window_df.empty:
                 continue
             if mode == "tradier":
@@ -514,8 +642,8 @@ def _compute_row_incremental(symbol: str, close_ts: datetime, kline_manager, mod
                 res = calculator.compute(window_df, tf, None, False, close_ts)
             if not res:
                 continue
-            if full_df is not None:
-                _patch_long_memory(module, res, tf, window_df, full_df, window)
+            if full is not None:
+                _patch_long_memory(module, res, tf, window_df, full, window)
             _merge_tf_result(row, res, tf, "15m")
     except _IncrementalRefused as e:
         INCREMENTAL_STATS["refused"] += 1

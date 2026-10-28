@@ -319,3 +319,17 @@ def test_wait_next_wakes_on_new_state_and_on_plan_now(tmp_path):
     t0 = time.time()
     t.wait_next(t0 - V.MIN_PASS_GAP_S, 30.0)
     assert time.time() - t0 < 1.0 and t.plan_now and t.last_wake.startswith("plan_now") and not (t.out / "PLAN_NOW_crypto").exists()
+
+
+def test_untradeable_no_verdict_closes_held_and_blocks_opens():
+    """OPERATOR 2026-10-28: a side with no verdict from the new kline is closed on every account and gets no opens; no
+    breaker applies (even when every held side is untradeable)."""
+    pos = {"XUSDT_LONG": {"qty": 3.0, "price": 1.0}, "YUSDT_SHORT": {"qty": 2.0, "price": 1.0}}
+    states = {"XUSDT_LONG": st(True), "YUSDT_SHORT": st(True), "ZUSDT_LONG": st(True)}
+    un = {s: {"bar": BAR, "reason": "state ok=False"} for s in ("XUSDT_LONG", "YUSDT_SHORT", "ZUSDT_LONG")}
+    orders, notes = V.plan_account("ang", "crypto", {"XUSDT_LONG", "YUSDT_SHORT", "ZUSDT_LONG"}, states, pos, BAR, set(), ALLOW, untradeable=un)
+    acts = {o["ss"]: o for o in orders}
+    assert set(acts) == {"XUSDT_LONG", "YUSDT_SHORT"} and all(o["act"] == "CLOSE" and o["reason"] == "UNTRADEABLE_NO_VERDICT" for o in orders)
+    assert acts["XUSDT_LONG"]["qty"] == 3.0 and any(s == "ZUSDT_LONG" and n.startswith("UNTRADEABLE_NO_OPEN") for s, n in notes)
+    orders, notes = V.plan_account("ang", "crypto", {"XUSDT_LONG"}, states, pos, BAR, set(), ALLOW, untradeable=un, untradeable_close=False)
+    assert not orders and any("CLOSE_DISABLED" in n for _, n in notes)

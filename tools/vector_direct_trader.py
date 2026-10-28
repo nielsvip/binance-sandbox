@@ -273,7 +273,7 @@ def no_information(st) -> bool:
     return (not st.get("ok")) and st.get("reason") == "missing live settings" and st.get("src") == "missing_published_per_sym_row"
 
 
-def plan_account(acct, venue, keys, states, positions, bar, done, allowed, prev_qty=None, wt15=None, noinfo_age=None):
+def plan_account(acct, venue, keys, states, positions, bar, done, allowed, prev_qty=None, wt15=None, noinfo_age=None, untradeable=None, untradeable_close=True):
     """Orders that converge one account to the board. positions: {ss: {"qty": abs qty, "price": px}} read just now.
     prev_qty: {ss: broker qty observed BEFORE this bar closed} — an AUGMENT/REDUCE the broker already shows was done by
     someone else (the Mac) and is not repeated. wt15: callable ss -> {bar_ts, wt1_15m, wt2_15m} of the latest closed 15m
@@ -293,9 +293,23 @@ def plan_account(acct, venue, keys, states, positions, bar, done, allowed, prev_
             notes.extend((s, f"NOINFO_BREAKER {len(aged)}/{len(held_sides)} held sides without information — no closes") for s in sorted(aged))
         else:
             noinfo = aged
+    untradeable = untradeable or {}
     for ss in sorted(keyset | set(held_sides)):
         st = states.get(ss)
         held = float((positions.get(ss) or {}).get("qty") or 0.0)
+        # OPERATOR 2026-10-28 (verbatim): "EVERY tradeable sym_side needs to have a verdict with a quantity from a NEW kline right
+        # then and there or a position needs to be closed and declared untradeable and sounding all bells and whistles".
+        # tools/s1_bar_guarantee.py declares a side UNTRADEABLE (data/vector_direct/untradeable_<venue>.json) once its repair
+        # chain for the new bar is exhausted: close it NOW on every account, no opens until a fresh ok state returns. No grace
+        # and no NOINFO_BREAKER here (operator rule); kill switch data/vector_direct/UNTRADEABLE_CLOSE_DISABLED.
+        if ss in untradeable:
+            u = untradeable[ss] or {}
+            if held > 0 and untradeable_close:
+                orders.append({"acct": acct, "ss": ss, "act": "CLOSE", "qty": held, "key": f"{acct}|{ss}|{u.get('bar')}|UNTRADEABLE_NO_VERDICT",
+                               "why": f"UNTRADEABLE_NO_VERDICT bar {u.get('bar')}: {str(u.get('reason'))[:200]}", "reason": "UNTRADEABLE_NO_VERDICT"})
+            else:
+                notes.append((ss, f"UNTRADEABLE_NO_OPEN{'_CLOSE_DISABLED' if held > 0 else ''} bar {u.get('bar')}"))
+            continue
         if held > 0 and ss in noinfo:
             why_state = "no state file" if not isinstance(st, dict) else f"state ok={st.get('ok')} reason={st.get('reason')} src={st.get('src')}"
             wt = (wt15(ss) or {}) if wt15 is not None else {}
@@ -1026,6 +1040,8 @@ class Trader:
                 self.done.discard(k)
                 self.done_ts.pop(k, None)
         orders_n = 0
+        untradeable = (read_json(self.out / f"untradeable_{self.venue}.json", {}) or {}).get("sides") or {}
+        untradeable_close = not (self.out / "UNTRADEABLE_CLOSE_DISABLED").exists()
         if self.__dict__.pop("plan_now", False):
             self.last_plan = {}
         consumed = self.__dict__.setdefault("consumed", {})
@@ -1047,19 +1063,24 @@ class Trader:
             self.with_held_states(states, pos)
             t_obs, prev = self.obs.get(acct, (0, {}))
             prev_qty = prev if t_obs and bar - BAR_S <= t_obs < bar + BAR_S else {}
-            orders, notes = plan_account(acct, self.venue, keys.get(acct, ()), states, pos, bar, self.done, allowed, prev_qty, wt15=self.wt15, noinfo_age=self.noinfo_age)
+            orders, notes = plan_account(acct, self.venue, keys.get(acct, ()), states, pos, bar, self.done, allowed, prev_qty, wt15=self.wt15, noinfo_age=self.noinfo_age,
+                                         untradeable=untradeable, untradeable_close=untradeable_close)
             planned_at = time.time()
+            for o in orders:
+                if o.get("reason") == "UNTRADEABLE_NO_VERDICT":
+                    log(f"CRITICAL UNTRADEABLE CLOSE {acct} {o['ss']} qty={o['qty']} — {o['why']}")
+                    self.alert("UNTRADEABLE_CLOSE", account=acct, sym_side=o["ss"], qty=o["qty"], why=o["why"], severity="CRITICAL")
             # consumed_<venue>.json: which state (npz_tail, ts) this account was planned against, first time per state —
             # read by tools/s1_bar_guarantee.py as the per-bar "executed" stage
             for ss in set(keys.get(acct, ())) | set(pos):
                 st = states.get(ss) or {}
-                sig = [st.get("npz_tail"), st.get("ts")]
+                sig = [st.get("npz_tail"), st.get("ts"), (untradeable.get(ss) or {}).get("bar")]
                 row = consumed.setdefault(ss, {}).get(acct)
                 if not row or row.get("sig") != sig:
                     consumed[ss][acct] = {"sig": sig, "npz_tail": st.get("npz_tail"), "ok": bool(st.get("ok")), "at": planned_at,
                                           "orders": [o["act"] for o in orders if o["ss"] == ss], "keys": [o["key"] for o in orders if o["ss"] == ss],
                                           "held": float((pos.get(ss) or {}).get("qty") or 0.0), "allowed": bool(allowed(acct, ss)) if (ss in keys.get(acct, ()) and st.get("open") and not (pos.get(ss) or {}).get("qty")) else None,
-                                          "notes": [n for s, n in notes if s == ss]}
+                                          "notes": [n for s, n in notes if s == ss], "untradeable_bar": (untradeable.get(ss) or {}).get("bar")}
                     consumed_dirty = True
             self.obs[acct] = (now, {ss: p["qty"] for ss, p in pos.items()})
             for ss, n in notes:
@@ -1084,7 +1105,9 @@ class Trader:
                   "market_open": market_ok, "active_accounts": active, "triggers": trig, "hb_age_s": None if hb_age is None else round(hb_age, 1),
                   "bar": bar, "states_fresh": fresh_n, "states_total": len(all_sides), "held_without_fresh_state": unmanaged, "pending_expectations": len(self.expect),
                   "orders_this_pass": orders_n, "start_position_size": START_POSITION_SIZE, "pin": self.pinned(now),
-                  "pass_s": round(time.time() - now, 3), "wake": self.__dict__.get("last_wake")}
+                  "pass_s": round(time.time() - now, 3), "wake": self.__dict__.get("last_wake"),
+                  "untradeable": sorted(untradeable), "untradeable_close_enabled": untradeable_close,
+                  "bells": read_json(self.root / "data" / "bar_guarantee" / f"BELLS_{self.venue}.json")}
         atomic_write_json(self.out / f"status_{self.venue}.json", status)
         return status
 

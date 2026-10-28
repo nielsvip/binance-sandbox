@@ -45,8 +45,10 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tools"))
 BAR_S = 900
 RECV_DEADLINE_S = 35.0
-APPEND_DEADLINE_S = 45.0
-STATE_DEADLINE_S = 90.0
+RECV_REPAIR_AT = (35.0, 50.0, 70.0)
+APPEND_REPAIR_AT = (45.0, 60.0, 80.0)
+STATE_REPAIR_AT = (90.0, 110.0)
+NO_VERDICT_S = float(os.environ.get("BAR_GUARANTEE_NO_VERDICT_S", "300"))
 EXEC_AFTER_STATE_S = 10.0
 LATE_S = float(os.environ.get("BAR_GUARANTEE_LATE_S", "90"))
 FINAL_S = 600.0
@@ -89,7 +91,7 @@ def engine_ast_sha(path: Path):
     return hashlib.sha256(ast.dump(ast.parse(path.read_text()), include_attributes=False).encode()).hexdigest()
 
 
-def repair_append(base: Path, symbols, bar, mode):
+def repair_append(base: Path, symbols, bar, mode, result_file=""):
     """Subprocess body: append the closed bar `bar` for exactly these symbols (npz_tail_service functions)."""
     import npz_tail_service as T
     out = {}
@@ -112,6 +114,8 @@ def repair_append(base: Path, symbols, bar, mode):
         except Exception as exc:
             out[symbol] = f"{type(exc).__name__}: {str(exc)[:120]}"
     print(json.dumps(out), flush=True)
+    if result_file:
+        atomic_json(Path(result_file), out)
     return 0
 
 
@@ -138,6 +142,196 @@ def expected_size_ok(act, row, cons, st, start_size):
     if want <= 0:
         return True, "engine act without size"
     return 0.5 * want <= qty <= 1.6 * want or abs(qty - want) * price < 6.0, f"qty {qty} vs {want:.6g}"
+
+
+# ───────────── BAR FREEZE ─────────────
+# OPERATOR 2026-10-28 (verbatim): "LIVE TRADING is ALWAYS the most important thing so from the moment :00/15/30/45 kline arrives
+# until all trades ahve executed according to the rolling forward per_sym vector settings all backtesting is pauesed - this will
+# never take >10s (max 1min) then backtesting 100% again until next [15m] bar approaches" + "THIS IS ABOUT s5 (during market
+# hours) but also applies to s1".
+# Mechanism = SIGSTOP/SIGCONT of the backtest PROCESSES (+ their descendants), not a whole-cgroup freeze: on S5 the backtests live
+# in ssh session scopes next to their own sshd, the Mac->S5 bar receiver (closed_15m_feed receive), closed_15m_cache_bridge and
+# per_sym_settings_feed; on S1 cron.service also holds the cron daemon, live keepalives and closed_15m_cache_bridge. Freezing those
+# cgroups would freeze the bar lane / ssh keepalives (a frozen sshd lets the dispatcher's ServerAlive kill the board). Only
+# processes whose command line is a backtest are stopped; live units, sshd/ssh/rsync and every bar/settings feeder never are.
+FREEZE_INCLUDE = ("v15_pilot.py", "s5_replay_driver.py", "tools/opt/", "backtest_v12_engine", "backtest_v8_precompute", "npz_bar_refresh.py",
+                  "npz_bar_ingest.py", "vec_forward_npz_refresh.py", "v15_stranded_board_requeue", "v15_local_herd", "v15_overnight_herd",
+                  "dc_simple_8_sweep", "v15_mega", "v15_switch_healer")
+FREEZE_NEVER = ("s1_bar_guarantee", "vector_direct", "fwdstate_npz_watch", "npz_tail_service", "npz_tail_compactor", "closed_15m", "closed_bar",
+                "stock_15m_clock", "crypto_15m_clock", "per_sym_settings_feed", "v15_forward_state", "sshd", "rsync", "/ssh ", "ssh -", "scp ",
+                "systemd", "cron", "fleet_watchdog", "fleet_dispatch", "live_mode", "vec_bar_trigger", "klines", "ez_", "tradier_")
+FREEZE_NEVER_CGROUPS = ("/system.slice/s1-", "/system.slice/s5-", "/system.slice/vector-direct", "/system.slice/ssh.service", "/init.scope",
+                        "/system.slice/systemd-")
+FREEZE_CAP_S = float(os.environ.get("BAR_FREEZE_CAP_S", "60"))
+FAILSAFE_S = 75.0
+
+
+def _proc_table():
+    out = {}
+    for d in os.listdir("/proc"):
+        if not d.isdigit():
+            continue
+        pid = int(d)
+        try:
+            with open(f"/proc/{d}/cmdline", "rb") as fh:
+                cmd = fh.read().replace(b"\0", b" ").decode("utf-8", "ignore").strip()
+            with open(f"/proc/{d}/stat") as fh:
+                st = fh.read()
+            rest = st[st.rfind(")") + 2:].split()
+            with open(f"/proc/{d}/cgroup") as fh:
+                cg = fh.read().strip().split(":")[-1]
+            out[pid] = {"cmd": cmd, "state": rest[0], "ppid": int(rest[1]), "cpu": int(rest[11]) + int(rest[12]), "uid": os.stat(f"/proc/{d}").st_uid, "cg": cg}
+        except (OSError, IndexError, ValueError):
+            continue
+    return out
+
+
+def freeze_targets(table=None):
+    """PIDs to stop: backtest command lines (FREEZE_INCLUDE) and all their descendants, minus FREEZE_NEVER / live cgroups / self."""
+    table = table if table is not None else _proc_table()
+    me, uid = os.getpid(), os.getuid()
+    bad = lambda p: (p["uid"] != uid or any(x in p["cmd"] for x in FREEZE_NEVER) or any(p["cg"].startswith(c) for c in FREEZE_NEVER_CGROUPS) or not p["cmd"])
+    roots = {pid for pid, p in table.items() if pid != me and not bad(p) and any(x in p["cmd"] for x in FREEZE_INCLUDE)}
+    kids = {}
+    for pid, p in table.items():
+        kids.setdefault(p["ppid"], []).append(pid)
+    out, stack = set(), list(roots)
+    while stack:
+        pid = stack.pop()
+        if pid in out or pid == me:
+            continue
+        p = table.get(pid)
+        if p is None or bad(p):
+            continue
+        out.add(pid)
+        stack.extend(kids.get(pid, []))
+    return out
+
+
+class BarFreeze:
+    def __init__(self, out: Path, venue: str):
+        self.out, self.venue = out, venue
+        self.state_path = out / f"FROZEN_{venue}.json"
+        self.state = None
+        self.pre = None  # (t, {pid: cpu ticks}) sampled ~10 s before the close
+        self.post = None
+
+    def enabled(self):
+        return os.environ.get("BAR_FREEZE", "1") != "0" and not (self.out / "FREEZE_DISABLED").exists()
+
+    def log(self, row):
+        row = {"iso": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")[:-4] + "Z", "epoch": time.time(), "host": socket.gethostname(), "venue": self.venue, **row}
+        try:
+            with open(self.out / f"freeze_{dt.datetime.now(dt.timezone.utc):%Y-%m-%d}.jsonl", "a") as fh:
+                fh.write(json.dumps(row, default=str) + "\n")
+        except OSError:
+            pass
+        return row
+
+    @staticmethod
+    def cpu_cores(a, b):
+        (t0, c0), (t1, c1) = a, b
+        common = set(c0) & set(c1)
+        dt_s = max(1e-6, t1 - t0)
+        return round(sum(max(0, c1[p] - c0[p]) for p in common) / os.sysconf("SC_CLK_TCK") / dt_s, 2), len(common)
+
+    def sample(self):
+        table = _proc_table()
+        return time.time(), {pid: table[pid]["cpu"] for pid in freeze_targets(table)}
+
+    def freeze(self, bar, close):
+        if self.state or not self.enabled():
+            return
+        pids = freeze_targets()
+        stopped = self._signal(pids, "SIGSTOP")
+        self.state = {"bar": bar, "close": close, "since": time.time(), "pids": sorted(stopped), "added": 0}
+        atomic_json(self.state_path, self.state)
+        pre = None
+        if self.pre and close - 15 <= self.pre[0] <= close:
+            pre = self.cpu_cores(self.pre, (time.time(), {p: c for p, c in self.sample()[1].items()}))
+        self.log({"event": "FREEZE", "bar": bar, "after_close_s": round(self.state["since"] - close, 3), "pids": len(stopped),
+                  "cmd_examples": self._examples(stopped), "pre_cpu_cores": pre[0] if pre else None, "pre_cpu_pids": pre[1] if pre else None})
+        log(f"FREEZE {self.venue} bar {bar}: {len(stopped)} backtest pids stopped at +{self.state['since'] - close:.2f}s (pre cpu {pre})")
+
+    def refreeze(self):
+        """New backtests launched during the freeze (fleet dispatch over ssh) are stopped too."""
+        if not self.state:
+            return
+        new = freeze_targets() - set(self.state["pids"])
+        if new:
+            stopped = self._signal(new, "SIGSTOP")
+            self.state["pids"] = sorted(set(self.state["pids"]) | stopped)
+            self.state["added"] += len(stopped)
+            atomic_json(self.state_path, self.state)
+
+    def thaw(self, reason, waiting=None):
+        st = self.state or read_json(self.state_path)
+        if not st:
+            return None
+        resumed = self._signal(set(st.get("pids") or []), "SIGCONT")
+        try:
+            self.state_path.unlink()
+        except OSError:
+            pass
+        self.state = None
+        dur = time.time() - float(st.get("since") or time.time())
+        row = self.log({"event": "THAW", "bar": st.get("bar"), "reason": reason, "frozen_s": round(dur, 3),
+                        "after_close_s": round(time.time() - float(st.get("close") or time.time()), 3), "pids": len(resumed),
+                        "added_during_freeze": st.get("added", 0), "waiting_on": waiting})
+        log(f"THAW {self.venue} bar {st.get('bar')}: {reason} after {dur:.2f}s, {len(resumed)} pids resumed, waiting_on={waiting}")
+        self.post = (time.time(), st.get("bar"))
+        return row
+
+    def after_thaw_sample(self):
+        """CPU of the backtests in the 10 s right after a thaw vs the ~10 s before the close (they must resume at 100%)."""
+        if not self.post:
+            return
+        t, bar = self.post
+        post0 = getattr(self, "post0", None)
+        if post0 is None and time.time() - t >= 0.5:
+            self.post0 = self.sample()
+        elif post0 is not None and time.time() - post0[0] >= 10:
+            post = self.cpu_cores(post0, self.sample())
+            self.log({"event": "RESUMED_CPU", "bar": bar, "post_cpu_cores": post[0], "post_cpu_pids": post[1]})
+            self.post0 = None
+            self.post = None
+
+    def _signal(self, pids, sig):
+        import signal as _s
+        done = set()
+        for pid in pids:
+            try:
+                os.kill(pid, getattr(_s, sig))
+                done.add(pid)
+            except (ProcessLookupError, PermissionError):
+                continue
+        return done
+
+    @staticmethod
+    def _examples(pids):
+        t = _proc_table()
+        names = {}
+        for p in pids:
+            c = (t.get(p) or {}).get("cmd", "")
+            k = next((x for x in FREEZE_INCLUDE if x in c), c[:40])
+            names[k] = names.get(k, 0) + 1
+        return names
+
+
+def failsafe(out: Path):
+    """Independent timer (bar-freeze-failsafe.timer, every 15 s): anything frozen longer than FAILSAFE_S is resumed."""
+    for path in out.glob("FROZEN_*.json"):
+        st = read_json(path) or {}
+        age = time.time() - float(st.get("since") or 0)
+        if age >= FAILSAFE_S:
+            bf = BarFreeze(out, path.stem.split("_", 1)[1])
+            bf.state = st
+            row = bf.thaw(f"FAILSAFE frozen {age:.0f}s >= {FAILSAFE_S:.0f}s")
+            for p in (out / "ALERTS.jsonl",):
+                with open(p, "a") as fh:
+                    fh.write(json.dumps({"kind": "BAR_FREEZE_FAILSAFE_THAW", **(row or {})}) + "\n")
+            print(json.dumps(row), flush=True)
+    return 0
 
 
 class Guarantee:
@@ -183,6 +377,7 @@ class Guarantee:
         self.procs = []
         self.last_poke = 0.0
         self.last_status = 0.0
+        self.freezer = BarFreeze(self.out, self.venue)
 
     # ── inputs ──
     def host_engine(self):
@@ -398,10 +593,11 @@ class Guarantee:
                 if len(ats) == len(r["accts"]):
                     r["exec_at"] = max(ats)
 
+    # ── repair chain; OPERATOR 2026-10-28: no verdict from the new kline -> CLOSE + UNTRADEABLE right then ──
     def repair(self, now):
         b = self.bar
         age = now - b["close"]
-        for at in (RECV_DEADLINE_S, 60.0, 120.0, 240.0):
+        for at in RECV_REPAIR_AT:
             tag = f"recv@{at:.0f}"
             if age >= at and tag not in b["done_stage"]:
                 b["done_stage"].add(tag)
@@ -412,24 +608,27 @@ class Guarantee:
                         b["syms"][s]["repairs"].append({"stage": "recv", "at": round(age, 1), "result": res.get(s)})
                     b["repairs_n"] += len(missing)
                     self.alert("BAR_MISSING", missing, f"fallback fetch at +{age:.0f}s: " + json.dumps(res)[:400])
-        for at in (APPEND_DEADLINE_S, 75.0, 120.0, 240.0):
+                    if at == RECV_REPAIR_AT[-1]:
+                        lost = {s: res.get(s) for s in missing if res.get(s) not in ("landed", "arrived_meanwhile")}
+                        self.declare({ss: f"no bar {self.iso(b['bar'])} from the Mac lane or the exchange ({lost[ss.rsplit('_', 1)[0]]})"
+                                      for ss in b["sides"] if ss.rsplit("_", 1)[0] in lost}, "bar")
+        self.collect_appends()
+        for i, at in enumerate(APPEND_REPAIR_AT):
             tag = f"append@{at:.0f}"
             if age >= at and tag not in b["done_stage"]:
                 b["done_stage"].add(tag)
-                missing = [s for s, r in b["syms"].items() if r["append_at"] is None]
+                missing = [s for s, r in b["syms"].items() if r["append_at"] is None and r["recv_at"] is not None]
                 if missing:
-                    have_bar = [s for s in missing if b["syms"][s]["recv_at"] is not None]
-                    if have_bar:
-                        self.spawn_append(have_bar, b["bar"])
+                    self.spawn_append(missing, b["bar"], final=(i == len(APPEND_REPAIR_AT) - 1))
                     for s in missing:
-                        b["syms"][s]["repairs"].append({"stage": "append", "at": round(age, 1), "spawned": s in have_bar})
-                    b["repairs_n"] += len(have_bar)
-                    self.alert("NPZ_NOT_APPENDED", missing, f"append subprocess for {len(have_bar)} (others still lack the bar)")
-        for at in (STATE_DEADLINE_S, 150.0, 300.0):
+                        b["syms"][s]["repairs"].append({"stage": "append", "at": round(age, 1)})
+                    b["repairs_n"] += len(missing)
+                    self.alert("NPZ_NOT_APPENDED", missing, f"append subprocess at +{age:.0f}s")
+        for at in STATE_REPAIR_AT:
             tag = f"state@{at:.0f}"
             if age >= at and tag not in b["done_stage"]:
                 b["done_stage"].add(tag)
-                missing = [ss for ss, r in b["sides"].items() if r["state_ok_at"] is None]
+                missing = [ss for ss, r in b["sides"].items() if r["state_ok_at"] is None and not r["untr_at"]]
                 if missing:
                     self.prio.mkdir(parents=True, exist_ok=True)
                     for ss in missing:
@@ -437,26 +636,36 @@ class Guarantee:
                             (self.prio / ss).write_text(f"{now} bar {b['bar']}")
                         except OSError:
                             pass
+                        b["sides"][ss]["prio_at"] = b["sides"][ss]["prio_at"] or now
                         b["sides"][ss]["repairs"].append({"stage": "state", "at": round(age, 1), "reason": b["sides"][ss]["reason"]})
                     b["repairs_n"] += len(missing)
                     self.alert("STATE_NOT_OK", [f"{ss}({b['sides'][ss]['reason']})" for ss in missing], "priority recompute (forward_state_priority)")
-        late = [ss for ss, r in b["sides"].items() if r["state_ok_at"] and r["exec_at"] is None and now - r["state_ok_at"] >= EXEC_AFTER_STATE_S]
+        # state errored AFTER its priority recompute -> no verdict for this bar
+        errored = {ss: f"state for the new bar not ok after the priority recompute: {r['reason']}" for ss, r in b["sides"].items()
+                   if not r["state_ok_at"] and not r["untr_at"] and r["prio_at"] and r["state_last_at"] and r["state_last_at"] > r["prio_at"]}
+        if errored:
+            self.declare(errored, "state")
+        if age >= NO_VERDICT_S:
+            stuck = {ss: f"no ok state {NO_VERDICT_S:.0f}s after the close (recv={'yes' if b['syms'][ss.rsplit('_', 1)[0]]['recv_at'] else 'NO'} "
+                         f"npz={'yes' if b['syms'][ss.rsplit('_', 1)[0]]['append_at'] else 'NO'} state_reason={r['reason']})"
+                     for ss, r in b["sides"].items() if not r["state_ok_at"] and not r["untr_at"]}
+            if stuck:
+                self.declare(stuck, "chain_exhausted")
+        late = [ss for ss, r in b["sides"].items() if ((r["state_ok_at"] and r["exec_at"] is None and now - r["state_ok_at"] >= EXEC_AFTER_STATE_S)
+                                                       or (r["untr_at"] and not r["untr_ack_at"] and now - r["untr_at"] >= 2))]
         if late and now - self.last_poke >= 5.0:
             self.last_poke = now
-            try:
-                (self.vd / f"PLAN_NOW_{self.venue}").write_text(f"s1_bar_guarantee bar {b['bar']} {len(late)} sides e.g. {late[:3]}")
-            except OSError:
-                pass
+            self.poke(f"{len(late)} sides e.g. {late[:3]}")
             for ss in late:
                 b["sides"][ss]["repairs"].append({"stage": "exec", "at": round(age, 1)})
             b["repairs_n"] += 1
-            log(f"POKE trader: {len(late)} ok states not consumed >= {EXEC_AFTER_STATE_S:.0f}s: {late[:6]}")
+            log(f"POKE trader: {len(late)} resolved states not consumed: {late[:6]}")
         overdue = [ss for ss, r in b["sides"].items() if r["state_ok_at"] and r["exec_at"] is None and now - r["state_ok_at"] >= 30.0
                    and f"exec_alert:{ss}" not in b["done_stage"]]
         if overdue:
             for ss in overdue:
                 b["done_stage"].add(f"exec_alert:{ss}")
-            self.alert("NOT_EXECUTED", overdue, "PLAN_NOW poke sent; trader has not planned these 30 s after the ok state")
+            self.ring("NOT_EXECUTED", f"trader has not planned {len(overdue)} ok states 30 s after they landed", sides=overdue)
         bad = [ss for ss, r in b["sides"].items() if r["verify"] and not (r["verify"]["settings_ok"] and r["verify"]["engine_ok"]) and f"verify:{ss}" not in b["done_stage"]]
         if bad:
             for ss in bad:
@@ -467,6 +676,103 @@ class Guarantee:
                 except OSError:
                     pass
             self.alert("STATE_SETTINGS_OR_ENGINE_MISMATCH", [f"{ss}(settings_ok={b['sides'][ss]['verify']['settings_ok']},engine_ok={b['sides'][ss]['verify']['engine_ok']})" for ss in bad], "priority recompute")
+
+    def poke(self, why):
+        try:
+            (self.vd / f"PLAN_NOW_{self.venue}").write_text(f"s1_bar_guarantee bar {self.bar['bar'] if self.bar else '?'} {why}")
+        except OSError:
+            pass
+
+    def declare(self, reasons, stage):
+        """No verdict from the new kline: mark UNTRADEABLE (trader closes every held account position at once, no opens)."""
+        if not reasons:
+            return
+        b = self.bar
+        now = time.time()
+        doc = read_json(self.vd / f"untradeable_{self.venue}.json", {}) or {}
+        sides = doc.get("sides") or {}
+        for ss, why in reasons.items():
+            b["sides"][ss]["untr_at"] = now
+            b["sides"][ss]["untr_reason"] = f"{stage}: {why}"
+            sides[ss] = {"bar": b["bar"], "since": now, "iso": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "stage": stage, "reason": why}
+        atomic_json(self.vd / f"untradeable_{self.venue}.json", {"epoch": now, "sides": sides})
+        self.poke(f"UNTRADEABLE {len(reasons)}")
+        held_sides = [ss for ss in reasons if b["sides"][ss]["held"]]
+        self.ring("UNTRADEABLE_DECLARED", f"{len(reasons)} sides have no verdict for bar {self.iso(b['bar'])} ({stage}); {len(held_sides)} held -> CLOSE on every account",
+                  sides=sorted(reasons), held=sorted(held_sides), reasons={k: str(v)[:160] for k, v in list(reasons.items())[:40]})
+        n_held = sum(1 for r in b["sides"].values() if r["held"])
+        n_untr_held = sum(1 for r in b["sides"].values() if r["held"] and r["untr_at"])
+        if n_held and n_untr_held > max(3, 0.25 * n_held):
+            self.ring("UNTRADEABLE_MASS", f"{n_untr_held}/{n_held} held sides untradeable in bar {self.iso(b['bar'])} — closing them (operator rule, no breaker); "
+                      f"kill switch: touch {self.vd}/UNTRADEABLE_CLOSE_DISABLED", held=n_held, untradeable_held=n_untr_held)
+
+    def restore_tradeable(self):
+        doc = read_json(self.vd / f"untradeable_{self.venue}.json", {}) or {}
+        sides = doc.get("sides") or {}
+        back = []
+        for ss, u in list(sides.items()):
+            st, _ = self.read_state(ss)
+            if isinstance(st, dict) and st.get("ok") and int(st.get("npz_tail") or 0) >= int(u.get("bar") or 0) and int(st.get("npz_tail") or 0) >= int(time.time() // BAR_S) * BAR_S - 2 * BAR_S:
+                if self.bar and ss in self.bar["sides"] and self.bar["sides"][ss]["untr_at"] and not self.bar["sides"][ss]["state_ok_at"]:
+                    continue
+                back.append(ss)
+                sides.pop(ss)
+        if back:
+            atomic_json(self.vd / f"untradeable_{self.venue}.json", {"epoch": time.time(), "sides": sides})
+            self.ring("TRADEABLE_RESTORED", f"{len(back)} sides have a fresh ok state again", sides=back, level="INFO")
+
+    def ring(self, kind, msg, level="CRITICAL", **fields):
+        """BELLS: ALERTS.jsonl (ours + trader's), a CRITICAL line in the trader log, BELLS_<venue>.json (trader status -> Mac)."""
+        now = time.time()
+        item = {"id": f"{self.venue}-{kind}-{now:.3f}", "epoch": now, "iso": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "host": socket.gethostname(), "venue": self.venue, "kind": kind, "level": level, "msg": msg,
+                "bar": self.bar["bar"] if self.bar else None, **fields}
+        for path in (self.out / "ALERTS.jsonl", self.vd / "ALERTS.jsonl"):
+            try:
+                with open(path, "a") as fh:
+                    fh.write(json.dumps({"kind": f"BAR_GUARANTEE_{kind}", **item}, default=str) + "\n")
+            except OSError:
+                pass
+        line = f"[{item['iso']}] {level} BAR_GUARANTEE {kind}: {msg}"
+        try:
+            with open(self.trader_log, "a") as fh:
+                fh.write(line + "\n")
+        except OSError:
+            pass
+        log(line)
+        self.bells = (self.bells + [item])[-30:]
+        self.write_bells()
+
+    def write_bells(self):
+        fz = self.freezer.state
+        atomic_json(self.out / f"BELLS_{self.venue}.json", {"epoch": time.time(), "items": self.bells,
+                                                             "frozen": {"bar": fz["bar"], "since": fz["since"], "pids": len(fz["pids"])} if fz else None,
+                                                             "untradeable": sorted(((read_json(self.vd / f"untradeable_{self.venue}.json", {}) or {}).get("sides") or {}))})
+
+    def collect_appends(self):
+        keep = []
+        for p, f, res_path, syms, final in self.procs:
+            if p.poll() is None:
+                keep.append((p, f, res_path, syms, final))
+                continue
+            f.close()
+            res = read_json(res_path, {}) or {}
+            if not self.bar:
+                continue
+            failed = {}
+            for s in syms:
+                r = res.get(s, "no result (subprocess died)")
+                if s in self.bar["syms"]:
+                    self.bar["syms"][s]["repairs"].append({"stage": "append_result", "result": r})
+                if r not in ("appended", "current") and s in self.bar["syms"] and not self.bar["syms"][s]["append_at"]:
+                    failed[s] = r
+            if failed and final:
+                self.declare({ss: f"NPZ row for the new bar failed after {len(APPEND_REPAIR_AT)} append repairs: {failed[ss.rsplit('_', 1)[0]]}"
+                              for ss in self.bar["sides"] if ss.rsplit("_", 1)[0] in failed and not self.bar["sides"][ss]["state_ok_at"]}, "npz")
+        self.procs = keep
+
+    def side_resolved(self, r):
+        return bool((r["state_ok_at"] and r["exec_at"]) or (r["untr_at"] and r["untr_ack_at"]))
 
     def fetch_bars(self, symbols, bar):
         import concurrent.futures as cf
@@ -527,16 +833,26 @@ class Guarantee:
                         "_source": "tradier_timesales_15min_s5_fallback"}, ""
         return None, "bar not returned"
 
-    def spawn_append(self, symbols, bar):
+    def spawn_append(self, symbols, bar, final=False):
         logf = open(self.out / f"repair_append_{self.venue}.log", "a")
+        res_path = self.out / f".repair_append_{self.venue}_{bar}_{int(time.time() * 1000)}.json"
         p = subprocess.Popen([sys.executable, "-u", str(Path(__file__).resolve()), "--venue", self.venue, "--repair-append", ",".join(symbols),
-                              "--bar", str(bar), "--base", str(self.base)], cwd=str(self.base), stdout=logf, stderr=subprocess.STDOUT, start_new_session=True)
-        self.procs.append((p, logf))
-        log(f"REPAIR append pid {p.pid} for {symbols[:10]}")
+                              "--bar", str(bar), "--base", str(self.base), "--result-file", str(res_path)], cwd=str(self.base), stdout=logf,
+                             stderr=subprocess.STDOUT, start_new_session=True)
+        self.procs.append((p, logf, res_path, list(symbols), final))
+        log(f"REPAIR append pid {p.pid} for {symbols[:10]}{' (final)' if final else ''}")
+
+    def waiting_on(self):
+        b = self.bar
+        sides = [(ss, r) for ss, r in b["sides"].items() if not self.side_resolved(r)]
+        return {"recv": sorted({ss.rsplit("_", 1)[0] for ss, _ in sides if not b["syms"][ss.rsplit("_", 1)[0]]["recv_at"]}),
+                "append": sorted({ss.rsplit("_", 1)[0] for ss, _ in sides if not b["syms"][ss.rsplit("_", 1)[0]]["append_at"]}),
+                "state_ok": sorted(f"{ss}({r['reason']})" for ss, r in sides if not r["state_ok_at"] and not r["untr_at"]),
+                "exec": sorted(ss for ss, r in sides if r["state_ok_at"] and not r["exec_at"]),
+                "untradeable_close_ack": sorted(ss for ss, r in sides if r["untr_at"] and not r["untr_ack_at"])}
 
     def complete(self):
-        b = self.bar
-        return all(r["append_at"] for r in b["syms"].values()) and all(r["state_ok_at"] and r["exec_at"] for r in b["sides"].values())
+        return all(self.side_resolved(r) for r in self.bar["sides"].values())
 
     # ── exactness audit ──
     def ledger_rows(self, b):
@@ -704,10 +1020,19 @@ class Guarantee:
     def loop(self):
         log(f"s1_bar_guarantee {self.venue} start base={self.base} live={self.live} states={self.state_dir} store={self.store} start_size={self.start_size}")
         self.follow_receipts()
+        self.freezer.thaw("startup")
+        frozen_for = None
         while True:
             now = time.time()
             try:
                 bar = int(now // BAR_S) * BAR_S - BAR_S
+                close = bar + BAR_S
+                next_close = close + BAR_S
+                if frozen_for != bar and 0 <= now - close < 5 and self.tracked_bar(bar):
+                    frozen_for = bar
+                    self.freezer.freeze(bar, close)
+                if 8 <= next_close - now <= 12 and (self.freezer.pre is None or self.freezer.pre[0] < next_close - 15):
+                    self.freezer.pre = self.freezer.sample()
                 if self.bar and (now - self.bar["close"] >= FINAL_S or (self.bar["bar"] != bar and self.complete())):
                     self.finalize(now)
                 if self.bar is None and (not self.history or self.history[-1]["bar"] < bar) and self.tracked_bar(bar) and now - (bar + BAR_S) < FINAL_S:
@@ -719,13 +1044,30 @@ class Guarantee:
                     if self.complete() and "complete" not in self.bar["done_stage"]:
                         self.bar["done_stage"].add("complete")
                         log(f"{self.venue} bar {self.iso(self.bar['bar'])} COMPLETE at +{now - self.bar['close']:.1f}s")
+                if self.freezer.state:
+                    fz = self.freezer.state
+                    if self.bar and self.bar["bar"] == fz["bar"] and self.complete():
+                        self.freezer.thaw("bar_done")
+                    elif now - fz["since"] >= FREEZE_CAP_S or (self.bar is None and now - fz["close"] > 10) or (self.bar and self.bar["bar"] != fz["bar"]):
+                        waiting = self.waiting_on() if self.bar and self.bar["bar"] == fz["bar"] else {"no_bar_record": True}
+                        self.freezer.thaw(f"CAP {FREEZE_CAP_S:.0f}s", waiting)
+                        if self.bar:
+                            self.alert("FREEZE_CAP_THAW", [f"{k}:{len(v)}" for k, v in waiting.items() if v], f"backtests resumed at the {FREEZE_CAP_S:.0f}s cap; late stages {json.dumps(waiting)[:300]}")
+                    else:
+                        self.freezer.refreeze()
+                self.freezer.after_thaw_sample()
                 self.procs = [(p, f) for p, f in self.procs if p.poll() is None or f.close()]
                 if now - self.last_status >= 2.0:
                     self.last_status = now
                     self.write_status(now)
             except Exception as exc:
                 log(f"loop error {type(exc).__name__}: {str(exc)[:300]}")
-            time.sleep(max(0.05, 1.0 - (time.time() - now)))
+                try:
+                    self.freezer.thaw(f"exception {type(exc).__name__}")
+                except Exception:
+                    pass
+            nc = (int(time.time() // BAR_S) + 1) * BAR_S
+            time.sleep(max(0.02, min(1.0 - (time.time() - now), nc - time.time() + 0.01)))
 
 
 def main():
@@ -737,10 +1079,15 @@ def main():
     ap.add_argument("--store-db", default=os.environ.get("PER_SYM_STORE_DB", ""))
     ap.add_argument("--local-ip", default=os.environ.get("VD_LOCAL_IP", "5.75.211.216"))
     ap.add_argument("--repair-append", default="")
+    ap.add_argument("--result-file", default="")
+    ap.add_argument("--trader-log", default=str(Path.home() / "logs" / "vector_direct_trader.log"))
+    ap.add_argument("--failsafe", action="store_true", help="oneshot: resume anything frozen longer than 75 s (systemd timer)")
     ap.add_argument("--bar", type=int, default=0)
     a = ap.parse_args()
+    if a.failsafe:
+        return failsafe(Path(a.live_root).expanduser() / "data" / "bar_guarantee")
     if a.repair_append:
-        return repair_append(Path(a.base).expanduser(), [s for s in a.repair_append.split(",") if s], a.bar, "crypto" if a.venue == "crypto" else "tradier")
+        return repair_append(Path(a.base).expanduser(), [s for s in a.repair_append.split(",") if s], a.bar, "crypto" if a.venue == "crypto" else "tradier", a.result_file)
     import fcntl
     out = Path(a.live_root).expanduser() / "data" / "bar_guarantee"
     out.mkdir(parents=True, exist_ok=True)
