@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-28T23:25:08.728174+00:00",
+  "ts": "2026-10-28T23:30:05.877835+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 17,
-  "pending_sym_sides": 136,
+  "fleet_published_last_60m": 8,
+  "pending_sym_sides": 133,
   "hosts": {
     "s1": {
       "published_last_60m": 1,
@@ -15,16 +15,16 @@
       "boards_running": 2,
       "workers": 13,
       "workers_vs_law_28": "13/28",
-      "mem_avail_mb": 12248,
-      "disk_free_gb": 27,
-      "load1": 8.8,
+      "mem_avail_mb": 11320,
+      "disk_free_gb": 26,
+      "load1": 15.6,
       "dispatch_idle_why": "full 2/2",
       "published_ss": [
         "ENJUSDT_SHORT"
       ]
     },
     "s2": {
-      "published_last_60m": 2,
+      "published_last_60m": 1,
       "published_last_3h": 2,
       "boards": {
         "BATUSDT_LONG": 7,
@@ -34,29 +34,29 @@
       "boards_running": 3,
       "workers": 21,
       "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 4287,
+      "mem_avail_mb": 2714,
       "disk_free_gb": 45,
-      "load1": 21.1,
+      "load1": 18.1,
       "dispatch_idle_why": "full 3/3",
       "published_ss": [
-        "MAGICUSDT_LONG",
         "QNTUSDT_LONG"
       ]
     },
     "s5": {
-      "published_last_60m": 7,
-      "published_last_3h": 30,
+      "published_last_60m": 6,
+      "published_last_3h": 29,
       "boards": {
         "CIBR_LONG": 0,
         "GOOGL_LONG": 7,
-        "LNG_LONG": 0
+        "LDOS_LONG": 7,
+        "LNG_LONG": 7
       },
-      "boards_running": 3,
-      "workers": 7,
-      "workers_vs_law_28": "7/28",
-      "mem_avail_mb": 22518,
+      "boards_running": 4,
+      "workers": 21,
+      "workers_vs_law_28": "21/28",
+      "mem_avail_mb": 17902,
       "disk_free_gb": 40,
-      "load1": 6.6,
+      "load1": 14.2,
       "dispatch_idle_why": "full 4/4",
       "published_ss": [
         "CME_LONG",
@@ -64,44 +64,19 @@
         "EQT_LONG",
         "MU_LONG",
         "ORCL_LONG",
-        "RS_LONG",
         "V_LONG"
       ]
     },
     "s6": {
-      "published_last_60m": 7,
-      "published_last_3h": 29,
-      "boards": {
-        "BA_SHORT": 7,
-        "BHP_SHORT": 7,
-        "BWXT_SHORT": 0,
-        "U_SHORT": 7
-      },
-      "boards_running": 4,
-      "workers": 21,
-      "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 17362,
-      "disk_free_gb": 27,
-      "load1": 13.1,
-      "dispatch_idle_why": "full 4/4",
-      "published_ss": [
-        "AMAT_SHORT",
-        "ASTS_SHORT",
-        "AU_SHORT",
-        "BABA_SHORT",
-        "BIDU_SHORT",
-        "BKR_SHORT",
-        "SCCO_SHORT"
-      ]
+      "unreachable": true
     }
   },
   "alerts": [
     "LOW_THROUGHPUT:s1:1/h<10 (idle_why=full 2/2)",
-    "DISK_FLOOR:s1:27GB<40",
-    "LOW_THROUGHPUT:s2:2/h<10 (idle_why=full 3/3)",
-    "LOW_THROUGHPUT:s5:7/h<10 (idle_why=full 4/4)",
-    "LOW_THROUGHPUT:s6:7/h<10 (idle_why=full 4/4)",
-    "DISK_FLOOR:s6:27GB<40"
+    "DISK_FLOOR:s1:26GB<40",
+    "LOW_THROUGHPUT:s2:1/h<10 (idle_why=full 3/3)",
+    "LOW_THROUGHPUT:s5:6/h<10 (idle_why=full 4/4)",
+    "UNREACHABLE:s6"
   ],
   "repair": null
 }

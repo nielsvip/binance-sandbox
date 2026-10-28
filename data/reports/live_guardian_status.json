@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-28T23:27:44Z",
+ "ts": "2026-10-28T23:33:00Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 71,
+   "fills_6h": 70,
    "open_positions": 17,
-   "unrealised_usd": 2.7,
+   "unrealised_usd": 2.47,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -44,8 +44,8 @@
   },
   "men": {
    "fills_6h": 114,
-   "open_positions": 21,
-   "unrealised_usd": 2.88,
+   "open_positions": 23,
+   "unrealised_usd": 2.3,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 119,
+   "fills_6h": 112,
    "open_positions": 31,
-   "unrealised_usd": 2.46,
+   "unrealised_usd": 1.6,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -75,14 +75,14 @@
    }
   },
   "inf": {
-   "fills_6h": 16,
-   "open_positions": 1,
-   "unrealised_usd": 0.03,
+   "fills_6h": 17,
+   "open_positions": 2,
+   "unrealised_usd": 0.02,
    "pos_mismatch": 0,
    "vec_parity": {
-    "live_vec_decisions": 5,
+    "live_vec_decisions": 6,
     "state_divergent": 0,
-    "filled": 0,
+    "filled": 1,
     "refused_non_safety": 2,
     "safety_refusals": 0,
     "not_filled_no_log": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 24,
    "open_positions": 8,
-   "unrealised_usd": 0.01,
+   "unrealised_usd": 0.04,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,73 +127,65 @@
     "20266"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 103.0
   },
   "men": {
    "pids": [
     "18231"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 19.0
   },
   "ang": {
    "pids": [
     "17150"
    ],
-   "starts_30m": 2,
-   "log_age_s": 186.0
+   "starts_30m": 0,
+   "log_age_s": 70.0
   },
   "inf": {
    "pids": [
     "89250"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 3.0
   },
   "flz": {
    "pids": [
     "88818"
    ],
    "starts_30m": 1,
-   "log_age_s": 6.0
+   "log_age_s": 19.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 12933.0
+   "log_age_s": 13249.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 12402.0
+   "log_age_s": 12718.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-28T23:27:46Z",
+   "ts": "2026-10-28T23:33:02Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "inf:PENGUUSDC_LONG",
    "evidence": "REDUCE PPL_TP_g3.03%>=3.00%_stopBE0.0077 bar=2026-10-28T20:45:00Z refused by non-safety gate: 28 21:02:04 - INFO - [inf] [VEC_EXACT] inf:PENGUUSDC_LONG CLOSE VEC_EXIT_OWED qty=1935.000000 -> SKIPPED_VX_INFLIGHT"
   },
   {
-   "ts": "2026-10-28T23:27:46Z",
+   "ts": "2026-10-28T23:33:02Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "inf:PENGUUSDC_LONG",
    "evidence": "OPEN TIER1_PRICE_CROSS_REENTRY_exit0.0079_cur bar=2026-10-28T21:00:00Z refused by non-safety gate: 28 21:15:57 - INFO - [inf] [VEC_EXACT] inf:PENGUUSDC_LONG CLOSE VEC_EXIT_OWED qty=1935.000000 -> SKIPPED_VX_INFLIGHT"
-  },
-  {
-   "ts": "2026-10-28T23:27:46Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 186s"
   }
  ],
  "alert_counts": {
-  "VEC_DECISION_REFUSED": 2,
-  "STALE_LOG": 1
+  "VEC_DECISION_REFUSED": 2
  },
  "active_interventions": {
   "acct:trc": {
@@ -239,5 +231,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.94
+ "sweep_s": 2.28
 }
