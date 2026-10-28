@@ -41,13 +41,6 @@
     "symbol": "BNBUSDC",
     "side": "LONG"
   },
-  "ang:DUSKUSDT_LONG": {
-    "orderId": "4000002002215236",
-    "stopPrice": 0.11254,
-    "entry_sig": "2026-10-27 23:47:43.396000+00:00",
-    "symbol": "DUSKUSDT",
-    "side": "LONG"
-  },
   "ang:DASHUSDT_LONG": {
     "orderId": "4000002002083236",
     "stopPrice": 54.3,
@@ -89,13 +82,6 @@
     "entry_sig": "2026-10-27 09:47:20.881000+00:00",
     "symbol": "ARBUSDC",
     "side": "LONG"
-  },
-  "ang:BIGTIMEUSDT_SHORT": {
-    "orderId": "4000002002016675",
-    "stopPrice": 0.006833,
-    "entry_sig": "2026-10-27 21:36:58.768000+00:00",
-    "symbol": "BIGTIMEUSDT",
-    "side": "SHORT"
   },
   "ang:STXUSDT_SHORT": {
     "orderId": "4000002002028315",
@@ -195,11 +181,18 @@
     "symbol": "EDUUSDT",
     "side": "SHORT"
   },
-  "ang:JASMYUSDT_SHORT": {
-    "orderId": "4000002002016676",
-    "stopPrice": 0.004344,
-    "entry_sig": "2026-10-27 21:36:59.361000+00:00",
-    "symbol": "JASMYUSDT",
+  "ang:PENGUUSDC_LONG": {
+    "orderId": "4000002002154450",
+    "stopPrice": 0.007627,
+    "entry_sig": "2026-10-27 23:16:27.977000+00:00",
+    "symbol": "PENGUUSDC",
+    "side": "LONG"
+  },
+  "ang:API3USDT_SHORT": {
+    "orderId": "4000002002807555",
+    "stopPrice": 0.2692,
+    "entry_sig": "2026-10-28 04:36:21.599000+00:00",
+    "symbol": "API3USDT",
     "side": "SHORT"
   },
   "ang:AVAXUSDC_LONG": {
@@ -209,11 +202,25 @@
     "symbol": "AVAXUSDC",
     "side": "LONG"
   },
-  "ang:PENGUUSDC_LONG": {
-    "orderId": "4000002002154450",
-    "stopPrice": 0.007627,
-    "entry_sig": "2026-10-27 23:16:27.977000+00:00",
-    "symbol": "PENGUUSDC",
+  "ang:JASMYUSDT_SHORT": {
+    "orderId": "4000002002016676",
+    "stopPrice": 0.004344,
+    "entry_sig": "2026-10-27 21:36:59.361000+00:00",
+    "symbol": "JASMYUSDT",
+    "side": "SHORT"
+  },
+  "ang:LINKUSDC_LONG": {
+    "orderId": "4000002002829283",
+    "stopPrice": 11.482,
+    "entry_sig": "2026-10-28 04:45:59.754000+00:00",
+    "symbol": "LINKUSDC",
+    "side": "LONG"
+  },
+  "ang:ZROUSDT_LONG": {
+    "orderId": "4000002002829889",
+    "stopPrice": 1.6603,
+    "entry_sig": "2026-10-28 04:46:09.564000+00:00",
+    "symbol": "ZROUSDT",
     "side": "LONG"
   }
 }
