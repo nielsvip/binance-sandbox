@@ -1,1 +1,1 @@
-{"error": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n  File \"/usr/lib/python3.12/json/__init__.py\", line 293, in load\n    return loads(fp.read(),\n           ^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/json/__init__.py\", line 346, in loads\n    return _default_decoder.decode(s)\n "}
+{"error": "mm_receive_fd: recvmsg: expected received 1 got 0\nproxy dialer did not pass back a connection"}
