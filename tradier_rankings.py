@@ -1149,7 +1149,7 @@ async def plot_dfs_subplots(
                     elif "stoch_crossunder" in reason_event: color_style, marker_style, is_vline, marker_size = "magenta", 'o', False, 4
                     elif "wt_crossover" in reason_event or "wt crossover" in reason_event: color_style, marker_style, is_vline, marker_size = "lime", '^', False, 8
                     elif "wt_crossunder" in reason_event or "wt crossunder" in reason_event: color_style, marker_style, is_vline, marker_size = "red", 'v', False, 8
-                    elif "wt strong alert" in reason_event: color_style = "lime" if action_event == "BUY" else "red"
+                    elif "wt strong alert" in reason_event: color_style, marker_style, is_vline, marker_size = ("lime", '^', False, 8) if action_event == "BUY" else ("red", 'v', False, 8)
                     elif "winners_up" in reason_event or "losers_down" in reason_event: is_vline, marker_style, color_style = False, '^', 'lime'
                     elif "winners_down" in reason_event or "losers_up" in reason_event: is_vline, marker_style, color_style = False, 'v', 'red'
                     t_idx = get_x_idx(ts_event)

@@ -6576,7 +6576,7 @@ async def plot_dfs_subplots(
                         color_style = "red"
                         marker_style = 'v'; is_vline = False; marker_size = 8
                     elif "wt strong alert" in reason_event:
-                        color_style = "lime" if action_event == "BUY" else "red"
+                        color_style, marker_style, is_vline, marker_size = ("lime", '^', False, 8) if action_event == "BUY" else ("red", 'v', False, 8)
                     elif "winners_up" in reason_event or "losers_down" in reason_event:
                         is_vline = False; marker_style = '^'; color_style = 'lime'
                     elif "winners_down" in reason_event or "losers_up" in reason_event:
