@@ -160,7 +160,16 @@ class Guarantee:
         self.VDT = VDT
         self.accounts = list(VDT.CRYPTO_ACCOUNTS if self.venue == "crypto" else VDT.STOCK_ACCOUNTS)
         env = VDT.load_env_files([self.live / ".env", Path.home() / ".env", Path.home() / "binance-sandbox" / ".env", self.vd / f"{self.venue}.env"])
-        self.start_size = float((getattr(VDT, "MANDATED_START", {}) or {}).get(self.venue) or VDT.START_POSITION_SIZE or env.get("VD_START_POSITION_SIZE") or 0)
+        # 2026-10-28: size the audit from the SAME authority the trader uses — the venue's own config
+        # file via VDT.apply_venue_sizing (crypto -> config.py, stocks -> config_tradier.py, market-mode
+        # applied). The old chain ended in env.get("VD_START_POSITION_SIZE"), a second source that no
+        # longer exists, so a stale env would have made this auditor flag every correctly sized order.
+        try:
+            VDT.apply_venue_sizing(self.venue)
+            self.start_size = float(VDT.START_POSITION_SIZE)
+        except Exception as _vse:
+            self.start_size = float((getattr(VDT, "MANDATED_START", {}) or {}).get(self.venue) or 0)
+            log(f"[SIZE-AUTHORITY-WARN] {type(_vse).__name__}: {_vse} — audit falls back to the {self.venue} mandate ${self.start_size}")
         self.env = env
         self.rc_pos = None
         self.recv = {}

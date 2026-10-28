@@ -181,7 +181,7 @@ SHOW_TOP_LEGEND = False  # top legend removed to regain vertical space
 SHOW_STOCK_MISMATCH = True  # USER 2026-10-24: faint reddish/greenish vlines for signal/fill discrepancies
 SHOW_STOCK_SIGNAL_ARROWS = False  # USER 2026-10-24: WT/winners lime-red triangles hidden (signal markers, not trades); code kept
 SHOW_TRADE_LOG_VLINES = False  # USER 2026-10-28: old full-height blue/red trade vlines from tradier_actions.log hidden; code kept
-SHOW_STOCK_OUTCOME_LINES = False  # USER 2026-10-28: stock green/red live exit bars hidden (unreadable); code kept
+SHOW_STOCK_OUTCOME_LINES = True  # USER 2026-10-28: stock green/red live exit bars ON (wanted); code kept
 STOCK_MISMATCH_TOL_MIN = 30.0
 import live_trade_history as _lth
 ACCOUNT_ARROW_ORDER = _lth.ACCOUNT_ARROW_ORDER
