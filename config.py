@@ -5310,7 +5310,7 @@ class Config:
     REGIME_TRENDING_NOLOSS_MIN: float = 0.50  # Let winners run in trends
     REGIME_TRENDING_EXIT_GAIN_MIN: float = 2.0  # Only exit at 2%+ gain
     REGIME_TRENDING_MIN_HOLD_BARS: int = 48  # 12h at 15m — hold longer
-    REGIME_TRENDING_WT_REDUCE_FRAC_LOW: float = 0.2  # Trim gently
+    REGIME_TRENDING_WT_REDUCE_FRAC_LOW: float = 0.05  # Trim gently
     REGIME_TRENDING_WT_REDUCE_FRAC_MED: float = 0.15  # Still gentle
     REGIME_TRENDING_WT_EXIT_VEL: float = -12.0  # Only exit on strong reversal
     REGIME_TRENDING_K_ZONE_BONUS: int = 15  # K-zone less important
