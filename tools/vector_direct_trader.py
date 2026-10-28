@@ -595,6 +595,9 @@ class Binance:
             return (q, "") if q >= mq else (0.0, f"qty {q} < minQty {mq}")
         if o["act"] == "AUGMENT":
             q = self._floor(max(float(o["qty"]), mn * 1.02 / price), step)
+            # 2026-10-28: flooring to the step pushed RAYSOLUSDT augments under the $5 min notional (-4164 on 3 accounts)
+            if q * price < mn * 1.02:
+                q = self._floor(mn * 1.02 / price + step, step)
             return (q, "") if q >= mq else (0.0, f"qty {q} < minQty {mq}")
         q = self._floor(min(float(o["qty"]), held), step)
         if q < mq or q <= 0:

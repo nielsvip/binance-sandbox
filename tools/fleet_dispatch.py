@@ -80,9 +80,9 @@ SLOTS = env_int("FLEET_SLOTS", 4)
 # forward-state writers (25-28 GB peak, 3 reboots on 10-27), so it holds ONE board; others keep FLEET_SLOTS. Override with
 # FLEET_HOST_SLOTS='{"s1": 1, "s5": 3}'.
 try:
-    HOST_SLOTS = {str(k): int(v) for k, v in json.loads(os.environ.get("FLEET_HOST_SLOTS", '{"s1": 1}')).items()}
+    HOST_SLOTS = {str(k): int(v) for k, v in json.loads(os.environ.get("FLEET_HOST_SLOTS", '{"s1": 3}')).items()}
 except (ValueError, TypeError, AttributeError):
-    HOST_SLOTS = {"s1": 1}
+    HOST_SLOTS = {"s1": 3}
 WORKERS = env_int("FLEET_WORKERS", 7)
 ORPHAN_SLOTS = env_int("FLEET_ORPHAN_SLOTS", 1)
 MEM_MIN_MB = env_int("FLEET_MEM_MIN_MB", 11000)  # 2026-10-28 operator: NO OOM — a 7-worker board peaks 8-9 GB, so a launch needs that much headroom beyond the 2-3 GB reserve

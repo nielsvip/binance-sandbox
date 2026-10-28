@@ -18,7 +18,9 @@ ROOT = Path(__file__).resolve().parents[1]
 MAC_DB = ROOT / "data/hourly_reconfig/per_sym_store.db"
 S1_DB = Path("/home/niels/binance/data/hourly_reconfig/per_sym_store.db")
 S1_SANDBOX_DB = Path("/home/niels/binance-sandbox/data/hourly_reconfig/per_sym_store.db")
+S5_DB = Path("/home/niels/binance-sandbox/data/hourly_reconfig/per_sym_store.db")
 REMOTE_SCRIPT = Path("/home/niels/binance-sandbox/tools/per_sym_history_sync.py")
+PILOT_PYTHON = "/home/niels/.conda/envs/binance_env_mac/bin/python"
 SSH = ["ssh", "-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=12"]
 
 
@@ -161,6 +163,30 @@ def run_push(host):
         source.close()
 
 
+def export_after(db, last):
+    source = connect(db)
+    try:
+        with gzip.GzipFile(fileobj=sys.stdout.buffer, mode="wb", compresslevel=6) as output:
+            for row in source.execute("SELECT * FROM per_sym_history WHERE id>? ORDER BY id", (last,)):
+                output.write((json.dumps(dict(row), separators=(",", ":"), default=str) + "\n").encode())
+    finally:
+        source.close()
+
+
+def run_pull_s5():
+    target = connect(S1_DB)
+    try:
+        last = progress(target, "s5")
+        remote = f"{PILOT_PYTHON} {REMOTE_SCRIPT} --export-after {last} --source-db {S5_DB}"
+        result = subprocess.run([*SSH, "niels@10.0.0.5", remote], capture_output=True, timeout=180)
+        if result.returncode:
+            raise RuntimeError(result.stderr.decode(errors="replace")[-500:])
+        records = (json.loads(line) for line in gzip.decompress(result.stdout).splitlines() if line.strip())
+        print(json.dumps(ingest_rows(target, "s5", records)), flush=True)
+    finally:
+        target.close()
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--host")
@@ -168,8 +194,15 @@ def main():
     parser.add_argument("--uids", action="store_true")
     parser.add_argument("--ingest")
     parser.add_argument("--ingest-file")
+    parser.add_argument("--pull-s5", action="store_true")
+    parser.add_argument("--export-after", type=int)
+    parser.add_argument("--source-db")
     args = parser.parse_args()
-    if args.uids:
+    if args.export_after is not None:
+        export_after(Path(args.source_db or S5_DB), args.export_after)
+    elif args.pull_s5:
+        run_pull_s5()
+    elif args.uids:
         target = connect(S1_DB)
         try:
             for (uid,) in target.execute("SELECT uid FROM per_sym_history_sync_uid"):
