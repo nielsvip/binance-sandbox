@@ -238,18 +238,22 @@ def offload_root(root_name: str, root: Path, host="mac", drives=None, use_gcs=Tr
                 if dry:
                     _log("offload_ext", seg=str(seg), dest=str(dest), dry=True)
                     continue
-                dest.parent.mkdir(parents=True, exist_ok=True)
+                if str(drv).startswith("/Volumes/") and not os.path.ismount(drv):  # 2026-10-28 01:5xZ: WD25 + TOSHIBA_EXT were unmounted mid-run
+                    continue
                 tmp = dest.with_name(dest.name + ".part")
-                shutil.copyfile(seg, tmp)
-                os.sync() if hasattr(os, "sync") else None
-                if sha256_file(tmp) == sha:
-                    os.replace(tmp, dest)
-                    copies.append({"kind": "ext", "path": str(dest), "sha256": sha, "verified": True, "at": _now_iso()})
-                    stat["ext_copies"] += 1
-                    have_ext.add(str(dest))
-                    break  # one ext copy per run is enough; GCS is the second
-                tmp.unlink()
-                _log("offload_ext_FAILED_VERIFY", seg=str(seg), dest=str(dest))
+                try:
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copyfile(seg, tmp)
+                    if sha256_file(tmp) == sha:
+                        os.replace(tmp, dest)
+                        copies.append({"kind": "ext", "path": str(dest), "sha256": sha, "verified": True, "at": _now_iso()})
+                        stat["ext_copies"] += 1
+                        have_ext.add(str(dest))
+                        break  # one ext copy per run is enough; GCS is the second
+                    tmp.unlink()
+                    _log("offload_ext_FAILED_VERIFY", seg=str(seg), dest=str(dest))
+                except OSError as e:
+                    _log("offload_ext_FAILED", seg=str(seg), dest=str(dest), why=repr(e))
             if G is not None and not any(c["kind"] == "gcs" for c in copies):
                 obj = f"history/{host}/{rel}"
                 try:
@@ -270,7 +274,13 @@ def offload_root(root_name: str, root: Path, host="mac", drives=None, use_gcs=Tr
             if dry:
                 continue
             row = {"event": "offloaded", "ledger": HA.ledger_name(seg), "segment": seg.name, "sha256": sha, "bytes": seg.stat().st_size, "copies": copies, "local_removed": False}
-            ext_ok = [c for c in copies if c["kind"] == "ext" and Path(c["path"]).is_file() and sha256_file(c["path"]) == sha]
+            ext_ok = []
+            for c in copies:
+                try:
+                    if c["kind"] == "ext" and Path(c["path"]).is_file() and sha256_file(c["path"]) == sha:
+                        ext_ok.append(c)
+                except OSError:
+                    pass
             if len(copies) >= min_copies and ext_ok:
                 row["local_removed"] = True
                 _manifest(a, row)
