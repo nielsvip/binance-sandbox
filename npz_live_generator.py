@@ -175,6 +175,17 @@ def _compute_row_for_15m_close(
     IndicatorCalculator.compute, then collect the scalar results for the new row.
     Returns dict of {key: value} for that row, or None if insufficient data.
     """
+    # USER 2026-10-28 ("NO complete npz calculation only 1 bar per 15min"): incremental row = same compute() on the
+    # last NPZ_ROW_WINDOW bars + the long-memory fields recomputed exactly on the full series. NPZ_ROW_MODE=full = the
+    # previous whole-history computation below (one-switch fallback); every refusal of the incremental path lands there.
+    if os.environ.get("NPZ_ROW_MODE", "incremental") != "full":
+        try:
+            incremental = _compute_row_incremental(symbol, close_ts, kline_manager, mode)
+        except Exception as e:
+            logger.warning(f"[NPZ-ROW-INC] {symbol} {close_ts}: {type(e).__name__}: {e} -> full compute")
+            incremental = None
+        if incremental is not None:
+            return incremental
     # USER 2026-10-25: always compute with a FRESH calculator, never the caller's shared one. Measured on S1:
     # 8 threads sharing one IndicatorCalculator took 33-51 s/symbol (GIL/state contention); fresh calculators do
     # the same row in ~7 s. The daemon shares its hot calculator across its live loop and 8 NPZ workers, which is
@@ -292,6 +303,22 @@ def _compute_row_for_15m_close(
                     raise e
             if not res:
                 continue
+            _merge_tf_result(row, res, tf, base_tf)
+        except Exception as e:
+            logger.warning(f"compute row failed {symbol} {tf} at {close_ts}: {e}")
+            continue
+
+    # Ensure we have at least close and timestamps
+    if "close" not in row or "timestamps" not in row:
+        logger.warning(f"row incomplete for {symbol} at {close_ts}: missing close/timestamps")
+        return None
+    return row
+
+
+def _merge_tf_result(row: Dict[str, Any], res: Dict[str, Any], tf: str, base_tf: str) -> None:
+    """Collect one TF's compute() result into the NPZ row (shared by the full and the incremental path)."""
+    if True:
+        if True:
             # Collect scalar keys for NPZ row: any key containing _{tf} is timeframe-specific
             for k, v in res.items():
                 if f"_{tf}" in k or k in ("open", "high", "low", "close", "volume", "timestamp"):
@@ -323,18 +350,182 @@ def _compute_row_for_15m_close(
                         # So we store the scalar HTF value for this 15m row
                         row[k] = v
             # Also ensure timestamps for HTF are not needed; NPZ timestamps is base 15m
-        except Exception as e:
-            logger.warning(f"compute row failed {symbol} {tf} at {close_ts}: {e}")
-            continue
 
-    # Ensure we have at least close and timestamps
-    if "close" not in row or "timestamps" not in row:
-        logger.warning(f"row incomplete for {symbol} at {close_ts}: missing close/timestamps")
+
+class _IncrementalRefused(Exception):
+    """The incremental row cannot be proven equal to the full computation for this input -> full computation."""
+
+
+INCREMENTAL_STATS: Dict[str, int] = {"rows": 0, "refused": 0, "tf_full_history": 0, "tf_windowed": 0}
+
+
+def _row_window() -> int:
+    try:
+        return max(600, int(os.environ.get("NPZ_ROW_WINDOW", "1500")))
+    except ValueError:
+        return 1500
+
+
+def _parse_kline_bytes(raw: bytes):
+    if os.environ.get("NPZ_ROW_JSON", "orjson") == "orjson":
+        try:
+            import orjson
+            return orjson.loads(raw)
+        except ImportError:
+            pass
+    return json.loads(raw)
+
+
+def _kline_window(path: Path, close_ts: datetime, window: int):
+    """(window_df, full_df) for one TF file as of close_ts.
+
+    window_df is exactly the last `window` rows of what _load_klines_df(path).loc[:close_ts] returns: the same loader
+    body runs on the file's tail rows, and the file is proven strictly time-ordered (every row one fixed ISO-Z format)
+    so the rows before the tail cannot sort into it. full_df holds the whole-history open/high/low/close series (prefix
+    rows + window rows) for the few fields whose value depends on the first bar of the file. full_df is None when
+    the whole file was parsed (window_df then IS the full computation's frame). (None, None) = the TF has no usable
+    data (the full path skips it the same way)."""
+    data = _parse_kline_bytes(path.read_bytes())
+    if not data:
+        return None, None
+    try:
+        stamps = np.array([row["timestamp"] for row in data])
+    except (KeyError, TypeError) as e:
+        raise _IncrementalRefused(f"{path.name}: row without timestamp ({e})")
+    if stamps.dtype.kind != "U" or stamps.dtype.itemsize != 27 * 4 or int(np.char.str_len(stamps).min()) != 27 or not bool(np.char.endswith(stamps, "Z").all()):
+        raise _IncrementalRefused(f"{path.name}: timestamps not in one fixed ISO-Z format")
+    if len(stamps) > 1 and not bool((stamps[1:] > stamps[:-1]).all()):
+        raise _IncrementalRefused(f"{path.name}: rows not strictly time-ordered")
+    close_iso = close_ts.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    upto = int(np.searchsorted(stamps, close_iso, side="right"))
+    start = max(0, upto - window - 400)
+    min_stamp = None
+    if start:
+        min_stamp = int(datetime.fromisoformat(str(stamps[start]).replace("Z", "+00:00")).timestamp())
+    try:
+        df = _klines_df_from_rows(path, data[start:], min_stamp)
+    except _OverlayBeforeWindow as e:
+        raise _IncrementalRefused(str(e))
+    if df is None or df.empty:
+        if start:
+            raise _IncrementalRefused(f"{path.name}: tail rows produced no frame")
+        return None, None
+    if df.index.tz is None:
+        df.index = df.index.tz_localize(timezone.utc)
+    df = df.loc[:close_ts]
+    if not start:
+        INCREMENTAL_STATS["tf_full_history"] += 1
+        return (df, None) if len(df) >= 5 else (None, None)
+    if len(df) < window:
+        raise _IncrementalRefused(f"{path.name}: {len(df)} window rows < {window}")
+    full = {}
+    for col in ("open", "high", "low", "close"):
+        values = [row.get(col) for row in data[:start]]
+        if not set(map(type, values)) <= {float, int}:
+            raise _IncrementalRefused(f"{path.name}: non-numeric {col} before the window")
+        full[col] = np.concatenate([np.array(values, dtype=np.float64), df[col].to_numpy(dtype=np.float64)])
+    INCREMENTAL_STATS["tf_windowed"] += 1
+    return df.iloc[-window:], pd.DataFrame(full)
+
+
+def _same(a, b) -> bool:
+    if a is None or b is None:
+        return a is None and b is None
+    if isinstance(a, float) and isinstance(b, float) and a != a and b != b:
+        return True
+    return type(a) is type(b) and a == b
+
+
+def _patch_long_memory(module, res: Dict[str, Any], tf: str, window_df: pd.DataFrame, full_df: pd.DataFrame, window: int) -> None:
+    """Replace the window values of the fields that depend on the file's FIRST bar with the exact full-series value.
+
+    smfi_* is a cumulative sum from bar 1, ema_*_std_* a pandas rolling std whose online state carries rounding from
+    bar 1, ema_N_* / atr_long_* recursive filters (span 200 / alpha 1/100 decay too slowly for a window). Each one is
+    recomputed by the SAME module function compute() calls, on the full series. Before that, the same call on the
+    window frame must reproduce compute()'s own window value bit for bit (proves the key wiring); any miss refuses."""
+    def series(frame, col):
+        return frame[col].astype(float)
+    if all(f"{k}_{tf}" in res for k in ("smfi", "smfi_sma", "smfi_bull_div", "smfi_bear_div")):
+        def smfi(frame):
+            sm = module.compute_smfi(series(frame, "open").tolist(), series(frame, "high").tolist(), series(frame, "low").tolist(), series(frame, "close").tolist(), 20)
+            return {f"smfi_{tf}": sm["smfi"], f"smfi_sma_{tf}": sm["smfi_sma"], f"smfi_bull_div_{tf}": 1 if sm["smfi_bull_divergence"] else 0, f"smfi_bear_div_{tf}": 1 if sm["smfi_bear_divergence"] else 0}
+        check = smfi(window_df)
+        if not all(_same(check[k], res[k]) for k in check):
+            raise _IncrementalRefused(f"smfi wiring {tf}: {check} vs window compute")
+        res.update(smfi(full_df))
+    elif any(f"{k}_{tf}" in res for k in ("smfi", "smfi_sma", "smfi_bull_div", "smfi_bear_div")):
+        raise _IncrementalRefused(f"partial smfi keys {tf}")
+    for key in list(res):
+        hit = re.fullmatch(rf"ema_(\d+)_std_{re.escape(tf)}", key)
+        if hit:
+            length = int(hit.group(1))
+            if not _same(module.ema_std(series(window_df, "close"), length, std_window=20), res[key]):
+                raise _IncrementalRefused(f"{key} wiring")
+            res[key] = module.ema_std(series(full_df, "close"), length, std_window=20)
+            continue
+        hit = re.fullmatch(rf"ema_(\d+)_{re.escape(tf)}", key)
+        if hit:
+            length = int(hit.group(1))
+            prev_key = f"{key}_prev"
+            win_curr, win_prev = module.ema_pair(series(window_df, "close"), length)
+            if not _same(win_curr, res[key]) or (prev_key in res and not _same(win_prev, res[prev_key])):
+                raise _IncrementalRefused(f"{key} wiring")
+            res[key], full_prev = module.ema_pair(series(full_df, "close"), length)
+            if prev_key in res:
+                res[prev_key] = full_prev
+    key = f"atr_long_{tf}"
+    if key in res:
+        length = int(getattr(module, "ATR_LONG_LENGTH"))
+        win_atr = module.atr_series(window_df, length)
+        if win_atr is None or not _same(float(win_atr.iloc[-1]), res[key]):
+            raise _IncrementalRefused(f"{key} wiring")
+        res[key] = float(module.atr_series(full_df, length).iloc[-1])
+    bars_ago = res.get(f"wt_cross_bars_ago_{tf}")
+    if isinstance(bars_ago, (int, np.integer)) and int(bars_ago) >= window - 200:
+        raise _IncrementalRefused(f"wt_cross_bars_ago_{tf}={bars_ago}: last cross not inside the window")
+
+
+def _compute_row_incremental(symbol: str, close_ts: datetime, kline_manager, mode: str) -> Optional[Dict[str, Any]]:
+    """The one new NPZ row from the last NPZ_ROW_WINDOW bars of each TF (see _kline_window / _patch_long_memory).
+    None = refused (logged) -> the caller runs the full computation. Same TF list, file choice, calculator and key
+    collection as the full path."""
+    if mode == "tradier":
+        import tradier_indicators as module
+        tfs = ["5m", "15m", "1h", "4h", "D"]
+    else:
+        import ez_indicators as module
+        tfs = ["3m", "15m", "1h", "4h", "D"]
+    window = _row_window()
+    base = getattr(kline_manager, "base_path", None) if kline_manager is not None else None
+    base = Path.cwd() if base is None else Path(base)
+    calculator = module.IndicatorCalculator()
+    row: Dict[str, Any] = {"timestamps": int(close_ts.timestamp())}
+    try:
+        for tf in tfs:
+            fname = _resolve_kline_path(symbol, tf, mode, base)
+            if fname is None:
+                continue
+            window_df, full_df = _kline_window(fname, close_ts, window)
+            if window_df is None or window_df.empty:
+                continue
+            if mode == "tradier":
+                res = calculator.compute(window_df, symbol, tf, None, close_ts, False)
+            else:
+                res = calculator.compute(window_df, tf, None, False, close_ts)
+            if not res:
+                continue
+            if full_df is not None:
+                _patch_long_memory(module, res, tf, window_df, full_df, window)
+            _merge_tf_result(row, res, tf, "15m")
+    except _IncrementalRefused as e:
+        INCREMENTAL_STATS["refused"] += 1
+        logger.warning(f"[NPZ-ROW-INC] {symbol} {close_ts.isoformat()} refused: {e} -> full compute")
         return None
-    # Fill missing HTF keys with 0/neutral to keep NPZ shape consistent (like precompute does for warmup)
-    # Precompute fills missing with 0 for numeric, so we should ensure row has entries for all expected NPZ keys?
-    # For incremental, we can just return what we have; _append will handle missing keys by filling 0.
+    if "close" not in row:
+        return None
+    INCREMENTAL_STATS["rows"] += 1
     return row
+
 
 def _load_klines_df(path: Path) -> Optional[pd.DataFrame]:
     try:
@@ -342,6 +533,20 @@ def _load_klines_df(path: Path) -> Optional[pd.DataFrame]:
             data = json.load(f)
         if not data:
             return None
+        return _klines_df_from_rows(path, data)
+    except Exception as e:
+        logger.debug(f"load klines failed {path}: {e}")
+        return None
+
+
+class _OverlayBeforeWindow(Exception):
+    """An overlay bar lies before the parsed tail window: the window cannot reproduce the full merge -> full path."""
+
+
+def _klines_df_from_rows(path: Path, data, min_stamp: Optional[int] = None) -> Optional[pd.DataFrame]:
+    """Body of _load_klines_df on an already-parsed row list. min_stamp (incremental tail mode only): the epoch of
+    the first parsed row; an overlay bar older than it raises _OverlayBeforeWindow instead of being merged."""
+    if True:
         if path.stem.endswith('_15m'):
             from closed_bar_feed import is_verified_closed_native, preferred_closed_row, timestamp_epoch
             mode = 'tradier' if path.parent.name == 'tradier' else 'crypto'
@@ -353,6 +558,8 @@ def _load_klines_df(path: Path) -> Optional[pd.DataFrame]:
                 index = {timestamp_epoch(item.get('timestamp') or item.get('timestamp_dt')): item for item in data}
                 for item in json.loads(overlay.read_text()):
                     stamp = timestamp_epoch(item['timestamp'])
+                    if min_stamp is not None and stamp < min_stamp:
+                        raise _OverlayBeforeWindow(f"{symbol} overlay bar {stamp} < window start {min_stamp}")
                     previous = index.get(stamp)
                     if previous is not None and is_verified_closed_native(previous, stamp + 900, path):
                         previous = dict(previous, _closed_verified_at=max(stamp + 900, float(previous.get('_closed_verified_at') or 0)))
@@ -380,9 +587,6 @@ def _load_klines_df(path: Path) -> Optional[pd.DataFrame]:
             df["close_time"] = df["_ts_copy"]
         df = df.drop(columns=["_ts_copy"], errors="ignore")
         return df
-    except Exception as e:
-        logger.debug(f"load klines failed {path}: {e}")
-        return None
 
 _TF_SECONDS = {"1m": 60, "3m": 180, "5m": 300, "15m": 900, "1h": 3600, "4h": 14400, "D": 86400, "W": 604800, "M": 2678400}
 

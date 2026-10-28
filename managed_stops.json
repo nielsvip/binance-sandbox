@@ -195,20 +195,6 @@
     "symbol": "API3USDT",
     "side": "SHORT"
   },
-  "ang:AVAXUSDC_LONG": {
-    "orderId": "4000002002469598",
-    "stopPrice": 8.802,
-    "entry_sig": "2026-10-28 01:50:21.540000+00:00",
-    "symbol": "AVAXUSDC",
-    "side": "LONG"
-  },
-  "ang:JASMYUSDT_SHORT": {
-    "orderId": "4000002002016676",
-    "stopPrice": 0.004344,
-    "entry_sig": "2026-10-27 21:36:59.361000+00:00",
-    "symbol": "JASMYUSDT",
-    "side": "SHORT"
-  },
   "ang:LINKUSDC_LONG": {
     "orderId": "4000002002829283",
     "stopPrice": 11.482,
@@ -222,5 +208,19 @@
     "entry_sig": "2026-10-28 04:46:09.564000+00:00",
     "symbol": "ZROUSDT",
     "side": "LONG"
+  },
+  "ang:AVAXUSDC_LONG": {
+    "orderId": "4000002002469598",
+    "stopPrice": 8.802,
+    "entry_sig": "2026-10-28 01:50:21.540000+00:00",
+    "symbol": "AVAXUSDC",
+    "side": "LONG"
+  },
+  "ang:JASMYUSDT_SHORT": {
+    "orderId": "4000002002016676",
+    "stopPrice": 0.004344,
+    "entry_sig": "2026-10-27 21:36:59.361000+00:00",
+    "symbol": "JASMYUSDT",
+    "side": "SHORT"
   }
 }
