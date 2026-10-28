@@ -6,11 +6,39 @@
     "symbol": "XRPUSDC",
     "side": "LONG"
   },
+  "flz:HYPEUSDT_LONG": {
+    "orderId": "1000002648315046",
+    "stopPrice": 80.719,
+    "entry_sig": "2026-10-28 07:46:54.169000+00:00",
+    "symbol": "HYPEUSDT",
+    "side": "LONG"
+  },
   "flz:BTCDOMUSDT_LONG": {
     "orderId": "1000002647575485",
     "stopPrice": 5522.6,
     "entry_sig": "2026-10-27 21:08:42.533000+00:00",
     "symbol": "BTCDOMUSDT",
     "side": "LONG"
+  },
+  "flz:GRAMUSDT_LONG": {
+    "orderId": "1000002648516872",
+    "stopPrice": 1.23,
+    "entry_sig": "2026-10-28 10:16:34.696000+00:00",
+    "symbol": "GRAMUSDT",
+    "side": "LONG"
+  },
+  "flz:BTCUSDC_LONG": {
+    "orderId": "1000002648516609",
+    "stopPrice": 80404.8,
+    "entry_sig": "2026-10-28 10:16:26.091000+00:00",
+    "symbol": "BTCUSDC",
+    "side": "LONG"
+  },
+  "flz:DASHUSDT_SHORT": {
+    "orderId": "1000002648516677",
+    "stopPrice": 55.05,
+    "entry_sig": "2026-10-28 10:16:29.166000+00:00",
+    "symbol": "DASHUSDT",
+    "side": "SHORT"
   }
 }

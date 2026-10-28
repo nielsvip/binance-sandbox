@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-28T10:20:04Z",
+ "generated_utc": "2026-10-28T10:40:05Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-28T13:30:00Z",
  "market_open": false,
@@ -15,10 +15,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 158,
-    "filled_before_open": 158
+    "filled_today": 161,
+    "filled_before_open": 161
    },
-   "detail": "158 boards filled before the open (158 today)"
+   "detail": "161 boards filled before the open (161 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -211,7 +211,7 @@
     "symbols": 329,
     "stale_over_90min": 1,
     "stale_pct": 0.3,
-    "median_age_min": 65.1,
+    "median_age_min": 40.1,
     "sample": [
      "ONEUSDT"
     ]
