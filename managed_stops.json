@@ -1,23 +1,9 @@
 {
-  "ang:IOTXUSDT_SHORT": {
-    "orderId": "4000002002548994",
-    "stopPrice": 0.003709,
-    "entry_sig": "2026-10-28 02:26:12.956000+00:00",
-    "symbol": "IOTXUSDT",
-    "side": "SHORT"
-  },
   "ang:BEAMXUSDT_LONG": {
     "orderId": "4000002002348687",
     "stopPrice": 0.0033,
     "entry_sig": "2026-10-28 00:56:57.183000+00:00",
     "symbol": "BEAMXUSDT",
-    "side": "LONG"
-  },
-  "ang:1000PEPEUSDC_LONG": {
-    "orderId": "4000002002083263",
-    "stopPrice": 0.004369,
-    "entry_sig": "2026-10-27 21:09:11.815000+00:00",
-    "symbol": "1000PEPEUSDC",
     "side": "LONG"
   },
   "ang:TIAUSDC_LONG": {
@@ -27,19 +13,19 @@
     "symbol": "TIAUSDC",
     "side": "LONG"
   },
-  "ang:ONEUSDT_SHORT": {
-    "orderId": "4000002001375206",
-    "stopPrice": 0.001335,
-    "entry_sig": "2026-10-27 15:45:55.900000+00:00",
-    "symbol": "ONEUSDT",
+  "ang:IOTXUSDT_SHORT": {
+    "orderId": "4000002002548994",
+    "stopPrice": 0.003709,
+    "entry_sig": "2026-10-28 02:26:12.956000+00:00",
+    "symbol": "IOTXUSDT",
     "side": "SHORT"
   },
-  "ang:BNBUSDC_LONG": {
-    "orderId": "4000002003954604",
-    "stopPrice": 746.13,
-    "entry_sig": "2026-10-28 13:33:14.152000+00:00",
-    "symbol": "BNBUSDC",
-    "side": "LONG"
+  "ang:JASMYUSDT_SHORT": {
+    "orderId": "4000002003546742",
+    "stopPrice": 0.004318,
+    "entry_sig": "2026-10-28 10:46:37.365000+00:00",
+    "symbol": "JASMYUSDT",
+    "side": "SHORT"
   },
   "ang:TRXUSDT_LONG": {
     "orderId": "4000002003285833",
@@ -48,11 +34,18 @@
     "symbol": "TRXUSDT",
     "side": "LONG"
   },
-  "ang:EGLDUSDT_SHORT": {
-    "orderId": "4000002002960922",
-    "stopPrice": 3.439,
-    "entry_sig": "2026-10-28 05:46:29.233000+00:00",
-    "symbol": "EGLDUSDT",
+  "ang:TRUMPUSDC_SHORT": {
+    "orderId": "4000002003902031",
+    "stopPrice": 1.735,
+    "entry_sig": "2026-10-28 13:16:43.110000+00:00",
+    "symbol": "TRUMPUSDC",
+    "side": "SHORT"
+  },
+  "ang:STRKUSDT_SHORT": {
+    "orderId": "4000002004215874",
+    "stopPrice": 0.04829,
+    "entry_sig": "2026-10-28 14:46:50.674000+00:00",
+    "symbol": "STRKUSDT",
     "side": "SHORT"
   }
 }

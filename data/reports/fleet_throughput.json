@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-28T14:40:06.611151+00:00",
+  "ts": "2026-10-28T14:45:06.884724+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 0,
-  "pending_sym_sides": null,
+  "pending_sym_sides": 147,
   "hosts": {
     "s1": {
       "published_last_60m": 0,
@@ -14,9 +14,9 @@
       "boards_running": 1,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 16454,
+      "mem_avail_mb": 15910,
       "disk_free_gb": 36,
-      "load1": 7.6,
+      "load1": 11.0,
       "dispatch_idle_why": null,
       "published_ss": []
     },
