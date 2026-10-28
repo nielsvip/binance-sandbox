@@ -17,8 +17,8 @@ Ledgers: <root>/<acct>/<SYM_SIDE>.jsonl for root in data/history and data/tradie
             No verified copy -> the segment stays local. Manifest: <acct>/archive/offload_manifest.jsonl.
   recover   fold rows from other copies of history (S1 pulls, backups/, ext drives) that the local ledger lacks into
             archive/<SS>.<now>.recovered.jsonl (rows verbatim, oldest first, rows older than 8 days only; the 7-day
-            Mac<->S1 sync owns the recent window). Idempotent: identity = sorted-key row sha256, plus the 7d sync's
-            (type, qty, price, |dt| < 3 s) signature.
+            Mac<->S1 sync owns the recent window). Idempotent: identity = sorted-key row sha256, plus a (type, qty) match
+            within 900 s (the writers' own dedup window) so another host's echo of the same fill is not added twice.
 
 Ext drives: WD25 first (probed healthy 2026-10-27, 3.7 TiB free), then SSD2T/E3T when they have room. TOSHIBA_EXT is
 skipped unless --allow-toshiba (2026-10-22: a fresh copy failed sha256 there). A drive must be a real mount (st_dev
@@ -288,9 +288,14 @@ def _identity(row: dict) -> str:
     return hashlib.sha256(json.dumps(row, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
 
 
+ECHO_WINDOW_S = 900.0  # the writers' own dedup window: one ledger never logs the same type+qty twice inside 900 s
+
+
 def _sig(row: dict):
+    """(type, qty): a copy of a row in another host's ledger (synced copy, or that host's echo of the same broker fill,
+    13-857 s late at a different mark price) carries the same type and qty inside ECHO_WINDOW_S."""
     try:
-        return (str(row.get("type") or "").upper(), float(row.get("qty")), float(row.get("price")))
+        return (str(row.get("type") or "").upper(), round(abs(float(row.get("qty"))), 6))
     except (TypeError, ValueError):
         return None
 
@@ -360,7 +365,7 @@ def recover(target_root: Path, sources: list, dry=False, now=None) -> dict:
                     if k in have:
                         continue
                     g = _sig(r)
-                    if g and any(abs(t - x) < 3 for x in sigs.get(g, [])):
+                    if g and any(abs(t - x) < ECHO_WINDOW_S for x in sigs.get(g, [])):
                         continue
                     have.add(k)
                     if g:

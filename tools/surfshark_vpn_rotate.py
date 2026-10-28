@@ -254,10 +254,33 @@ def ovpn_down(name):
 
 
 def _slot_start(name):
+    try:
+        st = load_state()
+        st["own_start_ts"] = time.time()
+        save_state(st)
+    except Exception:
+        pass
     if _is_ovpn(name):
         return ovpn_up(name)
     sh(["scutil", "--nc", "start", name])
     return True
+
+
+MANUAL_GRACE_S = 600
+
+
+def detect_manual(prev_conn, now_conn, own_start_ts, now_s):
+    """A slot that became Connected without the rotator starting it in the last
+    180 s was started by hand (the Surfshark app). Pure: returns the new names."""
+    fresh = [n for n in now_conn if n not in prev_conn]
+    if not fresh or now_s - own_start_ts < 180:
+        return []
+    return fresh
+
+
+def grant_manual_grace(names):
+    json.dump({"until": time.time() + MANUAL_GRACE_S}, open(HOLD_PATH, "w"))
+    log(f"manual connect detected ({', '.join(names)}) — 10 min grace, rotator stands down")
 
 
 def _slot_stop(name):
@@ -545,7 +568,23 @@ def wait_state(names, want, old_ip, timeout=75, same_ip_ok=False):
     return False
 
 
+HOLD_PATH = os.path.join(BASE, "data", "vpn_hold.json")
+
+
+def hold_remaining():
+    """Seconds left on a manual hold (0 when none). The watcher and rotator stand
+    down while it runs: no rotation, no app quit, no tunnel stop, no restore."""
+    try:
+        until = float(json.load(open(HOLD_PATH)).get("until", 0))
+    except Exception:
+        return 0.0
+    return max(0.0, until - time.time())
+
+
 def do_rotate(target=None, force_tunnel=False):
+    if hold_remaining() > 0 and not target:
+        log(f"hold active ({hold_remaining():.0f}s left) — not rotating")
+        return False
     wl, state = whitelist(), load_state()
     if not target and not force_tunnel:
         # USER 2026-10-28: a healthy whitelisted link (London WireGuard 185.134.22.81)
@@ -692,8 +731,19 @@ def cmd_watch(interval=15):
             return 1
     log(f"watch start interval={interval}s")
     n = 0
+    prev_conn = {s["name"] for s in slots() if s["status"] == "Connected"}
     while True:
         try:
+            now_conn = {s["name"] for s in slots() if s["status"] == "Connected"}
+            manual = detect_manual(
+                prev_conn, now_conn, load_state().get("own_start_ts", 0), time.time()
+            )
+            prev_conn = now_conn
+            if manual:
+                grant_manual_grace(manual)
+            if hold_remaining() > 0:
+                time.sleep(interval)
+                continue
             try:
                 scan_logs_for_ban()
             except Exception:
@@ -784,6 +834,18 @@ if __name__ == "__main__":
             else None
         )
         sys.exit(0 if do_rotate(tgt) else 1)
+    elif c == "hold":
+        mins = float(sys.argv[2]) if len(sys.argv) > 2 else 10.0
+        json.dump({"until": time.time() + mins * 60}, open(HOLD_PATH, "w"))
+        log(f"HOLD set for {mins:.0f} min — watcher and rotator stand down")
+        print(f"hold set for {mins:.0f} min")
+    elif c == "release":
+        try:
+            os.remove(HOLD_PATH)
+        except FileNotFoundError:
+            pass
+        log("HOLD released")
+        print("hold released")
     elif c == "watch":
         iv = int(sys.argv[2]) if len(sys.argv) > 2 else 15
         sys.exit(cmd_watch(iv))

@@ -98,6 +98,30 @@ def venue_values(stocks: bool) -> dict:
     return out, live_vals, quick_vals
 
 
+def grey_switches(path: Path) -> set:
+    """Switch names whose column-A row group is GREY = retired, excluded from calculation. The pilot skips them, so
+    neither their bold nor a yellow header of theirs is an authority: the config value stays (operator 2026-10-27 on
+    DAYTRADE_DC_TARGET_TF / TECHNICAL_DC_TARGET_TF: "staying grey")."""
+    import openpyxl
+    wb = openpyxl.load_workbook(str(path))
+    out = set()
+    try:
+        for tab in P.SWITCH_SHEETS:
+            if tab not in wb.sheetnames:
+                continue
+            ws = wb[tab]
+            for r in range(3, ws.max_row + 1):
+                a = ws.cell(row=r, column=1).value
+                if a in (None, ""):
+                    continue
+                f = ws.cell(row=r, column=1).font
+                if f is not None and f.color is not None and str(getattr(f.color, "rgb", "") or "").upper() in P.GREY_SKIP_RGB:
+                    out.add(str(a).strip())
+        return out
+    finally:
+        wb.close()
+
+
 def filter_header_defaults(path: Path) -> dict:
     import openpyxl
     wb = openpyxl.load_workbook(str(path), read_only=False)
@@ -137,17 +161,25 @@ def main():
             _pp = Path(os.environ.get("CSD4_PROMOTIONS") or (ROOT / "data" / "cat_side_promotions.json"))
             promoted = set((json.loads(_pp.read_text()).get(cs) or {}).keys()) if _pp.exists() else set()
         rows, bad = P.template_bold_defaults(path, typed, typed, promoted)
-        reinstated, container_only = [], []
+        grey = grey_switches(path)
+        reinstated, container_only, empty_bold = [], [], []
         if P.UNTRUSTED_BOLD and BOLD_WINS:
             for _tab, _sw, _v, _truth in list(P.UNTRUSTED_BOLD):
                 if isinstance(_truth, (dict, list, tuple, set)):
                     container_only.append(_sw)
+                    continue
+                if _v is None or (isinstance(_v, str) and not _v.strip()):
+                    empty_bold.append(_sw)  # template defect: bold formatting on an empty cell is not a value
+                    continue
+                if _sw in grey:
                     continue
                 rows.update(P._switch_overrides(_sw, _v))
                 reinstated.append({"tab": _tab, "switch": _sw, "bold": _v, "config_was": _truth})
             print(f"[{cs}] BOLD-WINS: reinstated {len(reinstated)} bold defaults the pilot discarded for differing from config: {[r['switch'] for r in reinstated[:8]]}")
             if container_only:
                 print(f"[{cs}] BOLD-WINS: {len(container_only)} left to config because the config value is a container a scalar cell cannot express: {container_only[:6]}")
+            if empty_bold:
+                print(f"[{cs}] BOLD-WINS-DEFECT: {len(empty_bold)} bold cells are EMPTY — not a default, config value kept, fix the sheet: {empty_bold[:6]}")
         elif P.UNTRUSTED_BOLD:
             print(f"[{cs}] {len(P.UNTRUSTED_BOLD)} placeholder bold values skipped (real value kept): {[x[1] for x in P.UNTRUSTED_BOLD[:6]]}")
         if bad:
@@ -160,7 +192,7 @@ def main():
                 # Same inversion as UNTRUSTED_BOLD: a bold yellow header that DIFFERS from config was skipped, which is
                 # the only case where it decides anything. Under BOLD_WINS the header is the authority; only a
                 # container-valued config field stays, because no scalar header can express one.
-                _skip = isinstance(typed.get(f), (dict, list, tuple, set)) if BOLD_WINS else (
+                _skip = (f in grey or isinstance(typed.get(f), (dict, list, tuple, set))) if BOLD_WINS else (
                     f in typed and f not in promoted and (isinstance(typed[f], (dict, list, tuple, set)) or not P._same_default(_fv, typed[f]))
                 )
                 if f in typed and f not in promoted and _skip:
@@ -209,6 +241,8 @@ def main():
             print(f"[{cs}] STAGE-ONLY: {len(_held)} promoted/changed values held back from live: {_held[:10]}")
         data.setdefault("_meta", {}).setdefault("bold_wins_reinstated", {})[cs] = reinstated
         data["_meta"].setdefault("bold_wins_container_only", {})[cs] = container_only
+        data["_meta"].setdefault("bold_wins_empty_bold_defect", {})[cs] = empty_bold
+        data["_meta"].setdefault("grey_switches_excluded", {})[cs] = len(grey)
         data.setdefault("_meta", {}).setdefault("conflicts_quick_vs_live", {})[cs] = conflicts
         data["_meta"].setdefault("filled_from_config", {})[cs] = len(filled)
         data["_meta"].setdefault("skipped_non_scalar_or_secret", {})[cs] = len(skipped)
@@ -225,15 +259,23 @@ def main():
     tmp = _out.with_suffix(".tmp")
     tmp.write_text(json.dumps(data, indent=1, default=str, sort_keys=True))
     tmp.replace(_out)
-    # dual-write: JSON stays as generated view, SQL primary keeps herds alive if file vanishes
-    try:
-        import per_sym_store as _pss
-        _pss.kv_put(_pss.KV_CAT_SIDE_DEFAULTS_4, data)
-    except Exception as _e:
-        print(f"[cat_side_defaults_4] kv_put failed (JSON view still written): {_e}")
+    # dual-write: JSON stays as generated view, SQL primary keeps herds alive if file vanishes.
+    # 2026-10-28: kv_put was NOT gated by CSD4_OUT, so a run redirected to a scratch file still published the SQL
+    # row that every live reader prefers — a "dry run" went live. CSD4_OUT now means dry: redirecting the JSON
+    # suppresses the SQL write unless CSD4_KV_WRITE=1 says otherwise.
+    _redirected = bool(os.environ.get("CSD4_OUT")) and Path(os.environ["CSD4_OUT"]) != CSD.PATH
+    if _redirected and os.environ.get("CSD4_KV_WRITE") != "1":
+        print(f"[cat_side_defaults_4] CSD4_OUT redirected to {_out} → SQL primary NOT written (set CSD4_KV_WRITE=1 to publish)")
+    else:
+        try:
+            import per_sym_store as _pss
+            _pss.kv_put(_pss.KV_CAT_SIDE_DEFAULTS_4, data)
+        except Exception as _e:
+            print(f"[cat_side_defaults_4] kv_put failed (JSON view still written): {_e}")
     rp = ROOT / "data" / "reports" / f"cat_side_defaults_4_{datetime.datetime.now().strftime('%Y%m%d%H%M')}.json"
     rp.write_text(json.dumps(report, indent=1, default=str))
-    print(f"[written] {_out}  [report] {rp}  [kv] {CSD.PATH.name}→SQL")
+    _kv = "SQL primary SKIPPED (redirected dry run)" if (_redirected and os.environ.get("CSD4_KV_WRITE") != "1") else f"{CSD.PATH.name}→SQL"
+    print(f"[written] {_out}  [report] {rp}  [kv] {_kv}")
 
 
 if __name__ == "__main__":

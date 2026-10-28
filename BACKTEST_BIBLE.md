@@ -100,6 +100,26 @@ paraphrase in this file becomes enforced law and blocks every other agent.
 
 **USER 2026-10-27, VERBATIM:** *"config and trading scripts and v12_quick do not get to set any defaults they just trade what is dictated by the sheet"* and *"config and the engines are followers that must merely match"*.
 
+### 🔴🔴🔴 0. THE HIGHEST STATEMENT OF THIS LAW — USER 2026-10-27, VERBATIM, SAID AFTER THE ABOVE AND OUTRANKING EVERY SENTENCE IN THIS FILE 🔴🔴🔴
+
+> *"NO config or live trading has ANY default that is NOT overridden by TEMPLATE_ switch default or override. TEMPLATE is the ONLY authority any default that exists in any trading or config script can ONLY exist because NO switch exists for it just yet"*
+
+**There are exactly TWO legal states for any default anywhere in this system. There is no third.**
+
+| State | Condition | What the default IS |
+|-------|-----------|---------------------|
+| **A** | the switch HAS a `TEMPLATE_FINAL_NORM` row | the **BOLD cell** is the default. `config.py`, `config_tradier.py`, `QuickConfig` and every trading script must MATCH it. A differing config value is a **BUG**, never a decision, never a "safety cap", never a "real value". |
+| **B** | the switch has NO template row | a config default may exist **ONLY because no switch exists for it yet**. It is a **PLACEHOLDER AWAITING A ROW**, not an authority. The correct response to finding one is to add the row, not to defend the value. |
+
+**Therefore the following are all PROHIBITED, and each one has been found in this codebase:**
+- Treating a bold that DIFFERS from config as "untrusted" and keeping the config value. **This inverts the law.** It is the single worst form of the violation, because it discards the bold in precisely the only case where the bold decides anything.
+- Deriving the default from the live config value and then re-bolding the row that matches it (`tools/v15_template_defaults_fix.py` does this — **do not run it**; use `tools/v15_template_is_default_mirror.py`, whose rule is that `is_default` MIRRORS the bold and never the reverse).
+- A `getattr(cfg, "X", <value>)` fallback, a `max()`/`min()` of two switches, or a unit conversion with a hardcoded constant, that produces an effective value the sheet never chose.
+
+**MEASURED, 2026-10-27/28 — how the inversion actually worked.** `v15_pilot.template_bold_defaults()` (`v15_pilot.py:2096`, `UNTRUSTED_BOLD`) **discarded a template bold whenever it differed from the config value**, keeping config as "the real value". It feeds both the 4 cat_side default layers and every board baseline. Compounding it: `tools/build_cat_side_defaults_4.py` read the **LEGACY** `SPREADSHEETS/` copies instead of `TEMPLATE_FINAL_NORM`, and a **single missing `is_default=YES` cell** (`CRYPTO_LONG!GLOBAL_RISK_GATES!KINDERGARTEN_STRICT_TFS`) made the whole four-set rebuild exit `REFUSED: template default violations` — so the live layer was frozen on a template generation older than both the legacy and the canonical sets, and **no template change reached live at all**. Audit: `tools/template_is_the_only_authority_audit.py` (665 literal config-vs-bold mismatches; 560 harmless because the cat_side layer outranks the literal, **21 where the config literal was the effective authority, 41 where the layer itself was stale**). Repaired in the builder (`CSD4_BOLD_WINS`, default ON): a discarded scalar bold is reinstated; only a **container-valued** config field (dict/list/set) or a **GREY retired row** keeps config, and a **bold formatting mark on an EMPTY cell is not a default** (`BOLD-WINS-DEFECT`). `v15_pilot.py` itself is LOCKED — the guard there still needs an operator unlock, and until then every NEW board baseline is still computed config-first.
+
+**Standing exceptions, which exist only because the bold was MEASURED to be destructive and must never be removed silently** — they are booked in `_meta.config_wins_exceptions` and need an operator ruling, not a cleanup: the `P0-FOSSIL` pins (`MOM3_FILTER_TF`, `VIGILANCE_GUARD_ENABLED` CRYPTO_SHORT, `WT_CROSSUNDER_FINAL_ENABLED` STOCKS_SHORT — 2026-10-04 SHORT-entry killers) and the `P0-ABLATION` forcing of `ABLATION_DISABLE_*=False`.
+
 1. **The default of every switch is the BOLD cell in `SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_*.xlsx`, and nothing else.** The bold default per cat_side is what `data/per_sym_settings.json` (the 4 cat_side default layers) is built FROM — never the other way round.
 2. **`config.py` / `config_tradier.py` / `v12_quick_engine.QuickConfig` are MIRRORS.** They carry the same value only so the template-bold == config-default contract stays green (`tools/v15_switch_add.py` refuses a mismatch with "align config first"). They decide nothing. **A value changed in config without the bold changing is a BUG, not a decision.**
 3. **`ez_manage.py` / `tradier_manage.py` / `v12_quick_engine.py` TRADE what the sheet dictates.** They may not introduce, raise, lower or "safety-cap" a default. A hardcoded fallback inside a trading script or an engine — `getattr(cfg, "X", <value>)` with a value the sheet never chose — is a **silent second authority**: remove it or point it at the shared reader.
