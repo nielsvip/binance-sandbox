@@ -419,6 +419,16 @@ def main() -> int:
     ap.add_argument("--target", choices=list(ROOTS), help="recover: which local root receives the rows")
     ap.add_argument("--source", action="append", default=[], help="recover: a history root (dir holding <acct>/ dirs); repeatable")
     a = ap.parse_args()
+    if a.command in ("fold", "compress", "offload", "cycle", "recover") and not a.dry_run:
+        import fcntl
+
+        REPORT.mkdir(parents=True, exist_ok=True)
+        lock = open(REPORT / ".offload.lock", "w")
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            print("another history_archive_offload run holds the lock; exiting")
+            return 0
     if a.command == "ext-health":
         print(json.dumps([ext_health(p, a.allow_toshiba) for p in EXT_ORDER], indent=1, default=str))
         return 0

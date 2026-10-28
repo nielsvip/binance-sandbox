@@ -41,6 +41,21 @@ TOOLS = ROOT / "tools"
 STATE_DIR = ROOT / "data" / "fleet_dispatch"
 LOG = ROOT / "logs" / "fleet_dispatch.jsonl"
 HB = pathlib.Path.home() / "fleet_dispatch" / "heartbeat.json"
+# Operator hold with a mandatory expiry: data/fleet_hold_hosts.json {"s2": {"until": <epoch>, "why": "..."}}. An expired
+# entry is ignored, so a forgotten hold can never idle a host for 19 h again (2026-10-27 drain incident). Running boards
+# are untouched; only NEW launches on that host are withheld.
+HOLD_FILE = ROOT / "data" / "fleet_hold_hosts.json"
+
+
+def manual_hold(name, now):
+    try:
+        entry = (json.loads(HOLD_FILE.read_text()) or {}).get(name) or {}
+        until = float(entry.get("until") or 0)
+        if until > now:
+            return f"HOLD until {time.strftime('%Y-%m-%dT%H:%MZ', time.gmtime(until))}: {entry.get('why', '')}"[:200]
+    except (OSError, ValueError, TypeError, AttributeError):
+        pass
+    return ""
 PY = "/home/niels/.conda/envs/binance_env_mac/bin/python"
 CAT_PRIORITY = ("CRYPTO_SHORT", "CRYPTO_LONG", "STOCKS_SHORT", "STOCKS_LONG")
 HOMES = {"s1": "CRYPTO_SHORT", "s2": "CRYPTO_LONG", "s5": "STOCKS_LONG", "s6": "STOCKS_SHORT"}
@@ -328,11 +343,14 @@ def unfinished_deaths(d, now):
     return died
 
 
-def admission(d, now):
+def admission(d, now, name=""):
     """-> (free_slots, reason). One launch per host per tick; memory/disk/spacing gates."""
     nrun = len(d.get("running") or {})
     if d.get("_quarantine"):
         return 0, d["_quarantine"]
+    hold = manual_hold(name, now) if name else ""
+    if hold:
+        return 0, hold
     if nrun >= SLOTS:
         return 0, f"full {nrun}/{SLOTS}"
     if int(d.get("disk_free_mb") or 0) < DISK_MIN_MB:
@@ -350,7 +368,7 @@ def admission(d, now):
 def plan(pend, partial, fleet_data, now, orphan_since):
     """-> ([(host, ss, why)], {host: reason}, orphans). Pure."""
     homes_present = {HOMES[n]: n for n in fleet_data if n in HOMES}
-    adm = {n: admission(d, now) for n, d in fleet_data.items()}
+    adm = {n: admission(d, now, n) for n, d in fleet_data.items()}
     orphans = set()
     for cat in CAT_PRIORITY:
         home = homes_present.get(cat)
@@ -579,7 +597,7 @@ def tick(args):
         homes_present = {HOMES[n]: n for n in data if n in HOMES}
         for cat in CAT_PRIORITY:
             home = homes_present.get(cat)
-            ok = home is not None and (admission(data[home], now)[0] or admission(data[home], now)[1].startswith(("full", "spacing")))
+            ok = home is not None and (admission(data[home], now, home)[0] or admission(data[home], now, home)[1].startswith(("full", "spacing")))
             if ok:
                 orphan_since.pop(cat, None)
             else:
@@ -607,7 +625,7 @@ def tick(args):
                 state["last_launch"] = now
         if not args.dry_run:
             rec["settings_history"] = settings_history(fleet, state)[:12]
-        free_cap = sum(1 for n in data if admission(data[n], now)[0])
+        free_cap = sum(1 for n in data if admission(data[n], now, n)[0])
         work = sum(rec["pending"].values())
         idle_s = now - float(state.get("last_launch") or now)
         if free_cap and work and idle_s > 900:
