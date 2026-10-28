@@ -23,6 +23,7 @@ from typing import Callable, List, Tuple
 
 import vec_decisions.process_position_crypto__dc15m_force_exit as _dc15
 import vec_decisions.min_hold_gate as _mhg
+import vec_decisions.check_exit_candidates_crypto__wt_cross_exit as _wtx
 
 _HA = {-1: "red", 0: "neutral", 1: "green"}
 
@@ -140,6 +141,8 @@ def dc15m_loss_close_allowed(reason, armed_now: bool) -> bool:
 TWIN_EXITS = (
     ("DC15M_FORCE_EXIT_ENABLED", lambda c: bool(c("DC15M_FORCE_EXIT_ENABLED", False)), dc15m_force_exit),
     ("IN_GAIN_TREND_EXIT_ENABLED", lambda c: bool(c("IN_GAIN_TREND_EXIT_ENABLED", False)), in_gain_trend_exit),
+    # 2026-10-28: live WT_CROSS_EXIT (ez_positions_quick check_exit_candidates) — own switch WT_CROSS_EXIT_VEC_ENABLED, default False
+    ("WT_CROSS_EXIT_VEC_ENABLED", _wtx.wt_cross_exit_armed, _wtx.wt_cross_exit_twin),
 )
 
 

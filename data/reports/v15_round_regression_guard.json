@@ -1,5 +1,5 @@
 {
- "at": "2026-10-28T19:26:11Z",
+ "at": "2026-10-28T20:26:05Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
@@ -19,31 +19,31 @@
    ],
    "rows": [
     {
-     "symside": "PTBUSDT_SHORT",
-     "published_at": 1793211836.8581464,
-     "final_gain": 69.03132724633159,
+     "symside": "XPLUSDT_SHORT",
+     "published_at": 1793217226.7561398,
+     "final_gain": 66.84330421131986,
      "best_start_gain": null,
      "best_start_chosen": null,
      "best_start_candidates": null,
-     "baseline_gain": 63.756363163709565,
-     "npz_ts_last": 1793200500.0,
-     "npz_md5": "e65f5b85a59189bef6effe84bcc6619b",
-     "npz_bars": 40332,
-     "bh": 52.72214283016772,
-     "verdict": null,
-     "npz_age_h_at_publish": 3.15
+     "baseline_gain": 44.15639556104858,
+     "npz_ts_last": 1793214000.0,
+     "npz_md5": "1cd10e0542ac1e4d390b8863d9687b8b",
+     "npz_bars": 41495,
+     "bh": 15.46994784743892,
+     "verdict": "BEST_EFFORT",
+     "npz_age_h_at_publish": 0.9
     }
    ],
    "error": null
   },
   "s2": {
-   "published_n": 6,
-   "per_hour": 3.0,
+   "published_n": 4,
+   "per_hour": 2.0,
    "improved_vs_best_start": 0,
    "mean_uplift_vs_best_start": -8.7121,
    "median_uplift": -8.7121,
    "chained_from_previous_published": 1,
-   "no_floor_recorded": 5,
+   "no_floor_recorded": 3,
    "backslides": [
     {
      "symside": "BEAMXUSDT_LONG",
@@ -54,26 +54,11 @@
    ],
    "stale_npz": [],
    "fails": [
-    "throughput 3.0/h < 12.0/h (one per 5 min)",
+    "throughput 2.0/h < 12.0/h (one per 5 min)",
     "1 board(s) published BELOW their best_start \u2014 the best-start law is broken",
     "rounds stopped learning: mean uplift vs best_start -8.7121"
    ],
    "rows": [
-    {
-     "symside": "BBUSDT_SHORT",
-     "published_at": 1793211773.0973508,
-     "final_gain": 49.55417484980739,
-     "best_start_gain": null,
-     "best_start_chosen": null,
-     "best_start_candidates": null,
-     "baseline_gain": 23.159036923363942,
-     "npz_ts_last": 1793208600.0,
-     "npz_md5": "fbb751b80bccfe529cd6172870f54cb3",
-     "npz_bars": 43560,
-     "bh": 0.6746826245765691,
-     "verdict": null,
-     "npz_age_h_at_publish": 0.88
-    },
     {
      "symside": "BEAMXUSDT_LONG",
      "published_at": 1793215528.8301606,
@@ -90,23 +75,23 @@
      "npz_age_h_at_publish": 1.17
     },
     {
-     "symside": "BLURUSDT_SHORT",
-     "published_at": 1793211264.6409094,
-     "final_gain": 68.13380555161956,
+     "symside": "BIGTIMEUSDT_SHORT",
+     "published_at": 1793218038.0129137,
+     "final_gain": 23.198738839499878,
      "best_start_gain": null,
      "best_start_chosen": null,
      "best_start_candidates": null,
-     "baseline_gain": 67.71322861119572,
-     "npz_ts_last": 1793208600.0,
-     "npz_md5": "14feb848a8fc48e6fa96c65d7c0ac215",
-     "npz_bars": 122807,
-     "bh": 53.209629968820785,
+     "baseline_gain": 14.947285636808818,
+     "npz_ts_last": 1793214000.0,
+     "npz_md5": "61dd474510268eceec05cced6215791e",
+     "npz_bars": 106765,
+     "bh": 15.654291243107618,
      "verdict": null,
-     "npz_age_h_at_publish": 0.74
+     "npz_age_h_at_publish": 1.12
     },
     {
      "symside": "COMPUSDT_LONG",
-     "published_at": 1793215569.1145773,
+     "published_at": 1793215596.906864,
      "final_gain": 29.880530518674842,
      "best_start_gain": null,
      "best_start_chosen": null,
@@ -133,21 +118,6 @@
      "bh": 9.781870566828387,
      "verdict": null,
      "npz_age_h_at_publish": 0.92
-    },
-    {
-     "symside": "TRUMPUSDC_SHORT",
-     "published_at": 1793208918.8041878,
-     "final_gain": 18.02453250336518,
-     "best_start_gain": null,
-     "best_start_chosen": null,
-     "best_start_candidates": null,
-     "baseline_gain": 16.623305452390753,
-     "npz_ts_last": 1793204100.0,
-     "npz_md5": "d02e3bcede0f5c5fceeab8d97bfc889e",
-     "npz_bars": 40227,
-     "bh": 13.277623376354567,
-     "verdict": null,
-     "npz_age_h_at_publish": 1.34
     }
    ],
    "error": null

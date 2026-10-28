@@ -93,3 +93,18 @@ def test_disabled_without_env(monkeypatch):
     V.simulate_one({"close": [1.0]}, "X", True, Cfg())
     V.simulate_one({"close": [1.0]}, "X", True, Cfg())
     assert V.calls == 2
+
+
+@pytest.mark.parametrize("memo", ["0", "2"])
+def test_pilot_starts_with_and_without_memo(memo):
+    # 2026-10-28 regression: an early os.environ read in _main_single hit "local variable 'os' referenced before assignment"
+    # (os is imported later inside that function) and killed EVERY board in 5 s, memo on or off.
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    env = dict(os.environ, V12_SIM_MEMO=memo)
+    r = subprocess.run([sys.executable, "v15_pilot.py", "--help"], cwd=str(root), env=env, capture_output=True, text=True, timeout=300)
+    assert r.returncode == 0, r.stderr[-800:]

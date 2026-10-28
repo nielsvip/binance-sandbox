@@ -10714,11 +10714,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             if _prio_pool is not None: _prio_pool.shutdown(wait=False, cancel_futures=True)  # TASK 05.2: release the priority worker with the main pool
             _pool = None
             print("[spec-fill] fork pool released before DONE stage (RAM headroom for save+live-verify)", flush=True)
-            if os.environ.get("V12_SIM_MEMO", "0") == "2":
+            if __import__("os").environ.get("V12_SIM_MEMO", "0") == "2":
                 from tools import v15_sim_memo as _SMC
                 _smc = _SMC.collect_stats()
                 progress.setdefault("v18", {})["sim_memo"] = _smc
-                print(f"[SIM-MEMO] {new_symside} hits={_smc['hits']} runs={_smc['runs']} hit_rate={_smc['hit_rate']} workers={_smc['workers']} affinity={os.environ.get('V15_ROW_AFFINITY', '0')}", flush=True)
+                print(f"[SIM-MEMO] {new_symside} hits={_smc['hits']} runs={_smc['runs']} hit_rate={_smc['hit_rate']} workers={_smc['workers']} affinity={__import__('os').environ.get('V15_ROW_AFFINITY', '0')}", flush=True)
     except Exception as _ps_e:
         print(f"[pool-release-warn] {_ps_e}", flush=True)
     # 2026-09-28 DONE-stage RAM trim part 2: a parent still hit 4.5GB (OOM-killed 19:53Z) — the
@@ -12804,10 +12804,10 @@ def _run_pair_partner(new_symside):
 
 def _main_single():
     _capture_start_stamp()
-    if os.environ.get("V12_SIM_MEMO", "0") == "2":  # gate candidate E (2026-10-28): exact whole-simulation memo, engine file untouched
+    if __import__("os").environ.get("V12_SIM_MEMO", "0") == "2":  # gate candidate E (2026-10-28): exact whole-simulation memo, engine file untouched (os is a later local in this function)
         try:
             from tools import v15_sim_memo as _SMI
-            print(f"[SIM-MEMO] exact whole-simulation memo installed={_SMI.install()} affinity={os.environ.get('V15_ROW_AFFINITY', '0')}", flush=True)
+            print(f"[SIM-MEMO] exact whole-simulation memo installed={_SMI.install()} affinity={__import__('os').environ.get('V15_ROW_AFFINITY', '0')}", flush=True)
         except Exception as _smie:
             print(f"[SIM-MEMO-WARN] {_smie} — memo off, board unchanged", flush=True)
     _cycle_deque = None

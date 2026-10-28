@@ -114,9 +114,10 @@ try:
     # 2026-10-28 16:3xZ measured (sampler ~/fleet_tp_boardmem_20261028.jsonl, PSS from smaps_rollup): S1 with 3 crypto boards
     # (peak PSS 3.8-4.5 GB each) fell to 5,145 MB available < the operator's 6 GB headroom -> 2; s5/s6 kept >= 13.5 GB at 4 boards
     # but run load 21-24 on 16 cores, so more slots there would only stretch walls.
-    HOST_SLOTS = {str(k): int(v) for k, v in json.loads(os.environ.get("FLEET_HOST_SLOTS", '{"s1": 2}')).items()}
+    # 2026-10-28 20:27Z: s2 ran 4 boards (28 pilot procs) at 4.6 GB available beside ez_indicators/fwdstate/bar trigger -> 3
+    HOST_SLOTS = {str(k): int(v) for k, v in json.loads(os.environ.get("FLEET_HOST_SLOTS", '{"s1": 2, "s2": 3}')).items()}
 except (ValueError, TypeError, AttributeError):
-    HOST_SLOTS = {"s1": 2}
+    HOST_SLOTS = {"s1": 2, "s2": 3}
 WORKERS = env_int("FLEET_WORKERS", 7)
 ORPHAN_SLOTS = env_int("FLEET_ORPHAN_SLOTS", 1)
 MEM_MIN_MB = env_int("FLEET_MEM_MIN_MB", 11000)  # 2026-10-28 operator: NO OOM — a 7-worker board peaks 8-9 GB, so a launch needs that much headroom beyond the 2-3 GB reserve
