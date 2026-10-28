@@ -152,7 +152,7 @@ for row in to_write:
  con.execute(sql,row); written+=1
 con.commit(); con.close(); pss._invalidate_read_cache()
 if written:
- subprocess.Popen(["flock","-n","/tmp/per_sym_full_sets_build.lock",sys.executable,"tools/build_per_sym_full_sets.py","--quiet"],cwd=str(pss.ROOT),stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
+ pass  # 2026-10-28 user rule: S1 builds per_sym_full_sets.json; no Mac rebuild (was Popen flock build_per_sym_full_sets.py)
 print(json.dumps({"written":written,"newer":newer}))'''
 
 
@@ -355,13 +355,10 @@ def absorb():
                 log(f"{ss} apply error: {str(e)[:200]}")
     if applied:
         try:
-            rebuilt = subprocess.run((sys.executable, "tools/build_per_sym_full_sets.py", "--quiet"), cwd=ROOT, capture_output=True, text=True, timeout=40)
-            if rebuilt.returncode:
-                log(f"Mac per_sym_full_sets rebuild failed: {rebuilt.stderr.strip()[-200:]}")
-            else:
-                log("Mac per_sym_full_sets rebuilt from current SQL")
+            # 2026-10-28 user rule: S1 builds per_sym_full_sets.json; the Mac only receives it. No Mac rebuild.
+            log("per_sym_full_sets rebuild skipped on Mac (S1 builds it)")
         except Exception as e:
-            log(f"Mac per_sym_full_sets rebuild error: {str(e)[:160]}")
+            log(f"per_sym_full_sets skip error: {str(e)[:160]}")
     replicated = 0
     if os.environ.get("PER_SYM_DELTA_BROADCAST_ENABLED") != "1":
         with ThreadPoolExecutor(max_workers=max(1, len(remote_latest))) as pool:

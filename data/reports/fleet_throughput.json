@@ -1,8 +1,8 @@
 {
-  "ts": "2026-10-28T18:55:08.495415+00:00",
+  "ts": "2026-10-28T19:05:11.051530+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 1,
+  "fleet_published_last_60m": 5,
   "pending_sym_sides": 127,
   "hosts": {
     "s1": {
@@ -15,19 +15,54 @@
       "boards_running": 2,
       "workers": 14,
       "workers_vs_law_28": "14/28",
-      "mem_avail_mb": 11442,
+      "mem_avail_mb": 10569,
       "disk_free_gb": 34,
-      "load1": 9.4,
+      "load1": 14.5,
       "dispatch_idle_why": "full 2/2",
       "published_ss": [
         "PTBUSDT_SHORT"
       ]
     },
     "s2": {
-      "unreachable": true
+      "published_last_60m": 3,
+      "published_last_3h": 5,
+      "boards": {
+        "BEAMXUSDT_LONG": 7,
+        "BEATUSDT_SHORT": 7,
+        "COMPUSDT_LONG": 7,
+        "SKYAIUSDT_LONG": 7
+      },
+      "boards_running": 4,
+      "workers": 28,
+      "workers_vs_law_28": "28/28",
+      "mem_avail_mb": 6967,
+      "disk_free_gb": 49,
+      "load1": 28.9,
+      "dispatch_idle_why": "full 4/4",
+      "published_ss": [
+        "BBUSDT_SHORT",
+        "BLURUSDT_SHORT",
+        "DASHUSDT_SHORT"
+      ]
     },
     "s5": {
-      "unreachable": true
+      "published_last_60m": 1,
+      "published_last_3h": 6,
+      "boards": {
+        "CDW_LONG": 7,
+        "HD_LONG": 7,
+        "ZCSH_LONG": 7
+      },
+      "boards_running": 3,
+      "workers": 21,
+      "workers_vs_law_28": "21/28",
+      "mem_avail_mb": 9794,
+      "disk_free_gb": 53,
+      "load1": 25.5,
+      "dispatch_idle_why": "full 4/4",
+      "published_ss": [
+        "1000BONKUSDC_SHORT"
+      ]
     },
     "s6": {
       "unreachable": true
@@ -36,8 +71,8 @@
   "alerts": [
     "LOW_THROUGHPUT:s1:1/h<10 (idle_why=full 2/2)",
     "DISK_FLOOR:s1:34GB<40",
-    "UNREACHABLE:s2",
-    "UNREACHABLE:s5",
+    "LOW_THROUGHPUT:s2:3/h<10 (idle_why=full 4/4)",
+    "LOW_THROUGHPUT:s5:1/h<10 (idle_why=full 4/4)",
     "UNREACHABLE:s6"
   ],
   "repair": null
