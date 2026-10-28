@@ -170,7 +170,12 @@ def _crypto_service(tmp_path, flag):
 
 
 def _last(tmp_path, acct, ss):
-    return [json.loads(x) for x in (tmp_path / "history" / acct / f"{ss}.jsonl").read_text().splitlines()]
+    out = []
+    for sub in ("history", "decisions"):
+        f = tmp_path / sub / acct / f"{ss}.jsonl"
+        if f.exists():
+            out += [json.loads(x) for x in f.read_text().splitlines() if x.strip()]
+    return out
 
 
 def _order(pk, qty, tagged_reason_text, prov):

@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 from closed_bar_feed import atomic_json
 from tools.crypto_15m_bar_clock import ObservedMarks
-from tools.stock_15m_bar_clock import completed_stock_row, ingest_quotes, native_prefix, quote_collection_window, quote_mark, stock_symbols
+from tools.stock_15m_bar_clock import completed_stock_row, ingest_quotes, ingest_stream_event, native_prefix, quote_collection_window, quote_mark, stock_symbols
 
 START = int(datetime(2026, 10, 26, 19, 45, tzinfo=timezone.utc).timestamp())
 
@@ -15,6 +15,15 @@ def test_quotes_start_one_hour_before_regular_session():
     assert quote_collection_window(opening - 1, (opening, closing))
     assert quote_collection_window(opening, (opening, closing))
     assert not quote_collection_window(closing, (opening, closing))
+
+
+def test_stream_quote_updates_mark_minute_from_source_timestamp():
+    observed = ObservedMarks()
+    stamp = START + 840
+    event = {'type': 'quote', 'symbol': 'AAPL', 'bid': 100, 'ask': 102, 'biddate': stamp * 1000, 'askdate': stamp * 1000}
+    assert ingest_stream_event(observed, event, stamp + 0.5) == 1
+    assert observed.bars['AAPL'][stamp]['close'] == 101
+    assert ingest_stream_event(observed, dict(event, biddate=(stamp - 10) * 1000, askdate=(stamp - 10) * 1000), stamp + 0.5) == 0
 
 
 def test_fresh_response_uses_current_bid_ask_with_old_last_trade():

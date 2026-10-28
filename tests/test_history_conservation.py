@@ -180,7 +180,7 @@ def test_tradier_writer_suppresses_repeat_close(tmp_path, monkeypatch):
     asyncio.run(fn(self_stub, pk, "AUGMENT", 22.0, 228.125, "GAP_MORNING_REENTRY"))
     asyncio.run(fn(self_stub, pk, "CLOSE", 22.0, 224.10, "UNCOND_CLOSE"))
     asyncio.run(fn(self_stub, pk, "CLOSE", 22.0, 224.10, "UNCOND_CLOSE_DUP"))
-    lines = (dd / "history" / "trb" / "CVX_SHORT.jsonl").read_text().splitlines()
+    lines = (dd / "decisions" / "trb" / "CVX_SHORT.jsonl").read_text().splitlines()
     assert len(lines) == 2
     assert json.loads(lines[0])["type"] == "AUGMENT"
     assert json.loads(lines[1])["type"] == "CLOSE"
@@ -198,5 +198,5 @@ def test_tradier_writer_first_close_always_allowed(tmp_path, monkeypatch):
     self_stub = SimpleNamespace(config=SimpleNamespace(DATA_DIR=str(dd)))
     fn = _tm.TradierTradeManager._append_to_history
     asyncio.run(fn(self_stub, "trb:AAPL_LONG", "CLOSE", 10.0, 347.0, "X"))
-    lines = (dd / "history" / "trb" / "AAPL_LONG.jsonl").read_text().splitlines()
+    lines = (dd / "decisions" / "trb" / "AAPL_LONG.jsonl").read_text().splitlines()
     assert len(lines) == 1

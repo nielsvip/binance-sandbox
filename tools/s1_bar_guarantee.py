@@ -551,7 +551,7 @@ class Guarantee:
                             r = json.loads(line)
                         except ValueError:
                             continue
-                        if r.get("event") == "ORDER" and b["close"] <= float(r.get("ts") or 0) < b["close"] + BAR_S and not r.get("dry_run"):
+                        if r.get("event") == "ORDER" and b["close"] - 2 * BAR_S <= float(r.get("ts") or 0) < b["close"] + BAR_S and not r.get("dry_run"):
                             rows.append(r)
             except OSError:
                 continue
@@ -559,9 +559,12 @@ class Guarantee:
 
     def audit(self):
         b = self.bar
-        orders = {}
+        orders, prior = {}, {}
         for r in self.ledger_rows(b):
-            orders.setdefault((r.get("acct"), r.get("ss")), []).append(r)
+            if float(r.get("ts") or 0) >= b["close"]:
+                orders.setdefault((r.get("acct"), r.get("ss")), []).append(r)
+            elif r.get("status") not in ("SENT",):
+                prior.setdefault((r.get("acct"), r.get("ss")), []).append(r)
         out = []
         for ss, side in b["sides"].items():
             st = side["state"] or {}
@@ -607,6 +610,9 @@ class Guarantee:
                     verdict = "wrong_direction"
                 elif failed:
                     verdict = "blocked:" + str(failed[-1].get("detail") or failed[-1].get("status"))[:90]
+                elif prior.get((acct, ss)):
+                    # the trader retries a failed OPEN once per bar (done_ts window): this bar's silence is that earlier refusal
+                    verdict = "blocked_retry_pending:" + str(prior[(acct, ss)][-1].get("detail") or prior[(acct, ss)][-1].get("status"))[:90]
                 else:
                     verdict = "missed"
                 verify = side["verify"] or {}

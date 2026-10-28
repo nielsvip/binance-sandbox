@@ -1982,7 +1982,7 @@ class TradierPositionManager:
         try:
             account_key, symbol, side = parse_position_key(position_key)
             symbol_side = f"{symbol}_{side}"
-            hist_dir = Path(self.config.DATA_DIR) / "history" / account_key
+            hist_dir = Path(self.config.DATA_DIR) / "decisions" / account_key
             hist_dir.mkdir(parents=True, exist_ok=True)
             filename = hist_dir / f"{symbol_side}.jsonl"
             try:  # USER 2026-10-27: roll at ~10 MB into archive/<SYM_SIDE>.<stamp>.jsonl, rename only — never deleted
@@ -3655,7 +3655,7 @@ class TradierPositionManager:
             symbol_side = parts[1] if len(parts) > 1 else position_key
             
             # 2. Setup Path
-            hist_dir = self.config.DATA_DIR / "history" / account_key
+            hist_dir = self.config.DATA_DIR / "decisions" / account_key
             hist_dir.mkdir(parents=True, exist_ok=True)
             filename = hist_dir / f"{symbol_side}.jsonl"
             

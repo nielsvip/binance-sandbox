@@ -2742,24 +2742,20 @@ def _weekly_max_shares_tradier(
             try:
                 # look in trb/trc history dirs for last 7d max
                 for _acc in account_key and [account_key] or ["trb", "trc"]:
-                    hist = (
-                        Path(config.DATA_DIR)
-                        / "history"
-                        / _acc
-                        / f"{symbol}_{'LONG' if getattr(position, 'position_side', 'LONG') == 'LONG' else 'SHORT'}.jsonl"
-                    )
-                    if not hist.exists():
+                    from vec_decisions import decision_store as _dstore
+                    _ss = f"{symbol}_{'LONG' if getattr(position, 'position_side', 'LONG') == 'LONG' else 'SHORT'}"
+                    _rl = _dstore.read_lines(config.DATA_DIR, _acc, _ss)
+                    if not _rl:
                         hist2 = (
                             Path(config.BASE_PATH) / _acc / f"history_{symbol}.jsonl"
                         )
-                        if hist2.exists():
-                            hist = hist2
-                        else:
+                        if not hist2.exists():
                             continue
+                        _rl = hist2.read_text(errors="replace").splitlines()
                     cutoff = datetime.now(timezone.utc) - timedelta(days=7)
                     peak = 0.0
                     try:
-                        txt = hist.read_text()
+                        txt = "\n".join(_rl)
                         for line in txt.strip().split("\n")[-800:]:
                             if not line.strip():
                                 continue
@@ -8148,11 +8144,13 @@ def _air_history_log(account_key, symbol, side) -> list:
         except Exception:
             return []
     try:
-        _p = Path(getattr(config, "DATA_DIR", Path(config.BASE_PATH) / "data" / "tradier")) / "history" / str(account_key) / f"{symbol}_{str(side).upper()}.jsonl"
-        if not _p.exists():
+        from vec_decisions import decision_store as _dstore
+        _dd = getattr(config, "DATA_DIR", Path(config.BASE_PATH) / "data" / "tradier")
+        _rl = _dstore.read_lines(_dd, str(account_key), f"{symbol}_{str(side).upper()}")
+        if not _rl:
             return []
         out = []
-        for _ln in _p.read_text(errors="ignore").splitlines()[-400:]:
+        for _ln in _rl[-400:]:
             try:
                 _r = json.loads(_ln)
                 if isinstance(_r, dict):
@@ -25932,11 +25930,18 @@ async def queue_trade_action(
                         )
                         _ot_today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
                         _ot_n = 0
-                        if _ot_hist.exists():
+                        _ot_extra = [
+                            _ot_base / "data" / "decisions" / _ot_acct / f"{_ot_symside}.jsonl",
+                            _ot_base / "data" / "tradier" / "decisions" / _ot_acct / f"{_ot_symside}.jsonl",
+                        ]
+                        _ot_files = [p for p in [_ot_hist, *_ot_extra] if p.exists()]
+                        if _ot_files:
                             import json as _ot_j
 
-                            with open(_ot_hist, errors="replace") as _ot_f:
-                                for _ot_line in _ot_f:
+                            _ot_all_lines = []
+                            for _ot_p in _ot_files:
+                                _ot_all_lines.extend(_ot_p.read_text(errors="replace").splitlines())
+                            for _ot_line in _ot_all_lines:
                                     _ot_line = _ot_line.strip()
                                     if not _ot_line:
                                         continue
@@ -52370,7 +52375,8 @@ class TradierTradeManager:
                 _hist_buys = 0
                 try:
                     _tra_hist_dir = Path(config.BASE_PATH) / "data" / "history" / "tra"
-                    for _hf in _tra_hist_dir.glob("*.jsonl"):
+                    _tra_dec_dir = Path(config.BASE_PATH) / "data" / "decisions" / "tra"
+                    for _hf in [*_tra_hist_dir.glob("*.jsonl"), *_tra_dec_dir.glob("*.jsonl")]:
                         with open(_hf) as _hfh:
                             for _ln in _hfh:
                                 if '"OPEN"' not in _ln and '"AUGMENT"' not in _ln:
@@ -52987,7 +52993,7 @@ class TradierTradeManager:
             parts = position_key.split(":")
             account_key = parts[0] if len(parts) > 0 else "unknown"
             symbol_side = parts[1] if len(parts) > 1 else position_key
-            hist_dir = Path(self.config.DATA_DIR) / "history" / account_key
+            hist_dir = Path(self.config.DATA_DIR) / "decisions" / account_key
             hist_dir.mkdir(parents=True, exist_ok=True)
             filename = hist_dir / f"{symbol_side}.jsonl"
             MAX_SIZE_BYTES = 200 * 1024

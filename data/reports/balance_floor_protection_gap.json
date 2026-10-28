@@ -1,0 +1,53 @@
+{
+  "subject": "balance_floor_watchdog.py — the account-level balance protection is both WRONG and NOT RUNNING",
+  "found_by": "binance-17 (the double-count); independently verified and extended by binance-3f, 2026-10-28",
+  "needs": "OPERATOR DECISION — every correct fix makes the reported balance LOWER, which can trip a floor HALT and obstruct trades. Not patched for that reason.",
+
+  "defect_1_double_count": {
+    "where": "balance_floor_watchdog.py, the futures balance reader (wanted = {USDC, USDT, BUSD}; usd += avail per asset row)",
+    "why_wrong": "These are CROSS / MULTI-ASSET accounts, so availableBalance is an ACCOUNT-level figure repeated on every asset row. Summing it across assets multiplies the same number by the count of non-zero rows.",
+    "measured_effect": "fin would be reported at ~$1.38 against an actual account-level ~$0.69; ang at ~$63.6 against ~$31.8. Roughly 2x, and up to ~8-10x if every asset row is summed."
+  },
+
+  "defect_2_the_mask_is_decisive_not_theoretical": {
+    "default_floor": "min_floor_usd = 1.0 (balance_floor_watchdog.py:65); at or below it the watchdog writes a HALT sentinel",
+    "fin_actual_available": "~$0.69 — BELOW the $1.00 floor, so a correct reader would HALT fin today",
+    "fin_as_reported_by_the_defect": "~$1.38 — ABOVE the floor, so no halt",
+    "conclusion": "The double-count does not merely delay the protection; on today's balances it flips the one genuinely-breached account from HALT to no-halt."
+  },
+
+  "defect_3_not_running_at_all": {
+    "mac_cron": 0,
+    "s1_cron": 0,
+    "s5_cron": 0,
+    "launchd_plist": "/Users/niels/Library/LaunchAgents/com.niels.balance-floor-watchdog.plist EXISTS but is NOT loaded in launchctl",
+    "processes": "0 on Mac, 0 on S1, 0 on S5",
+    "conclusion": "No balance floor protection is active on any host right now, so defects 1 and 2 are currently moot — and that is the more urgent fact."
+  },
+
+  "defect_4_the_template_switch_is_dead": {
+    "switch": "BALANCE_FLOOR_USD",
+    "declared": "config.Config ABSENT, config_tradier.TradierConfig ABSENT, QuickConfig 0.0",
+    "template_rows": "present in all four TEMPLATE_FINAL_NORM workbooks but ALL GREY, so no board ever evaluates it",
+    "and": "balance_floor_watchdog.py does not read BALANCE_FLOOR_USD at all — it uses its own min_floor_usd dataclass default. The switch is wired to nothing on any surface.",
+    "cross_reference": "one of the 19 grey-only undeclared switches in data/reports/surface_breaches_real.json's companion grey list"
+  },
+
+  "corroborating_balances": {
+    "source": "read-only /fapi/v2/balance per account on S1 (binance-17), account-level available",
+    "fin": "~$0.69  (USDT -7.41, USDC +62.89)  -> 613 x -2019 Margin is insufficient",
+    "ang": "~$31.8  (USDT -152.76, USDC +131.10) -> 211 x -2019",
+    "men": "~$97.9  (USDT -65.55, USDC -24.34)  -> 78 x -2027 leverage cap, not margin",
+    "inf": "~$23.8  -> no errors",
+    "flz": "~$84.4  -> no errors"
+  },
+
+  "options_for_the_operator": [
+    "A. Fix the reader to take the account-level figure once, and LEAVE the watchdog unscheduled: the numbers become honest with zero risk of obstructing a trade.",
+    "B. Fix the reader AND schedule it: real protection returns, but fin (~$0.69) halts immediately on the $1.00 default floor — which may be the correct outcome given it has already failed 613 opens.",
+    "C. Fix the reader, schedule it, and lower min_floor_usd below fin's balance: protection is active without halting fin today.",
+    "D. Leave as is: no protection, and the reader keeps overstating by ~2x.",
+    "Separately, and independent of A-D: either wire BALANCE_FLOOR_USD into the watchdog and declare it in both live configs, or remove its four grey template rows. Today it is a switch that reads from nothing and is swept by nothing."
+  ],
+  "recorded_utc": "2026-10-28T04:35:00Z"
+}
