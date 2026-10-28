@@ -43,12 +43,29 @@ except Exception:
         return False
 
 
+_NONCANON = None
+
+
 def load_json_list(p: Path) -> list[dict]:
     if not p.exists() or p.stat().st_size == 0:
         return []
     try:
-        d = json.loads(p.read_text())
-        return d if isinstance(d, list) else []
+        text = p.read_text()
+        d = json.loads(text)
+        if not isinstance(d, list):
+            return []
+        # 2026-10-28 operator law: ONE canonical UTC Z stamp. merge_klines/gather_fresh key bars by the raw stamp string, so a source still carrying
+        # "+00:00" / date-only / "NaT" forms next to canonical stores re-appended every bar as a "new" row (BARDUSDT_15m doubled 38.9k -> 75.0k rows
+        # minutes after the stores were normalised). Every list read here is converted (convert-only, no row dropped) before any key compare.
+        global _NONCANON
+        if _NONCANON is None:
+            import re
+            _NONCANON = re.compile(r'"timestamp(?:_dt)?"\s*:\s*"(?:[^"]*\+00:00|[^"]*-0[0-9]:00|\d{4}-\d\d-\d\d(?:\.0+Z)?|NaT|\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ)"')
+        if _NONCANON.search(text):
+            sys.path.insert(0, str(REPO))
+            import kline_stamp
+            d, _ = kline_stamp.normalize_rows(d)
+        return d
     except Exception:
         return []
 
