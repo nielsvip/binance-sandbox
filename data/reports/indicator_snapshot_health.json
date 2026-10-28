@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-28T13:56:14Z",
+ "generated_utc": "2026-10-28T14:01:05Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 1006.8,
+  "age_s": 1297.9,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 38323,
-  "proc_age_s": 20425.0,
-  "log_age_s": 631.9,
+  "proc_age_s": 20716.0,
+  "log_age_s": 103.7,
   "warmup_done": true,
   "timeframes_since_restart": [
    "D",
@@ -35,6 +35,8 @@
    "warm-up already complete (steady state is self-sustaining)",
    "warm-up already complete (steady state is self-sustaining)",
    "warm-up already complete (steady state is self-sustaining)",
+   "warm-up already complete (steady state is self-sustaining)",
+   "warm-up already complete (steady state is self-sustaining)",
    "warm-up already complete (steady state is self-sustaining)"
   ],
   "policy": {
@@ -48,21 +50,21 @@
   "mode": "ACTIVE",
   "since_epoch": 1793127215.692805,
   "activations": 164,
-  "hb_mtime": 1793195526.439525,
-  "mac_snapshot_age_s": 1781.458557844162,
+  "hb_mtime": 1793195887.4968495,
+  "mac_snapshot_age_s": 2141.63605093956,
   "mac_stale": true,
   "lease_holder": "mac",
   "lease_venues": null,
   "lease_since": "2026-10-27T18:56:44Z",
   "lease_reason": "manual force-mac",
-  "now": 1793195526.5715592,
-  "from_cache_age_s": 247.2,
-  "heartbeat_age_s": 0.1,
-  "active_s": 68310.9,
+  "now": 1793195892.653305,
+  "from_cache_age_s": 173.2,
+  "heartbeat_age_s": 5.2,
+  "active_s": 68677.0,
   "note": "ACTIVE is CORRECT while the Mac snapshot is stale \u2014 fix the Mac, S1 returns to NORMAL on its own"
  },
  "alerts": [
-  "SNAPSHOT STALE: latest_market_data.json is 1006s old (> 600s). ez_indicators pid=38323 warmup_done=True tfs_since_restart=['D', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', 'D', '4h'] restarts_last_hour=0. Live crypto decisions are reading a stale indicator snapshot."
+  "SNAPSHOT STALE: latest_market_data.json is 1297s old (> 600s). ez_indicators pid=38323 warmup_done=True tfs_since_restart=['D', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', 'D', '4h'] restarts_last_hour=0. Live crypto decisions are reading a stale indicator snapshot."
  ],
  "verdict": "ALERT"
 }
