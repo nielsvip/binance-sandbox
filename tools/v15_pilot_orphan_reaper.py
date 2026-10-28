@@ -121,6 +121,16 @@ def _liveness_age_s(pid, symbol_side, now):
     return min(ages) if ages else None
 
 
+def _is_7d(pid):
+    """7D pilots are launched with V15_7D_SOURCE_KIND / V15_7D_PILOT_FILE; never reap them as orphans."""
+    try:
+        with open(f"/proc/{pid}/environ", "rb") as fh:
+            env = fh.read().split(b"\0")
+    except OSError:
+        return False
+    return any(e.startswith(b"V15_7D_SOURCE_KIND=") or e.startswith(b"V15_7D_PILOT_FILE=") for e in env)
+
+
 def scan(stale_s, grace_s):
     """Group pilot-cmdline processes by sym_side. A group is an OOM orphan set ONLY if:
     no member has a child (kernel children file OR ppid scan), no member is a session leader
@@ -136,6 +146,8 @@ def scan(stale_s, grace_s):
         if PILOT_MATCH not in cmd or "--sym-side" not in cmd:
             continue
         if f"/proc/{pid}" in cmd or "orphan_reaper" in cmd:
+            continue
+        if _is_7d(pid):
             continue
         st = _stat_fields(pid)
         if not st:

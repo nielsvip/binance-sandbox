@@ -37,6 +37,11 @@ def _sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _is_stock_placement(queue: dict, ss: str) -> bool:
+    """Only stock sides follow the pre-open clock; crypto 7D runs whenever there is spare compute."""
+    return str(((queue.get("sym_sides") or {}).get(ss) or {}).get("cat_side", "")).startswith("STOCKS_")
+
+
 def _market_window(now: dt.datetime) -> bool:
     local = now.astimezone(NY)
     return local.weekday() < 5 and local.time() < dt.time(9, 30)
@@ -217,8 +222,10 @@ def tick(root: Path, now: dt.datetime, hosts: list[dict], stats: dict,
             if state_path.exists() and not dry_run:
                 state = json.loads(state_path.read_text())
                 if state.get("phase") in ("running", "await_replay"):
-                    for row in state.get("placements", {}).values():
-                        if row.get("status") in ("pending", "running"):
+                    qpath = folder / "queue.json"
+                    qdoc = json.loads(qpath.read_text()) if qpath.exists() else {"sym_sides": {}}
+                    for ss, row in state.get("placements", {}).items():
+                        if row.get("status") in ("pending", "running") and _is_stock_placement(qdoc, ss):
                             row.update({"status": "failed", "why": "market-open deadline"})
                         if row.get("status") == "valid" and row.get("replay_status") not in ("valid", "failed"):
                             row.update({"replay_status": "failed", "why": "market-open replay deadline"})
@@ -340,7 +347,7 @@ def tick(root: Path, now: dt.datetime, hosts: list[dict], stats: dict,
                             "why": "launcher vanished without a result"})
     if state.get("phase") == "running" and local_time >= dt.time(9, 0):
         unfinished = [ss for ss, row in state["placements"].items()
-                      if row.get("status") in ("pending", "running")]
+                      if row.get("status") in ("pending", "running") and _is_stock_placement(queue, ss)]
         if unfinished:
             state["bar_minute"] = 0
             queue["_meta"]["bar_minute"] = 0
