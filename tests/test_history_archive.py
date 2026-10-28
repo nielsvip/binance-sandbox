@@ -304,3 +304,68 @@ def test_recover_adds_only_missing_old_rows_and_is_idempotent(tmp_path, monkeypa
 def test_ext_health_refuses_toshiba_and_unmounted(tmp_path):
     assert _off.ext_health("/Volumes/TOSHIBA_EXT")["ok"] is False
     assert _off.ext_health(str(tmp_path))["ok"] is False
+
+
+class _FakeClient:
+    def __init__(self, trades, orders):
+        self.trades, self.orders, self.calls = trades, orders, []
+
+    def futures_account_trades(self, **kw):
+        self.calls.append(("trades", kw.get("symbol")))
+        return self.trades
+
+    def futures_get_order(self, symbol, orderId):
+        self.calls.append(("order", orderId))
+        return self.orders[orderId]
+
+
+def _rest_service(tmp_path, client, paper=False):
+    base = tmp_path / "base"
+    (base / "data").mkdir(parents=True)
+    if paper:
+        (base / "data" / "MAC_PAPER_TRADING").write_text("PAPER")
+    stub = SimpleNamespace(_history_dedup={}, _HISTORY_DEDUP_WINDOW_S=1.0, config=SimpleNamespace(DATA_DIR=tmp_path, HISTORY_PROV_ENABLED=False, BASE_PATH=base), redis_manager=None, accounts={"men": SimpleNamespace(client=client)})
+    stub._note_broker_fills = lambda *a: _eps.PositionService._note_broker_fills(stub, *a)
+    return stub
+
+
+def test_rest_fallback_stamps_mac_order_id(tmp_path):
+    t = int(time.time() * 1000) - 5000
+    cli = _FakeClient([{"orderId": 555, "qty": "3", "side": "BUY", "positionSide": "LONG", "time": t}, {"orderId": 555, "qty": "2", "side": "BUY", "positionSide": "LONG", "time": t + 10}], {555: {"clientOrderId": "x123", "status": "FILLED"}})
+    stub = _rest_service(tmp_path, cli)
+    _eps._RECENT_ORDER_FILLS.pop("men:RRRUSDC_LONG", None)
+    _run(_eps.PositionService._append_to_history(stub, "men:RRRUSDC_LONG", "AUGMENT", 5.0, 1.0, {"reason": "B"}))
+    row = json.loads((tmp_path / "history" / "men" / "RRRUSDC_LONG.jsonl").read_text().splitlines()[-1])
+    assert row["order_id"] == "555" and ("trades", "RRRUSDC") in cli.calls
+
+
+def test_rest_fallback_vector_direct_order_is_echo(tmp_path):
+    t = int(time.time() * 1000) - 5000
+    cli = _FakeClient([{"orderId": 777, "qty": "4", "side": "SELL", "positionSide": "LONG", "time": t}], {777: {"clientOrderId": "vdabcdef", "status": "FILLED"}})
+    stub = _rest_service(tmp_path, cli)
+    _eps._RECENT_ORDER_FILLS.pop("men:SSSUSDC_LONG", None)
+    _run(_eps.PositionService._append_to_history(stub, "men:SSSUSDC_LONG", "REDUCE", 4.0, 1.0, {"reason": "X"}))
+    row = json.loads((tmp_path / "history" / "men" / "SSSUSDC_LONG.jsonl").read_text().splitlines()[-1])
+    assert row.get("echo_of_order_id") == "777" and "order_id" not in row
+
+
+def test_rest_fallback_paper_mode_unknown_coid_is_echo(tmp_path):
+    t = int(time.time() * 1000) - 5000
+
+    class _NoOrder(_FakeClient):
+        def futures_get_order(self, symbol, orderId):
+            raise RuntimeError("boom")
+
+    cli = _NoOrder([{"orderId": 888, "qty": "1", "side": "BUY", "positionSide": "SHORT", "time": t}], {})
+    stub = _rest_service(tmp_path, cli, paper=True)
+    _eps._RECENT_ORDER_FILLS.pop("men:TTTUSDC_SHORT", None)
+    _run(_eps.PositionService._append_to_history(stub, "men:TTTUSDC_SHORT", "REDUCE", 1.0, 1.0, {"reason": "X"}))
+    row = json.loads((tmp_path / "history" / "men" / "TTTUSDC_SHORT.jsonl").read_text().splitlines()[-1])
+    assert row.get("echo_of_order_id") == "888" and "order_id" not in row
+
+
+def test_rest_fallback_budget_and_no_client_never_block_the_write(tmp_path):
+    stub = _rest_service(tmp_path, None)
+    _run(_eps.PositionService._append_to_history(stub, "men:UUUUSDC_LONG", "AUGMENT", 1.0, 1.0, {"reason": "X"}))
+    row = json.loads((tmp_path / "history" / "men" / "UUUUSDC_LONG.jsonl").read_text().splitlines()[-1])
+    assert row["qty"] == 1.0 and "order_id" not in row

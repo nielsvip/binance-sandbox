@@ -1602,7 +1602,7 @@ _RECENT_ORDER_PROV = {}
 
 
 _RECENT_ORDER_FILLS = {}
-_EXTERNAL_COID_PREFIXES = ("vd",)
+_EXTERNAL_COID_PREFIXES = ("vd", "paper-external")
 
 
 def note_order_fill(position_key, order_id, cum_qty, client_order_id="", status="", increases=None, now=None, window_s=1800.0):
@@ -8191,6 +8191,52 @@ class PositionService:
         except Exception:
             return None
 
+    async def _note_broker_fills(self, account_key, symbol, position_side):
+        """REST source of order ids for history rows (USER 2026-10-27). The user-data WS delivered 0 ACCOUNT_UPDATE events in the 2026-10-27/28 Mac logs, so fills are detected by REST polling and ORDER_TRADE_UPDATE never arrives. READ-ONLY GET userTrades (30 min, this side) grouped by orderId, + GET order for each new id (clientOrderId "vd..." = S1/S5 vector_direct). Budget 4 lookups/min/account and 3 order reads per lookup, skipped during an IP ban, bounded by the caller's timeout."""
+        try:
+            if _ban_remaining_seconds() > 0:
+                return
+            bud = self.__dict__.setdefault("_order_id_budget", {})
+            now_ts = time.time()
+            win = [t for t in bud.get(account_key, []) if now_ts - t < 60]
+            if len(win) >= 4:
+                return
+            win.append(now_ts)
+            bud[account_key] = win
+            cli = getattr((getattr(self, "accounts", None) or {}).get(account_key), "client", None)
+            if cli is None:
+                return
+            end = int(now_ts * 1000)
+            trades = await asyncio.wait_for(asyncio.to_thread(cli.futures_account_trades, symbol=symbol, startTime=end - 1800 * 1000, endTime=end, limit=200), timeout=4.0)
+            agg = {}
+            for t in trades or []:
+                if (t.get("positionSide") or position_side) != position_side:
+                    continue
+                o = agg.setdefault(str(t.get("orderId")), {"qty": 0.0, "inc": (str(t.get("side")) == "BUY") == (position_side == "LONG"), "time": 0})
+                o["qty"] += abs(float(t.get("qty") or 0.0))
+                o["time"] = max(o["time"], int(t.get("time") or 0))
+            pk = construct_position_key(account_key, symbol, position_side)
+            known = _RECENT_ORDER_FILLS.get(pk) or {}
+            paper = (Path(getattr(self.config, "BASE_PATH", Path.home() / "binance")) / "data" / "MAC_PAPER_TRADING").exists()
+            reads = 0
+            for oid, o in sorted(agg.items(), key=lambda x: -x[1]["time"]):
+                coid, status = "", ""
+                k = known.get(oid) or {}
+                if k.get("coid") or k.get("status"):
+                    coid, status = k.get("coid", ""), k.get("status", "")
+                elif reads < 3:
+                    reads += 1
+                    try:
+                        od = await asyncio.wait_for(asyncio.to_thread(cli.futures_get_order, symbol=symbol, orderId=int(oid)), timeout=3.0)
+                        coid, status = str(od.get("clientOrderId") or ""), str(od.get("status") or "")
+                    except Exception:
+                        pass
+                if not coid and paper:
+                    coid = "paper-external"
+                note_order_fill(pk, oid, o["qty"], client_order_id=coid, status=status or "FILLED", increases=o["inc"], now=o["time"] / 1000.0 if o["time"] else None)
+        except Exception as e:
+            logger.debug(f"[ORDER_ID_LOOKUP] {account_key}:{symbol}_{position_side}: {e!r}")
+
     async def _broker_open_fill_time(self, account_key, symbol, position_side, amt):
         """USER 2026-10-14 "THE PULL SHOWS YOU WHEN IT OPENED": a new lifecycle gets the broker's OPENING FILL time (READ-ONLY
         GET userTrades, replayed back from the current amount), never 'now'. Budgeted (8 lookups/min/account, 4 s each)."""
@@ -8616,6 +8662,10 @@ class PositionService:
             entry = { "ts": datetime.now(timezone.utc).isoformat(), "type": trade_type, "qty": round(float(qty), 6), "price": round(float(price), 8), "value": round(float(qty * price), 2), "reason": reason, "indicators": snapshot }
             try:  # USER 2026-10-27: additive broker order id(s) for this fill (see claim_order_fill); absent when no order matched
                 _oid_fields = claim_order_fill(position_key, qty, trade_type)
+                if not _oid_fields and "_" in symbol_side and str(trade_type or "").upper() in ("OPEN", "AUGMENT", "REENTRY", "REDUCE", "CLOSE"):
+                    _sym_o, _side_o = symbol_side.rsplit("_", 1)
+                    await asyncio.wait_for(self._note_broker_fills(account_key, _sym_o, _side_o), timeout=8.0)
+                    _oid_fields = claim_order_fill(position_key, qty, trade_type)
                 if _oid_fields:
                     entry.update(_oid_fields)
             except Exception:
