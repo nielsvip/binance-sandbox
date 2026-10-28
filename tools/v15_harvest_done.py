@@ -88,6 +88,30 @@ def harvest_xlsx():
         # final_path) is finished; a not_compliant sheet never gets a bh/gain filename
         if prog.get("not_compliant") or not prog.get("final_path"):
             continue
+        # 2026-10-28 (USER "I only got 1 result in 5 hours, I need at least 12 results per hour"): the pilot's own
+        # completeness/essential/chain/gain-truth gates ran before it printed [PUBLISH] and wrote final_path. Under the
+        # V21 row selection a published board fills ~2865 of 3977 non-grey rows, so is_complete() refused all 59 s5
+        # boards the pilot published and none reached the Mac. A pilot-published workbook is harvested as the pilot
+        # named it: on a kept-best publish final_path is the OLDER best, and naming that file from progress.final_gain
+        # (the newer losing candidate) would have put the wrong gain on it.
+        published = pathlib.Path(str(prog["final_path"]))
+        if published.name.startswith(f"{symside}_bh") and published.exists() and valid_xlsx(published):
+            gname, src = published.name, published
+            dst = OUT / gname
+            if dst.exists() and valid_xlsx(dst):
+                harvested.append((symside, gname))
+                continue
+            for old in OUT.glob(f"{symside}_bh*_30d_matrix.xlsx"):
+                if old.name != gname:
+                    old.unlink()
+            for old in OUT.glob(f"{symside}_bh*_30d_zoom.html"):
+                old.unlink()
+            tmp = OUT / (gname + ".tmp")
+            shutil.copy2(src, tmp)
+            os.replace(tmp, dst)
+            harvested.append((symside, gname))
+            print(f"[harvest] {symside} -> {gname} (pilot-published final_path)", flush=True)
+            continue
         try:
             if not is_complete(symside):
                 continue

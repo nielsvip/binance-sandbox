@@ -673,18 +673,19 @@ def _apply_visual(ws, r, c, fill=None, font=None, is_bold=False):
         pass
 
 _HDR_MAP_CACHE: dict = {}
+from weakref import ref as _weakref_hdr
 
 
 def _hdr_col_map(ws) -> dict:
     """Header lookup by row2 names — robust to column inserts per spec § TEMPLATE_*.xlsx. Cached per worksheet object (the
     pilot never writes headers, USER 2026-09-30): the per-row max_column walk was ~48% of the main thread's GIL time."""
     _hit = _HDR_MAP_CACHE.get(id(ws))
-    if _hit is not None and _hit[0] is ws:
+    if _hit is not None and _hit[0]() is ws:
         return dict(_hit[1])
     m = _hdr_col_map_scan(ws)
     if len(_HDR_MAP_CACHE) > 256:
         _HDR_MAP_CACHE.clear()
-    _HDR_MAP_CACHE[id(ws)] = (ws, m)  # holds the ws: its id can never be reused while cached
+    _HDR_MAP_CACHE[id(ws)] = (_weakref_hdr(ws), m)  # 2026-10-28: weak, a strong ws ref kept every transient workbook (~130 MB each) alive for the whole board
     return dict(m)
 
 
@@ -13765,21 +13766,21 @@ def _main_single():
             try:
                 from tools.v15_registration_candidate import SWITCH_SHEETS as _norm_tabs
                 _norm_template = get_template_for_symside(new_symside)
-                _norm_wb = openpyxl.load_workbook(str(_norm_template), read_only=False, data_only=False)
+                _norm_wb = openpyxl.load_workbook(str(_norm_template), read_only=True, data_only=False)  # 2026-10-28: read-only streaming scan, no ~130 MB object model
                 _norm_keys = set()
                 for _norm_tab in _norm_tabs:
                     if _norm_tab not in _norm_wb.sheetnames:
                         continue
                     _norm_ws = _norm_wb[_norm_tab]
-                    for _norm_row in range(3, _norm_ws.max_row + 1):
-                        _norm_switch = _norm_ws.cell(_norm_row, 1).value
+                    for (_norm_switch,) in _norm_ws.iter_rows(min_row=3, min_col=1, max_col=1, values_only=True):
                         if isinstance(_norm_switch, str) and _norm_switch.strip():
                             _norm_keys.add(_norm_switch.strip())
-                    for _norm_col in range(12, _norm_ws.max_column + 1):
-                        _norm_header = _norm_ws.cell(2, _norm_col).value
-                        if isinstance(_norm_header, str) and "=" in _norm_header:
-                            _norm_keys.add(_norm_header.split("=", 1)[0].strip())
+                    for _norm_hrow in _norm_ws.iter_rows(min_row=2, max_row=2, min_col=12, values_only=True):
+                        for _norm_header in _norm_hrow:
+                            if isinstance(_norm_header, str) and "=" in _norm_header:
+                                _norm_keys.add(_norm_header.split("=", 1)[0].strip())
                 _norm_wb.close()
+                _norm_wb = _norm_ws = None
                 _before_norm = dict(overrides)
                 _source_full_norm = dict(locals().get("_baseline_winner_full") or {})
                 _source_snapshot_sha = None
@@ -14839,6 +14840,10 @@ def _main_single():
                 _atomic_write_json(progress_path, progress)
         except Exception as _kg_e:
             print(f"[KG-FIRST-ERROR] {new_symside} {type(_kg_e).__name__}: {_kg_e} — board continues without the phase", flush=True)
+    # 2026-10-28 MEMORY: the pre-fill workbooks (baseline-metrics wb, wb_single, wb_refill; ~130 MB openpyxl model each) stayed
+    # bound to these locals for the whole spec fill, which opens its own copy. Drop them before it starts.
+    wb = ws = cell = wb_single = ws_c = ws_fix = wb_refill = ws_r = rws = _wb = None
+    __import__("gc").collect()
     # Baseline now correct with previous best overrides; now fill entire workbook per spec:
     #   VECTOR_DELTA = sum pos yellows; POS-> stay same tab next row + baseline, NEG/None/0-> move to first pending row in next tab
     #   STDEV_SLOPE_SIZING skipped (12 tabs), every row gets pos/neg delta, LIVE columns BLANK until complete, 10s RED stall guard
