@@ -8452,6 +8452,90 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             return
         ph = _v17_phase_start("P3_ESSENTIAL")
         done_ = progress.get("done") or {}
+        proven = {}
+        # 2026-10-28 ESSENTIAL REMEASURE (USER "these NEED to be calculated ... run those for the held up results"). Measured on
+        # HD_LONG / INTC_SHORT / NVDA_SHORT: every WT row was evaluated while the chain still had 0 trades (baseline 0.0), so each
+        # non-running candidate came back ZERO_TRADES (delta None) and the deferred-yellow pass below had nothing to retry; rows
+        # absent from `done` (greyed when the board ran) were never reachable either. For each FAIL switch: evaluate its own
+        # rows' naked candidates against the CURRENT chain (real engine evals), then those rows' unmeasured yellows.
+        try:
+            _rm_run = _ck(sanitize_overrides(dict(cumulative_overrides), defaults)[0])
+            _rm_cb = float(cumulative_gain)
+            _rm_tr = int(chain_trades or 0)
+            for sw in fails:
+                naked, yel = [], []
+                for _tab, _lst in per_tab_rows.items():
+                    for (_rr, _s, _cand) in _lst:
+                        if str(_s).strip() != sw:
+                            continue
+                        _pref = f"{_tab}!{_rr}:{sw}="
+                        _dk = next((k for k in done_ if isinstance(k, str) and k.startswith(_pref)), None) or f"{_pref}{_cand}"
+                        _rec = done_.get(_dk) if isinstance(done_.get(_dk), dict) else None
+                        if _rec is not None and (_rec.get("is_running") or _rec.get("delta") is not None):
+                            continue
+                        try:
+                            _ov = sanitize_overrides({**cumulative_overrides, **_switch_overrides(sw, _parse_opt_value(_cand, defaults.get(sw)))}, defaults)[0]
+                        except Exception:
+                            continue
+                        if _ck(_ov) == _rm_run:
+                            continue
+                        naked.append({"label": f"V17_ESSENTIAL_NAKED:{sw}={_cand}", "ov": _ov, "sw": sw, "cand": _cand, "sheet": _tab, "row": _rr, "dk": _dk})
+                if not naked:
+                    continue
+                _v17_batch(naked, _rm_cb, deadline)
+                for it in naked:
+                    res = it.get("res") or {}
+                    if it.get("err") == "V17_DEADLINE" or res.get("gain_pct") is None:
+                        continue
+                    _rec = done_.setdefault(it["dk"], {"switch": sw, "cand": str(it["cand"]), "tab": it["sheet"], "row": it["row"], "yellows": {}, "promoted": False, "complete": True})
+                    _rec.update(is_running=False, cumulative_before=_rm_cb, vec_gain=res.get("gain_pct"), trades=res.get("trades"), npz=_run_npz_short, essential_remeasured_utc=utcnow())
+                    if it.get("d") is not None:
+                        _rec.update(delta=float(it["d"]), naked_delta=float(it["d"]), delta_vs_cumulative=float(it["d"]), delta_invalid=not it.get("ok"), reason="ESSENTIAL_REMEASURED: naked flip re-evaluated on the current chain")
+                        try:
+                            _ws = wb[it["sheet"]]
+                            _cl = _resolve_cols(_ws)
+                            _num_cell(_ws, it["row"], _cl["F"], float(it["d"]), False)
+                            _num_cell(_ws, it["row"], _cl["G"], float(it["d"]), False)
+                        except Exception as _we:
+                            print(f"[V17-WARN] essential remeasure write {it['sheet']}!{it['row']}: {_we}", flush=True)
+                        if abs(float(it["d"])) > 1e-9:
+                            proven[sw] = it["label"]
+                    elif int(res.get("trades") or 0) == 0 and _rm_tr > 0:
+                        _rec.update(essential_zero_trades_on_chain=True, reason=f"ESSENTIAL_REMEASURED_ZERO_TRADES: candidate removes all {_rm_tr} chain trades")
+                        proven[sw] = it["label"] + " (removes all trades)"
+                    if _rm_tr > 0:
+                        try:
+                            _st = _row_static(it["sheet"], it["row"], sw, it["cand"])
+                        except Exception:
+                            _st = {}
+                        for h, f_ in list((_st.get("h2f") or {}).items())[:60]:
+                            if h in (_rec.get("yellows") or {}):
+                                continue
+                            yel.append({"label": f"V17_ESSENTIAL:{sw}={it['cand']}@{h}", "ov": {**it["ov"], f_["filter"]: _parse_opt_value(f_["opt"], defaults.get(f_["filter"]))}, "sw": sw, "cand": it["cand"], "sheet": it["sheet"], "row": it["row"], "h": h, "v": _rec})
+                if yel:
+                    _v17_batch(yel, _rm_cb, deadline)
+                    for it in yel:
+                        if it.get("d") is None:
+                            if it.get("err") != "V17_DEADLINE" and (it.get("res") or {}).get("gain_pct") is not None:
+                                it["v"].setdefault("yellow_reasons", {})[it["h"]] = "ZERO_TRADES"
+                            continue
+                        it["v"].setdefault("yellows", {})[it["h"]] = float(it["d"])
+                        try:
+                            _col = header_maps.get(it["sheet"], {}).get(it["h"])
+                            if _col:
+                                _yc = wb[it["sheet"]].cell(row=it["row"], column=_col)
+                                _yc.value = float(it["d"])
+                                _yc.font = Font(name="Arial", size=10, bold=False, color=None if it.get("ok") else "808080")
+                        except Exception:
+                            pass
+                        if abs(float(it["d"])) > 1e-9:
+                            proven[sw] = it["label"]
+                print(f"[ESSENTIAL-REMEASURE] {new_symside} {sw}: naked={len(naked)} yellows={len(yel)} chain={_rm_cb:.4f}/{_rm_tr}t proven={proven.get(sw)}", flush=True)
+        except V15Shutdown:
+            raise
+        except Exception as _rme:
+            print(f"[V17-WARN] essential remeasure {type(_rme).__name__}: {_rme}", flush=True)
+        _maybe_write_json(force=True)
         rows = []
         for k, v in list(done_.items()):
             if not isinstance(v, dict) or "!" not in str(k):
@@ -8473,7 +8557,6 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             except Exception:
                 mv = 0.0
             rows.append((k, v, tab, int(rrs), rsw.strip(), rc.strip(), st, mv))
-        proven = {}
         for sw in fails:
             cells = []
             for (k, v, tab, rr_, rsw, rc, st, mv) in rows:

@@ -198,3 +198,11 @@ def test_stock_floor_lower_than_crypto_floor():
     got = {h: s for h, s, _ in picks}
     assert got["s5"] == "AAPL_LONG"
     assert "s1" not in got and why_not["s1"].startswith("own venue work waits for memory")
+
+
+def test_priority_stays_inside_own_venue():
+    data = fleet4()
+    pend, partial, _ = F.pending_by_cat(UNI, data, NOW)
+    picks, _, _ = F.plan(pend, partial, data, NOW, {}, frozenset({"ETHUSDT_SHORT"}))
+    got = {h: s for h, s, _ in picks}
+    assert got["s1"] == "ETHUSDT_SHORT" and got["s5"] == "AAPL_LONG" and got["s6"] == "AAPL_SHORT"

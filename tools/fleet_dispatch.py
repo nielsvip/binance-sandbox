@@ -127,7 +127,7 @@ DISK_MIN_MB = env_int("FLEET_DISK_MIN_MB", 3000)
 MEM_MIN_MB_STOCKS = env_int("FLEET_MEM_MIN_MB_STOCKS", 8500)
 RAMP_S = env_int("FLEET_RAMP_S", 600)
 RAMP_MB = env_int("FLEET_RAMP_MB", 3000)  # 10-28 16Z: MEM_MIN_MB already holds the new board's full ramp; each ramping board still owes ~2-3.5 GB (board PSS 3.5-5.5 GB measured); 0 OOM kills s5/s6 04-16Z
-RAMP_MB_CRYPTO = env_int("FLEET_RAMP_MB_CRYPTO", 7000)
+RAMP_MB_CRYPTO = env_int("FLEET_RAMP_MB_CRYPTO", 5500)  # 2026-10-28 maxsets: owed = peak - ramp-window PSS; measured crypto peak <= 7,038 MB, PSS at <= 10 min 1.3-3.0 GB (s2 16Z 12 GB events coincided with the NPZ_QUARTER cron, since disabled)
 LAUNCH_GAP_S = env_int("FLEET_LAUNCH_GAP_S", 120)
 FRESH_BARS = env_int("FLEET_FRESH_BARS", 48)
 # 2026-10-28 maxsets ("stocks ... can backtest all night"; "idle compute is waste"): a FINISHED board whose NPZ has advanced by at
@@ -556,7 +556,9 @@ def plan(pend, partial, fleet_data, now, orphan_since, prio=frozenset(), refresh
         running = list((fleet_data[name].get("running") or {}).keys())
         foreign = sum(1 for s in running if cat_of(s) not in own) if own else 0
         pick, why = None, ""
-        live_prio = [c for c in CAT_PRIORITY if mem_fits(fleet_data[name], now, c) and any(s in prio and s not in claimed and partial.get(s) in (None, name) for s in pend.get(c, []))]
+        # priority sides go first WITHIN the host's own venue (USER 2026-10-28 venue rule supersedes the cross-venue priority ruling);
+        # another venue's priority sides are reached in pass 2 like any other backlog (sorted first there)
+        live_prio = [c for c in CAT_PRIORITY if (not own or c in own) and mem_fits(fleet_data[name], now, c) and any(s in prio and s not in claimed and partial.get(s) in (None, name) for s in pend.get(c, []))]
         if live_prio:
             pick, why = take(name, live_prio[0], pend), f"priority {live_prio[0]}"
         live_orphans = [c for c in CAT_PRIORITY if c in orphans and c not in own and avail(pend, c, name)]

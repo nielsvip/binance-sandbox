@@ -47,7 +47,7 @@ def _progress_dir():
 
 GREY_RGB = {"FFBFBFBF", "00BFBFBF"}
 ESSENTIAL_PREFIX = "ESSENTIAL-ROWS"
-UNTESTED_PREFIX = "untested (0 rows"
+UNTESTED_PREFIX = "untested ("  # 2026-10-28: also "(N rows, all running/skipped/missing)" -- rows evaluated on a 0-trade chain; v15_pilot P3_ESSENTIAL now re-measures them on the final chain
 
 
 def _best_first_allowed(root):
@@ -98,8 +98,14 @@ def holes_only_refusal(prog, measurable):
     unprotected = prog.get("unprotected")
     if not reason.startswith(ESSENTIAL_PREFIX) or not isinstance(unprotected, dict) or not unprotected:
         return False
-    if any(not str(why).startswith(UNTESTED_PREFIX) for why in unprotected.values()):
-        return False
+    try:  # 2026-10-28: a name the pilot no longer gates (DAYTRADE/TECHNICAL_DC_TARGET_TF, operator-greyed) cannot block a requeue
+        import v15_gate_surface_guard as _gsg
+        gated = _gsg.gate_switches(pathlib.Path(__file__).resolve().parent.parent / "v15_pilot.py")
+        unprotected = {k: v for k, v in unprotected.items() if k in gated}
+    except Exception:
+        pass
+    if not unprotected or any(not str(why).startswith(UNTESTED_PREFIX) for why in unprotected.values()):
+        return bool(reason.startswith(ESSENTIAL_PREFIX)) and not unprotected
     return measurable is not None and all(name in measurable for name in unprotected)
 
 
