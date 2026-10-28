@@ -1,18 +1,4 @@
 {
-  "flz:SOLUSDC_LONG": {
-    "orderId": "1000002648124654",
-    "stopPrice": 100.47,
-    "entry_sig": "2026-10-28 04:46:03.529000+00:00",
-    "symbol": "SOLUSDC",
-    "side": "LONG"
-  },
-  "flz:BTCDOMUSDT_LONG": {
-    "orderId": "1000002647575485",
-    "stopPrice": 5522.6,
-    "entry_sig": "2026-10-27 21:08:42.533000+00:00",
-    "symbol": "BTCDOMUSDT",
-    "side": "LONG"
-  },
   "flz:XRPUSDC_LONG": {
     "orderId": "1000002647823863",
     "stopPrice": 1.3104,
@@ -27,12 +13,19 @@
     "symbol": "BNBUSDC",
     "side": "LONG"
   },
-  "flz:BNBUSDC_SHORT": {
-    "orderId": "1000002647637309",
-    "stopPrice": 749.06,
-    "entry_sig": "2026-10-27 21:08:41.936000+00:00",
-    "symbol": "BNBUSDC",
-    "side": "SHORT"
+  "flz:HYPEUSDT_LONG": {
+    "orderId": "1000002647669267",
+    "stopPrice": 80.138,
+    "entry_sig": "2026-10-27 22:40:10.689000+00:00",
+    "symbol": "HYPEUSDT",
+    "side": "LONG"
+  },
+  "flz:SOLUSDC_LONG": {
+    "orderId": "1000002648124654",
+    "stopPrice": 100.47,
+    "entry_sig": "2026-10-28 04:46:03.529000+00:00",
+    "symbol": "SOLUSDC",
+    "side": "LONG"
   },
   "flz:ETHUSDC_SHORT": {
     "orderId": "1000002647641922",
@@ -41,12 +34,12 @@
     "symbol": "ETHUSDC",
     "side": "SHORT"
   },
-  "flz:HYPEUSDT_LONG": {
-    "orderId": "1000002647669267",
-    "stopPrice": 80.138,
-    "entry_sig": "2026-10-27 22:40:10.689000+00:00",
-    "symbol": "HYPEUSDT",
-    "side": "LONG"
+  "flz:BNBUSDC_SHORT": {
+    "orderId": "1000002647637309",
+    "stopPrice": 749.06,
+    "entry_sig": "2026-10-27 21:08:41.936000+00:00",
+    "symbol": "BNBUSDC",
+    "side": "SHORT"
   },
   "flz:DASHUSDT_SHORT": {
     "orderId": "1000002647943449",
@@ -54,5 +47,12 @@
     "entry_sig": "2026-10-28 02:15:24.526000+00:00",
     "symbol": "DASHUSDT",
     "side": "SHORT"
+  },
+  "flz:BTCDOMUSDT_LONG": {
+    "orderId": "1000002647575485",
+    "stopPrice": 5522.6,
+    "entry_sig": "2026-10-27 21:08:42.533000+00:00",
+    "symbol": "BTCDOMUSDT",
+    "side": "LONG"
   }
 }
