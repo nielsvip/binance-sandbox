@@ -2,6 +2,7 @@
 import argparse
 import fcntl
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -9,6 +10,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from npz_tail_store import compact_tail, tail_len
 from tools.npz_tail_service import load_universe, npz_for, owned_symbols
+
+
+MIN_TAIL_ROWS = max(1, int(os.environ.get('NPZ_COMPACT_AT', '1')))
 
 
 def maintenance_phase(now):
@@ -25,7 +29,7 @@ def compact_once(base, cat_side, clock=time.time):
         if symbol.endswith(('_LONG', '_SHORT')):
             symbol = symbol.rsplit('_', 1)[0]
         path = npz_for(base, symbol)
-        if not path or tail_len(path) < 4:
+        if not path or tail_len(path) < MIN_TAIL_ROWS:
             continue
         try:
             result['compacted'] += compact_tail(path)
