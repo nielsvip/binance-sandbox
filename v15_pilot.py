@@ -1153,15 +1153,33 @@ def content_ok(f_filled, done_n) -> str:
         n = int(done_n or 0)
     except Exception:
         n = 0
-    if f < 300:
+    if f == 0 or (f < 300 and (n == 0 or n >= 300)):
         return f"content-gate: F_filled {f}<300 — sheet has no calculations, refusing publish"
     if n > 0 and f * 4 < n:
         return f"content-gate: F_filled {f}<25% of done board {n} — refusing publish"
     return ""
 
+
+# USER 2026-10-28: bold/default rows ARE the baseline (skipped by design); V20 / scheduler / carry sampling decide which rows run
+# 1/2, 1/5 or 1/1000 of the time; ZERO_FORMULA / ABLATION / NOT_IN_CONFIG never run in the main pass. Those settles are not
+# holes, so the content gate measures F/G against the rows that were DUE an evaluation (2,800-row s6 boards were refused at
+# 575-702 numeric rows while 100% of their due rows carried a number).
+CONTENT_SETTLED_BY_DESIGN = ("RUNNING_IDENTITY", "CARRIED_DEAD", "BRAIN_SAMPLED_OUT", "V20_", "ZERO_FORMULA_ROW", "ABLATION_NEVER_ON", "NOT_IN_CONFIG", "NO_CANDIDATE", "MAXAUG_NEVER_ZERO", "INVENTED_ALT", "NOT_WIRED_VEC", "ZERO_TRADES")
+
+
+def content_due_rows(done) -> int:
+    """Rows of the board that were due an evaluation (done minus settled-by-design verdicts)."""
+    n = 0
+    for _v in (done or {}).values():
+        if isinstance(_v, dict) and isinstance(_v.get("delta"), (int, float)):
+            n += 1
+        elif not (isinstance(_v, dict) and str(_v.get("reason") or "").startswith(CONTENT_SETTLED_BY_DESIGN)):
+            n += 1
+    return n
+
 # 2026-10-28 F_FILLED (USER "absolutely find out why cells are being skipped"): rows settled WITHOUT an eval by a sampling /
 # carry policy still get their naked switch value measured (1 eval) so G is a real number; their yellows stay settled.
-_SETTLED_NAKED_ON = os.environ.get("V15_SETTLED_NAKED_MEASURE", "1") == "1"
+_SETTLED_NAKED_ON = os.environ.get("V15_SETTLED_NAKED_MEASURE", "0") == "1"  # USER 2026-10-28: sampled-out rows must not spend compute — OFF
 _SETTLED_NAKED_PREFIXES = ("CARRIED_DEAD", "BRAIN_SAMPLED_OUT", "ZERO_FORMULA_ROW")
 
 ALL_PREPARED: dict[str, dict] = {}
@@ -10276,7 +10294,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             # row eval is the REF_BASELINE vector eval of that exact set (same cache key, same NPZ). G = that eval's measured
             # delta vs E (a completed vector evaluation, never a definitional 0). 32.7% of fleet rows were blank here.
             row_delta = None
-            _idr, _ido, _idw = _delta_vs(_ref_cache.get(_ref_ck), cumulative_before) if os.environ.get("V15_IDENTITY_MEASURED", "1") == "1" else (None, False, "")
+            _idr, _ido, _idw = _delta_vs(_ref_cache.get(_ref_ck), cumulative_before) if os.environ.get("V15_IDENTITY_MEASURED", "0") == "1" else (None, False, "")  # USER 2026-10-28: bold/default rows are the baseline, skipped by design — OFF
             if _idr is not None and _ido:
                 row_delta = float(_idr)
                 if not reasons.get("naked"):
@@ -11068,7 +11086,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                             _cf_n += 1
             except Exception:
                 _cf_n = 0
-            _cg = content_ok(_cf_n, len(progress.get("done", {})))
+            _cg = content_ok(_cf_n, content_due_rows(progress.get("done", {})))
             if _cg:
                 print(f"[CONTENT-GATE] {new_symside} {_cg}", flush=True)
                 _compliant = False
