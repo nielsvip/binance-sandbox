@@ -1,57 +1,69 @@
 {
- "generated_at": "2026-10-28 12:56 UTC",
- "total_capital_usd": 106.52,
+ "generated_at": "2026-10-28 13:11 UTC",
+ "total_capital_usd": 114.03,
  "tier_capital": {
   "A": 0.0,
-  "B": 106.53,
+  "B": 114.04,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 3,
+  "B": 4,
   "C": 0
  },
  "winners": [],
  "losers": [
-  "flz:XRPUSDC_LONG",
-  "flz:BTCUSDC_LONG"
+  "flz:BTCUSDC_LONG",
+  "flz:XRPUSDC_LONG"
  ],
  "mediocre": [
-  "flz:BTCDOMUSDT_LONG"
+  "flz:BTCDOMUSDT_LONG",
+  "flz:BNBUSDC_LONG"
  ],
  "positions": [
   {
    "pk": "flz:BTCUSDC_LONG",
    "symbol": "BTCUSDC",
    "account": "flz",
-   "value_usd": 80.68,
-   "gain_pct": -0.941,
+   "value_usd": 80.63,
+   "gain_pct": -1.001,
    "tier": "B",
    "perf_mult": 0.67,
    "amt": 0.001,
-   "mark": 80679.9
+   "mark": 80631.44482617
   },
   {
    "pk": "flz:XRPUSDC_LONG",
    "symbol": "XRPUSDC",
    "account": "flz",
-   "value_usd": 14.72,
-   "gain_pct": -1.047,
+   "value_usd": 14.74,
+   "gain_pct": -0.909,
    "tier": "B",
-   "perf_mult": 4.1,
+   "perf_mult": 4.08,
    "amt": 11.2,
-   "mark": 1.3139
+   "mark": 1.31572994
   },
   {
    "pk": "flz:BTCDOMUSDT_LONG",
    "symbol": "BTCDOMUSDT",
    "account": "flz",
-   "value_usd": 11.13,
-   "gain_pct": -0.011,
+   "value_usd": 11.12,
+   "gain_pct": -0.084,
    "tier": "B",
    "perf_mult": 0.67,
    "amt": 0.002,
-   "mark": 5563.5
+   "mark": 5559.43617508
+  },
+  {
+   "pk": "flz:BNBUSDC_LONG",
+   "symbol": "BNBUSDC",
+   "account": "flz",
+   "value_usd": 7.55,
+   "gain_pct": -0.003,
+   "tier": "B",
+   "perf_mult": 0.7,
+   "amt": 0.01,
+   "mark": 754.6
   }
  ]
 }

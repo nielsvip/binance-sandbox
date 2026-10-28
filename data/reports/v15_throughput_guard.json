@@ -1,5 +1,5 @@
 {
- "at": "2026-10-28T12:11:36Z",
+ "at": "2026-10-28T13:11:32Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
@@ -9,16 +9,18 @@
    "published_n": 0,
    "flat_or_worse": 0,
    "unknown": 0,
-   "boards_running": [],
-   "mem_avail_mb": 19404,
-   "load1": 8.36,
+   "boards_running": [
+    "IOTXUSDT_SHORT"
+   ],
+   "mem_avail_mb": 15156,
+   "load1": 11.61,
    "nproc": 16,
    "slots": null,
-   "binding_reason": "CPU budget: median board 8540 core-s, 16 cores minus 1.3 competing non-board cores ({'other': 1.32}) = 14.7 usable -> host ceiling 6.2 boards/h. Move nice-0 non-board work off the host and/or cut core-s per board.",
+   "binding_reason": "CPU budget: median board 8540 core-s, 16 cores minus 1.5 competing non-board cores ({'other': 1.49, 'boards': 1.67}) = 14.5 usable -> host ceiling 6.1 boards/h. Move nice-0 non-board work off the host and/or cut core-s per board.",
    "error": null,
    "published": [],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 85.2,
+   "minutes_since_last_improved": 145.1,
    "last_improved_symside": "RLCUSDT_LONG",
    "cadence_ok": false,
    "improved_gap_min_median_24h": 313.9,
@@ -26,15 +28,16 @@
    "improved_finishes_24h": 3,
    "board_cpu_s_median_24h": 8539.6,
    "board_wall_s_median_24h": 2455.605695962906,
-   "board_cores": 0.0,
-   "nonboard_cores_competing": 1.32,
+   "board_cores": 1.67,
+   "nonboard_cores_competing": 1.49,
    "nonboard_cores_niced": 2.98,
    "cores_by_bucket": {
-    "other": 1.32
+    "other": 1.49,
+    "boards": 1.67
    },
    "cores_by_bucket_niced": {
-    "klines_vault": 1.98,
-    "other": 1.0
+    "other": 1.0,
+    "klines_vault": 1.98
    }
   },
   "s2": {
@@ -43,16 +46,18 @@
    "published_n": 0,
    "flat_or_worse": 0,
    "unknown": 0,
-   "boards_running": [],
-   "mem_avail_mb": 22353,
-   "load1": 4.55,
+   "boards_running": [
+    "1000PEPEUSDC_LONG"
+   ],
+   "mem_avail_mb": 19289,
+   "load1": 10.26,
    "nproc": 16,
    "slots": null,
    "binding_reason": "concurrency 0 boards: 12/h needs <= 0 min per sym_side \u2014 raise concurrent sides or cut evals per board",
    "error": null,
    "published": [],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 1499.7,
+   "minutes_since_last_improved": 1559.6,
    "last_improved_symside": "SKYAIUSDT_LONG",
    "cadence_ok": false,
    "improved_gap_min_median_24h": null,
@@ -60,12 +65,13 @@
    "improved_finishes_24h": 0,
    "board_cpu_s_median_24h": null,
    "board_wall_s_median_24h": null,
-   "board_cores": 0.0,
-   "nonboard_cores_competing": 1.79,
+   "board_cores": 7.38,
+   "nonboard_cores_competing": 3.74,
    "nonboard_cores_niced": 0,
    "cores_by_bucket": {
-    "other": 0.51,
-    "live_helpers": 1.28
+    "other": 0.59,
+    "boards": 7.38,
+    "live_helpers": 3.15
    },
    "cores_by_bucket_niced": {}
   }
