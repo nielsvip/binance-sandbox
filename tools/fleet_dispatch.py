@@ -45,6 +45,19 @@ HB = pathlib.Path.home() / "fleet_dispatch" / "heartbeat.json"
 # entry is ignored, so a forgotten hold can never idle a host for 19 h again (2026-10-27 drain incident). Running boards
 # are untouched; only NEW launches on that host are withheld.
 HOLD_FILE = ROOT / "data" / "fleet_hold_hosts.json"
+# Priority with a mandatory expiry: data/fleet_priority.json {"sym_sides": [...], "until": <epoch>, "why": "..."} puts those
+# sym_sides first in their cat_side queue (stable order otherwise). 2026-10-28: the 47 crypto boards refused by the D window bug
+PRIORITY_FILE = ROOT / "data" / "fleet_priority.json"
+
+
+def priority_sides(now):
+    try:
+        entry = json.loads(PRIORITY_FILE.read_text()) or {}
+        if float(entry.get("until") or 0) > now:
+            return {str(s).upper() for s in entry.get("sym_sides") or []}
+    except (OSError, ValueError, TypeError, AttributeError):
+        pass
+    return set()
 
 
 def manual_hold(name, now):
@@ -608,6 +621,11 @@ def tick(args):
                 seen.pop(n)
         rec["ghost_hosts"] = sorted(set(view) - set(data))
         pend, partial, skipped = pending_by_cat(universe, view, now)
+        prio = priority_sides(now)
+        if prio:
+            for cat in pend:
+                pend[cat].sort(key=lambda s: 0 if s in prio else 1)
+            rec["priority_pending"] = sorted(s for v in pend.values() for s in v if s in prio)
         # host quarantine: a board launched here that vanished unfinished (OOM-killed: S1 runs tests at
         # oom_score_adj +800 under its live stack) counts as a death; QUARANTINE_DEATHS within 2 h -> no launches
         # on that host for QUARANTINE_S (its home cat_side is then orphaned to the other servers)
