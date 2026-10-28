@@ -99,3 +99,13 @@ def test_tier_and_metrics_contract():
     assert 'if _HOLDOUT_PROMOTE and _hl and _hl.get("promotable_estimate_pct") is not None:' in src
     assert "_wt = _wbt(new_symside, _g_tier," in src
     assert '_set_metric("HOLDOUT_DROPPED", ", ".join(progress["holdout_confirm"].get("dropped") or []) or "none")' in src
+
+
+def test_floor_on_confirm_contract():
+    src = (ROOT / "v15_pilot.py").read_text()
+    i_hc = src.index("_HP.confirm_promotions(")
+    i_fl = src.index('_fl_hc = progress.get("holdout_confirm") if (_HOLDOUT_PROMOTE')
+    i_pub = src.index("_final_name = _final_matrix_name(")
+    assert i_hc < i_fl < i_pub  # the floor runs after the confirm step and before the publish
+    assert '_fl_conf = holdout_confirm_score(new_symside, _fl_alt, defaults)' in src  # judged on the unseen confirm window
+    assert 'progress["headline"] = honest_headline(progress, new_symside)' in src[i_fl:i_pub]  # spec path writes the headline

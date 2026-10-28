@@ -23,12 +23,24 @@ TOPOLOGY = [
     {"name": "gateway", "hcloud": "gateway", "ssh": ["gateway-internal"], "ips": ["10.0.0.2"], "role": "net"},
     {"name": "s1", "hcloud": "niels", "ssh": ["s1-int", "s1-pub"], "ips": ["10.0.0.3"],
      "jump": "gateway-internal", "role": "dispatcher",
-     "tick_log": "/tmp/v15_fleet_sched.log", "tick_max_age_s": 480},
+     "tick_log": "/tmp/v15_fleet_sched.log", "tick_max_age_s": 480,
+     "banner_gate": True, "banner_ips": ["157.180.125.52", "10.0.0.3", "5.75.211.216", "49.13.39.233"]},
     {"name": "s2", "hcloud": "s2", "ssh": ["s2"], "ips": ["10.0.0.4"], "role": "worker"},
     {"name": "s5", "hcloud": "s5", "ssh": ["s5"], "ips": ["10.0.0.5"], "via_gw": True, "role": "worker"},
     {"name": "s6", "hcloud": "s6", "ssh": ["s6"], "ips": ["10.0.0.6"], "via_gw": True, "role": "worker"},
 ]
 GW_JUMP = "gateway-internal"
+BANNER_ALIVE_FAILS = 10
+
+
+def ssh_banner(ip, timeout=8.0):
+    """True when the host's kernel + sshd still answer with an SSH banner (no login, no fork on the far side)."""
+    try:
+        with socket.create_connection((ip, 22), timeout=timeout) as s:
+            s.settimeout(timeout)
+            return s.recv(64).startswith(b"SSH-")
+    except OSError:
+        return False
 
 STATE_DIR = os.environ.get("FLEET_WD_STATE", "/tmp/fleet_watchdog")
 
@@ -158,6 +170,15 @@ def maybe_reboot(h, st, now, args, log):
         return "reboot-cooldown %ds left" % int(args.cooldown - (now - last_rb))
     if h["name"] == "gateway" and args.self_name == "gateway":
         return "REFUSE-gateway-suicide (needs Mac/s2 operator)"
+    # 2026-10-28 (USER "make sure s1 never misses a beat"): S1 is the sole live crypto executor. Hetzner actions show
+    # reboot_server 19:44:19Z and 20:24:13Z on 10-27 = THIS watchdog on s2 ("REBOOTED via hcloud" after 3 x 2 min of failed
+    # ssh LOGINS) while S1 was in an OOM storm, alive but too slow to log in. Its live chain (systemd, OOMScoreAdjust=-900)
+    # kept running; the reboot is what stopped it. A host whose kernel still answers the TCP SSH banner is slow, not dead:
+    # reboot it only after BANNER_ALIVE_FAILS consecutive failures (~20 min at */2).
+    if h.get("banner_gate"):
+        alive = [ip for ip in h.get("banner_ips", []) if ssh_banner(ip)]
+        if alive and fails < BANNER_ALIVE_FAILS:
+            return "SLOW-NOT-DEAD banner from %s -> no reboot (%d/%d)" % (",".join(alive), fails, BANNER_ALIVE_FAILS)
     if args.dry_run:
         return "WOULD-REBOOT (dry-run)"
     rc, out, err = sh(["hcloud", "server", "reboot", h["hcloud"]], timeout=90)

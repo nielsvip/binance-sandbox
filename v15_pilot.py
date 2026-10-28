@@ -10666,12 +10666,31 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _fl_cur = sanitize_overrides(dict(cumulative_overrides), defaults)[0]
                 _fl_g = float(_fresh_final.get("gain_pct")) if _fresh_final.get("gain_pct") is not None else -1e18
                 _fl_best = None
-                for _fl_lab, _fl_ov in _fl_cands:
-                    if _fl_ov == _fl_cur:
-                        continue
-                    _fl_r = _eps_fl(prepared, dict(_fl_ov), args.window_days) or {}
-                    if _fl_r.get("valid") and _fl_r.get("gain_pct") is not None and int(_fl_r.get("trades") or 0) > 0 and float(_fl_r["gain_pct"]) > max(_fl_g, float((_fl_best or (None, None, {"gain_pct": -1e18}))[2]["gain_pct"])) + 1e-6:
-                        _fl_best = (_fl_lab, _fl_ov, _fl_r)
+                _fl_hc = progress.get("holdout_confirm") if (_HOLDOUT_PROMOTE and isinstance(progress.get("holdout_confirm"), dict) and _HOLDOUT.get("confirm_end")) else None
+                if _fl_hc is not None and _fl_hc.get("g_pruned") is not None:
+                    # D (OPERATOR 2026-10-28 "no more fake and lying greedy numbers"): the floor is judged on the UNSEEN confirm window --
+                    # a start / best-seen set replaces the pruned final only if it does better on bars no fit has seen
+                    _fl_alt = {lab: ov for lab, ov in _fl_cands if ov != _fl_cur}
+                    _fl_conf = holdout_confirm_score(new_symside, _fl_alt, defaults) if _fl_alt else {}
+                    _fl_cg = float(_fl_hc["g_pruned"])
+                    for _fl_lab, _fl_ov in _fl_alt.items():
+                        _fl_c = _fl_conf.get(_fl_lab) or {}
+                        if _fl_c.get("valid") and _fl_c.get("gain_pct") is not None and float(_fl_c["gain_pct"]) > _fl_cg + 1e-6:
+                            _fl_cg = float(_fl_c["gain_pct"])
+                            _fl_r = _eps_fl(prepared, dict(_fl_ov), args.window_days) or {}
+                            if _fl_r.get("valid") and _fl_r.get("gain_pct") is not None and int(_fl_r.get("trades") or 0) > 0:
+                                _fl_best = (_fl_lab, _fl_ov, _fl_r)
+                    progress["holdout_confirm"]["floor_on_confirm"] = {lab: (_fl_conf.get(lab) or {}).get("gain_pct") for lab in _fl_alt}
+                    if _fl_best is not None:
+                        progress["holdout_confirm"]["g_published_confirm"] = _fl_cg
+                    print(f"[BEST-START-FLOOR] {new_symside} judged on the {_HOLDOUT['confirm_days']:.0f} d confirm window: pruned {float(_fl_hc['g_pruned']):.4f} vs {progress['holdout_confirm']['floor_on_confirm']}", flush=True)
+                else:
+                    for _fl_lab, _fl_ov in _fl_cands:
+                        if _fl_ov == _fl_cur:
+                            continue
+                        _fl_r = _eps_fl(prepared, dict(_fl_ov), args.window_days) or {}
+                        if _fl_r.get("valid") and _fl_r.get("gain_pct") is not None and int(_fl_r.get("trades") or 0) > 0 and float(_fl_r["gain_pct"]) > max(_fl_g, float((_fl_best or (None, None, {"gain_pct": -1e18}))[2]["gain_pct"])) + 1e-6:
+                            _fl_best = (_fl_lab, _fl_ov, _fl_r)
                 if _fl_best is not None:
                     _fl_lab, _fl_ov, _fl_r = _fl_best
                     print(f"[BEST-START-FLOOR] {new_symside} REFUSED final {_fl_g:.4f} < {_fl_lab} {float(_fl_r['gain_pct']):.4f} (fresh, same NPZ) — publishing {_fl_lab}", flush=True)
@@ -10693,6 +10712,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             raise
         except Exception as _fle:
             print(f"[BEST-START-FLOOR-warn] {new_symside}: {_fle}", flush=True)
+        if isinstance(progress.get("holdout_confirm"), dict):
+            try:  # D: the spec path publishes the honest headline too (the legacy path wrote it only there)
+                progress["headline"] = honest_headline(progress, new_symside)
+            except Exception as _hle:
+                progress["headline"] = {"error": repr(_hle)[:200]}
         # USER 2026-10-03 (pos-gain go-live): a sheet FINISHES when the final set qualifies — 30D:
         # valid, TIM in [20, 80], trades >= floor, gain > 0 (BH recorded, never gating). Failure -> revise with the
         # §58 repair (diagnosis-phased: TRADES/HOLDS/EXITS/GAIN), cycling bases across rounds; still failing ->
