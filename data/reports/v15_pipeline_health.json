@@ -1,10 +1,10 @@
 {
- "at": "2026-10-28T14:07:02Z",
+ "at": "2026-10-28T14:16:22Z",
  "s1": {
-  "error": "s1-int: mux_client_request_session: read from master failed: Broken pipe\nConnection closed by 157.180.125.52 port 22 | s1-pub: mm_receive_fd: recvmsg: expected received 1 got 0\nproxy dialer did not pass back a connection"
+  "error": "s1-int: mm_receive_fd: recvmsg: expected received 1 got 0\nproxy dialer did not pass back a connection | s1-pub: mm_receive_fd: recvmsg: expected received 1 got 0\nproxy dialer did not pass back a connection"
  },
  "red": [
-  "s1 unreachable: s1-int: mux_client_request_session: read from master failed: Broken pipe\nConnection closed by 157.180.125.52 port 22 | s1-pub: mm_receive_fd: recvmsg: expected received 1 got 0\nproxy dialer did not pass back a connection"
+  "s1 unreachable: s1-int: mm_receive_fd: recvmsg: expected received 1 got 0\nproxy dialer did not pass back a connection | s1-pub: mm_receive_fd: recvmsg: expected received 1 got 0\nproxy dialer did not pass back a connection"
  ],
  "warn": [],
  "ok": false
