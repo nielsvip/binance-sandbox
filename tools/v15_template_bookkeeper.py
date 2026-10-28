@@ -450,9 +450,13 @@ def main():
                 print(f"[bookkeeper] paint-yellows {cat}: CAT_SIDE_MISMATCH in {ppath} — refused", flush=True)
                 rc = 2
                 continue
+            import hashlib as _hl
+            md5_load = _hl.md5(open(tpath, "rb").read()).hexdigest()
             wb = _ox.load_workbook(tpath)
             try:
                 rep = paint_yellows(wb, plan)
+                if _hl.md5(open(tpath, "rb").read()).hexdigest() != md5_load:
+                    raise RuntimeError(f"{fname} changed on disk while painting (another writer) — nothing written, re-run")
                 print(f"[bookkeeper] paint-yellows {cat}: " + json.dumps({k: (len(v) if isinstance(v, list) else v) for k, v in rep.items() if k != "tabs"}), flush=True)
                 if rep["row_missing"]:
                     print(f"[bookkeeper] paint-yellows {cat}: rows not found {rep['row_missing'][:20]}", flush=True)
