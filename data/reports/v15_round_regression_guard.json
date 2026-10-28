@@ -1,5 +1,5 @@
 {
- "at": "2026-10-28T17:26:08Z",
+ "at": "2026-10-28T18:26:05Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
@@ -18,39 +18,23 @@
     "throughput 0.0/h < 12.0/h (one per 5 min)"
    ],
    "rows": [],
-   "error": null
+   "error": "mm_receive_fd: recvmsg: expected received 1 got 0\nproxy dialer did not pass back a connection\n"
   },
   "s2": {
-   "published_n": 1,
-   "per_hour": 0.5,
+   "published_n": 0,
+   "per_hour": 0.0,
    "improved_vs_best_start": 0,
    "mean_uplift_vs_best_start": null,
    "median_uplift": null,
    "chained_from_previous_published": 0,
-   "no_floor_recorded": 1,
+   "no_floor_recorded": 0,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 0.5/h < 12.0/h (one per 5 min)"
+    "throughput 0.0/h < 12.0/h (one per 5 min)"
    ],
-   "rows": [
-    {
-     "symside": "ACEUSDT_SHORT",
-     "published_at": 1793207105.3426268,
-     "final_gain": 33.07619475327215,
-     "best_start_gain": null,
-     "best_start_chosen": null,
-     "best_start_candidates": null,
-     "baseline_gain": -8.760007112577032,
-     "npz_ts_last": 1793204100.0,
-     "npz_md5": "8bc51210d62fcd52b62dc9bed8ea1a9f",
-     "npz_bars": 47641,
-     "bh": 9.834945391020957,
-     "verdict": null,
-     "npz_age_h_at_publish": 0.83
-    }
-   ],
-   "error": null
+   "rows": [],
+   "error": "Connection timed out during banner exchange\nConnection to UNKNOWN port 65535 timed out\n"
   }
  },
  "hosts_failing": [

@@ -1,10 +1,10 @@
 {
- "at": "2026-10-28T18:17:14Z",
+ "at": "2026-10-28T18:32:53Z",
  "s1": {
-  "error": "s1-int: mm_receive_fd: recvmsg: expected received 1 got 0\nproxy dialer did not pass back a connection | s1-pub: mm_receive_fd: recvmsg: expected received 1 got 0\nproxy dialer did not pass back a connection"
+  "error": "s1-int: mm_receive_fd: recvmsg: expected received 1 got 0\nproxy dialer did not pass back a connection | s1-pub: et /Users/niels/.ssh/cm-s1f-s1-pub already exists, disabling multiplexing\nTimeout, server 157.180.125.52 not responding."
  },
  "red": [
-  "s1 unreachable: s1-int: mm_receive_fd: recvmsg: expected received 1 got 0\nproxy dialer did not pass back a connection | s1-pub: mm_receive_fd: recvmsg: expected received 1 got 0\nproxy dialer did not pass back a connection"
+  "s1 unreachable: s1-int: mm_receive_fd: recvmsg: expected received 1 got 0\nproxy dialer did not pass back a connection | s1-pub: et /Users/niels/.ssh/cm-s1f-s1-pub already exists, disabling multiplexing\nTimeout, server 157.180.125.52 not responding."
  ],
  "warn": [],
  "ok": false

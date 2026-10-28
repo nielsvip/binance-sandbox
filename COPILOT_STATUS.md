@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-28 18:20:31 UTC
+# Copilot Status — 2026-10-28 18:30:40 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T18:14:24
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T18:15:25
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T18:16:26
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T18:17:27
-- **STALE_INDICATORS** [tradier]  — 2026-10-28T18:18:28
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T18:18:28
-- **STALE_INDICATORS** [tradier]  — 2026-10-28T18:18:59
-- **STALE_INDICATORS** [tradier]  — 2026-10-28T18:19:29
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T18:19:29
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T18:20:30
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T18:24:34
+- **STALE_INDICATORS** [tradier]  — 2026-10-28T18:25:05
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T18:25:35
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T18:26:36
+- **STALE_INDICATORS** [tradier]  — 2026-10-28T18:27:37
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T18:27:37
+- **STALE_INDICATORS** [tradier]  — 2026-10-28T18:28:08
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T18:28:38
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T18:29:39
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T18:30:40
 
 ## Missed Trades (trader comparison)
 
@@ -27,18 +27,18 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 11 | **Watching for reentry:** 15 | **Reentered:** 0
+**Held:** 12 | **Watching for reentry:** 15 | **Reentered:** 0
 
-- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +0.0%
-- HELD: **CRWD** LONG (tradier) peak +13.0%, now +-0.7%
-- HELD: **HOOD** SHORT (tradier) peak +12.2%, now +0.8%
+- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +0.4%
+- HELD: **EXEL** LONG (tradier) peak +13.6%, now +-0.1%
+- HELD: **CRWD** LONG (tradier) peak +13.0%, now +-0.8%
+- HELD: **HOOD** SHORT (tradier) peak +12.2%, now +0.3%
 - HELD: **NFLX** SHORT (tradier) peak +9.0%, now +0.5%
-- HELD: **PAAS** SHORT (tradier) peak +6.1%, now +-0.0%
-- HELD: **DASHUSDT** SHORT (crypto) peak +5.8%, now +-0.6%
-- HELD: **A** LONG (tradier) peak +5.0%, now +-0.6%
-- HELD: **LSCC** SHORT (tradier) peak +5.0%, now +0.7%
-- HELD: **SAP** LONG (tradier) peak +4.6%, now +-0.1%
-- HELD: **OLED** LONG (tradier) peak +4.3%, now +-1.9%
+- HELD: **PAAS** SHORT (tradier) peak +6.1%, now +0.0%
+- HELD: **DASHUSDT** SHORT (crypto) peak +5.8%, now +-0.7%
+- HELD: **A** LONG (tradier) peak +5.0%, now +-0.7%
+- HELD: **LSCC** SHORT (tradier) peak +5.0%, now +0.4%
+- HELD: **SAP** LONG (tradier) peak +4.6%, now +0.0%
 
 - WATCHING: **1000PEPEUSDC** LONG (crypto) peaked +12.1%, exited 1m ago
 - WATCHING: **GALAUSDT** SHORT (crypto) peaked +9.7%, exited 1m ago
@@ -55,7 +55,7 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 12
+**Issues (last 1h):** 9
 - [MEDIUM] ez_share_ind.py running but log stale (12min)
 - [MEDIUM] ez_share_ind.py running but log stale (13min)
 - [MEDIUM] ez_share_ind.py running but log stale (14min)
