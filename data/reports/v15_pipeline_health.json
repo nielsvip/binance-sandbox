@@ -1,8 +1,8 @@
 {
- "at": "2026-10-28T05:45:07Z",
+ "at": "2026-10-28T06:00:36Z",
  "s1": {
   "host": "niels",
-  "now": 1793166304.040925,
+  "now": 1793167233.0307834,
   "merge_crypto": {
    "n": 12,
    "max_lag_min": 15.0,
@@ -18,7 +18,7 @@
    "dead": []
   },
   "npz_legacy_crypto": [],
-  "append_log_age_min": 6.4,
+  "append_log_age_min": 21.9,
   "append_last_secs": 818.8,
   "append_last_stats": "'appended': 684, 'created': 0, 'up_to_date': 5703, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
   "npz_loop_pids": 0,
@@ -30,7 +30,7 @@
   "sched_err": "FileNotFoundError",
   "archive_n": 202,
   "archive_mb": 2461.8,
-  "archive_newest_min": 2782.6,
+  "archive_newest_min": 2798.1,
   "_via": "s1-int"
  },
  "red": [
@@ -38,7 +38,7 @@
   "L4 scheduler last ticked None min ago (cron */2)"
  ],
  "warn": [
-  "L5 newest archived board NPZ is 2783 min old \u2014 publishes may not be recording"
+  "L5 newest archived board NPZ is 2798 min old \u2014 publishes may not be recording"
  ],
  "ok": false
 }

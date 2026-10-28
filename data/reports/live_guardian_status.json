@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-28T05:55:54Z",
+ "ts": "2026-10-28T06:00:57Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,7 +29,7 @@
   "fin": {
    "fills_6h": 62,
    "open_positions": 25,
-   "unrealised_usd": -0.44,
+   "unrealised_usd": -0.23,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 115,
+   "fills_6h": 114,
    "open_positions": 27,
-   "unrealised_usd": -4.18,
+   "unrealised_usd": -4.17,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 1,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 151,
    "open_positions": 46,
-   "unrealised_usd": 0.26,
+   "unrealised_usd": 0.31,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 5,
@@ -77,7 +77,7 @@
   "inf": {
    "fills_6h": 13,
    "open_positions": 9,
-   "unrealised_usd": -0.51,
+   "unrealised_usd": -0.53,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 1,
@@ -91,9 +91,9 @@
    }
   },
   "flz": {
-   "fills_6h": 26,
+   "fills_6h": 24,
    "open_positions": 8,
-   "unrealised_usd": -0.2,
+   "unrealised_usd": -0.19,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,73 +127,65 @@
     "26167"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 0.0
   },
   "men": {
    "pids": [
     "25489"
    ],
    "starts_30m": 1,
-   "log_age_s": 551.0
+   "log_age_s": 1.0
   },
   "ang": {
    "pids": [
     "957"
    ],
    "starts_30m": 2,
-   "log_age_s": 92.0
+   "log_age_s": 396.0
   },
   "inf": {
    "pids": [
     "25206"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 0.0
   },
   "flz": {
    "pids": [
     "86718"
    ],
-   "starts_30m": 1,
-   "log_age_s": 4.0
+   "starts_30m": 0,
+   "log_age_s": 1.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 35721.0
+   "log_age_s": 36025.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 35796.0
+   "log_age_s": 36100.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-28T05:55:54Z",
+   "ts": "2026-10-28T06:00:58Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "inf:PENGUUSDC_LONG",
    "evidence": "OPEN B_KZONE bar=2026-10-28T05:00:00Z: live already holds 1932 (state divergence)"
   },
   {
-   "ts": "2026-10-28T05:55:55Z",
-   "severity": "WARN",
-   "kind": "ATTEMPT_STORM_KEY",
-   "key": "men:EDUUSDT_LONG",
-   "evidence": "35 execute_now attempts in 5 min (pre-gate)"
-  },
-  {
-   "ts": "2026-10-28T05:55:55Z",
+   "ts": "2026-10-28T06:00:59Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
-   "key": "men",
-   "evidence": "ez_manage_men.log not written for 551s"
+   "key": "ang",
+   "evidence": "ez_manage_ang.log not written for 396s"
   }
  ],
  "alert_counts": {
   "VEC_OPEN_WHILE_LIVE_IN": 1,
-  "ATTEMPT_STORM_KEY": 1,
   "STALE_LOG": 1
  },
  "active_interventions": {
@@ -247,5 +239,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.23
+ "sweep_s": 1.91
 }
