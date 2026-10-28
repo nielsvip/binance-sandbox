@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-28T23:12:15Z",
+ "generated_utc": "2026-10-28T23:16:16Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 877.0,
+  "age_s": 1115.3,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 85435,
-  "proc_age_s": 15645.0,
-  "log_age_s": 135.9,
+  "proc_age_s": 15883.0,
+  "log_age_s": 69.0,
   "warmup_done": true,
   "timeframes_since_restart": [
    "4h",
@@ -42,21 +42,20 @@
   "mode": "ACTIVE",
   "since_epoch": 1793127215.692805,
   "activations": 164,
-  "hb_mtime": 1793229003.6335623,
-  "mac_snapshot_age_s": 828.5928900241852,
+  "hb_mtime": 1793229363.5492318,
+  "mac_snapshot_age_s": 1188.7884857654572,
   "mac_stale": true,
   "lease_holder": "mac",
   "lease_venues": null,
   "lease_since": "2026-10-27T18:56:44Z",
   "lease_reason": "manual force-mac",
-  "now": 1793229013.0310476,
-  "from_cache_age_s": 122.1,
-  "heartbeat_age_s": 9.4,
-  "active_s": 101797.3,
+  "now": 1793229376.7510002,
+  "heartbeat_age_s": 13.2,
+  "active_s": 102161.1,
   "note": "ACTIVE is CORRECT while the Mac snapshot is stale \u2014 fix the Mac, S1 returns to NORMAL on its own"
  },
  "alerts": [
-  "SNAPSHOT STALE: latest_market_data.json is 877s old (> 600s). ez_indicators pid=85435 warmup_done=True tfs_since_restart=['4h', '1h', '15m', '3m'] restarts_last_hour=0. Live crypto decisions are reading a stale indicator snapshot."
+  "SNAPSHOT STALE: latest_market_data.json is 1115s old (> 600s). ez_indicators pid=85435 warmup_done=True tfs_since_restart=['4h', '1h', '15m', '3m'] restarts_last_hour=0. Live crypto decisions are reading a stale indicator snapshot."
  ],
  "verdict": "ALERT"
 }
