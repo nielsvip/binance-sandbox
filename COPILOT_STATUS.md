@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-28 18:00:10 UTC
+# Copilot Status — 2026-10-28 18:05:15 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-28T17:53:33
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T17:54:03
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T17:55:04
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T17:56:05
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T17:57:06
-- **STALE_INDICATORS** [tradier]  — 2026-10-28T17:58:07
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T17:58:07
-- **STALE_INDICATORS** [tradier]  — 2026-10-28T17:58:38
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T17:59:08
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T18:00:09
+- **STALE_INDICATORS** [tradier]  — 2026-10-28T18:01:10
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T18:01:10
+- **STALE_INDICATORS** [tradier]  — 2026-10-28T18:01:41
+- **STALE_INDICATORS** [tradier]  — 2026-10-28T18:02:11
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T18:02:11
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T18:03:12
+- **STALE_INDICATORS** [tradier]  — 2026-10-28T18:03:43
+- **STALE_INDICATORS** [tradier]  — 2026-10-28T18:04:13
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T18:04:13
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-28T18:05:14
 
 ## Missed Trades (trader comparison)
 
@@ -27,37 +27,37 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 14 | **Watching for reentry:** 16 | **Reentered:** 0
+**Held:** 12 | **Watching for reentry:** 15 | **Reentered:** 0
 
-- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +0.1%
+- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +0.5%
 - HELD: **EXEL** LONG (tradier) peak +13.6%, now +0.0%
-- HELD: **CRWD** LONG (tradier) peak +13.0%, now +-0.8%
-- HELD: **HOOD** SHORT (tradier) peak +12.2%, now +-0.3%
-- HELD: **NFLX** SHORT (tradier) peak +9.0%, now +0.2%
+- HELD: **CRWD** LONG (tradier) peak +13.0%, now +-1.0%
+- HELD: **HOOD** SHORT (tradier) peak +12.2%, now +-0.2%
+- HELD: **NFLX** SHORT (tradier) peak +9.0%, now +0.3%
 - HELD: **PAAS** SHORT (tradier) peak +6.1%, now +-0.1%
-- HELD: **DASHUSDT** SHORT (crypto) peak +5.8%, now +-0.3%
-- HELD: **BEATUSDT** SHORT (crypto) peak +5.4%, now +-6.2%
+- HELD: **DASHUSDT** SHORT (crypto) peak +5.8%, now +-0.9%
+- HELD: **BEATUSDT** SHORT (crypto) peak +5.4%, now +-8.0%
 - HELD: **A** LONG (tradier) peak +5.0%, now +-0.7%
-- HELD: **LSCC** SHORT (tradier) peak +5.0%, now +0.2%
+- HELD: **LSCC** SHORT (tradier) peak +5.0%, now +0.6%
 
-- WATCHING: **1000PEPEUSDC** LONG (crypto) peaked +12.1%, exited 1m ago
-- WATCHING: **GALAUSDT** SHORT (crypto) peaked +9.7%, exited 1m ago
-- WATCHING: **BEAMXUSDT** LONG (crypto) peaked +8.6%, exited 1m ago
-- WATCHING: **NEARUSDC** LONG (crypto) peaked +8.1%, exited 1m ago
-- WATCHING: **ACEUSDT** SHORT (crypto) peaked +7.7%, exited 1m ago
-- WATCHING: **BLURUSDT** SHORT (crypto) peaked +6.3%, exited 1m ago
-- WATCHING: **ARUSDT** LONG (crypto) peaked +5.0%, exited 1m ago
-- WATCHING: **ENJUSDT** SHORT (crypto) peaked +4.8%, exited 1m ago
-- WATCHING: **STXUSDT** LONG (crypto) peaked +4.2%, exited 1m ago
-- WATCHING: **ZROUSDT** LONG (crypto) peaked +4.2%, exited 1m ago
+- WATCHING: **1000PEPEUSDC** LONG (crypto) peaked +12.1%, exited 0m ago
+- WATCHING: **GALAUSDT** SHORT (crypto) peaked +9.7%, exited 0m ago
+- WATCHING: **BEAMXUSDT** LONG (crypto) peaked +8.6%, exited 0m ago
+- WATCHING: **NEARUSDC** LONG (crypto) peaked +8.1%, exited 0m ago
+- WATCHING: **ACEUSDT** SHORT (crypto) peaked +7.7%, exited 0m ago
+- WATCHING: **BLURUSDT** SHORT (crypto) peaked +6.3%, exited 0m ago
+- WATCHING: **ARUSDT** LONG (crypto) peaked +5.0%, exited 0m ago
+- WATCHING: **ENJUSDT** SHORT (crypto) peaked +4.8%, exited 0m ago
+- WATCHING: **STXUSDT** LONG (crypto) peaked +4.2%, exited 0m ago
+- WATCHING: **ZROUSDT** LONG (crypto) peaked +4.2%, exited 0m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 9
-- [HIGH] ez_manage.py for flz is NOT running
-- [MEDIUM] ez_indicators.py running but log stale (11min)
+**Issues (last 1h):** 11
 - [MEDIUM] ez_indicators.py running but log stale (12min)
 - [MEDIUM] ez_indicators.py running but log stale (13min)
 - [HIGH] ez_manage.py for flz is NOT running
+- [MEDIUM] ez_share_ind.py running but log stale (11min)
+- [MEDIUM] ez_share_ind.py running but log stale (12min)
