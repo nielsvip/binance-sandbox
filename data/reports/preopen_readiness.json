@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-28T09:20:07Z",
+ "generated_utc": "2026-10-28T09:40:02Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-28T13:30:00Z",
  "market_open": false,
@@ -7,7 +7,8 @@
  "failed_critical": [
   "defaults_chain_completed",
   "selection_fresh",
-  "live_set_matches_selection"
+  "live_set_matches_selection",
+  "indicators_fresh"
  ],
  "checks": [
   {
@@ -15,10 +16,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 147,
-    "filled_before_open": 147
+    "filled_today": 150,
+    "filled_before_open": 150
    },
-   "detail": "147 boards filled before the open (147 today)"
+   "detail": "150 boards filled before the open (150 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -205,16 +206,25 @@
   },
   {
    "name": "indicators_fresh",
-   "ok": true,
+   "ok": false,
    "critical": true,
    "measured": {
-    "symbols": 201,
-    "stale_over_90min": 0,
-    "stale_pct": 0.0,
-    "median_age_min": 35.1,
-    "sample": []
+    "symbols": 329,
+    "stale_over_90min": 131,
+    "stale_pct": 39.8,
+    "median_age_min": 25.0,
+    "sample": [
+     "ARBUSDC",
+     "ARPAUSDT",
+     "ARUSDT",
+     "ATOMUSDT",
+     "AVAXUSDC",
+     "AWEUSDT",
+     "AXSUSDT",
+     "BABAUSDT"
+    ]
    },
-   "detail": "0/201 symbols past the live 90-min entry gate (0.0%)"
+   "detail": "131/329 symbols past the live 90-min entry gate (39.8%)"
   },
   {
    "name": "s1_sets_synced",
