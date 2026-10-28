@@ -1,5 +1,5 @@
 {
- "at": "2026-10-28T13:26:01Z",
+ "at": "2026-10-28T14:26:07Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
@@ -34,7 +34,7 @@
     "throughput 0.0/h < 12.0/h (one per 5 min)"
    ],
    "rows": [],
-   "error": null
+   "error": "no output"
   }
  },
  "hosts_failing": [
