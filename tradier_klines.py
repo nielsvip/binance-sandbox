@@ -171,6 +171,12 @@ def _export_atomic_locked(df, path, replace_from=None):
             with path.open("r", encoding="utf-8") as handle:
                 existing = json.load(handle)
             if isinstance(existing, list):
+                # 2026-10-28 operator law: one canonical UTC Z stamp everywhere. Legacy rows ("YYYY-MM-DD", "...+00:00", "NaT" secondary stamps) are converted
+                # BEFORE the merge so they key the same way as the rows written now; convert-only, no row is ever dropped (klines_guard / klines_vault forbid shrinking).
+                import kline_stamp as _ks
+                existing, _stamp_stats = _ks.normalize_rows(existing)
+                if _stamp_stats["converted"] or _stamp_stats["secondary_nulled"]:
+                    logger.info("kline_stamp: %s converted %d primary / %d secondary stamps to canonical Z", path.name, _stamp_stats["converted"], _stamp_stats["secondary_nulled"])
                 merged = {}
                 for row in existing:
                     if isinstance(row, dict) and row.get("timestamp"):

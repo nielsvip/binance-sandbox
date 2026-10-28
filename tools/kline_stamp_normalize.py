@@ -9,6 +9,7 @@ generation when a live file has fewer rows than its seal. Re-seal (klines_vault 
 """
 import argparse
 import glob
+import gzip
 import json
 import os
 import shutil
@@ -32,7 +33,6 @@ def process(path, apply, drop, backup_dir):
     out, stats = K.normalize_rows(rows, drop_day_duplicates=drop)
     if stats["converted"] == 0 and stats["dropped"] == 0 and stats["secondary_nulled"] == 0:
         return {"touched": 0}
-    kept = [r for r in rows if not (drop and isinstance(r, dict) and K.DAY_ONLY.match(str(r.get("timestamp", ""))) and False)]
     if not drop:
         assert [ohlcv(r) for r in out] == [ohlcv(r) for r in rows], "OHLCV sequence changed"
     else:
@@ -43,7 +43,8 @@ def process(path, apply, drop, backup_dir):
     result = {"touched": 1, **stats}
     if apply:
         os.makedirs(backup_dir, exist_ok=True)
-        shutil.copy2(path, os.path.join(backup_dir, f"{os.path.basename(path)}.{int(time.time())}.bak"))
+        with open(path, "rb") as src, gzip.open(os.path.join(backup_dir, f"{os.path.basename(path)}.{int(time.time())}.bak.gz"), "wb", compresslevel=1) as dst:
+            shutil.copyfileobj(src, dst)
         if os.stat(path).st_mtime_ns != st0.st_mtime_ns:
             return {"touched": 0, "skipped_writer_active": 1}
         tmp = path + f".norm{os.getpid()}.tmp"

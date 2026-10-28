@@ -1,30 +1,52 @@
 {
-  "flz:DOGEUSDC_LONG": {
-    "orderId": "1000002649005836",
-    "stopPrice": 0.07815,
-    "entry_sig": "2026-10-28 14:45:54.333000+00:00",
-    "symbol": "DOGEUSDC",
+  "men:BEAMXUSDT_LONG": {
+    "orderId": "2000001546336154",
+    "stopPrice": 0.003294,
+    "entry_sig": "2026-10-27 22:39:58.937000+00:00",
+    "symbol": "BEAMXUSDT",
     "side": "LONG"
   },
-  "flz:GRAMUSDT_LONG": {
-    "orderId": "1000002649416767",
-    "stopPrice": 1.212,
-    "entry_sig": "2026-10-28 17:01:14.458000+00:00",
-    "symbol": "GRAMUSDT",
+  "men:NEARUSDC_LONG": {
+    "orderId": "2000001544615120",
+    "stopPrice": 4.358,
+    "entry_sig": "2026-10-27 08:10:09.368000+00:00",
+    "symbol": "NEARUSDC",
     "side": "LONG"
   },
-  "flz:XRPUSDC_LONG": {
-    "orderId": "1000002649269456",
-    "stopPrice": 1.3007,
-    "entry_sig": "2026-10-28 17:46:59.907731+00:00",
-    "symbol": "XRPUSDC",
+  "men:SKYAIUSDT_SHORT": {
+    "orderId": "2000001548812899",
+    "stopPrice": 0.03724,
+    "entry_sig": "2026-10-28 17:01:56.146000+00:00",
+    "symbol": "SKYAIUSDT",
+    "side": "SHORT",
+    "disaster_backstop": true
+  },
+  "men:STXUSDT_LONG": {
+    "orderId": "2000001548133321",
+    "stopPrice": 0.2949,
+    "entry_sig": "2026-10-28 14:04:31.348000+00:00",
+    "symbol": "STXUSDT",
     "side": "LONG"
   },
-  "flz:HYPEUSDT_LONG": {
-    "orderId": "1000002649007126",
-    "stopPrice": 79.201,
-    "entry_sig": "2026-10-28 14:46:39.007000+00:00",
-    "symbol": "HYPEUSDT",
+  "men:INJUSDT_LONG": {
+    "orderId": "2000001549221518",
+    "stopPrice": 7.656,
+    "entry_sig": "2026-10-28 21:16:17.462000+00:00",
+    "symbol": "INJUSDT",
+    "side": "LONG"
+  },
+  "men:QNTUSDT_LONG": {
+    "orderId": "2000001549221875",
+    "stopPrice": 191.9,
+    "entry_sig": "2026-10-28 21:16:24.729000+00:00",
+    "symbol": "QNTUSDT",
+    "side": "LONG"
+  },
+  "men:MAGICUSDT_LONG": {
+    "orderId": "2000001549221816",
+    "stopPrice": 0.08223,
+    "entry_sig": "2026-10-28 21:16:23.231000+00:00",
+    "symbol": "MAGICUSDT",
     "side": "LONG"
   }
 }
