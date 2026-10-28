@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-28T14:55:06.408159+00:00",
+  "ts": "2026-10-28T15:05:15.510078+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 0,
-  "pending_sym_sides": 145,
+  "pending_sym_sides": 141,
   "hosts": {
     "s1": {
       "published_last_60m": 0,
@@ -12,10 +12,10 @@
       "boards_running": 0,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 20208,
+      "mem_avail_mb": 18588,
       "disk_free_gb": 36,
-      "load1": 5.0,
-      "dispatch_idle_why": "quarantine: 6 boards died unfinished <2h ['BLURUSDT_SHORT', 'ENSUSDT_SHORT', 'MOVEUSDT_SHORT', 'MOVRUSDT_SHORT']",
+      "load1": 11.2,
+      "dispatch_idle_why": "spacing 93s < 120",
       "published_ss": []
     },
     "s2": {
@@ -25,15 +25,25 @@
       "unreachable": true
     },
     "s6": {
-      "unreachable": true
+      "published_last_60m": 0,
+      "published_last_3h": 0,
+      "boards": {},
+      "boards_running": 0,
+      "workers": 0,
+      "workers_vs_law_28": "0/28",
+      "mem_avail_mb": 25763,
+      "disk_free_gb": 56,
+      "load1": 2.6,
+      "dispatch_idle_why": "spacing 48s < 120",
+      "published_ss": []
     }
   },
   "alerts": [
-    "LOW_THROUGHPUT:s1:0/h<10 (idle_why=quarantine: 6 boards died unfinished <2h ['BLURUSDT_SHORT', 'ENSUSDT_SHORT', 'MOVEUSDT_SHORT', 'MOVRUSDT_SHORT'])",
+    "LOW_THROUGHPUT:s1:0/h<10 (idle_why=spacing 93s < 120)",
     "DISK_FLOOR:s1:36GB<40",
     "UNREACHABLE:s2",
     "UNREACHABLE:s5",
-    "UNREACHABLE:s6"
+    "LOW_THROUGHPUT:s6:0/h<10 (idle_why=spacing 48s < 120)"
   ],
   "repair": null
 }
