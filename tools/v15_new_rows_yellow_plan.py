@@ -24,6 +24,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
+sys.path.insert(1, str(ROOT))
 import v18_binding_map as B  # noqa: E402
 
 CAT_SIDES = B.CAT_SIDES
@@ -42,6 +43,7 @@ TF_TOKENS = {"15M": "15m", "1H": "1h", "4H": "4h", "D": "D", "1D": "D", "DAILY":
 IND_TOKENS = ("WT", "DC", "BB", "EMA", "SMA", "RSI", "ADX", "STOCH", "ATR", "MACD", "VOL", "VWAP", "HA", "KG", "KINDERGARTEN", "MOM", "MOM3", "SQUEEZE", "STDEV", "LH", "LL", "HH", "HL", "HLR", "FUNDING", "OI", "BTC", "RATIO", "GR", "GOLDEN", "SPIKE", "DIV", "VEL", "ACCEL", "SLOPE", "RZ", "CCI", "OBV", "PIVOT")
 LIVE_FILES = ("ez_manage.py", "tradier_manage.py", "ez_positions_quick.py", "btc_loop.py")
 STAGE_OF_KIND = {"entry": "ENTRY", "reentry": "REENTRY", "reduce": "REDUCE", "augment": "AUGMENT", "sizing": "SIZING", "global": "GLOBAL"}
+ARTEFACT_SWITCHES = ("MODE", "VENUE", "IS_TRADIER", "SIMPLE_PRICE_GT0_ENABLED")  # tools/v15_trade_autopsy_run.py AUTOPSY_DENY
 AMBIG_FN = ("process_position", "_execute_now_inner", "simulate_one", "<module>", "step", "apply", "worker", "run", "main", "__init__")
 
 
@@ -168,6 +170,8 @@ def fn_stage(fn):
     f = (fn or "").lower()
     if not f or any(f.endswith(a.lower()) or f == a.lower() for a in AMBIG_FN):
         return None
+    if "compute_reentry_blocks" in f:
+        return "ENTRY"  # v12 compute_reentry_blocks = the entry gate blocks (22_SWITCH_FAMILY_MAP §a)
     if "reentry" in f or "re_entry" in f:
         return "REENTRY"
     if "augment" in f:
@@ -233,7 +237,24 @@ def load_linknet(cs):
         return []
 
 
-def build_cs(cs, tpl_path, fm, ext, bible, groups, agk, never_tried):
+def pilot_attach_fn(tab_level_path):
+    """-> f(cs, tab, header_map, switch, cand, defaults) = set of headers the CURRENT v15_pilot attaches to the row (name-token rule,
+    mandatory bases, WT-core all-columns, ever-yellow, tab-level / unwired / type exclusions) — the cells a board really evaluates."""
+    import v15_pilot as P
+    if tab_level_path:
+        P._TAB_LEVEL_CACHE["spec"] = json.loads(Path(tab_level_path).read_text()).get("cats", {})
+    cache = {}
+
+    def f(cs, tab, hm, switch, cand, defaults):
+        k = (cs, tab, switch)
+        if k not in cache:
+            cache[k] = P._header_disc_precompute(tab, switch, hm, P.tab_level_filters(cs, tab), P.mandatory_bases_for_tab(tab, switch), defaults)
+        all_cols = switch in P.WT_CORE_MANDATORY_BASES
+        return set(P._header_disc_combine(cache[k], tab, switch, cand, P.ever_yellow_cells(cs), all_cols)["hdrs"])
+    return f
+
+
+def build_cs(cs, tpl_path, fm, ext, bible, groups, agk, never_tried, attach=None):
     tabs, hbold = read_workbook(tpl_path)
     # ---- defaults (bold) exactly as v18_binding_map.build_one
     defaults = {}
@@ -324,6 +345,12 @@ def build_cs(cs, tpl_path, fm, ext, bible, groups, agk, never_tried):
             g = live_stage or kind_stage
             resolved = exit_subtype(s) if g == "EXIT" else g
             why = f"no family; live read stage {g} ({'fn' if live_stage else 'bible kind'})"
+        elif fam == "UNKNOWN":
+            u = s.upper()
+            g = "REENTRY" if "REENTRY" in u else "AUGMENT" if "AUGMENT" in u else "REDUCE" if "REDUCE" in u else "EXIT" if any(t in u for t in ("STOP", "EXIT")) else "ENTRY" if any(t in u for t in ("ENTRY", "OPEN")) else None
+            if g:
+                resolved = exit_subtype(s) if g == "EXIT" else g
+                why = f"no family, no classifiable live read; name tokens -> {g}"
         elif src.endswith("ext_20261028") or fam == "GLOBAL":
             g = live_stage or (kind_stage if kind_stage != "GLOBAL" else None)
             if g and g != fam_grp and g != "SIZING":
@@ -367,6 +394,10 @@ def build_cs(cs, tpl_path, fm, ext, bible, groups, agk, never_tried):
         if r["grey"]:
             skipped["GREY_ROW (operator-greyed, never evaluated: no change)"] += 1
             per_sw[s]["grey_rows"] += 1
+            continue
+        if s in ARTEFACT_SWITCHES:
+            skipped["ARTEFACT_ROW (MODE/VENUE class, never a strategy setting: no change)"] += 1
+            per_sw[s]["artefact_rows"] += 1
             continue
         if s.startswith("ABLATION_"):
             skipped["ABLATION_ROW (never swept: no change)"] += 1
@@ -420,6 +451,12 @@ def build_cs(cs, tpl_path, fm, ext, bible, groups, agk, never_tried):
                     keep_other += 1
                 if lp is not None and lp >= 0.5 and v == "INDIRECT" and not is_default_opt:
                     noted.append({"hdr": h, "note": f"linknet p_pos_pred {lp:.2f} but INDIRECT (filter-alone echo) — not shaded"})
+        if attach is not None:
+            att = attach(cs, tab, tabs[tab]["headers"], s, cand, defaults)
+            for a_ in add:
+                a_["pilot_attaches"] = a_["hdr"] in att
+            per_tab[tab]["add_pilot_attaches"] += sum(1 for a_ in add if a_["pilot_attaches"])
+            per_sw[s]["add_pilot_attaches"] += sum(1 for a_ in add if a_["pilot_attaches"])
         rows_out.append({"tab": tab, "row": r["row"], "switch": s, "cand": vstr(cand), "row_key": rk, "family": fam, "default_row": r["bold"], "shaded_before": len(r["shaded"]), "add": add, "remove": rem, "kept_plausible": keep_ok, "kept_not_never_not_plausible": keep_other, "conditional_not_shaded": cond_only, "notes": noted})
         per_sw[s]["rows"] += 1
         per_sw[s]["add"] += len(add)
@@ -464,6 +501,8 @@ def main():
     ap.add_argument("--templates", default=str(ROOT / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM"))
     ap.add_argument("--out", default=str(ROOT / "data" / "reports" / "new_rows_yellow_placement_20261028"))
     ap.add_argument("--cat-side", default="all", choices=CAT_SIDES + ("all",))
+    ap.add_argument("--tab-level", default="", help="tab_level_filters.json the fleet pilot reads (S1 copy); enables the pilot_attaches check")
+    ap.add_argument("--no-pilot-attach", action="store_true")
     a = ap.parse_args()
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -473,9 +512,10 @@ def main():
     groups = B.literal_assign(B.ABLATION_GROUPS, "GROUPS")
     agk = B.literal_assign(B.EXEMPTIONS, "AUGMENT_GATE_KEYS")
     nt = json.loads((FULL / "reports" / "never_tried_A_latest.json").read_text())
+    attach = None if a.no_pilot_attach else pilot_attach_fn(a.tab_level)
     plans = {}
     for cs in (CAT_SIDES if a.cat_side == "all" else (a.cat_side,)):
-        p = build_cs(cs, Path(a.templates) / f"TEMPLATE_{cs}.xlsx", fm, ext, bible, groups, agk, nt)
+        p = build_cs(cs, Path(a.templates) / f"TEMPLATE_{cs}.xlsx", fm, ext, bible, groups, agk, nt, attach)
         (out / f"plan_{cs}.json").write_text(json.dumps(p, indent=1, default=str))
         plans[cs] = p
         print(json.dumps({"cat_side": cs, **p["meta"]["scope"], **p["meta"]["totals"], "skipped": p["meta"]["skipped_rows"]}), flush=True)

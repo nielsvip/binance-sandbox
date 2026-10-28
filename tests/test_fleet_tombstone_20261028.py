@@ -67,3 +67,39 @@ def test_probe_marks_tombstone_skip_as_start_refusal(tmp_path, monkeypatch):
         assert ss in json.loads(out)["start_refused"]
     finally:
         log.unlink()
+
+
+def test_priority_side_picked_before_own_partial():
+    uni = {"CRYPTO_SHORT": ["AAAUSDT_SHORT", "ZZZUSDT_SHORT"], "CRYPTO_LONG": [], "STOCKS_SHORT": [], "STOCKS_LONG": []}
+    d = host()
+    d["tails"] = {"AAAUSDT": TAIL, "ZZZUSDT": TAIL}
+    d["progress"] = {"AAAUSDT_SHORT": {"fg": False, "rows": 500, "ts": TAIL}}
+    pend, partial, _ = F.pending_by_cat(uni, {"s1": d}, NOW)
+    picks, _, _ = F.plan(pend, partial, {"s1": d}, NOW, {}, frozenset({"ZZZUSDT_SHORT"}))
+    assert picks[0][1] == "ZZZUSDT_SHORT"
+    picks, _, _ = F.plan(pend, partial, {"s1": d}, NOW, {})
+    assert picks[0][1] == "AAAUSDT_SHORT"
+
+
+def test_probe_normal_end_and_stale_npz_are_not_deaths(tmp_path):
+    import json
+    import os
+    import subprocess
+    probe = pathlib.Path(__file__).resolve().parents[1] / "tools" / "fleet_probe.py"
+    (tmp_path / "fleet_dispatch" / "launches").mkdir(parents=True)
+    lines = {"ZZA_LONG": "[spec-row] x\n[spec-fill] workbook complete, 2865 rows filled, returning early cum=30.3\n[mandatory-yellows] a\n",
+             "ZZB_LONG": "[NPZ-HOT] x\n[STALE_NPZ_SKIPPED] ZZB_LONG STALE_NPZ_SKIPPED: NPZ last bar ...\n",
+             "ZZC_LONG": "[spec-row] x\n[slow-cell] y\n"}
+    logs = []
+    try:
+        for ss, txt in lines.items():
+            log = pathlib.Path(f"/tmp/sweep_{ss}_30D.log")
+            log.write_text(txt)
+            logs.append(log)
+            (tmp_path / "fleet_dispatch" / "launches" / f"{ss}.json").write_text(json.dumps({"ss": ss, "ts": int(log.stat().st_mtime) - 5}))
+        out = subprocess.run([sys.executable, str(probe), "{}"], capture_output=True, text=True, env=dict(os.environ, HOME=str(tmp_path)), timeout=60).stdout
+        refused = json.loads(out)["start_refused"]
+        assert "ZZA_LONG" in refused and "ZZB_LONG" in refused and "ZZC_LONG" not in refused
+    finally:
+        for log in logs:
+            log.unlink()

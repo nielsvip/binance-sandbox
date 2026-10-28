@@ -409,7 +409,7 @@ def admission(d, now, name=""):
     return 1, "ok"
 
 
-def plan(pend, partial, fleet_data, now, orphan_since):
+def plan(pend, partial, fleet_data, now, orphan_since, prio=frozenset()):
     """-> ([(host, ss, why)], {host: reason}, orphans). Pure."""
     homes_present = {HOMES[n]: n for n in fleet_data if n in HOMES}
     adm = {n: admission(d, now, n) for n, d in fleet_data.items()}
@@ -427,7 +427,8 @@ def plan(pend, partial, fleet_data, now, orphan_since):
         # comes last (its progress lives on that host, so here it would be a fresh re-run)
         mine = [s for s in sides if partial.get(s) == host]
         fresh = [s for s in sides if s not in partial]
-        pick = (mine or fresh or sides or [None])[0]
+        first = [s for s in sides if s in prio and partial.get(s) in (None, host)]  # data/fleet_priority.json
+        pick = (first or mine or fresh or sides or [None])[0]
         if pick:
             claimed.add(pick)
         return pick
@@ -651,7 +652,7 @@ def tick(args):
                 orphan_since.pop(cat, None)
             else:
                 orphan_since.setdefault(cat, now)
-        picks, why_not, orphans = plan(pend, partial, data, now, orphan_since)
+        picks, why_not, orphans = plan(pend, partial, data, now, orphan_since, frozenset(prio))
         rec["pending"] = {c: len(v) for c, v in pend.items()}
         rec["universe"] = {c: len(v) for c, v in universe.items()}
         rec["running"] = sum(len(d.get("running") or {}) for d in data.values())

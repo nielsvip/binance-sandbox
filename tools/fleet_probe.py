@@ -172,7 +172,9 @@ def main():
                 tail = handle.read().decode("utf-8", "replace")
             # 2026-10-28: a tombstoned/finished board exits at start on [IMPOSSIBLE-SKIP]/[SOFT-SKIP]/[PROHIBITED]; S1 was
             # quarantined for hours by six such exits counted as deaths
-            for marker in ("BASELINE-PERSYM-SNAPSHOT-INVALID", "[IMPOSSIBLE-SKIP]", "[SOFT-SKIP]", "[PROHIBITED]"):
+            # also a normal end that leaves no final_gain: REDO scheduled after a compliance repair, the closing
+            # "[spec-fill] workbook complete" line, or a stale-NPZ refusal (s5 quarantined 16:0xZ on AMD_LONG + SNOW_LONG)
+            for marker in ("BASELINE-PERSYM-SNAPSHOT-INVALID", "[IMPOSSIBLE-SKIP]", "[SOFT-SKIP]", "[PROHIBITED]", "[STALE_NPZ_SKIPPED]", "[spec-fill] workbook complete", "[REDO] "):
                 if marker in tail and not any(m in tail.rsplit(marker, 1)[1] for m in ("[spec-row]", "[PUBLISH]", "[slow-cell]")):
                     out["start_refused"][symside] = int(os.path.getmtime(log))
                     break
