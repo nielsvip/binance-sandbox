@@ -1251,24 +1251,24 @@
   }
  },
  "freshness": {
-  "age_h_max": 12.5,
-  "age_h_median": 1.96,
-  "age_h_p90": 10.54,
+  "age_h_max": 12.75,
+  "age_h_median": 2.21,
+  "age_h_p90": 10.79,
   "bnb_source": "price_cache_2.json",
   "bnb_usd": 749.65,
   "caches": 594,
-  "fresh": 415,
-  "fresh_share": 0.6987,
+  "fresh": 414,
+  "fresh_share": 0.697,
   "note": "figures are a FLOOR on activity; a lagging cache shows fewer fills, never more",
   "ok": true,
-  "stale": 179
+  "stale": 180
  },
- "generated_at": "2026-10-28T14:31:43Z",
+ "generated_at": "2026-10-28T14:46:43Z",
  "label": "VERIFIED",
  "reconcile_14d": {
   "broker_net_usd": -126.2086,
   "divergence_usd": -1.1217,
-  "generated_at": "2026-10-28T14:35:33Z",
+  "generated_at": "2026-10-28T14:51:06Z",
   "inhouse_net_usd": -127.3303,
   "label": "VERIFIED",
   "symbols_compared": 119,

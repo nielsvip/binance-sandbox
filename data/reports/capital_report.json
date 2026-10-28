@@ -1,57 +1,54 @@
 {
- "generated_at": "2026-10-28 14:29 UTC",
- "total_capital_usd": 29.81,
+ "generated_at": "2026-10-28 14:53 UTC",
+ "total_capital_usd": 41.12,
  "tier_capital": {
   "A": 0.0,
-  "B": 18.63,
-  "C": 11.19
+  "B": 41.12,
+  "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
-  "C": 1
+  "B": 3,
+  "C": 0
  },
  "winners": [],
- "losers": [
-  "flz:BNBUSDC_LONG",
-  "flz:DASHUSDT_SHORT"
- ],
+ "losers": [],
  "mediocre": [
-  "flz:BTCDOMUSDT_LONG"
+  "inf:BNBUSDC_LONG"
  ],
  "positions": [
   {
-   "pk": "flz:DASHUSDT_SHORT",
-   "symbol": "DASHUSDT",
-   "account": "flz",
-   "value_usd": 11.19,
-   "gain_pct": 0.511,
-   "tier": "C",
-   "perf_mult": 0.47,
-   "amt": 0.212,
-   "mark": 52.76890366
+   "pk": "inf:PENGUUSDC_LONG",
+   "symbol": "PENGUUSDC",
+   "account": "inf",
+   "value_usd": 15.02,
+   "gain_pct": 0.235,
+   "tier": "B",
+   "perf_mult": 1.96,
+   "amt": 1955.0,
+   "mark": 0.007684
   },
   {
-   "pk": "flz:BTCDOMUSDT_LONG",
+   "pk": "inf:BNBUSDC_LONG",
+   "symbol": "BNBUSDC",
+   "account": "inf",
+   "value_usd": 14.96,
+   "gain_pct": -0.045,
+   "tier": "B",
+   "perf_mult": 0.76,
+   "amt": 0.02,
+   "mark": 747.81
+  },
+  {
+   "pk": "inf:BTCDOMUSDT_LONG",
    "symbol": "BTCDOMUSDT",
-   "account": "flz",
-   "value_usd": 11.16,
-   "gain_pct": 0.28,
+   "account": "inf",
+   "value_usd": 11.14,
+   "gain_pct": 0.398,
    "tier": "B",
    "perf_mult": 0.67,
    "amt": 0.002,
-   "mark": 5579.7
-  },
-  {
-   "pk": "flz:BNBUSDC_LONG",
-   "symbol": "BNBUSDC",
-   "account": "flz",
-   "value_usd": 7.47,
-   "gain_pct": -1.052,
-   "tier": "B",
-   "perf_mult": 0.76,
-   "amt": 0.01,
-   "mark": 746.68
+   "mark": 5572.0
   }
  ]
 }
