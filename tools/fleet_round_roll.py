@@ -91,6 +91,13 @@ def cmd_flip(a):
         print(f"  md5 {pathlib.Path(f).name:28s} " + " ".join(f"{n}={res[n].get(f, 'MISSING')[:8]}" for n in HOSTS))
     print(f"NEW pdir={pdir}\nNEW defaults_round={rdef}")
     print("template/per_sym_settings parity:", "OK (identical on all hosts)" if not bad else json.dumps(bad, indent=1))
+    expect = [x.strip() for x in (a.expect_tpl or "").split(",") if x.strip()]
+    if expect:
+        got = [res["s1"].get(f, "")[:len(e)] for f, e in zip(TEMPLATES, expect)]
+        if got != expect or len(expect) != len(TEMPLATES):
+            print(f"ABORT: templates on disk {got} != expected {expect} (order CL,CS,SL,SS)")
+            return 2
+        print(f"templates match expected {expect}")
     if not rdef or bad or any(o[0] != 0 for o in old.values()):
         print("ABORT: fingerprint unavailable, parity mismatch, or a host unreadable")
         return 2
@@ -216,6 +223,7 @@ def main():
     f.add_argument("--round", required=True)
     f.add_argument("--tag", required=True)
     f.add_argument("--apply", action="store_true")
+    f.add_argument("--expect-tpl", default="", help="comma list of md5 prefixes in order CRYPTO_LONG,CRYPTO_SHORT,STOCKS_LONG,STOCKS_SHORT")
     r = sub.add_parser("archive")
     r.add_argument("--hosts", default="s5,s6")
     r.add_argument("--to", default="s2")

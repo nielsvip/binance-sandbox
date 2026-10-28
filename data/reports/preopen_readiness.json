@@ -1,11 +1,10 @@
 {
- "generated_utc": "2026-10-28T17:00:18Z",
+ "generated_utc": "2026-10-28T17:40:13Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-28T13:30:00Z",
  "market_open": true,
  "verdict": "FAIL",
  "failed_critical": [
-  "defaults_chain_completed",
   "apply_report_written",
   "live_set_matches_selection",
   "indicators_fresh"
@@ -16,23 +15,23 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 217,
-    "filled_before_open": 133
+    "filled_today": 226,
+    "filled_before_open": 127
    },
-   "detail": "133 boards filled before the open (217 today)"
+   "detail": "127 boards filled before the open (226 today)"
   },
   {
    "name": "defaults_chain_completed",
-   "ok": false,
+   "ok": true,
    "critical": true,
    "measured": {
     "mac_done_stamp": true,
-    "s1_stamp": "NO_STAMP",
+    "s1_stamp": "{\n \"date\": \"20261028\",\n \"status\": \"DONE\",\n \"started\": \"2026-10-28T11:00:01Z\",\n \"ended\": \"2026-10-28T11:35:46.643599Z\",\n \"steps_ok\": \"1,2,2a,2b,3,4,4c,4b,4d,4e,4e,5,6,6b\",\n \"agg\": \"SPREADSHEETS/v15_avg_delta/v15_avg_delta_20261028.xlsx\",\n \"promoted_keys\": [\n  \"ADX_REGIME_FILTER_ENABLED\",\n  \"ATR_LONG_WINDOW\",\n  \"AUGMENT_FALLBACK_REDUCE_PCT\",\n  \"BB_BREAKOUT_ENTRY_TF\",\n  \"BB_SQUEEZE_ENTRY_ENABLED\",",
     "cat_side_defaults_4_at": "2026-10-21T04:54:49Z",
     "cat_side_age_days": 7.5,
     "cat_side_note": "rebuilt only by v15_daily_template_update --sync-defaults, a deliberate manual step \u2014 reported, never fails this gate"
    },
-   "detail": "mac stamp 20261028=True, s1 stamp NO_STAMP, cat_side layer 7.5d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
+   "detail": "mac stamp 20261028=True, s1 stamp {\n \"date\": \"20261028\",\n \"status\": \"DONE\",\n \"started\": \"2026-10-28T11:00:01Z\",\n \"ended\": \"2026-10-28T11:35:46.643599Z\",\n \"steps_ok\": \"1,2,2a,2b,3,4,4c,, cat_side layer 7.5d old"
   },
   {
    "name": "selection_fresh",
@@ -50,12 +49,12 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "reports_today": 15,
-    "newest_report": "persym_golive_20261028_refresh_1609.json",
-    "newest_report_at": "2026-10-28T16:15:42Z",
-    "tiers_at": "2026-10-28T16:20:55Z"
+    "reports_today": 16,
+    "newest_report": "persym_golive_20261028_refresh_1713.json",
+    "newest_report_at": "2026-10-28T17:20:03Z",
+    "tiers_at": "2026-10-28T17:26:45Z"
    },
-   "detail": "persym_golive_20261028_refresh_1609.json at 2026-10-28T16:15:42Z, tiers 2026-10-28T16:20:55Z \u2014 the apply never finished (no report / stale tiers): the live set is PARTIAL"
+   "detail": "persym_golive_20261028_refresh_1713.json at 2026-10-28T17:20:03Z, tiers 2026-10-28T17:26:45Z \u2014 the apply never finished (no report / stale tiers): the live set is PARTIAL"
   },
   {
    "name": "live_set_matches_selection",
@@ -63,9 +62,9 @@
    "critical": true,
    "measured": {
     "selection_n": 532,
-    "exact": 37,
+    "exact": 44,
     "benign_divergence_only": 117,
-    "material_divergence": 377,
+    "material_divergence": 370,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -202,7 +201,7 @@
      }
     ]
    },
-   "detail": "37 exact, 117 benign-only, 377 with material divergence, 1 with no live row"
+   "detail": "44 exact, 117 benign-only, 370 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
@@ -210,9 +209,9 @@
    "critical": true,
    "measured": {
     "symbols": 201,
-    "stale_over_90min": 197,
-    "stale_pct": 98.0,
-    "median_age_min": 180.3,
+    "stale_over_90min": 200,
+    "stale_pct": 99.5,
+    "median_age_min": 220.2,
     "sample": [
      "1000000MOGUSDT",
      "1000BONKUSDC",
@@ -224,7 +223,7 @@
      "1000SHIBUSDC"
     ]
    },
-   "detail": "197/201 symbols past the live 90-min entry gate (98.0%)"
+   "detail": "200/201 symbols past the live 90-min entry gate (99.5%)"
   },
   {
    "name": "s1_sets_synced",

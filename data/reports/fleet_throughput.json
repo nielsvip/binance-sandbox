@@ -1,12 +1,25 @@
 {
-  "ts": "2026-10-28T17:45:05.939032+00:00",
+  "ts": "2026-10-28T17:55:08.255073+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 0,
-  "pending_sym_sides": null,
+  "pending_sym_sides": 138,
   "hosts": {
     "s1": {
-      "unreachable": true
+      "published_last_60m": 0,
+      "published_last_3h": 0,
+      "boards": {
+        "PTBUSDT_SHORT": 7,
+        "XPLUSDT_SHORT": 7
+      },
+      "boards_running": 2,
+      "workers": 14,
+      "workers_vs_law_28": "14/28",
+      "mem_avail_mb": 10379,
+      "disk_free_gb": 34,
+      "load1": 20.4,
+      "dispatch_idle_why": "full 2/2",
+      "published_ss": []
     },
     "s2": {
       "unreachable": true
@@ -19,7 +32,8 @@
     }
   },
   "alerts": [
-    "UNREACHABLE:s1",
+    "LOW_THROUGHPUT:s1:0/h<10 (idle_why=full 2/2)",
+    "DISK_FLOOR:s1:34GB<40",
     "UNREACHABLE:s2",
     "UNREACHABLE:s5",
     "UNREACHABLE:s6"

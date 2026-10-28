@@ -57,3 +57,31 @@ def test_paint_is_idempotent_and_keeps_values():
     rep = BK.paint_yellows(wb, _plan())
     assert rep["added"] == 0 and rep["removed"] == 0 and rep["already"] == 2 and rep["already_clear"] == 1
     assert vals == [[c.value for c in r] for r in wb.active.iter_rows()]
+
+
+def _two_tab_wb():
+    wb = _wb()
+    src = wb.active
+    aug = wb.create_sheet("AUGMENT_TREND")
+    aug.cell(1, 1).value = "08 AUGMENT_TREND title"
+    for c, h in enumerate(HEAD[:15] + ["Live Location"], 1):
+        aug.cell(2, c).value = h
+    aug.merge_cells(start_row=1, start_column=1, end_row=1, end_column=16)
+    aug.cell(3, 1).value = "BOUNCE_AUGMENT_ENABLED"
+    aug.cell(3, 2).value = False
+    aug.cell(3, 16).value = "ez_manage.py:1"
+    src.cell(2, 18).value = "HTF_DIRECTION_GATE_ENABLED=True"
+    src.cell(2, 19).value = "HTF_DIRECTION_GATE_ENABLED=False"
+    src.cell(2, 19).font = Font(bold=True)
+    return wb
+
+
+def test_add_filter_columns_copies_headers_and_keeps_everything_else():
+    wb = _two_tab_wb()
+    rep = BK.add_filter_columns(wb, ["AUGMENT_TREND"], ["HTF_DIRECTION_GATE_ENABLED"])
+    ws = wb["AUGMENT_TREND"]
+    assert rep["AUGMENT_TREND"]["added"] == ["HTF_DIRECTION_GATE_ENABLED=True", "HTF_DIRECTION_GATE_ENABLED=False"]
+    assert ws.cell(2, 16).value == "HTF_DIRECTION_GATE_ENABLED=True" and ws.cell(2, 17).font.b
+    assert ws.cell(2, 18).value == "Live Location" and ws.cell(3, 18).value == "ez_manage.py:1"
+    assert [str(m) for m in ws.merged_cells.ranges] == ["A1:R1"]
+    assert BK.add_filter_columns(wb, ["AUGMENT_TREND"], ["HTF_DIRECTION_GATE_ENABLED"])["AUGMENT_TREND"]["added"] == []
