@@ -283,6 +283,14 @@ def state_for(symside, window_days=30):
            "entry_bar": int(tails[int(cur.get("bar", cur.get("bar_entry")))]) if cur is not None and cur.get("bar", cur.get("bar_entry")) is not None else None,
            "entry_px": cur.get("price", cur.get("entry_price")) if cur is not None else None,
            "audit_only": False}
+    if _anc:
+        try:  # audit only: does the board's STALE_SET_HALT twin hold opens at the current bar? (same predicate the engine used)
+            from vec_decisions import stale_set_halt_twin as _ssh_twin
+            _cl = [(float(t.get("ts") or 0.0), float(t.get("pnl_pct", 0.0) or 0.0)) for t in led if str(t.get("type", "")).upper() == "CLOSE"]
+            _h, _why = _ssh_twin.halt_fires(float(tail), _anc["STALE_SET_RECALC_EPOCH"], _anc["STALE_SET_APPLY_EPOCH"], _cl, float(ov.get("STALE_SET_HALT_DAYS", 10.0) or 10.0), int(ov.get("STALE_SET_HALT_LOSSES", 2) or 2))
+            out["stale_set_halt"] = {"halted": bool(_h), "why": _why}
+        except Exception as exc:
+            out["stale_set_halt"] = {"error": f"{type(exc).__name__}: {exc}"[:120]}
     try:
         _pos, _acts = _vector_acts(led, len(tails) - 1, tails)
         out.update(_pos)

@@ -3697,7 +3697,8 @@ def ez_vigilance_is_blocked(symbol: str, position_side: str) -> Tuple[bool, str]
             try:
                 _at = datetime.fromisoformat(str(_b.get("blocked_at")).replace("Z", "+00:00"))
                 _age_h = (datetime.now(timezone.utc) - _at).total_seconds() / 3600.0
-                if _age_h >= _hrs:
+                import vec_decisions.vigilance_dc4 as _vig_dc4_exp  # 2026-10-27 same expiry predicate as the vector
+                if _vig_dc4_exp.block_expired(_age_h, _hrs):
                     _EZ_VIGILANCE_STATE["blocks"].pop(_key, None)
                     _ez_vigilance_save()
                     logger.critical(f"🟢 [VIGILANCE_UNBLOCK] {_key}: {_hrs:.0f} h review window elapsed ({_age_h:.1f} h) — trading allowed again")
@@ -33820,6 +33821,11 @@ class MultiAccountTradeManager:
         try:
             from vec_decisions.net_exit_gate import mandatory_loss_stop_reason as _mandatory_exit, estimated_net_gain_positive as _net_exit_ok
             _mandatory_loss_stop = _mandatory_exit(reason)
+            if not _mandatory_loss_stop and str(reason or "").upper().startswith("VIGILANCE_DC4_"):
+                # USER 2026-10-27 "VIGILANCE_DC4_EXIT needs to be in switches and vectorized functions": the armed DC4
+                # vigilance close may close red, exactly as the vector's exit gate allows it (mandatory_stop_kind marker).
+                import vec_decisions.vigilance_dc4 as _vig_dc4_gate
+                _mandatory_loss_stop = _vig_dc4_gate.loss_close_allowed(reason, _vig_dc4_gate.armed(lambda _k, _d: _psym_get(symbol, position_side, _k, getattr(config, _k, _d))))
         except Exception:
             _mandatory_loss_stop = False
             _net_exit_ok = lambda gross, fee: False

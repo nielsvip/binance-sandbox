@@ -41,3 +41,18 @@ def fires(is_long: bool, px: float, lvl: float, tol_pct: float, gain_pct: float)
     except (TypeError, ValueError):
         return False
     return breach(is_long, px, lvl, tol_pct)
+
+
+def block_expired(age_hours: float, hours: float) -> bool:
+    """The DC4-stop entry block expires after VIGILANCE_BLOCK_HOURS (0 = open-ended). Live ez_vigilance_is_blocked and the
+    vector's release both call this."""
+    try:
+        h = float(hours or 0.0)
+        return h > 0 and float(age_hours) >= h
+    except (TypeError, ValueError):
+        return False
+
+
+def loss_close_allowed(reason, armed_now: bool) -> bool:
+    """Live twin of the vector's mandatory_stop_kind=VIGILANCE_DC4_ARMED marker: an armed DC4 vigilance close may close red."""
+    return bool(armed_now) and str(reason or "").upper().startswith("VIGILANCE_DC4_")

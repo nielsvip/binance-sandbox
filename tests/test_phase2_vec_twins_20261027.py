@@ -75,3 +75,15 @@ def test_vigilance_predicate_equals_old_inline_formula():
     assert mism == 0
     assert vig.armed(lambda k, d: {"VIGILANCE_DC4_STOP_ARMED": True, "VIGILANCE_DC4_STOP_TF": "OFF"}.get(k, d)) is False
     assert vig.armed(lambda k, d: {"VIGILANCE_DC4_STOP_ARMED": True}.get(k, d)) is True
+
+
+def test_vigilance_exit_gate_marker_and_expiry():
+    from vec_decisions.net_exit_gate import mandatory_loss_stop_reason, vector_exit_event_allowed
+    ev = {"type": "CLOSE", "reason": "VIGILANCE_DC4_15m_STOP g-1.00", "exit_reason": "VIGILANCE_DC4_15m_STOP g-1.00", "pnl_dollars": -1.0, "qty": 1.0, "exit_price": 1.0}
+    assert vector_exit_event_allowed(ev, None, None) is False  # bare reason: still not a mandatory stop
+    assert vector_exit_event_allowed({**ev, "mandatory_stop_kind": "VIGILANCE_DC4_ARMED"}, None, None) is True
+    assert not mandatory_loss_stop_reason("VIGILANCE_DC4_15M_HARD_STOP")  # the 2026-10 stop-law pin holds for the bare reason
+    assert vig.loss_close_allowed("VIGILANCE_DC4_15m_HARD_STOP_USER_LONG", True) is True
+    assert vig.loss_close_allowed("VIGILANCE_DC4_15m_HARD_STOP_USER_LONG", False) is False
+    assert vig.loss_close_allowed("FIXED_STOP", True) is False
+    assert vig.block_expired(12.0, 12.0) and not vig.block_expired(11.9, 12.0) and not vig.block_expired(100.0, 0.0)

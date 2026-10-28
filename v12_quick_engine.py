@@ -6649,6 +6649,7 @@ class QuickConfig:
         "15m"  # losing position + px breach dc_low4_{TF}/dc_high4_{TF} → close+block; OFF disables
     )
     VIGILANCE_CONSEC_LOSSES: int = 2  # losing closes in a row that block the sym_side
+    VIGILANCE_BLOCK_HOURS: float = 12.0  # MIRROR of config.py: the DC4-stop entry block expires after this many hours (live ez_vigilance_is_blocked), shared predicate vigilance_dc4.block_expired
     VIGILANCE_DC4_STOP_ARMED: bool = False  # USER 2026-10-27 "VIGILANCE_DC4_EXIT needs to be in switches and vectorized functions": the DC4 stop switch (MIRROR of config.py False); predicate vec_decisions/vigilance_dc4, same as live
     VIGILANCE_RECOVERY_REENTRY_ENABLED: bool = (
         False  # USER 2026-09-28 2nd mandate: auto-unblock on recovery, KEEP TRADING
@@ -17853,6 +17854,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     import vec_decisions.vigilance_dc4 as _vig_dc4_mod
 
     _vig_dc4_on = _vig_dc4_mod.armed(lambda _k, _d: getattr(cfg, _k, _d))
+    _vig_block_hours = float(getattr(cfg, "VIGILANCE_BLOCK_HOURS", 12.0) or 0.0)
+    _vig_block_ts = 0.0
     _vig_tol = (
         float(getattr(cfg, "VIGILANCE_DC4_BREACH_TOLERANCE_PCT", 0.25) or 0.0) / 100.0
     )  # dc_low_15m - 0.25% convention
@@ -19324,6 +19327,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             if (_vig_enabled or _vig_dc4_on) and _vig_blocked:
                 # Recovery auto-unblock (USER 2026-09-28 2nd mandate): price past block-exit, or bounce.
                 _vig_rec = False
+                # 2026-10-27: the live block EXPIRES after VIGILANCE_BLOCK_HOURS (ez_vigilance_is_blocked); same predicate here
+                if _vig_dc4_on and _vig_block_ts > 0 and i < len(ts) and _vig_dc4_mod.block_expired((float(ts[i]) - _vig_block_ts) / 3600.0, _vig_block_hours):
+                    _vig_rec = True
                 if _vig_rec_enabled:
                     if _vig_block_px > 0 and (
                         (is_long and px > _vig_block_px)
@@ -21039,13 +21045,20 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"),
                     "exit_reason": _vg_reason,
                     "bars_held": int(i - pos["entry_bar"]),
+                    **({"mandatory_stop_kind": "VIGILANCE_DC4_ARMED"} if _vig_dc4_on else {}),
                 }
             )
+            # 2026-10-27: a refused close (exit gate) restores the position via _pending_exit_restore and must NOT
+            # leave the sym_side blocked; before this check a refused DC4 close still set _vig_blocked forever.
+            if not (len(trades) and trades[-1].get("exit_reason") == _vg_reason):
+                pos = None
+                continue
             pos = None
             cd = cooldown_bars
             has_closed_before = True
             _vig_blocked = True
             _vig_block_px = float(px)
+            _vig_block_ts = _tsv
             continue
         # 2026-10-12 USER MANDATE — FIXED_STOP: frozen-at-entry dc_15m -0.25% (vv shorts). Non-negotiable: no switch, no cfg read, no veto, evaluated on EVERY bar of EVERY calc. The vector models THIS maker-first software leg (-0.25%, unchanged — USER 2026-10-18 "REGULAR and non negotiable stop orders in the script (maker) should stay at +/- 0.25"); the exchange STOP_MARKET backstop lives on the venue and moved to dc_15m -0.40% / +0.40% (was 0.2999%) so the maker leg gets more room to fill before the taker order takes over.
         try:

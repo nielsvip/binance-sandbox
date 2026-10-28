@@ -47,6 +47,11 @@ def vector_exit_event_allowed(event, position, before_position, mandatory_dc4_bu
         return True
     if mandatory_loss_stop_reason(reason, mandatory_dc4_buffer_pct):
         return True
+    # USER 2026-10-27 "VIGILANCE_DC4_EXIT needs to be in switches and vectorized functions": a DC4 vigilance stop is a
+    # loss close BY DEFINITION, so it can only exist as a switch if it may close red. Only the armed producer sets this
+    # marker (VIGILANCE_DC4_STOP_ARMED, default False); a bare VIGILANCE_DC4 reason is still not a mandatory stop.
+    if event.get("mandatory_stop_kind") == "VIGILANCE_DC4_ARMED" and str(reason or "").upper().startswith("VIGILANCE_DC4_"):
+        return True
     try:
         extra_fee = max(0.0, float(additional_fee_pct)) / 100.0
         if "pnl_dollars" in event:
