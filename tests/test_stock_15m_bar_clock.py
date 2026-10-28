@@ -58,6 +58,14 @@ def test_native_prefix_rejects_unverified_and_forming_snapshots(tmp_path):
     actual = [dict(records[0], timestamp=START + minute * 60, _closed_verified_at=START + (minute + 1) * 60) for minute in range(13)]
     atomic_json(folder / 'A_1m.json', actual)
     assert len(native_prefix(tmp_path, 'A', START)) == 13
+    prepared = [dict(row, _source='tradier_native_1min_prefix') for row in actual]
+    for row in prepared:
+        row.pop('_closed_verified_at')
+    atomic_json(folder / 'A_1m.json', prepared)
+    assert len(native_prefix(tmp_path, 'A', START)) == 13
+    prepared[0]['_provisional'] = True
+    atomic_json(folder / 'A_1m.json', prepared)
+    assert len(native_prefix(tmp_path, 'A', START)) == 12
 
 
 def test_exact_stock_account_books_and_empty_books(tmp_path):

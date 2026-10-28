@@ -1,18 +1,18 @@
 {
- "generated_utc": "2026-10-28T18:12:39.688824+00:00",
+ "generated_utc": "2026-10-28T19:12:28.617863+00:00",
  "days": 1.0,
  "totals": {
-  "entry_promises": 86,
-  "entry_broken_no_delivery": 86,
-  "exit_promises": 111,
-  "exit_broken_no_delivery": 110,
-  "exit_skipped_inflight": 1328,
+  "entry_promises": 87,
+  "entry_broken_no_delivery": 87,
+  "exit_promises": 113,
+  "exit_broken_no_delivery": 112,
+  "exit_skipped_inflight": 1378,
   "exit_kept_late": 1
  },
  "per_key": {
   "inf:PENGUUSDC_LONG": {
-   "entry_promises": 1,
-   "entry_broken_no_delivery": 1,
+   "entry_promises": 2,
+   "entry_broken_no_delivery": 2,
    "exit_promises": 1,
    "exit_broken_no_delivery": 1
   },
@@ -275,10 +275,11 @@
    "entry_broken_no_delivery": 2
   },
   "inf:BNBUSDC_LONG": {
-   "exit_promises": 3,
-   "exit_broken_no_delivery": 3,
+   "exit_promises": 4,
+   "exit_broken_no_delivery": 4,
    "entry_promises": 2,
-   "entry_broken_no_delivery": 2
+   "entry_broken_no_delivery": 2,
+   "exit_skipped_inflight": 20
   },
   "flz:BNBUSDC_LONG": {
    "exit_promises": 2,
@@ -311,10 +312,11 @@
    "exit_broken_no_delivery": 1
   },
   "inf:ARUSDT_LONG": {
-   "exit_promises": 2,
-   "exit_broken_no_delivery": 2,
+   "exit_promises": 3,
+   "exit_broken_no_delivery": 3,
    "entry_promises": 2,
-   "entry_broken_no_delivery": 2
+   "entry_broken_no_delivery": 2,
+   "exit_skipped_inflight": 30
   },
   "inf:XRPUSDC_LONG": {
    "entry_promises": 1,
@@ -2290,6 +2292,36 @@
    "late_min": null,
    "action": "OPEN",
    "reason": "REENTRY_HIGHER_LOW",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "BNBUSDC_LONG",
+   "kind": "exit",
+   "bar": "10-28 18:00",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "FIXED_STOP",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "ARUSDT_LONG",
+   "kind": "exit",
+   "bar": "10-28 18:15",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "FIXED_STOP",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "PENGUUSDC_LONG",
+   "kind": "entry",
+   "bar": "10-28 18:30",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "TIER1_PRICE_CROSS_REENTRY_exit0.0077_cur0.0078_k3m54",
    "outcome": "NO_DELIVERY"
   }
  ],

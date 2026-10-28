@@ -137,7 +137,8 @@ def native_prefix(base, symbol, start):
                     stamp = timestamp_epoch(row['timestamp'])
                     if stamp < start or stamp + span > start + 780 or row.get('_provisional') or row.get('provisional'):
                         continue
-                    if folder != 'klines_canonical' and float(row.get('_closed_verified_at') or 0) < stamp + span:
+                    prepared = row.get('_source') == f'tradier_native_{span // 60}min_prefix'
+                    if folder != 'klines_canonical' and not prepared and float(row.get('_closed_verified_at') or 0) < stamp + span:
                         continue
                     prices = {key: float(row[key]) for key in ('open', 'high', 'low', 'close')}
                     if all(math.isfinite(price) and price > 0 for price in prices.values()):
