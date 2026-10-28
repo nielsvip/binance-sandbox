@@ -1,27 +1,29 @@
 {
- "at": "2026-10-28T16:38:09Z",
+ "at": "2026-10-28T17:38:05Z",
  "reports": [
   {
-   "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261028_refresh_1609.json",
-   "age_min": 22.5,
+   "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261028_refresh_1713.json",
+   "age_min": 18.0,
    "applied": true,
    "n": null,
    "results": {
-    "REFUSED": 15
+    "REFUSED": 19,
+    "SKIP": 5
    },
    "registered": 0,
    "already_live_skipped": 0,
    "refused_by_class": {
     "switch_types validator unavailable \u2014 refusing (fail-closed)": 8,
-    "type-gate refused ALL (1 bad)": 4,
+    "type-gate refused ALL (1 bad)": 8,
+    "live row is a MEASURED h2h decision (2026-10-28T16": 5,
     "type-gate refused ALL (7 bad)": 2,
     "golive-blocklisted": 1
    },
    "changed_symsides": []
   },
   {
-   "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261028_refresh_1403.json",
-   "age_min": 152.4,
+   "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261028_refresh_1609.json",
+   "age_min": 82.4,
    "applied": true,
    "n": null,
    "results": {
@@ -39,5 +41,5 @@
   }
  ],
  "fails": [],
- "refused_total": 15
+ "refused_total": 24
 }
