@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-28T16:10:14.941352+00:00",
+  "ts": "2026-10-28T16:15:15.920861+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 1,
-  "pending_sym_sides": 152,
+  "fleet_published_last_60m": 0,
+  "pending_sym_sides": 149,
   "hosts": {
     "s1": {
       "published_last_60m": 0,
@@ -16,9 +16,9 @@
       "boards_running": 3,
       "workers": 21,
       "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 9705,
+      "mem_avail_mb": 6917,
       "disk_free_gb": 34,
-      "load1": 21.7,
+      "load1": 22.5,
       "dispatch_idle_why": "full 3/3",
       "published_ss": []
     },
@@ -29,23 +29,7 @@
       "unreachable": true
     },
     "s6": {
-      "published_last_60m": 1,
-      "published_last_3h": 1,
-      "boards": {
-        "GALAUSDT_SHORT": 0,
-        "LSCC_SHORT": 7,
-        "ZILUSDT_SHORT": 7
-      },
-      "boards_running": 3,
-      "workers": 14,
-      "workers_vs_law_28": "14/28",
-      "mem_avail_mb": 18653,
-      "disk_free_gb": 55,
-      "load1": 13.5,
-      "dispatch_idle_why": "full 4/4",
-      "published_ss": [
-        "GALAUSDT_SHORT"
-      ]
+      "unreachable": true
     }
   },
   "alerts": [
@@ -53,7 +37,7 @@
     "DISK_FLOOR:s1:34GB<40",
     "UNREACHABLE:s2",
     "UNREACHABLE:s5",
-    "LOW_THROUGHPUT:s6:1/h<10 (idle_why=full 4/4)"
+    "UNREACHABLE:s6"
   ],
   "repair": null
 }

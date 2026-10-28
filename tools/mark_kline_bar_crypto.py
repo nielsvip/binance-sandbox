@@ -31,10 +31,10 @@ def native_minutes(sym, start_s):
              "c": float(r[4]), "v": float(r[5])} for r in rows]
 
 
-def mark_minute(sym, start_s):
-    rows = get("/markPriceKlines", {"symbol": sym, "interval": "1m", "startTime": (start_s + 14 * 60) * 1000,
-                                    "limit": 2})
-    rows = [r for r in rows if int(r[0]) // 1000 == start_s + 14 * 60]
+def mark_minute(sym, start_s, minute=14):
+    t0 = start_s + minute * 60
+    rows = get("/markPriceKlines", {"symbol": sym, "interval": "1m", "startTime": t0 * 1000, "limit": 2})
+    rows = [r for r in rows if int(r[0]) // 1000 == t0]
     if not rows:
         return None
     r = rows[0]
@@ -42,17 +42,36 @@ def mark_minute(sym, start_s):
 
 
 def build(sym, start_s):
+    """Initial bar from what is available at close: native 1m :00-:12, minute :13 native if
+    it has arrived else its mark, minute :14 always its mark (never waits for the kline)."""
     nat = native_minutes(sym, start_s)
-    mk = mark_minute(sym, start_s)
-    if mk is None or len(nat) < 14:
-        return {"symbol": sym, "start": start_s, "complete": False,
-                "native_minutes": len(nat), "mark_minute": mk is not None}
-    highs = [m["h"] for m in nat] + [mk["h"]]
-    lows = [m["l"] for m in nat] + [mk["l"]]
-    return {"symbol": sym, "start": start_s, "complete": True, "open": nat[0]["o"],
-            "high": max(highs), "low": min(lows), "close": mk["c"],
-            "volume_native_0_13": sum(m["v"] for m in nat), "native_minutes": len(nat),
-            "ready_at": start_s + BAR}
+    nat_by_min = {(m["t"] - start_s) // 60: m for m in nat}
+    mk14 = mark_minute(sym, start_s)
+    if mk14 is None:
+        return {"symbol": sym, "start": start_s, "complete": False, "reason": "no mark :14"}
+    mins = []
+    for k in range(13):
+        m = nat_by_min.get(k)
+        if m is None:
+            return {"symbol": sym, "start": start_s, "complete": False, "reason": f"native :{k:02d} missing"}
+        mins.append(m)
+    m13 = nat_by_min.get(13)
+    if m13 is not None:
+        mins.append(m13)
+        src13 = "native"
+    else:
+        mk13 = mark_minute(sym, start_s, minute=13)
+        if mk13 is None:
+            return {"symbol": sym, "start": start_s, "complete": False, "reason": "no :13 native or mark"}
+        mins.append(mk13)
+        src13 = "mark"
+    mins.append(mk14)
+    highs = [m["h"] for m in mins]
+    lows = [m["l"] for m in mins]
+    return {"symbol": sym, "start": start_s, "complete": True, "open": mins[0]["o"],
+            "high": max(highs), "low": min(lows), "close": mk14["c"],
+            "volume_native_0_12": sum(m.get("v", 0.0) for m in mins[:13] if "v" in m),
+            "minute13_source": src13, "ready_at": start_s + BAR, "real_kline_pending": True}
 
 
 def compare_native_15m(sym, start_s, built):

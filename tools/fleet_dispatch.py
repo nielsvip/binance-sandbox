@@ -93,9 +93,12 @@ SLOTS = env_int("FLEET_SLOTS", 4)
 # forward-state writers (25-28 GB peak, 3 reboots on 10-27), so it holds ONE board; others keep FLEET_SLOTS. Override with
 # FLEET_HOST_SLOTS='{"s1": 1, "s5": 3}'.
 try:
-    HOST_SLOTS = {str(k): int(v) for k, v in json.loads(os.environ.get("FLEET_HOST_SLOTS", '{"s1": 3}')).items()}
+    # 2026-10-28 16:3xZ measured (sampler ~/fleet_tp_boardmem_20261028.jsonl, PSS from smaps_rollup): S1 with 3 crypto boards
+    # (peak PSS 3.8-4.5 GB each) fell to 5,145 MB available < the operator's 6 GB headroom -> 2; s5/s6 kept >= 13.5 GB at 4 boards
+    # but run load 21-24 on 16 cores, so more slots there would only stretch walls.
+    HOST_SLOTS = {str(k): int(v) for k, v in json.loads(os.environ.get("FLEET_HOST_SLOTS", '{"s1": 2}')).items()}
 except (ValueError, TypeError, AttributeError):
-    HOST_SLOTS = {"s1": 3}
+    HOST_SLOTS = {"s1": 2}
 WORKERS = env_int("FLEET_WORKERS", 7)
 ORPHAN_SLOTS = env_int("FLEET_ORPHAN_SLOTS", 1)
 MEM_MIN_MB = env_int("FLEET_MEM_MIN_MB", 11000)  # 2026-10-28 operator: NO OOM — a 7-worker board peaks 8-9 GB, so a launch needs that much headroom beyond the 2-3 GB reserve
@@ -448,7 +451,12 @@ def plan(pend, partial, fleet_data, now, orphan_since, prio=frozenset()):
         foreign = sum(1 for s in running if cat_of(s) != home)
         pick, why = None, ""
         live_orphans = [c for c in CAT_PRIORITY if c in orphans and c != home and any(s not in claimed for s in pend.get(c, []))]
-        if live_orphans and foreign < ORPHAN_SLOTS:
+        # data/fleet_priority.json sides go first on ANY host with a free slot, across home boundaries (2026-10-28 ruling: the 46
+        # crypto "23-day tests" were capped at S1's 2 slots while s5/s6 kept launching their home stocks)
+        live_prio = [c for c in CAT_PRIORITY if any(s in prio and s not in claimed and partial.get(s) in (None, name) for s in pend.get(c, []))]
+        if live_prio:
+            pick, why = take(name, live_prio[0]), f"priority {live_prio[0]}"
+        if not pick and live_orphans and foreign < ORPHAN_SLOTS:
             pick, why = take(name, live_orphans[0]), f"orphan {live_orphans[0]}"
         if not pick and home and any(s not in claimed for s in pend.get(home, [])):
             pick, why = take(name, home), f"home {home}"

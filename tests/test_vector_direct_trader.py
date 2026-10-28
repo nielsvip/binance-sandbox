@@ -383,3 +383,11 @@ def test_tradier_send_gate_refuses_tra_entries_but_not_exits():
     b.send("tra", dict(o, act="CLOSE", key="k2"), 1.0)
     b.send("trb", o, 1.0)
     assert [d["side"] for d in posted] == ["sell", "buy"]
+
+
+def test_untradeable_mass_hold_blocks_opens_without_closing():
+    pos = {"XUSDT_LONG": {"qty": 3.0, "price": 1.0}}
+    states = {"XUSDT_LONG": st(True), "ZUSDT_LONG": st(True)}
+    un = {s: {"bar": BAR, "mode": "hold"} for s in ("XUSDT_LONG", "ZUSDT_LONG")}
+    orders, notes = V.plan_account("ang", "crypto", {"XUSDT_LONG", "ZUSDT_LONG"}, states, pos, BAR, set(), ALLOW, untradeable=un)
+    assert not orders and sum(1 for _, n in notes if n.startswith("UNTRADEABLE_MASS_HOLD_NO_OPEN")) == 2

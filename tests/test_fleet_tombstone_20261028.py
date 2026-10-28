@@ -103,3 +103,17 @@ def test_probe_normal_end_and_stale_npz_are_not_deaths(tmp_path):
     finally:
         for log in logs:
             log.unlink()
+
+
+def test_priority_crosses_home_boundary():
+    uni = {"CRYPTO_SHORT": ["ZZZUSDT_SHORT"], "CRYPTO_LONG": [], "STOCKS_SHORT": ["AAPL_SHORT"], "STOCKS_LONG": []}
+    d6 = host()
+    d6["tails"] = {"ZZZUSDT": TAIL, "AAPL": TAIL}
+    d1 = host(running=("X1USDT_SHORT", "X2USDT_SHORT"))
+    d1["tails"] = d6["tails"]
+    data = {"s1": d1, "s6": d6}
+    pend, partial, _ = F.pending_by_cat(uni, data, NOW)
+    picks, _, _ = F.plan(pend, partial, data, NOW, {}, frozenset({"ZZZUSDT_SHORT"}))
+    assert ("s6", "ZZZUSDT_SHORT") in {(h, s) for h, s, _ in picks}
+    picks, _, _ = F.plan(pend, partial, data, NOW, {})
+    assert ("s6", "AAPL_SHORT") in {(h, s) for h, s, _ in picks}

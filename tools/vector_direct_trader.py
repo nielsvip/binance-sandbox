@@ -304,6 +304,11 @@ def plan_account(acct, venue, keys, states, positions, bar, done, allowed, prev_
         # and no NOINFO_BREAKER here (operator rule); kill switch data/vector_direct/UNTRADEABLE_CLOSE_DISABLED.
         if ss in untradeable:
             u = untradeable[ss] or {}
+            if u.get("mode") == "hold":
+                # OPERATOR 2026-10-28 "wait one bar above": >VD_MASS_FAIL_PCT of sides failed this bar -> no close this bar, opens blocked;
+                # the guarantee closes whatever still has no verdict on the next bar
+                notes.append((ss, f"UNTRADEABLE_MASS_HOLD_NO_OPEN bar {u.get('bar')}{' (held, close deferred one bar)' if held > 0 else ''}"))
+                continue
             if held > 0 and untradeable_close:
                 orders.append({"acct": acct, "ss": ss, "act": "CLOSE", "qty": held, "key": f"{acct}|{ss}|{u.get('bar')}|UNTRADEABLE_NO_VERDICT",
                                "why": f"UNTRADEABLE_NO_VERDICT bar {u.get('bar')}: {str(u.get('reason'))[:200]}", "reason": "UNTRADEABLE_NO_VERDICT"})

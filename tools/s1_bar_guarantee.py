@@ -49,6 +49,7 @@ RECV_REPAIR_AT = (35.0, 50.0, 70.0)
 APPEND_REPAIR_AT = (45.0, 60.0, 80.0)
 STATE_REPAIR_AT = (90.0, 110.0)
 NO_VERDICT_S = float(os.environ.get("BAR_GUARANTEE_NO_VERDICT_S", "300"))
+MASS_FAIL_PCT = float(os.environ.get("VD_MASS_FAIL_PCT", "25"))
 EXEC_AFTER_STATE_S = 10.0
 LATE_S = float(os.environ.get("BAR_GUARANTEE_LATE_S", "90"))
 FINAL_S = 600.0
@@ -411,9 +412,18 @@ class Guarantee:
                                    "keyed": sorted(a for a in active if ss in keys.get(a, ())), "held": sorted(a for a, v in held_by.items() if ss in v),
                                    "state_at": None, "state_ok_at": None, "reason": None, "exec_at": None, "orders": [], "repairs": [],
                                    "state": None, "consumed": {}, "verify": None, "prio_at": None, "state_last_at": None,
-                                   "untr_at": None, "untr_reason": None, "untr_ack_at": None} for ss in sorted(sides)},
+                                   "untr_at": None, "untr_reason": None, "untr_ack_at": None, "untr_mode": None} for ss in sorted(sides)},
                     "done_stage": set(), "alerts": [], "repairs_n": 0}
         log(f"{self.venue} bar {self.iso(bar)} tracking {len(syms)} symbols / {len(sides)} sides, active={active} sim={self.bar['sim']}")
+        # never hold more than one bar: a HOLD side that left the universe (so it cannot be re-judged) is closed now
+        doc = read_json(self.vd / f"untradeable_{self.venue}.json", {}) or {}
+        stale = {ss: u for ss, u in (doc.get("sides") or {}).items() if u.get("mode") == "hold" and int(u.get("bar") or 0) < bar and ss not in self.bar["sides"]}
+        if stale:
+            for ss, u in stale.items():
+                u.update(mode="close", bar=bar, held_over_from_bar=u.get("bar"), reason=f"held one bar, left the universe: {u.get('reason')}")
+            atomic_json(self.vd / f"untradeable_{self.venue}.json", {"epoch": now, "sides": dict(doc.get("sides") or {}, **stale)})
+            self.poke("UNTRADEABLE hold expired")
+            self.ring("UNTRADEABLE_MASS_CLOSE", f"{len(stale)} held-over sides outside the universe closed at bar {self.iso(bar)}", sides=sorted(stale))
 
     @staticmethod
     def iso(ts):
@@ -587,28 +597,59 @@ class Guarantee:
         except OSError:
             pass
 
+    def failing_share(self, new=()):
+        """Share of this bar's sides with no verdict: declared, or whose state for this bar came back not ok (pending ones excluded)."""
+        b = self.bar
+        fail = {ss for ss, r in b["sides"].items() if r.get("untr_at") or (r.get("state_last_at") and not r.get("state_ok_at"))} | set(new)
+        return len(fail) / max(1, len(b["sides"])), len(fail)
+
     def declare(self, reasons, stage):
-        """No verdict from the new kline: mark UNTRADEABLE (trader closes every held account position at once, no opens)."""
+        """No verdict from the new kline.
+        OPERATOR 2026-10-28: share of failing sides on THIS bar <= VD_MASS_FAIL_PCT (25) -> CLOSE + UNTRADEABLE now; above it ("wait one
+        bar above") -> HOLD for one bar: opens blocked, no close, UNTRADEABLE_MASS_HOLD bell; a side still without a verdict on the
+        NEXT bar is closed whatever the share (UNTRADEABLE_MASS_CLOSE); a side with a valid verdict is released. Never more than one bar."""
         if not reasons:
             return
         b = self.bar
         now = time.time()
         doc = read_json(self.vd / f"untradeable_{self.venue}.json", {}) or {}
         sides = doc.get("sides") or {}
+        share, nfail = self.failing_share(reasons)
+        mass = share * 100.0 > MASS_FAIL_PCT
+        modes = {}
         for ss, why in reasons.items():
-            b["sides"][ss]["untr_at"] = now
+            prev = sides.get(ss) or {}
+            held_over = prev.get("mode") == "hold" and int(prev.get("bar") or 0) < b["bar"]
+            if b["sides"][ss].get("untr_mode") == "close" or held_over or not mass:
+                mode = "close"
+            else:
+                mode = "hold"
+            modes[ss] = (mode, held_over)
+            b["sides"][ss]["untr_at"] = b["sides"][ss].get("untr_at") or now
+            b["sides"][ss]["untr_mode"] = mode
             b["sides"][ss]["untr_reason"] = f"{stage}: {why}"
-            sides[ss] = {"bar": b["bar"], "since": now, "iso": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "stage": stage, "reason": why}
+            sides[ss] = {"bar": b["bar"], "since": now, "iso": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "stage": stage,
+                         "reason": why, "mode": mode, "held_over_from_bar": prev.get("bar") if held_over else None,
+                         "failing_share_pct": round(share * 100, 1)}
         atomic_json(self.vd / f"untradeable_{self.venue}.json", {"epoch": now, "sides": sides})
         self.poke(f"UNTRADEABLE {len(reasons)}")
-        held_sides = [ss for ss in reasons if b["sides"][ss]["held"]]
-        self.ring("UNTRADEABLE_DECLARED", f"{len(reasons)} sides have no verdict for bar {self.iso(b['bar'])} ({stage}); {len(held_sides)} held -> CLOSE on every account",
-                  sides=sorted(reasons), held=sorted(held_sides), reasons={k: str(v)[:160] for k, v in list(reasons.items())[:40]})
-        n_held = sum(1 for r in b["sides"].values() if r["held"])
-        n_untr_held = sum(1 for r in b["sides"].values() if r["held"] and r["untr_at"])
-        if n_held and n_untr_held > max(3, 0.25 * n_held):
-            self.ring("UNTRADEABLE_MASS", f"{n_untr_held}/{n_held} held sides untradeable in bar {self.iso(b['bar'])} — closing them (operator rule, no breaker); "
-                      f"kill switch: touch {self.vd}/UNTRADEABLE_CLOSE_DISABLED", held=n_held, untradeable_held=n_untr_held)
+        closes = sorted(ss for ss, (m, ho) in modes.items() if m == "close" and not ho)
+        mass_closes = sorted(ss for ss, (m, ho) in modes.items() if m == "close" and ho)
+        holds = sorted(ss for ss, (m, _) in modes.items() if m == "hold")
+        pick = lambda xs: {k: str(reasons[k])[:160] for k in xs[:40]}
+        if closes:
+            held = [ss for ss in closes if b["sides"][ss]["held"]]
+            self.ring("UNTRADEABLE_DECLARED", f"{len(closes)} sides have no verdict for bar {self.iso(b['bar'])} ({stage}; failing {nfail}/{len(b['sides'])} = "
+                      f"{share * 100:.1f}% <= {MASS_FAIL_PCT:.0f}%); {len(held)} held -> CLOSE on every account", sides=closes, held=held, reasons=pick(closes))
+        if holds:
+            held = [ss for ss in holds if b["sides"][ss]["held"]]
+            self.ring("UNTRADEABLE_MASS_HOLD", f"{nfail}/{len(b['sides'])} sides ({share * 100:.1f}%) have no verdict for bar {self.iso(b['bar'])} — above "
+                      f"{MASS_FAIL_PCT:.0f}%: NOT closing this bar ({len(held)} held), opens blocked, repair chain continues; still failing next bar -> CLOSE",
+                      sides=holds, held=held, reasons=pick(holds))
+        if mass_closes:
+            held = [ss for ss in mass_closes if b["sides"][ss]["held"]]
+            self.ring("UNTRADEABLE_MASS_CLOSE", f"{len(mass_closes)} sides still without a verdict one bar after a mass hold (bar {self.iso(b['bar'])}); "
+                      f"{len(held)} held -> CLOSE on every account", sides=mass_closes, held=held, reasons=pick(mass_closes))
 
     def restore_tradeable(self):
         doc = read_json(self.vd / f"untradeable_{self.venue}.json", {}) or {}

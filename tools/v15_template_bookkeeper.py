@@ -18,6 +18,8 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tools"))
+import template_row_guard as G  # noqa: E402
 TEMPLATES = {"CRYPTO_LONG": "TEMPLATE_CRYPTO_LONG.xlsx", "CRYPTO_SHORT": "TEMPLATE_CRYPTO_SHORT.xlsx", "STOCKS_LONG": "TEMPLATE_STOCKS_LONG.xlsx", "STOCKS_SHORT": "TEMPLATE_STOCKS_SHORT.xlsx"}
 SHEET = "ZERO_FORMULA_BOOK"
 PROTOCOL_SHEET = "PROTOCOL"
@@ -278,6 +280,99 @@ def single_home(wb, switch, home):
     return rep
 
 
+PAINT_LIGHT = "FFFFF2CC"
+PAINT_YELLOWS = ("FFFFFF00", "FFFFF2CC")
+
+
+def _filter_cols(ws):
+    """{FILTER=opt header: column} of a switch tab (row 2, from column O up to the 'WHAT SWITCH' marker)."""
+    out = {}
+    for c in range(15, ws.max_column + 1):
+        h = ws.cell(2, c).value
+        if isinstance(h, str) and h.strip().upper().startswith("WHAT SWITCH"):
+            break
+        if isinstance(h, str) and "=" in h:
+            out[h.strip()] = c
+    return out
+
+
+def _fill_rgb(cell):
+    f = cell.fill
+    return str(f.fgColor.rgb or "").upper() if f is not None and f.fill_type == "solid" else ""
+
+
+def paint_yellows(wb, plan):
+    """2026-10-28 (operator order "make sure the yellow cells for the new rows are in the right places ..."): apply ONE
+    tools/v15_new_rows_yellow_plan.py plan_<CS>.json. Rows are resolved by (tab, switch, str(cand)) among the WHITE rows and
+    cells by their row-2 FILTER=opt header, never by the plan's coordinates (rows move between plan and apply). ADD paints an
+    unshaded filter cell light yellow FFF2CC; REMOVE gives a shaded NEVER cell the row's dominant non-yellow filter-cell fill (or
+    none). Only fills of filter cells change: every value and every fill outside the filter columns is checked identical before
+    and after (raises). Returns a report."""
+    import copy as _copy
+    from openpyxl.styles import PatternFill
+    rep = {"added": 0, "removed": 0, "already": 0, "already_clear": 0, "row_missing": [], "header_missing": 0, "tabs": {}}
+    by_tab = {}
+    for r in plan.get("rows") or []:
+        by_tab.setdefault(r["tab"], []).append(r)
+    for tab, prow in by_tab.items():
+        if tab not in wb.sheetnames:
+            rep["row_missing"].extend(f"{tab}!{r['switch']}={r['cand']}" for r in prow)
+            continue
+        ws = wb[tab]
+        cols = _filter_cols(ws)
+        fcols = set(cols.values())
+        before_vals = [[ws.cell(r, c).value for c in range(1, ws.max_column + 1)] for r in range(1, ws.max_row + 1)]
+        before_fp = G.fingerprints(ws, skip_cols=frozenset(fcols))
+        where = {}
+        for r in range(3, ws.max_row + 1):
+            a = ws.cell(r, 1)
+            sw = a.value
+            if sw in (None, "") or _fill_rgb(a).endswith("FFE699"):  # orange filter-block rows (v15_template_restructure_v3.ORANGE)
+                continue
+            fc = a.font.color.rgb if (a.font is not None and a.font.color is not None) else ""
+            where.setdefault((str(sw).strip(), "" if ws.cell(r, 2).value is None else str(ws.cell(r, 2).value)), []).append((r, str(fc or "").upper().endswith("BFBFBF")))
+        t = {"added": 0, "removed": 0}
+        for pr in prow:
+            hits = where.get((pr["switch"], pr["cand"])) or []
+            rr = next((r for r, _g in hits if r == pr.get("row")), None) or next((r for r, g in hits if not g), None)
+            if rr is None:
+                rep["row_missing"].append(pr["row_key"])
+                continue
+            for a_ in pr.get("add") or []:
+                c = cols.get(a_["hdr"])
+                if c is None:
+                    rep["header_missing"] += 1
+                    continue
+                cell = ws.cell(rr, c)
+                if _fill_rgb(cell) in PAINT_YELLOWS:
+                    rep["already"] += 1
+                    continue
+                cell.fill = PatternFill(start_color=PAINT_LIGHT, end_color=PAINT_LIGHT, fill_type="solid")
+                t["added"] += 1
+            if pr.get("remove"):
+                others = [_fill_rgb(ws.cell(rr, c)) for c in fcols]
+                cand = [x for x in others if x and x not in PAINT_YELLOWS]
+                base = max(set(cand), key=cand.count) if cand else ""
+                for x in pr["remove"]:
+                    c = cols.get(x["hdr"])
+                    if c is None:
+                        rep["header_missing"] += 1
+                        continue
+                    cell = ws.cell(rr, c)
+                    if _fill_rgb(cell) not in PAINT_YELLOWS:
+                        rep["already_clear"] += 1
+                        continue
+                    cell.fill = PatternFill(start_color=base, end_color=base, fill_type="solid") if base else PatternFill(fill_type=None)
+                    t["removed"] += 1
+        after_vals = [[ws.cell(r, c).value for c in range(1, ws.max_column + 1)] for r in range(1, ws.max_row + 1)]
+        if after_vals != before_vals or G.fingerprints(ws, skip_cols=frozenset(fcols)) != before_fp:
+            raise RuntimeError(f"{tab}: paint changed a value or a non-filter fill — refusing")
+        rep["tabs"][tab] = t
+        rep["added"] += t["added"]
+        rep["removed"] += t["removed"]
+    return rep
+
+
 def pull_fleet(ledger_root, hosts, timeout_s):
     pulled = 0
     for h in hosts:
@@ -309,6 +404,7 @@ def main():
     ap.add_argument("--cat-side", help="with --align-default: CRYPTO_LONG|CRYPTO_SHORT|STOCKS_LONG|STOCKS_SHORT")
     ap.add_argument("--single-home", metavar="SWITCH=TAB", help="keep SWITCH's white rows only in TAB of every template that has them there (filter-block rows untouched)")
     ap.add_argument("--dedupe-rows", action="store_true", help="remove repeated (switch, value) rows inside each switch tab of every template (yellow cells merged, bold kept)")
+    ap.add_argument("--paint-yellows", metavar="PLAN_DIR", help="apply tools/v15_new_rows_yellow_plan.py plan_<CS>.json files (fills of filter cells only; --cat-side limits; --dry-run reports)")
     a = ap.parse_args()
     try:
         import fcntl
@@ -338,6 +434,38 @@ def main():
         finally:
             wb.close()
         return 0
+    if a.paint_yellows:
+        import datetime as _dt, shutil as _sh, openpyxl as _ox
+        rc = 0
+        for cat, fname in TEMPLATES.items():
+            if a.cat_side and cat != a.cat_side:
+                continue
+            ppath = os.path.join(a.paint_yellows, f"plan_{cat}.json")
+            tpath = os.path.join(a.templates, fname)
+            if not os.path.exists(ppath) or not os.path.exists(tpath):
+                print(f"[bookkeeper] paint-yellows {cat}: plan or template missing — skipped", flush=True)
+                continue
+            plan = json.load(open(ppath))
+            if (plan.get("meta") or {}).get("cat_side") != cat:
+                print(f"[bookkeeper] paint-yellows {cat}: CAT_SIDE_MISMATCH in {ppath} — refused", flush=True)
+                rc = 2
+                continue
+            wb = _ox.load_workbook(tpath)
+            try:
+                rep = paint_yellows(wb, plan)
+                print(f"[bookkeeper] paint-yellows {cat}: " + json.dumps({k: (len(v) if isinstance(v, list) else v) for k, v in rep.items() if k != "tabs"}), flush=True)
+                if rep["row_missing"]:
+                    print(f"[bookkeeper] paint-yellows {cat}: rows not found {rep['row_missing'][:20]}", flush=True)
+                if (rep["added"] or rep["removed"]) and not a.dry_run:
+                    _sh.copy2(tpath, ROOT / "backups" / f"before_bookkeeper_paint_yellows_{_dt.datetime.utcnow().strftime('%Y%m%d%H%M')}_{fname}")
+                    atomic_save_xlsx(wb, tpath)
+                    print(f"[bookkeeper] paint-yellows written -> {tpath}", flush=True)
+            except RuntimeError as e:
+                print(f"[bookkeeper] paint-yellows {cat}: REFUSED {e}", flush=True)
+                rc = 2
+            finally:
+                wb.close()
+        return rc
     if a.single_home:
         import datetime as _dt, shutil as _sh, openpyxl as _ox
         sw, _, home = a.single_home.partition("=")
