@@ -18,6 +18,14 @@ from pathlib import Path
 
 _MISSING_V = object()
 STAGE_ONLY = "--stage-only" in sys.argv
+# OPERATOR LAW 2026-10-27, verbatim: "NO config or live trading has ANY default that is NOT overridden by
+# TEMPLATE_ switch default or override. TEMPLATE is the ONLY authority any default that exists in any trading
+# or config script can ONLY exist because NO switch exists for it just yet."
+# v15_pilot.template_bold_defaults DISCARDS a bold whenever it differs from the config value (UNTRUSTED_BOLD) —
+# i.e. in the only case where the bold decides anything. That runs the authority backwards, so this builder
+# reinstates every discarded scalar bold. A container-valued config field (dict/list/set) stays: a scalar cell
+# cannot express it, so it is a switch that does not exist yet, not a default the sheet chose.
+BOLD_WINS = os.environ.get("CSD4_BOLD_WINS", "1") != "0"
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 import v15_pilot as P  # noqa: E402
@@ -112,7 +120,9 @@ def main():
     report = {}
     bad_all = {}
     for cs, name in TEMPLATES.items():
-        path = Path(os.environ.get("CSD4_TEMPLATE_DIR") or (ROOT / "SPREADSHEETS")) / name  # PROMO 2026-10-01: env overrides keep the live file untouched in dry-runs
+        # 2026-10-28: the default was ROOT/"SPREADSHEETS", which is the LEGACY copy — the canonical workbooks are
+        # TEMPLATE_FINAL_NORM, so every template change since the move was invisible to this builder.
+        path = Path(os.environ.get("CSD4_TEMPLATE_DIR") or (ROOT / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM")) / name  # PROMO 2026-10-01: env overrides keep the live file untouched in dry-runs
         stocks = cs.startswith("STOCKS")
         typed, live_vals, quick_vals = venue_values(stocks)
         try:
@@ -127,7 +137,18 @@ def main():
             _pp = Path(os.environ.get("CSD4_PROMOTIONS") or (ROOT / "data" / "cat_side_promotions.json"))
             promoted = set((json.loads(_pp.read_text()).get(cs) or {}).keys()) if _pp.exists() else set()
         rows, bad = P.template_bold_defaults(path, typed, typed, promoted)
-        if P.UNTRUSTED_BOLD:
+        reinstated, container_only = [], []
+        if P.UNTRUSTED_BOLD and BOLD_WINS:
+            for _tab, _sw, _v, _truth in list(P.UNTRUSTED_BOLD):
+                if isinstance(_truth, (dict, list, tuple, set)):
+                    container_only.append(_sw)
+                    continue
+                rows.update(P._switch_overrides(_sw, _v))
+                reinstated.append({"tab": _tab, "switch": _sw, "bold": _v, "config_was": _truth})
+            print(f"[{cs}] BOLD-WINS: reinstated {len(reinstated)} bold defaults the pilot discarded for differing from config: {[r['switch'] for r in reinstated[:8]]}")
+            if container_only:
+                print(f"[{cs}] BOLD-WINS: {len(container_only)} left to config because the config value is a container a scalar cell cannot express: {container_only[:6]}")
+        elif P.UNTRUSTED_BOLD:
             print(f"[{cs}] {len(P.UNTRUSTED_BOLD)} placeholder bold values skipped (real value kept): {[x[1] for x in P.UNTRUSTED_BOLD[:6]]}")
         if bad:
             bad_all[cs] = bad[:10]
@@ -136,8 +157,14 @@ def main():
         for f, o in filter_header_defaults(path).items():
             if f not in vals:
                 _fv = P._parse_opt_value(o, typed.get(f))
-                if f in typed and f not in promoted and (isinstance(typed[f], (dict, list, tuple, set)) or not P._same_default(_fv, typed[f])):
-                    continue  # placeholder header default: the real value stays
+                # Same inversion as UNTRUSTED_BOLD: a bold yellow header that DIFFERS from config was skipped, which is
+                # the only case where it decides anything. Under BOLD_WINS the header is the authority; only a
+                # container-valued config field stays, because no scalar header can express one.
+                _skip = isinstance(typed.get(f), (dict, list, tuple, set)) if BOLD_WINS else (
+                    f in typed and f not in promoted and (isinstance(typed[f], (dict, list, tuple, set)) or not P._same_default(_fv, typed[f]))
+                )
+                if f in typed and f not in promoted and _skip:
+                    continue  # the real value stays
                 vals[f] = _fv
         kept = {k: v for k, v in vals.items() if k in typed}
         filled, conflicts, skipped = fill_every_field(kept, live_vals, quick_vals)
@@ -167,7 +194,8 @@ def main():
             if cs in _sides and _k in live_vals:
                 kept[_k] = live_vals[_k]
                 conflicts[:] = [c for c in conflicts if c != _k]
-                print(f"[{cs}] P0-FOSSIL: pinned {_k}={live_vals[_k]!r} to live truth (SHORT-entry killers 2026-10-04)")
+                data["_meta"].setdefault("config_wins_exceptions", {}).setdefault(cs, []).append(_k)
+                print(f"[{cs}] P0-FOSSIL: pinned {_k}={live_vals[_k]!r} to live truth (SHORT-entry killers 2026-10-04) — STANDING EXCEPTION to the template-only-authority law, kept because the bold was measured to kill SHORT entries; needs an operator ruling, not a silent removal")
         if STAGE_ONLY and CSD.PATH.exists():
             # USER-SAFETY 2026-09-30: live hot-reloads this file. --stage-only keeps every value that is ALREADY in the file (live
             # behaviour unchanged) and only adds the missing keys (= current config values). Promotions stay staged in the templates.
@@ -179,6 +207,8 @@ def main():
             data["_meta"].setdefault("staged_not_live", {})[cs] = {k: None for k in _held}
             data["_meta"]["staged_not_live"][cs] = _held
             print(f"[{cs}] STAGE-ONLY: {len(_held)} promoted/changed values held back from live: {_held[:10]}")
+        data.setdefault("_meta", {}).setdefault("bold_wins_reinstated", {})[cs] = reinstated
+        data["_meta"].setdefault("bold_wins_container_only", {})[cs] = container_only
         data.setdefault("_meta", {}).setdefault("conflicts_quick_vs_live", {})[cs] = conflicts
         data["_meta"].setdefault("filled_from_config", {})[cs] = len(filled)
         data["_meta"].setdefault("skipped_non_scalar_or_secret", {})[cs] = len(skipped)
