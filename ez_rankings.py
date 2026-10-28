@@ -84,6 +84,7 @@ SHOW_STOCH_HEATMAP = False  # USER 2026-10-24: red/green stoch_rsi background gr
 SHOW_CRYPTO_LIVE_ARROWS = True  # USER 2026-10-24: per-account live fills as arrows on crypto plots
 SHOW_CRYPTO_MISMATCH = True  # USER 2026-10-24: reddish/greenish vlines for signal/fill discrepancies
 SHOW_CRYPTO_SIGNAL_ARROWS = False  # USER 2026-10-24: WT/winners lime-red triangles hidden (signal markers, not trades); code kept
+SHOW_TRADE_LOG_VLINES = False  # USER 2026-10-28: old full-height blue/red trade vlines from actions.log hidden; code kept
 CRYPTO_ARROW_ACCOUNTS = ["ang", "inf", "flz", "men", "fin"]
 CRYPTO_MISMATCH_TOL_MIN = 30.0
 SHOW_CRYPTO_RSI_STRIP = True  # USER 2026-10-24: tiny RSI strip at the bottom of each crypto TF panel
@@ -6520,7 +6521,7 @@ async def plot_dfs_subplots(
         margin_abs_val = (0.012 * range_span) if range_span > 1e-9 else 0.02
         ax_plot.set_ylim(ymin_data - margin_abs_val, ymax_data + margin_abs_val)
         main_close_line = ax_plot.plot(df_tf["close_time"], df_tf["close"], color="#c0c0c0", lw=1.2, label=f"Close")
-        if crypto_trades:
+        if crypto_trades and SHOW_TRADE_LOG_VLINES:
             for trade in crypto_trades:
                 t_ts = trade['timestamp']
                 
@@ -6611,6 +6612,8 @@ async def plot_dfs_subplots(
                     _ve, _vx = _vtf.vec_trades_for_plot(symbol)
                     _vtf.draw_vec_mismatch(ax_plot, x_left_ts, x_right_ts, _ve, _vx,
                                            _fe, _fx, lambda _t: _t, CRYPTO_MISMATCH_TOL_MIN)
+                    _vtf.draw_vec_outcome_lines(ax_plot, x_left_ts, x_right_ts, _vtf.vec_exit_outcomes(symbol),
+                                                _fx, lambda _t: _t, CRYPTO_MISMATCH_TOL_MIN)
                     _lth.draw_outcome_lines(ax_plot, x_left_ts, x_right_ts, _bevs, lambda _t: _t)
                 if SHOW_CRYPTO_LIVE_ARROWS and _fills:
                     for _acct in CRYPTO_ARROW_ACCOUNTS:

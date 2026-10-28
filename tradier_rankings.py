@@ -180,6 +180,7 @@ SHOW_STOCH_STRIP = True  # tiny StochRSI %K/%D strip below the RSI strip, %K blu
 SHOW_TOP_LEGEND = False  # top legend removed to regain vertical space
 SHOW_STOCK_MISMATCH = True  # USER 2026-10-24: faint reddish/greenish vlines for signal/fill discrepancies
 SHOW_STOCK_SIGNAL_ARROWS = False  # USER 2026-10-24: WT/winners lime-red triangles hidden (signal markers, not trades); code kept
+SHOW_TRADE_LOG_VLINES = False  # USER 2026-10-28: old full-height blue/red trade vlines from tradier_actions.log hidden; code kept
 STOCK_MISMATCH_TOL_MIN = 30.0
 import live_trade_history as _lth
 ACCOUNT_ARROW_ORDER = _lth.ACCOUNT_ARROW_ORDER
@@ -1096,7 +1097,7 @@ async def plot_dfs_subplots(
             pos = _df["close_time"].searchsorted(ts)
             pos = min(max(int(pos), 0), len(_df) - 1)
             return _df["plot_idx"].iloc[pos]
-        if trades:
+        if trades and SHOW_TRADE_LOG_VLINES:
             for trade in trades:
                 t_ts = pd.to_datetime(trade['timestamp'], utc=True)
                 if x_left_ts <= t_ts <= x_right_ts:
@@ -1175,6 +1176,8 @@ async def plot_dfs_subplots(
                 _ve, _vx = _vtf.vec_trades_for_plot(symbol)
                 _vtf.draw_vec_mismatch(ax_plot, x_left_ts, x_right_ts, _ve, _vx,
                                        _fe, _fx, get_x_idx, STOCK_MISMATCH_TOL_MIN)
+                _vtf.draw_vec_outcome_lines(ax_plot, x_left_ts, x_right_ts, _vtf.vec_exit_outcomes(symbol),
+                                            _fx, get_x_idx, STOCK_MISMATCH_TOL_MIN)
                 _lth.draw_outcome_lines(ax_plot, x_left_ts, x_right_ts, _bevs, get_x_idx)
             except Exception: pass
         if len(df_tf) > 2 and 'close' in df_tf.columns:

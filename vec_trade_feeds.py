@@ -67,12 +67,26 @@ def _pick_html_files(files):
     return picked
 
 
+_html_out_cache = {}
+
+
+def _vec_win(trade):
+    """True/False from a matrix TRADES row's round-trip pnl; None if absent."""
+    pnl = trade.get("pnl_dollars")
+    if pnl is None:
+        pnl = trade.get("pnl_pct")
+    try:
+        return float(pnl) > 0 if pnl is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
 def load_html_trades(sym, side):
     """(entries, exits) datetimes from the picked matrix HTML(s) for sym_side."""
     key = (str(sym).upper(), str(side).upper())
     if key in _html_cache:
         return _html_cache[key]
-    entries, exits = [], []
+    entries, exits, outs = [], [], []
     if extract_js_array is not None and HTML_DIR.is_dir():
         seen = set()
         for hp in _pick_html_files(list(HTML_DIR.glob(f"{key[0]}_{key[1]}_*_matrix.html"))):
@@ -90,10 +104,27 @@ def load_html_trades(sym, side):
                     entries.append(_to_utc(t["entry_time"]))
                     if t.get("exit_time"):
                         exits.append(_to_utc(t["exit_time"]))
+                        win = _vec_win(t)
+                        if win is not None:
+                            outs.append((_to_utc(t["exit_time"]), win))
                 except Exception:
                     continue
     _html_cache[key] = (entries, exits)
+    _html_out_cache[key] = outs
     return entries, exits
+
+
+def vec_exit_outcomes(sym):
+    """(exit datetime, win bool) per vec round trip, LONG+SHORT, frozen HTML only.
+
+    The forward feed carries no price or pnl, so its exits have no outcome and
+    are never coloured. Sorted by exit time.
+    """
+    outs = []
+    for side in ("LONG", "SHORT"):
+        load_html_trades(sym, side)
+        outs += _html_out_cache.get((str(sym).upper(), side), [])
+    return sorted(outs, key=lambda o: o[0])
 
 
 def _forward_docs():
@@ -217,3 +248,30 @@ def draw_vec_mismatch(ax_plot, x_left_ts, x_right_ts, vec_entries, vec_exits,
                          ms=lth.MISMATCH_MARKER_SIZE, linestyle="None", zorder=9, clip_on=False)
             n_live += 1
     return n_vec, n_live
+
+
+def draw_vec_outcome_lines(ax_plot, x_left_ts, x_right_ts, vec_outcomes, fill_exits, x_of, tol_min=30.0):
+    """Pyrrhus bars: vec round-trip exits with NO live fill at the exit.
+
+    Orange = vec winning exit never executed, blue = vec losing exit never
+    executed. A vec exit that a live fill matched gets no bar here; the live
+    green/red bar from live_trade_history.draw_outcome_lines covers it.
+    Returns (n_win, n_loss).
+    """
+    import live_trade_history as lth
+    if not vec_outcomes:
+        return 0, 0
+    vo = sorted(vec_outcomes, key=lambda o: o[0])
+    tol_s = tol_min * 60.0
+    matched_v, _ = lth.greedy_match([t for t, _ in vo], sorted(fill_exits), tol_s)
+    n_win = n_loss = 0
+    for i, (t, win) in enumerate(vo):
+        if i in matched_v or not (x_left_ts <= t <= x_right_ts):
+            continue
+        color = lth.VEC_WIN_COLOR if win else lth.VEC_LOSS_COLOR
+        ax_plot.axvline(x=x_of(t), color=color, alpha=lth.OUTCOME_ALPHA, lw=lth.OUTCOME_LW, zorder=6)
+        if win:
+            n_win += 1
+        else:
+            n_loss += 1
+    return n_win, n_loss
