@@ -285,17 +285,28 @@ def tail_refresh(symbol):
         pass
     mode = "crypto" if symbol.endswith(("USDT", "USDC")) else "stocks"
     t0 = time.time()
+    if os.environ.get("V15_TAIL_REFRESH_RECOMPUTE", "0") != "1":
+        # OPERATOR LAW 2026-10-28: NPZs are never recomputed anywhere; S1 (crypto) / S5 (stocks) append one bar and fold it into the zip. Launch gets the NPZ as it is; the verdict below judges it by its own last bar.
+        st = "append-only"
+        out = {"tail": st, "tail_s": 0.0}
+    else:
+        out = None
     try:
+        if out is not None:
+            raise StopIteration
         r = subprocess.run(["/home/niels/.conda/envs/binance_env_mac/bin/python", str(ROOT / "tools" / "npz_bar_refresh.py"), "--symbols", symbol, "--mode", mode, "--w15", "2500", "--workers", "2", "--no-sentiment", "--no-fng"], capture_output=True, text=True, timeout=float(os.environ.get("V15_TAIL_REFRESH_TIMEOUT_S", "300")), cwd=str(ROOT))
         st = "INSTALLED" if '"status": "INSTALLED"' in (r.stdout or "") else ("current" if r.returncode == 0 else f"rc={r.returncode}")
         if "locked" in (r.stdout or ""):
             st = "LOCK_BLOCKED"
+    except StopIteration:
+        pass
     except subprocess.TimeoutExpired:
         st = "timeout"
     # 2026-10-16: "current" used to be inferred from rc=0 alone. The 24/7 --loop held the one global lock, so EVERY
     # top-up printed "locked (previous run active)", exited 0, and was logged as `tail current (0.2s)` before the
     # stale NPZ was pushed to the worker and md5-"verified". The tail is now judged by the NPZ itself.
-    out = {"tail": st, "tail_s": round(time.time() - t0, 1)}
+    if out is None:
+        out = {"tail": st, "tail_s": round(time.time() - t0, 1)}
     try:
         from tools.npz_bar_refresh import npz_last_ts
         from tools.npz_cutoffs import BAR, last_closed_bar, last_closed_stock_bar
@@ -303,7 +314,7 @@ def tail_refresh(symbol):
         cut = last_closed_bar() if mode == "crypto" else last_closed_stock_bar()
         out["tail_last_ts"] = last
         out["tail_bars_behind"] = None if last is None else int((int(cut) - int(last)) // BAR)
-        if out["tail_bars_behind"] is not None and out["tail_bars_behind"] > int(os.environ.get("V15_TAIL_MAX_BARS_BEHIND", "1")) and st != "INSTALLED":
+        if out["tail_bars_behind"] is not None and out["tail_bars_behind"] > int(os.environ.get("V15_TAIL_MAX_BARS_BEHIND", "1")) and st not in ("INSTALLED",):
             out["tail"] = f"STALE_{out['tail_bars_behind']}_BARS({st})"
     except Exception as e:
         out["tail_verify_err"] = f"{type(e).__name__}: {e}"[:120]

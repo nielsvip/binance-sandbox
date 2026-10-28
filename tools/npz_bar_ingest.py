@@ -457,7 +457,9 @@ def main():
         for items in by_sym.values():
             handle(items)
 
-    if a.apply and canon_syms:
+    if a.apply and canon_syms and os.environ.get("NPZ_INGEST_CANON_REFRESH", "0") != "1":
+        log(f"canonical refresh of {len(canon_syms)} symbols SKIPPED (operator law 2026-10-28: no recompute; tail service corrects the row via source_changed; NPZ_INGEST_CANON_REFRESH=1 restores)")
+    elif a.apply and canon_syms:
         import subprocess
         cmd = ["nice", "-n", "15", sys.executable, "-u", str(ROOT / "tools" / "npz_bar_refresh.py"), "--symbols", ",".join(sorted(canon_syms)), "--mode", "crypto",
                "--workers", os.environ.get("NPZ_INGEST_REFRESH_WORKERS", "4"), "--w15", "2500", "--no-sentiment", "--no-stamp"]

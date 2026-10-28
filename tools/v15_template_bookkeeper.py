@@ -297,8 +297,11 @@ def _filter_cols(ws):
 
 
 def _fill_rgb(cell):
-    f = cell.fill
-    return str(f.fgColor.rgb or "").upper() if f is not None and f.fill_type == "solid" else ""
+    try:
+        f = cell.fill
+        return str(f.fgColor.rgb or "").upper() if f is not None and f.fill_type == "solid" else ""
+    except AttributeError:  # MergedCell placeholder
+        return ""
 
 
 def paint_yellows(wb, plan):
@@ -373,6 +376,88 @@ def paint_yellows(wb, plan):
     return rep
 
 
+def _row_sigs(ws, skip_cols=frozenset()):
+    """per-row (value, solid fill) signature over all columns except skip_cols, in column order (header row included)."""
+    out = []
+    for r in range(1, ws.max_row + 1):
+        out.append(tuple((ws.cell(r, c).value, _fill_rgb(ws.cell(r, c))) for c in range(1, ws.max_column + 1) if c not in skip_cols))
+    return out
+
+
+def add_filter_columns(wb, tabs, bases):
+    """2026-10-28 (coordinator decision on the new-rows yellow placement): give a switch tab the FILTER=opt header columns of
+    `bases` it lacks, copied (value, font/bold, fill, comment such as DEFAULT, width) from the first tab of the SAME workbook
+    that has them, so the bold default is the one the workbook already declares. Columns are inserted directly after the
+    tab's last FILTER=opt column (trailing metadata columns shift right; everything is read by row-2 header). Body cells get
+    the row's dominant non-yellow filter fill (never yellow; painting is a separate --paint-yellows step). Refuses when a
+    merged range crosses the insert point, or when any pre-existing cell's value or fill differs after the insert."""
+    import copy as _copy
+    rep = {}
+    for tab in tabs:
+        if tab not in wb.sheetnames:
+            continue
+        ws = wb[tab]
+        have = _filter_cols(ws)
+        want = []
+        for base in bases:
+            src = None
+            for s in wb.worksheets:
+                if s.title == tab or s.title not in SWITCH_TABS:
+                    continue
+                sc = _filter_cols(s)
+                hs = [h for h in sc if h.split("=", 1)[0] == base]
+                if hs:
+                    src = (s, [(h, sc[h]) for h in hs])
+                    break
+            if src is None:
+                raise RuntimeError(f"{tab}: no tab of this workbook carries {base} headers to copy")
+            want += [(src[0], h, c) for h, c in src[1] if h not in have]
+        if not want:
+            rep[tab] = {"added": []}
+            continue
+        ins = max(have.values()) + 1 if have else 15
+        n = len(want)
+        remerge = []
+        for mr in list(ws.merged_cells.ranges):
+            if mr.max_col < ins:
+                continue
+            if mr.min_row == mr.max_row == 1 and mr.min_col < ins:  # the row-1 title banner: widened by n, nothing else moves
+                remerge.append((mr.min_row, mr.min_col, mr.max_row, mr.max_col + n))
+                ws.unmerge_cells(mr.coord)
+                continue
+            raise RuntimeError(f"{tab}: merged range {mr.coord} crosses the insert column {ins}")
+        before = _row_sigs(ws)
+        ws.insert_cols(ins, n)
+        for r0, c0, r1, c1 in remerge:
+            ws.merge_cells(start_row=r0, start_column=c0, end_row=r1, end_column=c1)
+        new_cols = set(range(ins, ins + n))
+        for k, (s, h, sc) in enumerate(want):
+            c = ins + k
+            src_cell, tgt = s.cell(2, sc), ws.cell(2, c)
+            tgt.value = h
+            tgt.font, tgt.fill, tgt.alignment, tgt.border, tgt.number_format = _copy.copy(src_cell.font), _copy.copy(src_cell.fill), _copy.copy(src_cell.alignment), _copy.copy(src_cell.border), src_cell.number_format
+            if src_cell.comment is not None:
+                from openpyxl.comments import Comment
+                tgt.comment = Comment(src_cell.comment.text, src_cell.comment.author or "bookkeeper")
+            from openpyxl.utils import get_column_letter
+            w = s.column_dimensions[get_column_letter(sc)].width
+            if w:
+                ws.column_dimensions[get_column_letter(c)].width = w
+        from openpyxl.styles import PatternFill
+        fcols = [c for c in _filter_cols(ws).values() if c not in new_cols]
+        for r in range(3, ws.max_row + 1):
+            if ws.cell(r, 1).value in (None, ""):
+                continue
+            cand = [x for x in (_fill_rgb(ws.cell(r, c)) for c in fcols) if x and x not in PAINT_YELLOWS]
+            base_fill = max(set(cand), key=cand.count) if cand else ""
+            for c in new_cols:
+                ws.cell(r, c).fill = PatternFill(start_color=base_fill, end_color=base_fill, fill_type="solid") if base_fill else PatternFill(fill_type=None)
+        if _row_sigs(ws, skip_cols=frozenset(new_cols)) != before:
+            raise RuntimeError(f"{tab}: column insert changed a pre-existing value or fill — refusing")
+        rep[tab] = {"added": [h for _, h, _ in want], "at_col": ins}
+    return rep
+
+
 def pull_fleet(ledger_root, hosts, timeout_s):
     pulled = 0
     for h in hosts:
@@ -405,6 +490,8 @@ def main():
     ap.add_argument("--single-home", metavar="SWITCH=TAB", help="keep SWITCH's white rows only in TAB of every template that has them there (filter-block rows untouched)")
     ap.add_argument("--dedupe-rows", action="store_true", help="remove repeated (switch, value) rows inside each switch tab of every template (yellow cells merged, bold kept)")
     ap.add_argument("--paint-yellows", metavar="PLAN_DIR", help="apply tools/v15_new_rows_yellow_plan.py plan_<CS>.json files (fills of filter cells only; --cat-side limits; --dry-run reports)")
+    ap.add_argument("--add-filter-cols", metavar="BASE[,BASE]", help="add the FILTER=opt header columns of these filter bases (copied from another tab of the same workbook) to --tabs")
+    ap.add_argument("--tabs", default="", help="with --add-filter-cols: comma-separated switch tabs")
     a = ap.parse_args()
     try:
         import fcntl
@@ -434,6 +521,37 @@ def main():
         finally:
             wb.close()
         return 0
+    if a.add_filter_cols:
+        import datetime as _dt, shutil as _sh, openpyxl as _ox, hashlib as _hl
+        bases = [b.strip() for b in a.add_filter_cols.split(",") if b.strip()]
+        tabs = [t.strip() for t in a.tabs.split(",") if t.strip()]
+        if not bases or not tabs or any(t not in SWITCH_TABS for t in tabs):
+            print("[bookkeeper] --add-filter-cols needs filter bases and --tabs from the switch tabs", flush=True)
+            return 2
+        rc = 0
+        for cat, fname in TEMPLATES.items():
+            if a.cat_side and cat != a.cat_side:
+                continue
+            tpath = os.path.join(a.templates, fname)
+            if not os.path.exists(tpath):
+                continue
+            md5_load = _hl.md5(open(tpath, "rb").read()).hexdigest()
+            wb = _ox.load_workbook(tpath)
+            try:
+                rep = add_filter_columns(wb, tabs, bases)
+                print(f"[bookkeeper] add-filter-cols {cat}: {json.dumps(rep)}", flush=True)
+                if _hl.md5(open(tpath, "rb").read()).hexdigest() != md5_load:
+                    raise RuntimeError(f"{fname} changed on disk meanwhile (another writer) — nothing written, re-run")
+                if any(v.get("added") for v in rep.values()) and not a.dry_run:
+                    _sh.copy2(tpath, ROOT / "backups" / f"before_bookkeeper_add_filter_cols_{_dt.datetime.utcnow().strftime('%Y%m%d%H%M')}_{fname}")
+                    atomic_save_xlsx(wb, tpath)
+                    print(f"[bookkeeper] add-filter-cols written -> {tpath}", flush=True)
+            except RuntimeError as e:
+                print(f"[bookkeeper] add-filter-cols {cat}: REFUSED {e}", flush=True)
+                rc = 2
+            finally:
+                wb.close()
+        return rc
     if a.paint_yellows:
         import datetime as _dt, shutil as _sh, openpyxl as _ox
         rc = 0
