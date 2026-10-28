@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-28T17:25:22.531172+00:00",
+  "ts": "2026-10-28T17:30:13.691870+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 6,
-  "pending_sym_sides": 134,
+  "fleet_published_last_60m": 0,
+  "pending_sym_sides": 135,
   "hosts": {
     "s1": {
       "published_last_60m": 0,
@@ -15,9 +15,9 @@
       "boards_running": 2,
       "workers": 14,
       "workers_vs_law_28": "14/28",
-      "mem_avail_mb": 10168,
+      "mem_avail_mb": 7858,
       "disk_free_gb": 35,
-      "load1": 23.4,
+      "load1": 30.9,
       "dispatch_idle_why": "full 2/2",
       "published_ss": []
     },
@@ -25,39 +25,33 @@
       "unreachable": true
     },
     "s5": {
-      "unreachable": true
-    },
-    "s6": {
-      "published_last_60m": 6,
-      "published_last_3h": 13,
+      "published_last_60m": 0,
+      "published_last_3h": 3,
       "boards": {
-        "1000LUNCUSDT_SHORT": 7,
-        "AAVEUSDC_SHORT": 7,
-        "INXUSDT_SHORT": 7
+        "1000BONKUSDC_SHORT": 7,
+        "ACTUSDT_SHORT": 0,
+        "GRAMUSDT_SHORT": 7,
+        "MOVRUSDT_SHORT": 7
       },
-      "boards_running": 3,
+      "boards_running": 4,
       "workers": 21,
       "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 16227,
-      "disk_free_gb": 54,
-      "load1": 23.1,
-      "dispatch_idle_why": "mem 16864MB < 11000+7000 owed by 1 ramping",
-      "published_ss": [
-        "ENSUSDT_SHORT",
-        "NLR_SHORT",
-        "ORCL_SHORT",
-        "PAAS_SHORT",
-        "RVNUSDT_SHORT",
-        "STXUSDT_SHORT"
-      ]
+      "mem_avail_mb": 2348,
+      "disk_free_gb": 56,
+      "load1": 23.0,
+      "dispatch_idle_why": "full 4/4",
+      "published_ss": []
+    },
+    "s6": {
+      "unreachable": true
     }
   },
   "alerts": [
     "LOW_THROUGHPUT:s1:0/h<10 (idle_why=full 2/2)",
     "DISK_FLOOR:s1:35GB<40",
     "UNREACHABLE:s2",
-    "UNREACHABLE:s5",
-    "LOW_THROUGHPUT:s6:6/h<10 (idle_why=mem 16864MB < 11000+7000 owed by 1 ramping)"
+    "LOW_THROUGHPUT:s5:0/h<10 (idle_why=full 4/4)",
+    "UNREACHABLE:s6"
   ],
   "repair": null
 }

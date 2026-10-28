@@ -86,7 +86,9 @@ def cmd_flip(a):
         print(f"  {n}: rc={rc} pdir={p} round={r}")
     rdef = fingerprint(a.round)
     pdir = f"/home/niels/v15_{a.round}_{a.tag}/progress"
-    _, bad = parity()
+    res, bad = parity()
+    for f in TEMPLATES + [SWEEP_DEF]:
+        print(f"  md5 {pathlib.Path(f).name:28s} " + " ".join(f"{n}={res[n].get(f, 'MISSING')[:8]}" for n in HOSTS))
     print(f"NEW pdir={pdir}\nNEW defaults_round={rdef}")
     print("template/per_sym_settings parity:", "OK (identical on all hosts)" if not bad else json.dumps(bad, indent=1))
     if not rdef or bad or any(o[0] != 0 for o in old.values()):
