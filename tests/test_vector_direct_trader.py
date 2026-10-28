@@ -148,7 +148,8 @@ def test_stock_market_closed_section_never_triggers(tmp_path):
     assert set(a.triggers(now, h, "stocks", {})[0]) == {"trb"}
 
 
-def test_binance_sizing(tmp_path):
+def test_binance_sizing(tmp_path, monkeypatch):
+    monkeypatch.setattr(V, 'MAX_OPEN_NOTIONAL', 80.0)
     b = V.Binance({}, tmp_path)
     b._xi = {"XUSDT": {"step": 0.001, "min_qty": 0.001, "max_qty": 0, "min_notional": 5.0, "status": "TRADING"},
              "BTCUSDT": {"step": 0.001, "min_qty": 0.001, "max_qty": 0, "min_notional": 100.0, "status": "TRADING"},
@@ -156,8 +157,8 @@ def test_binance_sizing(tmp_path):
     V.read_json = (lambda f: (lambda p, d=None: {"_fetched": 1e18} if "exchange_info" in str(p) else f(p, d)))(V.read_json)
     q, why = b.size({"ss": "XUSDT_LONG", "act": "OPEN", "notional": 15.0}, 0, 2.0)
     assert q == 7.5 and why == ""
-    q, _ = b.size({"ss": "BTCUSDT_LONG", "act": "OPEN", "notional": 15.0}, 0, 100000.0)
-    assert q * 100000.0 >= 100.0
+    q, why = b.size({"ss": "BTCUSDT_LONG", "act": "OPEN", "notional": 15.0}, 0, 100000.0)
+    assert q == 0 and 'cap' in why
     q, why = b.size({"ss": "BIGUSDT_LONG", "act": "OPEN", "notional": 15.0}, 0, 1.0)
     assert q == 0 and "cap" in why
     q, _ = b.size({"ss": "XUSDT_LONG", "act": "REDUCE", "qty": 2.0005}, 10.0, 2.0)
@@ -167,11 +168,14 @@ def test_binance_sizing(tmp_path):
     assert b.size({"ss": "XUSDT_LONG", "act": "CLOSE"}, 3.21, 2.0)[0] == 3.21
 
 
-def test_tradier_sizing_whole_shares(tmp_path):
+def test_tradier_sizing_whole_shares(tmp_path, monkeypatch):
+    monkeypatch.setattr(V, 'MAX_OPEN_NOTIONAL', 4000.0)
+    monkeypatch.setattr(V, 'STOCK_ONE_SHARE_MAX', 4000.0)
     t = V.Tradier({}, tmp_path)
-    assert t.size({"ss": "F_LONG", "act": "OPEN", "notional": 15.0}, 0, 11.0) == (1.0, "")
-    assert t.size({"ss": "AAPL_LONG", "act": "OPEN", "notional": 15.0}, 0, 230.0) == (1.0, "")
-    q, why = t.size({"ss": "SNDK_LONG", "act": "OPEN", "notional": 15.0}, 0, 1304.0)
+    assert t.size({"ss": "F_LONG", "act": "OPEN", "notional": 900.0}, 0, 11.0) == (81.0, "")
+    assert t.size({"ss": "AAPL_LONG", "act": "OPEN", "notional": 900.0}, 0, 230.0) == (3.0, "")
+    assert t.size({"ss": "SNDK_LONG", "act": "OPEN", "notional": 900.0}, 0, 1304.0) == (1.0, "")
+    q, why = t.size({"ss": "SNDK_LONG", "act": "OPEN", "notional": 900.0}, 0, 4001.0)
     assert q == 0 and "one-share cap" in why
     assert t.size({"ss": "F_LONG", "act": "REDUCE", "qty": 0.4}, 3, 11.0)[0] == 0
     assert t.size({"ss": "F_LONG", "act": "CLOSE"}, 3, 11.0)[0] == 3.0
