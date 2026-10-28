@@ -1,13 +1,13 @@
 {
- "at": "2026-10-28T02:45:13Z",
+ "at": "2026-10-28T03:01:25Z",
  "s1": {
   "host": "niels",
-  "now": 1793155509.3639078,
+  "now": 1793156434.4668667,
   "merge_crypto": {
    "n": 12,
-   "max_lag_min": 15.0,
+   "max_lag_min": 0.0,
    "median_lag_min": 0.0,
-   "worst": "1000CHEEMSUSDT",
+   "worst": "1000000MOGUSDT",
    "dead": []
   },
   "merge_stocks": {
@@ -18,19 +18,19 @@
    "dead": []
   },
   "npz_legacy_crypto": [],
-  "append_log_age_min": 4.0,
-  "append_last_secs": 664.3,
-  "append_last_stats": "'appended': 580, 'created': 0, 'up_to_date': 5444, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0, 'guard-blocked': 9",
+  "append_log_age_min": 5.2,
+  "append_last_secs": 620.8,
+  "append_last_stats": "'appended': 280, 'created': 0, 'up_to_date': 5816, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0, 'guard-blocked': 9",
   "npz_loop_pids": 1,
-  "npz_cycle_last_utc": "02:07:37",
-  "npz_cycle_installed": 44,
+  "npz_cycle_last_utc": "02:51:34",
+  "npz_cycle_installed": 46,
   "npz_cycle_not_ready": 0,
   "npz_cycle_no_new": 0,
   "npz_loop_has_settle": true,
   "sched_err": "FileNotFoundError",
   "archive_n": 202,
   "archive_mb": 2461.8,
-  "archive_newest_min": 2602.7,
+  "archive_newest_min": 2618.1,
   "_via": "s1-int"
  },
  "red": [
@@ -38,7 +38,7 @@
   "L4 scheduler last ticked None min ago (cron */2)"
  ],
  "warn": [
-  "L5 newest archived board NPZ is 2603 min old \u2014 publishes may not be recording"
+  "L5 newest archived board NPZ is 2618 min old \u2014 publishes may not be recording"
  ],
  "ok": false
 }

@@ -2384,6 +2384,10 @@ class IndicatorCalculator:
         if dch4 is not None:
             result[f"dc_high4_{timeframe}"] = dch4
             result[f"dc_low4_{timeframe}"] = dcl4
+        dch4_prev, dcl4_prev, _ = donchian_prev(high_series, low_series, 4)  # 2026-10-28 USER unlock: prior closed bar's DC4 = NPZ dc_*4_{tf}[i-1] (VIGILANCE_DC4 parity)
+        if dch4_prev is not None:
+            result[f"dc_high4_{timeframe}_prev"] = dch4_prev
+            result[f"dc_low4_{timeframe}_prev"] = dcl4_prev
         if dc_basis is not None and dc_basis_prev is not None:
             cross_up, cross_down = crossover_flags(current_price, prev_price, dc_basis, dc_basis_prev)
             result[f"dc_basis_crossover_{timeframe}"] = cross_up

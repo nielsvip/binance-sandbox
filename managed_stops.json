@@ -1,10 +1,24 @@
 {
+  "flz:BTCDOMUSDT_LONG": {
+    "orderId": "1000002647575485",
+    "stopPrice": 5522.6,
+    "entry_sig": "2026-10-27 21:08:42.533000+00:00",
+    "symbol": "BTCDOMUSDT",
+    "side": "LONG"
+  },
   "flz:BNBUSDC_LONG": {
     "orderId": "1000002647253262",
     "stopPrice": 735.73,
     "entry_sig": "2026-10-27 16:32:51.922000+00:00",
     "symbol": "BNBUSDC",
     "side": "LONG"
+  },
+  "flz:BNBUSDC_SHORT": {
+    "orderId": "1000002647637309",
+    "stopPrice": 749.06,
+    "entry_sig": "2026-10-27 21:08:41.936000+00:00",
+    "symbol": "BNBUSDC",
+    "side": "SHORT"
   },
   "flz:HYPEUSDT_LONG": {
     "orderId": "1000002647669267",
@@ -18,21 +32,8 @@
     "stopPrice": 2371.09,
     "entry_sig": "2026-10-27 22:09:19.286873+00:00",
     "symbol": "ETHUSDC",
-    "side": "SHORT"
-  },
-  "flz:BNBUSDC_SHORT": {
-    "orderId": "1000002647637309",
-    "stopPrice": 749.06,
-    "entry_sig": "2026-10-27 21:08:41.936000+00:00",
-    "symbol": "BNBUSDC",
-    "side": "SHORT"
-  },
-  "flz:BTCDOMUSDT_LONG": {
-    "orderId": "1000002647575485",
-    "stopPrice": 5522.6,
-    "entry_sig": "2026-10-27 21:08:42.533000+00:00",
-    "symbol": "BTCDOMUSDT",
-    "side": "LONG"
+    "side": "SHORT",
+    "disaster_backstop": true
   },
   "flz:DOGEUSDC_LONG": {
     "orderId": "1000002647641932",
@@ -47,12 +48,5 @@
     "entry_sig": "2026-10-27 23:15:20.408000+00:00",
     "symbol": "XRPUSDC",
     "side": "LONG"
-  },
-  "flz:DASHUSDT_SHORT": {
-    "orderId": "1000002647943449",
-    "stopPrice": 55.94,
-    "entry_sig": "2026-10-28 02:15:24.526000+00:00",
-    "symbol": "DASHUSDT",
-    "side": "SHORT"
   }
 }
