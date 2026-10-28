@@ -40,6 +40,18 @@ def _filter_tfs(get):
     return eff_921_tfs(get)
 
 
+def cumulative_mode(get) -> bool:
+    """KINDERGARTEN_CUMULATIVE_MODE (2026-10-28, USER: a switch that exists in a TEMPLATE_ is not up for
+    discussion, and every switch must be wired in the live scripts AND the vectorized engine). It was a
+    QuickConfig field and a template row in all 4 workbooks, but NOTHING in the crypto path read it: this
+    module is the one predicate crypto live (ez_manage fresh-OPEN chokepoint) and the crypto vector
+    (v12_quick_engine final entry_sig) share, so wiring it here gives both venues the switch at once.
+    True (the bold default) = cumulative quorum: strict-listed TFs must pass AND passing >= need.
+    False = legacy AND: every union-TF 9/21 check must agree. Semantics copied from the stocks twin
+    vec_decisions.live_kindergarten_stocks.pass_mask so crypto and stocks mean the same thing."""
+    return bool(get("KINDERGARTEN_CUMULATIVE_MODE", True))
+
+
 def ema921_pass(get, indicators, is_long):
     """Scalar live predicate. Returns (passed, passing, n_checks)."""
     if not bool(get("EMA_9_21_FILTER_ENABLED", False)):
@@ -53,6 +65,9 @@ def ema921_pass(get, indicators, is_long):
         checks.append((tf, (v != 0.0) if is_long else (v != 1.0)))
     if not checks:
         return True, 0, 0
+    if not cumulative_mode(get):
+        passing = sum(1 for _, ok in checks if ok)
+        return passing == len(checks), passing, len(checks)
     strict = _tfs(get("KINDERGARTEN_STRICT_TFS", ""))
     if strict and not all(ok for tf, ok in checks if tf in strict):
         return False, sum(1 for _, ok in checks if ok), len(checks)
@@ -76,6 +91,15 @@ def ema921_pass_vec(npz, n, is_long, cfg, safe):
             checks.append((tf, have, ok))
     if not checks:
         return None
+    if not cumulative_mode(get):
+        # legacy AND: every union-TF check must agree; a TF without data stays neutral (same as the
+        # stocks twin, which reads missing as -1.0 and therefore passes both sides).
+        ok_leg = np.ones(n, dtype=bool)
+        found_leg = np.zeros(n, dtype=np.int16)
+        for _tf, have, ok in checks:
+            found_leg += have.astype(np.int16)
+            ok_leg &= ~have | ok
+        return np.where(found_leg == 0, True, ok_leg)
     strict = _tfs(get("KINDERGARTEN_STRICT_TFS", ""))
     ok_all = np.ones(n, dtype=bool)
     passing = np.zeros(n, dtype=np.int16)

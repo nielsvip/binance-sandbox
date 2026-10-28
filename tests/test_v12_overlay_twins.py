@@ -24,19 +24,54 @@ def _overlay_region(lines):
     return (a0, a1)
 
 
+def _join_wrapped(lines):
+    """2026-10-28: black wraps `X: bool = (` / `self.X = (` onto the next line, so the old
+    line-at-a-time regex captured the literal "(" as the value on BOTH sides and reported them
+    value-identical. That produced 4 false positives (EMA_9_21_FILTER_ENABLED, EMA_DIST_SIZING_ENABLED,
+    GAP_RISK_EXIT_ENABLED, HTF_GATE_SIGNALS_SMA200D) whose real values are correct and DIFFER.
+    Collapse a trailing "(" into the following lines so the comparison sees the real value."""
+    out, i = [], 0
+    while i < len(lines):
+        ln = lines[i]
+        if ln.rstrip().endswith("("):
+            depth = ln.count("(") - ln.count(")")
+            buf = [ln.rstrip()]
+            j = i + 1
+            while j < len(lines) and depth > 0:
+                nxt = re.sub(r"\s*#.*$", "", lines[j]).strip()
+                buf.append(nxt)
+                depth += nxt.count("(") - nxt.count(")")
+                j += 1
+            out.append(" ".join(buf))
+            # keep line numbering stable for the region finder
+            out.extend("" for _ in range(j - i - 1))
+            i = j
+            continue
+        out.append(ln)
+        i += 1
+    return out
+
+
+def _value(s):
+    s = re.sub(r"\s*#.*$", "", s).strip()
+    s = s.strip("()").strip()
+    return s.strip("'\"")
+
+
 def _base_and_overlay():
-    lines = V12.read_text().splitlines()
-    a0, a1 = _overlay_region(lines)
+    raw = V12.read_text().splitlines()
+    a0, a1 = _overlay_region(raw)
+    lines = _join_wrapped(raw)
     base = {}
     for ln in lines[:a0] + lines[a1:]:
-        m = re.match(r"^\s*([A-Z][A-Z0-9_]*)\s*:[^=]+=\s*(.+?)(\s*#.*)?$", ln.strip())
+        m = re.match(r"^\s*([A-Z][A-Z0-9_]*)\s*:[^=]+=\s*(.+?)$", ln.strip())
         if m:
-            base[m.group(1)] = m.group(2).strip().strip("'\"")
+            base[m.group(1)] = _value(m.group(2))
     ov = {}
     for ln in lines[a0:a1]:
-        m = re.match(r"^\s*self\.([A-Z][A-Z0-9_]*)\s*=\s*(.+?)(\s*#.*)?$", ln.strip())
+        m = re.match(r"^\s*self\.([A-Z][A-Z0-9_]*)\s*=\s*(.+?)$", ln.strip())
         if m:
-            ov[m.group(1)] = m.group(2).strip().strip("'\"")
+            ov[m.group(1)] = _value(m.group(2))
     return (base, ov)
 
 

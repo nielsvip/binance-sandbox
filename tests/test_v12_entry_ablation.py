@@ -18,27 +18,48 @@ class TestEntryAblationGuard(unittest.TestCase):
     def setUpClass(cls):
         cls.lines = V12.read_text().split("\n")
 
+    @staticmethod
+    def _stmt_at(lines, idx):
+        """The whole statement starting at idx, whitespace-collapsed.
+
+        2026-10-28: these pins used to assert that every term sat on ONE physical line. black then
+        wrapped both the `_wd_armed = (...)` predicate and the `if (...)` suppression across lines, so
+        the pins failed while the wiring was intact and correct — a stale text-matcher, not a regression.
+        They now read the whole parenthesised statement, which is formatting-proof and asserts exactly
+        the same thing: suppression happens ONLY when the watchdog replacement is armed.
+        """
+        buf, depth = [], 0
+        for ln in lines[idx:]:
+            stripped = ln.split("#", 1)[0]
+            buf.append(stripped.strip())
+            depth += stripped.count("(") - stripped.count(")")
+            if depth <= 0 and buf:
+                break
+        return " ".join(x for x in buf if x)
+
     def test_suppression_requires_armed(self):
-        cands = [
-            l for l in self.lines
-            if "ABLATION_DISABLE_QUICK_ENTRY" in l
-            and "QUICK_ENTRY_ABLATION_SUPPRESS_VEC" in l
-            and l.strip().startswith("if ")
+        starts = [
+            i for i, l in enumerate(self.lines)
+            if l.strip().startswith("if ")
+            and "ABLATION_DISABLE_QUICK_ENTRY" in self._stmt_at(self.lines, i)
+            and "QUICK_ENTRY_ABLATION_SUPPRESS_VEC" in self._stmt_at(self.lines, i)
         ]
-        self.assertEqual(len(cands), 1)
-        self.assertIn("_wd_armed", cands[0])
+        self.assertEqual(len(starts), 1, "exactly one suppression site expected")
+        stmt = self._stmt_at(self.lines, starts[0])
+        self.assertIn("_wd_armed", stmt, "suppression must be conditioned on the armed predicate")
 
     def test_armed_predicate_complete(self):
         idx = next(i for i, l in enumerate(self.lines) if "_wd_armed = (" in l)
-        self.assertIn("_wd_crypto", self.lines[idx])
+        stmt = self._stmt_at(self.lines, idx)
+        self.assertIn("_wd_crypto", stmt)
         for term in (
             "MOMENTUM_SMA_WATCHDOG_ENABLED",
             "WATCHDOG_DC_FORCE_OPEN_ENABLED",
             "WATCHDOG_DC_VEC_ENABLED",
         ):
-            self.assertIn(term, self.lines[idx])
-        window = "\n".join(self.lines[max(0, idx - 12):idx])
-        self.assertIn("_wd_crypto = str(getattr(cfg, 'MODE', 'crypto')) != 'tradier'", window)
+            self.assertIn(term, stmt)
+        window = " ".join(x.split("#", 1)[0].strip() for x in self.lines[max(0, idx - 12):idx])
+        self.assertIn('_wd_crypto = str(getattr(cfg, "MODE", "crypto")) != "tradier"', window)
 
     def test_open_build_uses_shared_predicate(self):
         self.assertTrue(

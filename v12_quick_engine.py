@@ -5375,7 +5375,6 @@ class QuickConfig:
         # live evaluated 1h/4h/D that the vector never loaded — for 100% of stock sym_sides. Crypto is already
         # correct on both sides (("15m",), ez_manage.py:52405).
         self.R2_TF_LIST = ("1h", "4h", "D")
-        self.R3_HTF_FLIP_REQUIRE_WT = True
         self.STRUCTURAL_RANGE_SHIFT_TF = "bb_1h"
         self.GAP_RISK_EXIT_ENABLED = (
             True  # N2/007: live config_tradier True (2026-09-30)
@@ -5396,7 +5395,6 @@ class QuickConfig:
         # ═══ 2026-09-29 §17.4 CURATED SYNC — every simple-typed field where TradierConfig
         #     differs from the crypto-synced defaults (live is truth); §17.3 exclusions apply
         self.ADX_RANGING_THRESHOLD = 20.0
-        self.ADX_REGIME_FILTER_ENABLED = False
         self.ATR_ADAPTIVE_SIZING_TARGET_PCT = 1.5
         self.ATR_ADAPTIVE_STOP_ENABLED = True  # 2026-10-04 §17.4 parity B1: live True (unswept — no template rows, overlay governs tradier); was False
         self.AUGMENTATION_COOLDOWN_SECONDS = 300.0
@@ -5461,8 +5459,6 @@ class QuickConfig:
         self.K_LOWER_HIGH_EXIT_ENABLED = False
         self.LEADERBOARD_FILTER = False
         self.LH_HL_FILTER_AUGMENT_GATE_ENABLED = True
-        self.HYBRID_STRUCT_EXIT_ENABLED = False
-        self.EXIT_STRUCT_TF = "None"
         self.LONG_STRUCT_EXIT_TF = "D"
         self.LR_BAND_ENTRY_LO = 0.3
         self.LR_BAND_ENTRY_TF = "D"
@@ -5581,7 +5577,6 @@ class QuickConfig:
         self.MTF_BB_REJECT_EXIT_TF = "OFF"
         # parity-sync 20261006: stocks-uniform bold differs from the raw (crypto) value — §67 overlay
         self.FAST_RISER_DOUBLE_ENABLED = False
-        self.ATR_ADAPTIVE_STOP_MULT = 2.0
         self.BB_PULLBACK_GATE_TF = "OFF"
         self.GOLDEN_RULE_REQUIRE_ACTIVATION = False
         self.BB_EXIT_AT_LOSS_TF = "15m"
@@ -5590,14 +5585,12 @@ class QuickConfig:
         self.BREAKOUT_RETEST_FILTER_TF = "OFF"
         self.CIRCUIT_SHARPE_GATES_FILTER_TF = "4h"
         self.DC_MOMENTUM_BOTA_SCORER_FILTER_TF = "1h"
-        self.EMA_BLANKET_FILTER_FILTER_TF = "OFF"
         self.FH_MOMENTUM_FILTER_TF = "4h"
         self.GAP_PER_SYMBOL_AVG_THRESH_PCT = 0.3
         self.GR_V5_STATE_FILTER_TF = "OFF"
         self.LH_HL_FILTER_DC_THRESHOLD_PCT = 1.0
         self.PARTIAL_PROFIT_LOCK_V2_FILTER_TF = "OFF"
         self.REENTRY_SIZE_BREAKOUT_MULT = 0.5
-        self.WT_15M_BOUNCE_LOW_1H_GT_PREV = False
         self.WT_DC_TF_ENTRY = "15m"
         # parity-sync 20261008: stocks-uniform bold differs from the raw (crypto) value — §67 overlay
         self.MOMENTUM_BREAKOUT_FILTER_TF = "OFF"
@@ -5625,13 +5618,9 @@ class QuickConfig:
         self.EMA_DIST_SIZING_MULT = 2.0
         # parity-sync 20261015: stocks-uniform bold differs from the raw (crypto) value — §67 overlay
         self.NEWBORN_LOSS_KILL_ENABLED = False
-        self.R3_HTF_FLIP_EXIT_ENABLED = False
         # parity-sync 20261020: stocks-uniform bold differs from the raw (crypto) value — §67 overlay
-        self.LEGACY_REENTRY_PSR_QUICK_RECOVERY = True
-        self.WT_15M_BOUNCE_HIGH_1H_GT_PREV = False
         self.EXIT_R1_R2_FILTER_TF = '1h'
         # parity-sync 20261025: stocks-uniform bold differs from the raw (crypto) value — §67 overlay
-        self.REENTRY_AUGMENT_REQUIRE_NO_PRIOR_AUGMENT = True
         self.MANDATORY_REENTRY_WT_FILTER_TF_MODE = '5m_or_15m'
         self.UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED = False
         # parity-sync 20261027: stocks-uniform bold differs from the raw (crypto) value — §67 overlay
