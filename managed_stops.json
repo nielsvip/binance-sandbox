@@ -1,79 +1,9 @@
 {
-  "fin:SKYAIUSDT_SHORT": {
-    "orderId": "3000002281576245",
-    "stopPrice": 0.03724,
-    "entry_sig": "2026-10-28 17:01:54.216000+00:00",
-    "symbol": "SKYAIUSDT",
-    "side": "SHORT"
-  },
-  "fin:STXUSDT_LONG": {
-    "orderId": "3000002281027970",
-    "stopPrice": 0.2949,
-    "entry_sig": "2026-10-28 14:04:29.427000+00:00",
-    "symbol": "STXUSDT",
-    "side": "LONG"
-  },
-  "fin:BEAMXUSDT_LONG": {
-    "orderId": "3000002279459117",
-    "stopPrice": 0.003294,
-    "entry_sig": "2026-10-27 22:56:06.010000+00:00",
-    "symbol": "BEAMXUSDT",
-    "side": "LONG"
-  },
-  "fin:UNIUSDC_LONG": {
-    "orderId": "3000002281376173",
-    "stopPrice": 6.928,
-    "entry_sig": "2026-10-28 17:01:38.121000+00:00",
-    "symbol": "UNIUSDC",
-    "side": "LONG"
-  },
-  "fin:NEARUSDC_LONG": {
-    "orderId": "3000002277450882",
-    "stopPrice": 4.358,
-    "entry_sig": "2026-10-27 04:37:46.017000+00:00",
-    "symbol": "NEARUSDC",
-    "side": "LONG"
-  },
-  "fin:BATUSDT_LONG": {
-    "orderId": "3000002281750276",
-    "stopPrice": 0.13543,
-    "entry_sig": "2026-10-28 20:15:28.241000+00:00",
-    "symbol": "BATUSDT",
-    "side": "LONG"
-  },
-  "fin:PUMPUSDT_LONG": {
-    "orderId": "3000002281750318",
-    "stopPrice": 0.004138,
-    "entry_sig": "2026-10-28 20:15:29.480000+00:00",
-    "symbol": "PUMPUSDT",
-    "side": "LONG"
-  },
-  "fin:ZROUSDT_LONG": {
-    "orderId": "3000002281825335",
-    "stopPrice": 1.6656,
-    "entry_sig": "2026-10-28 21:00:24.576000+00:00",
-    "symbol": "ZROUSDT",
-    "side": "LONG"
-  },
-  "fin:DASHUSDT_LONG": {
-    "orderId": "3000002281825993",
-    "stopPrice": 52.7,
-    "entry_sig": "2026-10-28 21:00:48.176000+00:00",
-    "symbol": "DASHUSDT",
-    "side": "LONG"
-  },
-  "fin:MOVEUSDT_SHORT": {
-    "orderId": "3000002281849910",
-    "stopPrice": 0.006921,
-    "entry_sig": "2026-10-28 21:15:26.309000+00:00",
-    "symbol": "MOVEUSDT",
-    "side": "SHORT"
-  },
-  "fin:INJUSDT_LONG": {
-    "orderId": "3000002281870509",
-    "stopPrice": 7.656,
-    "entry_sig": "2026-10-28 21:16:18.979000+00:00",
-    "symbol": "INJUSDT",
+  "inf:XRPUSDC_LONG": {
+    "orderId": "2000001548646948",
+    "stopPrice": 1.3007,
+    "entry_sig": "2026-10-28 17:46:59.961272+00:00",
+    "symbol": "XRPUSDC",
     "side": "LONG"
   }
 }

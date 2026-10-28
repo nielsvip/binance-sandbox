@@ -35,6 +35,14 @@
       "TEMPLATE_CRYPTO_SHORT.xlsx!ENTRY_BREAKOUT_CHANNEL"
      ]
     },
+    "DELTA_EXIT_MIN_HOLD": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_CRYPTO_LONG.xlsx!EXIT_STRUCTURAL",
+      "TEMPLATE_CRYPTO_SHORT.xlsx!EXIT_STRUCTURAL"
+     ]
+    },
     "GAP_PER_SYMBOL_AVG_THRESH_PCT": {
      "class": "WRONG_TEMPLATE_LEAK",
      "other_config_has_it": true,
@@ -155,7 +163,7 @@
      ]
     }
    },
-   "missing_count": 19,
+   "missing_count": 20,
    "switch_keys_checked": 1225,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
@@ -187,6 +195,14 @@
      "sheets": [
       "TEMPLATE_STOCKS_LONG.xlsx!ENTRY_BREAKOUT_CHANNEL",
       "TEMPLATE_STOCKS_SHORT.xlsx!ENTRY_BREAKOUT_CHANNEL"
+     ]
+    },
+    "DELTA_EXIT_MIN_HOLD": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_STOCKS_LONG.xlsx!EXIT_STRUCTURAL",
+      "TEMPLATE_STOCKS_SHORT.xlsx!EXIT_STRUCTURAL"
      ]
     },
     "FUNDING_GATE_LONG_MAX": {
@@ -328,7 +344,7 @@
      ]
     }
    },
-   "missing_count": 20,
+   "missing_count": 21,
    "switch_keys_checked": 1318,
    "templates": [
     "TEMPLATE_STOCKS_LONG.xlsx",
@@ -336,5 +352,5 @@
    ]
   }
  },
- "generated": "2026-10-28T20:28:29.838290+00:00"
+ "generated": "2026-10-28T21:31:44.999010+00:00"
 }
