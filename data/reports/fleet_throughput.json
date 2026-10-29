@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-29T07:55:03.686836+00:00",
+  "ts": "2026-10-29T08:00:05.913820+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 9,
-  "pending_sym_sides": 10,
+  "fleet_published_last_60m": 10,
+  "pending_sym_sides": 9,
   "hosts": {
     "s1": {
       "published_last_60m": 1,
@@ -15,9 +15,9 @@
       "boards_running": 2,
       "workers": 13,
       "workers_vs_law_28": "13/28",
-      "mem_avail_mb": 8660,
+      "mem_avail_mb": 7760,
       "disk_free_gb": 26,
-      "load1": 14.1,
+      "load1": 12.2,
       "dispatch_idle_why": "full 2/2",
       "published_ss": [
         "ETHUSDC_SHORT"
@@ -28,15 +28,15 @@
       "published_last_3h": 6,
       "boards": {
         "BTCDOMUSDT_LONG": 7,
-        "INJUSDT_LONG": 7,
+        "INJUSDT_LONG": 0,
         "KAVAUSDT_LONG": 7
       },
       "boards_running": 3,
-      "workers": 21,
-      "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 5110,
-      "disk_free_gb": 39,
-      "load1": 19.0,
+      "workers": 14,
+      "workers_vs_law_28": "14/28",
+      "mem_avail_mb": 6038,
+      "disk_free_gb": 38,
+      "load1": 14.3,
       "dispatch_idle_why": "full 3/3",
       "published_ss": [
         "HYPEUSDT_LONG"
@@ -54,9 +54,9 @@
       "boards_running": 4,
       "workers": 28,
       "workers_vs_law_28": "28/28",
-      "mem_avail_mb": 11278,
+      "mem_avail_mb": 10467,
       "disk_free_gb": 37,
-      "load1": 21.7,
+      "load1": 22.1,
       "dispatch_idle_why": "full 4/4",
       "published_ss": [
         "1000SATSUSDT_SHORT",
@@ -65,25 +65,26 @@
       ]
     },
     "s6": {
-      "published_last_60m": 4,
-      "published_last_3h": 12,
+      "published_last_60m": 5,
+      "published_last_3h": 11,
       "boards": {
         "BTCUSDC_LONG": 7,
         "GASUSDT_SHORT": 7,
-        "IMXUSDT_SHORT": 7,
-        "XRPUSDC_LONG": 0
+        "JUPUSDT_LONG": 0,
+        "XRPUSDC_LONG": 7
       },
       "boards_running": 4,
       "workers": 21,
       "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 14465,
+      "mem_avail_mb": 17569,
       "disk_free_gb": 42,
-      "load1": 15.3,
-      "dispatch_idle_why": null,
+      "load1": 16.8,
+      "dispatch_idle_why": "full 4/4",
       "published_ss": [
         "1000SHIBUSDC_SHORT",
         "1000XECUSDT_SHORT",
         "BRETTUSDT_SHORT",
+        "IMXUSDT_SHORT",
         "NOTUSDT_SHORT"
       ]
     }
@@ -92,10 +93,10 @@
     "LOW_THROUGHPUT:s1:1/h<10 (idle_why=full 2/2)",
     "DISK_FLOOR:s1:26GB<40",
     "LOW_THROUGHPUT:s2:1/h<10 (idle_why=full 3/3)",
-    "DISK_FLOOR:s2:39GB<40",
+    "DISK_FLOOR:s2:38GB<40",
     "LOW_THROUGHPUT:s5:3/h<10 (idle_why=full 4/4)",
     "DISK_FLOOR:s5:37GB<40",
-    "LOW_THROUGHPUT:s6:4/h<10 (idle_why=None)"
+    "LOW_THROUGHPUT:s6:5/h<10 (idle_why=full 4/4)"
   ],
   "repair": null
 }
