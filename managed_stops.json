@@ -6,25 +6,11 @@
     "symbol": "BTCUSDC",
     "side": "LONG"
   },
-  "ang:TRBUSDT_LONG": {
-    "orderId": "4000002007827816",
-    "stopPrice": 16.654,
-    "entry_sig": "2026-10-29 11:25:37.320000+00:00",
-    "symbol": "TRBUSDT",
-    "side": "LONG"
-  },
   "ang:ARUSDT_LONG": {
     "orderId": "4000002006725976",
     "stopPrice": 3.334,
     "entry_sig": "2026-10-29 09:00:43.599000+00:00",
     "symbol": "ARUSDT",
-    "side": "LONG"
-  },
-  "ang:PUMPUSDT_LONG": {
-    "orderId": "4000002007819506",
-    "stopPrice": 0.004302,
-    "entry_sig": "2026-10-29 18:09:30.454908+00:00",
-    "symbol": "PUMPUSDT",
     "side": "LONG"
   },
   "ang:GRASSUSDT_LONG": {
@@ -62,14 +48,6 @@
     "entry_sig": "2026-10-29 19:00:19.767000+00:00",
     "symbol": "IOSTUSDT",
     "side": "SHORT",
-    "disaster_backstop": true
-  },
-  "ang:MAGICUSDT_LONG": {
-    "orderId": "4000002008367028",
-    "stopPrice": 0.0806,
-    "entry_sig": "2026-10-29 19:46:14.440000+00:00",
-    "symbol": "MAGICUSDT",
-    "side": "LONG",
     "disaster_backstop": true
   },
   "ang:1000PEPEUSDC_LONG": {

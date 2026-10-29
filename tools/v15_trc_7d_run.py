@@ -267,10 +267,14 @@ def result_of(ip, ss, day, folder=None):
             progress = None
     rc, out, _ = sh(ip, f"grep -c 'REDO scheduled' {base}/pilot.log", 20)
     redo = out.strip().isdigit() and int(out.strip()) > 0
+    rc, out, _ = sh(ip, f"grep -c '^\\[PUBLISH\\] ' {base}/pilot.log", 20)
+    # the pilot passed its publish gates and wrote the 7D workbook + manifest; result_done_utc is stamped only after the
+    # live-verify step, which the 7D launcher skips (XOM_LONG 2026-10-29: published 31 trades +4.48 %, refused as "not completed")
+    published = out.strip().isdigit() and int(out.strip()) > 0
     rc, out, _ = sh(ip, f"grep -c -E 'NO-TRADES-SKIP|0-TRADES-FAST-FAIL' {base}/pilot.log", 20)
     # the board's honest 7D answer is "no trade" (0 trades, no flip restores any): trc stays flat on it
     no_trades = out.strip().isdigit() and int(out.strip()) > 0 and not (progress or {}).get("cumulative_overrides")
-    return {"launcher": launcher, "progress": progress, "redo": redo, "no_trades": no_trades}
+    return {"launcher": launcher, "progress": progress, "redo": redo, "no_trades": no_trades, "published": published}
 
 
 def stage(ss, res, day):
@@ -279,8 +283,9 @@ def stage(ss, res, day):
     cum = prog.get("cumulative_overrides")
     # USER 2026-10-29 (option 1): a board that ended in the pilot's [REDO] (its compliance repair changed the set, rows not
     # refilled) is staged with its pre-repair set — the greedy chain it measured — instead of being relaunched
-    redo = bool(res.get("redo")) and not prog.get("result_done_utc")
-    if prog.get("window_days") != 7 or not (prog.get("result_done_utc") or redo) or not isinstance(cum, dict) or not cum:
+    published = bool(res.get("published"))
+    redo = bool(res.get("redo")) and not prog.get("result_done_utc") and not published
+    if prog.get("window_days") != 7 or not (prog.get("result_done_utc") or redo or published) or not isinstance(cum, dict) or not cum:
         return False, f"no finished 7D set ({(res.get('launcher') or {}).get('why')})"
     src = sqlite3.connect(f"file:{SRC_DB}?mode=ro", uri=True, timeout=10)
     src.row_factory = sqlite3.Row
@@ -292,8 +297,8 @@ def stage(ss, res, day):
     defaults = json.loads(row["defaults_snapshot_json"] or "{}")
     full = {**defaults, **cum}
     launcher = res.get("launcher") or {}
-    quality = "QUALIFIED" if launcher.get("valid") else "DIAGNOSTIC_ONLY"
-    why = None if launcher.get("valid") else (launcher.get("why") or "pilot qualification gate")
+    quality = "QUALIFIED" if launcher.get("valid") else ("PUBLISHED" if published else "DIAGNOSTIC_ONLY")
+    why = None if launcher.get("valid") or published else (launcher.get("why") or "pilot qualification gate")
     if redo:
         why = "REDO: pre-repair set (pilot compliance repair changed it; rows not refilled)"
     con = sqlite3.connect(TRC_DB, timeout=10)
