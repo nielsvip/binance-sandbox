@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-29T02:57:15Z",
+ "ts": "2026-10-29T03:02:54Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 80,
-   "open_positions": 10,
-   "unrealised_usd": -0.26,
+   "fills_6h": 74,
+   "open_positions": 11,
+   "unrealised_usd": -0.12,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 127,
+   "fills_6h": 121,
    "open_positions": 7,
-   "unrealised_usd": -0.67,
+   "unrealised_usd": -0.41,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 178,
+   "fills_6h": 176,
    "open_positions": 21,
-   "unrealised_usd": -2.82,
+   "unrealised_usd": -2.69,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -77,7 +77,7 @@
   "inf": {
    "fills_6h": 14,
    "open_positions": 1,
-   "unrealised_usd": -0.06,
+   "unrealised_usd": -0.05,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 9,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 27,
    "open_positions": 5,
-   "unrealised_usd": 0.12,
+   "unrealised_usd": 0.08,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,21 +127,21 @@
     "72211"
    ],
    "starts_30m": 3,
-   "log_age_s": 96.0
+   "log_age_s": 67.0
   },
   "men": {
    "pids": [
     "8520"
    ],
    "starts_30m": 1,
-   "log_age_s": 43.0
+   "log_age_s": 118.0
   },
   "ang": {
    "pids": [
     "69273"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 100.0
   },
   "inf": {
    "pids": [
@@ -155,64 +155,64 @@
     "7329"
    ],
    "starts_30m": 2,
-   "log_age_s": 14.0
+   "log_age_s": 54.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 25504.0
+   "log_age_s": 25844.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 24973.0
+   "log_age_s": 25312.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-29T02:57:16Z",
+   "ts": "2026-10-29T03:02:55Z",
    "severity": "CRITICAL",
    "kind": "RAPID_LOSS_KEY",
    "key": "ang:DUSKUSDT_LONG",
-   "evidence": "unrealised -8.35% (60-min high -1.08%), amt 141"
+   "evidence": "unrealised -8.16% (60-min high -1.08%), amt 141"
   },
   {
-   "ts": "2026-10-29T02:57:17Z",
+   "ts": "2026-10-29T03:02:56Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "inf:PENGUUSDC_LONG",
    "evidence": "OPEN TIER1_PRICE_CROSS_REENTRY_exit0.0079_cur bar=2026-10-28T21:00:00Z refused by non-safety gate: 28 21:15:57 - INFO - [inf] [VEC_EXACT] inf:PENGUUSDC_LONG CLOSE VEC_EXIT_OWED qty=1935.000000 -> SKIPPED_VX_INFLIGHT"
   },
   {
-   "ts": "2026-10-29T02:57:17Z",
+   "ts": "2026-10-29T03:02:56Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "inf:XRPUSDC_LONG",
    "evidence": "CLOSE ALL_TF_AGAINST_CLOSE g0.69% bar=2026-10-28T23:00:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-29T02:57:17Z",
+   "ts": "2026-10-29T03:02:56Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "inf:PENGUUSDC_LONG",
    "evidence": "CLOSE DC_HOPELESS_entry=0.0080_dc=[0.0073,0.00 bar=2026-10-28T23:00:00Z refused by non-safety gate: 28 23:16:50 - INFO - [inf] [VEC_EXACT] inf:PENGUUSDC_LONG CLOSE VEC_EXIT_OWED qty=1901.000000 -> SKIPPED_VX_INFLIGHT"
   },
   {
-   "ts": "2026-10-29T02:57:17Z",
+   "ts": "2026-10-29T03:02:56Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "inf:ARUSDT_LONG",
    "evidence": "CLOSE WT_LOWER_CROSS_EXIT wt_1h lower wt+price bar=2026-10-28T23:00:00Z refused by non-safety gate: 28 23:16:50 - INFO - [inf] [VEC_EXACT] inf:ARUSDT_LONG CLOSE VEC_EXIT_OWED qty=4.100000 -> BLOCKED_NET_GAIN"
   },
   {
-   "ts": "2026-10-29T02:57:17Z",
+   "ts": "2026-10-29T03:02:56Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "inf:PENGUUSDC_LONG",
    "evidence": "CLOSE FIXED_STOP bar=2026-10-29T02:00:00Z refused by non-safety gate: 29 02:16:28 - INFO - [inf] [VEC_EXACT] inf:PENGUUSDC_LONG CLOSE VEC_CONVERGE_TO_FLAT qty=1971.000000 -> BLOCKED_NET_GAIN"
   },
   {
-   "ts": "2026-10-29T02:57:17Z",
+   "ts": "2026-10-29T03:02:57Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "fin",
@@ -311,5 +311,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.77
+ "sweep_s": 2.67
 }
