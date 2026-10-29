@@ -1,173 +1,67 @@
 {
- "generated_at": "2026-10-29 19:23 UTC",
- "total_capital_usd": 203.28,
+ "generated_at": "2026-10-29 19:47 UTC",
+ "total_capital_usd": 162.98,
  "tier_capital": {
   "A": 0.0,
-  "B": 94.75,
-  "C": 108.53
+  "B": 82.17,
+  "C": 80.8
  },
  "tier_count": {
   "A": 0,
-  "B": 7,
-  "C": 6
+  "B": 3,
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "fin:KASUSDT_LONG",
-  "fin:EDUUSDT_LONG",
-  "fin:BANDUSDT_LONG",
-  "fin:INJUSDT_LONG",
-  "fin:ETHFIUSDC_LONG",
-  "fin:IOSTUSDT_SHORT",
-  "fin:MEWUSDT_SHORT",
-  "fin:IMXUSDT_SHORT"
+  "flz:BTCUSDC_LONG"
  ],
  "mediocre": [
-  "fin:BOMEUSDC_SHORT"
+  "flz:DASHUSDT_SHORT"
  ],
  "positions": [
   {
-   "pk": "fin:INJUSDT_LONG",
-   "symbol": "INJUSDT",
-   "account": "fin",
-   "value_usd": 34.32,
-   "gain_pct": -1.293,
+   "pk": "flz:BTCUSDC_LONG",
+   "symbol": "BTCUSDC",
+   "account": "flz",
+   "value_usd": 80.8,
+   "gain_pct": 0.754,
    "tier": "C",
-   "perf_mult": 0.18,
-   "amt": 4.3,
-   "mark": 7.98193108
+   "perf_mult": 0.57,
+   "amt": 0.001,
+   "mark": 80799.32319521
   },
   {
-   "pk": "fin:SKYAIUSDT_SHORT",
-   "symbol": "SKYAIUSDT",
-   "account": "fin",
-   "value_usd": 27.32,
-   "gain_pct": 1.716,
+   "pk": "flz:BNBUSDC_SHORT",
+   "symbol": "BNBUSDC",
+   "account": "flz",
+   "value_usd": 52.13,
+   "gain_pct": 1.23,
    "tier": "B",
-   "perf_mult": 1.25,
-   "amt": 805.0,
-   "mark": 0.03393468
+   "perf_mult": 0.59,
+   "amt": 0.07,
+   "mark": 744.75
   },
   {
-   "pk": "fin:IOSTUSDT_SHORT",
-   "symbol": "IOSTUSDT",
-   "account": "fin",
-   "value_usd": 14.99,
-   "gain_pct": 0.079,
-   "tier": "C",
-   "perf_mult": 0.4,
-   "amt": 20016.0,
-   "mark": 0.00074871
+   "pk": "flz:DOGEUSDC_LONG",
+   "symbol": "DOGEUSDC",
+   "account": "flz",
+   "value_usd": 15.07,
+   "gain_pct": 0.679,
+   "tier": "B",
+   "perf_mult": 2.15,
+   "amt": 190.0,
+   "mark": 0.07933519
   },
   {
-   "pk": "fin:ETHFIUSDC_LONG",
-   "symbol": "ETHFIUSDC",
-   "account": "fin",
+   "pk": "flz:DASHUSDT_SHORT",
+   "symbol": "DASHUSDT",
+   "account": "flz",
    "value_usd": 14.97,
-   "gain_pct": -0.138,
-   "tier": "C",
-   "perf_mult": 0.45,
-   "amt": 22.9,
-   "mark": 0.6535
-  },
-  {
-   "pk": "fin:MEWUSDT_SHORT",
-   "symbol": "MEWUSDT",
-   "account": "fin",
-   "value_usd": 14.94,
-   "gain_pct": 0.383,
-   "tier": "C",
-   "perf_mult": 0.19,
-   "amt": 33821.0,
-   "mark": 0.0004416
-  },
-  {
-   "pk": "fin:1000XECUSDT_SHORT",
-   "symbol": "1000XECUSDT",
-   "account": "fin",
-   "value_usd": 14.85,
-   "gain_pct": 0.943,
+   "gain_pct": -0.115,
    "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 2267.0,
-   "mark": 0.00655265
-  },
-  {
-   "pk": "fin:ARUSDT_LONG",
-   "symbol": "ARUSDT",
-   "account": "fin",
-   "value_usd": 14.83,
-   "gain_pct": 0.911,
-   "tier": "B",
-   "perf_mult": 0.89,
-   "amt": 4.3,
-   "mark": 3.44914167
-  },
-  {
-   "pk": "fin:IMXUSDT_SHORT",
-   "symbol": "IMXUSDT",
-   "account": "fin",
-   "value_usd": 14.72,
-   "gain_pct": 1.025,
-   "tier": "C",
-   "perf_mult": 0.39,
-   "amt": 107.0,
-   "mark": 0.13757579
-  },
-  {
-   "pk": "fin:BANDUSDT_LONG",
-   "symbol": "BANDUSDT",
-   "account": "fin",
-   "value_usd": 14.71,
-   "gain_pct": -1.896,
-   "tier": "B",
-   "perf_mult": 2.65,
-   "amt": 70.7,
-   "mark": 0.20807759
-  },
-  {
-   "pk": "fin:EDUUSDT_LONG",
-   "symbol": "EDUUSDT",
-   "account": "fin",
-   "value_usd": 14.66,
-   "gain_pct": -2.221,
-   "tier": "B",
-   "perf_mult": 0.69,
-   "amt": 251.0,
-   "mark": 0.058413
-  },
-  {
-   "pk": "fin:KASUSDT_LONG",
-   "symbol": "KASUSDT",
-   "account": "fin",
-   "value_usd": 14.59,
-   "gain_pct": -2.839,
-   "tier": "C",
-   "perf_mult": 0.33,
-   "amt": 406.0,
-   "mark": 0.0359335
-  },
-  {
-   "pk": "fin:EGLDUSDT_SHORT",
-   "symbol": "EGLDUSDT",
-   "account": "fin",
-   "value_usd": 4.83,
-   "gain_pct": 0.142,
-   "tier": "B",
-   "perf_mult": 2.95,
-   "amt": 1.4,
-   "mark": 3.44710731
-  },
-  {
-   "pk": "fin:BOMEUSDC_SHORT",
-   "symbol": "BOMEUSDC",
-   "account": "fin",
-   "value_usd": 3.55,
-   "gain_pct": 0.146,
-   "tier": "B",
-   "perf_mult": 0.56,
-   "amt": 5481.0,
-   "mark": 0.00064855
+   "perf_mult": 0.49,
+   "amt": 0.294,
+   "mark": 50.92830739
   }
  ]
 }
