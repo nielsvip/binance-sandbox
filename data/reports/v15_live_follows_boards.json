@@ -1,9 +1,28 @@
 {
- "at": "2026-10-28T23:38:04Z",
+ "at": "2026-10-29T00:38:06Z",
  "reports": [
   {
+   "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261028_refresh_0005.json",
+   "age_min": 11.0,
+   "applied": true,
+   "n": null,
+   "results": {
+    "REFUSED": 74,
+    "PASS": 1
+   },
+   "registered": 0,
+   "already_live_skipped": 0,
+   "refused_by_class": {
+    "type-gate refused ALL (1 bad)": 71,
+    "type-gate refused ALL (7 bad)": 1,
+    "golive-blocklisted": 1,
+    "type-gate refused ALL (2 bad)": 1
+   },
+   "changed_symsides": []
+  },
+  {
    "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261028_refresh_2301.json",
-   "age_min": 29.8,
+   "age_min": 89.8,
    "applied": true,
    "n": null,
    "results": {
@@ -18,27 +37,8 @@
     "type-gate refused ALL (2 bad)": 1
    },
    "changed_symsides": []
-  },
-  {
-   "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261028_refresh_2158.json",
-   "age_min": 73.1,
-   "applied": true,
-   "n": null,
-   "results": {
-    "REFUSED": 56,
-    "PASS": 2
-   },
-   "registered": 1,
-   "already_live_skipped": 0,
-   "refused_by_class": {
-    "type-gate refused ALL (1 bad)": 52,
-    "type-gate refused ALL (7 bad)": 2,
-    "golive-blocklisted": 1,
-    "type-gate refused ALL (2 bad)": 1
-   },
-   "changed_symsides": []
   }
  ],
  "fails": [],
- "refused_total": 63
+ "refused_total": 74
 }
