@@ -1,39 +1,23 @@
 {
- "at": "2026-10-29T14:26:06Z",
+ "at": "2026-10-29T15:26:07Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
  "hosts": {
   "s1": {
-   "published_n": 1,
-   "per_hour": 0.5,
+   "published_n": 0,
+   "per_hour": 0.0,
    "improved_vs_best_start": 0,
    "mean_uplift_vs_best_start": null,
    "median_uplift": null,
    "chained_from_previous_published": 0,
-   "no_floor_recorded": 1,
+   "no_floor_recorded": 0,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 0.5/h < 12.0/h (one per 5 min)"
+    "throughput 0.0/h < 12.0/h (one per 5 min)"
    ],
-   "rows": [
-    {
-     "symside": "ATOMUSDT_LONG",
-     "published_at": 1793280196.761463,
-     "final_gain": 16.407934412458864,
-     "best_start_gain": null,
-     "best_start_chosen": null,
-     "best_start_candidates": null,
-     "baseline_gain": -1.638951910721156,
-     "npz_ts_last": 1793277900.0,
-     "npz_md5": "5ebfbc7ecfe4ea2c2dec9f9d031c9c6f",
-     "npz_bars": 219280,
-     "bh": -2.2662868089077777,
-     "verdict": null,
-     "npz_age_h_at_publish": 0.64
-    }
-   ],
+   "rows": [],
    "error": null
   },
   "s2": {
@@ -66,19 +50,19 @@
      "npz_age_h_at_publish": 1.39
     },
     {
-     "symside": "GALAUSDT_LONG",
-     "published_at": 1793279532.8361652,
-     "final_gain": 28.43527836784151,
+     "symside": "TIAUSDC_LONG",
+     "published_at": 1793284854.5493846,
+     "final_gain": 46.32330617828856,
      "best_start_gain": null,
      "best_start_chosen": null,
      "best_start_candidates": null,
-     "baseline_gain": 25.824343185072852,
-     "npz_ts_last": 1793276100.0,
-     "npz_md5": "2a71b46f9425a1d0a749fa610b53f93a",
-     "npz_bars": 174748,
-     "bh": -8.551994825684183,
+     "baseline_gain": 32.1576149080108,
+     "npz_ts_last": 1793281500.0,
+     "npz_md5": "793e71fb7341fc965372db79cfe6e7ec",
+     "npz_bars": 43641,
+     "bh": 28.932211338205448,
      "verdict": null,
-     "npz_age_h_at_publish": 0.95
+     "npz_age_h_at_publish": 0.93
     },
     {
      "symside": "TRBUSDT_LONG",

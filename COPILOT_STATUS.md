@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-29 15:12:17 UTC
+# Copilot Status — 2026-10-29 15:22:18 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-29T14:54:24
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-29T15:02:04
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-29T15:03:05
-- **STALE_INDICATORS** [tradier]  — 2026-10-29T15:03:36
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-29T15:04:06
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-29T15:05:08
 - **RATIO_IMBALANCE** [crypto] inf — 2026-10-29T15:06:09
 - **RATIO_IMBALANCE** [crypto] inf — 2026-10-29T15:07:10
 - **RATIO_IMBALANCE** [crypto] inf — 2026-10-29T15:08:11
 - **STALE_INDICATORS** [tradier]  — 2026-10-29T15:11:45
+- **STALE_INDICATORS** [tradier]  — 2026-10-29T15:19:30
+- **STALE_INDICATORS** [tradier]  — 2026-10-29T15:20:01
+- **STALE_INDICATORS** [tradier]  — 2026-10-29T15:20:31
+- **STALE_INDICATORS** [tradier]  — 2026-10-29T15:21:03
+- **STALE_INDICATORS** [tradier]  — 2026-10-29T15:21:33
+- **STALE_INDICATORS** [tradier]  — 2026-10-29T15:22:08
 
 ## Missed Trades (trader comparison)
 
@@ -30,15 +30,15 @@ _None_
 **Held:** 14 | **Watching for reentry:** 10 | **Reentered:** 0
 
 - HELD: **CRWD** LONG (tradier) peak +11.7%, now +-2.7%
-- HELD: **FCN** LONG (tradier) peak +11.5%, now +8.4%
+- HELD: **FCN** LONG (tradier) peak +11.5%, now +8.3%
 - HELD: **HOOD** SHORT (tradier) peak +11.1%, now +-0.9%
-- HELD: **HYPEUSDT** LONG (crypto) peak +10.7%, now +10.7%
-- HELD: **WDAY** SHORT (tradier) peak +6.8%, now +5.8%
-- HELD: **DASHUSDT** SHORT (crypto) peak +5.8%, now +-1.0%
-- HELD: **A** LONG (tradier) peak +5.0%, now +0.1%
-- HELD: **LMT** LONG (tradier) peak +4.8%, now +4.4%
-- HELD: **KASUSDT** LONG (crypto) peak +4.6%, now +4.3%
-- HELD: **BMNR** SHORT (tradier) peak +4.0%, now +-2.0%
+- HELD: **HYPEUSDT** LONG (crypto) peak +11.0%, now +9.4%
+- HELD: **WDAY** SHORT (tradier) peak +6.8%, now +5.7%
+- HELD: **DASHUSDT** SHORT (crypto) peak +5.8%, now +-1.1%
+- HELD: **A** LONG (tradier) peak +5.0%, now +0.3%
+- HELD: **LMT** LONG (tradier) peak +4.8%, now +4.5%
+- HELD: **KASUSDT** LONG (crypto) peak +4.6%, now +3.9%
+- HELD: **BMNR** SHORT (tradier) peak +4.0%, now +-1.9%
 
 - WATCHING: **BEAMXUSDT** LONG (crypto) peaked +8.6%, exited 1m ago
 - WATCHING: **ACEUSDT** SHORT (crypto) peaked +7.7%, exited 1m ago
@@ -55,9 +55,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 14
-- [MEDIUM] ez_klines.py running but log stale (11min)
+**Issues (last 1h):** 10
 - [MEDIUM] ez_klines.py running but log stale (12min)
 - [MEDIUM] ez_rankings.py running but log stale (11min)
 - [MEDIUM] ez_rankings.py running but log stale (12min)
 - [HIGH] ez_manage.py for ang is NOT running
+- [CRITICAL] Local Redis (port 6379) is NOT responding
