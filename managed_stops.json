@@ -6,11 +6,81 @@
     "symbol": "BEAMXUSDT",
     "side": "LONG"
   },
+  "men:ARUSDT_LONG": {
+    "orderId": "2000001550702874",
+    "stopPrice": 3.334,
+    "entry_sig": "2026-10-29 09:00:46.085000+00:00",
+    "symbol": "ARUSDT",
+    "side": "LONG"
+  },
   "men:INXUSDT_SHORT": {
     "orderId": "2000001550347644",
     "stopPrice": 0.004861,
     "entry_sig": "2026-10-29 06:01:25.524000+00:00",
     "symbol": "INXUSDT",
+    "side": "SHORT"
+  },
+  "men:KASUSDT_LONG": {
+    "orderId": "2000001550835860",
+    "stopPrice": 0.03499,
+    "entry_sig": "2026-10-29 10:11:05.478000+00:00",
+    "symbol": "KASUSDT",
+    "side": "LONG"
+  },
+  "men:1INCHUSDT_SHORT": {
+    "orderId": "2000001550835245",
+    "stopPrice": 0.08773,
+    "entry_sig": "2026-10-29 10:10:54.403000+00:00",
+    "symbol": "1INCHUSDT",
+    "side": "SHORT"
+  },
+  "men:MASKUSDT_SHORT": {
+    "orderId": "2000001550835888",
+    "stopPrice": 0.3998,
+    "entry_sig": "2026-10-29 10:11:06.693000+00:00",
+    "symbol": "MASKUSDT",
+    "side": "SHORT"
+  },
+  "men:BOMEUSDC_SHORT": {
+    "orderId": "2000001550835776",
+    "stopPrice": 0.0006452,
+    "entry_sig": "2026-10-29 10:11:03.034000+00:00",
+    "symbol": "BOMEUSDC",
+    "side": "SHORT"
+  },
+  "men:BCHUSDC_SHORT": {
+    "orderId": "2000001550835708",
+    "stopPrice": 283.09,
+    "entry_sig": "2026-10-29 10:11:00.561000+00:00",
+    "symbol": "BCHUSDC",
+    "side": "SHORT"
+  },
+  "men:KAVAUSDT_LONG": {
+    "orderId": "2000001550616339",
+    "stopPrice": 0.06824,
+    "entry_sig": "2026-10-29 08:18:17.164000+00:00",
+    "symbol": "KAVAUSDT",
+    "side": "LONG"
+  },
+  "men:ASTERUSDT_LONG": {
+    "orderId": "2000001550835324",
+    "stopPrice": 0.6948,
+    "entry_sig": "2026-10-29 10:10:56.836000+00:00",
+    "symbol": "ASTERUSDT",
+    "side": "LONG"
+  },
+  "men:1000XECUSDT_SHORT": {
+    "orderId": "2000001550962724",
+    "stopPrice": 0.006608,
+    "entry_sig": "2026-10-29 11:15:46.974000+00:00",
+    "symbol": "1000XECUSDT",
+    "side": "SHORT"
+  },
+  "men:MEWUSDT_SHORT": {
+    "orderId": "2000001551020092",
+    "stopPrice": 0.0004343,
+    "entry_sig": "2026-10-29 11:46:26.981000+00:00",
+    "symbol": "MEWUSDT",
     "side": "SHORT"
   }
 }
