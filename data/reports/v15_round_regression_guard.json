@@ -1,5 +1,5 @@
 {
- "at": "2026-10-29T15:26:07Z",
+ "at": "2026-10-29T16:26:48Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
@@ -35,19 +35,34 @@
    ],
    "rows": [
     {
-     "symside": "EDUUSDT_LONG",
-     "published_at": 1793282903.9018831,
-     "final_gain": 102.00313535172663,
+     "symside": "STXUSDT_SHORT",
+     "published_at": 1793290587.4446576,
+     "final_gain": 41.09354858842607,
      "best_start_gain": null,
      "best_start_chosen": null,
      "best_start_candidates": null,
-     "baseline_gain": 88.5532286829386,
-     "npz_ts_last": 1793277900.0,
-     "npz_md5": "5f71eb4acd2e744ff65ccfc7b7684c7a",
-     "npz_bars": 43630,
-     "bh": 32.49759923763095,
+     "baseline_gain": 23.485405683081556,
+     "npz_ts_last": 1793286000.0,
+     "npz_md5": "39ef4801047cf93a3fc35bab512af46c",
+     "npz_bars": 43645,
+     "bh": 3.19517089152178,
      "verdict": null,
-     "npz_age_h_at_publish": 1.39
+     "npz_age_h_at_publish": 1.27
+    },
+    {
+     "symside": "SUSHIUSDT_LONG",
+     "published_at": 1793288078.3795688,
+     "final_gain": 29.32904650644928,
+     "best_start_gain": null,
+     "best_start_chosen": null,
+     "best_start_candidates": null,
+     "baseline_gain": -3.148683122519718,
+     "npz_ts_last": 1793285100.0,
+     "npz_md5": "9458ba9017c40514597e3e461d2bf033",
+     "npz_bars": 43645,
+     "bh": -14.194579209767936,
+     "verdict": null,
+     "npz_age_h_at_publish": 0.83
     },
     {
      "symside": "TIAUSDC_LONG",
@@ -63,21 +78,6 @@
      "bh": 28.932211338205448,
      "verdict": null,
      "npz_age_h_at_publish": 0.93
-    },
-    {
-     "symside": "TRBUSDT_LONG",
-     "published_at": 1793281173.5726202,
-     "final_gain": 28.992810400675996,
-     "best_start_gain": null,
-     "best_start_chosen": null,
-     "best_start_candidates": null,
-     "baseline_gain": 6.159546904034195,
-     "npz_ts_last": 1793276100.0,
-     "npz_md5": "29f56fc928171c67bfc6217cf2fa52dd",
-     "npz_bars": 5598,
-     "bh": -5.180692982878942,
-     "verdict": null,
-     "npz_age_h_at_publish": 1.41
     }
    ],
    "error": null
