@@ -1,15 +1,15 @@
 {
  "host": "MacBook-Pro.local",
  "base": ".",
- "at": "2026-10-29T01:37:09Z",
+ "at": "2026-10-29T02:37:07Z",
  "dirs": {
   "klines_cache": {
-   "files": 1063,
+   "files": 1057,
    "files_with_noncanonical": 0,
    "stamps": {}
   },
   "klines_cache/tradier": {
-   "files": 590,
+   "files": 0,
    "files_with_noncanonical": 0,
    "stamps": {}
   },
@@ -19,7 +19,7 @@
    "stamps": {}
   },
   "klines_cache_gateway": {
-   "files": 624,
+   "files": 758,
    "files_with_noncanonical": 0,
    "stamps": {}
   },
@@ -36,5 +36,5 @@
  },
  "offenders": [],
  "noncanonical_files": 0,
- "secs": 2202.8
+ "secs": 1707.7
 }
