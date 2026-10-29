@@ -1,5 +1,5 @@
 {
- "at": "2026-10-29T10:26:06Z",
+ "at": "2026-10-29T11:26:05Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
@@ -37,33 +37,48 @@
    "error": null
   },
   "s2": {
-   "published_n": 3,
-   "per_hour": 1.5,
+   "published_n": 5,
+   "per_hour": 2.5,
    "improved_vs_best_start": 0,
    "mean_uplift_vs_best_start": null,
    "median_uplift": null,
    "chained_from_previous_published": 0,
-   "no_floor_recorded": 3,
+   "no_floor_recorded": 5,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 1.5/h < 12.0/h (one per 5 min)"
+    "throughput 2.5/h < 12.0/h (one per 5 min)"
    ],
    "rows": [
     {
-     "symside": "KAVAUSDT_LONG",
-     "published_at": 1793263356.0687928,
-     "final_gain": 13.713722740415669,
+     "symside": "ASTERUSDT_LONG",
+     "published_at": 1793271744.245893,
+     "final_gain": 20.901847692019597,
      "best_start_gain": null,
      "best_start_chosen": null,
      "best_start_candidates": null,
-     "baseline_gain": 1.1068064791497831,
-     "npz_ts_last": 1793259900.0,
-     "npz_md5": "1551d8b0b65afdf0d44dcec6306a1a82",
-     "npz_bars": 43617,
-     "bh": 0.24299585766451343,
+     "baseline_gain": 15.187687843239742,
+     "npz_ts_last": 1793268900.0,
+     "npz_md5": "7b527cb9eaa3d5c9d7abdca3429d4c1b",
+     "npz_bars": 38849,
+     "bh": -1.9782712926335537,
      "verdict": null,
-     "npz_age_h_at_publish": 0.96
+     "npz_age_h_at_publish": 0.79
+    },
+    {
+     "symside": "DOGEUSDC_LONG",
+     "published_at": 1793269628.2689564,
+     "final_gain": 12.23479851740343,
+     "best_start_gain": null,
+     "best_start_chosen": null,
+     "best_start_candidates": null,
+     "baseline_gain": -0.5290264987054449,
+     "npz_ts_last": 1793266200.0,
+     "npz_md5": "7b0fff0591e81262fda6dff6c26e7622",
+     "npz_bars": 46795,
+     "bh": -19.817068553824086,
+     "verdict": null,
+     "npz_age_h_at_publish": 0.95
     },
     {
      "symside": "NEARUSDC_LONG",
@@ -94,6 +109,21 @@
      "bh": 28.49774848805004,
      "verdict": null,
      "npz_age_h_at_publish": 1.66
+    },
+    {
+     "symside": "UNIUSDC_LONG",
+     "published_at": 1793271339.9058836,
+     "final_gain": 33.080097921512206,
+     "best_start_gain": null,
+     "best_start_chosen": null,
+     "best_start_candidates": null,
+     "baseline_gain": -1.708536232916544,
+     "npz_ts_last": 1793268000.0,
+     "npz_md5": "751583c2ae06c3b0a6751c8c9c1efaab",
+     "npz_bars": 43626,
+     "bh": -19.107406090671017,
+     "verdict": null,
+     "npz_age_h_at_publish": 0.93
     }
    ],
    "error": null
