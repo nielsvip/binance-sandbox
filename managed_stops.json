@@ -1,37 +1,16 @@
 {
-  "fin:IMXUSDT_SHORT": {
-    "orderId": "3000002284175977",
-    "stopPrice": 0.1429,
-    "entry_sig": "2026-10-29 20:31:15.635000+00:00",
-    "symbol": "IMXUSDT",
-    "side": "SHORT"
+  "flz:HYPEUSDT_LONG": {
+    "orderId": "1000002652194262",
+    "stopPrice": 89.311,
+    "entry_sig": "2026-10-29 21:15:47.045000+00:00",
+    "symbol": "HYPEUSDT",
+    "side": "LONG"
   },
-  "fin:BOMEUSDC_SHORT": {
-    "orderId": "3000002284175329",
-    "stopPrice": 0.0006895,
-    "entry_sig": "2026-10-29 20:30:59.499000+00:00",
-    "symbol": "BOMEUSDC",
-    "side": "SHORT"
-  },
-  "fin:BCHUSDC_SHORT": {
-    "orderId": "3000002284230850",
-    "stopPrice": 294.33,
-    "entry_sig": "2026-10-29 20:45:38.512000+00:00",
-    "symbol": "BCHUSDC",
-    "side": "SHORT"
-  },
-  "fin:1000XECUSDT_SHORT": {
-    "orderId": "3000002284230495",
-    "stopPrice": 0.006739,
-    "entry_sig": "2026-10-29 20:45:33.091000+00:00",
-    "symbol": "1000XECUSDT",
-    "side": "SHORT"
-  },
-  "fin:GASUSDT_SHORT": {
-    "orderId": "3000002284231462",
-    "stopPrice": 1.237,
-    "entry_sig": "2026-10-29 20:45:47.843000+00:00",
-    "symbol": "GASUSDT",
+  "flz:DASHUSDT_SHORT": {
+    "orderId": "1000002652238508",
+    "stopPrice": 52.75,
+    "entry_sig": "2026-10-29 19:18:19.841546+00:00",
+    "symbol": "DASHUSDT",
     "side": "SHORT"
   }
 }

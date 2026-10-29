@@ -1,7 +1,7 @@
 {
  "host": "MacBook-Pro.local",
  "base": ".",
- "at": "2026-10-29T20:07:07Z",
+ "at": "2026-10-29T21:07:01Z",
  "dirs": {
   "klines_cache": {
    "files": 202,
@@ -9,21 +9,19 @@
    "stamps": {}
   },
   "klines_cache/tradier": {
-   "files": 1342,
+   "files": 4,
    "files_with_noncanonical": 0,
    "stamps": {}
   },
   "klines_canonical": {
-   "files": 621,
+   "files": 414,
    "files_with_noncanonical": 0,
    "stamps": {}
   },
   "klines_cache_gateway": {
-   "files": 697,
-   "files_with_noncanonical": 1,
-   "stamps": {
-    "unparseable-json": 1
-   }
+   "files": 662,
+   "files_with_noncanonical": 0,
+   "stamps": {}
   },
   "klines_cache_backtest": {
    "files": 0,
@@ -31,19 +29,12 @@
    "stamps": {}
   },
   "klines_cache_gateway/tradier": {
-   "files": 1319,
+   "files": 0,
    "files_with_noncanonical": 0,
    "stamps": {}
   }
  },
- "offenders": [
-  {
-   "file": "klines_cache_gateway/ALTUSDT_3m.json",
-   "kinds": {
-    "unparseable-json": 1
-   }
-  }
- ],
- "noncanonical_files": 1,
- "secs": 2568.8
+ "offenders": [],
+ "noncanonical_files": 0,
+ "secs": 1187.2
 }
