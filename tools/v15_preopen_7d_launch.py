@@ -119,7 +119,8 @@ def run_one(queue_path: Path, ss: str, result_dir: Path, workers: int,
     local = dt.datetime.now(dt.timezone.utc).astimezone(NY)
     queue = json.loads(queue_path.read_text())
     stock_side = str(((queue.get("sym_sides") or {}).get(ss) or {}).get("cat_side", "")).startswith("STOCKS_")
-    rehearsal = (ROOT / "data/preopen_7d/REHEARSAL_OVERRIDE").exists()
+    # V15_7D_ANYTIME=1: the trc 7D lane (paper) also runs intraday on the canonical NPZ (USER 2026-10-29 "run it now")
+    rehearsal = (ROOT / "data/preopen_7d/REHEARSAL_OVERRIDE").exists() or os.environ.get("V15_7D_ANYTIME") == "1"
     if not stock_side:
         pass  # crypto 7D has no market-hours constraint: runs any time there is spare compute
     elif rehearsal:
@@ -129,7 +130,9 @@ def run_one(queue_path: Path, ss: str, result_dir: Path, workers: int,
     command, env, folder = build_launch(queue, ss, result_dir, workers, python)
     log = folder / "pilot.log"
     overlay_dir = folder / "npz_overlay"
-    stock_overlay = str(queue["sym_sides"][ss].get("cat_side", "")).startswith("STOCKS_")
+    # V15_7D_OVERLAY=0: no premarket overlay (intraday run: today's RTH bars are already in the canonical NPZ)
+    stock_overlay = (str(queue["sym_sides"][ss].get("cat_side", "")).startswith("STOCKS_")
+                     and os.environ.get("V15_7D_OVERLAY", "1") != "0")
     try:
         if stock_overlay:
             from tools.opt.evaluate_v12 import resolve_tokenised

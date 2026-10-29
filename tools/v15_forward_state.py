@@ -20,7 +20,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-OUT = ROOT / "data" / "forward_state"
+# FWDSTATE_OUT_DIR: the trc 7D lane writes its own states (data/forward_state_7d) from its own store; unset = live 30D dir
+OUT = Path(os.environ.get("FWDSTATE_OUT_DIR") or ROOT / "data" / "forward_state")
 
 
 DEFAULT_STORE_DBS = (Path.home() / "binance" / "data" / "hourly_reconfig" / "per_sym_store.db", ROOT / "data" / "hourly_reconfig" / "per_sym_store.db")
