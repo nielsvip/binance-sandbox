@@ -27,13 +27,6 @@
     "symbol": "KASUSDT",
     "side": "LONG"
   },
-  "fin:BOMEUSDC_SHORT": {
-    "orderId": "3000002283965773",
-    "stopPrice": 0.0006895,
-    "entry_sig": "2026-10-29 18:30:35.117000+00:00",
-    "symbol": "BOMEUSDC",
-    "side": "SHORT"
-  },
   "fin:BANDUSDT_LONG": {
     "orderId": "3000002283749559",
     "stopPrice": 0.2058,
@@ -60,6 +53,27 @@
     "stopPrice": 0.006739,
     "entry_sig": "2026-10-29 18:15:49.073000+00:00",
     "symbol": "1000XECUSDT",
+    "side": "SHORT"
+  },
+  "fin:BOMEUSDC_SHORT": {
+    "orderId": "3000002283965773",
+    "stopPrice": 0.0006895,
+    "entry_sig": "2026-10-29 18:30:35.117000+00:00",
+    "symbol": "BOMEUSDC",
+    "side": "SHORT"
+  },
+  "fin:GALAUSDT_SHORT": {
+    "orderId": "3000002283993940",
+    "stopPrice": 0.00183,
+    "entry_sig": "2026-10-29 18:45:30.454000+00:00",
+    "symbol": "GALAUSDT",
+    "side": "SHORT"
+  },
+  "fin:ONEUSDT_SHORT": {
+    "orderId": "3000002283994310",
+    "stopPrice": 0.0013204,
+    "entry_sig": "2026-10-29 18:45:41.046000+00:00",
+    "symbol": "ONEUSDT",
     "side": "SHORT"
   }
 }
