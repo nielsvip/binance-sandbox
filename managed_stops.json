@@ -7,13 +7,6 @@
     "side": "SHORT",
     "disaster_backstop": true
   },
-  "ang:IOTXUSDT_SHORT": {
-    "orderId": "4000002005101964",
-    "stopPrice": 0.003741,
-    "entry_sig": "2026-10-28 17:16:24.012000+00:00",
-    "symbol": "IOTXUSDT",
-    "side": "SHORT"
-  },
   "ang:XLMUSDT_SHORT": {
     "orderId": "4000002005996591",
     "stopPrice": 0.17412,
@@ -75,6 +68,20 @@
     "stopPrice": 0.14855,
     "entry_sig": "2026-10-29 05:51:52.069000+00:00",
     "symbol": "ACEUSDT",
+    "side": "SHORT"
+  },
+  "ang:JASMYUSDT_SHORT": {
+    "orderId": "4000002006215776",
+    "stopPrice": 0.004206,
+    "entry_sig": "2026-10-29 05:03:17.069000+00:00",
+    "symbol": "JASMYUSDT",
+    "side": "SHORT"
+  },
+  "ang:BBUSDT_SHORT": {
+    "orderId": "4000002006337864",
+    "stopPrice": 0.008177,
+    "entry_sig": "2026-10-29 06:01:08.456000+00:00",
+    "symbol": "BBUSDT",
     "side": "SHORT"
   }
 }
