@@ -1,37 +1,51 @@
 {
-  "fin:BEAMXUSDT_LONG": {
-    "orderId": "3000002279459117",
-    "stopPrice": 0.003294,
-    "entry_sig": "2026-10-27 22:56:06.010000+00:00",
-    "symbol": "BEAMXUSDT",
-    "side": "LONG"
-  },
-  "fin:NEARUSDC_LONG": {
-    "orderId": "3000002277450882",
+  "men:NEARUSDC_LONG": {
+    "orderId": "2000001544615120",
     "stopPrice": 4.358,
-    "entry_sig": "2026-10-27 04:37:46.017000+00:00",
+    "entry_sig": "2026-10-27 08:10:09.368000+00:00",
     "symbol": "NEARUSDC",
     "side": "LONG"
   },
-  "fin:PUMPUSDT_LONG": {
-    "orderId": "3000002281750318",
+  "men:BEAMXUSDT_LONG": {
+    "orderId": "2000001546336154",
+    "stopPrice": 0.003294,
+    "entry_sig": "2026-10-27 22:39:58.937000+00:00",
+    "symbol": "BEAMXUSDT",
+    "side": "LONG"
+  },
+  "men:PUMPUSDT_LONG": {
+    "orderId": "2000001549015044",
     "stopPrice": 0.004138,
-    "entry_sig": "2026-10-28 20:15:29.480000+00:00",
+    "entry_sig": "2026-10-28 20:01:29.747000+00:00",
     "symbol": "PUMPUSDT",
     "side": "LONG"
   },
-  "fin:INJUSDT_LONG": {
-    "orderId": "3000002281870509",
+  "men:INJUSDT_LONG": {
+    "orderId": "2000001549251132",
     "stopPrice": 7.656,
-    "entry_sig": "2026-10-28 21:16:18.979000+00:00",
+    "entry_sig": "2026-10-28 21:16:17.462000+00:00",
     "symbol": "INJUSDT",
     "side": "LONG"
   },
-  "fin:SKYAIUSDT_SHORT": {
-    "orderId": "3000002281576245",
-    "stopPrice": 0.03724,
-    "entry_sig": "2026-10-28 17:01:54.216000+00:00",
-    "symbol": "SKYAIUSDT",
+  "men:FARTCOINUSDT_SHORT": {
+    "orderId": "2000001549493455",
+    "stopPrice": 0.1375,
+    "entry_sig": "2026-10-28 23:46:19.292000+00:00",
+    "symbol": "FARTCOINUSDT",
+    "side": "SHORT"
+  },
+  "men:MOVEUSDT_SHORT": {
+    "orderId": "2000001549555721",
+    "stopPrice": 0.006921,
+    "entry_sig": "2026-10-29 00:16:39.003000+00:00",
+    "symbol": "MOVEUSDT",
+    "side": "SHORT"
+  },
+  "men:INXUSDT_SHORT": {
+    "orderId": "2000001549775627",
+    "stopPrice": 0.004912,
+    "entry_sig": "2026-10-29 01:46:24.795000+00:00",
+    "symbol": "INXUSDT",
     "side": "SHORT"
   }
 }
