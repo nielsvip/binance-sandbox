@@ -1321,25 +1321,25 @@
   }
  },
  "freshness": {
-  "age_h_max": 10.45,
-  "age_h_median": 6.74,
-  "age_h_p90": 9.51,
+  "age_h_max": 10.57,
+  "age_h_median": 6.88,
+  "age_h_p90": 9.42,
   "bnb_source": "price_cache_2.json",
   "bnb_usd": 738.24381025,
   "caches": 650,
-  "fresh": 240,
-  "fresh_share": 0.3692,
+  "fresh": 259,
+  "fresh_share": 0.3985,
   "note": "figures are a FLOOR on activity; a lagging cache shows fewer fills, never more",
   "ok": false,
-  "stale": 410
+  "stale": 391
  },
- "generated_at": "2026-10-29T20:15:31Z",
+ "generated_at": "2026-10-29T20:31:25Z",
  "label": "[UNVERIFIED] fill cache coverage below threshold",
  "reconcile_14d": {
-  "broker_net_usd": -185.09,
-  "divergence_usd": 1.8783,
-  "generated_at": "2026-10-29T20:17:19Z",
-  "inhouse_net_usd": -183.2117,
+  "broker_net_usd": -184.2007,
+  "divergence_usd": 1.9924,
+  "generated_at": "2026-10-29T20:33:04Z",
+  "inhouse_net_usd": -182.2083,
   "label": "[UNVERIFIED] fill cache coverage below threshold",
   "symbols_compared": 126,
   "verdict": "OK",
@@ -1354,21 +1354,21 @@
    },
    {
     "broker_net_usd": -2.1528,
-    "divergence_usd": 0.5205,
-    "inhouse_net_usd": -1.6323,
+    "divergence_usd": 0.5962,
+    "inhouse_net_usd": -1.5566,
     "symbol": "IOSTUSDT"
+   },
+   {
+    "broker_net_usd": -0.6521,
+    "divergence_usd": 0.3156,
+    "inhouse_net_usd": -0.3365,
+    "symbol": "AIAUSDT"
    },
    {
     "broker_net_usd": -0.1022,
     "divergence_usd": 0.3013,
     "inhouse_net_usd": 0.1991,
     "symbol": "1000XECUSDT"
-   },
-   {
-    "broker_net_usd": -0.6521,
-    "divergence_usd": 0.2773,
-    "inhouse_net_usd": -0.3748,
-    "symbol": "AIAUSDT"
    },
    {
     "broker_net_usd": 0.0825,
@@ -1527,15 +1527,9 @@
     "symbol": "ETHUSDC"
    },
    {
-    "broker_net_usd": -4.3113,
+    "broker_net_usd": -2.9887,
     "divergence_usd": -0.0001,
-    "inhouse_net_usd": -4.3114,
-    "symbol": "DASHUSDT"
-   },
-   {
-    "broker_net_usd": -3.7247,
-    "divergence_usd": -0.0001,
-    "inhouse_net_usd": -3.7248,
+    "inhouse_net_usd": -2.9888,
     "symbol": "BBUSDT"
    },
    {
@@ -1575,9 +1569,9 @@
     "symbol": "DOTUSDT"
    },
    {
-    "broker_net_usd": 0.8732,
+    "broker_net_usd": 0.9574,
     "divergence_usd": 0.0,
-    "inhouse_net_usd": 0.8732,
+    "inhouse_net_usd": 0.9574,
     "symbol": "SNXUSDT"
    },
    {
@@ -1585,6 +1579,12 @@
     "divergence_usd": 0.0,
     "inhouse_net_usd": 0.6705,
     "symbol": "1000FLOKIUSDT"
+   },
+   {
+    "broker_net_usd": -1.7655,
+    "divergence_usd": 0.0,
+    "inhouse_net_usd": -1.7655,
+    "symbol": "ALTUSDT"
    }
   ]
  },

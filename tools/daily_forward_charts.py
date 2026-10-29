@@ -170,7 +170,7 @@ def main(argv: list[str]) -> int:
                 original = _install_cut(E, use_open)
                 fwd = _forward_month(E, sym, overrides)
             led = fwd["ledger"]
-            row.update(ok=True, trades=len(led), gain_pct=fwd.get("gain_pct"), cut_bar_open=_stamp(use_open),
+            row.update(ok=True, trades=fwd.get("trades"), ledger_rows=len(led), gain_pct=fwd.get("gain_pct"), cut_bar_open=_stamp(use_open),
                        src=src, settings_sha256=meta.get("settings_sha256"), valid=fwd.get("valid"),
                        invalid_reason=fwd.get("invalid_reason"))
             if a.verify:
