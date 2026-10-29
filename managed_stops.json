@@ -1,11 +1,4 @@
 {
-  "ang:IOTXUSDT_SHORT": {
-    "orderId": "4000002005101964",
-    "stopPrice": 0.003741,
-    "entry_sig": "2026-10-28 17:16:24.012000+00:00",
-    "symbol": "IOTXUSDT",
-    "side": "SHORT"
-  },
   "ang:BEAMXUSDT_LONG": {
     "orderId": "4000002002348687",
     "stopPrice": 0.0033,
@@ -13,11 +6,11 @@
     "symbol": "BEAMXUSDT",
     "side": "LONG"
   },
-  "ang:NMRUSDT_SHORT": {
-    "orderId": "4000002005964930",
-    "stopPrice": 10.185,
-    "entry_sig": "2026-10-29 03:01:24.125000+00:00",
-    "symbol": "NMRUSDT",
+  "ang:IOTXUSDT_SHORT": {
+    "orderId": "4000002005101964",
+    "stopPrice": 0.003741,
+    "entry_sig": "2026-10-28 17:16:24.012000+00:00",
+    "symbol": "IOTXUSDT",
     "side": "SHORT"
   }
 }

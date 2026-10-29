@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-29T03:35:03.784956+00:00",
+  "ts": "2026-10-29T03:40:09.023409+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 1,
-  "pending_sym_sides": null,
+  "pending_sym_sides": 54,
   "hosts": {
     "s1": {
       "published_last_60m": 1,
@@ -15,16 +15,28 @@
       "boards_running": 2,
       "workers": 13,
       "workers_vs_law_28": "13/28",
-      "mem_avail_mb": 11477,
+      "mem_avail_mb": 11645,
       "disk_free_gb": 28,
-      "load1": 11.1,
-      "dispatch_idle_why": null,
+      "load1": 13.7,
+      "dispatch_idle_why": "full 2/2",
       "published_ss": [
         "PUMPUSDT_SHORT"
       ]
     },
     "s2": {
-      "unreachable": true
+      "published_last_60m": 0,
+      "published_last_3h": 3,
+      "boards": {
+        "DOTUSDT_LONG": 2
+      },
+      "boards_running": 1,
+      "workers": 2,
+      "workers_vs_law_28": "2/28",
+      "mem_avail_mb": 16322,
+      "disk_free_gb": 25,
+      "load1": 6.9,
+      "dispatch_idle_why": "HOLD until 2026-10-29T04:00Z: V21 gate bench on s2 (2 arms x 2 workers) needs the RAM: no new production boards on s2 until ~04:00Z; set 01:0xZ by binance-f4, expires automatically",
+      "published_ss": []
     },
     "s5": {
       "unreachable": true
@@ -34,9 +46,10 @@
     }
   },
   "alerts": [
-    "LOW_THROUGHPUT:s1:1/h<10 (idle_why=None)",
+    "LOW_THROUGHPUT:s1:1/h<10 (idle_why=full 2/2)",
     "DISK_FLOOR:s1:28GB<40",
-    "UNREACHABLE:s2",
+    "LOW_THROUGHPUT:s2:0/h<10 (idle_why=HOLD until 2026-10-29T04:00Z: V21 gate bench on s2 (2 arms x 2 workers) needs the RAM: no new production boards on s2 until ~04:00Z; set 01:0xZ by binance-f4, expires automatically)",
+    "DISK_FLOOR:s2:25GB<40",
     "UNREACHABLE:s5",
     "UNREACHABLE:s6"
   ],
