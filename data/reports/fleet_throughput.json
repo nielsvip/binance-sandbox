@@ -1,13 +1,13 @@
 {
-  "ts": "2026-10-29T12:55:17.406580+00:00",
+  "ts": "2026-10-29T13:00:18.383810+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 0,
-  "pending_sym_sides": 1,
+  "fleet_published_last_60m": 8,
+  "pending_sym_sides": 0,
   "hosts": {
     "s1": {
       "published_last_60m": 0,
-      "published_last_3h": 2,
+      "published_last_3h": 1,
       "boards": {
         "1000BONKUSDC_SHORT": 6,
         "ATOMUSDT_LONG": 7
@@ -15,9 +15,9 @@
       "boards_running": 2,
       "workers": 13,
       "workers_vs_law_28": "13/28",
-      "mem_avail_mb": 6684,
+      "mem_avail_mb": 5833,
       "disk_free_gb": 22,
-      "load1": 11.4,
+      "load1": 15.1,
       "dispatch_idle_why": "full 2/2",
       "published_ss": []
     },
@@ -25,18 +25,57 @@
       "unreachable": true
     },
     "s5": {
-      "unreachable": true
+      "published_last_60m": 3,
+      "published_last_3h": 8,
+      "boards": {
+        "FILUSDC_LONG": 7,
+        "LTCUSDC_SHORT": 7,
+        "STRKUSDT_SHORT": 0
+      },
+      "boards_running": 3,
+      "workers": 14,
+      "workers_vs_law_28": "14/28",
+      "mem_avail_mb": 13287,
+      "disk_free_gb": 35,
+      "load1": 15.9,
+      "dispatch_idle_why": null,
+      "published_ss": [
+        "GALAUSDT_SHORT",
+        "MASKUSDT_SHORT",
+        "STRKUSDT_SHORT"
+      ]
     },
     "s6": {
-      "unreachable": true
+      "published_last_60m": 5,
+      "published_last_3h": 12,
+      "boards": {
+        "APEUSDT_LONG": 7,
+        "AVAXUSDC_LONG": 7,
+        "COHR_SHORT": 0,
+        "SUSHIUSDT_LONG": 7,
+        "THETAUSDT_LONG": 7
+      },
+      "boards_running": 5,
+      "workers": 28,
+      "workers_vs_law_28": "28/28",
+      "mem_avail_mb": 14195,
+      "disk_free_gb": 39,
+      "load1": 20.0,
+      "dispatch_idle_why": "full 4/4",
+      "published_ss": [
+        "COHR_SHORT",
+        "NOTUSDT_SHORT",
+        "NUE_LONG",
+        "PUMPUSDT_SHORT",
+        "XPLUSDT_SHORT"
+      ]
     }
   },
   "alerts": [
-    "LOW_THROUGHPUT:s1:0/h<10 (idle_why=full 2/2)",
     "DISK_FLOOR:s1:22GB<40",
     "UNREACHABLE:s2",
-    "UNREACHABLE:s5",
-    "UNREACHABLE:s6"
+    "DISK_FLOOR:s5:35GB<40",
+    "DISK_FLOOR:s6:39GB<40"
   ],
   "repair": null
 }
