@@ -1,5 +1,5 @@
 {
- "at": "2026-10-29T02:11:27Z",
+ "at": "2026-10-29T03:11:10Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
@@ -13,68 +13,54 @@
     "1000BONKUSDC_SHORT",
     "PUMPUSDT_SHORT"
    ],
-   "mem_avail_mb": 12946,
-   "load1": 7.7,
+   "mem_avail_mb": 5990,
+   "load1": 11.13,
    "nproc": 16,
    "slots": null,
-   "binding_reason": "CPU budget: median board 13383 core-s, 16 cores minus 3.4 competing non-board cores ({'other': 1.43, 'klines_append': 0.99, 'boards': 4.33, 'live_helpers': 0.97}) = 12.6 usable -> host ceiling 3.4 boards/h. Move nice-0 non-board work off the host and/or cut core-s per board.",
+   "binding_reason": "CPU budget: median board 13383 core-s, 16 cores minus 2.9 competing non-board cores ({'other': 1.85, 'boards': 1.0, 'klines_append': 0.99, 'klines_vault': 0.01}) = 13.2 usable -> host ceiling 3.5 boards/h. Move nice-0 non-board work off the host and/or cut core-s per board.",
    "error": null,
    "published": [],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 3.1,
+   "minutes_since_last_improved": 62.7,
    "last_improved_symside": "WUSDT_SHORT",
-   "cadence_ok": true,
+   "cadence_ok": false,
    "improved_gap_min_median_24h": 74.0,
    "improved_gap_min_max_24h": 76.5,
    "improved_finishes_24h": 4,
    "board_cpu_s_median_24h": 13382.9,
    "board_wall_s_median_24h": 4503.736167907715,
-   "board_cores": 4.33,
-   "nonboard_cores_competing": 3.39,
-   "nonboard_cores_niced": 1.97,
+   "board_cores": 1.0,
+   "nonboard_cores_competing": 2.85,
+   "nonboard_cores_niced": 1.99,
    "cores_by_bucket": {
-    "other": 1.43,
+    "other": 1.85,
+    "boards": 1.0,
     "klines_append": 0.99,
-    "boards": 4.33,
-    "live_helpers": 0.97
+    "klines_vault": 0.01
    },
    "cores_by_bucket_niced": {
-    "klines_vault": 1.97
+    "klines_vault": 1.99
    }
   },
   "s2": {
-   "improved": 2,
-   "improved_per_hour": 2.0,
-   "published_n": 2,
+   "improved": 0,
+   "improved_per_hour": 0.0,
+   "published_n": 0,
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "CHRUSDT_LONG"
+    "AMD_LONG",
+    "DOTUSDT_LONG"
    ],
-   "mem_avail_mb": 13828,
-   "load1": 6.51,
+   "mem_avail_mb": 17038,
+   "load1": 7.2,
    "nproc": 16,
    "slots": null,
-   "binding_reason": "CPU budget: median board 7669 core-s, 16 cores minus 3.1 competing non-board cores ({'other': 0.94, 'boards': 2.9, 'live_helpers': 2.12}) = 12.9 usable -> host ceiling 6.1 boards/h. Move nice-0 non-board work off the host and/or cut core-s per board.",
+   "binding_reason": "CPU budget: median board 7669 core-s, 16 cores minus 1.7 competing non-board cores ({'other': 0.44, 'boards': 3.22, 'live_helpers': 1.27}) = 14.3 usable -> host ceiling 6.7 boards/h. Move nice-0 non-board work off the host and/or cut core-s per board.",
    "error": null,
-   "published": [
-    {
-     "symside": "ALTUSDT_LONG",
-     "at": "2026-10-29T01:35:54Z",
-     "baseline": 49.09064865040147,
-     "final": 49.32185742892349,
-     "state": "improved"
-    },
-    {
-     "symside": "EDUUSDT_LONG",
-     "at": "2026-10-29T01:39:14Z",
-     "baseline": 28.67128242223901,
-     "final": 40.95238059145418,
-     "state": "improved"
-    }
-   ],
+   "published": [],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 32.0,
+   "minutes_since_last_improved": 91.5,
    "last_improved_symside": "EDUUSDT_LONG",
    "cadence_ok": false,
    "improved_gap_min_median_24h": 35.6,
@@ -82,17 +68,15 @@
    "improved_finishes_24h": 16,
    "board_cpu_s_median_24h": 7669.2,
    "board_wall_s_median_24h": 2797.5673789978027,
-   "board_cores": 2.9,
-   "nonboard_cores_competing": 3.06,
-   "nonboard_cores_niced": 0.53,
+   "board_cores": 3.22,
+   "nonboard_cores_competing": 1.71,
+   "nonboard_cores_niced": 0,
    "cores_by_bucket": {
-    "other": 0.94,
-    "boards": 2.9,
-    "live_helpers": 2.12
+    "other": 0.44,
+    "boards": 3.22,
+    "live_helpers": 1.27
    },
-   "cores_by_bucket_niced": {
-    "other": 0.53
-   }
+   "cores_by_bucket_niced": {}
   }
  },
  "under_target": [
@@ -100,6 +84,7 @@
   "s2"
  ],
  "cadence_breach": [
+  "s1",
   "s2"
  ]
 }

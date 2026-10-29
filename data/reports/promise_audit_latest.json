@@ -1,11 +1,11 @@
 {
- "generated_utc": "2026-10-29T02:12:30.282827+00:00",
+ "generated_utc": "2026-10-29T03:12:22.146850+00:00",
  "days": 1.0,
  "totals": {
   "entry_promises": 91,
   "entry_broken_no_delivery": 91,
-  "exit_promises": 118,
-  "exit_broken_no_delivery": 116,
+  "exit_promises": 119,
+  "exit_broken_no_delivery": 117,
   "exit_skipped_inflight": 1522,
   "exit_kept_in_bar": 1,
   "exit_kept_late": 1
@@ -14,8 +14,8 @@
   "inf:PENGUUSDC_LONG": {
    "entry_promises": 4,
    "entry_broken_no_delivery": 4,
-   "exit_promises": 3,
-   "exit_broken_no_delivery": 2,
+   "exit_promises": 4,
+   "exit_broken_no_delivery": 3,
    "exit_skipped_inflight": 122,
    "exit_kept_in_bar": 1
   },
@@ -2407,6 +2407,16 @@
    "late_min": null,
    "action": "OPEN",
    "reason": "TIER1_PRICE_CROSS_REENTRY_exit3.5152_cur3.5190_k3m8",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "PENGUUSDC_LONG",
+   "kind": "exit",
+   "bar": "10-29 02:00",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "FIXED_STOP",
    "outcome": "NO_DELIVERY"
   }
  ],
