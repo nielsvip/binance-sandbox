@@ -1,40 +1,147 @@
 {
- "at": "2026-10-29T07:26:04Z",
+ "at": "2026-10-29T08:26:02Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
  "hosts": {
   "s1": {
-   "published_n": 0,
-   "per_hour": 0.0,
+   "published_n": 2,
+   "per_hour": 1.0,
    "improved_vs_best_start": 0,
    "mean_uplift_vs_best_start": null,
    "median_uplift": null,
    "chained_from_previous_published": 0,
-   "no_floor_recorded": 0,
+   "no_floor_recorded": 2,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 0.0/h < 12.0/h (one per 5 min)"
+    "throughput 1.0/h < 12.0/h (one per 5 min)"
    ],
-   "rows": [],
-   "error": "mm_receive_fd: recvmsg: expected received 1 got 0\nproxy dialer did not pass back a connection\n"
+   "rows": [
+    {
+     "symside": "EIGENUSDT_SHORT",
+     "published_at": 1793261415.675797,
+     "final_gain": 40.66708794010863,
+     "best_start_gain": null,
+     "best_start_chosen": null,
+     "best_start_candidates": null,
+     "baseline_gain": 3.631326283062075,
+     "npz_ts_last": 1793257200.0,
+     "npz_md5": "a9e30c602329bd9c5cf2a5df537a52ba",
+     "npz_bars": 32761,
+     "bh": 5.604714318107336,
+     "verdict": null,
+     "npz_age_h_at_publish": 1.17
+    },
+    {
+     "symside": "ETHUSDC_SHORT",
+     "published_at": 1793258091.377226,
+     "final_gain": 18.932601384905805,
+     "best_start_gain": null,
+     "best_start_chosen": null,
+     "best_start_candidates": null,
+     "baseline_gain": 13.391075810689749,
+     "npz_ts_last": 1793253600.0,
+     "npz_md5": "b48ca7616ddddc5f375961a87df21120",
+     "npz_bars": 98743,
+     "bh": 10.705455949955885,
+     "verdict": null,
+     "npz_age_h_at_publish": 1.25
+    }
+   ],
+   "error": null
   },
   "s2": {
-   "published_n": 0,
-   "per_hour": 0.0,
+   "published_n": 5,
+   "per_hour": 2.5,
    "improved_vs_best_start": 0,
    "mean_uplift_vs_best_start": null,
    "median_uplift": null,
    "chained_from_previous_published": 0,
-   "no_floor_recorded": 0,
+   "no_floor_recorded": 5,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 0.0/h < 12.0/h (one per 5 min)"
+    "throughput 2.5/h < 12.0/h (one per 5 min)"
    ],
-   "rows": [],
-   "error": "Connection closed by UNKNOWN port 65535\n"
+   "rows": [
+    {
+     "symside": "BTCDOMUSDT_LONG",
+     "published_at": 1793262171.77922,
+     "final_gain": 14.506944807260439,
+     "best_start_gain": null,
+     "best_start_chosen": null,
+     "best_start_candidates": null,
+     "baseline_gain": 4.74387855494816,
+     "npz_ts_last": 1793257200.0,
+     "npz_md5": "499eca38a8a8fad1363a28b771471500",
+     "npz_bars": 187788,
+     "bh": 7.644700388810222,
+     "verdict": null,
+     "npz_age_h_at_publish": 1.38
+    },
+    {
+     "symside": "GRAMUSDT_LONG",
+     "published_at": 1793256527.6115394,
+     "final_gain": 28.492523156775963,
+     "best_start_gain": null,
+     "best_start_chosen": null,
+     "best_start_candidates": null,
+     "baseline_gain": -8.426346183425014,
+     "npz_ts_last": 1793251800.0,
+     "npz_md5": "731b7129a1219983f215d5244dc84d9d",
+     "npz_bars": 11415,
+     "bh": -7.009018211804384,
+     "verdict": null,
+     "npz_age_h_at_publish": 1.31
+    },
+    {
+     "symside": "HYPEUSDT_LONG",
+     "published_at": 1793257528.1846848,
+     "final_gain": 19.780519625331046,
+     "best_start_gain": null,
+     "best_start_chosen": null,
+     "best_start_candidates": null,
+     "baseline_gain": 2.6538404171139933,
+     "npz_ts_last": 1793254500.0,
+     "npz_md5": "6213ef9f2c5e1389e2f5cf2d7d654e96",
+     "npz_bars": 43604,
+     "bh": -15.836378340744076,
+     "verdict": null,
+     "npz_age_h_at_publish": 0.84
+    },
+    {
+     "symside": "PENGUUSDC_LONG",
+     "published_at": 1793256642.0325236,
+     "final_gain": 6.409845592649456,
+     "best_start_gain": null,
+     "best_start_chosen": null,
+     "best_start_candidates": null,
+     "baseline_gain": 5.694060405731063,
+     "npz_ts_last": 1793254500.0,
+     "npz_md5": "e23e8b06a17275cd69fed18eeea8e444",
+     "npz_bars": 43611,
+     "bh": -13.143300551108291,
+     "verdict": null,
+     "npz_age_h_at_publish": 0.6
+    },
+    {
+     "symside": "XMRUSDT_LONG",
+     "published_at": 1793255608.7678797,
+     "final_gain": 1.864332152026396,
+     "best_start_gain": null,
+     "best_start_chosen": null,
+     "best_start_candidates": null,
+     "baseline_gain": 1.3248359428587895,
+     "npz_ts_last": 1793249100.0,
+     "npz_md5": "c1004892ab3bfe917cf5a05865f2e654",
+     "npz_bars": 43604,
+     "bh": 8.015463812451602,
+     "verdict": null,
+     "npz_age_h_at_publish": 1.81
+    }
+   ],
+   "error": null
   }
  },
  "hosts_failing": [
