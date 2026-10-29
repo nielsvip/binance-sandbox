@@ -1,5 +1,5 @@
 {
-  "ts": "2026-10-29T10:10:05.200272+00:00",
+  "ts": "2026-10-29T10:15:04.164737+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 6,
@@ -7,7 +7,7 @@
   "hosts": {
     "s1": {
       "published_last_60m": 1,
-      "published_last_3h": 3,
+      "published_last_3h": 2,
       "boards": {
         "1000BONKUSDC_SHORT": 6,
         "FLUXUSDT_LONG": 7
@@ -15,9 +15,9 @@
       "boards_running": 2,
       "workers": 13,
       "workers_vs_law_28": "13/28",
-      "mem_avail_mb": 11663,
+      "mem_avail_mb": 11229,
       "disk_free_gb": 25,
-      "load1": 15.4,
+      "load1": 13.4,
       "dispatch_idle_why": "full 2/2",
       "published_ss": [
         "SOLUSDC_LONG"
@@ -34,9 +34,9 @@
       "boards_running": 3,
       "workers": 21,
       "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 10351,
+      "mem_avail_mb": 9562,
       "disk_free_gb": 39,
-      "load1": 22.8,
+      "load1": 21.1,
       "dispatch_idle_why": "full 3/3",
       "published_ss": [
         "NEARUSDC_LONG",
@@ -55,7 +55,7 @@
       "boards_running": 4,
       "workers": 28,
       "workers_vs_law_28": "28/28",
-      "mem_avail_mb": 7188,
+      "mem_avail_mb": 6182,
       "disk_free_gb": 36,
       "load1": 21.9,
       "dispatch_idle_why": "full 4/4",
@@ -68,17 +68,16 @@
       "published_last_3h": 10,
       "boards": {
         "PENDLEUSDT_LONG": 7,
-        "SPXUSDT_LONG": 0,
         "STRKUSDT_SHORT": 7,
         "UNIUSDC_LONG": 7
       },
-      "boards_running": 4,
+      "boards_running": 3,
       "workers": 21,
       "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 15810,
+      "mem_avail_mb": 16535,
       "disk_free_gb": 41,
-      "load1": 19.5,
-      "dispatch_idle_why": "full 4/4",
+      "load1": 14.7,
+      "dispatch_idle_why": null,
       "published_ss": [
         "PARTIUSDT_SHORT",
         "ZENUSDT_LONG"
