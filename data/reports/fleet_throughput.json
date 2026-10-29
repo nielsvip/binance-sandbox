@@ -1,24 +1,23 @@
 {
-  "ts": "2026-10-29T16:25:47.293437+00:00",
+  "ts": "2026-10-29T16:35:34.664684+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 0,
-  "pending_sym_sides": 56,
+  "pending_sym_sides": 49,
   "hosts": {
     "s1": {
       "published_last_60m": 0,
       "published_last_3h": 0,
       "boards": {
-        "1000BONKUSDC_SHORT": 6,
-        "LTCUSDC_SHORT": 7
+        "ADAUSDC_SHORT": 7
       },
-      "boards_running": 2,
-      "workers": 13,
-      "workers_vs_law_28": "13/28",
-      "mem_avail_mb": 11663,
-      "disk_free_gb": 21,
-      "load1": 9.0,
-      "dispatch_idle_why": "full 2/2",
+      "boards_running": 1,
+      "workers": 7,
+      "workers_vs_law_28": "7/28",
+      "mem_avail_mb": 15212,
+      "disk_free_gb": 15,
+      "load1": 11.8,
+      "dispatch_idle_why": "own venue work waits for memory (15612MB)",
       "published_ss": []
     },
     "s2": {
@@ -32,8 +31,8 @@
     }
   },
   "alerts": [
-    "LOW_THROUGHPUT:s1:0/h<10 (idle_why=full 2/2)",
-    "DISK_FLOOR:s1:21GB<40",
+    "LOW_THROUGHPUT:s1:0/h<10 (idle_why=own venue work waits for memory (15612MB))",
+    "DISK_FLOOR:s1:15GB<40",
     "UNREACHABLE:s2",
     "UNREACHABLE:s5",
     "UNREACHABLE:s6"
