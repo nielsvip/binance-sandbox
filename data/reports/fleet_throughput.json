@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-29T04:55:04.606028+00:00",
+  "ts": "2026-10-29T05:00:07.239126+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 10,
-  "pending_sym_sides": 43,
+  "pending_sym_sides": 42,
   "hosts": {
     "s1": {
       "published_last_60m": 1,
@@ -15,9 +15,9 @@
       "boards_running": 2,
       "workers": 13,
       "workers_vs_law_28": "13/28",
-      "mem_avail_mb": 10375,
+      "mem_avail_mb": 9291,
       "disk_free_gb": 28,
-      "load1": 15.2,
+      "load1": 16.4,
       "dispatch_idle_why": "full 2/2",
       "published_ss": [
         "MASKUSDT_SHORT"
@@ -27,15 +27,16 @@
       "published_last_60m": 1,
       "published_last_3h": 1,
       "boards": {
-        "BANDUSDT_LONG": 7
+        "BANDUSDT_LONG": 7,
+        "PENGUUSDC_LONG": 7
       },
-      "boards_running": 1,
-      "workers": 7,
-      "workers_vs_law_28": "7/28",
-      "mem_avail_mb": 13298,
-      "disk_free_gb": 39,
-      "load1": 11.0,
-      "dispatch_idle_why": "own venue work waits for memory (9989MB)",
+      "boards_running": 2,
+      "workers": 14,
+      "workers_vs_law_28": "14/28",
+      "mem_avail_mb": 9976,
+      "disk_free_gb": 41,
+      "load1": 12.4,
+      "dispatch_idle_why": "mem 9744MB < 8500+5500 owed by 1 ramping",
       "published_ss": [
         "KASUSDT_LONG"
       ]
@@ -52,9 +53,9 @@
       "boards_running": 4,
       "workers": 28,
       "workers_vs_law_28": "28/28",
-      "mem_avail_mb": 5521,
+      "mem_avail_mb": 4762,
       "disk_free_gb": 39,
-      "load1": 20.2,
+      "load1": 12.0,
       "dispatch_idle_why": "full 4/4",
       "published_ss": [
         "SKYAIUSDT_SHORT",
@@ -64,36 +65,35 @@
     },
     "s6": {
       "published_last_60m": 5,
-      "published_last_3h": 13,
+      "published_last_3h": 15,
       "boards": {
-        "ATOMUSDT_SHORT": 7,
-        "LINKUSDC_SHORT": 7,
+        "ATOMUSDT_SHORT": 0,
+        "LINKUSDC_SHORT": 0,
         "XLMUSDT_SHORT": 7
       },
       "boards_running": 3,
-      "workers": 21,
-      "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 8653,
+      "workers": 7,
+      "workers_vs_law_28": "7/28",
+      "mem_avail_mb": 13675,
       "disk_free_gb": 44,
-      "load1": 13.8,
-      "dispatch_idle_why": "no pending work anywhere (or none that fits memory)",
+      "load1": 6.1,
+      "dispatch_idle_why": "mem 7988MB < 8500",
       "published_ss": [
         "ADAUSDC_SHORT",
+        "ATOMUSDT_SHORT",
         "BCHUSDC_SHORT",
-        "BOMEUSDC_SHORT",
         "EGLDUSDT_SHORT",
-        "ONEUSDT_SHORT"
+        "LINKUSDC_SHORT"
       ]
     }
   },
   "alerts": [
     "LOW_THROUGHPUT:s1:1/h<10 (idle_why=full 2/2)",
     "DISK_FLOOR:s1:28GB<40",
-    "LOW_THROUGHPUT:s2:1/h<10 (idle_why=own venue work waits for memory (9989MB))",
-    "DISK_FLOOR:s2:39GB<40",
+    "LOW_THROUGHPUT:s2:1/h<10 (idle_why=mem 9744MB < 8500+5500 owed by 1 ramping)",
     "LOW_THROUGHPUT:s5:3/h<10 (idle_why=full 4/4)",
     "DISK_FLOOR:s5:39GB<40",
-    "LOW_THROUGHPUT:s6:5/h<10 (idle_why=no pending work anywhere (or none that fits memory))"
+    "LOW_THROUGHPUT:s6:5/h<10 (idle_why=mem 7988MB < 8500)"
   ],
   "repair": null
 }
