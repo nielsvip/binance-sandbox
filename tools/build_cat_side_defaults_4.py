@@ -221,13 +221,15 @@ def main():
             for k in _s2:
                 kept[k] = False
             print(f"[{cs}] P0-ABLATION-STOCKS2: pinned False: {_s2}")
-        _fossil = {"MOM3_FILTER_TF": ("CRYPTO_SHORT", "STOCKS_SHORT"), "VIGILANCE_GUARD_ENABLED": ("CRYPTO_SHORT",), "WT_CROSSUNDER_FINAL_ENABLED": ("STOCKS_SHORT",)}
-        for _k, _sides in _fossil.items():
-            if cs in _sides and _k in live_vals:
-                kept[_k] = live_vals[_k]
-                conflicts[:] = [c for c in conflicts if c != _k]
-                data["_meta"].setdefault("config_wins_exceptions", {}).setdefault(cs, []).append(_k)
-                print(f"[{cs}] P0-FOSSIL: pinned {_k}={live_vals[_k]!r} to live truth (SHORT-entry killers 2026-10-04) — STANDING EXCEPTION to the template-only-authority law, kept because the bold was measured to kill SHORT entries; needs an operator ruling, not a silent removal")
+        # OPERATOR RULING 2026-10-29 ("v12_quick_engine.py just like any config or live trading script needs to accept absolute
+        # authority from TEMPLATE_* values unless there is no switch there for the cat_side"): the 2026-10-04 P0-FOSSIL pins
+        # (MOM3_FILTER_TF CRYPTO_SHORT/STOCKS_SHORT, VIGILANCE_GUARD_ENABLED CRYPTO_SHORT, WT_CROSSUNDER_FINAL_ENABLED STOCKS_SHORT)
+        # that kept the live value over the template bold are RETIRED. The bold is the default; a wanted value is changed IN THE SHEET.
+        _fossil_retired = {"MOM3_FILTER_TF": ("CRYPTO_SHORT", "STOCKS_SHORT"), "VIGILANCE_GUARD_ENABLED": ("CRYPTO_SHORT",), "WT_CROSSUNDER_FINAL_ENABLED": ("STOCKS_SHORT",)}
+        for _k, _sides in _fossil_retired.items():
+            if cs in _sides and _k in live_vals and _k in kept and str(kept[_k]) != str(live_vals[_k]):
+                data["_meta"].setdefault("fossil_pins_retired_20261029", {}).setdefault(cs, []).append({"key": _k, "bold": kept[_k], "live_was": live_vals[_k]})
+                print(f"[{cs}] FOSSIL-RETIRED (operator ruling 2026-10-29): {_k} follows the template bold {kept[_k]!r} (live config carried {live_vals[_k]!r})")
         if STAGE_ONLY and CSD.PATH.exists():
             # USER-SAFETY 2026-09-30: live hot-reloads this file. --stage-only keeps every value that is ALREADY in the file (live
             # behaviour unchanged) and only adds the missing keys (= current config values). Promotions stay staged in the templates.
