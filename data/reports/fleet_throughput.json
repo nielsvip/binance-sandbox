@@ -1,5 +1,5 @@
 {
-  "ts": "2026-10-29T04:35:09.836394+00:00",
+  "ts": "2026-10-29T04:40:11.479940+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 9,
@@ -15,9 +15,9 @@
       "boards_running": 2,
       "workers": 13,
       "workers_vs_law_28": "13/28",
-      "mem_avail_mb": 10519,
+      "mem_avail_mb": 9925,
       "disk_free_gb": 28,
-      "load1": 16.1,
+      "load1": 14.8,
       "dispatch_idle_why": "full 2/2",
       "published_ss": [
         "MASKUSDT_SHORT"
@@ -25,7 +25,7 @@
     },
     "s2": {
       "published_last_60m": 0,
-      "published_last_3h": 2,
+      "published_last_3h": 0,
       "boards": {
         "BANDUSDT_LONG": 7,
         "KASUSDT_LONG": 7,
@@ -34,9 +34,9 @@
       "boards_running": 3,
       "workers": 21,
       "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 6615,
+      "mem_avail_mb": 5184,
       "disk_free_gb": 41,
-      "load1": 26.3,
+      "load1": 25.7,
       "dispatch_idle_why": "full 3/3",
       "published_ss": []
     },
@@ -47,14 +47,14 @@
         "1000FLOKIUSDT_SHORT": 7,
         "1INCHUSDT_SHORT": 7,
         "AAVEUSDC_SHORT": 7,
-        "ZKUSDT_SHORT": 0
+        "ZKUSDT_SHORT": 7
       },
       "boards_running": 4,
-      "workers": 21,
-      "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 16675,
+      "workers": 28,
+      "workers_vs_law_28": "28/28",
+      "mem_avail_mb": 12011,
       "disk_free_gb": 39,
-      "load1": 18.8,
+      "load1": 21.3,
       "dispatch_idle_why": "full 4/4",
       "published_ss": [
         "SKYAIUSDT_SHORT",
@@ -75,9 +75,9 @@
       "boards_running": 4,
       "workers": 28,
       "workers_vs_law_28": "28/28",
-      "mem_avail_mb": 8946,
+      "mem_avail_mb": 8213,
       "disk_free_gb": 44,
-      "load1": 25.7,
+      "load1": 23.7,
       "dispatch_idle_why": "full 4/4",
       "published_ss": [
         "BCHUSDC_SHORT",
