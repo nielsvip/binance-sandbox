@@ -1,8 +1,8 @@
 {
-  "ts": "2026-10-29T04:45:14.346011+00:00",
+  "ts": "2026-10-29T04:50:06.461458+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 8,
+  "fleet_published_last_60m": 9,
   "pending_sym_sides": 42,
   "hosts": {
     "s1": {
@@ -15,9 +15,9 @@
       "boards_running": 2,
       "workers": 13,
       "workers_vs_law_28": "13/28",
-      "mem_avail_mb": 9770,
+      "mem_avail_mb": 9989,
       "disk_free_gb": 28,
-      "load1": 17.5,
+      "load1": 16.3,
       "dispatch_idle_why": "full 2/2",
       "published_ss": [
         "MASKUSDT_SHORT"
@@ -34,9 +34,9 @@
       "boards_running": 3,
       "workers": 21,
       "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 4933,
+      "mem_avail_mb": 4699,
       "disk_free_gb": 40,
-      "load1": 19.0,
+      "load1": 16.0,
       "dispatch_idle_why": "full 3/3",
       "published_ss": []
     },
@@ -52,9 +52,9 @@
       "boards_running": 4,
       "workers": 28,
       "workers_vs_law_28": "28/28",
-      "mem_avail_mb": 11747,
+      "mem_avail_mb": 8439,
       "disk_free_gb": 39,
-      "load1": 20.7,
+      "load1": 26.5,
       "dispatch_idle_why": "full 4/4",
       "published_ss": [
         "SKYAIUSDT_SHORT",
@@ -63,22 +63,22 @@
       ]
     },
     "s6": {
-      "published_last_60m": 4,
-      "published_last_3h": 12,
+      "published_last_60m": 5,
+      "published_last_3h": 13,
       "boards": {
-        "ADAUSDC_SHORT": 7,
         "ATOMUSDT_SHORT": 7,
         "LINKUSDC_SHORT": 7,
         "XLMUSDT_SHORT": 7
       },
-      "boards_running": 4,
-      "workers": 28,
-      "workers_vs_law_28": "28/28",
-      "mem_avail_mb": 5468,
+      "boards_running": 3,
+      "workers": 21,
+      "workers_vs_law_28": "21/28",
+      "mem_avail_mb": 9843,
       "disk_free_gb": 44,
-      "load1": 19.8,
+      "load1": 18.0,
       "dispatch_idle_why": "full 4/4",
       "published_ss": [
+        "ADAUSDC_SHORT",
         "BCHUSDC_SHORT",
         "BOMEUSDC_SHORT",
         "EGLDUSDT_SHORT",
@@ -92,7 +92,7 @@
     "LOW_THROUGHPUT:s2:0/h<10 (idle_why=full 3/3)",
     "LOW_THROUGHPUT:s5:3/h<10 (idle_why=full 4/4)",
     "DISK_FLOOR:s5:39GB<40",
-    "LOW_THROUGHPUT:s6:4/h<10 (idle_why=full 4/4)"
+    "LOW_THROUGHPUT:s6:5/h<10 (idle_why=full 4/4)"
   ],
   "repair": null
 }
