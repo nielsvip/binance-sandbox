@@ -51,48 +51,64 @@ BOARD_TIMEOUT_S = int(os.environ.get("TRC7D_BOARD_TIMEOUT_S", "2400"))
 DEADLINE_S = int(os.environ.get("TRC7D_DEADLINE_S", str(3 * 3600)))
 HOLD_WHY ="TRC7D pass: 30D paused until every tradeable stock key has its 7D set"
 STOP_PIDS = "/tmp/v15_trc7d_stopped.pids"
+# USER 2026-10-29 "suspend the 30D boards to disk": no swap anywhere and every disk is under the 40 GB floor, so the disk image
+# is the board's own per-row progress checkpoint. Same preemption fleet_mem_valve uses: SIGTERM the board PARENT (the pilot
+# saves at the next cell boundary and exits; its fork pool goes with it), book "restarted" in the dispatcher's launch record
+# (no death, no host quarantine), and on resume the dispatcher relaunches it first (data/fleet_priority.json) from its progress.
 PAUSE_SCRIPT = r"""
-import os, signal
-mine = []
+import json, os, signal, time
+ps = {}
 for pid in os.listdir('/proc'):
     if not pid.isdigit():
         continue
     try:
         args = open(f'/proc/{pid}/cmdline', 'rb').read().split(b'\0')
-    except OSError:
+        if not any(a.endswith(b'v15_pilot.py') for a in args[:3]) or b'--sym-side' not in args:
+            continue
+        if b'--window-days' in args and args[args.index(b'--window-days') + 1] == b'7':
+            continue
+        ppid = int(open(f'/proc/{pid}/stat').read().rsplit(')', 1)[1].split()[1])
+        ps[int(pid)] = (ppid, args[args.index(b'--sym-side') + 1].decode())
+    except (OSError, ValueError, IndexError):
         continue
-    if not any(a.endswith(b'v15_pilot.py') for a in args) or b'--sym-side' not in args:
-        continue
-    if b'--window-days' in args and args[args.index(b'--window-days') + 1] == b'7':
-        continue
+tops = {pid: ss for pid, (ppid, ss) in ps.items() if ppid not in ps}
+for pid, ss in tops.items():
+    path = os.path.expanduser(f'~/fleet_dispatch/launches/{ss}.json')
     try:
-        os.kill(int(pid), signal.SIGSTOP)
-        mine.append(pid)
-    except OSError:
+        rec = json.load(open(path))
+        rec['restarted'] = int(time.time())
+        rec['restarted_by'] = 'trc7d_preempt'
+        json.dump(rec, open(path + '.trc7d_tmp', 'w'))
+        os.replace(path + '.trc7d_tmp', path)
+    except (OSError, ValueError):
         pass
-open('/tmp/v15_trc7d_stopped.pids', 'a').write(''.join(p + '\n' for p in mine))
+    for sig in (signal.SIGTERM, signal.SIGCONT):  # SIGCONT: a board still frozen by the earlier SIGSTOP pause
+        try:
+            os.kill(pid, sig)
+        except OSError:
+            pass
+for pid, (ppid, ss) in ps.items():
+    if pid not in tops:
+        try:
+            os.kill(pid, signal.SIGCONT)
+        except OSError:
+            pass
+open('/tmp/v15_trc7d_preempted.txt', 'a').write(''.join(ss + '\n' for ss in tops.values()))
 open('/tmp/v15_preopen_7d.pause', 'a').close()
-print(len(mine))
+print(json.dumps(sorted(tops.values())))
 """
 RESUME_SCRIPT = r"""
-import os, signal
-n = 0
+import os
 try:
-    pids = set(open('/tmp/v15_trc7d_stopped.pids').read().split())
+    sides = sorted(set(open('/tmp/v15_trc7d_preempted.txt').read().split()))
 except OSError:
-    pids = set()
-for pid in pids:
-    try:
-        os.kill(int(pid), signal.SIGCONT)
-        n += 1
-    except OSError:
-        pass
-for path in ('/tmp/v15_trc7d_stopped.pids', '/tmp/v15_preopen_7d.pause'):
+    sides = []
+for path in ('/tmp/v15_trc7d_preempted.txt', '/tmp/v15_trc7d_stopped.pids', '/tmp/v15_preopen_7d.pause'):
     try:
         os.remove(path)
     except OSError:
         pass
-print(n)
+print(' '.join(sides))
 """
 PROBE_SCRIPT = r"""
 import json, os, re
@@ -168,6 +184,21 @@ def hold(on: bool):
     return {ip: pyrun(ip, code, timeout=30)[1].strip() for ip in LEADERS}
 
 
+def prioritize(sides):
+    """The preempted 30D boards go first when the dispatcher resumes (its own expiring priority file, merged)."""
+    until = time.time() + 6 * 3600
+    code = (
+        "import json,time,pathlib\n"
+        "p=pathlib.Path.home()/'binance-sandbox/data/fleet_priority.json'\n"
+        "try: d=json.loads(p.read_text()) or {}\n"
+        "except Exception: d={}\n"
+        "old=d.get('sym_sides') or [] if float(d.get('until') or 0)>time.time() else []\n"
+        f"d={{'sym_sides':sorted(set(old)|set({sides!r})),'until':max(float(d.get('until') or 0),{until}),"
+        "'why':'TRC7D: 30D boards preempted for the 7D pass resume first'}\n"
+        "t=p.with_suffix('.trc7d.tmp'); t.write_text(json.dumps(d)); t.replace(p); print(len(d['sym_sides']))\n")
+    return {ip: pyrun(ip, code, timeout=30)[1].strip() for ip in LEADERS}
+
+
 def ship_npz(ip, symbol):
     """S5's NPZ to the target, md5-verified, never regressing the target's tail."""
     if ip == "local":
@@ -208,8 +239,8 @@ def launch(name, ip, ss, day, mode):
     return out.strip() or f"rc={rc} {err[-120:]}"
 
 
-def result_of(ip, ss, day):
-    base = f"~/binance-sandbox/data/preopen_7d/trc_run/{day}/results/{ss}"
+def result_of(ip, ss, day, folder=None):
+    base = f"~/binance-sandbox/data/preopen_7d/trc_run/{day}/results/{folder or ss}"
     rc, out, _ = sh(ip, f"test -s {base}/launcher.json && tail -n 1 {base}/launcher.json", 20)
     if rc or not out.strip():
         return None
@@ -227,14 +258,19 @@ def result_of(ip, ss, day):
             progress = json.loads(out.strip().splitlines()[-1])
         except ValueError:
             progress = None
-    return {"launcher": launcher, "progress": progress}
+    rc, out, _ = sh(ip, f"grep -c 'REDO scheduled' {base}/pilot.log", 20)
+    redo = out.strip().isdigit() and int(out.strip()) > 0
+    return {"launcher": launcher, "progress": progress, "redo": redo}
 
 
 def stage(ss, res, day):
     """-> (staged, why). Writes the trc 7D row; never touches the 30D store."""
     prog = res.get("progress") or {}
     cum = prog.get("cumulative_overrides")
-    if prog.get("window_days") != 7 or not prog.get("result_done_utc") or not isinstance(cum, dict) or not cum:
+    # USER 2026-10-29 (option 1): a board that ended in the pilot's [REDO] (its compliance repair changed the set, rows not
+    # refilled) is staged with its pre-repair set — the greedy chain it measured — instead of being relaunched
+    redo = bool(res.get("redo")) and not prog.get("result_done_utc")
+    if prog.get("window_days") != 7 or not (prog.get("result_done_utc") or redo) or not isinstance(cum, dict) or not cum:
         return False, f"no finished 7D set ({(res.get('launcher') or {}).get('why')})"
     src = sqlite3.connect(f"file:{SRC_DB}?mode=ro", uri=True, timeout=10)
     src.row_factory = sqlite3.Row
@@ -248,6 +284,8 @@ def stage(ss, res, day):
     launcher = res.get("launcher") or {}
     quality = "QUALIFIED" if launcher.get("valid") else "DIAGNOSTIC_ONLY"
     why = None if launcher.get("valid") else (launcher.get("why") or "pilot qualification gate")
+    if redo:
+        why = "REDO: pre-repair set (pilot compliance repair changed it; rows not refilled)"
     con = sqlite3.connect(TRC_DB, timeout=10)
     con.execute(f"CREATE TABLE IF NOT EXISTS per_sym_active ({', '.join(cols)})")
     con.execute("CREATE TABLE IF NOT EXISTS trc7d_provenance (sym_side TEXT, run_day TEXT, staged_utc TEXT, quality TEXT, why TEXT,"
@@ -332,18 +370,21 @@ def tick(state, day_dir):
                  summary={k: v for k, v in (res.get("progress") or {}).items() if k != "cumulative_overrides"})
         ok, why = stage(ss, res, day)
         p.update(staged=ok, quality=why if ok else None, stage_why=None if ok else why)
-        if not ok and "has not completed" in why and p.get("attempt", 1) < 2:
-            # the pilot's [REDO] (compliance repair changed the set -> rows must be refilled): the herd would relaunch it
-            # into a fresh fill; this isolated lane does the same once. attempt 1 is kept beside it for audit.
-            base = f"~/binance-sandbox/data/preopen_7d/trc_run/{day}/results"
-            sh(ip, f"rm -rf {base}/{ss}.attempt1 && mv {base}/{ss} {base}/{ss}.attempt1", 30)
-            state["placements"][ss] = {"rank": p["rank"], "status": "pending", "attempt": 2, "attempt1": {
-                "host": p["host"], "wall_min": round((now - p["started"]) / 60, 1), "why": why}}
-            print(f"[{now_iso()}] {ss} REDO -> relaunch (attempt 2)", flush=True)
-            continue
         if ok and not state.get("first_staged_utc"):
             state["first_staged_utc"] = now_iso()
         print(f"[{now_iso()}] {ss} on {p['host']} {round((now - p['started']) / 60, 1)} min staged={ok} {why}", flush=True)
+    for ss, p in state["placements"].items():
+        retry_a1 = p["status"] == "done" and not p.get("staged") and not p.get("a1_tried")
+        if p.get("attempt") == 2 and p.get("attempt1") and (p["status"] == "pending" or retry_a1):
+            p["a1_tried"] = True
+            ip = HOSTS[p["attempt1"]["host"]][0]
+            res = result_of(ip, ss, day, folder=f"{ss}.attempt1")
+            if res is None or (retry_a1 and not res.get("redo")):
+                continue
+            ok, why = stage(ss, res, day)
+            p.update(status="done", host=p["attempt1"]["host"], staged=ok, quality=why if ok else None, stage_why=None if ok else why,
+                     started=now - 60 * float(p["attempt1"].get("wall_min") or 0), finished=now, from_attempt1=True)
+            print(f"[{now_iso()}] {ss} staged from attempt 1 (REDO pre-repair) staged={ok} {why}", flush=True)
     order = sorted((ss for ss, p in state["placements"].items() if p["status"] == "pending"), key=lambda s: state["placements"][s]["rank"])
     for name, (ip, slots) in HOSTS.items():
         pr = probes.get(name)
@@ -379,6 +420,8 @@ def tick(state, day_dir):
     if terminal and not state.get("complete_utc"):
         state["complete_utc"] = now_iso()
         state["resumed"] = {n: pyrun(ip, RESUME_SCRIPT, timeout=60)[1].strip() for n, (ip, _) in HOSTS.items()}
+        preempted = sorted({x for v in state["resumed"].values() for x in v.split()})
+        state["priority"] = prioritize(preempted)
         state["unhold"] = hold(False)
     atomic(day_dir / "timing.json", timing(state))
     atomic(day_dir / "state.json", state)
