@@ -1,32 +1,79 @@
 {
- "generated_at": "2026-10-29 08:19 UTC",
- "total_capital_usd": 15.02,
+ "generated_at": "2026-10-29 08:36 UTC",
+ "total_capital_usd": 67.21,
  "tier_capital": {
   "A": 0.0,
-  "B": 15.02,
-  "C": 0.0
+  "B": 52.31,
+  "C": 14.89
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 0
+  "B": 4,
+  "C": 1
  },
  "winners": [],
- "losers": [],
+ "losers": [
+  "flz:DOGEUSDC_LONG",
+  "flz:DASHUSDT_SHORT"
+ ],
  "mediocre": [
-  "inf:BNBUSDC_LONG"
+  "flz:BNBUSDC_LONG"
  ],
  "positions": [
   {
-   "pk": "inf:BNBUSDC_LONG",
+   "pk": "flz:BNBUSDC_LONG",
    "symbol": "BNBUSDC",
-   "account": "inf",
+   "account": "flz",
    "value_usd": 15.02,
-   "gain_pct": 0.252,
+   "gain_pct": 0.274,
    "tier": "B",
-   "perf_mult": 0.84,
+   "perf_mult": 0.89,
    "amt": 0.02,
-   "mark": 750.88
+   "mark": 750.95
+  },
+  {
+   "pk": "flz:HYPEUSDT_LONG",
+   "symbol": "HYPEUSDT",
+   "account": "flz",
+   "value_usd": 15.01,
+   "gain_pct": 0.428,
+   "tier": "B",
+   "perf_mult": 0.95,
+   "amt": 0.19,
+   "mark": 79.01980972
+  },
+  {
+   "pk": "flz:DASHUSDT_SHORT",
+   "symbol": "DASHUSDT",
+   "account": "flz",
+   "value_usd": 14.89,
+   "gain_pct": 0.623,
+   "tier": "C",
+   "perf_mult": 0.48,
+   "amt": 0.294,
+   "mark": 50.65232617
+  },
+  {
+   "pk": "flz:DOGEUSDC_LONG",
+   "symbol": "DOGEUSDC",
+   "account": "flz",
+   "value_usd": 14.77,
+   "gain_pct": -1.32,
+   "tier": "B",
+   "perf_mult": 2.15,
+   "amt": 190.0,
+   "mark": 0.07776
+  },
+  {
+   "pk": "flz:BNBUSDC_SHORT",
+   "symbol": "BNBUSDC",
+   "account": "flz",
+   "value_usd": 7.51,
+   "gain_pct": 0.689,
+   "tier": "B",
+   "perf_mult": 0.89,
+   "amt": 0.01,
+   "mark": 750.95
   }
  ]
 }
