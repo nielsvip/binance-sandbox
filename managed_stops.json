@@ -1,9 +1,23 @@
 {
-  "flz:HYPEUSDT_LONG": {
-    "orderId": "1000002649007126",
-    "stopPrice": 79.201,
-    "entry_sig": "2026-10-28 14:46:39.007000+00:00",
-    "symbol": "HYPEUSDT",
+  "fin:BEAMXUSDT_LONG": {
+    "orderId": "3000002279459117",
+    "stopPrice": 0.003294,
+    "entry_sig": "2026-10-27 22:56:06.010000+00:00",
+    "symbol": "BEAMXUSDT",
+    "side": "LONG"
+  },
+  "fin:NEARUSDC_LONG": {
+    "orderId": "3000002277450882",
+    "stopPrice": 4.358,
+    "entry_sig": "2026-10-27 04:37:46.017000+00:00",
+    "symbol": "NEARUSDC",
+    "side": "LONG"
+  },
+  "fin:PUMPUSDT_LONG": {
+    "orderId": "3000002281750318",
+    "stopPrice": 0.004138,
+    "entry_sig": "2026-10-28 20:15:29.480000+00:00",
+    "symbol": "PUMPUSDT",
     "side": "LONG"
   }
 }

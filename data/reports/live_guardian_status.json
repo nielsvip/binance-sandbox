@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-29T02:15:20Z",
+ "ts": "2026-10-29T02:20:37Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 89,
-   "open_positions": 7,
-   "unrealised_usd": -2.06,
+   "fills_6h": 84,
+   "open_positions": 6,
+   "unrealised_usd": -0.44,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 134,
+   "fills_6h": 132,
    "open_positions": 10,
-   "unrealised_usd": -11.33,
+   "unrealised_usd": -10.7,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 150,
-   "open_positions": 32,
-   "unrealised_usd": -9.22,
+   "fills_6h": 159,
+   "open_positions": 17,
+   "unrealised_usd": -1.43,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -75,12 +75,12 @@
    }
   },
   "inf": {
-   "fills_6h": 16,
-   "open_positions": 2,
-   "unrealised_usd": -0.11,
+   "fills_6h": 12,
+   "open_positions": 1,
+   "unrealised_usd": -0.08,
    "pos_mismatch": 0,
    "vec_parity": {
-    "live_vec_decisions": 8,
+    "live_vec_decisions": 9,
     "state_divergent": 1,
     "filled": 3,
     "refused_non_safety": 4,
@@ -91,9 +91,9 @@
    }
   },
   "flz": {
-   "fills_6h": 27,
+   "fills_6h": 20,
    "open_positions": 4,
-   "unrealised_usd": 0.25,
+   "unrealised_usd": 0.22,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,123 +127,117 @@
     "20266"
    ],
    "starts_30m": 1,
-   "log_age_s": 34.0
+   "log_age_s": 6.0
   },
   "men": {
    "pids": [
     "8520"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 2.0
   },
   "ang": {
    "pids": [
     "69273"
    ],
-   "starts_30m": 2,
-   "log_age_s": 5.0
+   "starts_30m": 1,
+   "log_age_s": 262.0
   },
   "inf": {
    "pids": [
     "89250"
    ],
-   "starts_30m": 1,
-   "log_age_s": 1.0
+   "starts_30m": 0,
+   "log_age_s": 3.0
   },
   "flz": {
    "pids": [
     "69489"
    ],
    "starts_30m": 1,
-   "log_age_s": 22.0
+   "log_age_s": 313.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 22989.0
+   "log_age_s": 23306.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 22458.0
+   "log_age_s": 22775.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-29T02:15:20Z",
-   "severity": "CRITICAL",
-   "kind": "RAPID_LOSS_KEY",
-   "key": "fin:INJUSDT_LONG",
-   "evidence": "unrealised -5.02% (60-min high -0.37%), amt 3.6"
-  },
-  {
-   "ts": "2026-10-29T02:15:20Z",
+   "ts": "2026-10-29T02:20:37Z",
    "severity": "CRITICAL",
    "kind": "RAPID_LOSS_KEY",
    "key": "fin:PUMPUSDT_LONG",
-   "evidence": "unrealised -5.34% (60-min high -0.52%), amt 3331"
+   "evidence": "unrealised -5.11% (60-min high -0.61%), amt 3331"
   },
   {
-   "ts": "2026-10-29T02:15:21Z",
-   "severity": "CRITICAL",
-   "kind": "RAPID_LOSS_KEY",
-   "key": "men:INJUSDT_LONG",
-   "evidence": "unrealised -4.88% (60-min high +0.08%), amt 3.6"
-  },
-  {
-   "ts": "2026-10-29T02:15:21Z",
+   "ts": "2026-10-29T02:20:37Z",
    "severity": "CRITICAL",
    "kind": "RAPID_LOSS_KEY",
    "key": "men:PUMPUSDT_LONG",
-   "evidence": "unrealised -6.89% (60-min high -2.41%), amt 3269"
+   "evidence": "unrealised -6.42% (60-min high -2.41%), amt 3269"
   },
   {
-   "ts": "2026-10-29T02:15:21Z",
-   "severity": "CRITICAL",
-   "kind": "RAPID_LOSS_KEY",
-   "key": "ang:INJUSDT_LONG",
-   "evidence": "unrealised -4.85% (60-min high -0.36%), amt 3.6"
-  },
-  {
-   "ts": "2026-10-29T02:15:22Z",
+   "ts": "2026-10-29T02:20:38Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "inf:PENGUUSDC_LONG",
    "evidence": "OPEN TIER1_PRICE_CROSS_REENTRY_exit0.0079_cur bar=2026-10-28T21:00:00Z refused by non-safety gate: 28 21:15:57 - INFO - [inf] [VEC_EXACT] inf:PENGUUSDC_LONG CLOSE VEC_EXIT_OWED qty=1935.000000 -> SKIPPED_VX_INFLIGHT"
   },
   {
-   "ts": "2026-10-29T02:15:22Z",
+   "ts": "2026-10-29T02:20:38Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "inf:XRPUSDC_LONG",
    "evidence": "CLOSE ALL_TF_AGAINST_CLOSE g0.69% bar=2026-10-28T23:00:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-29T02:15:22Z",
+   "ts": "2026-10-29T02:20:38Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "inf:PENGUUSDC_LONG",
    "evidence": "CLOSE DC_HOPELESS_entry=0.0080_dc=[0.0073,0.00 bar=2026-10-28T23:00:00Z refused by non-safety gate: 28 23:16:50 - INFO - [inf] [VEC_EXACT] inf:PENGUUSDC_LONG CLOSE VEC_EXIT_OWED qty=1901.000000 -> SKIPPED_VX_INFLIGHT"
   },
   {
-   "ts": "2026-10-29T02:15:22Z",
+   "ts": "2026-10-29T02:20:38Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "inf:ARUSDT_LONG",
    "evidence": "CLOSE WT_LOWER_CROSS_EXIT wt_1h lower wt+price bar=2026-10-28T23:00:00Z refused by non-safety gate: 28 23:16:50 - INFO - [inf] [VEC_EXACT] inf:ARUSDT_LONG CLOSE VEC_EXIT_OWED qty=4.100000 -> BLOCKED_NET_GAIN"
   },
   {
-   "ts": "2026-10-29T02:15:22Z",
+   "ts": "2026-10-29T02:20:38Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "inf:ARUSDT_LONG",
    "evidence": "CLOSE FIXED_STOP bar=2026-10-29T01:00:00Z refused by non-safety gate: 29 01:16:41 - INFO - [inf] [VEC_EXACT] inf:ARUSDT_LONG CLOSE VEC_EXIT_OWED qty=4.200000 -> SKIPPED_VX_INFLIGHT"
+  },
+  {
+   "ts": "2026-10-29T02:20:39Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "ang",
+   "evidence": "ez_manage_ang.log not written for 262s"
+  },
+  {
+   "ts": "2026-10-29T02:20:39Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "flz",
+   "evidence": "ez_manage_flz.log not written for 313s"
   }
  ],
  "alert_counts": {
-  "RAPID_LOSS_KEY": 5,
+  "RAPID_LOSS_KEY": 2,
   "VEC_DECISION_REFUSED": 4,
-  "VEC_EXIT_WHILE_LIVE_FLAT": 1
+  "VEC_EXIT_WHILE_LIVE_FLAT": 1,
+  "STALE_LOG": 2
  },
  "active_interventions": {
   "acct:trc": {
@@ -324,5 +318,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 2.21
+ "sweep_s": 2.15
 }
