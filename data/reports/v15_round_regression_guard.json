@@ -1,24 +1,55 @@
 {
- "at": "2026-10-29T03:26:04Z",
+ "at": "2026-10-29T04:26:01Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
  "hosts": {
   "s1": {
-   "published_n": 0,
-   "per_hour": 0.0,
+   "published_n": 2,
+   "per_hour": 1.0,
    "improved_vs_best_start": 0,
    "mean_uplift_vs_best_start": null,
    "median_uplift": null,
    "chained_from_previous_published": 0,
-   "no_floor_recorded": 0,
+   "no_floor_recorded": 2,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 0.0/h < 12.0/h (one per 5 min)"
+    "throughput 1.0/h < 12.0/h (one per 5 min)"
    ],
-   "rows": [],
-   "error": "no output"
+   "rows": [
+    {
+     "symside": "MASKUSDT_SHORT",
+     "published_at": 1793247528.8503215,
+     "final_gain": 4.463877861554383,
+     "best_start_gain": null,
+     "best_start_chosen": null,
+     "best_start_candidates": null,
+     "baseline_gain": 2.1250914003254224,
+     "npz_ts_last": 1793242800.0,
+     "npz_md5": "ecce93941e8825a3735a604dc61b0d76",
+     "npz_bars": 181343,
+     "bh": 10.214716507349221,
+     "verdict": null,
+     "npz_age_h_at_publish": 1.31
+    },
+    {
+     "symside": "PUMPUSDT_SHORT",
+     "published_at": 1793244085.7587223,
+     "final_gain": 15.250325399270578,
+     "best_start_gain": null,
+     "best_start_chosen": null,
+     "best_start_candidates": null,
+     "baseline_gain": 15.250325399270578,
+     "npz_ts_last": 1793238300.0,
+     "npz_md5": "935be2806c699a8ce383a2e6f5c83c3e",
+     "npz_bars": 43593,
+     "bh": -13.657666098506539,
+     "verdict": null,
+     "npz_age_h_at_publish": 1.61
+    }
+   ],
+   "error": null
   },
   "s2": {
    "published_n": 0,
@@ -34,7 +65,7 @@
     "throughput 0.0/h < 12.0/h (one per 5 min)"
    ],
    "rows": [],
-   "error": "mux_client_request_session: read from master failed: Broken pipe\nFailed to connect to new control master\n"
+   "error": null
   }
  },
  "hosts_failing": [
