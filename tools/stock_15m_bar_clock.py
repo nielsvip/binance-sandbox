@@ -20,6 +20,19 @@ from tools.crypto_15m_bar_clock import ObservedMarks, emit, recent_rows
 from tools.npz_cutoffs import is_rth_bar_start, stock_session_bounds
 
 
+def publishable_bar_start(start):
+    """The opening 15m bar (session open - 15 min, e.g. 13:15Z) is the first official bar: it closes at the open and trades then."""
+    if is_rth_bar_start(start):
+        return True
+    try:
+        stamp = int(start)
+        day = datetime.fromtimestamp(stamp, timezone.utc).astimezone(ZoneInfo('America/New_York')).date()
+        bounds = stock_session_bounds(day)
+        return bounds is not None and stamp + 900 == bounds[0]
+    except (TypeError, ValueError, OverflowError):
+        return False
+
+
 def stock_symbols(base):
     symbols = set()
     for account in ('tra', 'trb', 'trc'):
@@ -117,7 +130,7 @@ async def stream_quote_events(api, observed, symbols_now, status):
 
 
 def completed_stock_row(observed, prefix, start, now):
-    if not is_rth_bar_start(start):
+    if not publishable_bar_start(start):
         return None
     bars = dict(prefix)
     bars.update({stamp: row for stamp, row in observed.items() if start <= stamp < start + 900})
@@ -223,7 +236,7 @@ async def main(base):
                     emit({'event': 'stock_clock_quote_batch', **task.result()})
                     quote_tasks.pop(key)
             observed.prune(now)
-            starts = ([bucket] if in_session and now - bucket >= 780 else []) + ([target] if is_rth_bar_start(target) else [])
+            starts = ([bucket] if in_session and now - bucket >= 780 else []) + ([target] if publishable_bar_start(target) else [])
             for start in starts:
                 for symbol in symbols:
                     key = (symbol, start)
@@ -243,7 +256,7 @@ async def main(base):
                         emit({'event': 'stock_clock_publish_error', 'symbol': key[0], 'error': str(exc), 'at': time.time()})
                     pending.pop(key)
             missing = []
-            if is_rth_bar_start(target):
+            if publishable_bar_start(target):
                 for symbol in symbols:
                     key = (symbol, target)
                     if key in emitted or key in pending:
