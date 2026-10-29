@@ -103,7 +103,7 @@ def cmd_snapshot(args):
         dst = snap / "npz" / f"{sym}.npz"
         if not dst.exists():
             shutil.copy2(src, dst)
-        man["npz"][sym] = {"md5": md5(dst), "bytes": dst.stat().st_size, "src_mtime": src.stat().st_mtime}
+        man["npz"][sym] = {"md5": md5(dst), "bytes": dst.stat().st_size, "src_mtime": src.stat().st_mtime, "days_15m": npz_depth_days(dst)}
         st = HOME / "v15_autopsy_first" / f"{ss}_autopsy_base.json"
         if st.exists():
             shutil.copy2(st, snap / "starts" / st.name)
@@ -150,6 +150,28 @@ def cmd_snapshot(args):
     (snap / "manifest.json").write_text(json.dumps(man, indent=1))
     print(json.dumps({"snap": str(snap), "sides": len(man["npz"]), "npz_bytes": sum(v["bytes"] for v in man["npz"].values()), "starts": len(man["starts"]), "data_files": man["data_files"], "env_keys": len(env), "env_source": how}))
     return 0
+
+
+def npz_depth_days(path):
+    """Days of 15m bars frozen in the NPZ (None when unreadable). 2026-10-29: the gate benches with V15_HOLDOUT_DAYS=7 and
+    snapped the fit window 30 -> 20 for the ~31 d 10-14 snapshot; evaluate_v12 now accepts only 1/7/30/365 d windows
+    ("unsupported window_days=20"), so on a DEEP snapshot the 30 d fit window must survive the cut instead (the pilot
+    loads window + holdout days, exactly as production does since the 10-28 37-day fix)."""
+    try:
+        import numpy as np
+        z = np.load(str(path), mmap_mode="r", allow_pickle=True)
+        key = next((k for k in z.files if "timestamp" in k and "15m" in k), None)
+        if key is None:
+            return None
+        t = np.asarray(z[key])
+        if len(t) < 2:
+            return None
+        try:
+            return round((float(t[-1]) - float(t[0])) / 86400.0, 1)
+        except Exception:
+            return round((np.datetime64(t[-1]) - np.datetime64(t[0])).astype("timedelta64[m]").astype(float) / 1440.0, 1)
+    except Exception:
+        return None
 
 
 def mem_avail_mb():
@@ -536,9 +558,14 @@ def _cmd_run_body(args, snap, man, run_dir):
         # Keep the requested window while the bars surviving the cut still cover it at the validator's floor
         # (metrics.MIN_WINDOW_COVERAGE = 0.80); otherwise snap DOWN to the largest allowed window, because the pilot
         # refuses anything else ("BLOCKED: only 30/20/7/1/365 allowed"). 30 d window - 7 d holdout -> 20 d fit.
-        if _want < MIN_WINDOW_COVERAGE * int(args.window_days):
+        _depths = [(man.get("npz") or {}).get(sym_of(s), {}).get("days_15m") for s in man["sides"] if sym_of(s) in (man.get("npz") or {})]
+        _deep = bool(_depths) and all(isinstance(d, (int, float)) and d >= int(args.window_days) + _ho + 1 for d in _depths)
+        if _deep:
+            print(f"[bench] holdout {_ho:.0f}d on a deep snapshot (min {min(_depths):.0f} d of bars): fit window stays {fit_days}d, the pilot loads window+holdout like production", flush=True)
+        elif _want < MIN_WINDOW_COVERAGE * int(args.window_days):
             fit_days = max([w for w in ALLOWED_WINDOWS if w <= _want] or [min(ALLOWED_WINDOWS)])
-        print(f"[bench] holdout {_ho:.0f}d -> fit window {fit_days}d (requested {args.window_days}d, {_want}d survives the cut, coverage floor {MIN_WINDOW_COVERAGE:.0%})", flush=True)
+        if not _deep:
+            print(f"[bench] holdout {_ho:.0f}d -> fit window {fit_days}d (requested {args.window_days}d, {_want}d survives the cut, coverage floor {MIN_WINDOW_COVERAGE:.0%})", flush=True)
     sides = [s for s in man["sides"] if sym_of(s) in man["npz"]]
     if args.only:
         sides = [s for s in sides if s in set(args.only.split(","))]
