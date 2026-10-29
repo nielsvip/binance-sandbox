@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-29T08:58:30Z",
+ "ts": "2026-10-29T09:03:41Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 52,
+   "fills_6h": 50,
    "open_positions": 15,
-   "unrealised_usd": 0.0,
+   "unrealised_usd": 0.01,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 16,
-   "open_positions": 7,
-   "unrealised_usd": 0.07,
+   "fills_6h": 17,
+   "open_positions": 8,
+   "unrealised_usd": 0.05,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 91,
-   "open_positions": 24,
-   "unrealised_usd": -0.18,
+   "fills_6h": 90,
+   "open_positions": 26,
+   "unrealised_usd": -0.37,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 1,
@@ -75,14 +75,14 @@
    }
   },
   "inf": {
-   "fills_6h": 4,
-   "open_positions": 1,
-   "unrealised_usd": 0.04,
+   "fills_6h": 5,
+   "open_positions": 2,
+   "unrealised_usd": 0.05,
    "pos_mismatch": 0,
    "vec_parity": {
-    "live_vec_decisions": 1,
+    "live_vec_decisions": 2,
     "state_divergent": 0,
-    "filled": 1,
+    "filled": 2,
     "refused_non_safety": 0,
     "safety_refusals": 0,
     "not_filled_no_log": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 14,
    "open_positions": 5,
-   "unrealised_usd": 0.04,
+   "unrealised_usd": 0.08,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,45 +127,45 @@
     "13903"
    ],
    "starts_30m": 1,
-   "log_age_s": 6.0
+   "log_age_s": 93.0
   },
   "men": {
    "pids": [
     "8520"
    ],
    "starts_30m": 1,
-   "log_age_s": 5.0
+   "log_age_s": 18.0
   },
   "ang": {
    "pids": [
     "61356"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 36.0
   },
   "inf": {
    "pids": [
     "73873"
    ],
    "starts_30m": 1,
-   "log_age_s": -0.0
+   "log_age_s": 5.0
   },
   "flz": {
    "pids": [
     "9546"
    ],
    "starts_30m": 1,
-   "log_age_s": -0.0
+   "log_age_s": 12.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 47179.0
+   "log_age_s": 47490.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 46648.0
+   "log_age_s": 46959.0
   }
  },
  "alerts": [],
@@ -214,5 +214,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.56
+ "sweep_s": 1.79
 }
