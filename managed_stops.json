@@ -5,5 +5,26 @@
     "entry_sig": "2026-10-27 22:39:58.937000+00:00",
     "symbol": "BEAMXUSDT",
     "side": "LONG"
+  },
+  "men:ARUSDT_LONG": {
+    "orderId": "2000001550702874",
+    "stopPrice": 3.334,
+    "entry_sig": "2026-10-29 09:00:46.085000+00:00",
+    "symbol": "ARUSDT",
+    "side": "LONG"
+  },
+  "men:EDUUSDT_LONG": {
+    "orderId": "2000001551375851",
+    "stopPrice": 0.05772,
+    "entry_sig": "2026-10-29 14:01:04.078000+00:00",
+    "symbol": "EDUUSDT",
+    "side": "LONG"
+  },
+  "men:1INCHUSDT_SHORT": {
+    "orderId": "2000001551518851",
+    "stopPrice": 0.0892,
+    "entry_sig": "2026-10-29 14:45:34.413000+00:00",
+    "symbol": "1INCHUSDT",
+    "side": "SHORT"
   }
 }
