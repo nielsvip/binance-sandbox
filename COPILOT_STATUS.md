@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-29 17:02:23 UTC
+# Copilot Status — 2026-10-29 17:11:04 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,9 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-29T17:00:42
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-29T17:00:42
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-29T17:01:02
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-29T17:01:02
-- **STALE_INDICATORS** [tradier]  — 2026-10-29T17:01:27
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-29T17:01:27
-- **STALE_INDICATORS** [tradier]  — 2026-10-29T17:01:57
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-29T17:01:57
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-29T17:02:01
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-29T17:02:01
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-29T17:10:22
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-29T17:10:22
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-29T17:10:22
 
 ## Missed Trades (trader comparison)
 
@@ -29,15 +22,15 @@ _None_
 
 **Held:** 12 | **Watching for reentry:** 14 | **Reentered:** 0
 
-- HELD: **CRWD** LONG (tradier) peak +11.7%, now +-2.3%
-- HELD: **FCN** LONG (tradier) peak +11.5%, now +10.2%
+- HELD: **CRWD** LONG (tradier) peak +11.7%, now +-2.7%
+- HELD: **FCN** LONG (tradier) peak +11.5%, now +10.4%
 - HELD: **HOOD** SHORT (tradier) peak +11.1%, now +-0.7%
-- HELD: **WDAY** SHORT (tradier) peak +6.8%, now +5.1%
-- HELD: **A** LONG (tradier) peak +5.0%, now +0.4%
+- HELD: **WDAY** SHORT (tradier) peak +6.8%, now +5.3%
+- HELD: **A** LONG (tradier) peak +5.0%, now +0.5%
 - HELD: **LMT** LONG (tradier) peak +4.8%, now +4.6%
-- HELD: **KASUSDT** LONG (crypto) peak +4.6%, now +-0.4%
-- HELD: **LDOS** LONG (tradier) peak +3.9%, now +2.5%
-- HELD: **RBLX** LONG (tradier) peak +3.4%, now +-0.2%
+- HELD: **KASUSDT** LONG (crypto) peak +4.6%, now +-1.0%
+- HELD: **LDOS** LONG (tradier) peak +3.9%, now +2.6%
+- HELD: **RBLX** LONG (tradier) peak +3.4%, now +0.7%
 - HELD: **SCHW** SHORT (tradier) peak +3.2%, now +-1.4%
 
 - WATCHING: **ACEUSDT** SHORT (crypto) peaked +7.7%, exited 1m ago
@@ -55,9 +48,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 50
-- [MEDIUM] ez_klines.py running but log stale (54min)
-- [MEDIUM] ez_rankings.py running but log stale (17min)
-- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
-- [MEDIUM] ez_klines.py running but log stale (55min)
-- [MEDIUM] ez_rankings.py running but log stale (18min)
+**Issues (last 1h):** 5
+- [HIGH] ez_manage.py for ang is NOT running
+- [HIGH] ez_manage.py for inf is NOT running
+- [HIGH] ez_manage.py for men is NOT running
+- [HIGH] ez_manage.py for flz is NOT running
+- [MEDIUM] ez_klines.py running but log stale (63min)

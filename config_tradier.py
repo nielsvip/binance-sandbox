@@ -196,7 +196,7 @@ class TradierConfig:
         4000.0  # USER 2026-10-28 vector-trader sizing mandate ("stocks 900 crypto 15 NO EXCEPTION"; the venue's OWN config file is the only authority the tiny S1/S5 vector traders read); was 5000.0 (STDEV_SLOPE fix 2026-09-14).
     )
     START_POSITION_SIZE: float = (
-        900.0  # USER 2026-10-28 vector-trader sizing mandate ("stocks 900 crypto 15 NO EXCEPTION"; the venue's OWN config file is the only authority the tiny S1/S5 vector traders read); was 500.0 (2026-06-14: $150 can't buy 1 share of $300+ stocks).
+        800.0  # USER 2026-10-29 "*800": stock START 800, max entry = 800 x 4 = 3200. Was 900.0 (2026-10-28 mandate); vector-trader sizing mandate ("stocks 900 crypto 15 NO EXCEPTION"; the venue's OWN config file is the only authority the tiny S1/S5 vector traders read); was 500.0 (2026-06-14: $150 can't buy 1 share of $300+ stocks).
     )
     # 2026-10-17 LIVE WIRING of the vector order/position caps (stocks half). vec_decisions.qty_quantizers
     # cap_dollar/cap_add_qty serve both venues off whichever cfg they are handed and read this venue's own

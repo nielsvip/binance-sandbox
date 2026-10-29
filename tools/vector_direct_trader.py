@@ -66,14 +66,15 @@ CRYPTO_SUFFIXES = ("USDT", "USDC", "USD1", "USDS", "BUSD", "FDUSD", "TUSD", "DAI
 # They are now resolved ONLY by apply_venue_sizing(venue) from the venue's own config file — see that function.
 # The placeholders below are 0.0 on purpose: if any path ever sizes an order before the venue is resolved, it
 # sizes to ZERO (no order) instead of silently trading the other venue's slice.
-MANDATED_START = {"crypto": 15.0, "stocks": 900.0}  # a mismatch is reported loudly on every start, never traded silently
+MANDATED_START = {"crypto": 15.0, "stocks": 800.0}  # a mismatch is reported loudly on every start, never traded silently
 START_POSITION_SIZE = 0.0
 MAX_OPEN_NOTIONAL = 0.0
 STOCK_ONE_SHARE_MAX = 0.0
 # USER 2026-10-29: "they can ONLY trade what the vectorized script dictates ... >$200 SUICIDE trades must be limited
-# right now". Hard ceiling on any single ENTRY (OPEN or AUGMENT) order notional, both venues. Over the ceiling the
+# right now", then "change it to 800" (same day). Hard ceiling on any single ENTRY (OPEN or AUGMENT) order notional, both venues.
+# The vector multiplier (engine_qty / engine_open_qty, carrying STDEV sizing) is applied BEFORE this ceiling, never replaced by it. Over the ceiling the
 # entry is SKIPPED, never partially sized. CLOSE/REDUCE are never limited (exits are never blocked).
-ENTRY_NOTIONAL_CEILING_USD = 200.0
+ENTRY_NOTIONAL_CEILING_USD = 3200.0  # = stocks START 800 x ratio max 4 (USER 2026-10-29)
 
 
 def apply_venue_sizing(venue: str) -> dict:
@@ -1324,7 +1325,7 @@ def main(argv=None):
             except Exception as exc:
                 log(f"PROBE {acct}: FAILED {str(exc)[:200]}")
         return 0
-    log(f"vector_direct_trader {a.venue} start: accounts={t.accounts} dry_run={a.dry_run} START_POSITION_SIZE=${START_POSITION_SIZE} MAX_OPEN_NOTIONAL=${MAX_OPEN_NOTIONAL} ONE_SHARE_MAX=${STOCK_ONE_SHARE_MAX} sizing={_size_rep['source']} root={t.root} states={t.state_dir}")
+    log(f"vector_direct_trader {a.venue} start: accounts={t.accounts} dry_run={a.dry_run} START_POSITION_SIZE=${START_POSITION_SIZE} MAX_OPEN_NOTIONAL=${MAX_OPEN_NOTIONAL} ENTRY_CEILING=${ENTRY_NOTIONAL_CEILING_USD} ONE_SHARE_MAX=${STOCK_ONE_SHARE_MAX} sizing={_size_rep['source']} root={t.root} states={t.state_dir}")
     while True:
         t0 = time.time()
         try:
