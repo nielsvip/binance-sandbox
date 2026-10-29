@@ -1,73 +1,9 @@
 {
-  "ang:TRXUSDT_SHORT": {
-    "orderId": "4000002005417754",
-    "stopPrice": 0.33189,
-    "entry_sig": "2026-10-28 23:10:16.202000+00:00",
-    "symbol": "TRXUSDT",
-    "side": "SHORT",
-    "disaster_backstop": true
-  },
-  "ang:XLMUSDT_SHORT": {
-    "orderId": "4000002005996591",
-    "stopPrice": 0.17412,
-    "entry_sig": "2026-10-29 03:16:37.700000+00:00",
-    "symbol": "XLMUSDT",
-    "side": "SHORT"
-  },
-  "ang:BEAMXUSDT_LONG": {
-    "orderId": "4000002002348687",
-    "stopPrice": 0.0033,
-    "entry_sig": "2026-10-28 00:56:57.183000+00:00",
+  "men:BEAMXUSDT_LONG": {
+    "orderId": "2000001546336154",
+    "stopPrice": 0.003294,
+    "entry_sig": "2026-10-27 22:39:58.937000+00:00",
     "symbol": "BEAMXUSDT",
     "side": "LONG"
-  },
-  "ang:STRKUSDT_SHORT": {
-    "orderId": "4000002006116274",
-    "stopPrice": 0.0474,
-    "entry_sig": "2026-10-29 04:15:08.005000+00:00",
-    "symbol": "STRKUSDT",
-    "side": "SHORT"
-  },
-  "ang:SUSHIUSDT_SHORT": {
-    "orderId": "4000002006119638",
-    "stopPrice": 0.2089,
-    "entry_sig": "2026-10-29 04:16:33.856000+00:00",
-    "symbol": "SUSHIUSDT",
-    "side": "SHORT"
-  },
-  "ang:STXUSDT_SHORT": {
-    "orderId": "4000002006119501",
-    "stopPrice": 0.302,
-    "entry_sig": "2026-10-29 04:16:31.782000+00:00",
-    "symbol": "STXUSDT",
-    "side": "SHORT"
-  },
-  "ang:ALGOUSDT_SHORT": {
-    "orderId": "4000002006117481",
-    "stopPrice": 0.10472,
-    "entry_sig": "2026-10-29 04:15:33.499000+00:00",
-    "symbol": "ALGOUSDT",
-    "side": "SHORT"
-  },
-  "ang:RENDERUSDT_SHORT": {
-    "orderId": "4000002006119285",
-    "stopPrice": 1.715,
-    "entry_sig": "2026-10-29 04:16:27.619000+00:00",
-    "symbol": "RENDERUSDT",
-    "side": "SHORT"
-  },
-  "ang:ACEUSDT_SHORT": {
-    "orderId": "4000002006319980",
-    "stopPrice": 0.14855,
-    "entry_sig": "2026-10-29 05:51:52.069000+00:00",
-    "symbol": "ACEUSDT",
-    "side": "SHORT"
-  },
-  "ang:BBUSDT_SHORT": {
-    "orderId": "4000002006337864",
-    "stopPrice": 0.008177,
-    "entry_sig": "2026-10-29 06:01:08.456000+00:00",
-    "symbol": "BBUSDT",
-    "side": "SHORT"
   }
 }
