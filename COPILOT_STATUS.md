@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-29 13:31:04 UTC
+# Copilot Status — 2026-10-29 13:35:17 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,8 +6,8 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-29T13:31:03
-- **BIG_LOSER** [tradier] trc:GOOGL_LONG — 2026-10-29T13:31:03
+- **BIG_LOSER** [tradier] trc:GOOGL_LONG — 2026-10-29T13:35:14
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-29T13:35:16
 
 ## Missed Trades (trader comparison)
 
@@ -21,16 +21,16 @@ _None_
 
 **Held:** 13 | **Watching for reentry:** 11 | **Reentered:** 0
 
-- HELD: **CRWD** LONG (tradier) peak +11.7%, now +-3.3%
-- HELD: **HOOD** SHORT (tradier) peak +11.1%, now +1.1%
-- HELD: **FCN** LONG (tradier) peak +11.0%, now +6.4%
-- HELD: **HYPEUSDT** LONG (crypto) peak +8.1%, now +7.7%
-- HELD: **DASHUSDT** SHORT (crypto) peak +5.8%, now +0.3%
-- HELD: **WDAY** SHORT (tradier) peak +4.4%, now +4.1%
-- HELD: **SAP** LONG (tradier) peak +4.4%, now +-2.0%
-- HELD: **LMT** LONG (tradier) peak +4.0%, now +3.6%
-- HELD: **INXUSDT** SHORT (crypto) peak +3.4%, now +0.4%
-- HELD: **OLED** LONG (tradier) peak +3.4%, now +1.0%
+- HELD: **CRWD** LONG (tradier) peak +11.7%, now +-5.1%
+- HELD: **HOOD** SHORT (tradier) peak +11.1%, now +1.5%
+- HELD: **FCN** LONG (tradier) peak +11.0%, now +7.2%
+- HELD: **HYPEUSDT** LONG (crypto) peak +8.1%, now +6.7%
+- HELD: **WDAY** SHORT (tradier) peak +6.0%, now +5.7%
+- HELD: **DASHUSDT** SHORT (crypto) peak +5.8%, now +0.1%
+- HELD: **SAP** LONG (tradier) peak +4.4%, now +-2.1%
+- HELD: **LMT** LONG (tradier) peak +4.2%, now +3.8%
+- HELD: **OLED** LONG (tradier) peak +4.2%, now +0.3%
+- HELD: **INXUSDT** SHORT (crypto) peak +3.4%, now +0.6%
 
 - WATCHING: **BEAMXUSDT** LONG (crypto) peaked +8.6%, exited 0m ago
 - WATCHING: **ACEUSDT** SHORT (crypto) peaked +7.7%, exited 0m ago
@@ -46,3 +46,7 @@ _None_
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
+
+**Issues (last 1h):** 2
+- [MEDIUM] ez_indicators.py running but log stale (11min)
+- [MEDIUM] ez_share_ind.py running but log stale (10min)
