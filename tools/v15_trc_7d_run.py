@@ -332,6 +332,15 @@ def tick(state, day_dir):
                  summary={k: v for k, v in (res.get("progress") or {}).items() if k != "cumulative_overrides"})
         ok, why = stage(ss, res, day)
         p.update(staged=ok, quality=why if ok else None, stage_why=None if ok else why)
+        if not ok and "has not completed" in why and p.get("attempt", 1) < 2:
+            # the pilot's [REDO] (compliance repair changed the set -> rows must be refilled): the herd would relaunch it
+            # into a fresh fill; this isolated lane does the same once. attempt 1 is kept beside it for audit.
+            base = f"~/binance-sandbox/data/preopen_7d/trc_run/{day}/results"
+            sh(ip, f"rm -rf {base}/{ss}.attempt1 && mv {base}/{ss} {base}/{ss}.attempt1", 30)
+            state["placements"][ss] = {"rank": p["rank"], "status": "pending", "attempt": 2, "attempt1": {
+                "host": p["host"], "wall_min": round((now - p["started"]) / 60, 1), "why": why}}
+            print(f"[{now_iso()}] {ss} REDO -> relaunch (attempt 2)", flush=True)
+            continue
         if ok and not state.get("first_staged_utc"):
             state["first_staged_utc"] = now_iso()
         print(f"[{now_iso()}] {ss} on {p['host']} {round((now - p['started']) / 60, 1)} min staged={ok} {why}", flush=True)
