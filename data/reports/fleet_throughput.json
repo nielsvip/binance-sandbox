@@ -1,24 +1,24 @@
 {
-  "ts": "2026-10-29T18:25:11.130262+00:00",
+  "ts": "2026-10-29T18:30:09.230497+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 1,
-  "pending_sym_sides": 59,
+  "pending_sym_sides": 58,
   "hosts": {
     "s1": {
       "published_last_60m": 1,
       "published_last_3h": 1,
       "boards": {
-        "COP_LONG": 7,
+        "CRK_LONG": 0,
         "MINAUSDT_SHORT": 7,
         "WLDUSDC_SHORT": 7
       },
       "boards_running": 3,
-      "workers": 21,
-      "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 7548,
-      "disk_free_gb": 16,
-      "load1": 15.5,
+      "workers": 14,
+      "workers_vs_law_28": "14/28",
+      "mem_avail_mb": 7702,
+      "disk_free_gb": 15,
+      "load1": 19.0,
       "dispatch_idle_why": "HOLD until 2026-10-29T22:01Z: TRC7D pass: 30D paused until every tradeable stock key has its 7D set",
       "published_ss": [
         "1INCHUSDT_SHORT"
@@ -36,7 +36,7 @@
   },
   "alerts": [
     "LOW_THROUGHPUT:s1:1/h<10 (idle_why=HOLD until 2026-10-29T22:01Z: TRC7D pass: 30D paused until every tradeable stock key has its 7D set)",
-    "DISK_FLOOR:s1:16GB<40",
+    "DISK_FLOOR:s1:15GB<40",
     "UNREACHABLE:s2",
     "UNREACHABLE:s5",
     "UNREACHABLE:s6"
