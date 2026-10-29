@@ -10,9 +10,9 @@ this file; `tools/v15_eval_cache.engine_versions()` hashes it, so a re-measure
 orphans every cached eval instead of silently mixing two fees.
 """
 
-MEASURED_AT = "2026-10-28T23:01:48Z"
+MEASURED_AT = "2026-10-29T21:00:58Z"
 MEASURED_BY = "fee_model.rebuild"
 SOURCE = "measured"
-CRYPTO_ROUND_TRIP_PCT = 0.056
+CRYPTO_ROUND_TRIP_PCT = 0.054
 TRADIER_ROUND_TRIP_PCT = 0.0
 WINDOWS = {"long_days": 90, "short_days": 30}
