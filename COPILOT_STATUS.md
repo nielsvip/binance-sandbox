@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-29 17:27:23 UTC
+# Copilot Status — 2026-10-29 17:35:44 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,11 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-29T17:25:33
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-29T17:25:33
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-29T17:25:33
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-29T17:25:34
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-29T17:25:34
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-29T17:32:58
+- **STALE_INDICATORS** [tradier]  — 2026-10-29T17:33:29
+- **STALE_INDICATORS** [tradier]  — 2026-10-29T17:33:59
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-29T17:34:00
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-29T17:34:00
+- **STALE_INDICATORS** [tradier]  — 2026-10-29T17:34:31
+- **STALE_INDICATORS** [tradier]  — 2026-10-29T17:35:01
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-29T17:35:02
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-29T17:35:02
+- **STALE_INDICATORS** [tradier]  — 2026-10-29T17:35:34
 
 ## Missed Trades (trader comparison)
 
@@ -22,17 +27,13 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 6 | **Watching for reentry:** 16 | **Reentered:** 0
+**Held:** 3 | **Watching for reentry:** 15 | **Reentered:** 0
 
-- HELD: **HOOD** SHORT (tradier) peak +11.1%, now +-0.5%
-- HELD: **WDAY** SHORT (tradier) peak +6.8%, now +5.4%
 - HELD: **KASUSDT** LONG (crypto) peak +4.6%, now +-1.2%
-- HELD: **SCHW** SHORT (tradier) peak +3.2%, now +-1.4%
 - HELD: **DOGEUSDC** LONG (crypto) peak +3.1%, now +1.7%
 - HELD: **BNBUSDC** SHORT (crypto) peak +3.0%, now +0.6%
 
 - WATCHING: **ACEUSDT** SHORT (crypto) peaked +7.7%, exited 2m ago
-- WATCHING: **EXEL** LONG (tradier) peaked +6.7%, exited 2m ago
 - WATCHING: **STXUSDT** SHORT (crypto) peaked +5.5%, exited 2m ago
 - WATCHING: **ARUSDT** LONG (crypto) peaked +5.4%, exited 2m ago
 - WATCHING: **ETHFIUSDC** LONG (crypto) peaked +5.3%, exited 2m ago
@@ -41,6 +42,7 @@ _None_
 - WATCHING: **AWEUSDT** LONG (crypto) peaked +4.6%, exited 2m ago
 - WATCHING: **MSTR** SHORT (tradier) peaked +4.2%, exited 2m ago
 - WATCHING: **RENDERUSDT** SHORT (crypto) peaked +4.2%, exited 2m ago
+- WATCHING: **TRUMPUSDC** SHORT (crypto) peaked +3.7%, exited 2m ago
 
 ## Supervisor
 
