@@ -1,79 +1,173 @@
 {
- "generated_at": "2026-10-29 08:36 UTC",
- "total_capital_usd": 67.21,
+ "generated_at": "2026-10-29 08:39 UTC",
+ "total_capital_usd": 184.42,
  "tier_capital": {
   "A": 0.0,
-  "B": 52.31,
-  "C": 14.89
+  "B": 128.7,
+  "C": 55.72
  },
  "tier_count": {
   "A": 0,
-  "B": 4,
-  "C": 1
+  "B": 9,
+  "C": 4
  },
  "winners": [],
  "losers": [
-  "flz:DOGEUSDC_LONG",
-  "flz:DASHUSDT_SHORT"
+  "fin:ETHFIUSDC_LONG",
+  "fin:ONEUSDT_SHORT",
+  "fin:EDUUSDT_LONG",
+  "fin:EGLDUSDT_SHORT",
+  "fin:KASUSDT_LONG",
+  "fin:MASKUSDT_SHORT",
+  "fin:1INCHUSDT_SHORT"
  ],
  "mediocre": [
-  "flz:BNBUSDC_LONG"
+  "fin:BNBUSDC_LONG",
+  "fin:AWEUSDT_LONG"
  ],
  "positions": [
   {
-   "pk": "flz:BNBUSDC_LONG",
+   "pk": "fin:SKYAIUSDT_SHORT",
+   "symbol": "SKYAIUSDT",
+   "account": "fin",
+   "value_usd": 27.53,
+   "gain_pct": 0.936,
+   "tier": "B",
+   "perf_mult": 1.25,
+   "amt": 805.0,
+   "mark": 0.03420403
+  },
+  {
+   "pk": "fin:ONEUSDT_SHORT",
+   "symbol": "ONEUSDT",
+   "account": "fin",
+   "value_usd": 15.18,
+   "gain_pct": -1.182,
+   "tier": "B",
+   "perf_mult": 4.41,
+   "amt": 12401.0,
+   "mark": 0.0012241
+  },
+  {
+   "pk": "fin:BEAMXUSDT_LONG",
+   "symbol": "BEAMXUSDT",
+   "account": "fin",
+   "value_usd": 15.1,
+   "gain_pct": 0.689,
+   "tier": "B",
+   "perf_mult": 0.82,
+   "amt": 4491.0,
+   "mark": 0.003363
+  },
+  {
+   "pk": "fin:KASUSDT_LONG",
+   "symbol": "KASUSDT",
+   "account": "fin",
+   "value_usd": 15.03,
+   "gain_pct": 0.313,
+   "tier": "C",
+   "perf_mult": 0.33,
+   "amt": 425.0,
+   "mark": 0.03536017
+  },
+  {
+   "pk": "fin:BNBUSDC_LONG",
    "symbol": "BNBUSDC",
-   "account": "flz",
-   "value_usd": 15.02,
-   "gain_pct": 0.274,
+   "account": "fin",
+   "value_usd": 15.01,
+   "gain_pct": 0.238,
    "tier": "B",
    "perf_mult": 0.89,
    "amt": 0.02,
-   "mark": 750.95
+   "mark": 750.68356413
   },
   {
-   "pk": "flz:HYPEUSDT_LONG",
-   "symbol": "HYPEUSDT",
-   "account": "flz",
-   "value_usd": 15.01,
-   "gain_pct": 0.428,
+   "pk": "fin:AWEUSDT_LONG",
+   "symbol": "AWEUSDT",
+   "account": "fin",
+   "value_usd": 15.0,
+   "gain_pct": 0.262,
    "tier": "B",
-   "perf_mult": 0.95,
-   "amt": 0.19,
-   "mark": 79.01980972
+   "perf_mult": 0.58,
+   "amt": 218.0,
+   "mark": 0.06879
   },
   {
-   "pk": "flz:DASHUSDT_SHORT",
-   "symbol": "DASHUSDT",
-   "account": "flz",
-   "value_usd": 14.89,
-   "gain_pct": 0.623,
+   "pk": "fin:BOMEUSDC_SHORT",
+   "symbol": "BOMEUSDC",
+   "account": "fin",
+   "value_usd": 14.87,
+   "gain_pct": 0.893,
+   "tier": "B",
+   "perf_mult": 0.56,
+   "amt": 23892.0,
+   "mark": 0.0006222
+  },
+  {
+   "pk": "fin:ETHFIUSDC_LONG",
+   "symbol": "ETHFIUSDC",
+   "account": "fin",
+   "value_usd": 14.83,
+   "gain_pct": -1.401,
    "tier": "C",
-   "perf_mult": 0.48,
-   "amt": 0.294,
-   "mark": 50.65232617
+   "perf_mult": 0.45,
+   "amt": 22.9,
+   "mark": 0.6475
   },
   {
-   "pk": "flz:DOGEUSDC_LONG",
-   "symbol": "DOGEUSDC",
-   "account": "flz",
-   "value_usd": 14.77,
-   "gain_pct": -1.32,
+   "pk": "fin:EDUUSDT_LONG",
+   "symbol": "EDUUSDT",
+   "account": "fin",
+   "value_usd": 14.82,
+   "gain_pct": -1.098,
    "tier": "B",
-   "perf_mult": 2.15,
-   "amt": 190.0,
-   "mark": 0.07776
+   "perf_mult": 0.63,
+   "amt": 256.0,
+   "mark": 0.05789221
   },
   {
-   "pk": "flz:BNBUSDC_SHORT",
-   "symbol": "BNBUSDC",
-   "account": "flz",
-   "value_usd": 7.51,
-   "gain_pct": 0.689,
+   "pk": "fin:MASKUSDT_SHORT",
+   "symbol": "MASKUSDT",
+   "account": "fin",
+   "value_usd": 14.78,
+   "gain_pct": 0.384,
+   "tier": "C",
+   "perf_mult": 0.32,
+   "amt": 38.0,
+   "mark": 0.389
+  },
+  {
+   "pk": "fin:EGLDUSDT_SHORT",
+   "symbol": "EGLDUSDT",
+   "account": "fin",
+   "value_usd": 11.11,
+   "gain_pct": -0.727,
    "tier": "B",
-   "perf_mult": 0.89,
-   "amt": 0.01,
-   "mark": 750.95
+   "perf_mult": 1.7,
+   "amt": 3.3,
+   "mark": 3.36629328
+  },
+  {
+   "pk": "fin:1INCHUSDT_SHORT",
+   "symbol": "1INCHUSDT",
+   "account": "fin",
+   "value_usd": 11.08,
+   "gain_pct": 0.802,
+   "tier": "C",
+   "perf_mult": 0.17,
+   "amt": 128.0,
+   "mark": 0.08656
+  },
+  {
+   "pk": "fin:INXUSDT_SHORT",
+   "symbol": "INXUSDT",
+   "account": "fin",
+   "value_usd": 0.08,
+   "gain_pct": 1.231,
+   "tier": "B",
+   "perf_mult": 1.91,
+   "amt": 18.0,
+   "mark": 0.00460165
   }
  ]
 }
