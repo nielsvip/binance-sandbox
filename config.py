@@ -1773,7 +1773,7 @@ class Config:
     R2_TF_LIST: tuple = ("15m",)  # crypto: 15m primary. Sweep tests 1h too.
     # === WT_15M_BOUNCE OPEN — 2026-09-01 vector/live parity fix ===
     # Bounces >100 trades/mo delta (WT_15M cross within BB + 4h/1h HTF in favor). Was dead via unknown-key drop — now declared so live and vector share same switch surface.
-    WT_15M_BOUNCE_OPEN_ENABLED: bool = False
+    WT_15M_BOUNCE_OPEN_ENABLED: bool = True
     WT_15M_BOUNCE_BB_MIN: float = 0.05
     WT_15M_BOUNCE_BB_MAX: float = 0.9
     WT_15M_BOUNCE_REQUIRE_BOTH_HTF: bool = False

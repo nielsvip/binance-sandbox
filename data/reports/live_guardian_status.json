@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-29T13:06:30Z",
+ "ts": "2026-10-29T13:11:41Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,7 +29,7 @@
   "fin": {
    "fills_6h": 35,
    "open_positions": 15,
-   "unrealised_usd": 1.35,
+   "unrealised_usd": 1.39,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 56,
    "open_positions": 21,
-   "unrealised_usd": 0.76,
+   "unrealised_usd": 0.77,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 82,
-   "open_positions": 31,
-   "unrealised_usd": 1.46,
+   "fills_6h": 83,
+   "open_positions": 32,
+   "unrealised_usd": 1.28,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 1,
@@ -75,9 +75,9 @@
    }
   },
   "inf": {
-   "fills_6h": 4,
-   "open_positions": 1,
-   "unrealised_usd": 0.33,
+   "fills_6h": 6,
+   "open_positions": 3,
+   "unrealised_usd": 0.42,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 3,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 26,
    "open_positions": 6,
-   "unrealised_usd": 0.69,
+   "unrealised_usd": 0.8,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -111,12 +111,12 @@
  "tradeable_guard": {
   "poison": false,
   "restored": false,
-  "total": 171,
+  "total": 175,
   "per_acct": {
-   "inf": 4,
+   "inf": 7,
    "men": 40,
    "fin": 39,
-   "ang": 62,
+   "ang": 63,
    "flz": 26
   }
  },
@@ -133,66 +133,52 @@
    "pids": [
     "74129"
    ],
-   "starts_30m": 0,
-   "log_age_s": 178.0
+   "starts_30m": 1,
+   "log_age_s": 489.0
   },
   "ang": {
    "pids": [
     "79365"
    ],
-   "starts_30m": 2,
-   "log_age_s": 1142.0
+   "starts_30m": 1,
+   "log_age_s": 36.0
   },
   "inf": {
    "pids": [
     "73873"
    ],
    "starts_30m": 1,
-   "log_age_s": 8.0
+   "log_age_s": 6.0
   },
   "flz": {
    "pids": [
     "78712"
    ],
    "starts_30m": 1,
-   "log_age_s": 1500.0
+   "log_age_s": 27.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 62059.0
+   "log_age_s": 62370.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 61527.0
+   "log_age_s": 61839.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-29T13:06:31Z",
+   "ts": "2026-10-29T13:11:43Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "men",
-   "evidence": "ez_manage_men.log not written for 178s"
-  },
-  {
-   "ts": "2026-10-29T13:06:31Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 1142s"
-  },
-  {
-   "ts": "2026-10-29T13:06:31Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 1500s"
+   "evidence": "ez_manage_men.log not written for 489s"
   }
  ],
  "alert_counts": {
-  "STALE_LOG": 3
+  "STALE_LOG": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -238,5 +224,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.9
+ "sweep_s": 1.72
 }
