@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-29T00:05:11.793718+00:00",
+  "ts": "2026-10-29T00:10:12.362992+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 14,
-  "pending_sym_sides": 106,
+  "fleet_published_last_60m": 18,
+  "pending_sym_sides": 104,
   "hosts": {
     "s1": {
       "published_last_60m": 2,
@@ -15,9 +15,9 @@
       "boards_running": 2,
       "workers": 13,
       "workers_vs_law_28": "13/28",
-      "mem_avail_mb": 9799,
+      "mem_avail_mb": 9770,
       "disk_free_gb": 26,
-      "load1": 15.4,
+      "load1": 16.6,
       "dispatch_idle_why": "full 2/2",
       "published_ss": [
         "ENJUSDT_SHORT",
@@ -29,58 +29,64 @@
       "published_last_3h": 3,
       "boards": {
         "BATUSDT_LONG": 7,
-        "PUMPUSDT_LONG": 7
+        "PUMPUSDT_LONG": 0
       },
       "boards_running": 2,
-      "workers": 14,
-      "workers_vs_law_28": "14/28",
-      "mem_avail_mb": 9052,
+      "workers": 7,
+      "workers_vs_law_28": "7/28",
+      "mem_avail_mb": 11495,
       "disk_free_gb": 44,
-      "load1": 13.6,
-      "dispatch_idle_why": "own venue work waits for memory (9084MB)",
+      "load1": 12.8,
+      "dispatch_idle_why": "own venue work waits for memory (9301MB)",
       "published_ss": [
         "GRASSUSDT_LONG"
       ]
     },
     "s5": {
-      "published_last_60m": 11,
-      "published_last_3h": 29,
-      "boards": {
-        "CIBR_LONG": 0,
-        "MSFT_LONG": 7,
-        "RRC_LONG": 7,
-        "TSLA_LONG": 0
-      },
-      "boards_running": 4,
-      "workers": 14,
-      "workers_vs_law_28": "14/28",
-      "mem_avail_mb": 18178,
-      "disk_free_gb": 40,
-      "load1": 7.7,
-      "dispatch_idle_why": "full 4/4",
-      "published_ss": [
-        "ASML_LONG",
-        "CME_LONG",
-        "EQT_LONG",
-        "GOOGL_LONG",
-        "LDOS_LONG",
-        "LNG_LONG",
-        "META_LONG",
-        "MU_LONG",
-        "PR_LONG",
-        "V_LONG",
-        "XOM_LONG"
-      ]
+      "unreachable": true
     },
     "s6": {
-      "unreachable": true
+      "published_last_60m": 15,
+      "published_last_3h": 25,
+      "boards": {
+        "ALGOUSDT_SHORT": 7,
+        "CHRUSDT_LONG": 7,
+        "PWR_SHORT": 0,
+        "PYPL_SHORT": 7,
+        "VLO_SHORT": 7
+      },
+      "boards_running": 5,
+      "workers": 28,
+      "workers_vs_law_28": "28/28",
+      "mem_avail_mb": 19219,
+      "disk_free_gb": 25,
+      "load1": 13.4,
+      "dispatch_idle_why": "full 6/4",
+      "published_ss": [
+        "AU_SHORT",
+        "BABA_SHORT",
+        "BA_SHORT",
+        "BHP_SHORT",
+        "BIDU_SHORT",
+        "BKR_SHORT",
+        "LOW_SHORT",
+        "NEM_SHORT",
+        "NFLX_SHORT",
+        "PWR_SHORT",
+        "SCCO_SHORT",
+        "U_SHORT",
+        "VZ_SHORT",
+        "WDAY_SHORT",
+        "WPM_SHORT"
+      ]
     }
   },
   "alerts": [
     "LOW_THROUGHPUT:s1:2/h<10 (idle_why=full 2/2)",
     "DISK_FLOOR:s1:26GB<40",
-    "LOW_THROUGHPUT:s2:1/h<10 (idle_why=own venue work waits for memory (9084MB))",
-    "UNREACHABLE:s6"
+    "LOW_THROUGHPUT:s2:1/h<10 (idle_why=own venue work waits for memory (9301MB))",
+    "UNREACHABLE:s5",
+    "DISK_FLOOR:s6:25GB<40"
   ],
   "repair": null
 }

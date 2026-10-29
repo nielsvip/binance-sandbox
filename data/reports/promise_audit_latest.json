@@ -1,21 +1,23 @@
 {
- "generated_utc": "2026-10-28T23:12:34.297422+00:00",
+ "generated_utc": "2026-10-29T00:12:44.903519+00:00",
  "days": 1.0,
  "totals": {
-  "entry_promises": 88,
-  "entry_broken_no_delivery": 88,
-  "exit_promises": 114,
-  "exit_broken_no_delivery": 113,
-  "exit_skipped_inflight": 1489,
+  "entry_promises": 89,
+  "entry_broken_no_delivery": 89,
+  "exit_promises": 117,
+  "exit_broken_no_delivery": 115,
+  "exit_skipped_inflight": 1518,
+  "exit_kept_in_bar": 1,
   "exit_kept_late": 1
  },
  "per_key": {
   "inf:PENGUUSDC_LONG": {
-   "entry_promises": 3,
-   "entry_broken_no_delivery": 3,
-   "exit_promises": 2,
+   "entry_promises": 4,
+   "entry_broken_no_delivery": 4,
+   "exit_promises": 3,
    "exit_broken_no_delivery": 2,
-   "exit_skipped_inflight": 94
+   "exit_skipped_inflight": 122,
+   "exit_kept_in_bar": 1
   },
   "men:UNIUSDC_LONG": {
    "exit_promises": 2,
@@ -313,15 +315,17 @@
    "exit_broken_no_delivery": 1
   },
   "inf:ARUSDT_LONG": {
-   "exit_promises": 3,
-   "exit_broken_no_delivery": 3,
+   "exit_promises": 4,
+   "exit_broken_no_delivery": 4,
    "entry_promises": 2,
    "entry_broken_no_delivery": 2,
-   "exit_skipped_inflight": 44
+   "exit_skipped_inflight": 45
   },
   "inf:XRPUSDC_LONG": {
    "entry_promises": 1,
-   "entry_broken_no_delivery": 1
+   "entry_broken_no_delivery": 1,
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1
   }
  },
  "detail": [
@@ -2344,6 +2348,36 @@
    "action": "OPEN",
    "reason": "TIER1_PRICE_CROSS_REENTRY_exit0.0079_cur0.0080_k3m92",
    "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "XRPUSDC_LONG",
+   "kind": "exit",
+   "bar": "10-28 23:00",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "ALL_TF_AGAINST_CLOSE g0.69%",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "ARUSDT_LONG",
+   "kind": "exit",
+   "bar": "10-28 23:00",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "WT_LOWER_CROSS_EXIT wt_1h lower wt+price",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "PENGUUSDC_LONG",
+   "kind": "entry",
+   "bar": "10-28 23:15",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+   "outcome": "NO_DELIVERY"
   }
  ],
  "broken": [
@@ -2593,6 +2627,19 @@
    "bar_ts": null,
    "lag_s": null,
    "detail": "inflight_age_s=93"
+  },
+  {
+   "ts": 1793229584.18811,
+   "kind": "BROKEN",
+   "acct": "inf",
+   "key": "inf:BNBUSDC_LONG",
+   "sym_side": "BNBUSDC_LONG",
+   "label": "CLOSE VEC_EXIT_OWED",
+   "why": "EXIT_WEDGED_FORCED",
+   "is_exit": true,
+   "bar_ts": null,
+   "lag_s": null,
+   "detail": "inflight_age_s=99"
   }
  ]
 }
