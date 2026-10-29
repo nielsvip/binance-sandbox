@@ -1,9 +1,9 @@
 {
- "generated_utc": "2026-10-29T00:12:44.903519+00:00",
+ "generated_utc": "2026-10-29T01:12:15.771017+00:00",
  "days": 1.0,
  "totals": {
-  "entry_promises": 89,
-  "entry_broken_no_delivery": 89,
+  "entry_promises": 90,
+  "entry_broken_no_delivery": 90,
   "exit_promises": 117,
   "exit_broken_no_delivery": 115,
   "exit_skipped_inflight": 1518,
@@ -317,8 +317,8 @@
   "inf:ARUSDT_LONG": {
    "exit_promises": 4,
    "exit_broken_no_delivery": 4,
-   "entry_promises": 2,
-   "entry_broken_no_delivery": 2,
+   "entry_promises": 3,
+   "entry_broken_no_delivery": 3,
    "exit_skipped_inflight": 45
   },
   "inf:XRPUSDC_LONG": {
@@ -2374,6 +2374,16 @@
    "sym_side": "PENGUUSDC_LONG",
    "kind": "entry",
    "bar": "10-28 23:15",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "ARUSDT_LONG",
+   "kind": "entry",
+   "bar": "10-29 00:00",
    "late_min": null,
    "action": "OPEN",
    "reason": "HTF_WT_CHURN_REENTRY_120MIN",

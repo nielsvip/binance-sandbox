@@ -1,8 +1,8 @@
 {
-  "ts": "2026-10-29T01:05:04.170325+00:00",
+  "ts": "2026-10-29T01:10:06.195339+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 7,
+  "fleet_published_last_60m": 6,
   "pending_sym_sides": 67,
   "hosts": {
     "s1": {
@@ -15,31 +15,32 @@
       "boards_running": 2,
       "workers": 13,
       "workers_vs_law_28": "13/28",
-      "mem_avail_mb": 12287,
+      "mem_avail_mb": 12333,
       "disk_free_gb": 26,
-      "load1": 11.2,
+      "load1": 10.1,
       "dispatch_idle_why": "full 2/2",
       "published_ss": [
         "BIOUSDC_SHORT"
       ]
     },
     "s2": {
-      "published_last_60m": 0,
-      "published_last_3h": 3,
+      "published_last_60m": 1,
+      "published_last_3h": 4,
       "boards": {
         "ALTUSDT_LONG": 7,
-        "BATUSDT_LONG": 0,
         "CHRUSDT_LONG": 5,
         "EDUUSDT_LONG": 7
       },
-      "boards_running": 4,
+      "boards_running": 3,
       "workers": 19,
       "workers_vs_law_28": "19/28",
-      "mem_avail_mb": 3916,
+      "mem_avail_mb": 6910,
       "disk_free_gb": 28,
-      "load1": 12.3,
+      "load1": 26.8,
       "dispatch_idle_why": "HOLD until 2026-10-29T04:00Z: V21 gate bench on s2 (2 arms x 2 workers) needs the RAM: no new production boards on s2 until ~04:00Z; set 01:0xZ by binance-f4, expires automatically",
-      "published_ss": []
+      "published_ss": [
+        "BATUSDT_LONG"
+      ]
     },
     "s5": {
       "published_last_60m": 3,
@@ -48,9 +49,9 @@
       "boards_running": 0,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 29827,
+      "mem_avail_mb": 29838,
       "disk_free_gb": 40,
-      "load1": 0.7,
+      "load1": 0.3,
       "dispatch_idle_why": "quarantine: 2 boards died unfinished <2h ['MCD_LONG', 'TRGP_LONG']",
       "published_ss": [
         "AR_LONG",
@@ -59,30 +60,28 @@
       ]
     },
     "s6": {
-      "published_last_60m": 3,
+      "published_last_60m": 1,
       "published_last_3h": 20,
       "boards": {},
       "boards_running": 0,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 28461,
+      "mem_avail_mb": 28431,
       "disk_free_gb": 46,
-      "load1": 0.9,
-      "dispatch_idle_why": "spacing 52s < 120",
+      "load1": 0.8,
+      "dispatch_idle_why": null,
       "published_ss": [
-        "PWR_SHORT",
-        "PYPL_SHORT",
-        "VZ_SHORT"
+        "PYPL_SHORT"
       ]
     }
   },
   "alerts": [
     "LOW_THROUGHPUT:s1:1/h<10 (idle_why=full 2/2)",
     "DISK_FLOOR:s1:26GB<40",
-    "LOW_THROUGHPUT:s2:0/h<10 (idle_why=HOLD until 2026-10-29T04:00Z: V21 gate bench on s2 (2 arms x 2 workers) needs the RAM: no new production boards on s2 until ~04:00Z; set 01:0xZ by binance-f4, expires automatically)",
+    "LOW_THROUGHPUT:s2:1/h<10 (idle_why=HOLD until 2026-10-29T04:00Z: V21 gate bench on s2 (2 arms x 2 workers) needs the RAM: no new production boards on s2 until ~04:00Z; set 01:0xZ by binance-f4, expires automatically)",
     "DISK_FLOOR:s2:28GB<40",
     "LOW_THROUGHPUT:s5:3/h<10 (idle_why=quarantine: 2 boards died unfinished <2h ['MCD_LONG', 'TRGP_LONG'])",
-    "LOW_THROUGHPUT:s6:3/h<10 (idle_why=spacing 52s < 120)"
+    "LOW_THROUGHPUT:s6:1/h<10 (idle_why=None)"
   ],
   "repair": null
 }
