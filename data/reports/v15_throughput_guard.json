@@ -1,89 +1,109 @@
 {
- "at": "2026-10-29T13:11:30Z",
+ "at": "2026-10-29T14:11:14Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
   "s1": {
-   "improved": 0,
-   "improved_per_hour": 0.0,
-   "published_n": 0,
-   "flat_or_worse": 0,
-   "unknown": 0,
-   "boards_running": [
-    "1000BONKUSDC_SHORT",
-    "ATOMUSDT_LONG"
-   ],
-   "mem_avail_mb": 11889,
-   "load1": 11.17,
-   "nproc": 16,
-   "slots": null,
-   "binding_reason": "CPU budget: median board 9698 core-s, 16 cores minus 3.3 competing non-board cores ({'other': 2.39, 'boards': 1.45, 'klines_append': 0.95}) = 12.7 usable -> host ceiling 4.7 boards/h. Move nice-0 non-board work off the host and/or cut core-s per board.",
-   "error": null,
-   "published": [],
-   "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 8.5,
-   "last_improved_symside": "ATOMUSDT_LONG",
-   "cadence_ok": false,
-   "improved_gap_min_median_24h": 76.5,
-   "improved_gap_min_max_24h": 130.8,
-   "improved_finishes_24h": 11,
-   "board_cpu_s_median_24h": 9698.3,
-   "board_wall_s_median_24h": 3346.5042901039124,
-   "board_cores": 1.45,
-   "nonboard_cores_competing": 3.34,
-   "nonboard_cores_niced": 1.92,
-   "cores_by_bucket": {
-    "other": 2.39,
-    "boards": 1.45,
-    "klines_append": 0.95
-   },
-   "cores_by_bucket_niced": {
-    "klines_vault": 1.9,
-    "other": 0.02
-   }
-  },
-  "s2": {
    "improved": 1,
    "improved_per_hour": 1.0,
    "published_n": 1,
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "GALAUSDT_LONG",
-    "QNTUSDT_LONG",
-    "TRBUSDT_LONG"
+    "1000BONKUSDC_SHORT",
+    "LTCUSDC_SHORT"
    ],
-   "mem_avail_mb": 9418,
-   "load1": 17.69,
+   "mem_avail_mb": 9158,
+   "load1": 12.74,
    "nproc": 16,
    "slots": null,
-   "binding_reason": "CPU budget: median board 7011 core-s, 16 cores minus 2.5 competing non-board cores ({'other': 0.84, 'boards': 13.33, 'live_helpers': 1.7}) = 13.5 usable -> host ceiling 6.9 boards/h. Move nice-0 non-board work off the host and/or cut core-s per board.",
+   "binding_reason": "CPU budget: median board 9698 core-s, 16 cores minus 2.5 competing non-board cores ({'other': 1.57, 'klines_append': 0.97, 'boards': 7.08}) = 13.5 usable -> host ceiling 5.0 boards/h. Move nice-0 non-board work off the host and/or cut core-s per board.",
    "error": null,
    "published": [
     {
-     "symside": "GALAUSDT_LONG",
-     "at": "2026-10-29T13:11:48Z",
-     "baseline": 25.824343185072852,
-     "final": 28.43527836784151,
+     "symside": "ATOMUSDT_LONG",
+     "at": "2026-10-29T13:23:16Z",
+     "baseline": -1.638951910721156,
+     "final": 16.407934412458864,
      "state": "improved"
     }
    ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 0.2,
-   "last_improved_symside": "GALAUSDT_LONG",
+   "minutes_since_last_improved": 47.6,
+   "last_improved_symside": "ATOMUSDT_LONG",
+   "cadence_ok": false,
+   "improved_gap_min_median_24h": 94.4,
+   "improved_gap_min_max_24h": 130.8,
+   "improved_finishes_24h": 11,
+   "board_cpu_s_median_24h": 9698.2,
+   "board_wall_s_median_24h": 3304.607819080353,
+   "board_cores": 7.08,
+   "nonboard_cores_competing": 2.54,
+   "nonboard_cores_niced": 1.96,
+   "cores_by_bucket": {
+    "other": 1.57,
+    "klines_append": 0.97,
+    "boards": 7.08
+   },
+   "cores_by_bucket_niced": {
+    "klines_vault": 1.96
+   }
+  },
+  "s2": {
+   "improved": 3,
+   "improved_per_hour": 3.0,
+   "published_n": 3,
+   "flat_or_worse": 0,
+   "unknown": 0,
+   "boards_running": [
+    "THETAUSDT_LONG",
+    "TIAUSDC_LONG"
+   ],
+   "mem_avail_mb": 13353,
+   "load1": 9.69,
+   "nproc": 16,
+   "slots": null,
+   "binding_reason": "CPU budget: median board 7022 core-s, 16 cores minus 1.9 competing non-board cores ({'other': 0.62, 'boards': 6.54, 'live_helpers': 1.25}) = 14.1 usable -> host ceiling 7.2 boards/h. Move nice-0 non-board work off the host and/or cut core-s per board.",
+   "error": null,
+   "published": [
+    {
+     "symside": "EDUUSDT_LONG",
+     "at": "2026-10-29T14:08:23Z",
+     "baseline": 88.5532286829386,
+     "final": 102.00313535172663,
+     "state": "improved"
+    },
+    {
+     "symside": "GALAUSDT_LONG",
+     "at": "2026-10-29T13:12:12Z",
+     "baseline": 25.824343185072852,
+     "final": 28.43527836784151,
+     "state": "improved"
+    },
+    {
+     "symside": "TRBUSDT_LONG",
+     "at": "2026-10-29T13:39:33Z",
+     "baseline": 6.159546904034195,
+     "final": 28.992810400675996,
+     "state": "improved"
+    }
+   ],
+   "cadence_target_min": 5.0,
+   "minutes_since_last_improved": 2.6,
+   "last_improved_symside": "EDUUSDT_LONG",
    "cadence_ok": true,
    "improved_gap_min_median_24h": 28.8,
    "improved_gap_min_max_24h": 2658.8,
    "improved_finishes_24h": 35,
-   "board_cpu_s_median_24h": 7011.1,
-   "board_wall_s_median_24h": 2460.6372389793396,
-   "board_cores": 13.33,
-   "nonboard_cores_competing": 2.54,
+   "board_cpu_s_median_24h": 7022.3,
+   "board_wall_s_median_24h": 2829.053670167923,
+   "board_cores": 6.54,
+   "nonboard_cores_competing": 1.87,
    "nonboard_cores_niced": 0,
    "cores_by_bucket": {
-    "other": 0.84,
-    "boards": 13.33,
-    "live_helpers": 1.7
+    "other": 0.62,
+    "boards": 6.54,
+    "live_helpers": 1.25
    },
    "cores_by_bucket_niced": {}
   }

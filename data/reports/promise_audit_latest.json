@@ -1,27 +1,29 @@
 {
- "generated_utc": "2026-10-29T13:12:13.974470+00:00",
+ "generated_utc": "2026-10-29T14:12:30.102039+00:00",
  "days": 1.0,
  "totals": {
-  "exit_promises": 13,
+  "exit_promises": 14,
   "exit_broken_no_delivery": 11,
-  "entry_promises": 8,
-  "entry_broken_no_delivery": 8,
-  "exit_skipped_inflight": 214,
-  "exit_kept_in_bar": 2
+  "exit_skipped_inflight": 441,
+  "exit_kept_in_bar": 2,
+  "entry_promises": 10,
+  "entry_broken_no_delivery": 10,
+  "exit_pending": 1
  },
  "per_key": {
-  "inf:ARUSDT_LONG": {
-   "exit_promises": 4,
-   "exit_broken_no_delivery": 4,
-   "entry_promises": 4,
-   "entry_broken_no_delivery": 4,
-   "exit_skipped_inflight": 49
-  },
   "inf:BNBUSDC_LONG": {
    "exit_promises": 4,
    "exit_broken_no_delivery": 3,
    "exit_skipped_inflight": 43,
    "exit_kept_in_bar": 1
+  },
+  "inf:ARUSDT_LONG": {
+   "entry_promises": 5,
+   "entry_broken_no_delivery": 5,
+   "exit_promises": 5,
+   "exit_skipped_inflight": 276,
+   "exit_broken_no_delivery": 4,
+   "exit_pending": 1
   },
   "inf:XRPUSDC_LONG": {
    "entry_promises": 1,
@@ -40,19 +42,13 @@
   "ang:BNBUSDC_LONG": {
    "exit_promises": 1,
    "exit_broken_no_delivery": 1
+  },
+  "inf:1000PEPEUSDC_LONG": {
+   "entry_promises": 1,
+   "entry_broken_no_delivery": 1
   }
  },
  "detail": [
-  {
-   "acct": "inf",
-   "sym_side": "ARUSDT_LONG",
-   "kind": "exit",
-   "bar": "10-28 13:45",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "FIXED_STOP",
-   "outcome": "NO_DELIVERY"
-  },
   {
    "acct": "inf",
    "sym_side": "BNBUSDC_LONG",
@@ -232,35 +228,39 @@
    "action": "CLOSE",
    "reason": "FIXED_STOP",
    "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "ARUSDT_LONG",
+   "kind": "exit",
+   "bar": "10-29 13:00",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "REDUCE_TO_FLAT",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "ARUSDT_LONG",
+   "kind": "entry",
+   "bar": "10-29 13:15",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "HTF_WT_CHURN_REENTRY_120MIN",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "1000PEPEUSDC_LONG",
+   "kind": "entry",
+   "bar": "10-29 13:15",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "REENTRY_HIGHER_LOW",
+   "outcome": "NO_DELIVERY"
   }
  ],
  "broken": [
-  {
-   "ts": 1793196036.8879318,
-   "kind": "BROKEN",
-   "acct": "inf",
-   "key": "inf:BTCDOMUSDT_LONG",
-   "sym_side": "BTCDOMUSDT_LONG",
-   "label": "CLOSE VEC_EXIT_OWED",
-   "why": "EXIT_WEDGED_FORCED",
-   "is_exit": true,
-   "bar_ts": null,
-   "lag_s": null,
-   "detail": "inflight_age_s=137"
-  },
-  {
-   "ts": 1793196401.6446788,
-   "kind": "BROKEN",
-   "acct": "inf",
-   "key": "inf:BTCDOMUSDT_LONG",
-   "sym_side": "BTCDOMUSDT_LONG",
-   "label": "CLOSE VEC_EXIT_OWED",
-   "why": "EXIT_WEDGED_FORCED",
-   "is_exit": true,
-   "bar_ts": null,
-   "lag_s": null,
-   "detail": "inflight_age_s=100"
-  },
   {
    "ts": 1793196765.351464,
    "kind": "BROKEN",
