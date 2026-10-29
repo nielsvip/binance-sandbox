@@ -1,45 +1,23 @@
 {
-  "men:ARUSDT_LONG": {
-    "orderId": "2000001550702874",
-    "stopPrice": 3.334,
-    "entry_sig": "2026-10-29 09:00:46.085000+00:00",
-    "symbol": "ARUSDT",
+  "flz:BTCUSDC_LONG": {
+    "orderId": "1000002650837832",
+    "stopPrice": 79387.9,
+    "entry_sig": "2026-10-29 10:46:44.468000+00:00",
+    "symbol": "BTCUSDC",
     "side": "LONG"
   },
-  "men:BANDUSDT_LONG": {
-    "orderId": "2000001551826347",
-    "stopPrice": 0.2058,
-    "entry_sig": "2026-10-29 16:30:47.199000+00:00",
-    "symbol": "BANDUSDT",
+  "flz:DOGEUSDC_LONG": {
+    "orderId": "1000002650430701",
+    "stopPrice": 0.07698,
+    "entry_sig": "2026-10-29 05:16:14.304000+00:00",
+    "symbol": "DOGEUSDC",
     "side": "LONG"
   },
-  "men:EDUUSDT_LONG": {
-    "orderId": "2000001551375851",
-    "stopPrice": 0.05772,
-    "entry_sig": "2026-10-29 14:01:04.078000+00:00",
-    "symbol": "EDUUSDT",
+  "flz:SOLUSDC_LONG": {
+    "orderId": "1000002650977814",
+    "stopPrice": 99.19,
+    "entry_sig": "2026-10-29 12:31:31.103000+00:00",
+    "symbol": "SOLUSDC",
     "side": "LONG"
-  },
-  "men:KASUSDT_LONG": {
-    "orderId": "2000001551696710",
-    "stopPrice": 0.03542,
-    "entry_sig": "2026-10-29 15:46:03.194000+00:00",
-    "symbol": "KASUSDT",
-    "side": "LONG"
-  },
-  "men:IMXUSDT_SHORT": {
-    "orderId": "2000001552002819",
-    "stopPrice": 0.1429,
-    "entry_sig": "2026-10-29 17:46:14.209000+00:00",
-    "symbol": "IMXUSDT",
-    "side": "SHORT"
-  },
-  "men:MEWUSDT_SHORT": {
-    "orderId": "2000001552074993",
-    "stopPrice": 0.0004748,
-    "entry_sig": "2026-10-29 18:41:32.621888+00:00",
-    "symbol": "MEWUSDT",
-    "side": "SHORT",
-    "disaster_backstop": true
   }
 }
