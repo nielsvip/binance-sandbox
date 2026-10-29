@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-29T14:18:18Z",
+ "ts": "2026-10-29T14:23:41Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,20 +29,20 @@
   "trb": {
    "fills_6h": 0,
    "open_positions": 16,
-   "unrealised_usd": -7.55,
+   "unrealised_usd": -7.09,
    "pos_mismatch": 0
   },
   "trc": {
    "fills_6h": 1,
    "open_positions": 29,
-   "unrealised_usd": 136.46,
+   "unrealised_usd": 122.35,
    "pos_mismatch": 0
   },
   "fin": {
    "fills_6h": 26,
-   "open_positions": 16,
-   "unrealised_usd": 1.31,
-   "pos_mismatch": 1,
+   "open_positions": 15,
+   "unrealised_usd": 1.32,
+   "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -56,9 +56,9 @@
   },
   "men": {
    "fills_6h": 67,
-   "open_positions": 21,
-   "unrealised_usd": 0.72,
-   "pos_mismatch": 3,
+   "open_positions": 20,
+   "unrealised_usd": 0.77,
+   "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -72,9 +72,9 @@
   },
   "ang": {
    "fills_6h": 75,
-   "open_positions": 33,
-   "unrealised_usd": 1.25,
-   "pos_mismatch": 11,
+   "open_positions": 32,
+   "unrealised_usd": 1.34,
+   "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -89,7 +89,7 @@
   "inf": {
    "fills_6h": 5,
    "open_positions": 4,
-   "unrealised_usd": 0.38,
+   "unrealised_usd": 0.31,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 7,
@@ -105,8 +105,8 @@
   "flz": {
    "fills_6h": 25,
    "open_positions": 7,
-   "unrealised_usd": 1.0,
-   "pos_mismatch": 1,
+   "unrealised_usd": 0.98,
+   "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -138,229 +138,93 @@
     "49653"
    ],
    "starts_30m": 1,
-   "log_age_s": 45.0
+   "log_age_s": 52.0
   },
   "men": {
    "pids": [
     "31275"
    ],
    "starts_30m": 1,
-   "log_age_s": 99.0
+   "log_age_s": 60.0
   },
   "ang": {
    "pids": [
     "25726"
    ],
    "starts_30m": 1,
-   "log_age_s": 677.0
+   "log_age_s": 288.0
   },
   "inf": {
    "pids": [
     "73873"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 1.0
   },
   "flz": {
    "pids": [
     "78592"
    ],
    "starts_30m": 1,
-   "log_age_s": 340.0
+   "log_age_s": 7.0
   },
   "trb": {
    "pids": [
     "32303"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 0.0
   },
   "trc": {
    "pids": [
     "32622"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 5.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-29T14:18:18Z",
-   "severity": "CRITICAL",
-   "kind": "RAPID_LOSS_KEY",
-   "key": "trb:FCN_LONG",
-   "evidence": "unrealised -4.48% (60-min high +0.00%), amt 1"
-  },
-  {
-   "ts": "2026-10-29T14:18:18Z",
-   "severity": "WARN",
-   "kind": "NO_PER_KEY_BLOCK_AVAILABLE",
-   "key": "trb:FCN_LONG",
-   "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for RAPID_LOSS_KEY unrealised -4.48% (60-min high +0.00%), amt 1 (opens/augments blocked; exits untouched)"
-  },
-  {
-   "ts": "2026-10-29T14:18:18Z",
+   "ts": "2026-10-29T14:23:41Z",
    "severity": "CRITICAL",
    "kind": "ACCOUNT_EQUITY_DROP",
    "key": "trc",
-   "evidence": "unrealised PnL of the same open positions fell $73.69 since 2026-10-29T13:57:58Z (now $+136.46)"
+   "evidence": "unrealised PnL of the same open positions fell $87.80 since 2026-10-29T13:57:58Z (now $+122.35)"
   },
   {
-   "ts": "2026-10-29T14:18:19Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:KAVAUSDT_LONG",
-   "evidence": "positions file amt 122.9 vs fill-ledger amt 0"
-  },
-  {
-   "ts": "2026-10-29T14:18:20Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "men:KAVAUSDT_LONG",
-   "evidence": "positions file amt 122.9 vs fill-ledger amt 0"
-  },
-  {
-   "ts": "2026-10-29T14:18:20Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "men:BNBUSDC_LONG",
-   "evidence": "positions file amt 0 vs fill-ledger amt 0.03"
-  },
-  {
-   "ts": "2026-10-29T14:18:20Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "men:1INCHUSDT_SHORT",
-   "evidence": "positions file amt 128 vs fill-ledger amt 922"
-  },
-  {
-   "ts": "2026-10-29T14:18:21Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "ang:BTCUSDC_LONG",
-   "evidence": "positions file amt 0.001 vs fill-ledger amt 0.004056"
-  },
-  {
-   "ts": "2026-10-29T14:18:21Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "ang:QNTUSDT_LONG",
-   "evidence": "positions file amt 0.2 vs fill-ledger amt 1.2"
-  },
-  {
-   "ts": "2026-10-29T14:18:21Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "ang:RSRUSDT_LONG",
-   "evidence": "positions file amt 9541 vs fill-ledger amt 65742.6"
-  },
-  {
-   "ts": "2026-10-29T14:18:21Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "ang:ARBUSDC_LONG",
-   "evidence": "positions file amt 89.7 vs fill-ledger amt 253.594"
-  },
-  {
-   "ts": "2026-10-29T14:18:21Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "ang:SUSHIUSDT_LONG",
-   "evidence": "positions file amt 74 vs fill-ledger amt 145"
-  },
-  {
-   "ts": "2026-10-29T14:18:21Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "ang:HYPEUSDT_LONG",
-   "evidence": "positions file amt 0.16 vs fill-ledger amt 0.34"
-  },
-  {
-   "ts": "2026-10-29T14:18:21Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "ang:NEARUSDC_LONG",
-   "evidence": "positions file amt 3 vs fill-ledger amt 21.0078"
-  },
-  {
-   "ts": "2026-10-29T14:18:21Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "ang:KAVAUSDT_LONG",
-   "evidence": "positions file amt 122.9 vs fill-ledger amt 0"
-  },
-  {
-   "ts": "2026-10-29T14:18:21Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "ang:RVNUSDT_SHORT",
-   "evidence": "positions file amt 10638 vs fill-ledger amt 138430"
-  },
-  {
-   "ts": "2026-10-29T14:18:21Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "ang:STXUSDT_SHORT",
-   "evidence": "positions file amt 51 vs fill-ledger amt 102"
-  },
-  {
-   "ts": "2026-10-29T14:18:21Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "ang:1000FLOKIUSDT_SHORT",
-   "evidence": "positions file amt 2 vs fill-ledger amt 104"
-  },
-  {
-   "ts": "2026-10-29T14:18:21Z",
+   "ts": "2026-10-29T14:23:42Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "inf:ARUSDT_LONG",
    "evidence": "REDUCE REDUCE_TO_FLAT bar=2026-10-29T13:00:00Z refused by non-safety gate: 29 13:16:50 - INFO - [inf] [VEC_EXACT] inf:ARUSDT_LONG CLOSE VEC_EXIT_OWED qty=4.400000 -> SKIPPED_VX_INFLIGHT"
   },
   {
-   "ts": "2026-10-29T14:18:21Z",
+   "ts": "2026-10-29T14:23:42Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "inf:ARUSDT_LONG",
    "evidence": "OPEN HTF_WT_CHURN_REENTRY_120MIN bar=2026-10-29T13:15:00Z refused by non-safety gate: 29 13:31:45 - INFO - [inf] [VEC_EXACT] inf:ARUSDT_LONG CLOSE VEC_EXIT_OWED qty=4.400000 -> SKIPPED_VX_INFLIGHT"
   },
   {
-   "ts": "2026-10-29T14:18:21Z",
+   "ts": "2026-10-29T14:23:42Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "inf:1000PEPEUSDC_LONG",
    "evidence": "OPEN REENTRY_HIGHER_LOW bar=2026-10-29T13:15:00Z: live already holds 3068 (state divergence)"
   },
   {
-   "ts": "2026-10-29T14:18:22Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "flz:SOLUSDC_LONG",
-   "evidence": "positions file amt 0.14 vs fill-ledger amt 0.28"
-  },
-  {
-   "ts": "2026-10-29T14:18:23Z",
+   "ts": "2026-10-29T14:23:43Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 677s"
-  },
-  {
-   "ts": "2026-10-29T14:18:23Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 340s"
+   "evidence": "ez_manage_ang.log not written for 288s"
   }
  ],
  "alert_counts": {
-  "RAPID_LOSS_KEY": 1,
-  "NO_PER_KEY_BLOCK_AVAILABLE": 1,
   "ACCOUNT_EQUITY_DROP": 1,
-  "POSITION_STATE_MISMATCH": 16,
   "VEC_DECISION_REFUSED": 2,
   "VEC_OPEN_WHILE_LIVE_IN": 1,
-  "STALE_LOG": 2
+  "STALE_LOG": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -406,5 +270,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 4.64
+ "sweep_s": 2.73
 }
