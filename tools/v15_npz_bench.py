@@ -162,6 +162,41 @@ def mem_avail_mb():
     return 1e9
 
 
+def freeze_live_baseline(snap):
+    """2026-10-29: every pilot since 10-26 refuses to start without data/live_baseline_snapshots/manifest.json
+    ([BASELINE-PERSYM-SNAPSHOT-INVALID] -> SystemExit(2)); the 10-14 snapshot predates that directory, so every
+    candidate arm died at the baseline step (lane E A/B on s6 20:4xZ: 8/8 boards rc=2 wall 10-35 s, gain None) while the
+    older champion ran -> HARNESS_FAIL forever. Freeze ONE copy of the Mac live full-set export into the snapshot the
+    first time it is missing (tmp + rename so two arms building at once share the same bytes); both arms then read
+    identical inputs and the frozen manifest is exempted from the 15-minute age law via V15_LIVE_SNAPSHOT_MAX_AGE_S."""
+    dst = snap / "data" / "live_baseline_snapshots"
+    if (dst / "manifest.json").exists():
+        return False
+    src = SRC / "data" / "live_baseline_snapshots"
+    if not (src / "manifest.json").exists():
+        print(f"[bench] WARN no live baseline export at {src}; candidate pilots will refuse their baseline", flush=True)
+        return False
+    tmp = snap / "data" / f".live_baseline_snapshots.tmp.{os.getpid()}"
+    shutil.rmtree(tmp, ignore_errors=True)
+    shutil.copytree(src, tmp)
+    try:
+        os.rename(tmp, dst)
+    except OSError:
+        shutil.rmtree(tmp, ignore_errors=True)  # the other arm won the rename; same source bytes either way
+        return False
+    try:
+        gen = json.loads((dst / "manifest.json").read_text()).get("generated_at")
+        mp = snap / "manifest.json"
+        if mp.exists():
+            man = json.loads(mp.read_text())
+            man["live_baseline_frozen"] = {"at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "generated_at": gen, "files": len(list(dst.glob("*.json")))}
+            mp.write_text(json.dumps(man, indent=1))
+    except Exception as exc:
+        print(f"[bench] WARN live baseline frozen but snapshot manifest not annotated: {exc}", flush=True)
+    print(f"[bench] froze live baseline export into {dst} (generated_at {gen})", flush=True)
+    return True
+
+
 def build_root(snap, run_dir, code):
     root = run_dir / "root"
     if root.exists():
@@ -172,7 +207,11 @@ def build_root(snap, run_dir, code):
         ex += ["--exclude", e]
     subprocess.run(["rsync", "-a"] + ex + [f"{code}/", f"{root}/"], check=True)
     os.symlink(SRC / ".venv", root / ".venv")
-    subprocess.run(["cp", "-a", str(snap / "data"), str(root / "data")], check=True)
+    freeze_live_baseline(snap)
+    if os.environ.get("BENCH_MOVE_DATA") == "1":  # scratch hosts at the 40 GB disk floor: move, the driver restores a pristine copy afterwards
+        os.rename(str(snap / "data"), str(root / "data"))
+    else:
+        subprocess.run(["cp", "-a", str(snap / "data"), str(root / "data")], check=True)
     ind = root / "backtest_v8" / "indicators"
     ind.mkdir(parents=True)
     now = time.time()
@@ -516,6 +555,7 @@ def _cmd_run_body(args, snap, man, run_dir):
             (sd / "out").mkdir(exist_ok=True)
             env = dict(env_base)
             env.update(V15_PROGRESS_DIR=str(sd / "progress"), V15_OUT_DIR=str(sd / "out"), V15_ISOLATED_PROOF="1", V15_FILL_SLICE_S="0", V15_FRESH_RUN="1", V15_EVAL_CACHE_DB=str(sd / "eval_cache.db"), V15_V17_CARRY_DIR=str(sd / "carry"))
+            env["V15_LIVE_SNAPSHOT_MAX_AGE_S"] = str(10 * 366 * 86400)  # the live baseline export is FROZEN in the snapshot (see freeze_live_baseline); the 15-minute law is for production hosts
             st = snap / "starts" / f"{ss}_autopsy_base.json"
             if st.exists():
                 env["V15_START_OVERRIDES"] = str(st)

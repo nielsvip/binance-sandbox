@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-28T23:59:09Z",
+ "ts": "2026-10-29T00:04:27Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,7 +29,7 @@
   "fin": {
    "fills_6h": 73,
    "open_positions": 17,
-   "unrealised_usd": 2.51,
+   "unrealised_usd": 2.87,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 121,
-   "open_positions": 23,
-   "unrealised_usd": 2.92,
+   "fills_6h": 120,
+   "open_positions": 22,
+   "unrealised_usd": 3.47,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 116,
+   "fills_6h": 117,
    "open_positions": 32,
-   "unrealised_usd": 2.81,
+   "unrealised_usd": 3.12,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -77,7 +77,7 @@
   "inf": {
    "fills_6h": 16,
    "open_positions": 2,
-   "unrealised_usd": 0.05,
+   "unrealised_usd": 0.07,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 5,
@@ -91,9 +91,9 @@
    }
   },
   "flz": {
-   "fills_6h": 23,
+   "fills_6h": 22,
    "open_positions": 8,
-   "unrealised_usd": 0.07,
+   "unrealised_usd": 0.05,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -126,89 +126,81 @@
    "pids": [
     "20266"
    ],
-   "starts_30m": 1,
-   "log_age_s": 84.0
+   "starts_30m": 0,
+   "log_age_s": 97.0
   },
   "men": {
    "pids": [
     "8520"
    ],
    "starts_30m": 1,
-   "log_age_s": 78.0
+   "log_age_s": 37.0
   },
   "ang": {
    "pids": [
     "12881"
    ],
-   "starts_30m": 2,
-   "log_age_s": 95.0
+   "starts_30m": 1,
+   "log_age_s": 52.0
   },
   "inf": {
    "pids": [
     "89250"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 5.0
   },
   "flz": {
    "pids": [
     "68548"
    ],
    "starts_30m": 2,
-   "log_age_s": 916.0
+   "log_age_s": 19.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 14818.0
+   "log_age_s": 15136.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 14287.0
+   "log_age_s": 14605.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-28T23:59:10Z",
+   "ts": "2026-10-29T00:04:28Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "inf:PENGUUSDC_LONG",
    "evidence": "OPEN TIER1_PRICE_CROSS_REENTRY_exit0.0079_cur bar=2026-10-28T21:00:00Z refused by non-safety gate: 28 21:15:57 - INFO - [inf] [VEC_EXACT] inf:PENGUUSDC_LONG CLOSE VEC_EXIT_OWED qty=1935.000000 -> SKIPPED_VX_INFLIGHT"
   },
   {
-   "ts": "2026-10-28T23:59:10Z",
+   "ts": "2026-10-29T00:04:28Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "inf:XRPUSDC_LONG",
    "evidence": "CLOSE ALL_TF_AGAINST_CLOSE g0.69% bar=2026-10-28T23:00:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-28T23:59:10Z",
+   "ts": "2026-10-29T00:04:28Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "inf:PENGUUSDC_LONG",
    "evidence": "CLOSE DC_HOPELESS_entry=0.0080_dc=[0.0073,0.00 bar=2026-10-28T23:00:00Z refused by non-safety gate: 28 23:16:50 - INFO - [inf] [VEC_EXACT] inf:PENGUUSDC_LONG CLOSE VEC_EXIT_OWED qty=1901.000000 -> SKIPPED_VX_INFLIGHT"
   },
   {
-   "ts": "2026-10-28T23:59:10Z",
+   "ts": "2026-10-29T00:04:28Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "inf:ARUSDT_LONG",
    "evidence": "CLOSE WT_LOWER_CROSS_EXIT wt_1h lower wt+price bar=2026-10-28T23:00:00Z refused by non-safety gate: 28 23:16:50 - INFO - [inf] [VEC_EXACT] inf:ARUSDT_LONG CLOSE VEC_EXIT_OWED qty=4.100000 -> BLOCKED_NET_GAIN"
-  },
-  {
-   "ts": "2026-10-28T23:59:11Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 916s"
   }
  ],
  "alert_counts": {
   "VEC_DECISION_REFUSED": 3,
-  "VEC_EXIT_WHILE_LIVE_FLAT": 1,
-  "STALE_LOG": 1
+  "VEC_EXIT_WHILE_LIVE_FLAT": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -254,5 +246,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 2.18
+ "sweep_s": 2.16
 }
