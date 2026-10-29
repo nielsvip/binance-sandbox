@@ -1,23 +1,38 @@
 {
- "at": "2026-10-29T12:26:04Z",
+ "at": "2026-10-29T13:26:11Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
  "hosts": {
   "s1": {
-   "published_n": 1,
-   "per_hour": 0.5,
+   "published_n": 2,
+   "per_hour": 1.0,
    "improved_vs_best_start": 0,
    "mean_uplift_vs_best_start": null,
    "median_uplift": null,
    "chained_from_previous_published": 0,
-   "no_floor_recorded": 1,
+   "no_floor_recorded": 2,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 0.5/h < 12.0/h (one per 5 min)"
+    "throughput 1.0/h < 12.0/h (one per 5 min)"
    ],
    "rows": [
+    {
+     "symside": "ATOMUSDT_LONG",
+     "published_at": 1793280196.761463,
+     "final_gain": 16.407934412458864,
+     "best_start_gain": null,
+     "best_start_chosen": null,
+     "best_start_candidates": null,
+     "baseline_gain": -1.638951910721156,
+     "npz_ts_last": 1793277900.0,
+     "npz_md5": "5ebfbc7ecfe4ea2c2dec9f9d031c9c6f",
+     "npz_bars": 219280,
+     "bh": -2.2662868089077777,
+     "verdict": null,
+     "npz_age_h_at_publish": 0.64
+    },
     {
      "symside": "FLUXUSDT_LONG",
      "published_at": 1793274501.4064436,
@@ -37,78 +52,48 @@
    "error": null
   },
   "s2": {
-   "published_n": 4,
-   "per_hour": 2.0,
+   "published_n": 2,
+   "per_hour": 1.0,
    "improved_vs_best_start": 0,
    "mean_uplift_vs_best_start": null,
    "median_uplift": null,
    "chained_from_previous_published": 0,
-   "no_floor_recorded": 4,
+   "no_floor_recorded": 2,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 2.0/h < 12.0/h (one per 5 min)"
+    "throughput 1.0/h < 12.0/h (one per 5 min)"
    ],
    "rows": [
     {
-     "symside": "ASTERUSDT_LONG",
-     "published_at": 1793271744.245893,
-     "final_gain": 20.901847692019597,
-     "best_start_gain": null,
-     "best_start_chosen": null,
-     "best_start_candidates": null,
-     "baseline_gain": 15.187687843239742,
-     "npz_ts_last": 1793268900.0,
-     "npz_md5": "7b527cb9eaa3d5c9d7abdca3429d4c1b",
-     "npz_bars": 38849,
-     "bh": -1.9782712926335537,
-     "verdict": null,
-     "npz_age_h_at_publish": 0.79
-    },
-    {
-     "symside": "DOGEUSDC_LONG",
-     "published_at": 1793269628.2689564,
-     "final_gain": 12.23479851740343,
-     "best_start_gain": null,
-     "best_start_chosen": null,
-     "best_start_candidates": null,
-     "baseline_gain": -0.5290264987054449,
-     "npz_ts_last": 1793266200.0,
-     "npz_md5": "7b0fff0591e81262fda6dff6c26e7622",
-     "npz_bars": 46795,
-     "bh": -19.817068553824086,
-     "verdict": null,
-     "npz_age_h_at_publish": 0.95
-    },
-    {
      "symside": "EDUUSDT_LONG",
      "published_at": 1793274535.5618937,
-     "final_gain": 88.99215519883431,
+     "final_gain": 91.48544345224664,
      "best_start_gain": null,
      "best_start_chosen": null,
      "best_start_candidates": null,
-     "baseline_gain": 34.55109640022504,
-     "npz_ts_last": 1793270700.0,
-     "npz_md5": "2ea2c93ea1273df1ccb0c32cbc3c1a83",
-     "npz_bars": 43622,
-     "bh": 36.12890907789119,
+     "baseline_gain": 88.5532286829386,
+     "npz_ts_last": 1793277900.0,
+     "npz_md5": "5f71eb4acd2e744ff65ccfc7b7684c7a",
+     "npz_bars": 43630,
+     "bh": 32.49759923763095,
      "verdict": null,
-     "npz_age_h_at_publish": 1.07
+     "npz_age_h_at_publish": -0.93
     },
     {
-     "symside": "UNIUSDC_LONG",
-     "published_at": 1793271339.9058836,
-     "final_gain": 33.080097921512206,
+     "symside": "GALAUSDT_LONG",
+     "published_at": 1793279532.8361652,
+     "final_gain": 28.43527836784151,
      "best_start_gain": null,
      "best_start_chosen": null,
      "best_start_candidates": null,
-     "baseline_gain": -1.708536232916544,
-     "npz_ts_last": 1793268000.0,
-     "npz_md5": "751583c2ae06c3b0a6751c8c9c1efaab",
-     "npz_bars": 43626,
-     "bh": -19.107406090671017,
+     "baseline_gain": 25.824343185072852,
+     "npz_ts_last": 1793276100.0,
+     "npz_md5": "2a71b46f9425a1d0a749fa610b53f93a",
+     "npz_bars": 174748,
+     "bh": -8.551994825684183,
      "verdict": null,
-     "npz_age_h_at_publish": 0.93
+     "npz_age_h_at_publish": 0.95
     }
    ],
    "error": null
