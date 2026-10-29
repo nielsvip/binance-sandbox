@@ -1,30 +1,37 @@
 {
-  "fin:IMXUSDT_SHORT": {
-    "orderId": "3000002284175977",
-    "stopPrice": 0.1429,
-    "entry_sig": "2026-10-29 20:31:15.635000+00:00",
-    "symbol": "IMXUSDT",
+  "ang:ETCUSDT_SHORT": {
+    "orderId": "4000002008473062",
+    "stopPrice": 7.709,
+    "entry_sig": "2026-10-29 20:16:06.989000+00:00",
+    "symbol": "ETCUSDT",
     "side": "SHORT"
   },
-  "fin:GASUSDT_SHORT": {
-    "orderId": "3000002284231462",
-    "stopPrice": 1.237,
-    "entry_sig": "2026-10-29 20:45:47.843000+00:00",
-    "symbol": "GASUSDT",
-    "side": "SHORT"
+  "ang:HYPEUSDT_LONG": {
+    "orderId": "4000002008718337",
+    "stopPrice": 89.311,
+    "entry_sig": "2026-10-29 21:15:44.273000+00:00",
+    "symbol": "HYPEUSDT",
+    "side": "LONG"
   },
-  "fin:INXUSDT_SHORT": {
-    "orderId": "3000002284492841",
-    "stopPrice": 0.004811,
-    "entry_sig": "2026-10-29 22:30:40.068000+00:00",
-    "symbol": "INXUSDT",
-    "side": "SHORT"
+  "ang:XMRUSDT_LONG": {
+    "orderId": "4000002008929381",
+    "stopPrice": 595.76,
+    "entry_sig": "2026-10-29 22:30:46.620000+00:00",
+    "symbol": "XMRUSDT",
+    "side": "LONG"
   },
-  "fin:BCHUSDC_SHORT": {
-    "orderId": "3000002284230850",
-    "stopPrice": 294.33,
-    "entry_sig": "2026-10-29 20:45:38.512000+00:00",
-    "symbol": "BCHUSDC",
-    "side": "SHORT"
+  "ang:BEAMXUSDT_LONG": {
+    "orderId": "4000002009110336",
+    "stopPrice": 0.003259,
+    "entry_sig": "2026-10-29 23:45:33.242000+00:00",
+    "symbol": "BEAMXUSDT",
+    "side": "LONG"
+  },
+  "ang:SKYUSDT_LONG": {
+    "orderId": "4000002009110936",
+    "stopPrice": 0.06231,
+    "entry_sig": "2026-10-29 23:45:43.657000+00:00",
+    "symbol": "SKYUSDT",
+    "side": "LONG"
   }
 }
