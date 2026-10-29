@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-29T22:10:05.794647+00:00",
+  "ts": "2026-10-29T22:15:03.087143+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 10,
-  "pending_sym_sides": 72,
+  "pending_sym_sides": 70,
   "hosts": {
     "s1": {
       "published_last_60m": 0,
@@ -14,10 +14,10 @@
       "boards_running": 1,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 7581,
+      "mem_avail_mb": 8253,
       "disk_free_gb": 17,
-      "load1": 8.1,
-      "dispatch_idle_why": "mem 8242MB < 8500",
+      "load1": 9.0,
+      "dispatch_idle_why": "mem 8498MB < 8500",
       "published_ss": []
     },
     "s2": {
@@ -31,9 +31,9 @@
       "boards_running": 3,
       "workers": 21,
       "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 7177,
+      "mem_avail_mb": 6496,
       "disk_free_gb": 32,
-      "load1": 28.1,
+      "load1": 22.7,
       "dispatch_idle_why": "full 3/3",
       "published_ss": [
         "GRASSUSDT_LONG"
@@ -45,14 +45,15 @@
       "boards": {
         "ABBV_LONG": 7,
         "AMD_LONG": 7,
+        "LLY_LONG": 7,
         "PLTR_SHORT": 6
       },
-      "boards_running": 3,
-      "workers": 20,
-      "workers_vs_law_28": "20/28",
-      "mem_avail_mb": 19719,
+      "boards_running": 4,
+      "workers": 27,
+      "workers_vs_law_28": "27/28",
+      "mem_avail_mb": 14859,
       "disk_free_gb": 12,
-      "load1": 7.0,
+      "load1": 7.9,
       "dispatch_idle_why": "full 4/4",
       "published_ss": [
         "LOW_LONG",
@@ -65,15 +66,15 @@
       "boards": {
         "AAPL_LONG": 7,
         "AR_LONG": 7,
-        "GILD_LONG": 0,
+        "GILD_LONG": 7,
         "SPOT_LONG": 7
       },
       "boards_running": 4,
-      "workers": 21,
-      "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 20711,
+      "workers": 28,
+      "workers_vs_law_28": "28/28",
+      "mem_avail_mb": 16839,
       "disk_free_gb": 3,
-      "load1": 18.2,
+      "load1": 20.0,
       "dispatch_idle_why": "full 4/4",
       "published_ss": [
         "AMZN_SHORT",
@@ -87,7 +88,7 @@
     }
   },
   "alerts": [
-    "LOW_THROUGHPUT:s1:0/h<10 (idle_why=mem 8242MB < 8500)",
+    "LOW_THROUGHPUT:s1:0/h<10 (idle_why=mem 8498MB < 8500)",
     "DISK_FLOOR:s1:17GB<40",
     "LOW_THROUGHPUT:s2:1/h<10 (idle_why=full 3/3)",
     "DISK_FLOOR:s2:32GB<40",
