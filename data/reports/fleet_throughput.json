@@ -1,8 +1,8 @@
 {
-  "ts": "2026-10-29T10:50:13.616979+00:00",
+  "ts": "2026-10-29T10:55:05.351918+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 9,
+  "fleet_published_last_60m": 7,
   "pending_sym_sides": 0,
   "hosts": {
     "s1": {
@@ -15,33 +15,31 @@
       "boards_running": 2,
       "workers": 13,
       "workers_vs_law_28": "13/28",
-      "mem_avail_mb": 9253,
+      "mem_avail_mb": 10710,
       "disk_free_gb": 24,
-      "load1": 16.8,
+      "load1": 11.0,
       "dispatch_idle_why": "full 2/2",
       "published_ss": [
         "SOLUSDC_LONG"
       ]
     },
     "s2": {
-      "published_last_60m": 3,
+      "published_last_60m": 1,
       "published_last_3h": 5,
       "boards": {
         "ASTERUSDT_LONG": 7,
-        "QNTUSDT_LONG": 0,
-        "UNIUSDC_LONG": 7
+        "JUPUSDT_LONG": 7,
+        "UNIUSDC_LONG": 0
       },
       "boards_running": 3,
       "workers": 14,
       "workers_vs_law_28": "14/28",
-      "mem_avail_mb": 9095,
+      "mem_avail_mb": 10390,
       "disk_free_gb": 38,
-      "load1": 19.8,
+      "load1": 13.2,
       "dispatch_idle_why": "full 3/3",
       "published_ss": [
-        "DOGEUSDC_LONG",
-        "NEARUSDC_LONG",
-        "TIAUSDC_LONG"
+        "DOGEUSDC_LONG"
       ]
     },
     "s5": {
@@ -56,9 +54,9 @@
       "boards_running": 4,
       "workers": 28,
       "workers_vs_law_28": "28/28",
-      "mem_avail_mb": 9042,
+      "mem_avail_mb": 7849,
       "disk_free_gb": 35,
-      "load1": 25.1,
+      "load1": 24.6,
       "dispatch_idle_why": "full 4/4",
       "published_ss": [
         "1000PEPEUSDC_LONG",
@@ -75,10 +73,10 @@
       "boards_running": 2,
       "workers": 14,
       "workers_vs_law_28": "14/28",
-      "mem_avail_mb": 18923,
+      "mem_avail_mb": 18087,
       "disk_free_gb": 40,
-      "load1": 14.4,
-      "dispatch_idle_why": "spacing 110s < 120",
+      "load1": 14.2,
+      "dispatch_idle_why": "spacing 108s < 120",
       "published_ss": [
         "RVNUSDT_SHORT",
         "STRKUSDT_SHORT",
