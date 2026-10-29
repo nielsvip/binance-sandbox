@@ -1,11 +1,11 @@
 {
- "generated_utc": "2026-10-29T16:13:05.670926+00:00",
+ "generated_utc": "2026-10-29T17:13:26.792073+00:00",
  "days": 1.0,
  "totals": {
-  "entry_promises": 12,
-  "entry_broken_no_delivery": 12,
-  "exit_promises": 17,
-  "exit_broken_no_delivery": 14,
+  "entry_promises": 13,
+  "entry_broken_no_delivery": 13,
+  "exit_promises": 18,
+  "exit_broken_no_delivery": 15,
   "exit_skipped_inflight": 522,
   "exit_kept_in_bar": 2,
   "exit_pending": 1
@@ -43,15 +43,18 @@
    "exit_broken_no_delivery": 1
   },
   "inf:1000PEPEUSDC_LONG": {
-   "entry_promises": 3,
-   "entry_broken_no_delivery": 3,
+   "entry_promises": 4,
+   "entry_broken_no_delivery": 4,
    "exit_promises": 3,
-   "exit_broken_no_delivery": 2,
-   "exit_pending": 1
+   "exit_broken_no_delivery": 3
   },
   "inf:BCHUSDC_SHORT": {
    "exit_promises": 1,
    "exit_broken_no_delivery": 1
+  },
+  "flz:XMRUSDT_LONG": {
+   "exit_promises": 1,
+   "exit_pending": 1
   }
  },
  "detail": [
@@ -314,6 +317,26 @@
    "action": "OPEN",
    "reason": "REENTRY_HIGHER_LOW",
    "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "1000PEPEUSDC_LONG",
+   "kind": "exit",
+   "bar": "10-29 15:45",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "WT_4H_VEL_EXIT_vel=-64.5_g=3.27%_k3m=50_k15m=93",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "1000PEPEUSDC_LONG",
+   "kind": "entry",
+   "bar": "10-29 16:00",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "REENTRY_HIGHER_LOW",
+   "outcome": "NO_DELIVERY"
   }
  ],
  "broken": [
@@ -407,6 +430,19 @@
    "bar_ts": 1793258100.0,
    "lag_s": 338.6,
    "detail": "inflight_age_s=100"
+  },
+  {
+   "ts": 1793292437.48751,
+   "kind": "BROKEN",
+   "acct": "inf",
+   "key": "inf:ARUSDT_LONG",
+   "sym_side": "ARUSDT_LONG",
+   "label": "CLOSE VEC_EXIT_OWED",
+   "why": "EXIT_WEDGED_FORCED",
+   "is_exit": true,
+   "bar_ts": 1793282400.0,
+   "lag_s": 9137.5,
+   "detail": "inflight_age_s=173"
   }
  ]
 }
