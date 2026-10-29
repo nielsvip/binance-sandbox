@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-29T17:35:28Z",
+ "ts": "2026-10-29T17:41:22Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -28,8 +28,8 @@
  "accounts": {
   "trb": {
    "fills_6h": 0,
-   "open_positions": 28,
-   "unrealised_usd": 5.92,
+   "open_positions": 29,
+   "unrealised_usd": 6.13,
    "pos_mismatch": 0
   },
   "trc": {
@@ -55,7 +55,7 @@
    }
   },
   "men": {
-   "fills_6h": 95,
+   "fills_6h": 93,
    "open_positions": 9,
    "unrealised_usd": 0.68,
    "pos_mismatch": 0,
@@ -71,7 +71,7 @@
    }
   },
   "ang": {
-   "fills_6h": 100,
+   "fills_6h": 98,
    "open_positions": 26,
    "unrealised_usd": 3.53,
    "pos_mismatch": 0,
@@ -89,7 +89,7 @@
   "inf": {
    "fills_6h": 19,
    "open_positions": 3,
-   "unrealised_usd": 0.29,
+   "unrealised_usd": 0.07,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 3,
@@ -137,85 +137,70 @@
    "pids": [
     "12949"
    ],
-   "starts_30m": 3,
-   "log_age_s": 5.0
+   "starts_30m": 1,
+   "log_age_s": -26.0
   },
   "men": {
    "pids": [
     "12848"
    ],
-   "starts_30m": 2,
-   "log_age_s": 4.0
+   "starts_30m": 1,
+   "log_age_s": -34.0
   },
   "ang": {
    "pids": [
     "12101"
    ],
-   "starts_30m": 2,
-   "log_age_s": 1.0
+   "starts_30m": 1,
+   "log_age_s": -36.0
   },
   "inf": {
    "pids": [
     "12346"
    ],
-   "starts_30m": 3,
-   "log_age_s": -0.0
+   "starts_30m": 2,
+   "log_age_s": -36.0
   },
   "flz": {
    "pids": [
     "12682"
    ],
-   "starts_30m": 2,
-   "log_age_s": -0.0
+   "starts_30m": 1,
+   "log_age_s": -34.0
   },
   "trb": {
    "pids": [
     "17568"
    ],
-   "starts_30m": 2,
-   "log_age_s": 1.0
+   "starts_30m": 1,
+   "log_age_s": -34.0
   },
   "trc": {
    "pids": [
     "17597"
    ],
-   "starts_30m": 2,
-   "log_age_s": 3.0
+   "starts_30m": 1,
+   "log_age_s": -36.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-29T17:35:35Z",
+   "ts": "2026-10-29T17:41:27Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "inf:1000PEPEUSDC_LONG",
    "evidence": "CLOSE WT_4H_VEL_EXIT_vel=-64.5_g=3.27%_k3m=50_ bar=2026-10-29T15:45:00Z refused by non-safety gate: 29 16:26:26 - WARNING - [inf] [VEC_EXACT_EXPIRED] 1000PEPEUSDC_LONG OPEN REENTRY_HIGHER_LOW bar=1793285100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
   },
   {
-   "ts": "2026-10-29T17:35:35Z",
+   "ts": "2026-10-29T17:41:27Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "inf:1000PEPEUSDC_LONG",
    "evidence": "OPEN REENTRY_HIGHER_LOW bar=2026-10-29T16:00:00Z refused by non-safety gate: 29 16:26:26 - WARNING - [inf] [VEC_EXACT_EXPIRED] 1000PEPEUSDC_LONG OPEN REENTRY_HIGHER_LOW bar=1793285100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-29T17:35:36Z",
-   "severity": "CRITICAL",
-   "kind": "RESTART_LOOP",
-   "key": "fin",
-   "evidence": "3 new process ids in 30 min (['37251', '49617', '12949'])"
-  },
-  {
-   "ts": "2026-10-29T17:35:36Z",
-   "severity": "CRITICAL",
-   "kind": "RESTART_LOOP",
-   "key": "inf",
-   "evidence": "3 new process ids in 30 min (['73873', '53183', '12346'])"
   }
  ],
  "alert_counts": {
-  "VEC_DECISION_REFUSED": 2,
-  "RESTART_LOOP": 2
+  "VEC_DECISION_REFUSED": 2
  },
  "active_interventions": {
   "acct:trc": {
@@ -261,5 +246,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 8.03
+ "sweep_s": 42.72
 }
