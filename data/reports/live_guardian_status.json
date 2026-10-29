@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-29T07:19:28Z",
+ "ts": "2026-10-29T07:25:04Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -111,11 +111,11 @@
  "tradeable_guard": {
   "poison": false,
   "restored": false,
-  "total": 153,
+  "total": 152,
   "per_acct": {
    "men": 50,
    "inf": 4,
-   "fin": 41,
+   "fin": 40,
    "ang": 32,
    "flz": 26
   }
@@ -127,21 +127,21 @@
     "13903"
    ],
    "starts_30m": 2,
-   "log_age_s": 52.0
+   "log_age_s": 87.0
   },
   "men": {
    "pids": [
     "8520"
    ],
    "starts_30m": 1,
-   "log_age_s": 24.0
+   "log_age_s": 107.0
   },
   "ang": {
    "pids": [
     "48334"
    ],
    "starts_30m": 1,
-   "log_age_s": 66.0
+   "log_age_s": 39.0
   },
   "inf": {
    "pids": [
@@ -155,30 +155,38 @@
     "9546"
    ],
    "starts_30m": 1,
-   "log_age_s": 7.0
+   "log_age_s": 138.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 41237.0
+   "log_age_s": 41573.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 40706.0
+   "log_age_s": 41042.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-29T07:19:29Z",
+   "ts": "2026-10-29T07:25:05Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "inf:PENGUUSDC_LONG",
    "evidence": "CLOSE FIXED_STOP bar=2026-10-29T02:00:00Z refused by non-safety gate: 29 02:16:28 - INFO - [inf] [VEC_EXACT] inf:PENGUUSDC_LONG CLOSE VEC_CONVERGE_TO_FLAT qty=1971.000000 -> BLOCKED_NET_GAIN"
+  },
+  {
+   "ts": "2026-10-29T07:25:06Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "flz",
+   "evidence": "ez_manage_flz.log not written for 138s"
   }
  ],
  "alert_counts": {
-  "VEC_DECISION_REFUSED": 1
+  "VEC_DECISION_REFUSED": 1,
+  "STALE_LOG": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -224,5 +232,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 2.27
+ "sweep_s": 1.89
 }
