@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-29T22:15:03.087143+00:00",
+  "ts": "2026-10-29T22:20:06.653735+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 10,
-  "pending_sym_sides": 70,
+  "fleet_published_last_60m": 12,
+  "pending_sym_sides": 68,
   "hosts": {
     "s1": {
       "published_last_60m": 0,
@@ -14,10 +14,10 @@
       "boards_running": 1,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 8253,
+      "mem_avail_mb": 7009,
       "disk_free_gb": 17,
-      "load1": 9.0,
-      "dispatch_idle_why": "mem 8498MB < 8500",
+      "load1": 10.7,
+      "dispatch_idle_why": "mem 6949MB < 8500",
       "published_ss": []
     },
     "s2": {
@@ -31,50 +31,51 @@
       "boards_running": 3,
       "workers": 21,
       "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 6496,
+      "mem_avail_mb": 6780,
       "disk_free_gb": 32,
-      "load1": 22.7,
+      "load1": 28.1,
       "dispatch_idle_why": "full 3/3",
       "published_ss": [
         "GRASSUSDT_LONG"
       ]
     },
     "s5": {
-      "published_last_60m": 2,
-      "published_last_3h": 2,
+      "published_last_60m": 3,
+      "published_last_3h": 3,
       "boards": {
-        "ABBV_LONG": 7,
         "AMD_LONG": 7,
         "LLY_LONG": 7,
+        "MCD_LONG": 0,
         "PLTR_SHORT": 6
       },
       "boards_running": 4,
-      "workers": 27,
-      "workers_vs_law_28": "27/28",
-      "mem_avail_mb": 14859,
-      "disk_free_gb": 12,
-      "load1": 7.9,
+      "workers": 20,
+      "workers_vs_law_28": "20/28",
+      "mem_avail_mb": 16650,
+      "disk_free_gb": 24,
+      "load1": 3.8,
       "dispatch_idle_why": "full 4/4",
       "published_ss": [
+        "ABBV_LONG",
         "LOW_LONG",
         "ZCSH_LONG"
       ]
     },
     "s6": {
-      "published_last_60m": 7,
-      "published_last_3h": 7,
+      "published_last_60m": 8,
+      "published_last_3h": 8,
       "boards": {
         "AAPL_LONG": 7,
-        "AR_LONG": 7,
-        "GILD_LONG": 7,
-        "SPOT_LONG": 7
+        "AR_LONG": 0,
+        "CVX_LONG": 0,
+        "GILD_LONG": 7
       },
       "boards_running": 4,
-      "workers": 28,
-      "workers_vs_law_28": "28/28",
-      "mem_avail_mb": 16839,
+      "workers": 14,
+      "workers_vs_law_28": "14/28",
+      "mem_avail_mb": 19552,
       "disk_free_gb": 3,
-      "load1": 20.0,
+      "load1": 18.0,
       "dispatch_idle_why": "full 4/4",
       "published_ss": [
         "AMZN_SHORT",
@@ -83,18 +84,19 @@
         "FNV_SHORT",
         "PR_LONG",
         "PWR_LONG",
+        "SPOT_LONG",
         "TSLA_LONG"
       ]
     }
   },
   "alerts": [
-    "LOW_THROUGHPUT:s1:0/h<10 (idle_why=mem 8498MB < 8500)",
+    "LOW_THROUGHPUT:s1:0/h<10 (idle_why=mem 6949MB < 8500)",
     "DISK_FLOOR:s1:17GB<40",
     "LOW_THROUGHPUT:s2:1/h<10 (idle_why=full 3/3)",
     "DISK_FLOOR:s2:32GB<40",
-    "LOW_THROUGHPUT:s5:2/h<10 (idle_why=full 4/4)",
-    "DISK_FLOOR:s5:12GB<40",
-    "LOW_THROUGHPUT:s6:7/h<10 (idle_why=full 4/4)",
+    "LOW_THROUGHPUT:s5:3/h<10 (idle_why=full 4/4)",
+    "DISK_FLOOR:s5:24GB<40",
+    "LOW_THROUGHPUT:s6:8/h<10 (idle_why=full 4/4)",
     "DISK_FLOOR:s6:3GB<40"
   ],
   "repair": null
