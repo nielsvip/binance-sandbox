@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-29T08:53:21Z",
+ "ts": "2026-10-29T08:58:30Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 56,
+   "fills_6h": 52,
    "open_positions": 15,
-   "unrealised_usd": 0.36,
+   "unrealised_usd": 0.0,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 16,
    "open_positions": 7,
-   "unrealised_usd": 0.22,
+   "unrealised_usd": 0.07,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 91,
    "open_positions": 24,
-   "unrealised_usd": 0.3,
+   "unrealised_usd": -0.18,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 1,
@@ -77,7 +77,7 @@
   "inf": {
    "fills_6h": 4,
    "open_positions": 1,
-   "unrealised_usd": 0.0,
+   "unrealised_usd": 0.04,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 1,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 14,
    "open_positions": 5,
-   "unrealised_usd": -0.04,
+   "unrealised_usd": 0.04,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,45 +127,45 @@
     "13903"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 6.0
   },
   "men": {
    "pids": [
     "8520"
    ],
    "starts_30m": 1,
-   "log_age_s": 7.0
+   "log_age_s": 5.0
   },
   "ang": {
    "pids": [
     "61356"
    ],
    "starts_30m": 1,
-   "log_age_s": 30.0
+   "log_age_s": 3.0
   },
   "inf": {
    "pids": [
     "73873"
    ],
    "starts_30m": 1,
-   "log_age_s": 8.0
+   "log_age_s": -0.0
   },
   "flz": {
    "pids": [
     "9546"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": -0.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 46869.0
+   "log_age_s": 47179.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 46338.0
+   "log_age_s": 46648.0
   }
  },
  "alerts": [],
@@ -214,5 +214,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.43
+ "sweep_s": 1.56
 }

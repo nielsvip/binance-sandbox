@@ -1,5 +1,5 @@
 {
-  "ts": "2026-10-29T08:50:04.048348+00:00",
+  "ts": "2026-10-29T08:55:05.471980+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 7,
@@ -15,9 +15,9 @@
       "boards_running": 2,
       "workers": 13,
       "workers_vs_law_28": "13/28",
-      "mem_avail_mb": 9336,
+      "mem_avail_mb": 9236,
       "disk_free_gb": 25,
-      "load1": 13.8,
+      "load1": 18.6,
       "dispatch_idle_why": "full 2/2",
       "published_ss": [
         "EIGENUSDT_SHORT"
@@ -34,9 +34,9 @@
       "boards_running": 3,
       "workers": 21,
       "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 9450,
+      "mem_avail_mb": 8702,
       "disk_free_gb": 39,
-      "load1": 20.8,
+      "load1": 19.9,
       "dispatch_idle_why": "full 3/3",
       "published_ss": [
         "BTCDOMUSDT_LONG",
@@ -45,19 +45,19 @@
     },
     "s5": {
       "published_last_60m": 1,
-      "published_last_3h": 6,
+      "published_last_3h": 5,
       "boards": {
-        "ASTERUSDT_SHORT": 7,
+        "ASTERUSDT_SHORT": 0,
         "IOSTUSDT_SHORT": 7,
         "MEWUSDT_SHORT": 7,
         "RVNUSDT_SHORT": 7
       },
       "boards_running": 4,
-      "workers": 28,
-      "workers_vs_law_28": "28/28",
-      "mem_avail_mb": 7880,
+      "workers": 21,
+      "workers_vs_law_28": "21/28",
+      "mem_avail_mb": 9805,
       "disk_free_gb": 36,
-      "load1": 8.4,
+      "load1": 19.3,
       "dispatch_idle_why": "full 4/4",
       "published_ss": [
         "MEMEUSDT_SHORT"
@@ -75,9 +75,9 @@
       "boards_running": 4,
       "workers": 28,
       "workers_vs_law_28": "28/28",
-      "mem_avail_mb": 16613,
+      "mem_avail_mb": 14238,
       "disk_free_gb": 41,
-      "load1": 20.8,
+      "load1": 20.6,
       "dispatch_idle_why": "full 4/4",
       "published_ss": [
         "BTCUSDC_LONG",
