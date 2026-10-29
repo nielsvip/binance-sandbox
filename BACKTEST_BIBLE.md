@@ -4920,3 +4920,31 @@ The project-copy and active synthetic `simulate_one` checks cover all three BT f
 ### 118.21 PORTFOLIO RATIO REDUCTIONS ARE NON-VECTORIZABLE AT SINGLE-SYMBOL SCOPE (2026-10-26)
 
 `RATIO_CLOSE_OW_*` is an account-level partial reduction selected from current exposure across multiple positions. A single-symbol NPZ does not contain the other live positions needed to make that portfolio decision, so do not fabricate a per-symbol vector mask. Keep the live 50% trim under its existing ratio settings and classify only the `REDUCE` action as non-vectorizable; a `CLOSE` with this prefix remains subject to normal exit parity. This exception concerns bar/path parity, not exact partial-reduction amount accounting.
+
+---
+
+## STORAGE POLICY — WHAT LIVES WHERE (USER 2026-10-29, binding)
+
+**Complete copies that must live on at least TWO external drives (WD25 plus one of E3T / SSD2T / TOSHIBA_EXT once it is healthy):**
+- the complete klines vault (`klines_vault/` on S1, the anti-erasure copy),
+- the complete NPZ set (`backtest_v8/indicators*`, all variants, full history),
+- the complete per-sym SQL (`data/hourly_reconfig/per_sym_store.db` history + `data/per_sym_full_sets.json`), plus the monthly snapshots.
+
+**S1 keeps (live working set):**
+- the last 1 year of NPZ and of klines,
+- more than one generation of `per_sym_settings` (JSON and SQL `kv_json` row), so a bad publish can always be rolled back one step.
+- S1 keeps no obsolete logs, temp files, or regenerable outputs older than their rule (see `tools/disk_analyze.py`).
+
+**S2 may help hold copies. S5 and S6 are temporary and hold nothing that is not also elsewhere.**
+
+**Drive roles**
+- WD25 (5 TB, healthy): primary second-copy home for everything above.
+- E3T (0.5 TB, 99 % full): binance archive, to be cleared before a second copy lands here.
+- SSD2T (2 TB, 0 free): binance archive and backups, to be assessed and cleared; a second-copy target once free.
+- TOSHIBA_EXT (2 TB, suspect since 2026-10-22, 0 free): read-only for now; never the only copy of anything.
+
+**Rules**
+1. A copy is deleted from a source only after the destination copy is checksum-verified (`md5` per file).
+2. Obsolete logs, temp files and regenerable outputs are deleted, not copied.
+3. Klines copies that are polled (`klines_cache`, `klines_cache_macbook`) do not move.
+4. Indicator variants (`indicators_val`, `indicators_3m_w2`, `indicators_5m_w2`, `indicators_fundoi`) stay on S1 until a real under-1 GB crisis.
