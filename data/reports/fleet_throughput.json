@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-29T11:35:07.741424+00:00",
+  "ts": "2026-10-29T11:40:09.072338+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 0,
-  "pending_sym_sides": 5,
+  "fleet_published_last_60m": 5,
+  "pending_sym_sides": 3,
   "hosts": {
     "s1": {
       "published_last_60m": 0,
@@ -15,17 +15,53 @@
       "boards_running": 2,
       "workers": 13,
       "workers_vs_law_28": "13/28",
-      "mem_avail_mb": 6353,
-      "disk_free_gb": 23,
-      "load1": 22.0,
+      "mem_avail_mb": 6879,
+      "disk_free_gb": 24,
+      "load1": 17.2,
       "dispatch_idle_why": "full 2/2",
       "published_ss": []
     },
     "s2": {
-      "unreachable": true
+      "published_last_60m": 2,
+      "published_last_3h": 6,
+      "boards": {
+        "EDUUSDT_LONG": 7,
+        "QNTUSDT_LONG": 0,
+        "TRBUSDT_LONG": 7
+      },
+      "boards_running": 3,
+      "workers": 14,
+      "workers_vs_law_28": "14/28",
+      "mem_avail_mb": 9564,
+      "disk_free_gb": 37,
+      "load1": 21.4,
+      "dispatch_idle_why": "full 3/3",
+      "published_ss": [
+        "ASTERUSDT_LONG",
+        "UNIUSDC_LONG"
+      ]
     },
     "s5": {
-      "unreachable": true
+      "published_last_60m": 3,
+      "published_last_3h": 7,
+      "boards": {
+        "ALGOUSDT_SHORT": 7,
+        "GALAUSDT_SHORT": 7,
+        "LTCUSDC_SHORT": 7,
+        "MASKUSDT_SHORT": 7
+      },
+      "boards_running": 4,
+      "workers": 28,
+      "workers_vs_law_28": "28/28",
+      "mem_avail_mb": 8947,
+      "disk_free_gb": 35,
+      "load1": 18.4,
+      "dispatch_idle_why": "full 4/4",
+      "published_ss": [
+        "1000PEPEUSDC_LONG",
+        "AWEUSDT_LONG",
+        "ZECUSDC_LONG"
+      ]
     },
     "s6": {
       "unreachable": true
@@ -33,9 +69,11 @@
   },
   "alerts": [
     "LOW_THROUGHPUT:s1:0/h<10 (idle_why=full 2/2)",
-    "DISK_FLOOR:s1:23GB<40",
-    "UNREACHABLE:s2",
-    "UNREACHABLE:s5",
+    "DISK_FLOOR:s1:24GB<40",
+    "LOW_THROUGHPUT:s2:2/h<10 (idle_why=full 3/3)",
+    "DISK_FLOOR:s2:37GB<40",
+    "LOW_THROUGHPUT:s5:3/h<10 (idle_why=full 4/4)",
+    "DISK_FLOOR:s5:35GB<40",
     "UNREACHABLE:s6"
   ],
   "repair": null
