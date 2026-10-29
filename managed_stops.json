@@ -6,6 +6,13 @@
     "symbol": "ARUSDT",
     "side": "LONG"
   },
+  "men:BANDUSDT_LONG": {
+    "orderId": "2000001551826347",
+    "stopPrice": 0.2058,
+    "entry_sig": "2026-10-29 16:30:47.199000+00:00",
+    "symbol": "BANDUSDT",
+    "side": "LONG"
+  },
   "men:EDUUSDT_LONG": {
     "orderId": "2000001551375851",
     "stopPrice": 0.05772,
@@ -13,12 +20,12 @@
     "symbol": "EDUUSDT",
     "side": "LONG"
   },
-  "men:1MBABYDOGEUSDT_SHORT": {
-    "orderId": "2000001551936363",
-    "stopPrice": 0.0003541,
-    "entry_sig": "2026-10-29 17:15:44.564000+00:00",
-    "symbol": "1MBABYDOGEUSDT",
-    "side": "SHORT"
+  "men:KASUSDT_LONG": {
+    "orderId": "2000001551696710",
+    "stopPrice": 0.03542,
+    "entry_sig": "2026-10-29 15:46:03.194000+00:00",
+    "symbol": "KASUSDT",
+    "side": "LONG"
   },
   "men:IMXUSDT_SHORT": {
     "orderId": "2000001552002819",
@@ -30,44 +37,9 @@
   "men:MEWUSDT_SHORT": {
     "orderId": "2000001552074993",
     "stopPrice": 0.0004748,
-    "entry_sig": "2026-10-29 18:16:16.041000+00:00",
+    "entry_sig": "2026-10-29 18:41:32.621888+00:00",
     "symbol": "MEWUSDT",
     "side": "SHORT",
     "disaster_backstop": true
-  },
-  "men:GALAUSDT_SHORT": {
-    "orderId": "2000001552074677",
-    "stopPrice": 0.00183,
-    "entry_sig": "2026-10-29 18:16:08.368000+00:00",
-    "symbol": "GALAUSDT",
-    "side": "SHORT"
-  },
-  "men:1000XECUSDT_SHORT": {
-    "orderId": "2000001552073750",
-    "stopPrice": 0.006739,
-    "entry_sig": "2026-10-29 18:25:19.096629+00:00",
-    "symbol": "1000XECUSDT",
-    "side": "SHORT"
-  },
-  "men:BOMEUSDC_SHORT": {
-    "orderId": "2000001552073999",
-    "stopPrice": 0.0006895,
-    "entry_sig": "2026-10-29 18:15:57.208000+00:00",
-    "symbol": "BOMEUSDC",
-    "side": "SHORT"
-  },
-  "men:KASUSDT_LONG": {
-    "orderId": "2000001551696710",
-    "stopPrice": 0.03542,
-    "entry_sig": "2026-10-29 15:46:03.194000+00:00",
-    "symbol": "KASUSDT",
-    "side": "LONG"
-  },
-  "men:BANDUSDT_LONG": {
-    "orderId": "2000001551826347",
-    "stopPrice": 0.2058,
-    "entry_sig": "2026-10-29 16:30:47.199000+00:00",
-    "symbol": "BANDUSDT",
-    "side": "LONG"
   }
 }
