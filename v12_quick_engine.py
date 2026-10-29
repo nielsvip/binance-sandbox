@@ -5610,6 +5610,7 @@ class QuickConfig:
         self.VIGILANCE_GUARD_ENABLED = False
         self.WT_15M_BOUNCE_HIGH_1H_GT_PREV = False
         self.WT_15M_BOUNCE_LOW_1H_GT_PREV = False
+        self.REENTRY_AUGMENT_REQUIRE_NO_PRIOR_AUGMENT = True  # config_tradier value; STOCKS_SHORT bolds True, STOCKS_LONG has no bold row
 
     ABLATION_DISABLE_AGGRESSIVE_HEDGE: bool = False  # auto-wired 625
     ABLATION_DISABLE_AUGMENTATION: bool = False  # auto-wired 625
