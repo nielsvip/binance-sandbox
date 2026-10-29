@@ -1,9 +1,27 @@
 {
- "at": "2026-10-29T02:38:06Z",
+ "at": "2026-10-29T03:38:04Z",
  "reports": [
   {
+   "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261029_refresh_0257.json",
+   "age_min": 36.5,
+   "applied": true,
+   "n": null,
+   "results": {
+    "REFUSED": 86
+   },
+   "registered": 0,
+   "already_live_skipped": 0,
+   "refused_by_class": {
+    "type-gate refused ALL (1 bad)": 83,
+    "type-gate refused ALL (7 bad)": 1,
+    "golive-blocklisted": 1,
+    "type-gate refused ALL (2 bad)": 1
+   },
+   "changed_symsides": []
+  },
+  {
    "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261029_refresh_0159.json",
-   "age_min": 32.9,
+   "age_min": 92.9,
    "applied": true,
    "n": null,
    "results": {
@@ -18,27 +36,10 @@
     "type-gate refused ALL (2 bad)": 1
    },
    "changed_symsides": []
-  },
-  {
-   "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261029_refresh_0102.json",
-   "age_min": 81.7,
-   "applied": true,
-   "n": null,
-   "results": {
-    "REFUSED": 82,
-    "PASS": 1
-   },
-   "registered": 0,
-   "already_live_skipped": 0,
-   "refused_by_class": {
-    "type-gate refused ALL (1 bad)": 79,
-    "type-gate refused ALL (7 bad)": 1,
-    "golive-blocklisted": 1,
-    "type-gate refused ALL (2 bad)": 1
-   },
-   "changed_symsides": []
   }
  ],
- "fails": [],
- "refused_total": 80
+ "fails": [
+  "86 sym_sides keep an older set because go-live refused the latest board (> 80)"
+ ],
+ "refused_total": 86
 }

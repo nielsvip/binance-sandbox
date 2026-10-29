@@ -1,47 +1,43 @@
 {
-  "ts": "2026-10-29T03:30:03.910049+00:00",
+  "ts": "2026-10-29T03:35:03.784956+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 3,
-  "pending_sym_sides": 54,
+  "fleet_published_last_60m": 1,
+  "pending_sym_sides": null,
   "hosts": {
     "s1": {
-      "unreachable": true
+      "published_last_60m": 1,
+      "published_last_3h": 2,
+      "boards": {
+        "1000BONKUSDC_SHORT": 6,
+        "MASKUSDT_SHORT": 7
+      },
+      "boards_running": 2,
+      "workers": 13,
+      "workers_vs_law_28": "13/28",
+      "mem_avail_mb": 11477,
+      "disk_free_gb": 28,
+      "load1": 11.1,
+      "dispatch_idle_why": null,
+      "published_ss": [
+        "PUMPUSDT_SHORT"
+      ]
     },
     "s2": {
       "unreachable": true
     },
     "s5": {
-      "published_last_60m": 3,
-      "published_last_3h": 7,
-      "boards": {
-        "SKYAIUSDT_SHORT": 7,
-        "SUSHIUSDT_SHORT": 7,
-        "VETUSDT_SHORT": 7,
-        "XPLUSDT_SHORT": 7
-      },
-      "boards_running": 4,
-      "workers": 28,
-      "workers_vs_law_28": "28/28",
-      "mem_avail_mb": 5175,
-      "disk_free_gb": 39,
-      "load1": 24.9,
-      "dispatch_idle_why": "full 4/4",
-      "published_ss": [
-        "BLURUSDT_SHORT",
-        "FCN_LONG",
-        "XLE_LONG"
-      ]
+      "unreachable": true
     },
     "s6": {
       "unreachable": true
     }
   },
   "alerts": [
-    "UNREACHABLE:s1",
+    "LOW_THROUGHPUT:s1:1/h<10 (idle_why=None)",
+    "DISK_FLOOR:s1:28GB<40",
     "UNREACHABLE:s2",
-    "LOW_THROUGHPUT:s5:3/h<10 (idle_why=full 4/4)",
-    "DISK_FLOOR:s5:39GB<40",
+    "UNREACHABLE:s5",
     "UNREACHABLE:s6"
   ],
   "repair": null
