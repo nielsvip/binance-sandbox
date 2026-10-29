@@ -1,21 +1,21 @@
 {
- "at": "2026-10-29T08:26:02Z",
+ "at": "2026-10-29T09:26:05Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
  "hosts": {
   "s1": {
-   "published_n": 2,
-   "per_hour": 1.0,
+   "published_n": 1,
+   "per_hour": 0.5,
    "improved_vs_best_start": 0,
    "mean_uplift_vs_best_start": null,
    "median_uplift": null,
    "chained_from_previous_published": 0,
-   "no_floor_recorded": 2,
+   "no_floor_recorded": 1,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 1.0/h < 12.0/h (one per 5 min)"
+    "throughput 0.5/h < 12.0/h (one per 5 min)"
    ],
    "rows": [
     {
@@ -32,37 +32,22 @@
      "bh": 5.604714318107336,
      "verdict": null,
      "npz_age_h_at_publish": 1.17
-    },
-    {
-     "symside": "ETHUSDC_SHORT",
-     "published_at": 1793258091.377226,
-     "final_gain": 18.932601384905805,
-     "best_start_gain": null,
-     "best_start_chosen": null,
-     "best_start_candidates": null,
-     "baseline_gain": 13.391075810689749,
-     "npz_ts_last": 1793253600.0,
-     "npz_md5": "b48ca7616ddddc5f375961a87df21120",
-     "npz_bars": 98743,
-     "bh": 10.705455949955885,
-     "verdict": null,
-     "npz_age_h_at_publish": 1.25
     }
    ],
    "error": null
   },
   "s2": {
-   "published_n": 5,
-   "per_hour": 2.5,
+   "published_n": 2,
+   "per_hour": 1.0,
    "improved_vs_best_start": 0,
    "mean_uplift_vs_best_start": null,
    "median_uplift": null,
    "chained_from_previous_published": 0,
-   "no_floor_recorded": 5,
+   "no_floor_recorded": 2,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 2.5/h < 12.0/h (one per 5 min)"
+    "throughput 1.0/h < 12.0/h (one per 5 min)"
    ],
    "rows": [
     {
@@ -81,64 +66,19 @@
      "npz_age_h_at_publish": 1.38
     },
     {
-     "symside": "GRAMUSDT_LONG",
-     "published_at": 1793256527.6115394,
-     "final_gain": 28.492523156775963,
+     "symside": "KAVAUSDT_LONG",
+     "published_at": 1793263356.0687928,
+     "final_gain": 13.713722740415669,
      "best_start_gain": null,
      "best_start_chosen": null,
      "best_start_candidates": null,
-     "baseline_gain": -8.426346183425014,
-     "npz_ts_last": 1793251800.0,
-     "npz_md5": "731b7129a1219983f215d5244dc84d9d",
-     "npz_bars": 11415,
-     "bh": -7.009018211804384,
+     "baseline_gain": 1.1068064791497831,
+     "npz_ts_last": 1793259900.0,
+     "npz_md5": "1551d8b0b65afdf0d44dcec6306a1a82",
+     "npz_bars": 43617,
+     "bh": 0.24299585766451343,
      "verdict": null,
-     "npz_age_h_at_publish": 1.31
-    },
-    {
-     "symside": "HYPEUSDT_LONG",
-     "published_at": 1793257528.1846848,
-     "final_gain": 19.780519625331046,
-     "best_start_gain": null,
-     "best_start_chosen": null,
-     "best_start_candidates": null,
-     "baseline_gain": 2.6538404171139933,
-     "npz_ts_last": 1793254500.0,
-     "npz_md5": "6213ef9f2c5e1389e2f5cf2d7d654e96",
-     "npz_bars": 43604,
-     "bh": -15.836378340744076,
-     "verdict": null,
-     "npz_age_h_at_publish": 0.84
-    },
-    {
-     "symside": "PENGUUSDC_LONG",
-     "published_at": 1793256642.0325236,
-     "final_gain": 6.409845592649456,
-     "best_start_gain": null,
-     "best_start_chosen": null,
-     "best_start_candidates": null,
-     "baseline_gain": 5.694060405731063,
-     "npz_ts_last": 1793254500.0,
-     "npz_md5": "e23e8b06a17275cd69fed18eeea8e444",
-     "npz_bars": 43611,
-     "bh": -13.143300551108291,
-     "verdict": null,
-     "npz_age_h_at_publish": 0.6
-    },
-    {
-     "symside": "XMRUSDT_LONG",
-     "published_at": 1793255608.7678797,
-     "final_gain": 1.864332152026396,
-     "best_start_gain": null,
-     "best_start_chosen": null,
-     "best_start_candidates": null,
-     "baseline_gain": 1.3248359428587895,
-     "npz_ts_last": 1793249100.0,
-     "npz_md5": "c1004892ab3bfe917cf5a05865f2e654",
-     "npz_bars": 43604,
-     "bh": 8.015463812451602,
-     "verdict": null,
-     "npz_age_h_at_publish": 1.81
+     "npz_age_h_at_publish": 0.96
     }
    ],
    "error": null
