@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-29T13:52:35Z",
+ "ts": "2026-10-29T13:57:58Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,19 +29,19 @@
   "trb": {
    "fills_6h": 0,
    "open_positions": 11,
-   "unrealised_usd": -6.29,
+   "unrealised_usd": -1.39,
    "pos_mismatch": 0
   },
   "trc": {
-   "fills_6h": 0,
-   "open_positions": 37,
-   "unrealised_usd": 14.27,
+   "fills_6h": 1,
+   "open_positions": 29,
+   "unrealised_usd": 210.15,
    "pos_mismatch": 0
   },
   "fin": {
    "fills_6h": 27,
    "open_positions": 15,
-   "unrealised_usd": 1.18,
+   "unrealised_usd": 1.19,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -73,7 +73,7 @@
   "ang": {
    "fills_6h": 75,
    "open_positions": 32,
-   "unrealised_usd": 1.25,
+   "unrealised_usd": 1.28,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -89,7 +89,7 @@
   "inf": {
    "fills_6h": 5,
    "open_positions": 4,
-   "unrealised_usd": 0.35,
+   "unrealised_usd": 0.36,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 5,
@@ -105,7 +105,7 @@
   "flz": {
    "fills_6h": 24,
    "open_positions": 6,
-   "unrealised_usd": 0.61,
+   "unrealised_usd": 0.64,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -138,100 +138,86 @@
     "1355"
    ],
    "starts_30m": 1,
-   "log_age_s": 350.0
+   "log_age_s": 672.0
   },
   "men": {
    "pids": [
     "31275"
    ],
    "starts_30m": 2,
-   "log_age_s": 12.0
+   "log_age_s": 28.0
   },
   "ang": {
    "pids": [
     "25726"
    ],
    "starts_30m": 2,
-   "log_age_s": 337.0
+   "log_age_s": 102.0
   },
   "inf": {
    "pids": [
     "73873"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 1.0
   },
   "flz": {
    "pids": [
     "78592"
    ],
    "starts_30m": 1,
-   "log_age_s": 336.0
+   "log_age_s": 15.0
   },
   "trb": {
    "pids": [
     "32303"
    ],
    "starts_30m": 2,
-   "log_age_s": -1.0
+   "log_age_s": 0.0
   },
   "trc": {
    "pids": [
     "32622"
    ],
    "starts_30m": 2,
-   "log_age_s": -1.0
+   "log_age_s": 0.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-29T13:52:35Z",
+   "ts": "2026-10-29T13:57:58Z",
    "severity": "CRITICAL",
    "kind": "RAPID_LOSS_KEY",
-   "key": "trc:GOOGL_LONG",
-   "evidence": "unrealised -12.65% (60-min high +0.71%), amt 1"
+   "key": "trc:AMZN_LONG",
+   "evidence": "unrealised -3.52% (60-min high +0.51%), amt 2"
   },
   {
-   "ts": "2026-10-29T13:52:35Z",
+   "ts": "2026-10-29T13:57:58Z",
    "severity": "WARN",
    "kind": "NO_PER_KEY_BLOCK_AVAILABLE",
-   "key": "trc:GOOGL_LONG",
-   "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for RAPID_LOSS_KEY unrealised -12.65% (60-min high +0.71%), amt 1 (opens/augments blocked; exits untouched)"
+   "key": "trc:AMZN_LONG",
+   "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for RAPID_LOSS_KEY unrealised -3.52% (60-min high +0.51%), amt 2 (opens/augments blocked; exits untouched)"
   },
   {
-   "ts": "2026-10-29T13:52:36Z",
+   "ts": "2026-10-29T13:57:59Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "inf:ARUSDT_LONG",
    "evidence": "REDUCE REDUCE_TO_FLAT bar=2026-10-29T13:00:00Z refused by non-safety gate: 29 13:16:50 - INFO - [inf] [VEC_EXACT] inf:ARUSDT_LONG CLOSE VEC_EXIT_OWED qty=4.400000 -> SKIPPED_VX_INFLIGHT"
   },
   {
-   "ts": "2026-10-29T13:52:37Z",
+   "ts": "2026-10-29T13:58:00Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 350s"
-  },
-  {
-   "ts": "2026-10-29T13:52:37Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 337s"
-  },
-  {
-   "ts": "2026-10-29T13:52:37Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 336s"
+   "evidence": "ez_manage_fin.log not written for 672s"
   }
  ],
  "alert_counts": {
   "RAPID_LOSS_KEY": 1,
   "NO_PER_KEY_BLOCK_AVAILABLE": 1,
   "VEC_DECISION_REFUSED": 1,
-  "STALE_LOG": 3
+  "STALE_LOG": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -277,5 +263,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 2.62
+ "sweep_s": 2.2
 }
