@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-29T18:30:09.230497+00:00",
+  "ts": "2026-10-29T18:35:11.675169+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 1,
-  "pending_sym_sides": 58,
+  "pending_sym_sides": 63,
   "hosts": {
     "s1": {
       "published_last_60m": 1,
@@ -16,9 +16,9 @@
       "boards_running": 3,
       "workers": 14,
       "workers_vs_law_28": "14/28",
-      "mem_avail_mb": 7702,
+      "mem_avail_mb": 7981,
       "disk_free_gb": 15,
-      "load1": 19.0,
+      "load1": 13.7,
       "dispatch_idle_why": "HOLD until 2026-10-29T22:01Z: TRC7D pass: 30D paused until every tradeable stock key has its 7D set",
       "published_ss": [
         "1INCHUSDT_SHORT"

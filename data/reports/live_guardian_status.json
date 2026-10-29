@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-29T18:34:50Z",
+ "ts": "2026-10-29T18:40:29Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -28,8 +28,8 @@
  "accounts": {
   "trb": {
    "fills_6h": 0,
-   "open_positions": 35,
-   "unrealised_usd": 8.01,
+   "open_positions": 36,
+   "unrealised_usd": 10.81,
    "pos_mismatch": 0
   },
   "trc": {
@@ -39,9 +39,9 @@
    "pos_mismatch": 0
   },
   "fin": {
-   "fills_6h": 65,
-   "open_positions": 14,
-   "unrealised_usd": -0.56,
+   "fills_6h": 66,
+   "open_positions": 12,
+   "unrealised_usd": -0.6,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 8,
@@ -55,9 +55,9 @@
    }
   },
   "men": {
-   "fills_6h": 95,
+   "fills_6h": 96,
    "open_positions": 19,
-   "unrealised_usd": -0.09,
+   "unrealised_usd": -0.14,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 11,
@@ -71,12 +71,12 @@
    }
   },
   "ang": {
-   "fills_6h": 104,
+   "fills_6h": 101,
    "open_positions": 33,
    "unrealised_usd": -1.68,
    "pos_mismatch": 0,
    "vec_parity": {
-    "live_vec_decisions": 7,
+    "live_vec_decisions": 10,
     "state_divergent": 0,
     "filled": 1,
     "refused_non_safety": 1,
@@ -89,7 +89,7 @@
   "inf": {
    "fills_6h": 19,
    "open_positions": 3,
-   "unrealised_usd": -0.66,
+   "unrealised_usd": -0.62,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 3,
@@ -105,7 +105,7 @@
   "flz": {
    "fills_6h": 31,
    "open_positions": 6,
-   "unrealised_usd": 1.19,
+   "unrealised_usd": 1.46,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 11,
@@ -145,173 +145,208 @@
     "17688"
    ],
    "starts_30m": 3,
-   "log_age_s": 4.0
+   "log_age_s": -0.0
   },
   "ang": {
    "pids": [
     "19493"
    ],
    "starts_30m": 2,
-   "log_age_s": 1.0
+   "log_age_s": -0.0
   },
   "inf": {
    "pids": [
     "17901"
    ],
    "starts_30m": 3,
-   "log_age_s": 4.0
+   "log_age_s": 2.0
   },
   "flz": {
    "pids": [
     "17900"
    ],
    "starts_30m": 2,
-   "log_age_s": 0.0
+   "log_age_s": 1.0
   },
   "trb": {
    "pids": [
     "19349"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 1.0
   },
   "trc": {
    "pids": [
     "14582"
    ],
    "starts_30m": 1,
-   "log_age_s": 6.0
+   "log_age_s": -1.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-29T18:34:51Z",
+   "ts": "2026-10-29T18:40:29Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "fin:IOSTUSDT_SHORT",
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 240401->721202 = $540.18 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 240401)"
+  },
+  {
+   "ts": "2026-10-29T18:40:31Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "fin:AWEUSDT_LONG",
    "evidence": "REDUCE WT_CROSS_EXIT_1h_bear_wt1=11.0_wt2=18.4 decided 2026-10-29T17:32:27Z bar=2026-10-29T17:15:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-29T18:34:51Z",
+   "ts": "2026-10-29T18:40:31Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "fin:IMXUSDT_SHORT",
    "evidence": "OPEN REENTRY_DC4_15M_BREAK bar=2026-10-29T17:30:00Z: live already holds 107 (state divergence)"
   },
   {
-   "ts": "2026-10-29T18:34:51Z",
+   "ts": "2026-10-29T18:40:32Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "men:IOSTUSDT_SHORT",
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 240462->721385 = $540.32 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 240462)"
+  },
+  {
+   "ts": "2026-10-29T18:40:32Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "men:AWEUSDT_LONG",
    "evidence": "REDUCE WT_CROSS_EXIT_1h_bear_wt1=11.0_wt2=18.4 decided 2026-10-29T17:32:43Z bar=2026-10-29T17:15:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-29T18:34:51Z",
+   "ts": "2026-10-29T18:40:32Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "men:IMXUSDT_SHORT",
    "evidence": "OPEN REENTRY_DC4_15M_BREAK bar=2026-10-29T17:30:00Z: live already holds 107 (state divergence)"
   },
   {
-   "ts": "2026-10-29T18:34:52Z",
+   "ts": "2026-10-29T18:40:33Z",
    "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "ang:PENGUUSDC_LONG",
-   "evidence": "29 18:22:19 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:PENGUUSDC_LONG: bypass MAX_ORDER_VALUE $20 / MAX_POSITION_SIZE $150 \u2014 restoring $4 on bounce (prior max 34890.0000)"
+   "kind": "SIZE_ANOMALY",
+   "key": "ang:IOSTUSDT_SHORT",
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 240436->721308 = $540.26 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 240436)"
   },
   {
-   "ts": "2026-10-29T18:34:52Z",
+   "ts": "2026-10-29T18:40:33Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "ang:AAVEUSDC_SHORT",
    "evidence": "CLOSE MULTI_TF_EXIT s65/45 g0.53% decided 2026-10-29T17:48:05Z bar=2026-10-29T17:30:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-29T18:34:52Z",
+   "ts": "2026-10-29T18:40:33Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "ang:UNIUSDC_LONG",
    "evidence": "OPEN HTF_WT_CHURN_REENTRY_120MIN bar=2026-10-29T17:45:00Z refused by non-safety gate: 29 18:07:28 - INFO - [ang] [VEC_EXACT] ang:UNIUSDC_LONG CLOSE VEC_EXIT_OWED qty=1.000000 -> SKIPPED_VX_INFLIGHT"
   },
   {
-   "ts": "2026-10-29T18:34:52Z",
+   "ts": "2026-10-29T18:40:33Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "inf:ACEUSDT_SHORT",
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 1265.47->2530.93 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 1265.47)"
+  },
+  {
+   "ts": "2026-10-29T18:40:34Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "inf:1000PEPEUSDC_LONG",
    "evidence": "CLOSE WT_4H_VEL_EXIT_vel=-64.5_g=3.27%_k3m=50_ bar=2026-10-29T15:45:00Z refused by non-safety gate: 29 16:26:26 - WARNING - [inf] [VEC_EXACT_EXPIRED] 1000PEPEUSDC_LONG OPEN REENTRY_HIGHER_LOW bar=1793285100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
   },
   {
-   "ts": "2026-10-29T18:34:52Z",
+   "ts": "2026-10-29T18:40:34Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "inf:1000PEPEUSDC_LONG",
    "evidence": "OPEN REENTRY_HIGHER_LOW bar=2026-10-29T16:00:00Z refused by non-safety gate: 29 16:26:26 - WARNING - [inf] [VEC_EXACT_EXPIRED] 1000PEPEUSDC_LONG OPEN REENTRY_HIGHER_LOW bar=1793285100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
   },
   {
-   "ts": "2026-10-29T18:34:53Z",
+   "ts": "2026-10-29T18:40:34Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "flz:WLDUSDC_SHORT",
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 431.333->1294 = $540.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 431.333)"
+  },
+  {
+   "ts": "2026-10-29T18:40:34Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "flz:WLDUSDC_SHORT",
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 431.448->1294.34 = $540.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 431.448)"
+  },
+  {
+   "ts": "2026-10-29T18:40:35Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "flz:XMRUSDT_LONG",
    "evidence": "REDUCE STDEV_REJECT_EXIT bar=2026-10-29T16:45:00Z refused by non-safety gate: 29 17:29:42 - INFO - [flz] [VEC_EXACT] flz:XMRUSDT_LONG CLOSE VEC_EXIT_OWED qty=0.024000 -> SKIPPED_VX_INFLIGHT"
   },
   {
-   "ts": "2026-10-29T18:34:53Z",
+   "ts": "2026-10-29T18:40:35Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "flz:GRAMUSDT_LONG",
    "evidence": "REDUCE SATOSHIT_EXIT_PARTIAL 0.70 decided 2026-10-29T17:13:39Z bar=2026-10-29T16:45:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-29T18:34:53Z",
+   "ts": "2026-10-29T18:40:35Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "flz:XMRUSDT_LONG",
    "evidence": "REDUCE STDEV_REJECT_EXIT bar=2026-10-29T17:00:00Z refused by non-safety gate: 29 17:29:42 - INFO - [flz] [VEC_EXACT] flz:XMRUSDT_LONG CLOSE VEC_EXIT_OWED qty=0.024000 -> SKIPPED_VX_INFLIGHT"
   },
   {
-   "ts": "2026-10-29T18:34:53Z",
+   "ts": "2026-10-29T18:40:35Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "flz:GRAMUSDT_LONG",
    "evidence": "REDUCE SATOSHIT_EXIT_PARTIAL 0.70 decided 2026-10-29T17:17:06Z bar=2026-10-29T17:00:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-29T18:34:53Z",
+   "ts": "2026-10-29T18:40:35Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "flz:GRAMUSDT_LONG",
    "evidence": "REDUCE SATOSHIT_EXIT_PARTIAL 0.70 decided 2026-10-29T17:28:47Z bar=2026-10-29T17:00:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-29T18:34:53Z",
+   "ts": "2026-10-29T18:40:35Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "flz:XMRUSDT_LONG",
    "evidence": "CLOSE PEAK_GIVEBACK_GAIN_EROSION_STOP bar=2026-10-29T17:00:00Z refused by non-safety gate: 29 17:29:42 - INFO - [flz] [VEC_EXACT] flz:XMRUSDT_LONG CLOSE VEC_EXIT_OWED qty=0.024000 -> SKIPPED_VX_INFLIGHT"
   },
   {
-   "ts": "2026-10-29T18:34:53Z",
+   "ts": "2026-10-29T18:40:35Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "flz:GRAMUSDT_LONG",
    "evidence": "REDUCE SATOSHIT_EXIT_PARTIAL 0.70 decided 2026-10-29T17:32:35Z bar=2026-10-29T17:15:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-29T18:34:54Z",
+   "ts": "2026-10-29T18:40:36Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "fin",
    "evidence": "3 new process ids in 30 min (['7384', '13382', '17230'])"
   },
   {
-   "ts": "2026-10-29T18:34:54Z",
+   "ts": "2026-10-29T18:40:36Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "men",
    "evidence": "3 new process ids in 30 min (['7357', '13484', '17688'])"
   },
   {
-   "ts": "2026-10-29T18:34:54Z",
+   "ts": "2026-10-29T18:40:36Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "inf",
@@ -319,9 +354,9 @@
   }
  ],
  "alert_counts": {
+  "SIZE_ANOMALY": 6,
   "VEC_DECISION_NOT_FILLED": 7,
   "VEC_OPEN_WHILE_LIVE_IN": 2,
-  "CAP_BYPASS": 1,
   "VEC_DECISION_REFUSED": 6,
   "RESTART_LOOP": 3
  },
@@ -350,6 +385,13 @@
    "undo": "rm /Users/niels/Documents/binance/data/HALT_TRADING_men",
    "dry_run": false
   },
+  "key:flz:WLDUSDC_SHORT": {
+   "ts": 1793298946.1560042,
+   "until": 1793306146.1560068,
+   "why": "SIZE_ANOMALY BREAKOUT_SIZE_LADDER qty 431.333->1294 ($540) past 1.5x MAX_ORDER_VALUE",
+   "undo": "redis-cli -p 6379 DEL open_blocked:flz:WLDUSDC_SHORT",
+   "dry_run": false
+  },
   "acct:inf": {
    "ts": 1791791577.100162,
    "why": "ACCOUNT_EQUITY_DROP unrealised PnL of the same open positions fell $25.47 since 2026-10-12T07:51:49Z (now $+1.07)",
@@ -367,7 +409,28 @@
    "why": "ORDER_STORM_ACCOUNT 27 fills/10min",
    "undo": "alert-only (never-halt policy 2026-10-10)",
    "dry_run": false
+  },
+  "key:fin:IOSTUSDT_SHORT": {
+   "ts": 1793299099.7196748,
+   "until": 1793306299.719677,
+   "why": "SIZE_ANOMALY BREAKOUT_SIZE_LADDER qty 240401->721202 ($540) past 1.5x MAX_ORDER_VALUE",
+   "undo": "redis-cli -p 6379 DEL open_blocked:fin:IOSTUSDT_SHORT",
+   "dry_run": false
+  },
+  "key:men:IOSTUSDT_SHORT": {
+   "ts": 1793299100.370185,
+   "until": 1793306300.370187,
+   "why": "SIZE_ANOMALY BREAKOUT_SIZE_LADDER qty 240462->721385 ($540) past 1.5x MAX_ORDER_VALUE",
+   "undo": "redis-cli -p 6379 DEL open_blocked:men:IOSTUSDT_SHORT",
+   "dry_run": false
+  },
+  "key:ang:IOSTUSDT_SHORT": {
+   "ts": 1793299101.737129,
+   "until": 1793306301.73713,
+   "why": "SIZE_ANOMALY BREAKOUT_SIZE_LADDER qty 240436->721308 ($540) past 1.5x MAX_ORDER_VALUE",
+   "undo": "redis-cli -p 6379 DEL open_blocked:ang:IOSTUSDT_SHORT",
+   "dry_run": false
   }
  },
- "sweep_s": 3.81
+ "sweep_s": 7.06
 }
