@@ -5305,6 +5305,9 @@ class QuickConfig:
             if hasattr(self, _k):
                 setattr(self, _k, _v)
                 n += 1
+        # USER LAW 2026-10-29: the TEMPLATE_{cat_side} layer IS this config's default. Stamp it so simulate_one knows the
+        # layer was applied (and never re-applies it over per-sym overrides laid on top).
+        object.__setattr__(self, "_template_layer", str(cat_side))
         return n
 
     def apply_per_sym_store(self, symbol: str, side: str) -> int:
@@ -6582,10 +6585,10 @@ class QuickConfig:
         1.0  # for relvol: >1.0x avg; for ema: >1.0x sma
     )
     WT_15M_BOUNCE_LOW_1H_GT_PREV: bool = (
-        False  # alias for FILTER_HL — template row WT_15M_BOUNCE_LOW_1H_GT_PREV
+        True  # 2026-10-29 USER LAW: TEMPLATE bold is the default (all crypto templates); stocks overlay pins its own bold
     )
     WT_15M_BOUNCE_HIGH_1H_GT_PREV: bool = (
-        False  # alias for FILTER_HH — template row WT_15M_BOUNCE_HIGH_1H_GT_PREV
+        True  # 2026-10-29 USER LAW: TEMPLATE bold is the default (all crypto templates); stocks overlay pins its own bold
     )
     WT_15M_BOUNCE_REL_VOL_GT_1: bool = (
         False  # alias for VOLUME_FILTER — template row WT_15M_BOUNCE_REL_VOL_GT_1
@@ -6600,7 +6603,7 @@ class QuickConfig:
     # live twin, and the breach needs the same channel tolerance the other dc exits use
     # (dc_low_15m - 0.25% convention, DAYTRADE/TECHNICAL_DC_STOP_BUFFER_PCT).
     VIGILANCE_GUARD_ENABLED: bool = (
-        False  # sweepable switch; False = DC4 stop + consec-loss block + recovery all inert
+        True  # 2026-10-29 USER LAW: TEMPLATE bold is the default (all crypto templates); stocks overlay pins its own bold
     )
     VIGILANCE_DC4_BREACH_TOLERANCE_PCT: float = (
         0.25  # breach depth beyond the dc4 level, % of level
@@ -7137,7 +7140,7 @@ class QuickConfig:
         86400.0  # V17 the reentry must open within this many seconds of the previous close (0 = no limit)
     )
     REENTRY_AUGMENT_REQUIRE_NO_PRIOR_AUGMENT: bool = (
-        True  # V17 carry only when the previous position never augmented (the augment was missed, not already taken)
+        False  # 2026-10-29 USER LAW: TEMPLATE bold is the default (all crypto templates); stocks overlay pins its own bold
     )
     AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED: bool = (
         True  # V17 mirror of the GLOBAL live kill switch (config.py / config_tradier.py, USER 2026-10-13 True); vec-inert (the vec ledger always carries), present so switch_parity sees live == vec; never swept, no template row
@@ -15503,6 +15506,64 @@ def _qc_alias(cfg, new, old):
     return vn
 
 
+_TEMPLATE_LAYER_ANNOUNCED = set()
+_TEMPLATE_RAW_REF = {}
+
+
+def _template_raw_reference(mode):
+    """Pristine class values per venue: what an unlayered QuickConfig field still holds when nobody set it."""
+    ref = _TEMPLATE_RAW_REF.get(mode)
+    if ref is None:
+        ref = QuickConfig()
+        if str(mode) == "tradier":
+            ref.apply_tradier_defaults()
+        _TEMPLATE_RAW_REF[mode] = ref
+    return ref
+
+
+def ensure_template_layer(cfg, sym, is_long):
+    """USER LAW 2026-10-29 (verbatim): "TEMPLATE_ is the SOURCE OF TRUTH that no config or v12 or live trading script can ever
+    override if a per_sym switch exists". A config that already carries its TEMPLATE_{cat_side} layer (apply_cat_side_defaults
+    stamps _template_layer; evaluate_v12 lays per-sym overrides on top) is returned untouched. Any other plain QuickConfig gets
+    the layer now, on a copy: every field still at its raw class value takes the template value; a field the caller set to
+    something else is an explicit override and stays. The raw class value therefore only trades where the sheet has no
+    switch for this cat_side. Announced once per sym/side per process so an unlayered caller is never silent."""
+    if type(cfg) is not QuickConfig or getattr(cfg, "_template_layer", None) is not None:
+        return cfg
+    try:
+        import per_sym_settings as _pss
+    except Exception:
+        return cfg
+    side = "LONG" if is_long else "SHORT"
+    mode = str(getattr(cfg, "MODE", "crypto"))
+    cat_side = _pss.cat_side_of(sym, side, "crypto" if mode == "crypto" else "stocks")
+    layer = _pss.defaults(cat_side)
+    out = copy.copy(cfg)
+    if not layer:
+        object.__setattr__(out, "_template_layer", f"none:{cat_side}")
+        return out
+    ref = _template_raw_reference(mode)
+    n = 0
+    for _k, _v in layer.items():
+        if not hasattr(out, _k):
+            continue
+        cur = getattr(out, _k)
+        try:
+            untouched = cur == getattr(ref, _k) or str(cur) == str(getattr(ref, _k))
+        except Exception:
+            untouched = str(cur) == str(getattr(ref, _k, None))
+        if untouched and str(cur) != str(_v):
+            setattr(out, _k, _v)
+            n += 1
+    object.__setattr__(out, "_template_layer", cat_side)
+    object.__setattr__(out, "_template_layer_auto", True)
+    key = (str(sym), side)
+    if key not in _TEMPLATE_LAYER_ANNOUNCED:
+        _TEMPLATE_LAYER_ANNOUNCED.add(key)
+        print(f"[TEMPLATE-LAYER-AUTO] {sym} {side}: unlayered QuickConfig received TEMPLATE_{cat_side} ({n} fields moved off raw class values); raw values trade only where the sheet has no switch", flush=True)
+    return out
+
+
 def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     """Simulate a single symbol/side. Returns a per-trade-normalized result
     dict, or None if insufficient data. Deployed capital is tracked per
@@ -15511,6 +15572,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     avg-trade-deployed-2000-v1 convention (CLAUDE.md), so augmenting a
     position no longer silently inflates the apparent return the way the
     old fixed-notional loop did."""
+    cfg = ensure_template_layer(cfg, sym, is_long)  # USER LAW 2026-10-29: TEMPLATE_ is the source of truth
     base_tf = _base_tf(npz, cfg)
     ts = npz.get("timestamps", npz.get(f"timestamp_{base_tf}", np.array([])))
     n = len(ts)
