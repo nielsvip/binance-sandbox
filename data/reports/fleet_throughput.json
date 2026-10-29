@@ -1,73 +1,27 @@
 {
-  "ts": "2026-10-29T03:50:02.387067+00:00",
+  "ts": "2026-10-29T03:55:04.221576+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 2,
-  "pending_sym_sides": 54,
+  "fleet_published_last_60m": 0,
+  "pending_sym_sides": null,
   "hosts": {
     "s1": {
-      "published_last_60m": 1,
-      "published_last_3h": 2,
-      "boards": {
-        "1000BONKUSDC_SHORT": 6,
-        "MASKUSDT_SHORT": 7
-      },
-      "boards_running": 2,
-      "workers": 13,
-      "workers_vs_law_28": "13/28",
-      "mem_avail_mb": 8930,
-      "disk_free_gb": 28,
-      "load1": 15.0,
-      "dispatch_idle_why": "full 2/2",
-      "published_ss": [
-        "PUMPUSDT_SHORT"
-      ]
+      "unreachable": true
     },
     "s2": {
-      "published_last_60m": 0,
-      "published_last_3h": 3,
-      "boards": {
-        "DOTUSDT_LONG": 0
-      },
-      "boards_running": 1,
-      "workers": 0,
-      "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 16689,
-      "disk_free_gb": 25,
-      "load1": 5.8,
-      "dispatch_idle_why": "HOLD until 2026-10-29T04:00Z: V21 gate bench on s2 (2 arms x 2 workers) needs the RAM: no new production boards on s2 until ~04:00Z; set 01:0xZ by binance-f4, expires automatically",
-      "published_ss": []
+      "unreachable": true
     },
     "s5": {
-      "published_last_60m": 1,
-      "published_last_3h": 8,
-      "boards": {
-        "SKYAIUSDT_SHORT": 7,
-        "VETUSDT_SHORT": 7,
-        "XPLUSDT_SHORT": 7
-      },
-      "boards_running": 3,
-      "workers": 21,
-      "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 9953,
-      "disk_free_gb": 39,
-      "load1": 16.8,
-      "dispatch_idle_why": "no pending work anywhere (or none that fits memory)",
-      "published_ss": [
-        "SUSHIUSDT_SHORT"
-      ]
+      "unreachable": true
     },
     "s6": {
       "unreachable": true
     }
   },
   "alerts": [
-    "LOW_THROUGHPUT:s1:1/h<10 (idle_why=full 2/2)",
-    "DISK_FLOOR:s1:28GB<40",
-    "LOW_THROUGHPUT:s2:0/h<10 (idle_why=HOLD until 2026-10-29T04:00Z: V21 gate bench on s2 (2 arms x 2 workers) needs the RAM: no new production boards on s2 until ~04:00Z; set 01:0xZ by binance-f4, expires automatically)",
-    "DISK_FLOOR:s2:25GB<40",
-    "LOW_THROUGHPUT:s5:1/h<10 (idle_why=no pending work anywhere (or none that fits memory))",
-    "DISK_FLOOR:s5:39GB<40",
+    "UNREACHABLE:s1",
+    "UNREACHABLE:s2",
+    "UNREACHABLE:s5",
     "UNREACHABLE:s6"
   ],
   "repair": null
