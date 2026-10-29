@@ -1,102 +1,40 @@
 {
- "at": "2026-10-29T02:26:04Z",
+ "at": "2026-10-29T03:26:04Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
  "hosts": {
   "s1": {
-   "published_n": 1,
-   "per_hour": 0.5,
+   "published_n": 0,
+   "per_hour": 0.0,
    "improved_vs_best_start": 0,
    "mean_uplift_vs_best_start": null,
    "median_uplift": null,
    "chained_from_previous_published": 0,
-   "no_floor_recorded": 1,
+   "no_floor_recorded": 0,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 0.5/h < 12.0/h (one per 5 min)"
+    "throughput 0.0/h < 12.0/h (one per 5 min)"
    ],
-   "rows": [
-    {
-     "symside": "BIOUSDC_SHORT",
-     "published_at": 1793235244.1359448,
-     "final_gain": 51.559845529403844,
-     "best_start_gain": null,
-     "best_start_chosen": null,
-     "best_start_candidates": null,
-     "baseline_gain": 11.99097977462474,
-     "npz_ts_last": 1793229300.0,
-     "npz_md5": "00a9e276a99483cc5a1de7ac0d11a512",
-     "npz_bars": 41249,
-     "bh": 12.829401272605159,
-     "verdict": null,
-     "npz_age_h_at_publish": 1.65
-    }
-   ],
-   "error": null
+   "rows": [],
+   "error": "no output"
   },
   "s2": {
-   "published_n": 3,
-   "per_hour": 1.5,
+   "published_n": 0,
+   "per_hour": 0.0,
    "improved_vs_best_start": 0,
    "mean_uplift_vs_best_start": null,
    "median_uplift": null,
    "chained_from_previous_published": 0,
-   "no_floor_recorded": 3,
+   "no_floor_recorded": 0,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 1.5/h < 12.0/h (one per 5 min)"
+    "throughput 0.0/h < 12.0/h (one per 5 min)"
    ],
-   "rows": [
-    {
-     "symside": "ALTUSDT_LONG",
-     "published_at": 1793237754.591058,
-     "final_gain": 49.32185742892349,
-     "best_start_gain": null,
-     "best_start_chosen": null,
-     "best_start_candidates": null,
-     "baseline_gain": 49.09064865040147,
-     "npz_ts_last": 1793232000.0,
-     "npz_md5": "ce5d32dd24780030984210f180180cd6",
-     "npz_bars": 47577,
-     "bh": 75.54614245277295,
-     "verdict": null,
-     "npz_age_h_at_publish": 1.6
-    },
-    {
-     "symside": "BATUSDT_LONG",
-     "published_at": 1793236016.0818505,
-     "final_gain": 67.90924446447539,
-     "best_start_gain": null,
-     "best_start_chosen": null,
-     "best_start_candidates": null,
-     "baseline_gain": 64.63496976862804,
-     "npz_ts_last": 1793229300.0,
-     "npz_md5": "120830030dc7f8594d08254dbddba652",
-     "npz_bars": 235148,
-     "bh": 117.033163276828,
-     "verdict": null,
-     "npz_age_h_at_publish": 1.87
-    },
-    {
-     "symside": "EDUUSDT_LONG",
-     "published_at": 1793237954.9211364,
-     "final_gain": 40.95238059145418,
-     "best_start_gain": null,
-     "best_start_chosen": null,
-     "best_start_candidates": null,
-     "baseline_gain": 28.67128242223901,
-     "npz_ts_last": 1793233800.0,
-     "npz_md5": "b85bafa664a9d2f5eb54f052cb749dea",
-     "npz_bars": 43581,
-     "bh": 41.29760084208351,
-     "verdict": null,
-     "npz_age_h_at_publish": 1.15
-    }
-   ],
-   "error": null
+   "rows": [],
+   "error": "mux_client_request_session: read from master failed: Broken pipe\nFailed to connect to new control master\n"
   }
  },
  "hosts_failing": [
