@@ -1,23 +1,39 @@
 {
- "at": "2026-10-29T22:26:03Z",
+ "at": "2026-10-29T23:26:03Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
  "hosts": {
   "s1": {
-   "published_n": 0,
-   "per_hour": 0.0,
+   "published_n": 1,
+   "per_hour": 0.5,
    "improved_vs_best_start": 0,
    "mean_uplift_vs_best_start": null,
    "median_uplift": null,
    "chained_from_previous_published": 0,
-   "no_floor_recorded": 0,
+   "no_floor_recorded": 1,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 0.0/h < 12.0/h (one per 5 min)"
+    "throughput 0.5/h < 12.0/h (one per 5 min)"
    ],
-   "rows": [],
+   "rows": [
+    {
+     "symside": "MINAUSDT_SHORT",
+     "published_at": 1793314614.0153165,
+     "final_gain": 26.44950374225817,
+     "best_start_gain": null,
+     "best_start_chosen": null,
+     "best_start_candidates": null,
+     "baseline_gain": 8.65608173948073,
+     "npz_ts_last": 1793312100.0,
+     "npz_md5": "6eb52d419cb197fcb383c135619bbbd2",
+     "npz_bars": 43675,
+     "bh": 54.37772960868108,
+     "verdict": null,
+     "npz_age_h_at_publish": 0.7
+    }
+   ],
    "error": null
   },
   "s2": {
