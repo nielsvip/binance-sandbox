@@ -1,23 +1,72 @@
 {
-  "flz:BTCUSDC_LONG": {
-    "orderId": "1000002650837832",
-    "stopPrice": 79387.9,
-    "entry_sig": "2026-10-29 10:46:44.468000+00:00",
-    "symbol": "BTCUSDC",
+  "fin:EDUUSDT_LONG": {
+    "orderId": "3000002283518616",
+    "stopPrice": 0.05772,
+    "entry_sig": "2026-10-29 14:45:31.225000+00:00",
+    "symbol": "EDUUSDT",
     "side": "LONG"
   },
-  "flz:DOGEUSDC_LONG": {
-    "orderId": "1000002650430701",
-    "stopPrice": 0.07698,
-    "entry_sig": "2026-10-29 05:16:14.304000+00:00",
-    "symbol": "DOGEUSDC",
+  "fin:KASUSDT_LONG": {
+    "orderId": "3000002283650445",
+    "stopPrice": 0.03542,
+    "entry_sig": "2026-10-29 15:46:04.997000+00:00",
+    "symbol": "KASUSDT",
     "side": "LONG"
   },
-  "flz:SOLUSDC_LONG": {
-    "orderId": "1000002650977814",
-    "stopPrice": 99.19,
-    "entry_sig": "2026-10-29 12:31:31.103000+00:00",
-    "symbol": "SOLUSDC",
+  "fin:BANDUSDT_LONG": {
+    "orderId": "3000002283749559",
+    "stopPrice": 0.2058,
+    "entry_sig": "2026-10-29 16:30:48.755000+00:00",
+    "symbol": "BANDUSDT",
     "side": "LONG"
+  },
+  "fin:IMXUSDT_SHORT": {
+    "orderId": "3000002283892540",
+    "stopPrice": 0.1429,
+    "entry_sig": "2026-10-29 17:46:15.762000+00:00",
+    "symbol": "IMXUSDT",
+    "side": "SHORT"
+  },
+  "fin:ARUSDT_LONG": {
+    "orderId": "3000002283025327",
+    "stopPrice": 3.334,
+    "entry_sig": "2026-10-29 10:15:18.909000+00:00",
+    "symbol": "ARUSDT",
+    "side": "LONG"
+  },
+  "fin:1000XECUSDT_SHORT": {
+    "orderId": "3000002283944420",
+    "stopPrice": 0.006739,
+    "entry_sig": "2026-10-29 18:15:49.073000+00:00",
+    "symbol": "1000XECUSDT",
+    "side": "SHORT"
+  },
+  "fin:IOSTUSDT_SHORT": {
+    "orderId": "3000002284015749",
+    "stopPrice": 0.0007797,
+    "entry_sig": "2026-10-29 19:00:23.186000+00:00",
+    "symbol": "IOSTUSDT",
+    "side": "SHORT"
+  },
+  "fin:MEWUSDT_SHORT": {
+    "orderId": "3000002284016406",
+    "stopPrice": 0.0004748,
+    "entry_sig": "2026-10-29 19:00:39.539000+00:00",
+    "symbol": "MEWUSDT",
+    "side": "SHORT"
+  },
+  "fin:EGLDUSDT_SHORT": {
+    "orderId": "3000002284015722",
+    "stopPrice": 3.59,
+    "entry_sig": "2026-10-29 19:00:20.788867+00:00",
+    "symbol": "EGLDUSDT",
+    "side": "SHORT"
+  },
+  "fin:BOMEUSDC_SHORT": {
+    "orderId": "3000002283965773",
+    "stopPrice": 0.0006895,
+    "entry_sig": "2026-10-29 18:30:35.117000+00:00",
+    "symbol": "BOMEUSDC",
+    "side": "SHORT"
   }
 }
