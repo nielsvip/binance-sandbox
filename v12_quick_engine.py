@@ -5605,6 +5605,11 @@ class QuickConfig:
         # parity-sync 20261027: stocks-uniform bold differs from the raw (crypto) value — §67 overlay
         self.GAP_MORNING_REENTRY_MINUTES_AFTER_OPEN = 180
         self.REGIME_TRENDING_WT_REDUCE_FRAC_LOW = 0.05
+        # 2026-10-29 USER LAW (TEMPLATE is the source of truth): the stocks templates bold these three the other way round
+        # from the crypto templates, whose value the class field now carries — the stocks overlay pins the stocks bold.
+        self.VIGILANCE_GUARD_ENABLED = False
+        self.WT_15M_BOUNCE_HIGH_1H_GT_PREV = False
+        self.WT_15M_BOUNCE_LOW_1H_GT_PREV = False
 
     ABLATION_DISABLE_AGGRESSIVE_HEDGE: bool = False  # auto-wired 625
     ABLATION_DISABLE_AUGMENTATION: bool = False  # auto-wired 625
