@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-29 16:25:35 UTC
+# Copilot Status — 2026-10-29 16:30:30 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-29T16:22:07
-- **STALE_INDICATORS** [tradier]  — 2026-10-29T16:22:36
-- **STALE_INDICATORS** [tradier]  — 2026-10-29T16:23:07
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-29T16:23:12
-- **STALE_INDICATORS** [tradier]  — 2026-10-29T16:23:46
-- **STALE_INDICATORS** [tradier]  — 2026-10-29T16:24:16
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-29T16:24:19
-- **STALE_INDICATORS** [tradier]  — 2026-10-29T16:24:51
-- **STALE_INDICATORS** [tradier]  — 2026-10-29T16:25:21
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-29T16:25:23
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-29T16:26:27
+- **STALE_INDICATORS** [tradier]  — 2026-10-29T16:26:59
+- **STALE_INDICATORS** [tradier]  — 2026-10-29T16:27:29
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-29T16:27:33
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-29T16:27:33
+- **STALE_INDICATORS** [tradier]  — 2026-10-29T16:28:05
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-29T16:28:43
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-29T16:28:43
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-29T16:29:37
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-29T16:29:37
 
 ## Missed Trades (trader comparison)
 
@@ -29,16 +29,16 @@ _None_
 
 **Held:** 13 | **Watching for reentry:** 13 | **Reentered:** 0
 
-- HELD: **HYPEUSDT** LONG (crypto) peak +12.2%, now +11.8%
+- HELD: **HYPEUSDT** LONG (crypto) peak +12.3%, now +12.3%
 - HELD: **CRWD** LONG (tradier) peak +11.7%, now +-2.6%
-- HELD: **FCN** LONG (tradier) peak +11.5%, now +8.7%
-- HELD: **HOOD** SHORT (tradier) peak +11.1%, now +-1.1%
-- HELD: **WDAY** SHORT (tradier) peak +6.8%, now +4.8%
-- HELD: **A** LONG (tradier) peak +5.0%, now +0.6%
-- HELD: **LMT** LONG (tradier) peak +4.8%, now +4.4%
-- HELD: **KASUSDT** LONG (crypto) peak +4.6%, now +-0.2%
-- HELD: **LDOS** LONG (tradier) peak +3.9%, now +2.3%
-- HELD: **RBLX** LONG (tradier) peak +3.4%, now +0.2%
+- HELD: **FCN** LONG (tradier) peak +11.5%, now +8.9%
+- HELD: **HOOD** SHORT (tradier) peak +11.1%, now +-1.2%
+- HELD: **WDAY** SHORT (tradier) peak +6.8%, now +5.0%
+- HELD: **A** LONG (tradier) peak +5.0%, now +0.5%
+- HELD: **LMT** LONG (tradier) peak +4.8%, now +4.5%
+- HELD: **KASUSDT** LONG (crypto) peak +4.6%, now +-0.1%
+- HELD: **LDOS** LONG (tradier) peak +3.9%, now +2.4%
+- HELD: **RBLX** LONG (tradier) peak +3.4%, now +0.5%
 
 - WATCHING: **ACEUSDT** SHORT (crypto) peaked +7.7%, exited 1m ago
 - WATCHING: **STXUSDT** SHORT (crypto) peaked +5.5%, exited 1m ago
@@ -56,8 +56,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [MEDIUM] ez_klines.py running but log stale (17min)
-- [MEDIUM] ez_rankings.py running but log stale (16min)
+- [MEDIUM] tradier_positions.py running but log stale (13min)
 - [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
-- [MEDIUM] ez_klines.py running but log stale (18min)
-- [MEDIUM] ez_rankings.py running but log stale (17min)
+- [MEDIUM] ez_klines.py running but log stale (23min)
+- [MEDIUM] ez_rankings.py running but log stale (21min)
+- [MEDIUM] tradier_positions.py running but log stale (14min)
