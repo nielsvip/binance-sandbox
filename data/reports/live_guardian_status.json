@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-29T09:08:54Z",
+ "ts": "2026-10-29T09:14:07Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,8 +29,8 @@
   "fin": {
    "fills_6h": 50,
    "open_positions": 15,
-   "unrealised_usd": -0.02,
-   "pos_mismatch": 0,
+   "unrealised_usd": 0.01,
+   "pos_mismatch": 2,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 17,
    "open_positions": 8,
-   "unrealised_usd": 0.2,
+   "unrealised_usd": 0.23,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -61,8 +61,8 @@
   "ang": {
    "fills_6h": 90,
    "open_positions": 26,
-   "unrealised_usd": -0.45,
-   "pos_mismatch": 0,
+   "unrealised_usd": -0.81,
+   "pos_mismatch": 5,
    "vec_parity": {
     "live_vec_decisions": 1,
     "state_divergent": 0,
@@ -77,7 +77,7 @@
   "inf": {
    "fills_6h": 5,
    "open_positions": 2,
-   "unrealised_usd": 0.12,
+   "unrealised_usd": 0.11,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 2,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 14,
    "open_positions": 5,
-   "unrealised_usd": 0.15,
+   "unrealised_usd": 0.16,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,58 +127,115 @@
     "13903"
    ],
    "starts_30m": 1,
-   "log_age_s": 106.0
+   "log_age_s": 247.0
   },
   "men": {
    "pids": [
     "8520"
    ],
    "starts_30m": 1,
-   "log_age_s": 129.0
+   "log_age_s": 271.0
   },
   "ang": {
    "pids": [
     "61356"
    ],
    "starts_30m": 1,
-   "log_age_s": 10.0
+   "log_age_s": 32.0
   },
   "inf": {
    "pids": [
     "73873"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 0.0
   },
   "flz": {
    "pids": [
     "9546"
    ],
    "starts_30m": 1,
-   "log_age_s": 25.0
+   "log_age_s": 1.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 47803.0
+   "log_age_s": 48117.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 47272.0
+   "log_age_s": 47586.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-29T09:08:56Z",
+   "ts": "2026-10-29T09:14:07Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "fin:EGLDUSDT_SHORT",
+   "evidence": "positions file amt 3.3 vs fill-ledger amt 120.1"
+  },
+  {
+   "ts": "2026-10-29T09:14:07Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "fin:1INCHUSDT_SHORT",
+   "evidence": "positions file amt 128 vs fill-ledger amt 1182"
+  },
+  {
+   "ts": "2026-10-29T09:14:09Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "ang:QNTUSDT_LONG",
+   "evidence": "positions file amt 0.2 vs fill-ledger amt 1.2"
+  },
+  {
+   "ts": "2026-10-29T09:14:09Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "ang:RSRUSDT_LONG",
+   "evidence": "positions file amt 9541 vs fill-ledger amt 65742.6"
+  },
+  {
+   "ts": "2026-10-29T09:14:09Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "ang:NEARUSDC_LONG",
+   "evidence": "positions file amt 3 vs fill-ledger amt 21.0078"
+  },
+  {
+   "ts": "2026-10-29T09:14:09Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "ang:RVNUSDT_SHORT",
+   "evidence": "positions file amt 10638 vs fill-ledger amt 138430"
+  },
+  {
+   "ts": "2026-10-29T09:14:09Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "ang:1000FLOKIUSDT_SHORT",
+   "evidence": "positions file amt 6 vs fill-ledger amt 108"
+  },
+  {
+   "ts": "2026-10-29T09:14:10Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "fin",
+   "evidence": "ez_manage_fin.log not written for 247s"
+  },
+  {
+   "ts": "2026-10-29T09:14:10Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "men",
-   "evidence": "ez_manage_men.log not written for 129s"
+   "evidence": "ez_manage_men.log not written for 271s"
   }
  ],
  "alert_counts": {
-  "STALE_LOG": 1
+  "POSITION_STATE_MISMATCH": 7,
+  "STALE_LOG": 2
  },
  "active_interventions": {
   "acct:trc": {
@@ -224,5 +281,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.7
+ "sweep_s": 2.91
 }

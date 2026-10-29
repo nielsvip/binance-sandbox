@@ -1,12 +1,12 @@
 {
-  "ts": "2026-10-29T09:05:07.767555+00:00",
+  "ts": "2026-10-29T09:10:12.072079+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 7,
-  "pending_sym_sides": 13,
+  "fleet_published_last_60m": 0,
+  "pending_sym_sides": 12,
   "hosts": {
     "s1": {
-      "published_last_60m": 1,
+      "published_last_60m": 0,
       "published_last_3h": 3,
       "boards": {
         "1000BONKUSDC_SHORT": 6,
@@ -15,85 +15,28 @@
       "boards_running": 2,
       "workers": 13,
       "workers_vs_law_28": "13/28",
-      "mem_avail_mb": 9186,
+      "mem_avail_mb": 9046,
       "disk_free_gb": 25,
-      "load1": 14.3,
+      "load1": 16.0,
       "dispatch_idle_why": "full 2/2",
-      "published_ss": [
-        "EIGENUSDT_SHORT"
-      ]
+      "published_ss": []
     },
     "s2": {
-      "published_last_60m": 2,
-      "published_last_3h": 6,
-      "boards": {
-        "ETHUSDC_LONG": 7,
-        "NEARUSDC_LONG": 7,
-        "TIAUSDC_LONG": 7
-      },
-      "boards_running": 3,
-      "workers": 21,
-      "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 5532,
-      "disk_free_gb": 39,
-      "load1": 24.2,
-      "dispatch_idle_why": "full 3/3",
-      "published_ss": [
-        "BTCDOMUSDT_LONG",
-        "KAVAUSDT_LONG"
-      ]
+      "unreachable": true
     },
     "s5": {
-      "published_last_60m": 1,
-      "published_last_3h": 5,
-      "boards": {
-        "ASTERUSDT_SHORT": 0,
-        "IOSTUSDT_SHORT": 7,
-        "MEWUSDT_SHORT": 7,
-        "RVNUSDT_SHORT": 7
-      },
-      "boards_running": 4,
-      "workers": 21,
-      "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 14004,
-      "disk_free_gb": 36,
-      "load1": 8.3,
-      "dispatch_idle_why": "full 4/4",
-      "published_ss": [
-        "MEMEUSDT_SHORT"
-      ]
+      "unreachable": true
     },
     "s6": {
-      "published_last_60m": 3,
-      "published_last_3h": 11,
-      "boards": {
-        "1000LUNCUSDT_SHORT": 7,
-        "ARUSDT_LONG": 7,
-        "PARTIUSDT_SHORT": 7,
-        "XRPUSDC_LONG": 7
-      },
-      "boards_running": 4,
-      "workers": 28,
-      "workers_vs_law_28": "28/28",
-      "mem_avail_mb": 15083,
-      "disk_free_gb": 41,
-      "load1": 20.3,
-      "dispatch_idle_why": "full 4/4",
-      "published_ss": [
-        "BTCUSDC_LONG",
-        "GASUSDT_SHORT",
-        "GRAMUSDT_SHORT"
-      ]
+      "unreachable": true
     }
   },
   "alerts": [
-    "LOW_THROUGHPUT:s1:1/h<10 (idle_why=full 2/2)",
+    "LOW_THROUGHPUT:s1:0/h<10 (idle_why=full 2/2)",
     "DISK_FLOOR:s1:25GB<40",
-    "LOW_THROUGHPUT:s2:2/h<10 (idle_why=full 3/3)",
-    "DISK_FLOOR:s2:39GB<40",
-    "LOW_THROUGHPUT:s5:1/h<10 (idle_why=full 4/4)",
-    "DISK_FLOOR:s5:36GB<40",
-    "LOW_THROUGHPUT:s6:3/h<10 (idle_why=full 4/4)"
+    "UNREACHABLE:s2",
+    "UNREACHABLE:s5",
+    "UNREACHABLE:s6"
   ],
   "repair": null
 }
