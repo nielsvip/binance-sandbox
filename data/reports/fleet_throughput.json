@@ -1,24 +1,24 @@
 {
-  "ts": "2026-10-29T18:10:08.812922+00:00",
+  "ts": "2026-10-29T18:20:03.085236+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 9,
-  "pending_sym_sides": 52,
+  "fleet_published_last_60m": 14,
+  "pending_sym_sides": 53,
   "hosts": {
     "s1": {
       "published_last_60m": 1,
       "published_last_3h": 1,
       "boards": {
-        "ARM_SHORT": 7,
+        "COP_LONG": 7,
         "MINAUSDT_SHORT": 7,
         "WLDUSDC_SHORT": 7
       },
       "boards_running": 3,
       "workers": 21,
       "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 8950,
-      "disk_free_gb": 17,
-      "load1": 10.2,
+      "mem_avail_mb": 6056,
+      "disk_free_gb": 16,
+      "load1": 14.2,
       "dispatch_idle_why": "HOLD until 2026-10-29T22:01Z: TRC7D pass: 30D paused until every tradeable stock key has its 7D set",
       "published_ss": [
         "1INCHUSDT_SHORT"
@@ -28,17 +28,17 @@
       "published_last_60m": 3,
       "published_last_3h": 7,
       "boards": {
+        "AU_SHORT": 0,
         "GRASSUSDT_LONG": 7,
-        "KGC_SHORT": 0,
         "RAYSOLUSDT_LONG": 7,
-        "RKLB_SHORT": 0
+        "UUUU_SHORT": 7
       },
       "boards_running": 4,
-      "workers": 14,
-      "workers_vs_law_28": "14/28",
-      "mem_avail_mb": 7688,
-      "disk_free_gb": 35,
-      "load1": 7.2,
+      "workers": 21,
+      "workers_vs_law_28": "21/28",
+      "mem_avail_mb": 6775,
+      "disk_free_gb": 34,
+      "load1": 10.9,
       "dispatch_idle_why": "HOLD until 2026-10-29T22:01Z: TRC7D pass: 30D paused until every tradeable stock key has its 7D set",
       "published_ss": [
         "ENAUSDC_LONG",
@@ -50,17 +50,18 @@
       "published_last_60m": 5,
       "published_last_3h": 18,
       "boards": {
+        "AR_LONG": 7,
         "ASML_LONG": 7,
+        "GDX_SHORT": 7,
         "LOW_LONG": 7,
-        "QBTS_SHORT": 7,
-        "ZCSH_LONG": 7
+        "RS_LONG": 7
       },
-      "boards_running": 4,
-      "workers": 28,
-      "workers_vs_law_28": "28/28",
-      "mem_avail_mb": 4390,
-      "disk_free_gb": 31,
-      "load1": 12.0,
+      "boards_running": 5,
+      "workers": 35,
+      "workers_vs_law_28": "35/28",
+      "mem_avail_mb": 2688,
+      "disk_free_gb": 29,
+      "load1": 19.7,
       "dispatch_idle_why": "HOLD until 2026-10-29T22:01Z: TRC7D pass: 30D paused until every tradeable stock key has its 7D set",
       "published_ss": [
         "LDOS_LONG",
@@ -71,17 +72,41 @@
       ]
     },
     "s6": {
-      "unreachable": true
+      "published_last_60m": 5,
+      "published_last_3h": 17,
+      "boards": {
+        "DAR_SHORT": 0,
+        "FNV_SHORT": 7,
+        "MRVL_SHORT": 7,
+        "MU_SHORT": 1,
+        "PLTR_SHORT": 0,
+        "XOM_LONG": 7
+      },
+      "boards_running": 6,
+      "workers": 22,
+      "workers_vs_law_28": "22/28",
+      "mem_avail_mb": 14390,
+      "disk_free_gb": 33,
+      "load1": 13.8,
+      "dispatch_idle_why": "HOLD until 2026-10-29T22:01Z: TRC7D pass: 30D paused until every tradeable stock key has its 7D set",
+      "published_ss": [
+        "ELD_SHORT",
+        "GOOGL_SHORT",
+        "RIO_SHORT",
+        "SCHW_SHORT",
+        "ZCSH_SHORT"
+      ]
     }
   },
   "alerts": [
     "LOW_THROUGHPUT:s1:1/h<10 (idle_why=HOLD until 2026-10-29T22:01Z: TRC7D pass: 30D paused until every tradeable stock key has its 7D set)",
-    "DISK_FLOOR:s1:17GB<40",
+    "DISK_FLOOR:s1:16GB<40",
     "LOW_THROUGHPUT:s2:3/h<10 (idle_why=HOLD until 2026-10-29T22:01Z: TRC7D pass: 30D paused until every tradeable stock key has its 7D set)",
-    "DISK_FLOOR:s2:35GB<40",
+    "DISK_FLOOR:s2:34GB<40",
     "LOW_THROUGHPUT:s5:5/h<10 (idle_why=HOLD until 2026-10-29T22:01Z: TRC7D pass: 30D paused until every tradeable stock key has its 7D set)",
-    "DISK_FLOOR:s5:31GB<40",
-    "UNREACHABLE:s6"
+    "DISK_FLOOR:s5:29GB<40",
+    "LOW_THROUGHPUT:s6:5/h<10 (idle_why=HOLD until 2026-10-29T22:01Z: TRC7D pass: 30D paused until every tradeable stock key has its 7D set)",
+    "DISK_FLOOR:s6:33GB<40"
   ],
   "repair": null
 }
