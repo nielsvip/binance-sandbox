@@ -1,10 +1,10 @@
 {
- "at": "2026-10-29T07:16:08Z",
+ "at": "2026-10-29T07:31:42Z",
  "s1": {
-  "error": "s1-int: master failed: Broken pipe\nmm_receive_fd: recvmsg: expected received 1 got 0\nproxy dialer did not pass back a connection | s1-pub: mm_receive_fd: recvmsg: expected received 1 got 0\nproxy dialer did not pass back a connection"
+  "error": "s1-int: mm_receive_fd: recvmsg: expected received 1 got 0\nproxy dialer did not pass back a connection | s1-pub: mm_receive_fd: recvmsg: expected received 1 got 0\nproxy dialer did not pass back a connection"
  },
  "red": [
-  "s1 unreachable: s1-int: master failed: Broken pipe\nmm_receive_fd: recvmsg: expected received 1 got 0\nproxy dialer did not pass back a connection | s1-pub: mm_receive_fd: recvmsg: expected received 1 got 0\nproxy dialer did not pass back a connection"
+  "s1 unreachable: s1-int: mm_receive_fd: recvmsg: expected received 1 got 0\nproxy dialer did not pass back a connection | s1-pub: mm_receive_fd: recvmsg: expected received 1 got 0\nproxy dialer did not pass back a connection"
  ],
  "warn": [],
  "ok": false
