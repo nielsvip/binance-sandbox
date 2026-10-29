@@ -1,5 +1,5 @@
 {
- "at": "2026-10-29T05:26:02Z",
+ "at": "2026-10-29T06:26:05Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
@@ -34,17 +34,17 @@
      "npz_age_h_at_publish": 1.31
     },
     {
-     "symside": "MASKUSDT_SHORT",
-     "published_at": 1793247528.8503215,
-     "final_gain": 4.463877861554383,
+     "symside": "BIGTIMEUSDT_SHORT",
+     "published_at": 1793254713.1740906,
+     "final_gain": 18.005072353211872,
      "best_start_gain": null,
      "best_start_chosen": null,
      "best_start_candidates": null,
-     "baseline_gain": 2.1250914003254224,
-     "npz_ts_last": 1793242800.0,
-     "npz_md5": "ecce93941e8825a3735a604dc61b0d76",
-     "npz_bars": 181343,
-     "bh": 10.214716507349221,
+     "baseline_gain": 18.005072353211872,
+     "npz_ts_last": 1793250000.0,
+     "npz_md5": "979599c568cc587557e1e7e0e151884c",
+     "npz_bars": 106805,
+     "bh": 19.212118030743806,
      "verdict": null,
      "npz_age_h_at_publish": 1.31
     }
@@ -52,17 +52,17 @@
    "error": null
   },
   "s2": {
-   "published_n": 2,
-   "per_hour": 1.0,
+   "published_n": 3,
+   "per_hour": 1.5,
    "improved_vs_best_start": 0,
    "mean_uplift_vs_best_start": null,
    "median_uplift": null,
    "chained_from_previous_published": 0,
-   "no_floor_recorded": 2,
+   "no_floor_recorded": 3,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 1.0/h < 12.0/h (one per 5 min)"
+    "throughput 1.5/h < 12.0/h (one per 5 min)"
    ],
    "rows": [
     {
@@ -79,6 +79,21 @@
      "bh": -0.41860479944908674,
      "verdict": null,
      "npz_age_h_at_publish": 1.41
+    },
+    {
+     "symside": "ENAUSDC_LONG",
+     "published_at": 1793252967.1046047,
+     "final_gain": 40.40358367922555,
+     "best_start_gain": null,
+     "best_start_chosen": null,
+     "best_start_candidates": null,
+     "baseline_gain": 8.738631080188224,
+     "npz_ts_last": 1793249100.0,
+     "npz_md5": "de12ab93d384bc2840de3d47fceda384",
+     "npz_bars": 46776,
+     "bh": -3.2056440592148254,
+     "verdict": null,
+     "npz_age_h_at_publish": 1.07
     },
     {
      "symside": "KASUSDT_LONG",
