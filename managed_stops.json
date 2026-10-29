@@ -1,68 +1,9 @@
 {
-  "ang:BTCUSDC_LONG": {
-    "orderId": "4000002007030798",
-    "stopPrice": 79387.9,
-    "entry_sig": "2026-10-29 11:25:33.356000+00:00",
-    "symbol": "BTCUSDC",
+  "men:EDUUSDT_LONG": {
+    "orderId": "EZMSTOP_FX_4B9D87E198F8",
+    "stopPrice": 0.05772,
+    "entry_sig": "2026-10-29 14:01:04.078000+00:00",
+    "symbol": "EDUUSDT",
     "side": "LONG"
-  },
-  "ang:1000PEPEUSDC_LONG": {
-    "orderId": "4000002007828214",
-    "stopPrice": 0.0048083,
-    "entry_sig": "2026-10-29 16:15:35.152000+00:00",
-    "symbol": "1000PEPEUSDC",
-    "side": "LONG"
-  },
-  "ang:ARBUSDC_LONG": {
-    "orderId": "4000002007030769",
-    "stopPrice": 0.1614,
-    "entry_sig": "2026-10-29 11:25:32.153000+00:00",
-    "symbol": "ARBUSDC",
-    "side": "LONG"
-  },
-  "ang:IOSTUSDT_SHORT": {
-    "orderId": "4000002008270213",
-    "stopPrice": 0.0007797,
-    "entry_sig": "2026-10-29 19:00:19.767000+00:00",
-    "symbol": "IOSTUSDT",
-    "side": "SHORT",
-    "disaster_backstop": true
-  },
-  "ang:XLMUSDT_SHORT": {
-    "orderId": "4000002005996591",
-    "stopPrice": 0.17412,
-    "entry_sig": "2026-10-29 03:16:37.700000+00:00",
-    "symbol": "XLMUSDT",
-    "side": "SHORT"
-  },
-  "ang:TRXUSDT_SHORT": {
-    "orderId": "4000002005417754",
-    "stopPrice": 0.33189,
-    "entry_sig": "2026-10-28 23:10:16.202000+00:00",
-    "symbol": "TRXUSDT",
-    "side": "SHORT",
-    "disaster_backstop": true
-  },
-  "ang:NEARUSDC_LONG": {
-    "orderId": "4000002006644965",
-    "stopPrice": 4.262,
-    "entry_sig": "2026-10-29 08:24:43.391000+00:00",
-    "symbol": "NEARUSDC",
-    "side": "LONG"
-  },
-  "ang:ARUSDT_LONG": {
-    "orderId": "4000002006725976",
-    "stopPrice": 3.334,
-    "entry_sig": "2026-10-29 09:00:43.599000+00:00",
-    "symbol": "ARUSDT",
-    "side": "LONG"
-  },
-  "ang:TIAUSDC_LONG": {
-    "orderId": "4000002007656549",
-    "stopPrice": 0.5238,
-    "entry_sig": "2026-10-29 15:16:26.536000+00:00",
-    "symbol": "TIAUSDC",
-    "side": "LONG",
-    "disaster_backstop": true
   }
 }
