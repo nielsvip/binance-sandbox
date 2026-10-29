@@ -1,5 +1,5 @@
 {
-  "ts": "2026-10-29T22:50:05.101979+00:00",
+  "ts": "2026-10-29T22:55:04.357150+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 16,
@@ -14,10 +14,10 @@
       "boards_running": 1,
       "workers": 7,
       "workers_vs_law_28": "7/28",
-      "mem_avail_mb": 7666,
+      "mem_avail_mb": 8201,
       "disk_free_gb": 16,
-      "load1": 10.4,
-      "dispatch_idle_why": "mem 8350MB < 8500",
+      "load1": 11.5,
+      "dispatch_idle_why": "mem 8480MB < 8500",
       "published_ss": []
     },
     "s2": {
@@ -31,9 +31,9 @@
       "boards_running": 3,
       "workers": 21,
       "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 4393,
+      "mem_avail_mb": 2651,
       "disk_free_gb": 33,
-      "load1": 21.9,
+      "load1": 17.3,
       "dispatch_idle_why": "full 3/3",
       "published_ss": [
         "MAGICUSDT_LONG"
@@ -44,16 +44,16 @@
       "published_last_3h": 5,
       "boards": {
         "AMD_LONG": 7,
+        "FCN_LONG": 7,
         "HII_LONG": 7,
-        "MA_LONG": 7,
         "PLTR_SHORT": 6
       },
       "boards_running": 4,
       "workers": 27,
       "workers_vs_law_28": "27/28",
-      "mem_avail_mb": 15698,
+      "mem_avail_mb": 15620,
       "disk_free_gb": 19,
-      "load1": 6.3,
+      "load1": 4.7,
       "dispatch_idle_why": "full 4/4",
       "published_ss": [
         "ABBV_LONG",
@@ -64,29 +64,28 @@
     },
     "s6": {
       "published_last_60m": 11,
-      "published_last_3h": 13,
+      "published_last_3h": 14,
       "boards": {
-        "COPX_LONG": 7,
         "HON_LONG": 7,
-        "SBUX_LONG": 7,
+        "UUUU_SHORT": 7,
         "XLE_LONG": 7
       },
-      "boards_running": 4,
-      "workers": 28,
-      "workers_vs_law_28": "28/28",
-      "mem_avail_mb": 17474,
+      "boards_running": 3,
+      "workers": 21,
+      "workers_vs_law_28": "21/28",
+      "mem_avail_mb": 21518,
       "disk_free_gb": 2,
-      "load1": 14.1,
-      "dispatch_idle_why": "full 4/4",
+      "load1": 14.4,
+      "dispatch_idle_why": null,
       "published_ss": [
         "AR_LONG",
         "CVX_LONG",
-        "DHR_LONG",
         "FNV_SHORT",
         "GILD_LONG",
         "PR_LONG",
         "PWR_LONG",
         "QQQ_LONG",
+        "SBUX_LONG",
         "SPOT_LONG",
         "TRGP_LONG",
         "TSLA_LONG"
@@ -94,7 +93,7 @@
     }
   },
   "alerts": [
-    "LOW_THROUGHPUT:s1:0/h<10 (idle_why=mem 8350MB < 8500)",
+    "LOW_THROUGHPUT:s1:0/h<10 (idle_why=mem 8480MB < 8500)",
     "DISK_FLOOR:s1:16GB<40",
     "LOW_THROUGHPUT:s2:1/h<10 (idle_why=full 3/3)",
     "DISK_FLOOR:s2:33GB<40",
