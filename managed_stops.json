@@ -1,51 +1,23 @@
 {
-  "fin:BEAMXUSDT_LONG": {
-    "orderId": "3000002279459117",
-    "stopPrice": 0.003294,
-    "entry_sig": "2026-10-27 22:56:06.010000+00:00",
+  "ang:BEAMXUSDT_LONG": {
+    "orderId": "4000002002348687",
+    "stopPrice": 0.0033,
+    "entry_sig": "2026-10-28 00:56:57.183000+00:00",
     "symbol": "BEAMXUSDT",
     "side": "LONG"
   },
-  "fin:NEARUSDC_LONG": {
-    "orderId": "3000002277450882",
-    "stopPrice": 4.358,
-    "entry_sig": "2026-10-27 04:37:46.017000+00:00",
-    "symbol": "NEARUSDC",
-    "side": "LONG"
-  },
-  "fin:PUMPUSDT_LONG": {
-    "orderId": "3000002281750318",
-    "stopPrice": 0.004138,
-    "entry_sig": "2026-10-28 20:15:29.480000+00:00",
-    "symbol": "PUMPUSDT",
-    "side": "LONG"
-  },
-  "fin:BNBUSDC_LONG": {
-    "orderId": "3000002282362894",
-    "stopPrice": 741.08,
-    "entry_sig": "2026-10-29 02:54:30.275000+00:00",
-    "symbol": "BNBUSDC",
-    "side": "LONG"
-  },
-  "fin:BANDUSDT_LONG": {
-    "orderId": "3000002282363374",
-    "stopPrice": 0.2055,
-    "entry_sig": "2026-10-29 02:54:48.426000+00:00",
-    "symbol": "BANDUSDT",
-    "side": "LONG"
-  },
-  "fin:MASKUSDT_SHORT": {
-    "orderId": "3000002282363558",
-    "stopPrice": 0.4024,
-    "entry_sig": "2026-10-29 02:54:54.794000+00:00",
-    "symbol": "MASKUSDT",
+  "ang:IOTXUSDT_SHORT": {
+    "orderId": "4000002005101964",
+    "stopPrice": 0.003741,
+    "entry_sig": "2026-10-28 17:16:24.012000+00:00",
+    "symbol": "IOTXUSDT",
     "side": "SHORT"
   },
-  "fin:KASUSDT_LONG": {
-    "orderId": "3000002282374640",
-    "stopPrice": 0.03539,
-    "entry_sig": "2026-10-29 03:01:19.811000+00:00",
-    "symbol": "KASUSDT",
-    "side": "LONG"
+  "ang:SKYAIUSDT_SHORT": {
+    "orderId": "4000002005961848",
+    "stopPrice": 0.03653,
+    "entry_sig": "2026-10-29 01:15:13.972000+00:00",
+    "symbol": "SKYAIUSDT",
+    "side": "SHORT"
   }
 }
