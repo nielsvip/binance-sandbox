@@ -1,0 +1,115 @@
+{
+ "window_from": "10-29 04:37",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 203,
+  "status_OK": 147,
+  "EXTRA": 8
+ },
+ "rows": [
+  {
+   "acct": "fin",
+   "sym_side": "1INCHUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-29 05:32",
+   "actual": "OPEN",
+   "actual_reason": "board holds since 1793242800, broker flat (engine qty ratio 0.750)",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "ADAUSDC_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-29 05:34",
+   "actual": "CLOSE",
+   "actual_reason": "board flat, broker holds 57.1",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "flz",
+   "sym_side": "DASHUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-29 05:04",
+   "actual": "CLOSE",
+   "actual_reason": "board flat, broker holds 0.281",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "flz",
+   "sym_side": "DOGEUSDC_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-29 05:16",
+   "actual": "OPEN",
+   "actual_reason": "board holds since 1793250000, broker flat (engine qty ratio 1.000)",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "fin",
+   "sym_side": "EDUUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-29 05:31",
+   "actual": "OPEN",
+   "actual_reason": "board holds since 1793250900, broker flat (engine qty ratio 1.000)",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "EDUUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-29 05:31",
+   "actual": "OPEN",
+   "actual_reason": "board holds since 1793250900, broker flat (engine qty ratio 1.000)",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "JASMYUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-29 05:03",
+   "actual": "OPEN",
+   "actual_reason": "board holds since 1793249100, broker flat (engine qty ratio 1.000)",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "WLDUSDC_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-29 04:45",
+   "actual": "REDUCE",
+   "actual_reason": "engine REDUCE frac 0.2500 (CYCLE_TP_TIERED_T1_0.30pct_gain0.31)",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  }
+ ]
+}
