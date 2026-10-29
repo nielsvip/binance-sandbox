@@ -1,27 +1,29 @@
 {
  "host": "MacBook-Pro.local",
  "base": ".",
- "at": "2026-10-29T11:07:04Z",
+ "at": "2026-10-29T12:07:04Z",
  "dirs": {
   "klines_cache": {
-   "files": 943,
+   "files": 980,
    "files_with_noncanonical": 0,
    "stamps": {}
   },
   "klines_cache/tradier": {
-   "files": 0,
+   "files": 2,
    "files_with_noncanonical": 0,
    "stamps": {}
   },
   "klines_canonical": {
-   "files": 414,
+   "files": 621,
    "files_with_noncanonical": 0,
    "stamps": {}
   },
   "klines_cache_gateway": {
-   "files": 732,
-   "files_with_noncanonical": 0,
-   "stamps": {}
+   "files": 885,
+   "files_with_noncanonical": 1,
+   "stamps": {
+    "unparseable-json": 1
+   }
   },
   "klines_cache_backtest": {
    "files": 0,
@@ -34,7 +36,14 @@
    "stamps": {}
   }
  },
- "offenders": [],
- "noncanonical_files": 0,
- "secs": 1914.8
+ "offenders": [
+  {
+   "file": "klines_cache_gateway/HYPEUSDT_3m.json",
+   "kinds": {
+    "unparseable-json": 1
+   }
+  }
+ ],
+ "noncanonical_files": 1,
+ "secs": 2341.9
 }
