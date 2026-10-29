@@ -1,5 +1,5 @@
 {
-  "ts": "2026-10-29T13:25:10.703721+00:00",
+  "ts": "2026-10-29T13:30:13.371755+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 9,
@@ -10,14 +10,14 @@
       "published_last_3h": 2,
       "boards": {
         "1000BONKUSDC_SHORT": 6,
-        "LTCUSDC_SHORT": 0
+        "LTCUSDC_SHORT": 7
       },
       "boards_running": 2,
-      "workers": 6,
-      "workers_vs_law_28": "6/28",
-      "mem_avail_mb": 13212,
+      "workers": 13,
+      "workers_vs_law_28": "13/28",
+      "mem_avail_mb": 9210,
       "disk_free_gb": 22,
-      "load1": 10.8,
+      "load1": 19.9,
       "dispatch_idle_why": "full 2/2",
       "published_ss": [
         "ATOMUSDT_LONG"
@@ -25,7 +25,7 @@
     },
     "s2": {
       "published_last_60m": 1,
-      "published_last_3h": 5,
+      "published_last_3h": 4,
       "boards": {
         "EDUUSDT_LONG": 7,
         "QNTUSDT_LONG": 7,
@@ -34,9 +34,9 @@
       "boards_running": 3,
       "workers": 21,
       "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 8415,
+      "mem_avail_mb": 7159,
       "disk_free_gb": 36,
-      "load1": 21.6,
+      "load1": 25.4,
       "dispatch_idle_why": "full 3/3",
       "published_ss": [
         "GALAUSDT_LONG"
@@ -52,10 +52,10 @@
       "boards_running": 2,
       "workers": 14,
       "workers_vs_law_28": "14/28",
-      "mem_avail_mb": 12025,
+      "mem_avail_mb": 11392,
       "disk_free_gb": 35,
       "load1": 13.8,
-      "dispatch_idle_why": "mem 12102MB < 8500+5500 owed by 1 ramping",
+      "dispatch_idle_why": "mem 11659MB < 8500+5500 owed by 1 ramping",
       "published_ss": [
         "STRKUSDT_SHORT"
       ]
@@ -65,16 +65,17 @@
       "published_last_3h": 12,
       "boards": {
         "APEUSDT_LONG": 7,
+        "COHR_SHORT": 0,
         "SUSHIUSDT_LONG": 7,
-        "THETAUSDT_LONG": 7
+        "THETAUSDT_LONG": 0
       },
-      "boards_running": 3,
-      "workers": 21,
-      "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 12998,
+      "boards_running": 4,
+      "workers": 14,
+      "workers_vs_law_28": "14/28",
+      "mem_avail_mb": 14985,
       "disk_free_gb": 39,
       "load1": 16.9,
-      "dispatch_idle_why": "spacing 48s < 120",
+      "dispatch_idle_why": "spacing 79s < 120",
       "published_ss": [
         "AVAXUSDC_LONG",
         "COHR_SHORT",
