@@ -1,8 +1,8 @@
 {
-  "ts": "2026-10-29T23:30:04.875392+00:00",
+  "ts": "2026-10-29T23:35:04.673320+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 9,
+  "fleet_published_last_60m": 2,
   "pending_sym_sides": 63,
   "hosts": {
     "s1": {
@@ -14,10 +14,10 @@
       "boards_running": 1,
       "workers": 7,
       "workers_vs_law_28": "7/28",
-      "mem_avail_mb": 2564,
+      "mem_avail_mb": 2687,
       "disk_free_gb": 17,
-      "load1": 23.5,
-      "dispatch_idle_why": "mem 2301MB < 8500",
+      "load1": 17.1,
+      "dispatch_idle_why": "mem 2731MB < 8500",
       "published_ss": [
         "MINAUSDT_SHORT"
       ]
@@ -32,10 +32,10 @@
       "boards_running": 2,
       "workers": 14,
       "workers_vs_law_28": "14/28",
-      "mem_avail_mb": 12796,
-      "disk_free_gb": 33,
-      "load1": 18.7,
-      "dispatch_idle_why": "mem 13188MB < 8500+5500 owed by 1 ramping",
+      "mem_avail_mb": 12649,
+      "disk_free_gb": 32,
+      "load1": 17.6,
+      "dispatch_idle_why": "mem 12955MB < 8500+5500 owed by 1 ramping",
       "published_ss": []
     },
     "s5": {
@@ -43,52 +43,33 @@
       "published_last_3h": 5,
       "boards": {
         "COPX_LONG": 7,
-        "HII_LONG": 7,
         "HON_LONG": 7,
-        "PLTR_SHORT": 6
+        "PLTR_SHORT": 6,
+        "RBLX_LONG": 0
       },
       "boards_running": 4,
-      "workers": 27,
-      "workers_vs_law_28": "27/28",
-      "mem_avail_mb": 9579,
+      "workers": 20,
+      "workers_vs_law_28": "20/28",
+      "mem_avail_mb": 14805,
       "disk_free_gb": 15,
-      "load1": 14.1,
+      "load1": 11.6,
       "dispatch_idle_why": "full 4/4",
       "published_ss": [
         "MCD_LONG"
       ]
     },
     "s6": {
-      "published_last_60m": 7,
-      "published_last_3h": 16,
-      "boards": {},
-      "boards_running": 0,
-      "workers": 0,
-      "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 28190,
-      "disk_free_gb": 2,
-      "load1": 1.4,
-      "dispatch_idle_why": "disk 2994MB < 3000",
-      "published_ss": [
-        "CVX_LONG",
-        "GILD_LONG",
-        "QQQ_LONG",
-        "SBUX_LONG",
-        "TRGP_LONG",
-        "UUUU_SHORT",
-        "XLE_LONG"
-      ]
+      "unreachable": true
     }
   },
   "alerts": [
-    "LOW_THROUGHPUT:s1:1/h<10 (idle_why=mem 2301MB < 8500)",
+    "LOW_THROUGHPUT:s1:1/h<10 (idle_why=mem 2731MB < 8500)",
     "DISK_FLOOR:s1:17GB<40",
-    "LOW_THROUGHPUT:s2:0/h<10 (idle_why=mem 13188MB < 8500+5500 owed by 1 ramping)",
-    "DISK_FLOOR:s2:33GB<40",
+    "LOW_THROUGHPUT:s2:0/h<10 (idle_why=mem 12955MB < 8500+5500 owed by 1 ramping)",
+    "DISK_FLOOR:s2:32GB<40",
     "LOW_THROUGHPUT:s5:1/h<10 (idle_why=full 4/4)",
     "DISK_FLOOR:s5:15GB<40",
-    "LOW_THROUGHPUT:s6:7/h<10 (idle_why=disk 2994MB < 3000)",
-    "DISK_FLOOR:s6:2GB<40"
+    "UNREACHABLE:s6"
   ],
   "repair": null
 }
