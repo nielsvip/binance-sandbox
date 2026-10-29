@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-29T06:16:49Z",
+ "generated_utc": "2026-10-29T06:21:45Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 592.8,
+  "age_s": 888.6,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 85435,
-  "proc_age_s": 41119.0,
-  "log_age_s": 193.5,
+  "proc_age_s": 41414.0,
+  "log_age_s": 97.5,
   "warmup_done": true,
   "timeframes_since_restart": [
    "4h",
@@ -28,8 +28,9 @@
   "written": 0,
   "lines": [],
   "decisions": [
-   "no ez_indicators process",
-   "no ez_indicators process",
+   "warm-up already complete (steady state is self-sustaining)",
+   "warm-up already complete (steady state is self-sustaining)",
+   "warm-up already complete (steady state is self-sustaining)",
    "warm-up already complete (steady state is self-sustaining)"
   ],
   "policy": {
@@ -43,20 +44,21 @@
   "mode": "ACTIVE",
   "since_epoch": 1793127215.692805,
   "activations": 164,
-  "hb_mtime": 1793254373.6422462,
-  "mac_snapshot_age_s": 497.03292417526245,
+  "hb_mtime": 1793254748.6998067,
+  "mac_snapshot_age_s": 872.2389969825745,
   "mac_stale": true,
   "lease_holder": "mac",
   "lease_venues": null,
   "lease_since": "2026-10-27T18:56:44Z",
   "lease_reason": "manual force-mac",
-  "now": 1793254384.5004327,
-  "from_cache_age_s": 225.1,
-  "heartbeat_age_s": 10.9,
-  "active_s": 127168.8
+  "now": 1793254757.27995,
+  "from_cache_age_s": 148.1,
+  "heartbeat_age_s": 8.6,
+  "active_s": 127541.6,
+  "note": "ACTIVE is CORRECT while the Mac snapshot is stale \u2014 fix the Mac, S1 returns to NORMAL on its own"
  },
  "alerts": [
-  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 127168s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (10s) AND the Mac snapshot is fresh (592s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
+  "SNAPSHOT STALE: latest_market_data.json is 888s old (> 600s). ez_indicators pid=85435 warmup_done=True tfs_since_restart=['4h', '1h', '15m', '3m', '4h', '1h', '15m'] restarts_last_hour=0. Live crypto decisions are reading a stale indicator snapshot."
  ],
  "verdict": "ALERT"
 }

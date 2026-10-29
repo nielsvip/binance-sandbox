@@ -1,26 +1,25 @@
 {
-  "ts": "2026-10-29T06:15:15.863097+00:00",
+  "ts": "2026-10-29T06:20:20.777165+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 1,
-  "pending_sym_sides": 30,
+  "pending_sym_sides": 29,
   "hosts": {
     "s1": {
       "published_last_60m": 1,
-      "published_last_3h": 3,
+      "published_last_3h": 4,
       "boards": {
-        "1000BONKUSDC_SHORT": 6,
-        "BIGTIMEUSDT_SHORT": 7
+        "1000BONKUSDC_SHORT": 6
       },
-      "boards_running": 2,
-      "workers": 13,
-      "workers_vs_law_28": "13/28",
-      "mem_avail_mb": 8296,
+      "boards_running": 1,
+      "workers": 6,
+      "workers_vs_law_28": "6/28",
+      "mem_avail_mb": 14194,
       "disk_free_gb": 28,
-      "load1": 12.7,
+      "load1": 9.9,
       "dispatch_idle_why": "full 2/2",
       "published_ss": [
-        "ALGOUSDT_SHORT"
+        "BIGTIMEUSDT_SHORT"
       ]
     },
     "s2": {
