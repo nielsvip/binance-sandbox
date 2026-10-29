@@ -43,7 +43,11 @@ TRC_DB = ROOT / "data/hourly_reconfig/per_sym_store_trc7d.db"
 SIDES_FILE = Path.home() / "fwd_trc7d_syms.txt"
 SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5", "-o", "ServerAliveInterval=10", "-o", "ServerAliveCountMax=3"]
 # name -> (ip, slots). S1 trades crypto and runs the crypto NPZ/state chain, S5 trades stocks: fewer 7D slots there.
-HOSTS = {"s5": ("local", 3), "s6": ("10.0.0.6", 4), "s2": ("10.0.0.4", 2), "s1": ("10.0.0.3", 1)}
+# 2026-10-29 18:4xZ: S5 at 3 boards + its live trader/state chain took ~9 kernel OOM kills (board workers mid-sweep) -> 2.
+HOSTS = {"s5": ("local", 2), "s6": ("10.0.0.6", 4), "s2": ("10.0.0.4", 2), "s1": ("10.0.0.3", 1)}
+# overnight (USER 2026-10-29 "the bottom half ... starting at 20:00 and do it slowly overnight while all tests keep running"):
+# nothing paused, one 7D board per stock/crypto worker beside the 30D boards, none on S1 (crypto live + NPZ/state chain)
+OVERNIGHT_SLOTS = {"s5": 1, "s6": 1, "s2": 1, "s1": 0}
 LEADERS = ("10.0.0.3", "10.0.0.4")
 MEM_FLOOR_MB = int(os.environ.get("TRC7D_MEM_FLOOR_MB", "5000"))
 LAUNCH_GAP_S = int(os.environ.get("TRC7D_LAUNCH_GAP_S", "45"))
@@ -227,8 +231,11 @@ def launch(name, ip, ss, day, mode):
                             f"niels@{ip}:{q}"], capture_output=True, text=True, timeout=120)
         if r.returncode:
             return f"QUEUE_SYNC_FAIL {r.stderr[-120:]}"
+    # premarket boards carry the temporary 08:45/09:00/09:15 overlay; a premarket board launched after 09:30 (the canonical NPZ
+    # then holds today's RTH bars) and every intraday/overnight board run on the canonical NPZ
+    late = mode == "premarket" and dt.datetime.now(NY).time() >= dt.time(9, 30)
     env = ("V18_CATCHUP=1 V15_7D_PILOT_FILE=v15_pilot.py V15_7D_ALREADY_PAUSED=1 V15_7D_MIN_MEM_MB=3000 "
-           + ("V15_7D_ANYTIME=1 V15_7D_OVERLAY=0 " if mode == "intraday" else ""))
+           + ("V15_7D_ANYTIME=1 V15_7D_OVERLAY=0 " if mode != "premarket" or late else ""))
     # setsid -f + every fd redirected: the board must not hold the ssh session (or the local pipe) open
     cmd = (f"cd ~/binance-sandbox && mkdir -p data/preopen_7d/trc_run/{day}/results/{ss} && "
            f"test ! -e data/preopen_7d/trc_run/{day}/results/{ss}/launcher.json && "
@@ -260,7 +267,10 @@ def result_of(ip, ss, day, folder=None):
             progress = None
     rc, out, _ = sh(ip, f"grep -c 'REDO scheduled' {base}/pilot.log", 20)
     redo = out.strip().isdigit() and int(out.strip()) > 0
-    return {"launcher": launcher, "progress": progress, "redo": redo}
+    rc, out, _ = sh(ip, f"grep -c -E 'NO-TRADES-SKIP|0-TRADES-FAST-FAIL' {base}/pilot.log", 20)
+    # the board's honest 7D answer is "no trade" (0 trades, no flip restores any): trc stays flat on it
+    no_trades = out.strip().isdigit() and int(out.strip()) > 0 and not (progress or {}).get("cumulative_overrides")
+    return {"launcher": launcher, "progress": progress, "redo": redo, "no_trades": no_trades}
 
 
 def stage(ss, res, day):
@@ -325,11 +335,12 @@ def timing(state):
 
 
 def wave_open(state, ss, local):
-    """premarket: the lower half of the ranking may start at 09:00 ET, the upper half (best-first) at 09:15 ET."""
+    """premarket: the less important half of this pass starts at 09:00 ET (the 09:00 price is not very reliable), the
+    best half best-first at 09:15 ET."""
     if state["mode"] != "premarket":
         return True
-    rank = state["placements"][ss]["rank"]
-    upper = rank <= (len(state["placements"]) + 1) // 2
+    pos = state["placements"][ss].get("pos", state["placements"][ss]["rank"])
+    upper = pos <= (len(state["placements"]) + 1) // 2
     return local.time() >= (dt.time(9, 15) if upper else dt.time(9, 0))
 
 
@@ -337,7 +348,7 @@ def tick(state, day_dir):
     now = time.time()
     local = dt.datetime.now(NY)
     day = state["day"]
-    if not state.get("paused"):
+    if not state.get("paused") and state["mode"] != "overnight":
         state["hold"] = hold(True)
         state["paused"] = {n: pyrun(ip, PAUSE_SCRIPT, timeout=60)[1].strip() for n, (ip, _) in HOSTS.items()}
         state["paused_utc"] = now_iso()
@@ -370,6 +381,15 @@ def tick(state, day_dir):
                  summary={k: v for k, v in (res.get("progress") or {}).items() if k != "cumulative_overrides"})
         ok, why = stage(ss, res, day)
         p.update(staged=ok, quality=why if ok else None, stage_why=None if ok else why)
+        if not ok and res.get("no_trades"):
+            p.update(quality="FLAT_NO_TRADES_7D", stage_why=None)
+        elif not ok and p.get("attempt", 1) < 2:
+            # neither a result, a REDO nor a 0-trade verdict: the board was killed (OOM) mid-sweep -> one relaunch
+            base = f"~/binance-sandbox/data/preopen_7d/trc_run/{day}/results"
+            sh(ip, f"rm -rf {base}/{ss}.attempt1 && mv {base}/{ss} {base}/{ss}.attempt1", 30)
+            state["placements"][ss] = {"rank": p["rank"], "status": "pending", "attempt": 2, "a1_tried": True, "attempt1": {
+                "host": p["host"], "wall_min": round((now - p["started"]) / 60, 1), "why": why}}
+            print(f"[{now_iso()}] {ss} killed mid-sweep -> relaunch (attempt 2)", flush=True)
         if ok and not state.get("first_staged_utc"):
             state["first_staged_utc"] = now_iso()
         print(f"[{now_iso()}] {ss} on {p['host']} {round((now - p['started']) / 60, 1)} min staged={ok} {why}", flush=True)
@@ -382,13 +402,20 @@ def tick(state, day_dir):
             if res is None or (retry_a1 and not res.get("redo")):
                 continue
             ok, why = stage(ss, res, day)
+            if not ok and res.get("no_trades"):
+                p.update(status="done", host=p["attempt1"]["host"], quality="FLAT_NO_TRADES_7D", started=now, finished=now)
+                continue
+            if not ok and not retry_a1:
+                continue  # attempt 1 left nothing usable (killed): attempt 2 runs
             p.update(status="done", host=p["attempt1"]["host"], staged=ok, quality=why if ok else None, stage_why=None if ok else why,
                      started=now - 60 * float(p["attempt1"].get("wall_min") or 0), finished=now, from_attempt1=True)
             print(f"[{now_iso()}] {ss} staged from attempt 1 (REDO pre-repair) staged={ok} {why}", flush=True)
     order = sorted((ss for ss, p in state["placements"].items() if p["status"] == "pending"), key=lambda s: state["placements"][s]["rank"])
     for name, (ip, slots) in HOSTS.items():
         pr = probes.get(name)
-        if not pr:
+        if state["mode"] == "overnight":
+            slots = OVERNIGHT_SLOTS.get(name, 0)
+        if not pr or not slots:
             continue
         busy = set(pr["running7d"]) | {ss for ss, p in state["placements"].items() if p.get("host") == name and p["status"] == "running"}
         if len(busy) >= slots or pr["mem"] < MEM_FLOOR_MB or now - state["last_launch"].get(name, 0) < LAUNCH_GAP_S:
@@ -409,20 +436,22 @@ def tick(state, day_dir):
             p["launch_errors"] = p.get("launch_errors", 0) + 1
             if p["launch_errors"] >= 3:
                 p.update(status="failed", why=f"launch failed: {out[-120:]}", finished=time.time())
-    if now - state["started_epoch"] > DEADLINE_S:
+    deadline_s = 12 * 3600 if state["mode"] == "overnight" else DEADLINE_S
+    if now - state["started_epoch"] > deadline_s:
         # the paused 30D fleet is never stranded: past the deadline nothing new launches and the fleet resumes
         for p in state["placements"].values():
             if p["status"] == "pending":
-                p.update(status="failed", why=f"pass deadline {DEADLINE_S // 60} min", finished=now)
+                p.update(status="failed", why=f"pass deadline {deadline_s // 60} min", finished=now)
             elif p["status"] == "running" and now - p["started"] > BOARD_TIMEOUT_S + 600:
                 p.update(status="failed", why="board exceeded launcher timeout", finished=now)
     terminal = all(p["status"] in ("done", "failed") for p in state["placements"].values())
     if terminal and not state.get("complete_utc"):
         state["complete_utc"] = now_iso()
-        state["resumed"] = {n: pyrun(ip, RESUME_SCRIPT, timeout=60)[1].strip() for n, (ip, _) in HOSTS.items()}
-        preempted = sorted({x for v in state["resumed"].values() for x in v.split()})
-        state["priority"] = prioritize(preempted)
-        state["unhold"] = hold(False)
+        if state.get("paused"):
+            state["resumed"] = {n: pyrun(ip, RESUME_SCRIPT, timeout=60)[1].strip() for n, (ip, _) in HOSTS.items()}
+            preempted = sorted({x for v in state["resumed"].values() for x in v.split()})
+            state["priority"] = prioritize(preempted)
+            state["unhold"] = hold(False)
     atomic(day_dir / "timing.json", timing(state))
     atomic(day_dir / "state.json", state)
     return terminal
@@ -430,22 +459,28 @@ def tick(state, day_dir):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--mode", choices=("intraday", "premarket"), default="intraday")
+    ap.add_argument("--mode", choices=("intraday", "premarket", "overnight"), default="intraday")
+    ap.add_argument("--half", choices=("all", "top", "bottom"), default="all", help="top = best half of the ranking, bottom = the rest")
     ap.add_argument("--day", default=dt.datetime.now(NY).strftime("%Y%m%d"))
     ap.add_argument("--interval", type=float, default=20.0)
     ap.add_argument("--limit", type=int, default=0, help="first N keys of the ranking only (smoke test)")
     a = ap.parse_args()
-    day_dir = ROOT / "data/preopen_7d/trc_run" / a.day
+    day_dir = ROOT / "data/preopen_7d/trc_run" / (a.day + ("_overnight" if a.mode == "overnight" else ""))
     state_path = day_dir / "state.json"
     if state_path.exists():
         state = json.loads(state_path.read_text())
     else:
         queue = build_queue(day_dir)
-        ranking = queue["ranking"][: a.limit] if a.limit else queue["ranking"]
-        state = {"day": a.day, "mode": a.mode, "started_utc": now_iso(), "started_epoch": time.time(), "last_launch": {},
-                 "queue_meta": queue["_meta"], "placements": {ss: {"rank": i + 1, "status": "pending"} for i, ss in enumerate(ranking)}}
+        full = queue["ranking"]
+        cut = (len(full) + 1) // 2
+        chosen = {"all": list(enumerate(full)), "top": list(enumerate(full))[:cut], "bottom": list(enumerate(full))[cut:]}[a.half]
+        chosen = chosen[: a.limit] if a.limit else chosen
+        state = {"day": day_dir.name, "trade_day": a.day, "mode": a.mode, "half": a.half, "started_utc": now_iso(), "started_epoch": time.time(), "last_launch": {},
+                 "queue_meta": queue["_meta"],
+                 "placements": {ss: {"rank": i + 1, "pos": j + 1, "status": "pending"} for j, (i, ss) in enumerate(chosen)}}
+        ranking = [ss for _, ss in chosen]
         atomic(state_path, state)
-        print(f"[{now_iso()}] trc 7D {a.mode} pass: {len(ranking)} keys (excluded {queue['_meta']['excluded_counts']})", flush=True)
+        print(f"[{now_iso()}] trc 7D {a.mode}/{a.half} pass: {len(ranking)} keys (excluded {queue['_meta']['excluded_counts']})", flush=True)
     while True:
         try:
             if tick(state, day_dir):

@@ -35,6 +35,10 @@ BAR_S = 900
 GRACE_S = float(os.environ.get("S1_BAR_FALLBACK_GRACE_S", "40"))
 RETRY_S = float(os.environ.get("S1_BAR_FALLBACK_RETRY_S", "120"))
 THREADS = int(os.environ.get("S1_BAR_FALLBACK_THREADS", "6"))
+MARK_FIRST = os.environ.get("S1_BAR_MARK_FIRST", "1") == "1"
+MARK_PASSES_S = tuple(float(x) for x in os.environ.get("S1_BAR_MARK_PASSES_S", "1,3,6").split(",") if x)
+MARK_THREADS = int(os.environ.get("S1_BAR_MARK_THREADS", "24"))
+HEAL_S = float(os.environ.get("S1_BAR_HEAL_S", "15"))
 FAPI = "https://fapi.binance.com/fapi/v1/klines"
 SUFFIXES = ("USDT", "USDC", "USD1", "USDS", "BUSD", "FDUSD", "TUSD", "DAI")
 REPORT = ROOT / "data" / "reports" / "s1_closed_bar_fallback_latest.json"
@@ -125,18 +129,47 @@ def fetch_bar(s, symbol, start):
             "_producer": "s1_closed_bar_fallback"}, ""
 
 
-def fill(base, symbols, start, s, dry_run=False):
+def stored_provisional(base: Path, symbol: str, start: int) -> bool:
+    from closed_bar_feed import timestamp_epoch
+    path = base / "data" / "closed_15m_bars" / "crypto" / f"{symbol}.json"
+    try:
+        return any(timestamp_epoch(r.get("timestamp")) == start and r.get("_provisional") for r in json.loads(path.read_text())[-4:])
+    except Exception:
+        return False
+
+
+def mark_row(symbol, start):
+    """Provisional bar at :15:00: native 1m :00-:13 + mark-price 1m :14 (closes exactly at the bar close)."""
+    import mark_kline_bar_crypto as M
+    b = M.build(symbol, start)
+    if not b.get("complete"):
+        return None, b.get("reason", "mark bar incomplete")
+    return {"timestamp": dt.datetime.fromtimestamp(start, dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000000Z"),
+            "open": b["open"], "high": b["high"], "low": b["low"], "close": b["close"], "volume": b["volume_native_0_12"],
+            "_closed": True, "_provisional": True, "_source": "binance_mark_1m_s1_fallback", "_mark_built_at": time.time(),
+            "_producer": "s1_closed_bar_fallback"}, ""
+
+
+def fill(base, symbols, start, s, dry_run=False, mode="real"):
+    """mode mark: provisional mark bar for symbols with no bar. heal: real kline for symbols with no bar or a
+    provisional one (arbitration in closed_bar_feed replaces the provisional row). real: plain fallback."""
     from closed_bar_feed import receive_closed_15m
-    missing = [x for x in symbols if not has_bar(base, x, start)]
+
+    def wanted(x):
+        if not has_bar(base, x, start):
+            return True
+        return mode == "heal" and stored_provisional(base, x, start)
+
+    missing = [x for x in symbols if wanted(x)]
     res = {"bar_start": start, "checked": len(symbols), "missing": len(missing), "filled": [], "failed": {}}
     if not missing:
         return res
 
     def one(symbol):
-        row, why = fetch_bar(s, symbol, start)
+        row, why = mark_row(symbol, start) if mode == "mark" else fetch_bar(s, symbol, start)
         if row is None:
             return symbol, why
-        if has_bar(base, symbol, start):
+        if has_bar(base, symbol, start) and not stored_provisional(base, symbol, start):
             return symbol, "arrived_meanwhile"
         if dry_run:
             return symbol, "dry"
@@ -144,7 +177,7 @@ def fill(base, symbols, start, s, dry_run=False):
         receive_closed_15m(str(base), ev)
         return symbol, ""
 
-    with cf.ThreadPoolExecutor(max_workers=THREADS) as ex:
+    with cf.ThreadPoolExecutor(max_workers=MARK_THREADS if mode == "mark" else THREADS) as ex:
         for symbol, why in ex.map(lambda x: _safe(one, x), missing):
             if why in ("", "dry"):
                 res["filled"].append(symbol)
@@ -191,14 +224,16 @@ def main():
     log(f"s1_closed_bar_fallback loop: grace {GRACE_S}s retry {RETRY_S}s sides {sides}")
     while True:
         close = (int(time.time() // BAR_S) + 1) * BAR_S
-        for delay in (GRACE_S, RETRY_S):
+        plan = ([(d, "mark") for d in MARK_PASSES_S] + [(HEAL_S, "heal"), (RETRY_S, "real")]) if MARK_FIRST else [(GRACE_S, "real"), (RETRY_S, "real")]
+        for delay, mode in plan:
             wait = close + delay - time.time()
             if wait > 0:
                 time.sleep(wait)
             start = close - BAR_S
             try:
                 symbols = universe(sides)
-                res = fill(base, symbols, start, s)
+                res = fill(base, symbols, start, s, mode=mode)
+                res["mode"] = mode
                 res["pass_delay_s"] = delay
                 report(res)
                 if res["missing"]:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create an isolated RTH-only 7D stock NPZ plus today's latest four premarket rows."""
+"""Create an isolated RTH-only 7D stock NPZ plus today's completed 08:45/09:00/09:15 ET premarket rows (temporary)."""
 from __future__ import annotations
 
 import datetime as dt
@@ -49,9 +49,13 @@ def build_overlay(symbol: str, overlay_dir: Path, now: dt.datetime | None = None
                 and stamp.tz_convert(NY).date() == local_day
                 and epoch <= pm_cutoff):
             pm_candidates.append(epoch)
-    pm_keep = set(pm_candidates[-4:])
-    if len(pm_keep) < 4:
-        raise ValueError(f"{symbol}: need four completed current-day premarket NPZ rows; found {len(pm_keep)}")
+    # USER 2026-10-29: exactly the 08:45 / 09:00 / 09:15 ET bars (bar-open stamps), each only once it has closed: a 09:00
+    # launch carries 08:45, a 09:15 launch 08:45 + 09:00; never earlier premarket bars
+    wanted = {dt.time(8, 45), dt.time(9, 0), dt.time(9, 15)}
+    pm_keep = {epoch for epoch in pm_candidates
+               if dt.datetime.fromtimestamp(epoch, dt.timezone.utc).astimezone(NY).time() in wanted}
+    if not pm_keep:
+        raise ValueError(f"{symbol}: no completed 08:45/09:00/09:15 ET premarket bar in the Tradier 15m klines yet")
     rth_days = []
     for value in ts_s:
         if is_rth_bar_start(int(value)):
