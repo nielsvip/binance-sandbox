@@ -158,7 +158,12 @@ def npz_depth_days(path):
     ("unsupported window_days=20"), so on a DEEP snapshot the 30 d fit window must survive the cut instead (the pilot
     loads window + holdout days, exactly as production does since the 10-28 37-day fix)."""
     try:
-        import numpy as np
+        try:
+            import numpy as np
+        except ImportError:  # the gate cron runs the system python3 (no numpy): ask the sandbox interpreter instead
+            r = subprocess.run([str(SRC / ".venv" / "bin" / "python"), "-c", "import sys, numpy as np; z = np.load(sys.argv[1], mmap_mode='r', allow_pickle=True); k = next((k for k in z.files if 'timestamp' in k and '15m' in k), None); t = np.asarray(z[k]) if k else None; print('' if t is None or len(t) < 2 else round((float(t[-1]) - float(t[0])) / 86400.0, 1))", str(path)], capture_output=True, text=True, timeout=120)
+            v = (r.stdout or "").strip()
+            return float(v) if v else None
         z = np.load(str(path), mmap_mode="r", allow_pickle=True)
         key = next((k for k in z.files if "timestamp" in k and "15m" in k), None)
         if key is None:

@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-29T00:20:17.708371+00:00",
+  "ts": "2026-10-29T00:30:07.778423+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 15,
-  "pending_sym_sides": 99,
+  "fleet_published_last_60m": 13,
+  "pending_sym_sides": 72,
   "hosts": {
     "s1": {
       "published_last_60m": 1,
@@ -15,9 +15,9 @@
       "boards_running": 2,
       "workers": 13,
       "workers_vs_law_28": "13/28",
-      "mem_avail_mb": 7948,
+      "mem_avail_mb": 7152,
       "disk_free_gb": 26,
-      "load1": 17.0,
+      "load1": 19.0,
       "dispatch_idle_why": "full 2/2",
       "published_ss": [
         "STRKUSDT_SHORT"
@@ -27,35 +27,37 @@
       "published_last_60m": 1,
       "published_last_3h": 3,
       "boards": {
+        "ALTUSDT_LONG": 7,
+        "AMD_LONG": 0,
         "BATUSDT_LONG": 7,
+        "CHRUSDT_LONG": 2,
         "PUMPUSDT_LONG": 7
       },
-      "boards_running": 2,
-      "workers": 14,
-      "workers_vs_law_28": "14/28",
-      "mem_avail_mb": 12763,
-      "disk_free_gb": 45,
-      "load1": 11.5,
-      "dispatch_idle_why": "mem 12802MB < 8500+5500 owed by 1 ramping",
+      "boards_running": 5,
+      "workers": 23,
+      "workers_vs_law_28": "23/28",
+      "mem_avail_mb": 7328,
+      "disk_free_gb": 28,
+      "load1": 26.5,
+      "dispatch_idle_why": "full 5/3",
       "published_ss": [
         "GRASSUSDT_LONG"
       ]
     },
     "s5": {
-      "published_last_60m": 13,
-      "published_last_3h": 30,
+      "published_last_60m": 11,
+      "published_last_3h": 28,
       "boards": {},
       "boards_running": 0,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 29690,
+      "mem_avail_mb": 29823,
       "disk_free_gb": 40,
-      "load1": 0.5,
-      "dispatch_idle_why": "spacing 113s < 120",
+      "load1": 1.1,
+      "dispatch_idle_why": "spacing 114s < 120",
       "published_ss": [
         "AR_LONG",
         "ASML_LONG",
-        "EQT_LONG",
         "GOOGL_LONG",
         "LDOS_LONG",
         "LNG_LONG",
@@ -64,7 +66,6 @@
         "PR_LONG",
         "RRC_LONG",
         "TSLA_LONG",
-        "V_LONG",
         "XOM_LONG"
       ]
     },
@@ -75,7 +76,8 @@
   "alerts": [
     "LOW_THROUGHPUT:s1:1/h<10 (idle_why=full 2/2)",
     "DISK_FLOOR:s1:26GB<40",
-    "LOW_THROUGHPUT:s2:1/h<10 (idle_why=mem 12802MB < 8500+5500 owed by 1 ramping)",
+    "LOW_THROUGHPUT:s2:1/h<10 (idle_why=full 5/3)",
+    "DISK_FLOOR:s2:28GB<40",
     "UNREACHABLE:s6"
   ],
   "repair": null

@@ -16214,7 +16214,30 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         _off = _i % _bars_per_day
                         if _bars_per_day - _bars_90m <= _off < _bars_per_day:
                             _in_window[_i] = True
-                _is_top = (_wt1_15 < _wt2_15) if is_long else (_wt1_15 > _wt2_15)
+                # SMALL-TOP PARITY (2026-10-29): live tradier_manage._is_small_top_for_gap_exit = ANY of
+                # wt15 cross | wt5 cross | HA red/green (15m or 5m) | price down/up | 4h DC breakdown/breakout.
+                # The NPZ has no 3m/5m arrays, so 5m terms map to 15m (BIBLE law: 15m is the lowest TF). The old
+                # WT-only gate fired on ~4 of 170 pre-close bars for AAPL and made the gap exits almost inert.
+                _cl_top = _safe(npz, "close", n)
+                _cl_top_prev = np.roll(_cl_top, 1)
+                _cl_top_prev[:1] = _cl_top[:1]
+                _ha15_top = _ha_int(npz, "ha_15m", n)
+                _dc_lo_top = _safe(npz, "dc_low_4h", n)
+                _dc_hi_top = _safe(npz, "dc_high_4h", n)
+                if is_long:
+                    _is_top = (
+                        (_wt1_15 < _wt2_15)
+                        | (_ha15_top == -1)
+                        | (_cl_top < _cl_top_prev)
+                        | ((_cl_top > 0) & (_dc_lo_top > 0) & (_cl_top < _dc_lo_top))
+                    )
+                else:
+                    _is_top = (
+                        (_wt1_15 > _wt2_15)
+                        | (_ha15_top == 1)
+                        | (_cl_top > _cl_top_prev)
+                        | ((_cl_top > 0) & (_dc_hi_top > 0) & (_cl_top > _dc_hi_top))
+                    )
                 if not bool(
                     getattr(cfg, "GAP_MOC_REQUIRE_TOP", True)
                 ):  # WIRING LANE E: live _is_small_top_for_gap_exit returns True when OFF
