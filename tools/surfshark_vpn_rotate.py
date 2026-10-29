@@ -742,6 +742,12 @@ def cmd_watch(interval=15):
             if manual:
                 grant_manual_grace(manual)
             if hold_remaining() > 0:
+                if cmd_check_quiet() == 0:
+                    time.sleep(interval)
+                    continue
+                if time.time() - load_state().get("last_rotate_ts", 0) >= COOLDOWN_S:
+                    log("watch: manual grace active but check failed (418 is immediate) -> rotating")
+                    do_rotate(ignore_hold=True)
                 time.sleep(interval)
                 continue
             try:
