@@ -20,11 +20,18 @@
     "symbol": "EDUUSDT",
     "side": "LONG"
   },
-  "men:1INCHUSDT_SHORT": {
-    "orderId": "2000001551518851",
-    "stopPrice": 0.0892,
-    "entry_sig": "2026-10-29 14:45:34.413000+00:00",
-    "symbol": "1INCHUSDT",
+  "men:KASUSDT_LONG": {
+    "orderId": "2000001550835860",
+    "stopPrice": 0.03499,
+    "entry_sig": "2026-10-29 10:11:05.478000+00:00",
+    "symbol": "KASUSDT",
+    "side": "LONG"
+  },
+  "men:IOSTUSDT_SHORT": {
+    "orderId": "2000001551568349",
+    "stopPrice": 0.0007837,
+    "entry_sig": "2026-10-29 15:01:21.365000+00:00",
+    "symbol": "IOSTUSDT",
     "side": "SHORT"
   }
 }
