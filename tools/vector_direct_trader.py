@@ -66,7 +66,7 @@ CRYPTO_SUFFIXES = ("USDT", "USDC", "USD1", "USDS", "BUSD", "FDUSD", "TUSD", "DAI
 # They are now resolved ONLY by apply_venue_sizing(venue) from the venue's own config file — see that function.
 # The placeholders below are 0.0 on purpose: if any path ever sizes an order before the venue is resolved, it
 # sizes to ZERO (no order) instead of silently trading the other venue's slice.
-MANDATED_START = {"crypto": 15.0, "stocks": 800.0}  # a mismatch is reported loudly on every start, never traded silently
+MANDATED_START = {"crypto": 15.0, "stocks": 250.0}  # a mismatch is reported loudly on every start, never traded silently
 START_POSITION_SIZE = 0.0
 MAX_OPEN_NOTIONAL = 0.0
 STOCK_ONE_SHARE_MAX = 0.0

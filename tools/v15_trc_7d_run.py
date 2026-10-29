@@ -198,11 +198,12 @@ def launch(name, ip, ss, day, mode):
             return f"QUEUE_SYNC_FAIL {r.stderr[-120:]}"
     env = ("V18_CATCHUP=1 V15_7D_PILOT_FILE=v15_pilot.py V15_7D_ALREADY_PAUSED=1 V15_7D_MIN_MEM_MB=3000 "
            + ("V15_7D_ANYTIME=1 V15_7D_OVERLAY=0 " if mode == "intraday" else ""))
+    # setsid -f + every fd redirected: the board must not hold the ssh session (or the local pipe) open
     cmd = (f"cd ~/binance-sandbox && mkdir -p data/preopen_7d/trc_run/{day}/results/{ss} && "
-           f"test ! -s data/preopen_7d/trc_run/{day}/results/{ss}/launcher.json && "
-           f"{env} nohup nice -n 15 {PY} -u tools/v15_preopen_7d_launch.py --queue ~/{q} --sym-side {ss} "
+           f"test ! -e data/preopen_7d/trc_run/{day}/results/{ss}/launcher.json && "
+           f"{env} setsid -f nice -n 15 {PY} -u tools/v15_preopen_7d_launch.py --queue ~/{q} --sym-side {ss} "
            f"--result-dir ~/{rdir} --workers 7 --timeout-sec {BOARD_TIMEOUT_S} --python {PY} "
-           f"> ~/{rdir}/{ss}/launcher.json 2> ~/{rdir}/{ss}/launcher.stderr < /dev/null & echo LAUNCHED")
+           f"> ~/{rdir}/{ss}/launcher.json 2> ~/{rdir}/{ss}/launcher.stderr < /dev/null && echo LAUNCHED")
     rc, out, err = sh(ip, cmd, 30)
     return out.strip() or f"rc={rc} {err[-120:]}"
 
@@ -215,6 +216,8 @@ def result_of(ip, ss, day):
     try:
         launcher = json.loads(out.strip().splitlines()[-1])
     except ValueError:
+        return None
+    if "valid" not in launcher:  # the launcher's REHEARSAL_WINDOW_OVERRIDE event line, not its result
         return None
     rc, out, err = sh(ip, f"test -s {base}/progress/{ss}_7d_progress.json && python3 - {base}/progress/{ss}_7d_progress.json",
                       90, inp=EXTRACT_SCRIPT)
@@ -308,6 +311,12 @@ def tick(state, day_dir):
         except (ValueError, IndexError):
             probes[name] = None
     state["probes"] = probes
+    for name, pr in probes.items():
+        for ss in (pr or {}).get("running7d") or []:
+            p = state["placements"].get(ss)
+            if p and p["status"] == "pending":
+                # a board already running there (a launch whose reply was lost): adopt it, never launch a duplicate
+                p.update(status="running", host=name, started=p.get("started") or now, adopted=True)
     for ss, p in state["placements"].items():
         if p["status"] != "running":
             continue

@@ -25,8 +25,10 @@ except Exception:
     pass
 
 
-@dataclass
+@dataclass(eq=False)
 class TradierConfig:
+    _INSTANCES: ClassVar[WeakSet] = WeakSet()
+    _CURRENT_MARKET_MODE: ClassVar[str] = "LIGHT_MODE"
     # USER 2026-09-30: every switch has FOUR defaults (CRYPTO_LONG/CRYPTO_SHORT/STOCKS_LONG/STOCKS_SHORT) in
     # data/per_sym_settings.json (built from the TEMPLATE bold defaults). Lookup order everywhere: per-sym override >
     # cat_side default (cat_side_defaults.get_for) > the single value in this class. False = old single-default behaviour.
@@ -193,10 +195,10 @@ class TradierConfig:
     # Original values preserved in inline comment in case we need to revert.
     # 2026-04-27 SECOND CUT — user at -30%/week, headless-chicken MSTR loop. Now 1/4 of original.
     MAX_POSITION_SIZE: float = (
-        4000.0  # USER 2026-10-28 vector-trader sizing mandate ("stocks 900 crypto 15 NO EXCEPTION"; the venue's OWN config file is the only authority the tiny S1/S5 vector traders read); was 5000.0 (STDEV_SLOPE fix 2026-09-14).
+        4000.0  # USER 2026-10-29 = LIGHT_MODE value (mode table in _apply_mode). Was 5000.0; USER 2026-10-28 vector-trader sizing mandate ("stocks 900 crypto 15 NO EXCEPTION"; the venue's OWN config file is the only authority the tiny S1/S5 vector traders read); was 5000.0 (STDEV_SLOPE fix 2026-09-14).
     )
     START_POSITION_SIZE: float = (
-        800.0  # USER 2026-10-29 "*800": stock START 800, max entry = 800 x 4 = 3200. Was 900.0 (2026-10-28 mandate); vector-trader sizing mandate ("stocks 900 crypto 15 NO EXCEPTION"; the venue's OWN config file is the only authority the tiny S1/S5 vector traders read); was 500.0 (2026-06-14: $150 can't buy 1 share of $300+ stocks).
+        250.0  # USER 2026-10-29 = LIGHT_MODE value (mode table in _apply_mode). Was 800.0 ("*800": stock START 800, max entry = 800 x 4 = 3200. Was 900.0 (2026-10-28 mandate); vector-trader sizing mandate ("stocks 900 crypto 15 NO EXCEPTION"; the venue's OWN config file is the only authority the tiny S1/S5 vector traders read); was 500.0 (2026-06-14: $150 can't buy 1 share of $300+ stocks).
     )
     # 2026-10-17 LIVE WIRING of the vector order/position caps (stocks half). vec_decisions.qty_quantizers
     # cap_dollar/cap_add_qty serve both venues off whichever cfg they are handed and read this venue's own
@@ -256,7 +258,7 @@ class TradierConfig:
     )
     STOCKS_OPEN_CEIL_SPS_ENABLED: bool = False  # USER 2026-10-14: stocks keep MAX_ORDER_VALUE ($7000) as the order cap — the 6x START_POSITION_SIZE ceiling ($3000) is crypto-only
     MAX_ORDER_VALUE: float = (
-        7000.0  # STDEV_SLOPE fix 2026-09-14: was 2500 (5x START) capped 10x D ladder; now 500*10=5000
+        1000.0  # USER 2026-10-29 = LIGHT_MODE value (mode table in _apply_mode). Was 7000.0. STDEV_SLOPE fix 2026-09-14: was 2500 (5x START) capped 10x D ladder; now 500*10=5000
     )
     ACCOUNT_SIDE_MAPPING: Dict[str, List[str]] = field(
         default_factory=lambda: {"tra": ["LONG"]}
@@ -4702,7 +4704,44 @@ class TradierConfig:
     MARKET_CLOSE_MINUTE: int = 0
     EXTREME_MODE: bool = False
     LIGHT_MODE: bool = False
-    MARKET_MODE: str = "NORMAL_MODE"
+    MARKET_MODE: str = "LIGHT_MODE"  # USER 2026-10-29: stocks mirror crypto (config.Config): LIGHT default, mode table in _apply_mode
+    def __post_init__(self):
+        self._INSTANCES.add(self)
+        self._apply_mode(self._resolve_initial_mode())
+
+    def _resolve_initial_mode(self) -> str:
+        if self.EXTREME_MODE and not self.LIGHT_MODE:
+            return "EXTREME_MODE"
+        if self.LIGHT_MODE and not self.EXTREME_MODE:
+            return "LIGHT_MODE"
+        if self.MARKET_MODE in {"EXTREME_MODE", "LIGHT_MODE", "NORMAL_MODE"}:
+            return self.MARKET_MODE
+        return self._CURRENT_MARKET_MODE
+
+    def _apply_mode(self, mode: str):
+        # USER 2026-10-29: "stocks light start 250 max order 1000 max pos 4000 / normal 600 / 2400 / 12000 /
+        # extreme 1200 / 4800 / 18000". The mode owns exactly these three sizing knobs; all other keys keep their values.
+        tables = {
+            "LIGHT_MODE": {"START_POSITION_SIZE": 250.0, "MAX_ORDER_VALUE": 1000.0, "MAX_POSITION_SIZE": 4000.0},
+            "NORMAL_MODE": {"START_POSITION_SIZE": 600.0, "MAX_ORDER_VALUE": 2400.0, "MAX_POSITION_SIZE": 12000.0},
+            "EXTREME_MODE": {"START_POSITION_SIZE": 1200.0, "MAX_ORDER_VALUE": 4800.0, "MAX_POSITION_SIZE": 18000.0},
+        }
+        if mode not in tables:
+            mode = "NORMAL_MODE"
+        for key, value in tables[mode].items():
+            setattr(self, key, value)
+        self.MARKET_MODE = mode
+        self.EXTREME_MODE = mode == "EXTREME_MODE"
+        self.LIGHT_MODE = mode == "LIGHT_MODE"
+        TradierConfig._CURRENT_MARKET_MODE = mode
+
+    @classmethod
+    def set_market_mode(cls, mode: str):
+        if mode not in {"NORMAL_MODE", "EXTREME_MODE", "LIGHT_MODE"}:
+            mode = "NORMAL_MODE"
+        cls._CURRENT_MARKET_MODE = mode
+        for instance in list(cls._INSTANCES):
+            instance._apply_mode(mode)
     REV_MODE: bool = False
     EXIT_ON_ALL: bool = True
     TREND_GATES: bool = True
@@ -5357,7 +5396,7 @@ class TradierConfig:
     # === TRC AGGRESSIVE SANDBOX — "after-sandbox sandbox" ===
     # trc is paper-money. Push extreme settings here to prove before applying to trb.
     # 2026-04-27 SECOND CUT — every trc cap now 1/4 of original.
-    TRC_START_POSITION_SIZE: float = 330.0  # was 500 / orig 1000
+    TRC_START_POSITION_SIZE: float = 800.0  # was 500 / orig 1000
     TRC_MAX_ORDER_VALUE: float = (
         3300.0  # STDEV_SLOPE fix 2026-09-14: was 1250 (3.78x START) →3300 for 10x ladder (330*10)
     )
@@ -5447,7 +5486,7 @@ class TradierConfig:
         3600.0  # USER 2026-10-11: 2500 -> 3600 = trb 900 base x 4x biggest gainer. Was 2026-04-27 second cut 2500.
     )
     TRB_START_POSITION_SIZE: float = (
-        900.0  # USER 2026-10-11: trb (real) base START; losers x0.05 -> $45, biggest gainer x4 -> $3600. trc paper keeps TRC_START 330.
+        800.0  # USER 2026-10-11: trb (real) base START; losers x0.05 -> $45, biggest gainer x4 -> $3600. trc paper keeps TRC_START 330.
     )
     # === trb caps now 1/4 of original ===
     TRB_MAX_LONG_VALUE: float = 12500.0  # was 25000 / orig 50000
