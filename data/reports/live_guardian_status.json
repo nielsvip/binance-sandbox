@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-29T04:05:43Z",
+ "ts": "2026-10-29T04:10:59Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -28,8 +28,8 @@
  "accounts": {
   "fin": {
    "fills_6h": 81,
-   "open_positions": 11,
-   "unrealised_usd": 0.37,
+   "open_positions": 10,
+   "unrealised_usd": 0.3,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 108,
    "open_positions": 6,
-   "unrealised_usd": 0.56,
+   "unrealised_usd": 0.42,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 169,
    "open_positions": 13,
-   "unrealised_usd": 0.58,
+   "unrealised_usd": 0.61,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -77,7 +77,7 @@
   "inf": {
    "fills_6h": 16,
    "open_positions": 1,
-   "unrealised_usd": -0.05,
+   "unrealised_usd": -0.06,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 4,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 29,
    "open_positions": 4,
-   "unrealised_usd": 0.37,
+   "unrealised_usd": 0.39,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,73 +127,80 @@
     "72211"
    ],
    "starts_30m": 1,
-   "log_age_s": 14.0
+   "log_age_s": 2.0
   },
   "men": {
    "pids": [
     "8520"
    ],
    "starts_30m": 1,
-   "log_age_s": 90.0
+   "log_age_s": 1.0
   },
   "ang": {
    "pids": [
     "69273"
    ],
    "starts_30m": 1,
-   "log_age_s": 158.0
+   "log_age_s": 474.0
   },
   "inf": {
    "pids": [
     "89250"
    ],
    "starts_30m": 1,
-   "log_age_s": 2892.0
+   "log_age_s": 3208.0
   },
   "flz": {
    "pids": [
     "16145"
    ],
-   "starts_30m": 2,
-   "log_age_s": 7.0
+   "starts_30m": 1,
+   "log_age_s": 223.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 29612.0
+   "log_age_s": 29928.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 29081.0
+   "log_age_s": 29397.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-29T04:05:44Z",
+   "ts": "2026-10-29T04:11:00Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "inf:PENGUUSDC_LONG",
    "evidence": "CLOSE FIXED_STOP bar=2026-10-29T02:00:00Z refused by non-safety gate: 29 02:16:28 - INFO - [inf] [VEC_EXACT] inf:PENGUUSDC_LONG CLOSE VEC_CONVERGE_TO_FLAT qty=1971.000000 -> BLOCKED_NET_GAIN"
   },
   {
-   "ts": "2026-10-29T04:05:45Z",
+   "ts": "2026-10-29T04:11:01Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 158s"
+   "evidence": "ez_manage_ang.log not written for 474s"
   },
   {
-   "ts": "2026-10-29T04:05:45Z",
+   "ts": "2026-10-29T04:11:01Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "inf",
-   "evidence": "ez_manage_inf.log not written for 2892s"
+   "evidence": "ez_manage_inf.log not written for 3208s"
+  },
+  {
+   "ts": "2026-10-29T04:11:01Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "flz",
+   "evidence": "ez_manage_flz.log not written for 223s"
   }
  ],
  "alert_counts": {
   "VEC_DECISION_REFUSED": 1,
-  "STALE_LOG": 2
+  "STALE_LOG": 3
  },
  "active_interventions": {
   "acct:trc": {
@@ -226,13 +233,6 @@
    "undo": "alert-only (never-halt policy 2026-10-10)",
    "dry_run": false
   },
-  "key:ang:INJUSDT_LONG": {
-   "ts": 1793239849.0994308,
-   "until": 1793247049.099521,
-   "why": "RAPID_LOSS_KEY unrealised -4.67% (60-min high +0.35%), amt 3.6 (opens/augments blocked; exits untouched)",
-   "undo": "redis-cli -p 6379 DEL open_blocked:ang:INJUSDT_LONG",
-   "dry_run": false
-  },
   "acct:fin": {
    "ts": 1792652010.862595,
    "why": "ORDER_STORM_ACCOUNT 28 fills/10min",
@@ -245,13 +245,6 @@
    "undo": "alert-only (never-halt policy 2026-10-10)",
    "dry_run": false
   },
-  "key:fin:PUMPUSDT_LONG": {
-   "ts": 1793239573.006803,
-   "until": 1793246773.006807,
-   "why": "RAPID_LOSS_KEY unrealised -4.73% (60-min high -0.52%), amt 3331 (opens/augments blocked; exits untouched)",
-   "undo": "redis-cli -p 6379 DEL open_blocked:fin:PUMPUSDT_LONG",
-   "dry_run": false
-  },
   "key:ang:DUSKUSDT_LONG": {
    "ts": 1793242547.220476,
    "until": 1793249747.220478,
@@ -260,5 +253,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 2.25
+ "sweep_s": 1.88
 }

@@ -1,57 +1,30 @@
 {
-  "ts": "2026-10-29T04:00:04.128546+00:00",
+  "ts": "2026-10-29T04:05:16.690283+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 2,
+  "fleet_published_last_60m": 1,
   "pending_sym_sides": null,
   "hosts": {
     "s1": {
-      "published_last_60m": 1,
-      "published_last_3h": 1,
-      "boards": {
-        "1000BONKUSDC_SHORT": 6,
-        "MASKUSDT_SHORT": 7
-      },
-      "boards_running": 2,
-      "workers": 13,
-      "workers_vs_law_28": "13/28",
-      "mem_avail_mb": 6637,
-      "disk_free_gb": 28,
-      "load1": 25.5,
-      "dispatch_idle_why": null,
-      "published_ss": [
-        "PUMPUSDT_SHORT"
-      ]
+      "unreachable": true
     },
     "s2": {
-      "published_last_60m": 0,
-      "published_last_3h": 3,
-      "boards": {
-        "KASUSDT_LONG": 0
-      },
-      "boards_running": 1,
-      "workers": 0,
-      "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 18671,
-      "disk_free_gb": 41,
-      "load1": 6.4,
-      "dispatch_idle_why": null,
-      "published_ss": []
+      "unreachable": true
     },
     "s5": {
       "published_last_60m": 1,
       "published_last_3h": 8,
       "boards": {
         "SKYAIUSDT_SHORT": 7,
-        "VETUSDT_SHORT": 7,
+        "VETUSDT_SHORT": 0,
         "XPLUSDT_SHORT": 7
       },
       "boards_running": 3,
-      "workers": 21,
-      "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 6129,
+      "workers": 14,
+      "workers_vs_law_28": "14/28",
+      "mem_avail_mb": 12322,
       "disk_free_gb": 39,
-      "load1": 15.3,
+      "load1": 5.5,
       "dispatch_idle_why": null,
       "published_ss": [
         "SUSHIUSDT_SHORT"
@@ -62,9 +35,8 @@
     }
   },
   "alerts": [
-    "LOW_THROUGHPUT:s1:1/h<10 (idle_why=None)",
-    "DISK_FLOOR:s1:28GB<40",
-    "LOW_THROUGHPUT:s2:0/h<10 (idle_why=None)",
+    "UNREACHABLE:s1",
+    "UNREACHABLE:s2",
     "LOW_THROUGHPUT:s5:1/h<10 (idle_why=None)",
     "DISK_FLOOR:s5:39GB<40",
     "UNREACHABLE:s6"
