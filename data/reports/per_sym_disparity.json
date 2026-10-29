@@ -1,14 +1,14 @@
 {
- "ts": "2026-10-29T11:56:06Z",
+ "ts": "2026-10-29T12:08:00Z",
  "n": 171,
  "classes": {
-  "DRIFT": 84,
-  "OK": 80,
+  "DRIFT": 90,
+  "OK": 74,
   "BOARD_TOO_OLD": 5,
   "NO_LATEST_BOARD": 2
  },
- "n_drift": 84,
- "n_entry_blocked": 91,
+ "n_drift": 90,
+ "n_entry_blocked": 97,
  "drift_keys": {
   "CYCLE_TP_TIERED_ENABLED": 20,
   "MTF_DC_REJECT_FILTER_TF": 12,
@@ -26,6 +26,8 @@
   "EMA_DIST_SIZING_MULT": 7,
   "LH_LL_TOP_EXIT_MODE": 7,
   "DC_BREAK_FILTER_TF": 6,
+  "DELTA_EXIT_MIN_HOLD": 6,
+  "MIN_HOLD_MINUTES_TRADIER": 6,
   "STOCKS_OPENING_BUFFER_ENTRY_ENABLED": 6,
   "GR_TOTAL_VOTE_SCORE_MIN": 6,
   "BAND_SLOPE_SIZING_V2_ENABLED": 6,
@@ -37,9 +39,7 @@
   "STDEV_SLOPE_SIZING_MODE": 5,
   "DC_HOPELESS_EXIT_ENABLED": 5,
   "MIN_HOLD_BARS": 5,
-  "DC_MOMENTUM_BOTA_SCORER_FILTER_TF": 5,
-  "DELTA_ENGINE_FILTER_TF": 5,
-  "SLOPE_SIZING_LIVE_TWIN_ENABLED": 5
+  "DC_MOMENTUM_BOTA_SCORER_FILTER_TF": 5
  },
  "rows": [
   {
@@ -92,7 +92,7 @@
    "venue": "stocks",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_9cb0c157_age173h_vintage_from_published_at",
+   "why": "OK_BOARD_9cb0c157_age174h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "9cb0c157",
@@ -125,7 +125,7 @@
    "venue": "crypto",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_11e40b7d_age5h_vintage_from_published_at",
+   "why": "OK_BOARD_11e40b7d_age6h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "11e40b7d",
@@ -147,11 +147,14 @@
   {
    "sym_side": "ADAUSDC_SHORT",
    "venue": "crypto",
-   "entry_allowed": true,
-   "class": "OK",
-   "why": "OK_BOARD_cb590931_age7h_vintage_from_published_at",
-   "diff_keys": [],
-   "n_diff": 0,
+   "entry_allowed": false,
+   "class": "DRIFT",
+   "why": "LIVE_SET_NE_BOARD_2keys:DELTA_EXIT_MIN_HOLD,MIN_HOLD_MINUTES_TRADIER",
+   "diff_keys": [
+    "DELTA_EXIT_MIN_HOLD",
+    "MIN_HOLD_MINUTES_TRADIER"
+   ],
+   "n_diff": 2,
    "board_md5": "cb590931",
    "n_board_overrides": 878
   },
@@ -360,7 +363,7 @@
    "venue": "crypto",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_9afb77ae_age105h_vintage_from_published_at",
+   "why": "OK_BOARD_9afb77ae_age106h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "9afb77ae",
@@ -575,7 +578,7 @@
    "venue": "stocks",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_1108f141_age14h_vintage_from_published_at",
+   "why": "OK_BOARD_1108f141_age15h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "1108f141",
@@ -608,11 +611,14 @@
   {
    "sym_side": "BTCUSDC_SHORT",
    "venue": "crypto",
-   "entry_allowed": true,
-   "class": "OK",
-   "why": "OK_BOARD_cb590931_age6h_vintage_from_published_at",
-   "diff_keys": [],
-   "n_diff": 0,
+   "entry_allowed": false,
+   "class": "DRIFT",
+   "why": "LIVE_SET_NE_BOARD_2keys:DELTA_EXIT_MIN_HOLD,MIN_HOLD_MINUTES_TRADIER",
+   "diff_keys": [
+    "DELTA_EXIT_MIN_HOLD",
+    "MIN_HOLD_MINUTES_TRADIER"
+   ],
+   "n_diff": 2,
    "board_md5": "cb590931",
    "n_board_overrides": 878
   },
@@ -875,7 +881,7 @@
    "venue": "stocks",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_4bfb6269_age33h_vintage_from_published_at",
+   "why": "OK_BOARD_4bfb6269_age34h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "4bfb6269",
@@ -906,11 +912,14 @@
   {
    "sym_side": "EIGENUSDT_SHORT",
    "venue": "crypto",
-   "entry_allowed": true,
-   "class": "OK",
-   "why": "OK_BOARD_83ca557f_age4h_vintage_from_published_at",
-   "diff_keys": [],
-   "n_diff": 0,
+   "entry_allowed": false,
+   "class": "DRIFT",
+   "why": "LIVE_SET_NE_BOARD_2keys:DELTA_EXIT_MIN_HOLD,MIN_HOLD_MINUTES_TRADIER",
+   "diff_keys": [
+    "DELTA_EXIT_MIN_HOLD",
+    "MIN_HOLD_MINUTES_TRADIER"
+   ],
+   "n_diff": 2,
    "board_md5": "83ca557f",
    "n_board_overrides": 884
   },
@@ -968,7 +977,7 @@
    "venue": "stocks",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_aa72f675_age12h_vintage_from_published_at",
+   "why": "OK_BOARD_aa72f675_age13h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "aa72f675",
@@ -1203,11 +1212,14 @@
   {
    "sym_side": "IOSTUSDT_SHORT",
    "venue": "crypto",
-   "entry_allowed": true,
-   "class": "OK",
-   "why": "OK_BOARD_ecf6f51a_age3h_vintage_from_published_at",
-   "diff_keys": [],
-   "n_diff": 0,
+   "entry_allowed": false,
+   "class": "DRIFT",
+   "why": "LIVE_SET_NE_BOARD_2keys:DELTA_EXIT_MIN_HOLD,MIN_HOLD_MINUTES_TRADIER",
+   "diff_keys": [
+    "DELTA_EXIT_MIN_HOLD",
+    "MIN_HOLD_MINUTES_TRADIER"
+   ],
+   "n_diff": 2,
    "board_md5": "ecf6f51a",
    "n_board_overrides": 878
   },
@@ -1417,11 +1429,14 @@
   {
    "sym_side": "MEWUSDT_SHORT",
    "venue": "crypto",
-   "entry_allowed": true,
-   "class": "OK",
-   "why": "OK_BOARD_5a81146c_age3h_vintage_from_published_at",
-   "diff_keys": [],
-   "n_diff": 0,
+   "entry_allowed": false,
+   "class": "DRIFT",
+   "why": "LIVE_SET_NE_BOARD_2keys:DELTA_EXIT_MIN_HOLD,MIN_HOLD_MINUTES_TRADIER",
+   "diff_keys": [
+    "DELTA_EXIT_MIN_HOLD",
+    "MIN_HOLD_MINUTES_TRADIER"
+   ],
+   "n_diff": 2,
    "board_md5": "5a81146c",
    "n_board_overrides": 879
   },
@@ -1607,7 +1622,7 @@
    "venue": "stocks",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_89072b04_age176h_vintage_from_published_at",
+   "why": "OK_BOARD_89072b04_age177h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "89072b04",
@@ -1705,7 +1720,7 @@
    "venue": "stocks",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_b44b2ebd_age9h_vintage_from_published_at",
+   "why": "OK_BOARD_b44b2ebd_age10h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "b44b2ebd",
@@ -2102,11 +2117,14 @@
   {
    "sym_side": "STRKUSDT_SHORT",
    "venue": "crypto",
-   "entry_allowed": true,
-   "class": "OK",
-   "why": "OK_BOARD_018c2f2a_age1h_vintage_from_published_at",
-   "diff_keys": [],
-   "n_diff": 0,
+   "entry_allowed": false,
+   "class": "DRIFT",
+   "why": "LIVE_SET_NE_BOARD_2keys:DELTA_EXIT_MIN_HOLD,MIN_HOLD_MINUTES_TRADIER",
+   "diff_keys": [
+    "DELTA_EXIT_MIN_HOLD",
+    "MIN_HOLD_MINUTES_TRADIER"
+   ],
+   "n_diff": 2,
    "board_md5": "018c2f2a",
    "n_board_overrides": 879
   },
@@ -2205,7 +2223,7 @@
    "venue": "crypto",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_a9de0771_age133h_vintage_from_published_at",
+   "why": "OK_BOARD_a9de0771_age134h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "a9de0771",
@@ -2216,7 +2234,7 @@
    "venue": "stocks",
    "entry_allowed": false,
    "class": "BOARD_TOO_OLD",
-   "why": "BOARD_TOO_OLD_229h>216h",
+   "why": "BOARD_TOO_OLD_230h>216h",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "c3a3d341",
@@ -2332,7 +2350,7 @@
    "venue": "stocks",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_741fec46_age15h_vintage_from_published_at",
+   "why": "OK_BOARD_741fec46_age16h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "741fec46",
@@ -2343,7 +2361,7 @@
    "venue": "stocks",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_8bcd99aa_age12h_vintage_from_published_at",
+   "why": "OK_BOARD_8bcd99aa_age13h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "8bcd99aa",
