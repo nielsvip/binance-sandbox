@@ -52,8 +52,8 @@ def build(root: Path, now: dt.datetime, db: Path):
             excluded["not_tradeable_book"].append(ss)
             continue
         if d30 is None:
+            # USER 2026-10-29 "all tradeable keys": a side without a 30D delta is still queued, ranked after every ranked side
             excluded["no_delta_30d"].append(ss)
-            continue
         try:
             overrides, defaults, full = json.loads(ov), json.loads(df), json.loads(fc)
         except (TypeError, ValueError):
@@ -64,9 +64,9 @@ def build(root: Path, now: dt.datetime, db: Path):
             continue
         drift = sorted(k for k in set(overrides) | set(defaults) | set(full)
                        if ({**defaults, **overrides}).get(k) != full.get(k))
-        accepted.append({"ss": ss, "updated_at": upd, "delta_30d": float(d30), "gain_30d": g30,
+        accepted.append({"ss": ss, "updated_at": upd, "delta_30d": float(d30) if d30 is not None else None, "gain_30d": g30,
                          "overrides": overrides, "drift": drift})
-    accepted.sort(key=lambda x: (-x["delta_30d"], -(x["gain_30d"] or 0), x["ss"]))
+    accepted.sort(key=lambda x: (x["delta_30d"] is None, -(x["delta_30d"] or 0), -(x["gain_30d"] or 0), x["ss"]))
     out = {"_meta": {"created_at": now.isoformat(), "scope": "trc_stocks", "rank": "delta_30d desc",
                      "tradeable_sides": len(allowed),
                      "source_db": str(db), "source_db_sha256": db_sha, "n": len(accepted),

@@ -41,7 +41,7 @@ BAR_S = 900
 RETRY_S = 30.0
 REWRITE_MIN_S = 120.0
 NICE = int(os.environ.get("FWDSTATE_NICE", "-5"))
-PRIORITY_DIR = ROOT / "data" / "forward_state_priority"
+PRIORITY_DIR = Path(os.environ.get("FWDSTATE_PRIORITY_DIR") or ROOT / "data" / "forward_state_priority")  # trc 7D watcher: its own dir
 STOP = False
 
 

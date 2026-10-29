@@ -6010,8 +6010,8 @@ class Config:
             # A cooldown decides WHICH BAR a trade lands on, so a mode table moving it changes the trade the
             # vector chose. Exposure is cut by the size knobs alone; timing stays the board's.
             "START_POSITION_SIZE": 15.0,  # USER 2026-10-28 "stocks 900 crypto 15 NO EXCEPTION" — the mandate lives INSIDE market mode (its owner), never bypassed; was 12.0 RESTORED 2026-10-17 (LIGHT overlay held the crypto start below the mandate).
-            "MAX_POSITION_SIZE": 80.0,  # USER 2026-10-28 "stocks 900 crypto 15 NO EXCEPTION" — the mandate lives INSIDE market mode (its owner), never bypassed; was 40.0 RESTORED 2026-10-17; now equals the base-mode 80.0 so LIGHT no longer halves the crypto position cap.
-            "MAX_ORDER_VALUE": 20.0,  # RESTORED 2026-10-17; minimum mode held 6.0
+            "MAX_POSITION_SIZE": 150.0,  # USER 2026-10-29 "raise max pos size to 150" (was 80.0). USER 2026-10-28 "stocks 900 crypto 15 NO EXCEPTION" — the mandate lives INSIDE market mode (its owner), never bypassed; was 40.0 RESTORED 2026-10-17; now equals the base-mode 80.0 so LIGHT no longer halves the crypto position cap.
+            "MAX_ORDER_VALUE": 60.0,  # USER 2026-10-29 "max order value to 60" (was 20.0). RESTORED 2026-10-17; minimum mode held 6.0
             "MAX_ORDER_VALUE_MEN": 20.0,  # USER 2026-10-17 "280 is more than enough with the error prone system we are running now" (light table had 440, above normal's 280); QuickConfig-exact
             "MAX_ORDER_VALUE_FIN": 20.0,  # RESTORED 2026-10-17; minimum mode held 6.0
             "MIN_GAIN": 3.0,  # was 5.0. 3.0% survives 1.5% reversal after 50% aug
