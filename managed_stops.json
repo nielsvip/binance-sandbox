@@ -20,13 +20,6 @@
     "symbol": "PUMPUSDT",
     "side": "LONG"
   },
-  "fin:DASHUSDT_LONG": {
-    "orderId": "3000002281825993",
-    "stopPrice": 52.7,
-    "entry_sig": "2026-10-28 21:00:48.176000+00:00",
-    "symbol": "DASHUSDT",
-    "side": "LONG"
-  },
   "fin:INJUSDT_LONG": {
     "orderId": "3000002281870509",
     "stopPrice": 7.656,
@@ -34,11 +27,11 @@
     "symbol": "INJUSDT",
     "side": "LONG"
   },
-  "fin:SKYAIUSDT_SHORT": {
-    "orderId": "3000002281576245",
-    "stopPrice": 0.03724,
-    "entry_sig": "2026-10-28 17:01:54.216000+00:00",
-    "symbol": "SKYAIUSDT",
+  "fin:ACTUSDT_SHORT": {
+    "orderId": "3000002281996172",
+    "stopPrice": 0.00893,
+    "entry_sig": "2026-10-28 23:15:41.488000+00:00",
+    "symbol": "ACTUSDT",
     "side": "SHORT"
   },
   "fin:FARTCOINUSDT_SHORT": {
@@ -48,11 +41,18 @@
     "symbol": "FARTCOINUSDT",
     "side": "SHORT"
   },
-  "fin:ACTUSDT_SHORT": {
-    "orderId": "3000002281996172",
-    "stopPrice": 0.00893,
-    "entry_sig": "2026-10-28 23:15:41.488000+00:00",
-    "symbol": "ACTUSDT",
+  "fin:SKYAIUSDT_SHORT": {
+    "orderId": "3000002281576245",
+    "stopPrice": 0.03724,
+    "entry_sig": "2026-10-28 17:01:54.216000+00:00",
+    "symbol": "SKYAIUSDT",
+    "side": "SHORT"
+  },
+  "fin:INXUSDT_SHORT": {
+    "orderId": "3000002282220311",
+    "stopPrice": 0.004912,
+    "entry_sig": "2026-10-29 01:46:26.635000+00:00",
+    "symbol": "INXUSDT",
     "side": "SHORT"
   }
 }
