@@ -1,79 +1,46 @@
 {
-  "ts": "2026-10-29T00:50:10.151910+00:00",
+  "ts": "2026-10-29T00:55:31.711769+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 13,
-  "pending_sym_sides": 70,
+  "fleet_published_last_60m": 5,
+  "pending_sym_sides": 68,
   "hosts": {
     "s1": {
-      "published_last_60m": 0,
-      "published_last_3h": 2,
-      "boards": {
-        "1000BONKUSDC_SHORT": 6,
-        "BIOUSDC_SHORT": 7
-      },
-      "boards_running": 2,
-      "workers": 13,
-      "workers_vs_law_28": "13/28",
-      "mem_avail_mb": 6372,
-      "disk_free_gb": 26,
-      "load1": 10.8,
-      "dispatch_idle_why": "full 2/2",
-      "published_ss": []
-    },
-    "s2": {
-      "published_last_60m": 0,
+      "published_last_60m": 1,
       "published_last_3h": 3,
       "boards": {
-        "ALTUSDT_LONG": 7,
-        "BATUSDT_LONG": 7,
-        "PUMPUSDT_LONG": 0
+        "1000BONKUSDC_SHORT": 6
       },
-      "boards_running": 3,
-      "workers": 14,
-      "workers_vs_law_28": "14/28",
-      "mem_avail_mb": 8156,
-      "disk_free_gb": 42,
-      "load1": 19.9,
-      "dispatch_idle_why": "full 3/3",
-      "published_ss": []
-    },
-    "s5": {
-      "published_last_60m": 7,
-      "published_last_3h": 24,
-      "boards": {},
-      "boards_running": 0,
-      "workers": 0,
-      "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 29893,
-      "disk_free_gb": 40,
-      "load1": 0.8,
-      "dispatch_idle_why": "spacing 53s < 120",
+      "boards_running": 1,
+      "workers": 6,
+      "workers_vs_law_28": "6/28",
+      "mem_avail_mb": 14554,
+      "disk_free_gb": 26,
+      "load1": 7.7,
+      "dispatch_idle_why": "full 2/2",
       "published_ss": [
-        "AR_LONG",
-        "ASML_LONG",
-        "META_LONG",
-        "MSFT_LONG",
-        "PR_LONG",
-        "RRC_LONG",
-        "TSLA_LONG"
+        "BIOUSDC_SHORT"
       ]
     },
+    "s2": {
+      "unreachable": true
+    },
+    "s5": {
+      "unreachable": true
+    },
     "s6": {
-      "published_last_60m": 6,
-      "published_last_3h": 21,
+      "published_last_60m": 4,
+      "published_last_3h": 20,
       "boards": {},
       "boards_running": 0,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 28444,
+      "mem_avail_mb": 28457,
       "disk_free_gb": 46,
-      "load1": 0.7,
-      "dispatch_idle_why": "quarantine: 2 boards died unfinished <2h ['ELD_SHORT', 'ZCSH_SHORT']",
+      "load1": 1.4,
+      "dispatch_idle_why": "spacing 112s < 120",
       "published_ss": [
-        "LOW_SHORT",
         "NEM_SHORT",
-        "NFLX_SHORT",
         "PWR_SHORT",
         "PYPL_SHORT",
         "VZ_SHORT"
@@ -81,11 +48,11 @@
     }
   },
   "alerts": [
-    "LOW_THROUGHPUT:s1:0/h<10 (idle_why=full 2/2)",
+    "LOW_THROUGHPUT:s1:1/h<10 (idle_why=full 2/2)",
     "DISK_FLOOR:s1:26GB<40",
-    "LOW_THROUGHPUT:s2:0/h<10 (idle_why=full 3/3)",
-    "LOW_THROUGHPUT:s5:7/h<10 (idle_why=spacing 53s < 120)",
-    "LOW_THROUGHPUT:s6:6/h<10 (idle_why=quarantine: 2 boards died unfinished <2h ['ELD_SHORT', 'ZCSH_SHORT'])"
+    "UNREACHABLE:s2",
+    "UNREACHABLE:s5",
+    "LOW_THROUGHPUT:s6:4/h<10 (idle_why=spacing 112s < 120)"
   ],
   "repair": null
 }
