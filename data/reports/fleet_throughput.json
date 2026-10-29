@@ -1,8 +1,8 @@
 {
-  "ts": "2026-10-29T07:45:08.780202+00:00",
+  "ts": "2026-10-29T07:50:08.928523+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 1,
+  "fleet_published_last_60m": 10,
   "pending_sym_sides": 11,
   "hosts": {
     "s1": {
@@ -15,30 +15,86 @@
       "boards_running": 2,
       "workers": 13,
       "workers_vs_law_28": "13/28",
-      "mem_avail_mb": 9214,
+      "mem_avail_mb": 7793,
       "disk_free_gb": 26,
-      "load1": 17.3,
+      "load1": 15.3,
       "dispatch_idle_why": "full 2/2",
       "published_ss": [
         "ETHUSDC_SHORT"
       ]
     },
     "s2": {
-      "unreachable": true
+      "published_last_60m": 2,
+      "published_last_3h": 7,
+      "boards": {
+        "BTCDOMUSDT_LONG": 7,
+        "INJUSDT_LONG": 7,
+        "KAVAUSDT_LONG": 7
+      },
+      "boards_running": 3,
+      "workers": 21,
+      "workers_vs_law_28": "21/28",
+      "mem_avail_mb": 6837,
+      "disk_free_gb": 40,
+      "load1": 23.2,
+      "dispatch_idle_why": "full 3/3",
+      "published_ss": [
+        "HYPEUSDT_LONG",
+        "PENGUUSDC_LONG"
+      ]
     },
     "s5": {
-      "unreachable": true
+      "published_last_60m": 3,
+      "published_last_3h": 10,
+      "boards": {
+        "BNBUSDC_LONG": 0,
+        "IOSTUSDT_SHORT": 7,
+        "MEMEUSDT_SHORT": 7,
+        "MEWUSDT_SHORT": 7
+      },
+      "boards_running": 4,
+      "workers": 21,
+      "workers_vs_law_28": "21/28",
+      "mem_avail_mb": 17075,
+      "disk_free_gb": 37,
+      "load1": 15.4,
+      "dispatch_idle_why": "mem 17049MB < 8500+11000 owed by 2 ramping",
+      "published_ss": [
+        "1000SATSUSDT_SHORT",
+        "1MBABYDOGEUSDT_SHORT",
+        "BBUSDT_SHORT"
+      ]
     },
     "s6": {
-      "unreachable": true
+      "published_last_60m": 4,
+      "published_last_3h": 12,
+      "boards": {
+        "BTCUSDC_LONG": 7,
+        "GASUSDT_SHORT": 7,
+        "IMXUSDT_SHORT": 7
+      },
+      "boards_running": 3,
+      "workers": 21,
+      "workers_vs_law_28": "21/28",
+      "mem_avail_mb": 16178,
+      "disk_free_gb": 42,
+      "load1": 19.8,
+      "dispatch_idle_why": "full 4/4",
+      "published_ss": [
+        "1000SHIBUSDC_SHORT",
+        "1000XECUSDT_SHORT",
+        "BRETTUSDT_SHORT",
+        "NOTUSDT_SHORT"
+      ]
     }
   },
   "alerts": [
     "LOW_THROUGHPUT:s1:1/h<10 (idle_why=full 2/2)",
     "DISK_FLOOR:s1:26GB<40",
-    "UNREACHABLE:s2",
-    "UNREACHABLE:s5",
-    "UNREACHABLE:s6"
+    "LOW_THROUGHPUT:s2:2/h<10 (idle_why=full 3/3)",
+    "LOW_THROUGHPUT:s5:3/h<10 (idle_why=mem 17049MB < 8500+11000 owed by 2 ramping)",
+    "DISK_FLOOR:s5:37GB<40",
+    "LOW_THROUGHPUT:s6:4/h<10 (idle_why=full 4/4)"
   ],
   "repair": null
 }
