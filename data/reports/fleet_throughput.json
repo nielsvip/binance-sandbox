@@ -1,8 +1,8 @@
 {
-  "ts": "2026-10-29T10:25:03.540489+00:00",
+  "ts": "2026-10-29T10:30:06.315970+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 6,
+  "fleet_published_last_60m": 7,
   "pending_sym_sides": 0,
   "hosts": {
     "s1": {
@@ -15,30 +15,31 @@
       "boards_running": 2,
       "workers": 13,
       "workers_vs_law_28": "13/28",
-      "mem_avail_mb": 10485,
+      "mem_avail_mb": 9583,
       "disk_free_gb": 25,
-      "load1": 14.7,
+      "load1": 17.9,
       "dispatch_idle_why": "full 2/2",
       "published_ss": [
         "SOLUSDC_LONG"
       ]
     },
     "s2": {
-      "published_last_60m": 2,
-      "published_last_3h": 4,
+      "published_last_60m": 3,
+      "published_last_3h": 5,
       "boards": {
         "ASTERUSDT_LONG": 7,
-        "DOGEUSDC_LONG": 7,
-        "QNTUSDT_LONG": 7
+        "QNTUSDT_LONG": 7,
+        "UNIUSDC_LONG": 0
       },
       "boards_running": 3,
-      "workers": 21,
-      "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 8035,
+      "workers": 14,
+      "workers_vs_law_28": "14/28",
+      "mem_avail_mb": 9819,
       "disk_free_gb": 39,
-      "load1": 18.3,
+      "load1": 17.2,
       "dispatch_idle_why": "full 3/3",
       "published_ss": [
+        "DOGEUSDC_LONG",
         "NEARUSDC_LONG",
         "TIAUSDC_LONG"
       ]
@@ -49,16 +50,16 @@
       "boards": {
         "1000PEPEUSDC_LONG": 7,
         "AWEUSDT_LONG": 7,
-        "PUMPUSDT_SHORT": 0,
+        "PUMPUSDT_SHORT": 7,
         "ZECUSDC_LONG": 7
       },
       "boards_running": 4,
-      "workers": 21,
-      "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 9944,
+      "workers": 28,
+      "workers_vs_law_28": "28/28",
+      "mem_avail_mb": 7421,
       "disk_free_gb": 36,
-      "load1": 17.1,
-      "dispatch_idle_why": null,
+      "load1": 14.7,
+      "dispatch_idle_why": "full 4/4",
       "published_ss": [
         "KMNOUSDT_LONG"
       ]
@@ -67,17 +68,17 @@
       "published_last_60m": 2,
       "published_last_3h": 8,
       "boards": {
-        "JUPUSDT_LONG": 7,
+        "JUPUSDT_LONG": 0,
         "PENDLEUSDT_LONG": 7,
-        "STRKUSDT_SHORT": 7,
-        "UNIUSDC_LONG": 0
+        "RVNUSDT_SHORT": 7,
+        "STRKUSDT_SHORT": 7
       },
       "boards_running": 4,
       "workers": 21,
       "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 14736,
+      "mem_avail_mb": 17394,
       "disk_free_gb": 40,
-      "load1": 21.7,
+      "load1": 15.9,
       "dispatch_idle_why": "full 4/4",
       "published_ss": [
         "PARTIUSDT_SHORT",
