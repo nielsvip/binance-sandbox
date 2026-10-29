@@ -1331,25 +1331,25 @@
   }
  },
  "freshness": {
-  "age_h_max": 10.78,
-  "age_h_median": 7.58,
-  "age_h_p90": 10.24,
+  "age_h_max": 11.03,
+  "age_h_median": 7.83,
+  "age_h_p90": 10.49,
   "bnb_source": "price_cache_2.json",
   "bnb_usd": 706.68376005,
   "caches": 652,
-  "fresh": 287,
-  "fresh_share": 0.4402,
+  "fresh": 286,
+  "fresh_share": 0.4387,
   "note": "figures are a FLOOR on activity; a lagging cache shows fewer fills, never more",
   "ok": false,
-  "stale": 365
+  "stale": 366
  },
- "generated_at": "2026-10-29T21:31:13Z",
+ "generated_at": "2026-10-29T21:46:08Z",
  "label": "[UNVERIFIED] fill cache coverage below threshold",
  "reconcile_14d": {
-  "broker_net_usd": -182.7458,
-  "divergence_usd": 2.301,
-  "generated_at": "2026-10-29T21:33:08Z",
-  "inhouse_net_usd": -180.4448,
+  "broker_net_usd": -182.7439,
+  "divergence_usd": 2.3011,
+  "generated_at": "2026-10-29T21:47:52Z",
+  "inhouse_net_usd": -180.4428,
   "label": "[UNVERIFIED] fill cache coverage below threshold",
   "symbols_compared": 126,
   "verdict": "OK",
@@ -1483,6 +1483,12 @@
     "symbol": "LINKUSDC"
    },
    {
+    "broker_net_usd": -0.301,
+    "divergence_usd": 0.0001,
+    "inhouse_net_usd": -0.3009,
+    "symbol": "IOTXUSDT"
+   },
+   {
     "broker_net_usd": -3.6041,
     "divergence_usd": -0.0001,
     "inhouse_net_usd": -3.6042,
@@ -1559,12 +1565,6 @@
     "divergence_usd": 0.0,
     "inhouse_net_usd": -0.2878,
     "symbol": "ALGOUSDT"
-   },
-   {
-    "broker_net_usd": -0.3029,
-    "divergence_usd": 0.0,
-    "inhouse_net_usd": -0.3029,
-    "symbol": "IOTXUSDT"
    },
    {
     "broker_net_usd": -5.1385,
