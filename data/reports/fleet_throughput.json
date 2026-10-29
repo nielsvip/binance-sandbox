@@ -1,8 +1,8 @@
 {
-  "ts": "2026-10-29T13:10:10.517684+00:00",
+  "ts": "2026-10-29T13:15:14.164816+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 5,
+  "fleet_published_last_60m": 7,
   "pending_sym_sides": 0,
   "hosts": {
     "s1": {
@@ -15,35 +15,52 @@
       "boards_running": 2,
       "workers": 13,
       "workers_vs_law_28": "13/28",
-      "mem_avail_mb": 11546,
+      "mem_avail_mb": 10894,
       "disk_free_gb": 22,
-      "load1": 15.3,
+      "load1": 19.4,
       "dispatch_idle_why": "full 2/2",
       "published_ss": []
     },
     "s2": {
-      "unreachable": true
+      "published_last_60m": 1,
+      "published_last_3h": 5,
+      "boards": {
+        "EDUUSDT_LONG": 0,
+        "QNTUSDT_LONG": 7,
+        "TRBUSDT_LONG": 7
+      },
+      "boards_running": 3,
+      "workers": 14,
+      "workers_vs_law_28": "14/28",
+      "mem_avail_mb": 10920,
+      "disk_free_gb": 37,
+      "load1": 20.7,
+      "dispatch_idle_why": null,
+      "published_ss": [
+        "GALAUSDT_LONG"
+      ]
     },
     "s5": {
       "unreachable": true
     },
     "s6": {
-      "published_last_60m": 5,
-      "published_last_3h": 11,
+      "published_last_60m": 6,
+      "published_last_3h": 12,
       "boards": {
         "APEUSDT_LONG": 7,
-        "AVAXUSDC_LONG": 7,
+        "COHR_SHORT": 0,
         "SUSHIUSDT_LONG": 7,
         "THETAUSDT_LONG": 7
       },
       "boards_running": 4,
-      "workers": 28,
-      "workers_vs_law_28": "28/28",
-      "mem_avail_mb": 11758,
+      "workers": 21,
+      "workers_vs_law_28": "21/28",
+      "mem_avail_mb": 16206,
       "disk_free_gb": 39,
-      "load1": 16.7,
-      "dispatch_idle_why": "full 4/4",
+      "load1": 19.5,
+      "dispatch_idle_why": "spacing 108s < 120",
       "published_ss": [
+        "AVAXUSDC_LONG",
         "COHR_SHORT",
         "NOTUSDT_SHORT",
         "NUE_LONG",
@@ -54,7 +71,7 @@
   },
   "alerts": [
     "DISK_FLOOR:s1:22GB<40",
-    "UNREACHABLE:s2",
+    "DISK_FLOOR:s2:37GB<40",
     "UNREACHABLE:s5",
     "DISK_FLOOR:s6:39GB<40"
   ],

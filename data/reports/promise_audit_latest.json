@@ -1,56 +1,26 @@
 {
- "generated_utc": "2026-10-29T12:12:19.374384+00:00",
+ "generated_utc": "2026-10-29T13:12:13.974470+00:00",
  "days": 1.0,
  "totals": {
-  "exit_promises": 21,
-  "exit_broken_no_delivery": 19,
-  "entry_promises": 10,
-  "entry_broken_no_delivery": 10,
+  "exit_promises": 13,
+  "exit_broken_no_delivery": 11,
+  "entry_promises": 8,
+  "entry_broken_no_delivery": 8,
   "exit_skipped_inflight": 214,
   "exit_kept_in_bar": 2
  },
  "per_key": {
-  "men:ZROUSDT_LONG": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
-  },
-  "men:BATUSDT_LONG": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
-  },
-  "men:ENJUSDT_SHORT": {
-   "exit_promises": 2,
-   "exit_broken_no_delivery": 2
-  },
-  "men:INJUSDT_LONG": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
-  },
   "inf:ARUSDT_LONG": {
-   "exit_promises": 5,
-   "exit_broken_no_delivery": 5,
-   "entry_promises": 5,
-   "entry_broken_no_delivery": 5,
+   "exit_promises": 4,
+   "exit_broken_no_delivery": 4,
+   "entry_promises": 4,
+   "entry_broken_no_delivery": 4,
    "exit_skipped_inflight": 49
   },
-  "flz:GRAMUSDT_LONG": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
-  },
   "inf:BNBUSDC_LONG": {
-   "entry_promises": 1,
-   "entry_broken_no_delivery": 1,
    "exit_promises": 4,
    "exit_broken_no_delivery": 3,
    "exit_skipped_inflight": 43,
-   "exit_kept_in_bar": 1
-  },
-  "inf:PENGUUSDC_LONG": {
-   "exit_promises": 4,
-   "exit_broken_no_delivery": 3,
-   "entry_promises": 3,
-   "entry_broken_no_delivery": 3,
-   "exit_skipped_inflight": 122,
    "exit_kept_in_bar": 1
   },
   "inf:XRPUSDC_LONG": {
@@ -59,112 +29,20 @@
    "exit_promises": 1,
    "exit_broken_no_delivery": 1
   },
+  "inf:PENGUUSDC_LONG": {
+   "entry_promises": 3,
+   "entry_broken_no_delivery": 3,
+   "exit_promises": 3,
+   "exit_skipped_inflight": 122,
+   "exit_broken_no_delivery": 2,
+   "exit_kept_in_bar": 1
+  },
   "ang:BNBUSDC_LONG": {
    "exit_promises": 1,
    "exit_broken_no_delivery": 1
   }
  },
  "detail": [
-  {
-   "acct": "men",
-   "sym_side": "ZROUSDT_LONG",
-   "kind": "exit",
-   "bar": "10-28 12:00",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "FIXED_STOP",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "men",
-   "sym_side": "BATUSDT_LONG",
-   "kind": "exit",
-   "bar": "10-28 12:00",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "FIXED_STOP",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "men",
-   "sym_side": "ENJUSDT_SHORT",
-   "kind": "exit",
-   "bar": "10-28 12:00",
-   "late_min": null,
-   "action": "REDUCE",
-   "reason": "CYCLE_TP_TIERED_T0_0.15pct_gain0.78",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "men",
-   "sym_side": "ENJUSDT_SHORT",
-   "kind": "exit",
-   "bar": "10-28 12:00",
-   "late_min": null,
-   "action": "REDUCE",
-   "reason": "SIMPLE_TP_EXIT(gain=0.78%>=tp=0.5%)_bc139",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "men",
-   "sym_side": "INJUSDT_LONG",
-   "kind": "exit",
-   "bar": "10-28 12:00",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "FIXED_STOP",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "inf",
-   "sym_side": "ARUSDT_LONG",
-   "kind": "exit",
-   "bar": "10-28 12:00",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "FIXED_STOP",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "flz",
-   "sym_side": "GRAMUSDT_LONG",
-   "kind": "exit",
-   "bar": "10-28 12:15",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "FIXED_STOP",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "inf",
-   "sym_side": "ARUSDT_LONG",
-   "kind": "entry",
-   "bar": "10-28 12:15",
-   "late_min": null,
-   "action": "OPEN",
-   "reason": "TIER1_PRICE_CROSS_REENTRY_exit3.4863_cur3.4940_k3m16",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "inf",
-   "sym_side": "BNBUSDC_LONG",
-   "kind": "entry",
-   "bar": "10-28 12:45",
-   "late_min": null,
-   "action": "OPEN",
-   "reason": "HTF_WT_CHURN_REENTRY_120MIN",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "inf",
-   "sym_side": "PENGUUSDC_LONG",
-   "kind": "exit",
-   "bar": "10-28 12:45",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "FIXED_STOP",
-   "outcome": "NO_DELIVERY"
-  },
   {
    "acct": "inf",
    "sym_side": "ARUSDT_LONG",
@@ -357,32 +235,6 @@
   }
  ],
  "broken": [
-  {
-   "ts": 1793190929.053571,
-   "kind": "BROKEN",
-   "acct": "inf",
-   "key": "inf:BTCDOMUSDT_LONG",
-   "sym_side": "BTCDOMUSDT_LONG",
-   "label": "CLOSE VEC_EXIT_OWED",
-   "why": "EXIT_WEDGED_FORCED",
-   "is_exit": true,
-   "bar_ts": null,
-   "lag_s": null,
-   "detail": "inflight_age_s=114"
-  },
-  {
-   "ts": 1793191552.566026,
-   "kind": "BROKEN",
-   "acct": "inf",
-   "key": "inf:BTCDOMUSDT_LONG",
-   "sym_side": "BTCDOMUSDT_LONG",
-   "label": "CLOSE VEC_EXIT_OWED",
-   "why": "EXIT_WEDGED_FORCED",
-   "is_exit": true,
-   "bar_ts": null,
-   "lag_s": null,
-   "detail": "inflight_age_s=109"
-  },
   {
    "ts": 1793196036.8879318,
    "kind": "BROKEN",
