@@ -70,6 +70,10 @@ MANDATED_START = {"crypto": 15.0, "stocks": 900.0}  # a mismatch is reported lou
 START_POSITION_SIZE = 0.0
 MAX_OPEN_NOTIONAL = 0.0
 STOCK_ONE_SHARE_MAX = 0.0
+# USER 2026-10-29: "they can ONLY trade what the vectorized script dictates ... >$200 SUICIDE trades must be limited
+# right now". Hard ceiling on any single ENTRY (OPEN or AUGMENT) order notional, both venues. Over the ceiling the
+# entry is SKIPPED, never partially sized. CLOSE/REDUCE are never limited (exits are never blocked).
+ENTRY_NOTIONAL_CEILING_USD = 200.0
 
 
 def apply_venue_sizing(venue: str) -> dict:
@@ -614,17 +618,21 @@ class Binance:
             return held, ""
         if o["act"] == "OPEN":
             notional = max(float(o["notional"]), mn * 1.02)
-            if notional > MAX_OPEN_NOTIONAL:
-                return 0.0, f"min notional {mn} needs ${notional:.0f} > cap ${MAX_OPEN_NOTIONAL:.0f}"
+            if notional > min(MAX_OPEN_NOTIONAL, ENTRY_NOTIONAL_CEILING_USD):
+                return 0.0, f"min notional {mn} needs ${notional:.0f} > cap ${min(MAX_OPEN_NOTIONAL, ENTRY_NOTIONAL_CEILING_USD):.0f}"
             q = self._floor(notional / price, step)
             if q * price < mn:
                 q = self._floor(notional / price + step, step)
+            if q * price > ENTRY_NOTIONAL_CEILING_USD:
+                return 0.0, f"entry ${q * price:.0f} > ${ENTRY_NOTIONAL_CEILING_USD:.0f} ceiling (skip)"
             return (q, "") if q >= mq else (0.0, f"qty {q} < minQty {mq}")
         if o["act"] == "AUGMENT":
             q = self._floor(max(float(o["qty"]), mn * 1.02 / price), step)
             # 2026-10-28: flooring to the step pushed RAYSOLUSDT augments under the $5 min notional (-4164 on 3 accounts)
             if q * price < mn * 1.02:
                 q = self._floor(mn * 1.02 / price + step, step)
+            if q * price > ENTRY_NOTIONAL_CEILING_USD:
+                return 0.0, f"augment ${q * price:.0f} > ${ENTRY_NOTIONAL_CEILING_USD:.0f} ceiling (skip)"
             return (q, "") if q >= mq else (0.0, f"qty {q} < minQty {mq}")
         q = self._floor(min(float(o["qty"]), held), step)
         if q < mq or q <= 0:
@@ -731,20 +739,27 @@ class Tradier:
             # operation and this binds only if START_POS is raised. MAX_POSITION_SIZE itself stays
             # exclusively MARKET MODE's business (operator, same message) — this is the trader's own ceiling.
             _want = float(o["notional"])
-            if _want > MAX_OPEN_NOTIONAL:
-                log(f"[VD-CAP] {o.get('ss')} open notional ${_want:.0f} clamped to MAX_OPEN_NOTIONAL ${MAX_OPEN_NOTIONAL:.0f}")
-                _want = MAX_OPEN_NOTIONAL
+            _cap = min(MAX_OPEN_NOTIONAL, ENTRY_NOTIONAL_CEILING_USD)
+            if _want > _cap:
+                log(f"[VD-CAP] {o.get('ss')} open notional ${_want:.0f} clamped to ${_cap:.0f} (MAX_OPEN_NOTIONAL ${MAX_OPEN_NOTIONAL:.0f}, entry ceiling ${ENTRY_NOTIONAL_CEILING_USD:.0f})")
+                _want = _cap
             n = math.floor(_want / price) if price > 0 else 0
             if n >= 1:
                 return float(n), ""
             # stock convention (tradier_manage max(1, int(qty)); config_tradier START_POSITION_SIZE $500 "$150 can't buy 1
             # share of $300+ stocks"): one whole share when the $15 slice is less than a share, up to STOCK_ONE_SHARE_MAX
-            if 0 < price <= STOCK_ONE_SHARE_MAX:
+            # and never above the entry ceiling
+            if 0 < price <= min(STOCK_ONE_SHARE_MAX, ENTRY_NOTIONAL_CEILING_USD):
                 return 1.0, ""
-            return 0.0, f"one share ${price:.2f} > ${STOCK_ONE_SHARE_MAX:.0f} one-share cap (skip)"
+            return 0.0, f"one share ${price:.2f} > ${min(STOCK_ONE_SHARE_MAX, ENTRY_NOTIONAL_CEILING_USD):.0f} entry cap (skip)"
         if o["act"] == "AUGMENT":
+            if price <= 0:
+                return 0.0, "augment with no price (skip)"
             n = math.floor(float(o["qty"]))
-            return (float(n), "") if n >= 1 else (0.0, f"augment {o['qty']:.3f} shares < 1")
+            if n * price > ENTRY_NOTIONAL_CEILING_USD:
+                n = math.floor(ENTRY_NOTIONAL_CEILING_USD / price)
+                log(f"[VD-CAP] {o.get('ss')} augment clamped to ${ENTRY_NOTIONAL_CEILING_USD:.0f} entry ceiling ({n} sh @ ${price:.2f})")
+            return (float(n), "") if n >= 1 else (0.0, f"augment {o['qty']:.3f} shares < 1 or over ${ENTRY_NOTIONAL_CEILING_USD:.0f} ceiling")
         n = min(int(held), int(round(float(o["qty"]))))
         return (float(n), "") if n >= 1 else (0.0, f"reduce {o['qty']:.3f} shares < 1")
 

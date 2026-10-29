@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-29T00:40:14.443231+00:00",
+  "ts": "2026-10-29T00:45:12.100590+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 9,
-  "pending_sym_sides": 67,
+  "fleet_published_last_60m": 15,
+  "pending_sym_sides": 69,
   "hosts": {
     "s1": {
       "published_last_60m": 0,
@@ -15,14 +15,14 @@
       "boards_running": 2,
       "workers": 13,
       "workers_vs_law_28": "13/28",
-      "mem_avail_mb": 7269,
+      "mem_avail_mb": 7119,
       "disk_free_gb": 26,
-      "load1": 12.7,
+      "load1": 12.8,
       "dispatch_idle_why": "full 2/2",
       "published_ss": []
     },
     "s2": {
-      "published_last_60m": 1,
+      "published_last_60m": 0,
       "published_last_3h": 3,
       "boards": {
         "ALTUSDT_LONG": 7,
@@ -32,13 +32,11 @@
       "boards_running": 3,
       "workers": 21,
       "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 7436,
+      "mem_avail_mb": 7300,
       "disk_free_gb": 42,
-      "load1": 22.3,
+      "load1": 20.0,
       "dispatch_idle_why": "full 3/3",
-      "published_ss": [
-        "GRASSUSDT_LONG"
-      ]
+      "published_ss": []
     },
     "s5": {
       "published_last_60m": 8,
@@ -47,9 +45,9 @@
       "boards_running": 0,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 29830,
+      "mem_avail_mb": 29821,
       "disk_free_gb": 40,
-      "load1": 1.0,
+      "load1": 0.7,
       "dispatch_idle_why": "quarantine: 2 boards died unfinished <2h ['MCD_LONG', 'TRGP_LONG']",
       "published_ss": [
         "AR_LONG",
@@ -63,15 +61,33 @@
       ]
     },
     "s6": {
-      "unreachable": true
+      "published_last_60m": 7,
+      "published_last_3h": 21,
+      "boards": {},
+      "boards_running": 0,
+      "workers": 0,
+      "workers_vs_law_28": "0/28",
+      "mem_avail_mb": 28452,
+      "disk_free_gb": 46,
+      "load1": 0.7,
+      "dispatch_idle_why": "quarantine: 2 boards died unfinished <2h ['ELD_SHORT', 'ZCSH_SHORT']",
+      "published_ss": [
+        "LOW_SHORT",
+        "NEM_SHORT",
+        "NFLX_SHORT",
+        "PWR_SHORT",
+        "PYPL_SHORT",
+        "VZ_SHORT",
+        "WPM_SHORT"
+      ]
     }
   },
   "alerts": [
     "LOW_THROUGHPUT:s1:0/h<10 (idle_why=full 2/2)",
     "DISK_FLOOR:s1:26GB<40",
-    "LOW_THROUGHPUT:s2:1/h<10 (idle_why=full 3/3)",
+    "LOW_THROUGHPUT:s2:0/h<10 (idle_why=full 3/3)",
     "LOW_THROUGHPUT:s5:8/h<10 (idle_why=quarantine: 2 boards died unfinished <2h ['MCD_LONG', 'TRGP_LONG'])",
-    "UNREACHABLE:s6"
+    "LOW_THROUGHPUT:s6:7/h<10 (idle_why=quarantine: 2 boards died unfinished <2h ['ELD_SHORT', 'ZCSH_SHORT'])"
   ],
   "repair": null
 }
