@@ -143,7 +143,7 @@ def main():
     # 2026-10-28: S5 (stocks) runs this watcher too; its held sides come from held_stocks.json and are NOT crypto
     args.held_file = args.held_file or str(Path.home() / "binance" / "data" / "vector_direct" / f"held_{args.venue}.json")
     want_crypto = args.venue == "crypto"
-    workers = max(1, min(4, args.workers))
+    workers = max(1, min(12, args.workers))
     sides_path = Path(args.sides_file).expanduser()
     held_path = Path(args.held_file).expanduser()
     db = Path(store_db() or "")

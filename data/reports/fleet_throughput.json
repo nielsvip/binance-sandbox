@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-29T20:20:04.477603+00:00",
+  "ts": "2026-10-29T20:25:02.527387+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 0,
-  "pending_sym_sides": 83,
+  "pending_sym_sides": 86,
   "hosts": {
     "s1": {
       "published_last_60m": 0,
@@ -14,25 +14,25 @@
       "boards_running": 1,
       "workers": 7,
       "workers_vs_law_28": "7/28",
-      "mem_avail_mb": 12919,
-      "disk_free_gb": 11,
-      "load1": 16.4,
+      "mem_avail_mb": 14216,
+      "disk_free_gb": 10,
+      "load1": 12.5,
       "dispatch_idle_why": "HOLD until 2026-10-29T22:01Z: TRC7D pass: 30D paused until every tradeable stock key has its 7D set",
       "published_ss": []
     },
     "s2": {
       "published_last_60m": 0,
-      "published_last_3h": 3,
+      "published_last_3h": 2,
       "boards": {
-        "SCCO_SHORT": 7,
-        "V_LONG": 0
+        "SCCO_SHORT": 0,
+        "V_LONG": 7
       },
       "boards_running": 2,
       "workers": 7,
       "workers_vs_law_28": "7/28",
-      "mem_avail_mb": 15389,
-      "disk_free_gb": 21,
-      "load1": 12.5,
+      "mem_avail_mb": 12865,
+      "disk_free_gb": 33,
+      "load1": 14.4,
       "dispatch_idle_why": "HOLD until 2026-10-29T22:01Z: TRC7D pass: 30D paused until every tradeable stock key has its 7D set",
       "published_ss": []
     },
@@ -46,9 +46,9 @@
       "boards_running": 2,
       "workers": 6,
       "workers_vs_law_28": "6/28",
-      "mem_avail_mb": 23391,
+      "mem_avail_mb": 23126,
       "disk_free_gb": 12,
-      "load1": 2.4,
+      "load1": 3.1,
       "dispatch_idle_why": "HOLD until 2026-10-29T22:01Z: TRC7D pass: 30D paused until every tradeable stock key has its 7D set",
       "published_ss": []
     },
@@ -56,30 +56,29 @@
       "published_last_60m": 0,
       "published_last_3h": 5,
       "boards": {
-        "COIN_LONG": 0,
-        "COPX_LONG": 0,
+        "AG_SHORT": 0,
         "NVDA_SHORT": 0,
-        "ZETA_LONG": 7
+        "ZETA_LONG": 0
       },
-      "boards_running": 4,
-      "workers": 7,
-      "workers_vs_law_28": "7/28",
-      "mem_avail_mb": 18747,
-      "disk_free_gb": 10,
-      "load1": 10.5,
+      "boards_running": 3,
+      "workers": 0,
+      "workers_vs_law_28": "0/28",
+      "mem_avail_mb": 27070,
+      "disk_free_gb": 17,
+      "load1": 7.9,
       "dispatch_idle_why": "HOLD until 2026-10-29T22:01Z: TRC7D pass: 30D paused until every tradeable stock key has its 7D set",
       "published_ss": []
     }
   },
   "alerts": [
     "LOW_THROUGHPUT:s1:0/h<10 (idle_why=HOLD until 2026-10-29T22:01Z: TRC7D pass: 30D paused until every tradeable stock key has its 7D set)",
-    "DISK_FLOOR:s1:11GB<40",
+    "DISK_FLOOR:s1:10GB<40",
     "LOW_THROUGHPUT:s2:0/h<10 (idle_why=HOLD until 2026-10-29T22:01Z: TRC7D pass: 30D paused until every tradeable stock key has its 7D set)",
-    "DISK_FLOOR:s2:21GB<40",
+    "DISK_FLOOR:s2:33GB<40",
     "LOW_THROUGHPUT:s5:0/h<10 (idle_why=HOLD until 2026-10-29T22:01Z: TRC7D pass: 30D paused until every tradeable stock key has its 7D set)",
     "DISK_FLOOR:s5:12GB<40",
     "LOW_THROUGHPUT:s6:0/h<10 (idle_why=HOLD until 2026-10-29T22:01Z: TRC7D pass: 30D paused until every tradeable stock key has its 7D set)",
-    "DISK_FLOOR:s6:10GB<40"
+    "DISK_FLOOR:s6:17GB<40"
   ],
   "repair": null
 }

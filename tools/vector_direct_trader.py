@@ -140,6 +140,9 @@ MISS_GRACE_S = float(os.environ.get("VD_MISS_GRACE_S", "90"))
 MISS_MIN_AFTER_CLOSE_S = float(os.environ.get("VD_MISS_MIN_AFTER_CLOSE_S", "180"))
 HOLD_MIN_S = float(os.environ.get("VD_HOLD_MIN_S", "1800"))
 HOLD_MAX_S = float(os.environ.get("VD_HOLD_MAX_S", "14400"))
+# USER 2026-10-29: "live trading has to be running 24/7 for crypto on s1 and 9:00-16:00 on s5 ... take out the pin".
+# S1/S5 own every account of their venue at all times: no takeover-on-Mac-health, no handback, no pin file.
+OWN_ALWAYS = os.environ.get("VD_OWN_ALWAYS", "1") == "1"
 RELEASE_HEALTHY_S = float(os.environ.get("VD_RELEASE_HEALTHY_S", "600"))
 REPEAT_WINDOW_S = float(os.environ.get("VD_REPEAT_WINDOW_S", "7200"))
 STATE_MAX_LAG_S = float(os.environ.get("VD_STATE_MAX_LAG_S", "1800"))
@@ -477,6 +480,12 @@ class Activation:
 
     def update(self, now, trig):
         changes = []
+        if OWN_ALWAYS:
+            for a in self.accounts:
+                if not self.st[a]["active"]:
+                    self.st[a].update(active=True, since=now, healthy_since=None, reason="own_always")
+                    changes.append((a, "OWN_ALWAYS", "owned at start (no handback)"))
+            return changes
         for a in self.accounts:
             s = self.st[a]
             if a in trig:
@@ -496,6 +505,8 @@ class Activation:
         return changes
 
     def active(self):
+        if OWN_ALWAYS:
+            return list(self.accounts)
         return [a for a in self.accounts if self.st[a]["active"]]
 
     def save(self):
@@ -694,22 +705,11 @@ class Tradier:
         return r.json()
 
     def market_open(self):
-        t, val = self._clock
-        if time.time() - t > 60:
-            try:
-                st = (self._req("GET", "tra", "/markets/clock").get("clock") or {}).get("state")
-                val = st == "open"
-            except Exception as exc:
-                log(f"tradier clock failed ({exc}); using weekday 13:30-20:00Z fallback")
-                now = dt.datetime.now(dt.timezone.utc)
-                try:
-                    from zoneinfo import ZoneInfo
-                    et = now.astimezone(ZoneInfo("America/New_York"))
-                    val = et.weekday() < 5 and dt.time(9, 30) <= et.time() < dt.time(16, 0)
-                except Exception:
-                    val = False
-            self._clock = (time.time(), val)
-        return val
+        # USER 2026-10-29: S5 stocks run 09:00-16:00 ET; orders only from the 09:30 open (3 premarket bars feed the first plan).
+        # Clock is computed locally from New York time, never from the broker clock API (it dropped connections).
+        from zoneinfo import ZoneInfo
+        et = dt.datetime.now(dt.timezone.utc).astimezone(ZoneInfo("America/New_York"))
+        return et.weekday() < 5 and dt.time(9, 30) <= et.time() < dt.time(16, 0)
 
     def positions(self, acct):
         aid, _k, _b = self.account(acct)
