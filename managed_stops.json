@@ -1,37 +1,30 @@
 {
-  "men:EDUUSDT_LONG": {
-    "orderId": "EZMSTOP_FX_B0EC57583692",
-    "stopPrice": 0.05772,
-    "entry_sig": "2026-10-29 14:01:04.078000+00:00",
-    "symbol": "EDUUSDT",
-    "side": "LONG"
-  },
-  "men:IMXUSDT_SHORT": {
-    "orderId": "2000001552435207",
+  "fin:IMXUSDT_SHORT": {
+    "orderId": "3000002284175977",
     "stopPrice": 0.1429,
-    "entry_sig": "2026-10-29 20:31:14.090000+00:00",
+    "entry_sig": "2026-10-29 20:31:15.635000+00:00",
     "symbol": "IMXUSDT",
     "side": "SHORT"
   },
-  "men:GASUSDT_SHORT": {
-    "orderId": "2000001552515026",
+  "fin:GASUSDT_SHORT": {
+    "orderId": "3000002284231462",
     "stopPrice": 1.237,
-    "entry_sig": "2026-10-29 20:45:44.985000+00:00",
+    "entry_sig": "2026-10-29 20:45:47.843000+00:00",
     "symbol": "GASUSDT",
     "side": "SHORT"
   },
-  "men:BCHUSDC_SHORT": {
-    "orderId": "2000001552514308",
-    "stopPrice": 294.33,
-    "entry_sig": "2026-10-29 20:45:36.946000+00:00",
-    "symbol": "BCHUSDC",
+  "fin:INXUSDT_SHORT": {
+    "orderId": "3000002284492841",
+    "stopPrice": 0.004811,
+    "entry_sig": "2026-10-29 22:30:40.068000+00:00",
+    "symbol": "INXUSDT",
     "side": "SHORT"
   },
-  "men:INXUSDT_SHORT": {
-    "orderId": "2000001552890406",
-    "stopPrice": 0.004811,
-    "entry_sig": "2026-10-29 22:30:38.289000+00:00",
-    "symbol": "INXUSDT",
+  "fin:BCHUSDC_SHORT": {
+    "orderId": "3000002284230850",
+    "stopPrice": 294.33,
+    "entry_sig": "2026-10-29 20:45:38.512000+00:00",
+    "symbol": "BCHUSDC",
     "side": "SHORT"
   }
 }
