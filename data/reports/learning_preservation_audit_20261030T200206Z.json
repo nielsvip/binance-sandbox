@@ -1,5 +1,5 @@
 {
-  "audit_at_utc": "2026-10-30T20:59:39Z",
+  "audit_at_utc": "2026-10-30T21:06:51Z",
   "scope": "non-destructive corpus preservation evidence; fleet retirement not approved",
   "external_storage": {
     "WD25": {
@@ -82,12 +82,20 @@
     "fresh_store": "/home/niels/v20_candidate_review_20261030/experience_restore_20261030T2030Z/store/experience",
     "decoded_db_hashes": "all four decoded SHA256 values matched source manifest hashes before use; CRYPTO_LONG decoded scratch removed only after ctxjoin consumer completed and agent confirmed release; verified GCS tar and compressed shard retained",
     "retained_sources": true,
-    "s6_space_after_decode": "20 GiB free observed; additional materialization deferred",
+    "s6_space_after_decode": "36 GiB free observed after reclaiming decoded CRYPTO_LONG and CRYPTO_SHORT scratch after their consumers completed",
     "consumer_audit_CRYPTO_LONG": {
       "consumer_status": "complete rc0; output 616 B, SHA256 b71adaf0bf48b4e6d9a8f33c9bf5b933ee46122470d5e77120117cc85a41c05e; report SHA256 d9383e38a0f24a62720d0e1ec037470be70979dc595b115fffb486c91a143fb2; driver SHA256 6cc2f336331025fd4f73ad059df7b77ad0f01832a1e9c0ee3bb5b3b9c3eaec03",
       "evidence": "4,344,370 log_replay_v1 + 2,250,258 log/none rows, no native provenance; five sampled set digests matched canonical producer; zero strict contexts had chain_sha_verified extras; 0 eligible log rows and 0 contexts",
       "decoded_scratch": "CRYPTO_LONG DB removed after consumer release; GCS tar and compressed shard retained",
       "s6_space_after_reclaim": "29 GiB free observed"
+    },
+    "consumer_audit_CRYPTO_SHORT": {
+      "consumer_status": "complete; decoded DB released by agent",
+      "ctxjoin_sha256": "5271d253da5262055f53f4df419788c4902ad5187997a63cd4d081dd89f1a4fa",
+      "report_sha256": "798cf6799dd0e5a4da13d4a33df1c9c3bc7fcf71aad76d1001b86fa9ff6ce478",
+      "consumer_sha256": "0e3da462c5975c4217f93fd33eda76f04a8d8d65c229e7a6e297dc0048402419",
+      "evidence": "4,790,995 log_replay_v1 + 623,487 log/none rows; no native provenance; output contexts 0",
+      "decoded_scratch": "CRYPTO_SHORT DB removed after consumer release; GCS tar and compressed shard retained"
     }
   },
   "wd25_s6_rebuild_scratch_copy": {

@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import signal
+import shutil
 import subprocess
 import sys
 import time
@@ -21,6 +22,8 @@ def main():
     parser.add_argument("--side", required=True)
     parser.add_argument("--seconds", type=int, default=180)
     parser.add_argument("--attempt", default="attempt_01")
+    parser.add_argument("--reserve-mib", type=int, default=20000)
+    parser.add_argument("--scratch-budget-mib", type=int, default=256)
     args = parser.parse_args()
     root = args.root.resolve()
     assert root.name.startswith("v15_canary_materialized_")
@@ -32,6 +35,7 @@ def main():
     assert symbol in json.loads(book.read_bytes()), "side outside frozen current Mac book"
     available = lambda: int(next(line.split()[1] for line in Path("/proc/meminfo").read_text().splitlines() if line.startswith("MemAvailable:"))) / 1024
     assert available() > 12000, "hold canary for measured memory headroom"
+    assert shutil.disk_usage(root).free / 1024 ** 2 >= args.reserve_mib + args.scratch_budget_mib, "hold canary for actual benchmark reserve plus bounded working budget"
     manifest = json.loads((root / "research/materialization.json").read_text())
     env = dict(os.environ)
     for key, value in manifest["source_env"].items():
@@ -120,7 +124,7 @@ runpy.run_path(str(root / "v15_pilot.py"), run_name="__main__")
         time.sleep(0.5)
     process.wait()
     log.close()
-    report = {"started_at_utc": before, "ended_at_utc": stamp(), "side": args.side, "attempt": args.attempt, "pid": process.pid, "returncode": process.returncode, "stop_reason": reason, "wall_s": time.monotonic() - started, "sampled_peak_pss_kb": max((x["pss_kb"] for x in samples), default=0), "sampled_max_live_tree_cpu_s": max((x["cpu_s_live_processes"] for x in samples), default=0), "samples": samples, "limits": ["Startup-only diagnostic, not a complete board or speed proof", "CPU excludes processes already reaped before sampling", "Memory peak sampled at0.5s, transient peaks may be missed", "Python audit hook covers audited Python operations, not all native syscalls", "No production deployment or promotion"]}
+    report = {"started_at_utc": before, "ended_at_utc": stamp(), "side": args.side, "attempt": args.attempt, "pid": process.pid, "returncode": process.returncode, "stop_reason": reason, "reserve_mib": args.reserve_mib, "scratch_budget_mib": args.scratch_budget_mib, "wall_s": time.monotonic() - started, "sampled_peak_pss_kb": max((x["pss_kb"] for x in samples), default=0), "sampled_max_live_tree_cpu_s": max((x["cpu_s_live_processes"] for x in samples), default=0), "samples": samples, "limits": ["Startup-only diagnostic, not a complete board or speed proof", "CPU excludes processes already reaped before sampling", "Memory peak sampled at0.5s, transient peaks may be missed", "Python audit hook covers audited Python operations, not all native syscalls", "No production deployment or promotion"]}
     (local / "canary_resources.json").write_text(json.dumps(report, indent=2))
     print(json.dumps({k: v for k, v in report.items() if k != "samples"}), flush=True)
 

@@ -17014,7 +17014,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             getattr(_gcfg, "CIRCUIT_SHARPE_GATES_FILTER_TF", "OFF"),
         )
         _breakout_retest_gate = None
-        if is_tradier and bool(getattr(cfg, "BREAKOUT_RETEST_ARMED_ENABLED", False)):
+        if str(getattr(cfg, "MODE", "crypto")) == "tradier" and bool(getattr(cfg, "BREAKOUT_RETEST_ARMED_ENABLED", False)):
             _br_tf = str(getattr(_gcfg, "BREAKOUT_RETEST_FILTER_TF", "OFF") or "OFF").strip()
             if _br_tf.upper() != "OFF":
                 _breakout_retest_gate = vec_decisions.generic_filter_tf._cond("dc_retest_hold", npz, n, _br_tf, is_long, close, _safe)
