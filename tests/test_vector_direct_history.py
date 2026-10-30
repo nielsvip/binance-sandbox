@@ -282,6 +282,23 @@ def test_export_resolves_once_then_serves_cache(tmp_path):
     assert fake.calls == [] and st["sent"] == 1
 
 
+def test_stock_export_resolves_tradier_response_id(tmp_path):
+    out = tmp_path / "data" / "vector_direct"
+    out.mkdir(parents=True)
+    now = time.time()
+    day = datetime.fromtimestamp(now, tz=timezone.utc).strftime("%Y-%m-%d")
+    (out / f"ledger_stocks_{day}.jsonl").write_text(json.dumps({"ts": now - 10, "event": "ORDER", "dry_run": False, "acct": "trb", "ss": "AAPL_LONG", "act": "OPEN", "key": "trb|AAPL_LONG|123|OPEN", "status": "SENT", "resp": {"id": 155004418, "status": "ok"}}) + "\n")
+    class Fake:
+        calls = []
+        def resolve(self, acct, ss, order_id=None, client=None):
+            self.calls.append((order_id, client))
+            return {"found": True, "order_id": str(order_id), "status": "filled", "exec_qty": 1, "avg_price": 100, "quote": 100, "fill_ms": int(now * 1000)}
+    fake = Fake()
+    vx.export("stocks", tmp_path, now - 100, 1, broker=fake, now=now, emit=lambda x: None)
+    assert fake.calls == [("155004418", None)]
+    assert json.loads((out / "fills_stocks.json").read_text())["oid:trb:155004418"]["status"] == "filled"
+
+
 def test_guardian_reconcile_matches_order_rows_by_broker_id(tmp_path, monkeypatch):
     from tools.forward_parity import live_guardian as lg
 

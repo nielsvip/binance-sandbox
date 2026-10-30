@@ -394,7 +394,11 @@ def discrepancy_overlay(page: str, board: dict, rows: list[dict]) -> tuple[str, 
         crypto = board["symside"].rsplit("_", 1)[0].endswith(("USDT", "USDC", "USD1"))
         filled = (broker_fill.get("found") and float(broker_fill.get("exec_qty") or 0) > 0
                   and str(broker_fill.get("status") or "").lower() in ("filled", "partially_filled")) or (crypto and (status in ("FILLED", "PARTIALLY_FILLED") or float(response.get("executedQty") or 0) > 0))
-        (live if filled else accepted).add(key)
+        terminal_unfilled = str(broker_fill.get("status") or "").lower() in ("rejected", "canceled", "expired") and float(broker_fill.get("exec_qty") or 0) <= 0
+        if filled:
+            live.add(key)
+        elif not terminal_unfilled:
+            accepted.add(key)
         accounts.setdefault(key, set()).add(str(row.get("acct") or "?"))
     bar_index = {bar: i for i, bar in enumerate(bar_times)}
     blue = [{"i": bar_index[bar], "action": act, "accounts": sorted(accounts.get((bar, act), []))} for bar, act in sorted(live - vector)]
