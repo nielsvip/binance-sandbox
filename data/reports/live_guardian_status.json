@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-30T19:10:52Z",
+ "ts": "2026-10-30T19:15:58Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,15 +27,15 @@
  "rth": true,
  "accounts": {
   "trb": {
-   "fills_6h": 0,
+   "fills_6h": 13,
    "open_positions": 2,
-   "unrealised_usd": 2.0,
+   "unrealised_usd": 1.5,
    "pos_mismatch": 0
   },
   "trc": {
    "fills_6h": 0,
    "open_positions": 1,
-   "unrealised_usd": -7.02,
+   "unrealised_usd": -7.78,
    "pos_mismatch": 0
   },
   "fin": {
@@ -57,7 +57,7 @@
   "men": {
    "fills_6h": 0,
    "open_positions": 2,
-   "unrealised_usd": -0.64,
+   "unrealised_usd": -0.56,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -73,7 +73,7 @@
   "ang": {
    "fills_6h": 1,
    "open_positions": 2,
-   "unrealised_usd": 0.28,
+   "unrealised_usd": 0.36,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -105,7 +105,7 @@
   "flz": {
    "fills_6h": 0,
    "open_positions": 1,
-   "unrealised_usd": -0.13,
+   "unrealised_usd": -0.11,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -122,11 +122,11 @@
  "tradeable_guard": {
   "poison": false,
   "restored": false,
-  "total": 197,
+  "total": 153,
   "per_acct": {
    "men": 36,
-   "ang": 95,
    "fin": 36,
+   "ang": 51,
    "flz": 26,
    "inf": 4
   }
@@ -138,69 +138,92 @@
     "15395"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 22.0
   },
   "men": {
    "pids": [
     "89151"
    ],
    "starts_30m": 1,
-   "log_age_s": 97.0
+   "log_age_s": 409.0
   },
   "ang": {
    "pids": [
     "13630"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 0.0
   },
   "inf": {
    "pids": [
     "14141"
    ],
    "starts_30m": 1,
-   "log_age_s": 17.0
+   "log_age_s": 9.0
   },
   "flz": {
    "pids": [
     "14468"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 1.0
   },
   "trb": {
    "pids": [
     "13227"
    ],
    "starts_30m": 1,
-   "log_age_s": 545.0
+   "log_age_s": 856.0
   },
   "trc": {
    "pids": [
     "13411"
    ],
    "starts_30m": 1,
-   "log_age_s": 1960.0
+   "log_age_s": 2271.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-30T19:10:54Z",
+   "ts": "2026-10-30T19:16:04Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "flz:BNBUSDC_SHORT",
+   "evidence": "30 19:15:23 - WARNING - [flz] [REENTRY_GRANDFATHERED] flz:BNBUSDC_SHORT: bypass MAX_ORDER_VALUE $20 / MAX_POSITION_SIZE $150 \u2014 restoring $1237 on bounce (prior max 0.1000)"
+  },
+  {
+   "ts": "2026-10-30T19:16:04Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "flz:BNBUSDC_SHORT",
+   "evidence": "order notional $1236.58 > MAX_ORDER_VALUE $300: 30 19:15:23 - INFO - [flz] [execute_trade_action][flz] \u2705 \u2705 \u2705 \u2705 OPEN flz:BNBUSDC_SHORT @ 696.031317 qty=1.776623 ($1236.58) side=SELL | CRYPTO_REENTRY_PATHWAY_MANDATORY_FAVORABLE_SHORT_px696.165546_exi"
+  },
+  {
+   "ts": "2026-10-30T19:16:05Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "men",
+   "evidence": "ez_manage_men.log not written for 409s"
+  },
+  {
+   "ts": "2026-10-30T19:16:05Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "trb",
-   "evidence": "tradier_manage_trb.log not written for 545s"
+   "evidence": "tradier_manage_trb.log not written for 856s"
   },
   {
-   "ts": "2026-10-30T19:10:54Z",
+   "ts": "2026-10-30T19:16:05Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "trc",
-   "evidence": "tradier_manage_trc.log not written for 1960s"
+   "evidence": "tradier_manage_trc.log not written for 2271s"
   }
  ],
  "alert_counts": {
-  "STALE_LOG": 2
+  "CAP_BYPASS": 1,
+  "SIZE_ANOMALY": 1,
+  "STALE_LOG": 3
  },
  "active_interventions": {
   "acct:trc": {
@@ -251,7 +274,14 @@
    "why": "RAPID_LOSS_KEY unrealised -6.21% (60-min high -2.02%), amt 131 (opens/augments blocked; exits untouched)",
    "undo": "redis-cli -p 6379 DEL open_blocked:men:IMXUSDT_SHORT",
    "dry_run": false
+  },
+  "key:flz:BNBUSDC_SHORT": {
+   "ts": 1793387738.364738,
+   "until": 1793394938.3647602,
+   "why": "SIZE_ANOMALY order $1236.58 > 1.5x MAX_ORDER_VALUE",
+   "undo": "redis-cli -p 6379 DEL open_blocked:flz:BNBUSDC_SHORT",
+   "dry_run": false
   }
  },
- "sweep_s": 1.8
+ "sweep_s": 6.58
 }
