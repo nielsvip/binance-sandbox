@@ -3043,6 +3043,18 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     # Mock the Binance client on trade_manager to record trades
     # MUST be sync (called via asyncio.to_thread) and MUST update positionAmt
     class _RecordingClient:
+        def __init__(self):
+            self._algo_stops = {}
+        def futures_create_algo_order(self, **kw):
+            order_id = str(kw.get("clientAlgoId") or len(self._algo_stops) + 1)
+            self._algo_stops[order_id] = dict(kw, algoId=order_id, orderType=kw.get("type"), algoStatus="NEW")
+            return {"algoId": order_id, "algoStatus": "NEW"}
+        def futures_get_open_algo_orders(self, **kw):
+            symbol = str(kw.get("symbol") or "")
+            return [dict(row) for row in self._algo_stops.values() if not symbol or str(row.get("symbol")) == symbol]
+        def futures_cancel_algo_order(self, **kw):
+            self._algo_stops.pop(str(kw.get("algoId") or ""), None)
+            return {"status": "CANCELED"}
         def futures_create_order(self, **kw):
             qty = float(kw.get("quantity", 0))
             px = float(kw.get("price", 0))

@@ -1,0 +1,24 @@
+{
+ "window_from": "10-30 21:37",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 347,
+  "status_OK": 7,
+  "EXTRA": 1
+ },
+ "rows": [
+  {
+   "acct": "ang",
+   "sym_side": "ACEUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-30 22:15",
+   "actual": "CLOSE",
+   "actual_reason": "board flat, broker holds 111.96",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  }
+ ]
+}

@@ -265,7 +265,7 @@
     "manifest_sha256": "3cf1a640a15bab2c67e94c2cf9e5f39d46ec0ede58548ea7060a53d9fe55aafc",
     "no_other_data_touched": true,
     "receipt": "s2:/home/niels/v15_bench/.preservation_archive_20261030T222913Z/verification_receipt.json",
-    "receipt_sha256": "28a515a6cbb0d1db1b6c74652c4885efcf2ce9480a7ed08692f49315cc843df4",
+    "receipt_sha256": "2d4d2828f57a878fe0d8560497260529cc4c25fe19a351768896c27f54122c76",
     "reclaimed_exact_paths": [
       "/home/niels/v15_bench/canary_materialized_COIN_SHORT_20261030",
       "/home/niels/v15_bench/canary_materialized_COIN_SHORT_20261030_v2",
@@ -274,6 +274,20 @@
       "/home/niels/v15_bench/snap_20261030T201500Z_coherent/code"
     ],
     "regular_files": 29959,
+    "retained_probe2_receipts": {
+      "all_sha256_verified": true,
+      "bytes": 7393,
+      "directory": "s2:/home/niels/v15_bench/.preservation_archive_20261030T222913Z/config_probe2_receipts/",
+      "files": [
+        "config_path_preflight.json",
+        "final_env.json",
+        "routing_preflight.json",
+        "source_interpreter_identity.json",
+        "audit/denied_writes.jsonl",
+        "audit/frozen_reads.jsonl"
+      ],
+      "manifest_sha256": "3722639f8077c0c2b058435c25146be85c2dad9137155601f6fc147d354d724c"
+    },
     "symlinks": 2903,
     "verification": "Streaming archive member-by-member SHA256/type/mode/link-target verification matched the source manifest; all 29,959 regular source files rehashed after archive and source metadata remained stable; 0 errors; no active consumer found in repeated process cwd/fd scan."
   },
@@ -284,6 +298,7 @@
         "/home/niels/binance-sandbox/backtest_v8/indicators/_stale_wallclock_4h",
         "/home/niels/binance-sandbox/backtest_v8/indicators/_quarantine"
       ],
+      "historical_bytes_unresolved": "Mapped links point to mutable S6 backtest_v8/indicators targets. Metadata sample ages are under 18 minutes; contents not materialized or treated as historical frozen bytes. Full 1,374-link mapping remains archived.",
       "interpretation": "No sandbox targets were dereferenced/copied. Literal map is preserved. No hash-based duplicate claim; these targets require exact selected-path verification before any decision to skip or materialize them.",
       "links": 1374,
       "lstat_counts": {

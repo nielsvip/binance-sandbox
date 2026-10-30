@@ -144,3 +144,19 @@ def test_stop_above_the_held_share_count_is_refused(tmp_path):
     except RuntimeError as exc:
         assert "STOP_QTY_ABOVE_HELD" in str(exc)
     assert b.placed == []
+
+
+def test_stock_close_ack_keeps_stop_until_broker_is_flat(tmp_path):
+    stop = {"id": 17, "side": "buy_to_cover", "quantity": 38, "status": "open", "type": "stop", "symbol": "XUSDT", "stop_price": 21.49}
+    b = FakeTradier(tmp_path, held={"XUSDT_SHORT": 38.0}, resting=[stop])
+    t, rows, alerts = _trader(tmp_path, "stocks", b)
+    o = {"ss": "XUSDT_SHORT", "act": "CLOSE", "key": "trb|XUSDT_SHORT|1793303100|CLOSE"}
+    msg = S.Stops(t).after_fill("trb", o, 38.0, 38.0, 21.4)
+    assert "protective stop retained" in msg
+    assert not [call for call in b.calls if call[0] == "DELETE"]
+    assert rows[-1]["status"] == "STOP_RETAINED_POSITION_HELD"
+    assert alerts[-1][0] == "VD_CLOSE_NOT_FLAT_STOP_RETAINED"
+    b.held.clear()
+    msg = S.Stops(t).after_fill("trb", o, 38.0, 38.0, 21.4)
+    assert "stops cancelled 1" in msg
+    assert [call for call in b.calls if call[0] == "DELETE"]

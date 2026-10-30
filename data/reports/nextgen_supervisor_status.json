@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-10-30T21:54:36.012761Z",
+  "recorded_at": "2026-10-30T22:44:44.867945+00:00",
   "status": "active_not_achieved",
   "deployment_authorized_by_this_record": false,
   "requirements": {
@@ -84,15 +84,15 @@
     ]
   },
   "source_hashes_at_recording": {
-    "tools/v20_candidate_refresh.py": "aedd617438b0adacdbb546fc073bc0b00447cd8b539a4f23c1258ebc8e5d4297",
+    "tools/v20_candidate_refresh.py": "e4022ef8ea759271cf8c79857c4b1624f90039d4214ddda50b92f9a2e774871a",
     "tools/v20_absorb_cycle.py": "94a06dfd04ae896caf49d19a48f8268047416839aca79c0bdfcf26ec9701eca4",
-    "tools/v18_brain.py": "68d2c9b6be7f84d78baa4e8b35494fda294dafdf7ca945e177c399aeecf2f6e9",
-    "tools/v18_linknet.py": "f8dd0b6beeb96a6954eeb3bbd55f9da936073bd38683e9b4a9106d3cd625985c",
-    "tools/v18_precision_build.py": "3d672cf223daa5b8110e7393dfed647f51159c88b6eeb4d08f6c07e7482847da",
-    "tools/v18_digest.py": "1ca4b6dbc947df5a987b031a62f2c80e70a004fa3b05701a006d9e1b66c1532c",
+    "tools/v18_brain.py": "1edb5e0e552a7f6a5514c670d28ddb063e1698682d3d56ad5b61ee0d6ec7ef1a",
+    "tools/v18_linknet.py": "ac550266a411df8b9d609aa1ad687a8602a93614451ec3843ab5e42be4b73dbd",
+    "tools/v18_precision_build.py": "b9ba0c8204279affd1a3333058742cb002b5d960139aadc95b3de4b01c0e1d40",
+    "tools/v18_digest.py": "4bb08309c1196940b52c36514fdbcc32507b427d362fb9514a3f5c2c9a33fb50",
     "tools/v15_nextgen_shadow_plan.py": "eceb880e53b25db0c7a250a01c251f056689dbd8f8df2c99c5865f212248c9ba",
     "tools/v15_nextgen_shadow_replay.py": "6831935eda6f51de802850fdbf109a112bfab95f7b6463565a2b631d7276eeb9",
-    "data/reports/nextgen_60d_candidate.patch": "847dde0eab137f1e6b8880e9d582e623c8e1be1aa9b04d3fbb1857ee12014bbf"
+    "data/reports/nextgen_60d_candidate.patch": "d0c55af23b8dec3c2eec5b7c18afae529502ba13301ff6c2a0d04cc886013791"
   },
   "benchmark_repair": {
     "snapshot": "s2:/home/niels/v15_bench/snap_20261030T201500Z_coherent",
@@ -293,5 +293,21 @@
   "local_disk_incident": {
     "observed": "ENOSPC during generated evidence spill and heredoc creation; later rootobserved1.7GiBfree",
     "action": "no originaldata deleted byroot; learner owns reproduciblepartial reclamation and remote regeneration; only smallstatuswrites resumed"
-  }
+  },
+  "candidate_activation": {
+    "status": "not_ready_for_intended_nn_gate_comparison",
+    "bundle": "data/reports/nextgen_gate_artifact_repair/candidate_nn_20261030",
+    "artifact_hashes": "root verified all8 plus v8 runtime; independent agent matched final57 manifest",
+    "finding": "Current runtime reads separate legacy linknet_proposals files; compiled8 digest proposals/scorer not consumed by pilot planner. Graph heads can change, but intended neural proposal activation unproven.",
+    "next": "Trace actual consumers, wire versioned candidate artifact path, demonstrate real priority changes before gate",
+    "deployment": false
+  },
+  "gate_comparison_preconditions": {
+    "runtime": "actual champion differs in material pilot/engine/config; controlled common runtime prerequisite unresolved",
+    "snapshot_pin": "staged submit/run/redecide pin with8passingtests; not active",
+    "frozen_input_integrity": "manifest SHA does not detect changed payload; staged verification in progress",
+    "gain": "unproven",
+    "speed": "deferred until gain comparison"
+  },
+  "preservation_authority": "data/reports/learning_preservation_audit_20261030T200206Z.json"
 }

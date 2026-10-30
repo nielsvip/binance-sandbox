@@ -175,6 +175,12 @@ class Stops:
             symbol, side = o["ss"].rsplit("_", 1)
             symbol, side = symbol.upper(), side.upper()
             if act == "CLOSE":
+                if self.t.venue == "stocks":
+                    held_now = self._tr_held(acct, symbol, side)
+                    if held_now > 0:
+                        self._row(acct=acct, ss=o["ss"], act="CLOSE", status="STOP_RETAINED_POSITION_HELD", qty=held_now, key=o["key"])
+                        self.t.alert("VD_CLOSE_NOT_FLAT_STOP_RETAINED", account=acct, sym_side=o["ss"], held=held_now, key=o["key"], severity="CRITICAL")
+                        return f"close not confirmed flat: {held_now} shares still held; protective stop retained"
                 n = self.cancel(acct, symbol, side)
                 self._row(acct=acct, ss=o["ss"], act="CANCEL_ON_CLOSE", cancelled=n, key=o["key"])
                 return f"stops cancelled {n}"

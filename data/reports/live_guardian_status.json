@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-30T22:40:27Z",
+ "ts": "2026-10-30T22:45:50Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -120,69 +120,66 @@
    "inf": 4
   }
  },
- "reconcile": {
-  "inf": {
-   "symbols": 0,
-   "broker_fills": 0,
-   "matched": 0,
-   "appended": 0
-  },
-  "flz": {
-   "symbols": 0,
-   "broker_fills": 0,
-   "matched": 0,
-   "appended": 0
-  }
- },
+ "reconcile": {},
  "process": {
   "fin": {
    "pids": [
     "56796"
    ],
    "starts_30m": 1,
-   "log_age_s": 5.0
+   "log_age_s": 257.0
   },
   "men": {
    "pids": [
     "59391"
    ],
    "starts_30m": 1,
-   "log_age_s": 8.0
+   "log_age_s": 13.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
-   "starts_30m": 2,
-   "log_age_s": 8.0
+   "starts_30m": 1,
+   "log_age_s": 1.0
   },
   "inf": {
    "pids": [
     "64156"
    ],
    "starts_30m": 1,
-   "log_age_s": 6.0
+   "log_age_s": 5.0
   },
   "flz": {
    "pids": [
     "70377"
    ],
    "starts_30m": 1,
-   "log_age_s": 9.0
+   "log_age_s": 6.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 13122.0
+   "log_age_s": 13442.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 14537.0
+   "log_age_s": 14857.0
   }
  },
- "alerts": [],
- "alert_counts": {},
+ "alerts": [
+  {
+   "ts": "2026-10-30T22:45:51Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "fin",
+   "evidence": "ez_manage_fin.log not written for 257s"
+  }
+ ],
+ "alert_counts": {
+  "STALE_LOG": 1
+ },
  "active_interventions": {
   "acct:trc": {
    "ts": 1791314517.218395,
@@ -227,5 +224,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 3.95
+ "sweep_s": 0.79
 }

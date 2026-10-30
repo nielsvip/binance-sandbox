@@ -35539,7 +35539,14 @@ class MultiAccountTradeManager:
                         return "OFF"
                     return _psym_get(symbol, position_side, name, getattr(config, name, default))
                 _entry_ftf_price = safe_fetch_float(old_price or _entry_ftf_ind.get("current_price") or _entry_ftf_ind.get("close"), 0.0)
-                _entry_ftf_ok, _entry_ftf_reason = _parity_filter_tf_gates(_entry_ftf_ind, str(position_side).upper() == "LONG", _entry_ftf_price, _entry_ftf_cfg)
+                _entry_ftf_family = []
+                if str(action or "").upper() == "QUICK_OPEN":
+                    from ez_positions_quick import _family_lane_tags
+                    _entry_ftf_family = _family_lane_tags(_entry_ftf_ind, _entry_ftf_price, str(position_side).upper() == "LONG", _entry_ftf_cfg)
+                if _entry_ftf_family:
+                    _entry_ftf_ok, _entry_ftf_reason = True, f"FAMILY_BYPASS({','.join(_entry_ftf_family)})"
+                else:
+                    _entry_ftf_ok, _entry_ftf_reason = _parity_filter_tf_gates(_entry_ftf_ind, str(position_side).upper() == "LONG", _entry_ftf_price, _entry_ftf_cfg)
                 if not _entry_ftf_ok:
                     logger.warning(f"[ENTRY_FILTER_TF_VETO] {position_key}: {action} blocked by {_entry_ftf_reason} reason={(reason or '')[:80]}")
                     return f"BLOCKED_{_entry_ftf_reason}"
