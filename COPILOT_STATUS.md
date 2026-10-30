@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-30 17:33:23 UTC
+# Copilot Status — 2026-10-30 17:36:57 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -8,6 +8,13 @@
 
 - **STALE_INDICATORS** [tradier]  — 2026-10-30T17:31:51
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-30T17:31:51
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-30T17:33:33
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-30T17:34:04
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-30T17:34:34
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-30T17:35:05
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-30T17:35:35
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-30T17:36:06
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-30T17:36:36
 
 ## Missed Trades (trader comparison)
 
@@ -21,12 +28,12 @@ _None_
 
 **Held:** 3 | **Watching for reentry:** 2 | **Reentered:** 0
 
-- HELD: **HYPEUSDT** LONG (crypto) peak +12.3%, now +-0.2%
+- HELD: **HYPEUSDT** LONG (crypto) peak +12.3%, now +-0.3%
 - HELD: **GILD** LONG (tradier) peak +6.2%, now +6.2%
 - HELD: **LMT** LONG (tradier) peak +4.8%, now +-0.9%
 
-- WATCHING: **ACEUSDT** SHORT (crypto) peaked +7.7%, exited 2m ago
-- WATCHING: **1MBABYDOGEUSDT** SHORT (crypto) peaked +6.0%, exited 2m ago
+- WATCHING: **ACEUSDT** SHORT (crypto) peaked +7.7%, exited 1m ago
+- WATCHING: **1MBABYDOGEUSDT** SHORT (crypto) peaked +6.0%, exited 1m ago
 
 ## Supervisor
 
