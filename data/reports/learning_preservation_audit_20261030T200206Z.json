@@ -1,0 +1,104 @@
+{
+  "audit_at_utc": "2026-10-30T20:51:05Z",
+  "scope": "non-destructive corpus preservation evidence; fleet retirement not approved",
+  "external_storage": {
+    "WD25": {
+      "mount": "/Volumes/WD25",
+      "volume_uuid": "04543668-3000-3F41-BB34-1C876F724D28",
+      "filesystem": "ExFAT",
+      "space_observed": "3.2 TiB free",
+      "command": "diskutil info /Volumes/WD25"
+    },
+    "TOSHIBA_EXT": {
+      "device": "/dev/disk5s1",
+      "volume_uuid": "CB74078E-CB60-392D-A83D-73E7DCF836DC",
+      "filesystem": "ExFAT",
+      "state": "physically attached, unmounted; no repair, fsck, or mount attempted",
+      "evidence": "diskutil info /dev/disk5s1 succeeded; diskutil list /dev/disk5 timed out",
+      "reason_deferred": "shares USB3.1 hub with WD25; defer read-only mount pending WD25 transfer verification"
+    }
+  },
+  "gcs_experience_restore": {
+    "object": "gs://v15-cold-329002141504/fleet_archives/s5/experience_cold_af1eab344426.tar.zst",
+    "generation": "1793154688805498",
+    "bytes": 2402070211,
+    "md5_base64": "rQ6cHUBUIs8xSo7hnM58TQ==",
+    "sha256": "0b92fd8f47e8e95605a5451defcc34b7133ab4efc237ad95e3b369ac0878d138",
+    "receipt": "data/reports/gcs_cold_store.jsonl, verified receipt; source /home/niels/rebuild_scratch_s5/experience_cold",
+    "destination_archive": "/home/niels/v20_candidate_review_20261030/experience_restore_20261030T2030Z/experience_cold.tar.zst",
+    "transport": "direct GCS-to-S6 with generation-pinned ranged download; ephemeral authorization passed in-memory over SSH stdin; no private key or long-lived credential copied",
+    "verification": "downloaded size, MD5 and SHA256 matched receipt/object metadata",
+    "tar_inspection": {
+      "members": 14,
+      "decoded_tar_bytes": 2402037760,
+      "regular_payload_bytes": 2402019120,
+      "unsafe_paths": [],
+      "links": 0,
+      "member_types": "directories, four compressed SQLite shards, per-shard manifests/logs, SHA256SUMS"
+    },
+    "decoded_db_source_bytes_total": 25156386816,
+    "shards": [
+      {
+        "name": "CRYPTO_LONG",
+        "bytes": 10025791488,
+        "sha256": "a9c4e171a36905ae687abd9fd804eee4c94505ff9f35860114dba6c1ab9e78ea",
+        "eval_range_utc": [
+          "2026-10-21T09:31:55Z",
+          "2026-10-22T17:35:11Z"
+        ],
+        "live_events": 0
+      },
+      {
+        "name": "CRYPTO_SHORT",
+        "bytes": 8176959488,
+        "sha256": "0a2f12aabf01ff473f2647a5cda619f3d512e70bc2fc49295f13505ceaaf34c7",
+        "eval_range_utc": [
+          "2026-10-21T09:31:54Z",
+          "2026-10-22T18:44:58Z"
+        ],
+        "live_events": 0
+      },
+      {
+        "name": "STOCKS_LONG",
+        "bytes": 3675877376,
+        "sha256": "34362727fbcbe13c67287eef0088db05dda47234e3fba22cd84722b0ba91d4cf",
+        "eval_range_utc": [
+          "2026-10-21T09:31:21Z",
+          "2026-10-22T18:46:00Z"
+        ],
+        "live_events": 0
+      },
+      {
+        "name": "STOCKS_SHORT",
+        "bytes": 3277758464,
+        "sha256": "db36705e6681ae8deca9ac73a5e99b72245428212acc3f4f045977158a53a602",
+        "eval_range_utc": [
+          "2026-10-21T09:31:26Z",
+          "2026-10-22T17:48:02Z"
+        ],
+        "live_events": 0
+      }
+    ],
+    "fresh_store": "/home/niels/v20_candidate_review_20261030/experience_restore_20261030T2030Z/store/experience",
+    "decoded_db_hashes": "all four decoded SHA256 values matched source manifest hashes",
+    "retained_sources": true,
+    "s6_space_after_decode": "20 GiB free observed; additional materialization deferred"
+  },
+  "wd25_s6_rebuild_scratch_copy": {
+    "source": "s6:/home/niels/rebuild_scratch_s6/",
+    "destination": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_rebuild_scratch/",
+    "first_transfer": "rsync ended code 255 after approximately 1.30 GB; partial retained",
+    "resume": "rsync -rt --partial --append-verify --info=progress2 --bwlimit=4096 -e 'ssh -S none -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=15 -o ServerAliveCountMax=3'; exited 0, 44 seconds, 35,198,954 bytes incremental across 243 entries",
+    "large_member": {
+      "path": "s1_data_archive/klines_hist_w2.tar.zst",
+      "bytes": 1218456299
+    },
+    "verification_state": "verified at 2026-10-30T20:51:05Z: rsync dry-run with checksum checked all 243 entries (207 regular files, 36 directories), total 1,331,992,053 B; 0 created/changed/transferred/deleted and 0 bytes transferred. This establishes byte-for-byte match with current S6 source and no source changes observable at verification.",
+    "verification_command": "rsync -nrc --itemize-changes --stats -rt -e ssh -S none ... s6:/home/niels/rebuild_scratch_s6/ <WD25 destination>/"
+  },
+  "s1_consumer_audit": {
+    "finding": "no relevant S1 cron/process consumer of ~/binance v18_linknet or v20_absorb since 20:00 UTC was found",
+    "evidence": "crontab and active process argv/cwd checks; 20:00 must-refresh and 20:23 endgame merge ran from /home/niels/binance-sandbox; inspected callers had no v18_linknet/v20_absorb imports"
+  },
+  "preservation_status": "incomplete; originals retained; no retirement/deletion authorized by this audit"
+}

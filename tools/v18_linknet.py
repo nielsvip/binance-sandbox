@@ -546,7 +546,7 @@ def build_ctx_join(cs, store, fctx=None, native=None, log=_log, verified_log_onl
         con = sqlite3.connect(f"file:{shard}?mode=ro", uri=True, timeout=600)
         eligible = "provenance IN ('rebuilt','log') AND base_set_id IS NOT NULL AND cum_before IS NOT NULL"
         if verified_log_only:
-            eligible += " AND json_valid(extra) AND json_extract(extra, '$.chain_sha_verified') = 1"
+            eligible += " AND CASE WHEN json_valid(extra) THEN json_extract(extra, '$.chain_sha_verified') ELSE 0 END = 1"
         evidence = con.execute("SELECT count(*), min(ts), max(ts), sum(npz_md5 IS NULL), sum(window_days IS NULL) FROM evals WHERE " + eligible).fetchone()
         source_reports.append({"path": str(shard), "bytes": shard.stat().st_size, "eligible_log_rows": evidence[0], "first_event_epoch": evidence[1], "last_event_epoch": evidence[2], "rows_without_npz_md5": evidence[3] or 0, "rows_without_window_days": evidence[4] or 0, "engine_version_identity": "not present in experience schema; source provenance remains required"})
         rows = con.execute("SELECT sym_side, cum_before, base_set_id, count(*), min(ts), max(ts) FROM evals WHERE " + eligible + " GROUP BY sym_side, round(cum_before, 3), base_set_id").fetchall()

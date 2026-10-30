@@ -159,16 +159,26 @@ def main():
     root.mkdir(parents=True)
     store = experience.Store(root / "store", apply=args.apply)
     reports = []
+    report_path = root / "report.json"
+    report_path.write_text(json.dumps({"schema": "exact_chain_context_v1", "status": "running", "applied": args.apply}))
     try:
         with (root / "unknown_contexts.jsonl").open("w") as diagnostics:
             for pair in args.pair:
                 log, separator, progress = pair.partition("=")
                 if not separator:
                     raise ValueError("pair needs log=progress")
-                emit = (lambda raw, values, board, proof: write_eval(store, raw, values, board, proof)) if args.apply else (lambda *args: None)
-                reports.append(reconstruct(log, progress, args.host, emit, lambda record: diagnostics.write(json.dumps(record, sort_keys=True) + "\n")))
+                emit = (lambda raw, values, board, proof: write_eval(store, raw, values, board, dict(proof, chain_sha_verified=False, source_reconstruction_pending=True))) if args.apply else (lambda *args: None)
+                report = reconstruct(log, progress, args.host, emit, lambda record: diagnostics.write(json.dumps(record, sort_keys=True) + "\n"))
+                if args.apply:
+                    for connection in store.cons.values():
+                        connection.execute("UPDATE evals SET extra=json_set(extra,'$.chain_sha_verified',json('true'),'$.source_reconstruction_pending',json('false')) WHERE source=? AND json_extract(extra,'$.progress_sha256')=?", (str(Path(log)), report["sources"][str(Path(progress))]))
+                    store.flush()
+                reports.append(report)
         store.flush()
-        (root / "report.json").write_text(json.dumps({"schema": "exact_chain_context_v1", "applied": args.apply, "pairs": reports, "status": "exact_contexts_only_not_production_eligible"}, indent=2))
+        report_path.write_text(json.dumps({"schema": "exact_chain_context_v1", "applied": args.apply, "pairs": reports, "status": "exact_contexts_only_not_production_eligible"}, indent=2))
+    except Exception as error:
+        report_path.write_text(json.dumps({"schema": "exact_chain_context_v1", "applied": args.apply, "pairs": reports, "status": "failed", "error": str(error)}, indent=2))
+        raise
     finally:
         store.close()
     print(json.dumps({"out_dir": str(root), "pairs": len(reports), "applied": args.apply}))
