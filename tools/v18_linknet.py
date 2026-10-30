@@ -342,7 +342,7 @@ class CatDS:
                 self.c["R_identity_cand_eq_inforce"] += 1
             else:
                 self.ex.add(kind=0, set_i=si, filt_i=-1, sc_i=sci, fc_i=-1, inf_src=self.INF_SRC[src], ctx_i=self._ctx("R", reg, sym, tier, prov=prov), ts=t, b_t0=b_t0,
-                            board_i=bi, y=y, d=self._f(d), valid=int(VB.gain_eligible(naked[1], d)), m_tim=self._f(naked[3]),
+                            board_i=bi, y=y, d=self._f(d), valid=int(bool(naked[1])), m_tim=self._f(naked[3]),
                             m_dd=self._f(naked[5]), m_wr=self._f(naked[7]), w=float(naked[8] or 1.0), x_i=xi, prov=self.PROV[prov])
                 self.c["R"] += 1
                 self.c["R_with_context" if xi >= 0 else "R_without_context"] += 1
@@ -369,7 +369,7 @@ class CatDS:
             y = 1 if (valid and md is not None and md > EPS) else 0
             self.c[f"F_inf_{src}"] += 1
             self.ex.add(kind=1, set_i=si, filt_i=self.filts(hdr), sc_i=sci, fc_i=self.fcombo(f"{hdr}|INF={finf}|{fsrc}"), inf_src=self.INF_SRC[src], ctx_i=ci, ts=t, b_t0=b_t0, board_i=bi, y=y, d=self._f(md),
-                        valid=int(VB.gain_eligible(valid, md)), m_tim=self._f(c[4]), m_dd=self._f(c[6]), m_wr=self._f(c[8]), w=float(c[9] or 1.0), x_i=xi, prov=self.PROV[prov])
+                        valid=int(bool(valid)), m_tim=self._f(c[4]), m_dd=self._f(c[6]), m_wr=self._f(c[8]), w=float(c[9] or 1.0), x_i=xi, prov=self.PROV[prov])
             self.c["F"] += 1
             self.c["F_with_context" if xi >= 0 else "F_without_context"] += 1
             self.c[f"F_prov_{prov}"] += 1
@@ -406,7 +406,7 @@ class CatDS:
         xi = self._xctx(ev["s"], self.last_base.get(ev["s"]))
         self.ex.add(kind=2, set_i=self.sets(f"{sheet}|{sw}={cand}"), filt_i=-1, sc_i=self.scombo(f"{sheet}|{sw}={cand}|INF={inf}|{src}"), fc_i=-1,
                     inf_src=self.INF_SRC[src], ctx_i=self._ctx("PH", None, ev["s"], None, ev.get("ph")), ts=t,
-                    b_t0=b_t0, board_i=self.boards(b), y=y, d=self._f(d), valid=int(VB.gain_eligible(v, d)), m_tim=self._f(m[0]),
+                    b_t0=b_t0, board_i=self.boards(b), y=y, d=self._f(d), valid=int(v), m_tim=self._f(m[0]),
                     m_dd=self._f(m[2]), m_wr=self._f(m[4]), w=float(ev.get("w") or 1.0), x_i=xi, prov=0)
         self.c["PH"] += 1
         self.c["PH_with_context" if xi >= 0 else "PH_without_context"] += 1
@@ -2515,10 +2515,12 @@ def cmd_calibrate(a):
             if ri is None:
                 continue
             nk = ev.get("n")
-            if nk is not None and nk[-1]:
+            if nk is not None and nk[-1] and VB.gain_eligible(nk[1], nk[0]):
                 PR.append(float(z["row_p_pos"][ri, 0]))
                 YR.append(1 if (nk[1] and nk[0] is not None and nk[0] > EPS) else 0)
             for c in ev.get("y") or []:
+                if not VB.gain_eligible(c[2], c[1]):
+                    continue
                 yi = y_ix.get(str(c[0]).strip())
                 if yi is None:
                     continue

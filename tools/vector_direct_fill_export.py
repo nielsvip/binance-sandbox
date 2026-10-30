@@ -282,9 +282,13 @@ class TradierRO:
 
     @staticmethod
     def _fill(o):
-        q = float(o.get("exec_quantity") or 0)
-        px = float(o.get("avg_fill_price") or 0)
-        ts = o.get("transaction_date") or o.get("create_date")
+        legs = o.get("leg") or []
+        legs = [legs] if isinstance(legs, dict) else legs
+        entry = next((leg for leg in legs if str(leg.get("side") or "").lower() in ("buy", "sell_short")), None) if str(o.get("class") or "").lower() == "oto" else None
+        source = entry or o
+        q = float(source.get("exec_quantity") or 0)
+        px = float(source.get("avg_fill_price") or 0)
+        ts = source.get("transaction_date") or source.get("create_date")
         try:
             ms = int(
                 dt.datetime.fromisoformat(str(ts).replace("Z", "+00:00")).timestamp()
@@ -296,12 +300,12 @@ class TradierRO:
             "found": True,
             "order_id": str(o.get("id")),
             "client_order_id": o.get("tag"),
-            "status": o.get("status"),
+            "status": "filled" if entry and q >= float(entry.get("quantity") or 0) > 0 else source.get("status"),
             "exec_qty": q,
             "avg_price": px,
             "quote": q * px,
             "fill_ms": ms,
-            "side": o.get("side"),
+            "side": source.get("side"),
             "src": "tradier GET /accounts/{id}/orders/{id}",
         }
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Build matched graph and neural artifacts in a fresh isolated candidate directory; never deploy."""
 import argparse
+import gzip
 import hashlib
 import json
 import os
@@ -43,7 +44,7 @@ def plan(run_dir, spill_dirs, context_root, cut, python=sys.executable, max_cont
         raise ValueError("run directory must be fresh and outside production data")
     if context == ROOT or context in run.parents or run in context.parents:
         raise ValueError("context must be a dedicated snapshot separate from repository and run directory")
-    context_files = files_under(context)
+    context_files = [path for path in files_under(context) if "_cache" not in path.relative_to(context).parts]
     generated = ("ds_", "model_v1_", "model_v2_", "report_v2_", "production_", "linknet_scores_v2_", "linknet_proposals_v2_", "v18_brain_")
     if any(path.name.startswith(generated) for path in context_files):
         raise ValueError("context must not contain pre-existing candidate output artifacts")
@@ -71,11 +72,14 @@ def plan(run_dir, spill_dirs, context_root, cut, python=sys.executable, max_cont
         [python, str(code_root / "tools/v18_linknet.py"), "dataset", *spill_args, "--tmp-dir", str(run / "tmp_dataset"), "--out-dir", str(dataset), "--ctx-dir", str(dataset)],
         [python, str(code_root / "tools/v18_linknet.py"), "train2", "--ds-dir", str(dataset)],
         [python, str(code_root / "tools/v18_linknet.py"), "score2", "--ds-dir", str(dataset), "--out-dir", str(learn)],
+        [python, str(code_root / "tools/v18_precision_build.py"), "split"],
+        [python, str(code_root / "tools/v18_precision_build.py"), "build", "--replace"],
+        [python, str(code_root / "tools/v18_digest.py"), "--learn-dir", str(learn), "--out-dir", str(learn), "--linknet-report-dir", str(dataset), "--apply"],
     ]
     code = sorted(set(ROOT.glob("*.py")) | set((ROOT / "tools").rglob("*.py")))
     if any(path.is_symlink() for path in code):
         raise ValueError("source snapshot contains symlinked Python code")
-    return {"status": "planned", "run_dir": str(run), "context_root": str(context), "context_files": [str(path) for path in context_files], "spill_files": [str(path) for path in spills], "code_files": [str(path) for path in code], "cut": cut, "commands": commands, "scope": "matched graph and LinkNet candidate; precision/digest rebuild and production gate still required", "eligibility": {"status": "unverified_not_promotable", "preservation": "source files are hashed, never rewritten or deleted; raw source inventory remains an external prerequisite", "reader_retains": ["row cumulative baseline cb", "symbol/side, board id, row timestamp", "naked and marginal deltas, validity bits, propensity weights", "pinned or causally inferred in-force values, joined chain context when available"], "reader_gaps": ["engine era and exact NPZ/window identities are not universal required training features", "invalid rows can enter existing positivity targets as negatives; eligibility repair required", "missing raw/skipped/error evidence cannot be reconstructed from spills", "historic sources need an independent provenance and eligibility audit"]}}
+    return {"status": "planned", "run_dir": str(run), "context_root": str(context), "context_files": [str(path) for path in context_files], "spill_files": [str(path) for path in spills], "code_files": [str(path) for path in code], "cut": cut, "commands": commands, "scope": "matched graph and LinkNet candidate; precision/digest rebuild and production gate still required", "eligibility": {"status": "unverified_not_promotable", "preservation": "source files are hashed, never rewritten or deleted; raw source inventory remains an external prerequisite", "reader_retains": ["row cumulative baseline cb", "symbol/side, board id, row timestamp", "naked and marginal deltas, validity bits, propensity weights", "pinned or causally inferred in-force values, joined chain context when available"], "reader_gaps": ["engine era and exact NPZ/window identities are not universal required training features", "ambiguous invalid/missing/nonfinite gain labels are conservatively excluded; exclusions require raw-source audit", "missing raw/skipped/error evidence cannot be reconstructed from spills", "historic sources need raw-log re-extraction to recover reasons missing in old spills; no success inferred from synthetic zero"]}}
 
 
 def required_artifacts(run):
@@ -85,6 +89,12 @@ def required_artifacts(run):
     result = [run / "graph_report.json", run / "graph_state.pkl"]
     for cat_side in CAT_SIDES:
         result.extend([run / "brain" / f"v18_brain_{cat_side}.json", dataset / f"ds_{cat_side}.npz", dataset / f"report_v2_{cat_side}.json", dataset / f"production_{cat_side}.json", dataset / f"model_v2_{cat_side}.npz", learn / f"linknet_scores_v2_{cat_side}.npz", learn / f"linknet_proposals_v2_{cat_side}.json"])
+        production = dataset / f"production_{cat_side}.json"
+        if production.is_file() and json.loads(production.read_text()).get("production_scorer") in ("v1", "hybrid_v1"):
+            result.append(dataset / f"model_v1_{cat_side}.npz")
+        result.extend([learn / f"switch_cards_{cat_side}.json", learn / f"switch_profile_{cat_side}.json", learn / f"needed_filters_{cat_side}.json", learn / f"digest_{cat_side}.json", learn / "precision" / f"stats_{cat_side}.json"])
+        positive = learn / f"positives_all_{cat_side}.json"
+        result.append(positive if positive.exists() else positive.with_suffix(".json.gz"))
     return result
 
 
@@ -102,7 +112,7 @@ def execute(candidate):
     try:
         sources = candidate["context_files"] + candidate["spill_files"] + candidate["code_files"]
         manifest["source_sha256"] = {path: sha256(path) for path in sources}
-        shutil.copytree(candidate["context_root"], run / "context")
+        shutil.copytree(candidate["context_root"], run / "context", ignore=shutil.ignore_patterns("_cache"))
         for source in candidate["context_files"]:
             copied = run / "context" / Path(source).relative_to(candidate["context_root"])
             if sha256(copied) != manifest["source_sha256"][source]:
@@ -113,6 +123,16 @@ def execute(candidate):
             shutil.copy2(source, copied)
             if sha256(copied) != manifest["source_sha256"][source]:
                 raise ValueError(f"spill changed during snapshot: {source}")
+        precision = run / "context/data/learn/precision/extract"
+        precision.mkdir(parents=True, exist_ok=False)
+        (run / "context/backups").mkdir(exist_ok=True)
+        for frozen in sorted((run / "spills").iterdir()):
+            destination = precision / (frozen.name if frozen.name.endswith(".gz") else frozen.name + ".gz")
+            if frozen.name.endswith(".gz"):
+                shutil.copy2(frozen, destination)
+            else:
+                with frozen.open("rb") as source, gzip.open(destination, "wb") as target_stream:
+                    shutil.copyfileobj(source, target_stream)
         for source in candidate["code_files"]:
             copied = run / "code" / Path(source).relative_to(ROOT)
             copied.parent.mkdir(parents=True, exist_ok=True)
@@ -121,6 +141,10 @@ def execute(candidate):
                 raise ValueError(f"code changed during snapshot: {source}")
         env = dict(os.environ, V18_ROOT=str(run / "context"), V18_LEARN_DIR=str(run / "context/data/learn"), PYTHONDONTWRITEBYTECODE="1", PYTHONPATH=str(run / "code"))
         for index, command in enumerate(candidate["commands"]):
+            if "v18_precision_build.py" in command[1] and "split" in command:
+                if not (run / "brain").is_dir():
+                    raise ValueError("missing required artifacts: graph exports before precision build")
+                shutil.copytree(run / "brain", run / "context/data/brain", dirs_exist_ok=True)
             manifest["status"] = "running"
             phase = {"index": index, "command": command, "status": "running"}
             manifest["phases"].append(phase)
@@ -139,8 +163,16 @@ def execute(candidate):
             raise ValueError(f"missing required artifacts: {missing}")
         from tools.v20_absorb_cycle import corpus_provenance
         manifest["corpus_provenance"] = corpus_provenance(json.loads((run / "graph_report.json").read_text()))
+        dataset = run / "context/data/learn/linknet/v2"
+        manifest["gain_eligibility_by_cat_side"] = {}
+        for cat_side in CAT_SIDES:
+            report = json.loads((dataset / f"report_v2_{cat_side}.json").read_text())
+            if report.get("selection", {}).get("v1_gate", {}).get("test_used_for_selection") is not False or not report.get("calibration_source") or not report.get("gain_eligibility"):
+                raise ValueError(f"missing independent-test or gain-eligibility proof for {cat_side}")
+            manifest["gain_eligibility_by_cat_side"][cat_side] = report["gain_eligibility"]
         manifest["artifact_sha256"] = {str(path.relative_to(run)): sha256(path) for path in artifacts}
-        manifest["status"] = "graph_neural_built_not_deployed"
+        manifest["status"] = "learner_candidate_built_not_deployed"
+        manifest["scope"] = "matched graph, LinkNet, precision profiles and digest; staged ancillary evidence remains dated input; raw-source/context eligibility and production gate still required"
     except Exception as error:
         manifest.update(status="failed", error=str(error))
         save()

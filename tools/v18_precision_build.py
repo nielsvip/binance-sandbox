@@ -39,7 +39,7 @@ from pathlib import Path
 import numpy as np
 from scipy import stats as SS
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(os.environ.get("V18_ROOT") or Path(__file__).resolve().parent.parent)
 sys.path.insert(0, str(ROOT / "tools"))
 LEARN = ROOT / "data" / "learn"
 PREC = LEARN / "precision"
@@ -489,16 +489,17 @@ def regime_of(bh, cuts):
 
 def key_estimates(key, sym, d, valid, nkeys, secs, p0=None, rho=None):
     """Hierarchical Beta (sym_side -> cat_side) P(pos) with design-effect weights + cluster-robust mean-delta / E[d|pos]."""
-    pos = ((valid == 1) & (d > EPS)).astype(float)
-    neg = ((valid == 1) & (d < -EPS)).astype(float)
-    inv = (valid != 1).astype(float)
-    zero = ((valid == 1) & (np.abs(d) < T["eps"])).astype(float)
+    eligible = (valid == 1) & np.isfinite(d)
+    pos = (eligible & (d > EPS)).astype(float)
+    neg = (eligible & (d < -EPS)).astype(float)
+    inv = (~eligible).astype(float)
+    zero = (eligible & (np.abs(d) < T["eps"])).astype(float)
     u, g = group((key, sym))
     gk = u[:, 0]
-    n_g = np.bincount(g).astype(float)
+    n_g = np.bincount(g, weights=eligible.astype(float))
     pos_g = np.bincount(g, weights=pos)
     if p0 is None:
-        p0 = float(pos.sum() / max(1, len(pos)))
+        p0 = float(pos.sum() / max(1, eligible.sum()))
     if rho is None:
         rho = icc_binary(gk, n_g, pos_g)
     f_g = 1.0 / (1.0 + (n_g - 1.0) * rho)
@@ -508,8 +509,8 @@ def key_estimates(key, sym, d, valid, nkeys, secs, p0=None, rho=None):
     b_post = max(T["alpha_floor"], T["m0"] * (1 - p0)) + Nf - A
     lo, hi = beta_ci(a_post, b_post, T["ci"])
     pm = a_post / (a_post + b_post)
-    vd = np.where(valid == 1, d, 0.0)
-    nv_g = np.bincount(g, weights=(valid == 1).astype(float))
+    vd = np.where(eligible, d, 0.0)
+    nv_g = np.bincount(g, weights=eligible.astype(float))
     mean_g = np.bincount(g, weights=vd) / np.maximum(nv_g, 1)
     cm = cluster_stats(gk, mean_g, nv_g, nkeys)
     pd_ = np.where(pos > 0, d, 0.0)
@@ -527,14 +528,14 @@ def key_estimates(key, sym, d, valid, nkeys, secs, p0=None, rho=None):
         "secs": np.bincount(key, weights=secs, minlength=nkeys),
         "n_syms": np.bincount(gk, minlength=nkeys).astype(int), "pos_syms": np.bincount(gk, weights=(pos_g > 0).astype(float), minlength=nkeys).astype(int),
         "neg_syms": np.bincount(gk, weights=(np.bincount(g, weights=neg) > 0).astype(float), minlength=nkeys).astype(int),
-        "zero_syms": np.bincount(gk, weights=((np.bincount(g, weights=zero) == n_g)).astype(float), minlength=nkeys).astype(int),
+        "zero_syms": np.bincount(gk, weights=((n_g > 0) & (np.bincount(g, weights=zero) == n_g)).astype(float), minlength=nkeys).astype(int),
         "p_mean": pm, "p_lo": lo, "p_hi": hi, "mean_lo": cm["lo"], "mean_hi": cm["hi"], "mean_c": cm["mean"], "k_valid": cm["k"],
         "p_gt": cm["p_gt"], "p_lt": cm["p_lt"], "epos_c": cp["mean"], "epos_lo": cp["lo"], "epos_hi": cp["hi"], "epos_shr": e_pos_shr,
         "rho": rho, "p0": p0, "groups": (u, g, n_g, pos_g, f_g, mean_g, nv_g),
     }
     # medians per key (sorted segments)
     med = np.full(nkeys, np.nan)
-    vm = valid == 1
+    vm = eligible
     if vm.any():
         kk, dd = key[vm], d[vm]
         o = np.lexsort((dd, kk))

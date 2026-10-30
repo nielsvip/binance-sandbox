@@ -92,13 +92,27 @@ def choose_scorer(rep, head="F", tie=SCORER_TIE):
     arm = "hybrid" if ("hybrid" in aucs and aucs["hybrid"] >= best - tie) else max(aucs, key=lambda k: (aucs[k], k == "hybrid"))
     return {"arm": arm, "auc_seen": seen.get(REPORT_ARM_KEY[arm]), "auc_never": aucs[arm], "n_never": nev.get("n"), "n_pos_never": nev.get("pos"),
             "rule": SCORER_RULE, "auc_never_by_arm": {k: aucs.get(k) for k in SCORER_ARMS}, "auc_seen_by_arm": {k: seen.get(v) for k, v in REPORT_ARM_KEY.items()},
-            "head": head, "n_seen": seen.get("n"), "n_pos_seen": seen.get("pos"), "report_cut_test": (rep or {}).get("cut_test")}
+            "head": head, "n_seen": seen.get("n"), "n_pos_seen": seen.get("pos"), "report_cut_test": (rep or {}).get("cut_test"), "selection_source": "legacy held-out test metrics; not independent OOS selection", "test_used_for_selection": True}
 
 
 def linknet_scorer(cat_side, learn_dir, report_dir=None):
     """-> ({cat_side: scorer} or None, source path). Reads <report_dir or learn_dir/linknet>/linknet_report_<CS>.json; a report
     of another cat_side is refused; absent / unreadable / no never-tried AUC -> None (the key is then left out)."""
-    p = Path(report_dir or (Path(learn_dir) / "linknet")) / f"linknet_report_{cat_side}.json"
+    directory = Path(report_dir or (Path(learn_dir) / "linknet"))
+    candidate_path = directory / f"report_v2_{cat_side}.json"
+    candidate = C.read_json(candidate_path, None)
+    if isinstance(candidate, dict):
+        selection = candidate.get("selection") or {}
+        choice = selection.get("production_scorer")
+        arm = {"v1": "linknet", "v2": "linknet", "hybrid_v1": "hybrid", "hybrid_v2": "hybrid", "counts": "counts"}.get(choice)
+        if arm is None or (selection.get("v1_gate") or {}).get("test_used_for_selection") is not False:
+            raise ValueError("candidate digest requires validation-only scorer provenance")
+        validation = (candidate.get("validation") or {}).get("F") or {}
+        seen = validation.get("held_out_boards") or {}
+        never = validation.get("never_tried_pair") or {}
+        scorer = {"arm": arm, "auc_seen": seen.get(f"auc_{choice}"), "auc_never": never.get(f"auc_{choice}"), "n_never": never.get("n"), "n_pos_never": never.get("pos"), "rule": "matched report_v2 production choice from chronological validation only; test unused", "production_scorer": choice, "selection_source": "chronological validation only", "test_used_for_selection": False}
+        return {cat_side: scorer}, str(candidate_path)
+    p = directory / f"linknet_report_{cat_side}.json"
     rep = C.read_json(p, None)
     if not isinstance(rep, dict) or rep.get("cat_side") not in (None, cat_side):
         return None, str(p)
@@ -201,7 +215,7 @@ def assemble(cat_side, learn_dir=None, linknet_report_dir=None):
     sc, sp = linknet_scorer(cat_side, d, linknet_report_dir)
     if sc:
         doc["scorer"] = sc
-        sources["scorer"] = {"file": sp, "rule": SCORER_RULE}
+        sources["scorer"] = {"file": sp, "rule": sc[cat_side]["rule"]}
     return doc
 
 

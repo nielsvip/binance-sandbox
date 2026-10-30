@@ -431,6 +431,8 @@ class Assembler:
         ev = {"e": "row", "t": b["t0"], "s": self.sym, "b": self.board, "sh": b["key"][0], "k": f"{sw}={cand}", "cb": _r(b["cb"]), "n": nrec,
               "y": ys, "ni": b["ni"], "sy": syn, "p": promoted, "ps": how, "g": regime_of(self.ctx.get("bh")), "ti": self.ctx.get("tier"),
               "bh": _r(self.ctx.get("bh"), 3), "rk": rk}
+        if b.get("eval_provenance"):
+            ev["eval_provenance"] = b["eval_provenance"]
         nfp = b.get("naked_fp")
         if nfp and naked is not None:
             nz = [[hdr, _r(rec[0]), rec[1]] for hdr, rec in b["y"].items() if (b.get("yfp") or {}).get(hdr) == nfp]
@@ -496,6 +498,8 @@ class Assembler:
                 self.close_row(None, next_cb=cb)
                 self.buf = {"key": key, "t0": ts, "cb": cb, "y": {}, "yv": {}, "ni": 0, "naked": None}
             rec = self._rec(r)
+            provenance_fields = ("ts", "fn", "valid", "invalid_reason", "err", "cached", "fp", "evaluation_success", "npz_id", "npz_md5", "engine_md5", "window_days", "offset_days", "cum_before", "set_sha", "base_set_id")
+            self.buf.setdefault("eval_provenance", {})[lab] = {name: r[name] for name in provenance_fields if name in r}
             if lab == "naked":
                 self.buf["naked"] = rec
                 fp = r.get("fp")

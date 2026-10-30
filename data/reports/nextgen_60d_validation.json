@@ -1,15 +1,16 @@
 {
-  "tested_at_utc": "2026-10-30T20:00:27.496880Z",
+  "tested_at_utc": "2026-10-30T20:05:15.477293Z",
   "patch": "/Users/niels/Documents/binance/data/reports/nextgen_60d_candidate.patch",
-  "patch_sha256": "ecad574fe7b24131d1f5726f42feda5702c9ad30c41aa3189a88c162677ebc95",
+  "patch_sha256": "847dde0eab137f1e6b8880e9d582e623c8e1be1aa9b04d3fbb1857ee12014bbf",
   "source_preimage_sha256": {
     "tools/opt/evaluate_v12.py": "555ecba9821093f54079d97ff4863f2b904ba7f552207ca702345797a443f0f5",
     "v15_pilot.py": "3588e3b2168540eede250ae65d6d19e42020d03dd7d0d30f42ff5f527e4aa5d6",
-    "tools/v15_npz_bench.py": "966605762611be4fef15b70cd332c9bf39c75f767902abba4c940f60aceadb11"
+    "tools/v15_npz_bench.py": "966605762611be4fef15b70cd332c9bf39c75f767902abba4c940f60aceadb11",
+    "switch_parity.py": "8890c7ec9be369d29af89f186a4d8a13567cdbdec6c95a2e06befe33e67bc160"
   },
   "checks": [
     "patch_applies_to_temporary_copies_only",
-    "three_candidate_sources_compile",
+    "four_candidate_sources_compile",
     "crypto_30_calendar_days_exact_aligned",
     "crypto_60_calendar_days_exact_aligned",
     "stocks_30_sessions_exact",

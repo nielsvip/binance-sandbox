@@ -762,6 +762,19 @@ class Tradier:
         self.env, self.out, self.s = env, out, _session(None)
         self._clock = (0.0, False)
         self._orders_cache = {}
+        self._protected_ids = {}
+        for days_back in (1, 0):
+            path = self.out / f"ledger_stocks_{dt.datetime.fromtimestamp(time.time() - days_back * 86400, dt.timezone.utc):%Y-%m-%d}.jsonl"
+            try:
+                for line in path.read_text().splitlines():
+                    row = json.loads(line)
+                    key = (row.get("acct"), row.get("ss"))
+                    if row.get("status") == "PROTECTED_OTO_SUBMITTED" and (row.get("resp") or {}).get("id"):
+                        self._protected_ids.setdefault(key, set()).add(str(row["resp"]["id"]))
+                    elif row.get("status") == "PROTECTED_OTO_CANCELLED":
+                        self._protected_ids.setdefault(key, set()).discard(str(row.get("order_id")))
+            except (OSError, ValueError, TypeError):
+                continue
 
     def account(self, acct):
         a = acct.upper()
@@ -810,42 +823,53 @@ class Tradier:
         q = q[0] if isinstance(q, list) else q
         return float(q.get("last") or q.get("ask") or 0.0)
 
-    def _recent_orders(self, acct):
-        cached = self._orders_cache.get(acct)
+    def _protected_order(self, acct, order_id):
+        cached = self._orders_cache.get((acct, str(order_id)))
         if cached and time.time() - cached[0] < 5:
             return cached[1]
         aid, _key, _base = self.account(acct)
-        doc = self._req("GET", acct, f"/accounts/{aid}/orders")
-        rows = (doc.get("orders") or {}).get("order") or []
-        rows = [rows] if isinstance(rows, dict) else rows
-        self._orders_cache[acct] = (time.time(), rows)
-        return rows
+        row = (self._req("GET", acct, f"/accounts/{aid}/orders/{order_id}").get("order") or {})
+        self._orders_cache[(acct, str(order_id))] = (time.time(), row)
+        return row
 
     def pending_protected(self, acct, symbol, side):
-        rows = self._recent_orders(acct)
-        opening_side = "buy" if side == "LONG" else "sell_short"
-        return next((row for row in rows if str(row.get("symbol") or "").upper() == symbol and str(row.get("side") or "").lower() == opening_side and str(row.get("status") or "").lower() in ("open", "pending", "partially_filled") and ((str(row.get("class") or row.get("order_class") or "").lower() == "oto") or str(row.get("tag") or "").startswith("vdo"))), None)
+        key = (acct, f"{symbol}_{side}")
+        for order_id in tuple(self._protected_ids.get(key, ())):
+            row = self._protected_order(acct, order_id)
+            legs = row.get("leg") or []
+            legs = [legs] if isinstance(legs, dict) else legs
+            opening = next((leg for leg in legs if str(leg.get("side") or "").lower() in ("buy", "sell_short")), {})
+            if opening and float(opening.get("exec_quantity") or 0) >= float(opening.get("quantity") or 0) > 0:
+                self._protected_ids[key].discard(order_id)
+                continue
+            if str(row.get("status") or "").lower() in ("open", "pending", "partially_filled"):
+                return row
+            self._protected_ids[key].discard(order_id)
+        return None
 
     def cancel_stale_protected(self, acct, desired):
         aid, _key, _base = self.account(acct)
-        rows = self._recent_orders(acct)
         cancelled = []
-        for row in rows:
-            if not str(row.get("tag") or "").startswith("vdo") or str(row.get("status") or "").lower() not in ("open", "pending", "partially_filled"):
+        for (owner, ss), order_ids in tuple(self._protected_ids.items()):
+            if owner != acct or ss in desired:
                 continue
-            side = str(row.get("side") or "").lower()
-            if side not in ("buy", "sell_short"):
-                continue
-            ss = f"{str(row.get('symbol') or '').upper()}_{'LONG' if side == 'buy' else 'SHORT'}"
-            if ss in desired:
-                continue
-            order_id = row.get("id")
-            if not order_id:
-                raise RuntimeError(f"OTO_CANCEL_NO_ID {acct} {ss}")
-            result = self._req("DELETE", acct, f"/accounts/{aid}/orders/{order_id}")
-            cancelled.append((ss, order_id, result))
-        if cancelled:
-            self._orders_cache.pop(acct, None)
+            for order_id in tuple(order_ids):
+                row = self._protected_order(acct, order_id)
+                if str(row.get("status") or "").lower() not in ("open", "pending", "partially_filled"):
+                    order_ids.discard(order_id)
+                    continue
+                legs = row.get("leg") or []
+                legs = [legs] if isinstance(legs, dict) else legs
+                opening = next((leg for leg in legs if str(leg.get("side") or "").lower() in ("buy", "sell_short")), {})
+                if opening and float(opening.get("exec_quantity") or 0) >= float(opening.get("quantity") or 0) > 0:
+                    order_ids.discard(order_id)
+                    continue
+                if float(opening.get("exec_quantity") or 0) > 0:
+                    raise RuntimeError(f"OTO_PARTIAL_ENTRY_NEEDS_STOP_RECONCILIATION {acct} {ss} id={order_id}")
+                result = self._req("DELETE", acct, f"/accounts/{aid}/orders/{order_id}")
+                order_ids.discard(order_id)
+                self._orders_cache.pop((acct, order_id), None)
+                cancelled.append((ss, order_id, result))
         return cancelled
 
     def send_protected(self, acct, order, quantity, stop_level):
@@ -866,9 +890,9 @@ class Tradier:
         parent = result.get("order") or {}
         if not parent.get("id"):
             raise RuntimeError(f"OTO_SUBMISSION_UNCONFIRMED {symbol}: {str(parent)[:160]}")
-        cached = self._orders_cache.get(acct)
-        if cached:
-            cached[1].append({"id": parent["id"], "symbol": symbol, "side": opening_side, "status": "pending", "class": "oto", "tag": data["tag"]})
+        order_id = str(parent["id"])
+        self._protected_ids.setdefault((acct, order["ss"]), set()).add(order_id)
+        self._orders_cache[(acct, order_id)] = (time.time(), {"id": parent["id"], "status": "pending", "class": "oto"})
         return {"id": parent["id"], "status": parent.get("status"), "class": "oto", "limit": limit_price, "stop": stop_level}
 
     def size(self, o, held, price):

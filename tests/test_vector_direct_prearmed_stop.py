@@ -100,16 +100,25 @@ def test_tradier_contingent_order_has_entry_and_stop_legs(tmp_path):
 def test_stale_contingent_entry_is_cancelled_but_current_entry_is_kept(tmp_path):
     broker = module.Tradier({}, tmp_path)
     broker.account = lambda account: ("test-account", "test-key", "test-url")
+    broker._protected_ids = {("trb", "XYZ_LONG"): {"17"}, ("trb", "ABC_SHORT"): {"18"}}
     deleted = []
-    rows = [{"id": 17, "symbol": "XYZ", "side": "buy", "status": "open", "tag": "vdo1"}, {"id": 18, "symbol": "ABC", "side": "sell_short", "status": "pending", "tag": "vdo2"}, {"id": 19, "symbol": "OTHER", "side": "buy", "status": "open", "tag": "manual"}]
     def request(method, account, path, params=None, data=None):
         if method == "GET":
-            return {"orders": {"order": rows}}
+            return {"order": {"id": 18, "status": "open", "class": "oto", "leg": [{"side": "sell_short", "exec_quantity": 0}]}}
         deleted.append(path)
         return {"order": {"status": "ok"}}
     broker._req = request
     assert len(broker.cancel_stale_protected("trb", {"XYZ_LONG"})) == 1
     assert deleted == ["/accounts/test-account/orders/18"]
+
+
+def test_filled_oto_parent_is_not_cancelled_with_its_live_stop(tmp_path):
+    broker = module.Tradier({}, tmp_path)
+    broker.account = lambda account: ("test-account", "test-key", "test-url")
+    broker._protected_ids = {("trb", "XYZ_LONG"): {"17"}}
+    broker._req = lambda method, account, path, params=None, data=None: {"order": {"id": 17, "status": "open", "class": "oto", "leg": [{"side": "buy", "quantity": 2, "exec_quantity": 2}, {"side": "sell", "status": "held"}]}} if method == "GET" else (_ for _ in ()).throw(AssertionError("filled parent must remain"))
+    assert broker.cancel_stale_protected("trb", set()) == []
+    assert broker.pending_protected("trb", "XYZ", "LONG") is None
 
 
 def test_lost_stop_closes_filled_position(tmp_path):

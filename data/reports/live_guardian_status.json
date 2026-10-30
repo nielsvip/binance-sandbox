@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-30T20:03:44Z",
+ "ts": "2026-10-30T20:09:11Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,7 +29,7 @@
   "fin": {
    "fills_6h": 0,
    "open_positions": 1,
-   "unrealised_usd": -0.01,
+   "unrealised_usd": 0.03,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 0,
    "open_positions": 2,
-   "unrealised_usd": -0.96,
+   "unrealised_usd": -0.84,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 1,
    "open_positions": 2,
-   "unrealised_usd": 0.12,
+   "unrealised_usd": 0.15,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 0,
    "open_positions": 1,
-   "unrealised_usd": -0.06,
+   "unrealised_usd": -0.12,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,59 +127,49 @@
     "60398"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 74.0
   },
   "men": {
    "pids": [
     "59391"
    ],
-   "starts_30m": 2,
-   "log_age_s": 38.0
+   "starts_30m": 1,
+   "log_age_s": 4.0
   },
   "ang": {
    "pids": [
     "60082"
    ],
    "starts_30m": 1,
-   "log_age_s": 133.0
+   "log_age_s": 8.0
   },
   "inf": {
    "pids": [
     "64156"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 0.0
   },
   "flz": {
    "pids": [
     "70377"
    ],
-   "starts_30m": 2,
-   "log_age_s": 15.0
+   "starts_30m": 1,
+   "log_age_s": 1.0
   },
   "trb": {
    "pids": [],
-   "starts_30m": 1,
-   "log_age_s": 3717.0
+   "starts_30m": 0,
+   "log_age_s": 4043.0
   },
   "trc": {
    "pids": [],
-   "starts_30m": 1,
-   "log_age_s": 5131.0
+   "starts_30m": 0,
+   "log_age_s": 5458.0
   }
  },
- "alerts": [
-  {
-   "ts": "2026-10-30T20:03:45Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 133s"
-  }
- ],
- "alert_counts": {
-  "STALE_LOG": 1
- },
+ "alerts": [],
+ "alert_counts": {},
  "active_interventions": {
   "acct:trc": {
    "ts": 1791314517.218395,
@@ -231,5 +221,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.25
+ "sweep_s": 1.38
 }

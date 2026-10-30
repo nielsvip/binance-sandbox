@@ -1,0 +1,13 @@
+{
+  "captured_at_utc": "2026-10-30T20:05:42.913961Z",
+  "source_host": "s2",
+  "source_path": "/home/niels/v15_run38_20261028/progress/v15_delta_log/EDUUSDT_LONG_jump.jsonl",
+  "tail_lines": 2000,
+  "rows_captured": 2000,
+  "raw_tail_sha256": "5f44dde90a640c57a1b75a213c8afb29fea87c580851a69eadf5a58a869ea105",
+  "sample_sha256": "37dc604b5da0c0a946cc119fc4f59af4217089a0f6e0e4d2b241a45220aff9e4",
+  "first_row_ts": "2026-10-30T19:58:36Z",
+  "last_row_ts": "2026-10-30T20:05:39Z",
+  "timing_semantics": "secs is reported eval elapsed wall time, NOT process CPU; cached/settled excluded from measured cost pool",
+  "fields_dropped": "gain, trades, Sharpe/capital fields omitted"
+}

@@ -66,6 +66,13 @@ def _echo(t, typ, q, px, reason="VEC_DRIVEN_OPEN_RECONCILE_", ind=None):
     }
 
 
+def test_tradier_oto_parent_exports_filled_entry_leg():
+    parent = {"id": 17, "class": "oto", "status": "open", "leg": [{"id": 18, "symbol": "BNO", "side": "buy", "quantity": 2, "exec_quantity": 2, "avg_fill_price": 30.12, "status": "filled", "transaction_date": "2026-10-30T19:30:00Z"}, {"id": 19, "side": "sell", "quantity": 2, "exec_quantity": 0, "status": "open"}]}
+    fill = vx.TradierRO._fill(parent)
+    assert fill["status"] == "filled" and fill["exec_qty"] == 2 and fill["avg_price"] == 30.12
+    assert fill["order_id"] == "17" and fill["side"] == "buy"
+
+
 def test_build_row_carries_fill_reason_value_and_order_id():
     r = vi.build_row(_rec(), "S1_VECTOR_DIRECT")
     assert (
