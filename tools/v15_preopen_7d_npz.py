@@ -48,9 +48,10 @@ def build_overlay(symbol: str, overlay_dir: Path, now: dt.datetime | None = None
     key = tradier_key(ROOT)
     if not key:
         raise ValueError(f"{symbol}: no Tradier market-data key for the premarket bars")
-    deadline = time.time() + 90
+    live = abs(time.time() - now.timestamp()) < 600  # a past `now` (replay/test) never waits
+    deadline = time.time() + (90 if live else 0)
     while True:
-        bars, why = fetch_premarket(key, symbol, local_day, wanted, max(time.time(), now.timestamp()))
+        bars, why = fetch_premarket(key, symbol, local_day, set(closed), time.time() if live else now.timestamp())
         if bars is None:
             raise ValueError(f"{symbol}: premarket fetch failed: {why}")
         if closed[-1] in bars or time.time() >= deadline:
