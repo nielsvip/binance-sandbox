@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-30T18:02:57Z",
+ "ts": "2026-10-30T18:08:00Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -28,20 +28,20 @@
  "accounts": {
   "trb": {
    "fills_6h": 0,
-   "open_positions": 3,
-   "unrealised_usd": 4.51,
+   "open_positions": 2,
+   "unrealised_usd": 2.79,
    "pos_mismatch": 0
   },
   "trc": {
    "fills_6h": 0,
    "open_positions": 1,
-   "unrealised_usd": -7.03,
+   "unrealised_usd": -7.28,
    "pos_mismatch": 0
   },
   "fin": {
    "fills_6h": 0,
    "open_positions": 1,
-   "unrealised_usd": 0.12,
+   "unrealised_usd": 0.1,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -57,7 +57,7 @@
   "men": {
    "fills_6h": 0,
    "open_positions": 2,
-   "unrealised_usd": -0.8,
+   "unrealised_usd": -0.78,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -73,7 +73,7 @@
   "ang": {
    "fills_6h": 1,
    "open_positions": 2,
-   "unrealised_usd": 0.37,
+   "unrealised_usd": 0.36,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -105,7 +105,7 @@
   "flz": {
    "fills_6h": 0,
    "open_positions": 1,
-   "unrealised_usd": -0.05,
+   "unrealised_usd": -0.03,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -138,63 +138,53 @@
     "15395"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 4.0
   },
   "men": {
    "pids": [
     "14728"
    ],
-   "starts_30m": 0,
-   "log_age_s": 1.0
+   "starts_30m": 1,
+   "log_age_s": 5.0
   },
   "ang": {
    "pids": [
     "13630"
    ],
-   "starts_30m": 0,
-   "log_age_s": 2.0
+   "starts_30m": 1,
+   "log_age_s": 8.0
   },
   "inf": {
    "pids": [
     "14141"
    ],
-   "starts_30m": 0,
-   "log_age_s": 10.0
+   "starts_30m": 1,
+   "log_age_s": 4.0
   },
   "flz": {
    "pids": [
     "14468"
    ],
-   "starts_30m": 0,
-   "log_age_s": 1.0
+   "starts_30m": 1,
+   "log_age_s": 11.0
   },
   "trb": {
    "pids": [
     "13227"
    ],
-   "starts_30m": 0,
-   "log_age_s": 14.0
+   "starts_30m": 1,
+   "log_age_s": 2.0
   },
   "trc": {
    "pids": [
     "13411"
    ],
-   "starts_30m": 0,
-   "log_age_s": 2.0
+   "starts_30m": 1,
+   "log_age_s": 18.0
   }
  },
- "alerts": [
-  {
-   "ts": "2026-10-30T18:02:57Z",
-   "severity": "CRITICAL",
-   "kind": "RAPID_LOSS_KEY",
-   "key": "men:IMXUSDT_SHORT",
-   "evidence": "unrealised -6.21% (60-min high -2.02%), amt 131"
-  }
- ],
- "alert_counts": {
-  "RAPID_LOSS_KEY": 1
- },
+ "alerts": [],
+ "alert_counts": {},
  "active_interventions": {
   "acct:trc": {
    "ts": 1791314517.218395,
@@ -246,5 +236,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 2.02
+ "sweep_s": 3.77
 }
