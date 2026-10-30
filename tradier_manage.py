@@ -49378,6 +49378,37 @@ class TradierTradeManager:
             if not _v20_ok:
                 logger.warning(f"[TRB_V20_STATE_BLOCK] {position_key}: {action} requires fresh actionable V20 state targeting {position_side}")
                 return "BLOCKED_TRB_V20_STATE"
+        _prearm_increase = not (is_full_close or "CLOSE" in _exit_action or "REDUCE" in _exit_action or "STOP" in _exit_action) and ((str(position_side or "").upper() == "LONG" and str(side or "").upper() == "BUY") or (str(position_side or "").upper() == "SHORT" and str(side or "").upper() == "SELL"))
+        if _prearm_increase:
+            try:
+                _ind_pre = self.get_indicators(symbol) or {}
+                _px_pre = safe_fetch_float(old_price or _ind_pre.get("current_price") or _ind_pre.get("close"), 0.0)
+                _long_pre = str(position_side or "").upper() == "LONG"
+                _soft_pre = _fixed_stop_core.freeze_software_level(_long_pre, safe_fetch_float(_ind_pre.get("dc_low_15m"), 0.0), safe_fetch_float(_ind_pre.get("dc_high_15m"), 0.0), _px_pre)
+                _stop_pre = _fixed_stop_core.exchange_level(_long_pre, _soft_pre)
+                _qty_pre = abs(safe_fetch_float(original_position_amt, 0.0)) + abs(safe_fetch_float(quantity, 0.0))
+                if _px_pre <= 0 or _stop_pre <= 0 or _qty_pre <= 0 or (_long_pre and _stop_pre >= _px_pre) or (not _long_pre and _stop_pre <= _px_pre):
+                    raise RuntimeError(f"invalid stop level {_stop_pre}, price {_px_pre}, qty {_qty_pre}")
+                async def _resting_pre():
+                    _bsnap.invalidate(account_key)
+                    _FIXED_STOP_ORDERS_MEMO.pop(str(account_key or ""), None)
+                    _rows = await self._fixed_stop_broker_stops(account_key, symbol, position_side)
+                    if _rows is None:
+                        return False
+                    for _row in _rows:
+                        _level = safe_fetch_float(_row.get("stop_price") or _row.get("stop"), 0.0)
+                        _qty = safe_fetch_float(_row.get("quantity"), 0.0)
+                        if _qty >= _qty_pre and _level > 0 and ((_long_pre and _level >= _stop_pre) or (not _long_pre and _level <= _stop_pre)):
+                            return True
+                    return False
+                if not await _resting_pre():
+                    _placed_pre = await self._fixed_stop_order_action_tradier(position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, action="PLACE_STOP", stop_price=_stop_pre, quantity=_qty_pre, current_price=_px_pre)
+                    if not str(_placed_pre or "").upper().startswith("SUCCESS") or not await _resting_pre():
+                        raise RuntimeError(f"broker stop did not rest before entry ({_placed_pre})")
+                logger.critical(f"🛡️ [ENTRY_STOP_PREARMED_TR] {position_key}: stop {_stop_pre:.4f} qty {_qty_pre} rests BEFORE {action}")
+            except Exception as _prearm_error:
+                logger.critical(f"⛔ [ENTRY_STOP_REFUSED_TR] {position_key}: {action} NOT SENT: {_prearm_error}")
+                return "REFUSED_ENTRY_WITHOUT_RESTING_STOP"
         _res = await self._execute_now_inner(
             position_key=position_key, account_key=account_key, symbol=symbol,
             original_position_amt=original_position_amt, side=side, position_side=position_side,

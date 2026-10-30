@@ -33832,6 +33832,46 @@ class MultiAccountTradeManager:
             if not _net_exit_ok(_gross_gain, _fee_floor):
                 logger.warning(f"[EXECUTE_NOW_NET_GAIN_BLOCK] {position_key}: {action} blocked; gross_gain={_gross_gain!r}% estimated_fee={_fee_floor:.4f}% reason={str(reason or '')[:100]}")
                 return "BLOCKED_NET_GAIN"
+        _act_u = str(action or "").upper()
+        _prearm_incr = not (is_full_close or "CLOSE" in _act_u or "REDUCE" in _act_u or "STOP" in _act_u) and (
+            is_hedge
+            or (str(position_side or "").upper() == "LONG" and str(side or "").upper() == "BUY")
+            or (str(position_side or "").upper() == "SHORT" and str(side or "").upper() == "SELL")
+        )
+        _prearm_level = 0.0
+        _prearm_client = None
+        async def _prearm_resting():
+            rows = await self._fixed_stop_algo_call(_prearm_client, "list", symbol=symbol)
+            rows = rows.get("orders") or [] if isinstance(rows, dict) else rows or []
+            for row in rows:
+                if not isinstance(row, dict) or str(row.get("orderType") or row.get("type") or "").upper() != "STOP_MARKET":
+                    continue
+                if str(row.get("positionSide") or "").upper() != str(position_side or "").upper() or str(row.get("workingType") or "").upper() != "MARK_PRICE" or str(row.get("closePosition") or "").lower() != "true":
+                    continue
+                level = safe_fetch_float(row.get("triggerPrice"), 0.0)
+                if level <= 0 or (str(position_side).upper() == "LONG" and level < _prearm_level) or (str(position_side).upper() == "SHORT" and level > _prearm_level):
+                    continue
+                if str(row.get("algoStatus") or row.get("status") or "NEW").upper() in ("NEW", "OPEN"):
+                    return True
+            return False
+        if _prearm_incr:
+            try:
+                _px_pre = safe_fetch_float(old_price, 0.0)
+                _ind_pre = self.service.indicators_snapshot.get(symbol, {}) if self.service else {}
+                _long_pre = str(position_side or "").upper() == "LONG"
+                _soft_pre = _fixed_stop_core.freeze_software_level(_long_pre, safe_fetch_float(_ind_pre.get("dc_low_15m"), 0.0), safe_fetch_float(_ind_pre.get("dc_high_15m"), 0.0), _px_pre)
+                _prearm_level = _fixed_stop_core.crypto_exchange_level(_long_pre, _soft_pre)
+                if _px_pre <= 0 or _prearm_level <= 0 or (_long_pre and _prearm_level >= _px_pre) or (not _long_pre and _prearm_level <= _px_pre):
+                    raise RuntimeError(f"invalid entry stop: price={_px_pre} level={_prearm_level}")
+                _prearm_client = self.get_client(account_key)
+                if not await _prearm_resting():
+                    _placed = await self.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=original_positionAmt, side="SELL" if _long_pre else "BUY", position_side=position_side, quantity=0.0, old_price=_px_pre, unique_id=f"PREARM_{int(time.time())}", reason="FIXED_STOP_ENTRY_PREARM", is_full_close=False, action="PLACE_STOP", stop_price=_prearm_level)
+                    if not str(_placed or "").upper().startswith("SUCCESS") or not await _prearm_resting():
+                        raise RuntimeError(f"exchange STOP_MARKET not verified resting ({_placed})")
+                logger.critical(f"🛡️ [ENTRY_STOP_PREARMED] {position_key}: exchange STOP_MARKET rests at {_prearm_level:.6f} BEFORE {action}")
+            except Exception as _prearm_error:
+                logger.critical(f"⛔ [ENTRY_STOP_REFUSED] {position_key}: {action} NOT SENT: {_prearm_error}")
+                return "REFUSED_ENTRY_WITHOUT_RESTING_STOP"
         _res = await self._execute_now_inner(
             position_key=position_key, account_key=account_key, symbol=symbol,
             original_positionAmt=original_positionAmt, side=side, position_side=position_side,
@@ -33849,11 +33889,14 @@ class MultiAccountTradeManager:
                 or (str(position_side or "").upper() == "SHORT" and str(side or "").upper() == "SELL")
             )
             if _is_incr and str(_res or "").upper().startswith("SUCCESS"):
-                await self._require_exchange_stop_after_entry(
-                    position_key=position_key, account_key=account_key, symbol=symbol,
-                    position_side=position_side, original_positionAmt=original_positionAmt,
-                    old_price=old_price, action=_act_u, reason=reason, result=str(_res),
-                )
+                if not await _prearm_resting():
+                    _repair = await self._require_exchange_stop_after_entry(position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, original_positionAmt=original_positionAmt, old_price=old_price, action=_act_u, reason=reason, result=str(_res))
+                    if not await _prearm_resting():
+                        logger.critical(f"⛔ [ENTRY_STOP_GONE] {position_key}: filled entry lost its exchange STOP_MARKET (repair={_repair}); emergency close required")
+                        _pos_now = await self.get_position(position_key)
+                        _held_now = abs(safe_fetch_float(getattr(_pos_now, "positionAmt", 0), 0.0)) if _pos_now else 0.0
+                        if _held_now > 0:
+                            await self.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_held_now, side="SELL" if str(position_side).upper() == "LONG" else "BUY", position_side=position_side, quantity=_held_now, old_price=old_price, unique_id=f"FX_UNPROTECTED_{int(time.time())}", reason="FIXED_STOP_UNPROTECTED_ENTRY", is_full_close=True, action="CLOSE")
         except Exception as _rq_e:  # a stop failure must never unwind or mask a real fill
             logger.critical(f"🛡️ [ENTRY_STOP_REQUIRED] {position_key}: post-fill stop requirement ERRORED after {_res}: {_rq_e}")
             self._mark_entry_unprotected(position_key, account_key, symbol, position_side, f"requirement_error:{_rq_e}")
