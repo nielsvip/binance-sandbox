@@ -23,6 +23,9 @@ def session_open_mask(ts_label, bar_minutes: float = 15.0) -> np.ndarray:
     if n == 0 or getattr(_slsg, "_NY", None) is None:
         return out
     rth = _slsg.rth_mask(ts, bar_minutes)
+    # USER 2026-10-30: rth_mask now starts at the 09:15 bar; the session OPEN stays the 09:30 bar.
+    _mins = np.array([_dt.datetime.fromtimestamp(t / (1000.0 if abs(t) > 1e11 else 1.0), _slsg._NY).hour * 60 + _dt.datetime.fromtimestamp(t / (1000.0 if abs(t) > 1e11 else 1.0), _slsg._NY).minute if np.isfinite(t) and t > 0 else -1 for t in ts], dtype=float)
+    rth = rth & (_mins >= 570.0)
     scale = 1000.0 if np.nanmax(np.abs(ts)) > 1e11 else 1.0
     seen = set()
     for i in range(n):

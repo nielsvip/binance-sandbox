@@ -30,10 +30,10 @@ def test_rth_mask_equals_live_rule_at_bar_close_and_open():
     for t, v in zip(ts, m):
         d = dt.datetime.fromtimestamp(t, NY)
         mod = d.hour * 60 + d.minute
-        # bar actionable iff live is open at both the bar open and (just before) the bar close
-        exp = G.live_in_rth(d.weekday(), mod) and G.live_in_rth(d.weekday(), mod + 15 - 1e-6)
+        # USER 2026-10-30: the 09:15 premarket bar acts (its close is the 09:30 open). Actionable iff it starts at 09:15 or later and ends by 16:00.
+        exp = d.weekday() < 5 and mod >= 555 and mod + 15 <= 960
         assert bool(v) == exp, (d, v, exp)
-    assert m.sum() == 5 * 26  # 26 RTH bars per weekday, none on the weekend
+    assert m.sum() == 5 * 27  # 27 bars per weekday (09:15 .. 15:45), none on the weekend
 
 
 def test_opening_buffer_equals_live_rule_at_decision_instant():
