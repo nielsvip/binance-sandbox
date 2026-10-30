@@ -113,6 +113,14 @@ def _timed(symbol_side):
 
 def _publish(symbol_side, state, extra=""):
     OUT.mkdir(parents=True, exist_ok=True)
+    if state.get("ok") and state.get("ledger_sha256"):
+        history = OUT.parent / (OUT.name + "_history") / symbol_side
+        history.mkdir(parents=True, exist_ok=True)
+        stamp = str(state.get("ts") or "").replace(":", "").replace("-", "")
+        record = history / f"{state.get('npz_tail')}_{stamp}_{state['ledger_sha256'][:12]}.json"
+        record_tmp = record.with_name(record.name + f".new.{os.getpid()}")
+        record_tmp.write_text(json.dumps(state, indent=1))
+        os.replace(record_tmp, record)
     target = OUT / f"{symbol_side}.json"
     tmp = target.with_name(target.name + f".new.{os.getpid()}")
     tmp.write_text(json.dumps(state, indent=1))
