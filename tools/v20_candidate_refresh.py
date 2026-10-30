@@ -128,17 +128,43 @@ def files_under(root):
 
 
 def source_files(root):
+    import ast
     root = Path(root)
-    excluded = {"data", "backups", ".git", ".venv", "venv", "node_modules", "__pycache__", ".mypy_cache", ".pytest_cache", "site-packages"}
-    result = []
-    for directory, names, files in os.walk(root):
-        names[:] = [name for name in names if name not in excluded and not name.startswith(".") and not (Path(directory) / name).is_symlink()]
-        for name in files:
-            path = Path(directory) / name
-            if name.endswith(".py"):
-                if path.is_symlink():
-                    raise ValueError(f"source snapshot contains symlink: {path}")
-                result.append(path)
+    excluded = {"data", "backups", "venv", "node_modules", "__pycache__", "site-packages", "projects", "project", "archive", "artifacts", "tests", "reports", "outputs", "logs", "scratch", "scratch_def2", "staging", "tmp", "old", "rollback", "patches", "proposed_patches", "contained_instance", "SPREADSHEETS", "indicators"}
+    result, pending, visited = set(), list(root.glob("*.py")), set()
+    packages = {path.name for path in root.iterdir() if path.is_dir() and (path / "__init__.py").is_file()}
+    packages.add("tools")
+    def add_package(name):
+        if name in visited or name in excluded or name.startswith("."):
+            return
+        visited.add(name)
+        package = root / name
+        if package.is_symlink():
+            raise ValueError(f"source package contains symlink: {package}")
+        if not package.is_dir():
+            return
+        for directory, names, files in os.walk(package):
+            names[:] = [value for value in names if value not in excluded and not value.startswith(".") and not (Path(directory) / value).is_symlink()]
+            pending.extend(Path(directory) / value for value in files if value.endswith(".py"))
+    for name in sorted(packages):
+        add_package(name)
+    while pending:
+        path = pending.pop()
+        if path in result:
+            continue
+        if path.is_symlink():
+            raise ValueError(f"source snapshot contains symlink: {path}")
+        result.add(path)
+        try:
+            syntax = ast.parse(path.read_bytes())
+        except (SyntaxError, UnicodeDecodeError):
+            continue
+        for node in ast.walk(syntax):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    add_package(alias.name.split(".")[0])
+            elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
+                add_package(node.module.split(".")[0])
     return sorted(result)
 
 

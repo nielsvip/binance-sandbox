@@ -65,7 +65,7 @@ def install_audit(root, side):
 
 def install_routes(root, side, assets=None):
     root, side = Path(root).resolve(), Path(side).resolve()
-    assets = Path(assets or Path(__file__).with_name("v15_nextgen_routing_assets")).resolve()
+    assets = Path(assets or Path(__file__).resolve().parents[1] / "data/reports/nextgen_gate_artifact_repair/routing_assets").resolve()
     meta = json.loads((assets / "manifest.json").read_text())
     receipt = {}
     for name, before in meta["source_sha256"].items():
