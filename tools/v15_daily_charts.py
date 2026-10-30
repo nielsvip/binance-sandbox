@@ -314,6 +314,88 @@ def comparison_block(board: dict, res: dict) -> str:
     )
 
 
+def confirmed_order_rows(host: str, symsides: set[str], since: float) -> list[dict]:
+    """Read the trader journal on its owner host; an accepted stock order is not a fill."""
+    script = """import glob,json,pathlib
+symsides = %r
+since = %r
+venue = %r
+for path in sorted(glob.glob(str(pathlib.Path.home() / 'binance/data/vector_direct' / ('ledger_' + venue + '_*.jsonl')))):
+    for line in open(path):
+        try: row = json.loads(line)
+        except (ValueError, UnicodeError): continue
+        if row.get('event') == 'ORDER' and row.get('ss') in symsides and float(row.get('ts') or 0) >= since:
+            print(json.dumps(row, separators=(',', ':')))
+""" % (repr(sorted(symsides)), repr(since), repr("crypto" if host == "s1" else "stocks"))
+    response = ssh(host, "python3 - <<'PY'\n" + script + "PY", 180)
+    return [json.loads(line) for line in response.stdout.splitlines() if line.startswith("{")]
+
+
+def _chart_array(page: str, name: str) -> list:
+    match = re.search(r"const " + name + r" = ([^\n]+);", page)
+    if not match:
+        raise ValueError(f"chart has no {name} array")
+    return json.loads(match.group(1))
+
+
+def discrepancy_overlay(page: str, board: dict, rows: list[dict]) -> tuple[str, dict]:
+    """Compare action and exact bar after publication; draw full-height discrepancy markers."""
+    labels = _chart_array(page, "LABELS")
+    trades = _chart_array(page, "TRADES")
+    events = _chart_array(page, "EVENTS")
+    published = parse_iso(board["published_utc"])
+    if published is None:
+        raise ValueError("original board publication time is not parseable")
+    first = published.timestamp()
+    bar_times = []
+    for label in labels:
+        parsed = parse_iso(str(label).replace(" ", "T") + ":00")
+        bar_times.append(int(parsed.timestamp()) if parsed else 0)
+    vector = set()
+    for trade in trades:
+        for action, field in (("OPEN", "bar_entry"), ("CLOSE", "bar_exit")):
+            if action == "CLOSE" and trade.get("unrealised"):
+                continue
+            index = trade.get(field)
+            if isinstance(index, int) and 0 <= index < len(bar_times) and bar_times[index] >= first:
+                vector.add((bar_times[index], action))
+    for event in events:
+        action = str(event.get("type") or "").upper()
+        index = event.get("bar")
+        if action in ("AUGMENT", "REDUCE") and isinstance(index, int) and 0 <= index < len(bar_times) and bar_times[index] >= first:
+            vector.add((bar_times[index], action))
+    live, accepted = set(), set()
+    accounts = {}
+    for row in rows:
+        if row.get("ss") != board["symside"] or row.get("status") != "SENT" or row.get("dry_run"):
+            continue
+        parts = str(row.get("key") or "").split("|")
+        if len(parts) < 4 or not parts[2].isdigit():
+            continue
+        key = (int(parts[2]), str(row.get("act") or "").upper())
+        if key[0] < first or key[0] not in bar_times:
+            continue
+        response = row.get("resp") or {}
+        status = str(response.get("status") or "").upper()
+        filled = status in ("FILLED", "PARTIALLY_FILLED") or float(response.get("executedQty") or 0) > 0
+        (live if filled else accepted).add(key)
+        accounts.setdefault(key, set()).add(str(row.get("acct") or "?"))
+    bar_index = {bar: i for i, bar in enumerate(bar_times)}
+    blue = [{"i": bar_index[bar], "action": act, "accounts": sorted(accounts.get((bar, act), []))} for bar, act in sorted(live - vector)]
+    orange = [{"i": bar_index[bar], "action": act} for bar, act in sorted(vector - live - accepted)]
+    pending = [{"i": bar_index[bar], "action": act} for bar, act in sorted(accepted - live)]
+    data = json.dumps({"blue": blue, "orange": orange, "accepted_unverified": pending}, separators=(",", ":"))
+    plugin = "const DISCREPANCIES = " + data + ";\nChart.register({id:'forwardDiscrepancyLines',afterDatasetsDraw(chart){const x=chart.scales.x,a=chart.chartArea,ctx=chart.ctx;for(const [name,color] of [['blue','#2563eb'],['orange','#f97316']]){for(const row of DISCREPANCIES[name]){const px=x.getPixelForValue(row.i);if(px<a.left||px>a.right)continue;ctx.save();ctx.strokeStyle=color;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(px,a.top);ctx.lineTo(px,a.bottom);ctx.stroke();ctx.restore();}}}});\n"
+    page = page.replace("new Chart(c,{", plugin + "new Chart(c,{", 1)
+    summary = (f"<div class='metrics'><b>AFTER ORIGINAL BOARD PUBLICATION — VECTOR VS CONFIRMED BROKER FILLS</b> "
+               f"<span style='color:#60a5fa'>blue live only {len(blue)}</span> · "
+               f"<span style='color:#fb923c'>orange vector only {len(orange)}</span> · "
+               f"""accepted, fill unverified {len(pending)}. Exact 15 minute bar and action; quantities ignored. """
+               f"Stock 'ok' responses are order acceptance, not actual fills. No broker fill history means orange marks require investigation.</div>")
+    page = page.replace("<div id='wrap'>", summary + "<div id='wrap'>", 1)
+    return page, {"live_only": len(blue), "vector_only": len(orange), "accepted_unverified": len(pending)}
+
+
 def fail_page(symside: str, board: dict, error: str, now: str) -> str:
     return (
         f"<!doctype html><html><head><meta charset=utf-8><title>{_html.escape(symside)} daily FAIL</title>"
@@ -335,6 +417,17 @@ def publish(boards: dict, results: list, run_id: str, started: str, partial: boo
 
     CHARTS.mkdir(parents=True, exist_ok=True)
     by_sym = {r["symside"]: r for r in results}
+    live_rows = {}
+    live_errors = {}
+    for host in HOSTS:
+        sides = {s for s, r in by_sym.items() if r.get("status") == "OK" and ("s1" if s.rsplit("_", 1)[0].endswith(("USDT", "USDC", "USD1")) else "s5") == host}
+        stamps = [parse_iso(boards[s].get("published_utc")) for s in sides]
+        if not sides or not any(stamps):
+            continue
+        try:
+            live_rows[host] = confirmed_order_rows(host, sides, min(t.timestamp() for t in stamps if t))
+        except Exception as exc:
+            live_errors[host] = str(exc)[:180]
     entries, now = [], iso(utcnow())
     for symside in sorted(boards):
         board, res = boards[symside], by_sym.get(symside)
@@ -351,6 +444,15 @@ def publish(boards: dict, results: list, run_id: str, started: str, partial: boo
                 if res["set_md5"] != board["overrides_md5"]:
                     raise AssertionError(f"worker set md5 {res['set_md5']} != board {board['overrides_md5']}")
                 text = re.sub(r"(<h2>.*?</h2>)", lambda m: m.group(1) + comparison_block(board, res), text, count=1, flags=re.S)
+                title = f"{symside} — B&H {_fmt(res['metrics'].get('bh_pct'))}% · {res['metrics'].get('trades')} vector trades · gain {_fmt(res['metrics'].get('gain_pct'))}%"
+                text = re.sub(r"<title>.*?</title>", "<title>" + _html.escape(title) + "</title>", text, count=1, flags=re.S)
+                text = re.sub(r"<h2>.*?</h2>", "<h2>" + _html.escape(title) + "</h2>", text, count=1, flags=re.S)
+                owner = "s1" if symside.rsplit("_", 1)[0].endswith(("USDT", "USDC", "USD1")) else "s5"
+                if owner in live_errors:
+                    text = text.replace("<div id='wrap'>", "<div class='metrics' style='color:#ef4444'>LIVE FILL COMPARISON UNAVAILABLE: " + _html.escape(live_errors[owner]) + "</div><div id='wrap'>", 1)
+                    entry["discrepancy_error"] = live_errors[owner]
+                else:
+                    text, entry["discrepancies"] = discrepancy_overlay(text, board, live_rows.get(owner, []))
                 verify_html(text, symside, require_table=True)
                 if parse_chart_metrics(text).get("gain_pct") != res["metrics"]["gain_pct"]:
                     raise AssertionError("final file gain differs from worker result")
