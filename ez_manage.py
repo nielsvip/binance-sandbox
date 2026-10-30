@@ -34040,6 +34040,11 @@ class MultiAccountTradeManager:
                 try:
                     position.fixed_stop_price = _lvl
                     position.fixed_stop_armed = _fixed_stop_core.armed_at_freeze(_is_long, _px, _lvl)
+                    _opened = getattr(position, "opened_at", None)
+                    if hasattr(_opened, "timestamp"):
+                        _opened_epoch = _opened.timestamp()
+                        if _opened_epoch > 0:
+                            position.fixed_stop_anchor = _opened_epoch
                 except Exception:
                     pass
         if _lvl <= 0:

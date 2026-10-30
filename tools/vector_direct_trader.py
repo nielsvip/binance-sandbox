@@ -186,6 +186,15 @@ MIN_PASS_GAP_S = float(os.environ.get("VD_MIN_PASS_GAP_S", "2.0"))
 # It carries the LIFECYCLE the broker APIs do not return (entry_price, opened_at, max_gain, gain, last_signal) — Tradier
 # /positions gives quantity + cost_basis only. The BROKER remains the sole authority on what is held: a row here never
 # creates, removes or resizes a position, it only annotates one the broker already shows, and a disagreement rings.
+# USER 2026-10-30 (verbatim): "MAKE SURE ALL FIN TRADING IS SSTILLL BLOCKED aexcept the trading of men sym_sides from 7D
+# resultss that are < a day old". fin is a LIVE account that sent 47 real orders on 2026-10-30 — it was NOT blocked. It
+# may now open or augment ONE kind of position: a sym_side that is in men's book AND carries a 7D result younger than
+# SEVENDAY_MAX_AGE_S. Everything else is refused. This FAILS CLOSED: no readable 7D artifact means no entries at all,
+# which is today's state because the crypto 7D lane has no driver. EXITS are never gated — closing a position is an
+# absolute law of this system, and a gate that strands a live position is worse than the entry it was meant to stop.
+SEVENDAY_ONLY_ACCOUNTS = tuple(x.strip() for x in os.environ.get("VD_SEVENDAY_ONLY_ACCOUNTS", "fin").split(",") if x.strip())
+SEVENDAY_MAX_AGE_S = float(os.environ.get("VD_SEVENDAY_MAX_AGE_S", str(24 * 3600)))
+SEVENDAY_BOOK = {"fin": "men"}
 MAC_POSITIONS = os.environ.get("VD_MAC_POSITIONS", "1") == "1"
 MAC_POSITIONS_MAX_AGE_S = float(os.environ.get("VD_MAC_POSITIONS_MAX_AGE_S", "900"))
 # Every held position must carry a resting protective stop. Audited per account at most this often (0 = off).

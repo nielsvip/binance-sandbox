@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-10-30T21:33:54.655610Z",
+  "recorded_at": "2026-10-30T21:45:55.071787Z",
   "status": "active_not_achieved",
   "deployment_authorized_by_this_record": false,
   "requirements": {
@@ -160,7 +160,7 @@
       "forward_action": "new historical feature work under already excluded v15_nextgen_*.py or isolated review patches; no revert"
     }
   },
-  "previous_goal_turn_classification": "progress: isolatedS2 Linux tests passed, preserved priorbundle verified, originalper-row NPZsources identified",
+  "previous_goal_turn_classification": "progress: completed prior8model transfer and actualresolver hashverification onS2",
   "restored_archive_consumers": {
     "consumer_audit_CRYPTO_LONG": {
       "consumer_status": "complete rc0; output 616 B, SHA256 b71adaf0bf48b4e6d9a8f33c9bf5b933ee46122470d5e77120117cc85a41c05e; report SHA256 d9383e38a0f24a62720d0e1ec037470be70979dc595b115fffb486c91a143fb2; driver SHA256 6cc2f336331025fd4f73ad059df7b77ad0f01832a1e9c0ee3bb5b3b9c3eaec03",
@@ -237,7 +237,9 @@
         "ROOT/tools/v18_data/<sub>/<name>",
         "ROOT/tools/v18_data_<sub>_<name>"
       ],
-      "local_receipt": "data/reports/nextgen_gate_artifact_repair/previous_nn_bundle.json"
+      "local_receipt": "data/reports/nextgen_gate_artifact_repair/previous_nn_bundle.json",
+      "s2_fixture": "/home/niels/v15_bench/reviews/prior_nn_20261030T213610Z",
+      "s2_receipt": "/home/niels/v15_bench/reviews/prior_nn_20261030T213610Z/verified_bundle_receipt.json"
     },
     "repair": {
       "helper": "tools/v15_nextgen_gate_artifacts.py",
@@ -257,5 +259,26 @@
       "declaration": "tools/v18_model_bundle.json with schema v15_nn_bundle/1 and exact8fileSHA; V15_REQUIRE_MODEL_BUNDLE=1 fails if missing; guard resolves with actualper-sideenvironment",
       "missing_destination_fix": "deployment records okFalse if modeldestinationparent missing; no silentcompletion"
     }
+  },
+  "full_prior_baseline": {
+    "host": "s2",
+    "driver_pid": 1254059,
+    "first_pilot_pid": 1254879,
+    "work": "/home/niels/v15_bench/reviews/prior_baseline_20261030T214353Z",
+    "label": "nextgen_prior_20261030T214353Z",
+    "snapshot": "snap_20261030T210717Z_current8_r2",
+    "state": "driver confirmed live; first side baseline valid and private workbook created",
+    "scope": "full8side priornetwork preparation; not candidate comparison or promotion",
+    "controls": "preserved prior8modelbundle hashverified; commonruntime; championbudget andskipflags;30Dfit7Dholdout; requiredmodelpreflight",
+    "limitations": [
+      "actualmodelinference audit pending",
+      "all8results pending",
+      "previousNN training and current startingfullsets may overlap historicalholdout",
+      "no independentmarketOOS claim"
+    ]
+  },
+  "local_disk_incident": {
+    "observed": "ENOSPC during generated evidence spill and heredoc creation; later rootobserved1.7GiBfree",
+    "action": "no originaldata deleted byroot; learner owns reproduciblepartial reclamation and remote regeneration; only smallstatuswrites resumed"
   }
 }
