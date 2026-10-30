@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-10-30T20:09:33.613392Z",
+  "recorded_at": "2026-10-30T20:24:54.222557Z",
   "status": "active_not_achieved",
   "deployment_authorized_by_this_record": false,
   "requirements": {
@@ -16,10 +16,16 @@
         "SSD2T",
         "E3T"
       ],
-      "missing_drive": "TOSHIBA_EXT",
       "transfer_pid_last_observed": 47708,
       "transfer_destination": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_rebuild_scratch",
-      "transfer_verified_complete": false
+      "transfer_verified_complete": false,
+      "fourth_drive": {
+        "name": "TOSHIBA_EXT",
+        "device": "/dev/disk5s1",
+        "uuid": "CB74078E-CB60-392D-A83D-73E7DCF836DC",
+        "state": "physically_present_unmounted",
+        "mount_deferred": "shares USB hub with active WD25 preservation; read-only mount after stable copy"
+      }
     },
     "full_matched_learning_refresh": {
       "status": "incomplete",
@@ -79,5 +85,40 @@
     "tools/v15_nextgen_shadow_plan.py": "eceb880e53b25db0c7a250a01c251f056689dbd8f8df2c99c5865f212248c9ba",
     "tools/v15_nextgen_shadow_replay.py": "6831935eda6f51de802850fdbf109a112bfab95f7b6463565a2b631d7276eeb9",
     "data/reports/nextgen_60d_candidate.patch": "847dde0eab137f1e6b8880e9d582e623c8e1be1aa9b04d3fbb1857ee12014bbf"
+  },
+  "benchmark_repair": {
+    "snapshot": "s2:/home/niels/v15_bench/snap_20261030T201500Z_coherent",
+    "state": "frozen_inputs_startup_preflight_required",
+    "production_parity_audit_at": "2026-10-30T20:12:09.442832Z",
+    "hard_disparities_by_category": {
+      "CRYPTO_LONG": [],
+      "CRYPTO_SHORT": [],
+      "STOCKS_LONG": [],
+      "STOCKS_SHORT": []
+    },
+    "original_npz_vintage": "2026-10-28/2026-10-29",
+    "actual_canary_result": "not_yet_verified"
+  },
+  "learning_smoke": {
+    "root": "s6:/home/niels/v20_candidate_review_20261030",
+    "selected_recent_rows": 311,
+    "source_event_day": "2026-10-27",
+    "scope": "compatibility sample only; not full-corpus absorption",
+    "training_result": "not_yet_verified",
+    "context_vintage": "2026-10-20",
+    "context_coverage": "requires_measurement",
+    "symbol_identity_census": "current book allowlist insufficient for historical corpus; retain unknowns separately",
+    "process_reported": 3829852,
+    "run_dir": "s6:/home/niels/v20_candidate_review_20261030/run_smoke_recent_01",
+    "state": "features_completed_graph_training_observed",
+    "missing_dependency": "binding maps absent in smoke snapshot; unknown binding, not full training readiness"
+  },
+  "automatic_sync_incident": {
+    "finding": "Mac automatic sync copied candidate learning modules into S1 ~/binance before a gate release",
+    "sandbox_linknet_hash_observed": "c82a623d68c3f4db3f313c91f9580cd0f395575966f27a1085239d36146a3b2b",
+    "fix": "tools/mac_livecode_push.sh excludes nine candidate modules; actual rsync filter fixture passed",
+    "rollback_performed": false,
+    "consumer_audit": "Observed active pilots and inspected scheduled learning call paths used ~/binance-sandbox; no relevant ~/binance learner consumer found",
+    "limitation": "process and inspected cron evidence, not an assertion that filesystem was unchanged"
   }
 }

@@ -1,0 +1,14 @@
+{
+  "prepared_at_utc": "2026-10-30T20:21:37.682255Z",
+  "stage": "/var/folders/sx/tx28jqfd58n76ww_d042dy5m0000gn/T/nextgen_canary_routing_four7fk_",
+  "source_snapshot": "s2:/home/niels/v15_bench/snap_20261030T201500Z_coherent",
+  "source_sha256": {
+    "v15_pilot.py": "3588e3b2168540eede250ae65d6d19e42020d03dd7d0d30f42ff5f527e4aa5d6",
+    "switch_parity.py": "37cfb6c29977797f48a0ebbf4ac532165ce440ba5ebcf23280f3c071dc9f6f82"
+  },
+  "candidate_sha256": {
+    "v15_pilot.py": "dc8b85dbba59b5d6695f494965da4d9af0d3c30c313600e38572fb60b849c24b",
+    "switch_parity.py": "a12429a246452e1676b76eaa4a7f99df4acb5254149810bd370d941ce4d2fa5b"
+  },
+  "scope": "scratch canary routing only; no strategy/default/parity classification change"
+}

@@ -160,6 +160,13 @@ REPLAN_S = float(os.environ.get("VD_REPLAN_S", "60"))
 # 2026-10-28 USER "s1 never misses a beat ... executes it immediately": the loop wakes as soon as a state lands in the state
 # dir (dir mtime) or tools/s1_bar_guarantee.py writes data/vector_direct/PLAN_NOW_<venue>; MIN_PASS_GAP_S bounds REST weight.
 MIN_PASS_GAP_S = float(os.environ.get("VD_MIN_PASS_GAP_S", "2.0"))
+# USER 2026-10-30: "it should rsyn positions data to s1 crypto and s5 stocks which the vectorized trader needs to use for
+# its positions tracking". tools/mac_positions_push_executors.py lands data/vector_direct/mac_positions_<venue>.json here.
+# It carries the LIFECYCLE the broker APIs do not return (entry_price, opened_at, max_gain, gain, last_signal) — Tradier
+# /positions gives quantity + cost_basis only. The BROKER remains the sole authority on what is held: a row here never
+# creates, removes or resizes a position, it only annotates one the broker already shows, and a disagreement rings.
+MAC_POSITIONS = os.environ.get("VD_MAC_POSITIONS", "1") == "1"
+MAC_POSITIONS_MAX_AGE_S = float(os.environ.get("VD_MAC_POSITIONS_MAX_AGE_S", "900"))
 MAX_ATTEMPTS = 3
 VENUE_WIDE_KINDS_IGNORED = ("account_dead", "broker_unreachable_account")
 
@@ -1081,6 +1088,7 @@ class Trader:
         state producer (tools/fwdstate_npz_watch.py on S1) computes them FIRST after every bar close and covers a held side
         that is outside the tradeable universe."""
         pos = self.broker.positions(acct)
+        self.annotate_with_mac(acct, pos)
         held = self.__dict__.setdefault("held", {})
         held[acct] = sorted(ss for ss, p in pos.items() if float(p.get("qty") or 0) > 0)
         sides = sorted(set().union(*held.values()))
@@ -1101,6 +1109,71 @@ class Trader:
                 self.held_written = (time.time(), sides)
             except OSError as exc:
                 log(f"held file write failed: {exc}")
+        return pos
+
+    def mac_positions(self):
+        """The Mac books as pushed by tools/mac_positions_push_executors.py, re-read only when the file changes."""
+        path = self.out / f"mac_positions_{self.venue}.json"
+        try:
+            stat = path.stat()
+        except OSError:
+            return {}
+        stamp = (stat.st_mtime_ns, stat.st_size)
+        hit = self.__dict__.get("mac_positions_cache")
+        if hit and hit[0] == stamp:
+            return hit[1]
+        doc = read_json(path, {}) or {}
+        self.mac_positions_cache = (stamp, doc if isinstance(doc, dict) else {})
+        return self.mac_positions_cache[1]
+
+    def annotate_with_mac(self, acct, pos):
+        """Attach the Mac's lifecycle fields to the broker's positions. The broker's qty is never touched."""
+        if not MAC_POSITIONS:
+            return pos
+        doc = self.mac_positions()
+        if not doc:
+            return pos
+        age = time.time() - float(doc.get("epoch") or 0)
+        if age > MAC_POSITIONS_MAX_AGE_S:
+            if self.__dict__.setdefault("mac_pos_stale", None) != int(age // MAC_POSITIONS_MAX_AGE_S):
+                self.mac_pos_stale = int(age // MAC_POSITIONS_MAX_AGE_S)
+                self.alert("VD_MAC_POSITIONS_STALE", venue=self.venue, age_s=round(age, 1), written_at=doc.get("written_at"))
+                log(f"mac positions stale: {round(age / 60, 1)} min old (limit {MAC_POSITIONS_MAX_AGE_S / 60:.0f} min) — lifecycle fields not attached")
+            return pos
+        self.mac_pos_stale = None
+        book = (doc.get("accounts") or {}).get(acct) or {}
+        rung = self.__dict__.setdefault("mac_pos_rung", set())
+        for ss, broker_row in pos.items():
+            row = book.get(ss)
+            if not isinstance(row, dict):
+                signal = (acct, ss, "mac_missing", doc.get("written_at"))
+                if signal not in rung:
+                    rung.add(signal)
+                    self.alert("VD_MAC_POSITION_MISSING", account=acct, sym_side=ss, broker_qty=float(broker_row.get("qty") or 0), written_at=doc.get("written_at"))
+                continue
+            broker_qty, mac_qty = float(broker_row.get("qty") or 0), float(row.get("qty") or 0)
+            broker_row["mac"] = {k: v for k, v in row.items() if k != "qty"}
+            broker_row["mac_qty"] = mac_qty
+            broker_row["mac_age_s"] = round(age, 1)
+            if not float(broker_row.get("entry") or 0) and row.get("entry_price") is not None:
+                broker_row["entry"] = float(row["entry_price"])
+            for field in ("opened_at", "max_gain", "gain", "last_signal"):
+                if row.get(field) is not None and broker_row.get(field) is None:
+                    broker_row[field] = row[field]
+            if broker_qty > 0 and abs(mac_qty - broker_qty) > max(1e-8, broker_qty * 1e-6):
+                signal = (acct, ss, "qty", round(mac_qty, 8), round(broker_qty, 8))
+                if signal not in rung:
+                    rung.add(signal)
+                    self.alert("VD_MAC_POSITION_QTY_DISAGREES", account=acct, sym_side=ss, broker_qty=broker_qty, mac_qty=mac_qty, written_at=doc.get("written_at"))
+                    log(f"mac/broker disagree {acct} {ss}: broker {broker_qty} vs mac {mac_qty} — broker stands, lifecycle attached anyway")
+        for ss, row in book.items():
+            if ss in pos or float(row.get("qty") or 0) <= 0:
+                continue
+            signal = (acct, ss, "broker_flat", doc.get("written_at"))
+            if signal not in rung:
+                rung.add(signal)
+                self.alert("VD_MAC_HOLDS_WHAT_BROKER_DOES_NOT", account=acct, sym_side=ss, mac_qty=float(row.get("qty") or 0), written_at=doc.get("written_at"))
+                log(f"mac holds {acct} {ss} qty={row.get('qty')} the broker does not show — no order derived from it, the broker is the authority")
         return pos
 
     def wt15(self, ss):

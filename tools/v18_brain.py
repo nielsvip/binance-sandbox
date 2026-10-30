@@ -175,6 +175,10 @@ def gain_eligible(valid, delta):
     return bool(valid) and _f(delta) is not None
 
 
+GAIN_ELIGIBILITY_POLICY = "valid_finite_gain_v1"
+GAIN_TARGET = "positive delta among eligible valid finite measurements; ambiguous invalids excluded; compare models only on a common eligible test population"
+
+
 def _r(x, nd=5):
     return None if x is None else round(x, nd)
 
@@ -2268,7 +2272,7 @@ def cmd_train(a):
     for b in brains.values():
         b.finish()
     del seen
-    meta = {"schema": SCHEMA, "at": utc_now(), "cut": a.cut, "spills": files, "events_read": n, "dedupe": dict(cnt), "sort_secs": round(t_sort, 1),
+    meta = {"schema": SCHEMA, "gain_eligibility_policy": GAIN_ELIGIBILITY_POLICY, "gain_target": GAIN_TARGET, "at": utc_now(), "cut": a.cut, "spills": files, "events_read": n, "dedupe": dict(cnt), "sort_secs": round(t_sort, 1),
             "train_secs": round(time.time() - t0 - t_sort, 1), "m_shrink": M_SHRINK, "w_fit": W_FIT, "w_fwd": W_FWD, "nf": NF, "pos_floor_pp": POS_FLOOR,
             "regime_source": "board bh bucket (FLAT/UP/DOWN/STRONG_*); classify_regime needs NPZ bars the corpus does not hold",
             "extract_reports": [json.loads(Path(p).read_text()) for d in a.spill_dir for p in sorted(glob.glob(os.path.join(os.path.expanduser(d), "extract_*.json")))]}
@@ -2430,7 +2434,7 @@ def export_one(sb, tidx, floor, p_ref_r, p_ref_f, max_bytes=MAX_EXPORT_BYTES, mi
         lst.sort(key=lambda r: (-(r[0] > 0), -r[1]))
         sym_rows[ss] = [[nidx(a), round(float(E[C["wpos"]]), 3), round(float(E[C["wn"]]), 3)] for _p, _n, a, E in lst]
     coverage = coverage_of(sb, tidx, floor, p_ref_r, p_ref_f)
-    blob = {"_meta": {"schema": SCHEMA, "cat_side": sb["cs"], "at": utc_now(), "first_ts": sb["first_ts"], "last_ts": sb["last_ts"], "counters": sb["c"],
+    blob = {"_meta": {"schema": SCHEMA, "gain_eligibility_policy": GAIN_ELIGIBILITY_POLICY, "gain_target": GAIN_TARGET, "cat_side": sb["cs"], "at": utc_now(), "first_ts": sb["first_ts"], "last_ts": sb["last_ts"], "counters": sb["c"],
                       "heads_trained": sb["hn"], "nf": NF, "pos_floor_pp": POS_FLOOR, "floor_per_1000": max(HARD_MIN_FLOOR, floor), "p_ref": {"R": p_ref_r, "F": p_ref_f},
                       "m_shrink": M_SHRINK, "cs_cols": ["node", "wpos", "wn", "n", "pos", "neg", "inv", "sum_pos", "d_tim", "d_trades", "d_dd", "d_sharpe", "d_wr",
                                                         "n_sym", "fwd_n", "fwd_pos", "live_n", "live_pos", "n_ident", "mean_secs", "live_pnl_pp"],

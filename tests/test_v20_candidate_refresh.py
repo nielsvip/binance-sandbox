@@ -19,6 +19,10 @@ def inputs(tmp_path):
     spills = tmp_path / "spills"
     spills.mkdir()
     (spills / "spill_test.tsv").write_text("frozen evidence")
+    for name in ("data/SWITCH_BIBLE.json", "data/switch_dependencies.json", "data/v17_tf_semantics.json", *[f"data/learn/binding_map_{cat_side}.json" for cat_side in refresh.CAT_SIDES]):
+        path = context / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("{}")
     return context, spills
 
 
@@ -77,3 +81,13 @@ def test_mutated_source_disqualifies_candidate(tmp_path, monkeypatch):
     monkeypatch.setattr(refresh.subprocess, "run", mutate)
     with pytest.raises(ValueError, match="source changed"):
         refresh.execute(candidate)
+
+
+def test_full_build_requires_binding_inputs_and_smoke_reports_missing(tmp_path):
+    context, spills = inputs(tmp_path)
+    (context / "data/learn/binding_map_CRYPTO_LONG.json").unlink()
+    with pytest.raises(ValueError, match="full candidate requires"):
+        refresh.plan(tmp_path / "full", [spills], context, "2026-10-22T00:00:00Z")
+    smoke = refresh.plan(tmp_path / "smoke", [spills], context, "2026-10-22T00:00:00Z", stop_after="graph")
+    assert smoke["mode"] == "compatibility_smoke"
+    assert smoke["missing_context_inputs"] == ["data/learn/binding_map_CRYPTO_LONG.json"]

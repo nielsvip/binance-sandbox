@@ -48,6 +48,8 @@ EXCLUDES=(--include 'SPREADSHEETS/' --include 'SPREADSHEETS/TEMPLATE_FINAL_NORM/
   # USER 2026-10-20 (VERSION GATE, CLAUDE.md): the pilot and its subscripts reach production ONLY through tools/v15_version_gate.py on S2.
   # This push carried an ungated v15_pilot.py (md5 2995dd8f, then fd2c447d) into S1 ~/binance. Excluded so it can never again.
   --exclude '/v15_pilot.py' --exclude '/tools/v15_brain.py' --exclude '/tools/v17_combo_engine.py' --exclude '/tools/v17_priors.py' --exclude '/tools/v18_must_index.py' --exclude '/tools/v15_365_repair.py' --exclude '/tools/v15_endgame_knowledge_merge.py' --exclude '/tools/v15_row_guards.py' --exclude '/tools/v15_diagnose_repair.py' --exclude '/tools/v15_graph_search.py' --exclude '/tools/v15_v18_planner.py'
+  --exclude '/tools/v18_brain.py' --exclude '/tools/v18_linknet.py' --exclude '/tools/v18_precision_build.py' --exclude '/tools/v18_digest.py'
+  --exclude '/tools/v20_absorb_cycle.py' --exclude '/tools/v20_candidate_refresh.py' --exclude '/tools/v15_nextgen_*.py' --exclude '/tools/v15_canonical_frame.py'
   --exclude 'plots/' --exclude 'plots_tradier/')
 try_push() { # try_push <shell-or-EMPTY> <destination>
     local shell="$1" dest="$2" rc

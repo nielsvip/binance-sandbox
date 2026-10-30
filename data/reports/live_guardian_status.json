@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-30T20:19:39Z",
+ "ts": "2026-10-30T20:25:06Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,7 +29,7 @@
   "fin": {
    "fills_6h": 0,
    "open_positions": 1,
-   "unrealised_usd": 0.0,
+   "unrealised_usd": 0.07,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 0,
    "open_positions": 2,
-   "unrealised_usd": -0.9,
+   "unrealised_usd": -0.79,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 1,
    "open_positions": 2,
-   "unrealised_usd": 0.19,
+   "unrealised_usd": 0.21,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 0,
    "open_positions": 1,
-   "unrealised_usd": -0.12,
+   "unrealised_usd": -0.14,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,54 +127,54 @@
     "60398"
    ],
    "starts_30m": 1,
-   "log_age_s": 702.0
+   "log_age_s": 1029.0
   },
   "men": {
    "pids": [
     "59391"
    ],
    "starts_30m": 1,
-   "log_age_s": 10.0
+   "log_age_s": 18.0
   },
   "ang": {
    "pids": [
     "60082"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 6.0
   },
   "inf": {
    "pids": [
     "64156"
    ],
    "starts_30m": 1,
-   "log_age_s": 21.0
+   "log_age_s": 2.0
   },
   "flz": {
    "pids": [
     "70377"
    ],
    "starts_30m": 1,
-   "log_age_s": 8.0
+   "log_age_s": 5.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 4672.0
+   "log_age_s": 4999.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 6087.0
+   "log_age_s": 6413.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-30T20:19:41Z",
+   "ts": "2026-10-30T20:25:07Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 702s"
+   "evidence": "ez_manage_fin.log not written for 1029s"
   }
  ],
  "alert_counts": {
@@ -231,5 +231,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.2
+ "sweep_s": 1.15
 }

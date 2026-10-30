@@ -1299,6 +1299,8 @@ class Trainer:
         platt = validation_platt(val_scores, D, val_rows, test_rows)["linknet"]
         rep["platt"] = platt
         rep["gain_eligibility"] = self.gain_eligibility
+        rep["gain_eligibility_policy"] = VB.GAIN_ELIGIBILITY_POLICY
+        rep["gain_target"] = VB.GAIN_TARGET
         rep["calibration_source"] = "chronological validation; early-stop model predictions; transferred to refit model"
         pc = np.where(kind == 0, apply_platt(p_ln, platt["R"]), apply_platt(p_ln, platt["F"]))
         cal2 = []
@@ -1389,7 +1391,7 @@ def cmd_train(a):
               f"fwd labels {len(tr.D.get('fwd_y', [])):,} ({time.time() - t0:.1f}s)", flush=True)
         rep, best_ep = tr.holdout_report()
         net, hist, secs = tr.final(best_ep)
-        meta = {"schema": SCHEMA, "cat_side": cs, "trained_at": utc_now(), "epochs": best_ep, "k": tr.k, "H": tr.H, "vocab": tr.fz.names,
+        meta = {"schema": SCHEMA, "gain_eligibility_policy": VB.GAIN_ELIGIBILITY_POLICY, "gain_target": VB.GAIN_TARGET, "cat_side": cs, "trained_at": utc_now(), "epochs": best_ep, "k": tr.k, "H": tr.H, "vocab": tr.fz.names,
                 "corpus_last_ts": VB.iso_of(float(tr.D["ts"].max())), "corpus_first_ts": VB.iso_of(float(tr.D["ts"][tr.D["ts"] > 0].min())),
                 "n_examples": int(len(tr.D["kind"])), "label": PRED_LABEL, "platt": rep.get("platt")}
         mp = out_dir / f"linknet_model_{cs}.npz"
@@ -1809,7 +1811,7 @@ class Trainer2(Trainer):
                "n_pre_test": int(len(pre_rows)), "n_test": int(len(test_rows)), "boards_test": int(len(np.unique(D["board_i"][test_rows]))),
                "validation": val_tab, "selection": {"rule": "best mean VALIDATION AUC (models early-stopped on fit < q70, counts from fit) over " + ", ".join(sel_used),
                                                     "mean_val_auc": sel_mean, "production_scorer": prod},
-               "test": test_tab, "platt_on_validation": platt, "calibration_source": "chronological validation; early-stop model predictions; transferred to refit model", "gain_eligibility": self.gain_eligibility, "heads": heads, "PH_by_time": ph, "forward": fwd, "mean_pred_vs_realised_test": mean_pred}
+               "test": test_tab, "gain_eligibility_policy": VB.GAIN_ELIGIBILITY_POLICY, "gain_target": VB.GAIN_TARGET, "platt_on_validation": platt, "calibration_source": "chronological validation; early-stop model predictions; transferred to refit model", "gain_eligibility": self.gain_eligibility, "heads": heads, "PH_by_time": ph, "forward": fwd, "mean_pred_vs_realised_test": mean_pred}
         return rep, ep, prod
 
     def final_v2(self, ep, which=("v1", "v2")):
@@ -1873,7 +1875,7 @@ def cmd_redecide(a):
             tr = Trainer2(cs, ds_dir=out_dir, k=a.k, H=a.hidden, batch=a.batch, lr=a.lr, max_epochs=a.max_epochs)
             ep = (rep["epochs"]["v1"], rep["epochs"]["v2"])
             net, hist, secs = tr.final_v2(ep, which=("v1",))["v1"]
-            meta = {"schema": SCHEMA2, "cat_side": cs, "net": "v1", "trained_at": utc_now(), "epochs": ep[0], "k": tr.k, "H": tr.H, "vocab": tr.fz.names, "xvocab": None,
+            meta = {"schema": SCHEMA2, "gain_eligibility_policy": VB.GAIN_ELIGIBILITY_POLICY, "gain_target": VB.GAIN_TARGET, "cat_side": cs, "net": "v1", "trained_at": utc_now(), "epochs": ep[0], "k": tr.k, "H": tr.H, "vocab": tr.fz.names, "xvocab": None,
                     "corpus_last_ts": VB.iso_of(float(tr.D["ts"].max())), "n_examples": int(len(tr.D["kind"])), "label": PRED_LABEL, "production_scorer": prod,
                     "platt": rep["platt_on_validation"].get(prod)}
             mp = out_dir / f"model_v1_{cs}.npz"
@@ -1914,7 +1916,7 @@ def train2_one(cs, ds_dir, fctx=None, log=_log, status=True, **kw):
             xv[j] = f_
         files = {}
         for nm, (net, hist, secs) in fin.items():
-            meta = {"schema": SCHEMA2, "cat_side": cs, "net": nm, "trained_at": utc_now(), "epochs": ep[0 if nm == "v1" else 1], "k": tr.k, "H": tr.H,
+            meta = {"schema": SCHEMA2, "gain_eligibility_policy": VB.GAIN_ELIGIBILITY_POLICY, "gain_target": VB.GAIN_TARGET, "cat_side": cs, "net": nm, "trained_at": utc_now(), "epochs": ep[0 if nm == "v1" else 1], "k": tr.k, "H": tr.H,
                     "vocab": tr.fz.names, "xvocab": xv if nm == "v2" else None, "corpus_last_ts": VB.iso_of(float(D["ts"].max())),
                     "n_examples": int(len(D["kind"])), "label": PRED_LABEL, "production_scorer": prod, "platt": rep["platt_on_validation"].get(prod)}
             mp = out_dir / f"model_{nm}_{cs}.npz"
