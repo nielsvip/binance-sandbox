@@ -1,5 +1,5 @@
 {
- "at": "2026-10-30T01:26:02Z",
+ "at": "2026-10-30T02:26:03Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
@@ -18,66 +18,36 @@
     "throughput 0.0/h < 12.0/h (one per 5 min)"
    ],
    "rows": [],
-   "error": "no output"
+   "error": null
   },
   "s2": {
-   "published_n": 3,
-   "per_hour": 1.5,
+   "published_n": 1,
+   "per_hour": 0.5,
    "improved_vs_best_start": 0,
    "mean_uplift_vs_best_start": null,
    "median_uplift": null,
    "chained_from_previous_published": 0,
-   "no_floor_recorded": 3,
+   "no_floor_recorded": 1,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 1.5/h < 12.0/h (one per 5 min)"
+    "throughput 0.5/h < 12.0/h (one per 5 min)"
    ],
    "rows": [
     {
-     "symside": "DUSKUSDT_LONG",
-     "published_at": 1793318697.0021632,
-     "final_gain": 49.515041924815485,
+     "symside": "BEAMXUSDT_LONG",
+     "published_at": 1793324146.6365557,
+     "final_gain": 49.135133859521105,
      "best_start_gain": null,
      "best_start_chosen": null,
      "best_start_candidates": null,
-     "baseline_gain": 49.515041924815485,
-     "npz_ts_last": 1793315700.0,
-     "npz_md5": "5ce7b79c89378129dcdec9a5ebcb6e83",
-     "npz_bars": 43671,
-     "bh": 20.344375685775386,
+     "baseline_gain": 49.081351499842214,
+     "npz_ts_last": 1793321100.0,
+     "npz_md5": "11b61bf4eaab8dafdb2af23eee1fded2",
+     "npz_bars": 103438,
+     "bh": 59.42857675041474,
      "verdict": null,
-     "npz_age_h_at_publish": 0.83
-    },
-    {
-     "symside": "KMNOUSDT_LONG",
-     "published_at": 1793319253.2311451,
-     "final_gain": 49.86487842707936,
-     "best_start_gain": null,
-     "best_start_chosen": null,
-     "best_start_candidates": null,
-     "baseline_gain": 29.8922430451038,
-     "npz_ts_last": 1793316600.0,
-     "npz_md5": "ac275ad50cd4e932826a609bf6f41ff4",
-     "npz_bars": 43680,
-     "bh": 11.474460170064676,
-     "verdict": null,
-     "npz_age_h_at_publish": 0.74
-    },
-    {
-     "symside": "RAYSOLUSDT_LONG",
-     "published_at": 1793319657.7755144,
-     "final_gain": 57.114123858679335,
-     "best_start_gain": null,
-     "best_start_chosen": null,
-     "best_start_candidates": null,
-     "baseline_gain": -11.81747637597647,
-     "npz_ts_last": 1793313900.0,
-     "npz_md5": "63c0da38516371639ee5e2ccd3f74f9b",
-     "npz_bars": 43662,
-     "bh": 1.3897368416344125,
-     "verdict": null,
-     "npz_age_h_at_publish": 1.6
+     "npz_age_h_at_publish": 0.85
     }
    ],
    "error": null

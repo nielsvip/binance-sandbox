@@ -61,20 +61,21 @@ def build_overlay(symbol: str, overlay_dir: Path, now: dt.datetime | None = None
     if not pm_keep:
         raise ValueError(f"{symbol}: Tradier returned no completed 08:45/09:00/09:15 ET premarket bar")
     kline_base = private_klines(ROOT, overlay_dir / "klines", symbol, bars)
+    # 2026-10-30: only the last 21 days are classified. is_rth_bar_start builds a NYSE schedule per date (lru_cache 32), so
+    # walking all ~42k rows of a multi-year store took minutes per overlay; seven sessions always fit in 21 days.
+    recent = np.flatnonzero(ts_s >= int(ts_s[-1]) - 21 * 86400)
+    rth_of = {int(i): is_rth_bar_start(int(ts_s[i])) for i in recent}
+    day_of = {i: dt.datetime.fromtimestamp(int(ts_s[i]), dt.timezone.utc).astimezone(NY).date() for i in recent}
     rth_days = []
-    for value in ts_s:
-        if is_rth_bar_start(int(value)):
-            day = dt.datetime.fromtimestamp(int(value), dt.timezone.utc).astimezone(NY).date()
-            if day not in rth_days:
-                rth_days.append(day)
+    for i in recent:
+        if rth_of[int(i)] and day_of[i] not in rth_days:
+            rth_days.append(day_of[i])
     selected_days = set(rth_days[-7:])
     if len(selected_days) < 7:
         raise ValueError(f"{symbol}: canonical NPZ has only {len(selected_days)} RTH sessions; 7D requires seven")
-    rth_keep = np.asarray([
-        is_rth_bar_start(int(value)) and
-        dt.datetime.fromtimestamp(int(value), dt.timezone.utc).astimezone(NY).date() in selected_days
-        for value in ts_s
-    ], dtype=bool)
+    rth_keep = np.zeros(len(ts_s), dtype=bool)
+    for i in recent:
+        rth_keep[i] = rth_of[int(i)] and day_of[i] in selected_days
     end = max(int(ts_s[np.flatnonzero(rth_keep)[-1]]), max(pm_keep))
     start = int(ts_s[np.flatnonzero(rth_keep)[0]])
     keep = rth_keep  # the live store's own temporary premarket rows (npz_premarket_temp_bars) are never copied; they are recomputed below
