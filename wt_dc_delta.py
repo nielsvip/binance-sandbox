@@ -1668,6 +1668,11 @@ def _divergence_int(value):
 def _safe_float(val):
     if val is None:
         return None
+    if isinstance(val, str):
+        state = val.strip().upper()
+        encoded = {"BEAR": -1.0, "BULL": 1.0, "SHORT": -1.0, "LONG": 1.0, "RED": -1.0, "GREEN": 1.0, "LH": -1.0, "LL": -1.0, "HH": 1.0, "HL": 1.0, "CONTRACTING": -1.0, "EXPANDING": 1.0, "EXHAUST_DOWN": -2.0, "IMPULSE_DOWN": -1.0, "NEUTRAL": 0.0, "NONE": 0.0, "IMPULSE_UP": 1.0, "EXHAUST_UP": 2.0}
+        if state in encoded:
+            return encoded[state]
     try:
         return float(val)
     except (ValueError, TypeError):

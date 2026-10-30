@@ -62,6 +62,15 @@ def test_short_mirror():
     assert ok is True and tf == "15m"
 
 
+def test_encoded_htf_vetoes_match_npz_numeric_states():
+    for value in (-1, "IMPULSE_DOWN"):
+        ind = _ind(wt_momentum_state_4h=value, wt_momentum_state_D=value)
+        assert dzb.baseline_bounce_fires_scalar(ind, True, _g(), {})[0] is False
+    for value in (-1, "BEAR"):
+        ind = _ind(wt_divergence_1h=value, wt_divergence_4h=value)
+        assert dzb.baseline_bounce_fires_scalar(ind, True, _g(), {})[0] is False
+
+
 def test_mask_matches_scalar_on_synthetic():
     n = 60
     close = np.linspace(90, 110, n)

@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-30T22:14:33Z",
+ "ts": "2026-10-30T22:19:51Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 1,
-   "open_positions": 1,
-   "unrealised_usd": -0.21,
+   "fills_6h": 2,
+   "open_positions": 0,
+   "unrealised_usd": 0.0,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,73 +127,58 @@
     "32936"
    ],
    "starts_30m": 2,
-   "log_age_s": 125.0
+   "log_age_s": 4.0
   },
   "men": {
    "pids": [
     "59391"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 13.0
   },
   "ang": {
    "pids": [
-    "60082"
+    "83759"
    ],
-   "starts_30m": 1,
-   "log_age_s": 3602.0
+   "starts_30m": 2,
+   "log_age_s": -0.0
   },
   "inf": {
    "pids": [
     "64156"
    ],
    "starts_30m": 1,
-   "log_age_s": 24.0
+   "log_age_s": 5.0
   },
   "flz": {
    "pids": [
     "70377"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 13.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 11565.0
+   "log_age_s": 11883.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 12979.0
+   "log_age_s": 13298.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-30T22:14:33Z",
+   "ts": "2026-10-30T22:19:51Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "men:EIGENUSDT_SHORT",
    "evidence": "30 22:06:52 - WARNING - [men] [REENTRY_GRANDFATHERED] men:EIGENUSDT_SHORT: bypass MAX_ORDER_VALUE $20 / MAX_POSITION_SIZE $20 \u2014 restoring $6 on bounce (prior max 109.3000)"
-  },
-  {
-   "ts": "2026-10-30T22:14:34Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 125s"
-  },
-  {
-   "ts": "2026-10-30T22:14:34Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 3602s"
   }
  ],
  "alert_counts": {
-  "CAP_BYPASS": 1,
-  "STALE_LOG": 2
+  "CAP_BYPASS": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -239,5 +224,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.79
+ "sweep_s": 0.77
 }
