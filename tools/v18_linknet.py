@@ -65,6 +65,7 @@ import numpy as np  # noqa: E402
 
 from tools import v18_brain as VB  # noqa: E402  (the corpus reader: sorted_events, cat_side_of, regime_of, epoch_of, M_SHRINK)
 from tools import v18_features as FT  # noqa: E402
+from tools import v15_nextgen_historical_features as HF
 
 SCHEMA = "v18_linknet/1"
 CAT_SIDES = VB.CAT_SIDES
@@ -170,8 +171,12 @@ class CatDS:
 
     def __init__(self, cs, defaults=None, ctxj=None, enc=None):
         self.cs = cs
+        self.feature_mode = HF.mode()
+        if self.feature_mode == "context_free":
+            defaults, ctxj = {}, None
         self.ctxj = ctxj
-        self.enc = enc if (enc is not None or ctxj is None) else FT.ContextEncoder(FT.load_context(cs))
+        self.enc = enc if (enc is not None or ctxj is None) else HF.context_encoder(HF.adapt(FT.load_context(cs)))
+        self._verified_values = {}
         self.xctx = Interner()
         self.bpromo = collections.defaultdict(dict)
         self.last_base = {}
@@ -201,7 +206,7 @@ class CatDS:
         promotions the stored base already holds; adds the later ones, e.g. phases whose stored base froze after the main pass)."""
         if base_ci is None or self.ctxj is None:
             return -1
-        promos = self.bpromo.get(sym) or {}
+        promos = {} if self.feature_mode != "serving" else (self.bpromo.get(sym) or {})
         ck = (base_ci, tuple(sorted(promos.items())))
         x = self.xcache.get(ck)
         if x is None:
@@ -280,6 +285,11 @@ class CatDS:
         """DEFAULT IN FORCE of a key on this sym_side at this moment: its last promotion on the sym_side (P), else the
         template bold (T), else unknown (U). USER LAW 2026-10-20: targets are relative to it (the delta-log delta already is:
         it is measured against the chain), and candidate == in-force is identity (no label)."""
+        if self.feature_mode == "context_free":
+            return None, "U"
+        if self.feature_mode == "historical_quality":
+            value = self._verified_values.get(key)
+            return (value, "V") if value is not None else (None, "U")
         v = self.inforce[sym].get(key)
         if v is not None:
             return v, "P"
@@ -314,10 +324,16 @@ class CatDS:
         bi = self.boards(b)
         si = self.sets(f"{sheet}|{sw}={cand}")
         base = self._base_of(ev, t)
+        if self.feature_mode == "historical_quality":
+            report = (self.ctxj or {}).get("report") or {}
+            verified = base is not None and report.get("verified_log_only") is True and report.get("context_value_encoding") == "absolute_verified"
+            self._verified_values = dict(value[4:].split("=", 1) for value in self.ctxj["ctxs"][base] if value.startswith(("X.s:", "X.f:")) and "=" in value) if verified else {}
+            if not verified:
+                base = None
         if base is not None and not foreign:
             self.last_base[sym] = base
         xi = self._xctx(sym, base)
-        if "ck" in ev:
+        if "ck" in ev and self.feature_mode == "serving":
             src = self.CK_MAP.get(ev.get("ck"), "U")
             inf = ev.get("cv") if src not in ("N", "U") else None
             self.c[f"inforce_pinned_{ev.get('ck')}"] += 1
@@ -421,7 +437,7 @@ class CatDS:
         tmp = out_dir / f".ds_{self.cs}.tmp.npz"
         np.savez_compressed(tmp, **cols, **fw)
         os.replace(tmp, p)
-        keys = {"cat_side": self.cs, "sets": self.sets.keys, "filts": self.filts.keys, "set_combos": self.scombo.keys, "filt_combos": self.fcombo.keys, "ctxs": [list(c) for c in self.ctxs.keys], "boards": self.boards.keys,
+        keys = {"cat_side": self.cs, "feature_mode": self.feature_mode, "sets": self.sets.keys, "filts": self.filts.keys, "set_combos": self.scombo.keys, "filt_combos": self.fcombo.keys, "ctxs": [list(c) for c in self.ctxs.keys], "boards": self.boards.keys,
                 "xctxs": [list(c) for c in self.xctx.keys], "counters": dict(self.c), "built_at": utc_now()}
         with gzip.open(out_dir / f"ds_{self.cs}_keys.json.gz", "wt") as fh:
             json.dump(keys, fh)
@@ -430,6 +446,8 @@ class CatDS:
 
 def _template_defaults(cs, a=None):
     """Template bold defaults of the cat_side (the in-force value of a key no promotion has changed). Tests inject them."""
+    if HF.mode() != "serving":
+        return {}
     inj = getattr(a, "defaults", None) if a is not None else None
     if inj is not None:
         return inj.get(cs, {})
@@ -533,8 +551,8 @@ def build_ctx_join(cs, store, fctx=None, native=None, log=_log, verified_log_onl
     Nothing is written to the store."""
     import sqlite3
     t0 = time.time()
-    fctx = fctx or FT.load_context(cs)
-    enc = FT.ContextEncoder(fctx)
+    fctx = HF.adapt(fctx or FT.load_context(cs))
+    enc = HF.context_encoder(fctx)
     native = cs.startswith("CRYPTO") if native is None else native
     ctxs = Interner()
     cbmap = collections.defaultdict(list)
@@ -629,7 +647,7 @@ def build_ctx_join(cs, store, fctx=None, native=None, log=_log, verified_log_onl
         con.close()
         log(f"[ctxjoin] {cs} {shard.name}: {dict(cnt)} ctxs {len(ctxs.keys):,} {time.time() - t0:.0f}s")
     sizes = np.array([len(c) for c in ctxs.keys]) if ctxs.keys else np.zeros(1)
-    rep = {"cat_side": cs, "store": str(store), "verified_log_only": verified_log_only, "source_reports": source_reports, "context_definition": "pre-evaluation base_set_id; set content digest verified; native one-key parent sets verified; no board-final substitution", "contexts": len(ctxs.keys), "cb_keys": len(cbmap), "native_children": len(natmap),
+    rep = {"cat_side": cs, "store": str(store), "verified_log_only": verified_log_only, "feature_mode": getattr(fctx, "feature_mode", "serving"), "context_value_encoding": ("absolute_verified" if verified_log_only else "absolute_unverified") if getattr(fctx, "feature_mode", "serving") == "historical_quality" else "relative_to_serving_defaults", "source_reports": source_reports, "context_definition": "pre-evaluation base_set_id; set content digest verified; native one-key parent sets verified; no board-final substitution", "contexts": len(ctxs.keys), "cb_keys": len(cbmap), "native_children": len(natmap),
            "ignored_description_values": {"keys": len(enc.ignored_values), "values": int(sum(enc.ignored_values.values())), "top": dict(enc.ignored_values.most_common(10))},
            "context_size_mean": round(float(sizes.mean()), 1), "context_size_p50": float(np.median(sizes)), "context_size_max": int(sizes.max()),
            "counters": dict(cnt), "secs": round(time.time() - t0, 1), "built_at": utc_now()}
@@ -676,9 +694,9 @@ def load_ds(cs, ds_dir=DS_DIR):
 class Featurizer:
     """Key strings -> padded (idx, x) tables over a vocabulary. Slot 0/1 of S and F are the ID features; slot 0 of C = sym_side."""
 
-    def __init__(self, cs, fctx=None):
+    def __init__(self, cs, fctx=None, feature_mode=None):
         self.cs = cs
-        self.fctx = fctx or FT.load_context(cs)
+        self.fctx = HF.adapt(fctx or FT.load_context(cs), feature_mode)
         self.vocab = {"<pad>": 0}
         self.names = ["<pad>"]
         self.unknown_tokens = collections.Counter()
@@ -706,6 +724,7 @@ class Featurizer:
         if src is None:
             inf = self.fctx.default(sw)
             src = "T" if inf is not None else "U"
+        inf, src = HF.inforce(self.fctx, inf, src)
         a = FT.name_attrs(sw, self.fctx, tab=None if tab == "NA" else tab)
         self.unknown_tokens.update(a["unknown_tokens"])
         f = FT.features(sw, cand, self.fctx, tab=None if tab == "NA" else tab, attrs=a)
@@ -717,6 +736,7 @@ class Featurizer:
         if src is None:
             inf = self.fctx.default(f_, is_filter=True)
             src = "T" if inf is not None else "U"
+        inf, src = HF.inforce(self.fctx, inf, src)
         a = FT.name_attrs(f_, self.fctx, is_filter=True)
         self.unknown_tokens.update(a["unknown_tokens"])
         f = FT.features(f_, o, self.fctx, is_filter=True, attrs=a)
@@ -984,6 +1004,7 @@ class Trainer:
         self.max_train = max_train
         self.D, self.K = load_ds(cs, ds_dir)
         self.fz = Featurizer(cs, fctx=fctx)
+        HF.require_quality_training(self.fz.fctx, self.K, self.D)
         for sw, vals in seen_values(self.K["sets"]).items():
             if sw not in self.fz.fctx.cands:
                 self.fz.fctx.add_seen_values(sw, vals)
@@ -1310,6 +1331,7 @@ class Trainer:
         rep["platt"] = platt
         rep["gain_eligibility"] = self.gain_eligibility
         rep["gain_eligibility_policy"] = VB.GAIN_ELIGIBILITY_POLICY
+        rep["feature_mode"] = HF.mode()
         rep["gain_target"] = VB.GAIN_TARGET
         rep["calibration_source"] = "chronological validation; early-stop model predictions; transferred to refit model"
         pc = np.where(kind == 0, apply_platt(p_ln, platt["R"]), apply_platt(p_ln, platt["F"]))
@@ -1401,7 +1423,7 @@ def cmd_train(a):
               f"fwd labels {len(tr.D.get('fwd_y', [])):,} ({time.time() - t0:.1f}s)", flush=True)
         rep, best_ep = tr.holdout_report()
         net, hist, secs = tr.final(best_ep)
-        meta = {"schema": SCHEMA, "gain_eligibility_policy": VB.GAIN_ELIGIBILITY_POLICY, "gain_target": VB.GAIN_TARGET, "cat_side": cs, "trained_at": utc_now(), "epochs": best_ep, "k": tr.k, "H": tr.H, "vocab": tr.fz.names,
+        meta = {"schema": SCHEMA, "feature_mode": HF.mode(), "gain_eligibility_policy": VB.GAIN_ELIGIBILITY_POLICY, "gain_target": VB.GAIN_TARGET, "cat_side": cs, "trained_at": utc_now(), "epochs": best_ep, "k": tr.k, "H": tr.H, "vocab": tr.fz.names,
                 "corpus_last_ts": VB.iso_of(float(tr.D["ts"].max())), "corpus_first_ts": VB.iso_of(float(tr.D["ts"][tr.D["ts"] > 0].min())),
                 "n_examples": int(len(tr.D["kind"])), "label": PRED_LABEL, "platt": rep.get("platt")}
         mp = out_dir / f"linknet_model_{cs}.npz"
@@ -1821,7 +1843,7 @@ class Trainer2(Trainer):
                "n_pre_test": int(len(pre_rows)), "n_test": int(len(test_rows)), "boards_test": int(len(np.unique(D["board_i"][test_rows]))),
                "validation": val_tab, "selection": {"rule": "best mean VALIDATION AUC (models early-stopped on fit < q70, counts from fit) over " + ", ".join(sel_used),
                                                     "mean_val_auc": sel_mean, "production_scorer": prod},
-               "test": test_tab, "gain_eligibility_policy": VB.GAIN_ELIGIBILITY_POLICY, "gain_target": VB.GAIN_TARGET, "platt_on_validation": platt, "calibration_source": "chronological validation; early-stop model predictions; transferred to refit model", "gain_eligibility": self.gain_eligibility, "heads": heads, "PH_by_time": ph, "forward": fwd, "mean_pred_vs_realised_test": mean_pred}
+               "test": test_tab, "feature_mode": HF.mode(), "gain_eligibility_policy": VB.GAIN_ELIGIBILITY_POLICY, "gain_target": VB.GAIN_TARGET, "platt_on_validation": platt, "calibration_source": "chronological validation; early-stop model predictions; transferred to refit model", "gain_eligibility": self.gain_eligibility, "heads": heads, "PH_by_time": ph, "forward": fwd, "mean_pred_vs_realised_test": mean_pred}
         return rep, ep, prod
 
     def final_v2(self, ep, which=("v1", "v2")):
@@ -1885,7 +1907,7 @@ def cmd_redecide(a):
             tr = Trainer2(cs, ds_dir=out_dir, k=a.k, H=a.hidden, batch=a.batch, lr=a.lr, max_epochs=a.max_epochs)
             ep = (rep["epochs"]["v1"], rep["epochs"]["v2"])
             net, hist, secs = tr.final_v2(ep, which=("v1",))["v1"]
-            meta = {"schema": SCHEMA2, "gain_eligibility_policy": VB.GAIN_ELIGIBILITY_POLICY, "gain_target": VB.GAIN_TARGET, "cat_side": cs, "net": "v1", "trained_at": utc_now(), "epochs": ep[0], "k": tr.k, "H": tr.H, "vocab": tr.fz.names, "xvocab": None,
+            meta = {"schema": SCHEMA2, "feature_mode": HF.mode(), "gain_eligibility_policy": VB.GAIN_ELIGIBILITY_POLICY, "gain_target": VB.GAIN_TARGET, "cat_side": cs, "net": "v1", "trained_at": utc_now(), "epochs": ep[0], "k": tr.k, "H": tr.H, "vocab": tr.fz.names, "xvocab": None,
                     "corpus_last_ts": VB.iso_of(float(tr.D["ts"].max())), "n_examples": int(len(tr.D["kind"])), "label": PRED_LABEL, "production_scorer": prod,
                     "platt": rep["platt_on_validation"].get(prod)}
             mp = out_dir / f"model_v1_{cs}.npz"
@@ -1926,7 +1948,7 @@ def train2_one(cs, ds_dir, fctx=None, log=_log, status=True, **kw):
             xv[j] = f_
         files = {}
         for nm, (net, hist, secs) in fin.items():
-            meta = {"schema": SCHEMA2, "gain_eligibility_policy": VB.GAIN_ELIGIBILITY_POLICY, "gain_target": VB.GAIN_TARGET, "cat_side": cs, "net": nm, "trained_at": utc_now(), "epochs": ep[0 if nm == "v1" else 1], "k": tr.k, "H": tr.H,
+            meta = {"schema": SCHEMA2, "feature_mode": HF.mode(), "gain_eligibility_policy": VB.GAIN_ELIGIBILITY_POLICY, "gain_target": VB.GAIN_TARGET, "cat_side": cs, "net": nm, "trained_at": utc_now(), "epochs": ep[0 if nm == "v1" else 1], "k": tr.k, "H": tr.H,
                     "vocab": tr.fz.names, "xvocab": xv if nm == "v2" else None, "corpus_last_ts": VB.iso_of(float(D["ts"].max())),
                     "n_examples": int(len(D["kind"])), "label": PRED_LABEL, "production_scorer": prod, "platt": rep["platt_on_validation"].get(prod)}
             mp = out_dir / f"model_{nm}_{cs}.npz"
@@ -2088,7 +2110,7 @@ class Scorer:
         self.net, self.meta = LinkNet.load(Path(ds_dir) / f"linknet_model_{cs}.npz")
         if self.meta.get("cat_side") != cs:
             raise ValueError(f"model of {self.meta.get('cat_side')} refused for {cs} (principle 13)")
-        self.fz = Featurizer(cs, fctx=fctx)
+        self.fz = Featurizer(cs, fctx=fctx, feature_mode=self.meta.get("feature_mode", "serving"))
         self.fz.vocab = {n: i for i, n in enumerate(self.meta["vocab"])}
         self.fz.names = list(self.meta["vocab"])
         self.frozen_V = len(self.fz.names)
@@ -2667,11 +2689,11 @@ class Scorer2(Scorer):
             self.net1, _m1 = LinkNet.load(Path(ds_dir) / f"model_v1_{cs}.npz")
         self.meta = dict(self.meta2, trained_at=self.meta2["trained_at"], platt=self.platt)
         self.net = self.net1 if self.net1 is not None else self.net2
-        self.fz = Featurizer(cs, fctx=fctx)
+        self.fz = Featurizer(cs, fctx=fctx, feature_mode=self.meta2.get("feature_mode", "serving"))
         self.fz.vocab = {n: i for i, n in enumerate(self.meta2["vocab"])}
         self.fz.names = list(self.meta2["vocab"])
         self.xvocab = {f: j for j, f in enumerate(self.meta2["xvocab"] or []) if f is not None}
-        self.enc = FT.ContextEncoder(self.fz.fctx)
+        self.enc = HF.context_encoder(self.fz.fctx)
         self.D, self.K = load_ds(cs, ds_dir)
         for sw, vals in seen_values(self.K["sets"]).items():
             if sw not in self.fz.fctx.cands:

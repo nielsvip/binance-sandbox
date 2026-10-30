@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-10-30T21:15:31.002525Z",
+  "recorded_at": "2026-10-30T21:20:02.589532Z",
   "status": "active_not_achieved",
   "deployment_authorized_by_this_record": false,
   "requirements": {
@@ -158,7 +158,7 @@
       "forward_action": "new historical feature work under already excluded v15_nextgen_*.py or isolated review patches; no revert"
     }
   },
-  "previous_goal_turn_classification": "no_progress_password_clarification_only; resumed concrete audits this turn",
+  "previous_goal_turn_classification": "progress: directly audited gate model omission and recorded authoritative S2 observations",
   "restored_archive_consumers": {
     "consumer_audit_CRYPTO_LONG": {
       "consumer_status": "complete rc0; output 616 B, SHA256 b71adaf0bf48b4e6d9a8f33c9bf5b933ee46122470d5e77120117cc85a41c05e; report SHA256 d9383e38a0f24a62720d0e1ec037470be70979dc595b115fffb486c91a143fb2; driver SHA256 6cc2f336331025fd4f73ad059df7b77ad0f01832a1e9c0ee3bb5b3b9c3eaec03",
@@ -221,8 +221,33 @@
       ]
     },
     "local_code_finding": "v15_npz_bench.build_root excludes candidate data and copies snap/data; gate rsync_tree excludes data including champion retention",
-    "remote_harness_confirmation": "pending compute agent audit",
+    "remote_harness_confirmation": "confirmed by direct S2 AST read: build_root excludes candidate data then uses snapshot; rsync_tree excludes data",
     "required_before_submission": "prove distinct matched prior and candidate neural-network artifacts are consumed by respective arms; preserve same skip policy and budget; recover previous model identity from gate evidence",
-    "status": "not_ready_for_model_submission"
+    "status": "not_ready_for_model_submission",
+    "correction": "absence of data/brain and data/learn in champion does not mean no prior models: flat tools/v18_data_* artifacts retained",
+    "previous_learning_bundle": {
+      "id": "20261022T235810Z",
+      "name": "UNION #3",
+      "evidence": "compute_audit reports current champion flat brain hashes match original PASS; receipt collection pending",
+      "loader_order": [
+        "V18_BRAIN_DIR or V18_DIGEST_DIR env",
+        "ROOT/data/<sub>/<name>",
+        "ROOT/tools/v18_data/<sub>/<name>",
+        "ROOT/tools/v18_data_<sub>_<name>"
+      ]
+    },
+    "repair": {
+      "helper": "tools/v15_nextgen_gate_artifacts.py",
+      "patch": "data/reports/nextgen_gate_artifact_repair/integration.patch",
+      "status": "review_only_not_deployed",
+      "canonical_harness_edited": false,
+      "tests": "8 passed in 0.62s; includes actual staged build_root and rsync_tree",
+      "remaining": [
+        "remote base diff review",
+        "actual runtime resolved paths and hashes under exact env",
+        "matched caller engine templates inputs budget",
+        "complete candidate runtime artifacts"
+      ]
+    }
   }
 }
