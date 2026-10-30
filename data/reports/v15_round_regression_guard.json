@@ -1,5 +1,5 @@
 {
- "at": "2026-10-30T03:26:02Z",
+ "at": "2026-10-30T04:26:01Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
@@ -66,19 +66,19 @@
      "npz_age_h_at_publish": 0.57
     },
     {
-     "symside": "BEAMXUSDT_LONG",
-     "published_at": 1793324146.6365557,
-     "final_gain": 49.135133859521105,
+     "symside": "ZENUSDT_LONG",
+     "published_at": 1793334182.7356117,
+     "final_gain": 35.538389237019715,
      "best_start_gain": null,
      "best_start_chosen": null,
      "best_start_candidates": null,
-     "baseline_gain": 49.081351499842214,
-     "npz_ts_last": 1793321100.0,
-     "npz_md5": "11b61bf4eaab8dafdb2af23eee1fded2",
-     "npz_bars": 103438,
-     "bh": 59.42857675041474,
+     "baseline_gain": 34.733440934885486,
+     "npz_ts_last": 1793331900.0,
+     "npz_md5": "19ee810f24448cee578165e297ceb3b0",
+     "npz_bars": 43666,
+     "bh": -24.21425960607898,
      "verdict": null,
-     "npz_age_h_at_publish": 0.85
+     "npz_age_h_at_publish": 0.63
     }
    ],
    "error": null

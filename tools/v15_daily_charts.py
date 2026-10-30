@@ -158,7 +158,7 @@ def resolve_remote(boards: dict) -> None:
         if not need:
             break
         try:
-            ssh(host, "cat > /tmp/dc_need.json", 120, json.dumps(need))
+            ssh(host, "cat > /tmp/dc_need.json", 300, json.dumps(need))
             ssh(host, f"cd {root} && python3 tools/v15_daily_chart_worker.py resolve /tmp/dc_need.json > /tmp/dc_found.json", 900)
             local = STAGE / f"found_{host}.json"
             local.parent.mkdir(parents=True, exist_ok=True)
@@ -178,7 +178,7 @@ def resolve_remote(boards: dict) -> None:
 
 def npz_inventory(host: str, root: str) -> set:
     try:
-        r = ssh(host, f"ls {root}/backtest_v8/indicators/", 120)
+        r = ssh(host, f"ls {root}/backtest_v8/indicators/", 300)
     except Exception as exc:
         print(f"[daily-charts] NPZ inventory: {exc}", flush=True)
         return set()
@@ -193,7 +193,7 @@ def deploy_worker() -> None:
         got = ""
         for _ in range(3):
             try:
-                ssh(host, f"cat > {HOSTS[host]}/tools/v15_daily_chart_worker.py.tmp && mv {HOSTS[host]}/tools/v15_daily_chart_worker.py.tmp {HOSTS[host]}/tools/v15_daily_chart_worker.py", 120, src.read_text())
+                ssh(host, f"cat > {HOSTS[host]}/tools/v15_daily_chart_worker.py.tmp && mv {HOSTS[host]}/tools/v15_daily_chart_worker.py.tmp {HOSTS[host]}/tools/v15_daily_chart_worker.py", 300, src.read_text())
                 got = ssh(host, f"md5sum {HOSTS[host]}/tools/v15_daily_chart_worker.py", 60).stdout[:32]
             except Exception as exc:
                 print(f"[daily-charts] deploy to {host} failed: {exc}", flush=True)
@@ -228,13 +228,21 @@ def dispatch(boards: dict, run_id: str, procs: int) -> list:
         local = STAGE / run_id / host
         local.mkdir(parents=True, exist_ok=True)
         try:
-            ssh(host, f"mkdir -p {remote} && cat > {remote}/jobs.json", 120, json.dumps(host_jobs))
-            ssh(host, f"cd {HOSTS[host]} && setsid nohup nice -n 15 {WORKER_PY} -u tools/v15_daily_chart_worker.py render {remote}/jobs.json {remote}/out {procs} > {remote}/worker.log 2>&1 < /dev/null &", 120)
+            (local / "jobs.json").write_text(json.dumps(host_jobs))
+            ssh(host, f"mkdir -p {remote}", 300)
+            for attempt in range(3):
+                r = subprocess.run(["rsync", "-az", "--timeout=300", str(local / "jobs.json"), f"{host}:{remote}/jobs.json"], capture_output=True, text=True, timeout=1200)
+                if r.returncode == 0:
+                    break
+                time.sleep(10)
+            else:
+                raise RuntimeError(f"host {host} did not answer (rsync jobs.json): {r.stderr.strip()[-300:]}")
+            ssh(host, f"cd {HOSTS[host]} && setsid nohup nice -n 15 {WORKER_PY} -u tools/v15_daily_chart_worker.py render {remote}/jobs.json {remote}/out {procs} > {remote}/worker.log 2>&1 < /dev/null &", 300)
             deadline, last = time.time() + 6 * 3600, ""
             while time.time() < deadline:
                 time.sleep(30)
                 try:
-                    last = ssh(host, f"grep -c . {remote}/out/results.jsonl 2>/dev/null; grep -q '] DONE ' {remote}/worker.log && echo DONE; pgrep -f '{remote}/jobs.json' >/dev/null || echo GONE", 120).stdout.split()
+                    last = ssh(host, f"grep -c . {remote}/out/results.jsonl 2>/dev/null; grep -q '] DONE ' {remote}/worker.log && echo DONE; pgrep -f '{remote}/jobs.json' >/dev/null || echo GONE", 300).stdout.split()
                 except Exception as exc:
                     print(f"[daily-charts] {host} poll: {exc}", flush=True)
                     continue
@@ -247,7 +255,7 @@ def dispatch(boards: dict, run_id: str, procs: int) -> list:
             except Exception as exc:
                 print(f"[daily-charts] {exc}", flush=True)
             rows = [json.loads(line) for line in (local / "results.jsonl").read_text().splitlines() if line.strip()]
-            ssh(host, f"rm -rf {remote}", 120)
+            ssh(host, f"rm -rf {remote}", 300)
         except Exception as exc:
             rows = []
             print(f"[daily-charts] {host} dispatch failed: {exc}", flush=True)
@@ -473,7 +481,7 @@ def push_halts(doc: dict) -> dict:
     status = {}
     for host, ddir in HALT_TARGETS:
         try:
-            r = ssh(host, f"test -d {ddir} || exit 3; cat > {ddir}/deterioration_halt.json.tmp && mv {ddir}/deterioration_halt.json.tmp {ddir}/deterioration_halt.json && md5sum {ddir}/deterioration_halt.json", 120, body)
+            r = ssh(host, f"test -d {ddir} || exit 3; cat > {ddir}/deterioration_halt.json.tmp && mv {ddir}/deterioration_halt.json.tmp {ddir}/deterioration_halt.json && md5sum {ddir}/deterioration_halt.json", 300, body)
             status[f"{host}:{ddir}"] = "OK" if r.stdout[:32] == want else f"MISMATCH rc={r.returncode} {r.stdout[:32]} {r.stderr.strip()[-160:]}"
         except Exception as exc:
             status[f"{host}:{ddir}"] = f"FAIL {exc}"
@@ -492,7 +500,7 @@ def sync_priority(halted: set) -> dict:
     now, status = time.time(), {}
     for host in PRIORITY_HOSTS:
         try:
-            cur = json.loads(ssh(host, f"cat {PRIORITY_REMOTE} 2>/dev/null || echo '{{}}'", 120).stdout or "{}") or {}
+            cur = json.loads(ssh(host, f"cat {PRIORITY_REMOTE} 2>/dev/null || echo '{{}}'", 300).stdout or "{}") or {}
             live = float(cur.get("until") or 0) > now
             sides = [s for s in (cur.get("sym_sides") or []) if live and s not in (mine_before - halted)]
             sides += [s for s in sorted(halted) if s not in sides]
@@ -501,7 +509,7 @@ def sync_priority(halted: set) -> dict:
                 why.append(f"DAILY_DETERIORATION {len(halted)} sides (tools/v15_daily_charts.py)")
             until = max(float(cur.get("until") or 0) if live else 0.0, now + 86400 if halted else 0.0)
             doc = {"sym_sides": sides, "until": until, "why": " | ".join(why)}
-            r = ssh(host, f"cat > {PRIORITY_REMOTE}.tmp && mv {PRIORITY_REMOTE}.tmp {PRIORITY_REMOTE} && cat {PRIORITY_REMOTE}", 120, json.dumps(doc))
+            r = ssh(host, f"cat > {PRIORITY_REMOTE}.tmp && mv {PRIORITY_REMOTE}.tmp {PRIORITY_REMOTE} && cat {PRIORITY_REMOTE}", 300, json.dumps(doc))
             status[host] = "OK" if json.loads(r.stdout or "{}") == doc else f"MISMATCH {r.stderr.strip()[-160:]}"
         except Exception as exc:
             status[host] = f"FAIL {exc}"

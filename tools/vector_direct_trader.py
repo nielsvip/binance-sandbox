@@ -1383,6 +1383,12 @@ class Trader:
             symbol, side = split_ss(o["ss"])
             held = float((pos.get(o["ss"]) or {}).get("qty") or 0.0)
             row = {"event": "ORDER", "acct": acct, "ss": o["ss"], "act": o["act"], "key": o["key"], "why": o["why"], "held": held}
+            if self.venue == "crypto" and o["act"] in ("OPEN", "AUGMENT") and (self.out / "EXITS_ONLY").exists():
+                if o["key"] not in self.quiet:
+                    self.quiet.add(o["key"])
+                    self._ledger({**row, "status": "EXITS_ONLY", "final": False})
+                    log(f"EXITS_ONLY {acct} {o['ss']} {o['act']} held; CLOSE/REDUCE remain active")
+                continue
             if o.get("anchor") is not None:
                 row["anchor"] = int(o["anchor"])
             if o["act"] == "OPEN" and (acct, o["ss"], o.get("anchor")) in self.filled_open_anchors:
@@ -1425,6 +1431,11 @@ class Trader:
                     row.update({"status": "DRY_RUN" if self.a.dry_run else "KILLED"})
                     self._ledger(row)
                     log(f"{'DRY' if self.a.dry_run else 'KILL'} {acct} {o['ss']} {o['act']} qty={qty} px={price} (${qty * price:.2f}) — {o['why']}")
+                continue
+            if self.venue == "crypto" and o["act"] in ("OPEN", "AUGMENT") and (self.out / "EXITS_ONLY").exists():
+                if o["key"] not in self.quiet:
+                    self.quiet.add(o["key"])
+                    self._ledger({**row, "status": "EXITS_ONLY", "final": False})
                 continue
             try:
                 resp = self.broker.send(acct, o, qty)
