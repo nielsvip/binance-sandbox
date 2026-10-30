@@ -36,6 +36,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 FS_DIR = ROOT / "data" / "forward_state"
 OUT_DIR = ROOT / "data" / "reports" / "charts_daily_30d"
+HISTORY_DIR = ROOT / "data" / "forward_state_history"
 BAR_S = 900
 CRYPTO_SUFFIXES = ("USDT", "USDC", "USD1", "USDS", "BUSD", "FDUSD", "TUSD", "DAI")
 WINDOW_DAYS = 30
@@ -65,6 +66,20 @@ def _sym_sides(venue: str, only: str | None) -> list[str]:
             continue
         out.append(name)
     return out
+
+
+def _recorded_state(symside: str, cut_open: float, current: dict) -> dict | None:
+    if int(current.get("npz_tail") or 0) == int(cut_open) and isinstance(current.get("ledger"), list):
+        return current
+    records = sorted((HISTORY_DIR / symside).glob(f"{int(cut_open)}_*.json"), reverse=True)
+    for path in records:
+        try:
+            state = json.loads(path.read_text())
+            if state.get("ok") and isinstance(state.get("ledger"), list):
+                return state
+        except (OSError, ValueError):
+            continue
+    return None
 
 
 def _install_cut(E, cut_open_s: float):
@@ -169,8 +184,13 @@ def main(argv: list[str]) -> int:
             with merged_npz_reads(_paths):
                 original = _install_cut(E, use_open)
                 fwd = _forward_month(E, sym, overrides)
+            recorded = _recorded_state(sym, use_open, state)
+            if recorded is not None:
+                fwd.update(ledger=recorded["ledger"], execution_ledger=recorded["ledger"],
+                           gain_pct=recorded.get("gain_pct"), trades=recorded.get("trades"))
             led = fwd["ledger"]
             row.update(ok=True, trades=fwd.get("trades"), ledger_rows=len(led), gain_pct=fwd.get("gain_pct"), cut_bar_open=_stamp(use_open),
+                       ledger_source="published_state" if recorded is not None else "recomputed_current_npz",
                        src=src, settings_sha256=meta.get("settings_sha256"), valid=fwd.get("valid"),
                        invalid_reason=fwd.get("invalid_reason"))
             if a.verify:

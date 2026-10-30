@@ -142,10 +142,19 @@ def run_one(queue_path: Path, ss: str, result_dir: Path, workers: int,
             from tools.v15_preopen_7d_npz import build_overlay
 
             symbol, _ = resolve_tokenised(ss.rsplit("_", 1)[0])
-            overlay = build_overlay(symbol, overlay_dir)
-            env["V12_NPZ_DIR"] = str(overlay_dir)
-            env["V15_7D_NPZ_OVERLAY"] = "1"
-            (folder / "npz_overlay_manifest.json").write_text(json.dumps(overlay, sort_keys=True) + "\n")
+            try:
+                overlay = build_overlay(symbol, overlay_dir)
+            except ValueError as exc:
+                # USER 2026-10-30: a symbol without premarket trades is never left without its 7D set: the board runs on the
+                # canonical NPZ (no premarket rows exist to add) and the launcher record says so
+                if "is in the klines or on Tradier" not in str(exc):  # only "Tradier has no bar", never "not closed yet"
+                    raise
+                stock_overlay = False
+                print(json.dumps({"event": "NO_PREMARKET_BARS_CANONICAL_NPZ", "sym_side": ss, "why": str(exc)}), flush=True)
+            if stock_overlay:
+                env["V12_NPZ_DIR"] = str(overlay_dir)
+                env["V15_7D_NPZ_OVERLAY"] = "1"
+                (folder / "npz_overlay_manifest.json").write_text(json.dumps(overlay, sort_keys=True) + "\n")
         with _host_slot_guard():
             with log.open("ab") as f:
                 proc = subprocess.Popen(command, cwd=ROOT, env=env, stdout=f, stderr=subprocess.STDOUT,

@@ -206,3 +206,11 @@ def test_priority_stays_inside_own_venue():
     picks, _, _ = F.plan(pend, partial, data, NOW, {}, frozenset({"ETHUSDT_SHORT"}))
     got = {h: s for h, s, _ in picks}
     assert got["s1"] == "ETHUSDT_SHORT" and got["s5"] == "AAPL_LONG" and got["s6"] == "AAPL_SHORT"
+
+
+def test_priority_rerun_moves_to_front_of_pending():
+    pend = {"CRYPTO_LONG": ["A_LONG"], "STOCKS_LONG": []}
+    refresh = {"CRYPTO_LONG": ["B_LONG", "C_LONG"], "STOCKS_LONG": ["D_LONG"]}
+    F.promote_priority_reruns(pend, refresh, {"C_LONG", "D_LONG"})
+    assert pend == {"CRYPTO_LONG": ["C_LONG", "A_LONG"], "STOCKS_LONG": ["D_LONG"]}
+    assert refresh == {"CRYPTO_LONG": ["B_LONG"], "STOCKS_LONG": []}

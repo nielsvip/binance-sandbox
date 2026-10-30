@@ -349,7 +349,7 @@ def session_open_utc(day=None):
 
 def premarket_thin(symbols, sessions=3):
     """USER 2026-10-30: symbols without premarket trades get their 7D overnight, not in the morning pass. A symbol is thin when
-    Tradier served none of the three 15m bars ending at the open on at least 2 of the last `sessions` sessions (one timesales call
+    Tradier served none of the three 15m bars ending at the open on ANY of the last `sessions` sessions (one timesales call
     per symbol, matched on Tradier's UTC epoch). Returns {"sessions": [...], "thin": [...], "bars": {symbol: [n per session]}}."""
     import requests
     from tools.npz_premarket_temp_bars import temp_epochs, tradier_keys
@@ -380,7 +380,7 @@ def premarket_thin(symbols, sessions=3):
         stamps = {int(d.get("timestamp") or 0) for d in (data if isinstance(data, list) else [data])}
         counts = [len(stamps & set(temp_epochs(d))) for d in days]
         out["bars"][symbol] = counts
-        if sum(1 for c in counts if c == 0) >= 2:
+        if any(c == 0 for c in counts):
             out["thin"].append(symbol)
     return out
 

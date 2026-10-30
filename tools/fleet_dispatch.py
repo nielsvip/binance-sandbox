@@ -403,6 +403,17 @@ def pending_by_cat(universe, fleet_data, now):
     return pend, partial, skipped
 
 
+def promote_priority_reruns(pend, refresh, prio):
+    """USER 2026-10-30: a sym_side whose daily recalculation deteriorated (tools/v15_daily_charts.py -> data/fleet_priority.json)
+    lines up with priority even when its board is finished and only due a re-run: move it from the re-run queue to the front of
+    pending, where the priority pick reads. In place, pure."""
+    for cat, sides in refresh.items():
+        moved = [s for s in sides if s in prio]
+        if moved:
+            refresh[cat] = [s for s in sides if s not in prio]
+            pend[cat] = moved + [s for s in pend.get(cat, []) if s not in moved]
+
+
 def refresh_by_cat(universe, fleet_data, now, pend):
     """-> {cat: [ss...]} FINISHED boards whose NPZ advanced >= REFRESH_BARS_* (but < FRESH_BARS, else they are already pending),
     in universe (best-first) order. Same cooldown / attempt / tombstone guards as pending_by_cat. Pure."""
@@ -788,6 +799,7 @@ def tick(args):
             else:
                 orphan_since.setdefault(cat, now)
         refresh = refresh_by_cat(universe, view, now, pend)
+        promote_priority_reruns(pend, refresh, prio)
         picks, why_not, orphans = plan(pend, partial, data, now, orphan_since, frozenset(prio), refresh)
         rec["pending"] = {c: len(v) for c, v in pend.items()}
         rec["rerun"] = {c: len(v) for c, v in refresh.items()}

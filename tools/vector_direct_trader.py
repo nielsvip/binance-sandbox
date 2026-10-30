@@ -236,6 +236,13 @@ def entry_allowed(root: Path, venue: str, acct: str, ss: str) -> bool:
         return True
 
 
+def deterioration_halts(root: Path) -> dict:
+    """USER 2026-10-30: a sym_side whose daily 30D recalculation (tools/v15_daily_charts.py) deteriorated significantly versus
+    its published board stops trading immediately: no OPEN, no AUGMENT. Exits are never blocked. Unreadable file = no halt."""
+    doc = read_json(root / "data" / "deterioration_halt.json", {}) or {}
+    return {str(k).upper(): v for k, v in (doc.get("halts") or {}).items()} if isinstance(doc, dict) else {}
+
+
 def universe(root: Path, venue: str, accounts) -> dict:
     out = {a: set() for a in accounts}
     if venue == "crypto":
@@ -290,7 +297,7 @@ def no_information(st) -> bool:
     return (not st.get("ok")) and st.get("reason") == "missing live settings" and st.get("src") == "missing_published_per_sym_row"
 
 
-def plan_account(acct, venue, keys, states, positions, bar, done, allowed, prev_qty=None, wt15=None, noinfo_age=None, untradeable=None, untradeable_close=True):
+def plan_account(acct, venue, keys, states, positions, bar, done, allowed, prev_qty=None, wt15=None, noinfo_age=None, untradeable=None, untradeable_close=True, halted=None):
     """Orders that converge one account to the board. positions: {ss: {"qty": abs qty, "price": px}} read just now.
     prev_qty: {ss: broker qty observed BEFORE this bar closed} — an AUGMENT/REDUCE the broker already shows was done by
     someone else (the Mac) and is not repeated. wt15: callable ss -> {bar_ts, wt1_15m, wt2_15m} of the latest closed 15m
@@ -299,6 +306,7 @@ def plan_account(acct, venue, keys, states, positions, bar, done, allowed, prev_
     board state says. Returns (orders, notes)."""
     orders, notes = [], []
     prev_qty = prev_qty or {}
+    halted = halted or {}
     keyset = set(keys)
     held_sides = [s for s, p in positions.items() if float(p.get("qty") or 0) > 0]
     # no-information sides past the grace (one full bar past the state deadline) are treated as non-tradeable; a breaker
@@ -375,6 +383,9 @@ def plan_account(acct, venue, keys, states, positions, bar, done, allowed, prev_
             orders.append({"acct": acct, "ss": ss, "act": "CLOSE", "qty": held, "key": f"{acct}|{ss}|{tail}|CLOSE",
                            "why": f"board flat, broker holds {held}"})
         elif board_open and held <= 0:
+            if ss in halted:
+                notes.append((ss, f"DETERIORATION_HALT_NO_OPEN since {(halted[ss] or {}).get('halted_utc')}"))
+                continue
             if not allowed(acct, ss):
                 notes.append((ss, "SKIP_OPEN_NOT_IN_BOOKS"))
                 continue
@@ -391,6 +402,9 @@ def plan_account(acct, venue, keys, states, positions, bar, done, allowed, prev_
                 typ = str(a.get("type") or "").upper()
                 q, before = float(a.get("qty") or 0.0), float(a.get("qty_before") or 0.0)
                 if typ == "AUGMENT" and q > 0 and before > 0:
+                    if ss in halted:
+                        notes.append((ss, f"DETERIORATION_HALT_NO_AUGMENT since {(halted[ss] or {}).get('halted_utc')}"))
+                        continue
                     want = base * q / before
                     if prev_qty.get(ss) and held >= base + 0.5 * want:
                         notes.append((ss, f"AUGMENT_ALREADY_ON_BROKER {base}->{held}"))
@@ -981,7 +995,7 @@ class Trader:
                 log(f"paper {acct}: positions failed {str(exc)[:120]}")
                 continue
             self.with_held_states(states, pos)
-            orders, _ = plan_account(acct, self.venue, keys.get(acct, ()), states, pos, bar, self.paper_done, allowed, wt15=self.wt15, noinfo_age=self.noinfo_age)
+            orders, _ = plan_account(acct, self.venue, keys.get(acct, ()), states, pos, bar, self.paper_done, allowed, wt15=self.wt15, noinfo_age=self.noinfo_age, halted=dict.fromkeys(getattr(self, "halted_now", ()), {}))
             path = self.out / f"paper_{self.venue}_{dt.datetime.fromtimestamp(now, dt.timezone.utc):%Y-%m-%d}.jsonl"
             with open(path, "a") as fh:
                 for o in orders:
@@ -1062,7 +1076,11 @@ class Trader:
         market_ok = True
         if self.venue == "stocks":
             market_ok = self.broker.market_open() or bool(self.a.assume_open and self.a.dry_run)
-        allowed = lambda acct, ss: entry_allowed(self.root, self.venue, acct, ss)
+        halted = deterioration_halts(self.root)
+        if set(halted) != getattr(self, "halted_now", set()):
+            log(f"DETERIORATION HALT {len(halted)} sym_sides (no OPEN/AUGMENT, exits unchanged): {','.join(sorted(halted))[:600]}")
+            self.halted_now = set(halted)
+        allowed = lambda acct, ss: ss not in halted and entry_allowed(self.root, self.venue, acct, ss)
         hb = self.heartbeat()
         missed = self.check_expectations(now, set(self.act.active())) if market_ok else {}
         trig, hb_age = self.act.triggers(now, hb, self.venue, missed)
@@ -1134,7 +1152,7 @@ class Trader:
             t_obs, prev = self.obs.get(acct, (0, {}))
             prev_qty = prev if t_obs and bar - BAR_S <= t_obs < bar + BAR_S else {}
             orders, notes = plan_account(acct, self.venue, keys.get(acct, ()), states, pos, bar, self.done, allowed, prev_qty, wt15=self.wt15, noinfo_age=self.noinfo_age,
-                                         untradeable=untradeable, untradeable_close=untradeable_close)
+                                         untradeable=untradeable, untradeable_close=untradeable_close, halted=halted)
             planned_at = time.time()
             for o in orders:
                 if o.get("reason") == "UNTRADEABLE_NO_VERDICT":
