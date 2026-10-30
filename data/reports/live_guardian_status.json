@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-30T18:13:35Z",
+ "ts": "2026-10-30T18:19:51Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,19 +29,19 @@
   "trb": {
    "fills_6h": 0,
    "open_positions": 2,
-   "unrealised_usd": 0.0,
+   "unrealised_usd": 1.79,
    "pos_mismatch": 0
   },
   "trc": {
    "fills_6h": 0,
    "open_positions": 1,
-   "unrealised_usd": 0.0,
+   "unrealised_usd": -8.07,
    "pos_mismatch": 0
   },
   "fin": {
    "fills_6h": 0,
    "open_positions": 1,
-   "unrealised_usd": 0.1,
+   "unrealised_usd": 0.16,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -57,7 +57,7 @@
   "men": {
    "fills_6h": 0,
    "open_positions": 2,
-   "unrealised_usd": -0.78,
+   "unrealised_usd": -0.72,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -73,7 +73,7 @@
   "ang": {
    "fills_6h": 1,
    "open_positions": 2,
-   "unrealised_usd": 0.35,
+   "unrealised_usd": 0.31,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -105,7 +105,7 @@
   "flz": {
    "fills_6h": 0,
    "open_positions": 1,
-   "unrealised_usd": -0.06,
+   "unrealised_usd": -0.15,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -122,10 +122,10 @@
  "tradeable_guard": {
   "poison": false,
   "restored": false,
-  "total": 185,
+  "total": 188,
   "per_acct": {
    "men": 36,
-   "ang": 86,
+   "ang": 89,
    "fin": 36,
    "flz": 26,
    "inf": 1
@@ -138,7 +138,7 @@
     "15395"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 24.0
   },
   "men": {
    "pids": [
@@ -152,35 +152,35 @@
     "13630"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 5.0
   },
   "inf": {
    "pids": [
     "14141"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 2.0
   },
   "flz": {
    "pids": [
     "14468"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 10.0
   },
   "trb": {
    "pids": [
     "13227"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 1.0
   },
   "trc": {
    "pids": [
     "13411"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": -0.0
   }
  },
  "alerts": [],
@@ -236,5 +236,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.2
+ "sweep_s": 1.69
 }
