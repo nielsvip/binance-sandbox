@@ -3206,12 +3206,21 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             return True, _q
         trade_manager.place_maker_order = _plc_maker_fill
 
-    # Seed symbol_configs so maker loop doesn't crash with "Symbol config missing"
+    # Seed exchange metadata from the captured symbol config so stop equality uses real ticks.
+    try:
+        with open(BASE_PATH / "symbol_configs.json") as _sc_file:
+            _recorded_symbol_configs = json.load(_sc_file)
+    except (OSError, ValueError):
+        _recorded_symbol_configs = {}
     for sym in stores.keys():
+        _recorded = _recorded_symbol_configs.get(sym, {})
         trade_manager.symbol_configs[sym] = {
-            "tick_size": 0.01, "step_size": 0.00001, "min_qty": 0.00001,
-            "min_notional": 5.0, "max_qty": 1000000.0, "price_precision": 2,
-            "qty_precision": 5,
+            "tick_size": float(_recorded.get("tick_size") or 0.0),
+            "step_size": float(_recorded.get("step_size") or 0.0),
+            "min_qty": float(_recorded.get("step_size") or 0.0),
+            "min_notional": 5.0, "max_qty": 1000000.0,
+            "price_precision": int(_recorded.get("price_precision") or 0),
+            "qty_precision": int(_recorded.get("quantity_precision") or 0),
         }
     v8_logger.info(f"Seeded symbol_configs for {len(stores)} symbols")
     ez_manage._AIR_BARS_LOADER = _air_npz_bars_loader(stores)  # V17 AIR: HL_REF='low' reads the frozen NPZ, never live klines
