@@ -26,7 +26,6 @@ import argparse
 import datetime as dt
 import json
 import os
-import re
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor
@@ -98,33 +97,105 @@ def symbols(live_root):
     return sorted(out)
 
 
-def kline_ready(base, symbol, epoch):
-    """The completed bar `epoch` is in the Tradier 15m kline file and the file was written after that bar closed."""
+def tradier_key(base):
+    """Market-data token. TRB by default: the bar guarantee's own Tradier fallback uses TRA, so the two never share a rate bucket."""
+    env = {}
+    for path in (Path(base) / ".env", Path.home() / ".env", Path.home() / "binance" / ".env"):
+        try:
+            for line in path.read_text().splitlines():
+                line = line.strip()
+                if line.startswith("export "):
+                    line = line[7:]
+                if "=" in line and not line.startswith("#"):
+                    name, value = line.split("=", 1)
+                    env.setdefault(name.strip(), value.strip().strip("'\""))
+        except OSError:
+            continue
+    for name in (os.environ.get("PM_TEMP_TRADIER_KEY", ""), "TRADIER_API_KEY_TRB", "TRADIER_API_KEY_TRA", "TRADIER_API_KEY"):
+        if name and (os.environ.get(name) or env.get(name)):
+            return os.environ.get(name) or env.get(name)
+    return None
+
+
+def fetch_premarket(key, symbol, day, epochs, now):
+    """Today's premarket 15min bars from Tradier timesales (session_filter=all), only those of `epochs` that have closed.
+    The Tradier klines on the hosts carry today's premarket bars only from the next day (klines_canonical stocks-fetch fetches
+    completed sessions), so the 08:45-09:15 bars are fetched here at their close. {epoch: kline row} or (None, why)."""
+    import requests
+
+    params = {"symbol": symbol, "interval": "15min", "start": f"{day.isoformat()} 08:45", "end": f"{day.isoformat()} 09:30", "session_filter": "all"}
+    for attempt in range(3):
+        r = requests.get("https://api.tradier.com/v1/markets/timesales", params=params, timeout=10,
+                         headers={"Authorization": f"Bearer {key}", "Accept": "application/json"})
+        if r.status_code == 429:
+            time.sleep(2 + 3 * attempt)
+            continue
+        if r.status_code != 200:
+            return None, f"HTTP {r.status_code} {r.text[:80]}"
+        try:
+            available = int(r.headers.get("X-Ratelimit-Available") or 999)
+            expiry = float(r.headers.get("X-Ratelimit-Expiry") or 0) / 1000.0
+        except ValueError:
+            available, expiry = 999, 0
+        if available < 15 and expiry > time.time():
+            time.sleep(min(30.0, expiry - time.time() + 0.5))  # leave the bucket to the live lanes sharing it
+        data = ((r.json() or {}).get("series") or {}).get("data") or []
+        data = data if isinstance(data, list) else [data]
+        out = {}
+        for d in data:
+            stamp = int(d.get("timestamp") or 0)
+            if stamp in epochs and stamp + 900 + SETTLE_S <= now:
+                out[stamp] = {"timestamp": dt.datetime.fromtimestamp(stamp, dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000000Z"),
+                              "open": float(d["open"]), "high": float(d["high"]), "low": float(d["low"]), "close": float(d["close"]),
+                              "volume": float(d.get("volume") or 0), "_closed": True, "_provisional": False,
+                              "_source": "tradier_timesales_15min_premarket_temp"}
+        return out, ""
+    return None, "HTTP 429 three times"
+
+
+def private_klines(base, private, symbol, bars):
+    """A kline view for this symbol only: the host's own files for 5m/1h/4h/D (symlinks, never written) and a private 15m
+    copy that adds today's fetched premarket bars. The shared history stays RTH-only, so the 09:30 bar's permanent row
+    (computed at 09:45 by the tail service) sees exactly the inputs it would have seen without this tool."""
     from npz_live_generator import _resolve_kline_path
 
-    path = _resolve_kline_path(symbol, "15m", "tradier", Path(base))
-    if path is None:
-        return False, "no Tradier 15m kline file"
-    if path.stat().st_mtime < epoch + 900:
-        return False, f"kline file last written before the {iso(epoch)} bar closed"
-    stamp = dt.datetime.fromtimestamp(epoch, dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:00")
-    with open(path, "rb") as stream:
-        stream.seek(max(0, path.stat().st_size - 262144))
-        tail = stream.read().decode("utf-8", errors="ignore")
-    if not re.search(r'"timestamp"\s*:\s*"' + re.escape(stamp), tail):
-        return False, f"kline has no {iso(epoch)} bar yet"
-    return True, ""
+    folder = Path(private) / "klines_cache" / "tradier"
+    folder.mkdir(parents=True, exist_ok=True)
+    for tf in ("5m", "1h", "4h", "D"):
+        real = _resolve_kline_path(symbol, tf, "tradier", Path(base))
+        link = folder / f"{symbol}_{tf}.json"
+        if real is not None and not link.exists():
+            link.symlink_to(real)
+    real = _resolve_kline_path(symbol, "15m", "tradier", Path(base))
+    if real is None:
+        raise FileNotFoundError(f"{symbol}: no Tradier 15m kline file")
+    doc = json.loads(real.read_text())
+    rows = doc if isinstance(doc, list) else doc.get("klines", [])
+    first = min(bars)
+    from closed_bar_feed import timestamp_epoch
+
+    rows = [row for row in rows if timestamp_epoch(row["timestamp"]) < first] + [bars[e] for e in sorted(bars)]
+    target = folder / f"{symbol}_15m.json"
+    tmp = target.with_name(f".{target.name}.{os.getpid()}.tmp")
+    tmp.write_text(json.dumps(rows))
+    os.replace(tmp, target)
+    return Path(private)
 
 
 def _add_one(task):
-    """Append the ready bars of one symbol in time order; stops at the first failure (a later bar never jumps it)."""
-    base, ind, symbol, epochs = task
+    """Append the fetched bars of one symbol in time order; stops at the first failure (a later bar never jumps it)."""
+    base, ind, private, symbol, bars, epochs = task
     import npz_tail_service as T
     from npz_tail_store import append_tail_row
 
+    bars = {int(k): v for k, v in bars.items()}
+    try:
+        kbase = private_klines(base, private, symbol, bars)
+    except Exception as exc:
+        return [(symbol, min(epochs), f"private klines {type(exc).__name__}: {exc}")]
     out = []
     for epoch in epochs:
-        row = T._compute_row_process((symbol, int(epoch), str(base), "tradier"))
+        row = T._compute_row_process((symbol, int(epoch), str(kbase), "tradier"))
         if not row:
             out.append((symbol, epoch, "compute returned nothing"))
             break
@@ -202,6 +273,7 @@ class Run:
         self.live = Path(a.live_root).expanduser()
         self.ind = Path(a.ind_dir).expanduser() if a.ind_dir else self.base / "backtest_v8" / "indicators"
         self.out = Path(a.out_dir).expanduser() if a.out_dir else self.base / "data" / "npz_premarket_temp"
+        self.test = bool(a.now)
         self.now = float(a.now) if a.now else time.time()
         self.day = dt.date.fromisoformat(a.day) if a.day else dt.datetime.fromtimestamp(self.now, dt.timezone.utc).astimezone(NY).date()
         self.only = {s.strip().upper() for s in (a.symbols or "").split(",") if s.strip()}
@@ -233,27 +305,56 @@ class Run:
         led = self.ledger(self.day)
         self.out.mkdir(parents=True, exist_ok=True)
         (self.out / "ACTIVE").write_text(json.dumps({"day": self.day.isoformat(), "at": self.now}) + "\n")
-        tasks, skipped = [], {}
+        key = tradier_key(self.base)
+        if not key:
+            return {"error": "no Tradier market-data key"}
+        tasks, skipped, wanted = [], {}, {}
         for symbol in self.universe():
             have = {int(e) for e in led["added"].get(symbol, [])}
             tip = T.tip_of(str(self.ind / f"{symbol}.npz"))
-            ready = []
+            todo = []
             for epoch in due:
                 if epoch in have:
                     continue
                 if tip is not None and int(tip) >= epoch:
                     skipped.setdefault(symbol, {})[str(epoch)] = f"store tip {iso(tip)} is not before {iso(epoch)}"
                     continue
-                ok, why = kline_ready(self.base, symbol, epoch)
-                if not ok:
-                    # a later bar whose kline file was written after its own close and still lacks this one -> this one is absent at
-                    # the source and is given up (rows are append-only); otherwise it is retried next minute
-                    skipped.setdefault(symbol, {})[str(epoch)] = why
-                    continue
-                ready.append(epoch)
-            if ready:
-                tasks.append((str(self.base), str(self.ind), symbol, ready))
+                todo.append(epoch)
+            if todo:
+                wanted[symbol] = todo
         t0 = time.time()
+        from concurrent.futures import ThreadPoolExecutor
+
+        def fetch(symbol):
+            try:
+                return symbol, fetch_premarket(key, symbol, self.day, set(epochs), self.now if self.test else time.time())
+            except Exception as exc:
+                return symbol, (None, f"{type(exc).__name__}: {str(exc)[:100]}")
+
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            fetched = dict(pool.map(fetch, sorted(wanted)))
+        fetch_s = round(time.time() - t0, 1)
+        bars_dir = self.out / f"{self.day.strftime('%Y%m%d')}_bars"
+        for symbol, todo in wanted.items():
+            bars, why = fetched.get(symbol) or (None, "not fetched")
+            if bars is None:
+                for epoch in todo:
+                    skipped.setdefault(symbol, {})[str(epoch)] = f"fetch: {why}"
+                continue
+            ready = {}
+            for epoch in todo:
+                if epoch in bars:
+                    ready[epoch] = bars[epoch]
+                else:
+                    # rows are append-only: a bar Tradier does not return while a later one exists is given up (absent at the source)
+                    skipped.setdefault(symbol, {})[str(epoch)] = "Tradier returned no bar"
+            if ready:
+                kept = read_json(bars_dir / f"{symbol}.json", {}) or {}
+                kept.update({str(k): v for k, v in bars.items()})
+                atomic_json(bars_dir / f"{symbol}.json", kept)
+                # the private 15m view carries every premarket bar fetched so far (earlier temp rows' bars included)
+                view = {int(k): v for k, v in kept.items() if int(k) <= max(ready)}
+                tasks.append((str(self.base), str(self.ind), str(self.out / "kl" / symbol), symbol, view, sorted(ready)))
         results = []
         if tasks:
             with ProcessPoolExecutor(max_workers=min(self.workers, len(tasks))) as pool:
@@ -266,10 +367,10 @@ class Run:
                 skipped.setdefault(symbol, {})[str(epoch)] = status
         led["skipped"] = {k: v for k, v in skipped.items() if v}
         appended = sum(1 for r in results if r[2] == "appended")
-        led["events"].append({"at": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "kind": "add", "appended": appended, "tasks": len(tasks), "compute_s": round(time.time() - t0, 1)})
+        led["events"].append({"at": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "kind": "add", "appended": appended, "tasks": len(tasks), "fetched": len(wanted), "fetch_s": fetch_s, "total_s": round(time.time() - t0, 1)})
         atomic_json(self.ledger_path(self.day), led)
         per_bar = {iso(e): sum(1 for v in led["added"].values() if e in v) for e in epochs}
-        return {"appended": appended, "tasks": len(tasks), "failed": [r for r in results if r[2] != "appended"][:20], "rows_per_bar": per_bar, "symbols": len(self.universe()), "compute_s": round(time.time() - t0, 1)}
+        return {"appended": appended, "tasks": len(tasks), "failed": [r for r in results if r[2] != "appended"][:20], "rows_per_bar": per_bar, "symbols": len(self.universe()), "fetched": len(wanted), "fetch_s": fetch_s, "total_s": round(time.time() - t0, 1)}
 
     def erase(self, day=None):
         day = day or self.day
@@ -285,6 +386,10 @@ class Run:
         errors = {s: r for s, r in results.items() if r.get("error")}
         removed = {s: r for s, r in results.items() if r["sidecar"] or r["zip"]}
         verified = not errors
+        if verified:
+            import shutil
+
+            shutil.rmtree(self.out / "kl", ignore_errors=True)
         stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         led.setdefault("events", []).append({"at": stamp, "kind": "erase", "symbols": len(tasks), "removed_symbols": len(removed),
                                               "rows_zip": sum(r["zip"] for r in results.values()), "rows_sidecar": sum(r["sidecar"] for r in results.values()),
