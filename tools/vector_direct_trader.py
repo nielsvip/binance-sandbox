@@ -47,6 +47,7 @@ import hmac
 import json
 import math
 import os
+import sqlite3
 import socket
 import sys
 import time
@@ -243,6 +244,51 @@ def deterioration_halts(root: Path) -> dict:
     return {str(k).upper(): v for k, v in (doc.get("halts") or {}).items()} if isinstance(doc, dict) else {}
 
 
+def rolling_deterioration_halts(root: Path, state_dir: Path, states: dict, bar: int) -> dict:
+    """Latch a fresh, same-settings 30D loss of at least five percentage points; never auto-release."""
+    path = root / "data" / "vector_direct" / "deteriorated_crypto.json"
+    latched = read_json(path, {}) or {}
+    if not isinstance(latched, dict):
+        raise RuntimeError(f"invalid deterioration latch {path}")
+    db = state_dir.parents[1] / "data" / "hourly_reconfig" / "per_sym_store.db"
+    if not db.exists():
+        log(f"rolling deterioration DB missing: {db}; existing latches kept")
+        return latched
+    added = {}
+    try:
+        con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=5)
+        try:
+            for ss, state in states.items():
+                if ss in latched or not state_fresh(state, bar) or state.get("gain_pct") is None:
+                    continue
+                row = con.execute("SELECT updated_at, gain_30d, acc_gain_pct FROM per_sym_active WHERE sym_side=?", (ss,)).fetchone()
+                if not row or row[0] != state.get("settings_updated_at"):
+                    continue
+                old = row[1] if row[1] is not None else row[2]
+                if old is None:
+                    continue
+                published, current = float(old), float(state["gain_pct"])
+                if not (math.isfinite(published) and math.isfinite(current)):
+                    continue
+                if published - current < 5.0 and not (published > 0 >= current):
+                    continue
+                added[ss] = {"published_gain_pct": published, "rolling_gain_pct": current,
+                             "drop_pp": published - current, "published_settings_at": row[0],
+                             "state_ts": state.get("ts"), "npz_tail": state.get("npz_tail"),
+                             "latched_utc": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                             "reason": "fresh 30D replay deteriorated by at least 5 pp or turned nonpositive"}
+        finally:
+            con.close()
+    except Exception as exc:
+        log(f"rolling deterioration read failed: {type(exc).__name__}: {exc}; existing latches kept")
+        return latched
+    if added:
+        latched.update(added)
+        atomic_write_json(path, latched)
+        log(f"ROLLING DETERIORATION LATCH {len(added)} new crypto sides; CLOSE held and forbid reentry: {','.join(sorted(added))}")
+    return latched
+
+
 def universe(root: Path, venue: str, accounts) -> dict:
     out = {a: set() for a in accounts}
     if venue == "crypto":
@@ -322,6 +368,15 @@ def plan_account(acct, venue, keys, states, positions, bar, done, allowed, prev_
     for ss in sorted(keyset | set(held_sides)):
         st = states.get(ss)
         held = float((positions.get(ss) or {}).get("qty") or 0.0)
+        if venue == "crypto" and ss in halted:
+            if held > 0:
+                orders.append({"acct": acct, "ss": ss, "act": "CLOSE", "qty": held,
+                               "key": f"{acct}|{ss}|{bar}|DETERIORATED_CLOSE",
+                               "why": f"DETERIORATED_CLOSE: {str((halted[ss] or {}).get('reason') or '30D gain deterioration')[:160]}",
+                               "reason": "DETERIORATED_CLOSE"})
+            else:
+                notes.append((ss, "DETERIORATED_NO_REENTRY"))
+            continue
         # OPERATOR 2026-10-28 (verbatim): "EVERY tradeable sym_side needs to have a verdict with a quantity from a NEW kline right
         # then and there or a position needs to be closed and declared untradeable and sounding all bells and whistles".
         # tools/s1_bar_guarantee.py declares a side UNTRADEABLE (data/vector_direct/untradeable_<venue>.json) once its repair
@@ -1119,6 +1174,8 @@ class Trader:
         if self.venue == "stocks":
             market_ok = self.broker.market_open() or bool(self.a.assume_open and self.a.dry_run)
         halted = deterioration_halts(self.root)
+        if self.venue == "crypto":
+            halted.update(rolling_deterioration_halts(self.root, self.state_dir, states, bar))
         if set(halted) != getattr(self, "halted_now", set()):
             log(f"DETERIORATION HALT {len(halted)} sym_sides (no OPEN/AUGMENT, exits unchanged): {','.join(sorted(halted))[:600]}")
             self.halted_now = set(halted)
@@ -1191,6 +1248,8 @@ class Trader:
                 log(f"{acct}: broker positions FAILED {str(exc)[:160]}")
                 continue
             self.with_held_states(states, pos)
+            if self.venue == "crypto":
+                halted.update(rolling_deterioration_halts(self.root, self.state_dir, states, bar))
             self._remember_held_anchors(acct, pos, states)
             t_obs, prev = self.obs.get(acct, (0, {}))
             prev_qty = prev if t_obs and bar - BAR_S <= t_obs < bar + BAR_S else {}
