@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-30T17:26:25.418739+00:00",
+  "ts": "2026-10-30T17:35:09.300610+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 0,
-  "pending_sym_sides": 189,
+  "pending_sym_sides": 165,
   "hosts": {
     "s1": {
       "published_last_60m": 0,
@@ -12,59 +12,69 @@
       "boards_running": 0,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 9925,
+      "mem_avail_mb": 9267,
       "disk_free_gb": 17,
-      "load1": 7.2,
-      "dispatch_idle_why": "baseline snapshot stale 39326s > 3600-300s (pilot would refuse at start)",
+      "load1": 9.7,
+      "dispatch_idle_why": "own venue work waits for memory (9296MB)",
       "published_ss": []
     },
     "s2": {
       "published_last_60m": 0,
       "published_last_3h": 0,
-      "boards": {},
-      "boards_running": 0,
-      "workers": 0,
-      "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 19743,
+      "boards": {
+        "MAGICUSDT_LONG": 7,
+        "QNTUSDT_LONG": 7
+      },
+      "boards_running": 2,
+      "workers": 14,
+      "workers_vs_law_28": "14/28",
+      "mem_avail_mb": 13576,
       "disk_free_gb": 29,
-      "load1": 4.0,
-      "dispatch_idle_why": "baseline snapshot stale 39326s > 3600-300s (pilot would refuse at start)",
+      "load1": 18.0,
+      "dispatch_idle_why": "mem 13651MB < 8500+11000 owed by 2 ramping",
       "published_ss": []
     },
     "s5": {
       "published_last_60m": 0,
       "published_last_3h": 0,
-      "boards": {},
-      "boards_running": 0,
-      "workers": 0,
-      "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 20645,
+      "boards": {
+        "COPX_LONG": 7,
+        "HII_LONG": 7
+      },
+      "boards_running": 2,
+      "workers": 14,
+      "workers_vs_law_28": "14/28",
+      "mem_avail_mb": 13113,
       "disk_free_gb": 71,
-      "load1": 3.0,
-      "dispatch_idle_why": "baseline snapshot stale 39326s > 3600-300s (pilot would refuse at start)",
+      "load1": 6.9,
+      "dispatch_idle_why": "mem 13228MB < 8500+6000 owed by 2 ramping",
       "published_ss": []
     },
     "s6": {
       "published_last_60m": 0,
       "published_last_3h": 0,
-      "boards": {},
-      "boards_running": 0,
-      "workers": 0,
-      "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 25633,
+      "boards": {
+        "ACEUSDT_SHORT": 7,
+        "AG_SHORT": 7,
+        "MNTS_SHORT": 7
+      },
+      "boards_running": 3,
+      "workers": 21,
+      "workers_vs_law_28": "21/28",
+      "mem_avail_mb": 18645,
       "disk_free_gb": 53,
-      "load1": 1.2,
-      "dispatch_idle_why": "baseline snapshot stale 39326s > 3600-300s (pilot would refuse at start)",
+      "load1": 16.0,
+      "dispatch_idle_why": "full 4/4",
       "published_ss": []
     }
   },
   "alerts": [
-    "LOW_THROUGHPUT:s1:0/h<12 (idle_why=baseline snapshot stale 39326s > 3600-300s (pilot would refuse at start))",
+    "LOW_THROUGHPUT:s1:0/h<12 (idle_why=own venue work waits for memory (9296MB))",
     "DISK_FLOOR:s1:17GB<40",
-    "LOW_THROUGHPUT:s2:0/h<12 (idle_why=baseline snapshot stale 39326s > 3600-300s (pilot would refuse at start))",
+    "LOW_THROUGHPUT:s2:0/h<12 (idle_why=mem 13651MB < 8500+11000 owed by 2 ramping)",
     "DISK_FLOOR:s2:29GB<40",
-    "LOW_THROUGHPUT:s5:0/h<12 (idle_why=baseline snapshot stale 39326s > 3600-300s (pilot would refuse at start))",
-    "LOW_THROUGHPUT:s6:0/h<12 (idle_why=baseline snapshot stale 39326s > 3600-300s (pilot would refuse at start))"
+    "LOW_THROUGHPUT:s5:0/h<12 (idle_why=mem 13228MB < 8500+6000 owed by 2 ramping)",
+    "LOW_THROUGHPUT:s6:0/h<12 (idle_why=full 4/4)"
   ],
   "repair": null
 }

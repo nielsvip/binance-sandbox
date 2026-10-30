@@ -1,56 +1,41 @@
 {
- "generated_at": "2026-10-30 17:29 UTC",
- "total_capital_usd": 45.5,
+ "generated_at": "2026-10-30 17:33 UTC",
+ "total_capital_usd": 29.08,
  "tier_capital": {
   "A": 0.0,
-  "B": 45.5,
+  "B": 29.08,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 3,
+  "B": 2,
   "C": 0
  },
  "winners": [],
- "losers": [
-  "ang:TRUMPUSDC_SHORT"
- ],
- "mediocre": [
-  "ang:ACEUSDT_SHORT"
- ],
+ "losers": [],
+ "mediocre": [],
  "positions": [
-  {
-   "pk": "ang:TRUMPUSDC_SHORT",
-   "symbol": "TRUMPUSDC",
-   "account": "ang",
-   "value_usd": 15.51,
-   "gain_pct": -3.389,
-   "tier": "B",
-   "perf_mult": 2.71,
-   "amt": 9.97,
-   "mark": 1.556
-  },
   {
    "pk": "ang:ACEUSDT_SHORT",
    "symbol": "ACEUSDT",
    "account": "ang",
-   "value_usd": 15.02,
-   "gain_pct": -0.142,
+   "value_usd": 14.56,
+   "gain_pct": 2.919,
    "tier": "B",
    "perf_mult": 0.79,
    "amt": 111.96,
-   "mark": 0.13413
+   "mark": 0.13004
   },
   {
    "pk": "ang:HYPEUSDT_LONG",
    "symbol": "HYPEUSDT",
    "account": "ang",
-   "value_usd": 14.97,
-   "gain_pct": 2.696,
+   "value_usd": 14.52,
+   "gain_pct": -0.448,
    "tier": "B",
    "perf_mult": 4.42,
    "amt": 0.16,
-   "mark": 93.54283889
+   "mark": 90.72859921
   }
  ]
 }

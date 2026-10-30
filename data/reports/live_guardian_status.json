@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-30T17:29:12Z",
+ "ts": "2026-10-30T17:36:22Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -28,14 +28,14 @@
  "accounts": {
   "trb": {
    "fills_6h": 0,
-   "open_positions": 21,
-   "unrealised_usd": 57.35,
+   "open_positions": 18,
+   "unrealised_usd": 49.88,
    "pos_mismatch": 0
   },
   "trc": {
    "fills_6h": 0,
    "open_positions": 1,
-   "unrealised_usd": -5.93,
+   "unrealised_usd": -5.91,
    "pos_mismatch": 0
   },
   "fin": {
@@ -57,7 +57,7 @@
   "men": {
    "fills_6h": 0,
    "open_positions": 2,
-   "unrealised_usd": -0.84,
+   "unrealised_usd": -0.85,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -73,7 +73,7 @@
   "ang": {
    "fills_6h": 1,
    "open_positions": 2,
-   "unrealised_usd": 0.38,
+   "unrealised_usd": 0.39,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -105,7 +105,7 @@
   "flz": {
    "fills_6h": 0,
    "open_positions": 1,
-   "unrealised_usd": -0.02,
+   "unrealised_usd": -0.03,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -122,12 +122,12 @@
  "tradeable_guard": {
   "poison": false,
   "restored": false,
-  "total": 149,
+  "total": 177,
   "per_acct": {
-   "fin": 36,
-   "ang": 50,
-   "flz": 26,
    "men": 36,
+   "ang": 78,
+   "fin": 36,
+   "flz": 26,
    "inf": 1
   }
  },
@@ -135,61 +135,61 @@
  "process": {
   "fin": {
    "pids": [
-    "12634"
+    "15395"
    ],
-   "starts_30m": 1,
-   "log_age_s": 28.0
+   "starts_30m": 2,
+   "log_age_s": 22.0
   },
   "men": {
    "pids": [
-    "9036"
+    "14728"
    ],
-   "starts_30m": 1,
-   "log_age_s": 12.0
+   "starts_30m": 2,
+   "log_age_s": 4.0
   },
   "ang": {
    "pids": [
-    "7799"
+    "13630"
    ],
-   "starts_30m": 1,
-   "log_age_s": 88.0
+   "starts_30m": 2,
+   "log_age_s": 3.0
   },
   "inf": {
    "pids": [
-    "8447"
+    "14141"
    ],
-   "starts_30m": 1,
-   "log_age_s": 39.0
+   "starts_30m": 2,
+   "log_age_s": 18.0
   },
   "flz": {
    "pids": [
-    "10013"
+    "14468"
    ],
-   "starts_30m": 1,
-   "log_age_s": 11.0
+   "starts_30m": 2,
+   "log_age_s": 20.0
   },
   "trb": {
    "pids": [
-    "17343"
+    "13227"
    ],
-   "starts_30m": 1,
-   "log_age_s": 1.0
+   "starts_30m": 2,
+   "log_age_s": 3.0
   },
   "trc": {
    "pids": [
-    "17457"
+    "13411"
    ],
-   "starts_30m": 1,
-   "log_age_s": 18.0
+   "starts_30m": 2,
+   "log_age_s": 2.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-30T17:29:12Z",
+   "ts": "2026-10-30T17:36:23Z",
    "severity": "CRITICAL",
    "kind": "RAPID_LOSS_KEY",
    "key": "men:IMXUSDT_SHORT",
-   "evidence": "unrealised -6.21% (60-min high -2.02%), amt 131"
+   "evidence": "unrealised -6.30% (60-min high -2.02%), amt 131"
   }
  ],
  "alert_counts": {
@@ -246,5 +246,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.64
+ "sweep_s": 2.3
 }
