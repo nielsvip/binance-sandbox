@@ -72,6 +72,7 @@ def test_mutated_source_disqualifies_candidate(tmp_path, monkeypatch):
     candidate = refresh.plan(tmp_path / "candidate", [spills], context, "2026-10-22T00:00:00Z")
     def mutate(*args, **kwargs):
         (spills / "spill_test.tsv").write_text("changed evidence")
+        (Path(candidate["run_dir"]) / "brain").mkdir(exist_ok=True)
         return SimpleNamespace(returncode=0)
     monkeypatch.setattr(refresh.subprocess, "run", mutate)
     with pytest.raises(ValueError, match="source changed"):

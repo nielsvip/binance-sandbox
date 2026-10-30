@@ -1,5 +1,6 @@
 import json
 import numpy as np
+import pytest
 from tools import v18_precision_build as precision
 from tools import v18_digest as digest
 
@@ -18,7 +19,7 @@ def test_precision_invalid_and_unknown_visits_do_not_change_gain_posterior():
 
 
 def test_digest_uses_matched_validation_choice_independent_of_test(tmp_path):
-    report = {"selection": {"production_scorer": "v2", "v1_gate": {"test_used_for_selection": False}}, "validation": {"F": {"never_tried_pair": {"auc_v2": 0.8, "n": 20, "pos": 2}}}}
+    report = {"cat_side": "CRYPTO_LONG", "selection": {"production_scorer": "v2", "v1_gate": {"test_used_for_selection": False}}, "validation": {"F": {"never_tried_pair": {"auc_v2": 0.8, "n": 20, "pos": 2}}}}
     path = tmp_path / "report_v2_CRYPTO_LONG.json"
     path.write_text(json.dumps(report))
     first, _ = digest.linknet_scorer("CRYPTO_LONG", tmp_path, tmp_path)
@@ -27,3 +28,16 @@ def test_digest_uses_matched_validation_choice_independent_of_test(tmp_path):
     second, _ = digest.linknet_scorer("CRYPTO_LONG", tmp_path, tmp_path)
     assert first == second
     assert first["CRYPTO_LONG"]["test_used_for_selection"] is False
+    report["cat_side"] = "CRYPTO_SHORT"
+    path.write_text(json.dumps(report))
+    with pytest.raises(ValueError, match="refused"):
+        digest.linknet_scorer("CRYPTO_LONG", tmp_path, tmp_path)
+
+
+def test_invalid_only_symbol_groups_do_not_change_icc_or_posterior():
+    symbols = np.repeat(np.arange(12), 4)
+    delta = np.tile([1.0, 0.0, -1.0, 0.0], 12)
+    clean = precision.key_estimates(np.zeros(len(delta), int), symbols, delta, np.ones(len(delta), int), 1, np.zeros(len(delta)))
+    mixed = precision.key_estimates(np.zeros(len(delta) + 40, int), np.concatenate([symbols, np.arange(20, 60)]), np.concatenate([delta, np.full(40, 99.0)]), np.concatenate([np.ones(len(delta), int), np.zeros(40, int)]), 1, np.zeros(len(delta) + 40))
+    assert clean["rho"] == mixed["rho"]
+    np.testing.assert_allclose(clean["p_mean"], mixed["p_mean"])

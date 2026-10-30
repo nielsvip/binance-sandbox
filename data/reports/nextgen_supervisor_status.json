@@ -1,0 +1,83 @@
+{
+  "recorded_at": "2026-10-30T20:09:33.613392Z",
+  "status": "active_not_achieved",
+  "deployment_authorized_by_this_record": false,
+  "requirements": {
+    "all_source_inventory_and_preservation": {
+      "status": "incomplete",
+      "known_hosts": [
+        "s1",
+        "s2",
+        "s5",
+        "s6"
+      ],
+      "mounted_drives_observed": [
+        "WD25",
+        "SSD2T",
+        "E3T"
+      ],
+      "missing_drive": "TOSHIBA_EXT",
+      "transfer_pid_last_observed": 47708,
+      "transfer_destination": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_rebuild_scratch",
+      "transfer_verified_complete": false
+    },
+    "full_matched_learning_refresh": {
+      "status": "incomplete",
+      "runner": "tools/v20_candidate_refresh.py",
+      "context_join_vintage": "2026-10-20",
+      "newer_context_coverage": "unverified"
+    },
+    "new_switch_exploration": {
+      "status": "shadow_only",
+      "helper": "tools/v15_nextgen_shadow_plan.py",
+      "production_integrated": false
+    },
+    "gain_improvement": {
+      "status": "unproven",
+      "required": "real engine trade returns, matched frozen inputs, independent chronological evaluation"
+    },
+    "compute_reduction": {
+      "status": "unproven",
+      "required_reduction_fraction": 0.9,
+      "required": "measured parent-and-descendant CPU per sym_side plus wall time and actual completion; shadow cost budgets are not measurements"
+    },
+    "60d_runs": {
+      "status": "patch_only",
+      "patch": "data/reports/nextgen_60d_candidate.patch",
+      "required_unlock": "v15_pilot.py",
+      "scheduler_enabled": false,
+      "actual_run_verified": false
+    },
+    "daily_s1_s2_catchup": {
+      "status": "unproven",
+      "required": "complete daily runs for all required sym_sides while maintaining live data duties"
+    },
+    "s5_s6_retirement": {
+      "status": "not_ready",
+      "retirement_performed": false
+    }
+  },
+  "benchmark_defect": {
+    "source": "s2:/home/niels/v15_bench/runs/20261014__gate_20261030T043918Z_cand/*/pilot.log",
+    "finding": "Six sides stopped at default parity startup checks; they did not produce optimization results",
+    "affected": [
+      "ALGOUSDT_SHORT",
+      "MINAUSDT_SHORT",
+      "AMD_LONG",
+      "QBTS_LONG",
+      "CDE_SHORT",
+      "COIN_SHORT"
+    ]
+  },
+  "source_hashes_at_recording": {
+    "tools/v20_candidate_refresh.py": "aedd617438b0adacdbb546fc073bc0b00447cd8b539a4f23c1258ebc8e5d4297",
+    "tools/v20_absorb_cycle.py": "94a06dfd04ae896caf49d19a48f8268047416839aca79c0bdfcf26ec9701eca4",
+    "tools/v18_brain.py": "68d2c9b6be7f84d78baa4e8b35494fda294dafdf7ca945e177c399aeecf2f6e9",
+    "tools/v18_linknet.py": "f8dd0b6beeb96a6954eeb3bbd55f9da936073bd38683e9b4a9106d3cd625985c",
+    "tools/v18_precision_build.py": "3d672cf223daa5b8110e7393dfed647f51159c88b6eeb4d08f6c07e7482847da",
+    "tools/v18_digest.py": "1ca4b6dbc947df5a987b031a62f2c80e70a004fa3b05701a006d9e1b66c1532c",
+    "tools/v15_nextgen_shadow_plan.py": "eceb880e53b25db0c7a250a01c251f056689dbd8f8df2c99c5865f212248c9ba",
+    "tools/v15_nextgen_shadow_replay.py": "6831935eda6f51de802850fdbf109a112bfab95f7b6463565a2b631d7276eeb9",
+    "data/reports/nextgen_60d_candidate.patch": "847dde0eab137f1e6b8880e9d582e623c8e1be1aa9b04d3fbb1857ee12014bbf"
+  }
+}

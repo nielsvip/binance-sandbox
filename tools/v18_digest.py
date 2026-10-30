@@ -102,6 +102,8 @@ def linknet_scorer(cat_side, learn_dir, report_dir=None):
     candidate_path = directory / f"report_v2_{cat_side}.json"
     candidate = C.read_json(candidate_path, None)
     if isinstance(candidate, dict):
+        if candidate.get("cat_side") != cat_side:
+            raise ValueError(f"candidate report cat_side {candidate.get('cat_side')!r} refused for {cat_side}")
         selection = candidate.get("selection") or {}
         choice = selection.get("production_scorer")
         arm = {"v1": "linknet", "v2": "linknet", "hybrid_v1": "hybrid", "hybrid_v2": "hybrid", "counts": "counts"}.get(choice)

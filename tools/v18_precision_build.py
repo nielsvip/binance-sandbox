@@ -501,7 +501,8 @@ def key_estimates(key, sym, d, valid, nkeys, secs, p0=None, rho=None):
     if p0 is None:
         p0 = float(pos.sum() / max(1, eligible.sum()))
     if rho is None:
-        rho = icc_binary(gk, n_g, pos_g)
+        present = n_g > 0
+        rho = icc_binary(gk[present], n_g[present], pos_g[present])
     f_g = 1.0 / (1.0 + (n_g - 1.0) * rho)
     A = np.bincount(gk, weights=f_g * pos_g, minlength=nkeys)
     Nf = np.bincount(gk, weights=f_g * n_g, minlength=nkeys)

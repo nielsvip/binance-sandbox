@@ -35,7 +35,7 @@ def files_under(root):
     return [path for path in entries if path.is_file()]
 
 
-def plan(run_dir, spill_dirs, context_root, cut, python=sys.executable, max_context_mb=256):
+def plan(run_dir, spill_dirs, context_root, cut, python=sys.executable, max_context_mb=256, max_epochs=20, max_train=None, stop_after=None):
     run = Path(run_dir).expanduser().resolve()
     context = Path(context_root).expanduser().resolve()
     if datetime.fromisoformat(cut.replace("Z", "+00:00")).tzinfo is None:
@@ -76,10 +76,15 @@ def plan(run_dir, spill_dirs, context_root, cut, python=sys.executable, max_cont
         [python, str(code_root / "tools/v18_precision_build.py"), "build", "--replace"],
         [python, str(code_root / "tools/v18_digest.py"), "--learn-dir", str(learn), "--out-dir", str(learn), "--linknet-report-dir", str(dataset), "--apply"],
     ]
-    code = sorted(set(ROOT.glob("*.py")) | set((ROOT / "tools").rglob("*.py")))
+    commands[3].extend(["--max-epochs", str(max_epochs)])
+    if max_train is not None:
+        commands[3].extend(["--max-train", str(max_train)])
+    if stop_after is not None:
+        commands = commands[:{"features": 1, "graph": 2, "dataset": 3, "train": 4, "score": 5, "precision": 7, "digest": 8}[stop_after]]
+    code = sorted(path for path in set(ROOT.glob("*.py")) | set((ROOT / "tools").rglob("*.py")) if path.is_file())
     if any(path.is_symlink() for path in code):
         raise ValueError("source snapshot contains symlinked Python code")
-    return {"status": "planned", "run_dir": str(run), "context_root": str(context), "context_files": [str(path) for path in context_files], "spill_files": [str(path) for path in spills], "code_files": [str(path) for path in code], "cut": cut, "commands": commands, "scope": "matched graph and LinkNet candidate; precision/digest rebuild and production gate still required", "eligibility": {"status": "unverified_not_promotable", "preservation": "source files are hashed, never rewritten or deleted; raw source inventory remains an external prerequisite", "reader_retains": ["row cumulative baseline cb", "symbol/side, board id, row timestamp", "naked and marginal deltas, validity bits, propensity weights", "pinned or causally inferred in-force values, joined chain context when available"], "reader_gaps": ["engine era and exact NPZ/window identities are not universal required training features", "ambiguous invalid/missing/nonfinite gain labels are conservatively excluded; exclusions require raw-source audit", "missing raw/skipped/error evidence cannot be reconstructed from spills", "historic sources need raw-log re-extraction to recover reasons missing in old spills; no success inferred from synthetic zero"]}}
+    return {"status": "planned", "mode": "compatibility_smoke" if max_train is not None or stop_after is not None else "candidate", "run_dir": str(run), "context_root": str(context), "context_files": [str(path) for path in context_files], "spill_files": [str(path) for path in spills], "code_files": [str(path) for path in code], "cut": cut, "commands": commands, "scope": "matched graph and LinkNet candidate; precision/digest rebuild and production gate still required", "eligibility": {"status": "unverified_not_promotable", "preservation": "source files are hashed, never rewritten or deleted; raw source inventory remains an external prerequisite", "reader_retains": ["row cumulative baseline cb", "symbol/side, board id, row timestamp", "naked and marginal deltas, validity bits, propensity weights", "pinned or causally inferred in-force values, joined chain context when available"], "reader_gaps": ["engine era and exact NPZ/window identities are not universal required training features", "ambiguous invalid/missing/nonfinite gain labels are conservatively excluded; exclusions require raw-source audit", "missing raw/skipped/error evidence cannot be reconstructed from spills", "historic sources need raw-log re-extraction to recover reasons missing in old spills; no success inferred from synthetic zero"]}}
 
 
 def required_artifacts(run):
@@ -139,7 +144,7 @@ def execute(candidate):
             shutil.copy2(source, copied)
             if sha256(copied) != manifest["source_sha256"][source]:
                 raise ValueError(f"code changed during snapshot: {source}")
-        env = dict(os.environ, V18_ROOT=str(run / "context"), V18_LEARN_DIR=str(run / "context/data/learn"), PYTHONDONTWRITEBYTECODE="1", PYTHONPATH=str(run / "code"))
+        env = dict(os.environ, V18_ROOT=str(run / "context"), V18_LEARN_DIR=str(run / "context/data/learn"), PYTHONDONTWRITEBYTECODE="1", PYTHONPATH=str(run / "code"), OPENBLAS_NUM_THREADS="2", OMP_NUM_THREADS="2", MKL_NUM_THREADS="2", NUMEXPR_NUM_THREADS="2")
         for index, command in enumerate(candidate["commands"]):
             if "v18_precision_build.py" in command[1] and "split" in command:
                 if not (run / "brain").is_dir():
@@ -157,6 +162,10 @@ def execute(candidate):
                 raise RuntimeError(f"phase {index} failed with exit {result.returncode}")
         if any(sha256(path) != digest for path, digest in manifest["source_sha256"].items()):
             raise ValueError("source changed during candidate build; artifacts are not eligible")
+        if len(candidate["commands"]) < 8:
+            manifest.update(status="partial_smoke_not_deployed", incomplete_phases=["full artifact validation", "remaining refresh phases", "raw-source/context eligibility", "production gate"])
+            save()
+            return manifest
         artifacts = required_artifacts(run)
         missing = [str(path) for path in artifacts if not path.is_file() or path.stat().st_size == 0]
         if missing:
@@ -189,9 +198,12 @@ def main():
     parser.add_argument("--cut", required=True)
     parser.add_argument("--python", default=sys.executable)
     parser.add_argument("--max-context-mb", type=int, default=256)
+    parser.add_argument("--max-epochs", type=int, default=20)
+    parser.add_argument("--max-train", type=int)
+    parser.add_argument("--stop-after", choices=("features", "graph", "dataset", "train", "score", "precision", "digest"), help="bounded smoke only; incomplete phases stay explicitly unfinished")
     parser.add_argument("--execute", action="store_true", help="default only prints the plan; never trains on the Mac")
     args = parser.parse_args()
-    candidate = plan(args.run_dir, args.spill_dir, args.context_root, args.cut, args.python, args.max_context_mb)
+    candidate = plan(args.run_dir, args.spill_dir, args.context_root, args.cut, args.python, args.max_context_mb, args.max_epochs, args.max_train, args.stop_after)
     if args.execute and sys.platform == "darwin":
         parser.error("candidate training runs on a worker, not the Mac")
     print(json.dumps(execute(candidate) if args.execute else candidate, indent=2))

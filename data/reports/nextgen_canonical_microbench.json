@@ -1,0 +1,153 @@
+{
+  "tested_at_utc": "2026-10-30T20:12:16.597214Z",
+  "sample_sha256": "37dc604b5da0c0a946cc119fc4f59af4217089a0f6e0e4d2b241a45220aff9e4",
+  "live_export_generated_at_utc": "2026-10-30T20:04:29.495461Z",
+  "results": [
+    {
+      "sym_side": "EDUUSDT_LONG",
+      "base_fields": 3628,
+      "source_sha256": "0ced5e819b8822f8eb0acfcffe8c0cce7ea8c3b86ea3385753f950b6ca1bade6",
+      "cases": 1740,
+      "all_legacy_key_and_task_pickle_equal": true,
+      "median_process_cpu_s_by_mode": {
+        "old_key_with_shallow_merge": 2.0417520000000025,
+        "new_key_only": 1.3480199999999982,
+        "old_key_and_task": 2.1329100000000025,
+        "new_key_and_deepcopied_task": 2.9717610000000008
+      },
+      "raw_process_cpu_s": {
+        "old_key_with_shallow_merge": [
+          2.026472000000001,
+          2.0719659999999998,
+          2.0417520000000025
+        ],
+        "new_key_only": [
+          1.3518659999999993,
+          1.3296820000000018,
+          1.3480199999999982
+        ],
+        "old_key_and_task": [
+          2.1479479999999995,
+          2.1329100000000025,
+          2.062228000000001
+        ],
+        "new_key_and_deepcopied_task": [
+          2.9717610000000008,
+          2.9990699999999997,
+          2.917860000000001
+        ]
+      }
+    },
+    {
+      "sym_side": "ALGOUSDT_SHORT",
+      "base_fields": 3616,
+      "source_sha256": "aac4ef91e8df8c67b96901d022c4e057a9cf8936c5c964f5bf3a31818baa28ac",
+      "cases": 1740,
+      "all_legacy_key_and_task_pickle_equal": true,
+      "median_process_cpu_s_by_mode": {
+        "old_key_with_shallow_merge": 2.043621999999999,
+        "new_key_only": 1.317025000000001,
+        "old_key_and_task": 2.012342999999994,
+        "new_key_and_deepcopied_task": 2.834885
+      },
+      "raw_process_cpu_s": {
+        "old_key_with_shallow_merge": [
+          2.1041589999999957,
+          2.043621999999999,
+          1.9810930000000013
+        ],
+        "new_key_only": [
+          1.3640710000000027,
+          1.317025000000001,
+          1.287669000000001
+        ],
+        "old_key_and_task": [
+          2.012342999999994,
+          1.9945900000000023,
+          2.0213719999999995
+        ],
+        "new_key_and_deepcopied_task": [
+          2.834885,
+          2.8470769999999987,
+          2.788114
+        ]
+      }
+    },
+    {
+      "sym_side": "AMD_LONG",
+      "base_fields": 3612,
+      "source_sha256": "b19966be29261e5d68e441fb2e14e5b5cd7f982078dfb5230c4901a430d06b14",
+      "cases": 1740,
+      "all_legacy_key_and_task_pickle_equal": true,
+      "median_process_cpu_s_by_mode": {
+        "old_key_with_shallow_merge": 2.0239890000000003,
+        "new_key_only": 1.3066940000000073,
+        "old_key_and_task": 2.0365469999999988,
+        "new_key_and_deepcopied_task": 2.8235990000000015
+      },
+      "raw_process_cpu_s": {
+        "old_key_with_shallow_merge": [
+          1.9653569999999974,
+          2.035531000000006,
+          2.0239890000000003
+        ],
+        "new_key_only": [
+          1.3191640000000007,
+          1.2785889999999966,
+          1.3066940000000073
+        ],
+        "old_key_and_task": [
+          2.0365469999999988,
+          2.0301819999999964,
+          2.046818000000002
+        ],
+        "new_key_and_deepcopied_task": [
+          2.8219940000000037,
+          2.8235990000000015,
+          2.8697039999999987
+        ]
+      }
+    },
+    {
+      "sym_side": "COIN_SHORT",
+      "base_fields": 3586,
+      "source_sha256": "b4b4b3964c05d244c254c5676744f256e591d8e170b97e53fd9a9265fe4b90ea",
+      "cases": 1740,
+      "all_legacy_key_and_task_pickle_equal": true,
+      "median_process_cpu_s_by_mode": {
+        "old_key_with_shallow_merge": 1.9955759999999998,
+        "new_key_only": 1.307001999999997,
+        "old_key_and_task": 2.0185129999999987,
+        "new_key_and_deepcopied_task": 2.7873670000000033
+      },
+      "raw_process_cpu_s": {
+        "old_key_with_shallow_merge": [
+          2.0679890000000114,
+          1.9775830000000099,
+          1.9955759999999998
+        ],
+        "new_key_only": [
+          1.307001999999997,
+          1.2833140000000043,
+          1.3071870000000132
+        ],
+        "old_key_and_task": [
+          2.0185129999999987,
+          2.0401919999999905,
+          2.0038780000000003
+        ],
+        "new_key_and_deepcopied_task": [
+          2.7984560000000016,
+          2.7645179999999954,
+          2.7873670000000033
+        ]
+      }
+    }
+  ],
+  "limits": [
+    "Microbenchmark only; no board speedup or CPU reduction extrapolated",
+    "Template candidate sanitizer not run; patches are parsed logged row/filter values",
+    "New task construction deep-copies mutable values and is timed separately",
+    "Frozen frame requires explicit generation invalidation on promotion/default changes"
+  ]
+}
