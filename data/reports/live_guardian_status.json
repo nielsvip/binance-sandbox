@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-30T01:03:53Z",
+ "ts": "2026-10-30T01:09:16Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -28,8 +28,8 @@
  "accounts": {
   "fin": {
    "fills_6h": 109,
-   "open_positions": 12,
-   "unrealised_usd": -0.68,
+   "open_positions": 9,
+   "unrealised_usd": -1.06,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -44,8 +44,8 @@
   },
   "men": {
    "fills_6h": 113,
-   "open_positions": 11,
-   "unrealised_usd": -1.79,
+   "open_positions": 10,
+   "unrealised_usd": -2.08,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 1,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 194,
+   "fills_6h": 193,
    "open_positions": 17,
-   "unrealised_usd": 0.86,
+   "unrealised_usd": 0.51,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -81,7 +81,7 @@
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 2,
-    "state_divergent": 1,
+    "state_divergent": 2,
     "filled": 0,
     "refused_non_safety": 0,
     "safety_refusals": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 25,
    "open_positions": 6,
-   "unrealised_usd": -1.14,
+   "unrealised_usd": -1.05,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,97 +127,104 @@
     "48315"
    ],
    "starts_30m": 1,
-   "log_age_s": 637.0
+   "log_age_s": 954.0
   },
   "men": {
    "pids": [
     "48306"
    ],
    "starts_30m": 1,
-   "log_age_s": 955.0
+   "log_age_s": 1272.0
   },
   "ang": {
    "pids": [
     "31077"
    ],
    "starts_30m": 1,
-   "log_age_s": 933.0
+   "log_age_s": 1250.0
   },
   "inf": {
    "pids": [
     "16365"
    ],
    "starts_30m": 1,
-   "log_age_s": -0.0
+   "log_age_s": 3.0
   },
   "flz": {
    "pids": [
     "21639"
    ],
    "starts_30m": 1,
-   "log_age_s": 987.0
+   "log_age_s": 1304.0
   },
   "trb": {
    "pids": [
     "19349"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 5.0
   },
   "trc": {
    "pids": [
     "14582"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 1.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-30T01:03:56Z",
+   "ts": "2026-10-30T01:09:17Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "men:ARUSDT_LONG",
    "evidence": "CLOSE FIXED_STOP bar=2026-10-29T20:00:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-30T01:03:58Z",
+   "ts": "2026-10-30T01:09:18Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "inf:ARUSDT_LONG",
    "evidence": "CLOSE FIXED_STOP bar=2026-10-29T20:00:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-30T01:04:02Z",
+   "ts": "2026-10-30T01:09:18Z",
+   "severity": "INFO",
+   "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
+   "key": "inf:1000PEPEUSDC_LONG",
+   "evidence": "CLOSE FIXED_STOP bar=2026-10-29T20:30:00Z: live already flat (state divergence, no order needed)"
+  },
+  {
+   "ts": "2026-10-30T01:09:18Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 637s"
+   "evidence": "ez_manage_fin.log not written for 954s"
   },
   {
-   "ts": "2026-10-30T01:04:02Z",
+   "ts": "2026-10-30T01:09:18Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "men",
-   "evidence": "ez_manage_men.log not written for 955s"
+   "evidence": "ez_manage_men.log not written for 1272s"
   },
   {
-   "ts": "2026-10-30T01:04:02Z",
+   "ts": "2026-10-30T01:09:18Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 933s"
+   "evidence": "ez_manage_ang.log not written for 1250s"
   },
   {
-   "ts": "2026-10-30T01:04:02Z",
+   "ts": "2026-10-30T01:09:18Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 987s"
+   "evidence": "ez_manage_flz.log not written for 1304s"
   }
  ],
  "alert_counts": {
-  "VEC_EXIT_WHILE_LIVE_FLAT": 2,
+  "VEC_EXIT_WHILE_LIVE_FLAT": 3,
   "STALE_LOG": 4
  },
  "active_interventions": {
@@ -320,5 +327,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 8.75
+ "sweep_s": 1.58
 }
