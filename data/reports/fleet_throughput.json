@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-30T06:15:01.387393+00:00",
+  "ts": "2026-10-30T06:25:03.615623+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 4,
-  "pending_sym_sides": 58,
+  "fleet_published_last_60m": 3,
+  "pending_sym_sides": 56,
   "hosts": {
     "s1": {
       "published_last_60m": 0,
@@ -14,78 +14,75 @@
       "boards_running": 1,
       "workers": 7,
       "workers_vs_law_28": "7/28",
-      "mem_avail_mb": 4466,
-      "disk_free_gb": 13,
-      "load1": 13.6,
-      "dispatch_idle_why": "mem 4760MB < 8500",
+      "mem_avail_mb": 4121,
+      "disk_free_gb": 12,
+      "load1": 10.4,
+      "dispatch_idle_why": "mem 3897MB < 8500",
       "published_ss": []
     },
     "s2": {
-      "published_last_60m": 2,
+      "published_last_60m": 1,
       "published_last_3h": 4,
       "boards": {
         "DOTUSDT_LONG": 5,
-        "EDUUSDT_LONG": 7
+        "EDUUSDT_LONG": 7,
+        "ZENUSDT_LONG": 7
       },
-      "boards_running": 2,
-      "workers": 12,
-      "workers_vs_law_28": "12/28",
-      "mem_avail_mb": 12018,
-      "disk_free_gb": 30,
-      "load1": 14.0,
-      "dispatch_idle_why": "mem 12300MB < 8500+5500 owed by 1 ramping",
+      "boards_running": 3,
+      "workers": 19,
+      "workers_vs_law_28": "19/28",
+      "mem_avail_mb": 6829,
+      "disk_free_gb": 29,
+      "load1": 19.7,
+      "dispatch_idle_why": "full 3/3",
       "published_ss": [
-        "EDUUSDT_LONG",
-        "ZENUSDT_LONG"
+        "EDUUSDT_LONG"
       ]
     },
     "s5": {
-      "published_last_60m": 1,
+      "published_last_60m": 0,
       "published_last_3h": 14,
       "boards": {
         "ATOMUSDT_SHORT": 7,
         "EGLDUSDT_SHORT": 7,
-        "ONEUSDT_SHORT": 7,
-        "STXUSDT_SHORT": 7
-      },
-      "boards_running": 4,
-      "workers": 28,
-      "workers_vs_law_28": "28/28",
-      "mem_avail_mb": 3249,
-      "disk_free_gb": 78,
-      "load1": 19.5,
-      "dispatch_idle_why": "full 4/4",
-      "published_ss": [
-        "BOMEUSDC_SHORT"
-      ]
-    },
-    "s6": {
-      "published_last_60m": 1,
-      "published_last_3h": 3,
-      "boards": {
-        "API3USDT_SHORT": 7,
-        "BBUSDT_SHORT": 7,
-        "MASKUSDT_SHORT": 0
+        "ONEUSDT_SHORT": 7
       },
       "boards_running": 3,
-      "workers": 14,
-      "workers_vs_law_28": "14/28",
-      "mem_avail_mb": 15561,
-      "disk_free_gb": 67,
-      "load1": 11.2,
+      "workers": 21,
+      "workers_vs_law_28": "21/28",
+      "mem_avail_mb": 9363,
+      "disk_free_gb": 78,
+      "load1": 21.2,
       "dispatch_idle_why": "no pending work anywhere (or none that fits memory)",
+      "published_ss": []
+    },
+    "s6": {
+      "published_last_60m": 2,
+      "published_last_3h": 4,
+      "boards": {
+        "1000LUNCUSDT_SHORT": 0,
+        "COTIUSDT_SHORT": 7
+      },
+      "boards_running": 2,
+      "workers": 7,
+      "workers_vs_law_28": "7/28",
+      "mem_avail_mb": 22300,
+      "disk_free_gb": 67,
+      "load1": 9.0,
+      "dispatch_idle_why": "spacing 24s < 120",
       "published_ss": [
+        "API3USDT_SHORT",
         "ETCUSDT_SHORT"
       ]
     }
   },
   "alerts": [
-    "LOW_THROUGHPUT:s1:0/h<12 (idle_why=mem 4760MB < 8500)",
-    "DISK_FLOOR:s1:13GB<40",
-    "LOW_THROUGHPUT:s2:2/h<12 (idle_why=mem 12300MB < 8500+5500 owed by 1 ramping)",
-    "DISK_FLOOR:s2:30GB<40",
-    "LOW_THROUGHPUT:s5:1/h<12 (idle_why=full 4/4)",
-    "LOW_THROUGHPUT:s6:1/h<12 (idle_why=no pending work anywhere (or none that fits memory))"
+    "LOW_THROUGHPUT:s1:0/h<12 (idle_why=mem 3897MB < 8500)",
+    "DISK_FLOOR:s1:12GB<40",
+    "LOW_THROUGHPUT:s2:1/h<12 (idle_why=full 3/3)",
+    "DISK_FLOOR:s2:29GB<40",
+    "LOW_THROUGHPUT:s5:0/h<12 (idle_why=no pending work anywhere (or none that fits memory))",
+    "LOW_THROUGHPUT:s6:2/h<12 (idle_why=spacing 24s < 120)"
   ],
-  "repair": "DISK_REPAIR:s1:13GB->14G (eval_cache_v1.db + rebuild_scratch_* deleted)"
+  "repair": "DISK_REPAIR:s1:12GB->13G (eval_cache_v1.db + rebuild_scratch_* deleted)"
 }
