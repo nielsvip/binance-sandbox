@@ -1,16 +1,16 @@
 {
-  "ang:XMRUSDT_LONG": {
-    "orderId": "4000002008929381",
-    "stopPrice": 595.76,
-    "entry_sig": "2026-10-29 22:30:46.620000+00:00",
-    "symbol": "XMRUSDT",
-    "side": "LONG"
-  },
   "ang:SKYUSDT_LONG": {
     "orderId": "4000002009110936",
     "stopPrice": 0.06231,
     "entry_sig": "2026-10-29 23:45:43.657000+00:00",
     "symbol": "SKYUSDT",
+    "side": "LONG"
+  },
+  "ang:XMRUSDT_LONG": {
+    "orderId": "4000002008929381",
+    "stopPrice": 595.76,
+    "entry_sig": "2026-10-29 22:30:46.620000+00:00",
+    "symbol": "XMRUSDT",
     "side": "LONG"
   },
   "ang:ETCUSDT_SHORT": {
@@ -25,13 +25,6 @@
     "stopPrice": 0.001771,
     "entry_sig": "2026-10-30 00:30:39.347000+00:00",
     "symbol": "GALAUSDT",
-    "side": "SHORT"
-  },
-  "ang:VETUSDT_SHORT": {
-    "orderId": "4000002009359180",
-    "stopPrice": 0.006149,
-    "entry_sig": "2026-10-30 00:45:44.873000+00:00",
-    "symbol": "VETUSDT",
     "side": "SHORT"
   }
 }
