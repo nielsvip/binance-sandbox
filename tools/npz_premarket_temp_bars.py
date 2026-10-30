@@ -424,6 +424,11 @@ class Run:
         if self.now < opened - 1800 + SETTLE_S:
             return dict(report, skip="before 09:00 ET")
         if self.now < opened + ERASE_AFTER_OPEN_S:
+            # cron starts this at hh:mm:00; a wanted bar closing within the next 20 s is waited for, so the pass runs at close + 5 s
+            soon = [e + 900 + SETTLE_S for e in temp_epochs(self.day) if 0 < e + 900 + SETTLE_S - self.now <= 20]
+            if soon and not self.test:
+                time.sleep(min(soon) - self.now)
+                self.now = time.time()
             return dict(report, add=self.add())
         led = read_json(self.ledger_path(self.day), {}) or {}
         if led.get("added") and not led.get("erased_verified_utc"):
