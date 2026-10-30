@@ -67,6 +67,19 @@ def test_filled_board_entry_is_not_opened_again_after_broker_goes_flat(tmp_path)
     assert any("SKIP_ALREADY_FILLED_ANCHOR" in line for line in trader._ledger_path().read_text().splitlines())
 
 
+def test_observed_stock_position_records_entry_for_future_flat_broker(tmp_path):
+    from types import SimpleNamespace
+    trader = V.Trader.__new__(V.Trader)
+    trader.out = tmp_path
+    trader.venue = "stocks"
+    trader.a = SimpleNamespace(dry_run=False, force_active=False)
+    trader.filled_open_anchors = set()
+    state = st(True)
+    trader._remember_held_anchors("trb", {"AAPL_LONG": {"qty": 2}}, {"AAPL_LONG": state})
+    anchor = state["engine_open_bar_ts"]
+    assert ("trb", "AAPL_LONG", anchor) in trader._load_filled_open_anchors()
+
+
 def test_unpublished_fallback_settings_never_open_and_close_held():
     fallback = dict(st(True), src='fallback:cat_side_defaults:STOCKS_SHORT', settings_fallback=True)
     orders, notes = V.plan_account('trb', 'stocks', ['ELD_SHORT'], {'ELD_SHORT': fallback}, {}, BAR, set(), ALLOW)

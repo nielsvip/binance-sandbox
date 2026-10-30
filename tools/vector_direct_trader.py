@@ -851,6 +851,9 @@ class Trader:
                 with path.open() as rows:
                     for line in rows:
                         row = json.loads(line)
+                        if row.get("event") == "OBSERVED_OPEN" and row.get("anchor") is not None:
+                            filled.add((row.get("acct"), row.get("ss"), int(row["anchor"])))
+                            continue
                         if row.get("event") != "ORDER" or row.get("act") != "OPEN" or row.get("status") != "SENT":
                             continue
                         response = row.get("resp") or {}
@@ -864,6 +867,21 @@ class Trader:
             except (OSError, ValueError, TypeError):
                 continue
         return filled
+
+    def _remember_held_anchors(self, acct, positions, states):
+        for symbol_side, position in positions.items():
+            if float(position.get("qty") or 0) <= 0:
+                continue
+            state = states.get(symbol_side) or {}
+            if not state.get("ok") or not state.get("open"):
+                continue
+            anchor = state.get("engine_open_bar_ts") or state.get("entry_bar")
+            if anchor is None:
+                continue
+            key = (acct, symbol_side, int(anchor))
+            if key not in self.filled_open_anchors:
+                self.filled_open_anchors.add(key)
+                self._ledger({"event": "OBSERVED_OPEN", "acct": acct, "ss": symbol_side, "anchor": int(anchor), "qty": float(position["qty"])})
 
     def _load_done(self):
         done = set()
@@ -1018,6 +1036,7 @@ class Trader:
                 log(f"paper {acct}: positions failed {str(exc)[:120]}")
                 continue
             self.with_held_states(states, pos)
+            self._remember_held_anchors(acct, pos, states)
             orders, _ = plan_account(acct, self.venue, keys.get(acct, ()), states, pos, bar, self.paper_done, allowed, wt15=self.wt15, noinfo_age=self.noinfo_age, halted=dict.fromkeys(getattr(self, "halted_now", ()), {}))
             path = self.out / f"paper_{self.venue}_{dt.datetime.fromtimestamp(now, dt.timezone.utc):%Y-%m-%d}.jsonl"
             with open(path, "a") as fh:
@@ -1172,6 +1191,7 @@ class Trader:
                 log(f"{acct}: broker positions FAILED {str(exc)[:160]}")
                 continue
             self.with_held_states(states, pos)
+            self._remember_held_anchors(acct, pos, states)
             t_obs, prev = self.obs.get(acct, (0, {}))
             prev_qty = prev if t_obs and bar - BAR_S <= t_obs < bar + BAR_S else {}
             orders, notes = plan_account(acct, self.venue, keys.get(acct, ()), states, pos, bar, self.done, allowed, prev_qty, wt15=self.wt15, noinfo_age=self.noinfo_age,
