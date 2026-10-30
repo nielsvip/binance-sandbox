@@ -761,6 +761,7 @@ class Tradier:
     def __init__(self, env, out: Path):
         self.env, self.out, self.s = env, out, _session(None)
         self._clock = (0.0, False)
+        self._orders_cache = {}
 
     def account(self, acct):
         a = acct.upper()
@@ -780,6 +781,8 @@ class Tradier:
                            headers={"Authorization": f"Bearer {key}", "Accept": "application/json"})
         if r.status_code >= 400:
             raise RuntimeError(f"HTTP {r.status_code} {path}: {r.text[:200]}")
+        if method == "DELETE" and not r.content:
+            return {"status": "cancelled"}
         return r.json()
 
     def market_open(self):
@@ -807,13 +810,43 @@ class Tradier:
         q = q[0] if isinstance(q, list) else q
         return float(q.get("last") or q.get("ask") or 0.0)
 
-    def pending_protected(self, acct, symbol, side):
+    def _recent_orders(self, acct):
+        cached = self._orders_cache.get(acct)
+        if cached and time.time() - cached[0] < 5:
+            return cached[1]
         aid, _key, _base = self.account(acct)
         doc = self._req("GET", acct, f"/accounts/{aid}/orders")
         rows = (doc.get("orders") or {}).get("order") or []
         rows = [rows] if isinstance(rows, dict) else rows
+        self._orders_cache[acct] = (time.time(), rows)
+        return rows
+
+    def pending_protected(self, acct, symbol, side):
+        rows = self._recent_orders(acct)
         opening_side = "buy" if side == "LONG" else "sell_short"
-        return next((row for row in rows if str(row.get("symbol") or "").upper() == symbol and str(row.get("side") or "").lower() == opening_side and str(row.get("status") or "").lower() in ("open", "pending", "partially_filled") and (str(row.get("class") or row.get("order_class") or "").lower() == "oto" or str(row.get("tag") or "").startswith("vdo"))), None)
+        return next((row for row in rows if str(row.get("symbol") or "").upper() == symbol and str(row.get("side") or "").lower() == opening_side and str(row.get("status") or "").lower() in ("open", "pending", "partially_filled") and ((str(row.get("class") or row.get("order_class") or "").lower() == "oto") or str(row.get("tag") or "").startswith("vdo"))), None)
+
+    def cancel_stale_protected(self, acct, desired):
+        aid, _key, _base = self.account(acct)
+        rows = self._recent_orders(acct)
+        cancelled = []
+        for row in rows:
+            if not str(row.get("tag") or "").startswith("vdo") or str(row.get("status") or "").lower() not in ("open", "pending", "partially_filled"):
+                continue
+            side = str(row.get("side") or "").lower()
+            if side not in ("buy", "sell_short"):
+                continue
+            ss = f"{str(row.get('symbol') or '').upper()}_{'LONG' if side == 'buy' else 'SHORT'}"
+            if ss in desired:
+                continue
+            order_id = row.get("id")
+            if not order_id:
+                raise RuntimeError(f"OTO_CANCEL_NO_ID {acct} {ss}")
+            result = self._req("DELETE", acct, f"/accounts/{aid}/orders/{order_id}")
+            cancelled.append((ss, order_id, result))
+        if cancelled:
+            self._orders_cache.pop(acct, None)
+        return cancelled
 
     def send_protected(self, acct, order, quantity, stop_level):
         aid, _key, _base = self.account(acct)
@@ -833,6 +866,9 @@ class Tradier:
         parent = result.get("order") or {}
         if not parent.get("id"):
             raise RuntimeError(f"OTO_SUBMISSION_UNCONFIRMED {symbol}: {str(parent)[:160]}")
+        cached = self._orders_cache.get(acct)
+        if cached:
+            cached[1].append({"id": parent["id"], "symbol": symbol, "side": opening_side, "status": "pending", "class": "oto", "tag": data["tag"]})
         return {"id": parent["id"], "status": parent.get("status"), "class": "oto", "limit": limit_price, "stop": stop_level}
 
     def size(self, o, held, price):
@@ -1316,6 +1352,15 @@ class Trader:
                     orders = [o for o in orders if o["act"] not in ("OPEN", "AUGMENT")] + self.rebalance(acct, pos, bar, forced)
                     if dropped:
                         log(f"{acct} REBAL WINDOW: entries held back {dropped}")
+            if self.venue == "stocks" and not self.a.dry_run and not killed:
+                try:
+                    desired = {o["ss"] for o in orders if o["act"] in ("OPEN", "AUGMENT") and not self._entry_banned(acct)}
+                    for ss, order_id, result in self.broker.cancel_stale_protected(acct, desired):
+                        self._ledger({"event": "ORDER", "acct": acct, "ss": ss, "act": "CANCEL_PENDING_ENTRY", "status": "PROTECTED_OTO_CANCELLED", "order_id": order_id, "resp": result, "final": True})
+                        log(f"PROTECTED_OTO_CANCELLED {acct} {ss} id={order_id}: no longer planned")
+                except Exception as exc:
+                    self.alert("PROTECTED_OTO_CANCEL_FAILED", account=acct, error=str(exc)[:200], severity="CRITICAL")
+                    log(f"PROTECTED_OTO_CANCEL_FAILED {acct}: {exc}")
             orders_n += self.send_orders(acct, orders, pos, killed)
         if consumed_dirty:
             try:
@@ -1539,8 +1584,7 @@ class Trader:
                         continue
                     stop_level = self.stops.entry_level(o, price)
                     response = self.broker.send_protected(acct, o, qty, stop_level)
-                    row.update({"status": "PROTECTED_OTO_SUBMITTED", "resp": response, "stop_level": stop_level, "final": True})
-                    self.done.add(o["key"])
+                    row.update({"status": "PROTECTED_OTO_SUBMITTED", "resp": response, "stop_level": stop_level, "final": False})
                     self._ledger(row)
                     log(f"PROTECTED_OTO_SUBMITTED {acct} {o['ss']} {o['act']} qty={qty} limit={response['limit']} stop={stop_level} id={response['id']}")
                 except Exception as exc:

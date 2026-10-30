@@ -79,6 +79,7 @@ def test_stock_entry_submits_one_contingent_order_without_flat_position_stop(tmp
     assert ("oto", "OPEN") in events
     assert not any(event[0] in ("prearm", "send") for event in events)
     assert ("ledger", "PROTECTED_OTO_SUBMITTED") in events
+    assert order()["key"] not in obj.done
 
 
 def test_tradier_contingent_order_has_entry_and_stop_legs(tmp_path):
@@ -94,6 +95,21 @@ def test_tradier_contingent_order_has_entry_and_stop_legs(tmp_path):
     response = broker.send_protected("trb", {"ss": "XYZ_LONG", "key": "one"}, 3, 9.5)
     assert response["id"] == 17 and response["class"] == "oto"
     assert posted == [{"class": "oto", "duration[0]": "day", "duration[1]": "gtc", "symbol[0]": "XYZ", "quantity[0]": "3", "type[0]": "limit", "side[0]": "buy", "price[0]": "10.03", "symbol[1]": "XYZ", "quantity[1]": "3", "type[1]": "stop", "side[1]": "sell", "stop[1]": "9.50", "tag": posted[0]["tag"]}]
+
+
+def test_stale_contingent_entry_is_cancelled_but_current_entry_is_kept(tmp_path):
+    broker = module.Tradier({}, tmp_path)
+    broker.account = lambda account: ("test-account", "test-key", "test-url")
+    deleted = []
+    rows = [{"id": 17, "symbol": "XYZ", "side": "buy", "status": "open", "tag": "vdo1"}, {"id": 18, "symbol": "ABC", "side": "sell_short", "status": "pending", "tag": "vdo2"}, {"id": 19, "symbol": "OTHER", "side": "buy", "status": "open", "tag": "manual"}]
+    def request(method, account, path, params=None, data=None):
+        if method == "GET":
+            return {"orders": {"order": rows}}
+        deleted.append(path)
+        return {"order": {"status": "ok"}}
+    broker._req = request
+    assert len(broker.cancel_stale_protected("trb", {"XYZ_LONG"})) == 1
+    assert deleted == ["/accounts/test-account/orders/18"]
 
 
 def test_lost_stop_closes_filled_position(tmp_path):

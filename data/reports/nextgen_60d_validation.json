@@ -1,7 +1,7 @@
 {
-  "tested_at_utc": "2026-10-30T19:57:36.923787+00:00",
+  "tested_at_utc": "2026-10-30T20:00:27.496880Z",
   "patch": "/Users/niels/Documents/binance/data/reports/nextgen_60d_candidate.patch",
-  "patch_sha256": "58c438de0fec60ae364d4cfbe28db8e3a529008054bf1268d6564c776d9be8d2",
+  "patch_sha256": "ecad574fe7b24131d1f5726f42feda5702c9ad30c41aa3189a88c162677ebc95",
   "source_preimage_sha256": {
     "tools/opt/evaluate_v12.py": "555ecba9821093f54079d97ff4863f2b904ba7f552207ca702345797a443f0f5",
     "v15_pilot.py": "3588e3b2168540eede250ae65d6d19e42020d03dd7d0d30f42ff5f527e4aa5d6",
@@ -18,6 +18,14 @@
     "isolated_output_and_source_hash_accepted",
     "V15_60D_SOURCE_SHA256_invalid_refused",
     "V15_OUT_DIR_invalid_refused",
+    "V15_PROGRESS_DIR_invalid_refused",
+    "V15_PROGRESS_DIR_invalid_refused",
+    "V15_EVAL_CACHE_DB_invalid_refused",
+    "SWITCH_PARITY_REGISTER_invalid_refused",
+    "V15_60D_RESEARCH_ROOT_invalid_refused",
+    "shared_data_symlink_refused",
+    "60d_registration_refused_even_if_env_changes",
+    "provenance_survives_missing_prior_record",
     "original_sources_unchanged"
   ],
   "status": "PASS",

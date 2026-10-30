@@ -171,6 +171,10 @@ def _f(x):
         return None
 
 
+def gain_eligible(valid, delta):
+    return bool(valid) and _f(delta) is not None
+
+
 def _r(x, nd=5):
     return None if x is None else round(x, nd)
 
@@ -1499,9 +1503,8 @@ class Graph:
             E[31] = ts_ep
         if not valid:
             E[1] += 1
-            E[4] += w
             return
-        if d is None:
+        if _f(d) is None:
             return
         E[4] += w
         if d > POS_THR:
@@ -1894,7 +1897,9 @@ class CatBrain:
         a = "R:" + row_key
         x_r = None
         p_fit = None
-        if naked is not None and naked[-1]:
+        if naked is not None and naked[-1] and not gain_eligible(naked[1], naked[0]):
+            self.c["gain_naked_excluded_ambiguous_invalid" if not naked[1] else "gain_naked_excluded_missing_nonfinite"] += 1
+        if naked is not None and naked[-1] and gain_eligible(naked[1], naked[0]):
             x_r, cn = featurize(T, self.bk, "R", sym, sheet, row_key, None, None, regime, tc, bc, eb, et)
             p = H.p("R", x_r)
             p_fit = p
@@ -1911,7 +1916,7 @@ class CatBrain:
         cells = ev.get("y") or []
         rs = self.run_set.setdefault(sym, {})
         rc = self.bi.row_context(sheet, sw, cand, rs) if self.bi is not None else None
-        nvalid = bool(naked is not None and naked[1] and naked[0] is not None)
+        nvalid = bool(naked is not None and gain_eligible(naked[1], naked[0]))
         src = self.board_src.get(sym)
         bknown = src is None or (src == "progress" and bool(ev.get("nzk")))
         nz = ev.get("nz") or []
@@ -1919,6 +1924,9 @@ class CatBrain:
         for c in cells:
             hdr, md, valid, secs = c[0], c[1], c[2], c[3]
             mm, w, dabs = c[4:9], c[9] or 1.0, c[10]
+            if not gain_eligible(valid, md):
+                self.c["gain_cells_excluded_ambiguous_invalid" if not valid else "gain_cells_excluded_missing_nonfinite"] += 1
+                continue
             x_f, cn = featurize(T, self.bk, "F", sym, sheet, row_key, hdr, nd, regime, tc, bc, eb, et)
             x0 = x_f[:17] + [0.0, 0.0] + x_f[19:]
             self._mb(x0, sheet, sw, cand, hdr, md, valid, rs, rc, nvalid, bknown, str(hdr).strip() in nzset, test, w, H.p("F0", x0))
@@ -1985,7 +1993,7 @@ class CatBrain:
             g.E[ip, C["syn_pos"]] += int(syn > EPS)
             g.E[ip, C["syn_neg"]] += int(syn < -EPS)
             self.c["synergy_quartets"] += 1
-        if naked is not None and naked[-1]:
+        if naked is not None and naked[-1] and gain_eligible(naked[1], naked[0]):
             yb = 1.0 if (nd is not None and nd > POS_THR) else 0.0
             for k in (sym, (sym, sheet)):
                 self.ema[k] = min(0.98, max(0.002, 0.98 * self.ema[k] + 0.02 * yb))
@@ -2013,7 +2021,7 @@ class CatBrain:
         self.c["bind_verdict_" + bf["bind_verdict"]] += 1
         noop = noop_listed or bool(valid and nvalid and md is not None and abs(md) <= EPS)
         nflag = (1.0 if noop else 0.0) if bknown else -1.0
-        if nvalid and md is not None:
+        if nvalid and gain_eligible(valid, md):
             y = 1.0 if (valid and md > POS_THR) else 0.0
             p = H.p("M", xm)
             self.mb_cap["M"].extend((p, y, t, nflag))
@@ -2021,7 +2029,7 @@ class CatBrain:
             H.learn("M", xm, y, p, W_FIT * w)
             self.c["M_labels"] += 1
             self.c["M_pos"] += int(y)
-        if bknown:
+        if bknown and nvalid and gain_eligible(valid, md):
             y = 0.0 if noop else 1.0
             p = H.p("B", xm)
             self.mb_cap["B"].extend((p, y, t, nflag))

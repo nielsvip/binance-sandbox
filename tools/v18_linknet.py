@@ -336,13 +336,13 @@ class CatDS:
             inf, src = None, "U"
         sci = self.scombo(f"{sheet}|{sw}={cand}|INF={inf}|{src}")
         if naked is not None and naked[-1]:
-            d = naked[0] if naked[1] else None
+            d = naked[0]
             y = 1 if (d is not None and d > EPS) else 0
             if inf is not None and str(cand) == str(inf):
                 self.c["R_identity_cand_eq_inforce"] += 1
             else:
                 self.ex.add(kind=0, set_i=si, filt_i=-1, sc_i=sci, fc_i=-1, inf_src=self.INF_SRC[src], ctx_i=self._ctx("R", reg, sym, tier, prov=prov), ts=t, b_t0=b_t0,
-                            board_i=bi, y=y, d=self._f(d if d is not None else 0.0), valid=int(bool(naked[1])), m_tim=self._f(naked[3]),
+                            board_i=bi, y=y, d=self._f(d), valid=int(VB.gain_eligible(naked[1], d)), m_tim=self._f(naked[3]),
                             m_dd=self._f(naked[5]), m_wr=self._f(naked[7]), w=float(naked[8] or 1.0), x_i=xi, prov=self.PROV[prov])
                 self.c["R"] += 1
                 self.c["R_with_context" if xi >= 0 else "R_without_context"] += 1
@@ -368,8 +368,8 @@ class CatDS:
                     continue
             y = 1 if (valid and md is not None and md > EPS) else 0
             self.c[f"F_inf_{src}"] += 1
-            self.ex.add(kind=1, set_i=si, filt_i=self.filts(hdr), sc_i=sci, fc_i=self.fcombo(f"{hdr}|INF={finf}|{fsrc}"), inf_src=self.INF_SRC[src], ctx_i=ci, ts=t, b_t0=b_t0, board_i=bi, y=y, d=self._f(md if md is not None else 0.0),
-                        valid=int(bool(valid)), m_tim=self._f(c[4]), m_dd=self._f(c[6]), m_wr=self._f(c[8]), w=float(c[9] or 1.0), x_i=xi, prov=self.PROV[prov])
+            self.ex.add(kind=1, set_i=si, filt_i=self.filts(hdr), sc_i=sci, fc_i=self.fcombo(f"{hdr}|INF={finf}|{fsrc}"), inf_src=self.INF_SRC[src], ctx_i=ci, ts=t, b_t0=b_t0, board_i=bi, y=y, d=self._f(md),
+                        valid=int(VB.gain_eligible(valid, md)), m_tim=self._f(c[4]), m_dd=self._f(c[6]), m_wr=self._f(c[8]), w=float(c[9] or 1.0), x_i=xi, prov=self.PROV[prov])
             self.c["F"] += 1
             self.c["F_with_context" if xi >= 0 else "F_without_context"] += 1
             self.c[f"F_prov_{prov}"] += 1
@@ -406,7 +406,7 @@ class CatDS:
         xi = self._xctx(ev["s"], self.last_base.get(ev["s"]))
         self.ex.add(kind=2, set_i=self.sets(f"{sheet}|{sw}={cand}"), filt_i=-1, sc_i=self.scombo(f"{sheet}|{sw}={cand}|INF={inf}|{src}"), fc_i=-1,
                     inf_src=self.INF_SRC[src], ctx_i=self._ctx("PH", None, ev["s"], None, ev.get("ph")), ts=t,
-                    b_t0=b_t0, board_i=self.boards(b), y=y, d=self._f(d if d is not None else 0.0), valid=int(v), m_tim=self._f(m[0]),
+                    b_t0=b_t0, board_i=self.boards(b), y=y, d=self._f(d), valid=int(VB.gain_eligible(v, d)), m_tim=self._f(m[0]),
                     m_dd=self._f(m[2]), m_wr=self._f(m[4]), w=float(ev.get("w") or 1.0), x_i=xi, prov=0)
         self.c["PH"] += 1
         self.c["PH_with_context" if xi >= 0 else "PH_without_context"] += 1
@@ -906,6 +906,10 @@ def fit_platt(p, y, iters=50):
     return float(a), float(b)
 
 
+def gain_mask(dataset):
+    return (dataset["valid"] > 0) & np.isfinite(dataset["d"])
+
+
 def validation_platt(scores, dataset, validation_rows, test_rows):
     if np.intersect1d(validation_rows, test_rows).size:
         raise ValueError("calibration rows overlap test rows")
@@ -989,11 +993,13 @@ class Trainer:
         y = D["y"].astype(np.float32)
         w = np.clip(D["w"], 0.0, 1000.0)
         Y[:, 0] = y
-        M[:, 0] = w
-        dpos = np.where(y > 0, np.log1p(np.maximum(D["d"], 0.0)), 0.0)
+        eligible = gain_mask(D)
+        self.gain_eligibility = {"eligible": int(eligible.sum()), "excluded_ambiguous_invalid": int((D["valid"] <= 0).sum()), "excluded_missing_nonfinite": int(((D["valid"] > 0) & ~np.isfinite(D["d"])).sum())}
+        M[:, 0] = w * eligible
+        dpos = np.where(y > 0, np.log1p(np.maximum(np.nan_to_num(D["d"], nan=0.0, posinf=0.0, neginf=0.0), 0.0)), 0.0)
         Y[:, 1] = dpos
-        M[:, 1] = y * w
-        valid = D["valid"] > 0
+        M[:, 1] = y * w * eligible
+        valid = eligible
         for h, col in ((2, "m_tim"), (3, "m_dd"), (4, "m_wr")):
             v = D[col]
             ok = valid & np.isfinite(v)
@@ -1015,16 +1021,17 @@ class Trainer:
         cut_val = float(np.quantile(boards_t0, q_val))
         cut_test = float(np.quantile(boards_t0, q_test))
         ts = D["ts"]
-        fit = (bt < cut_val) & (ts < cut_val)
-        val = (bt >= cut_val) & (bt < cut_test) & (ts < cut_test) & (D["kind"] < 2)
-        pre_test = (bt < cut_test) & (ts < cut_test)
-        test = (bt >= cut_test) & (D["kind"] < 2)
-        test_ph = (ts >= cut_test) & (D["kind"] == 2)
+        eligible = gain_mask(D)
+        fit = (bt < cut_val) & (ts < cut_val) & eligible
+        val = (bt >= cut_val) & (bt < cut_test) & (ts < cut_test) & (D["kind"] < 2) & eligible
+        pre_test = (bt < cut_test) & (ts < cut_test) & eligible
+        test = (bt >= cut_test) & (D["kind"] < 2) & eligible
+        test_ph = (ts >= cut_test) & (D["kind"] == 2) & eligible
         self.cut_val, self.cut_test = cut_val, cut_test
         f_ts = D.get("fwd_ts", np.zeros(0))
         f_res = D.get("fwd_t_res", np.zeros(0))
         fsp = {"fit": (f_res < cut_val), "pre_test": (f_res < cut_test), "test": (f_ts >= cut_test)}
-        return {"fit": fit, "val": val, "pre_test": pre_test, "test": test, "test_ph": test_ph, "all": np.ones(len(ts), bool)}, fsp
+        return {"fit": fit, "val": val, "pre_test": pre_test, "test": test, "test_ph": test_ph, "all": eligible}, fsp
 
     # -- batches
     def _gather(self, rows, fwd_rows=None, drop=True, rng=None):
@@ -1091,6 +1098,7 @@ class Trainer:
         V = len(self.fz.names)
         net = LinkNet(V, k=self.k, H=self.H, seed=self.seed)
         rows = np.asarray(rows)
+        rows = rows[gain_mask(self.D)[rows]]
         if self.max_train and len(rows) > self.max_train:
             rows = np.sort(rng.choice(rows, self.max_train, replace=False))
         fwd_rows = np.asarray(fwd_rows if fwd_rows is not None else [], dtype=np.int64)
@@ -1133,6 +1141,7 @@ class Trainer:
     # -- count baseline (v18_brain shrinkage on the same pre-test data)
     def count_baseline(self, fit_rows, eval_rows):
         D = self.D
+        fit_rows = fit_rows[gain_mask(D)[fit_rows]]
         m = VB.M_SHRINK
         out = np.zeros(len(eval_rows), np.float64)
         e_pos = np.zeros(len(eval_rows), np.float64)
@@ -1150,6 +1159,10 @@ class Trainer:
             yk, dk = y_f[kind_f == kind], d_f[kind_f == kind]
             p0 = (yk.sum() + 1.0) / (len(yk) + 2.0)
             mpos0 = float(dk[yk > 0].mean()) if (yk > 0).any() else 0.0
+            if len(fk) == 0:
+                out[sel_e] = p0
+                pr_out[sel_e] = p0
+                continue
             if kind == 1:
                 pk = D["set_i"][fk].astype(np.int64) * 1000003 + D["filt_i"][fk]
                 ek = D["set_i"][eval_rows][sel_e].astype(np.int64) * 1000003 + D["filt_i"][eval_rows][sel_e]
@@ -1285,6 +1298,7 @@ class Trainer:
         val_scores = {"linknet": sigmoid(self.predict(net_es, val_rows)[:, 0])}
         platt = validation_platt(val_scores, D, val_rows, test_rows)["linknet"]
         rep["platt"] = platt
+        rep["gain_eligibility"] = self.gain_eligibility
         rep["calibration_source"] = "chronological validation; early-stop model predictions; transferred to refit model"
         pc = np.where(kind == 0, apply_platt(p_ln, platt["R"]), apply_platt(p_ln, platt["F"]))
         cal2 = []
@@ -1632,6 +1646,7 @@ class Trainer2(Trainer):
         V, VX = len(self.fz.names), self.XC.shape[1]
         net = LinkNet2(V, VX, k=self.k, H=self.H, seed=self.seed)
         rows = np.asarray(rows)
+        rows = rows[gain_mask(self.D)[rows]]
         if self.max_train and len(rows) > self.max_train:
             rows = np.sort(rng.choice(rows, self.max_train, replace=False))
         fwd_rows = np.asarray(fwd_rows if fwd_rows is not None else [], dtype=np.int64)
@@ -1794,7 +1809,7 @@ class Trainer2(Trainer):
                "n_pre_test": int(len(pre_rows)), "n_test": int(len(test_rows)), "boards_test": int(len(np.unique(D["board_i"][test_rows]))),
                "validation": val_tab, "selection": {"rule": "best mean VALIDATION AUC (models early-stopped on fit < q70, counts from fit) over " + ", ".join(sel_used),
                                                     "mean_val_auc": sel_mean, "production_scorer": prod},
-               "test": test_tab, "platt_on_validation": platt, "calibration_source": "chronological validation; early-stop model predictions; transferred to refit model", "heads": heads, "PH_by_time": ph, "forward": fwd, "mean_pred_vs_realised_test": mean_pred}
+               "test": test_tab, "platt_on_validation": platt, "calibration_source": "chronological validation; early-stop model predictions; transferred to refit model", "gain_eligibility": self.gain_eligibility, "heads": heads, "PH_by_time": ph, "forward": fwd, "mean_pred_vs_realised_test": mean_pred}
         return rep, ep, prod
 
     def final_v2(self, ep, which=("v1", "v2")):
@@ -2100,12 +2115,12 @@ class Scorer:
     def evidence(self):
         """Measured counts over the WHOLE corpus (the evidence the predictions are judged against, never a prediction)."""
         D, K = self.D, self.K
-        R = D["kind"] != 1
+        R = (D["kind"] != 1) & gain_mask(D)
         si = D["set_i"]
         n_set = np.bincount(si[R], minlength=len(K["sets"]))
         p_set = np.bincount(si[R], weights=D["y"][R].astype(np.float64), minlength=len(K["sets"]))
         s_set = np.bincount(si[R], weights=np.where(D["y"][R] > 0, D["d"][R], 0.0).astype(np.float64), minlength=len(K["sets"]))
-        Fm = D["kind"] == 1
+        Fm = (D["kind"] == 1) & gain_mask(D)
         pk = si[Fm].astype(np.int64) * 1000003 + D["filt_i"][Fm]
         up, inv = np.unique(pk, return_inverse=True)
         n_p = np.bincount(inv)
@@ -2654,11 +2669,11 @@ class Scorer2(Scorer):
     def evidence(self):
         super().evidence()
         D = self.D
-        R = D["kind"] == 0
+        R = (D["kind"] == 0) & gain_mask(D)
         nS = len(self.K["sets"])
         self.ev["n_setR"] = np.bincount(D["set_i"][R], minlength=nS)
         self.ev["p_setR"] = np.bincount(D["set_i"][R], weights=D["y"][R].astype(np.float64), minlength=nS)
-        Fm = D["kind"] == 1
+        Fm = (D["kind"] == 1) & gain_mask(D)
         self.p0 = {"R": (float(D["y"][R].sum()) + 1.0) / (float(R.sum()) + 2.0), "F": (float(D["y"][Fm].sum()) + 1.0) / (float(Fm.sum()) + 2.0)}
         m = VB.M_SHRINK
         self.fo_rate = (self.ev["pfo"] + m * self.p0["F"]) / (self.ev["nfo"] + m)
