@@ -1,8 +1,8 @@
 {
-  "ts": "2026-10-30T05:30:01.742978+00:00",
+  "ts": "2026-10-30T05:35:01.914448+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 10,
+  "fleet_published_last_60m": 9,
   "pending_sym_sides": 58,
   "hosts": {
     "s1": {
@@ -14,15 +14,15 @@
       "boards_running": 1,
       "workers": 7,
       "workers_vs_law_28": "7/28",
-      "mem_avail_mb": 7393,
-      "disk_free_gb": 13,
-      "load1": 15.8,
-      "dispatch_idle_why": "mem 8100MB < 8500",
+      "mem_avail_mb": 7336,
+      "disk_free_gb": 14,
+      "load1": 16.8,
+      "dispatch_idle_why": "mem 7116MB < 8500",
       "published_ss": []
     },
     "s2": {
       "published_last_60m": 4,
-      "published_last_3h": 5,
+      "published_last_3h": 4,
       "boards": {
         "CHRUSDT_LONG": 5,
         "XMRUSDT_LONG": 7
@@ -30,10 +30,10 @@
       "boards_running": 2,
       "workers": 12,
       "workers_vs_law_28": "12/28",
-      "mem_avail_mb": 11010,
+      "mem_avail_mb": 9731,
       "disk_free_gb": 28,
-      "load1": 9.3,
-      "dispatch_idle_why": "mem 11828MB < 8500+5500 owed by 1 ramping",
+      "load1": 13.4,
+      "dispatch_idle_why": "mem 10073MB < 8500+5500 owed by 1 ramping",
       "published_ss": [
         "EDUUSDT_LONG",
         "XMRUSDT_LONG",
@@ -42,7 +42,7 @@
       ]
     },
     "s5": {
-      "published_last_60m": 6,
+      "published_last_60m": 5,
       "published_last_3h": 18,
       "boards": {
         "ATOMUSDT_SHORT": 7,
@@ -53,14 +53,13 @@
       "boards_running": 4,
       "workers": 28,
       "workers_vs_law_28": "28/28",
-      "mem_avail_mb": 11951,
+      "mem_avail_mb": 11386,
       "disk_free_gb": 79,
-      "load1": 23.2,
+      "load1": 22.7,
       "dispatch_idle_why": "full 4/4",
       "published_ss": [
         "BOMEUSDC_SHORT",
         "GALAUSDT_SHORT",
-        "MSTR_SHORT",
         "ORCL_SHORT",
         "RIO_SHORT",
         "SCHW_SHORT"
@@ -78,20 +77,20 @@
       "boards_running": 4,
       "workers": 28,
       "workers_vs_law_28": "28/28",
-      "mem_avail_mb": 11869,
+      "mem_avail_mb": 9794,
       "disk_free_gb": 68,
-      "load1": 23.3,
+      "load1": 19.3,
       "dispatch_idle_why": "full 4/4",
       "published_ss": []
     }
   },
   "alerts": [
-    "LOW_THROUGHPUT:s1:0/h<12 (idle_why=mem 8100MB < 8500)",
-    "DISK_FLOOR:s1:13GB<40",
-    "LOW_THROUGHPUT:s2:4/h<12 (idle_why=mem 11828MB < 8500+5500 owed by 1 ramping)",
+    "LOW_THROUGHPUT:s1:0/h<12 (idle_why=mem 7116MB < 8500)",
+    "DISK_FLOOR:s1:14GB<40",
+    "LOW_THROUGHPUT:s2:4/h<12 (idle_why=mem 10073MB < 8500+5500 owed by 1 ramping)",
     "DISK_FLOOR:s2:28GB<40",
-    "LOW_THROUGHPUT:s5:6/h<12 (idle_why=full 4/4)",
+    "LOW_THROUGHPUT:s5:5/h<12 (idle_why=full 4/4)",
     "LOW_THROUGHPUT:s6:0/h<12 (idle_why=full 4/4)"
   ],
-  "repair": "DISK_REPAIR:s1:13GB->14G (eval_cache_v1.db + rebuild_scratch_* deleted)"
+  "repair": "DISK_REPAIR:s1:14GB->15G (eval_cache_v1.db + rebuild_scratch_* deleted)"
 }
