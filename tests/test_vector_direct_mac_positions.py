@@ -135,3 +135,25 @@ def test_a_stale_venue_mode_still_falls_back_to_light(tmp_path, monkeypatch):
     obj.root = tmp_path / "trc7d_root"
     (obj.root / "data").mkdir(parents=True)
     assert obj.stock_mode(1793390000.0) == ("LIGHT_MODE", "FALLBACK LIGHT (mode file missing or stale)")
+
+
+def test_all_three_size_knobs_come_from_the_mode_table_not_a_hardcoded_ceiling():
+    """START, MAX_ORDER_VALUE and MAX_POSITION_SIZE all follow the market mode (USER 2026-10-30)."""
+    assert module.stock_mode_sizing("LIGHT_MODE") == (250.0, 1000.0, 4000.0)
+    assert module.stock_mode_sizing("NORMAL_MODE") == (600.0, 2400.0, 12000.0)
+    assert module.stock_mode_sizing("EXTREME_MODE") == (1200.0, 4800.0, 18000.0)
+    starts = {m: module.stock_mode_sizing(m)[0] for m in module.STOCK_MODE_START}
+    assert starts == module.STOCK_MODE_START, "the local START table must not drift from config_tradier"
+
+
+def test_trc_rebalances_and_trims_exactly_like_trb():
+    assert set(module.REBAL_ACCOUNTS) == {"trb", "trc"}
+
+
+def test_trc_plans_trb_keys_and_never_its_own(tmp_path):
+    for name, syms in (("symbols_trb_long", ["AAPL"]), ("symbols_trb_short", ["MSFT"]),
+                       ("symbols_trc_long", ["ZZZZ"]), ("symbols_trc_short", ["YYYY"])):
+        (tmp_path / f"{name}.json").write_text(json.dumps(syms))
+    out = module.universe(tmp_path, "stocks", ["trb", "trc"])
+    assert out["trc"] == {"AAPL_LONG", "MSFT_SHORT"} == out["trb"]
+    assert not any(s.startswith(("ZZZZ", "YYYY")) for s in out["trc"])

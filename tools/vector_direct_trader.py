@@ -151,8 +151,29 @@ REBAL_LONG_CAP = float(os.environ.get("VD_REBAL_LONG_CAP", "2000"))
 # (same index formula and thresholds as ez_rankings). START_POSITION_SIZE follows the mode table of config_tradier
 # (LIGHT 250 / NORMAL 600 / EXTREME 1200). A missing or stale file falls back to LIGHT_MODE, the same default crypto uses.
 STOCK_MODE_START = {"LIGHT_MODE": 250.0, "NORMAL_MODE": 600.0, "EXTREME_MODE": 1200.0}
+
+
+def stock_mode_sizing(mode):
+    """(START_POSITION_SIZE, MAX_ORDER_VALUE, MAX_POSITION_SIZE) for a market mode, from config_tradier's OWN table.
+
+    USER 2026-10-30: "make sure the START_POSITION_SIZE and MAX_ORDER_VALUE and MAX_POSITION_SIZE trc uses is identical
+    to trb and according to market movement between light normal and extreme modes calculated multiple times per day."
+    Before this, only START followed the mode: MAX_POSITION_SIZE was frozen at process start from the config's class
+    default and MAX_ORDER_VALUE was never read at all — a hard-coded $3,200 entry ceiling stood in for it, derived from
+    a START of $800 that no longer exists. The numbers are not copied here; `TradierConfig._apply_mode` is the one
+    authority (LIGHT 250/1000/4000, NORMAL 600/2400/12000, EXTREME 1200/4800/18000) and the result is cached per mode."""
+    cache = stock_mode_sizing.__dict__.setdefault("cache", {})
+    if mode not in cache:
+        import config_tradier
+        cfg = config_tradier.TradierConfig()
+        cfg._apply_mode(mode)
+        cache[mode] = (float(cfg.START_POSITION_SIZE), float(cfg.MAX_ORDER_VALUE), float(cfg.MAX_POSITION_SIZE))
+    return cache[mode]
 STOCK_MODE_MAX_AGE_S = float(os.environ.get("VD_STOCK_MODE_MAX_AGE_S", "1800"))
-REBAL_ACCOUNTS = tuple(x for x in os.environ.get("VD_REBAL_ACCOUNTS", "trb").split(",") if x)
+# USER 2026-10-30: "VD_REBAL_ACCOUNTS and down gapper closes need to be identical as well we need to be comparing apples
+# with apples." trc (7D) must trim and close exactly like trb (30D), so the only difference between the two books is the
+# settings. The rebalance IS the only account-scoped close in this trader — there is no separate gap rule anywhere.
+REBAL_ACCOUNTS = tuple(x for x in os.environ.get("VD_REBAL_ACCOUNTS", "trb,trc").split(",") if x)
 RELEASE_HEALTHY_S = float(os.environ.get("VD_RELEASE_HEALTHY_S", "600"))
 REPEAT_WINDOW_S = float(os.environ.get("VD_REPEAT_WINDOW_S", "7200"))
 STATE_MAX_LAG_S = float(os.environ.get("VD_STATE_MAX_LAG_S", "1800"))
@@ -1355,15 +1376,15 @@ class Trader:
         return missed
 
     def run_once(self):
-        global START_POSITION_SIZE
+        global START_POSITION_SIZE, MAX_OPEN_NOTIONAL, ENTRY_NOTIONAL_CEILING_USD
         now = time.time()
         bar = last_closed_bar(now)
         if self.venue == "stocks":
             mode, why = self.stock_mode(now)
+            START_POSITION_SIZE, ENTRY_NOTIONAL_CEILING_USD, MAX_OPEN_NOTIONAL = stock_mode_sizing(mode)
             if mode != getattr(self, "stock_mode_now", None):
-                log(f"STOCK MODE {mode} start=${STOCK_MODE_START[mode]:.0f} ({why})")
+                log(f"STOCK MODE {mode} start=${START_POSITION_SIZE:.0f} max_order=${ENTRY_NOTIONAL_CEILING_USD:.0f} max_position=${MAX_OPEN_NOTIONAL:.0f} ({why})")
                 self.stock_mode_now = mode
-            START_POSITION_SIZE = STOCK_MODE_START[mode]
         keys = universe(self.root, self.venue, self.accounts)
         all_sides = set().union(*keys.values()) if keys else set()
         states = self.load_states(all_sides | set().union(*self.held.values()) if self.held else all_sides)

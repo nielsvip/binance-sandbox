@@ -35509,7 +35509,8 @@ class MultiAccountTradeManager:
         # Native entry orders must obey the same per-symbol FILTER_TF masks as the vector entry signal.
         # QUICK_OPEN previously bypassed check_entry_alignment, so DC breakout alone could open on bars
         # rejected by BAR_PATTERNS / DC_MOMENTUM_BOTA / CIRCUIT_SHARPE in v12_quick_engine.
-        if not _is_exit and not _vd_exempt:
+        _entry_ftf_increase = not is_full_close and ((str(position_side or "").upper() == "LONG" and str(side or "").upper() == "BUY") or (str(position_side or "").upper() == "SHORT" and str(side or "").upper() == "SELL"))
+        if _entry_ftf_increase and not _vd_exempt:
             try:
                 _entry_ftf_ind = await ii(self, symbol) or {}
                 def _entry_ftf_cfg(name, default=None):

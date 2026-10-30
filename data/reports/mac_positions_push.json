@@ -1,10 +1,10 @@
 {
- "epoch": 1793395576.146097,
- "written_at": "2026-10-30T21:26:16.146100Z",
+ "epoch": 1793395870.0565639,
+ "written_at": "2026-10-30T21:31:10.056566Z",
  "venues": {
   "crypto": {
    "local": "/Users/niels/Documents/binance/data/vector_direct/mac_positions_crypto.json",
-   "sha256": "eef0cdfda32819501b0d4319cd9231f8589fee77c98061131d2aa20ec8822867",
+   "sha256": "bcb566ff1a52002ee5f54e649ed1c091b151f815592b43cb15e2d1e7af393905",
    "held_total": 1,
    "sides": [
     "ACEUSDT_SHORT"
@@ -15,29 +15,29 @@
     {
      "host": "s1-int",
      "tree": "binance",
-     "ok": false,
-     "error": "CalledProcessError: Connection closed by 157.180.125.52 port 22\r\n",
+     "ok": true,
+     "sha256": "bcb566ff1a52002ee5f54e649ed1c091b151f815592b43cb15e2d1e7af393905",
      "remote": "~/binance/data/vector_direct/mac_positions_crypto.json"
     },
     {
      "host": "s1-pub",
      "tree": "binance",
-     "ok": false,
-     "error": "CalledProcessError: Connection closed by 157.180.125.52 port 22\r\nrsync(71328): error: unexpected end of file\n",
+     "ok": true,
+     "sha256": "bcb566ff1a52002ee5f54e649ed1c091b151f815592b43cb15e2d1e7af393905",
      "remote": "~/binance/data/vector_direct/mac_positions_crypto.json"
     },
     {
      "host": "s1",
      "tree": "binance",
-     "ok": false,
-     "error": "CalledProcessError: Connection closed by 157.180.125.52 port 22\r\nrsync(71330): error: unexpected end of file\n",
+     "ok": true,
+     "sha256": "bcb566ff1a52002ee5f54e649ed1c091b151f815592b43cb15e2d1e7af393905",
      "remote": "~/binance/data/vector_direct/mac_positions_crypto.json"
     },
     {
      "host": "niels@10.0.0.3",
      "tree": "binance",
      "ok": true,
-     "sha256": "eef0cdfda32819501b0d4319cd9231f8589fee77c98061131d2aa20ec8822867",
+     "sha256": "bcb566ff1a52002ee5f54e649ed1c091b151f815592b43cb15e2d1e7af393905",
      "remote": "~/binance/data/vector_direct/mac_positions_crypto.json"
     }
    ],
@@ -48,7 +48,7 @@
   },
   "stocks": {
    "local": "/Users/niels/Documents/binance/data/vector_direct/mac_positions_stocks.json",
-   "sha256": "de2aab300e3c78f78c2d085a82428d5fe6db3d08338b17b18fe47b6314c42795",
+   "sha256": "f3a11f10b3165473574aa24c074f8f7c31d4f5a4a9104c87bb77f60af9d5ccf1",
    "held_total": 3,
    "sides": [
     "GILD_LONG",
@@ -61,28 +61,28 @@
      "host": "s5",
      "tree": "binance",
      "ok": true,
-     "sha256": "de2aab300e3c78f78c2d085a82428d5fe6db3d08338b17b18fe47b6314c42795",
+     "sha256": "f3a11f10b3165473574aa24c074f8f7c31d4f5a4a9104c87bb77f60af9d5ccf1",
      "remote": "~/binance/data/vector_direct/mac_positions_stocks.json"
     },
     {
      "host": "s5",
      "tree": "trc7d_root",
      "ok": true,
-     "sha256": "de2aab300e3c78f78c2d085a82428d5fe6db3d08338b17b18fe47b6314c42795",
+     "sha256": "f3a11f10b3165473574aa24c074f8f7c31d4f5a4a9104c87bb77f60af9d5ccf1",
      "remote": "~/trc7d_root/data/vector_direct/mac_positions_stocks.json"
     },
     {
      "host": "niels@10.0.0.5",
      "tree": "binance",
      "ok": true,
-     "sha256": "de2aab300e3c78f78c2d085a82428d5fe6db3d08338b17b18fe47b6314c42795",
+     "sha256": "f3a11f10b3165473574aa24c074f8f7c31d4f5a4a9104c87bb77f60af9d5ccf1",
      "remote": "~/binance/data/vector_direct/mac_positions_stocks.json"
     },
     {
      "host": "niels@10.0.0.5",
      "tree": "trc7d_root",
      "ok": true,
-     "sha256": "de2aab300e3c78f78c2d085a82428d5fe6db3d08338b17b18fe47b6314c42795",
+     "sha256": "f3a11f10b3165473574aa24c074f8f7c31d4f5a4a9104c87bb77f60af9d5ccf1",
      "remote": "~/trc7d_root/data/vector_direct/mac_positions_stocks.json"
     }
    ],

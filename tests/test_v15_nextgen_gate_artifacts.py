@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from tools.v15_nextgen_gate_artifacts import inventory, overlay, resolve_models
+from tools.v15_nextgen_gate_artifacts import inventory, overlay, resolve_models, verify_declared_bundle
 
 
 def artifact(root, relative, value):
@@ -154,3 +154,43 @@ def test_missing_model_destination_cannot_be_successful_deploy(tmp_path, monkeyp
     assert failure["ok"] is False
     assert failure["reason"] == "destination parent missing"
     assert not module.deploy_complete(records)
+
+
+def declare_bundle(root):
+    resolved = resolve_models(root, {})
+    return artifact(root, "tools/v18_model_bundle.json", {"schema": "v15_nn_bundle/1", "bundle_id": "fixture", "expected_sha256_by_filename": {name: entry["sha256"] for name, entry in resolved["models"].items()}})
+
+
+def test_declared_bundle_requires_all_eight_and_exact_hashes(tmp_path):
+    resolver_fixture(tmp_path)
+    manifest = declare_bundle(tmp_path)
+    assert verify_declared_bundle(tmp_path, {})["bundle_id"] == "fixture"
+    document = json.loads(manifest.read_text())
+    document["expected_sha256_by_filename"].pop("digest_STOCKS_SHORT.json")
+    manifest.write_text(json.dumps(document))
+    with pytest.raises(ValueError, match="all eight"):
+        verify_declared_bundle(tmp_path, {})
+
+
+def test_legacy_optional_but_required_nn_cannot_omit_declaration(tmp_path):
+    assert verify_declared_bundle(tmp_path, {}) is None
+    with pytest.raises(ValueError, match="declared model bundle"):
+        verify_declared_bundle(tmp_path, {"V15_REQUIRE_MODEL_BUNDLE": "1"})
+
+
+def test_actual_bench_refuses_wrong_bundle_before_starting_pilot(tmp_path, monkeypatch):
+    import types
+    module = load_repair("v15_npz_bench", monkeypatch)
+    root, run = tmp_path / "root", tmp_path / "run"
+    resolver_fixture(root)
+    declare_bundle(root)
+    artifact(root, "data/brain/v18_brain_CRYPTO_LONG.json", {"wrong_model": True})
+    (root / "v15_pilot.py").write_text("")
+    monkeypatch.setattr(module, "build_root", lambda *args: root)
+    monkeypatch.setattr(module, "mem_avail_mb", lambda: 100000)
+    def forbidden_launch(*args, **kwargs):
+        raise AssertionError("pilot launched before validating model bundle")
+    monkeypatch.setattr(module.subprocess, "Popen", forbidden_launch)
+    args = types.SimpleNamespace(code=str(root), env_file=None, set=[], window_days=30, only=None, _running={}, parallel=1, min_free_mb=1, workers=1)
+    with pytest.raises(ValueError, match="intended bundle"):
+        module._cmd_run_body(args, tmp_path / "snapshot", {"sides": ["COIN_SHORT"], "npz": {"COIN": {}}, "env": {}}, run)

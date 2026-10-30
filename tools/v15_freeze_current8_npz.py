@@ -21,6 +21,7 @@ def main():
     parser.add_argument("--base", type=Path, required=True)
     parser.add_argument("--dest", type=Path, required=True)
     parser.add_argument("--source", type=Path, required=True)
+    parser.add_argument("--reuse-six", type=Path)
     args = parser.parse_args()
     assert not args.dest.exists(), "new snapshot only"
     admission = json.loads((args.mac_inputs / "admission.json").read_text())
@@ -39,8 +40,9 @@ def main():
     (args.dest / "historical_comparison_manifest.json").write_text(json.dumps(base, indent=2))
     for side in admission["sides"]:
         symbol = side.rsplit("_", 1)[0]
-        old = symbol in ("COIN", "CDE")
-        file = (args.base / "npz" if old else args.source / "backtest_v8/indicators") / f"{symbol}.npz"
+        old = symbol not in ("COIN", "CDE") if args.reuse_six else symbol in ("COIN", "CDE")
+        immutable = args.reuse_six if args.reuse_six else args.base
+        file = (immutable / "npz" if old else args.source / "backtest_v8/indicators") / f"{symbol}.npz"
         payload = file.read_bytes()
         target = args.dest / "npz" / file.name
         if old:
@@ -69,6 +71,9 @@ def main():
         assert hashlib.sha256(full.read_bytes()).hexdigest() == admission["baseline_sha256"][side]
         (args.dest / "starts" / f"{side}_autopsy_base.json").write_bytes(full.read_bytes())
         manifest["starts"][side] = hashlib.md5(full.read_bytes()).hexdigest()
+    if args.reuse_six:
+        manifest["npz_policy"] = "six immutable NPZs reused from prior current8; fresh COIN/CDE source byte copies, original bar timestamps retained"
+        manifest["previous_current8_snapshot"] = str(args.reuse_six)
     (args.dest / "manifest.json").write_text(json.dumps(manifest, indent=2))
     print(json.dumps({"snapshot": str(args.dest), "status": manifest["status"], "sides": [{"side": side, **{k: manifest["npz"][side.rsplit('_', 1)[0]][k] for k in ("sha256", "last_bar_utc", "holdout_start_utc", "days_15m", "holdout_bound_kind")}} for side in admission["sides"]]}, indent=2), flush=True)
 

@@ -92,3 +92,24 @@ def resolve_models(root, env, expected=None):
                 raise ValueError(f"resolved model differs from intended bundle: {name}")
             resolved[name] = {"path": path.relative_to(root).as_posix(), "sha256": digest, "bytes": len(payload)}
     return {"evidence_type": "actual resolver evaluated under supplied launch environment; not a runtime read trace", "planner_sha256": hashlib.sha256(source).hexdigest(), "models": resolved}
+
+def verify_declared_bundle(root, env, required=False):
+    root = Path(root).absolute()
+    manifest = root / "tools/v18_model_bundle.json"
+    _plain_path(root, manifest)
+    if not manifest.exists():
+        if required or env.get("V15_REQUIRE_MODEL_BUNDLE") == "1":
+            raise ValueError("neural-network comparison requires a declared model bundle")
+        return None
+    payload = manifest.read_bytes()
+    declaration = json.loads(payload)
+    if declaration.get("schema") != "v15_nn_bundle/1":
+        raise ValueError("unknown neural-network bundle schema")
+    expected = declaration.get("expected_sha256_by_filename")
+    names = {f"{prefix}_{category}.json" for prefix in ("v18_brain", "digest") for category in ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT")}
+    if not isinstance(expected, dict) or set(expected) != names or any(not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{64}", value) for value in expected.values()):
+        raise ValueError("neural-network bundle requires exact hashes for all eight runtime artifacts")
+    receipt = resolve_models(root, env, expected)
+    receipt["bundle_manifest_sha256"] = hashlib.sha256(payload).hexdigest()
+    receipt["bundle_id"] = declaration.get("bundle_id")
+    return receipt

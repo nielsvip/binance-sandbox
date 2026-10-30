@@ -1,0 +1,289 @@
+{
+  "at": "2026-10-30T21:29:34.666597Z",
+  "status": "NPZ_AND_ADMISSION_READY_DEPENDENCY_CLOSURE_PENDING",
+  "src": "/home/niels/binance-sandbox",
+  "sides": [
+    "1000PEPEUSDC_LONG",
+    "AAVEUSDC_LONG",
+    "1000BONKUSDC_SHORT",
+    "1INCHUSDT_SHORT",
+    "IBM_LONG",
+    "TMO_LONG",
+    "COIN_SHORT",
+    "CDE_SHORT"
+  ],
+  "npz": {
+    "1000PEPEUSDC": {
+      "md5": "804c44c67830b7d792ce8b0b70ffade7",
+      "sha256": "fbfd394b76246133828dd3c251e8d81bcfc4bafb4329b7e3d3c7407e85632d73",
+      "bytes": 18278436,
+      "src": "/home/niels/v15_bench/snap_20261030T210717Z_current8/npz/1000PEPEUSDC.npz",
+      "src_mtime": 1793395255.7117867,
+      "captured_at_utc": "2026-10-30T21:29:34.770933Z",
+      "first_bar_utc": "2025-07-31T23:45:00.000000Z",
+      "last_bar_utc": "2026-10-30T21:00:00.000000Z",
+      "days_15m": 455.885417,
+      "holdout_start_utc": "2026-10-23T21:00:00.000000Z",
+      "holdout_start_epoch": 1792789200.0,
+      "holdout_policy": "7_calendar_days",
+      "holdout_bound_kind": "actual_first_completed_15m_event",
+      "training_event_latest_allowed": "strictly before holdout_start_epoch; no example/label/aggregate may include later observations"
+    },
+    "AAVEUSDC": {
+      "md5": "2b77872d2b02b703063b3c8bc8d646cb",
+      "sha256": "c31c17f77ad86fa1d7e84a350aafad3aea0a3557289b2b431705ba09b553a282",
+      "bytes": 18083281,
+      "src": "/home/niels/v15_bench/snap_20261030T210717Z_current8/npz/AAVEUSDC.npz",
+      "src_mtime": 1793395255.8117878,
+      "captured_at_utc": "2026-10-30T21:29:34.855322Z",
+      "first_bar_utc": "2025-07-31T23:45:00.000000Z",
+      "last_bar_utc": "2026-10-30T21:00:00.000000Z",
+      "days_15m": 455.885417,
+      "holdout_start_utc": "2026-10-23T21:00:00.000000Z",
+      "holdout_start_epoch": 1792789200.0,
+      "holdout_policy": "7_calendar_days",
+      "holdout_bound_kind": "actual_first_completed_15m_event",
+      "training_event_latest_allowed": "strictly before holdout_start_epoch; no example/label/aggregate may include later observations"
+    },
+    "1000BONKUSDC": {
+      "md5": "279633f73aff4123c470edc383b1e020",
+      "sha256": "00530ad3fc933d5e55439a8b61718542d938d1addef99cb21ee748503c096898",
+      "bytes": 19901662,
+      "src": "/home/niels/v15_bench/snap_20261030T210717Z_current8/npz/1000BONKUSDC.npz",
+      "src_mtime": 1793395255.9077885,
+      "captured_at_utc": "2026-10-30T21:29:34.945812Z",
+      "first_bar_utc": "2025-04-01T21:30:00.000000Z",
+      "last_bar_utc": "2026-10-30T21:00:00.000000Z",
+      "days_15m": 576.979167,
+      "holdout_start_utc": "2026-10-23T21:00:00.000000Z",
+      "holdout_start_epoch": 1792789200.0,
+      "holdout_policy": "7_calendar_days",
+      "holdout_bound_kind": "actual_first_completed_15m_event",
+      "training_event_latest_allowed": "strictly before holdout_start_epoch; no example/label/aggregate may include later observations"
+    },
+    "1INCHUSDT": {
+      "md5": "46b4008b581e73dd5a24d0ad5d6d990f",
+      "sha256": "40e5990c8e94a41ea9f0ef10cf2cd9605b8d54a9cf2bd217a43c8ca2491b8d2c",
+      "bytes": 18761871,
+      "src": "/home/niels/v15_bench/snap_20261030T210717Z_current8/npz/1INCHUSDT.npz",
+      "src_mtime": 1793395256.0077896,
+      "captured_at_utc": "2026-10-30T21:29:35.024233Z",
+      "first_bar_utc": "2025-03-31T04:45:00.000000Z",
+      "last_bar_utc": "2026-10-30T21:00:00.000000Z",
+      "days_15m": 578.677083,
+      "holdout_start_utc": "2026-10-23T21:00:00.000000Z",
+      "holdout_start_epoch": 1792789200.0,
+      "holdout_policy": "7_calendar_days",
+      "holdout_bound_kind": "actual_first_completed_15m_event",
+      "training_event_latest_allowed": "strictly before holdout_start_epoch; no example/label/aggregate may include later observations"
+    },
+    "IBM": {
+      "md5": "b334c4ce60f45c557cd89f6ba7a4f1c8",
+      "sha256": "7dc50e9440e0853473127c805ce3f6f2afdf0fb9d3551d5b66812ca6bea8f475",
+      "bytes": 1339745,
+      "src": "/home/niels/v15_bench/snap_20261030T210717Z_current8/npz/IBM.npz",
+      "src_mtime": 1793395256.0877903,
+      "captured_at_utc": "2026-10-30T21:29:35.052845Z",
+      "first_bar_utc": "2026-07-13T12:30:00.000000Z",
+      "last_bar_utc": "2026-10-30T19:45:00.000000Z",
+      "days_15m": 109.302083,
+      "holdout_start_utc": "2026-10-22T13:45:00.000000Z",
+      "holdout_start_epoch": 1792676700.0,
+      "holdout_policy": "7_trading_sessions",
+      "holdout_bound_kind": "actual_first_completed_15m_event",
+      "training_event_latest_allowed": "strictly before holdout_start_epoch; no example/label/aggregate may include later observations"
+    },
+    "TMO": {
+      "md5": "04e60fb0b93bf5d51e58cd84ccf215e4",
+      "sha256": "53e5d0eca8a814704f13317f926c6b11d7ad59176fc08493146d5bee0d610e9d",
+      "bytes": 9717097,
+      "src": "/home/niels/v15_bench/snap_20261030T210717Z_current8/npz/TMO.npz",
+      "src_mtime": 1793395256.1237905,
+      "captured_at_utc": "2026-10-30T21:29:35.097671Z",
+      "first_bar_utc": "2024-03-26T13:20:00.000000Z",
+      "last_bar_utc": "2026-10-30T19:45:00.000000Z",
+      "days_15m": 948.267361,
+      "holdout_start_utc": "2026-10-22T13:45:00.000000Z",
+      "holdout_start_epoch": 1792676700.0,
+      "holdout_policy": "7_trading_sessions",
+      "holdout_bound_kind": "actual_first_completed_15m_event",
+      "training_event_latest_allowed": "strictly before holdout_start_epoch; no example/label/aggregate may include later observations"
+    },
+    "COIN": {
+      "md5": "8bef0384479b183c6621a6aaaa308337",
+      "sha256": "7b1f577ee563d997743276690eb249d3d86a890f1f904fcd9666672de28a91a1",
+      "bytes": 13471092,
+      "src": "/home/niels/binance-sandbox/backtest_v8/indicators/COIN.npz",
+      "src_mtime": 1793391968.6413612,
+      "captured_at_utc": "2026-10-30T21:29:35.165286Z",
+      "first_bar_utc": "2024-10-01T08:00:00.000000Z",
+      "last_bar_utc": "2026-10-30T19:45:00.000000Z",
+      "days_15m": 759.489583,
+      "holdout_start_utc": "2026-10-22T13:45:00.000000Z",
+      "holdout_start_epoch": 1792676700.0,
+      "holdout_policy": "7_trading_sessions",
+      "holdout_bound_kind": "actual_first_completed_15m_event",
+      "training_event_latest_allowed": "strictly before holdout_start_epoch; no example/label/aggregate may include later observations"
+    },
+    "CDE": {
+      "md5": "90a21b078e600624417c568e5303429e",
+      "sha256": "c5ff337e4e929901686b60d70b5c872978a1d40b2d2b3ad4c4daeba76e29a186",
+      "bytes": 2079294,
+      "src": "/home/niels/binance-sandbox/backtest_v8/indicators/CDE.npz",
+      "src_mtime": 1793391876.9491262,
+      "captured_at_utc": "2026-10-30T21:29:35.182448Z",
+      "first_bar_utc": "2026-07-13T12:30:00.000000Z",
+      "last_bar_utc": "2026-10-30T19:45:00.000000Z",
+      "days_15m": 109.302083,
+      "holdout_start_utc": "2026-10-22T13:45:00.000000Z",
+      "holdout_start_epoch": 1792676700.0,
+      "holdout_policy": "7_trading_sessions",
+      "holdout_bound_kind": "actual_first_completed_15m_event",
+      "training_event_latest_allowed": "strictly before holdout_start_epoch; no example/label/aggregate may include later observations"
+    }
+  },
+  "starts": {
+    "1000PEPEUSDC_LONG": "14831470d0565dbb9e70862df16af308",
+    "AAVEUSDC_LONG": "d3877d781533385a4e43eca605632ad0",
+    "1000BONKUSDC_SHORT": "f4c168a7f5f74d3e673eb31238c34c09",
+    "1INCHUSDT_SHORT": "6c64373f6cd294dfa02d23c7ff18215a",
+    "IBM_LONG": "3288dbd304c4265bbd17e4e9c79823eb",
+    "TMO_LONG": "87a4e5ccd3aaf133d5e2dd0ec3713411",
+    "COIN_SHORT": "d57e9249aca64eef23b6b3174661bae0",
+    "CDE_SHORT": "9b3e42323ce74b62a8bf13deac7cc9bd"
+  },
+  "templates": {
+    "TEMPLATE_CRYPTO_LONG.xlsx": "a540690473203e4059f245006104308c",
+    "TEMPLATE_CRYPTO_SHORT.xlsx": "89f6c147709f248892a2dd5433af2565",
+    "TEMPLATE_STOCKS_LONG.xlsx": "17366eb8c4beddd646b352cee85a9665",
+    "TEMPLATE_STOCKS_SHORT.xlsx": "7bca335e84ba04137ef861c891d9b459"
+  },
+  "env": {
+    "V15_POOL_BATCH_N": "8",
+    "V15_INERT_SAMPLE_EVERY": "100",
+    "V15_V17_SHARE_RETEST": "0.84",
+    "V15_EVAL_CACHE": "1",
+    "V15_TIER_BIG_MOVER": "8",
+    "V15_V17_P_MIN": "0.006",
+    "V15_FOCUS_S_WINNER": "600",
+    "V15_BOARD_BUDGET": "0",
+    "V15_V17_P3_MAX_S_MEDIOCRE": "648.0",
+    "V15_V17_SHARE_SURGEON_WINNER": "0.9",
+    "V15_V17_SHARE_ABLATION": "0.48",
+    "V15_FRESH_RUN": "1",
+    "V15_POSSYM_SAMPLING": "0",
+    "V15_LIVE_SNAPSHOT_MAX_AGE_S": "3600",
+    "V15_V17_P3_MAX_S_WINNER": "1500.0",
+    "V15_FOCUS_S_MEDIOCRE": "150",
+    "V15_ENDGAME_S": "120",
+    "V15_PAIR_MODE": "0",
+    "V15_FOCUS_S_LOSER": "60",
+    "V12_NPZ_CACHE": "4",
+    "V15_V17_COMBO_SHARE_WINNER": "0.4",
+    "V12_ALLOW_STALE_NPZ": "0",
+    "V15_V17_RETEST_MAX": "0",
+    "V15_FOCUS_TOP_K_BHCHASE": "48",
+    "V15_V17_SHARE_SURGEON": "0.6",
+    "V15_DEFAULTS_ROUND": "run38-jsonab2c019a-tpl7de4d950ece2-eng92feb8f3",
+    "V15_FOCUS_S_BHCHASE": "600",
+    "V15_ADAPT_BASELINE": "0",
+    "V15_V17_RETEST_X_MAX": "0",
+    "V15_PREV_BEST_START": "0",
+    "V15_V17_P3_MAX_S_LOSER": "300.0",
+    "V15_EVAL_CACHE_MAX_ROWS": "100000",
+    "V15_V17_SHARE_FOCUS": "0.6",
+    "V15_TEMPLATE_DEFAULTS": "1",
+    "V15_DIAG_REPAIR_S": "150",
+    "V15_SKIP_LIVE_AT_DONE": "1",
+    "V15_UNWIRED_SKIP": "0",
+    "V15_V17_COMBO_SHARE": "0.35",
+    "V15_POSSYM_MIN_N": "1",
+    "V15_V17_P3_MAX_S_LOST_CAUSE": "120.0",
+    "V15_V17_ROUNDS": "1"
+  },
+  "env_source": "/proc/804466/environ",
+  "admission": {
+    "captured_at_utc": "2026-10-30T21:07:17.069304Z",
+    "sides": [
+      "1000PEPEUSDC_LONG",
+      "AAVEUSDC_LONG",
+      "1000BONKUSDC_SHORT",
+      "1INCHUSDT_SHORT",
+      "IBM_LONG",
+      "TMO_LONG",
+      "COIN_SHORT",
+      "CDE_SHORT"
+    ],
+    "admission": {
+      "1000PEPEUSDC_LONG": {
+        "venue": "crypto",
+        "accounts": [
+          "ang",
+          "inf"
+        ]
+      },
+      "AAVEUSDC_LONG": {
+        "venue": "crypto",
+        "accounts": [
+          "ang"
+        ]
+      },
+      "1000BONKUSDC_SHORT": {
+        "venue": "crypto",
+        "accounts": [
+          "ang"
+        ]
+      },
+      "1INCHUSDT_SHORT": {
+        "venue": "crypto",
+        "accounts": [
+          "ang",
+          "fin",
+          "men"
+        ]
+      },
+      "IBM_LONG": {
+        "venue": "stocks",
+        "book": "symbols_trb_long.json"
+      },
+      "TMO_LONG": {
+        "venue": "stocks",
+        "book": "symbols_trb_long.json"
+      },
+      "COIN_SHORT": {
+        "venue": "stocks",
+        "book": "symbols_trb_short.json"
+      },
+      "CDE_SHORT": {
+        "venue": "stocks",
+        "book": "symbols_trb_short.json"
+      }
+    },
+    "book_sha256": {
+      "tradeable_keys.json": "062c9f5f530ce9d77005be265ed4d6dff02866f5e360ca157afc5f53ae203bc6",
+      "symbols_ang_long.json": "684eb319611f05955c6ddb913da25bcab742e2a772a5f86e9ea8fb2b2799d78a",
+      "symbols_inf_long.json": "f47f7b1a453a771b17b49313e5abe25fe067634e2438cbcb9973f10246dd8e8f",
+      "symbols_ang_short.json": "c9b115f34dfd0127799c8517a9df128c612b7c179fc1297eac5daca546e2945f",
+      "symbols_men_short.json": "86274340411f463e32804f80f199420f8ddb7e4525f8f26179a34116c42b9bd2",
+      "symbols_trb_long.json": "ab411257292b8f2aa68f1f98042c6972e10d16351f79e1643f82639d6999f37d",
+      "symbols_trb_short.json": "06d9fae16823460b49a7ddf1280295d62f36bd6fce60e8a4a76ff20e22df125f"
+    },
+    "baseline_sha256": {
+      "1000PEPEUSDC_LONG": "d3d5774fc217e9e755b89eade9f93f90ca01498f81fc2033ceaec85ef8976ecf",
+      "AAVEUSDC_LONG": "fec32b04af884c8bb085e8db83b49295a657dab78ecbedfaf79c34950309a52d",
+      "1000BONKUSDC_SHORT": "0ba1c3f24e99d4483fb6778361bd31c2968a504bdab867790855d0778f9dd327",
+      "1INCHUSDT_SHORT": "6da197e310f62ceaa212f62b98c83f8469e19100fa8555bedb9f4161563b5b4d",
+      "IBM_LONG": "e6fa1375321c6fb0d50cdc099b36455220070ea2aa3d4c40e155a99a46566a00",
+      "TMO_LONG": "7d2bcb272474e2fe4647631fccce7b16ba2bf9b33be8bf726cc3cecd22662c1a",
+      "COIN_SHORT": "b4b4b3964c05d244c254c5676744f256e591d8e170b97e53fd9a9265fe4b90ea",
+      "CDE_SHORT": "82334b8c952f0103703927c3780f8157d1c78f1ef9c0be759ccdd84c689319e9"
+    },
+    "baseline_export_generated_at": 1793394267.128573,
+    "clock_sha256": "241355bbb40cadfadc8289f0a6f777d210f43b6a0d5ae47ba122f629c0301a8a",
+    "status": "CAPTURED_ADMISSION_AND_BASELINES_NOT_BACKTEST_RESULTS"
+  },
+  "slicer_source_sha256": "555ecba9821093f54079d97ff4863f2b904ba7f552207ca702345797a443f0f5",
+  "holdout_days": 7,
+  "npz_policy": "six immutable NPZs reused from prior current8; fresh COIN/CDE source byte copies, original bar timestamps retained",
+  "previous_current8_snapshot": "/home/niels/v15_bench/snap_20261030T210717Z_current8"
+}
