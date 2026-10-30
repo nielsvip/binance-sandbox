@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-10-30 17:41 UTC",
- "total_capital_usd": 14.9,
+ "generated_at": "2026-10-30 17:42 UTC",
+ "total_capital_usd": 14.52,
  "tier_capital": {
   "A": 0.0,
-  "B": 14.9,
+  "B": 14.52,
   "C": 0.0
  },
  "tier_count": {
@@ -16,15 +16,15 @@
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:1MBABYDOGEUSDT_SHORT",
-   "symbol": "1MBABYDOGEUSDT",
-   "account": "fin",
-   "value_usd": 14.9,
-   "gain_pct": 0.654,
+   "pk": "flz:HYPEUSDT_LONG",
+   "symbol": "HYPEUSDT",
+   "account": "flz",
+   "value_usd": 14.52,
+   "gain_pct": -0.222,
    "tier": "B",
-   "perf_mult": 3.58,
-   "amt": 46670.0,
-   "mark": 0.0003192
+   "perf_mult": 4.41,
+   "amt": 0.16,
+   "mark": 90.76395222
   }
  ]
 }
