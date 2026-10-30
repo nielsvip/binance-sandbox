@@ -807,6 +807,34 @@ class Tradier:
         q = q[0] if isinstance(q, list) else q
         return float(q.get("last") or q.get("ask") or 0.0)
 
+    def pending_protected(self, acct, symbol, side):
+        aid, _key, _base = self.account(acct)
+        doc = self._req("GET", acct, f"/accounts/{aid}/orders")
+        rows = (doc.get("orders") or {}).get("order") or []
+        rows = [rows] if isinstance(rows, dict) else rows
+        opening_side = "buy" if side == "LONG" else "sell_short"
+        return next((row for row in rows if str(row.get("symbol") or "").upper() == symbol and str(row.get("side") or "").lower() == opening_side and str(row.get("status") or "").lower() in ("open", "pending", "partially_filled") and (str(row.get("class") or row.get("order_class") or "").lower() == "oto" or str(row.get("tag") or "").startswith("vdo"))), None)
+
+    def send_protected(self, acct, order, quantity, stop_level):
+        aid, _key, _base = self.account(acct)
+        symbol, side = split_ss(order["ss"])
+        quote = (self._req("GET", acct, "/markets/quotes", params={"symbols": symbol}).get("quotes") or {}).get("quote") or {}
+        quote = quote[0] if isinstance(quote, list) else quote
+        opening_side = "buy" if side == "LONG" else "sell_short"
+        closing_side = "sell" if side == "LONG" else "buy_to_cover"
+        touch = float(quote.get("ask") or 0) if side == "LONG" else float(quote.get("bid") or 0)
+        if not math.isfinite(touch) or touch <= 0:
+            raise RuntimeError(f"OTO_NO_TOUCH_QUOTE {symbol}: no {('ask' if side == 'LONG' else 'bid')}")
+        limit_price = math.ceil(touch * 1.003 * 100) / 100 if side == "LONG" else math.floor(touch * 0.997 * 100) / 100
+        if limit_price <= 0:
+            raise RuntimeError(f"OTO_BAD_LIMIT {symbol}: {limit_price}")
+        data = {"class": "oto", "duration[0]": "day", "duration[1]": "gtc", "symbol[0]": symbol, "quantity[0]": str(int(quantity)), "type[0]": "limit", "side[0]": opening_side, "price[0]": f"{limit_price:.2f}", "symbol[1]": symbol, "quantity[1]": str(int(quantity)), "type[1]": "stop", "side[1]": closing_side, "stop[1]": f"{stop_level:.2f}", "tag": "vdo" + hashlib.sha1(order["key"].encode()).hexdigest()[:20]}
+        result = self._req("POST", acct, f"/accounts/{aid}/orders", data=data)
+        parent = result.get("order") or {}
+        if not parent.get("id"):
+            raise RuntimeError(f"OTO_SUBMISSION_UNCONFIRMED {symbol}: {str(parent)[:160]}")
+        return {"id": parent["id"], "status": parent.get("status"), "class": "oto", "limit": limit_price, "stop": stop_level}
+
     def size(self, o, held, price):
         if o["act"] == "CLOSE":
             return float(int(held)), ""
@@ -1500,6 +1528,27 @@ class Trader:
                 sys.path.insert(0, str(Path(__file__).resolve().parent))
                 from vector_direct_stops import Stops
                 self.stops = Stops(self)
+            if self.venue == "stocks" and o["act"] in ("OPEN", "AUGMENT"):
+                try:
+                    pending = self.broker.pending_protected(acct, symbol, side)
+                    if pending:
+                        row.update({"status": "PROTECTED_ENTRY_PENDING", "detail": str(pending.get("id")), "final": False})
+                        if o["key"] not in self.quiet:
+                            self.quiet.add(o["key"])
+                            self._ledger(row)
+                        continue
+                    stop_level = self.stops.entry_level(o, price)
+                    response = self.broker.send_protected(acct, o, qty, stop_level)
+                    row.update({"status": "PROTECTED_OTO_SUBMITTED", "resp": response, "stop_level": stop_level, "final": False})
+                    self.done.add(o["key"])
+                    self._ledger(row)
+                    log(f"PROTECTED_OTO_SUBMITTED {acct} {o['ss']} {o['act']} qty={qty} limit={response['limit']} stop={stop_level} id={response['id']}")
+                except Exception as exc:
+                    row.update({"status": "REFUSED_UNPROTECTED_ENTRY", "detail": str(exc)[:300], "final": False})
+                    self._ledger(row)
+                    self.alert("UNPROTECTED_ENTRY_REFUSED", account=acct, sym_side=o["ss"], error=str(exc)[:200], severity="CRITICAL")
+                    log(f"REFUSED_UNPROTECTED_ENTRY {acct} {o['ss']} {o['act']}: {exc}")
+                continue
             stop_level_armed = None
             if o["act"] in ("OPEN", "AUGMENT"):
                 try:

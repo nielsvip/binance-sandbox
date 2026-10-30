@@ -108,8 +108,8 @@ class Stops:
                 return row
         return None
 
-    def prearm_entry(self, acct, order, quantity, held_before, mark):
-        """Refuse an entry unless its full resulting position has a verified resting stop first."""
+    def entry_level(self, order, mark):
+        """Return the closed-bar protective level, or refuse an invalid stop."""
         symbol, side = order["ss"].rsplit("_", 1)
         symbol, side = symbol.upper(), side.upper()
         src = dc15(self._npz_dir(), symbol)
@@ -119,7 +119,14 @@ class Stops:
         if mark <= 0 or (side == "LONG" and level >= mark) or (side == "SHORT" and level <= mark):
             raise RuntimeError(f"STOP_WRONG_SIDE {symbol}: stop={level} mark={mark}")
         tick = self._tick(symbol) if self.t.venue == "crypto" else 0.01
-        level = round_to_tick(level, tick, side)
+        return round_to_tick(level, tick, side)
+
+    def prearm_entry(self, acct, order, quantity, held_before, mark):
+        """Refuse an entry unless its full resulting position has a verified resting stop first."""
+        symbol, side = order["ss"].rsplit("_", 1)
+        symbol, side = symbol.upper(), side.upper()
+        level = self.entry_level(order, mark)
+        src = dc15(self._npz_dir(), symbol)
         total = held_before + quantity
         existing = self._matching_stop(acct, symbol, side, level, total)
         if existing is None:
