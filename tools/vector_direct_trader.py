@@ -146,6 +146,11 @@ OWN_ALWAYS = os.environ.get("VD_OWN_ALWAYS", "1") == "1"
 # USER 2026-10-30: stocks plan from 08:45 ET (premarket bars feed the 7D); orders only from the 09:30 open; the last 90 min
 # (14:30 ET) the REBAL_ACCOUNTS long book is trimmed to REBAL_LONG_CAP at local tops (forced at 15:45 ET if still over).
 REBAL_LONG_CAP = float(os.environ.get("VD_REBAL_LONG_CAP", "2000"))
+# USER 2026-10-30: stocks mirror crypto's market mode. tools/stock_market_mode.py writes data/market_mode_stocks.json
+# (same index formula and thresholds as ez_rankings). START_POSITION_SIZE follows the mode table of config_tradier
+# (LIGHT 250 / NORMAL 600 / EXTREME 1200). A missing or stale file falls back to LIGHT_MODE, the same default crypto uses.
+STOCK_MODE_START = {"LIGHT_MODE": 250.0, "NORMAL_MODE": 600.0, "EXTREME_MODE": 1200.0}
+STOCK_MODE_MAX_AGE_S = float(os.environ.get("VD_STOCK_MODE_MAX_AGE_S", "1800"))
 REBAL_ACCOUNTS = tuple(x for x in os.environ.get("VD_REBAL_ACCOUNTS", "trb").split(",") if x)
 RELEASE_HEALTHY_S = float(os.environ.get("VD_RELEASE_HEALTHY_S", "600"))
 REPEAT_WINDOW_S = float(os.environ.get("VD_REPEAT_WINDOW_S", "7200"))
@@ -1042,8 +1047,15 @@ class Trader:
         return missed
 
     def run_once(self):
+        global START_POSITION_SIZE
         now = time.time()
         bar = last_closed_bar(now)
+        if self.venue == "stocks":
+            mode, why = self.stock_mode(now)
+            if mode != getattr(self, "stock_mode_now", None):
+                log(f"STOCK MODE {mode} start=${STOCK_MODE_START[mode]:.0f} ({why})")
+                self.stock_mode_now = mode
+            START_POSITION_SIZE = STOCK_MODE_START[mode]
         keys = universe(self.root, self.venue, self.accounts)
         all_sides = set().union(*keys.values()) if keys else set()
         states = self.load_states(all_sides | set().union(*self.held.values()) if self.held else all_sides)
@@ -1223,6 +1235,18 @@ class Trader:
         except Exception as exc:
             log(f"entry_banned unavailable ({type(exc).__name__}): {'refusing' if self.venue == 'stocks' else 'allowing'} {acct} entries")
             return self.venue == "stocks"
+
+    def stock_mode(self, now):
+        """(mode, source) from data/market_mode_stocks.json; LIGHT_MODE when missing or older than STOCK_MODE_MAX_AGE_S."""
+        doc = read_json(self.root / "data" / "market_mode_stocks.json", {}) or {}
+        mode = doc.get("mode")
+        try:
+            ts = dt.datetime.strptime(str(doc.get("timestamp")), "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=dt.timezone.utc).timestamp()
+        except ValueError:
+            ts = 0.0
+        if mode in STOCK_MODE_START and now - ts <= STOCK_MODE_MAX_AGE_S:
+            return mode, f"detector index {doc.get('market_index')}"
+        return "LIGHT_MODE", "FALLBACK LIGHT (mode file missing or stale)"
 
     def rebal_phase(self, now=None):
         """(orders_ok, rebalance_window, forced) in New York time for the stock venue."""
