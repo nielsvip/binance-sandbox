@@ -3023,6 +3023,11 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     # Create the REAL MultiAccountTradeManager
     trade_manager = ez_manage.MultiAccountTradeManager(accounts, symbols, use_dummy_lock=True)
     trade_manager._allowed_accounts = frozenset([account_key])
+    if os.environ.get("V12_LIVE_ONLY_PRODUCERS") == "1" and os.environ.get("V12_REAL_EXECUTE") == "1":
+        _golden_allowed = {key.strip().upper() for key in os.environ.get("V8_RESEARCH_ALLOW_SIDE_KEYS", "").split(",") if key.strip()}
+        for _golden_side_name in ("LONG", "SHORT"):
+            _golden_pool = {name for name in symbols if not _golden_allowed or f"{name}_{_golden_side_name}" in _golden_allowed}
+            setattr(trade_manager, f"symbols_{account_key}_{_golden_side_name.lower()}", _golden_pool)
     # P3-#4: CircuitBreaker stub — real SmartCircuitBreaker needs live price history not in NPZ
     if not hasattr(trade_manager, 'circuit_breaker'):
         class _CBStub:
@@ -5389,6 +5394,9 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 trade_manager.price_cache_2[sym] = p
             if hasattr(trade_manager, 'price_update_time'):
                 trade_manager.price_update_time[sym] = float(ts)
+        if os.environ.get("V12_LIVE_ONLY_PRODUCERS") == "1" and os.environ.get("V12_REAL_EXECUTE") == "1":
+            trade_manager._parity_clock_ts = float(ts)
+            await trade_manager._golden_rule_loop(_parity_once=True)
         # parity-loop-crypto (iso copy only, proposed to lane A): VEC_DRIVEN intent feed
         if os.environ.get("V12_VEC_INTENT_FEED"):
             from tools.parity_sample import vec_intent_feed as _vif

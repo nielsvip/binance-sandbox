@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-30T23:15:08Z",
+ "ts": "2026-10-30T23:20:23Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -127,58 +127,58 @@
     "56796"
    ],
    "starts_30m": 1,
-   "log_age_s": 10.0
+   "log_age_s": 12.0
   },
   "men": {
    "pids": [
     "59391"
    ],
    "starts_30m": 1,
-   "log_age_s": 13.0
+   "log_age_s": 28.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 37.0
+   "log_age_s": 33.0
   },
   "inf": {
    "pids": [
     "64156"
    ],
    "starts_30m": 1,
-   "log_age_s": 14.0
+   "log_age_s": 3.0
   },
   "flz": {
    "pids": [
     "70377"
    ],
    "starts_30m": 1,
-   "log_age_s": 12.0
+   "log_age_s": 122.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 15200.0
+   "log_age_s": 15517.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 16615.0
+   "log_age_s": 16931.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-30T23:15:09Z",
+   "ts": "2026-10-30T23:20:26Z",
    "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "flz:ZECUSDC_LONG",
-   "evidence": "30 23:00:52 - WARNING - [flz] [REENTRY_GRANDFATHERED] flz:ZECUSDC_LONG: bypass MAX_ORDER_VALUE $60 / MAX_POSITION_SIZE $150 \u2014 restoring $256 on bounce (prior max 0.9900)"
+   "kind": "STALE_LOG",
+   "key": "flz",
+   "evidence": "ez_manage_flz.log not written for 122s"
   }
  ],
  "alert_counts": {
-  "CAP_BYPASS": 1
+  "STALE_LOG": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -224,5 +224,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.71
+ "sweep_s": 2.41
 }

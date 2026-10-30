@@ -109,6 +109,17 @@ def resolve_models(root, env, expected=None):
             if expected is not None and expected.get(name) != digest:
                 raise ValueError(f"resolved model differs from intended bundle: {name}")
             resolved[name] = {"path": path.relative_to(root).as_posix(), "sha256": digest, "bytes": len(payload)}
+    for name, expected_sha in (expected or {}).items():
+        if name in resolved:
+            continue
+        path = Path(namespace["learn_file"](name, root, "learn"))
+        if not path.is_absolute():
+            path = root / path
+        _plain_path(root, path)
+        payload = path.read_bytes()
+        if hashlib.sha256(payload).hexdigest() != expected_sha:
+            raise ValueError(f"resolved ancillary differs from intended bundle: {name}")
+        resolved[name] = {"path": path.relative_to(root).as_posix(), "sha256": expected_sha, "bytes": len(payload)}
     return {"evidence_type": "actual resolver evaluated under supplied launch environment; not a runtime read trace", "planner_sha256": hashlib.sha256(source).hexdigest(), "models": resolved}
 
 def verify_declared_bundle(root, env, required=False):
@@ -129,7 +140,7 @@ def verify_declared_bundle(root, env, required=False):
     if expanded:
         names = {f"{prefix}_{category}.json{'.gz' if prefix == 'positives_all' else ''}" for prefix in ("v18_brain", "digest", "needed_filters", "switch_profile", "positives_all", "binding_map", "linknet_proposals", "must_pos") for category in ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT")}
     if not isinstance(expected, dict) or set(expected) != names or any(not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{64}", value) for value in expected.values()):
-        raise ValueError("neural-network bundle requires exact hashes for all declared runtime artifacts")
+        raise ValueError("neural-network bundle requires exact hashes for all declared32 runtime artifacts" if expanded else "neural-network bundle requires exact hashes for all eight runtime artifacts")
     if expanded:
         for key, value in declaration.get("required_runtime_flags", {}).items():
             if env.get(key) != str(value):

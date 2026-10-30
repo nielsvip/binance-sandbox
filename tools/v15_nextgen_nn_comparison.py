@@ -1,6 +1,8 @@
 """Explicit, fail-closed NN comparison fixtures and sandbox runtime identity guards."""
 import hashlib
 import json
+import os
+import tempfile
 from pathlib import Path
 import shutil
 import subprocess
@@ -26,7 +28,10 @@ def check_files(root, files):
 
 
 def bundle_files(root, declaration):
-    from tools.v15_nextgen_gate_artifacts import declared_relative
+    try:
+        from .v15_nextgen_gate_artifacts import declared_relative
+    except ImportError:
+        from v15_nextgen_gate_artifacts import declared_relative
     expected = declaration['expected_sha256_by_filename']
     files = {declared_relative(name): value for name, value in expected.items()}
     check_files(root, files)
@@ -45,16 +50,39 @@ def validate(spec):
     if set(compatibility) != {'tools/v15_v18_planner.py', 'tools/v18_brain.py'}:
         raise ValueError('comparison compatibility payload must declare planner and brain only')
     equivalence = pinned_json(spec['old_behavior_equivalence'])
-    if equivalence.get('schema') != 'v15_nn_old_behavior_equivalence/1' or equivalence.get('mismatches') != 0:
+    if equivalence.get('status') != 'passed_diagnostic_compatibility_not_gain':
         raise ValueError('old NN compatibility equivalence not established')
-    if equivalence.get('tested_compatibility_sha256') != compatibility or not all(equivalence.get('cases', {}).get(key, 0) > 0 for key in ['proposal_decisions', 'filter_decisions', 'graph_decisions']):
-        raise ValueError('equivalence must prove actual proposal/filter/graph decisions for exact compatibility code')
+    source_hashes = equivalence.get('source_sha256', {})
+    if source_hashes.get('tested_planner') != compatibility['tools/v15_v18_planner.py'] or source_hashes.get('tested_brain') != compatibility['tools/v18_brain.py']:
+        raise ValueError('equivalence does not match exact compatibility code')
+    results = equivalence.get('results', {})
+    for category in ['CRYPTO_LONG', 'CRYPTO_SHORT', 'STOCKS_LONG', 'STOCKS_SHORT']:
+        result = results.get(category, {})
+        if not all(result.get(key) is True for key in ['prior_proposal_ranks_exact_equal', 'prior_profile_digest_must_exact_equal', 'prior_graph_decisions_M_B_exact_equal', 'promoted_binding_maps_loaded_both_versions']) or min(result.get('ranked_pairs', 0), result.get('graph_fixed_actual_cells', 0), result.get('must_items_equal_both_arms', 0)) <= 0:
+            raise ValueError('equivalence lacks actual proposal/filter/MUST/graph cases for all categories')
+    declarations = {}
     for arm in ['reference', 'candidate']:
         declaration = pinned_json(spec[arm])
+        declarations[arm] = declaration
         root = Path(spec[arm]['path']).parent.parent
         bundle_files(root, declaration)
         if arm == 'candidate':
             check_files(root, compatibility)
+    reference_root = Path(spec['reference']['path']).parent.parent
+    candidate_root = Path(spec['candidate']['path']).parent.parent
+    reference_names = declarations['reference']['expected_sha256_by_filename']
+    candidate_names = declarations['candidate']['expected_sha256_by_filename']
+    if set(reference_names) != set(candidate_names) or len(reference_names) != 32:
+        raise ValueError('both NN arms must declare the same complete32 input paths')
+    for name in reference_names:
+        if name.startswith(('needed_filters_', 'switch_profile_', 'positives_all_', 'binding_map_', 'must_pos_')) and reference_names[name] != candidate_names[name]:
+            raise ValueError(f'NN comparison ancillary differs: {name}')
+        if name.startswith('digest_'):
+            left = json.loads((reference_root / 'data/learn' / name).read_text())
+            right = json.loads((candidate_root / 'data/learn' / name).read_text())
+            retained = lambda value: {key: item for key, item in value.items() if key not in ('scorer', 'proposals')}
+            if retained(left) != retained(right):
+                raise ValueError(f'NN comparison digest ancillary fields differ: {name}')
     flags = spec.get('equal_runtime_flags', {})
     if flags != {'V18_LINKNET_FIRST': '1', 'V18_LINKNET_BUNDLE_REQUIRED': '1', 'V15_REQUIRE_MODEL_BUNDLE': '1'}:
         raise ValueError('NN comparison requires equal activation and provenance guards')
@@ -66,6 +94,20 @@ def validate(spec):
     return runtime
 
 
+
+def atomic_copy(source, target):
+    target = Path(target)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(prefix='.nn_payload_', dir=target.parent)
+    os.close(descriptor)
+    try:
+        shutil.copyfile(source, temporary)
+        os.replace(temporary, target)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
 def materialize(spec, directory):
     runtime = validate(spec)
     directory = Path(directory)
@@ -75,7 +117,7 @@ def materialize(spec, directory):
         root = directory / name
         if root.exists():
             raise ValueError('comparison tree already exists')
-        shutil.copytree(runtime['code_root'], root)
+        shutil.copytree(runtime['code_root'], root, copy_function=os.link)
         check_files(root, runtime['files'])
         declaration = pinned_json(spec[arm])
         bundle_root = Path(spec[arm]['path']).parent.parent
@@ -83,11 +125,12 @@ def materialize(spec, directory):
         for relative in files:
             target = root / relative
             target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(bundle_root / relative, target)
+            atomic_copy(bundle_root / relative, target)
         for relative in spec['compatibility']:
-            shutil.copyfile(candidate_root / relative, root / relative)
+            atomic_copy(candidate_root / relative, root / relative)
         check_files(root, {**files, **spec['compatibility']})
         outputs[arm] = str(root)
+    check_files(runtime['code_root'], runtime['files'])
     return outputs
 
 

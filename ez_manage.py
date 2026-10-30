@@ -19346,7 +19346,7 @@ class MultiAccountTradeManager:
             return False, f"state_bar={state.get('bar_ts')} required={closed_ts} status={state.get('status')} target={target_side}"
         return True, "closed-bar vector target agrees"
 
-    async def _golden_rule_loop(self):
+    async def _golden_rule_loop(self, _parity_once=False):
         # GOLDEN RULE — restored 2026-05-05 per user directive.
         # For ANY tradeable symbol where wt1_3m > wt2_3m AND price > dc_high_15m,
         # MUST hold a LONG (however small). Vice versa for SHORT (wt1_3m < wt2_3m
@@ -19363,7 +19363,8 @@ class MultiAccountTradeManager:
             logger.info("[GOLDEN_RULE] disabled by config")
             return
         try:
-            await asyncio.sleep(45)
+            if not _parity_once:
+                await asyncio.sleep(45)
         except Exception:
             pass
         poll_s = float(getattr(config, "GOLDEN_RULE_POLL_S", 30.0))
@@ -19372,9 +19373,10 @@ class MultiAccountTradeManager:
         if not hasattr(self, "_golden_last_trigger"):
             self._golden_last_trigger = {}
         while True:
-            if _vx_native_off():  # 2026-10-06 switch-over: native GOLDEN_RULE opener off at the source while the vec twin owns ENTRY (vec GOLDEN_RULE is twinned)
+            if _vx_native_off() and not _parity_once:  # 2026-10-06 switch-over: native GOLDEN_RULE opener off at the source while the vec twin owns ENTRY (vec GOLDEN_RULE is twinned)
                 await asyncio.sleep(30)
                 continue
+            _golden_now = float(getattr(self, "_parity_clock_ts", 0) or time.time()) if _parity_once else time.time()
             try:
                 allowed = list(getattr(self, "_allowed_accounts", set()) or {})
                 # Per-account symbol pools
@@ -19457,7 +19459,7 @@ class MultiAccountTradeManager:
                             _gr_cooldown_ps = float(_psym_get(sym, _gr_side_ps, "GOLDEN_RULE_COOLDOWN_S", cooldown))
                             # cooldown
                             if (
-                                time.time() - self._golden_last_trigger.get(pkey, 0)
+                                _golden_now - self._golden_last_trigger.get(pkey, 0)
                                 < _gr_cooldown_ps
                             ):
                                 continue
@@ -19543,7 +19545,7 @@ class MultiAccountTradeManager:
                                 )
                                 self._golden_prev_above[_prev_key] = _above_now
                                 if _above_now and not _above_prev:
-                                    self._golden_breakout_ts[_bk_key] = time.time()
+                                    self._golden_breakout_ts[_bk_key] = _golden_now
                                     mult = _m_breakout
                                     if wt1 <= wt2:
                                         continue
@@ -19552,7 +19554,7 @@ class MultiAccountTradeManager:
                                     )
                                 elif not _above_now and dc_b_1h and price >= dc_b_1h:
                                     _bk_ts = self._golden_breakout_ts.get(_bk_key, 0)
-                                    if time.time() - _bk_ts > _retest_win:
+                                    if _golden_now - _bk_ts > _retest_win:
                                         continue
                                     if not (k_3m > d_3m and k_3m > k_3m_prev):
                                         continue
@@ -19574,7 +19576,7 @@ class MultiAccountTradeManager:
                                 )
                                 self._golden_prev_above[_prev_key] = _below_now
                                 if _below_now and not _below_prev:
-                                    self._golden_breakout_ts[_bk_key] = time.time()
+                                    self._golden_breakout_ts[_bk_key] = _golden_now
                                     mult = _m_breakout
                                     if wt1 >= wt2:
                                         continue
@@ -19583,7 +19585,7 @@ class MultiAccountTradeManager:
                                     )
                                 elif not _below_now and dc_b_1h and price <= dc_b_1h:
                                     _bk_ts = self._golden_breakout_ts.get(_bk_key, 0)
-                                    if time.time() - _bk_ts > _retest_win:
+                                    if _golden_now - _bk_ts > _retest_win:
                                         continue
                                     if not (k_3m < d_3m and k_3m < k_3m_prev):
                                         continue
@@ -19700,7 +19702,7 @@ class MultiAccountTradeManager:
                                 if not _gr_ready:
                                     logger.info(f"[GOLDEN_RULE_DEFER_CLOSED_BAR] {pkey}: {_gr_defer_reason}")
                                     continue
-                            self._golden_last_trigger[pkey] = time.time()
+                            self._golden_last_trigger[pkey] = _golden_now
                             side = "BUY" if is_long else "SELL"
                             pside = "LONG" if is_long else "SHORT"
                             reason_str = f"GOLDEN_RULE_{'LONG' if is_long else 'SHORT'}_mult{mult}"
@@ -19729,7 +19731,8 @@ class MultiAccountTradeManager:
                                 logger.error(
                                     f"[GOLDEN_RULE] {pkey} execute_now err: {type(e).__name__}: {e}"
                                 )
-                            await asyncio.sleep(0.05)  # yield
+                            if not _parity_once:
+                                await asyncio.sleep(0.05)  # yield
                 if fired:
                     logger.info(f"[GOLDEN_RULE] tick fired={fired}")
             except Exception as outer:
@@ -19737,6 +19740,8 @@ class MultiAccountTradeManager:
                     f"[GOLDEN_RULE] loop err: {type(outer).__name__}: {outer}",
                     exc_info=True,
                 )
+            if _parity_once:
+                return
             try:
                 await asyncio.sleep(poll_s)
             except Exception:
