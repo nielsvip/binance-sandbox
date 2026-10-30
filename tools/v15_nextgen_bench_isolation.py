@@ -7,6 +7,8 @@ import json
 import os
 from pathlib import Path
 import runpy
+import shlex
+import tempfile
 import subprocess
 import sys
 
@@ -61,19 +63,56 @@ def install_audit(root, side):
     sys.addaudithook(audit)
 
 
-def prepare(root, side, env, symbol, window_days):
+def install_routes(root, side, assets=None):
+    root, side = Path(root).resolve(), Path(side).resolve()
+    assets = Path(assets or Path(__file__).with_name("v15_nextgen_routing_assets")).resolve()
+    meta = json.loads((assets / "manifest.json").read_text())
+    receipt = {}
+    for name, before in meta["source_sha256"].items():
+        origin, target = assets / name, root / name
+        if origin.is_symlink() or target.is_symlink():
+            raise ValueError("routing source and target must be materialized")
+        payload = origin.read_bytes()
+        after = hashlib.sha256(payload).hexdigest()
+        if after != meta["candidate_sha256"][name]:
+            raise ValueError(f"routing asset hash mismatch: {name}")
+        actual = hashlib.sha256(target.read_bytes()).hexdigest()
+        if actual not in (before, after):
+            raise ValueError(f"unapproved routing preimage: {name}")
+        if actual == before:
+            backup = root / "harness_backups" / ("before_routing_" + name)
+            backup.parent.mkdir(parents=True, exist_ok=True)
+            backup.write_bytes(target.read_bytes())
+            descriptor, temporary = tempfile.mkstemp(prefix=".private_route_", dir=target.parent)
+            os.close(descriptor)
+            Path(temporary).write_bytes(payload)
+            os.replace(temporary, target)
+        receipt[name] = {"source_sha256": before, "routed_sha256": after}
+    (side / "routing_preflight.json").write_text(json.dumps({"at_utc": utc(), "scope": meta["scope"], "files": receipt}, indent=2))
+    return receipt
+
+
+def prepare(root, side, env, symbol, window_days, assets=None):
     root, side = Path(root).resolve(), Path(side).resolve()
     if root == side or root.parent != side.parent:
         raise ValueError("benchmark root and side directory must be distinct siblings")
     npz = root / "backtest_v8/indicators" / f"{symbol}.npz"
     if not npz.is_file() or npz.is_symlink():
         raise ValueError(f"missing materialized frozen NPZ: {npz}")
-    executable = (root / ".venv/bin/python").resolve()
+    receipt = root / ".benchmark_interpreter.json"
+    install_routes(root, side, assets)
+    executable = Path(json.loads(receipt.read_text())["executable"]) if receipt.exists() else (root / ".venv/bin/python").resolve()
     if not executable.is_file():
         raise ValueError("benchmark interpreter missing")
     link = root / ".venv"
     if link.is_symlink():
         link.unlink()  # only the new builder-created interpreter link, never its target
+    if not receipt.exists():
+        receipt.write_text(json.dumps({"executable": str(executable), "sha256": hashlib.sha256(executable.read_bytes()).hexdigest()}))
+        bridge = root / ".venv/bin/python"
+        bridge.parent.mkdir(parents=True, exist_ok=True)
+        bridge.write_text("#!/bin/sh\nexec " + shlex.quote(str(executable)) + ' "$@"\n')
+        bridge.chmod(0o755)
     links = [str(path) for path in root.rglob("*") if path.is_symlink()]
     if links:
         raise ValueError(f"benchmark root contains symlinks: {links[:5]}")

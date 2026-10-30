@@ -23,7 +23,9 @@ def gain_population(index_path, out_dir, cutoffs, allowed_sym_sides=None, max_bo
     from tools import v18_brain as brain
     root = Path(out_dir)
     root.mkdir(parents=True, exist_ok=False)
-    records = json.loads(Path(index_path).read_text())
+    index_payload = Path(index_path).read_bytes()
+    index_digest = hashlib.sha256(index_payload).hexdigest()
+    records = json.loads(index_payload)
     counts, board_counts, row_counts = Counter(), Counter(), Counter()
     proofs, seen = [], set()
     spill = root / "spill_gain_explicit_progress.tsv.gz"
@@ -74,6 +76,8 @@ def gain_population(index_path, out_dir, cutoffs, allowed_sym_sides=None, max_bo
             for end, rows in sorted(groups.items()):
                 current = [{}]
                 def emit(event):
+                    if event.get("e") != "board":
+                        event.update({name: value for name, value in extra.items() if name != "set0"})
                     event.update(current[0])
                     output.write(event["t"] + "\t" + json.dumps(event, separators=(",", ":"), default=str) + "\n")
                 extra = {"src": "progress", "ts_source": "explicit_progress_row_npz", "npz": end, "cs": category, "wd": document.get("window_days"), "file": path.name, "source_file": str(path), "source_sha256": digest, "lineage_policy": "explicit_rec_npz_v1", "label_computation_time": "not inferred from NPZ timestamp", "set0": document.get("initial_overrides") or None}
@@ -90,7 +94,16 @@ def gain_population(index_path, out_dir, cutoffs, allowed_sym_sides=None, max_bo
             row_counts[category] += source_rows
             proofs.append({"symbol_side": symbol, "category": category, "source_file": str(path), "sha256": digest, "rows": source_rows, "market_end_min": min(groups), "market_end_max": max(groups), "top_npz_id": document.get("npz_id"), "result_start_utc": document.get("result_start_utc"), "result_done_utc": document.get("result_done_utc")})
     report = {"schema": "explicit_progress_gain_population_v1", "cutoffs_epoch": cutoffs, "index_sha256": sha256(index_path), "unique_boards_by_category": dict(board_counts), "source_rows_by_category": dict(row_counts), "sources": proofs, "counters": dict(counts), "spill_sha256": sha256(spill) if output_stream is None else wire_digest.hexdigest(), "status": "declared_older_market_population_not_oos_gain_proof", "scope": "explicit per-row NPZ tags only; no top-NPZ fallback; current-book scope and board cap recorded; computation dates not fabricated"}
+    report["index_sha256"] = index_digest
+    report["max_boards_per_cat"] = max_boards_per_cat
+    report["input_index_entries"] = len(records)
+    if sha256(index_path) != index_digest:
+        report["status"] = "failed_index_changed_ineligible"
+    if set(board_counts) != set(cutoffs):
+        report["status"] = "failed_missing_categories_ineligible"
     (root / "population.json").write_text(json.dumps(report, indent=2, default=str))
+    if report["status"].startswith("failed_"):
+        raise ValueError(report["status"])
     if set(board_counts) != set(cutoffs):
         raise ValueError(f"population does not cover all categories: {dict(board_counts)}")
     return report
