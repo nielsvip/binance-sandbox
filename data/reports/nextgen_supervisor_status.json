@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-10-30T20:24:54.222557Z",
+  "recorded_at": "2026-10-30T20:28:46.341832Z",
   "status": "active_not_achieved",
   "deployment_authorized_by_this_record": false,
   "requirements": {
@@ -104,14 +104,22 @@
     "selected_recent_rows": 311,
     "source_event_day": "2026-10-27",
     "scope": "compatibility sample only; not full-corpus absorption",
-    "training_result": "not_yet_verified",
+    "training_result": "compatibility_success_only",
     "context_vintage": "2026-10-20",
     "context_coverage": "requires_measurement",
     "symbol_identity_census": "current book allowlist insufficient for historical corpus; retain unknowns separately",
     "process_reported": 3829852,
     "run_dir": "s6:/home/niels/v20_candidate_review_20261030/run_smoke_recent_01",
-    "state": "features_completed_graph_training_observed",
-    "missing_dependency": "binding maps absent in smoke snapshot; unknown binding, not full training readiness"
+    "state": "four_phases_completed_rc0_partial_smoke_not_deployed",
+    "missing_dependency": "binding maps absent in smoke snapshot; unknown binding, not full training readiness",
+    "with_context_by_category": {
+      "CRYPTO_LONG": 0,
+      "CRYPTO_SHORT": 0,
+      "STOCKS_LONG": 0,
+      "STOCKS_SHORT": 0
+    },
+    "evidence": "data/reports/v20_candidate_review_20261030/run_smoke_recent_01/manifest.json",
+    "next_required": "restore preserved experience and reconstruct current causal joins; binding maps and historical identity scope unresolved"
   },
   "automatic_sync_incident": {
     "finding": "Mac automatic sync copied candidate learning modules into S1 ~/binance before a gate release",

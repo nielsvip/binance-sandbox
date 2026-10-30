@@ -167,6 +167,8 @@ MIN_PASS_GAP_S = float(os.environ.get("VD_MIN_PASS_GAP_S", "2.0"))
 # creates, removes or resizes a position, it only annotates one the broker already shows, and a disagreement rings.
 MAC_POSITIONS = os.environ.get("VD_MAC_POSITIONS", "1") == "1"
 MAC_POSITIONS_MAX_AGE_S = float(os.environ.get("VD_MAC_POSITIONS_MAX_AGE_S", "900"))
+# Every held position must carry a resting protective stop. Audited per account at most this often (0 = off).
+PROTECTION_AUDIT_S = float(os.environ.get("VD_PROTECTION_AUDIT_S", "300"))
 MAX_ATTEMPTS = 3
 VENUE_WIDE_KINDS_IGNORED = ("account_dead", "broker_unreachable_account")
 
@@ -1111,6 +1113,40 @@ class Trader:
                 log(f"held file write failed: {exc}")
         return pos
 
+    def audit_protection(self, acct, pos):
+        """Ring for every held position with no resting protective stop. Reports only — it places no order.
+
+        An entry is protected by the stop its own order carries (Tradier OTO leg, Binance closePosition algo). Nothing
+        re-checked afterwards, so a stop that was rejected, cancelled or expired left the position bare and silent.
+        Measured 2026-10-30: trc held LMT_LONG with no stop of any kind at the broker."""
+        if not PROTECTION_AUDIT_S or time.time() - self.__dict__.setdefault("protection_audited", {}).get(acct, 0.0) < PROTECTION_AUDIT_S:
+            return
+        self.protection_audited[acct] = time.time()
+        if not hasattr(self, "stops"):
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
+            from vector_direct_stops import Stops
+            self.stops = Stops(self)
+        bare, rung = [], self.__dict__.setdefault("bare_rung", set())
+        for ss, row in pos.items():
+            if float(row.get("qty") or 0) <= 0:
+                continue
+            symbol, side = split_ss(ss)
+            try:
+                level = self.stops.resting_level(acct, symbol, side)
+            except Exception as exc:
+                log(f"protection audit {acct} {ss}: resting stop unreadable {str(exc)[:120]}")
+                continue
+            if level:
+                rung.discard((acct, ss))
+                continue
+            bare.append(ss)
+            if (acct, ss) not in rung:
+                rung.add((acct, ss))
+                self.alert("VD_HELD_POSITION_UNPROTECTED", account=acct, sym_side=ss, qty=float(row.get("qty") or 0), severity="CRITICAL")
+        if bare:
+            log(f"CRITICAL UNPROTECTED {acct}: {len(bare)} held position(s) with no resting stop: {','.join(sorted(bare))}")
+        self._ledger({"event": "PROTECTION_AUDIT", "acct": acct, "held": len([1 for r in pos.values() if float(r.get("qty") or 0) > 0]), "unprotected": sorted(bare)})
+
     def mac_positions(self):
         """The Mac books as pushed by tools/mac_positions_push_executors.py, re-read only when the file changes."""
         path = self.out / f"mac_positions_{self.venue}.json"
@@ -1409,6 +1445,7 @@ class Trader:
                 log(f"{acct}: broker positions FAILED {str(exc)[:160]}")
                 continue
             self.with_held_states(states, pos)
+            self.audit_protection(acct, pos)
             if self.venue == "crypto":
                 halted.update(rolling_deterioration_halts(self.root, self.state_dir, states, bar))
             self._remember_held_anchors(acct, pos, states)

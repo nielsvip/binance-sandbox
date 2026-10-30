@@ -78,3 +78,27 @@ def test_no_book_is_not_an_error(tmp_path):
     (tmp_path / "mac_positions_stocks.json").unlink()
     pos = {"LMT_LONG": {"qty": 1.0}}
     assert obj.annotate_with_mac("trb", pos) is pos and alerts == []
+
+
+def test_a_held_position_without_a_resting_stop_rings_critical(tmp_path):
+    obj, alerts, logs = trader(tmp_path, MAC)
+    obj._ledger = lambda row: None
+    obj.stops = SimpleNamespace(resting_level=lambda acct, symbol, side: None)
+    obj.audit_protection("trb", {"LMT_LONG": {"qty": 1.0}})
+    assert [k for k, _ in alerts] == ["VD_HELD_POSITION_UNPROTECTED"]
+    assert alerts[0][1]["severity"] == "CRITICAL"
+    obj.protection_audited["trb"] = 0.0
+    obj.audit_protection("trb", {"LMT_LONG": {"qty": 1.0}})
+    assert len(alerts) == 1, "one bell per episode, not one per pass"
+
+
+def test_a_protected_position_rings_nothing_and_rearms_the_bell(tmp_path):
+    obj, alerts, _ = trader(tmp_path, MAC)
+    obj._ledger = lambda row: None
+    obj.stops = SimpleNamespace(resting_level=lambda acct, symbol, side: 625.64)
+    obj.audit_protection("trb", {"LMT_LONG": {"qty": 1.0}})
+    assert alerts == []
+    obj.protection_audited["trb"] = 0.0
+    obj.stops = SimpleNamespace(resting_level=lambda acct, symbol, side: None)
+    obj.audit_protection("trb", {"LMT_LONG": {"qty": 1.0}})
+    assert [k for k, _ in alerts] == ["VD_HELD_POSITION_UNPROTECTED"]

@@ -7,8 +7,8 @@
     "switch_parity.py": "37cfb6c29977797f48a0ebbf4ac532165ce440ba5ebcf23280f3c071dc9f6f82"
   },
   "candidate_sha256": {
-    "v15_pilot.py": "dc8b85dbba59b5d6695f494965da4d9af0d3c30c313600e38572fb60b849c24b",
+    "v15_pilot.py": "4570814bb1ccda4a1ec06e02a5ac07b8695f6acf51965ee536e37dd383e53fec",
     "switch_parity.py": "a12429a246452e1676b76eaa4a7f99df4acb5254149810bd370d941ce4d2fa5b"
   },
-  "scope": "scratch canary routing only; no strategy/default/parity classification change"
+  "scope": "scratch output/flags/parity-cache/private-temp routing only; no strategy/default/parity classification change"
 }

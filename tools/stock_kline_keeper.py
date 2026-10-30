@@ -70,6 +70,10 @@ def enforce_window(now):
                     continue
             keep.append(row)
         if len(keep) != len(rows):
+            gone = [str(r.get("timestamp", "")) for r in rows if r not in keep]
+            with open(os.path.expanduser("~/logs/kline_enforce_removed.log"), "a") as log:
+                for stamp in gone:
+                    log.write(f"{now.strftime('%Y-%m-%dT%H:%M:%SZ')} removed {path.name} {stamp}\n")
             tmp = path.with_name("." + path.name + ".enforce")
             tmp.write_text(json.dumps(keep))
             os.replace(tmp, path)
