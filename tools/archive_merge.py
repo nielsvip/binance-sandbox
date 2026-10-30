@@ -20,6 +20,7 @@ ARCHIVE = Path(os.environ.get("ARCHIVE_DIR", "/Volumes/WD25/binance_npz_archive/
 STAGE = Path(os.environ.get("ARCHIVE_STAGE", str(Path.home() / "binance_archive_stage")))
 S1_OUT = "/home/niels/binance-sandbox/archive_outbox"
 HOSTS = ["s1-int", "s1-pub"]
+BAR_S = 900
 SSH = ["-o", "ConnectTimeout=10", "-o", "ServerAliveInterval=10", "-o", "ControlMaster=no", "-o", "ControlPath=none"]
 
 
@@ -57,6 +58,8 @@ def merge_one(delta_path, sym, tip):
         bts = base["timestamps"].astype("int64")
         if int(bts[-1]) >= tip:
             return "already_current"
+        if int(dts[0]) > int(bts[-1]) + BAR_S:
+            return "gap"
         keep = np.where(dts > int(bts[-1]))[0]
         merged = {}
         for k in base:
@@ -66,7 +69,7 @@ def merge_one(delta_path, sym, tip):
             else:
                 merged[k] = b_arr
     else:
-        merged = delta
+        return "no_base"
     tmp = target.with_name("." + target.name + ".merge")
     with open(tmp, "wb") as fh:
         np.savez_compressed(fh, **merged)
