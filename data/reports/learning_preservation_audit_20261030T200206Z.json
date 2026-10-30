@@ -1,278 +1,291 @@
 {
-  "audit_at_utc": "2026-10-30T21:33:06Z",
-  "scope": "non-destructive corpus preservation evidence; fleet retirement not approved",
+  "audit_at_utc": "2026-10-30T21:52:05Z",
   "external_storage": {
-    "WD25": {
-      "mount": "/Volumes/WD25",
-      "volume_uuid": "04543668-3000-3F41-BB34-1C876F724D28",
-      "filesystem": "ExFAT",
-      "space_observed": "3.2 TiB free",
-      "command": "diskutil info /Volumes/WD25"
-    },
     "TOSHIBA_EXT": {
       "device": "/dev/disk5s1",
-      "volume_uuid": "CB74078E-CB60-392D-A83D-73E7DCF836DC",
+      "evidence": "Earlier diskutil list /dev/disk5 timed out; later auto-mounted. Normal timeout 20 unmount attempt returned interrupted; no force, repair, fsck, or writes. Current limited inventory exists but is not a full-drive audit.",
       "filesystem": "ExFAT",
-      "state": "physically attached, unmounted; no repair, fsck, or mount attempted",
-      "evidence": "diskutil info /dev/disk5s1 succeeded; diskutil list /dev/disk5 timed out",
-      "reason_deferred": "shares USB3.1 hub with WD25; defer read-only mount pending WD25 transfer verification"
+      "reason_deferred": "No read-only mount established; no further mount operation while WD25 verification/hub activity ongoing.",
+      "state": "physically attached and mounted at /Volumes/TOSHIBA_EXT; diskutil info reports writable; our access has been metadata/read-only only",
+      "volume_uuid": "CB74078E-CB60-392D-A83D-73E7DCF836DC"
+    },
+    "WD25": {
+      "command": "diskutil info /Volumes/WD25",
+      "filesystem": "ExFAT",
+      "mount": "/Volumes/WD25",
+      "space_observed": "3.2 TiB free",
+      "volume_uuid": "04543668-3000-3F41-BB34-1C876F724D28"
     }
   },
   "gcs_experience_restore": {
-    "object": "gs://v15-cold-329002141504/fleet_archives/s5/experience_cold_af1eab344426.tar.zst",
-    "generation": "1793154688805498",
     "bytes": 2402070211,
-    "md5_base64": "rQ6cHUBUIs8xSo7hnM58TQ==",
-    "sha256": "0b92fd8f47e8e95605a5451defcc34b7133ab4efc237ad95e3b369ac0878d138",
-    "receipt": "data/reports/gcs_cold_store.jsonl, verified receipt; source /home/niels/rebuild_scratch_s5/experience_cold",
-    "destination_archive": "/home/niels/v20_candidate_review_20261030/experience_restore_20261030T2030Z/experience_cold.tar.zst",
-    "transport": "direct GCS-to-S6 with generation-pinned ranged download; ephemeral authorization passed in-memory over SSH stdin; no private key or long-lived credential copied",
-    "verification": "downloaded size, MD5 and SHA256 matched receipt/object metadata",
-    "tar_inspection": {
-      "members": 14,
-      "decoded_tar_bytes": 2402037760,
-      "regular_payload_bytes": 2402019120,
-      "unsafe_paths": [],
-      "links": 0,
-      "member_types": "directories, four compressed SQLite shards, per-shard manifests/logs, SHA256SUMS"
+    "consumer_audit_CRYPTO_LONG": {
+      "consumer_status": "complete rc0; output 616 B, SHA256 b71adaf0bf48b4e6d9a8f33c9bf5b933ee46122470d5e77120117cc85a41c05e; report SHA256 d9383e38a0f24a62720d0e1ec037470be70979dc595b115fffb486c91a143fb2; driver SHA256 6cc2f336331025fd4f73ad059df7b77ad0f01832a1e9c0ee3bb5b3b9c3eaec03",
+      "decoded_scratch": "CRYPTO_LONG DB removed after consumer release; GCS tar and compressed shard retained",
+      "evidence": "4,344,370 log_replay_v1 + 2,250,258 log/none rows, no native provenance; five sampled set digests matched canonical producer; zero strict contexts had chain_sha_verified extras; 0 eligible log rows and 0 contexts",
+      "s6_space_after_reclaim": "29 GiB free observed"
     },
+    "consumer_audit_CRYPTO_SHORT": {
+      "consumer_sha256": "0e3da462c5975c4217f93fd33eda76f04a8d8d65c229e7a6e297dc0048402419",
+      "consumer_status": "complete; decoded DB released by agent",
+      "ctxjoin_sha256": "5271d253da5262055f53f4df419788c4902ad5187997a63cd4d081dd89f1a4fa",
+      "decoded_scratch": "CRYPTO_SHORT DB removed after consumer release; GCS tar and compressed shard retained",
+      "evidence": "4,790,995 log_replay_v1 + 623,487 log/none rows; no native provenance; output contexts 0",
+      "report_sha256": "798cf6799dd0e5a4da13d4a33df1c9c3bc7fcf71aad76d1001b86fa9ff6ce478"
+    },
+    "consumer_audit_STOCKS_LONG": {
+      "consumer_sha256": "37b9dcfaf4e9f2d01e5cedf2ef660654f19e9092456a9afe5099a5894a6adb63",
+      "consumer_status": "complete; decoded DB released by agent",
+      "ctxjoin_sha256": "0a32c55c4b3fb11a38381b59a7e754b5b58397ae63cb3c586ac0053e78a69738",
+      "decoded_scratch": "STOCKS_LONG DB removed after consumer release; GCS tar and compressed shard retained",
+      "evidence": "1,960,298 log_replay_v1 + 292,778 log/none rows, no native provenance; 0 strict contexts",
+      "report_sha256": "aa7bc24366b515fcfc4c3aa4df26526afa04acdf48ada51d043edc844da9a2b6"
+    },
+    "decoded_db_hashes": "all four decoded SHA256 values matched source manifest hashes before use; CRYPTO_LONG decoded scratch removed only after ctxjoin consumer completed and agent confirmed release; verified GCS tar and compressed shard retained",
     "decoded_db_source_bytes_total": 25156386816,
+    "destination_archive": "/home/niels/v20_candidate_review_20261030/experience_restore_20261030T2030Z/experience_cold.tar.zst",
+    "fresh_store": "/home/niels/v20_candidate_review_20261030/experience_restore_20261030T2030Z/store/experience",
+    "generation": "1793154688805498",
+    "md5_base64": "rQ6cHUBUIs8xSo7hnM58TQ==",
+    "object": "gs://v15-cold-329002141504/fleet_archives/s5/experience_cold_af1eab344426.tar.zst",
+    "receipt": "data/reports/gcs_cold_store.jsonl, verified receipt; source /home/niels/rebuild_scratch_s5/experience_cold",
+    "retained_sources": true,
+    "s6_space_after_decode": "39 GiB free observed after reclaiming decoded CRYPTO_LONG, CRYPTO_SHORT, and STOCKS_LONG scratch after each consumer completed",
+    "sha256": "0b92fd8f47e8e95605a5451defcc34b7133ab4efc237ad95e3b369ac0878d138",
     "shards": [
       {
-        "name": "CRYPTO_LONG",
         "bytes": 10025791488,
-        "sha256": "a9c4e171a36905ae687abd9fd804eee4c94505ff9f35860114dba6c1ab9e78ea",
         "eval_range_utc": [
           "2026-10-21T09:31:55Z",
           "2026-10-22T17:35:11Z"
         ],
-        "live_events": 0
+        "live_events": 0,
+        "name": "CRYPTO_LONG",
+        "sha256": "a9c4e171a36905ae687abd9fd804eee4c94505ff9f35860114dba6c1ab9e78ea"
       },
       {
-        "name": "CRYPTO_SHORT",
         "bytes": 8176959488,
-        "sha256": "0a2f12aabf01ff473f2647a5cda619f3d512e70bc2fc49295f13505ceaaf34c7",
         "eval_range_utc": [
           "2026-10-21T09:31:54Z",
           "2026-10-22T18:44:58Z"
         ],
-        "live_events": 0
+        "live_events": 0,
+        "name": "CRYPTO_SHORT",
+        "sha256": "0a2f12aabf01ff473f2647a5cda619f3d512e70bc2fc49295f13505ceaaf34c7"
       },
       {
-        "name": "STOCKS_LONG",
         "bytes": 3675877376,
-        "sha256": "34362727fbcbe13c67287eef0088db05dda47234e3fba22cd84722b0ba91d4cf",
         "eval_range_utc": [
           "2026-10-21T09:31:21Z",
           "2026-10-22T18:46:00Z"
         ],
-        "live_events": 0
+        "live_events": 0,
+        "name": "STOCKS_LONG",
+        "sha256": "34362727fbcbe13c67287eef0088db05dda47234e3fba22cd84722b0ba91d4cf"
       },
       {
-        "name": "STOCKS_SHORT",
         "bytes": 3277758464,
-        "sha256": "db36705e6681ae8deca9ac73a5e99b72245428212acc3f4f045977158a53a602",
         "eval_range_utc": [
           "2026-10-21T09:31:26Z",
           "2026-10-22T17:48:02Z"
         ],
-        "live_events": 0
+        "live_events": 0,
+        "name": "STOCKS_SHORT",
+        "sha256": "db36705e6681ae8deca9ac73a5e99b72245428212acc3f4f045977158a53a602"
       }
     ],
-    "fresh_store": "/home/niels/v20_candidate_review_20261030/experience_restore_20261030T2030Z/store/experience",
-    "decoded_db_hashes": "all four decoded SHA256 values matched source manifest hashes before use; CRYPTO_LONG decoded scratch removed only after ctxjoin consumer completed and agent confirmed release; verified GCS tar and compressed shard retained",
-    "retained_sources": true,
-    "s6_space_after_decode": "39 GiB free observed after reclaiming decoded CRYPTO_LONG, CRYPTO_SHORT, and STOCKS_LONG scratch after each consumer completed",
-    "consumer_audit_CRYPTO_LONG": {
-      "consumer_status": "complete rc0; output 616 B, SHA256 b71adaf0bf48b4e6d9a8f33c9bf5b933ee46122470d5e77120117cc85a41c05e; report SHA256 d9383e38a0f24a62720d0e1ec037470be70979dc595b115fffb486c91a143fb2; driver SHA256 6cc2f336331025fd4f73ad059df7b77ad0f01832a1e9c0ee3bb5b3b9c3eaec03",
-      "evidence": "4,344,370 log_replay_v1 + 2,250,258 log/none rows, no native provenance; five sampled set digests matched canonical producer; zero strict contexts had chain_sha_verified extras; 0 eligible log rows and 0 contexts",
-      "decoded_scratch": "CRYPTO_LONG DB removed after consumer release; GCS tar and compressed shard retained",
-      "s6_space_after_reclaim": "29 GiB free observed"
+    "tar_inspection": {
+      "decoded_tar_bytes": 2402037760,
+      "links": 0,
+      "member_types": "directories, four compressed SQLite shards, per-shard manifests/logs, SHA256SUMS",
+      "members": 14,
+      "regular_payload_bytes": 2402019120,
+      "unsafe_paths": []
     },
-    "consumer_audit_CRYPTO_SHORT": {
-      "consumer_status": "complete; decoded DB released by agent",
-      "ctxjoin_sha256": "5271d253da5262055f53f4df419788c4902ad5187997a63cd4d081dd89f1a4fa",
-      "report_sha256": "798cf6799dd0e5a4da13d4a33df1c9c3bc7fcf71aad76d1001b86fa9ff6ce478",
-      "consumer_sha256": "0e3da462c5975c4217f93fd33eda76f04a8d8d65c229e7a6e297dc0048402419",
-      "evidence": "4,790,995 log_replay_v1 + 623,487 log/none rows; no native provenance; output contexts 0",
-      "decoded_scratch": "CRYPTO_SHORT DB removed after consumer release; GCS tar and compressed shard retained"
-    },
-    "consumer_audit_STOCKS_LONG": {
-      "consumer_status": "complete; decoded DB released by agent",
-      "ctxjoin_sha256": "0a32c55c4b3fb11a38381b59a7e754b5b58397ae63cb3c586ac0053e78a69738",
-      "report_sha256": "aa7bc24366b515fcfc4c3aa4df26526afa04acdf48ada51d043edc844da9a2b6",
-      "consumer_sha256": "37b9dcfaf4e9f2d01e5cedf2ef660654f19e9092456a9afe5099a5894a6adb63",
-      "evidence": "1,960,298 log_replay_v1 + 292,778 log/none rows, no native provenance; 0 strict contexts",
-      "decoded_scratch": "STOCKS_LONG DB removed after consumer release; GCS tar and compressed shard retained"
-    }
-  },
-  "wd25_s6_rebuild_scratch_copy": {
-    "source": "s6:/home/niels/rebuild_scratch_s6/",
-    "destination": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_rebuild_scratch/",
-    "first_transfer": "rsync ended code 255 after approximately 1.30 GB; partial retained",
-    "resume": "rsync -rt --partial --append-verify --info=progress2 --bwlimit=4096 -e 'ssh -S none -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=15 -o ServerAliveCountMax=3'; exited 0, 44 seconds, 35,198,954 bytes incremental across 243 entries",
-    "large_member": {
-      "path": "s1_data_archive/klines_hist_w2.tar.zst",
-      "bytes": 1218456299
-    },
-    "verification_state": "verified at 2026-10-30T20:51:05Z: rsync dry-run with checksum checked all 243 entries (207 regular files, 36 directories), total 1,331,992,053 B; 0 created/changed/transferred/deleted and 0 bytes transferred. This establishes byte-for-byte match with current S6 source and no source changes observable at verification. Source contains no symlinks (separate bounded source listing); source mtime scan found no files changed within the prior 60 minutes.",
-    "verification_command": "rsync -nrc --itemize-changes --stats -rt -e ssh -S none ... s6:/home/niels/rebuild_scratch_s6/ <WD25 destination>/"
-  },
-  "s1_consumer_audit": {
-    "finding": "no relevant S1 cron/process consumer of ~/binance v18_linknet or v20_absorb since 20:00 UTC was found",
-    "evidence": "crontab and active process argv/cwd checks; 20:00 must-refresh and 20:23 endgame merge ran from /home/niels/binance-sandbox; inspected callers had no v18_linknet/v20_absorb imports"
-  },
-  "preservation_status": "incomplete; originals retained; no retirement/deletion authorized by this audit",
-  "next_copy": {
-    "source": "s6:/home/niels/v20_u4/full/data/learn/",
-    "destination": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/full_data_learn/",
-    "status": "in progress, rsync session 95115 resumed from retained partial; about 193MB transferred at last poll; no delete; not yet verified",
-    "initial_attempt": "own rsync session 29160 briefly ran then was intentionally interrupted after lsof showed new TOSHIBA system metadata readers; retained partial and resumed once after parent directed avoiding unmount/force and continuing read-only-access preservation"
-  },
-  "s6_v20_u4_spills_copy": {
-    "source": "s6:/home/niels/v20_u4/spills/",
-    "destination": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/",
-    "source_unique_vs_s5": "S5 v20_u4/spills absent; bounded S5 existence check",
-    "source_symlinks": 0,
-    "copy_command": "rsync -rt --partial --append-verify --info=progress2 --bwlimit=4096 -e ssh -S none ...",
-    "copy_exit": 0,
-    "verified_at_utc": "2026-10-30T21:18:44Z",
-    "checksum_verification": "rsync -nrc --itemize-changes --stats -rt; exit 0; 171 entries (161 regular files, 10 directories), total 1,651,762,046 B; 0 created/changed/deleted, 0 bytes transferred"
-  },
-  "toshiba_current_state": {
-    "device": "/dev/disk5s1",
-    "uuid": "CB74078E-CB60-392D-A83D-73E7DCF836DC",
-    "mount": "/Volumes/TOSHIBA_EXT",
-    "mount_read_only": "No (diskutil info says volume writable)",
-    "active_external_reader": "PID 22872 rsync -rltDv --partial to Storage Box; lsof shows volume cwd and one file read-only descriptor. Process observed at 04:01 elapsed; left untouched.",
-    "our_access": "metadata-only ls and bounded find to maxdepth 3; no writes, repair, fsck, or unmount/remount",
-    "inventory": "partial; manifests under binance_archive/data and eval_cache; full read-only inventory deferred until external reader exits and a true read-only mount can be used",
-    "unmount_attempt": "timeout 20 diskutil unmount /dev/disk5s1 returned diskutil interrupted; mount remains active; subsequent diskutil info hung and was cancelled; no force/repair/fsck"
-  },
-  "last_promoted_nn_baseline": {
-    "candidate": "S2 /home/niels/v15_bench/gate/candidates/20261022T235810Z/meta.json",
-    "state": "PASS; V20 COMPLETE; finished 2026-10-23, decision.PASS=true",
-    "preserved_manifest": "data/learn/v3u3_20261022/MANIFEST.json",
-    "manifest_built": "2026-10-22",
-    "global_corpus_last_ts": "2026-10-22T20:39:54Z",
-    "provenance": "All 8 preserved brain/digest payload sizes and MD5 values recomputed and matched the manifest; manifest hashes also match the S2 PASS candidate meta files map. This is a preserved promoted baseline, not current mutable worker files.",
-    "brains": {
-      "CRYPTO_LONG": {
-        "file": "brain_union/v18_brain_CRYPTO_LONG.json",
-        "bytes": 7259410,
-        "md5": "bf957b09f060f0bf751bf129bf43c50c",
-        "corpus_last_ts": "2026-10-22T20:39:54Z"
-      },
-      "CRYPTO_SHORT": {
-        "file": "brain_union/v18_brain_CRYPTO_SHORT.json",
-        "bytes": 6691818,
-        "md5": "8a167212c6ad1634ce6ee21773148955",
-        "corpus_last_ts": "2026-10-22T19:27:30Z"
-      },
-      "STOCKS_LONG": {
-        "file": "brain_union/v18_brain_STOCKS_LONG.json",
-        "bytes": 9847628,
-        "md5": "da2f28c0bda8bd5353a84d13459edb5e",
-        "corpus_last_ts": "2026-10-22T17:12:52Z"
-      },
-      "STOCKS_SHORT": {
-        "file": "brain_union/v18_brain_STOCKS_SHORT.json",
-        "bytes": 9489710,
-        "md5": "c65ba34d3317106e7891f183f91d1137",
-        "corpus_last_ts": "2026-10-22T19:13:43Z"
-      }
-    },
-    "digests": {
-      "CRYPTO_LONG": {
-        "file": "digest/digest_CRYPTO_LONG.json",
-        "bytes": 511667,
-        "md5": "2286eb71c7c8bf019cf1d1124b209457",
-        "corpus_last_ts": "2026-10-22T20:39:54Z"
-      },
-      "CRYPTO_SHORT": {
-        "file": "digest/digest_CRYPTO_SHORT.json",
-        "bytes": 520887,
-        "md5": "b70882b615599545e73d145a30007d0f",
-        "corpus_last_ts": "2026-10-22T19:27:30Z"
-      },
-      "STOCKS_LONG": {
-        "file": "digest/digest_STOCKS_LONG.json",
-        "bytes": 511876,
-        "md5": "948c36533eaa1aecebc91a4c8f234831",
-        "corpus_last_ts": "2026-10-22T17:12:52Z"
-      },
-      "STOCKS_SHORT": {
-        "file": "digest/digest_STOCKS_SHORT.json",
-        "bytes": 512721,
-        "md5": "244d9df1da2ce756deb85795bbd2b10a",
-        "corpus_last_ts": "2026-10-22T19:13:43Z"
-      }
-    },
-    "live_worker_files": "S1/S5/S6 flat tools/v18_data_brain_* and tools/v18_data_learn_digest_* have different MD5 values from promoted baseline and match one another across hosts; do not treat them as promoted proof.",
-    "candidate_payload": "only meta.json remains in S2 candidate directory; candidate file payloads absent"
+    "transport": "direct GCS-to-S6 with generation-pinned ranged download; ephemeral authorization passed in-memory over SSH stdin; no private key or long-lived credential copied",
+    "verification": "downloaded size, MD5 and SHA256 matched receipt/object metadata"
   },
   "historical_progress_source_evidence": {
+    "extractor_at": "2026-10-22T19:13:15Z",
+    "extractor_report": "data/brain_scratch/spill_boards/extract_progress_macboards_20261022T191139Z_20496_443715.json",
+    "extractor_sha256": "e18cdde68b66b6ba7f3132557d98edb548e9f204b4ecf66285d24b45d1c6e449",
+    "extractor_source": "data/reports/lifecycle_pilot/*_v14_progress.json",
     "index": "data/brain_scratch/spill_boards/progress_index_macboards.json",
     "index_bytes": 118487,
     "index_records": 413,
     "index_sha256": "66057b861be35bd7606b9d5beb6c4c9ab0b15a5c7fa2e63c01135430db20747c",
-    "extractor_report": "data/brain_scratch/spill_boards/extract_progress_macboards_20261022T191139Z_20496_443715.json",
-    "extractor_at": "2026-10-22T19:13:15Z",
-    "extractor_source": "data/reports/lifecycle_pilot/*_v14_progress.json",
-    "extractor_sha256": "e18cdde68b66b6ba7f3132557d98edb548e9f204b4ecf66285d24b45d1c6e449",
+    "interpretation": "Explicit per-row done[*].npz values were parsed; these four sampled sources all predate their category gate cutoff. Index/file mtime was not treated as NPZ freshness. Sample does not establish all eligible rows.",
     "sample_progress_jsons": [
       {
+        "all_rows_tagged": true,
         "cat_side": "STOCKS_LONG",
+        "done_npz_tag": "ts1791290700.0_n41756",
         "path": "data/reports/lifecycle_pilot/AAPL_LONG_v14_progress.json",
         "rows": 2163,
-        "done_npz_tag": "ts1791290700.0_n41756",
-        "all_rows_tagged": true,
         "sha256": "e3233ace2348b0a3208ebb787d20bbf1f99531a22116251afd4c1a1f19b8256a",
         "top_npz_id": {
-          "ts_last": 1791290700.0,
+          "md5": "178231276e05a3aaca0db4bbde172e05",
           "n": 41756,
-          "md5": "178231276e05a3aaca0db4bbde172e05"
+          "ts_last": 1791290700.0
         }
       },
       {
+        "all_rows_tagged": true,
         "cat_side": "STOCKS_SHORT",
+        "done_npz_tag": "ts1791416700.0_n41864",
         "path": "data/reports/lifecycle_pilot/AAPL_SHORT_v14_progress.json",
         "rows": 3358,
-        "done_npz_tag": "ts1791416700.0_n41864",
-        "all_rows_tagged": true,
         "sha256": "feb7fd2b6fd53df7626779387901907b5ee7e74beda72eeccb353873e1cb27e8",
         "top_npz_id": {
-          "ts_last": 1791416700.0,
+          "md5": "46ebbdf65cb94beb2e96619b1ee36877",
           "n": 41864,
-          "md5": "46ebbdf65cb94beb2e96619b1ee36877"
+          "ts_last": 1791416700.0
         }
       },
       {
+        "all_rows_tagged": true,
         "cat_side": "CRYPTO_LONG",
+        "done_npz_tag": "ts1791332100.0_n39157",
         "path": "data/reports/lifecycle_pilot/BTCUSDC_LONG_v14_progress.json",
         "rows": 3248,
-        "done_npz_tag": "ts1791332100.0_n39157",
-        "all_rows_tagged": true,
         "sha256": "588585fe720cf7608d78fb24a725c80b95fa163b165f89a8c8520fba9e9d12ff",
         "top_npz_id": {
-          "ts_last": 1791332100.0,
-          "n": 39157
+          "n": 39157,
+          "ts_last": 1791332100.0
         }
       },
       {
+        "all_rows_tagged": true,
         "cat_side": "CRYPTO_SHORT",
+        "done_npz_tag": "ts1791644400.0_n39504",
         "path": "data/reports/lifecycle_pilot/BTCUSDC_SHORT_v14_progress.json",
         "rows": 3196,
-        "done_npz_tag": "ts1791644400.0_n39504",
-        "all_rows_tagged": true,
         "sha256": "ee84cad0ab898588111ddb5ffe3d3fb47f5a60f7171a765d71164b74c3c565b9",
         "top_npz_id": {
-          "ts_last": 1791644400.0,
+          "md5": "4a68234f1953642d0daad0894ff82ab3",
           "n": 39504,
-          "md5": "4a68234f1953642d0daad0894ff82ab3"
+          "ts_last": 1791644400.0
         }
       }
-    ],
-    "interpretation": "Explicit per-row done[*].npz values were parsed; these four sampled sources all predate their category gate cutoff. Index/file mtime was not treated as NPZ freshness. Sample does not establish all eligible rows."
+    ]
+  },
+  "last_promoted_nn_baseline": {
+    "brains": {
+      "CRYPTO_LONG": {
+        "bytes": 7259410,
+        "corpus_last_ts": "2026-10-22T20:39:54Z",
+        "file": "brain_union/v18_brain_CRYPTO_LONG.json",
+        "md5": "bf957b09f060f0bf751bf129bf43c50c"
+      },
+      "CRYPTO_SHORT": {
+        "bytes": 6691818,
+        "corpus_last_ts": "2026-10-22T19:27:30Z",
+        "file": "brain_union/v18_brain_CRYPTO_SHORT.json",
+        "md5": "8a167212c6ad1634ce6ee21773148955"
+      },
+      "STOCKS_LONG": {
+        "bytes": 9847628,
+        "corpus_last_ts": "2026-10-22T17:12:52Z",
+        "file": "brain_union/v18_brain_STOCKS_LONG.json",
+        "md5": "da2f28c0bda8bd5353a84d13459edb5e"
+      },
+      "STOCKS_SHORT": {
+        "bytes": 9489710,
+        "corpus_last_ts": "2026-10-22T19:13:43Z",
+        "file": "brain_union/v18_brain_STOCKS_SHORT.json",
+        "md5": "c65ba34d3317106e7891f183f91d1137"
+      }
+    },
+    "candidate": "S2 /home/niels/v15_bench/gate/candidates/20261022T235810Z/meta.json",
+    "candidate_payload": "only meta.json remains in S2 candidate directory; candidate file payloads absent",
+    "digests": {
+      "CRYPTO_LONG": {
+        "bytes": 511667,
+        "corpus_last_ts": "2026-10-22T20:39:54Z",
+        "file": "digest/digest_CRYPTO_LONG.json",
+        "md5": "2286eb71c7c8bf019cf1d1124b209457"
+      },
+      "CRYPTO_SHORT": {
+        "bytes": 520887,
+        "corpus_last_ts": "2026-10-22T19:27:30Z",
+        "file": "digest/digest_CRYPTO_SHORT.json",
+        "md5": "b70882b615599545e73d145a30007d0f"
+      },
+      "STOCKS_LONG": {
+        "bytes": 511876,
+        "corpus_last_ts": "2026-10-22T17:12:52Z",
+        "file": "digest/digest_STOCKS_LONG.json",
+        "md5": "948c36533eaa1aecebc91a4c8f234831"
+      },
+      "STOCKS_SHORT": {
+        "bytes": 512721,
+        "corpus_last_ts": "2026-10-22T19:13:43Z",
+        "file": "digest/digest_STOCKS_SHORT.json",
+        "md5": "244d9df1da2ce756deb85795bbd2b10a"
+      }
+    },
+    "global_corpus_last_ts": "2026-10-22T20:39:54Z",
+    "live_worker_files": "S1/S5/S6 flat tools/v18_data_brain_* and tools/v18_data_learn_digest_* have different MD5 values from promoted baseline and match one another across hosts; do not treat them as promoted proof.",
+    "manifest_built": "2026-10-22",
+    "preserved_manifest": "data/learn/v3u3_20261022/MANIFEST.json",
+    "provenance": "All 8 preserved brain/digest payload sizes and MD5 values recomputed and matched the manifest; manifest hashes also match the S2 PASS candidate meta files map. This is a preserved promoted baseline, not current mutable worker files.",
+    "state": "PASS; V20 COMPLETE; finished 2026-10-23, decision.PASS=true"
+  },
+  "next_copy": {
+    "destination": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/full_data_learn/",
+    "initial_attempt": "own rsync session 29160 briefly ran then was intentionally interrupted after lsof showed new TOSHIBA system metadata readers; retained partial and resumed once after parent directed avoiding unmount/force and continuing read-only-access preservation",
+    "source": "s6:/home/niels/v20_u4/full/data/learn/",
+    "status": "in progress, rsync session 95115 resumed from retained partial; about 193MB transferred at last poll; no delete; not yet verified"
+  },
+  "preservation_status": "incomplete; originals retained; no retirement/deletion authorized by this audit",
+  "s1_consumer_audit": {
+    "evidence": "crontab and active process argv/cwd checks; 20:00 must-refresh and 20:23 endgame merge ran from /home/niels/binance-sandbox; inspected callers had no v18_linknet/v20_absorb imports",
+    "finding": "no relevant S1 cron/process consumer of ~/binance v18_linknet or v20_absorb since 20:00 UTC was found"
+  },
+  "s6_v20_u4_full_data_learn_copy": {
+    "destination": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/full_data_learn/",
+    "source": "s6:/home/niels/v20_u4/full/data/learn/",
+    "source_stability": "rsync checksum comparison found all files identical at verification; this proves point-in-time equality, not future immutability",
+    "source_symlinks": 0,
+    "transfer_bytes": 1743096276,
+    "transfer_exit": 0,
+    "transfer_session": 95115,
+    "verification": "rsync -nrc --itemize-changes --stats -rt; exit 0; 214 entries (202 regular files, 12 directories), total 1,743,943,276 B; 0 created/changed/deleted; 0 bytes transferred",
+    "verified_at_utc": "2026-10-30T21:52:05Z",
+    "wd25_uuid_revalidated": "04543668-3000-3F41-BB34-1C876F724D28"
+  },
+  "s6_v20_u4_spills_copy": {
+    "checksum_verification": "rsync -nrc --itemize-changes --stats -rt; exit 0; 171 entries (161 regular files, 10 directories), total 1,651,762,046 B; 0 created/changed/deleted, 0 bytes transferred",
+    "copy_command": "rsync -rt --partial --append-verify --info=progress2 --bwlimit=4096 -e ssh -S none ...",
+    "copy_exit": 0,
+    "destination": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/",
+    "source": "s6:/home/niels/v20_u4/spills/",
+    "source_symlinks": 0,
+    "source_unique_vs_s5": "S5 v20_u4/spills absent; bounded S5 existence check",
+    "verified_at_utc": "2026-10-30T21:18:44Z"
+  },
+  "scope": "non-destructive corpus preservation evidence; fleet retirement not approved",
+  "toshiba_current_state": {
+    "active_external_reader": "PID 22872 rsync -rltDv --partial to Storage Box; lsof shows volume cwd and one file read-only descriptor. Process observed at 04:01 elapsed; left untouched.",
+    "device": "/dev/disk5s1",
+    "inventory": "partial known-directory inventory; no whole-volume scan; actual read-only mount not established",
+    "mount": "/Volumes/TOSHIBA_EXT",
+    "mount_read_only": "No (diskutil info reports volume writable)",
+    "our_access": "bounded metadata/listing only; no writes, repair, fsck, force-unmount, or remount",
+    "state": "mounted at /Volumes/TOSHIBA_EXT; our access read-only",
+    "unmount_attempt": "timeout 20 diskutil unmount /dev/disk5s1 returned diskutil interrupted; mount remains active; subsequent diskutil info hung and was cancelled; no force/repair/fsck",
+    "uuid": "CB74078E-CB60-392D-A83D-73E7DCF836DC"
+  },
+  "wd25_s6_rebuild_scratch_copy": {
+    "destination": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_rebuild_scratch/",
+    "first_transfer": "rsync ended code 255 after approximately 1.30 GB; partial retained",
+    "large_member": {
+      "bytes": 1218456299,
+      "path": "s1_data_archive/klines_hist_w2.tar.zst"
+    },
+    "resume": "rsync -rt --partial --append-verify --info=progress2 --bwlimit=4096 -e 'ssh -S none -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=15 -o ServerAliveCountMax=3'; exited 0, 44 seconds, 35,198,954 bytes incremental across 243 entries",
+    "source": "s6:/home/niels/rebuild_scratch_s6/",
+    "verification_command": "rsync -nrc --itemize-changes --stats -rt -e ssh -S none ... s6:/home/niels/rebuild_scratch_s6/ <WD25 destination>/",
+    "verification_state": "verified at 2026-10-30T20:51:05Z: rsync dry-run with checksum checked all 243 entries (207 regular files, 36 directories), total 1,331,992,053 B; 0 created/changed/transferred/deleted and 0 bytes transferred. This establishes byte-for-byte match with current S6 source and no source changes observable at verification. Source contains no symlinks (separate bounded source listing); source mtime scan found no files changed within the prior 60 minutes."
   }
 }

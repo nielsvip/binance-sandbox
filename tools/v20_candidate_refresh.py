@@ -2,6 +2,7 @@
 """Build matched graph and neural artifacts in a fresh isolated candidate directory; never deploy."""
 import argparse
 import gzip
+import io
 import hashlib
 import json
 import os
@@ -17,7 +18,7 @@ if str(ROOT) not in sys.path:
 CAT_SIDES = ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT")
 
 
-def gain_population(index_path, out_dir, cutoffs, allowed_sym_sides=None, max_boards_per_cat=12):
+def gain_population(index_path, out_dir, cutoffs, allowed_sym_sides=None, max_boards_per_cat=12, output_stream=None):
     from collections import Counter
     from tools import v18_brain as brain
     root = Path(out_dir)
@@ -26,7 +27,15 @@ def gain_population(index_path, out_dir, cutoffs, allowed_sym_sides=None, max_bo
     counts, board_counts, row_counts = Counter(), Counter(), Counter()
     proofs, seen = [], set()
     spill = root / "spill_gain_explicit_progress.tsv.gz"
-    with gzip.open(spill, "wt") as output:
+    wire_digest = hashlib.sha256()
+    class WireWriter:
+        def write(self, payload):
+            wire_digest.update(payload)
+            return output_stream.write(payload)
+        def flush(self):
+            output_stream.flush()
+    destination = gzip.open(spill, "wt", compresslevel=3) if output_stream is None else io.TextIOWrapper(gzip.GzipFile(fileobj=WireWriter(), mode="wb", compresslevel=3))
+    with destination as output:
         for entry in records:
             path = Path(entry["file"])
             if str(path) in seen or not path.is_file():
@@ -37,7 +46,7 @@ def gain_population(index_path, out_dir, cutoffs, allowed_sym_sides=None, max_bo
             if category not in cutoffs or (allowed_sym_sides is not None and symbol not in allowed_sym_sides):
                 counts["excluded_identity"] += 1
                 continue
-            if board_counts[category] >= max_boards_per_cat:
+            if max_boards_per_cat is not None and board_counts[category] >= max_boards_per_cat:
                 counts["deferred_board_cap"] += 1
                 continue
             payload = path.read_bytes()
@@ -71,7 +80,7 @@ def gain_population(index_path, out_dir, cutoffs, allowed_sym_sides=None, max_bo
                 emitter = brain.BoardEmitter("progress", symbol, brain.iso_of(end), emit, counts, extra, path.name + "#" + str(end))
                 emitter.start(brain._f(document.get("bh")), document.get("tier"), document.get("defaults_round"))
                 for key, row in rows:
-                    current[0] = {"progress_key": key, "explicit_row_npz": row["npz"], "source_record_sha256": hashlib.sha256(json.dumps(row, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()}
+                    current[0] = {"progress_key": key, "explicit_row_npz": row["npz"], "record_identity": "source_sha256 + progress_key"}
                     brain._progress_row(emitter, key, row, counts, category)
                 emitter.finish()
                 source_rows += len(rows)
@@ -80,7 +89,7 @@ def gain_population(index_path, out_dir, cutoffs, allowed_sym_sides=None, max_bo
             board_counts[category] += 1
             row_counts[category] += source_rows
             proofs.append({"symbol_side": symbol, "category": category, "source_file": str(path), "sha256": digest, "rows": source_rows, "market_end_min": min(groups), "market_end_max": max(groups), "top_npz_id": document.get("npz_id"), "result_start_utc": document.get("result_start_utc"), "result_done_utc": document.get("result_done_utc")})
-    report = {"schema": "explicit_progress_gain_population_v1", "cutoffs_epoch": cutoffs, "index_sha256": sha256(index_path), "unique_boards_by_category": dict(board_counts), "source_rows_by_category": dict(row_counts), "sources": proofs, "counters": dict(counts), "spill_sha256": sha256(spill), "status": "declared_older_market_population_not_oos_gain_proof", "scope": "explicit per-row NPZ tags only; no top-NPZ fallback; current-book scope and board cap recorded; computation dates not fabricated"}
+    report = {"schema": "explicit_progress_gain_population_v1", "cutoffs_epoch": cutoffs, "index_sha256": sha256(index_path), "unique_boards_by_category": dict(board_counts), "source_rows_by_category": dict(row_counts), "sources": proofs, "counters": dict(counts), "spill_sha256": sha256(spill) if output_stream is None else wire_digest.hexdigest(), "status": "declared_older_market_population_not_oos_gain_proof", "scope": "explicit per-row NPZ tags only; no top-NPZ fallback; current-book scope and board cap recorded; computation dates not fabricated"}
     (root / "population.json").write_text(json.dumps(report, indent=2, default=str))
     if set(board_counts) != set(cutoffs):
         raise ValueError(f"population does not cover all categories: {dict(board_counts)}")
@@ -103,6 +112,21 @@ def files_under(root):
     if any(path.is_symlink() for path in entries):
         raise ValueError(f"symlinks are forbidden in snapshot: {root}")
     return [path for path in entries if path.is_file()]
+
+
+def source_files(root):
+    root = Path(root)
+    excluded = {"data", "backups", ".git", ".venv", "venv", "node_modules", "__pycache__", ".mypy_cache", ".pytest_cache", "site-packages"}
+    result = []
+    for directory, names, files in os.walk(root):
+        names[:] = [name for name in names if name not in excluded and not name.startswith(".") and not (Path(directory) / name).is_symlink()]
+        for name in files:
+            path = Path(directory) / name
+            if name.endswith(".py"):
+                if path.is_symlink():
+                    raise ValueError(f"source snapshot contains symlink: {path}")
+                result.append(path)
+    return sorted(result)
 
 
 def plan(run_dir, spill_dirs, context_root, cut, python=sys.executable, max_context_mb=256, max_epochs=20, max_train=None, stop_after=None):
@@ -155,7 +179,7 @@ def plan(run_dir, spill_dirs, context_root, cut, python=sys.executable, max_cont
         commands[3].extend(["--max-train", str(max_train)])
     if stop_after is not None:
         commands = commands[:{"features": 1, "graph": 2, "dataset": 3, "train": 4, "score": 5, "precision": 7, "digest": 8}[stop_after]]
-    code = sorted(path for path in set(ROOT.glob("*.py")) | set((ROOT / "tools").rglob("*.py")) if path.is_file())
+    code = source_files(ROOT)
     if any(path.is_symlink() for path in code):
         raise ValueError("source snapshot contains symlinked Python code")
     return {"status": "planned", "mode": "compatibility_smoke" if max_train is not None or stop_after is not None else "candidate", "missing_context_inputs": missing_inputs, "run_dir": str(run), "context_root": str(context), "context_files": [str(path) for path in context_files], "spill_files": [str(path) for path in spills], "code_files": [str(path) for path in code], "cut": cut, "commands": commands, "scope": "matched graph and LinkNet candidate; precision/digest rebuild and production gate still required", "eligibility": {"schema": "candidate_evidence_v1", "gain_eligibility_policy": "valid_finite_gain_v1", "gain_target": "positive delta among eligible valid finite measurements; common eligible test population required for comparisons", "status": "unverified_not_promotable", "preservation": "source files are hashed, never rewritten or deleted; raw source inventory remains an external prerequisite", "reader_retains": ["row cumulative baseline cb", "symbol/side, board id, row timestamp", "naked and marginal deltas, validity bits, propensity weights", "pinned or causally inferred in-force values, joined chain context when available"], "reader_gaps": ["engine era and exact NPZ/window identities are not universal required training features", "chronological board/event test slices can overlap underlying market windows; no market OOS proof", "quality-proof training requires actual training NPZ/data-end before holdout start, overlap purged, unknown lineage excluded, and pre-cut templates/defaults frozen", "ambiguous invalid/missing/nonfinite gain labels are conservatively excluded; exclusions require raw-source audit", "missing raw/skipped/error evidence cannot be reconstructed from spills", "historic sources need raw-log re-extraction to recover reasons missing in old spills; no success inferred from synthetic zero"]}}

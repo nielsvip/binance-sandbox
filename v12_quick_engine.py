@@ -11387,7 +11387,7 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
     # live wt_dc_delta.py zone signal (BASELINE_BOUNCE_LONG/SHORT) that the scoring worker opens as
     # QUICK_OPEN_STRONG_BUY/SELL (257+ live-only legs: live fires standalone, velocity twin never matched it).
     # Shared core vec_decisions/delta_zone_baseline.py (scalar+mask, presence-checked, no fabrication).
-    if bool(getattr(cfg, "RZ_ENTRY_ENABLED", True)):
+    if (bool(getattr(cfg, "RZ_ENTRY_ENABLED", True)) and bool(getattr(cfg, "DELTA_ENGINE_ENABLED", True)) and bool(getattr(cfg, "DELTA_ENTRY_ENABLED", True))):
         try:
             import vec_decisions.delta_zone_baseline as _dzb
             blocks["B_DELTA_BASELINE_BOUNCE"] = _dzb.baseline_bounce_mask(npz, n, is_long, cfg, _safe)

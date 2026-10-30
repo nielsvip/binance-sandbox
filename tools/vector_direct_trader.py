@@ -1143,6 +1143,60 @@ class Trader:
                 log(f"held file write failed: {exc}")
         return pos
 
+    def sevenday_sides(self):
+        """{sym_side: staged_epoch} from the 7D lane, re-read when the artifact changes. Empty = nothing is fresh.
+
+        Two sources, first readable wins: data/vector_direct/sevenday_<venue>.json — the contract a 7D runner writes,
+        {"epoch": ..., "sides": {ss: staged_epoch}} — then the older data/preopen_7d/active/current.json. An artifact
+        that cannot be parsed yields {}, which refuses every entry rather than guessing one is fresh."""
+        out, stamps = {}, []
+        paths = (self.out / f"sevenday_{self.venue}.json", self.root / "data" / "preopen_7d" / "active" / "current.json")
+        for path in paths:
+            try:
+                stamps.append((str(path), path.stat().st_mtime_ns))
+            except OSError:
+                stamps.append((str(path), 0))
+        hit = self.__dict__.get("sevenday_cache")
+        if hit and hit[0] == stamps:
+            return hit[1]
+        for path in paths:
+            doc = read_json(path, None)
+            if not isinstance(doc, dict):
+                continue
+            sides = doc.get("sides") if isinstance(doc.get("sides"), dict) else doc.get("sym_sides")
+            if not isinstance(sides, dict):
+                continue
+            fallback = float(doc.get("epoch") or 0.0)
+            for ss, value in sides.items():
+                when = value if isinstance(value, (int, float)) else (value or {}).get("staged_epoch") if isinstance(value, dict) else None
+                try:
+                    out[str(ss).upper()] = float(when) if when else fallback
+                except (TypeError, ValueError):
+                    out[str(ss).upper()] = fallback
+            if out:
+                break
+        self.sevenday_cache = (stamps, out)
+        return out
+
+    def sevenday_ok(self, acct, ss, now):
+        """(allowed, why) for an OPEN/AUGMENT on a 7D-only account. Entries only; exits never reach here."""
+        if acct not in SEVENDAY_ONLY_ACCOUNTS:
+            return True, ""
+        book = SEVENDAY_BOOK.get(acct)
+        if book:
+            keys = universe(self.root, self.venue, (book,)).get(book) or set()
+            if not keys:
+                return False, f"{acct} is 7D-only on {book}'s book and {book}'s key list is unreadable"
+            if ss.upper() not in keys:
+                return False, f"{ss} is not in {book}'s book"
+        staged = self.sevenday_sides().get(ss.upper())
+        if not staged:
+            return False, f"no 7D result for {ss} (the 7D lane has published nothing)"
+        age = now - float(staged)
+        if age > SEVENDAY_MAX_AGE_S:
+            return False, f"7D result for {ss} is {age / 3600:.1f} h old (limit {SEVENDAY_MAX_AGE_S / 3600:.0f} h)"
+        return True, f"7D result {age / 3600:.1f} h old"
+
     def audit_protection(self, acct, pos):
         """Ring for every held position with no resting protective stop. Reports only — it places no order.
 
@@ -1713,6 +1767,16 @@ class Trader:
                 self._ledger(row)
                 log(f"{acct} {o['ss']} {o['act']} REFUSED_TRA_EXITS_ONLY (order_dedupe_guard.entry_banned)")
                 continue
+            if o["act"] in ("OPEN", "AUGMENT"):
+                allowed_7d, why_7d = self.sevenday_ok(acct, o["ss"], time.time())
+                if not allowed_7d:
+                    # never final: the moment a fresh 7D set lands, the board's entry must be able to go through
+                    row.update({"status": "REFUSED_NOT_FRESH_7D", "detail": why_7d, "final": False})
+                    if o["key"] not in self.quiet:
+                        self.quiet.add(o["key"])
+                        self._ledger(row)
+                        log(f"{acct} {o['ss']} {o['act']} REFUSED_NOT_FRESH_7D: {why_7d}")
+                    continue
             try:
                 price = float((pos.get(o["ss"]) or {}).get("price") or 0.0) or self.broker.price(symbol)
                 qty, why = self.broker.size(o, held, price)

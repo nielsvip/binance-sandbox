@@ -157,3 +157,52 @@ def test_trc_plans_trb_keys_and_never_its_own(tmp_path):
     out = module.universe(tmp_path, "stocks", ["trb", "trc"])
     assert out["trc"] == {"AAPL_LONG", "MSFT_SHORT"} == out["trb"]
     assert not any(s.startswith(("ZZZZ", "YYYY")) for s in out["trc"])
+
+
+def seven(tmp_path, sides=None, keys=("AAAUSDT_LONG",), epoch=None):
+    obj = module.Trader.__new__(module.Trader)
+    obj.venue = "crypto"
+    obj.out = tmp_path
+    obj.root = tmp_path
+    (tmp_path / "tradeable_keys.json").write_text(json.dumps([f"men:{k}" for k in keys] + [f"fin:{k}" for k in keys]))
+    if sides is not None:
+        (tmp_path / "sevenday_crypto.json").write_text(json.dumps({"epoch": epoch or time.time(), "sides": sides}))
+    return obj
+
+
+def test_fin_cannot_open_without_a_seven_day_result(tmp_path):
+    obj = seven(tmp_path)
+    ok, why = obj.sevenday_ok("fin", "AAAUSDT_LONG", time.time())
+    assert ok is False and "no 7D result" in why
+
+
+def test_fin_opens_only_a_fresh_seven_day_men_side(tmp_path):
+    now = time.time()
+    obj = seven(tmp_path, sides={"AAAUSDT_LONG": now - 3600})
+    assert obj.sevenday_ok("fin", "AAAUSDT_LONG", now)[0] is True
+
+
+def test_a_seven_day_result_over_a_day_old_is_refused(tmp_path):
+    now = time.time()
+    obj = seven(tmp_path, sides={"AAAUSDT_LONG": now - 25 * 3600})
+    ok, why = obj.sevenday_ok("fin", "AAAUSDT_LONG", now)
+    assert ok is False and "25.0 h old" in why
+
+
+def test_a_side_outside_mens_book_is_refused_even_when_fresh(tmp_path):
+    now = time.time()
+    obj = seven(tmp_path, sides={"ZZZUSDT_LONG": now}, keys=("AAAUSDT_LONG",))
+    ok, why = obj.sevenday_ok("fin", "ZZZUSDT_LONG", now)
+    assert ok is False and "not in men's book" in why
+
+
+def test_other_accounts_are_untouched_by_the_gate(tmp_path):
+    obj = seven(tmp_path)
+    for acct in ("men", "ang", "flz", "inf"):
+        assert obj.sevenday_ok(acct, "AAAUSDT_LONG", time.time()) == (True, "")
+
+
+def test_an_unparsable_artifact_refuses_rather_than_guesses(tmp_path):
+    obj = seven(tmp_path)
+    (tmp_path / "sevenday_crypto.json").write_text("{not json")
+    assert obj.sevenday_ok("fin", "AAAUSDT_LONG", time.time())[0] is False
