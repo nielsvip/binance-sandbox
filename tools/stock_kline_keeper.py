@@ -64,7 +64,7 @@ def enforce_window(now):
             if stamp.startswith(day):
                 hhmm = stamp[11:16]
                 off_hours = hhmm >= "20:00"
-                temp = stamp[11:19] in TEMP_STARTS and now.hour * 60 + now.minute >= TEMP_ERASE_AFTER
+                temp = False  # USER 2026-10-30: temp premarket bars are kept for backtesting; their erase is owned by npz_premarket_temp_bars
                 if off_hours or temp:
                     removed += 1
                     continue

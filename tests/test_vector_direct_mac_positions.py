@@ -102,3 +102,36 @@ def test_a_protected_position_rings_nothing_and_rearms_the_bell(tmp_path):
     obj.stops = SimpleNamespace(resting_level=lambda acct, symbol, side: None)
     obj.audit_protection("trb", {"LMT_LONG": {"qty": 1.0}})
     assert [k for k, _ in alerts] == ["VD_HELD_POSITION_UNPROTECTED"]
+
+
+def test_an_alternate_root_reads_the_venue_market_mode_not_the_light_fallback(tmp_path, monkeypatch):
+    """trc runs --root ~/trc7d_root, which holds no mode file; it must still size like trb (USER 2026-10-30)."""
+    home = tmp_path / "home"
+    (home / "binance" / "data").mkdir(parents=True)
+    now = 1793390000.0
+    stamp = module.dt.datetime.fromtimestamp(now - 60, module.dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    (home / "binance" / "data" / "market_mode_stocks.json").write_text(
+        json.dumps({"mode": "NORMAL_MODE", "market_index": 12.5, "timestamp": stamp}))
+    monkeypatch.setattr(module.Path, "home", staticmethod(lambda: home))
+    obj = module.Trader.__new__(module.Trader)
+    obj.root = tmp_path / "trc7d_root"
+    (obj.root / "data").mkdir(parents=True)
+    mode, source = obj.stock_mode(now)
+    assert mode == "NORMAL_MODE" and "venue tree" in source
+    assert module.STOCK_MODE_START[mode] == 600.0
+
+    obj.root = home / "binance"
+    mode, source = obj.stock_mode(now)
+    assert mode == "NORMAL_MODE" and "root" in source
+
+
+def test_a_stale_venue_mode_still_falls_back_to_light(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    (home / "binance" / "data").mkdir(parents=True)
+    old = module.dt.datetime.fromtimestamp(1793390000.0 - 9999, module.dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    (home / "binance" / "data" / "market_mode_stocks.json").write_text(json.dumps({"mode": "EXTREME_MODE", "timestamp": old}))
+    monkeypatch.setattr(module.Path, "home", staticmethod(lambda: home))
+    obj = module.Trader.__new__(module.Trader)
+    obj.root = tmp_path / "trc7d_root"
+    (obj.root / "data").mkdir(parents=True)
+    assert obj.stock_mode(1793390000.0) == ("LIGHT_MODE", "FALLBACK LIGHT (mode file missing or stale)")

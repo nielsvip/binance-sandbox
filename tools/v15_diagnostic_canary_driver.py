@@ -20,6 +20,7 @@ def main():
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument("--side", required=True)
     parser.add_argument("--seconds", type=int, default=180)
+    parser.add_argument("--attempt", default="attempt_01")
     args = parser.parse_args()
     root = args.root.resolve()
     assert root.name.startswith("v15_canary_materialized_")
@@ -36,7 +37,13 @@ def main():
     for key, value in manifest["source_env"].items():
         if not any(mark in str(value) for mark in ("/", "~")):
             env[key] = str(value)
-    local = root / "research"
+    if not args.attempt.replace("_", "").isalnum():
+        raise ValueError("invalid diagnostic attempt name")
+    local = root / "research" / args.attempt
+    if local.exists():
+        raise ValueError("diagnostic attempt already exists")
+    local.mkdir(parents=True)
+    env["V15_DIAGNOSTIC_LOG_DIR"] = str(local)
     paths = {"BASE_PATH": root, "V15_OUT_DIR": local / "out", "V15_PROGRESS_DIR": local / "progress", "V15_FLAGS_DIR": local / "flags", "V15_V17_CARRY_DIR": local / "carry", "V15_EVAL_CACHE_DB": local / "eval_cache.db", "PER_SYM_STORE_DB": root / "data/hourly_reconfig/per_sym_store.db", "V15_PREV_BEST_DIR": local / "prev_best", "V15_PRIORITY_DIR": root / "data/cat_avg", "V15_GATE_FLAGS": root / "data/v15_gate_flags.json", "V15_BRAIN_DIR": root / "data/brain", "V15_LEDGER_JSON": root / "data/v15_symside_ledger.json", "V15_ENDGAME_KNOWLEDGE": root / "data/endgame/endgame_knowledge_fleet.json", "V12_NPZ_DIR": root / "backtest_v8/indicators", "SWITCH_PARITY_CACHE_DIR": local / "parity_cache", "TMPDIR": local / "tmp", "NUMBA_CACHE_DIR": local / "numba_cache", "MPLCONFIGDIR": local / "mpl", "XDG_CACHE_HOME": local / "xdg_cache"}
     for key, value in paths.items():
         env[key] = str(value)
@@ -45,7 +52,7 @@ def main():
     (local / "launch_env.json").write_text(json.dumps({k: v for k, v in env.items() if k.startswith(("V15_", "V12_", "V18_", "V20_")) or k in paths}, indent=2))
     startup = '''import os, pathlib, sys, runpy, json
 root = pathlib.Path(sys.argv[1]).resolve()
-audit = open(root / "research/write_audit.jsonl", "a", buffering=1)
+audit = open(pathlib.Path(os.environ["V15_DIAGNOSTIC_LOG_DIR"]) / "write_audit.jsonl", "a", buffering=1)
 def guard(event, args):
     paths = []
     if event == "open" and isinstance(args[0], (str, bytes, os.PathLike)):
@@ -106,7 +113,7 @@ runpy.run_path(str(root / "v15_pilot.py"), run_name="__main__")
         time.sleep(0.5)
     process.wait()
     log.close()
-    report = {"started_at_utc": before, "ended_at_utc": stamp(), "side": args.side, "pid": process.pid, "returncode": process.returncode, "stop_reason": reason, "wall_s": time.monotonic() - started, "sampled_peak_pss_kb": max((x["pss_kb"] for x in samples), default=0), "sampled_max_live_tree_cpu_s": max((x["cpu_s_live_processes"] for x in samples), default=0), "samples": samples, "limits": ["Startup-only diagnostic, not a complete board or speed proof", "CPU excludes processes already reaped before sampling", "Memory peak sampled at0.5s, transient peaks may be missed", "Python audit hook covers audited Python operations, not all native syscalls", "No production deployment or promotion"]}
+    report = {"started_at_utc": before, "ended_at_utc": stamp(), "side": args.side, "attempt": args.attempt, "pid": process.pid, "returncode": process.returncode, "stop_reason": reason, "wall_s": time.monotonic() - started, "sampled_peak_pss_kb": max((x["pss_kb"] for x in samples), default=0), "sampled_max_live_tree_cpu_s": max((x["cpu_s_live_processes"] for x in samples), default=0), "samples": samples, "limits": ["Startup-only diagnostic, not a complete board or speed proof", "CPU excludes processes already reaped before sampling", "Memory peak sampled at0.5s, transient peaks may be missed", "Python audit hook covers audited Python operations, not all native syscalls", "No production deployment or promotion"]}
     (local / "canary_resources.json").write_text(json.dumps(report, indent=2))
     print(json.dumps({k: v for k, v in report.items() if k != "samples"}), flush=True)
 

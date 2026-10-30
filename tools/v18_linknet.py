@@ -521,7 +521,7 @@ def _vstr(v):
     return str(v)
 
 
-def build_ctx_join(cs, store, fctx=None, native=None, log=_log):
+def build_ctx_join(cs, store, fctx=None, native=None, log=_log, verified_log_only=False):
     """FULL SET IN FORCE of every eval of one cat_side, from the experience store (read-only). -> dict
       ctxs    [feature tuple]  every distinct chain context (ContextEncoder.feats of the set's diff vs the template bold)
       cbmap   {(sym_side, round(cum_before, 3)): [(ctx_id, n, ts_min, ts_max)]}   rebuilt + log rows: base_set_id = the chain
@@ -541,10 +541,15 @@ def build_ctx_join(cs, store, fctx=None, native=None, log=_log):
     natmap = {}
     cnt = collections.Counter()
     base_ctx = {}
+    source_reports = []
     for shard in sorted(Path(store).glob(f"experience_{cs}_*.db")):
         con = sqlite3.connect(f"file:{shard}?mode=ro", uri=True, timeout=600)
-        rows = con.execute("SELECT sym_side, cum_before, base_set_id, count(*), min(ts), max(ts) FROM evals WHERE provenance IN ('rebuilt','log') "
-                           "AND base_set_id IS NOT NULL AND cum_before IS NOT NULL GROUP BY sym_side, round(cum_before, 3), base_set_id").fetchall()
+        eligible = "provenance IN ('rebuilt','log') AND base_set_id IS NOT NULL AND cum_before IS NOT NULL"
+        if verified_log_only:
+            eligible += " AND json_valid(extra) AND json_extract(extra, '$.chain_sha_verified') = 1"
+        evidence = con.execute("SELECT count(*), min(ts), max(ts), sum(npz_md5 IS NULL), sum(window_days IS NULL) FROM evals WHERE " + eligible).fetchone()
+        source_reports.append({"path": str(shard), "bytes": shard.stat().st_size, "eligible_log_rows": evidence[0], "first_event_epoch": evidence[1], "last_event_epoch": evidence[2], "rows_without_npz_md5": evidence[3] or 0, "rows_without_window_days": evidence[4] or 0, "engine_version_identity": "not present in experience schema; source provenance remains required"})
+        rows = con.execute("SELECT sym_side, cum_before, base_set_id, count(*), min(ts), max(ts) FROM evals WHERE " + eligible + " GROUP BY sym_side, round(cum_before, 3), base_set_id").fetchall()
         cnt["cb_groups"] += len(rows)
         need = {r[2] for r in rows} - set(base_ctx)
         bases = {}
@@ -554,12 +559,17 @@ def build_ctx_join(cs, store, fctx=None, native=None, log=_log):
             if row is None:
                 return None
             try:
-                return json.loads(gzip.decompress(row[0]))
+                values = json.loads(gzip.decompress(row[0]))
             except Exception:
                 try:
-                    return json.loads(row[0])
+                    values = json.loads(row[0])
                 except Exception:
                     return None
+            digest = __import__("hashlib").sha256(json.dumps(values, sort_keys=True, default=str, separators=(",", ":")).encode()).hexdigest()
+            if digest != sid:
+                cnt["set_content_digest_mismatch"] += 1
+                return None
+            return values
         for sid in need:
             s = load_set(sid)
             if s is None:
@@ -619,7 +629,7 @@ def build_ctx_join(cs, store, fctx=None, native=None, log=_log):
         con.close()
         log(f"[ctxjoin] {cs} {shard.name}: {dict(cnt)} ctxs {len(ctxs.keys):,} {time.time() - t0:.0f}s")
     sizes = np.array([len(c) for c in ctxs.keys]) if ctxs.keys else np.zeros(1)
-    rep = {"cat_side": cs, "store": str(store), "contexts": len(ctxs.keys), "cb_keys": len(cbmap), "native_children": len(natmap),
+    rep = {"cat_side": cs, "store": str(store), "verified_log_only": verified_log_only, "source_reports": source_reports, "context_definition": "pre-evaluation base_set_id; set content digest verified; native one-key parent sets verified; no board-final substitution", "contexts": len(ctxs.keys), "cb_keys": len(cbmap), "native_children": len(natmap),
            "ignored_description_values": {"keys": len(enc.ignored_values), "values": int(sum(enc.ignored_values.values())), "top": dict(enc.ignored_values.most_common(10))},
            "context_size_mean": round(float(sizes.mean()), 1), "context_size_p50": float(np.median(sizes)), "context_size_max": int(sizes.max()),
            "counters": dict(cnt), "secs": round(time.time() - t0, 1), "built_at": utc_now()}
@@ -632,7 +642,7 @@ def cmd_ctxjoin(a):
     out_dir.mkdir(parents=True, exist_ok=True)
     reps = {}
     for cs in a.cat_side or CAT_SIDES:
-        j = build_ctx_join(cs, a.store)
+        j = build_ctx_join(cs, a.store, verified_log_only=a.verified_log_only)
         p = out_dir / f"ctxjoin_{cs}.pkl.gz"
         tmp = out_dir / f".ctxjoin_{cs}.tmp"
         with gzip.open(tmp, "wb", compresslevel=3) as fh:
@@ -3136,6 +3146,7 @@ def main(argv=None):
     j.add_argument("--cat-side", action="append", choices=CAT_SIDES)
     j.add_argument("--store", default=str(ROOT / "data" / "experience"))
     j.add_argument("--out-dir", default=str(DS_DIR / "v2"))
+    j.add_argument("--verified-log-only", action="store_true", help="exclude legacy unverified replay chains; native parents still require content-digest proof")
     t = sub.add_parser("train")
     t.add_argument("--cat-side", action="append", choices=CAT_SIDES)
     t.add_argument("--ds-dir", default=str(DS_DIR))

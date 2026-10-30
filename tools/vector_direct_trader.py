@@ -1564,15 +1564,23 @@ class Trader:
             return self.venue == "stocks"
 
     def stock_mode(self, now):
-        """(mode, source) from data/market_mode_stocks.json; LIGHT_MODE when missing or older than STOCK_MODE_MAX_AGE_S."""
-        doc = read_json(self.root / "data" / "market_mode_stocks.json", {}) or {}
-        mode = doc.get("mode")
-        try:
-            ts = dt.datetime.strptime(str(doc.get("timestamp")), "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=dt.timezone.utc).timestamp()
-        except ValueError:
-            ts = 0.0
-        if mode in STOCK_MODE_START and now - ts <= STOCK_MODE_MAX_AGE_S:
-            return mode, f"detector index {doc.get('market_index')}"
+        """(mode, source) from data/market_mode_stocks.json; LIGHT_MODE when missing or older than STOCK_MODE_MAX_AGE_S.
+
+        The market mode is VENUE-wide, not per-root: tools/stock_market_mode.py writes one file into the host's main
+        tree. An alternate root (the trc 7D lane runs --root ~/trc7d_root) has no copy of it, so reading only the root
+        pinned that account to the LIGHT fallback for good — measured 2026-10-30, trb followed the detector while trc
+        read "mode file missing" on every pass. Two accounts on different size tables cannot be compared, so the main
+        tree is consulted whenever the root has no fresh file."""
+        for path in (self.root / "data" / "market_mode_stocks.json", Path.home() / "binance" / "data" / "market_mode_stocks.json"):
+            doc = read_json(path, {}) or {}
+            mode = doc.get("mode")
+            try:
+                ts = dt.datetime.strptime(str(doc.get("timestamp")), "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=dt.timezone.utc).timestamp()
+            except ValueError:
+                ts = 0.0
+            if mode in STOCK_MODE_START and now - ts <= STOCK_MODE_MAX_AGE_S:
+                where = "root" if path.parent.parent == self.root else "venue tree"
+                return mode, f"detector index {doc.get('market_index')} ({where})"
         return "LIGHT_MODE", "FALLBACK LIGHT (mode file missing or stale)"
 
     def rebal_phase(self, now=None):
