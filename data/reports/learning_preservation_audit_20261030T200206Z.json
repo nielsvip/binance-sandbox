@@ -1,5 +1,5 @@
 {
-  "audit_at_utc": "2026-10-30T22:26:56Z",
+  "audit_at_utc": "2026-10-30T22:38:27Z",
   "external_storage": {
     "TOSHIBA_EXT": {
       "device": "/dev/disk5s1",
@@ -249,6 +249,33 @@
   "s1_consumer_audit": {
     "evidence": "crontab and active process argv/cwd checks; 20:00 must-refresh and 20:23 endgame merge ran from /home/niels/binance-sandbox; inspected callers had no v18_linknet/v20_absorb imports",
     "finding": "no relevant S1 cron/process consumer of ~/binance v18_linknet or v20_absorb since 20:00 UTC was found"
+  },
+  "s2_generated_scratch_archive_reclaim": {
+    "archive": "s2:/home/niels/v15_bench/.preservation_archive_20261030T222913Z/source_payload.tar.gz",
+    "archive_bytes": 836259884,
+    "archive_manifest_receipt_retained": true,
+    "archive_sha256": "0199bb9bcc07b1664972e2be3850b2a12c87934cdb5e0c67b00247478ed42bd5",
+    "df_available_after_bytes": 23386288128,
+    "df_available_before_bytes": 21034749952,
+    "df_delta_bytes": 2351538176,
+    "directories": 551,
+    "logical_regular_bytes": 2696607268,
+    "manifest": "s2:/home/niels/v15_bench/.preservation_archive_20261030T222913Z/source_manifest.json",
+    "manifest_entries": 33413,
+    "manifest_sha256": "3cf1a640a15bab2c67e94c2cf9e5f39d46ec0ede58548ea7060a53d9fe55aafc",
+    "no_other_data_touched": true,
+    "receipt": "s2:/home/niels/v15_bench/.preservation_archive_20261030T222913Z/verification_receipt.json",
+    "receipt_sha256": "28a515a6cbb0d1db1b6c74652c4885efcf2ce9480a7ed08692f49315cc843df4",
+    "reclaimed_exact_paths": [
+      "/home/niels/v15_bench/canary_materialized_COIN_SHORT_20261030",
+      "/home/niels/v15_bench/canary_materialized_COIN_SHORT_20261030_v2",
+      "/home/niels/v15_bench/reviews/nn_artifacts_20261030T222009Z_isolation_r3/config_probe",
+      "/home/niels/v15_bench/reviews/nn_artifacts_20261030T222009Z_isolation_r3/config_probe2",
+      "/home/niels/v15_bench/snap_20261030T201500Z_coherent/code"
+    ],
+    "regular_files": 29959,
+    "symlinks": 2903,
+    "verification": "Streaming archive member-by-member SHA256/type/mode/link-target verification matched the source manifest; all 29,959 regular source files rehashed after archive and source metadata remained stable; 0 errors; no active consumer found in repeated process cwd/fd scan."
   },
   "s6_v20_u4_E_selected": {
     "destination": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/E_selected/",

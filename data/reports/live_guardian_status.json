@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-30T22:35:09Z",
+ "ts": "2026-10-30T22:40:27Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -120,66 +120,69 @@
    "inf": 4
   }
  },
- "reconcile": {},
+ "reconcile": {
+  "inf": {
+   "symbols": 0,
+   "broker_fills": 0,
+   "matched": 0,
+   "appended": 0
+  },
+  "flz": {
+   "symbols": 0,
+   "broker_fills": 0,
+   "matched": 0,
+   "appended": 0
+  }
+ },
  "process": {
   "fin": {
    "pids": [
     "56796"
    ],
    "starts_30m": 1,
-   "log_age_s": 114.0
+   "log_age_s": 5.0
   },
   "men": {
    "pids": [
     "59391"
    ],
    "starts_30m": 1,
-   "log_age_s": 25.0
+   "log_age_s": 8.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 2,
-   "log_age_s": 1.0
+   "log_age_s": 8.0
   },
   "inf": {
    "pids": [
     "64156"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 6.0
   },
   "flz": {
    "pids": [
     "70377"
    ],
    "starts_30m": 1,
-   "log_age_s": 7.0
+   "log_age_s": 9.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 12801.0
+   "log_age_s": 13122.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 14216.0
+   "log_age_s": 14537.0
   }
  },
- "alerts": [
-  {
-   "ts": "2026-10-30T22:35:09Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "men:EIGENUSDT_SHORT",
-   "evidence": "30 22:21:13 - WARNING - [men] [REENTRY_GRANDFATHERED] men:EIGENUSDT_SHORT: bypass MAX_ORDER_VALUE $20 / MAX_POSITION_SIZE $20 \u2014 restoring $8 on bounce (prior max 109.3000)"
-  }
- ],
- "alert_counts": {
-  "CAP_BYPASS": 1
- },
+ "alerts": [],
+ "alert_counts": {},
  "active_interventions": {
   "acct:trc": {
    "ts": 1791314517.218395,
@@ -224,5 +227,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.14
+ "sweep_s": 3.95
 }

@@ -7129,6 +7129,37 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 pos = trade_manager.positions.get(pk)
                 if pos and abs(getattr(pos, 'positionAmt', 0)) > 0.0001:
                     try:
+                        if os.environ.get("V12_REAL_EXECUTE") == "1":
+                            _wick_sym = pk.split(":", 1)[-1].rsplit("_", 1)[0].upper()
+                            _wick_ind = indicator_cache.get(_wick_sym, {})
+                            _wick_stop = float(getattr(pos, "fixed_stop_price", 0) or 0)
+                            _wick_opened = getattr(pos, "opened_at", None)
+                            _wick_opened_ts = _wick_opened.timestamp() if hasattr(_wick_opened, "timestamp") else 0.0
+                            _wick_long = pk.endswith("_LONG")
+                            _wick_extreme = float(_wick_ind.get("low_15m" if _wick_long else "high_15m", 0) or 0)
+                            _wick_hit = _wick_stop > 0 and _wick_opened_ts > 0 and _wick_opened_ts < float(ts) - 1 and _wick_extreme > 0 and ((_wick_long and _wick_extreme <= _wick_stop) or (not _wick_long and _wick_extreme >= _wick_stop))
+                            if _wick_hit:
+                                _wick_open = float(_wick_ind.get("open_15m", 0) or 0)
+                                _wick_px = (min(_wick_stop, _wick_open) if _wick_long else max(_wick_stop, _wick_open)) if _wick_open > 0 else _wick_stop
+                                _wick_prev_px = price_cache.get(_wick_sym)
+                                _wick_prev_ind_px = _wick_ind.get("current_price")
+                                price_cache[_wick_sym] = _wick_px
+                                _wick_ind["current_price"] = _wick_px
+                                try:
+                                    await ez_manage.process_position(account_key=account_key, position_key=pk, order_queue=order_queue, trade_manager=trade_manager, force=True)
+                                finally:
+                                    if _wick_prev_px is None:
+                                        price_cache.pop(_wick_sym, None)
+                                    else:
+                                        price_cache[_wick_sym] = _wick_prev_px
+                                    if _wick_prev_ind_px is None:
+                                        _wick_ind.pop("current_price", None)
+                                    else:
+                                        _wick_ind["current_price"] = _wick_prev_ind_px
+                                v8_logger.info("[V12_REAL_EXECUTE_STOP_WICK] %s bar=%s stop=%.10f lowhigh=%.10f probe=%.10f amount_after=%.10f", pk, ts, _wick_stop, _wick_extreme, _wick_px, abs(float(getattr(trade_manager.positions.get(pk), "positionAmt", 0) or 0)))
+                                pos = trade_manager.positions.get(pk)
+                                if not pos or abs(getattr(pos, "positionAmt", 0)) <= 0.0001:
+                                    continue
                         await ez_manage.process_position(
                             account_key=account_key, position_key=pk,
                             order_queue=order_queue, trade_manager=trade_manager, force=True)
