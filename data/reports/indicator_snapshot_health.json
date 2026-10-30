@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-30T04:15:45Z",
+ "generated_utc": "2026-10-30T04:21:42Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 17.6,
+  "age_s": 38.6,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 54361,
-  "proc_age_s": 33831.0,
-  "log_age_s": 16.7,
+  "proc_age_s": 34188.0,
+  "log_age_s": 11.0,
   "warmup_done": true,
   "timeframes_since_restart": [
    "15m",
@@ -66,23 +66,9 @@
   }
  },
  "s1_failover": {
-  "mode": "ACTIVE",
-  "since_epoch": 1793127215.692805,
-  "activations": 164,
-  "hb_mtime": 1793333455.5469387,
-  "mac_snapshot_age_s": 691.5834600925446,
-  "mac_stale": true,
-  "lease_holder": "mac",
-  "lease_venues": null,
-  "lease_since": "2026-10-27T18:56:44Z",
-  "lease_reason": "manual force-mac",
-  "now": 1793333459.2085655,
-  "from_cache_age_s": 286.7,
-  "heartbeat_age_s": 3.7,
-  "active_s": 206243.5
+  "error": "TimeoutExpired: Command '['ssh', '-o', 'ConnectTimeout=10', '-o', 'BatchMode=yes', 's1-pub', 'python3 -c \"import json,time;s=json.load(open(\\'/home/niels/binance/data/live_failover/state.json\\'));h=json.load(open(\\'/home/niels/binance/data/live_failover/mac_data_heartbeat.json\\'));v=(s.get(\\'venues\\') or {}).get(\\'crypto\\') or {};c=(h.get(\\'venues\\') or {}).get(\\'crypto\\') or {};print(json.dumps({\\'mode\\':v.get(\\'mode\\'),\\'since_epoch\\':v.get(\\'since_epoch\\'),\\'activations\\':v.get(\\'activations\\'),\\'hb_mtime\\':__import__(\\'os\\').stat(\\'/home/niels/binance/data/live_failover/mac_data_heartbeat.json\\').st_mtime,\\'mac_snapshot_age_s\\':c.get(\\'snapshot_age_s\\'),\\'mac_stale\\':c.get(\\'stale\\'),\\'lease_holder\\':(s.get(\\'lease\\') or {}).get(\\'holder\\'),\\'lease_venues\\':(s.get(\\'lease\\') or {}).get(\\'venues\\'),\\'lease_since\\':(s.get(\\'lease\\') or {}).get(\\'since\\'),\\'lease_reason\\':(s.get(\\'lease\\') or {}).get(\\'reason\\'),\\'now\\':time.time()}))\"']' timed out after 20 seconds",
+  "from_cache_age_s": 278.0
  },
- "alerts": [
-  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 206243s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (3s) AND the Mac snapshot is fresh (17s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
- ],
- "verdict": "ALERT"
+ "alerts": [],
+ "verdict": "OK"
 }
