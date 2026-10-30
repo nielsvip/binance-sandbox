@@ -33924,7 +33924,9 @@ class MultiAccountTradeManager:
             )
             if _is_incr and str(_res or "").upper().startswith("SUCCESS"):
                 _repair = await self._require_exchange_stop_after_entry(position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, original_positionAmt=original_positionAmt, old_price=old_price, action=_act_u, reason=reason, result=str(_res))
-                if not await _prearm_resting():
+                _repaired_oid = str(_repair).split(":", 1)[1] if str(_repair).startswith("SUCCESS:") else ""
+                _repaired_resting = bool(_repaired_oid) and await self._fixed_stop_find_algo(account_key, symbol, str(position_side).upper(), _repaired_oid) is True
+                if not (_repaired_resting or await _prearm_resting()):
                     logger.critical(f"⛔ [ENTRY_STOP_GONE] {position_key}: filled entry lost its exchange STOP_MARKET (repair={_repair}); emergency close required")
                     _pos_now = await self.get_position(position_key)
                     _held_now = abs(safe_fetch_float(getattr(_pos_now, "positionAmt", 0), 0.0)) if _pos_now else 0.0

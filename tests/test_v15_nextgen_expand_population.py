@@ -68,4 +68,15 @@ def test_skipped_zero_cannot_become_negative_and_promotion_block_remains_measure
     assert record["yellow_reasons"]["FILTER_TF=1h"]
     raw["reason"] = "DEAD_VEC_PATH: promotion blocked after measured evaluation"
     raw["trades"] = 143
+    assert expanded.strict_record(raw)[1:] == (False, False)
+    raw["naked_valid"] = True
     assert expanded.strict_record(raw)[1:] == (True, True)
+
+
+def test_row_winner_is_not_a_verified_naked_delta_and_constraints_remain_diagnostic():
+    raw = {"delta_invalid": False, "delta": 3.0, "joint_delta": None, "naked_delta": None, "cumulative_before": 10.0}
+    assert expanded.strict_record(raw)[1:] == (False, False)
+    raw.update(naked_delta=0.0, reason="ZERO_TRADES")
+    assert expanded.strict_record(raw)[1:] == (False, False)
+    raw["reason"] = "TIM-guard: constraint applies"
+    assert expanded.strict_record(raw)[1:] == (False, False)

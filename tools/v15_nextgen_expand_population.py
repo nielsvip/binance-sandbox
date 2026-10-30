@@ -15,17 +15,19 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from tools import v15_nextgen_corpus_collector as corpus
 NON_EVAL_REASONS = ("SKIPPED_", "ZERO_FORMULA_ROW", "INVENTED_ALT", "TYPE_MISMATCH", "ABLATION_NEVER_ON", "NO_CANDIDATE", "MAXAUG_NEVER_ZERO", "DATA_ERROR")
+AMBIGUOUS_GAIN_REASONS = ("TIM-guard", "TIM ", "DD ", "trades ", "ZERO_TRADES", "npz covers", "override ", "invalid", "no result", "timeout", "error")
 
 
 def strict_record(raw):
     record = dict(raw)
     identity = bool(raw.get("is_running")) or str(raw.get("reason") or "").startswith("RUNNING_IDENTITY")
     raw_invalid = raw.get("delta_invalid")
-    explicit_valid = type(raw_invalid) in (bool, int) and raw_invalid == 0 and not str(raw.get("reason") or "").startswith(NON_EVAL_REASONS)
+    reason = str(raw.get("reason") or "")
+    explicit_valid = type(raw_invalid) in (bool, int) and raw_invalid == 0 and not reason.startswith(NON_EVAL_REASONS + AMBIGUOUS_GAIN_REASONS) and not raw.get("err")
     naked = raw.get("naked_delta")
-    if naked is None and raw.get("joint_delta") is None:
-        naked = raw.get("delta")
-    naked_ok = explicit_valid and corpus.finite(naked) and corpus.finite(raw.get("cumulative_before"))
+    promotion_block = reason.startswith(("DEAD_VEC_PATH", "LIVE_DEAD_KEY"))
+    naked_proof = raw.get("naked_valid") is True or raw.get("naked_ok") is True or raw.get("promoted_how") == "naked"
+    naked_ok = explicit_valid and corpus.finite(naked) and corpus.finite(raw.get("cumulative_before")) and (not promotion_block or naked_proof)
     baseline_ok = explicit_valid and corpus.finite(raw.get("cumulative_before")) and (identity or naked_ok)
     record["delta_invalid"] = not naked_ok
     reasons = dict(raw.get("yellow_reasons") or {})
@@ -52,7 +54,8 @@ def convert(manifest_path, archive_path, out_dir, templates):
     official_counts, seen_rows, seen_members, source_reports = Counter(), set(), set(), []
     spill = root / "spill_expanded_explicit_progress.tsv.gz"
     cases = root / "cases_preserved_not_training.jsonl.gz"
-    report = {"schema": "expanded_official_progress_population/1", "status": "running", "source_manifest_sha256": corpus.digest(manifest_path), "source_archive_sha256": archive_sha, "cutoffs_epoch": cutoffs, "sources": source_reports, "quality_training_verified": False, "scope": "original81 plus exact historical NPZ-ledger sources; no current-book filtering/suffix mapping; frozen source bytes retained; official marginal conversion; no training", "target_policy": "R positive naked delta vs cumulative among explicit-valid finite records; F positive cell-minus-naked among explicit-valid finite cells with a verified finite baseline; identities/skips/unknown validity never negatives", "temporal_semantics": "t is explicit per-row NPZ last-bar, never claimed as cell computation time; engine/window-start/context completeness remains unverified"}
+    report = {"schema": "expanded_official_progress_population/1", "status": "running", "source_manifest_sha256": corpus.digest(manifest_path), "source_archive_sha256": archive_sha, "cutoffs_epoch": cutoffs, "sources": source_reports, "quality_training_verified": False, "scope": "original81 plus exact historical NPZ-ledger sources; no current-book filtering/suffix mapping; frozen source bytes retained; official marginal conversion; no training", "target_policy": "R requires explicit finite naked_delta, never row-winner fallback; ambiguous failure/constraint reasons and promotion-block-hidden naked validity excluded; F requires finite measured cell and eligible naked or identity baseline; raw ambiguous measurements retained as diagnostics", "temporal_semantics": "t is explicit per-row NPZ last-bar, never claimed as cell computation time; engine/window-start/context completeness remains unverified"}
+    report["wiring_era_policy"] = "old real zero is evidence only for its original engine/configuration; unknown wiring era cannot establish newly wired switch deadness; source result engine hashes are not per-row lineage; no suppression or training authorized here"
     output_report = root / "population.json"
     try:
         with gzip.open(spill, "wt", compresslevel=3) as output, gzip.open(cases, "wt", compresslevel=3) as diagnostics, tarfile.open(archive_path, "r|gz") as archive:
@@ -80,7 +83,7 @@ def convert(manifest_path, archive_path, out_dir, templates):
                         counter["malformed_rows"] += 1
                         continue
                     end = corpus.market_end(raw.get("npz"))
-                    provenance = {"source_file": entry["source_file"], "source_sha256": entry["source_sha256"], "archive_member": member.name, "progress_key": key, "symbol_side": symbol, "identity_tier": identity_tier, "explicit_row_npz": raw.get("npz"), "market_end": end, "raw_reason": raw.get("reason")}
+                    provenance = {"source_file": entry["source_file"], "source_sha256": entry["source_sha256"], "archive_member": member.name, "progress_key": key, "symbol_side": symbol, "identity_tier": identity_tier, "explicit_row_npz": raw.get("npz"), "market_end": end, "raw_reason": raw.get("reason"), "engine_hash_per_row": raw.get("engine_md5") or raw.get("engine_hash")}
                     if end is None or end >= cutoffs[category]:
                         reason = "unknown_explicit_row_npz" if end is None else "market_end_not_before_holdout"
                         counter[reason] += 1
@@ -99,7 +102,7 @@ def convert(manifest_path, archive_path, out_dir, templates):
                 emitted_before = counter["emitted_rows"]
                 for end, rows in sorted(groups.items()):
                     current = [None]
-                    common = {"src": "progress", "ts_source": "explicit_progress_row_npz", "npz": end, "cs": category, "wd": document.get("window_days"), "source_file": entry["source_file"], "source_sha256": entry["source_sha256"], "archive_member": member.name, "selection": entry["selection"], "label_computation_time": "not inferred from NPZ timestamp", "set0": document.get("initial_overrides") or None}
+                    common = {"src": "progress", "ts_source": "explicit_progress_row_npz", "npz": end, "cs": category, "wd": document.get("window_days"), "source_file": entry["source_file"], "source_sha256": entry["source_sha256"], "archive_member": member.name, "selection": entry["selection"], "source_result_engine_md5_not_per_row": document.get("result_engine_md5"), "source_result_pilot_md5_not_per_row": document.get("result_pilot_md5"), "label_computation_time": "not inferred from NPZ timestamp", "set0": document.get("initial_overrides") or None}
                     def emit(event):
                         event.update({key: value for key, value in common.items() if key != "set0" or event.get("e") == "board"})
                         if event.get("e") == "board":
@@ -139,7 +142,7 @@ def convert(manifest_path, archive_path, out_dir, templates):
                         current[0] = provenance, naked_ok, baseline_ok
                         brain._progress_row(emitter, key, record, official_counts, category)
                     emitter.finish()
-                source_reports.append(dict(entry, identity_tier=identity_tier, category=category, source_rows=sum(len(rows) for rows in groups.values()), emitted_rows=counter["emitted_rows"] - emitted_before))
+                source_reports.append(dict(entry, identity_tier=identity_tier, category=category, source_rows=sum(len(rows) for rows in groups.values()), emitted_rows=counter["emitted_rows"] - emitted_before, source_result_engine_md5_not_per_row=document.get("result_engine_md5"), source_result_pilot_md5_not_per_row=document.get("result_pilot_md5")))
         if seen_members != set(members):
             raise ValueError("source archive lacks declared members")
         if corpus.digest(archive_path) != archive_sha:
