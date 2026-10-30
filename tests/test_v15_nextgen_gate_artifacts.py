@@ -138,3 +138,19 @@ def test_actual_resolver_missing_override_cannot_fall_back(tmp_path):
     resolver_fixture(tmp_path)
     with pytest.raises(FileNotFoundError):
         resolve_models(tmp_path, {"V18_DIGEST_DIR": "missing_digest_dir"})
+
+
+def test_missing_model_destination_cannot_be_successful_deploy(tmp_path, monkeypatch):
+    module = load_repair("v15_version_gate", monkeypatch)
+    gate, candidate, target = [tmp_path / name for name in ("gate", "candidate", "target")]
+    gate.mkdir()
+    (target / "data").mkdir(parents=True)
+    relative = "data/brain/v18_brain_CRYPTO_LONG.json"
+    artifact(candidate / "tree", relative, {"model": 2})
+    monkeypatch.setattr(module, "GATE", gate)
+    monkeypatch.setattr(module, "deploy_targets", lambda: [("local", target, False)])
+    records = module.deploy(candidate, {"id": "fixture", "env": {}, "files": {relative: "ignored_by_deploy"}})
+    failure = next(record for record in records if record["file"] == relative)
+    assert failure["ok"] is False
+    assert failure["reason"] == "destination parent missing"
+    assert not module.deploy_complete(records)

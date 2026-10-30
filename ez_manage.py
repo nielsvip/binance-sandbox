@@ -35506,6 +35506,26 @@ class MultiAccountTradeManager:
                             return f"BLOCKED_TOP_OF_RANGE_{_tor_side_str}_thr{_tor_threshold}"
         except Exception as _tor_e:
             logger.warning(f"[TOP_OF_RANGE_BLOCK] {position_key}: check error (fail-open): {_tor_e}")
+        # Native entry orders must obey the same per-symbol FILTER_TF masks as the vector entry signal.
+        # QUICK_OPEN previously bypassed check_entry_alignment, so DC breakout alone could open on bars
+        # rejected by BAR_PATTERNS / DC_MOMENTUM_BOTA / CIRCUIT_SHARPE in v12_quick_engine.
+        if not _is_exit and not _vd_exempt:
+            try:
+                _entry_ftf_ind = await ii(self, symbol) or {}
+                def _entry_ftf_cfg(name, default=None):
+                    if name == "BREAKOUT_RETEST_FILTER_TF" and not bool(_psym_get(symbol, position_side, "BREAKOUT_RETEST_ARMED_ENABLED", getattr(config, "BREAKOUT_RETEST_ARMED_ENABLED", False))):
+                        return "OFF"
+                    if name == "EMA_BLANKET_FILTER_FILTER_TF" and not bool(_psym_get(symbol, position_side, "EMA_BLANKET_FILTER_ENABLED", getattr(config, "EMA_BLANKET_FILTER_ENABLED", False))):
+                        return "OFF"
+                    return _psym_get(symbol, position_side, name, getattr(config, name, default))
+                _entry_ftf_price = safe_fetch_float(old_price or _entry_ftf_ind.get("current_price") or _entry_ftf_ind.get("close"), 0.0)
+                _entry_ftf_ok, _entry_ftf_reason = _parity_filter_tf_gates(_entry_ftf_ind, str(position_side).upper() == "LONG", _entry_ftf_price, _entry_ftf_cfg)
+                if not _entry_ftf_ok:
+                    logger.warning(f"[ENTRY_FILTER_TF_VETO] {position_key}: {action} blocked by {_entry_ftf_reason} reason={(reason or '')[:80]}")
+                    return f"BLOCKED_{_entry_ftf_reason}"
+            except Exception as _entry_ftf_error:
+                logger.error(f"[ENTRY_FILTER_TF_VETO] {position_key}: check failed: {_entry_ftf_error}")
+                return "BLOCKED_ENTRY_FILTER_TF_ERROR"
         # ═══════════════════════════════════════════════════════════════════════════
         # 🚫 EXIT BLOCKER LH/LL — 2026-09-15 USER: block REDUCE/CLOSE unless LH (closed 15m) OR LL (forming) ===
         try:
