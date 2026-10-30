@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-30T06:44:20Z",
+ "ts": "2026-10-30T17:29:12Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -24,12 +24,24 @@
   "KEY_BLOCK_TTL_S": 7200,
   "POS_MISMATCH_PCT": 5.0
  },
- "rth": false,
+ "rth": true,
  "accounts": {
+  "trb": {
+   "fills_6h": 0,
+   "open_positions": 21,
+   "unrealised_usd": 57.35,
+   "pos_mismatch": 0
+  },
+  "trc": {
+   "fills_6h": 0,
+   "open_positions": 1,
+   "unrealised_usd": -5.93,
+   "pos_mismatch": 0
+  },
   "fin": {
-   "fills_6h": 29,
-   "open_positions": 2,
-   "unrealised_usd": -1.05,
+   "fills_6h": 0,
+   "open_positions": 1,
+   "unrealised_usd": 0.1,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -43,13 +55,13 @@
    }
   },
   "men": {
-   "fills_6h": 54,
-   "open_positions": 3,
-   "unrealised_usd": -1.39,
+   "fills_6h": 0,
+   "open_positions": 2,
+   "unrealised_usd": -0.84,
    "pos_mismatch": 0,
    "vec_parity": {
-    "live_vec_decisions": 1,
-    "state_divergent": 1,
+    "live_vec_decisions": 0,
+    "state_divergent": 0,
     "filled": 0,
     "refused_non_safety": 0,
     "safety_refusals": 0,
@@ -59,31 +71,31 @@
    }
   },
   "ang": {
-   "fills_6h": 93,
-   "open_positions": 3,
-   "unrealised_usd": -0.14,
+   "fills_6h": 1,
+   "open_positions": 2,
+   "unrealised_usd": 0.38,
    "pos_mismatch": 0,
    "vec_parity": {
-    "live_vec_decisions": 6,
-    "state_divergent": 1,
-    "filled": 1,
+    "live_vec_decisions": 0,
+    "state_divergent": 0,
+    "filled": 0,
     "refused_non_safety": 0,
     "safety_refusals": 0,
-    "not_filled_no_log": 4,
+    "not_filled_no_log": 0,
     "vec_exact_fills_without_decision": 0,
     "matched_by_reason": 0
    }
   },
   "inf": {
-   "fills_6h": 3,
+   "fills_6h": 0,
    "open_positions": 0,
    "unrealised_usd": 0.0,
    "pos_mismatch": 0,
    "vec_parity": {
-    "live_vec_decisions": 1,
+    "live_vec_decisions": 0,
     "state_divergent": 0,
     "filled": 0,
-    "refused_non_safety": 1,
+    "refused_non_safety": 0,
     "safety_refusals": 0,
     "not_filled_no_log": 0,
     "vec_exact_fills_without_decision": 0,
@@ -91,9 +103,9 @@
    }
   },
   "flz": {
-   "fills_6h": 16,
-   "open_positions": 2,
-   "unrealised_usd": 0.26,
+   "fills_6h": 0,
+   "open_positions": 1,
+   "unrealised_usd": -0.02,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -107,16 +119,15 @@
    }
   }
  },
- "stocks": "market closed: stock checks idle",
  "tradeable_guard": {
   "poison": false,
   "restored": false,
   "total": 149,
   "per_acct": {
-   "men": 36,
    "fin": 36,
    "ang": 50,
    "flz": 26,
+   "men": 36,
    "inf": 1
   }
  },
@@ -124,105 +135,65 @@
  "process": {
   "fin": {
    "pids": [
-    "28889"
+    "12634"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 28.0
   },
   "men": {
    "pids": [
-    "28781"
+    "9036"
    ],
    "starts_30m": 1,
-   "log_age_s": 60.0
+   "log_age_s": 12.0
   },
   "ang": {
    "pids": [
-    "28918"
+    "7799"
    ],
    "starts_30m": 1,
-   "log_age_s": 63.0
+   "log_age_s": 88.0
   },
   "inf": {
    "pids": [
-    "28566"
+    "8447"
    ],
    "starts_30m": 1,
-   "log_age_s": 16.0
+   "log_age_s": 39.0
   },
   "flz": {
    "pids": [
-    "28637"
+    "10013"
    ],
    "starts_30m": 1,
-   "log_age_s": 47.0
+   "log_age_s": 11.0
   },
   "trb": {
-   "pids": [],
-   "starts_30m": 0,
-   "log_age_s": 5732.0
+   "pids": [
+    "17343"
+   ],
+   "starts_30m": 1,
+   "log_age_s": 1.0
   },
   "trc": {
-   "pids": [],
-   "starts_30m": 0,
-   "log_age_s": 5732.0
+   "pids": [
+    "17457"
+   ],
+   "starts_30m": 1,
+   "log_age_s": 18.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-30T06:44:25Z",
-   "severity": "INFO",
-   "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
-   "key": "men:AWEUSDT_LONG",
-   "evidence": "CLOSE PPL_SL_CLOSE_upgraded-scalp_px0.0698_sto bar=2026-10-30T05:15:00Z: live already flat (state divergence, no order needed)"
-  },
-  {
-   "ts": "2026-10-30T06:44:27Z",
+   "ts": "2026-10-30T17:29:12Z",
    "severity": "CRITICAL",
-   "kind": "VEC_DECISION_NOT_FILLED",
-   "key": "ang:ARKMUSDT_LONG",
-   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_LONG_px0.105700 decided 2026-10-30T01:55:00Z bar=2026-10-30T01:30:00Z: no fill in 1800s and no refusal logged"
-  },
-  {
-   "ts": "2026-10-30T06:44:27Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_NOT_FILLED",
-   "key": "ang:ARKMUSDT_LONG",
-   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_LONG_px0.105000 decided 2026-10-30T03:24:00Z bar=2026-10-30T02:45:00Z: no fill in 1800s and no refusal logged"
-  },
-  {
-   "ts": "2026-10-30T06:44:27Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_NOT_FILLED",
-   "key": "ang:ARKMUSDT_LONG",
-   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_LONG_px0.104100 decided 2026-10-30T03:24:07Z bar=2026-10-30T03:00:00Z: no fill in 1800s and no refusal logged"
-  },
-  {
-   "ts": "2026-10-30T06:44:27Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_NOT_FILLED",
-   "key": "ang:COTIUSDT_SHORT",
-   "evidence": "AUGMENT HAIKU_WINNER_AUG_3.6pct decided 2026-10-30T04:24:57Z bar=2026-10-30T03:00:00Z: no fill in 1800s and no refusal logged"
-  },
-  {
-   "ts": "2026-10-30T06:44:27Z",
-   "severity": "INFO",
-   "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
-   "key": "ang:COTIUSDT_SHORT",
-   "evidence": "CLOSE PPL_SL_CLOSE_upgraded-scalp_px0.0090_sto bar=2026-10-30T05:30:00Z: live already flat (state divergence, no order needed)"
-  },
-  {
-   "ts": "2026-10-30T06:44:27Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "inf:ARUSDT_LONG",
-   "evidence": "OPEN REENTRY_DC4_15M_BREAK bar=2026-10-30T03:30:00Z refused by non-safety gate: 30 03:53:52 - WARNING - [inf] [VEC_EXACT_EXPIRED] ARUSDT_LONG CLOSE FIXED_STOP bar=1793304000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+   "kind": "RAPID_LOSS_KEY",
+   "key": "men:IMXUSDT_SHORT",
+   "evidence": "unrealised -6.21% (60-min high -2.02%), amt 131"
   }
  ],
  "alert_counts": {
-  "VEC_EXIT_WHILE_LIVE_FLAT": 2,
-  "VEC_DECISION_NOT_FILLED": 4,
-  "VEC_DECISION_REFUSED": 1
+  "RAPID_LOSS_KEY": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -266,7 +237,14 @@
    "why": "ORDER_STORM_ACCOUNT 27 fills/10min",
    "undo": "alert-only (never-halt policy 2026-10-10)",
    "dry_run": false
+  },
+  "key:men:IMXUSDT_SHORT": {
+   "ts": 1793381270.5569868,
+   "until": 1793388470.556989,
+   "why": "RAPID_LOSS_KEY unrealised -6.21% (60-min high -2.02%), amt 131 (opens/augments blocked; exits untouched)",
+   "undo": "redis-cli -p 6379 DEL open_blocked:men:IMXUSDT_SHORT",
+   "dry_run": false
   }
  },
- "sweep_s": 8.2
+ "sweep_s": 0.64
 }

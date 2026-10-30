@@ -1,44 +1,56 @@
 {
- "generated_at": "2026-10-30 06:14 UTC",
- "total_capital_usd": 31.07,
+ "generated_at": "2026-10-30 17:29 UTC",
+ "total_capital_usd": 45.5,
  "tier_capital": {
   "A": 0.0,
-  "B": 31.07,
+  "B": 45.5,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
+  "B": 3,
   "C": 0
  },
  "winners": [],
  "losers": [
-  "fin:1000SHIBUSDC_SHORT",
-  "fin:1MBABYDOGEUSDT_SHORT"
+  "ang:TRUMPUSDC_SHORT"
  ],
- "mediocre": [],
+ "mediocre": [
+  "ang:ACEUSDT_SHORT"
+ ],
  "positions": [
   {
-   "pk": "fin:1000SHIBUSDC_SHORT",
-   "symbol": "1000SHIBUSDC",
-   "account": "fin",
-   "value_usd": 15.73,
-   "gain_pct": -4.674,
+   "pk": "ang:TRUMPUSDC_SHORT",
+   "symbol": "TRUMPUSDC",
+   "account": "ang",
+   "value_usd": 15.51,
+   "gain_pct": -3.389,
    "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 3349.0,
-   "mark": 0.004698
+   "perf_mult": 2.71,
+   "amt": 9.97,
+   "mark": 1.556
   },
   {
-   "pk": "fin:1MBABYDOGEUSDT_SHORT",
-   "symbol": "1MBABYDOGEUSDT",
-   "account": "fin",
-   "value_usd": 15.34,
-   "gain_pct": -2.272,
+   "pk": "ang:ACEUSDT_SHORT",
+   "symbol": "ACEUSDT",
+   "account": "ang",
+   "value_usd": 15.02,
+   "gain_pct": -0.142,
    "tier": "B",
-   "perf_mult": 3.58,
-   "amt": 46670.0,
-   "mark": 0.0003286
+   "perf_mult": 0.79,
+   "amt": 111.96,
+   "mark": 0.13413
+  },
+  {
+   "pk": "ang:HYPEUSDT_LONG",
+   "symbol": "HYPEUSDT",
+   "account": "ang",
+   "value_usd": 14.97,
+   "gain_pct": 2.696,
+   "tier": "B",
+   "perf_mult": 4.42,
+   "amt": 0.16,
+   "mark": 93.54283889
   }
  ]
 }
