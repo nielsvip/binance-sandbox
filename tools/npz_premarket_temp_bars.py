@@ -45,7 +45,7 @@ UTC = dt.timezone.utc
 OFFSETS = (2700, 1800, 900)  # the three 15m bars ending at the session open
 ERASE_AFTER_OPEN_S = 600  # open + 10 min: five minutes before the open bar closes and its decisions are made
 SETTLE_S = 5
-WORKERS = int(os.environ.get("PM_TEMP_WORKERS", "6"))
+WORKERS = int(os.environ.get("PM_TEMP_WORKERS", "12"))  # measured 10-30: 121 rows in 14.6 s at 12 workers, 23.3 s at 6 (load 19)
 
 
 def log(msg):
@@ -106,7 +106,18 @@ def symbols(live_root):
     return sorted(out)
 
 
-def tradier_key(base):
+def tradier_keys(base):
+    """Market-data tokens TRB then TRA (distinct accounts = distinct 120/min buckets). The ~120 symbol calls at the open bar are
+    split across them so neither bucket runs dry; the bar guarantee's own fallback (TRA) fetches only a handful of bars."""
+    keys = []
+    for name in ("TRADIER_API_KEY_TRB", "TRADIER_API_KEY_TRA"):
+        key = tradier_key(base, name)
+        if key and key not in keys:
+            keys.append(key)
+    return keys or [k for k in [tradier_key(base)] if k]
+
+
+def tradier_key(base, only=None):
     """Market-data token. TRB by default: the bar guarantee's own Tradier fallback uses TRA, so the two never share a rate bucket."""
     env = {}
     for path in (Path(base) / ".env", Path.home() / ".env", Path.home() / "binance" / ".env"):
@@ -120,7 +131,7 @@ def tradier_key(base):
                     env.setdefault(name.strip(), value.strip().strip("'\""))
         except OSError:
             continue
-    for name in (os.environ.get("PM_TEMP_TRADIER_KEY", ""), "TRADIER_API_KEY_TRB", "TRADIER_API_KEY_TRA", "TRADIER_API_KEY"):
+    for name in ((only,) if only else (os.environ.get("PM_TEMP_TRADIER_KEY", ""), "TRADIER_API_KEY_TRB", "TRADIER_API_KEY_TRA", "TRADIER_API_KEY")):
         if name and (os.environ.get(name) or env.get(name)):
             return os.environ.get(name) or env.get(name)
     return None
@@ -316,8 +327,8 @@ class Run:
         led = self.ledger(self.day)
         self.out.mkdir(parents=True, exist_ok=True)
         (self.out / "ACTIVE").write_text(json.dumps({"day": self.day.isoformat(), "at": self.now}) + "\n")
-        key = tradier_key(self.base)
-        if not key:
+        keys = tradier_keys(self.base)
+        if not keys:
             return {"error": "no Tradier market-data key"}
         skipped, wanted, need_fetch = {}, {}, {}
         for symbol in self.universe():
@@ -337,39 +348,60 @@ class Run:
                 if missing and not self.no_klines:
                     need_fetch[symbol] = missing
         t0 = time.time()
+        order = {symbol: i for i, symbol in enumerate(sorted(need_fetch))}
+        latency = led.setdefault("fetch_latency_s", {})  # epoch -> {symbol: seconds after the bar close when Tradier served it}
 
         def fetch(symbol):
+            key = keys[order[symbol] % len(keys)]
             try:
                 return symbol, fetch_premarket(key, symbol, self.day, need_fetch[symbol], self.now if self.test else time.time())
             except Exception as exc:
                 return symbol, (None, f"{type(exc).__name__}: {str(exc)[:100]}")
 
-        with ThreadPoolExecutor(max_workers=4) as pool:
-            fetched = dict(pool.map(fetch, sorted(need_fetch)))
-        fetch_s = round(time.time() - t0, 1)
-        tasks = []
-        for symbol, todo in wanted.items():
-            bars, why = fetched.get(symbol) or ({}, "")
-            if bars is None:
-                bars = {}
-                for epoch in need_fetch.get(symbol, ()):
-                    skipped.setdefault(symbol, {})[str(epoch)] = f"fetch: {why}"
-            for epoch in need_fetch.get(symbol, ()):
-                if epoch not in bars:
-                    skipped.setdefault(symbol, {}).setdefault(str(epoch), "Tradier returned no closed bar yet")
+        def task_for(symbol, bars):
             # rows go in time order; a bar that is in neither the host file nor Tradier stops that symbol's chain this pass
             ready = []
-            for epoch in todo:
+            for epoch in wanted[symbol]:
                 if epoch in bars or epoch not in need_fetch.get(symbol, ()):
                     ready.append(epoch)
                 else:
                     break
-            if ready:
-                tasks.append((str(self.base), str(self.ind), symbol, {e: bars[e] for e in ready if e in bars}, ready))
-        results = []
-        if tasks:
-            with ProcessPoolExecutor(max_workers=min(self.workers, len(tasks))) as pool:
-                results = [r for rows in pool.map(_add_one, tasks) for r in rows]
+            return (str(self.base), str(self.ind), symbol, {e: bars[e] for e in ready if e in bars}, ready) if ready else None
+
+        # a symbol whose bar Tradier does not serve yet is retried inside this pass (+3/+6/+10/+15/+25/+40 s), and each symbol's
+        # row is computed as soon as its bar is in, so one slow symbol never holds the others back
+        futures, last_why, fetch_s = [], {}, 0.0
+        with ProcessPoolExecutor(max_workers=self.workers) as cpu, ThreadPoolExecutor(max_workers=8) as net:
+            for symbol in [s for s in wanted if s not in need_fetch]:
+                task = task_for(symbol, {})
+                if task:
+                    futures.append(cpu.submit(_add_one, task))
+            pending = set(need_fetch)
+            for wait_s in (0, 3, 6, 10, 15, 25, 40):
+                if not pending:
+                    break
+                if wait_s and not self.test:
+                    time.sleep(max(0.0, t0 + wait_s - time.time()))
+                for symbol, (bars, why) in net.map(fetch, sorted(pending)):
+                    if bars is None:
+                        last_why[symbol] = f"fetch: {why}"
+                        continue
+                    if not all(epoch in bars for epoch in need_fetch[symbol]):
+                        last_why[symbol] = "Tradier returned no closed bar yet"
+                        if not any(epoch in bars for epoch in need_fetch[symbol]):
+                            continue
+                    for epoch in bars:
+                        latency.setdefault(str(epoch), {})[symbol] = round(time.time() - (epoch + 900), 1)
+                    pending.discard(symbol)
+                    task = task_for(symbol, bars)
+                    if task:
+                        futures.append(cpu.submit(_add_one, task))
+            fetch_s = round(time.time() - t0, 1)
+            for symbol in pending:
+                for epoch in need_fetch[symbol]:
+                    skipped.setdefault(symbol, {})[str(epoch)] = last_why.get(symbol, "not fetched")
+            results = [r for f in futures for r in f.result()]
+        tasks = futures  # one per symbol with rows to append this pass
         for symbol, epoch, status in results:
             if status == "appended":
                 led["added"].setdefault(symbol, []).append(int(epoch))
@@ -378,7 +410,7 @@ class Run:
                 skipped.setdefault(symbol, {})[str(epoch)] = status
         led["skipped"] = {k: v for k, v in skipped.items() if v}
         appended = sum(1 for r in results if r[2] == "appended")
-        landed = sum(len(t[3]) for t in tasks)
+        landed = sum(len(need_fetch[s]) for s in need_fetch if s not in pending)
         led["events"].append({"at": dt.datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"), "kind": "add", "appended": appended, "klines_fetched": landed,
                               "fetched_symbols": len(need_fetch), "fetch_s": fetch_s, "total_s": round(time.time() - t0, 1)})
         atomic_json(self.ledger_path(self.day), led)
