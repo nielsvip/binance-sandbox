@@ -71,6 +71,13 @@ def test_encoded_htf_vetoes_match_npz_numeric_states():
         assert dzb.baseline_bounce_fires_scalar(ind, True, _g(), {})[0] is False
 
 
+def test_delta_weights_follow_native_venue_defaults():
+    crypto = lambda key, default=None: {"MODE": "crypto"}.get(key, default)
+    stocks = lambda key, default=None: {"MODE": "tradier"}.get(key, default)
+    assert dzb._tf_weights(crypto) == {"3m": 3.0, "15m": 2.0, "1h": 1.0, "4h": 1.0, "D": 0.5}
+    assert dzb._tf_weights(stocks) == {"1h": 2.0, "4h": 3.0, "D": 2.0}
+
+
 def test_mask_matches_scalar_on_synthetic():
     n = 60
     close = np.linspace(90, 110, n)

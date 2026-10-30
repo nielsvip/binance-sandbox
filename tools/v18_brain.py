@@ -2308,7 +2308,7 @@ def _state_dump(state):
                              "live_fam": {k: list(v) for k, v in b.live_fam.items()}, "remedy": {k: list(v) for k, v in b.remedy.items()},
                              "quart": {"|".join(k): list(v) for k, v in b.quart.items()}, "sheet_of": b.sheet_of, "first_ts": b.first_ts, "last_ts": b.last_ts,
                              "buckets": b.bk.cands, "mb": b.mb_report(),
-                             "bind": {"why": b.bind_why, "path": getattr(b.bi, "path", None), "built_at": (getattr(b.bi, "meta", None) or {}).get("built_at"),
+                             "bind": {"mode": "unknown" if b.bi is None else "mapped", "why": b.bind_why, "path": getattr(b.bi, "path", None), "built_at": (getattr(b.bi, "meta", None) or {}).get("built_at"),
                                       "dim": NBF, "names": list(FX.BIND_FEATURE_NAMES)}}
     return out
 
@@ -2832,6 +2832,17 @@ def cmd_suggest(a):
 
 # ------------------------------------------------------------------------------------------------ runtime (pilot) + compare
 
+def binding_feature_mode(meta):
+    binding = meta.get("bind") or {}
+    if not isinstance(binding, dict):
+        raise ValueError("binding feature metadata must be an object")
+    selected = binding.get("mode")
+    if selected is None:
+        selected = "unknown" if binding.get("why") == "disabled (--no-binding-map)" else "mapped"
+    if selected not in ("unknown", "mapped"):
+        raise ValueError(f"unsupported binding feature mode: {selected}")
+    return selected
+
 class PilotBrainV18:
     """Runtime twin for ONE board (the pilot imports this behind V18_BRAIN=1). Loads data/brain/v18_brain_<CAT_SIDE>.json
     (V18_BRAIN_DIR overrides the dir). decide() is pure apart from the in-board EMA/sym evidence that observe() updates.
@@ -2861,10 +2872,13 @@ class PilotBrainV18:
         self.booked = collections.Counter()
         self.bi, self.bind_why = None, "model has no M/B heads"
         if all(h in self.w for h in BIND_HEADS):
-            try:
-                self.bi, self.bind_why = FX.load_binding_map(cs, ROOT, os.environ.get("V18_BINDING_MAP_DIR") or None)
-            except Exception as e:  # fail-open: every binding feature UNKNOWN
-                self.bi, self.bind_why = None, f"load error {type(e).__name__}"
+            if binding_feature_mode(self.meta) == "unknown":
+                self.bind_why = "model trained with UNKNOWN binding features"
+            else:
+                try:
+                    self.bi, self.bind_why = FX.load_binding_map(cs, ROOT, os.environ.get("V18_BINDING_MAP_DIR") or None)
+                except Exception as e:  # fail-open: every binding feature UNKNOWN
+                    self.bi, self.bind_why = None, f"load error {type(e).__name__}"
 
     def mb(self, sheet, row_key, filter_key, running_set=None, x0=None):
         """-> (p_marginal, p_binds, bind_verdict) of one cell; (None, None, None) when the model carries no M/B heads."""

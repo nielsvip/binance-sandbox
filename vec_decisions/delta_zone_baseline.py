@@ -51,11 +51,12 @@ def _C(cfg_get, key, default):
 
 
 def _tf_weights(cfg_get):
-    tw = _C(cfg_get, "delta_tf_weights", None)
+    stock_mode = str(_C(cfg_get, "mode", "crypto") or "crypto").lower() == "tradier"
+    tw = _C(cfg_get, "delta_tf_weights_stock" if stock_mode else "delta_tf_weights", None)
     if not isinstance(tw, dict) or not tw:
         tw = _C(cfg_get, "tf_weights", None)
     if not isinstance(tw, dict) or not tw:
-        tw = _LIVE_DELTA_DEFAULT_CFG["tf_weights"]
+        tw = {"1h": 2.0, "4h": 3.0, "D": 2.0} if stock_mode else _LIVE_DELTA_DEFAULT_CFG["tf_weights"]
     return tw
 
 

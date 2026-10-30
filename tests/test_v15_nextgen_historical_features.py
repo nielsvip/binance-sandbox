@@ -76,3 +76,6 @@ def test_intrinsic_scoring_keeps_candidate_universe_without_default_features():
     assert left.fctx.span("STOP_PCT") == right.fctx.span("STOP_PCT") == []
     assert left.fctx.default("STOP_PCT") is None
     assert left.set_feats("EXIT_STRUCTURAL|STOP_PCT=3") == right.set_feats("EXIT_STRUCTURAL|STOP_PCT=3")
+    training = network.Featurizer("CRYPTO_LONG", current_context(2, [0, 2, 4]), feature_mode="context_free")
+    assert left.set_feats("EXIT_STRUCTURAL|STOP_PCT=3") == training.set_feats("EXIT_STRUCTURAL|STOP_PCT=3")
+    assert left.filt_feats("FILTER_TF=1h") == training.filt_feats("FILTER_TF=1h")

@@ -452,9 +452,21 @@ except Exception:
 PYEOF
 )
         if [[ -n "$_stage_db" && -s "$_stage_db" ]]; then
+            # 7D lane armed: ez_manage's own fin gate (fin_side_authorized + assert_ready, which pins validation.json
+            # to TODAY's date) is the only authority on which men sym_side may be opened.
             export VEC_LIVE_SCOPE=7d PER_SYM_STORE_DB="$_stage_db"
+            export ODG_ENTRY_BANNED_ACCOUNTS="${ODG_ENTRY_BANNED_ACCOUNTS_BASE:-}"
         else
+            # USER 2026-10-30: "MAKE SURE ALL FIN TRADING IS SSTILLL BLOCKED aexcept the trading of men sym_sides from
+            # 7D resultss that are < a day old". With no staged 7D db there is no such result, so fin must not open
+            # ANYTHING. The 7D gate at ez_manage.py:36661 is scoped to VEC_LIVE_SCOPE=7d and was being UNSET here, so
+            # fin fell through to ordinary 30D entries with no fin-specific gate at all — the one hole in this design.
+            # order_dedupe_guard.entry_banned is the wire gate every futures_create_order passes
+            # (ez_manage.py:11211 wrap_binance_client), the same mechanism that keeps tra exits-only forever, so this
+            # refuses every exposure-increasing fin order with ACCOUNT_ENTRY_BANNED and leaves EXITS untouched.
             unset VEC_LIVE_SCOPE PER_SYM_STORE_DB
+            export ODG_ENTRY_BANNED_ACCOUNTS="$(printf '%s' "${ODG_ENTRY_BANNED_ACCOUNTS_BASE:+${ODG_ENTRY_BANNED_ACCOUNTS_BASE},}fin")"
+            log "[FIN 7D] no staged 7D db — fin entries BANNED at the order_dedupe_guard wire (exits unaffected)"
         fi
     fi
     log "Starting $SCRIPT ${ARGS[*]}"

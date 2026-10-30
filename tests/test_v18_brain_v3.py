@@ -145,6 +145,48 @@ def test_logs_extract_marks_fingerprint_noops(trained):
     assert all(len(r["y"]) == 3 for r in rows)  # every other field unchanged: the noop cell stays a y cell
 
 
+def test_unknown_training_binding_mode_survives_serving(trained, tmp_path, monkeypatch):
+    out = tmp_path / "unknown_brain"
+    assert B.main(["train", "--spill-dir", str(trained["spill"]), "--cut", "2026-10-16T00:00:00Z", "--state", str(tmp_path / "unknown.pkl"), "--out-dir", str(out), "--report", str(tmp_path / "unknown_report.json"), "--template-cache", str(tmp_path / "none"), "--no-binding-map"]) == 0
+    path = out / f"v18_brain_{CS}.json"
+    blob = json.loads(path.read_text())
+    assert blob["_meta"]["bind"]["mode"] == "unknown"
+    def forbidden_map(*args, **kwargs):
+        raise AssertionError("UNKNOWN-trained model must not load a serving binding map")
+    monkeypatch.setattr(FX, "load_binding_map", forbidden_map)
+    pb = B.PilotBrainV18(path, "BTCUSDT_LONG")
+    tab, key, header = "ENTRY_BREAKOUT_CHANNEL", "DC_BREAK_FILTER_TF=D", "WT_BOUNCE_K=2"
+    x0, _ = pb._x("F0", tab, key, header)
+    train_binding = FX.bind_vector(FX.binding_features(None, tab, "DC_BREAK_FILTER_TF", "D", header, None))
+    expected = tuple(B.sig(sum(a * b for a, b in zip(pb.w[head], x0 + train_binding))) for head in ("M", "B"))
+    actual = pb.mb(tab, key, header, {"WT_BOUNCE_ENABLED": True})
+    assert actual == (*expected, "UNKNOWN")
+    blob["_meta"]["bind"].pop("mode")
+    legacy_disabled = tmp_path / "legacy_explicit_disabled.json"
+    legacy_disabled.write_text(json.dumps(blob))
+    assert B.PilotBrainV18(legacy_disabled, "BTCUSDT_LONG").mb(tab, key, header, {}) == actual
+
+
+def test_legacy_mapped_binding_behavior_unchanged(trained, tmp_path, monkeypatch):
+    monkeypatch.setenv("V18_BINDING_MAP_DIR", str(trained["learn"]))
+    path = trained["out"] / f"v18_brain_{CS}.json"
+    mapped = B.PilotBrainV18(path, "BTCUSDT_LONG")
+    blob = json.loads(path.read_text())
+    blob["_meta"]["bind"].pop("mode")
+    legacy_path = tmp_path / "legacy_mapped.json"
+    legacy_path.write_text(json.dumps(blob))
+    legacy = B.PilotBrainV18(legacy_path, "BTCUSDT_LONG")
+    args = ("ENTRY_BREAKOUT_CHANNEL", "DC_BREAK_FILTER_TF=D", "WT_BOUNCE_K=2", {"WT_BOUNCE_ENABLED": True})
+    assert mapped.bi is not None and legacy.bi is not None
+    assert mapped.mb(*args) == legacy.mb(*args)
+    assert mapped.mb(*args)[2] == "CONDITIONAL_ARMED"
+
+
+def test_unknown_binding_mode_value_is_rejected():
+    with pytest.raises(ValueError, match="unsupported binding feature mode"):
+        B.binding_feature_mode({"bind": {"mode": "guess"}})
+
+
 def test_heads_m_b_labels_and_report(trained):
     sb = trained["state"]["brains"][CS]
     c = sb["c"]
