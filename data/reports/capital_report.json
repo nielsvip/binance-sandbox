@@ -1,43 +1,30 @@
 {
- "generated_at": "2026-10-30 18:33 UTC",
- "total_capital_usd": 28.97,
+ "generated_at": "2026-10-30 18:44 UTC",
+ "total_capital_usd": 14.81,
  "tier_capital": {
   "A": 0.0,
-  "B": 28.97,
+  "B": 14.81,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
+  "B": 1,
   "C": 0
  },
  "winners": [],
- "losers": [
-  "ang:HYPEUSDT_LONG"
- ],
+ "losers": [],
  "mediocre": [],
  "positions": [
   {
-   "pk": "ang:ACEUSDT_SHORT",
-   "symbol": "ACEUSDT",
-   "account": "ang",
-   "value_usd": 14.54,
-   "gain_pct": 3.024,
+   "pk": "fin:1MBABYDOGEUSDT_SHORT",
+   "symbol": "1MBABYDOGEUSDT",
+   "account": "fin",
+   "value_usd": 14.81,
+   "gain_pct": 1.245,
    "tier": "B",
-   "perf_mult": 0.79,
-   "amt": 111.96,
-   "mark": 0.12989
-  },
-  {
-   "pk": "ang:HYPEUSDT_LONG",
-   "symbol": "HYPEUSDT",
-   "account": "ang",
-   "value_usd": 14.43,
-   "gain_pct": -1.004,
-   "tier": "B",
-   "perf_mult": 4.42,
-   "amt": 0.16,
-   "mark": 90.172675
+   "perf_mult": 3.58,
+   "amt": 46670.0,
+   "mark": 0.0003173
   }
  ]
 }

@@ -320,11 +320,17 @@ def confirmed_order_rows(host: str, symsides: set[str], since: float) -> list[di
 symsides = %r
 since = %r
 venue = %r
+root = pathlib.Path.home() / 'binance/data/vector_direct'
+try: fills = json.loads((root / ('fills_' + venue + '.json')).read_text())
+except (OSError, ValueError): fills = {}
 for path in sorted(glob.glob(str(pathlib.Path.home() / 'binance/data/vector_direct' / ('ledger_' + venue + '_*.jsonl')))):
     for line in open(path):
         try: row = json.loads(line)
         except (ValueError, UnicodeError): continue
         if row.get('event') == 'ORDER' and row.get('ss') in symsides and float(row.get('ts') or 0) >= since:
+            response = row.get('resp') or {}
+            oid = response.get('orderId') or response.get('id')
+            if oid: row['broker_fill'] = fills.get('oid:' + str(row.get('acct')) + ':' + str(oid))
             print(json.dumps(row, separators=(',', ':')))
 """ % (repr(sorted(symsides)), repr(since), repr("crypto" if host == "s1" else "stocks"))
     response = ssh(host, "python3 - <<'PY'\n" + script + "PY", 180)
@@ -377,7 +383,10 @@ def discrepancy_overlay(page: str, board: dict, rows: list[dict]) -> tuple[str, 
             continue
         response = row.get("resp") or {}
         status = str(response.get("status") or "").upper()
-        filled = status in ("FILLED", "PARTIALLY_FILLED") or float(response.get("executedQty") or 0) > 0
+        broker_fill = row.get("broker_fill") or {}
+        crypto = board["symside"].rsplit("_", 1)[0].endswith(("USDT", "USDC", "USD1"))
+        filled = (broker_fill.get("found") and float(broker_fill.get("exec_qty") or 0) > 0
+                  and str(broker_fill.get("status") or "").lower() in ("filled", "partially_filled")) or (crypto and (status in ("FILLED", "PARTIALLY_FILLED") or float(response.get("executedQty") or 0) > 0))
         (live if filled else accepted).add(key)
         accounts.setdefault(key, set()).add(str(row.get("acct") or "?"))
     bar_index = {bar: i for i, bar in enumerate(bar_times)}

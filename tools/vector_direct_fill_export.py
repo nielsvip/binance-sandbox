@@ -365,7 +365,8 @@ def export(
         status = r.get("status")
         if status == "SENT":
             stats["sent"] += 1
-            oid = str((r.get("resp") or {}).get("orderId") or "")
+            response = r.get("resp") or {}
+            oid = str(response.get("orderId") or (response.get("id") if venue == "stocks" else "") or "")
             ck = (
                 f"oid:{r.get('acct')}:{oid}"
                 if oid
