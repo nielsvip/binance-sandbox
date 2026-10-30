@@ -17,6 +17,76 @@ if str(ROOT) not in sys.path:
 CAT_SIDES = ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT")
 
 
+def gain_population(index_path, out_dir, cutoffs, allowed_sym_sides=None, max_boards_per_cat=12):
+    from collections import Counter
+    from tools import v18_brain as brain
+    root = Path(out_dir)
+    root.mkdir(parents=True, exist_ok=False)
+    records = json.loads(Path(index_path).read_text())
+    counts, board_counts, row_counts = Counter(), Counter(), Counter()
+    proofs, seen = [], set()
+    spill = root / "spill_gain_explicit_progress.tsv.gz"
+    with gzip.open(spill, "wt") as output:
+        for entry in records:
+            path = Path(entry["file"])
+            if str(path) in seen or not path.is_file():
+                continue
+            seen.add(str(path))
+            symbol = entry.get("s")
+            category = brain.cat_side_of(symbol)
+            if category not in cutoffs or (allowed_sym_sides is not None and symbol not in allowed_sym_sides):
+                counts["excluded_identity"] += 1
+                continue
+            if board_counts[category] >= max_boards_per_cat:
+                counts["deferred_board_cap"] += 1
+                continue
+            payload = path.read_bytes()
+            digest = hashlib.sha256(payload).hexdigest()
+            document = json.loads(payload)
+            if document.get("symside") != symbol:
+                counts["foreign_progress_identity"] += 1
+                continue
+            groups = {}
+            for key, row in (document.get("done") or {}).items():
+                if not isinstance(row, dict):
+                    counts["malformed_row"] += 1
+                    continue
+                end = brain.npz_ts_of(row.get("npz"))
+                if end is None:
+                    counts["unknown_explicit_row_npz"] += 1
+                    continue
+                if end >= cutoffs[category]:
+                    counts["market_end_not_before_holdout"] += 1
+                    continue
+                groups.setdefault(end, []).append((key, row))
+            if not groups:
+                continue
+            source_rows = 0
+            for end, rows in sorted(groups.items()):
+                current = [{}]
+                def emit(event):
+                    event.update(current[0])
+                    output.write(event["t"] + "\t" + json.dumps(event, separators=(",", ":"), default=str) + "\n")
+                extra = {"src": "progress", "ts_source": "explicit_progress_row_npz", "npz": end, "cs": category, "wd": document.get("window_days"), "file": path.name, "source_file": str(path), "source_sha256": digest, "lineage_policy": "explicit_rec_npz_v1", "label_computation_time": "not inferred from NPZ timestamp", "set0": document.get("initial_overrides") or None}
+                emitter = brain.BoardEmitter("progress", symbol, brain.iso_of(end), emit, counts, extra, path.name + "#" + str(end))
+                emitter.start(brain._f(document.get("bh")), document.get("tier"), document.get("defaults_round"))
+                for key, row in rows:
+                    current[0] = {"progress_key": key, "explicit_row_npz": row["npz"], "source_record_sha256": hashlib.sha256(json.dumps(row, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()}
+                    brain._progress_row(emitter, key, row, counts, category)
+                emitter.finish()
+                source_rows += len(rows)
+            if sha256(path) != digest:
+                raise ValueError(f"progress source changed while freezing: {path}")
+            board_counts[category] += 1
+            row_counts[category] += source_rows
+            proofs.append({"symbol_side": symbol, "category": category, "source_file": str(path), "sha256": digest, "rows": source_rows, "market_end_min": min(groups), "market_end_max": max(groups), "top_npz_id": document.get("npz_id"), "result_start_utc": document.get("result_start_utc"), "result_done_utc": document.get("result_done_utc")})
+    report = {"schema": "explicit_progress_gain_population_v1", "cutoffs_epoch": cutoffs, "index_sha256": sha256(index_path), "unique_boards_by_category": dict(board_counts), "source_rows_by_category": dict(row_counts), "sources": proofs, "counters": dict(counts), "spill_sha256": sha256(spill), "status": "declared_older_market_population_not_oos_gain_proof", "scope": "explicit per-row NPZ tags only; no top-NPZ fallback; current-book scope and board cap recorded; computation dates not fabricated"}
+    (root / "population.json").write_text(json.dumps(report, indent=2, default=str))
+    if set(board_counts) != set(cutoffs):
+        raise ValueError(f"population does not cover all categories: {dict(board_counts)}")
+    return report
+
+
 def sha256(path):
     digest = hashlib.sha256()
     with Path(path).open("rb") as stream:

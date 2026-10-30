@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-10-30T21:20:02.589532Z",
+  "recorded_at": "2026-10-30T21:33:54.655610Z",
   "status": "active_not_achieved",
   "deployment_authorized_by_this_record": false,
   "requirements": {
@@ -121,7 +121,9 @@
       "reason": "GR_FILTER_ALL_ENTRIES warning: missing vec_paths package",
       "next": "complete source-only dependency closure and import preflight before fresh isolated run",
       "resource_receipt": "pending terminal driver receipt"
-    }
+    },
+    "current8_manifest": "data/reports/nextgen_current8_manifest_r2.json",
+    "temporal_caveat": "current crypto holdout startsOct23T21:00; currentstocksOct22T13:45; priorNN stockscorpus mayoverlap so no independentunseenclaim"
   },
   "learning_smoke": {
     "root": "s6:/home/niels/v20_candidate_review_20261030",
@@ -158,7 +160,7 @@
       "forward_action": "new historical feature work under already excluded v15_nextgen_*.py or isolated review patches; no revert"
     }
   },
-  "previous_goal_turn_classification": "progress: directly audited gate model omission and recorded authoritative S2 observations",
+  "previous_goal_turn_classification": "progress: isolatedS2 Linux tests passed, preserved priorbundle verified, originalper-row NPZsources identified",
   "restored_archive_consumers": {
     "consumer_audit_CRYPTO_LONG": {
       "consumer_status": "complete rc0; output 616 B, SHA256 b71adaf0bf48b4e6d9a8f33c9bf5b933ee46122470d5e77120117cc85a41c05e; report SHA256 d9383e38a0f24a62720d0e1ec037470be70979dc595b115fffb486c91a143fb2; driver SHA256 6cc2f336331025fd4f73ad059df7b77ad0f01832a1e9c0ee3bb5b3b9c3eaec03",
@@ -228,26 +230,32 @@
     "previous_learning_bundle": {
       "id": "20261022T235810Z",
       "name": "UNION #3",
-      "evidence": "compute_audit reports current champion flat brain hashes match original PASS; receipt collection pending",
+      "evidence": "root independently hashed all8files; actualS2championresolver selected all8expected hashes in isolatedflatfixture; corpus matchedPASSmetadata",
       "loader_order": [
         "V18_BRAIN_DIR or V18_DIGEST_DIR env",
         "ROOT/data/<sub>/<name>",
         "ROOT/tools/v18_data/<sub>/<name>",
         "ROOT/tools/v18_data_<sub>_<name>"
-      ]
+      ],
+      "local_receipt": "data/reports/nextgen_gate_artifact_repair/previous_nn_bundle.json"
     },
     "repair": {
       "helper": "tools/v15_nextgen_gate_artifacts.py",
       "patch": "data/reports/nextgen_gate_artifact_repair/integration.patch",
-      "status": "review_only_not_deployed",
+      "status": "isolated_S2_revision2_tested_not_deployed",
       "canonical_harness_edited": false,
-      "tests": "8 passed in 0.62s; includes actual staged build_root and rsync_tree",
+      "tests": "33 passed locally and 33 passed on S2 in0.56s; actuallaunchwrongbundle test rejects beforePopen",
       "remaining": [
-        "remote base diff review",
-        "actual runtime resolved paths and hashes under exact env",
-        "matched caller engine templates inputs budget",
-        "complete candidate runtime artifacts"
-      ]
+        "final independent review of prelaunch guard",
+        "complete common runtime dependency closure",
+        "complete matched candidate artifacts",
+        "eight actual benchmarkresults",
+        "active S2 harness installation after checks"
+      ],
+      "s2_stage": "/home/niels/v15_bench/reviews/nn_artifacts_20261030T213315Z",
+      "s2_receipt": "data/reports/nextgen_gate_artifact_repair/s2_stage_20261030T213315Z.json",
+      "declaration": "tools/v18_model_bundle.json with schema v15_nn_bundle/1 and exact8fileSHA; V15_REQUIRE_MODEL_BUNDLE=1 fails if missing; guard resolves with actualper-sideenvironment",
+      "missing_destination_fix": "deployment records okFalse if modeldestinationparent missing; no silentcompletion"
     }
   }
 }

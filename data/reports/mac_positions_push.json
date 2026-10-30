@@ -1,10 +1,10 @@
 {
- "epoch": 1793395870.0565639,
- "written_at": "2026-10-30T21:31:10.056566Z",
+ "epoch": 1793396458.2920709,
+ "written_at": "2026-10-30T21:40:58.292074Z",
  "venues": {
   "crypto": {
    "local": "/Users/niels/Documents/binance/data/vector_direct/mac_positions_crypto.json",
-   "sha256": "bcb566ff1a52002ee5f54e649ed1c091b151f815592b43cb15e2d1e7af393905",
+   "sha256": "d3735e3710bcd843fa674e41195e8622f36ae6bbaeda838ba56ab10541767a55",
    "held_total": 1,
    "sides": [
     "ACEUSDT_SHORT"
@@ -16,28 +16,28 @@
      "host": "s1-int",
      "tree": "binance",
      "ok": true,
-     "sha256": "bcb566ff1a52002ee5f54e649ed1c091b151f815592b43cb15e2d1e7af393905",
+     "sha256": "d3735e3710bcd843fa674e41195e8622f36ae6bbaeda838ba56ab10541767a55",
      "remote": "~/binance/data/vector_direct/mac_positions_crypto.json"
     },
     {
      "host": "s1-pub",
      "tree": "binance",
-     "ok": true,
-     "sha256": "bcb566ff1a52002ee5f54e649ed1c091b151f815592b43cb15e2d1e7af393905",
+     "ok": false,
+     "error": "CalledProcessError: Connection closed by 49.13.39.233 port 22\r\n",
      "remote": "~/binance/data/vector_direct/mac_positions_crypto.json"
     },
     {
      "host": "s1",
      "tree": "binance",
      "ok": true,
-     "sha256": "bcb566ff1a52002ee5f54e649ed1c091b151f815592b43cb15e2d1e7af393905",
+     "sha256": "d3735e3710bcd843fa674e41195e8622f36ae6bbaeda838ba56ab10541767a55",
      "remote": "~/binance/data/vector_direct/mac_positions_crypto.json"
     },
     {
      "host": "niels@10.0.0.3",
      "tree": "binance",
      "ok": true,
-     "sha256": "bcb566ff1a52002ee5f54e649ed1c091b151f815592b43cb15e2d1e7af393905",
+     "sha256": "d3735e3710bcd843fa674e41195e8622f36ae6bbaeda838ba56ab10541767a55",
      "remote": "~/binance/data/vector_direct/mac_positions_crypto.json"
     }
    ],
@@ -48,7 +48,7 @@
   },
   "stocks": {
    "local": "/Users/niels/Documents/binance/data/vector_direct/mac_positions_stocks.json",
-   "sha256": "f3a11f10b3165473574aa24c074f8f7c31d4f5a4a9104c87bb77f60af9d5ccf1",
+   "sha256": "ef45eead100336fc1dd4abfbd4f1c45aec9ae1e9d96239bf18f1aeecb8fd03cd",
    "held_total": 3,
    "sides": [
     "GILD_LONG",
@@ -61,34 +61,33 @@
      "host": "s5",
      "tree": "binance",
      "ok": true,
-     "sha256": "f3a11f10b3165473574aa24c074f8f7c31d4f5a4a9104c87bb77f60af9d5ccf1",
+     "sha256": "ef45eead100336fc1dd4abfbd4f1c45aec9ae1e9d96239bf18f1aeecb8fd03cd",
      "remote": "~/binance/data/vector_direct/mac_positions_stocks.json"
     },
     {
      "host": "s5",
      "tree": "trc7d_root",
-     "ok": true,
-     "sha256": "f3a11f10b3165473574aa24c074f8f7c31d4f5a4a9104c87bb77f60af9d5ccf1",
+     "ok": false,
+     "error": "CalledProcessError: Connection timed out during banner exchange\r\nConnection to UNKNOWN port 65535 timed out\r\n",
      "remote": "~/trc7d_root/data/vector_direct/mac_positions_stocks.json"
     },
     {
      "host": "niels@10.0.0.5",
      "tree": "binance",
      "ok": true,
-     "sha256": "f3a11f10b3165473574aa24c074f8f7c31d4f5a4a9104c87bb77f60af9d5ccf1",
+     "sha256": "ef45eead100336fc1dd4abfbd4f1c45aec9ae1e9d96239bf18f1aeecb8fd03cd",
      "remote": "~/binance/data/vector_direct/mac_positions_stocks.json"
     },
     {
      "host": "niels@10.0.0.5",
      "tree": "trc7d_root",
-     "ok": true,
-     "sha256": "f3a11f10b3165473574aa24c074f8f7c31d4f5a4a9104c87bb77f60af9d5ccf1",
+     "ok": false,
+     "error": "CalledProcessError: Connection timed out during banner exchange\r\nConnection to UNKNOWN port 65535 timed out\r\n",
      "remote": "~/trc7d_root/data/vector_direct/mac_positions_stocks.json"
     }
    ],
    "delivered": [
-    "binance",
-    "trc7d_root"
+    "binance"
    ],
    "ok": true
   }

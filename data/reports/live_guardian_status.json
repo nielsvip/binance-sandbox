@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-30T21:33:23Z",
+ "ts": "2026-10-30T21:43:36Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 1,
    "open_positions": 1,
-   "unrealised_usd": 0.12,
+   "unrealised_usd": 0.1,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -126,74 +126,67 @@
    "pids": [
     "75350"
    ],
-   "starts_30m": 2,
-   "log_age_s": 124.0
+   "starts_30m": 1,
+   "log_age_s": 9.0
   },
   "men": {
    "pids": [
     "59391"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 2.0
   },
   "ang": {
    "pids": [
     "60082"
    ],
    "starts_30m": 1,
-   "log_age_s": 1133.0
+   "log_age_s": 1745.0
   },
   "inf": {
    "pids": [
     "64156"
    ],
    "starts_30m": 1,
-   "log_age_s": 26.0
+   "log_age_s": 5.0
   },
   "flz": {
    "pids": [
     "70377"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 1.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 9096.0
+   "log_age_s": 9708.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 10510.0
+   "log_age_s": 11122.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-30T21:33:23Z",
+   "ts": "2026-10-30T21:43:36Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "men:EIGENUSDT_SHORT",
    "evidence": "30 21:29:01 - WARNING - [men] [REENTRY_GRANDFATHERED] men:EIGENUSDT_SHORT: bypass MAX_ORDER_VALUE $20 / MAX_POSITION_SIZE $20 \u2014 restoring $9 on bounce (prior max 109.3000)"
   },
   {
-   "ts": "2026-10-30T21:33:24Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 124s"
-  },
-  {
-   "ts": "2026-10-30T21:33:24Z",
+   "ts": "2026-10-30T21:43:37Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 1133s"
+   "evidence": "ez_manage_ang.log not written for 1745s"
   }
  ],
  "alert_counts": {
   "CAP_BYPASS": 1,
-  "STALE_LOG": 2
+  "STALE_LOG": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -239,5 +232,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.15
+ "sweep_s": 0.81
 }

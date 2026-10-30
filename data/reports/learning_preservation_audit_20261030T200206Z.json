@@ -1,5 +1,5 @@
 {
-  "audit_at_utc": "2026-10-30T21:21:38Z",
+  "audit_at_utc": "2026-10-30T21:33:06Z",
   "scope": "non-destructive corpus preservation evidence; fleet retirement not approved",
   "external_storage": {
     "WD25": {
@@ -126,7 +126,8 @@
   "next_copy": {
     "source": "s6:/home/niels/v20_u4/full/data/learn/",
     "destination": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/full_data_learn/",
-    "status": "queued; 1.7G; absent on S5; no symlinks; wait until TOSHIBA and shared USB hub are idle"
+    "status": "in progress, rsync session 95115 resumed from retained partial; about 193MB transferred at last poll; no delete; not yet verified",
+    "initial_attempt": "own rsync session 29160 briefly ran then was intentionally interrupted after lsof showed new TOSHIBA system metadata readers; retained partial and resumed once after parent directed avoiding unmount/force and continuing read-only-access preservation"
   },
   "s6_v20_u4_spills_copy": {
     "source": "s6:/home/niels/v20_u4/spills/",
@@ -145,7 +146,8 @@
     "mount_read_only": "No (diskutil info says volume writable)",
     "active_external_reader": "PID 22872 rsync -rltDv --partial to Storage Box; lsof shows volume cwd and one file read-only descriptor. Process observed at 04:01 elapsed; left untouched.",
     "our_access": "metadata-only ls and bounded find to maxdepth 3; no writes, repair, fsck, or unmount/remount",
-    "inventory": "partial; manifests under binance_archive/data and eval_cache; full read-only inventory deferred until external reader exits and a true read-only mount can be used"
+    "inventory": "partial; manifests under binance_archive/data and eval_cache; full read-only inventory deferred until external reader exits and a true read-only mount can be used",
+    "unmount_attempt": "timeout 20 diskutil unmount /dev/disk5s1 returned diskutil interrupted; mount remains active; subsequent diskutil info hung and was cancelled; no force/repair/fsck"
   },
   "last_promoted_nn_baseline": {
     "candidate": "S2 /home/niels/v15_bench/gate/candidates/20261022T235810Z/meta.json",
@@ -208,5 +210,69 @@
     },
     "live_worker_files": "S1/S5/S6 flat tools/v18_data_brain_* and tools/v18_data_learn_digest_* have different MD5 values from promoted baseline and match one another across hosts; do not treat them as promoted proof.",
     "candidate_payload": "only meta.json remains in S2 candidate directory; candidate file payloads absent"
+  },
+  "historical_progress_source_evidence": {
+    "index": "data/brain_scratch/spill_boards/progress_index_macboards.json",
+    "index_bytes": 118487,
+    "index_records": 413,
+    "index_sha256": "66057b861be35bd7606b9d5beb6c4c9ab0b15a5c7fa2e63c01135430db20747c",
+    "extractor_report": "data/brain_scratch/spill_boards/extract_progress_macboards_20261022T191139Z_20496_443715.json",
+    "extractor_at": "2026-10-22T19:13:15Z",
+    "extractor_source": "data/reports/lifecycle_pilot/*_v14_progress.json",
+    "extractor_sha256": "e18cdde68b66b6ba7f3132557d98edb548e9f204b4ecf66285d24b45d1c6e449",
+    "sample_progress_jsons": [
+      {
+        "cat_side": "STOCKS_LONG",
+        "path": "data/reports/lifecycle_pilot/AAPL_LONG_v14_progress.json",
+        "rows": 2163,
+        "done_npz_tag": "ts1791290700.0_n41756",
+        "all_rows_tagged": true,
+        "sha256": "e3233ace2348b0a3208ebb787d20bbf1f99531a22116251afd4c1a1f19b8256a",
+        "top_npz_id": {
+          "ts_last": 1791290700.0,
+          "n": 41756,
+          "md5": "178231276e05a3aaca0db4bbde172e05"
+        }
+      },
+      {
+        "cat_side": "STOCKS_SHORT",
+        "path": "data/reports/lifecycle_pilot/AAPL_SHORT_v14_progress.json",
+        "rows": 3358,
+        "done_npz_tag": "ts1791416700.0_n41864",
+        "all_rows_tagged": true,
+        "sha256": "feb7fd2b6fd53df7626779387901907b5ee7e74beda72eeccb353873e1cb27e8",
+        "top_npz_id": {
+          "ts_last": 1791416700.0,
+          "n": 41864,
+          "md5": "46ebbdf65cb94beb2e96619b1ee36877"
+        }
+      },
+      {
+        "cat_side": "CRYPTO_LONG",
+        "path": "data/reports/lifecycle_pilot/BTCUSDC_LONG_v14_progress.json",
+        "rows": 3248,
+        "done_npz_tag": "ts1791332100.0_n39157",
+        "all_rows_tagged": true,
+        "sha256": "588585fe720cf7608d78fb24a725c80b95fa163b165f89a8c8520fba9e9d12ff",
+        "top_npz_id": {
+          "ts_last": 1791332100.0,
+          "n": 39157
+        }
+      },
+      {
+        "cat_side": "CRYPTO_SHORT",
+        "path": "data/reports/lifecycle_pilot/BTCUSDC_SHORT_v14_progress.json",
+        "rows": 3196,
+        "done_npz_tag": "ts1791644400.0_n39504",
+        "all_rows_tagged": true,
+        "sha256": "ee84cad0ab898588111ddb5ffe3d3fb47f5a60f7171a765d71164b74c3c565b9",
+        "top_npz_id": {
+          "ts_last": 1791644400.0,
+          "n": 39504,
+          "md5": "4a68234f1953642d0daad0894ff82ab3"
+        }
+      }
+    ],
+    "interpretation": "Explicit per-row done[*].npz values were parsed; these four sampled sources all predate their category gate cutoff. Index/file mtime was not treated as NPZ freshness. Sample does not establish all eligible rows."
   }
 }

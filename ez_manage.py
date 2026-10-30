@@ -33816,6 +33816,20 @@ class MultiAccountTradeManager:
         except Exception:
             _mandatory_loss_stop = False
             _net_exit_ok = lambda gross, fee: False
+        # Apply daily WT exit veto at the final order gate, including QUICK_CLOSE
+        # orders that skip execute_trade_action's quantity-calculation branch.
+        if _is_exit and not _mandatory_loss_stop and bool(_psym_get(symbol, position_side, "HTF_TREND_VETO_ON_REDUCE_ENABLED", getattr(config, "HTF_TREND_VETO_ON_REDUCE_ENABLED", False))):
+            try:
+                _hvr_final_ind = await ii(self, symbol) or {}
+                _hvr_final_w1 = safe_fetch_float(_hvr_final_ind.get("wt1_D"), 0.0)
+                _hvr_final_w2 = safe_fetch_float(_hvr_final_ind.get("wt2_D"), 0.0)
+                _hvr_final_long = str(position_side or "").upper() == "LONG"
+                if abs(_hvr_final_w1) > 1e-9 and abs(_hvr_final_w2) > 1e-9 and ((_hvr_final_long and _hvr_final_w1 > _hvr_final_w2) or (not _hvr_final_long and _hvr_final_w1 < _hvr_final_w2)):
+                    logger.warning(f"[HTF_TREND_VETO_ON_REDUCE] {position_key}: BLOCKED action={action} wt1_D={_hvr_final_w1:.2f} wt2_D={_hvr_final_w2:.2f} reason={(reason or '')[:80]}")
+                    return "BLOCKED_HTF_TREND_VETO_ON_REDUCE"
+            except Exception as _hvr_final_error:
+                logger.error(f"[HTF_TREND_VETO_ON_REDUCE] {position_key}: final check failed: {_hvr_final_error}")
+                return "BLOCKED_HTF_TREND_VETO_ERROR"
         from live_twins.vector_exit_authority import current_vector_exit as _verified_vector_exit
         if _is_exit and not _mandatory_loss_stop and not _verified_vector_exit(position_key) and _exit_action not in ("PLACE_STOP", "CANCEL_STOP"):
             _exit_pos = None
