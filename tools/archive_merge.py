@@ -69,7 +69,7 @@ def merge_one(delta_path, sym, tip):
         merged = delta
     tmp = target.with_name("." + target.name + ".merge")
     with open(tmp, "wb") as fh:
-        np.savez(fh, **merged)
+        np.savez_compressed(fh, **merged)
     with np.load(tmp, allow_pickle=True) as chk:
         mts = chk["timestamps"].astype("int64")
         if int(mts[-1]) != tip or np.any(np.diff(mts) <= 0):
