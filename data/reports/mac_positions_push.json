@@ -1,10 +1,10 @@
 {
- "epoch": 1793392193.131192,
- "written_at": "2026-10-30T20:29:53.131194Z",
+ "epoch": 1793392489.61924,
+ "written_at": "2026-10-30T20:34:49.619241Z",
  "venues": {
   "crypto": {
    "local": "/Users/niels/Documents/binance/data/vector_direct/mac_positions_crypto.json",
-   "sha256": "5e663f8541301f0218a4aaba91bfc6566bde47a63120d0e5a7e740e819eda8a5",
+   "sha256": "9e92e442c261ff0b4ddf788338a7d05a02f9219afbbe47637525ba137e9d1f6f",
    "held_total": 6,
    "sides": [
     "1MBABYDOGEUSDT_SHORT",
@@ -18,40 +18,38 @@
     {
      "host": "s1-int",
      "tree": "binance",
-     "ok": true,
-     "sha256": "5e663f8541301f0218a4aaba91bfc6566bde47a63120d0e5a7e740e819eda8a5",
+     "ok": false,
+     "error": "CalledProcessError: ssh_s1_connect: every S1 path failed in 9.1s: v4-fip-fsn:timeout v4-primary:timeout v6:No route to host v4-fip-nbg:timeout gw-private:closed-before-banner s2-pr",
      "remote": "~/binance/data/vector_direct/mac_positions_crypto.json"
     },
     {
      "host": "s1-pub",
      "tree": "binance",
      "ok": false,
-     "error": "CalledProcessError: Connection closed by 157.180.125.52 port 22\r\n",
+     "error": "CalledProcessError: ssh_s1_connect: every S1 path failed in 9.0s: v4-fip-fsn:timeout v4-primary:timeout v6:No route to host v4-fip-nbg:timeout gw-private:closed-before-banner s2-pr",
      "remote": "~/binance/data/vector_direct/mac_positions_crypto.json"
     },
     {
      "host": "s1",
      "tree": "binance",
-     "ok": true,
-     "sha256": "5e663f8541301f0218a4aaba91bfc6566bde47a63120d0e5a7e740e819eda8a5",
+     "ok": false,
+     "error": "CalledProcessError: ssh_s1_connect: every S1 path failed in 9.0s: v4-fip-fsn:timeout v4-primary:timeout v6:No route to host v4-fip-nbg:timeout gw-private:closed-before-banner s2-pr",
      "remote": "~/binance/data/vector_direct/mac_positions_crypto.json"
     },
     {
      "host": "niels@10.0.0.3",
      "tree": "binance",
-     "ok": true,
-     "sha256": "5e663f8541301f0218a4aaba91bfc6566bde47a63120d0e5a7e740e819eda8a5",
+     "ok": false,
+     "error": "CalledProcessError: ssh_s1_connect: every S1 path failed in 9.1s: v4-fip-fsn:timeout v4-primary:timeout v6:No route to host v4-fip-nbg:timeout gw-private:closed-before-banner s2-pr",
      "remote": "~/binance/data/vector_direct/mac_positions_crypto.json"
     }
    ],
-   "delivered": [
-    "binance"
-   ],
-   "ok": true
+   "delivered": [],
+   "ok": false
   },
   "stocks": {
    "local": "/Users/niels/Documents/binance/data/vector_direct/mac_positions_stocks.json",
-   "sha256": "3c136de0decf7fa69a7fc3a9848075a09987269323ddee50dcdf53c632a5696d",
+   "sha256": "1ac453c09fee965625414f6b841fa54a2e55445fc58670ac354573578353ae8b",
    "held_total": 3,
    "sides": [
     "GILD_LONG",
@@ -63,37 +61,34 @@
     {
      "host": "s5",
      "tree": "binance",
-     "ok": true,
-     "sha256": "3c136de0decf7fa69a7fc3a9848075a09987269323ddee50dcdf53c632a5696d",
+     "ok": false,
+     "error": "CalledProcessError: Connection timed out during banner exchange\r\nConnection to UNKNOWN port 65535 timed out\r\n",
      "remote": "~/binance/data/vector_direct/mac_positions_stocks.json"
     },
     {
      "host": "s5",
      "tree": "trc7d_root",
-     "ok": true,
-     "sha256": "3c136de0decf7fa69a7fc3a9848075a09987269323ddee50dcdf53c632a5696d",
+     "ok": false,
+     "error": "CalledProcessError: Connection timed out during banner exchange\r\nConnection to UNKNOWN port 65535 timed out\r\n",
      "remote": "~/trc7d_root/data/vector_direct/mac_positions_stocks.json"
     },
     {
      "host": "niels@10.0.0.5",
      "tree": "binance",
-     "ok": true,
-     "sha256": "3c136de0decf7fa69a7fc3a9848075a09987269323ddee50dcdf53c632a5696d",
+     "ok": false,
+     "error": "CalledProcessError: Connection timed out during banner exchange\r\nConnection to UNKNOWN port 65535 timed out\r\n",
      "remote": "~/binance/data/vector_direct/mac_positions_stocks.json"
     },
     {
      "host": "niels@10.0.0.5",
      "tree": "trc7d_root",
-     "ok": true,
-     "sha256": "3c136de0decf7fa69a7fc3a9848075a09987269323ddee50dcdf53c632a5696d",
+     "ok": false,
+     "error": "CalledProcessError: Connection timed out during banner exchange\r\nConnection to UNKNOWN port 65535 timed out\r\n",
      "remote": "~/trc7d_root/data/vector_direct/mac_positions_stocks.json"
     }
    ],
-   "delivered": [
-    "binance",
-    "trc7d_root"
-   ],
-   "ok": true
+   "delivered": [],
+   "ok": false
   }
  }
 }

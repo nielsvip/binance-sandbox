@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-30T20:30:34Z",
+ "ts": "2026-10-30T20:35:35Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 0,
+   "fills_6h": 1,
    "open_positions": 1,
-   "unrealised_usd": 0.07,
+   "unrealised_usd": 0.06,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 0,
+   "fills_6h": 1,
    "open_positions": 2,
-   "unrealised_usd": -0.77,
+   "unrealised_usd": -0.81,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 1,
    "open_positions": 2,
-   "unrealised_usd": 0.26,
+   "unrealised_usd": 0.25,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 0,
    "open_positions": 1,
-   "unrealised_usd": -0.14,
+   "unrealised_usd": -0.16,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,54 +127,54 @@
     "60398"
    ],
    "starts_30m": 1,
-   "log_age_s": 1356.0
+   "log_age_s": 283.0
   },
   "men": {
    "pids": [
     "59391"
    ],
    "starts_30m": 1,
-   "log_age_s": 9.0
+   "log_age_s": 4.0
   },
   "ang": {
    "pids": [
     "60082"
    ],
    "starts_30m": 1,
-   "log_age_s": 12.0
+   "log_age_s": 79.0
   },
   "inf": {
    "pids": [
     "64156"
    ],
    "starts_30m": 1,
-   "log_age_s": -0.0
+   "log_age_s": 9.0
   },
   "flz": {
    "pids": [
     "70377"
    ],
    "starts_30m": 1,
-   "log_age_s": 6.0
+   "log_age_s": 1.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 5326.0
+   "log_age_s": 5627.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 6741.0
+   "log_age_s": 7042.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-30T20:30:35Z",
+   "ts": "2026-10-30T20:35:36Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 1356s"
+   "evidence": "ez_manage_fin.log not written for 283s"
   }
  ],
  "alert_counts": {
