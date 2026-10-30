@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-30T18:19:51Z",
+ "ts": "2026-10-30T18:24:57Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -122,13 +122,13 @@
  "tradeable_guard": {
   "poison": false,
   "restored": false,
-  "total": 188,
+  "total": 191,
   "per_acct": {
    "men": 36,
    "ang": 89,
    "fin": 36,
    "flz": 26,
-   "inf": 1
+   "inf": 4
   }
  },
  "reconcile": {},
@@ -138,49 +138,49 @@
     "15395"
    ],
    "starts_30m": 1,
-   "log_age_s": 24.0
+   "log_age_s": 0.0
   },
   "men": {
    "pids": [
     "14728"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 6.0
   },
   "ang": {
    "pids": [
     "13630"
    ],
    "starts_30m": 1,
-   "log_age_s": 5.0
+   "log_age_s": 2.0
   },
   "inf": {
    "pids": [
     "14141"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 1.0
   },
   "flz": {
    "pids": [
     "14468"
    ],
    "starts_30m": 1,
-   "log_age_s": 10.0
+   "log_age_s": 6.0
   },
   "trb": {
    "pids": [
     "13227"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 2.0
   },
   "trc": {
    "pids": [
     "13411"
    ],
    "starts_30m": 1,
-   "log_age_s": -0.0
+   "log_age_s": 1.0
   }
  },
  "alerts": [],
@@ -236,5 +236,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.69
+ "sweep_s": 1.25
 }
