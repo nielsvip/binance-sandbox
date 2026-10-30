@@ -1,0 +1,30 @@
+{
+  "tested_at_utc": "2026-10-30T19:57:36.923787+00:00",
+  "patch": "/Users/niels/Documents/binance/data/reports/nextgen_60d_candidate.patch",
+  "patch_sha256": "58c438de0fec60ae364d4cfbe28db8e3a529008054bf1268d6564c776d9be8d2",
+  "source_preimage_sha256": {
+    "tools/opt/evaluate_v12.py": "555ecba9821093f54079d97ff4863f2b904ba7f552207ca702345797a443f0f5",
+    "v15_pilot.py": "3588e3b2168540eede250ae65d6d19e42020d03dd7d0d30f42ff5f527e4aa5d6",
+    "tools/v15_npz_bench.py": "966605762611be4fef15b70cd332c9bf39c75f767902abba4c940f60aceadb11"
+  },
+  "checks": [
+    "patch_applies_to_temporary_copies_only",
+    "three_candidate_sources_compile",
+    "crypto_30_calendar_days_exact_aligned",
+    "crypto_60_calendar_days_exact_aligned",
+    "stocks_30_sessions_exact",
+    "stocks_60_sessions_exact",
+    "stocks_insufficient_sessions_refused",
+    "isolated_output_and_source_hash_accepted",
+    "V15_60D_SOURCE_SHA256_invalid_refused",
+    "V15_OUT_DIR_invalid_refused",
+    "original_sources_unchanged"
+  ],
+  "status": "PASS",
+  "limits": [
+    "No actual engine backtest, board fill or scheduler dry-run executed",
+    "Scheduler remains 30D only",
+    "Stock 60D follows existing session semantics: 60 trading sessions",
+    "No production files changed or deployed"
+  ]
+}

@@ -352,12 +352,31 @@ def compress(host: str, paths: list, apply: bool) -> dict:
     return out
 
 
+def corpus_provenance(report: dict) -> dict:
+    per = report.get("per_cat_side") or {}
+    observed = {}
+    for cat_side, evidence in per.items():
+        raw = evidence.get("last_ts")
+        if not raw and not (evidence.get("counters") or {}).get("rows"):
+            continue
+        try:
+            value = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+            if value.tzinfo is None or value.year < 1970:
+                raise ValueError("missing timezone or sentinel date")
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"unknown corpus timestamp for {cat_side}: {raw!r}") from exc
+        observed[cat_side] = value.astimezone(timezone.utc)
+    if not observed:
+        raise ValueError("no observed corpus timestamps in training report")
+    return {"global_corpus_last_ts": max(observed.values()).isoformat(timespec="microseconds").replace("+00:00", "Z"), "corpus_last_ts_by_cat_side": {key: value.isoformat(timespec="microseconds").replace("+00:00", "Z") for key, value in observed.items()}, "corpus_timestamp_source": "v18_brain_report.per_cat_side.last_ts", "corpus_coverage": "latest observed events; not proof of source completeness"}
+
+
 def train(orchestrator: str, hosts: list) -> dict:
     """Union train + export over EVERY spill on the orchestrator, then the MANIFEST that records what is absorbed.
 
-    Absorbing without training changes nothing the pilot reads: the heads only learn here. The cut is q80 of board
-    times, matching the published contract, so the held-out slice stays chronological and the AUCs stay comparable
-    with the v3u3 run. The MANIFEST is what the PURGE GATE reads for test 1, so it is written only on a clean train.
+    Absorbing without training changes nothing the pilot reads: the heads only learn here. The cut is now minus
+    V18_CUT_DAYS (default 3); post-cut metrics are chronological predict-before-learn diagnostics, not a frozen
+    model holdout. The MANIFEST is what the PURGE GATE reads, so it requires observed event provenance.
     """
     # A union train sorts every spill through a temp dir. Starting one on a host that is nearly full does not fail
     # cleanly: sort dies with exit 2 part-way, the run dir is left behind, and the host is now even fuller. Refuse
@@ -388,10 +407,19 @@ def train(orchestrator: str, hosts: list) -> dict:
         log(f"train_{name}", orchestrator=orchestrator, rc=result.returncode, run_dir=run_dir, tail=tail, error=(result.stderr[-300:].strip() if result.returncode else ""))
         if result.returncode:
             return {"ok": False, "step": name, "run_dir": run_dir}
+    result = sh(orchestrator, f"cat {run_dir}/brain_state/v18_brain_report.json", timeout=120)
+    try:
+        if result.returncode:
+            raise ValueError("training report could not be read")
+        provenance = corpus_provenance(json.loads(result.stdout))
+    except (ValueError, TypeError, AttributeError) as exc:
+        log("train_manifest_refused", orchestrator=orchestrator, run_dir=run_dir, why=str(exc))
+        return {"ok": False, "step": "provenance", "run_dir": run_dir, "why": str(exc)}
     manifest = {
         "built": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        "trained_at": datetime.now(timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z"),
         "kind": f"AUTO absorption cycle on {orchestrator} (tools/v20_absorb_cycle.py)",
-        "global_corpus_last_ts": datetime.now(timezone.utc).isoformat(),
+        **provenance,
         "sources": [f"{host}auto(logs+progress, watermarked incremental)" for host in hosts],
         "run_dir": run_dir,
     }

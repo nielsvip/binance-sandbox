@@ -887,8 +887,7 @@ def loss_grad(out, Y, M, lam=(1.0, 0.5, 0.2, 0.2, 0.2, 1.0)):
 # ------------------------------------------------------------------------------------------------ metrics
 
 def fit_platt(p, y, iters=50):
-    """Platt scaling on logit(p): -> (a, b) with P = sigmoid(a * logit(p) + b), Newton steps on the log-loss. Fitted on the
-    HELD-OUT boards of the refit model (never on its own training rows)."""
+    """Platt scaling on logit(p): -> (a, b) with P = sigmoid(a * logit(p) + b), Newton steps on the log-loss."""
     p = np.clip(np.asarray(p, np.float64), 1e-7, 1 - 1e-7)
     y = np.asarray(y, np.float64)
     if len(p) < 50 or y.sum() < 5 or y.sum() > len(y) - 5:
@@ -905,6 +904,21 @@ def fit_platt(p, y, iters=50):
         if np.abs(step).max() < 1e-8:
             break
     return float(a), float(b)
+
+
+def validation_platt(scores, dataset, validation_rows, test_rows):
+    if np.intersect1d(validation_rows, test_rows).size:
+        raise ValueError("calibration rows overlap test rows")
+    kind = dataset["kind"][validation_rows]
+    labels = dataset["y"][validation_rows].astype(np.float64)
+    return {name: {kn: fit_platt(prob[kind == kv], labels[kind == kv]) for kn, kv in (("R", 0), ("F", 1))} for name, prob in scores.items()}
+
+
+def require_validation_platt(report):
+    calibration = report.get("platt_on_validation")
+    if not calibration or not report.get("calibration_source"):
+        raise ValueError("LinkNet calibration provenance missing or legacy test-fitted calibration; retrain matched models, report and production artifacts")
+    return calibration
 
 
 def apply_platt(p, ab):
@@ -1268,11 +1282,10 @@ class Trainer:
             if sel.sum():
                 cal.append({"decile": i + 1, "n": int(sel.sum()), "mean_pred": round(float(p_ln[sel].mean()), 5), "realised": round(float(y[sel].mean()), 5)})
         res["calibration_deciles"] = cal
-        platt = {}
-        for kn, kv in (("R", 0), ("F", 1)):
-            sel = kind == kv
-            platt[kn] = fit_platt(p_ln[sel], y[sel])
+        val_scores = {"linknet": sigmoid(self.predict(net_es, val_rows)[:, 0])}
+        platt = validation_platt(val_scores, D, val_rows, test_rows)["linknet"]
         rep["platt"] = platt
+        rep["calibration_source"] = "chronological validation; early-stop model predictions; transferred to refit model"
         pc = np.where(kind == 0, apply_platt(p_ln, platt["R"]), apply_platt(p_ln, platt["F"]))
         cal2 = []
         qs2 = np.quantile(pc, np.linspace(0, 1, 11))
@@ -1280,7 +1293,7 @@ class Trainer:
             sel = (pc >= qs2[i]) & ((pc < qs2[i + 1]) if i < 9 else (pc <= qs2[i + 1]))
             if sel.sum():
                 cal2.append({"decile": i + 1, "n": int(sel.sum()), "mean_pred": round(float(pc[sel].mean()), 5), "realised": round(float(y[sel].mean()), 5)})
-        res["calibration_deciles_after_platt_fitted_on_this_holdout"] = cal2
+        res["calibration_deciles_after_validation_platt"] = cal2
         res["mean_pred_vs_realised"] = {"mean_pred": round(float(p_ln.mean()), 5), "realised": round(float(y.mean()), 5)}
         # phase evals held out by time
         ph_rows = idx_all[sp["test_ph"]]
@@ -1750,7 +1763,7 @@ class Trainer2(Trainer):
         kind = D["kind"][test_rows]
         y = D["y"][test_rows].astype(np.float64)
         d = D["d"][test_rows].astype(np.float64)
-        platt = {s_: {kn: fit_platt(sc_t[s_][kind == kv], y[kind == kv]) for kn, kv in (("R", 0), ("F", 1))} for s_ in SCORERS}
+        platt = validation_platt(sc_v, D, val_rows, test_rows)
         heads = {}
         for nm, o in (("v1", o1), ("v2", o2)):
             hb = {}
@@ -1781,7 +1794,7 @@ class Trainer2(Trainer):
                "n_pre_test": int(len(pre_rows)), "n_test": int(len(test_rows)), "boards_test": int(len(np.unique(D["board_i"][test_rows]))),
                "validation": val_tab, "selection": {"rule": "best mean VALIDATION AUC (models early-stopped on fit < q70, counts from fit) over " + ", ".join(sel_used),
                                                     "mean_val_auc": sel_mean, "production_scorer": prod},
-               "test": test_tab, "platt_on_test": platt, "heads": heads, "PH_by_time": ph, "forward": fwd, "mean_pred_vs_realised_test": mean_pred}
+               "test": test_tab, "platt_on_validation": platt, "calibration_source": "chronological validation; early-stop model predictions; transferred to refit model", "heads": heads, "PH_by_time": ph, "forward": fwd, "mean_pred_vs_realised_test": mean_pred}
         return rep, ep, prod
 
     def final_v2(self, ep, which=("v1", "v2")):
@@ -1805,19 +1818,18 @@ GATE_SUBSETS = (("F", "never_tried_pair"), ("F", "never_tried_context"))
 def v1_gate(rep):
     """USER RULE (E8d brief): 'if v2 does not beat v1 on never-tried pairs or contexts, say so plainly and keep v1 as the scorer'.
     The validation-selected scorer stands only if it is v1-free OR its v2 form beats its v1 counterpart (v2 vs v1, hybrid_v2 vs
-    hybrid_v1) on the held-out boards in BOTH F never-tried pairs and F never-tried contexts; otherwise the v1 counterpart is the
-    production scorer. Writes the verdict into rep['selection'] and returns the production scorer. (The gate reads the test
-    numbers: the final choice is therefore not test-blind; stated in the report.)"""
+    hybrid_v1) on the validation boards in BOTH F never-tried pairs and F never-tried contexts; otherwise the v1 counterpart is the
+    production scorer. The chronological test is reserved for evaluation and never read by this gate."""
     sel = rep["selection"]
     chosen = sel.get("validation_choice") or sel["production_scorer"]
     sel["validation_choice"] = chosen
     v1c = V1_COUNTERPART.get(chosen)
-    verdict = {"rule": "v2-based choice kept only if it beats its v1 counterpart on the held-out boards in BOTH " + ", ".join(f"{k}/{n}" for k, n in GATE_SUBSETS)}
+    verdict = {"rule": "v2-based choice kept only if it beats its v1 counterpart on the validation boards in BOTH " + ", ".join(f"{k}/{n}" for k, n in GATE_SUBSETS), "selection_source": "chronological validation only", "test_used_for_selection": False}
     prod = chosen
     if v1c is not None:
         cmp_ = {}
         for kn, nm in GATE_SUBSETS:
-            b = rep["test"][kn][nm]
+            b = ((rep.get("validation") or {}).get(kn) or {}).get(nm) or {}
             cmp_[f"{kn}/{nm}"] = {chosen: b.get(f"auc_{chosen}"), v1c: b.get(f"auc_{v1c}"), "n": b.get("n"), "pos": b.get("pos")}
         beats = all((c[chosen] is not None and c[v1c] is not None and c[chosen] > c[v1c]) for c in cmp_.values())
         verdict.update({"compare": cmp_, "v2_beats_v1": beats})
@@ -1839,6 +1851,7 @@ def cmd_redecide(a):
         out_dir = Path(a.ds_dir)
         rp = out_dir / f"report_v2_{cs}.json"
         rep = json.loads(rp.read_text())
+        require_validation_platt(rep)
         prod = v1_gate(rep)
         files = dict(rep.get("models") or {})
         if prod in ("v1", "hybrid_v1") and "v1" not in files:
@@ -1847,13 +1860,13 @@ def cmd_redecide(a):
             net, hist, secs = tr.final_v2(ep, which=("v1",))["v1"]
             meta = {"schema": SCHEMA2, "cat_side": cs, "net": "v1", "trained_at": utc_now(), "epochs": ep[0], "k": tr.k, "H": tr.H, "vocab": tr.fz.names, "xvocab": None,
                     "corpus_last_ts": VB.iso_of(float(tr.D["ts"].max())), "n_examples": int(len(tr.D["kind"])), "label": PRED_LABEL, "production_scorer": prod,
-                    "platt": rep["platt_on_test"].get(prod)}
+                    "platt": rep["platt_on_validation"].get(prod)}
             mp = out_dir / f"model_v1_{cs}.npz"
             net.save(mp, meta)
             files["v1"] = {"file": str(mp), "bytes": mp.stat().st_size, "n_params": int(sum(v.size for v in net.p.values())), "secs_final": secs, "final_history": hist}
         rep["models"] = files
         rp.write_text(json.dumps(rep, indent=1, default=str))
-        prod_doc = {"cat_side": cs, "production_scorer": prod, "selection": rep["selection"], "platt": rep["platt_on_test"].get(prod),
+        prod_doc = {"cat_side": cs, "production_scorer": prod, "selection": rep["selection"], "platt": rep["platt_on_validation"].get(prod),
                     "models": {k: v["file"] for k, v in files.items()}, "decided_at": utc_now(), "label": PRED_LABEL}
         (out_dir / f"production_{cs}.json").write_text(json.dumps(prod_doc, indent=1))
         write_status(cs, "trained_v2", production_scorer=prod, v1_gate=rep["selection"]["v1_gate"]["outcome"])
@@ -1888,7 +1901,7 @@ def train2_one(cs, ds_dir, fctx=None, log=_log, status=True, **kw):
         for nm, (net, hist, secs) in fin.items():
             meta = {"schema": SCHEMA2, "cat_side": cs, "net": nm, "trained_at": utc_now(), "epochs": ep[0 if nm == "v1" else 1], "k": tr.k, "H": tr.H,
                     "vocab": tr.fz.names, "xvocab": xv if nm == "v2" else None, "corpus_last_ts": VB.iso_of(float(D["ts"].max())),
-                    "n_examples": int(len(D["kind"])), "label": PRED_LABEL, "production_scorer": prod, "platt": rep["platt_on_test"].get(prod)}
+                    "n_examples": int(len(D["kind"])), "label": PRED_LABEL, "production_scorer": prod, "platt": rep["platt_on_validation"].get(prod)}
             mp = out_dir / f"model_{nm}_{cs}.npz"
             net.save(mp, meta)
             files[nm] = {"file": str(mp), "bytes": mp.stat().st_size, "n_params": int(sum(v.size for v in net.p.values())), "secs_final": secs, "final_history": hist}
@@ -1900,7 +1913,7 @@ def train2_one(cs, ds_dir, fctx=None, log=_log, status=True, **kw):
                                "pos": {kn: int(D["y"][D["kind"] == kv].sum()) for kn, kv in (("R", 0), ("F", 1), ("PH", 2))}}})
         rep["inherent_vs_genuine_negatives"] = inherent_report(tr.D, tr.K)
         (out_dir / f"report_v2_{cs}.json").write_text(json.dumps(rep, indent=1, default=str))
-        prod_doc = {"cat_side": cs, "production_scorer": prod, "selection": rep["selection"], "platt": rep["platt_on_test"].get(prod),
+        prod_doc = {"cat_side": cs, "production_scorer": prod, "selection": rep["selection"], "platt": rep["platt_on_validation"].get(prod),
                     "models": {k: v["file"] for k, v in files.items()}, "decided_at": utc_now(), "label": PRED_LABEL}
         (out_dir / f"production_{cs}.json").write_text(json.dumps(prod_doc, indent=1))
         T = rep["test"]
@@ -2613,6 +2626,10 @@ class Scorer2(Scorer):
             raise ValueError(f"production file of {pd.get('cat_side')} refused for {cs} (principle 13)")
         self.prod = pd["production_scorer"]
         self.platt = pd.get("platt") or {}
+        report = json.loads((Path(ds_dir) / f"report_v2_{cs}.json").read_text())
+        self.platt_all = require_validation_platt(report)
+        if self.platt != self.platt_all.get(self.prod):
+            raise ValueError("LinkNet production calibration differs from validation report; rebuild matched artifacts")
         self.net2, self.meta2 = LinkNet2.load(Path(ds_dir) / f"model_v2_{cs}.npz")
         if self.meta2.get("cat_side") != cs:
             raise ValueError(f"model of {self.meta2.get('cat_side')} refused for {cs} (principle 13)")
@@ -2632,10 +2649,6 @@ class Scorer2(Scorer):
                 self.fz.fctx.add_seen_values(sw, vals)
         self.unknown_feature_hits = collections.Counter()
         self.unknown_context_features = collections.Counter()
-        try:
-            self.platt_all = json.loads((Path(ds_dir) / f"report_v2_{cs}.json").read_text()).get("platt_on_test") or {}
-        except Exception:
-            self.platt_all = {}
         self.secondary = self.net1 is not None
 
     def evidence(self):

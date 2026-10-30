@@ -205,7 +205,7 @@ def ingest(
         f = rec.get("fill") or {}
         lk = f"{venue}:{rec.get('key')}"
         if not f.get("found") or not rec.get("final"):
-            if rec.get("ledger_status") == "SENT":
+            if rec.get("ledger_status") in ("SENT", "PROTECTED_OTO_SUBMITTED"):
                 pend.setdefault(
                     lk,
                     {

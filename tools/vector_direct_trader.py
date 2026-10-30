@@ -1539,7 +1539,7 @@ class Trader:
                         continue
                     stop_level = self.stops.entry_level(o, price)
                     response = self.broker.send_protected(acct, o, qty, stop_level)
-                    row.update({"status": "PROTECTED_OTO_SUBMITTED", "resp": response, "stop_level": stop_level, "final": False})
+                    row.update({"status": "PROTECTED_OTO_SUBMITTED", "resp": response, "stop_level": stop_level, "final": True})
                     self.done.add(o["key"])
                     self._ledger(row)
                     log(f"PROTECTED_OTO_SUBMITTED {acct} {o['ss']} {o['act']} qty={qty} limit={response['limit']} stop={stop_level} id={response['id']}")

@@ -418,7 +418,7 @@ def test_pair_with_context_ranks_untried_under_each_live_chain(tmp_path):
 def test_v1_gate_keeps_v1_unless_v2_beats_it_on_never_tried_pairs_and_contexts():
     def rep(pair2, pair1, ctx2, ctx1, choice="hybrid_v2"):
         return {"selection": {"production_scorer": choice},
-                "test": {"F": {"never_tried_pair": {"n": 10, "pos": 2, "auc_hybrid_v2": pair2, "auc_hybrid_v1": pair1, "auc_v2": pair2, "auc_v1": pair1},
+                "validation": {"F": {"never_tried_pair": {"n": 10, "pos": 2, "auc_hybrid_v2": pair2, "auc_hybrid_v1": pair1, "auc_v2": pair2, "auc_v1": pair1},
                                "never_tried_context": {"n": 10, "pos": 2, "auc_hybrid_v2": ctx2, "auc_hybrid_v1": ctx1, "auc_v2": ctx2, "auc_v1": ctx1}}}}
     r = rep(0.85, 0.84, 0.87, 0.88)
     assert LN.v1_gate(r) == "hybrid_v1" and r["selection"]["v1_gate"]["v2_beats_v1"] is False      # wins one, loses one -> v1

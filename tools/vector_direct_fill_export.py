@@ -363,7 +363,7 @@ def export(
     )
     for r in rows:
         status = r.get("status")
-        if status == "SENT":
+        if status in ("SENT", "PROTECTED_OTO_SUBMITTED"):
             stats["sent"] += 1
             response = r.get("resp") or {}
             oid = str(response.get("orderId") or (response.get("id") if venue == "stocks" else "") or "")
@@ -406,7 +406,7 @@ def export(
                 stats.setdefault("errors", []).append(
                     f"{r.get('acct')} {r.get('ss')}: {str(exc)[:120]}"
                 )
-        if status != "SENT" and not (cached or {}).get("found"):
+        if status not in ("SENT", "PROTECTED_OTO_SUBMITTED") and not (cached or {}).get("found"):
             continue
         fill = cached if (cached or {}).get("found") else None
         if fill is None or needs_resolve(cached):
