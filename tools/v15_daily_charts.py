@@ -18,6 +18,7 @@ import argparse
 import datetime
 import fcntl
 import glob
+import hashlib
 import html as _html
 import json
 import os
@@ -157,6 +158,25 @@ def npz_inventory(host: str, root: str) -> set:
     return {n[:-4] for n in r.stdout.split() if n.endswith(".npz")} if r.returncode == 0 else set()
 
 
+def deploy_worker() -> None:
+    """Every host must run the exact worker this Mac holds; a host that cannot be verified gets no jobs."""
+    src = ROOT / "tools" / "v15_daily_chart_worker.py"
+    want = hashlib.md5(src.read_bytes()).hexdigest()
+    for host in list(HOSTS):
+        got = ""
+        for _ in range(3):
+            try:
+                ssh(host, f"cat > {HOSTS[host]}/tools/v15_daily_chart_worker.py.tmp && mv {HOSTS[host]}/tools/v15_daily_chart_worker.py.tmp {HOSTS[host]}/tools/v15_daily_chart_worker.py", 120, src.read_text())
+                got = ssh(host, f"md5sum {HOSTS[host]}/tools/v15_daily_chart_worker.py", 60).stdout[:32]
+            except Exception as exc:
+                print(f"[daily-charts] deploy to {host} failed: {exc}", flush=True)
+            if got == want:
+                break
+        if got != want:
+            print(f"[daily-charts] {host} worker md5 {got or 'unreachable'} != {want} — host excluded this run", flush=True)
+            HOSTS.pop(host)
+
+
 def dispatch(boards: dict, run_id: str, procs: int) -> list:
     jobs = {h: [] for h in HOSTS}
     inv = {h: npz_inventory(h, r) for h, r in HOSTS.items()}
@@ -168,7 +188,7 @@ def dispatch(boards: dict, run_id: str, procs: int) -> list:
         symbol = symside.rsplit("_", 1)[0]
         hosts = [h for h in HOSTS if symbol in inv[h]]
         if not hosts:
-            board["error"] = f"NPZ {symbol}.npz on no worker ({', '.join(HOSTS)})"
+            board["error"] = f"NPZ {symbol}.npz on no verified worker ({', '.join(HOSTS) or 'none reachable'})"
             continue
         host = min(hosts, key=lambda h: len(jobs[h]))
         jobs[host].append({"symside": symside, "overrides": board["overrides"], "out_name": f"{symside}_30d_daily.html", "heading": f"{symside} — daily 30D recalculation of the published V15 set"})
@@ -358,11 +378,12 @@ def main() -> int:
     run_id = now.strftime("%Y%m%dT%H%M%SZ")
     only = {s.upper() for s in a.symside} if a.symside else None
     print(f"[daily-charts] run {run_id} start (slot {slot or 'manual'})", flush=True)
+    deploy_worker()
     boards = discover(only)
     resolve_remote(boards)
     print(f"[daily-charts] {len(boards)} sym_sides; set proven for {sum(1 for b in boards.values() if 'overrides' in b and 'error' not in b)}", flush=True)
-    for host in HOSTS:
-        subprocess.run(["rsync", "-a", str(ROOT / "tools" / "v15_daily_chart_worker.py"), f"{host}:{HOSTS[host]}/tools/"], timeout=120)
+    if not HOSTS:
+        print("[daily-charts] no verified worker host — every sym_side reported FAIL", flush=True)
     results = dispatch(boards, run_id, a.procs)
     manifest = publish(boards, results, run_id, started, partial=bool(only))
     if slot and not only:

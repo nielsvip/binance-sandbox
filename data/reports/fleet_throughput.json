@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-30T03:35:01.964625+00:00",
+  "ts": "2026-10-30T03:40:05.310882+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 2,
-  "pending_sym_sides": null,
+  "pending_sym_sides": 66,
   "hosts": {
     "s1": {
       "published_last_60m": 1,
@@ -12,16 +12,30 @@
       "boards_running": 0,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 10239,
+      "mem_avail_mb": 10706,
       "disk_free_gb": 15,
-      "load1": 7.6,
-      "dispatch_idle_why": null,
+      "load1": 5.7,
+      "dispatch_idle_why": "own venue work waits for memory (10891MB)",
       "published_ss": [
         "DOTUSDT_SHORT"
       ]
     },
     "s2": {
-      "unreachable": true
+      "published_last_60m": 0,
+      "published_last_3h": 2,
+      "boards": {
+        "XMRUSDT_LONG": 7,
+        "ZENUSDT_LONG": 7,
+        "ZROUSDT_LONG": 7
+      },
+      "boards_running": 3,
+      "workers": 21,
+      "workers_vs_law_28": "21/28",
+      "mem_avail_mb": 9386,
+      "disk_free_gb": 34,
+      "load1": 19.4,
+      "dispatch_idle_why": "full 3/3",
+      "published_ss": []
     },
     "s5": {
       "unreachable": true
@@ -30,15 +44,15 @@
       "published_last_60m": 1,
       "published_last_3h": 1,
       "boards": {
-        "BABA_SHORT": 0,
-        "VALE_SHORT": 7
+        "BABA_SHORT": 7,
+        "U_SHORT": 7
       },
       "boards_running": 2,
-      "workers": 7,
-      "workers_vs_law_28": "7/28",
-      "mem_avail_mb": 25700,
+      "workers": 14,
+      "workers_vs_law_28": "14/28",
+      "mem_avail_mb": 24287,
       "disk_free_gb": 6,
-      "load1": 7.3,
+      "load1": 7.6,
       "dispatch_idle_why": null,
       "published_ss": [
         "ASTS_SHORT"
@@ -46,9 +60,10 @@
     }
   },
   "alerts": [
-    "LOW_THROUGHPUT:s1:1/h<10 (idle_why=None)",
+    "LOW_THROUGHPUT:s1:1/h<10 (idle_why=own venue work waits for memory (10891MB))",
     "DISK_FLOOR:s1:15GB<40",
-    "UNREACHABLE:s2",
+    "LOW_THROUGHPUT:s2:0/h<10 (idle_why=full 3/3)",
+    "DISK_FLOOR:s2:34GB<40",
     "UNREACHABLE:s5",
     "LOW_THROUGHPUT:s6:1/h<10 (idle_why=None)",
     "DISK_FLOOR:s6:6GB<40"

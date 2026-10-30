@@ -91,12 +91,9 @@ def _et_minutes_raw(ts_arr):
 
 
 def rth_mask(ts_label, bar_minutes=15.0):
-    """True where the bar (label = bar open time) can act: Mon-Fri, from the 09:15 premarket bar (its close is the 09:30 open) to the last bar ending by 16:00 ET.
-
-    USER 2026-10-30: decisions are made at the bar close, so the trade for the bar that closes at 09:30 happens at 09:30. The 09:15 label is the first acting bar.
-    """
+    """True where the bar (label = bar open time) lies fully inside Mon-Fri 09:30-16:00 ET."""
     wd, m = _et_minutes(ts_label)
-    return (wd < 5) & (m >= 555.0) & (m + float(bar_minutes) <= 960.0)
+    return (wd < 5) & (m >= 570.0) & (m + float(bar_minutes) <= 960.0)
 
 
 def live_in_rth(weekday, minute_of_day):
