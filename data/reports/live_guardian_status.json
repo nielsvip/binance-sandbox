@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-30T06:35:14Z",
+ "ts": "2026-10-30T06:40:27Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 54,
    "open_positions": 3,
-   "unrealised_usd": -1.47,
+   "unrealised_usd": -1.51,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 1,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 93,
    "open_positions": 3,
-   "unrealised_usd": -0.19,
+   "unrealised_usd": -0.14,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 6,
@@ -80,8 +80,8 @@
    "unrealised_usd": 0.0,
    "pos_mismatch": 0,
    "vec_parity": {
-    "live_vec_decisions": 2,
-    "state_divergent": 1,
+    "live_vec_decisions": 1,
+    "state_divergent": 0,
     "filled": 0,
     "refused_non_safety": 1,
     "safety_refusals": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 16,
    "open_positions": 2,
-   "unrealised_usd": 0.25,
+   "unrealised_usd": 0.29,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,109 +127,110 @@
     "28889"
    ],
    "starts_30m": 1,
-   "log_age_s": 10.0
+   "log_age_s": 44.0
   },
   "men": {
    "pids": [
     "28781"
    ],
    "starts_30m": 1,
-   "log_age_s": 21.0
+   "log_age_s": 6.0
   },
   "ang": {
    "pids": [
     "28918"
    ],
    "starts_30m": 1,
-   "log_age_s": 16.0
+   "log_age_s": 240.0
   },
   "inf": {
    "pids": [
     "28566"
    ],
    "starts_30m": 1,
-   "log_age_s": 10.0
+   "log_age_s": 13.0
   },
   "flz": {
    "pids": [
     "28637"
    ],
    "starts_30m": 1,
-   "log_age_s": 8.0
+   "log_age_s": 3.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 5183.0
+   "log_age_s": 5496.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 5183.0
+   "log_age_s": 5496.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-30T06:35:16Z",
+   "ts": "2026-10-30T06:40:28Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "men:AWEUSDT_LONG",
    "evidence": "CLOSE PPL_SL_CLOSE_upgraded-scalp_px0.0698_sto bar=2026-10-30T05:15:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-30T06:35:17Z",
+   "ts": "2026-10-30T06:40:29Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "ang:ARKMUSDT_LONG",
    "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_LONG_px0.105700 decided 2026-10-30T01:55:00Z bar=2026-10-30T01:30:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-30T06:35:17Z",
+   "ts": "2026-10-30T06:40:29Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "ang:ARKMUSDT_LONG",
    "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_LONG_px0.105000 decided 2026-10-30T03:24:00Z bar=2026-10-30T02:45:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-30T06:35:17Z",
+   "ts": "2026-10-30T06:40:29Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "ang:ARKMUSDT_LONG",
    "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_LONG_px0.104100 decided 2026-10-30T03:24:07Z bar=2026-10-30T03:00:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-30T06:35:17Z",
+   "ts": "2026-10-30T06:40:29Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "ang:COTIUSDT_SHORT",
    "evidence": "AUGMENT HAIKU_WINNER_AUG_3.6pct decided 2026-10-30T04:24:57Z bar=2026-10-30T03:00:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-30T06:35:17Z",
+   "ts": "2026-10-30T06:40:29Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "ang:COTIUSDT_SHORT",
    "evidence": "CLOSE PPL_SL_CLOSE_upgraded-scalp_px0.0090_sto bar=2026-10-30T05:30:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-30T06:35:18Z",
-   "severity": "INFO",
-   "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
-   "key": "inf:1000PEPEUSDC_LONG",
-   "evidence": "CLOSE FIXED_STOP bar=2026-10-29T20:30:00Z: live already flat (state divergence, no order needed)"
-  },
-  {
-   "ts": "2026-10-30T06:35:18Z",
+   "ts": "2026-10-30T06:40:30Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "inf:ARUSDT_LONG",
    "evidence": "OPEN REENTRY_DC4_15M_BREAK bar=2026-10-30T03:30:00Z refused by non-safety gate: 30 03:53:52 - WARNING - [inf] [VEC_EXACT_EXPIRED] ARUSDT_LONG CLOSE FIXED_STOP bar=1793304000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-30T06:40:32Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "ang",
+   "evidence": "ez_manage_ang.log not written for 240s"
   }
  ],
  "alert_counts": {
-  "VEC_EXIT_WHILE_LIVE_FLAT": 3,
+  "VEC_EXIT_WHILE_LIVE_FLAT": 2,
   "VEC_DECISION_NOT_FILLED": 4,
-  "VEC_DECISION_REFUSED": 1
+  "VEC_DECISION_REFUSED": 1,
+  "STALE_LOG": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -275,5 +276,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 5.21
+ "sweep_s": 5.34
 }
