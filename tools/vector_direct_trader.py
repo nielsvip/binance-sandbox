@@ -143,6 +143,10 @@ HOLD_MAX_S = float(os.environ.get("VD_HOLD_MAX_S", "14400"))
 # USER 2026-10-29: "live trading has to be running 24/7 for crypto on s1 and 9:00-16:00 on s5 ... take out the pin".
 # S1/S5 own every account of their venue at all times: no takeover-on-Mac-health, no handback, no pin file.
 OWN_ALWAYS = os.environ.get("VD_OWN_ALWAYS", "1") == "1"
+# USER 2026-10-30: stocks plan from 08:45 ET (premarket bars feed the 7D); orders only from the 09:30 open; the last 90 min
+# (14:30 ET) the REBAL_ACCOUNTS long book is trimmed to REBAL_LONG_CAP at local tops (forced at 15:45 ET if still over).
+REBAL_LONG_CAP = float(os.environ.get("VD_REBAL_LONG_CAP", "2000"))
+REBAL_ACCOUNTS = tuple(x for x in os.environ.get("VD_REBAL_ACCOUNTS", "trb").split(",") if x)
 RELEASE_HEALTHY_S = float(os.environ.get("VD_RELEASE_HEALTHY_S", "600"))
 REPEAT_WINDOW_S = float(os.environ.get("VD_REPEAT_WINDOW_S", "7200"))
 STATE_MAX_LAG_S = float(os.environ.get("VD_STATE_MAX_LAG_S", "1800"))
@@ -709,7 +713,7 @@ class Tradier:
         # Clock is computed locally from New York time, never from the broker clock API (it dropped connections).
         from zoneinfo import ZoneInfo
         et = dt.datetime.now(dt.timezone.utc).astimezone(ZoneInfo("America/New_York"))
-        return et.weekday() < 5 and dt.time(9, 30) <= et.time() < dt.time(16, 0)
+        return et.weekday() < 5 and dt.time(8, 45) <= et.time() < dt.time(16, 0)
 
     def positions(self, acct):
         aid, _k, _b = self.account(acct)
@@ -1145,6 +1149,13 @@ class Trader:
                         self._ledger({"event": "NOTE", "acct": acct, "ss": ss, "note": n, "key": k, "final": True})
             # biggest open position first, then the rest of the tradeable keys
             orders.sort(key=lambda o: (0 if (pos.get(o["ss"]) or {}).get("qty") else 1, -float((pos.get(o["ss"]) or {}).get("qty") or 0) * float((pos.get(o["ss"]) or {}).get("price") or 0) or -float((pos.get(o["ss"]) or {}).get("cost") or 0), o["ss"]))
+            if self.venue == "stocks" and acct in REBAL_ACCOUNTS:
+                orders_ok, rebal_win, forced = self.rebal_phase()
+                if rebal_win and orders_ok:
+                    dropped = [o["ss"] for o in orders if o["act"] in ("OPEN", "AUGMENT")]
+                    orders = [o for o in orders if o["act"] not in ("OPEN", "AUGMENT")] + self.rebalance(acct, pos, bar, forced)
+                    if dropped:
+                        log(f"{acct} REBAL WINDOW: entries held back {dropped}")
             orders_n += self.send_orders(acct, orders, pos, killed)
         if consumed_dirty:
             try:
@@ -1213,8 +1224,69 @@ class Trader:
             log(f"entry_banned unavailable ({type(exc).__name__}): {'refusing' if self.venue == 'stocks' else 'allowing'} {acct} entries")
             return self.venue == "stocks"
 
+    def rebal_phase(self, now=None):
+        """(orders_ok, rebalance_window, forced) in New York time for the stock venue."""
+        from zoneinfo import ZoneInfo
+        t = dt.datetime.fromtimestamp(now or time.time(), dt.timezone.utc).astimezone(ZoneInfo("America/New_York"))
+        if t.weekday() >= 5:
+            return False, False, False
+        hm = (t.hour, t.minute)
+        return hm >= (9, 30), hm >= (14, 30), hm >= (15, 45)
+
+    def bar15(self, symbol):
+        """Last closed 15m bar of symbol from the host's NPZ tail sidecar (fields high_15m, low_15m, close_15m, dc_*_15m)."""
+        base = Path(self.a.npz_dir).expanduser() if self.a.npz_dir else Path(self.state_dir).parent.parent / "backtest_v8" / "indicators"
+        p = base / ".tail" / f"{symbol}.jsonl"
+        try:
+            with open(p, "rb") as fh:
+                fh.seek(max(0, p.stat().st_size - 8192))
+                last = [ln for ln in fh.read().decode("utf-8", "replace").splitlines() if ln.strip()][-1]
+            return json.loads(last)
+        except Exception:
+            return None
+
+    def at_local_extreme(self, symbol, side):
+        """side 'top': the last closed 15m bar made the channel high and turned down; 'bottom': channel low and turned up."""
+        b = self.bar15(symbol)
+        if not b:
+            return False
+        try:
+            if side == "top":
+                return float(b["high_15m"]) >= float(b["dc_high_15m"]) * 0.999 and float(b["close_15m"]) < float(b["close_15m_prev"])
+            return float(b["low_15m"]) <= float(b["dc_low_15m"]) * 1.001 and float(b["close_15m"]) > float(b["close_15m_prev"])
+        except (KeyError, TypeError, ValueError):
+            return False
+
+    def rebalance(self, acct, pos, bar, forced):
+        """Trim this account's long book to REBAL_LONG_CAP pro-rata with a one-share floor, only at a local top (or forced)."""
+        longs = {ss: p for ss, p in pos.items() if ss.endswith("_LONG") and float(p.get("qty") or 0) > 0}
+        if not longs:
+            return []
+        px = {ss: float(self.broker.price(split_ss(ss)[0]) or 0.0) for ss in longs}
+        book = sum(float(longs[ss]["qty"]) * px[ss] for ss in longs)
+        if book <= REBAL_LONG_CAP:
+            return []
+        f = REBAL_LONG_CAP / book
+        out = []
+        for ss in sorted(longs):
+            q = float(longs[ss]["qty"])
+            tgt = max(1.0, math.floor(q * f))
+            cut = q - tgt
+            if cut < 1 or px[ss] <= 0:
+                continue
+            if not (forced or self.at_local_extreme(split_ss(ss)[0], "top")):
+                continue
+            how = "FORCED 15:45 ET" if forced else "local top confirmed"
+            out.append({"ss": ss, "act": "REDUCE", "qty": cut, "key": f"{acct}|{ss}|{bar}|REBAL",
+                        "why": f"REBALANCE long book ${book:.0f} > cap ${REBAL_LONG_CAP:.0f} ({how}): {q:.0f} -> {tgt:.0f} sh"})
+        return out
+
     def send_orders(self, acct, orders, pos, killed):
         orders_n = 0
+        if self.venue == "stocks" and not self.rebal_phase()[0]:
+            for o in orders:
+                log(f"{acct} {o['ss']} {o['act']} HELD: stocks orders start at the 09:30 ET open (planning only)")
+            return 0
         if self.venue == "stocks":
             held_syms = {}
             for ss in pos:

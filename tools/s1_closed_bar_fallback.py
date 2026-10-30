@@ -35,7 +35,7 @@ BAR_S = 900
 GRACE_S = float(os.environ.get("S1_BAR_FALLBACK_GRACE_S", "40"))
 RETRY_S = float(os.environ.get("S1_BAR_FALLBACK_RETRY_S", "120"))
 THREADS = int(os.environ.get("S1_BAR_FALLBACK_THREADS", "6"))
-MARK_FIRST = os.environ.get("S1_BAR_MARK_FIRST", "1") == "1"
+MARK_FIRST = os.environ.get("S1_BAR_MARK_FIRST", "0") == "1"
 MARK_PASSES_S = tuple(float(x) for x in os.environ.get("S1_BAR_MARK_PASSES_S", "1,3,6").split(",") if x)
 MARK_THREADS = int(os.environ.get("S1_BAR_MARK_THREADS", "24"))
 HEAL_S = float(os.environ.get("S1_BAR_HEAL_S", "15"))
