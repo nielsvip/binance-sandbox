@@ -1,0 +1,24 @@
+{
+ "window_from": "10-30 21:07",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 347,
+  "status_OK": 7,
+  "EXTRA": 1
+ },
+ "rows": [
+  {
+   "acct": "ang",
+   "sym_side": "HYPEUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-30 21:12",
+   "actual": "CLOSE",
+   "actual_reason": "QUICK_ULTIMATE_DC_4h_HARD_STOP_LONG_px77.176000_lvl77.717000_g-1.05_REDUCE",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  }
+ ]
+}

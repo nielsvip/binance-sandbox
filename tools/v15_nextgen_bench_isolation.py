@@ -101,14 +101,14 @@ def prepare(root, side, env, symbol, window_days, assets=None):
         raise ValueError(f"missing materialized frozen NPZ: {npz}")
     receipt = root / ".benchmark_interpreter.json"
     install_routes(root, side, assets)
-    executable = Path(json.loads(receipt.read_text())["executable"]) if receipt.exists() else (root / ".venv/bin/python").resolve()
+    executable = Path(json.loads(receipt.read_text())["executable"]) if receipt.exists() else (root / ".venv").resolve() / "bin/python"
     if not executable.is_file():
         raise ValueError("benchmark interpreter missing")
     link = root / ".venv"
     if link.is_symlink():
         link.unlink()  # only the new builder-created interpreter link, never its target
     if not receipt.exists():
-        receipt.write_text(json.dumps({"executable": str(executable), "sha256": hashlib.sha256(executable.read_bytes()).hexdigest()}))
+        receipt.write_text(json.dumps({"executable": str(executable), "sha256": hashlib.sha256(executable.read_bytes()).hexdigest(), "source_environment_python": str(executable)}))
         bridge = root / ".venv/bin/python"
         bridge.parent.mkdir(parents=True, exist_ok=True)
         bridge.write_text("#!/bin/sh\nexec " + shlex.quote(str(executable)) + ' "$@"\n')
@@ -134,6 +134,12 @@ def prepare(root, side, env, symbol, window_days, assets=None):
     return str(executable), result
 
 
+def environment_identity():
+    import numpy
+    import openpyxl
+    return {"sys_prefix": sys.prefix, "base_prefix": sys.base_prefix, "executable": sys.executable, "numpy_version": numpy.__version__, "numpy_path": str(Path(numpy.__file__).resolve()), "openpyxl_version": openpyxl.__version__, "openpyxl_path": str(Path(openpyxl.__file__).resolve())}
+
+
 def probe(root, side):
     root, side = Path(root).resolve(), Path(side).resolve()
     install_audit(root, side)
@@ -141,21 +147,33 @@ def probe(root, side):
     config = importlib.import_module("config")
     tradier = importlib.import_module("config_tradier")
     store = importlib.import_module("per_sym_store")
+    for module in (config, tradier, store):
+        if Path(module.__file__).resolve().parent != root:
+            raise ValueError(f"imported config module escaped benchmark: {module.__file__}")
     paths = {"Config.BASE_PATH": config.Config.BASE_PATH, "Config.DATA_DIR": config.Config.DATA_DIR, "TradierConfig.BASE_PATH": tradier.TradierConfig.BASE_PATH, "per_sym_store.DB_PATH": store.DB_PATH}
     for name, path in paths.items():
         if not inside(path, (root, side)):
             raise ValueError(f"actual imported config path escaped benchmark: {name}={path}")
-    result = {"at_utc": utc(), "status": "ACTUAL_CONFIG_PRIVATE_PATHS_PASS", "paths": {name: str(Path(path).resolve()) for name, path in paths.items()}, "config_sha256": hashlib.sha256((root / "config.py").read_bytes()).hexdigest(), "tradier_config_sha256": hashlib.sha256((root / "config_tradier.py").read_bytes()).hexdigest(), "audit_scope": "audited Python operations only; not all native syscalls"}
+    result = {"at_utc": utc(), "status": "ACTUAL_CONFIG_PRIVATE_PATHS_PASS", "paths": {name: str(Path(path).resolve()) for name, path in paths.items()}, "config_sha256": hashlib.sha256((root / "config.py").read_bytes()).hexdigest(), "tradier_config_sha256": hashlib.sha256((root / "config_tradier.py").read_bytes()).hexdigest(), "interpreter_identity": environment_identity(), "audit_scope": "audited Python operations only; not all native syscalls"}
     (side / "config_path_preflight.json").write_text(json.dumps(result, indent=2))
     return result
 
 
 def check_config(executable, root, side, env):
+    source = json.loads((Path(root) / ".benchmark_interpreter.json").read_text())["source_environment_python"]
+    original = subprocess.run([source, str(Path(__file__).resolve()), "identity", str(root), str(side)], cwd=root, env=env, capture_output=True, text=True)
+    if original.returncode:
+        (Path(side) / "interpreter_failure.json").write_text(json.dumps({"at_utc": utc(), "stderr": original.stderr, "stdout": original.stdout}))
+        raise ValueError("source benchmark environment cannot import numpy/openpyxl")
+    expected = json.loads((Path(side) / "source_interpreter_identity.json").read_text())
     result = subprocess.run([executable, str(Path(__file__).resolve()), "probe", str(root), str(side)], cwd=root, env=env, capture_output=True, text=True)
     if result.returncode:
         (Path(side) / "config_preflight_failure.json").write_text(json.dumps({"at_utc": utc(), "returncode": result.returncode, "stdout": result.stdout, "stderr": result.stderr}, indent=2))
         raise ValueError(f"actual config isolation preflight failed; see {side}/config_preflight_failure.json")
-    return json.loads((Path(side) / "config_path_preflight.json").read_text())
+    receipt = json.loads((Path(side) / "config_path_preflight.json").read_text())
+    if receipt["interpreter_identity"] != expected:
+        raise ValueError("benchmark interpreter identity differs from source environment")
+    return receipt
 
 
 def command(executable, root, side, pilot_args):
@@ -164,13 +182,17 @@ def command(executable, root, side, pilot_args):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", choices=("probe", "run"))
+    parser.add_argument("action", choices=("probe", "run", "identity"))
     parser.add_argument("root")
     parser.add_argument("side")
     parser.add_argument("pilot_args", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     root, side = Path(args.root).resolve(), Path(args.side).resolve()
     install_audit(root, side)
+    if args.action == "identity":
+        identity = environment_identity()
+        (side / "source_interpreter_identity.json").write_text(json.dumps(identity, indent=2))
+        return
     if args.action == "probe":
         print(json.dumps(probe(root, side)))
         return

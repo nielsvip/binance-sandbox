@@ -110,6 +110,36 @@ def test_foreign_npz_read_refused(tmp_path):
     assert "outside frozen root" in result.stderr
 
 
+def test_real_symlinked_venv_environment_identity_preserved(tmp_path):
+    import venv
+    root, side, assets = fixture(tmp_path)
+    environment = tmp_path / "real_venv"
+    venv.EnvBuilder(system_site_packages=True, with_pip=False, symlinks=True).create(environment)
+    (root / ".venv").unlink()
+    (root / ".venv").symlink_to(environment, target_is_directory=True)
+    assert (environment / "bin/python").is_symlink()
+    executable, env = prepare(root, side, {}, "SIDE", 30, assets)
+    assert executable == str(environment.resolve() / "bin/python")
+    receipt = check_config(executable, root, side, env)
+    assert Path(receipt["interpreter_identity"]["sys_prefix"]).resolve() == environment.resolve()
+    result = subprocess.run([str(root / ".venv/bin/python"), "-c", "import sys; print(sys.prefix)"], cwd=root, env=env, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    assert Path(result.stdout.strip()).resolve() == environment.resolve()
+
+
+def test_exec_python_child_also_audited(tmp_path):
+    outside = tmp_path / "child_outside.txt"
+    child = "from pathlib import Path; Path(" + repr(str(outside)) + ").write_text('bad')"
+    pilot = "import subprocess,sys\nsubprocess.run([sys.executable, '-c', " + repr(child) + "],check=True)\n"
+    root, side, assets = fixture(tmp_path, pilot)
+    executable, env = prepare(root, side, {}, "SIDE", 30, assets)
+    result = subprocess.run(command(executable, root, side, []), env=env, cwd=root, capture_output=True, text=True)
+    assert result.returncode != 0
+    assert not outside.exists()
+    records = [json.loads(line) for line in (side / "audit/denied_writes.jsonl").read_text().splitlines()]
+    assert records and any(record["path"] == str(outside.resolve()) for record in records)
+
+
 def test_aborted_staged_run_preserves_all_outputs(tmp_path, monkeypatch):
     repo = Path(__file__).resolve().parents[1]
     monkeypatch.syspath_prepend(str(repo / "tools"))

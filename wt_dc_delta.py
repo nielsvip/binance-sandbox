@@ -856,7 +856,7 @@ class DeltaTracker:
             if _rz_div_exit_enabled and not sig.exit_long and not sig.exit_pending_long and side in ("LONG", "L"):
                 _div_bear_count = 0
                 for _dtf in ["1h", "4h", "D"]:
-                    _div_val = int(_safe_float(indicators.get(f"wt_divergence_{_dtf}")) or 0)
+                    _div_val = _divergence_int(indicators.get(f"wt_divergence_{_dtf}"))
                     if _div_val == -1:  # bearish divergence
                         _div_bear_count += 1
                 if _div_bear_count >= 2:
@@ -866,7 +866,7 @@ class DeltaTracker:
             if _rz_div_exit_enabled and not sig.exit_short and not sig.exit_pending_short and side in ("SHORT", "S"):
                 _div_bull_count = 0
                 for _dtf in ["1h", "4h", "D"]:
-                    _div_val = int(_safe_float(indicators.get(f"wt_divergence_{_dtf}")) or 0)
+                    _div_val = _divergence_int(indicators.get(f"wt_divergence_{_dtf}"))
                     if _div_val == 1:  # bullish divergence
                         _div_bull_count += 1
                 if _div_bull_count >= 2:
@@ -1228,7 +1228,7 @@ class DeltaTracker:
         _wt2_1h = _safe_float(indicators.get("wt2_1h")) or 0.0
         _wt_vel_1h = _safe_float(indicators.get("wt_velocity_1h")) or 0.0
         _wt_accel_1h = _safe_float(indicators.get("wt_acceleration_1h")) or 0.0
-        _wt_mom_1h = int(_safe_float(indicators.get("wt_momentum_state_1h")) or 0)
+        _wt_mom_1h = _momentum_state_int(indicators.get("wt_momentum_state_1h"))
         _wt_cross_1h = int(_safe_float(indicators.get("wt_cross_1h")) or 0)
         _wt_cross_val_1h = _safe_float(indicators.get("wt_cross_value_1h")) or 0.0
         _wt_cross_prev_val_1h = _safe_float(indicators.get("wt_cross_prev_value_1h")) or 0.0
@@ -1240,16 +1240,16 @@ class DeltaTracker:
         _wt_trough_prev_1h = _safe_float(indicators.get("wt_trough_prev_1h")) or 0.0
         _wt_peak_struct_1h = int(_safe_float(indicators.get("wt_peak_structure_1h")) or 0)
         _wt_trough_struct_1h = int(_safe_float(indicators.get("wt_trough_structure_1h")) or 0)
-        _wt_div_1h = int(_safe_float(indicators.get("wt_divergence_1h")) or 0)
+        _wt_div_1h = _divergence_int(indicators.get("wt_divergence_1h"))
         _wt_div_str_1h = _safe_float(indicators.get("wt_divergence_strength_1h")) or 0.0
         _wt_pct_1h = _safe_float(indicators.get("wt_percentile_1h")) or 50.0
         _wt_extreme_1h = int(_safe_float(indicators.get("wt_extreme_1h")) or 0) == 1
         _wt_wave_1h = int(_safe_float(indicators.get("wt_wave_phase_1h")) or 0)
         # 4h WT structure
-        _wt_mom_4h = int(_safe_float(indicators.get("wt_momentum_state_4h")) or 0)
+        _wt_mom_4h = _momentum_state_int(indicators.get("wt_momentum_state_4h"))
         _wt_peak_struct_4h = int(_safe_float(indicators.get("wt_peak_structure_4h")) or 0)
         _wt_trough_struct_4h = int(_safe_float(indicators.get("wt_trough_structure_4h")) or 0)
-        _wt_div_4h = int(_safe_float(indicators.get("wt_divergence_4h")) or 0)
+        _wt_div_4h = _divergence_int(indicators.get("wt_divergence_4h"))
         _wt_wave_4h = int(_safe_float(indicators.get("wt_wave_phase_4h")) or 0)
         # Stoch + MFI for "legs remaining"
         _k_1h = _safe_float(indicators.get("stoch_k_1h")) or 50.0
@@ -1313,8 +1313,8 @@ class DeltaTracker:
         _bullish_struct = _wt_peak_struct_1h == 1 and _wt_trough_struct_1h == 1  # HH + HL
         _bearish_struct = _wt_peak_struct_1h == -1 and _wt_trough_struct_1h == -1  # LH + LL
         # Divergence weakens conviction — now uses ALL available TFs (2026-04-11)
-        _wt_div_D = int(_safe_float(indicators.get("wt_divergence_D")) or 0)
-        _wt_div_15m = int(_safe_float(indicators.get("wt_divergence_15m")) or 0)
+        _wt_div_D = _divergence_int(indicators.get("wt_divergence_D"))
+        _wt_div_15m = _divergence_int(indicators.get("wt_divergence_15m"))
         _bull_div = _wt_div_1h == -1 or _wt_div_4h == -1 or _wt_div_D == -1  # BEAR divergence on ANY HTF
         _bear_div = _wt_div_1h == 1 or _wt_div_4h == 1 or _wt_div_D == 1  # BULL divergence on ANY HTF
         _bull_div_count = sum(1 for v in [_wt_div_1h, _wt_div_4h, _wt_div_D] if v == -1)
@@ -1389,7 +1389,7 @@ class DeltaTracker:
         # HTF alignment: block ONLY when HTF is AGGRESSIVELY bearish/bullish against the trade.
         # IMPULSE_DOWN (-1) is the reversal; EXHAUST_DOWN (-2) is the capitulation.
         # We only block when IMPULSE_DOWN on 4h (fresh trend change), not when everything is mildly bearish.
-        _wt_mom_D = int(_safe_float(indicators.get("wt_momentum_state_D")) or 0)
+        _wt_mom_D = _momentum_state_int(indicators.get("wt_momentum_state_D"))
         _htf_bull_ok = not (_wt_mom_4h == -1 and _wt_mom_D == -1)  # both fresh down = block long
         _htf_bear_ok = not (_wt_mom_4h == 1 and _wt_mom_D == 1)  # both fresh up = block short
         _rz_k_entry_max = cfg.get("rz_k_entry_max", 50.0)  # sweep: 40/50/60
@@ -1638,6 +1638,31 @@ class DeltaTracker:
                 "_exit_pending_short_rebound",
             ):
                 prev.pop(key, None)
+
+
+def _momentum_state_int(value):
+    if isinstance(value, str):
+        state = value.strip().upper()
+        encoded = {"EXHAUST_DOWN": -2, "IMPULSE_DOWN": -1, "NEUTRAL": 0, "IMPULSE_UP": 1, "EXHAUST_UP": 2}
+        if state in encoded:
+            return encoded[state]
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _divergence_int(value):
+    if isinstance(value, str):
+        state = value.strip().upper()
+        if state == "BEAR":
+            return -1
+        if state == "BULL":
+            return 1
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return 0
 
 
 def _safe_float(val):

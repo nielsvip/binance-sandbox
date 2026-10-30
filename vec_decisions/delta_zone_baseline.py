@@ -213,17 +213,19 @@ def baseline_bounce_fires_scalar(ind, is_long, cfg_get, prev=None, update_prev=T
     )
     near_baseline = touched_tf is not None and not near_top and not near_bottom
 
-    mom_4h = int(_num("wt_momentum_state_4h") or 0)
-    mom_D = int(_num("wt_momentum_state_D") or 0)
+    from wt_dc_delta import _momentum_state_int
+    mom_4h = _momentum_state_int(_get("wt_momentum_state_4h"))
+    mom_D = _momentum_state_int(_get("wt_momentum_state_D"))
     htf_bull_ok = not (mom_4h == -1 and mom_D == -1)
     htf_bear_ok = not (mom_4h == 1 and mom_D == 1)
     k_1h = _num("stoch_k_1h")
     k_1h = 50.0 if k_1h is None else k_1h
     k_thr = _f(cfg_get("rz_k_exit", 80.0), 80.0)
     div_min = int(_f(cfg_get("rz_div_block_min", 2), 2))
-    div_1h = int(_num("wt_divergence_1h") or 0)
-    div_4h = int(_num("wt_divergence_4h") or 0)
-    div_D = int(_num("wt_divergence_D") or 0)
+    from wt_dc_delta import _divergence_int
+    div_1h = _divergence_int(_get("wt_divergence_1h"))
+    div_4h = _divergence_int(_get("wt_divergence_4h"))
+    div_D = _divergence_int(_get("wt_divergence_D"))
     bull_div_n = sum(1 for v in (div_1h, div_4h, div_D) if v == -1)
     bear_div_n = sum(1 for v in (div_1h, div_4h, div_D) if v == 1)
 
