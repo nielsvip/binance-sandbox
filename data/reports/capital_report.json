@@ -1,43 +1,43 @@
 {
- "generated_at": "2026-10-30 19:19 UTC",
- "total_capital_usd": 30.53,
+ "generated_at": "2026-10-30 19:33 UTC",
+ "total_capital_usd": 28.99,
  "tier_capital": {
   "A": 0.0,
-  "B": 14.78,
-  "C": 15.75
+  "B": 28.99,
+  "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 1
+  "B": 2,
+  "C": 0
  },
  "winners": [],
  "losers": [
-  "men:IMXUSDT_SHORT"
+  "ang:HYPEUSDT_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "men:IMXUSDT_SHORT",
-   "symbol": "IMXUSDT",
-   "account": "men",
-   "value_usd": 15.75,
-   "gain_pct": -5.192,
-   "tier": "C",
-   "perf_mult": 0.39,
-   "amt": 131.0,
-   "mark": 0.12023473
+   "pk": "ang:ACEUSDT_SHORT",
+   "symbol": "ACEUSDT",
+   "account": "ang",
+   "value_usd": 14.58,
+   "gain_pct": 2.74,
+   "tier": "B",
+   "perf_mult": 0.92,
+   "amt": 111.96,
+   "mark": 0.13020102
   },
   {
-   "pk": "men:1MBABYDOGEUSDT_SHORT",
-   "symbol": "1MBABYDOGEUSDT",
-   "account": "men",
-   "value_usd": 14.78,
-   "gain_pct": 1.307,
+   "pk": "ang:HYPEUSDT_LONG",
+   "symbol": "HYPEUSDT",
+   "account": "ang",
+   "value_usd": 14.41,
+   "gain_pct": -1.094,
    "tier": "B",
-   "perf_mult": 3.3,
-   "amt": 46612.0,
-   "mark": 0.0003171
+   "perf_mult": 3.02,
+   "amt": 0.16,
+   "mark": 90.06966048
   }
  ]
 }
