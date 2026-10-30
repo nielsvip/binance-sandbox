@@ -35526,6 +35526,7 @@ class MultiAccountTradeManager:
             if (_blk_tfs
                 and not _vd_exempt  # lane A 2026-10-06 (CHRUSDT_LONG 173x BLOCKED_EXIT_LH_LL_REQUIRED): a vec-decided exit is never re-gated
                 and not _vd_lhll_vec  # USER 2026-10-24: vec-decided exits skip re-gating
+                and not _mandatory_loss_stop  # frozen channel and armed mandatory stops must reach execute_now
                 and ("REDUCE" in _kill_act or "CLOSE" in _kill_act)
                 and "HEDGE" not in (reason or "").upper()):
                 if _blk_sym:

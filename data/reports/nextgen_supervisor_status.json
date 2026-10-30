@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-10-30T21:11:54.669757Z",
+  "recorded_at": "2026-10-30T21:15:31.002525Z",
   "status": "active_not_achieved",
   "deployment_authorized_by_this_record": false,
   "requirements": {
@@ -195,5 +195,34 @@
       "validation": "rerun promoted neural network on frozen historical inputs and measured cells; establish no result deterioration attributable to skipped cells; measure actual compute per sym_side",
       "status": "deferred_until_gain_stage"
     }
-  ]
+  ],
+  "gate_model_identity_audit": {
+    "observed_directly_on_s2": {
+      "champion_candidate": "20261030T043918Z",
+      "champion_promoted_at": "2026-10-30T06:36:22Z",
+      "pilot_md5": "e674ffe156db927feab54a33bc0c0524",
+      "brain_artifacts_in_champion_tree": 0,
+      "digest_artifacts_in_champion_tree": 0,
+      "latest_candidate_files": {
+        "tools/v15_forward_state.py": "8b987a6a146ba3ac19ddb21bc258cfc6"
+      },
+      "pass_candidate_metadata_entries_with_brain_or_learn_data_files": 0,
+      "last_gate_scored_sides": [
+        "CHRUSDT_LONG",
+        "DOTUSDT_LONG"
+      ],
+      "last_gate_uninformative_sides": [
+        "ALGOUSDT_SHORT",
+        "MINAUSDT_SHORT",
+        "AMD_LONG",
+        "QBTS_LONG",
+        "COIN_SHORT",
+        "CDE_SHORT"
+      ]
+    },
+    "local_code_finding": "v15_npz_bench.build_root excludes candidate data and copies snap/data; gate rsync_tree excludes data including champion retention",
+    "remote_harness_confirmation": "pending compute agent audit",
+    "required_before_submission": "prove distinct matched prior and candidate neural-network artifacts are consumed by respective arms; preserve same skip policy and budget; recover previous model identity from gate evidence",
+    "status": "not_ready_for_model_submission"
+  }
 }
