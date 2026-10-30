@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-30T05:23:55Z",
+ "ts": "2026-10-30T05:28:57Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,7 +29,7 @@
   "fin": {
    "fills_6h": 52,
    "open_positions": 3,
-   "unrealised_usd": -0.89,
+   "unrealised_usd": -0.9,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 75,
    "open_positions": 5,
-   "unrealised_usd": -0.97,
+   "unrealised_usd": -1.01,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 137,
    "open_positions": 4,
-   "unrealised_usd": -0.3,
+   "unrealised_usd": -0.29,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 5,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 23,
    "open_positions": 2,
-   "unrealised_usd": 0.24,
+   "unrealised_usd": 0.25,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,85 +127,85 @@
     "28889"
    ],
    "starts_30m": 1,
-   "log_age_s": 6.0
+   "log_age_s": 1.0
   },
   "men": {
    "pids": [
     "28781"
    ],
    "starts_30m": 2,
-   "log_age_s": -2.0
+   "log_age_s": 2.0
   },
   "ang": {
    "pids": [
     "28918"
    ],
-   "starts_30m": 2,
-   "log_age_s": 3.0
+   "starts_30m": 1,
+   "log_age_s": 0.0
   },
   "inf": {
    "pids": [
     "28566"
    ],
    "starts_30m": 1,
-   "log_age_s": -2.0
+   "log_age_s": 2.0
   },
   "flz": {
    "pids": [
     "28637"
    ],
    "starts_30m": 2,
-   "log_age_s": -0.0
+   "log_age_s": 0.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 1,
-   "log_age_s": 900.0
+   "log_age_s": 1201.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 1,
-   "log_age_s": 900.0
+   "log_age_s": 1201.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-30T05:23:56Z",
+   "ts": "2026-10-30T05:28:57Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "ang:ARKMUSDT_LONG",
    "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_LONG_px0.105700 decided 2026-10-30T01:55:00Z bar=2026-10-30T01:30:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-30T05:23:56Z",
+   "ts": "2026-10-30T05:28:57Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "ang:ARKMUSDT_LONG",
    "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_LONG_px0.105000 decided 2026-10-30T03:24:00Z bar=2026-10-30T02:45:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-30T05:23:56Z",
+   "ts": "2026-10-30T05:28:57Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "ang:ARKMUSDT_LONG",
    "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_LONG_px0.104100 decided 2026-10-30T03:24:07Z bar=2026-10-30T03:00:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-30T05:23:56Z",
+   "ts": "2026-10-30T05:28:57Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "ang:COTIUSDT_SHORT",
    "evidence": "AUGMENT HAIKU_WINNER_AUG_3.6pct decided 2026-10-30T04:24:57Z bar=2026-10-30T03:00:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-30T05:23:56Z",
+   "ts": "2026-10-30T05:28:57Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "inf:1000PEPEUSDC_LONG",
    "evidence": "CLOSE FIXED_STOP bar=2026-10-29T20:30:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-30T05:23:56Z",
+   "ts": "2026-10-30T05:28:57Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "inf:ARUSDT_LONG",
@@ -261,5 +261,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 2.95
+ "sweep_s": 0.69
 }
