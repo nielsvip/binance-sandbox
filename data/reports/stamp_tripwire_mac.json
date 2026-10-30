@@ -1,20 +1,17 @@
 {
  "host": "MacBook-Pro.local",
  "base": ".",
- "at": "2026-10-30T21:37:11Z",
+ "at": "2026-10-30T22:07:05Z",
  "dirs": {
   "klines_cache": {
-   "files": 899,
+   "files": 869,
    "files_with_noncanonical": 0,
    "stamps": {}
   },
   "klines_cache/tradier": {
-   "files": 11,
-   "files_with_noncanonical": 11,
-   "stamps": {
-    "date-only": 4509,
-    "other-string": 6974
-   }
+   "files": 0,
+   "files_with_noncanonical": 0,
+   "stamps": {}
   },
   "klines_canonical": {
    "files": 414,
@@ -22,7 +19,7 @@
    "stamps": {}
   },
   "klines_cache_gateway": {
-   "files": 688,
+   "files": 737,
    "files_with_noncanonical": 0,
    "stamps": {}
   },
@@ -37,74 +34,7 @@
    "stamps": {}
   }
  },
- "offenders": [
-  {
-   "file": "klines_cache/tradier/AEM_D.json",
-   "kinds": {
-    "date-only": 501
-   }
-  },
-  {
-   "file": "klines_cache/tradier/BNO_1h.json",
-   "kinds": {
-    "other-string": 3487
-   }
-  },
-  {
-   "file": "klines_cache/tradier/COIN_D.json",
-   "kinds": {
-    "date-only": 501
-   }
-  },
-  {
-   "file": "klines_cache/tradier/GDX_D.json",
-   "kinds": {
-    "date-only": 501
-   }
-  },
-  {
-   "file": "klines_cache/tradier/GLD_D.json",
-   "kinds": {
-    "date-only": 501
-   }
-  },
-  {
-   "file": "klines_cache/tradier/IBIT_D.json",
-   "kinds": {
-    "date-only": 501
-   }
-  },
-  {
-   "file": "klines_cache/tradier/MSTR_D.json",
-   "kinds": {
-    "date-only": 501
-   }
-  },
-  {
-   "file": "klines_cache/tradier/NEM_D.json",
-   "kinds": {
-    "date-only": 501
-   }
-  },
-  {
-   "file": "klines_cache/tradier/RGLD_D.json",
-   "kinds": {
-    "date-only": 501
-   }
-  },
-  {
-   "file": "klines_cache/tradier/USO_1h.json",
-   "kinds": {
-    "other-string": 3487
-   }
-  },
-  {
-   "file": "klines_cache/tradier/WPM_D.json",
-   "kinds": {
-    "date-only": 501
-   }
-  }
- ],
- "noncanonical_files": 11,
- "secs": 1232.4
+ "offenders": [],
+ "noncanonical_files": 0,
+ "secs": 1380.5
 }

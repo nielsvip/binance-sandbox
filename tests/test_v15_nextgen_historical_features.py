@@ -69,7 +69,10 @@ def test_intrinsic_scoring_keeps_candidate_universe_without_default_features():
         context.tidx["tabs"] = {"EXIT_STRUCTURAL": {"rows": [[3, "STOP_PCT", 3, default]], "yellows": ["FILTER_TF=1h"]}}
     left = network.Featurizer("CRYPTO_LONG", first, feature_mode="context_free")
     right = network.Featurizer("CRYPTO_LONG", second, feature_mode="context_free")
-    assert left.fctx.tidx["tabs"] == right.fctx.tidx["tabs"] == {"EXIT_STRUCTURAL": {"rows": [[3, "STOP_PCT", 3, None]], "yellows": ["FILTER_TF=1h"]}}
+    assert left.fctx.scoring_index == right.fctx.scoring_index == {"tabs": {"EXIT_STRUCTURAL": {"rows": [[3, "STOP_PCT", 3, None]], "yellows": ["FILTER_TF=1h"]}}}
+    assert left.fctx.tidx["tabs"] == right.fctx.tidx["tabs"] == {}
+    assert left.fctx.tabs_of == right.fctx.tabs_of == {}
+    assert left.fctx.fopts == right.fctx.fopts == {}
     assert left.fctx.span("STOP_PCT") == right.fctx.span("STOP_PCT") == []
     assert left.fctx.default("STOP_PCT") is None
     assert left.set_feats("EXIT_STRUCTURAL|STOP_PCT=3") == right.set_feats("EXIT_STRUCTURAL|STOP_PCT=3")

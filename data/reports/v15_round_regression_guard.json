@@ -1,5 +1,5 @@
 {
- "at": "2026-10-30T21:26:08Z",
+ "at": "2026-10-30T22:26:05Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
@@ -21,19 +21,34 @@
    "error": null
   },
   "s2": {
-   "published_n": 1,
-   "per_hour": 0.5,
+   "published_n": 2,
+   "per_hour": 1.0,
    "improved_vs_best_start": 0,
    "mean_uplift_vs_best_start": null,
    "median_uplift": null,
    "chained_from_previous_published": 0,
-   "no_floor_recorded": 1,
+   "no_floor_recorded": 2,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 0.5/h < 12.0/h (one per 5 min)"
+    "throughput 1.0/h < 12.0/h (one per 5 min)"
    ],
    "rows": [
+    {
+     "symside": "GRASSUSDT_LONG",
+     "published_at": 1793397499.6102998,
+     "final_gain": 89.4328958286542,
+     "best_start_gain": null,
+     "best_start_chosen": null,
+     "best_start_candidates": null,
+     "baseline_gain": 62.87216143906905,
+     "npz_ts_last": 1793394000.0,
+     "npz_md5": "49e8129386f9f8789a96a1e91e9a0fbd",
+     "npz_bars": 69222,
+     "bh": 50.64219905053626,
+     "verdict": null,
+     "npz_age_h_at_publish": 0.97
+    },
     {
      "symside": "RAYSOLUSDT_LONG",
      "published_at": 1793392344.6745865,

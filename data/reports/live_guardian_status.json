@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-30T22:24:48Z",
+ "ts": "2026-10-30T22:30:09Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -126,51 +126,51 @@
    "pids": [
     "32936"
    ],
-   "starts_30m": 2,
-   "log_age_s": 1.0
+   "starts_30m": 1,
+   "log_age_s": 14.0
   },
   "men": {
    "pids": [
     "59391"
    ],
    "starts_30m": 1,
-   "log_age_s": 10.0
+   "log_age_s": 9.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 2,
-   "log_age_s": 6.0
+   "log_age_s": 3.0
   },
   "inf": {
    "pids": [
     "64156"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 11.0
   },
   "flz": {
    "pids": [
     "70377"
    ],
    "starts_30m": 1,
-   "log_age_s": 9.0
+   "log_age_s": 3.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 12180.0
+   "log_age_s": 12502.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 13595.0
+   "log_age_s": 13917.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-30T22:24:49Z",
+   "ts": "2026-10-30T22:30:10Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "men:EIGENUSDT_SHORT",
@@ -224,5 +224,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.86
+ "sweep_s": 2.06
 }

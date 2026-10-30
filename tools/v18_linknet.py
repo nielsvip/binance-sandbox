@@ -2192,7 +2192,7 @@ class Scorer:
                 "d_wr": out[:, 4] * MSCALE, "fwd": sigmoid(out[:, 5])}
 
     def score_template(self, out_npz, chunk_rows=64):
-        tidx = self.fz.fctx.tidx
+        tidx = getattr(self.fz.fctx, "scoring_index", self.fz.fctx.tidx)
         row_keys, row_tabs = [], []
         for tab, blk in tidx["tabs"].items():
             for _r, sw, cand, _d in blk["rows"]:
@@ -2787,7 +2787,7 @@ class Scorer2(Scorer):
 
     def grid(self, ctx_list, regimes_for_first=True):
         """every template row / cell x contexts. ctx_list = [(name, feats)]; regimes (6) only for ctx_list[0]; ALL for the rest."""
-        tidx = self.fz.fctx.tidx
+        tidx = getattr(self.fz.fctx, "scoring_index", self.fz.fctx.tidx)
         row_keys = []
         for tab, blk in tidx["tabs"].items():
             for _r0, sw, cand, _d in blk["rows"]:

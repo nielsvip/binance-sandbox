@@ -1,5 +1,5 @@
 {
-  "audit_at_utc": "2026-10-30T21:52:05Z",
+  "audit_at_utc": "2026-10-30T22:26:56Z",
   "external_storage": {
     "TOSHIBA_EXT": {
       "device": "/dev/disk5s1",
@@ -41,8 +41,16 @@
       "evidence": "1,960,298 log_replay_v1 + 292,778 log/none rows, no native provenance; 0 strict contexts",
       "report_sha256": "aa7bc24366b515fcfc4c3aa4df26526afa04acdf48ada51d043edc844da9a2b6"
     },
+    "consumer_audit_STOCKS_SHORT": {
+      "consumer_status": "complete; agent released decoded DB after consumer finished; no open handles/processes observed; decoded DB plus empty WAL and SHM removed from isolated scratch only",
+      "ctxjoin_sha256": "faeac91c7859dcfdc5cdc4c1c072d27da3960ba113a3442c9430e9af38dc1312",
+      "decoded_scratch": "STOCKS_SHORT DB and zero-byte WAL/SHM removed after agent release and lsof/ps showed no consumers; GCS tar and compressed shard retained",
+      "evidence": "1,870,851 log_replay_v1 + 245,020 log/none rows; no native provenance; 0 strict contexts",
+      "report_sha256": "cd68633eba33b2c52ffbce2bcc175b9cea49e78c909983dc61b9d1c257c59a50"
+    },
     "decoded_db_hashes": "all four decoded SHA256 values matched source manifest hashes before use; CRYPTO_LONG decoded scratch removed only after ctxjoin consumer completed and agent confirmed release; verified GCS tar and compressed shard retained",
     "decoded_db_source_bytes_total": 25156386816,
+    "decoded_scratch_lifecycle": "All four decoded DBs have been consumed sequentially and removed from isolated scratch after respective agent completion/release; compressed shards and verified GCS tar remain retained. Zero-byte WAL and small SHM companions for the first three categories remain; not needed for DB preservation and not removed.",
     "destination_archive": "/home/niels/v20_candidate_review_20261030/experience_restore_20261030T2030Z/experience_cold.tar.zst",
     "fresh_store": "/home/niels/v20_candidate_review_20261030/experience_restore_20261030T2030Z/store/experience",
     "generation": "1793154688805498",
@@ -241,6 +249,52 @@
   "s1_consumer_audit": {
     "evidence": "crontab and active process argv/cwd checks; 20:00 must-refresh and 20:23 endgame merge ran from /home/niels/binance-sandbox; inspected callers had no v18_linknet/v20_absorb imports",
     "finding": "no relevant S1 cron/process consumer of ~/binance v18_linknet or v20_absorb since 20:00 UTC was found"
+  },
+  "s6_v20_u4_E_selected": {
+    "destination": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/E_selected/",
+    "frozen_ind_literal_targets": {
+      "directory_targets": [
+        "/home/niels/binance-sandbox/backtest_v8/indicators/_stale_wallclock_4h",
+        "/home/niels/binance-sandbox/backtest_v8/indicators/_quarantine"
+      ],
+      "interpretation": "No sandbox targets were dereferenced/copied. Literal map is preserved. No hash-based duplicate claim; these targets require exact selected-path verification before any decision to skip or materialize them.",
+      "links": 1374,
+      "lstat_counts": {
+        "directory_targets": 2,
+        "missing_targets": 46,
+        "regular_files": 853,
+        "symlink_targets": 473
+      },
+      "regular_target_bytes_sum_without_dedup": 23471319538,
+      "unique_literal_targets": 1374
+    },
+    "literal_symlink_map": {
+      "bytes": 1286136,
+      "entries": 9715,
+      "path": "E_selected/E_symlink_map.json",
+      "policy": "literal link paths and targets only; no dereference",
+      "sha256": "2857efb67bcd8bca37c7e718e26eda279c443dac76327639fb45f01b51ed1b2e"
+    },
+    "scope_note": "Selected E root experiment/model/result files, bench snapshot, regular frozen_ind files, and v18_data/source modules preserved. This is not a complete E tree; code_E bulk, linked sandbox targets, and nonselected E directories remain source-only.",
+    "selected_learning_and_benchmark": {
+      "directories": 63,
+      "filters": "bench/**, frozen_ind/**, code_E/tools/v18_data_*, code_E/tools/v18_*.py; --no-links",
+      "regular_files_bytes": 510793845,
+      "rsync_list_entries": 1539,
+      "rsync_regular_entries": 102,
+      "symlinks_skipped": 1374,
+      "transfer_exit": 0,
+      "verification": "rsync -nrc; exit 0; zero differences, zero bytes transferred; rsync total size includes symlink path records (510,885,951 B). All links are separately represented in E_symlink_map.json."
+    },
+    "source": "s6:/home/niels/v20_u4/E/",
+    "top_level_regular_evidence": {
+      "bytes": 1405509623,
+      "regular_files": 131,
+      "source_entries": 132,
+      "transfer_exit": 0,
+      "verification": "rsync -nrc; exit 0; 132 entries (131 regular, 1 dir), total 1,405,509,623 B; 0 created/changed/deleted/transferred"
+    },
+    "wd25_uuid": "04543668-3000-3F41-BB34-1C876F724D28"
   },
   "s6_v20_u4_full_data_learn_copy": {
     "destination": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/full_data_learn/",
