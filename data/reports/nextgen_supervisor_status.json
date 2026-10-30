@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-10-30T20:28:46.341832Z",
+  "recorded_at": "2026-10-30T21:11:54.669757Z",
   "status": "active_not_achieved",
   "deployment_authorized_by_this_record": false,
   "requirements": {
@@ -16,15 +16,21 @@
         "SSD2T",
         "E3T"
       ],
-      "transfer_pid_last_observed": 47708,
       "transfer_destination": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_rebuild_scratch",
-      "transfer_verified_complete": false,
+      "transfer_verified_complete": true,
       "fourth_drive": {
         "name": "TOSHIBA_EXT",
         "device": "/dev/disk5s1",
         "uuid": "CB74078E-CB60-392D-A83D-73E7DCF836DC",
         "state": "physically_present_unmounted",
         "mount_deferred": "shares USB hub with active WD25 preservation; read-only mount after stable copy"
+      },
+      "verified_copy_scope": "verified at 2026-10-30T20:51:05Z: rsync dry-run with checksum checked all 243 entries (207 regular files, 36 directories), total 1,331,992,053 B; 0 created/changed/transferred/deleted and 0 bytes transferred. This establishes byte-for-byte match with current S6 source and no source changes observable at verification. Source contains no symlinks (separate bounded source listing); source mtime scan found no files changed within the prior 60 minutes.",
+      "ongoing_copy": {
+        "source": "s6:/home/niels/v20_u4/spills/",
+        "destination": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/",
+        "status": "in progress; rsync session 19510; source size approximately 1.6G; no symlinks; do not count as verified until whole-tree checksum dry-run completes",
+        "wd25_uuid": "04543668-3000-3F41-BB34-1C876F724D28"
       }
     },
     "full_matched_learning_refresh": {
@@ -40,12 +46,14 @@
     },
     "gain_improvement": {
       "status": "unproven",
-      "required": "real engine trade returns, matched frozen inputs, independent chronological evaluation"
+      "required": "real engine trade returns, matched frozen inputs, independent chronological evaluation",
+      "promotion_authority": "existing S2 version gate against last promoted neural network"
     },
     "compute_reduction": {
       "status": "unproven",
       "required_reduction_fraction": 0.9,
-      "required": "measured parent-and-descendant CPU per sym_side plus wall time and actual completion; shadow cost budgets are not measurements"
+      "required": "measured parent-and-descendant CPU per sym_side plus wall time and actual completion; shadow cost budgets are not measurements",
+      "sequence": "after gain-stage neural-network promotion"
     },
     "60d_runs": {
       "status": "patch_only",
@@ -97,7 +105,23 @@
       "STOCKS_SHORT": []
     },
     "original_npz_vintage": "2026-10-28/2026-10-29",
-    "actual_canary_result": "not_yet_verified"
+    "actual_canary_result": {
+      "source": "compute_audit live observation 2026-10-30T21:09:42.990813Z",
+      "attempt": 3,
+      "fresh_engine_evaluations": 237,
+      "cached_results": 68,
+      "private_outputs": [
+        "workbook",
+        "progress",
+        "delta-log"
+      ],
+      "audited_npz_reads": 6,
+      "outside_python_write_audit": 0,
+      "quality_eligible": false,
+      "reason": "GR_FILTER_ALL_ENTRIES warning: missing vec_paths package",
+      "next": "complete source-only dependency closure and import preflight before fresh isolated run",
+      "resource_receipt": "pending terminal driver receipt"
+    }
   },
   "learning_smoke": {
     "root": "s6:/home/niels/v20_candidate_review_20261030",
@@ -106,7 +130,7 @@
     "scope": "compatibility sample only; not full-corpus absorption",
     "training_result": "compatibility_success_only",
     "context_vintage": "2026-10-20",
-    "context_coverage": "requires_measurement",
+    "context_coverage": "zero in bounded recent compatibility sample across all four categories",
     "symbol_identity_census": "current book allowlist insufficient for historical corpus; retain unknowns separately",
     "process_reported": 3829852,
     "run_dir": "s6:/home/niels/v20_candidate_review_20261030/run_smoke_recent_01",
@@ -127,6 +151,49 @@
     "fix": "tools/mac_livecode_push.sh excludes nine candidate modules; actual rsync filter fixture passed",
     "rollback_performed": false,
     "consumer_audit": "Observed active pilots and inspected scheduled learning call paths used ~/binance-sandbox; no relevant ~/binance learner consumer found",
-    "limitation": "process and inspected cron evidence, not an assertion that filesystem was unchanged"
-  }
+    "limitation": "process and inspected cron evidence, not an assertion that filesystem was unchanged",
+    "lock_audit_correction": {
+      "finding": "LOCKED_FILES.md lines 91 and 482 explicitly relock mac_livecode_push.sh; earlier exclusion edits missed restriction",
+      "further_pusher_edits": false,
+      "forward_action": "new historical feature work under already excluded v15_nextgen_*.py or isolated review patches; no revert"
+    }
+  },
+  "previous_goal_turn_classification": "no_progress_password_clarification_only; resumed concrete audits this turn",
+  "restored_archive_consumers": {
+    "consumer_audit_CRYPTO_LONG": {
+      "consumer_status": "complete rc0; output 616 B, SHA256 b71adaf0bf48b4e6d9a8f33c9bf5b933ee46122470d5e77120117cc85a41c05e; report SHA256 d9383e38a0f24a62720d0e1ec037470be70979dc595b115fffb486c91a143fb2; driver SHA256 6cc2f336331025fd4f73ad059df7b77ad0f01832a1e9c0ee3bb5b3b9c3eaec03",
+      "evidence": "4,344,370 log_replay_v1 + 2,250,258 log/none rows, no native provenance; five sampled set digests matched canonical producer; zero strict contexts had chain_sha_verified extras; 0 eligible log rows and 0 contexts",
+      "decoded_scratch": "CRYPTO_LONG DB removed after consumer release; GCS tar and compressed shard retained",
+      "s6_space_after_reclaim": "29 GiB free observed"
+    },
+    "consumer_audit_CRYPTO_SHORT": {
+      "consumer_status": "complete; decoded DB released by agent",
+      "ctxjoin_sha256": "5271d253da5262055f53f4df419788c4902ad5187997a63cd4d081dd89f1a4fa",
+      "report_sha256": "798cf6799dd0e5a4da13d4a33df1c9c3bc7fcf71aad76d1001b86fa9ff6ce478",
+      "consumer_sha256": "0e3da462c5975c4217f93fd33eda76f04a8d8d65c229e7a6e297dc0048402419",
+      "evidence": "4,790,995 log_replay_v1 + 623,487 log/none rows; no native provenance; output contexts 0",
+      "decoded_scratch": "CRYPTO_SHORT DB removed after consumer release; GCS tar and compressed shard retained"
+    }
+  },
+  "preservation_evidence": "data/reports/learning_preservation_audit_20261030T200206Z.json",
+  "focused_validation": {
+    "command": "python3 -m pytest -q tests/test_v20_context_rebuild.py tests/test_v20_candidate_refresh.py tests/test_v18_gain_eligibility.py tests/test_v15_nextgen_shadow_plan.py",
+    "result": "31 passed in 3.14s",
+    "scope": "component tests, not board performance or gain proof"
+  },
+  "user_ordered_stages": [
+    {
+      "stage": 1,
+      "objective": "neural network gain improvement",
+      "promotion": "existing S2 version gate compares complete candidate against last promoted neural network version",
+      "comparison_control": "unchanged skip policy and testing budget; matched frozen inputs",
+      "status": "in_progress_not_yet_proven"
+    },
+    {
+      "stage": 2,
+      "objective": "at least 90 percent compute reduction",
+      "validation": "rerun promoted neural network on frozen historical inputs and measured cells; establish no result deterioration attributable to skipped cells; measure actual compute per sym_side",
+      "status": "deferred_until_gain_stage"
+    }
+  ]
 }

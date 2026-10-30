@@ -4178,6 +4178,8 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         _claim_original = _parity_claim_gate.try_claim
         _parity_claim_gate._claims.clear()
         _parity_claim_gate.try_claim = lambda key, now=None: _claim_original(key, _sim_ts[0] if now is None else now)
+        # This replay measures native decisions, so remove the temporary vec-dictate order suppression.
+        ez_manage._ezm_base_config.VEC_DICTATE_ONLY_ENABLED = False
         # ez_manage._PROCESS_START_TS is the WALL time at import while ez_manage.time is the SIM clock, so
         # (time.time() - _PROCESS_START_TS) was negative for the whole replay and the COLD_START_FLOOD_GUARD window never
         # ended (BTCUSDC_SHORT "2464984s left"): every vec-exact open lost its MTF bypass. A live process is warm after

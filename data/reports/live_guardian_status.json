@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-30T21:07:21Z",
+ "ts": "2026-10-30T21:12:20Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -127,28 +127,28 @@
     "60398"
    ],
    "starts_30m": 1,
-   "log_age_s": 1587.0
+   "log_age_s": 1889.0
   },
   "men": {
    "pids": [
     "59391"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 8.0
   },
   "ang": {
    "pids": [
     "60082"
    ],
    "starts_30m": 1,
-   "log_age_s": 7.0
+   "log_age_s": 21.0
   },
   "inf": {
    "pids": [
     "64156"
    ],
    "starts_30m": 1,
-   "log_age_s": 6.0
+   "log_age_s": 9.0
   },
   "flz": {
    "pids": [
@@ -160,24 +160,32 @@
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 7533.0
+   "log_age_s": 7835.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 8947.0
+   "log_age_s": 9250.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-30T21:07:22Z",
+   "ts": "2026-10-30T21:12:23Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "ang:1000BONKUSDC_SHORT",
+   "evidence": "30 21:11:21 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:1000BONKUSDC_SHORT: bypass MAX_ORDER_VALUE $20 / MAX_POSITION_SIZE $150 \u2014 restoring $4 on bounce (prior max 9274.0000)"
+  },
+  {
+   "ts": "2026-10-30T21:12:24Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 1587s"
+   "evidence": "ez_manage_fin.log not written for 1889s"
   }
  ],
  "alert_counts": {
+  "CAP_BYPASS": 1,
   "STALE_LOG": 1
  },
  "active_interventions": {
@@ -231,5 +239,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.06
+ "sweep_s": 4.0
 }

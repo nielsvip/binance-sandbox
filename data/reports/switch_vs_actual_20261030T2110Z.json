@@ -1,0 +1,102 @@
+{
+ "window_from": "10-30 20:07",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 348,
+  "status_OK": 6,
+  "EXTRA": 7
+ },
+ "rows": [
+  {
+   "acct": "fin",
+   "sym_side": "1MBABYDOGEUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-30 20:30",
+   "actual": "REDUCE",
+   "actual_reason": "engine REDUCE frac 0.1500 (WT_CROSS_EXIT_1h_bull_wt1=-16.5_wt2=-26.7)",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "fin",
+   "sym_side": "1MBABYDOGEUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-30 20:45",
+   "actual": "CLOSE",
+   "actual_reason": "board flat, broker holds 39670.0",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "1MBABYDOGEUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-30 20:30",
+   "actual": "REDUCE",
+   "actual_reason": "engine REDUCE frac 0.1500 (WT_CROSS_EXIT_1h_bull_wt1=-16.5_wt2=-26.7)",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "1MBABYDOGEUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-30 20:45",
+   "actual": "CLOSE",
+   "actual_reason": "board flat, broker holds 39621.0",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "HYPEUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-30 20:45",
+   "actual": "CLOSE",
+   "actual_reason": "DETERIORATED_CLOSE: fresh 30D replay deteriorated by at least 5 pp or turned nonpositive",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "flz",
+   "sym_side": "HYPEUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-30 20:45",
+   "actual": "CLOSE",
+   "actual_reason": "DETERIORATED_CLOSE: fresh 30D replay deteriorated by at least 5 pp or turned nonpositive",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "IMXUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-30 20:45",
+   "actual": "CLOSE",
+   "actual_reason": "DETERIORATED_CLOSE: fresh 30D replay deteriorated by at least 5 pp or turned nonpositive",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  }
+ ]
+}

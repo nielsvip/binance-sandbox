@@ -49371,7 +49371,7 @@ class TradierTradeManager:
                 _v20_full = json.loads(_v20_store._maybe_decompress(_v20_row[0])) if _v20_row and _v20_row[0] else None
                 _v20_set_hash = _v20_hashlib.md5(json.dumps(_v20_full, sort_keys=True, default=str).encode()).hexdigest() if isinstance(_v20_full, dict) and _v20_full else None
                 from tools.npz_cutoffs import is_rth_bar_start as _v20_rth_bar_start
-                _v20_ok = _v20_state.get("v12_quick_engine_md5") == "95ddae52a6539978b696d97a4326057d" and _v20_set_hash is not None and _v20_state.get("set_md5") == _v20_set_hash and _v20_state.get("status") == "OK" and _v20_state.get("engine_valid") is True and _v20_state.get("actionable") is True and _v20_rth_bar_start(_v20_state.get("bar_ts")) and 0.0 <= _v20_age <= 1200.0 and _v20_target == str(position_side or "").upper()
+                _v20_ok = _v20_state.get("v12_quick_engine_md5") == _v20_hashlib.md5(Path(__file__).with_name("v12_quick_engine.py").read_bytes()).hexdigest() and _v20_set_hash is not None and _v20_state.get("set_md5") == _v20_set_hash and _v20_state.get("status") == "OK" and _v20_state.get("engine_valid") is True and _v20_state.get("actionable") is True and _v20_rth_bar_start(_v20_state.get("bar_ts")) and 0.0 <= _v20_age <= 1200.0 and _v20_target == str(position_side or "").upper()
             except Exception as _v20_e:
                 _v20_ok = False
                 logger.warning(f"[TRB_V20_STATE] {position_key}: state read failed: {_v20_e}")
