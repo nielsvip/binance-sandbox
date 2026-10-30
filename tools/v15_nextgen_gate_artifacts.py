@@ -142,11 +142,17 @@ def verify_declared_bundle(root, env, required=False):
     if not isinstance(expected, dict) or set(expected) != names or any(not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{64}", value) for value in expected.values()):
         raise ValueError("neural-network bundle requires exact hashes for all declared32 runtime artifacts" if expanded else "neural-network bundle requires exact hashes for all eight runtime artifacts")
     if expanded:
-        for key, value in declaration.get("required_runtime_flags", {}).items():
-            if env.get(key) != str(value):
-                raise ValueError(f"required neural-network activation flag differs: {key}")
-        if env.get("V18_LINKNET_FIRST") != "1" or env.get("V18_LINKNET_BUNDLE_REQUIRED") != "1":
-            raise ValueError("compiled neural-network activation guards required")
+        prior_inactive = env.get("V15_NN_REFERENCE_LEGACY_POLICY") == "1"
+        if prior_inactive:
+            categories = declaration.get("linknet_activation", {}).get("by_category", {})
+            if env.get("V18_LINKNET_FIRST") != "0" or env.get("V18_LINKNET_BUNDLE_REQUIRED") != "0" or len(categories) != 4 or any(entry.get("production_scorer") != "legacy_compiled_output" for entry in categories.values()):
+                raise ValueError("prior inactive-policy artifact guard requires exact legacy declarations and consumer off")
+        else:
+            for key, value in declaration.get("required_runtime_flags", {}).items():
+                if env.get(key) != str(value):
+                    raise ValueError(f"required neural-network activation flag differs: {key}")
+            if env.get("V18_LINKNET_FIRST") != "1" or env.get("V18_LINKNET_BUNDLE_REQUIRED") != "1":
+                raise ValueError("compiled neural-network activation guards required")
         for name, expected_sha in expected.items():
             path = root / declared_relative(name)
             _plain_path(root, path)

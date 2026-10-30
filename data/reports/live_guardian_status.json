@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-30T23:25:26Z",
+ "ts": "2026-10-30T23:30:24Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 3,
-   "open_positions": 0,
-   "unrealised_usd": 0.0,
+   "fills_6h": 22,
+   "open_positions": 16,
+   "unrealised_usd": -0.15,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 9,
-   "open_positions": 1,
-   "unrealised_usd": -0.0,
+   "fills_6h": 29,
+   "open_positions": 17,
+   "unrealised_usd": 0.07,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -75,9 +75,9 @@
    }
   },
   "inf": {
-   "fills_6h": 0,
-   "open_positions": 0,
-   "unrealised_usd": 0.0,
+   "fills_6h": 4,
+   "open_positions": 4,
+   "unrealised_usd": 0.05,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -91,9 +91,9 @@
    }
   },
   "flz": {
-   "fills_6h": 1,
-   "open_positions": 0,
-   "unrealised_usd": 0.0,
+   "fills_6h": 15,
+   "open_positions": 13,
+   "unrealised_usd": -0.08,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,45 +127,45 @@
     "56796"
    ],
    "starts_30m": 1,
-   "log_age_s": 20.0
+   "log_age_s": 32.0
   },
   "men": {
    "pids": [
     "59391"
    ],
    "starts_30m": 1,
-   "log_age_s": 26.0
+   "log_age_s": 12.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 10.0
+   "log_age_s": 94.0
   },
   "inf": {
    "pids": [
     "64156"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 88.0
   },
   "flz": {
    "pids": [
     "70377"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": -2.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 15818.0
+   "log_age_s": 16117.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 17233.0
+   "log_age_s": 17532.0
   }
  },
  "alerts": [],
@@ -214,5 +214,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.0
+ "sweep_s": 6.22
 }

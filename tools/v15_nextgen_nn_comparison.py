@@ -83,9 +83,16 @@ def validate(spec):
             retained = lambda value: {key: item for key, item in value.items() if key not in ('scorer', 'proposals')}
             if retained(left) != retained(right):
                 raise ValueError(f'NN comparison digest ancillary fields differ: {name}')
-    flags = spec.get('equal_runtime_flags', {})
-    if flags != {'V18_LINKNET_FIRST': '1', 'V18_LINKNET_BUNDLE_REQUIRED': '1', 'V15_REQUIRE_MODEL_BUNDLE': '1'}:
-        raise ValueError('NN comparison requires equal activation and provenance guards')
+    policy = pinned_json(spec['reference_policy'])
+    if policy.get('schema') != 'v15_nn_reference_policy/1' or policy.get('pilot_sha256') != runtime['files'].get('v15_pilot.py'):
+        raise ValueError('reference policy must execute exact frozen pilot flag loader')
+    effective = policy.get('effective_policy', {})
+    if effective.get('V18_LINKNET_FIRST') != '0' or effective.get('V18_LINKNET_BUNDLE_REQUIRED') != '0':
+        raise ValueError('this mode requires proven prior inactive consumer policy')
+    reference_flags = {'V18_LINKNET_FIRST': '0', 'V18_LINKNET_BUNDLE_REQUIRED': '0', 'V15_REQUIRE_MODEL_BUNDLE': '1', 'V15_NN_REFERENCE_LEGACY_POLICY': '1'}
+    candidate_flags = {'V18_LINKNET_FIRST': '1', 'V18_LINKNET_BUNDLE_REQUIRED': '1', 'V15_REQUIRE_MODEL_BUNDLE': '1'}
+    if spec.get('reference_runtime_flags') != reference_flags or spec.get('candidate_runtime_flags') != candidate_flags:
+        raise ValueError('explicit prior-off versus candidate-active policy required; fixed budget and skip policy unchanged')
     if not spec.get('deployment_sandboxes'):
         raise ValueError('explicit sandbox deployment scope required')
     for target in spec['deployment_sandboxes']:

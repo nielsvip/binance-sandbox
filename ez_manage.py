@@ -19330,13 +19330,15 @@ class MultiAccountTradeManager:
         )
         self._cache_tasks.append(asyncio.create_task(self._intervention_queue_loop()))
 
-    def _golden_closed_bar_open_ready(self, symbol, is_long, indicators, now=None):
+    def _golden_closed_bar_open_ready(self, symbol, is_long, indicators, now=None, require_vector_state=True):
         now = time.time() if now is None else float(now)
         closed_ts = math.floor((now - 900.0) / 900.0) * 900
         indicator_dt = safe_datetime(indicators.get("timestamp_15m"))
         indicator_ts = int(indicator_dt.timestamp()) if indicator_dt else 0
         if indicator_ts != closed_ts:
             return False, f"indicator15={indicator_ts} required={closed_ts}"
+        if not require_vector_state:
+            return True, "closed-bar indicator agrees"
         from live_twins import vec_driven
         sym_side = f"{symbol}_{'LONG' if is_long else 'SHORT'}"
         state = vec_driven.load_state(vec_driven.vec_live_dir(getattr(self.config, "BASE_PATH", ".")) / "state", sym_side) or {}
@@ -19706,14 +19708,13 @@ class MultiAccountTradeManager:
                             action = "OPEN" if cur_amt == 0 else "AUGMENT"
                             if action == "OPEN":
                                 try:
-                                    _gr_ready, _gr_defer_reason = self._golden_closed_bar_open_ready(sym, is_long, ind)
+                                    _gr_ready, _gr_defer_reason = self._golden_closed_bar_open_ready(sym, is_long, ind, now=(_golden_now + 900 if _parity_once else None), require_vector_state=not _parity_once)
                                 except Exception as _gr_state_err:
                                     logger.warning(f"[GOLDEN_RULE_DEFER_CLOSED_BAR] {pkey}: {_gr_state_err}")
                                     continue
                                 if not _gr_ready:
                                     logger.info(f"[GOLDEN_RULE_DEFER_CLOSED_BAR] {pkey}: {_gr_defer_reason}")
                                     continue
-                            self._golden_last_trigger[pkey] = _golden_now
                             side = "BUY" if is_long else "SELL"
                             pside = "LONG" if is_long else "SHORT"
                             reason_str = f"GOLDEN_RULE_{'LONG' if is_long else 'SHORT'}_mult{mult}"
@@ -19733,11 +19734,14 @@ class MultiAccountTradeManager:
                                     side=side,
                                     position_side=pside,
                                     quantity=qty,
+                                    old_price=price,
                                     reason=reason_str,
                                     action=action,
                                 )
                                 logger.critical(f"🌟 [GOLDEN_RULE] {pkey} → {result}")
-                                fired += 1
+                                if str(result or "").upper().startswith("SUCCESS"):
+                                    self._golden_last_trigger[pkey] = _golden_now
+                                    fired += 1
                             except Exception as e:
                                 logger.error(
                                     f"[GOLDEN_RULE] {pkey} execute_now err: {type(e).__name__}: {e}"
@@ -33834,7 +33838,7 @@ class MultiAccountTradeManager:
             _net_exit_ok = lambda gross, fee: False
         # Apply daily WT exit veto at the final order gate, including QUICK_CLOSE
         # orders that skip execute_trade_action's quantity-calculation branch.
-        if _is_exit and not _mandatory_loss_stop and bool(_psym_get(symbol, position_side, "HTF_TREND_VETO_ON_REDUCE_ENABLED", getattr(config, "HTF_TREND_VETO_ON_REDUCE_ENABLED", False))):
+        if _is_exit and _exit_action not in ("PLACE_STOP", "CANCEL_STOP") and not _mandatory_loss_stop and bool(_psym_get(symbol, position_side, "HTF_TREND_VETO_ON_REDUCE_ENABLED", getattr(config, "HTF_TREND_VETO_ON_REDUCE_ENABLED", False))):
             try:
                 _hvr_final_ind = await ii(self, symbol) or {}
                 _hvr_final_w1 = safe_fetch_float(_hvr_final_ind.get("wt1_D"), 0.0)
