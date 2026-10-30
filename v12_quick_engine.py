@@ -16969,12 +16969,12 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         if str(getattr(cfg, "MODE", "crypto")) == "tradier" and bool(
             getattr(cfg, "STOCKS_LIVE_ENTRY_STACK_ENABLED", False)
         ):
-            # [C2 q003] live has NO fresh-open consumer for these FILTER_TFs (tradier_manage.py:5358/5422 assigned-only stubs; tradier_matrix_gates.touch_all_filter_tf_gates discards
-            # the result; EMA_BLANKET only when EMA_BLANKET_FILTER_ENABLED, default OFF): applying them as entry masks at the 15m template default zeroed every live-source signal
+            # [C2 q003] live has NO fresh-open consumer for BAR_PATTERNS_FILTER_TF (tradier_manage.py:5358/5422 assigned-only stubs; tradier_matrix_gates.touch_all_filter_tf_gates discards
+            # the result; EMA_BLANKET only when EMA_BLANKET_FILTER_ENABLED, default OFF): applying them as entry masks at the 15m template default zeroed every live-source signal; BREAKOUT_RETEST has a live veto and must stay active
             import copy as _cp
 
             _gcfg = _cp.copy(cfg)
-            for _nm in ("BAR_PATTERNS_FILTER_TF", "BREAKOUT_RETEST_FILTER_TF"):
+            for _nm in ("BAR_PATTERNS_FILTER_TF",):
                 setattr(_gcfg, _nm, "OFF")
             if not bool(getattr(cfg, "EMA_BLANKET_FILTER_ENABLED", False)):
                 setattr(_gcfg, "EMA_BLANKET_FILTER_FILTER_TF", "OFF")

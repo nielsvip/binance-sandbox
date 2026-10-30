@@ -53,7 +53,8 @@ def enforce_window(now):
     premarket bars once it is 13:40 UTC. Runs after every fill, because the gap-fill merges Tradier history back in."""
     day = now.strftime("%Y-%m-%d")
     removed = 0
-    for path in CACHE.glob("*_15m.json"):
+    paths = list(CACHE.glob("*_15m.json")) + list((BASE / "klines_cache_gateway" / "tradier").glob("*_15m.json"))
+    for path in paths:
         try:
             rows = json.loads(path.read_text())
         except Exception:
