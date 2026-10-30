@@ -1,5 +1,5 @@
 {
- "at": "2026-10-30T18:26:07Z",
+ "at": "2026-10-30T19:26:07Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
@@ -18,23 +18,54 @@
     "throughput 0.0/h < 12.0/h (one per 5 min)"
    ],
    "rows": [],
-   "error": "mm_receive_fd: recvmsg: expected received 1 got 0\nproxy dialer did not pass back a connection\n"
+   "error": null
   },
   "s2": {
-   "published_n": 0,
-   "per_hour": 0.0,
+   "published_n": 2,
+   "per_hour": 1.0,
    "improved_vs_best_start": 0,
    "mean_uplift_vs_best_start": null,
    "median_uplift": null,
    "chained_from_previous_published": 0,
-   "no_floor_recorded": 0,
+   "no_floor_recorded": 2,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 0.0/h < 12.0/h (one per 5 min)"
+    "throughput 1.0/h < 12.0/h (one per 5 min)"
    ],
-   "rows": [],
-   "error": "Connection closed by UNKNOWN port 65535\n"
+   "rows": [
+    {
+     "symside": "BATUSDT_LONG",
+     "published_at": 1793384424.4877114,
+     "final_gain": 126.92224665833845,
+     "best_start_gain": null,
+     "best_start_chosen": null,
+     "best_start_candidates": null,
+     "baseline_gain": 60.785449049989346,
+     "npz_ts_last": 1793380500.0,
+     "npz_md5": "50401cd764560d6c4082c9ff77a4bcfc",
+     "npz_bars": 235236,
+     "bh": 93.24842370087431,
+     "verdict": null,
+     "npz_age_h_at_publish": 1.09
+    },
+    {
+     "symside": "WLDUSDC_LONG",
+     "published_at": 1793386585.8743412,
+     "final_gain": 80.91628610393026,
+     "best_start_gain": null,
+     "best_start_chosen": null,
+     "best_start_candidates": null,
+     "baseline_gain": 20.65025939772578,
+     "npz_ts_last": 1793382300.0,
+     "npz_md5": "83bbcd7221b359b5860efd71d8a40ca0",
+     "npz_bars": 43753,
+     "bh": 29.13633926119017,
+     "verdict": null,
+     "npz_age_h_at_publish": 1.19
+    }
+   ],
+   "error": null
   }
  },
  "hosts_failing": [
