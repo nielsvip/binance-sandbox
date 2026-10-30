@@ -1,0 +1,91 @@
+{
+ "window_from": "10-30 05:07",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 230,
+  "status_OK": 124,
+  "dictated_but_no_account_traded_it": 1,
+  "FILLED_ON_BAR": 3,
+  "EXTRA": 3
+ },
+ "rows": [
+  {
+   "acct": "fin",
+   "sym_side": "AWEUSDT_LONG",
+   "dictated_bar": "10-30 05:15",
+   "dictated": "CLOSE",
+   "dictated_reason": "PPL_SL_CLOSE_upgraded-scalp_px0.0698_stop0.0698",
+   "actual_at": "10-30 05:30",
+   "actual": "CLOSE",
+   "actual_reason": "board flat, broker holds 109.0",
+   "late_bars": 0,
+   "verdict": "FILLED_ON_BAR",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "AWEUSDT_LONG",
+   "dictated_bar": "10-30 05:15",
+   "dictated": "CLOSE",
+   "dictated_reason": "PPL_SL_CLOSE_upgraded-scalp_px0.0698_stop0.0698",
+   "actual_at": "10-30 05:30",
+   "actual": "CLOSE",
+   "actual_reason": "board flat, broker holds 109.0",
+   "late_bars": 0,
+   "verdict": "FILLED_ON_BAR",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "COTIUSDT_SHORT",
+   "dictated_bar": "10-30 05:30",
+   "dictated": "CLOSE",
+   "dictated_reason": "PPL_SL_CLOSE_upgraded-scalp_px0.0090_stop0.0090",
+   "actual_at": "10-30 05:45",
+   "actual": "CLOSE",
+   "actual_reason": "board flat, broker holds 1528.0",
+   "late_bars": 0,
+   "verdict": "FILLED_ON_BAR",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "JUPUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-30 05:15",
+   "actual": "REDUCE",
+   "actual_reason": "engine REDUCE frac 0.5000 (PPL_TP_g1.51%>=1.50%_stopBE0.2524)",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "JUPUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-30 06:00",
+   "actual": "CLOSE",
+   "actual_reason": "board flat, broker holds 30.0",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "JUPUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-30 06:00",
+   "actual": "CLOSE",
+   "actual_reason": "EXIT_GUARANTEE_FORCE[REFUSED:UNCONFIRMED_BY_BROKER_MAKER_REDU] VEC_EXIT_OWED paper-flat-li",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  }
+ ]
+}
