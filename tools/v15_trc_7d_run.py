@@ -220,7 +220,7 @@ def ship_npz(ip, symbol):
     return sh(ip, install, 90)[1].strip()[-40:]
 
 
-def launch(name, ip, ss, day, mode):
+def launch(name, ip, ss, day, mode, no_overlay=False):
     rdir = f"binance-sandbox/data/preopen_7d/trc_run/{day}/results"
     q = f"binance-sandbox/data/preopen_7d/trc_run/{day}/queue.json"
     if ip != "local":
@@ -233,6 +233,7 @@ def launch(name, ip, ss, day, mode):
     # after the open (the canonical NPZ then holds the session) and every intraday/overnight board run on the canonical NPZ.
     # UTC only (USER 2026-10-30): the open is the exchange calendar's UTC epoch.
     late = mode == "premarket" and time.time() >= (session_open_utc() or float("inf"))
+    late = late or no_overlay  # a premarket-thin side has no premarket bars: it runs on the canonical NPZ like an overnight board
     env = ("V18_CATCHUP=1 V15_7D_PILOT_FILE=v15_pilot.py V15_7D_ALREADY_PAUSED=1 V15_7D_MIN_MEM_MB=3000 "
            + ("V15_7D_ANYTIME=1 V15_7D_OVERLAY=0 " if mode != "premarket" or late else ""))
     # setsid -f + every fd redirected: the board must not hold the ssh session (or the local pipe) open
@@ -346,11 +347,52 @@ def session_open_utc(day=None):
     return int(bounds[0]) if bounds else None
 
 
+def premarket_thin(symbols, sessions=3):
+    """USER 2026-10-30: symbols without premarket trades get their 7D overnight, not in the morning pass. A symbol is thin when
+    Tradier served none of the three 15m bars ending at the open on at least 2 of the last `sessions` sessions (one timesales call
+    per symbol, matched on Tradier's UTC epoch). Returns {"sessions": [...], "thin": [...], "bars": {symbol: [n per session]}}."""
+    import requests
+    from tools.npz_premarket_temp_bars import temp_epochs, tradier_keys
+
+    now = time.time()
+    days, day = [], dt.datetime.now(dt.timezone.utc).date()
+    while len(days) < sessions:
+        epochs = temp_epochs(day)
+        if epochs and epochs[-1] + 900 <= now:
+            days.append(day)
+        day -= dt.timedelta(days=1)
+    days.reverse()
+    keys = tradier_keys(ROOT)
+    out = {"sessions": [d.isoformat() for d in days], "thin": [], "bars": {}, "errors": {}}
+    for i, symbol in enumerate(sorted(set(symbols))):
+        r = None
+        try:
+            r = requests.get("https://api.tradier.com/v1/markets/timesales", timeout=15,
+                             params={"symbol": symbol, "interval": "15min", "start": f"{days[0].isoformat()} 00:00",
+                                     "end": f"{days[-1].isoformat()} 23:59", "session_filter": "all"},
+                             headers={"Authorization": f"Bearer {keys[i % len(keys)]}", "Accept": "application/json"})
+            data = ((r.json() or {}).get("series") or {}).get("data") or [] if r.status_code == 200 else None
+        except Exception as exc:
+            data, out["errors"][symbol] = None, f"{type(exc).__name__}: {str(exc)[:80]}"
+        if data is None:
+            out["errors"].setdefault(symbol, f"HTTP {getattr(r, 'status_code', '?')}")
+            continue  # unknown is never classified thin: it stays in its normal half
+        stamps = {int(d.get("timestamp") or 0) for d in (data if isinstance(data, list) else [data])}
+        counts = [len(stamps & set(temp_epochs(d))) for d in days]
+        out["bars"][symbol] = counts
+        if sum(1 for c in counts if c == 0) >= 2:
+            out["thin"].append(symbol)
+    return out
+
+
 def wave_open(state, ss, now):
     """premarket: the less important half of this pass starts 30 min before the open (that first bar's price is not very
     reliable), the best half best-first 15 min before the open. UTC epochs only."""
     if state["mode"] != "premarket":
         return True
+    if state["placements"][ss].get("no_overlay"):
+        # a premarket-thin side never takes a slot from a best-first side: it starts once every other side has launched
+        return not any(p.get("status") == "pending" and not p.get("no_overlay") for p in state["placements"].values())
     pos = state["placements"][ss].get("pos", state["placements"][ss]["rank"])
     upper = pos <= (len(state["placements"]) + 1) // 2
     opened = session_open_utc()
@@ -399,7 +441,7 @@ def tick(state, day_dir):
             # neither a result, a REDO nor a 0-trade verdict: the board was killed (OOM) mid-sweep -> one relaunch
             base = f"~/binance-sandbox/data/preopen_7d/trc_run/{day}/results"
             sh(ip, f"rm -rf {base}/{ss}.attempt1 && mv {base}/{ss} {base}/{ss}.attempt1", 30)
-            state["placements"][ss] = {"rank": p["rank"], "status": "pending", "attempt": 2, "a1_tried": True, "attempt1": {
+            state["placements"][ss] = {"rank": p["rank"], "status": "pending", "attempt": 2, "a1_tried": True, **({"no_overlay": True} if p.get("no_overlay") else {}), "attempt1": {
                 "host": p["host"], "wall_min": round((now - p["started"]) / 60, 1), "why": why}}
             print(f"[{now_iso()}] {ss} killed mid-sweep -> relaunch (attempt 2)", flush=True)
         if ok and not state.get("first_staged_utc"):
@@ -437,7 +479,7 @@ def tick(state, day_dir):
             break
         order.remove(pick)
         npz = ship_npz(ip, pick.rsplit("_", 1)[0])
-        out = launch(name, ip, pick, day, state["mode"])
+        out = launch(name, ip, pick, day, state["mode"], bool(state["placements"][pick].get("no_overlay")))
         p = state["placements"][pick]
         p.update(host=name, npz=npz, launch=out[-160:])
         if out.endswith("LAUNCHED"):
@@ -486,10 +528,30 @@ def main():
         full = queue["ranking"]
         cut = (len(full) + 1) // 2
         chosen = {"all": list(enumerate(full)), "top": list(enumerate(full))[:cut], "bottom": list(enumerate(full))[cut:]}[a.half]
+        # USER 2026-10-30: "12 of 121 symbols had no premarket trade at all <- add them to the sym_sides that get calculated after
+        # 20:00utc they have all night to complete we ONLY need the best_first to have pre market numbers and 7D calculations RIGHT
+        # AT market open". The thin top-half sides move to the overnight pass (best-first there too); the morning pass keeps only
+        # sides with premarket bars. A thin side the overnight pass of this trade day did not hold runs last in the morning pass,
+        # without the overlay, after every best-first side has launched.
+        thin, late_thin = {}, set()
+        if a.half in ("top", "bottom") and a.mode in ("premarket", "overnight"):
+            thin = premarket_thin({ss.rsplit("_", 1)[0] for ss in full})
+            atomic(day_dir / "premarket_thin.json", thin)
+            top = list(enumerate(full))[:cut]
+            thin_top = [(i, ss) for i, ss in top if ss.rsplit("_", 1)[0] in set(thin["thin"])]
+            if a.half == "bottom":
+                chosen = sorted(chosen + thin_top)
+            else:
+                night = ROOT / "data/preopen_7d/trc_run" / f"{a.day}_overnight" / "state.json"
+                done = set((json.loads(night.read_text()).get("placements") or {}) if night.exists() else ())
+                chosen = [(i, ss) for i, ss in chosen if (i, ss) not in thin_top]
+                late_thin = {ss for _, ss in thin_top if ss not in done}
+                chosen += [(i, ss) for i, ss in thin_top if ss in late_thin]
         chosen = chosen[: a.limit] if a.limit else chosen
         state = {"day": day_dir.name, "trade_day": a.day, "mode": a.mode, "half": a.half, "started_utc": now_iso(), "started_epoch": time.time(), "last_launch": {},
-                 "queue_meta": queue["_meta"],
-                 "placements": {ss: {"rank": i + 1, "pos": j + 1, "status": "pending"} for j, (i, ss) in enumerate(chosen)}}
+                 "queue_meta": queue["_meta"], "premarket_thin": thin.get("thin", []), "premarket_thin_sessions": thin.get("sessions", []),
+                 "placements": {ss: dict({"rank": i + 1, "pos": j + 1, "status": "pending"}, **({"no_overlay": True} if ss in late_thin else {}))
+                                for j, (i, ss) in enumerate(chosen)}}
         ranking = [ss for _, ss in chosen]
         atomic(state_path, state)
         print(f"[{now_iso()}] trc 7D {a.mode}/{a.half} pass: {len(ranking)} keys (excluded {queue['_meta']['excluded_counts']})", flush=True)
