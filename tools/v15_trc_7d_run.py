@@ -31,11 +31,9 @@ import sqlite3
 import subprocess
 import sys
 import time
-from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-NY = ZoneInfo("America/New_York")
 PY = "/home/niels/.conda/envs/binance_env_mac/bin/python"
 BOOKS_ROOT = Path.home() / "binance"
 SRC_DB = ROOT / "data/hourly_reconfig/per_sym_store.db"
@@ -231,9 +229,10 @@ def launch(name, ip, ss, day, mode):
                             f"niels@{ip}:{q}"], capture_output=True, text=True, timeout=120)
         if r.returncode:
             return f"QUEUE_SYNC_FAIL {r.stderr[-120:]}"
-    # premarket boards carry the temporary 08:45/09:00/09:15 overlay; a premarket board launched after 09:30 (the canonical NPZ
-    # then holds today's RTH bars) and every intraday/overnight board run on the canonical NPZ
-    late = mode == "premarket" and dt.datetime.now(NY).time() >= dt.time(9, 30)
+    # premarket boards carry the temporary overlay of the three 15m bars ending at the open; a premarket board launched at or
+    # after the open (the canonical NPZ then holds the session) and every intraday/overnight board run on the canonical NPZ.
+    # UTC only (USER 2026-10-30): the open is the exchange calendar's UTC epoch.
+    late = mode == "premarket" and time.time() >= (session_open_utc() or float("inf"))
     env = ("V18_CATCHUP=1 V15_7D_PILOT_FILE=v15_pilot.py V15_7D_ALREADY_PAUSED=1 V15_7D_MIN_MEM_MB=3000 "
            + ("V15_7D_ANYTIME=1 V15_7D_OVERLAY=0 " if mode != "premarket" or late else ""))
     # setsid -f + every fd redirected: the board must not hold the ssh session (or the local pipe) open
@@ -339,19 +338,27 @@ def timing(state):
             "first_staged_utc": state.get("first_staged_utc"), "complete_utc": state.get("complete_utc")}
 
 
-def wave_open(state, ss, local):
-    """premarket: the less important half of this pass starts at 09:00 ET (the 09:00 price is not very reliable), the
-    best half best-first at 09:15 ET."""
+def session_open_utc(day=None):
+    """UTC epoch of the exchange open on this UTC date (None when there is no session)."""
+    from tools.npz_cutoffs import stock_session_bounds
+
+    bounds = stock_session_bounds(day or dt.datetime.now(dt.timezone.utc).date())
+    return int(bounds[0]) if bounds else None
+
+
+def wave_open(state, ss, now):
+    """premarket: the less important half of this pass starts 30 min before the open (that first bar's price is not very
+    reliable), the best half best-first 15 min before the open. UTC epochs only."""
     if state["mode"] != "premarket":
         return True
     pos = state["placements"][ss].get("pos", state["placements"][ss]["rank"])
     upper = pos <= (len(state["placements"]) + 1) // 2
-    return local.time() >= (dt.time(9, 15) if upper else dt.time(9, 0))
+    opened = session_open_utc()
+    return opened is not None and now >= opened - (900 if upper else 1800)
 
 
 def tick(state, day_dir):
     now = time.time()
-    local = dt.datetime.now(NY)
     day = state["day"]
     if not state.get("paused") and state["mode"] != "overnight":
         state["hold"] = hold(True)
@@ -425,7 +432,7 @@ def tick(state, day_dir):
         busy = set(pr["running7d"]) | {ss for ss, p in state["placements"].items() if p.get("host") == name and p["status"] == "running"}
         if len(busy) >= slots or pr["mem"] < MEM_FLOOR_MB or now - state["last_launch"].get(name, 0) < LAUNCH_GAP_S:
             continue
-        pick = next((ss for ss in order if wave_open(state, ss, local)), None)
+        pick = next((ss for ss in order if wave_open(state, ss, now)), None)
         if not pick:
             break
         order.remove(pick)
@@ -466,11 +473,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", choices=("intraday", "premarket", "overnight"), default="intraday")
     ap.add_argument("--half", choices=("all", "top", "bottom"), default="all", help="top = best half of the ranking, bottom = the rest")
-    ap.add_argument("--day", default=dt.datetime.now(NY).strftime("%Y%m%d"))
+    ap.add_argument("--day", default=dt.datetime.now(dt.timezone.utc).strftime("%Y%m%d"))
     ap.add_argument("--interval", type=float, default=20.0)
     ap.add_argument("--limit", type=int, default=0, help="first N keys of the ranking only (smoke test)")
     a = ap.parse_args()
-    day_dir = ROOT / "data/preopen_7d/trc_run" / (a.day + ("_overnight" if a.mode == "overnight" else ""))
+    day_dir = ROOT / "data/preopen_7d/trc_run" / (a.day + {"overnight": "_overnight", "premarket": "_premarket"}.get(a.mode, ""))
     state_path = day_dir / "state.json"
     if state_path.exists():
         state = json.loads(state_path.read_text())

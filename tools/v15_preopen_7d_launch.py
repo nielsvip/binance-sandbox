@@ -14,13 +14,11 @@ import signal
 import shutil
 import subprocess
 import sys
-from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from tools.v15_preopen_7d_stage import digest, validate_one  # noqa: E402
 
-NY = ZoneInfo("America/New_York")
 
 
 def _active_symbols(lines: list[str]) -> set[str]:
@@ -116,7 +114,7 @@ def build_launch(queue: dict, ss: str, result_dir: Path, workers: int, python: s
 
 def run_one(queue_path: Path, ss: str, result_dir: Path, workers: int,
             timeout_sec: int, python: str) -> dict:
-    local = dt.datetime.now(dt.timezone.utc).astimezone(NY)
+    local = dt.datetime.now(dt.timezone.utc)
     queue = json.loads(queue_path.read_text())
     stock_side = str(((queue.get("sym_sides") or {}).get(ss) or {}).get("cat_side", "")).startswith("STOCKS_")
     # V15_7D_ANYTIME=1: the trc 7D lane (paper) also runs intraday on the canonical NPZ (USER 2026-10-29 "run it now")
@@ -125,8 +123,13 @@ def run_one(queue_path: Path, ss: str, result_dir: Path, workers: int,
         pass  # crypto 7D has no market-hours constraint: runs any time there is spare compute
     elif rehearsal:
         print(json.dumps({"event": "REHEARSAL_WINDOW_OVERRIDE", "sym_side": ss, "at": local.isoformat()}), flush=True)
-    elif local.weekday() >= 5 or not dt.time(6, 0) <= local.time() < dt.time(9, 30):
-        raise ValueError("7D stock optimization is allowed only in the 06:00–09:30 ET morning window")
+    else:
+        # UTC only (USER 2026-10-30): the morning window is the 3.5 h before the exchange calendar's UTC open
+        from tools.npz_cutoffs import stock_session_bounds
+
+        bounds = stock_session_bounds(local.date())
+        if bounds is None or not bounds[0] - 12600 <= local.timestamp() < bounds[0]:
+            raise ValueError("7D stock optimization is allowed only in the 3.5 h before the session open")
     command, env, folder = build_launch(queue, ss, result_dir, workers, python)
     log = folder / "pilot.log"
     overlay_dir = folder / "npz_overlay"

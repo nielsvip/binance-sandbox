@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create an isolated RTH-only 7D stock NPZ plus today's completed 08:45/09:00/09:15 ET premarket rows (temporary)."""
+"""Create an isolated RTH-only 7D stock NPZ plus today's completed premarket rows of the three 15m bars ending at the open (temporary)."""
 from __future__ import annotations
 
 import datetime as dt
@@ -8,12 +8,10 @@ import json
 import time
 from types import SimpleNamespace
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
-NY = ZoneInfo("America/New_York")
 
 
 def build_overlay(symbol: str, overlay_dir: Path, now: dt.datetime | None = None) -> dict:
@@ -32,40 +30,42 @@ def build_overlay(symbol: str, overlay_dir: Path, now: dt.datetime | None = None
         raise ValueError(f"{symbol}: NPZ has no timestamps")
     scale = 1000 if int(ts[-1]) > 10**11 else 1
     ts_s = ts // scale
-    local_day = now.astimezone(NY).date()
     import npz_live_generator as live_npz
-    from tools.npz_premarket_temp_bars import fetch_premarket, private_klines, temp_epochs, tradier_key
+    from tools.npz_premarket_temp_bars import fetch_premarket, klines_have, land_klines, temp_epochs, tradier_key, utc_day
 
-    # USER 2026-10-29: exactly the 08:45 / 09:00 / 09:15 ET bars (bar-open stamps), each only once it has closed: a 09:00
-    # launch carries 08:45, a 09:15 launch 08:45 + 09:00; never earlier premarket bars.
-    # 2026-10-30: the host Tradier klines receive today's premarket bars only the next day (klines_canonical stocks-fetch
-    # takes completed sessions), so they are fetched from Tradier timesales here, the same way the live temp rows are
-    # (tools/npz_premarket_temp_bars.py); a launch right at a bar close waits up to 90 s for Tradier to serve that bar.
-    wanted = set(temp_epochs(local_day))
+    # USER 2026-10-29: exactly the three 15m bars ending at the session open (UTC: open - 2700/-1800/-900 s), each only once it
+    # has closed: an open-30 min launch carries the first, an open-15 min launch the first two. USER 2026-10-30: these klines
+    # must ARRIVE and be used for the NPZ ("UTC ONLY"): a bar missing from the host Tradier 15m kline file is fetched from
+    # Tradier timesales and written ONCE into that file (same writer as tools/npz_premarket_temp_bars.py, which normally landed
+    # it already); the rows are computed from the host klines. A launch right at a bar close waits up to 90 s for the bar.
+    day = utc_day(now.timestamp())
+    wanted = set(temp_epochs(day))
     closed = sorted(epoch for epoch in wanted if epoch + 900 <= now.timestamp())
     if not closed:
-        raise ValueError(f"{symbol}: no 08:45/09:00/09:15 ET premarket bar has closed yet")
-    key = tradier_key(ROOT)
-    if not key:
-        raise ValueError(f"{symbol}: no Tradier market-data key for the premarket bars")
+        raise ValueError(f"{symbol}: no premarket bar ending at the open has closed yet")
     live = abs(time.time() - now.timestamp()) < 600  # a past `now` (replay/test) never waits
     deadline = time.time() + (90 if live else 0)
-    while True:
-        bars, why = fetch_premarket(key, symbol, local_day, set(closed), time.time() if live else now.timestamp())
+    present = klines_have(ROOT, symbol, set(closed))
+    while set(closed) - present:
+        key = tradier_key(ROOT)
+        if not key:
+            raise ValueError(f"{symbol}: no Tradier market-data key for the premarket bars")
+        bars, why = fetch_premarket(key, symbol, day, set(closed) - present, time.time() if live else now.timestamp())
         if bars is None:
             raise ValueError(f"{symbol}: premarket fetch failed: {why}")
-        if closed[-1] in bars or time.time() >= deadline:
+        if bars:
+            present = land_klines(ROOT, symbol, bars) | present
+        if closed[-1] in present or time.time() >= deadline:
             break
         time.sleep(10)
-    pm_keep = set(bars)
+    pm_keep = {epoch for epoch in closed if epoch in present}
     if not pm_keep:
-        raise ValueError(f"{symbol}: Tradier returned no completed 08:45/09:00/09:15 ET premarket bar")
-    kline_base = private_klines(ROOT, overlay_dir / "klines", symbol, bars)
+        raise ValueError(f"{symbol}: no premarket bar ending at the open is in the klines or on Tradier")
     # 2026-10-30: only the last 21 days are classified. is_rth_bar_start builds a NYSE schedule per date (lru_cache 32), so
     # walking all ~42k rows of a multi-year store took minutes per overlay; seven sessions always fit in 21 days.
     recent = np.flatnonzero(ts_s >= int(ts_s[-1]) - 21 * 86400)
     rth_of = {int(i): is_rth_bar_start(int(ts_s[i])) for i in recent}
-    day_of = {i: dt.datetime.fromtimestamp(int(ts_s[i]), dt.timezone.utc).astimezone(NY).date() for i in recent}
+    day_of = {i: dt.datetime.fromtimestamp(int(ts_s[i]), dt.timezone.utc).date() for i in recent}  # a US session never crosses a UTC midnight
     rth_days = []
     for i in recent:
         if rth_of[int(i)] and day_of[i] not in rth_days:
@@ -92,7 +92,7 @@ def build_overlay(symbol: str, overlay_dir: Path, now: dt.datetime | None = None
     tmp = target.with_name(f".{target.name}.{__import__('os').getpid()}.tmp.npz")
     np.savez_compressed(tmp, **out_arrays)
     tmp.replace(target)
-    manager = SimpleNamespace(base_path=kline_base)  # host klines for 5m/1h/4h/D, private 15m view with today's premarket bars
+    manager = SimpleNamespace(base_path=ROOT)  # the host klines, which now hold the premarket bars
     for epoch in sorted(pm_keep):
         row = live_npz._compute_row_for_15m_close(
             symbol, dt.datetime.fromtimestamp(epoch, dt.timezone.utc), manager, None, "tradier")
