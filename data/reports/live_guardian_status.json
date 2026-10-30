@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-30T00:19:42Z",
+ "ts": "2026-10-30T00:27:30Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,12 +29,12 @@
   "fin": {
    "fills_6h": 120,
    "open_positions": 9,
-   "unrealised_usd": 1.15,
+   "unrealised_usd": 2.47,
    "pos_mismatch": 0,
    "vec_parity": {
-    "live_vec_decisions": 6,
-    "state_divergent": 1,
-    "filled": 3,
+    "live_vec_decisions": 4,
+    "state_divergent": 0,
+    "filled": 2,
     "refused_non_safety": 2,
     "safety_refusals": 0,
     "not_filled_no_log": 0,
@@ -45,12 +45,12 @@
   "men": {
    "fills_6h": 126,
    "open_positions": 10,
-   "unrealised_usd": 0.29,
+   "unrealised_usd": 1.4,
    "pos_mismatch": 0,
    "vec_parity": {
-    "live_vec_decisions": 9,
-    "state_divergent": 5,
-    "filled": 2,
+    "live_vec_decisions": 5,
+    "state_divergent": 2,
+    "filled": 1,
     "refused_non_safety": 2,
     "safety_refusals": 0,
     "not_filled_no_log": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 202,
-   "open_positions": 16,
-   "unrealised_usd": 1.99,
+   "fills_6h": 201,
+   "open_positions": 15,
+   "unrealised_usd": 4.51,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 26,
    "open_positions": 4,
-   "unrealised_usd": -1.16,
+   "unrealised_usd": -0.77,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,21 +127,21 @@
     "48315"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 9.0
   },
   "men": {
    "pids": [
     "48306"
    ],
    "starts_30m": 1,
-   "log_age_s": 227.0
+   "log_age_s": 124.0
   },
   "ang": {
    "pids": [
     "31077"
    ],
    "starts_30m": 1,
-   "log_age_s": 2781.0
+   "log_age_s": 102.0
   },
   "inf": {
    "pids": [
@@ -155,128 +155,193 @@
     "21639"
    ],
    "starts_30m": 1,
-   "log_age_s": 262.0
+   "log_age_s": 144.0
   },
   "trb": {
    "pids": [
     "19349"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": -0.0
   },
   "trc": {
    "pids": [
     "14582"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 1.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-30T00:19:42Z",
-   "severity": "WARN",
-   "kind": "VEC_OPEN_WHILE_LIVE_IN",
-   "key": "fin:1000XECUSDT_SHORT",
-   "evidence": "OPEN REENTRY_DC4_15M_BREAK bar=2026-10-29T18:00:00Z: live already holds 2267 (state divergence)"
+   "ts": "2026-10-30T00:27:30Z",
+   "severity": "CRITICAL",
+   "kind": "RAPID_LOSS_KEY",
+   "key": "fin:EDUUSDT_LONG",
+   "evidence": "unrealised -9.03% (60-min high -4.18%), amt 259"
   },
   {
-   "ts": "2026-10-30T00:19:42Z",
+   "ts": "2026-10-30T00:27:30Z",
+   "severity": "CRITICAL",
+   "kind": "RAPID_LOSS_KEY",
+   "key": "fin:ETHFIUSDC_LONG",
+   "evidence": "unrealised -11.23% (60-min high -5.93%), amt 22.9"
+  },
+  {
+   "ts": "2026-10-30T00:27:31Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "fin:FLUXUSDT_LONG",
    "evidence": "CLOSE PPL_SL_CLOSE_BE+buffer_px0.0667_stop0.06 bar=2026-10-29T18:15:00Z refused by non-safety gate: 29 18:34:03 - INFO - [fin] [VEC_EXACT] fin:FLUXUSDT_LONG CLOSE VEC_CONVERGE_TO_FLAT qty=95.000000 -> BLOCKED_NET_GAIN"
   },
   {
-   "ts": "2026-10-30T00:19:42Z",
+   "ts": "2026-10-30T00:27:31Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "fin:1INCHUSDT_SHORT",
    "evidence": "OPEN REENTRY_DC4_15M_BREAK bar=2026-10-29T18:15:00Z refused by non-safety gate: 29 18:38:10 - INFO - [fin] [VEC_EXACT] fin:1INCHUSDT_SHORT CLOSE VEC_EXIT_OWED qty=128.000000 -> SKIPPED_VX_INFLIGHT"
   },
   {
-   "ts": "2026-10-30T00:19:43Z",
-   "severity": "WARN",
-   "kind": "VEC_OPEN_WHILE_LIVE_IN",
-   "key": "men:MEWUSDT_SHORT",
-   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-29T18:00:00Z: live already holds 33534 (state divergence)"
+   "ts": "2026-10-30T00:27:32Z",
+   "severity": "CRITICAL",
+   "kind": "RAPID_LOSS_KEY",
+   "key": "men:EDUUSDT_LONG",
+   "evidence": "unrealised -9.07% (60-min high -4.25%), amt 259"
   },
   {
-   "ts": "2026-10-30T00:19:43Z",
-   "severity": "WARN",
-   "kind": "VEC_OPEN_WHILE_LIVE_IN",
-   "key": "men:1000XECUSDT_SHORT",
-   "evidence": "OPEN REENTRY_DC4_15M_BREAK bar=2026-10-29T18:00:00Z: live already holds 2266 (state divergence)"
+   "ts": "2026-10-30T00:27:32Z",
+   "severity": "CRITICAL",
+   "kind": "RAPID_LOSS_KEY",
+   "key": "men:ETHFIUSDC_LONG",
+   "evidence": "unrealised -11.16% (60-min high -5.97%), amt 22.9"
   },
   {
-   "ts": "2026-10-30T00:19:43Z",
-   "severity": "WARN",
-   "kind": "VEC_OPEN_WHILE_LIVE_IN",
-   "key": "men:BOMEUSDC_SHORT",
-   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-29T18:00:00Z: live already holds 22967 (state divergence)"
+   "ts": "2026-10-30T00:27:32Z",
+   "severity": "CRITICAL",
+   "kind": "RAPID_LOSS_KEY",
+   "key": "men:RLCUSDT_LONG",
+   "evidence": "unrealised -5.91% (60-min high -0.57%), amt 16.9"
   },
   {
-   "ts": "2026-10-30T00:19:43Z",
+   "ts": "2026-10-30T00:27:32Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "men:FLUXUSDT_LONG",
    "evidence": "CLOSE PPL_SL_CLOSE_BE+buffer_px0.0667_stop0.06 bar=2026-10-29T18:15:00Z refused by non-safety gate: 29 18:35:04 - INFO - [men] [VEC_EXACT] men:FLUXUSDT_LONG CLOSE VEC_CONVERGE_TO_FLAT qty=95.000000 -> BLOCKED_NET_GAIN"
   },
   {
-   "ts": "2026-10-30T00:19:43Z",
+   "ts": "2026-10-30T00:27:32Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "men:1INCHUSDT_SHORT",
    "evidence": "OPEN REENTRY_DC4_15M_BREAK bar=2026-10-29T18:15:00Z refused by non-safety gate: 29 18:38:17 - INFO - [men] [VEC_EXACT] men:1INCHUSDT_SHORT CLOSE VEC_EXIT_OWED qty=128.000000 -> SKIPPED_VX_INFLIGHT"
   },
   {
-   "ts": "2026-10-30T00:19:43Z",
+   "ts": "2026-10-30T00:27:32Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "men:EGLDUSDT_SHORT",
    "evidence": "OPEN TIER1_PARTIAL_EXHAUSTED_exit3.4930_cur3. bar=2026-10-29T18:15:00Z: live already holds 4.3 (state divergence)"
   },
   {
-   "ts": "2026-10-30T00:19:43Z",
+   "ts": "2026-10-30T00:27:32Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "men:ARUSDT_LONG",
    "evidence": "CLOSE FIXED_STOP bar=2026-10-29T20:00:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-30T00:19:44Z",
+   "ts": "2026-10-30T00:27:34Z",
+   "severity": "CRITICAL",
+   "kind": "RAPID_LOSS_KEY",
+   "key": "ang:ARKMUSDT_LONG",
+   "evidence": "unrealised -13.80% (60-min high -8.89%), amt 124"
+  },
+  {
+   "ts": "2026-10-30T00:27:38Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "inf:ARUSDT_LONG",
    "evidence": "CLOSE FIXED_STOP bar=2026-10-29T20:00:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-30T00:19:45Z",
+   "ts": "2026-10-30T00:27:39Z",
+   "severity": "WARN",
+   "kind": "ATTEMPT_STORM_KEY",
+   "key": "flz:BTCUSDC_LONG",
+   "evidence": "63 execute_now attempts in 5 min (pre-gate)"
+  },
+  {
+   "ts": "2026-10-30T00:27:39Z",
+   "severity": "WARN",
+   "kind": "ATTEMPT_STORM_KEY",
+   "key": "men:EDUUSDT_LONG",
+   "evidence": "42 execute_now attempts in 5 min (pre-gate)"
+  },
+  {
+   "ts": "2026-10-30T00:27:39Z",
+   "severity": "WARN",
+   "kind": "ATTEMPT_STORM_KEY",
+   "key": "men:ETHFIUSDC_LONG",
+   "evidence": "42 execute_now attempts in 5 min (pre-gate)"
+  },
+  {
+   "ts": "2026-10-30T00:27:39Z",
+   "severity": "WARN",
+   "kind": "ATTEMPT_STORM_KEY",
+   "key": "men:RLCUSDT_LONG",
+   "evidence": "42 execute_now attempts in 5 min (pre-gate)"
+  },
+  {
+   "ts": "2026-10-30T00:27:39Z",
+   "severity": "WARN",
+   "kind": "ATTEMPT_STORM_KEY",
+   "key": "fin:EDUUSDT_LONG",
+   "evidence": "43 execute_now attempts in 5 min (pre-gate)"
+  },
+  {
+   "ts": "2026-10-30T00:27:39Z",
+   "severity": "WARN",
+   "kind": "ATTEMPT_STORM_KEY",
+   "key": "fin:ETHFIUSDC_LONG",
+   "evidence": "43 execute_now attempts in 5 min (pre-gate)"
+  },
+  {
+   "ts": "2026-10-30T00:27:39Z",
+   "severity": "WARN",
+   "kind": "ATTEMPT_STORM_KEY",
+   "key": "ang:MAGICUSDT_LONG",
+   "evidence": "35 execute_now attempts in 5 min (pre-gate)"
+  },
+  {
+   "ts": "2026-10-30T00:27:39Z",
+   "severity": "WARN",
+   "kind": "ATTEMPT_STORM_KEY",
+   "key": "ang:ARKMUSDT_LONG",
+   "evidence": "35 execute_now attempts in 5 min (pre-gate)"
+  },
+  {
+   "ts": "2026-10-30T00:27:40Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "men",
-   "evidence": "ez_manage_men.log not written for 227s"
+   "evidence": "ez_manage_men.log not written for 124s"
   },
   {
-   "ts": "2026-10-30T00:19:45Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 2781s"
-  },
-  {
-   "ts": "2026-10-30T00:19:45Z",
+   "ts": "2026-10-30T00:27:40Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 262s"
+   "evidence": "ez_manage_flz.log not written for 144s"
   }
  ],
  "alert_counts": {
-  "VEC_OPEN_WHILE_LIVE_IN": 5,
+  "RAPID_LOSS_KEY": 6,
   "VEC_DECISION_REFUSED": 4,
+  "VEC_OPEN_WHILE_LIVE_IN": 1,
   "VEC_EXIT_WHILE_LIVE_FLAT": 2,
-  "STALE_LOG": 3
+  "ATTEMPT_STORM_KEY": 8,
+  "STALE_LOG": 2
  },
  "active_interventions": {
   "acct:trc": {
@@ -289,6 +354,13 @@
    "ts": 1791314663.497563,
    "why": "ACCOUNT_EQUITY_DROP unrealised PnL of the same open positions fell $30.53 since 2026-10-06T19:19:51Z (now $+405.99)",
    "undo": "rm /Users/niels/Documents/binance/data/HALT_TRADING_trb",
+   "dry_run": false
+  },
+  "key:men:EDUUSDT_LONG": {
+   "ts": 1793319635.40576,
+   "until": 1793326835.405772,
+   "why": "RAPID_LOSS_KEY unrealised -8.38% (60-min high -4.25%), amt 259 (opens/augments blocked; exits untouched)",
+   "undo": "redis-cli -p 6379 DEL open_blocked:men:EDUUSDT_LONG",
    "dry_run": false
   },
   "key:men:RLCUSDT_LONG": {
@@ -314,6 +386,13 @@
    "ts": 1791791577.100162,
    "why": "ACCOUNT_EQUITY_DROP unrealised PnL of the same open positions fell $25.47 since 2026-10-12T07:51:49Z (now $+1.07)",
    "undo": "alert-only (never-halt policy 2026-10-10)",
+   "dry_run": false
+  },
+  "key:ang:ARKMUSDT_LONG": {
+   "ts": 1793320054.5845811,
+   "until": 1793327254.584584,
+   "why": "RAPID_LOSS_KEY unrealised -13.80% (60-min high -8.89%), amt 124 (opens/augments blocked; exits untouched)",
+   "undo": "redis-cli -p 6379 DEL open_blocked:ang:ARKMUSDT_LONG",
    "dry_run": false
   },
   "acct:fin": {
@@ -357,5 +436,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 3.81
+ "sweep_s": 10.4
 }
