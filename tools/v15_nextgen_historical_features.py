@@ -58,6 +58,8 @@ def adapt(context, feature_mode=None, manifest_path=None):
     if selected == "serving":
         return context
     index = {"tabs": {}, "switches": {}, "defaults": {}}
+    if selected == "context_free":
+        index["tabs"] = {name: {"rows": [list(row[:3]) + [None] for row in block.get("rows", [])], "yellows": list(block.get("yellows", []))} for name, block in context.tidx.get("tabs", {}).items()}
     provenance = None
     if selected == "historical_quality":
         path = manifest_path or os.environ.get("V18_ASOF_TEMPLATE_MANIFEST")

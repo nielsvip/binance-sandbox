@@ -24,6 +24,7 @@ live's missing-indicator skip, NEVER a default-filled fabrication:
   uses bar-step diffs, which is what those ticks sum to per bar.
 """
 TFS = ["3m", "15m", "1h", "4h", "D"]
+from wt_dc_delta import DEFAULT_CFG as _LIVE_DELTA_DEFAULT_CFG
 WT_DELTA_FIELDS = [
     "wt1", "wt2", "wt_score", "wt_velocity", "wt_acceleration",
     "wt_percentile", "wt_zscore",
@@ -49,15 +50,21 @@ def _C(cfg_get, key, default):
     return default if v is None else v
 
 
+def _tf_weights(cfg_get):
+    tw = _C(cfg_get, "delta_tf_weights", None)
+    if not isinstance(tw, dict) or not tw:
+        tw = _C(cfg_get, "tf_weights", None)
+    if not isinstance(tw, dict) or not tw:
+        tw = _LIVE_DELTA_DEFAULT_CFG["tf_weights"]
+    return tw
+
+
 def _tfs(cfg_get):
-    tw = _C(cfg_get, "tf_weights", {}) or {}
-    if not isinstance(tw, dict):
-        tw = {}
-    return list(tw.keys()) if tw else list(TFS)
+    return list(_tf_weights(cfg_get))
 
 
 def _tw(cfg_get):
-    tw = _C(cfg_get, "tf_weights", {}) or {}
+    tw = _tf_weights(cfg_get)
     if not isinstance(tw, dict):
         tw = {}
     return {tf: float(tw.get(tf, 1.0)) for tf in _tfs(cfg_get)}
@@ -288,7 +295,7 @@ def baseline_bounce_mask(npz, n, is_long, cfg, _safe):
         return d if v is None else v
 
     try:
-        tw_raw = _cfg("tf_weights", {}) or {}
+        tw_raw = _tf_weights(_cfg)
     except Exception:
         tw_raw = {}
     tfs = list(tw_raw.keys()) if tw_raw else list(TFS)

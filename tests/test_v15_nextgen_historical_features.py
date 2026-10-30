@@ -60,3 +60,16 @@ def test_context_free_dataset_never_infers_current_template_values(monkeypatch):
     dataset.inforce["BTCUSDT_LONG"]["STOP_PCT"] = 2
     assert dataset.in_force("BTCUSDT_LONG", "STOP_PCT") == (None, "U")
     assert network._template_defaults("CRYPTO_LONG") == {}
+
+
+def test_intrinsic_scoring_keeps_candidate_universe_without_default_features():
+    first = current_context(2, [0, 2, 4])
+    second = current_context(900, [100, 900, 10000])
+    for context, default in ((first, 2), (second, 900)):
+        context.tidx["tabs"] = {"EXIT_STRUCTURAL": {"rows": [[3, "STOP_PCT", 3, default]], "yellows": ["FILTER_TF=1h"]}}
+    left = network.Featurizer("CRYPTO_LONG", first, feature_mode="context_free")
+    right = network.Featurizer("CRYPTO_LONG", second, feature_mode="context_free")
+    assert left.fctx.tidx["tabs"] == right.fctx.tidx["tabs"] == {"EXIT_STRUCTURAL": {"rows": [[3, "STOP_PCT", 3, None]], "yellows": ["FILTER_TF=1h"]}}
+    assert left.fctx.span("STOP_PCT") == right.fctx.span("STOP_PCT") == []
+    assert left.fctx.default("STOP_PCT") is None
+    assert left.set_feats("EXIT_STRUCTURAL|STOP_PCT=3") == right.set_feats("EXIT_STRUCTURAL|STOP_PCT=3")
