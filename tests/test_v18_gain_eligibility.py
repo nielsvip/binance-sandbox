@@ -93,3 +93,16 @@ def test_dataset_to_trainer_preserves_missing_vs_invalid_and_real_delta(tmp_path
     assert np.isnan(trainer.D["d"][1])
     assert trainer.M[:, 0].tolist() == [0, 0, 1]
     assert trainer.gain_eligibility == {"eligible": 1, "excluded_ambiguous_invalid": 1, "excluded_missing_nonfinite": 1}
+
+
+def test_chain_join_requires_unique_context_at_evaluation_time():
+    builder = linknet.CatDS("CRYPTO_LONG")
+    builder.ctxj = {"cbmap": {("BTCUSDT_LONG", 1.0): [(2, 99, 100.0, 110.0), (3, 1, 200.0, 210.0)]}}
+    event = {"s": "BTCUSDT_LONG", "b": "board", "cb": 1.0}
+    assert builder._base_of(event, 105.0) == 2
+    assert builder._base_of(event, 205.0) == 3
+    assert builder._base_of(event, 150.0) is None
+    builder.ctxj["cbmap"][("BTCUSDT_LONG", 1.0)].append((4, 1, 100.0, 110.0))
+    assert builder._base_of(event, 105.0) is None
+    assert builder.c["ctx_log_outside_recorded_time"] == 1
+    assert builder.c["ctx_log_ambiguous_time_match"] == 1

@@ -228,12 +228,12 @@ class CatDS:
         if not c:
             self.c["ctx_log_unjoined"] += 1
             return None
-        if len(c) == 1:
-            self.c["ctx_log_joined"] += 1
-            return c[0][0]
-        best = min(c, key=lambda r: (0.0 if r[2] - 1 <= t <= r[3] + 1 else min(abs(t - r[2]), abs(t - r[3])), -r[1]))
-        self.c["ctx_log_joined_ambiguous_cb"] += 1
-        return best[0]
+        matches = {row[0] for row in c if row[2] - 1 <= t <= row[3] + 1}
+        if len(matches) != 1:
+            self.c["ctx_log_outside_recorded_time" if not matches else "ctx_log_ambiguous_time_match"] += 1
+            return None
+        self.c["ctx_log_joined"] += 1
+        return next(iter(matches))
 
     def _new_board(self, sym, b):
         old = self.board_of.get(sym)

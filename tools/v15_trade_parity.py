@@ -430,7 +430,7 @@ def run(symside: str, ov: dict, window_days: int, tol_min: float, min_match: flo
     # (native openers replaced by the vec twin; runbook data/parity/PARITY_VEC_EXACT_SWITCHOVER_RUNBOOK.md §3). Default ON;
     # TRADE_PARITY_VEC_EXACT=0 = labelled seam/native diagnostic. Live-leg only (the vec leg is the reference).
     vec_exact = os.environ.get("TRADE_PARITY_VEC_EXACT", "1") == "1"
-    live_extra = {}
+    live_extra = {"VEC_BACKSTOP_SYNC_ENABLED": False, "VEC_BACKSTOP_ENABLED": False, "VEC_DRIVEN_ENABLED": False, "PARITY_VEC_EXACT_MODE": False} if not vec_exact else {}
     if vec_exact:
         live_extra = {"PARITY_VEC_EXACT_MODE": True, "PARITY_VEC_EXACT_FAMILIES": os.environ.get("TRADE_PARITY_VEC_EXACT_FAMILIES", "ENTRY,EXIT,AUGMENT"),
                       "VEC_DRIVEN_ENABLED": False, "VEC_DRIVEN_NATIVE_ENTRY_BLOCK_ALL": False,
@@ -482,7 +482,7 @@ def run(symside: str, ov: dict, window_days: int, tol_min: float, min_match: flo
     if not live.get("execution_ledger"):
         rep["verdict"] = "UNAVAILABLE" if not live.get("valid") and not live.get("trades") else rep["verdict"]
     rep.update({"symside": symside, "window_days": window_days, "n_overrides": len(ov), "tol_min": tol_min,
-                "host": socket.gethostname(), "live_universe": in_live_universe(symside), "isolation": isolation, "npz": npz_stamp(symside, frozen_dir), "npz_frozen_dir": frozen_dir, "mode_label": "VEC_EXACT" if vec_exact else "SEAM_DIAGNOSTIC", "live_ablation_scope": live_scope, "both_leg_overrides": both_notes, "n_overrides_live": len(ov_live), "engine_md5": engine_md5(), "env": {k: os.environ.get(k) for k in HARNESS_ENV},
+                "host": socket.gethostname(), "live_universe": in_live_universe(symside), "isolation": isolation, "npz": npz_stamp(symside, frozen_dir), "npz_frozen_dir": frozen_dir, "mode_label": "VEC_EXACT" if vec_exact else "SEAM_DIAGNOSTIC", "live_ablation_scope": live_scope, "both_leg_overrides": both_notes, "live_overlay": live_extra, "n_overrides_live": len(ov_live), "engine_md5": engine_md5(), "env": {k: os.environ.get(k) for k in HARNESS_ENV},
                 "vec": {k: vec.get(k) for k in ("gain_pct", "trades", "tim_pct", "max_dd_pct", "valid", "invalid_reason")},
                 "live": {k: live.get(k) for k in ("gain_pct", "trades", "tim_pct", "max_dd_pct", "valid", "invalid_reason")},
                 "live_trace": live.get("trace"), "precedence": "set" if os.environ.get("V12_RUN_ONE_SET_PRECEDENCE") == "1" else "store", "set_precedence": live.get("set_precedence"), "override_issues": live.get("override_issues") or [], "dropped_after_crash": dropped_after_crash,

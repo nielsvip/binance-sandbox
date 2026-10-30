@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-30T20:14:34Z",
+ "ts": "2026-10-30T20:19:39Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,7 +29,7 @@
   "fin": {
    "fills_6h": 0,
    "open_positions": 1,
-   "unrealised_usd": 0.01,
+   "unrealised_usd": 0.0,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 1,
    "open_positions": 2,
-   "unrealised_usd": 0.14,
+   "unrealised_usd": 0.19,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 0,
    "open_positions": 1,
-   "unrealised_usd": -0.14,
+   "unrealised_usd": -0.12,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,54 +127,54 @@
     "60398"
    ],
    "starts_30m": 1,
-   "log_age_s": 396.0
+   "log_age_s": 702.0
   },
   "men": {
    "pids": [
     "59391"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 10.0
   },
   "ang": {
    "pids": [
     "60082"
    ],
    "starts_30m": 1,
-   "log_age_s": 7.0
+   "log_age_s": 4.0
   },
   "inf": {
    "pids": [
     "64156"
    ],
    "starts_30m": 1,
-   "log_age_s": 9.0
+   "log_age_s": 21.0
   },
   "flz": {
    "pids": [
     "70377"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 8.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 4366.0
+   "log_age_s": 4672.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 5781.0
+   "log_age_s": 6087.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-30T20:14:35Z",
+   "ts": "2026-10-30T20:19:41Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 396s"
+   "evidence": "ez_manage_fin.log not written for 702s"
   }
  ],
  "alert_counts": {

@@ -236,6 +236,29 @@ def _add_one(task):
     return out
 
 
+def erase_klines(base, symbols, epochs):
+    """Remove the temporary premarket kline bars (USER 2026-10-30: temp klines and temp NPZ bars are erased at open + 600 s)."""
+    stamps = {iso(e) for e in epochs}
+    errors = {}
+    removed = 0
+    for symbol in symbols:
+        for tf in ("15m", "5m"):
+            path = Path(base) / "klines_cache" / "tradier" / f"{symbol}_{tf}.json"
+            if not path.exists():
+                continue
+            try:
+                rows = json.loads(path.read_text())
+                keep = [r for r in rows if str(r.get("timestamp", "")) not in stamps]
+                if len(keep) != len(rows):
+                    tmp = path.with_name(f".{path.name}.{os.getpid()}.erase")
+                    tmp.write_text(json.dumps(keep))
+                    os.replace(tmp, path)
+                    removed += len(rows) - len(keep)
+            except Exception as exc:
+                errors[f"{symbol}_{tf}"] = f"{type(exc).__name__}: {str(exc)[:120]}"
+    return {"klines_removed": removed, "klines_errors": errors}
+
+
 def _erase_one(task):
     ind, symbol, epochs = task
     from npz_tail_store import _store_lock, tail_path_for_npz, tail_rows
@@ -431,6 +454,8 @@ class Run:
             results = dict(pool.map(_erase_one, tasks))
         errors = {s: r for s, r in results.items() if r.get("error")}
         removed = {s: r for s, r in results.items() if r["sidecar"] or r["zip"]}
+        kl = erase_klines(Path(self.ind).parents[1], names, epochs)
+        errors.update(kl["klines_errors"])
         verified = not errors
         stamp = dt.datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         led.setdefault("events", []).append({"at": stamp, "kind": "erase", "symbols": len(tasks), "removed_symbols": len(removed),
@@ -445,7 +470,7 @@ class Run:
             except FileNotFoundError:
                 pass
         return {"verified": verified, "symbols": len(tasks), "removed_symbols": len(removed), "rows_zip": sum(r["zip"] for r in results.values()),
-                "rows_sidecar": sum(r["sidecar"] for r in results.values()), "errors": errors, "erase_s": round(time.time() - t0, 1)}
+                "rows_sidecar": sum(r["sidecar"] for r in results.values()), "klines_removed": kl["klines_removed"], "errors": errors, "erase_s": round(time.time() - t0, 1)}
 
     def pending_days(self, exclude=None):
         out = []

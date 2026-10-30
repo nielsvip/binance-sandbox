@@ -76,3 +76,71 @@ def test_close_cancels_and_crypto_reduce_places_nothing(tmp_path):
     b.calls.clear()
     S.Stops(t).after_fill("ang", {"ss": "XUSDT_LONG", "act": "REDUCE", "key": "k"}, 1.0, 5.0, 11.0)
     assert b.calls == []
+
+
+class FakeTradier:
+    """Tradier answers a submission with status "ok" and REJECTS a closing stop that has no position under it."""
+
+    def __init__(self, out, held=None, resting=()):
+        self.out, self.calls, self.resting = out, [], list(resting)
+        self.held = dict(held or {})
+        self.placed = []
+
+    def account(self, acct):
+        return "VA1", "key", "https://sandbox.tradier.com/v1"
+
+    def positions(self, acct):
+        return {ss: {"qty": q} for ss, q in self.held.items() if q}
+
+    def _req(self, method, acct, path, params=None, data=None):
+        self.calls.append((method, path, dict(data or {})))
+        if method == "GET" and path.endswith("/orders"):
+            return {"orders": {"order": list(self.resting)}}
+        if method == "POST":
+            self.placed.append(dict(data or {}))
+            return {"order": {"id": 101, "status": "ok"}}
+        return {"status": "cancelled"}
+
+
+def test_tradier_submission_ack_ok_is_accepted_and_the_entry_is_not_refused(tmp_path):
+    b = FakeTradier(tmp_path, held={"XUSDT_LONG": 5.0})
+    t, rows, alerts = _trader(tmp_path, "stocks", b)
+    b.resting = [{"id": 101, "side": "sell", "quantity": 5, "status": "open", "type": "stop", "symbol": "XUSDT", "stop_price": 9.96}]
+    level = S.Stops(t).prearm_entry("trb", {"ss": "XUSDT_LONG", "act": "AUGMENT", "key": "k"}, 0.0, 5.0, 11.0)
+    assert level == 9.96 and not alerts
+    assert [r.get("status") for r in rows] == ["PREARM_VERIFIED"]
+
+
+def test_a_closing_stop_is_never_sent_to_tradier_without_a_position(tmp_path):
+    b = FakeTradier(tmp_path, held={})
+    t, rows, alerts = _trader(tmp_path, "stocks", b)
+    try:
+        S.Stops(t).prearm_entry("trb", {"ss": "XUSDT_LONG", "act": "OPEN", "key": "k"}, 5.0, 0.0, 11.0)
+        raise AssertionError("a naked stop must be refused")
+    except RuntimeError as exc:
+        assert "STOP_WOULD_BE_NAKED" in str(exc)
+    assert b.placed == []
+
+
+def test_a_refused_entry_withdraws_the_stop_it_placed(tmp_path):
+    b = FakeTradier(tmp_path, held={"XUSDT_LONG": 5.0})
+    t, rows, alerts = _trader(tmp_path, "stocks", b)
+    b.resting = [{"id": 9, "side": "sell", "quantity": 5, "status": "open", "type": "stop", "symbol": "XUSDT", "stop_price": 0.0}]
+    try:
+        S.Stops(t).prearm_entry("trb", {"ss": "XUSDT_LONG", "act": "AUGMENT", "key": "k"}, 0.0, 5.0, 11.0)
+        raise AssertionError("an unverifiable stop must refuse the entry")
+    except RuntimeError as exc:
+        assert "STOP_NOT_RESTING" in str(exc) and "withdrew 1 stop" in str(exc)
+    assert [r.get("status") for r in rows] == ["WITHDRAWN"]
+    assert [c[0] for c in b.calls if c[0] == "DELETE"] == ["DELETE"]
+
+
+def test_stop_above_the_held_share_count_is_refused(tmp_path):
+    b = FakeTradier(tmp_path, held={"XUSDT_LONG": 2.0})
+    t, rows, alerts = _trader(tmp_path, "stocks", b)
+    try:
+        S.Stops(t).place("trb", "XUSDT", "LONG", 9.96, 5.0, "k")
+        raise AssertionError("a stop larger than the position must be refused")
+    except RuntimeError as exc:
+        assert "STOP_QTY_ABOVE_HELD" in str(exc)
+    assert b.placed == []

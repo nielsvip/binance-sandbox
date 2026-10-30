@@ -21,6 +21,10 @@ import time
 from pathlib import Path
 
 STOP_BUFFER = 0.004
+# A broker's SUBMISSION ack, not a resting state. Tradier answers {"order": {"id": N, "status": "ok"}} and Binance's algo
+# endpoint answers NEW/WORKING. Measured 2026-10-30: "ok" was absent here, so every Tradier prearm raised
+# STOP_PLACE_UNCONFIRMED after the stop had already been sent — 2,966 naked stops rejected on trb+trc in one session.
+PLACE_ACK_OK = ("NEW", "OPEN", "PENDING", "WORKING", "OK")
 
 
 def stop_level(side, dc_low, dc_high):
@@ -122,7 +126,11 @@ class Stops:
         return round_to_tick(level, tick, side)
 
     def prearm_entry(self, acct, order, quantity, held_before, mark):
-        """Refuse an entry unless its full resulting position has a verified resting stop first."""
+        """Refuse an entry unless its full resulting position has a verified resting stop first.
+
+        A refusal must never leave the stop this call placed behind: an unprotected entry is not sent, so that stop has no
+        position under it and the broker rejects it once per pass forever (measured 2026-10-30). Every raise below therefore
+        cancels first."""
         symbol, side = order["ss"].rsplit("_", 1)
         symbol, side = symbol.upper(), side.upper()
         level = self.entry_level(order, mark)
@@ -131,13 +139,28 @@ class Stops:
         existing = self._matching_stop(acct, symbol, side, level, total)
         if existing is None:
             placed = self.place(acct, symbol, side, level, total, order["key"])
-            if not placed.get("id") or str(placed.get("status") or "").upper() not in ("NEW", "OPEN", "PENDING"):
-                raise RuntimeError(f"STOP_PLACE_UNCONFIRMED {symbol}: {placed}")
+            if not placed.get("id") or str(placed.get("status") or "").upper() not in PLACE_ACK_OK:
+                self._withdraw(acct, symbol, side, order, f"STOP_PLACE_UNCONFIRMED {symbol}: {placed}")
             existing = self._matching_stop(acct, symbol, side, level, total)
         if existing is None:
-            raise RuntimeError(f"STOP_NOT_RESTING {symbol}: level={level}")
+            self._withdraw(acct, symbol, side, order, f"STOP_NOT_RESTING {symbol}: level={level}")
         self._row(acct=acct, ss=order["ss"], act=order["act"], status="PREARM_VERIFIED", level=level, qty=total, dc=src, key=order["key"])
         return level
+
+    def _withdraw(self, acct, symbol, side, order, reason):
+        """Cancel the stop a refused entry just placed, then raise. Never swallows the original reason."""
+        try:
+            cancelled = self.cancel(acct, symbol, side)
+        except Exception as exc:
+            self._row(acct=acct, ss=order["ss"], act=order.get("act"), status="WITHDRAW_FAILED", detail=f"{reason} | cancel failed {str(exc)[:160]}", key=order.get("key"))
+            self.t.alert("VD_STOP_WITHDRAW_FAILED", account=acct, sym_side=order["ss"], error=str(exc)[:200], severity="CRITICAL")
+            raise RuntimeError(f"{reason} (stop left resting: cancel failed {str(exc)[:120]})")
+        self._row(acct=acct, ss=order["ss"], act=order.get("act"), status="WITHDRAWN", cancelled=cancelled, detail=reason, key=order.get("key"))
+        raise RuntimeError(f"{reason} (withdrew {cancelled} stop(s))")
+
+    def _tr_held(self, acct, symbol, side):
+        rows = self.t.broker.positions(acct)
+        return float((rows.get(f"{symbol}_{side}") or {}).get("qty") or 0.0)
 
     def verify_entry(self, acct, order, quantity, held_before, level):
         symbol, side = order["ss"].rsplit("_", 1)
@@ -261,5 +284,13 @@ class Stops:
                 "type": "stop", "stop": f"{level:.2f}", "duration": "gtc", "tag": cid[:24]}
         if int(qty) < 1:
             raise RuntimeError(f"stop qty {qty} < 1 share")
+        # A standalone equity stop is a CLOSING order (sell / buy_to_cover): with no position under it Tradier rejects it,
+        # so sending one is never anything but noise in the account. An entry's stop belongs in the OTO the entry itself
+        # carries (Tradier.send_protected), never here. Refused BEFORE the POST so nothing has to be withdrawn.
+        held_now = self._tr_held(acct, symbol, side)
+        if held_now <= 0:
+            raise RuntimeError(f"STOP_WOULD_BE_NAKED {symbol}_{side}: broker holds 0 on {acct} — a closing stop needs a position (entries are protected by their OTO)")
+        if int(qty) > int(held_now):
+            raise RuntimeError(f"STOP_QTY_ABOVE_HELD {symbol}_{side}: stop {int(qty)} > held {int(held_now)} on {acct}")
         r = self.t.broker._req("POST", acct, f"/accounts/{aid}/orders", data=data)
         return {"id": (r.get("order") or {}).get("id"), "level": level, "status": (r.get("order") or {}).get("status")}
