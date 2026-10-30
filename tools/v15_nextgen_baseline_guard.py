@@ -36,7 +36,7 @@ def load_pin(path, sym_side, defaults, npz, window_days):
     if hashlib.sha256(Path(npz).read_bytes()).hexdigest() != pin.get('npz_sha256'):
         raise PinnedBaselineError('baseline NPZ differs from previous accepted fixture')
     source = pin.get('accepted_source', {})
-    if not source.get('sha256') or not source.get('computed_at_utc') or not source.get('previous_acceptance_id'):
+    if not source.get('sha256') or not source.get('previous_acceptance_id'):
         raise PinnedBaselineError('previous accepted baseline provenance required')
     source_path = Path(source.get('path', ''))
     if not source_path.is_file() or source_path.is_symlink() or hashlib.sha256(source_path.read_bytes()).hexdigest() != source['sha256']:
@@ -52,15 +52,26 @@ def load_pin(path, sym_side, defaults, npz, window_days):
         raise PinnedBaselineError('independent previous-version actual-engine oracle required on identical frozen NPZ')
     if oracle.get('window_days') != window_days or oracle.get('holdout_days') != pin.get('holdout_days') or float(pin.get('holdout_days', 0)) != float(os.environ.get('V15_HOLDOUT_DAYS', '0')):
         raise PinnedBaselineError('previous oracle window/holdout policy differs')
+    defaults = {key: value for key, value in defaults.items() if str(key).isupper() and not callable(value)}
     previous = pin.get('previous_effective_defaults', {})
+    defaults_source = pin.get('previous_defaults_source', {})
+    defaults_path = Path(defaults_source.get('path', ''))
+    if not defaults_path.is_file() or defaults_path.is_symlink() or hashlib.sha256(defaults_path.read_bytes()).hexdigest() != defaults_source.get('sha256'):
+        raise PinnedBaselineError('previous effective defaults source bytes required')
+    previous_source = json.loads(defaults_path.read_text())
+    for key in defaults_source.get('settings_pointer', []):
+        previous_source = previous_source[key]
+    if fingerprint(previous_source) != fingerprint(previous):
+        raise PinnedBaselineError('previous effective defaults differ from anchored source')
     settings = dict(pin.get('accepted_full_settings', {}))
-    if not previous or not settings or set(settings) != set(previous):
+    if not previous or not settings or not set(previous).issubset(settings):
         raise PinnedBaselineError('complete previous defaults and accepted full settings required')
-    new = set(defaults) - set(previous)
+    known_previous = set(previous) | set(settings)
+    new = set(defaults) - known_previous
     neutral = pin.get('neutral_new_keys', {})
     if set(neutral) != new:
         raise PinnedBaselineError('every new key requires explicit previous-behavior neutral manifest')
-    if set(previous) - set(defaults):
+    if known_previous - set(defaults):
         raise PinnedBaselineError('previous baseline keys disappeared')
     for key in new:
         entry = neutral[key]

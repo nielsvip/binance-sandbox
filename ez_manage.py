@@ -33923,14 +33923,13 @@ class MultiAccountTradeManager:
                 or (str(position_side or "").upper() == "SHORT" and str(side or "").upper() == "SELL")
             )
             if _is_incr and str(_res or "").upper().startswith("SUCCESS"):
+                _repair = await self._require_exchange_stop_after_entry(position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, original_positionAmt=original_positionAmt, old_price=old_price, action=_act_u, reason=reason, result=str(_res))
                 if not await _prearm_resting():
-                    _repair = await self._require_exchange_stop_after_entry(position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, original_positionAmt=original_positionAmt, old_price=old_price, action=_act_u, reason=reason, result=str(_res))
-                    if not await _prearm_resting():
-                        logger.critical(f"⛔ [ENTRY_STOP_GONE] {position_key}: filled entry lost its exchange STOP_MARKET (repair={_repair}); emergency close required")
-                        _pos_now = await self.get_position(position_key)
-                        _held_now = abs(safe_fetch_float(getattr(_pos_now, "positionAmt", 0), 0.0)) if _pos_now else 0.0
-                        if _held_now > 0:
-                            await self.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_held_now, side="SELL" if str(position_side).upper() == "LONG" else "BUY", position_side=position_side, quantity=_held_now, old_price=old_price, unique_id=f"FX_UNPROTECTED_{int(time.time())}", reason="FIXED_STOP_UNPROTECTED_ENTRY", is_full_close=True, action="CLOSE")
+                    logger.critical(f"⛔ [ENTRY_STOP_GONE] {position_key}: filled entry lost its exchange STOP_MARKET (repair={_repair}); emergency close required")
+                    _pos_now = await self.get_position(position_key)
+                    _held_now = abs(safe_fetch_float(getattr(_pos_now, "positionAmt", 0), 0.0)) if _pos_now else 0.0
+                    if _held_now > 0:
+                        await self.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_held_now, side="SELL" if str(position_side).upper() == "LONG" else "BUY", position_side=position_side, quantity=_held_now, old_price=old_price, unique_id=f"FX_UNPROTECTED_{int(time.time())}", reason="FIXED_STOP_UNPROTECTED_ENTRY", is_full_close=True, action="CLOSE")
         except Exception as _rq_e:  # a stop failure must never unwind or mask a real fill
             logger.critical(f"🛡️ [ENTRY_STOP_REQUIRED] {position_key}: post-fill stop requirement ERRORED after {_res}: {_rq_e}")
             self._mark_entry_unprotected(position_key, account_key, symbol, position_side, f"requirement_error:{_rq_e}")

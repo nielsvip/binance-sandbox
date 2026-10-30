@@ -14,13 +14,14 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from tools import v15_nextgen_corpus_collector as corpus
+NON_EVAL_REASONS = ("SKIPPED_", "ZERO_FORMULA_ROW", "INVENTED_ALT", "TYPE_MISMATCH", "ABLATION_NEVER_ON", "NO_CANDIDATE", "MAXAUG_NEVER_ZERO", "DATA_ERROR")
 
 
 def strict_record(raw):
     record = dict(raw)
     identity = bool(raw.get("is_running")) or str(raw.get("reason") or "").startswith("RUNNING_IDENTITY")
     raw_invalid = raw.get("delta_invalid")
-    explicit_valid = type(raw_invalid) in (bool, int) and raw_invalid == 0
+    explicit_valid = type(raw_invalid) in (bool, int) and raw_invalid == 0 and not str(raw.get("reason") or "").startswith(NON_EVAL_REASONS)
     naked = raw.get("naked_delta")
     if naked is None and raw.get("joint_delta") is None:
         naked = raw.get("delta")
@@ -79,7 +80,7 @@ def convert(manifest_path, archive_path, out_dir, templates):
                         counter["malformed_rows"] += 1
                         continue
                     end = corpus.market_end(raw.get("npz"))
-                    provenance = {"source_file": entry["source_file"], "source_sha256": entry["source_sha256"], "archive_member": member.name, "progress_key": key, "symbol_side": symbol, "identity_tier": identity_tier, "explicit_row_npz": raw.get("npz"), "market_end": end}
+                    provenance = {"source_file": entry["source_file"], "source_sha256": entry["source_sha256"], "archive_member": member.name, "progress_key": key, "symbol_side": symbol, "identity_tier": identity_tier, "explicit_row_npz": raw.get("npz"), "market_end": end, "raw_reason": raw.get("reason")}
                     if end is None or end >= cutoffs[category]:
                         reason = "unknown_explicit_row_npz" if end is None else "market_end_not_before_holdout"
                         counter[reason] += 1

@@ -59,3 +59,13 @@ def test_source_archive_hash_mismatch_never_produces_approved_population(tmp_pat
     manifest.write_text(json.dumps(payload))
     with pytest.raises(ValueError, match="archive hash mismatch"):
         expanded.convert(manifest, archive, tmp_path / "bad", templates)
+
+
+def test_skipped_zero_cannot_become_negative_and_promotion_block_remains_measured():
+    raw = {"delta_invalid": False, "naked_delta": 0.0, "cumulative_before": 10.0, "yellows": {"FILTER_TF=1h": 0.0}, "reason": "SKIPPED_SAMPLING(pos_sym=0)"}
+    record, naked_ok, baseline_ok = expanded.strict_record(raw)
+    assert not naked_ok and not baseline_ok and record["delta_invalid"] is True
+    assert record["yellow_reasons"]["FILTER_TF=1h"]
+    raw["reason"] = "DEAD_VEC_PATH: promotion blocked after measured evaluation"
+    raw["trades"] = 143
+    assert expanded.strict_record(raw)[1:] == (True, True)
