@@ -2,6 +2,8 @@
 import dataclasses
 import hashlib
 import json
+import math
+import os
 from pathlib import Path
 
 
@@ -10,6 +12,8 @@ class PinnedBaselineError(SystemExit):
 
 
 def normalized(value):
+    if isinstance(value, float) and not math.isfinite(value):
+        return {'nonfinite_float': 'nan' if math.isnan(value) else ('positive_infinity' if value > 0 else 'negative_infinity')}
     if isinstance(value, dict):
         return {str(key): normalized(item) for key, item in value.items()}
     if isinstance(value, (list, tuple)):
@@ -27,8 +31,6 @@ def fingerprint(value):
 
 def load_pin(path, sym_side, defaults, npz, window_days):
     pin = json.loads(Path(path).read_text())
-    if window_days != 30:
-        raise PinnedBaselineError('pinned baseline contract requires30D; no alternate-window workaround')
     if pin.get('schema') != 'v15_pinned_baseline/1' or pin.get('sym_side') != sym_side or pin.get('window_days') != window_days:
         raise PinnedBaselineError('baseline pin scope mismatch')
     if hashlib.sha256(Path(npz).read_bytes()).hexdigest() != pin.get('npz_sha256'):
@@ -48,8 +50,10 @@ def load_pin(path, sym_side, defaults, npz, window_days):
     oracle = proof.get('oracle', {})
     if oracle.get('npz_sha256') != pin.get('npz_sha256') or oracle.get('accepted_settings_sha256') != fingerprint(accepted) or not all(oracle.get(key) for key in ['evaluated_at_utc', 'previous_runtime_manifest_sha256', 'previous_engine_sha256', 'previous_evaluator_sha256']):
         raise PinnedBaselineError('independent previous-version actual-engine oracle required on identical frozen NPZ')
+    if oracle.get('window_days') != window_days or oracle.get('holdout_days') != pin.get('holdout_days') or float(pin.get('holdout_days', 0)) != float(os.environ.get('V15_HOLDOUT_DAYS', '0')):
+        raise PinnedBaselineError('previous oracle window/holdout policy differs')
     previous = pin.get('previous_effective_defaults', {})
-    settings = pin.get('accepted_full_settings', {})
+    settings = dict(pin.get('accepted_full_settings', {}))
     if not previous or not settings or set(settings) != set(previous):
         raise PinnedBaselineError('complete previous defaults and accepted full settings required')
     new = set(defaults) - set(previous)
@@ -74,22 +78,39 @@ def assert_settings(pin, settings):
         raise PinnedBaselineError('accepted starting baseline was replaced or overlaid')
 
 
+
+RESULT_FIELDS = frozenset('symside offset_days gain_pct gain_per_mo bh_pct bh_per_mo delta_vs_bh delta_per_mo max_dd_pct net_gain_dollars max_invested_dollars avg_invested_dollars flat_gain_pct sizing_lift_pct size_return_corr lifecycles engine_max_dd_pct_RAW tim_pct wr_pct engine_wr_RAW pool_sharpe trades ledger execution_ledger peak_notional exposure_series equity_curve seeded gain_dollars mean_deployed spike_trades_dropped spike_frac behavior_fingerprint htf_align years bars window_days data_days favorable_capture_pct adverse_exposure_pct directional_precision_pct slope_size_alignment valid invalid_reason beats_bh beats_bh_10x score binding'.split())
+RESULT_SEPARATE_IDENTITY = frozenset(['overrides', 'npz_provenance'])
+
+
+def result_fields(result):
+    unknown = set(result) - RESULT_FIELDS - RESULT_SEPARATE_IDENTITY
+    if unknown:
+        raise PinnedBaselineError(f'unreviewed baseline result fields: {sorted(unknown)}')
+    return {key: value for key, value in result.items() if key in RESULT_FIELDS}
+
+
 def capture_actual(prepared, settings, evaluate, window_days):
     import v12_quick_engine as engine
-    original = engine.simulate_one
+    original = engine.ensure_template_layer
     configs = []
-    def simulate(npz, symbol, is_long, cfg, *args, **kwargs):
-        configs.append({field.name: getattr(cfg, field.name) for field in dataclasses.fields(engine.QuickConfig)})
-        return original(npz, symbol, is_long, cfg, *args, **kwargs)
-    engine.simulate_one = simulate
+    def ensure(cfg, symbol, is_long):
+        effective = original(cfg, symbol, is_long)
+        configs.append({field.name: getattr(effective, field.name) for field in dataclasses.fields(engine.QuickConfig)})
+        return effective
+    engine.ensure_template_layer = ensure
     try:
         result = evaluate(prepared, dict(settings), window_days=window_days, include_ledger=True)
     finally:
-        engine.simulate_one = original
+        engine.ensure_template_layer = original
     ledger = result.get('execution_ledger')
     if not configs or not isinstance(ledger, list):
         raise PinnedBaselineError('real engine configuration and execution ledger required; cache-only proof forbidden')
-    return result, {'effective_config_sha256': fingerprint(configs), 'execution_ledger_sha256': fingerprint(ledger), 'result_sha256': fingerprint(result)}
+    timestamps = (prepared.get('npz_prepared') or {}).get('timestamps')
+    if timestamps is None:
+        raise PinnedBaselineError('actual prepared input cutoff identity required')
+    cutoff = fingerprint({'timestamps': timestamps, 'window_days': prepared.get('window_days'), 'offset_days': prepared.get('offset_days', 0)})
+    return result, {'input_cutoff_sha256': cutoff, 'effective_config_sha256': fingerprint(configs), 'effective_config_values': normalized(configs), 'execution_ledger_sha256': fingerprint(ledger), 'result_sha256': fingerprint(result_fields(result))}
 
 
 def enforce_actual(pin, prepared, settings, evaluate, window_days):
@@ -99,6 +120,18 @@ def enforce_actual(pin, prepared, settings, evaluate, window_days):
     except Exception as error:
         raise PinnedBaselineError('actual baseline capture failed; optimizer forbidden') from error
     proof = pin.get('previous_actual_engine_proof', {})
-    if not proof or any(proof.get(key) != value for key, value in actual.items()):
+    previous_configs = proof.get('effective_config_values')
+    if not previous_configs or fingerprint(previous_configs) != proof.get('effective_config_sha256'):
+        raise PinnedBaselineError('actual previous-version complete effective configuration source required')
+    neutral = pin.get('neutral_new_keys', {})
+    expected_configs = []
+    for previous in previous_configs:
+        extended = dict(previous)
+        for key, entry in neutral.items():
+            if key in extended:
+                raise PinnedBaselineError('neutral-new-key declaration shadows previous effective config')
+            extended[key] = entry['value']
+        expected_configs.append(extended)
+    if fingerprint(expected_configs) != actual['effective_config_sha256'] or any(proof.get(key) != actual[key] for key in ['input_cutoff_sha256', 'execution_ledger_sha256', 'result_sha256']):
         raise PinnedBaselineError('initial effective configuration, real execution ledger or result drifted; no optimizer permitted')
     return result

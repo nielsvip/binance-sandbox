@@ -23087,7 +23087,7 @@ class MultiAccountTradeManager:
                                             pass
                                         logger.critical(f"🛡️ [FIXED_STOP_DISASTER_BACKSTOP_KEPT] {position_key}: correct level {_soft0:.8f} is already behind price {float(current_price or 0):.8f} (cross predates the fix) — keeping resting stop {_oid0} at {_trig0} rather than leaving the position naked")
                                         return "OK_DISASTER_BACKSTOP_KEPT"
-                                    if _oid0 and str(getattr(position, "exchange_stop_order_id", "") or "") == _oid0:
+                                    if _oid0 and _want0 > 0 and abs(_trig0 - _want0) <= _tk0 * 1.5 and str(getattr(position, "exchange_stop_order_id", "") or "") == _oid0:
                                         # This lifecycle already owns the exchange stop. The software
                                         # level may still carry an older BB/1h spec in another writer;
                                         # keep the broker's frozen entry-time dc15 order untouched.
@@ -34050,7 +34050,8 @@ class MultiAccountTradeManager:
         # specified for stocks ("you take the stop for the entire position to the new dc_low_15-0.3%, vv short").
         _grew = _amt > abs(safe_fetch_float(original_positionAmt or 0, 0.0)) + 1e-9
         _augment = _grew or "AUGMENT" in str(action or "").upper() or "AUGMENT" in str(reason or "").upper()
-        _refreeze = _augment and bool(getattr(config, "FIXED_STOP_AUGMENT_REFREEZE", True))
+        _fresh_open = str(action or "").upper() in ("OPEN", "QUICK_OPEN", "REENTRY") and abs(safe_fetch_float(original_positionAmt or 0, 0.0)) <= 1e-9
+        _refreeze = _fresh_open or (_augment and bool(getattr(config, "FIXED_STOP_AUGMENT_REFREEZE", True)))
         if _lvl <= 0 or _refreeze or _fixed_stop_level_absurd(_is_long, _lvl, _ep):
             _new, _src = _fixed_stop_freeze_level_spec(symbol, position_side, _is_long, _ind, _ep)
             if _new > 0:

@@ -14,6 +14,7 @@ from v15_nextgen_nn_comparison import atomic_copy, bundle_files, check_files, sh
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--baseline-pin', required=True)
     parser.add_argument('--review', required=True)
     parser.add_argument('--runtime-manifest', required=True)
     parser.add_argument('--bundle-root', required=True)
@@ -21,6 +22,7 @@ def main():
     parser.add_argument('--snapshot', default='20261030T210717Z_current8_r2')
     parser.add_argument('--side', default='AAVEUSDC_LONG')
     args = parser.parse_args()
+    raise ValueError('optimizer preparation held: independent prior baseline oracle and reviewed pinned-pilot routing integration required; do not use pre-contract command')
     review, work, bundle = Path(args.review).resolve(), Path(args.work).resolve(), Path(args.bundle_root).resolve()
     if work.exists():
         raise ValueError('new canary preparation work directory required')
