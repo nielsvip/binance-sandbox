@@ -323,17 +323,23 @@ venue = %r
 root = pathlib.Path.home() / 'binance/data/vector_direct'
 try: fills = json.loads((root / ('fills_' + venue + '.json')).read_text())
 except (OSError, ValueError): fills = {}
+coverage_start = None
 for path in sorted(glob.glob(str(pathlib.Path.home() / 'binance/data/vector_direct' / ('ledger_' + venue + '_*.jsonl')))):
     for line in open(path):
         try: row = json.loads(line)
         except (ValueError, UnicodeError): continue
+        if row.get('event') == 'ORDER' and row.get('ts'):
+            coverage_start = min(coverage_start, float(row['ts'])) if coverage_start is not None else float(row['ts'])
         if row.get('event') == 'ORDER' and row.get('ss') in symsides and float(row.get('ts') or 0) >= since:
             response = row.get('resp') or {}
             oid = response.get('orderId') or response.get('id')
             if oid: row['broker_fill'] = fills.get('oid:' + str(row.get('acct')) + ':' + str(oid))
             print(json.dumps(row, separators=(',', ':')))
-""" % (repr(sorted(symsides)), repr(since), repr("crypto" if host == "s1" else "stocks"))
+print(json.dumps({'_coverage_start': coverage_start}))
+""" % (sorted(symsides), since, "crypto" if host == "s1" else "stocks")
     response = ssh(host, "python3 - <<'PY'\n" + script + "PY", 180)
+    if response.returncode != 0:
+        raise RuntimeError(f"{host} live order read failed: {response.stderr.strip()[-300:]}")
     return [json.loads(line) for line in response.stdout.splitlines() if line.startswith("{")]
 
 
@@ -353,6 +359,7 @@ def discrepancy_overlay(page: str, board: dict, rows: list[dict]) -> tuple[str, 
     if published is None:
         raise ValueError("original board publication time is not parseable")
     first = published.timestamp()
+    coverage = next((float(row["_coverage_start"]) for row in rows if row.get("_coverage_start") is not None), None)
     bar_times = []
     for label in labels:
         parsed = parse_iso(str(label).replace(" ", "T") + ":00")
@@ -391,7 +398,7 @@ def discrepancy_overlay(page: str, board: dict, rows: list[dict]) -> tuple[str, 
         accounts.setdefault(key, set()).add(str(row.get("acct") or "?"))
     bar_index = {bar: i for i, bar in enumerate(bar_times)}
     blue = [{"i": bar_index[bar], "action": act, "accounts": sorted(accounts.get((bar, act), []))} for bar, act in sorted(live - vector)]
-    orange = [{"i": bar_index[bar], "action": act} for bar, act in sorted(vector - live - accepted)]
+    orange = [{"i": bar_index[bar], "action": act} for bar, act in sorted(vector - live - accepted) if coverage is not None and bar >= int(coverage // 900) * 900]
     pending = [{"i": bar_index[bar], "action": act} for bar, act in sorted(accepted - live)]
     data = json.dumps({"blue": blue, "orange": orange, "accepted_unverified": pending}, separators=(",", ":"))
     plugin = "const DISCREPANCIES = " + data + ";\nChart.register({id:'forwardDiscrepancyLines',afterDatasetsDraw(chart){const x=chart.scales.x,a=chart.chartArea,ctx=chart.ctx;for(const [name,color] of [['blue','#2563eb'],['orange','#f97316']]){for(const row of DISCREPANCIES[name]){const px=x.getPixelForValue(row.i);if(px<a.left||px>a.right)continue;ctx.save();ctx.strokeStyle=color;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(px,a.top);ctx.lineTo(px,a.bottom);ctx.stroke();ctx.restore();}}}});\n"
@@ -400,6 +407,7 @@ def discrepancy_overlay(page: str, board: dict, rows: list[dict]) -> tuple[str, 
                f"<span style='color:#60a5fa'>blue live only {len(blue)}</span> · "
                f"<span style='color:#fb923c'>orange vector only {len(orange)}</span> · "
                f"""accepted, fill unverified {len(pending)}. Exact 15 minute bar and action; quantities ignored. """
+               f"Journal coverage starts {_html.escape(iso(datetime.datetime.fromtimestamp(coverage, datetime.timezone.utc)) if coverage else 'UNAVAILABLE')}; earlier vector events are unassessed. "
                f"Stock 'ok' responses are order acceptance, not actual fills. No broker fill history means orange marks require investigation.</div>")
     page = page.replace("<div id='wrap'>", summary + "<div id='wrap'>", 1)
     return page, {"live_only": len(blue), "vector_only": len(orange), "accepted_unverified": len(pending)}
