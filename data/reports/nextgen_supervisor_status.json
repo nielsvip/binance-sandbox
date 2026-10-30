@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-10-30T21:45:55.071787Z",
+  "recorded_at": "2026-10-30T21:54:36.012761Z",
   "status": "active_not_achieved",
   "deployment_authorized_by_this_record": false,
   "requirements": {
@@ -160,7 +160,7 @@
       "forward_action": "new historical feature work under already excluded v15_nextgen_*.py or isolated review patches; no revert"
     }
   },
-  "previous_goal_turn_classification": "progress: completed prior8model transfer and actualresolver hashverification onS2",
+  "previous_goal_turn_classification": "progress: fullbaseline launched and sourcecorpus capacity checked; subsequent audit invalidated baseline and required routing repair",
   "restored_archive_consumers": {
     "consumer_audit_CRYPTO_LONG": {
       "consumer_status": "complete rc0; output 616 B, SHA256 b71adaf0bf48b4e6d9a8f33c9bf5b933ee46122470d5e77120117cc85a41c05e; report SHA256 d9383e38a0f24a62720d0e1ec037470be70979dc595b115fffb486c91a143fb2; driver SHA256 6cc2f336331025fd4f73ad059df7b77ad0f01832a1e9c0ee3bb5b3b9c3eaec03",
@@ -248,16 +248,18 @@
       "canonical_harness_edited": false,
       "tests": "33 passed locally and 33 passed on S2 in0.56s; actuallaunchwrongbundle test rejects beforePopen",
       "remaining": [
-        "final independent review of prelaunch guard",
-        "complete common runtime dependency closure",
-        "complete matched candidate artifacts",
-        "eight actual benchmarkresults",
-        "active S2 harness installation after checks"
+        "private runtime routing + actual fresh-process config preflight",
+        "reused Python write/NPZ audit wrapper",
+        "preserve aborted-run evidence",
+        "independent review and S2 tests of routing changes",
+        "complete candidate learning artifacts",
+        "rerun full8 matched comparison"
       ],
       "s2_stage": "/home/niels/v15_bench/reviews/nn_artifacts_20261030T213315Z",
       "s2_receipt": "data/reports/nextgen_gate_artifact_repair/s2_stage_20261030T213315Z.json",
       "declaration": "tools/v18_model_bundle.json with schema v15_nn_bundle/1 and exact8fileSHA; V15_REQUIRE_MODEL_BUNDLE=1 fails if missing; guard resolves with actualper-sideenvironment",
-      "missing_destination_fix": "deployment records okFalse if modeldestinationparent missing; no silentcompletion"
+      "missing_destination_fix": "deployment records okFalse if modeldestinationparent missing; no silentcompletion",
+      "routing_owner": "compute_audit; root review before relaunch"
     }
   },
   "full_prior_baseline": {
@@ -267,7 +269,7 @@
     "work": "/home/niels/v15_bench/reviews/prior_baseline_20261030T214353Z",
     "label": "nextgen_prior_20261030T214353Z",
     "snapshot": "snap_20261030T210717Z_current8_r2",
-    "state": "driver confirmed live; first side baseline valid and private workbook created",
+    "state": "stopped_invalid_isolation_both_PIDs_confirmed_terminal",
     "scope": "full8side priornetwork preparation; not candidate comparison or promotion",
     "controls": "preserved prior8modelbundle hashverified; commonruntime; championbudget andskipflags;30Dfit7Dholdout; requiredmodelpreflight",
     "limitations": [
@@ -275,7 +277,18 @@
       "all8results pending",
       "previousNN training and current startingfullsets may overlap historicalholdout",
       "no independentmarketOOS claim"
-    ]
+    ],
+    "quality_eligible": false,
+    "reason": "actual Config.BASE_PATH fallback to live sandbox; missing explicit routing and private temp paths",
+    "preservation_error": "existing harness cleanup deleted run directory because no results; side logs/workbook not retained; root disclosed",
+    "retained": [
+      "work/code",
+      "work/env.json",
+      "work/launch_receipt.json",
+      "work/driver.log",
+      "work/stopped_isolation_defect.json"
+    ],
+    "scope_correction": "engine NPZ loader and per_sym_store use their own module roots; live NPZ reads or live SQL writes NOT established by Config.BASE_PATH defect alone"
   },
   "local_disk_incident": {
     "observed": "ENOSPC during generated evidence spill and heredoc creation; later rootobserved1.7GiBfree",
