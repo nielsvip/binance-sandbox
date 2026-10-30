@@ -2,7 +2,8 @@
 
 The SMA classifiers keep writing MEN and FIN independently. Only FIN's live
 admission source is temporarily MEN's book; the source automatically returns
-to FIN at the deadline. TRC's admission source is always TRB's book.
+to FIN at the deadline. TRC's admission source is always TRB's book. Crypto
+entry admission uses the explicit account key in tradeable_keys.json.
 """
 from __future__ import annotations
 
