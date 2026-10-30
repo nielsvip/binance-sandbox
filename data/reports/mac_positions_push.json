@@ -1,10 +1,10 @@
 {
- "epoch": 1793392489.61924,
- "written_at": "2026-10-30T20:34:49.619241Z",
+ "epoch": 1793392764.7889512,
+ "written_at": "2026-10-30T20:39:24.788954Z",
  "venues": {
   "crypto": {
    "local": "/Users/niels/Documents/binance/data/vector_direct/mac_positions_crypto.json",
-   "sha256": "9e92e442c261ff0b4ddf788338a7d05a02f9219afbbe47637525ba137e9d1f6f",
+   "sha256": "e004024d7afc34340c0c7706f5ec0bac3815db14e23aab073885a45250ff6f64",
    "held_total": 6,
    "sides": [
     "1MBABYDOGEUSDT_SHORT",
@@ -26,14 +26,14 @@
      "host": "s1-pub",
      "tree": "binance",
      "ok": false,
-     "error": "CalledProcessError: ssh_s1_connect: every S1 path failed in 9.0s: v4-fip-fsn:timeout v4-primary:timeout v6:No route to host v4-fip-nbg:timeout gw-private:closed-before-banner s2-pr",
+     "error": "CalledProcessError: ssh_s1_connect: every S1 path failed in 9.1s: v4-fip-fsn:timeout v4-primary:timeout v6:No route to host v4-fip-nbg:timeout gw-private:closed-before-banner s2-pr",
      "remote": "~/binance/data/vector_direct/mac_positions_crypto.json"
     },
     {
      "host": "s1",
      "tree": "binance",
      "ok": false,
-     "error": "CalledProcessError: ssh_s1_connect: every S1 path failed in 9.0s: v4-fip-fsn:timeout v4-primary:timeout v6:No route to host v4-fip-nbg:timeout gw-private:closed-before-banner s2-pr",
+     "error": "CalledProcessError: ssh_s1_connect: every S1 path failed in 9.1s: v4-fip-fsn:timeout v4-primary:timeout v6:No route to host v4-fip-nbg:timeout gw-private:closed-before-banner s2-pr",
      "remote": "~/binance/data/vector_direct/mac_positions_crypto.json"
     },
     {
@@ -49,7 +49,7 @@
   },
   "stocks": {
    "local": "/Users/niels/Documents/binance/data/vector_direct/mac_positions_stocks.json",
-   "sha256": "1ac453c09fee965625414f6b841fa54a2e55445fc58670ac354573578353ae8b",
+   "sha256": "7611bb90b38ef638ab56ae8eaffb6b09573451a2988ab4de01432121daed1a2e",
    "held_total": 3,
    "sides": [
     "GILD_LONG",

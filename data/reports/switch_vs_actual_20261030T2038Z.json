@@ -1,0 +1,37 @@
+{
+ "window_from": "10-30 19:37",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 348,
+  "status_OK": 6,
+  "EXTRA": 2
+ },
+ "rows": [
+  {
+   "acct": "fin",
+   "sym_side": "1MBABYDOGEUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-30 20:30",
+   "actual": "REDUCE",
+   "actual_reason": "engine REDUCE frac 0.1500 (WT_CROSS_EXIT_1h_bull_wt1=-16.5_wt2=-26.7)",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "1MBABYDOGEUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-30 20:30",
+   "actual": "REDUCE",
+   "actual_reason": "engine REDUCE frac 0.1500 (WT_CROSS_EXIT_1h_bull_wt1=-16.5_wt2=-26.7)",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  }
+ ]
+}
