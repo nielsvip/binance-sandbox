@@ -273,10 +273,20 @@ def state_for(symside, window_days=30):
         return {"ts": time.strftime("%FT%TZ", time.gmtime()), "sym_side": symside, "ok": False,
                 "reason": perf_reason or "invalid_30d_replay", "src": src, "npz_tail": tail, **setting_meta}
     led = [t for t in (res.get("ledger") or []) if isinstance(t, dict)]
+    # Preserve the exact replay inputs and acts used for this published verdict.
+    import numpy as _npmod
+    input_hashes = {}
+    for key in ("timestamps", "close"):
+        values = _np.get(key)
+        if values is not None:
+            array = _npmod.ascontiguousarray(values)
+            input_hashes[key] = hashlib.sha256(array.view(_npmod.uint8)).hexdigest()
+    ledger_hash = hashlib.sha256(json.dumps(led, sort_keys=True, default=str, separators=(",", ":")).encode()).hexdigest()
     cur = _open_ledger_position(led, len(tails) - 1)
     out = {"ts": time.strftime("%FT%TZ", time.gmtime()), "sym_side": symside, "ok": True,
            "src": src, "npz_tail": tail, "window_days": window_days,
            "engine_ast_sha256": _engine_ast_sha256(), **setting_meta,
+           "input_sha256": input_hashes, "ledger_sha256": ledger_hash, "ledger": led,
            "gain_pct": res.get("gain_pct"), "trades": res.get("trades"),
            "valid": True, "performance_valid": perf_valid,
            "performance_invalid_reason": None if perf_valid else perf_reason,

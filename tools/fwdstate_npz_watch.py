@@ -265,6 +265,7 @@ def main():
                 except Exception as exc:
                     state, t0, t1 = {"sym_side": symbol_side, "ok": False, "reason": f"worker_error:{exc}"}, started[4], time.time()
                 tail = state.get("npz_tail") or started[0]
+                print(f"[{time.strftime('%FT%TZ', time.gmtime())}] STATE_ID {symbol_side} tail={tail} settings={state.get('settings_sha256')} inputs={state.get('input_sha256')} ledger={state.get('ledger_sha256')} gain={state.get('gain_pct')} trades={state.get('trades')}", flush=True)
                 lag = f" lag_s={time.time() - (int(tail) + BAR_S):.1f}" if tail else ""
                 mt = _publish(symbol_side, state, f" class={started[3]} queue_s={t0 - started[4]:.1f} compute_s={t1 - t0:.1f}{lag}")
                 published[symbol_side] = (state, mt)
