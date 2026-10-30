@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-30T18:24:57Z",
+ "ts": "2026-10-30T18:31:42Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,13 +29,13 @@
   "trb": {
    "fills_6h": 0,
    "open_positions": 2,
-   "unrealised_usd": 1.79,
+   "unrealised_usd": 0.0,
    "pos_mismatch": 0
   },
   "trc": {
    "fills_6h": 0,
    "open_positions": 1,
-   "unrealised_usd": -8.07,
+   "unrealised_usd": 0.0,
    "pos_mismatch": 0
   },
   "fin": {
@@ -138,49 +138,49 @@
     "15395"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 3.0
   },
   "men": {
    "pids": [
     "14728"
    ],
-   "starts_30m": 1,
-   "log_age_s": 6.0
+   "starts_30m": 0,
+   "log_age_s": 4.0
   },
   "ang": {
    "pids": [
     "13630"
    ],
-   "starts_30m": 1,
-   "log_age_s": 2.0
+   "starts_30m": 0,
+   "log_age_s": 7.0
   },
   "inf": {
    "pids": [
     "14141"
    ],
-   "starts_30m": 1,
-   "log_age_s": 1.0
+   "starts_30m": 0,
+   "log_age_s": 9.0
   },
   "flz": {
    "pids": [
     "14468"
    ],
-   "starts_30m": 1,
-   "log_age_s": 6.0
+   "starts_30m": 0,
+   "log_age_s": 31.0
   },
   "trb": {
    "pids": [
     "13227"
    ],
-   "starts_30m": 1,
-   "log_age_s": 2.0
+   "starts_30m": 0,
+   "log_age_s": 6.0
   },
   "trc": {
    "pids": [
     "13411"
    ],
-   "starts_30m": 1,
-   "log_age_s": 1.0
+   "starts_30m": 0,
+   "log_age_s": 17.0
   }
  },
  "alerts": [],
@@ -236,5 +236,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.25
+ "sweep_s": 104.11
 }

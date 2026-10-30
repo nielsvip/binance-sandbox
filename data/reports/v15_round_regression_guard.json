@@ -1,5 +1,5 @@
 {
- "at": "2026-10-30T17:26:25Z",
+ "at": "2026-10-30T18:26:07Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
@@ -18,7 +18,7 @@
     "throughput 0.0/h < 12.0/h (one per 5 min)"
    ],
    "rows": [],
-   "error": null
+   "error": "mm_receive_fd: recvmsg: expected received 1 got 0\nproxy dialer did not pass back a connection\n"
   },
   "s2": {
    "published_n": 0,
@@ -34,7 +34,7 @@
     "throughput 0.0/h < 12.0/h (one per 5 min)"
    ],
    "rows": [],
-   "error": null
+   "error": "Connection closed by UNKNOWN port 65535\n"
   }
  },
  "hosts_failing": [
