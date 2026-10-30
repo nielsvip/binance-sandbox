@@ -7,8 +7,8 @@
  ],
  "n_keys": 1357,
  "verdicts": {
-  "OK": 1190,
-  "ABSENT": 37,
+  "OK": 1186,
+  "ABSENT": 41,
   "ROUTED_PSYM": 77,
   "GLOBAL_LEAK": 8,
   "INERT": 45
@@ -217,7 +217,7 @@
     {
      "read": "vec_decisions.twin_yellow_filters.py:523 in fast_riser_signal()",
      "live_callers": [
-      "tradier_manage.py:26183"
+      "tradier_manage.py:26159"
      ]
     }
    ]
@@ -687,10 +687,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:74 in atr_adaptive_size_mult()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -719,10 +719,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:94 in atr_adaptive_size_mult()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -795,10 +795,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:76 in atr_adaptive_size_mult()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -893,10 +893,10 @@
     {
      "read": "vec_decisions.augment_core.py:121 in cooldown_ok()",
      "live_callers": [
-      "ez_manage.py:45201",
-      "ez_manage.py:45210",
-      "tradier_manage.py:14820",
-      "tradier_manage.py:14835"
+      "ez_manage.py:45226",
+      "ez_manage.py:45235",
+      "tradier_manage.py:14801",
+      "tradier_manage.py:14816"
      ]
     }
    ]
@@ -989,10 +989,10 @@
     {
      "read": "vec_decisions.live_unw_gates.py:115 in augment_tier_min_gain()",
      "live_callers": [
-      "ez_manage.py:27605",
-      "ez_manage.py:35201",
-      "ez_manage.py:35204",
-      "ez_manage.py:35219"
+      "ez_manage.py:27587",
+      "ez_manage.py:35226",
+      "ez_manage.py:35229",
+      "ez_manage.py:35244"
      ]
     }
    ]
@@ -1021,10 +1021,10 @@
     {
      "read": "vec_decisions.live_unw_gates.py:117 in augment_tier_min_gain()",
      "live_callers": [
-      "ez_manage.py:27605",
-      "ez_manage.py:35201",
-      "ez_manage.py:35204",
-      "ez_manage.py:35219"
+      "ez_manage.py:27587",
+      "ez_manage.py:35226",
+      "ez_manage.py:35229",
+      "ez_manage.py:35244"
      ]
     }
    ]
@@ -1053,10 +1053,10 @@
     {
      "read": "vec_decisions.live_unw_gates.py:70 in augment_bull_kill_blocked()",
      "live_callers": [
-      "ez_manage.py:27605",
-      "ez_manage.py:35201",
-      "ez_manage.py:35204",
-      "ez_manage.py:35219"
+      "ez_manage.py:27587",
+      "ez_manage.py:35226",
+      "ez_manage.py:35229",
+      "ez_manage.py:35244"
      ]
     }
    ]
@@ -1085,10 +1085,10 @@
     {
      "read": "vec_decisions.twin_reentry_staged.py:330 in augment_fallback_fires()",
      "live_callers": [
-      "ez_manage.py:44974",
-      "ez_manage.py:44975",
-      "tradier_manage.py:19955",
-      "tradier_manage.py:19960"
+      "ez_manage.py:44999",
+      "ez_manage.py:45000",
+      "tradier_manage.py:19931",
+      "tradier_manage.py:19936"
      ]
     }
    ]
@@ -1117,10 +1117,10 @@
     {
      "read": "vec_decisions.twin_reentry_staged.py:337 in augment_fallback_reduce_frac()",
      "live_callers": [
-      "ez_manage.py:44974",
-      "ez_manage.py:44975",
-      "tradier_manage.py:19955",
-      "tradier_manage.py:19960"
+      "ez_manage.py:44999",
+      "ez_manage.py:45000",
+      "tradier_manage.py:19931",
+      "tradier_manage.py:19936"
      ]
     }
    ]
@@ -1149,10 +1149,10 @@
     {
      "read": "vec_decisions.twin_reentry_staged.py:339 in augment_fallback_reduce_frac()",
      "live_callers": [
-      "ez_manage.py:44974",
-      "ez_manage.py:44975",
-      "tradier_manage.py:19955",
-      "tradier_manage.py:19960"
+      "ez_manage.py:44999",
+      "ez_manage.py:45000",
+      "tradier_manage.py:19931",
+      "tradier_manage.py:19936"
      ]
     }
    ]
@@ -1181,10 +1181,10 @@
     {
      "read": "live_twins.reentry_augment.py:208 in enabled()",
      "live_callers": [
-      "ez_manage.py:9062",
-      "ez_manage.py:9072",
-      "tradier_manage.py:8185",
-      "tradier_manage.py:8203"
+      "ez_manage.py:9044",
+      "ez_manage.py:9054",
+      "tradier_manage.py:8174",
+      "tradier_manage.py:8192"
      ]
     }
    ]
@@ -1255,10 +1255,10 @@
     {
      "read": "vec_decisions.augment_core.py:84 in profit_ok()",
      "live_callers": [
-      "ez_manage.py:45201",
-      "ez_manage.py:45210",
-      "tradier_manage.py:14820",
-      "tradier_manage.py:14835"
+      "ez_manage.py:45226",
+      "ez_manage.py:45235",
+      "tradier_manage.py:14801",
+      "tradier_manage.py:14816"
      ]
     }
    ]
@@ -1309,8 +1309,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:733 in tf_alignment_ok_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -1383,10 +1383,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_b.py:376 in band_arrow_entry()",
      "live_callers": [
-      "ez_manage.py:50553",
-      "ez_manage.py:50921",
-      "ez_manage.py:50923",
-      "ez_manage.py:50935"
+      "ez_manage.py:50578",
+      "ez_manage.py:50946",
+      "ez_manage.py:50948",
+      "ez_manage.py:50960"
      ]
     }
    ]
@@ -1415,10 +1415,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_b.py:379 in band_arrow_entry()",
      "live_callers": [
-      "ez_manage.py:50553",
-      "ez_manage.py:50921",
-      "ez_manage.py:50923",
-      "ez_manage.py:50935"
+      "ez_manage.py:50578",
+      "ez_manage.py:50946",
+      "ez_manage.py:50948",
+      "ez_manage.py:50960"
      ]
     }
    ]
@@ -1687,10 +1687,10 @@
     {
      "read": "vec_decisions.twin_exits_dead.py:100 in bbkc_entry_tf()",
      "live_callers": [
-      "ez_manage.py:34824",
-      "ez_manage.py:34829",
-      "ez_manage.py:44779",
-      "ez_manage.py:54802"
+      "ez_manage.py:34849",
+      "ez_manage.py:34854",
+      "ez_manage.py:44804",
+      "ez_manage.py:54827"
      ]
     }
    ]
@@ -1719,10 +1719,10 @@
     {
      "read": "vec_decisions.twin_exits_dead.py:102 in bbkc_entry_tf()",
      "live_callers": [
-      "ez_manage.py:34824",
-      "ez_manage.py:34829",
-      "ez_manage.py:44779",
-      "ez_manage.py:54802"
+      "ez_manage.py:34849",
+      "ez_manage.py:34854",
+      "ez_manage.py:44804",
+      "ez_manage.py:54827"
      ]
     }
    ]
@@ -1751,10 +1751,10 @@
     {
      "read": "vec_decisions.twin_exits_dead.py:106 in bbkc_exit_tf()",
      "live_callers": [
-      "ez_manage.py:34824",
-      "ez_manage.py:34829",
-      "ez_manage.py:44779",
-      "ez_manage.py:54802"
+      "ez_manage.py:34849",
+      "ez_manage.py:34854",
+      "ez_manage.py:44804",
+      "ez_manage.py:54827"
      ]
     }
    ]
@@ -1783,10 +1783,10 @@
     {
      "read": "vec_decisions.twin_exits_dead.py:108 in bbkc_exit_tf()",
      "live_callers": [
-      "ez_manage.py:34824",
-      "ez_manage.py:34829",
-      "ez_manage.py:44779",
-      "ez_manage.py:54802"
+      "ez_manage.py:34849",
+      "ez_manage.py:34854",
+      "ez_manage.py:44804",
+      "ez_manage.py:54827"
      ]
     }
    ]
@@ -1815,10 +1815,10 @@
     {
      "read": "live_twins.parity_open_gates.py:103 in entry_filter_tf_veto()",
      "live_callers": [
-      "ez_manage.py:34755",
-      "ez_manage.py:34756",
-      "ez_manage.py:34762",
-      "ez_manage.py:34769"
+      "ez_manage.py:34780",
+      "ez_manage.py:34781",
+      "ez_manage.py:34787",
+      "ez_manage.py:34794"
      ]
     }
    ]
@@ -1848,10 +1848,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_b.py:470 in bb_bounce_entry()",
      "live_callers": [
-      "ez_manage.py:50553",
-      "ez_manage.py:50921",
-      "ez_manage.py:50923",
-      "ez_manage.py:50935"
+      "ez_manage.py:50578",
+      "ez_manage.py:50946",
+      "ez_manage.py:50948",
+      "ez_manage.py:50960"
      ]
     }
    ]
@@ -1880,10 +1880,10 @@
     {
      "read": "vec_decisions.twin_reentry_staged.py:245 in bb_breakout_fires()",
      "live_callers": [
-      "ez_manage.py:44974",
-      "ez_manage.py:44975",
-      "tradier_manage.py:19955",
-      "tradier_manage.py:19960"
+      "ez_manage.py:44999",
+      "ez_manage.py:45000",
+      "tradier_manage.py:19931",
+      "tradier_manage.py:19936"
      ]
     }
    ]
@@ -1934,10 +1934,10 @@
     {
      "read": "vec_decisions.twin_reentry_staged.py:275 in bb_breakout_score()",
      "live_callers": [
-      "ez_manage.py:44974",
-      "ez_manage.py:44975",
-      "tradier_manage.py:19955",
-      "tradier_manage.py:19960"
+      "ez_manage.py:44999",
+      "ez_manage.py:45000",
+      "tradier_manage.py:19931",
+      "tradier_manage.py:19936"
      ]
     }
    ]
@@ -2029,10 +2029,10 @@
     {
      "read": "vec_decisions.bb_stoch_exits.py:54 in bb_band_exits()",
      "live_callers": [
-      "ez_manage.py:54764",
-      "ez_manage.py:54766",
-      "ez_manage.py:55659",
-      "tradier_manage.py:16193"
+      "ez_manage.py:54789",
+      "ez_manage.py:54791",
+      "ez_manage.py:55684",
+      "tradier_manage.py:16174"
      ]
     }
    ]
@@ -2127,10 +2127,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_b.py:286 in bb_pctb_entry()",
      "live_callers": [
-      "ez_manage.py:50553",
-      "ez_manage.py:50921",
-      "ez_manage.py:50923",
-      "ez_manage.py:50935"
+      "ez_manage.py:50578",
+      "ez_manage.py:50946",
+      "ez_manage.py:50948",
+      "ez_manage.py:50960"
      ]
     }
    ]
@@ -2160,10 +2160,10 @@
     {
      "read": "vec_decisions.bb_stoch_exits.py:57 in bb_band_exits()",
      "live_callers": [
-      "ez_manage.py:54764",
-      "ez_manage.py:54766",
-      "ez_manage.py:55659",
-      "tradier_manage.py:16193"
+      "ez_manage.py:54789",
+      "ez_manage.py:54791",
+      "ez_manage.py:55684",
+      "tradier_manage.py:16174"
      ]
     }
    ]
@@ -2544,10 +2544,10 @@
     {
      "read": "vec_decisions.live_unw_gates.py:88 in exit_hold_blocked()",
      "live_callers": [
-      "ez_manage.py:27605",
-      "ez_manage.py:35201",
-      "ez_manage.py:35204",
-      "ez_manage.py:35219"
+      "ez_manage.py:27587",
+      "ez_manage.py:35226",
+      "ez_manage.py:35229",
+      "ez_manage.py:35244"
      ]
     }
    ]
@@ -2576,10 +2576,10 @@
     {
      "read": "vec_decisions.live_unw_gates.py:88 in exit_hold_blocked()",
      "live_callers": [
-      "ez_manage.py:27605",
-      "ez_manage.py:35201",
-      "ez_manage.py:35204",
-      "ez_manage.py:35219"
+      "ez_manage.py:27587",
+      "ez_manage.py:35226",
+      "ez_manage.py:35229",
+      "ez_manage.py:35244"
      ]
     }
    ]
@@ -2651,10 +2651,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:210 in newborn_kill_fires()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -2683,10 +2683,10 @@
     {
      "read": "vec_decisions.augment_core.py:108 in bounce_sig()",
      "live_callers": [
-      "ez_manage.py:45201",
-      "ez_manage.py:45210",
-      "tradier_manage.py:14820",
-      "tradier_manage.py:14835"
+      "ez_manage.py:45226",
+      "ez_manage.py:45235",
+      "tradier_manage.py:14801",
+      "tradier_manage.py:14816"
      ]
     }
    ]
@@ -2715,10 +2715,10 @@
     {
      "read": "vec_decisions.augment_core.py:100 in bounce_sig()",
      "live_callers": [
-      "ez_manage.py:45201",
-      "ez_manage.py:45210",
-      "tradier_manage.py:14820",
-      "tradier_manage.py:14835"
+      "ez_manage.py:45226",
+      "ez_manage.py:45235",
+      "tradier_manage.py:14801",
+      "tradier_manage.py:14816"
      ]
     }
    ]
@@ -2747,10 +2747,10 @@
     {
      "read": "vec_decisions.augment_core.py:100 in bounce_sig()",
      "live_callers": [
-      "ez_manage.py:45201",
-      "ez_manage.py:45210",
-      "tradier_manage.py:14820",
-      "tradier_manage.py:14835"
+      "ez_manage.py:45226",
+      "ez_manage.py:45235",
+      "tradier_manage.py:14801",
+      "tradier_manage.py:14816"
      ]
     }
    ]
@@ -2779,10 +2779,10 @@
     {
      "read": "vec_decisions.augment_core.py:107 in bounce_sig()",
      "live_callers": [
-      "ez_manage.py:45201",
-      "ez_manage.py:45210",
-      "tradier_manage.py:14820",
-      "tradier_manage.py:14835"
+      "ez_manage.py:45226",
+      "ez_manage.py:45235",
+      "tradier_manage.py:14801",
+      "tradier_manage.py:14816"
      ]
     }
    ]
@@ -2811,10 +2811,10 @@
     {
      "read": "vec_decisions.augment_core.py:86 in profit_ok()",
      "live_callers": [
-      "ez_manage.py:45201",
-      "ez_manage.py:45210",
-      "tradier_manage.py:14820",
-      "tradier_manage.py:14835"
+      "ez_manage.py:45226",
+      "ez_manage.py:45235",
+      "tradier_manage.py:14801",
+      "tradier_manage.py:14816"
      ]
     }
    ]
@@ -3092,10 +3092,10 @@
     {
      "read": "vec_decisions.twin_reentry_staged.py:232 in breakout_leash_reentry_mult()",
      "live_callers": [
-      "ez_manage.py:44974",
-      "ez_manage.py:44975",
-      "tradier_manage.py:19955",
-      "tradier_manage.py:19960"
+      "ez_manage.py:44999",
+      "ez_manage.py:45000",
+      "tradier_manage.py:19931",
+      "tradier_manage.py:19936"
      ]
     }
    ]
@@ -3479,10 +3479,10 @@
     {
      "read": "vec_decisions.live_unw_gates.py:86 in exit_hold_blocked()",
      "live_callers": [
-      "ez_manage.py:27605",
-      "ez_manage.py:35201",
-      "ez_manage.py:35204",
-      "ez_manage.py:35219"
+      "ez_manage.py:27587",
+      "ez_manage.py:35226",
+      "ez_manage.py:35229",
+      "ez_manage.py:35244"
      ]
     }
    ]
@@ -3511,10 +3511,10 @@
     {
      "read": "vec_decisions.live_unw_gates.py:72 in augment_bull_kill_blocked()",
      "live_callers": [
-      "ez_manage.py:27605",
-      "ez_manage.py:35201",
-      "ez_manage.py:35204",
-      "ez_manage.py:35219"
+      "ez_manage.py:27587",
+      "ez_manage.py:35226",
+      "ez_manage.py:35229",
+      "ez_manage.py:35244"
      ]
     }
    ]
@@ -3739,10 +3739,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:75 in clenow_blocks()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -3771,10 +3771,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:82 in clenow_blocks()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -3803,10 +3803,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:84 in clenow_blocks()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -3865,10 +3865,10 @@
     {
      "read": "vec_decisions.twin_reentry_staged.py:307 in wt_4h_vel_exit_fires()",
      "live_callers": [
-      "ez_manage.py:44974",
-      "ez_manage.py:44975",
-      "tradier_manage.py:19955",
-      "tradier_manage.py:19960"
+      "ez_manage.py:44999",
+      "ez_manage.py:45000",
+      "tradier_manage.py:19931",
+      "tradier_manage.py:19936"
      ]
     }
    ]
@@ -3897,10 +3897,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:102 in confluence_blocks()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -3929,10 +3929,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:99 in confluence_blocks()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -3961,10 +3961,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:57 in connors_fires()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -3993,10 +3993,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:61 in connors_fires()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -4086,6 +4086,8 @@
     "GLOBAL_RISK_GATES"
    ],
    "filter_tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
     "ENTRY_BREAKOUT_CHANNEL",
     "ENTRY_CONFIRMATION_GATES",
     "ENTRY_REVERSAL_BOUNCE"
@@ -4141,7 +4143,7 @@
     {
      "read": "live_twins.vec_reentry.py:65 in fires()",
      "live_callers": [
-      "ez_manage.py:50582"
+      "ez_manage.py:50607"
      ]
     }
    ]
@@ -4369,10 +4371,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:258 in cycle_tp_tier()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -4401,10 +4403,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:270 in cycle_tp_tier()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -4477,10 +4479,10 @@
     {
      "read": "vec_decisions.dc_channel_exits.py:67 in resolve_daytrade_dc()",
      "live_callers": [
-      "ez_manage.py:54666",
-      "ez_manage.py:54693",
-      "tradier_manage.py:16101",
-      "tradier_manage.py:16120"
+      "ez_manage.py:54691",
+      "ez_manage.py:54718",
+      "tradier_manage.py:16082",
+      "tradier_manage.py:16101"
      ]
     }
    ]
@@ -4509,10 +4511,10 @@
     {
      "read": "vec_decisions.dc_channel_exits.py:68 in resolve_daytrade_dc()",
      "live_callers": [
-      "ez_manage.py:54666",
-      "ez_manage.py:54693",
-      "tradier_manage.py:16101",
-      "tradier_manage.py:16120"
+      "ez_manage.py:54691",
+      "ez_manage.py:54718",
+      "tradier_manage.py:16082",
+      "tradier_manage.py:16101"
      ]
     }
    ]
@@ -4674,7 +4676,7 @@
     {
      "read": "vec_decisions.twin_yellow_filters.py:685 in dc_breach_reduce_mask()",
      "live_callers": [
-      "tradier_manage.py:26183"
+      "tradier_manage.py:26159"
      ]
     }
    ]
@@ -4881,7 +4883,7 @@
     {
      "read": "vec_decisions.twin_yellow_filters.py:272 in dc_break_entry_gate()",
      "live_callers": [
-      "tradier_manage.py:26183"
+      "tradier_manage.py:26159"
      ]
     }
    ]
@@ -4908,8 +4910,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:405 in wtdc_hard_short_ok_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -4960,8 +4962,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:562 in daytrade_entry_fire_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -4988,10 +4990,10 @@
    "global_sites": [],
    "routed_sites": [
     {
-     "read": "vec_decisions.twin_p0_crypto_b.py:897 in daytrade_pct_resolve()",
+     "read": "vec_decisions.twin_p0_crypto_b.py:890 in daytrade_pct_resolve()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -5020,10 +5022,10 @@
     {
      "read": "vec_decisions.dc_channel_exits.py:76 in resolve_daytrade_dc()",
      "live_callers": [
-      "ez_manage.py:54666",
-      "ez_manage.py:54693",
-      "tradier_manage.py:16101",
-      "tradier_manage.py:16120"
+      "ez_manage.py:54691",
+      "ez_manage.py:54718",
+      "tradier_manage.py:16082",
+      "tradier_manage.py:16101"
      ]
     }
    ]
@@ -5052,10 +5054,10 @@
     {
      "read": "vec_decisions.dc_channel_exits.py:78 in resolve_daytrade_dc()",
      "live_callers": [
-      "ez_manage.py:54666",
-      "ez_manage.py:54693",
-      "tradier_manage.py:16101",
-      "tradier_manage.py:16120"
+      "ez_manage.py:54691",
+      "ez_manage.py:54718",
+      "tradier_manage.py:16082",
+      "tradier_manage.py:16101"
      ]
     }
    ]
@@ -5104,10 +5106,10 @@
    "global_sites": [],
    "routed_sites": [
     {
-     "read": "vec_decisions.twin_p0_crypto_b.py:898 in daytrade_pct_resolve()",
+     "read": "vec_decisions.twin_p0_crypto_b.py:891 in daytrade_pct_resolve()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -5350,10 +5352,10 @@
     {
      "read": "vec_decisions.twin_reentry_staged.py:282 in dc_hopeless_exit_fires()",
      "live_callers": [
-      "ez_manage.py:44974",
-      "ez_manage.py:44975",
-      "tradier_manage.py:19955",
-      "tradier_manage.py:19960"
+      "ez_manage.py:44999",
+      "ez_manage.py:45000",
+      "tradier_manage.py:19931",
+      "tradier_manage.py:19936"
      ]
     }
    ]
@@ -5382,10 +5384,10 @@
     {
      "read": "vec_decisions.twin_reentry_staged.py:286 in dc_hopeless_exit_fires()",
      "live_callers": [
-      "ez_manage.py:44974",
-      "ez_manage.py:44975",
-      "tradier_manage.py:19955",
-      "tradier_manage.py:19960"
+      "ez_manage.py:44999",
+      "ez_manage.py:45000",
+      "tradier_manage.py:19931",
+      "tradier_manage.py:19936"
      ]
     }
    ]
@@ -5472,8 +5474,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:565 in daytrade_entry_fire_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -5522,10 +5524,10 @@
     {
      "read": "vec_decisions.noloss_hold.py:63 in noloss_hold_loss_exit()",
      "live_callers": [
-      "ez_manage.py:54747",
-      "ez_manage.py:54759",
-      "tradier_manage.py:16165",
-      "tradier_manage.py:16186"
+      "ez_manage.py:54772",
+      "ez_manage.py:54784",
+      "tradier_manage.py:16146",
+      "tradier_manage.py:16167"
      ]
     }
    ]
@@ -5554,10 +5556,10 @@
     {
      "read": "vec_decisions.noloss_hold.py:64 in noloss_hold_loss_exit()",
      "live_callers": [
-      "ez_manage.py:54747",
-      "ez_manage.py:54759",
-      "tradier_manage.py:16165",
-      "tradier_manage.py:16186"
+      "ez_manage.py:54772",
+      "ez_manage.py:54784",
+      "tradier_manage.py:16146",
+      "tradier_manage.py:16167"
      ]
     }
    ]
@@ -6132,13 +6134,13 @@
   },
   {
    "key": "DELTA_EXIT_MIN_HOLD",
-   "verdict": "OK",
+   "verdict": "ABSENT",
    "n_psym": 0,
    "n_global": 0,
    "n_discarded": 0,
-   "n_namelist": 5,
+   "n_namelist": 0,
    "n_dead": 0,
-   "n_proxy_psym": 3,
+   "n_proxy_psym": 0,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -6904,10 +6906,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_b.py:233 in ema20_slope_entry()",
      "live_callers": [
-      "ez_manage.py:50553",
-      "ez_manage.py:50921",
-      "ez_manage.py:50923",
-      "ez_manage.py:50935"
+      "ez_manage.py:50578",
+      "ez_manage.py:50946",
+      "ez_manage.py:50948",
+      "ez_manage.py:50960"
      ]
     }
    ]
@@ -6998,10 +7000,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:501 in kg_entry_allowed()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -7028,10 +7030,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:502 in kg_entry_allowed()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -7058,10 +7060,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:502 in kg_entry_allowed()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -7095,16 +7097,16 @@
     {
      "read": "vec_decisions.kg_entry_gate.py:57 in ema921_pass()",
      "live_callers": [
-      "ez_manage.py:34801"
+      "ez_manage.py:34826"
      ]
     },
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:487 in kg_entry_allowed()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -7172,16 +7174,16 @@
     {
      "read": "vec_decisions.kg_entry_gate.py:34 in effective_min_tfs()",
      "live_callers": [
-      "ez_manage.py:34801"
+      "ez_manage.py:34826"
      ]
     },
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:526 in kg_entry_allowed()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -7210,16 +7212,16 @@
     {
      "read": "vec_decisions.kg_entry_gate.py:21 in eff_921_tfs()",
      "live_callers": [
-      "ez_manage.py:34801"
+      "ez_manage.py:34826"
      ]
     },
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:497 in kg_entry_allowed()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -7248,16 +7250,16 @@
     {
      "read": "vec_decisions.kg_entry_gate.py:22 in eff_921_tfs()",
      "live_callers": [
-      "ez_manage.py:34801"
+      "ez_manage.py:34826"
      ]
     },
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:491 in kg_entry_allowed()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -7286,7 +7288,7 @@
     {
      "read": "vec_decisions.twin_yellow_filters.py:593 in ema_blanket_pass_vec()",
      "live_callers": [
-      "tradier_manage.py:26183"
+      "tradier_manage.py:26159"
      ]
     }
    ]
@@ -7339,7 +7341,7 @@
     {
      "read": "vec_decisions.twin_yellow_filters.py:595 in ema_blanket_pass_vec()",
      "live_callers": [
-      "tradier_manage.py:26183"
+      "tradier_manage.py:26159"
      ]
     }
    ]
@@ -7368,7 +7370,7 @@
     {
      "read": "vec_decisions.twin_yellow_filters.py:598 in ema_blanket_pass_vec()",
      "live_callers": [
-      "tradier_manage.py:26183"
+      "tradier_manage.py:26159"
      ]
     }
    ]
@@ -7397,10 +7399,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_b.py:250 in ema_dist_entry()",
      "live_callers": [
-      "ez_manage.py:50553",
-      "ez_manage.py:50921",
-      "ez_manage.py:50923",
-      "ez_manage.py:50935"
+      "ez_manage.py:50578",
+      "ez_manage.py:50946",
+      "ez_manage.py:50948",
+      "ez_manage.py:50960"
      ]
     }
    ]
@@ -7469,10 +7471,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:105 in ema_dist_size_mult()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -7501,10 +7503,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:112 in ema_dist_size_mult()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -7608,7 +7610,7 @@
     {
      "read": "vec_decisions.twin_yellow_filters.py:519 in fast_riser_signal()",
      "live_callers": [
-      "tradier_manage.py:26183"
+      "tradier_manage.py:26159"
      ]
     }
    ]
@@ -7681,10 +7683,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_a.py:281 in evaluate_bounce_deep_turn()",
      "live_callers": [
-      "ez_manage.py:51280",
-      "ez_manage.py:51290",
-      "ez_manage.py:51300",
-      "ez_manage.py:51310"
+      "ez_manage.py:51305",
+      "ez_manage.py:51315",
+      "ez_manage.py:51325",
+      "ez_manage.py:51335"
      ]
     }
    ]
@@ -7713,10 +7715,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_a.py:280 in evaluate_bounce_deep_turn()",
      "live_callers": [
-      "ez_manage.py:51280",
-      "ez_manage.py:51290",
-      "ez_manage.py:51300",
-      "ez_manage.py:51310"
+      "ez_manage.py:51305",
+      "ez_manage.py:51315",
+      "ez_manage.py:51325",
+      "ez_manage.py:51335"
      ]
     }
    ]
@@ -7745,10 +7747,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_a.py:282 in evaluate_bounce_deep_turn()",
      "live_callers": [
-      "ez_manage.py:51280",
-      "ez_manage.py:51290",
-      "ez_manage.py:51300",
-      "ez_manage.py:51310"
+      "ez_manage.py:51305",
+      "ez_manage.py:51315",
+      "ez_manage.py:51325",
+      "ez_manage.py:51335"
      ]
     }
    ]
@@ -7777,10 +7779,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_a.py:273 in evaluate_bounce_deep_turn()",
      "live_callers": [
-      "ez_manage.py:51280",
-      "ez_manage.py:51290",
-      "ez_manage.py:51300",
-      "ez_manage.py:51310"
+      "ez_manage.py:51305",
+      "ez_manage.py:51315",
+      "ez_manage.py:51325",
+      "ez_manage.py:51335"
      ]
     }
    ]
@@ -7809,10 +7811,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_a.py:275 in evaluate_bounce_deep_turn()",
      "live_callers": [
-      "ez_manage.py:51280",
-      "ez_manage.py:51290",
-      "ez_manage.py:51300",
-      "ez_manage.py:51310"
+      "ez_manage.py:51305",
+      "ez_manage.py:51315",
+      "ez_manage.py:51325",
+      "ez_manage.py:51335"
      ]
     }
    ]
@@ -7841,10 +7843,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_a.py:283 in evaluate_bounce_deep_turn()",
      "live_callers": [
-      "ez_manage.py:51280",
-      "ez_manage.py:51290",
-      "ez_manage.py:51300",
-      "ez_manage.py:51310"
+      "ez_manage.py:51305",
+      "ez_manage.py:51315",
+      "ez_manage.py:51325",
+      "ez_manage.py:51335"
      ]
     }
    ]
@@ -7873,10 +7875,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_a.py:302 in evaluate_bounce_donchian()",
      "live_callers": [
-      "ez_manage.py:51280",
-      "ez_manage.py:51290",
-      "ez_manage.py:51300",
-      "ez_manage.py:51310"
+      "ez_manage.py:51305",
+      "ez_manage.py:51315",
+      "ez_manage.py:51325",
+      "ez_manage.py:51335"
      ]
     }
    ]
@@ -7905,10 +7907,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_a.py:296 in evaluate_bounce_donchian()",
      "live_callers": [
-      "ez_manage.py:51280",
-      "ez_manage.py:51290",
-      "ez_manage.py:51300",
-      "ez_manage.py:51310"
+      "ez_manage.py:51305",
+      "ez_manage.py:51315",
+      "ez_manage.py:51325",
+      "ez_manage.py:51335"
      ]
     }
    ]
@@ -7937,10 +7939,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_a.py:303 in evaluate_bounce_donchian()",
      "live_callers": [
-      "ez_manage.py:51280",
-      "ez_manage.py:51290",
-      "ez_manage.py:51300",
-      "ez_manage.py:51310"
+      "ez_manage.py:51305",
+      "ez_manage.py:51315",
+      "ez_manage.py:51325",
+      "ez_manage.py:51335"
      ]
     }
    ]
@@ -7969,10 +7971,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_a.py:301 in evaluate_bounce_donchian()",
      "live_callers": [
-      "ez_manage.py:51280",
-      "ez_manage.py:51290",
-      "ez_manage.py:51300",
-      "ez_manage.py:51310"
+      "ez_manage.py:51305",
+      "ez_manage.py:51315",
+      "ez_manage.py:51325",
+      "ez_manage.py:51335"
      ]
     }
    ]
@@ -8177,10 +8179,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_a.py:316 in evaluate_stoch_hhhl()",
      "live_callers": [
-      "ez_manage.py:51280",
-      "ez_manage.py:51290",
-      "ez_manage.py:51300",
-      "ez_manage.py:51310"
+      "ez_manage.py:51305",
+      "ez_manage.py:51315",
+      "ez_manage.py:51325",
+      "ez_manage.py:51335"
      ]
     }
    ]
@@ -8209,10 +8211,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_a.py:322 in evaluate_stoch_hhhl()",
      "live_callers": [
-      "ez_manage.py:51280",
-      "ez_manage.py:51290",
-      "ez_manage.py:51300",
-      "ez_manage.py:51310"
+      "ez_manage.py:51305",
+      "ez_manage.py:51315",
+      "ez_manage.py:51325",
+      "ez_manage.py:51335"
      ]
     }
    ]
@@ -8241,10 +8243,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_a.py:323 in evaluate_stoch_hhhl()",
      "live_callers": [
-      "ez_manage.py:51280",
-      "ez_manage.py:51290",
-      "ez_manage.py:51300",
-      "ez_manage.py:51310"
+      "ez_manage.py:51305",
+      "ez_manage.py:51315",
+      "ez_manage.py:51325",
+      "ez_manage.py:51335"
      ]
     }
    ]
@@ -8273,10 +8275,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_a.py:335 in evaluate_stoch_parent()",
      "live_callers": [
-      "ez_manage.py:51280",
-      "ez_manage.py:51290",
-      "ez_manage.py:51300",
-      "ez_manage.py:51310"
+      "ez_manage.py:51305",
+      "ez_manage.py:51315",
+      "ez_manage.py:51325",
+      "ez_manage.py:51335"
      ]
     }
    ]
@@ -8305,10 +8307,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_a.py:340 in evaluate_stoch_parent()",
      "live_callers": [
-      "ez_manage.py:51280",
-      "ez_manage.py:51290",
-      "ez_manage.py:51300",
-      "ez_manage.py:51310"
+      "ez_manage.py:51305",
+      "ez_manage.py:51315",
+      "ez_manage.py:51325",
+      "ez_manage.py:51335"
      ]
     }
    ]
@@ -8337,10 +8339,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_a.py:341 in evaluate_stoch_parent()",
      "live_callers": [
-      "ez_manage.py:51280",
-      "ez_manage.py:51290",
-      "ez_manage.py:51300",
-      "ez_manage.py:51310"
+      "ez_manage.py:51305",
+      "ez_manage.py:51315",
+      "ez_manage.py:51325",
+      "ez_manage.py:51335"
      ]
     }
    ]
@@ -8369,10 +8371,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_a.py:342 in evaluate_stoch_parent()",
      "live_callers": [
-      "ez_manage.py:51280",
-      "ez_manage.py:51290",
-      "ez_manage.py:51300",
-      "ez_manage.py:51310"
+      "ez_manage.py:51305",
+      "ez_manage.py:51315",
+      "ez_manage.py:51325",
+      "ez_manage.py:51335"
      ]
     }
    ]
@@ -8705,7 +8707,7 @@
     {
      "read": "vec_decisions.twin_yellow_filters.py:683 in dc_breach_reduce_mask()",
      "live_callers": [
-      "tradier_manage.py:26183"
+      "tradier_manage.py:26159"
      ]
     }
    ]
@@ -9056,10 +9058,10 @@
     {
      "read": "vec_decisions.twin_exits_dead.py:621 in velocity_wt_min_tfs()",
      "live_callers": [
-      "ez_manage.py:34824",
-      "ez_manage.py:34829",
-      "ez_manage.py:44779",
-      "ez_manage.py:54802"
+      "ez_manage.py:34849",
+      "ez_manage.py:34854",
+      "ez_manage.py:44804",
+      "ez_manage.py:54827"
      ]
     }
    ]
@@ -9089,10 +9091,10 @@
     {
      "read": "vec_decisions.twin_exits_dead.py:600 in velocity_wt_tfs()",
      "live_callers": [
-      "ez_manage.py:34824",
-      "ez_manage.py:34829",
-      "ez_manage.py:44779",
-      "ez_manage.py:54802"
+      "ez_manage.py:34849",
+      "ez_manage.py:34854",
+      "ez_manage.py:44804",
+      "ez_manage.py:54827"
      ]
     }
    ]
@@ -9209,10 +9211,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:131 in e1_wt_delta_fires()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -9241,10 +9243,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:121 in e1_wt_delta_fires()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -9295,7 +9297,7 @@
     {
      "read": "vec_decisions.twin_yellow_filters.py:521 in fast_riser_signal()",
      "live_callers": [
-      "tradier_manage.py:26183"
+      "tradier_manage.py:26159"
      ]
     }
    ]
@@ -9348,7 +9350,7 @@
     {
      "read": "vec_decisions.twin_yellow_filters.py:525 in fast_riser_signal()",
      "live_callers": [
-      "tradier_manage.py:26183"
+      "tradier_manage.py:26159"
      ]
     }
    ]
@@ -9445,10 +9447,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:167 in fh_enabled()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -9490,10 +9492,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:185 in fh_momentum_fires()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -9557,10 +9559,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:66 in fixed_quantity_active()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -10062,10 +10064,10 @@
     {
      "read": "vec_decisions.twin_entries_dead_a.py:206 in _entry_funding_mask()",
      "live_callers": [
-      "ez_manage.py:51335",
-      "ez_manage.py:54789",
-      "tradier_manage.py:16235",
-      "tradier_manage.py:18864"
+      "ez_manage.py:51360",
+      "ez_manage.py:54814",
+      "tradier_manage.py:16216",
+      "tradier_manage.py:18845"
      ]
     }
    ]
@@ -10094,10 +10096,10 @@
     {
      "read": "vec_decisions.twin_entries_dead_a.py:208 in _entry_funding_mask()",
      "live_callers": [
-      "ez_manage.py:51335",
-      "ez_manage.py:54789",
-      "tradier_manage.py:16235",
-      "tradier_manage.py:18864"
+      "ez_manage.py:51360",
+      "ez_manage.py:54814",
+      "tradier_manage.py:16216",
+      "tradier_manage.py:18845"
      ]
     }
    ]
@@ -10126,10 +10128,10 @@
     {
      "read": "vec_decisions.twin_entries_dead_a.py:252 in _exit_funding_mask()",
      "live_callers": [
-      "ez_manage.py:51335",
-      "ez_manage.py:54789",
-      "tradier_manage.py:16235",
-      "tradier_manage.py:18864"
+      "ez_manage.py:51360",
+      "ez_manage.py:54814",
+      "tradier_manage.py:16216",
+      "tradier_manage.py:18845"
      ]
     }
    ]
@@ -10158,10 +10160,10 @@
     {
      "read": "vec_decisions.twin_entries_dead_a.py:254 in _exit_funding_mask()",
      "live_callers": [
-      "ez_manage.py:51335",
-      "ez_manage.py:54789",
-      "tradier_manage.py:16235",
-      "tradier_manage.py:18864"
+      "ez_manage.py:51360",
+      "ez_manage.py:54814",
+      "tradier_manage.py:16216",
+      "tradier_manage.py:18845"
      ]
     }
    ]
@@ -12078,7 +12080,7 @@
     {
      "read": "live_twins.vec_reentry.py:83 in fires()",
      "live_callers": [
-      "ez_manage.py:50582"
+      "ez_manage.py:50607"
      ]
     }
    ]
@@ -12110,7 +12112,7 @@
     {
      "read": "live_twins.vec_reentry.py:86 in fires()",
      "live_callers": [
-      "ez_manage.py:50582"
+      "ez_manage.py:50607"
      ]
     }
    ]
@@ -12877,10 +12879,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:157 in htf_against_fires()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -12909,10 +12911,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:143 in htf_against_fires()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -13020,6 +13022,8 @@
     "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [
+    "AUGMENT_RISK_SIZING",
+    "AUGMENT_TREND",
     "ENTRY_BREAKOUT_CHANNEL",
     "ENTRY_CONFIRMATION_GATES",
     "ENTRY_REVERSAL_BOUNCE"
@@ -13029,10 +13033,10 @@
     {
      "read": "live_twins.parity_open_gates.py:155 in strict_open_veto()",
      "live_callers": [
-      "ez_manage.py:34755",
-      "ez_manage.py:34756",
-      "ez_manage.py:34762",
-      "ez_manage.py:34769"
+      "ez_manage.py:34780",
+      "ez_manage.py:34781",
+      "ez_manage.py:34787",
+      "ez_manage.py:34794"
      ]
     }
    ]
@@ -13176,10 +13180,10 @@
     {
      "read": "live_twins.parity_open_gates.py:157 in strict_open_veto()",
      "live_callers": [
-      "ez_manage.py:34755",
-      "ez_manage.py:34756",
-      "ez_manage.py:34762",
-      "ez_manage.py:34769"
+      "ez_manage.py:34780",
+      "ez_manage.py:34781",
+      "ez_manage.py:34787",
+      "ez_manage.py:34794"
      ]
     }
    ]
@@ -13208,10 +13212,10 @@
     {
      "read": "live_twins.parity_open_gates.py:176 in htf_gate_bypassed()",
      "live_callers": [
-      "ez_manage.py:34755",
-      "ez_manage.py:34756",
-      "ez_manage.py:34762",
-      "ez_manage.py:34769"
+      "ez_manage.py:34780",
+      "ez_manage.py:34781",
+      "ez_manage.py:34787",
+      "ez_manage.py:34794"
      ]
     }
    ]
@@ -13240,10 +13244,10 @@
     {
      "read": "live_twins.parity_open_gates.py:128 in htf_direction_pass_live()",
      "live_callers": [
-      "ez_manage.py:34755",
-      "ez_manage.py:34756",
-      "ez_manage.py:34762",
-      "ez_manage.py:34769"
+      "ez_manage.py:34780",
+      "ez_manage.py:34781",
+      "ez_manage.py:34787",
+      "ez_manage.py:34794"
      ]
     }
    ]
@@ -13272,10 +13276,10 @@
     {
      "read": "live_twins.parity_open_gates.py:126 in htf_direction_pass_live()",
      "live_callers": [
-      "ez_manage.py:34755",
-      "ez_manage.py:34756",
-      "ez_manage.py:34762",
-      "ez_manage.py:34769"
+      "ez_manage.py:34780",
+      "ez_manage.py:34781",
+      "ez_manage.py:34787",
+      "ez_manage.py:34794"
      ]
     }
    ]
@@ -13304,10 +13308,10 @@
     {
      "read": "live_twins.parity_open_gates.py:122 in htf_direction_pass_live()",
      "live_callers": [
-      "ez_manage.py:34755",
-      "ez_manage.py:34756",
-      "ez_manage.py:34762",
-      "ez_manage.py:34769"
+      "ez_manage.py:34780",
+      "ez_manage.py:34781",
+      "ez_manage.py:34787",
+      "ez_manage.py:34794"
      ]
     }
    ]
@@ -13644,7 +13648,7 @@
     {
      "read": "live_twins.vec_reentry.py:72 in fires()",
      "live_callers": [
-      "ez_manage.py:50582"
+      "ez_manage.py:50607"
      ]
     }
    ]
@@ -13673,7 +13677,7 @@
     {
      "read": "live_twins.vec_reentry.py:72 in fires()",
      "live_callers": [
-      "ez_manage.py:50582"
+      "ez_manage.py:50607"
      ]
     }
    ]
@@ -13904,8 +13908,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:104 in _k3m_floor_val()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -13934,8 +13938,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:103 in _k3m_floor_val()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -13962,7 +13966,7 @@
     {
      "read": "live_twins.key_level.py:49 in decide()",
      "live_callers": [
-      "ez_manage.py:54931"
+      "ez_manage.py:54956"
      ]
     }
    ]
@@ -13989,7 +13993,7 @@
     {
      "read": "live_twins.key_level.py:47 in decide()",
      "live_callers": [
-      "ez_manage.py:54931"
+      "ez_manage.py:54956"
      ]
     }
    ]
@@ -14042,16 +14046,16 @@
     {
      "read": "vec_decisions.kg_entry_gate.py:31 in effective_min_tfs()",
      "live_callers": [
-      "ez_manage.py:34801"
+      "ez_manage.py:34826"
      ]
     },
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:525 in kg_entry_allowed()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -14080,16 +14084,16 @@
     {
      "read": "vec_decisions.kg_entry_gate.py:52 in cumulative_mode()",
      "live_callers": [
-      "ez_manage.py:34801"
+      "ez_manage.py:34826"
      ]
     },
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:490 in kg_entry_allowed()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -14123,16 +14127,16 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:487 in kg_entry_allowed()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     },
     {
      "read": "vec_decisions.twin_yellow_filters.py:417 in kg_block_mask()",
      "live_callers": [
-      "tradier_manage.py:26183"
+      "tradier_manage.py:26159"
      ]
     }
    ]
@@ -14165,7 +14169,7 @@
     {
      "read": "vec_decisions.twin_yellow_filters.py:419 in kg_block_mask()",
      "live_callers": [
-      "tradier_manage.py:26183"
+      "tradier_manage.py:26159"
      ]
     }
    ]
@@ -14194,16 +14198,16 @@
     {
      "read": "vec_decisions.kg_entry_gate.py:71 in ema921_pass()",
      "live_callers": [
-      "ez_manage.py:34801"
+      "ez_manage.py:34826"
      ]
     },
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:520 in kg_entry_allowed()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -14232,8 +14236,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:643 in kzone_entry_fire_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -14282,8 +14286,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:646 in kzone_entry_fire_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -14310,8 +14314,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:155 in kzone_veto_ok_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -14338,8 +14342,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:647 in kzone_entry_fire_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -14366,8 +14370,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:155 in kzone_veto_ok_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -14396,8 +14400,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:152 in kzone_veto_ok_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -14716,8 +14720,8 @@
     {
      "read": "vec_decisions.lh_ll_top_exit.py:74 in resolve_lh_ll_top_exit()",
      "live_callers": [
-      "ez_manage.py:54874",
-      "tradier_manage.py:16782"
+      "ez_manage.py:54899",
+      "tradier_manage.py:16763"
      ]
     }
    ]
@@ -14748,8 +14752,8 @@
     {
      "read": "vec_decisions.lh_ll_top_exit.py:74 in resolve_lh_ll_top_exit()",
      "live_callers": [
-      "ez_manage.py:54874",
-      "tradier_manage.py:16782"
+      "ez_manage.py:54899",
+      "tradier_manage.py:16763"
      ]
     }
    ]
@@ -14780,8 +14784,8 @@
     {
      "read": "vec_decisions.lh_ll_top_exit.py:66 in resolve_lh_ll_top_exit()",
      "live_callers": [
-      "ez_manage.py:54874",
-      "tradier_manage.py:16782"
+      "ez_manage.py:54899",
+      "tradier_manage.py:16763"
      ]
     }
    ]
@@ -14812,8 +14816,8 @@
     {
      "read": "vec_decisions.lh_ll_top_exit.py:71 in resolve_lh_ll_top_exit()",
      "live_callers": [
-      "ez_manage.py:54874",
-      "tradier_manage.py:16782"
+      "ez_manage.py:54899",
+      "tradier_manage.py:16763"
      ]
     }
    ]
@@ -14844,8 +14848,8 @@
     {
      "read": "vec_decisions.lh_ll_top_exit.py:74 in resolve_lh_ll_top_exit()",
      "live_callers": [
-      "ez_manage.py:54874",
-      "tradier_manage.py:16782"
+      "ez_manage.py:54899",
+      "tradier_manage.py:16763"
      ]
     }
    ]
@@ -14876,8 +14880,8 @@
     {
      "read": "vec_decisions.lh_ll_top_exit.py:68 in resolve_lh_ll_top_exit()",
      "live_callers": [
-      "ez_manage.py:54874",
-      "tradier_manage.py:16782"
+      "ez_manage.py:54899",
+      "tradier_manage.py:16763"
      ]
     }
    ]
@@ -14908,8 +14912,8 @@
     {
      "read": "vec_decisions.lh_ll_top_exit.py:67 in resolve_lh_ll_top_exit()",
      "live_callers": [
-      "ez_manage.py:54874",
-      "tradier_manage.py:16782"
+      "ez_manage.py:54899",
+      "tradier_manage.py:16763"
      ]
     }
    ]
@@ -15070,7 +15074,7 @@
     {
      "read": "live_twins.key_level.py:54 in decide()",
      "live_callers": [
-      "ez_manage.py:54931"
+      "ez_manage.py:54956"
      ]
     }
    ]
@@ -15449,10 +15453,10 @@
    "global_sites": [],
    "routed_sites": [
     {
-     "read": "vec_decisions.twin_p0_crypto_b.py:978 in lr_ladder_stoch_ok()",
+     "read": "vec_decisions.twin_p0_crypto_b.py:971 in lr_ladder_stoch_ok()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -15873,7 +15877,7 @@
     {
      "read": "vec_decisions.twin_yellow_filters.py:978 in mandatory_wt_vec()",
      "live_callers": [
-      "tradier_manage.py:26183"
+      "tradier_manage.py:26159"
      ]
     }
    ]
@@ -15903,7 +15907,7 @@
     {
      "read": "vec_decisions.twin_yellow_filters.py:981 in mandatory_wt_vec()",
      "live_callers": [
-      "tradier_manage.py:26183"
+      "tradier_manage.py:26159"
      ]
     }
    ]
@@ -15932,7 +15936,7 @@
     {
      "read": "vec_decisions.twin_yellow_filters.py:984 in mandatory_wt_vec()",
      "live_callers": [
-      "tradier_manage.py:26183"
+      "tradier_manage.py:26159"
      ]
     }
    ]
@@ -15962,7 +15966,7 @@
     {
      "read": "vec_decisions.twin_yellow_filters.py:982 in mandatory_wt_vec()",
      "live_callers": [
-      "tradier_manage.py:26183"
+      "tradier_manage.py:26159"
      ]
     }
    ]
@@ -16004,7 +16008,7 @@
     {
      "read": "vec_decisions.twin_yellow_filters.py:980 in mandatory_wt_vec()",
      "live_callers": [
-      "tradier_manage.py:26183"
+      "tradier_manage.py:26159"
      ]
     }
    ]
@@ -16034,7 +16038,7 @@
     {
      "read": "vec_decisions.twin_yellow_filters.py:983 in mandatory_wt_vec()",
      "live_callers": [
-      "tradier_manage.py:26183"
+      "tradier_manage.py:26159"
      ]
     }
    ]
@@ -16067,7 +16071,7 @@
    "n_psym": 20,
    "n_global": 2,
    "n_discarded": 0,
-   "n_namelist": 19,
+   "n_namelist": 22,
    "n_dead": 0,
    "n_proxy_psym": 3,
    "templates": [
@@ -16142,10 +16146,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_b.py:399 in mfi_gate()",
      "live_callers": [
-      "ez_manage.py:50553",
-      "ez_manage.py:50921",
-      "ez_manage.py:50923",
-      "ez_manage.py:50935"
+      "ez_manage.py:50578",
+      "ez_manage.py:50946",
+      "ez_manage.py:50948",
+      "ez_manage.py:50960"
      ]
     }
    ]
@@ -16277,12 +16281,12 @@
   {
    "key": "MIN_HOLD_BARS",
    "verdict": "OK",
-   "n_psym": 7,
+   "n_psym": 22,
    "n_global": 0,
    "n_discarded": 0,
-   "n_namelist": 11,
+   "n_namelist": 12,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 7,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -16296,10 +16300,10 @@
    "global_sites": [],
    "routed_sites": [
     {
-     "read": "vec_decisions.twin_p0_crypto_b.py:822 in min_hold_bars()",
+     "read": "vec_decisions.twin_p0_crypto_b.py:823 in min_hold_bars()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -16328,11 +16332,11 @@
   },
   {
    "key": "MIN_HOLD_MINUTES_TRADIER",
-   "verdict": "OK",
-   "n_psym": 5,
+   "verdict": "ABSENT",
+   "n_psym": 0,
    "n_global": 0,
    "n_discarded": 0,
-   "n_namelist": 8,
+   "n_namelist": 0,
    "n_dead": 0,
    "n_proxy_psym": 0,
    "templates": [
@@ -16346,15 +16350,7 @@
    ],
    "filter_tabs": [],
    "global_sites": [],
-   "routed_sites": [
-    {
-     "read": "vec_decisions.twin_p0_crypto_b.py:823 in min_hold_bars()",
-     "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
-     ]
-    }
-   ]
+   "routed_sites": []
   },
   {
    "key": "MIN_POSITION_SIZE",
@@ -16517,10 +16513,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:260 in tradier_mi_fires()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -16747,33 +16743,33 @@
     {
      "read": "vec_decisions.dc_channel_exits.py:89 in dc_stop_hit()",
      "live_callers": [
-      "ez_manage.py:54666",
-      "ez_manage.py:54693",
-      "tradier_manage.py:16101",
-      "tradier_manage.py:16120"
+      "ez_manage.py:54691",
+      "ez_manage.py:54718",
+      "tradier_manage.py:16082",
+      "tradier_manage.py:16101"
      ]
     },
     {
      "read": "vec_decisions.lh_ll_top_exit.py:137 in check_lh_ll_top_exit()",
      "live_callers": [
-      "ez_manage.py:54874",
-      "tradier_manage.py:16782"
+      "ez_manage.py:54899",
+      "tradier_manage.py:16763"
      ]
     },
     {
      "read": "vec_decisions.twin_entries_dead_a.py:92 in _is_tradier()",
      "live_callers": [
-      "ez_manage.py:51335",
-      "ez_manage.py:54789",
-      "tradier_manage.py:16235",
-      "tradier_manage.py:18864"
+      "ez_manage.py:51360",
+      "ez_manage.py:54814",
+      "tradier_manage.py:16216",
+      "tradier_manage.py:18845"
      ]
     },
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:564 in daytrade_entry_fire_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -16848,7 +16844,7 @@
     {
      "read": "vec_decisions.twin_yellow_filters.py:241 in mom3_entry_gate()",
      "live_callers": [
-      "tradier_manage.py:26183"
+      "tradier_manage.py:26159"
      ]
     }
    ]
@@ -16875,23 +16871,23 @@
     {
      "read": "live_twins.parity_open_gates.py:95 in entry_filter_tf_veto()",
      "live_callers": [
-      "ez_manage.py:34755",
-      "ez_manage.py:34756",
-      "ez_manage.py:34762",
-      "ez_manage.py:34769"
+      "ez_manage.py:34780",
+      "ez_manage.py:34781",
+      "ez_manage.py:34787",
+      "ez_manage.py:34794"
      ]
     },
     {
      "read": "vec_decisions.reentry_mask_arm.py:102 in _live_mom3()",
      "live_callers": [
-      "ez_manage.py:57419",
-      "tradier_manage.py:19392"
+      "ez_manage.py:57444",
+      "tradier_manage.py:19368"
      ]
     },
     {
      "read": "vec_decisions.twin_yellow_filters.py:250 in mom3_entry_gate()",
      "live_callers": [
-      "tradier_manage.py:26183"
+      "tradier_manage.py:26159"
      ]
     }
    ]
@@ -16918,23 +16914,23 @@
     {
      "read": "live_twins.parity_open_gates.py:95 in entry_filter_tf_veto()",
      "live_callers": [
-      "ez_manage.py:34755",
-      "ez_manage.py:34756",
-      "ez_manage.py:34762",
-      "ez_manage.py:34769"
+      "ez_manage.py:34780",
+      "ez_manage.py:34781",
+      "ez_manage.py:34787",
+      "ez_manage.py:34794"
      ]
     },
     {
      "read": "vec_decisions.reentry_mask_arm.py:106 in _live_mom3()",
      "live_callers": [
-      "ez_manage.py:57419",
-      "tradier_manage.py:19392"
+      "ez_manage.py:57444",
+      "tradier_manage.py:19368"
      ]
     },
     {
      "read": "vec_decisions.twin_yellow_filters.py:253 in mom3_entry_gate()",
      "live_callers": [
-      "tradier_manage.py:26183"
+      "tradier_manage.py:26159"
      ]
     }
    ]
@@ -17049,7 +17045,7 @@
     {
      "read": "vec_decisions.twin_yellow_filters.py:259 in momentum_breakout_gate()",
      "live_callers": [
-      "tradier_manage.py:26183"
+      "tradier_manage.py:26159"
      ]
     }
    ]
@@ -17078,10 +17074,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:439 in watchdog_open()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -17110,10 +17106,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:510 in watchdog_open()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -17286,10 +17282,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:320 in mtf_atr_trail_on()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -17316,10 +17312,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:322 in mtf_atr_trail_on()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -17401,10 +17397,10 @@
    "global_sites": [],
    "routed_sites": [
     {
-     "read": "vec_decisions.twin_p0_crypto_b.py:881 in mtf_atr_trail_tf()",
+     "read": "vec_decisions.twin_p0_crypto_b.py:874 in mtf_atr_trail_tf()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -17429,10 +17425,10 @@
    "global_sites": [],
    "routed_sites": [
     {
-     "read": "vec_decisions.twin_p0_crypto_b.py:880 in mtf_atr_trail_tf()",
+     "read": "vec_decisions.twin_p0_crypto_b.py:873 in mtf_atr_trail_tf()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -17650,10 +17646,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:318 in mtf_atr_trail_on()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -18008,10 +18004,10 @@
     {
      "read": "vec_decisions.twin_exits_dead.py:308 in mu_exit_mask()",
      "live_callers": [
-      "ez_manage.py:34824",
-      "ez_manage.py:34829",
-      "ez_manage.py:44779",
-      "ez_manage.py:54802"
+      "ez_manage.py:34849",
+      "ez_manage.py:34854",
+      "ez_manage.py:44804",
+      "ez_manage.py:54827"
      ]
     }
    ]
@@ -18040,10 +18036,10 @@
     {
      "read": "vec_decisions.twin_exits_dead.py:310 in mu_exit_mask()",
      "live_callers": [
-      "ez_manage.py:34824",
-      "ez_manage.py:34829",
-      "ez_manage.py:44779",
-      "ez_manage.py:54802"
+      "ez_manage.py:34849",
+      "ez_manage.py:34854",
+      "ez_manage.py:44804",
+      "ez_manage.py:54827"
      ]
     }
    ]
@@ -18072,10 +18068,10 @@
     {
      "read": "vec_decisions.twin_exits_dead.py:309 in mu_exit_mask()",
      "live_callers": [
-      "ez_manage.py:34824",
-      "ez_manage.py:34829",
-      "ez_manage.py:44779",
-      "ez_manage.py:54802"
+      "ez_manage.py:34849",
+      "ez_manage.py:34854",
+      "ez_manage.py:44804",
+      "ez_manage.py:54827"
      ]
     }
    ]
@@ -18104,10 +18100,10 @@
     {
      "read": "vec_decisions.twin_exits_dead.py:313 in mu_exit_mask()",
      "live_callers": [
-      "ez_manage.py:34824",
-      "ez_manage.py:34829",
-      "ez_manage.py:44779",
-      "ez_manage.py:54802"
+      "ez_manage.py:34849",
+      "ez_manage.py:34854",
+      "ez_manage.py:44804",
+      "ez_manage.py:54827"
      ]
     }
    ]
@@ -18136,10 +18132,10 @@
     {
      "read": "vec_decisions.twin_exits_dead.py:335 in mu_exit_mask()",
      "live_callers": [
-      "ez_manage.py:34824",
-      "ez_manage.py:34829",
-      "ez_manage.py:44779",
-      "ez_manage.py:54802"
+      "ez_manage.py:34849",
+      "ez_manage.py:34854",
+      "ez_manage.py:44804",
+      "ez_manage.py:54827"
      ]
     }
    ]
@@ -18168,10 +18164,10 @@
     {
      "read": "vec_decisions.twin_exits_dead.py:336 in mu_exit_mask()",
      "live_callers": [
-      "ez_manage.py:34824",
-      "ez_manage.py:34829",
-      "ez_manage.py:44779",
-      "ez_manage.py:54802"
+      "ez_manage.py:34849",
+      "ez_manage.py:34854",
+      "ez_manage.py:44804",
+      "ez_manage.py:54827"
      ]
     }
    ]
@@ -18200,10 +18196,10 @@
     {
      "read": "vec_decisions.twin_exits_dead.py:356 in mu_exit_live_fire()",
      "live_callers": [
-      "ez_manage.py:34824",
-      "ez_manage.py:34829",
-      "ez_manage.py:44779",
-      "ez_manage.py:54802"
+      "ez_manage.py:34849",
+      "ez_manage.py:34854",
+      "ez_manage.py:44804",
+      "ez_manage.py:54827"
      ]
     }
    ]
@@ -18232,10 +18228,10 @@
     {
      "read": "vec_decisions.twin_exits_dead.py:394 in mu_reentry_mask()",
      "live_callers": [
-      "ez_manage.py:34824",
-      "ez_manage.py:34829",
-      "ez_manage.py:44779",
-      "ez_manage.py:54802"
+      "ez_manage.py:34849",
+      "ez_manage.py:34854",
+      "ez_manage.py:44804",
+      "ez_manage.py:54827"
      ]
     }
    ]
@@ -18286,10 +18282,10 @@
     {
      "read": "vec_decisions.twin_exits_dead.py:401 in mu_reentry_mask()",
      "live_callers": [
-      "ez_manage.py:34824",
-      "ez_manage.py:34829",
-      "ez_manage.py:44779",
-      "ez_manage.py:54802"
+      "ez_manage.py:34849",
+      "ez_manage.py:34854",
+      "ez_manage.py:44804",
+      "ez_manage.py:54827"
      ]
     }
    ]
@@ -18318,10 +18314,10 @@
     {
      "read": "vec_decisions.twin_exits_dead.py:312 in mu_exit_mask()",
      "live_callers": [
-      "ez_manage.py:34824",
-      "ez_manage.py:34829",
-      "ez_manage.py:44779",
-      "ez_manage.py:54802"
+      "ez_manage.py:34849",
+      "ez_manage.py:34854",
+      "ez_manage.py:44804",
+      "ez_manage.py:54827"
      ]
     }
    ]
@@ -18350,10 +18346,10 @@
     {
      "read": "vec_decisions.twin_exits_dead.py:311 in mu_exit_mask()",
      "live_callers": [
-      "ez_manage.py:34824",
-      "ez_manage.py:34829",
-      "ez_manage.py:44779",
-      "ez_manage.py:54802"
+      "ez_manage.py:34849",
+      "ez_manage.py:34854",
+      "ez_manage.py:44804",
+      "ez_manage.py:54827"
      ]
     }
    ]
@@ -18382,10 +18378,10 @@
     {
      "read": "vec_decisions.twin_exits_dead.py:293 in mu_symbols()",
      "live_callers": [
-      "ez_manage.py:34824",
-      "ez_manage.py:34829",
-      "ez_manage.py:44779",
-      "ez_manage.py:54802"
+      "ez_manage.py:34849",
+      "ez_manage.py:34854",
+      "ez_manage.py:44804",
+      "ez_manage.py:54827"
      ]
     }
    ]
@@ -18414,10 +18410,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:183 in newborn_kill_fires()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -18492,10 +18488,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:188 in newborn_kill_fires()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -18524,10 +18520,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:195 in newborn_kill_fires()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -18556,10 +18552,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:199 in newborn_kill_fires()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -18588,10 +18584,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:187 in newborn_kill_fires()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -18729,10 +18725,10 @@
     {
      "read": "vec_decisions.noloss_hold.py:56 in noloss_hold_loss_exit()",
      "live_callers": [
-      "ez_manage.py:54747",
-      "ez_manage.py:54759",
-      "tradier_manage.py:16165",
-      "tradier_manage.py:16186"
+      "ez_manage.py:54772",
+      "ez_manage.py:54784",
+      "tradier_manage.py:16146",
+      "tradier_manage.py:16167"
      ]
     }
    ]
@@ -18761,10 +18757,10 @@
     {
      "read": "vec_decisions.noloss_hold.py:58 in noloss_hold_loss_exit()",
      "live_callers": [
-      "ez_manage.py:54747",
-      "ez_manage.py:54759",
-      "tradier_manage.py:16165",
-      "tradier_manage.py:16186"
+      "ez_manage.py:54772",
+      "ez_manage.py:54784",
+      "tradier_manage.py:16146",
+      "tradier_manage.py:16167"
      ]
     }
    ]
@@ -18793,10 +18789,10 @@
     {
      "read": "vec_decisions.noloss_hold.py:52 in noloss_hold_loss_exit()",
      "live_callers": [
-      "ez_manage.py:54747",
-      "ez_manage.py:54759",
-      "tradier_manage.py:16165",
-      "tradier_manage.py:16186"
+      "ez_manage.py:54772",
+      "ez_manage.py:54784",
+      "tradier_manage.py:16146",
+      "tradier_manage.py:16167"
      ]
     }
    ]
@@ -18825,10 +18821,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:261 in cycle_tp_tier()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -19163,10 +19159,10 @@
     {
      "read": "live_twins.parity_open_gates.py:136 in oi_confirm_blocks_live()",
      "live_callers": [
-      "ez_manage.py:34755",
-      "ez_manage.py:34756",
-      "ez_manage.py:34762",
-      "ez_manage.py:34769"
+      "ez_manage.py:34780",
+      "ez_manage.py:34781",
+      "ez_manage.py:34787",
+      "ez_manage.py:34794"
      ]
     }
    ]
@@ -19195,10 +19191,10 @@
     {
      "read": "live_twins.parity_open_gates.py:143 in oi_confirm_blocks_live()",
      "live_callers": [
-      "ez_manage.py:34755",
-      "ez_manage.py:34756",
-      "ez_manage.py:34762",
-      "ez_manage.py:34769"
+      "ez_manage.py:34780",
+      "ez_manage.py:34781",
+      "ez_manage.py:34787",
+      "ez_manage.py:34794"
      ]
     }
    ]
@@ -19227,10 +19223,10 @@
     {
      "read": "live_twins.parity_open_gates.py:143 in oi_confirm_blocks_live()",
      "live_callers": [
-      "ez_manage.py:34755",
-      "ez_manage.py:34756",
-      "ez_manage.py:34762",
-      "ez_manage.py:34769"
+      "ez_manage.py:34780",
+      "ez_manage.py:34781",
+      "ez_manage.py:34787",
+      "ez_manage.py:34794"
      ]
     }
    ]
@@ -19259,10 +19255,10 @@
     {
      "read": "vec_decisions.twin_entries_dead_a.py:224 in _entry_oi_mask()",
      "live_callers": [
-      "ez_manage.py:51335",
-      "ez_manage.py:54789",
-      "tradier_manage.py:16235",
-      "tradier_manage.py:18864"
+      "ez_manage.py:51360",
+      "ez_manage.py:54814",
+      "tradier_manage.py:16216",
+      "tradier_manage.py:18845"
      ]
     }
    ]
@@ -19291,10 +19287,10 @@
     {
      "read": "vec_decisions.twin_entries_dead_a.py:226 in _entry_oi_mask()",
      "live_callers": [
-      "ez_manage.py:51335",
-      "ez_manage.py:54789",
-      "tradier_manage.py:16235",
-      "tradier_manage.py:18864"
+      "ez_manage.py:51360",
+      "ez_manage.py:54814",
+      "tradier_manage.py:16216",
+      "tradier_manage.py:18845"
      ]
     }
    ]
@@ -19323,10 +19319,10 @@
     {
      "read": "vec_decisions.twin_entries_dead_a.py:270 in _exit_oi_mask()",
      "live_callers": [
-      "ez_manage.py:51335",
-      "ez_manage.py:54789",
-      "tradier_manage.py:16235",
-      "tradier_manage.py:18864"
+      "ez_manage.py:51360",
+      "ez_manage.py:54814",
+      "tradier_manage.py:16216",
+      "tradier_manage.py:18845"
      ]
     }
    ]
@@ -19355,10 +19351,10 @@
     {
      "read": "vec_decisions.twin_entries_dead_a.py:272 in _exit_oi_mask()",
      "live_callers": [
-      "ez_manage.py:51335",
-      "ez_manage.py:54789",
-      "tradier_manage.py:16235",
-      "tradier_manage.py:18864"
+      "ez_manage.py:51360",
+      "ez_manage.py:54814",
+      "tradier_manage.py:16216",
+      "tradier_manage.py:18845"
      ]
     }
    ]
@@ -19684,10 +19680,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:307 in ppl_step()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -19712,10 +19708,10 @@
    "global_sites": [],
    "routed_sites": [
     {
-     "read": "vec_decisions.twin_p0_crypto_b.py:927 in ppl_params()",
+     "read": "vec_decisions.twin_p0_crypto_b.py:920 in ppl_params()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -19744,10 +19740,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:308 in ppl_step()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -19772,10 +19768,10 @@
    "global_sites": [],
    "routed_sites": [
     {
-     "read": "vec_decisions.twin_p0_crypto_b.py:928 in ppl_params()",
+     "read": "vec_decisions.twin_p0_crypto_b.py:921 in ppl_params()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -19804,10 +19800,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:304 in ppl_step()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -19836,10 +19832,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:309 in ppl_step()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -19864,10 +19860,10 @@
    "global_sites": [],
    "routed_sites": [
     {
-     "read": "vec_decisions.twin_p0_crypto_b.py:929 in ppl_params()",
+     "read": "vec_decisions.twin_p0_crypto_b.py:922 in ppl_params()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -19896,10 +19892,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:306 in ppl_step()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -19924,10 +19920,10 @@
    "global_sites": [],
    "routed_sites": [
     {
-     "read": "vec_decisions.twin_p0_crypto_b.py:926 in ppl_params()",
+     "read": "vec_decisions.twin_p0_crypto_b.py:919 in ppl_params()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -20437,19 +20433,19 @@
     {
      "read": "vec_decisions.augment_core.py:90 in pyramid_sig()",
      "live_callers": [
-      "ez_manage.py:45201",
-      "ez_manage.py:45210",
-      "tradier_manage.py:14820",
-      "tradier_manage.py:14835"
+      "ez_manage.py:45226",
+      "ez_manage.py:45235",
+      "tradier_manage.py:14801",
+      "tradier_manage.py:14816"
      ]
     },
     {
      "read": "vec_decisions.twin_sizing_reduce.py:411 in pyramid_fires()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -20476,19 +20472,19 @@
     {
      "read": "vec_decisions.augment_core.py:96 in pyramid_sig()",
      "live_callers": [
-      "ez_manage.py:45201",
-      "ez_manage.py:45210",
-      "tradier_manage.py:14820",
-      "tradier_manage.py:14835"
+      "ez_manage.py:45226",
+      "ez_manage.py:45235",
+      "tradier_manage.py:14801",
+      "tradier_manage.py:14816"
      ]
     },
     {
      "read": "vec_decisions.twin_sizing_reduce.py:426 in pyramid_fires()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -20517,19 +20513,19 @@
     {
      "read": "vec_decisions.augment_core.py:95 in pyramid_sig()",
      "live_callers": [
-      "ez_manage.py:45201",
-      "ez_manage.py:45210",
-      "tradier_manage.py:14820",
-      "tradier_manage.py:14835"
+      "ez_manage.py:45226",
+      "ez_manage.py:45235",
+      "tradier_manage.py:14801",
+      "tradier_manage.py:14816"
      ]
     },
     {
      "read": "vec_decisions.twin_sizing_reduce.py:423 in pyramid_fires()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -20558,10 +20554,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:414 in pyramid_fires()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -20590,19 +20586,19 @@
     {
      "read": "vec_decisions.augment_core.py:95 in pyramid_sig()",
      "live_callers": [
-      "ez_manage.py:45201",
-      "ez_manage.py:45210",
-      "tradier_manage.py:14820",
-      "tradier_manage.py:14835"
+      "ez_manage.py:45226",
+      "ez_manage.py:45235",
+      "tradier_manage.py:14801",
+      "tradier_manage.py:14816"
      ]
     },
     {
      "read": "vec_decisions.twin_sizing_reduce.py:420 in pyramid_fires()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -20631,19 +20627,19 @@
     {
      "read": "vec_decisions.augment_core.py:151 in decide()",
      "live_callers": [
-      "ez_manage.py:45201",
-      "ez_manage.py:45210",
-      "tradier_manage.py:14820",
-      "tradier_manage.py:14835"
+      "ez_manage.py:45226",
+      "ez_manage.py:45235",
+      "tradier_manage.py:14801",
+      "tradier_manage.py:14816"
      ]
     },
     {
      "read": "vec_decisions.twin_sizing_reduce.py:421 in pyramid_fires()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -20888,7 +20884,7 @@
     {
      "read": "vec_decisions.twin_yellow_filters.py:1142 in r2_bar_fires()",
      "live_callers": [
-      "tradier_manage.py:26183"
+      "tradier_manage.py:26159"
      ]
     }
    ]
@@ -21463,10 +21459,10 @@
     {
      "read": "live_twins.reentry_augment.py:220 in decide()",
      "live_callers": [
-      "ez_manage.py:9062",
-      "ez_manage.py:9072",
-      "tradier_manage.py:8185",
-      "tradier_manage.py:8203"
+      "ez_manage.py:9044",
+      "ez_manage.py:9054",
+      "tradier_manage.py:8174",
+      "tradier_manage.py:8192"
      ]
     }
    ]
@@ -21495,10 +21491,10 @@
     {
      "read": "live_twins.reentry_augment.py:180 in carry_mult()",
      "live_callers": [
-      "ez_manage.py:9062",
-      "ez_manage.py:9072",
-      "tradier_manage.py:8185",
-      "tradier_manage.py:8203"
+      "ez_manage.py:9044",
+      "ez_manage.py:9054",
+      "tradier_manage.py:8174",
+      "tradier_manage.py:8192"
      ]
     }
    ]
@@ -21527,10 +21523,10 @@
     {
      "read": "live_twins.reentry_augment.py:172 in carry_mult()",
      "live_callers": [
-      "ez_manage.py:9062",
-      "ez_manage.py:9072",
-      "tradier_manage.py:8185",
-      "tradier_manage.py:8203"
+      "ez_manage.py:9044",
+      "ez_manage.py:9054",
+      "tradier_manage.py:8174",
+      "tradier_manage.py:8192"
      ]
     }
    ]
@@ -21559,10 +21555,10 @@
     {
      "read": "live_twins.reentry_augment.py:187 in carry_mult()",
      "live_callers": [
-      "ez_manage.py:9062",
-      "ez_manage.py:9072",
-      "tradier_manage.py:8185",
-      "tradier_manage.py:8203"
+      "ez_manage.py:9044",
+      "ez_manage.py:9054",
+      "tradier_manage.py:8174",
+      "tradier_manage.py:8192"
      ]
     }
    ]
@@ -21591,10 +21587,10 @@
     {
      "read": "live_twins.reentry_augment.py:166 in carry_mult()",
      "live_callers": [
-      "ez_manage.py:9062",
-      "ez_manage.py:9072",
-      "tradier_manage.py:8185",
-      "tradier_manage.py:8203"
+      "ez_manage.py:9044",
+      "ez_manage.py:9054",
+      "tradier_manage.py:8174",
+      "tradier_manage.py:8192"
      ]
     }
    ]
@@ -22255,10 +22251,10 @@
    "global_sites": [],
    "routed_sites": [
     {
-     "read": "vec_decisions.twin_p0_crypto_b.py:849 in reentry_fire_allowed()",
+     "read": "vec_decisions.twin_p0_crypto_b.py:842 in reentry_fire_allowed()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -22309,9 +22305,9 @@
     {
      "read": "vec_decisions.reentry_crossback.py:39 in buffer_pct()",
      "live_callers": [
-      "ez_manage.py:57407",
-      "tradier_manage.py:19320",
-      "tradier_manage.py:19321"
+      "ez_manage.py:57432",
+      "tradier_manage.py:19296",
+      "tradier_manage.py:19297"
      ]
     }
    ]
@@ -22362,7 +22358,7 @@
     {
      "read": "live_twins.vec_reentry.py:98 in fires()",
      "live_callers": [
-      "ez_manage.py:50582"
+      "ez_manage.py:50607"
      ]
     }
    ]
@@ -22391,7 +22387,7 @@
     {
      "read": "live_twins.vec_reentry.py:100 in fires()",
      "live_callers": [
-      "ez_manage.py:50582"
+      "ez_manage.py:50607"
      ]
     }
    ]
@@ -22418,10 +22414,10 @@
    "global_sites": [],
    "routed_sites": [
     {
-     "read": "vec_decisions.twin_p0_crypto_b.py:841 in reentry_filter_need()",
+     "read": "vec_decisions.twin_p0_crypto_b.py:834 in reentry_filter_need()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -22558,7 +22554,7 @@
     {
      "read": "live_twins.vec_reentry.py:91 in fires()",
      "live_callers": [
-      "ez_manage.py:50582"
+      "ez_manage.py:50607"
      ]
     }
    ]
@@ -22584,8 +22580,8 @@
     {
      "read": "vec_decisions.reentry_mask_arm.py:42 in armed()",
      "live_callers": [
-      "ez_manage.py:57419",
-      "tradier_manage.py:19392"
+      "ez_manage.py:57444",
+      "tradier_manage.py:19368"
      ]
     }
    ]
@@ -22611,8 +22607,8 @@
     {
      "read": "vec_decisions.reentry_mask_arm.py:38 in armed()",
      "live_callers": [
-      "ez_manage.py:57419",
-      "tradier_manage.py:19392"
+      "ez_manage.py:57444",
+      "tradier_manage.py:19368"
      ]
     }
    ]
@@ -22639,8 +22635,8 @@
     {
      "read": "vec_decisions.reentry_mask_arm.py:40 in armed()",
      "live_callers": [
-      "ez_manage.py:57419",
-      "tradier_manage.py:19392"
+      "ez_manage.py:57444",
+      "tradier_manage.py:19368"
      ]
     }
    ]
@@ -22666,8 +22662,8 @@
     {
      "read": "vec_decisions.reentry_mask_arm.py:44 in armed()",
      "live_callers": [
-      "ez_manage.py:57419",
-      "tradier_manage.py:19392"
+      "ez_manage.py:57444",
+      "tradier_manage.py:19368"
      ]
     }
    ]
@@ -22693,8 +22689,8 @@
     {
      "read": "vec_decisions.reentry_mask_arm.py:46 in armed()",
      "live_callers": [
-      "ez_manage.py:57419",
-      "tradier_manage.py:19392"
+      "ez_manage.py:57444",
+      "tradier_manage.py:19368"
      ]
     }
    ]
@@ -22720,8 +22716,8 @@
     {
      "read": "vec_decisions.reentry_mask_arm.py:48 in armed()",
      "live_callers": [
-      "ez_manage.py:57419",
-      "tradier_manage.py:19392"
+      "ez_manage.py:57444",
+      "tradier_manage.py:19368"
      ]
     }
    ]
@@ -22747,8 +22743,8 @@
     {
      "read": "vec_decisions.reentry_mask_arm.py:50 in armed()",
      "live_callers": [
-      "ez_manage.py:57419",
-      "tradier_manage.py:19392"
+      "ez_manage.py:57444",
+      "tradier_manage.py:19368"
      ]
     }
    ]
@@ -23017,10 +23013,10 @@
     {
      "read": "vec_decisions.twin_reentry_staged.py:151 in reentry_pull1_fires()",
      "live_callers": [
-      "ez_manage.py:44974",
-      "ez_manage.py:44975",
-      "tradier_manage.py:19955",
-      "tradier_manage.py:19960"
+      "ez_manage.py:44999",
+      "ez_manage.py:45000",
+      "tradier_manage.py:19931",
+      "tradier_manage.py:19936"
      ]
     }
    ]
@@ -23049,10 +23045,10 @@
     {
      "read": "vec_decisions.twin_reentry_staged.py:173 in reentry_pull2_fires()",
      "live_callers": [
-      "ez_manage.py:44974",
-      "ez_manage.py:44975",
-      "tradier_manage.py:19955",
-      "tradier_manage.py:19960"
+      "ez_manage.py:44999",
+      "ez_manage.py:45000",
+      "tradier_manage.py:19931",
+      "tradier_manage.py:19936"
      ]
     }
    ]
@@ -23081,10 +23077,10 @@
     {
      "read": "vec_decisions.twin_reentry_staged.py:193 in reentry_pull3_fires()",
      "live_callers": [
-      "ez_manage.py:44974",
-      "ez_manage.py:44975",
-      "tradier_manage.py:19955",
-      "tradier_manage.py:19960"
+      "ez_manage.py:44999",
+      "ez_manage.py:45000",
+      "tradier_manage.py:19931",
+      "tradier_manage.py:19936"
      ]
     }
    ]
@@ -23113,10 +23109,10 @@
     {
      "read": "vec_decisions.twin_reentry_staged.py:213 in reentry_pull4_fires()",
      "live_callers": [
-      "ez_manage.py:44974",
-      "ez_manage.py:44975",
-      "tradier_manage.py:19955",
-      "tradier_manage.py:19960"
+      "ez_manage.py:44999",
+      "ez_manage.py:45000",
+      "tradier_manage.py:19931",
+      "tradier_manage.py:19936"
      ]
     }
    ]
@@ -23211,9 +23207,9 @@
     {
      "read": "vec_decisions.reentry_crossback.py:32 in law_enabled()",
      "live_callers": [
-      "ez_manage.py:57407",
-      "tradier_manage.py:19320",
-      "tradier_manage.py:19321"
+      "ez_manage.py:57432",
+      "tradier_manage.py:19296",
+      "tradier_manage.py:19297"
      ]
     }
    ]
@@ -23473,10 +23469,10 @@
    "global_sites": [],
    "routed_sites": [
     {
-     "read": "vec_decisions.twin_p0_crypto_b.py:873 in reentry_tier1_mult()",
+     "read": "vec_decisions.twin_p0_crypto_b.py:866 in reentry_tier1_mult()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -23654,10 +23650,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:300 in regime_adaptive_mult()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -23708,10 +23704,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:303 in regime_adaptive_mult()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -23740,10 +23736,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:304 in regime_adaptive_mult()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -23816,10 +23812,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:308 in regime_adaptive_mult()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -23914,10 +23910,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:306 in regime_adaptive_mult()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -24012,10 +24008,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:46 in rsi2_fires()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -24044,10 +24040,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:50 in rsi2_fires()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -24076,10 +24072,10 @@
     {
      "read": "vec_decisions.twin_entries_dead_a.py:383 in check_entry_proposal()",
      "live_callers": [
-      "ez_manage.py:51335",
-      "ez_manage.py:54789",
-      "tradier_manage.py:16235",
-      "tradier_manage.py:18864"
+      "ez_manage.py:51360",
+      "ez_manage.py:54814",
+      "tradier_manage.py:16216",
+      "tradier_manage.py:18845"
      ]
     }
    ]
@@ -24108,10 +24104,10 @@
     {
      "read": "vec_decisions.twin_entries_dead_a.py:238 in _entry_rsi2_mask()",
      "live_callers": [
-      "ez_manage.py:51335",
-      "ez_manage.py:54789",
-      "tradier_manage.py:16235",
-      "tradier_manage.py:18864"
+      "ez_manage.py:51360",
+      "ez_manage.py:54814",
+      "tradier_manage.py:16216",
+      "tradier_manage.py:18845"
      ]
     }
    ]
@@ -24140,10 +24136,10 @@
     {
      "read": "vec_decisions.twin_entries_dead_a.py:408 in check_exit()",
      "live_callers": [
-      "ez_manage.py:51335",
-      "ez_manage.py:54789",
-      "tradier_manage.py:16235",
-      "tradier_manage.py:18864"
+      "ez_manage.py:51360",
+      "ez_manage.py:54814",
+      "tradier_manage.py:16216",
+      "tradier_manage.py:18845"
      ]
     }
    ]
@@ -24172,10 +24168,10 @@
     {
      "read": "vec_decisions.twin_entries_dead_a.py:284 in _exit_rsi2_mask()",
      "live_callers": [
-      "ez_manage.py:51335",
-      "ez_manage.py:54789",
-      "tradier_manage.py:16235",
-      "tradier_manage.py:18864"
+      "ez_manage.py:51360",
+      "ez_manage.py:54814",
+      "tradier_manage.py:16216",
+      "tradier_manage.py:18845"
      ]
     }
    ]
@@ -24476,10 +24472,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:208 in rz_bottom_fires()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -24530,10 +24526,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:210 in rz_bottom_fires()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -24562,10 +24558,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:211 in rz_bottom_fires()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -24638,10 +24634,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:369 in satoshit_fires()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -24670,10 +24666,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_b.py:325 in satoshit_entry()",
      "live_callers": [
-      "ez_manage.py:50553",
-      "ez_manage.py:50921",
-      "ez_manage.py:50923",
-      "ez_manage.py:50935"
+      "ez_manage.py:50578",
+      "ez_manage.py:50946",
+      "ez_manage.py:50948",
+      "ez_manage.py:50960"
      ]
     }
    ]
@@ -24702,17 +24698,17 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:602 in satoshit_exit_fire_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     },
     {
      "read": "vec_decisions.twin_sizing_reduce.py:367 in satoshit_fires()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -24741,8 +24737,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:607 in satoshit_exit_fire_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -24768,8 +24764,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:608 in satoshit_exit_fire_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -24798,10 +24794,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:386 in satoshit_fires()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -24827,8 +24823,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:610 in satoshit_exit_fire_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -24854,8 +24850,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:611 in satoshit_exit_fire_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -25041,8 +25037,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:612 in satoshit_exit_fire_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -25168,10 +25164,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:439 in sba_bounce_score()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -25200,10 +25196,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:470 in sba_veto_blocks()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -25232,10 +25228,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:472 in sba_veto_blocks()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -25264,8 +25260,8 @@
     {
      "read": "live_twins.scale_direction_live.py:258 in check()",
      "live_callers": [
-      "ez_manage.py:33800",
-      "tradier_manage.py:49370"
+      "ez_manage.py:33782",
+      "tradier_manage.py:49314"
      ]
     }
    ]
@@ -25386,8 +25382,8 @@
     {
      "read": "live_twins.scale_direction_live.py:249 in check()",
      "live_callers": [
-      "ez_manage.py:33800",
-      "tradier_manage.py:49370"
+      "ez_manage.py:33782",
+      "tradier_manage.py:49314"
      ]
     }
    ]
@@ -25853,10 +25849,10 @@
    "global_sites": [],
    "routed_sites": [
     {
-     "read": "vec_decisions.twin_p0_crypto_b.py:864 in simple_gt0()",
+     "read": "vec_decisions.twin_p0_crypto_b.py:857 in simple_gt0()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -25929,10 +25925,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_b.py:269 in sma200_dist_entry()",
      "live_callers": [
-      "ez_manage.py:50553",
-      "ez_manage.py:50921",
-      "ez_manage.py:50923",
-      "ez_manage.py:50935"
+      "ez_manage.py:50578",
+      "ez_manage.py:50946",
+      "ez_manage.py:50948",
+      "ez_manage.py:50960"
      ]
     }
    ]
@@ -25979,10 +25975,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:512 in kg_entry_allowed()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -26009,10 +26005,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:513 in kg_entry_allowed()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -26039,10 +26035,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:506 in kg_entry_allowed()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -26069,10 +26065,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:507 in kg_entry_allowed()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -26101,10 +26097,10 @@
     {
      "read": "vec_decisions.twin_entries_dead_b.py:84 in resolve_smfi_div_entry()",
      "live_callers": [
-      "ez_manage.py:51321",
-      "ez_manage.py:54772",
-      "tradier_manage.py:16205",
-      "tradier_manage.py:16206"
+      "ez_manage.py:51346",
+      "ez_manage.py:54797",
+      "tradier_manage.py:16186",
+      "tradier_manage.py:16187"
      ]
     }
    ]
@@ -26133,10 +26129,10 @@
     {
      "read": "vec_decisions.twin_entries_dead_b.py:86 in resolve_smfi_div_entry()",
      "live_callers": [
-      "ez_manage.py:51321",
-      "ez_manage.py:54772",
-      "tradier_manage.py:16205",
-      "tradier_manage.py:16206"
+      "ez_manage.py:51346",
+      "ez_manage.py:54797",
+      "tradier_manage.py:16186",
+      "tradier_manage.py:16187"
      ]
     }
    ]
@@ -26165,10 +26161,10 @@
     {
      "read": "vec_decisions.twin_entries_dead_b.py:93 in resolve_smfi_div_exit()",
      "live_callers": [
-      "ez_manage.py:51321",
-      "ez_manage.py:54772",
-      "tradier_manage.py:16205",
-      "tradier_manage.py:16206"
+      "ez_manage.py:51346",
+      "ez_manage.py:54797",
+      "tradier_manage.py:16186",
+      "tradier_manage.py:16187"
      ]
     }
    ]
@@ -26197,10 +26193,10 @@
     {
      "read": "vec_decisions.twin_entries_dead_b.py:95 in resolve_smfi_div_exit()",
      "live_callers": [
-      "ez_manage.py:51321",
-      "ez_manage.py:54772",
-      "tradier_manage.py:16205",
-      "tradier_manage.py:16206"
+      "ez_manage.py:51346",
+      "ez_manage.py:54797",
+      "tradier_manage.py:16186",
+      "tradier_manage.py:16187"
      ]
     }
    ]
@@ -26255,7 +26251,7 @@
    "n_psym": 98,
    "n_global": 11,
    "n_discarded": 0,
-   "n_namelist": 28,
+   "n_namelist": 31,
    "n_dead": 0,
    "n_proxy_psym": 31,
    "templates": [
@@ -26494,10 +26490,10 @@
     {
      "read": "vec_decisions.twin_exits_dead.py:470 in stdev_fail_mask()",
      "live_callers": [
-      "ez_manage.py:34824",
-      "ez_manage.py:34829",
-      "ez_manage.py:44779",
-      "ez_manage.py:54802"
+      "ez_manage.py:34849",
+      "ez_manage.py:34854",
+      "ez_manage.py:44804",
+      "ez_manage.py:54827"
      ]
     }
    ]
@@ -26526,10 +26522,10 @@
     {
      "read": "vec_decisions.twin_exits_dead.py:452 in _stdev_params()",
      "live_callers": [
-      "ez_manage.py:34824",
-      "ez_manage.py:34829",
-      "ez_manage.py:44779",
-      "ez_manage.py:54802"
+      "ez_manage.py:34849",
+      "ez_manage.py:34854",
+      "ez_manage.py:44804",
+      "ez_manage.py:54827"
      ]
     }
    ]
@@ -26558,10 +26554,10 @@
     {
      "read": "vec_decisions.twin_exits_dead.py:453 in _stdev_params()",
      "live_callers": [
-      "ez_manage.py:34824",
-      "ez_manage.py:34829",
-      "ez_manage.py:44779",
-      "ez_manage.py:54802"
+      "ez_manage.py:34849",
+      "ez_manage.py:34854",
+      "ez_manage.py:44804",
+      "ez_manage.py:54827"
      ]
     }
    ]
@@ -26590,10 +26586,10 @@
     {
      "read": "vec_decisions.twin_exits_dead.py:451 in _stdev_params()",
      "live_callers": [
-      "ez_manage.py:34824",
-      "ez_manage.py:34829",
-      "ez_manage.py:44779",
-      "ez_manage.py:54802"
+      "ez_manage.py:34849",
+      "ez_manage.py:34854",
+      "ez_manage.py:44804",
+      "ez_manage.py:54827"
      ]
     }
    ]
@@ -26644,10 +26640,10 @@
     {
      "read": "vec_decisions.twin_exits_dead.py:448 in _stdev_params()",
      "live_callers": [
-      "ez_manage.py:34824",
-      "ez_manage.py:34829",
-      "ez_manage.py:44779",
-      "ez_manage.py:54802"
+      "ez_manage.py:34849",
+      "ez_manage.py:34854",
+      "ez_manage.py:44804",
+      "ez_manage.py:54827"
      ]
     }
    ]
@@ -26676,10 +26672,10 @@
     {
      "read": "vec_decisions.twin_exits_dead.py:449 in _stdev_params()",
      "live_callers": [
-      "ez_manage.py:34824",
-      "ez_manage.py:34829",
-      "ez_manage.py:44779",
-      "ez_manage.py:54802"
+      "ez_manage.py:34849",
+      "ez_manage.py:34854",
+      "ez_manage.py:44804",
+      "ez_manage.py:54827"
      ]
     }
    ]
@@ -26774,10 +26770,10 @@
     {
      "read": "vec_decisions.twin_exits_dead.py:450 in _stdev_params()",
      "live_callers": [
-      "ez_manage.py:34824",
-      "ez_manage.py:34829",
-      "ez_manage.py:44779",
-      "ez_manage.py:54802"
+      "ez_manage.py:34849",
+      "ez_manage.py:34854",
+      "ez_manage.py:44804",
+      "ez_manage.py:54827"
      ]
     }
    ]
@@ -27310,10 +27306,10 @@
     {
      "read": "vec_decisions.bb_stoch_exits.py:82 in stoch_cross_3m_exit()",
      "live_callers": [
-      "ez_manage.py:54764",
-      "ez_manage.py:54766",
-      "ez_manage.py:55659",
-      "tradier_manage.py:16193"
+      "ez_manage.py:54789",
+      "ez_manage.py:54791",
+      "ez_manage.py:55684",
+      "tradier_manage.py:16174"
      ]
     }
    ]
@@ -27342,8 +27338,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:706 in tradier_stoch_entry_fire_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -27372,10 +27368,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_b.py:187 in stoch_entry()",
      "live_callers": [
-      "ez_manage.py:50553",
-      "ez_manage.py:50921",
-      "ez_manage.py:50923",
-      "ez_manage.py:50935"
+      "ez_manage.py:50578",
+      "ez_manage.py:50946",
+      "ez_manage.py:50948",
+      "ez_manage.py:50960"
      ]
     }
    ]
@@ -27404,10 +27400,10 @@
     {
      "read": "vec_decisions.twin_entries_dead_b.py:64 in resolve_stoch_xtreme_entry()",
      "live_callers": [
-      "ez_manage.py:51321",
-      "ez_manage.py:54772",
-      "tradier_manage.py:16205",
-      "tradier_manage.py:16206"
+      "ez_manage.py:51346",
+      "ez_manage.py:54797",
+      "tradier_manage.py:16186",
+      "tradier_manage.py:16187"
      ]
     }
    ]
@@ -27436,10 +27432,10 @@
     {
      "read": "vec_decisions.twin_entries_dead_b.py:66 in resolve_stoch_xtreme_entry()",
      "live_callers": [
-      "ez_manage.py:51321",
-      "ez_manage.py:54772",
-      "tradier_manage.py:16205",
-      "tradier_manage.py:16206"
+      "ez_manage.py:51346",
+      "ez_manage.py:54797",
+      "tradier_manage.py:16186",
+      "tradier_manage.py:16187"
      ]
     }
    ]
@@ -27468,10 +27464,10 @@
     {
      "read": "vec_decisions.twin_entries_dead_b.py:74 in resolve_stoch_xtreme_exit()",
      "live_callers": [
-      "ez_manage.py:51321",
-      "ez_manage.py:54772",
-      "tradier_manage.py:16205",
-      "tradier_manage.py:16206"
+      "ez_manage.py:51346",
+      "ez_manage.py:54797",
+      "tradier_manage.py:16186",
+      "tradier_manage.py:16187"
      ]
     }
    ]
@@ -27500,10 +27496,10 @@
     {
      "read": "vec_decisions.twin_entries_dead_b.py:76 in resolve_stoch_xtreme_exit()",
      "live_callers": [
-      "ez_manage.py:51321",
-      "ez_manage.py:54772",
-      "tradier_manage.py:16205",
-      "tradier_manage.py:16206"
+      "ez_manage.py:51346",
+      "ez_manage.py:54797",
+      "tradier_manage.py:16186",
+      "tradier_manage.py:16187"
      ]
     }
    ]
@@ -27530,8 +27526,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:312 in wtdc_htf_ok_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -27618,10 +27614,10 @@
     {
      "read": "vec_decisions.augment_core.py:77 in live_enabled()",
      "live_callers": [
-      "ez_manage.py:45201",
-      "ez_manage.py:45210",
-      "tradier_manage.py:14820",
-      "tradier_manage.py:14835"
+      "ez_manage.py:45226",
+      "ez_manage.py:45235",
+      "tradier_manage.py:14801",
+      "tradier_manage.py:14816"
      ]
     }
    ]
@@ -27648,10 +27644,10 @@
     {
      "read": "vec_decisions.augment_core.py:77 in live_enabled()",
      "live_callers": [
-      "ez_manage.py:45201",
-      "ez_manage.py:45210",
-      "tradier_manage.py:14820",
-      "tradier_manage.py:14835"
+      "ez_manage.py:45226",
+      "ez_manage.py:45235",
+      "tradier_manage.py:14801",
+      "tradier_manage.py:14816"
      ]
     }
    ]
@@ -27680,10 +27676,10 @@
     {
      "read": "vec_decisions.noloss_hold.py:77 in stop_loss_fires()",
      "live_callers": [
-      "ez_manage.py:54747",
-      "ez_manage.py:54759",
-      "tradier_manage.py:16165",
-      "tradier_manage.py:16186"
+      "ez_manage.py:54772",
+      "ez_manage.py:54784",
+      "tradier_manage.py:16146",
+      "tradier_manage.py:16167"
      ]
     }
    ]
@@ -27712,10 +27708,10 @@
     {
      "read": "vec_decisions.noloss_hold.py:79 in stop_loss_fires()",
      "live_callers": [
-      "ez_manage.py:54747",
-      "ez_manage.py:54759",
-      "tradier_manage.py:16165",
-      "tradier_manage.py:16186"
+      "ez_manage.py:54772",
+      "ez_manage.py:54784",
+      "tradier_manage.py:16146",
+      "tradier_manage.py:16167"
      ]
     }
    ]
@@ -27898,8 +27894,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:792 in strength_ok_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -27928,8 +27924,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:797 in strength_ok_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -28046,7 +28042,7 @@
     {
      "read": "live_twins.vec_reentry.py:80 in fires()",
      "live_callers": [
-      "ez_manage.py:50582"
+      "ez_manage.py:50607"
      ]
     }
    ]
@@ -28075,10 +28071,10 @@
     {
      "read": "vec_decisions.dc_channel_exits.py:207 in resolve_technical_dc()",
      "live_callers": [
-      "ez_manage.py:54666",
-      "ez_manage.py:54693",
-      "tradier_manage.py:16101",
-      "tradier_manage.py:16120"
+      "ez_manage.py:54691",
+      "ez_manage.py:54718",
+      "tradier_manage.py:16082",
+      "tradier_manage.py:16101"
      ]
     }
    ]
@@ -28107,10 +28103,10 @@
     {
      "read": "vec_decisions.dc_channel_exits.py:209 in resolve_technical_dc()",
      "live_callers": [
-      "ez_manage.py:54666",
-      "ez_manage.py:54693",
-      "tradier_manage.py:16101",
-      "tradier_manage.py:16120"
+      "ez_manage.py:54691",
+      "ez_manage.py:54718",
+      "tradier_manage.py:16082",
+      "tradier_manage.py:16101"
      ]
     }
    ]
@@ -28139,10 +28135,10 @@
     {
      "read": "vec_decisions.dc_channel_exits.py:208 in resolve_technical_dc()",
      "live_callers": [
-      "ez_manage.py:54666",
-      "ez_manage.py:54693",
-      "tradier_manage.py:16101",
-      "tradier_manage.py:16120"
+      "ez_manage.py:54691",
+      "ez_manage.py:54718",
+      "tradier_manage.py:16082",
+      "tradier_manage.py:16101"
      ]
     }
    ]
@@ -28174,10 +28170,10 @@
     {
      "read": "vec_decisions.dc_channel_exits.py:211 in resolve_technical_dc()",
      "live_callers": [
-      "ez_manage.py:54666",
-      "ez_manage.py:54693",
-      "tradier_manage.py:16101",
-      "tradier_manage.py:16120"
+      "ez_manage.py:54691",
+      "ez_manage.py:54718",
+      "tradier_manage.py:16082",
+      "tradier_manage.py:16101"
      ]
     }
    ]
@@ -28206,8 +28202,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:742 in tf_alignment_ok_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -28346,8 +28342,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:562 in daytrade_entry_fire_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -28376,8 +28372,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:567 in daytrade_entry_fire_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -28404,10 +28400,10 @@
    "global_sites": [],
    "routed_sites": [
     {
-     "read": "vec_decisions.twin_p0_crypto_b.py:895 in daytrade_pct_resolve()",
+     "read": "vec_decisions.twin_p0_crypto_b.py:888 in daytrade_pct_resolve()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -28434,10 +28430,10 @@
    "global_sites": [],
    "routed_sites": [
     {
-     "read": "vec_decisions.twin_p0_crypto_b.py:914 in daytrade_use_dc_flags()",
+     "read": "vec_decisions.twin_p0_crypto_b.py:907 in daytrade_use_dc_flags()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -28464,10 +28460,10 @@
    "global_sites": [],
    "routed_sites": [
     {
-     "read": "vec_decisions.twin_p0_crypto_b.py:913 in daytrade_use_dc_flags()",
+     "read": "vec_decisions.twin_p0_crypto_b.py:906 in daytrade_use_dc_flags()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -28516,10 +28512,10 @@
    "global_sites": [],
    "routed_sites": [
     {
-     "read": "vec_decisions.twin_p0_crypto_b.py:896 in daytrade_pct_resolve()",
+     "read": "vec_decisions.twin_p0_crypto_b.py:889 in daytrade_pct_resolve()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -28546,10 +28542,10 @@
    "global_sites": [],
    "routed_sites": [
     {
-     "read": "vec_decisions.twin_p0_crypto_b.py:916 in daytrade_use_dc_flags()",
+     "read": "vec_decisions.twin_p0_crypto_b.py:909 in daytrade_use_dc_flags()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -28576,10 +28572,10 @@
    "global_sites": [],
    "routed_sites": [
     {
-     "read": "vec_decisions.twin_p0_crypto_b.py:915 in daytrade_use_dc_flags()",
+     "read": "vec_decisions.twin_p0_crypto_b.py:908 in daytrade_use_dc_flags()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -28608,8 +28604,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:565 in daytrade_entry_fire_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -28638,8 +28634,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:762 in tradier_entry_score_ok_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -28668,10 +28664,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:183 in fh_momentum_fires()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -28698,10 +28694,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:184 in fh_momentum_fires()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -28730,10 +28726,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:167 in fh_enabled()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -28762,10 +28758,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:194 in fh_momentum_fires()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -28794,10 +28790,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:195 in fh_momentum_fires()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -28826,10 +28822,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:180 in fh_momentum_fires()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -28858,10 +28854,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:177 in fh_momentum_fires()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -28888,8 +28884,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:646 in kzone_entry_fire_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -28916,8 +28912,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:647 in kzone_entry_fire_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -28946,10 +28942,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:247 in tradier_mfi_long_blocks()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -28976,23 +28972,23 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:252 in tradier_mfi_long_blocks()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
   },
   {
    "key": "TRADIER_MIN_HOLD_MINUTES",
-   "verdict": "OK",
-   "n_psym": 6,
+   "verdict": "ABSENT",
+   "n_psym": 0,
    "n_global": 0,
    "n_discarded": 0,
-   "n_namelist": 5,
+   "n_namelist": 0,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 0,
    "templates": [
     "TEMPLATE_STOCKS_LONG.xlsx",
     "TEMPLATE_STOCKS_SHORT.xlsx"
@@ -29006,8 +29002,8 @@
   },
   {
    "key": "TRADIER_MIN_HOLD_MINUTES_SHORT",
-   "verdict": "OK",
-   "n_psym": 3,
+   "verdict": "ABSENT",
+   "n_psym": 0,
    "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 0,
@@ -29047,10 +29043,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:260 in tradier_mi_fires()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -29079,10 +29075,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:268 in tradier_mi_fires()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -29131,10 +29127,10 @@
     {
      "read": "vec_decisions.twin_exits_dead.py:414 in mu_reentry_live_fire()",
      "live_callers": [
-      "ez_manage.py:34824",
-      "ez_manage.py:34829",
-      "ez_manage.py:44779",
-      "ez_manage.py:54802"
+      "ez_manage.py:34849",
+      "ez_manage.py:34854",
+      "ez_manage.py:44804",
+      "ez_manage.py:54827"
      ]
     }
    ]
@@ -29227,8 +29223,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:672 in tradier_rsi_entry_fire_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -29255,17 +29251,17 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:282 in tradier_rsi_short_fires()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     },
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:676 in tradier_rsi_entry_fire_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -29292,17 +29288,17 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:287 in tradier_rsi_short_fires()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     },
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:694 in tradier_rsi_entry_fire()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -29329,8 +29325,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:721 in tradier_stoch_entry_fire()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -29357,8 +29353,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:711 in tradier_stoch_entry_fire_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -29385,8 +29381,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:721 in tradier_stoch_entry_fire()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -29413,8 +29409,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:711 in tradier_stoch_entry_fire_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -29652,7 +29648,7 @@
    "n_psym": 0,
    "n_global": 0,
    "n_discarded": 0,
-   "n_namelist": 291,
+   "n_namelist": 292,
    "n_dead": 0,
    "n_proxy_psym": 0,
    "templates": [
@@ -29676,10 +29672,10 @@
     {
      "read": "live_twins.reentry_augment.py:93 in _act()",
      "live_callers": [
-      "ez_manage.py:9062",
-      "ez_manage.py:9072",
-      "tradier_manage.py:8185",
-      "tradier_manage.py:8203"
+      "ez_manage.py:9044",
+      "ez_manage.py:9054",
+      "tradier_manage.py:8174",
+      "tradier_manage.py:8192"
      ]
     }
    ]
@@ -30229,10 +30225,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:136 in vel_exit_fires()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -30261,10 +30257,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:134 in vel_exit_fires()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -30335,10 +30331,10 @@
     {
      "read": "vec_decisions.vigilance_dc4.py:20 in armed()",
      "live_callers": [
-      "ez_manage.py:33829",
-      "ez_manage.py:54493",
-      "tradier_manage.py:14409",
-      "tradier_manage.py:49399"
+      "ez_manage.py:33811",
+      "ez_manage.py:54518",
+      "tradier_manage.py:14390",
+      "tradier_manage.py:49343"
      ]
     }
    ]
@@ -30367,10 +30363,10 @@
     {
      "read": "vec_decisions.vigilance_dc4.py:22 in armed()",
      "live_callers": [
-      "ez_manage.py:33829",
-      "ez_manage.py:54493",
-      "tradier_manage.py:14409",
-      "tradier_manage.py:49399"
+      "ez_manage.py:33811",
+      "ez_manage.py:54518",
+      "tradier_manage.py:14390",
+      "tradier_manage.py:49343"
      ]
     }
    ]
@@ -30663,10 +30659,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_b.py:302 in vwap_bounce_entry()",
      "live_callers": [
-      "ez_manage.py:50553",
-      "ez_manage.py:50921",
-      "ez_manage.py:50923",
-      "ez_manage.py:50935"
+      "ez_manage.py:50578",
+      "ez_manage.py:50946",
+      "ez_manage.py:50948",
+      "ez_manage.py:50960"
      ]
     }
    ]
@@ -30695,8 +30691,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:207 in vwap_filter_ok_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -30725,10 +30721,10 @@
     {
      "read": "vec_decisions.twin_entries_dead_b.py:102 in resolve_vwap_stretch_entry()",
      "live_callers": [
-      "ez_manage.py:51321",
-      "ez_manage.py:54772",
-      "tradier_manage.py:16205",
-      "tradier_manage.py:16206"
+      "ez_manage.py:51346",
+      "ez_manage.py:54797",
+      "tradier_manage.py:16186",
+      "tradier_manage.py:16187"
      ]
     }
    ]
@@ -30757,10 +30753,10 @@
     {
      "read": "vec_decisions.twin_entries_dead_b.py:105 in resolve_vwap_stretch_entry()",
      "live_callers": [
-      "ez_manage.py:51321",
-      "ez_manage.py:54772",
-      "tradier_manage.py:16205",
-      "tradier_manage.py:16206"
+      "ez_manage.py:51346",
+      "ez_manage.py:54797",
+      "tradier_manage.py:16186",
+      "tradier_manage.py:16187"
      ]
     }
    ]
@@ -30789,10 +30785,10 @@
     {
      "read": "vec_decisions.twin_entries_dead_b.py:114 in resolve_vwap_stretch_exit()",
      "live_callers": [
-      "ez_manage.py:51321",
-      "ez_manage.py:54772",
-      "tradier_manage.py:16205",
-      "tradier_manage.py:16206"
+      "ez_manage.py:51346",
+      "ez_manage.py:54797",
+      "tradier_manage.py:16186",
+      "tradier_manage.py:16187"
      ]
     }
    ]
@@ -30821,10 +30817,10 @@
     {
      "read": "vec_decisions.twin_entries_dead_b.py:117 in resolve_vwap_stretch_exit()",
      "live_callers": [
-      "ez_manage.py:51321",
-      "ez_manage.py:54772",
-      "tradier_manage.py:16205",
-      "tradier_manage.py:16206"
+      "ez_manage.py:51346",
+      "ez_manage.py:54797",
+      "tradier_manage.py:16186",
+      "tradier_manage.py:16187"
      ]
     }
    ]
@@ -30853,10 +30849,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:445 in watchdog_open()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -30885,10 +30881,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:453 in watchdog_open()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -30917,10 +30913,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:446 in watchdog_open()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -30949,10 +30945,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:497 in watchdog_open()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -30981,10 +30977,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:499 in watchdog_open()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -31013,10 +31009,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:501 in watchdog_open()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -31045,10 +31041,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:503 in watchdog_open()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -31077,10 +31073,10 @@
     {
      "read": "vec_decisions.twin_exits_dead.py:194 in wick_entry_tf()",
      "live_callers": [
-      "ez_manage.py:34824",
-      "ez_manage.py:34829",
-      "ez_manage.py:44779",
-      "ez_manage.py:54802"
+      "ez_manage.py:34849",
+      "ez_manage.py:34854",
+      "ez_manage.py:44804",
+      "ez_manage.py:54827"
      ]
     }
    ]
@@ -31109,10 +31105,10 @@
     {
      "read": "vec_decisions.twin_exits_dead.py:196 in wick_entry_tf()",
      "live_callers": [
-      "ez_manage.py:34824",
-      "ez_manage.py:34829",
-      "ez_manage.py:44779",
-      "ez_manage.py:54802"
+      "ez_manage.py:34849",
+      "ez_manage.py:34854",
+      "ez_manage.py:44804",
+      "ez_manage.py:54827"
      ]
     }
    ]
@@ -31141,10 +31137,10 @@
     {
      "read": "vec_decisions.twin_exits_dead.py:200 in wick_exit_tf()",
      "live_callers": [
-      "ez_manage.py:34824",
-      "ez_manage.py:34829",
-      "ez_manage.py:44779",
-      "ez_manage.py:54802"
+      "ez_manage.py:34849",
+      "ez_manage.py:34854",
+      "ez_manage.py:44804",
+      "ez_manage.py:54827"
      ]
     }
    ]
@@ -31173,10 +31169,10 @@
     {
      "read": "vec_decisions.twin_exits_dead.py:202 in wick_exit_tf()",
      "live_callers": [
-      "ez_manage.py:34824",
-      "ez_manage.py:34829",
-      "ez_manage.py:44779",
-      "ez_manage.py:54802"
+      "ez_manage.py:34849",
+      "ez_manage.py:34854",
+      "ez_manage.py:44804",
+      "ez_manage.py:54827"
      ]
     }
    ]
@@ -31408,10 +31404,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_b.py:119 in wt_15m_bounce()",
      "live_callers": [
-      "ez_manage.py:50553",
-      "ez_manage.py:50921",
-      "ez_manage.py:50923",
-      "ez_manage.py:50935"
+      "ez_manage.py:50578",
+      "ez_manage.py:50946",
+      "ez_manage.py:50948",
+      "ez_manage.py:50960"
      ]
     }
    ]
@@ -31440,10 +31436,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_b.py:118 in wt_15m_bounce()",
      "live_callers": [
-      "ez_manage.py:50553",
-      "ez_manage.py:50921",
-      "ez_manage.py:50923",
-      "ez_manage.py:50935"
+      "ez_manage.py:50578",
+      "ez_manage.py:50946",
+      "ez_manage.py:50948",
+      "ez_manage.py:50960"
      ]
     }
    ]
@@ -31472,10 +31468,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_b.py:130 in wt_15m_bounce()",
      "live_callers": [
-      "ez_manage.py:50553",
-      "ez_manage.py:50921",
-      "ez_manage.py:50923",
-      "ez_manage.py:50935"
+      "ez_manage.py:50578",
+      "ez_manage.py:50946",
+      "ez_manage.py:50948",
+      "ez_manage.py:50960"
      ]
     }
    ]
@@ -31526,10 +31522,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_b.py:119 in wt_15m_bounce()",
      "live_callers": [
-      "ez_manage.py:50553",
-      "ez_manage.py:50921",
-      "ez_manage.py:50923",
-      "ez_manage.py:50935"
+      "ez_manage.py:50578",
+      "ez_manage.py:50946",
+      "ez_manage.py:50948",
+      "ez_manage.py:50960"
      ]
     }
    ]
@@ -31580,10 +31576,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_b.py:118 in wt_15m_bounce()",
      "live_callers": [
-      "ez_manage.py:50553",
-      "ez_manage.py:50921",
-      "ez_manage.py:50923",
-      "ez_manage.py:50935"
+      "ez_manage.py:50578",
+      "ez_manage.py:50946",
+      "ez_manage.py:50948",
+      "ez_manage.py:50960"
      ]
     }
    ]
@@ -31612,10 +31608,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_b.py:91 in wt_15m_bounce()",
      "live_callers": [
-      "ez_manage.py:50553",
-      "ez_manage.py:50921",
-      "ez_manage.py:50923",
-      "ez_manage.py:50935"
+      "ez_manage.py:50578",
+      "ez_manage.py:50946",
+      "ez_manage.py:50948",
+      "ez_manage.py:50960"
      ]
     }
    ]
@@ -31663,10 +31659,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_b.py:143 in wt_15m_bounce()",
      "live_callers": [
-      "ez_manage.py:50553",
-      "ez_manage.py:50921",
-      "ez_manage.py:50923",
-      "ez_manage.py:50935"
+      "ez_manage.py:50578",
+      "ez_manage.py:50946",
+      "ez_manage.py:50948",
+      "ez_manage.py:50960"
      ]
     }
    ]
@@ -31695,10 +31691,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_b.py:96 in wt_15m_bounce()",
      "live_callers": [
-      "ez_manage.py:50553",
-      "ez_manage.py:50921",
-      "ez_manage.py:50923",
-      "ez_manage.py:50935"
+      "ez_manage.py:50578",
+      "ez_manage.py:50946",
+      "ez_manage.py:50948",
+      "ez_manage.py:50960"
      ]
     }
    ]
@@ -31727,10 +31723,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_b.py:143 in wt_15m_bounce()",
      "live_callers": [
-      "ez_manage.py:50553",
-      "ez_manage.py:50921",
-      "ez_manage.py:50923",
-      "ez_manage.py:50935"
+      "ez_manage.py:50578",
+      "ez_manage.py:50946",
+      "ez_manage.py:50948",
+      "ez_manage.py:50960"
      ]
     }
    ]
@@ -31759,10 +31755,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_b.py:146 in wt_15m_bounce()",
      "live_callers": [
-      "ez_manage.py:50553",
-      "ez_manage.py:50921",
-      "ez_manage.py:50923",
-      "ez_manage.py:50935"
+      "ez_manage.py:50578",
+      "ez_manage.py:50946",
+      "ez_manage.py:50948",
+      "ez_manage.py:50960"
      ]
     }
    ]
@@ -31857,7 +31853,7 @@
     {
      "read": "vec_decisions.twin_yellow_filters.py:1147 in r2_bar_fires()",
      "live_callers": [
-      "tradier_manage.py:26183"
+      "tradier_manage.py:26159"
      ]
     }
    ]
@@ -31908,7 +31904,7 @@
     {
      "read": "vec_decisions.twin_yellow_filters.py:1143 in r2_bar_fires()",
      "live_callers": [
-      "tradier_manage.py:26183"
+      "tradier_manage.py:26159"
      ]
     }
    ]
@@ -31937,7 +31933,7 @@
     {
      "read": "vec_decisions.twin_yellow_filters.py:1144 in r2_bar_fires()",
      "live_callers": [
-      "tradier_manage.py:26183"
+      "tradier_manage.py:26159"
      ]
     }
    ]
@@ -31966,10 +31962,10 @@
     {
      "read": "vec_decisions.twin_reentry_staged.py:298 in wt_4h_vel_exit_fires()",
      "live_callers": [
-      "ez_manage.py:44974",
-      "ez_manage.py:44975",
-      "tradier_manage.py:19955",
-      "tradier_manage.py:19960"
+      "ez_manage.py:44999",
+      "ez_manage.py:45000",
+      "tradier_manage.py:19931",
+      "tradier_manage.py:19936"
      ]
     }
    ]
@@ -31998,10 +31994,10 @@
     {
      "read": "vec_decisions.twin_reentry_staged.py:311 in wt_4h_vel_exit_fires()",
      "live_callers": [
-      "ez_manage.py:44974",
-      "ez_manage.py:44975",
-      "tradier_manage.py:19955",
-      "tradier_manage.py:19960"
+      "ez_manage.py:44999",
+      "ez_manage.py:45000",
+      "tradier_manage.py:19931",
+      "tradier_manage.py:19936"
      ]
     }
    ]
@@ -32030,10 +32026,10 @@
     {
      "read": "vec_decisions.twin_reentry_staged.py:312 in wt_4h_vel_exit_fires()",
      "live_callers": [
-      "ez_manage.py:44974",
-      "ez_manage.py:44975",
-      "tradier_manage.py:19955",
-      "tradier_manage.py:19960"
+      "ez_manage.py:44999",
+      "ez_manage.py:45000",
+      "tradier_manage.py:19931",
+      "tradier_manage.py:19936"
      ]
     }
    ]
@@ -32059,10 +32055,10 @@
     {
      "read": "vec_decisions.twin_reentry_staged.py:302 in wt_4h_vel_exit_fires()",
      "live_callers": [
-      "ez_manage.py:44974",
-      "ez_manage.py:44975",
-      "tradier_manage.py:19955",
-      "tradier_manage.py:19960"
+      "ez_manage.py:44999",
+      "ez_manage.py:45000",
+      "tradier_manage.py:19931",
+      "tradier_manage.py:19936"
      ]
     }
    ]
@@ -32091,10 +32087,10 @@
     {
      "read": "vec_decisions.twin_reentry_staged.py:310 in wt_4h_vel_exit_fires()",
      "live_callers": [
-      "ez_manage.py:44974",
-      "ez_manage.py:44975",
-      "tradier_manage.py:19955",
-      "tradier_manage.py:19960"
+      "ez_manage.py:44999",
+      "ez_manage.py:45000",
+      "tradier_manage.py:19931",
+      "tradier_manage.py:19936"
      ]
     }
    ]
@@ -32123,10 +32119,10 @@
     {
      "read": "vec_decisions.twin_reentry_staged.py:306 in wt_4h_vel_exit_fires()",
      "live_callers": [
-      "ez_manage.py:44974",
-      "ez_manage.py:44975",
-      "tradier_manage.py:19955",
-      "tradier_manage.py:19960"
+      "ez_manage.py:44999",
+      "ez_manage.py:45000",
+      "tradier_manage.py:19931",
+      "tradier_manage.py:19936"
      ]
     }
    ]
@@ -32152,10 +32148,10 @@
     {
      "read": "vec_decisions.twin_reentry_staged.py:304 in wt_4h_vel_exit_fires()",
      "live_callers": [
-      "ez_manage.py:44974",
-      "ez_manage.py:44975",
-      "tradier_manage.py:19955",
-      "tradier_manage.py:19960"
+      "ez_manage.py:44999",
+      "ez_manage.py:45000",
+      "tradier_manage.py:19931",
+      "tradier_manage.py:19936"
      ]
     }
    ]
@@ -32290,10 +32286,10 @@
     {
      "read": "vec_decisions.live_unw_gates.py:154 in wt_composite_block()",
      "live_callers": [
-      "ez_manage.py:27605",
-      "ez_manage.py:35201",
-      "ez_manage.py:35204",
-      "ez_manage.py:35219"
+      "ez_manage.py:27587",
+      "ez_manage.py:35226",
+      "ez_manage.py:35229",
+      "ez_manage.py:35244"
      ]
     }
    ]
@@ -32388,10 +32384,10 @@
     {
      "read": "vec_decisions.live_unw_gates.py:148 in wt_composite_block()",
      "live_callers": [
-      "ez_manage.py:27605",
-      "ez_manage.py:35201",
-      "ez_manage.py:35204",
-      "ez_manage.py:35219"
+      "ez_manage.py:27587",
+      "ez_manage.py:35226",
+      "ez_manage.py:35229",
+      "ez_manage.py:35244"
      ]
     }
    ]
@@ -32420,10 +32416,10 @@
     {
      "read": "vec_decisions.live_unw_gates.py:150 in wt_composite_block()",
      "live_callers": [
-      "ez_manage.py:27605",
-      "ez_manage.py:35201",
-      "ez_manage.py:35204",
-      "ez_manage.py:35219"
+      "ez_manage.py:27587",
+      "ez_manage.py:35226",
+      "ez_manage.py:35229",
+      "ez_manage.py:35244"
      ]
     }
    ]
@@ -32452,10 +32448,10 @@
     {
      "read": "vec_decisions.live_unw_gates.py:150 in wt_composite_block()",
      "live_callers": [
-      "ez_manage.py:27605",
-      "ez_manage.py:35201",
-      "ez_manage.py:35204",
-      "ez_manage.py:35219"
+      "ez_manage.py:27587",
+      "ez_manage.py:35226",
+      "ez_manage.py:35229",
+      "ez_manage.py:35244"
      ]
     }
    ]
@@ -32524,10 +32520,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_b.py:436 in wt_crossunder_final_exit()",
      "live_callers": [
-      "ez_manage.py:50553",
-      "ez_manage.py:50921",
-      "ez_manage.py:50923",
-      "ez_manage.py:50935"
+      "ez_manage.py:50578",
+      "ez_manage.py:50946",
+      "ez_manage.py:50948",
+      "ez_manage.py:50960"
      ]
     }
    ]
@@ -32664,10 +32660,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:153 in htf_against_fires()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -32716,8 +32712,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:395 in wtdc_hard_short_ok_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -32813,8 +32809,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:517 in wtdc_entry_threshold()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -32843,17 +32839,17 @@
     {
      "read": "vec_decisions.twin_entry_ports_b.py:412 in wt_dc_detailed_entry()",
      "live_callers": [
-      "ez_manage.py:50553",
-      "ez_manage.py:50921",
-      "ez_manage.py:50923",
-      "ez_manage.py:50935"
+      "ez_manage.py:50578",
+      "ez_manage.py:50946",
+      "ez_manage.py:50948",
+      "ez_manage.py:50960"
      ]
     },
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:515 in wtdc_entry_threshold()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -32973,8 +32969,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:538 in wtdc_live_entry_fire()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -33003,8 +32999,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:519 in wtdc_entry_threshold()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -33075,8 +33071,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:396 in wtdc_hard_short_ok_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -33105,8 +33101,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:263 in _wtdc_htf_base_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -33135,8 +33131,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:310 in wtdc_htf_ok_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -33163,8 +33159,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:392 in wtdc_hard_short_ok_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -33190,8 +33186,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:417 in wtdc_k5m_ok()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -33260,8 +33256,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:229 in _wtdc_stoch_tf()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -33291,8 +33287,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:243 in wtdc_stoch_ok_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -33322,8 +33318,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:244 in wtdc_stoch_ok_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -33353,10 +33349,10 @@
     {
      "read": "vec_decisions.live_unw_gates.py:32 in wtdc_combo_tfs()",
      "live_callers": [
-      "ez_manage.py:27605",
-      "ez_manage.py:35201",
-      "ez_manage.py:35204",
-      "ez_manage.py:35219"
+      "ez_manage.py:27587",
+      "ez_manage.py:35226",
+      "ez_manage.py:35229",
+      "ez_manage.py:35244"
      ]
     }
    ]
@@ -33385,17 +33381,17 @@
     {
      "read": "vec_decisions.twin_entry_ports_b.py:420 in wt_dc_detailed_entry()",
      "live_callers": [
-      "ez_manage.py:50553",
-      "ez_manage.py:50921",
-      "ez_manage.py:50923",
-      "ez_manage.py:50935"
+      "ez_manage.py:50578",
+      "ez_manage.py:50946",
+      "ez_manage.py:50948",
+      "ez_manage.py:50960"
      ]
     },
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:520 in wtdc_entry_threshold()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -33424,8 +33420,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:292 in wtdc_htf_ok_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -33454,8 +33450,8 @@
     {
      "read": "vec_decisions.twin_p0_crypto_b.py:293 in wtdc_htf_ok_vec()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -33656,10 +33652,10 @@
    "global_sites": [],
    "routed_sites": [
     {
-     "read": "vec_decisions.twin_p0_crypto_b.py:1001 in wt_d_bounce_dd_stop_fire()",
+     "read": "vec_decisions.twin_p0_crypto_b.py:994 in wt_d_bounce_dd_stop_fire()",
      "live_callers": [
-      "ez_manage.py:51132",
-      "ez_manage.py:51147"
+      "ez_manage.py:51157",
+      "ez_manage.py:51172"
      ]
     }
    ]
@@ -33728,10 +33724,10 @@
     {
      "read": "vec_decisions.twin_entry_ports_b.py:210 in wt_entry()",
      "live_callers": [
-      "ez_manage.py:50553",
-      "ez_manage.py:50921",
-      "ez_manage.py:50923",
-      "ez_manage.py:50935"
+      "ez_manage.py:50578",
+      "ez_manage.py:50946",
+      "ez_manage.py:50948",
+      "ez_manage.py:50960"
      ]
     }
    ]
@@ -33976,7 +33972,7 @@
     {
      "read": "vec_decisions.grey_wire_entries.py:38 in wt_percentile_entry_gate()",
      "live_callers": [
-      "tradier_manage.py:26301"
+      "tradier_manage.py:26277"
      ]
     }
    ]
@@ -34005,7 +34001,7 @@
     {
      "read": "vec_decisions.grey_wire_entries.py:42 in wt_percentile_entry_gate()",
      "live_callers": [
-      "tradier_manage.py:26301"
+      "tradier_manage.py:26277"
      ]
     }
    ]
@@ -34034,7 +34030,7 @@
     {
      "read": "vec_decisions.grey_wire_entries.py:43 in wt_percentile_entry_gate()",
      "live_callers": [
-      "tradier_manage.py:26301"
+      "tradier_manage.py:26277"
      ]
     }
    ]
@@ -34063,10 +34059,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:232 in wt_percentile_fires()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -34095,10 +34091,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:242 in wt_percentile_fires()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -34127,10 +34123,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:241 in wt_percentile_fires()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -34159,10 +34155,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:246 in wt_percentile_fires()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -34191,10 +34187,10 @@
     {
      "read": "vec_decisions.twin_sizing_reduce.py:245 in wt_percentile_fires()",
      "live_callers": [
-      "tradier_manage.py:16359",
-      "tradier_manage.py:16363",
-      "tradier_manage.py:16437",
-      "tradier_manage.py:16465"
+      "tradier_manage.py:16340",
+      "tradier_manage.py:16344",
+      "tradier_manage.py:16418",
+      "tradier_manage.py:16446"
      ]
     }
    ]
@@ -34418,10 +34414,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:151 in wt_vel_decay_fires()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -34450,10 +34446,10 @@
     {
      "read": "vec_decisions.twin_gates_sizing_a.py:154 in wt_vel_decay_fires()",
      "live_callers": [
-      "ez_manage.py:35177",
-      "ez_manage.py:35179",
-      "ez_manage.py:35181",
-      "ez_manage.py:48009"
+      "ez_manage.py:35202",
+      "ez_manage.py:35204",
+      "ez_manage.py:35206",
+      "ez_manage.py:48034"
      ]
     }
    ]
@@ -34482,7 +34478,7 @@
     {
      "read": "vec_decisions.twin_yellow_filters.py:1145 in r2_bar_fires()",
      "live_callers": [
-      "tradier_manage.py:26183"
+      "tradier_manage.py:26159"
      ]
     }
    ]
@@ -34511,7 +34507,7 @@
     {
      "read": "vec_decisions.twin_yellow_filters.py:1146 in r2_bar_fires()",
      "live_callers": [
-      "tradier_manage.py:26183"
+      "tradier_manage.py:26159"
      ]
     }
    ]
