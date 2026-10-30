@@ -19670,7 +19670,18 @@ class MultiAccountTradeManager:
                                         f"[GOLDEN_RULE_HTF_VETO] {pkey} {'LONG' if is_long else 'SHORT'}: HTF against (D ha={_ha_D} wt1>wt2={_w1_D > _w2_D}, 4h ha={_ha_4h} wt1>wt2={_w1_4h > _w2_4h}) — REFUSED"
                                     )
                                     continue
+                            def _golden_ftf_cfg(name, default=None):
+                                if name == "BREAKOUT_RETEST_FILTER_TF" and not bool(_psym_get(sym, _gr_side_ps, "BREAKOUT_RETEST_ARMED_ENABLED", getattr(config, "BREAKOUT_RETEST_ARMED_ENABLED", False))):
+                                    return "OFF"
+                                if name == "EMA_BLANKET_FILTER_FILTER_TF" and not bool(_psym_get(sym, _gr_side_ps, "EMA_BLANKET_FILTER_ENABLED", getattr(config, "EMA_BLANKET_FILTER_ENABLED", False))):
+                                    return "OFF"
+                                return _psym_get(sym, _gr_side_ps, name, getattr(config, name, default))
+                            _golden_ftf_ok, _golden_ftf_why = _parity_filter_tf_gates(ind, is_long, price, _golden_ftf_cfg)
+                            if not _golden_ftf_ok:
+                                logger.info(f"[GOLDEN_RULE_FTF_VETO] {pkey}: {_golden_ftf_why}")
+                                continue
                             target_usd = float(_psym_get(sym, _gr_side_ps, "GOLDEN_RULE_BASE_USD", base_usd)) * mult
+                            target_usd = max(target_usd, float(getattr(config, "START_POSITION_SIZE", 0.0) or 0.0))
                             target_qty = target_usd / price
                             try:
                                 pos = self.positions.get(pkey)

@@ -430,7 +430,7 @@ def discrepancy_overlay(page: str, board: dict, rows: list[dict], equity: dict |
                     if 0 <= fill_index < len(bar_times) and fill_time < bar_times[-1] + 900:
                         broker_events.append({"i": fill_index, "action": "CLOSE (protective stop)", "qty": float(stop_fill["exec_qty"]), "price": float(stop_fill["avg_price"]), "acct": row.get("acct"), "time": iso(datetime.datetime.fromtimestamp(fill_time, datetime.timezone.utc)), "reason": f"PROTECTIVE_DC15_STOP level={row.get('level')}", "order_id": str(stop_fill.get("order_id") or ""), "before_board": fill_time < first})
                     stop_status = "FILLED"
-                stop_events.append({"i": display_index, "level": float(row.get("level") or 0), "status": stop_status, "acct": row.get("acct"), "time": _html.escape(str(row.get("iso") or ""))})
+                stop_events.append({"i": display_index, "level": float(row.get("level") or 0), "status": stop_status, "acct": row.get("acct"), "time": _html.escape(str(row.get("iso") or "")), "order_id": str(stop_fill.get("order_id") or (row.get("resp") or {}).get("id") or "")})
             continue
         if row.get("event") != "ORDER" or row.get("status") != "SENT":
             continue
@@ -463,15 +463,15 @@ def discrepancy_overlay(page: str, board: dict, rows: list[dict], equity: dict |
     pending = [{"i": bar_index[bar], "action": act} for bar, act in sorted(accepted - live)]
     data = json.dumps({"blue": blue, "orange": orange, "accepted_unverified": pending}, separators=(",", ":"))
     fills_json = json.dumps(broker_events, separators=(",", ":"))
-    stops_json = json.dumps([r for r in stop_events if r["level"] > 0], separators=(",", ":"))
+    stops_json = json.dumps([r for r in stop_events if r["level"] > 0 and r["status"] in ("PLACED", "FILLED", "PREARM_VERIFIED")], separators=(",", ":"))
     plugin = ("const DISCREPANCIES = " + data + ";\nconst BROKER_FILLS = " + fills_json + ";\nconst BROKER_STOPS = " + stops_json + ";\n"
               "DATASETS.push({label:'CONFIRMED broker fill',data:BROKER_FILLS.map(r=>({x:LABELS[r.i],y:r.price,qty:r.qty,price:r.price,reason:r.action+' '+r.acct+' '+r.reason+' order '+r.order_id})),type:'scatter',backgroundColor:'#38bdf8',borderColor:'#ffffff',borderWidth:2.5,pointStyle:'star',pointRadius:11,pointHoverRadius:15,order:30});\n"
-              "DATASETS.push({label:'broker protective stop placed',data:BROKER_STOPS.map(r=>({x:LABELS[r.i],y:r.level,qty:'stop',price:r.level,reason:r.status+' '+r.acct})),type:'scatter',backgroundColor:'#e879f9',borderColor:'#ffffff',borderWidth:2,pointStyle:'rectRot',pointRadius:8,pointHoverRadius:12,order:29});\n"
+              "DATASETS.push({label:'broker protective stop placed',data:BROKER_STOPS.map(r=>({x:LABELS[r.i],y:r.level,qty:'stop',price:r.level,reason:r.status+' '+r.acct+' order '+r.order_id})),type:'scatter',backgroundColor:'#e879f9',borderColor:'#ffffff',borderWidth:2,pointStyle:'rectRot',pointRadius:8,pointHoverRadius:12,order:29});\n"
               "Chart.register({id:'forwardDiscrepancyLines',afterDatasetsDraw(chart){const x=chart.scales.x,a=chart.chartArea,ctx=chart.ctx;for(const [name,color] of [['blue','#2563eb'],['orange','#f97316']]){for(const row of DISCREPANCIES[name]){const px=x.getPixelForValue(row.i);if(px<a.left||px>a.right)continue;ctx.save();ctx.strokeStyle=color;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(px,a.top);ctx.lineTo(px,a.bottom);ctx.stroke();ctx.restore();}}}});\n")
     page = page.replace("pointRadius:5.5", "pointRadius:8")
     page = page.replace("new Chart(c,{", plugin + "new Chart(c,{", 1)
     rows_html = "".join(f"<tr><td>{_html.escape(r['time'])}</td><td>{_html.escape(str(r['acct']))}</td><td>{_html.escape(r['action'])}</td><td>{r['qty']:g}</td><td>${r['price']:.4f}</td><td>{_html.escape(r['reason'])}</td><td>{_html.escape(r['order_id'])}</td></tr>" for r in sorted(broker_events, key=lambda r: r["time"]))
-    stop_html = "".join(f"<tr><td>{r['time']}</td><td>{_html.escape(str(r['acct']))}</td><td>{_html.escape(r['status'])}</td><td>{'$' + format(r['level'], '.4f') if r['level'] else '—'}</td></tr>" for r in sorted(stop_events, key=lambda r: r["time"]))
+    stop_html = "".join(f"<tr><td>{r['time']}</td><td>{_html.escape(str(r['acct']))}</td><td>{_html.escape(r['status'])}</td><td>{'$' + format(r['level'], '.4f') if r['level'] else '—'}</td><td>{_html.escape(r['order_id'])}</td></tr>" for r in sorted(stop_events, key=lambda r: r["time"]))
     order_html = "".join(f"<tr><td>{_html.escape(r['time'])}</td><td>{_html.escape(r['acct'])}</td><td>{_html.escape(r['action'])}</td><td>{r['qty']:g}</td><td>{_html.escape(r['status'])}</td><td>{_html.escape(r['order_id'])}</td><td>{_html.escape(r['reason'])}</td></tr>" for r in sorted(order_outcomes, key=lambda r: r["time"]))
     summary = (f"<div class='metrics'><b>AFTER ORIGINAL BOARD PUBLICATION — VECTOR VS CONFIRMED BROKER FILLS</b> "
                f"<span style='color:#60a5fa'>blue live only {len(blue)}</span> · "
@@ -479,7 +479,7 @@ def discrepancy_overlay(page: str, board: dict, rows: list[dict], equity: dict |
                f"""accepted, fill unverified {len(pending)}. Exact 15 minute bar and action; quantities ignored. """
                f"Journal coverage starts {_html.escape(iso(datetime.datetime.fromtimestamp(coverage, datetime.timezone.utc)) if coverage else 'UNAVAILABLE')}; earlier vector events are unassessed. "
                f"Stock 'ok' responses are order acceptance, not actual fills. No broker fill history means orange marks require investigation.</div>"
-               f"<details open><summary>{len(broker_events)} confirmed broker fills (blue stars) · {len(stop_events)} protective stop records (purple diamonds at placed level) within this chart window</summary><table><tr><th>UTC fill</th><th>account</th><th>action</th><th>qty</th><th>fill price</th><th>trader reason</th><th>broker order</th></tr>{rows_html}</table><table><tr><th>UTC</th><th>account</th><th>stop status</th><th>level</th></tr>{stop_html}</table><table><tr><th>UTC order</th><th>account</th><th>action</th><th>qty</th><th>broker status</th><th>order ID</th><th>trader reason</th></tr>{order_html}</table></details>")
+               f"<details open><summary>{len(broker_events)} confirmed broker fills (blue stars) · {len(stop_events)} protective stop records (purple diamonds at placed level) within this chart window</summary><table><tr><th>UTC fill</th><th>account</th><th>action</th><th>qty</th><th>fill price</th><th>trader reason</th><th>broker order</th></tr>{rows_html}</table><table><tr><th>UTC</th><th>account</th><th>stop status</th><th>level</th><th>order ID</th></tr>{stop_html}</table><table><tr><th>UTC order</th><th>account</th><th>action</th><th>qty</th><th>broker status</th><th>order ID</th><th>trader reason</th></tr>{order_html}</table></details>")
     if equity:
         stock = not board["symside"].rsplit("_", 1)[0].endswith(("USDT", "USDC", "USD1"))
         selected = equity.get("accounts", {})

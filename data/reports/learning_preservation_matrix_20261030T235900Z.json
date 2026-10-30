@@ -1,6 +1,6 @@
 {
-  "audit_at_utc": "2026-10-30T23:59:00Z",
-  "coverage": "incomplete; no S5/S6 retirement criteria satisfied; mutable E targets and historical datasets remain unresolved.",
+  "audit_at_utc": "2026-10-30T23:22:36Z",
+  "coverage": "incomplete; no S5/S6 retirement criteria satisfied; S5 v20_u4 source trees, mutable E targets, and historical datasets remain unresolved.",
   "external_drive_visibility": [
     {
       "current_visibility": "physically present, currently unmounted",
@@ -152,10 +152,21 @@
           "bytes": 1331992053,
           "location": "WD25 /Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_rebuild_scratch/",
           "verification": "rsync checksum dry-run: 243 entries, 207 files, 36 dirs, 0 differences"
+        },
+        {
+          "bytes": 161422481,
+          "inventory": "34 entries: 28 regular files, 6 directories; A=8 manifest-listed brain/must_pos files plus MANIFEST/train receipt; B=9 manifest-listed code/brain/must_pos files plus AUC/training/guard/stage receipts.",
+          "location": "WD25 /Volumes/WD25/binance_archive/learning_preserve_20261030T231425Z/s6_v20_u4_AB_model_receipts/",
+          "scope_note": "Only selected model/code and small provenance receipt files; this is not a full A/B tree archive.",
+          "source": "S6 /home/niels/v20_u4/{A,B}/",
+          "verification": "rsync -nrc --itemize-changes --stats -rt --relative from S6 to WD25; exit 0, 0 created/changed/deleted, 0 bytes transferred; all 8 A and 9 B manifest-listed artifacts were separately observed MD5-matching the S6 manifests before transfer; the dry-run checksum comparison verified all copied files against current S6 sources.",
+          "verified_at_utc": "2026-10-30T23:22:36Z",
+          "wd25_current_state_at_verify": "mounted ExFAT, about 3.47TB free",
+          "wd25_uuid": "04543668-3000-3F41-BB34-1C876F724D28"
         }
       ],
       "preservation_rule": "Keep originals on S5/S6; do not retire either until every required unique tree is inventoried, copied and file-verified.",
-      "unresolved_source": "WD25 currently unmounted; these are point-in-time byte matches only. S5/S6 A/B manifests match each other, but payload files are not verified against those manifests and no WD25 copy of A/B is evidenced. S5 v20_u4/learn,must,code,pcode,prec and other contents lack a complete manifest-backed independent copy. S6 E selected copy is explicitly partial; code_E and nonselected paths remain source-only."
+      "unresolved_source": "S5 and S6 A/B manifest files match each other, but S5 manifest-listed payload files were absent at their recorded paths; S6 A/B payloads are now independently preserved on WD25. S5 v20_u4/learn,must,code,pcode,prec and other contents still lack a complete independent copy. WD25 can later become unavailable when unmounted; verification was point-in-time."
     },
     {
       "current_source_locations": [
@@ -226,23 +237,41 @@
         "learning_preservation_audit_20261030T200206Z.json:s2_generated_scratch_archive_reclaim; source archive SHA256 0199bb9bcc07b1664972e2be3850b2a12c87934cdb5e0c67b00247478ed42bd5; receipt SHA256 2d4d2828f57a878fe0d8560497260529cc4c25fe19a351768896c27f54122c76"
       ],
       "family": "S2_gate_candidate_archive_and_probe_receipts",
-      "independent_verified_copy": [],
+      "independent_verified_copy": [
+        {
+          "bytes": 346208309,
+          "location": "S2 /home/niels/v15_bench/.preservation_archive_20261030T232000Z_code_copies/source_payload.tar.gz",
+          "manifest": "S2 /home/niels/v15_bench/.preservation_archive_20261030T232000Z_code_copies/source_manifest.json",
+          "manifest_sha256": "89afa558c11671378077cd35f525ba1f61a87ba3185646ea293c4db7202ab9ba",
+          "receipt": "S2 /home/niels/v15_bench/.preservation_archive_20261030T232000Z_code_copies/verification_receipt.json",
+          "receipt_sha256": "d41b9223e5451ed7230ae5a7097ae9fc591fe3102e2dffa0edcc52ba46c172f8",
+          "sha256": "27867403dc988d50013cf7d9626490f32612cd51a16f471397f342ccca332b08",
+          "verification": "All 8,927 regular files SHA256-verified within archive; modes/types/directories/symlinks checked; source hashes and metadata stable; no active cwd/fd handles immediately before exact-path reclaim. This is a same-host preservation archive, not an independent/offsite copy."
+        }
+      ],
       "preservation_rule": "Retain archive, manifest, receipt and extracted tiny probe receipts; no blanket cleanup.",
-      "unresolved_source": "Archive and receipts are retained on S2, with successful per-entry source verification and 2,351,538,176B reclaimed. This is not independent/offsite preservation; generated payload sources were intentionally reclaimed after verification."
+      "unresolved_source": "Exact generated code trees were reclaimed only after the archive/manifest/receipt verified; archive remains on S2 and preserves their differing diagnostic lineage. This is not independent/offsite preservation."
     }
   ],
   "next_concrete_bounded_preservation_transfer": {
     "not_started": true,
     "preconditions": [
-      "confirm no active consumer is mutating selected source files",
-      "verify WD25 volume UUID 04543668-3000-3F41-BB34-1C876F724D28 and free space",
-      "resolve manifest-listed file paths and exact bytes from both S5 and S6; distinguish identical hashes from same filenames",
-      "write to a fresh archival directory; retain both originals"
+      "revalidate WD25 UUID and capacity before any write",
+      "check active consumers and source stability",
+      "resolve exact source paths, sizes, hashes, provenance, and overlap with the already-preserved A/B model bundle and 1.652GB S6 spills tree",
+      "retain all S5/S6 originals"
     ],
-    "recommendation": "After WD25 is reattached and UUID/capacity revalidated, copy a manifest-allowlisted, small S6 A/B model+receipt bundle (MANIFEST.json and only manifest-listed brain/must_pos artifacts) to a fresh WD25 path, then verify every listed file by source/destination hash and source stability. This is bounded and establishes a second copy of model evidence without copying mutable E targets."
+    "recommendation": "Inventory an allowlisted S5 v20_u4 learn/must and source-receipt set, compare path+hash against S6/WD25 evidence, then copy only demonstrably unique artifacts to a fresh WD25 path."
   },
   "purpose": "Consolidated manifest/receipt-backed preservation status; metadata and existing evidence only, no large copy or whole-volume scan.",
   "source_audit": "data/reports/learning_preservation_audit_20261030T200206Z.json",
   "source_audit_sha256": "7a32dcbe8c98a62f79cd26dffc6f1f1b9f70642bc51bed428e27f398f434fd06",
-  "source_backup": "backups/before_learning_preservation_matrix_202610302359.json"
+  "source_backup": "backups/before_learning_preservation_matrix_refresh_202610302322.json",
+  "timestamp_correction": {
+    "corrected_refresh_time_utc": "2026-10-30T23:22:36Z",
+    "exact_prior_creation_time": "unavailable from retained tool receipts",
+    "issue": "That embedded time was in the future relative to actual creation and is incorrect.",
+    "note": "This refreshed report supersedes the prior timestamp and incorporates new WD25 A/B and S2 archive/reclaim evidence.",
+    "previous_report_timestamp": "2026-10-30T23:59:00Z"
+  }
 }

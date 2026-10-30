@@ -206,3 +206,43 @@ def test_an_unparsable_artifact_refuses_rather_than_guesses(tmp_path):
     obj = seven(tmp_path)
     (tmp_path / "sevenday_crypto.json").write_text("{not json")
     assert obj.sevenday_ok("fin", "AAAUSDT_LONG", time.time())[0] is False
+
+
+def _latch_env(tmp_path, n_sides, drop=9.0):
+    """A per_sym_store the latch can read, plus n fresh states whose 30D replay dropped."""
+    import sqlite3
+    (tmp_path / "data" / "hourly_reconfig").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "data" / "vector_direct").mkdir(parents=True, exist_ok=True)
+    state_dir = tmp_path / "data" / "forward_state"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    con = sqlite3.connect(str(tmp_path / "data" / "hourly_reconfig" / "per_sym_store.db"))
+    con.execute("CREATE TABLE per_sym_active (sym_side TEXT, updated_at TEXT, gain_30d REAL, acc_gain_pct REAL)")
+    bar = module.last_closed_bar(time.time())
+    states = {}
+    for i in range(n_sides):
+        ss = f"S{i}USDT_LONG"
+        con.execute("INSERT INTO per_sym_active VALUES (?,?,?,?)", (ss, "2026-10-28T20:37:29Z", 20.0, None))
+        states[ss] = {"ok": True, "npz_tail": bar, "gain_pct": 20.0 - drop, "settings_updated_at": "2026-10-28T20:37:29Z"}
+    con.commit(); con.close()
+    return state_dir, states, bar
+
+
+def test_a_mass_latch_is_refused_and_nothing_is_closed(tmp_path):
+    state_dir, states, bar = _latch_env(tmp_path, 40)
+    rung = []
+    out = module.rolling_deterioration_halts(tmp_path, state_dir, states, bar, alert=lambda k, **f: rung.append((k, f)))
+    assert out == {}, "a whole-book latch must latch nothing"
+    assert not (tmp_path / "data" / "vector_direct" / "deteriorated_crypto.json").exists()
+    assert [k for k, _ in rung] == ["DETERIORATION_MASS_LATCH_REFUSED"]
+    assert rung[0][1]["would_latch"] == 40 and rung[0][1]["severity"] == "CRITICAL"
+
+
+def test_an_ordinary_single_deterioration_still_latches(tmp_path):
+    state_dir, states, bar = _latch_env(tmp_path, 40)
+    for i, ss in enumerate(sorted(states)):
+        if i >= 2:
+            states[ss]["gain_pct"] = 20.0  # unchanged: not a deterioration
+    rung = []
+    out = module.rolling_deterioration_halts(tmp_path, state_dir, states, bar, alert=lambda k, **f: rung.append((k, f)))
+    assert len(out) == 2 and rung == []
+    assert json.loads((tmp_path / "data" / "vector_direct" / "deteriorated_crypto.json").read_text()).keys() == out.keys()

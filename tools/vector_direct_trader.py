@@ -199,6 +199,11 @@ MAC_POSITIONS = os.environ.get("VD_MAC_POSITIONS", "1") == "1"
 MAC_POSITIONS_MAX_AGE_S = float(os.environ.get("VD_MAC_POSITIONS_MAX_AGE_S", "900"))
 # Every held position must carry a resting protective stop. Audited per account at most this often (0 = off).
 PROTECTION_AUDIT_S = float(os.environ.get("VD_PROTECTION_AUDIT_S", "300"))
+# Mass brake on the permanent deterioration latch: a pass that would latch more than this share of the sides it
+# actually compared is a fault signature, not that many real deteriorations (2026-10-30: 187 latched vs a 90-side
+# universe emptied every crypto account). 0 disables the brake.
+DETERIORATION_MASS_PCT = float(os.environ.get("VD_DETERIORATION_MASS_PCT", "0.25"))
+DETERIORATION_MASS_MIN = int(os.environ.get("VD_DETERIORATION_MASS_MIN", "3"))
 MAX_ATTEMPTS = 3
 VENUE_WIDE_KINDS_IGNORED = ("account_dead", "broker_unreachable_account")
 
@@ -283,8 +288,15 @@ def deterioration_halts(root: Path) -> dict:
     return {str(k).upper(): v for k, v in (doc.get("halts") or {}).items()} if isinstance(doc, dict) else {}
 
 
-def rolling_deterioration_halts(root: Path, state_dir: Path, states: dict, bar: int) -> dict:
-    """Latch a fresh, same-settings 30D loss of at least five percentage points; never auto-release."""
+def rolling_deterioration_halts(root: Path, state_dir: Path, states: dict, bar: int, alert=None) -> dict:
+    """Latch a fresh, same-settings 30D loss of at least five percentage points; never auto-release.
+
+    MASS BRAKE (2026-10-30). This latch is permanent and forbids reentry, and its second arm fires on a mere SIGN FLIP
+    (`published > 0 >= current`), not only on the 5 pp drop — so a broad down day can latch the whole book at once with
+    no way back. That is what happened: 163 sides latched in the 7 minutes 04:38–04:45Z and the file ended up holding
+    **187 sides against a 90-side universe**, every account drained to zero and nothing could reopen. A pass that would
+    latch more than DETERIORATION_MASS_PCT of the sides it actually evaluated is therefore a DEFECT SIGNATURE, not 163
+    independent deteriorations: it latches NOTHING and rings. Ordinary one-off deteriorations still latch normally."""
     path = root / "data" / "vector_direct" / "deteriorated_crypto.json"
     latched = read_json(path, {}) or {}
     if not isinstance(latched, dict):
@@ -293,7 +305,7 @@ def rolling_deterioration_halts(root: Path, state_dir: Path, states: dict, bar: 
     if not db.exists():
         log(f"rolling deterioration DB missing: {db}; existing latches kept")
         return latched
-    added = {}
+    added, evaluated = {}, 0
     try:
         con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=5)
         try:
@@ -309,6 +321,7 @@ def rolling_deterioration_halts(root: Path, state_dir: Path, states: dict, bar: 
                 published, current = float(old), float(state["gain_pct"])
                 if not (math.isfinite(published) and math.isfinite(current)):
                     continue
+                evaluated += 1
                 if published - current < 5.0 and not (published > 0 >= current):
                     continue
                 added[ss] = {"published_gain_pct": published, "rolling_gain_pct": current,
@@ -320,6 +333,17 @@ def rolling_deterioration_halts(root: Path, state_dir: Path, states: dict, bar: 
             con.close()
     except Exception as exc:
         log(f"rolling deterioration read failed: {type(exc).__name__}: {exc}; existing latches kept")
+        return latched
+    if added and len(added) > max(DETERIORATION_MASS_MIN, DETERIORATION_MASS_PCT * evaluated):
+        share = (len(added) / evaluated * 100.0) if evaluated else 100.0
+        log(f"CRITICAL DETERIORATION_MASS_LATCH_REFUSED: {len(added)} of {evaluated} evaluated sides ({share:.0f}%) would latch in one pass "
+            f"— that is a data or settings fault, not {len(added)} deteriorations; NOTHING latched, no position closed: {','.join(sorted(added)[:12])}")
+        if alert is not None:
+            try:
+                alert("DETERIORATION_MASS_LATCH_REFUSED", venue="crypto", would_latch=len(added), evaluated=evaluated,
+                      share_pct=round(share, 1), sample=sorted(added)[:12], severity="CRITICAL")
+            except Exception:
+                pass
         return latched
     if added:
         latched.update(added)
@@ -1456,7 +1480,7 @@ class Trader:
             market_ok = self.broker.market_open() or bool(self.a.assume_open and self.a.dry_run)
         halted = deterioration_halts(self.root)
         if self.venue == "crypto":
-            halted.update(rolling_deterioration_halts(self.root, self.state_dir, states, bar))
+            halted.update(rolling_deterioration_halts(self.root, self.state_dir, states, bar, alert=self.alert))
         if set(halted) != getattr(self, "halted_now", set()):
             log(f"DETERIORATION HALT {len(halted)} sym_sides (no OPEN/AUGMENT, exits unchanged): {','.join(sorted(halted))[:600]}")
             self.halted_now = set(halted)
@@ -1531,7 +1555,7 @@ class Trader:
             self.with_held_states(states, pos)
             self.audit_protection(acct, pos)
             if self.venue == "crypto":
-                halted.update(rolling_deterioration_halts(self.root, self.state_dir, states, bar))
+                halted.update(rolling_deterioration_halts(self.root, self.state_dir, states, bar, alert=self.alert))
             self._remember_held_anchors(acct, pos, states)
             t_obs, prev = self.obs.get(acct, (0, {}))
             prev_qty = prev if t_obs and bar - BAR_S <= t_obs < bar + BAR_S else {}
@@ -1830,7 +1854,14 @@ class Trader:
                     log(f"REFUSED_UNPROTECTED_ENTRY {acct} {o['ss']} {o['act']}: {exc}")
                 continue
             stop_level_armed = None
-            if o["act"] in ("OPEN", "AUGMENT"):
+            # A protective stop can only PRE-exist where something is already held. Binance refuses a
+            # closePosition/GTE stop against a flat book (-4509 "Time in Force (TIF) GTE can only be used with open
+            # positions") and Tradier rejects a bare sell/buy_to_cover the same way, so prearming an OPEN from flat is
+            # impossible on both venues, not merely unlucky. Measured 2026-10-30: with the EXITS_ONLY flag lifted every
+            # crypto OPEN from flat died on -4509, which is why the whole book stayed empty. An OPEN from flat
+            # therefore arms its stop immediately AFTER the fill and is closed again if that fails (below) — the
+            # behaviour that placed today's 100 crypto stops successfully.
+            if o["act"] in ("OPEN", "AUGMENT") and held > 0:
                 try:
                     stop_level_armed = self.stops.prearm_entry(acct, o, qty, held, price)
                 except Exception as exc:
@@ -1868,6 +1899,25 @@ class Trader:
                         log(f"STOP {acct} {o['ss']} {o['act']}: {self.stops.after_fill(acct, o, qty, held, price)}")
                     except Exception as exc:
                         log(f"STOP {acct} {o['ss']} {o['act']}: hook failed {str(exc)[:160]}")
+                    if o["act"] in ("OPEN", "AUGMENT"):
+                        # The entry could not be pre-protected, so the guarantee is enforced here instead: a position
+                        # that came out of this with no resting stop is closed again rather than left bare.
+                        try:
+                            if self.stops.resting_level(acct, symbol, side):
+                                log(f"STOP {acct} {o['ss']} {o['act']}: resting after the fill")
+                            else:
+                                self.alert("STOP_MISSING_AFTER_ENTRY", account=acct, sym_side=o["ss"], severity="CRITICAL")
+                                log(f"STOP_MISSING_AFTER_ENTRY {acct} {o['ss']}: no resting stop after the fill; closing any held quantity now")
+                                actual = float((self.broker.positions(acct).get(o["ss"]) or {}).get("qty") or 0.0)
+                                if actual > 0:
+                                    close_order = {"ss": o["ss"], "act": "CLOSE", "qty": actual, "key": f"{o['key']}|STOP_MISSING", "why": "STOP_MISSING_AFTER_ENTRY"}
+                                    close_resp = self.broker.send(acct, close_order, actual)
+                                    self._ledger({"event": "ORDER", "acct": acct, "ss": o["ss"], "act": "CLOSE", "key": close_order["key"], "qty": actual,
+                                                  "status": "SENT", "resp": close_resp, "why": close_order["why"], "final": True})
+                                    log(f"STOP_MISSING_AFTER_ENTRY_CLOSE {acct} {o['ss']} qty={actual}: {close_resp}")
+                        except Exception as exc:
+                            self.alert("STOP_MISSING_CHECK_FAILED", account=acct, sym_side=o["ss"], error=str(exc)[:200], severity="CRITICAL")
+                            log(f"STOP_MISSING_CHECK_FAILED {acct} {o['ss']}: {str(exc)[:160]}")
             except RestBlocked as exc:
                 row.update({"status": "BLOCKED", "detail": str(exc)})
                 log(f"{acct} {o['ss']} {o['act']}: {exc}")

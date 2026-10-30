@@ -151,3 +151,11 @@ def guard_sandboxes(spec, deployed=False):
     if not all(row['ok'] for row in receipts):
         raise ValueError(f'NN sandbox runtime identity guard failed: {receipts}')
     return receipts
+
+
+def require_complete_results(reference, candidate, sides):
+    if len(sides) != 8 or len(set(sides)) != 8:
+        raise ValueError('declared NN comparison requires exact eight-side snapshot coverage')
+    for arm in (reference, candidate):
+        if set(arm) != set(sides) or any(row.get('err') or not isinstance(row.get('final_gain'), (int, float)) for row in arm.values()):
+            raise ValueError('NN comparison has missing or failed real boards; no complete comparison')

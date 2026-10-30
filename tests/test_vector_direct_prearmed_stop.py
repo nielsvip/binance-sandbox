@@ -11,7 +11,7 @@ sys.modules[spec.name] = module
 spec.loader.exec_module(module)
 
 
-def trader(tmp_path, stop_failure=None, verify_failure=None):
+def trader(tmp_path, stop_failure=None, verify_failure=None, resting_missing=False):
     events = []
     obj = module.Trader.__new__(module.Trader)
     obj.venue = "crypto"
@@ -46,6 +46,12 @@ def trader(tmp_path, stop_failure=None, verify_failure=None):
             events.append(("verify", order["act"]))
             if verify_failure:
                 raise RuntimeError(verify_failure)
+        def after_fill(self, account, order, quantity, held, price):
+            events.append(("after_fill", order["act"]))
+            return "stop placed"
+        def resting_level(self, account, symbol, side):
+            events.append(("resting", symbol))
+            return None if resting_missing else 0.9
     obj.stops = Stops()
     return obj, events
 
@@ -54,18 +60,22 @@ def order():
     return {"ss": "XUSDT_LONG", "act": "OPEN", "key": "entry-1", "why": "test", "notional": 10.0}
 
 
+HELD = {"XUSDT_LONG": {"qty": 10.0, "price": 1.0}}
+
+
 def test_no_entry_is_sent_when_stop_cannot_be_verified(tmp_path):
+    """An AUGMENT onto an OPEN position can be pre-protected, so a failure there must refuse the entry."""
     obj, events = trader(tmp_path, stop_failure="not resting")
-    obj.send_orders("ang", [order()], {}, False)
-    assert ("prearm", "OPEN") in events
+    obj.send_orders("ang", [dict(order(), act="AUGMENT")], HELD, False)
+    assert ("prearm", "AUGMENT") in events
     assert not any(event[0] == "send" for event in events)
     assert ("ledger", "REFUSED_UNPROTECTED_ENTRY") in events
 
 
 def test_stop_precedes_entry_and_is_verified_after_fill(tmp_path):
     obj, events = trader(tmp_path)
-    obj.send_orders("ang", [order()], {}, False)
-    assert [event for event in events if event[0] in ("prearm", "send", "verify")] == [("prearm", "OPEN"), ("send", "OPEN"), ("verify", "OPEN")]
+    obj.send_orders("ang", [dict(order(), act="AUGMENT")], HELD, False)
+    assert [e for e in events if e[0] in ("prearm", "send", "verify")] == [("prearm", "AUGMENT"), ("send", "AUGMENT"), ("verify", "AUGMENT")]
 
 
 def test_stock_entry_submits_one_contingent_order_without_flat_position_stop(tmp_path):
@@ -123,5 +133,20 @@ def test_filled_oto_parent_is_not_cancelled_with_its_live_stop(tmp_path):
 
 def test_lost_stop_closes_filled_position(tmp_path):
     obj, events = trader(tmp_path, verify_failure="gone")
+    obj.send_orders("ang", [dict(order(), act="AUGMENT")], HELD, False)
+    assert [e for e in events if e[0] == "send"] == [("send", "AUGMENT"), ("send", "CLOSE")]
+
+
+def test_an_open_from_flat_is_not_prearmed_because_the_exchange_refuses_it(tmp_path):
+    """Binance -4509 / a bare Tradier stop: a closing stop needs a position. The stop follows the fill instead."""
+    obj, events = trader(tmp_path)
     obj.send_orders("ang", [order()], {}, False)
-    assert [event for event in events if event[0] == "send"] == [("send", "OPEN"), ("send", "CLOSE")]
+    assert not any(e[0] == "prearm" for e in events), "prearming a flat book is impossible, not optional"
+    assert [e[0] for e in events if e[0] in ("send", "after_fill", "resting")] == ["send", "after_fill", "resting"]
+
+
+def test_an_open_from_flat_whose_stop_never_rests_is_closed_again(tmp_path):
+    obj, events = trader(tmp_path, resting_missing=True)
+    obj.send_orders("ang", [order()], {}, False)
+    assert [e for e in events if e[0] == "send"] == [("send", "OPEN"), ("send", "CLOSE")]
+    assert ("alert", "STOP_MISSING_AFTER_ENTRY") in events
