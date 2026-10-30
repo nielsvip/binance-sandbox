@@ -1496,6 +1496,20 @@ class Trader:
                     self.quiet.add(o["key"])
                     self._ledger({**row, "status": "EXITS_ONLY", "final": False})
                 continue
+            if not hasattr(self, "stops"):
+                sys.path.insert(0, str(Path(__file__).resolve().parent))
+                from vector_direct_stops import Stops
+                self.stops = Stops(self)
+            stop_level_armed = None
+            if o["act"] in ("OPEN", "AUGMENT"):
+                try:
+                    stop_level_armed = self.stops.prearm_entry(acct, o, qty, held, price)
+                except Exception as exc:
+                    row.update({"status": "REFUSED_UNPROTECTED_ENTRY", "detail": str(exc)[:300], "final": False})
+                    self._ledger(row)
+                    self.alert("UNPROTECTED_ENTRY_REFUSED", account=acct, sym_side=o["ss"], error=str(exc)[:200], severity="CRITICAL")
+                    log(f"REFUSED_UNPROTECTED_ENTRY {acct} {o['ss']} {o['act']}: {exc}")
+                    continue
             try:
                 resp = self.broker.send(acct, o, qty)
                 row.update({"status": "SENT", "resp": resp, "final": True})
@@ -1504,13 +1518,24 @@ class Trader:
                 self.done.add(o["key"])
                 self.done_ts[o["key"]] = time.time()
                 log(f"SENT {acct} {o['ss']} {o['act']} qty={qty} px~{price} -> {resp}")
-                # USER 2026-10-27: a STOP MARKET at dc_low_15m -0.4% (dc_high_15m +0.4% shorts) for every non-exit order
-                if os.environ.get("VD_STOPS", "1") == "1":
+                if stop_level_armed is not None:
                     try:
-                        if not hasattr(self, "stops"):
-                            sys.path.insert(0, str(Path(__file__).resolve().parent))
-                            from vector_direct_stops import Stops
-                            self.stops = Stops(self)
+                        self.stops.verify_entry(acct, o, qty, held, stop_level_armed)
+                        log(f"STOP {acct} {o['ss']} {o['act']}: verified resting before and after fill at {stop_level_armed}")
+                    except Exception as exc:
+                        self.alert("STOP_GONE_AFTER_ENTRY", account=acct, sym_side=o["ss"], error=str(exc)[:200], severity="CRITICAL")
+                        log(f"STOP_GONE_AFTER_ENTRY {acct} {o['ss']}: {exc}; closing any held quantity now")
+                        try:
+                            actual = float((self.broker.positions(acct).get(o["ss"]) or {}).get("qty") or 0.0)
+                            if actual > 0:
+                                close_order = {"ss": o["ss"], "act": "CLOSE", "qty": actual, "key": f"{o['key']}|STOP_GONE", "why": "STOP_GONE_AFTER_ENTRY"}
+                                close_resp = self.broker.send(acct, close_order, actual)
+                                self._ledger({"event": "ORDER", "acct": acct, "ss": o["ss"], "act": "CLOSE", "key": close_order["key"], "qty": actual, "status": "SENT", "resp": close_resp, "why": close_order["why"], "final": True})
+                                log(f"STOP_GONE_AFTER_ENTRY_CLOSE {acct} {o['ss']} qty={actual}: {close_resp}")
+                        except Exception as close_exc:
+                            self.alert("STOP_GONE_CLOSE_FAILED", account=acct, sym_side=o["ss"], error=str(close_exc)[:200], severity="CRITICAL")
+                else:
+                    try:
                         log(f"STOP {acct} {o['ss']} {o['act']}: {self.stops.after_fill(acct, o, qty, held, price)}")
                     except Exception as exc:
                         log(f"STOP {acct} {o['ss']} {o['act']}: hook failed {str(exc)[:160]}")
