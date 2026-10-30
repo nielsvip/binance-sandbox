@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-30T23:30:24Z",
+ "ts": "2026-10-30T23:35:40Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 22,
-   "open_positions": 16,
-   "unrealised_usd": -0.15,
+   "fills_6h": 23,
+   "open_positions": 18,
+   "unrealised_usd": -0.57,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 29,
-   "open_positions": 17,
-   "unrealised_usd": 0.07,
+   "fills_6h": 33,
+   "open_positions": 13,
+   "unrealised_usd": 0.37,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -77,7 +77,7 @@
   "inf": {
    "fills_6h": 4,
    "open_positions": 4,
-   "unrealised_usd": 0.05,
+   "unrealised_usd": 0.06,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -91,9 +91,9 @@
    }
   },
   "flz": {
-   "fills_6h": 15,
-   "open_positions": 13,
-   "unrealised_usd": -0.08,
+   "fills_6h": 16,
+   "open_positions": 12,
+   "unrealised_usd": 0.03,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,49 +127,67 @@
     "56796"
    ],
    "starts_30m": 1,
-   "log_age_s": 32.0
+   "log_age_s": 97.0
   },
   "men": {
    "pids": [
     "59391"
    ],
    "starts_30m": 1,
-   "log_age_s": 12.0
+   "log_age_s": 5.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 94.0
+   "log_age_s": 125.0
   },
   "inf": {
    "pids": [
     "64156"
    ],
    "starts_30m": 1,
-   "log_age_s": 88.0
+   "log_age_s": 3.0
   },
   "flz": {
    "pids": [
     "70377"
    ],
    "starts_30m": 1,
-   "log_age_s": -2.0
+   "log_age_s": 101.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 16117.0
+   "log_age_s": 16433.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 17532.0
+   "log_age_s": 17848.0
   }
  },
- "alerts": [],
- "alert_counts": {},
+ "alerts": [
+  {
+   "ts": "2026-10-30T23:35:40Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "men:EIGENUSDT_SHORT",
+   "evidence": "30 23:33:06 - WARNING - [men] [REENTRY_GRANDFATHERED] men:EIGENUSDT_SHORT: bypass MAX_ORDER_VALUE $20 / MAX_POSITION_SIZE $20 \u2014 restoring $18 on bounce (prior max 109.3000)"
+  },
+  {
+   "ts": "2026-10-30T23:35:43Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "ang",
+   "evidence": "ez_manage_ang.log not written for 125s"
+  }
+ ],
+ "alert_counts": {
+  "CAP_BYPASS": 1,
+  "STALE_LOG": 1
+ },
  "active_interventions": {
   "acct:trc": {
    "ts": 1791314517.218395,
@@ -214,5 +232,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 6.22
+ "sweep_s": 2.44
 }

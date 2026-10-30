@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-10-30T22:44:44.867945+00:00",
+  "recorded_at": "2026-10-30T23:33:48.933964+00:00",
   "status": "active_not_achieved",
   "deployment_authorized_by_this_record": false,
   "requirements": {
@@ -295,11 +295,20 @@
     "action": "no originaldata deleted byroot; learner owns reproduciblepartial reclamation and remote regeneration; only smallstatuswrites resumed"
   },
   "candidate_activation": {
-    "status": "not_ready_for_intended_nn_gate_comparison",
-    "bundle": "data/reports/nextgen_gate_artifact_repair/candidate_nn_20261030",
-    "artifact_hashes": "root verified all8 plus v8 runtime; independent agent matched final57 manifest",
-    "finding": "Current runtime reads separate legacy linknet_proposals files; compiled8 digest proposals/scorer not consumed by pilot planner. Graph heads can change, but intended neural proposal activation unproven.",
-    "next": "Trace actual consumers, wire versioned candidate artifact path, demonstrate real priority changes before gate",
+    "status": "diagnostic_consumer_activation_verified_not_full_benchmark",
+    "bundle_directory": "data/reports/nextgen_inference_activation_20261030",
+    "reference": "reference_controlled_v2",
+    "candidate": "candidate_controlled_v2",
+    "declared_artifacts_each": 32,
+    "identical_ancillary_artifacts": 20,
+    "digest_different_fields_only": [
+      "proposals",
+      "scorer"
+    ],
+    "runtime_files_identical": true,
+    "prior_compatibility_scope": "full ranking/filter/MUST equality and24 actual graph cells; conditional activation, not actual prior policy",
+    "remote_transfer_receipt": "data/reports/nextgen_gate_artifact_repair/runtime_bundle_transfer_20261030T232058Z/receipt.json",
+    "remote_transfer_verified_files": 72,
     "deployment": false
   },
   "gate_comparison_preconditions": {
@@ -309,5 +318,23 @@
     "gain": "unproven",
     "speed": "deferred until gain comparison"
   },
-  "preservation_authority": "data/reports/learning_preservation_audit_20261030T200206Z.json"
+  "preservation_authority": "data/reports/learning_preservation_audit_20261030T200206Z.json",
+  "baseline_invariant": {
+    "user_requirement": "Always start previous accepted baseline; identical NPZ must reproduce unchanged results; new switches off or prior-behavior-preserving by default",
+    "status": "not_yet_enforced_in_canonical_pilot",
+    "confirmed_gap": "30D ignores V15_START_OVERRIDES and can select template/live challengers before optimization",
+    "source_lines": [
+      "v15_pilot.py:13445",
+      "v15_pilot.py:13635",
+      "v15_pilot.py:13928"
+    ],
+    "next": "review-only pin patch and real prior-versus-candidate baseline ledger/effective-setting proof; canonical pilot locked",
+    "oracle_rule": "expected baseline must come from previous accepted version or independently verified prior ledger on identical NPZ, never candidate self-reference"
+  },
+  "reference_policy": {
+    "effective_linknet_first": 0,
+    "candidate_linknet_first": 1,
+    "evidence": "s2:/home/niels/v15_bench/reviews/nn_artifacts_20261030T231758Z_r4/reference_policy_receipt.json",
+    "qualification": "candidate activation is explicit postbaseline behavior change, not a provenance-only guard; reference must preserve effective prior policy"
+  }
 }

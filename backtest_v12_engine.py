@@ -2825,6 +2825,19 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     # always return None so backtest uses class defaults — no Redis blocking.
     config.Config._get_regime_from_redis = classmethod(lambda cls, full_key: None)
     indicator_cache, price_cache, executed_trades = apply_patches(stores, mode)
+    if os.environ.get("V12_REAL_EXECUTE") == "1":
+        from vec_decisions import execution_ledger as _sim_execution_ledger
+        def _sim_count_recent_accepted(_base_path, _account_key, _cutoff):
+            _now = float(_sim_ts[0])
+            _fills = set()
+            for _row in executed_trades:
+                if not isinstance(_row, dict) or not (_row.get("status") == "FILLED" or _row.get("type") == "webhook"):
+                    continue
+                _row_ts = float(_row.get("timestamp") or 0)
+                if _now - 60.0 <= _row_ts <= _now:
+                    _fills.add((_row_ts, _row.get("position_key"), _row.get("side"), float(_row.get("quantity") or 0)))
+            return len(_fills)
+        _sim_execution_ledger.count_recent_accepted = _sim_count_recent_accepted
 
     # ═══ LIVE PnL TRACKER — instrumented per close to identify problem code paths ═══
     # _live_pnl tracks running totals so we can stop & inspect mid-run
