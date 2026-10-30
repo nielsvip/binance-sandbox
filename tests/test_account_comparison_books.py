@@ -32,12 +32,14 @@ def test_trc_mirrors_trb_exactly_and_missing_book_fails_closed(tmp_path):
     assert not side_allowed(tmp_path, "trc", "AAPL", "LONG")
 
 
-def test_crypto_entry_requires_exact_side_and_account_key(tmp_path):
+def test_crypto_entry_requires_exact_account_key_even_when_side_book_differs(tmp_path):
     (tmp_path / "symbols_men_long.json").write_text(json.dumps(["AAAUSDT"]))
     (tmp_path / "symbols_fin_long.json").write_text("[]")
     (tmp_path / "tradeable_keys.json").write_text(json.dumps(["men:AAAUSDT_LONG"]))
     assert crypto_entry_allowed(tmp_path, "men", "AAAUSDT", "LONG")
     assert not crypto_entry_allowed(tmp_path, "fin", "AAAUSDT", "LONG")
     assert not crypto_entry_allowed(tmp_path, "men", "AAAUSDT", "SHORT")
+    (tmp_path / "tradeable_keys.json").write_text(json.dumps(["ang:AAAUSDT_LONG"]))
+    assert crypto_entry_allowed(tmp_path, "ang", "AAAUSDT", "LONG")
     (tmp_path / "tradeable_keys.json").unlink()
     assert not crypto_entry_allowed(tmp_path, "men", "AAAUSDT", "LONG")

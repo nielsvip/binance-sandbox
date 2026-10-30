@@ -47,9 +47,7 @@ def side_allowed(root: Path, account: str, symbol: str, side: str,
 
 
 def crypto_entry_allowed(root: Path, account: str, symbol: str, side: str) -> bool:
-    """A crypto entry needs both today's account side book and its live key."""
-    if not side_allowed(root, account, symbol, side):
-        return False
+    """The account's explicit tradeable key is the crypto entry authority."""
     try:
         keys = json.loads((Path(root) / "tradeable_keys.json").read_text())
         if isinstance(keys, dict):
