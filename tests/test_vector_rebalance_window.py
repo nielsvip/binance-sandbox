@@ -48,6 +48,8 @@ def test_phases_new_york_time():
     assert t.rebal_phase(ts(2026, 10, 30, 14, 30)) == (True, True, False)
     assert t.rebal_phase(ts(2026, 10, 30, 15, 45)) == (True, True, True)
     assert t.rebal_phase(ts(2026, 10, 31, 10, 0)) == (False, False, False)  # Saturday
+    assert t.rebal_phase(ts(2026, 10, 29, 22, 52)) == (False, False, False)  # weekday evening: no forced trim
+    assert t.rebal_phase(ts(2026, 10, 30, 16, 0)) == (False, False, False)
 
 
 def test_local_top_and_bottom(tmp_path):

@@ -1255,7 +1255,9 @@ class Trader:
         if t.weekday() >= 5:
             return False, False, False
         hm = (t.hour, t.minute)
-        return hm >= (9, 30), hm >= (14, 30), hm >= (15, 45)
+        if not (9, 30) <= hm < (16, 0):
+            return False, False, False
+        return True, hm >= (14, 30), hm >= (15, 45)
 
     def bar15(self, symbol):
         """Last closed 15m bar of symbol from the host's NPZ tail sidecar (fields high_15m, low_15m, close_15m, dc_*_15m)."""
