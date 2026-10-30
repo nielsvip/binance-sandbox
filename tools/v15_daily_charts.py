@@ -423,6 +423,13 @@ def discrepancy_overlay(page: str, board: dict, rows: list[dict], equity: dict |
         if row.get("event") == "STOP":
             stop_status = row.get("status") or row.get("act")
             if stop_status in ("PLACED", "PREARM_VERIFIED", "CANCEL_ON_CLOSE", "STOP_RETAINED_POSITION_HELD"):
+                stop_fill = row.get("broker_fill") or {}
+                if stop_status == "PLACED" and stop_fill.get("found") and float(stop_fill.get("exec_qty") or 0) > 0 and float(stop_fill.get("avg_price") or 0) > 0:
+                    fill_time = float(stop_fill.get("fill_ms") or 0) / 1000 or event_time
+                    fill_index = bisect.bisect_right(bar_times, fill_time) - 1
+                    if 0 <= fill_index < len(bar_times) and fill_time < bar_times[-1] + 900:
+                        broker_events.append({"i": fill_index, "action": "CLOSE (protective stop)", "qty": float(stop_fill["exec_qty"]), "price": float(stop_fill["avg_price"]), "acct": row.get("acct"), "time": iso(datetime.datetime.fromtimestamp(fill_time, datetime.timezone.utc)), "reason": f"PROTECTIVE_DC15_STOP level={row.get('level')}", "order_id": str(stop_fill.get("order_id") or ""), "before_board": fill_time < first})
+                    stop_status = "FILLED"
                 stop_events.append({"i": display_index, "level": float(row.get("level") or 0), "status": stop_status, "acct": row.get("acct"), "time": _html.escape(str(row.get("iso") or ""))})
             continue
         if row.get("event") != "ORDER" or row.get("status") != "SENT":

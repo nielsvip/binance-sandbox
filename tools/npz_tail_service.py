@@ -172,6 +172,12 @@ def sweep_symbol(
         return "current"
     if not is_closed_bar(int(last_close_ts), now_s):
         return "refused"
+    if tip is not None and not correction and int(last_close_ts) - int(tip) > 900:
+        # USER 2026-10-30: never skip a bar. Append every owed bar in order (tip+15m .. last_close-15m) before the newest one.
+        for owed in range(int(tip) + 900, int(last_close_ts), 900)[:16]:
+            if sweep_symbol(npz_path, symbol, owed, compute_fn, now_s=now_s, on_append=on_append) not in ("appended", "current"):
+                return "error"
+        tip = tip_of(npz_path)
     try:
         row = compute_fn(symbol, int(last_close_ts))
     except Exception:

@@ -899,11 +899,25 @@ def pair_beats_naked(e: dict) -> bool:
 
 
 # ── V18_LINKNET_FIRST: first trials of untried pairs come from the linknet's ranked template_untried list ───────────────
+class LinkNetBundleError(SystemExit):
+    pass
+
+
 def linknet_first_on() -> bool:
-    return flag_on("V18_LINKNET_FIRST")
+    active = flag_on("V18_LINKNET_FIRST")
+    if flag_on("V18_LINKNET_BUNDLE_REQUIRED") and not active:
+        raise LinkNetBundleError("required compiled LinkNet consumer is disabled")
+    return active
 
 
 def declared_linknet_first(cat_side, root=None):
+    try:
+        return _declared_linknet_first(cat_side, root)
+    except Exception as error:
+        raise LinkNetBundleError(str(error)) from error
+
+
+def _declared_linknet_first(cat_side, root=None):
     base = Path(root or Path(__file__).resolve().parents[1])
     declaration = base / "tools" / "v18_model_bundle.json"
     required = flag_on("V18_LINKNET_BUNDLE_REQUIRED")
@@ -930,8 +944,11 @@ def declared_linknet_first(cat_side, root=None):
     if not sources or any(not isinstance(value, str) or len(value) != 64 or any(char not in "0123456789abcdef" for char in value) for value in sources.values()):
         raise ValueError("declared LinkNet training artifact hashes absent/invalid")
     scorer = entry.get("production_scorer")
+    legacy = entry.get("artifact_schema") == "v18_linknet/1" and scorer == "legacy_compiled_output"
     model_kind = {"v1": "model_v1", "hybrid_v1": "model_v1", "v2": "model_v2", "hybrid_v2": "model_v2", "counts": "ds"}.get(scorer)
-    if model_kind is None or f"{model_kind}_{cat_side}.npz" not in sources:
+    if legacy and f"linknet_report_{cat_side}.json" not in sources:
+        raise ValueError("declared legacy LinkNet report source hash absent")
+    if not legacy and (model_kind is None or f"{model_kind}_{cat_side}.npz" not in sources):
         raise ValueError("declared LinkNet selected scorer source hash absent")
     path = learn_file(filename, base)
     if not path.is_file():
@@ -941,8 +958,10 @@ def declared_linknet_first(cat_side, root=None):
         raise ValueError(f"declared LinkNet artifact hash mismatch: {path}")
     document = json.loads(payload)
     meta = document.get("meta") or {}
-    if meta.get("cat_side") != cat_side or meta.get("production_scorer") != entry.get("production_scorer"):
+    if meta.get("cat_side") != cat_side or (not legacy and meta.get("production_scorer") != entry.get("production_scorer")):
         raise ValueError("declared LinkNet category/scorer mismatch")
+    if legacy and (meta.get("schema") != "v18_linknet/1" or not entry.get("model_trained_at") or meta.get("model_trained_at") != entry["model_trained_at"]):
+        raise ValueError("declared legacy LinkNet model timestamp/schema mismatch")
     if not isinstance(document.get("template_untried"), list) or not document["template_untried"]:
         raise ValueError("declared LinkNet has no compiled template candidates")
     return path, document, f"declared bundle={bundle.get('bundle_id')} compiled_sha256={expected} source_artifacts={json.dumps(sources, sort_keys=True)}"

@@ -118,7 +118,7 @@ def ledger_rows(out: Path, venue: str, since: float, now: float) -> list:
                         continue
                     if (
                         isinstance(r, dict)
-                        and r.get("event") == "ORDER"
+                        and (r.get("event") == "ORDER" or (venue == "stocks" and r.get("event") == "STOP" and r.get("status") == "PLACED" and (r.get("resp") or {}).get("id")))
                         and not r.get("dry_run")
                         and float(r.get("ts") or 0) >= since
                     ):
@@ -353,6 +353,8 @@ def export(
     cache_p = out / f"fills_{venue}.json"
     cache = read_json(cache_p, {}) or {}
     rows = ledger_rows(out, venue, since, now)
+    if venue == "stocks":
+        rows.sort(key=lambda row: 0 if row.get("event") == "STOP" else 1)
     calls, changed, stats = (
         0,
         False,
@@ -367,7 +369,8 @@ def export(
     )
     for r in rows:
         status = r.get("status")
-        if status in ("SENT", "PROTECTED_OTO_SUBMITTED"):
+        protective_stop = venue == "stocks" and r.get("event") == "STOP" and status == "PLACED"
+        if status in ("SENT", "PROTECTED_OTO_SUBMITTED") or protective_stop:
             stats["sent"] += 1
             response = r.get("resp") or {}
             oid = str(response.get("orderId") or (response.get("id") if venue == "stocks" else "") or "")
@@ -410,7 +413,7 @@ def export(
                 stats.setdefault("errors", []).append(
                     f"{r.get('acct')} {r.get('ss')}: {str(exc)[:120]}"
                 )
-        if status not in ("SENT", "PROTECTED_OTO_SUBMITTED") and not (cached or {}).get("found"):
+        if status not in ("SENT", "PROTECTED_OTO_SUBMITTED") and not protective_stop and not (cached or {}).get("found"):
             continue
         fill = cached if (cached or {}).get("found") else None
         if fill is None or needs_resolve(cached):
@@ -421,13 +424,13 @@ def export(
                     "venue": venue,
                     "acct": r.get("acct"),
                     "ss": r.get("ss"),
-                    "act": r.get("act"),
-                    "why": r.get("why"),
-                    "key": r.get("key"),
+                    "act": "CLOSE" if protective_stop else r.get("act"),
+                    "why": f"PROTECTIVE_DC15_STOP level={r.get('level')} entry_key={r.get('key')}" if protective_stop else r.get("why"),
+                    "key": f"{r.get('key')}|STOP|{oid}" if protective_stop else r.get("key"),
                     "ledger_ts": r.get("ts"),
                     "ledger_iso": r.get("iso"),
                     "ledger_status": status,
-                    "sent_mark": r.get("price"),
+                    "sent_mark": r.get("level") if protective_stop else r.get("price"),
                     "sent_qty": r.get("qty"),
                     "resp": r.get("resp"),
                     "fill": fill,

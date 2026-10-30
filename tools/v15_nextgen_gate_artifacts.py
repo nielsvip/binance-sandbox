@@ -38,7 +38,25 @@ def inventory(root):
             if not isinstance(value, dict):
                 raise ValueError(f"gate model artifact must be a JSON object: {relative}")
             result[relative] = {"sha256": hashlib.sha256(payload).hexdigest(), "bytes": len(payload)}
+    declaration = root / "tools/v18_model_bundle.json"
+    if declaration.is_file():
+        value = json.loads(declaration.read_bytes())
+        if value.get("linknet_activation", {}).get("schema") == "compiled_linknet_first/1":
+            for name, expected in value.get("expected_sha256_by_filename", {}).items():
+                relative = declared_relative(name)
+                path = root / relative
+                _plain_path(root, path)
+                payload = path.read_bytes()
+                sha = hashlib.sha256(payload).hexdigest()
+                if sha != expected:
+                    raise ValueError(f"declared artifact mismatch: {relative}")
+                result[relative] = {"sha256": sha, "bytes": len(payload)}
     return result
+
+def declared_relative(name):
+    if not re.fullmatch(r"(?:v18_brain|digest|needed_filters|switch_profile|positives_all|binding_map|linknet_proposals|must_pos)_(?:CRYPTO_LONG|CRYPTO_SHORT|STOCKS_LONG|STOCKS_SHORT)\.json(?:\.gz)?", name):
+        raise ValueError(f"undeclared artifact kind: {name}")
+    return "data/" + ("brain/" if name.startswith("v18_brain_") else "learn/") + name
 
 def overlay(source, destination):
     source, destination = Path(source).absolute(), Path(destination).absolute()
@@ -107,8 +125,22 @@ def verify_declared_bundle(root, env, required=False):
         raise ValueError("unknown neural-network bundle schema")
     expected = declaration.get("expected_sha256_by_filename")
     names = {f"{prefix}_{category}.json" for prefix in ("v18_brain", "digest") for category in ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT")}
+    expanded = declaration.get("linknet_activation", {}).get("schema") == "compiled_linknet_first/1"
+    if expanded:
+        names = {f"{prefix}_{category}.json{'.gz' if prefix == 'positives_all' else ''}" for prefix in ("v18_brain", "digest", "needed_filters", "switch_profile", "positives_all", "binding_map", "linknet_proposals", "must_pos") for category in ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT")}
     if not isinstance(expected, dict) or set(expected) != names or any(not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{64}", value) for value in expected.values()):
-        raise ValueError("neural-network bundle requires exact hashes for all eight runtime artifacts")
+        raise ValueError("neural-network bundle requires exact hashes for all declared runtime artifacts")
+    if expanded:
+        for key, value in declaration.get("required_runtime_flags", {}).items():
+            if env.get(key) != str(value):
+                raise ValueError(f"required neural-network activation flag differs: {key}")
+        if env.get("V18_LINKNET_FIRST") != "1" or env.get("V18_LINKNET_BUNDLE_REQUIRED") != "1":
+            raise ValueError("compiled neural-network activation guards required")
+        for name, expected_sha in expected.items():
+            path = root / declared_relative(name)
+            _plain_path(root, path)
+            if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != expected_sha:
+                raise ValueError(f"declared ancillary artifact differs: {name}")
     receipt = resolve_models(root, env, expected)
     receipt["bundle_manifest_sha256"] = hashlib.sha256(payload).hexdigest()
     receipt["bundle_id"] = declaration.get("bundle_id")

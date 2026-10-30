@@ -1,3 +1,11 @@
+## 🗄 OFFSITE STORE "5T" — Hetzner Storage Box (added 2026-10-30)
+- **Name:** `5T` (Storage Box ID 687858, BX21, 5 TiB, Helsinki `hel1`, ZFS enabled, SSH on port 23).
+- **Address:** `u706004@u706004.your-storagebox.de` port 23. Login with key only. Shell is SFTP/rsync only (no commands).
+- **Keys:** `~/.ssh/id_ed25519_storagebox` on S1, S2, S5, S6 (each registered on the box). Mac: `~/.ssh/hetzner_storagebox_ed25519`.
+- **Layout:** one top folder per source: `s1/`, `s2/`, `s5/`, `s6/`. Mac external drives will go under `mac-ext/`.
+- **Rules:** append-only. Sync jobs never use `--delete`. Server data is removed only after a checksum match on the box (`rsync -c --dry-run` shows no mismatches). Verified copies on the box are the single source of truth for klines and NPZ history.
+- **Not** `u705131` (an old box that no longer exists).
+
 # 📖 BACKTEST BIBLE — Single Source of Truth — 2026-09-26 Redo, updated 2026-10-07
 
 

@@ -306,6 +306,28 @@ def test_stock_export_resolves_tradier_response_id(tmp_path):
     assert json.loads((out / "fills_stocks.json").read_text())["oid:trb:155004418"]["status"] == "filled"
 
 
+def test_filled_protective_stop_becomes_real_close_once(tmp_path):
+    out = tmp_path / "data" / "vector_direct"
+    out.mkdir(parents=True)
+    now = time.time()
+    day = datetime.fromtimestamp(now, tz=timezone.utc).strftime("%Y-%m-%d")
+    stop = {"ts": now - 10, "event": "STOP", "acct": "trb", "ss": "T_SHORT", "act": "OPEN", "status": "PLACED", "key": "trb|T_SHORT|123|OPEN", "level": 21.33, "qty": 9, "resp": {"id": 154391760, "status": "ok"}}
+    (out / f"ledger_stocks_{day}.jsonl").write_text(json.dumps(stop) + "\n")
+    class Fake:
+        def resolve(self, acct, ss, order_id=None, client=None):
+            assert order_id == "154391760"
+            return {"found": True, "order_id": order_id, "status": "filled", "exec_qty": 9, "avg_price": 21.3299, "quote": 191.9691, "fill_ms": int((now - 5) * 1000)}
+    lines = []
+    vx.export("stocks", tmp_path, now - 100, 1, broker=Fake(), now=now, emit=lines.append)
+    rec = next(json.loads(line) for line in lines if '"fill"' in line)
+    row = vi.build_row(rec, "S5_VECTOR_DIRECT")
+    assert row["type"] == "CLOSE" and row["qty"] == 9
+    assert row["reason"].startswith("PROTECTIVE_DC15_STOP level=21.33")
+    assert row["order_id"] == "154391760"
+    assert vi.ingest("stocks", [rec], {}, tmp_path / "history", now)["appended"] == 1
+    assert vi.ingest("stocks", [rec], {}, tmp_path / "history", now)["appended"] == 0
+
+
 def test_guardian_reconcile_matches_order_rows_by_broker_id(tmp_path, monkeypatch):
     from tools.forward_parity import live_guardian as lg
 
