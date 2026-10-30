@@ -13,7 +13,10 @@ def digest(path, algorithm):
 
 
 def verify_inputs(snapshot):
-    snapshot = Path(snapshot).resolve()
+    snapshot = Path(snapshot)
+    if snapshot.is_symlink():
+        raise ValueError("snapshot root may not be a symlink")
+    snapshot = snapshot.resolve()
     manifest = json.loads((snapshot / 'manifest.json').read_text())
     expected = {}
     for symbol, entry in manifest.get('npz', {}).items():
@@ -46,6 +49,23 @@ def verify_inputs(snapshot):
         raise ValueError(f'frozen inputs missing: {sorted(missing)}')
     if 'frozen_data_sha256' in manifest:
         actual_data = {name for name in inventory if name.startswith('data/')}
-        if actual_data != set(manifest['frozen_data_sha256']):
+        if actual_data != {name for name in manifest['frozen_data_sha256'] if name.startswith('data/')}:
             raise ValueError('frozen data inventory changed')
-    return {'inventory_sha256': hashlib.sha256(json.dumps(inventory, sort_keys=True, separators=(',', ':')).encode()).hexdigest(), 'files': len(inventory)}
+    return {'inventory_sha256': hashlib.sha256(json.dumps(inventory, sort_keys=True, separators=(',', ':')).encode()).hexdigest(), 'files': len(inventory), 'inventory': inventory}
+
+
+def verify_materialized(root, pin):
+    root = Path(root)
+    for relative, expected in pin['inventory'].items():
+        if relative.startswith('npz/'):
+            targets = [root / 'backtest_v8/indicators' / relative[4:]]
+        elif relative.startswith('templates/'):
+            targets = [root / 'SPREADSHEETS/TEMPLATE_FINAL_NORM' / relative[10:], root / 'SPREADSHEETS' / relative[10:]]
+        elif relative.startswith('starts/'):
+            targets = [root / 'frozen_starts' / relative[7:]]
+        else:
+            targets = [root / relative]
+        for target in targets:
+            if target.is_symlink() or not target.is_file() or digest(target, 'sha256') != expected:
+                raise ValueError(f'materialized frozen input mismatch: {relative}')
+    return {'status': 'MATERIALIZED_PINNED_INPUTS_PASS', 'files': pin['files'], 'inventory_sha256': pin['inventory_sha256']}

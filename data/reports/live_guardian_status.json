@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-30T22:45:50Z",
+ "ts": "2026-10-30T23:04:52Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -126,59 +126,59 @@
    "pids": [
     "56796"
    ],
-   "starts_30m": 1,
-   "log_age_s": 257.0
+   "starts_30m": 0,
+   "log_age_s": 4.0
   },
   "men": {
    "pids": [
     "59391"
    ],
    "starts_30m": 1,
-   "log_age_s": 13.0
+   "log_age_s": 45.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 10.0
   },
   "inf": {
    "pids": [
     "64156"
    ],
    "starts_30m": 1,
-   "log_age_s": 5.0
+   "log_age_s": 6.0
   },
   "flz": {
    "pids": [
     "70377"
    ],
    "starts_30m": 1,
-   "log_age_s": 6.0
+   "log_age_s": 3.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 13442.0
+   "log_age_s": 14584.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 14857.0
+   "log_age_s": 15998.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-30T22:45:51Z",
+   "ts": "2026-10-30T23:04:52Z",
    "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 257s"
+   "kind": "CAP_BYPASS",
+   "key": "flz:ZECUSDC_LONG",
+   "evidence": "30 23:00:52 - WARNING - [flz] [REENTRY_GRANDFATHERED] flz:ZECUSDC_LONG: bypass MAX_ORDER_VALUE $60 / MAX_POSITION_SIZE $150 \u2014 restoring $256 on bounce (prior max 0.9900)"
   }
  ],
  "alert_counts": {
-  "STALE_LOG": 1
+  "CAP_BYPASS": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -224,5 +224,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.79
+ "sweep_s": 0.86
 }

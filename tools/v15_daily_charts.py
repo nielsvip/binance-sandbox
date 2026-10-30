@@ -15,6 +15,7 @@ data/reports/daily_charts_history.jsonl. A sym_side whose calc or provenance fai
     python tools/v15_daily_charts.py --now --symside SAP_LONG
 """
 import argparse
+import bisect
 import datetime
 import fcntl
 import glob
@@ -330,7 +331,7 @@ for path in sorted(glob.glob(str(pathlib.Path.home() / 'binance/data/vector_dire
         except (ValueError, UnicodeError): continue
         if row.get('event') == 'ORDER' and row.get('ts'):
             coverage_start = min(coverage_start, float(row['ts'])) if coverage_start is not None else float(row['ts'])
-        if row.get('event') == 'ORDER' and row.get('ss') in symsides and float(row.get('ts') or 0) >= since:
+        if row.get('event') in ('ORDER', 'STOP') and row.get('ss') in symsides and float(row.get('ts') or 0) >= since:
             response = row.get('resp') or {}
             oid = response.get('orderId') or response.get('id')
             if oid: row['broker_fill'] = fills.get('oid:' + str(row.get('acct')) + ':' + str(oid))
@@ -379,15 +380,24 @@ def discrepancy_overlay(page: str, board: dict, rows: list[dict]) -> tuple[str, 
             vector.add((bar_times[index], action))
     live, accepted = set(), set()
     accounts = {}
+    broker_events, stop_events = [], []
     for row in rows:
-        if row.get("ss") != board["symside"] or row.get("status") != "SENT" or row.get("dry_run"):
+        if row.get("ss") != board["symside"] or row.get("dry_run"):
+            continue
+        event_time = float(row.get("ts") or 0)
+        display_index = bisect.bisect_right(bar_times, event_time) - 1
+        if not 0 <= display_index < len(bar_times) or event_time >= bar_times[-1] + 900:
+            continue
+        if row.get("event") == "STOP":
+            if row.get("status") in ("PLACED", "PREARM_VERIFIED") and row.get("level"):
+                stop_events.append({"i": display_index, "level": float(row["level"]), "status": row["status"], "acct": row.get("acct"), "time": _html.escape(str(row.get("iso") or ""))})
+            continue
+        if row.get("event") != "ORDER" or row.get("status") != "SENT":
             continue
         parts = str(row.get("key") or "").split("|")
         if len(parts) < 4 or not parts[2].isdigit():
             continue
         key = (int(parts[2]), str(row.get("act") or "").upper())
-        if key[0] < first or key[0] not in bar_times:
-            continue
         response = row.get("resp") or {}
         status = str(response.get("status") or "").upper()
         broker_fill = row.get("broker_fill") or {}
@@ -396,25 +406,39 @@ def discrepancy_overlay(page: str, board: dict, rows: list[dict]) -> tuple[str, 
                   and str(broker_fill.get("status") or "").lower() in ("filled", "partially_filled")) or (crypto and (status in ("FILLED", "PARTIALLY_FILLED") or float(response.get("executedQty") or 0) > 0))
         terminal_unfilled = str(broker_fill.get("status") or "").lower() in ("rejected", "canceled", "expired") and float(broker_fill.get("exec_qty") or 0) <= 0
         if filled:
-            live.add(key)
+            if key[0] >= first and key[0] in bar_times:
+                live.add(key)
+            fill_price = float(broker_fill.get("avg_price") or response.get("avgPrice") or 0)
+            fill_time = float(broker_fill.get("fill_ms") or 0) / 1000 or event_time
+            if fill_price > 0:
+                broker_events.append({"i": display_index, "action": key[1], "qty": float(broker_fill.get("exec_qty") or response.get("executedQty") or row.get("qty") or 0), "price": fill_price, "acct": row.get("acct"), "time": iso(datetime.datetime.fromtimestamp(fill_time, datetime.timezone.utc)), "reason": str(row.get("why") or "")[:160], "order_id": str(broker_fill.get("order_id") or response.get("orderId") or response.get("id") or ""), "before_board": event_time < first})
         elif not terminal_unfilled:
-            accepted.add(key)
+            if key[0] >= first and key[0] in bar_times:
+                accepted.add(key)
         accounts.setdefault(key, set()).add(str(row.get("acct") or "?"))
     bar_index = {bar: i for i, bar in enumerate(bar_times)}
     blue = [{"i": bar_index[bar], "action": act, "accounts": sorted(accounts.get((bar, act), []))} for bar, act in sorted(live - vector)]
     orange = [{"i": bar_index[bar], "action": act} for bar, act in sorted(vector - live - accepted) if coverage is not None and bar >= int(coverage // 900) * 900]
     pending = [{"i": bar_index[bar], "action": act} for bar, act in sorted(accepted - live)]
     data = json.dumps({"blue": blue, "orange": orange, "accepted_unverified": pending}, separators=(",", ":"))
-    plugin = "const DISCREPANCIES = " + data + ";\nChart.register({id:'forwardDiscrepancyLines',afterDatasetsDraw(chart){const x=chart.scales.x,a=chart.chartArea,ctx=chart.ctx;for(const [name,color] of [['blue','#2563eb'],['orange','#f97316']]){for(const row of DISCREPANCIES[name]){const px=x.getPixelForValue(row.i);if(px<a.left||px>a.right)continue;ctx.save();ctx.strokeStyle=color;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(px,a.top);ctx.lineTo(px,a.bottom);ctx.stroke();ctx.restore();}}}});\n"
+    fills_json = json.dumps(broker_events, separators=(",", ":"))
+    stops_json = json.dumps(stop_events, separators=(",", ":"))
+    plugin = ("const DISCREPANCIES = " + data + ";\nconst BROKER_FILLS = " + fills_json + ";\nconst BROKER_STOPS = " + stops_json + ";\n"
+              "DATASETS.push({label:'CONFIRMED broker fill',data:BROKER_FILLS.map(r=>({x:LABELS[r.i],y:r.price,qty:r.qty,price:r.price,reason:r.action+' '+r.acct+' '+r.reason+' order '+r.order_id})),type:'scatter',backgroundColor:'#38bdf8',borderColor:'#ffffff',borderWidth:2.5,pointStyle:'star',pointRadius:11,pointHoverRadius:15,order:30});\n"
+              "DATASETS.push({label:'broker protective stop placed',data:BROKER_STOPS.map(r=>({x:LABELS[r.i],y:r.level,qty:'stop',price:r.level,reason:r.status+' '+r.acct})),type:'scatter',backgroundColor:'#e879f9',borderColor:'#ffffff',borderWidth:2,pointStyle:'rectRot',pointRadius:8,pointHoverRadius:12,order:29});\n"
+              "Chart.register({id:'forwardDiscrepancyLines',afterDatasetsDraw(chart){const x=chart.scales.x,a=chart.chartArea,ctx=chart.ctx;for(const [name,color] of [['blue','#2563eb'],['orange','#f97316']]){for(const row of DISCREPANCIES[name]){const px=x.getPixelForValue(row.i);if(px<a.left||px>a.right)continue;ctx.save();ctx.strokeStyle=color;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(px,a.top);ctx.lineTo(px,a.bottom);ctx.stroke();ctx.restore();}}}});\n")
     page = page.replace("new Chart(c,{", plugin + "new Chart(c,{", 1)
+    rows_html = "".join(f"<tr><td>{_html.escape(r['time'])}</td><td>{_html.escape(str(r['acct']))}</td><td>{_html.escape(r['action'])}</td><td>{r['qty']:g}</td><td>${r['price']:.4f}</td><td>{_html.escape(r['reason'])}</td><td>{_html.escape(r['order_id'])}</td></tr>" for r in sorted(broker_events, key=lambda r: r["time"]))
+    stop_html = "".join(f"<tr><td>{r['time']}</td><td>{_html.escape(str(r['acct']))}</td><td>{_html.escape(r['status'])}</td><td>${r['level']:.4f}</td></tr>" for r in sorted(stop_events, key=lambda r: r["time"]))
     summary = (f"<div class='metrics'><b>AFTER ORIGINAL BOARD PUBLICATION — VECTOR VS CONFIRMED BROKER FILLS</b> "
                f"<span style='color:#60a5fa'>blue live only {len(blue)}</span> · "
                f"<span style='color:#fb923c'>orange vector only {len(orange)}</span> · "
                f"""accepted, fill unverified {len(pending)}. Exact 15 minute bar and action; quantities ignored. """
                f"Journal coverage starts {_html.escape(iso(datetime.datetime.fromtimestamp(coverage, datetime.timezone.utc)) if coverage else 'UNAVAILABLE')}; earlier vector events are unassessed. "
-               f"Stock 'ok' responses are order acceptance, not actual fills. No broker fill history means orange marks require investigation.</div>")
+               f"Stock 'ok' responses are order acceptance, not actual fills. No broker fill history means orange marks require investigation.</div>"
+               f"<details open><summary>{len(broker_events)} confirmed broker fills (blue stars) · {len(stop_events)} protective stop records (purple diamonds) within this chart window</summary><table><tr><th>UTC fill</th><th>account</th><th>action</th><th>qty</th><th>fill price</th><th>trader reason</th><th>broker order</th></tr>{rows_html}</table><table><tr><th>UTC</th><th>account</th><th>stop status</th><th>level</th></tr>{stop_html}</table></details>")
     page = page.replace("<div id='wrap'>", summary + "<div id='wrap'>", 1)
-    return page, {"live_only": len(blue), "vector_only": len(orange), "accepted_unverified": len(pending)}
+    return page, {"live_only": len(blue), "vector_only": len(orange), "accepted_unverified": len(pending), "confirmed_broker_fills": len(broker_events), "protective_stop_records": len(stop_events)}
 
 
 def fail_page(symside: str, board: dict, error: str, now: str) -> str:
@@ -446,7 +470,7 @@ def publish(boards: dict, results: list, run_id: str, started: str, partial: boo
         if not sides or not any(stamps):
             continue
         try:
-            live_rows[host] = confirmed_order_rows(host, sides, min(t.timestamp() for t in stamps if t))
+            live_rows[host] = confirmed_order_rows(host, sides, min(t.timestamp() for t in stamps if t) - 35 * 86400)
         except Exception as exc:
             live_errors[host] = str(exc)[:180]
     entries, now = [], iso(utcnow())

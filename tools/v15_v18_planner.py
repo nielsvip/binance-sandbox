@@ -903,17 +903,67 @@ def linknet_first_on() -> bool:
     return flag_on("V18_LINKNET_FIRST")
 
 
+def declared_linknet_first(cat_side, root=None):
+    base = Path(root or Path(__file__).resolve().parents[1])
+    declaration = base / "tools" / "v18_model_bundle.json"
+    required = flag_on("V18_LINKNET_BUNDLE_REQUIRED")
+    if not declaration.is_file():
+        if required:
+            raise ValueError("required LinkNet bundle declaration absent")
+        return None
+    bundle = json.loads(declaration.read_text())
+    activation = bundle.get("linknet_activation")
+    if activation is None:
+        if required:
+            raise ValueError("required LinkNet activation declaration absent")
+        return None
+    if activation.get("schema") != "compiled_linknet_first/1":
+        raise ValueError("unsupported compiled LinkNet activation schema")
+    entry = (activation.get("by_category") or {}).get(cat_side)
+    if not isinstance(entry, dict):
+        raise ValueError(f"declared LinkNet category absent: {cat_side}")
+    filename = f"linknet_proposals_{cat_side}.json"
+    expected = (bundle.get("expected_sha256_by_filename") or {}).get(filename)
+    if entry.get("filename") != filename or not isinstance(expected, str) or len(expected) != 64:
+        raise ValueError("declared LinkNet artifact identity/hash absent")
+    sources = entry.get("source_artifacts_sha256") or {}
+    if not sources or any(not isinstance(value, str) or len(value) != 64 or any(char not in "0123456789abcdef" for char in value) for value in sources.values()):
+        raise ValueError("declared LinkNet training artifact hashes absent/invalid")
+    scorer = entry.get("production_scorer")
+    model_kind = {"v1": "model_v1", "hybrid_v1": "model_v1", "v2": "model_v2", "hybrid_v2": "model_v2", "counts": "ds"}.get(scorer)
+    if model_kind is None or f"{model_kind}_{cat_side}.npz" not in sources:
+        raise ValueError("declared LinkNet selected scorer source hash absent")
+    path = learn_file(filename, base)
+    if not path.is_file():
+        raise ValueError(f"declared LinkNet artifact absent: {path}")
+    payload = path.read_bytes()
+    if hashlib.sha256(payload).hexdigest() != expected:
+        raise ValueError(f"declared LinkNet artifact hash mismatch: {path}")
+    document = json.loads(payload)
+    meta = document.get("meta") or {}
+    if meta.get("cat_side") != cat_side or meta.get("production_scorer") != entry.get("production_scorer"):
+        raise ValueError("declared LinkNet category/scorer mismatch")
+    if not isinstance(document.get("template_untried"), list) or not document["template_untried"]:
+        raise ValueError("declared LinkNet has no compiled template candidates")
+    return path, document, f"declared bundle={bundle.get('bundle_id')} compiled_sha256={expected} source_artifacts={json.dumps(sources, sort_keys=True)}"
+
+
 def load_linknet_first(cat_side: str, root=None, top=None):
     """data/learn/linknet_proposals_<CS>.json -> ({("SW=c", "F=o"): {"rank", "p_pos_pred", "e_delta_pred"}}, why).
     Only `template_untried` items of THIS cat_side (status HAS_TEMPLATE_ROW or PREDICTED_NOT_MEASURED; the pilot still checks
     the board's own template columns); `needs_row` items are never candidates.
     Ranked by p_pos_pred (desc); `top` (V18_LINKNET_TOP, default all) caps the list. Everything here is a PREDICTION."""
     cs = str(cat_side or "").upper()
-    p = learn_file(f"linknet_proposals_{cs}.json", root)
-    try:
-        d = json.loads(p.read_text())
-    except Exception as e:
-        return {}, f"absent/unreadable {p.name}: {e}"[:160]
+    declared = declared_linknet_first(cs, root)
+    provenance = ""
+    if declared:
+        p, d, provenance = declared
+    else:
+        p = learn_file(f"linknet_proposals_{cs}.json", root)
+        try:
+            d = json.loads(p.read_text())
+        except Exception as e:
+            return {}, f"absent/unreadable {p.name}: {e}"[:160]
     if str((d.get("meta") or {}).get("cat_side") or "").upper() != cs:
         return {}, "linknet CAT_SIDE_MISMATCH — refused (principle 13)"
     items = [x for x in (d.get("template_untried") or []) if isinstance(x, dict) and x.get("switch") and x.get("filter") and "NEEDS_ROW" not in str(x.get("status") or "").upper() and str(x.get("cat_side") or cs).upper() == cs]
@@ -925,7 +975,7 @@ def load_linknet_first(cat_side: str, root=None, top=None):
     for r, x in enumerate(items, 1):
         k = (f"{str(x['switch']).strip()}={str(x['cand']).strip()}", f"{str(x['filter']).strip()}={str(x['opt']).strip()}")
         out.setdefault(k, {"rank": r, "p_pos_pred": x.get("p_pos_pred"), "e_delta_pred": x.get("e_delta_pred")})
-    return out, f"ok {p.name} template_untried={len(items)} built_at={(d.get('meta') or {}).get('built_at')}"
+    return out, f"ok {p.name} template_untried={len(items)} built_at={(d.get('meta') or {}).get('built_at')} {provenance}".strip()
 
 
 # ── memory + MUST ordering (2026-10-20) ─────────────────────────────────────────────────────────────────────────────────
