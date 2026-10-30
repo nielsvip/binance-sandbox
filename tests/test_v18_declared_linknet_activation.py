@@ -49,3 +49,22 @@ def test_required_declaration_missing_is_error_but_legacy_remains_open(tmp_path,
         planner.load_linknet_first("CRYPTO_LONG", tmp_path)
     monkeypatch.delenv("V18_LINKNET_BUNDLE_REQUIRED")
     assert planner.load_linknet_first("CRYPTO_LONG", tmp_path)[0] == {}
+
+
+def test_declared_selected_model_source_and_category_are_required(tmp_path, monkeypatch):
+    monkeypatch.delenv("V18_DIGEST_DIR", raising=False)
+    path, declaration = fixture(tmp_path)
+    entry = declaration["linknet_activation"]["by_category"]["CRYPTO_LONG"]
+    entry["source_artifacts_sha256"] = {"unrelated.npz": "a" * 64}
+    declaration_path = tmp_path / "tools/v18_model_bundle.json"
+    declaration_path.write_text(json.dumps(declaration))
+    with pytest.raises(ValueError, match="selected scorer source hash"):
+        planner.load_linknet_first("CRYPTO_LONG", tmp_path)
+    entry["source_artifacts_sha256"] = {"model_v1_CRYPTO_LONG.npz": "a" * 64}
+    document = json.loads(path.read_text())
+    document["meta"]["cat_side"] = "STOCKS_LONG"
+    path.write_text(json.dumps(document))
+    declaration["expected_sha256_by_filename"][path.name] = hashlib.sha256(path.read_bytes()).hexdigest()
+    declaration_path.write_text(json.dumps(declaration))
+    with pytest.raises(ValueError, match="category/scorer mismatch"):
+        planner.load_linknet_first("CRYPTO_LONG", tmp_path)

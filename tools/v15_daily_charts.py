@@ -344,6 +344,38 @@ print(json.dumps({'_coverage_start': coverage_start}))
     return [json.loads(line) for line in response.stdout.splitlines() if line.startswith("{")]
 
 
+def broker_equity_snapshot(host: str) -> dict:
+    """Read actual account equity from the venue's authenticated account endpoint."""
+    script = """import json,sys,time
+from pathlib import Path
+root=Path.home()/'binance'
+sys.path.insert(0,str(root))
+from tools.vector_direct_fill_export import BinanceRO,TradierRO,load_env,trader_local_ip
+env=load_env(root)
+out={}
+if %r == 's1':
+    broker=BinanceRO(env,root/'data/vector_direct',trader_local_ip())
+    for acct in ('flz','men','ang','inf','fin'):
+        try:
+            row=broker._get(acct,'/fapi/v2/account',{})
+            out[acct]={'equity_usd':row.get('totalMarginBalance'),'wallet_usd':row.get('totalWalletBalance'),'unrealized_usd':row.get('totalUnrealizedProfit'),'available_usd':row.get('availableBalance'),'source':'Binance GET /fapi/v2/account'}
+        except Exception as exc: out[acct]={'error':type(exc).__name__+': '+str(exc)[:100]}
+else:
+    broker=TradierRO(env)
+    for acct in ('tra','trb','trc'):
+        try:
+            aid,*_=broker.account(acct)
+            row=(broker._get(acct,f'/accounts/{aid}/balances') or {}).get('balances') or {}
+            out[acct]={'equity_usd':row.get('total_equity'),'cash_usd':row.get('total_cash'),'open_pl_usd':row.get('open_pl'),'closed_today_pl_usd':row.get('close_pl'),'source':'Tradier GET /accounts/{id}/balances'}
+        except Exception as exc: out[acct]={'error':type(exc).__name__+': '+str(exc)[:100]}
+print(json.dumps({'asof_utc':time.strftime('%%FT%%TZ',time.gmtime()),'accounts':out}))
+""" % host
+    response = ssh(host, "python3 - <<'PY'\n" + script + "PY", 120)
+    if response.returncode != 0:
+        raise RuntimeError(f"{host} broker equity read failed: {response.stderr.strip()[-200:]}")
+    return json.loads(response.stdout.splitlines()[-1])
+
+
 def _chart_array(page: str, name: str) -> list:
     match = re.search(r"const " + name + r" = ([^\n]+);", page)
     if not match:
@@ -351,7 +383,7 @@ def _chart_array(page: str, name: str) -> list:
     return json.loads(match.group(1))
 
 
-def discrepancy_overlay(page: str, board: dict, rows: list[dict]) -> tuple[str, dict]:
+def discrepancy_overlay(page: str, board: dict, rows: list[dict], equity: dict | None = None) -> tuple[str, dict]:
     """Compare action and exact bar after publication; draw full-height discrepancy markers."""
     labels = _chart_array(page, "LABELS")
     trades = _chart_array(page, "TRADES")
@@ -380,7 +412,7 @@ def discrepancy_overlay(page: str, board: dict, rows: list[dict]) -> tuple[str, 
             vector.add((bar_times[index], action))
     live, accepted = set(), set()
     accounts = {}
-    broker_events, stop_events = [], []
+    broker_events, stop_events, order_outcomes = [], [], []
     for row in rows:
         if row.get("ss") != board["symside"] or row.get("dry_run"):
             continue
@@ -389,8 +421,9 @@ def discrepancy_overlay(page: str, board: dict, rows: list[dict]) -> tuple[str, 
         if not 0 <= display_index < len(bar_times) or event_time >= bar_times[-1] + 900:
             continue
         if row.get("event") == "STOP":
-            if row.get("status") in ("PLACED", "PREARM_VERIFIED") and row.get("level"):
-                stop_events.append({"i": display_index, "level": float(row["level"]), "status": row["status"], "acct": row.get("acct"), "time": _html.escape(str(row.get("iso") or ""))})
+            stop_status = row.get("status") or row.get("act")
+            if stop_status in ("PLACED", "PREARM_VERIFIED", "CANCEL_ON_CLOSE", "STOP_RETAINED_POSITION_HELD"):
+                stop_events.append({"i": display_index, "level": float(row.get("level") or 0), "status": stop_status, "acct": row.get("acct"), "time": _html.escape(str(row.get("iso") or ""))})
             continue
         if row.get("event") != "ORDER" or row.get("status") != "SENT":
             continue
@@ -405,6 +438,7 @@ def discrepancy_overlay(page: str, board: dict, rows: list[dict]) -> tuple[str, 
         filled = (broker_fill.get("found") and float(broker_fill.get("exec_qty") or 0) > 0
                   and str(broker_fill.get("status") or "").lower() in ("filled", "partially_filled")) or (crypto and (status in ("FILLED", "PARTIALLY_FILLED") or float(response.get("executedQty") or 0) > 0))
         terminal_unfilled = str(broker_fill.get("status") or "").lower() in ("rejected", "canceled", "expired") and float(broker_fill.get("exec_qty") or 0) <= 0
+        order_outcomes.append({"time": iso(datetime.datetime.fromtimestamp(event_time, datetime.timezone.utc)), "acct": str(row.get("acct") or ""), "action": key[1], "qty": float(row.get("qty") or 0), "status": str(broker_fill.get("status") or response.get("status") or "UNVERIFIED"), "order_id": str(broker_fill.get("order_id") or response.get("orderId") or response.get("id") or ""), "reason": str(row.get("why") or "")[:160]})
         if filled:
             if key[0] >= first and key[0] in bar_times:
                 live.add(key)
@@ -422,21 +456,28 @@ def discrepancy_overlay(page: str, board: dict, rows: list[dict]) -> tuple[str, 
     pending = [{"i": bar_index[bar], "action": act} for bar, act in sorted(accepted - live)]
     data = json.dumps({"blue": blue, "orange": orange, "accepted_unverified": pending}, separators=(",", ":"))
     fills_json = json.dumps(broker_events, separators=(",", ":"))
-    stops_json = json.dumps(stop_events, separators=(",", ":"))
+    stops_json = json.dumps([r for r in stop_events if r["level"] > 0], separators=(",", ":"))
     plugin = ("const DISCREPANCIES = " + data + ";\nconst BROKER_FILLS = " + fills_json + ";\nconst BROKER_STOPS = " + stops_json + ";\n"
               "DATASETS.push({label:'CONFIRMED broker fill',data:BROKER_FILLS.map(r=>({x:LABELS[r.i],y:r.price,qty:r.qty,price:r.price,reason:r.action+' '+r.acct+' '+r.reason+' order '+r.order_id})),type:'scatter',backgroundColor:'#38bdf8',borderColor:'#ffffff',borderWidth:2.5,pointStyle:'star',pointRadius:11,pointHoverRadius:15,order:30});\n"
               "DATASETS.push({label:'broker protective stop placed',data:BROKER_STOPS.map(r=>({x:LABELS[r.i],y:r.level,qty:'stop',price:r.level,reason:r.status+' '+r.acct})),type:'scatter',backgroundColor:'#e879f9',borderColor:'#ffffff',borderWidth:2,pointStyle:'rectRot',pointRadius:8,pointHoverRadius:12,order:29});\n"
               "Chart.register({id:'forwardDiscrepancyLines',afterDatasetsDraw(chart){const x=chart.scales.x,a=chart.chartArea,ctx=chart.ctx;for(const [name,color] of [['blue','#2563eb'],['orange','#f97316']]){for(const row of DISCREPANCIES[name]){const px=x.getPixelForValue(row.i);if(px<a.left||px>a.right)continue;ctx.save();ctx.strokeStyle=color;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(px,a.top);ctx.lineTo(px,a.bottom);ctx.stroke();ctx.restore();}}}});\n")
+    page = page.replace("pointRadius:5.5", "pointRadius:8")
     page = page.replace("new Chart(c,{", plugin + "new Chart(c,{", 1)
     rows_html = "".join(f"<tr><td>{_html.escape(r['time'])}</td><td>{_html.escape(str(r['acct']))}</td><td>{_html.escape(r['action'])}</td><td>{r['qty']:g}</td><td>${r['price']:.4f}</td><td>{_html.escape(r['reason'])}</td><td>{_html.escape(r['order_id'])}</td></tr>" for r in sorted(broker_events, key=lambda r: r["time"]))
-    stop_html = "".join(f"<tr><td>{r['time']}</td><td>{_html.escape(str(r['acct']))}</td><td>{_html.escape(r['status'])}</td><td>${r['level']:.4f}</td></tr>" for r in sorted(stop_events, key=lambda r: r["time"]))
+    stop_html = "".join(f"<tr><td>{r['time']}</td><td>{_html.escape(str(r['acct']))}</td><td>{_html.escape(r['status'])}</td><td>{'$' + format(r['level'], '.4f') if r['level'] else '—'}</td></tr>" for r in sorted(stop_events, key=lambda r: r["time"]))
+    order_html = "".join(f"<tr><td>{_html.escape(r['time'])}</td><td>{_html.escape(r['acct'])}</td><td>{_html.escape(r['action'])}</td><td>{r['qty']:g}</td><td>{_html.escape(r['status'])}</td><td>{_html.escape(r['order_id'])}</td><td>{_html.escape(r['reason'])}</td></tr>" for r in sorted(order_outcomes, key=lambda r: r["time"]))
     summary = (f"<div class='metrics'><b>AFTER ORIGINAL BOARD PUBLICATION — VECTOR VS CONFIRMED BROKER FILLS</b> "
                f"<span style='color:#60a5fa'>blue live only {len(blue)}</span> · "
                f"<span style='color:#fb923c'>orange vector only {len(orange)}</span> · "
                f"""accepted, fill unverified {len(pending)}. Exact 15 minute bar and action; quantities ignored. """
                f"Journal coverage starts {_html.escape(iso(datetime.datetime.fromtimestamp(coverage, datetime.timezone.utc)) if coverage else 'UNAVAILABLE')}; earlier vector events are unassessed. "
                f"Stock 'ok' responses are order acceptance, not actual fills. No broker fill history means orange marks require investigation.</div>"
-               f"<details open><summary>{len(broker_events)} confirmed broker fills (blue stars) · {len(stop_events)} protective stop records (purple diamonds) within this chart window</summary><table><tr><th>UTC fill</th><th>account</th><th>action</th><th>qty</th><th>fill price</th><th>trader reason</th><th>broker order</th></tr>{rows_html}</table><table><tr><th>UTC</th><th>account</th><th>stop status</th><th>level</th></tr>{stop_html}</table></details>")
+               f"<details open><summary>{len(broker_events)} confirmed broker fills (blue stars) · {len(stop_events)} protective stop records (purple diamonds at placed level) within this chart window</summary><table><tr><th>UTC fill</th><th>account</th><th>action</th><th>qty</th><th>fill price</th><th>trader reason</th><th>broker order</th></tr>{rows_html}</table><table><tr><th>UTC</th><th>account</th><th>stop status</th><th>level</th></tr>{stop_html}</table><table><tr><th>UTC order</th><th>account</th><th>action</th><th>qty</th><th>broker status</th><th>order ID</th><th>trader reason</th></tr>{order_html}</table></details>")
+    if equity:
+        stock = not board["symside"].rsplit("_", 1)[0].endswith(("USDT", "USDC", "USD1"))
+        selected = equity.get("accounts", {})
+        figures = " · ".join(f"{_html.escape(acct)} equity ${float(row['equity_usd']):,.2f} (wallet ${float(row.get('wallet_usd') or 0):,.2f}; available ${float(row.get('available_usd') or 0):,.2f})" if row and row.get("equity_usd") is not None and not stock else f"{_html.escape(acct)} equity ${float(row['equity_usd']):,.2f} (cash ${float(row.get('cash_usd') or 0):,.2f}; open P/L ${float(row.get('open_pl_usd') or 0):+,.2f}; closed today ${float(row.get('closed_today_pl_usd') or 0):+,.2f})" if row and row.get("equity_usd") is not None else f"{_html.escape(acct)} UNAVAILABLE: {_html.escape(str((row or {}).get('error') or 'missing broker value'))}" for acct, row in selected.items())
+        summary += f"<div class='metrics'><b>BROKER ACCOUNT EQUITY</b> · as of {_html.escape(str(equity.get('asof_utc') or '?'))} · {figures} · direct authenticated venue API; current snapshot, not historical chart P/L.</div>"
     page = page.replace("<div id='wrap'>", summary + "<div id='wrap'>", 1)
     return page, {"live_only": len(blue), "vector_only": len(orange), "accepted_unverified": len(pending), "confirmed_broker_fills": len(broker_events), "protective_stop_records": len(stop_events)}
 
@@ -464,6 +505,8 @@ def publish(boards: dict, results: list, run_id: str, started: str, partial: boo
     by_sym = {r["symside"]: r for r in results}
     live_rows = {}
     live_errors = {}
+    broker_equity = {}
+    equity_errors = {}
     for host in HOSTS:
         sides = {s for s, r in by_sym.items() if r.get("status") == "OK" and ("s1" if s.rsplit("_", 1)[0].endswith(("USDT", "USDC", "USD1")) else "s5") == host}
         stamps = [parse_iso(boards[s].get("published_utc")) for s in sides]
@@ -473,6 +516,10 @@ def publish(boards: dict, results: list, run_id: str, started: str, partial: boo
             live_rows[host] = confirmed_order_rows(host, sides, min(t.timestamp() for t in stamps if t) - 35 * 86400)
         except Exception as exc:
             live_errors[host] = str(exc)[:180]
+        try:
+            broker_equity[host] = broker_equity_snapshot(host)
+        except Exception as exc:
+            equity_errors[host] = str(exc)[:180]
     entries, now = [], iso(utcnow())
     for symside in sorted(boards):
         board, res = boards[symside], by_sym.get(symside)
@@ -497,7 +544,10 @@ def publish(boards: dict, results: list, run_id: str, started: str, partial: boo
                     text = text.replace("<div id='wrap'>", "<div class='metrics' style='color:#ef4444'>LIVE FILL COMPARISON UNAVAILABLE: " + _html.escape(live_errors[owner]) + "</div><div id='wrap'>", 1)
                     entry["discrepancy_error"] = live_errors[owner]
                 else:
-                    text, entry["discrepancies"] = discrepancy_overlay(text, board, live_rows.get(owner, []))
+                    text, entry["discrepancies"] = discrepancy_overlay(text, board, live_rows.get(owner, []), broker_equity.get(owner))
+                if owner in equity_errors:
+                    text = text.replace("<div id='wrap'>", "<div class='metrics' style='color:#ef4444'>BROKER EQUITY UNAVAILABLE: " + _html.escape(equity_errors[owner]) + "</div><div id='wrap'>", 1)
+                    entry["broker_equity_error"] = equity_errors[owner]
                 verify_html(text, symside, require_table=True)
                 if parse_chart_metrics(text).get("gain_pct") != res["metrics"]["gain_pct"]:
                     raise AssertionError("final file gain differs from worker result")

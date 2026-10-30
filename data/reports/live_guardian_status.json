@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-30T23:04:52Z",
+ "ts": "2026-10-30T23:10:05Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -126,51 +126,51 @@
    "pids": [
     "56796"
    ],
-   "starts_30m": 0,
-   "log_age_s": 4.0
+   "starts_30m": 1,
+   "log_age_s": 8.0
   },
   "men": {
    "pids": [
     "59391"
    ],
    "starts_30m": 1,
-   "log_age_s": 45.0
+   "log_age_s": 2.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 10.0
+   "log_age_s": 7.0
   },
   "inf": {
    "pids": [
     "64156"
    ],
    "starts_30m": 1,
-   "log_age_s": 6.0
+   "log_age_s": 13.0
   },
   "flz": {
    "pids": [
     "70377"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 6.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 14584.0
+   "log_age_s": 14898.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 15998.0
+   "log_age_s": 16313.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-30T23:04:52Z",
+   "ts": "2026-10-30T23:10:06Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "flz:ZECUSDC_LONG",
@@ -224,5 +224,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.86
+ "sweep_s": 1.89
 }
