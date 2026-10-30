@@ -20,13 +20,6 @@
     "symbol": "MINAUSDT",
     "side": "SHORT"
   },
-  "ang:PUMPUSDT_LONG": {
-    "orderId": "4000002009759706",
-    "stopPrice": 0.003739,
-    "entry_sig": "2026-10-30 03:45:39.664000+00:00",
-    "symbol": "PUMPUSDT",
-    "side": "LONG"
-  },
   "ang:XMRUSDT_LONG": {
     "orderId": "4000002008929381",
     "stopPrice": 595.76,
@@ -62,11 +55,25 @@
     "symbol": "ASTERUSDT",
     "side": "LONG"
   },
+  "ang:PUMPUSDT_LONG": {
+    "orderId": "4000002009759706",
+    "stopPrice": 0.003739,
+    "entry_sig": "2026-10-30 03:45:39.664000+00:00",
+    "symbol": "PUMPUSDT",
+    "side": "LONG"
+  },
   "ang:BEAMXUSDT_LONG": {
     "orderId": "4000002009759127",
     "stopPrice": 0.003212,
     "entry_sig": "2026-10-30 03:45:29.045000+00:00",
     "symbol": "BEAMXUSDT",
+    "side": "LONG"
+  },
+  "ang:RAYSOLUSDT_LONG": {
+    "orderId": "4000002009821250",
+    "stopPrice": 1.5075,
+    "entry_sig": "2026-10-30 04:15:41.175000+00:00",
+    "symbol": "RAYSOLUSDT",
     "side": "LONG"
   }
 }

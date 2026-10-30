@@ -213,7 +213,8 @@ def dispatch(boards: dict, run_id: str, procs: int) -> list:
         if "error" in board:
             continue
         symbol = symside.rsplit("_", 1)[0]
-        hosts = [h for h in HOSTS if symbol in inv[h]]
+        home = "s1" if symbol.endswith(("USDT", "USDC", "USD1")) else "s5"  # USER 2026-10-30: crypto NPZ on S1, stock NPZ on S5
+        hosts = [h for h in HOSTS if h == home and symbol in inv[h]]
         if not hosts:
             board["error"] = f"NPZ {symbol}.npz on no verified worker ({', '.join(HOSTS) or 'none reachable'})"
             continue
@@ -511,8 +512,10 @@ def sync_priority(halted: set) -> dict:
 
 
 def enforce(manifest=None) -> dict:
+    """USER 2026-10-30 "KEEP OUT OF THE TRADERS": deterioration is REPORTED only (manifest, index, events log); nothing is
+    pushed to any trader root and nothing is written to the fleet priority file."""
     doc = update_halts(manifest)
-    return {"halted": sorted(doc["halts"]), "halt_push": push_halts(doc), "priority": sync_priority(set(doc["halts"]))}
+    return {"deteriorated": sorted(doc["halts"]), "halt_push": "DISABLED (user: keep out of the traders)", "priority": "DISABLED"}
 
 
 def slot_due(now: datetime.datetime) -> str:
@@ -536,8 +539,6 @@ def main() -> int:
     now = utcnow()
     slot = slot_due(now) if (a.scheduled or not a.symside) else None
     if a.scheduled and not slot:
-        if load_halts():
-            enforce()
         return 0
     LOCK.parent.mkdir(parents=True, exist_ok=True)
     lock_fh = open(LOCK, "w")

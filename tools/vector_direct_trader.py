@@ -393,7 +393,7 @@ def plan_account(acct, venue, keys, states, positions, bar, done, allowed, prev_
             ratio = min(4.0, max(0.25, eq / oq)) if eq > 0 and oq > 0 else 1.0
             anchor = st.get("engine_open_bar_ts") or st.get("entry_bar") or tail
             orders.append({"acct": acct, "ss": ss, "act": "OPEN", "notional": START_POSITION_SIZE * ratio,
-                           "key": f"{acct}|{ss}|{tail}|OPEN", "why": f"board holds since {anchor}, broker flat (engine qty ratio {ratio:.3f})"})
+                           "key": f"{acct}|{ss}|{tail}|OPEN", "anchor": int(anchor), "why": f"board holds since {anchor}, broker flat (engine qty ratio {ratio:.3f})"})
         elif board_open and held > 0:
             if int(st.get("acts_bar_ts") or -1) != tail:
                 continue
@@ -826,6 +826,7 @@ class Trader:
         self.act = Activation(self.out / f"activation_{self.venue}{_sfx}.json", self.accounts)
         self.done_ts = {}
         self.done = self._load_done()
+        self.filled_open_anchors = self._load_filled_open_anchors()
         self.quiet = set()
         self.attempts = {}
         self.expect = []
@@ -841,6 +842,28 @@ class Trader:
 
     def _ledger_path(self, ts=None):
         return self.out / f"ledger_{self.venue}_{dt.datetime.fromtimestamp(ts or time.time(), dt.timezone.utc):%Y-%m-%d}.jsonl"
+
+    def _load_filled_open_anchors(self):
+        filled = set()
+        for days_back in range(31):
+            path = self._ledger_path(time.time() - days_back * 86400)
+            try:
+                with path.open() as rows:
+                    for line in rows:
+                        row = json.loads(line)
+                        if row.get("event") != "ORDER" or row.get("act") != "OPEN" or row.get("status") != "SENT":
+                            continue
+                        response = row.get("resp") or {}
+                        if not isinstance(response, dict):
+                            continue
+                        if str(response.get("status") or "").upper() != "FILLED" and float(response.get("executedQty") or 0) <= 0:
+                            continue
+                        anchor = row.get("anchor") or str(row.get("why") or "").split("board holds since ")[-1].split(",", 1)[0]
+                        if str(anchor).isdigit():
+                            filled.add((row.get("acct"), row.get("ss"), int(anchor)))
+            except (OSError, ValueError, TypeError):
+                continue
+        return filled
 
     def _load_done(self):
         done = set()
@@ -1340,6 +1363,14 @@ class Trader:
             symbol, side = split_ss(o["ss"])
             held = float((pos.get(o["ss"]) or {}).get("qty") or 0.0)
             row = {"event": "ORDER", "acct": acct, "ss": o["ss"], "act": o["act"], "key": o["key"], "why": o["why"], "held": held}
+            if o.get("anchor") is not None:
+                row["anchor"] = int(o["anchor"])
+            if o["act"] == "OPEN" and (acct, o["ss"], o.get("anchor")) in self.filled_open_anchors:
+                row.update({"status": "SKIP_ALREADY_FILLED_ANCHOR", "final": True})
+                self.done.add(o["key"])
+                self._ledger(row)
+                log(f"{acct} {o['ss']} OPEN skipped: board entry {o['anchor']} already filled once")
+                continue
             if self.venue == "stocks" and o["act"] == "OPEN" and held_syms.get(symbol, set()) - {side}:
                 row.update({"status": "SKIP_OPPOSITE_SIDE_HELD", "final": True})
                 self.done.add(o["key"])
@@ -1378,6 +1409,8 @@ class Trader:
             try:
                 resp = self.broker.send(acct, o, qty)
                 row.update({"status": "SENT", "resp": resp, "final": True})
+                if o["act"] == "OPEN" and o.get("anchor") is not None and (str(resp.get("status") or "").upper() == "FILLED" or float(resp.get("executedQty") or 0) > 0):
+                    self.filled_open_anchors.add((acct, o["ss"], int(o["anchor"])))
                 self.done.add(o["key"])
                 self.done_ts[o["key"]] = time.time()
                 log(f"SENT {acct} {o['ss']} {o['act']} qty={qty} px~{price} -> {resp}")
