@@ -465,13 +465,13 @@ def test_held_file_carries_per_side_notional_summed_over_accounts(tmp_path):
     assert doc["notional"] == {"XUSDT_LONG": 30.0, "YUSDT_SHORT": 5.0} and doc["total_notional"] == 35.0
 
 
-def test_deterioration_halt_blocks_open_and_augment_never_exits(tmp_path):
+def test_deterioration_halt_closes_and_never_reenters(tmp_path):
     halted = {"XUSDT_LONG": {"halted_utc": "2026-10-30T04:00:00Z"}}
     orders, notes = V.plan_account("ang", "crypto", ["XUSDT_LONG"], {"XUSDT_LONG": st(True, eq=75.0, oq=100.0)}, {}, BAR, set(), ALLOW, halted=halted)
-    assert orders == [] and notes[0][1].startswith("DETERIORATION_HALT_NO_OPEN")
+    assert orders == [] and notes[0][1] == "DETERIORATED_NO_REENTRY"
     acts = [{"type": "REDUCE", "qty": 25.0, "qty_before": 100.0, "qty_frac": 0.25}, {"type": "AUGMENT", "qty": 50.0, "qty_before": 75.0}]
     orders, notes = V.plan_account("ang", "crypto", ["XUSDT_LONG"], {"XUSDT_LONG": st(True, acts=acts)}, {"XUSDT_LONG": {"qty": 8.0}}, BAR, set(), ALLOW, halted=halted)
-    assert [o["act"] for o in orders] == ["REDUCE"] and any(n[1].startswith("DETERIORATION_HALT_NO_AUGMENT") for n in notes)
+    assert [o["act"] for o in orders] == ["CLOSE"] and orders[0]["reason"] == "DETERIORATED_CLOSE"
     orders, _ = V.plan_account("ang", "crypto", ["XUSDT_LONG"], {"XUSDT_LONG": st(False)}, {"XUSDT_LONG": {"qty": 12.0}}, BAR, set(), ALLOW, halted=halted)
     assert [(o["act"], o["qty"]) for o in orders] == [("CLOSE", 12.0)]
     (tmp_path / "data").mkdir()

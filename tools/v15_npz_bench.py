@@ -33,7 +33,7 @@ CODE_EXCLUDE = ["data", "backtest_v8", "backtest_v7", "SPREADSHEETS", "klines_ca
 DATA_EXCLUDE_DIRS = {"eval_cache_v1.db", "klines_3m_hist_w2", "klines_5m_hist_w2", "matrix_npz", "reports", "tradier", "sweep_results", "vec_live", "hourly_reconfig", "yellow_discovery", "s6_365", "causal_learner.db", "kpi"}
 DATA_MAX_FILE = 150 * 1024 * 1024
 ENV_KEEP_PREFIX = ("V15_", "V12_")
-ALLOWED_WINDOWS = (1, 7, 20, 30, 365)  # v15_pilot --window-days whitelist
+ALLOWED_WINDOWS = (1, 7, 30, 365)  # evaluate_v12._exact_30d_slice accepts these windows
 MIN_WINDOW_COVERAGE = 0.80  # tools/opt/metrics.py: a board whose NPZ covers less of the window is INVALID
 ENV_DROP = {"V15_PROGRESS_DIR", "V15_OUT_DIR", "V15_START_OVERRIDES", "V15_ISOLATED_PROOF", "V15_EVAL_CACHE_DB", "V15_FILL_SLICE_S", "V15_V17_CARRY_DIR"}
 CRYPTO_SUFFIX = ("USDT", "USDC", "BUSD", "FDUSD", "TUSD")
@@ -562,7 +562,7 @@ def _cmd_run_body(args, snap, man, run_dir):
         _want = int(args.window_days) - int(_ho)
         # Keep the requested window while the bars surviving the cut still cover it at the validator's floor
         # (metrics.MIN_WINDOW_COVERAGE = 0.80); otherwise snap DOWN to the largest allowed window, because the pilot
-        # refuses anything else ("BLOCKED: only 30/20/7/1/365 allowed"). 30 d window - 7 d holdout -> 20 d fit.
+        # refuses anything else. The evaluator's supported fit below 23 d is 7 d.
         _depths = [(man.get("npz") or {}).get(sym_of(s), {}).get("days_15m") for s in man["sides"] if sym_of(s) in (man.get("npz") or {})]
         _deep = bool(_depths) and all(isinstance(d, (int, float)) and d >= int(args.window_days) + _ho + 1 for d in _depths)
         if _deep:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Keep one localhost SSH forward per server alive: 2201 S1, 2202 S2, 2205 S5, 2206 S6.
+"""Keep one localhost SSH forward per server alive: 2201+2203 S1, 2202 gateway, 2204 S2, 2205 S5, 2206 S6.
 
 Each port walks its candidate routes in order (direct public, fallback IP, gateway ProxyJump). A route is only
 considered up when a probe THROUGH the port returns the expected hostname, so a forward that lands on the wrong box
@@ -12,18 +12,14 @@ import time
 
 # Route forms: "alias" (direct ssh alias) or "J:<jump>|<target>" (plan B: reach a private 10.0.0.x through a
 # live server that is interconnected with it). Each port is verified by the hostname it returns.
-PLAN_B_JUMPS = ["gateway-internal", "s6-pub", "s5-pub", "s1-pub"]
+PRIVATE_JUMP = "gateway-internal"
 PORTS = {
-    2201: {"name": "s1", "expect": "niels", "routes": ["s1-pub", "s1-fip-nbg", "s1-fip-fsn"]
-           + [f"J:{j}|10.0.0.3" for j in PLAN_B_JUMPS]},
-    2202: {"name": "gateway", "expect": "gateway", "routes": ["gateway-internal", "gateway-redis"]
-           + [f"J:{j}|10.0.0.2" for j in PLAN_B_JUMPS if j != "gateway-internal"]},
-    2204: {"name": "s2", "expect": "s2", "routes": ["s2", "s2-int"]
-           + [f"J:{j}|10.0.0.4" for j in PLAN_B_JUMPS]},
-    2205: {"name": "s5", "expect": "s5", "routes": ["s5-pub", "s5"]
-           + [f"J:{j}|10.0.0.5" for j in PLAN_B_JUMPS if j != "s5-pub"]},
-    2206: {"name": "s6", "expect": "s6", "routes": ["s6-pub", "s6"]
-           + [f"J:{j}|10.0.0.6" for j in PLAN_B_JUMPS if j != "s6-pub"]},
+    2201: {"name": "s1", "expect": "niels", "routes": [f"J:{PRIVATE_JUMP}|10.0.0.3", "s1-pub", "s1-fip-nbg", "s1-fip-fsn"]},
+    2202: {"name": "gateway", "expect": "gateway", "routes": ["gateway-internal", "gateway-redis"]},
+    2203: {"name": "s1", "expect": "niels", "routes": [f"J:{PRIVATE_JUMP}|10.0.0.3", "s1-fip-nbg", "s1-pub"]},
+    2204: {"name": "s2", "expect": "s2", "routes": [f"J:{PRIVATE_JUMP}|10.0.0.4", "s2", "s2-pub"]},
+    2205: {"name": "s5", "expect": "s5", "routes": [f"J:{PRIVATE_JUMP}|10.0.0.5", "s5", "s5-pub"]},
+    2206: {"name": "s6", "expect": "s6", "routes": [f"J:{PRIVATE_JUMP}|10.0.0.6", "s6", "s6-pub"]},
 }
 COMMON = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "-o", "ControlMaster=no", "-o", "ControlPath=none",
           "-o", "StrictHostKeyChecking=accept-new"]
