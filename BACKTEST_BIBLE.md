@@ -1,5 +1,17 @@
 # 📖 BACKTEST BIBLE — Single Source of Truth — 2026-09-26 Redo, updated 2026-10-07
 
+
+## 🔴 CONNECTIONS ARE 100% RELIABLE — NO EXCUSES, EVER (USER 2026-10-30)
+
+There is no excuse for even a millisecond of delay or an unreachable host, from anywhere to anywhere. Every agent must treat any "down", "unreachable", "timed out" or "tunnel is broken" claim as a defect to fix, not a status to report.
+
+- **Full mesh, always up:** Mac ↔ S1, S2, S5, S6 and every server ↔ every other server (S1 ↔ S2 ↔ S5 ↔ S6), over every live path: named aliases, `gateway-internal`, 10.0.0.x, public IPs, and the local tunnel ports 2201–2206 on the Mac.
+- **Mac tunnels:** `tools/tunnel_supervisor.py` is the single manager (ports 2201 S1, 2202 gateway, 2203 S1, 2204 S2, 2205 S5, 2206 S6). It runs under launchd with KeepAlive and waits for each forward to bind before judging it. `tools/mesh_watchdog.sh` (launchd, every 60 s) checks every port returns the expected hostname and restarts the supervisor only after three consecutive failures or a stale log.
+- **Server watchdogs:** `mesh-peer-watch.service` (systemd user, Restart=always) on every server probes every peer over 10.0.0.x and falls back to the gateway jump, logging each route with its answer to `~/mesh_peer_watch.log`.
+- **Never claim a route is down without its exact error.** Never add a new excuse path. A dropped route is re-routed on the spot to the next live path, and the failure is logged.
+- **No single route is ever the only route.** A transfer must race every live path at once so a dropped connection is invisible.
+- **Owner of record:** `tools/mesh_watchdog.sh`, `tools/tunnel_supervisor.py`, `~/mesh_peer_watch.sh` on each server. Changing them requires a backup first and a verification run afterwards.
+
 ## 2026-10-26 fleet and premarket operating contract (supersedes older queue exceptions)
 
 - **OOM policy (2026-10-26 correction):** the fleet reaper must never send `SIGTERM` or `SIGKILL` to an active pilot because `MemAvailable` crossed an OOM threshold. OOM pressure blocks or reduces *new* admissions through the memory worker plan; active pilots remain alive and checkpoint normally. This supersedes the older “least-progress OOM victim” behavior and any claim that the OOM guard can kill a test safely. Stuck, orphaned and hard-cap recovery are separate policies and must not be mislabeled as OOM handling. Every live utilization report must state when disk/RAM gates or lack of eligible work prevent the four-symbol/28-worker target; the target is not a guarantee that can override host safety gates.

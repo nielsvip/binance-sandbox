@@ -20479,6 +20479,87 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     elif _gap_pending is not None:
                         _gap_pending = None  # WIRING LANE E: generic open while pending -> drop (live 9954-9958: position exists)
             continue
+        # 2026-10-12 USER MANDATE — FIXED_STOP: frozen-at-entry dc_15m -0.25% (vv shorts). Non-negotiable: no switch, no cfg read, no veto, evaluated on EVERY bar of EVERY calc. The vector models THIS maker-first software leg (-0.25%, unchanged — USER 2026-10-18 "REGULAR and non negotiable stop orders in the script (maker) should stay at +/- 0.25"); the exchange STOP_MARKET backstop lives on the venue and moved to dc_15m -0.40% / +0.40% (was 0.2999%) so the maker leg gets more room to fill before the taker order takes over.
+        try:
+            _fx_fire = ""
+            if pos is not None:
+                _fx_lvl = float(pos.get("fixed_stop", 0.0) or 0.0)
+                if not np.isfinite(_fx_lvl) or _fx_lvl <= 0:
+                    try:
+                        _fx_c15l = float(_uh_l15[i]) if i < len(_uh_l15) else 0.0
+                        _fx_c15h = float(_uh_h15[i]) if i < len(_uh_h15) else 0.0
+                    except Exception:
+                        _fx_c15l, _fx_c15h = 0.0, 0.0
+                    _fx_lvl = vec_decisions.fixed_stop.freeze_software_level(is_long, _fx_c15l, _fx_c15h, float(pos.get("entry_price", pos.get("avg_price", px)))) if _fx_ref_default else _fx_freeze_spec(i, float(pos.get("entry_price", pos.get("avg_price", px))))
+                    pos["fixed_stop"] = _fx_lvl
+                if not np.isfinite(_fx_lvl) or _fx_lvl <= 0:
+                    raise RuntimeError("FIXED_STOP has no valid level for an open position")
+                if _fx_sess_open is not None and i < len(_fx_sess_open) and bool(_fx_sess_open[i]) and int(pos.get("entry_bar", i)) < i:
+                    # 2026-10-13 SESSION_OPEN_STOP_REFREEZE (stocks): carried into this session -> new stop at the current dc_15m channel
+                    _fx_new = vec_decisions.fixed_stop.freeze_software_level(is_long, float(_uh_l15[i]) if i < len(_uh_l15) else 0.0, float(_uh_h15[i]) if i < len(_uh_h15) else 0.0, float(pos.get("entry_price", pos.get("avg_price", px)))) if _fx_ref_default else _fx_freeze_spec(i, float(pos.get("entry_price", pos.get("avg_price", px))))
+                    if _fx_new > 0:
+                        _fx_lvl = _fx_new
+                        pos["fixed_stop"] = _fx_lvl
+                        pos["fixed_stop_eff"] = 0.0
+                if _fx_tight_on:
+                    # E7 FIXED_STOP_TIGHTEN_MODE: the level checked on THIS bar is the ratchet set from information through the
+                    # previous bar (updated below, after the checks) — causal, and never looser than the frozen level.
+                    _fx_lvl = vec_decisions.fixed_stop.tightened(is_long, _fx_lvl, float(pos.get("fixed_stop_eff", 0.0) or 0.0))
+                _fx_px = px
+                if vec_decisions.fixed_stop.breached(is_long, px, _fx_lvl):
+                    _fx_fire = "FIXED_STOP"
+                if int(pos.get("entry_bar", i)) < i and _fx_lvl > 0 and i < len(_fx_bar_lo):
+                    _fx_wick = float(_fx_bar_lo[i]) if is_long else float(_fx_bar_hi[i])
+                    if _fx_wick > 0 and vec_decisions.fixed_stop.breached(is_long, _fx_wick, _fx_lvl):
+                        # filled at the stop level, or at the bar open when the bar gapped through it (never better than the open)
+                        _fx_o = float(_fx_bar_op[i]) if i < len(_fx_bar_op) else 0.0
+                        _fx_px = (min(_fx_lvl, _fx_o) if is_long else max(_fx_lvl, _fx_o)) if _fx_o > 0 else _fx_lvl
+                        _fx_fire = "FIXED_STOP"
+                if _fx_tight_on and not _fx_fire:
+                    pos["fixed_stop_eff"] = vec_decisions.fixed_stop.tightened(is_long, _fx_lvl, vec_decisions.fixed_stop.tighten_candidate(is_long, _fx_spec, float(pos.get("avg_price", pos.get("entry_price", px))), float(pos.get("peak_pnl_pct", 0.0) or 0.0), _fx_ref_now(i), float(px)))
+            if _fx_fire:
+                px = _fx_px
+                pos["fees"] += abs(pos["qty"] * px) * half_fee
+                _pnl = (
+                    pos["realized"]
+                    + (
+                        (px - pos["avg_price"]) * pos["qty"]
+                        if is_long
+                        else (pos["avg_price"] - px) * pos["qty"]
+                    )
+                    - pos["fees"]
+                )
+                _pct = _pnl / pos["deployed"] * 100 if pos["deployed"] else 0.0
+                _tsu = (
+                    float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+                )
+                list.append(trades,
+                    {
+                        "pnl_dollars": _pnl,
+                        "pnl_pct": float(_pct),
+                        "deployed": pos["deployed"],
+                        "reason": _fx_fire,
+                        "type": "CLOSE",
+                        "ts": _tsu,
+                        "price": float(px),
+                        "bar_entry": int(pos["entry_bar"]),
+                        "bar_exit": int(i),
+                        "entry_price": float(pos.get("entry_price", pos["avg_price"])),
+                        "exit_price": float(px),
+                        "qty": float(pos["qty"]),
+                        "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"),
+                        "exit_reason": _fx_fire,
+                        "fixed_stop_level": float(_fx_lvl),
+                        "mandatory_stop_kind": "DC15_FROZEN_DEFAULT" if _fx_ref_default else "",
+                        "bars_held": int(i - pos["entry_bar"]),
+                    }
+                )
+                pos = None
+                cd = cooldown_bars
+                has_closed_before = True
+                continue
+        except Exception as _fixed_stop_error:
+            raise RuntimeError(f"FIXED_STOP evaluation failed for {sym} bar {i}") from _fixed_stop_error
         if _blacklisted:
             # BLACKLIST_SYMBOLS strand (live: process_position NO_ACTION — entries open, never managed)
             bars_in_pos += 1
@@ -21130,85 +21211,6 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _vig_block_px = float(px)
             _vig_block_ts = _tsv
             continue
-        # 2026-10-12 USER MANDATE — FIXED_STOP: frozen-at-entry dc_15m -0.25% (vv shorts). Non-negotiable: no switch, no cfg read, no veto, evaluated on EVERY bar of EVERY calc. The vector models THIS maker-first software leg (-0.25%, unchanged — USER 2026-10-18 "REGULAR and non negotiable stop orders in the script (maker) should stay at +/- 0.25"); the exchange STOP_MARKET backstop lives on the venue and moved to dc_15m -0.40% / +0.40% (was 0.2999%) so the maker leg gets more room to fill before the taker order takes over.
-        try:
-            _fx_fire = ""
-            if pos is not None:
-                _fx_lvl = float(pos.get("fixed_stop", 0.0) or 0.0)
-                if _fx_lvl <= 0:
-                    try:
-                        _fx_c15l = float(_uh_l15[i]) if i < len(_uh_l15) else 0.0
-                        _fx_c15h = float(_uh_h15[i]) if i < len(_uh_h15) else 0.0
-                    except Exception:
-                        _fx_c15l, _fx_c15h = 0.0, 0.0
-                    _fx_lvl = vec_decisions.fixed_stop.freeze_software_level(is_long, _fx_c15l, _fx_c15h, float(pos.get("entry_price", pos.get("avg_price", px)))) if _fx_ref_default else _fx_freeze_spec(i, float(pos.get("entry_price", pos.get("avg_price", px))))
-                    pos["fixed_stop"] = _fx_lvl
-                if _fx_sess_open is not None and i < len(_fx_sess_open) and bool(_fx_sess_open[i]) and int(pos.get("entry_bar", i)) < i:
-                    # 2026-10-13 SESSION_OPEN_STOP_REFREEZE (stocks): carried into this session -> new stop at the current dc_15m channel
-                    _fx_new = vec_decisions.fixed_stop.freeze_software_level(is_long, float(_uh_l15[i]) if i < len(_uh_l15) else 0.0, float(_uh_h15[i]) if i < len(_uh_h15) else 0.0, float(pos.get("entry_price", pos.get("avg_price", px)))) if _fx_ref_default else _fx_freeze_spec(i, float(pos.get("entry_price", pos.get("avg_price", px))))
-                    if _fx_new > 0:
-                        _fx_lvl = _fx_new
-                        pos["fixed_stop"] = _fx_lvl
-                        pos["fixed_stop_eff"] = 0.0
-                if _fx_tight_on:
-                    # E7 FIXED_STOP_TIGHTEN_MODE: the level checked on THIS bar is the ratchet set from information through the
-                    # previous bar (updated below, after the checks) — causal, and never looser than the frozen level.
-                    _fx_lvl = vec_decisions.fixed_stop.tightened(is_long, _fx_lvl, float(pos.get("fixed_stop_eff", 0.0) or 0.0))
-                _fx_px = px
-                if vec_decisions.fixed_stop.breached(is_long, px, _fx_lvl):
-                    _fx_fire = "FIXED_STOP"
-                if int(pos.get("entry_bar", i)) < i and _fx_lvl > 0 and i < len(_fx_bar_lo):
-                    _fx_wick = float(_fx_bar_lo[i]) if is_long else float(_fx_bar_hi[i])
-                    if _fx_wick > 0 and vec_decisions.fixed_stop.breached(is_long, _fx_wick, _fx_lvl):
-                        # filled at the stop level, or at the bar open when the bar gapped through it (never better than the open)
-                        _fx_o = float(_fx_bar_op[i]) if i < len(_fx_bar_op) else 0.0
-                        _fx_px = (min(_fx_lvl, _fx_o) if is_long else max(_fx_lvl, _fx_o)) if _fx_o > 0 else _fx_lvl
-                        _fx_fire = "FIXED_STOP"
-                if _fx_tight_on and not _fx_fire:
-                    pos["fixed_stop_eff"] = vec_decisions.fixed_stop.tightened(is_long, _fx_lvl, vec_decisions.fixed_stop.tighten_candidate(is_long, _fx_spec, float(pos.get("avg_price", pos.get("entry_price", px))), float(pos.get("peak_pnl_pct", 0.0) or 0.0), _fx_ref_now(i), float(px)))
-            if _fx_fire:
-                px = _fx_px
-                pos["fees"] += abs(pos["qty"] * px) * half_fee
-                _pnl = (
-                    pos["realized"]
-                    + (
-                        (px - pos["avg_price"]) * pos["qty"]
-                        if is_long
-                        else (pos["avg_price"] - px) * pos["qty"]
-                    )
-                    - pos["fees"]
-                )
-                _pct = _pnl / pos["deployed"] * 100 if pos["deployed"] else 0.0
-                _tsu = (
-                    float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
-                )
-                list.append(trades,
-                    {
-                        "pnl_dollars": _pnl,
-                        "pnl_pct": float(_pct),
-                        "deployed": pos["deployed"],
-                        "reason": _fx_fire,
-                        "type": "CLOSE",
-                        "ts": _tsu,
-                        "price": float(px),
-                        "bar_entry": int(pos["entry_bar"]),
-                        "bar_exit": int(i),
-                        "entry_price": float(pos.get("entry_price", pos["avg_price"])),
-                        "exit_price": float(px),
-                        "qty": float(pos["qty"]),
-                        "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"),
-                        "exit_reason": _fx_fire,
-                        "fixed_stop_level": float(_fx_lvl),
-                        "mandatory_stop_kind": "DC15_FROZEN_DEFAULT" if _fx_ref_default else "",
-                        "bars_held": int(i - pos["entry_bar"]),
-                    }
-                )
-                pos = None
-                cd = cooldown_bars
-                has_closed_before = True
-                continue
-        except Exception:
-            pass
         # USER 2026-10-28 (verbatim): "DELTA_EXIT_DC15M_FLOOR_BREAK should be tested as a switch ... wired correctly so it does
         # move the needle in both vec and live identically.; DC15M_FORCE_EXIT_ENABLED ... same name in stocks and crypto - it
         # should always be skipped if min_hold is not yet reached". ONE decision with ez_manage/tradier_manage

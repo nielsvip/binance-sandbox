@@ -148,6 +148,17 @@ For full list, **see [`ABSOLUTE_PROHIBITIONS.md`](ABSOLUTE_PROHIBITIONS.md).**
 
 ## INFRASTRUCTURE — GATEWAY + S1 ALWAYS STAY, S4/S5 ARE IMAGES OF S1
 
+## 🔴 CONNECTIONS ARE 100% RELIABLE — NO EXCUSES, EVER (USER 2026-10-30)
+
+There is no excuse for even a millisecond of delay or an unreachable host, from anywhere to anywhere. Every agent must treat any "down", "unreachable", "timed out" or "tunnel is broken" claim as a defect to fix, not a status to report.
+
+- **Full mesh, always up:** Mac ↔ S1, S2, S5, S6 and every server ↔ every other server (S1 ↔ S2 ↔ S5 ↔ S6), over every live path: named aliases, `gateway-internal`, 10.0.0.x, public IPs, and the local tunnel ports 2201–2206 on the Mac.
+- **Mac tunnels:** `tools/tunnel_supervisor.py` is the single manager (ports 2201 S1, 2202 gateway, 2203 S1, 2204 S2, 2205 S5, 2206 S6). It runs under launchd with KeepAlive and waits for each forward to bind before judging it. `tools/mesh_watchdog.sh` (launchd, every 60 s) checks every port returns the expected hostname and restarts the supervisor only after three consecutive failures or a stale log.
+- **Server watchdogs:** `mesh-peer-watch.service` (systemd user, Restart=always) on every server probes every peer over 10.0.0.x and falls back to the gateway jump, logging each route with its answer to `~/mesh_peer_watch.log`.
+- **Never claim a route is down without its exact error.** Never add a new excuse path. A dropped route is re-routed on the spot to the next live path, and the failure is logged.
+- **No single route is ever the only route.** A transfer must race every live path at once so a dropped connection is invisible.
+- **Owner of record:** `tools/mesh_watchdog.sh`, `tools/tunnel_supervisor.py`, `~/mesh_peer_watch.sh` on each server. Changing them requires a backup first and a verification run afterwards.
+
 **NPZ AND KLINE STORAGE LAW (USER 2026-10-30).** The Mac holds NO NPZs. Its network to Hetzner is lossy, so it is never a data store. Full NPZ history lives on the attached drives (WD25, SSD2T) as verified copies, and on the servers that calculate each symbol: S1 (crypto master), S5 (stocks), S2 (crypto workers), S6 (its own sym_sides only). An NPZ may be removed from any location only after a second copy is verified by size and sha256. Append-only: a new bar goes onto the master on the server that calculates it, the moment the bar is produced, and a catch-up runs when a sym_side becomes tradeable again.
 
 **CONNECTIONS — RACE EVERY PATH, NEVER ONE (USER 2026-10-30).** Every server transfer runs over ALL live paths at the same time: the named aliases (`s1`, `s1-int`, `s1-pub`, `s2`, `s5`, `s6`), the gateway (`gateway-internal`, `gateway`), the internal 10.0.0.x addresses, the public IPs, and the local tunnel ports (2200, 2201, 2203, 2205). Split the work across the live paths, and when one drops, its share moves to the others so nothing stalls. A 1 GB file must arrive in seconds, and a dropped connection must go unnoticed. Only report a host as unreachable when every path has failed, and then give the exact error from each path. The existing `tools/ssh_s1_connect.py` race is the reference implementation.
