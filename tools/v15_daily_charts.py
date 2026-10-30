@@ -125,8 +125,28 @@ def discover(only=None) -> dict:
     return best
 
 
-def ssh(host: str, cmd: str, timeout: int = 600, stdin=None) -> subprocess.CompletedProcess:
-    return subprocess.run(SSH + [host, cmd], capture_output=True, text=True, timeout=timeout, input=stdin)
+def ssh(host: str, cmd: str, timeout: int = 600, stdin=None, tries: int = 3) -> subprocess.CompletedProcess:
+    """Same mesh path every attempt (CLAUDE.md connection rule); the last error is raised verbatim."""
+    err = None
+    for attempt in range(tries):
+        try:
+            r = subprocess.run(SSH + [host, cmd], capture_output=True, text=True, timeout=timeout, input=stdin)
+            if r.returncode != 255:
+                return r
+            err = RuntimeError(f"host {host} did not answer: {r.stderr.strip()[-300:]}")
+        except subprocess.TimeoutExpired as exc:
+            err = RuntimeError(f"host {host} did not answer within {timeout}s: {exc}")
+        time.sleep(5 * (attempt + 1))
+    raise err
+
+
+def fetch(host: str, remote: str, local: Path, timeout: int = 1800, tries: int = 3) -> None:
+    for attempt in range(tries):
+        r = subprocess.run(["rsync", "-az", f"{host}:{remote}", str(local)], capture_output=True, text=True, timeout=timeout)
+        if r.returncode == 0:
+            return
+        time.sleep(5 * (attempt + 1))
+    raise RuntimeError(f"host {host} did not answer (rsync {remote}): {r.stderr.strip()[-300:]}")
 
 
 def resolve_remote(boards: dict) -> None:
@@ -138,9 +158,12 @@ def resolve_remote(boards: dict) -> None:
         if not need:
             break
         try:
-            ssh(host, f"cat > /tmp/dc_need.json", 60, json.dumps(need))
-            r = ssh(host, f"cd {root} && python3 tools/v15_daily_chart_worker.py resolve /tmp/dc_need.json", 900)
-            found = json.loads(r.stdout or "{}")
+            ssh(host, "cat > /tmp/dc_need.json", 120, json.dumps(need))
+            ssh(host, f"cd {root} && python3 tools/v15_daily_chart_worker.py resolve /tmp/dc_need.json > /tmp/dc_found.json", 900)
+            local = STAGE / f"found_{host}.json"
+            local.parent.mkdir(parents=True, exist_ok=True)
+            fetch(host, "/tmp/dc_found.json", local, 600)
+            found = json.loads(local.read_text() or "{}")
         except Exception as exc:
             print(f"[daily-charts] resolve on {host} failed: {exc}", flush=True)
             continue
@@ -154,7 +177,11 @@ def resolve_remote(boards: dict) -> None:
 
 
 def npz_inventory(host: str, root: str) -> set:
-    r = ssh(host, f"ls {root}/backtest_v8/indicators/", 60)
+    try:
+        r = ssh(host, f"ls {root}/backtest_v8/indicators/", 120)
+    except Exception as exc:
+        print(f"[daily-charts] NPZ inventory: {exc}", flush=True)
+        return set()
     return {n[:-4] for n in r.stdout.split() if n.endswith(".npz")} if r.returncode == 0 else set()
 
 
@@ -201,10 +228,23 @@ def dispatch(boards: dict, run_id: str, procs: int) -> list:
         local.mkdir(parents=True, exist_ok=True)
         try:
             ssh(host, f"mkdir -p {remote} && cat > {remote}/jobs.json", 120, json.dumps(host_jobs))
-            r = ssh(host, f"cd {HOSTS[host]} && nice -n 15 {WORKER_PY} -u tools/v15_daily_chart_worker.py render {remote}/jobs.json {remote}/out {procs} > {remote}/worker.log 2>&1; tail -2 {remote}/worker.log", 6 * 3600)
-            print(f"[daily-charts] {host}: {r.stdout.strip()[-300:]} {r.stderr.strip()[-200:]}", flush=True)
-            subprocess.run(["rsync", "-az", f"{host}:{remote}/out/", str(local) + "/"], check=True, timeout=1800)
-            subprocess.run(["rsync", "-az", f"{host}:{remote}/worker.log", str(local) + "/"], timeout=300)
+            ssh(host, f"cd {HOSTS[host]} && setsid nohup nice -n 15 {WORKER_PY} -u tools/v15_daily_chart_worker.py render {remote}/jobs.json {remote}/out {procs} > {remote}/worker.log 2>&1 < /dev/null &", 120)
+            deadline, last = time.time() + 6 * 3600, ""
+            while time.time() < deadline:
+                time.sleep(30)
+                try:
+                    last = ssh(host, f"grep -c . {remote}/out/results.jsonl 2>/dev/null; grep -q '] DONE ' {remote}/worker.log && echo DONE; pgrep -f '{remote}/jobs.json' >/dev/null || echo GONE", 120).stdout.split()
+                except Exception as exc:
+                    print(f"[daily-charts] {host} poll: {exc}", flush=True)
+                    continue
+                if "DONE" in last or "GONE" in last:
+                    break
+            print(f"[daily-charts] {host}: worker finished state {last} ({len(host_jobs)} jobs)", flush=True)
+            fetch(host, f"{remote}/out/", local)
+            try:
+                fetch(host, f"{remote}/worker.log", local / "worker.log", 300)
+            except Exception as exc:
+                print(f"[daily-charts] {exc}", flush=True)
             rows = [json.loads(line) for line in (local / "results.jsonl").read_text().splitlines() if line.strip()]
             ssh(host, f"rm -rf {remote}", 120)
         except Exception as exc:
@@ -332,17 +372,147 @@ def index_page(manifest: dict) -> str:
     for e in sorted(manifest["entries"], key=lambda e: (e["status"] != "OK", -(e.get("metrics") or {}).get("gain_pct", -1e9) if e["status"] == "OK" else 0, e["symside"])):
         m, d, o = e.get("metrics") or {}, e.get("deltas") or {}, e.get("orig_metrics") or {}
         if e["status"] == "OK":
-            rows.append(f"<tr><td><a href='{e['chart']}'>{e['symside']}</a></td><td>OK</td><td>{_fmt(m.get('gain_pct'))}</td><td>{_fmt(o.get('gain_pct'))}</td><td>{_fmt(d.get('gain_pct'), 2, True)}</td><td>{_fmt(m.get('bh_pct'))}</td><td>{m.get('trades')}</td><td>{_fmt(m.get('max_dd_pct'))}</td><td>{_fmt(m.get('tim_pct'))}</td><td>{e.get('board_cells_vintage') or 'UNAVAILABLE'}</td><td>{e.get('board_age_at_calc')}</td><td>{e.get('calculated_utc')}</td></tr>")
+            halt = e.get("deterioration")
+            rows.append(f"<tr><td><a href='{e['chart']}'>{e['symside']}</a></td><td{' style=color:#ef4444 title=' + chr(34) + _html.escape('; '.join(halt)) + chr(34) if halt else ''}>{'HALTED' if halt else 'OK'}</td><td>{_fmt(m.get('gain_pct'))}</td><td>{_fmt(o.get('gain_pct'))}</td><td>{_fmt(d.get('gain_pct'), 2, True)}</td><td>{_fmt(m.get('bh_pct'))}</td><td>{m.get('trades')}</td><td>{_fmt(m.get('max_dd_pct'))}</td><td>{_fmt(m.get('tim_pct'))}</td><td>{e.get('board_cells_vintage') or 'UNAVAILABLE'}</td><td>{e.get('board_age_at_calc')}</td><td>{e.get('calculated_utc')}</td></tr>")
         else:
             rows.append(f"<tr style='color:#ef4444'><td><a href='{e['chart']}'>{e['symside']}</a></td><td>FAIL</td><td colspan=10>{_html.escape(e.get('error', '')[:200])}</td></tr>")
     return (
         "<!doctype html><html><head><meta charset=utf-8><title>V15 daily 30D charts</title>"
         "<style>body{font-family:system-ui,monospace;margin:12px;background:#0a0a0a;color:#e5e5e5}a{color:#93c5fd}table{border-collapse:collapse;font-size:11px}th{background:#1f2937;padding:4px}td{border:1px solid #333;padding:3px}</style></head><body>"
-        f"<h2>V15 daily 30D charts — run {manifest['run_id']}</h2><p>started {manifest['started_utc']} · finished {manifest['finished_utc']} · {manifest['ok']}/{manifest['sym_sides']} OK · {manifest['fail']} FAIL{' · COMPLETE' if manifest['complete'] else ' · INCOMPLETE'}</p>"
+        f"<h2>V15 daily 30D charts — run {manifest['run_id']}</h2><p>started {manifest['started_utc']} · finished {manifest['finished_utc']} · {manifest['ok']}/{manifest['sym_sides']} OK · {manifest['fail']} FAIL{' · COMPLETE' if manifest['complete'] else ' · INCOMPLETE'} · {len((manifest.get('enforcement') or {}).get('halted') or [])} sym_sides HALTED (no open/augment; exits follow the board) — rules: " + _html.escape(", ".join(f"{k} {w} >= {v}" for k, w, v in DETERIORATION_RULES)) + ", gain turning non-positive</p>"
         "<table><thead><tr><th>sym_side</th><th>status</th><th>gain % today</th><th>gain % board</th><th>Δ gain</th><th>B&H %</th><th>trades</th><th>max DD %</th><th>TIM %</th><th>board cells calculated</th><th>board age at recalc</th><th>recalculated</th></tr></thead><tbody>"
         + "".join(rows)
         + "</tbody></table></body></html>\n"
     )
+
+
+# USER 2026-10-30: "ANY number that deteriorates significantly gets lined up with priority in v15_fleet_scheduler and stops
+# trading immediately". The board launcher is tools/fleet_dispatch.py since 2026-10-27 (v15_fleet_scheduler's S1 cron is
+# disabled), so priority = data/fleet_priority.json on S1+S2; the stop = data/deterioration_halt.json in every
+# vector_direct_trader root (no OPEN / AUGMENT; exits never blocked). Today vs the published board, same set:
+DETERIORATION_RULES = (("gain_pct", "drop", 5.0), ("delta_vs_bh", "drop", 5.0), ("max_dd_pct", "rise", 2.0), ("wr_pct", "drop", 15.0))
+HALT_FILE = ROOT / "data" / "deterioration_halt.json"
+HALT_TARGETS = (("s1", "~/binance/data"), ("s5", "~/binance/data"), ("s5", "~/trc7d_root/data"))
+PRIORITY_HOSTS = ("s1", "s2")
+PRIORITY_REMOTE = "~/binance-sandbox/data/fleet_priority.json"
+PRIORITY_MINE = ROOT / "data" / "reports" / "daily_charts_priority_added.json"
+
+
+def deterioration(entry: dict) -> list:
+    o, n = entry.get("orig_metrics") or {}, entry.get("metrics") or {}
+    out = []
+    for key, way, limit in DETERIORATION_RULES:
+        if o.get(key) is None or n.get(key) is None:
+            continue
+        d = float(n[key]) - float(o[key])
+        if (way == "drop" and d <= -limit) or (way == "rise" and d >= limit):
+            out.append(f"{key} {float(o[key]):.2f} -> {float(n[key]):.2f} ({d:+.2f}, limit {'-' if way == 'drop' else '+'}{limit})")
+    if o.get("gain_pct") is not None and n.get("gain_pct") is not None and float(o["gain_pct"]) > 0 >= float(n["gain_pct"]):
+        out.append(f"gain_pct turned non-positive {float(o['gain_pct']):.2f} -> {float(n['gain_pct']):.2f}")
+    return out
+
+
+def load_halts() -> dict:
+    try:
+        return dict((json.loads(HALT_FILE.read_text()) or {}).get("halts") or {})
+    except Exception:
+        return {}
+
+
+def latest_publish(symside: str) -> str:
+    best = ""
+    for mp in glob.glob(str(CELL / f"{symside}_*_manifest.json")):
+        try:
+            man = json.loads(Path(mp).read_text())
+        except Exception:
+            continue
+        if str(man.get("symside") or "").upper() == symside and (man.get("published_utc") or "") > best:
+            best = man["published_utc"]
+    return best
+
+
+def update_halts(manifest=None) -> dict:
+    """Daily run: deteriorated sides halt (fresh halted_utc); a side recalculated OK today without deterioration is released.
+    Every call: a side whose board was re-published after its halt is released (the fleet re-ran it on the latest NPZ)."""
+    halts, now, released = load_halts(), iso(utcnow()), {}
+    if manifest:
+        for e in manifest["entries"]:
+            if e["status"] != "OK":
+                continue
+            reasons = deterioration(e)
+            e["deterioration"] = reasons
+            if reasons:
+                keep = halts.get(e["symside"]) or {}
+                halts[e["symside"]] = {"halted_utc": keep.get("halted_utc") or now, "rechecked_utc": e["calculated_utc"], "reasons": reasons, "board": e["board"], "board_published_utc": e["board_published_utc"], "set_md5": e["set_md5"], "today_gain_pct": e["metrics"].get("gain_pct"), "board_gain_pct": (e.get("orig_metrics") or {}).get("gain_pct")}
+            elif e["symside"] in halts:
+                released[e["symside"]] = f"recalculated {e['calculated_utc']} without significant deterioration"
+                halts.pop(e["symside"])
+    for symside in list(halts):
+        pub = latest_publish(symside)
+        if pub and pub > halts[symside]["halted_utc"]:
+            released[symside] = f"new board published {pub} after halt {halts[symside]['halted_utc']}"
+            halts.pop(symside)
+    doc = {"updated_utc": now, "rules": [list(r) for r in DETERIORATION_RULES], "semantics": "no OPEN / AUGMENT for these sym_sides on every account; CLOSE / REDUCE follow the board", "halts": halts}
+    atomic_write(HALT_FILE, json.dumps(doc, indent=1, sort_keys=True))
+    for symside, why in released.items():
+        print(f"[daily-charts] HALT RELEASED {symside}: {why}", flush=True)
+    with open(ROOT / "data" / "reports" / "deterioration_halt_events.jsonl", "a", encoding="utf-8") as fh:
+        for symside, h in halts.items():
+            if h["halted_utc"] == now:
+                fh.write(json.dumps({"event": "HALT", "symside": symside, **h}) + "\n")
+        for symside, why in released.items():
+            fh.write(json.dumps({"event": "RELEASE", "symside": symside, "utc": now, "why": why}) + "\n")
+    return doc
+
+
+def push_halts(doc: dict) -> dict:
+    """Same bytes on every trader root, md5-verified. A host that did not answer is reported, never assumed."""
+    body = json.dumps(doc, indent=1, sort_keys=True)
+    want = hashlib.md5(body.encode()).hexdigest()
+    status = {}
+    for host, ddir in HALT_TARGETS:
+        try:
+            r = ssh(host, f"test -d {ddir} || exit 3; cat > {ddir}/deterioration_halt.json.tmp && mv {ddir}/deterioration_halt.json.tmp {ddir}/deterioration_halt.json && md5sum {ddir}/deterioration_halt.json", 120, body)
+            status[f"{host}:{ddir}"] = "OK" if r.stdout[:32] == want else f"MISMATCH rc={r.returncode} {r.stdout[:32]} {r.stderr.strip()[-160:]}"
+        except Exception as exc:
+            status[f"{host}:{ddir}"] = f"FAIL {exc}"
+    for target, st in status.items():
+        print(f"[daily-charts] halt file -> {target}: {st} ({len(doc['halts'])} halted)", flush=True)
+    return status
+
+
+def sync_priority(halted: set) -> dict:
+    """Merge halted sides into fleet_dispatch's priority file on S1+S2; remove sides this tool added that are no longer halted.
+    Other lanes' sides in the file are kept untouched."""
+    try:
+        mine_before = set(json.loads(PRIORITY_MINE.read_text()))
+    except Exception:
+        mine_before = set()
+    now, status = time.time(), {}
+    for host in PRIORITY_HOSTS:
+        try:
+            cur = json.loads(ssh(host, f"cat {PRIORITY_REMOTE} 2>/dev/null || echo '{{}}'", 120).stdout or "{}") or {}
+            live = float(cur.get("until") or 0) > now
+            sides = [s for s in (cur.get("sym_sides") or []) if live and s not in (mine_before - halted)]
+            sides += [s for s in sorted(halted) if s not in sides]
+            why = [w for w in str(cur.get("why") or "").split(" | ") if w and live and not w.startswith("DAILY_DETERIORATION")]
+            if halted:
+                why.append(f"DAILY_DETERIORATION {len(halted)} sides (tools/v15_daily_charts.py)")
+            until = max(float(cur.get("until") or 0) if live else 0.0, now + 86400 if halted else 0.0)
+            doc = {"sym_sides": sides, "until": until, "why": " | ".join(why)}
+            r = ssh(host, f"cat > {PRIORITY_REMOTE}.tmp && mv {PRIORITY_REMOTE}.tmp {PRIORITY_REMOTE} && cat {PRIORITY_REMOTE}", 120, json.dumps(doc))
+            status[host] = "OK" if json.loads(r.stdout or "{}") == doc else f"MISMATCH {r.stderr.strip()[-160:]}"
+        except Exception as exc:
+            status[host] = f"FAIL {exc}"
+        print(f"[daily-charts] fleet_priority -> {host}: {status[host]} ({len(halted)} deterioration sides)", flush=True)
+    if all(v == "OK" for v in status.values()):
+        atomic_write(PRIORITY_MINE, json.dumps(sorted(halted)))
+    return status
+
+
+def enforce(manifest=None) -> dict:
+    doc = update_halts(manifest)
+    return {"halted": sorted(doc["halts"]), "halt_push": push_halts(doc), "priority": sync_priority(set(doc["halts"]))}
 
 
 def slot_due(now: datetime.datetime) -> str:
@@ -366,6 +536,8 @@ def main() -> int:
     now = utcnow()
     slot = slot_due(now) if (a.scheduled or not a.symside) else None
     if a.scheduled and not slot:
+        if load_halts():
+            enforce()
         return 0
     LOCK.parent.mkdir(parents=True, exist_ok=True)
     lock_fh = open(LOCK, "w")
@@ -386,6 +558,10 @@ def main() -> int:
         print("[daily-charts] no verified worker host — every sym_side reported FAIL", flush=True)
     results = dispatch(boards, run_id, a.procs)
     manifest = publish(boards, results, run_id, started, partial=bool(only))
+    manifest["enforcement"] = enforce(manifest)
+    atomic_write(CHARTS / ("daily_charts_manifest_partial.json" if only else "daily_charts_manifest.json"), json.dumps(manifest, indent=1, default=str))
+    if not only:
+        atomic_write(CHARTS / "index.html", index_page(manifest))
     if slot and not only:
         atomic_write(STATE, json.dumps({"last_slot_done": slot, "run_id": run_id, "ok": manifest["ok"], "fail": manifest["fail"]}))
     shutil.rmtree(STAGE / run_id, ignore_errors=True)
