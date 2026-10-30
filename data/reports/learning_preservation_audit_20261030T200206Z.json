@@ -1,5 +1,5 @@
 {
-  "audit_at_utc": "2026-10-30T20:51:05Z",
+  "audit_at_utc": "2026-10-30T20:59:39Z",
   "scope": "non-destructive corpus preservation evidence; fleet retirement not approved",
   "external_storage": {
     "WD25": {
@@ -80,9 +80,15 @@
       }
     ],
     "fresh_store": "/home/niels/v20_candidate_review_20261030/experience_restore_20261030T2030Z/store/experience",
-    "decoded_db_hashes": "all four decoded SHA256 values matched source manifest hashes",
+    "decoded_db_hashes": "all four decoded SHA256 values matched source manifest hashes before use; CRYPTO_LONG decoded scratch removed only after ctxjoin consumer completed and agent confirmed release; verified GCS tar and compressed shard retained",
     "retained_sources": true,
-    "s6_space_after_decode": "20 GiB free observed; additional materialization deferred"
+    "s6_space_after_decode": "20 GiB free observed; additional materialization deferred",
+    "consumer_audit_CRYPTO_LONG": {
+      "consumer_status": "complete rc0; output 616 B, SHA256 b71adaf0bf48b4e6d9a8f33c9bf5b933ee46122470d5e77120117cc85a41c05e; report SHA256 d9383e38a0f24a62720d0e1ec037470be70979dc595b115fffb486c91a143fb2; driver SHA256 6cc2f336331025fd4f73ad059df7b77ad0f01832a1e9c0ee3bb5b3b9c3eaec03",
+      "evidence": "4,344,370 log_replay_v1 + 2,250,258 log/none rows, no native provenance; five sampled set digests matched canonical producer; zero strict contexts had chain_sha_verified extras; 0 eligible log rows and 0 contexts",
+      "decoded_scratch": "CRYPTO_LONG DB removed after consumer release; GCS tar and compressed shard retained",
+      "s6_space_after_reclaim": "29 GiB free observed"
+    }
   },
   "wd25_s6_rebuild_scratch_copy": {
     "source": "s6:/home/niels/rebuild_scratch_s6/",
@@ -93,12 +99,18 @@
       "path": "s1_data_archive/klines_hist_w2.tar.zst",
       "bytes": 1218456299
     },
-    "verification_state": "verified at 2026-10-30T20:51:05Z: rsync dry-run with checksum checked all 243 entries (207 regular files, 36 directories), total 1,331,992,053 B; 0 created/changed/transferred/deleted and 0 bytes transferred. This establishes byte-for-byte match with current S6 source and no source changes observable at verification.",
+    "verification_state": "verified at 2026-10-30T20:51:05Z: rsync dry-run with checksum checked all 243 entries (207 regular files, 36 directories), total 1,331,992,053 B; 0 created/changed/transferred/deleted and 0 bytes transferred. This establishes byte-for-byte match with current S6 source and no source changes observable at verification. Source contains no symlinks (separate bounded source listing); source mtime scan found no files changed within the prior 60 minutes.",
     "verification_command": "rsync -nrc --itemize-changes --stats -rt -e ssh -S none ... s6:/home/niels/rebuild_scratch_s6/ <WD25 destination>/"
   },
   "s1_consumer_audit": {
     "finding": "no relevant S1 cron/process consumer of ~/binance v18_linknet or v20_absorb since 20:00 UTC was found",
     "evidence": "crontab and active process argv/cwd checks; 20:00 must-refresh and 20:23 endgame merge ran from /home/niels/binance-sandbox; inspected callers had no v18_linknet/v20_absorb imports"
   },
-  "preservation_status": "incomplete; originals retained; no retirement/deletion authorized by this audit"
+  "preservation_status": "incomplete; originals retained; no retirement/deletion authorized by this audit",
+  "next_copy": {
+    "source": "s6:/home/niels/v20_u4/spills/",
+    "destination": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/",
+    "status": "in progress; rsync session 19510; source size approximately 1.6G; no symlinks; do not count as verified until whole-tree checksum dry-run completes",
+    "wd25_uuid": "04543668-3000-3F41-BB34-1C876F724D28"
+  }
 }

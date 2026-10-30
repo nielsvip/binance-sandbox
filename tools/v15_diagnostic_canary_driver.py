@@ -44,7 +44,8 @@ def main():
         raise ValueError("diagnostic attempt already exists")
     local.mkdir(parents=True)
     env["V15_DIAGNOSTIC_LOG_DIR"] = str(local)
-    paths = {"BASE_PATH": root, "V15_OUT_DIR": local / "out", "V15_PROGRESS_DIR": local / "progress", "V15_FLAGS_DIR": local / "flags", "V15_V17_CARRY_DIR": local / "carry", "V15_EVAL_CACHE_DB": local / "eval_cache.db", "PER_SYM_STORE_DB": root / "data/hourly_reconfig/per_sym_store.db", "V15_PREV_BEST_DIR": local / "prev_best", "V15_PRIORITY_DIR": root / "data/cat_avg", "V15_GATE_FLAGS": root / "data/v15_gate_flags.json", "V15_BRAIN_DIR": root / "data/brain", "V15_LEDGER_JSON": root / "data/v15_symside_ledger.json", "V15_ENDGAME_KNOWLEDGE": root / "data/endgame/endgame_knowledge_fleet.json", "V12_NPZ_DIR": root / "backtest_v8/indicators", "SWITCH_PARITY_CACHE_DIR": local / "parity_cache", "TMPDIR": local / "tmp", "NUMBA_CACHE_DIR": local / "numba_cache", "MPLCONFIGDIR": local / "mpl", "XDG_CACHE_HOME": local / "xdg_cache"}
+    paths = {"BASE_PATH": root, "V15_OUT_DIR": local / "out", "V15_PROGRESS_DIR": local / "progress", "V15_FLAGS_DIR": local / "flags", "V15_V17_CARRY_DIR": local / "carry", "V15_EVAL_CACHE_DB": local / "eval_cache.db", "PER_SYM_STORE_DB": root / "data/hourly_reconfig/per_sym_store.db", "V15_PREV_BEST_DIR": local / "prev_best", "V15_PRIORITY_DIR": root / "data/cat_avg", "V15_GATE_FLAGS": root / "data/v15_gate_flags.json", "V15_BRAIN_DIR": root / "data/brain", "V15_LEDGER_JSON": root / "data/v15_symside_ledger.json", "V15_ENDGAME_KNOWLEDGE": root / "data/endgame/endgame_knowledge_fleet.json", "SWITCH_PARITY_CACHE_DIR": local / "parity_cache", "TMPDIR": local / "tmp", "NUMBA_CACHE_DIR": local / "numba_cache", "MPLCONFIGDIR": local / "mpl", "XDG_CACHE_HOME": local / "xdg_cache"}
+    env.pop("V12_NPZ_DIR", None)
     for key, value in paths.items():
         env[key] = str(value)
         (value.parent if value.suffix else value).mkdir(parents=True, exist_ok=True)
@@ -53,10 +54,16 @@ def main():
     startup = '''import os, pathlib, sys, runpy, json
 root = pathlib.Path(sys.argv[1]).resolve()
 audit = open(pathlib.Path(os.environ["V15_DIAGNOSTIC_LOG_DIR"]) / "write_audit.jsonl", "a", buffering=1)
+npz_audit = open(pathlib.Path(os.environ["V15_DIAGNOSTIC_LOG_DIR"]) / "npz_reads.jsonl", "a", buffering=1)
 def guard(event, args):
     paths = []
     if event == "open" and isinstance(args[0], (str, bytes, os.PathLike)):
         mode, flags = args[1], args[2]
+        read_path = pathlib.Path(os.fsdecode(args[0])).resolve()
+        if read_path.suffix == ".npz":
+            npz_audit.write(json.dumps({"path": str(read_path), "inside_root": root in read_path.parents}) + "\\n")
+            if root not in read_path.parents:
+                raise PermissionError("diagnostic NPZ read outside frozen root: " + str(read_path))
         if (isinstance(mode, str) and any(c in mode for c in "wax+")) or (isinstance(flags, int) and flags & (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC | os.O_APPEND)):
             paths = [args[0]]
     elif event in ("os.remove", "os.rmdir", "os.mkdir", "os.chmod", "os.chown", "os.utime"):

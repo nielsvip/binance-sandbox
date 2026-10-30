@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-10-30 19:58 UTC",
- "total_capital_usd": 14.48,
+ "generated_at": "2026-10-30 20:58 UTC",
+ "total_capital_usd": 14.64,
  "tier_capital": {
   "A": 0.0,
-  "B": 14.48,
+  "B": 14.64,
   "C": 0.0
  },
  "tier_count": {
@@ -12,21 +12,19 @@
   "C": 0
  },
  "winners": [],
- "losers": [
-  "flz:HYPEUSDT_LONG"
- ],
+ "losers": [],
  "mediocre": [],
  "positions": [
   {
-   "pk": "flz:HYPEUSDT_LONG",
-   "symbol": "HYPEUSDT",
-   "account": "flz",
-   "value_usd": 14.48,
-   "gain_pct": -0.652,
+   "pk": "ang:ACEUSDT_SHORT",
+   "symbol": "ACEUSDT",
+   "account": "ang",
+   "value_usd": 14.64,
+   "gain_pct": 2.359,
    "tier": "B",
-   "perf_mult": 3.02,
-   "amt": 0.16,
-   "mark": 90.506
+   "perf_mult": 0.92,
+   "amt": 111.96,
+   "mark": 0.13078
   }
  ]
 }

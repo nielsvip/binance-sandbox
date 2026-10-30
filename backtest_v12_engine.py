@@ -4172,6 +4172,12 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         trade_manager.execute_trade_action = _crypto_eta
     else:
         v8_logger.warning("[V12_REAL_EXECUTE] crypto: real execute_trade_action + execute_now (broker I/O stubbed only)")
+        # The production dedup claim uses wall time. A replay advances many bars within one wall minute,
+        # so give that same claim predicate the frozen bar clock while keeping its TTL and key logic.
+        import parity_exact_gate as _parity_claim_gate
+        _claim_original = _parity_claim_gate.try_claim
+        _parity_claim_gate._claims.clear()
+        _parity_claim_gate.try_claim = lambda key, now=None: _claim_original(key, _sim_ts[0] if now is None else now)
         # ez_manage._PROCESS_START_TS is the WALL time at import while ez_manage.time is the SIM clock, so
         # (time.time() - _PROCESS_START_TS) was negative for the whole replay and the COLD_START_FLOOD_GUARD window never
         # ended (BTCUSDC_SHORT "2464984s left"): every vec-exact open lost its MTF bypass. A live process is warm after

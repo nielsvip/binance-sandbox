@@ -16964,6 +16964,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         )
     except Exception:
         _mi_arr = None
+    _breakout_retest_gate = None
     try:
         _gcfg = cfg
         if str(getattr(cfg, "MODE", "crypto")) == "tradier" and bool(
@@ -17012,6 +17013,11 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             getattr(_gcfg, "DC_MOMENTUM_BOTA_SCORER_FILTER_TF", "OFF"),
             getattr(_gcfg, "CIRCUIT_SHARPE_GATES_FILTER_TF", "OFF"),
         )
+        _breakout_retest_gate = None
+        if is_tradier and bool(getattr(cfg, "BREAKOUT_RETEST_ARMED_ENABLED", False)):
+            _br_tf = str(getattr(_gcfg, "BREAKOUT_RETEST_FILTER_TF", "OFF") or "OFF").strip()
+            if _br_tf.upper() != "OFF":
+                _breakout_retest_gate = vec_decisions.generic_filter_tf._cond("dc_retest_hold", npz, n, _br_tf, is_long, close, _safe)
         if _gftf.get("entry") is not None:
             entry_sig = entry_sig & _gftf["entry"]
             for _gname, (
@@ -19904,6 +19910,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     pass
             if not fire and _wd_open is not None and bool(_wd_open[i]):
                 fire = True
+            # The native Tradier retest veto guards every OPEN path, including late reentry fires.
+            if fire and is_tradier and _breakout_retest_gate is not None and not bool(_breakout_retest_gate[i]):
+                fire = False
             # 2026-10-02 SELL_TOP recross bypass (MOVR §63, sweep-gated): after a SELL_TOP exit, a
             # recross of the exit price within HLR_RECROSS_BYPASS_BARS skips the unconditional
             # 09-27 hard blocks (DC4H/STOP/KG/GR) below. Sweepable gates are never bypassed.
