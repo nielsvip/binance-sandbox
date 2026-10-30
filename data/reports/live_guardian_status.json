@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-30T05:13:22Z",
+ "ts": "2026-10-30T05:18:41Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,7 +27,7 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 55,
+   "fills_6h": 52,
    "open_positions": 3,
    "unrealised_usd": -0.86,
    "pos_mismatch": 0,
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 77,
+   "fills_6h": 75,
    "open_positions": 5,
-   "unrealised_usd": -0.9,
+   "unrealised_usd": -0.97,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 144,
+   "fills_6h": 137,
    "open_positions": 4,
-   "unrealised_usd": -0.29,
+   "unrealised_usd": -0.25,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 5,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 23,
    "open_positions": 2,
-   "unrealised_usd": 0.22,
+   "unrealised_usd": 0.19,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -126,104 +126,96 @@
    "pids": [
     "28889"
    ],
-   "starts_30m": 2,
-   "log_age_s": 113.0
+   "starts_30m": 1,
+   "log_age_s": 0.0
   },
   "men": {
    "pids": [
     "28781"
    ],
    "starts_30m": 2,
-   "log_age_s": 77.0
+   "log_age_s": 0.0
   },
   "ang": {
    "pids": [
     "28918"
    ],
    "starts_30m": 2,
-   "log_age_s": 93.0
+   "log_age_s": 1.0
   },
   "inf": {
    "pids": [
     "28566"
    ],
-   "starts_30m": 2,
-   "log_age_s": 92.0
+   "starts_30m": 1,
+   "log_age_s": 1.0
   },
   "flz": {
    "pids": [
     "28637"
    ],
-   "starts_30m": 3,
-   "log_age_s": 88.0
+   "starts_30m": 2,
+   "log_age_s": 0.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 1,
-   "log_age_s": 268.0
+   "log_age_s": 586.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 1,
-   "log_age_s": 268.0
+   "log_age_s": 586.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-30T05:13:23Z",
+   "ts": "2026-10-30T05:18:42Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "ang:ARKMUSDT_LONG",
    "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_LONG_px0.105700 decided 2026-10-30T01:55:00Z bar=2026-10-30T01:30:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-30T05:13:23Z",
+   "ts": "2026-10-30T05:18:42Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "ang:ARKMUSDT_LONG",
    "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_LONG_px0.105000 decided 2026-10-30T03:24:00Z bar=2026-10-30T02:45:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-30T05:13:23Z",
+   "ts": "2026-10-30T05:18:42Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "ang:ARKMUSDT_LONG",
    "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_LONG_px0.104100 decided 2026-10-30T03:24:07Z bar=2026-10-30T03:00:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-30T05:13:23Z",
+   "ts": "2026-10-30T05:18:42Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "ang:COTIUSDT_SHORT",
    "evidence": "AUGMENT HAIKU_WINNER_AUG_3.6pct decided 2026-10-30T04:24:57Z bar=2026-10-30T03:00:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-30T05:13:24Z",
+   "ts": "2026-10-30T05:18:42Z",
    "severity": "INFO",
    "kind": "VEC_EXIT_WHILE_LIVE_FLAT",
    "key": "inf:1000PEPEUSDC_LONG",
    "evidence": "CLOSE FIXED_STOP bar=2026-10-29T20:30:00Z: live already flat (state divergence, no order needed)"
   },
   {
-   "ts": "2026-10-30T05:13:24Z",
+   "ts": "2026-10-30T05:18:42Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "inf:ARUSDT_LONG",
    "evidence": "OPEN REENTRY_DC4_15M_BREAK bar=2026-10-30T03:30:00Z refused by non-safety gate: 30 03:53:52 - WARNING - [inf] [VEC_EXACT_EXPIRED] ARUSDT_LONG CLOSE FIXED_STOP bar=1793304000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-30T05:13:24Z",
-   "severity": "CRITICAL",
-   "kind": "RESTART_LOOP",
-   "key": "flz",
-   "evidence": "3 new process ids in 30 min (['21639', '88243', '28637'])"
   }
  ],
  "alert_counts": {
   "VEC_DECISION_NOT_FILLED": 4,
   "VEC_EXIT_WHILE_LIVE_FLAT": 1,
-  "VEC_DECISION_REFUSED": 1,
-  "RESTART_LOOP": 1
+  "VEC_DECISION_REFUSED": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -269,5 +261,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 2.01
+ "sweep_s": 1.0
 }

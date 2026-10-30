@@ -1,55 +1,55 @@
 {
- "generated_at": "2026-10-30 05:03 UTC",
- "total_capital_usd": 104.36,
+ "generated_at": "2026-10-30 05:14 UTC",
+ "total_capital_usd": 38.57,
  "tier_capital": {
   "A": 0.0,
-  "B": 26.1,
-  "C": 78.25
+  "B": 38.57,
+  "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
-  "C": 1
+  "B": 3,
+  "C": 0
  },
  "winners": [],
  "losers": [
-  "flz:BTCDOMUSDT_LONG",
-  "flz:BTCUSDC_LONG"
+  "fin:1000SHIBUSDC_SHORT",
+  "fin:1MBABYDOGEUSDT_SHORT"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "flz:BTCUSDC_LONG",
-   "symbol": "BTCUSDC",
-   "account": "flz",
-   "value_usd": 78.25,
-   "gain_pct": -1.26,
-   "tier": "C",
-   "perf_mult": 0.57,
-   "amt": 0.001,
-   "mark": 78254.68246743
+   "pk": "fin:1000SHIBUSDC_SHORT",
+   "symbol": "1000SHIBUSDC",
+   "account": "fin",
+   "value_usd": 15.69,
+   "gain_pct": -4.718,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 3349.0,
+   "mark": 0.00468466
   },
   {
-   "pk": "flz:HYPEUSDT_LONG",
-   "symbol": "HYPEUSDT",
-   "account": "flz",
-   "value_usd": 14.86,
-   "gain_pct": 1.93,
+   "pk": "fin:1MBABYDOGEUSDT_SHORT",
+   "symbol": "1MBABYDOGEUSDT",
+   "account": "fin",
+   "value_usd": 15.27,
+   "gain_pct": -1.833,
    "tier": "B",
-   "perf_mult": 4.41,
-   "amt": 0.16,
-   "mark": 92.85831031
+   "perf_mult": 3.58,
+   "amt": 46670.0,
+   "mark": 0.00032719
   },
   {
-   "pk": "flz:BTCDOMUSDT_LONG",
-   "symbol": "BTCDOMUSDT",
-   "account": "flz",
-   "value_usd": 11.24,
-   "gain_pct": -1.284,
+   "pk": "fin:AWEUSDT_LONG",
+   "symbol": "AWEUSDT",
+   "account": "fin",
+   "value_usd": 7.61,
+   "gain_pct": 1.613,
    "tier": "B",
-   "perf_mult": 1.33,
-   "amt": 0.002,
-   "mark": 5621.49731038
+   "perf_mult": 3.68,
+   "amt": 109.0,
+   "mark": 0.0698387
   }
  ]
 }
