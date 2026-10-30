@@ -80,6 +80,64 @@ class Stops:
             pass
         return row
 
+    def _matching_stop(self, acct, symbol, side, level, quantity):
+        if self.t.venue == "crypto":
+            rows = self._algo_open(acct, symbol)
+            for row in rows:
+                if str(row.get("positionSide") or "BOTH").upper() not in (side, "BOTH"):
+                    continue
+                if str(row.get("orderType") or row.get("type") or "").upper() != "STOP_MARKET":
+                    continue
+                if str(row.get("workingType") or "").upper() != "MARK_PRICE":
+                    continue
+                if str(row.get("closePosition") or "").lower() != "true":
+                    continue
+                actual = float(row.get("triggerPrice") or 0)
+                if actual <= 0 or (side == "LONG" and actual < level) or (side == "SHORT" and actual > level):
+                    continue
+                if str(row.get("algoStatus") or row.get("status") or "NEW").upper() not in ("NEW", "OPEN"):
+                    continue
+                return row
+            return None
+        close_side = "sell" if side == "LONG" else "buy_to_cover"
+        for row in self._tr_orders(acct, symbol):
+            actual = float(row.get("stop_price") or row.get("stop") or 0)
+            if str(row.get("side") or "").lower() != close_side or float(row.get("quantity") or 0) < quantity:
+                continue
+            if actual > 0 and ((side == "LONG" and actual >= level) or (side == "SHORT" and actual <= level)):
+                return row
+        return None
+
+    def prearm_entry(self, acct, order, quantity, held_before, mark):
+        """Refuse an entry unless its full resulting position has a verified resting stop first."""
+        symbol, side = order["ss"].rsplit("_", 1)
+        symbol, side = symbol.upper(), side.upper()
+        src = dc15(self._npz_dir(), symbol)
+        level = stop_level(side, src.get("dc_low_15m"), src.get("dc_high_15m"))
+        if level is None or not math.isfinite(level):
+            raise RuntimeError(f"NO_DC15 {symbol}: {src}")
+        if mark <= 0 or (side == "LONG" and level >= mark) or (side == "SHORT" and level <= mark):
+            raise RuntimeError(f"STOP_WRONG_SIDE {symbol}: stop={level} mark={mark}")
+        tick = self._tick(symbol) if self.t.venue == "crypto" else 0.01
+        level = round_to_tick(level, tick, side)
+        total = held_before + quantity
+        existing = self._matching_stop(acct, symbol, side, level, total)
+        if existing is None:
+            placed = self.place(acct, symbol, side, level, total, order["key"])
+            if not placed.get("id") or str(placed.get("status") or "").upper() not in ("NEW", "OPEN", "PENDING"):
+                raise RuntimeError(f"STOP_PLACE_UNCONFIRMED {symbol}: {placed}")
+            existing = self._matching_stop(acct, symbol, side, level, total)
+        if existing is None:
+            raise RuntimeError(f"STOP_NOT_RESTING {symbol}: level={level}")
+        self._row(acct=acct, ss=order["ss"], act=order["act"], status="PREARM_VERIFIED", level=level, qty=total, dc=src, key=order["key"])
+        return level
+
+    def verify_entry(self, acct, order, quantity, held_before, level):
+        symbol, side = order["ss"].rsplit("_", 1)
+        if self._matching_stop(acct, symbol.upper(), side.upper(), level, held_before + quantity) is None:
+            raise RuntimeError(f"STOP_GONE_AFTER_ENTRY {order['ss']} level={level}")
+        self._row(acct=acct, ss=order["ss"], act=order["act"], status="FILLED_PROTECTED", level=level, qty=held_before + quantity, key=order["key"])
+
     def after_fill(self, acct, o, qty, held_before, price):
         """Called once an order is SENT. Returns a short status string for the log. Never raises."""
         try:

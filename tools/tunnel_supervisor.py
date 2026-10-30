@@ -5,6 +5,7 @@ Each port walks its candidate routes in order (direct public, fallback IP, gatew
 considered up when a probe THROUGH the port returns the expected hostname, so a forward that lands on the wrong box
 or a dead route never counts. Two failed probes move on to the next route. Runs under launchd (KeepAlive).
 """
+import socket
 import subprocess
 import sys
 import threading
@@ -48,6 +49,17 @@ def probe(port, expect):
     return got == expect, got or out.stderr.strip()[-120:]
 
 
+def wait_bound(port, proc, limit=60):
+    end = time.time() + limit
+    while time.time() < end and proc.poll() is None:
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=2):
+                return True
+        except OSError:
+            time.sleep(1)
+    return False
+
+
 def run_port(port, spec):
     idx = 0
     while True:
@@ -61,7 +73,8 @@ def run_port(port, spec):
                "-o", "ServerAliveCountMax=2", "-L", f"127.0.0.1:{port}:127.0.0.1:22", *dest]
         proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         log(f"{spec['name']} port {port}: route {route} started (pid {proc.pid})")
-        time.sleep(8)
+        if not wait_bound(port, proc):
+            log(f"{spec['name']} port {port}: route {route} did not bind within 60s")
         fails = 0
         while proc.poll() is None:
             time.sleep(PROBE_EVERY)
