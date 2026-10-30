@@ -1,36 +1,21 @@
 #!/usr/bin/env python3
-"""daily_forward_charts — 30D hires charts of the FORWARD state, cut at the day's 20:00Z close.
+"""Plot recorded forward execution events from the exact published state.
 
-Runs ON S5 (stocks) or S1 (crypto), from the host's own NPZ store. For every sym_side the host's forward
-state (data/forward_state/<SYM_SIDE>.json, tools/v15_forward_state.py) decides for, it:
-
-  1. takes the switch set the forward state uses: the ACTIVE published set in per_sym_store.db
-     (tools/v15_forward_state._load_overrides), with the same retired-key drop and stale-set anchors as
-     state_for() — not a progress json, not a board sheet;
-  2. cuts the NPZ at the 20:00Z close: a 15m bar is stamped at its OPEN, so the close-20:00 bar is
-     stamped 19:45 (the forward state's npz_tail convention); bars stamped later are never seen;
-  3. evaluates the trades through the forward path itself (tools/opt/evaluate_v12.prepare +
-     evaluate_prepared_sanitized, the call state_for() makes) on that cut NPZ;
-  4. renders the same hires chart (tools/opt/hires_chart.generate_hires) over that ledger into
-     data/reports/charts_daily_30d/<SYM_SIDE>_30d_daily.html. Re-running overwrites the previous day's file.
-
---verify: cuts at the tail the forward state itself was computed on (its npz_tail) and checks the forward
-ledger's trade count and gain against the state's own trades / gain_pct. A mismatch is reported, never hidden.
-
-Usage (on the host):  .venv/bin/python tools/daily_forward_charts.py --venue stock|crypto [--cut 2026-10-29T20:00Z]
-                      [--only AAPL_LONG] [--verify] [--out DIR]
-Writes manifest.json in the output dir: one row per sym_side with its cut, trades, gain and any skip reason.
+Historical NPZ bytes can change after a state is written. A state without a saved ledger is
+unverifiable: quarantine its old chart and record the failure in manifest.json. The chart plots
+only recorded execution prices; the price path between events was not preserved.
 """
 from __future__ import annotations
 
 import argparse
 import datetime as dt
+import hashlib
+import html
 import json
 import sys
 import time
 from pathlib import Path
 
-import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -82,55 +67,28 @@ def _recorded_state(symside: str, cut_open: float, current: dict) -> dict | None
     return None
 
 
-def _install_cut(E, cut_open_s: float):
-    """Wrap evaluate_v12._store so every NPZ the forward path or the chart loads ends at the cut bar (inclusive).
-    Both prepare() and build_cfg_npz() load through _store, so the cut applies before any slicing."""
-    original = E._store
-
-    def cut_store(*args, **kwargs):
-        npz = original(*args, **kwargs)
-        if npz is None:
-            return None
-        ts = np.asarray(npz.get("timestamps"), dtype="float64")
-        finite = np.flatnonzero(np.isfinite(ts) & (ts > 0))
-        scale = 1000.0 if float(ts[finite[-1]]) > 1e11 else 1.0
-        n = len(ts)
-        keep = int(np.searchsorted(ts / scale, cut_open_s, side="right"))
-        cut = dict(npz)
-        for k, v in npz.items():
-            if isinstance(v, np.ndarray) and v.shape[:1] == (n,):
-                cut[k] = v[:keep]
-        return cut
-
-    E._store = cut_store
-    return original
-
-
-def _npz_paths(symside: str, E) -> list:
-    """The NPZ files state_for() reads through merged_npz_reads (zip plus its .tail sidecar)."""
-    sym = symside.rsplit("_", 1)[0]
-    names = {sym}
-    try:
-        names.add(E.resolve_tokenised(sym)[0])
-    except Exception:
-        pass
-    return [ROOT / pfx / "indicators" / f"{n}.npz" for pfx in ("backtest_v8", "backtest_v7") for n in names]
-
-
-def _forward_month(E, sym: str, overrides: dict, window_days: int = WINDOW_DAYS) -> dict:
-    """The forward path, exactly as state_for() calls it, returned in the shape generate_hires reads."""
-    from tools.opt.v12_pilot import evaluate_prepared_sanitized
-    prep = E.prepare(sym, window_days)
-    if prep is None:
-        raise ValueError("prepare returned None (no NPZ)")
-    res = dict(evaluate_prepared_sanitized(prep, overrides, window_days, include_ledger=True) or {})
-    ledger = res.get("ledger") or []
-    res["execution_ledger"] = ledger
-    res["ledger"] = ledger
-    res.setdefault("bh_pct", prep.get("bh"))
-    res["window"] = prep.get("window") or {}
-    res["_prep_window"] = prep.get("window") or {}
-    return res
+def _render_recorded_events(symside: str, state: dict, target: Path) -> None:
+    """Plot recorded execution prices only; no later NPZ is read."""
+    events = [(float(e["ts"]), float(e["price"]), str(e.get("type") or ""), str(e.get("reason") or e.get("exit_reason") or ""))
+              for e in state["ledger"] if isinstance(e, dict) and e.get("ts") is not None and e.get("price") is not None]
+    if not events:
+        raise ValueError("recorded ledger has no priced events")
+    times = [e[0] for e in events]
+    prices = [e[1] for e in events]
+    lo_t, hi_t = min(times), max(times)
+    lo_p, hi_p = min(prices), max(prices)
+    span_t, span_p = max(1.0, hi_t - lo_t), max(1e-9, hi_p - lo_p)
+    xy = [(70 + 1060 * (t - lo_t) / span_t, 650 - 570 * (p - lo_p) / span_p) for t, p, _, _ in events]
+    line = " ".join(f"{x:.1f},{y:.1f}" for x, y in xy)
+    dots = []
+    for (x, y), (ts, price, typ, reason) in zip(xy, events):
+        color = "#16a34a" if typ == "OPEN" else "#dc2626" if typ == "CLOSE" else "#eab308"
+        label = html.escape(f"{_stamp(ts)} {typ} {price:.8g} {reason}")
+        dots.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="5" fill="{color}"><title>{label}</title></circle>')
+    title = html.escape(f"{symside} — recorded forward execution events")
+    subtitle = html.escape(f"State {_stamp(_epoch(state['ts']))} · bar {_stamp(float(state['npz_tail']))} · {state.get('trades')} trades · gain {state.get('gain_pct')}%")
+    doc = f'<!doctype html><meta charset="utf-8"><title>{title}</title><style>body{{font:16px system-ui;background:#0b1220;color:#e5e7eb;margin:32px}}svg{{max-width:100%;background:#111827;border:1px solid #374151}}p{{color:#9ca3af}}</style><h1>{title}</h1><p>{subtitle}</p><p>Recorded event prices only. The price path between events was not preserved.</p><svg viewBox="0 0 1200 720" role="img" aria-label="Recorded execution event prices"><polyline fill="none" stroke="#93c5fd" stroke-width="2" points="{line}"/>{"".join(dots)}<text x="70" y="35" fill="#e5e7eb">{hi_p:.8g}</text><text x="70" y="690" fill="#e5e7eb">{lo_p:.8g}</text></svg>'
+    target.write_text(doc)
 
 
 def main(argv: list[str]) -> int:
@@ -151,11 +109,6 @@ def main(argv: list[str]) -> int:
 
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
-    import tools.opt.evaluate_v12 as E
-    from tools.v15_forward_state import _load_overrides, _drop_retired, _stale_anchor
-    from tools.opt.hires_chart import generate_hires
-    import tools.opt.lifecycle_pilot as LP
-
     rows = []
     t0 = time.time()
     syms = _sym_sides(a.venue, a.only)
@@ -163,55 +116,30 @@ def main(argv: list[str]) -> int:
     for i, sym in enumerate(syms):
         row = {"symside": sym, "cut_close": _stamp(cut_close)}
         tag = f"[{i + 1}/{len(syms)}] {sym}"
-        original = None
         try:
             state = json.loads((FS_DIR / f"{sym}.json").read_text())
-            overrides, src, meta = _load_overrides(sym)
-            if not overrides:
-                row.update(ok=False, reason=f"no active published set ({src})")
+            use_open = float(state["npz_tail"]) if a.verify else cut_open
+            recorded = _recorded_state(sym, use_open, state)
+            target = out / f"{sym}_30d_daily.html"
+            if recorded is None or not recorded.get("ok") or not isinstance(recorded.get("ledger"), list):
+                if target.exists():
+                    target.rename(target.with_name(target.name + ".unverified"))
+                row.update(ok=False, reason="NO_STATE_TIME_LEDGER: historical replay cannot be verified", cut_bar_open=_stamp(use_open))
                 print(f"{tag} SKIP {row['reason']}", flush=True)
                 rows.append(row)
                 continue
-            dropped = _drop_retired(overrides)
-            overrides = {k: v for k, v in overrides.items() if k not in dropped}
-            anc = _stale_anchor(sym) if src == "per_sym_store.active" else {}
-            if anc:
-                overrides = {**overrides, "STALE_SET_RECALC_EPOCH": anc["STALE_SET_RECALC_EPOCH"], "STALE_SET_APPLY_EPOCH": anc["STALE_SET_APPLY_EPOCH"]}
-            use_open = float(state["npz_tail"]) if a.verify else cut_open
-            E._STORES.clear()
-            _paths = _npz_paths(sym, E)
-            from tools.npz_merged_view import merged_npz_reads
-            with merged_npz_reads(_paths):
-                original = _install_cut(E, use_open)
-                fwd = _forward_month(E, sym, overrides)
-            recorded = _recorded_state(sym, use_open, state)
-            if recorded is not None:
-                fwd.update(ledger=recorded["ledger"], execution_ledger=recorded["ledger"],
-                           gain_pct=recorded.get("gain_pct"), trades=recorded.get("trades"))
-            led = fwd["ledger"]
-            row.update(ok=True, trades=fwd.get("trades"), ledger_rows=len(led), gain_pct=fwd.get("gain_pct"), cut_bar_open=_stamp(use_open),
-                       ledger_source="published_state" if recorded is not None else "recomputed_current_npz",
-                       src=src, settings_sha256=meta.get("settings_sha256"), valid=fwd.get("valid"),
-                       invalid_reason=fwd.get("invalid_reason"))
+            digest = hashlib.sha256(json.dumps(recorded["ledger"], sort_keys=True, default=str, separators=(",", ":")).encode()).hexdigest()
+            if digest != recorded.get("ledger_sha256"):
+                raise ValueError("recorded ledger hash mismatch")
+            _render_recorded_events(sym, recorded, target)
+            row.update(ok=True, trades=recorded.get("trades"), ledger_rows=len(recorded["ledger"]), gain_pct=recorded.get("gain_pct"), cut_bar_open=_stamp(use_open),
+                       ledger_source="published_state", settings_sha256=recorded.get("settings_sha256"), ledger_sha256=digest)
             if a.verify:
-                row.update(state_trades=state.get("trades"), state_gain_pct=state.get("gain_pct"),
-                           state_open=state.get("open"), state_tail=state.get("npz_tail"))
-                row["match"] = bool(row["trades"] == state.get("trades")
-                                    and row["gain_pct"] is not None and state.get("gain_pct") is not None
-                                    and abs(float(row["gain_pct"]) - float(state["gain_pct"])) < 0.01)
-            # generate_hires pulls its evaluation from lifecycle_pilot.evaluate_month: hand it the forward ledger
-            LP.evaluate_month = lambda s, ov, include_ledger=False, window_days=WINDOW_DAYS, _f=fwd: dict(_f)
-            label_end = _stamp(use_open + BAR_S)
-            with merged_npz_reads(_paths):
-                generate_hires(sym, dict(overrides), WINDOW_DAYS, out_name=f"{sym}_30d_daily.html",
-                               heading=f"{sym} — 30D window ending {label_end}", out_dir=str(out))
-            print(f"{tag} OK trades={row['trades']} gain={row['gain_pct']}" + (f" MATCH={row['match']} (state trades={row['state_trades']} gain={row['state_gain_pct']})" if a.verify else ""), flush=True)
+                row["match"] = int(recorded["npz_tail"]) == int(state["npz_tail"]) and digest == state.get("ledger_sha256")
+            print(f"{tag} OK recorded trades={row['trades']} gain={row['gain_pct']}", flush=True)
         except Exception as exc:
             row.update(ok=False, reason=f"{type(exc).__name__}: {str(exc)[:200]}")
             print(f"{tag} FAIL {row['reason']}", flush=True)
-        finally:
-            if original is not None:
-                E._store = original
         rows.append(row)
 
     (out / "manifest.json").write_text(json.dumps({"venue": a.venue, "cut_close": _stamp(cut_close), "verify": a.verify,

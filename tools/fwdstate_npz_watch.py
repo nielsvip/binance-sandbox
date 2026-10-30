@@ -21,6 +21,7 @@ close, every bar). Measured before this rewrite: first state of a bar 100 s afte
 Pool size stays at most 4 (USER 2026-10-25: max 4 sym evals in RAM; S1 OOM-rebooted twice).
 """
 import argparse
+import hashlib
 import json
 import os
 import signal
@@ -107,7 +108,30 @@ def _npz_tail(path):
 
 def _timed(symbol_side):
     t0 = time.time()
-    state = _one(symbol_side)
+    # Observe the exact result returned to state_for in this worker. This does not
+    # re-run the engine or change its result, and preserves the state-time ledger.
+    from tools.opt import v12_pilot as pilot
+    original = pilot.evaluate_prepared_sanitized
+    observed = {}
+    def capture(prepared, overrides, window_days, *args, **kwargs):
+        result = original(prepared, overrides, window_days, *args, **kwargs)
+        if kwargs.get("include_ledger") and isinstance(result, dict):
+            observed["ledger"] = result.get("ledger") or []
+            npz = (prepared or {}).get("npz_prepared") or {}
+            observed["inputs"] = {key: npz.get(key) for key in ("timestamps", "close")}
+        return result
+    pilot.evaluate_prepared_sanitized = capture
+    try:
+        state = _one(symbol_side)
+    finally:
+        pilot.evaluate_prepared_sanitized = original
+    if state.get("ok") and "ledger" in observed:
+        import numpy as np
+        ledger = observed["ledger"]
+        state["ledger"] = ledger
+        state["ledger_sha256"] = hashlib.sha256(json.dumps(ledger, sort_keys=True, default=str, separators=(",", ":")).encode()).hexdigest()
+        state["input_sha256"] = {key: hashlib.sha256(np.ascontiguousarray(value).view(np.uint8)).hexdigest()
+                                 for key, value in observed["inputs"].items() if value is not None}
     return state, t0, time.time()
 
 
