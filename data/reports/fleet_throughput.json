@@ -1,5 +1,5 @@
 {
-  "ts": "2026-10-31T13:55:06.613432+00:00",
+  "ts": "2026-10-31T14:00:07.934184+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 0,
@@ -12,9 +12,9 @@
       "boards_running": 0,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 26882,
+      "mem_avail_mb": 27044,
       "disk_free_gb": 0,
-      "load1": 9.5,
+      "load1": 10.2,
       "dispatch_idle_why": "disk 0MB < 3000",
       "published_ss": []
     },
@@ -25,9 +25,9 @@
       "boards_running": 0,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 19300,
-      "disk_free_gb": 22,
-      "load1": 3.3,
+      "mem_avail_mb": 18607,
+      "disk_free_gb": 21,
+      "load1": 4.5,
       "dispatch_idle_why": "HOLD until 2026-10-31T11:16Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides)",
       "published_ss": []
     },
@@ -43,9 +43,9 @@
       "boards_running": 4,
       "workers": 28,
       "workers_vs_law_28": "28/28",
-      "mem_avail_mb": 10465,
+      "mem_avail_mb": 10196,
       "disk_free_gb": 52,
-      "load1": 23.6,
+      "load1": 26.9,
       "dispatch_idle_why": "HOLD until 2026-10-31T11:16Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides)",
       "published_ss": []
     },
@@ -56,9 +56,9 @@
       "boards_running": 0,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 28219,
+      "mem_avail_mb": 27964,
       "disk_free_gb": 45,
-      "load1": 1.3,
+      "load1": 1.8,
       "dispatch_idle_why": "HOLD until 2026-10-31T11:16Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides)",
       "published_ss": []
     }
@@ -67,10 +67,10 @@
     "LOW_THROUGHPUT:s1:0/h<12 (idle_why=disk 0MB < 3000)",
     "DISK_FLOOR:s1:0GB<40",
     "LOW_THROUGHPUT:s2:0/h<12 (idle_why=HOLD until 2026-10-31T11:16Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides))",
-    "DISK_FLOOR:s2:22GB<40",
+    "DISK_FLOOR:s2:21GB<40",
     "LOW_THROUGHPUT:s5:0/h<12 (idle_why=HOLD until 2026-10-31T11:16Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides))",
-    "STUCK_BOARD:s5:COTIUSDT_SHORT:120min",
-    "STUCK_BOARD:s5:USTCUSDT_SHORT:123min",
+    "STUCK_BOARD:s5:COTIUSDT_SHORT:125min",
+    "STUCK_BOARD:s5:USTCUSDT_SHORT:128min",
     "LOW_THROUGHPUT:s6:0/h<12 (idle_why=HOLD until 2026-10-31T11:16Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides))"
   ],
   "repair": "DISK_REPAIR:s1:0GB->0G (eval_cache_v1.db + rebuild_scratch_* deleted)"
