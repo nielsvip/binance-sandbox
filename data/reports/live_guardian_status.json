@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T09:57:56Z",
+ "ts": "2026-10-31T10:03:10Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 42,
+   "fills_6h": 39,
    "open_positions": 15,
-   "unrealised_usd": -0.48,
+   "unrealised_usd": -0.46,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 70,
+   "fills_6h": 66,
    "open_positions": 12,
-   "unrealised_usd": 0.17,
+   "unrealised_usd": 0.39,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 14,
    "open_positions": 5,
-   "unrealised_usd": -0.17,
+   "unrealised_usd": -0.14,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,66 +127,66 @@
     "43587"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 6.0
   },
   "men": {
    "pids": [
     "20386"
    ],
    "starts_30m": 1,
-   "log_age_s": 387.0
+   "log_age_s": 105.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 39.0
+   "log_age_s": 20.0
   },
   "inf": {
    "pids": [
     "34297"
    ],
    "starts_30m": 2,
-   "log_age_s": 11.0
+   "log_age_s": 9.0
   },
   "flz": {
    "pids": [
     "78263"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 39.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 18939.0
+   "log_age_s": 19252.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 19254.0
+   "log_age_s": 19567.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T09:57:57Z",
+   "ts": "2026-10-31T10:03:10Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "fin:FIDAUSDT_SHORT",
+   "evidence": "31 10:01:36 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:FIDAUSDT_SHORT: bypass MAX_ORDER_VALUE $20 / MAX_POSITION_SIZE $20 \u2014 restoring $38 on bounce (prior max 0.0000)"
+  },
+  {
+   "ts": "2026-10-31T10:03:10Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:HYPEUSDT_LONG",
    "evidence": "CLOSE FIXED_STOP decided 2026-10-31T06:26:14Z bar=2026-10-31T04:30:00Z: no fill in 1800s and no refusal logged"
-  },
-  {
-   "ts": "2026-10-31T09:57:58Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "men",
-   "evidence": "ez_manage_men.log not written for 387s"
   }
  ],
  "alert_counts": {
-  "VEC_DECISION_NOT_FILLED": 1,
-  "STALE_LOG": 1
+  "CAP_BYPASS": 1,
+  "VEC_DECISION_NOT_FILLED": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -244,14 +244,7 @@
    "why": "RAPID_LOSS_KEY unrealised -4.62% (60-min high +0.55%), amt 10366 (opens/augments blocked; exits untouched)",
    "undo": "redis-cli -p 6379 DEL open_blocked:ang:RSRUSDT_SHORT",
    "dry_run": false
-  },
-  "key:men:BOMEUSDC_SHORT": {
-   "ts": 1793433548.895605,
-   "until": 1793440748.895608,
-   "why": "SIZE_ANOMALY order $2021.61 > 1.5x MAX_ORDER_VALUE",
-   "undo": "redis-cli -p 6379 DEL open_blocked:men:BOMEUSDC_SHORT",
-   "dry_run": false
   }
  },
- "sweep_s": 1.72
+ "sweep_s": 1.97
 }
