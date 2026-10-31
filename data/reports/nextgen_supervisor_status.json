@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-10-31T02:51:02.238332+00:00",
+  "recorded_at": "2026-10-31T02:54:46.479881+00:00",
   "status": "active_not_achieved",
   "deployment_authorized_by_this_record": false,
   "requirements": {
@@ -514,6 +514,34 @@
       "receipt": "/home/niels/v15_bench/reviews/ibm_baseline_20261031_review1/side/previous_baseline_oracle.json",
       "saved_at": "2026-10-31T02:44:24.818159Z",
       "qualification": "Freshly computed replay of old selected settings on frozen input; not an old computation date and not candidate parity. Original source computation date unknown."
+    },
+    "frozen_kindergarten_domain": {
+      "status": "ACTUAL_HELPER_DOMAIN_CENSUS_ALL_FOUR_TEMPLATES",
+      "helper_sha256": "5e5c62810e499bb16170bac02dd529d3a5c496638172c1a73a99fcd4dcb80c80",
+      "all_nine_keys_present": true,
+      "grey_rows": 0,
+      "unique_single_options": {
+        "CRYPTO_LONG": 35,
+        "CRYPTO_SHORT": 35,
+        "STOCKS_LONG": 35,
+        "STOCKS_SHORT": 34
+      },
+      "template_sha256": {
+        "CRYPTO_LONG": "b87d20604d16facdee3d0abcd890e0184b856db79044627d7f82594b3986822a",
+        "CRYPTO_SHORT": "3e989e4fb5171a19ca48fb9865b463c28457a83e0641523ae75e4823f3aed1d4",
+        "STOCKS_LONG": "27fbc35c5a9c40097d29ec860db5a31cc210e37b5805cc7c4ca23901373e3344",
+        "STOCKS_SHORT": "f9f13313a14b36b729e2395ee47002fee963a9f5e5f8bc7001820805428d240c"
+      },
+      "source_stability": "helper and each book hashes checked unchanged across census",
+      "qualification": "Frozen reference templates only, not current mutable books. Does not prove full phase execution or promotion."
+    },
+    "ibm_authority_diagnostic": {
+      "status": "COMBINED_REPAIR_TERMINAL_RC0_NOT_NN_GAIN",
+      "saved_at": "2026-10-31T02:52:36.226288Z",
+      "receipt_sha256": "ff5e5899ffba315638fd78c24e6840911c2b3d6c13b84c46b620b4e7c5f517b4",
+      "evidence_dir": "data/reports/nextgen_authority_repair_20261031/actual_evidence/ibm_both",
+      "agent_verified_selected_fields_restored": 28,
+      "qualification": "Same frozen input cutoff; original oracle preserved; config/ledger/result changes are code-repair effects, not NN gain."
     }
   },
   "required_before_s2_comparison": {

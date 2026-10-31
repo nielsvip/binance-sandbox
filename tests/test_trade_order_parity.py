@@ -1,0 +1,49 @@
+from copy import deepcopy
+from tools.trade_order_parity import compare_orders
+
+def ledger():
+    return [
+        {"account": "ang", "sym_side": "TEST_LONG", "bar_ts": 1800, "action": "OPEN", "qty": 10, "position_after": 10},
+        {"account": "ang", "sym_side": "TEST_LONG", "bar_ts": 2700, "action": "REDUCE", "qty": 4, "position_after": 6},
+        {"account": "ang", "sym_side": "TEST_LONG", "bar_ts": 3600, "action": "CLOSE", "qty": 6, "position_after": 0},
+    ]
+
+def test_exact_partial_order_sequence_passes():
+    assert compare_orders(ledger(), ledger())["verdict"] == "PASS"
+
+def test_same_entry_exit_bars_but_different_partial_quantities_fail():
+    actual = ledger()
+    actual[1].update(qty=3, position_after=7)
+    actual[2].update(qty=7)
+    report = compare_orders(ledger(), actual)
+    assert report["verdict"] == "FAIL"
+    assert len(report["differences"]) == 2
+
+def test_one_bar_late_is_not_matched_by_tolerance():
+    actual = ledger()
+    actual[1]["bar_ts"] += 900
+    assert compare_orders(ledger(), actual)["verdict"] == "FAIL"
+
+def test_duplicate_reduction_changes_position_and_fails():
+    actual = ledger()
+    duplicate = deepcopy(actual[1])
+    duplicate.update(qty=2, position_after=4)
+    actual.insert(2, duplicate)
+    actual[3].update(qty=4)
+    assert compare_orders(ledger(), actual)["verdict"] == "FAIL"
+
+def test_close_more_than_open_is_invalid_even_if_both_lanes_do_it():
+    actual = ledger()
+    actual[-1]["qty"] = 12
+    report = compare_orders(actual, actual)
+    assert report["verdict"] == "INVALID"
+    assert "conservation" in report["native_errors"][0]["error"]
+
+def test_empty_ledgers_are_not_parity_proof():
+    assert compare_orders([], [])["verdict"] == "NO_EVENTS"
+
+def test_different_accounts_are_not_silently_matched():
+    actual = ledger()
+    for row in actual:
+        row["account"] = "inf"
+    assert compare_orders(ledger(), actual)["verdict"] == "FAIL"

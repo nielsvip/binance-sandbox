@@ -1237,6 +1237,7 @@ class Trader:
         state producer (tools/fwdstate_npz_watch.py on S1) computes them FIRST after every bar close and covers a held side
         that is outside the tradeable universe."""
         pos = self.broker.positions(acct)
+        self.__dict__.setdefault("position_observed_at", {})[acct] = time.time()
         self.annotate_with_mac(acct, pos)
         held = self.__dict__.setdefault("held", {})
         held[acct] = sorted(ss for ss, p in pos.items() if float(p.get("qty") or 0) > 0)
@@ -1763,6 +1764,7 @@ class Trader:
                                           "notes": [n for s, n in notes if s == ss], "untradeable_bar": (untradeable.get(ss) or {}).get("bar")}
                     try:
                         consumed[ss][acct]["decision_provenance"] = persist_decision_state(self.out, st)
+                        consumed[ss][acct]["account_execution_context"] = self.capture_account_position(acct, ss, pos.get(ss) or {"qty": 0.0}, consumed[ss][acct]["decision_provenance"], bar)
                         self._ledger({"event": "DECISION", "acct": acct, "ss": ss, "bar": bar, **consumed[ss][acct]})
                     except OSError as exc:
                         self.alert("DECISION_PROVENANCE_WRITE_FAILED", account=acct, sym_side=ss, error=str(exc), severity="CRITICAL")
@@ -1950,6 +1952,30 @@ class Trader:
                 order["decision_provenance"] = {"status": "CAPTURE_FAILED", "error": str(exc)}
                 self.alert("DECISION_PROVENANCE_WRITE_FAILED", account=order.get("acct"), sym_side=order["ss"], error=str(exc), severity="CRITICAL")
 
+    def capture_account_position(self, acct, symbol_side, position, provenance, bar_ts):
+        try:
+            try:
+                from tools.account_execution_state import build_snapshot, persist_snapshot
+            except ImportError:
+                from account_execution_state import build_snapshot, persist_snapshot
+            symbol, _side = split_ss(symbol_side)
+            if self.venue == "crypto":
+                filters_doc = read_json(self.out / "exchange_info_crypto.json", {}) or {}
+                filters = (filters_doc.get("symbols") or {}).get(symbol)
+                fetched = float(filters_doc.get("_fetched") or 0)
+                if not filters or not 0 <= time.time() - fetched <= 6 * 3600:
+                    raise ValueError("current broker lot filters unavailable")
+                filter_source = {"venue": "crypto", "symbol": symbol, "filters": filters, "fetched_at": fetched}
+            else:
+                filter_source = {"venue": "stocks", "symbol": symbol, "filters": {"step": 1, "min_qty": 1}, "source": "Tradier.size whole-share execution contract"}
+            filter_hash = hashlib.sha256(json.dumps(filter_source, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+            snapshot = build_snapshot(acct, symbol_side, position, broker_confirmed=True, broker_source="Binance.positionRisk" if self.venue == "crypto" else "Tradier.account.positions", observed_at=(self.__dict__.get("position_observed_at") or {}).get(acct), bar_ts=bar_ts, settings_sha256=provenance.get("settings_sha256"), filter_sha256=filter_hash, state_sha256=provenance.get("state_sha256"))
+            reference = persist_snapshot(self.out / "account_execution", snapshot)
+            reference.update({"status": "BROKER_OBSERVED", "lifecycle_id": snapshot["lifecycle_id"], "lifecycle_status": snapshot["lifecycle_status"], "filter_source": filter_source})
+            return reference
+        except (OSError, ValueError, TypeError, ImportError) as exc:
+            return {"status": "UNVERIFIED", "error": str(exc)[:240]}
+
     def send_orders(self, acct, orders, pos, killed):
         orders_n = 0
         submitted_sides = set()
@@ -1967,6 +1993,7 @@ class Trader:
             if o["act"] in ("REDUCE", "CLOSE") or (self.venue == "crypto" and o["ss"] in submitted_sides):
                 try:
                     pos = self.broker.positions(acct)
+                    self.__dict__.setdefault("position_observed_at", {})[acct] = time.time()
                     self.annotate_with_mac(acct, pos)
                 except Exception as exc:
                     self._ledger({"event": "ORDER", "acct": acct, "ss": o["ss"], "act": o["act"], "key": o["key"], "status": "POSITION_REFRESH_FAILED", "detail": str(exc)[:160], "final": False})
@@ -2021,6 +2048,7 @@ class Trader:
             except Exception as exc:
                 qty, why, price = 0.0, f"sizing failed: {str(exc)[:120]}", 0.0
             row.update({"price": price, "qty": qty, "notional": round(qty * price, 4) if price else None})
+            row["account_execution_context"] = self.capture_account_position(acct, o["ss"], pos.get(o["ss"]) or {"qty": 0.0}, row["decision_provenance"], row["decision_provenance"].get("npz_tail") or (int(time.time()) // BAR_S - 1) * BAR_S)
             if o["act"] in ("REDUCE", "CLOSE"):
                 profitable, profit_check = actual_reduction_is_profitable(o["ss"], pos.get(o["ss"]) or {}, price)
                 row["actual_profit_check"] = profit_check

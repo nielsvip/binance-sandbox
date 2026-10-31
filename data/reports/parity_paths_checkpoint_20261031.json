@@ -1,6 +1,6 @@
 {
-  "computed_at": "2026-10-31T02:48:07.125170+00:00",
-  "status": "IN_PROGRESS_NATIVE_PARITY_FAIL",
+  "computed_at": "2026-10-31T02:52:40.703261+00:00",
+  "status": "IN_PROGRESS_ONE_FROZEN_ENTRY_EXIT_FIXTURE_PASS_FULL_PARITY_UNPROVEN",
   "fleet_deployed": "PARTIAL_AUTO_PUSH_DISCOVERED; NOT_A_REVIEWED_FLEET_BATCH",
   "log_text_preserved": true,
   "local_template_install_summary": {
@@ -124,17 +124,18 @@
     "ang/inf full common-sym_side and loss attribution"
   ],
   "latest_crypto_replay": {
-    "computed_at": "2026-10-31T02:46:40Z",
+    "report": "/tmp/parity_1000pepe_8of8_20261031T025132.json",
+    "computed_at": "2026-10-31T02:51:32Z",
     "symbol_side": "1000PEPEUSDC_LONG",
     "frozen_npz_md5": "88b03db6b7ace4203ae899f65b40f30c",
     "window_days": 7,
     "tol_seconds": 0,
-    "vector_trips": 7,
+    "vector_trips": 8,
     "native_trips": 8,
-    "matched_entries": 7,
-    "matching_exits": 6,
-    "verdict": "FAIL",
-    "remaining_first_exit": "2026-10-30T12:00:00Z native WT velocity exit absent vector"
+    "matched_entries": 8,
+    "matching_exits": 8,
+    "roundtrip_verdict": "PASS",
+    "full_order_quantity_and_error_verdict": "NOT_VERIFIED"
   },
   "reviewed_test_evidence": {
     "affected_suite": {
@@ -282,5 +283,19 @@
         "STRUCTURAL_RANGE_SHIFT_K_LOW@EXIT_STRUCTURAL+3"
       ]
     }
+  },
+  "final_acceptance_required": {
+    "window": "last14calendarDays",
+    "data": "same frozen15m kline and NPZ bars with causal warmup",
+    "order_fields": [
+      "bar",
+      "symbol",
+      "side",
+      "action",
+      "quantity",
+      "position_after"
+    ],
+    "accounts": "all tradeable sym_sides; compare ang/inf commonkeys overmatchingeligibility",
+    "errors": "zero unexplained runtimeerrors and VEC discrepancies; preserve messages"
   }
 }

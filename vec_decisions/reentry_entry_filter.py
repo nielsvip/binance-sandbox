@@ -2,6 +2,26 @@
 
 import numpy as np
 
+
+class SnapshotConfigView:
+    """Per-symbol config overlay that supports predicate-local copy changes."""
+
+    def __init__(self, base, getter):
+        object.__setattr__(self, "_base", base)
+        object.__setattr__(self, "_getter", getter)
+
+    def __getattr__(self, name):
+        base = object.__getattribute__(self, "_base")
+        getter = object.__getattribute__(self, "_getter")
+        return getter(name, getattr(base, name, None))
+
+    def __copy__(self):
+        clone = type(self).__new__(type(self))
+        object.__setattr__(clone, "_base", object.__getattribute__(self, "_base"))
+        object.__setattr__(clone, "_getter", object.__getattribute__(self, "_getter"))
+        return clone
+
+
 _INDICATOR_STRING_CODES = {
     "wt_cross": {"BEAR": -1, "NONE": 0, "BULL": 1},
     "wt_signal": {"BEAR": -1, "NEUTRAL": 0, "BULL": 1},

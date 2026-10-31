@@ -1879,7 +1879,11 @@ def apply_patches(stores: Dict[str, IndicatorStore], mode: str):
     # --- Patch datetime.now/utcnow ---
     _real_dt = datetime
 
-    class _PatchedDatetime(datetime):
+    class _SimDatetimeMeta(type(_real_dt)):
+        def __instancecheck__(cls, instance):
+            return isinstance(instance, _real_dt) or type.__instancecheck__(cls, instance)
+
+    class _PatchedDatetime(_real_dt, metaclass=_SimDatetimeMeta):
         @classmethod
         def now(cls, tz=None):
             return _sim_datetime_now(tz)
@@ -3120,12 +3124,14 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             side = kw.get("side", "")
             pos_side = kw.get("positionSide", "")
             pk = f"{account_key}:{sym}_{'LONG' if pos_side == 'LONG' else 'SHORT'}"
+            pos = trade_manager.positions.get(pk)
+            before_amt = abs(float(getattr(pos, "positionAmt", 0) or 0)) if pos else 0.0
             trade = {"timestamp": _sim_ts[0], "params": kw, "status": "FILLED",
                      "avgPrice": str(px), "executedQty": str(qty),
-                     "position_key": pk, "side": side, "quantity": qty, "price": px}
+                     "position_key": pk, "side": side, "quantity": qty, "price": px,
+                     "position_before": before_amt, "sym_side": pk.split(":", 1)[-1]}
             executed_trades.append(trade)
             # Update positionAmt (what exchange would do)
-            pos = trade_manager.positions.get(pk)
             if not pos:
                 v8_logger.warning(f"[MOCK_FCO] No position for pk={pk} (available: {list(trade_manager.positions.keys())[:5]})")
             if pos and qty > 0:
@@ -3143,6 +3149,14 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     else:
                         pos.entry_price = (_old_amt * pos.entry_price + abs(qty) * px) / (_old_amt + abs(qty))
                     pos.positionAmt = _old_amt + abs(qty)
+                after_amt = abs(float(getattr(pos, "positionAmt", 0) or 0))
+                trade["action"] = ("CLOSE" if after_amt <= 1e-12 else "REDUCE") if is_reduce else ("OPEN" if before_amt < 0.0001 else "AUGMENT")
+                trade["position_after"] = after_amt
+                trade["position_after_signed"] = after_amt if is_long else -after_amt
+            else:
+                trade["action"] = "UNKNOWN"
+                trade["position_after"] = before_amt
+                trade["position_after_signed"] = before_amt if pk.endswith("_LONG") else -before_amt
             return {"orderId": len(executed_trades), "status": "FILLED",
                     "avgPrice": str(px), "executedQty": str(qty)}
         def futures_position_information(self, **kw):
@@ -4358,9 +4372,38 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         ez_manage.calculate_final_order_quantity = _v8_do_calc_qty
         v8_logger.info("[V8_DECISION_ONLY] calculate_final_order_quantity stubbed (crypto path)")
 
-    # PositionService — start EMPTY, no disk positions
-    # Backtest must earn every position through the trading logic
-    v8_logger.info("Bootstrapping PositionService (EMPTY — no disk positions)...")
+    # The replay service gets a private empty snapshot for its own symbol universe.
+    # Native coverage stays active while current account positions remain outside the replay.
+    import tempfile as _tf_replay
+    _replay_position_root = Path(_tf_replay.mkdtemp(prefix="v8_position_fixture_"))
+    _replay_symbols = sorted(str(s).upper() for s in stores)
+    (_replay_position_root / "symbols.json").write_text(json.dumps(_replay_symbols))
+    for _replay_side in ("LONG", "SHORT"):
+        (_replay_position_root / f"symbols_{account_key}_{_replay_side.lower()}.json").write_text(json.dumps(_replay_symbols))
+    _replay_account_dir = _replay_position_root / account_key.lower()
+    _replay_account_dir.mkdir(parents=True, exist_ok=True)
+    for _replay_side in ("LONG", "SHORT"):
+        _replay_rows = {
+            f"{account_key}:{_replay_sym}_{_replay_side}": {
+                "symbol": _replay_sym,
+                "position_side": _replay_side,
+                "positionAmt": 0.0,
+                "entry_price": 0.0,
+                "mark_price": 0.0,
+            }
+            for _replay_sym in _replay_symbols
+        }
+        (_replay_account_dir / f"{_replay_side.lower()}_positions.json").write_text(json.dumps(_replay_rows))
+    _service_config_type = ez_positions_service.Config
+
+    def _replay_service_config():
+        _cfg = _service_config_type()
+        _cfg.BASE_PATH = _replay_position_root
+        _cfg.SYMBOLS_FILE = _replay_position_root / "symbols.json"
+        return _cfg
+
+    ez_positions_service.Config = _replay_service_config
+    v8_logger.info(f"Bootstrapping PositionService from replay fixture {str(_replay_position_root)} with {len(_replay_symbols)} symbols...")
     try:
         positions_service = await ez_positions_service.bootstrap_position_service(
             logger=logging.getLogger("v8_bootstrap"),
@@ -4369,25 +4412,25 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             load_priority='disk',
             start_maintenance=False,
         )
-        # CLEAR all loaded positions — start from zero
-        positions_service.positions = {}
-        positions_service.positions_by_account = {account_key: {}}
         trade_manager.positions_by_account = positions_service.positions_by_account
         trade_manager.positions = positions_service.positions
         trade_manager.positions_service = positions_service
         trade_manager.service = positions_service
         positions_service.trade_manager = trade_manager
-        v8_logger.info("PositionService ready — 0 positions (clean start)")
+        trade_manager._v8_position_fixture_root = str(_replay_position_root)
+        v8_logger.info(f"PositionService ready — {sum(len(v) for v in positions_service.positions_by_account.values())} empty replay slots")
     except Exception as e:
         v8_logger.warning(f"PositionService bootstrap failed ({e}) — creating empty")
         trade_manager.positions = {}
         trade_manager.positions_by_account = {account_key: {}}
+    finally:
+        ez_positions_service.Config = _service_config_type
 
     # TrackerManager, DataManager, HedgeEngine, Registry (ALL REAL)
     v8_logger.info("Initializing TrackerManager, HedgeEngine, DataManager...")
     redis_manager = trade_manager.redis_manager
     tracker_manager = ez_positions_quick.TrackerManager(
-        BASE_PATH, trade_manager=trade_manager, redis_manager=redis_manager)
+        _replay_position_root, trade_manager=trade_manager, redis_manager=redis_manager)
     tracker_manager.accounts = accounts
     trade_manager.tracker_manager = tracker_manager
 
@@ -4398,14 +4441,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             await tracker_manager.sync_universe(ak)
         except Exception as e:
             v8_logger.warning(f"Tracker sync_universe {ak}: {e}")
-    # Reset ALL loaded positions — clean slate (or seed from snapshot below)
-    trade_manager.positions = {}
-    trade_manager.positions_by_account = {account_key: {}}
-    if trade_manager.positions_service:
-        trade_manager.positions_service.positions = {}
-        trade_manager.positions_service.positions_by_account = {account_key: {}}
-    tracker_manager.positions = {}
-    tracker_manager.positions_by_account = {account_key: {}}
+    # Keep the fixture's empty slots in place through native manage and coverage paths.
     # ─── V8 SEED-POSITIONS (forward-parity loop) ─────────────────────────────
     # When --seed-positions <path> is set (or env V8_SEED_POSITIONS_FILE), load
     # the live open positions / hedges / exit_candidates / tradeable_keys from
@@ -4601,8 +4637,9 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     # instead of broadcasting every NPZ sym to both sides. Live tradier_positions.py reads the
     # same files; BT engine must mirror or it simulates wrong-side phantom trades that live
     # correctly refuses (root cause of "BT-only entries" discrepancy on trb 2026-05-21).
-    _long_allow_path = BASE_PATH / f"symbols_{account_key}_long.json"
-    _short_allow_path = BASE_PATH / f"symbols_{account_key}_short.json"
+    _universe_root = Path(getattr(trade_manager, "_v8_position_fixture_root", BASE_PATH))
+    _long_allow_path = _universe_root / f"symbols_{account_key}_long.json"
+    _short_allow_path = _universe_root / f"symbols_{account_key}_short.json"
     try:
         _long_allow = set(json.load(open(_long_allow_path))) if _long_allow_path.exists() else None
     except Exception:
@@ -18721,7 +18758,7 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
         m["ledger"] = [{"ts": float(getattr(e,"ts",0)), "type": getattr(e,"type",""), "price": float(getattr(e,"value",0)/max(1e-9,float(getattr(e,"qty",0)))) if getattr(e,"qty",0) else 0.0, "qty": float(getattr(e,"qty",0)), "pnl_pct": float(getattr(e,"pnl_pct",0)), "reason": ""} for e in events if getattr(e,"type","")=="CLOSE"]
         # 2026-10-06 trade-parity (tools/v15_trade_parity.py): every executed live-path event with its action + reason,
         # so vec and live ledgers can be matched trade-by-trade. Output only — no simulation change.
-        m["execution_ledger"] = [{"ts": float(getattr(e, "ts", 0)), "type": getattr(e, "type", ""), "action": str(ev.get("action", "") or "").upper(), "reason": str(ev.get("reason", "") or "")[:160], "qty": float(getattr(e, "qty", 0)), "price": float(ev.get("price", 0) or 0), "pnl_pct": float(getattr(e, "pnl_pct", 0)), "raw_type": str(ev.get("type", "") or ""), "position_key": str(ev.get("position_key", "") or ""), "position_side": str(ev.get("position_side", "") or ""), "side": str(ev.get("side", "") or "")} for e, ev in zip(events, executed or [])]
+        m["execution_ledger"] = [{"ts": float(getattr(e, "ts", 0)), "type": getattr(e, "type", ""), "action": str(ev.get("action", "") or "").upper(), "reason": str(ev.get("reason", "") or "")[:160], "qty": float(getattr(e, "qty", 0)), "price": float(ev.get("price", 0) or 0), "pnl_pct": float(getattr(e, "pnl_pct", 0)), "raw_type": str(ev.get("type", "") or ""), "position_key": str(ev.get("position_key", "") or ""), "position_side": str(ev.get("position_side", "") or ""), "side": str(ev.get("side", "") or ""), "status": str(ev.get("status", "") or ""), "position_before": ev.get("position_before"), "position_after": ev.get("position_after"), "position_after_signed": ev.get("position_after_signed"), "sym_side": str(ev.get("sym_side", "") or ""), "account": str(ev.get("position_key", "").split(":", 1)[0]) if ev.get("position_key") else ""} for e, ev in zip(events, executed or [])]
         m["sim_account"] = str(_run_one_sim_account or os.environ.get("V12_SIM_ACCOUNT") or "trb").lower() if mode == "tradier" else None
         m["exit_guarantee_replay"] = _xg_rp.replay_stats() if _xg_rp is not None else None  # 2026-10-14: would-escalate / would-retry counts (pass-through)
         return m

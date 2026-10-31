@@ -62,13 +62,16 @@ def test_historical_membership_is_account_specific_and_unknown_fails_closed(monk
     import vec_decisions.quick_missing_wr_lr as missing
 
     archive = tmp_path / "wr_lists_history.jsonl"
-    archive.write_text(json.dumps({"ts": 100.0, "ang_long": ["1000PEPEUSDC"], "ang_short": [], "inf_long": [], "inf_short": ["1000PEPEUSDC"]}) + "\n")
+    archive.write_text(json.dumps({"ts": 100.0, "ang_long": ["1000PEPEUSDC"], "ang_short": [], "inf_long": [], "inf_short": ["1000PEPEUSDC"], "flz_long": ["1000PEPEUSDC"], "fin_short": ["1000PEPEUSDC"], "men_long": []}) + "\n")
     monkeypatch.setattr(missing, "_archive_path", lambda: str(archive))
     monkeypatch.setattr(missing, "_ARCHIVE_CACHE", {"mtime": None, "rows": [], "times": []})
     times = np.array([99.0, 100.0, 101.0])
     np.testing.assert_array_equal(historical_wr_membership_mask("1000PEPEUSDC", times, True, "ang"), [False, True, True])
     np.testing.assert_array_equal(historical_wr_membership_mask("1000PEPEUSDC", times, True, "inf"), [False, False, False])
     np.testing.assert_array_equal(historical_wr_membership_mask("1000PEPEUSDC", times, False, "inf"), [False, True, True])
+    np.testing.assert_array_equal(historical_wr_membership_mask("1000PEPEUSDC", times, True, "flz"), [False, True, True])
+    np.testing.assert_array_equal(historical_wr_membership_mask("1000PEPEUSDC", times, False, "fin"), [False, True, True])
+    np.testing.assert_array_equal(historical_wr_membership_mask("1000PEPEUSDC", times, True, "men"), [False, False, False])
     np.testing.assert_array_equal(historical_wr_membership_mask("1000PEPEUSDC", times, True, None), [False, False, False])
 
 

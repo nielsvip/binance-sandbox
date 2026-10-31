@@ -1,5 +1,6 @@
 import copy
 import pickle
+import warnings
 
 import numpy as np
 import v12_quick_engine as V
@@ -48,6 +49,51 @@ def test_b04_predicate_switch_and_side_masks():
     cfg.REENTRY_B04_DC_RETEST_ENABLED = False
     assert not dc_high_break_retest_mask(long_npz, 2, True, cfg, _safe)[0].any()
     assert not dc_high_break_retest_mask(short_npz, 2, False, cfg, _safe)[0].any()
+
+
+def test_b04_zero_previous_channels_are_silent_and_fail_closed():
+    channels = {
+        "4h": (np.asarray([0.0, 100.0]), np.asarray([0.0, 0.0])),
+        "1h": (np.asarray([0.0, 100.0]), np.asarray([0.0, 0.0])),
+        "15m": (np.asarray([0.0, 100.0]), np.asarray([0.0, 0.0])),
+    }
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", RuntimeWarning)
+        long_result = dc_high_break_retest_live_adapter(
+            {"k_15m": 60.0, "d_15m": 50.0, "k_15m_prev": 55.0}, 100.0, True
+        )
+        long_mask = dc_high_break_retest_mask(
+            {
+                "close": np.asarray([100.0, 100.0]),
+                "dc_high_4h": channels["4h"][0],
+                "dc_high_4h_ant": channels["4h"][1],
+                "stoch_k_15m": np.asarray([60.0, 60.0]),
+                "stoch_d_15m": np.asarray([50.0, 50.0]),
+                "stoch_k_15m_prev": np.asarray([55.0, 55.0]),
+            },
+            2,
+            True,
+            Config(),
+            _safe,
+        )
+        short_mask = dc_high_break_retest_mask(
+            {
+                "close": np.asarray([100.0, 100.0]),
+                "dc_low_4h": channels["4h"][0],
+                "dc_low_4h_ant": channels["4h"][1],
+                "stoch_k_15m": np.asarray([40.0, 40.0]),
+                "stoch_d_15m": np.asarray([50.0, 50.0]),
+                "stoch_k_15m_prev": np.asarray([45.0, 45.0]),
+            },
+            2,
+            False,
+            Config(),
+            _safe,
+        )
+    assert long_result[0] is False
+    assert not long_mask[0].any()
+    assert not short_mask[0].any()
+    assert not [warning for warning in caught if issubclass(warning.category, RuntimeWarning)]
 
 
 def test_b04_uses_priority_first_match_and_missing_inputs_fail_open():

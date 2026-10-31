@@ -31484,27 +31484,21 @@ async def check_entry_candidates_for_account(
                     _reentry_ftf_enabled = bool(_psym_get(symbol, position_side, "REENTRY_ENTRY_FILTER_ENABLED", getattr(config, "REENTRY_ENTRY_FILTER_ENABLED", False)))
                     if curr_amt == 0 and _vec_reentry_fire and _reentry_ftf_enabled:
                         try:
+                            from vec_decisions.reentry_entry_filter import SnapshotConfigView as _ReentryCfgView
                             from vec_decisions.reentry_entry_filter import live_reentry_min_pass as _live_reentry_min_pass
-
-                            class _ReentryCfgView:
-                                def __init__(self, base, getter):
-                                    self._base = base
-                                    self._getter = getter
-
-                                def __getattr__(self, name):
-                                    return self._getter(name, getattr(self._base, name, None))
 
                             _reentry_cfg_get = lambda n, d=None: _psym_get(symbol, position_side, n, getattr(config, n, d))
                             _reentry_cfg_view = _ReentryCfgView(config, _reentry_cfg_get)
                             _reentry_min = _reentry_cfg_get("REENTRY_FILTER_MIN_PASS", 1)
-                            _reentry_allowed, _reentry_passed, _reentry_required, _reentry_active, _reentry_masks = _live_reentry_min_pass(indicators, is_long, _reentry_cfg_view, float(current_price or 0), _reentry_min, now, True)
+                            _reentry_timestamp = float(now.timestamp()) if hasattr(now, "timestamp") else float(now or 0.0)
+                            _reentry_allowed, _reentry_passed, _reentry_required, _reentry_active, _reentry_masks = _live_reentry_min_pass(indicators, is_long, _reentry_cfg_view, float(current_price or 0), _reentry_min, _reentry_timestamp, True)
                             if not _reentry_allowed:
                                 logger.warning(f"[REENTRY_MIN_PASS] {position_key}: blocked ({_reentry_passed}/{_reentry_active}; required={_reentry_required})")
                                 return
                         except Exception as _reentry_filter_error:
                             logger.error(f"[REENTRY_MIN_PASS_INVALID] {position_key}: enabled reentry mask evaluation failed: {_reentry_filter_error}")
                             return
-                    if _should_apply_fresh_open_ftf(curr_amt, _vec_reentry_fire, _reentry_ftf_enabled):
+                    if _should_apply_fresh_open_ftf(curr_amt, _vec_reentry_fire):
                         try:
                             _wftf_get = lambda n, d: _psym_get(symbol, position_side, n, getattr(config, n, d))
                             _wftf_fam = _family_lane_tags(indicators, current_price, is_long, _wftf_get)

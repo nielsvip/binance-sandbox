@@ -6,13 +6,14 @@ from bisect import bisect_right
 import numpy as np
 
 _ARCHIVE_CACHE = {"mtime": None, "rows": [], "times": []}
+_WR_ACCOUNTS = ("ang", "inf", "fin", "men", "flz")
 
 
 def historical_wr_membership_mask(symbol, timestamps, is_long, account=None):
     """Return account-specific archived membership; unknown data stays False."""
     ts = np.asarray(timestamps, dtype=float)
     result = np.zeros(ts.shape, dtype=bool)
-    if ts.ndim != 1 or account not in ("ang", "inf"):
+    if ts.ndim != 1 or account not in _WR_ACCOUNTS:
         return result
     for i, value in enumerate(ts):
         result[i] = _wr_in_list_at_account(symbol, bool(is_long), float(value), account) is True
@@ -101,7 +102,7 @@ def wr_lr_quick_good_from_npz(npz, symbol, is_long, cfg, score=None, membership_
     if timestamps is None:
         return None
     account = account or _cfg(cfg, "VEC_ACCOUNT_KEY", None)
-    if account not in ("ang", "inf"):
+    if account not in _WR_ACCOUNTS:
         return None
     membership = historical_wr_membership_mask(str(symbol), timestamps, is_long, account) if membership_lookup is None else np.zeros(n, dtype=bool)
     if membership_lookup is not None:

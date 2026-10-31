@@ -1,0 +1,54 @@
+{
+  "audited_at": "2026-10-31T02:53:35.142405Z",
+  "requested_window": {
+    "start_inclusive": "2026-10-21T00:00:00Z",
+    "end_exclusive": "2026-10-31T00:00:00Z",
+    "interpretation": "last ten completed UTC days"
+  },
+  "scope": "changes made in this thread: paper streaming, journaling, raw snapshot storage and native feed transport",
+  "verification_gate": "NOT_PASSED",
+  "full_ten_day_trade_replay_performed": false,
+  "avoided_bad_trades": null,
+  "avoided_loss": null,
+  "reason": "No live entry/exit change was made by this thread. The causal historical inputs required to attribute individual avoided trades are not established.",
+  "source_comparison": {
+    "before_path": "backups/before_paper_forward_stream_20261031020915.py",
+    "before_sha256": "91d678c3d121002ae045a97e651a86ca9b479ddb3d92efbb2cc0f78a3b27a353",
+    "current_path": "backtest_v12_engine.py",
+    "current_sha256": "a181b80ffb014697dfe7a51db45c91ffc824c4048ba303bd1f2f29b015db6704",
+    "historical_body_unchanged_after_removing_our_optional_forward_hooks": {
+      "run_simulation": true,
+      "run_simulation_tradier": true
+    },
+    "unrelated_concurrent_changes_excluded": [
+      "deterministic pending coroutine warning",
+      "PositionService._periodic_phantom_kill isolation",
+      "patch_tradier_sim_time integration"
+    ]
+  },
+  "settings_history": {
+    "path": "/Users/niels/Documents/binance/data/hourly_reconfig/per_sym_store.db",
+    "rows_in_requested_window": 1573,
+    "first_updated_at": "2026-10-21T00:28:15Z",
+    "last_updated_at": "2026-10-30T23:49:20Z",
+    "limitation": "Store write timestamp does not prove activation on each execution host or bind settings to each fill."
+  },
+  "available_sources": [
+    "data/exchange_fills/{ang,fin,flz,inf,men}/*.json",
+    "data/history/<account>/*.jsonl",
+    "data/market_data_*.json",
+    "data/tradier/tradier_indicators_*.json"
+  ],
+  "missing_proof": [
+    "Continuous original native observation sequence with data-availability times over the complete window",
+    "Per-fill linkage to the effective code/settings and position lifecycle",
+    "Comparable before/after real-manager replay with fees, partial fills, and changed subsequent lifecycle"
+  ],
+  "existing_probes": {
+    "crypto": "data/reports/paper_crypto_startup_probe_20261031_run2.json",
+    "stocks": "data/reports/paper_stocks_startup_probe_20261031_run2.json",
+    "scope": "one-frame startup only; settings and trading parity unverified"
+  },
+  "deployment": "Only native-feed collectors were deployed by this thread; no strategy switch was enabled.",
+  "continuation": "No further scenario-fleet activation or promotion on the basis of this verification."
+}

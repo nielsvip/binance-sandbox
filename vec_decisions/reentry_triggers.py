@@ -27,7 +27,14 @@ def any_enabled(cfg) -> bool:
 
 
 def should_apply_fresh_open_ftf(curr_amt, explicit_reentry, reentry_filter_enabled=False) -> bool:
-    return float(curr_amt or 0.0) == 0.0 and (not bool(explicit_reentry) or bool(reentry_filter_enabled))
+    """Apply the all-pass fresh-entry gates only to ordinary flat opens.
+
+    Explicit reentries use the dedicated REENTRY_ENTRY_FILTER min-pass gate;
+    running the all-pass fresh gate after it would silently override that policy.
+    The third argument remains accepted for existing callers but does not change
+    the fresh-entry classification.
+    """
+    return float(curr_amt or 0.0) == 0.0 and not bool(explicit_reentry)
 
 
 def fire(cfg, is_long: bool, close: float, prev_close: float, exit_px: float, dc4_prev: float, dc4_prev2: float,

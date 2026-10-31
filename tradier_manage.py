@@ -34045,19 +34045,27 @@ class StockStrategy:
         SP = float(_cfg("START_POSITION_SIZE", config.START_POSITION_SIZE, account_key, symbol, position_side)) / current_price
         velocity_mult = 1.0
         log_parts = [f"[SIZE_CALC] {symbol} {position_side} Base: {qty:.2f}"]
-        knife_penalty = 1.0
+        from vec_decisions.tradier_augment_sizing import initial_adjustment_components
         ha_5m = i.get("ha_5m", "neutral")
-        if is_long:
-            if ha_5m == "red":
-                # Strict: If 5m is still red, we are likely early.
-                knife_penalty *= 0.3
-                log_parts.append("Knife(HA_Red)")
-        else:  # SHORT
-            if ha_5m == "green":
-                knife_penalty *= 0.3
-                log_parts.append("Knife(HA_Grn)")
-
-        # Apply Knife Penalty immediately
+        k_15m = i.get("k_15m", 50)
+        d_15m = i.get("d_15m", 50)
+        k_1h = i.get("k_1h", 50)
+        k_5m = i.get("k_5m", 50)
+        now_est = datetime.now(timezone.utc).astimezone(ZoneInfo("America/New_York"))
+        current_time_est = now_est.time()
+        is_long_term_focus = current_time_est < dt_time(11, 0) or current_time_est > dt_time(14, 0)
+        is_short_term_focus = not is_long_term_focus
+        knife_penalty, reduction_factor = initial_adjustment_components(
+            is_long,
+            ha_5m,
+            k_15m,
+            d_15m,
+            k_1h,
+            k_5m,
+            current_time_est,
+        )
+        if knife_penalty < 1.0:
+            log_parts.append("Knife(HA_Red)" if is_long else "Knife(HA_Grn)")
         qty *= knife_penalty
         if qty <= 0:
             return 0.0
@@ -34084,57 +34092,7 @@ class StockStrategy:
         # ============================================
         # 1. TIME-BASED STRATEGY SELECTION
         # ============================================
-        now_est = datetime.now(timezone.utc).astimezone(ZoneInfo("America/New_York"))
-        current_time_est = now_est.time()
-        market_open = dt_time(9, 30)
-        market_close = dt_time(16, 0)
-
-        # Determine if we should focus on long-term (1h/4h/D) or short-term (1m/5m/15m)
-        is_long_term_focus = False
-        is_short_term_focus = False
-
-        # Before 11 AM or after 2 PM: Focus on longer timeframes
-        if current_time_est < dt_time(11, 0) or current_time_est > dt_time(14, 0):
-            is_long_term_focus = True
-        # 11 AM - 2 PM: Focus on short-term intraday
-        else:
-            is_short_term_focus = True
-
-        # After 3:30 PM, reduce all positions for market close
-        is_near_close = current_time_est > dt_time(15, 30)
-
-        # ============================================
-        # 2. INITIAL REDUCTION FACTORS
-        # ============================================
-        reduction_factor = 1.0
-
-        # Check if K aligns with D on 15m (basic alignment)
-        k_15m = i.get("k_15m", 50)
-        d_15m = i.get("d_15m", 50)
-        k_ok = (k_15m >= d_15m) if is_long else (k_15m <= d_15m)
-        if not k_ok:
-            reduction_factor *= 0.3
-
-        k_5m = i.get("k_5m", 50)
-        k_1h = i.get("k_1h", 50)
-
-        if is_long_term_focus:
-            if is_long and k_1h > 80:
-                reduction_factor *= 0.7
-            elif not is_long and k_1h < 20:
-                reduction_factor *= 0.7
-
-        # Short-term overextension reduction
-        if is_short_term_focus:
-            if is_long and k_5m > 85:
-                reduction_factor *= 0.6
-            elif not is_long and k_5m < 15:
-                reduction_factor *= 0.6
-
-        if is_near_close:
-            reduction_factor *= 0.5
-
-        qty = qty * reduction_factor
+        qty *= reduction_factor
 
         # ============================================
         # 2b. GOLDEN ANGLES DYNAMIC SIZING (backtest-validated)

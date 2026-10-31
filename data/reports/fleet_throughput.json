@@ -1,5 +1,5 @@
 {
-  "ts": "2026-10-31T02:50:05.704467+00:00",
+  "ts": "2026-10-31T02:55:07.871964+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 7,
@@ -19,9 +19,9 @@
       "boards_running": 3,
       "workers": 19,
       "workers_vs_law_28": "19/28",
-      "mem_avail_mb": 7831,
+      "mem_avail_mb": 5752,
       "disk_free_gb": 20,
-      "load1": 20.0,
+      "load1": 23.4,
       "dispatch_idle_why": null,
       "published_ss": [
         "STXUSDT_LONG"
@@ -29,21 +29,20 @@
     },
     "s5": {
       "published_last_60m": 3,
-      "published_last_3h": 6,
+      "published_last_3h": 5,
       "boards": {
         "AAVEUSDC_LONG": 7,
-        "ENAUSDC_LONG": 0,
         "ENJUSDT_SHORT": 6,
         "FLUXUSDT_LONG": 7,
         "PTBUSDT_SHORT": 7,
         "QNTUSDT_LONG": 7
       },
-      "boards_running": 6,
+      "boards_running": 5,
       "workers": 34,
       "workers_vs_law_28": "34/28",
-      "mem_avail_mb": 5270,
+      "mem_avail_mb": 5183,
       "disk_free_gb": 13,
-      "load1": 17.9,
+      "load1": 20.2,
       "dispatch_idle_why": null,
       "published_ss": [
         "BIOUSDC_SHORT",
@@ -58,14 +57,15 @@
         "ACTUSDT_SHORT": 7,
         "KAVAUSDT_LONG": 7,
         "NXE_SHORT": 7,
+        "ONEUSDT_LONG": 7,
         "SANDUSDT_SHORT": 7
       },
-      "boards_running": 4,
-      "workers": 28,
-      "workers_vs_law_28": "28/28",
-      "mem_avail_mb": 8479,
-      "disk_free_gb": 38,
-      "load1": 18.7,
+      "boards_running": 5,
+      "workers": 35,
+      "workers_vs_law_28": "35/28",
+      "mem_avail_mb": 7637,
+      "disk_free_gb": 37,
+      "load1": 20.8,
       "dispatch_idle_why": null,
       "published_ss": [
         "BMNR_LONG",
@@ -81,7 +81,7 @@
     "LOW_THROUGHPUT:s5:3/h<12 (idle_why=None)",
     "DISK_FLOOR:s5:13GB<40",
     "LOW_THROUGHPUT:s6:3/h<12 (idle_why=None)",
-    "DISK_FLOOR:s6:38GB<40"
+    "DISK_FLOOR:s6:37GB<40"
   ],
   "repair": "DISK_REPAIR:s5:13GB->21G (eval_cache_v1.db + rebuild_scratch_* deleted)"
 }

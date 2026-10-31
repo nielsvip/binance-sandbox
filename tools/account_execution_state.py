@@ -13,11 +13,13 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 _SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 def _number(value, name, allow_zero=True):
+    if isinstance(value, bool):
+        raise ValueError(f"{name} must be finite numeric")
     try:
         number = float(value)
     except (TypeError, ValueError, OverflowError) as exc:
@@ -125,19 +127,20 @@ def _validated_mac_lifecycle(position, now, max_age_s, qty, entry):
     except ValueError as exc:
         return None, str(exc)
     source_epoch = position["mac"].get("source_file_epoch")
-    if source_epoch not in (None, ""):
-        try:
-            source_epoch = _epoch(source_epoch, "mac.source_file_epoch")
-            if position["mac"].get("last_updated"):
-                source_epoch = min(
-                    source_epoch,
-                    _epoch(position["mac"]["last_updated"], "mac.last_updated"),
-                )
-        except ValueError as exc:
-            return None, str(exc)
-        if now - source_epoch > max_age_s or now - source_epoch < -5:
-            return None, "Mac source file is stale or future-dated"
-    if age > max_age_s or age < -5 or now - opened_at < -5 or opened_at > now:
+    if source_epoch in (None, "") or not position["mac"].get("source_file"):
+        return None, "Mac source file provenance is missing"
+    try:
+        source_epoch = _epoch(source_epoch, "mac.source_file_epoch")
+        if position["mac"].get("last_updated"):
+            source_epoch = min(
+                source_epoch,
+                _epoch(position["mac"]["last_updated"], "mac.last_updated"),
+            )
+    except ValueError as exc:
+        return None, str(exc)
+    if now - source_epoch > max_age_s or source_epoch > now:
+        return None, "Mac source file is stale or future-dated"
+    if age > max_age_s or age < 0 or opened_at > now:
         return None, "Mac lifecycle annotation is stale or future-dated"
     if abs(mac_qty - qty) > max(1e-8, qty * 1e-6):
         return None, "Mac quantity does not match broker quantity"
@@ -172,9 +175,11 @@ def build_snapshot(
     observed = _epoch(observed_at, "observed_at")
     current = _epoch(time.time() if now is None else now, "now")
     age = current - observed
-    if age < -5 or age > _number(max_age_s, "max_age_s"):
+    if age < 0 or age > _number(max_age_s, "max_age_s"):
         raise ValueError("broker position observation is stale or future-dated")
     bar = _epoch(bar_ts, "bar_ts")
+    if bar > current:
+        raise ValueError("decision bar timestamp is future-dated")
     qty = _number(broker_position.get("qty"), "broker qty")
     entry_raw = broker_position.get("entry")
     entry = (
@@ -227,14 +232,24 @@ def build_snapshot(
         "state_sha256": state_hash,
         "broker_facts_sha256": _canonical_hash(broker_facts),
         "mac_lifecycle": None,
+        "mac_annotation_sha256": None,
     }
     if lifecycle_id:
         snapshot["mac_lifecycle"] = {
             "opened_at": _epoch(broker_position["mac"]["opened_at"], "mac.opened_at"),
-            "source_file": broker_position["mac"].get("source_file"),
-            "source_file_epoch": broker_position["mac"].get("source_file_epoch"),
+            "qty": broker_position["mac_qty"],
+            "age_s": broker_position["mac_age_s"],
+            "fields": dict(broker_position["mac"]),
             "source": "mac_snapshot_broker_verified",
         }
+        snapshot["mac_annotation_sha256"] = _canonical_hash(
+            {
+                "position_source": broker_position.get("position_source"),
+                "mac_qty": broker_position.get("mac_qty"),
+                "mac_age_s": broker_position.get("mac_age_s"),
+                "mac": broker_position["mac"],
+            }
+        )
     snapshot["snapshot_sha256"] = _canonical_hash(snapshot)
     return snapshot
 
@@ -302,7 +317,8 @@ def _read_journal(path, account, sym_side, lifecycle_id):
             "account": account,
             "sym_side": sym_side,
             "lifecycle_id": lifecycle_id,
-            "executed_tier": None,
+            "executed_tiers": {},
+            "family_order": {},
             "intents": {},
             "fill_ids": {},
             "events": [],
@@ -341,11 +357,19 @@ def record_tier_intent(
     tier_after,
     action,
     requested_qty,
+    family,
+    revision=0,
+    sequence=0,
     now=None,
 ):
-    """Create or idempotently retrieve a pending tier transition; no intent advances executed tier."""
+    """Create/revise a family-specific pending tier transition without advancing its cursor."""
     if not isinstance(snapshot, dict) or snapshot.get("lifecycle_id") is None:
         raise ValueError("tier transitions require a verified actual lifecycle")
+    expected_snapshot_hash = _canonical_hash(
+        {key: value for key, value in snapshot.items() if key != "snapshot_sha256"}
+    )
+    if snapshot.get("snapshot_sha256") != expected_snapshot_hash:
+        raise ValueError("tier transition snapshot hash does not match its contents")
     acct, ss = _identity(snapshot.get("account"), snapshot.get("sym_side"))
     lifecycle = snapshot["lifecycle_id"]
     iid = str(intent_id or "").strip()
@@ -353,17 +377,27 @@ def record_tier_intent(
         raise ValueError("intent_id is required")
     before = None if tier_before is None else int(tier_before)
     after = int(tier_after)
+    family = str(family or "").strip().upper()
+    if not family:
+        raise ValueError("tier family is required")
+    revision = int(revision)
+    sequence = int(sequence)
+    if revision < 0 or sequence < 0:
+        raise ValueError("revision and sequence must be nonnegative integers")
     if before is not None and before < 0 or after < 0:
         raise ValueError("tier values must be nonnegative integers")
     requested = _number(requested_qty, "requested_qty", allow_zero=False)
     timestamp = _epoch(time.time() if now is None else now, "now")
     intent = {
         "intent_id": iid,
+        "family": family,
         "bar_ts": _epoch(bar_ts, "bar_ts"),
+        "sequence": sequence,
         "tier_before": before,
         "tier_after": after,
         "action": str(action or "").upper(),
         "requested_qty": requested,
+        "revision": revision,
         "snapshot_sha256": _required_hash(
             snapshot.get("snapshot_sha256"), "snapshot_sha256"
         ),
@@ -371,32 +405,45 @@ def record_tier_intent(
         "filter_sha256": snapshot["filter_sha256"],
         "state_sha256": snapshot["state_sha256"],
         "broker_facts_sha256": snapshot["broker_facts_sha256"],
+        "mac_annotation_sha256": snapshot["mac_annotation_sha256"],
         "confirmed_fills_qty": 0.0,
         "status": "PENDING",
         "created_at": timestamp,
         "attempts": [],
         "fills": [],
+        "revisions": [],
     }
     if intent["action"] not in ("OPEN", "AUGMENT", "REDUCE", "CLOSE"):
         raise ValueError("unsupported tier action")
 
+    revision_record = {
+        "revision": revision,
+        "requested_qty": requested,
+        "snapshot_sha256": intent["snapshot_sha256"],
+        "settings_sha256": intent["settings_sha256"],
+        "filter_sha256": intent["filter_sha256"],
+        "state_sha256": intent["state_sha256"],
+        "broker_facts_sha256": intent["broker_facts_sha256"],
+        "mac_annotation_sha256": intent["mac_annotation_sha256"],
+        "created_at": timestamp,
+    }
+
     def apply(doc):
+        family_state = doc["executed_tiers"].get(
+            family, {"tier": None, "bar_ts": 0.0, "sequence": -1}
+        )
         existing = doc["intents"].get(iid)
         if existing:
             compare = {
                 key: existing.get(key)
                 for key in (
                     "intent_id",
+                    "family",
                     "bar_ts",
+                    "sequence",
                     "tier_before",
                     "tier_after",
                     "action",
-                    "requested_qty",
-                    "snapshot_sha256",
-                    "settings_sha256",
-                    "filter_sha256",
-                    "state_sha256",
-                    "broker_facts_sha256",
                 )
             }
             wanted = {key: intent[key] for key in compare}
@@ -404,16 +451,64 @@ def record_tier_intent(
                 raise ValueError(
                     "intent_id already exists with different transition data"
                 )
-            return {"created": False, "intent": existing}
-        if doc.get("executed_tier") != before:
-            raise ValueError(
-                f"tier_before {before} does not match confirmed tier {doc.get('executed_tier')}"
+            current_revision = int(existing["revision"])
+            if revision == current_revision:
+                saved_revision = existing["revisions"][-1]
+                if any(
+                    saved_revision.get(key) != revision_record.get(key)
+                    for key in revision_record
+                    if key != "created_at"
+                ):
+                    raise ValueError(
+                        "revision already exists with different sizing or provenance"
+                    )
+                return {"created": False, "revised": False, "intent": existing}
+            if revision != current_revision + 1:
+                raise ValueError(
+                    "resized intent revision must increment by exactly one"
+                )
+            if existing["status"] in ("FILLED", "OVERFILLED"):
+                raise ValueError("completed tier intent cannot be resized")
+            existing["revision"] = revision
+            existing["requested_qty"] = requested
+            existing["snapshot_sha256"] = intent["snapshot_sha256"]
+            existing["settings_sha256"] = intent["settings_sha256"]
+            existing["filter_sha256"] = intent["filter_sha256"]
+            existing["state_sha256"] = intent["state_sha256"]
+            existing["broker_facts_sha256"] = intent["broker_facts_sha256"]
+            existing["mac_annotation_sha256"] = intent["mac_annotation_sha256"]
+            existing["revisions"].append(revision_record)
+            complete, advanced = _settle_intent(doc, existing)
+            doc["events"].append(
+                {
+                    "event": "INTENT_RESIZED",
+                    "intent_id": iid,
+                    "revision": revision,
+                    "requested_qty": requested,
+                    "at": timestamp,
+                    "tier_advanced": advanced,
+                }
             )
-        if any(item.get("status") != "FILLED" for item in doc["intents"].values()):
-            raise ValueError("another tier transition is still pending")
-        if intent["bar_ts"] < float(doc.get("last_bar_ts") or 0.0):
-            raise ValueError("tier intent bar is older than the lifecycle journal")
-        doc["last_bar_ts"] = intent["bar_ts"]
+            return {
+                "created": False,
+                "revised": True,
+                "intent": existing,
+                "complete": complete,
+            }
+        if family_state.get("tier") != before:
+            raise ValueError(
+                f"tier_before {before} does not match confirmed {family} tier {family_state.get('tier')}"
+            )
+        prior_order = doc["family_order"].get(family, [0.0, -1])
+        order = [intent["bar_ts"], sequence]
+        if tuple(order) < tuple(prior_order):
+            raise ValueError("tier intent bar is older than the family journal")
+        if tuple(order) == tuple(prior_order):
+            raise ValueError("family bar/sequence already has an intent")
+        if revision != 0:
+            raise ValueError("a new intent must begin at revision 0")
+        doc["family_order"][family] = order
+        intent["revisions"].append(revision_record)
         doc["intents"][iid] = intent
         doc["events"].append(
             {
@@ -423,14 +518,24 @@ def record_tier_intent(
                 "bar_ts": intent["bar_ts"],
             }
         )
-        return {"created": True, "intent": intent}
+        return {"created": True, "revised": False, "intent": intent}
 
     result, _ = _mutate_journal(root, acct, ss, lifecycle, apply)
     return result
 
 
 def record_attempt(
-    root, account, sym_side, lifecycle_id, intent_id, outcome, *, at=None, detail=None
+    root,
+    account,
+    sym_side,
+    lifecycle_id,
+    intent_id,
+    outcome,
+    *,
+    revision=None,
+    at=None,
+    detail=None,
+    now=None,
 ):
     """Record submit/reject/unfilled observations without changing executed tier or discarding pending work."""
     result_status = str(outcome or "").upper()
@@ -443,12 +548,23 @@ def record_attempt(
     ):
         raise ValueError("outcome must describe a non-fill attempt")
     timestamp = _epoch(time.time() if at is None else at, "at")
+    current = _epoch(time.time() if now is None else now, "now")
+    if timestamp > current:
+        raise ValueError("attempt timestamp is future-dated")
 
     def apply(doc):
         intent = doc["intents"].get(str(intent_id))
-        if not intent or intent.get("status") == "FILLED":
+        if not intent or intent.get("status") in ("FILLED", "OVERFILLED"):
             raise ValueError("pending tier intent not found")
-        attempt = {"outcome": result_status, "at": timestamp, "detail": detail}
+        revision_id = intent["revision"] if revision is None else int(revision)
+        if revision_id < 0 or revision_id > intent["revision"]:
+            raise ValueError("attempt revision is not present")
+        attempt = {
+            "revision": revision_id,
+            "outcome": result_status,
+            "at": timestamp,
+            "detail": detail,
+        }
         if attempt not in intent["attempts"]:
             intent["attempts"].append(attempt)
             doc["events"].append(
@@ -478,6 +594,8 @@ def record_confirmed_fill(
     fill_source,
     confirmed,
     filled_at,
+    revision=None,
+    now=None,
 ):
     """Add an idempotent broker fill; advance the tier only once its requested quantity is confirmed."""
     if confirmed is not True or not str(fill_source or "").strip():
@@ -487,12 +605,22 @@ def record_confirmed_fill(
         raise ValueError("fill_id is required")
     qty = _number(filled_qty, "filled_qty", allow_zero=False)
     timestamp = _epoch(filled_at, "filled_at")
+    current = _epoch(time.time() if now is None else now, "now")
+    if timestamp > current:
+        raise ValueError("fill timestamp is future-dated")
 
     def apply(doc):
         prior = doc["fill_ids"].get(fid)
+        intent = doc["intents"].get(str(intent_id))
+        if not intent:
+            raise ValueError("tier intent not found")
+        revision_id = intent["revision"] if revision is None else int(revision)
+        if revision_id < 0 or revision_id > intent["revision"]:
+            raise ValueError("fill revision is not present")
         fill = {
             "fill_id": fid,
             "intent_id": str(intent_id),
+            "revision": revision_id,
             "qty": qty,
             "source": str(fill_source),
             "filled_at": timestamp,
@@ -502,41 +630,68 @@ def record_confirmed_fill(
                 raise ValueError("fill_id already recorded with different data")
             return {
                 "duplicate": True,
-                "intent": doc["intents"].get(str(intent_id)),
-                "executed_tier": doc.get("executed_tier"),
+                "intent": intent,
+                "executed_tier": doc["executed_tiers"]
+                .get(intent["family"], {})
+                .get("tier"),
             }
-        intent = doc["intents"].get(str(intent_id))
-        if not intent or intent.get("status") == "FILLED":
-            raise ValueError("pending tier intent not found")
         cumulative = float(intent.get("confirmed_fills_qty") or 0.0) + qty
         requested = float(intent["requested_qty"])
-        if cumulative > requested + max(1e-10, requested * 1e-8):
-            raise ValueError("confirmed fills exceed requested quantity")
-        intent["confirmed_fills_qty"] = min(cumulative, requested)
+        intent["confirmed_fills_qty"] = cumulative
         intent["fills"].append(fill)
         doc["fill_ids"][fid] = fill
-        complete = intent["confirmed_fills_qty"] >= requested - max(
-            1e-10, requested * 1e-8
-        )
-        intent["status"] = "FILLED" if complete else "PENDING"
-        if complete:
-            doc["executed_tier"] = intent["tier_after"]
+        complete, advanced = _settle_intent(doc, intent)
         doc["events"].append(
             {
                 "event": "FILL_CONFIRMED",
                 **fill,
                 "cumulative_qty": intent["confirmed_fills_qty"],
-                "tier_advanced": complete,
+                "requested_qty": requested,
+                "tier_advanced": advanced,
+                "overfilled": intent["status"] == "OVERFILLED",
             }
         )
         return {
             "duplicate": False,
             "intent": intent,
-            "executed_tier": doc.get("executed_tier"),
+            "executed_tier": doc["executed_tiers"]
+            .get(intent["family"], {})
+            .get("tier"),
+            "executed_tiers": doc["executed_tiers"],
+            "tier_advanced": advanced,
         }
 
     result, _ = _mutate_journal(root, account, sym_side, lifecycle_id, apply)
     return result
+
+
+def _settle_intent(doc, intent):
+    requested = float(intent["requested_qty"])
+    filled = float(intent.get("confirmed_fills_qty") or 0.0)
+    tolerance = max(1e-10, requested * 1e-8)
+    complete = filled >= requested - tolerance
+    intent["status"] = (
+        "OVERFILLED"
+        if filled > requested + tolerance
+        else "FILLED" if complete else "PENDING"
+    )
+    if not complete:
+        return False, False
+    family = intent["family"]
+    cursor = doc["executed_tiers"].get(
+        family, {"tier": None, "bar_ts": 0.0, "sequence": -1}
+    )
+    incoming = (float(intent["bar_ts"]), int(intent.get("sequence") or 0))
+    current = (float(cursor.get("bar_ts") or 0.0), int(cursor.get("sequence", -1)))
+    if incoming < current:
+        return True, False
+    doc["executed_tiers"][family] = {
+        "tier": intent["tier_after"],
+        "bar_ts": incoming[0],
+        "sequence": incoming[1],
+        "intent_id": intent["intent_id"],
+    }
+    return True, True
 
 
 def load_lifecycle_state(root, account, sym_side, lifecycle_id):

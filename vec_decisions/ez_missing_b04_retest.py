@@ -34,10 +34,20 @@ def dc_high_break_retest_core(price, is_long, channels, k, d, k_prev):
         previous = np.broadcast_to(np.atleast_1d(np.asarray(previous, dtype=float)), price.shape)
         valid_channel = np.isfinite(current) & np.isfinite(previous) & (current > 0.0) & (previous > 0.0)
         if is_long:
-            expansion = (current - previous) / previous
+            expansion = np.divide(
+                current - previous,
+                previous,
+                out=np.zeros_like(previous),
+                where=previous > 0.0,
+            )
             zone = (price >= previous * 0.99) & (price <= previous * 1.005)
         else:
-            expansion = (previous - current) / previous
+            expansion = np.divide(
+                previous - current,
+                previous,
+                out=np.zeros_like(previous),
+                where=previous > 0.0,
+            )
             zone = (price >= previous * 0.995) & (price <= previous * 1.01)
         candidate = valid_channel & valid_price & valid_stoch & (expansion >= 0.015) & zone & stoch_turn & ~fire
         fire[candidate] = True
