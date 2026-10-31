@@ -150,6 +150,7 @@ def load_pin(path, sym_side, defaults, npz, window_days, supported_fields=None, 
     pin['global_context'] = {key: value for key, value in previous_config.items() if key in managed}
     pin['reader_transformations'] = {'raw_accepted_keys_not_engine_fields': sorted(set(accepted_settings) - supported), 'globally_managed_keys_not_per_sym_overrides': sorted(managed), 'prior_defaults_keys_not_engine_fields': sorted(set(previous) - supported), 'sanitizer_warnings': list(warnings), 'reader_input_keys_preserved': sorted(settings), 'source': 'accepted reader inputs preserved; complete previous effective config is assertion only, never expanded into new override-presence semantics'}
     pin['settings'] = settings
+    pin['pin_sha256'] = hashlib.sha256(Path(path).read_bytes()).hexdigest()
     return pin
 
 
@@ -229,4 +230,9 @@ def enforce_actual(pin, prepared, settings, evaluate, window_days, window_contex
         expected_configs.append(extended)
     if fingerprint(expected_configs) != actual['effective_config_sha256'] or any(proof.get(key) != actual[key] for key in ['input_cutoff_sha256', 'execution_ledger_sha256', 'result_sha256']):
         raise PinnedBaselineError('initial effective configuration, real execution ledger or result drifted; no optimizer permitted')
+    if os.environ.get('V15_BASELINE_VERIFY_ONLY') == '1':
+        side = Path(os.environ['V15_BENCH_SIDE'])
+        receipt = {'status': 'ACTUAL_PINNED_BASELINE_MATCH_NO_OPTIMIZER', 'at_utc': datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ'), 'pin_sha256': pin.get('pin_sha256'), 'effective_config_sha256': actual['effective_config_sha256'], 'execution_ledger_sha256': actual['execution_ledger_sha256'], 'result_sha256': actual['result_sha256'], 'input_cutoff_sha256': actual['input_cutoff_sha256'], 'window_context': window_context, 'scope': 'initial baseline parity only; no NN selection, gain comparison or promotion'}
+        (side / 'candidate_baseline_parity.json').write_text(json.dumps(receipt, indent=2))
+        raise SystemExit(0)
     return result

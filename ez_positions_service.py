@@ -1576,7 +1576,7 @@ def memory_positions_newest(positions):
     from datetime import datetime, timezone
     newest = None
     for pos in (positions or {}).values():
-        lu = getattr(pos, "last_updated", None)
+        lu = pos.get("last_updated") if isinstance(pos, dict) else getattr(pos, "last_updated", None)
         try:
             if isinstance(lu, str):
                 lu = datetime.fromisoformat(lu.replace("Z", "+00:00"))
@@ -1946,14 +1946,17 @@ async def save_positions_guarded(service, account_key, force=False):
     try:
         mem_newest = memory_positions_newest((service.positions_by_account or {}).get(account_key))
         if mem_newest is not None:
-            disk_newest = 0.0
-            for side in ("long", "short"):
-                try:
-                    p = service.get_position_file(account_key, side)
-                    if p.exists():
-                        disk_newest = max(disk_newest, p.stat().st_mtime)
-                except Exception:
-                    pass
+            def disk_observation_time():
+                newest = 0.0
+                for side in ("long", "short"):
+                    try:
+                        p = service.get_position_file(account_key, side)
+                        with p.open() as fh:
+                            newest = max(newest, memory_positions_newest(json.load(fh)) or 0.0)
+                    except (OSError, ValueError, TypeError, AttributeError):
+                        continue
+                return newest
+            disk_newest = await asyncio.to_thread(disk_observation_time)
             if mem_newest < disk_newest - 1.0:
                 logger.warning(f"[save_guard][{account_key}] REFUSED older-over-newer (mem {mem_newest:.0f} < disk {disk_newest:.0f})")
                 return False
@@ -2868,6 +2871,10 @@ def _force_ipv4_for_client(client: Client):
     client.session.mount("https://", adapter)
     client.session.mount("http://", adapter)
 
+def _private_user_stream_url(listen_key):
+    from urllib.parse import urlencode
+    return "wss://fstream.binance.com/private/ws?" + urlencode({"listenKey": listen_key, "events": "ORDER_TRADE_UPDATE/ACCOUNT_UPDATE/listenKeyExpired"}, safe="/")
+
 class WebSocketManager:
 
     def __init__(self, account_keys, api_key: str, api_secret: str, config, symbols=None, service=None):
@@ -2986,11 +2993,7 @@ class WebSocketManager:
                     continue
                 if not getattr(self, 'session', None) or self.session.closed:
                     self.session = await self._init_session()
-                # 2026-05-10: REVERTED to /ws/{lk}. Binance's own Python SDK (binance-futures-connector-python) still uses /ws/{listen_key}.
-                # Earlier I tried /private/{lk} based on a blog post — both /private/{lk} and /private/stream?streams={lk} delivered 0 messages.
-                # The user-data WS dying may be a Binance-side or account-level issue, not a URL change. Falling back to REST polling
-                # (position.mark_price + fetch_positions every 4-6s) keeps positions current; this is the "as always" backup pattern.
-                user_url = f"wss://fstream.binance.com/ws/{listen_key}"
+                user_url = _private_user_stream_url(listen_key)
                 logger.info(f"[{account_key}] 🔌 Connecting WS to {user_url[:30]}...")
                 keepalive_task = asyncio.create_task(self.keep_listen_key_alive(account_key))
                 asyncio.create_task(self.ensure_mark_price_tasks())
@@ -3024,8 +3027,7 @@ class WebSocketManager:
                     try :
                         new_listen_key = await asyncio.to_thread(self.client.futures_stream_get_listen_key)
                         self.listen_keys[account_key] = new_listen_key
-                        # 2026-05-10: REVERTED to /ws/{lk} (see comment at user_url above)
-                        url = f"wss://fstream.binance.com/ws/{new_listen_key}"
+                        url = _private_user_stream_url(new_listen_key)
                         logger.info(f"[{account_key}] 🔑 Fresh listen key obtained for reconnect")
                     except Exception as lk_err:
                         _record_ip_ban_from_exc(lk_err)

@@ -25017,7 +25017,7 @@ async def execute_trade_wrapper(
         await tracker_manager.set_processing(position_key)
     try:
         reason = f"QUICK_{reason}"
-        action = f"QUICK_{action}"
+        action = "REENTRY" if action == "REENTRY" else f"QUICK_{action}"
         result = None
         if "WAIT" in reason:
             return f"{position_key} BLOCKED_WAIT MEANS WAIT 6717"

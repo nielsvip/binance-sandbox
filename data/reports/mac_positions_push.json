@@ -1,11 +1,11 @@
 {
- "epoch": 1793408410.478266,
- "written_at": "2026-10-31T01:00:10.478269Z",
+ "epoch": 1793408715.312025,
+ "written_at": "2026-10-31T01:05:15.312036Z",
  "venues": {
   "crypto": {
    "local": "/Users/niels/Documents/binance/data/vector_direct/mac_positions_crypto.json",
-   "sha256": "ccb45ebfc14fa1ced1b917ebb55e605861b37969033ae10cf1ece22e975ebdc1",
-   "held_total": 32,
+   "sha256": "e7a15fae2172a3799754d00dac46363223ccfc7f862be74be0db4db7fe6bb056",
+   "held_total": 38,
    "sides": [
     "1000PEPEUSDC_LONG",
     "ARUSDT_LONG",
@@ -18,16 +18,20 @@
     "DOGEUSDC_LONG",
     "EDUUSDT_LONG",
     "EDUUSDT_SHORT",
+    "EIGENUSDT_SHORT",
+    "FARTCOINUSDT_SHORT",
     "FLUXUSDT_LONG",
     "GRASSUSDT_LONG",
     "HYPEUSDT_LONG",
     "HYPEUSDT_SHORT",
     "JUPUSDT_LONG",
     "KAVAUSDT_LONG",
+    "NEARUSDC_LONG",
     "ONDOUSDT_LONG",
     "ONEUSDT_SHORT",
     "RAYSOLUSDT_LONG",
     "SOLUSDC_LONG",
+    "TIAUSDC_LONG",
     "WLDUSDC_SHORT",
     "XMRUSDT_LONG",
     "XRPUSDC_LONG",
@@ -41,7 +45,7 @@
      "host": "s1-pub",
      "tree": "binance",
      "ok": true,
-     "sha256": "ccb45ebfc14fa1ced1b917ebb55e605861b37969033ae10cf1ece22e975ebdc1",
+     "sha256": "e7a15fae2172a3799754d00dac46363223ccfc7f862be74be0db4db7fe6bb056",
      "remote": "~/binance/data/vector_direct/mac_positions_crypto.json"
     }
    ],
@@ -52,7 +56,7 @@
   },
   "stocks": {
    "local": "/Users/niels/Documents/binance/data/vector_direct/mac_positions_stocks.json",
-   "sha256": "1bd478d28819295566ed5cc389959443aaf66e4f96fc157121446041702b3779",
+   "sha256": "67f3ee4f031c1bde070bcb8be170019625f5cbb4581fa533780e4b0c4d2dfc0c",
    "held_total": 3,
    "sides": [
     "GILD_LONG",
@@ -65,14 +69,14 @@
      "host": "s5",
      "tree": "binance",
      "ok": true,
-     "sha256": "1bd478d28819295566ed5cc389959443aaf66e4f96fc157121446041702b3779",
+     "sha256": "67f3ee4f031c1bde070bcb8be170019625f5cbb4581fa533780e4b0c4d2dfc0c",
      "remote": "~/binance/data/vector_direct/mac_positions_stocks.json"
     },
     {
      "host": "s5",
      "tree": "trc7d_root",
      "ok": true,
-     "sha256": "1bd478d28819295566ed5cc389959443aaf66e4f96fc157121446041702b3779",
+     "sha256": "67f3ee4f031c1bde070bcb8be170019625f5cbb4581fa533780e4b0c4d2dfc0c",
      "remote": "~/trc7d_root/data/vector_direct/mac_positions_stocks.json"
     }
    ],

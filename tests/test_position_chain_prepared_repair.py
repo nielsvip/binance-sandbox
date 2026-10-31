@@ -2,6 +2,9 @@ import ast
 import asyncio
 import logging
 import time
+import json
+import os
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -81,3 +84,42 @@ def test_confirmed_positions_persist_before_slow_stop_maintenance(tmp_path):
         await obj._fixed_stop_cycle_tasks["ang"]
         assert calls == ["update", "save", "stop"]
     asyncio.run(scenario())
+
+
+def test_save_guard_compares_observations_not_file_write_time(tmp_path, monkeypatch):
+    tree = ast.parse(SOURCE.read_text())
+    selected = [node for node in tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name in {"memory_positions_newest", "save_positions_guarded"}]
+    env = {"asyncio": asyncio, "json": json, "logger": logging.getLogger(__name__), "SAVE_STALE_REFUSE_S": 120}
+    exec(compile(ast.Module(body=selected, type_ignores=[]), str(SOURCE), "exec"), env)
+    saved = []
+    async def save(*args, **kwargs):
+        saved.append(1)
+    monkeypatch.setitem(sys.modules, "ez_positions", SimpleNamespace(atomic_save_positions=save))
+    now = time.time()
+    row = SimpleNamespace(last_updated=now - 5)
+    service = SimpleNamespace(positions_by_account={"ang": {"X_LONG": row}}, get_position_file=lambda account, side: tmp_path / f"{side}.json")
+    for side in ("long", "short"):
+        path = tmp_path / f"{side}.json"
+        path.write_text(json.dumps({"X_LONG": {"last_updated": now - 10}}))
+        os.utime(path, (now, now))
+    assert asyncio.run(env["save_positions_guarded"](service, "ang")) is True
+    assert saved == [1]
+    (tmp_path / "long.json").write_text(json.dumps({"X_LONG": {"last_updated": now}}))
+    assert asyncio.run(env["save_positions_guarded"](service, "ang")) is False
+    assert saved == [1]
+
+
+def test_user_stream_routes_private_events_on_connect_and_reconnect():
+    from urllib.parse import urlparse, parse_qs
+    tree = ast.parse(SOURCE.read_text())
+    node = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "_private_user_stream_url")
+    env = {}
+    exec(compile(ast.Module(body=[node], type_ignores=[]), str(SOURCE), "exec"), env)
+    uri = urlparse(env["_private_user_stream_url"]("test&key"))
+    assert uri.path == "/private/ws"
+    params = parse_qs(uri.query)
+    assert params["listenKey"] == ["test&key"]
+    assert {"ACCOUNT_UPDATE", "ORDER_TRADE_UPDATE"} <= set(params["events"][0].split("/"))
+    manager = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == "WebSocketManager")
+    calls = [node for node in ast.walk(manager) if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "_private_user_stream_url"]
+    assert len(calls) == 2
