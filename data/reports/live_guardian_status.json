@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T13:20:33Z",
+ "ts": "2026-10-31T13:25:41Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 23,
+   "fills_6h": 22,
    "open_positions": 22,
-   "unrealised_usd": 0.83,
+   "unrealised_usd": 0.77,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,7 +59,7 @@
    }
   },
   "ang": {
-   "fills_6h": 28,
+   "fills_6h": 27,
    "open_positions": 5,
    "unrealised_usd": -0.25,
    "pos_mismatch": 0,
@@ -75,7 +75,7 @@
    }
   },
   "inf": {
-   "fills_6h": 1,
+   "fills_6h": 0,
    "open_positions": 0,
    "unrealised_usd": 0.0,
    "pos_mismatch": 0,
@@ -91,9 +91,9 @@
    }
   },
   "flz": {
-   "fills_6h": 9,
+   "fills_6h": 6,
    "open_positions": 5,
-   "unrealised_usd": -0.24,
+   "unrealised_usd": -0.33,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -111,13 +111,13 @@
  "tradeable_guard": {
   "poison": false,
   "restored": false,
-  "total": 187,
+  "total": 184,
   "per_acct": {
    "men": 57,
    "fin": 50,
    "ang": 50,
    "flz": 26,
-   "inf": 4
+   "inf": 1
   }
  },
  "reconcile": {},
@@ -127,58 +127,73 @@
     "43587"
    ],
    "starts_30m": 1,
-   "log_age_s": 8.0
+   "log_age_s": 1.0
   },
   "men": {
    "pids": [
     "7492"
    ],
    "starts_30m": 1,
-   "log_age_s": 5.0
+   "log_age_s": 286.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 83.0
+   "log_age_s": 33.0
   },
   "inf": {
    "pids": [
     "11994"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 17.0
   },
   "flz": {
    "pids": [
     "73791"
    ],
    "starts_30m": 1,
-   "log_age_s": 65.0
+   "log_age_s": 373.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 31095.0
+   "log_age_s": 31403.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 31411.0
+   "log_age_s": 31719.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T13:20:33Z",
+   "ts": "2026-10-31T13:25:41Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "fin:FLUXUSDT_LONG",
    "evidence": "CLOSE FIXED_STOP decided 2026-10-31T11:14:33Z bar=2026-10-31T10:45:00Z: no fill in 1800s and no refusal logged"
+  },
+  {
+   "ts": "2026-10-31T13:25:43Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "men",
+   "evidence": "ez_manage_men.log not written for 286s"
+  },
+  {
+   "ts": "2026-10-31T13:25:43Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "flz",
+   "evidence": "ez_manage_flz.log not written for 373s"
   }
  ],
  "alert_counts": {
-  "VEC_DECISION_NOT_FILLED": 1
+  "VEC_DECISION_NOT_FILLED": 1,
+  "STALE_LOG": 2
  },
  "active_interventions": {
   "acct:trc": {
@@ -231,5 +246,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.39
+ "sweep_s": 1.65
 }
