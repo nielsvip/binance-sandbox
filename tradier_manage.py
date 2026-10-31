@@ -39047,8 +39047,10 @@ class StockStrategy:
         low_5m_prev = float(i.get(f"low_{_exit_bar_tf}_prev", 0))
         high_5m = float(i.get(f"high_{_exit_bar_tf}", 0))
         high_5m_prev = float(i.get(f"high_{_exit_bar_tf}_prev", 0))
-        dc_low_5m = float(i.get(f"dc_low_{_exit_bar_tf}", 0))
-        dc_high_5m = float(i.get(f"dc_high_{_exit_bar_tf}", 0))
+        # At the 15m floor use the completed channel; retain current 5m reads when LTF is on.
+        from vec_decisions.tradier_missing_exit_k5m_bounce_15m import k5m_live_channel_level
+        dc_low_5m = k5m_live_channel_level(i, "dc_low", _exit_bar_tf)
+        dc_high_5m = k5m_live_channel_level(i, "dc_high", _exit_bar_tf)
         close_5m_prev = float(i.get("close_5m_prev", current_price) or current_price)
         # K5M exits: raised from gain>0.5 to gain>=noloss_min — was losing -$1,804 total on stocks
         # 2026-04-08: DISABLED K5M/HARD_DROP exits — these bypass the WT/DC scorer

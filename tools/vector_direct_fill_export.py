@@ -25,6 +25,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import sys
 import time
 import urllib.parse
@@ -444,13 +445,50 @@ def export(
     return stats
 
 
+def export_decision_states(root: Path, hashes, emit=print, max_states=32) -> dict:
+    """Emit only requested immutable decision states after validating their content address."""
+    out = root / "data" / "vector_direct"
+    exported = 0
+    skipped = 0
+    seen = set()
+    for value in hashes:
+        digest = str(value).lower()
+        if not re.fullmatch(r"[0-9a-f]{64}", digest) or digest in seen:
+            skipped += 1
+            continue
+        seen.add(digest)
+        if exported >= max_states:
+            skipped += 1
+            continue
+        relative = Path("decision_states") / digest[:2] / (digest + ".json")
+        path = out / relative
+        try:
+            state = json.loads(path.read_text())
+            canonical = json.dumps(state, sort_keys=True, separators=(",", ":"), default=str).encode()
+        except (OSError, ValueError, TypeError):
+            skipped += 1
+            continue
+        if hashlib.sha256(canonical).hexdigest() != digest or not isinstance(state, dict):
+            skipped += 1
+            continue
+        emit(json.dumps({"_decision_state": True, "state_sha256": digest,
+                         "state_file": str(relative), "state": state}, default=str))
+        exported += 1
+    return {"requested": len(list(hashes)) if not isinstance(hashes, (list, tuple)) else len(hashes),
+            "exported": exported, "skipped": skipped}
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--venue", choices=("crypto", "stocks"), required=True)
     ap.add_argument("--root", default="~/binance")
     ap.add_argument("--since", type=float, default=0.0, help="epoch; default now-2d")
     ap.add_argument("--max-resolve", type=int, default=12)
+    ap.add_argument("--decision-state-hashes", default="", help="comma-separated content addresses to export; read-only, max 32")
     a = ap.parse_args(argv)
+    if a.decision_state_hashes:
+        export_decision_states(Path(a.root).expanduser(), a.decision_state_hashes.split(","))
+        return 0
     now = time.time()
     export(
         a.venue,

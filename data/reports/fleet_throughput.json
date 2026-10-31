@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-31T01:30:09.533292+00:00",
+  "ts": "2026-10-31T01:35:07.270678+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 6,
-  "pending_sym_sides": 70,
+  "pending_sym_sides": 69,
   "hosts": {
     "s1": {
       "published_last_60m": 0,
@@ -12,10 +12,10 @@
       "boards_running": 0,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 5657,
-      "disk_free_gb": 7,
-      "load1": 15.9,
-      "dispatch_idle_why": "mem 6084MB < 8500",
+      "mem_avail_mb": 6372,
+      "disk_free_gb": 6,
+      "load1": 10.1,
+      "dispatch_idle_why": "mem 7180MB < 8500",
       "published_ss": []
     },
     "s2": {
@@ -29,9 +29,9 @@
       "boards_running": 3,
       "workers": 21,
       "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 5944,
-      "disk_free_gb": 16,
-      "load1": 12.3,
+      "mem_avail_mb": 5294,
+      "disk_free_gb": 15,
+      "load1": 21.7,
       "dispatch_idle_why": "full 3/3",
       "published_ss": [
         "BEAMXUSDT_LONG"
@@ -39,7 +39,7 @@
     },
     "s5": {
       "published_last_60m": 2,
-      "published_last_3h": 6,
+      "published_last_3h": 5,
       "boards": {
         "ATOMUSDT_SHORT": 0,
         "EGLDUSDT_SHORT": 0,
@@ -48,9 +48,9 @@
       "boards_running": 3,
       "workers": 7,
       "workers_vs_law_28": "7/28",
-      "mem_avail_mb": 8692,
+      "mem_avail_mb": 9254,
       "disk_free_gb": 35,
-      "load1": 8.3,
+      "load1": 8.2,
       "dispatch_idle_why": "no pending work anywhere (or none that fits memory)",
       "published_ss": [
         "AGI_SHORT",
@@ -62,15 +62,16 @@
       "published_last_3h": 8,
       "boards": {
         "BRETTUSDT_SHORT": 7,
-        "SAP_LONG": 0
+        "ENJUSDT_SHORT": 7,
+        "SAP_LONG": 7
       },
-      "boards_running": 2,
-      "workers": 7,
-      "workers_vs_law_28": "7/28",
-      "mem_avail_mb": 26054,
-      "disk_free_gb": 52,
-      "load1": 7.8,
-      "dispatch_idle_why": "spacing 86s < 120",
+      "boards_running": 3,
+      "workers": 21,
+      "workers_vs_law_28": "21/28",
+      "mem_avail_mb": 17358,
+      "disk_free_gb": 50,
+      "load1": 11.6,
+      "dispatch_idle_why": "mem 17976MB < 8500+11000 owed by 2 ramping",
       "published_ss": [
         "ONEUSDT_SHORT",
         "RS_LONG",
@@ -79,13 +80,13 @@
     }
   },
   "alerts": [
-    "LOW_THROUGHPUT:s1:0/h<12 (idle_why=mem 6084MB < 8500)",
-    "DISK_FLOOR:s1:7GB<40",
+    "LOW_THROUGHPUT:s1:0/h<12 (idle_why=mem 7180MB < 8500)",
+    "DISK_FLOOR:s1:6GB<40",
     "LOW_THROUGHPUT:s2:1/h<12 (idle_why=full 3/3)",
-    "DISK_FLOOR:s2:16GB<40",
+    "DISK_FLOOR:s2:15GB<40",
     "LOW_THROUGHPUT:s5:2/h<12 (idle_why=no pending work anywhere (or none that fits memory))",
     "DISK_FLOOR:s5:35GB<40",
-    "LOW_THROUGHPUT:s6:3/h<12 (idle_why=spacing 86s < 120)"
+    "LOW_THROUGHPUT:s6:3/h<12 (idle_why=mem 17976MB < 8500+11000 owed by 2 ramping)"
   ],
-  "repair": "DISK_REPAIR:s1:7GB->8G (eval_cache_v1.db + rebuild_scratch_* deleted)"
+  "repair": "DISK_REPAIR:s1:6GB->7G (eval_cache_v1.db + rebuild_scratch_* deleted)"
 }

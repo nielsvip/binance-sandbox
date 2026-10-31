@@ -114,7 +114,23 @@ def summarize_run(result: dict, round_trip_fee_pct: float, window_days: int) -> 
     actions = [e for e in ledger if isinstance(e, dict) and "pnl_dollars" not in e
                and str(e.get("type") or "").upper() in ("OPEN", "AUGMENT", "REDUCE", "CLOSE")]
     trades = [e for e in ledger if isinstance(e, dict) and "pnl_dollars" in e and not e.get("seeded_prewindow")]
-    turnover = sum(abs(float(e.get("qty") or 0) * float(e.get("price") or 0)) for e in actions)
+    action_turnover = sum(abs(float(e.get("qty") or 0) * float(e.get("price") or 0)) for e in actions)
+    missing_close_turnover = 0.0
+    for trade in trades:
+        ty = str(trade.get("type") or "CLOSE").upper()
+        if ty not in ("CLOSE", "REDUCE"):
+            continue
+        bar, qty, price = int(trade.get("bar_exit", -1)), abs(float(trade.get("qty") or 0)), abs(float(trade.get("exit_price") or trade.get("price") or 0))
+        matching = any(
+            str(event.get("type") or "").upper() in ("CLOSE", "REDUCE")
+            and int(event.get("bar", -2)) == bar
+            and abs(abs(float(event.get("qty") or 0)) - qty) <= max(1e-9, qty * 1e-8)
+            and abs(abs(float(event.get("price") or 0)) - price) <= max(1e-9, price * 1e-8)
+            for event in actions
+        )
+        if not matching:
+            missing_close_turnover += qty * price
+    turnover = action_turnover + missing_close_turnover
     fee_est = turnover * round_trip_fee_pct / 200.0
     net = sum(float(e.get("pnl_dollars") or 0) for e in trades)
     opens = [e for e in actions if str(e.get("type") or "").upper() == "OPEN"]
@@ -122,15 +138,17 @@ def summarize_run(result: dict, round_trip_fee_pct: float, window_days: int) -> 
     rows = []
     for trade in trades:
         entry_bar, exit_bar = int(trade.get("bar_entry", -1)), int(trade.get("bar_exit", -1))
-        trade_turnover = sum(abs(float(e.get("qty") or 0) * float(e.get("price") or 0)) for e in actions
-                             if entry_bar <= int(e.get("bar", -1)) <= exit_bar)
         rows.append({key: trade.get(key) for key in (
-            "bar_entry", "bar_exit", "entry_price", "exit_price", "qty", "pnl_pct",
+            "bar_entry", "bar_exit", "entry_price", "exit_price", "qty",
             "entry_reason", "exit_reason", "bars_held")})
-        rows[-1].update({"net_pnl_engine": float(trade.get("pnl_dollars") or 0),
-                         "turnover_estimate": trade_turnover,
-                         "estimated_fee_at_configured_round_trip_rate": trade_turnover * round_trip_fee_pct / 200.0})
+        rows[-1]["net_pnl_engine_quote_units"] = float(trade.get("pnl_dollars") or 0)
     days = float(result.get("data_days") or 0)
+    from metrics_guard import pool_sharpe_from_ledger, validate_and_format_sharpe
+    _guarded_sample = validate_and_format_sharpe(
+        pool_sharpe_from_ledger(trades), label="pool_sharpe", n_syms=1,
+        years=max(days / 365.0, 0.0), trades=len(trades), mode="crypto",
+    )
+    guarded_diagnostic = "[DIAGNOSTIC ONLY" in _guarded_sample
     return {
         "status": "DIAGNOSTIC_ONLY", "valid": bool(result.get("valid")),
         "invalid_reason": result.get("invalid_reason"), "window_days": window_days,
@@ -138,10 +156,15 @@ def summarize_run(result: dict, round_trip_fee_pct: float, window_days: int) -> 
         "reentry_count": max(0, len(opens) - 1), "net_pnl_engine": net,
         "turnover_estimate": turnover, "estimated_fee_at_configured_round_trip_rate": fee_est,
         "commission_model_round_trip_pct": round_trip_fee_pct,
+        "fee_estimate_basis": "all execution action turnover plus any realized close trade notional missing an action event; RT fee rate/2 applied to each side; engine net P&L remains authoritative",
+        "action_turnover_estimate": action_turnover,
+        "unmatched_realized_close_turnover_added": missing_close_turnover,
         "ppl_remainder_close_count": len(ppl_closes),
         "ppl_remainder_close_losing_count": sum(float(e.get("pnl_dollars") or 0) <= 0 for e in ppl_closes),
         "all_losing_close_count": sum(float(e.get("pnl_dollars") or 0) < 0 for e in trades),
-        "max_dd_pct_engine": result.get("max_dd_pct"), "trade_rows": rows,
+        "max_dd_pct_engine": result.get("max_dd_pct"),
+        "metric_guard_sample_status": "DIAGNOSTIC_ONLY" if guarded_diagnostic else "VALIDATED",
+        "trade_rows": rows,
         "trade_lifecycle_sha256": sha256_json([{k: r.get(k) for k in ("bar_entry", "bar_exit", "entry_price", "exit_price", "net_pnl_engine", "exit_reason")} for r in rows]),
     }
 

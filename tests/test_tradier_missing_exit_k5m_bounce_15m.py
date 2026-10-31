@@ -5,6 +5,7 @@ import numpy as np
 from vec_decisions.tradier_missing_exit_k5m_bounce_15m import (
     exit_k5m_bounce_live,
     exit_k5m_bounce_mask,
+    k5m_live_channel_level,
 )
 
 
@@ -55,6 +56,32 @@ def test_live_scalar_adapter_matches_long_and_short_masks():
         EXIT_K5M_BOUNCE_ENABLED=True,
         NOLOSS_MIN_PROFIT_PCT_TRADIER=3.0,
     )
-    assert exit_k5m_bounce_live(cfg, {"dc_low_15m": 99.0, "stoch_k_15m": 29.0}, 98.0, 3.0, True)
-    assert exit_k5m_bounce_live(cfg, {"dc_high_15m": 101.0, "stoch_k_15m": 71.0}, 102.0, 3.0, False)
-    assert not exit_k5m_bounce_live(cfg, {"dc_low_15m": 99.0, "stoch_k_15m": 29.0}, 98.0, 2.99, True)
+    assert exit_k5m_bounce_live(cfg, {"dc_low_15m_prev": 99.0, "stoch_k_15m": 29.0}, 98.0, 3.0, True)
+    assert exit_k5m_bounce_live(cfg, {"dc_high_15m_prev": 101.0, "stoch_k_15m": 71.0}, 102.0, 3.0, False)
+    assert not exit_k5m_bounce_live(cfg, {"dc_low_15m_prev": 99.0, "stoch_k_15m": 29.0}, 98.0, 2.99, True)
+
+
+def test_completed_previous_band_wins_when_current_band_differs():
+    cfg = SimpleNamespace(
+        EXIT_K5M_BOUNCE_ENABLED=True,
+        NOLOSS_MIN_PROFIT_PCT_TRADIER=3.0,
+    )
+    indicators = {
+        "dc_low_15m": 95.0,
+        "dc_low_15m_prev": 105.0,
+        "stoch_k_15m": 20.0,
+    }
+    assert exit_k5m_bounce_live(cfg, indicators, 100.0, 3.0, True)
+    assert exit_k5m_bounce_mask(
+        {"close": np.array([100.0]), "dc_low_15m": np.array([95.0]),
+         "dc_low_15m_prev": np.array([105.0]), "stoch_k_15m": np.array([20.0])},
+        1, True, np.array([3.0]), cfg, _safe,
+    ).tolist() == [True]
+    assert not exit_k5m_bounce_live(
+        cfg, {"dc_low_15m": 105.0, "stoch_k_15m": 20.0}, 100.0, 3.0, True
+    )
+    assert k5m_live_channel_level(indicators, "dc_low", "15m") == 105.0
+    assert k5m_live_channel_level(indicators, "dc_low", "5m") == 0.0
+    assert k5m_live_channel_level(
+        {"dc_low_5m": 96.0, "dc_low_5m_prev": 105.0}, "dc_low", "5m"
+    ) == 96.0

@@ -2,6 +2,15 @@
 import numpy as np
 
 
+def k5m_live_channel_level(indicators, field, timeframe):
+    suffix = "_prev" if timeframe == "15m" else ""
+    value = (indicators or {}).get(f"{field}_{timeframe}{suffix}")
+    try:
+        return float(value) if value is not None else 0.0
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def _previous_channel(npz, name, n, safe):
     prev = npz.get(f"{name}_prev")
     if prev is not None and len(prev) == n:
@@ -55,16 +64,12 @@ def exit_k5m_bounce_live(config, indicators, current_price, gain_pct, is_long):
             k = indicators.get("k_15m")
         k = float(50.0 if k is None else k)
         minimum_gain = float(getattr(config, "NOLOSS_MIN_PROFIT_PCT_TRADIER"))
-        dc_low = indicators.get("dc_low_15m")
-        dc_high = indicators.get("dc_high_15m")
-        if is_long and dc_low is None:
-            return False
-        if not is_long and dc_high is None:
-            return False
+        dc_low = k5m_live_channel_level(indicators, "dc_low", "15m")
+        dc_high = k5m_live_channel_level(indicators, "dc_high", "15m")
         return exit_k5m_bounce_fire(
             px,
-            float(dc_low or 0.0),
-            float(dc_high or 0.0),
+            dc_low,
+            dc_high,
             k,
             gain,
             is_long,

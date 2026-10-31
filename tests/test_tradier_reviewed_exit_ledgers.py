@@ -147,22 +147,25 @@ def test_k5m_bounce_switch_changes_simulate_one_close_ledger():
 
 def test_rule_b_gain_uses_open_cost_basis_after_augment_and_partial_reduce():
     npz = _base_npz()
+    npz["low"] = np.full(len(npz["close"]), 100.0)
     augment_bar = 201
     fire_bar = 202
     npz["close"][augment_bar] = 99.8
+    npz["low"][augment_bar] = 99.8
     if "close_15m" in npz:
         npz["close_15m"][augment_bar] = 99.8
     npz["low_15m_prev"][augment_bar - 1] = 98.0
     npz["low_15m_prev"][augment_bar] = 99.0
     npz["dc_low_15m_prev"][augment_bar - 1] = 94.0
     npz["dc_low_15m_prev"][augment_bar] = 95.0
-    npz["close"][fire_bar] = 103.0
+    npz["close"][fire_bar] = 103.5
+    npz["low"][fire_bar] = 103.25
     if "close_15m" in npz:
-        npz["close_15m"][fire_bar] = 103.0
-    npz["low_15m"][fire_bar] = 99.5
-    npz["low_15m_prev"][fire_bar] = 100.0
-    npz["high_15m"][fire_bar] = 103.5
-    npz["high_15m_prev"][fire_bar] = 104.0
+        npz["close_15m"][fire_bar] = 103.5
+    npz["low_15m"][fire_bar] = 103.25
+    npz["low_15m_prev"][fire_bar] = 104.0
+    npz["high_15m"][fire_bar] = 103.75
+    npz["high_15m_prev"][fire_bar] = 104.5
     off = _run_after_augment_reduce(npz, "RULE_B_5M_EXIT_ENABLED", False)
     on = _run_after_augment_reduce(npz, "RULE_B_5M_EXIT_ENABLED", True)
     off_ledger = off.get("ledger", [])
@@ -175,4 +178,58 @@ def test_rule_b_gain_uses_open_cost_basis_after_augment_and_partial_reduce():
     fires = _reason_events(on, "RULE_B_5M_")
     assert len(fires) == 1
     assert fires[0]["bar_exit"] == fire_bar
-    assert fires[0]["reason"] == "RULE_B_5M_LL_LH_gain:3.10%"
+    assert fires[0]["reason"] == "RULE_B_5M_LL_LH_gain:3.60%"
+
+
+def test_k5m_gain_uses_open_cost_basis_after_augment_and_partial_reduce():
+    npz = _base_npz()
+    npz["low"] = np.full(len(npz["close"]), 100.0)
+    augment_bar = 201
+    fire_bar = 202
+    npz["close"][augment_bar] = 99.8
+    npz["low"][augment_bar] = 99.8
+    if "close_15m" in npz:
+        npz["close_15m"][augment_bar] = 99.8
+    npz["low_15m_prev"][augment_bar - 1] = 98.0
+    npz["low_15m_prev"][augment_bar] = 99.0
+    npz["dc_low_15m_prev"][augment_bar - 1] = 94.0
+    npz["dc_low_15m_prev"][augment_bar] = 95.0
+    npz["close"][fire_bar] = 103.5
+    npz["low"][fire_bar] = 103.25
+    if "close_15m" in npz:
+        npz["close_15m"][fire_bar] = 103.5
+    npz["stoch_k_15m"][fire_bar] = 20.0
+    npz["dc_low_15m_prev"][fire_bar] = 104.5
+    off = _run_after_augment_reduce(npz, "EXIT_K5M_BOUNCE_ENABLED", False)
+    on = _run_after_augment_reduce(npz, "EXIT_K5M_BOUNCE_ENABLED", True)
+    on_ledger = on.get("ledger", [])
+    augments = [row for row in on_ledger if row.get("type") == "AUGMENT"]
+    reduces = [row for row in on_ledger if row.get("type") == "REDUCE"]
+    assert any(row.get("bar") == augment_bar for row in augments)
+    assert any(row.get("bar") == fire_bar for row in reduces)
+    assert _reason_events(off, "K5M_REAL_DROP_DC") == []
+    fires = _reason_events(on, "K5M_REAL_DROP_DC")
+    assert len(fires) == 1
+    assert fires[0]["bar_exit"] == fire_bar
+    assert fires[0]["reason"] == "K5M_REAL_DROP_DC_k5:20.0<dc5:104.50_gain:3.60%"
+
+
+def test_stdev_reject_stock_switch_changes_simulate_one_ledger():
+    npz = _base_npz()
+    fire_bar = 201
+    npz["close"][fire_bar] = 103.0
+    if "close_15m" in npz:
+        npz["close_15m"][fire_bar] = 103.0
+    npz["bb_pct_b_D"] = np.full(len(npz["close"]), 0.5)
+    npz["bb_pct_b_D_prev"] = np.full(len(npz["close"]), 0.5)
+    npz["wt_velocity_1h"] = np.zeros(len(npz["close"]))
+    npz["bb_pct_b_D"][fire_bar] = 0.6
+    npz["bb_pct_b_D_prev"][fire_bar] = 0.9
+    npz["wt_velocity_1h"][fire_bar] = -1.0
+    off = _run(npz, "STDEV_REJECT_EXIT_ENABLED", False)
+    on = _run(npz, "STDEV_REJECT_EXIT_ENABLED", True)
+    assert _reason_events(off, "STDEV_REJECT_EXIT_") == []
+    fires = _reason_events(on, "STDEV_REJECT_EXIT_")
+    assert len(fires) == 1
+    assert fires[0]["bar_exit"] == fire_bar
+    assert fires[0]["reason"] == "STDEV_REJECT_EXIT_D_pctb=0.600_g=3.00%"

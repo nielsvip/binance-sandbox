@@ -1803,10 +1803,20 @@ async def drain_pending_v8_tasks():
 # ═══════════════════════════════════════════════════════════════
 # STEP 5: Apply I/O patches BEFORE running main init
 # ═══════════════════════════════════════════════════════════════
+def _isolate_frozen_data_feeds(service_module, quick_module):
+    async def _frozen_feed(*args, **kwargs):
+        return None
+    for owner, methods in ((getattr(service_module, 'IndicatorsBridge', None), ('_hot_path_loop', '_cold_data_loop', '_redis_fallback_loop', '_refresh_from_source')), (getattr(quick_module, 'FastDataManager', None), ('_maintain_shared_memory_connection', '_maintain_cold_data_sync'))):
+        if owner is not None:
+            for method in methods:
+                if hasattr(owner, method):
+                    setattr(owner, method, _frozen_feed)
+
 def apply_patches(stores: Dict[str, IndicatorStore], mode: str):
     """Apply ONLY I/O patches. No trade logic changes."""
     global _executed_trades, _v8_orig_create_task
     _executed_trades = []
+    _isolate_frozen_data_feeds(ez_positions_service, ez_positions_quick)
     # Reset pending-coro list — apply_patches is called once per run.
     _pending_v8_coros.clear()
 

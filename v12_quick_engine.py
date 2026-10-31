@@ -16568,14 +16568,33 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             exit_sig = exit_sig | _n2gx.gap_risk_exit_live_vec(npz, n, cfg, is_long)
     except Exception:
         pass
-    # N2/009 STDEV_REJECT_EXIT live-faithful twin (ez_positions_quick.py:12033; crypto only; master default OFF like live)
+    # STDEV_REJECT_EXIT uses the shared live/vector predicate for both venues.
+    cfg.STDEV_REJECT_EXIT_INFO = None
     try:
-        if getattr(cfg, "MODE", "crypto") != "tradier" and bool(
-            getattr(cfg, "STDEV_REJECT_EXIT_ENABLED", False)
-        ):
-            import vec_decisions.stdev_reject_exit_live as _n2sr
+        if bool(getattr(cfg, "STDEV_REJECT_EXIT_ENABLED", False)):
+            if getattr(cfg, "MODE", "crypto") == "tradier":
+                _sre_tf = str(getattr(cfg, "STDEV_REJECT_EXIT_TF", "D"))
+                _sre_now = np.asarray(_safe(npz, f"bb_pct_b_{_sre_tf}", n, 0.5), dtype=float)
+                _sre_prev_key = f"bb_pct_b_{_sre_tf}_prev"
+                _sre_prev = (
+                    np.asarray(_safe(npz, _sre_prev_key, n, 0.5), dtype=float)
+                    if _sre_prev_key in npz
+                    else _sre_now
+                )
+                _sre_vel = np.asarray(_safe(npz, "wt_velocity_1h", n, 0.0), dtype=float)
+                _sre_mask = vec_decisions.check_exit_candidates_stocks__stdev_reject_exit.check_stdev_reject_exit_vec(
+                    cfg, _sre_now, _sre_prev, _sre_vel, is_long
+                )
+                cfg.STDEV_REJECT_EXIT_INFO = {
+                    "mask": np.asarray(_sre_mask, dtype=bool),
+                    "pctb_now": _sre_now,
+                    "timeframe": _sre_tf,
+                }
+                exit_sig = exit_sig | np.asarray(_sre_mask, dtype=bool)
+            else:
+                import vec_decisions.stdev_reject_exit_live as _n2sr
 
-            exit_sig = exit_sig | _n2sr.stdev_reject_exit_mask(npz, n, cfg, is_long)
+                exit_sig = exit_sig | _n2sr.stdev_reject_exit_mask(npz, n, cfg, is_long)
     except Exception:
         pass
     # BOTTOM/TOP exit families (all EXIT_FAMS ORed; live twin exit_fire_live in process_position)
@@ -23737,7 +23756,18 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             and i < len(_wt_final_mask)
             and bool(_wt_final_mask[i])
         )
-        _xc_ok = _xc_loss or _wt_final_fire or (
+        _stdev_reject_info = getattr(cfg, "STDEV_REJECT_EXIT_INFO", None)
+        _stdev_reject_mask = (
+            _stdev_reject_info.get("mask")
+            if isinstance(_stdev_reject_info, dict)
+            else None
+        )
+        _stdev_reject_fire = (
+            _stdev_reject_mask is not None
+            and i < len(_stdev_reject_mask)
+            and bool(_stdev_reject_mask[i])
+        )
+        _xc_ok = _xc_loss or _wt_final_fire or _stdev_reject_fire or (
             _gftf.get("exit_confirm") is None or bool(_gftf["exit_confirm"][i])
         )
         if _hold_bars_fire or (exit_sig[i] and held_bars >= min_hold and _xc_ok):
@@ -24078,6 +24108,20 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             pnl_pct_preview,
                             held_bars * bmin,
                         )
+            if _tech_reason == "TECHNICAL_EXIT":
+                _stdev_reject_info = getattr(cfg, "STDEV_REJECT_EXIT_INFO", None)
+                if isinstance(_stdev_reject_info, dict):
+                    _stdev_reject_mask = _stdev_reject_info.get("mask")
+                    if (
+                        _stdev_reject_mask is not None
+                        and i < len(_stdev_reject_mask)
+                        and bool(_stdev_reject_mask[i])
+                    ):
+                        _stdev_pctb = float(_stdev_reject_info["pctb_now"][i])
+                        _tech_reason = (
+                            f"STDEV_REJECT_EXIT_{_stdev_reject_info['timeframe']}_"
+                            f"pctb={_stdev_pctb:.3f}_g={pnl_pct_preview:.2f}%"
+                        )
             if not _hold_bars_fire and _tech_reason == "TECHNICAL_EXIT":
                 _bb_recovery_info = getattr(cfg, "BB_RECOVERY_EXIT_INFO", None)
                 _bb_recovery_mask = (
@@ -24097,7 +24141,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         float(getattr(cfg, "COMMISSION_BUFFER_PCT", 0.08) or 0.0),
                     )
                     if not positive_after_estimated_fees(
-                        pnl_pct_preview, _bb_recovery_fee_pct
+                        live_pnl_pct, _bb_recovery_fee_pct
                     ):
                         continue
                     _tech_reason = (
@@ -24125,7 +24169,20 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 continue  # N2/011 live gain floor
             if not _hold_bars_fire and vec_decisions.noloss_gate.noloss_blocks(cfg, _tech_reason, live_pnl_pct):
                 _bb_recov_admitted = False
-                if _bb_recovery_on and pos.get("avg_price", 0) > 0:
+                if (
+                    not _bb_recovery_on
+                    and _tech_reason.startswith("BB_RECOVERY_EXIT_TRADIER_")
+                    and pos.get("avg_price", 0) > 0
+                ):
+                    from vec_decisions.bb_recovery_exit import positive_after_estimated_fees
+
+                    _bb_recov_fee_pct = max(
+                        0.0, float(getattr(cfg, "COMMISSION_BUFFER_PCT", 0.08) or 0.0)
+                    )
+                    _bb_recov_admitted = positive_after_estimated_fees(
+                        live_pnl_pct, _bb_recov_fee_pct
+                    )
+                if not _bb_recov_admitted and _bb_recovery_on and pos.get("avg_price", 0) > 0:
                     from vec_decisions.bb_recovery_exit import (
                         positive_after_estimated_fees,
                         tradier_recovery_bypass_mask,
@@ -24161,6 +24218,50 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 )
             if not _hold_bars_fire and _htfv_block(i, _tech_reason):
                 continue  # lane-D: stocks HTF_TREND_VETO_ON_REDUCE
+            if _tech_reason.startswith("BB_RECOVERY_EXIT_TRADIER_"):
+                from vec_decisions.quick_missing_bb_recovery_sizing import (
+                    bb_recovery_qty_limits,
+                    bb_recovery_reduce_qty_scalar,
+                )
+
+                _bbr_pos_min, _bbr_order_min = bb_recovery_qty_limits(sym, px, cfg)
+                _bbr_reduce_qty = bb_recovery_reduce_qty_scalar(
+                    pos["qty"],
+                    _bbr_pos_min,
+                    live_pnl_pct,
+                    getattr(cfg, "NOLOSS_MIN_PROFIT_PCT", 0.5),
+                    getattr(cfg, "WT_REDUCE_FRAC_LOW", 0.15),
+                    getattr(cfg, "WT_REDUCE_FRAC_MED", 0.25),
+                    getattr(cfg, "WT_REDUCE_FRAC_HIGH", 0.50),
+                )
+                if (
+                    not np.isfinite(_bbr_reduce_qty)
+                    or _bbr_reduce_qty <= 0.0
+                    or _bbr_reduce_qty >= pos["qty"]
+                    or _bbr_reduce_qty < _bbr_order_min
+                ):
+                    continue
+                _bbr_realized = (
+                    (px - pos["avg_price"]) * _bbr_reduce_qty
+                    if is_long
+                    else (pos["avg_price"] - px) * _bbr_reduce_qty
+                )
+                pos["realized"] += _bbr_realized
+                pos["fees"] += abs(_bbr_reduce_qty * px) * half_fee
+                pos["qty"] -= _bbr_reduce_qty
+                events.append(
+                    {
+                        "type": "REDUCE",
+                        "ts": float(ts[i]) if i < len(ts) else 0.0,
+                        "price": float(px),
+                        "qty": float(_bbr_reduce_qty),
+                        "pos_deployed": float(pos["deployed"]),
+                        "bar": int(i),
+                        "reason": _tech_reason,
+                    }
+                )
+                pos["last_reduce_bar"] = int(i)
+                continue
             _exit_fee = abs(pos["qty"] * px) * half_fee
             pnl_dollars = pnl_preview - (pos["fees"] + _exit_fee)
             _fee_buffer_pct = 0.0 if is_tradier else max(

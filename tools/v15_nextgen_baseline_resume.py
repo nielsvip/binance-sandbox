@@ -11,7 +11,7 @@ def identity(pin):
     return {'pin_sha256': pin['pin_sha256'], 'npz_sha256': pin['npz_sha256'], 'window_days': pin['window_days'], 'window_context': pin['window_context']}
 
 def validate(pin, progress):
-    if not progress.get('done'):
+    if not progress.get('pinned_baseline_resume') and not progress.get('done'):
         if progress.get('cumulative_overrides') is not None:
             assert_settings(pin, progress['cumulative_overrides'])
         return

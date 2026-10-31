@@ -1,11 +1,12 @@
 import datetime as dt
+import hashlib
 import json
 import tempfile
 import unittest
 from pathlib import Path
 
-from tools.vector_direct_fill_export import export
-from tools.vector_direct_history_import import build_row
+from tools.vector_direct_fill_export import export, export_decision_states
+from tools.vector_direct_history_import import build_row, sync_decision_state_snapshots
 
 
 class VectorDirectDecisionProvenanceTransportTests(unittest.TestCase):
@@ -37,6 +38,51 @@ class VectorDirectDecisionProvenanceTransportTests(unittest.TestCase):
                "exec_qty": 1, "avg_price": 1, "quote": 1, "fill_ms": 1793408400000}}
         row = build_row(rec, "S1_VECTOR_DIRECT")
         self.assertNotIn("decision_provenance", row)
+
+    def test_only_requested_content_addressed_decision_states_are_exported(self):
+        state = {"bar_ts": 1793408400, "events_this_bar": [{"type": "OPEN", "reason": "REENTRY_LOWER_HIGH"}],
+                 "settings_sha256": "settings", "engine_ast_sha256": "engine"}
+        digest = hashlib.sha256(json.dumps(state, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        rel = f"decision_states/{digest[:2]}/{digest}.json"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            path = root / "data" / "vector_direct" / rel
+            path.parent.mkdir(parents=True)
+            path.write_text(json.dumps(state, indent=1))
+            emitted = []
+            stats = export_decision_states(root, [digest, "../untrusted"], emitted.append)
+            self.assertEqual(stats["exported"], 1)
+            self.assertEqual(stats["skipped"], 1)
+            row = json.loads(emitted[0])
+            self.assertEqual(row["state_sha256"], digest)
+            self.assertEqual(row["state_file"], rel)
+            self.assertEqual(row["state"], state)
+
+    def test_importer_fetches_only_missing_state_hashes_and_verifies_before_cache(self):
+        state = {"bar_ts": 1793408400, "events_this_bar": [{"type": "OPEN", "reason": "REENTRY_LOWER_HIGH"}]}
+        digest = hashlib.sha256(json.dumps(state, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        rel = f"decision_states/{digest[:2]}/{digest}.json"
+        rec = {"venue": "crypto", "decision_provenance": {"state_sha256": digest, "state_file": rel}}
+        calls = []
+        def fetcher(venue, hashes):
+            calls.append((venue, hashes))
+            return [{"_decision_state": True, "state_sha256": digest, "state_file": rel, "state": state}]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            result = sync_decision_state_snapshots([rec], root, fetcher)
+            self.assertEqual(result, {"requested": 1, "verified": 1, "rejected": 0, "invalid_references": 0})
+            self.assertEqual(calls, [("crypto", [digest])])
+            saved = root / rel
+            self.assertEqual(hashlib.sha256(saved.read_bytes()).hexdigest(), digest)
+            second = sync_decision_state_snapshots([rec], root, fetcher)
+            self.assertEqual(second["requested"], 0)
+            self.assertEqual(len(calls), 1)
+
+            bad_root = root / "bad"
+            bad = {"_decision_state": True, "state_sha256": digest, "state_file": rel, "state": {"tampered": True}}
+            rejected = sync_decision_state_snapshots([rec], bad_root, lambda venue, hashes: [bad])
+            self.assertEqual(rejected["rejected"], 1)
+            self.assertFalse((bad_root / rel).exists())
 
 
 if __name__ == "__main__":

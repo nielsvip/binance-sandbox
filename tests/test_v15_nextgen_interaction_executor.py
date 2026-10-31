@@ -135,3 +135,24 @@ def test_routing_exception_requires_both_original_preimage_and_candidate_bytes(t
     (root / 'v15_pilot.py').write_text('unapproved_route')
     with pytest.raises(ValueError, match='routing transformation'):
         E.validate_inputs(context, lambda: None)
+
+
+def test_positive_joint_does_not_assert_a_harmful_added_filter_benefits(tmp_path, monkeypatch):
+    pin, context, calls = setup_fixture(tmp_path, monkeypatch)
+    original = E.guard.capture_actual
+    def capture(prepared, settings, evaluate, window_days):
+        result, proof = original(prepared, settings, evaluate, window_days)
+        if settings['A']:
+            result['gain_pct'] = 10.0 if settings['B'] == 0 else 9.0
+        return result, proof
+    monkeypatch.setattr(E.guard, 'capture_actual', capture)
+    x, y = {'field': 'A', 'value': True}, {'field': 'B', 'value': 5}
+    output = tmp_path / 'harmful_addition'
+    E.execute_quartet({'npz_prepared': {'timestamps': np.array([1.0, 2.0])}}, pin, x, y, context, output, lambda *args: True)
+    receipt = output / 'quartet.json'
+    ranked = E.prioritize_confirmation([{'id': 'joint', 'x': x, 'y': y}, {'id': 'filter', 'x': x, 'y': y, 'priority_target': 'y_given_x'}], [(receipt, E.sha(receipt))], context, lambda *args: True)
+    joint, addition = ranked
+    assert joint['measured_priority'] > 0
+    assert joint['measured_relationship_features'][0]['positive_y_given_x'] is False
+    assert addition['measured_priority'] == 0
+    assert addition['measured_relationship_features'][0]['effects']['Z_minus_X'] == -1.0

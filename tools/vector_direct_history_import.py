@@ -32,6 +32,7 @@ import re
 import subprocess
 import sys
 import time
+import hashlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -53,6 +54,7 @@ SS_RE = re.compile(r"^[A-Z0-9]{1,30}_(LONG|SHORT)$")
 ACTS = ("OPEN", "CLOSE", "AUGMENT", "REDUCE")
 PENDING_ALERT_S = 900.0
 SINCE_S = 2 * 86400.0
+MAX_DECISION_STATES_PER_HOST = 32
 
 
 def iso(t: float) -> str:
@@ -77,6 +79,17 @@ def remote_cmd(venue: str, since: float, max_resolve: int) -> str:
     return (
         "cd ~/binance && P=python3; [ -x ~/.conda/envs/binance_env_mac/bin/python ] && P=~/.conda/envs/binance_env_mac/bin/python; "
         f"$P tools/vector_direct_fill_export.py --venue {venue} --since {since:.0f} --max-resolve {int(max_resolve)}"
+    )
+
+
+def remote_state_cmd(venue: str, hashes: list[str]) -> str:
+    safe_hashes = [value for value in hashes if re.fullmatch(r"[0-9a-f]{64}", value)]
+    if not safe_hashes or len(safe_hashes) > MAX_DECISION_STATES_PER_HOST:
+        raise ValueError("decision state request must contain 1..32 valid SHA-256 hashes")
+    joined = ",".join(safe_hashes)
+    return (
+        "cd ~/binance && P=python3; [ -x ~/.conda/envs/binance_env_mac/bin/python ] && P=~/.conda/envs/binance_env_mac/bin/python; "
+        f"$P tools/vector_direct_fill_export.py --venue {venue} --decision-state-hashes {joined}"
     )
 
 
@@ -105,6 +118,84 @@ def fetch(venue: str, since: float, max_resolve: int, timeout: float = 90.0) -> 
     if stats is None:
         raise RuntimeError(f"ssh {host}: no _stats line (output truncated?)")
     return recs, stats
+
+
+def fetch_decision_states(venue: str, hashes: list[str], timeout: float = 45.0) -> list[dict]:
+    host = HOSTS[venue][0]
+    p = subprocess.run(SSH + [host, remote_state_cmd(venue, hashes)], capture_output=True, text=True, timeout=timeout)
+    if p.returncode != 0:
+        raise RuntimeError(f"ssh {host} state export rc={p.returncode}: {(p.stderr or p.stdout)[-300:]}")
+    rows = []
+    for line in p.stdout.splitlines():
+        try:
+            row = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(row, dict) and row.get("_decision_state") is True:
+            rows.append(row)
+    return rows
+
+
+def _canonical_state_bytes(state: dict) -> bytes:
+    return json.dumps(state, sort_keys=True, separators=(",", ":"), default=str).encode()
+
+
+def sync_decision_state_snapshots(recs: list[dict], decision_state_root: Path, state_fetcher=fetch_decision_states) -> dict:
+    """Fetch only missing state hashes referenced by these fills, verify, then cache immutable bodies locally."""
+    requested = {venue: set() for venue in HOSTS}
+    root = Path(decision_state_root)
+    root_resolved = root.resolve()
+    invalid_refs = 0
+    for venue, rec in (("crypto" if rec.get("venue") == "crypto" else "stocks", rec) for rec in recs):
+        proof = rec.get("decision_provenance")
+        if not isinstance(proof, dict):
+            continue
+        digest = str(proof.get("state_sha256") or "").lower()
+        relative = str(proof.get("state_file") or "")
+        expected = f"decision_states/{digest[:2]}/{digest}.json"
+        if not re.fullmatch(r"[0-9a-f]{64}", digest) or relative != expected:
+            invalid_refs += 1
+            continue
+        path = (root / relative).resolve()
+        if not path.is_relative_to(root_resolved):
+            invalid_refs += 1
+            continue
+        valid = False
+        try:
+            state = json.loads(path.read_text())
+            valid = hashlib.sha256(_canonical_state_bytes(state)).hexdigest() == digest
+        except (OSError, ValueError, TypeError):
+            pass
+        if not valid:
+            requested[venue].add(digest)
+    counts = {"requested": 0, "verified": 0, "rejected": 0, "invalid_references": invalid_refs}
+    for venue, values in requested.items():
+        ordered = sorted(values)
+        for start in range(0, len(ordered), MAX_DECISION_STATES_PER_HOST):
+            batch = ordered[start:start + MAX_DECISION_STATES_PER_HOST]
+            counts["requested"] += len(batch)
+            try:
+                rows = state_fetcher(venue, batch)
+            except Exception:
+                continue
+            for row in rows:
+                digest = str(row.get("state_sha256") or "").lower()
+                relative = str(row.get("state_file") or "")
+                state = row.get("state")
+                expected = f"decision_states/{digest[:2]}/{digest}.json"
+                if digest not in batch or relative != expected or not isinstance(state, dict):
+                    counts["rejected"] += 1
+                    continue
+                if hashlib.sha256(_canonical_state_bytes(state)).hexdigest() != digest:
+                    counts["rejected"] += 1
+                    continue
+                path = root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+                tmp.write_bytes(_canonical_state_bytes(state))
+                os.replace(tmp, path)
+                counts["verified"] += 1
+    return counts
 
 
 def build_row(rec: dict, src: str) -> dict | None:
@@ -251,7 +342,7 @@ def ingest(
     return out
 
 
-def run_once(venues, max_resolve: int, now=None, fetcher=fetch, hist=None) -> dict:
+def run_once(venues, max_resolve: int, now=None, fetcher=fetch, hist=None, state_fetcher=fetch_decision_states) -> dict:
     now = now or time.time()
     hist = hist or (ROOT / "data" / "history")
     OUT.mkdir(parents=True, exist_ok=True)
@@ -271,8 +362,9 @@ def run_once(venues, max_resolve: int, now=None, fetcher=fetch, hist=None) -> di
         st = {"ts": iso(now), "host": HOSTS[venue][0]}
         try:
             recs, stats = fetcher(venue, now - SINCE_S, max_resolve)
+            state_sync = sync_decision_state_snapshots(recs, ROOT / "data" / "vector_direct", state_fetcher)
             res = ingest(venue, recs, vs, hist, now, audit_log)
-            st.update(ok=True, remote=stats.get("_stats"), **res)
+            st.update(ok=True, remote=stats.get("_stats"), decision_states=state_sync, **res)
             vs["last_ok"] = now
         except Exception as exc:
             st.update(ok=False, error=f"{type(exc).__name__}: {str(exc)[:300]}")

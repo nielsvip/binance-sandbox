@@ -1,0 +1,205 @@
+{
+  "schema": "profit_protection_native_ledger_inventory/1",
+  "audited_at": "2026-10-31T01:38:47.519176+00:00",
+  "source": "data/reports/nextgen_pinned_baseline_review_20261030/s2_oracle_attempt03/previous_execution_ledger.json",
+  "source_sha256": "2042c4558e106ed995a78b0d468f2c4a1bb3bf8b2c3750a4e91c9fa1a9eede6d",
+  "scope": "one captured previous-baseline diagnostic; no candidate comparison",
+  "total_rows": 96,
+  "realized_rows": 48,
+  "field_union": [
+    "bar",
+    "bar_entry",
+    "bar_exit",
+    "bars_held",
+    "closed_qty",
+    "deployed",
+    "entry_price",
+    "entry_reason",
+    "exit_price",
+    "exit_reason",
+    "fixed_stop_level",
+    "mandatory_stop_kind",
+    "pnl_dollars",
+    "pnl_is_lifecycle",
+    "pnl_pct",
+    "pos_deployed",
+    "price",
+    "qty",
+    "reason",
+    "ts",
+    "type",
+    "unrealised"
+  ],
+  "realized_reason_counts": [
+    {
+      "type": "CLOSE",
+      "exit_reason": "BB_RECOVERY_EXIT_TRADIER_SHORT",
+      "pnl_sign": "positive",
+      "pnl_is_lifecycle": "None",
+      "count": 7
+    },
+    {
+      "type": "CLOSE",
+      "exit_reason": "FINAL_MTM",
+      "pnl_sign": "negative",
+      "pnl_is_lifecycle": "None",
+      "count": 1
+    },
+    {
+      "type": "CLOSE",
+      "exit_reason": "FIXED_STOP",
+      "pnl_sign": "negative",
+      "pnl_is_lifecycle": "None",
+      "count": 16
+    },
+    {
+      "type": "CLOSE",
+      "exit_reason": "MTF_BB_REJECT_1h",
+      "pnl_sign": "positive",
+      "pnl_is_lifecycle": "None",
+      "count": 5
+    },
+    {
+      "type": "CLOSE",
+      "exit_reason": "MTF_GR_WT_EXIT_15m_grTFs=3",
+      "pnl_sign": "positive",
+      "pnl_is_lifecycle": "None",
+      "count": 1
+    },
+    {
+      "type": "CLOSE",
+      "exit_reason": "WT_CROSS_EXIT_1h_bull_wt1=-69.3_wt2=-71.1",
+      "pnl_sign": "positive",
+      "pnl_is_lifecycle": "None",
+      "count": 1
+    },
+    {
+      "type": "CLOSE",
+      "exit_reason": "WT_CROSS_EXIT_1h_bull_wt1=-86.5_wt2=-89.0",
+      "pnl_sign": "positive",
+      "pnl_is_lifecycle": "None",
+      "count": 1
+    },
+    {
+      "type": "REDUCE",
+      "exit_reason": "PPL_TP_g1.51%>=1.50%_stopBE0.0991",
+      "pnl_sign": "positive",
+      "pnl_is_lifecycle": "True",
+      "count": 1
+    },
+    {
+      "type": "REDUCE",
+      "exit_reason": "PPL_TP_g1.52%>=1.50%_stopBE0.1024",
+      "pnl_sign": "positive",
+      "pnl_is_lifecycle": "True",
+      "count": 1
+    },
+    {
+      "type": "REDUCE",
+      "exit_reason": "PPL_TP_g1.53%>=1.50%_stopBE0.1064",
+      "pnl_sign": "positive",
+      "pnl_is_lifecycle": "True",
+      "count": 1
+    },
+    {
+      "type": "REDUCE",
+      "exit_reason": "PPL_TP_g1.57%>=1.50%_stopBE0.1060",
+      "pnl_sign": "positive",
+      "pnl_is_lifecycle": "True",
+      "count": 1
+    },
+    {
+      "type": "REDUCE",
+      "exit_reason": "PPL_TP_g1.70%>=1.50%_stopBE0.1022",
+      "pnl_sign": "positive",
+      "pnl_is_lifecycle": "True",
+      "count": 1
+    },
+    {
+      "type": "REDUCE",
+      "exit_reason": "PPL_TP_g1.75%>=1.50%_stopBE0.0984",
+      "pnl_sign": "positive",
+      "pnl_is_lifecycle": "True",
+      "count": 1
+    },
+    {
+      "type": "REDUCE",
+      "exit_reason": "PPL_TP_g1.78%>=1.50%_stopBE0.0955",
+      "pnl_sign": "positive",
+      "pnl_is_lifecycle": "True",
+      "count": 1
+    },
+    {
+      "type": "REDUCE",
+      "exit_reason": "PPL_TP_g1.81%>=1.50%_stopBE0.0956",
+      "pnl_sign": "positive",
+      "pnl_is_lifecycle": "True",
+      "count": 1
+    },
+    {
+      "type": "REDUCE",
+      "exit_reason": "PPL_TP_g1.82%>=1.50%_stopBE0.1034",
+      "pnl_sign": "positive",
+      "pnl_is_lifecycle": "True",
+      "count": 1
+    },
+    {
+      "type": "REDUCE",
+      "exit_reason": "PPL_TP_g1.84%>=1.50%_stopBE0.0949",
+      "pnl_sign": "positive",
+      "pnl_is_lifecycle": "True",
+      "count": 1
+    },
+    {
+      "type": "REDUCE",
+      "exit_reason": "PPL_TP_g1.89%>=1.50%_stopBE0.1028",
+      "pnl_sign": "positive",
+      "pnl_is_lifecycle": "True",
+      "count": 1
+    },
+    {
+      "type": "REDUCE",
+      "exit_reason": "PPL_TP_g1.94%>=1.50%_stopBE0.0975",
+      "pnl_sign": "positive",
+      "pnl_is_lifecycle": "True",
+      "count": 1
+    },
+    {
+      "type": "REDUCE",
+      "exit_reason": "PPL_TP_g1.99%>=1.50%_stopBE0.1048",
+      "pnl_sign": "positive",
+      "pnl_is_lifecycle": "True",
+      "count": 1
+    },
+    {
+      "type": "REDUCE",
+      "exit_reason": "PPL_TP_g2.09%>=1.50%_stopBE0.1006",
+      "pnl_sign": "positive",
+      "pnl_is_lifecycle": "True",
+      "count": 1
+    },
+    {
+      "type": "REDUCE",
+      "exit_reason": "PPL_TP_g2.80%>=1.50%_stopBE0.1019",
+      "pnl_sign": "positive",
+      "pnl_is_lifecycle": "True",
+      "count": 1
+    },
+    {
+      "type": "REDUCE",
+      "exit_reason": "PPL_TP_g3.73%>=1.50%_stopBE0.1032",
+      "pnl_sign": "positive",
+      "pnl_is_lifecycle": "True",
+      "count": 1
+    }
+  ],
+  "missing_evidence": [
+    "per-bar actual peak favorable state",
+    "peak timestamp",
+    "protection predicate/refusal state",
+    "actual maker/taker fill class",
+    "per-fill commission",
+    "executable quote availability"
+  ],
+  "interpretation": "Counts refer to actual emitted ledger rows, which may be reductions or lifecycle totals; not distinct trades or avoidable-loss claims."
+}

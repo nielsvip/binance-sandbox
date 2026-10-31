@@ -413,7 +413,8 @@ def reconstruct_account(account_id, account, window_start_ms=None, window_end_ms
                 "ending_qty_observed": None, "ending_qty_reconciliation_delta": None,
                 "entry_decision_evidence": None, "entry_switch_attribution": "unknown",
                 "entry_switch_candidate": None, "entry_switch_candidate_status": None,
-                "entry_switch_candidate_evidence": None,
+                "entry_switch_candidate_evidence": None, "entry_reason_candidate": None,
+                "entry_reason_candidate_status": None,
                 "events": [], "issues": [], "_qty": opening_qty or 0.0, "_avg": None,
             }
 
@@ -488,6 +489,8 @@ def reconstruct_account(account_id, account, window_start_ms=None, window_end_ms
                     cur["entry_switch_candidate"] = forward_candidate.get("switch")
                     cur["entry_switch_candidate_status"] = forward_candidate.get("status")
                     cur["entry_switch_candidate_evidence"] = forward_candidate
+                    cur["entry_reason_candidate"] = forward_candidate.get("reason")
+                    cur["entry_reason_candidate_status"] = forward_candidate.get("status")
             else:
                 if cur is None:
                     cur = new_lifecycle(True, None, "unknown_due_to_missing_opening_evidence")
@@ -509,6 +512,8 @@ def reconstruct_account(account_id, account, window_start_ms=None, window_end_ms
                 "order_type": (order or {}).get("type"),
                 "client_order_id": (order or {}).get("clientOrderId"),
                 "entry_switch_attribution": (cur.get("entry_switch_attribution") if opening else "unknown"),
+                "entry_reason_candidate": (cur.get("entry_reason_candidate") if opening else None),
+                "entry_reason_candidate_status": (cur.get("entry_reason_candidate_status") if opening else None),
                 "order_id_linked_history_records": order_matches,
                 "forward_anchor_switch_candidate": forward_candidate,
                 "current_qty_after": cur["_qty"], "weighted_average_entry_price_after": cur["_avg"],
@@ -658,12 +663,12 @@ def reconstruct_account(account_id, account, window_start_ms=None, window_end_ms
                                       "order_linked_record_sources": dict(source_counts),
                                       "order_linked_recorded_provenance_source_switch": dict(source_switch_counts),
                                       "forward_anchor_candidate_status_counts": dict(candidate_status_counts),
-                                      "unknown_reason": "No exact order-ID-linked VEC_EXACT OPEN/REENTRY history row with a canonical switch was recorded; generic VECTOR_DIRECT and stale/unlinked contexts are not promoted."},
+                                      "unknown_reason": "No exact order-ID-linked VEC_EXACT record or content-address-verified consumed-state decision row provided a canonical switch; generic VECTOR_DIRECT and stale/unlinked contexts are not promoted."},
         "per_symbol": grouped,
         "lifecycles": lifecycles,
         "malformed_or_unreconciled_records": malformed_fills,
         "account_commission_by_asset": dict(_sum_commissions(lifecycles)),
-        "notes": ["No commission conversion was performed.", "Entry-switch attribution is unknown unless the actual fill/order record contains explicit decision evidence.",
+        "notes": ["No commission conversion was performed.", "Verified entry attribution requires an exact broker-order-ID link to stored VEC_EXACT provenance or a content-address-verified consumed decision state; timestamped bar candidates remain unverified.",
                   "Fixed-stop labels require a matching raw order type beginning STOP or client order ID prefix vds/EZMSTOP.",
                   "Raw realized PnL and commission totals are kept asset-separated; no net-after-fee amount is synthesized."],
     }
@@ -725,8 +730,14 @@ def build_neural_builder_handoff(inventories, source_path="<memory>"):
     candidate_losses = collections.defaultdict(lambda: {"completed_loss_lifecycle_count": 0, "completed_candidate_lifecycle_count": 0,
                                                         "fixed_stop_closed_loss_lifecycle_count": 0,
                                                         "candidate_status_counts": {}, "entry_reasons": {}})
+    reason_candidate_losses = collections.defaultdict(lambda: {"completed_loss_lifecycle_count": 0,
+                                                               "fixed_stop_closed_loss_lifecycle_count": 0,
+                                                               "candidate_status_counts": {}, "mapped_switches": {}})
     proven_losses = collections.defaultdict(lambda: {"completed_loss_lifecycle_count": 0, "fixed_stop_closed_loss_lifecycle_count": 0})
     unknown_losses = collections.Counter()
+    rejected_evidence = collections.defaultdict(lambda: {"completed_loss_lifecycle_count": 0, "entry_reasons": {}, "candidate_switches": {}})
+    rankable_candidate_statuses = {"hash_bound_forward_action_candidate", "archived_bar_intent_reason_candidate_missing_forward_hash_record",
+                                   "current_bar_intent_reason_candidate_unarchived", "reason_not_in_verified_switch_mapping"}
     for account_id, inventory in sorted(inventories.items()):
         coverage = inventory.get("entry_provenance_coverage") or {}
         total_events += coverage.get("entry_fill_events", 0)
@@ -761,7 +772,7 @@ def build_neural_builder_handoff(inventories, source_path="<memory>"):
                 key = (str(account_id), symbol_side, str(proven_switch))
                 proven_losses[key]["completed_loss_lifecycle_count"] += 1
                 proven_losses[key]["fixed_stop_closed_loss_lifecycle_count"] += stop_loss
-            elif candidate_switch:
+            elif candidate_switch and life.get("entry_switch_candidate_status") in rankable_candidate_statuses:
                 key = (str(account_id), symbol_side, str(candidate_switch))
                 row = candidate_losses[key]
                 row["completed_loss_lifecycle_count"] += 1
@@ -771,19 +782,43 @@ def build_neural_builder_handoff(inventories, source_path="<memory>"):
                 row["candidate_status_counts"][status] = row["candidate_status_counts"].get(status, 0) + 1
                 reason = str((life.get("entry_switch_candidate_evidence") or {}).get("reason") or "unknown")
                 row["entry_reasons"][reason] = row["entry_reasons"].get(reason, 0) + 1
+            elif life.get("entry_reason_candidate_status") == "intent_entry_time_or_generation_unverified":
+                evidence = life.get("entry_switch_candidate_evidence") or {}
+                reason = str(life.get("entry_reason_candidate") or "unknown")
+                switch = str(evidence.get("switch") or "unknown")
+                row = rejected_evidence[(str(account_id), symbol_side, "intent_entry_time_or_generation_unverified")]
+                row["completed_loss_lifecycle_count"] += 1
+                row["entry_reasons"][reason] = row["entry_reasons"].get(reason, 0) + 1
+                row["candidate_switches"][switch] = row["candidate_switches"].get(switch, 0) + 1
             else:
                 unknown_losses[(str(account_id), symbol_side)] += 1
+            reason = life.get("entry_reason_candidate")
+            reason_status = life.get("entry_reason_candidate_status")
+            if reason and reason_status in rankable_candidate_statuses:
+                key = (str(account_id), symbol_side, str(reason))
+                row = reason_candidate_losses[key]
+                row["completed_loss_lifecycle_count"] += 1
+                row["fixed_stop_closed_loss_lifecycle_count"] += stop_loss
+                row["candidate_status_counts"][str(reason_status)] = row["candidate_status_counts"].get(str(reason_status), 0) + 1
+                if candidate_switch:
+                    row["mapped_switches"][str(candidate_switch)] = row["mapped_switches"].get(str(candidate_switch), 0) + 1
 
     candidate_rank = [{"account_id": key[0], "sym_side": key[1], "entry_switch_candidate": key[2], **counts}
                       for key, counts in candidate_losses.items()]
     candidate_rank.sort(key=lambda item: (-item["completed_loss_lifecycle_count"], item["account_id"], item["sym_side"], item["entry_switch_candidate"]))
+    reason_candidate_rank = [{"account_id": key[0], "sym_side": key[1], "entry_reason_candidate": key[2], **counts}
+                             for key, counts in reason_candidate_losses.items()]
+    reason_candidate_rank.sort(key=lambda item: (-item["completed_loss_lifecycle_count"], item["account_id"], item["sym_side"], item["entry_reason_candidate"]))
     proven_rank = [{"account_id": key[0], "sym_side": key[1], "entry_switch": key[2], **counts} for key, counts in proven_losses.items()]
     proven_rank.sort(key=lambda item: (-item["completed_loss_lifecycle_count"], item["account_id"], item["sym_side"], item["entry_switch"]))
+    rejected_rows = [{"account_id": key[0], "sym_side": key[1], "reason": key[2], **counts}
+                     for key, counts in rejected_evidence.items()]
+    rejected_rows.sort(key=lambda item: (-item["completed_loss_lifecycle_count"], item["account_id"], item["sym_side"], item["reason"]))
     return {
         "schema_version": 1, "artifact_type": "neural_builder_position_provenance_handoff",
         "source_path": str(source_path), "account_count": len(inventories),
         "entry_provenance_policy": {
-            "proven_switch_attribution": "An exact order-ID-linked recorded VEC_EXACT OPEN/REENTRY event whose stored provenance contains a canonical switch name.",
+            "proven_switch_attribution": "An exact order-ID-linked recorded VEC_EXACT OPEN/REENTRY event with a canonical switch, or an exact order-ID-linked history row whose decision_provenance state file verifies against its content address and whose consumed OPEN/REENTRY reason maps through the verified static switch registry.",
             "unverified_candidate": "Exact broker order_id history row -> exact ledger_key account/sym_side/bar -> exact bar-named intent and/or forward acts_bar_ts; the entry reason maps through history_prov._resolve_spec. Candidates remain unverified because the broker execution row has no matching execution-generation/settings hash.",
             "rejected": ["VECTOR_DIRECT is a transport/source label, not the entry switch.",
                          "Generic reason text is not promoted to a canonical switch without a verified reason-to-switch mapping.",
@@ -796,14 +831,17 @@ def build_neural_builder_handoff(inventories, source_path="<memory>"):
                      "entry_fill_events_without_verified_switch": total_events - total_attributed},
         "per_account": per_account, "cross_symbol": cross_symbol,
         "losing_entry_switch_rankings": {"proven": proven_rank, "exact_anchor_candidates_unverified": candidate_rank,
+                                         "exact_anchor_entry_reasons_unverified": reason_candidate_rank,
                                          "completed_loss_lifecycles_without_switch": [{"account_id": key[0], "sym_side": key[1], "completed_loss_lifecycle_count": value}
                                                                                        for key, value in sorted(unknown_losses.items())]},
+        "rejected_evidence": {"excluded_from_candidate_rankings": rejected_rows,
+                              "policy": "Entry-time/generation mismatches and conflicting bar intent versions are retained as rejected evidence, not attributed or ranked as switch/reason candidates."},
         "fixed_stop_loss_vs_gain_stop_opportunities": {"fixed_stop_closed_loss_lifecycles_are_actual_broker_stop_fills": True,
                                                        "gain_stop_candidate_opportunities": "not included in this broker-fill inventory; evaluate separately from exact forward exit-candidate evidence, and never count as closed losses"},
         "unknowns": ["Broker fills expose the executed order ID and fill facts, not the originating vector entry switch.",
                      "A direct order history row may say VECTOR_DIRECT or a broker/position reconciliation reason; those values do not identify the underlying entry switch.",
                      "Exact bar reason and hash-bound forward state provide a useful candidate, but not proof that the live execution used that exact settings/engine generation.",
-                     "A switch remains unknown unless the actual order ID joins to recorded VEC_EXACT entry provenance with a canonical switch."],
+                     "A switch remains unknown unless the actual order ID joins to recorded VEC_EXACT entry provenance or a content-address-verified consumed decision state with a canonical switch."],
     }
 
 

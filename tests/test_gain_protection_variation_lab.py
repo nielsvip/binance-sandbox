@@ -1,4 +1,4 @@
-from tools.gain_protection_variation_lab import candidate_configs, confirmed_stop_loser_counts
+from tools.gain_protection_variation_lab import candidate_configs, confirmed_stop_loser_counts, summarize_run
 
 
 def test_candidates_are_template_backed_fee_positive_and_set_gain_protection_only():
@@ -29,3 +29,23 @@ def test_selection_uses_confirmed_fixed_stop_loss_fill_count():
         "SHORT": {"fixed_stop_exit_fill_loss_count": 2},
     }}, "BBB": {"position_sides": {"LONG": {"fixed_stop_exit_fill_loss_count": 4}}}}}
     assert confirmed_stop_loser_counts(inventory, 3) == {"AAA_LONG": 3, "BBB_LONG": 4}
+
+
+def test_turnover_estimate_includes_realized_close_missing_action_event():
+    result = {
+        "valid": True,
+        "data_days": 7,
+        "max_dd_pct": 0.0,
+        "execution_ledger": [
+            {"type": "OPEN", "qty": 10, "price": 100, "bar": 1},
+            {"type": "CLOSE", "qty": 10, "price": 110, "bar_entry": 1, "bar_exit": 2,
+             "entry_price": 100, "exit_price": 110, "pnl_dollars": 98, "pnl_pct": 0.98,
+             "exit_reason": "FIXED_STOP"},
+        ],
+    }
+    summary = summarize_run(result, 0.2, 7)
+    assert summary["action_turnover_estimate"] == 1000
+    assert summary["unmatched_realized_close_turnover_added"] == 1100
+    assert summary["turnover_estimate"] == 2100
+    assert summary["estimated_fee_at_configured_round_trip_rate"] == 2.1
+    assert summary["metric_guard_sample_status"] == "DIAGNOSTIC_ONLY"

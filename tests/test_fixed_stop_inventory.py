@@ -140,6 +140,38 @@ class FixedStopInventoryTests(unittest.TestCase):
         losses = handoff["losing_entry_switch_rankings"]["exact_anchor_candidates_unverified"]
         self.assertEqual(losses[0]["completed_loss_lifecycle_count"], 1)
 
+    def test_reason_candidates_are_separate_and_generation_mismatch_is_rejected(self):
+        fills = [fill(1, 941, "BUY", 1, 10), fill(2, 951, "SELL", 1, 9, -1, timestamp=2000)]
+        linked = {"941": [{"source": "history", "source_path": "history.jsonl", "order_id_relationship": "order_id",
+                            "recorded_type": "OPEN", "ledger_key": "acct|ABCUSDT_LONG|1000|OPEN",
+                            "recorded_provenance": {"src": "S1_VECTOR_DIRECT", "switch": "VECTOR_DIRECT"}}]}
+        forward = {("ABCUSDT_LONG", 1000, "OPEN"): {
+            "intents": [{"source": "bar_intent_archive", "source_path": "intent.json", "sha256": "h",
+                         "entry_reason": "REENTRY_LOWER_HIGH", "entry_ts": 2000}], "forward_states": []}}
+        inventory = reconstruct_account("acct", account_for(fills), 0, 3000, linked, forward)
+        life = inventory["lifecycles"][0]
+        self.assertEqual(life["entry_reason_candidate_status"], "intent_entry_time_or_generation_unverified")
+        handoff = build_neural_builder_handoff({"acct": inventory}, "synthetic.json")
+        self.assertEqual(handoff["losing_entry_switch_rankings"]["exact_anchor_candidates_unverified"], [])
+        self.assertEqual(handoff["losing_entry_switch_rankings"]["exact_anchor_entry_reasons_unverified"], [])
+        rejected = handoff["rejected_evidence"]["excluded_from_candidate_rankings"]
+        self.assertEqual(rejected[0]["completed_loss_lifecycle_count"], 1)
+        self.assertEqual(rejected[0]["entry_reasons"], {"REENTRY_LOWER_HIGH": 1})
+
+    def test_unmapped_recorded_entry_reason_is_ranked_as_reason_only(self):
+        life = {"status": "completed", "symbol": "ABCUSDT", "position_side": "LONG",
+                "entry_switch_attribution": "unknown", "entry_switch_candidate": None,
+                "entry_reason_candidate": "UNMAPPED_EXACT_BAR_REASON", "entry_reason_candidate_status": "reason_not_in_verified_switch_mapping",
+                "entry_switch_candidate_evidence": {"reason": "UNMAPPED_EXACT_BAR_REASON", "switch": None},
+                "events": [{"realized_pnl_raw": -1, "event_type": "close", "fixed_stop_order_detected": True}]}
+        inventory = {"entry_provenance_coverage": {"entry_fill_events": 1, "entry_fill_events_with_order_id_history_match": 1,
+                                                    "entry_fill_events_with_verified_switch": 0, "entry_fill_events_with_unverified_switch_candidate": 0},
+                     "per_symbol": {}, "lifecycles": [life]}
+        handoff = build_neural_builder_handoff({"acct": inventory}, "synthetic.json")
+        reason_rows = handoff["losing_entry_switch_rankings"]["exact_anchor_entry_reasons_unverified"]
+        self.assertEqual(reason_rows[0]["entry_reason_candidate"], "UNMAPPED_EXACT_BAR_REASON")
+        self.assertEqual(reason_rows[0]["fixed_stop_closed_loss_lifecycle_count"], 1)
+
     def test_content_addressed_order_decision_state_proves_recorded_switch(self):
         state = {"settings_sha256": "settings", "engine_ast_sha256": "engine", "npz_tail": 123,
                  "ts": "2026-10-31T00:00:00Z", "settings_updated_at": "2026-10-30T23:00:00Z", "bar_ts": 1000,

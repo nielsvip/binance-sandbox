@@ -11940,6 +11940,7 @@ def _atomic_save_once(wb, wb_path: Path):
 
 # progress_path.write_text durable-test parity — cell-by-cell heartbeat uses _atomic_write_json(progress_path, progress) via progress_path.write_text fallback
 def _atomic_write_json(path: Path, data: dict):
+    from tools.v15_nextgen_baseline_resume import stamp as _stamp_pinned_resume
     tmp = str(path) + ".tmp"
     import os as _os, json as _json
     try:  # PIPE 2026-10-01: every progress JSON carries the defaults round id (env V15_DEFAULTS_ROUND) so rounds with different defaults are never averaged together
@@ -11952,6 +11953,7 @@ def _atomic_write_json(path: Path, data: dict):
             strip_global_only_progress(data)  # GLOBAL_ONLY never persisted in a board's set
     except Exception:
         pass
+    _stamp_pinned_resume(path, data)
     try:
         Path(tmp).write_text(_json.dumps(data, indent=2))
         try:
@@ -12800,6 +12802,9 @@ def _v18_pair_fork(new_symside):
         if _partner is None or ensure_npz_for_symside(_partner, 30) is None:
             print(f"[V18-PAIR] {new_symside}: partner {_opp0} not due / no NPZ — primary only", flush=True)
             return None
+        _pair_pin_root = Path(os.environ.get("V15_PINNED_BASELINE", ""))
+        if not _pair_pin_root.is_dir() or not (_pair_pin_root / f"{_partner}.json").is_file():
+            raise SystemExit(f"[PINNED-BASELINE-PAIR] {_partner} requires its own contract in V15_PINNED_BASELINE directory; shared pin forbidden")
         sys.stdout.flush()
         sys.stderr.flush()
         pid = os.fork()
@@ -12811,7 +12816,7 @@ def _v18_pair_fork(new_symside):
                 print(f"[V18-PAIR] child {os.getpid()} calculating partner {_partner} concurrently with {new_symside} (NPZ {_cur_md5})", flush=True)
                 _main_single()
             except SystemExit as _se:
-                _code = _se.code if isinstance(_se.code, int) else 0
+                _code = _se.code if isinstance(_se.code, int) else (0 if _se.code is None else 1)
             except BaseException as _ce:
                 print(f"[V18-PAIR] partner {_partner} child error {_ce}", flush=True)
                 _code = 1
@@ -12837,6 +12842,8 @@ def _pair_child_workers():
 def _v18_pair_join(new_symside, pid, partner):
     try:
         _, st = os.waitpid(pid, 0)
+        if not os.WIFEXITED(st) or os.WEXITSTATUS(st) != 0:
+            raise SystemExit(f"[PINNED-BASELINE-PAIR] {partner} failed child status {st}")
         print(f"[V18-PAIR] pair {new_symside} + {partner} calculated concurrently (child exit status {st})", flush=True)
     except Exception as _je:
         print(f"[V18-PAIR-warn] join {partner}: {_je}", flush=True)
@@ -12866,7 +12873,9 @@ def _run_pair_partner(new_symside):
             try:
                 _main_single()
             except SystemExit as _se:
-                print(f"[PAIR-IN-RAM] partner {_partner} exited SystemExit({_se.code}) — primary result stands", flush=True)
+                if _se.code not in (None, 0):
+                    raise
+                print(f"[PAIR-IN-RAM] partner {_partner} exited SystemExit({_se.code})", flush=True)
         finally:
             sys.argv = _saved_argv
             os.environ.pop("V15_PAIR_CHILD", None)
@@ -12909,6 +12918,8 @@ def _main_single():
     ap.add_argument("--sheet-order", default=None, help="0914 override sheet order comma-separated (e.g. GLOBAL_RISK_GATES,EXIT_VELOCITY,...)")
     ap.add_argument("--batch-syms", default=None, help="4 NPZ batch: comma-separated sym_sides (e.g. AAPL_LONG,AAPL_SHORT,MSFT_LONG,MSFT_SHORT) — loads 4 NPZs LONG+SHORT together, keeps all hot in RAM until all 12 tabs finished, never erase")
     args = ap.parse_args()
+    if not getattr(args, "dry_run", False) and not __import__("os").environ.get("V15_PINNED_BASELINE"):
+        raise SystemExit("[PINNED-BASELINE-REQUIRED] this pilot version will not optimize without a previous accepted baseline contract")
     if not getattr(args, "dry_run", False):
         _require_progress_dir()
     # normalize seq-mode aliases
@@ -13433,7 +13444,16 @@ def _main_single():
         # (USER 2026-09-30: V15_INGEST_BEST=1 keeps the prior-best overrides FIRST, then the baseline)
         print(f"[FRESH-RUN] {new_symside}: prior-best/previous-sheet ingest ignored ({len(overrides)} -> live recipe {len(_recipe_only_overrides)} overrides)", flush=True)
         overrides = dict(_recipe_only_overrides)
-    if os.environ.get("V15_START_OVERRIDES") and args.window_days != 30:
+    _pinned_baseline = None
+    if os.environ.get("V15_PINNED_BASELINE"):
+        from tools.v15_nextgen_baseline_guard import load_pin, assert_settings, enforce_actual, PinnedBaselineError
+        _pinned_baseline_path = Path(os.environ["V15_PINNED_BASELINE"])
+        if _pinned_baseline_path.is_dir():
+            _pinned_baseline_path = _pinned_baseline_path / (new_symside + ".json")
+        _pinned_baseline = load_pin(_pinned_baseline_path, new_symside, defaults, ROOT / "backtest_v8" / "indicators" / (new_symside.rsplit("_", 1)[0] + ".npz"), args.window_days, supported_fields={field.name for field in dataclasses.fields(__import__("v12_quick_engine").QuickConfig)}, global_fields=set(GLOBAL_ONLY_KEYS) | set(__import__("tools.opt.evaluate_v12", fromlist=["MARKET_MODE_SIZING_KEYS"]).MARKET_MODE_SIZING_KEYS) | {"MODE", "MARKET_MODE", "VENUE", "IS_TRADIER"}, sanitize=sanitize_overrides)
+        overrides = dict(_pinned_baseline["settings"])
+        _recipe_only_overrides = dict(overrides)
+    if os.environ.get("V15_START_OVERRIDES") and args.window_days != 30 and _pinned_baseline is None:
         # USER 2026-09-29 (BIBLE §58): re-run the 30D sheet from the 365D-repaired set (tools/v15_365_repair.py output
         # or a plain {switch: value} json) — it becomes the sheet's live-recipe baseline
         _so = json.load(open(os.environ["V15_START_OVERRIDES"]))
@@ -13442,7 +13462,7 @@ def _main_single():
         print(f"[START-OVERRIDES] {new_symside}: {len(_so)} overrides from {os.environ['V15_START_OVERRIDES']} (365D-repaired set)", flush=True)
         overrides = {**_tpl_defaults, **_so}
         _recipe_only_overrides = dict(overrides)
-    elif os.environ.get("V15_START_OVERRIDES") and args.window_days == 30:
+    elif os.environ.get("V15_START_OVERRIDES") and args.window_days == 30 and _pinned_baseline is None:
         print(f"[START-OVERRIDES-IGNORED] {new_symside}: 30D baseline is selected only from validated Mac live snapshot and cat_side template", flush=True)
     # USER 2026-10-02 (finish qualification REDO): a DONE stage that scheduled a re-fill left needs_redo
     # in progress — the repaired set becomes this fill's baseline (§58 step 5), same as V15_START_OVERRIDES.
@@ -13455,7 +13475,7 @@ def _main_single():
         if _nr_pp.exists():
             _nr_pj = json.loads(_nr_pp.read_text())
             _nr = _nr_pj.get("needs_redo") or {}
-            if _nr.get("overrides") and _nr_pj.get("verdict") != "IMPOSSIBLE" and args.window_days != 30:
+            if _nr.get("overrides") and _nr_pj.get("verdict") != "IMPOSSIBLE" and args.window_days != 30 and _pinned_baseline is None:
                 _so2 = strip_global_only(dict(_nr["overrides"]))
                 print(f"[REDO-START] {new_symside}: {len(_so2)} overrides from needs_redo depth {_nr.get('depth')} ({(_nr.get('reason') or '')[:100]})", flush=True)
                 overrides = {**_tpl_defaults, **_so2}
@@ -13465,13 +13485,15 @@ def _main_single():
                 print(f"[REDO-START-IGNORED] {new_symside}: 30D baseline is selected only from validated Mac live snapshot and cat_side template", flush=True)
     except Exception as _nr_e:
         print(f"[redo-start-warn] {_nr_e}", flush=True)
-    if os.environ.get("V15_TEMPLATE_DEFAULTS", "0") == "1" and not os.environ.get("V15_START_OVERRIDES") and not _nr_applied:
+    if os.environ.get("V15_TEMPLATE_DEFAULTS", "0") == "1" and not os.environ.get("V15_START_OVERRIDES") and not _nr_applied and _pinned_baseline is None:
         # USER 2026-09-29: live recipe makes 0 trades (impossible) -> start from the TEMPLATE_{CAT}_{SIDE} bold defaults (= live config defaults)
         # 2026-10-08 (USER gains lane, system audit): a V15_START_OVERRIDES run is already template-defaults + the repaired/autopsy-first set (§58 step 5) — it must NOT be dropped here (it was, silently, under the fleet launcher).
         print(f"[TEMPLATE-DEFAULTS] {new_symside}: live recipe/best dropped ({len(overrides)} overrides) -> template defaults only", flush=True)
         overrides = dict(_tpl_defaults)
         _recipe_only_overrides = dict(_tpl_defaults)
     overrides, warns = sanitize_overrides(overrides, defaults)
+    if _pinned_baseline is not None:
+        assert_settings(_pinned_baseline, overrides)
     if warns:
         print(f"[sanitize] {warns}", flush=True)
     print(f"[STEP] sanitize done {len(overrides)}", flush=True)
@@ -13600,12 +13622,12 @@ def _main_single():
         prepared_for_fallback = None
     else:
         from tools.opt.v12_pilot import evaluate_prepared_sanitized
-        baseline_vec = evaluate_prepared_sanitized(prepared, overrides, window_days=args.window_days)
+        baseline_vec = enforce_actual(_pinned_baseline, prepared, overrides, evaluate_prepared_sanitized, args.window_days, window_context={key: _HOLDOUT.get(key) for key in ["days", "confirm_days", "cut", "confirm_end", "on", "installed"]}) if _pinned_baseline is not None else evaluate_prepared_sanitized(prepared, overrides, window_days=args.window_days)
         # USER 2026-09-29: an ingested BEST / previous-XLS set built on the broken engine/NPZ can zero the baseline
         # (BTCUSDC_LONG: 84 hustler_best overrides -> 0 trades vs recipe 286). A prior best that cannot trade is not a
         # baseline: fall back to the live recipe when it trades and the ingested set does not.
         _bt = baseline_vec.get("trades_rows", baseline_vec.get("trades"))  # PAR/001: floor on all-rows count
-        if not _sql_baseline_7d and isinstance(_bt, (int, float)) and _bt < 10:
+        if not _sql_baseline_7d and _pinned_baseline is None and isinstance(_bt, (int, float)) and _bt < 10:
             try:
                 _rec_ov, _ = sanitize_overrides(dict(_recipe_only_overrides), defaults)
                 if _rec_ov != overrides:
@@ -13632,7 +13654,7 @@ def _main_single():
         # Bias-free baseline (backtest-expert: 80% breaking, no look-ahead): evaluate cat_side defaults first, then per_sym
         # full snapshot from last promotion, pick best credible as E3. Winning baseline's full set is diffed against
         # latest bold template defaults — every non-current default becomes an override in column C.
-        _cat_persym_contract = bool(prepared is not None and args.window_days == 30)
+        _cat_persym_contract = bool(prepared is not None and args.window_days == 30 and _pinned_baseline is None)
         _cat_persym_selected = False
         if _cat_persym_contract:
             try:
@@ -13765,7 +13787,7 @@ def _main_single():
         # are better than the latest best per_sym settings. USER 2026-10-11: START_OVERRIDES runs now CHOOSE (3-way
         # start/per_sym/cat, incumbent-biased credible-first); needs_redo refills + SKIP=1 stay measure-only (sheet
         # integrity / template purity). 2-3 hot evals ~0.2s.
-        if prepared is not None and not locals().get("_cat_vs_persym_done"):
+        if prepared is not None and not locals().get("_cat_vs_persym_done") and _pinned_baseline is None:
             try:
                 _dc_cat_ov, _ = sanitize_overrides(dict(_tpl_defaults), defaults)
                 _dc_per_ov, _dc_per_lbl = None, None
@@ -13848,7 +13870,7 @@ def _main_single():
         # previous best / template defaults on the CURRENT engine and start from the best credible one (not only when the
         # recipe fails). A V15_START_OVERRIDES (365D-repaired) run keeps its set unless it is not credible.
         _always_best_base = not locals().get("_cat_persym_selected") and os.environ.get("V15_FRESH_RUN", "0") == "1" and not os.environ.get("V15_START_OVERRIDES")
-        if prepared is not None and not locals().get("_cat_persym_selected") and os.environ.get("V15_ADAPT_BASELINE", "1") == "1" and (_always_best_base or int(baseline_vec.get("trades") or 0) < ADAPT_FLOOR_TRADES or not baseline_vec.get("valid") or float(baseline_vec.get("gain_pct") or 0) < ADAPT_ULTRA_NEG_PCT):
+        if prepared is not None and not locals().get("_cat_persym_selected") and _pinned_baseline is None and os.environ.get("V15_ADAPT_BASELINE", "1") == "1" and (_always_best_base or int(baseline_vec.get("trades") or 0) < ADAPT_FLOOR_TRADES or not baseline_vec.get("valid") or float(baseline_vec.get("gain_pct") or 0) < ADAPT_ULTRA_NEG_PCT):
             # USER 2026-09-29: never sweep from a 0-trade / sub-floor / ultra-negative baseline — adapt to a credible one first
             _bases = [("live_recipe", dict(_recipe_only_overrides)), ("template_defaults", dict(_tpl_defaults)), ("current", dict(overrides))]
             if _ingested_overrides and _ingested_overrides != _recipe_only_overrides:
@@ -13889,7 +13911,7 @@ def _main_single():
     # so a final below the previous best is impossible. Candidates: the incumbent (start/challenger winner, which
     # already competed against cat_side defaults + per-sym), the top published sets from S1 per_sym_history
     # (shipped with the dispatch: ~/v15_prev_best/{ss}.json) and earlier finals on this host. V15_PREV_BEST_START=0 disables.
-    if prepared is not None and not locals().get("_cat_persym_selected") and os.environ.get("V15_PREV_BEST_START", "1") == "1" and not locals().get("_nr_applied"):
+    if prepared is not None and not locals().get("_cat_persym_selected") and _pinned_baseline is None and os.environ.get("V15_PREV_BEST_START", "1") == "1" and not locals().get("_nr_applied"):
         try:
             from baseline_select import score as _pb_score
             _pb_list = []
@@ -14438,6 +14460,9 @@ def _main_single():
         _run_npz_id = None
         _run_npz_short = "npz?"
     _board_reset = False
+    if _pinned_baseline is not None:
+        from tools.v15_nextgen_baseline_resume import activate as _activate_pinned_resume, validate as _validate_pinned_resume
+        _activate_pinned_resume(progress_path, _pinned_baseline)
     try:
         progress = json.loads(progress_path.read_text())
         # USER 2026-10-03 (complete-rounds): rows stuck is_running are CORPSES — no worker is alive at
@@ -14672,7 +14697,7 @@ def _main_single():
                 try:
                     _atomic_write_json(progress_path, progress)
                 except Exception:
-                    progress_path.write_text(json.dumps(progress))
+                    __import__("tools.v15_nextgen_baseline_resume", fromlist=["stamp"]).stamp(progress_path, progress); progress_path.write_text(json.dumps(progress))
                 print(f"[HOLLOW-REDO] {new_symside} {len(_hol_drop)} hollow rows {dict(_hol_load.get('tally', {}))} — board archived (.hollowprev), rebuild scheduled (depth {_d0}), exiting for herd relaunch", flush=True)
                 return
         except Exception as _hol_e:
@@ -14726,6 +14751,8 @@ def _main_single():
             if _s1_progress.exists() and _s1_progress != progress_path:
                 try:
                     _s1_data = json.loads(_s1_progress.read_text())
+                    if _pinned_baseline is not None:
+                        _validate_pinned_resume(_pinned_baseline, _s1_data)
                     if _s1_data.get("verdict") in ("IMPOSSIBLE", "NO_TRADES", "BEST_EFFORT") and progress.get("verdict") not in ("IMPOSSIBLE", "NO_TRADES", "BEST_EFFORT"):
                         for _tk in ("verdict", "impossible_reasons", "impossible_path", "impossible_metrics", "verdict_reasons", "verdict_npz_mtime_ns"):
                             if _tk in _s1_data:
@@ -14764,6 +14791,8 @@ def _main_single():
                     _sp.run(["scp", "-o", "StrictHostKeyChecking=no", f"niels@157.90.168.35:/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{progress_path.name}", str(progress_path)], capture_output=True, timeout=5)
                     if progress_path.exists():
                         _new = json.loads(progress_path.read_text())
+                        if _pinned_baseline is not None:
+                            _validate_pinned_resume(_pinned_baseline, _new)
                         if len(_new.get("done", {})) > len(progress.get("done", {})):
                             progress = _new
                             print(f"[respect-s1-scp] fetched {progress_path.name} from S1", flush=True)
@@ -14782,7 +14811,7 @@ def _main_single():
             try:
                 _atomic_write_json(progress_path, progress)
             except Exception:
-                progress_path.write_text(json.dumps(progress))
+                __import__("tools.v15_nextgen_baseline_resume", fromlist=["stamp"]).stamp(progress_path, progress); progress_path.write_text(json.dumps(progress))
         else:
             print(f"[SOFT-SKIP] {new_symside} verdict {progress.get('verdict')} on same NPZ — nothing to do (reruns on NPZ refresh).", flush=True)
             return
@@ -14806,7 +14835,10 @@ def _main_single():
     # Enforce monotonic baseline: never underperform BEST (leave settings as is = 0 delta)
     cumulative_gain = max(float(progress.get("cumulative_gain") or baseline_gain), float(baseline_gain or 0), float(progress.get("hustler_best_gain") or 0))
     cumulative_overrides = dict(progress.get("cumulative_overrides", overrides))
-    cumulative_overrides = _clean_ingested_overrides(cumulative_overrides)
+    if _pinned_baseline is None:
+        cumulative_overrides = _clean_ingested_overrides(cumulative_overrides)
+    else:
+        _validate_pinned_resume(_pinned_baseline, progress)
     _bl_trades = int(baseline_live.get("trades") or 0)
     _bl_valid = bool(baseline_live.get("valid"))
     baseline_had_zero_trades = (_bl_trades == 0) or (not _bl_valid)
@@ -14926,6 +14958,8 @@ def _main_single():
     # ── SPEC-COMPLIANT FILLER (2026-09-26) — overrides legacy cycle/worst2best loop ──
     # CRITICAL BUG #1: Calculate baseline with PREVIOUS BEST OVERRIDES before spec_fill
     # Without this, baseline is wrong and ALL deltas are calculated against wrong baseline
+    if _pinned_baseline is not None and not progress.get("pinned_baseline_resume"):
+        assert_settings(_pinned_baseline, cumulative_overrides)
     try:
         _base_recalc = evaluate_prepared_sanitized(prepared, cumulative_overrides, args.window_days)
         baseline_gain = float(_base_recalc.get("gain_pct", baseline_gain))
@@ -14974,7 +15008,7 @@ def _main_single():
         progress["floor_blockers"] = _blockers
         _atomic_write_json(progress_path, progress)
         print(f"[FLOOR-BLOCKERS] {new_symside} baseline {baseline_trades} trades; single flips that restore >={min_trades} trades: {[(b['switch'], b['flip_to'], b['trades']) for b in _blockers][:12]}", flush=True)
-        if baseline_trades == 0 and not _blockers:
+        if baseline_trades == 0 and not _blockers and _pinned_baseline is None:
             # USER 2026-10-25 unseal (stocks 0-trade seal since the 10-24 swing knob): a flip restoring
             # >0 trades (even below floor) proves entries flow — seed the sweep with the best such
             # flip INSTEAD of skipping, so the sweep can honestly climb from a trading baseline.
@@ -17064,7 +17098,7 @@ def _main_single():
             try:
                 _atomic_write_json(progress_path, progress)
             except Exception:
-                progress_path.write_text(json.dumps(progress))
+                __import__("tools.v15_nextgen_baseline_resume", fromlist=["stamp"]).stamp(progress_path, progress); progress_path.write_text(json.dumps(progress))
             print(f"[NPZ-MIDRUN-REFUSE] {new_symside} NPZ changed during run — FINAL refused, board archived (.npzprev), rebuild scheduled (depth {_dF}), exiting for herd relaunch", flush=True)
             return
         progress["npz_id_final"] = _final_npz_id
