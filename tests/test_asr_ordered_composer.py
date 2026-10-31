@@ -212,3 +212,30 @@ def test_raw_npz_and_explicit_causal_state_assemble_into_composer_inputs():
     result = compose_asr_late_score(bound, True)
     assert result["complete_rate"] is False
     assert result["final_score"].shape == (fixture["n"],)
+
+
+def test_post_late_market_quality_precedes_final_score_tail(monkeypatch):
+    import vec_decisions.asr_ordered_composer as composer
+    inputs = _inputs(7)
+    cfg = inputs["cfg"]
+    cfg.MARKET_QUALITY_SCORE_ENABLED = True
+    values = inputs["stages"]["channel_confluence"]["npz"]
+    values.update({
+        "bb_width_1h": np.full(7, 4.0), "bb_width_4h": np.full(7, 8.0),
+        "dc_width_1h": np.full(7, 5.0), "dc_width_4h": np.full(7, 10.0),
+        "adx_1h": np.full(7, 15.0), "adx_4h": np.full(7, 20.0),
+        "sma_200_1h": np.full(7, 110.0),
+        "relative_volume_15m": np.full(7, 0.5), "relative_volume_1h": np.full(7, 0.7),
+        "mfi_1h": np.full(7, 45.0), "mfi_4h": np.full(7, 46.0),
+    })
+    captured = {}
+    original = composer.finish_array
+    def record_finish(*args):
+        captured["score"] = np.asarray(args[1]).copy()
+        return original(*args)
+    monkeypatch.setattr(composer, "finish_array", record_finish)
+    post_state = {"current_price": inputs["stages"]["finish_tail"]["current_price"]}
+    result = compose_asr_late_score(inputs, True, post_late_entry_state=post_state)
+    assert np.all(result["score_after_post_late_score"] - result["score_after_late_score"] == 2.0)
+    assert np.array_equal(captured["score"], result["score_after_post_late_score"])
+    assert result["masks"]["post_late:MARKET_QUALITY_SCORE"].all()

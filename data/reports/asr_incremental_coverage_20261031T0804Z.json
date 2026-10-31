@@ -1,0 +1,158 @@
+{
+  "candidate_composer": "vec_decisions.asr_ordered_composer.evaluate_asr_entry_candidate_array binds prefix and late score stages on one raw NPZ, explicit causal state, upstream membership; rejects current-price mismatch. complete_rate remains false.",
+  "generated_utc": "2026-10-31T08:05:04.353312+00:00",
+  "implemented": [
+    {
+      "module": "vec_decisions/asr_pre_score_gates.py",
+      "predicate": "causal stale-indicator (>90m) veto, 120s bridge freshness exception, >=3% gain winner bypass",
+      "required_state": [
+        "indicator_age_minutes",
+        "tick_age_seconds",
+        "gain",
+        "position_amt"
+      ],
+      "span": "3670-3729",
+      "tests": "tests/test_asr_pre_score_gates.py; tests/test_asr_entry_prefix.py"
+    },
+    {
+      "module": "vec_decisions/asr_pre_score_gates.py",
+      "predicate": "WT_DC enabled/side masters; BASIS_CONDITION; R-G1/2/3/4/5/6/7/10 and R-S6; source-order first veto",
+      "span": "3730-4034",
+      "tests": "tests/test_asr_pre_score_gates.py"
+    },
+    {
+      "module": "vec_decisions/asr_upstream_entry_gates.py",
+      "predicate": "tradeable key set/member/temp key, held-position exemption, BTC-dedicated account block, allowed and positive price",
+      "required_state": [
+        "tradeable_key_set_nonempty",
+        "tradeable_position_member",
+        "temp_key_member",
+        "position_exists",
+        "position_amt",
+        "btc_dedicated_account_blocked",
+        "is_allowed",
+        "current_price"
+      ],
+      "span": "3996-4014",
+      "tests": "tests/test_asr_upstream_entry_gates.py; tests/test_asr_entry_candidate_route.py"
+    },
+    {
+      "module": "vec_decisions/asr_entry_prefix.py + asr_inline_score.py + asr_score_core.py",
+      "predicate": "HTF/composite, ordered score prefixes, structure, regime input, ratio/rank, MTS/MI, SMA extreme, cap, chase/ATR, channel/K-cross, BC155/K-zone, mover/fade/Satoshit, HLR rally, candle alignment and unreliable indicator gates",
+      "span": "4696-5434 selected blocks",
+      "status": "selected input/gate/scoring stages only; not full native range"
+    },
+    {
+      "module": "vec_decisions/asr_entry_prefix.py + asr_inline_score.py",
+      "predicate": "DATA_BLIND, KX, all-TF WT hard gates and penalty",
+      "span": "5485-5672"
+    },
+    {
+      "module": "vec_decisions/asr_reentry_stage.py",
+      "predicate": "causal bounce-reset lifecycle, obligatory reentry shared scorer, price-cross/tier order, first entry moment and score bonuses",
+      "span": "5675-6052",
+      "tests": "tests/test_asr_entry_prefix.py"
+    },
+    {
+      "module": "vec_decisions/asr_entry_prefix.py + asr_inline_score.py",
+      "predicate": "RSI/MFI, DC momentum/BOTA, second entry moment and bonuses; scalp-reduce branch is masked/excluded",
+      "span": "6053-6264",
+      "tests": "tests/test_asr_entry_prefix.py; tests/test_asr_inline_score.py"
+    },
+    {
+      "module": "vec_decisions/asr_pre_dc_entry_score.py + asr_ordered_composer.py + component modules",
+      "predicate": "pre-DC state, DC structure, breakout PA, directional, WT intelligence, volume, tracker history, channel/rank, post-rank, DC sufficiency, late/research and finish tail",
+      "span": "7169-7649",
+      "tests": "tests/test_asr_pre_dc_entry_score.py; tests/test_asr_ordered_composer.py"
+    },
+    {
+      "module": "vec_paths/exit_tight_breakout_scorer.py::score_exit_tight_breakout_array",
+      "native_scalar": "shared score_exit_tight_breakout",
+      "predicate": "tight-breakout/HTF-momentum/profit-stall/loss-momentum score deltas",
+      "span": "exit scorer helper",
+      "tests": "tests/test_exit_tight_breakout_scorer.py"
+    },
+    {
+      "module": "vec_decisions/asr_hlr_top_exit.py",
+      "predicate": "gain floors, per-TF WT exhaustion/divergence/peak/velocity confirmation, minimum-TF/higher-TF rule, reentry multiplier",
+      "span": "HLR top exit block in 6420+",
+      "status": "pure trigger/multiplier only; native registry side effect is not ported",
+      "tests": "tests/test_asr_hlr_top_exit.py"
+    }
+  ],
+  "native_source": "ez_positions_quick.py:AdvancedSignalRater.rate (starts 3616)",
+  "scope": "ASR vectorization inventory and implementation state; no complete-rate or action-bar parity claim",
+  "sha256": {
+    "tests/test_asr_entry_candidate_route.py": "82d48a1478b4e15c6fe4b974d8da5f9378f9718e43f1c307ed2961be8242017c",
+    "tests/test_asr_entry_prefix.py": "e0eac6aa74a3848efe860fe489705d293485ffb0f35c4d8c3562a95cc4789cfc",
+    "tests/test_asr_hlr_top_exit.py": "7d2fd921f1a5082cb3398e38718c120dc9491f9ce30ad162f6a2258870c27b36",
+    "tests/test_asr_pre_score_gates.py": "95259d29e520589e401bc45ad6a5c4526ec6014ba9d09d9fc039b2f7531512fc",
+    "tests/test_asr_upstream_entry_gates.py": "6c90c169e8fad93ea42815176921f80c2c570e661560f9574d997a0c01150d73",
+    "tests/test_exit_tight_breakout_scorer.py": "a74c5116a7f2f43d935255ed8126d8c43818825ba1f3af426564d15a7cb2580d",
+    "vec_decisions/asr_entry_prefix.py": "195ecd3b9597c84b840ac943caf7372c5d2a0231b0c495564d1dc60577f0d6ed",
+    "vec_decisions/asr_hlr_top_exit.py": "d5e502100df06a5b15f9db5370c0287925135bbc69b5b817def6e7bcc5e43e99",
+    "vec_decisions/asr_inline_score.py": "09be907dbdaad80749455ce6f352cf431a71e7357fcc39aa766b07134af05d40",
+    "vec_decisions/asr_ordered_composer.py": "cf0fb7aa8fac63dbcc61cb14dfc5cd94335f0060cf7d26e11a6730630fb38f77",
+    "vec_decisions/asr_pre_score_gates.py": "259df1a23099de135431af7abd4bda968652cdea06df85e5c31314114bde0eb9",
+    "vec_decisions/asr_reentry_stage.py": "32c25a9e4aa69b3d3352a503e4c07a177d4278cc30e3e570b0be55f4aba2d234",
+    "vec_decisions/asr_upstream_entry_gates.py": "fe228ebb9a1d02c11cd432eef91e9a5c0d5f9180e08101815d67c5abb2668f57",
+    "vec_paths/exit_tight_breakout_scorer.py": "b6b2168a5a3143288ad963c82522da2e2c099c71ae77de3d0219f2dc94e1abde"
+  },
+  "unresolved": [
+    {
+      "gap": "rate initialization, account/symbol/side position lookup, mode-specific source selection",
+      "required": [
+        "exact account/config context",
+        "position snapshot",
+        "tracker candidate state"
+      ],
+      "span": "3616-3669"
+    },
+    {
+      "gap": "indicator/local metric hydration, timeframe policy and many pre-score gates/producers; delta-tracker and trading-policy calls",
+      "required": [
+        "canonical causal indicators and derived state",
+        "exact tradeable/BTC account facts already consumed by upstream gate helper",
+        "DeltaTracker result",
+        "trading-policy/regime result",
+        "source-selected account settings"
+      ],
+      "span": "4035-4695"
+    },
+    {
+      "gap": "tracker-derived last entry/augmentation/reduction/exit time and price, gain/prev_gain, position stats",
+      "required": [
+        "causal accepted lifecycle event stream and current position/tracker snapshot"
+      ],
+      "span": "5435-5484"
+    },
+    {
+      "gap": "scalp-only entry/exit paths",
+      "span": "6265-6419",
+      "status": "excluded by user"
+    },
+    {
+      "gap": "exit lifecycle ordering, no-loss/ratio/formation/TP/WT and other structural exits; includes non-scalp exits",
+      "required": [
+        "real position, account ratio, open/augmentation time, delta/regime and tracker state; ordered early-return masks"
+      ],
+      "span": "6420-7168"
+    },
+    {
+      "gap": "remaining action recommendation/threshold and final account settings",
+      "required": [
+        "full final source tail and exact effective per-symbol/account settings"
+      ],
+      "span": "7650-end-of-rate"
+    },
+    {
+      "gap": "no caller/import for ASR prefix/ordered candidate composer; no actual vector action consumer",
+      "span": "v12_quick_engine.py::simulate_one",
+      "status": "unwired; helper tests do not establish action-bar parity"
+    }
+  ],
+  "verification": {
+    "broad_prior": "tests/test_asr_*.py: 104 passed before latest pre-score/upstream/exit additions; not rerun after those additions",
+    "current_focus": "31 passed across pre-score/prefix/pre-DC/ordered-composer/candidate-route/upstream-gate tests; exit scorer and HLR tests each 2 passed; py_compile passed for edited modules"
+  }
+}

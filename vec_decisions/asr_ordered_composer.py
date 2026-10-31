@@ -7,6 +7,8 @@ are not included, so the result is not a complete AdvancedSignalRater.rate().
 
 import numpy as np
 
+from collections.abc import Mapping
+
 from vec_decisions.asr_breakout_pa_score import breakout_pa_score_array
 from vec_decisions.asr_channel_confluence_score import apply_channel_confluence_vec
 from vec_decisions.asr_dc_structure_score import dc_structure_votes_array
@@ -35,6 +37,7 @@ ASR_LATE_STAGE_ORDER = (
     "post_rank_transform",
     "dc_sufficiency",
     "late_score_including_research",
+    "market_quality_and_delta_entry_contributions",
     "finish_tail",
 )
 
@@ -202,11 +205,11 @@ def _column(value, name, n, dtype=None):
     return array
 
 
-def compose_asr_late_score(inputs, is_long, is_exit=False):
-    """Run the declared ordered NumPy span, including research and final tail.
+def compose_asr_late_score(inputs, is_long, is_exit=False, post_late_entry_state=None):
+    """Run the ordered NumPy score stages through the final tail.
 
-    Every stage input is explicit. No lifecycle, sentiment, tracker, or portfolio
-    values are synthesized. The return is not a complete ASR rate().
+    Post-late MQ/Delta state is consumed only when supplied explicitly. Earlier
+    lifecycle gates and active family-lane predicates still prevent full-rate use.
     """
     n = int(inputs["n"])
     if n < 1:
@@ -221,7 +224,7 @@ def compose_asr_late_score(inputs, is_long, is_exit=False):
     if "late_score_including_research" in stages:
         late_npz = stages["late_score_including_research"]["npz"]
         stages["late_score_including_research"]["npz"] = bind_asr_npz_arrays(late_npz, inputs["cfg"])
-    absent = [name for name in ASR_LATE_STAGE_ORDER if name not in stages]
+    absent = [name for name in ASR_LATE_STAGE_ORDER if name != "market_quality_and_delta_entry_contributions" and name not in stages]
     if absent:
         raise ValueError(f"missing ordered ASR stages: {','.join(absent)}")
     pre_dc = stages["pre_dc_entry_state"]
@@ -276,6 +279,14 @@ def compose_asr_late_score(inputs, is_long, is_exit=False):
         current_price=late["current_price"], is_exit=is_exit,
     )
     masks.update({f"late:{key}": value for key, value in late_masks.items()})
+    score_after_late_score = score.copy()
+    if post_late_entry_state is not None and not is_exit:
+        from vec_decisions.asr_post_late_entry import apply_asr_post_late_entry_array
+        score, post_late_masks = apply_asr_post_late_entry_array(
+            decoded_npz, inputs["cfg"], is_long, post_late_entry_state, score
+        )
+        masks.update({f"post_late:{key}": value for key, value in post_late_masks.items()})
+    score_after_post_late_score = score.copy()
     tail = stages["finish_tail"]
     final_score, recommendation = finish_array(
         inputs["cfg"], score, tail["current_price"], is_long, tail["dc_high_1h"],
@@ -291,7 +302,8 @@ def compose_asr_late_score(inputs, is_long, is_exit=False):
         "pr_confirm": pre_dc_result["pr_confirm"],
         "valid_setup_before_dc": pre_dc_result["valid_setup"],
         "score_after_dc_sufficiency": score_after_dc_sufficiency,
-        "score_after_late_score": score,
+        "score_after_late_score": score_after_late_score,
+        "score_after_post_late_score": score_after_post_late_score,
         "final_score": final_score,
         "recommendation": recommendation,
         "masks": masks,
@@ -301,7 +313,7 @@ def compose_asr_late_score(inputs, is_long, is_exit=False):
     }
 
 
-def compose_asr_entry_candidate_array(prefix_result, late_inputs, is_long, upstream_entry_eligible):
+def compose_asr_entry_candidate_array(prefix_result, late_inputs, is_long, upstream_entry_eligible, post_late_entry_state=None):
     """Join the causal entry prefix to the ordered post-7169 score chain.
 
     The caller supplies all earlier lifecycle/portfolio gates explicitly in
@@ -319,13 +331,23 @@ def compose_asr_entry_candidate_array(prefix_result, late_inputs, is_long, upstr
         raise ValueError("late_inputs.n must be positive")
     if upstream_entry_eligible is None:
         raise ValueError("upstream_entry_eligible must be explicit")
+    upstream_detail = None
+    if isinstance(upstream_entry_eligible, Mapping):
+        from vec_decisions.asr_upstream_entry_gates import asr_upstream_entry_gates
+        upstream_detail = asr_upstream_entry_gates(upstream_entry_eligible)
+        upstream_raw = upstream_detail["eligible"]
+    else:
+        upstream_raw = upstream_entry_eligible
     score = _column(prefix_result["score"], "prefix score", n)
     prefix_allowed = _column(prefix_result["entry_allowed"], "prefix entry_allowed", n, bool)
-    upstream = _column(upstream_entry_eligible, "upstream_entry_eligible", n, bool)
+    upstream = _column(upstream_raw, "upstream_entry_eligible", n, bool)
     allowed = prefix_allowed & upstream
     inputs = dict(late_inputs)
     inputs["score_before_dc"] = np.where(allowed, score, 0.0)
-    late = compose_asr_late_score(inputs, is_long, is_exit=False)
+    if post_late_entry_state is None:
+        late = compose_asr_late_score(inputs, is_long, is_exit=False)
+    else:
+        late = compose_asr_late_score(inputs, is_long, is_exit=False, post_late_entry_state=post_late_entry_state)
     output = dict(late)
     output["score_before_dc"] = inputs["score_before_dc"].copy()
     output["entry_allowed"] = allowed
@@ -334,8 +356,46 @@ def compose_asr_entry_candidate_array(prefix_result, late_inputs, is_long, upstr
     output["masks"] = dict(late["masks"])
     output["masks"]["upstream_entry_veto"] = ~upstream
     output["masks"]["entry_prefix_veto"] = upstream & ~prefix_allowed
+    if upstream_detail is not None:
+        output["upstream_reason"] = upstream_detail["reason"]
+        output["masks"].update({f"upstream:{key}": value for key,value in upstream_detail["masks"].items()})
     output["complete_rate"] = False
     output["remaining_stages"] = tuple(ASR_REMAINING_AFTER_COMPOSER) + (
         "native_entry_family_sources_and_action_dispatch",
     )
     return output
+
+
+def evaluate_asr_entry_candidate_array(npz,n,is_long,cfg,prefix_context,late_causal_state,upstream_entry_state,score=None):
+    """Run the bound prefix and ordered late score chain on one raw NPZ.
+
+    `late_causal_state` feeds the native pre-DC/post-7169 and tracker/rank
+    stages; `upstream_entry_state` carries exact account membership/permission
+    facts. This is still a component candidate scorer, not a complete `rate()`
+    or v12 action consumer while listed native stages remain uncovered.
+    """
+    from vec_decisions.asr_entry_prefix import score_asr_entry_prefix_array
+    n=int(n)
+    if n<1:
+        raise ValueError("n must be positive")
+    if "current_price" not in prefix_context or "current_price" not in late_causal_state:
+        raise ValueError("both prefix and late causal state require current_price")
+    prefix_price=_column(prefix_context["current_price"],"prefix current_price",n)
+    late_price=_column(late_causal_state["current_price"],"late current_price",n)
+    if not np.array_equal(prefix_price,late_price,equal_nan=True):
+        raise ValueError("prefix and late-stage current_price must match bar-for-bar")
+    prefix=score_asr_entry_prefix_array(npz,n,is_long,cfg,prefix_context,score=score)
+    late_inputs=assemble_asr_composer_inputs(npz,cfg,late_causal_state,n,is_long)
+    post_late_state = late_causal_state.get("post_late_entry_state")
+    if post_late_state is None:
+        result = compose_asr_entry_candidate_array(prefix, late_inputs, is_long, upstream_entry_state)
+    else:
+        result = compose_asr_entry_candidate_array(
+            prefix, late_inputs, is_long, upstream_entry_state,
+            post_late_entry_state=post_late_state,
+        )
+    result["prefix_result"]=prefix
+    result["reentry_state_out"]=prefix.get("reentry_state_out")
+    result["masks"].update({f"prefix:{key}":value for key,value in prefix.get("masks",{}).items()})
+    result["complete_rate"]=False
+    return result

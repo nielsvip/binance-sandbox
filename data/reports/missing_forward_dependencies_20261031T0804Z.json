@@ -1,0 +1,79 @@
+{
+  "observed_at": "2026-10-31T08:05:02.122810+00:00",
+  "engine_sha256": "2fe343a0c646fa209cfb8952ad169866a37bd6adf5b51787f4ee4473b4ce793c",
+  "missing_from_sandbox": {
+    "vec_decisions/reentry_entry_filter.py": {
+      "sha256": "8c811330942753faa0ad7d83692ff4a3816cd525c4e44a0e364dfce0f14aadd7",
+      "bytes": 19275
+    },
+    "vec_decisions/tradier_reentry_final_filter.py": {
+      "sha256": "9a6d63cbfd96c6f331bcb2a07c159a89834d93305c7bab5b039554f309b56175",
+      "bytes": 551
+    },
+    "vec_decisions/ema20_hard_open.py": {
+      "sha256": "1fc3f8bff38abb469f0b013746c8e5faf5373280d0b82a9b24f49f8ca14182d2",
+      "bytes": 723
+    },
+    "vec_decisions/ez_missing_b04_retest.py": {
+      "sha256": "f829482e6abd48da5006e6ecac814b59d83eeeca77d9f0681d781001ef731bcc",
+      "bytes": 6620
+    },
+    "vec_decisions/tradier_signal_score.py": {
+      "sha256": "dce7a7da4fae47828ef2fffec1c3a088daaf4dc7cdebce48d87e465668777bad",
+      "bytes": 63088
+    },
+    "vec_decisions/adx_regime_gate.py": {
+      "sha256": "ef4efcddea7949a573ddb4a84fa3d6c34249dc30105ec92c9b23cd70588c606d",
+      "bytes": 848
+    },
+    "vec_decisions/tradier_missing_rule_a_retest.py": {
+      "sha256": "b4d953ebe4c0a19c12574c49b9ca32e3f32b33ef66ad59edf8950932a5e16ad7",
+      "bytes": 3387
+    },
+    "vec_decisions/tradier_missing_exit_k5m_bounce_15m.py": {
+      "sha256": "80b55c08a794c899229ca6f9d461d4bc8a48d53320e42d941eb6bbb7d6c13add",
+      "bytes": 3013
+    },
+    "vec_decisions/b12_inputs.py": {
+      "sha256": "681a1e24fa7d963b19e1bdea73d880bf28d9b6d9344fae7ee80c59b8e00045ff",
+      "bytes": 2309
+    },
+    "vec_decisions/tradier_missing_rule_b_exit_15m.py": {
+      "sha256": "02a0f87d65c55a731e7b9c775e815ca696030d7d9d8956e97a4f054a8fbc00b3",
+      "bytes": 2743
+    },
+    "vec_decisions/watchdog_mtf_gate.py": {
+      "sha256": "ee6b965a016f302357a533e2a3298e425d0a5b3946c45a0ab2d7f908e562588d",
+      "bytes": 2005
+    },
+    "vec_decisions/ez_missing_hold_bars_exit.py": {
+      "sha256": "e8d61d88a73de00fffd09acfc311971b3851f12b110c595f4a83155cafa14f95",
+      "bytes": 3591
+    },
+    "vec_decisions/quick_missing_bb_recovery_sizing.py": {
+      "sha256": "41b95e58386196fb817ca8a85d3d94c5b3685b85dd9e5fa0df3f04ca56c1844b",
+      "bytes": 3216
+    },
+    "vec_decisions/wt_winner_pullback_augment.py": {
+      "sha256": "30493e77b2c7ebb7ec7c265e0dfeb6d8ddf9e9aceaff89b1f2e4b82504bf6d61",
+      "bytes": 1402
+    },
+    "vec_decisions/ppl_reaugment_gate.py": {
+      "sha256": "d9f4ddd3b5c1838d438d878064cba3428d072e2c6b251d5189e30a6bfab1526a",
+      "bytes": 4227
+    },
+    "vec_decisions/quick_missing_augmented_dc_break.py": {
+      "sha256": "8abf7dc04828fe50100049d0f871cd3202e3a2287736a741ba427661c9641e64",
+      "bytes": 3238
+    },
+    "vec_decisions/asr_input_adapter.py": {
+      "sha256": "fa5c2a50ac73552e373da46022dcaf91230d0012a460eb6f612f95c0c8ba5301",
+      "bytes": 3295
+    },
+    "vec_decisions/tradier_market_quality.py": {
+      "sha256": "98331a49ef60d9106947104b10e92ff4cb2518d9c09c6c445ba1c1b2efec694a",
+      "bytes": 7312
+    }
+  },
+  "status": "NOT_DEPLOYED; IMPORT_SMOKE_REQUIRED"
+}

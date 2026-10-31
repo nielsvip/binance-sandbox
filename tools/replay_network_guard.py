@@ -5,6 +5,7 @@ import socket
 import sys
 import threading
 import time
+import traceback
 from pathlib import Path
 
 _installed = None
@@ -30,6 +31,7 @@ def install(audit_path, run_root):
     os.environ["EZ_SKIP_ENV_GPG"] = "1"
     def blocked(operation, address):
         record = {"record": "blocked_replay_network_attempt", "pid": os.getpid(), "time_ns": time.time_ns(), "operation": operation, "address": str(address)}
+        record["callsite"] = [{"file": frame.filename, "line": frame.lineno, "function": frame.name} for frame in traceback.extract_stack(limit=18)[:-1]]
         with _lock:
             _attempts.append(record)
             with path.open("a") as stream:

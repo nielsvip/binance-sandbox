@@ -7,7 +7,7 @@ from vec_decisions.asr_upstream_entry_gates import asr_upstream_entry_gates
 def _state():
     return {"current_price":np.array([100.,100.,100.,0.,100.]),
       "tradeable_key_set_nonempty":np.array([True,True,False,False,True]),
-      "tradeable_position_member":np.array([True,False,False,False,False]),
+      "tradeable_position_member":np.array([True,False,False,False,True]),
       "temp_key_member":np.array([False,False,False,False,False]),
       "position_exists":np.array([False,False,False,False,True]),
       "position_amt":np.array([0.,0.,0.,0.,-1.]),
@@ -17,7 +17,7 @@ def _state():
 def test_upstream_gates_preserve_tradeable_position_btc_permission_price_order():
     result=asr_upstream_entry_gates(_state())
     assert result["reason"].tolist()==["","NOT A TRADEABLE KEY","BTC_HARD_BLOCKED","No current_price","BTC_HARD_BLOCKED"]
-    assert result["eligible"].tolist()==[True,False,False,False,True]
+    assert result["eligible"].tolist()==[True,False,False,False,False]
 
 def test_temp_membership_allows_nontradeable_candidate_and_unallowed_is_later():
     state=_state()
