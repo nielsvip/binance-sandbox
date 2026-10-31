@@ -23,6 +23,17 @@ _NUMERIC_FIELDS = {
     "high_4h_prev": ("high_4h_prev", "high_4h_prev", 0.0),
     "low_4h": ("low_4h", "low_4h", 0.0),
     "low_4h_prev": ("low_4h_prev", "low_4h_prev", 0.0),
+    "rsi_1h": ("rsi_1h", "rsi_1h", 50.0),
+    "rsi_4h": ("rsi_4h", "rsi_4h", 50.0),
+    "mfi_1h": ("mfi_1h", "mfi_1h", 50.0),
+    "mfi_4h": ("mfi_4h", "mfi_4h", 50.0),
+    "mfi_D": ("mfi_D", "mfi_D", 50.0),
+    "bar_direction_1h": ("bar_direction_1h", "bar_direction_1h", 0.0),
+    "bar_direction_4h": ("bar_direction_4h", "bar_direction_4h", 0.0),
+    "bar_direction_D": ("bar_direction_D", "bar_direction_D", 0.0),
+    "bar_strength_1h": ("bar_strength_1h", "bar_strength_1h", 0.0),
+    "bar_strength_4h": ("bar_strength_4h", "bar_strength_4h", 0.0),
+    "bar_strength_D": ("bar_strength_D", "bar_strength_D", 0.0),
 }
 
 
@@ -47,8 +58,30 @@ def _column(indicators, names, default, n):
     return out
 
 
+def _truth_column(indicators, key, n):
+    raw = indicators.get(key, False)
+    values = np.asarray(raw, dtype=object)
+    if values.ndim == 0:
+        values = np.full(n, values.item(), dtype=object)
+    values = values.reshape(-1)
+    if values.size != n:
+        raise ValueError(f"{key} length {values.size} does not match n={n}")
+    return np.asarray([bool(value) for value in values], dtype=bool)
+
+
+def _int_column(indicators, key, n):
+    raw = indicators.get(key, 0)
+    values = np.asarray(raw, dtype=object)
+    if values.ndim == 0:
+        values = np.full(n, values.item(), dtype=object)
+    values = values.reshape(-1)
+    if values.size != n:
+        raise ValueError(f"{key} length {values.size} does not match n={n}")
+    return np.asarray([int(value or 0) for value in values], dtype=np.int64)
+
+
 def check_htf_trend_array(indicators, current_price):
-    """Return exact native `direction, score` arrays with source `_sf` defaults."""
+    """Match ez_manage.TradingPolicy.check_htf_trend including bar and flow votes."""
     if not isinstance(indicators, Mapping):
         raise ValueError("indicators must be a mapping")
     price = np.asarray(current_price, dtype=float)
@@ -59,8 +92,8 @@ def check_htf_trend_array(indicators, current_price):
     if n < 1:
         raise ValueError("current_price must be nonempty")
     cols = {key: _column(indicators, (native, alias), default, n) for key, (native, alias, default) in _NUMERIC_FIELDS.items()}
-    bull = np.zeros(n, dtype=np.int64)
-    bear = np.zeros(n, dtype=np.int64)
+    bull = np.zeros(n, dtype=float)
+    bear = np.zeros(n, dtype=float)
     for tf in ("1h", "4h", "D"):
         bull += cols[f"stoch_k_{tf}"] > cols[f"stoch_d_{tf}"]
         bear += cols[f"stoch_k_{tf}"] <= cols[f"stoch_d_{tf}"]
@@ -84,6 +117,27 @@ def check_htf_trend_array(indicators, current_price):
                  & (cols[f"low_{tf}"] > 0.0) & (cols[f"low_{tf}_prev"] > 0.0))
         bull += valid & (cols[f"high_{tf}"] > cols[f"high_{tf}_prev"]) & (cols[f"low_{tf}"] > cols[f"low_{tf}_prev"])
         bear += valid & (cols[f"high_{tf}"] < cols[f"high_{tf}_prev"]) & (cols[f"low_{tf}"] < cols[f"low_{tf}_prev"])
+    for tf, weight in (("1h", 1), ("4h", 2), ("D", 3)):
+        direction = cols[f"bar_direction_{tf}"]
+        strength = cols[f"bar_strength_{tf}"]
+        volume_confirm = _truth_column(indicators, f"bar_vol_confirm_{tf}", n)
+        active = (direction != 0.0) & (strength >= 0.3)
+        points = weight * (1 + volume_confirm.astype(np.int64)) * np.where(strength >= 0.6, 1.0, 0.5)
+        bull += (active & (direction > 0.0)) * points
+        bear += (active & (direction < 0.0)) * points
+        bull += _truth_column(indicators, f"bar_swing_bull_{tf}", n) * (weight * 2)
+        bear += _truth_column(indicators, f"bar_swing_bear_{tf}", n) * (weight * 2)
+        streak = _int_column(indicators, f"bar_streak_{tf}", n)
+        bull += (streak >= 3) * weight
+        bear += (streak <= -3) * weight
+        vol_spike = _truth_column(indicators, f"bar_vol_spike_{tf}", n) & (direction != 0.0)
+        bull += vol_spike & (direction > 0.0) * weight
+        bear += vol_spike & (direction < 0.0) * weight
+    for name, weight in (("rsi_1h", 1), ("rsi_4h", 2), ("mfi_1h", 1), ("mfi_4h", 2), ("mfi_D", 2)):
+        value = cols[name]
+        upper, lower = ((55.0, 45.0) if name.startswith("rsi_") else (60.0, 40.0))
+        bull += (value > upper) * weight
+        bear += (value < lower) * weight
     score = bull - bear
-    direction = np.where(score >= 6, "BULL", np.where(score <= -6, "BEAR", "NEUTRAL"))
+    direction = np.where(score >= 5, "BULL", np.where(score <= -5, "BEAR", "NEUTRAL"))
     return direction.astype(object), score

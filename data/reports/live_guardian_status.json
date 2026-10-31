@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T09:16:24Z",
+ "ts": "2026-10-31T09:21:14Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,8 +29,8 @@
   "fin": {
    "fills_6h": 2,
    "open_positions": 1,
-   "unrealised_usd": -0.07,
-   "pos_mismatch": 1,
+   "unrealised_usd": -0.06,
+   "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -43,10 +43,10 @@
    }
   },
   "men": {
-   "fills_6h": 45,
+   "fills_6h": 44,
    "open_positions": 15,
-   "unrealised_usd": -0.82,
-   "pos_mismatch": 5,
+   "unrealised_usd": -0.76,
+   "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 74,
+   "fills_6h": 73,
    "open_positions": 12,
-   "unrealised_usd": -0.65,
+   "unrealised_usd": -0.34,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -75,7 +75,7 @@
    }
   },
   "inf": {
-   "fills_6h": 3,
+   "fills_6h": 2,
    "open_positions": 0,
    "unrealised_usd": 0.0,
    "pos_mismatch": 0,
@@ -91,9 +91,9 @@
    }
   },
   "flz": {
-   "fills_6h": 17,
+   "fills_6h": 15,
    "open_positions": 5,
-   "unrealised_usd": -0.19,
+   "unrealised_usd": -0.17,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,14 +127,14 @@
     "23901"
    ],
    "starts_30m": 1,
-   "log_age_s": 2933.0
+   "log_age_s": 3222.0
   },
   "men": {
    "pids": [
     "84264"
    ],
    "starts_30m": 1,
-   "log_age_s": 1850.0
+   "log_age_s": 2139.0
   },
   "ang": {
    "pids": [
@@ -148,102 +148,66 @@
     "68362"
    ],
    "starts_30m": 1,
-   "log_age_s": 1627.0
+   "log_age_s": 1917.0
   },
   "flz": {
    "pids": [
     "78263"
    ],
    "starts_30m": 2,
-   "log_age_s": 5.0
+   "log_age_s": 261.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 16447.0
+   "log_age_s": 16736.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 16762.0
+   "log_age_s": 17051.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T09:16:24Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:FLUXUSDT_LONG",
-   "evidence": "positions file amt 249 vs fill-ledger amt 435"
-  },
-  {
-   "ts": "2026-10-31T09:16:25Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "men:1000XECUSDT_SHORT",
-   "evidence": "positions file amt 3063 vs fill-ledger amt 5424"
-  },
-  {
-   "ts": "2026-10-31T09:16:25Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "men:INXUSDT_SHORT",
-   "evidence": "positions file amt 4263 vs fill-ledger amt 7775"
-  },
-  {
-   "ts": "2026-10-31T09:16:25Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "men:IMXUSDT_SHORT",
-   "evidence": "positions file amt 122 vs fill-ledger amt 242"
-  },
-  {
-   "ts": "2026-10-31T09:16:25Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "men:GASUSDT_SHORT",
-   "evidence": "positions file amt 10.7 vs fill-ledger amt 23.5"
-  },
-  {
-   "ts": "2026-10-31T09:16:25Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "men:1MBABYDOGEUSDT_SHORT",
-   "evidence": "positions file amt 25164 vs fill-ledger amt 71091"
-  },
-  {
-   "ts": "2026-10-31T09:16:26Z",
+   "ts": "2026-10-31T09:21:14Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:HYPEUSDT_LONG",
    "evidence": "CLOSE FIXED_STOP decided 2026-10-31T06:26:14Z bar=2026-10-31T04:30:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-31T09:16:26Z",
+   "ts": "2026-10-31T09:21:15Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 2933s"
+   "evidence": "ez_manage_fin.log not written for 3222s"
   },
   {
-   "ts": "2026-10-31T09:16:26Z",
+   "ts": "2026-10-31T09:21:15Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "men",
-   "evidence": "ez_manage_men.log not written for 1850s"
+   "evidence": "ez_manage_men.log not written for 2139s"
   },
   {
-   "ts": "2026-10-31T09:16:26Z",
+   "ts": "2026-10-31T09:21:15Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "inf",
-   "evidence": "ez_manage_inf.log not written for 1627s"
+   "evidence": "ez_manage_inf.log not written for 1917s"
+  },
+  {
+   "ts": "2026-10-31T09:21:15Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "flz",
+   "evidence": "ez_manage_flz.log not written for 261s"
   }
  ],
  "alert_counts": {
-  "POSITION_STATE_MISMATCH": 6,
   "VEC_DECISION_NOT_FILLED": 1,
-  "STALE_LOG": 3
+  "STALE_LOG": 4
  },
  "active_interventions": {
   "acct:trc": {
@@ -317,5 +281,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 2.38
+ "sweep_s": 1.55
 }
