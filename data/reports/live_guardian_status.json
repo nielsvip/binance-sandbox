@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T14:17:54Z",
+ "ts": "2026-10-31T14:23:08Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 13,
    "open_positions": 22,
-   "unrealised_usd": 0.3,
+   "unrealised_usd": 0.25,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 14,
    "open_positions": 5,
-   "unrealised_usd": -0.5,
+   "unrealised_usd": -0.46,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 3,
    "open_positions": 5,
-   "unrealised_usd": -0.5,
+   "unrealised_usd": -0.49,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,74 +127,58 @@
     "43587"
    ],
    "starts_30m": 1,
-   "log_age_s": 236.0
+   "log_age_s": 4.0
   },
   "men": {
    "pids": [
     "7492"
    ],
    "starts_30m": 1,
-   "log_age_s": 19.0
+   "log_age_s": 16.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 6.0
+   "log_age_s": 18.0
   },
   "inf": {
    "pids": [
     "11994"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 27.0
   },
   "flz": {
    "pids": [
     "73791"
    ],
    "starts_30m": 1,
-   "log_age_s": 30.0
+   "log_age_s": 4.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 34536.0
+   "log_age_s": 34850.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 34852.0
+   "log_age_s": 35166.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T14:17:54Z",
+   "ts": "2026-10-31T14:23:08Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "fin:FLUXUSDT_LONG",
    "evidence": "CLOSE FIXED_STOP decided 2026-10-31T11:14:33Z bar=2026-10-31T10:45:00Z: no fill in 1800s and no refusal logged"
-  },
-  {
-   "ts": "2026-10-31T14:17:55Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "flz:DOGEUSDC_SHORT",
-   "evidence": "31 14:07:25 - WARNING - [flz] [REENTRY_GRANDFATHERED] flz:DOGEUSDC_SHORT: bypass MAX_ORDER_VALUE $60 / MAX_POSITION_SIZE $150 \u2014 restoring $37 on bounce (prior max 1554.0000)"
-  },
-  {
-   "ts": "2026-10-31T14:17:56Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 236s"
   }
  ],
  "alert_counts": {
-  "VEC_DECISION_NOT_FILLED": 1,
-  "CAP_BYPASS": 1,
-  "STALE_LOG": 1
+  "VEC_DECISION_NOT_FILLED": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -254,5 +238,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.43
+ "sweep_s": 1.75
 }
