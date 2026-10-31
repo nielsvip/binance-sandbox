@@ -523,3 +523,78 @@ def all_tf_wt_entry_array(values, is_long, score=None):
         "WT_ANTI_VOTES": anti,
         "WT_SIG_BAD": sig_bad,
     }
+
+
+
+def rsi_mfi_score_array(values, is_long, is_exit=False, score=None):
+    """NumPy counterpart to the live-shared RSI/MFI scorer at rate() 6053+."""
+    n = _size(values, "close")
+    result = np.zeros(n, dtype=float) if score is None else np.asarray(score, dtype=float).reshape(-1).copy()
+    if result.size != n:
+        raise ValueError("score and RSI/MFI inputs have different lengths")
+    if is_exit:
+        return result, {"RSI_MFI_DELTA": np.zeros(n, dtype=float)}
+    rsi1 = np.where(_float_column(values, "rsi_1h", n, 50.0) == 0.0, 50.0, _float_column(values, "rsi_1h", n, 50.0))
+    rsi4 = np.where(_float_column(values, "rsi_4h", n, 50.0) == 0.0, 50.0, _float_column(values, "rsi_4h", n, 50.0))
+    mfi1 = np.where(_float_column(values, "mfi_1h", n, 50.0) == 0.0, 50.0, _float_column(values, "mfi_1h", n, 50.0))
+    mfi4 = np.where(_float_column(values, "mfi_4h", n, 50.0) == 0.0, 50.0, _float_column(values, "mfi_4h", n, 50.0))
+    mfid = np.where(_float_column(values, "mfi_D", n, 50.0) == 0.0, 50.0, _float_column(values, "mfi_D", n, 50.0))
+    if is_long:
+        delta = (rsi1 < 50) * 6 + (rsi4 < 50) * 10 - (rsi1 > 70) * 6 - (rsi4 > 70) * 10
+        delta += ((rsi1 < 50) & (rsi4 < 50)) * 8
+        delta += (mfi1 < 50) * 7 + (mfi4 < 40) * 14 + (mfi4 < 50) * 6 + (mfid < 40) * 8
+        delta += ((mfi1 < 40) & (mfi4 < 40)) * 10 - (mfi1 > 70) * 8 - (mfi4 > 70) * 14
+    else:
+        delta = (rsi1 > 50) * 6 + (rsi4 > 50) * 10 - (rsi1 < 30) * 6 - (rsi4 < 30) * 10
+        delta += ((rsi1 > 50) & (rsi4 > 50)) * 8
+        delta += (mfi1 > 60) * 7 + (mfi4 > 60) * 14 + (mfi4 > 50) * 6 + (mfid > 60) * 10
+        delta += ((mfi1 > 60) & (mfi4 > 60)) * 10 - (mfi1 < 30) * 8 - (mfi4 < 30) * 14
+    result += delta
+    return result, {"RSI_MFI_DELTA": delta}
+
+
+def dc_momentum_bota_score_array(values, state, is_long, is_exit=False, score=None):
+    """NumPy counterpart to native-shared DC momentum/BOTA/gain scoring.
+
+    Native suppresses BOTA only when this scorer itself emits DC_MOMENTUM_SCALP;
+    its returned reasons have not yet been appended by the caller at this point.
+    """
+    n = _size(values, "close")
+    result = np.zeros(n, dtype=float) if score is None else np.asarray(score, dtype=float).reshape(-1).copy()
+    if result.size != n:
+        raise ValueError("score and DC momentum inputs have different lengths")
+    missing = [key for key in ("current_price", "pnl_pct") if key not in state]
+    if missing:
+        raise ValueError(f"DC momentum/BOTA requires explicit state: {','.join(missing)}")
+    px = _float_column(state, "current_price", n, 0.0)
+    pnl = _float_column(state, "pnl_pct", n, 0.0)
+    defaults = {"k_3m": 50.0, "k_3m_prev": 50.0, "k_1m": 50.0, "k_1m_prev": 50.0, "d_1m": 50.0,
+                "d_3m": 50.0, "k_15m": 50.0, "true_lag": 999.0}
+    col = {key: _float_column(values, key, n, defaults.get(key, 0.0)) for key in (
+        "dc_low_15m", "dc_high_15m", "dc_high_3m", "dc_low_3m", "k_3m", "k_3m_prev",
+        "k_1m", "k_1m_prev", "d_1m", "d_3m", "k_15m", "true_lag", "ema_50_15m", "sma_200_15m")}
+    expansion = np.zeros(n, dtype=float)
+    np.divide((col["dc_high_15m"] - col["dc_low_15m"]) * 100.0, col["dc_low_15m"], out=expansion, where=col["dc_low_15m"] > 0)
+    massive = expansion > 4.5
+    delta = np.zeros(n, dtype=float)
+    if is_long:
+        breakout = (col["dc_high_3m"] > 0) & (px >= col["dc_high_3m"])
+        dm = breakout & ((col["k_3m"] > col["k_3m_prev"]) | ((col["k_1m"] > col["d_1m"]) & (col["true_lag"] < 10.0)))
+        near_sma = (px <= col["ema_50_15m"] * 1.03) | (px <= col["sma_200_15m"] * 1.03)
+        micro_turn = (col["k_1m"] > col["d_1m"]) & (col["k_1m"] > col["k_1m_prev"]) & (col["k_3m"] > col["d_3m"])
+        bota = massive & ~dm & near_sma & (col["k_15m"] < 35) & micro_turn
+        bullish = (col["k_1m"] > col["d_1m"]) & (col["k_3m"] > col["d_3m"])
+    else:
+        breakout = (col["dc_low_3m"] > 0) & (px <= col["dc_low_3m"])
+        dm = breakout & ((col["k_3m"] < col["k_3m_prev"]) | ((col["k_1m"] < col["d_1m"]) & (col["true_lag"] < 10.0)))
+        near_sma = (px >= col["ema_50_15m"] * 0.97) | (px >= col["sma_200_15m"] * 0.97)
+        micro_turn = (col["k_1m"] < col["d_1m"]) & (col["k_1m"] < col["k_1m_prev"]) & (col["k_3m"] < col["d_3m"])
+        bota = massive & ~dm & near_sma & (col["k_15m"] > 65) & micro_turn
+        bullish = (col["k_1m"] < col["d_1m"]) & (col["k_3m"] < col["d_3m"])
+    decent = (pnl > 2.8) & (pnl < 3.5) & bullish
+    if not is_exit:
+        delta += dm * 25.0 + bota * 30.0 + decent * 15.0
+    result += delta
+    return result, {"DC_MOMENTUM": dm & ~is_exit, "BOTA_PULLBACK": bota & ~is_exit,
+                    "DECENT_GAIN_PUSH": decent & ~is_exit, "DC_EXPANSION_PCT": expansion,
+                    "MASSIVE_EXPANSION": massive}

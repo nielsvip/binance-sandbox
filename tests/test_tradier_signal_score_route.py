@@ -603,6 +603,34 @@ def test_vector_mts_scores_match_native_analyzer_both_sides():
             assert reasons[index] == expected_reason
 
 
+def test_htf_bb_scalar_fallback_cannot_override_blocked_threshold_zero():
+    npz = _base_npz()
+    n = len(npz["close"])
+    bar = 201
+    npz["close"] = np.full(n, 100.0)
+    npz["atr_1h"] = np.full(n, 1.0)
+    npz["bb_pct_b_4h"] = np.full(n, 0.98)
+    npz["bb_upper_4h"] = np.full(n, 105.0)
+    npz["k_5m"] = np.full(n, 50.0)
+    npz["d_5m"] = np.full(n, 50.0)
+    npz["k_4h"] = np.full(n, 50.0)
+    npz["d_4h"] = np.full(n, 50.0)
+    npz["mfi_4h"] = np.full(n, 50.0)
+    cfg = _cfg()
+    cfg.MODE = "tradier"
+    cfg.LTF_SUB15M_TRADING_ENABLED = False
+    cfg.K_ZONE_ENTRY_ENABLED_TRADIER = False
+    cfg.BB_BREAKOUT_ENTRY_TF = "4h"
+    cfg.ENTRY_SCORE_THRESHOLD = 0.0
+    cfg.ENTRY_ATR_PCT_MIN = 1.5
+    cfg.BACKTEST_VALIDATED_GATES_TRADIER = False
+    cfg.HTF_SIGNAL_CONSUME_ENABLED = True
+    scores, fires, reasons = entry_score_arrays(npz, n, "SYNTH", True, cfg)
+    assert scores[bar] == 0.0
+    assert not fires[bar]
+    assert reasons[bar] == ""
+
+
 def test_vector_mts_gate_block_matches_native_scalar():
     import tradier_manage as tm
 

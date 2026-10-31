@@ -1005,7 +1005,7 @@ def entry_score_arrays_numpy(npz, n, symbol, is_long, cfg, candidate_mask=None):
             reason_out[index] = f"{side}_{recommendation}: {','.join(reasons[index])}"
     # Statefully consumed HTF-only BB setups keep the live gate oracle until the vector retry book is supplied.
     bb_tf = str(getattr(cfg, "BB_BREAKOUT_ENTRY_TF", "OFF") or "OFF").strip()
-    htf_only = candidates & bb & ~stoch & ~kzone_mask & ~flow & (bb_tf in ("1h", "4h", "D")) & bool(getattr(cfg, "HTF_SIGNAL_CONSUME_ENABLED", True))
+    htf_only = active & bb & ~stoch & ~kzone_mask & ~flow & (bb_tf in ("1h", "4h", "D")) & bool(getattr(cfg, "HTF_SIGNAL_CONSUME_ENABLED", True))
     if np.any(htf_only):
         scalar_scores, scalar_fires, scalar_reasons = _entry_score_arrays_scalar(npz, n, symbol, is_long, cfg, htf_only)
         final_score[htf_only] = scalar_scores[htf_only]

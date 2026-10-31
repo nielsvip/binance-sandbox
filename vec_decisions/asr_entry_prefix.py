@@ -30,6 +30,7 @@ from vec_decisions.asr_score_core import (
 from vec_decisions.asr_stoch_entry_score import stoch_entry_score_array
 from vec_decisions.asr_input_adapter import paired_npz_view
 from vec_decisions.asr_ordered_composer import bind_asr_npz_arrays
+from vec_decisions.asr_reentry_stage import apply_asr_reentry_entry_stage
 
 
 def _cfg(cfg, name, default):
@@ -307,18 +308,25 @@ def score_asr_entry_prefix_array(npz, n, is_long, cfg, context=None, score=None)
     result = np.where(wt_active & ~wt_block, proposed, result)
     for key, value in wt_masks.items():
         masks[f"all_tf_wt:{key}"] = wt_active & value
+    reentry = apply_asr_reentry_entry_stage(score_arrays, context, is_long, cfg, result, active=~blocked)
+    result = reentry["score"]
+    veto("ASR_REENTRY_STAGE", ~reentry["entry_allowed"])
+    masks.update({f"reentry:{key}": value for key, value in reentry.items() if isinstance(value, np.ndarray) and key not in ("score", "entry_allowed")})
+    masks["reentry:bounce_reset_final"] = np.full(n, reentry["bounce_reentry_k_reset"], dtype=bool)
     return {
         "score": result,
         "entry_allowed": ~blocked,
         "hlr_size_multiplier": hlr_size_multiplier,
         "hlr_bypass": hlr_bypass,
+        "reentry_state_out": {"bounce_reentry_k_reset": reentry["bounce_reentry_k_reset"]},
         "masks": masks,
         "complete_rate": False,
         "covered_native_spans": ("ez_positions_quick.py:4696-4954 selected gate/score blocks including chase/ATR vetoes", "ez_positions_quick.py:4955-5071 channel/K/DC-cross and directional scores", "ez_positions_quick.py:5072-5434 BC155 through HLR/candle-alignment and unreliable-indicator gates",
-            "ez_positions_quick.py:5485-5672 data-blind veto, KX score, and all-TF WT veto/penalties"),
+            "ez_positions_quick.py:5485-5672 data-blind veto, KX score, and all-TF WT veto/penalties",
+            "ez_positions_quick.py:5675-6052 stateful mandatory reentry, early entry moment, and score bonuses"),
         "remaining": (
             "pre_score_lifecycle_gates", "regime_input_producer",
-            "tracker_position_and_market_state:ez_positions_quick.py:5435-5484", "tracker_state_mandatory_reentry:ez_positions_quick.py:5675-6052", "RSI_MFI_DC_BOTA_scores:ez_positions_quick.py:6053-6264",
+            "tracker_position_and_market_state:ez_positions_quick.py:5435-5484", "RSI_MFI_DC_BOTA_scores:ez_positions_quick.py:6053-6264",
             "scalp_and_lifecycle_paths:ez_positions_quick.py:6265-7158",
             "action_threshold_and_execution",
         ),

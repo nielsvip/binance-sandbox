@@ -67,7 +67,9 @@ def _arrays(n=3):
 
 def test_entry_prefix_preserves_native_score_order_and_explicit_context():
     npz = _arrays()
-    context = {"current_price": np.array([100.0, 100.0, 100.0]), "portfolio_ratio_active": False, "mover_registry_available": False, "last_reduction_price": np.zeros(3), "minutes_since_reduction": np.full(3, 999.0), "gain": np.zeros(3), "prev_gain": np.zeros(3), "true_lag": np.full(3, 999.0)}
+    context = {"current_price": np.array([100.0, 100.0, 100.0]), "portfolio_ratio_active": False, "mover_registry_available": False, "last_reduction_price": np.zeros(3), "minutes_since_reduction": np.full(3, 10.0), "gain": np.zeros(3), "prev_gain": np.zeros(3), "true_lag": np.full(3, 999.0), "position_amt": np.ones(3), "prev_cross_price": np.zeros(3),
+               "vol_ok": np.ones(3, dtype=bool), "vol_strong": np.zeros(3, dtype=bool), "rel_vol_3m": np.ones(3),
+               "pnl_pct": np.zeros(3), "trend_is_bullish": np.ones(3, dtype=bool), "trend_is_bearish": np.zeros(3, dtype=bool), "bounce_reentry_k_reset": True}
     result = score_asr_entry_prefix_array(npz, 3, True, _cfg(), context)
     assert result["entry_allowed"].tolist() == [True, False, True]
     assert result["masks"]["SHIT_IDEA"].tolist() == [False, True, False]
@@ -78,6 +80,7 @@ def test_entry_prefix_preserves_native_score_order_and_explicit_context():
         "ez_positions_quick.py:4955-5071 channel/K/DC-cross and directional scores",
         "ez_positions_quick.py:5072-5434 BC155 through HLR/candle-alignment and unreliable-indicator gates",
         "ez_positions_quick.py:5485-5672 data-blind veto, KX score, and all-TF WT veto/penalties",
+        "ez_positions_quick.py:5675-6052 stateful mandatory reentry, early entry moment, and score bonuses",
     )
     assert result["masks"]["stoch_entry:long_ok"].tolist() == [True, False, True]
 
@@ -113,8 +116,10 @@ def test_entry_prefix_chase_and_atr_gates_use_effective_settings():
     values["atr_1h"] = np.array([1.0, 0.2, 1.0])
     context = {"current_price": np.full(3, 100.0), "portfolio_ratio_active": False,
                "mover_registry_available": False, "last_reduction_price": np.zeros(3),
-               "minutes_since_reduction": np.full(3, 999.0), "gain": np.zeros(3),
-               "prev_gain": np.zeros(3), "true_lag": np.full(3, 999.0),
+               "minutes_since_reduction": np.full(3, 10.0), "gain": np.zeros(3),
+               "prev_gain": np.zeros(3), "true_lag": np.full(3, 999.0), "position_amt": np.ones(3),
+               "prev_cross_price": np.zeros(3), "vol_ok": np.ones(3, dtype=bool), "vol_strong": np.zeros(3, dtype=bool),
+               "rel_vol_3m": np.ones(3), "pnl_pct": np.zeros(3), "trend_is_bullish": np.ones(3, dtype=bool), "trend_is_bearish": np.zeros(3, dtype=bool), "bounce_reentry_k_reset": True,
                "long_stoch_chase_block": True, "entry_atr_pct_min": 0.5}
     result = score_asr_entry_prefix_array(values, 3, True, _cfg(), context)
     assert result["masks"]["LONG_CHASE_BLOCK"].tolist() == [True, False, False]

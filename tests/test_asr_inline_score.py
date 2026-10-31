@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import numpy as np
 
 from utils import safe_fetch_float
-from vec_decisions.asr_inline_score import all_tf_wt_entry_array, bc155_score_array, hlr_rally_score_array, k_zone_score_array, momentum_fade_score_array, satoshit_score_array, stoch_kx_score_array
+from vec_decisions.asr_inline_score import all_tf_wt_entry_array, bc155_score_array, dc_momentum_bota_score_array, hlr_rally_score_array, k_zone_score_array, momentum_fade_score_array, rsi_mfi_score_array, satoshit_score_array, stoch_kx_score_array
 
 
 ORACLE_SHA256 = "d45e0765b6bddc221cd2bbad5c14f6895729dab925340c7857d3a02adfabad3b"
@@ -290,3 +290,35 @@ def test_stoch_kx_score_matches_shared_native_scalar_for_both_sides_and_modes():
                     row["crossover_price_3m"], row["crossover_price_previous_3m"], row["crossunder_price_3m"], row["crossunder_price_previous_3m"],
                     row["crossover_price_15m"], row["crossover_price_previous_15m"], row["crossunder_price_15m"], row["crossunder_price_previous_15m"])
                 assert actual[i] == kx, (i, is_long, is_exit, actual[i], kx)
+
+
+def test_rsi_mfi_array_matches_native_shared_scorer():
+    from vec_paths.rsi_mfi_scorer import score_rsi_mfi
+    rng = np.random.default_rng(4316053)
+    n = 250
+    values = {"close": np.full(n, 100.0)}
+    for key in ("rsi_1h", "rsi_4h", "mfi_1h", "mfi_4h", "mfi_D"):
+        values[key] = rng.choice([0.0, 20.0, 29.9, 30.0, 39.9, 40.0, 49.9, 50.0, 60.0, 70.0, 70.1, 90.0], n)
+    for is_long in (True, False):
+        expected = np.array([score_rsi_mfi(is_long, False, *(50.0 if values[key][i] == 0 else values[key][i] for key in ("rsi_1h", "rsi_4h", "mfi_1h", "mfi_4h", "mfi_D")))[0] for i in range(n)])
+        actual, _ = rsi_mfi_score_array(values, is_long)
+        assert np.array_equal(actual, expected)
+
+
+def test_dc_momentum_bota_array_matches_native_shared_scorer():
+    from vec_paths.dc_momentum_bota_scorer import score_dc_momentum_bota
+    rng = np.random.default_rng(4316054)
+    n = 350
+    values = {"close": np.full(n, 100.0)}
+    for key in ("dc_low_15m", "dc_high_15m", "dc_high_3m", "dc_low_3m", "k_3m", "k_3m_prev", "k_1m", "k_1m_prev", "d_1m", "d_3m", "k_15m", "true_lag", "ema_50_15m", "sma_200_15m"):
+        values[key] = rng.choice([0.0, 20.0, 35.0, 50.0, 65.0, 80.0, 100.0, 105.0, 110.0], n)
+    state = {"current_price": rng.choice([80.0, 100.0, 120.0], n), "pnl_pct": rng.choice([-1.0, 0.0, 2.8, 3.0, 3.5], n)}
+    for is_long in (True, False):
+        for is_exit in (True, False):
+            actual, masks = dc_momentum_bota_score_array(values, state, is_long, is_exit)
+            for i in range(n):
+                expected = score_dc_momentum_bota(is_long, is_exit, state["current_price"][i], state["pnl_pct"][i],
+                    values["dc_low_15m"][i], values["dc_high_15m"][i], values["dc_high_3m"][i], values["dc_low_3m"][i],
+                    values["k_3m"][i], values["k_3m_prev"][i], values["k_1m"][i], values["k_1m_prev"][i], values["d_1m"][i],
+                    values["d_3m"][i], values["k_15m"][i], values["true_lag"][i], values["ema_50_15m"][i], values["sma_200_15m"][i])[0]
+                assert actual[i] == expected, (i, is_long, is_exit, actual[i], expected)

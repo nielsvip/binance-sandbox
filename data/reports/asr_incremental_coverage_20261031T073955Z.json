@@ -1,0 +1,63 @@
+{
+  "changed_sources": {
+    "tests/test_asr_entry_prefix.py": "1f351021742dd7fff610f0297bb840204feded368fced6c227bcd1056bc6eb65",
+    "tests/test_asr_inline_score.py": "943f5dce020ee628d9b529e4788af0f3f2cd9e6f12f152ac813b5fb5418090b9",
+    "vec_decisions/asr_entry_prefix.py": "d7ec6a35895a18a04cd4fa5d05bea559bae5c2a6264f48f8d17a049a6a3e1b53",
+    "vec_decisions/asr_inline_score.py": "09be907dbdaad80749455ce6f352cf431a71e7357fcc39aa766b07134af05d40"
+  },
+  "coverage_status": "PARTIAL; no complete AdvancedSignalRater NumPy route or v12 consumer",
+  "created_utc": "2026-10-31T07:39:55.984162+00:00",
+  "frozen_native_oracle": {
+    "path": "backups/before_asr_inline_score_native_oracle_ez_positions_quick_20261031T072554Z_1793431554865884000.py",
+    "sha256": "d45e0765b6bddc221cd2bbad5c14f6895729dab925340c7857d3a02adfabad3b"
+  },
+  "incremental_coverage": [
+    {
+      "source_span": "ez_positions_quick.py:4925-4954",
+      "status": "implemented in prefix; effective chase/ATR settings may be supplied explicitly in context; behavior boundary tests pass; native-AST gate differential still pending"
+    },
+    {
+      "source_span": "ez_positions_quick.py:5485-5672",
+      "status": "implemented in ordered prefix: DATA_BLIND gate, KX score, all-TF WT gates and penalties; randomized native AST differential for WT and shared scalar differential for KX pass"
+    },
+    {
+      "source_span": "ez_positions_quick.py:6053-6264",
+      "status": "RSI/MFI and DC momentum/BOTA/decent-gain NumPy components added and differential against exact shared scalar callees passes; not integrated into an ordered rate composer because stateful mandatory reentry and entry gating precede them"
+    }
+  ],
+  "required_context": {
+    "entry_prefix": "current_price; portfolio_ratio_active and ratio arrays when active; mover_registry_available and direction when available; gain/prev_gain when DATA_BLIND is active; last_reduction_price, minutes_since_reduction, gain, true_lag for KX; regime_delta if regime switch enabled; effective chase/ATR overrides if symbol-level values differ from cfg",
+    "mandatory_reentry_gap": "persistent bounce K-reset keyed by position_key; positionAmt; last reduction time/price; prior cross close; tier flags; five WT alignment inputs; evaluate_obligatory_reentry tiers and enabled bounce-family checker outputs"
+  },
+  "unresolved_native_order": [
+    {
+      "source_span": "ez_positions_quick.py:5435-5484",
+      "status": "tracker/market-state hydration not represented by current prefix; some values are explicit context dependencies"
+    },
+    {
+      "source_span": "ez_positions_quick.py:5675-6052",
+      "status": "stateful mandatory reentry and bounce-after-correction branches absent from the prefix"
+    },
+    {
+      "source_span": "ez_positions_quick.py:6053-6264",
+      "status": "NumPy components exist but ordered consumer after reentry/early-return control flow is absent"
+    },
+    {
+      "source_span": "ez_positions_quick.py:6265-7158",
+      "status": "scalp and lifecycle branches require separate exact audit; excluded/nonvectorizable branch coverage is not claimed"
+    },
+    {
+      "source_span": "AdvancedSignalRater.rate aggregate \u2192 v12_quick_engine",
+      "status": "no import/call found for asr_entry_prefix or asr_inline_score; vector scorer cannot currently affect an engine action bar"
+    },
+    {
+      "source_span": "full rate output",
+      "status": "complete_rate remains false; no full score/action bar parity claim"
+    }
+  ],
+  "validation": {
+    "command": "python -m pytest -q tests/test_asr_entry_prefix.py tests/test_asr_inline_score.py tests/test_asr_ordered_composer.py tests/test_asr_pre_dc_entry_score.py tests/test_asr_input_contract.py",
+    "compile": "py_compile passed for asr_inline_score.py, asr_entry_prefix.py, and touched tests before final 24-test run",
+    "result": "24 passed in 6.83s"
+  }
+}
