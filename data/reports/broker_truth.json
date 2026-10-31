@@ -1451,9 +1451,9 @@
   }
  },
  "freshness": {
-  "age_h_max": 3.33,
-  "age_h_median": 1.19,
-  "age_h_p90": 2.98,
+  "age_h_max": 3.39,
+  "age_h_median": 1.12,
+  "age_h_p90": 3.07,
   "bnb_source": "price_cache_2.json",
   "bnb_usd": 704.70042821,
   "caches": 699,
@@ -1463,13 +1463,13 @@
   "ok": true,
   "stale": 0
  },
- "generated_at": "2026-10-31T12:15:59Z",
+ "generated_at": "2026-10-31T12:31:15Z",
  "label": "VERIFIED",
  "reconcile_14d": {
-  "broker_net_usd": -202.4908,
-  "divergence_usd": 0.1983,
-  "generated_at": "2026-10-31T12:18:41Z",
-  "inhouse_net_usd": -202.2925,
+  "broker_net_usd": -202.5258,
+  "divergence_usd": 0.1982,
+  "generated_at": "2026-10-31T12:33:30Z",
+  "inhouse_net_usd": -202.3276,
   "label": "VERIFIED",
   "symbols_compared": 135,
   "verdict": "OK",
@@ -1591,12 +1591,6 @@
     "symbol": "ADAUSDC"
    },
    {
-    "broker_net_usd": -0.3324,
-    "divergence_usd": 0.0001,
-    "inhouse_net_usd": -0.3323,
-    "symbol": "1INCHUSDT"
-   },
-   {
     "broker_net_usd": -2.9581,
     "divergence_usd": -0.0001,
     "inhouse_net_usd": -2.9582,
@@ -1715,6 +1709,12 @@
     "divergence_usd": 0.0,
     "inhouse_net_usd": -2.0666,
     "symbol": "DOTUSDT"
+   },
+   {
+    "broker_net_usd": -0.587,
+    "divergence_usd": 0.0,
+    "inhouse_net_usd": -0.587,
+    "symbol": "SKLUSDT"
    }
   ]
  },
