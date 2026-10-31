@@ -1,0 +1,92 @@
+{
+  "verified_at": "2026-10-31T04:08:22.435867+00:00",
+  "release": {
+    "release": "ea1fd08ff0eb9bc5",
+    "base": "/home/niels/binance-sandbox/.paper_sql_release/ea1fd08ff0eb9bc5",
+    "hashes": {
+      "tools/paper_inventory.py": "824ea13639bf9a388fcb2bfd1b4668ebad8640141b937d37efc14673dc12fb30",
+      "tools/paper_inventory_evidence.py": "000bc59a3fb0f974d577c4cdf9001d6ce90930814538daba67810b8efc071c8c",
+      "tools/paper_scenario_db.py": "5eabf6e28e03c691dff47c0022b470615f47bf0a4508fe0876811f8fa59e3882",
+      "tools/paper_forward_lab.py": "151ccb21099bc1449379a33ead9adabb54d9504d38b8be823b4e5f74ad13f7c2",
+      "tools/paper_scenario_catalog.py": "d40009a603d9134d855149b2d124b0786fe83cb803a4fb77cc3217bf21f73185",
+      "tools/paper_fleet_budget.py": "4b7ee1a013418e3960bd4db714876217998607b249f63dc827aca66f4f8fda6c",
+      "tools/paper_counterfactual_scope.py": "0fde75133e257a0b6f3e375ab43cafd035c356b27cb25d00e3e498c77d922960",
+      "tools/paper_counterfactual_sql.py": "7022558a43edd4e17159f50141969d8d24e1ad1b4f222dc84e44189628b8a3e5",
+      "tools/paper_forward_comprehensive.py": "3077d9e6c67a26bf1301406a0ff47e18d1b633327e90548c3d97a61e95c77cd9",
+      "tools/forward_parity/families.py": "3b37eb5ccaeb0af0f86ca2fdad5ef006a11b5ac2fcd9588677e92ec627bd530b",
+      "loss_prone.py": "ed85864a4f8bc924f8c161c312657d354121ac356d26e553dbc6a9c8914edfb2"
+    },
+    "deployed_at": "2026-10-31T04:05:32.520046+00:00"
+  },
+  "master": "s1-pub:/home/niels/binance-sandbox/data/paper_forward_lab/scenarios.db",
+  "snapshot": "/Users/niels/Documents/binance/data/paper_forward_lab/scenarios.s1.db",
+  "workflow": "counterfactual_would_have_actions",
+  "trading_hold_preserved": true,
+  "activation_enabled": false,
+  "action_counts_by_route": [
+    {
+      "route": "native_counterfactual",
+      "actions": 3203
+    },
+    {
+      "route": "needs_wiring_audit",
+      "actions": 866
+    },
+    {
+      "route": "nonvector_counterfactual",
+      "actions": 2112
+    },
+    {
+      "route": "operational_reconciliation",
+      "actions": 723
+    },
+    {
+      "route": "vector_backtest",
+      "actions": 6364
+    }
+  ],
+  "candidate_status": [
+    {
+      "route": "native_counterfactual",
+      "comparison_status": "PENDING_COMPARISON",
+      "actions": 3203
+    },
+    {
+      "route": "nonvector_counterfactual",
+      "comparison_status": "PENDING_COMPARISON",
+      "actions": 2112
+    }
+  ],
+  "corrected_requested_paths": [
+    {
+      "path_name": "DELTA_EXIT_DC15M_FLOOR_BREAK",
+      "canonical_switch": "DC15M_FORCE_EXIT_ENABLED",
+      "recorded_actions": 76
+    },
+    {
+      "path_name": "QUICK_WT_CROSS_EXIT_1H_BEAR",
+      "canonical_switch": "WT_CROSS_EXIT_ENABLED",
+      "recorded_actions": 61
+    },
+    {
+      "path_name": "QUICK_WT_CROSS_EXIT_1H_BULL",
+      "canonical_switch": "WT_CROSS_EXIT_ENABLED",
+      "recorded_actions": 167
+    }
+  ],
+  "counterfactual_outcomes": 0,
+  "integrity": "ok",
+  "foreign_key_errors": [],
+  "focused_tests": "32 passed (counterfactual receipts, routing, SQL, inventory and immutable settings)",
+  "fleet_wt_behavior_tests": "3 passed on deployed S1 helpers",
+  "active_template_proof": "data/reports/paper_vector_exit_coverage_20261031_040407.json",
+  "source_event_history": "Imported existing events; these are not new trades and are not re-dated.",
+  "outcome_semantics": {
+    "entry": "Recorded source-action price to defined 15m horizon, less configured fixed cost estimate.",
+    "exit": "Recorded source-action price versus next recorded lifecycle close; gross relative price comparison, fees unverified.",
+    "missing": "Missing price or uncompleted baseline/horizon remains null/pending.",
+    "history": "Positive, negative, duplicate and pending receipts retained; latest-outcome view prevents obsolete positive results ranking above newer negative results."
+  },
+  "next_data_flow": "Existing scorer publishes per-action receipts at its next scheduled evaluation; ten-minute importer transports receipts and new raw events into S1 SQL. No heavy replay or trade restart launched.",
+  "remaining_audit": "866 events include unresolved TRADIER_DC_BREAKOUT, MFI2_MEAN_REVERSION, ANG_TIMING_TRIM_FAILED and SATOSHIT_VEC_EXIT; source-only helper presence is not accepted as full vector wiring proof."
+}

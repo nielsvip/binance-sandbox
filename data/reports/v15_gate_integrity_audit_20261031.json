@@ -46,7 +46,7 @@
     "S2_sandbox_tools_opt_evaluate_v12.py": "555ecba9821093f54079d97ff4863f2b904ba7f552207ca702345797a443f0f5",
     "Mac_workspace_v15_pilot.py": "e91ed048ecf972d899b243c843372476e35c1cddb70c06d3f23fe453c25de0a8",
     "Mac_workspace_v15_pilot_md5": "0d77489f74319e9398cae2ecebe58058",
-    "Mac_workspace_tools_opt_evaluate_v12.py": "555ecba9821093f54079d97ff4863f2b904ba7f552207ca702797a443f0f5",
+    "Mac_workspace_tools_opt_evaluate_v12.py": "555ecba9821093f54079d97ff4863f2b904ba7f552207ca702345797a443f0f5",
     "Mac_workspace_v12_quick_engine.py": "ee7fc6150b8c5e02bc556e3c93d153bb6739351c5378c90ff5a2f59d2392073b"
   },
   "champion_production_divergence": {
@@ -72,7 +72,7 @@
       "current S2 sandbox data excluding configured excluded paths",
       "captured process environment via --pid or explicit --env-json"
     ],
-    "gate_snapshot_override": "V15_GATE_SNAP=<fresh-id> is read by v15_version_gate.py at import; default remains 20261014.",
+    "gate_snapshot_override": "V15_GATE_SNAP=<fresh-id> is read by v15_version_gate.py at import; default remains 20261014. The override is an existing supported option, not a new patch.",
     "note": "Do not rebuild/force the 20261014 snapshot while its gate arms are active. Use a new snapshot name and capture the current production environment."
   },
   "gate_refresh_behavior": {
@@ -83,16 +83,23 @@
   },
   "cli_syntax_correction": {
     "reason": "S2 parser defines --files with nargs=\"*\"; a second --files option replaces/loses the first list.",
-    "correct_form": "Use --files exactly once, followed by every SRC=REL mapping, then the next option such as --note or --set.",
+    "correct_form": "Use --files exactly once, followed by every SRC=REL mapping, then the next option such as --note or --set. Parser is argparse nargs=\"*\".",
     "example": "python3 ~/v15_bench/tools/v15_version_gate.py submit --files /staged/pilot.py=v15_pilot.py /staged/evaluator.py=tools/opt/evaluate_v12.py /staged/bench.py=tools/v15_npz_bench.py /staged/parity.py=switch_parity.py --note \"current-production forward merge\""
   },
   "proposed_review_only_gate_path": {
-    "stage_patch": "data/reports/v15_gate_current_runtime_context_20261031_v2.patch",
-    "stage_patch_sha256": "d6ee81012595a082ecfa177c7ab8229af6e231b361cfd919e962c01211c0960d",
-    "intent": "Opt-in V15_GATE_CURRENT_RUNTIME_CONTEXT=1 constructs immutable per-candidate champion/candidate code roots from current S2 production SRC; only explicit meta.files are overlaid into candidate. It hash-binds both source trees and the complete named snapshot including current templates/data/NPZ and captures production flags/env for both arms.",
-    "promotion": "On PASS/deploy-complete, archive existing champion tree and metadata under gate/history before promoting effective candidate runtime tree; deploy() still publishes only explicit meta.files plus gate flags/env.",
+    "stage_patch": "data/reports/v15_gate_current_runtime_context_20261031_v3.patch",
+    "stage_patch_sha256": "63a46f887e6f2d5c59bd658bae84428cc238a56e1b1347de924c4532ab1e8ebe",
+    "intent": "Opt-in V15_GATE_CURRENT_RUNTIME_CONTEXT=1 builds paired code roots from current S2 production SRC; only submitted meta.files are overlaid on candidate. A SHA-256 manifest binds the common code tree and every file in a new frozen snapshot (current templates/data/NPZ), and both arms receive current snapshot production flags/env plus candidate-only deltas.",
+    "promotion": "Before deployment, archive existing champion tree and metadata under gate/history. After PASS/deploy-complete, promote the effective candidate runtime tree. deploy() remains limited to explicit meta.files plus gate flags/env.",
     "thresholds": "No changes to decide(), fit/OOS tolerances, side-drop checks, coverage floor, or score semantics.",
-    "status": "Mac-stage patch only; not applied, compiled, tested, or submitted."
+    "status": "Mac-stage patch only; not applied, compiled, tested, or submitted.",
+    "command_after_review": "V15_GATE_SNAP=<fresh-id> V15_GATE_CURRENT_RUNTIME_CONTEXT=1 python3 ~/v15_bench/tools/v15_version_gate.py run",
+    "limitations": [
+      "Code candidates only; data-file candidates stay on legacy gate path.",
+      "Hashing every snapshot file (current snapshot data observed at 5.1 GB) adds one-time pre-bench work.",
+      "Snapshot must be freshly named, capture a verified production pilot env, and already contain live_baseline_snapshots/manifest.json.",
+      "Patch has not been applied, compiled, tested, or submitted."
+    ]
   },
   "allowlist_patch": {
     "path": "data/reports/nextgen_60d_gate_whitelist_support_20261031.patch",

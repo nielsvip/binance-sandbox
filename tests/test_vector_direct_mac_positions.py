@@ -290,3 +290,30 @@ def test_both_arms_stay_flat_when_the_lane_publishes_nothing(tmp_path):
     for arm in ("fin", "trc"):
         ok, why = obj.sevenday_ok(arm, "AAAUSDT_LONG", time.time())
         assert ok is False, f"{arm} must stay flat with nothing published, got {why}"
+
+
+def test_fin_plans_from_its_own_7d_states_never_mens_30d_ones(tmp_path):
+    """USER 2026-10-31: fin must TRADE 7D settings; authorising it while feeding it 30D states would duplicate men."""
+    assert module.SEVENDAY_STATE_DIRS == {"fin": "forward_state_fin7d"}
+    s30 = tmp_path / "data" / "forward_state"
+    s7 = tmp_path / "data" / "forward_state_fin7d"
+    s30.mkdir(parents=True)
+    s7.mkdir(parents=True)
+    (s30 / "AWEUSDT_LONG.json").write_text(json.dumps({"ok": True, "src": "30d", "settings_src": "per_sym_store.active"}))
+    (s7 / "AWEUSDT_LONG.json").write_text(json.dumps({"ok": True, "src": "7d", "settings_src": "per_sym_store_7d.active"}))
+    obj = module.Trader.__new__(module.Trader)
+    obj.state_dir = s30
+    assert obj.load_states({"AWEUSDT_LONG"})["AWEUSDT_LONG"]["src"] == "30d"
+    assert obj.load_states({"AWEUSDT_LONG"}, obj.state_dir.parent / module.SEVENDAY_STATE_DIRS["fin"])["AWEUSDT_LONG"]["src"] == "7d"
+
+
+def test_a_held_fin_side_outside_the_universe_is_managed_from_its_7d_state(tmp_path):
+    s30 = tmp_path / "data" / "forward_state"
+    s7 = tmp_path / "data" / "forward_state_fin7d"
+    s30.mkdir(parents=True)
+    s7.mkdir(parents=True)
+    (s7 / "HELD_LONG.json").write_text(json.dumps({"ok": True, "src": "7d"}))
+    obj = module.Trader.__new__(module.Trader)
+    obj.state_dir = s30
+    states = obj.with_held_states({}, {"HELD_LONG": {"qty": 1.0}}, s7)
+    assert states["HELD_LONG"]["src"] == "7d"

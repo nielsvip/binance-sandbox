@@ -64,8 +64,8 @@ def _publish(monkeypatch, tmp_path, sides, allow_vector_only):
     return json.loads((tmp_path / "sevenday_crypto.json").read_text()), doc
 
 
-def _row(tier, age_s=0.0):
-    return {"tier": tier, "why": "", "host": "s6", "staged_epoch": time.time() - age_s, "staged_utc": "x"}
+def _row(tier, age_s=0.0, staged=True):
+    return {"tier": tier, "why": "", "host": "s6", "staged_epoch": time.time() - age_s, "staged_utc": "x", "staged": staged}
 
 
 def test_vector_only_sets_are_not_tradeable_by_default(monkeypatch, tmp_path):
@@ -128,3 +128,38 @@ def test_a_board_with_no_gain_of_its_own_is_refused():
 def test_a_real_vector_only_board_still_passes():
     p = dict(GOOD_PROGRESS, result_done_utc=None, final_path=None, live_verified={}, cumulative_gain=7.86)
     assert F.classify(result(valid=False, why="x", progress=p))[0] == "vector_only"
+
+
+# ── rolling >20 h refresh (USER 2026-10-31) ──
+
+def test_a_verified_set_that_was_not_staged_is_not_tradeable(monkeypatch, tmp_path):
+    """fin trades from per_sym_store_7d.db; authorising a side with no staged set gives it nothing to trade from."""
+    on_disk, _ = _publish(monkeypatch, tmp_path, {"AUSDT_LONG": _row("validated", staged=False)}, True)
+    assert on_disk["sides"] == {}
+
+
+def test_a_new_run_adds_to_the_previous_publication_instead_of_wiping_it(monkeypatch, tmp_path):
+    _publish(monkeypatch, tmp_path, {"OLD_LONG": _row("validated", age_s=5 * 3600)}, False)
+    on_disk, _ = _publish(monkeypatch, tmp_path, {"NEW_LONG": _row("validated")}, False)
+    assert set(on_disk["sides"]) == {"OLD_LONG", "NEW_LONG"}, "a still-fresh side from an earlier run must stay tradeable"
+
+
+def test_the_staged_epoch_is_carried_forward_not_restamped(monkeypatch, tmp_path):
+    first, _ = _publish(monkeypatch, tmp_path, {"OLD_LONG": _row("validated", age_s=5 * 3600)}, False)
+    second, _ = _publish(monkeypatch, tmp_path, {}, False)
+    assert second["sides"]["OLD_LONG"] == first["sides"]["OLD_LONG"], "republishing must never give an old set a newer date"
+
+
+def test_needs_refresh_after_twenty_hours():
+    now = time.time()
+    prior = {"FRESH": {"staged": True, "staged_epoch": now - 19 * 3600},
+             "STALE": {"staged": True, "staged_epoch": now - 21 * 3600},
+             "UNSTAGED": {"staged": False, "staged_epoch": now}}
+    assert F.needs_refresh("FRESH", prior, now) is False
+    assert F.needs_refresh("STALE", prior, now) is True
+    assert F.needs_refresh("UNSTAGED", prior, now) is True
+    assert F.needs_refresh("NEVER", prior, now) is True
+
+
+def test_the_refresh_target_leaves_margin_inside_the_trading_window():
+    assert F.REFRESH_AFTER_S == 20 * 3600 and F.MAX_AGE_S == 30 * 3600 and F.REFRESH_AFTER_S < F.MAX_AGE_S

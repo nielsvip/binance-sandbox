@@ -44,6 +44,28 @@ class RetainedPrediction(FrozenRecord):
     pass
 
 
+class BoundDomain(FrozenRecord):
+    pass
+
+
+def bind_domain_sources(epoch, references):
+    _check_epoch(epoch)
+    if not references or any(not any(source['path'] == reference['path'] and source['sha256'] == reference['sha256'] for source in epoch['sources']) for reference in references):
+        raise ValueError('domain references must belong to the immutable batch source epoch')
+    return BoundDomain(epoch_id=epoch['id'], references=_freeze(references))
+
+
+def validate_domain(domain, context):
+    bound = domain.get('bound_domain')
+    if bound is not None:
+        _check_epoch(context['current_epoch'])
+        if not isinstance(bound, BoundDomain) or bound['epoch_id'] != context['current_epoch']['id']:
+            raise ValueError('domain belongs to a different source epoch')
+    for source in domain.get('evidence_refs', []):
+        if evidence.sha(Path(source['path'])) != source['sha256']:
+            raise ValueError('domain evidence source changed')
+
+
 def bind_prediction_artifact(source):
     payload = Path(source['path']).read_bytes()
     if hashlib.sha256(payload).hexdigest() != source['sha256']:
@@ -60,6 +82,8 @@ def retained_prediction(artifact, index, proposal, context, resolve_original):
         raise ValueError('source-bound NN artifact required')
     if artifact['document']['meta'].get('cat_side') != cat_side_of(scientific_identity(context)['sym_side']):
         raise ValueError('retained NN artifact belongs to another category/side')
+    if context.get('model_usage') != 'research_priority_only':
+        raise ValueError('retained model window lineage is not verified for holdout qualification; export/corpus timestamps are insufficient; research-priority use must be explicit')
     original = artifact['document']['template_untried'][index]
     resolved = resolve_original(original)
     if resolved.get('eligible') is not True or evidence.pair_identity(resolved['x'], resolved['y']) != evidence.pair_identity(proposal['x'], proposal['y']):
@@ -67,14 +91,14 @@ def retained_prediction(artifact, index, proposal, context, resolve_original):
     score = original.get('p_pos_pred')
     if not isinstance(score, (int, float)) or isinstance(score, bool) or not math.isfinite(score) or not 0 <= score <= 1:
         raise ValueError('finite retained NN probability required')
-    return RetainedPrediction(source=artifact['source'], index=index, pair_id=evidence.pair_identity(proposal['x'], proposal['y']), scientific_identity=_freeze(scientific_identity(context)), score=float(score), semantics='retained historical NN prediction used only as fair priority tie-break; not current measured benefit')
+    return RetainedPrediction(source=artifact['source'], index=index, pair_id=evidence.pair_identity(proposal['x'], proposal['y']), scientific_identity=_freeze(scientific_identity(context)), score=float(score), quality_qualified=False, model_usage='research_priority_only', semantics='retained historical NN prediction used only as fair priority tie-break; not current measured benefit or independent holdout evidence')
 
 
-def prediction_tiebreak(proposal, domain, scientific):
+def prediction_tiebreak(proposal, domain, scientific, context):
     prediction = domain.get('retained_prediction')
     if prediction is None:
         return 0.0
-    if not isinstance(prediction, RetainedPrediction) or prediction['pair_id'] != evidence.pair_identity(proposal['x'], proposal['y']) or evidence.guard.fingerprint(prediction['scientific_identity']) != evidence.guard.fingerprint(scientific):
+    if not isinstance(prediction, RetainedPrediction) or context.get('model_usage') != prediction['model_usage'] or prediction['pair_id'] != evidence.pair_identity(proposal['x'], proposal['y']) or evidence.guard.fingerprint(prediction['scientific_identity']) != evidence.guard.fingerprint(scientific):
         raise ValueError('retained NN tie-break has stale context or unrelated pair')
     return float(prediction['score'])
 
@@ -181,9 +205,7 @@ def allocate(experiments, state, context, evaluation_budget, current_domain, sel
         if selection_contract(proposal) is not True:
             rejected.append({'experiment': proposal, 'reason': 'per_side_selection_or_declared_experiment_contract_violation'})
             continue
-        for source in domain.get('evidence_refs', []):
-            if evidence.sha(Path(source['path'])) != source['sha256']:
-                raise ValueError('priority evidence source changed')
+        validate_domain(domain, context)
         identity = evidence.guard.fingerprint({'pair': evidence.pair_identity(proposal['x'], proposal['y']), 'scientific_context': scientific})
         if identity in eligible:
             eligible[identity]['mirrored_source_ids'].append(proposal['id'])
@@ -193,7 +215,7 @@ def allocate(experiments, state, context, evaluation_budget, current_domain, sel
         bands = {name for name in ('protection', 'recovery') if domain.get(name) is True}
         if unknown:
             bands.add('unknown')
-        eligible[identity] = {'id': proposal['id'], 'identity': identity, 'experiment': proposal, 'domain': domain, 'bands': sorted(bands), 'unknown': unknown, 'ranked_evidence': ranked, 'retained_nn_tiebreak': prediction_tiebreak(proposal, domain, scientific), 'mirrored_source_ids': []}
+        eligible[identity] = {'id': proposal['id'], 'identity': identity, 'experiment': proposal, 'domain': domain, 'bands': sorted(bands), 'unknown': unknown, 'ranked_evidence': ranked, 'retained_nn_tiebreak': prediction_tiebreak(proposal, domain, scientific, context), 'mirrored_source_ids': []}
     active = {band for row in eligible.values() for band in row['bands']}
     for band in quotas:
         debts[band] = int(debts.get(band, 0)) + quotas[band] if band in active else 0
@@ -246,9 +268,7 @@ def first_pass_yellows(cells, row_identity, state, context, evaluation_budget, c
         if not isinstance(resolved, dict) or resolved.get('eligible') is not True:
             rejected.append({'cell': cell, 'reason': 'not_actual_row_yellow'})
             continue
-        for source in resolved.get('evidence_refs', []):
-            if evidence.sha(Path(source['path'])) != source['sha256']:
-                raise ValueError('yellow domain evidence source changed')
+        validate_domain(resolved, context)
         actual_row = {name: resolved.get(name) for name in ('tab', 'row', 'switch', 'cand')}
         if evidence.guard.fingerprint(actual_row) != evidence.guard.fingerprint(row_identity):
             raise ValueError('first-pass yellow allocator cannot change or rerank the current row')

@@ -489,8 +489,21 @@ def test_deterioration_halt_waits_for_fresh_wt15_against_and_never_reenters(tmp_
     orders, _ = V.plan_account("ang", "crypto", ["XUSDT_LONG"], {"XUSDT_LONG": st(False)}, {"XUSDT_LONG": {"qty": 12.0}}, BAR, set(), ALLOW, wt15=with_wt, halted=halted)
     assert [(o["act"], o["qty"]) for o in orders] == [("CLOSE", 12.0)] and orders[0].get("reason") != "DETERIORATED_CLOSE"
     (tmp_path / "data").mkdir()
-    (tmp_path / "data" / "deterioration_halt.json").write_text('{"halts": {"xusdt_long": {"halted_utc": "x"}}}')
+    import hashlib
+    import sqlite3
+    import json
+    active = {"WT_15M_BOUNCE_OPEN_ENABLED": True}
+    md5 = hashlib.md5(json.dumps(active, sort_keys=True, default=str).encode()).hexdigest()
+    db_dir = tmp_path / "data" / "hourly_reconfig"
+    db_dir.mkdir()
+    con = sqlite3.connect(db_dir / "per_sym_store.db")
+    con.execute("CREATE TABLE per_sym_active(sym_side TEXT, overrides_json TEXT)")
+    con.execute("INSERT INTO per_sym_active VALUES (?,?)", ("XUSDT_LONG", json.dumps(active)))
+    con.commit(); con.close()
+    (tmp_path / "data" / "deterioration_halt.json").write_text(json.dumps({"halts": {"XUSDT_LONG": {"halted_utc": "x", "set_md5": md5}}}))
     assert set(V.deterioration_halts(tmp_path)) == {"XUSDT_LONG"}
+    (tmp_path / "data" / "deterioration_halt.json").write_text(json.dumps({"halts": {"XUSDT_LONG": {"set_md5": "stale-board-md5"}}}))
+    assert V.deterioration_halts(tmp_path) == {}
     (tmp_path / "data" / "deterioration_halt.json").write_text("{broken")
     assert V.deterioration_halts(tmp_path) == {}
 

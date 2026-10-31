@@ -42,11 +42,18 @@ WORKERS = {"s6": 3, "s5": 3, "s2": 1}
 MEM_FLOOR_MB = int(os.environ.get("FIN7D_MEM_FLOOR_MB", "4000"))
 BOARD_TIMEOUT_S = int(os.environ.get("FIN7D_BOARD_TIMEOUT_S", "3600"))
 POLL_S = int(os.environ.get("FIN7D_POLL_S", "60"))
-DEADLINE_S = int(os.environ.get("FIN7D_DEADLINE_S", str(10 * 3600)))
+DEADLINE_S = int(os.environ.get("FIN7D_DEADLINE_S", str(4 * 3600)))  # hourly runs: never hold the lock all day
 ALLOW_VECTOR_ONLY = os.environ.get("FIN7D_ALLOW_VECTOR_ONLY", "0") == "1"
 # a board that declares itself NOT-FINISHED is relaunched this many times before the side is given up on
 REDO_ATTEMPTS = int(os.environ.get("FIN7D_REDO_ATTEMPTS", "2"))
 MAX_AGE_S = float(os.environ.get("FIN7D_MAX_AGE_S", str(30 * 3600)))
+# USER 2026-10-31: "any crypto sym_side that has not had an update for >20hrs has to get updated and traded on 7D fin
+# account simple". Each run recomputes every side whose last STAGED 7D set is older than this (or missing), so nothing
+# reaches the 30 h entry limit: 10 h of margin for a slow or failed board to be retried.
+REFRESH_AFTER_S = float(os.environ.get("FIN7D_REFRESH_AFTER_S", str(20 * 3600)))
+S1_BASE_DB = "/home/niels/binance/data/hourly_reconfig/per_sym_store.db"          # men's 30D store (S1 crypto producer)
+S1_STORE_DB = "/home/niels/binance-sandbox/data/hourly_reconfig/per_sym_store_7d.db"  # fin's 7D store
+S1_SIDES_FILE = "/home/niels/fwd_fin7d_syms.txt"                                   # sides the fin 7D state producer builds
 SSH = ["ssh", "-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "StrictHostKeyChecking=accept-new"]
 S1 = ("s1-int", "s1-pub", "niels@10.0.0.3")
 PUBLISHED = ROOT / "data" / "vector_direct" / "sevenday_crypto.json"
@@ -162,17 +169,74 @@ def classify(result):
     return None, f"refused: {why[:160]}"
 
 
+def load_prior():
+    """Every side the last publication recorded, with its staged_epoch. A run must ADD to these, never wipe them."""
+    try:
+        doc = json.loads(PUBLISHED.read_text())
+    except (OSError, ValueError):
+        return {}
+    return {ss: row for ss, row in (doc.get("detail") or {}).items() if isinstance(row, dict) and row.get("staged_epoch") is not None}
+
+
+def needs_refresh(ss, prior, now):
+    row = prior.get(ss)
+    return not row or not row.get("staged") or now - float(row["staged_epoch"]) > REFRESH_AFTER_S
+
+
+def stage_on_s1(worker, ss, run_id, day):
+    """Lay this board's 7D overrides on men's 30D base in fin's 7D store on S1. (ok, why)."""
+    rdir = f"binance-sandbox/data/preopen_7d/fin_run/{run_id}/results/{ss}"
+    rc, out, err = sh(worker, f"python3 -c \"import json;d=json.load(open('/home/niels/{rdir}/progress/{ss}_7d_progress.json'));"
+                              f"print(json.dumps({{'overrides':d.get('cumulative_overrides'),'metrics':{{k:d.get(k) for k in "
+                              f"('cumulative_gain','baseline_gain','window_days','result_done_utc')}}}}))\"", 120)
+    if rc or not out.strip():
+        return False, f"could not read the board's overrides on {worker}: {err[-120:]}"
+    try:
+        doc = json.loads(out.strip().splitlines()[-1])
+    except ValueError:
+        return False, "board overrides unparsable"
+    overrides = doc.get("overrides")
+    if not isinstance(overrides, dict) or not overrides:
+        return False, "board has no cumulative_overrides"
+    with tempfile.TemporaryDirectory() as tmp:
+        ov, mt = Path(tmp) / "ov.json", Path(tmp) / "mt.json"
+        ov.write_text(json.dumps(overrides))
+        mt.write_text(json.dumps(doc.get("metrics") or {}))
+        errors = []
+        for host in S1:
+            try:
+                r = subprocess.run(["scp", "-q", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", str(ov), str(mt), f"{host}:/tmp/"],
+                                   capture_output=True, text=True, timeout=90)
+            except (subprocess.TimeoutExpired, OSError) as exc:
+                errors.append(f"{host}: {type(exc).__name__}")
+                continue
+            if r.returncode:
+                errors.append(f"{host}: scp rc={r.returncode}")
+                continue
+            rc2, out2, err2 = sh(host, f"cd ~/binance-sandbox && python3 -I tools/fin_7d_stage_one.py --sym-side {ss} "
+                                       f"--overrides /tmp/ov.json --metrics /tmp/mt.json --base-db {S1_BASE_DB} --store-db {S1_STORE_DB} "
+                                       f"--day {day} && (grep -qx {ss} {S1_SIDES_FILE} 2>/dev/null || echo {ss} >> {S1_SIDES_FILE})", 120)
+            if rc2 == 0:
+                return True, f"staged into fin's 7D store via {host} ({len(overrides)} overrides)"
+            errors.append(f"{host}: {(err2 or out2)[-160:]}")
+        return False, "staging failed on every S1 path: " + " | ".join(errors)
+
+
 def publish(sides, day, meta):
     """Rewrite sevenday_crypto.json with every side that may be traded, then push it to S1."""
     now = time.time()
-    fresh = {ss: row for ss, row in sides.items() if now - float(row["staged_epoch"]) <= MAX_AGE_S}
-    tradeable = {ss: row["staged_epoch"] for ss, row in fresh.items()
-                 if row["tier"] == "validated" or (row["tier"] == "vector_only" and ALLOW_VECTOR_ONLY)}
+    combined = {**load_prior(), **sides}   # earlier runs' sides stay published until they age out
+    fresh = {ss: row for ss, row in combined.items() if now - float(row["staged_epoch"]) <= MAX_AGE_S}
+    # tradeable needs the set STAGED as well as verified: fin trades from per_sym_store_7d.db, so an authorised side
+    # with no staged 7D set would have nothing to be traded from
+    tradeable = {ss: row["staged_epoch"] for ss, row in fresh.items() if row.get("staged")
+                 and (row["tier"] == "validated" or (row["tier"] == "vector_only" and ALLOW_VECTOR_ONLY))}
     # "redo" is recorded for the report and is NEVER tradeable under any flag
     doc = {"source": "fin_7d_daily", "venue": "crypto", "scope": SCOPE, "account": "fin", "book": "men",
            "day": day, "epoch": now, "written_at": stamp(now), "max_age_s": MAX_AGE_S,
            "allow_vector_only": ALLOW_VECTOR_ONLY, "sides": tradeable,
-           "detail": {ss: {k: row[k] for k in ("tier", "why", "host", "staged_utc")} for ss, row in fresh.items()},
+           "detail": {ss: {k: row.get(k) for k in ("tier", "why", "host", "staged_utc", "staged_epoch", "staged", "stage_why", "run_id")}
+                      for ss, row in fresh.items()},
            "counts": {"tradeable": len(tradeable), "vector_only": sum(1 for r in fresh.values() if r["tier"] == "vector_only"),
                       "validated": sum(1 for r in fresh.values() if r["tier"] == "validated"),
                       "redo": sum(1 for r in fresh.values() if r["tier"] == "redo")},
@@ -203,16 +267,23 @@ def _push_s1(host):
 
 def run(day=None, dry_run=False):
     day = day or dt.datetime.now(dt.timezone.utc).strftime("%Y%m%d")
+    # A directory PER RUN, never per day: hourly refreshes would otherwise find the previous run's launcher.json, skip the
+    # relaunch (`test ! -e`) and re-classify an OLD result under a NEW timestamp — an old test wearing a new date.
+    run_id = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%MZ")
     started = time.time()
-    queue_path, queue, sides = select_queue(day)
+    queue_path, queue, candidates = select_queue(run_id)
+    prior = load_prior()
+    sides = [ss for ss in candidates if needs_refresh(ss, prior, started)]
+    log(f"run {run_id}: {len(candidates)} fin sides with a 30D base; {len(sides)} older than {REFRESH_AFTER_S / 3600:.0f} h or never "
+        f"staged -> recompute; {len(candidates) - len(sides)} still fresh")
     if not sides:
-        log("nothing to compute: men's book has no side with a 30D baseline")
+        publish({}, day, {"run_id": run_id, "started_utc": stamp(started), "boards": 0, "note": "nothing stale"})
         return 0
     hosts = [h for h in WORKERS if sh(h, "true", 20)[0] == 0]
     if not hosts:
         raise RuntimeError("no crypto NPZ worker is reachable")
-    for h in hosts:
-        if not ship_queue(h, queue_path, day):
+    for h in list(hosts):
+        if not ship_queue(h, queue_path, run_id):
             log(f"{h}: queue could not be shipped — excluded from this pass")
             hosts = [x for x in hosts if x != h]
     log(f"workers {', '.join(f'{h}x{WORKERS[h]}' for h in hosts)} | boards {len(sides)} | deadline {DEADLINE_S / 3600:.1f}h"
@@ -220,12 +291,13 @@ def run(day=None, dry_run=False):
     if dry_run:
         return 0
     pending, inflight, done, attempts = list(sides), {}, {}, {}
+    meta = {"run_id": run_id, "started_utc": stamp(started), "boards": len(sides)}
     while (pending or inflight) and time.time() - started < DEADLINE_S:
         for host in hosts:
             free = WORKERS[host] - sum(1 for h in inflight.values() if h == host)
             while free > 0 and pending:
                 ss = pending.pop(0)
-                answer = launch(host, ss, day)
+                answer = launch(host, ss, run_id)
                 if answer == "LAUNCHED":
                     inflight[ss] = host
                     free -= 1
@@ -233,18 +305,12 @@ def run(day=None, dry_run=False):
                 elif answer.startswith("HOLD_MEM"):
                     pending.append(ss)   # the host is short of memory right now; try it again next poll
                     free = 0
-                elif fetch_result(host, ss, day) is not None:
-                    # a launcher.json already exists from an earlier pass, so the board will never relaunch here
-                    # (`test ! -e`). Hand it to the fetch path to be classified instead of re-queueing it forever.
-                    inflight[ss] = host
-                    free -= 1
-                    log(f"{ss} already has a result on {host} — classifying it instead of relaunching")
                 else:
                     pending.append(ss)
                     log(f"{ss} on {host}: {answer}")
                     free = 0
         for ss, host in list(inflight.items()):
-            result = fetch_result(host, ss, day)
+            result = fetch_result(host, ss, run_id)
             if result is None:
                 continue
             inflight.pop(ss, None)
@@ -254,26 +320,28 @@ def run(day=None, dry_run=False):
                 n = attempts.get(ss, 0) + 1
                 attempts[ss] = n
                 if n <= REDO_ATTEMPTS:
-                    sh(host, f"rm -f ~/binance-sandbox/data/preopen_7d/fin_run/{day}/results/{ss}/launcher.json", 30)
+                    sh(host, f"rm -f ~/binance-sandbox/data/preopen_7d/fin_run/{run_id}/results/{ss}/launcher.json", 30)
                     pending.append(ss)
                     log(f"REDO {ss} on {host}: relaunching (attempt {n + 1} of {REDO_ATTEMPTS + 1})")
                 else:
-                    done[ss] = {"tier": "redo", "why": f"{why} (gave up after {n} relaunches)", "host": host,
-                                "staged_epoch": time.time(), "staged_utc": stamp()}
+                    done[ss] = {"tier": "redo", "why": f"{why} (gave up after {n} relaunches)", "host": host, "run_id": run_id,
+                                "staged_epoch": time.time(), "staged_utc": stamp(), "staged": False}
                     log(f"GAVE UP {ss} on {host}: still asking for a REDO after {n} relaunches")
                 continue
-            if tier:
-                done[ss] = {"tier": tier, "why": why, "host": host, "staged_epoch": time.time(), "staged_utc": stamp()}
-                log(f"FINISHED {ss} on {host}: {tier} — {why}")
-                publish(done, day, {"started_utc": stamp(started), "boards": len(sides)})
-            else:
+            if not tier:
                 log(f"REFUSED {ss} on {host}: {why}")
+                continue
+            row = {"tier": tier, "why": why, "host": host, "run_id": run_id, "staged_epoch": time.time(), "staged_utc": stamp()}
+            ok, stage_why = stage_on_s1(host, ss, run_id, day)
+            row.update(staged=ok, stage_why=stage_why)
+            done[ss] = row
+            log(f"FINISHED {ss} on {host}: {tier} — {why} | {'STAGED' if ok else 'NOT STAGED'}: {stage_why}")
+            publish(done, day, meta)
         if pending or inflight:
             time.sleep(POLL_S)
-    doc, _ = publish(done, day, {"started_utc": stamp(started), "finished_utc": stamp(), "boards": len(sides),
-                                 "unfinished": sorted(pending + list(inflight))})
-    log(f"pass done in {(time.time() - started) / 60:.0f} min: {doc['counts']} | unfinished {len(pending) + len(inflight)}")
-    if doc["counts"]["tradeable"] == 0 and doc["counts"]["vector_only"]:
+    doc, _ = publish(done, day, {**meta, "finished_utc": stamp(), "unfinished": sorted(pending + list(inflight))})
+    log(f"run {run_id} done in {(time.time() - started) / 60:.0f} min: {doc['counts']} | unfinished {len(pending) + len(inflight)}")
+    if doc["counts"]["tradeable"] == 0 and doc["counts"]["vector_only"] and not ALLOW_VECTOR_ONLY:
         log(f"NOTE {doc['counts']['vector_only']} sets are vector-verified and ONE check short of tradeable "
             f"(the pilot never records live/vector parity). fin stays flat. Set FIN7D_ALLOW_VECTOR_ONLY=1 to trade them.")
     return 0

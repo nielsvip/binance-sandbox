@@ -22,7 +22,7 @@ def domain(row):
 
 
 def test_retained_nn_scores_change_fair_order_but_never_eligibility_or_starve_low_score(tmp_path):
-    current = context(tmp_path)
+    current = dict(context(tmp_path), model_usage='research_priority_only')
     proposals = catalog()[2:4]
     def run(scores, name):
         path = tmp_path / name
@@ -31,6 +31,8 @@ def test_retained_nn_scores_change_fair_order_but_never_eligibility_or_starve_lo
         artifact = P.bind_prediction_artifact(dict(path=str(path), sha256=P.evidence.sha(path)))
         resolve = lambda original: dict(eligible=True, x=dict(field=original['switch'], value=True), y=dict(field='COMMON', value=1))
         bound = {row['id']: P.retained_prediction(artifact, index, row, current, resolve) for index, row in enumerate(proposals)}
+        with pytest.raises(ValueError, match='window lineage'):
+            P.retained_prediction(artifact, 0, proposals[0], dict(current, model_usage='pre_holdout_qualified'), resolve)
         classify = lambda row: dict(eligible=True, retained_prediction=bound[row['id']])
         first = P.allocate(proposals, {}, current, 5, classify, lambda row: True)
         second = P.allocate(proposals, first['next_state'], current, 5, classify, lambda row: True)

@@ -366,9 +366,31 @@ def entry_allowed(root: Path, venue: str, acct: str, ss: str) -> bool:
 
 
 def deterioration_halts(root: Path) -> dict:
-    """Read daily same-settings 30D gain drops of at least 15 pp. Crypto held sides close on a halt."""
+    """A chart halt applies only to the exact full set currently active in the live 30D store."""
     doc = read_json(root / "data" / "deterioration_halt.json", {}) or {}
-    return {str(k).upper(): v for k, v in (doc.get("halts") or {}).items()} if isinstance(doc, dict) else {}
+    rows = (doc.get("halts") or {}) if isinstance(doc, dict) else {}
+    if not rows:
+        return {}
+    db = root / "data" / "hourly_reconfig" / "per_sym_store.db"
+    try:
+        con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=2)
+        try:
+            active = {ss: raw for ss, raw in con.execute("SELECT sym_side,overrides_json FROM per_sym_active WHERE sym_side IN (" + ",".join("?" for _ in rows) + ")", tuple(rows))}
+        finally:
+            con.close()
+    except (sqlite3.Error, OSError) as exc:
+        log(f"daily chart halt set identity unavailable: {exc}; no chart halts applied")
+        return {}
+    verified = {}
+    for ss, rec in rows.items():
+        try:
+            raw = active.get(ss)
+            md5 = hashlib.md5(json.dumps(json.loads(raw), sort_keys=True, default=str).encode()).hexdigest() if raw else None
+            if md5 == rec.get("set_md5"):
+                verified[str(ss).upper()] = rec
+        except (TypeError, ValueError):
+            continue
+    return verified
 
 
 def rolling_deterioration_halts(root: Path, state_dir: Path, states: dict, bar: int, alert=None) -> dict:
@@ -1683,7 +1705,7 @@ class Trader:
         market_ok = True
         if self.venue == "stocks":
             market_ok = self.broker.market_open() or bool(self.a.assume_open and self.a.dry_run)
-        halted = deterioration_halts(self.root)
+        halted = deterioration_halts(self.root) if not self.state_dir.name.endswith("_7d") else {}
         if self.venue == "crypto":
             halted.update(rolling_deterioration_halts(self.root, self.state_dir, states, bar, alert=self.alert))
         if set(halted) != getattr(self, "halted_now", set()):

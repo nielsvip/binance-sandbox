@@ -1,0 +1,31 @@
+{
+  "recorded_at_utc": "2026-10-31T04:03:54Z",
+  "host": "s5",
+  "parent_tree": "/home/niels/v20_u4/code",
+  "literal_symlink_provenance": [
+    {"link": "SPREADSHEETS", "link_path": "/home/niels/v20_u4/code/SPREADSHEETS", "literal_target": "/home/niels/binance-sandbox/SPREADSHEETS", "target_type": "directory", "target_inventory": {"regular_files_recursive": 25881, "logical_bytes": 24186172874, "symlinks_recursive": 0, "mtime_epoch_min": 1787069041.9979798, "mtime_epoch_max": 1793419091.4500905}, "dedup_check": {"method": "rsync --dry-run --size-only against local Mac SPREADSHEETS; read-only metadata comparison", "different_or_missing_path_size_entries": 23484, "not_different_path_size_entries_inferred": 2397, "content_identity_proven": false}, "next_action": "Do not treat as preserved. Prioritize bounded categories by historical importance; hash before dedup/copy. Directory is mutable and includes recent files."},
+    {"link": "data/learn/_cache", "link_path": "/home/niels/v20_u4/code/data/learn/_cache", "literal_target": "/home/niels/binance-sandbox/data/learn/_cache", "target_type": "directory", "target_inventory": {"direct_regular_files": 4, "logical_bytes": 1417615, "nested_symlinks": 0}, "verified_copy": {"path": "/Volumes/WD25/binance_archive/s5_symlink_cache_20261031T035948Z/", "receipt": "data/reports/s5_symlink_cache_copy_receipt_20261031T035948Z.json", "receipt_sha256": "a05e5fbbe2119c07b744f2c692d583f452d9f9c1fae3ee38631ec183bb602e16", "per_file_source_destination_sha256": true}}
+  ],
+  "targeted_small_component_closure": {
+    "source": "/home/niels/binance-sandbox/SPREADSHEETS/TEMPLATE_FINAL_NORM/",
+    "literal_provenance": "S5 code/SPREADSHEETS link resolves to the S5 binance-sandbox SPREADSHEETS tree; this subdirectory was copied as its own source component.",
+    "source_open_handles": "lsof +D returned none at inspection time",
+    "regular_files": 20,
+    "logical_bytes": 12487748,
+    "source_pre_post_stat_manifest_sha256": "49ef1ef4292c35d631817b974d42753c5847693180397d7df9828d66e9eeb28b",
+    "source_pre_post_file_sha_manifest_sha256": "9ae49e693594acb648e89218af22c7bc754a1e0e5658445ae7c67e2317b37b69",
+    "destination_per_file_sha_manifest_sha256": "9ae49e693594acb648e89218af22c7bc754a1e0e5658445ae7c67e2317b37b69",
+    "destination": "/Volumes/WD25/binance_archive/s5_template_final_norm_20261031T0410Z/",
+    "wd25_volume_uuid": "04543668-3000-3F41-BB34-1C876F724D28",
+    "evidence_files": ["source_stat_pre.txt", "source_sha256_pre.txt", "source_stat_post.txt", "source_sha256_post.txt", "destination_sha256.txt"],
+    "interpretation": "Exact 20-file point-in-time component is independently preserved and source remained stat/hash stable. Includes four normative templates plus .addtmp/.greytmp/.booktmp and hidden temporary files; these remain evidence, not interpreted as valid templates. Main template hashes differ from local Mac copies, so do not silently deduplicate or rebind authority."
+  },
+  "prior_union3_linknet_state_lookup": {
+    "mac_snapshot": "data/learn/v3u3_20261022/linknet/ contains dataset_report.json and four linknet_report_*.json files, but no model_*.npz or checkpoint; brain_state/ contains only v18_brain_report.json.",
+    "bounded_hosts_checked": ["S1 /home/niels/binance-sandbox/data/learn", "S2 /home/niels/binance-sandbox/data/learn and /home/niels/v15_bench/reviews/prior_oracle_20261031T000747Z", "S5 /home/niels/binance-sandbox/data/learn", "S6 /home/niels/binance-sandbox/data/learn and /home/niels/v20_candidate_review_20261030"],
+    "found_graph_state": "Only S6 candidate run graph_state.pkl outputs under /home/niels/v20_candidate_review_20261030; these are later candidate-run artifacts, not prior UNION#3 checkpoint lineage.",
+    "verified_prior_union3_graph_pickle_or_linknet_model": "not found in bounded audited paths; no exact prior model/checkpoint/dataset receipt established",
+    "promoted_model_payload": "Oct22-built UNION#3 brain and digest set received S2 PASS on 2026-10-23; source and WD25 set are identified in data/reports/s5_seed_and_oct23_nn_preservation_20261031T0131Z.json. This is not a distinct Oct23 training run."
+  },
+  "coverage": "These findings close the small S5 _cache symlink target and the 20-file S5 TEMPLATE_FINAL_NORM component only. The 24.19GB SPREADSHEETS target, remaining v20_u4 data, live S1/S2 databases, worker corpora, and external-drive full inventories remain unresolved."
+}

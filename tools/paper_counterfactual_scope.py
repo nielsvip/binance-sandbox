@@ -73,6 +73,45 @@ def classify_path(path_name, metadata=None, venue=None):
             ],
         )
 
+    if upper.startswith("VEC_FWD_MISSING_FLAT"):
+        return _result(
+            "operational_reconciliation",
+            None,
+            None,
+            [
+                "verified board-convergence/backstop-close path",
+                "ez_manage.py reconciliation branch near line 10070",
+                "tradier_manage.py reconciliation branch near line 15506",
+                "operational reconciliation, not a strategy family",
+            ],
+        )
+
+    if re.match(r"^WT_15M_BOUNCE_OPEN_[LS](?:_|$)", upper):
+        return _result(
+            "vector_backtest",
+            "WT_15M_BOUNCE_OPEN_ENABLED",
+            "15m",
+            [
+                "verified vector entry path: v12_quick_engine.compute_entry_signals",
+                "shared live twin: vec_decisions/twin_entry_ports_b.py",
+            ],
+        )
+
+    if upper.startswith("QUICK_AUGMENTED_DC_BREAK_REDUCE_TO_MIN"):
+        return _result(
+            "vector_backtest",
+            "AUGMENTED_DC_BREAK_ENABLED",
+            "15m",
+            [
+                "verified live branch: ez_positions_quick.py augmented DC break reduce",
+                "vector twin: vec_decisions/live_exit_chain.py steps 9 and prepare path",
+            ],
+            optional_native_variant={
+                "timeframe": "3m",
+                "note": "native channel variant is optional and separate from the 15m vector base",
+            },
+        )
+
     # Prefer caller-supplied metadata. Registry lookup is an optional fallback;
     # registry misses are not treated as proof of a non-vector path.
     tf = _metadata_tf(meta)

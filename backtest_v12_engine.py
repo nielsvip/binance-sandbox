@@ -4467,12 +4467,27 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     # (~line 1551 below) will then merge — it only creates a shell when the pk
     # is not already present, so seeded positions survive.
     _seed_file = os.environ.get("V8_SEED_POSITIONS_FILE", "").strip()
+    _historical_seed_mode = os.environ.get("V8_HISTORICAL_SEED_MODE", "0") == "1"
+    if _historical_seed_mode and (not _seed_file or not Path(_seed_file).is_file()):
+        raise RuntimeError("V8_HISTORICAL_SEED_MODE requires an existing V8_SEED_POSITIONS_FILE")
     if _seed_file and Path(_seed_file).exists():
         try:
             with open(_seed_file) as _sf:
                 _seed = json.load(_sf)
-            _seed_account = _seed.get("account")
-            if _seed_account and _seed_account != account_key:
+            if _historical_seed_mode:
+                from tools.historical_seed_state import position_mark_at_cutoff as _hist_position_mark, validate_historical_seed as _validate_historical_seed
+                _hist_bar_seconds = float(os.environ.get("V12_COMPLETED_BAR_SECONDS", "0") or 0)
+                if _hist_bar_seconds != 900.0:
+                    raise ValueError("historical seed mode requires V12_COMPLETED_BAR_SECONDS=900")
+                _hist_cutoffs = [float(getattr(_store, "decision_start_ts")) for _store in stores.values() if getattr(_store, "decision_start_ts", None) is not None]
+                if not _hist_cutoffs or any(abs(_cutoff - _hist_cutoffs[0]) > 1e-6 for _cutoff in _hist_cutoffs[1:]):
+                    raise ValueError("historical seed stores must share one exact decision_start_ts cutoff")
+                _hist_cutoff = _hist_cutoffs[0]
+                _hist_meta = _validate_historical_seed(_seed, account_key, _hist_cutoff, _hist_bar_seconds)
+                v8_logger.info(f"[V8_HISTORICAL_SEED] account={_hist_meta['account']} bar_ts={_hist_meta['bar_ts']:.3f} decision_ts={_hist_meta['decision_ts']:.3f} source={_hist_meta['source']}")
+            else:
+                _seed_account = _seed.get("account")
+            if not _historical_seed_mode and _seed_account and _seed_account != account_key:
                 v8_logger.warning(f"[V8_SEED] snapshot account={_seed_account} != run account={account_key} — skipping seed")
             else:
                 _n_pos = 0
@@ -4493,6 +4508,8 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     try:
                         _pos = ez_manage.Position.from_dict(_pdict)
                     except Exception as _e:
+                        if _historical_seed_mode:
+                            raise ValueError(f"historical seed failed to reconstruct {_pk}: {_e}") from _e
                         v8_logger.warning(f"[V8_SEED] failed to reconstruct {_pk}: {_e}")
                         continue
                     try:
@@ -4503,8 +4520,21 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     # position's symbol. Live `gain` was current-time; backtest must align
                     # to the bar the sim opens on.
                     _sym = getattr(_pos, "symbol", "") or _pk.split(":", 1)[-1].rsplit("_", 1)[0]
-                    _store = stores.get(_sym)
-                    if _store is not None and getattr(_pos, "entry_price", 0):
+                    _store = stores.get(_sym) or stores.get(str(_sym).upper())
+                    if _historical_seed_mode:
+                        if _store is not None:
+                            _mark_state = _hist_position_mark(_pdict, _store.timestamps, _store.price, _hist_cutoff)
+                            object.__setattr__(_pos, "gain", _mark_state["gain"])
+                            object.__setattr__(_pos, "mark_price", _mark_state["mark_price"])
+                        else:
+                            try:
+                                _frozen_mark = float(_pdict.get("mark_price", 0) or 0)
+                                _frozen_gain = float(_pdict.get("gain"))
+                            except (TypeError, ValueError) as _mark_error:
+                                raise ValueError(f"historical seed position {_pk} has no frozen cutoff mark for absent symbol {_sym}") from _mark_error
+                            if not np.isfinite(_frozen_mark) or _frozen_mark <= 0 or not np.isfinite(_frozen_gain):
+                                raise ValueError(f"historical seed position {_pk} has invalid frozen cutoff mark for absent symbol {_sym}")
+                    elif _store is not None and getattr(_pos, "entry_price", 0):
                         try:
                             _p0 = float(_store.price(0))
                             if _p0 > 0:
@@ -4526,12 +4556,13 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     # "never augmented during this sim" — the gates fall through to
                     # default-permissive on first attempt, then start tracking from
                     # the first sim-time fill onwards.
-                    for _ts_attr in ("last_augmentation_time", "last_reduction_time",
-                                       "opened_at", "mark_price_last_updated", "last_updated"):
-                        try:
-                            object.__setattr__(_pos, _ts_attr, _sim_start_dt)
-                        except Exception:
-                            pass
+                    if not _historical_seed_mode:
+                        for _ts_attr in ("last_augmentation_time", "last_reduction_time",
+                                           "opened_at", "mark_price_last_updated", "last_updated"):
+                            try:
+                                object.__setattr__(_pos, _ts_attr, _sim_start_dt)
+                            except Exception:
+                                pass
                     trade_manager.positions[_pk] = _pos
                     trade_manager.positions_by_account.setdefault(account_key, {})[_pk] = _pos
                     if trade_manager.positions_service:
@@ -4544,8 +4575,12 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 tracker_manager.exit_candidates = dict(_ec)
                 _tk_list = _seed.get("tradeable_keys") or []
                 tracker_manager.tradeable_position_keys[account_key] = set(_tk_list)
+                if not _historical_seed_mode:
+                    v8_logger.info("[V8_SEED_MODE] mode=legacy_sim_anchor timestamps_and_gain_recomputed_at_start")
                 v8_logger.info(f"[V8_SEED] loaded {_n_pos} positions, {len(_hedges)} hedges, {len(_ec)} exit_candidates, {len(_tk_list)} tradeable_keys from {_seed_file}")
         except Exception as _e:
+            if _historical_seed_mode:
+                raise RuntimeError(f"historical replay seed rejected: {_e}") from _e
             v8_logger.error(f"[V8_SEED] failed to load {_seed_file}: {_e}")
     else:
         if _seed_file:

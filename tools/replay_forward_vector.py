@@ -9,8 +9,10 @@ source files are immutable inputs and are never written by this driver.
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import hashlib
 import json
+import multiprocessing
 import os
 import shutil
 import sys
@@ -287,10 +289,68 @@ def _restore_state_context(forward_state, evaluate_v12, pilot_v12, quick_engine,
     npz_cutoffs.last_closed_bar = original["last_closed_bar"]
 
 
+def _parallel_state_chunk(task):
+    """Evaluate independent causal prefixes in one isolated process context."""
+    (npz_path, symside, indexes, runtime_code, canonical_npz_path,
+     active_set, provenance_root) = task
+    with np.load(npz_path, allow_pickle=True) as archive:
+        arrays = {key: archive[key] for key in archive.files}
+    row_count = len(arrays["timestamps"])
+    old_sys_path = list(sys.path)
+    if str(runtime_code) in sys.path:
+        sys.path.remove(str(runtime_code))
+    sys.path.insert(0, str(runtime_code))
+    os.environ["BASE_PATH"] = str(runtime_code)
+    os.environ["V12_BASE_PATH"] = str(runtime_code)
+    os.environ["V12_NPZ_DIR"] = str(Path(canonical_npz_path).parent)
+    os.environ["V12_RUN_ONE_SET_PRECEDENCE"] = "1"
+    os.environ["V12_SIM_ALLOW_LIVE_MARKET_FILE"] = "0"
+    os.environ.pop("V12_ALLOW_STALE_NPZ", None)
+    import tools.v15_forward_state as forward_state
+    import tools.opt.evaluate_v12 as evaluate_v12
+    import tools.opt.v12_pilot as pilot_v12
+    import tools.npz_cutoffs as npz_cutoffs
+    import v12_quick_engine as quick_engine
+    real_time_module = time
+    original = _install_state_context(
+        forward_state, evaluate_v12, pilot_v12, quick_engine, npz_cutoffs,
+        canonical_npz_path, runtime_code, active_set, provenance_root,
+    )
+    results = []
+    try:
+        for idx in indexes:
+            bar_ts = int(arrays["timestamps"][idx])
+            decision_ts = bar_ts + 900
+            original["npz_holder"]["npz"] = row_prefix(arrays, int(idx), row_count)
+            original["npz_holder"]["decision_ts"] = decision_ts
+            forward_state.time = _ReplayClock(decision_ts, real_time_module)
+            try:
+                result = forward_state.state_for(symside, window_days=30)
+                if int(result.get("npz_tail") or 0) not in (0, bar_ts):
+                    raise AssertionError(f"state_for consumed tail {result.get('npz_tail')} beyond selected bar {bar_ts}")
+            except Exception as exc:
+                result = {
+                    "ts": time.strftime("%FT%TZ", time.gmtime()),
+                    "sym_side": symside,
+                    "ok": False,
+                    "reason": f"state_for exception {type(exc).__name__}: {str(exc)[:240]}",
+                    "npz_tail": bar_ts,
+                    "execution_error": True,
+                }
+            results.append((int(idx), result))
+    finally:
+        _restore_state_context(
+            forward_state, evaluate_v12, pilot_v12, quick_engine,
+            npz_cutoffs, original,
+        )
+        sys.path[:] = old_sys_path
+    return results
+
+
 def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
            end_ts: int, output_path: Path, code_root: Path, code_manifest: Path | None = None,
            limit: int | None = None, planner_account: str | None = None,
-           exchange_info_path: Path | None = None):
+           exchange_info_path: Path | None = None, state_workers: int = 1):
     active_set = json.loads(active_path.read_text())
     if str(active_set.get("sym_side", "")).upper() != symside.upper():
         raise ValueError(f"active set is for {active_set.get('sym_side')}, requested {symside}")
@@ -311,6 +371,7 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
         raise ValueError(f"requested interval expected {expected_rows} rows, found {len(selected)}")
     if limit is not None:
         selected = selected[: max(0, int(limit))]
+    state_workers = max(1, min(int(state_workers), len(selected) or 1))
 
     source_hashes = _source_hashes(code_root)
     manifest_hash = _sha256(code_manifest) if code_manifest and code_manifest.is_file() else None
@@ -409,12 +470,16 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
                 "planner_sizing_source": sizing_source if planner_account else None,
                 "code_root": str(code_root),
                 "runtime_code_root": str(runtime_code),
+                "driver_script": str(Path(__file__).resolve()),
+                "driver_script_sha256": _sha256(Path(__file__).resolve()),
                 "code_manifest": str(code_manifest) if code_manifest else None,
                 "code_manifest_sha256": manifest_hash,
                 "source_hashes": source_hashes,
                 "interval_start_exclusive": _iso(start_ts),
                 "interval_end_inclusive": _iso(end_ts),
                 "bar_count": len(selected),
+                "state_workers": state_workers,
+                "state_worker_semantics": "independent causal state_for prefixes; output sorted by bar; planner and simulated fills remain serial" if state_workers > 1 else "serial causal state_for prefixes",
                 "npz_row_aligned_array_count": len(row_aligned_keys),
                 "npz_row_aligned_keys_sha256": _canonical_sha256(row_aligned_keys),
                 "npz_nonrow_array_shapes": nonrow_shapes,
@@ -463,6 +528,22 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
             if cutoff_state.get("ok") is not True:
                 _why = str(cutoff_state.get("reason") or "cutoff_state_failure")
                 invalid_counts[_why] = invalid_counts.get(_why, 0) + 1
+            parallel_results = None
+            if state_workers > 1:
+                chunks = [
+                    (npz_path, symside, selected[worker_index::state_workers].tolist(),
+                     runtime_code, canonical_npz_path, active_set,
+                     provenance_root / f"state_worker_{worker_index:02d}")
+                    for worker_index in range(state_workers)
+                ]
+                with concurrent.futures.ProcessPoolExecutor(
+                    max_workers=state_workers,
+                    mp_context=multiprocessing.get_context("spawn"),
+                ) as pool:
+                    shard_results = list(pool.map(_parallel_state_chunk, chunks))
+                parallel_results = {
+                    idx: result for shard in shard_results for idx, result in shard
+                }
             for row_number, idx in enumerate(selected, 1):
                 bar_ts = int(timestamps[idx])
                 decision_ts = bar_ts + 900
@@ -473,8 +554,11 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
                 original["npz_holder"]["decision_ts"] = decision_ts
                 if int(prefix["timestamps"][-1]) != bar_ts:
                     raise AssertionError("causal prefix ends after or before its selected signal bar")
-                forward_state.time = _ReplayClock(decision_ts, real_time_module)
-                result = forward_state.state_for(symside, window_days=30)
+                if parallel_results is None:
+                    forward_state.time = _ReplayClock(decision_ts, real_time_module)
+                    result = forward_state.state_for(symside, window_days=30)
+                else:
+                    result = parallel_results[int(idx)]
                 if int(result.get("npz_tail") or 0) not in (0, bar_ts):
                     raise AssertionError(f"state_for consumed tail {result.get('npz_tail')} beyond selected bar {bar_ts}")
                 state_rows += 1
@@ -625,11 +709,12 @@ def main(argv=None):
     parser.add_argument("--limit", type=int, help="process only the first N selected bars (proof mode)")
     parser.add_argument("--planner-account", help="also replay the actual vector_direct_trader plan_account for this frozen admitted account")
     parser.add_argument("--exchange-info-json", type=Path, help="frozen Binance exchange-info cache required by planner sizing")
+    parser.add_argument("--state-workers", type=int, default=1, help="parallel independent state_for evaluations; planner remains ordered in the parent")
     args = parser.parse_args(argv)
     print(json.dumps(replay(
         args.npz, args.active_set, args.sym_side, args.start_ts, args.end_ts,
         args.out, args.code_root.resolve(), args.code_manifest, args.limit,
-        args.planner_account, args.exchange_info_json,
+        args.planner_account, args.exchange_info_json, args.state_workers,
     ), sort_keys=True))
 
 
