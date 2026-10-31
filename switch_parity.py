@@ -142,7 +142,7 @@ def _load_switch_types(root):
     then fall back to the one shipped beside this module. Still fail-closed when neither imports, which is
     what §96 actually requires.
     """
-    import importlib
+    import importlib.util
 
     for cand in (Path(root) / "tools" / "switch_types.py", Path(__file__).resolve().parent / "tools" / "switch_types.py"):
         if not cand.is_file():
@@ -612,6 +612,21 @@ def register_workbook_result(
     }
     full = dict(snap)
     full.update(coerced)
+    expected_live_config_sha256 = None
+    current_full_for_cas = {}
+    if not dry_run:
+        try:
+            import per_sym_store as _cas_pss
+            from tools.v15_accepted_provenance import config_sha256 as _config_sha256_for_cas
+            current_full_for_cas = _cas_pss.get_sqlite_full_config(sym_side) or {}
+            served_full_config = _cas_pss.get_full_config(sym_side) or {}
+            if _config_sha256_for_cas(served_full_config) != _config_sha256_for_cas(current_full_for_cas):
+                rep["reason"] = "SQLite active set and fallback-served set differ (refusing non-atomic compare-and-swap)"
+                return rep
+            expected_live_config_sha256 = _config_sha256_for_cas(current_full_for_cas)
+        except Exception as _cas_error:
+            rep["reason"] = f"current full-config compare-and-swap unavailable (refusing write): {type(_cas_error).__name__}: {str(_cas_error)[:100]}"
+            return rep
     if n_prom < 1:
         _accepted = None
         try:
@@ -619,7 +634,7 @@ def register_workbook_result(
             from tools.v15_accepted_provenance import protect_accepted_set as _protect_accepted_set
             _accepted_map = _accepted_pss.kv_get("catside_verified") or {}
             _accepted = _accepted_map.get(sym_side) if isinstance(_accepted_map, dict) else None
-            _current_full = _accepted_pss.get_full_config(sym_side) or {}
+            _current_full = current_full_for_cas
             _accepted_refusal = _protect_accepted_set(_accepted, _current_full, full, n_prom)
             if _accepted_refusal:
                 rep["reason"] = _accepted_refusal
@@ -677,6 +692,7 @@ def register_workbook_result(
             template_md5=tpl_md5,
             defaults_round=dround,
             json_path=book,
+            expected_full_config_sha256=expected_live_config_sha256,
         )
         rep["sqlite"] = True
         rep["book"] = book.name

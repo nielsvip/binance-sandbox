@@ -38,8 +38,10 @@ def read_jsonl(paths):
     for raw_path in paths:
         path = Path(raw_path).expanduser().resolve()
         before = sha256_file(path)
+        line_count = 0
         with path.open() as stream:
             for line_number, line in enumerate(stream, 1):
+                line_count = line_number
                 if not line.strip():
                     continue
                 value = json.loads(line)
@@ -48,7 +50,7 @@ def read_jsonl(paths):
                 records.append((value, str(path), line_number, sha256_bytes(canonical(value))))
         if sha256_file(path) != before:
             raise ValueError(f"source changed during read: {path}")
-        sources.append({"path": str(path), "sha256": before, "records": line_number if 'line_number' in locals() else 0})
+        sources.append({"path": str(path), "sha256": before, "records": line_count})
     return records, sources
 
 
@@ -81,11 +83,11 @@ def _context_key(record, audit):
         cell.get("tab"),
         cell.get("row"),
         cell.get("switch"),
-        canonical(cell.get("cand")),
+        canonical(cell.get("cand")).decode(),
         audit.get("engine_sha256"),
         audit.get("npz_sha256"),
         audit.get("input_cutoff_sha256"),
-        canonical(audit.get("window")),
+        canonical(audit.get("window")).decode(),
         audit.get("accepted_chain_sha256"),
     )
 
@@ -192,7 +194,7 @@ def _event_pair(cell_item, naked_item, context):
         "k": f"{cell['switch']}={cell['cand']}",
         "cb": None,
         "n": None,
-        "y": [[header, lift, 1, 0.0, metric_lifts, 1.0, cell_gain]],
+        "y": [[header, lift, 1, 0.0, *metric_lifts, 1.0, cell_gain]],
         "ya": [],
         "nu": 1,
         "ni": 0,
@@ -238,13 +240,18 @@ def convert(attempt_paths, naked_paths, proof_paths, context_path, out_dir, cuto
     naked_records, naked_sources = read_jsonl(naked_paths)
     verified_cells, verified_naked = [], []
     excluded = []
+    naked_sources_set = {item["path"] for item in naked_sources}
     for record, source, line, attempt_sha in cell_records + naked_records:
         digest = next(item["sha256"] for item in cell_sources + naked_sources if item["path"] == source)
         result, verified = _verify_record(record, source, line, digest, audits, ctx)
         if verified is None:
             excluded.append(result)
             continue
-        (verified_naked if _is_naked(verified) else verified_cells).append(verified)
+        if source in naked_sources_set or _is_naked(verified):
+            verified["class"] = "verified_same_chain_naked_measurement"
+            verified_naked.append(verified)
+        else:
+            verified_cells.append(verified)
     naked_by_key = defaultdict(list)
     for item in verified_naked:
         naked_by_key[_context_key(item["record"], item["audit"])].append(item)

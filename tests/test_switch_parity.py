@@ -70,6 +70,10 @@ def iso(tmp_path, monkeypatch):
 
     importlib.reload(cat_side_defaults)
     importlib.reload(per_sym_store)
+    per_sym_store.CRYPTO_JSON = tmp_path / "data" / "hourly_reconfig" / "per_sym_active_config.json"
+    per_sym_store.STOCKS_JSON = tmp_path / "data" / "hourly_reconfig" / "per_sym_active_config_stocks.json"
+    per_sym_store.TRB_JSON = tmp_path / "data" / "hourly_reconfig" / "trb" / "active_config.json"
+    per_sym_store.TRC_JSON = tmp_path / "data" / "hourly_reconfig" / "trc" / "active_config.json"
     yield tmp_path
     for k in ("SWITCH_PARITY_ROOT", "PER_SYM_STORE_DB", "CAT_SIDE_DEFAULTS_PATH"):
         os.environ.pop(k, None)
@@ -82,12 +86,23 @@ def _book(iso, name="per_sym_active_config.json"):
     return json.loads(p.read_text())
 
 
-def test_register_happy_path_crypto(iso):
+def test_register_happy_path_crypto(iso, monkeypatch):
+    import per_sym_store as pss
+    original_upsert = pss.upsert
+    seen_kwargs = {}
+
+    def record_upsert(*args, **kwargs):
+        seen_kwargs.update(kwargs)
+        return original_upsert(*args, **kwargs)
+
+    monkeypatch.setattr(pss, "upsert", record_upsert)
     rep = SP.register_workbook_result(
         "BTCUSDC_LONG", {"SW_BOOL": True, "SW_TF": "1h"}, dict(EVIDENCE)
     )
     assert rep["registered"] is True
     assert rep["tag"].startswith("v15_30D_")
+    from tools.v15_accepted_provenance import config_sha256
+    assert seen_kwargs["expected_full_config_sha256"] == config_sha256({})
     entry = _book(iso)["BTCUSDC_LONG"]
     assert entry["overrides"] == {"SW_BOOL": True, "SW_TF": "1h"}
     assert entry["full_config"]["SW_BOOL"] is True

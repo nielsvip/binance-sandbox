@@ -1,4 +1,4 @@
-from tools.v15_accepted_provenance import config_sha256, measurement_matches_current, protect_accepted_set
+from tools.v15_accepted_provenance import config_sha256, measurement_matches_candidate, measurement_matches_current, protect_accepted_set
 
 
 def test_h2h_accepted_live_set_is_preserved_when_no_switch_was_promoted():
@@ -20,6 +20,34 @@ def test_acceptance_guard_uses_hash_compare_and_swap():
     stale_record = {"accepted_set_sha256": config_sha256({"A": None}), "verdict": "KEEP_LIVE"}
     assert protect_accepted_set(stale_record, accepted, changed, 0) == ""
 
+
+
+
+
+def test_h2h_report_candidate_mode_selects_the_measured_candidate_source(monkeypatch):
+    import tools.v15_golive_headtohead as h2h
+
+    calls = []
+    monkeypatch.setattr(h2h, "_candidate_catside", lambda ss: (calls.append((ss, "catside")) or {"A": 1}, {"cat_side": "CRYPTO_LONG"}))
+    monkeypatch.setattr(h2h, "_candidate_set", lambda ss: (calls.append((ss, "published")) or {"A": 2}, {"history_id": 7}))
+    assert h2h._report_candidate_mode({"candidate_mode": "catside"}, {"sym_side": "XUSDC_LONG"}) == "catside"
+    assert h2h._candidate_for_mode("XUSDC_LONG", "catside")[0] == {"A": 1}
+    assert h2h._report_candidate_mode({}, {"candidate_meta": {"source": "cat_side_defaults"}}) == "catside"
+    assert h2h._candidate_for_mode("XUSDC_LONG", "published")[0] == {"A": 2}
+    assert calls == [("XUSDC_LONG", "catside"), ("XUSDC_LONG", "published")]
+
+def test_h2h_candidate_cas_supports_published_and_catside_modes():
+    live = {"BASE": 1}
+    candidate = {"BASE": 1, "SWITCH": True}
+    published = {"history_id": 42, "published_at": "2026-10-31T04:22:30Z", "winning_tag": "pilot", "overrides_sha256": config_sha256({"SWITCH": True})}
+    decision = {"live_set_sha256": config_sha256(live), "candidate_set_sha256": config_sha256(candidate), "candidate_meta": dict(published)}
+    assert measurement_matches_candidate(decision, live, published, candidate, "published")[0]
+    changed_row = {**published, "history_id": 43}
+    assert not measurement_matches_candidate(decision, live, changed_row, candidate, "published")[0]
+    catside = {"source": "cat_side_defaults", "cat_side": "CRYPTO_LONG"}
+    decision["candidate_meta"] = dict(catside)
+    assert measurement_matches_candidate(decision, live, catside, candidate, "catside")[0]
+    assert not measurement_matches_candidate(decision, live, {**catside, "cat_side": "CRYPTO_SHORT"}, candidate, "catside")[0]
 
 def test_measurement_cas_requires_exact_current_live_candidate_and_publish_row():
     live = {"A": True}

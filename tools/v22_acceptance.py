@@ -73,6 +73,30 @@ def _read_snapshot(payload):
     return set(sides), snapshot["sha256"]
 
 
+def _read_gate_receipt(reference):
+    if not isinstance(reference, dict) or set(reference) != {"path", "sha256"}:
+        raise ValueError("s2_gate_receipt must give the raw decision receipt path and SHA256")
+    path = Path(reference["path"])
+    _sha256(reference["sha256"], "s2_gate_receipt.sha256")
+    raw = path.read_bytes()
+    if hashlib.sha256(raw).hexdigest() != reference["sha256"]:
+        raise ValueError("raw S2 gate receipt does not match its declared SHA256")
+    gate = json.loads(raw)
+    required = {
+        "schema",
+        "status",
+        "baseline_version",
+        "candidate_version",
+        "decision_id",
+        "input_identity_sha256",
+        "baseline_model_sha256_by_side",
+        "candidate_model_sha256_by_side",
+    }
+    if not isinstance(gate, dict) or set(gate) != required or gate.get("schema") != "v22_nn_gate_receipt/1":
+        raise ValueError("raw S2 gate receipt is not a complete v22_nn_gate_receipt/1")
+    return gate
+
+
 def comparison_identity_sha256(common_identity, sides, score_kind):
     value = {"common_identity": common_identity, "sides": sorted(sides), "score_kind": score_kind}
     encoded = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
@@ -92,15 +116,12 @@ def evaluate(payload):
     common_identity = _identity(payload.get("common_identity"), "common_identity")
     if common_identity["snapshot_manifest_sha256"] != manifest_sha:
         raise ValueError("common identity does not bind the pinned snapshot manifest")
-    gate = payload.get("s2_gate_decision")
-    if not isinstance(gate, dict):
-        raise ValueError("existing S2 gate decision evidence is required")
+    gate = _read_gate_receipt(payload.get("s2_gate_receipt"))
     if (gate.get("baseline_version"), gate.get("candidate_version")) not in {("v20", "v21"), ("v21", "v22")}:
         raise ValueError("S2 gate must compare the immediately prior NN version: v20→v21 or v21→v22")
     gate_pass = gate.get("status") == "PASS"
     if not isinstance(gate.get("decision_id"), str) or not gate["decision_id"].strip():
         raise ValueError("S2 gate decision_id is required")
-    _sha256(gate.get("evidence_sha256"), "s2_gate_decision.evidence_sha256")
     identity_sha = comparison_identity_sha256(common_identity, sides, payload["score_kind"])
     if gate.get("input_identity_sha256") != identity_sha:
         raise ValueError("S2 gate input identity does not match this comparison")
@@ -194,6 +215,8 @@ def evaluate(payload):
         "snapshot_id": EXPECTED_SNAPSHOT,
         "coverage": {"expected": len(sides), "measured": len(rows), "complete": True},
         "score_kind": payload["score_kind"],
+        "evidence_self_reported": False,
+        "s2_gate_receipt_sha256_verified": True,
         "aggregate_baseline_oos_gain_pct": baseline_sum,
         "aggregate_candidate_oos_gain_pct": candidate_sum,
         "aggregate_oos_quality_change_pct": quality_change,

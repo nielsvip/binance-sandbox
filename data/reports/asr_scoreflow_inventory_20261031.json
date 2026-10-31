@@ -1,0 +1,8476 @@
+{
+  "coverage_status": "aggregate not implemented; inventory only; account/tracker/wall-clock dependencies and hard early-return semantics need explicit treatment",
+  "existing_vector_related_modules": [
+    "vec_decisions/quick_missing_entry_score.py (partial, no v12 caller found)",
+    "vec_paths/live_entry_engine.py (separate LIVE_ENTRY_ENGINE score, not AdvancedSignalRater aggregate)",
+    "vec_paths/stoch_kx_scorer.py (named scorer component)",
+    "vec_paths/rsi_mfi_scorer.py (named scorer component)",
+    "vec_paths/dc_momentum_bota_scorer.py (named scorer component)",
+    "vec_paths/exit_tight_breakout_scorer.py (exit component)"
+  ],
+  "function": {
+    "all_score_mutations_including_initialization": 422,
+    "end_line": 9054,
+    "ifs": 864,
+    "name": "AdvancedSignalRater.rate",
+    "returns": 105,
+    "score_mutations_after_entry_scoring_begins": 421,
+    "start_line": 3616
+  },
+  "literal_config_getattr_names": [
+    "ADX_RANGING_THRESHOLD",
+    "ADX_REGIME_FILTER_ENABLED",
+    "ADX_TF",
+    "BASIS_CONDITION",
+    "BB_BREAKOUT_ENABLED",
+    "BB_BREAKOUT_SCORE",
+    "BB_BREAKOUT_TF",
+    "BB_RSI_STOCH_SCALP_ENABLED",
+    "BB_RSI_STOCH_SCALP_SCORE",
+    "BEAR_MARKET_MODE",
+    "BOUNCE_REENTRY_ENABLED",
+    "BOUNCE_REENTRY_K_RESET_LONG",
+    "BOUNCE_REENTRY_K_RESET_SHORT",
+    "DC_BREAKOUT_ENTRY_ENABLED",
+    "DC_BREAKOUT_SCORE",
+    "DC_BREAKOUT_TF",
+    "DC_BREAKOUT_TF_EXPANDED",
+    "DC_MOMENT_ENABLED",
+    "DC_MOMENT_OPPOSITE_PENALTY",
+    "DC_MOMENT_STRONG_BONUS",
+    "DC_MOMENT_STRONG_THRESHOLD",
+    "DELTA_ENGINE_ENABLED",
+    "DELTA_ENTRY_SCORE_BONUS",
+    "DELTA_ENTRY_SCORE_PENALTY",
+    "DELTA_EXIT_SCORE_BONUS",
+    "DELTA_EXIT_SPEED_DECAY",
+    "DELTA_HTF_GATE",
+    "DELTA_MIN_TF_FOR_ACTION",
+    "DELTA_SCORE_WEIGHT",
+    "EMA200_STOCHRSI_BODY_MULT",
+    "EMA200_STOCHRSI_ENABLED",
+    "EMA200_STOCHRSI_K_LONG",
+    "EMA200_STOCHRSI_K_SHORT",
+    "EMA200_STOCHRSI_SCORE",
+    "EMA200_STOCHRSI_TF",
+    "EMA_PULLBACK_ENABLED",
+    "EMA_PULLBACK_SCORE_BONUS",
+    "EMA_PULLBACK_TF",
+    "ENTRY_ATR_PCT_MIN",
+    "ENTRY_VOL_MIN_RATIO",
+    "FORMATION_EXIT_ENABLED",
+    "FORMATION_EXIT_MIN_GAIN_PCT",
+    "HA_WICK_QUALITY_ENABLED",
+    "HA_WICK_QUALITY_SCORE",
+    "HA_WICK_QUALITY_TF",
+    "HLR_BYPASS_MIN_TF_WEIGHT",
+    "HLR_OFF_SMA_PTS_FRAC",
+    "HLR_OFF_SMA_SZ_FRAC",
+    "HLR_PTS_15M",
+    "HLR_PTS_1H",
+    "HLR_PTS_3M",
+    "HLR_PTS_4H",
+    "HLR_PTS_D",
+    "HLR_PTS_W",
+    "HLR_RALLY_ENABLED",
+    "HLR_REENTRY_MULT_1H",
+    "HLR_REENTRY_MULT_4H",
+    "HLR_REENTRY_MULT_D",
+    "HLR_REENTRY_MULT_W",
+    "HLR_SMA_BAND_PCT",
+    "HLR_SZ_15M",
+    "HLR_SZ_1H",
+    "HLR_SZ_3M",
+    "HLR_SZ_4H",
+    "HLR_SZ_D",
+    "HLR_SZ_MAX",
+    "HLR_SZ_W",
+    "HLR_TOP_EXIT_ENABLED",
+    "HLR_TOP_MIN_GAIN_PCT",
+    "HLR_TOP_MIN_TFS",
+    "HLR_TOP_VEL_1H_THRESH",
+    "HLR_TOP_VEL_4H_THRESH",
+    "HLR_TOP_VEL_D_THRESH",
+    "HTF_STRICT",
+    "K3M_CAP",
+    "K3M_CAP_BREAKOUT_BYPASS",
+    "K_ZONE_ENTRY_BONUS",
+    "K_ZONE_ENTRY_BONUS_TRADIER",
+    "K_ZONE_ENTRY_ENABLED",
+    "K_ZONE_ENTRY_ENABLED_TRADIER",
+    "K_ZONE_LONG_THRESHOLD",
+    "K_ZONE_LONG_THRESHOLD_TRADIER",
+    "K_ZONE_SHORT_THRESHOLD",
+    "K_ZONE_SHORT_THRESHOLD_TRADIER",
+    "LONG_STOCH_CHASE_BLOCK",
+    "LOSS_EXIT_REQUIRES_HEDGE",
+    "LS_RATIO_MAX",
+    "LS_RATIO_MIN",
+    "MACD_EXIT_ENABLED",
+    "MACD_EXIT_MIN_GAIN",
+    "MACD_EXIT_TF",
+    "MACD_ZERO_CROSS_ENABLED",
+    "MACD_ZERO_CROSS_SCORE",
+    "MACD_ZERO_CROSS_TF",
+    "MANDATORY_REENTRY_ALLOW_WT0_STRONG_CROSS",
+    "MANDATORY_REENTRY_K_HIGH_BLOCK",
+    "MANDATORY_REENTRY_K_LOW_BLOCK",
+    "MANDATORY_REENTRY_REQUIRE_K_NOT_EXTREME",
+    "MARKET_QUALITY_SCORE_ENABLED",
+    "MI_DIV_EXIT_ENABLED",
+    "MI_ENTRY_ENABLED",
+    "MI_ENTRY_EXHAUST_BONUS",
+    "MI_ENTRY_STRUCT_BONUS",
+    "MI_EXHAUST_EXIT_ENABLED",
+    "MI_EXIT_ENABLED",
+    "MI_MIN_GAIN_EXIT",
+    "MI_STRUCT_EXIT_ENABLED",
+    "MI_TF_AGREE_MIN",
+    "MI_VELOCITY_EXIT_ENABLED",
+    "MI_WAVE_EXIT_ENABLED",
+    "MOMENTUM_FADE_BODY_ATR_MIN",
+    "MOMENTUM_FADE_BODY_ATR_MIN_TRADIER",
+    "MOMENTUM_FADE_ENABLED",
+    "MOMENTUM_FADE_ENABLED_TRADIER",
+    "MOMENTUM_FADE_K_ZONE",
+    "MOMENTUM_FADE_K_ZONE_TRADIER",
+    "MOMENTUM_FADE_SCORE_BONUS",
+    "MOMENTUM_FADE_SCORE_BONUS_TRADIER",
+    "MOMENTUM_FADE_VOL_MIN",
+    "MOMENTUM_FADE_VOL_MIN_TRADIER",
+    "MOVER_SCORE_BONUS",
+    "MTS_BOTTOM_BONUS_THRESHOLD",
+    "MTS_BOTTOM_MIN",
+    "MTS_BOTTOM_MIN_SHORT",
+    "MTS_BOTTOM_MIN_TRADIER",
+    "MTS_BOTTOM_STRONG_THRESHOLD",
+    "MTS_ENTRY_QUALITY_BONUS",
+    "MTS_ENTRY_QUALITY_MIN",
+    "MTS_ENTRY_QUALITY_MIN_SHORT",
+    "MTS_ENTRY_QUALITY_MIN_TRADIER",
+    "MTS_ENTRY_QUALITY_STRONG",
+    "MTS_GATE_ENABLED",
+    "MTS_GATE_ENABLED_TRADIER",
+    "NOLOSS_MIN_PROFIT_PCT",
+    "OVERBOUGHT_SCORE_GUT_BREAKOUT_BYPASS",
+    "PARABOLIC_BB_PCT_B_4H_MAX",
+    "PARABOLIC_BB_PCT_B_4H_MIN",
+    "PARABOLIC_PROTECTION_ENABLED",
+    "PARABOLIC_RSI_1H_MAX",
+    "PARABOLIC_RSI_1H_MIN",
+    "PARABOLIC_RSI_4H_MAX",
+    "PARABOLIC_RSI_4H_MIN",
+    "RANK_CONVICTION_ENABLED",
+    "REENTRY_TIER2_MIN_MINUTES",
+    "REENTRY_TIER2_PRICE_PCT",
+    "REGIME_DETECTION_ENABLED",
+    "RP_OPPOSITE_PENALTY",
+    "RP_STRONG_BONUS",
+    "RP_STRONG_THRESHOLD",
+    "RP_WEAK_PENALTY",
+    "RP_WEAK_THRESHOLD",
+    "RSI2_MEAN_REVERSION_ENABLED",
+    "RSI2_SCORE_BONUS",
+    "RSI2_THRESHOLD_LONG",
+    "RSI2_THRESHOLD_SHORT",
+    "RSI_MACD_EMA_ENABLED",
+    "RSI_MACD_EMA_RSI_LONG",
+    "RSI_MACD_EMA_RSI_SHORT",
+    "RSI_MACD_EMA_SCORE",
+    "RSI_MACD_EMA_TF",
+    "R_G10_HTF_DIV_GATE_ENABLED",
+    "R_G10_HTF_DIV_TFS",
+    "R_S1_WT_COMPOSITE_DELTA_THR",
+    "R_S1_WT_COMPOSITE_DELTA_USE_ENABLED",
+    "R_S2_WT_ADAPTIVE_OS_ENABLED",
+    "R_S2_WT_PCT_OB_SHORT",
+    "R_S2_WT_PCT_OS_LONG",
+    "R_S3_DIV_STACK_ENABLED",
+    "R_S3_HIDDEN_BONUS",
+    "R_S3_HTF_WEIGHT_ENABLED",
+    "R_S3_MAIN_PENALTY",
+    "R_S3_TF_WEIGHT_15M",
+    "R_S3_TF_WEIGHT_1H",
+    "R_S3_TF_WEIGHT_3M",
+    "R_S3_TF_WEIGHT_4H",
+    "R_S3_TF_WEIGHT_D",
+    "R_S4_HA_STREAK_ENABLED",
+    "R_S4_HA_STREAK_TF",
+    "R_S4_HA_STREAK_WEIGHT",
+    "R_S5_SENT_VEL_BONUS",
+    "R_S5_SENT_VEL_ENABLED",
+    "R_S5_SENT_VEL_PCT_THR",
+    "R_S6_WT_MSTATE_GATE_MODE",
+    "R_S7_HHLL_BONUS_PER_TF",
+    "R_S7_HHLL_MIN_INDICATORS",
+    "R_S7_HHLL_MIN_TFS_FOR_BONUS",
+    "R_S7_HHLL_STACK_ENABLED",
+    "R_S7_HHLL_TFS",
+    "SATOSHIT_ACCOUNTS",
+    "SATOSHIT_ENABLED",
+    "SCALP_ACCOUNTS",
+    "SENTIMENT_TOP_N",
+    "SENTIMENT_TOP_N_GATE_ENABLED",
+    "SHORT_ABOVE_EMA20_IS_PENALTY",
+    "SHORT_ABOVE_SMA20_BONUS",
+    "SHORT_RSI_MIN_1H",
+    "SIMPLE_TP_EXIT_ENABLED",
+    "SIMPLE_TP_PCT",
+    "STOCH_CROSS_ENTRY_ENABLED",
+    "TF_MICRO",
+    "TF_SCALP",
+    "TRIPLE_CONF_ENABLED",
+    "TRIPLE_CONF_RSI_LONG",
+    "TRIPLE_CONF_RSI_SHORT",
+    "TRIPLE_CONF_SCORE",
+    "TRIPLE_CONF_STOCH_LONG",
+    "TRIPLE_CONF_STOCH_SHORT",
+    "TRIPLE_CONF_TF",
+    "TR_ADX4H_BOYCOTT_SCORE",
+    "TR_ADX4H_GATE_ENABLED",
+    "TR_ADX4H_MAX",
+    "TR_BBWIDTH4H_BOYCOTT_SCORE",
+    "TR_BBWIDTH4H_GATE_ENABLED",
+    "TR_BBWIDTH4H_MAX",
+    "TR_CHOP4H_BONUS",
+    "TR_CHOP4H_GATE_ENABLED",
+    "TR_CHOP4H_MIN",
+    "TR_CHOP4H_PENALTY",
+    "TR_CHOP4H_TREND_MAX",
+    "TR_DCWIDTH4H_SHORT_BOYCOTT_SCORE",
+    "TR_DCWIDTH4H_SHORT_ENABLED",
+    "TR_DCWIDTH4H_SHORT_MAX",
+    "TR_MFI4H_LONG_BOYCOTT_SCORE",
+    "TR_MFI4H_LONG_ENABLED",
+    "TR_MFI4H_LONG_MIN",
+    "WT15M_AGAINST_PENALTY",
+    "WT_CHOP_GATE_ENABLED",
+    "WT_CHOP_MAX",
+    "WT_COMPOSITE_DELTA_GATE_ENABLED",
+    "WT_COMPOSITE_DELTA_LONG_MIN",
+    "WT_COMPOSITE_DELTA_SCORE_BONUS",
+    "WT_COMPOSITE_DELTA_SCORE_ENABLED",
+    "WT_COMPOSITE_DELTA_SCORE_THRESHOLD",
+    "WT_COMPOSITE_DELTA_SHORT_MAX",
+    "WT_COMPOSITE_ENTRY_BLOCK",
+    "WT_COMPOSITE_ENTRY_GOOD",
+    "WT_COMPOSITE_ENTRY_OK",
+    "WT_COMPOSITE_ENTRY_STRONG",
+    "WT_COMPOSITE_HTF_GATE",
+    "WT_COMPOSITE_SCORING_ENABLED",
+    "WT_COMPOSITE_SCORING_ENABLED_TRADIER",
+    "WT_DC_DC_TF",
+    "WT_DC_ENTRY_ENABLED",
+    "WT_DC_LONG_ENABLED",
+    "WT_DC_SHORT_ENABLED",
+    "WT_DC_STOCH_TF",
+    "WT_DC_TF_ENTRY",
+    "WT_DC_TF_HTF",
+    "WT_DC_TF_HTF2",
+    "WT_DIV_ENTRY_GATE_ENABLED",
+    "WT_EXHAUST_ENTRY_GATE_ENABLED",
+    "WT_EXIT_VEL_THRESHOLD",
+    "WT_MTF_VEL_GATE_ENABLED",
+    "WT_MTF_VEL_MIN",
+    "WT_PERCENTILE_ENTRY_GATE_ENABLED",
+    "WT_PERCENTILE_ENTRY_OB_D",
+    "WT_PERCENTILE_ENTRY_OS_D"
+  ],
+  "literal_indicator_metric_reads": {
+    "ind": [
+      "0dc_moment",
+      "0is_bottom_sentiment",
+      "0is_top_sentiment",
+      "0market_sentiment_local",
+      "0market_sentiment_score",
+      "0ranking_points",
+      "0ranking_points_global",
+      "0sentiment_classification",
+      "0sentiment_rank",
+      "0sentiment_velocity",
+      "adx_4h",
+      "bb_lower_4h",
+      "bb_pct_b_1h",
+      "bb_pct_b_4h",
+      "bb_upper_4h",
+      "choppiness_4h",
+      "d_15m",
+      "dc_basis_15m",
+      "dc_basis_1h",
+      "dc_basis_4h",
+      "dc_basis_D",
+      "dc_high4_1m",
+      "dc_high_1m",
+      "dc_high_4h",
+      "dc_low4_1m",
+      "dc_low_1m",
+      "dc_low_4h",
+      "k_15m",
+      "k_1h",
+      "k_4h_prev",
+      "lr_trend_15m",
+      "relative_volume_15m",
+      "relative_volume_1h",
+      "relative_volume_3m",
+      "rsi_1h",
+      "rsi_2_1h",
+      "rsi_4h",
+      "sma_200_1h",
+      "timestamp",
+      "timestamp_15m",
+      "velocity",
+      "wt1_4h",
+      "wt1_D",
+      "wt2_4h",
+      "wt2_D",
+      "wt_any_bear_div",
+      "wt_any_bull_div",
+      "wt_bear_alignment",
+      "wt_bear_cross_count",
+      "wt_bull_alignment",
+      "wt_bull_cross_count",
+      "wt_bullish_4h",
+      "wt_composite_bias",
+      "wt_composite_delta",
+      "wt_composite_long",
+      "wt_composite_short",
+      "wt_cross_15m",
+      "wt_cross_1h",
+      "wt_cross_rising_1h",
+      "wt_divergence_1h",
+      "wt_divergence_4h",
+      "wt_divergence_D",
+      "wt_extreme_1h",
+      "wt_hl_count",
+      "wt_lh_count",
+      "wt_momentum_state_15m",
+      "wt_momentum_state_1h",
+      "wt_momentum_state_3m",
+      "wt_momentum_state_4h",
+      "wt_momentum_state_D",
+      "wt_momentum_state_W",
+      "wt_overbought_tf_count",
+      "wt_oversold_tf_count",
+      "wt_peak_structure_1h",
+      "wt_peak_structure_4h",
+      "wt_peak_structure_D",
+      "wt_percentile_15m",
+      "wt_percentile_1h",
+      "wt_percentile_4h",
+      "wt_percentile_D",
+      "wt_score_15m",
+      "wt_score_1h",
+      "wt_strongest_bear_div_tf",
+      "wt_strongest_bull_div_tf",
+      "wt_trough_structure_1h",
+      "wt_trough_structure_4h",
+      "wt_trough_structure_D",
+      "wt_velocity_15m",
+      "wt_velocity_1h",
+      "wt_velocity_4h",
+      "wt_velocity_D",
+      "wt_velocity_W",
+      "wt_velocity_down_count",
+      "wt_velocity_up_count",
+      "wt_wave_phase_1h"
+    ],
+    "metrics": [
+      "0dc_moment",
+      "0ranking_points",
+      "0ranking_points_global",
+      "_tick_ts",
+      "k_1m",
+      "k_1m_prev",
+      "wt_bullish_4h",
+      "wt_velocity_4h"
+    ]
+  },
+  "score_updates": [
+    {
+      "expr": "8",
+      "guards": [
+        {
+          "line": 4696,
+          "test": "_wt_comp_enabled and (not is_exit)"
+        },
+        {
+          "line": 4701,
+          "test": "_wt_side_comp >= _wt_strong"
+        }
+      ],
+      "line": 4702,
+      "op": "+="
+    },
+    {
+      "expr": "5",
+      "guards": [
+        {
+          "line": 4696,
+          "test": "_wt_comp_enabled and (not is_exit)"
+        },
+        {
+          "line": 4701,
+          "test": "NOT (_wt_side_comp >= _wt_strong)"
+        },
+        {
+          "line": 4706,
+          "test": "_wt_side_comp >= _wt_good"
+        }
+      ],
+      "line": 4707,
+      "op": "+="
+    },
+    {
+      "expr": "2",
+      "guards": [
+        {
+          "line": 4696,
+          "test": "_wt_comp_enabled and (not is_exit)"
+        },
+        {
+          "line": 4701,
+          "test": "NOT (_wt_side_comp >= _wt_strong)"
+        },
+        {
+          "line": 4706,
+          "test": "NOT (_wt_side_comp >= _wt_good)"
+        },
+        {
+          "line": 4711,
+          "test": "_wt_side_comp >= _wt_ok"
+        }
+      ],
+      "line": 4712,
+      "op": "+="
+    },
+    {
+      "expr": "5",
+      "guards": [
+        {
+          "line": 4696,
+          "test": "_wt_comp_enabled and (not is_exit)"
+        },
+        {
+          "line": 4716,
+          "test": "is_long and _wt_os_count >= 2"
+        }
+      ],
+      "line": 4717,
+      "op": "+="
+    },
+    {
+      "expr": "5",
+      "guards": [
+        {
+          "line": 4696,
+          "test": "_wt_comp_enabled and (not is_exit)"
+        },
+        {
+          "line": 4716,
+          "test": "NOT (is_long and _wt_os_count >= 2)"
+        },
+        {
+          "line": 4719,
+          "test": "not is_long and _wt_ob_count >= 2"
+        }
+      ],
+      "line": 4720,
+      "op": "+="
+    },
+    {
+      "expr": "5",
+      "guards": [
+        {
+          "line": 4696,
+          "test": "_wt_comp_enabled and (not is_exit)"
+        },
+        {
+          "line": 4722,
+          "test": "is_long and _wt_hl_count >= 2"
+        }
+      ],
+      "line": 4723,
+      "op": "+="
+    },
+    {
+      "expr": "5",
+      "guards": [
+        {
+          "line": 4696,
+          "test": "_wt_comp_enabled and (not is_exit)"
+        },
+        {
+          "line": 4722,
+          "test": "NOT (is_long and _wt_hl_count >= 2)"
+        },
+        {
+          "line": 4725,
+          "test": "not is_long and _wt_lh_count >= 2"
+        }
+      ],
+      "line": 4726,
+      "op": "+="
+    },
+    {
+      "expr": "6",
+      "guards": [
+        {
+          "line": 4696,
+          "test": "_wt_comp_enabled and (not is_exit)"
+        },
+        {
+          "line": 4731,
+          "test": "bool(getattr(config, 'R_S1_WT_COMPOSITE_DELTA_USE_ENABLED', False))"
+        },
+        {
+          "line": 4734,
+          "test": "_r_s1_d is not None"
+        },
+        {
+          "line": 4735,
+          "test": "is_long and _r_s1_d > _r_s1_thr"
+        }
+      ],
+      "line": 4736,
+      "op": "+="
+    },
+    {
+      "expr": "6",
+      "guards": [
+        {
+          "line": 4696,
+          "test": "_wt_comp_enabled and (not is_exit)"
+        },
+        {
+          "line": 4731,
+          "test": "bool(getattr(config, 'R_S1_WT_COMPOSITE_DELTA_USE_ENABLED', False))"
+        },
+        {
+          "line": 4734,
+          "test": "_r_s1_d is not None"
+        },
+        {
+          "line": 4735,
+          "test": "NOT (is_long and _r_s1_d > _r_s1_thr)"
+        },
+        {
+          "line": 4740,
+          "test": "not is_long and _r_s1_d < -_r_s1_thr"
+        }
+      ],
+      "line": 4741,
+      "op": "+="
+    },
+    {
+      "expr": "7",
+      "guards": [
+        {
+          "line": 4696,
+          "test": "_wt_comp_enabled and (not is_exit)"
+        },
+        {
+          "line": 4747,
+          "test": "bool(getattr(config, 'R_S2_WT_ADAPTIVE_OS_ENABLED', False))"
+        },
+        {
+          "line": 4749,
+          "test": "_r_s2_pct >= 0"
+        },
+        {
+          "line": 4752,
+          "test": "is_long and _r_s2_pct < _r_s2_os"
+        }
+      ],
+      "line": 4753,
+      "op": "+="
+    },
+    {
+      "expr": "7",
+      "guards": [
+        {
+          "line": 4696,
+          "test": "_wt_comp_enabled and (not is_exit)"
+        },
+        {
+          "line": 4747,
+          "test": "bool(getattr(config, 'R_S2_WT_ADAPTIVE_OS_ENABLED', False))"
+        },
+        {
+          "line": 4749,
+          "test": "_r_s2_pct >= 0"
+        },
+        {
+          "line": 4752,
+          "test": "NOT (is_long and _r_s2_pct < _r_s2_os)"
+        },
+        {
+          "line": 4757,
+          "test": "not is_long and _r_s2_pct > _r_s2_ob"
+        }
+      ],
+      "line": 4758,
+      "op": "+="
+    },
+    {
+      "expr": "10",
+      "guards": [
+        {
+          "line": 4696,
+          "test": "_wt_comp_enabled and (not is_exit)"
+        },
+        {
+          "line": 4762,
+          "test": "ind.get('wt_any_bull_div') and is_long"
+        }
+      ],
+      "line": 4763,
+      "op": "+="
+    },
+    {
+      "expr": "10",
+      "guards": [
+        {
+          "line": 4696,
+          "test": "_wt_comp_enabled and (not is_exit)"
+        },
+        {
+          "line": 4762,
+          "test": "NOT (ind.get('wt_any_bull_div') and is_long)"
+        },
+        {
+          "line": 4767,
+          "test": "ind.get('wt_any_bear_div') and (not is_long)"
+        }
+      ],
+      "line": 4768,
+      "op": "+="
+    },
+    {
+      "expr": "3",
+      "guards": [
+        {
+          "line": 4696,
+          "test": "_wt_comp_enabled and (not is_exit)"
+        },
+        {
+          "line": 4772,
+          "test": "is_long and _wt_bull_cross_n >= 2"
+        }
+      ],
+      "line": 4773,
+      "op": "+="
+    },
+    {
+      "expr": "3",
+      "guards": [
+        {
+          "line": 4696,
+          "test": "_wt_comp_enabled and (not is_exit)"
+        },
+        {
+          "line": 4772,
+          "test": "NOT (is_long and _wt_bull_cross_n >= 2)"
+        },
+        {
+          "line": 4775,
+          "test": "not is_long and _wt_bear_cross_n >= 2"
+        }
+      ],
+      "line": 4776,
+      "op": "+="
+    },
+    {
+      "expr": "_dcm_bonus",
+      "guards": [
+        {
+          "line": 4781,
+          "test": "bool(getattr(config, 'DC_MOMENT_ENABLED', True)) and (not is_exit)"
+        },
+        {
+          "line": 4792,
+          "test": "is_long and _dcm > _dcm_strong"
+        }
+      ],
+      "line": 4793,
+      "op": "+="
+    },
+    {
+      "expr": "_dcm_bonus",
+      "guards": [
+        {
+          "line": 4781,
+          "test": "bool(getattr(config, 'DC_MOMENT_ENABLED', True)) and (not is_exit)"
+        },
+        {
+          "line": 4792,
+          "test": "NOT (is_long and _dcm > _dcm_strong)"
+        },
+        {
+          "line": 4795,
+          "test": "not is_long and _dcm < -_dcm_strong"
+        }
+      ],
+      "line": 4796,
+      "op": "+="
+    },
+    {
+      "expr": "_dcm_pen",
+      "guards": [
+        {
+          "line": 4781,
+          "test": "bool(getattr(config, 'DC_MOMENT_ENABLED', True)) and (not is_exit)"
+        },
+        {
+          "line": 4792,
+          "test": "NOT (is_long and _dcm > _dcm_strong)"
+        },
+        {
+          "line": 4795,
+          "test": "NOT (not is_long and _dcm < -_dcm_strong)"
+        },
+        {
+          "line": 4798,
+          "test": "is_long and _dcm < -_dcm_strong"
+        }
+      ],
+      "line": 4799,
+      "op": "+="
+    },
+    {
+      "expr": "_dcm_pen",
+      "guards": [
+        {
+          "line": 4781,
+          "test": "bool(getattr(config, 'DC_MOMENT_ENABLED', True)) and (not is_exit)"
+        },
+        {
+          "line": 4792,
+          "test": "NOT (is_long and _dcm > _dcm_strong)"
+        },
+        {
+          "line": 4795,
+          "test": "NOT (not is_long and _dcm < -_dcm_strong)"
+        },
+        {
+          "line": 4798,
+          "test": "NOT (is_long and _dcm < -_dcm_strong)"
+        },
+        {
+          "line": 4801,
+          "test": "not is_long and _dcm > _dcm_strong"
+        }
+      ],
+      "line": 4802,
+      "op": "+="
+    },
+    {
+      "expr": "_cd_bonus",
+      "guards": [
+        {
+          "line": 4805,
+          "test": "bool(getattr(config, 'WT_COMPOSITE_DELTA_SCORE_ENABLED', True)) and (not is_exit)"
+        },
+        {
+          "line": 4810,
+          "test": "_cd_s is not None"
+        },
+        {
+          "line": 4817,
+          "test": "is_long and _cd_s > _cd_thresh"
+        }
+      ],
+      "line": 4818,
+      "op": "+="
+    },
+    {
+      "expr": "_cd_bonus",
+      "guards": [
+        {
+          "line": 4805,
+          "test": "bool(getattr(config, 'WT_COMPOSITE_DELTA_SCORE_ENABLED', True)) and (not is_exit)"
+        },
+        {
+          "line": 4810,
+          "test": "_cd_s is not None"
+        },
+        {
+          "line": 4817,
+          "test": "NOT (is_long and _cd_s > _cd_thresh)"
+        },
+        {
+          "line": 4820,
+          "test": "not is_long and _cd_s < -_cd_thresh"
+        }
+      ],
+      "line": 4821,
+      "op": "+="
+    },
+    {
+      "expr": "_15m_pen",
+      "guards": [
+        {
+          "line": 4826,
+          "test": "not is_exit"
+        },
+        {
+          "line": 4845,
+          "test": "is_long and wt1_15m < _wt1_15m_prev_r and (not _3m_hh_bypass)"
+        }
+      ],
+      "line": 4846,
+      "op": "+="
+    },
+    {
+      "expr": "_15m_pen",
+      "guards": [
+        {
+          "line": 4826,
+          "test": "not is_exit"
+        },
+        {
+          "line": 4845,
+          "test": "NOT (is_long and wt1_15m < _wt1_15m_prev_r and (not _3m_hh_bypass))"
+        },
+        {
+          "line": 4850,
+          "test": "not is_long and wt1_15m > _wt1_15m_prev_r and (not _3m_ll_bypass)"
+        }
+      ],
+      "line": 4851,
+      "op": "+="
+    },
+    {
+      "expr": "_bonus",
+      "guards": [
+        {
+          "line": 4856,
+          "test": "bool(getattr(config, 'R_S3_DIV_STACK_ENABLED', False)) and (not is_exit)"
+        },
+        {
+          "line": 4894,
+          "test": "_hid_cnt >= 2"
+        }
+      ],
+      "line": 4898,
+      "op": "+="
+    },
+    {
+      "expr": "_pen",
+      "guards": [
+        {
+          "line": 4856,
+          "test": "bool(getattr(config, 'R_S3_DIV_STACK_ENABLED', False)) and (not is_exit)"
+        },
+        {
+          "line": 4902,
+          "test": "_main_against >= 1"
+        }
+      ],
+      "line": 4904,
+      "op": "+="
+    },
+    {
+      "expr": "_s7_bonus",
+      "guards": [
+        {
+          "line": 4911,
+          "test": "bool(getattr(config, 'R_S7_HHLL_STACK_ENABLED', False)) and (not is_exit)"
+        },
+        {
+          "line": 4957,
+          "test": "len(_s7_confirmed_tfs) >= _s7_min_tfs"
+        }
+      ],
+      "line": 4959,
+      "op": "+="
+    },
+    {
+      "expr": "_bonus",
+      "guards": [
+        {
+          "line": 4962,
+          "test": "bool(getattr(config, 'R_S4_HA_STREAK_ENABLED', False)) and (not is_exit)"
+        },
+        {
+          "line": 4970,
+          "test": "_ha_aligned and _ha_streak > 0"
+        }
+      ],
+      "line": 4972,
+      "op": "+="
+    },
+    {
+      "expr": "_sv_bonus",
+      "guards": [
+        {
+          "line": 4977,
+          "test": "bool(getattr(config, 'R_S5_SENT_VEL_ENABLED', False)) and (not is_exit)"
+        },
+        {
+          "line": 4984,
+          "test": "_sv_align and abs(float(_sv or 0.0)) >= _sv_thr"
+        }
+      ],
+      "line": 4985,
+      "op": "+="
+    },
+    {
+      "expr": "_regime_params.get('k_zone_bonus', 0) - 25",
+      "guards": [
+        {
+          "line": 4990,
+          "test": "getattr(config, 'REGIME_DETECTION_ENABLED', False) and (not is_exit)"
+        },
+        {
+          "line": 4991,
+          "test": "try"
+        }
+      ],
+      "line": 4998,
+      "op": "+="
+    },
+    {
+      "expr": "15",
+      "guards": [
+        {
+          "line": 5031,
+          "test": "not is_exit and tracker_manager and hasattr(tracker_manager, 'positions_service') and tracker_manager.positions_service"
+        },
+        {
+          "line": 5043,
+          "test": "is_long and _rs_ratio < _rs_min"
+        }
+      ],
+      "line": 5044,
+      "op": "+="
+    },
+    {
+      "expr": "15",
+      "guards": [
+        {
+          "line": 5031,
+          "test": "not is_exit and tracker_manager and hasattr(tracker_manager, 'positions_service') and tracker_manager.positions_service"
+        },
+        {
+          "line": 5043,
+          "test": "NOT (is_long and _rs_ratio < _rs_min)"
+        },
+        {
+          "line": 5046,
+          "test": "not is_long and _rs_ratio > _rs_max"
+        }
+      ],
+      "line": 5047,
+      "op": "+="
+    },
+    {
+      "expr": "10",
+      "guards": [
+        {
+          "line": 5031,
+          "test": "not is_exit and tracker_manager and hasattr(tracker_manager, 'positions_service') and tracker_manager.positions_service"
+        },
+        {
+          "line": 5043,
+          "test": "NOT (is_long and _rs_ratio < _rs_min)"
+        },
+        {
+          "line": 5046,
+          "test": "NOT (not is_long and _rs_ratio > _rs_max)"
+        },
+        {
+          "line": 5049,
+          "test": "is_long and _rs_ratio > _rs_max"
+        }
+      ],
+      "line": 5050,
+      "op": "+="
+    },
+    {
+      "expr": "10",
+      "guards": [
+        {
+          "line": 5031,
+          "test": "not is_exit and tracker_manager and hasattr(tracker_manager, 'positions_service') and tracker_manager.positions_service"
+        },
+        {
+          "line": 5043,
+          "test": "NOT (is_long and _rs_ratio < _rs_min)"
+        },
+        {
+          "line": 5046,
+          "test": "NOT (not is_long and _rs_ratio > _rs_max)"
+        },
+        {
+          "line": 5049,
+          "test": "NOT (is_long and _rs_ratio > _rs_max)"
+        },
+        {
+          "line": 5052,
+          "test": "not is_long and _rs_ratio < _rs_min"
+        }
+      ],
+      "line": 5053,
+      "op": "+="
+    },
+    {
+      "expr": "_rp_bonus",
+      "guards": [
+        {
+          "line": 5059,
+          "test": "bool(getattr(config, 'RANK_CONVICTION_ENABLED', True)) and (not is_exit)"
+        },
+        {
+          "line": 5074,
+          "test": "_rp_dir_match and _rp_abs >= _rp_strong"
+        }
+      ],
+      "line": 5075,
+      "op": "+="
+    },
+    {
+      "expr": "_rp_weak_pen",
+      "guards": [
+        {
+          "line": 5059,
+          "test": "bool(getattr(config, 'RANK_CONVICTION_ENABLED', True)) and (not is_exit)"
+        },
+        {
+          "line": 5074,
+          "test": "NOT (_rp_dir_match and _rp_abs >= _rp_strong)"
+        },
+        {
+          "line": 5077,
+          "test": "_rp_abs < _rp_weak"
+        }
+      ],
+      "line": 5078,
+      "op": "+="
+    },
+    {
+      "expr": "_rp_opp_pen",
+      "guards": [
+        {
+          "line": 5059,
+          "test": "bool(getattr(config, 'RANK_CONVICTION_ENABLED', True)) and (not is_exit)"
+        },
+        {
+          "line": 5074,
+          "test": "NOT (_rp_dir_match and _rp_abs >= _rp_strong)"
+        },
+        {
+          "line": 5077,
+          "test": "NOT (_rp_abs < _rp_weak)"
+        },
+        {
+          "line": 5080,
+          "test": "_rp_dir_opposite and _rp_abs >= _rp_strong"
+        }
+      ],
+      "line": 5081,
+      "op": "+="
+    },
+    {
+      "expr": "15",
+      "guards": [
+        {
+          "line": 5102,
+          "test": "not is_exit"
+        },
+        {
+          "line": 5103,
+          "test": "is_long and (not is_long_stoch_ok)"
+        }
+      ],
+      "line": 5104,
+      "op": "+="
+    },
+    {
+      "expr": "15",
+      "guards": [
+        {
+          "line": 5102,
+          "test": "not is_exit"
+        },
+        {
+          "line": 5103,
+          "test": "NOT (is_long and (not is_long_stoch_ok))"
+        },
+        {
+          "line": 5108,
+          "test": "not is_long and (not is_short_stoch_ok)"
+        }
+      ],
+      "line": 5109,
+      "op": "+="
+    },
+    {
+      "expr": "8",
+      "guards": [
+        {
+          "line": 5102,
+          "test": "not is_exit"
+        },
+        {
+          "line": 5157,
+          "test": "_mts_bottom > _mts_b_strong"
+        }
+      ],
+      "line": 5158,
+      "op": "+="
+    },
+    {
+      "expr": "4",
+      "guards": [
+        {
+          "line": 5102,
+          "test": "not is_exit"
+        },
+        {
+          "line": 5157,
+          "test": "NOT (_mts_bottom > _mts_b_strong)"
+        },
+        {
+          "line": 5160,
+          "test": "_mts_bottom > _mts_b_bonus"
+        }
+      ],
+      "line": 5161,
+      "op": "+="
+    },
+    {
+      "expr": "5",
+      "guards": [
+        {
+          "line": 5102,
+          "test": "not is_exit"
+        },
+        {
+          "line": 5163,
+          "test": "_mts_eq > _mts_eq_strong"
+        }
+      ],
+      "line": 5164,
+      "op": "+="
+    },
+    {
+      "expr": "2",
+      "guards": [
+        {
+          "line": 5102,
+          "test": "not is_exit"
+        },
+        {
+          "line": 5163,
+          "test": "NOT (_mts_eq > _mts_eq_strong)"
+        },
+        {
+          "line": 5166,
+          "test": "_mts_eq > _mts_eq_bonus"
+        }
+      ],
+      "line": 5167,
+      "op": "+="
+    },
+    {
+      "expr": "_mi_e_bonus",
+      "guards": [
+        {
+          "line": 5102,
+          "test": "not is_exit"
+        },
+        {
+          "line": 5170,
+          "test": "getattr(config, 'MI_ENTRY_ENABLED', False)"
+        }
+      ],
+      "line": 5206,
+      "op": "+="
+    },
+    {
+      "expr": "15",
+      "guards": [
+        {
+          "line": 5224,
+          "test": "_sma500_1h > 0"
+        },
+        {
+          "line": 5226,
+          "test": "is_long and _s500_dist < -0.03"
+        }
+      ],
+      "line": 5227,
+      "op": "+="
+    },
+    {
+      "expr": "10",
+      "guards": [
+        {
+          "line": 5224,
+          "test": "_sma500_1h > 0"
+        },
+        {
+          "line": 5226,
+          "test": "NOT (is_long and _s500_dist < -0.03)"
+        },
+        {
+          "line": 5229,
+          "test": "is_long and _s500_dist > 0.08"
+        }
+      ],
+      "line": 5230,
+      "op": "+="
+    },
+    {
+      "expr": "15",
+      "guards": [
+        {
+          "line": 5224,
+          "test": "_sma500_1h > 0"
+        },
+        {
+          "line": 5226,
+          "test": "NOT (is_long and _s500_dist < -0.03)"
+        },
+        {
+          "line": 5229,
+          "test": "NOT (is_long and _s500_dist > 0.08)"
+        },
+        {
+          "line": 5232,
+          "test": "not is_long and _s500_dist > 0.03"
+        }
+      ],
+      "line": 5233,
+      "op": "+="
+    },
+    {
+      "expr": "10",
+      "guards": [
+        {
+          "line": 5224,
+          "test": "_sma500_1h > 0"
+        },
+        {
+          "line": 5226,
+          "test": "NOT (is_long and _s500_dist < -0.03)"
+        },
+        {
+          "line": 5229,
+          "test": "NOT (is_long and _s500_dist > 0.08)"
+        },
+        {
+          "line": 5232,
+          "test": "NOT (not is_long and _s500_dist > 0.03)"
+        },
+        {
+          "line": 5235,
+          "test": "not is_long and _s500_dist < -0.08"
+        }
+      ],
+      "line": 5236,
+      "op": "+="
+    },
+    {
+      "expr": "10",
+      "guards": [
+        {
+          "line": 5238,
+          "test": "_ema20_4h > 0"
+        },
+        {
+          "line": 5240,
+          "test": "is_long and _e20_dist < -0.02"
+        }
+      ],
+      "line": 5241,
+      "op": "+="
+    },
+    {
+      "expr": "10",
+      "guards": [
+        {
+          "line": 5238,
+          "test": "_ema20_4h > 0"
+        },
+        {
+          "line": 5240,
+          "test": "NOT (is_long and _e20_dist < -0.02)"
+        },
+        {
+          "line": 5243,
+          "test": "not is_long and _e20_dist > 0.02"
+        }
+      ],
+      "line": 5244,
+      "op": "+="
+    },
+    {
+      "expr": "25",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "is_long"
+        },
+        {
+          "line": 5323,
+          "test": "dc_w1h > 5.0 and current_price < dc_high_1h * 0.97 and (current_price > dc_basis_1h)"
+        }
+      ],
+      "line": 5328,
+      "op": "+="
+    },
+    {
+      "expr": "35",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "is_long"
+        },
+        {
+          "line": 5330,
+          "test": "dc_wD > 6.0 and current_price < dc_high_D * 0.95 and (current_price > dc_basis_D)"
+        }
+      ],
+      "line": 5335,
+      "op": "+="
+    },
+    {
+      "expr": "30",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "is_long"
+        },
+        {
+          "line": 5337,
+          "test": "dc_w4h > 4.0 and current_price < dc_high_4h * 0.96 and (current_price > dc_basis_4h)"
+        }
+      ],
+      "line": 5342,
+      "op": "+="
+    },
+    {
+      "expr": "10",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "is_long"
+        },
+        {
+          "line": 5344,
+          "test": "k_15m < 20"
+        }
+      ],
+      "line": 5345,
+      "op": "+="
+    },
+    {
+      "expr": "15",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "is_long"
+        },
+        {
+          "line": 5347,
+          "test": "k_1h < 20"
+        }
+      ],
+      "line": 5348,
+      "op": "+="
+    },
+    {
+      "expr": "20",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "is_long"
+        },
+        {
+          "line": 5350,
+          "test": "k_4h < 25"
+        }
+      ],
+      "line": 5351,
+      "op": "+="
+    },
+    {
+      "expr": "25",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "is_long"
+        },
+        {
+          "line": 5353,
+          "test": "k_D < 30"
+        }
+      ],
+      "line": 5354,
+      "op": "+="
+    },
+    {
+      "expr": "30",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "is_long"
+        },
+        {
+          "line": 5356,
+          "test": "dc_basis_crossover_3m"
+        }
+      ],
+      "line": 5357,
+      "op": "+="
+    },
+    {
+      "expr": "25",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "is_long"
+        },
+        {
+          "line": 5359,
+          "test": "dc_basis_crossover_15m"
+        }
+      ],
+      "line": 5360,
+      "op": "+="
+    },
+    {
+      "expr": "20",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "is_long"
+        },
+        {
+          "line": 5362,
+          "test": "dc_basis_crossover_1h"
+        }
+      ],
+      "line": 5363,
+      "op": "+="
+    },
+    {
+      "expr": "15",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "is_long"
+        },
+        {
+          "line": 5365,
+          "test": "dc_basis_crossover_4h"
+        }
+      ],
+      "line": 5366,
+      "op": "+="
+    },
+    {
+      "expr": "10",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "is_long"
+        },
+        {
+          "line": 5368,
+          "test": "dc_basis_crossover_D"
+        }
+      ],
+      "line": 5369,
+      "op": "+="
+    },
+    {
+      "expr": "30",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "is_long"
+        },
+        {
+          "line": 5371,
+          "test": "dc_basis_crossunder_3m"
+        }
+      ],
+      "line": 5372,
+      "op": "+="
+    },
+    {
+      "expr": "25",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "is_long"
+        },
+        {
+          "line": 5374,
+          "test": "dc_basis_crossunder_15m"
+        }
+      ],
+      "line": 5375,
+      "op": "+="
+    },
+    {
+      "expr": "20",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "is_long"
+        },
+        {
+          "line": 5377,
+          "test": "dc_basis_crossunder_1h"
+        }
+      ],
+      "line": 5378,
+      "op": "+="
+    },
+    {
+      "expr": "10",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "is_long"
+        },
+        {
+          "line": 5380,
+          "test": "current_price > ema_50_15m"
+        }
+      ],
+      "line": 5381,
+      "op": "+="
+    },
+    {
+      "expr": "15",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "is_long"
+        },
+        {
+          "line": 5380,
+          "test": "NOT (current_price > ema_50_15m)"
+        }
+      ],
+      "line": 5384,
+      "op": "+="
+    },
+    {
+      "expr": "10",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "is_long"
+        },
+        {
+          "line": 5386,
+          "test": "current_price > sma_200_15m"
+        }
+      ],
+      "line": 5387,
+      "op": "+="
+    },
+    {
+      "expr": "15",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "is_long"
+        },
+        {
+          "line": 5386,
+          "test": "NOT (current_price > sma_200_15m)"
+        }
+      ],
+      "line": 5390,
+      "op": "+="
+    },
+    {
+      "expr": "10",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "is_long"
+        },
+        {
+          "line": 5392,
+          "test": "current_price > sma_200_1h"
+        }
+      ],
+      "line": 5393,
+      "op": "+="
+    },
+    {
+      "expr": "15",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "is_long"
+        },
+        {
+          "line": 5392,
+          "test": "NOT (current_price > sma_200_1h)"
+        }
+      ],
+      "line": 5396,
+      "op": "+="
+    },
+    {
+      "expr": "25",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "is_long"
+        },
+        {
+          "line": 5398,
+          "test": "sma_200_D > 0"
+        },
+        {
+          "line": 5400,
+          "test": "_sma200d_dist > 0.06"
+        }
+      ],
+      "line": 5401,
+      "op": "+="
+    },
+    {
+      "expr": "15",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "is_long"
+        },
+        {
+          "line": 5398,
+          "test": "sma_200_D > 0"
+        },
+        {
+          "line": 5400,
+          "test": "NOT (_sma200d_dist > 0.06)"
+        },
+        {
+          "line": 5403,
+          "test": "_sma200d_dist < -0.06"
+        }
+      ],
+      "line": 5404,
+      "op": "+="
+    },
+    {
+      "expr": "20",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "is_long"
+        },
+        {
+          "line": 5406,
+          "test": "rsi_4h < 20"
+        }
+      ],
+      "line": 5407,
+      "op": "+="
+    },
+    {
+      "expr": "10",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "is_long"
+        },
+        {
+          "line": 5406,
+          "test": "NOT (rsi_4h < 20)"
+        },
+        {
+          "line": 5409,
+          "test": "rsi_4h < 30"
+        }
+      ],
+      "line": 5410,
+      "op": "+="
+    },
+    {
+      "expr": "25",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5413,
+          "test": "dc_w1h > 5.0 and current_price > dc_low_1h * 1.03 and (current_price < dc_basis_1h)"
+        }
+      ],
+      "line": 5418,
+      "op": "+="
+    },
+    {
+      "expr": "35",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5420,
+          "test": "dc_wD > 6.0 and current_price > dc_low_D * 1.05 and (current_price < dc_basis_D)"
+        }
+      ],
+      "line": 5425,
+      "op": "+="
+    },
+    {
+      "expr": "30",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5427,
+          "test": "dc_w4h > 4.0 and current_price > dc_low_4h * 1.04 and (current_price < dc_basis_4h)"
+        }
+      ],
+      "line": 5432,
+      "op": "+="
+    },
+    {
+      "expr": "10",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5434,
+          "test": "k_15m > 80"
+        }
+      ],
+      "line": 5435,
+      "op": "+="
+    },
+    {
+      "expr": "15",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5437,
+          "test": "k_1h > 80"
+        }
+      ],
+      "line": 5438,
+      "op": "+="
+    },
+    {
+      "expr": "20",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5440,
+          "test": "k_4h > 75"
+        }
+      ],
+      "line": 5441,
+      "op": "+="
+    },
+    {
+      "expr": "25",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5443,
+          "test": "k_D > 70"
+        }
+      ],
+      "line": 5444,
+      "op": "+="
+    },
+    {
+      "expr": "30",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5446,
+          "test": "dc_basis_crossunder_3m"
+        }
+      ],
+      "line": 5447,
+      "op": "+="
+    },
+    {
+      "expr": "25",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5449,
+          "test": "dc_basis_crossunder_15m"
+        }
+      ],
+      "line": 5450,
+      "op": "+="
+    },
+    {
+      "expr": "20",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5452,
+          "test": "dc_basis_crossunder_1h"
+        }
+      ],
+      "line": 5453,
+      "op": "+="
+    },
+    {
+      "expr": "15",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5455,
+          "test": "dc_basis_crossunder_4h"
+        }
+      ],
+      "line": 5456,
+      "op": "+="
+    },
+    {
+      "expr": "10",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5458,
+          "test": "dc_basis_crossunder_D"
+        }
+      ],
+      "line": 5459,
+      "op": "+="
+    },
+    {
+      "expr": "30",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5461,
+          "test": "dc_basis_crossover_3m"
+        }
+      ],
+      "line": 5462,
+      "op": "+="
+    },
+    {
+      "expr": "25",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5464,
+          "test": "dc_basis_crossover_15m"
+        }
+      ],
+      "line": 5465,
+      "op": "+="
+    },
+    {
+      "expr": "20",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5467,
+          "test": "dc_basis_crossover_1h"
+        }
+      ],
+      "line": 5468,
+      "op": "+="
+    },
+    {
+      "expr": "10",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5470,
+          "test": "current_price < ema_50_15m"
+        }
+      ],
+      "line": 5471,
+      "op": "+="
+    },
+    {
+      "expr": "15",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5470,
+          "test": "NOT (current_price < ema_50_15m)"
+        }
+      ],
+      "line": 5474,
+      "op": "+="
+    },
+    {
+      "expr": "10",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5476,
+          "test": "current_price < sma_200_15m"
+        }
+      ],
+      "line": 5477,
+      "op": "+="
+    },
+    {
+      "expr": "15",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5476,
+          "test": "NOT (current_price < sma_200_15m)"
+        }
+      ],
+      "line": 5480,
+      "op": "+="
+    },
+    {
+      "expr": "10",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5482,
+          "test": "current_price < sma_200_1h"
+        }
+      ],
+      "line": 5483,
+      "op": "+="
+    },
+    {
+      "expr": "15",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5482,
+          "test": "NOT (current_price < sma_200_1h)"
+        }
+      ],
+      "line": 5486,
+      "op": "+="
+    },
+    {
+      "expr": "35",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5488,
+          "test": "sma_200_D > 0"
+        },
+        {
+          "line": 5490,
+          "test": "_sma200d_dist > 0.12"
+        }
+      ],
+      "line": 5491,
+      "op": "+="
+    },
+    {
+      "expr": "20",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5488,
+          "test": "sma_200_D > 0"
+        },
+        {
+          "line": 5490,
+          "test": "NOT (_sma200d_dist > 0.12)"
+        },
+        {
+          "line": 5495,
+          "test": "_sma200d_dist > 0.06"
+        }
+      ],
+      "line": 5496,
+      "op": "+="
+    },
+    {
+      "expr": "20",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5488,
+          "test": "sma_200_D > 0"
+        },
+        {
+          "line": 5490,
+          "test": "NOT (_sma200d_dist > 0.12)"
+        },
+        {
+          "line": 5495,
+          "test": "NOT (_sma200d_dist > 0.06)"
+        },
+        {
+          "line": 5498,
+          "test": "_sma200d_dist < -0.06"
+        }
+      ],
+      "line": 5499,
+      "op": "+="
+    },
+    {
+      "expr": "20",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5503,
+          "test": "rsi_1h > 80"
+        }
+      ],
+      "line": 5504,
+      "op": "+="
+    },
+    {
+      "expr": "10",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5503,
+          "test": "NOT (rsi_1h > 80)"
+        },
+        {
+          "line": 5506,
+          "test": "rsi_1h > 70"
+        }
+      ],
+      "line": 5507,
+      "op": "+="
+    },
+    {
+      "expr": "20",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5509,
+          "test": "rsi_4h < 20"
+        }
+      ],
+      "line": 5510,
+      "op": "+="
+    },
+    {
+      "expr": "_short_sma20_bonus",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5518,
+          "test": "_short_sma20_bonus > 0 and ema_20_1h > 0"
+        },
+        {
+          "line": 5520,
+          "test": "_short_flip"
+        },
+        {
+          "line": 5521,
+          "test": "_ema20_dist_1h > 2.0"
+        }
+      ],
+      "line": 5522,
+      "op": "+="
+    },
+    {
+      "expr": "int(_short_sma20_bonus * 0.5)",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5518,
+          "test": "_short_sma20_bonus > 0 and ema_20_1h > 0"
+        },
+        {
+          "line": 5520,
+          "test": "_short_flip"
+        },
+        {
+          "line": 5521,
+          "test": "NOT (_ema20_dist_1h > 2.0)"
+        },
+        {
+          "line": 5526,
+          "test": "_ema20_dist_1h < -1.0"
+        }
+      ],
+      "line": 5527,
+      "op": "+="
+    },
+    {
+      "expr": "_short_sma20_bonus",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5518,
+          "test": "_short_sma20_bonus > 0 and ema_20_1h > 0"
+        },
+        {
+          "line": 5520,
+          "test": "NOT (_short_flip)"
+        },
+        {
+          "line": 5532,
+          "test": "_ema20_dist_1h > 2.0"
+        }
+      ],
+      "line": 5533,
+      "op": "+="
+    },
+    {
+      "expr": "_short_sma20_bonus",
+      "guards": [
+        {
+          "line": 5322,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5518,
+          "test": "_short_sma20_bonus > 0 and ema_20_1h > 0"
+        },
+        {
+          "line": 5520,
+          "test": "NOT (_short_flip)"
+        },
+        {
+          "line": 5532,
+          "test": "NOT (_ema20_dist_1h > 2.0)"
+        },
+        {
+          "line": 5537,
+          "test": "_ema20_dist_1h < -1.0"
+        }
+      ],
+      "line": 5538,
+      "op": "+="
+    },
+    {
+      "expr": "_penalty",
+      "guards": [
+        {
+          "line": 5546,
+          "test": "not is_exit"
+        },
+        {
+          "line": 5549,
+          "test": "getattr(config, 'TR_ADX4H_GATE_ENABLED', True) and _adx_4h_val > getattr(config, 'TR_ADX4H_MAX', 20.0)"
+        }
+      ],
+      "line": 5553,
+      "op": "+="
+    },
+    {
+      "expr": "_penalty",
+      "guards": [
+        {
+          "line": 5546,
+          "test": "not is_exit"
+        },
+        {
+          "line": 5558,
+          "test": "getattr(config, 'TR_BBWIDTH4H_GATE_ENABLED', True)"
+        },
+        {
+          "line": 5566,
+          "test": "_bb_width_4h > getattr(config, 'TR_BBWIDTH4H_MAX', 10.0)"
+        }
+      ],
+      "line": 5568,
+      "op": "+="
+    },
+    {
+      "expr": "_bonus",
+      "guards": [
+        {
+          "line": 5546,
+          "test": "not is_exit"
+        },
+        {
+          "line": 5573,
+          "test": "getattr(config, 'TR_CHOP4H_GATE_ENABLED', True)"
+        },
+        {
+          "line": 5575,
+          "test": "_chop_4h >= getattr(config, 'TR_CHOP4H_MIN', 50.0)"
+        }
+      ],
+      "line": 5577,
+      "op": "+="
+    },
+    {
+      "expr": "_penalty",
+      "guards": [
+        {
+          "line": 5546,
+          "test": "not is_exit"
+        },
+        {
+          "line": 5573,
+          "test": "getattr(config, 'TR_CHOP4H_GATE_ENABLED', True)"
+        },
+        {
+          "line": 5575,
+          "test": "NOT (_chop_4h >= getattr(config, 'TR_CHOP4H_MIN', 50.0))"
+        },
+        {
+          "line": 5579,
+          "test": "_chop_4h < getattr(config, 'TR_CHOP4H_TREND_MAX', 38.0)"
+        }
+      ],
+      "line": 5581,
+      "op": "+="
+    },
+    {
+      "expr": "_penalty",
+      "guards": [
+        {
+          "line": 5546,
+          "test": "not is_exit"
+        },
+        {
+          "line": 5584,
+          "test": "getattr(config, 'TR_MFI4H_LONG_ENABLED', True) and is_long and (mfi_4h > 0) and (mfi_4h < getattr(config, 'TR_MFI4H_LONG_MIN', 40.0))"
+        }
+      ],
+      "line": 5591,
+      "op": "+="
+    },
+    {
+      "expr": "_penalty",
+      "guards": [
+        {
+          "line": 5546,
+          "test": "not is_exit"
+        },
+        {
+          "line": 5594,
+          "test": "getattr(config, 'TR_DCWIDTH4H_SHORT_ENABLED', True) and (not is_long)"
+        },
+        {
+          "line": 5602,
+          "test": "_dc_width_4h > getattr(config, 'TR_DCWIDTH4H_SHORT_MAX', 15.0)"
+        }
+      ],
+      "line": 5604,
+      "op": "+="
+    },
+    {
+      "expr": "_kz_bonus",
+      "guards": [
+        {
+          "line": 5612,
+          "test": "_kz_enabled and (not is_exit)"
+        },
+        {
+          "line": 5623,
+          "test": "is_long and k_3m < _kz_long_thr and _k3m_rising and _bull_candle"
+        }
+      ],
+      "line": 5624,
+      "op": "+="
+    },
+    {
+      "expr": "_kz_bonus",
+      "guards": [
+        {
+          "line": 5612,
+          "test": "_kz_enabled and (not is_exit)"
+        },
+        {
+          "line": 5623,
+          "test": "NOT (is_long and k_3m < _kz_long_thr and _k3m_rising and _bull_candle)"
+        },
+        {
+          "line": 5628,
+          "test": "not is_long and k_3m > _kz_short_thr and _k3m_falling and _bear_candle"
+        }
+      ],
+      "line": 5629,
+      "op": "+="
+    },
+    {
+      "expr": "_kz_t_bonus",
+      "guards": [
+        {
+          "line": 5637,
+          "test": "_kz_tradier_enabled and (not is_exit)"
+        },
+        {
+          "line": 5651,
+          "test": "is_long and k_3m < _kz_t_long_thr and _k3m_rising_t and _bull_candle_t"
+        }
+      ],
+      "line": 5652,
+      "op": "+="
+    },
+    {
+      "expr": "_kz_t_bonus",
+      "guards": [
+        {
+          "line": 5637,
+          "test": "_kz_tradier_enabled and (not is_exit)"
+        },
+        {
+          "line": 5651,
+          "test": "NOT (is_long and k_3m < _kz_t_long_thr and _k3m_rising_t and _bull_candle_t)"
+        },
+        {
+          "line": 5656,
+          "test": "not is_long and k_3m > _kz_t_short_thr and _k3m_falling_t and _bear_candle_t"
+        }
+      ],
+      "line": 5662,
+      "op": "+="
+    },
+    {
+      "expr": "_mv_bonus",
+      "guards": [
+        {
+          "line": 5667,
+          "test": "not is_exit and hasattr(tracker_manager, 'registry') and hasattr(tracker_manager.registry, '_active_movers')"
+        },
+        {
+          "line": 5673,
+          "test": "_mv"
+        },
+        {
+          "line": 5676,
+          "test": "is_long and _mv_dir == 'LONG' or (not is_long and _mv_dir == 'SHORT')"
+        }
+      ],
+      "line": 5679,
+      "op": "+="
+    },
+    {
+      "expr": "_mf_bonus",
+      "guards": [
+        {
+          "line": 5686,
+          "test": "_mf_enabled and (not is_exit)"
+        },
+        {
+          "line": 5694,
+          "test": "_body_vs_atr >= _mf_body_min and _vol_spike"
+        },
+        {
+          "line": 5698,
+          "test": "_k_ok"
+        }
+      ],
+      "line": 5699,
+      "op": "+="
+    },
+    {
+      "expr": "_mf_t_bonus",
+      "guards": [
+        {
+          "line": 5707,
+          "test": "_mf_tradier_enabled and (not is_exit)"
+        },
+        {
+          "line": 5717,
+          "test": "_body_vs_atr_15m >= _mf_t_body_min and _vol_spike_15m"
+        },
+        {
+          "line": 5721,
+          "test": "_k_ok_t"
+        }
+      ],
+      "line": 5722,
+      "op": "+="
+    },
+    {
+      "expr": "_sat_score",
+      "guards": [
+        {
+          "line": 5727,
+          "test": "getattr(config, 'SATOSHIT_ENABLED', False) and account_key in getattr(config, 'SATOSHIT_ACCOUNTS', []) and (not is_exit)"
+        },
+        {
+          "line": 5735,
+          "test": "_sat_score > 0"
+        }
+      ],
+      "line": 5736,
+      "op": "+="
+    },
+    {
+      "expr": "5",
+      "guards": [
+        {
+          "line": 5739,
+          "test": "is_long"
+        },
+        {
+          "line": 5740,
+          "test": "is_long_stoch_ok"
+        }
+      ],
+      "line": 5741,
+      "op": "+="
+    },
+    {
+      "expr": "3",
+      "guards": [
+        {
+          "line": 5739,
+          "test": "is_long"
+        },
+        {
+          "line": 5743,
+          "test": "ltf_aligned"
+        }
+      ],
+      "line": 5744,
+      "op": "+="
+    },
+    {
+      "expr": "5",
+      "guards": [
+        {
+          "line": 5739,
+          "test": "is_long"
+        },
+        {
+          "line": 5746,
+          "test": "htf_aligned"
+        }
+      ],
+      "line": 5747,
+      "op": "+="
+    },
+    {
+      "expr": "5",
+      "guards": [
+        {
+          "line": 5739,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5750,
+          "test": "is_short_stoch_ok"
+        }
+      ],
+      "line": 5751,
+      "op": "+="
+    },
+    {
+      "expr": "3",
+      "guards": [
+        {
+          "line": 5739,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5753,
+          "test": "ltf_aligned"
+        }
+      ],
+      "line": 5754,
+      "op": "+="
+    },
+    {
+      "expr": "5",
+      "guards": [
+        {
+          "line": 5739,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 5756,
+          "test": "htf_aligned"
+        }
+      ],
+      "line": 5757,
+      "op": "+="
+    },
+    {
+      "expr": "_hlr_rally_score",
+      "guards": [
+        {
+          "line": 5766,
+          "test": "getattr(config, 'HLR_RALLY_ENABLED', True) and (not is_exit)"
+        },
+        {
+          "line": 5851,
+          "test": "_hlr_rally_score > 0"
+        }
+      ],
+      "line": 5854,
+      "op": "+="
+    },
+    {
+      "expr": "2",
+      "guards": [
+        {
+          "line": 5880,
+          "test": "is_long and (not is_exit) and (not c3_long) or (not is_long and (not is_exit) and (not c3_short))"
+        }
+      ],
+      "line": 5883,
+      "op": "+="
+    },
+    {
+      "expr": "2",
+      "guards": [
+        {
+          "line": 5884,
+          "test": "is_long and is_exit and (not c3_short) or (not is_long and is_exit and (not c3_long))"
+        }
+      ],
+      "line": 5887,
+      "op": "+="
+    },
+    {
+      "expr": "3",
+      "guards": [
+        {
+          "line": 5888,
+          "test": "is_long and (not is_exit) and c1_long and c3_long or (not is_long and (not is_exit) and c1_short and c3_short)"
+        }
+      ],
+      "line": 5891,
+      "op": "+="
+    },
+    {
+      "expr": "1",
+      "guards": [
+        {
+          "line": 5888,
+          "test": "NOT (is_long and (not is_exit) and c1_long and c3_long or (not is_long and (not is_exit) and c1_short and c3_short))"
+        },
+        {
+          "line": 5892,
+          "test": "is_long and (not is_exit) and c3_long or (not is_long and (not is_exit) and c3_short)"
+        }
+      ],
+      "line": 5895,
+      "op": "+="
+    },
+    {
+      "expr": "_kx_dscore",
+      "guards": [],
+      "line": 6021,
+      "op": "+="
+    },
+    {
+      "expr": "_struct_votes * 2 + _cv_votes - _wt_htf_penalty",
+      "guards": [
+        {
+          "line": 6027,
+          "test": "not is_exit"
+        }
+      ],
+      "line": 6143,
+      "op": "+="
+    },
+    {
+      "expr": "15",
+      "guards": [
+        {
+          "line": 6154,
+          "test": "_bounce_enabled and (not is_exit) and (min_since_red < 120) and (min_since_red > 0)"
+        },
+        {
+          "line": 6170,
+          "test": "_br_has_reset"
+        }
+      ],
+      "line": 6172,
+      "op": "+="
+    },
+    {
+      "expr": "_obl_score",
+      "guards": [
+        {
+          "line": 6154,
+          "test": "_bounce_enabled and (not is_exit) and (min_since_red < 120) and (min_since_red > 0)"
+        },
+        {
+          "line": 6170,
+          "test": "NOT (_br_has_reset)"
+        },
+        {
+          "line": 6176,
+          "test": "not _br_has_reset and actual_last_red_price > 0 and (is_long and current_price >= actual_last_red_price or (not is_long and current_price <= actual_last_red_price))"
+        },
+        {
+          "line": 6258,
+          "test": "_obl_ok"
+        }
+      ],
+      "line": 6260,
+      "op": "+="
+    },
+    {
+      "expr": "30",
+      "guards": [
+        {
+          "line": 6154,
+          "test": "_bounce_enabled and (not is_exit) and (min_since_red < 120) and (min_since_red > 0)"
+        },
+        {
+          "line": 6170,
+          "test": "NOT (_br_has_reset)"
+        },
+        {
+          "line": 6176,
+          "test": "not _br_has_reset and actual_last_red_price > 0 and (is_long and current_price >= actual_last_red_price or (not is_long and current_price <= actual_last_red_price))"
+        },
+        {
+          "line": 6258,
+          "test": "NOT (_obl_ok)"
+        },
+        {
+          "line": 6267,
+          "test": "NOT (_mr_kx_block)"
+        },
+        {
+          "line": 6272,
+          "test": "_mr_min_signal or _mr_is_cont"
+        }
+      ],
+      "line": 6274,
+      "op": "+="
+    },
+    {
+      "expr": "20",
+      "guards": [
+        {
+          "line": 6154,
+          "test": "_bounce_enabled and (not is_exit) and (min_since_red < 120) and (min_since_red > 0)"
+        },
+        {
+          "line": 6170,
+          "test": "NOT (_br_has_reset)"
+        },
+        {
+          "line": 6176,
+          "test": "not _br_has_reset and actual_last_red_price > 0 and (is_long and current_price >= actual_last_red_price or (not is_long and current_price <= actual_last_red_price))"
+        },
+        {
+          "line": 6258,
+          "test": "NOT (_obl_ok)"
+        },
+        {
+          "line": 6267,
+          "test": "NOT (_mr_kx_block)"
+        },
+        {
+          "line": 6272,
+          "test": "NOT (_mr_min_signal or _mr_is_cont)"
+        },
+        {
+          "line": 6281,
+          "test": "_mr_allow_wt0 and abs(current_price / actual_last_red_price - 1.0) > 0.003 and _mr_wt_3m and (_mr_htf >= 1)"
+        }
+      ],
+      "line": 6288,
+      "op": "+="
+    },
+    {
+      "expr": "12",
+      "guards": [
+        {
+          "line": 6154,
+          "test": "_bounce_enabled and (not is_exit) and (min_since_red < 120) and (min_since_red > 0)"
+        },
+        {
+          "line": 6170,
+          "test": "NOT (_br_has_reset)"
+        },
+        {
+          "line": 6176,
+          "test": "NOT (not _br_has_reset and actual_last_red_price > 0 and (is_long and current_price >= actual_last_red_price or (not is_long and current_price <= actual_last_red_price)))"
+        },
+        {
+          "line": 6299,
+          "test": "not _br_has_reset and actual_last_red_price > 0 and (min_since_red >= _tier2_min_min)"
+        },
+        {
+          "line": 6317,
+          "test": "_trend_continues and _momentum_ok and _not_exhausted"
+        }
+      ],
+      "line": 6319,
+      "op": "+="
+    },
+    {
+      "expr": "20",
+      "guards": [
+        {
+          "line": 6154,
+          "test": "_bounce_enabled and (not is_exit) and (min_since_red < 120) and (min_since_red > 0)"
+        },
+        {
+          "line": 6170,
+          "test": "NOT (_br_has_reset)"
+        },
+        {
+          "line": 6176,
+          "test": "NOT (not _br_has_reset and actual_last_red_price > 0 and (is_long and current_price >= actual_last_red_price or (not is_long and current_price <= actual_last_red_price)))"
+        },
+        {
+          "line": 6299,
+          "test": "not _br_has_reset and actual_last_red_price > 0 and (min_since_red >= _tier2_min_min)"
+        },
+        {
+          "line": 6317,
+          "test": "NOT (_trend_continues and _momentum_ok and _not_exhausted)"
+        },
+        {
+          "line": 6330,
+          "test": "_gr_crossed"
+        },
+        {
+          "line": 6338,
+          "test": "_gr_wt >= 3"
+        }
+      ],
+      "line": 6340,
+      "op": "+="
+    },
+    {
+      "expr": "15",
+      "guards": [
+        {
+          "line": 6154,
+          "test": "_bounce_enabled and (not is_exit) and (min_since_red < 120) and (min_since_red > 0)"
+        },
+        {
+          "line": 6170,
+          "test": "NOT (_br_has_reset)"
+        },
+        {
+          "line": 6176,
+          "test": "NOT (not _br_has_reset and actual_last_red_price > 0 and (is_long and current_price >= actual_last_red_price or (not is_long and current_price <= actual_last_red_price)))"
+        },
+        {
+          "line": 6299,
+          "test": "not _br_has_reset and actual_last_red_price > 0 and (min_since_red >= _tier2_min_min)"
+        },
+        {
+          "line": 6317,
+          "test": "NOT (_trend_continues and _momentum_ok and _not_exhausted)"
+        },
+        {
+          "line": 6330,
+          "test": "_gr_crossed"
+        },
+        {
+          "line": 6338,
+          "test": "NOT (_gr_wt >= 3)"
+        },
+        {
+          "line": 6344,
+          "test": "_gr_wt >= 2 and abs(current_price / actual_last_red_price - 1.0) > 0.003"
+        }
+      ],
+      "line": 6349,
+      "op": "+="
+    },
+    {
+      "expr": "_olt_score",
+      "guards": [
+        {
+          "line": 6368,
+          "test": "not is_exit and positionAmt == 0.0"
+        },
+        {
+          "line": 6369,
+          "test": "try"
+        },
+        {
+          "line": 6384,
+          "test": "_olt_ok"
+        }
+      ],
+      "line": 6386,
+      "op": "+="
+    },
+    {
+      "expr": "10",
+      "guards": [
+        {
+          "line": 6406,
+          "test": "not is_exit"
+        },
+        {
+          "line": 6444,
+          "test": "force_reentry"
+        }
+      ],
+      "line": 6445,
+      "op": "+="
+    },
+    {
+      "expr": "15",
+      "guards": [
+        {
+          "line": 6406,
+          "test": "not is_exit"
+        },
+        {
+          "line": 6447,
+          "test": "getattr(config, 'BEAR_MARKET_MODE', False)"
+        },
+        {
+          "line": 6448,
+          "test": "is_long"
+        }
+      ],
+      "line": 6449,
+      "op": "+="
+    },
+    {
+      "expr": "10",
+      "guards": [
+        {
+          "line": 6406,
+          "test": "not is_exit"
+        },
+        {
+          "line": 6447,
+          "test": "getattr(config, 'BEAR_MARKET_MODE', False)"
+        },
+        {
+          "line": 6448,
+          "test": "NOT (is_long)"
+        }
+      ],
+      "line": 6452,
+      "op": "+="
+    },
+    {
+      "expr": "8",
+      "guards": [
+        {
+          "line": 6406,
+          "test": "not is_exit"
+        },
+        {
+          "line": 6455,
+          "test": "vol_strong"
+        }
+      ],
+      "line": 6456,
+      "op": "+="
+    },
+    {
+      "expr": "5",
+      "guards": [
+        {
+          "line": 6406,
+          "test": "not is_exit"
+        },
+        {
+          "line": 6455,
+          "test": "NOT (vol_strong)"
+        },
+        {
+          "line": 6458,
+          "test": "not vol_ok"
+        }
+      ],
+      "line": 6459,
+      "op": "+="
+    },
+    {
+      "expr": "score * 0.3",
+      "guards": [
+        {
+          "line": 6406,
+          "test": "not is_exit"
+        },
+        {
+          "line": 6461,
+          "test": "is_long"
+        },
+        {
+          "line": 6462,
+          "test": "not trend_is_bullish"
+        }
+      ],
+      "line": 6463,
+      "op": "="
+    },
+    {
+      "expr": "5",
+      "guards": [
+        {
+          "line": 6406,
+          "test": "not is_exit"
+        },
+        {
+          "line": 6461,
+          "test": "is_long"
+        },
+        {
+          "line": 6466,
+          "test": "k_1mco and k_3m < 80 and (true_lag < 10.0) or (k_3mco and k_15m > 80)"
+        }
+      ],
+      "line": 6467,
+      "op": "+="
+    },
+    {
+      "expr": "3",
+      "guards": [
+        {
+          "line": 6406,
+          "test": "not is_exit"
+        },
+        {
+          "line": 6461,
+          "test": "is_long"
+        },
+        {
+          "line": 6466,
+          "test": "k_1mco and k_3m < 80 and (true_lag < 10.0) or (k_3mco and k_15m > 80)"
+        },
+        {
+          "line": 6468,
+          "test": "k_15m > 50 and k_3m > d_3m or (k_15m < 30 and k_3m > d_3m)"
+        }
+      ],
+      "line": 6469,
+      "op": "+="
+    },
+    {
+      "expr": "5",
+      "guards": [
+        {
+          "line": 6406,
+          "test": "not is_exit"
+        },
+        {
+          "line": 6461,
+          "test": "is_long"
+        },
+        {
+          "line": 6470,
+          "test": "k_15m > 50 and k_1m < 40 and (k_3m > d_3m)"
+        }
+      ],
+      "line": 6471,
+      "op": "+="
+    },
+    {
+      "expr": "4",
+      "guards": [
+        {
+          "line": 6406,
+          "test": "not is_exit"
+        },
+        {
+          "line": 6461,
+          "test": "is_long"
+        },
+        {
+          "line": 6473,
+          "test": "k_15mco"
+        }
+      ],
+      "line": 6474,
+      "op": "+="
+    },
+    {
+      "expr": "25",
+      "guards": [
+        {
+          "line": 6406,
+          "test": "not is_exit"
+        },
+        {
+          "line": 6461,
+          "test": "is_long"
+        },
+        {
+          "line": 6486,
+          "test": "dc_width_15m > 5.0 and near_sma and k_15m_reset and k_3mco"
+        }
+      ],
+      "line": 6487,
+      "op": "+="
+    },
+    {
+      "expr": "10",
+      "guards": [
+        {
+          "line": 6406,
+          "test": "not is_exit"
+        },
+        {
+          "line": 6461,
+          "test": "is_long"
+        },
+        {
+          "line": 6486,
+          "test": "NOT (dc_width_15m > 5.0 and near_sma and k_15m_reset and k_3mco)"
+        },
+        {
+          "line": 6489,
+          "test": "current_price > dc_high_15m and k_1h > d_1h and (k_15m > k_15m_prev)"
+        }
+      ],
+      "line": 6490,
+      "op": "+="
+    },
+    {
+      "expr": "5",
+      "guards": [
+        {
+          "line": 6406,
+          "test": "not is_exit"
+        },
+        {
+          "line": 6461,
+          "test": "is_long"
+        },
+        {
+          "line": 6486,
+          "test": "NOT (dc_width_15m > 5.0 and near_sma and k_15m_reset and k_3mco)"
+        },
+        {
+          "line": 6489,
+          "test": "NOT (current_price > dc_high_15m and k_1h > d_1h and (k_15m > k_15m_prev))"
+        },
+        {
+          "line": 6492,
+          "test": "k_15m > 90 and k_15m < k_15m_prev"
+        }
+      ],
+      "line": 6493,
+      "op": "+="
+    },
+    {
+      "expr": "score * 0.3",
+      "guards": [
+        {
+          "line": 6406,
+          "test": "not is_exit"
+        },
+        {
+          "line": 6461,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 6495,
+          "test": "not trend_is_bearish"
+        }
+      ],
+      "line": 6496,
+      "op": "="
+    },
+    {
+      "expr": "5",
+      "guards": [
+        {
+          "line": 6406,
+          "test": "not is_exit"
+        },
+        {
+          "line": 6461,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 6499,
+          "test": "k_1mcu and k_3m > 20 and (true_lag < 10.0) or (k_3mcu and k_15m > 20)"
+        }
+      ],
+      "line": 6500,
+      "op": "+="
+    },
+    {
+      "expr": "3",
+      "guards": [
+        {
+          "line": 6406,
+          "test": "not is_exit"
+        },
+        {
+          "line": 6461,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 6499,
+          "test": "k_1mcu and k_3m > 20 and (true_lag < 10.0) or (k_3mcu and k_15m > 20)"
+        },
+        {
+          "line": 6501,
+          "test": "k_15m < 50 and k_3m < d_3m or (k_15m > 70 and k_3m < d_3m)"
+        }
+      ],
+      "line": 6502,
+      "op": "+="
+    },
+    {
+      "expr": "4",
+      "guards": [
+        {
+          "line": 6406,
+          "test": "not is_exit"
+        },
+        {
+          "line": 6461,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 6503,
+          "test": "k_15mcu"
+        }
+      ],
+      "line": 6504,
+      "op": "+="
+    },
+    {
+      "expr": "25",
+      "guards": [
+        {
+          "line": 6406,
+          "test": "not is_exit"
+        },
+        {
+          "line": 6461,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 6516,
+          "test": "dc_width_15m > 5.0 and near_sma and k_15m_reset and k_3mcu"
+        }
+      ],
+      "line": 6517,
+      "op": "+="
+    },
+    {
+      "expr": "10",
+      "guards": [
+        {
+          "line": 6406,
+          "test": "not is_exit"
+        },
+        {
+          "line": 6461,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 6516,
+          "test": "NOT (dc_width_15m > 5.0 and near_sma and k_15m_reset and k_3mcu)"
+        },
+        {
+          "line": 6519,
+          "test": "current_price < dc_low_15m and k_1h < d_1h and (k_15m < k_15m_prev)"
+        }
+      ],
+      "line": 6520,
+      "op": "+="
+    },
+    {
+      "expr": "5",
+      "guards": [
+        {
+          "line": 6406,
+          "test": "not is_exit"
+        },
+        {
+          "line": 6461,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 6522,
+          "test": "k_15m < 10 or current_price < dc_low_15m"
+        }
+      ],
+      "line": 6523,
+      "op": "+="
+    },
+    {
+      "expr": "_rm_dscore",
+      "guards": [],
+      "line": 6546,
+      "op": "+="
+    },
+    {
+      "expr": "_dcb_dscore",
+      "guards": [],
+      "line": 6575,
+      "op": "+="
+    },
+    {
+      "expr": "10",
+      "guards": [
+        {
+          "line": 6577,
+          "test": "not is_exit"
+        },
+        {
+          "line": 6591,
+          "test": "'BOTA' not in str(reasons) and 'DC_MOMENTUM_SCALP' not in str(reasons)"
+        },
+        {
+          "line": 6592,
+          "test": "is_long"
+        },
+        {
+          "line": 6604,
+          "test": "not trend_is_bullish"
+        }
+      ],
+      "line": 6605,
+      "op": "+="
+    },
+    {
+      "expr": "5",
+      "guards": [
+        {
+          "line": 6577,
+          "test": "not is_exit"
+        },
+        {
+          "line": 6591,
+          "test": "'BOTA' not in str(reasons) and 'DC_MOMENTUM_SCALP' not in str(reasons)"
+        },
+        {
+          "line": 6592,
+          "test": "is_long"
+        },
+        {
+          "line": 6606,
+          "test": "k_1mco and k_3m < 80 and (true_lag < 10.0) or (k_3mco and k_15m > 80)"
+        }
+      ],
+      "line": 6609,
+      "op": "+="
+    },
+    {
+      "expr": "5",
+      "guards": [
+        {
+          "line": 6577,
+          "test": "not is_exit"
+        },
+        {
+          "line": 6591,
+          "test": "'BOTA' not in str(reasons) and 'DC_MOMENTUM_SCALP' not in str(reasons)"
+        },
+        {
+          "line": 6592,
+          "test": "is_long"
+        },
+        {
+          "line": 6606,
+          "test": "k_1mco and k_3m < 80 and (true_lag < 10.0) or (k_3mco and k_15m > 80)"
+        },
+        {
+          "line": 6610,
+          "test": "k_15m > 50 and k_3m > d_3m or (k_15m < 30 and k_3m > d_3m)"
+        }
+      ],
+      "line": 6611,
+      "op": "+="
+    },
+    {
+      "expr": "4",
+      "guards": [
+        {
+          "line": 6577,
+          "test": "not is_exit"
+        },
+        {
+          "line": 6591,
+          "test": "'BOTA' not in str(reasons) and 'DC_MOMENTUM_SCALP' not in str(reasons)"
+        },
+        {
+          "line": 6592,
+          "test": "is_long"
+        },
+        {
+          "line": 6612,
+          "test": "k_15mco"
+        }
+      ],
+      "line": 6613,
+      "op": "+="
+    },
+    {
+      "expr": "10",
+      "guards": [
+        {
+          "line": 6577,
+          "test": "not is_exit"
+        },
+        {
+          "line": 6591,
+          "test": "'BOTA' not in str(reasons) and 'DC_MOMENTUM_SCALP' not in str(reasons)"
+        },
+        {
+          "line": 6592,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 6626,
+          "test": "not trend_is_bearish"
+        }
+      ],
+      "line": 6627,
+      "op": "+="
+    },
+    {
+      "expr": "5",
+      "guards": [
+        {
+          "line": 6577,
+          "test": "not is_exit"
+        },
+        {
+          "line": 6591,
+          "test": "'BOTA' not in str(reasons) and 'DC_MOMENTUM_SCALP' not in str(reasons)"
+        },
+        {
+          "line": 6592,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 6628,
+          "test": "k_1mcu and k_3m > 20 and (true_lag < 10.0) or (k_3mcu and k_15m < 20)"
+        }
+      ],
+      "line": 6631,
+      "op": "+="
+    },
+    {
+      "expr": "5",
+      "guards": [
+        {
+          "line": 6577,
+          "test": "not is_exit"
+        },
+        {
+          "line": 6591,
+          "test": "'BOTA' not in str(reasons) and 'DC_MOMENTUM_SCALP' not in str(reasons)"
+        },
+        {
+          "line": 6592,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 6628,
+          "test": "k_1mcu and k_3m > 20 and (true_lag < 10.0) or (k_3mcu and k_15m < 20)"
+        },
+        {
+          "line": 6632,
+          "test": "k_15m < 50 and k_3m < d_3m or (k_15m > 70 and k_3m < d_3m)"
+        }
+      ],
+      "line": 6633,
+      "op": "+="
+    },
+    {
+      "expr": "4",
+      "guards": [
+        {
+          "line": 6577,
+          "test": "not is_exit"
+        },
+        {
+          "line": 6591,
+          "test": "'BOTA' not in str(reasons) and 'DC_MOMENTUM_SCALP' not in str(reasons)"
+        },
+        {
+          "line": 6592,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 6634,
+          "test": "k_15mcu"
+        }
+      ],
+      "line": 6635,
+      "op": "+="
+    },
+    {
+      "expr": "30.0",
+      "guards": [
+        {
+          "line": 6577,
+          "test": "NOT (not is_exit)"
+        },
+        {
+          "line": 6663,
+          "test": "is_long and current_price >= dc_high_3m"
+        },
+        {
+          "line": 6664,
+          "test": "k_3m < k_3m_prev or (k_1m < d_1m and true_lag < 10.0)"
+        }
+      ],
+      "line": 6665,
+      "op": "+="
+    },
+    {
+      "expr": "30.0",
+      "guards": [
+        {
+          "line": 6577,
+          "test": "NOT (not is_exit)"
+        },
+        {
+          "line": 6663,
+          "test": "NOT (is_long and current_price >= dc_high_3m)"
+        },
+        {
+          "line": 6667,
+          "test": "not is_long and current_price <= dc_low_3m"
+        },
+        {
+          "line": 6668,
+          "test": "k_3m > k_3m_prev or (k_1m > d_1m and true_lag < 10.0)"
+        }
+      ],
+      "line": 6669,
+      "op": "+="
+    },
+    {
+      "expr": "_etb_ds",
+      "guards": [
+        {
+          "line": 6577,
+          "test": "NOT (not is_exit)"
+        }
+      ],
+      "line": 6726,
+      "op": "+="
+    },
+    {
+      "expr": "10",
+      "guards": [
+        {
+          "line": 6577,
+          "test": "NOT (not is_exit)"
+        },
+        {
+          "line": 6728,
+          "test": "time_in_trade < 5 and -1.0 < pnl_pct < 0.1 and ('TIGHT' not in str(reasons)) and ('SCALP_CUT' not in str(reasons))"
+        }
+      ],
+      "line": 6734,
+      "op": "+="
+    },
+    {
+      "expr": "10.0",
+      "guards": [
+        {
+          "line": 6736,
+          "test": "should_scalp and is_exit"
+        },
+        {
+          "line": 6737,
+          "test": "is_long"
+        },
+        {
+          "line": 6746,
+          "test": "pnl_pct >= 0.1 and (scalp_condition_standard or scalp_condition_momentum or scalp_condition_decay or (pnl_pct < prev_gain) or (k_15m < k_15m_prev) or lower_low_15m) and (min_since_aug > 4 or current_price <= dc_low4_3m)"
+        }
+      ],
+      "line": 6758,
+      "op": "+="
+    },
+    {
+      "expr": "10.0",
+      "guards": [
+        {
+          "line": 6736,
+          "test": "should_scalp and is_exit"
+        },
+        {
+          "line": 6737,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 6781,
+          "test": "pnl_pct >= 0.1 and (scalp_condition_standard or scalp_condition_momentum or scalp_condition_decay or (pnl_pct < prev_gain) or (k_15m > k_15m_prev) or higher_high_15m) and (min_since_aug > 4 or current_price >= dc_high4_3m)"
+        }
+      ],
+      "line": 6793,
+      "op": "+="
+    },
+    {
+      "expr": "7.0",
+      "guards": [
+        {
+          "line": 6804,
+          "test": "should_scalp and (not is_exit)"
+        },
+        {
+          "line": 6806,
+          "test": "is_long"
+        },
+        {
+          "line": 6824,
+          "test": "scalp_entry_condition_1 and has_flipped or scalp_entry_condition_2 or scalp_entry_condition_3 or (current_price > last_reduction_price)"
+        }
+      ],
+      "line": 6831,
+      "op": "+="
+    },
+    {
+      "expr": "7.0",
+      "guards": [
+        {
+          "line": 6804,
+          "test": "should_scalp and (not is_exit)"
+        },
+        {
+          "line": 6806,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 6858,
+          "test": "scalp_entry_condition_1 and has_flipped or scalp_entry_condition_2 or scalp_entry_condition_3 or (current_price < last_reduction_price)"
+        }
+      ],
+      "line": 6865,
+      "op": "+="
+    },
+    {
+      "expr": "8.0",
+      "guards": [
+        {
+          "line": 6804,
+          "test": "should_scalp and (not is_exit)"
+        },
+        {
+          "line": 6887,
+          "test": "price_breakout"
+        }
+      ],
+      "line": 6889,
+      "op": "+="
+    },
+    {
+      "expr": "_delta_exit_bonus",
+      "guards": [
+        {
+          "line": 6891,
+          "test": "is_exit"
+        },
+        {
+          "line": 6893,
+          "test": "getattr(config, 'DELTA_EXIT_SPEED_DECAY', True) and _delta_sig and _delta_exit_ok"
+        }
+      ],
+      "line": 6898,
+      "op": "+="
+    },
+    {
+      "expr": "6",
+      "guards": [
+        {
+          "line": 6891,
+          "test": "is_exit"
+        },
+        {
+          "line": 7453,
+          "test": "_agg_enabled and pnl_pct < 0.17 and is_1m_flip_against and (not _is_hedge_pos)"
+        },
+        {
+          "line": 7470,
+          "test": "NOT (not structure_is_safe)"
+        }
+      ],
+      "line": 7474,
+      "op": "+="
+    },
+    {
+      "expr": "8.0",
+      "guards": [
+        {
+          "line": 6891,
+          "test": "is_exit"
+        },
+        {
+          "line": 7508,
+          "test": "pnl_pct < 0.2 and (is_long and (k_3m < d_3m or k_15m < d_15m or bot_sent) and (k_1m < k_1m_prev)) or (not is_long and (k_3m > d_3m or (k_15m > d_15m or higher_high_15m) or top_sent) and (k_1m > k_1m_prev))"
+        }
+      ],
+      "line": 7521,
+      "op": "+="
+    },
+    {
+      "expr": "4.0",
+      "guards": [
+        {
+          "line": 6891,
+          "test": "is_exit"
+        },
+        {
+          "line": 7523,
+          "test": "should_scalp"
+        },
+        {
+          "line": 7524,
+          "test": "is_long and (k_15m > 80 or (k_15m < d_15m or lower_low_15m) or bot_sent) and (k_3m < k_3m_prev or k_1m < d_1m) or (not is_long and (k_15m < 20 or (k_15m > d_15m or higher_high_15m) or top_sent) and (k_3m > k_3m_prev or k_1m < d_1m))"
+        }
+      ],
+      "line": 7533,
+      "op": "+="
+    },
+    {
+      "expr": "8",
+      "guards": [
+        {
+          "line": 6891,
+          "test": "is_exit"
+        },
+        {
+          "line": 7569,
+          "test": "is_long"
+        },
+        {
+          "line": 7582,
+          "test": "lower_high_3m and k_3m < k_3m_prev and (min_since_aug > 4)"
+        }
+      ],
+      "line": 7583,
+      "op": "+="
+    },
+    {
+      "expr": "8",
+      "guards": [
+        {
+          "line": 6891,
+          "test": "is_exit"
+        },
+        {
+          "line": 7569,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 7599,
+          "test": "higher_low_3m and k_3m > k_3m_prev and (min_since_aug > 4)"
+        }
+      ],
+      "line": 7600,
+      "op": "+="
+    },
+    {
+      "expr": "4.0",
+      "guards": [
+        {
+          "line": 6891,
+          "test": "is_exit"
+        },
+        {
+          "line": 7603,
+          "test": "should_close"
+        }
+      ],
+      "line": 7604,
+      "op": "+="
+    },
+    {
+      "expr": "3",
+      "guards": [
+        {
+          "line": 6891,
+          "test": "is_exit"
+        },
+        {
+          "line": 7603,
+          "test": "should_close"
+        },
+        {
+          "line": 7605,
+          "test": "'no_flip' in reasons"
+        }
+      ],
+      "line": 7606,
+      "op": "+="
+    },
+    {
+      "expr": "1",
+      "guards": [
+        {
+          "line": 6891,
+          "test": "is_exit"
+        },
+        {
+          "line": 7603,
+          "test": "should_close"
+        },
+        {
+          "line": 7607,
+          "test": "'Stagnant' in reasons"
+        }
+      ],
+      "line": 7608,
+      "op": "+="
+    },
+    {
+      "expr": "1",
+      "guards": [
+        {
+          "line": 6891,
+          "test": "is_exit"
+        },
+        {
+          "line": 7603,
+          "test": "should_close"
+        },
+        {
+          "line": 7609,
+          "test": "'in_scalp_gain' in reasons"
+        }
+      ],
+      "line": 7610,
+      "op": "+="
+    },
+    {
+      "expr": "2",
+      "guards": [
+        {
+          "line": 6891,
+          "test": "is_exit"
+        },
+        {
+          "line": 7603,
+          "test": "should_close"
+        },
+        {
+          "line": 7611,
+          "test": "'almost_losing' in reasons"
+        }
+      ],
+      "line": 7612,
+      "op": "+="
+    },
+    {
+      "expr": "3",
+      "guards": [
+        {
+          "line": 6891,
+          "test": "is_exit"
+        },
+        {
+          "line": 7603,
+          "test": "should_close"
+        },
+        {
+          "line": 7613,
+          "test": "'gain < 0.17' in reasons"
+        }
+      ],
+      "line": 7614,
+      "op": "+="
+    },
+    {
+      "expr": "3",
+      "guards": [
+        {
+          "line": 6891,
+          "test": "is_exit"
+        },
+        {
+          "line": 7603,
+          "test": "should_close"
+        },
+        {
+          "line": 7615,
+          "test": "'k_3m_flip' in reasons"
+        }
+      ],
+      "line": 7616,
+      "op": "+="
+    },
+    {
+      "expr": "10",
+      "guards": [
+        {
+          "line": 6891,
+          "test": "is_exit"
+        },
+        {
+          "line": 7603,
+          "test": "should_close"
+        },
+        {
+          "line": 7617,
+          "test": "'dc_broken' in reasons"
+        }
+      ],
+      "line": 7618,
+      "op": "+="
+    },
+    {
+      "expr": "14",
+      "guards": [
+        {
+          "line": 6891,
+          "test": "is_exit"
+        },
+        {
+          "line": 7603,
+          "test": "should_close"
+        },
+        {
+          "line": 7619,
+          "test": "'dc4_broken' in reasons"
+        }
+      ],
+      "line": 7620,
+      "op": "+="
+    },
+    {
+      "expr": "7",
+      "guards": [
+        {
+          "line": 6891,
+          "test": "is_exit"
+        },
+        {
+          "line": 7603,
+          "test": "should_close"
+        },
+        {
+          "line": 7621,
+          "test": "'just_opened' in reasons"
+        }
+      ],
+      "line": 7622,
+      "op": "+="
+    },
+    {
+      "expr": "2",
+      "guards": [
+        {
+          "line": 6891,
+          "test": "is_exit"
+        },
+        {
+          "line": 7603,
+          "test": "should_close"
+        },
+        {
+          "line": 7623,
+          "test": "'Overbought_Safety' in reasons or 'Oversold_Safety' in reasons"
+        }
+      ],
+      "line": 7624,
+      "op": "+="
+    },
+    {
+      "expr": "20",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7663,
+          "test": "force_reentry"
+        }
+      ],
+      "line": 7664,
+      "op": "+="
+    },
+    {
+      "expr": "0.3 * score",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7688,
+          "test": "not c1_long and is_long and (not special_reentry) and (not force_reentry)"
+        }
+      ],
+      "line": 7689,
+      "op": "="
+    },
+    {
+      "expr": "0.3 * score",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7690,
+          "test": "not c1_short and (not is_long) and (not special_reentry) and (not force_reentry)"
+        }
+      ],
+      "line": 7696,
+      "op": "="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7727,
+          "test": "is_long"
+        },
+        {
+          "line": 7728,
+          "test": "dc_high_4h > dc_high_4h_ant"
+        }
+      ],
+      "line": 7729,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7727,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 7732,
+          "test": "dc_low_4h < dc_low_4h_ant"
+        }
+      ],
+      "line": 7733,
+      "op": "+="
+    },
+    {
+      "expr": "3.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7735,
+          "test": "is_long"
+        },
+        {
+          "line": 7736,
+          "test": "k_4h < 50"
+        }
+      ],
+      "line": 7737,
+      "op": "+="
+    },
+    {
+      "expr": "3.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7735,
+          "test": "is_long"
+        },
+        {
+          "line": 7736,
+          "test": "NOT (k_4h < 50)"
+        },
+        {
+          "line": 7738,
+          "test": "k_4h > 85"
+        }
+      ],
+      "line": 7739,
+      "op": "+="
+    },
+    {
+      "expr": "3.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7735,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 7741,
+          "test": "k_4h > 50"
+        }
+      ],
+      "line": 7742,
+      "op": "+="
+    },
+    {
+      "expr": "3.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7735,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 7741,
+          "test": "NOT (k_4h > 50)"
+        },
+        {
+          "line": 7743,
+          "test": "k_4h < 15"
+        }
+      ],
+      "line": 7744,
+      "op": "+="
+    },
+    {
+      "expr": "3",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7746,
+          "test": "recent_exit"
+        },
+        {
+          "line": 7756,
+          "test": "set_a"
+        }
+      ],
+      "line": 7758,
+      "op": "+="
+    },
+    {
+      "expr": "3",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7746,
+          "test": "recent_exit"
+        },
+        {
+          "line": 7769,
+          "test": "set_b"
+        }
+      ],
+      "line": 7771,
+      "op": "+="
+    },
+    {
+      "expr": "5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7746,
+          "test": "recent_exit"
+        },
+        {
+          "line": 7787,
+          "test": "set_c"
+        }
+      ],
+      "line": 7789,
+      "op": "+="
+    },
+    {
+      "expr": "5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7746,
+          "test": "recent_exit"
+        },
+        {
+          "line": 7802,
+          "test": "set_d"
+        }
+      ],
+      "line": 7804,
+      "op": "+="
+    },
+    {
+      "expr": "2",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7746,
+          "test": "recent_exit"
+        },
+        {
+          "line": 7823,
+          "test": "set_e"
+        }
+      ],
+      "line": 7824,
+      "op": "+="
+    },
+    {
+      "expr": "1.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7831,
+          "test": "is_long and k_1m_prev < 20 and (k_1m > k_1m_prev)"
+        }
+      ],
+      "line": 7833,
+      "op": "+="
+    },
+    {
+      "expr": "1.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7831,
+          "test": "NOT (is_long and k_1m_prev < 20 and (k_1m > k_1m_prev))"
+        },
+        {
+          "line": 7835,
+          "test": "not is_long and k_1m_prev > 80 and (k_1m < k_1m_prev)"
+        }
+      ],
+      "line": 7837,
+      "op": "+="
+    },
+    {
+      "expr": "6.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7849,
+          "test": "is_long and k_3mco and (current_price < pos_last_red) and (current_price > pos_last_aug)"
+        }
+      ],
+      "line": 7856,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7849,
+          "test": "NOT (is_long and k_3mco and (current_price < pos_last_red) and (current_price > pos_last_aug))"
+        },
+        {
+          "line": 7858,
+          "test": "is_long and k_3mco and (current_price > pos_last_aug)"
+        }
+      ],
+      "line": 7860,
+      "op": "+="
+    },
+    {
+      "expr": "6.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7849,
+          "test": "NOT (is_long and k_3mco and (current_price < pos_last_red) and (current_price > pos_last_aug))"
+        },
+        {
+          "line": 7858,
+          "test": "NOT (is_long and k_3mco and (current_price > pos_last_aug))"
+        },
+        {
+          "line": 7862,
+          "test": "not is_long and k_3mcu and (current_price > pos_last_red) and (current_price < pos_last_aug)"
+        }
+      ],
+      "line": 7869,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7849,
+          "test": "NOT (is_long and k_3mco and (current_price < pos_last_red) and (current_price > pos_last_aug))"
+        },
+        {
+          "line": 7858,
+          "test": "NOT (is_long and k_3mco and (current_price > pos_last_aug))"
+        },
+        {
+          "line": 7862,
+          "test": "NOT (not is_long and k_3mcu and (current_price > pos_last_red) and (current_price < pos_last_aug))"
+        },
+        {
+          "line": 7871,
+          "test": "not is_long and k_3mcu and (current_price < pos_last_aug)"
+        }
+      ],
+      "line": 7873,
+      "op": "+="
+    },
+    {
+      "expr": "4.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7881,
+          "test": "is_long"
+        },
+        {
+          "line": 7882,
+          "test": "(dc_low_3m > dc_low_3m_ant or dc_high_3m > dc_high_3m_ant) and (dc_low_15m > dc_low_15m_ant or dc_high_15m > dc_high_15m_ant) and (dc_low_1h > dc_low_1h_ant or dc_high_1h > dc_high_1h_ant) and (dc_low_4h > dc_low_4h_ant or dc_high_4h > dc_high_4h_ant)"
+        }
+      ],
+      "line": 7889,
+      "op": "+="
+    },
+    {
+      "expr": "3.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7881,
+          "test": "is_long"
+        },
+        {
+          "line": 7891,
+          "test": "(dc_low_3m > dc_low_3m_ant or dc_high_3m > dc_high_3m_ant) and (dc_low_15m > dc_low_15m_ant or dc_high_15m > dc_high_15m_ant) and ((dc_low_1h > dc_low_1h_ant or dc_high_1h > dc_high_1h_ant) or (dc_low_4h > dc_low_4h_ant or dc_high_4h > dc_high_4h_ant))"
+        }
+      ],
+      "line": 7900,
+      "op": "+="
+    },
+    {
+      "expr": "1.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7881,
+          "test": "is_long"
+        },
+        {
+          "line": 7902,
+          "test": "(dc_low_3m > dc_low_3m_ant or dc_high_3m > dc_high_3m_ant) or ((dc_low_15m > dc_low_15m_ant or dc_high_15m > dc_high_15m_ant) or ((dc_low_1h > dc_low_1h_ant or dc_high_1h > dc_high_1h_ant) or (dc_low_4h > dc_low_4h_ant or dc_high_4h > dc_high_4h_ant)))"
+        }
+      ],
+      "line": 7910,
+      "op": "+="
+    },
+    {
+      "expr": "4.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7881,
+          "test": "is_long"
+        },
+        {
+          "line": 7912,
+          "test": "dc_low_3m < dc_low_3m_ant and dc_high_3m < dc_high_3m_ant or (dc_low_15m < dc_low_15m_ant and dc_high_15m < dc_high_15m_ant)"
+        }
+      ],
+      "line": 7915,
+      "op": "+="
+    },
+    {
+      "expr": "3.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7881,
+          "test": "is_long"
+        },
+        {
+          "line": 7917,
+          "test": "(dc_low_3m < dc_low_3m_ant or dc_high_3m < dc_high_3m_ant) and (dc_low_15m < dc_low_15m_ant or dc_high_15m < dc_high_15m_ant)"
+        }
+      ],
+      "line": 7920,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7881,
+          "test": "is_long"
+        },
+        {
+          "line": 7922,
+          "test": "dc_low_1h < dc_low_1h_ant and dc_high_1h < dc_high_1h_ant or (dc_low_4h < dc_low_4h_ant and dc_high_4h < dc_high_4h_ant)"
+        }
+      ],
+      "line": 7925,
+      "op": "+="
+    },
+    {
+      "expr": "5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7881,
+          "test": "is_long"
+        },
+        {
+          "line": 7927,
+          "test": "current_price >= dc_high_4h and (k_1m > d_1m and true_lag < 10.0) and (k_15m > d_15m or higher_high_15m)"
+        }
+      ],
+      "line": 7932,
+      "op": "+="
+    },
+    {
+      "expr": "4",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7881,
+          "test": "is_long"
+        },
+        {
+          "line": 7934,
+          "test": "current_price >= dc_high_1h and (k_1m > d_1m and true_lag < 10.0) and (k_15m > d_15m or higher_high_15m)"
+        }
+      ],
+      "line": 7939,
+      "op": "+="
+    },
+    {
+      "expr": "3",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7881,
+          "test": "is_long"
+        },
+        {
+          "line": 7941,
+          "test": "current_price >= dc_high_15m and (k_1m > d_1m and true_lag < 10.0) and (k_15m > d_15m or higher_high_15m)"
+        }
+      ],
+      "line": 7946,
+      "op": "+="
+    },
+    {
+      "expr": "6",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7881,
+          "test": "is_long"
+        },
+        {
+          "line": 7941,
+          "test": "NOT (current_price >= dc_high_15m and (k_1m > d_1m and true_lag < 10.0) and (k_15m > d_15m or higher_high_15m))"
+        },
+        {
+          "line": 7948,
+          "test": "current_price >= dc_high_3m and (k_1m > d_1m and true_lag < 10.0) and (k_15m > d_15m or higher_high_15m) and (k_3m < 40 or k_15m < 20)"
+        }
+      ],
+      "line": 7954,
+      "op": "+="
+    },
+    {
+      "expr": "2",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7881,
+          "test": "is_long"
+        },
+        {
+          "line": 7941,
+          "test": "NOT (current_price >= dc_high_15m and (k_1m > d_1m and true_lag < 10.0) and (k_15m > d_15m or higher_high_15m))"
+        },
+        {
+          "line": 7948,
+          "test": "NOT (current_price >= dc_high_3m and (k_1m > d_1m and true_lag < 10.0) and (k_15m > d_15m or higher_high_15m) and (k_3m < 40 or k_15m < 20))"
+        },
+        {
+          "line": 7956,
+          "test": "current_price >= dc_high_3m and (k_1m > d_1m and true_lag < 10.0) and (k_15m > d_15m or higher_high_15m)"
+        }
+      ],
+      "line": 7961,
+      "op": "+="
+    },
+    {
+      "expr": "4.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7881,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 7964,
+          "test": "not is_long"
+        },
+        {
+          "line": 7965,
+          "test": "(dc_low_3m < dc_low_3m_ant or dc_high_3m < dc_high_3m_ant) and (dc_low_15m < dc_low_15m_ant or dc_high_15m < dc_high_15m_ant) and (dc_low_1h < dc_low_1h_ant or dc_high_1h < dc_high_1h_ant) and (dc_low_4h < dc_low_4h_ant or dc_high_4h < dc_high_4h_ant)"
+        }
+      ],
+      "line": 7972,
+      "op": "+="
+    },
+    {
+      "expr": "3.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7881,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 7964,
+          "test": "not is_long"
+        },
+        {
+          "line": 7974,
+          "test": "(dc_low_3m < dc_low_3m_ant or dc_high_3m < dc_high_3m_ant) and (dc_low_15m < dc_low_15m_ant or dc_high_15m < dc_high_15m_ant) and ((dc_low_1h < dc_low_1h_ant or dc_high_1h < dc_high_1h_ant) or (dc_low_4h < dc_low_4h_ant or dc_high_4h < dc_high_4h_ant))"
+        }
+      ],
+      "line": 7983,
+      "op": "+="
+    },
+    {
+      "expr": "1.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7881,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 7964,
+          "test": "not is_long"
+        },
+        {
+          "line": 7985,
+          "test": "(dc_low_3m < dc_low_3m_ant or dc_high_3m < dc_high_3m_ant) or ((dc_low_15m < dc_low_15m_ant or dc_high_15m < dc_high_15m_ant) or ((dc_low_1h < dc_low_1h_ant or dc_high_1h < dc_high_1h_ant) or (dc_low_4h < dc_low_4h_ant or dc_high_4h < dc_high_4h_ant)))"
+        }
+      ],
+      "line": 7993,
+      "op": "+="
+    },
+    {
+      "expr": "4.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7881,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 7964,
+          "test": "not is_long"
+        },
+        {
+          "line": 7995,
+          "test": "dc_low_3m > dc_low_3m_ant and dc_high_3m > dc_high_3m_ant or (dc_low_15m > dc_low_15m_ant and dc_high_15m > dc_high_15m_ant)"
+        }
+      ],
+      "line": 7998,
+      "op": "+="
+    },
+    {
+      "expr": "3.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7881,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 7964,
+          "test": "not is_long"
+        },
+        {
+          "line": 8000,
+          "test": "(dc_low_3m > dc_low_3m_ant or dc_high_3m > dc_high_3m_ant) and (dc_low_15m > dc_low_15m_ant or dc_high_15m > dc_high_15m_ant)"
+        }
+      ],
+      "line": 8003,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7881,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 7964,
+          "test": "not is_long"
+        },
+        {
+          "line": 8005,
+          "test": "dc_low_1h > dc_low_1h_ant and dc_high_1h > dc_high_1h_ant or (dc_low_4h > dc_low_4h_ant and dc_high_4h > dc_high_4h_ant)"
+        }
+      ],
+      "line": 8008,
+      "op": "+="
+    },
+    {
+      "expr": "5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7881,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 7964,
+          "test": "not is_long"
+        },
+        {
+          "line": 8010,
+          "test": "current_price <= dc_low_4h and (k_1m < d_1m and true_lag < 10.0) and (k_15m < d_15m or lower_low_15m)"
+        }
+      ],
+      "line": 8015,
+      "op": "+="
+    },
+    {
+      "expr": "4",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7881,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 7964,
+          "test": "not is_long"
+        },
+        {
+          "line": 8017,
+          "test": "current_price <= dc_low_1h and k_3m < d_3m and (k_15m < d_15m or lower_low_15m)"
+        }
+      ],
+      "line": 8022,
+      "op": "+="
+    },
+    {
+      "expr": "6",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7881,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 7964,
+          "test": "not is_long"
+        },
+        {
+          "line": 8024,
+          "test": "current_price <= dc_low_15m and (k_1m < d_1m and true_lag < 10.0) and (k_15m < d_15m or lower_low_15m) and (k_3m > 60 or k_15m > 80)"
+        }
+      ],
+      "line": 8030,
+      "op": "+="
+    },
+    {
+      "expr": "2",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 7881,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 7964,
+          "test": "not is_long"
+        },
+        {
+          "line": 8024,
+          "test": "NOT (current_price <= dc_low_15m and (k_1m < d_1m and true_lag < 10.0) and (k_15m < d_15m or lower_low_15m) and (k_3m > 60 or k_15m > 80))"
+        },
+        {
+          "line": 8032,
+          "test": "current_price <= dc_low_3m and k_3m < d_3m and (k_15m < d_15m or lower_low_15m)"
+        }
+      ],
+      "line": 8037,
+      "op": "+="
+    },
+    {
+      "expr": "7",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8039,
+          "test": "(is_long and k_1m > k_1m_prev + 50.0 or k_3m > k_3m_prev + 40.0) or (not is_long and k_1m < k_1m_prev - 50.0 or k_3m < k_3m_prev - 40.0)"
+        }
+      ],
+      "line": 8042,
+      "op": "+="
+    },
+    {
+      "expr": "3",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8039,
+          "test": "NOT ((is_long and k_1m > k_1m_prev + 50.0 or k_3m > k_3m_prev + 40.0) or (not is_long and k_1m < k_1m_prev - 50.0 or k_3m < k_3m_prev - 40.0))"
+        },
+        {
+          "line": 8043,
+          "test": "(is_long and k_1m > k_1m_prev + 40.0 or k_3m > k_3m_prev + 30.0) or (not is_long and k_1m < k_1m_prev - 40.0 or k_3m < k_3m_prev - 30.0)"
+        }
+      ],
+      "line": 8046,
+      "op": "+="
+    },
+    {
+      "expr": "1",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8039,
+          "test": "NOT ((is_long and k_1m > k_1m_prev + 50.0 or k_3m > k_3m_prev + 40.0) or (not is_long and k_1m < k_1m_prev - 50.0 or k_3m < k_3m_prev - 40.0))"
+        },
+        {
+          "line": 8043,
+          "test": "NOT ((is_long and k_1m > k_1m_prev + 40.0 or k_3m > k_3m_prev + 30.0) or (not is_long and k_1m < k_1m_prev - 40.0 or k_3m < k_3m_prev - 30.0))"
+        },
+        {
+          "line": 8047,
+          "test": "(is_long and k_1m > k_1m_prev + 20.0 or k_3m > k_3m_prev + 20.0) or (not is_long and k_1m < k_1m_prev - 20.0 or k_3m < k_3m_prev - 20.0)"
+        }
+      ],
+      "line": 8050,
+      "op": "+="
+    },
+    {
+      "expr": "2",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8052,
+          "test": "is_long"
+        },
+        {
+          "line": 8053,
+          "test": "prev_cross_price != 0 and current_price >= prev_cross_price"
+        }
+      ],
+      "line": 8055,
+      "op": "+="
+    },
+    {
+      "expr": "1",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8052,
+          "test": "is_long"
+        },
+        {
+          "line": 8053,
+          "test": "NOT (prev_cross_price != 0 and current_price >= prev_cross_price)"
+        },
+        {
+          "line": 8056,
+          "test": "lr_slope > 0"
+        }
+      ],
+      "line": 8058,
+      "op": "+="
+    },
+    {
+      "expr": "2",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8052,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8060,
+          "test": "prev_cross_price != 0 and current_price <= prev_cross_price"
+        }
+      ],
+      "line": 8062,
+      "op": "+="
+    },
+    {
+      "expr": "1",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8052,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8060,
+          "test": "NOT (prev_cross_price != 0 and current_price <= prev_cross_price)"
+        },
+        {
+          "line": 8063,
+          "test": "lr_slope < 0"
+        }
+      ],
+      "line": 8065,
+      "op": "+="
+    },
+    {
+      "expr": "1.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8069,
+          "test": "is_long and k_1h > d_1h"
+        }
+      ],
+      "line": 8070,
+      "op": "+="
+    },
+    {
+      "expr": "1.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8071,
+          "test": "not is_long and k_1h < d_1h"
+        }
+      ],
+      "line": 8072,
+      "op": "+="
+    },
+    {
+      "expr": "1.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8073,
+          "test": "is_long and current_price > dc_basis_15m or (not is_long and current_price < dc_basis_15m)"
+        }
+      ],
+      "line": 8079,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8080,
+          "test": "is_long and current_price < dc_basis_15m or (not is_long and current_price > dc_basis_15m)"
+        }
+      ],
+      "line": 8086,
+      "op": "+="
+    },
+    {
+      "expr": "1.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8087,
+          "test": "is_long and current_price > dc_basis_1h or (not is_long and current_price < dc_basis_1h)"
+        }
+      ],
+      "line": 8093,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8094,
+          "test": "is_long and current_price < dc_basis_1h or (not is_long and current_price > dc_basis_1h)"
+        }
+      ],
+      "line": 8100,
+      "op": "+="
+    },
+    {
+      "expr": "1.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8101,
+          "test": "is_long and current_price > dc_basis_4h or (not is_long and current_price < dc_basis_4h)"
+        }
+      ],
+      "line": 8107,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8108,
+          "test": "is_long and current_price < dc_basis_4h or (not is_long and current_price > dc_basis_4h)"
+        }
+      ],
+      "line": 8114,
+      "op": "+="
+    },
+    {
+      "expr": "1.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8115,
+          "test": "is_long and current_price > sma_200_1m or (not is_long and current_price < sma_200_1m)"
+        }
+      ],
+      "line": 8121,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8122,
+          "test": "is_long and current_price < sma_200_1m or (not is_long and current_price > sma_200_1m)"
+        }
+      ],
+      "line": 8128,
+      "op": "+="
+    },
+    {
+      "expr": "1.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8129,
+          "test": "is_long and current_price > sma_200_15m or (not is_long and current_price < sma_200_15m)"
+        }
+      ],
+      "line": 8135,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8136,
+          "test": "is_long and current_price < sma_200_15m or (not is_long and current_price > sma_200_15m)"
+        }
+      ],
+      "line": 8142,
+      "op": "+="
+    },
+    {
+      "expr": "1.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8143,
+          "test": "is_long and current_price > sma_200_1h or (not is_long and current_price < sma_200_1h)"
+        }
+      ],
+      "line": 8149,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8150,
+          "test": "is_long and current_price < sma_200_1h or (not is_long and current_price > sma_200_1h)"
+        }
+      ],
+      "line": 8156,
+      "op": "+="
+    },
+    {
+      "expr": "1.5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8157,
+          "test": "is_long"
+        },
+        {
+          "line": 8158,
+          "test": "ha_15m == 'green'"
+        }
+      ],
+      "line": 8159,
+      "op": "+="
+    },
+    {
+      "expr": "1.5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8157,
+          "test": "is_long"
+        },
+        {
+          "line": 8160,
+          "test": "ha_1h == 'green'"
+        }
+      ],
+      "line": 8161,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8157,
+          "test": "is_long"
+        },
+        {
+          "line": 8162,
+          "test": "ha_15m == 'red'"
+        }
+      ],
+      "line": 8163,
+      "op": "+="
+    },
+    {
+      "expr": "1.5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8157,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8165,
+          "test": "ha_15m == 'red'"
+        }
+      ],
+      "line": 8166,
+      "op": "+="
+    },
+    {
+      "expr": "1.5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8157,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8167,
+          "test": "ha_1h == 'red'"
+        }
+      ],
+      "line": 8168,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8157,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8169,
+          "test": "ha_15m == 'green'"
+        }
+      ],
+      "line": 8170,
+      "op": "+="
+    },
+    {
+      "expr": "1.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8171,
+          "test": "is_long"
+        },
+        {
+          "line": 8172,
+          "test": "wt_score_15m > 0 and wt_score_1h > -20"
+        }
+      ],
+      "line": 8173,
+      "op": "+="
+    },
+    {
+      "expr": "1.5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8171,
+          "test": "is_long"
+        },
+        {
+          "line": 8174,
+          "test": "wt_score_15m < -50"
+        }
+      ],
+      "line": 8175,
+      "op": "+="
+    },
+    {
+      "expr": "1.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8171,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8177,
+          "test": "wt_score_15m < 0 and wt_score_1h < 20"
+        }
+      ],
+      "line": 8178,
+      "op": "+="
+    },
+    {
+      "expr": "1.5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8171,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8179,
+          "test": "wt_score_15m > 50"
+        }
+      ],
+      "line": 8180,
+      "op": "+="
+    },
+    {
+      "expr": "4.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8183,
+          "test": "_wt_div_1h == 'BULL' and is_long"
+        }
+      ],
+      "line": 8184,
+      "op": "+="
+    },
+    {
+      "expr": "4.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8183,
+          "test": "NOT (_wt_div_1h == 'BULL' and is_long)"
+        },
+        {
+          "line": 8186,
+          "test": "_wt_div_1h == 'BEAR' and (not is_long)"
+        }
+      ],
+      "line": 8187,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8183,
+          "test": "NOT (_wt_div_1h == 'BULL' and is_long)"
+        },
+        {
+          "line": 8186,
+          "test": "NOT (_wt_div_1h == 'BEAR' and (not is_long))"
+        },
+        {
+          "line": 8189,
+          "test": "_wt_div_1h == 'HIDDEN_BULL' and is_long"
+        }
+      ],
+      "line": 8190,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8183,
+          "test": "NOT (_wt_div_1h == 'BULL' and is_long)"
+        },
+        {
+          "line": 8186,
+          "test": "NOT (_wt_div_1h == 'BEAR' and (not is_long))"
+        },
+        {
+          "line": 8189,
+          "test": "NOT (_wt_div_1h == 'HIDDEN_BULL' and is_long)"
+        },
+        {
+          "line": 8192,
+          "test": "_wt_div_1h == 'HIDDEN_BEAR' and (not is_long)"
+        }
+      ],
+      "line": 8193,
+      "op": "+="
+    },
+    {
+      "expr": "5.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8195,
+          "test": "_wt_div_4h == 'BULL' and is_long"
+        }
+      ],
+      "line": 8196,
+      "op": "+="
+    },
+    {
+      "expr": "5.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8195,
+          "test": "NOT (_wt_div_4h == 'BULL' and is_long)"
+        },
+        {
+          "line": 8198,
+          "test": "_wt_div_4h == 'BEAR' and (not is_long)"
+        }
+      ],
+      "line": 8199,
+      "op": "+="
+    },
+    {
+      "expr": "3.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8202,
+          "test": "is_long and _wt_mom_1h == 'EXHAUST_DOWN'"
+        }
+      ],
+      "line": 8203,
+      "op": "+="
+    },
+    {
+      "expr": "3.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8202,
+          "test": "NOT (is_long and _wt_mom_1h == 'EXHAUST_DOWN')"
+        },
+        {
+          "line": 8205,
+          "test": "not is_long and _wt_mom_1h == 'EXHAUST_UP'"
+        }
+      ],
+      "line": 8206,
+      "op": "+="
+    },
+    {
+      "expr": "1.5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8208,
+          "test": "is_long and _wt_mom_1h == 'IMPULSE_UP'"
+        }
+      ],
+      "line": 8209,
+      "op": "+="
+    },
+    {
+      "expr": "1.5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8208,
+          "test": "NOT (is_long and _wt_mom_1h == 'IMPULSE_UP')"
+        },
+        {
+          "line": 8211,
+          "test": "not is_long and _wt_mom_1h == 'IMPULSE_DOWN'"
+        }
+      ],
+      "line": 8212,
+      "op": "+="
+    },
+    {
+      "expr": "4.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8215,
+          "test": "is_long and _wt_mom_1h == 'IMPULSE_DOWN'"
+        }
+      ],
+      "line": 8216,
+      "op": "+="
+    },
+    {
+      "expr": "4.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8215,
+          "test": "NOT (is_long and _wt_mom_1h == 'IMPULSE_DOWN')"
+        },
+        {
+          "line": 8218,
+          "test": "not is_long and _wt_mom_1h == 'IMPULSE_UP'"
+        }
+      ],
+      "line": 8219,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8222,
+          "test": "is_long and _wt_trough_struct_1h == 'HL'"
+        }
+      ],
+      "line": 8223,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8222,
+          "test": "NOT (is_long and _wt_trough_struct_1h == 'HL')"
+        },
+        {
+          "line": 8225,
+          "test": "not is_long and _wt_peak_struct_1h == 'LH'"
+        }
+      ],
+      "line": 8226,
+      "op": "+="
+    },
+    {
+      "expr": "3.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8229,
+          "test": "is_long and _wt_peak_struct_1h == 'LH' and (_wt_peak_struct_4h == 'LH')"
+        }
+      ],
+      "line": 8230,
+      "op": "+="
+    },
+    {
+      "expr": "3.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8229,
+          "test": "NOT (is_long and _wt_peak_struct_1h == 'LH' and (_wt_peak_struct_4h == 'LH'))"
+        },
+        {
+          "line": 8232,
+          "test": "not is_long and _wt_trough_struct_1h == 'HL' and (_wt_trough_struct_4h == 'HL')"
+        }
+      ],
+      "line": 8237,
+      "op": "+="
+    },
+    {
+      "expr": "3.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8240,
+          "test": "_wt_cross_1h == 'BULL' and is_long"
+        }
+      ],
+      "line": 8241,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8240,
+          "test": "_wt_cross_1h == 'BULL' and is_long"
+        },
+        {
+          "line": 8243,
+          "test": "_wt_cross_rising_1h"
+        }
+      ],
+      "line": 8244,
+      "op": "+="
+    },
+    {
+      "expr": "3.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8240,
+          "test": "NOT (_wt_cross_1h == 'BULL' and is_long)"
+        },
+        {
+          "line": 8246,
+          "test": "_wt_cross_1h == 'BEAR' and (not is_long)"
+        }
+      ],
+      "line": 8247,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8240,
+          "test": "NOT (_wt_cross_1h == 'BULL' and is_long)"
+        },
+        {
+          "line": 8246,
+          "test": "_wt_cross_1h == 'BEAR' and (not is_long)"
+        },
+        {
+          "line": 8249,
+          "test": "_wt_cross_rising_1h is False"
+        }
+      ],
+      "line": 8250,
+      "op": "+="
+    },
+    {
+      "expr": "3.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8253,
+          "test": "is_long and _wt_pctile_1h < 10"
+        }
+      ],
+      "line": 8254,
+      "op": "+="
+    },
+    {
+      "expr": "3.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8253,
+          "test": "NOT (is_long and _wt_pctile_1h < 10)"
+        },
+        {
+          "line": 8256,
+          "test": "not is_long and _wt_pctile_1h > 90"
+        }
+      ],
+      "line": 8257,
+      "op": "+="
+    },
+    {
+      "expr": "4.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8260,
+          "test": "_wt_extreme_1h"
+        },
+        {
+          "line": 8261,
+          "test": "is_long and _wt_pctile_1h > 90"
+        }
+      ],
+      "line": 8262,
+      "op": "+="
+    },
+    {
+      "expr": "4.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8260,
+          "test": "_wt_extreme_1h"
+        },
+        {
+          "line": 8261,
+          "test": "NOT (is_long and _wt_pctile_1h > 90)"
+        },
+        {
+          "line": 8264,
+          "test": "not is_long and _wt_pctile_1h < 10"
+        }
+      ],
+      "line": 8265,
+      "op": "+="
+    },
+    {
+      "expr": "4.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8310,
+          "test": "_wt_trigger_count >= 4"
+        }
+      ],
+      "line": 8311,
+      "op": "+="
+    },
+    {
+      "expr": "2.5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8310,
+          "test": "NOT (_wt_trigger_count >= 4)"
+        },
+        {
+          "line": 8313,
+          "test": "_wt_trigger_count >= 3"
+        }
+      ],
+      "line": 8314,
+      "op": "+="
+    },
+    {
+      "expr": "1.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8310,
+          "test": "NOT (_wt_trigger_count >= 4)"
+        },
+        {
+          "line": 8313,
+          "test": "NOT (_wt_trigger_count >= 3)"
+        },
+        {
+          "line": 8316,
+          "test": "_wt_trigger_count >= 2"
+        }
+      ],
+      "line": 8317,
+      "op": "+="
+    },
+    {
+      "expr": "3.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8310,
+          "test": "NOT (_wt_trigger_count >= 4)"
+        },
+        {
+          "line": 8313,
+          "test": "NOT (_wt_trigger_count >= 3)"
+        },
+        {
+          "line": 8316,
+          "test": "NOT (_wt_trigger_count >= 2)"
+        },
+        {
+          "line": 8319,
+          "test": "_wt_trigger_count == 0"
+        }
+      ],
+      "line": 8320,
+      "op": "+="
+    },
+    {
+      "expr": "1.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8323,
+          "test": "rel_vol > 1.5"
+        }
+      ],
+      "line": 8324,
+      "op": "+="
+    },
+    {
+      "expr": "1.5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8323,
+          "test": "NOT (rel_vol > 1.5)"
+        },
+        {
+          "line": 8326,
+          "test": "rel_vol < 0.5"
+        }
+      ],
+      "line": 8327,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8332,
+          "test": "z_conviction > 20"
+        }
+      ],
+      "line": 8333,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8335,
+          "test": "is_long"
+        },
+        {
+          "line": 8336,
+          "test": "current_price > dc_high_1h * 0.995 and rel_vol < 2.0"
+        }
+      ],
+      "line": 8337,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8335,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8340,
+          "test": "current_price < dc_low_1h * 1.005 and rel_vol < 2.0"
+        }
+      ],
+      "line": 8341,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8378,
+          "test": "is_long and k_3m > d_3m or (not is_long and k_3m < d_3m)"
+        }
+      ],
+      "line": 8379,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8380,
+          "test": "is_long and k_15m < 20 or (not is_long and k_15m > 80)"
+        }
+      ],
+      "line": 8381,
+      "op": "+="
+    },
+    {
+      "expr": "3.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8382,
+          "test": "is_long and k_15m > 80 or (not is_long and k_15m < 20)"
+        }
+      ],
+      "line": 8383,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8384,
+          "test": "is_long and k_3m < 20 or (not is_long and k_3m > 80)"
+        }
+      ],
+      "line": 8385,
+      "op": "+="
+    },
+    {
+      "expr": "4.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8386,
+          "test": "is_long and k_3m > 80 or (not is_long and k_3m < 20)"
+        }
+      ],
+      "line": 8387,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8388,
+          "test": "is_long and k_1h < d_1h or (not is_long and k_1h > d_1h)"
+        }
+      ],
+      "line": 8389,
+      "op": "+="
+    },
+    {
+      "expr": "1.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8390,
+          "test": "is_long and k_4h < d_4h or (not is_long and k_4h > d_4h)"
+        }
+      ],
+      "line": 8391,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8392,
+          "test": "is_long and k_1h < 30 and (k_1h > d_1h) or (not is_long and k_1h > 70 and (k_1h < d_1h))"
+        }
+      ],
+      "line": 8395,
+      "op": "+="
+    },
+    {
+      "expr": "3.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8396,
+          "test": "is_long and current_price > dc_basis_1h * 1.04 and (current_price > dc_basis_15m) or (not is_long and current_price < dc_basis_15m * 0.96 and (current_price < dc_basis_15m))"
+        }
+      ],
+      "line": 8405,
+      "op": "+="
+    },
+    {
+      "expr": "1.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8396,
+          "test": "NOT (is_long and current_price > dc_basis_1h * 1.04 and (current_price > dc_basis_15m) or (not is_long and current_price < dc_basis_15m * 0.96 and (current_price < dc_basis_15m)))"
+        },
+        {
+          "line": 8406,
+          "test": "is_long and current_price > dc_basis_1h * 1.03 or (not is_long and current_price < dc_basis_1h * 0.93)"
+        }
+      ],
+      "line": 8409,
+      "op": "+="
+    },
+    {
+      "expr": "1.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8410,
+          "test": "is_long and sco1h and (current_price > dc_basis_1h) or (not is_long and scu1h and (current_price < dc_basis_1h * 0.93))"
+        }
+      ],
+      "line": 8413,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8414,
+          "test": "is_long and sco15m and (current_price > dc_basis_15m) or (not is_long and scu15m and (current_price < dc_basis_15m))"
+        }
+      ],
+      "line": 8417,
+      "op": "+="
+    },
+    {
+      "expr": "1.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8418,
+          "test": "is_long and current_price > dc_basis_1h or (not is_long and current_price < dc_basis_1h)"
+        }
+      ],
+      "line": 8421,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8422,
+          "test": "is_long and current_price < dc_basis_4h or (not is_long and current_price > dc_basis_4h)"
+        }
+      ],
+      "line": 8425,
+      "op": "+="
+    },
+    {
+      "expr": "0.5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8431,
+          "test": "_dc_h1m > 0 and _dc_l1m > 0"
+        },
+        {
+          "line": 8432,
+          "test": "is_long and current_price >= _dc_h1m or (not is_long and current_price <= _dc_l1m)"
+        }
+      ],
+      "line": 8435,
+      "op": "+="
+    },
+    {
+      "expr": "1.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8436,
+          "test": "is_long and current_price >= dc_high_3m or (not is_long and current_price <= dc_low_3m)"
+        }
+      ],
+      "line": 8439,
+      "op": "+="
+    },
+    {
+      "expr": "1.5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8440,
+          "test": "is_long and current_price >= dc_high_15m or (not is_long and current_price <= dc_low_15m)"
+        }
+      ],
+      "line": 8443,
+      "op": "+="
+    },
+    {
+      "expr": "2",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8444,
+          "test": "is_long and current_price >= dc_high_1h or (not is_long and current_price <= dc_low_1h)"
+        }
+      ],
+      "line": 8447,
+      "op": "+="
+    },
+    {
+      "expr": "2",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8448,
+          "test": "is_long and current_price >= dc_high_4h or (not is_long and current_price <= dc_low_4h)"
+        }
+      ],
+      "line": 8451,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8455,
+          "test": "is_long"
+        },
+        {
+          "line": 8456,
+          "test": "top_sent"
+        }
+      ],
+      "line": 8457,
+      "op": "+="
+    },
+    {
+      "expr": "5.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8455,
+          "test": "is_long"
+        },
+        {
+          "line": 8456,
+          "test": "NOT (top_sent)"
+        },
+        {
+          "line": 8458,
+          "test": "bot_sent"
+        }
+      ],
+      "line": 8459,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8455,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8461,
+          "test": "bot_sent"
+        }
+      ],
+      "line": 8462,
+      "op": "+="
+    },
+    {
+      "expr": "5.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8455,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8461,
+          "test": "NOT (bot_sent)"
+        },
+        {
+          "line": 8463,
+          "test": "top_sent"
+        }
+      ],
+      "line": 8464,
+      "op": "+="
+    },
+    {
+      "expr": "4.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8468,
+          "test": "is_long"
+        },
+        {
+          "line": 8469,
+          "test": "rank_points >= 95"
+        }
+      ],
+      "line": 8470,
+      "op": "+="
+    },
+    {
+      "expr": "2.5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8468,
+          "test": "is_long"
+        },
+        {
+          "line": 8469,
+          "test": "NOT (rank_points >= 95)"
+        },
+        {
+          "line": 8471,
+          "test": "rank_points >= 90"
+        }
+      ],
+      "line": 8472,
+      "op": "+="
+    },
+    {
+      "expr": "1.5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8468,
+          "test": "is_long"
+        },
+        {
+          "line": 8469,
+          "test": "NOT (rank_points >= 95)"
+        },
+        {
+          "line": 8471,
+          "test": "NOT (rank_points >= 90)"
+        },
+        {
+          "line": 8473,
+          "test": "rank_points >= 80"
+        }
+      ],
+      "line": 8474,
+      "op": "+="
+    },
+    {
+      "expr": "0.5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8468,
+          "test": "is_long"
+        },
+        {
+          "line": 8469,
+          "test": "NOT (rank_points >= 95)"
+        },
+        {
+          "line": 8471,
+          "test": "NOT (rank_points >= 90)"
+        },
+        {
+          "line": 8473,
+          "test": "NOT (rank_points >= 80)"
+        },
+        {
+          "line": 8475,
+          "test": "rank_points >= 50"
+        }
+      ],
+      "line": 8476,
+      "op": "+="
+    },
+    {
+      "expr": "4.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8468,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8478,
+          "test": "rank_points <= 5"
+        }
+      ],
+      "line": 8479,
+      "op": "+="
+    },
+    {
+      "expr": "2.5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8468,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8478,
+          "test": "NOT (rank_points <= 5)"
+        },
+        {
+          "line": 8480,
+          "test": "rank_points <= 10"
+        }
+      ],
+      "line": 8481,
+      "op": "+="
+    },
+    {
+      "expr": "1.5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8468,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8478,
+          "test": "NOT (rank_points <= 5)"
+        },
+        {
+          "line": 8480,
+          "test": "NOT (rank_points <= 10)"
+        },
+        {
+          "line": 8482,
+          "test": "rank_points <= 20"
+        }
+      ],
+      "line": 8483,
+      "op": "+="
+    },
+    {
+      "expr": "0.5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8468,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8478,
+          "test": "NOT (rank_points <= 5)"
+        },
+        {
+          "line": 8480,
+          "test": "NOT (rank_points <= 10)"
+        },
+        {
+          "line": 8482,
+          "test": "NOT (rank_points <= 20)"
+        },
+        {
+          "line": 8484,
+          "test": "rank_points <= 50"
+        }
+      ],
+      "line": 8485,
+      "op": "+="
+    },
+    {
+      "expr": "history_score_mod",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        }
+      ],
+      "line": 8486,
+      "op": "+="
+    },
+    {
+      "expr": "2",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8487,
+          "test": "ind"
+        },
+        {
+          "line": 8489,
+          "test": "is_long"
+        },
+        {
+          "line": 8490,
+          "test": "sentc == 'EXTREME_BULLISH'"
+        }
+      ],
+      "line": 8491,
+      "op": "+="
+    },
+    {
+      "expr": "1",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8487,
+          "test": "ind"
+        },
+        {
+          "line": 8489,
+          "test": "is_long"
+        },
+        {
+          "line": 8492,
+          "test": "sentc == 'NEUTRAL'"
+        }
+      ],
+      "line": 8493,
+      "op": "+="
+    },
+    {
+      "expr": "2",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8487,
+          "test": "ind"
+        },
+        {
+          "line": 8489,
+          "test": "is_long"
+        },
+        {
+          "line": 8494,
+          "test": "'BEARISH' in sentc"
+        }
+      ],
+      "line": 8495,
+      "op": "+="
+    },
+    {
+      "expr": "1.5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8487,
+          "test": "ind"
+        },
+        {
+          "line": 8489,
+          "test": "is_long"
+        },
+        {
+          "line": 8496,
+          "test": "local_sent > 50"
+        }
+      ],
+      "line": 8497,
+      "op": "+="
+    },
+    {
+      "expr": "0.5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8487,
+          "test": "ind"
+        },
+        {
+          "line": 8489,
+          "test": "is_long"
+        },
+        {
+          "line": 8496,
+          "test": "NOT (local_sent > 50)"
+        },
+        {
+          "line": 8498,
+          "test": "local_sent > 25"
+        }
+      ],
+      "line": 8499,
+      "op": "+="
+    },
+    {
+      "expr": "3",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8487,
+          "test": "ind"
+        },
+        {
+          "line": 8489,
+          "test": "is_long"
+        },
+        {
+          "line": 8500,
+          "test": "global_sent < -20"
+        }
+      ],
+      "line": 8501,
+      "op": "+="
+    },
+    {
+      "expr": "3",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8487,
+          "test": "ind"
+        },
+        {
+          "line": 8489,
+          "test": "is_long"
+        },
+        {
+          "line": 8500,
+          "test": "NOT (global_sent < -20)"
+        },
+        {
+          "line": 8502,
+          "test": "global_sent > 50"
+        }
+      ],
+      "line": 8503,
+      "op": "+="
+    },
+    {
+      "expr": "1",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8487,
+          "test": "ind"
+        },
+        {
+          "line": 8489,
+          "test": "is_long"
+        },
+        {
+          "line": 8500,
+          "test": "NOT (global_sent < -20)"
+        },
+        {
+          "line": 8502,
+          "test": "NOT (global_sent > 50)"
+        },
+        {
+          "line": 8504,
+          "test": "global_sent > 30"
+        }
+      ],
+      "line": 8505,
+      "op": "+="
+    },
+    {
+      "expr": "2",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8487,
+          "test": "ind"
+        },
+        {
+          "line": 8489,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8507,
+          "test": "sentc == 'EXTREME_BEARISH'"
+        }
+      ],
+      "line": 8508,
+      "op": "+="
+    },
+    {
+      "expr": "1",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8487,
+          "test": "ind"
+        },
+        {
+          "line": 8489,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8509,
+          "test": "sentc == 'NEUTRAL'"
+        }
+      ],
+      "line": 8510,
+      "op": "+="
+    },
+    {
+      "expr": "2",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8487,
+          "test": "ind"
+        },
+        {
+          "line": 8489,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8511,
+          "test": "'BULLISH' in sentc"
+        }
+      ],
+      "line": 8512,
+      "op": "+="
+    },
+    {
+      "expr": "1.5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8487,
+          "test": "ind"
+        },
+        {
+          "line": 8489,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8513,
+          "test": "local_sent < -50"
+        }
+      ],
+      "line": 8514,
+      "op": "+="
+    },
+    {
+      "expr": "0.5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8487,
+          "test": "ind"
+        },
+        {
+          "line": 8489,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8513,
+          "test": "NOT (local_sent < -50)"
+        },
+        {
+          "line": 8515,
+          "test": "local_sent < -25"
+        }
+      ],
+      "line": 8516,
+      "op": "+="
+    },
+    {
+      "expr": "3",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8487,
+          "test": "ind"
+        },
+        {
+          "line": 8489,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8517,
+          "test": "global_sent > 20"
+        }
+      ],
+      "line": 8518,
+      "op": "+="
+    },
+    {
+      "expr": "3",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8487,
+          "test": "ind"
+        },
+        {
+          "line": 8489,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8517,
+          "test": "NOT (global_sent > 20)"
+        },
+        {
+          "line": 8519,
+          "test": "global_sent < -50"
+        }
+      ],
+      "line": 8520,
+      "op": "+="
+    },
+    {
+      "expr": "1",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8487,
+          "test": "ind"
+        },
+        {
+          "line": 8489,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8517,
+          "test": "NOT (global_sent > 20)"
+        },
+        {
+          "line": 8519,
+          "test": "NOT (global_sent < -50)"
+        },
+        {
+          "line": 8521,
+          "test": "global_sent < -30"
+        }
+      ],
+      "line": 8522,
+      "op": "+="
+    },
+    {
+      "expr": "6.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8487,
+          "test": "ind"
+        },
+        {
+          "line": 8524,
+          "test": "is_long"
+        },
+        {
+          "line": 8525,
+          "test": "alpha > 50"
+        }
+      ],
+      "line": 8526,
+      "op": "+="
+    },
+    {
+      "expr": "3.5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8487,
+          "test": "ind"
+        },
+        {
+          "line": 8524,
+          "test": "is_long"
+        },
+        {
+          "line": 8525,
+          "test": "NOT (alpha > 50)"
+        },
+        {
+          "line": 8529,
+          "test": "alpha > 40"
+        }
+      ],
+      "line": 8530,
+      "op": "+="
+    },
+    {
+      "expr": "1.5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8487,
+          "test": "ind"
+        },
+        {
+          "line": 8524,
+          "test": "is_long"
+        },
+        {
+          "line": 8525,
+          "test": "NOT (alpha > 50)"
+        },
+        {
+          "line": 8529,
+          "test": "NOT (alpha > 40)"
+        },
+        {
+          "line": 8531,
+          "test": "alpha > 20"
+        }
+      ],
+      "line": 8532,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8487,
+          "test": "ind"
+        },
+        {
+          "line": 8524,
+          "test": "is_long"
+        },
+        {
+          "line": 8525,
+          "test": "NOT (alpha > 50)"
+        },
+        {
+          "line": 8529,
+          "test": "NOT (alpha > 40)"
+        },
+        {
+          "line": 8531,
+          "test": "NOT (alpha > 20)"
+        },
+        {
+          "line": 8533,
+          "test": "alpha < -20"
+        }
+      ],
+      "line": 8534,
+      "op": "+="
+    },
+    {
+      "expr": "6.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8487,
+          "test": "ind"
+        },
+        {
+          "line": 8524,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8536,
+          "test": "alpha < -50"
+        }
+      ],
+      "line": 8537,
+      "op": "+="
+    },
+    {
+      "expr": "3.5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8487,
+          "test": "ind"
+        },
+        {
+          "line": 8524,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8536,
+          "test": "NOT (alpha < -50)"
+        },
+        {
+          "line": 8538,
+          "test": "alpha < -40"
+        }
+      ],
+      "line": 8539,
+      "op": "+="
+    },
+    {
+      "expr": "1.5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8487,
+          "test": "ind"
+        },
+        {
+          "line": 8524,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8536,
+          "test": "NOT (alpha < -50)"
+        },
+        {
+          "line": 8538,
+          "test": "NOT (alpha < -40)"
+        },
+        {
+          "line": 8540,
+          "test": "alpha < -20"
+        }
+      ],
+      "line": 8541,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8487,
+          "test": "ind"
+        },
+        {
+          "line": 8524,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8536,
+          "test": "NOT (alpha < -50)"
+        },
+        {
+          "line": 8538,
+          "test": "NOT (alpha < -40)"
+        },
+        {
+          "line": 8540,
+          "test": "NOT (alpha < -20)"
+        },
+        {
+          "line": 8542,
+          "test": "alpha > 20"
+        }
+      ],
+      "line": 8543,
+      "op": "+="
+    },
+    {
+      "expr": "0.3 * score",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8547,
+          "test": "not c1_long and is_long"
+        }
+      ],
+      "line": 8548,
+      "op": "="
+    },
+    {
+      "expr": "1.5 * score",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8549,
+          "test": "is_long and k_1m < 20 or k_3m < 20"
+        }
+      ],
+      "line": 8550,
+      "op": "="
+    },
+    {
+      "expr": "1.5 * score",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8551,
+          "test": "not is_long and k_1m > 80 or k_3m > 80"
+        }
+      ],
+      "line": 8552,
+      "op": "="
+    },
+    {
+      "expr": "0.3 * score",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8553,
+          "test": "not c1_short and (not is_long)"
+        }
+      ],
+      "line": 8554,
+      "op": "="
+    },
+    {
+      "expr": "5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8555,
+          "test": "not scalp_entry_detected"
+        },
+        {
+          "line": 8556,
+          "test": "is_long and (k_15m < d_15m or lower_low_15m) or (not is_long and (k_15m > d_15m or higher_high_15m))"
+        }
+      ],
+      "line": 8559,
+      "op": "+="
+    },
+    {
+      "expr": "5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8555,
+          "test": "not scalp_entry_detected"
+        },
+        {
+          "line": 8560,
+          "test": "is_long and k_3m < d_3m or (not is_long and k_3m > d_3m)"
+        }
+      ],
+      "line": 8561,
+      "op": "+="
+    },
+    {
+      "expr": "4",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8562,
+          "test": "score >= 5"
+        },
+        {
+          "line": 8563,
+          "test": "gain > 3 * config.MIN_GAIN"
+        }
+      ],
+      "line": 8564,
+      "op": "+="
+    },
+    {
+      "expr": "3",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8562,
+          "test": "score >= 5"
+        },
+        {
+          "line": 8563,
+          "test": "NOT (gain > 3 * config.MIN_GAIN)"
+        },
+        {
+          "line": 8565,
+          "test": "gain > 2 * config.MIN_GAIN"
+        }
+      ],
+      "line": 8566,
+      "op": "+="
+    },
+    {
+      "expr": "1.5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8562,
+          "test": "score >= 5"
+        },
+        {
+          "line": 8563,
+          "test": "NOT (gain > 3 * config.MIN_GAIN)"
+        },
+        {
+          "line": 8565,
+          "test": "NOT (gain > 2 * config.MIN_GAIN)"
+        },
+        {
+          "line": 8567,
+          "test": "gain > config.MIN_GAIN"
+        }
+      ],
+      "line": 8568,
+      "op": "+="
+    },
+    {
+      "expr": "0.2 * score",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8569,
+          "test": "(is_long and k_1m > 85 or k_3m > 85) or (not is_long and k_1m < 15 or k_3m < 15)"
+        }
+      ],
+      "line": 8572,
+      "op": "="
+    },
+    {
+      "expr": "0.1 * score",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8573,
+          "test": "is_long and (k_1m < d_1m and true_lag < 10.0) and (k_3m < d_3m) or (not is_long and k_1m > d_1m and (k_3m > d_3m))"
+        }
+      ],
+      "line": 8576,
+      "op": "="
+    },
+    {
+      "expr": "0.4 * score",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8573,
+          "test": "NOT (is_long and (k_1m < d_1m and true_lag < 10.0) and (k_3m < d_3m) or (not is_long and k_1m > d_1m and (k_3m > d_3m)))"
+        },
+        {
+          "line": 8577,
+          "test": "is_long and (k_1m < d_1m and true_lag < 10.0 or k_3m < d_3m) or (not is_long and (k_1m > d_1m or k_3m > d_3m))"
+        }
+      ],
+      "line": 8580,
+      "op": "="
+    },
+    {
+      "expr": "6",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8581,
+          "test": "(is_long and k_1m > k_1m_prev + 40.0 or k_3m > k_3m_prev + 30.0 or k_15m > k_15m_prev + 25.0) or (not is_long and k_1m < k_1m_prev - 40.0 or k_3m < k_3m_prev - 30.0 or k_15m < k_15m_prev - 25.0)"
+        }
+      ],
+      "line": 8592,
+      "op": "+="
+    },
+    {
+      "expr": "max(0.8 * score, 10.0)",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8594,
+          "test": "'Trend_Continuation_ReEntry' in reasons"
+        }
+      ],
+      "line": 8595,
+      "op": "="
+    },
+    {
+      "expr": "0.35",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8598,
+          "test": "dc_low_3m and dc_low_15m and dc_low_1h"
+        },
+        {
+          "line": 8604,
+          "test": "not dc_suff"
+        }
+      ],
+      "line": 8605,
+      "op": "+="
+    },
+    {
+      "expr": "knife_penalty",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        }
+      ],
+      "line": 8640,
+      "op": "+="
+    },
+    {
+      "expr": "12",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8641,
+          "test": "score > 10 and gain > 3"
+        }
+      ],
+      "line": 8642,
+      "op": "+="
+    },
+    {
+      "expr": "8",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8643,
+          "test": "score > 8 and gain > 1.5"
+        }
+      ],
+      "line": 8644,
+      "op": "+="
+    },
+    {
+      "expr": "6.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8687,
+          "test": "is_long"
+        },
+        {
+          "line": 8689,
+          "test": "_dcp_cum < 0.2"
+        }
+      ],
+      "line": 8690,
+      "op": "+="
+    },
+    {
+      "expr": "3.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8687,
+          "test": "is_long"
+        },
+        {
+          "line": 8689,
+          "test": "NOT (_dcp_cum < 0.2)"
+        },
+        {
+          "line": 8692,
+          "test": "_dcp_cum < 0.35"
+        }
+      ],
+      "line": 8693,
+      "op": "+="
+    },
+    {
+      "expr": "5.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8687,
+          "test": "is_long"
+        },
+        {
+          "line": 8689,
+          "test": "NOT (_dcp_cum < 0.2)"
+        },
+        {
+          "line": 8692,
+          "test": "NOT (_dcp_cum < 0.35)"
+        },
+        {
+          "line": 8695,
+          "test": "_dcp_cum > 0.8"
+        }
+      ],
+      "line": 8696,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8687,
+          "test": "is_long"
+        },
+        {
+          "line": 8689,
+          "test": "NOT (_dcp_cum < 0.2)"
+        },
+        {
+          "line": 8692,
+          "test": "NOT (_dcp_cum < 0.35)"
+        },
+        {
+          "line": 8695,
+          "test": "NOT (_dcp_cum > 0.8)"
+        },
+        {
+          "line": 8698,
+          "test": "_dcp_cum > 0.65"
+        }
+      ],
+      "line": 8699,
+      "op": "+="
+    },
+    {
+      "expr": "3.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8687,
+          "test": "is_long"
+        },
+        {
+          "line": 8702,
+          "test": "_dcp_15m < 0.2"
+        }
+      ],
+      "line": 8703,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8687,
+          "test": "is_long"
+        },
+        {
+          "line": 8704,
+          "test": "_dcp_1h < 0.25"
+        }
+      ],
+      "line": 8705,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8687,
+          "test": "is_long"
+        },
+        {
+          "line": 8706,
+          "test": "_dcp_4h < 0.2"
+        }
+      ],
+      "line": 8707,
+      "op": "+="
+    },
+    {
+      "expr": "3.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8687,
+          "test": "is_long"
+        },
+        {
+          "line": 8708,
+          "test": "_dcp_15m > 0.85"
+        }
+      ],
+      "line": 8709,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8687,
+          "test": "is_long"
+        },
+        {
+          "line": 8710,
+          "test": "_dcp_1h > 0.85"
+        }
+      ],
+      "line": 8711,
+      "op": "+="
+    },
+    {
+      "expr": "6.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8687,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8714,
+          "test": "_dcp_cum > 0.8"
+        }
+      ],
+      "line": 8715,
+      "op": "+="
+    },
+    {
+      "expr": "3.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8687,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8714,
+          "test": "NOT (_dcp_cum > 0.8)"
+        },
+        {
+          "line": 8717,
+          "test": "_dcp_cum > 0.65"
+        }
+      ],
+      "line": 8718,
+      "op": "+="
+    },
+    {
+      "expr": "5.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8687,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8714,
+          "test": "NOT (_dcp_cum > 0.8)"
+        },
+        {
+          "line": 8717,
+          "test": "NOT (_dcp_cum > 0.65)"
+        },
+        {
+          "line": 8720,
+          "test": "_dcp_cum < 0.2"
+        }
+      ],
+      "line": 8721,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8687,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8714,
+          "test": "NOT (_dcp_cum > 0.8)"
+        },
+        {
+          "line": 8717,
+          "test": "NOT (_dcp_cum > 0.65)"
+        },
+        {
+          "line": 8720,
+          "test": "NOT (_dcp_cum < 0.2)"
+        },
+        {
+          "line": 8723,
+          "test": "_dcp_cum < 0.35"
+        }
+      ],
+      "line": 8724,
+      "op": "+="
+    },
+    {
+      "expr": "3.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8687,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8726,
+          "test": "_dcp_15m > 0.8"
+        }
+      ],
+      "line": 8727,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8687,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8728,
+          "test": "_dcp_1h > 0.75"
+        }
+      ],
+      "line": 8729,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8687,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8730,
+          "test": "_dcp_4h > 0.8"
+        }
+      ],
+      "line": 8731,
+      "op": "+="
+    },
+    {
+      "expr": "3.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8687,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8732,
+          "test": "_dcp_15m < 0.15"
+        }
+      ],
+      "line": 8733,
+      "op": "+="
+    },
+    {
+      "expr": "2.0",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8687,
+          "test": "NOT (is_long)"
+        },
+        {
+          "line": 8734,
+          "test": "_dcp_1h < 0.15"
+        }
+      ],
+      "line": 8735,
+      "op": "+="
+    },
+    {
+      "expr": "getattr(config, 'EMA_PULLBACK_SCORE_BONUS', 35)",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8739,
+          "test": "getattr(config, 'EMA_PULLBACK_ENABLED', False)"
+        },
+        {
+          "line": 8745,
+          "test": "_ep_ema9 > 0 and _ep_ema14 > 0 and (_ep_ema20 > 0)"
+        },
+        {
+          "line": 8746,
+          "test": "is_long and current_price > _ep_ema20 and (current_price < _ep_ema9) and (current_price < _ep_ema14) and (_ep_k < 20)"
+        }
+      ],
+      "line": 8753,
+      "op": "+="
+    },
+    {
+      "expr": "getattr(config, 'EMA_PULLBACK_SCORE_BONUS', 35)",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8739,
+          "test": "getattr(config, 'EMA_PULLBACK_ENABLED', False)"
+        },
+        {
+          "line": 8745,
+          "test": "_ep_ema9 > 0 and _ep_ema14 > 0 and (_ep_ema20 > 0)"
+        },
+        {
+          "line": 8746,
+          "test": "NOT (is_long and current_price > _ep_ema20 and (current_price < _ep_ema9) and (current_price < _ep_ema14) and (_ep_k < 20))"
+        },
+        {
+          "line": 8755,
+          "test": "not is_long and current_price < _ep_ema20 and (current_price > _ep_ema9) and (current_price > _ep_ema14) and (_ep_k > 80)"
+        }
+      ],
+      "line": 8762,
+      "op": "+="
+    },
+    {
+      "expr": "getattr(config, 'BB_RSI_STOCH_SCALP_SCORE', 25)",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8765,
+          "test": "getattr(config, 'BB_RSI_STOCH_SCALP_ENABLED', False)"
+        },
+        {
+          "line": 8769,
+          "test": "is_long and _bs_bb < 0.05 and (_bs_rsi < 30) and (_bs_k < 20)"
+        }
+      ],
+      "line": 8770,
+      "op": "+="
+    },
+    {
+      "expr": "getattr(config, 'BB_RSI_STOCH_SCALP_SCORE', 25)",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8765,
+          "test": "getattr(config, 'BB_RSI_STOCH_SCALP_ENABLED', False)"
+        },
+        {
+          "line": 8769,
+          "test": "NOT (is_long and _bs_bb < 0.05 and (_bs_rsi < 30) and (_bs_k < 20))"
+        },
+        {
+          "line": 8774,
+          "test": "not is_long and _bs_bb > 0.95 and (_bs_rsi > 70) and (_bs_k > 80)"
+        }
+      ],
+      "line": 8775,
+      "op": "+="
+    },
+    {
+      "expr": "getattr(config, 'MACD_ZERO_CROSS_SCORE', 15)",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8780,
+          "test": "getattr(config, 'MACD_ZERO_CROSS_ENABLED', False)"
+        },
+        {
+          "line": 8786,
+          "test": "is_long and _mz_co and (_mz_macd < 0) and (_mz_sma > 0) and (current_price > _mz_sma)"
+        }
+      ],
+      "line": 8793,
+      "op": "+="
+    },
+    {
+      "expr": "getattr(config, 'MACD_ZERO_CROSS_SCORE', 15)",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8780,
+          "test": "getattr(config, 'MACD_ZERO_CROSS_ENABLED', False)"
+        },
+        {
+          "line": 8786,
+          "test": "NOT (is_long and _mz_co and (_mz_macd < 0) and (_mz_sma > 0) and (current_price > _mz_sma))"
+        },
+        {
+          "line": 8795,
+          "test": "not is_long and _mz_cu and (_mz_macd > 0) and (_mz_sma > 0) and (current_price < _mz_sma)"
+        }
+      ],
+      "line": 8802,
+      "op": "+="
+    },
+    {
+      "expr": "getattr(config, 'RSI2_SCORE_BONUS', 20)",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8805,
+          "test": "getattr(config, 'RSI2_MEAN_REVERSION_ENABLED', False)"
+        },
+        {
+          "line": 8807,
+          "test": "is_long and _r2 < getattr(config, 'RSI2_THRESHOLD_LONG', 15.0)"
+        }
+      ],
+      "line": 8808,
+      "op": "+="
+    },
+    {
+      "expr": "getattr(config, 'RSI2_SCORE_BONUS', 20)",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8805,
+          "test": "getattr(config, 'RSI2_MEAN_REVERSION_ENABLED', False)"
+        },
+        {
+          "line": 8807,
+          "test": "NOT (is_long and _r2 < getattr(config, 'RSI2_THRESHOLD_LONG', 15.0))"
+        },
+        {
+          "line": 8810,
+          "test": "not is_long and _r2 > getattr(config, 'RSI2_THRESHOLD_SHORT', 85.0)"
+        }
+      ],
+      "line": 8813,
+      "op": "+="
+    },
+    {
+      "expr": "getattr(config, 'HA_WICK_QUALITY_SCORE', 15)",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8816,
+          "test": "getattr(config, 'HA_WICK_QUALITY_ENABLED', False)"
+        },
+        {
+          "line": 8819,
+          "test": "is_long and _hw_streak >= 3"
+        }
+      ],
+      "line": 8820,
+      "op": "+="
+    },
+    {
+      "expr": "getattr(config, 'HA_WICK_QUALITY_SCORE', 15)",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8816,
+          "test": "getattr(config, 'HA_WICK_QUALITY_ENABLED', False)"
+        },
+        {
+          "line": 8819,
+          "test": "NOT (is_long and _hw_streak >= 3)"
+        },
+        {
+          "line": 8822,
+          "test": "not is_long and _hw_streak <= -3"
+        }
+      ],
+      "line": 8823,
+      "op": "+="
+    },
+    {
+      "expr": "getattr(config, 'BB_BREAKOUT_SCORE', 20)",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8826,
+          "test": "getattr(config, 'BB_BREAKOUT_ENABLED', False)"
+        },
+        {
+          "line": 8831,
+          "test": "_bb_adx > 25 and _bb_sma > 0"
+        },
+        {
+          "line": 8832,
+          "test": "is_long and _bb_pct > 1.0 and (current_price > _bb_sma)"
+        }
+      ],
+      "line": 8833,
+      "op": "+="
+    },
+    {
+      "expr": "getattr(config, 'BB_BREAKOUT_SCORE', 20)",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8826,
+          "test": "getattr(config, 'BB_BREAKOUT_ENABLED', False)"
+        },
+        {
+          "line": 8831,
+          "test": "_bb_adx > 25 and _bb_sma > 0"
+        },
+        {
+          "line": 8832,
+          "test": "NOT (is_long and _bb_pct > 1.0 and (current_price > _bb_sma))"
+        },
+        {
+          "line": 8837,
+          "test": "not is_long and _bb_pct < 0.0 and (current_price < _bb_sma)"
+        }
+      ],
+      "line": 8838,
+      "op": "+="
+    },
+    {
+      "expr": "getattr(config, 'TRIPLE_CONF_SCORE', 30)",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8843,
+          "test": "getattr(config, 'TRIPLE_CONF_ENABLED', False) and (not is_exit)"
+        },
+        {
+          "line": 8849,
+          "test": "is_long and _tc_rsi < getattr(config, 'TRIPLE_CONF_RSI_LONG', 30.0) and (_tc_k < getattr(config, 'TRIPLE_CONF_STOCH_LONG', 20.0)) and _tc_macd_co"
+        }
+      ],
+      "line": 8855,
+      "op": "+="
+    },
+    {
+      "expr": "getattr(config, 'TRIPLE_CONF_SCORE', 30)",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8843,
+          "test": "getattr(config, 'TRIPLE_CONF_ENABLED', False) and (not is_exit)"
+        },
+        {
+          "line": 8849,
+          "test": "NOT (is_long and _tc_rsi < getattr(config, 'TRIPLE_CONF_RSI_LONG', 30.0) and (_tc_k < getattr(config, 'TRIPLE_CONF_STOCH_LONG', 20.0)) and _tc_macd_co)"
+        },
+        {
+          "line": 8859,
+          "test": "not is_long and _tc_rsi > getattr(config, 'TRIPLE_CONF_RSI_SHORT', 70.0) and (_tc_k > getattr(config, 'TRIPLE_CONF_STOCH_SHORT', 80.0)) and _tc_macd_cu"
+        }
+      ],
+      "line": 8865,
+      "op": "+="
+    },
+    {
+      "expr": "getattr(config, 'EMA200_STOCHRSI_SCORE', 25)",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8870,
+          "test": "getattr(config, 'EMA200_STOCHRSI_ENABLED', False) and (not is_exit)"
+        },
+        {
+          "line": 8877,
+          "test": "_es_sma > 0"
+        },
+        {
+          "line": 8878,
+          "test": "is_long and current_price > _es_sma and (_es_k < getattr(config, 'EMA200_STOCHRSI_K_LONG', 20.0)) and _es_kco and (_es_br >= getattr(config, 'EMA200_STOCHRSI_BODY_MULT', 1.05))"
+        }
+      ],
+      "line": 8885,
+      "op": "+="
+    },
+    {
+      "expr": "getattr(config, 'EMA200_STOCHRSI_SCORE', 25)",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8870,
+          "test": "getattr(config, 'EMA200_STOCHRSI_ENABLED', False) and (not is_exit)"
+        },
+        {
+          "line": 8877,
+          "test": "_es_sma > 0"
+        },
+        {
+          "line": 8878,
+          "test": "NOT (is_long and current_price > _es_sma and (_es_k < getattr(config, 'EMA200_STOCHRSI_K_LONG', 20.0)) and _es_kco and (_es_br >= getattr(config, 'EMA200_STOCHRSI_BODY_MULT', 1.05)))"
+        },
+        {
+          "line": 8889,
+          "test": "not is_long and current_price < _es_sma and (_es_k > getattr(config, 'EMA200_STOCHRSI_K_SHORT', 80.0)) and _es_kcu and (_es_br >= getattr(config, 'EMA200_STOCHRSI_BODY_MULT', 1.05))"
+        }
+      ],
+      "line": 8896,
+      "op": "+="
+    },
+    {
+      "expr": "getattr(config, 'RSI_MACD_EMA_SCORE', 25)",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8901,
+          "test": "getattr(config, 'RSI_MACD_EMA_ENABLED', False) and (not is_exit)"
+        },
+        {
+          "line": 8907,
+          "test": "_rm_ema9 > 0"
+        },
+        {
+          "line": 8908,
+          "test": "is_long and current_price > _rm_ema9 and _rm_macd_co and (_rm_rsi < getattr(config, 'RSI_MACD_EMA_RSI_LONG', 35.0))"
+        }
+      ],
+      "line": 8914,
+      "op": "+="
+    },
+    {
+      "expr": "getattr(config, 'RSI_MACD_EMA_SCORE', 25)",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8901,
+          "test": "getattr(config, 'RSI_MACD_EMA_ENABLED', False) and (not is_exit)"
+        },
+        {
+          "line": 8907,
+          "test": "_rm_ema9 > 0"
+        },
+        {
+          "line": 8908,
+          "test": "NOT (is_long and current_price > _rm_ema9 and _rm_macd_co and (_rm_rsi < getattr(config, 'RSI_MACD_EMA_RSI_LONG', 35.0)))"
+        },
+        {
+          "line": 8916,
+          "test": "not is_long and current_price < _rm_ema9 and _rm_macd_cu and (_rm_rsi > getattr(config, 'RSI_MACD_EMA_RSI_SHORT', 65.0))"
+        }
+      ],
+      "line": 8922,
+      "op": "+="
+    },
+    {
+      "expr": "getattr(config, 'DC_BREAKOUT_SCORE', 15)",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8926,
+          "test": "getattr(config, 'DC_BREAKOUT_ENTRY_ENABLED', False) and (not is_exit)"
+        },
+        {
+          "line": 8937,
+          "test": "_dc_hi > 0 and _dc_lo > 0 and (_dc_adx > 25)"
+        },
+        {
+          "line": 8938,
+          "test": "is_long and current_price > _dc_hi"
+        }
+      ],
+      "line": 8939,
+      "op": "+="
+    },
+    {
+      "expr": "getattr(config, 'DC_BREAKOUT_SCORE', 15)",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8926,
+          "test": "getattr(config, 'DC_BREAKOUT_ENTRY_ENABLED', False) and (not is_exit)"
+        },
+        {
+          "line": 8937,
+          "test": "_dc_hi > 0 and _dc_lo > 0 and (_dc_adx > 25)"
+        },
+        {
+          "line": 8938,
+          "test": "NOT (is_long and current_price > _dc_hi)"
+        },
+        {
+          "line": 8943,
+          "test": "not is_long and current_price < _dc_lo"
+        }
+      ],
+      "line": 8944,
+      "op": "+="
+    },
+    {
+      "expr": "5",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8963,
+          "test": "getattr(config, 'MARKET_QUALITY_SCORE_ENABLED', False) and (not is_exit)"
+        },
+        {
+          "line": 8968,
+          "test": "_mq_total >= 6.0"
+        }
+      ],
+      "line": 8969,
+      "op": "+="
+    },
+    {
+      "expr": "2",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8963,
+          "test": "getattr(config, 'MARKET_QUALITY_SCORE_ENABLED', False) and (not is_exit)"
+        },
+        {
+          "line": 8968,
+          "test": "NOT (_mq_total >= 6.0)"
+        },
+        {
+          "line": 8971,
+          "test": "_mq_total >= 4.0"
+        }
+      ],
+      "line": 8972,
+      "op": "+="
+    },
+    {
+      "expr": "_delta_entry_bonus",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8977,
+          "test": "getattr(config, 'DELTA_ENGINE_ENABLED', False) and _delta_sig"
+        },
+        {
+          "line": 8978,
+          "test": "_delta_entry_ok and _delta_active_tfs >= _delta_min_tf"
+        }
+      ],
+      "line": 8979,
+      "op": "+="
+    },
+    {
+      "expr": "_delta_entry_penalty",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8977,
+          "test": "getattr(config, 'DELTA_ENGINE_ENABLED', False) and _delta_sig"
+        },
+        {
+          "line": 8978,
+          "test": "NOT (_delta_entry_ok and _delta_active_tfs >= _delta_min_tf)"
+        },
+        {
+          "line": 8983,
+          "test": "not _delta_entry_ok and _delta_active_tfs < _delta_min_tf"
+        }
+      ],
+      "line": 8984,
+      "op": "+="
+    },
+    {
+      "expr": "_delta_entry_penalty",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8977,
+          "test": "getattr(config, 'DELTA_ENGINE_ENABLED', False) and _delta_sig"
+        },
+        {
+          "line": 8990,
+          "test": "_htf_g != 'none'"
+        },
+        {
+          "line": 9001,
+          "test": "_htf_g in ('4h', '4h_D') and (not _htf_4h_ok)"
+        }
+      ],
+      "line": 9002,
+      "op": "+="
+    },
+    {
+      "expr": "_delta_entry_penalty",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 8977,
+          "test": "getattr(config, 'DELTA_ENGINE_ENABLED', False) and _delta_sig"
+        },
+        {
+          "line": 8990,
+          "test": "_htf_g != 'none'"
+        },
+        {
+          "line": 9004,
+          "test": "_htf_g == '4h_D' and (not _htf_D_ok)"
+        }
+      ],
+      "line": 9005,
+      "op": "+="
+    },
+    {
+      "expr": "35",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 9012,
+          "test": "not is_exit"
+        },
+        {
+          "line": 9013,
+          "test": "try"
+        }
+      ],
+      "line": 9017,
+      "op": "+="
+    },
+    {
+      "expr": "0.2 * score",
+      "guards": [
+        {
+          "line": 7640,
+          "test": "not is_exit"
+        },
+        {
+          "line": 9041,
+          "test": "not _sg_breakout and (is_long and (k_1m > 70 and true_lag < 10.0 or k_3m > 80) or (not is_long and (k_1m < 30 and true_lag < 10.0 or k_3m < 20)))"
+        }
+      ],
+      "line": 9045,
+      "op": "="
+    }
+  ],
+  "source_file": "ez_positions_quick.py",
+  "source_sha256": "7634c897c67a28dbbfcbf99f39cabc1e564084bf82d07f632b6042267399d1a8"
+}

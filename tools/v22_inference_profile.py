@@ -23,7 +23,7 @@ from pathlib import Path
 SCHEMA = "v22_inference_runtime_profile/1"
 MAX_JSON_BYTES = 16 * 1024 * 1024
 PHASE_RE = re.compile(r"\[V17-PHASE\]\s+([A-Za-z0-9_.-]+).*?\bwall(?:_s)?\s*[=:]\s*([0-9]+(?:\.[0-9]+)?)")
-TS_RE = re.compile(r"(20\d\d-\d\d-\d\d[T ][0-9:.]+Z?)")
+TS_RE = re.compile(r"^\s*(20\d\d-\d\d-\d\d[T ][0-9:.]+Z?)")
 
 
 def _utc_now():
@@ -182,10 +182,10 @@ def _parse_jsonl_record(record, kind, state):
             elif record.get("cached") is True:
                 _add_duration(state["delta_eval_secs_cached"], record.get("secs"))
     if kind == "coverage_attempts":
-        state["coverage_attempts"] += 1
+        state["coverage_records"] += 1
         if record.get("engine_execution_attempted") is True:
             state["coverage_engine_attempts"] += 1
-        _add_duration(state["coverage_eval_wall_seconds_sum"], record.get("wall_seconds"))
+            _add_duration(state["coverage_eval_wall_seconds_sum"], record.get("wall_seconds"))
 
 
 def _scan_source(source):
@@ -201,14 +201,14 @@ def _scan_source(source):
         "delta_eval_secs_uncached": _duration_bucket(),
         "delta_eval_secs_cached": _duration_bucket(),
         "coverage_eval_wall_seconds_sum": _duration_bucket(),
-        "coverage_attempts": 0,
+        "coverage_records": 0,
         "coverage_engine_attempts": 0,
         "timestamp_min": None,
         "timestamp_max": None,
         "json": None,
     }
     try:
-        if kind in {"progress", "campaign_result", "oracle", "run_manifest", "manifest"}:
+        if kind in {"progress", "campaign_result", "oracle", "run_manifest", "manifest", "launch_receipt", "terminal_receipt"}:
             raw, parsed = _read_small_json(stream)
             digest.update(raw)
             byte_count += len(raw)
@@ -274,7 +274,7 @@ def profile(manifest):
             "delta_eval_secs_uncached_sum": _duration_bucket(),
             "delta_eval_secs_cached_sum": _duration_bucket(),
             "coverage_eval_wall_seconds_sum": _duration_bucket(),
-            "coverage_attempts": 0,
+            "coverage_records": 0,
             "coverage_engine_attempts": 0,
             "coverage_progress_snapshots": [],
             "campaign_receipts": [],
@@ -316,7 +316,7 @@ def profile(manifest):
             dst["sum_s"] += src["sum_s"]
             dst["min_s"] = src["min_s"] if dst["min_s"] is None else (min(dst["min_s"], src["min_s"]) if src["min_s"] is not None else dst["min_s"])
             dst["max_s"] = src["max_s"] if dst["max_s"] is None else (max(dst["max_s"], src["max_s"]) if src["max_s"] is not None else dst["max_s"])
-        output["measured"]["coverage_attempts"] += state["coverage_attempts"]
+        output["measured"]["coverage_records"] += state["coverage_records"]
         output["measured"]["coverage_engine_attempts"] += state["coverage_engine_attempts"]
         if source.get("kind") == "progress":
             output["measured"]["coverage_progress_snapshots"].append({"source": scanned["source"]["path"], "observed_at": state.get("progress_observed_at"), "counts": state.get("progress_counts")})

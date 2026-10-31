@@ -209,6 +209,51 @@ def test_upsert_compare_and_swap_refuses_stale_full_config():
             pss.CRYPTO_JSON, pss.STOCKS_JSON = old_cj, old_sj
 
 
+def test_upsert_compare_and_swap_checks_latest_published_row():
+    import hashlib
+    with tempfile.TemporaryDirectory() as td:
+        old_db = pss.DB_PATH
+        old_cj, old_sj = pss.CRYPTO_JSON, pss.STOCKS_JSON
+        pss.DB_PATH = Path(td) / "published_cas.db"
+        pss.CRYPTO_JSON = Path(td) / "crypto.json"
+        pss.STOCKS_JSON = Path(td) / "stocks.json"
+        try:
+            sym_side = "PUBCASUSDT_LONG"
+            full = {"A": 1}
+            first_meta = {"source": "fleet_orchestrator_publish", "winning_tag": "publish1"}
+            pss.upsert(sym_side, {"A": 1}, full, full, first_meta)
+            con = sqlite3.connect(str(pss.DB_PATH))
+            first = con.execute("SELECT id, updated_at, winning_tag, overrides_json FROM per_sym_history WHERE sym_side=? ORDER BY id DESC LIMIT 1", (sym_side,)).fetchone()
+            con.close()
+            stale_identity = {
+                "history_id": int(first[0]), "published_at": first[1], "winning_tag": first[2],
+                "overrides_sha256": hashlib.sha256(json.dumps(json.loads(first[3] or "{}"), sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest(),
+            }
+            second_meta = {"source": "fleet_orchestrator_publish", "winning_tag": "publish2"}
+            pss.upsert(sym_side, {"A": 1}, full, full, second_meta)
+            con = sqlite3.connect(str(pss.DB_PATH))
+            latest = con.execute("SELECT id, updated_at, winning_tag, overrides_json FROM per_sym_history WHERE sym_side=? ORDER BY id DESC LIMIT 1", (sym_side,)).fetchone()
+            con.close()
+            latest_identity = {
+                "history_id": int(latest[0]), "published_at": latest[1], "winning_tag": latest[2],
+                "overrides_sha256": hashlib.sha256(json.dumps(json.loads(latest[3] or "{}"), sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest(),
+            }
+            replacement = {"A": 2}
+            live_hash = hashlib.sha256(json.dumps(full, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()
+            try:
+                pss.upsert(sym_side, replacement, replacement, replacement, {"winning_tag": "h2h"}, expected_full_config_sha256=live_hash, expected_published_history_identity=stale_identity)
+            except RuntimeError as exc:
+                assert "latest published candidate identity changed" in str(exc)
+            else:
+                raise AssertionError("stale published row unexpectedly passed compare-and-swap")
+            assert pss.get_full_config(sym_side) == full
+            pss.upsert(sym_side, replacement, replacement, replacement, {"winning_tag": "h2h"}, expected_full_config_sha256=live_hash, expected_published_history_identity=latest_identity)
+            assert pss.get_full_config(sym_side) == replacement
+        finally:
+            pss.DB_PATH = old_db
+            pss.CRYPTO_JSON, pss.STOCKS_JSON = old_cj, old_sj
+
+
 def test_kv_survives_json_vanish():
     """Writers dual-write JSON→SQL; loaders SQL-primary so vanishing JSONs don't silently lose 172 promotions."""
     import tempfile

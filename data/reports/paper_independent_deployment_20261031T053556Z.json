@@ -1,0 +1,89 @@
+{
+  "audit_at_utc": "2026-10-31T05:35:56.496729+00:00",
+  "batch_id": "c448841839bb41caa13a",
+  "campaign": {
+    "anchor": "first_available_after",
+    "decision_clock": "observed_at_utc",
+    "duration_seconds": 21600,
+    "independent_state_per_run": true,
+    "native_source_timestamps_preserved": true,
+    "promotion_enabled": false
+  },
+  "collector_receipt": {
+    "path": "/Users/niels/Documents/binance/data/reports/paper_independent_collector_deploy_20261031T053150Z.json",
+    "sha256": "5d42e0cd83cfe9b054bca88dfd9b2a05f36b5f3057664e317c55e086287a8d1c"
+  },
+  "coordinator_release": "95c6c75aecf9230648fd",
+  "coordinator_release_reason": "Replace quadratic manifest list membership with indexed set lookup; engine and worker remain frozen",
+  "coverage_limitations": [
+    "1m crypto timestamps are aliased and stock timestamps are heartbeats; neither is accepted as verified native 1m input",
+    "Current native source clocks include crypto 3m and stock 5m; stock observations await open-market data",
+    "32,921 parameter jobs remain unresolved rather than receiving invented candidate values",
+    "Rejected effective settings, including the diagnosed stock DELTA_TF_WEIGHTS type mismatch, stop before frames",
+    "Production workers await complete input windows and resource admission; no performance results exist at audit capture"
+  ],
+  "defined_candidate_jobs": 75523,
+  "distinct_sym_sides": 749,
+  "engine_sha256": "3273eecb524b55c65bae690f67bdbc67445d59c0d45e867c3f8f2d9750bfcddb",
+  "hosts": {
+    "s1": {
+      "jobs": 31476,
+      "venue": "crypto"
+    },
+    "s2": {
+      "jobs": 29928,
+      "venue": "crypto"
+    },
+    "s5": {
+      "jobs": 25320,
+      "venue": "stocks"
+    },
+    "s6": {
+      "jobs": 21720,
+      "venue": "stocks"
+    }
+  },
+  "pending_parameter_jobs": 32921,
+  "process_deviations": [
+    "The first accounting-related edits to tools/paper_forward_results.py and tools/paper_forward_collect.py did not have pre-edit backups. This was disclosed; no retrospective or fabricated backups were created. Later edits had backups where noted, and no file was rolled back."
+  ],
+  "resource_policy": {
+    "cpu_quota_percent_per_host": 200,
+    "cpu_scheduling": "SCHED_IDLE",
+    "max_workers_per_host": 4,
+    "maximum_cpu_pressure_avg10": 10,
+    "maximum_load_per_cpu": 0.8,
+    "memory_high_gib": 4,
+    "memory_max_gib": 6,
+    "minimum_disk_reserve_gib": 8,
+    "minimum_memory_reserve_gib": 8,
+    "nice": 19
+  },
+  "runtime_sha256": "259e13fdcf88a81ca1d091b3fa102be04ca87a727c4339897be0b806aaf79f82",
+  "sql_master": {
+    "coordinator_table": "paper_coordinator_jobs",
+    "host": "s1",
+    "paired_delta_view": "paper_paired_simulated_cost_readiness",
+    "path": "/home/niels/binance-sandbox/data/paper_forward_lab/scenarios.db",
+    "receipts_table": "forward_receipts"
+  },
+  "total_jobs": 108444,
+  "validation": {
+    "actual_engine_diagnostic_crypto_receipts": 2,
+    "indexed_manifest_benchmark_jobs": 31476,
+    "indexed_manifest_benchmark_seconds": 8.398,
+    "integration_tests_passed": 110,
+    "production_execution_evidence": {
+      "accounting_fills": 0,
+      "forward_receipts": 0,
+      "independent_forward_results": 0,
+      "independent_forward_runs": 0,
+      "meaning": "No worker execution receipts or outcomes were present at capture; no fills or performance were fabricated.",
+      "performance_claims_emitted": false,
+      "trades": 0,
+      "worker_result_manifests_imported": 0
+    },
+    "subsequent_controller_tests_passed": 26,
+    "subtests_passed": 5
+  }
+}

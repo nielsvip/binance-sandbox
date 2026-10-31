@@ -1,6 +1,6 @@
 {
   "acceptance_contract": "Exact entry/augment/reduce/close action bars; quantities may differ. Focused reachability is not full rolling replay acceptance.",
-  "as_of_utc": "2026-10-31T05:33:52+00:00",
+  "as_of_utc": "2026-10-31T05:34:21+00:00",
   "decision_rule": "A vector block or score weight is not treated as full-path parity unless producer predicate, eligibility, downstream gate, and execution reachability are all evidenced.",
   "paths": [
     {
@@ -302,7 +302,7 @@
         "ez_manage.py:38858-38878 SHORT_SMA_GATE for short augment when current price is above SMA200_15m and position value >= per-sym SPS; pass only through the configured extreme-overbought RSI4h/RSI_D/BB%B override.",
         "ez_manage.py:39643-39652 AUGMENT_GUARD requires MIN_GAIN when current position value exceeds per-sym START_POSITION_SIZE."
       ],
-      "proof": "tests/test_ppl_reaugment.py, tests/test_ppl_reaugment_execute_now_gates.py, and tests/test_ppl_reaugment_short_sma.py (15 passed): extracted actual native raw-3% branch; losing/augment-depth pullback conditions; projected-entry check; typed WT_CROSS UAGAIN tier; short SMA/overbought thresholds; actual simulate_one PPL trigger action bar 9 with configured gain tiers (2.8% blocked; >4.5% trigger accepted; typed 4% WT_CROSS threshold blocks).",
+      "proof": "tests/test_ppl_reaugment.py, tests/test_ppl_reaugment_execute_now_gates.py, and tests/test_ppl_reaugment_short_sma.py (16 passed): extracted actual native raw-3% branch; losing/augment-depth pullback conditions; projected-entry check; typed WT_CROSS UAGAIN tier; short SMA/overbought thresholds; actual simulate_one PPL trigger action bar 9 on both long and short with configured gain tiers (2.8% blocked; >4.5% generic trigger accepted; typed 4% WT_CROSS threshold blocks).",
       "status": "Implemented for the enumerated inner gain predicates. This is not full execute_now action parity: other side-list, provenance, rate-limit, freshness, and exchange-order layers remain account/runtime concerns.",
       "switches": [
         "PPL_REAUGMENT_ENABLED",
@@ -332,11 +332,11 @@
       "result": "Paired 15m scalar/vector input comparison: 40,571 AAPL bars across crypto/Tradier, LONG/SHORT, LTF on/off yielded zero component score/fire mismatches. Actual WT_DC compute_entry_signals mask toggles at same-bar AAPL index 103 with a 5.6 score boost. simulate_one ledger action bars did not differ on that diagnostic. Shared augment gain gate actual ledger regression blocked -1% AT_LOSS HL add; remaining action/source-family limitations recorded on path entries."
     },
     "ppl_reaugment_gates": {
-      "at_utc": "2026-10-31T05:33:52+00:00",
-      "result": "15 focused tests passed across the PPL gate, PPL trigger, and short-SMA suites; v12 compiled and relocked; no production sync, orders, or service restarts.",
+      "at_utc": "2026-10-31T05:34:21+00:00",
+      "result": "16 focused tests passed across PPL trigger, inner-gate, and short-SMA suites for both long and short action bars; v12 compiled and relocked; no production sync, orders, or service restarts.",
       "backup": "backups/before_ppl_reaugment_short_sma_wire_v12_quick_engine_20261031T053339Z_1793424819443137000.py"
     }
   },
-  "review_updated_at": "2026-10-31T05:33:52+00:00",
+  "review_updated_at": "2026-10-31T05:34:21+00:00",
   "scope": "ez_positions_quick.py flat OPEN, explicit REENTRY, and vectorizable non-hedge/non-scalp exit paths reviewed in this pass"
 }

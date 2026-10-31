@@ -4692,134 +4692,21 @@ class AdvancedSignalRater:
                         "WAIT",
                         f"HTF_1H_REQUIRED(k1h={k_1h:.0f},d1h={d_1h:.0f})_tournament",
                     )
-        # --- WT COMPOSITE SCORE BONUSES ---
-        if _wt_comp_enabled and not is_exit:
-            _wt_strong = getattr(config, "WT_COMPOSITE_ENTRY_STRONG", 50.0)
-            _wt_good = getattr(config, "WT_COMPOSITE_ENTRY_GOOD", 30.0)
-            _wt_ok = getattr(config, "WT_COMPOSITE_ENTRY_OK", 10.0)
-            _wt_side_comp = _wt_comp_long if is_long else _wt_comp_short
-            if _wt_side_comp >= _wt_strong:
-                score += 8
-                reasons.append(
-                    f"WT_STRONG({'L' if is_long else 'S'}={_wt_side_comp:.0f},+8)"
-                )
-            elif _wt_side_comp >= _wt_good:
-                score += 5
-                reasons.append(
-                    f"WT_GOOD({'L' if is_long else 'S'}={_wt_side_comp:.0f},+5)"
-                )
-            elif _wt_side_comp >= _wt_ok:
-                score += 2
-                reasons.append(
-                    f"WT_OK({'L' if is_long else 'S'}={_wt_side_comp:.0f},+2)"
-                )
-            if is_long and _wt_os_count >= 2:
-                score += 5
-                reasons.append(f"WT_MULTI_OS({_wt_os_count:.0f}TF,+5)")
-            elif not is_long and _wt_ob_count >= 2:
-                score += 5
-                reasons.append(f"WT_MULTI_OB({_wt_ob_count:.0f}TF,+5)")
-            if is_long and _wt_hl_count >= 2:
-                score += 5
-                reasons.append(f"WT_HL_STRUCT({_wt_hl_count:.0f},+5)")
-            elif not is_long and _wt_lh_count >= 2:
-                score += 5
-                reasons.append(f"WT_LH_STRUCT({_wt_lh_count:.0f},+5)")
-            # R-S1 (2026-04-19 default OFF): wt_composite_delta magnitude bonus.
-            # Pre-computed TF-weighted bias. When delta confirms side AND |delta| > THR → bonus.
-            # Complements the existing side-comp bonuses rather than replacing them.
-            if bool(getattr(config, "R_S1_WT_COMPOSITE_DELTA_USE_ENABLED", False)):
-                _r_s1_d = safe_fetch_float(ind.get("wt_composite_delta"), None)
-                _r_s1_thr = float(getattr(config, "R_S1_WT_COMPOSITE_DELTA_THR", 50.0))
-                if _r_s1_d is not None:
-                    if is_long and _r_s1_d > _r_s1_thr:
-                        score += 6
-                        reasons.append(
-                            f"R_S1_CDELTA_BULL({_r_s1_d:.0f}>{_r_s1_thr:.0f},+6)"
-                        )
-                    elif (not is_long) and _r_s1_d < -_r_s1_thr:
-                        score += 6
-                        reasons.append(
-                            f"R_S1_CDELTA_BEAR({_r_s1_d:.0f}<-{_r_s1_thr:.0f},+6)"
-                        )
-            # R-S2 (2026-04-19 default OFF): adaptive OB/OS using wt_percentile_15m.
-            # Replaces fixed wt1 thresholds with 200-bar percentile (self-calibrating per symbol).
-            if bool(getattr(config, "R_S2_WT_ADAPTIVE_OS_ENABLED", False)):
-                _r_s2_pct = safe_fetch_float(ind.get("wt_percentile_15m"), -1.0)
-                if _r_s2_pct >= 0:
-                    _r_s2_os = float(getattr(config, "R_S2_WT_PCT_OS_LONG", 10.0))
-                    _r_s2_ob = float(getattr(config, "R_S2_WT_PCT_OB_SHORT", 90.0))
-                    if is_long and _r_s2_pct < _r_s2_os:
-                        score += 7
-                        reasons.append(
-                            f"R_S2_PCT_OS_L({_r_s2_pct:.0f}<{_r_s2_os:.0f},+7)"
-                        )
-                    elif (not is_long) and _r_s2_pct > _r_s2_ob:
-                        score += 7
-                        reasons.append(
-                            f"R_S2_PCT_OB_S({_r_s2_pct:.0f}>{_r_s2_ob:.0f},+7)"
-                        )
-            if ind.get("wt_any_bull_div") and is_long:
-                score += 10
-                reasons.append(
-                    f"WT_BULL_DIV({ind.get('wt_strongest_bull_div_tf')},+10)"
-                )
-            elif ind.get("wt_any_bear_div") and not is_long:
-                score += 10
-                reasons.append(
-                    f"WT_BEAR_DIV({ind.get('wt_strongest_bear_div_tf')},+10)"
-                )
-            if is_long and _wt_bull_cross_n >= 2:
-                score += 3
-                reasons.append(f"WT_MULTI_BULL_X({_wt_bull_cross_n:.0f},+3)")
-            elif not is_long and _wt_bear_cross_n >= 2:
-                score += 3
-                reasons.append(f"WT_MULTI_BEAR_X({_wt_bear_cross_n:.0f},+3)")
-        # === DC_MOMENT SIGNAL (2026-04-16): route pre-computed 0dc_moment into score ===
-        # 0dc_moment is the cross-TF DC strength composite (already in market_data, was fetched at line 707
-        # but never fed into scoring). Aligned with direction = higher conviction; opposite = penalty.
-        if bool(getattr(config, "DC_MOMENT_ENABLED", True)) and not is_exit:
-            _dcm = safe_fetch_float(
-                ind.get(
-                    "0dc_moment",
-                    metrics.get("0dc_moment") if isinstance(metrics, dict) else 0,
-                ),
-                0,
+        # Shared pure score prefix keeps native reason order and vector arithmetic aligned.
+        if not is_exit:
+            from vec_decisions.asr_score_core import apply_score_prefix_scalar
+
+            score, reasons = apply_score_prefix_scalar(
+                score,
+                reasons,
+                ind,
+                metrics,
+                is_long,
+                config,
+                _wt_comp_enabled,
+                _wt_bull_cross_n,
+                _wt_bear_cross_n,
             )
-            _dcm_strong = float(getattr(config, "DC_MOMENT_STRONG_THRESHOLD", 40.0))
-            _dcm_bonus = float(getattr(config, "DC_MOMENT_STRONG_BONUS", 10.0))
-            _dcm_pen = float(getattr(config, "DC_MOMENT_OPPOSITE_PENALTY", -15.0))
-            if is_long and _dcm > _dcm_strong:
-                score += _dcm_bonus
-                reasons.append(f"DC_MOMENT_STRONG_L({_dcm:.0f},+{_dcm_bonus:.0f})")
-            elif not is_long and _dcm < -_dcm_strong:
-                score += _dcm_bonus
-                reasons.append(f"DC_MOMENT_STRONG_S({_dcm:.0f},+{_dcm_bonus:.0f})")
-            elif is_long and _dcm < -_dcm_strong:
-                score += _dcm_pen
-                reasons.append(f"DC_MOMENT_OPPOSITE_L({_dcm:.0f},{_dcm_pen:.0f})")
-            elif not is_long and _dcm > _dcm_strong:
-                score += _dcm_pen
-                reasons.append(f"DC_MOMENT_OPPOSITE_S({_dcm:.0f},{_dcm_pen:.0f})")
-        # === WT_COMPOSITE_DELTA SCORE BONUS (2026-04-19: indicator audit) ===
-        if (
-            bool(getattr(config, "WT_COMPOSITE_DELTA_SCORE_ENABLED", True))
-            and not is_exit
-        ):
-            _cd_s = safe_fetch_float(ind.get("wt_composite_delta"), None)
-            if _cd_s is not None:
-                _cd_thresh = float(
-                    getattr(config, "WT_COMPOSITE_DELTA_SCORE_THRESHOLD", 50.0)
-                )
-                _cd_bonus = float(
-                    getattr(config, "WT_COMPOSITE_DELTA_SCORE_BONUS", 3.0)
-                )
-                if is_long and _cd_s > _cd_thresh:
-                    score += _cd_bonus
-                    reasons.append(f"WT_CD_BULL({_cd_s:.0f},+{_cd_bonus:.0f})")
-                elif not is_long and _cd_s < -_cd_thresh:
-                    score += _cd_bonus
-                    reasons.append(f"WT_CD_BEAR({_cd_s:.0f},+{_cd_bonus:.0f})")
         # === 15M MOMENTUM GATE — penalise entries where 15m WT is declining (LONG) or rising (SHORT) ===
         # Quicker than wt1<wt2 crossover: compares wt1_15m vs its own previous value.
         # Bypass: if 3m WT is making higher highs (bull cross + rising) for LONG, or lower lows for SHORT.

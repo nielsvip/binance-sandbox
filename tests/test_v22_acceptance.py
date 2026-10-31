@@ -50,24 +50,36 @@ def make_payload(directory):
             },
         }
     score_kind = "oos_gain_pct"
+    gate_path = Path(directory) / "s2_gate_receipt.json"
+    gate_receipt = {
+        "schema": "v22_nn_gate_receipt/1",
+        "status": "PASS",
+        "baseline_version": "v21",
+        "candidate_version": "v22",
+        "decision_id": "s2-20261031-001",
+        "input_identity_sha256": comparison_identity_sha256(identity, set(sides), score_kind),
+        "baseline_model_sha256_by_side": models["baseline"],
+        "candidate_model_sha256_by_side": models["candidate"],
+    }
+    gate_path.write_text(json.dumps(gate_receipt, sort_keys=True))
+    gate_sha = hashlib.sha256(gate_path.read_bytes()).hexdigest()
     return {
         "schema": "v22_nn_acceptance_input/1",
         "comparison_id": "review-v22-001",
         "snapshot_manifest": {"path": str(snapshot_path), "sha256": manifest_sha},
         "common_identity": identity,
         "score_kind": score_kind,
-        "s2_gate_decision": {
-            "status": "PASS",
-            "baseline_version": "v21",
-            "candidate_version": "v22",
-            "decision_id": "s2-20261031-001",
-            "evidence_sha256": "e" * 64,
-            "input_identity_sha256": comparison_identity_sha256(identity, set(sides), score_kind),
-            "baseline_model_sha256_by_side": models["baseline"],
-            "candidate_model_sha256_by_side": models["candidate"],
-        },
+        "s2_gate_receipt": {"path": str(gate_path), "sha256": gate_sha},
         "sides": results,
     }
+
+
+def rewrite_gate(payload, **updates):
+    path = Path(payload["s2_gate_receipt"]["path"])
+    gate = json.loads(path.read_text())
+    gate.update(updates)
+    path.write_text(json.dumps(gate, sort_keys=True))
+    payload["s2_gate_receipt"]["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 class V22AcceptanceTests(unittest.TestCase):
@@ -108,14 +120,14 @@ class V22AcceptanceTests(unittest.TestCase):
     def test_rejects_s2_identity_mismatch(self):
         with tempfile.TemporaryDirectory() as directory:
             payload = make_payload(directory)
-            payload["s2_gate_decision"]["input_identity_sha256"] = "f" * 64
+            rewrite_gate(payload, input_identity_sha256="f" * 64)
             with self.assertRaisesRegex(ValueError, "input identity"):
                 evaluate(payload)
 
     def test_failed_gate_is_reported_as_not_accepted(self):
         with tempfile.TemporaryDirectory() as directory:
             payload = make_payload(directory)
-            payload["s2_gate_decision"]["status"] = "FAIL"
+            rewrite_gate(payload, status="FAIL")
             result = evaluate(payload)
         self.assertFalse(result["accepted"])
         self.assertFalse(result["s2_gate_pass"])
@@ -145,7 +157,9 @@ class V22AcceptanceTests(unittest.TestCase):
     def test_s2_model_identity_must_match_consumed_model(self):
         with tempfile.TemporaryDirectory() as directory:
             payload = make_payload(directory)
-            payload["s2_gate_decision"]["candidate_model_sha256_by_side"]["A_LONG"] = "f" * 64
+            gate = json.loads(Path(payload["s2_gate_receipt"]["path"]).read_text())
+            gate["candidate_model_sha256_by_side"]["A_LONG"] = "f" * 64
+            rewrite_gate(payload, candidate_model_sha256_by_side=gate["candidate_model_sha256_by_side"])
             with self.assertRaisesRegex(ValueError, "consumed candidate model identities"):
                 evaluate(payload)
 

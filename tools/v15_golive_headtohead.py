@@ -96,7 +96,7 @@ def _candidate_set(sym_side):
     if not isinstance(ov, dict) or len(ov) < 20:
         return None, f"publish row carries {len(ov) if isinstance(ov, dict) else 0} keys — nothing usable"
     return ov, {"history_id": int(r["id"]), "published_at": r["updated_at"], "winning_tag": r["winning_tag"], "claimed_gain": r["gain_pct"],
-                "publish_row_keys": len(ov)}
+                "publish_row_keys": len(ov), "overrides_sha256": _config_sha256(ov)}
 
 
 def _candidate_catside(sym_side):
@@ -120,7 +120,7 @@ def _candidate_catside(sym_side):
         return None, f"cat_side defaults unreadable: {type(e).__name__}: {str(e)[:60]}"
     if len(ov) < 20:
         return None, f"cat_side {cat_side} carries {len(ov)} keys — nothing usable"
-    return ov, {"cat_side": cat_side, "cat_side_keys": len(ov), "source": "cat_side_defaults"}
+    return ov, {"cat_side": cat_side, "cat_side_keys": len(ov), "source": "cat_side_defaults", "overrides_sha256": _config_sha256(ov)}
 
 
 def _stale_sym_sides(days):
@@ -149,6 +149,22 @@ def _stale_sym_sides(days):
             out.append((age_d, sym_side))
     out.sort(reverse=True)
     return [ss for _, ss in out]
+
+
+def _candidate_for_mode(sym_side, candidate_mode):
+    if candidate_mode == "catside":
+        return _candidate_catside(sym_side)
+    if candidate_mode == "published":
+        return _candidate_set(sym_side)
+    return None, f"unknown candidate mode {candidate_mode!r}"
+
+
+def _report_candidate_mode(report, decision):
+    mode = (decision or {}).get("candidate_mode") or (report or {}).get("candidate_mode")
+    if mode in {"published", "catside"}:
+        return mode
+    meta = (decision or {}).get("candidate_meta") or {}
+    return "catside" if meta.get("source") == "cat_side_defaults" or meta.get("cat_side") else "published"
 
 
 def _candidate_full(incumbent, cand):
@@ -193,11 +209,12 @@ def measure(a):
         sides = sorted(live_in)
     sides = sorted(dict.fromkeys(sides))
     source_sha256 = hashlib.sha256(Path(a.live_sets).read_bytes()).hexdigest() if a.live_sets else ""
+    candidate_mode = getattr(a, "candidate", "published")
     out = {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "host": os.uname().nodename,
-           "window_days": a.window_days, "tol": TOL,
+           "window_days": a.window_days, "tol": TOL, "candidate_mode": candidate_mode,
            "incumbent_source": a.live_sets or f"local per_sym_store ({PS.DB_PATH})", "incumbent_source_sha256": source_sha256, "decisions": []}
     for i, ss in enumerate(sides, 1):
-        d = {"sym_side": ss}
+        d = {"sym_side": ss, "candidate_mode": candidate_mode}
         live = live_in.get(ss) if live_in else (PS.get_full_config(ss) or {})
         live = live if isinstance(live, dict) else {}
         cand, meta = _candidate_catside(ss) if getattr(a, "candidate", "published") == "catside" else _candidate_set(ss)
@@ -328,13 +345,14 @@ def apply_(a):
             continue
         live_now = PS.get_full_config(ss) or {}
         live_hash = _config_sha256(live_now)
-        latest_diff, latest_meta = _candidate_set(ss)
+        candidate_mode = _report_candidate_mode(d, x)
+        latest_diff, latest_meta = _candidate_for_mode(ss, candidate_mode)
         if not isinstance(latest_diff, dict):
-            fail.append(f"{ss}: latest published row unavailable at apply time")
+            fail.append(f"{ss}: current {candidate_mode} candidate unavailable at apply time")
             continue
         candidate_now = _candidate_full(live_now, latest_diff)
-        from tools.v15_accepted_provenance import measurement_matches_current
-        cas_ok, cas_why = measurement_matches_current(x, live_now, latest_meta, candidate_now)
+        from tools.v15_accepted_provenance import measurement_matches_candidate
+        cas_ok, cas_why = measurement_matches_candidate(x, live_now, latest_meta, candidate_now, candidate_mode)
         if not cas_ok:
             fail.append(f"{ss}: compare-and-swap refused: {cas_why}")
             continue
@@ -370,14 +388,19 @@ def apply_(a):
                 "h2h_npz_window_sha256": x.get("npz_window_sha256"),
                 "incumbent_source_sha256": d.get("incumbent_source_sha256")}
         try:
-            PS.upsert(ss, cand, snap, cand, meta, json_path=jp if jp.exists() else None, expected_full_config_sha256=x.get("live_set_sha256"))
+            published_identity = None
+            if candidate_mode == "published":
+                published_identity = {key: latest_meta.get(key) for key in ("history_id", "published_at", "winning_tag", "overrides_sha256")}
+            PS.upsert(ss, cand, snap, cand, meta, json_path=jp if jp.exists() else None,
+                      expected_full_config_sha256=x.get("live_set_sha256"),
+                      expected_published_history_identity=published_identity)
             back = PS.get_full_config(ss) or {}
             miss = [k for k, v in cand.items() if back.get(k) != v]
             if miss:
                 fail.append(f"{ss}: {len(miss)} key(s) did not read back (e.g. {miss[:3]})")
                 continue
             ok += 1
-            accepted_records[ss] = {"verdict": "APPLY_CANDIDATE", "accepted_set_sha256": x.get("candidate_set_sha256"),
+            accepted_records[ss] = {"verdict": "APPLY_CANDIDATE", "candidate_mode": candidate_mode, "accepted_set_sha256": x.get("candidate_set_sha256"),
                                     "live_set_sha256": x.get("live_set_sha256"), "candidate_set_sha256": x.get("candidate_set_sha256"),
                                     "report_sha256": report_sha256, "published_history_id": (x.get("candidate_meta") or {}).get("history_id"),
                                     "npz_window_sha256": x.get("npz_window_sha256")}
@@ -389,12 +412,13 @@ def apply_(a):
         ss = str(x.get("sym_side") or "")
         current = PS.get_full_config(ss) or {}
         current_hash = _config_sha256(current)
-        latest_diff, latest_meta = _candidate_set(ss)
+        candidate_mode = _report_candidate_mode(d, x)
+        latest_diff, latest_meta = _candidate_for_mode(ss, candidate_mode)
         candidate = _candidate_full(current, latest_diff) if isinstance(latest_diff, dict) else {}
-        from tools.v15_accepted_provenance import measurement_matches_current
-        cas_ok, _ = measurement_matches_current(x, current, latest_meta if isinstance(latest_meta, dict) else {}, candidate)
+        from tools.v15_accepted_provenance import measurement_matches_candidate
+        cas_ok, _ = measurement_matches_candidate(x, current, latest_meta if isinstance(latest_meta, dict) else {}, candidate, candidate_mode)
         if cas_ok and current_hash == x.get("live_set_sha256"):
-            accepted_records[ss] = {"verdict": "KEEP_LIVE", "accepted_set_sha256": current_hash,
+            accepted_records[ss] = {"verdict": "KEEP_LIVE", "candidate_mode": candidate_mode, "accepted_set_sha256": current_hash,
                                     "live_set_sha256": current_hash, "candidate_set_sha256": x.get("candidate_set_sha256"),
                                     "report_sha256": report_sha256, "published_history_id": (x.get("candidate_meta") or {}).get("history_id"),
                                     "npz_window_sha256": x.get("npz_window_sha256")}

@@ -37,3 +37,30 @@ def measurement_matches_current(decision, current_config, published_meta, candid
     if expected_window and actual_window and expected_window != actual_window:
         return False, "NPZ measurement window changed"
     return True, "exact measured live and published sets still current"
+
+def measurement_matches_candidate(decision, current_config, candidate_meta, candidate_config, candidate_mode):
+    if not isinstance(decision, dict) or not isinstance(candidate_meta, dict):
+        return False, "missing measured decision or candidate metadata"
+    if config_sha256(current_config) != decision.get("live_set_sha256"):
+        return False, "live set changed after H2H measurement"
+    if config_sha256(candidate_config) != decision.get("candidate_set_sha256"):
+        return False, "candidate set changed after H2H measurement"
+    expected = decision.get("candidate_meta") or {}
+    mode = str(candidate_mode or "")
+    if mode == "published":
+        for key in ("history_id", "published_at", "winning_tag", "overrides_sha256"):
+            if expected.get(key) != candidate_meta.get(key):
+                return False, f"published candidate {key} changed after H2H measurement"
+    elif mode == "catside":
+        if candidate_meta.get("source") != "cat_side_defaults":
+            return False, "candidate source is not current cat_side defaults"
+        if expected.get("cat_side") != candidate_meta.get("cat_side"):
+            return False, "cat_side candidate changed after H2H measurement"
+    else:
+        return False, f"unknown measured candidate mode {mode!r}"
+    expected_window = decision.get("npz_window_sha256")
+    actual_window = decision.get("npz_window_sha256_current")
+    if expected_window and actual_window and expected_window != actual_window:
+        return False, "NPZ measurement window changed"
+    return True, f"exact measured live and {mode} candidate sets still current"
+

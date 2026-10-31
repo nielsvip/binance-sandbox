@@ -100,7 +100,7 @@ def test_tradier_mark_gain_gate_fails_closed_when_mark_inputs_are_missing_or_non
     )
     assert not vector_exit_event_allowed(
         {"type": "CLOSE", "reason": "EXIT", "entry_price": 0.0, "price": 101.0},
-        {"avg_price": 100.0},
-        {"avg_price": 100.0},
+        {},
+        {},
         require_positive_mark_gain=True,
     )
