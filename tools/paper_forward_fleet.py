@@ -278,13 +278,18 @@ def source_window_available(spec, specs_dir, root):
                 poll_status = None
     except (OSError, ValueError, json.JSONDecodeError):
         poll_status = None
+    def poll_detail(status):
+        blocked = poll_status.get("blocked_timeframes", [])
+        eligible = poll_status.get("eligible_timeframes", [])
+        suffix = f"timeframe={window['source_timeframe']}; blocked_timeframes={','.join(blocked)}; eligible_timeframes={','.join(eligible)}"
+        return f"{status}: {suffix}" if status else f"SOURCE_PROVENANCE_GAP: {suffix}"
     if poll_status:
         provenance_gaps = poll_status.get("provenance_gaps", [])
         if window["source_timeframe"] in provenance_gaps:
-            return False, "UNVERIFIED_NATIVE_PROVENANCE"
+            return False, poll_detail("UNVERIFIED_NATIVE_PROVENANCE")
     if not database.is_file():
         if poll_status and poll_status.get("status") in {"UNVERIFIED_NATIVE_PROVENANCE", "NO_FRESH_FRAMES", "STALE_CAPTURE", "INPUT_ERROR", "DISK_RESERVE_BLOCKED", "ARCHIVE_FULL"}:
-            return False, poll_status["status"]
+            return False, poll_detail(poll_status["status"])
         return False, "WAITING_FOR_SOURCE_JOURNAL"
     symbol = spec["sym_side"].rsplit("_", 1)[0]
     venue = spec["venue"].lower()

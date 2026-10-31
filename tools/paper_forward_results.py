@@ -221,8 +221,23 @@ def _store_pair_metadata(db: ScenarioDB, manifest: Mapping[str, Any], settings_h
 def _store_run_provenance(db: ScenarioDB, manifest: Mapping[str, Any], run_dir: str | Path | None) -> None:
     context = manifest.get("context") if isinstance(manifest.get("context"), Mapping) else {}
     result = {}
-    if run_dir is not None and (Path(run_dir) / "result.json").is_file():
-        result = json.loads((Path(run_dir) / "result.json").read_text())
+    result_unpinned = False
+    if run_dir is None and manifest.get("result_file"):
+        raise ValueError("run_dir is required to verify the manifest-pinned result artifact")
+    if run_dir is not None:
+        result_file = manifest.get("result_file")
+        if result_file:
+            relative = Path(str(result_file))
+            if relative.is_absolute() or ".." in relative.parts or not manifest.get("result_sha256"):
+                raise ValueError("manifest result artifact reference is unsafe or missing its hash")
+            result_path = Path(run_dir) / relative
+            result_bytes = result_path.read_bytes()
+            if hashlib.sha256(result_bytes).hexdigest() != manifest["result_sha256"]:
+                raise ValueError("result artifact hash does not match manifest")
+            result = json.loads(result_bytes)
+        elif (Path(run_dir) / "result.json").is_file():
+            result_unpinned = True
+            result = json.loads((Path(run_dir) / "result.json").read_text())
         for key in ("run_id", "epoch_id", "scenario_id", "sym_side", "settings_sha256", "code_sha256"):
             if result.get(key) is not None and str(result[key]) != str(manifest.get(key)):
                 raise ValueError(f"result.json {key} does not match worker manifest")
@@ -248,6 +263,8 @@ def _store_run_provenance(db: ScenarioDB, manifest: Mapping[str, Any], run_dir: 
         reasons.append("SETTINGS_MISMATCH")
     if gaps:
         reasons.append("COVERAGE_GAPS")
+    if result_unpinned:
+        reasons.append("RESULT_PROVENANCE_UNPINNED")
     if not source_timeframe:
         reasons.append("SOURCE_TIMEFRAME_UNVERIFIED")
     if not alias_verified:
@@ -563,6 +580,29 @@ def ingest(db: ScenarioDB, journal_path: str | Path, manifest: Mapping[str, Any]
     return {"run_id": manifest["run_id"], "epoch_id": manifest["epoch_id"], "receipts": len(receipts), "execution_events": raw_events, "decision_rows": decision_rows, "completed_lifecycles": completed, "accounting_fills": accounting_fills, "status": terminal_status if is_terminal else "RUNNING", "evidence_kind": "independent_forward", "result_valid": bool(db.query("SELECT input_provenance_valid FROM paper_forward_run_provenance WHERE run_id=?", (manifest["run_id"],))[0][0])}
 
 
+def ingest_terminal_without_journal(db: ScenarioDB, manifest: Mapping[str, Any], run_dir: str | Path | None = None) -> dict:
+    status = str(manifest.get("status", "")).upper()
+    if status not in {"DATA_GAP", "SETTINGS_MISMATCH"} or manifest.get("finished") is not True:
+        raise ValueError("journal-free ingestion is limited to finished DATA_GAP or SETTINGS_MISMATCH runs")
+    if int(manifest.get("frame_count", 0) or 0) != 0 or int(manifest.get("committed_receipts", 0) or 0) != 0:
+        raise ValueError("journal-free terminal status must declare zero frames and receipts")
+    if manifest.get("accounting_file") or manifest.get("accounting_sha256"):
+        raise ValueError("journal-free terminal status cannot claim accounting fills")
+    identity = {key: manifest[key] for key in ("run_id", "epoch_id", "scenario_id", "sym_side", "settings_sha256", "code_sha256") if key in manifest}
+    if len(identity) != 6:
+        raise ValueError("journal-free terminal status is missing run identity")
+    with db.transaction():
+        _ensure_run(db, manifest, identity, run_dir)
+        recorded_at = str(manifest.get("ended_at") or manifest.get("started_at") or "")
+        if not recorded_at or datetime.fromisoformat(recorded_at.replace("Z", "+00:00")).tzinfo is None:
+            raise ValueError("terminal status requires timezone-aware ended_at or started_at")
+        status_id = "paper-finished-" + _digest([manifest["run_id"], status, manifest.get("reason"), manifest.get("settings_mismatch_keys")])
+        db.add_run_status(event_id=status_id, run_id=manifest["run_id"], recorded_at=recorded_at, status=status,
+                          detail={"epoch_id": manifest["epoch_id"], "receipts": 0, "reason": manifest.get("reason"), "settings_mismatch_keys": manifest.get("settings_mismatch_keys", []), "journal_present": False})
+    valid = bool(db.query("SELECT input_provenance_valid FROM paper_forward_run_provenance WHERE run_id=?", (manifest["run_id"],))[0][0])
+    return {"run_id": manifest["run_id"], "epoch_id": manifest["epoch_id"], "receipts": 0, "execution_events": 0, "decision_rows": 0, "completed_lifecycles": 0, "accounting_fills": 0, "status": status, "evidence_kind": "independent_forward", "result_valid": False if status in {"DATA_GAP", "SETTINGS_MISMATCH"} else valid}
+
+
 def _journal_frame_count(path: str | Path) -> int:
     uri = Path(path).resolve().as_uri() + "?mode=ro"
     with sqlite3.connect(uri, uri=True) as connection:
@@ -577,12 +617,13 @@ def ingest_directory(db: ScenarioDB, root: str | Path) -> list[dict]:
     for manifest_path in manifest_paths:
         run_dir = manifest_path.parent
         journal_path = next((run_dir / name for name in ("receipt.snapshot.db", "receipts.snapshot.db", "receipts.sqlite3") if (run_dir / name).is_file()), None)
-        if journal_path is None:
-            continue
         try:
             raw = manifest_path.read_bytes()
             manifest = json.loads(raw)
-            result = ingest(db, journal_path, manifest, run_dir)
+            if journal_path is None:
+                result = ingest_terminal_without_journal(db, manifest, run_dir)
+            else:
+                result = ingest(db, journal_path, manifest, run_dir)
             result["manifest_sha256"] = hashlib.sha256(raw).hexdigest()
             results.append(result)
         except (OSError, sqlite3.Error, ValueError, KeyError) as exc:

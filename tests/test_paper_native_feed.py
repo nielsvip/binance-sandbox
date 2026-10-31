@@ -81,6 +81,8 @@ class PaperNativeFeedTests(unittest.TestCase):
         self.assertEqual(saved_receipt, receipt)
         self.assertFalse(saved_receipt["verified_native_1m"])
         self.assertEqual(saved_receipt["timeframe_provenance"]["1m"]["status"], "KNOWN_ALIAS")
+        self.assertEqual(saved_receipt["timeframe_provenance"]["3m"]["status"], "NATIVE_SOURCE")
+        self.assertEqual(saved_receipt["timeframe_provenance"]["3m"]["producer_source_sha256"], "f5a013f5a7461539b75fd761fef13d4a74b961052308083920ba439bc31e7e9e")
 
 
 if __name__ == "__main__":

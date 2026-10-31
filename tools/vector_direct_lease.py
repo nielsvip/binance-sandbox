@@ -117,11 +117,10 @@ def witness_says_primary_stale(venue: str, now: float):
             if age > TAKEOVER_AFTER_S:
                 return True, f"{witness} via {address}: primary beat {age:.0f}s old"
             return False, f"{witness} via {address}: primary beat {age:.0f}s old — primary is alive"
-        # that witness could not reach the primary on any address at all: it agrees the primary is unreachable
-        doc, error = _ssh_json(witness, "echo '{\"ok\":1}'", 14.0)
-        if not error:
-            return True, f"{witness} is reachable but cannot reach the primary on any address"
-    return False, "no witness could be consulted — a backup must not take over on its own word"
+        # DEFECT 1b: "the witness cannot reach the primary" was counted as the primary being DEAD. Reachability is a
+        # property of the path, not of the trader — S6 could not reach a merely slow S1 either. Only a beat the witness
+        # actually READ and found stale is evidence; an unreachable primary is unknown, and unknown never takes over.
+    return False, "no witness could read the primary's beat — unreachable is not dead, a backup must not take over on it"
 
 
 def decide(venue: str, role: str, out: Path, now=None, state=None, peer_reader=read_peer, witness=witness_says_primary_stale):
@@ -148,6 +147,18 @@ def decide(venue: str, role: str, out: Path, now=None, state=None, peer_reader=r
         return True, f"primary trading; backup idle (beat {('%.0fs old' % peer_age) if peer_age is not None else 'absent'})", state
 
     # backup
+    # DEFECT 1 (measured 2026-10-31 04:59:19Z): an UNREADABLE primary beat was treated as infinitely stale at once,
+    # skipping the TAKEOVER_AFTER_S grace — S1 was mid-restart and slow to answer ssh for under a minute, S2 took the
+    # lease, crashed every pass, and crypto had no working trader for ~2 minutes. An unreadable beat now has to stay
+    # unreadable for the whole grace before it can count, exactly like a stale one.
+    if peer is None:
+        first = state.get("peer_unreadable_since") or now
+        state["peer_unreadable_since"] = first
+        if not state.get("active") and now - first < TAKEOVER_AFTER_S:
+            state["active"] = False
+            return False, f"primary beat unreadable for {now - first:.0f}s of {TAKEOVER_AFTER_S:.0f}s — not evidence yet, backup idle", state
+    else:
+        state.pop("peer_unreadable_since", None)
     if peer and peer_age is not None and peer_age <= TAKEOVER_AFTER_S:
         if state.get("active"):
             healthy_since = state.get("primary_healthy_since") or now

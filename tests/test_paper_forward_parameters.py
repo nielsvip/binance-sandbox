@@ -40,6 +40,7 @@ def test_resolves_only_values_present_in_matching_active_template(tmp_path):
     assert missing["candidate_source_xlsx_sha256"] == numeric["candidate_source_xlsx_sha256"]
     assert "candidate_values" not in boolean
     assert text_bool["candidate_values"] == [False]
+    assert text_bool["candidate_value_evidence"] == [{"value": False, "effective_type": "bool", "raw_cell_types": ["str"]}]
     assert grey["candidate_values"] == []
 
 

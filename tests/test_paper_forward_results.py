@@ -2,7 +2,7 @@ import hashlib
 import json
 
 from tools.paper_frame_stream import FrameJournal
-from tools.paper_forward_results import _digest, ingest, ingest_directory
+from tools.paper_forward_results import _digest, ingest, ingest_directory, ingest_terminal_without_journal
 from tools.paper_scenario_db import ScenarioDB
 
 
@@ -339,6 +339,17 @@ def test_terminal_settings_mismatch_is_visible_without_processing_frames(tmp_pat
     assert db.query("SELECT status FROM run_current_status WHERE run_id='actual-run-1'")[0][0] == "SETTINGS_MISMATCH"
     assert db.query("SELECT COUNT(*) FROM forward_receipts WHERE run_id='actual-run-1'")[0][0] == 0
     assert db.query("SELECT COUNT(*) FROM trades WHERE run_id='actual-run-1'")[0][0] == 0
+    db.close()
+
+
+def test_terminal_mismatch_without_receipt_journal_is_status_only(tmp_path):
+    db, _journal, manifest = _fixture(tmp_path)
+    manifest.update(status="SETTINGS_MISMATCH", finished=True, ended_at="1970-01-01T00:05:00Z", settings_mismatch_keys=["X"])
+    result = ingest_terminal_without_journal(db, manifest, tmp_path)
+    assert result["status"] == "SETTINGS_MISMATCH"
+    assert result["receipts"] == result["execution_events"] == result["completed_lifecycles"] == 0
+    assert db.query("SELECT status FROM run_current_status WHERE run_id='actual-run-1'")[0][0] == "SETTINGS_MISMATCH"
+    assert db.query("SELECT COUNT(*) FROM forward_receipts")[0][0] == 0
     db.close()
 
 

@@ -32,6 +32,7 @@ def workbook_candidates(path):
     file_hash = hashlib.sha256(path.read_bytes()).hexdigest()
     workbook = openpyxl.load_workbook(path, read_only=True, data_only=True)
     values = {}
+    raw_types = {}
     try:
         skip = {"PROTOCOL", "LEGEND_FILTERS", "INSTRUCTIONS", "INSTRUCTIONS_V2", "FILTERS_EXPLAINED", "FILTER_DICTIONARY_V2", "Results_Deltas", "Results_30d_Deltas"}
         for sheet in workbook.worksheets:
@@ -46,13 +47,19 @@ def workbook_candidates(path):
                 switch = row[0].value.strip().upper()
                 if not switch or row[1].value is None:
                     continue
-                candidate = _cell_value(row[1].value)
+                raw_value = row[1].value
+                candidate = _cell_value(raw_value)
                 bucket = values.setdefault(switch, [])
-                if not any(type(old) is type(candidate) and old == candidate for old in bucket):
+                evidence = raw_types.setdefault(switch, [])
+                index = next((i for i, old in enumerate(bucket) if type(old) is type(candidate) and old == candidate), None)
+                if index is None:
                     bucket.append(candidate)
+                    evidence.append([type(raw_value).__name__])
+                elif type(raw_value).__name__ not in evidence[index]:
+                    evidence[index].append(type(raw_value).__name__)
     finally:
         workbook.close()
-    return values, file_hash
+    return values, raw_types, file_hash
 
 
 def resolve_catalog(catalog, template_dir):
@@ -66,11 +73,15 @@ def resolve_catalog(catalog, template_dir):
             key = (copy["venue"], copy["side"])
             if key not in cache:
                 filename = TEMPLATE_NAMES.get(key)
-                cache[key] = workbook_candidates(template_dir / filename) if filename else ({}, None)
-            values, source_hash = cache[key]
+                cache[key] = workbook_candidates(template_dir / filename) if filename else ({}, {}, None)
+            values, raw_types, source_hash = cache[key]
             candidates = values.get(str(copy["switch"]).upper(), [])
             copy["candidate_values"] = list(candidates)
             copy["candidate_value_types"] = sorted({type(value).__name__ for value in candidates})
+            copy["candidate_value_evidence"] = [
+                {"value": value, "effective_type": type(value).__name__, "raw_cell_types": raw_types.get(str(copy["switch"]).upper(), [])[index]}
+                for index, value in enumerate(candidates)
+            ]
             copy["candidate_source"] = "TEMPLATE_FINAL_NORM" if candidates else None
             copy["candidate_source_xlsx_sha256"] = source_hash
         resolved.append(copy)

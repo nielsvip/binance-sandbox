@@ -1,6 +1,6 @@
 import json
 
-from tools.paper_inventory import ingest_plan, variant
+from tools.paper_inventory import digest, ingest_plan, variant
 from tools.paper_scenario_db import ScenarioDB
 
 
@@ -45,7 +45,7 @@ def test_ingest_plan_honors_authoritative_nonbool_values(tmp_path):
     db = ScenarioDB(tmp_path / "inventory.sqlite")
     plan = plan_fixture()
     number = next(row for row in plan["catalog"]["scenarios"] if row["scenario_id"] == "number")
-    number.update({"candidate_values": [2.5, 5], "candidate_value_types": ["float", "int"], "candidate_source": "TEMPLATE_FINAL_NORM", "candidate_source_xlsx_sha256": "d" * 64})
+    number.update({"candidate_values": [2.5, 5], "candidate_value_types": ["float", "int"], "candidate_value_evidence": [{"value": 2.5, "effective_type": "float", "raw_cell_types": ["float"]}, {"value": 5, "effective_type": "int", "raw_cell_types": ["int"]}], "candidate_source": "TEMPLATE_FINAL_NORM", "candidate_source_xlsx_sha256": "d" * 64})
     ingest_plan(db, plan)
     runs = db.query("SELECT r.status,s.parameters_json FROM runs r JOIN scenarios s ON s.scenario_id=r.scenario_id")
     number_rows = [row for row in runs if json.loads(row["parameters_json"])["catalog"]["scenario_id"] == "number"]
@@ -53,6 +53,39 @@ def test_ingest_plan_honors_authoritative_nonbool_values(tmp_path):
     assert {json.loads(row["parameters_json"])["overrides"]["NUMBER_SWITCH"] for row in number_rows} == {2.5, 5}
     assert all(row["status"] == "PENDING_VALIDATED_EXECUTION" for row in number_rows)
     assert all(json.loads(row["parameters_json"])["candidate_resolution"]["source_xlsx_sha256"] == "d" * 64 for row in number_rows)
+    assert {json.loads(row["parameters_json"])["candidate_resolution"]["value_evidence"]["effective_type"] for row in number_rows} == {"float", "int"}
+    db.close()
+
+
+def test_plan_registers_shared_settings_snapshots_once_without_per_group_payloads(tmp_path):
+    db = ScenarioDB(tmp_path / "inventory.sqlite")
+    plan = plan_fixture()
+    shared = {"DELTA_TF_WEIGHTS": {"3m": 0.25}, "START_POSITION_SIZE": 15}
+    settings_hash = digest(shared)
+    plan["settings_snapshots"] = {settings_hash: shared}
+    plan["groups"][0]["settings_sha256"] = settings_hash
+    assert "effective_settings" not in plan["groups"][0]
+    first = ingest_plan(db, plan)
+    ingest_plan(db, plan)
+    rows = db.query("SELECT settings_hash,settings_json FROM settings_snapshots")
+    assert len(rows) == 1
+    assert rows[0]["settings_hash"] == settings_hash
+    assert json.loads(rows[0]["settings_json"]) == shared
+    assert first["groups"] == 1
+    db.close()
+
+
+def test_plan_rejects_shared_settings_snapshot_hash_mismatch(tmp_path):
+    db = ScenarioDB(tmp_path / "inventory.sqlite")
+    plan = plan_fixture()
+    plan["settings_snapshots"] = {"f" * 64: {"A": 1}}
+    try:
+        ingest_plan(db, plan)
+    except ValueError as exc:
+        assert "settings snapshot hash mismatch" in str(exc)
+    else:
+        raise AssertionError("expected invalid settings snapshot hash rejection")
+    assert db.query("SELECT COUNT(*) FROM settings_snapshots")[0][0] == 0
     db.close()
 
 

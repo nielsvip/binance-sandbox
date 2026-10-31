@@ -22,12 +22,12 @@ import zlib
 from pathlib import Path
 
 try:
-    from .paper_native_feed import MAX_BYTES, SOURCE_BY_HOST, TIMEFRAMES, validate_snapshot_bytes
+    from .paper_native_feed import MAX_BYTES, SOURCE_BY_HOST, TIMEFRAMES, TIMEFRAME_PROVENANCE, validate_snapshot_bytes
 except ImportError:
-    from paper_native_feed import MAX_BYTES, SOURCE_BY_HOST, TIMEFRAMES, validate_snapshot_bytes
+    from paper_native_feed import MAX_BYTES, SOURCE_BY_HOST, TIMEFRAMES, TIMEFRAME_PROVENANCE, validate_snapshot_bytes
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_TIMEFRAMES = ("1m",)
+DEFAULT_TIMEFRAMES = ("1m", "3m", "5m")
 ALLOWED_JOURNAL_TIMEFRAMES = ("1m", "3m", "5m", "15m")
 DEFAULT_MAX_DB_BYTES = 1024**3
 DEFAULT_DISK_RESERVE_BYTES = 8 * 1024**3
@@ -162,15 +162,24 @@ def inspect_source(snapshot_path, receipt_path, host, timeframes=DEFAULT_TIMEFRA
         return {"status": "STALE_CAPTURE", "host": host, "venue": expected_venue, "observed_ts": observed_ts,
                 "source_sha256": _digest(raw), "candidates": [], "stale_count": 0, "invalid_count": 0}
     provenance = receipt.get("timeframe_provenance")
+    expected_provenance = TIMEFRAME_PROVENANCE[expected_venue]
     verified_timeframes, provenance_gaps = [], []
     for timeframe in timeframes:
         entry = provenance.get(timeframe) if isinstance(provenance, dict) else None
+        expected_entry = expected_provenance.get(timeframe)
         if timeframe == "1m":
             verified = (receipt.get("verified_native_1m") is True and isinstance(entry, dict)
-                        and entry.get("status") == "VERIFIED_NATIVE" and entry.get("source_field") == "timestamp_1m")
+                        and isinstance(expected_entry, dict) and expected_entry.get("status") == "VERIFIED_NATIVE"
+                        and entry.get("status") == "VERIFIED_NATIVE" and entry.get("source_field") == "timestamp_1m"
+                        and entry.get("producer_source_path") == expected_entry.get("producer_source_path")
+                        and entry.get("producer_source_sha256") == expected_entry.get("producer_source_sha256"))
         else:
-            verified = (isinstance(entry, dict) and entry.get("status") == "NATIVE_SOURCE"
-                        and entry.get("source_field") == f"timestamp_{timeframe}")
+            verified = (isinstance(entry, dict) and isinstance(expected_entry, dict)
+                        and expected_entry.get("status") == "NATIVE_SOURCE" and entry.get("status") == "NATIVE_SOURCE"
+                        and entry.get("source_field") == f"timestamp_{timeframe}"
+                        and entry.get("source_field") == expected_entry.get("source_field")
+                        and entry.get("producer_source_path") == expected_entry.get("producer_source_path")
+                        and entry.get("producer_source_sha256") == expected_entry.get("producer_source_sha256"))
         if verified:
             verified_timeframes.append(timeframe)
         else:
@@ -181,7 +190,8 @@ def inspect_source(snapshot_path, receipt_path, host, timeframes=DEFAULT_TIMEFRA
     if not verified_timeframes:
         return {"status": "UNVERIFIED_NATIVE_PROVENANCE", "host": host, "venue": expected_venue,
                 "observed_ts": observed_ts, "source_sha256": _digest(raw), "candidates": [],
-                "stale_count": 0, "invalid_count": invalid_count, "provenance_gaps": provenance_gaps}
+                "stale_count": 0, "invalid_count": invalid_count, "provenance_gaps": provenance_gaps,
+                "blocked_timeframes": provenance_gaps, "eligible_timeframes": []}
     for symbol, row in snapshot.items():
         if symbol.startswith("_") or not isinstance(row, dict):
             continue
@@ -206,7 +216,8 @@ def inspect_source(snapshot_path, receipt_path, host, timeframes=DEFAULT_TIMEFRA
                                "payload_blob": compressed, "raw_bytes": len(payload)})
     return {"status": "READY" if candidates else "NO_FRESH_FRAMES", "host": host, "venue": expected_venue,
             "observed_ts": observed_ts, "source_sha256": _digest(raw), "candidates": candidates,
-            "stale_count": stale_count, "invalid_count": invalid_count, "provenance_gaps": provenance_gaps}
+            "stale_count": stale_count, "invalid_count": invalid_count, "provenance_gaps": provenance_gaps,
+            "blocked_timeframes": provenance_gaps, "eligible_timeframes": verified_timeframes}
 
 
 def _append_capture(database, snapshot_path, receipt_path, host, timeframes=DEFAULT_TIMEFRAMES,
@@ -223,7 +234,7 @@ def _append_capture(database, snapshot_path, receipt_path, host, timeframes=DEFA
     if free_bytes < min_free_bytes:
         return {"status": "DISK_RESERVE_BLOCKED", "host": source["host"], "venue": source["venue"],
                 "free_bytes": free_bytes, "required_free_bytes": min_free_bytes, "inserted": 0, "duplicates": 0,
-                "source_sha256": source["source_sha256"]}
+                "source_sha256": source["source_sha256"], "blocked_timeframes": source["blocked_timeframes"]}
     connection = _connect(database)
     inserted = duplicates = 0
     try:
@@ -232,7 +243,8 @@ def _append_capture(database, snapshot_path, receipt_path, host, timeframes=DEFA
         if previous_status and previous_status[0] == "ARCHIVE_FULL":
             connection.execute("ROLLBACK")
             return {"status": "ARCHIVE_FULL", "host": source["host"], "venue": source["venue"], "inserted": 0, "duplicates": 0,
-                    "source_sha256": source["source_sha256"], "database_bytes": _db_bytes(database)}
+                    "source_sha256": source["source_sha256"], "database_bytes": _db_bytes(database),
+                    "blocked_timeframes": source["blocked_timeframes"]}
         pending, conflicts = [], []
         for candidate in source["candidates"]:
             existing = connection.execute("SELECT input_hash FROM frame_index WHERE host=? AND source_ts=? AND symbol=? AND timeframe=?",
@@ -264,13 +276,14 @@ def _append_capture(database, snapshot_path, receipt_path, host, timeframes=DEFA
             connection.execute("PRAGMA wal_checkpoint(TRUNCATE)")
             return {"status": "ARCHIVE_FULL", "host": source["host"], "venue": source["venue"], "inserted": 0,
                     "duplicates": duplicates, "source_sha256": source["source_sha256"], "database_bytes": _db_bytes(database),
-                    "max_database_bytes": max_database_bytes}
+                    "max_database_bytes": max_database_bytes, "blocked_timeframes": source["blocked_timeframes"]}
         if free_bytes - estimated_growth < min_free_bytes:
             _set_meta(connection, {"status": "DISK_RESERVE_BLOCKED", "last_observed_ts": source["observed_ts"], "last_source_sha256": source["source_sha256"]})
             connection.execute("COMMIT")
             connection.execute("PRAGMA wal_checkpoint(TRUNCATE)")
             return {"status": "DISK_RESERVE_BLOCKED", "host": source["host"], "venue": source["venue"], "inserted": 0,
-                    "duplicates": duplicates, "free_bytes": free_bytes, "required_free_bytes": min_free_bytes}
+                    "duplicates": duplicates, "free_bytes": free_bytes, "required_free_bytes": min_free_bytes,
+                    "blocked_timeframes": source["blocked_timeframes"]}
         for input_hash, (blob, raw_bytes) in unique_payloads.items():
             connection.execute("INSERT OR IGNORE INTO payloads(input_hash,payload_encoding,payload_blob,raw_bytes,compressed_bytes) VALUES(?,?,?,?,?)",
                                (input_hash, "zlib", sqlite3.Binary(blob), raw_bytes, len(blob)))
@@ -286,7 +299,8 @@ def _append_capture(database, snapshot_path, receipt_path, host, timeframes=DEFA
             connection.execute("COMMIT")
             connection.execute("PRAGMA wal_checkpoint(TRUNCATE)")
             return {"status": "ARCHIVE_FULL", "host": source["host"], "venue": source["venue"], "inserted": 0,
-                    "duplicates": duplicates, "database_bytes": _db_bytes(database), "max_database_bytes": max_database_bytes}
+                    "duplicates": duplicates, "database_bytes": _db_bytes(database), "max_database_bytes": max_database_bytes,
+                    "blocked_timeframes": source["blocked_timeframes"]}
         last_sequence = connection.execute("SELECT COALESCE(MAX(sequence),0) FROM frame_index").fetchone()[0]
         _set_meta(connection, {"status": "SOURCE_CONFLICT" if conflicts else "OK", "host": source["host"], "venue": source["venue"], "last_observed_ts": source["observed_ts"],
                                "last_source_sha256": source["source_sha256"], "latest_sequence": last_sequence,
@@ -299,7 +313,9 @@ def _append_capture(database, snapshot_path, receipt_path, host, timeframes=DEFA
         return {"status": "SOURCE_CONFLICT" if conflicts else "OK" if inserted else "NO_NEW_FRAMES", "host": source["host"], "venue": source["venue"],
                 "inserted": inserted, "duplicates": duplicates, "stale_count": source["stale_count"],
                 "invalid_count": source["invalid_count"], "latest_sequence": last_sequence,
-                "source_sha256": source["source_sha256"], "database_bytes": database_bytes, "conflicts": len(conflicts)}
+                "source_sha256": source["source_sha256"], "database_bytes": database_bytes, "conflicts": len(conflicts),
+                "provenance_gaps": source["provenance_gaps"], "blocked_timeframes": source["blocked_timeframes"],
+                "eligible_timeframes": source["eligible_timeframes"]}
     except Exception:
         if connection.in_transaction:
             connection.execute("ROLLBACK")

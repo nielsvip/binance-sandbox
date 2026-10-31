@@ -288,12 +288,12 @@ def test_source_window_surfaces_native_provenance_gap_without_database(tmp_path)
     spec["experiment_window"] = {"window_id": "epoch-1", "source_timeframe": "1m", "start_source_ts": 100.0, "end_source_ts": 160.0}
     journal = tmp_path / spec["source_journal"]
     journal.parent.mkdir(parents=True)
-    Path(f"{journal}.status.json").write_text(json.dumps({"host": spec["host"], "venue": "crypto", "status": "UNVERIFIED_NATIVE_PROVENANCE", "provenance_gaps": ["1m"]}), encoding="utf-8")
+    Path(f"{journal}.status.json").write_text(json.dumps({"host": spec["host"], "venue": "crypto", "status": "UNVERIFIED_NATIVE_PROVENANCE", "provenance_gaps": ["1m"], "blocked_timeframes": ["1m", "5m"], "eligible_timeframes": ["3m"]}), encoding="utf-8")
 
     ready, reason = source_window_available(spec, tmp_path, tmp_path)
 
     assert not ready
-    assert reason == "UNVERIFIED_NATIVE_PROVENANCE"
+    assert reason == "UNVERIFIED_NATIVE_PROVENANCE: timeframe=1m; blocked_timeframes=1m,5m; eligible_timeframes=3m"
 
 
 def test_finite_window_pair_waits_for_archive_end_then_runs_baseline_before_candidate(tmp_path):

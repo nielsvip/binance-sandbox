@@ -29,14 +29,14 @@ TIMEFRAMES = ("1m", "3m", "5m", "15m", "1h", "4h", "D", "W", "M")
 SYMBOL_KEY_RE = re.compile(r"^[A-Za-z0-9._-]{1,40}$")
 TIMEFRAME_PROVENANCE = {
     "crypto": {
-        "1m": {"status": "KNOWN_ALIAS", "source_field": "timestamp_3m", "reason": "ez_indicators IndicatorCalculator assigns timestamp_1m from its 3m calculation"},
-        "3m": {"status": "NATIVE_SOURCE", "source_field": "timestamp_3m", "producer": "ez_indicators IndicatorCalculator"},
-        "5m": {"status": "UNSUPPORTED", "source_field": None, "reason": "ez_indicators TIMEFRAMES has no 5m calculation"},
+        "1m": {"status": "KNOWN_ALIAS", "source_field": "timestamp_3m", "reason": "ez_indicators IndicatorCalculator assigns timestamp_1m from its 3m calculation", "producer_source_path": "/home/niels/binance/ez_s2_stack/ez_indicators.py", "producer_source_sha256": "f5a013f5a7461539b75fd761fef13d4a74b961052308083920ba439bc31e7e9e"},
+        "3m": {"status": "NATIVE_SOURCE", "source_field": "timestamp_3m", "producer": "ez_indicators IndicatorCalculator", "producer_source_path": "/home/niels/binance/ez_s2_stack/ez_indicators.py", "producer_source_sha256": "f5a013f5a7461539b75fd761fef13d4a74b961052308083920ba439bc31e7e9e"},
+        "5m": {"status": "UNSUPPORTED", "source_field": None, "reason": "ez_indicators TIMEFRAMES has no 5m calculation", "producer_source_path": "/home/niels/binance/ez_s2_stack/ez_indicators.py", "producer_source_sha256": "f5a013f5a7461539b75fd761fef13d4a74b961052308083920ba439bc31e7e9e"},
     },
     "stocks": {
-        "1m": {"status": "WALLCLOCK_HEARTBEAT", "source_field": None, "reason": "tradier_indicators stamps timestamp_1m with utc_now"},
-        "3m": {"status": "NATIVE_SOURCE", "source_field": "timestamp_3m", "producer": "tradier_indicators IndicatorCalculator"},
-        "5m": {"status": "NATIVE_SOURCE", "source_field": "timestamp_5m", "producer": "tradier_indicators IndicatorCalculator"},
+        "1m": {"status": "WALLCLOCK_HEARTBEAT", "source_field": None, "reason": "tradier_indicators stamps timestamp_1m with utc_now", "producer_source_path": "/home/niels/binance/tradier_indicators.py", "producer_source_sha256": "1e582f05e1cd33cd43d0e659591363c9cee0d8af29276bff9c2767790a4d1811"},
+        "3m": {"status": "NATIVE_SOURCE", "source_field": "timestamp_3m", "producer": "tradier_indicators IndicatorCalculator", "producer_source_path": "/home/niels/binance/tradier_indicators.py", "producer_source_sha256": "1e582f05e1cd33cd43d0e659591363c9cee0d8af29276bff9c2767790a4d1811"},
+        "5m": {"status": "NATIVE_SOURCE", "source_field": "timestamp_5m", "producer": "tradier_indicators IndicatorCalculator", "producer_source_path": "/home/niels/binance/tradier_indicators.py", "producer_source_sha256": "1e582f05e1cd33cd43d0e659591363c9cee0d8af29276bff9c2767790a4d1811"},
     },
 }
 

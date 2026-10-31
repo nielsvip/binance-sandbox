@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T05:03:14Z",
+ "ts": "2026-10-31T05:08:34Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,7 +29,7 @@
   "fin": {
    "fills_6h": 1,
    "open_positions": 1,
-   "unrealised_usd": -0.06,
+   "unrealised_usd": -0.03,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 74,
    "open_positions": 13,
-   "unrealised_usd": 0.27,
+   "unrealised_usd": 0.29,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -60,8 +60,8 @@
   },
   "ang": {
    "fills_6h": 140,
-   "open_positions": 14,
-   "unrealised_usd": 0.31,
+   "open_positions": 15,
+   "unrealised_usd": 0.1,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 41,
    "open_positions": 8,
-   "unrealised_usd": 0.19,
+   "unrealised_usd": 0.14,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -111,10 +111,10 @@
  "tradeable_guard": {
   "poison": false,
   "restored": false,
-  "total": 190,
+  "total": 166,
   "per_acct": {
    "men": 36,
-   "fin": 74,
+   "fin": 50,
    "ang": 50,
    "flz": 26,
    "inf": 4
@@ -127,28 +127,28 @@
     "67104"
    ],
    "starts_30m": 2,
-   "log_age_s": 3844.0
+   "log_age_s": 48.0
   },
   "men": {
    "pids": [
     "92430"
    ],
    "starts_30m": 1,
-   "log_age_s": 103.0
+   "log_age_s": 422.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 110.0
+   "log_age_s": 30.0
   },
   "inf": {
    "pids": [
     "68362"
    ],
    "starts_30m": 1,
-   "log_age_s": 16.0
+   "log_age_s": 2.0
   },
   "flz": {
    "pids": [
@@ -160,53 +160,74 @@
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 1256.0
+   "log_age_s": 1576.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 1572.0
+   "log_age_s": 1891.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T05:03:16Z",
+   "ts": "2026-10-31T05:08:35Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "flz:BTCUSDC_LONG",
    "evidence": "31 04:56:31 - WARNING - [flz] [REENTRY_GRANDFATHERED] flz:BTCUSDC_LONG: bypass MAX_ORDER_VALUE $60 / MAX_POSITION_SIZE $2000 \u2014 restoring $67 on bounce (prior max 0.0160)"
   },
   {
-   "ts": "2026-10-31T05:03:16Z",
+   "ts": "2026-10-31T05:08:35Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "flz:DOGEUSDC_SHORT",
    "evidence": "31 04:59:41 - WARNING - [flz] [REENTRY_GRANDFATHERED] flz:DOGEUSDC_SHORT: bypass MAX_ORDER_VALUE $60 / MAX_POSITION_SIZE $150 \u2014 restoring $988 on bounce (prior max 1554.0000)"
   },
   {
-   "ts": "2026-10-31T05:03:16Z",
+   "ts": "2026-10-31T05:08:35Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "flz:DOGEUSDC_SHORT",
    "evidence": "order notional $988.27 > MAX_ORDER_VALUE $300: 31 04:59:41 - INFO - [flz] [execute_trade_action][flz] \u2705 \u2705 \u2705 \u2705 OPEN flz:DOGEUSDC_SHORT @ 0.075080 qty=13162.936263 ($988.27) side=SELL | QUICK_OPEN_STRONG_SELL_k1:50/d150/k3:50.0/d3:50.0_@0.0750_TIER1"
   },
   {
-   "ts": "2026-10-31T05:03:16Z",
+   "ts": "2026-10-31T05:08:35Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "flz:ZECUSDC_SHORT",
    "evidence": "31 05:01:10 - WARNING - [flz] [REENTRY_GRANDFATHERED] flz:ZECUSDC_SHORT: bypass MAX_ORDER_VALUE $60 / MAX_POSITION_SIZE $150 \u2014 restoring $83 on bounce (prior max 1.0020)"
   },
   {
-   "ts": "2026-10-31T05:03:16Z",
+   "ts": "2026-10-31T05:08:35Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "flz:HYPEUSDT_SHORT",
+   "evidence": "31 05:04:08 - WARNING - [flz] [REENTRY_GRANDFATHERED] flz:HYPEUSDT_SHORT: bypass MAX_ORDER_VALUE $60 / MAX_POSITION_SIZE $150 \u2014 restoring $27 on bounce (prior max 0.3400)"
+  },
+  {
+   "ts": "2026-10-31T05:08:35Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "flz:BTCUSDC_LONG",
+   "evidence": "31 05:04:26 - WARNING - [flz] [REENTRY_GRANDFATHERED] flz:BTCUSDC_LONG: bypass MAX_ORDER_VALUE $60 / MAX_POSITION_SIZE $2000 \u2014 restoring $74 on bounce (prior max 0.0160)"
+  },
+  {
+   "ts": "2026-10-31T05:08:35Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "flz:ZECUSDC_SHORT",
+   "evidence": "31 05:06:53 - WARNING - [flz] [REENTRY_GRANDFATHERED] flz:ZECUSDC_SHORT: bypass MAX_ORDER_VALUE $60 / MAX_POSITION_SIZE $150 \u2014 restoring $73 on bounce (prior max 1.0020)"
+  },
+  {
+   "ts": "2026-10-31T05:08:35Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
-   "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 3844s"
+   "key": "men",
+   "evidence": "ez_manage_men.log not written for 422s"
   }
  ],
  "alert_counts": {
-  "CAP_BYPASS": 3,
+  "CAP_BYPASS": 6,
   "SIZE_ANOMALY": 1,
   "STALE_LOG": 1
  },
@@ -268,5 +289,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.88
+ "sweep_s": 1.48
 }

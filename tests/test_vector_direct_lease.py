@@ -38,7 +38,7 @@ def test_a_backup_does_not_trade_on_its_own_word_when_it_can_see_nothing(tmp_pat
     """The split-brain case: the backup's own link dropped, so silence proves nothing."""
     may, why, _ = L.decide("crypto", "backup", tmp_path, NOW, {}, lambda v, r: (None, ["unreachable"]),
                            lambda venue, now: (False, "no witness could be consulted"))
-    assert may is False and "NOT taking over" in why
+    assert may is False and ("NOT taking over" in why or "not evidence yet" in why), why
 
 
 def test_a_backup_takes_over_only_with_a_witness(tmp_path):
@@ -192,3 +192,76 @@ def test_a_primary_is_never_gated_on_the_readiness_probe(tmp_path):
     """The primary must not be stopped by a probe wobble; losing the primary is the thing to avoid."""
     t, rung = _host("primary", ready=False, tmp_path=tmp_path)
     assert t.lease_ok(time.time()) is True
+
+
+# ── the false takeover of 2026-10-31 04:59:19Z, and the readiness gaps it exposed ──
+
+def test_an_unreadable_primary_beat_is_not_stale_until_the_grace_has_passed(tmp_path):
+    """S1 was mid-restart and slow to answer ssh for under a minute; that must never look like a dead primary."""
+    witness_called = []
+    witness = lambda venue, now: witness_called.append(1) or (True, "would take over")
+    state = {}
+    for second in (0, 30, 90, 170):
+        may, why, state = L.decide("crypto", "backup", tmp_path, NOW + second, state, lambda v, r: (None, ["timeout"]), witness)
+        assert may is False and "not evidence yet" in why, (second, why)
+    assert witness_called == [], "the witness must not even be asked inside the grace"
+
+
+def test_an_unreadable_beat_past_the_grace_still_needs_a_witness_that_read_it_stale(tmp_path):
+    state = {"peer_unreadable_since": NOW - (L.TAKEOVER_AFTER_S + 5)}
+    may, why, _ = L.decide("crypto", "backup", tmp_path, NOW, state, lambda v, r: (None, ["timeout"]),
+                           lambda venue, now: (False, "no witness could read the primary's beat"))
+    assert may is False
+
+
+def test_a_witness_that_cannot_reach_the_primary_is_not_evidence_it_is_dead(monkeypatch):
+    calls = []
+    def fake_ssh(address, command, timeout=14.0):
+        calls.append(command)
+        return None, f"{address}: timeout"     # every path to the primary times out from the witness
+    monkeypatch.setattr(L, "_ssh_json", fake_ssh)
+    verdict, detail = L.witness_says_primary_stale("crypto", NOW)
+    assert verdict is False and "unreachable is not dead" in detail
+
+
+def test_a_readable_beat_resets_the_unreadable_clock(tmp_path):
+    state = {"peer_unreadable_since": NOW - 500}
+    _, _, state = L.decide("crypto", "backup", tmp_path, NOW, state, reader(beat("s1", "primary", True, 5)), never_asked)
+    assert "peer_unreadable_since" not in state
+
+
+def _ready_host(tmp_path, reachable):
+    import importlib.util, types
+    spec = importlib.util.spec_from_file_location("vdt_ready_all", ROOT / "tools" / "vector_direct_trader.py")
+    m = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = m
+    spec.loader.exec_module(m)
+    t = m.Trader.__new__(m.Trader)
+    t.accounts = ["ang", "fin", "flz", "inf", "men"]
+    class Broker:
+        def positions(self, acct):
+            if acct not in reachable:
+                raise RuntimeError("HTTP 401 -2015 Invalid API-key, IP, or permissions, request ip: 2.29.22.116")
+            return {}
+    t.broker = Broker()
+    return t
+
+
+def test_readiness_requires_every_account_not_just_the_first(tmp_path):
+    """S2 reached ang + flz only; probing the first account alone reported it ready for all five."""
+    ok, why = _ready_host(tmp_path, {"ang", "flz"}).broker_ready(time.time())
+    assert ok is False and "3 of 5 accounts unreachable" in why
+
+
+def test_readiness_passes_only_when_every_account_answers(tmp_path):
+    ok, why = _ready_host(tmp_path, {"ang", "fin", "flz", "inf", "men"}).broker_ready(time.time())
+    assert ok is True and "all 5 accounts reachable" in why
+
+
+def test_an_unready_backup_never_writes_an_active_beat(tmp_path):
+    """Defect 4: the beat said active=True before readiness was decided."""
+    beats = []
+    t, rung = _host("backup", ready=False, tmp_path=tmp_path)
+    t.lease.write_beat = staticmethod(lambda out, venue, role, active, why="": beats.append(active) or {})
+    assert t.lease_ok(time.time()) is False
+    assert True not in beats, "an unready backup must never claim the lease, even for an instant"

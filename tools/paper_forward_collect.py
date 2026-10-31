@@ -34,11 +34,11 @@ from pathlib import Path
 from typing import Any, Callable, Mapping
 
 try:
-    from .paper_forward_results import _canonical, _digest, ingest
+    from .paper_forward_results import _canonical, _digest, ingest, ingest_terminal_without_journal
     from .paper_inventory import ingest_plan
     from .paper_scenario_db import ScenarioDB
 except ImportError:
-    from paper_forward_results import _canonical, _digest, ingest
+    from paper_forward_results import _canonical, _digest, ingest, ingest_terminal_without_journal
     from paper_inventory import ingest_plan
     from paper_scenario_db import ScenarioDB
 
@@ -351,10 +351,15 @@ class PaperForwardCollector:
                     raise ValueError("staged result.json hash does not match manifest")
             snapshot_source = local_run_dir / "receipts.snapshot.db" if local_run_dir is not None else str(Path(remote_manifest_path).parent / "receipts.snapshot.db")
             snapshot_target = stage / "receipts.snapshot.db"
-            if local_run_dir is not None:
-                self._copy_local_file(snapshot_source, snapshot_target)
-            else:
-                self._sync_file(host, snapshot_source, snapshot_target)
+            has_snapshot = Path(snapshot_source).is_file() if local_run_dir is not None else True
+            terminal_without_snapshot = str(manifest.get("status", "")).upper() in {"DATA_GAP", "SETTINGS_MISMATCH"} and manifest.get("finished") is True and int(manifest.get("frame_count", 0) or 0) == 0 and int(manifest.get("committed_receipts", 0) or 0) == 0
+            if has_snapshot:
+                if local_run_dir is not None:
+                    self._copy_local_file(snapshot_source, snapshot_target)
+                else:
+                    self._sync_file(host, snapshot_source, snapshot_target)
+            elif not terminal_without_snapshot:
+                raise ValueError("worker receipt snapshot is missing")
             if remote_manifest_path is not None:
                 second = stage / (manifest_name + ".verify")
                 self._sync_file(host, str(remote_manifest_path), second)
@@ -369,10 +374,10 @@ class PaperForwardCollector:
                     raise ValueError("local worker manifest identity/settings changed while staging artifacts")
                 self._copy_local_file(local_run_dir / manifest_name, first_manifest)
                 manifest = latest
-            bundle_hash = _digest({"manifest_sha256": _sha256_file(first_manifest), "settings_sha256": {str(path.relative_to(stage)): _sha256_file(path) for path in stage.rglob("*.json")}, "receipts_sha256": _sha256_file(snapshot_target)})
+            bundle_hash = _digest({"manifest_sha256": _sha256_file(first_manifest), "settings_sha256": {str(path.relative_to(stage)): _sha256_file(path) for path in stage.rglob("*.json")}, "receipts_sha256": _sha256_file(snapshot_target) if snapshot_target.is_file() else "NO_RECEIPT_JOURNAL"})
             destination = self.collected_root / host / manifest["run_id"] / bundle_hash
             destination.parent.mkdir(parents=True, exist_ok=True)
-            result = ingest(self.db, snapshot_target, manifest, stage)
+            result = ingest(self.db, snapshot_target, manifest, stage) if snapshot_target.is_file() else ingest_terminal_without_journal(self.db, manifest, stage)
             if destination.exists():
                 shutil.rmtree(stage)
             else:
@@ -459,7 +464,7 @@ class PaperForwardCollector:
 
     def collect_once(self, plan: Mapping[str, Any]) -> dict:
         plan_code_hash = hashlib.sha256(_canonical(plan["catalog"]["file_sha256"]).encode()).hexdigest()
-        plan_token = "plan-" + _digest({"codes": plan_code_hash, "catalog_scenarios": plan["catalog"]["scenarios"], "groups": plan["groups"], "uncovered": plan["uncovered"], "universe_sha256": plan["universe_sha256"]})
+        plan_token = "plan-" + _digest({"codes": plan_code_hash, "catalog_scenarios": plan["catalog"]["scenarios"], "settings_snapshot_hashes": sorted(plan.get("settings_snapshots", {})), "groups": plan["groups"], "uncovered": plan["uncovered"], "universe_sha256": plan["universe_sha256"]})
         if self.db.query("SELECT 1 FROM imports WHERE import_id=?", (plan_token,)):
             plan_result = {"registered": False, "plan_import_id": plan_token}
         else:

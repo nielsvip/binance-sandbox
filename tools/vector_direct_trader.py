@@ -1568,10 +1568,14 @@ class Trader:
             # A backup must never trade on a fault, because that is how two traders happen.
             may = self.a.role == "primary"
             why = f"lease decision failed ({type(exc).__name__}: {str(exc)[:120]}); {'primary keeps trading' if may else 'backup stands down'}"
-        try:
-            self.lease.write_beat(self.out, self.venue, self.a.role, may, why)
-        except OSError as exc:
-            log(f"lease beat write failed: {exc}")
+        # DEFECT 4 (2026-10-31): the beat used to say active=True BEFORE readiness was checked, so a primary reading it
+        # in between deferred to a backup that was about to refuse. A backup's beat now claims the lease only after it has
+        # proved it can trade; the primary's beat is written straight away as before.
+        if not (may and self.a.role == "backup"):
+            try:
+                self.lease.write_beat(self.out, self.venue, self.a.role, may, why)
+            except OSError as exc:
+                log(f"lease beat write failed: {exc}")
         if may and self.a.role == "backup":
             # A backup that claims the lease makes the primary stand down. If it then cannot reach the broker the venue
             # has ZERO traders — worse than having no backup at all. Measured 2026-10-31: S2 cannot authenticate to
@@ -1586,6 +1590,10 @@ class Trader:
                     log(f"CRITICAL LEASE {self.venue} backup REFUSING the lease: {detail} — the primary must keep the venue")
                     self._ledger({"event": "LEASE", "venue": self.venue, "role": "backup", "may_trade": False, "why": f"not broker-ready: {detail}"})
                 return False
+            try:
+                self.lease.write_beat(self.out, self.venue, self.a.role, True, why)
+            except OSError as exc:
+                log(f"lease beat write failed: {exc}")
         if why != getattr(self, "lease_why", None):
             self.lease_why = why
             log(f"LEASE {self.venue} {self.a.role}: {'TRADING' if may else 'STOOD DOWN'} — {why}")
@@ -1599,14 +1607,31 @@ class Trader:
         hit = self.__dict__.get("broker_ready_cache")
         if hit and now - hit[0] < BROKER_READY_EVERY_S:
             return hit[1], hit[2]
-        acct = (self.accounts or (None,))[0]
-        if not acct:
+        # DEFECT 2 (2026-10-31): only the FIRST account was probed. S2 reached ang and flz but not fin/inf/men (-2015,
+        # their keys not allowlisted for 2.29.22.116), reported ready, and would have taken all five accounts with three of
+        # them untradeable. The lease covers every account of the venue, so every one must answer.
+        # DEFECT 3: S2 claimed the lease and then died every pass on `No module named 'vector_direct_stops'`. A backup that
+        # cannot import what a pass imports is not ready either.
+        if not self.accounts:
             return False, "no account configured"
         try:
-            self.broker.positions(acct)
-            ready, detail = True, f"broker reachable for {acct} from this host"
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
+            import vector_direct_stops  # noqa: F401  (imported by every pass that places or audits a stop)
+            import vector_direct_lease  # noqa: F401
         except Exception as exc:
-            ready, detail = False, f"broker unreachable for {acct} from this host: {str(exc)[:200]}"
+            ready, detail = False, f"this host cannot import a module every pass needs: {type(exc).__name__}: {str(exc)[:160]}"
+            self.broker_ready_cache = (now, ready, detail)
+            return ready, detail
+        failed = []
+        for acct in self.accounts:
+            try:
+                self.broker.positions(acct)
+            except Exception as exc:
+                failed.append(f"{acct}: {str(exc)[:90]}")
+        if failed:
+            ready, detail = False, f"{len(failed)} of {len(self.accounts)} accounts unreachable from this host: " + " | ".join(failed)[:300]
+        else:
+            ready, detail = True, f"all {len(self.accounts)} accounts reachable from this host"
         self.broker_ready_cache = (now, ready, detail)
         return ready, detail
 

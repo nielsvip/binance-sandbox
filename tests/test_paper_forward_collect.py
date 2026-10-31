@@ -102,6 +102,7 @@ def _coordinator_snapshot(path, host, status):
 
 def test_local_collect_registers_plan_then_imports_receipts_and_coordinator_separately(tmp_path):
     plan, run_dir = _plan_and_worker(tmp_path)
+    plan["settings_snapshots"] = {plan["groups"][0]["settings_sha256"]: json.loads((run_dir / "base_settings.json").read_text())}
     coordinator_path = tmp_path / "data" / "paper_forward_lab" / "fleet_s1.snapshot.sqlite3"
     coordinator_path.parent.mkdir(parents=True, exist_ok=True)
     _coordinator_snapshot(coordinator_path, "s1", "DONE")
@@ -110,6 +111,9 @@ def test_local_collect_registers_plan_then_imports_receipts_and_coordinator_sepa
         first = collector.collect_once(plan)
         second = collector.collect_once(plan)
         assert first["plan_registered"]["groups"] == 1
+        assert first["plan_registered"]["plan_import_id"] == second["plan_registered"]["plan_import_id"]
+        assert second["plan_registered"]["registered"] is False
+        assert db.query("SELECT COUNT(*) FROM settings_snapshots")[0][0] == 1
         assert first["collected_artifacts"][0]["status"] == "COMPLETED"
         runs = db.query("SELECT evidence_kind FROM runs WHERE run_id='paper-run-1'")
         assert runs[0][0] == "independent_forward"
@@ -218,3 +222,40 @@ def test_local_collector_copies_manifest_pinned_accounting_artifact(tmp_path):
         imported = next(row for row in result["collected_artifacts"] if row.get("run_id") == "paper-run-1")
         assert imported["accounting_fills"] == 0
         assert (Path(imported["bundle_path"]) / "accounting.json").is_file()
+
+
+def test_local_collector_records_terminal_settings_mismatch_without_receipt_db(tmp_path):
+    plan, run_dir = _plan_and_worker(tmp_path)
+    (run_dir / "receipts.snapshot.db").unlink()
+    manifest_path = run_dir / "worker.result_manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest.update(status="SETTINGS_MISMATCH", frame_count=0, committed_receipts=0, settings_mismatch_keys=["X"])
+    manifest_path.write_text(_canon(manifest))
+    with _collector_db(tmp_path / "data" / "paper_forward_lab" / "central.sqlite") as db:
+        result = PaperForwardCollector(tmp_path, db, hosts=("s1",)).collect_once(plan)
+        imported = next(row for row in result["collected_artifacts"] if row.get("run_id") == "paper-run-1")
+        assert imported["status"] == "SETTINGS_MISMATCH"
+        assert imported["result_valid"] is False
+        assert not (Path(imported["bundle_path"]) / "receipts.snapshot.db").exists()
+        assert db.query("SELECT status FROM run_current_status WHERE run_id='paper-run-1'")[0][0] == "SETTINGS_MISMATCH"
+        assert db.query("SELECT COUNT(*) FROM forward_receipts WHERE run_id='paper-run-1'")[0][0] == 0
+
+
+def test_local_collector_stages_and_checks_manifest_pinned_result_json(tmp_path):
+    plan, run_dir = _plan_and_worker(tmp_path)
+    manifest_path = run_dir / "worker.result_manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    result = {key: manifest[key] for key in ("run_id", "epoch_id", "scenario_id", "sym_side", "settings_sha256", "code_sha256")}
+    result.update({"override_issues": [{"key": "X", "action": "SKIPPED"}], "status": "COMPLETED"})
+    body = _canon(result) + "\n"
+    (run_dir / "result.json").write_text(body)
+    manifest["result_file"] = "result.json"
+    manifest["result_sha256"] = hashlib.sha256(body.encode()).hexdigest()
+    manifest_path.write_text(_canon(manifest))
+    with _collector_db(tmp_path / "data" / "paper_forward_lab" / "central.sqlite") as db:
+        collected = PaperForwardCollector(tmp_path, db, hosts=("s1",)).collect_once(plan)
+        imported = next(row for row in collected["collected_artifacts"] if row.get("run_id") == "paper-run-1")
+        assert (Path(imported["bundle_path"]) / "result.json").is_file()
+        assert imported["result_valid"] is False
+        provenance = db.query("SELECT invalid_reasons_json FROM paper_forward_run_provenance WHERE run_id='paper-run-1'")[0][0]
+        assert "OVERRIDE_ISSUES" in provenance

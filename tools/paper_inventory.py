@@ -23,11 +23,21 @@ def ensure_scenario(db, scenario_id, path_id, side, parameters, parent=None):
     previous = db.query("SELECT created_at FROM scenarios WHERE scenario_id=?", (scenario_id,))
     db.add_scenario(scenario_id=scenario_id, path_id=path_id, side=side, parameters=parameters, parent_scenario_id=parent, created_at=previous[0][0] if previous else now())
 
+def _plan_settings_snapshots(db, plan):
+    snapshots = plan.get("settings_snapshots", {})
+    if not isinstance(snapshots, dict):
+        raise ValueError("settings_snapshots must map SHA-256 hashes to settings objects")
+    for settings_hash, settings in snapshots.items():
+        if not isinstance(settings, dict) or digest(settings) != settings_hash:
+            raise ValueError(f"settings snapshot hash mismatch: {settings_hash}")
+        db.add_settings_snapshot(settings_hash=settings_hash, settings=settings)
+
 def ingest_plan(db, plan):
     code_hash = digest(plan["catalog"]["file_sha256"])
     by_catalog = {}
     with db.transaction():
         db.add_source_code_snapshot(code_hash=code_hash, file_hashes=plan["catalog"]["file_sha256"])
+        _plan_settings_snapshots(db, plan)
         for item in plan["catalog"]["scenarios"]:
             path_id = "catalog-path-" + digest([item["venue"], item["switch"], item["coverage_kind"], item["provenance"]])
             db.add_path(path_id=path_id, venue=item["venue"], path_name=item["switch"] or "BASELINE", switch_name=item["switch"] or "", classification=item["coverage_kind"], provenance=item["provenance"])
@@ -41,11 +51,12 @@ def ingest_plan(db, plan):
             else:
                 candidates = [None]
             by_catalog[item["scenario_id"]] = []
-            for value in candidates:
+            for candidate_index, value in enumerate(candidates):
                 resolved_value = item["kind"] == "baseline" or (item["default_kind"] != "boolean" and isinstance(authoritative, list) and bool(authoritative))
                 parameters = {"overrides": {} if value is None else {item["switch"]: value}, "parameter_status": "RESOLVED" if item["kind"] == "baseline" or value is not None else "NEEDS_AUTHORITATIVE_VALUES", "catalog": item}
                 if resolved_value and item["kind"] != "baseline":
-                    parameters["candidate_resolution"] = {"source": item.get("candidate_source"), "source_xlsx_sha256": item.get("candidate_source_xlsx_sha256"), "value_types": item.get("candidate_value_types", [type(value).__name__])}
+                    evidence = item.get("candidate_value_evidence", [])
+                    parameters["candidate_resolution"] = {"source": item.get("candidate_source"), "source_xlsx_sha256": item.get("candidate_source_xlsx_sha256"), "value_type": type(value).__name__, "value_evidence": evidence[candidate_index] if candidate_index < len(evidence) else None}
                 scenario_id = "scenario-" + digest([path_id, item["side"], parameters])
                 ensure_scenario(db, scenario_id, path_id, item["side"], parameters)
                 by_catalog[item["scenario_id"]].append((scenario_id, parameters["parameter_status"]))
@@ -58,7 +69,7 @@ def ingest_plan(db, plan):
                     if db.query("SELECT 1 FROM runs WHERE run_id=?", (run_id,)):
                         continue
                     db.add_run(run_id=run_id, scenario_id=scenario_id, sym_side=group["sym_side"], host=group["host"], settings_hash=group["settings_sha256"], code_hash=code_hash, evidence_kind="catalog_only", status="PENDING_VALIDATED_EXECUTION" if parameter_status == "RESOLVED" else "PENDING_PARAMETERS", started_at=plan["planned_at"], ended_at=None)
-        token = "plan-" + digest({"codes": code_hash, "catalog_scenarios": plan["catalog"]["scenarios"], "groups": plan["groups"], "uncovered": plan["uncovered"], "universe_sha256": plan["universe_sha256"]})
+        token = "plan-" + digest({"codes": code_hash, "catalog_scenarios": plan["catalog"]["scenarios"], "settings_snapshot_hashes": sorted(plan.get("settings_snapshots", {})), "groups": plan["groups"], "uncovered": plan["uncovered"], "universe_sha256": plan["universe_sha256"]})
         if not db.query("SELECT 1 FROM imports WHERE import_id=?", (token,)):
             db.record_import(import_id=token, source_path=plan["universe_source"], source_hash=plan["universe_sha256"], imported_at=now(), source_computed_at=None)
         for gap in plan["uncovered"]:

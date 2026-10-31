@@ -62,12 +62,42 @@ def build(root):
     missing.extend({"sym_side": symbol, "reason": "NO_ACTIVE_SETTINGS"} for symbol in sorted(set(allowed) - set(universe)))
     return {"schema_version": 1, "experiment_window": {"window_id": "prospective-six-hour-" + str(anchor), "source_timeframe": "1m", "anchor": "first_available_after", "not_before_source_ts": anchor, "duration_seconds": 21600}, "planned_at": utc_now(), "status": "PLAN_ONLY", "running_scenarios": 0, "promotion_enabled": False, "catalog": catalog, "universe_sha256": digest(universe), "universe_source": str(database) + "#per_sym_active/all", "settings_source": str(database), "groups": groups, "uncovered": missing}
 
+def native_timeframes(switch):
+    name = "_" + str(switch or "").lower() + "_"
+    return [timeframe for timeframe in ("1m", "3m", "5m") if "_" + timeframe + "_" in name]
+
+def partition_clock_groups(plan):
+    catalog = {item["scenario_id"]: item for item in plan["catalog"]["scenarios"]}
+    snapshots = dict(plan.get("settings_snapshots", {}))
+    groups = []
+    for original in plan["groups"]:
+        group = dict(original)
+        if "effective_settings" in group:
+            snapshots[group["settings_sha256"]] = group.pop("effective_settings")
+        if group.get("frame_timeframe"):
+            groups.append(group)
+            continue
+        baseline = [key for key in group["scenario_ids"] if catalog[key]["kind"] == "baseline"]
+        clocks = {}
+        default = "3m" if group["venue"] == "crypto" else "5m"
+        for key in group["scenario_ids"]:
+            item = catalog[key]
+            if item["kind"] == "baseline":
+                continue
+            needed = native_timeframes(item.get("switch"))
+            clock = needed[0] if needed else default
+            clocks.setdefault(clock, []).append(key)
+        for clock, selected in sorted(clocks.items()):
+            groups.append({**group, "frame_timeframe": clock, "scenario_ids": baseline + selected, "scenario_count": len(baseline) + len(selected)})
+    return {**plan, "groups": groups, "settings_snapshots": snapshots}
+
 def export(plan, destination, remote_root, engine_root):
+    plan = partition_clock_groups(plan)
     destination = Path(destination)
     destination.mkdir(parents=True, exist_ok=True)
     remote_root = Path(remote_root)
     for group in plan["groups"]:
-        group["epoch_id"] = digest({"sym_side": group["sym_side"], "settings": group["settings_sha256"], "sources": plan["catalog"]["file_sha256"], "runtime": str(engine_root), "window": plan.get("experiment_window"), "experiment": "isolated_all_blanket_paths_blocked_except_candidate_v1"})
+        group["epoch_id"] = digest({"sym_side": group["sym_side"], "settings": group["settings_sha256"], "sources": plan["catalog"]["file_sha256"], "runtime": str(engine_root), "clock": group["frame_timeframe"], "window": plan.get("experiment_window"), "experiment": "isolated_all_blanket_paths_blocked_except_candidate_v1"})
     code_hash = digest(plan["catalog"]["file_sha256"])
     batch_id = digest({"groups": plan["groups"], "code": code_hash})[:20]
     batch = destination / batch_id
@@ -81,18 +111,21 @@ def export(plan, destination, remote_root, engine_root):
             for group in plan["groups"]:
                 host = group["host"]
                 base_hash = group["settings_sha256"]
-                write_once(batch / host / "inputs/settings" / (base_hash + ".json"), group["effective_settings"])
+                write_once(batch / host / "inputs/settings" / (base_hash + ".json"), plan["settings_snapshots"][base_hash])
                 rows = db.query("SELECT r.run_id,r.scenario_id,r.status,s.parameters_json FROM runs r JOIN scenarios s USING(scenario_id) WHERE r.sym_side=? AND r.settings_hash=? AND r.evidence_kind='catalog_only'", (group["sym_side"], base_hash))
                 for row in rows:
+                    if row["run_id"] != "planned-" + digest([row["scenario_id"], group["epoch_id"]]):
+                        continue
                     parameters = json.loads(row["parameters_json"])
                     overrides = parameters["overrides"]
                     override_hash = digest(overrides)
                     write_once(batch / host / "inputs/overrides" / (override_hash + ".json"), overrides)
                     run_id = "forward-" + digest([row["scenario_id"], group["epoch_id"], "independent-v1"])
-                    native = sorted({entry for entry in ("1m", "3m", "5m") if ("_" + entry + "_") in ("_" + str(parameters["catalog"].get("switch") or "").lower() + "_")})
-                    timeframe = "1m"
+                    native = native_timeframes(parameters["catalog"].get("switch"))
+                    timeframe = group["frame_timeframe"]
+                    window = {**plan["experiment_window"], "source_timeframe": timeframe, "window_id": plan["experiment_window"]["window_id"] + "-" + timeframe} if plan.get("experiment_window") else None
                     launchable = row["status"] != "PENDING_PARAMETERS"
-                    spec = {"schema_version": 1, "experiment_window": plan.get("experiment_window"), "is_baseline": parameters["catalog"]["kind"] == "baseline", "source_journal": str(remote_root / "data/paper_forward_lab" / ("native_journal_" + group["venue"] + ".sqlite3")), "run_id": run_id, "epoch_id": group["epoch_id"], "scenario_id": row["scenario_id"], "planned_run_id": row["run_id"], "sym_side": group["sym_side"], "venue": group["venue"], "host": host, "plan_code_hash": code_hash, "parent_settings_sha256": base_hash, "full_settings": str(remote_batch / host / "inputs/settings" / (base_hash + ".json")), "candidate_overrides": str(remote_batch / host / "inputs/overrides" / (override_hash + ".json")), "registered_candidate_overrides": overrides, "paper_mask_release": sorted(overrides), "experiment_context": {"name": "isolated_all_blanket_paths_blocked_except_candidate_v1", "release_nonvectorizable": True, "release_sub15m": True}, "engine_root": str(engine_root), "frame_timeframe": timeframe, "required_timeframes": sorted(set([timeframe] + native)), "poll_seconds": 10, "max_age_seconds": 120, "launchable": launchable, "pending_reason": None if launchable else "PENDING_PARAMETER_VALUES", "snapshot": str(remote_root / "data/paper_forward_lab/feed" / (group["venue"] + ".json")), "receipt": str(remote_root / "data/paper_forward_lab/feed" / (group["venue"] + ".receipt.json"))}
+                    spec = {"schema_version": 1, "experiment_window": window, "is_baseline": parameters["catalog"]["kind"] == "baseline", "source_journal": str(remote_root / "data/paper_forward_lab" / ("native_journal_" + group["venue"] + ".sqlite3")), "run_id": run_id, "epoch_id": group["epoch_id"], "scenario_id": row["scenario_id"], "planned_run_id": row["run_id"], "sym_side": group["sym_side"], "venue": group["venue"], "host": host, "plan_code_hash": code_hash, "parent_settings_sha256": base_hash, "full_settings": str(remote_batch / host / "inputs/settings" / (base_hash + ".json")), "candidate_overrides": str(remote_batch / host / "inputs/overrides" / (override_hash + ".json")), "registered_candidate_overrides": overrides, "paper_mask_release": sorted(overrides), "experiment_context": {"name": "isolated_all_blanket_paths_blocked_except_candidate_v1", "release_nonvectorizable": True, "release_sub15m": True}, "engine_root": str(engine_root), "frame_timeframe": timeframe, "required_timeframes": sorted(set([timeframe] + native)), "poll_seconds": 10, "max_age_seconds": {"1m":120,"3m":360,"5m":600}[timeframe], "launchable": launchable, "pending_reason": None if launchable else "PENDING_PARAMETER_VALUES", "snapshot": str(remote_root / "data/paper_forward_lab/feed" / (group["venue"] + ".json")), "receipt": str(remote_root / "data/paper_forward_lab/feed" / (group["venue"] + ".receipt.json"))}
                     filename = run_id + ".json"
                     write_once(batch / host / "specs" / filename, spec)
                     jobs[host].append({"spec_file": filename, **{key: spec[key] for key in ("run_id", "epoch_id", "scenario_id", "sym_side", "venue", "host")}})

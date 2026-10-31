@@ -48,13 +48,6 @@
     "symbol": "GRAMUSDT",
     "side": "SHORT"
   },
-  "ang:ACTUSDT_SHORT": {
-    "orderId": "4000002013816786",
-    "stopPrice": 0.008509,
-    "entry_sig": "2026-10-31 04:04:02.504555+00:00",
-    "symbol": "ACTUSDT",
-    "side": "SHORT"
-  },
   "ang:SKYUSDT_SHORT": {
     "orderId": "4000002013876593",
     "stopPrice": 0.06786,
@@ -67,6 +60,13 @@
     "stopPrice": 0.1803,
     "entry_sig": "2026-10-31 01:15:15.220000+00:00",
     "symbol": "WIFUSDC",
+    "side": "SHORT"
+  },
+  "ang:EGLDUSDT_SHORT": {
+    "orderId": "4000002013946650",
+    "stopPrice": 3.383,
+    "entry_sig": "2026-10-31 05:01:21.010000+00:00",
+    "symbol": "EGLDUSDT",
     "side": "SHORT"
   }
 }
