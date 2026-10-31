@@ -6,12 +6,12 @@ import numpy as np
 
 
 _NUMERIC_FIELDS = {
-    "stoch_k_1h": ("stoch_k_1h", "k_1h", 50.0),
-    "stoch_d_1h": ("stoch_d_1h", "d_1h", 50.0),
-    "stoch_k_4h": ("stoch_k_4h", "k_4h", 50.0),
-    "stoch_d_4h": ("stoch_d_4h", "d_4h", 50.0),
-    "stoch_k_D": ("stoch_k_D", "k_D", 50.0),
-    "stoch_d_D": ("stoch_d_D", "d_D", 50.0),
+    "stoch_k_1h": ("k_1h", "stoch_k_1h", 50.0),
+    "stoch_d_1h": ("d_1h", "stoch_d_1h", 50.0),
+    "stoch_k_4h": ("k_4h", "stoch_k_4h", 50.0),
+    "stoch_d_4h": ("d_4h", "stoch_d_4h", 50.0),
+    "stoch_k_D": ("k_D", "stoch_k_D", 50.0),
+    "stoch_d_D": ("d_D", "stoch_d_D", 50.0),
     "dc_basis_1h": ("dc_basis_1h", "dc_basis_1h", 0.0),
     "dc_basis_4h": ("dc_basis_4h", "dc_basis_4h", 0.0),
     "sma_200_1h": ("sma_200_1h", "sma_200_1h", 0.0),
@@ -115,8 +115,8 @@ def check_htf_trend_array(indicators, current_price):
     for tf in ("1h", "4h"):
         valid = ((cols[f"high_{tf}"] > 0.0) & (cols[f"high_{tf}_prev"] > 0.0)
                  & (cols[f"low_{tf}"] > 0.0) & (cols[f"low_{tf}_prev"] > 0.0))
-        bull += valid & (cols[f"high_{tf}"] > cols[f"high_{tf}_prev"]) & (cols[f"low_{tf}"] > cols[f"low_{tf}_prev"])
-        bear += valid & (cols[f"high_{tf}"] < cols[f"high_{tf}_prev"]) & (cols[f"low_{tf}"] < cols[f"low_{tf}_prev"])
+        bull += (valid & (cols[f"high_{tf}"] > cols[f"high_{tf}_prev"]) & (cols[f"low_{tf}"] > cols[f"low_{tf}_prev"])) * 3
+        bear += (valid & (cols[f"high_{tf}"] < cols[f"high_{tf}_prev"]) & (cols[f"low_{tf}"] < cols[f"low_{tf}_prev"])) * 3
     for tf, weight in (("1h", 1), ("4h", 2), ("D", 3)):
         direction = cols[f"bar_direction_{tf}"]
         strength = cols[f"bar_strength_{tf}"]
@@ -131,8 +131,8 @@ def check_htf_trend_array(indicators, current_price):
         bull += (streak >= 3) * weight
         bear += (streak <= -3) * weight
         vol_spike = _truth_column(indicators, f"bar_vol_spike_{tf}", n) & (direction != 0.0)
-        bull += vol_spike & (direction > 0.0) * weight
-        bear += vol_spike & (direction < 0.0) * weight
+        bull += (vol_spike & (direction > 0.0)) * weight
+        bear += (vol_spike & (direction < 0.0)) * weight
     for name, weight in (("rsi_1h", 1), ("rsi_4h", 2), ("mfi_1h", 1), ("mfi_4h", 2), ("mfi_D", 2)):
         value = cols[name]
         upper, lower = ((55.0, 45.0) if name.startswith("rsi_") else (60.0, 40.0))
