@@ -256,6 +256,9 @@ def load_measured_quartet(path, expected_sha256):
 
 
 def prioritize_confirmation(proposals, measured, current_context, eligible):
+    if measured:
+        from tools.opt.v12_pilot import evaluate_prepared_sanitized
+        validate_inputs(current_context, evaluate_prepared_sanitized)
     result = []
     for proposal in proposals:
         item = dict(proposal, measured_priority=0.0, measured_sources=[], next_phase='independent_window_confirmation', current_confirmation_verified=False)
@@ -265,6 +268,7 @@ def prioritize_confirmation(proposals, measured, current_context, eligible):
                 continue
             if pair_identity(proposal['x'], proposal['y']) == proof['canonical_pair_id']:
                 item['measured_priority'] = max(item['measured_priority'], proof['joint_delta_vs_baseline'])
-                item['measured_sources'].append(digest)
+                if digest not in item['measured_sources']:
+                    item['measured_sources'].append(digest)
         result.append(item)
     return sorted(result, key=lambda item: (-item['measured_priority'], str(item.get('id', ''))))

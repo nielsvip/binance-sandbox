@@ -20205,15 +20205,16 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 if _lr_flat_open_target is not None and _fire_src == "LR_BAND_LADDER_PARITY_TARGET":
                     _dollar = float(_lr_flat_open_target.add_notional_usd)
                 _b04_selected = False
-                if entry_sig[i] and _fire_src is None:
-                    for _b04_name, _b04_mask in _entry_blocks_cache.items():
-                        if _b04_name == "B04":
-                            _b04_selected = bool(_b04_mask[i])
-                            break
-                        if bool(_b04_mask[i]):
-                            break
-                if _b04_selected:
-                    _dollar *= float(_b04_size_mult[i])
+                if entry_sig[i]:
+                    if str(_fire_src or "") == "B04":
+                        _b04_selected = True
+                    elif _fire_src is None:
+                        for _b04_name, _b04_mask in _entry_blocks_cache.items():
+                            if _b04_name == "B04":
+                                _b04_selected = bool(_b04_mask[i])
+                                break
+                            if bool(_b04_mask[i]):
+                                break
                 if _wirec_size_mult is not None and i < len(_wirec_size_mult):
                     _dollar = _dollar * float(_wirec_size_mult[i])  # WIRING LANE C L1c
                 if _grd_open_mult is not None and i < len(_grd_open_mult):
@@ -20238,6 +20239,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         )
                 if _sr_fired[0] == i and not entry_sig[i]:
                     _dollar = _dollar * _srm.size_mult(cfg, _srm.REASON)  # STOP_RECLAIM_SIZE_MULT (live: twin dispatch applies the same)
+                if _b04_selected:
+                    _dollar *= float(_b04_size_mult[i])
                 if _qs_on:  # QTY_STREAK quantizer (live: ez_manage/tradier_manage via vec_decisions/qty_quantizers.py)
                     for _qs_t in trades[_qs_seen:]:
                         if str(_qs_t.get("type", "")) == "CLOSE" and not _qs_t.get("unrealised"):
@@ -20642,6 +20645,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             try:
                 from vec_decisions.ez_missing_hold_bars_exit import (
                     optimal_hold_bars_exit_live_adapter,
+                    satoshit_standard_exits_skipped,
                 )
 
                 _entry_bar = int(pos.get("entry_bar", -1))
@@ -20672,6 +20676,15 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     else 0.0
                 )
                 _hold_now_ts = float(ts[i]) if i < len(ts) else 0.0
+                _hold_aug_reasons = [
+                    str(_event.get("reason") or "")
+                    for _event in events
+                    if _event.get("type") == "AUGMENT"
+                    and int(_event.get("bar", -1)) >= _entry_bar
+                ]
+                _hold_skip_standard = satoshit_standard_exits_skipped(
+                    cfg, pos.get("entry_reason", ""), _hold_aug_reasons
+                )
                 _hold_bars_fire = optimal_hold_bars_exit_live_adapter(
                     cfg,
                     _hold_gain_pct,
@@ -20679,7 +20692,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     _opened_ts,
                     _last_aug_ts,
                     float(pos.get("qty", 0.0)) > 0.0,
-                    False,
+                    _hold_skip_standard,
+                    allow_epoch=True,
                 )
             except Exception:
                 _hold_bars_fire = False
@@ -23718,7 +23732,18 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 < 0
             )
         )  # USER 2026-10-06 twin: loss exits bypass exit_confirm
-        _xc_ok = _xc_loss or (
+        _wt_final_info = getattr(cfg, "WT_FINAL_EXIT_INFO", None)
+        _wt_final_mask = (
+            _wt_final_info.get("mask")
+            if isinstance(_wt_final_info, dict)
+            else None
+        )
+        _wt_final_fire = (
+            _wt_final_mask is not None
+            and i < len(_wt_final_mask)
+            and bool(_wt_final_mask[i])
+        )
+        _xc_ok = _xc_loss or _wt_final_fire or (
             _gftf.get("exit_confirm") is None or bool(_gftf["exit_confirm"][i])
         )
         if _hold_bars_fire or (exit_sig[i] and held_bars >= min_hold and _xc_ok):

@@ -3,6 +3,17 @@
 import numpy as np
 
 
+def satoshit_standard_exits_skipped(cfg, entry_reason, augmentation_reasons):
+    """Match ez_satoshit.is_satoshit_trade from the latest position reason."""
+    if not bool(getattr(cfg, "SATOSHIT_PROTECT_TRADES", False)) or not bool(
+        getattr(cfg, "SATOSHIT_ENABLED", False)
+    ):
+        return False
+    reasons = list(augmentation_reasons or [])
+    source = reasons[-1] if reasons else entry_reason
+    return "SATOSHIT" in str(source or "")
+
+
 def optimal_hold_bars_exit_core(cfg, gain_pct, elapsed_seconds, eligible):
     """Return a bool mask for the live gain, focus-TF, and wall-age rule."""
     gain_pct = np.asarray(gain_pct, dtype=float)
@@ -17,7 +28,7 @@ def optimal_hold_bars_exit_core(cfg, gain_pct, elapsed_seconds, eligible):
     return eligible & np.isfinite(gain_pct) & np.isfinite(elapsed_seconds) & (gain_pct > min_gain) & (elapsed_seconds > max_age_seconds)
 
 
-def optimal_hold_bars_exit_live_adapter(cfg, gain_pct, now_ts, opened_at_ts, last_augmentation_ts, position_active, skip_standard_exits):
+def optimal_hold_bars_exit_live_adapter(cfg, gain_pct, now_ts, opened_at_ts, last_augmentation_ts, position_active, skip_standard_exits, allow_epoch=False):
     """Scalar live adapter; opened_at has precedence, matching the current caller."""
     anchor = opened_at_ts if opened_at_ts else last_augmentation_ts
     if not anchor or skip_standard_exits or not position_active:
@@ -25,7 +36,7 @@ def optimal_hold_bars_exit_live_adapter(cfg, gain_pct, now_ts, opened_at_ts, las
     try:
         elapsed = (now_ts - anchor).total_seconds()
     except (TypeError, AttributeError):
-        if isinstance(now_ts, (int, float)) and isinstance(anchor, (int, float)):
+        if allow_epoch and isinstance(now_ts, (int, float)) and isinstance(anchor, (int, float)):
             elapsed = float(now_ts) - float(anchor)
         else:
             elapsed = 0.0

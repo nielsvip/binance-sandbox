@@ -1,0 +1,60 @@
+{
+  "audit_at_utc": "2026-10-31T01:25:02Z",
+  "scope": "relocate verified research-only cold experience archive and compressed shards; no decoded DB, master, live log, or run04 output included",
+  "source_root": "/home/niels/v20_candidate_review_20261030/experience_restore_20261030T2030Z",
+  "source_type": "isolated GCS research restore; all four ctxjoin consumers previously completed and released decoded DB scratch",
+  "gcs": {
+    "uri": "gs://v15-cold-329002141504/fleet_archives/s5/experience_cold_af1eab344426.tar.zst",
+    "generation": "1793154688805498",
+    "verified_receipt": "data/reports/gcs_cold_store.jsonl",
+    "source_audit_receipt": "data/reports/learning_preservation_audit_20261030T200206Z.json#gcs_experience_restore",
+    "archive_bytes": 2402070211,
+    "archive_sha256": "0b92fd8f47e8e95605a5451defcc34b7133ab4efc237ad95e3b369ac0878d138",
+    "md5_base64": "rQ6cHUBUIs8xSo7hnM58TQ=="
+  },
+  "destination": {
+    "path": "/Volumes/WD25/binance_archive/experience_restore_20261031T0120Z/experience_cold.tar.zst",
+    "volume_uuid": "04543668-3000-3F41-BB34-1C876F724D28",
+    "bytes": 2402070211,
+    "sha256": "0b92fd8f47e8e95605a5451defcc34b7133ab4efc237ad95e3b369ac0878d138",
+    "verified": true,
+    "transfer": "rsync -rt --partial --append-verify over ssh -S none; exit 0; session 30534"
+  },
+  "archive_member_verification": {
+    "method": "zstd -dc destination | Python tarfile stream mode; metadata only, no extraction",
+    "members": 14,
+    "safe_member_inventory": "Prior inspection: directories, four compressed SQLite shards, per-shard manifests/logs and SHA256SUMS; no links or unsafe paths.",
+    "embedded_sha256sums_member": "experience_cold/SHA256SUMS",
+    "embedded_compressed_shards": [
+      {"name": "experience_CRYPTO_LONG_202610.db.zst", "bytes": 929346786, "sha256": "6d451c5faa545621de1d425c06859aa3c189b21c8d0cae10ef0e96b5b3cdbd92", "source_db_bytes": 10025791488, "source_db_sha256": "a9c4e171a36905ae687abd9fd804eee4c94505ff9f35860114dba6c1ab9e78ea"},
+      {"name": "experience_CRYPTO_SHORT_202610.db.zst", "bytes": 775731617, "sha256": "b6bc3c8fb4543136b62f183163a9c9e4f0b6d81ccc3b20cc70bf28f8e776babf", "source_db_bytes": 8176959488, "source_db_sha256": "0a2f12aabf01ff473f2647a5cda619f3d512e70bc2fc49295f13505ceaaf34c7"},
+      {"name": "experience_STOCKS_LONG_202610.db.zst", "bytes": 365075776, "sha256": "212dd28648fcd11343cb2b736cd2820b75a54567fd4543200f14bcfc1f1049a6", "source_db_bytes": 3675877376, "source_db_sha256": "34362727fbcbe13c67287eef0088db05dda47234e3fba22cd84722b0ba91d4cf"},
+      {"name": "experience_STOCKS_SHORT_202610.db.zst", "bytes": 331853589, "sha256": "5533d2c01320ef038d06edafe852e8da8b516b801693ecd9cd76643e8832872d", "source_db_bytes": 3277758464, "source_db_sha256": "db36705e6681ae8deca9ac73a5e99b72245428212acc3f4f045977158a53a602"}
+    ],
+    "embedded_checksums_match_adjacent_source_SHA256SUMS_and_source_manifests": true,
+    "separate_wd_copy": {"name": "experience_STOCKS_SHORT_202610.db.zst", "path": "/Volumes/WD25/binance_archive/research_native_20261031T0042Z/experience_STOCKS_SHORT_202610.db.zst", "sha256": "5533d2c01320ef038d06edafe852e8da8b516b801693ecd9cd76643e8832872d", "verified": true}
+  },
+  "source_predelete_check": {
+    "at_utc": "2026-10-31T01:24Z",
+    "hashes_match_gcs_receipt_adjacent_SHA256SUMS_embedded_SHA256SUMS_and_embedded_manifests": true,
+    "archive_and_shards_sha256": {
+      "experience_cold.tar.zst": "0b92fd8f47e8e95605a5451defcc34b7133ab4efc237ad95e3b369ac0878d138",
+      "experience_CRYPTO_LONG_202610.db.zst": "6d451c5faa545621de1d425c06859aa3c189b21c8d0cae10ef0e96b5b3cdbd92",
+      "experience_CRYPTO_SHORT_202610.db.zst": "b6bc3c8fb4543136b62f183163a9c9e4f0b6d81ccc3b20cc70bf28f8e776babf",
+      "experience_STOCKS_LONG_202610.db.zst": "212dd28648fcd11343cb2b736cd2820b75a54567fd4543200f14bcfc1f1049a6",
+      "experience_STOCKS_SHORT_202610.db.zst": "5533d2c01320ef038d06edafe852e8da8b516b801693ecd9cd76643e8832872d"
+    },
+    "files_stable": "Sizes/inodes/mtime observed before transfer; identical sizes and inodes at final predelete listing; final hashes match the earlier hashes.",
+    "consumer_check": "lsof +D on isolated restore returned no open handles; process query found no ctxjoin/v18_experience/restore consumer; decoded DBs already released by learning_audit.",
+    "preserved_nonpayloads": "Per-shard manifests, SHA256SUMS, cold.out logs, decoded-store WAL/SHM companions remain untouched."
+  },
+  "exact_authorized_source_payloads_for_reclamation": [
+    "/home/niels/v20_candidate_review_20261030/experience_restore_20261030T2030Z/experience_cold.tar.zst",
+    "/home/niels/v20_candidate_review_20261030/experience_restore_20261030T2030Z/store/experience_cold/experience_CRYPTO_LONG_202610.db.zst",
+    "/home/niels/v20_candidate_review_20261030/experience_restore_20261030T2030Z/store/experience_cold/experience_CRYPTO_SHORT_202610.db.zst",
+    "/home/niels/v20_candidate_review_20261030/experience_restore_20261030T2030Z/store/experience_cold/experience_STOCKS_LONG_202610.db.zst",
+    "/home/niels/v20_candidate_review_20261030/experience_restore_20261030T2030Z/store/experience_cold/experience_STOCKS_SHORT_202610.db.zst"
+  ],
+  "expected_reclaimed_bytes": 4804077979,
+  "reclamation_status": "authorized by parent; not yet performed at receipt creation time"
+}

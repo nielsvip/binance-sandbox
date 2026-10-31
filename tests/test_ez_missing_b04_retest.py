@@ -139,7 +139,8 @@ def test_reentry_block_metadata_survives_copy_pickle_without_changing_dict_itera
         assert clone.size_multipliers["B04"].tolist() == [2.0]
 
 
-def test_b04_switch_flips_simulate_one_trade_ledger():
+def test_b04_switch_flips_simulate_one_trade_ledger(monkeypatch):
+    monkeypatch.setenv("V12_SETUP_MEMO", "0")
     n = 120
     close = np.empty(n)
     close[:8] = 100.0 * (1.005 ** np.arange(8))
@@ -178,12 +179,15 @@ def test_b04_switch_flips_simulate_one_trade_ledger():
         if winning_tf == "4h":
             fixture["dc_high_4h_ant"] = np.full(n, 100.0)
         else:
+            fixture["dc_high_4h"] = np.full(n, 101.0)
             fixture["dc_high_15m"] = np.full(n, 102.0)
             fixture["dc_high_15m_ant"] = np.full(n, 100.0)
         cfg = V.QuickConfig()
         cfg.PARTIAL_PROFIT_LOCK_ENABLED = False
         cfg.REENTRY_B04_DC_RETEST_ENABLED = enabled
         cfg.MIN_HOLD_BARS = 0
+        cfg.MAX_ORDER_VALUE = 10000.0
+        cfg.START_POSITION_SIZE = 500.0
         cfg.ENTRY_ISOLATE_FAMILY = "B04"
         cfg.CYCLE_TP_ENABLED = False
         for name, value in vars(cfg).items():

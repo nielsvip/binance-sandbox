@@ -1,0 +1,138 @@
+import sys
+
+import numpy as np
+
+sys.path.insert(0, ".")
+sys.path.insert(0, "tests")
+
+import v12_quick_engine as V
+from test_stocks_symgate_reentry_vec import _synth_npz
+
+
+def _base_npz():
+    npz = _synth_npz()
+    n = len(npz["close"])
+    npz["close"] = np.full(n, 100.0)
+    if "close_15m" in npz:
+        npz["close_15m"] = np.full(n, 100.0)
+    for tf in ("15m", "1h", "4h", "D"):
+        npz[f"wt1_{tf}"] = np.zeros(n)
+        npz[f"wt2_{tf}"] = np.zeros(n)
+    npz["stoch_k_15m"] = np.full(n, 50.0)
+    npz["dc_low_15m"] = np.zeros(n)
+    npz["dc_low_15m_prev"] = np.zeros(n)
+    npz["dc_high_15m"] = np.zeros(n)
+    npz["dc_high_15m_prev"] = np.zeros(n)
+    npz["low_15m"] = np.full(n, 100.0)
+    npz["low_15m_prev"] = np.full(n, 100.0)
+    npz["high_15m"] = np.full(n, 100.0)
+    npz["high_15m_prev"] = np.full(n, 100.0)
+    return npz
+
+
+def _cfg():
+    cfg = V.QuickConfig()
+    cfg.apply_tradier_defaults()
+    cfg.MODE = "tradier"
+    cfg.STOCKS_LIVE_ENTRY_STACK_ENABLED = False
+    cfg.STRUCTURAL_EXIT_GATE_ENABLED = False
+    cfg.VEC_EXIT_SIG_IS_TRIGGER = True
+    cfg.SATOSHIT_EXIT_PARTIAL_PCT = 0.0
+    for name in (
+        "ABLATION_DISABLE_ENTRY_TECHNICAL",
+        "ABLATION_DISABLE_ENTRY_REVERSAL",
+        "ABLATION_DISABLE_QUICK_ENTRY",
+        "ABLATION_DISABLE_ENTRY_LEADERBOARD",
+        "ABLATION_DISABLE_ENTRY_RANKING",
+    ):
+        setattr(cfg, name, True)
+    for name in (
+        "PROFIT_TARGET_ENABLED",
+        "STOP_LOSS_ENABLED",
+        "WT_DC_EXIT_ENABLED",
+        "STOCKS_WTDC_SCORER_EXIT_ENABLED",
+        "MULTI_TF_EXIT_ENABLED_TRADIER",
+        "MULTI_TF_EXIT_ENABLED",
+        "PARABOLIC_PROTECTION_ENABLED",
+        "WT_DIV_EXIT_ENABLED",
+        "WT_ACCEL_EXIT_ENABLED",
+        "WT_MOMENTUM_EXIT_ENABLED",
+        "STDEV_BB_RZ_EXIT_ENABLED",
+        "STDEV_REJECT_EXIT_ENABLED",
+        "WT_15M_LH_WAIT_EXIT_ENABLED",
+        "WT_DIVERGENCE_VV_SHORT_EXIT_ENABLED",
+        "EXIT_K5M_BOUNCE_ENABLED",
+        "RULE_B_5M_EXIT_ENABLED",
+        "WT_CROSSUNDER_FINAL_ENABLED",
+    ):
+        setattr(cfg, name, False)
+    cfg.NOLOSS_MIN_PROFIT_PCT_TRADIER = 3.0
+    object.__setattr__(cfg, "_template_layer", "STOCKS_LONG")
+    return cfg
+
+
+def _run(npz, switch, enabled):
+    cfg = _cfg()
+    setattr(cfg, switch, enabled)
+    return V.simulate_one(npz, "SYNTH", True, cfg, force_initial_seed=True)
+
+
+def _reason_events(result, prefix):
+    return [
+        row
+        for row in result.get("ledger", [])
+        if row.get("type") == "CLOSE" and str(row.get("reason", "")).startswith(prefix)
+    ]
+
+
+def test_wt_crossunder_switch_changes_simulate_one_close_ledger():
+    npz = _base_npz()
+    fire_bar = 201
+    npz["close"][fire_bar] = 104.0
+    if "close_15m" in npz:
+        npz["close_15m"][fire_bar] = 104.0
+    npz["wt1_15m"][fire_bar] = -1.0
+    npz["wt1_1h"][fire_bar] = -1.0
+    off = _run(npz, "WT_CROSSUNDER_FINAL_ENABLED", False)
+    on = _run(npz, "WT_CROSSUNDER_FINAL_ENABLED", True)
+    assert _reason_events(off, "WT_CROSSUNDER_FINAL") == []
+    fires = _reason_events(on, "WT_CROSSUNDER_FINAL")
+    assert len(fires) == 1
+    assert fires[0]["bar_exit"] == fire_bar
+    assert fires[0]["reason"] == "WT_CROSSUNDER_FINAL_5m_15m_1hTrue_4hFalse_DFalse_g4.00%_hold3015m_MANDATORY_REENTRY"
+
+
+def test_rule_b_switch_changes_simulate_one_close_ledger():
+    npz = _base_npz()
+    fire_bar = 201
+    npz["close"][fire_bar] = 104.0
+    if "close_15m" in npz:
+        npz["close_15m"][fire_bar] = 104.0
+    npz["low_15m"][fire_bar] = 103.5
+    npz["low_15m_prev"][fire_bar] = 104.0
+    npz["high_15m"][fire_bar] = 104.5
+    npz["high_15m_prev"][fire_bar] = 105.0
+    off = _run(npz, "RULE_B_5M_EXIT_ENABLED", False)
+    on = _run(npz, "RULE_B_5M_EXIT_ENABLED", True)
+    assert _reason_events(off, "RULE_B_5M_") == []
+    fires = _reason_events(on, "RULE_B_5M_")
+    assert len(fires) == 1
+    assert fires[0]["bar_exit"] == fire_bar
+    assert fires[0]["reason"] == "RULE_B_5M_LL_LH_gain:4.00%"
+
+
+def test_k5m_bounce_switch_changes_simulate_one_close_ledger():
+    npz = _base_npz()
+    fire_bar = 201
+    npz["close"][fire_bar] = 104.0
+    if "close_15m" in npz:
+        npz["close_15m"][fire_bar] = 104.0
+    npz["stoch_k_15m"][fire_bar] = 20.0
+    npz["dc_low_15m_prev"][fire_bar] = 105.0
+    off = _run(npz, "EXIT_K5M_BOUNCE_ENABLED", False)
+    on = _run(npz, "EXIT_K5M_BOUNCE_ENABLED", True)
+    assert _reason_events(off, "K5M_REAL_DROP_DC") == []
+    fires = _reason_events(on, "K5M_REAL_DROP_DC")
+    assert len(fires) == 1
+    assert fires[0]["bar_exit"] == fire_bar
+    assert fires[0]["reason"] == "K5M_REAL_DROP_DC_k5:20.0<dc5:105.00_gain:4.00%"

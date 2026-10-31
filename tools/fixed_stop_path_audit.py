@@ -2,6 +2,7 @@
 """Audit post-entry closed-bar and OHLC path evidence for recorded stop fills."""
 import argparse
 import bisect
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -205,12 +206,13 @@ def audit_lifecycle(lifecycle, bar_data, cutoff_ms):
                             "This audit does not attribute a missed exit to a switch or claim decision parity."]}
 
 
-def audit_inventory(inventory, npz_root, fallback_root=None, cutoff_ms=None):
+def audit_inventory(inventory, npz_root, fallback_root=None, cutoff_ms=None, intent_ledger_path=None):
     if inventory.get("schema_version") != 1 or not isinstance(inventory.get("lifecycles"), list):
         raise ValueError("expected fixed_stop_inventory schema_version 1 with lifecycles[]")
     inventory_source = inventory.get("source") or {}
     if cutoff_ms is None:
         cutoff_ms = _number((inventory.get("coverage") or {}).get("window_end_ms") or inventory_source.get("window_end_ms"))
+    intent_source, intent_index = _read_intent_ledger(intent_ledger_path)
     cache = {}
     one_minute_cache = {}
     rows = []
@@ -267,6 +269,8 @@ def audit_inventory(inventory, npz_root, fallback_root=None, cutoff_ms=None):
                 result = {**chosen, "primary_15m_classification": primary["classification"],
                           "one_minute_refinement_classification": one_minute["classification"],
                           "one_minute_refinement_has_eligible_bars": one_minute["eligible_bar_count"] > 0}
+            if intent_source:
+                result["forward_intent_evidence"] = _intent_evidence(lifecycle, result, intent_index, lifecycle.get("account_id"))
             rows.append(result)
     counts = {}
     for row in rows:
@@ -278,7 +282,7 @@ def audit_inventory(inventory, npz_root, fallback_root=None, cutoff_ms=None):
             "bar_source_policy": "canonical per-symbol NPZ 15m OHLC primary; consolidated 1m OHLC refines lifecycles when a 1m file exists; if NPZ is missing use consolidated 1m, then 3m, then 15m",
             "post_cutoff_or_cutoff_crossing_source_rows_excluded_count": excluded_source_rows,
             "bar_sources_by_symbol": bar_sources, "one_minute_sources_by_symbol": one_minute_sources,
-            "counts_by_classification": counts,
+            "counts_by_classification": counts, "forward_intent_ledger_source": intent_source,
             "fixed_stop_lifecycle_count": len(rows), "lifecycles": rows}
 
 
@@ -295,16 +299,79 @@ def _evidence_rank(result):
     return 0
 
 
+def _sha256_file(path):
+    digest = hashlib.sha256()
+    with open(path, "rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _compact_intent(record):
+    return {key: record.get(key) for key in ("account", "ss", "bar_ts", "bar_iso", "engine_type", "reason",
+                                              "intent_id", "engine_md5", "set_md5", "npz_ts_last", "emitted_at")}
+
+
+def _read_intent_ledger(path):
+    if not path:
+        return None, {}
+    index = {}
+    row_count = 0
+    for line in Path(path).read_text().splitlines():
+        try:
+            record = json.loads(line)
+            symbol_side = str(record.get("ss") or "")
+            bar_ts = _number(record.get("bar_ts"))
+            if symbol_side and bar_ts is not None:
+                index.setdefault(symbol_side, []).append(record)
+                row_count += 1
+        except (json.JSONDecodeError, TypeError):
+            continue
+    for records in index.values():
+        records.sort(key=lambda record: _number(record.get("bar_ts")) or 0.0)
+    return {"path": str(path), "sha256": _sha256_file(path), "parsed_action_rows": row_count}, index
+
+
+def _intent_evidence(lifecycle, result, intent_index, account_id):
+    events = lifecycle.get("events") or []
+    entries = [_event_ms(event) for event in events if event.get("event_type") == "open" and _event_ms(event) is not None]
+    stops = [_event_ms(event) for event in events if event.get("fixed_stop_order_detected") and event.get("event_type") in {"reduce", "close"} and _event_ms(event) is not None]
+    if not entries or not stops:
+        return {"status": "MISSING_ENTRY_OR_STOP_TIMESTAMP", "intent_count_during_lifecycle": None,
+                "intents_during_lifecycle": [], "exact_profitable_bar_intents": []}
+    start_ms = min(entries)
+    stop_ms = min(stops)
+    symbol_side = str(lifecycle.get("symbol") or "") + "_" + str(lifecycle.get("position_side") or "")
+    rows = []
+    for record in intent_index.get(symbol_side, []):
+        account = record.get("account")
+        accounts = account if isinstance(account, list) else [account]
+        if str(account_id) not in {str(value) for value in accounts}:
+            continue
+        bar_ms = _number(record.get("bar_ts"))
+        if bar_ms is not None and start_ms / 1000 <= bar_ms <= stop_ms / 1000:
+            rows.append(record)
+    opportunity = result.get("first_confirmed_closed_bar_opportunity") or {}
+    opportunity_bar = _number(opportunity.get("bar_start_ms"))
+    exact = [record for record in rows if opportunity_bar is not None and _number(record.get("bar_ts")) == opportunity_bar / 1000]
+    status = "ACTION_ROWS_AT_PROFITABLE_BAR" if exact else ("NO_EMITTED_ACTION_ROW_AT_PROFITABLE_BAR" if opportunity_bar is not None else "NO_CONFIRMED_PROFITABLE_BAR")
+    return {"status": status, "source_semantics": "emitted action ledger only; absent row does not prove no exit candidate was evaluated",
+            "intent_count_during_lifecycle": len(rows), "intents_during_lifecycle": [_compact_intent(row) for row in rows],
+            "profitable_bar_start_ms": opportunity_bar, "exact_profitable_bar_intent_count": len(exact),
+            "exact_profitable_bar_intents": [_compact_intent(row) for row in exact]}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--inventory", required=True)
     parser.add_argument("--npz-root", required=True)
     parser.add_argument("--fallback-root")
     parser.add_argument("--cutoff-ms", type=int)
+    parser.add_argument("--intent-ledger")
     parser.add_argument("--out", required=True)
     args = parser.parse_args()
     inventory = json.loads(Path(args.inventory).read_text())
-    result = audit_inventory(inventory, args.npz_root, args.fallback_root, args.cutoff_ms)
+    result = audit_inventory(inventory, args.npz_root, args.fallback_root, args.cutoff_ms, args.intent_ledger)
     Path(args.out).write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
     print(json.dumps({"out": args.out, "fixed_stop_lifecycle_count": result["fixed_stop_lifecycle_count"],
                       "counts_by_classification": result["counts_by_classification"]}, sort_keys=True))

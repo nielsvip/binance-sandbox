@@ -2811,6 +2811,27 @@ def _v8ns_compute_position_mom(indicators, lookback_bars=12):
 # ═══════════════════════════════════════════════════════════════
 # STEP 7: The simulation engine
 # ═══════════════════════════════════════════════════════════════
+def _refresh_sim_position_marks(trade_manager, price_cache, sim_dt):
+    for _pk, _pos in list(trade_manager.positions.items()):
+        _sym = _pk.split(':')[1].replace('_LONG', '').replace('_SHORT', '') if ':' in _pk else ''
+        _mp = price_cache.get(_sym, 0)
+        if _mp <= 0:
+            continue
+        _pos.mark_price = _mp
+        _pos.mark_price_last_updated = sim_dt
+        _amt = abs(getattr(_pos, 'positionAmt', 0))
+        if _amt >= 0.0001:
+            _ep = getattr(_pos, 'entry_price', 0) or _mp
+            _is_long = _pk.endswith('_LONG')
+            _pos.gain = ((_mp - _ep) / _ep * 100) if _is_long else ((_ep - _mp) / _ep * 100) if _ep > 0 else 0
+            _pos.prev_gain = getattr(_pos, 'prev_gain', _pos.gain)
+            if _pos.gain > getattr(_pos, 'max_gain', 0):
+                _pos.max_gain = _pos.gain
+        if not isinstance(getattr(_pos, 'opened_at', None), datetime):
+            _pos.opened_at = sim_dt
+        _pos.last_updated = sim_dt
+
+
 async def run_simulation(mode, account_key, start_date, capital, stores, resolution):
     """Run the REAL trading engine on historical data.
 
@@ -5315,34 +5336,6 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             if hasattr(trade_manager, '_dc_breakout_entry_cd'):
                 trade_manager._dc_breakout_entry_cd.clear()
 
-        # FIX: Update mark_price + gain for ALL positions, INCLUDING EMPTY SHELLS.
-        # Bug 2026-04-09: empty position shells retained STALE mark_price (sometimes from
-        # NPZ-end values like $5234 BTCDOMUSDT) that get_fresh_price would return when a
-        # new entry came in, causing -80% phantom losses on subsequent close. Always sync.
-        _sim_dt = _sim_datetime_now(timezone.utc)
-        for _pk, _pos in list(trade_manager.positions.items()):
-            _sym = _pk.split(':')[1].replace('_LONG', '').replace('_SHORT', '') if ':' in _pk else ''
-            _mp = price_cache.get(_sym, 0)
-            if _mp <= 0:
-                continue
-            _pos.mark_price = _mp
-            _pos.mark_price_last_updated = _sim_dt
-            _amt = abs(getattr(_pos, 'positionAmt', 0))
-            if _amt >= 0.0001:
-                _ep = getattr(_pos, 'entry_price', 0) or _mp
-                _is_long = _pk.endswith('_LONG')
-                _pos.gain = ((_mp - _ep) / _ep * 100) if _is_long else ((_ep - _mp) / _ep * 100) if _ep > 0 else 0
-                _pos.prev_gain = getattr(_pos, 'prev_gain', _pos.gain)
-                if _pos.gain > getattr(_pos, 'max_gain', 0):
-                    _pos.max_gain = _pos.gain
-            # else: empty shell — only sync mark_price; NEVER touch entry_price (SACRED).
-            # Stale entry_price on empty shells doesn't affect gain calc since the
-            # gain block above is gated on _amt >= 0.0001.
-            # FIX: Ensure opened_at is always datetime (prevents TypeError crash)
-            if not isinstance(getattr(_pos, 'opened_at', None), datetime):
-                _pos.opened_at = _sim_dt
-            _pos.last_updated = _sim_dt
-
         # NO_LOSS already disabled before loop — ensure it stays off on ALL Config instances
         config.STRICT_NO_LOSS_ACCOUNTS = []
         config.Config.STRICT_NO_LOSS_ACCOUNTS = []
@@ -5416,6 +5409,10 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 trade_manager.price_cache_2[sym] = p
             if hasattr(trade_manager, 'price_update_time'):
                 trade_manager.price_update_time[sym] = float(ts)
+        # Refresh position marks only after this bar's price/indicator caches advance.
+        # Gain-based native exits must consume the same bar as ii() and price().
+        _sim_dt = _sim_datetime_now(timezone.utc)
+        _refresh_sim_position_marks(trade_manager, price_cache, _sim_dt)
         if os.environ.get("V12_LIVE_ONLY_PRODUCERS") == "1" and os.environ.get("V12_REAL_EXECUTE") == "1":
             trade_manager._parity_clock_ts = float(ts)
             await trade_manager._golden_rule_loop(_parity_once=True)

@@ -124,3 +124,29 @@ def test_npz_quick_good_refuses_15m_approximation_when_ltf_is_enabled():
 
     npz = {"timestamps": np.array([100.]), "ha_4h": np.array([1], dtype=np.int8)}
     assert wr_lr_quick_good_from_npz(npz, "1000PEPEUSDC", True, LtfEnabled(), membership_lookup=lambda *args: True, account="ang") is None
+
+
+def test_npz_quick_good_short_wrapper_matches_native_scalar():
+    from vec_decisions.quick_missing_wr_lr import wr_lr_quick_good_from_npz
+
+    npz = {
+        "timestamps": np.array([400.]),
+        "ha_4h": np.array([-1], dtype=np.int8),
+        "stoch_k_1h": np.array([70.]),
+        "stoch_k_15m": np.array([75.]),
+        "stoch_k_15m_prev": np.array([80.]),
+        "wt_cross_15m": np.array([-1], dtype=np.int8),
+    }
+    membership = lambda account, symbol, side, ts: account == "inf" and symbol == "1000PEPEUSDC" and not side and ts == 400.0
+    mask, score = wr_lr_quick_good_from_npz(
+        npz, "1000PEPEUSDC", False, Config(), np.array([18.]),
+        membership_lookup=membership, account="inf",
+    )
+    expected, _ = check_wr_lr_pullback(
+        Config(),
+        {"ha_4h": "red", "stoch_k_1h": 70., "stoch_k_15m": 75.,
+         "stoch_k_15m_prev": 80., "wt_cross_15m": "BEAR"},
+        {}, True, False,
+    )
+    np.testing.assert_array_equal(mask, [expected])
+    np.testing.assert_array_equal(score, [22.])

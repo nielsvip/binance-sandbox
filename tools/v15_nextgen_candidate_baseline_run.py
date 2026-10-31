@@ -37,7 +37,14 @@ def main():
     stopped = threading.Event()
     def output_monitor():
         while not stopped.wait(0.2):
-            total = sum(path.stat().st_size for directory in (root, side) for path in directory.rglob('*') if path.is_file() and str(path.resolve()) not in protected)
+            total = 0
+            for directory in (root, side):
+                for path in directory.rglob('*'):
+                    try:
+                        if path.is_file() and str(path.resolve()) not in protected:
+                            total += path.stat().st_size
+                    except FileNotFoundError:
+                        pass
             if total > 64 * (1 << 20):
                 (side / 'output_cap_exceeded.json').write_text(json.dumps({'new_output_bytes': total, 'owned_pgid': owned_pgid}))
                 if os.getpgrp() == owned_pgid == os.getpid():

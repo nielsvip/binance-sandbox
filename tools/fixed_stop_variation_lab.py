@@ -172,12 +172,13 @@ def summarize_run(result: dict, half_fee_pct: float, window_days: int) -> dict:
             for e in action_rows if entry_bar <= int(e.get("bar", -1)) <= exit_bar
         )
         trade_fee = trade_turnover * half_fee_pct / 100.0
-        row = {key: trade.get(key) for key in ("bar_entry", "bar_exit", "entry_price", "exit_price", "qty", "pnl_pct", "entry_reason", "exit_reason", "bars_held")}
+        row = {key: trade.get(key) for key in ("bar_entry", "bar_exit", "entry_price", "exit_price", "qty", "pnl_pct", "entry_reason", "exit_reason", "bars_held", "fixed_stop_level")}
         row.update({"net_pnl_engine": float(trade.get("pnl_dollars") or 0), "simulated_fee_estimate": trade_fee, "gross_pnl_estimate": float(trade.get("pnl_dollars") or 0) + trade_fee, "turnover_estimate": trade_turnover})
         rows.append(row)
     data_days = float(result.get("data_days") or 0)
     trades = len(trade_rows)
     diagnostic = data_days <= 365.0 or trades < 30
+    lifecycle_signature = sha256_json([{key: row.get(key) for key in ("bar_entry", "bar_exit", "entry_price", "exit_price", "pnl_pct", "net_pnl_engine", "exit_reason", "fixed_stop_level")} for row in rows])
     return {
         "valid": bool(result.get("valid")), "invalid_reason": result.get("invalid_reason"),
         "status": "DIAGNOSTIC_ONLY" if diagnostic else "DIAGNOSTIC_ONLY_NO_OOS", "window_days": window_days,
@@ -186,7 +187,7 @@ def summarize_run(result: dict, half_fee_pct: float, window_days: int) -> dict:
         "losing_fixed_stop_count": sum(float(e.get("pnl_dollars") or 0) < 0 for e in stop_rows),
         "net_pnl_engine": net, "simulated_fee_estimate": fee_est, "gross_pnl_estimate": net + fee_est,
         "turnover_estimate": turnover, "commission_model_round_trip_pct": half_fee_pct * 2.0,
-        "max_dd_pct_engine": result.get("max_dd_pct"), "trade_rows": rows,
+        "max_dd_pct_engine": result.get("max_dd_pct"), "lifecycle_signature_sha256": lifecycle_signature, "trade_rows": rows,
     }
 
 
@@ -220,6 +221,8 @@ def run_side(ss: str, loss_count: int, active: dict, prepared, choices: dict, te
             "losing_fixed_stop_count": candidate["losing_fixed_stop_count"] - keep["losing_fixed_stop_count"],
         }
         runs.append({"variant": variant["label"], "stop_spec": {**cfg, **variant["overrides"]}, "result": candidate})
+    for row in runs[1:]:
+        row["result"]["ledger_identical_to_keep"] = row["result"]["lifecycle_signature_sha256"] == keep["lifecycle_signature_sha256"]
     npz = prepared.get("npz_prepared") or {}
     ts = npz.get("timestamps")
     prov = prepared.get("npz_provenance") or {}
@@ -238,6 +241,7 @@ def run_side(ss: str, loss_count: int, active: dict, prepared, choices: dict, te
         "npz_last_ts": float(ts[-1]) if ts is not None and len(ts) else None,
         "real_engine": "tools.opt.evaluate_v12.evaluate_prepared -> v12_quick_engine.simulate_one",
         "evaluations": runs,
+        "stop_variation_wiring_status": ("ALL_VARIANTS_IDENTICAL_TO_KEEP" if runs[1:] and all(r["result"].get("ledger_identical_to_keep") for r in runs[1:]) else "AT_LEAST_ONE_VARIANT_CHANGED_LEDGER"),
         "interpretation_limit": "Current active published full_config is replayed over this frozen NPZ window; this is not exchange-fill lifecycle attribution. Historic set-generation differences and actual fill fees/slippage are not reconstructed here.",
     }
 
@@ -251,8 +255,8 @@ def main():
     ap.add_argument("--min-losing-stop-fills", type=int, default=3)
     ap.add_argument("--symsides", default="", help="optional comma-list, intersected with inventory selection")
     args = ap.parse_args()
-    if args.window_days not in (30, 365):
-        ap.error("--window-days must be 30 or 365")
+    if args.window_days not in (7, 30, 365):
+        ap.error("--window-days must be 7, 30 or 365")
     inv_path, db_path, out_path = Path(args.inventory), Path(args.db), Path(args.out)
     inventory = json.loads(inv_path.read_text())
     if int(inventory.get("schema_version") or 0) != 1:

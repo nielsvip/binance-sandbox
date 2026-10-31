@@ -116,6 +116,22 @@ class FixedStopPathAuditTests(unittest.TestCase):
         self.assertEqual(row["classification"], "CLOSED_BAR_GROSS_PROFIT_OPPORTUNITY")
         self.assertEqual(row["bar_timeframe"], "1m")
 
+    def test_intent_join_labels_emitted_actions_without_claiming_candidate_coverage(self):
+        doc = {"schema_version": 1, "source": {"sha256": "abc", "window_end_ms": 2700000}, "lifecycles": [
+            lifecycle([event(0, "open", 1, 10, 10), event(1800000, "close", 0, 10, 9, True, -1, 2)])]}
+        with tempfile.TemporaryDirectory() as temp_dir:
+            np.savez_compressed(Path(temp_dir) / "ABCUSDT.npz", timestamps=np.array([0, 900]),
+                                close_15m=np.array([11, 10]), high_15m=np.array([12, 11]), low_15m=np.array([9, 9]))
+            ledger = Path(temp_dir) / "intent_ledger.jsonl"
+            ledger.write_text(json.dumps({"account": "acct", "ss": "ABCUSDT_LONG", "bar_ts": 0,
+                                          "engine_type": "REDUCE", "reason": "TEST_REDUCE"}) + "\n")
+            result = audit_inventory(doc, temp_dir, intent_ledger_path=ledger)
+        evidence = result["lifecycles"][0]["forward_intent_evidence"]
+        self.assertEqual(evidence["status"], "ACTION_ROWS_AT_PROFITABLE_BAR")
+        self.assertEqual(evidence["exact_profitable_bar_intent_count"], 1)
+        self.assertIn("does not prove no exit candidate", evidence["source_semantics"])
+        self.assertEqual(result["forward_intent_ledger_source"]["parsed_action_rows"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

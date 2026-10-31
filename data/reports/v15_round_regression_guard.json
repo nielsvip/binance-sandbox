@@ -1,5 +1,5 @@
 {
- "at": "2026-10-31T00:26:06Z",
+ "at": "2026-10-31T01:26:06Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
@@ -21,19 +21,35 @@
    "error": null
   },
   "s2": {
-   "published_n": 0,
-   "per_hour": 0.0,
+   "published_n": 1,
+   "per_hour": 0.5,
    "improved_vs_best_start": 0,
    "mean_uplift_vs_best_start": null,
    "median_uplift": null,
    "chained_from_previous_published": 0,
-   "no_floor_recorded": 0,
+   "no_floor_recorded": 1,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 0.0/h < 12.0/h (one per 5 min)"
+    "throughput 0.5/h < 12.0/h (one per 5 min)"
    ],
-   "rows": [],
+   "rows": [
+    {
+     "symside": "BEAMXUSDT_LONG",
+     "published_at": 1793408934.2642872,
+     "final_gain": 56.52641582818717,
+     "best_start_gain": null,
+     "best_start_chosen": null,
+     "best_start_candidates": null,
+     "baseline_gain": 50.888264065040076,
+     "npz_ts_last": 1793405700.0,
+     "npz_md5": "db955e45ce39c99a4102e3b9563edb53",
+     "npz_bars": 103532,
+     "bh": 71.11801006450203,
+     "verdict": null,
+     "npz_age_h_at_publish": 0.9
+    }
+   ],
    "error": null
   }
  },

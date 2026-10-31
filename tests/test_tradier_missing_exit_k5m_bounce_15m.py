@@ -23,7 +23,9 @@ def test_long_and_short_mask_match_native_predicate_on_15m_inputs():
     data = {
         "close": np.array([98.0, 97.0, 102.0, 102.0]),
         "dc_low_15m": np.array([99.0, 99.0, 99.0, 99.0]),
+        "dc_low_15m_prev": np.array([99.0, 99.0, 99.0, 99.0]),
         "dc_high_15m": np.array([101.0, 101.0, 101.0, 101.0]),
+        "dc_high_15m_prev": np.array([101.0, 101.0, 101.0, 101.0]),
         "stoch_k_15m": np.array([20.0, 20.0, 80.0, 80.0]),
     }
     gain = np.array([3.0, 2.99, 3.0, 2.99])
@@ -39,6 +41,7 @@ def test_off_missing_band_and_boundary_values_fail_closed():
     data = {
         "close": np.array([98.0, 98.0]),
         "dc_low_15m": np.array([99.0, 0.0]),
+        "dc_low_15m_prev": np.array([99.0, 0.0]),
         "stoch_k_15m": np.array([30.0, 20.0]),
     }
     assert exit_k5m_bounce_mask(data, 2, True, np.array([4.0, 4.0]), cfg, _safe).tolist() == [False, False]

@@ -138,20 +138,28 @@ def exit_mask(npz, n, is_long, cfg, close, _safe):
         except Exception:
             pass
         return None
-    w1_5 = np.asarray(_safe(npz, "wt1_5m", n, 0.0), dtype=float)
-    w2_5 = np.asarray(_safe(npz, "wt2_5m", n, 0.0), dtype=float)
-    if w1_5.sum() == 0 and w2_5.sum() == 0:
-        # Live per-key fallback: 5m missing -> 3m (tradier_manage 19945-19946).
-        # In-engine precedent for the all-zero probe: v12 MTF_GR block.
-        w1_5 = np.asarray(_safe(npz, "wt1_3m", n, 0.0), dtype=float)
-        w2_5 = np.asarray(_safe(npz, "wt2_3m", n, 0.0), dtype=float)
-    if w1_5.sum() == 0 and w2_5.sum() == 0:
-        # §40 floor: no sub-15m WT in ANY NPZ -> finest available = base TF
-        # (mirrors engine _base_tf: preferred BASE_TF, then close_{tf}
-        # presence probe). 15m on current stocks NPZs.
-        _btf = _base_tf(npz, cfg)
-        w1_5 = np.asarray(_safe(npz, f"wt1_{_btf}", n, 0.0), dtype=float)
-        w2_5 = np.asarray(_safe(npz, f"wt2_{_btf}", n, 0.0), dtype=float)
+    _tradier_ltf_off = (
+        str(getattr(cfg, "MODE", "crypto")).lower() == "tradier"
+        and not bool(getattr(cfg, "LTF_SUB15M_TRADING_ENABLED", False))
+    )
+    if _tradier_ltf_off:
+        w1_5 = np.asarray(_safe(npz, "wt1_15m", n, 0.0), dtype=float)
+        w2_5 = np.asarray(_safe(npz, "wt2_15m", n, 0.0), dtype=float)
+    else:
+        w1_5 = np.asarray(_safe(npz, "wt1_5m", n, 0.0), dtype=float)
+        w2_5 = np.asarray(_safe(npz, "wt2_5m", n, 0.0), dtype=float)
+        if w1_5.sum() == 0 and w2_5.sum() == 0:
+            # Live per-key fallback: 5m missing -> 3m (tradier_manage 19945-19946).
+            # In-engine precedent for the all-zero probe: v12 MTF_GR block.
+            w1_5 = np.asarray(_safe(npz, "wt1_3m", n, 0.0), dtype=float)
+            w2_5 = np.asarray(_safe(npz, "wt2_3m", n, 0.0), dtype=float)
+        if w1_5.sum() == 0 and w2_5.sum() == 0:
+            # §40 floor: no sub-15m WT in ANY NPZ -> finest available = base TF
+            # (mirrors engine _base_tf: preferred BASE_TF, then close_{tf}
+            # presence probe). 15m on current stocks NPZs.
+            _btf = _base_tf(npz, cfg)
+            w1_5 = np.asarray(_safe(npz, f"wt1_{_btf}", n, 0.0), dtype=float)
+            w2_5 = np.asarray(_safe(npz, f"wt2_{_btf}", n, 0.0), dtype=float)
     w1_15 = np.asarray(_safe(npz, "wt1_15m", n, 0.0), dtype=float)
     w2_15 = np.asarray(_safe(npz, "wt2_15m", n, 0.0), dtype=float)
     w1_1h = np.asarray(_safe(npz, "wt1_1h", n, 0.0), dtype=float)

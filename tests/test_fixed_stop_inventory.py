@@ -1,6 +1,6 @@
 import unittest
 
-from tools.fixed_stop_inventory import reconstruct_account
+from tools.fixed_stop_inventory import build_neural_builder_handoff, reconstruct_account
 
 
 def fill(trade_id, order_id, side, qty, price, realized=0, commission=0, commission_asset="BNB", timestamp=1000):
@@ -84,6 +84,36 @@ class FixedStopInventoryTests(unittest.TestCase):
         self.assertEqual(life["status"], "open")
         self.assertEqual(life["entry_switch_attribution"], "RECORDED_SWITCH_A")
         self.assertEqual(result["lifecycle_counts"]["open"], 1)
+
+    def test_exact_generic_history_match_is_not_promoted_to_switch(self):
+        fills = [fill(1, 91, "BUY", 1, 10)]
+        linked = {"91": [{"source": "history", "order_id_relationship": "order_id", "recorded_type": "OPEN",
+                           "recorded_reason": "board holds since bar", "recorded_provenance": {"src": "S1_VECTOR_DIRECT", "switch": "VECTOR_DIRECT"}}]}
+        result = reconstruct_account("acct", account_for(fills, ending_qty=1), 0, 3000, linked)
+        life = result["lifecycles"][0]
+        self.assertEqual(life["entry_switch_attribution"], "unknown")
+        self.assertEqual(len(life["events"][0]["order_id_linked_history_records"]), 1)
+        self.assertEqual(result["entry_provenance_coverage"]["entry_fill_events_with_verified_switch"], 0)
+
+    def test_exact_vec_entry_history_switch_can_be_attributed(self):
+        fills = [fill(1, 92, "BUY", 1, 10)]
+        linked = {"92": [{"source": "history", "source_path": "data/history/acct/ABCUSDT_LONG.jsonl",
+                           "order_id_relationship": "order_id", "recorded_type": "OPEN", "recorded_ts": "2026-10-31T00:00:00Z",
+                           "recorded_reason": "REENTRY_LOWER_HIGH", "recorded_provenance": {"src": "VEC_EXACT", "switch": "REENTRY_ON_HIGHER_LOW_ENABLED"}}]}
+        result = reconstruct_account("acct", account_for(fills, ending_qty=1), 0, 3000, linked)
+        life = result["lifecycles"][0]
+        self.assertEqual(life["entry_switch_attribution"], "REENTRY_ON_HIGHER_LOW_ENABLED")
+        self.assertEqual(result["entry_provenance_coverage"]["entry_fill_events_with_verified_switch"], 1)
+
+    def test_neural_builder_handoff_preserves_per_symbol_unknown_coverage(self):
+        fills = [fill(1, 93, "BUY", 1, 10)]
+        linked = {"93": [{"source": "history", "order_id_relationship": "order_id", "recorded_type": "OPEN",
+                           "recorded_provenance": {"src": "S1_VECTOR_DIRECT", "switch": "VECTOR_DIRECT"}}]}
+        inventory = reconstruct_account("acct", account_for(fills, ending_qty=1), 0, 3000, linked)
+        handoff = build_neural_builder_handoff({"acct": inventory}, "synthetic.json")
+        self.assertEqual(handoff["coverage"]["entry_fill_events"], 1)
+        self.assertEqual(handoff["coverage"]["entry_fill_events_with_verified_switch"], 0)
+        self.assertEqual(handoff["cross_symbol"]["acct:ABCUSDT_LONG"]["entry_fill_events_with_order_id_history_match"], 1)
 
 
 if __name__ == "__main__":
