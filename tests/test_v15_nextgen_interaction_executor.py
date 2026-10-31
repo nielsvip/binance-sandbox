@@ -97,7 +97,7 @@ def test_dependency_mediated_operation_is_retained_and_each_case_gets_fresh_arra
             proof['effective_config_sha256'] = E.guard.fingerprint(proof['effective_config_values'])
         return result, proof
     monkeypatch.setattr(E.guard, 'capture_actual', capture)
-    prepared = {'npz_prepared': {'prices': np.array([3.0, 4.0])}}
+    prepared = {'npz_prepared': {'timestamps': np.array([1.0, 2.0]), 'prices': np.array([3.0, 4.0])}}
     output = tmp_path / 'expanded'
     x, y = {'field': 'A', 'value': True}, {'field': 'B', 'value': 5}
     result = E.execute_quartet(prepared, pin, x, y, context, output, lambda *args: True)

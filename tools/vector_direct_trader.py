@@ -1733,12 +1733,14 @@ class Trader:
                 atomic_write_json(self.out / f"consumed_{self.venue}.json", {"epoch": time.time(), "pid": os.getpid(), "sides": consumed})
             except OSError as exc:
                 log(f"consumed file write failed: {exc}")
-        if market_ok:
+        if market_ok and lease_held:
+            # the backstop SENDS orders, so it is gated by the lease exactly like the main loop
             self.paper(now, [a for a in self.accounts if a not in active], keys, states, bar, allowed)
             orders_n += self.backstop(now, killed, keys, states, allowed)
         fresh_n = sum(1 for st in states.values() if state_fresh(st, bar))
         unmanaged = sorted(f"{a}:{ss}" for a, sides in self.held.items() for ss in sides if not state_fresh(states.get(ss), bar))
         status = {"epoch": now, "iso": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "host": socket.gethostname(),
+                  "role": self.a.role, "lease_held": bool(lease_held), "lease_why": getattr(self, "lease_why", ""),
                   "venue": self.venue, "armed": not self.a.dry_run and not killed, "dry_run": self.a.dry_run, "killed": killed,
                   "market_open": market_ok, "active_accounts": active, "triggers": trig, "hb_age_s": None if hb_age is None else round(hb_age, 1),
                   "bar": bar, "states_fresh": fresh_n, "states_total": len(all_sides), "held_without_fresh_state": unmanaged, "pending_expectations": len(self.expect),

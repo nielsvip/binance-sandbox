@@ -55,7 +55,7 @@ def main():
         if sha(bundle / relative) != expected:
             raise ValueError('candidate bundle source mismatch')
     size = sum((bundle / relative).stat().st_size for relative in ['tools/v15_v18_planner.py', 'tools/v18_brain.py', 'tools/v18_model_bundle.json']) + Path(args.pilot).stat().st_size * 3 + Path(args.helper).stat().st_size + (16 << 20)
-    if shutil.disk_usage(base).free - size < 20000 * (1 << 20):
+    if shutil.disk_usage(base).free - size < 10000 * (1 << 20):
         raise ValueError('candidate preparation would breach original disk reserve')
     shutil.copytree(previous, root, copy_function=os.link, ignore=shutil.ignore_patterns("harness_backups", "__pycache__"))
     side.mkdir()
@@ -71,7 +71,7 @@ def main():
     atomic_copy(args.helper, root / 'tools/v15_nextgen_baseline_guard.py')
     (side / 'baseline_pin.json').write_text(json.dumps(pin, indent=2))
     env = json.loads((base / 'side/prepared_env.json').read_text())
-    env.update(V15_PROGRESS_DIR=str(side / 'progress'), V15_OUT_DIR=str(side / 'out'), V15_PINNED_BASELINE=str(side / 'baseline_pin.json'), V15_BASELINE_VERIFY_ONLY='1', V15_FRESH_RUN='1', V15_ISOLATED_PROOF='1', V18_LINKNET_FIRST='1', V18_LINKNET_BUNDLE_REQUIRED='1', V15_REQUIRE_MODEL_BUNDLE='1')
+    env.update(V15_PROGRESS_DIR=str(side / 'progress'), V15_OUT_DIR=str(side / 'out'), V15_PINNED_BASELINE=str(side / 'baseline_pin.json'), V15_BASELINE_VERIFY_ONLY='1', V15_BASELINE_PRECHECK='1', V15_FRESH_RUN='1', V15_ISOLATED_PROOF='1', V18_LINKNET_FIRST='1', V18_LINKNET_BUNDLE_REQUIRED='1', V15_REQUIRE_MODEL_BUNDLE='1')
     for name in ['progress', 'out', 'tmp']:
         (side / name).mkdir()
     executable, env = prepare(root, side, env, request['sym_side'].rsplit('_', 1)[0], request['window_days'], assets)
@@ -79,7 +79,7 @@ def main():
     (side / 'env.json').write_text(json.dumps(env, indent=2))
     command = [executable, '-u', str(base / 'harness/v15_nextgen_candidate_baseline_run.py'), '--root', str(root), '--side', str(side), '--sym-side', request['sym_side']]
     (side / 'run_candidate_baseline.sh').write_text('#!/bin/sh\nexec env ' + shlex.join([key + '=' + value for key, value in env.items()] + command) + '\n')
-    receipt = {'at_utc': datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ'), 'status': 'CANDIDATE_BASELINE_PREPARED_NOT_EXECUTED', 'previous_oracle_sha256': sha(base / 'side/previous_baseline_oracle.json'), 'pin_sha256': sha(side / 'baseline_pin.json'), 'pilot_sha256': sha(root / 'v15_pilot.py'), 'helper_sha256': sha(root / 'tools/v15_nextgen_baseline_guard.py'), 'routing_manifest_sha256': sha(assets / 'manifest.json'), 'command': ['sh', str(side / 'run_candidate_baseline.sh')]}
+    receipt = {'at_utc': datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ'), 'status': 'CANDIDATE_BASELINE_PREPARED_NOT_EXECUTED', 'resource_contract': {'scope': 'baseline-only precheck, not official gain gate', 'available_memory_mib': 7000, 'disk_reserve_mib': 10000, 'hard_address_space_bytes': 6 * (1 << 30), 'new_output_bytes': 64 * (1 << 20)}, 'previous_oracle_sha256': sha(base / 'side/previous_baseline_oracle.json'), 'pin_sha256': sha(side / 'baseline_pin.json'), 'pilot_sha256': sha(root / 'v15_pilot.py'), 'helper_sha256': sha(root / 'tools/v15_nextgen_baseline_guard.py'), 'routing_manifest_sha256': sha(assets / 'manifest.json'), 'command': ['sh', str(side / 'run_candidate_baseline.sh')]}
     (side / 'preparation_receipt.json').write_text(json.dumps(receipt, indent=2))
     print(json.dumps(receipt), flush=True)
 

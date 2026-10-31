@@ -41,8 +41,15 @@ def enabled(cfg) -> bool:
     return (str(v).strip().lower() in ("1", "true", "yes")) if isinstance(v, str) else bool(v)
 
 
+def is_fixed_stop_exit(reason) -> bool:
+    value = str(reason or "").upper()
+    for prefix in ("CLOSED_", "REDUCED_", "MAKER_PROFIT_EXIT_"):
+        if value.startswith(prefix):
+            value = value[len(prefix):]
+    return value == STOP_REASON or value.startswith(STOP_REASON + "_")
+
 def armed(last_exit_reason, last_entry_reason) -> bool:
-    return str(last_exit_reason or "").upper().startswith(STOP_REASON) and not str(last_entry_reason or "").upper().startswith(REASON)
+    return is_fixed_stop_exit(last_exit_reason) and not str(last_entry_reason or "").upper().startswith(REASON)
 
 
 def fire(cfg, is_long: bool, stop_level: float, bars_since: int, ext_since: float, close: float, high: float, low: float,
@@ -106,7 +113,7 @@ def exclusive_blocks(cfg, last_exit_reason, bars_since: int) -> bool:
     v = _get(cfg, "STOP_RECLAIM_EXCLUSIVE", True)
     if not ((str(v).strip().lower() in ("1", "true", "yes")) if isinstance(v, str) else bool(v)):
         return False
-    if not str(last_exit_reason or "").upper().startswith(STOP_REASON):
+    if not is_fixed_stop_exit(last_exit_reason):
         return False
     return 0 <= int(bars_since) <= int(_num(_get(cfg, "STOP_RECLAIM_WINDOW_BARS", 4), 4))
 

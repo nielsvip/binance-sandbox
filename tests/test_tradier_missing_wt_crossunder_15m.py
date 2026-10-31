@@ -15,44 +15,50 @@ def _safe(npz, key, n, default=0.0):
     return np.asarray(value, dtype=float)
 
 
-def test_long_exit_uses_causal_15m_cross_and_stoch_threshold():
-    data = {
+def _long_data():
+    return {
         "wt1_15m": np.array([1.0, -1.0, -1.0]),
         "wt2_15m": np.array([0.0, 0.0, 0.0]),
-        "stoch_k_15m": np.array([80.0, 80.0, 80.0]),
+        "wt1_1h": np.array([1.0, -1.0, -1.0]),
+        "wt2_1h": np.array([0.0, 0.0, 0.0]),
+        "wt1_4h": np.zeros(3),
+        "wt2_4h": np.zeros(3),
+        "wt1_D": np.zeros(3),
+        "wt2_D": np.zeros(3),
     }
-    cfg = SimpleNamespace(WT_CROSSUNDER_FINAL_ENABLED=True)
-    assert wt_crossunder_15m_mask(data, 3, True, cfg, _safe).tolist() == [False, True, False]
+
+
+def test_long_exit_uses_native_directional_15m_and_htf_gates():
+    data = _long_data()
+    cfg = SimpleNamespace(WT_CROSSUNDER_FINAL_ENABLED=True, PARABOLIC_PROTECTION_ENABLED=False)
+    mask = wt_crossunder_15m_mask(data, 3, True, cfg, _safe)
+    assert mask.tolist() == [False, True, True]
     get = lambda key, default=None: True if key == "WT_CROSSUNDER_FINAL_ENABLED" else default
-    live = []
-    for i in range(3):
-        prev = data["wt1_15m"][max(0, i - 1)]
-        fire, _ = wt_crossunder_15m_live(
-            get,
-            True,
-            {
-                "wt1_15m": data["wt1_15m"][i],
-                "wt2_15m": data["wt2_15m"][i],
-                "wt1_15m_prev": prev,
-                "stoch_k_15m": data["stoch_k_15m"][i],
-            },
-        )
-        live.append(fire)
-    assert live == [False, True, False]
+    fire, reason = wt_crossunder_15m_live(get, True, {key: value[1] for key, value in data.items()}, 2.5, 45)
+    assert fire is True
+    assert reason == "WT_CROSSUNDER_FINAL_5m_15m_1hTrue_4hFalse_DFalse_g2.50%_hold45m_MANDATORY_REENTRY"
 
 
-def test_short_exit_mirror_and_master_off_are_zero():
+def test_short_exit_mirror_parabolic_veto_and_master_off():
     data = {
         "wt1_15m": np.array([-1.0, 1.0, 1.0]),
-        "wt2_15m": np.array([0.0, 0.0, 0.0]),
-        "stoch_k_15m": np.array([20.0, 20.0, 20.0]),
+        "wt2_15m": np.zeros(3),
+        "wt1_1h": np.array([-1.0, 1.0, 1.0]),
+        "wt2_1h": np.zeros(3),
+        "wt1_4h": np.zeros(3),
+        "wt2_4h": np.zeros(3),
+        "wt1_D": np.zeros(3),
+        "wt2_D": np.zeros(3),
+        "rsi_4h": np.array([50.0, 20.0, 50.0]),
+        "rsi_1h": np.array([50.0, 30.0, 50.0]),
+        "bb_pct_b_4h": np.array([0.5, 0.05, 0.5]),
     }
-    on = SimpleNamespace(WT_CROSSUNDER_FINAL_ENABLED=True)
-    off = SimpleNamespace(WT_CROSSUNDER_FINAL_ENABLED=False)
-    assert wt_crossunder_15m_mask(data, 3, False, on, _safe).tolist() == [False, True, False]
+    on = SimpleNamespace(WT_CROSSUNDER_FINAL_ENABLED=True, PARABOLIC_PROTECTION_ENABLED=True)
+    off = SimpleNamespace(WT_CROSSUNDER_FINAL_ENABLED=False, PARABOLIC_PROTECTION_ENABLED=True)
+    assert wt_crossunder_15m_mask(data, 3, False, on, _safe).tolist() == [False, False, True]
     assert not wt_crossunder_15m_mask(data, 3, False, off, _safe).any()
 
 
-def test_missing_npz_keys_fail_closed():
-    cfg = SimpleNamespace(WT_CROSSUNDER_FINAL_ENABLED=True)
+def test_missing_htf_data_fails_closed():
+    cfg = SimpleNamespace(WT_CROSSUNDER_FINAL_ENABLED=True, PARABOLIC_PROTECTION_ENABLED=False)
     assert not wt_crossunder_15m_mask({}, 4, True, cfg, _safe).any()

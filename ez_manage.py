@@ -60275,39 +60275,43 @@ async def process_position(
             # BACKTEST_CHANGE_15: OPTIMAL_HOLD_BARS — time-based exit when position held too long while in profit
             # BACKTEST_CHANGE_108: Only fire if gain >= NOLOSS_MIN_PROFIT_PCT
             _noloss_min_ohb = getattr(config, "NOLOSS_MIN_PROFIT_PCT", 0.50)
-            if (
-                not _sat_skip_standard_exits
-                and _pp_gain > max(config.GAIN_THRESHOLD_LOW, _noloss_min_ohb)
-                and config.TF_FOCUS == "3m"
-            ):
+            _ohb_opened = getattr(position, "opened_at", None) or getattr(
+                position, "last_augmentation_time", None
+            )
+            _ohb_age = (
+                (now - _ohb_opened).total_seconds()
+                if isinstance(_ohb_opened, datetime)
+                else 0
+            )
+            from vec_decisions.ez_missing_hold_bars_exit import (
+                optimal_hold_bars_exit_live_adapter,
+            )
+
+            _ohb_fire = optimal_hold_bars_exit_live_adapter(
+                config,
+                _pp_gain,
+                now,
+                getattr(position, "opened_at", None),
+                getattr(position, "last_augmentation_time", None),
+                abs(safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0))
+                > pos_min_qty,
+                _sat_skip_standard_exits,
+            )
+            if _ohb_fire:
                 _ohb_max_secs = getattr(config, "OPTIMAL_HOLD_BARS_3M", 21) * 180
-                _ohb_opened = getattr(position, "opened_at", None) or getattr(
-                    position, "last_augmentation_time", None
+                logger.warning(
+                    f"[HOLD_BARS_EXIT] {position_key}: held {_ohb_age:.0f}s > {_ohb_max_secs}s ({getattr(config, 'OPTIMAL_HOLD_BARS_3M', 21)} bars) gain={_pp_gain:.2f}%"
                 )
-                if _ohb_opened:
-                    _ohb_age = (
-                        (now - _ohb_opened).total_seconds()
-                        if isinstance(_ohb_opened, datetime)
-                        else 0
-                    )
-                    if _ohb_age > _ohb_max_secs:
-                        _ohb_amt = abs(
-                            safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0)
-                        )
-                        if _ohb_amt > pos_min_qty:
-                            logger.warning(
-                                f"[HOLD_BARS_EXIT] {position_key}: held {_ohb_age:.0f}s > {_ohb_max_secs}s ({getattr(config, 'OPTIMAL_HOLD_BARS_3M', 21)} bars) gain={_pp_gain:.2f}%"
-                            )
-                            result = await queue_trade_action(
-                                order_queue,
-                                trade_manager,
-                                position_key,
-                                "QUICK_CLOSE",
-                                f"HOLD_BARS_EXIT_{_ohb_age:.0f}s_gain{_pp_gain:.2f}",
-                                0.85,
-                            )
-                            if result:
-                                return f"{EvalStatus.ACTION_TAKEN}:HOLD_BARS_EXIT"
+                result = await queue_trade_action(
+                    order_queue,
+                    trade_manager,
+                    position_key,
+                    "QUICK_CLOSE",
+                    f"HOLD_BARS_EXIT_{_ohb_age:.0f}s_gain{_pp_gain:.2f}",
+                    0.85,
+                )
+                if result:
+                    return f"{EvalStatus.ACTION_TAKEN}:HOLD_BARS_EXIT"
             # BACKTEST_CHANGE_12: CYCLE_TP_TIERED — staged take-profit at multiple levels
             # BACKTEST_CHANGE_108: Only fire tiers above NOLOSS_MIN_PROFIT_PCT
             _noloss_min_tpt = getattr(config, "NOLOSS_MIN_PROFIT_PCT", 0.50)

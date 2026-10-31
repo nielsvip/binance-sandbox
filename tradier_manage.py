@@ -7779,10 +7779,7 @@ def _trb_start_usd(account_key):
 # WT_CROSS_EXIT_REQUIRE_15M_CONFIRM is deliberately NOT here — it REQUIRES 15m confirmation, i.e. it constrains a
 # sub-15m signal rather than creating one; forcing it False would loosen the system.
 SUB15M_BLOCKED_SWITCHES = {
-    "WT_CROSSUNDER_FINAL_ENABLED": False,
-    "RULE_B_5M_EXIT_ENABLED": False,
     "RULE_B_3M_EXIT_ENABLED": False,
-    "EXIT_K5M_BOUNCE_ENABLED": False,
     "EXIT_HARD_DROP_5M_ENABLED": False,
     "EXIT_STRUCT_BREAK_5M_ENABLED": False,
     "STOCH_CROSS_3M_EXIT_ENABLED": False,
@@ -37742,12 +37739,21 @@ class StockStrategy:
             #   PLUS 15m must be going down OR be above 95 (overbought)
             #   PLUS at least 1 of (1h, 4h, D) must be negative
             # This prevents false exits from HTF noise on forward-filled data.
-            _wt1_5m = float(
-                (_d_ind or {}).get("wt1_5m", (_d_ind or {}).get("wt1_3m", 0)) or 0
+            _wt_ltf_tf = (
+                "5m"
+                if bool(_cfg_auto("LTF_SUB15M_TRADING_ENABLED", False))
+                else "15m"
             )
-            _wt2_5m = float(
-                (_d_ind or {}).get("wt2_5m", (_d_ind or {}).get("wt2_3m", 0)) or 0
-            )
+            if _wt_ltf_tf == "15m":
+                _wt1_5m = float((_d_ind or {}).get("wt1_15m", 0) or 0)
+                _wt2_5m = float((_d_ind or {}).get("wt2_15m", 0) or 0)
+            else:
+                _wt1_5m = float(
+                    (_d_ind or {}).get("wt1_5m", (_d_ind or {}).get("wt1_3m", 0)) or 0
+                )
+                _wt2_5m = float(
+                    (_d_ind or {}).get("wt2_5m", (_d_ind or {}).get("wt2_3m", 0)) or 0
+                )
             _wt1_15m = float((_d_ind or {}).get("wt1_15m", 0) or 0)
             _wt2_15m = float((_d_ind or {}).get("wt2_15m", 0) or 0)
             _wt1_1h = float((_d_ind or {}).get("wt1_1h", 0) or 0)
@@ -37869,12 +37875,21 @@ class StockStrategy:
             and path_switch(config, "WT_CROSSUNDER_FINAL_ENABLED", True)
         ):
             _xu_ind = indicators if indicators else i
-            _wt1_5m = float(
-                (_xu_ind or {}).get("wt1_5m", (_xu_ind or {}).get("wt1_3m", 0)) or 0
+            _wt_ltf_tf = (
+                "5m"
+                if bool(_cfg_auto("LTF_SUB15M_TRADING_ENABLED", False))
+                else "15m"
             )
-            _wt2_5m = float(
-                (_xu_ind or {}).get("wt2_5m", (_xu_ind or {}).get("wt2_3m", 0)) or 0
-            )
+            if _wt_ltf_tf == "15m":
+                _wt1_5m = float((_xu_ind or {}).get("wt1_15m", 0) or 0)
+                _wt2_5m = float((_xu_ind or {}).get("wt2_15m", 0) or 0)
+            else:
+                _wt1_5m = float(
+                    (_xu_ind or {}).get("wt1_5m", (_xu_ind or {}).get("wt1_3m", 0)) or 0
+                )
+                _wt2_5m = float(
+                    (_xu_ind or {}).get("wt2_5m", (_xu_ind or {}).get("wt2_3m", 0)) or 0
+                )
             _wt1_15m = float((_xu_ind or {}).get("wt1_15m", 0) or 0)
             _wt2_15m = float((_xu_ind or {}).get("wt2_15m", 0) or 0)
             _wt1_1h = float((_xu_ind or {}).get("wt1_1h", 0) or 0)
@@ -39019,16 +39034,21 @@ class StockStrategy:
         # 3.5. K5M MOMENTUM EXIT (BOUNCE-TURN / REAL DROP)
         # Now gated by multi-TF WT confirmation
         # --------------------------------------------------
-        k_5m = float(i.get("k_5m", 50))
-        k_5m_prev = float(i.get("k_5m_prev", 50))
+        _exit_bar_tf = (
+            "5m"
+            if bool(_cfg_auto("LTF_SUB15M_TRADING_ENABLED", False))
+            else "15m"
+        )
+        k_5m = float(i.get(f"k_{_exit_bar_tf}", i.get(f"stoch_k_{_exit_bar_tf}", 50)))
+        k_5m_prev = float(i.get(f"k_{_exit_bar_tf}_prev", i.get(f"stoch_k_{_exit_bar_tf}_prev", 50)))
         k_15m = float(i.get("k_15m", 50))
         k_1h = float(i.get("k_1h", 50))
-        low_5m = float(i.get("low_5m", 0))
-        low_5m_prev = float(i.get("low_5m_prev", 0))
-        high_5m = float(i.get("high_5m", 0))
-        high_5m_prev = float(i.get("high_5m_prev", 0))
-        dc_low_5m = float(i.get("dc_low_5m", 0))
-        dc_high_5m = float(i.get("dc_high_5m", 0))
+        low_5m = float(i.get(f"low_{_exit_bar_tf}", 0))
+        low_5m_prev = float(i.get(f"low_{_exit_bar_tf}_prev", 0))
+        high_5m = float(i.get(f"high_{_exit_bar_tf}", 0))
+        high_5m_prev = float(i.get(f"high_{_exit_bar_tf}_prev", 0))
+        dc_low_5m = float(i.get(f"dc_low_{_exit_bar_tf}", 0))
+        dc_high_5m = float(i.get(f"dc_high_{_exit_bar_tf}", 0))
         close_5m_prev = float(i.get("close_5m_prev", current_price) or current_price)
         # K5M exits: raised from gain>0.5 to gain>=noloss_min — was losing -$1,804 total on stocks
         # 2026-04-08: DISABLED K5M/HARD_DROP exits — these bypass the WT/DC scorer

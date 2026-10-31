@@ -4659,6 +4659,7 @@ class Config:
     OPTIMAL_HOLD_BARS_3M: int = (
         999  # ABLATION_V3_REVERT: was 21 (BC_15). Confirmed on BOTH v2 (4-day) and v3 (3-year, 215 sym): +1.04 Sharpe, 85% improved. Forced exit kills winners.
     )
+    OPTIMAL_HOLD_BARS_EXIT_ENABLED: bool = True
     OPTIMAL_HOLD_BARS_15M: int = (
         999  # BACKTEST_CHANGE_16: REVERTED (was 13). Ablation: -6.983 Sharpe, WORST of 52 tested. 0% symbols improved. Hold period too short kills winners.
     )

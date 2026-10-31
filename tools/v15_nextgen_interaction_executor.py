@@ -53,6 +53,15 @@ def prepared_arrays_identity(prepared):
     return guard.fingerprint(arrays)
 
 
+def prepared_window(prepared):
+    import numpy as np
+    timestamps = np.asarray((prepared.get('npz_prepared') or {}).get('timestamps', ()), dtype='float64')
+    if len(timestamps) < 2 or not np.all(np.isfinite(timestamps) & (timestamps > 0)) or np.any(np.diff(timestamps) < 0):
+        raise ValueError('finite ordered actual prepared timestamps required')
+    scale = 1000.0 if timestamps[-1] > 1e11 else 1.0
+    return {'first_bar': datetime.fromtimestamp(float(timestamps[0] / scale), timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ'), 'last_bar': datetime.fromtimestamp(float(timestamps[-1] / scale), timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ'), 'bars': len(timestamps), 'source': 'actual prepared npz_prepared timestamps; not file mtime or execution date'}
+
+
 def derived_effects(gains):
     return {'X_minus_B': gains['X'] - gains['B'], 'Y_minus_B': gains['Y'] - gains['B'], 'Z_minus_X': gains['Z'] - gains['X'], 'Z_minus_Y': gains['Z'] - gains['Y'], 'Z_minus_B': gains['Z'] - gains['B'], 'interaction_Z_minus_X_minus_Y_plus_B': gains['Z'] - gains['X'] - gains['Y'] + gains['B']}
 
@@ -159,9 +168,10 @@ def execute_quartet(prepared, pin, x, y, context, output, eligible, pin_loading=
             raise ValueError('identity treatment is not an interaction experiment')
     validate_inputs(context, evaluate_prepared_sanitized)
     original_arrays = prepared_arrays_identity(prepared)
+    actual_window = prepared_window(prepared)
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
-    manifest = {'schema': 'prospective_quartet/1', 'status': 'measuring', 'context': context, 'x': x, 'y': y, 'canonical_pair_id': pair_identity(x, y), 'components': {}, 'baseline_modified': False, 'runtime_hooked': False, 'source_sha256': sha(__file__), 'recorded_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')}
+    manifest = {'schema': 'prospective_quartet/1', 'status': 'measuring', 'measurement_scope': '[DIAGNOSTIC ONLY] one-symbol frozen-window factorial measurements; future confirmation required, no promotion or gain claim', 'context': context, 'actual_prepared_window': actual_window, 'x': x, 'y': y, 'canonical_pair_id': pair_identity(x, y), 'components': {}, 'baseline_modified': False, 'runtime_hooked': False, 'source_sha256': sha(__file__), 'recorded_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')}
     configs = {'B': baseline, 'X': dict(baseline, **{x['field']: x['value']}), 'Y': dict(baseline, **{y['field']: y['value']}), 'Z': dict(baseline, **{x['field']: x['value'], y['field']: y['value']})}
     try:
         for name, settings in configs.items():

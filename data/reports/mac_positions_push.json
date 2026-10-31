@@ -1,10 +1,10 @@
 {
- "epoch": 1793409355.585381,
- "written_at": "2026-10-31T01:15:55.585383Z",
+ "epoch": 1793409665.459877,
+ "written_at": "2026-10-31T01:21:05.459880Z",
  "venues": {
   "crypto": {
    "local": "/Users/niels/Documents/binance/data/vector_direct/mac_positions_crypto.json",
-   "sha256": "5b22c55dfffa94bafcc39e55c52e584165b8e20a41b2f218ec28f8b49bf66c67",
+   "sha256": "38c5687bdaf347708065936958239e2bf2d9dcc6f1d5baa1504457e6eccc3718",
    "held_total": 44,
    "sides": [
     "1000PEPEUSDC_LONG",
@@ -51,7 +51,7 @@
      "host": "s1-pub",
      "tree": "binance",
      "ok": true,
-     "sha256": "5b22c55dfffa94bafcc39e55c52e584165b8e20a41b2f218ec28f8b49bf66c67",
+     "sha256": "38c5687bdaf347708065936958239e2bf2d9dcc6f1d5baa1504457e6eccc3718",
      "remote": "~/binance/data/vector_direct/mac_positions_crypto.json"
     }
    ],
@@ -62,7 +62,7 @@
   },
   "stocks": {
    "local": "/Users/niels/Documents/binance/data/vector_direct/mac_positions_stocks.json",
-   "sha256": "c342872c1c0443c99037467a65d26b8fa54e6749432b46853a43c536b29b8e61",
+   "sha256": "e18fc737905583872222566ee9705c9d095f2dd052128f8a8058b5e4cf5b4610",
    "held_total": 3,
    "sides": [
     "GILD_LONG",
@@ -75,14 +75,14 @@
      "host": "s5",
      "tree": "binance",
      "ok": true,
-     "sha256": "c342872c1c0443c99037467a65d26b8fa54e6749432b46853a43c536b29b8e61",
+     "sha256": "e18fc737905583872222566ee9705c9d095f2dd052128f8a8058b5e4cf5b4610",
      "remote": "~/binance/data/vector_direct/mac_positions_stocks.json"
     },
     {
      "host": "s5",
      "tree": "trc7d_root",
      "ok": true,
-     "sha256": "c342872c1c0443c99037467a65d26b8fa54e6749432b46853a43c536b29b8e61",
+     "sha256": "e18fc737905583872222566ee9705c9d095f2dd052128f8a8058b5e4cf5b4610",
      "remote": "~/trc7d_root/data/vector_direct/mac_positions_stocks.json"
     }
    ],

@@ -28,6 +28,18 @@ def _fire(cfg, is_long=True, **over):
 def test_all_six_conditions_fire_long():
     assert _fire(_cfg())
 
+def test_native_decorated_stop_preserves_exclusive_window():
+    from live_twins.stop_reclaim_live import armed
+    cfg = _cfg(STOP_RECLAIM_WINDOW_BARS=2)
+    for reason in ("FIXED_STOP", "FIXED_STOP_LONG_px0.004786", "MAKER_PROFIT_EXIT_FIXED_STOP_LONG_px0.004786", "CLOSED_MAKER_PROFIT_EXIT_FIXED_STOP_LONG_px0.004786"):
+        assert armed(reason)
+        assert SR.armed(reason, "GOLDEN_RULE_ENTRY")
+        assert SR.exclusive_blocks(cfg, reason, 1)
+        assert SR.exclusive_blocks(cfg, reason, 2)
+        assert not SR.exclusive_blocks(cfg, reason, 3)
+    assert not SR.exclusive_blocks(cfg, "WT_EXIT_FIXED_STOP_REFERENCE", 1)
+    assert not SR.exclusive_blocks(_cfg(STOP_RECLAIM_REENTRY_ENABLED=False), "FIXED_STOP", 1)
+
 
 def test_each_condition_vetoes():
     c = _cfg()

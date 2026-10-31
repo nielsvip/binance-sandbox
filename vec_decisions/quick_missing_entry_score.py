@@ -14,18 +14,9 @@ def bb_breakout_score_scalar(indicators, current_price, is_long, cfg, score=0.0)
         return float(score), False
     tf = str(_cfg(cfg, "BB_BREAKOUT_TF", "1h"))
     ind = indicators or {}
-    try:
-        pct_b = float(ind.get(f"bb_pct_b_{tf}", 0.5))
-    except (TypeError, ValueError):
-        pct_b = 0.5
-    try:
-        sma = float(ind.get(f"sma_200_{tf}", 0))
-    except (TypeError, ValueError):
-        sma = 0.0
-    try:
-        adx = float(ind.get(f"adx_{tf}", 0))
-    except (TypeError, ValueError):
-        adx = 0.0
+    pct_b = _scalar_float(ind.get(f"bb_pct_b_{tf}"), 0.5)
+    sma = _scalar_float(ind.get(f"sma_200_{tf}"), 0.0)
+    adx = _scalar_float(ind.get(f"adx_{tf}"), 0.0)
     px = float(current_price or 0.0)
     fire = adx > 25.0 and sma > 0.0 and ((is_long and pct_b > 1.0 and px > sma) or (not is_long and pct_b < 0.0 and px < sma))
     bonus = float(_cfg(cfg, "BB_BREAKOUT_SCORE", 20)) if fire else 0.0
@@ -169,7 +160,8 @@ def _column(npz, key, n, default, dtype=float):
             if raw.dtype.kind in "SUO":
                 return np.asarray([str(value).lower() in ("1", "true", "yes") for value in raw], dtype=bool)
             return raw.astype(bool)
-        return raw.astype(float)
+        values = raw.astype(float)
+        return np.where(np.isfinite(values), values, default)
     except Exception:
         return np.full(n, default, dtype=dtype)
 
@@ -297,6 +289,7 @@ def _raw_column(npz, key, n):
 
 def _scalar_float(value, default):
     try:
-        return float(value)
+        result = float(value)
+        return result if np.isfinite(result) else float(default)
     except (TypeError, ValueError):
         return float(default)

@@ -1,3 +1,6 @@
+import copy
+import pickle
+
 import numpy as np
 import v12_quick_engine as V
 
@@ -115,6 +118,25 @@ def test_b04_uses_only_prior_bar_when_explicit_stochastic_previous_is_absent():
     }
     mask, _, _ = dc_high_break_retest_mask(npz, 3, True, Config(), _safe)
     assert mask.tolist() == [False, True, False]
+
+
+def test_reentry_block_metadata_survives_copy_pickle_without_changing_dict_iteration():
+    npz = {
+        "close": np.array([100.2]),
+        "dc_high_4h": np.array([102.0]),
+        "dc_high_4h_ant": np.array([100.0]),
+        "stoch_k_15m": np.array([62.0]),
+        "stoch_d_15m": np.array([58.0]),
+        "stoch_k_15m_prev": np.array([60.0]),
+    }
+    cfg = V.QuickConfig()
+    cfg.REENTRY_B04_DC_RETEST_ENABLED = True
+    blocks = V.compute_reentry_blocks(npz, 1, True, cfg)
+    assert isinstance(blocks, dict)
+    assert list(blocks).count("B04") == 1
+    for clone in (copy.deepcopy(blocks), pickle.loads(pickle.dumps(blocks))):
+        assert list(clone) == list(blocks)
+        assert clone.size_multipliers["B04"].tolist() == [2.0]
 
 
 def test_b04_switch_flips_simulate_one_trade_ledger():

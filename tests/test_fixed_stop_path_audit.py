@@ -1,5 +1,9 @@
+import json
 import unittest
+import tempfile
+from pathlib import Path
 
+import numpy as np
 from tools.fixed_stop_path_audit import audit_inventory, audit_lifecycle
 
 
@@ -22,6 +26,9 @@ class FixedStopPathAuditTests(unittest.TestCase):
                           (2700000, 8, 12, 7)], "timeframe": "15m", "source_kind": "test", "source_path": "fixture"}
         result = audit_lifecycle(life, bars, 4000000)
         self.assertEqual(result["classification"], "CLOSED_BAR_GROSS_PROFIT_OPPORTUNITY")
+        self.assertEqual(result["first_entry_fill_timestamp_ms"], 0)
+        self.assertEqual(result["first_stop_fill_timestamp_ms"], 3600000)
+        self.assertEqual(result["entry_to_first_stop_seconds"], 3600)
         self.assertEqual(result["eligible_bar_count"], 3)
         self.assertEqual(result["first_confirmed_closed_bar_opportunity"]["bar_start_ms"], 0)
         self.assertEqual(result["first_confirmed_closed_bar_opportunity"]["gross_pnl_at_close_before_commission"], 2)
@@ -75,6 +82,39 @@ class FixedStopPathAuditTests(unittest.TestCase):
         result = audit_inventory(doc, None)
         self.assertEqual(result["fixed_stop_lifecycle_count"], 1)
         self.assertEqual(result["counts_by_classification"], {"UNVERIFIED_NO_VALID_BAR_SOURCE": 1})
+
+    def test_source_census_excludes_cutoff_crossing_npz_rows(self):
+        doc = {"schema_version": 1, "source": {"sha256": "abc", "window_end_ms": 1800000}, "lifecycles": [
+            lifecycle([event(0, "open", 1, 10, 10), event(2700000, "close", 0, 10, 9, True, -1, 2)])]}
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "ABCUSDT.npz"
+            np.savez_compressed(path, timestamps=np.array([0, 900, 1800]), close_15m=np.array([11, 11, 11]),
+                                high_15m=np.array([12, 12, 12]), low_15m=np.array([9, 9, 9]))
+            result = audit_inventory(doc, temp_dir)
+        self.assertEqual(result["source_inventory"]["sha256"], "abc")
+        self.assertNotIn("bars", result["source_inventory"])
+        self.assertEqual(result["post_cutoff_or_cutoff_crossing_source_rows_excluded_count"], 1)
+        self.assertEqual(result["bar_sources_by_symbol"]["ABCUSDT"]["rows_usable_by_cutoff_count"], 2)
+        evidence = result["lifecycles"][0]
+        self.assertEqual(evidence["eligible_bar_count"], 2)
+
+    def test_one_minute_refinement_can_resolve_a_trade_shorter_than_one_npz_bar(self):
+        doc = {"schema_version": 1, "source": {"sha256": "abc", "window_end_ms": 200000}, "lifecycles": [
+            lifecycle([event(0, "open", 1, 10, 10), event(120000, "close", 0, 10, 9, True, -1, 2)])]}
+        with tempfile.TemporaryDirectory() as temp_dir:
+            fallback_dir = Path(temp_dir) / "fallback"
+            fallback_dir.mkdir()
+            np.savez_compressed(Path(temp_dir) / "ABCUSDT.npz", timestamps=np.array([0]),
+                                close_15m=np.array([11]), high_15m=np.array([12]), low_15m=np.array([9]))
+            (fallback_dir / "ABCUSDT_1m.json").write_text(json.dumps([
+                {"timestamp": "1970-01-01T00:00:00.000Z", "close": 11, "high": 12, "low": 9},
+                {"timestamp": "1970-01-01T00:01:00.000Z", "close": 10, "high": 11, "low": 9}]))
+            result = audit_inventory(doc, temp_dir, fallback_dir)
+        row = result["lifecycles"][0]
+        self.assertEqual(row["primary_15m_classification"], "UNVERIFIED_NO_FULL_BAR_WITHIN_LIFECYCLE")
+        self.assertEqual(row["one_minute_refinement_classification"], "CLOSED_BAR_GROSS_PROFIT_OPPORTUNITY")
+        self.assertEqual(row["classification"], "CLOSED_BAR_GROSS_PROFIT_OPPORTUNITY")
+        self.assertEqual(row["bar_timeframe"], "1m")
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ import json
 import os
 import sys
 from datetime import datetime, timezone
+from datetime import timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Optional, Set
@@ -123,3 +124,29 @@ def test_user_stream_routes_private_events_on_connect_and_reconnect():
     manager = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == "WebSocketManager")
     calls = [node for node in ast.walk(manager) if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "_private_user_stream_url"]
     assert len(calls) == 2
+
+
+def test_disk_context_rejects_old_close_before_new_open(tmp_path):
+    tree = ast.parse(SOURCE.read_text())
+    selected = [node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef) and node.name in {"is_context_fresh", "_fetch_decision_context_blocking"}]
+    env = {"datetime": datetime, "timezone": timezone, "timedelta": timedelta, "time": time, "orjson": json, "config": SimpleNamespace(BASE_PATH=tmp_path)}
+    exec(compile(ast.Module(body=selected, type_ignores=[]), str(SOURCE), "exec"), env)
+    path = tmp_path / "data/history/ang/WIFUSDC_SHORT.jsonl"
+    path.parent.mkdir(parents=True)
+    old = {"type": "CLOSE", "ts": (datetime.now(timezone.utc) - timedelta(days=3)).isoformat()}
+    path.write_text(json.dumps(old) + "\n")
+    assert env["_fetch_decision_context_blocking"](None, "ang:WIFUSDC_SHORT") == {}
+    fresh = {"type": "OPEN", "ts": datetime.now(timezone.utc).isoformat()}
+    path.write_text(json.dumps(fresh) + "\n")
+    assert env["_fetch_decision_context_blocking"](None, "ang:WIFUSDC_SHORT")["action"] == "OPEN"
+
+
+def test_quantity_increase_cannot_inherit_close_signal():
+    tree = ast.parse(SOURCE.read_text())
+    method = next(node for node in ast.walk(tree) if isinstance(node, ast.AsyncFunctionDef) and node.name == "handle_augmentation")
+    assignment = max((node for node in ast.walk(method) if isinstance(node, ast.Assign) and any(isinstance(target, ast.Attribute) and target.attr == "last_signal" for target in node.targets)), key=lambda node: node.lineno)
+    for old_qty, expected in ((0, "OPEN"), (10, "AUGMENT")):
+        position = SimpleNamespace(last_signal="CLOSE")
+        env = {"position": position, "_action_from_ctx": "CLOSE", "positionAmt": old_qty}
+        exec(compile(ast.Module(body=[assignment], type_ignores=[]), str(SOURCE), "exec"), env)
+        assert position.last_signal == expected

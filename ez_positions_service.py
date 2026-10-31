@@ -8457,7 +8457,7 @@ class PositionService:
             self.position_reasons[position_key] = {}
         reason_text = decision_context.get('reason') if decision_context else (position.augment_reason or "Unknown")
         _action_from_ctx = decision_context.get('action', '') if decision_context else ''
-        position.last_signal = _action_from_ctx or reason_text or 'AUGMENT'
+        position.last_signal = _action_from_ctx if _action_from_ctx in {'OPEN', 'AUGMENT', 'REENTER', 'REENTRY'} else ('OPEN' if positionAmt == 0 else 'AUGMENT')
         if not position.augment_reason and reason_text and reason_text != "Unknown":
             position.augment_reason = reason_text
         self.position_reasons[position_key]['last_augment_reason'] = reason_text
@@ -8517,7 +8517,7 @@ class PositionService:
                                 try: _last_match = orjson.loads(_line)
                                 except Exception: pass
                 except Exception: pass
-                if _last_match: return _last_match
+                if _last_match and is_context_fresh(_last_match): return _last_match
             _sym_side = position_key.split(':')[1] if ':' in position_key else ''
             _hfile = _P(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / 'data' / 'history' / account_key / f'{_sym_side}.jsonl'
             if _hfile.exists():
@@ -8531,7 +8531,8 @@ class PositionService:
                                 except Exception: pass
                 except Exception: pass
                 if _last:
-                    return {'action': _last.get('type', ''), 'reason': _last.get('reason', ''), 'snapshot': _last.get('indicators', {}), 'timestamp': _last.get('ts', '')}
+                    context = {'action': _last.get('type', ''), 'reason': _last.get('reason', ''), 'snapshot': _last.get('indicators', {}), 'timestamp': _last.get('ts', '')}
+                    if is_context_fresh(context): return context
         except Exception: pass
         return {}
 
@@ -8556,7 +8557,7 @@ class PositionService:
                                 try:
                                     _fresh = is_context_fresh(_ctx)
                                 except Exception:
-                                    _fresh = True
+                                    _fresh = False
                                 if _fresh:
                                     return _ctx
                                 try:

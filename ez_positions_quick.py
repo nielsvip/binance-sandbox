@@ -30165,7 +30165,9 @@ async def check_entry_candidates_for_account(
                         _rt_exit_px = safe_fetch_float(getattr(position, "last_reduction_price", 0) or _rt_saved.get("reentry_level") or (tracker_manager.last_exit_prices or {}).get(position_key) or 0, 0.0)
                         _rt_exit_ts = _reentry_epoch(getattr(position, "last_reduction_time", None)) or _reentry_epoch(_rt_saved.get("timestamp")) or _reentry_epoch((tracker_manager.last_exit_times or {}).get(position_key)) or 0.0
                         _rt_cfg = lambda key, default: _sw_get(symbol, position_side, key, default)
-                        if _rt_exit_ts > 0 and _reentry_triggers.any_enabled(_rt_cfg):
+                        import vec_decisions.stop_reclaim as _rt_reclaim
+                        _rt_reclaim_hold = _rt_exit_ts > 0 and _rt_reclaim.exclusive_blocks(_rt_cfg, _rt_saved.get("reason", ""), int(max(0.0, now - _rt_exit_ts) // 900))
+                        if _rt_exit_ts > 0 and not _rt_reclaim_hold and _reentry_triggers.any_enabled(_rt_cfg):
                             _rt_path = Path(getattr(config, "BASE_PATH", ".")) / "klines_cache" / f"{symbol}_15m.json"
                             _rt_name = _reentry_triggers.fire_live(_rt_cfg, is_long, current_price, indicators, _rt_exit_px, _rt_exit_ts, _rt_path, asof_ts=now)
                             if _rt_name:
@@ -30176,7 +30178,7 @@ async def check_entry_candidates_for_account(
                                 reason = _rt_name
                                 rec = "STRONG_BUY" if is_long else "STRONG_SELL"
                                 logger.warning(f"[{_rt_name}] {position_key}: flat re-entry trigger fired at {current_price:.6f}")
-                        if _rt_exit_ts > 0 and not should_trade and bool(_sw_get(symbol, position_side, "REENTRY_TIER_MODEL_ENABLED", False)):
+                        if _rt_exit_ts > 0 and not should_trade and not _rt_reclaim_hold and bool(_sw_get(symbol, position_side, "REENTRY_TIER_MODEL_ENABLED", False)):
                             from types import SimpleNamespace as _ReentryConfig
                             import vec_decisions.reentry_tiers as _reentry_tiers
                             _tier_cfg = _ReentryConfig(**{key: _sw_get(symbol, position_side, key, getattr(config, key, default)) for key, default in (("REENTRY_MIN_GAP_MINUTES", 0.0), ("REENTRY_EXHAUSTED_PARTIAL_ENABLED", True), ("REENTRY_TIER2_PRICE_PCT", 0.003), ("REENTRY_TIER2_MIN_MINUTES", 10.0))})
@@ -30967,11 +30969,13 @@ async def check_entry_candidates_for_account(
                                     f"[BB_SQUEEZE_BLOCKED] {position_key}: {_bbs_signal} signal but alignment={_bbs_alignment:.0f} < {_bbs_min_align}"
                                 )
                 # == 2.5σ STDEV BREAKOUT: standalone entry (fires only when no other strategy triggers) ==
+                from vec_decisions.quick_stdev_eval import evaluate_stdev_once as _eval_stdev_once
+                _sb_eval_cache = {}
                 if not should_trade and getattr(
                     config, "STDEV_BREAKOUT_ENABLED", False
                 ):
-                    _sb_result_standalone = detect_stdev_breakout(
-                        symbol, is_long, indicators, metrics
+                    _sb_result_standalone = _eval_stdev_once(
+                        _sb_eval_cache, detect_stdev_breakout, symbol, is_long, indicators, metrics
                     )
                     if _sb_result_standalone:
                         should_trade = True
@@ -31151,8 +31155,8 @@ async def check_entry_candidates_for_account(
                 # == 2.5σ STDEV BREAKOUT BOOST: score + size multiplier when in breakout zone ==
                 _sb_size_mult = 1.0
                 if should_trade and getattr(config, "STDEV_BREAKOUT_ENABLED", False):
-                    _sb_result = detect_stdev_breakout(
-                        symbol, is_long, indicators, metrics
+                    _sb_result = _eval_stdev_once(
+                        _sb_eval_cache, detect_stdev_breakout, symbol, is_long, indicators, metrics
                     )
                     if _sb_result:
                         _sb_phase = _sb_result["phase"]

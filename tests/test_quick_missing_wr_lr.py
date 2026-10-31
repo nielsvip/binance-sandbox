@@ -57,9 +57,70 @@ def test_score_floor_is_conditional_and_shape_checked():
     np.testing.assert_array_equal(wr_lr_good_score(score, mask), [22.0, 22.0, 31.0])
 
 
-def test_historical_membership_is_per_bar_and_unknown_fails_closed(monkeypatch):
-    import vec_decisions.check_entry_candidates_crypto__wr_lr_pullback as live_twin
-    membership = {100.0: True, 200.0: False}
-    monkeypatch.setattr(live_twin, "wr_in_list_at", lambda symbol, is_long, ts: membership.get(ts))
-    mask = historical_wr_membership_mask("1000PEPEUSDC", np.array([100.0, 200.0, 300.0]), True)
-    np.testing.assert_array_equal(mask, [True, False, False])
+def test_historical_membership_is_account_specific_and_unknown_fails_closed(monkeypatch, tmp_path):
+    import json
+    import vec_decisions.quick_missing_wr_lr as missing
+
+    archive = tmp_path / "wr_lists_history.jsonl"
+    archive.write_text(json.dumps({"ts": 100.0, "ang_long": ["1000PEPEUSDC"], "ang_short": [], "inf_long": [], "inf_short": ["1000PEPEUSDC"]}) + "\n")
+    monkeypatch.setattr(missing, "_archive_path", lambda: str(archive))
+    monkeypatch.setattr(missing, "_ARCHIVE_CACHE", {"mtime": None, "rows": [], "times": []})
+    times = np.array([99.0, 100.0, 101.0])
+    np.testing.assert_array_equal(historical_wr_membership_mask("1000PEPEUSDC", times, True, "ang"), [False, True, True])
+    np.testing.assert_array_equal(historical_wr_membership_mask("1000PEPEUSDC", times, True, "inf"), [False, False, False])
+    np.testing.assert_array_equal(historical_wr_membership_mask("1000PEPEUSDC", times, False, "inf"), [False, True, True])
+    np.testing.assert_array_equal(historical_wr_membership_mask("1000PEPEUSDC", times, True, None), [False, False, False])
+
+
+def test_npz_quick_good_adapter_uses_archive_membership_and_real_fields():
+    from vec_decisions.quick_missing_wr_lr import wr_lr_quick_good_from_npz
+
+    npz = {
+        "timestamps": np.array([100., 200., 300.]),
+        "ha_4h": np.array([1, 1, 0], dtype=np.int8),
+        "stoch_k_1h": np.array([30., 70., 30.]),
+        "stoch_k_15m": np.array([25., 75., 25.]),
+        "stoch_k_15m_prev": np.array([20., 80., 20.]),
+        "wt_cross_15m": np.array([0, 0, 0], dtype=np.int8),
+    }
+    lookups = {100.: True, 200.: True, 300.: None}
+    mask, score = wr_lr_quick_good_from_npz(
+        npz, "1000PEPEUSDC", True, Config(), np.array([15., 20., 30.]),
+        membership_lookup=lambda account, symbol, side, ts: lookups[ts], account="ang",
+    )
+    expected = []
+    for i, ts in enumerate(npz["timestamps"]):
+        expected.append(check_wr_lr_pullback(
+            Config(),
+            {"ha_4h": "green", "stoch_k_1h": npz["stoch_k_1h"][i],
+             "stoch_k_15m": npz["stoch_k_15m"][i],
+             "stoch_k_15m_prev": npz["stoch_k_15m_prev"][i], "wt_cross_15m": ""},
+            {}, lookups[ts] is True, True,
+        )[0])
+    np.testing.assert_array_equal(mask, expected)
+    np.testing.assert_array_equal(score, [22., 20., 30.])
+
+
+def test_npz_quick_good_fails_closed_without_archived_membership_or_timestamps():
+    from vec_decisions.quick_missing_wr_lr import wr_lr_quick_good_from_npz
+
+    npz = {
+        "timestamps": np.array([100.]), "ha_4h": np.array([1], dtype=np.int8),
+        "stoch_k_1h": np.array([30.]), "stoch_k_15m": np.array([25.]),
+        "stoch_k_15m_prev": np.array([20.]), "wt_cross_15m": np.array([1], dtype=np.int8),
+    }
+    mask, _ = wr_lr_quick_good_from_npz(npz, "1000PEPEUSDC", True, Config(), membership_lookup=lambda *args: None, account="ang")
+    assert not mask.any()
+    missing = {key: value for key, value in npz.items() if key != "timestamps"}
+    assert wr_lr_quick_good_from_npz(missing, "1000PEPEUSDC", True, Config(), account="ang") is None
+
+
+def test_npz_quick_good_refuses_15m_approximation_when_ltf_is_enabled():
+    from vec_decisions.quick_missing_wr_lr import wr_lr_quick_good_from_npz
+
+    class LtfEnabled:
+        USE_1M_3M_SIGNALS_ENABLED = True
+        WR_PULLBACK_ENABLED = True
+
+    npz = {"timestamps": np.array([100.]), "ha_4h": np.array([1], dtype=np.int8)}
+    assert wr_lr_quick_good_from_npz(npz, "1000PEPEUSDC", True, LtfEnabled(), membership_lookup=lambda *args: True, account="ang") is None

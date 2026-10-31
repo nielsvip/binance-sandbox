@@ -107,13 +107,20 @@ def audit_lifecycle(lifecycle, bar_data, cutoff_ms):
     stop_events = [event for event in events if event.get("fixed_stop_order_detected") and event.get("event_type") in {"reduce", "close"}]
     if not stop_events:
         return None
+    entry_events = [event for event in events if event.get("event_type") in {"open", "augment"} and _event_ms(event) is not None]
+    first_entry_ms = _event_ms(entry_events[0]) if entry_events else None
+    first_stop_ms = min((_event_ms(event) for event in stop_events if _event_ms(event) is not None), default=None)
     account = str(lifecycle.get("account_id") or "")
     symbol = str(lifecycle.get("symbol") or "")
     side = str(lifecycle.get("position_side") or "").upper()
     base = {"account_id": account, "symbol": symbol, "position_side": side,
             "lifecycle_index": lifecycle.get("lifecycle_index"), "status": lifecycle.get("status"),
             "fixed_stop_event_count": len(stop_events),
-            "fixed_stop_event_trade_ids": [event.get("trade_id") for event in stop_events]}
+            "fixed_stop_event_trade_ids": [event.get("trade_id") for event in stop_events],
+            "first_entry_fill_timestamp_ms": first_entry_ms, "first_stop_fill_timestamp_ms": first_stop_ms,
+            "entry_to_first_stop_seconds": (first_stop_ms - first_entry_ms) / 1000.0 if first_entry_ms is not None and first_stop_ms is not None else None,
+            "first_stop_order_ids": [event.get("order_id") for event in stop_events],
+            "first_stop_order_types": [event.get("order_type") for event in stop_events]}
     if side not in {"LONG", "SHORT"} or not bar_data:
         return {**base, "classification": "UNVERIFIED_NO_VALID_BAR_SOURCE", "eligible_bar_count": 0}
 
@@ -201,27 +208,91 @@ def audit_lifecycle(lifecycle, bar_data, cutoff_ms):
 def audit_inventory(inventory, npz_root, fallback_root=None, cutoff_ms=None):
     if inventory.get("schema_version") != 1 or not isinstance(inventory.get("lifecycles"), list):
         raise ValueError("expected fixed_stop_inventory schema_version 1 with lifecycles[]")
-    source = inventory.get("source") or {}
+    inventory_source = inventory.get("source") or {}
     if cutoff_ms is None:
-        cutoff_ms = _number((inventory.get("coverage") or {}).get("window_end_ms") or source.get("window_end_ms"))
+        cutoff_ms = _number((inventory.get("coverage") or {}).get("window_end_ms") or inventory_source.get("window_end_ms"))
     cache = {}
+    one_minute_cache = {}
     rows = []
+    bar_sources = {}
+    one_minute_sources = {}
     for lifecycle in inventory["lifecycles"]:
         if not any(event.get("fixed_stop_order_detected") for event in lifecycle.get("events", [])):
             continue
         symbol = str(lifecycle.get("symbol") or "")
         if symbol not in cache:
             cache[symbol] = load_symbol_bars(symbol, npz_root, fallback_root)
-        result = audit_lifecycle(lifecycle, cache[symbol], cutoff_ms)
+            bar_source = cache[symbol]
+            if bar_source:
+                interval_ms = BAR_INTERVAL_SECONDS[bar_source["timeframe"]] * 1000
+                source_bars = bar_source["bars"]
+                post_cutoff = [bar for bar in source_bars if cutoff_ms is not None and bar[0] + interval_ms > cutoff_ms]
+                bar_sources[symbol] = {"source_path": bar_source.get("source_path"), "source_kind": bar_source.get("source_kind"),
+                                       "timeframe": bar_source.get("timeframe"), "source_row_count": len(source_bars),
+                                       "rows_usable_by_cutoff_count": len(source_bars) - len(post_cutoff),
+                                       "rows_after_cutoff_or_crossing_cutoff_excluded_count": len(post_cutoff),
+                                       "first_excluded_bar_start_ms": post_cutoff[0][0] if post_cutoff else None,
+                                       "last_excluded_bar_start_ms": post_cutoff[-1][0] if post_cutoff else None}
+            else:
+                bar_sources[symbol] = {"source_path": None, "source_kind": None, "timeframe": None,
+                                       "source_row_count": 0, "rows_usable_by_cutoff_count": 0,
+                                       "rows_after_cutoff_or_crossing_cutoff_excluded_count": None,
+                                       "first_excluded_bar_start_ms": None, "last_excluded_bar_start_ms": None}
+        primary = audit_lifecycle(lifecycle, cache[symbol], cutoff_ms)
+        one_minute = None
+        if cache[symbol] and cache[symbol].get("timeframe") == "15m" and fallback_root:
+            if symbol not in one_minute_cache:
+                path = Path(fallback_root) / (symbol + "_1m.json")
+                one_minute_cache[symbol] = load_json_bars(path, "1m") if path.is_file() else None
+                if one_minute_cache[symbol]:
+                    one_minute_cache[symbol]["source_path"] = str(path)
+            source_1m = one_minute_cache[symbol]
+            if source_1m:
+                interval_ms = BAR_INTERVAL_SECONDS["1m"] * 1000
+                source_bars = source_1m["bars"]
+                post_cutoff = [bar for bar in source_bars if cutoff_ms is not None and bar[0] + interval_ms > cutoff_ms]
+                one_minute_sources[symbol] = {"source_path": source_1m.get("source_path"), "source_kind": source_1m.get("source_kind"),
+                                              "timeframe": "1m", "source_row_count": len(source_bars),
+                                              "source_first_bar_start_ms": source_bars[0][0] if source_bars else None,
+                                              "source_end_ms": source_bars[-1][0] + interval_ms if source_bars else None,
+                                              "rows_usable_by_cutoff_count": len(source_bars) - len(post_cutoff),
+                                              "rows_after_cutoff_or_crossing_cutoff_excluded_count": len(post_cutoff),
+                                              "first_excluded_bar_start_ms": post_cutoff[0][0] if post_cutoff else None,
+                                              "last_excluded_bar_start_ms": post_cutoff[-1][0] if post_cutoff else None}
+                one_minute = audit_lifecycle(lifecycle, source_1m, cutoff_ms)
+        result = primary
         if result:
+            if primary and one_minute:
+                chosen = one_minute if _evidence_rank(one_minute) > _evidence_rank(primary) else primary
+                result = {**chosen, "primary_15m_classification": primary["classification"],
+                          "one_minute_refinement_classification": one_minute["classification"],
+                          "one_minute_refinement_has_eligible_bars": one_minute["eligible_bar_count"] > 0}
             rows.append(result)
     counts = {}
     for row in rows:
         key = row["classification"]
         counts[key] = counts.get(key, 0) + 1
-    return {"schema_version": 1, "source_inventory": source, "audit_cutoff_ms": cutoff_ms,
-            "bar_source_policy": "canonical per-symbol NPZ 15m OHLC first; consolidated JSON fallback 1m then 3m then 15m",
-            "counts_by_classification": counts, "fixed_stop_lifecycle_count": len(rows), "lifecycles": rows}
+    excluded_source_rows = sum(row["rows_after_cutoff_or_crossing_cutoff_excluded_count"] or 0 for row in bar_sources.values())
+    excluded_source_rows += sum(row["rows_after_cutoff_or_crossing_cutoff_excluded_count"] or 0 for row in one_minute_sources.values())
+    return {"schema_version": 1, "source_inventory": inventory_source, "audit_cutoff_ms": cutoff_ms,
+            "bar_source_policy": "canonical per-symbol NPZ 15m OHLC primary; consolidated 1m OHLC refines lifecycles when a 1m file exists; if NPZ is missing use consolidated 1m, then 3m, then 15m",
+            "post_cutoff_or_cutoff_crossing_source_rows_excluded_count": excluded_source_rows,
+            "bar_sources_by_symbol": bar_sources, "one_minute_sources_by_symbol": one_minute_sources,
+            "counts_by_classification": counts,
+            "fixed_stop_lifecycle_count": len(rows), "lifecycles": rows}
+
+
+def _evidence_rank(result):
+    category = result.get("classification")
+    if category == "CLOSED_BAR_GROSS_PROFIT_OPPORTUNITY":
+        return 4
+    if category == "POSSIBLE_INTRABAR_ONLY_OHLC_BOUND":
+        return 3
+    if category == "NO_CLOSED_BAR_GROSS_PROFIT_EVIDENCE" and result.get("eligible_bar_count", 0):
+        return 2
+    if result.get("eligible_bar_count", 0):
+        return 1
+    return 0
 
 
 def main():

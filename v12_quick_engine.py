@@ -2241,6 +2241,7 @@ AUTO_WIRED_PARAMS = [
     "OPPOSITE_LOSER_HEDGE_PROTECT_REQUIRE_WT_3M",
     "OPTIMAL_HOLD_BARS_15M",
     "OPTIMAL_HOLD_BARS_3M",
+    "OPTIMAL_HOLD_BARS_EXIT_ENABLED",
     "OPTIONS_ALERT_ABS_LOSS_PP",
     "OPTIONS_ALERT_DROP_PP",
     "OPTIONS_AUGMENT_INTO_LOSS_BLOCK_ENABLED",
@@ -8971,6 +8972,7 @@ class QuickConfig:
     OPPOSITE_LOSER_HEDGE_PROTECT_REQUIRE_WT_3M: bool = False
     OPTIMAL_HOLD_BARS_15M: int = 999
     OPTIMAL_HOLD_BARS_3M: int = 999
+    OPTIMAL_HOLD_BARS_EXIT_ENABLED: bool = True
     OPTIONS_ALERT_ABS_LOSS_PP: float = 25.0
     OPTIONS_ALERT_DROP_PP: float = 5.0
     OPTIONS_AUGMENT_INTO_LOSS_THRESHOLD: float = 0.85
@@ -10454,6 +10456,12 @@ def _ema_blanket_final_entry_mask(npz, n, is_long, cfg, close, safe):
     return _tyf.ema_blanket_pass_vec(npz, n, is_long, cfg, safe)
 
 
+class _DecisionBlockMap(dict):
+    def __init__(self):
+        super().__init__()
+        self.size_multipliers = {}
+
+
 def compute_reentry_blocks(npz, n, is_long, cfg):
     """Returns dict of block_name -> boolean array (True = block fires)."""
     close = _base_safe(npz, "close", n, cfg)
@@ -10486,7 +10494,7 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
     ha_15m = _ha_int(npz, "ha_15m", n)
     ha_1h = _ha_int(npz, "ha_1h", n)
 
-    blocks = {}
+    blocks = _DecisionBlockMap()
     # 2026-10-06 USER full-parity: GOLDEN_RULE loop trigger (breakout 0.1x / retest 5.0x + consensus + veto).
     # Shared twin of ez_manage._golden_rule_loop. Inserted FIRST so golden bars carry the golden reason.
     if bool(getattr(cfg, "GOLDEN_RULE_ENABLED", True)):
@@ -10669,7 +10677,11 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
             )
     if cfg.REENTRY_B04_DC_RETEST_ENABLED:
         from vec_decisions.ez_missing_b04_retest import dc_high_break_retest_mask
-        blocks["B04"] = dc_high_break_retest_mask(npz, n, is_long, cfg, _safe)[0]
+        _b04_fire, _b04_mult, _ = dc_high_break_retest_mask(
+            npz, n, is_long, cfg, _safe
+        )
+        blocks["B04"] = _b04_fire
+        blocks.size_multipliers["B04"] = _b04_mult
     if cfg.REENTRY_B10_STOCH_REV_ENABLED:
         if is_long:
             blocks["B10"] = (
@@ -18163,6 +18175,30 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     if str(getattr(cfg, "MODE", "crypto")) == "tradier" and bool(getattr(cfg, "BREAKOUT_RETEST_ARMED_ENABLED", False)):
         from vec_decisions.tradier_missing_rule_a_retest import rule_a_retest_mask
         _rule_a_retest_mask = rule_a_retest_mask(npz, n, is_long, cfg, _safe)
+    _tr_exit15 = str(getattr(cfg, "MODE", "crypto")) == "tradier" and not bool(
+        getattr(cfg, "LTF_SUB15M_TRADING_ENABLED", False)
+    )
+    _k5m_bounce_on = _tr_exit15 and bool(getattr(cfg, "EXIT_K5M_BOUNCE_ENABLED", False))
+    _k5m_dc_low15 = _k5m_dc_high15 = _k5m_k15 = None
+    if _k5m_bounce_on:
+        from vec_decisions.tradier_missing_exit_k5m_bounce_15m import _previous_channel
+        _k5m_dc_low15 = _previous_channel(npz, "dc_low_15m", n, _safe)
+        _k5m_dc_high15 = _previous_channel(npz, "dc_high_15m", n, _safe)
+        _k5m_k15 = np.asarray(_safe(npz, "stoch_k_15m", n, 50.0), dtype=float)
+    _rule_b_exit_on = _tr_exit15 and bool(getattr(cfg, "RULE_B_5M_EXIT_ENABLED", False))
+    if _rule_b_exit_on:
+        _rule_b_low15 = np.asarray(_safe(npz, "low_15m", n, 0.0), dtype=float)
+        _rule_b_low15_prev = np.asarray(_safe(npz, "low_15m_prev", n, np.nan), dtype=float)
+        _rule_b_high15 = np.asarray(_safe(npz, "high_15m", n, 0.0), dtype=float)
+        _rule_b_high15_prev = np.asarray(_safe(npz, "high_15m_prev", n, np.nan), dtype=float)
+        if np.all(~np.isfinite(_rule_b_low15_prev)):
+            _rule_b_low15_prev = np.roll(_rule_b_low15, 1)
+            if n:
+                _rule_b_low15_prev[0] = 0.0
+        if np.all(~np.isfinite(_rule_b_high15_prev)):
+            _rule_b_high15_prev = np.roll(_rule_b_high15, 1)
+            if n:
+                _rule_b_high15_prev[0] = 0.0
     # 2026-10-17 STOP_RECLAIM_REENTRY inputs (vec_decisions/stop_reclaim.py) — only built when the switch is on
     _sr_on = _srm.enabled(cfg)
     _sr_xst, _rt_xst = [-1, -1, 0.0], [-1, -1, 0.0]  # 2026-10-17 speed: running-extreme state (_running_ext)
@@ -18386,14 +18422,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _entry_blocks_cache = _setup_memo("reentry_blocks", compute_reentry_blocks, cfg, npz, n, is_long, lambda: compute_reentry_blocks(npz, n, is_long, cfg))
     except Exception:
         _entry_blocks_cache = {}
-    _b04_size_mult = np.ones(n, dtype=float)
-    if bool(cfg.REENTRY_B04_DC_RETEST_ENABLED):
-        try:
-            from vec_decisions.ez_missing_b04_retest import dc_high_break_retest_mask
-
-            _, _b04_size_mult, _ = dc_high_break_retest_mask(npz, n, is_long, cfg, _safe)
-        except Exception:
-            pass
+    _b04_size_mult = getattr(_entry_blocks_cache, "size_multipliers", {}).get(
+        "B04", np.ones(n, dtype=float)
+    )
 
     # 2026-09-30 GREY-SWITCH WIRING — exits shared with live stocks (tradier_manage GREY_WIRE hook) via
     # vec_decisions.grey_wire_exits (crypto live source of truth: ez_manage.process_position). Every enable
@@ -20604,6 +20635,54 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         except Exception:
             pass
         held_bars = i - pos["entry_bar"]
+        _hold_bars_fire = False
+        if pos is not None and not is_tradier and bool(
+            getattr(cfg, "OPTIMAL_HOLD_BARS_EXIT_ENABLED", True)
+        ):
+            try:
+                from vec_decisions.ez_missing_hold_bars_exit import (
+                    optimal_hold_bars_exit_live_adapter,
+                )
+
+                _entry_bar = int(pos.get("entry_bar", -1))
+                _opened_ts = (
+                    float(ts[_entry_bar])
+                    if 0 <= _entry_bar < len(ts)
+                    else 0.0
+                )
+                _last_aug_bar = int(pos.get("last_aug_bar", -1))
+                _last_aug_ts = (
+                    float(ts[_last_aug_bar])
+                    if 0 <= _last_aug_bar < len(ts)
+                    else 0.0
+                )
+                if not _opened_ts and not _last_aug_ts:
+                    for _hold_event in reversed(events):
+                        if _hold_event.get("type") == "AUGMENT":
+                            _last_aug_ts = float(_hold_event.get("ts") or 0.0)
+                            break
+                _hold_gain_dollars = pos["realized"] + (
+                    (px - pos["avg_price"]) * pos["qty"]
+                    if is_long
+                    else (pos["avg_price"] - px) * pos["qty"]
+                )
+                _hold_gain_pct = (
+                    _hold_gain_dollars / pos["deployed"] * 100.0
+                    if pos["deployed"] > 0
+                    else 0.0
+                )
+                _hold_now_ts = float(ts[i]) if i < len(ts) else 0.0
+                _hold_bars_fire = optimal_hold_bars_exit_live_adapter(
+                    cfg,
+                    _hold_gain_pct,
+                    _hold_now_ts,
+                    _opened_ts,
+                    _last_aug_ts,
+                    float(pos.get("qty", 0.0)) > 0.0,
+                    False,
+                )
+            except Exception:
+                _hold_bars_fire = False
         if _lnx_dc15_on:  # USER 2026-10-28 DC15M_FORCE_EXIT decision for this bar (shared with ez_manage/tradier_manage)
             _dc15_pre_bar = -1
             try:
@@ -22906,6 +22985,47 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                     closed, reason = True, _wsx_reason
             except Exception:
                 pass
+        if not closed and pos is not None and _k5m_bounce_on:
+            from vec_decisions.tradier_missing_exit_k5m_bounce_15m import exit_k5m_bounce_fire
+            _dc15 = float(_k5m_dc_low15[i] if is_long else _k5m_dc_high15[i]) if i < n else 0.0
+            _k15 = float(_k5m_k15[i]) if i < n else 50.0
+            _k5m_fire = exit_k5m_bounce_fire(
+                float(px), _dc15 if is_long else 0.0, _dc15 if not is_long else 0.0,
+                _k15, live_pnl_pct, is_long,
+                float(getattr(cfg, "NOLOSS_MIN_PROFIT_PCT_TRADIER", 3.0)),
+            )
+            if _k5m_fire:
+                if is_long:
+                    reason = f"K5M_REAL_DROP_DC_k5:{_k15:.1f}<dc5:{_dc15:.2f}_gain:{live_pnl_pct:.2f}%"
+                else:
+                    reason = f"K5M_REAL_RISE_DC_k5:{_k15:.1f}>dc5:{_dc15:.2f}_gain:{live_pnl_pct:.2f}%"
+                closed = not vec_decisions.noloss_gate.noloss_blocks(cfg, reason, live_pnl_pct)
+                if closed and (_qta_eb_block is not None and bool(_qta_eb_block[i])):
+                    closed = False
+                if closed and _htfv_block(i, reason):
+                    closed = False
+        if not closed and pos is not None and _rule_b_exit_on:
+            from vec_decisions.tradier_missing_rule_b_exit_15m import rule_b_exit_15m_fires
+            _rule_b_ind = {
+                "low_15m": float(_rule_b_low15[i]),
+                "low_15m_prev": float(_rule_b_low15_prev[i]),
+                "high_15m": float(_rule_b_high15[i]),
+                "high_15m_prev": float(_rule_b_high15_prev[i]),
+            }
+            _rule_b_fire, _ = rule_b_exit_15m_fires(
+                lambda _k, _d=None: getattr(cfg, _k, _d),
+                is_long, _rule_b_ind, live_pnl_pct,
+            )
+            if _rule_b_fire:
+                reason = (
+                    f"RULE_B_5M_LL_LH_gain:{live_pnl_pct:.2f}%"
+                    if is_long else f"RULE_B_5M_HH_HL_gain:{live_pnl_pct:.2f}%"
+                )
+                closed = not vec_decisions.noloss_gate.noloss_blocks(cfg, reason, live_pnl_pct)
+                if closed and (_qta_eb_block is not None and bool(_qta_eb_block[i])):
+                    closed = False
+                if closed and _htfv_block(i, reason):
+                    closed = False
         if closed:
             pos["fees"] += abs(pos["qty"] * px) * half_fee
             pnl_dollars = (
@@ -23601,13 +23721,13 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _xc_ok = _xc_loss or (
             _gftf.get("exit_confirm") is None or bool(_gftf["exit_confirm"][i])
         )
-        if exit_sig[i] and held_bars >= min_hold and _xc_ok:
-            if 0 < satoshit_partial < 1.0 and not _sd_ok("REDUCE"):
+        if _hold_bars_fire or (exit_sig[i] and held_bars >= min_hold and _xc_ok):
+            if not _hold_bars_fire and 0 < satoshit_partial < 1.0 and not _sd_ok("REDUCE"):
                 # SCALE_DIRECTION: the SATOSHIT partial sells momentum STRENGTH (long: RSI>=55 + K>=60) —
                 # 2,482 measured reduces. Price rising in favour is augment territory: hold this bar, do not
                 # fall through to the full technical exit below (that would CLOSE instead of scale out).
                 continue
-            if 0 < satoshit_partial < 1.0:
+            if not _hold_bars_fire and 0 < satoshit_partial < 1.0:
                 reduce_qty = pos["qty"] * satoshit_partial
                 realized = (
                     (px - pos["avg_price"]) * reduce_qty
@@ -23675,7 +23795,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 pnl_preview / pos["deployed"] * 100 if pos["deployed"] > 0 else 0.0
             )
             # W2-GR5M STAGED: sole-GR attribution (gain/age veto + NOLOSS bypass).
-            _grd_sole_gr = (
+            _grd_sole_gr = not _hold_bars_fire and (
                 _grd_exit_raw is not None
                 and i < len(_grd_exit_raw)
                 and bool(_grd_exit_raw[i])
@@ -23720,7 +23840,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         continue
                 else:
                     continue
-            _tech_reason = "TECHNICAL_EXIT"
+            _tech_reason = "HOLD_BARS_EXIT" if _hold_bars_fire else "TECHNICAL_EXIT"
             if _grd_sole_gr:
                 _tech_reason = "GR_HTF_DIRECT_EXIT_%d" % int(
                     _grd_exit_score[i]
@@ -23916,7 +24036,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                 )
             except Exception:
                 pass
-            if _tech_reason == "TECHNICAL_EXIT":
+            if not _hold_bars_fire and _tech_reason == "TECHNICAL_EXIT":
                 _bb_recovery_info = getattr(cfg, "BB_RECOVERY_EXIT_INFO", None)
                 _bb_recovery_mask = (
                     _bb_recovery_info.get("mask")
@@ -23950,18 +24070,18 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     if i < len(_bt_mask) and bool(_bt_mask[i]):
                         _tech_reason = f"BT_{_bt_fam}_EXIT"
                         break
-            if _tech_reason == "TECHNICAL_EXIT" and not bool(
+            if not _hold_bars_fire and _tech_reason == "TECHNICAL_EXIT" and not bool(
                 getattr(cfg, "VEC_EXIT_SIG_IS_TRIGGER", False)
             ):
                 continue
-            if (
+            if not _hold_bars_fire and (
                 _tech_reason == "TECHNICAL_EXIT"
                 and pnl_pct_preview
                 <= float(getattr(cfg, "VEC_GENERIC_EXIT_MIN_GAIN_PCT", 0.0) or 0.0)
                 and float(getattr(cfg, "VEC_GENERIC_EXIT_MIN_GAIN_PCT", 0.0) or 0.0) > 0
             ):
                 continue  # N2/011 live gain floor
-            if vec_decisions.noloss_gate.noloss_blocks(cfg, _tech_reason, live_pnl_pct):
+            if not _hold_bars_fire and vec_decisions.noloss_gate.noloss_blocks(cfg, _tech_reason, live_pnl_pct):
                 _bb_recov_admitted = False
                 if _bb_recovery_on and pos.get("avg_price", 0) > 0:
                     from vec_decisions.bb_recovery_exit import (
@@ -23997,7 +24117,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     if is_long
                     else "BB_RECOVERY_EXIT_TRADIER_SHORT"
                 )
-            if _htfv_block(i, _tech_reason):
+            if not _hold_bars_fire and _htfv_block(i, _tech_reason):
                 continue  # lane-D: stocks HTF_TREND_VETO_ON_REDUCE
             _exit_fee = abs(pos["qty"] * px) * half_fee
             pnl_dollars = pnl_preview - (pos["fees"] + _exit_fee)
