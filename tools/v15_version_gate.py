@@ -90,6 +90,36 @@ def deploy_targets():
 def deploy_complete(records):
     """PASS deploy is complete when every MANDATORY record is ok; optional (ephemeral) misses are reported, never blocking."""
     return bool(records) and all(x["ok"] for x in records if not x.get("optional"))
+
+
+def install_model_bundle(source, destination, expected):
+    source, destination = Path(source), Path(destination)
+    if model_bundle_pin(source) != expected:
+        raise ValueError("candidate model bundle changed before champion installation")
+    for relative in expected["artifact_sha256"]:
+        src = source / relative
+        dst = destination / relative
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        tmp = dst.with_name(f".{dst.name}.model-gate.tmp")
+        shutil.copy2(src, tmp)
+        if sha256(tmp) != expected["artifact_sha256"][relative]:
+            tmp.unlink(missing_ok=True)
+            raise ValueError(f"temporary champion model copy failed SHA256: {relative}")
+        os.replace(tmp, dst)
+    relative = MODEL_BUNDLE_PATH
+    src = source / relative
+    dst = destination / relative
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dst.with_name(f".{dst.name}.model-gate.tmp")
+    shutil.copy2(src, tmp)
+    if hashlib.sha256(tmp.read_bytes()).hexdigest() != expected["manifest_sha256"]:
+        tmp.unlink(missing_ok=True)
+        raise ValueError("temporary champion model declaration failed SHA256")
+    os.replace(tmp, dst)
+    actual = model_bundle_pin(destination)
+    if actual != expected:
+        raise ValueError("installed CHAMP model bundle does not equal the candidate bundle")
+    return actual
 # USER 2026-10-17 ("all of it should be fed into the next v15_pilot calculations then it gets into live trading if
 # proven successful"): switch_types.py and switch_parity.py were NOT gated, yet v15_pilot imports both and
 # tools/switch_types.coerce IS the pilot's type law (_types_coerce_reason, v15_pilot:2193) — "a candidate the engine
@@ -269,6 +299,32 @@ def validate_model_training_windows(spec, reference_root, candidate_root, snapsh
     return actual
 
 
+def validate_model_authority_eligibility(spec, candidate_root, snapshot_pin):
+    if not spec.get("promotion_eligible"):
+        return False
+    proof_spec = spec.get("authority_eligibility") or {}
+    path = Path(proof_spec.get("path") or "")
+    if path.is_symlink() or not path.is_file():
+        raise ValueError("promotion eligibility requires a separate 101-unique-evidence proof receipt")
+    raw = path.read_bytes()
+    if hashlib.sha256(raw).hexdigest() != proof_spec.get("sha256"):
+        raise ValueError("promotion eligibility proof receipt SHA256 differs from the pinned declaration")
+    proof = json.loads(raw)
+    if proof.get("schema") != "v18_brain_authority_eligibility/1" or proof.get("snapshot_manifest_sha256") != snapshot_pin.get("manifest_sha256"):
+        raise ValueError("promotion eligibility proof does not identify the exact frozen snapshot")
+    sides = set(snapshot_pin.get("sides") or [])
+    if set(proof.get("sides") or []) != sides:
+        raise ValueError("promotion eligibility proof does not cover all eight pinned sides")
+    counts = proof.get("min_unique_evidence_by_side") or {}
+    if set(counts) != sides or any(not isinstance(counts[side], int) or counts[side] < 101 for side in sides):
+        raise ValueError("promotion eligibility proof lacks at least 101 unique evidence points on every pinned side")
+    candidate = model_bundle_pin(candidate_root)
+    brain_hashes = {category: candidate["artifact_sha256"].get(f"data/brain/v18_brain_{category}.json") for category in MODEL_CATEGORIES}
+    if proof.get("candidate_brain_sha256_by_category") != brain_hashes:
+        raise ValueError("promotion eligibility proof is not bound to the candidate brain artifacts")
+    return True
+
+
 def model_runtime_pin(runtime_spec):
     runtime_spec = runtime_spec or {}
     manifest_path = Path(runtime_spec.get("path") or "").resolve()
@@ -387,6 +443,7 @@ def model_comparison_spec_pin(path, reference_root, candidate_root, reference_pi
         if reference_pin.get("artifact_sha256", {}).get(f"data/brain/{name}" if name.startswith("v18_brain_") else f"data/learn/{name}") != record["sha256"]:
             raise ValueError(f"reference model bundle is not byte-identical to current champion resolver output: {name}")
     training_windows = validate_model_training_windows(spec, reference_root, candidate_root, snapshot_pin)
+    authority_eligibility_verified = validate_model_authority_eligibility(spec, candidate_root, snapshot_pin)
     base_flags = dict(base_flags or {})
     cli_flags = cli_flags or {}
     reference_flags = model_arm_flags(spec, "reference", base_flags, {})
@@ -402,7 +459,7 @@ def model_comparison_spec_pin(path, reference_root, candidate_root, reference_pi
             raise ValueError(f"reference runtime flags omit or alter actual champion setting {key}")
     if not reference_flags or not candidate_flags:
         raise ValueError("comparison spec must pin reference and candidate runtime flags")
-    return {"comparison_id": spec.get("comparison_id"), "path": str(path), "sha256": hashlib.sha256(raw).hexdigest(), "runtime": runtime_pin, "training_market_max_by_category": training_windows, "promotion_eligible": bool(spec.get("promotion_eligible")), "base_flags": base_flags, "reference_flags": reference_flags, "candidate_flags": candidate_flags}
+    return {"comparison_id": spec.get("comparison_id"), "path": str(path), "sha256": hashlib.sha256(raw).hexdigest(), "runtime": runtime_pin, "training_market_max_by_category": training_windows, "promotion_eligible": authority_eligibility_verified, "authority_eligibility": spec.get("authority_eligibility"), "base_flags": base_flags, "reference_flags": reference_flags, "candidate_flags": candidate_flags}
 
 
 def stage_model_bundle(source, destination):
@@ -763,7 +820,10 @@ def deploy(cd, meta):
             want = md5(src)
             if host == "local":
                 dst = Path(root) / rel
-                if not dst.parent.exists():
+                if GATED_DATA_RE.fullmatch(rel) or rel == MODEL_BUNDLE_PATH:
+                    dst.parent.mkdir(parents=True, exist_ok=True)
+                elif not dst.parent.exists():
+                    out.append({"host": host, "root": str(root), "file": rel, "ok": False, **({"optional": True} if optional else {})})
                     continue
                 tmp = dst.with_name(f".{dst.name}.gate.tmp")
                 shutil.copy2(src, tmp)
@@ -772,9 +832,9 @@ def deploy(cd, meta):
             else:
                 tmpr = f"{root}/.{Path(rel).name}.gate.tmp"
                 subprocess.run(["rsync", "-a", "-e", "ssh -o BatchMode=yes -o ConnectTimeout=10", str(src), f"{host}:{tmpr}"], check=False)
-                if GATED_DATA_RE.match(rel) and subprocess.run(["ssh", "-o", "BatchMode=yes", host, f"test -d {root}/{Path(rel).parent}"]).returncode != 0:
-                    continue
-                r = subprocess.run(["ssh", "-o", "BatchMode=yes", host, f"test -d {root}/{Path(rel).parent} && mv {tmpr} {root}/{rel} && md5sum {root}/{rel} || rm -f {tmpr}"], capture_output=True, text=True)
+                make_parent = GATED_DATA_RE.fullmatch(rel) or rel == MODEL_BUNDLE_PATH
+                parent_cmd = f"mkdir -p {root}/{Path(rel).parent} && " if make_parent else f"test -d {root}/{Path(rel).parent} && "
+                r = subprocess.run(["ssh", "-o", "BatchMode=yes", host, f"{parent_cmd}mv {tmpr} {root}/{rel} && md5sum {root}/{rel} || rm -f {tmpr}"], capture_output=True, text=True)
                 got = (r.stdout.split() or [""])[0]
             out.append({"host": host, "root": str(root), "file": rel, "ok": got == want, **({"optional": True} if optional else {})})
     return out
@@ -927,6 +987,9 @@ def apply_model_overlay_acceptance(cd, meta, decision):
     promotion_eligible = bool(((overlay.get("comparison_spec") or {}).get("promotion_eligible")))
     if not promotion_eligible:
         reasons.append("model promotion eligibility is not proven by the pinned comparison spec")
+    expected_candidate_files = {MODEL_BUNDLE_PATH} | set((overlay.get("candidate") or {}).get("artifact_sha256", {}))
+    if set(meta.get("files") or {}) != expected_candidate_files:
+        reasons.append("candidate submission is not an exact model-only 33-file overlay")
     try:
         current_snapshot = model_snapshot_pin()
         if current_snapshot != overlay.get("snapshot"):
@@ -1004,7 +1067,7 @@ def apply_model_overlay_acceptance(cd, meta, decision):
             quality_pass = quality_change >= 20.0
             if not quality_pass:
                 reasons.append("aggregate OOS quality change is below 20%")
-        baseline_wall, candidate_wall = float(whole_board_wall["baseline"]), float(whole_board_wall["candidate"])
+        baseline_wall, candidate_wall = sum(baseline_walls), sum(candidate_walls)
         if not math.isfinite(baseline_wall) or not math.isfinite(candidate_wall) or baseline_wall <= 0 or candidate_wall <= 0:
             raise ValueError("whole-board active wall-clock measurements are missing, non-finite, or non-positive")
         time_reduction = 100.0 * (baseline_wall - candidate_wall) / baseline_wall
@@ -1032,8 +1095,10 @@ def apply_model_overlay_acceptance(cd, meta, decision):
         "quality_change_label": quality_label,
         "quality_pass": quality_pass,
         "side_regressions": side_regressions,
-        "baseline_whole_board_wall_seconds": baseline_wall,
-        "candidate_whole_board_wall_seconds": candidate_wall,
+        "baseline_aggregate_side_processing_wall_seconds": baseline_wall,
+        "candidate_aggregate_side_processing_wall_seconds": candidate_wall,
+        "baseline_run_elapsed_seconds_diagnostic": whole_board_wall.get("baseline"),
+        "candidate_run_elapsed_seconds_diagnostic": whole_board_wall.get("candidate"),
         "whole_board_time_reduction_pct": time_reduction,
         "speed_pass": speed_pass,
         "training_windows_verified": training_windows_verified,
@@ -1077,6 +1142,8 @@ def validate_model_run_evidence(run_dir, label, run_root, expected_sides, overla
         reasons.append(f"{arm} effective V18_/V20_ environment hash differs from explicitly pinned arm flags")
     if not isinstance(payload.get("retry_count"), int) or payload.get("retry_count") < 0:
         reasons.append(f"{arm} retry/requeue count is absent or invalid")
+    elif payload.get("retry_count") != 0:
+        reasons.append(f"{arm} used {payload.get('retry_count')} memory requeues; per-side processing-time comparison is invalid")
     board_wall = payload.get("board_wall_s")
     if not isinstance(board_wall, (int, float)) or not math.isfinite(float(board_wall)) or board_wall <= 0:
         reasons.append(f"{arm} active whole-board wall measurement is absent or invalid")
@@ -1149,10 +1216,18 @@ def finalize(cd, meta, d):
     if d["PASS"]:
         meta["deploy"] = deploy(cd, meta)
         if deploy_complete(meta["deploy"]):
-            rsync_tree(cd / "tree", CHAMP / "tree")
-            _prev = json.loads((CHAMP / "meta.json").read_text()) if (CHAMP / "meta.json").exists() else {}
-            _env = result_env(meta["env"]) if meta.get("env") is not None else champ_env(_prev)
-            write_json_atomic(CHAMP / "meta.json", {"at": now(), "from": f"candidate {meta['id']}", "pilot_md5": md5(CHAMP / "tree" / "v15_pilot.py"), "flags": meta.get("flags") or {}, "env": _env, "previous_pilot_md5": _prev.get("pilot_md5"), "decision": {k: v for k, v in d.items() if k != "rows"}})
+            try:
+                if meta.get("model_overlay"):
+                    install_model_bundle(cd / "tree", CHAMP / "tree", meta["model_overlay"]["candidate"])
+                rsync_tree(cd / "tree", CHAMP / "tree")
+                if meta.get("model_overlay") and model_bundle_pin(CHAMP / "tree") != meta["model_overlay"]["candidate"]:
+                    raise ValueError("CHAMP resolved model bundle differs from the accepted candidate")
+                _prev = json.loads((CHAMP / "meta.json").read_text()) if (CHAMP / "meta.json").exists() else {}
+                _env = result_env(meta["env"]) if meta.get("env") is not None else champ_env(_prev)
+                write_json_atomic(CHAMP / "meta.json", {"at": now(), "from": f"candidate {meta['id']}", "pilot_md5": md5(CHAMP / "tree" / "v15_pilot.py"), "flags": meta.get("flags") or {}, "env": _env, "previous_pilot_md5": _prev.get("pilot_md5"), "decision": {k: v for k, v in d.items() if k != "rows"}})
+            except (OSError, ValueError, KeyError) as exc:
+                meta["state"] = "PASS_DEPLOY_INCOMPLETE"
+                meta["model_install_error"] = str(exc)
         else:
             meta["state"] = "PASS_DEPLOY_INCOMPLETE"
     write_json_atomic(cd / "meta.json", meta)

@@ -7627,38 +7627,18 @@ class AdvancedSignalRater:
             _wt_score_delta, _wt_score_reasons, _wt_trigger_count = _wt_intelligence_score_scalar(_wt_intelligence_values, is_long)
             score += _wt_score_delta
             reasons.extend(_wt_score_reasons)
-            if rel_vol > 1.5:
-                score += 1.0
-                reasons.append("HighVol")
-            elif rel_vol < 0.5:
-                score -= 1.5
-                reasons.append("LowVol")
-            z_conviction = safe_fetch_float(
-                ind.get(f'zconviction_augment_{"long" if is_long else "short"}'), 0.0
-            )
-            if z_conviction > 20:
-                score += 2.0
-                reasons.append(f"Z_Conviction({int(z_conviction or 0.0)})")
-            if is_long:
-                if current_price > dc_high_1h * 0.995 and rel_vol < 2.0:
-                    score -= 2.0
-                    reasons.append("Near_1H_Res")
-            else:
-                if current_price < dc_low_1h * 1.005 and rel_vol < 2.0:
-                    score -= 2.0
-                    reasons.append("Near_1H_Sup")
-            if trend_ok and pa_confirm:
+            from vec_decisions.asr_volume_setup_score import volume_setup_scalar as _asr_volume_setup_scalar
+            _asr_volume_setup_values = {
+                "rel_vol": rel_vol, "z_conviction": safe_fetch_float(ind.get(f'zconviction_augment_{"long" if is_long else "short"}'), 0.0),
+                "current_price": current_price, "dc_high_1h": dc_high_1h, "dc_low_1h": dc_low_1h,
+                "trend_ok": trend_ok, "pa_confirm": pa_confirm, "pr_confirm": pr_confirm,
+                "k_1m_prev": k_1m_prev, "k_3m": k_3m, "k_1m": k_1m,
+            }
+            _asr_volume_delta, _asr_volume_reasons, _asr_setup_valid = _asr_volume_setup_scalar(_asr_volume_setup_values, is_long)
+            score += _asr_volume_delta
+            reasons.extend(_asr_volume_reasons)
+            if _asr_setup_valid:
                 valid_setup = True
-                reasons.append("Trend+PA")
-            elif pr_confirm:
-                valid_setup = True
-                reasons.append("ReEntry_Struct")
-            elif is_long and k_1m_prev < 10 and k_3m < 25 and k_1m > k_1m_prev:
-                valid_setup = True
-                reasons.append("Sniper_Long")
-            elif not is_long and k_1m_prev > 90 and k_3m > 75 and k_1m < k_1m_prev:
-                valid_setup = True
-                reasons.append("Sniper_Short")
             logger.info(f" in rate3 {position_key} {score} ")
             history_score_mod = 0.0
             if tracker_data and not is_exit:

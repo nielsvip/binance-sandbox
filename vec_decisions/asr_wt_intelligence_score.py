@@ -165,13 +165,13 @@ def wt_intelligence_score_array(values, is_long):
         trigger_count = (pct1 < 30).astype(int) + (pct4 < 30).astype(int)
         trigger_count += np.isin(div1, ("BULL", "HIDDEN_BULL"))
         trigger_count += np.isin(div4, ("BULL", "HIDDEN_BULL"))
-        trigger_count += (struct4 == "HL") + (structD == "HL")
+        trigger_count += (struct4 == "HL").astype(int) + (structD == "HL").astype(int)
     else:
         struct4 = peak4
         structD = arrays["wt_peak_structure_D"]
         trigger_count = (pct1 > 70).astype(int) + (pct4 > 70).astype(int)
         trigger_count += np.isin(div1, ("BEAR", "HIDDEN_BEAR"))
         trigger_count += np.isin(div4, ("BEAR", "HIDDEN_BEAR"))
-        trigger_count += (struct4 == "LH") + (structD == "LH")
+        trigger_count += (struct4 == "LH").astype(int) + (structD == "LH").astype(int)
     score += np.where(trigger_count >= 4, 4.0, np.where(trigger_count >= 3, 2.5, np.where(trigger_count >= 2, 1.0, np.where(trigger_count == 0, -3.0, 0.0))))
     return score, trigger_count
