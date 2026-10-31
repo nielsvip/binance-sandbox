@@ -593,11 +593,16 @@ def index_page(manifest: dict) -> str:
     rows = []
     for e in sorted(manifest["entries"], key=lambda e: (e["status"] != "OK", -(e.get("metrics") or {}).get("gain_pct", -1e9) if e["status"] == "OK" else 0, e["symside"])):
         m, d, o = e.get("metrics") or {}, e.get("deltas") or {}, e.get("orig_metrics") or {}
+        chart_path = CHARTS / e["chart"]
+        chart_head = chart_path.open(encoding="utf-8", errors="replace").read(1200) if chart_path.is_file() else ""
+        title_match = re.search(r"<title>(.*?)</title>", chart_head, re.S | re.I)
+        chart_title = _html.unescape(title_match.group(1)) if title_match else e["symside"]
+        link = f"<a href='{_html.escape(e['chart'])}' title='{_html.escape(chart_title, quote=True)}'>{_html.escape(chart_title)}</a>"
         if e["status"] == "OK":
             halt = e.get("deterioration")
-            rows.append(f"<tr><td><a href='{e['chart']}'>{e['symside']}</a></td><td{' style=color:#ef4444 title=' + chr(34) + _html.escape('; '.join(halt)) + chr(34) if halt else ''}>{'HALTED' if halt else 'OK'}</td><td>{_fmt(m.get('gain_pct'))}</td><td>{_fmt(o.get('gain_pct'))}</td><td>{_fmt(d.get('gain_pct'), 2, True)}</td><td>{_fmt(m.get('bh_pct'))}</td><td>{m.get('trades')}</td><td>{_fmt(m.get('max_dd_pct'))}</td><td>{_fmt(m.get('tim_pct'))}</td><td>{e.get('board_cells_vintage') or 'UNAVAILABLE'}</td><td>{e.get('board_age_at_calc')}</td><td>{e.get('calculated_utc')}</td></tr>")
+            rows.append(f"<tr><td>{link}</td><td{' style=color:#ef4444 title=' + chr(34) + _html.escape('; '.join(halt)) + chr(34) if halt else ''}>{'HALTED' if halt else 'OK'}</td><td>{_fmt(m.get('gain_pct'))}</td><td>{_fmt(o.get('gain_pct'))}</td><td>{_fmt(d.get('gain_pct'), 2, True)}</td><td>{_fmt(m.get('bh_pct'))}</td><td>{m.get('trades')}</td><td>{_fmt(m.get('max_dd_pct'))}</td><td>{_fmt(m.get('tim_pct'))}</td><td>{e.get('board_cells_vintage') or 'UNAVAILABLE'}</td><td>{e.get('board_age_at_calc')}</td><td>{e.get('calculated_utc')}</td></tr>")
         else:
-            rows.append(f"<tr style='color:#ef4444'><td><a href='{e['chart']}'>{e['symside']}</a></td><td>FAIL</td><td colspan=10>{_html.escape(e.get('error', '')[:200])}</td></tr>")
+            rows.append(f"<tr style='color:#ef4444'><td>{link}</td><td>FAIL</td><td colspan=10>{_html.escape(e.get('error', '')[:200])}</td></tr>")
     return (
         "<!doctype html><html><head><meta charset=utf-8><title>V15 daily 30D charts</title>"
         "<style>body{font-family:system-ui,monospace;margin:12px;background:#0a0a0a;color:#e5e5e5}a{color:#93c5fd}table{border-collapse:collapse;font-size:11px}th{background:#1f2937;padding:4px}td{border:1px solid #333;padding:3px}</style></head><body>"

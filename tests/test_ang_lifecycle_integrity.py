@@ -7,6 +7,27 @@ from tools import vector_direct_trader as trader
 from tools import mac_positions_push_executors as push
 
 
+def test_multiple_orders_refresh_actual_broker_quantity(tmp_path):
+    obj = trader.Trader.__new__(trader.Trader)
+    obj.venue = "crypto"
+    obj.out = tmp_path
+    obj.a = SimpleNamespace(dry_run=False)
+    obj.done, obj.done_ts, obj.quiet = set(), {}, set()
+    obj.filled_open_anchors = set()
+    obj._entry_banned = lambda acct: False
+    rows, held_seen = [], []
+    obj._ledger = rows.append
+    obj.stops = SimpleNamespace(after_fill=lambda *args: "ok")
+    def size(order, held, price):
+        held_seen.append(held)
+        return min(order["qty"], held), "ok"
+    obj.broker = SimpleNamespace(positions=lambda acct: {"TESTUSDT_LONG": {"qty": 7, "price": 10}}, size=size, send=lambda *args: {"status": "FILLED"})
+    orders = [{"ss": "TESTUSDT_LONG", "act": "REDUCE", "qty": 3, "key": str(i), "why": "test"} for i in range(2)]
+    obj.send_orders("ang", orders, {"TESTUSDT_LONG": {"qty": 10, "price": 10}}, False)
+    assert held_seen == [10, 7]
+    assert [row["held"] for row in rows] == [10, 7]
+
+
 def test_terminal_reduction_uses_exit_bar_and_stays_flat_afterwards():
     ledger = [{"type": "OPEN", "bar": 0, "qty": 100, "price": 10}, {"type": "REDUCE", "bar": 1, "qty": 50, "price": 11}, {"type": "REDUCE", "bar_entry": 0, "bar_exit": 2, "qty": 50, "price": 12, "pnl_is_lifecycle": True}]
     position, actions = forward._vector_acts(ledger, 2, [100, 1000, 1900])

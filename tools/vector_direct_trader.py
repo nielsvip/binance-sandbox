@@ -1789,6 +1789,7 @@ class Trader:
 
     def send_orders(self, acct, orders, pos, killed):
         orders_n = 0
+        submitted_sides = set()
         if self.venue == "stocks" and not self.rebal_phase()[0]:
             for o in orders:
                 log(f"{acct} {o['ss']} {o['act']} HELD: stocks orders start at the 09:30 ET open (planning only)")
@@ -1800,6 +1801,13 @@ class Trader:
         for o in orders:
             orders_n += 1
             symbol, side = split_ss(o["ss"])
+            if self.venue == "crypto" and o["ss"] in submitted_sides:
+                try:
+                    pos = self.broker.positions(acct)
+                except Exception as exc:
+                    self._ledger({"event": "ORDER", "acct": acct, "ss": o["ss"], "act": o["act"], "key": o["key"], "status": "POSITION_REFRESH_FAILED", "detail": str(exc)[:160], "final": False})
+                    log(f"{acct} {o['ss']} {o['act']} held: broker position refresh failed: {str(exc)[:160]}")
+                    continue
             held = float((pos.get(o["ss"]) or {}).get("qty") or 0.0)
             row = {"event": "ORDER", "acct": acct, "ss": o["ss"], "act": o["act"], "key": o["key"], "why": o["why"], "held": held}
             if self.venue == "crypto" and o["act"] in ("OPEN", "AUGMENT") and (self.out / "EXITS_ONLY").exists():
@@ -1908,6 +1916,7 @@ class Trader:
                     log(f"REFUSED_UNPROTECTED_ENTRY {acct} {o['ss']} {o['act']}: {exc}")
                     continue
             try:
+                submitted_sides.add(o["ss"])
                 resp = self.broker.send(acct, o, qty)
                 row.update({"status": "SENT", "resp": resp, "final": True})
                 if o["act"] == "OPEN" and o.get("anchor") is not None and (str(resp.get("status") or "").upper() == "FILLED" or float(resp.get("executedQty") or 0) > 0):
