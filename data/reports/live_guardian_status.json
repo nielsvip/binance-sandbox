@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T10:03:10Z",
+ "ts": "2026-10-31T10:08:25Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 39,
    "open_positions": 15,
-   "unrealised_usd": -0.46,
+   "unrealised_usd": -0.35,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 66,
+   "fills_6h": 63,
    "open_positions": 12,
-   "unrealised_usd": 0.39,
+   "unrealised_usd": 0.37,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 14,
    "open_positions": 5,
-   "unrealised_usd": -0.14,
+   "unrealised_usd": -0.18,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,57 +127,57 @@
     "43587"
    ],
    "starts_30m": 1,
-   "log_age_s": 6.0
+   "log_age_s": 9.0
   },
   "men": {
    "pids": [
     "20386"
    ],
    "starts_30m": 1,
-   "log_age_s": 105.0
+   "log_age_s": 3.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 20.0
+   "log_age_s": 9.0
   },
   "inf": {
    "pids": [
     "34297"
    ],
-   "starts_30m": 2,
-   "log_age_s": 9.0
+   "starts_30m": 1,
+   "log_age_s": 1.0
   },
   "flz": {
    "pids": [
     "78263"
    ],
    "starts_30m": 1,
-   "log_age_s": 39.0
+   "log_age_s": 24.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 19252.0
+   "log_age_s": 19567.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 19567.0
+   "log_age_s": 19882.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T10:03:10Z",
+   "ts": "2026-10-31T10:08:25Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "fin:FIDAUSDT_SHORT",
    "evidence": "31 10:01:36 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:FIDAUSDT_SHORT: bypass MAX_ORDER_VALUE $20 / MAX_POSITION_SIZE $20 \u2014 restoring $38 on bounce (prior max 0.0000)"
   },
   {
-   "ts": "2026-10-31T10:03:10Z",
+   "ts": "2026-10-31T10:08:26Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:HYPEUSDT_LONG",
@@ -246,5 +246,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.97
+ "sweep_s": 1.47
 }
