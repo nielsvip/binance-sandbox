@@ -61,7 +61,7 @@ def _gain_and_trades(sym_side, ov, window_days):
     except Exception as e:
         return None, None, None, None, None, f"{type(e).__name__}: {str(e)[:90]}", None
     if not r.get("valid"):
-        return None, None, None, None, None, f"invalid: {str(r.get('invalid_reason'))[:80]}"
+        return None, None, None, None, None, f"invalid: {str(r.get('invalid_reason'))[:80]}", r.get("npz_provenance")
     led = r.get("execution_ledger") or []
     real = MG.realised_closes(led)
     if not real:
@@ -370,7 +370,7 @@ def apply_(a):
                 "h2h_npz_window_sha256": x.get("npz_window_sha256"),
                 "incumbent_source_sha256": d.get("incumbent_source_sha256")}
         try:
-            PS.upsert(ss, cand, snap, cand, meta, json_path=jp if jp.exists() else None)
+            PS.upsert(ss, cand, snap, cand, meta, json_path=jp if jp.exists() else None, expected_full_config_sha256=x.get("live_set_sha256"))
             back = PS.get_full_config(ss) or {}
             miss = [k for k, v in cand.items() if back.get(k) != v]
             if miss:

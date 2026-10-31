@@ -3,7 +3,7 @@
 # Runs from cron every 15 min. When free < S2_GUARD_MIN_FREE_GB (40) or use% > S2_GUARD_MAX_USE (85) it prunes ONLY:
 #   A decided version-gate runs (~/v15_bench/runs/*__gate_<ID>_*): root/ tree + per-side eval_cache.db* (results.json + per-side out/progress/pilot.log kept)
 #   B decided throughput-proof arms (~/v15_throughput_proof/*/arm_*, proof.json present, idle >24h): root/ + eval_cache.db*
-#   C /tmp regular files older than 3 days, not open by any process (locks/pids/sockets/dot-files skipped)
+#   C /tmp regular files whose mtime AND ctime are older than 3 days, not open by any process (locks/pids/sockets/dot-files skipped)
 #   D ~/binance-sandbox/backups top-level regular files older than 14 days, keeping the newest of each distinct file (never *.npz, never dirs)
 #   E ~/binance-sandbox/data/eval_cache_v1.db* only when the gate champion env has V15_EVAL_CACHE=0 and no process holds it open
 # NEVER touches: snap_*, gate/*, the champion's run, pending/running candidates' runs, the current progress dir, NPZ stores, klines, boards, ~/binance.
@@ -85,8 +85,8 @@ for arm in "$H"/v15_throughput_proof/*/arm_*; do
   zap "$arm/root" "B:proof-arm-root"
   for c in "$arm"/eval_cache.db "$arm"/eval_cache.db-wal "$arm"/eval_cache.db-shm; do [ -e "$c" ] && zap "$c" "B:proof-arm-cache"; done
 done
-# --- C /tmp files older than 3 days
-while IFS= read -r -d '' f; do zap "$f" "C:tmp>3d"; done < <(find /tmp -xdev -type f -mtime +3 -user niels ! -name '*.lock' ! -name '*.pid' ! -name '.*' ! -path '/tmp/.*' ! -path '/tmp/systemd-private*' ! -path '/tmp/tmux*' -print0 2>/dev/null)
+# --- C /tmp files unchanged for 3 days; copied source retains old mtime but has fresh ctime
+while IFS= read -r -d '' f; do zap "$f" "C:tmp>3d"; done < <(find /tmp -xdev -type f -mtime +3 -ctime +3 -user niels ! -name '*.lock' ! -name '*.pid' ! -name '.*' ! -path '/tmp/.*' ! -path '/tmp/systemd-private*' ! -path '/tmp/tmux*' -print0 2>/dev/null)
 # --- D backups >14d, newest per distinct file kept
 BK=$H/binance-sandbox/backups
 if [ -d "$BK" ]; then

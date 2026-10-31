@@ -1,5 +1,5 @@
 {
-  "ts": "2026-10-31T05:15:15.881627+00:00",
+  "ts": "2026-10-31T05:20:08.302505+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 3,
@@ -14,9 +14,9 @@
       "boards_running": 1,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 3525,
+      "mem_avail_mb": 6769,
       "disk_free_gb": 8,
-      "load1": 24.1,
+      "load1": 12.8,
       "dispatch_idle_why": "HOLD until 2026-10-31T06:28Z: FULLCELL_COVERAGE owner fullcell_20261031T045055Z; temporary new30D admissions lease; running boards untouched; native mandatory expiry",
       "published_ss": []
     },
@@ -25,17 +25,17 @@
       "published_last_3h": 3,
       "boards": {
         "ATOMUSDT_SHORT": 7,
-        "AWEUSDT_LONG": 0,
-        "BANDUSDT_LONG": 0,
-        "CVX_LONG": 0,
+        "AWEUSDT_LONG": 7,
+        "BANDUSDT_LONG": 7,
+        "CVX_LONG": 7,
         "PARTIUSDT_LONG": 7
       },
       "boards_running": 5,
-      "workers": 14,
-      "workers_vs_law_28": "14/28",
-      "mem_avail_mb": 9350,
-      "disk_free_gb": 22,
-      "load1": 16.3,
+      "workers": 35,
+      "workers_vs_law_28": "35/28",
+      "mem_avail_mb": 2621,
+      "disk_free_gb": 21,
+      "load1": 33.7,
       "dispatch_idle_why": "HOLD until 2026-10-31T07:11Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides)",
       "published_ss": [
         "QNTUSDT_LONG"
@@ -46,18 +46,18 @@
       "published_last_3h": 6,
       "boards": {
         "1MBABYDOGEUSDT_SHORT": 0,
-        "ARPAUSDT_SHORT": 7,
+        "ARPAUSDT_SHORT": 0,
         "ARUSDT_LONG": 0,
-        "ASTERUSDT_LONG": 7,
+        "ASTERUSDT_LONG": 0,
         "ENJUSDT_SHORT": 6,
         "USTCUSDT_SHORT": 7
       },
       "boards_running": 6,
-      "workers": 27,
-      "workers_vs_law_28": "27/28",
-      "mem_avail_mb": 10056,
-      "disk_free_gb": 10,
-      "load1": 25.3,
+      "workers": 13,
+      "workers_vs_law_28": "13/28",
+      "mem_avail_mb": 7884,
+      "disk_free_gb": 8,
+      "load1": 17.4,
       "dispatch_idle_why": "HOLD until 2026-10-31T07:11Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides)",
       "published_ss": [
         "GRTUSDT_LONG"
@@ -68,17 +68,17 @@
       "published_last_3h": 5,
       "boards": {
         "1000SATSUSDT_SHORT": 7,
-        "1000XECUSDT_SHORT": 7,
+        "1000XECUSDT_SHORT": 0,
         "1INCHUSDT_SHORT": 7,
-        "1MBABYDOGEUSDT_SHORT": 7,
+        "1MBABYDOGEUSDT_SHORT": 0,
         "KAVAUSDT_LONG": 0
       },
       "boards_running": 5,
-      "workers": 28,
-      "workers_vs_law_28": "28/28",
-      "mem_avail_mb": 16285,
-      "disk_free_gb": 17,
-      "load1": 29.0,
+      "workers": 14,
+      "workers_vs_law_28": "14/28",
+      "mem_avail_mb": 14012,
+      "disk_free_gb": 16,
+      "load1": 15.5,
       "dispatch_idle_why": "HOLD until 2026-10-31T07:11Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides)",
       "published_ss": [
         "HMSTRUSDT_SHORT"
@@ -89,12 +89,12 @@
     "LOW_THROUGHPUT:s1:0/h<12 (idle_why=HOLD until 2026-10-31T06:28Z: FULLCELL_COVERAGE owner fullcell_20261031T045055Z; temporary new30D admissions lease; running boards untouched; native mandatory expiry)",
     "DISK_FLOOR:s1:8GB<40",
     "LOW_THROUGHPUT:s2:1/h<12 (idle_why=HOLD until 2026-10-31T07:11Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides))",
-    "DISK_FLOOR:s2:22GB<40",
+    "DISK_FLOOR:s2:21GB<40",
     "LOW_THROUGHPUT:s5:1/h<12 (idle_why=HOLD until 2026-10-31T07:11Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides))",
-    "DISK_FLOOR:s5:10GB<40",
-    "STUCK_BOARD:s5:ENJUSDT_SHORT:176min",
+    "DISK_FLOOR:s5:8GB<40",
+    "STUCK_BOARD:s5:ENJUSDT_SHORT:181min",
     "LOW_THROUGHPUT:s6:1/h<12 (idle_why=HOLD until 2026-10-31T07:11Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides))",
-    "DISK_FLOOR:s6:17GB<40"
+    "DISK_FLOOR:s6:16GB<40"
   ],
-  "repair": "DISK_REPAIR:s1:8GB->9G (eval_cache_v1.db + rebuild_scratch_* deleted); DISK_REPAIR:s5:10GB->23G (eval_cache_v1.db + rebuild_scratch_* deleted)"
+  "repair": "DISK_REPAIR:s1:8GB->9G (eval_cache_v1.db + rebuild_scratch_* deleted); DISK_REPAIR:s5:8GB->22G (eval_cache_v1.db + rebuild_scratch_* deleted)"
 }
