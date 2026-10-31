@@ -88,3 +88,28 @@ def test_refused_stateful_wt_exit_keeps_identity_and_elapsed_age(wt_exempt, expe
     assert closed["bar_exit"] == expected_bar
     assert closed["reason"].startswith("STATEFUL_PORTED_EXIT")
     assert closed["exit_family"] == "WT_4H_VEL_EXIT"
+
+
+def test_zero_quantity_quick_reduce_does_not_suppress_later_native_wt_exit():
+    data = _npz()
+    n = len(data["close"])
+    prices = np.full(n, 100.2)
+    prices[0] = 100.0
+    for key in ("close", "close_15m", "open_15m", "high_15m", "low_15m"):
+        data[key] = prices.copy()
+    data["wt_velocity_4h"] = np.full(n, -20.0)
+    cfg = _cfg()
+    cfg.STRUCTURAL_RANGE_SHIFT_EXIT = False
+    cfg.WT_CROSS_EXIT_ENABLED = True
+    cfg.WT_CROSS_EXIT_MIN_AGE_MINUTES = 1.0
+    cfg.WT_REDUCE_FRAC_LOW = 0.0
+    cfg.NOLOSS_MIN_PROFIT_PCT = 0.1
+    cfg.WT_4H_VEL_EXIT_ENABLED = True
+    cfg.WT_4H_VEL_EXIT_REQUIRE_K_EXTREME = False
+    cfg.WT_4H_VEL_EXIT_LONG_VEL_MIN = -3.0
+    cfg.OPTIMAL_HOLD_BARS_EXIT_ENABLED = False
+    result = V.simulate_one(data, "ZERO_REDUCE_WT_TEST", True, cfg, force_initial_seed=True)
+    assert not any(row.get("type") == "REDUCE" for row in result["ledger"])
+    closed = next(row for row in result["ledger"] if row.get("type") == "CLOSE" and not row.get("unrealised"))
+    assert closed["bar_exit"] == 1
+    assert closed["exit_family"] == "WT_4H_VEL_EXIT"

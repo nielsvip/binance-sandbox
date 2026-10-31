@@ -193,6 +193,83 @@ def test_wave4_native_provider_reports_only_active_shared_gates():
         "HTF_DIRECTION_GATE_ENABLED": True,
         "WT_PERCENTILE_ENTRY_GATE_ENABLED": True,
     }
+    unavailable_bar = wave4_live_masks(
+        {"oi_change_1h_pct": np.nan, "close_1h_prev": 0.0}, True, cfg, 101.0
+    )
+    assert unavailable_bar["OI_CONFIRM_ENABLED"] is True
+
+
+def test_oi_mask_is_causal_and_enabled_missing_values_pass_consistently():
+    from vec_decisions.wave4_families import oi_confirm_entry_gate
+
+    cfg = SimpleNamespace(
+        MODE="crypto",
+        BASE_TF="15m",
+        ENTRY_CHOKE_GATES_ON_FINAL=False,
+        ENTRY_VET_RELAX_MODE=3,
+        FUNDING_GATE_ENABLED=False,
+        WT_DIV_ENTRY_GATE_ENABLED=False,
+        OI_CONFIRM_ENABLED=True,
+        HTF_DIRECTION_GATE_ENABLED=True,
+        OI_CONFIRM_MIN_CHANGE_PCT=0.5,
+        OI_CONFIRM_MIN_PRICE_PCT=0.3,
+        EMA_BLANKET_FILTER_ENABLED=False,
+        WT_PERCENTILE_ENTRY_GATE_ENABLED=False,
+        DC_BREAK_FILTER_TF="OFF",
+        ENTRY_DC_TF="OFF",
+    )
+
+    def safe(data, key, n, default=0.0):
+        return data[key] if key in data else np.full(n, default)
+
+    all_zero = {
+        "oi_change_1h_pct": np.zeros(2),
+        "close_1h_prev": np.zeros(2),
+    }
+    assert oi_confirm_entry_gate(all_zero, 2, True, cfg, np.ones(2), safe).tolist() == [True, True]
+    missing_fields = oi_confirm_entry_gate({}, 2, True, cfg, np.ones(2), safe)
+    assert missing_fields.tolist() == [True, True]
+    all_zero_snapshot = vector_entry_mask_snapshot(
+        {"oi_change_1h_pct": 0.0, "close_1h_prev": 0.0},
+        True,
+        cfg,
+        1.0,
+    )
+    assert all_zero_snapshot["OI_CONFIRM_ENABLED"] is True
+
+    late_valid = {
+        "oi_change_1h_pct": np.asarray([0.0, 1.0]),
+        "close_1h_prev": np.asarray([0.0, 100.0]),
+    }
+    vector_masks = oi_confirm_entry_gate(
+        late_valid, 2, True, cfg, np.asarray([1.0, 101.0]), safe
+    )
+    assert vector_masks.tolist() == [True, True]
+    late_snapshot = vector_entry_mask_snapshot(
+        {"oi_change_1h_pct": 0.0, "close_1h_prev": 0.0},
+        True,
+        cfg,
+        1.0,
+    )
+    assert late_snapshot["OI_CONFIRM_ENABLED"] is True
+
+    no_oi = vector_entry_mask_snapshot({}, True, cfg, 1.0)
+    assert no_oi["OI_CONFIRM_ENABLED"] is True
+
+    prefix = {
+        "oi_change_1h_pct": np.asarray([np.nan, -1.0]),
+        "close_1h_prev": np.asarray([0.0, 100.0]),
+    }
+    prefix_close = np.asarray([1.0, 99.0])
+    prefix_only = oi_confirm_entry_gate(prefix, 2, True, cfg, prefix_close, safe)
+    with_future = {
+        "oi_change_1h_pct": np.asarray([np.nan, -1.0, 2.0]),
+        "close_1h_prev": np.asarray([0.0, 100.0, 100.0]),
+    }
+    extended = oi_confirm_entry_gate(
+        with_future, 3, True, cfg, np.asarray([1.0, 99.0, 102.0]), safe
+    )
+    assert extended[:2].tolist() == prefix_only.tolist()
 
 
 def test_full_provider_matches_active_vector_names_for_single_generic_gate():

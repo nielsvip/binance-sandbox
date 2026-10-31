@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-10-31T00:53:24.270996+00:00",
+  "recorded_at": "2026-10-31T02:46:23.524562+00:00",
   "status": "active_not_achieved",
   "deployment_authorized_by_this_record": false,
   "requirements": {
@@ -438,13 +438,13 @@
     "next_baseline_step": "Minimal accepted reader-input projection plus explicit neutral new keys, then assert full effective config/ledger/result against independent prior oracle; canonical local pilot still unchanged."
   },
   "latest_verified_progress": {
-    "updated_at": "2026-10-31T02:36:15.310713+00:00",
+    "updated_at": "2026-10-31T02:46:23.524562+00:00",
     "candidate_baseline": {
       "status": "ONE_SIDE_ACTUAL_BASELINE_PARITY_PASS_NO_OPTIMIZER",
       "sym_side": "1INCHUSDT_SHORT",
       "evaluated_at": "2026-10-31T01:27:19.954437Z",
       "evidence_dir": "data/reports/nextgen_pinned_baseline_review_20261030/s2_candidate_attempt01",
-      "qualification": "Pair wrapper unnecessarily prepared LONG and swallowed string SystemExit; LONG had no engine baseline. Fix pending. SHORT parity independently matches previous oracle."
+      "qualification": "SHORT parity independently matches previous oracle. Pair-wrapper propagation repair applied in local e91ed pilot; full pair execution not proven."
     },
     "expanded_training": {
       "status": "ALL_EIGHT_PHASES_COMPLETE_WORKER_RC0_NOT_DEPLOYED",
@@ -457,9 +457,12 @@
       "qualification": "Expanded 248-source/202 emitting-side corpus only; not all collected data, not new profit-protection objective or promotion evidence"
     },
     "quartets": {
-      "status": "PRECHECK_FAILED_RESOURCE_FLOOR_BEFORE_WORKER",
-      "attempt": "prospective_quartets_20261031_02",
-      "checkpoint_resource_values": "not recorded; supervisor reporting fix required"
+      "status": "HISTORICAL_ENGINE_DIAGNOSTIC_BATCH_TERMINAL_RC0",
+      "stage": "/home/niels/v15_bench/reviews/protection_quartets_20261031_05",
+      "terminal_at": "2026-10-31T02:43:52.312685Z",
+      "actual_output_bytes": 5450255,
+      "frozen_template_sha256": "3e989e4fb5171a19ca48fb9865b463c28457a83e0641523ae75e4823f3aed1d4",
+      "qualification": "Result inspection pending. Same historical engine and frozen domain; not authority-corrected current-runtime evidence or NN promotion."
     },
     "preservation": {
       "receipt": "data/reports/experience_restore_reclamation_20261031T012834Z.json",
@@ -485,6 +488,30 @@
       "sha256": "e91ed048ecf972d899b243c843372476e35c1cddb70c06d3f23fe453c25de0a8",
       "receipt": "data/reports/nextgen_pinned_baseline_review_20261030/local_apply_receipt.json",
       "locked": true
+    },
+    "authority_diagnostics": {
+      "status": "THREE_REPAIR_ARMS_TERMINAL_RC0_NOT_NN_GAIN",
+      "host": "s6",
+      "directory": "/home/niels/v15_bench/reviews/authority_arms_20261031_review1",
+      "arms": {
+        "layer_only": {
+          "saved_at": "2026-10-31T02:38:34.951711Z"
+        },
+        "orphan_only": {
+          "saved_at": "2026-10-31T02:43:01.654603Z"
+        },
+        "both": {
+          "saved_at": "2026-10-31T02:43:22.203091Z"
+        }
+      },
+      "qualification": "Exact old oracle preserved; code repairs may alter selected-effective config/trades. Full arm comparison in progress, no NN promotion or speed claim."
+    },
+    "ibm_previous_oracle": {
+      "status": "ACTUAL_PREVIOUS_RUNTIME_BASELINE_CAPTURED_RC0",
+      "host": "s6",
+      "receipt": "/home/niels/v15_bench/reviews/ibm_baseline_20261031_review1/side/previous_baseline_oracle.json",
+      "saved_at": "2026-10-31T02:44:24.818159Z",
+      "qualification": "Freshly computed replay of old selected settings on frozen input; not an old computation date and not candidate parity. Original source computation date unknown."
     }
   },
   "required_before_s2_comparison": {
@@ -541,7 +568,8 @@
     "review_dir": "data/reports/nextgen_authority_repair_20261031",
     "review_status": "isolated forward repair prepared; actual corrected-engine measurements pending; no canonical engine overwrite",
     "selected_effective_inventory": "data/reports/nextgen_selected_effective_inventory_20261031.json",
-    "selected_absent_template_inventory": "data/reports/nextgen_selected_missing_fields_template_inventory_20261031.json"
+    "selected_absent_template_inventory": "data/reports/nextgen_selected_missing_fields_template_inventory_20261031.json",
+    "actual_layer_only_observation": "Agent source comparison:36changed effective fields now exactly match selected inputs; root observed terminal receipt. Three-arm detailed receipt verification in progress."
   },
   "required_execution_order": {
     "user_instruction_at": "2026-10-31T02:15:02.613847+00:00",

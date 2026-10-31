@@ -61,6 +61,43 @@ def _knobs(cfg):
     }
 
 
+def trigger_values(is_long, px, last_wt, last_px, req_hwt, req_hpx, d_on, h4_on, w1_D, w1_D_prev, w1_4h, w1_4h_prev):
+    """Return the first live-order D/4h trigger from already-resolved scalar inputs."""
+    if d_on:
+        bounce = (w1_D > w1_D_prev) if is_long else (w1_D < w1_D_prev)
+        hwt = (not req_hwt) or ((w1_D > last_wt) if is_long else (w1_D < last_wt))
+        hpx = (not req_hpx) or ((px > last_px) if is_long else (px < last_px))
+        if bounce and hwt and hpx:
+            return "D", w1_D
+    if h4_on:
+        bounce = (w1_4h > w1_4h_prev) if is_long else (w1_4h < w1_4h_prev)
+        hwt = (not req_hwt) or ((w1_4h > last_wt) if is_long else (w1_4h < last_wt))
+        hpx = (not req_hpx) or ((px > last_px) if is_long else (px < last_px))
+        if bounce and hwt and hpx:
+            return "4h", w1_4h
+    return None, 0.0
+
+
+def live_trigger_values(is_long, now, last_aug_ts, cooldown_hours, px, last_wt, last_px, req_hwt, req_hpx, d_on, h4_on, w1_D, w1_D_prev, w1_4h, w1_4h_prev):
+    """Apply the native DD_BOUNCE cooldown and return (trigger_tf, trigger_wt)."""
+    if (float(now) - float(last_aug_ts)) < float(cooldown_hours) * 3600.0:
+        return None, 0.0
+    return trigger_values(
+        is_long,
+        px,
+        last_wt,
+        last_px,
+        req_hwt,
+        req_hpx,
+        d_on,
+        h4_on,
+        w1_D,
+        w1_D_prev,
+        w1_4h,
+        w1_4h_prev,
+    )
+
+
 def fires(P, i, px, live_pnl_pct, state, ts_now, cfg):
     """(fire, new_state, trig_tf). state None -> live-equivalent fresh defaults."""
     if not bool(getattr(cfg, 'DD_BOUNCE_ENABLED', False)):
@@ -83,28 +120,25 @@ def fires(P, i, px, live_pnl_pct, state, ts_now, cfg):
         now = float(ts_now)
     except Exception:
         return False, state, None
-    if not ((now - last_ts) >= K['cd_s']):
-        return False, state, None
     req_hwt = K['req_hwt']
     req_hpx = K['req_hpx']
-    trig_tf = None
-    trig_wt = 0.0
-    if K['d_on']:
-        w = float(P.w1_D[i]) if i < len(P.w1_D) else 0.0
-        wp = float(P.w1_D_prev[i]) if i < len(P.w1_D_prev) else 0.0
-        bounce = (w > wp) if P.is_long else (w < wp)
-        hwt = ((not req_hwt) or ((w > last_wt) if P.is_long else (w < last_wt)))
-        hpx = ((not req_hpx) or ((px > last_px) if P.is_long else (px < last_px)))
-        if bounce and hwt and hpx:
-            trig_tf, trig_wt = 'D', w
-    if trig_tf is None and K['h4_on']:
-        w = float(P.w1_4h[i]) if i < len(P.w1_4h) else 0.0
-        wp = float(P.w1_4h_prev[i]) if i < len(P.w1_4h_prev) else 0.0
-        bounce = (w > wp) if P.is_long else (w < wp)
-        hwt = ((not req_hwt) or ((w > last_wt) if P.is_long else (w < last_wt)))
-        hpx = ((not req_hpx) or ((px > last_px) if P.is_long else (px < last_px)))
-        if bounce and hwt and hpx:
-            trig_tf, trig_wt = '4h', w
+    trig_tf, trig_wt = live_trigger_values(
+        P.is_long,
+        now,
+        last_ts,
+        K['cd_s'] / 3600.0,
+        float(px),
+        last_wt,
+        last_px,
+        req_hwt,
+        req_hpx,
+        K['d_on'],
+        K['h4_on'],
+        float(P.w1_D[i]) if i < len(P.w1_D) else 0.0,
+        float(P.w1_D_prev[i]) if i < len(P.w1_D_prev) else 0.0,
+        float(P.w1_4h[i]) if i < len(P.w1_4h) else 0.0,
+        float(P.w1_4h_prev[i]) if i < len(P.w1_4h_prev) else 0.0,
+    )
     if trig_tf is None:
         return False, state, None
     return True, {'ts': now, 'wt': trig_wt, 'px': float(px)}, trig_tf

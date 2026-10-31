@@ -1,0 +1,1515 @@
+{
+  "complete_source_path_map": [
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0131Z/s5_v20_u4/must/A.err",
+      "proof": "data/reports/s5_seed_and_oct23_nn_preservation_20261031T0131Z.json",
+      "sha256": "fc4c8f43d62f96fd5292eed841f6341d360c4ad1cd1fed2611bb247a6159616e",
+      "size_bytes": 560,
+      "source_path": "/home/niels/v20_u4/must/A.err"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0131Z/s5_v20_u4/must/A.out",
+      "proof": "data/reports/s5_seed_and_oct23_nn_preservation_20261031T0131Z.json",
+      "sha256": "4b2fd181208b4312445f9f98de6df92927cff6574e330bf18793a0c2a54aff51",
+      "size_bytes": 280,
+      "source_path": "/home/niels/v20_u4/must/A.out"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0131Z/s5_v20_u4/must/A/build_stats.json",
+      "proof": "data/reports/s5_seed_and_oct23_nn_preservation_20261031T0131Z.json",
+      "sha256": "3e4458626e7d50d27a8ef0b1a84422b78c9416cc8fcbaa4d6879769e5361b7fb",
+      "size_bytes": 1163,
+      "source_path": "/home/niels/v20_u4/must/A/build_stats.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/A/must_pos_CRYPTO_LONG.json",
+      "proof": "this receipt",
+      "sha256": "41625b7aa5524b9dc6b7b351fa5f752b59366e0261d8c0a8c9a93650b127da59",
+      "size_bytes": 10009866,
+      "source_path": "/home/niels/v20_u4/must/A/must_pos_CRYPTO_LONG.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/A/must_pos_CRYPTO_SHORT.json",
+      "proof": "this receipt",
+      "sha256": "2bfbedffc3abc97164a11ff9d931be957081d7cfe1cd1dd1e5f8d72c372ee5e4",
+      "size_bytes": 6676037,
+      "source_path": "/home/niels/v20_u4/must/A/must_pos_CRYPTO_SHORT.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/A/must_pos_STOCKS_LONG.json",
+      "proof": "this receipt",
+      "sha256": "fbd496cc69ffc55762c5131039dcad6e84d373b1f970887e8983da7e9033395f",
+      "size_bytes": 3811301,
+      "source_path": "/home/niels/v20_u4/must/A/must_pos_STOCKS_LONG.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/A/must_pos_STOCKS_SHORT.json",
+      "proof": "this receipt",
+      "sha256": "c2a17a2caf01c5608be2997c77b31861336bee816e07c716dd2919c1bd751e8f",
+      "size_bytes": 2315693,
+      "source_path": "/home/niels/v20_u4/must/A/must_pos_STOCKS_SHORT.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/A/must_pos_state_CRYPTO_LONG.json",
+      "proof": "this receipt",
+      "sha256": "7d95606ec454f52f3164cd003deb78ba3a2f5a28f318064e91a4c233d9023339",
+      "size_bytes": 11006117,
+      "source_path": "/home/niels/v20_u4/must/A/must_pos_state_CRYPTO_LONG.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/A/must_pos_state_CRYPTO_SHORT.json",
+      "proof": "this receipt",
+      "sha256": "0c592b27b96a97023a8ca31489a2ae7aa54353daca4b1b30a2d84490135b3d38",
+      "size_bytes": 7703438,
+      "source_path": "/home/niels/v20_u4/must/A/must_pos_state_CRYPTO_SHORT.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/A/must_pos_state_STOCKS_LONG.json",
+      "proof": "this receipt",
+      "sha256": "76b5e20e61b5542c0209fa3977321999370cbb7b7d9ba4c2204d884961c67294",
+      "size_bytes": 4580172,
+      "source_path": "/home/niels/v20_u4/must/A/must_pos_state_STOCKS_LONG.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/A/must_pos_state_STOCKS_SHORT.json",
+      "proof": "this receipt",
+      "sha256": "ed5acc1952515cbc5e8523052ce7c74613eb8ace6a953d8f0ba9b667ea42baad",
+      "size_bytes": 2690385,
+      "source_path": "/home/niels/v20_u4/must/A/must_pos_state_STOCKS_SHORT.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/A/must_pos_watermarks.json",
+      "proof": "this receipt",
+      "sha256": "e13ed87e5c42395c15eb109a950e4c2550eb1069d45c8f914d828645a84ed633",
+      "size_bytes": 2013714,
+      "source_path": "/home/niels/v20_u4/must/A/must_pos_watermarks.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0131Z/s5_v20_u4/must/A2.err",
+      "proof": "data/reports/s5_seed_and_oct23_nn_preservation_20261031T0131Z.json",
+      "sha256": "ceec0144f117996a7b6bb384b9ff49972a8e823886ffe6af8e7e3e12abc84401",
+      "size_bytes": 564,
+      "source_path": "/home/niels/v20_u4/must/A2.err"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0131Z/s5_v20_u4/must/A2.out",
+      "proof": "data/reports/s5_seed_and_oct23_nn_preservation_20261031T0131Z.json",
+      "sha256": "cabd10f3f4a42f666d05ab4098ab1d4a267f06c6da20163a2cae48b27408b45c",
+      "size_bytes": 280,
+      "source_path": "/home/niels/v20_u4/must/A2.out"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/build_stats.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/verification_receipt.json",
+      "sha256": "f310ae704b94a285f80d1f5d515b7e222d052294c2bdb8bb91df7357a0bd9094",
+      "size_bytes": 1167,
+      "source_path": "/home/niels/v20_u4/must/A2/build_stats.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/must_pos_CRYPTO_LONG.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/verification_receipt.json",
+      "sha256": "fdbbdb16c40ba81bea9caaec302ac15d08bc02857bae1e692e125e0931c3c677",
+      "size_bytes": 10009867,
+      "source_path": "/home/niels/v20_u4/must/A2/must_pos_CRYPTO_LONG.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/must_pos_CRYPTO_SHORT.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/verification_receipt.json",
+      "sha256": "88420cf7a786fe71bedf6f2f93187d7aa49c72cf04956126da4099197e61f1e0",
+      "size_bytes": 6676038,
+      "source_path": "/home/niels/v20_u4/must/A2/must_pos_CRYPTO_SHORT.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/must_pos_STOCKS_LONG.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/verification_receipt.json",
+      "sha256": "ff1f257facdd9b5128f26ef2d20a7f3233bb108e87d5a742decc690590e604b6",
+      "size_bytes": 4027851,
+      "source_path": "/home/niels/v20_u4/must/A2/must_pos_STOCKS_LONG.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/must_pos_STOCKS_SHORT.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/verification_receipt.json",
+      "sha256": "07a4877e4ebb5ba2ba778b0a8bfb31c1dace5d56ef01620df039d13f17462ea5",
+      "size_bytes": 2315694,
+      "source_path": "/home/niels/v20_u4/must/A2/must_pos_STOCKS_SHORT.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/must_pos_state_CRYPTO_LONG.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/verification_receipt.json",
+      "sha256": "182dbbf82a075d4a19fbe0070fbbc6254ccb0aa5fb19f2c8413c7581c6af1354",
+      "size_bytes": 11006117,
+      "source_path": "/home/niels/v20_u4/must/A2/must_pos_state_CRYPTO_LONG.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/must_pos_state_CRYPTO_SHORT.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/verification_receipt.json",
+      "sha256": "00a7cef64c23a801eb6a50b100db94a6d70c56cc137b3265eca0f8945ded769d",
+      "size_bytes": 7703438,
+      "source_path": "/home/niels/v20_u4/must/A2/must_pos_state_CRYPTO_SHORT.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/must_pos_state_STOCKS_LONG.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/verification_receipt.json",
+      "sha256": "fda81cdc412124eb8d4b603a1f6b98e515c275dcd94361ae595e3e212024fdcb",
+      "size_bytes": 4786109,
+      "source_path": "/home/niels/v20_u4/must/A2/must_pos_state_STOCKS_LONG.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/must_pos_state_STOCKS_SHORT.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/verification_receipt.json",
+      "sha256": "e44c6a4a1c5f7cc700df393692c9823774d407351c08e14303eb591cecf80513",
+      "size_bytes": 2690385,
+      "source_path": "/home/niels/v20_u4/must/A2/must_pos_state_STOCKS_SHORT.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/must_pos_watermarks.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/verification_receipt.json",
+      "sha256": "8a4aa71fb37cc1750c98c3bc0df832d49666a6996b57709272e3330d8860e132",
+      "size_bytes": 2014215,
+      "source_path": "/home/niels/v20_u4/must/A2/must_pos_watermarks.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0131Z/s5_v20_u4/must/B.err",
+      "proof": "data/reports/s5_seed_and_oct23_nn_preservation_20261031T0131Z.json",
+      "sha256": "007231ae31ae3455797506b340d469e84935bbc4c94285fe7993dfd917e21613",
+      "size_bytes": 606,
+      "source_path": "/home/niels/v20_u4/must/B.err"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0131Z/s5_v20_u4/must/B.out",
+      "proof": "data/reports/s5_seed_and_oct23_nn_preservation_20261031T0131Z.json",
+      "sha256": "aa1404fab5c0b87eb91614494d797ee39c007831fafa9c0748cf7739f97e646a",
+      "size_bytes": 280,
+      "source_path": "/home/niels/v20_u4/must/B.out"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0131Z/s5_v20_u4/must/B/build_stats.json",
+      "proof": "data/reports/s5_seed_and_oct23_nn_preservation_20261031T0131Z.json",
+      "sha256": "b7ecd96182195c7714d844d9b673b5e43de4b73a88f30f7084048d7e10c35f6b",
+      "size_bytes": 1160,
+      "source_path": "/home/niels/v20_u4/must/B/build_stats.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/B/must_pos_CRYPTO_LONG.json",
+      "proof": "this receipt",
+      "sha256": "8c230a44cf668215b5bd21dbd10a49c671335022928569bcb3351fa256dd7134",
+      "size_bytes": 7624184,
+      "source_path": "/home/niels/v20_u4/must/B/must_pos_CRYPTO_LONG.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/B/must_pos_CRYPTO_SHORT.json",
+      "proof": "this receipt",
+      "sha256": "0e1759ed734f62de26fd2da96b36d3e7ca93a2713faf74b4eae9791a91a2b570",
+      "size_bytes": 5204621,
+      "source_path": "/home/niels/v20_u4/must/B/must_pos_CRYPTO_SHORT.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/B/must_pos_STOCKS_LONG.json",
+      "proof": "this receipt",
+      "sha256": "0c5db82b25de338ea7dc26b9eff6c76873ebda3d68edb48282ddfb1be1fd9653",
+      "size_bytes": 2433642,
+      "source_path": "/home/niels/v20_u4/must/B/must_pos_STOCKS_LONG.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/B/must_pos_STOCKS_SHORT.json",
+      "proof": "this receipt",
+      "sha256": "6eea91d50d041dd982e76a7c69a3cacd651a9502e5ee487f423a8aaa3ff116ab",
+      "size_bytes": 1591356,
+      "source_path": "/home/niels/v20_u4/must/B/must_pos_STOCKS_SHORT.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/B/must_pos_state_CRYPTO_LONG.json",
+      "proof": "this receipt",
+      "sha256": "319ec12757fb78dadbc2551b9f8361cd7c9576dbd52091ccf6e5ea9660603e82",
+      "size_bytes": 8064963,
+      "source_path": "/home/niels/v20_u4/must/B/must_pos_state_CRYPTO_LONG.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/B/must_pos_state_CRYPTO_SHORT.json",
+      "proof": "this receipt",
+      "sha256": "552d9350ef58553e7cbf2973289dc5c9968784ba8bfca6bfff7836e0e57e1e0b",
+      "size_bytes": 5701450,
+      "source_path": "/home/niels/v20_u4/must/B/must_pos_state_CRYPTO_SHORT.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/B/must_pos_state_STOCKS_LONG.json",
+      "proof": "this receipt",
+      "sha256": "367c5cbbac7a5dcf6e65a94dd4ab649a746967a0dea23f594c9a8f92f6c1f87e",
+      "size_bytes": 2812476,
+      "source_path": "/home/niels/v20_u4/must/B/must_pos_state_STOCKS_LONG.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/B/must_pos_state_STOCKS_SHORT.json",
+      "proof": "this receipt",
+      "sha256": "e491f13881ffc9fce8cd657117efc00dc8d50b10d11b4c634875ab8b6aca1c4f",
+      "size_bytes": 1774711,
+      "source_path": "/home/niels/v20_u4/must/B/must_pos_state_STOCKS_SHORT.json"
+    },
+    {
+      "method": "deduplicated_to_new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/A/must_pos_watermarks.json",
+      "proof": "this receipt",
+      "sha256": "e13ed87e5c42395c15eb109a950e4c2550eb1069d45c8f914d828645a84ed633",
+      "size_bytes": 2013714,
+      "source_path": "/home/niels/v20_u4/must/B/must_pos_watermarks.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0131Z/s5_v20_u4/must/B2.err",
+      "proof": "data/reports/s5_seed_and_oct23_nn_preservation_20261031T0131Z.json",
+      "sha256": "a77ec944e7d5e7b81c7b727fe9fbdd93c7acf623f29d60be9082c93e16f58543",
+      "size_bytes": 564,
+      "source_path": "/home/niels/v20_u4/must/B2.err"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0131Z/s5_v20_u4/must/B2.out",
+      "proof": "data/reports/s5_seed_and_oct23_nn_preservation_20261031T0131Z.json",
+      "sha256": "04cd73ff0b81384ca791af8514627ed15f4a9bfae31604ef2487a3dc65b90a2b",
+      "size_bytes": 280,
+      "source_path": "/home/niels/v20_u4/must/B2.out"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/build_stats.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/verification_receipt.json",
+      "sha256": "e72cdde532f625753f07e2d50df346ca2fe978993fa17f902a38a5e5c5905ffc",
+      "size_bytes": 1165,
+      "source_path": "/home/niels/v20_u4/must/B2/build_stats.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/must_pos_CRYPTO_LONG.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/verification_receipt.json",
+      "sha256": "9bf7582ca9cc583c767a1dff7330e087f5f665af5768954c6e6adf0ead3f143f",
+      "size_bytes": 7624185,
+      "source_path": "/home/niels/v20_u4/must/B2/must_pos_CRYPTO_LONG.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/must_pos_CRYPTO_SHORT.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/verification_receipt.json",
+      "sha256": "9d0e03cceb4610765170a86c2e7cc1958422f733387aed0bef510c4d9768cf74",
+      "size_bytes": 5204622,
+      "source_path": "/home/niels/v20_u4/must/B2/must_pos_CRYPTO_SHORT.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/must_pos_STOCKS_LONG.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/verification_receipt.json",
+      "sha256": "07043edc5ca6099a799680607dfbd22b9c58e8ca6a189a369b7b15cab4042ee2",
+      "size_bytes": 2600411,
+      "source_path": "/home/niels/v20_u4/must/B2/must_pos_STOCKS_LONG.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/must_pos_STOCKS_SHORT.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/verification_receipt.json",
+      "sha256": "131c5be605705edf70c1cc0022850c9f066034ba0a59c5de536e5e075a7c5fe1",
+      "size_bytes": 1591357,
+      "source_path": "/home/niels/v20_u4/must/B2/must_pos_STOCKS_SHORT.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/must_pos_state_CRYPTO_LONG.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/verification_receipt.json",
+      "sha256": "8b56ae6a53e1df259b4da67e7c8977d043f2036bbda5851a464ae4643f145553",
+      "size_bytes": 8064963,
+      "source_path": "/home/niels/v20_u4/must/B2/must_pos_state_CRYPTO_LONG.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/must_pos_state_CRYPTO_SHORT.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/verification_receipt.json",
+      "sha256": "7522b864939b7d3c27c34a6ac113208a7378d07a53528fab8bd78ad8601a055c",
+      "size_bytes": 5701450,
+      "source_path": "/home/niels/v20_u4/must/B2/must_pos_state_CRYPTO_SHORT.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/must_pos_state_STOCKS_LONG.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/verification_receipt.json",
+      "sha256": "4c9e48809b05679d0d59d3834b97c758c2dc299f1445a828ffb9a14ca5296259",
+      "size_bytes": 2970694,
+      "source_path": "/home/niels/v20_u4/must/B2/must_pos_state_STOCKS_LONG.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/must_pos_state_STOCKS_SHORT.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/verification_receipt.json",
+      "sha256": "36d39df27591166b86a977e599cce7e423bc359dc49b6eb8a56904d01955e64b",
+      "size_bytes": 1774711,
+      "source_path": "/home/niels/v20_u4/must/B2/must_pos_state_STOCKS_SHORT.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/must_pos_watermarks.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/verification_receipt.json",
+      "sha256": "677cbbade0cffd77c58fdedd219e2dd6d8048563361e251aa504ba241212b37f",
+      "size_bytes": 2014219,
+      "source_path": "/home/niels/v20_u4/must/B2/must_pos_watermarks.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s1/A/build_stats.json",
+      "proof": "this receipt",
+      "sha256": "4bf05e6b63f540d065b1f9f8ddadaafda7c1430aaac83f85fb0a4d597288f0f5",
+      "size_bytes": 1108,
+      "source_path": "/home/niels/v20_u4/must/hosts/s1/A/build_stats.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s1/A/must_pos_state_CRYPTO_LONG.json",
+      "proof": "this receipt",
+      "sha256": "dbff45f8aa5e0c145e02a28bb2bed9146cc6c52494900443490c2590e437ac56",
+      "size_bytes": 178,
+      "source_path": "/home/niels/v20_u4/must/hosts/s1/A/must_pos_state_CRYPTO_LONG.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s1/A/must_pos_state_CRYPTO_SHORT.json",
+      "proof": "this receipt",
+      "sha256": "126a87458a35713a9799c29105e28a77b91cd3a9068d102ebb953b6976a0d550",
+      "size_bytes": 3196133,
+      "source_path": "/home/niels/v20_u4/must/hosts/s1/A/must_pos_state_CRYPTO_SHORT.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s1/A/must_pos_state_STOCKS_LONG.json",
+      "proof": "this receipt",
+      "sha256": "31e20faceb26ff94128bb16d2d8f3f579f78a5958deadd881908b13072351f2f",
+      "size_bytes": 178,
+      "source_path": "/home/niels/v20_u4/must/hosts/s1/A/must_pos_state_STOCKS_LONG.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s1/A/must_pos_state_STOCKS_SHORT.json",
+      "proof": "this receipt",
+      "sha256": "9d912585a90ac70268f850544dcadce3975b3d8e38b24fdd98318de84045add2",
+      "size_bytes": 179,
+      "source_path": "/home/niels/v20_u4/must/hosts/s1/A/must_pos_state_STOCKS_SHORT.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s1/B/build_stats.json",
+      "proof": "this receipt",
+      "sha256": "e5bfcc412ccb8e78d47abd90e4c091c69a3b19cc341ea18c145b523716dbd0f3",
+      "size_bytes": 1109,
+      "source_path": "/home/niels/v20_u4/must/hosts/s1/B/build_stats.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s1/B/must_pos_state_CRYPTO_LONG.json",
+      "proof": "this receipt",
+      "sha256": "dc3e0ba286f9f579fe5d12043fcdfc53205d80b531420cd8c015d5e93df554bc",
+      "size_bytes": 178,
+      "source_path": "/home/niels/v20_u4/must/hosts/s1/B/must_pos_state_CRYPTO_LONG.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s1/B/must_pos_state_CRYPTO_SHORT.json",
+      "proof": "this receipt",
+      "sha256": "d20c7b3455386b2c6103f2bdca42c6bb00505410aff8fe43a5cd9a54b24ea4a0",
+      "size_bytes": 2898425,
+      "source_path": "/home/niels/v20_u4/must/hosts/s1/B/must_pos_state_CRYPTO_SHORT.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s1/B/must_pos_state_STOCKS_LONG.json",
+      "proof": "this receipt",
+      "sha256": "8b06bf08a1fb6feb28387c21f9da769be1e62c56d7d6034778b2c2749d2d91b4",
+      "size_bytes": 178,
+      "source_path": "/home/niels/v20_u4/must/hosts/s1/B/must_pos_state_STOCKS_LONG.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s1/B/must_pos_state_STOCKS_SHORT.json",
+      "proof": "this receipt",
+      "sha256": "14df2b8f5b4fd2535a0712abdb07e2418af825b7067538990b0d1c5a4144b6be",
+      "size_bytes": 179,
+      "source_path": "/home/niels/v20_u4/must/hosts/s1/B/must_pos_state_STOCKS_SHORT.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s2/A/build_stats.json",
+      "proof": "this receipt",
+      "sha256": "98206d293ba00817ab7762ec64dd53cd2af4eb06c8b4c0e335216c0c1e0490ca",
+      "size_bytes": 1153,
+      "source_path": "/home/niels/v20_u4/must/hosts/s2/A/build_stats.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s2/A/must_pos_state_CRYPTO_LONG.json",
+      "proof": "this receipt",
+      "sha256": "cefe07c122ae4e9181698b9452bef021f25db5bc7fb85b4bcc0532cfec6f37b5",
+      "size_bytes": 10975663,
+      "source_path": "/home/niels/v20_u4/must/hosts/s2/A/must_pos_state_CRYPTO_LONG.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s2/A/must_pos_state_CRYPTO_SHORT.json",
+      "proof": "this receipt",
+      "sha256": "baa8df9817dd0812ff2b593fc0d873753e7d129bc0e6d4a063ce0a6de6bf26b9",
+      "size_bytes": 3669279,
+      "source_path": "/home/niels/v20_u4/must/hosts/s2/A/must_pos_state_CRYPTO_SHORT.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s2/A/must_pos_state_STOCKS_LONG.json",
+      "proof": "this receipt",
+      "sha256": "51157076ab45067765eb8d0efd4f3481d355e5d6c534c22ef8252cc4145497b7",
+      "size_bytes": 631092,
+      "source_path": "/home/niels/v20_u4/must/hosts/s2/A/must_pos_state_STOCKS_LONG.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s2/A/must_pos_state_STOCKS_SHORT.json",
+      "proof": "this receipt",
+      "sha256": "945092d4eb113de586996677f1f4467ff7905cc13c06abf676d5a31473171df4",
+      "size_bytes": 1034927,
+      "source_path": "/home/niels/v20_u4/must/hosts/s2/A/must_pos_state_STOCKS_SHORT.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s2/B/build_stats.json",
+      "proof": "this receipt",
+      "sha256": "3087f10bb73ff46c40aee5f2d0829ac099498ba7189b5e91e2d912865be29534",
+      "size_bytes": 1151,
+      "source_path": "/home/niels/v20_u4/must/hosts/s2/B/build_stats.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s2/B/must_pos_state_CRYPTO_LONG.json",
+      "proof": "this receipt",
+      "sha256": "4a551427a3fdd6e6c4e2058472adab1bfd146daa126906a2d36f7432d945c3d7",
+      "size_bytes": 8947127,
+      "source_path": "/home/niels/v20_u4/must/hosts/s2/B/must_pos_state_CRYPTO_LONG.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s2/B/must_pos_state_CRYPTO_SHORT.json",
+      "proof": "this receipt",
+      "sha256": "a32b48d548eb57fe0546546faabfc4377ba182fbcf785d7fcb93ef6a84013bae",
+      "size_bytes": 2694450,
+      "source_path": "/home/niels/v20_u4/must/hosts/s2/B/must_pos_state_CRYPTO_SHORT.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s2/B/must_pos_state_STOCKS_LONG.json",
+      "proof": "this receipt",
+      "sha256": "541b7c45c4de3e4faab45ede3e49c658a0c975c5dc83095de229779dcbe212f6",
+      "size_bytes": 438400,
+      "source_path": "/home/niels/v20_u4/must/hosts/s2/B/must_pos_state_STOCKS_LONG.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s2/B/must_pos_state_STOCKS_SHORT.json",
+      "proof": "this receipt",
+      "sha256": "e45e2a099cbe133f0aeb7eb4fd43e3e2a74156e28c12979ef7ebcfb8edc7f3d1",
+      "size_bytes": 577408,
+      "source_path": "/home/niels/v20_u4/must/hosts/s2/B/must_pos_state_STOCKS_SHORT.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/build_stats.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/verification_receipt.json",
+      "sha256": "f310ae704b94a285f80d1f5d515b7e222d052294c2bdb8bb91df7357a0bd9094",
+      "size_bytes": 1167,
+      "source_path": "/home/niels/v20_u4/must/hosts/s5/A/build_stats.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/must_pos_state_CRYPTO_LONG.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/verification_receipt.json",
+      "sha256": "182dbbf82a075d4a19fbe0070fbbc6254ccb0aa5fb19f2c8413c7581c6af1354",
+      "size_bytes": 11006117,
+      "source_path": "/home/niels/v20_u4/must/hosts/s5/A/must_pos_state_CRYPTO_LONG.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/must_pos_state_CRYPTO_SHORT.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/verification_receipt.json",
+      "sha256": "00a7cef64c23a801eb6a50b100db94a6d70c56cc137b3265eca0f8945ded769d",
+      "size_bytes": 7703438,
+      "source_path": "/home/niels/v20_u4/must/hosts/s5/A/must_pos_state_CRYPTO_SHORT.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/must_pos_state_STOCKS_LONG.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/verification_receipt.json",
+      "sha256": "fda81cdc412124eb8d4b603a1f6b98e515c275dcd94361ae595e3e212024fdcb",
+      "size_bytes": 4786109,
+      "source_path": "/home/niels/v20_u4/must/hosts/s5/A/must_pos_state_STOCKS_LONG.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/must_pos_state_STOCKS_SHORT.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/verification_receipt.json",
+      "sha256": "e44c6a4a1c5f7cc700df393692c9823774d407351c08e14303eb591cecf80513",
+      "size_bytes": 2690385,
+      "source_path": "/home/niels/v20_u4/must/hosts/s5/A/must_pos_state_STOCKS_SHORT.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/build_stats.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/verification_receipt.json",
+      "sha256": "e72cdde532f625753f07e2d50df346ca2fe978993fa17f902a38a5e5c5905ffc",
+      "size_bytes": 1165,
+      "source_path": "/home/niels/v20_u4/must/hosts/s5/B/build_stats.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/must_pos_state_CRYPTO_LONG.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/verification_receipt.json",
+      "sha256": "8b56ae6a53e1df259b4da67e7c8977d043f2036bbda5851a464ae4643f145553",
+      "size_bytes": 8064963,
+      "source_path": "/home/niels/v20_u4/must/hosts/s5/B/must_pos_state_CRYPTO_LONG.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/must_pos_state_CRYPTO_SHORT.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/verification_receipt.json",
+      "sha256": "7522b864939b7d3c27c34a6ac113208a7378d07a53528fab8bd78ad8601a055c",
+      "size_bytes": 5701450,
+      "source_path": "/home/niels/v20_u4/must/hosts/s5/B/must_pos_state_CRYPTO_SHORT.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/must_pos_state_STOCKS_LONG.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/verification_receipt.json",
+      "sha256": "4c9e48809b05679d0d59d3834b97c758c2dc299f1445a828ffb9a14ca5296259",
+      "size_bytes": 2970694,
+      "source_path": "/home/niels/v20_u4/must/hosts/s5/B/must_pos_state_STOCKS_LONG.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/must_pos_state_STOCKS_SHORT.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/verification_receipt.json",
+      "sha256": "36d39df27591166b86a977e599cce7e423bc359dc49b6eb8a56904d01955e64b",
+      "size_bytes": 1774711,
+      "source_path": "/home/niels/v20_u4/must/hosts/s5/B/must_pos_state_STOCKS_SHORT.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s6/A/build_stats.json",
+      "proof": "this receipt",
+      "sha256": "65d51482f6f151e87d202638546c6f3995e98d77b1c41df2922c405d8a03e58e",
+      "size_bytes": 1162,
+      "source_path": "/home/niels/v20_u4/must/hosts/s6/A/build_stats.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s6/A/must_pos_state_CRYPTO_LONG.json",
+      "proof": "this receipt",
+      "sha256": "44933cb1f8640e55a13058fddc3e3f207fdebb7fa6ef3b74664c01ab2ccf7d60",
+      "size_bytes": 9944307,
+      "source_path": "/home/niels/v20_u4/must/hosts/s6/A/must_pos_state_CRYPTO_LONG.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s6/A/must_pos_state_CRYPTO_SHORT.json",
+      "proof": "this receipt",
+      "sha256": "e91be1f656b8ad36da125a1863a8c59802d4fa638db59a2a74c040fa3e117034",
+      "size_bytes": 11864311,
+      "source_path": "/home/niels/v20_u4/must/hosts/s6/A/must_pos_state_CRYPTO_SHORT.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s6/A/must_pos_state_STOCKS_LONG.json",
+      "proof": "this receipt",
+      "sha256": "111a2eb90b5b8a03f6e12011184eb48c268a1f0b3d324b59a3d79e7932d4640f",
+      "size_bytes": 1437719,
+      "source_path": "/home/niels/v20_u4/must/hosts/s6/A/must_pos_state_STOCKS_LONG.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s6/A/must_pos_state_STOCKS_SHORT.json",
+      "proof": "this receipt",
+      "sha256": "366e90bf79f256fd73d1d6cdbee7353c90f185770490843487ec9f3d5a602eed",
+      "size_bytes": 5659670,
+      "source_path": "/home/niels/v20_u4/must/hosts/s6/A/must_pos_state_STOCKS_SHORT.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s6/B/build_stats.json",
+      "proof": "this receipt",
+      "sha256": "0316a91f2c7140e2b3342c6c1ce13b6edda247df44bee8f2f2693e0a31643b64",
+      "size_bytes": 1163,
+      "source_path": "/home/niels/v20_u4/must/hosts/s6/B/build_stats.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s6/B/must_pos_state_CRYPTO_LONG.json",
+      "proof": "this receipt",
+      "sha256": "909d5f6bf2d2bf7ffe997e84ff5117203ba041ade06fed132dbda7a074d340f0",
+      "size_bytes": 7340732,
+      "source_path": "/home/niels/v20_u4/must/hosts/s6/B/must_pos_state_CRYPTO_LONG.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s6/B/must_pos_state_CRYPTO_SHORT.json",
+      "proof": "this receipt",
+      "sha256": "8d38e186819011ac4ac2d5fcd7a6987533abc052c9d396d13c6a3c830f6084ac",
+      "size_bytes": 9204959,
+      "source_path": "/home/niels/v20_u4/must/hosts/s6/B/must_pos_state_CRYPTO_SHORT.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s6/B/must_pos_state_STOCKS_LONG.json",
+      "proof": "this receipt",
+      "sha256": "e25158d30e9f9a88924ac1fd781c6ff590916a592403a53e831770d8c0df240c",
+      "size_bytes": 723804,
+      "source_path": "/home/niels/v20_u4/must/hosts/s6/B/must_pos_state_STOCKS_LONG.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s6/B/must_pos_state_STOCKS_SHORT.json",
+      "proof": "this receipt",
+      "sha256": "0c72b12946957789a0f78d7da27edcb8541022ab1e7fb1ecc7b917b09fe9ef3e",
+      "size_bytes": 3811387,
+      "source_path": "/home/niels/v20_u4/must/hosts/s6/B/must_pos_state_STOCKS_SHORT.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0131Z/s5_v20_u4/must/seed_v3u3/must_pos_CRYPTO_LONG.json",
+      "proof": "data/reports/s5_seed_and_oct23_nn_preservation_20261031T0131Z.json",
+      "sha256": "4ba0ef5b5cbb256c45446a469ff10eda35da042f7fa31d4d8090df12c7b6bf8c",
+      "size_bytes": 13631210,
+      "source_path": "/home/niels/v20_u4/must/seed_v3u3/must_pos_CRYPTO_LONG.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0131Z/s5_v20_u4/must/seed_v3u3/must_pos_CRYPTO_SHORT.json",
+      "proof": "data/reports/s5_seed_and_oct23_nn_preservation_20261031T0131Z.json",
+      "sha256": "1b18947b564b3df6b5f4f325971e12264624d510007b067c023c530ecbd966f7",
+      "size_bytes": 12044958,
+      "source_path": "/home/niels/v20_u4/must/seed_v3u3/must_pos_CRYPTO_SHORT.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0131Z/s5_v20_u4/must/seed_v3u3/must_pos_STOCKS_LONG.json",
+      "proof": "data/reports/s5_seed_and_oct23_nn_preservation_20261031T0131Z.json",
+      "sha256": "f7649814cbdac99e73e525421fdf0c570a66c95196d1d8a860ea47ffb3b7f833",
+      "size_bytes": 3826799,
+      "source_path": "/home/niels/v20_u4/must/seed_v3u3/must_pos_STOCKS_LONG.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0131Z/s5_v20_u4/must/seed_v3u3/must_pos_STOCKS_SHORT.json",
+      "proof": "data/reports/s5_seed_and_oct23_nn_preservation_20261031T0131Z.json",
+      "sha256": "231a0fa84eee3373aaabdd45629eb64e6045dce369d1c4d743cd93364acd413a",
+      "size_bytes": 4531971,
+      "source_path": "/home/niels/v20_u4/must/seed_v3u3/must_pos_STOCKS_SHORT.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0131Z/s5_v20_u4/must/seed_v3u3/must_pos_state_CRYPTO_LONG.json",
+      "proof": "data/reports/s5_seed_and_oct23_nn_preservation_20261031T0131Z.json",
+      "sha256": "a1448553b011349c970893ecdaca00f6b50d413e9e88c0068d366bf9adf5534c",
+      "size_bytes": 19865985,
+      "source_path": "/home/niels/v20_u4/must/seed_v3u3/must_pos_state_CRYPTO_LONG.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0131Z/s5_v20_u4/must/seed_v3u3/must_pos_state_CRYPTO_SHORT.json",
+      "proof": "data/reports/s5_seed_and_oct23_nn_preservation_20261031T0131Z.json",
+      "sha256": "14198c7a3aa8f88a68778894a00ced8588bdcbed86eb1c108e18543db12f931e",
+      "size_bytes": 17390660,
+      "source_path": "/home/niels/v20_u4/must/seed_v3u3/must_pos_state_CRYPTO_SHORT.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0131Z/s5_v20_u4/must/seed_v3u3/must_pos_state_STOCKS_LONG.json",
+      "proof": "data/reports/s5_seed_and_oct23_nn_preservation_20261031T0131Z.json",
+      "sha256": "700bb3241ef7556e90a7f4c59b4403330accc22b3aa624136b5297ad8d7dbdee",
+      "size_bytes": 7320001,
+      "source_path": "/home/niels/v20_u4/must/seed_v3u3/must_pos_state_STOCKS_LONG.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0131Z/s5_v20_u4/must/seed_v3u3/must_pos_state_STOCKS_SHORT.json",
+      "proof": "data/reports/s5_seed_and_oct23_nn_preservation_20261031T0131Z.json",
+      "sha256": "ddc7c4d10536282ff5a2372ea5393fa9aeb4d763c358c5d111f36f83c98bdaed",
+      "size_bytes": 8025486,
+      "source_path": "/home/niels/v20_u4/must/seed_v3u3/must_pos_state_STOCKS_SHORT.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0131Z/s5_v20_u4/must/seed_v3u3/must_pos_watermarks.json",
+      "proof": "data/reports/s5_seed_and_oct23_nn_preservation_20261031T0131Z.json",
+      "sha256": "40c5e9eb4a5bc75df8d89d4b14f04e6f492d005868c82d96e3b49640361bd345",
+      "size_bytes": 5672318,
+      "source_path": "/home/niels/v20_u4/must/seed_v3u3/must_pos_watermarks.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_A/union_A.out",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_A/verification_receipt.json",
+      "sha256": "6af8eb6d79648b4fc2b15c7f9acd936d8ebd437959760d7c09966cf9e410cc79",
+      "size_bytes": 2049,
+      "source_path": "/home/niels/v20_u4/must/union_A.out"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/union_A/must_pos_CRYPTO_LONG.json",
+      "proof": "this receipt",
+      "sha256": "7a2c75aef757474fffcaec2e4930d5a9bdef8106e3bc9e4a65bf965535c670cc",
+      "size_bytes": 17666051,
+      "source_path": "/home/niels/v20_u4/must/union_A/must_pos_CRYPTO_LONG.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/union_A/must_pos_CRYPTO_SHORT.json",
+      "proof": "this receipt",
+      "sha256": "d007e2dbc0215abc997c0c54a844855feda71303bcbce2dfceddee4523e36db9",
+      "size_bytes": 14727414,
+      "source_path": "/home/niels/v20_u4/must/union_A/must_pos_CRYPTO_SHORT.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/union_A/must_pos_STOCKS_LONG.json",
+      "proof": "this receipt",
+      "sha256": "922b38866df4287fd4657131e140d30e72ec947abd41a3087655fb1b1ae3338b",
+      "size_bytes": 5112052,
+      "source_path": "/home/niels/v20_u4/must/union_A/must_pos_STOCKS_LONG.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/union_A/must_pos_STOCKS_SHORT.json",
+      "proof": "this receipt",
+      "sha256": "f0b1ff67498d87367c06f0cb54f1d1632c9d33d990ba413930f8702bf6ce3250",
+      "size_bytes": 6210141,
+      "source_path": "/home/niels/v20_u4/must/union_A/must_pos_STOCKS_SHORT.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_A/must_pos_state_CRYPTO_LONG.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_A/verification_receipt.json",
+      "sha256": "45cd4251907771cdbaeb8a2f9220a1eb059c18fa5189320b89a10590de5fe7df",
+      "size_bytes": 24330298,
+      "source_path": "/home/niels/v20_u4/must/union_A/must_pos_state_CRYPTO_LONG.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_A/must_pos_state_CRYPTO_SHORT.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_A/verification_receipt.json",
+      "sha256": "8e67babc7834d617143572f21176fc737b9706f0ce8702a016e55d2a2ec87d44",
+      "size_bytes": 20641649,
+      "source_path": "/home/niels/v20_u4/must/union_A/must_pos_state_CRYPTO_SHORT.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_A/must_pos_state_STOCKS_LONG.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_A/verification_receipt.json",
+      "sha256": "9932a9138a8bbee2310c2a982fd57d90d465e36f150c4ecbe2c9fd90e9a8a124",
+      "size_bytes": 8853294,
+      "source_path": "/home/niels/v20_u4/must/union_A/must_pos_state_STOCKS_LONG.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_A/must_pos_state_STOCKS_SHORT.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_A/verification_receipt.json",
+      "sha256": "4ac477a7d45d9b8b560702463ab494c63cc7a3e5c77a5e3163476f725f0f0aca",
+      "size_bytes": 10202721,
+      "source_path": "/home/niels/v20_u4/must/union_A/must_pos_state_STOCKS_SHORT.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_A/union_report.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_A/verification_receipt.json",
+      "sha256": "91e6eabb6d318ddfc16587a83cbe8327827a347c8a71eceaff094c4bbce21056",
+      "size_bytes": 2048,
+      "source_path": "/home/niels/v20_u4/must/union_A/union_report.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_B/union_B.out",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_B/verification_receipt.json",
+      "sha256": "5cf2edeef982c755576c79d27f6247809d68178f1b694d8da485efac1cdcc616",
+      "size_bytes": 2056,
+      "source_path": "/home/niels/v20_u4/must/union_B.out"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/union_B/must_pos_CRYPTO_LONG.json",
+      "proof": "this receipt",
+      "sha256": "0d62764c311cf2d7eb4e0a88c95d7e4558d76ed85aef625738c1b69813937076",
+      "size_bytes": 15856168,
+      "source_path": "/home/niels/v20_u4/must/union_B/must_pos_CRYPTO_LONG.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/union_B/must_pos_CRYPTO_SHORT.json",
+      "proof": "this receipt",
+      "sha256": "4d10dc6680b24c2cf45c4658510e3f400a241470b82bf4afdfeb128002eccce0",
+      "size_bytes": 13315719,
+      "source_path": "/home/niels/v20_u4/must/union_B/must_pos_CRYPTO_SHORT.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/union_B/must_pos_STOCKS_LONG.json",
+      "proof": "this receipt",
+      "sha256": "e32e60bc96ed6346e8fc19713f8f0276346ed54f3e7e6ee2ed6cc2030ba8bae6",
+      "size_bytes": 3893201,
+      "source_path": "/home/niels/v20_u4/must/union_B/must_pos_STOCKS_LONG.json"
+    },
+    {
+      "method": "new_unique_copy",
+      "preserved_at": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/union_B/must_pos_STOCKS_SHORT.json",
+      "proof": "this receipt",
+      "sha256": "cb1826df3e7b4a0ea94f57c30151b5a2c84d5d2758ce69d05cc7b460decbe542",
+      "size_bytes": 4905145,
+      "source_path": "/home/niels/v20_u4/must/union_B/must_pos_STOCKS_SHORT.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_B/must_pos_state_CRYPTO_LONG.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_B/verification_receipt.json",
+      "sha256": "87b04b41b169d1bce1dad9a85b046fd9a73bfcf8a2c6776dd74ae66ac010b427",
+      "size_bytes": 21063271,
+      "source_path": "/home/niels/v20_u4/must/union_B/must_pos_state_CRYPTO_LONG.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_B/must_pos_state_CRYPTO_SHORT.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_B/verification_receipt.json",
+      "sha256": "f52594c9010500748c516d04370760fa9ba74003ed3308fc1be382dbd69e74eb",
+      "size_bytes": 18144453,
+      "source_path": "/home/niels/v20_u4/must/union_B/must_pos_state_CRYPTO_SHORT.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_B/must_pos_state_STOCKS_LONG.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_B/verification_receipt.json",
+      "sha256": "8cc3fdc9669d3cb69e20b40d6f5e596557a53660973addc2f172ae90b3935944",
+      "size_bytes": 6641842,
+      "source_path": "/home/niels/v20_u4/must/union_B/must_pos_state_STOCKS_LONG.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_B/must_pos_state_STOCKS_SHORT.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_B/verification_receipt.json",
+      "sha256": "c63c0a01e091c22084b2b47b2ea1908a32efe2ac92141a184a800d2aad0c88d8",
+      "size_bytes": 7794513,
+      "source_path": "/home/niels/v20_u4/must/union_B/must_pos_state_STOCKS_SHORT.json"
+    },
+    {
+      "method": "existing_verified_copy_or_exact_content_dedup",
+      "preserved_at": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_B/union_report.json",
+      "proof": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_B/verification_receipt.json",
+      "sha256": "76305dc59e59643c140a1de98e62bc2077352cdbf9e90ab685a8e0a729bf4f88",
+      "size_bytes": 2055,
+      "source_path": "/home/niels/v20_u4/must/union_B/union_report.json"
+    }
+  ],
+  "created_at_utc": "2026-10-31T02:46:48.582920+00:00",
+  "dedup_results": {
+    "duplicate_paths_mapped_to_same_new_content": 1,
+    "new_uncovered_logical_bytes": 254771440,
+    "new_uncovered_logical_paths": 56,
+    "new_unique_bytes": 252757726,
+    "new_unique_content_hashes": 55,
+    "prior_verified_receipt_items": 72,
+    "source_paths_covered_by_prior_exact_or_content_hash_copy": 61
+  },
+  "destination_volume_uuid": "04543668-3000-3F41-BB34-1C876F724D28",
+  "new_destination_root": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z",
+  "new_unique_files": [
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/A/must_pos_CRYPTO_LONG.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136670203121962,
+      "mtime_ns_before_census": 1793136670203121962,
+      "path": "A/must_pos_CRYPTO_LONG.json",
+      "sha256": "41625b7aa5524b9dc6b7b351fa5f752b59366e0261d8c0a8c9a93650b127da59",
+      "size_bytes": 10009866,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/A/must_pos_CRYPTO_SHORT.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136670623123379,
+      "mtime_ns_before_census": 1793136670623123379,
+      "path": "A/must_pos_CRYPTO_SHORT.json",
+      "sha256": "2bfbedffc3abc97164a11ff9d931be957081d7cfe1cd1dd1e5f8d72c372ee5e4",
+      "size_bytes": 6676037,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/A/must_pos_STOCKS_LONG.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136670875124230,
+      "mtime_ns_before_census": 1793136670875124230,
+      "path": "A/must_pos_STOCKS_LONG.json",
+      "sha256": "fbd496cc69ffc55762c5131039dcad6e84d373b1f970887e8983da7e9033395f",
+      "size_bytes": 3811301,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/A/must_pos_STOCKS_SHORT.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136671211125363,
+      "mtime_ns_before_census": 1793136671211125363,
+      "path": "A/must_pos_STOCKS_SHORT.json",
+      "sha256": "c2a17a2caf01c5608be2997c77b31861336bee816e07c716dd2919c1bd751e8f",
+      "size_bytes": 2315693,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/A/must_pos_state_CRYPTO_LONG.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136669671120166,
+      "mtime_ns_before_census": 1793136669671120166,
+      "path": "A/must_pos_state_CRYPTO_LONG.json",
+      "sha256": "7d95606ec454f52f3164cd003deb78ba3a2f5a28f318064e91a4c233d9023339",
+      "size_bytes": 11006117,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/A/must_pos_state_CRYPTO_SHORT.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136670379122556,
+      "mtime_ns_before_census": 1793136670379122556,
+      "path": "A/must_pos_state_CRYPTO_SHORT.json",
+      "sha256": "0c592b27b96a97023a8ca31489a2ae7aa54353daca4b1b30a2d84490135b3d38",
+      "size_bytes": 7703438,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/A/must_pos_state_STOCKS_LONG.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136670723123717,
+      "mtime_ns_before_census": 1793136670723123717,
+      "path": "A/must_pos_state_STOCKS_LONG.json",
+      "sha256": "76b5e20e61b5542c0209fa3977321999370cbb7b7d9ba4c2204d884961c67294",
+      "size_bytes": 4580172,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/A/must_pos_state_STOCKS_SHORT.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136670935124432,
+      "mtime_ns_before_census": 1793136670935124432,
+      "path": "A/must_pos_state_STOCKS_SHORT.json",
+      "sha256": "ed5acc1952515cbc5e8523052ce7c74613eb8ace6a953d8f0ba9b667ea42baad",
+      "size_bytes": 2690385,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/A/must_pos_watermarks.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136671239125458,
+      "mtime_ns_before_census": 1793136671239125458,
+      "path": "A/must_pos_watermarks.json",
+      "sha256": "e13ed87e5c42395c15eb109a950e4c2550eb1069d45c8f914d828645a84ed633",
+      "size_bytes": 2013714,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/B/must_pos_CRYPTO_LONG.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136846055680450,
+      "mtime_ns_before_census": 1793136846055680450,
+      "path": "B/must_pos_CRYPTO_LONG.json",
+      "sha256": "8c230a44cf668215b5bd21dbd10a49c671335022928569bcb3351fa256dd7134",
+      "size_bytes": 7624184,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/B/must_pos_CRYPTO_SHORT.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136846467681685,
+      "mtime_ns_before_census": 1793136846467681685,
+      "path": "B/must_pos_CRYPTO_SHORT.json",
+      "sha256": "0e1759ed734f62de26fd2da96b36d3e7ca93a2713faf74b4eae9791a91a2b570",
+      "size_bytes": 5204621,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/B/must_pos_STOCKS_LONG.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136846623682153,
+      "mtime_ns_before_census": 1793136846623682153,
+      "path": "B/must_pos_STOCKS_LONG.json",
+      "sha256": "0c5db82b25de338ea7dc26b9eff6c76873ebda3d68edb48282ddfb1be1fd9653",
+      "size_bytes": 2433642,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/B/must_pos_STOCKS_SHORT.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136846715682429,
+      "mtime_ns_before_census": 1793136846715682429,
+      "path": "B/must_pos_STOCKS_SHORT.json",
+      "sha256": "6eea91d50d041dd982e76a7c69a3cacd651a9502e5ee487f423a8aaa3ff116ab",
+      "size_bytes": 1591356,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/B/must_pos_state_CRYPTO_LONG.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136845803679695,
+      "mtime_ns_before_census": 1793136845803679695,
+      "path": "B/must_pos_state_CRYPTO_LONG.json",
+      "sha256": "319ec12757fb78dadbc2551b9f8361cd7c9576dbd52091ccf6e5ea9660603e82",
+      "size_bytes": 8064963,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/B/must_pos_state_CRYPTO_SHORT.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136846175680810,
+      "mtime_ns_before_census": 1793136846175680810,
+      "path": "B/must_pos_state_CRYPTO_SHORT.json",
+      "sha256": "552d9350ef58553e7cbf2973289dc5c9968784ba8bfca6bfff7836e0e57e1e0b",
+      "size_bytes": 5701450,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/B/must_pos_state_STOCKS_LONG.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136846531681877,
+      "mtime_ns_before_census": 1793136846531681877,
+      "path": "B/must_pos_state_STOCKS_LONG.json",
+      "sha256": "367c5cbbac7a5dcf6e65a94dd4ab649a746967a0dea23f594c9a8f92f6c1f87e",
+      "size_bytes": 2812476,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/B/must_pos_state_STOCKS_SHORT.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136846659682261,
+      "mtime_ns_before_census": 1793136846659682261,
+      "path": "B/must_pos_state_STOCKS_SHORT.json",
+      "sha256": "e491f13881ffc9fce8cd657117efc00dc8d50b10d11b4c634875ab8b6aca1c4f",
+      "size_bytes": 1774711,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s1/A/build_stats.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136351273553161,
+      "mtime_ns_before_census": 1793136351273553161,
+      "path": "hosts/s1/A/build_stats.json",
+      "sha256": "4bf05e6b63f540d065b1f9f8ddadaafda7c1430aaac83f85fb0a4d597288f0f5",
+      "size_bytes": 1108,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s1/A/must_pos_state_CRYPTO_LONG.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136351049548029,
+      "mtime_ns_before_census": 1793136351049548029,
+      "path": "hosts/s1/A/must_pos_state_CRYPTO_LONG.json",
+      "sha256": "dbff45f8aa5e0c145e02a28bb2bed9146cc6c52494900443490c2590e437ac56",
+      "size_bytes": 178,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s1/A/must_pos_state_CRYPTO_SHORT.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136351128549839,
+      "mtime_ns_before_census": 1793136351128549839,
+      "path": "hosts/s1/A/must_pos_state_CRYPTO_SHORT.json",
+      "sha256": "126a87458a35713a9799c29105e28a77b91cd3a9068d102ebb953b6976a0d550",
+      "size_bytes": 3196133,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s1/A/must_pos_state_STOCKS_LONG.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136351256552771,
+      "mtime_ns_before_census": 1793136351256552771,
+      "path": "hosts/s1/A/must_pos_state_STOCKS_LONG.json",
+      "sha256": "31e20faceb26ff94128bb16d2d8f3f579f78a5958deadd881908b13072351f2f",
+      "size_bytes": 178,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s1/A/must_pos_state_STOCKS_SHORT.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136351260552863,
+      "mtime_ns_before_census": 1793136351260552863,
+      "path": "hosts/s1/A/must_pos_state_STOCKS_SHORT.json",
+      "sha256": "9d912585a90ac70268f850544dcadce3975b3d8e38b24fdd98318de84045add2",
+      "size_bytes": 179,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s1/B/build_stats.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136355771656214,
+      "mtime_ns_before_census": 1793136355771656214,
+      "path": "hosts/s1/B/build_stats.json",
+      "sha256": "e5bfcc412ccb8e78d47abd90e4c091c69a3b19cc341ea18c145b523716dbd0f3",
+      "size_bytes": 1109,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s1/B/must_pos_state_CRYPTO_LONG.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136355570651608,
+      "mtime_ns_before_census": 1793136355570651608,
+      "path": "hosts/s1/B/must_pos_state_CRYPTO_LONG.json",
+      "sha256": "dc3e0ba286f9f579fe5d12043fcdfc53205d80b531420cd8c015d5e93df554bc",
+      "size_bytes": 178,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s1/B/must_pos_state_CRYPTO_SHORT.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136355638653166,
+      "mtime_ns_before_census": 1793136355638653166,
+      "path": "hosts/s1/B/must_pos_state_CRYPTO_SHORT.json",
+      "sha256": "d20c7b3455386b2c6103f2bdca42c6bb00505410aff8fe43a5cd9a54b24ea4a0",
+      "size_bytes": 2898425,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s1/B/must_pos_state_STOCKS_LONG.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136355755655847,
+      "mtime_ns_before_census": 1793136355755655847,
+      "path": "hosts/s1/B/must_pos_state_STOCKS_LONG.json",
+      "sha256": "8b06bf08a1fb6feb28387c21f9da769be1e62c56d7d6034778b2c2749d2d91b4",
+      "size_bytes": 178,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s1/B/must_pos_state_STOCKS_SHORT.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136355758655916,
+      "mtime_ns_before_census": 1793136355758655916,
+      "path": "hosts/s1/B/must_pos_state_STOCKS_SHORT.json",
+      "sha256": "14df2b8f5b4fd2535a0712abdb07e2418af825b7067538990b0d1c5a4144b6be",
+      "size_bytes": 179,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s2/A/build_stats.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136436293202490,
+      "mtime_ns_before_census": 1793136436293202490,
+      "path": "hosts/s2/A/build_stats.json",
+      "sha256": "98206d293ba00817ab7762ec64dd53cd2af4eb06c8b4c0e335216c0c1e0490ca",
+      "size_bytes": 1153,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s2/A/must_pos_state_CRYPTO_LONG.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136435237192079,
+      "mtime_ns_before_census": 1793136435237192079,
+      "path": "hosts/s2/A/must_pos_state_CRYPTO_LONG.json",
+      "sha256": "cefe07c122ae4e9181698b9452bef021f25db5bc7fb85b4bcc0532cfec6f37b5",
+      "size_bytes": 10975663,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s2/A/must_pos_state_CRYPTO_SHORT.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136435853198152,
+      "mtime_ns_before_census": 1793136435853198152,
+      "path": "hosts/s2/A/must_pos_state_CRYPTO_SHORT.json",
+      "sha256": "baa8df9817dd0812ff2b593fc0d873753e7d129bc0e6d4a063ce0a6de6bf26b9",
+      "size_bytes": 3669279,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s2/A/must_pos_state_STOCKS_LONG.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136436129200873,
+      "mtime_ns_before_census": 1793136436129200873,
+      "path": "hosts/s2/A/must_pos_state_STOCKS_LONG.json",
+      "sha256": "51157076ab45067765eb8d0efd4f3481d355e5d6c534c22ef8252cc4145497b7",
+      "size_bytes": 631092,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s2/A/must_pos_state_STOCKS_SHORT.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136436169201268,
+      "mtime_ns_before_census": 1793136436169201268,
+      "path": "hosts/s2/A/must_pos_state_STOCKS_SHORT.json",
+      "sha256": "945092d4eb113de586996677f1f4467ff7905cc13c06abf676d5a31473171df4",
+      "size_bytes": 1034927,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s2/B/build_stats.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136514153970725,
+      "mtime_ns_before_census": 1793136514153970725,
+      "path": "hosts/s2/B/build_stats.json",
+      "sha256": "3087f10bb73ff46c40aee5f2d0829ac099498ba7189b5e91e2d912865be29534",
+      "size_bytes": 1151,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s2/B/must_pos_state_CRYPTO_LONG.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136513477964050,
+      "mtime_ns_before_census": 1793136513477964050,
+      "path": "hosts/s2/B/must_pos_state_CRYPTO_LONG.json",
+      "sha256": "4a551427a3fdd6e6c4e2058472adab1bfd146daa126906a2d36f7432d945c3d7",
+      "size_bytes": 8947127,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s2/B/must_pos_state_CRYPTO_SHORT.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136513941968632,
+      "mtime_ns_before_census": 1793136513941968632,
+      "path": "hosts/s2/B/must_pos_state_CRYPTO_SHORT.json",
+      "sha256": "a32b48d548eb57fe0546546faabfc4377ba182fbcf785d7fcb93ef6a84013bae",
+      "size_bytes": 2694450,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s2/B/must_pos_state_STOCKS_LONG.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136514041969619,
+      "mtime_ns_before_census": 1793136514041969619,
+      "path": "hosts/s2/B/must_pos_state_STOCKS_LONG.json",
+      "sha256": "541b7c45c4de3e4faab45ede3e49c658a0c975c5dc83095de229779dcbe212f6",
+      "size_bytes": 438400,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s2/B/must_pos_state_STOCKS_SHORT.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793136514065969856,
+      "mtime_ns_before_census": 1793136514065969856,
+      "path": "hosts/s2/B/must_pos_state_STOCKS_SHORT.json",
+      "sha256": "e45e2a099cbe133f0aeb7eb4fd43e3e2a74156e28c12979ef7ebcfb8edc7f3d1",
+      "size_bytes": 577408,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s6/A/build_stats.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793137503821167879,
+      "mtime_ns_before_census": 1793137503821167879,
+      "path": "hosts/s6/A/build_stats.json",
+      "sha256": "65d51482f6f151e87d202638546c6f3995e98d77b1c41df2922c405d8a03e58e",
+      "size_bytes": 1162,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s6/A/must_pos_state_CRYPTO_LONG.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793137502013165528,
+      "mtime_ns_before_census": 1793137502013165528,
+      "path": "hosts/s6/A/must_pos_state_CRYPTO_LONG.json",
+      "sha256": "44933cb1f8640e55a13058fddc3e3f207fdebb7fa6ef3b74664c01ab2ccf7d60",
+      "size_bytes": 9944307,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s6/A/must_pos_state_CRYPTO_SHORT.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793137502769166511,
+      "mtime_ns_before_census": 1793137502769166511,
+      "path": "hosts/s6/A/must_pos_state_CRYPTO_SHORT.json",
+      "sha256": "e91be1f656b8ad36da125a1863a8c59802d4fa638db59a2a74c040fa3e117034",
+      "size_bytes": 11864311,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s6/A/must_pos_state_STOCKS_LONG.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793137503157167016,
+      "mtime_ns_before_census": 1793137503157167016,
+      "path": "hosts/s6/A/must_pos_state_STOCKS_LONG.json",
+      "sha256": "111a2eb90b5b8a03f6e12011184eb48c268a1f0b3d324b59a3d79e7932d4640f",
+      "size_bytes": 1437719,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s6/A/must_pos_state_STOCKS_SHORT.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793137503497167458,
+      "mtime_ns_before_census": 1793137503497167458,
+      "path": "hosts/s6/A/must_pos_state_STOCKS_SHORT.json",
+      "sha256": "366e90bf79f256fd73d1d6cdbee7353c90f185770490843487ec9f3d5a602eed",
+      "size_bytes": 5659670,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s6/B/build_stats.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793137673093384554,
+      "mtime_ns_before_census": 1793137673093384554,
+      "path": "hosts/s6/B/build_stats.json",
+      "sha256": "0316a91f2c7140e2b3342c6c1ce13b6edda247df44bee8f2f2693e0a31643b64",
+      "size_bytes": 1163,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s6/B/must_pos_state_CRYPTO_LONG.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793137671777382893,
+      "mtime_ns_before_census": 1793137671777382893,
+      "path": "hosts/s6/B/must_pos_state_CRYPTO_LONG.json",
+      "sha256": "909d5f6bf2d2bf7ffe997e84ff5117203ba041ade06fed132dbda7a074d340f0",
+      "size_bytes": 7340732,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s6/B/must_pos_state_CRYPTO_SHORT.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793137672333383595,
+      "mtime_ns_before_census": 1793137672333383595,
+      "path": "hosts/s6/B/must_pos_state_CRYPTO_SHORT.json",
+      "sha256": "8d38e186819011ac4ac2d5fcd7a6987533abc052c9d396d13c6a3c830f6084ac",
+      "size_bytes": 9204959,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s6/B/must_pos_state_STOCKS_LONG.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793137672625383964,
+      "mtime_ns_before_census": 1793137672625383964,
+      "path": "hosts/s6/B/must_pos_state_STOCKS_LONG.json",
+      "sha256": "e25158d30e9f9a88924ac1fd781c6ff590916a592403a53e831770d8c0df240c",
+      "size_bytes": 723804,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/hosts/s6/B/must_pos_state_STOCKS_SHORT.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793137672737384105,
+      "mtime_ns_before_census": 1793137672737384105,
+      "path": "hosts/s6/B/must_pos_state_STOCKS_SHORT.json",
+      "sha256": "0c72b12946957789a0f78d7da27edcb8541022ab1e7fb1ecc7b917b09fe9ef3e",
+      "size_bytes": 3811387,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/union_A/must_pos_CRYPTO_LONG.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793137758069967245,
+      "mtime_ns_before_census": 1793137758069967245,
+      "path": "union_A/must_pos_CRYPTO_LONG.json",
+      "sha256": "7a2c75aef757474fffcaec2e4930d5a9bdef8106e3bc9e4a65bf965535c670cc",
+      "size_bytes": 17666051,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/union_A/must_pos_CRYPTO_SHORT.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793137762673977522,
+      "mtime_ns_before_census": 1793137762673977522,
+      "path": "union_A/must_pos_CRYPTO_SHORT.json",
+      "sha256": "d007e2dbc0215abc997c0c54a844855feda71303bcbce2dfceddee4523e36db9",
+      "size_bytes": 14727414,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/union_A/must_pos_STOCKS_LONG.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793137765197983154,
+      "mtime_ns_before_census": 1793137765197983154,
+      "path": "union_A/must_pos_STOCKS_LONG.json",
+      "sha256": "922b38866df4287fd4657131e140d30e72ec947abd41a3087655fb1b1ae3338b",
+      "size_bytes": 5112052,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/union_A/must_pos_STOCKS_SHORT.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793137768009989426,
+      "mtime_ns_before_census": 1793137768009989426,
+      "path": "union_A/must_pos_STOCKS_SHORT.json",
+      "sha256": "f0b1ff67498d87367c06f0cb54f1d1632c9d33d990ba413930f8702bf6ce3250",
+      "size_bytes": 6210141,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/union_B/must_pos_CRYPTO_LONG.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793137772665999805,
+      "mtime_ns_before_census": 1793137772665999805,
+      "path": "union_B/must_pos_CRYPTO_LONG.json",
+      "sha256": "0d62764c311cf2d7eb4e0a88c95d7e4558d76ed85aef625738c1b69813937076",
+      "size_bytes": 15856168,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/union_B/must_pos_CRYPTO_SHORT.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793137776534008424,
+      "mtime_ns_before_census": 1793137776534008424,
+      "path": "union_B/must_pos_CRYPTO_SHORT.json",
+      "sha256": "4d10dc6680b24c2cf45c4658510e3f400a241470b82bf4afdfeb128002eccce0",
+      "size_bytes": 13315719,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/union_B/must_pos_STOCKS_LONG.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793137778246012237,
+      "mtime_ns_before_census": 1793137778246012237,
+      "path": "union_B/must_pos_STOCKS_LONG.json",
+      "sha256": "e32e60bc96ed6346e8fc19713f8f0276346ed54f3e7e6ee2ed6cc2030ba8bae6",
+      "size_bytes": 3893201,
+      "source_matches_current_post_copy_probe": true
+    },
+    {
+      "destination_path": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/union_B/must_pos_STOCKS_SHORT.json",
+      "destination_sha256_match": true,
+      "mtime_ns_after_census": 1793137780290016788,
+      "mtime_ns_before_census": 1793137780290016788,
+      "path": "union_B/must_pos_STOCKS_SHORT.json",
+      "sha256": "cb1826df3e7b4a0ea94f57c30151b5a2c84d5d2758ce69d05cc7b460decbe542",
+      "size_bytes": 4905145,
+      "source_matches_current_post_copy_probe": true
+    }
+  ],
+  "source_host": "s5",
+  "source_retained": true,
+  "source_root": "/home/niels/v20_u4/must",
+  "source_tree_census": {
+    "all_117_source_file_hashes_stable_at_inventory": true,
+    "logical_bytes": 598245671,
+    "regular_files": 117,
+    "symlinks": 0
+  },
+  "symlink_targets_followed": false,
+  "verification_note": "The 598MB full source tree exceeds the 500MB broad-archive target, so only 55 unique uncovered files (252.76MB) were copied. Previously verified copies cover 61 source paths; one other source path deduplicates to a matching content hash. All source path bytes are represented by the path map."
+}

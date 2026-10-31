@@ -9392,32 +9392,7 @@ def _psym_sps(symbol: str, side: str):
 
 
 def _psym_sps_raw(symbol: str, side: str):
-    """Effective START_POSITION_SIZE for (symbol, side). Honors per-sym
-    START_POSITION_SIZE_OVERRIDE_USD first, then per-sym START_POSITION_SIZE,
-    finally config.START_POSITION_SIZE. Use at sizing call sites in lieu of
-    `config.START_POSITION_SIZE`. 2026-06-02: result scaled by per-sym conviction (size_mult).
-    2026-05-18 Path B — implements user's minimum-patch trial-sizing key."""
-    try:
-        if os.environ.get("V8_DISABLE_PER_SYM") == "1":
-            return getattr(config, "START_POSITION_SIZE", 45.0)
-        # USER 2026-10-06 SINGLE SOURCE: sizing reads sqlite overrides (was JSON layer — dual-sourced vs _psym_get).
-        _sps_ov = None
-        if os.environ.get("PER_SYM_STORE_SQLITE_DISABLED") != "1":
-            try:
-                import per_sym_store as _pss_sps
-                _sps_ov = _pss_sps.get_overrides(f"{symbol}_{side}")
-            except Exception:
-                _sps_ov = None
-        ov = _sps_ov if isinstance(_sps_ov, dict) else {}
-        _cv = _ezm_conviction_mult(symbol, side)
-        if "START_POSITION_SIZE_OVERRIDE_USD" in ov:
-            v = ov["START_POSITION_SIZE_OVERRIDE_USD"]
-            if v is not None:
-                return float(_crypto_mode_ceiling("START_POSITION_SIZE", v)) * _cv  # mode ceiling on the base; conviction still differentiates
-        if "START_POSITION_SIZE" in ov:
-            return float(_crypto_mode_ceiling("START_POSITION_SIZE", ov["START_POSITION_SIZE"])) * _cv
-    except Exception:
-        pass
+    """Market-mode base START_POSITION_SIZE, with explicit sizing multipliers applied separately."""
     base = float(getattr(_ezm_base_config, "START_POSITION_SIZE", 45.0)) * _ezm_conviction_mult(symbol, side)
     # GOLDEN PULLBACK exceptional quantity — caller passes indicators via thread-local _GOLDEN_PULLBACK_CTX if available
     try:

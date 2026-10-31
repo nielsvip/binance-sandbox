@@ -30,13 +30,11 @@ _MI_TFS = ("15m", "1h", "4h", "D")
 def oi_confirm_entry_gate(npz, n, is_long, config, close, safe):
     if not bool(getattr(config, "OI_CONFIRM_ENABLED", False)):
         return None
-    # b7: live nests the OI gate INSIDE `if HTF_DIRECTION_GATE_ENABLED` (ez_positions_quick 12658-12700) -> dead unless that master is on
-    if not bool(getattr(config, "HTF_DIRECTION_GATE_ENABLED", False)):
-        return None
+    # The live OI gate is independent of HTF_DIRECTION_GATE_ENABLED. Missing
+    # values pass per bar, so mask activity must not depend on a suffix-wide
+    # availability check (which made earlier bars depend on later data).
     oi = safe(npz, "oi_change_1h_pct", n, np.nan)
     p1h = safe(npz, "close_1h_prev", n, 0.0)
-    if not np.any(np.isfinite(oi)) or not np.any(p1h > 0):
-        return None  # no OI data on this venue — fail-open, matches live (crypto-only gate)
     min_oi = float(getattr(config, "OI_CONFIRM_MIN_CHANGE_PCT", 0.5))
     min_px = float(getattr(config, "OI_CONFIRM_MIN_PRICE_PCT", 0.3))
     with np.errstate(divide="ignore", invalid="ignore"):

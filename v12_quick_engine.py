@@ -21032,66 +21032,67 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         pos.get("entry_qty", pos["qty"])
                     ):
                         _lec_qty = pos["qty"]
-                _lec_ts = (
-                    float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
-                )
-                if _lec_qty >= pos["qty"] - 1e-12:
-                    pos["fees"] += abs(pos["qty"] * px) * half_fee
-                    _pnl = (
-                        pos["realized"]
-                        + (
-                            (px - pos["avg_price"]) * pos["qty"]
-                            if is_long
-                            else (pos["avg_price"] - px) * pos["qty"]
+                if _lec_qty > 0.0:
+                    _lec_ts = (
+                        float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+                    )
+                    if _lec_qty >= pos["qty"] - 1e-12:
+                        pos["fees"] += abs(pos["qty"] * px) * half_fee
+                        _pnl = (
+                            pos["realized"]
+                            + (
+                                (px - pos["avg_price"]) * pos["qty"]
+                                if is_long
+                                else (pos["avg_price"] - px) * pos["qty"]
+                            )
+                            - pos["fees"]
                         )
-                        - pos["fees"]
-                    )
-                    _pct = _pnl / pos["deployed"] * 100 if pos["deployed"] else 0.0
-                    trades.append(
-                        {
-                            "pnl_dollars": _pnl,
-                            "pnl_pct": float(_pct),
-                            "deployed": pos["deployed"],
-                            "reason": _lec_reason,
-                            "type": "CLOSE",
-                            "ts": _lec_ts,
-                            "price": float(px),
-                            "bar_entry": int(pos["entry_bar"]),
-                            "bar_exit": int(i),
-                            "entry_price": float(
-                                pos.get("entry_price", pos["avg_price"])
-                            ),
-                            "exit_price": float(px),
-                            "qty": float(pos["qty"]),
-                            "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"),
-                            "exit_reason": _lec_reason,
-                            "bars_held": int(i - pos["entry_bar"]),
-                        }
-                    )
-                    pos = None
-                    cd = cooldown_bars
-                    has_closed_before = True
-                else:
-                    pos["realized"] += (
-                        (px - pos["avg_price"]) * _lec_qty
-                        if is_long
-                        else (pos["avg_price"] - px) * _lec_qty
-                    )
-                    pos["fees"] += abs(_lec_qty * px) * half_fee
-                    pos["qty"] -= _lec_qty
-                    events.append(
-                        {
-                            "type": "REDUCE",
-                            "ts": _lec_ts,
-                            "price": float(px),
-                            "qty": float(_lec_qty),
-                            "pos_deployed": float(pos["deployed"]),
-                            "bar": int(i),
-                            "reason": _lec_reason,
-                        }
-                    )
-                    pos["last_reduce_bar"] = int(i)
-                continue
+                        _pct = _pnl / pos["deployed"] * 100 if pos["deployed"] else 0.0
+                        trades.append(
+                            {
+                                "pnl_dollars": _pnl,
+                                "pnl_pct": float(_pct),
+                                "deployed": pos["deployed"],
+                                "reason": _lec_reason,
+                                "type": "CLOSE",
+                                "ts": _lec_ts,
+                                "price": float(px),
+                                "bar_entry": int(pos["entry_bar"]),
+                                "bar_exit": int(i),
+                                "entry_price": float(
+                                    pos.get("entry_price", pos["avg_price"])
+                                ),
+                                "exit_price": float(px),
+                                "qty": float(pos["qty"]),
+                                "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"),
+                                "exit_reason": _lec_reason,
+                                "bars_held": int(i - pos["entry_bar"]),
+                            }
+                        )
+                        pos = None
+                        cd = cooldown_bars
+                        has_closed_before = True
+                    else:
+                        pos["realized"] += (
+                            (px - pos["avg_price"]) * _lec_qty
+                            if is_long
+                            else (pos["avg_price"] - px) * _lec_qty
+                        )
+                        pos["fees"] += abs(_lec_qty * px) * half_fee
+                        pos["qty"] -= _lec_qty
+                        events.append(
+                            {
+                                "type": "REDUCE",
+                                "ts": _lec_ts,
+                                "price": float(px),
+                                "qty": float(_lec_qty),
+                                "pos_deployed": float(pos["deployed"]),
+                                "bar": int(i),
+                                "reason": _lec_reason,
+                            }
+                        )
+                        pos["last_reduce_bar"] = int(i)
+                    continue
             # b2c: ez_manage.process_position exits (R1 / R2 / MOMENTUM_TP / DC_BASIS_3M_REDUCE) — full closes
             _pp_hit = _lec.step_pp(
                 _lec_P,

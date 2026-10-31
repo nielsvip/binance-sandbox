@@ -1866,6 +1866,8 @@ def apply_patches(stores: Dict[str, IndicatorStore], mode: str):
     # --- Patch time in ALL trading modules ---
     sim_time = _SimTime()
     ez_manage.time = sim_time
+    from vec_decisions.tradier_sim_clock import patch_tradier_sim_time
+    patch_tradier_sim_time(sim_time, mode)
     # F1 (2026-10-01): ez_manage.ii() falls back to the newest REAL market_data_*.json in DATA_DIR whenever the sim snapshot lacks
     # HTF keys or k_3m/d_3m == 0 (always true on crypto NPZ without 3m stoch) -> real Aug-2026 indicator values leaked into the sim
     # (non-causal) AND 54ms orjson.loads of an 11MB file per call (59% of the 30D runtime). The sim must read ONLY frozen-NPZ data.

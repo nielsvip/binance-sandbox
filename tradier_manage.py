@@ -40637,57 +40637,33 @@ class StockStrategy:
                         _ddb_last_px = _ddb.get(
                             "last_aug_price", (0.0 if is_long else float("inf"))
                         )
-                        _ddb_tf = None
-                        _ddb_wt = 0.0
-                        if bool(_cfg_auto("DD_BOUNCE_WT_D_ENABLED", True)):
-                            _ddb_wd = float(i.get("wt1_D", 0) or 0)
-                            _ddb_wdp = float(
-                                i.get("wt1_D_prev", i.get("wt2_D", _ddb_wd)) or _ddb_wd
-                            )
-                            _ddb_b = (
-                                (_ddb_wd > _ddb_wdp)
-                                if is_long
-                                else (_ddb_wd < _ddb_wdp)
-                            )
-                            _ddb_hw = (not _ddb_req_hwt) or (
-                                (_ddb_wd > _ddb_last_wt)
-                                if is_long
-                                else (_ddb_wd < _ddb_last_wt)
-                            )
-                            _ddb_hp = (not _ddb_req_hpx) or (
-                                (current_price > _ddb_last_px)
-                                if is_long
-                                else (current_price < _ddb_last_px)
-                            )
-                            if _ddb_b and _ddb_hw and _ddb_hp:
-                                _ddb_tf = "D"
-                                _ddb_wt = _ddb_wd
-                        if _ddb_tf is None and bool(
-                            _cfg_auto("DD_BOUNCE_WT_4H_ENABLED", True)
-                        ):
-                            _ddb_w4 = float(i.get("wt1_4h", 0) or 0)
-                            _ddb_w4p = float(
-                                i.get("wt1_4h_prev", i.get("wt2_4h", _ddb_w4))
-                                or _ddb_w4
-                            )
-                            _ddb_b4 = (
-                                (_ddb_w4 > _ddb_w4p)
-                                if is_long
-                                else (_ddb_w4 < _ddb_w4p)
-                            )
-                            _ddb_hw4 = (not _ddb_req_hwt) or (
-                                (_ddb_w4 > _ddb_last_wt)
-                                if is_long
-                                else (_ddb_w4 < _ddb_last_wt)
-                            )
-                            _ddb_hp4 = (not _ddb_req_hpx) or (
-                                (current_price > _ddb_last_px)
-                                if is_long
-                                else (current_price < _ddb_last_px)
-                            )
-                            if _ddb_b4 and _ddb_hw4 and _ddb_hp4:
-                                _ddb_tf = "4h"
-                                _ddb_wt = _ddb_w4
+                        from vec_decisions.wirem_dd_bounce import live_trigger_values as _ddb_trigger_values
+                        _ddb_wd = float(i.get("wt1_D", 0) or 0)
+                        _ddb_wdp = float(
+                            i.get("wt1_D_prev", i.get("wt2_D", _ddb_wd)) or _ddb_wd
+                        )
+                        _ddb_w4 = float(i.get("wt1_4h", 0) or 0)
+                        _ddb_w4p = float(
+                            i.get("wt1_4h_prev", i.get("wt2_4h", _ddb_w4))
+                            or _ddb_w4
+                        )
+                        _ddb_tf, _ddb_wt = _ddb_trigger_values(
+                            is_long,
+                            time.time(),
+                            float(_ddb.get("last_aug_ts", 0.0)),
+                            float(_cfg_auto("DD_BOUNCE_COOLDOWN_HOURS", 4.0)),
+                            current_price,
+                            _ddb_last_wt,
+                            _ddb_last_px,
+                            _ddb_req_hwt,
+                            _ddb_req_hpx,
+                            bool(_cfg_auto("DD_BOUNCE_WT_D_ENABLED", True)),
+                            bool(_cfg_auto("DD_BOUNCE_WT_4H_ENABLED", True)),
+                            _ddb_wd,
+                            _ddb_wdp,
+                            _ddb_w4,
+                            _ddb_w4p,
+                        )
                         if _ddb_tf is not None:
                             _ddb_raw = current_qty
                             _ddb_max_val = _cfg_auto("MAX_SYMBOL_VALUE_TRADIER", 15000)
