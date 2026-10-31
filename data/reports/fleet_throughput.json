@@ -1,5 +1,5 @@
 {
-  "ts": "2026-10-31T17:05:05.782431+00:00",
+  "ts": "2026-10-31T17:10:08.396284+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 1,
@@ -12,9 +12,9 @@
       "boards_running": 0,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 26380,
+      "mem_avail_mb": 26972,
       "disk_free_gb": 0,
-      "load1": 13.9,
+      "load1": 17.2,
       "dispatch_idle_why": "disk 0MB < 3000",
       "published_ss": []
     },
@@ -25,9 +25,9 @@
       "boards_running": 0,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 19091,
+      "mem_avail_mb": 19288,
       "disk_free_gb": 23,
-      "load1": 3.4,
+      "load1": 3.0,
       "dispatch_idle_why": "HOLD until 2026-10-31T11:16Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides)",
       "published_ss": []
     },
@@ -40,9 +40,9 @@
       "boards_running": 1,
       "workers": 7,
       "workers_vs_law_28": "7/28",
-      "mem_avail_mb": 23466,
+      "mem_avail_mb": 23617,
       "disk_free_gb": 52,
-      "load1": 1.4,
+      "load1": 0.4,
       "dispatch_idle_why": "HOLD until 2026-10-31T11:16Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides)",
       "published_ss": [
         "BCHUSDC_SHORT"
@@ -55,9 +55,9 @@
       "boards_running": 0,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 28174,
+      "mem_avail_mb": 28189,
       "disk_free_gb": 47,
-      "load1": 0.8,
+      "load1": 0.7,
       "dispatch_idle_why": "HOLD until 2026-10-31T11:16Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides)",
       "published_ss": []
     }
