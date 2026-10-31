@@ -1,0 +1,29 @@
+{
+  "created_at_utc": "2026-10-31T00:35:56.108392+00:00",
+  "host": "s5",
+  "hold_path": "/tmp/v15_stock_canary_hold",
+  "nonce": "s5nn20261031_0035z",
+  "inode": 3754,
+  "hold_sha256": "6812152fe7ea335de88d33fd9d151081c0608407f02987e4623b9150197a9439",
+  "expires_epoch": 1793407816.6456866,
+  "expires_utc": "2026-10-31T00:50:16.645687+00:00",
+  "cleanup_pid": 2546372,
+  "cleanup_receipt": "/tmp/s5_nn_hold_s5nn20261031_0035z.receipt.json",
+  "cleanup_status": "removed_own_inode_nonce",
+  "lock": "/tmp/self_dispatch_npz_sides_s5.lock acquired nonblocking before hold creation",
+  "persistent_receipt": "/home/niels/binance-sandbox/data/reports/s5_nn_hold_s5nn20261031_0035z.json",
+  "central_hold_sha256": "9a043bff83a1a94c557b095c61945b771b838eea08c4a7ee12f08f1fe98f3a90",
+  "cleanup_predicate": "read_text().strip()==nonce AND exact inode",
+  "cleanup_timer_corrected_utc": "2026-10-31T00:38:48.048195+00:00",
+  "cleanup_at_utc": "2026-10-31T00:50:16.654631+00:00",
+  "central_hold": {
+    "path": "s1:/home/niels/binance-sandbox/data/fleet_hold_hosts.json",
+    "sha256": "9a043bff83a1a94c557b095c61945b771b838eea08c4a7ee12f08f1fe98f3a90",
+    "backup": "s1:/home/niels/binance-sandbox/backups/before_s5_nn_hold_20261031T003516Z.json",
+    "backup_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "expires_utc": "2026-10-31T00:50:16.645687+00:00",
+    "next_tick_confirmed_at_utc": "2026-10-31T00:36:01Z",
+    "post_expiry_tick_confirmed_at_utc": "2026-10-31T00:52:02Z",
+    "post_expiry_s5_reason": "mem 5457MB < 8500"
+  }
+}

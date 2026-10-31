@@ -87,7 +87,7 @@ def fingerprint(value):
     return hashlib.sha256(json.dumps(normalized(value), sort_keys=True, separators=(',', ':'), allow_nan=False).encode()).hexdigest()
 
 
-def load_pin(path, sym_side, defaults, npz, window_days, supported_fields=None, global_fields=()):
+def load_pin(path, sym_side, defaults, npz, window_days, supported_fields=None, global_fields=(), sanitize=None):
     pin = json.loads(Path(path).read_text())
     if pin.get('schema') != 'v15_pinned_baseline/1' or pin.get('sym_side') != sym_side or pin.get('window_days') != window_days:
         raise PinnedBaselineError('baseline pin scope mismatch')
@@ -129,7 +129,7 @@ def load_pin(path, sym_side, defaults, npz, window_days, supported_fields=None, 
         raise PinnedBaselineError('independent previous actual effective config required; raw SQL/default key counts are not a configuration oracle')
     previous_config = decoded(configs[0])
     supported = set(supported_fields) if supported_fields is not None else set(defaults)
-    managed = (set(global_fields) & supported) | {key for key, value in previous_config.items() if isinstance(value, Path)}
+    managed = set(global_fields) | {key for key, value in previous_config.items() if isinstance(value, Path)}
     per_sym = supported - managed
     retired = set(previous_config) - supported
     if retired:
@@ -142,12 +142,13 @@ def load_pin(path, sym_side, defaults, npz, window_days, supported_fields=None, 
         entry = neutral[key]
         if 'value' not in entry or not entry.get('previous_behavior') or not entry.get('evidence_sha256'):
             raise PinnedBaselineError('neutral new key lacks explicit previous-behavior evidence')
-    settings = {key: value for key, value in previous_config.items() if key in per_sym}
+    reader_settings, warnings = sanitize(dict(accepted_settings), defaults) if sanitize is not None else (dict(accepted_settings), [])
+    if set(reader_settings) - set(accepted_settings):
+        raise PinnedBaselineError('accepted reader transformation introduced unaccepted input keys')
+    settings = {key: value for key, value in reader_settings.items() if key not in managed}
     settings.update({key: decoded(entry['value']) for key, entry in neutral.items() if key in per_sym})
-    if set(settings) != per_sym:
-        raise PinnedBaselineError('incomplete supported per-sym effective configuration')
     pin['global_context'] = {key: value for key, value in previous_config.items() if key in managed}
-    pin['reader_transformations'] = {'raw_accepted_keys_not_engine_fields': sorted(set(accepted_settings) - supported), 'globally_managed_keys_not_per_sym_overrides': sorted(managed), 'prior_defaults_keys_not_engine_fields': sorted(set(previous) - supported), 'source': 'previous actual evaluator coercion/dependencies/template/market-mode context; effective config independently measured'}
+    pin['reader_transformations'] = {'raw_accepted_keys_not_engine_fields': sorted(set(accepted_settings) - supported), 'globally_managed_keys_not_per_sym_overrides': sorted(managed), 'prior_defaults_keys_not_engine_fields': sorted(set(previous) - supported), 'sanitizer_warnings': list(warnings), 'reader_input_keys_preserved': sorted(settings), 'source': 'accepted reader inputs preserved; complete previous effective config is assertion only, never expanded into new override-presence semantics'}
     pin['settings'] = settings
     return pin
 

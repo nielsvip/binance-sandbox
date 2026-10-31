@@ -1,0 +1,28 @@
+{
+  "created_at_utc": "2026-10-31T00:53:53.002187+00:00",
+  "scope": "Single-category STOCKS_SHORT archive verification and interaction-component census on WD25; no source writes or broad store reconstruction.",
+  "compressed_copy_receipt": {
+    "path": "/Volumes/WD25/binance_archive/research_native_20261031T0042Z/copy_receipt.json",
+    "sha256": "52efde50f6fe9ec11015f23906e86c439ad25a0db32710f4c0b45db36216137d",
+    "bytes": 331853589,
+    "content_sha256": "5533d2c01320ef038d06edafe852e8da8b516b801693ecd9cd76643e8832872d",
+    "source_stable": true
+  },
+  "native_decode_receipt": {
+    "path": "/Volumes/WD25/binance_archive/research_native_20261031T0042Z/native_decode_receipt.json",
+    "sha256": "45ae2a57d4187c455ba61336ad47793b6ab5d5e908f37493e0133c30e177ce47",
+    "bytes": 3277758464,
+    "sha256_content": "db36705e6681ae8deca9ac73a5e99b72245428212acc3f4f045977158a53a602",
+    "manifest_matched": true
+  },
+  "native_census": {
+    "path": "/Volumes/WD25/binance_archive/research_native_20261031T0042Z/native_census_report.json",
+    "sha256": "2a789edf27c50d04677e7b6794c3e9678567b2d1a43d9f43a8eeeafb6dcf71f7",
+    "query_limit": 20000,
+    "eligible_sample_rows": 0,
+    "potential_quartets": 0,
+    "query_plan": "SCAN evals; no usable index, full table read to return zero eligible rows",
+    "read_only": "SQLite mode=ro&immutable=1, query_only; no sidecars; no metrics in report"
+  },
+  "coverage_limit": "The Oct 22 STOCKS_SHORT shard supplied no native explicit valid-gain component rows in the query. No quartet verified. No other category shards were decoded or scanned."
+}

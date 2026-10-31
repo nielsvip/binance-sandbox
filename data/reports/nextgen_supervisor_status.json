@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-10-31T00:48:08.667521+00:00",
+  "recorded_at": "2026-10-31T00:53:24.270996+00:00",
   "status": "active_not_achieved",
   "deployment_authorized_by_this_record": false,
   "requirements": {
@@ -31,7 +31,8 @@
         "destination": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/",
         "status": "in progress; rsync session 19510; source size approximately 1.6G; no symlinks; do not count as verified until whole-tree checksum dry-run completes",
         "wd25_uuid": "04543668-3000-3F41-BB34-1C876F724D28"
-      }
+      },
+      "latest_matrix": "data/reports/learning_preservation_matrix_20261031T0027Z.json"
     },
     "full_matched_learning_refresh": {
       "status": "incomplete",
@@ -404,7 +405,11 @@
       "local_file": "s5:/tmp/v15_stock_canary_hold",
       "nonce": "s5nn20261031_0035z",
       "automatic_cleanup": "owned nonce and inode only; corpus agent verifies expiry",
-      "training_started": "not yet verified"
+      "training_started": false,
+      "state": "expired; own local hold automatically removed; central expired entry ignored",
+      "cleanup_at_utc": "2026-10-31T00:50:16.654631Z",
+      "post_expiry_dispatch_tick": "2026-10-31T00:52:02Z",
+      "receipt": "data/reports/s5_nn_hold_s5nn20261031_0035z.json"
     },
     "runtime_connection_bridge": {
       "state": "review-only; no runtime hookup",
@@ -415,6 +420,21 @@
       ],
       "proof_requirement": "exact four native component records, canonical full configs, matching engine/NPZ/window context, preserved source hashes; current execution requires fresh measurements",
       "real_corpus_verified_edge_count": "not yet measured"
-    }
+    },
+    "expanded_training_resources": {
+      "status": "S5 attempts refused before training; S6 isolated preparation authorized",
+      "S6_contract": {
+        "max_virtual_gib": 6,
+        "min_available_ram_gib": 9,
+        "min_disk_reserve_gib": 18,
+        "max_new_output_gib": 2,
+        "stop_scope": "own training process group only if reserve/output budget breached"
+      },
+      "original_S2_gate_floors_unchanged": true,
+      "source_scope": "202 emitting sym_sides from248 preserved sources;296502 emitted rows;524290 eligible historical targets",
+      "full_corpus_claim": false,
+      "production_deployed": false
+    },
+    "next_baseline_step": "Minimal accepted reader-input projection plus explicit neutral new keys, then assert full effective config/ledger/result against independent prior oracle; canonical local pilot still unchanged."
   }
 }

@@ -1,100 +1,41 @@
 {
- "generated_at": "2026-10-31 00:36 UTC",
- "total_capital_usd": 101.2,
+ "generated_at": "2026-10-31 00:50 UTC",
+ "total_capital_usd": 29.36,
  "tier_capital": {
   "A": 0.0,
-  "B": 86.16,
-  "C": 15.04
+  "B": 29.36,
+  "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 6,
-  "C": 1
+  "B": 2,
+  "C": 0
  },
  "winners": [],
- "losers": [
-  "men:BANDUSDT_LONG"
- ],
- "mediocre": [
-  "men:EDUUSDT_LONG"
- ],
+ "losers": [],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "men:ONEUSDT_SHORT",
-   "symbol": "ONEUSDT",
-   "account": "men",
-   "value_usd": 18.67,
-   "gain_pct": 0.315,
+   "pk": "inf:1000PEPEUSDC_LONG",
+   "symbol": "1000PEPEUSDC",
+   "account": "inf",
+   "value_usd": 14.98,
+   "gain_pct": -0.139,
    "tier": "B",
-   "perf_mult": 3.08,
-   "amt": 15636.0,
-   "mark": 0.00119413
+   "perf_mult": 5.84,
+   "amt": 3027.0,
+   "mark": 0.0049475
   },
   {
-   "pk": "men:AWEUSDT_LONG",
-   "symbol": "AWEUSDT",
-   "account": "men",
-   "value_usd": 15.13,
-   "gain_pct": 1.302,
+   "pk": "inf:HYPEUSDT_LONG",
+   "symbol": "HYPEUSDT",
+   "account": "inf",
+   "value_usd": 14.38,
+   "gain_pct": 0.435,
    "tier": "B",
-   "perf_mult": 3.21,
-   "amt": 216.0,
-   "mark": 0.07005
-  },
-  {
-   "pk": "men:BANDUSDT_LONG",
-   "symbol": "BANDUSDT",
-   "account": "men",
-   "value_usd": 15.04,
-   "gain_pct": 0.417,
-   "tier": "C",
-   "perf_mult": 0.42,
-   "amt": 75.4,
-   "mark": 0.19942745
-  },
-  {
-   "pk": "men:EDUUSDT_LONG",
-   "symbol": "EDUUSDT",
-   "account": "men",
-   "value_usd": 14.95,
-   "gain_pct": -0.114,
-   "tier": "B",
-   "perf_mult": 0.47,
-   "amt": 270.0,
-   "mark": 0.05538667
-  },
-  {
-   "pk": "men:KAVAUSDT_LONG",
-   "symbol": "KAVAUSDT",
-   "account": "men",
-   "value_usd": 14.94,
-   "gain_pct": -0.373,
-   "tier": "B",
-   "perf_mult": 2.22,
-   "amt": 215.3,
-   "mark": 0.0694
-  },
-  {
-   "pk": "men:ARUSDT_LONG",
-   "symbol": "ARUSDT",
-   "account": "men",
-   "value_usd": 14.9,
-   "gain_pct": 0.441,
-   "tier": "B",
-   "perf_mult": 0.93,
-   "amt": 4.6,
-   "mark": 3.23922328
-  },
-  {
-   "pk": "men:JUPUSDT_LONG",
-   "symbol": "JUPUSDT",
-   "account": "men",
-   "value_usd": 7.57,
-   "gain_pct": 1.202,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 29.0,
-   "mark": 0.2609
+   "perf_mult": 2.47,
+   "amt": 0.16,
+   "mark": 89.90334306
   }
  ]
 }
