@@ -63,6 +63,10 @@ def _actions_at(ledger, bar_ts: int):
         if isinstance(event, dict)
         and str(event.get("type", "")).upper() in _ACTION_TYPES
         and int(float(event.get("ts") or -1)) == int(bar_ts)
+        and not (
+            str(event.get("type", "")).upper() == "CLOSE"
+            and str(event.get("reason") or event.get("exit_reason") or "").upper() == "FINAL_MTM"
+        )
     ]
 
 
@@ -83,6 +87,11 @@ def _source_hashes(code_root: Path):
         Path("v12_quick_engine.py"),
         Path("cat_side_defaults.py"),
         Path("per_sym_live_set.py"),
+        Path("config.py"),
+        Path("config_tradier.py"),
+        Path("data/cat_side_defaults_4.json"),
+        Path("data/sweep_cat_overrides.json"),
+        Path("SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx"),
     ]
     out = {}
     for rel in candidates:
@@ -178,6 +187,14 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
 
     source_hashes = _source_hashes(code_root)
     manifest_hash = _sha256(code_manifest) if code_manifest and code_manifest.is_file() else None
+    row_aligned_keys = sorted(
+        key for key, value in arrays.items()
+        if isinstance(value, np.ndarray) and value.ndim and len(value) == len(timestamps)
+    )
+    nonrow_shapes = {
+        key: list(value.shape) for key, value in arrays.items()
+        if isinstance(value, np.ndarray) and (not value.ndim or len(value) != len(timestamps))
+    }
     input_hash = _sha256(npz_path)
     active_hash = _sha256(active_path)
     run_started = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -190,6 +207,7 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
     original_clock = forward_state.time
     counts = {name: 0 for name in sorted(_ACTION_TYPES)}
     state_rows = 0
+    invalid_counts = {}
     try:
         with output_path.open("w", encoding="utf-8") as stream:
             header = {
@@ -206,6 +224,7 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
                 "active_set_template_md5": active_set.get("template_md5"),
                 "active_set_defaults_round": active_set.get("defaults_round"),
                 "active_set_admission_keys": active_set.get("account_admission_keys"),
+                "active_set_has_current_admission": bool(active_set.get("account_admission_keys")),
                 "code_root": str(code_root),
                 "code_manifest": str(code_manifest) if code_manifest else None,
                 "code_manifest_sha256": manifest_hash,
@@ -213,6 +232,9 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
                 "interval_start_exclusive": _iso(start_ts),
                 "interval_end_inclusive": _iso(end_ts),
                 "bar_count": len(selected),
+                "npz_row_aligned_array_count": len(row_aligned_keys),
+                "npz_row_aligned_keys_sha256": _canonical_sha256(row_aligned_keys),
+                "npz_nonrow_array_shapes": nonrow_shapes,
                 "npz_open_ts_to_decision_clock_seconds": 900,
                 "decision_clock_semantics": "bar open timestamp t is evaluated as closed at t+900s",
                 "configuration_semantics": "frozen active override snapshot; retrospectively applied to every historical prefix",
@@ -234,6 +256,9 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
                 if int(result.get("npz_tail") or 0) not in (0, bar_ts):
                     raise AssertionError(f"state_for consumed tail {result.get('npz_tail')} beyond selected bar {bar_ts}")
                 state_rows += 1
+                if result.get("ok") is not True:
+                    _why = str(result.get("reason") or "unspecified_state_for_failure")
+                    invalid_counts[_why] = invalid_counts.get(_why, 0) + 1
                 state_record = {
                     "record": "state",
                     "row": row_number,
@@ -279,13 +304,15 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
                 "sym_side": symside.upper(),
                 "states_evaluated": state_rows,
                 "action_counts": counts,
+                "invalid_state_counts": invalid_counts,
                 "replay_completed_at_wall_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                 "provenance_output_dir": str(provenance_root),
             }
             stream.write(json.dumps(trailer, sort_keys=True, default=str) + "\n")
     finally:
         _restore_state_context(forward_state, evaluate_v12, pilot_v12, original)
-    return {"states_evaluated": state_rows, "action_counts": counts, "output": str(output_path)}
+    return {"states_evaluated": state_rows, "action_counts": counts,
+            "invalid_state_counts": invalid_counts, "output": str(output_path)}
 
 
 def main(argv=None):
@@ -303,7 +330,11 @@ def main(argv=None):
     code_root = args.code_root.resolve()
     if str(code_root) not in sys.path:
         sys.path.insert(0, str(code_root))
-    os.environ.setdefault("V15_SIM_ALLOW_LIVE_MARKET_FILE", "0")
+    os.environ["BASE_PATH"] = str(code_root)
+    os.environ["V12_BASE_PATH"] = str(code_root)
+    os.environ["V12_NPZ_DIR"] = str(args.npz.resolve().parent)
+    os.environ["V12_RUN_ONE_SET_PRECEDENCE"] = "1"
+    os.environ["V12_SIM_ALLOW_LIVE_MARKET_FILE"] = "0"
     print(json.dumps(replay(
         args.npz, args.active_set, args.sym_side, args.start_ts, args.end_ts,
         args.out, code_root, args.code_manifest, args.limit,

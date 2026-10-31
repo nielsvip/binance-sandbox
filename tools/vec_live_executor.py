@@ -457,15 +457,18 @@ def base_prepared(ss: str):
     return prep
 
 
-def canonical_anchor(ss: str) -> dict:
+def canonical_anchor(ss: str, timestamps=None) -> dict:
     """Return the rolling 30D window start from the latest merged NPZ row."""
     import numpy as np
     from tools.opt import evaluate_v12 as E
 
     sym, side = split_ss(ss)
     mode = "crypto" if E.is_crypto(sym) else "tradier"
-    z = _load_timestamps(sym)
-    ts = np.asarray(z["timestamps"], dtype="float64")
+    if timestamps is None:
+        z = _load_timestamps(sym)
+        ts = np.asarray(z["timestamps"], dtype="float64")
+    else:
+        ts = np.asarray(timestamps, dtype="float64")
     fin = ts[np.isfinite(ts) & (ts > 0)]
     sec = fin / (1000.0 if float(fin[-1]) > 1e11 else 1.0)
     end_s = float(sec[-1])

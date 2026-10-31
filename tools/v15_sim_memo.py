@@ -112,7 +112,7 @@ def _proxy_class(base, names):
 
 def _replay(ent, npz, cfg):
     for k, v in ent[2].items():
-        npz[k] = v
+        npz[k] = _cp.deepcopy(v)
     for k, v in ent[4].items():
         setattr(cfg, k, _cp.deepcopy(v))
     return _cp.deepcopy(ent[3])
@@ -125,7 +125,7 @@ def _hash_npz_value(h, value):
             a = _np.asarray(value)
             h.update(b"A"); h.update(a.dtype.str.encode()); h.update(repr(a.shape).encode())
             if a.dtype.hasobject:
-                _hash_npz_value(h, a.tolist())
+                return _hash_npz_value(h, a.tolist())
             else:
                 h.update(memoryview(_np.ascontiguousarray(a)).cast("B"))
             return True
@@ -217,7 +217,7 @@ def _memo_simulate(V, orig, npz, sym, is_long, cfg, force_initial_seed=False):
     before = {k: id(v) for k, v in npz.items()}
     _STATE["runs"] += 1
     res = orig(npz, sym, is_long, proxy, force_initial_seed)
-    ent = (fp, dict(st["reads"]), {k: v for k, v in npz.items() if before.get(k) != id(v)}, _cp.deepcopy(res), _cp.deepcopy(st["writes"]))
+    ent = (fp, dict(st["reads"]), _cp.deepcopy({k: v for k, v in npz.items() if before.get(k) != id(v)}), _cp.deepcopy(res), _cp.deepcopy(st["writes"]))
     try:
         ikeys = tuple(sorted(ent[1]))
         ival = tuple(_hkey(ent[1][k], missing) for k in ikeys)

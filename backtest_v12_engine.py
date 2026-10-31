@@ -8643,9 +8643,10 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         forward_session.assert_ready("tradier", stores)
     import tradier_manage as tm_mod
     _v20_replay_root_t = None
-    _v20_config_inner_t = None
-    _v20_config_base_t = None
     _v20_states_t = {}
+    _v20_execute_now_original_t = None
+    _v20_module_open_original_t = None
+    _v20_module_had_open_t = False
     # CRITICAL: V8 backtest must NEVER call Redis. The live config_tradier.Config
     # has _get_regime_from_redis which connects to Redis on every get_symbol_setting()
     # call. On servers without real Redis (S2 dummy/timeout), the GET command blocks
@@ -11880,14 +11881,12 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         )
         from tools import vec_live_executor as _v20_executor_t
         _v20_replay_root_t = Path(_v20_tempfile_t.mkdtemp(prefix="trb_v20_replay_"))
-        try:
-            _v20_config_inner_t = object.__getattribute__(tm_mod.config, "_inner")
-        except Exception:
-            _v20_config_inner_t = tm_mod.config
-        _v20_config_base_t = getattr(_v20_config_inner_t, "BASE_PATH", None)
-        setattr(_v20_config_inner_t, "BASE_PATH", _v20_replay_root_t)
         _v20_state_dir_t = _v20_replay_root_t / "data" / "vec_live" / "state"
         _v20_state_dir_t.mkdir(parents=True, exist_ok=True)
+        _v20_source_state_root_t = (
+            Path(str(getattr(tm_mod.config, "BASE_PATH", Path(tm_mod.__file__).resolve().parent)))
+            / "data" / "vec_live" / "state"
+        ).resolve()
         _v20_sets_t = _v20_executor_t.load_sets()
         _v20_sides_t = [os.environ.get("V8_LADDER_ONLY_SIDE", "").upper()]
         if _v20_sides_t[0] not in ("LONG", "SHORT"):
@@ -11902,6 +11901,8 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             try:
                 with np.load(str(_v20_path_t), allow_pickle=True) as _v20_npz_t:
                     _v20_raw_t = {key: np.asarray(_v20_npz_t[key]) for key in _v20_npz_t.files}
+                import hashlib as _v20_hashlib_t
+                _v20_source_sha_t = _v20_hashlib_t.sha256(_v20_path_t.read_bytes()).hexdigest()
                 _v20_ts_t = np.asarray(_v20_raw_t.get("timestamps", []), dtype="float64")
                 _v20_scale_t = 1000.0 if _v20_ts_t.size and float(_v20_ts_t[-1]) > 1e11 else 1.0
                 _v20_seconds_t = _v20_ts_t / _v20_scale_t
@@ -11916,7 +11917,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                         _v20_bar_t = float(_v20_bar_t)
                         if _v20_bar_t > _v20_seconds_t[-1]:
                             continue
-                        _v20_anchor_doc_t = _v20_anchor_t(_v20_raw_t, _v20_bar_t, "tradier")
+                        _v20_anchor_doc_t = _v20_anchor_t(_v20_ss_t, _v20_raw_t, _v20_bar_t)
                         _v20_state_t = _v20_completed_state_t(
                             _v20_ss_t,
                             _v20_overrides_t,
@@ -11927,6 +11928,8 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                             engine_root=Path(tm_mod.__file__).resolve().parent,
                         )
                         _v20_state_t["account"] = _v20_entry_t.get("account") or "trb"
+                        _v20_state_t["source_npz_path"] = str(_v20_path_t.resolve())
+                        _v20_state_t["source_npz_sha256"] = _v20_source_sha_t
                         _v20_state_t["written_at"] = _v20_bar_t + _v20_completed_seconds_t
                         _v20_state_t["written_iso"] = datetime.fromtimestamp(
                             _v20_bar_t + _v20_completed_seconds_t, tz=timezone.utc
@@ -11939,6 +11942,54 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             f"[TRB_V20_REPLAY_STATE] hydrated={_v20_hydrated_t} root={_v20_replay_root_t} "
             f"unavailable={_v20_unavailable_t[:8]}"
         )
+        _v20_provenance_t = {}
+        for (_v20_prov_ss_t, _v20_prov_bar_t), _v20_prov_state_t in _v20_states_t.items():
+            _v20_provenance_t.setdefault(
+                _v20_prov_ss_t,
+                {
+                    "source_npz_path": _v20_prov_state_t.get("source_npz_path"),
+                    "source_npz_sha256": _v20_prov_state_t.get("source_npz_sha256"),
+                    "set_md5": _v20_prov_state_t.get("set_md5"),
+                    "v12_quick_engine_md5": _v20_prov_state_t.get("v12_quick_engine_md5"),
+                },
+            )
+        v8_logger.info(f"[TRB_V20_REPLAY_PROVENANCE] {json.dumps(_v20_provenance_t, sort_keys=True)}")
+        if _v20_hydrated_t:
+            import builtins as _v20_builtins_t
+            import threading as _v20_threading_t
+            _v20_open_lock_t = _v20_threading_t.Lock()
+            _v20_open_active_t = [0]
+            _v20_module_had_open_t = "open" in tm_mod.__dict__
+            _v20_module_open_original_t = tm_mod.__dict__.get("open", _v20_builtins_t.open)
+            _v20_execute_now_original_t = manager.execute_now
+
+            def _v20_redirect_open_t(file, *args, **kwargs):
+                try:
+                    _candidate_path_t = Path(file).expanduser().resolve()
+                except (TypeError, ValueError, OSError):
+                    return _v20_module_open_original_t(file, *args, **kwargs)
+                if _candidate_path_t.parent == _v20_source_state_root_t and _candidate_path_t.suffix == ".json":
+                    _fixture_path_t = _v20_state_dir_t / _candidate_path_t.name
+                    return _v20_module_open_original_t(_fixture_path_t, *args, **kwargs)
+                return _v20_module_open_original_t(file, *args, **kwargs)
+
+            async def _v20_execute_now_with_fixture_state_t(*args, **kwargs):
+                with _v20_open_lock_t:
+                    if _v20_open_active_t[0] == 0:
+                        tm_mod.__dict__["open"] = _v20_redirect_open_t
+                    _v20_open_active_t[0] += 1
+                try:
+                    return await _v20_execute_now_original_t(*args, **kwargs)
+                finally:
+                    with _v20_open_lock_t:
+                        _v20_open_active_t[0] -= 1
+                        if _v20_open_active_t[0] == 0:
+                            if _v20_module_had_open_t:
+                                tm_mod.__dict__["open"] = _v20_module_open_original_t
+                            else:
+                                tm_mod.__dict__.pop("open", None)
+
+            manager.execute_now = _v20_execute_now_with_fixture_state_t
     _v8_wall_deadline_t = float(__import__('os').environ.get("V8_MAX_WALL_SECS", "0") or 0)
     _v8_wall_t0_t = __import__('time').time()
     if forward_session is not None:
@@ -13859,8 +13910,13 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             print("V8_PROCESS_STATUS_HISTOGRAM: " + json.dumps(_extra_result_t.get("ordinary_process_status_hist", {}), sort_keys=True, default=str), flush=True)
         except Exception:
             pass
-    if _v20_replay_root_t is not None and _v20_config_inner_t is not None:
-        setattr(_v20_config_inner_t, "BASE_PATH", _v20_config_base_t)
+    if _v20_execute_now_original_t is not None:
+        manager.execute_now = _v20_execute_now_original_t
+        if _v20_open_active_t[0] == 0:
+            if _v20_module_had_open_t:
+                tm_mod.__dict__["open"] = _v20_module_open_original_t
+            else:
+                tm_mod.__dict__.pop("open", None)
     _v8_result_from_trades(executed_trades, capital, _extra_result_t)
     _write_chart_trades(executed_trades)
     log_dir = BASE_PATH / "backtest_v8" / "logs"

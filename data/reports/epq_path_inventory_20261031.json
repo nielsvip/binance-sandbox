@@ -39,12 +39,12 @@
       ],
       "engine": "v12_quick_engine.py simulate_one initializes PARABOLIC state outside pos/bar snapshots and passes it only from eligible live_exit_chain.step; live_exit_chain prepares paired channel/crack arrays and advances the recurrence after K1M and BB_RECOVERY priority. A same-bar collision test establishes PARABOLIC before SRS. Actual simulate_one tests show ON books both long/short bars and OFF books neither.",
       "inputs": "15m mode: actual NPZ current/prior 15m OHLC and 4-bar Donchian channel; completed 15m timestamps; WT/DC fields consumed by DeltaTracker and DELTA_TF_WEIGHTS. LTF-on requires real 3m fields/timestamps; no 15m substitution is made.",
-      "limitations": "Need reproduce delta_tracker bull_accel/bear_accel from causal arrays or pass its existing per-bar state; absent/error behavior must preserve native no-decel=True.",
+      "limitations": "Full same-bar native vs rolling vector execution remains unproven. State depends on path eligibility; same-bar multi-account caching is tested but complete account histories are not.",
       "native": "ez_positions_quick.py:26550-26620; branch remains after BB_RECOVERY, no higher-priority hard exit, non-hedge, outside grace, switch enabled. LTF-off now feeds paired 15m channel/OHLC plus a completed-bar state recurrence keyed (symbol, side) in FastDataManager, outside position snapshots. State persists across close/reentry and duplicate timestamps reuse cached acceleration; missing state or timestamp is fail-closed with a diagnostic.",
       "paired_timeframe_policy": "SWITCH_WIRING_GUIDE.md:117-124 permits 3m-to-15m port with 15m as floor in LTF-off mode. Native and vector must consume paired current/prior 15m OHLC and channel values, rather than missing-value zeros.",
       "path": "PARABOLIC_EXIT",
       "predicate": "Long: k_15m > 90, price > dc_high4_15m, low_15m > 0 and lower than prior low, and shared DeltaTracker bull_accel. Short mirrors with k_15m < 10, price < dc_low4_15m, higher high than prior high, and bear_accel. LTF-on retains native 3m fields and original DeltaTracker tick call.",
-      "proof": "Native source lines and existing shared predicate module inspected; no ledger replay proof claimed.",
+      "proof": "Focused shared recurrence, actual simulate_one ON/OFF both sides, extracted native state cache, and priority collision tests; see listed tests. Full production/replay acceptance pending.",
       "status": "Implemented and tested in local candidate. Master remains False in QuickConfig (existing template default remains authoritative). No production sync, order, or restart.",
       "switches": [
         "PARABOLIC_EXIT_ENABLED",
@@ -55,14 +55,14 @@
       "tests": "tests/test_parabolic_delta.py; tests/test_parabolic_delta_npz_parity.py (43,756 frozen bars, both sides); tests/test_parabolic_engine_hook.py (simulate_one ON/OFF both sides, AST-extracted native state cache/refusal persistence, same-bar account cache, and SRS collision). Latest focused suite: 14 passed."
     },
     {
-      "engine": "v12_quick_engine.py:10610-10628 has WR_PULLBACK block and :12178 assigns standalone strength weight 6, but caller passes in_list=True; this is not exact account membership and does not establish full AdvancedSignalRater/QUICK_OPEN_GOOD reachability. Separate candidate: vec_decisions/quick_missing_wr_lr.py.",
-      "limitations": "The archive is per-account book history (ang/inf/men/flz/fin), while common boards carry no VEC_ACCOUNT_KEY. This does not prove a shared cross-account decision rule, native 300s cooldown behavior, exact order quantity, or the full scorer. LTF-on requires real 1m/3m inputs; candidate returns unsupported instead of using 15m proxies.",
-      "membership_meaning": "Native reads trade_manager.symbols_{account_key}_long/short. tools/wr_list_archive.py snapshots the account directional symbol-book files. Source comment says membership means trend confirmed by ranking. This is account/book eligibility, not a dedicated WR strategy approval switch.",
+      "engine": "v12 shared WR mask now receives paired actual 15m current/prior stochastic and decoded WT crosses; eligible common board uses in_list=True, native separately checks exact account admission.",
+      "limitations": "Actual native full execution and all downstream gates still require same-bar replay. LTF-on requires real inputs. Account eligibility snapshot must be explicit. Quantities need not match.",
+      "membership_meaning": "Current native caller uses explicit account:sym_side in canonical tradeable_keys.json via crypto_entry_allowed; old sidebook/ranking membership was replaced in candidate.",
       "native": "ez_positions_quick.py:30838-30923; score=max(score,22), direct should_trade=True; 300-second per-account/symbol cooldown.",
       "path": "WR_PULLBACK / LR_SHORTTOP (QUICK_OPEN_GOOD producer)",
       "predicate": "Account side-list membership; HA4h not against; K1h/K15m/K3m oversold or overbought; turning WT cross or K turn. Under USE_1M_3M_SIGNALS_ENABLED=False, K3m/K1m legs map to 15m exactly.",
-      "proof": "tests/test_quick_missing_wr_lr.py; tests/test_quick_missing_wr_lr_npz_parity.py compares every frozen 1000PEPE bar against the shared scalar adapter for FLZ LONG/SHORT: 43,756 bars, 2,294 FLZ-long membership bars, 85 LONG fires, zero mask differences; zero SHORT membership and zero differences.",
-      "status": "CANDIDATE predicate exact for 15m/LTF-off, not integrated into v12; do not wire account archive into common sym_side boards without an explicit account/book policy.",
+      "proof": "tests/test_wr_tradeable_common.py: 4 passed, including exact key admission, absent key refusal, simulate_one enabled vs disabled OPEN at bar12 and WT-cross-without-stoch-turn OPEN. Earlier archive predicate checks remain component evidence only.",
+      "status": "IMPLEMENTED native canonical admission + vector input wiring; focused action proof passed, full replay pending.",
       "switches": [
         "WR_PULLBACK_ENABLED",
         "USE_1M_3M_SIGNALS_ENABLED",
@@ -255,5 +255,7 @@
     "pytest": "77 passed across K1M pairing/precedence, reentry filters/triggers, frozen reentry mask parity, filter gate parity, B04, and WR/LR scalar parity; 6 external websockets deprecation warnings only.",
     "template": "K1M_EXTREME_REVERSE_ENABLED present only in crypto EXIT_STRUCTURAL: False bold + True option in both long/short books; row intake queued/pushed to S1. No fleet template sync."
   },
-  "scope": "ez_positions_quick.py flat OPEN, explicit REENTRY, and vectorizable non-hedge/non-scalp exit paths reviewed in this pass"
+  "scope": "ez_positions_quick.py flat OPEN, explicit REENTRY, and vectorizable non-hedge/non-scalp exit paths reviewed in this pass",
+  "review_updated_at": "2026-10-31T03:49:39.522731+00:00",
+  "acceptance_contract": "Exact entry/augment/reduce/close action bars; quantities may differ. Focused reachability is not full rolling replay acceptance."
 }

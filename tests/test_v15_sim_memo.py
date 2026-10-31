@@ -66,6 +66,26 @@ def test_unread_key_hits_and_replays_side_channel():
     assert c2.SIDE_INFO == {"g": 20.0} and npz2["derived"] == [20.0]
 
 
+def test_npz_side_effects_are_deep_copied_on_store_and_each_replay():
+    V = _engine()
+    assert SM.install(V)
+    first_npz = {"close": [1.0, 2.0]}
+    first = V.simulate_one(first_npz, "X", True, Cfg(A=2))
+    first_npz["derived"][0] = -1.0
+    first["ledger"][0]["g"] = -2.0
+    replay_npz = {"close": [1.0, 2.0]}
+    replay = V.simulate_one(replay_npz, "X", True, Cfg(A=2))
+    assert replay_npz["derived"] == [20.0]
+    assert replay["ledger"] == [{"g": 20.0}]
+    replay_npz["derived"][0] = -3.0
+    replay["ledger"][0]["g"] = -4.0
+    next_npz = {"close": [1.0, 2.0]}
+    next_replay = V.simulate_one(next_npz, "X", True, Cfg(A=2))
+    assert next_npz["derived"] == [20.0]
+    assert next_replay["ledger"] == [{"g": 20.0}]
+    assert V.calls == 1 and SM.stats() == {"hits": 2, "runs": 1}
+
+
 def test_read_key_change_misses_and_matches_fresh():
     V = _engine()
     SM.install(V)
@@ -123,6 +143,23 @@ def test_in_place_indicator_mutation_invalidates_memo():
     assert calls["n"] == 2
     assert first["gain"] == 7.0 and second["gain"] == 14.0
     assert SM.stats() == {"hits": 0, "runs": 2}
+
+
+def test_unsupported_nested_object_array_fails_open_without_cache_hit():
+    V = _engine()
+    calls = {"n": 0}
+
+    def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
+        calls["n"] += 1
+        value = repr(npz["opaque"][0])
+        return {"gain": value, "ledger": [{"opaque": value}]}
+
+    V.simulate_one = simulate_one
+    assert SM.install(V)
+    first = V.simulate_one({"close": [1.0, 2.0], "opaque": np.array([object()], dtype=object)}, "X", True, Cfg())
+    second = V.simulate_one({"close": [1.0, 2.0], "opaque": np.array([object()], dtype=object)}, "X", True, Cfg())
+    assert calls["n"] == 2 and first != second
+    assert SM.stats() == {"hits": 0, "runs": 0}
 
 
 def test_template_layer_is_applied_before_cfg_proxy():

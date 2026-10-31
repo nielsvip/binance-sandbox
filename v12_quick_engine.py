@@ -15653,7 +15653,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         return True, float(_plan["engine_reduce_qty"]), _plan
 
     def _account_partial_commit(_position, _plan, _event):
-        if _plan is None:
+        if _plan is None or _event is None:
             return
         _position["_account_projected_qty"] = float(_plan["account_projected_qty_after"])
         _position["_account_partial_projection_consumed"] = True
@@ -16165,9 +16165,12 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         def __init__(self, source):
             super().__init__()
             self.source = source
+            self.last_append_event = None
         def append(self, event):
+            self.last_append_event = None
             if _exit_event_accept(event, self.source):
                 super().append(event)
+                self.last_append_event = event
         def extend(self, values):
             for event in values:
                 self.append(event)
@@ -19463,7 +19466,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             if _pending_exit_control_restore is not None:
                                 _pending_exit_control_restore = (_pending_exit_control_restore[0], _pending_exit_control_restore[1], bars_in_pos)
                             continue
-                        _account_partial_commit(pos, _cs_plan, events[-1])
+                        _account_partial_commit(pos, _cs_plan, events.last_append_event)
                         pos["last_reduce_bar"] = int(i)
                         _cs_book.on_sell(_cs_ts, flat=False)
                 if not _cs_partial_rejected:
@@ -21088,7 +21091,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                 "reason": _bbr_reason_early,
                             }
                         )
-                        _account_partial_commit(pos, _bbr_plan_early, events[-1])
+                        _account_partial_commit(pos, _bbr_plan_early, events.last_append_event)
                         pos["last_reduce_bar"] = int(i)
                         continue
         # 2026-10-01 b2c LIVE CRYPTO EXIT CHAIN hook (live_exit_chain.step): hit -> full close (STOP/CLOSE/KILL reasons) or partial REDUCE by live gain bands
@@ -21230,7 +21233,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                 "bars_held": int(i - pos["entry_bar"]),
                             }
                         )
-                        _account_partial_commit(pos, _lec_plan, trades[-1])
+                        _account_partial_commit(pos, _lec_plan, trades.last_append_event)
                         pos = None
                         cd = cooldown_bars
                         has_closed_before = True
@@ -21253,7 +21256,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                 "reason": _lec_reason,
                             }
                         )
-                        _account_partial_commit(pos, _lec_plan, events[-1])
+                        _account_partial_commit(pos, _lec_plan, events.last_append_event)
                         pos["last_reduce_bar"] = int(i)
                     continue
             # b2c: ez_manage.process_position exits (R1 / R2 / MOMENTUM_TP / DC_BASIS_3M_REDUCE) — full closes
@@ -21385,7 +21388,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                     "bars_held": int(i - pos["entry_bar"]),
                                 }
                             )
-                            _account_partial_commit(pos, _sfk_plan, trades[-1])
+                            _account_partial_commit(pos, _sfk_plan, trades.last_append_event)
                             pos = None
                             cd = cooldown_bars
                             has_closed_before = True
@@ -21408,7 +21411,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                     "reason": _sfk_reason,
                                 }
                             )
-                            _account_partial_commit(pos, _sfk_plan, events[-1])
+                            _account_partial_commit(pos, _sfk_plan, events.last_append_event)
                             pos["last_reduce_bar"] = int(i)
                         continue
         # 2026-09-30 STATEFUL PORTED EXITS (WT_4H_VEL_EXIT / WT_EXHAUST_EXIT / MU_CORRECTION_EXIT — gain/age-gated; ported_stateful_exit.py)
@@ -22285,7 +22288,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             }
                         )
                         if _hq_account_plan is not None:
-                            _account_partial_commit(pos, _hq_account_plan, trades[-1])
+                            _account_partial_commit(pos, _hq_account_plan, trades.last_append_event)
                         pos = None
                         cd = cooldown_bars
                         has_closed_before = True
@@ -22302,7 +22305,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         }
                     )
                     pos["last_reduce_bar"] = int(i)
-                    _account_partial_commit(pos, _hq_account_plan, events[-1])
+                    _account_partial_commit(pos, _hq_account_plan, events.last_append_event)
                     _hq_reason = ""
         except Exception:
             _hq_fire, _hq_qty, _hq_reason, _hq_st = False, 0.0, "", None
@@ -22338,7 +22341,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         _afb_ts = (float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0)
                         events.append({"type": "REDUCE", "ts": _afb_ts, "price": float(px), "qty": float(_afb_rq), "pos_deployed": float(pos["deployed"]), "bar": int(i), "reason": _afb_reason})
                         pos["last_reduce_bar"] = int(i)
-                        _account_partial_commit(pos, _afb_account_plan, events[-1])
+                        _account_partial_commit(pos, _afb_account_plan, events.last_append_event)
         except Exception:
             pass
         # FAST_RISER quick-jump double (ez_manage.py:52393-52468): TF jump signal + profit floor
@@ -22948,7 +22951,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         }
                     )
                     if _ppl_account_plan is not None:
-                        _account_partial_commit(pos, _ppl_account_plan, trades[-1])
+                        _account_partial_commit(pos, _ppl_account_plan, trades.last_append_event)
                     pos = None
                     cd = cooldown_bars
                     has_closed_before = True
@@ -22965,7 +22968,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     }
                 )
                 pos["last_reduce_bar"] = int(i)
-                _account_partial_commit(pos, _ppl_account_plan, events[-1])
+                _account_partial_commit(pos, _ppl_account_plan, events.last_append_event)
                 if (
                     _ppl_reaug_on
                 ):  # USER 2026-10-22: every PPL tap arms the DC-reclaim re-augment (one-shot)
@@ -23092,7 +23095,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     }
                 )
                 pos["last_reduce_bar"] = int(i)
-                _account_partial_commit(pos, _qr_account_plan, events[-1])
+                _account_partial_commit(pos, _qr_account_plan, events.last_append_event)
         # ═══ WT_D_BOUNCE_DD_STOP (tradier_manage.py:11705-11716): price back through the last
         # augment price cuts that augment leg, once per leg (re-armed by the next augment).
         if pos is not None and vec_decisions.reduce_profit_lock.dd_bounce_stop_fires(
@@ -23146,7 +23149,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         }
                     )
                     if _dd_account_plan is not None:
-                        _account_partial_commit(pos, _dd_account_plan, trades[-1])
+                        _account_partial_commit(pos, _dd_account_plan, trades.last_append_event)
                     pos = None
                     cd = cooldown_bars
                     has_closed_before = True
@@ -23162,7 +23165,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         "reason": _dd_reason,
                     }
                 )
-                _account_partial_commit(pos, _dd_account_plan, events[-1])
+                _account_partial_commit(pos, _dd_account_plan, events.last_append_event)
                 pos["last_reduce_bar"] = int(i)
 
         _ty_fire, _ty_reason = False, ""
@@ -23563,7 +23566,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         }
                     )
                     if _w2_account_plan is not None:
-                        _account_partial_commit(pos, _w2_account_plan, trades[-1])
+                        _account_partial_commit(pos, _w2_account_plan, trades.last_append_event)
                     pos = None
                     cd = cooldown_bars
                     has_closed_before = True
@@ -23585,7 +23588,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         }
                     )
                     pos["last_reduce_bar"] = int(i)
-                    _account_partial_commit(pos, _w2_account_plan, events[-1])
+                    _account_partial_commit(pos, _w2_account_plan, events.last_append_event)
                 continue
         _red_cd_ok = (
             i - int(pos.get("last_reduce_bar", -(10**9)))
@@ -23663,7 +23666,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     }
                 )
                 if _red_account_plan is not None:
-                    _account_partial_commit(pos, _red_account_plan, trades[-1])
+                    _account_partial_commit(pos, _red_account_plan, trades.last_append_event)
                 # 2026-10-02 SELL_TOP cd=0 (MOVR §63): a premature top exit restarts entry
                 # eligibility immediately so the recross reentry can fire on the very next bar.
                 if _qr_fire:
@@ -23706,7 +23709,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         ),
                     }
                 )
-                _account_partial_commit(pos, _red_account_plan, events[-1])
+                _account_partial_commit(pos, _red_account_plan, events.last_append_event)
                 pos["last_reduce_bar"] = int(i)
             continue
 
@@ -24209,7 +24212,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         "reason": f"SATOSHIT_EXIT_PARTIAL {satoshit_partial:.2f}",
                     }
                 )
-                _account_partial_commit(pos, _satoshi_account_plan, events[-1])
+                _account_partial_commit(pos, _satoshi_account_plan, events.last_append_event)
                 pos["last_reduce_bar"] = int(i)
                 if pos["qty"] <= 1e-9:
                     # Repeated 70% cuts can leave dust: without this the lifecycle never closed and was booked as
@@ -24659,7 +24662,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             "reason": _tech_reason,
                         }
                     )
-                    _account_partial_commit(pos, _bbr_account_plan, events[-1])
+                    _account_partial_commit(pos, _bbr_account_plan, events.last_append_event)
                     pos["last_reduce_bar"] = int(i)
                     continue
             if not _bbr_account_rejected:

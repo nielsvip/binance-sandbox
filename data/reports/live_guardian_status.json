@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T03:48:43Z",
+ "ts": "2026-10-31T03:53:45Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 62,
    "open_positions": 13,
-   "unrealised_usd": 0.24,
+   "unrealised_usd": 0.28,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -77,7 +77,7 @@
   "inf": {
    "fills_6h": 9,
    "open_positions": 2,
-   "unrealised_usd": -0.16,
+   "unrealised_usd": -0.17,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 39,
    "open_positions": 8,
-   "unrealised_usd": 0.14,
+   "unrealised_usd": 0.16,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,61 +127,61 @@
     "67204"
    ],
    "starts_30m": 1,
-   "log_age_s": -0.0
+   "log_age_s": 10.0
   },
   "men": {
    "pids": [
     "92430"
    ],
    "starts_30m": 1,
-   "log_age_s": 10.0
+   "log_age_s": 6.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 10.0
+   "log_age_s": 16.0
   },
   "inf": {
    "pids": [
     "93155"
    ],
    "starts_30m": 1,
-   "log_age_s": 2912.0
+   "log_age_s": 3214.0
   },
   "flz": {
    "pids": [
     "45392"
    ],
    "starts_30m": 1,
-   "log_age_s": 2692.0
+   "log_age_s": 2993.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 0.0
+   "log_age_s": 297.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 5.0
+   "log_age_s": 307.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T03:48:46Z",
+   "ts": "2026-10-31T03:53:48Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "inf",
-   "evidence": "ez_manage_inf.log not written for 2912s"
+   "evidence": "ez_manage_inf.log not written for 3214s"
   },
   {
-   "ts": "2026-10-31T03:48:46Z",
+   "ts": "2026-10-31T03:53:48Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 2692s"
+   "evidence": "ez_manage_flz.log not written for 2993s"
   }
  ],
  "alert_counts": {
@@ -252,5 +252,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 2.78
+ "sweep_s": 3.68
 }
