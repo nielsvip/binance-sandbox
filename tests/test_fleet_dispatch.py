@@ -70,6 +70,15 @@ def test_live_catchup_uses_current_set_vector_loss_global_order():
     assert doc["rows"][0]["source_host"] == "s5"
 
 
+def test_new_live_set_gets_new_catchup_token_same_day():
+    doc = {"run_id": "live-20261031", "rows": [{"symside": "BTCUSDT_LONG", "drop_pp": 22.0, "settings_sha256": "new-set-hash"}]}
+    old = {"mode": "catchup", "catchup_run_id": "live-20261031:old-set-hash", "ts": NOW - 20, "n": 1}
+    data = fleet4(s1=host(launches={"BTCUSDT_LONG": old}))
+    assert F.unlaunched_catchup(doc, data, now=NOW) == ["BTCUSDT_LONG"]
+    data["s1"]["launches"]["BTCUSDT_LONG"]["catchup_run_id"] = F.catchup_token(doc, doc["rows"][0])
+    assert F.unlaunched_catchup(doc, data, now=NOW) == []
+
+
 def test_idle_stock_host_takes_worst_crypto_catchup():
     data = fleet4(s1=host(mem=500), s2=host(mem=500))
     pend, partial, _ = F.pending_by_cat(UNI, data, NOW)

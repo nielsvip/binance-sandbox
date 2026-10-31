@@ -1,16 +1,19 @@
 {
   "actions_taken": [
-    "Read-only trace; no source edits, service restarts, tests, exchange calls, or orders."
+    "Read-only trace; no source edits, service restarts, tests, exchange calls, or orders.",
+    "Corrected an earlier inaccurate claim: current S1 source already validates matched set identity; the remaining proven consumer issue is fail-open behavior when identity cannot be verified. No time-matched evidence proves the exact gate transition at 04:00."
   ],
   "conclusion": {
     "not_proven": [
-      "The identity of the process that wrote the 04:03:37 halt file: the payload and file timestamp prove the rewrite and its declared policy, but the writer's source/log was not found in the available current artifacts.",
-      "This evidence does not establish universal first-minute execution for every side; it demonstrates these 3 late opens on one 15m bar."
+      "The exact runtime source of the DETERIORATED_NO_REENTRY halt at 04:00. The live source already validates chart set identity, while the current queried DB was modified at 04:11, after the event; time-matched store/file provenance is not available in the ledger.",
+      "Whether the 04:03:37 rewrite itself caused the permission transition for all three sides. The payload indicates 140 mismatched records were removed, but no pre-rewrite halt-file copy or trader log transition was found.",
+      "The identity of the process that wrote the 04:03:37 halt file.",
+      "Universal first-minute execution for every side; the evidence establishes these three late opens on one bar."
     ],
     "proven": [
-      "The immediate permission change was the 04:03:37 deterioration_halt.json rewrite; affected old chart sets were stale relative to current per-symbol overrides.",
-      "The live consumer did not validate set identity before applying those halts.",
-      "Plan/control changes were not part of DECISION dedup identity, and the late OPENs were SENT with stale state-only provenance rather than a new DECISION."
+      "The 04:00 DECISION rows denied entry and the 04:04 SENT rows reused their same bar/state hash without a new DECISION.",
+      "The 04:03:37 deterioration_halt.json rewrite declares removed_mismatched=140 and a set-identity rule; it is the observed file transition between denial and fill.",
+      "The decision dedup key omits the gate/control context and actual plan; ORDER carries only the state provenance."
     ]
   },
   "evidence": [
@@ -39,11 +42,11 @@
       "source": "S1 /home/niels/binance/data/deterioration_halt.json (also current Mac workspace copy)"
     },
     {
-      "details": "Original HALT events: ACT set_md5=1ca30ef8bae7ae5556f8410c813eabd0, QNT=9f626bc0c8c4ec2d13c346109225bc5e, SAND=67271ba974fd4a9a99b5403885fdf997. Current S1 overrides_json were canonicalized using tools/v15_daily_chart_worker.set_md5 (MD5(json.dumps(overrides or {}, sort_keys=True, default=str))): ACT=60c6dd0ec610ad220ab38e403451ee72 (updated_at 00:15:30Z), QNT=0ff42db46efa2ced6ddbf40cc71c6ae0 (03:32:56Z), SAND=015e3ca73cf36b928434f9e2226250fc (10/23 19:33:12Z). All current identities differ from the corresponding original halted chart sets.",
+      "details": "Original HALT events: ACT set_md5=1ca30ef8bae7ae5556f8410c813eabd0, QNT=9f626bc0c8c4ec2d13c346109225bc5e, SAND=67271ba974fd4a9a99b5403885fdf997. Current S1 overrides_json were canonicalized using tools/v15_daily_chart_worker.set_md5 (MD5(json.dumps(overrides or {}, sort_keys=True, default=str))): ACT=60c6dd0ec610ad220ab38e403451ee72 (updated_at 00:15:30Z), QNT=0ff42db46efa2ced6ddbf40cc71c6ae0 (03:32:56Z), SAND=015e3ca73cf36b928434f9e2226250fc (10/23 19:33:12Z). All current identities differ from the corresponding original halted chart sets. Caution: the queried S1 sandbox store file mtime is 04:11:34Z, after the 04:00 decisions and 04:04 orders; therefore current MD5 values cannot establish the exact active override bytes the consumer saw at those earlier times.",
       "source": "Mac data/reports/deterioration_halt_events.jsonl and S1 data/hourly_reconfig/per_sym_store.db"
     },
     {
-      "details": "The gate file's advertised set_identity_rule is not enforced by the live consumer. DECISION signature is [npz_tail, ts, untradeable_bar]; it omits the active halt/gate context and plan output. send_orders attaches state provenance, so a later plan change can execute with the prior denied DECISION's state hash.",
+      "details": "The live source already validates chart set_md5 against exact per_sym_active.overrides_json MD5. Its unknown-store path currently logs 'no chart halts applied' and returns {}, so identity uncertainty fails open. Code locations in the S1 source are deterioration_halts around 364-394, DECISION consumed dedup around 1779-1787, and ORDER provenance around 2022/2070. The DECISION identity is only [npz_tail, ts, untradeable_bar] and order provenance is state-only, so plan/control changes still lack a new immutable DECISION.",
       "lines": {
         "DECISION_consumed_dedup_only_state_sig": "1779-1787",
         "ORDER_uses_order_decision_provenance": "2022 and 2070",
@@ -55,7 +58,7 @@
   "ledger_note": "S1 ledger hash was computed at 04:07Z while the live ledger was still appending; use the listed JSONL row numbers and row content as the primary event evidence, not the hash alone.",
   "observed_at_utc": "2026-10-31T04:09:33Z",
   "proposed_repair": [
-    "Validate each halt against the exact active per_sym override MD5 at the consumer. A proven mismatch is stale/diagnostic; if active identity cannot be verified, preserve a fail-closed unverified status and do not silently release. Keep matching valid halts active.",
+    "Keep exact set-identity validation for matching halts; when active store/row/MD5 identity is unavailable, return explicit identity_status=UNVERIFIED per affected side and keep OPEN/AUGMENT blocked with a visible reason. A proven mismatch may be treated as stale, with the mismatch recorded.",
     "Create immutable per-account/per-side plan decisions whose identity includes state hash, bar, active-set identity, gate/control context (including halt file digest and matched halt record), account admission, broker-held quantity, planner output and notes. Emit a new DECISION whenever that context or plan changes, even when NPZ tail and state timestamp do not.",
     "Before sending OPEN/AUGMENT, require a same-bar plan-decision record authorizing that exact action and reference its decision_id/context hash on ORDER; on absent/mismatched provenance, log a critical error and hold the entry until a fresh decision is recorded. Apply the forward patch independently to current Mac source 402ba407 and S1 live source d0db497 after deployment owner review."
   ],
@@ -64,7 +67,22 @@
   "source_hashes": {
     "mac_tools/v15_daily_charts.py_sha256": "570dab1302c741fd2376eb1fcd32f1bc096a8c7926b11bc1b2ec3f36e98e93a2",
     "mac_tools/vector_direct_trader.py_sha256": "402ba40750eb565c77986f9db98e6de3d7e78ed35eff5b8f0aef4b8ed0a52b4d",
+    "mac_tools/vector_direct_trader.py_sha256_after_staged_patch": "818ac08a1ba3881b59b6505a42d5e15fca3ca7b30a384dc31d78fab4e19d45ae",
     "s1_ledger_crypto_2026-10-31.jsonl_sha256_at_04:07": "cf9ed465e624afa59d41545324184f68c50a321a635c97eb0743a8214311c494",
-    "s1_live_tools/vector_direct_trader.py_sha256": "d0db4970851108dfbf20f1ed63fbe971b426b56781db345f4f89cedbee5ba3c7"
+    "s1_live_tools/vector_direct_trader.py_sha256": "d0db4970851108dfbf20f1ed63fbe971b426b56781db345f4f89cedbee5ba3c7",
+    "s1_live_tools/vector_direct_trader.py_sha256_at_04:16_pre_patch": "ef57138e63e169ad0c9d39252a9778e6ca7278b16e669079af28b39481334a46"
+  },
+  "staged_patch_artifacts": {
+    "mac": "data/reports/late_order_trace_20261031T0414Z_mac.patch",
+    "s1_base_snapshot": "backups/before_s1_plan_decision_identity_202610310416.py",
+    "s1_live_variant": "data/reports/late_order_trace_20261031T0416Z_s1.patch",
+    "tests": "data/reports/late_order_trace_20261031T0414Z_tests.patch"
+  },
+  "verification": {
+    "focused_pytest": "python -m pytest -q tests/test_vector_direct_trader.py -k \"plan_decision or deterioration_halts or filled_board_entry or missed_board_close\": 5 passed",
+    "full_pytest": "35 passed, 4 failed; failures in existing activation/ownership expectations, Tradier one-share error text, and stocks test fixture missing rebal_phase",
+    "live_actions": "No S1 source edit, service restart, exchange call, or order",
+    "mac_source_compile": "python -m py_compile tools/vector_direct_trader.py: PASS",
+    "staged_s1_source_compile": "python -m py_compile on staged S1 variant: PASS"
   }
 }

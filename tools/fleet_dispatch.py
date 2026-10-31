@@ -74,14 +74,19 @@ def catchup_queue(now):
         return {}
 
 
+def catchup_token(doc, row):
+    identity = str(row.get("settings_sha256") or row.get("settings_updated_at") or "")
+    return str(doc.get("run_id") or "") + (":" + identity[:16] if identity else "")
+
+
 def unlaunched_catchup(doc, fleet_data, holds=(), now=None):
-    run_id = doc.get("run_id")
+    tokens = {str(r["symside"]).upper(): catchup_token(doc, r) for r in doc.get("rows") or []}
     now = time.time() if now is None else now
     running = {ss for data in fleet_data.values() for ss in (data.get("running") or {})}
     blocked = running | set(holds)
     for data in fleet_data.values():
         for ss, rec in (data.get("launches") or {}).items():
-            if rec.get("mode") != "catchup" or rec.get("catchup_run_id") != run_id:
+            if rec.get("mode") != "catchup" or rec.get("catchup_run_id") != tokens.get(ss):
                 continue
             progress = (data.get("progress") or {}).get(ss) or {}
             complete_after_launch = progress.get("complete") and float(progress.get("mtime") or 0) >= float(rec.get("ts") or 0)
@@ -873,7 +878,8 @@ def tick(args):
                 tails[sym] = max(tails.get(sym, 0), int(t or 0))
         if picks and not args.dry_run:
             with cf.ThreadPoolExecutor(max_workers=len(picks)) as pool:
-                futs = [pool.submit(launch, fleet, h, s, tails.get(s.rsplit("_", 1)[0], 0), me, "catchup" if w.startswith("catchup ") else "slow", catchup_doc.get("run_id") or "") for h, s, w in picks]
+                tokens = {str(r["symside"]).upper(): catchup_token(catchup_doc, r) for r in catchup_doc["rows"]}
+                futs = [pool.submit(launch, fleet, h, s, tails.get(s.rsplit("_", 1)[0], 0), me, "catchup" if w.startswith("catchup ") else "slow", tokens.get(s, "") if w.startswith("catchup ") else "") for h, s, w in picks]
                 rec["launches"] = [f.result() for f in futs]
             for x in rec["launches"]:
                 if x["result"] == "NPZ_STALE_HOLD":

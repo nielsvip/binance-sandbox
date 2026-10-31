@@ -10,7 +10,7 @@ from tools import v15_nextgen_runtime_factory as F
 
 
 def runtime_fixture(tmp_path):
-    assets = ['v12_quick_engine.py', 'v15_pilot.py', 'tools/opt/evaluate_v12.py', 'tools/opt/v12_pilot.py', 'tools/v15_kindergarten_first.py', 'data.npz']
+    assets = ['v12_quick_engine.py', 'v15_pilot.py', 'tools/opt/evaluate_v12.py', 'tools/opt/v12_pilot.py', 'tools/v15_kindergarten_first.py','tools/v15_daily_template_update.py', 'data.npz']
     sources = []
     classifier_source = "def exact(cell, context):\n return dict(cell, eligible=True)\n"
     for asset in assets:
@@ -24,8 +24,8 @@ def runtime_fixture(tmp_path):
     workbook = openpyxl.Workbook()
     workbook.active.title = 'EXIT'
     workbook.active.append(['title'])
-    workbook.active.append(['Switch', 'cand', 'AVG_DELTA'])
-    workbook.active.append(['FLAG', True, -1])
+    workbook.active.append(['Switch', 'cand', 'AVG_DELTA','is_default'])
+    workbook.active.append(['FLAG', True, -1,'YES'])
     workbook.save(book)
     workbook.close()
     sources.append(dict(asset=book.name, path=str(book), sha256=F.priority.evidence.sha(book)))

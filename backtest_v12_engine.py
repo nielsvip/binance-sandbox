@@ -1436,7 +1436,7 @@ from backtest_v8_harness import (
 # ═══════════════════════════════════════════════════════════════
 # STEP 2: Simulation time controller
 # ═══════════════════════════════════════════════════════════════
-from tools.replay_clock import ReplayEventLedger, set_completed_bar_clock
+from tools.replay_clock import ReplayEventLedger, set_completed_bar_clock, expect_replay_bars
 from tools.replay_ownership import replay_ownership_scope, configure_replay_ownership
 
 _sim_ts = [0.0]  # Decision clock; completed-bar replay adds the candle duration.
@@ -5346,6 +5346,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             pass
     _last_heartbeat = _real_time_module.time()
     # V8_MAX_BARS env var (for profiling / diagnostic runs) — cap total bars processed
+    expect_replay_bars(sorted_ts)
     _v8_max_bars = int(os.environ.get("V8_MAX_BARS", "0") or 0)
     if _v8_max_bars > 0:
         sorted_ts = sorted_ts[:_v8_max_bars]
@@ -11934,6 +11935,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     # Keep diagnostic route preflights cheap.  The earlier V8_MAX_BARS hook
     # belongs to the crypto loop; Tradier's independent timeline must honour
     # the same cap before it starts its own simulation loop.
+    expect_replay_bars(all_ts)
     _v8_max_bars_tradier = int(os.environ.get("V8_MAX_BARS", "0") or 0)
     if _v8_max_bars_tradier > 0 and len(all_ts) > _v8_max_bars_tradier:
         all_ts = all_ts[:_v8_max_bars_tradier]
@@ -19123,6 +19125,7 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
         m["execution_ledger"] = _native_execution_rows
         m["canonical_order_ledger"] = _canonical_native_orders
         m["replay_ownership"] = getattr(executed, "replay_ownership", [])
+        m["replay_coverage"] = getattr(executed, "replay_coverage", {"verdict": "NOT_RECORDED"})
         m["sim_account"] = str(_run_one_sim_account or os.environ.get("V12_SIM_ACCOUNT") or ("trb" if mode == "tradier" else "ang")).lower()
         m["exit_guarantee_replay"] = _xg_rp.replay_stats() if _xg_rp is not None else None  # 2026-10-14: would-escalate / would-retry counts (pass-through)
         return m

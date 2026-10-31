@@ -220,7 +220,7 @@ def _latch_env(tmp_path, n_sides, drop=9.0):
     for i in range(n_sides):
         ss = f"S{i}USDT_LONG"
         con.execute("INSERT INTO per_sym_active VALUES (?,?,?,?)", (ss, "2026-10-28T20:37:29Z", 20.0, None))
-        states[ss] = {"ok": True, "npz_tail": bar, "gain_pct": 20.0 - drop, "settings_updated_at": "2026-10-28T20:37:29Z"}
+        states[ss] = {"ok": True, "npz_tail": bar, "gain_pct": 20.0 - drop, "settings_updated_at": "2026-10-28T20:37:29Z", "settings_sha256": "original-set"}
     con.commit(); con.close()
     return state_dir, states, bar
 
@@ -246,7 +246,7 @@ def test_an_ordinary_single_deterioration_still_latches(tmp_path):
     assert json.loads((tmp_path / "data" / "vector_direct" / "deteriorated_crypto.json").read_text()).keys() == out.keys()
 
 
-def test_drop_below_15_pp_keeps_trading_and_releases_prior_latch(tmp_path):
+def test_latch_releases_only_after_different_live_set_has_fresh_vector_verdict(tmp_path):
     state_dir, states, bar = _latch_env(tmp_path, 40, drop=18.0)
     for ss in list(states)[1:]:
         states[ss]["gain_pct"] = 20.0
@@ -254,6 +254,14 @@ def test_drop_below_15_pp_keeps_trading_and_releases_prior_latch(tmp_path):
     assert len(out) == 1
     first = next(iter(out))
     states[first]["gain_pct"] = 6.0
+    assert first in module.rolling_deterioration_halts(tmp_path, state_dir, states, bar), "same vector set must not reopen after a temporary rebound"
+    import sqlite3
+    db = tmp_path / "data" / "hourly_reconfig" / "per_sym_store.db"
+    con = sqlite3.connect(db)
+    con.execute("UPDATE per_sym_active SET updated_at=?,gain_30d=? WHERE sym_side=?", ("2026-10-31T04:30:00Z", 10.0, first))
+    con.commit(); con.close()
+    states[first]["settings_updated_at"] = "2026-10-31T04:30:00Z"
+    states[first]["settings_sha256"] = "new-measured-set"
     assert module.rolling_deterioration_halts(tmp_path, state_dir, states, bar) == {}
     assert json.loads((tmp_path / "data" / "vector_direct" / "deteriorated_crypto.json").read_text()) == {}
 

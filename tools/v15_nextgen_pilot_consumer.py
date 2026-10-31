@@ -70,13 +70,15 @@ class VerifiedRowOrder(priority.FrozenRecord):
     pass
 
 
-def bind_row_order(template_source, tabs):
+def bind_row_order(template_source, tabs, writer_source=None, defaults=None, default_marker=None):
     import openpyxl
     path = priority.Path(template_source['path'])
     if priority.evidence.sha(path) != template_source['sha256']:
         raise ValueError('template order source content mismatch')
+    if writer_source is not None and priority.evidence.sha(writer_source['path']) != writer_source['sha256']:
+        raise ValueError('template writer contract source changed')
     workbook = openpyxl.load_workbook(path, read_only=False, data_only=True)
-    rows, statistics = [], []
+    rows, statistics, source_exclusions = [], [], []
     try:
         for tab in tabs:
             sheet = workbook[tab]
@@ -86,30 +88,47 @@ def bind_row_order(template_source, tabs):
             groups, positions = [], {}
             for number in range(3, sheet.max_row + 1):
                 switch, cand = sheet.cell(number, 1).value, sheet.cell(number, 2).value
-                if switch in (None, '') or cand is None:
+                if switch in (None, ''):
                     continue
                 orange = 'FFE699' in str(sheet.cell(number, 1).fill.fgColor.rgb or '')
                 key = (str(switch).strip(), orange)
                 if key not in positions:
                     positions[key] = len(groups)
-                    groups.append({'switch': key[0], 'orange': orange, 'values': []})
+                    groups.append({'switch': key[0], 'orange': orange, 'values': [], 'has_default':False})
                 elif groups[-1] is not groups[positions[key]]:
                     raise ValueError('template switch group is not contiguous')
                 value = sheet.cell(number, headers['AVG_DELTA']).value
                 if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value):
                     groups[positions[key]]['values'].append(float(value))
-                rows.append(dict(tab=tab, row=number, switch=str(switch).strip(), cand=cand))
+                if 'is_default' in headers and str(sheet.cell(number,headers['is_default']).value or '').strip().upper()=='YES':
+                    groups[positions[key]]['has_default']=True
+                field = str(switch).strip()
+                color = sheet.cell(number,1).font.color
+                grey = color is not None and str(getattr(color,'rgb','') or '').upper() in ('FFBFBFBF','00BFBFBF')
+                placeholder = field.lower() in ('switch','general','blanket','filter','option value') or field.startswith('—')
+                effective_cand = cand if cand is not None else (defaults or {}).get(field,default_marker)
+                option_placeholder = isinstance(effective_cand,str) and effective_cand.strip().lower() in ('option value','sheets applicable','gates')
+                if grey or placeholder or option_placeholder:
+                    source_exclusions.append(dict(tab=tab,row=number,switch=field,cand=cand,reason='source_grey_font' if grey else 'source_placeholder',measured=False))
+                else:
+                    rows.append(dict(tab=tab, row=number, switch=field, cand=effective_cand))
             scored = [{**group, 'mean': sum(group['values']) / len(group['values']) if group['values'] else None} for group in groups]
             expected = sorted(scored, key=lambda group: (group['orange'], group['mean'] is None, group['mean'] if group['mean'] is not None else 0))
+            white = [group for group in expected if not group['orange']]
+            if white and not white[0]['has_default']:
+                first = next((index for index,group in enumerate(white) if group['has_default']),None)
+                if first is not None:
+                    white.insert(0,white.pop(first))
+            expected = white + [group for group in expected if group['orange']]
             if [(group['switch'], group['orange']) for group in scored] != [(group['switch'], group['orange']) for group in expected]:
                 mismatch = next((actual, wanted) for actual, wanted in zip(scored, expected) if (actual['switch'], actual['orange']) != (wanted['switch'], wanted['orange']))
                 raise ValueError(f"physical template order unverified in {tab}: first differing actual {mismatch[0]['switch']} mean={mismatch[0]['mean']}; expected {mismatch[1]['switch']} mean={mismatch[1]['mean']}; no re-sort performed")
-            statistics.append(dict(tab=tab, groups=len(groups), scored_groups=sum(group['mean'] is not None for group in scored)))
+            statistics.append(dict(tab=tab, groups=len(groups), scored_groups=sum(group['mean'] is not None for group in scored), default_metadata='is_default' in headers))
     finally:
         workbook.close()
     if priority.evidence.sha(path) != template_source['sha256']:
         raise ValueError('template source changed during order census')
-    return VerifiedRowOrder(schema='verified_physical_worst_first/1', source=priority._freeze(template_source), rows=priority._freeze(rows), physical_row_order_sha256=priority.evidence.guard.fingerprint(rows), statistics=priority._freeze(statistics))
+    return VerifiedRowOrder(schema='verified_physical_worst_first/1', source=priority._freeze(template_source), writer_contract_source=priority._freeze(writer_source), rule='current writer group mean AVG_DELTA; white before orange; first white group containing a default is hoisted only when otherwise missing; actual pilot source grey/placeholder exclusions; no row reorder performed', producer_execution_provenance_claimed=False, source_exclusions=priority._freeze(source_exclusions), rows=priority._freeze(rows), physical_row_order_sha256=priority.evidence.guard.fingerprint(rows), statistics=priority._freeze(statistics))
 
 
 def capture_legal(info):

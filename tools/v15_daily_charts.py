@@ -26,6 +26,7 @@ import math
 import os
 import re
 import shutil
+import sqlite3
 import subprocess
 import sys
 import threading
@@ -643,8 +644,9 @@ def publish(boards: dict, results: list, run_id: str, started: str, partial: boo
 def index_page(manifest: dict) -> str:
     rows = []
     active = {r["symside"]: r["drop_pp"] for r in catchup_rows(manifest)}
+    same_set = active_set_matches(catchup_rows(manifest))
     catchup_n = len(active)
-    severe_n = sum(drop >= 15.0 for drop in active.values())
+    severe_n = sum(drop >= 15.0 and ss in same_set for ss, drop in active.items())
     for e in sorted(manifest["entries"], key=lambda e: (e["status"] != "OK", -(e.get("metrics") or {}).get("gain_pct", -1e9) if e["status"] == "OK" else 0, e["symside"])):
         m, d, o = e.get("metrics") or {}, e.get("deltas") or {}, e.get("orig_metrics") or {}
         chart_path = CHARTS / e["chart"]
@@ -663,14 +665,14 @@ def index_page(manifest: dict) -> str:
         link = f"<a href='{_html.escape(e['chart'])}' title='{_html.escape(chart_title + ' · ' + direction, quote=True)}' style='color:{title_color}'>{_html.escape(chart_title)}</a> <span style='color:{title_color}'>{_html.escape(direction)}</span>"
         if e["status"] == "OK":
             drop = d.get("gain_pct")
-            queue_status = "HALTED · CATCH-UP" if active.get(e["symside"], 0) >= 15.0 else "CATCH-UP · TRADING" if e["symside"] in active else "SUPERSEDED" if drop is not None and float(drop) < -1e-9 else "OK"
+            queue_status = "HALTED · SAME LIVE SET" if active.get(e["symside"], 0) >= 15.0 and e["symside"] in same_set else "LIVE SET DIFFERS" if e["symside"] in active and e["symside"] not in same_set else "DOWN · TRADING" if e["symside"] in active else "SUPERSEDED" if drop is not None and float(drop) < -1e-9 else "OK"
             rows.append(f"<tr><td>{link}</td><td>{queue_status}</td><td>{_fmt(m.get('gain_pct'))}</td><td>{_fmt(o.get('gain_pct'))}</td><td>{_fmt(d.get('gain_pct'), 2, True)}</td><td>{_fmt(m.get('bh_pct'))}</td><td>{m.get('trades')}</td><td>{_fmt(m.get('max_dd_pct'))}</td><td>{_fmt(m.get('tim_pct'))}</td><td>{e.get('board_cells_vintage') or 'UNAVAILABLE'}</td><td>{e.get('board_age_at_calc')}</td><td>{e.get('calculated_utc')}</td></tr>")
         else:
             rows.append(f"<tr style='color:#ef4444'><td>{link}</td><td>FAIL</td><td colspan=10>{_html.escape(e.get('error', '')[:200])}</td></tr>")
     return (
         "<!doctype html><html><head><meta charset=utf-8><title>V15 daily 30D charts</title>"
         "<style>body{font-family:system-ui,monospace;margin:12px;background:#0a0a0a;color:#e5e5e5}a{color:#93c5fd}table{border-collapse:collapse;font-size:11px}th{background:#1f2937;padding:4px}td{border:1px solid #333;padding:3px}</style></head><body>"
-        f"<h2>V15 daily 30D charts — run {manifest['run_id']}</h2><p>started {manifest['started_utc']} · finished {manifest['finished_utc']} · {manifest['ok']}/{manifest['sym_sides']} OK · {manifest['fail']} FAIL{' · COMPLETE' if manifest['complete'] else ' · INCOMPLETE'} · {catchup_n} negative gain changes queued for catch-up, {severe_n} at least 15 pp lower and halted. Smaller drops keep trading.</p>"
+        f"<h2>V15 daily 30D charts — run {manifest['run_id']}</h2><p>started {manifest['started_utc']} · finished {manifest['finished_utc']} · {manifest['ok']}/{manifest['sym_sides']} OK · {manifest['fail']} FAIL{' · COMPLETE' if manifest['complete'] else ' · INCOMPLETE'} · {catchup_n} negative board comparisons, {severe_n} at least 15 pp lower on the exact live set. Fleet catch-up follows the active live set and rolling vector state.</p>"
         "<p><span style='color:#4ade80'>↑ higher gain</span> · <span style='color:#fb7185'>↓ lower gain</span> · <span style='color:#d1d5db'>= unchanged</span> · <span style='color:#a3a3a3'>uncompared</span>. Percentage-point change from the original published board using the same settings on the latest rolling 30-day window.</p>"
         "<table><thead><tr><th>sym_side</th><th>status</th><th>gain % today</th><th>gain % board</th><th>Δ gain</th><th>B&H %</th><th>trades</th><th>max DD %</th><th>TIM %</th><th>board cells calculated</th><th>board age at recalc</th><th>recalculated</th></tr></thead><tbody>"
         + "".join(rows)
@@ -681,7 +683,7 @@ def index_page(manifest: dict) -> str:
 # A same-settings 30D gain drop of at least 15 pp halts entries while all negative gain drops enter catch-up.
 DETERIORATION_RULES = (("gain_pct", "drop", 15.0),)
 HALT_FILE = ROOT / "data" / "deterioration_halt.json"
-HALT_TARGETS = (("s1-int", "~/binance/data"), ("s5", "~/binance/data"), ("s5", "~/trc7d_root/data"))
+HALT_TARGETS = (("s1-int", "~/binance/data"), ("s5", "~/binance/data"))
 PRIORITY_HOSTS = ("s1-int", "s2")
 PRIORITY_REMOTE = "~/binance-sandbox/data/fleet_priority.json"
 PRIORITY_MINE = ROOT / "data" / "reports" / "daily_charts_priority_added.json"
@@ -813,6 +815,29 @@ def catchup_rows(manifest: dict) -> list[dict]:
     return sorted(rows, key=lambda row: (-row["drop_pp"], row["symside"]))
 
 
+def active_set_matches(rows: list[dict]) -> set:
+    if not rows:
+        return set()
+    try:
+        db = ROOT / "data" / "hourly_reconfig" / "per_sym_store.db"
+        con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=5)
+        try:
+            active = {ss: raw for ss, raw in con.execute("SELECT sym_side,overrides_json FROM per_sym_active WHERE sym_side IN (" + ",".join("?" for _ in rows) + ")", tuple(r["symside"] for r in rows))}
+        finally:
+            con.close()
+    except (sqlite3.Error, OSError):
+        return set()
+    same = set()
+    for row in rows:
+        try:
+            raw = active.get(row["symside"])
+            if raw and hashlib.md5(json.dumps(json.loads(raw), sort_keys=True, default=str).encode()).hexdigest() == row["set_md5"]:
+                same.add(row["symside"])
+        except (TypeError, ValueError):
+            continue
+    return same
+
+
 def sync_catchup_queue(doc: dict) -> dict:
     body = json.dumps(doc, indent=1, sort_keys=True)
     want = hashlib.sha256(body.encode()).hexdigest()
@@ -830,19 +855,19 @@ def sync_catchup_queue(doc: dict) -> dict:
 
 
 def enforce(manifest=None, partial=False) -> dict:
-    """Queue negative gain deltas; halt only drops of at least 15 pp."""
+    """Keep board comparisons diagnostic unless the exact board set is active live."""
     if partial or not manifest:
         return {"catchup": "partial chart run: fleet queue unchanged", "halt_push": "DISABLED"}
     rows = catchup_rows(manifest)
-    doc = {"schema": "daily-chart-catchup-v1", "run_id": manifest["run_id"], "generated_utc": iso(utcnow()), "until": time.time() + 36 * 3600, "rows": rows, "threshold_halt_pp": 15.0, "mode": "V18_CATCHUP=1"}
+    same_set = active_set_matches(rows)
+    doc = {"schema": "daily-chart-diagnostic-v1", "run_id": manifest["run_id"], "generated_utc": iso(utcnow()), "rows": rows, "live_queue_source": "fleet_probe active SQL set plus forward vector state"}
     atomic_write(CATCHUP_FILE, json.dumps(doc, indent=1, sort_keys=True))
-    halts = {r["symside"]: {"halted_utc": iso(utcnow()), "rechecked_utc": r["calculated_utc"], "drop_pp": r["drop_pp"], "board_published_utc": r["board_published_utc"], "set_md5": r["set_md5"], "reason": "same-settings 30D gain fell by at least 15 pp"} for r in rows if r["drop_pp"] >= 15.0}
+    halts = {r["symside"]: {"halted_utc": iso(utcnow()), "rechecked_utc": r["calculated_utc"], "drop_pp": r["drop_pp"], "board_published_utc": r["board_published_utc"], "set_md5": r["set_md5"], "reason": "same-settings 30D gain fell by at least 15 pp"} for r in rows if r["drop_pp"] >= 15.0 and r["symside"] in same_set}
     halt_doc = {"updated_utc": iso(utcnow()), "semantics": "drops >=15 pp forbid OPEN/AUGMENT; crypto held positions wait for current-bar WT 15m against before deterioration CLOSE; ordinary strategy exits remain active", "halts": halts}
     atomic_write(HALT_FILE, json.dumps(halt_doc, indent=1, sort_keys=True))
-    status = sync_catchup_queue(doc)
     halt_status = push_halts(halt_doc)
-    print(f"[daily-charts] catch-up queue {len(rows)} negative sides, {sum(r['drop_pp'] >= 15 for r in rows)} at least 15 pp; S1/S2 {status}", flush=True)
-    return {"catchup": len(rows), "severe_drop_15pp": len(halts), "queue_sync": status, "halt_push": halt_status}
+    print(f"[daily-charts] {len(rows)} negative board diagnostics, {len(halts)} severe exact-live-set halts; fleet catch-up uses live vector state", flush=True)
+    return {"board_diagnostic_down": len(rows), "severe_same_live_set": len(halts), "live_catchup_source": "active SQL plus forward vector state", "halt_push": halt_status}
 
 
 def slot_due(now: datetime.datetime) -> str:

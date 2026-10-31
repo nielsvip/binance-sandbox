@@ -238,6 +238,9 @@ DETERIORATION_MASS_MIN = int(os.environ.get("VD_DETERIORATION_MASS_MIN", "3"))
 BROKER_READY_EVERY_S = float(os.environ.get("VD_BROKER_READY_EVERY_S", "60"))
 MAX_ATTEMPTS = 3
 VENUE_WIDE_KINDS_IGNORED = ("account_dead", "broker_unreachable_account")
+PERSISTED_STATE_REF_CACHE = {}
+PERSISTED_PLAN_REF_CACHE = {}
+UNVERIFIED_HALT_LOG_STATE = {"signature": None, "at": 0.0}
 
 
 def log(msg: str) -> None:
@@ -273,17 +276,26 @@ def atomic_write_json(path: Path, payload) -> None:
 
 
 def persist_decision_state(directory, state):
+    cache_key = (str(Path(directory)), id(state))
+    cached = PERSISTED_STATE_REF_CACHE.get(cache_key)
+    if cached and cached[0] is state:
+        return cached[1]
     encoded = json.dumps(state, sort_keys=True, separators=(",", ":"), default=str).encode()
     digest = hashlib.sha256(encoded).hexdigest()
     relative = Path("decision_states") / digest[:2] / (digest + ".json")
     path = Path(directory) / relative
     if not path.exists():
         atomic_write_json(path, state)
-    return {"state_sha256": digest, "state_file": str(relative), "npz_tail": state.get("npz_tail"), "state_ts": state.get("ts"), "settings_sha256": state.get("settings_sha256"), "engine_ast_sha256": state.get("engine_ast_sha256"), "settings_updated_at": state.get("settings_updated_at")}
+    reference = {"state_sha256": digest, "state_file": str(relative), "npz_tail": state.get("npz_tail"), "state_ts": state.get("ts"), "settings_sha256": state.get("settings_sha256"), "engine_ast_sha256": state.get("engine_ast_sha256"), "settings_updated_at": state.get("settings_updated_at")}
+    if len(PERSISTED_STATE_REF_CACHE) >= 512:
+        PERSISTED_STATE_REF_CACHE.pop(next(iter(PERSISTED_STATE_REF_CACHE)))
+    PERSISTED_STATE_REF_CACHE[cache_key] = (state, reference)
+    return reference
 
 
 def order_intent(order):
-    return {key: order.get(key) for key in ("act", "key", "qty", "notional", "reason", "why") if order.get(key) is not None}
+    excluded = {"plan_decision", "decision_provenance", "bar", "account_execution_context"}
+    return {key: value for key, value in order.items() if key not in excluded}
 
 
 def persist_plan_decision(directory, document):
@@ -291,9 +303,14 @@ def persist_plan_decision(directory, document):
     digest = hashlib.sha256(encoded).hexdigest()
     relative = Path("plan_decisions") / digest[:2] / f"{digest}.json"
     path = Path(directory) / relative
-    if not path.exists():
+    cache_key = (str(Path(directory)), digest)
+    if cache_key not in PERSISTED_PLAN_REF_CACHE and not path.exists():
         atomic_write_json(path, document)
-    return {"plan_decision_id": digest, "plan_decision_file": str(relative)}
+    reference = {"plan_decision_id": digest, "plan_decision_file": str(relative)}
+    if len(PERSISTED_PLAN_REF_CACHE) >= 2048:
+        PERSISTED_PLAN_REF_CACHE.pop(next(iter(PERSISTED_PLAN_REF_CACHE)))
+    PERSISTED_PLAN_REF_CACHE[cache_key] = reference
+    return reference
 
 
 def validate_plan_decision(directory, acct, order):
@@ -301,8 +318,14 @@ def validate_plan_decision(directory, acct, order):
     decision_id, relative = reference.get("plan_decision_id"), reference.get("plan_decision_file")
     if not decision_id or not relative:
         return False, "missing plan decision reference"
-    relative = Path(relative)
-    if relative.is_absolute() or relative.parts[:1] != ("plan_decisions",):
+    if not isinstance(decision_id, str) or len(decision_id) != 64 or any(char not in "0123456789abcdef" for char in decision_id):
+        return False, "invalid plan decision hash"
+    try:
+        relative = Path(relative)
+    except (TypeError, ValueError):
+        return False, "invalid plan decision path"
+    expected_path = Path("plan_decisions") / decision_id[:2] / f"{decision_id}.json"
+    if relative.is_absolute() or relative != expected_path:
         return False, "invalid plan decision path"
     path = Path(directory) / relative
     document = read_json(path)
@@ -313,13 +336,28 @@ def validate_plan_decision(directory, acct, order):
         return False, "plan decision content hash mismatch"
     if document.get("acct") != acct or document.get("ss") != order.get("ss"):
         return False, "plan decision account or side mismatch"
+    try:
+        order_bar = int(order.get("bar") if order.get("bar") is not None else str(order.get("key", "")).split("|")[2])
+    except (IndexError, TypeError, ValueError):
+        return False, "order bar unavailable"
+    if document.get("bar") != order_bar:
+        return False, "plan decision bar mismatch"
     state_ref = document.get("state_provenance") or {}
-    state_path = Path(state_ref.get("state_file") or "")
-    if state_path.is_absolute() or state_path.parts[:1] != ("decision_states",):
+    try:
+        state_path = Path(state_ref.get("state_file") or "")
+    except (TypeError, ValueError):
+        return False, "invalid state provenance path"
+    state_hash = state_ref.get("state_sha256")
+    if not isinstance(state_hash, str) or len(state_hash) != 64 or any(char not in "0123456789abcdef" for char in state_hash):
+        return False, "invalid state provenance hash"
+    expected_state_path = Path("decision_states") / state_hash[:2] / f"{state_hash}.json"
+    if state_path.is_absolute() or state_path != expected_state_path:
         return False, "invalid state provenance path"
     state = read_json(Path(directory) / state_path)
-    if not isinstance(state, dict) or hashlib.sha256(json.dumps(state, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest() != state_ref.get("state_sha256"):
+    if not isinstance(state, dict) or hashlib.sha256(json.dumps(state, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest() != state_hash:
         return False, "state provenance missing or hash mismatch"
+    if order.get("decision_provenance") != state_ref:
+        return False, "order state provenance differs from plan decision"
     if order_intent(order) not in (document.get("orders") or []):
         return False, "order intent absent from plan decision"
     return True, ""
@@ -414,10 +452,16 @@ def deterioration_halts(root: Path, store_db=None) -> dict:
     rows = (doc.get("halts") or {}) if isinstance(doc, dict) else {}
     if not rows:
         return {}
+    def log_unverified(sides, reason):
+        signature = (tuple(sorted(sides)), reason)
+        now = time.time()
+        if signature != UNVERIFIED_HALT_LOG_STATE["signature"] or now - UNVERIFIED_HALT_LOG_STATE["at"] >= 60:
+            log(f"daily chart halt identity unverified for {len(sides)} sides; OPEN/AUGMENT remain blocked: {reason}")
+            UNVERIFIED_HALT_LOG_STATE.update(signature=signature, at=now)
     def unverified(reason):
         out = {str(ss).upper(): {**(rec if isinstance(rec, dict) else {}), "identity_status": "UNVERIFIED", "identity_error": reason} for ss, rec in rows.items()}
         if out:
-            log(f"daily chart halt identity unverified for {len(out)} sides; OPEN/AUGMENT remain blocked: {reason}")
+            log_unverified(out, reason)
         return out
     db = Path(store_db) if store_db is not None else root / "data" / "hourly_reconfig" / "per_sym_store.db"
     try:
@@ -442,7 +486,7 @@ def deterioration_halts(root: Path, store_db=None) -> dict:
             verified[str(ss).upper()] = {**(rec if isinstance(rec, dict) else {}), "identity_status": "UNVERIFIED", "identity_error": "active override JSON invalid"}
     unknown = sorted(ss for ss, rec in verified.items() if rec.get("identity_status") == "UNVERIFIED")
     if unknown:
-        log(f"daily chart halt identity unverified for {len(unknown)} sides; OPEN/AUGMENT remain blocked: {','.join(unknown[:12])}")
+        log_unverified(unknown, ",".join(unknown[:12]))
     return verified
 
 
@@ -478,13 +522,16 @@ def rolling_deterioration_halts(root: Path, state_dir: Path, states: dict, bar: 
                     continue
                 evaluated += 1
                 if published - current < 15.0:
-                    if ss in latched:
+                    previous = latched.get(ss) or {}
+                    changed_set = previous.get("settings_sha256") and state.get("settings_sha256") and previous["settings_sha256"] != state["settings_sha256"] and previous.get("published_settings_at") != row[0]
+                    if ss in latched and changed_set:
                         latched.pop(ss)
                     continue
                 if ss in latched:
                     continue
                 added[ss] = {"published_gain_pct": published, "rolling_gain_pct": current,
                              "drop_pp": published - current, "published_settings_at": row[0],
+                             "settings_sha256": state.get("settings_sha256"),
                              "state_ts": state.get("ts"), "npz_tail": state.get("npz_tail"),
                              "latched_utc": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                              "reason": "fresh 30D replay deteriorated by at least 15 pp"}
@@ -607,7 +654,12 @@ def plan_account(acct, venue, keys, states, positions, bar, done, allowed, prev_
         st = states.get(ss)
         held = float((positions.get(ss) or {}).get("qty") or 0.0)
         if venue == "crypto" and ss in halted:
-            if held > 0:
+            halt = halted[ss] or {}
+            if halt.get("identity_status") == "UNVERIFIED":
+                if held <= 0:
+                    notes.append((ss, "DETERIORATION_IDENTITY_UNVERIFIED_NO_REENTRY"))
+                    continue
+            elif held > 0:
                 wt = (wt15(ss) or {}) if wt15 is not None else {}
                 wt_bar = int(wt.get("bar_ts") or 0)
                 if wt_bar == bar:
@@ -617,7 +669,7 @@ def plan_account(acct, venue, keys, states, positions, bar, done, allowed, prev_
                 if against:
                     orders.append({"acct": acct, "ss": ss, "act": "CLOSE", "qty": held,
                                    "key": f"{acct}|{ss}|{wt_bar}|DETERIORATED_CLOSE",
-                                   "why": f"DETERIORATED_CLOSE_WT15_AGAINST: {detail}; {str((halted[ss] or {}).get('reason') or '30D gain deterioration')[:120]}",
+                                   "why": f"DETERIORATED_CLOSE_WT15_AGAINST: {detail}; {str(halt.get('reason') or '30D gain deterioration')[:120]}",
                                    "reason": "DETERIORATED_CLOSE", "deterioration_wt15_bar": wt_bar})
                     continue
                 notes.append((ss, f"DETERIORATION_HOLD_WAIT_WT15 {detail}"))
@@ -686,7 +738,9 @@ def plan_account(acct, venue, keys, states, positions, bar, done, allowed, prev_
                            "why": f"board flat, broker holds {held}"})
         elif board_open and held <= 0:
             if ss in halted:
-                notes.append((ss, f"DETERIORATION_HALT_NO_OPEN since {(halted[ss] or {}).get('halted_utc')}"))
+                halt = halted[ss] or {}
+                note = "DETERIORATION_IDENTITY_UNVERIFIED_NO_REENTRY" if halt.get("identity_status") == "UNVERIFIED" else f"DETERIORATION_HALT_NO_OPEN since {halt.get('halted_utc')}"
+                notes.append((ss, note))
                 continue
             if not allowed(acct, ss):
                 notes.append((ss, "SKIP_OPEN_NOT_IN_BOOKS"))
@@ -695,6 +749,7 @@ def plan_account(acct, venue, keys, states, positions, bar, done, allowed, prev_
             ratio = min(4.0, max(0.25, eq / oq)) if eq > 0 and oq > 0 else 1.0
             anchor = st.get("engine_open_bar_ts") or st.get("entry_bar") or tail
             orders.append({"acct": acct, "ss": ss, "act": "OPEN", "notional": START_POSITION_SIZE * ratio,
+                           "engine_qty": eq, "engine_open_qty": oq, "engine_qty_ratio": ratio,
                            "key": f"{acct}|{ss}|{tail}|OPEN", "anchor": int(anchor), "why": f"board holds since {anchor}, broker flat (engine qty ratio {ratio:.3f})"})
         elif board_open and held > 0:
             if int(st.get("acts_bar_ts") or -1) != tail:
@@ -705,13 +760,16 @@ def plan_account(acct, venue, keys, states, positions, bar, done, allowed, prev_
                 q, before = float(a.get("qty") or 0.0), float(a.get("qty_before") or 0.0)
                 if typ == "AUGMENT" and q > 0 and before > 0:
                     if ss in halted:
-                        notes.append((ss, f"DETERIORATION_HALT_NO_AUGMENT since {(halted[ss] or {}).get('halted_utc')}"))
+                        halt = halted[ss] or {}
+                        note = "DETERIORATION_IDENTITY_UNVERIFIED_NO_AUGMENT" if halt.get("identity_status") == "UNVERIFIED" else f"DETERIORATION_HALT_NO_AUGMENT since {halt.get('halted_utc')}"
+                        notes.append((ss, note))
                         continue
                     want = base * q / before
                     if prev_qty.get(ss) and held >= base + 0.5 * want:
                         notes.append((ss, f"AUGMENT_ALREADY_ON_BROKER {base}->{held}"))
                         continue
-                    orders.append({"acct": acct, "ss": ss, "act": "AUGMENT", "qty": want, "key": f"{acct}|{ss}|{tail}|AUGMENT|{i}",
+                    orders.append({"acct": acct, "ss": ss, "act": "AUGMENT", "qty": want, "engine_action_qty": q, "engine_action_qty_before": before,
+                                   "engine_action_fraction": q / before, "base_qty": base, "key": f"{acct}|{ss}|{tail}|AUGMENT|{i}",
                                    "why": f"engine AUGMENT {q:.6g} on {before:.6g} ({a.get('reason')})"})
                 elif typ == "REDUCE" and a.get("qty_frac"):
                     frac = float(a["qty_frac"])
@@ -719,7 +777,8 @@ def plan_account(acct, venue, keys, states, positions, bar, done, allowed, prev_
                     if prev_qty.get(ss) and held <= base - 0.5 * want:
                         notes.append((ss, f"REDUCE_ALREADY_ON_BROKER {base}->{held}"))
                         continue
-                    orders.append({"acct": acct, "ss": ss, "act": "REDUCE", "qty": min(held, want), "key": f"{acct}|{ss}|{tail}|REDUCE|{i}",
+                    orders.append({"acct": acct, "ss": ss, "act": "REDUCE", "qty": min(held, want), "qty_frac": frac, "engine_action_qty": q,
+                                   "engine_action_qty_before": before, "base_qty": base, "key": f"{acct}|{ss}|{tail}|REDUCE|{i}",
                                    "why": f"engine REDUCE frac {frac:.4f} ({a.get('reason')})"})
     return [o for o in orders if o["key"] not in done], notes
 
@@ -1325,10 +1384,26 @@ class Trader:
     def load_states(self, sides, state_dir=None):
         out = {}
         base = Path(state_dir) if state_dir else self.state_dir
+        cache = self.__dict__.setdefault("loaded_state_cache", {})
         for ss in sides:
-            d = read_json(base / f"{ss}.json")
+            path = base / f"{ss}.json"
+            try:
+                stat = path.stat()
+                version = (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
+            except OSError:
+                continue
+            cache_key = str(path)
+            cached = cache.get(cache_key)
+            if cached and cached[0] == version:
+                out[ss] = cached[1]
+                continue
+            d = read_json(path)
             if isinstance(d, dict):
-                out[ss] = reconcile_terminal_lifecycle(d)
+                state = reconcile_terminal_lifecycle(d)
+                if len(cache) >= 512:
+                    cache.pop(next(iter(cache)))
+                cache[cache_key] = (version, state)
+                out[ss] = state
         return out
 
     def positions(self, acct):
@@ -1645,9 +1720,9 @@ class Trader:
         base = Path(state_dir) if state_dir else getattr(self, "state_dir", None)
         for ss, p in pos.items():
             if ss not in states and float(p.get("qty") or 0) > 0 and base:
-                d = read_json(base / f"{ss}.json")
-                if isinstance(d, dict):
-                    states[ss] = reconcile_terminal_lifecycle(d)
+                loaded = self.load_states([ss], base)
+                if ss in loaded:
+                    states[ss] = loaded[ss]
         return states
 
     def alert(self, kind, **fields):
@@ -1702,7 +1777,9 @@ class Trader:
                 elif e["want"] == "HOLD" and held <= 0 and st.get("open"):
                     eq, oq = float(st.get("engine_qty") or 0.0), float(st.get("engine_open_qty") or 0.0)
                     ratio = min(4.0, max(0.25, eq / oq)) if eq > 0 and oq > 0 else 1.0
-                    orders.append({"acct": acct, "ss": e["ss"], "act": "OPEN", "notional": START_POSITION_SIZE * ratio, "key": f"{acct}|{e['ss']}|{e['bar']}|BACKSTOP_OPEN", "why": f"BACKSTOP Mac missed board OPEN at bar {e['bar']}"})
+                    orders.append({"acct": acct, "ss": e["ss"], "act": "OPEN", "notional": START_POSITION_SIZE * ratio,
+                                   "engine_qty": eq, "engine_open_qty": oq, "engine_qty_ratio": ratio,
+                                   "key": f"{acct}|{e['ss']}|{e['bar']}|BACKSTOP_OPEN", "why": f"BACKSTOP Mac missed board OPEN at bar {e['bar']}"})
                 else:
                     continue
                 self.alert("BACKSTOP_FAILURE_MAC_MISSED_ORDER", account=acct, sym_side=e["ss"], board=e["want"], bar=e["bar"], broker_qty=held, action=orders[-1]["act"])

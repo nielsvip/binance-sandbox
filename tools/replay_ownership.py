@@ -1,6 +1,7 @@
 import functools
 import os
 from contextvars import ContextVar
+from tools.replay_clock import begin_bar_coverage, end_bar_coverage, replay_bar_coverage
 
 _scope = ContextVar("replay_ownership_scope", default=None)
 
@@ -9,10 +10,12 @@ def replay_ownership_scope(function):
     async def wrapped(*args, **kwargs):
         state = {"restores": [], "reports": []}
         token = _scope.set(state)
+        coverage_token = begin_bar_coverage()
         try:
             result = await function(*args, **kwargs)
             if hasattr(result, "__dict__"):
                 result.replay_ownership = list(state["reports"])
+                result.replay_coverage = replay_bar_coverage()
             return result
         finally:
             for config, had_own, value in reversed(state["restores"]):
@@ -21,6 +24,7 @@ def replay_ownership_scope(function):
                 else:
                     delattr(config, "VEC_DICTATE_ONLY_ENABLED")
             _scope.reset(token)
+            end_bar_coverage(coverage_token)
     return wrapped
 
 def configure_replay_ownership(config, venue):

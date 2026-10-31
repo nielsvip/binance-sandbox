@@ -30,7 +30,7 @@ def build(spec, prepared, progress, current_chain, defaults, exact_classifier):
     epoch = priority.bind_epoch(sources)
     priority.validate_epoch_sources(epoch)
     lookup = {source['asset']: source for source in sources}
-    required = ('v12_quick_engine.py', 'v15_pilot.py', 'tools/opt/evaluate_v12.py', 'tools/opt/v12_pilot.py', 'tools/v15_kindergarten_first.py')
+    required = ('v12_quick_engine.py', 'v15_pilot.py', 'tools/opt/evaluate_v12.py', 'tools/opt/v12_pilot.py', 'tools/v15_kindergarten_first.py','tools/v15_daily_template_update.py')
     if any(asset not in lookup for asset in required):
         raise ValueError('actual pilot/engine/evaluator/KG source pins required')
     if Path(exact_classifier.__code__.co_filename).resolve() != Path(lookup['v15_pilot.py']['path']).resolve():
@@ -39,7 +39,9 @@ def build(spec, prepared, progress, current_chain, defaults, exact_classifier):
         raise ValueError('actual pilot defaults differ from pinned factory snapshot')
     template = lookup[spec['template_asset']]
     npz = lookup[spec['npz_asset']]
-    order = consumer.bind_row_order(template, spec['tabs'])
+    order = consumer.bind_row_order(template, spec['tabs'],lookup['tools/v15_daily_template_update.py'],defaults,spec.get('default_marker'))
+    if any(not row['default_metadata'] for row in order['statistics']):
+        raise ValueError('actual template default metadata required for writer-order validation')
     arrays_hash = priority.evidence.prepared_arrays_identity(prepared)
     if arrays_hash != spec['prepared_arrays_sha256']:
         raise ValueError('actual prepared arrays differ from source-bound prepared snapshot')
