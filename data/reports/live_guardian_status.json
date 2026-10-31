@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T14:07:38Z",
+ "ts": "2026-10-31T14:12:48Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 21,
    "open_positions": 22,
-   "unrealised_usd": 0.19,
+   "unrealised_usd": 0.11,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 24,
    "open_positions": 5,
-   "unrealised_usd": -0.4,
+   "unrealised_usd": -0.5,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 5,
    "open_positions": 5,
-   "unrealised_usd": -0.41,
+   "unrealised_usd": -0.48,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,71 +127,57 @@
     "43587"
    ],
    "starts_30m": 1,
-   "log_age_s": 8.0
+   "log_age_s": 17.0
   },
   "men": {
    "pids": [
     "7492"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 88.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 63.0
+   "log_age_s": 46.0
   },
   "inf": {
    "pids": [
     "11994"
    ],
    "starts_30m": 1,
-   "log_age_s": 7.0
+   "log_age_s": 73.0
   },
   "flz": {
    "pids": [
     "73791"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 16.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 33920.0
+   "log_age_s": 34230.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 34236.0
+   "log_age_s": 34546.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T14:07:38Z",
+   "ts": "2026-10-31T14:12:48Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "fin:FLUXUSDT_LONG",
    "evidence": "CLOSE FIXED_STOP decided 2026-10-31T11:14:33Z bar=2026-10-31T10:45:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-31T14:07:38Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "men:ICXUSDT_SHORT",
-   "evidence": "31 13:56:10 - WARNING - [men] [REENTRY_GRANDFATHERED] men:ICXUSDT_SHORT: bypass MAX_ORDER_VALUE $20 / MAX_POSITION_SIZE $20 \u2014 restoring $5004 on bounce (prior max 0.0000)"
-  },
-  {
-   "ts": "2026-10-31T14:07:38Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "men:ICXUSDT_SHORT",
-   "evidence": "order notional $5003.98 > MAX_ORDER_VALUE $300: 31 13:56:10 - INFO - [men] [execute_trade_action][men] \u2705 \u2705 \u2705 \u2705 OPEN men:ICXUSDT_SHORT @ 0.012875 qty=388658.790055 ($5003.98) side=SELL | QUICK_OPEN_STRONG_SELL_k1:50/d150/k3:50.0/d3:50.0_@0.0129_REEN"
-  },
-  {
-   "ts": "2026-10-31T14:07:39Z",
+   "ts": "2026-10-31T14:12:49Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "flz:DOGEUSDC_SHORT",
@@ -200,8 +186,7 @@
  ],
  "alert_counts": {
   "VEC_DECISION_NOT_FILLED": 1,
-  "CAP_BYPASS": 2,
-  "SIZE_ANOMALY": 1
+  "CAP_BYPASS": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -261,5 +246,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.47
+ "sweep_s": 1.45
 }
