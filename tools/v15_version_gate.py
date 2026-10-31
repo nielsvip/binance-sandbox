@@ -157,6 +157,80 @@ def model_snapshot_pin():
     return {"snapshot_id": SNAP, "manifest_sha256": hashlib.sha256(raw).hexdigest(), "sides": sides}
 
 
+def model_runtime_pin(runtime_spec):
+    runtime_spec = runtime_spec or {}
+    manifest_path = Path(runtime_spec.get("path") or "").resolve()
+    raw = manifest_path.read_bytes()
+    manifest_sha = hashlib.sha256(raw).hexdigest()
+    if manifest_sha != runtime_spec.get("sha256"):
+        raise ValueError("comparison runtime manifest SHA256 differs from its pinned declaration")
+    manifest = json.loads(raw)
+    if manifest.get("schema") != "v15_nn_runtime/1" or not isinstance(manifest.get("files"), dict):
+        raise ValueError("comparison runtime manifest has an unsupported schema")
+    code_root = Path(manifest.get("code_root") or "").resolve()
+    if not code_root.is_dir():
+        raise ValueError("comparison runtime code_root is missing")
+    files = manifest["files"]
+    for relative, expected in files.items():
+        rel = Path(relative)
+        if rel.is_absolute() or ".." in rel.parts or not isinstance(expected, str) or not re.fullmatch(r"[0-9a-f]{64}", expected):
+            raise ValueError(f"invalid comparison runtime file declaration: {relative}")
+        source = code_root / rel
+        if source.is_symlink() or not source.is_file() or sha256(source) != expected:
+            raise ValueError(f"comparison runtime file fails its declared SHA256: {relative}")
+    return {"manifest_path": str(manifest_path), "manifest_sha256": manifest_sha, "code_root": str(code_root), "files": files}
+
+
+def verify_model_runtime_tree(runtime_pin, code_root):
+    root = Path(code_root).resolve()
+    for relative, expected in (runtime_pin or {}).get("files", {}).items():
+        target = root / relative
+        if target.is_symlink() or not target.is_file() or sha256(target) != expected:
+            raise ValueError(f"model comparison runtime differs from pinned champion tree: {relative}")
+    return True
+
+
+def model_arm_flags(spec, arm_name, base_flags, cli_flags):
+    equal_flags = spec.get("equal_runtime_flags") or {}
+    arm_flags = spec.get(f"{arm_name}_runtime_flags") or {}
+    if not isinstance(equal_flags, dict) or not isinstance(arm_flags, dict):
+        raise ValueError("comparison runtime flags must be objects")
+    prescribed = dict(equal_flags)
+    prescribed.update(arm_flags)
+    for key, value in cli_flags.items():
+        if key in prescribed and str(value) != str(prescribed[key]):
+            raise ValueError(f"--set {key}={value} conflicts with pinned {arm_name} comparison flag {prescribed[key]}")
+    flags = dict(base_flags)
+    flags.update(equal_flags)
+    flags.update(arm_flags)
+    return flags
+
+
+def model_comparison_spec_pin(path, reference_root, candidate_root, reference_pin, candidate_pin, champion_tree=None, base_flags=None, cli_flags=None):
+    path = Path(path).resolve()
+    raw = path.read_bytes()
+    spec = json.loads(raw)
+    if spec.get("schema") != "v15_nn_comparison/1":
+        raise ValueError("model comparison spec has an unknown schema")
+    runtime_pin = model_runtime_pin(spec.get("runtime"))
+    if champion_tree is not None:
+        verify_model_runtime_tree(runtime_pin, champion_tree)
+    for arm_name, root, pin in (("reference", reference_root, reference_pin), ("candidate", candidate_root, candidate_pin)):
+        arm = spec.get(arm_name) or {}
+        declaration_path = Path(arm.get("path") or "").resolve()
+        if arm_name == "reference" and declaration_path != Path(root).resolve() / MODEL_BUNDLE_PATH:
+            raise ValueError(f"comparison spec {arm_name} bundle path differs from the submitted bundle")
+        if arm.get("sha256") != pin.get("manifest_sha256"):
+            raise ValueError(f"comparison spec {arm_name} bundle manifest hash differs from submitted bundle")
+    base_flags = dict(base_flags or {})
+    cli_flags = cli_flags or {}
+    reference_flags = model_arm_flags(spec, "reference", base_flags, {})
+    candidate_flags = model_arm_flags(spec, "candidate", base_flags, cli_flags)
+    if not reference_flags or not candidate_flags:
+        raise ValueError("comparison spec must pin reference and candidate runtime flags")
+    return {"comparison_id": spec.get("comparison_id"), "path": str(path), "sha256": hashlib.sha256(raw).hexdigest(), "runtime": runtime_pin, "base_flags": base_flags, "reference_flags": reference_flags, "candidate_flags": candidate_flags}
+
+
 def stage_model_bundle(source, destination):
     source, destination = Path(source), Path(destination)
     pin = model_bundle_pin(source)
@@ -266,30 +340,34 @@ def cmd_submit(a):
         (cd / "tree" / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src, cd / "tree" / rel)
         files[rel] = md5(cd / "tree" / rel)
+    flags = dict(champ.get("flags") or {})
+    cli_flags = {}
+    for kv in a.set or []:
+        k, _, v = kv.partition("=")
+        cli_flags[k] = v
+        flags[k] = v
     has_model_assets = MODEL_BUNDLE_PATH in files or any(GATED_DATA_RE.fullmatch(rel) for rel in files)
     model_overlay = None
     if has_model_assets:
-        if MODEL_BUNDLE_PATH not in files or not a.nn_baseline_bundle:
-            print("[gate] model submission requires tools/v18_model_bundle.json plus --nn-baseline-bundle with an independently pinned 32-artifact reference", file=sys.stderr)
+        if MODEL_BUNDLE_PATH not in files or not a.nn_baseline_bundle or not a.nn_comparison_spec:
+            print("[gate] model submission requires tools/v18_model_bundle.json, --nn-baseline-bundle, and --nn-comparison-spec pinning both arm declarations", file=sys.stderr)
             shutil.rmtree(cd)
             return 2
         try:
             candidate_pin = model_bundle_pin(cd / "tree")
             baseline_pin = stage_model_bundle(a.nn_baseline_bundle, cd / "nn_baseline_bundle")
+            comparison_spec_pin = model_comparison_spec_pin(a.nn_comparison_spec, a.nn_baseline_bundle, cd / "tree", baseline_pin, candidate_pin, CHAMP / "tree", flags, cli_flags)
             snapshot_pin = model_snapshot_pin()
         except (OSError, ValueError, json.JSONDecodeError) as exc:
             print(f"[gate] invalid model bundle: {exc}", file=sys.stderr)
             shutil.rmtree(cd)
             return 2
-        model_overlay = {"candidate": candidate_pin, "baseline": baseline_pin, "baseline_bundle_path": str(cd / "nn_baseline_bundle"), "snapshot": snapshot_pin}
-    elif a.nn_baseline_bundle:
-        print("[gate] --nn-baseline-bundle requires candidate model bundle assets", file=sys.stderr)
+        flags = comparison_spec_pin["candidate_flags"]
+        model_overlay = {"candidate": candidate_pin, "baseline": baseline_pin, "baseline_bundle_path": str(cd / "nn_baseline_bundle"), "baseline_source_path": str(Path(a.nn_baseline_bundle).resolve()), "comparison_spec": comparison_spec_pin, "snapshot": snapshot_pin, "champion_flags_sha256": hashlib.sha256(json.dumps(champ.get("flags") or {}, sort_keys=True, separators=(",", ":")).encode()).hexdigest(), "base_flags": comparison_spec_pin["base_flags"], "reference_flags": comparison_spec_pin["reference_flags"], "candidate_flags": comparison_spec_pin["candidate_flags"]}
+    elif a.nn_baseline_bundle or a.nn_comparison_spec:
+        print("[gate] NN bundle/spec arguments require candidate model bundle assets", file=sys.stderr)
         shutil.rmtree(cd)
         return 2
-    flags = dict(champ.get("flags") or {})
-    for kv in a.set or []:
-        k, _, v = kv.partition("=")
-        flags[k] = v
     # Launch env (what the scheduler/autotune export at dispatch) is benched like code: candidate env = champion env + changes.
     env = champ_env(champ)
     if a.env_from_production:
@@ -307,7 +385,6 @@ def cmd_submit(a):
             env[k] = v
     env = result_env(env)
     if model_overlay:
-        model_overlay["common_flags"] = flags
         model_overlay["common_env_sha256"] = hashlib.sha256(json.dumps(env, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     meta = {"id": cid, "submitted": now(), "note": a.note or "", "priority": int(a.priority or 0), "files": files, "flags": flags, "env": env, "env_changes": env_diff(champ_env(champ), env), "champion_pilot_md5": champ.get("pilot_md5"), "model_overlay": model_overlay, "state": "pending"}
     if not files and not a.set and not meta["env_changes"] and not a.allow_identical:
@@ -629,15 +706,23 @@ def cmd_run(a):
             baseline_path = Path(model_overlay["baseline_bundle_path"])
             baseline_pin = model_bundle_pin(baseline_path)
             current_snapshot = model_snapshot_pin()
+            baseline_source = Path(model_overlay["baseline_source_path"])
+            baseline_source_pin = model_bundle_pin(baseline_source)
+            current_champion_flags = champ.get("flags") or {}
+            champion_flags_sha = hashlib.sha256(json.dumps(current_champion_flags, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+            if champion_flags_sha != model_overlay.get("champion_flags_sha256"):
+                raise ValueError("current champion flags changed after model comparison submit")
+            comparison_spec_pin = model_comparison_spec_pin(model_overlay["comparison_spec"]["path"], baseline_source, cd / "tree", baseline_source_pin, candidate_pin, CHAMP / "tree", model_overlay.get("base_flags"))
+            verify_model_runtime_tree(comparison_spec_pin["runtime"], cd / "tree")
             common_env = result_env(meta["env"]) if meta.get("env") is not None else champ_env(champ)
             common_env_sha = hashlib.sha256(json.dumps(common_env, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
         except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
             print(f"[gate] REFUSED model overlay candidate {meta.get('id')}: {exc}", file=sys.stderr)
             return 2
-        if candidate_pin != model_overlay.get("candidate") or baseline_pin != model_overlay.get("baseline") or current_snapshot != model_overlay.get("snapshot"):
+        if candidate_pin != model_overlay.get("candidate") or baseline_pin != model_overlay.get("baseline") or baseline_source_pin != model_overlay.get("baseline") or current_snapshot != model_overlay.get("snapshot") or comparison_spec_pin != model_overlay.get("comparison_spec"):
             print(f"[gate] REFUSED model overlay candidate {meta.get('id')}: pinned bundle changed after submit", file=sys.stderr)
             return 2
-        if (meta.get("flags") or {}) != model_overlay.get("common_flags") or common_env_sha != model_overlay.get("common_env_sha256"):
+        if (meta.get("flags") or {}) != model_overlay.get("candidate_flags") or comparison_spec_pin.get("reference_flags") != model_overlay.get("reference_flags") or comparison_spec_pin.get("candidate_flags") != model_overlay.get("candidate_flags") or common_env_sha != model_overlay.get("common_env_sha256"):
             print(f"[gate] REFUSED model overlay candidate {meta.get('id')}: common runtime settings changed after submit", file=sys.stderr)
             return 2
     meta["state"] = "running"
@@ -645,10 +730,9 @@ def cmd_run(a):
     write_json_atomic(cd / "meta.json", meta)
     lc, la = f"gate_{meta['id']}_champ", f"gate_{meta['id']}_cand"
     if model_overlay:
-        common_flags = meta.get("flags") or {}
         common_env = result_env(meta["env"]) if meta.get("env") is not None else champ_env(champ)
-        p1 = bench(lc, CHAMP / "tree", common_flags, common_env, Path(model_overlay["baseline_bundle_path"]))
-        p2 = bench(la, cd / "tree", common_flags, common_env, cd / "tree")
+        p1 = bench(lc, CHAMP / "tree", model_overlay["reference_flags"], common_env, Path(model_overlay["baseline_bundle_path"]))
+        p2 = bench(la, cd / "tree", model_overlay["candidate_flags"], common_env, cd / "tree")
     else:
         p1 = bench(lc, CHAMP / "tree", champ.get("flags") or {}, champ_env(champ))
         p2 = bench(la, cd / "tree", meta.get("flags") or {}, result_env(meta["env"]) if meta.get("env") is not None else champ_env(champ))
@@ -679,8 +763,9 @@ def apply_model_overlay_acceptance(cd, meta, decision):
             receipt = json.loads((run_dir / "model_bundle_receipt.json").read_text())
             if receipt.get("manifest_sha256") != expected.get("manifest_sha256") or receipt.get("artifact_sha256") != expected.get("artifact_sha256"):
                 reasons.append(f"{arm} build_root receipt differs from the pinned bundle")
+            verify_model_runtime_tree(overlay["comparison_spec"]["runtime"], run_dir / "root")
         except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
-            reasons.append(f"{arm} actual run-root model verification failed: {exc}")
+            reasons.append(f"{arm} actual run-root model/runtime verification failed: {exc}")
     rows = decision.get("rows") or []
     row_by_side = {row.get("side"): row for row in rows if isinstance(row, dict)}
     scored = set(decision.get("scored") or [])
@@ -890,6 +975,7 @@ def main(argv=None):
     s.add_argument("--env-from-production", metavar="HOST", help="candidate env = the env a running production pilot on HOST (local or 10.0.0.3) really has")
     s.add_argument("--allow-identical", action="store_true", help="champion-vs-champion run (noise calibration)")
     s.add_argument("--nn-baseline-bundle", help="independently pinned 32-artifact bundle to use for the champion arm of a model comparison")
+    s.add_argument("--nn-comparison-spec", help="v15_nn_comparison/1 spec pinning the exact reference and candidate model declarations")
     s.add_argument("--priority", type=int, default=0, help="higher benches first (user-ordered comparisons)")
     sub.add_parser("run")
     rd = sub.add_parser("redecide")

@@ -43,3 +43,30 @@ def test_array_hydration_and_dynamic_timeframe_selection_use_same_policy():
     assert selected_timeframe("3m", False) == "15m"
     assert selected_timeframe("1m", True) == "1m"
     assert selected_timeframe("4h", False) == "4h"
+
+
+def test_ltf_off_hydrates_missing_micro_keys_from_real_15m_only_schema():
+    indicators = {"k_15m": 71.0, "k_15m_prev": 66.0, "d_15m": 60.0,
+                  "wt1_15m": 20.0, "wt2_15m": 10.0,
+                  "dc_basis_15m": 90.0, "dc_high_15m": 110.0, "dc_low_15m": 80.0}
+    ind_view, metrics_view, missing = paired_indicator_view(indicators, {}, False)
+    assert missing == ()
+    for timeframe in ("1m", "3m", "5m"):
+        assert ind_view[f"k_{timeframe}"] == 71.0
+        assert ind_view[f"k_{timeframe}_prev"] == 66.0
+        assert ind_view[f"d_{timeframe}"] == 60.0
+    assert ind_view["wt1_3m"] == 20.0 and ind_view["wt2_1m"] == 10.0
+    assert ind_view["dc_basis_3m"] == 90.0 and ind_view["dc_high_3m"] == 110.0
+    assert metrics_view == {}
+    assert "k_3m" not in indicators
+
+
+def test_ltf_off_overwrites_contradictory_existing_array_micro_with_15m_peer():
+    arrays = {"k_3m": np.array([2.0, 3.0]), "k_15m": np.array([70.0, 71.0]),
+              "d_15m": np.array([60.0, 61.0])}
+    paired = paired_npz_view(arrays, False)
+    assert paired["k_3m"].tolist() == [70.0, 71.0]
+    assert paired["k_1m"].tolist() == [70.0, 71.0]
+    assert paired["k_5m"].tolist() == [70.0, 71.0]
+    assert paired["d_3m"].tolist() == [60.0, 61.0]
+    assert arrays["k_3m"].tolist() == [2.0, 3.0]

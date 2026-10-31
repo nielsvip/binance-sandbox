@@ -6,6 +6,7 @@ from collections.abc import Mapping
 
 
 _MICRO_TOKEN = re.compile(r"_(?:1m|3m|5m)(?=_|$)")
+_15M_TOKEN = re.compile(r"_15m(?=_|$)")
 ASR_REQUIRED_LTF_KEYS = (
     "k_1m", "k_1m_prev", "d_1m", "k_3m", "d_3m", "k_3m_prev",
     "wt1_3m", "wt2_3m", "dc_basis_3m", "dc_high_3m", "dc_low_3m",
@@ -22,10 +23,20 @@ def _15m_key(key):
     return _MICRO_TOKEN.sub("_15m", str(key))
 
 
+def _hydrate_ltf_aliases(mapping):
+    result = dict(mapping)
+    for key, value in mapping.items():
+        key = str(key)
+        if _15M_TOKEN.search(key):
+            for timeframe in ("1m", "3m", "5m"):
+                result[_15M_TOKEN.sub(f"_{timeframe}", key)] = value
+    return result
+
+
 def _view(mapping, use_ltf):
     if not isinstance(mapping, Mapping):
         return {}
-    result = dict(mapping)
+    result = dict(mapping) if use_ltf else _hydrate_ltf_aliases(mapping)
     if use_ltf:
         return result
     for key in tuple(result):
@@ -45,8 +56,8 @@ def paired_indicator_view(indicators, metrics, use_ltf):
         indicators = {}
     if not isinstance(metrics, Mapping):
         metrics = {}
-    ind_view = dict(indicators)
-    metrics_view = dict(metrics)
+    ind_view = dict(indicators) if use_ltf else _hydrate_ltf_aliases(indicators)
+    metrics_view = dict(metrics) if use_ltf else _hydrate_ltf_aliases(metrics)
     if not use_ltf:
         for source, own, other in ((indicators, ind_view, metrics), (metrics, metrics_view, indicators)):
             for key in tuple(own):

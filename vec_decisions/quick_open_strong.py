@@ -121,17 +121,28 @@ def check_quick_open_strong(config, indicators: dict, is_long: bool,
     return True, f"{reason} score={score:.1f}>=80"
 
 
-def augment_fire_from_state(config, pos, live_pnl_pct, is_long):
+def volatility_warning_from_indicators(indicators):
+    def number(value, default):
+        try:
+            return default if value is None else float(value)
+        except (ValueError, TypeError):
+            return default
+    indicators = indicators or {}
+    current = number(indicators.get("volatility_1h_%", indicators.get("0sentiment_strength", 0)), 0)
+    average = number(indicators.get("avg_volatility_1h_%", 50.0), 50.0)
+    return average > 0 and current / average > 1.5
+
+def augment_fire_from_state(config, pos, live_pnl_pct, is_long, indicators=None):
     """SIM-LOOP driver (v12 augment gate). Synthesizes the live
     PositionFieldCalculator inputs from simulated position state and runs the
     shared fire test. Returns (fires, reason).
 
     Live requires an open position (positionAmt>0 and avg_entry_price>0):
     flat/empty pos -> (False, ''). momentum = mean of prior-bar unrealized
-    gains (the sim samples per bar where live samples per tick). risk_level =
-    shared drawdown ladder on (peak - current). high_vol has NO NPZ source ->
-    False (fail-open, documented; residual measured via parity, ATR proxy if
-    it ever names a bar). Crypto only (live QUICK lives in ez_positions_quick;
+    gains (the sim samples per bar where live samples per minute). risk_level =
+    shared drawdown ladder on (peak - current). Volatility uses supplied native
+    fields and defaults. Missing historical sentiment/minute sampling remains
+    a replay-input limitation. Crypto only (live QUICK lives in ez_positions_quick;
     tradier has no QUICK path). Gated by QUICK_OPEN_STRONG_VEC_ENABLED."""
     try:
         if pos is None or float(pos.get("qty", 0) or 0) <= 0:
@@ -143,7 +154,7 @@ def augment_fire_from_state(config, pos, live_pnl_pct, is_long):
         _hist = pos.get("_qos_gain_hist") or []
         _mom = None
         _prior = _hist[:-1]  # sim appends the current bar before the gate runs; live decides on prior ticks only
-        if _prior:
+        if len(_prior) >= 3:
             _tail = _prior[-3:]
             _mom = float(sum(_tail) / len(_tail))
         try:
@@ -155,7 +166,7 @@ def augment_fire_from_state(config, pos, live_pnl_pct, is_long):
         except Exception:
             return False, ""
         _risk = _risk_level_from_drawdown(_peak - _cur)
-        return check_quick_open_strong(config, {}, bool(is_long), momentum=_mom, risk_level=_risk, high_vol=False)
+        return check_quick_open_strong(config, {}, bool(is_long), momentum=_mom, risk_level=_risk, high_vol=volatility_warning_from_indicators(indicators))
     except Exception:
         return False, ""
 

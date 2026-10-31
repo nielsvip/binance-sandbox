@@ -22535,7 +22535,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _qos_fire, _qos_reason = False, ""
         try:
             import vec_decisions.quick_open_strong as _qos_mod
-            _qos_fire, _qos_reason = _qos_mod.augment_fire_from_state(cfg, pos, live_pnl_pct, is_long)
+            _qos_fire, _qos_reason = _qos_mod.augment_fire_from_state(cfg, pos, live_pnl_pct, is_long, indicators={key: npz[key][i] for key in ("volatility_1h_%", "avg_volatility_1h_%", "0sentiment_strength") if key in npz})
         except Exception:
             _qos_fire, _qos_reason = False, ""
         _hw_fire, _hw_reason = False, ""
